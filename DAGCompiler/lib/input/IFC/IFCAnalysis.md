@@ -4,6 +4,28 @@
 
 ---
 
+## 0. Federation — Merging Discipline IFCs
+
+Real-world projects export one IFC per discipline (ARC, MEP, STR). The pipeline
+needs a single federated IFC per building.
+
+**Script:** `tools/federation_preprocessor.py` — IfcPatch MergeProjects, GUID-preserving.
+
+**Source of truth:** copied from
+`/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/federation_preprocessor.py`.
+
+**Folder layout:**
+
+```
+IFC/                    ← merged/federated IFCs (pipeline reads from here)
+IFC/UNMERGED/           ← raw per-discipline exports (federation input)
+```
+
+**Revit models** (3 UNMERGED IFCs: ARC, MEP, STR) are not yet merged — RM currently
+runs on `Ifc4_Revit_MEP.ifc` alone. Full federation pending (PROGRESS.md S104).
+
+---
+
 ## 1. In-Pipeline Models (have classify YAML)
 
 These models have Rosetta Stone YAMLs and run through the pipeline today.
@@ -190,3 +212,30 @@ become more representative and the false-positive rate decreases.
 ./scripts/extract_validation_rules.sh <building_type>  # mine rules from extracted DB
 ./scripts/apply_mined_rules.sh                          # apply all DV_*_rules.sql
 ```
+
+---
+
+## 7. IFC as Compiled Output — Symmetric Invariants (S145)
+
+An IFC file is a **compiled binary**, not source code. The architect's intent
+(the "source") is lost. To extract a reusable BOM, the compiler must
+reverse-engineer three logical layers from the placement data:
+
+| Layer | What | Math | BOM impact |
+|-------|------|------|------------|
+| **Global Invariant** | Interior elements follow 180° rotation about building center | `P_B = R_180(P_A - C) + C` | 1:1 match, single library entry, instance transform |
+| **Mirror-Axis Exception** | Envelope elements (exterior walls) stay static — normal vector must face outward | `P_B = Mirror_axis(P_A)` | Handedness check — left-hand vs right-hand may be different SKUs |
+| **Functional Offset** | ~700mm residual between theoretical rotation center and actual placement | `P_B = Transform(P_A) + v_offset` | System integration — the "linker" gap for party wall / MEP chase |
+
+**Evidence:** DX Duplex (S145) — paired ARC windows rotate perfectly about
+building center Y=-8.9, exterior walls stay at same Y (static envelope),
+ceilings show ~700mm offset (party wall thickness). See
+[DuplexAnalysis.md §Hybrid Symmetry](../../../docs/DuplexAnalysis.md#hybrid-symmetry-s145-finding).
+
+**Extraction principle:** Don't match identical coordinates — match **relative
+topology**. Normalize to local space, fuzzy-pair with tolerance, classify the
+residual vector: zero = unit element, wall-thickness = partition, large = interface.
+
+**Philosophy:** An IFC model is a collection of local coordinate systems linked
+by functional constraints. Solving for the constraints (the "why" behind the
+offset) yields not just a BOM but a generative script that can rebuild the building.

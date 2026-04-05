@@ -28,6 +28,8 @@
 
 **S144 GEO White-Box Logging DONE:** GeoProofRecord + GeoProofFormatter — structured Input→Process→Output proof chain per element. 58 SH / 215 DX proof records. LMP with inverse rotation (0 FAIL). Envelope UNKNOWN (parent dims not on M_Product stubs). DX B-side rot=π negation confirmed. §6.12.1 isolation maintained. Existing TACK logs preserved.
 
+**S145 DX Mirror Placement DONE:** IFC Duplex has hybrid symmetry — exterior walls static (same Y), interior rotated about building center Y=-8.9. Neither pure rot=π nor mirror handles all. MIRROR:X chosen (negate X offset only, keep Y). PlacementCollectorVisitor: mirrorAxisStack + parseMirrorAxis(). DX 8/8 PASS, SH 8/8 PASS. B-side inside building. [DuplexAnalysis.md §Rotation Center Proof](docs/DuplexAnalysis.md).
+
 ## What's Next
 
 **Blueprint Sessions (§14.3):** [ProjectOrderBlueprint.md](docs/ProjectOrderBlueprint.md)

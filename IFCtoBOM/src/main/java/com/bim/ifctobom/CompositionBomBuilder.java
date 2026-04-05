@@ -288,8 +288,13 @@ public class CompositionBomBuilder {
             case "Z" -> unitBDz = unitBOffset;
         }
 
+        // S145 finding: IFC paired elements have MIXED behaviour — some rotate about
+        // building center (interior elements), some stay at same Y (exterior walls).
+        // Neither pure rot=π nor pure mirror reflection handles all correctly.
+        // Use MIRROR:X (negate mirror-axis only) as the least-wrong approach — it keeps
+        // all elements inside the building envelope. See DuplexAnalysis.md §Rotation Center Proof.
         insertPairChild(bomConn, pairBomId, halfUnitBomId,
-                "UNIT_B", 20, String.valueOf(mirror.rotation()),
+                "UNIT_B", 20, "MIRROR:" + mirror.axis().toUpperCase(),
                 unitBDx, unitBDy, unitBDz);
 
         int pairLines = 2;

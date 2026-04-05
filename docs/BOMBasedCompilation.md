@@ -1027,6 +1027,60 @@ L1. Never skip layers. Each verb = one file, one keyword, one payload record.
 
 Full grammar spec: [`docs/BIM_COBOL.md`](BIM_COBOL.md)
 
+### 6.1 Workshop Verbs — Fabrication Instructions on Placed Products
+
+Products in the catalog are **standard rectangular LODs** (uncut). This is correct —
+a wall panel is manufactured rectangular and cut to fit on site. The IFC authoring
+tool stores the clipped shape (IfcBooleanClippingResult), but extraction yields the
+**pre-cut AABB extent**. The compiler places the uncut product at the tack offset.
+Workshop verbs then describe the fabrication operation.
+
+**Root verb + sub-verb pattern:**
+
+```
+verb_ref = PLACE                          ← placement (root)
+workshop = CUT_TOP:ROOF_ASSEMBLY:CURVED   ← fabrication (sub-verb)
+```
+
+The root verb resolves WHERE. The sub-verb resolves HOW TO FABRICATE.
+
+| Sub-verb | Operation | Example |
+|----------|-----------|---------|
+| `CUT_TOP` | Trim upper extent to constraining surface | Wall top → curved roof profile |
+| `CUT_BOTTOM` | Trim lower extent to ground/slab slope | Wall base → sloped terrain |
+| `CUT_SIDE` | Trim lateral extent to adjacent element | Wall end → angled corner |
+| `NOTCH` | Rectangular cutout for penetration | Wall → pipe/duct passage |
+| `MITER` | Angle cut at joint | Two walls meeting at non-90° |
+
+**Construction workflow parallel:**
+
+1. **Catalog** — standard product (rectangular panel, straight pipe)
+2. **BOM line** — root verb places product at tack offset (compilation)
+3. **Workshop instruction** — sub-verb says cut top to roof curve at this location
+4. **Fabrication** — InterimWorkshop computes the cut profile from intersection
+5. **Output** — product + cut instruction (dimensions, profile, reference element)
+
+**Implementation via AttributeSet (iDempiere M_AttributeSet):**
+
+Workshop sub-verbs are per-instance, not per-product. A wall type is rectangular
+in the catalog; each placed instance gets an `M_AttributeSetInstance` carrying
+its specific cut:
+
+```
+M_AttributeSet: WORKSHOP_CUT
+  Attributes: cut_face (TOP/BOTTOM/SIDE), cut_ref_bom_id (constraining element),
+              cut_profile (FLAT/CURVED/PITCHED), cut_offset_mm (overshoot depth)
+```
+
+This is the same pattern as InterimWorkshop for pipes (§6.12.2 §6) — UOM drives
+pipe length, ASI drives wall trim. Both are fabrication instructions resolved at
+compile time, not product properties.
+
+**Scope:** Applies broadly as an envelope operation — all elements overshooting
+the building envelope (roof, ground, perimeter) receive workshop cuts. Not
+element-specific code; a single pass after placement identifies all overshoots
+and generates ASI per instance.
+
 ---
 
 ## 7. Verification: The Rosetta Stone Gate
@@ -1196,10 +1250,10 @@ The system uses two complementary mechanisms:
 **Mechanism 1 — Structural shell via MIRRORED_PAIR:**
 `CompositionBomBuilder.java` writes DUPLEX_SINGLE_UNIT_STD (walls, slabs, ceilings —
 elements modeled for A-side only). UNIT_A gets `rotation_rule=0`, UNIT_B gets
-`rotation_rule=3.14159` (DX_BOM.db query confirmed). The GEO log (pipeline_DX
-Duplex_extracted_20260404_021000.log, line 1897) shows this firing:
-`ROT 3.1416rad: leaf=(3.7390,9.0990) → rotated=(-3.7390,-9.0990)`.
-The rotation IS applied at compile time to structural shell elements. ✓
+`rotation_rule=π` (180° rotation, not mirror reflection). The B-side is the A-side
+rotated about the building center. See [DuplexAnalysis.md §Rotation Center Proof](DuplexAnalysis.md#rotation-center-proof-s145-2026-04-05)
+for the mathematical proof (paired element midpoints = building center = MEP core
+centroid, zero slop after correct proximity-based pairing).
 
 **Mechanism 2 — Room furniture via ScopeBomBuilder:**
 The IFC file contains B-side room furniture at correct world positions (independently

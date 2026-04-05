@@ -287,6 +287,105 @@ SET BOMs and the half-unit.
 **C9 WARN (50 mismatches):** Rank-match artifact documented in §Resolved #5 below.
 Reduced from 89→50 after P128 removed furniture from half-unit pairing.
 
+## Rotation Center Proof (S145, 2026-04-05)
+
+The B-side half-unit is a **180° rotation** of the A-side, NOT a mirror reflection.
+A duplex rotated 180° looks the same — front becomes back, left becomes right.
+
+### Establishing the center
+
+The rotation center equals the building geometric center, which equals the MEP
+core centroid. All three independently confirm Y = -8.9 (IFC coords).
+
+| Source | X | Y | Method |
+|--------|---|---|--------|
+| Building AABB center | 4.33 | -8.9 | `(min + max) / 2` |
+| MEP IfcFlowFitting centroid (220 elbows) | 4.34 | -8.93 | `AVG(centroid)` |
+| Paired ARC window midpoints | 4.40 | -8.9 | `(A_y + B_y) / 2` |
+
+### Proof: paired element midpoints
+
+Four `IfcWindow 2800x2410mm` instances form two rotation pairs:
+
+```
+Pair 1: A guid=1l0GAJtRTFv8$zmKJOH4$e  Y=-17.383
+        B guid=1l0GAJtRTFv8$zmKJOH4pU  Y= -0.417
+        Midpoint Y = (-17.383 + -0.417) / 2 = -8.900  ← EXACT
+
+Pair 2: A guid=1hOSvn6df7F8_7GcBWlSXO  Y= -0.417
+        B guid=1hOSvn6df7F8_7GcBWlS_W  Y=-17.383
+        Midpoint Y = (-0.417 + -17.383) / 2 = -8.900  ← EXACT
+```
+
+**The IFC model is geometrically clean.** Initial analysis reported 7m "slop" but
+this was a **mis-pairing artifact**: matching A1↔B2 instead of A1↔B1. Correct
+proximity-based pairing shows zero slop. The modelling is professional.
+
+### Pairing trap
+
+When `N` elements of the same type exist per side, naive pairing by
+`(product_type, storey)` can mis-pair. Correct pairing requires cross-axis
+proximity: for X-axis rotation, sort candidates by Y distance from the
+expected mirror position `2 * center_y - A_y`.
+
+### Rotation formula
+
+For rot=π about center `(Cx, Cy)`:
+
+```
+B_world = 2 * C - A_world  (component-wise)
+```
+
+In the BOM walker, offsets are relative to the half-unit LBD corner.
+The `CompositionBomBuilder` compensates by shifting UNIT_B's anchor:
+
+```
+anchor_B = mirror_position(anchor_A) + 2 * half_unit_offset_center
+```
+
+Where `half_unit_offset_center = max_leaf_offset / 2` (from BOM line dx/dy range,
+NOT from element AABB maxX/maxY which includes element width).
+
+### GUID issue with factored LEAFs
+
+Factored leaves (qty > 1 with verb expansion) produce multiple instances from a
+single BOM line. The GUID for each instance is generated from the line's ordinal +
+verb index. When the same BOM is walked for both UNIT_A and UNIT_B, the A_/B_
+prefix distinguishes them, but the verb-expanded instance indices must be stable
+across both walks. This is verified by the existing unit prefix stack mechanism.
+
+### Hybrid symmetry (S145 finding)
+
+The IFC model uses **mixed placement** — not a single global transform:
+
+| Element class | Behaviour | Evidence |
+|--------------|-----------|----------|
+| Exterior walls | **Static** — same Y on both sides | seq60: A_y=-17.38, B_y=-17.80 (midpoint=-17.59, not center) |
+| Interior walls, doors | **Rotated about center** (-8.9) | seq70: A_y=-6.25, B_y=-11.67 (midpoint=-8.96) |
+| Ceilings, slabs | **Near-center** with functional offset | seq10: midpoint=-9.99 (~1m from center = party wall gap) |
+
+**Root cause:** Exterior walls are pinned to site coordinates (cladding must face out).
+Interior elements rotate around the MEP core. The ~700mm offset between the theoretical
+center (-8.9) and some element midpoints accounts for the party wall thickness / MEP chase.
+
+**Compiler consequence:** Neither pure `rot=π` nor pure `MIRROR:X` handles all elements
+correctly. Current approach uses `MIRROR:X` (negate mirror-axis offset only) as the
+least-wrong single transform — keeps all elements inside the building envelope.
+Per-element rotation would require classifying each BOM line as "rotates" vs "static",
+which is a future enhancement requiring IFC placement analysis.
+
+### MEP walker implications
+
+The shared half-unit BOM contains MEP elements (pipes, fittings, terminals).
+When the walker applies rot=π to MEP leaf offsets, the shim anchor resolution
+(§6.12.2) must also rotate — a shim host surface at `(x, y)` on A-side maps to
+`(2*Cx - x, 2*Cy - y)` on B-side. Current shim matching uses extraction-DB
+positions which are side-specific, so A-side shims resolve correctly but B-side
+shims would need rotated host lookup. This is not a correctness objective now —
+it establishes a compiler truth for the DISC engine to validate against ERP.db.
+
+ARC/STR elements are the priority. MEP walk correctness is a robustness probe.
+
 ## Resolved Issues
 
 ### 1. Element Count Gap: 1093 vs 1099 — FIXED (2026-03-14)

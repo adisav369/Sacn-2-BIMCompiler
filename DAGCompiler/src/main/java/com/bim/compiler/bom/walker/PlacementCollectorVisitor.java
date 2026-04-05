@@ -55,6 +55,11 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** Cumulative rotation (radians) through the sub-assembly stack. */
     private final Deque<Double> rotationStack = new ArrayDeque<>();
 
+    /** Mirror axis through the sub-assembly stack ("" = no mirror, "X"/"Y"/"Z" = reflection).
+     *  S145: MIRROR:X negates only the mirror-axis offset, cross-axes unchanged.
+     *  See docs/DuplexAnalysis.md §Rotation Center Proof. */
+    private final Deque<String> mirrorAxisStack = new ArrayDeque<>();
+
     /** Storey names inferred from FLOOR-level BOMs in the hierarchy. */
     private final Deque<String> storeyStack = new ArrayDeque<>();
 
@@ -211,14 +216,27 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         double lineDy = (line != null) ? line.getDy() : 0;
         double lineDz = (line != null) ? line.getDz() : 0;
 
-        // Apply cumulative rotation to line offsets (rotation from parent frame)
+        // Apply cumulative mirror reflection OR rotation to line offsets
+        // S145: MIRROR:X negates only X offset, keeps Y unchanged
+        String cumMirror = mirrorAxisStack.isEmpty() ? "" : mirrorAxisStack.peek();
         double cumRot = rotationStack.isEmpty() ? 0.0 : rotationStack.peek();
-        if (cumRot != 0.0) {
+        if (!cumMirror.isEmpty()) {
+            double rx = lineDx, ry = lineDy;
+            switch (cumMirror) {
+                case "X" -> rx = -lineDx;
+                case "Y" -> ry = -lineDy;
+            }
+            if (BIMLogger.geoMatch(childBomId != null ? childBomId : "ROOT")) {
+                BIMLogger.geo("TACK", "  MIRROR:{}: line=({:.4f},{:.4f}) → reflected=({:.4f},{:.4f})",
+                    cumMirror, line != null ? line.getDx() : 0.0, line != null ? line.getDy() : 0.0, rx, ry);
+            }
+            lineDx = rx;
+            lineDy = ry;
+        } else if (cumRot != 0.0) {
             double cos = Math.cos(cumRot);
             double sin = Math.sin(cumRot);
             double rx = lineDx * cos - lineDy * sin;
             double ry = lineDx * sin + lineDy * cos;
-            // Log 4: Rotation applied — proves rotation was not skipped
             if (BIMLogger.geoMatch(childBomId != null ? childBomId : "ROOT")) {
                 BIMLogger.geo("TACK", "  ROT {:.4f}rad: line=({:.4f},{:.4f}) → rotated=({:.4f},{:.4f})",
                     cumRot, line != null ? line.getDx() : 0.0, line != null ? line.getDy() : 0.0, rx, ry);
@@ -239,6 +257,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         double lineRot = parseRotation(line);
         double newCumRot = cumRot + lineRot;
         rotationStack.push(newCumRot);
+
+        // Propagate mirror axis: inherit from parent, or set from this line's rule
+        String lineMirror = parseMirrorAxis(line);
+        mirrorAxisStack.push(lineMirror != null ? lineMirror : (!cumMirror.isEmpty() ? cumMirror : ""));
 
         // New anchor = parent anchor + rotated line offset + child BOM origin
         double[] parent = anchorStack.isEmpty() ? new double[]{0, 0, 0} : anchorStack.peek();
@@ -296,6 +318,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         if (!rotationStack.isEmpty()) {
             rotationStack.pop();
         }
+        if (!mirrorAxisStack.isEmpty()) {
+            mirrorAxisStack.pop();
+        }
         if (!unitPrefixStack.isEmpty()) {
             unitPrefixStack.pop();
         }
@@ -336,12 +361,25 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
         double[] anchor = anchorStack.isEmpty() ? new double[]{0, 0, 0} : anchorStack.peek();
 
-        // Apply cumulative rotation to leaf offsets (origin for verb patterns)
+        // Apply cumulative mirror reflection OR rotation to leaf offsets
         double leafDx = line.getDx();
         double leafDy = line.getDy();
         double leafDz = line.getDz();
+        String cumMirror = mirrorAxisStack.isEmpty() ? "" : mirrorAxisStack.peek();
         double cumRot = rotationStack.isEmpty() ? 0.0 : rotationStack.peek();
-        if (cumRot != 0.0) {
+        if (!cumMirror.isEmpty()) {
+            double rx = leafDx, ry = leafDy;
+            switch (cumMirror) {
+                case "X" -> rx = -leafDx;
+                case "Y" -> ry = -leafDy;
+            }
+            if (BIMLogger.geoMatch(line.getChildProductId())) {
+                BIMLogger.geo("TACK", "  MIRROR:{}: leaf=({:.4f},{:.4f}) → reflected=({:.4f},{:.4f})",
+                    cumMirror, line.getDx(), line.getDy(), rx, ry);
+            }
+            leafDx = rx;
+            leafDy = ry;
+        } else if (cumRot != 0.0) {
             double cos = Math.cos(cumRot);
             double sin = Math.sin(cumRot);
             double rx = leafDx * cos - leafDy * sin;
@@ -963,12 +1001,14 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
     /**
      * Parse rotation_rule from a BOM line as radians.
-     * Supports numeric values (e.g. "0", "3.141592653589793") and null/empty → 0.
+     * Supports numeric values (e.g. "0", "3.141592653589793"), MIRROR:X/Y/Z, and null/empty → 0.
+     * MIRROR rules return 0.0 radians — reflection handled separately via mirrorAxisStack.
      */
     private static double parseRotation(MBOMLine line) {
         if (line == null) return 0.0;
         String rule = line.getRotationRule();
         if (rule == null || rule.isEmpty() || "0".equals(rule)) return 0.0;
+        if (rule.startsWith("MIRROR:")) return 0.0;
         try {
             return Double.parseDouble(rule);
         } catch (NumberFormatException e) {
@@ -977,6 +1017,14 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             BIMLogger.geo("TACK", "ROT_PARSE_ERR {} rule='{}' — fallback 0.0rad", productRef, rule);
             return 0.0;
         }
+    }
+
+    /** Parse mirror axis from rotation_rule. Returns "X"/"Y"/"Z" for MIRROR:X/Y/Z, null otherwise. */
+    private static String parseMirrorAxis(MBOMLine line) {
+        if (line == null) return null;
+        String rule = line.getRotationRule();
+        if (rule != null && rule.startsWith("MIRROR:")) return rule.substring(7);
+        return null;
     }
 
     /**
