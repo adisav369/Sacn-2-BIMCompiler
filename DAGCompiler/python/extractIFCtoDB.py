@@ -126,22 +126,28 @@ CREATE TABLE IF NOT EXISTS material_layers (
 
 
 # Default IFC classes for reference extraction
-REFERENCE_CLASSES = [
-    "IfcFurnishingElement", "IfcFurniture",
-    "IfcDoor", "IfcWindow",
-    "IfcFlowTerminal", "IfcFlowSegment", "IfcFlowFitting",
-    "IfcWall", "IfcWallStandardCase", "IfcSlab", "IfcColumn",
-    "IfcStairFlight", "IfcRailing", "IfcRoof",
-    "IfcPlate", "IfcMember", "IfcBeam",
-    "IfcFireSuppressionTerminal", "IfcLightFixture",
-    "IfcAirTerminal", "IfcPipeFitting", "IfcDuctFitting",
-    "IfcPipeSegment", "IfcDuctSegment",
-    "IfcValve", "IfcAlarm", "IfcElectricAppliance",
-    "IfcSensor", "IfcController", "IfcFlowController",
-    "IfcReinforcingBar", "IfcBuildingElementProxy",
-    "IfcSanitaryTerminal", "IfcRampFlight",
-    "IfcCovering", "IfcOpeningElement",
-]
+# Non-geometric IFC types — no 3D body, skip tessellation entirely.
+# All other IfcProduct subclasses with a Representation are extracted.
+NON_GEOMETRIC_CLASSES = {
+    "IfcDistributionPort",    # logical connection points, no mesh
+    "IfcGrid",                # reference grid lines, 2D only
+    "IfcGridAxis",
+    "IfcSpace",               # spatial container, no body
+    "IfcZone",
+    "IfcSpatialZone",
+    "IfcAnnotation",          # 2D annotations
+    "IfcVirtualElement",      # abstract boundary
+    "IfcRelSpaceBoundary",
+    "IfcBuildingStorey",      # spatial container
+    "IfcBuilding",
+    "IfcSite",
+    "IfcProject",
+    "IfcExternalSpatialElement",
+}
+
+# REFERENCE_CLASSES kept for backwards compatibility with callers that pass classes=
+# The extraction loop now defaults to all IfcProduct — see extract_reference().
+REFERENCE_CLASSES = None  # Deprecated: extraction now uses blacklist, not whitelist
 
 # Discipline inference from IFC class
 DISCIPLINE_MAP = {
@@ -153,9 +159,27 @@ DISCIPLINE_MAP = {
     "IfcFireSuppressionTerminal": "FP", "IfcAlarm": "FP",
     "IfcSensor": "FP", "IfcController": "FP",
     "IfcLightFixture": "ELEC", "IfcElectricAppliance": "ELEC",
+    "IfcCableSegment": "ELEC", "IfcCableFitting": "ELEC",
+    "IfcCableCarrierSegment": "ELEC", "IfcCableCarrierFitting": "ELEC",
+    "IfcDistributionControlElement": "ELEC", "IfcElectricDistributionBoard": "ELEC",
+    "IfcElectricMotor": "ELEC", "IfcElectricGenerator": "ELEC",
     "IfcAirTerminal": "ACMV",
+    "IfcPump": "MECH", "IfcFan": "MECH", "IfcUnitaryEquipment": "MECH",
+    "IfcHeatExchanger": "MECH", "IfcBoiler": "MECH", "IfcChiller": "MECH",
+    "IfcCoolingTower": "MECH", "IfcCompressor": "MECH", "IfcMotorConnection": "MECH",
+    "IfcSprayTerminal": "FP",
     "IfcColumn": "STR", "IfcBeam": "STR", "IfcMember": "STR",
-    "IfcReinforcingBar": "STR",
+    "IfcPlate": "STR", "IfcReinforcingBar": "STR",
+    # IFC4X3 Infrastructure disciplines
+    "IfcGeographicElement": "GIS",
+    "IfcRoad": "ROAD", "IfcRoadPart": "ROAD", "IfcKerb": "ROAD", "IfcPavement": "ROAD",
+    "IfcRailway": "RAIL", "IfcRailwayPart": "RAIL", "IfcRail": "RAIL", "IfcTrackElement": "RAIL",
+    "IfcBridge": "BRIDGE", "IfcBridgePart": "BRIDGE",
+    "IfcTunnel": "TUNNEL", "IfcTunnelPart": "TUNNEL",
+    "IfcMarineFacility": "MARINE", "IfcMarinePart": "MARINE",
+    "IfcAlignment": "INFRA", "IfcLinearElement": "INFRA", "IfcLinearPositioningElement": "INFRA",
+    "IfcEarthworksCut": "INFRA", "IfcEarthworksFill": "INFRA", "IfcEarthworksObstacle": "INFRA",
+    "IfcCivilElement": "INFRA", "IfcFacility": "INFRA", "IfcFacilityPart": "INFRA",
 }
 
 
@@ -170,6 +194,73 @@ def infer_discipline(ifc_class):
 def geometry_hash(vertices_blob, faces_blob):
     """SHA256-based 16-char hash of centered geometry."""
     return hashlib.sha256(vertices_blob + faces_blob).hexdigest()[:16]
+
+
+def boolean_depth(item, depth=0, _visited=None):
+    """Count max IfcBooleanResult chain depth in a representation item."""
+    if _visited is None:
+        _visited = set()
+    eid = item.id()
+    if eid in _visited:
+        return depth
+    _visited.add(eid)
+    if item.is_a("IfcBooleanResult"):
+        return max(
+            boolean_depth(item.FirstOperand, depth + 1, _visited),
+            boolean_depth(item.SecondOperand, depth + 1, _visited),
+        )
+    if item.is_a("IfcMappedItem"):
+        try:
+            for sub in item.MappingSource.MappedRepresentation.Items:
+                d = boolean_depth(sub, depth, _visited)
+                if d > depth:
+                    depth = d
+        except Exception:
+            pass
+    return depth
+
+
+def element_boolean_depth(elem):
+    """Return max boolean chain depth across all representations of an element."""
+    try:
+        if not elem.Representation:
+            return 0
+        max_d = 0
+        for rep in elem.Representation.Representations:
+            for item in rep.Items:
+                d = boolean_depth(item)
+                if d > max_d:
+                    max_d = d
+        return max_d
+    except Exception:
+        return 0
+
+
+def bbox_from_placement(elem):
+    """Fallback: derive a minimal 1×1×1 box from the element's placement origin."""
+    import ifcopenshell.util.placement as ifcplace
+    try:
+        m = ifcplace.get_local_placement(elem.ObjectPlacement)
+        cx, cy, cz = float(m[0][3]), float(m[1][3]), float(m[2][3])
+    except Exception:
+        cx = cy = cz = 0.0
+    # Unit box centred on placement origin
+    half = 0.5
+    verts = np.array([
+        [-half, -half, -half], [half, -half, -half],
+        [half,  half, -half], [-half,  half, -half],
+        [-half, -half,  half], [half, -half,  half],
+        [half,  half,  half], [-half,  half,  half],
+    ], dtype=np.float32)
+    faces = np.array([
+        [0,1,2],[0,2,3],[4,5,6],[4,6,7],
+        [0,1,5],[0,5,4],[2,3,7],[2,7,6],
+        [1,2,6],[1,6,5],[0,3,7],[0,7,4],
+    ], dtype=np.int32)
+    center = np.array([cx, cy, cz], dtype=np.float64)
+    return verts.tobytes(), faces.tobytes(), center, \
+           np.array([cx-half, cy-half, cz-half]), \
+           np.array([cx+half, cy+half, cz+half])
 
 
 # ---------------------------------------------------------------------------
@@ -463,14 +554,20 @@ def write_material_layers(conn, layers):
 # ---------------------------------------------------------------------------
 
 def extract_reference(ifc_path, output_path, classes=None, exclude=None, dry_run=False):
-    """Full extraction from IFC to reference DB with geometry + materials."""
+    """Full extraction from IFC to reference DB with geometry + materials.
+
+    Extracts ALL IfcProduct subclasses that have a Representation, except
+    known non-geometric types (NON_GEOMETRIC_CLASSES blacklist).
+    The `classes` parameter is kept for backwards compatibility but ignored
+    when None — the blacklist approach is always used by default.
+    """
     import ifcopenshell
     import ifcopenshell.geom
 
-    if classes is None:
-        classes = REFERENCE_CLASSES
     if exclude is None:
         exclude = []
+    # Merge caller-supplied exclude with the global blacklist
+    skip_classes = NON_GEOMETRIC_CLASSES | set(exclude)
 
     print(f"Opening IFC: {ifc_path}")
     ifc_file = ifcopenshell.open(ifc_path)
@@ -520,32 +617,77 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None, dry_run
     settings.set(settings.USE_WORLD_COORDS, True)
     settings.set(settings.WELD_VERTICES, True)
 
+    # Tier 2: no boolean operations — fast fallback for complex CSG elements
+    settings_no_bool = ifcopenshell.geom.settings()
+    settings_no_bool.set(settings_no_bool.USE_WORLD_COORDS, True)
+    settings_no_bool.set(settings_no_bool.WELD_VERTICES, True)
+    settings_no_bool.set(settings_no_bool.DISABLE_BOOLEAN_RESULT, True)
+
+    # Boolean depth threshold — elements above this skip full tessellation
+    BOOL_DEPTH_THRESHOLD = 3
+
     existing_hashes = set()
     next_id = 1
-    imported = failed = 0
+    imported = failed = simplified = bbox_fallback = 0
     mat_found = rgba_found = 0
 
-    active_classes = [c for c in classes if c not in exclude]
-    for cls in active_classes:
+    # Collect all unique concrete IFC classes present in the file,
+    # excluding known non-geometric types. This replaces the old whitelist.
+    all_classes = set()
+    for elem in ifc_file.by_type("IfcProduct"):
+        c = elem.is_a()
+        if c not in skip_classes and elem.Representation is not None:
+            all_classes.add(c)
+
+    for cls in sorted(all_classes):
         try:
-            elements = ifc_file.by_type(cls)
+            elements = [e for e in ifc_file.by_type(cls)
+                        if e.is_a() == cls and e.Representation is not None]
         except RuntimeError:
             continue
         for elem in elements:
             try:
-                shape = ifcopenshell.geom.create_shape(settings, elem)
-                geo = shape.geometry
-                verts = np.array(geo.verts, dtype=np.float64).reshape(-1, 3)
-                faces = np.array(geo.faces, dtype=np.int32).reshape(-1, 3)
-                if len(verts) < 3 or len(faces) < 1:
-                    raise ValueError("degenerate")
+                # --- Tier selection: pre-scan boolean depth ---
+                use_bbox = False
+                depth = element_boolean_depth(elem)
+                if depth > BOOL_DEPTH_THRESHOLD:
+                    # Tier 2: skip full CSG, tessellate base shape only
+                    try:
+                        shape = ifcopenshell.geom.create_shape(settings_no_bool, elem)
+                        simplified += 1
+                    except Exception:
+                        use_bbox = True
+                else:
+                    # Tier 1: full tessellation
+                    try:
+                        shape = ifcopenshell.geom.create_shape(settings, elem)
+                    except Exception:
+                        # Tier 2 on failure
+                        try:
+                            shape = ifcopenshell.geom.create_shape(settings_no_bool, elem)
+                            simplified += 1
+                        except Exception:
+                            use_bbox = True
 
-                minXYZ = verts.min(axis=0)
-                maxXYZ = verts.max(axis=0)
-                center = (minXYZ + maxXYZ) / 2.0
-                v_centered = (verts - center).astype(np.float32)
-                vblob = v_centered.tobytes()
-                fblob = faces.astype(np.int32).tobytes()
+                if use_bbox:
+                    # Tier 3: placement bbox
+                    vblob, fblob, center, minXYZ, maxXYZ = bbox_from_placement(elem)
+                    bbox_fallback += 1
+                else:
+                    geo = shape.geometry
+                    verts = np.array(geo.verts, dtype=np.float64).reshape(-1, 3)
+                    faces = np.array(geo.faces, dtype=np.int32).reshape(-1, 3)
+                    if len(verts) < 3 or len(faces) < 1:
+                        vblob, fblob, center, minXYZ, maxXYZ = bbox_from_placement(elem)
+                        bbox_fallback += 1
+                    else:
+                        minXYZ = verts.min(axis=0)
+                        maxXYZ = verts.max(axis=0)
+                        center = (minXYZ + maxXYZ) / 2.0
+                        v_centered = (verts - center).astype(np.float32)
+                        vblob = v_centered.tobytes()
+                        fblob = faces.astype(np.int32).tobytes()
+
                 ghash = geometry_hash(vblob, fblob)
 
                 guid = elem.GlobalId
@@ -647,7 +789,7 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None, dry_run
         write_surface_styles(conn, styles)
         write_material_layers(conn, layers)
 
-    print(f"  Elements:    {imported} (failed: {failed})")
+    print(f"  Elements:    {imported} (failed: {failed}, simplified: {simplified}, bbox_fallback: {bbox_fallback})")
     print(f"  Materials:   {mat_found} names, {rgba_found} RGBA colours")
     print(f"  Surface styles: {len(styles)}, Material layers: {len(layers)}")
 
