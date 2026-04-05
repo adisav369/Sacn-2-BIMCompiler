@@ -314,18 +314,25 @@ def main():
         "SELECT discipline, COUNT(*) FROM elements_meta GROUP BY discipline ORDER BY COUNT(*) DESC"
     ).fetchall()
 
-    # Store building center as camera target — loader uses this to face the building
+    # Store building center + view distance as camera target for the loader
     try:
-        row = dst.execute(
-            "SELECT AVG(center_x), AVG(center_y), AVG(center_z) FROM element_transforms"
-        ).fetchone()
+        row = dst.execute("""
+            SELECT (MIN(center_x)+MAX(center_x))/2.0,
+                   (MIN(center_y)+MAX(center_y))/2.0,
+                   (MIN(center_z)+MAX(center_z))/2.0,
+                   SQRT(POWER(MAX(center_x)-MIN(center_x),2)
+                      + POWER(MAX(center_y)-MIN(center_y),2)
+                      + POWER(MAX(center_z)-MIN(center_z),2)) * 0.8
+            FROM element_transforms
+        """).fetchone()
         if row and row[0] is not None:
-            cx, cy, cz = row
-            dst.execute("INSERT OR REPLACE INTO project_metadata VALUES ('view_center_x', ?)", (str(cx),))
-            dst.execute("INSERT OR REPLACE INTO project_metadata VALUES ('view_center_y', ?)", (str(cy),))
-            dst.execute("INSERT OR REPLACE INTO project_metadata VALUES ('view_center_z', ?)", (str(cz),))
+            cx, cy, cz, vd = row
+            dst.execute("INSERT OR REPLACE INTO project_metadata VALUES ('view_center_x', ?)", (str(round(cx,2)),))
+            dst.execute("INSERT OR REPLACE INTO project_metadata VALUES ('view_center_y', ?)", (str(round(cy,2)),))
+            dst.execute("INSERT OR REPLACE INTO project_metadata VALUES ('view_center_z', ?)", (str(round(cz,2)),))
+            dst.execute("INSERT OR REPLACE INTO project_metadata VALUES ('view_distance',  ?)", (str(round(vd,1)),))
             dst.commit()
-            print(f"  Camera target: ({cx:.2f}, {cy:.2f}, {cz:.2f})m")
+            print(f"  Camera target: ({cx:.2f}, {cy:.2f}, {cz:.2f})m  dist={vd:.1f}m")
     except Exception as e:
         print(f"  Camera target write skipped: {e}")
 
