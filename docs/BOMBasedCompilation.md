@@ -48,6 +48,7 @@ Read the [MANIFESTO](MANIFESTO.md) first for the ERP world view.
 | **C_OrderLine** (order line) | Instance of a product in this project. Compilation explodes parent → child lines. Exception lines name only deviations |
 | **C_DocType** (document type) | "Construction Order" — one only. Classification metadata, NOT a compilation driver |
 | **[AD_ChangeLog](https://wiki.idempiere.org/en/AD_ChangeLog)** (audit trail) | Full provenance — every PLACE, DELETE, MOVE, RESIZE logged with before/after state. UNDO/REDO stack |
+| **[C_BPartner](PREFAB_ARCHITECTURE.md)** (business partner) | Manufacturer/supplier — WHO makes this product. IFC source accreditation. Starter kit brand: user picks BPartner → all downstream equipment follows. Three dimensions: Category (WHAT) × BPartner (WHO) × SpaceSize (HOW MUCH) |
 | **C_Campaign** (marketing) | Design theme (Bali, Scandinavian, Industrial) |
 | **[C_Project](ProjectOrderBlueprint.md#2-c_project-site-as-bom)** (project) | Site development — groups C_Orders under one project (budget, schedule, milestones) |
 | **[C_Location](https://wiki.idempiere.org/en/C_Location)** (address/coordinates) | Plot location — independent dimension linking site coordinates to C_Order or C_Project |

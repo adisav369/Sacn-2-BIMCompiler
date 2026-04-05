@@ -98,6 +98,10 @@ public class IFCtoERP {
         }
         BIMLogger.fine(TAG, "{}: MEP class breakdown: {}", buildingType, classCounts);
 
+        // S148: MEP-SPACE — infer room function from furniture containment, map MEP elements to spaces
+        // Implementing BBC.md §6.12.2 — grep 'MEP-SPACE' for session pickup
+        emitMepSpaceLog(refDb, buildingType);
+
         // Classify and aggregate into joint piece types
         Map<String, JointPieceType> types = classifyElements(mepElements, buildingType);
 
@@ -114,6 +118,22 @@ public class IFCtoERP {
 
         // Promote to M_Product (INSERT OR IGNORE — toolbox grows)
         int promoted = promoteToProduct(erpConn);
+        // Backfill M_Product_Category_ID for newly promoted products
+        // (ProductRegistrar's backfill ran before IFCtoERP — these products missed it)
+        // Implementing DISC_VALIDATION_DB_SRS.md §6.4 — Witness: W-DISC-CAT
+        try (Statement stmt = erpConn.createStatement()) {
+            stmt.executeUpdate("""
+                    UPDATE M_Product
+                    SET M_Product_Category_ID = (
+                        SELECT c.M_Product_Category_ID
+                        FROM M_Product_Category c
+                        WHERE c.IFC_Class = M_Product.ifc_class
+                        LIMIT 1
+                    )
+                    WHERE M_Product_Category_ID IS NULL
+                      AND ifc_class IS NOT NULL
+                    """);
+        }
         BIMLogger.info(TAG, "{}: {} MEP elements → {} joint types, {} new M_Products",
                 buildingType, mepElements.size(), staged, promoted);
 
@@ -1327,6 +1347,254 @@ public class IFCtoERP {
         try (Statement stmt = erpConn.createStatement()) {
             return stmt.executeUpdate(sql);
         }
+    }
+
+    // ── S148: MEP-SPACE diagnostic logging ────────────────────────────
+
+    /**
+     * Emit MEP-SPACE log: infer room function from furniture containment,
+     * then map MEP terminals/controllers to spaces by position overlap.
+     *
+     * <p>Read-only against extracted DB. No data is written — purely diagnostic.
+     * Logs are the deliverable: grep 'MEP-SPACE' in pipeline log.
+     *
+     * <p>Room AABB is computed from furniture elements contained in each IfcSpace.
+     * MEP elements (storey=Unknown, no spatial containment) are mapped by
+     * centroid-in-AABB test against the room envelopes.
+     */
+    private static void emitMepSpaceLog(Path refDb, String buildingType) {
+        String url = "jdbc:sqlite:" + refDb;
+        try (Connection conn = DriverManager.getConnection(url)) {
+            // 1. Build room AABBs from furniture containment
+            Map<String, double[]> roomAabb = new LinkedHashMap<>(); // room → [minX,maxX,minY,maxY,minZ,maxZ]
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("""
+                    SELECT ss.name,
+                           MIN(r.minX), MAX(r.maxX), MIN(r.minY), MAX(r.maxY),
+                           MIN(r.minZ), MAX(r.maxZ), COUNT(*)
+                    FROM rel_contained_in_space rcs
+                    JOIN spatial_structure ss ON rcs.space_guid = ss.guid
+                    JOIN elements_meta m ON m.guid = rcs.element_guid
+                    JOIN elements_rtree r ON r.id = m.id
+                    WHERE ss.type = 'IfcSpace'
+                    GROUP BY ss.name
+                    """)) {
+                while (rs.next()) {
+                    String room = rs.getString(1);
+                    roomAabb.put(room, new double[]{
+                        rs.getDouble(2), rs.getDouble(3),
+                        rs.getDouble(4), rs.getDouble(5),
+                        rs.getDouble(6), rs.getDouble(7)
+                    });
+                }
+            }
+            if (roomAabb.isEmpty()) {
+                BIMLogger.info("MEP-SPACE", "{}: no room AABBs from furniture containment", buildingType);
+                return;
+            }
+
+            // 2. Read MEP terminals + controllers with positions and element_name
+            record MepCandidate(String ifcClass, String elementName, String fixtureType,
+                                double cx, double cy, double cz) {}
+            List<MepCandidate> candidates = new ArrayList<>();
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("""
+                    SELECT m.ifc_class, m.element_name,
+                           (r.minX + r.maxX) / 2.0, (r.minY + r.maxY) / 2.0, (r.minZ + r.maxZ) / 2.0
+                    FROM elements_meta m
+                    JOIN elements_rtree r ON m.id = r.id
+                    WHERE m.ifc_class IN ('IfcFlowTerminal', 'IfcFlowController')
+                    """)) {
+                while (rs.next()) {
+                    String name = rs.getString(2) != null ? rs.getString(2) : "";
+                    String fixture = classifyFixtureName(name.toLowerCase());
+                    candidates.add(new MepCandidate(
+                        rs.getString(1), name, fixture,
+                        rs.getDouble(3), rs.getDouble(4), rs.getDouble(5)));
+                }
+            }
+
+            // 3. Read pipe segments with positions and system type
+            record PipeCandidate(String pipeSystem, double cx, double cy, double cz) {}
+            List<PipeCandidate> pipes = new ArrayList<>();
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("""
+                    SELECT m.element_name,
+                           (r.minX + r.maxX) / 2.0, (r.minY + r.maxY) / 2.0, (r.minZ + r.maxZ) / 2.0
+                    FROM elements_meta m
+                    JOIN elements_rtree r ON m.id = r.id
+                    WHERE m.ifc_class IN ('IfcFlowSegment', 'IfcFlowFitting')
+                    """)) {
+                while (rs.next()) {
+                    String name = rs.getString(1) != null ? rs.getString(1) : "";
+                    String system = classifyPipeSystem(name.toLowerCase());
+                    pipes.add(new PipeCandidate(system, rs.getDouble(2), rs.getDouble(3), rs.getDouble(4)));
+                }
+            }
+
+            // 4. Map candidates to rooms by centroid-in-AABB (with 0.5m padding for near-wall fixtures)
+            double PAD = 0.5; // metres — fixtures may be slightly outside furniture envelope
+            Map<String, List<String>> roomFixtures = new LinkedHashMap<>();
+            Map<String, Map<String, Integer>> roomPipes = new LinkedHashMap<>();
+            int unmappedFixtures = 0, unmappedPipes = 0;
+
+            for (MepCandidate c : candidates) {
+                String room = findContainingRoom(roomAabb, c.cx, c.cy, c.cz, PAD);
+                if (room != null) {
+                    roomFixtures.computeIfAbsent(room, k -> new ArrayList<>()).add(c.fixtureType);
+                } else {
+                    unmappedFixtures++;
+                }
+            }
+
+            for (PipeCandidate p : pipes) {
+                String room = findContainingRoom(roomAabb, p.cx, p.cy, p.cz, PAD);
+                if (room != null) {
+                    roomPipes.computeIfAbsent(room, k -> new LinkedHashMap<>())
+                             .merge(p.pipeSystem, 1, Integer::sum);
+                } else {
+                    unmappedPipes++;
+                }
+            }
+
+            // 5. Infer space type from fixture set and emit log
+            for (Map.Entry<String, double[]> entry : roomAabb.entrySet()) {
+                String room = entry.getKey();
+                List<String> fixtures = roomFixtures.getOrDefault(room, List.of());
+                Map<String, Integer> pipeCounts = roomPipes.getOrDefault(room, Map.of());
+
+                // Count fixture types
+                Map<String, Integer> fixtureCounts = new LinkedHashMap<>();
+                for (String f : fixtures) fixtureCounts.merge(f, 1, Integer::sum);
+
+                String spaceType = inferSpaceType(fixtureCounts);
+
+                BIMLogger.info("MEP-SPACE", "room={} space_type={} fixtures={} pipes={}",
+                    room, spaceType, fixtureCounts, pipeCounts);
+            }
+
+            // Also log spaces with NO room AABB (empty rooms, hallways)
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("""
+                    SELECT ss.name FROM spatial_structure ss
+                    WHERE ss.type = 'IfcSpace'
+                    ORDER BY ss.name
+                    """)) {
+                while (rs.next()) {
+                    String room = rs.getString(1);
+                    if (!roomAabb.containsKey(room)) {
+                        BIMLogger.info("MEP-SPACE", "room={} space_type=EMPTY fixtures=(none) pipes=(none)", room);
+                    }
+                }
+            }
+
+            BIMLogger.info("MEP-SPACE", "{}: rooms_with_aabb={} fixtures_mapped={} fixtures_unmapped={} pipes_mapped={} pipes_unmapped={}",
+                buildingType, roomAabb.size(),
+                candidates.size() - unmappedFixtures, unmappedFixtures,
+                pipes.size() - unmappedPipes, unmappedPipes);
+
+        } catch (SQLException e) {
+            BIMLogger.warn("MEP-SPACE", "{}: diagnostic query failed: {}", buildingType, e.getMessage());
+        }
+    }
+
+    /** Classify fixture from element_name for MEP-SPACE logging. */
+    private static String classifyFixtureName(String nameLower) {
+        if (nameLower.contains("water closet"))     return "WC";
+        if (nameLower.contains("lavatory"))          return "LAVATORY";
+        if (nameLower.contains("sink"))              return "SINK";
+        if (nameLower.contains("shower"))            return "SHOWER";
+        if (nameLower.contains("bath tub") || nameLower.contains("bathtub")) return "BATHTUB";
+        if (nameLower.contains("refrigerator"))      return "FRIDGE";
+        if (nameLower.contains("range"))             return "RANGE";
+        if (nameLower.contains("microwave"))         return "MICROWAVE";
+        if (nameLower.contains("receptacle"))        return "ELEC_OUTLET";
+        if (nameLower.contains("light switch") || nameLower.contains("lighting switch")) return "ELEC_SWITCH";
+        if (nameLower.contains("pendant") || nameLower.contains("sconce")) return "LIGHT";
+        if (nameLower.contains("panelboard"))        return "ELEC_PANEL";
+        if (nameLower.contains("telephone"))         return "TELECOM";
+        if (nameLower.contains("fire alarm"))        return "FIRE_ALARM";
+        if (nameLower.contains("smoke detector"))    return "SMOKE_DET";
+        if (nameLower.contains("valve"))             return "VALVE";
+        if (nameLower.contains("backflow"))          return "BACKFLOW";
+        if (nameLower.contains("roof drain"))        return "ROOF_DRAIN";
+        return "OTHER";
+    }
+
+    /** Classify pipe system from element_name for MEP-SPACE logging. */
+    private static String classifyPipeSystem(String nameLower) {
+        if (nameLower.contains("cold water"))        return "CW";
+        if (nameLower.contains("hot water"))         return "HW";
+        if (nameLower.contains("waste"))             return "WASTE";
+        if (nameLower.contains("pvc"))               return "PVC";
+        if (nameLower.contains("conduit"))           return "CONDUIT";
+        if (nameLower.contains("duct"))              return "DUCT";
+        if (nameLower.contains("mechanical pipe"))   return "MECH";
+        return "OTHER";
+    }
+
+    /** Find which room AABB contains a point (with padding). Returns null if no match. */
+    private static String findContainingRoom(Map<String, double[]> roomAabb,
+                                              double cx, double cy, double cz, double pad) {
+        String best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (Map.Entry<String, double[]> e : roomAabb.entrySet()) {
+            double[] a = e.getValue();
+            // Padded AABB containment test
+            if (cx >= a[0] - pad && cx <= a[1] + pad &&
+                cy >= a[2] - pad && cy <= a[3] + pad &&
+                cz >= a[4] - pad && cz <= a[5] + pad) {
+                // If multiple rooms match (overlapping with padding), pick closest to center
+                double dcx = cx - (a[0] + a[1]) / 2.0;
+                double dcy = cy - (a[2] + a[3]) / 2.0;
+                double dist = dcx * dcx + dcy * dcy; // XY distance only — same storey
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = e.getKey();
+                }
+            }
+        }
+        return best;
+    }
+
+    /** Infer space type from fixture set — abstract, building-agnostic. */
+    private static String inferSpaceType(Map<String, Integer> fixtureCounts) {
+        boolean hasSink = fixtureCounts.containsKey("SINK");
+        boolean hasWC = fixtureCounts.containsKey("WC");
+        boolean hasLavatory = fixtureCounts.containsKey("LAVATORY");
+        boolean hasShower = fixtureCounts.containsKey("SHOWER");
+        boolean hasBathtub = fixtureCounts.containsKey("BATHTUB");
+        boolean hasFridge = fixtureCounts.containsKey("FRIDGE");
+        boolean hasRange = fixtureCounts.containsKey("RANGE");
+
+        // Kitchen: has sink + cooking appliance (range/microwave/fridge)
+        if (hasSink && (hasFridge || hasRange)) return "KITCHEN";
+
+        // Bathroom: has WC or shower/bathtub, or multiple lavatories (L2 bathrooms)
+        if (hasWC && (hasLavatory || hasShower || hasBathtub)) return "BATHROOM";
+        if (hasShower || hasBathtub) return "BATHROOM";
+        if (hasLavatory && fixtureCounts.getOrDefault("LAVATORY", 0) >= 2) return "BATHROOM";
+
+        // Toilet/WC room: WC only, no bathing
+        if (hasWC) return "TOILET";
+
+        // Single lavatory room (powder room)
+        if (hasLavatory) return "TOILET";
+
+        // Laundry: has sink but no cooking (different from kitchen)
+        if (hasSink) return "UTILITY";
+
+        // Has only electrical + pass-through infrastructure (no actual plumbing fixtures)
+        if (!fixtureCounts.isEmpty()) {
+            boolean onlyElecOrInfra = fixtureCounts.keySet().stream()
+                .allMatch(k -> k.startsWith("ELEC_") || k.equals("LIGHT") ||
+                          k.equals("SMOKE_DET") || k.equals("TELECOM") ||
+                          k.equals("FIRE_ALARM") ||
+                          k.equals("VALVE") || k.equals("BACKFLOW"));  // pipe infrastructure, not room fixtures
+            if (onlyElecOrInfra) return "HABITABLE";  // bedroom/living — has power but no plumbing
+        }
+
+        return "UNKNOWN";
     }
 
     // ── records ─────────────────────────────────────────────────────

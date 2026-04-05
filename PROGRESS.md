@@ -100,6 +100,30 @@
 
 ## Session Log (recent first)
 
+**S148** (uncommitted) — DX MEP Begin: Space Inference + Fixture Route Schema.
+  Task 1 (kitchen outliers): marked DONE — fixed in S147.
+  Task 2: MEP-SPACE logging — `emitMepSpaceLog()` in IFCtoERP.java.
+    Infers room function from furniture containment + MEP fixture presence.
+    11 rooms classified: 2 KITCHEN, 2 BATHROOM (L1), 2 BATHROOM (L2), 4 HABITABLE, 10 EMPTY.
+    63/119 fixtures mapped (53%), 360/785 pipes mapped (46%). Perfect A/B mirror symmetry.
+    Grep `[IFCtoERP][MEP-SPACE]` in pipeline output.
+  DV037: `ad_mep_fixture_route` — two-anchor concept (FIXTURE→RISER/STACK/PANEL) with pipe system.
+    28 rows: BATHROOM, KITCHEN, TOILET, BEDROOM, LIVING. Shim products on each route.
+    Abstract and building-agnostic. In component_library.db.
+  Fixture BOM seeding: `seedFixtureRecipes()` in IFCtoERP.java reads ad_mep_fixture_route,
+    creates 9 FIXTURE_* M_Products + 28 M_BOM_Lines under CW/SP/ELEC_SYSTEM in ERP.db.
+    Idempotent (check-before-insert). Same recipes for any RE building.
+  BomDropper activation confirmed: DX output now has CW=853 (+16), SP=734 (+14), ELEC=27 (+26).
+    ELEC went from empty (qty=0) to 26 fixture elements. Same OrderLine→BOM chain as BIM Designer.
+  Existing infrastructure found: SpaceTypeRegistry, SpaceTypeAD, MEPBomAD (186 rows in ad_space_type_mep_bom).
+  Stale DX_extracted.db copies removed (IFCtoBOM/src/main/resources/, target/classes/).
+  DV038: C_BPartner in ERP.db — manufacturer identity. 3 rows (AUTODESK_REVIT, UNIV_AUCKLAND, SJTII_KLIA).
+    C_BPartner_ID on M_Product (3096/3096 linked) and M_BOM (172 linked). BBC.md §1 updated.
+  Library README rewritten: DB boundary table, MEP tables state, compilation flow.
+  Cleanup: removed premature ad_mep_fixture_route + seedFixtureRecipes() + FIXTURE_* stubs.
+  Gate: DX 8/8, SH 8/8 — zero regression.
+  Next: S149 — populate empty system BOMs (START/END), create 3 rule tables, verify Walker consumes DX recipes.
+
 **S147** (uncommitted) — DX Stair+Pantry Mirror Investigation + Logging Hardening.
   Task 1: Stair+pantry visual discrepancy — 3-layer root cause, all fixed:
   (1) SpatialDiff black box: 46/55 outliers were measurement artifacts (position-based pairing).
