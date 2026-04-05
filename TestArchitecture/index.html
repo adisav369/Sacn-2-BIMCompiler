@@ -878,6 +878,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#compilation-logging-regime-s147" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compilation Logging Regime (S147)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#bimeyes-geometric-comprehension" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3075,6 +3086,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#compilation-logging-regime-s147" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compilation Logging Regime (S147)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#bimeyes-geometric-comprehension" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3738,6 +3760,70 @@ to. Without this mapping, spec changes silently orphan tests.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="compilation-logging-regime-s147">Compilation Logging Regime (S147)<a class="headerlink" href="#compilation-logging-regime-s147" title="Permanent link">&para;</a></h3>
+<p>Structured log channels emitted by every compilation run. Grepable, parseable,
+actionable. Designed for session pickup — any coder can read the state without
+running the pipeline again.</p>
+<table>
+<thead>
+<tr>
+<th>Channel</th>
+<th>Emitted by</th>
+<th>Module</th>
+<th>What it proves</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SPATIAL-REPORT</code></td>
+<td>CompilationPipeline.GeometryStage</td>
+<td>DAGCompiler (black box)</td>
+<td>Modal shift, outlier count (sym/asym), per-class diagnosis, missing elements by discipline</td>
+</tr>
+<tr>
+<td><code>BOM-SUMMARY</code></td>
+<td>IFCtoBOMPipeline (post-commit)</td>
+<td>IFCtoBOM (white box)</td>
+<td>BOM tree shape: type/count/children/instances/verbs per BOM</td>
+</tr>
+<tr>
+<td><code>LOD-ROTATE</code></td>
+<td>MeshBinder.bind() + BuildingWriter</td>
+<td>DAGCompiler (white box)</td>
+<td>B-side LOD meshes received rot=π — per-element confirmation</td>
+</tr>
+<tr>
+<td><code>TACK LEAF</code></td>
+<td>PlacementCollectorVisitor.onLeaf()</td>
+<td>DAGCompiler (white box)</td>
+<td>Per-element: anchor + offset + half-extents + AABB + transform state</td>
+</tr>
+<tr>
+<td><code>TACK GUID</code></td>
+<td>PlacementCollectorVisitor.onLeaf()</td>
+<td>DAGCompiler (white box, FINE)</td>
+<td>GUID resolution path: MA/LINE_REF/GENERATED + base vs prefixed</td>
+</tr>
+<tr>
+<td><code>LMP-DIFF</code></td>
+<td>CompilationPipeline.GeometryStage</td>
+<td>DAGCompiler (black box)</td>
+<td>Per-element AABB comparison (output vs reference), modal shift, outliers</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Post-hoc tooling:</strong>
+- <code>rosetta_trace.sh &lt;log&gt; &lt;output.db&gt; [ref.db]</code> — correlates black box outliers
+  with white box TACK, DB inventories, and emits prioritised action items.</p>
+<p><strong>Box separation rule:</strong> White box (GEO/TACK) logs what the walker computes.
+Black box (LMP-DIFF/SPATIAL-REPORT) compares output vs reference DBs.
+Neither inspects the other during execution. <code>rosetta_trace.sh</code> reads both
+outputs post-hoc.</p>
+<p><strong>Invariants (from BBC.md §4.3):</strong>
+- I-GUID-1: Every element_ref matches 22-char IFC pattern (ElementIdentity contract).
+- I-GUID-2: SpatialDiff identity overlap ≥ 95% when reference DB available.
+- I-GUID-3: SpatialDiff uses identity-based matching (not position fallback).
+- I-GUID-4: Zero GENERATED guidSource for extracted buildings.</p>
 <h3 id="bimeyes-geometric-comprehension">BIMEyes — Geometric Comprehension<a class="headerlink" href="#bimeyes-geometric-comprehension" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -3791,6 +3877,13 @@ to. Without this mapping, spec changes silently orphan tests.</p>
 <td>EyesProofRunner</td>
 <td>W-EYES-NONDISTURB</td>
 <td>IMPLEMENTED</td>
+</tr>
+<tr>
+<td>EYES §P05/P06</td>
+<td>IFC source duplicate + cross-discipline co-location jitter</td>
+<td>PlacementCollectorVisitor</td>
+<td>W-TE-PROOF</td>
+<td>PASS</td>
 </tr>
 </tbody>
 </table>
@@ -3894,7 +3987,8 @@ to. Without this mapping, spec changes silently orphan tests.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Rule:</strong> No code change without checking this matrix first.</p>
+<p><strong>Rule:</strong> No code change without checking this matrix first.
+<strong>How to use:</strong> PASS row touched → run its test. SPEC ONLY → write the test. PENDING → write the spec first.</p>
 <h3 id="executable-traceability-code-level-enforcement">Executable Traceability — Code-Level Enforcement<a class="headerlink" href="#executable-traceability-code-level-enforcement" title="Permanent link">&para;</a></h3>
 <p><strong><code>@Traces</code> annotation on every test class:</strong>
 <div class="highlight"><pre><span></span><code><span class="cm">/** @Traces BBC.md §4.0 — LBD tack convention */</span>

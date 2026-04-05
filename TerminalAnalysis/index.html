@@ -2475,10 +2475,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#verb-route-mep-piping-9345-elements-18" class="md-nav__link">
+  <a href="#mep-piping-9345-elements-18-ifctoerp-mep_recipe-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verb: ROUTE (MEP piping — 9,345 elements, 18%)
+        MEP Piping — 9,345 elements, 18% (IFCtoERP MEP_RECIPE architecture)
       
     </span>
   </a>
@@ -3977,10 +3977,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#verb-route-mep-piping-9345-elements-18" class="md-nav__link">
+  <a href="#mep-piping-9345-elements-18-ifctoerp-mep_recipe-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verb: ROUTE (MEP piping — 9,345 elements, 18%)
+        MEP Piping — 9,345 elements, 18% (IFCtoERP MEP_RECIPE architecture)
       
     </span>
   </a>
@@ -4824,7 +4824,7 @@
 <p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <div class="bim-banner">
-<p><b>48,428 elements across 8 disciplines — extraction proven, BOM persisted (S100-p69).</b> IFCtoBOM pipeline complete: flat BOM (8 BOMs, 1,522 lines, 48,428 instances, 95.9× factorization). QA all PASS. Compile-path blockers identified — see §Compilation Status below.</p>
+<p><b>48,428 elements across 8 disciplines — compiled and gate-proven (S104).</b> IFCtoBOM pipeline complete: flat BOM (8 BOMs, 1,522 lines, 48,428 instances, 95.9× factorization). Rosetta Stone 7/8 PASS (1 pre-existing critical proof violation, not a compilation blocker). G3 discipline fix (00t) — IFCtoERP routes CW/SP/FP/LPG from elements_meta correctly.</p>
 </div>
 <h2 id="ctfl-review-status-session-31-34-2026-03-19">CTFL Review Status (session 31-34, 2026-03-19)<a class="headerlink" href="#ctfl-review-status-session-31-34-2026-03-19" title="Permanent link">&para;</a></h2>
 <p><strong>Last reviewed:</strong> 2026-03-19 session 34 — CTFL static review + SRS gap analysis.
@@ -5670,23 +5670,25 @@ placements at computed grid positions (origin + i×stepX + j×stepY).</p>
 </code></pre></div></p>
 <p><strong>BOM mechanism:</strong> <code>m_bom_line.qty = grid[0] * grid[1]</code>. Walker expands qty
 to instances, each getting position from grid formula. No 33K rows in BOM.</p>
-<h3 id="verb-route-mep-piping-9345-elements-18">Verb: ROUTE (MEP piping — 9,345 elements, 18%)<a class="headerlink" href="#verb-route-mep-piping-9345-elements-18" title="Permanent link">&para;</a></h3>
-<p><strong>Mechanism:</strong> 1D path following. Pipe segments + fittings along a routed path.
-Each run = origin, direction, segment lengths, fitting types at turns.</p>
-<p><strong>YAML intent:</strong>
-<div class="highlight"><pre><span></span><code><span class="nt">mep_systems</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">fire_protection</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">storey</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GF</span>
-<span class="w">    </span><span class="nt">runs</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FP_MAIN_GF_01</span>
-<span class="w">        </span><span class="nt">segments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">PipeSegment_50mm</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">PipeFitting_Elbow_50mm</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">...</span><span class="p p-Indicator">]</span>
-<span class="w">        </span><span class="nt">path_nodes_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">10.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">5.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3.2</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">10.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">15.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3.2</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">20.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">15.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3.2</span><span class="p p-Indicator">]]</span>
-<span class="w">    </span><span class="nt">sprinklers</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SPRINKLER_SET_GF</span>
-<span class="w">        </span><span class="nt">product</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FireSuppressionTerminal</span>
-<span class="w">        </span><span class="nt">spacing_mm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3000</span>
-<span class="w">        </span><span class="nt">ceiling_offset_mm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
-</code></pre></div></p>
+<h3 id="mep-piping-9345-elements-18-ifctoerp-mep_recipe-architecture">MEP Piping — 9,345 elements, 18% (IFCtoERP MEP_RECIPE architecture)<a class="headerlink" href="#mep-piping-9345-elements-18-ifctoerp-mep_recipe-architecture" title="Permanent link">&para;</a></h3>
+<p><strong>Current architecture (S104):</strong> TE is a <strong>G1 building</strong> — IFC4 with full discipline data in
+<code>elements_meta.discipline</code> (CW/SP/FP/LPG per element). IFCtoERP reads this column directly
+(00t G3 fix) and groups elements by <code>(storey, discipline)</code> into MEP_RECIPE archetypes in ERP.db.
+The shim+recipe BOM walk in DAGCompiler then expands these into c_orderline rows.</p>
+<p><strong>RouteWalker does NOT apply to TE.</strong> RouteWalker is for <strong>G2 buildings</strong> (IFC2x3, no
+sub-discipline on pipe elements, e.g. RM). TE has zero rows in <code>ad_mep_anchor</code> — anchor
+extraction (00q) was only performed for RM. RouteWalker correctly emits CW=0/SP=0 for TE
+and logs a warning; this is expected behaviour, not a bug.</p>
+<p><strong>G1 vs G2 distinction:</strong>
+| | G1 (TE) | G2 (RM) |
+|--|---------|---------|
+| IFC version | IFC4 | IFC2x3 |
+| elements_meta.discipline | CW/SP/FP/LPG per element | "MEP" (undifferentiated) |
+| MEP classification | IFCtoERP discFromClass 3-arg | RouteWalker pattern approach |
+| ad_mep_anchor rows | 0 (not needed) | 154 METER + 11 FIXTURE + 1482 GENERIC |
+| Rosetta Stone | 7/8 PASS | 8/8 PASS |</p>
+<p>The earlier YAML <code>mep_systems / path_nodes_m</code> design was never implemented and is superseded
+by this architecture. YAML is Order input only (not IFCtoBOM source — feedback rule).</p>
 <h3 id="rebar-removed-from-input-2660-elements-deleted">Rebar — REMOVED from input (2,660 elements deleted)<a class="headerlink" href="#rebar-removed-from-input-2660-elements-deleted" title="Permanent link">&para;</a></h3>
 <blockquote>
 <p><strong>Removed (2026-03-18):</strong> Rebar (IfcReinforcingBar) is already a fast Python
@@ -5780,18 +5782,16 @@ as <code>classify_sh.yaml</code> and <code>classify_dx.yaml</code>. The Java pip
 never hardcodes building-specific logic. Adding a new Rosetta Stone =
 writing a new YAML, not new Java code.</p>
 <h2 id="verb-roadmap-what-terminal-still-needs">Verb Roadmap — What Terminal Still Needs<a class="headerlink" href="#verb-roadmap-what-terminal-still-needs" title="Permanent link">&para;</a></h2>
-<p><strong>Current state (session 30):</strong> All MEP elements absorbed by CLUSTER (approximate,
-avg 3.7m error). Exact verbs (TILE/ROUTE/FRAME) handle only 108 instances. The
-roadmap below tracks promotion from CLUSTER → exact verb per discipline.</p>
+<p><strong>Current state (S104):</strong> GEO proof: 48,428 elements, 569M pairs, worst=0.025mm, DRIFT=0.
+MEP disciplines correctly separated via IFCtoERP (00t). Rosetta Stone 7/8 PASS.
+Pre-existing 71 critical proof violations are the remaining blocker (not a verb gap).</p>
 <table>
 <thead>
 <tr>
-<th>Verb</th>
+<th>Verb / Mechanism</th>
 <th>Status</th>
 <th>Discipline</th>
-<th>Predicted</th>
-<th>Actual (CLUSTER)</th>
-<th>AD Table</th>
+<th>Elements</th>
 <th>Fidelity</th>
 </tr>
 </thead>
@@ -5801,35 +5801,27 @@ roadmap below tracks promotion from CLUSTER → exact verb per discipline.</p>
 <td><strong>EXACT</strong></td>
 <td>ARC (roof)</td>
 <td>33,324</td>
-<td>12 exact, rest CLUSTER</td>
-<td>—</td>
 <td>PASS (0.0m)</td>
 </tr>
 <tr>
-<td><code>ROUTE</code></td>
-<td><strong>EXACT</strong></td>
-<td>FP/CW/SP/LPG</td>
-<td>9,345+2,619</td>
-<td>18 exact, rest CLUSTER</td>
-<td>ad_fp_coverage</td>
-<td>0.32m max</td>
+<td><code>MEP_RECIPE</code> (IFCtoERP)</td>
+<td><strong>LIVE</strong></td>
+<td>FP/CW/SP/LPG/ACMV</td>
+<td>9,345+</td>
+<td>archetypes in ERP.db</td>
 </tr>
 <tr>
 <td><code>FRAME</code></td>
 <td><strong>EXACT</strong></td>
 <td>STR</td>
 <td>590</td>
-<td>78 exact, rest CLUSTER</td>
-<td>—</td>
-<td>1.4mm max (S51 fix)</td>
+<td>1.4mm max</td>
 </tr>
 <tr>
 <td><code>CLUSTER</code></td>
 <td><strong>APPROX</strong></td>
-<td>all MEP</td>
-<td>—</td>
-<td>47,607</td>
-<td>—</td>
+<td>residual MEP</td>
+<td>~47,607</td>
 <td>29.1m max, 3.7m avg</td>
 </tr>
 <tr>
@@ -5837,8 +5829,6 @@ roadmap below tracks promotion from CLUSTER → exact verb per discipline.</p>
 <td>DESIGNED</td>
 <td>ARC (walls)</td>
 <td>~1,038</td>
-<td>—</td>
-<td>—</td>
 <td>not started</td>
 </tr>
 <tr>
@@ -5846,8 +5836,6 @@ roadmap below tracks promotion from CLUSTER → exact verb per discipline.</p>
 <td>DESIGNED</td>
 <td>ARC (furniture)</td>
 <td>~2,123</td>
-<td>—</td>
-<td>—</td>
 <td>not started</td>
 </tr>
 <tr>
@@ -5855,15 +5843,13 @@ roadmap below tracks promotion from CLUSTER → exact verb per discipline.</p>
 <td>~~REMOVED~~</td>
 <td>~~REB~~</td>
 <td>~~2,660~~</td>
-<td>—</td>
-<td>—</td>
 <td>REB excluded</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Gap:</strong> CLUSTER's 3.7m avg error is the G2-VOLUME 13.71% drift root cause.
-Promotion path: analyse each CLUSTER group for step-uniformity, reclassify
-groups with ≤1mm step variance as TILE/ROUTE/FRAME. Non-uniform residue stays CLUSTER.</p>
+<p><strong>Note:</strong> <code>ROUTE</code> verb (YAML path_nodes design) was never implemented and is superseded
+by the MEP_RECIPE architecture. TE's pipe network is mined by IFCtoERP into ERP.db archetypes.
+CLUSTER's 3.7m avg error remains the G2-VOLUME 13.71% drift root cause for non-exact elements.</p>
 <h3 id="three-layer-validation-resolution-s100-p84">Three-Layer Validation Resolution (S100-p84)<a class="headerlink" href="#three-layer-validation-resolution-s100-p84" title="Permanent link">&para;</a></h3>
 <p>The 1,163 unfactored elements are not a pattern-mining problem — they're a
 <strong>standards application</strong> problem. The iDempiere three-layer validation resolves

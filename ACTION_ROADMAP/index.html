@@ -3212,13 +3212,23 @@
 <td>M_Product_Category drives room→furniture selection — bedroom gets bed set, not sofa set</td>
 </tr>
 <tr>
+<td><strong>Type-Safe Design Language</strong></td>
+<td>5d</td>
+<td>Gesture → Type Resolution Ladder → W_BOM_Variance. Replays as BIM COBOL verbs. <a href="../SPATIAL_VARIANCE_SRS/">SPATIAL_VARIANCE_SRS.md</a></td>
+</tr>
+<tr>
+<td><strong>Finish Walls</strong></td>
+<td>3d</td>
+<td>Detect missing ARC walls in half-finished IFC; click empty edge or panel "FINISH WALLS" → COMPLETE verb. <a href="../FINISH_WALLS_SRS/">FINISH_WALLS_SRS.md</a></td>
+</tr>
+<tr>
 <td><strong>Exit criterion</strong></td>
 <td></td>
 <td>User can design a house from scratch and compile it without touching SQL</td>
 </tr>
 </tbody>
 </table>
-<p>SRS: <a href="../BIM_Designer_SRS/">BIM_Designer_SRS.md</a> (2,665 lines, 50 functional requirements specified)</p>
+<p>SRS: <a href="../BIM_Designer_SRS/">BIM_Designer_SRS.md</a> §28–§35 | <a href="../SPATIAL_VARIANCE_SRS/">SPATIAL_VARIANCE_SRS.md</a> | <a href="../FINISH_WALLS_SRS/">FINISH_WALLS_SRS.md</a></p>
 <hr />
 <h2 id="phase-4-dimensional-outputs-17-days-early-june">Phase 4 — Dimensional Outputs (~17 days → early June)<a class="headerlink" href="#phase-4-dimensional-outputs-17-days-early-june" title="Permanent link">&para;</a></h2>
 <p><em>Complete the 4D–8D promise.</em></p>
@@ -3271,8 +3281,14 @@
 <tr>
 <td><strong>2D Layout</strong></td>
 <td>5d</td>
-<td>Specced</td>
-<td>Floor plans, elevations, sections as SVG from compiled BOM. <a href="../2D_LAYOUT/">2D_LAYOUT</a></td>
+<td>Python prototype DONE (6 SVGs, SH). Java port pending. <a href="../2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md">2D_ARCHITECTURAL_LAYOUT.md</a></td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Synthetic Rosetta Stone</strong></td>
+<td>2d</td>
+<td>panel→variance→compile→project→measure. Closes compiler-modeller loop. <a href="../SPATIAL_VARIANCE_SRS/">SPATIAL_VARIANCE_SRS.md §12</a></td>
+<td></td>
 </tr>
 <tr>
 <td><strong>PDF Terrain</strong></td>
@@ -3410,8 +3426,8 @@
 <td>Interactive 3D element placement via BlenderBridge</td>
 </tr>
 <tr>
-<td>Freehand drawing → BOM</td>
-<td>Viewport geometry becomes BOM mutation</td>
+<td>Type-Safe gesture editing</td>
+<td>Stroke/pull/cut/add → Type Resolution Ladder → W_BOM_Variance (Level 5 only if no concrete type). <a href="../SPATIAL_VARIANCE_SRS/">SPATIAL_VARIANCE_SRS.md §3–§4</a></td>
 </tr>
 <tr>
 <td>~~MIRROR verb for duplex~~</td>
@@ -3562,6 +3578,18 @@
 <tr>
 <td><strong>Data model</strong></td>
 <td><a href="../DATA_MODEL/">DATA_MODEL.md</a></td>
+</tr>
+<tr>
+<td><strong>Type-Safe Design Language</strong></td>
+<td><a href="../SPATIAL_VARIANCE_SRS/">SPATIAL_VARIANCE_SRS.md</a> — gesture→verb→variance→compile loop</td>
+</tr>
+<tr>
+<td><strong>Finish Walls</strong></td>
+<td><a href="../FINISH_WALLS_SRS/">FINISH_WALLS_SRS.md</a> — detect + complete missing ARC walls</td>
+</tr>
+<tr>
+<td><strong>2D Projection</strong></td>
+<td><a href="../2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md">2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md</a> §12–§13</td>
 </tr>
 </tbody>
 </table>

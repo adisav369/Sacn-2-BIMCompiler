@@ -2388,6 +2388,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#quick-start-fresh-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start — Fresh Install
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#quick-start-for-users" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3169,6 +3180,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#quick-start-fresh-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start — Fresh Install
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#quick-start-for-users" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3755,6 +3777,15 @@ The YAML is the <strong>Order input and onboarding tool</strong> — how buildin
 IFC extraction is IFC-driven (family types, spatial containment). YAML defines
 the Order: how extracted elements are organised into the BOM tree.</p>
 </blockquote>
+<h2 id="quick-start-fresh-install">Quick Start — Fresh Install<a class="headerlink" href="#quick-start-fresh-install" title="Permanent link">&para;</a></h2>
+<p>If starting from scratch (no <code>library/ERP.db</code>), build the seed database first:</p>
+<div class="highlight"><pre><span></span><code>./scripts/rebuild_erp.sh<span class="w">              </span><span class="c1"># Creates ERP.db with all reference data</span>
+./scripts/onboard_ifc.sh<span class="w"> </span>--prefix<span class="w"> </span>XX<span class="w"> </span>--type<span class="w"> </span>MyBuilding<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;My Building&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--base<span class="w"> </span>RE<span class="w"> </span>--ifc<span class="w"> </span>path/to/building.ifc
+</code></pre></div>
+<p><code>rebuild_erp.sh</code> creates the Application Dictionary seed (M_Product_Category, AD_Org,
+aliases, patterns, recipes). <code>onboard_ifc.sh</code> then processes any IFC file — no manual
+SQL needed. See <a href="../DEPLOYMENT/#erpdb--from-scratch-rebuild">DEPLOYMENT.md</a> for details.</p>
 <h2 id="quick-start-for-users">Quick Start — For Users<a class="headerlink" href="#quick-start-for-users" title="Permanent link">&para;</a></h2>
 <p>Everything is already built. 34 buildings are onboarded, BOMs are generated, the
 component library is populated. You don't need to run the pipeline to start working.</p>

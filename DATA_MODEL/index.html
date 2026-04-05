@@ -4067,7 +4067,10 @@ the same BOM level — you never need to traverse a category tree.</p>
 <p><strong>Note:</strong> <code>Parent_Category_ID</code> is legacy — the <a href="../MANIFESTO/#what-m_product_category-classification--ad_org-discipline">BOM cascade</a>
 already expresses hierarchy through M_BOM_Line parent-child relationships.</p>
 </blockquote>
-<p>117 rows total (DV018 migration). Representative categories:</p>
+<p>127 rows total (DV018 hierarchy + DV031 disciplines + DV027 PK migration).
+<code>AD_Org_ID</code> column (DV036) wires <code>M_Product → M_Product_Category → AD_Org_ID</code>
+per <a href="../DISC_VALIDATION_DB_SRS/#64-bom-tree-structure">DISC_VALIDATION_DB_SRS.md §6.4</a>.
+Representative categories:</p>
 <table>
 <thead>
 <tr>

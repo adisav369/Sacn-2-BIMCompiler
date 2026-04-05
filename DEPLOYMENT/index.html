@@ -2672,6 +2672,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#erpdb-from-scratch-rebuild" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ERP.db — From-Scratch Rebuild
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pipeline-script-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3019,6 +3030,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#erpdb-from-scratch-rebuild" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ERP.db — From-Scratch Rebuild
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pipeline-script-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3359,6 +3381,23 @@ docker-compose<span class="w"> </span>restart<span class="w"> </span>nginx
 </table>
 <p>The DAO abstraction isolates all database access — swapping SQLite for PostgreSQL
 changes the connection factory, not the business logic.</p>
+<h2 id="erpdb-from-scratch-rebuild">ERP.db — From-Scratch Rebuild<a class="headerlink" href="#erpdb-from-scratch-rebuild" title="Permanent link">&para;</a></h2>
+<p><code>library/ERP.db</code> is the seed/reference database (like iDempiere's Application Dictionary).
+It holds discipline metadata, product categories, validation rules, and shared recipes.
+<strong>No manual SQL needed</strong> — <code>scripts/rebuild_erp.sh</code> creates it from the migration chain:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Fresh build (schema + seeds only — 928KB, 44 tables, 127 categories)</span>
+./scripts/rebuild_erp.sh
+
+<span class="c1"># With per-building validation rules (mined from prior output DBs)</span>
+./scripts/rebuild_erp.sh<span class="w"> </span>--with-rules
+
+<span class="c1"># Full: schema + rules + pipeline run on SH/DX/RM</span>
+./scripts/rebuild_erp.sh<span class="w"> </span>--full
+</code></pre></div>
+<p>After rebuild, process any IFC with <code>onboard_ifc.sh</code> or <code>run_RosettaStones.sh</code>.
+<code>ProductRegistrar</code> auto-creates M_Product rows and assigns M_Product_Category_ID
+from ifc_class. The discipline chain (<code>M_Product → M_Product_Category → AD_Org_ID</code>)
+resolves automatically per <a href="../DISC_VALIDATION_DB_SRS/#64-bom-tree-structure">DISC_VALIDATION_DB_SRS.md §6.4</a>.</p>
 <h2 id="pipeline-script-architecture">Pipeline Script Architecture<a class="headerlink" href="#pipeline-script-architecture" title="Permanent link">&para;</a></h2>
 <p>The pipeline has three independent lifecycle phases. Each phase is a separate
 subscript, callable alone or via the fleet orchestrator.</p>

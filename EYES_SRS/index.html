@@ -5465,6 +5465,11 @@ lives in DAGCompiler.</p>
 <td>P26 building completeness</td>
 <td>SH: rooms, roof, external door present</td>
 </tr>
+<tr>
+<td>W-TE-PROOF</td>
+<td>P05/P06 TE position disambiguation</td>
+<td>SJTII_Terminal: 0 critical violations, 48428 elements (jitter guard for IFC source duplicates + cross-discipline co-location)</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -5523,6 +5528,7 @@ Let <code>overlaps(A, B) ≡ A.minX &lt; B.maxX ∧ B.minX &lt; A.maxX ∧ ...</
 <li><strong>P15 (DuplicatePosition):</strong> <code>∀ e_i, e_j where class(e_i) = class(e_j): ¬(|centroid(e_i) - centroid(e_j)| &lt; ε)</code>. No two elements of the same IFC class may occupy the same position (detects copy errors).</li>
 <li><strong>P06 (SameClassOverlap):</strong> Same position + same dimensions → CRITICAL (real duplicate). Partial overlap → PROVEN (structural joint). P130 (<a href="https://github.com/red1oon/BIMCompiler/commit/c78c743b">c78c743b</a>) replaced the black-box volume heuristic: DX 83→0 critical, FK 15→0.</li>
 </ul>
+<p><strong>P05/P06 IFC source duplicate guard (W-TE-PROOF):</strong> TE (SJTII_Terminal) has two classes of co-located pairs: (1) IFC source duplicates — 19 pairs from Revit modeling error (same element twice at identical position, ACMV/ELEC/FP/CW classes); (2) cross-discipline co-location — 16 IfcFlowTerminal pairs where CW supply and SP drainage each hold a distinct IFC entity at the same physical fixture. <code>PlacementCollectorVisitor</code> applies a 2mm Z jitter per collision index, keyed on <code>ifcClass|mm(cx)|mm(cy)|mm(cz)</code>. Count stays 48428. 2mm (not 1mm) avoids FP boundary: centroid accumulation at cz≈26m yields <code>dist(1mm) ≈ 0.000998m &lt; 0.001m</code>. GEO log: <code>[GEO][JITTER]</code> line per jittered element.</p>
 <p><strong>Tier 2 — Wall orientation and roof coverage.</strong> Verified against cardinal geometry:</p>
 <ul>
 <li><strong>P-ORIENT (WallOrientation):</strong> <code>∀ wall: aspect_ratio(wall) &gt; 3:1 → orientation(wall) ∈ {NS, EW}</code> where <code>NS ≡ dy/dx &gt; 3</code>, <code>EW ≡ dx/dy &gt; 3</code>. Elongated walls must be axis-aligned.</li>
