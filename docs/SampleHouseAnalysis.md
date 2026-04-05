@@ -83,6 +83,42 @@ BOM walk recompilation via `CompileStage` → `writeFromBomWalk()`. **7/7 PASS.*
 | §4 | Openings | deferred (no proof aggregate) |
 | §9 | Orientation | deferred (no proof aggregate) |
 
+## BOM Compilation Model (S147)
+
+The Sample House is the simplest Rosetta Stone — 58 elements, no mirroring,
+single storey + roof. It proves the BOM compilation concept in its purest form.
+
+```
+BUILDING_SH_STD (BUILDING)                     ← the order: "build this house"
+ ├─ SH_GF_STR (FLOOR)       13 → 16 instances ← ground floor structure (walls, slabs)
+ │                                               verbs: TILE (curtain wall mullions)
+ ├─ SH_RO_STR (FLOOR)        2 → 2 instances  ← roof structure
+ ├─ SH_UN_STR (FLOOR)        2 → 2 instances  ← unknown storey (2 beams)
+ ├─ SH_ROOM_GF (FLOOR)       2 rooms          ← room index
+ │   ├─ SH_1_LIVING_ROOM_SET (SET)  9 → 12    ← living room: sofa, table, chairs, piano
+ │   │                                           verb: CLUSTER (chair group)
+ │   └─ SH_2_BEDROOM_SET (SET)      2 → 2     ← bedroom: bed, wardrobe
+ ├─ FLOOR_SLAB_GF (ASSEMBLY) 0                 ← ground slab (stub)
+ ├─ ROOF_ASSEMBLY (ASSEMBLY)  0                 ← roof assembly (stub)
+ ├─ SH_UN_ASM_1 (ASSEMBLY)  13 → 13           ← assembly: windows, doors
+ └─ SH_UN_ASM_2 (ASSEMBLY)   7 → 13           ← assembly: coverings, verbs expand
+```
+
+**11 BOMs, 56 lines, 58 instances.** Almost 1:1 — minimal factorization because
+SH has few repeated elements. The living room chair CLUSTER (3 chairs at explicit
+offsets) is the only verb-expanded group.
+
+**No mirroring, no rotation.** SH is a simple box — IDENTITY transform on every
+element. This makes it the baseline: if SH breaks, the core BOM walk is broken.
+If SH passes but DX fails, the issue is in the mirroring/rotation layer.
+
+**SPATIAL-REPORT:** `outliers=4 sym=4 asym=0` — 4 IfcMember (rafters) with
+stepped X offsets. These are real position differences from the LOD placement
+vs IFC reference, not compilation errors.
+
+**Logging proof:** `grep BOM-SUMMARY logs/*SampleHouse*ifctobom*.log` shows
+this tree. `grep SPATIAL-REPORT logs/pipeline_SH*.log` for spatial accuracy.
+
 ## Guardrails
 
 1. **Smallest stone — any regression shows here first.** Run SH before DX/TE.

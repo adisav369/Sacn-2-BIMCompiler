@@ -287,6 +287,52 @@ SET BOMs and the half-unit.
 **C9 WARN (50 mismatches):** Rank-match artifact documented in §Resolved #5 below.
 Reduced from 89→50 after P128 removed furniture from half-unit pairing.
 
+## BOM Compilation Model (S147, 2026-04-05)
+
+The duplex is compiled entirely from ERP BOM primitives — `m_bom` + `m_bom_line`
+(iDempiere Bill of Materials). No intermediate geometry representation. The BOM
+IS the spatial model.
+
+```
+BUILDING_DX_STD (BUILDING)                    ← the order: "build this duplex"
+ ├─ DX_TF_STR (FLOOR)      14 children       ← foundation: footings, ground slab
+ ├─ DX_L1_STR (FLOOR)      28 children       ← Level 1 structure: walls, slabs, beams
+ ├─ DX_L2_STR (FLOOR)       5 children       ← Level 2 structure
+ ├─ DX_RO_STR (FLOOR)       4 children       ← Roof structure
+ ├─ DX_ROOM_L1 (FLOOR)      5 rooms          ← Room index: points to SET BOMs
+ │   ├─ DX_A102_SET (SET)   5 → 5 instances  ← A-side living: sofa, tables, lamp
+ │   ├─ DX_A103_SET (SET)   5 → 15 instances ← A-side kitchen: 8 base + 4 upper cabinets + counter
+ │   ├─ DX_A104_SET (SET)   1 → 1 instance   ← A-side pantry: vanity cabinet
+ │   ├─ DX_B102_SET (SET)   5 → 5 instances  ← B-side living (rot=π of A)
+ │   └─ DX_B103_SET (SET)   5 → 15 instances ← B-side kitchen (rot=π of A)
+ ├─ DX_ROOM_L2 (FLOOR)      6 rooms          ← Level 2 rooms: bedrooms, bathroom
+ ├─ DUPLEX_SINGLE_UNIT_STD (FLOOR) 51 children ← half-unit: all per-unit elements
+ │   └─ DUPLEX_SET_STD (SET) 2 → 2 instances ← stair assembly (stringers + railings)
+ ├─ FLOOR_SLAB_GF (ASSEMBLY)                  ← ground floor slab (empty stub)
+ ├─ FLOOR_SLAB_L2 (ASSEMBLY)                  ← Level 2 slab (empty stub)
+ └─ ROOF_ASSEMBLY (ASSEMBLY)                   ← roof (empty stub)
+```
+
+**25 BOMs, 169 lines, 189 instances.** The gap between lines and instances is
+the verb expansion — `LINE:X:0.012,1.772,2.772,3.772` (4 explicit positions
+for 4 upper cabinets) and `LINE_MULTI:X:0.76,1.76,2.76,3.76;X:0.00,1.00,2.00,3.76`
+(8 base cabinets in two rows). VerbFactorizer compresses 15 elements into 5 lines.
+
+**Half-unit walk:** `DUPLEX_SINGLE_UNIT_STD` is walked twice — once with
+`IDENTITY` (A-side) and once with `MIRROR:X` (B-side, rot=π). All 51 children
+inherit the transform. The B-side kitchen cabinets, stair, walls all get their
+positions from the same BOM data — only the sign flips.
+
+**Discipline separation:** 904 MEP elements (IfcFlowSegment, IfcFlowTerminal,
+IfcFlowFitting, IfcFlowController) excluded from BOM by §6.12.1. Confirmed by
+`SPATIAL-REPORT: missing_summary: disc_excluded=904 not_in_bom=0`. These belong
+in the DISC path (IFCtoERP), not the ARC BOM.
+
+**Logging proof:** `grep BOM-SUMMARY logs/*ifctobom*.log` shows this tree.
+`grep SPATIAL-REPORT logs/pipeline_DX*.log` shows 0 wall outliers, 15 furniture
+GUID-order cosmetic mismatches. `grep LOD-ROTATE logs/pipeline_DX*.log` confirms
+51 B-side meshes rotated 180°.
+
 ## Rotation Center Proof (S145, 2026-04-05)
 
 The B-side half-unit is a **180° rotation** of the A-side, NOT a mirror reflection.
@@ -548,3 +594,35 @@ revealed the 6m drift. The improved TACK log now shows:
 - Half-extent sign: `sign=+1` or `sign=-1`
 - Actual AABB: `X=[min,max] Y=[min,max] Z=[min,max]`
 - Mirror-aware containment check (eliminated 55 false OVERSHOOTs)
+
+### 6. Zigzag partition axis — rot=π holds for non-straight party walls (S147)
+
+The duplex party wall is not a straight line. Between the stair wells, the
+partition zigzags inward on each side to provide stair clearance — a common
+duplex design pattern. The A-side notches in at X=4.420 (wall `36_A`), the
+B-side notches in at X=5.160 (wall `87_B`).
+
+**Proof:** rot=π about building center (4.790, 13.283) verified:
+- A zigzag center: X=4.496, Y=13.253
+- B zigzag center: X=5.084, Y=13.313
+- (A + B) / 2 = (4.790, 13.283) — exact building center
+
+The rotation axis holds despite the non-straight partition because rot=π is
+a global transform about the building center, not about the party wall itself.
+Each element is positioned independently via BOM tack offsets; the rotation
+negates both X and Y offsets under MIRROR:X (S145 fix). The zigzag walls are
+ordinary children of the half-unit BOM — no special-case geometry.
+
+**Code path:** `PlacementCollectorVisitor.onLeaf()` reads `mirrorAxisStack`,
+negates offsets via `xySign = -1.0`. `CompositionBomBuilder.buildComposition()`
+classifies walls as A/B/SHARED. Zigzag walls are correctly classified A/B
+(they sit entirely on one side of the building center X).
+
+**LOD rotation (S147):** B-side LOD meshes now receive rot=π via
+`MeshBinder.bind()` (rotate around mesh center, then translate to AABB).
+Confirmed by `LOD-ROTATE` log: 51 B-side elements at `rotZ=3.1416rad`.
+Stair flight, stringers, railings all rotated — visual orientation correct.
+
+**Logging:** `SPATIAL-REPORT` (grep pipeline log) confirms 0 wall outliers
+after identity-based matching. `BOM-SUMMARY` (grep IFCtoBOM log) shows the
+BOM tree structure including the half-unit's 51 children.

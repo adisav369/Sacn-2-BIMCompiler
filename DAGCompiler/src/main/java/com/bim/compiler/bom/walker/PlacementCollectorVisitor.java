@@ -217,14 +217,14 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         double lineDz = (line != null) ? line.getDz() : 0;
 
         // Apply cumulative mirror reflection OR rotation to line offsets
-        // S145: MIRROR:X negates only X offset, keeps Y unchanged
+        // S145 fix: MIRROR:X is rot=π about party wall — negate both X and Y
         String cumMirror = mirrorAxisStack.isEmpty() ? "" : mirrorAxisStack.peek();
         double cumRot = rotationStack.isEmpty() ? 0.0 : rotationStack.peek();
         if (!cumMirror.isEmpty()) {
             double rx = lineDx, ry = lineDy;
             switch (cumMirror) {
-                case "X" -> rx = -lineDx;
-                case "Y" -> ry = -lineDy;
+                case "X" -> { rx = -lineDx; ry = -lineDy; }
+                case "Y" -> { rx = -lineDx; ry = -lineDy; }
             }
             if (BIMLogger.geoMatch(childBomId != null ? childBomId : "ROOT")) {
                 BIMLogger.geo("TACK", "  MIRROR:{}: line=({:.4f},{:.4f}) → reflected=({:.4f},{:.4f})",
@@ -370,8 +370,8 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         if (!cumMirror.isEmpty()) {
             double rx = leafDx, ry = leafDy;
             switch (cumMirror) {
-                case "X" -> rx = -leafDx;
-                case "Y" -> ry = -leafDy;
+                case "X" -> { rx = -leafDx; ry = -leafDy; }
+                case "Y" -> { rx = -leafDx; ry = -leafDy; }
             }
             if (BIMLogger.geoMatch(line.getChildProductId())) {
                 BIMLogger.geo("TACK", "  MIRROR:{}: leaf=({:.4f},{:.4f}) → reflected=({:.4f},{:.4f})",
@@ -494,46 +494,63 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
             // BOM stores LBD offsets (§4 tack convention).
             // Add half-extents to recover centroid for Placement min/max computation.
-            double cx = anchor[0] + offsets[qi][0] + iHalfW;
-            double cy = anchor[1] + offsets[qi][1] + iHalfD;
+            // S145 fix: MIRROR:X is rot=π — flip both X and Y half-extents
+            String leafMirror = mirrorAxisStack.isEmpty() ? "" : mirrorAxisStack.peek();
+            double xySign = leafMirror.isEmpty() ? 1.0 : -1.0;
+            double cx = anchor[0] + offsets[qi][0] + xySign * iHalfW;
+            double cy = anchor[1] + offsets[qi][1] + xySign * iHalfD;
             double cz = anchor[2] + offsets[qi][2] + iHalfH;
 
             // Log 3+5: LEAF — proves centroid was computed by tack accumulation + shows GUID
             // (elementRef resolved below, so we log after GUID resolution)
 
-            // Element ref: CP-1 MA guid > line ref > generated.
+            // Element identity: CP-1 MA guid > line ref > generated.
+            // Implementing BBC.md §4.3 — Witness: W-GUID-1
             // MA (Material Allocation) carries per-instance IFC GUIDs for SpatialDiff.
             // Guard: only accept valid IFC GloballyUniqueId (22 chars, base64url+'$').
             // Invalid format = product name leaked into MA → reject, fall through.
-            String elementRef = null;
+            ElementIdentity identity;
             if (maGuids != null && qi < maGuids.length && maGuids[qi] != null
                     && IFC_GUID.matcher(maGuids[qi]).matches()) {
-                elementRef = maGuids[qi];
-            }
-            if (elementRef == null) {
-                elementRef = line.getElementRef();
-                if (elementRef == null || elementRef.isEmpty()) {
-                    elementRef = (product != null ? product.getProductId() : productId)
-                        + ":" + (++ordinalCounter);
-                } else if (qty > 1) {
-                    elementRef = elementRef + ":" + qi;
+                identity = ElementIdentity.fromMA(maGuids[qi], unitPrefix);
+            } else {
+                String lineRef = line.getElementRef();
+                if (lineRef != null && !lineRef.isEmpty() && IFC_GUID.matcher(lineRef).matches()) {
+                    identity = ElementIdentity.fromLineRef(lineRef, unitPrefix);
+                } else if (lineRef != null && !lineRef.isEmpty() && qty > 1) {
+                    identity = ElementIdentity.generated(lineRef + ":" + qi, unitPrefix);
+                } else if (lineRef != null && !lineRef.isEmpty()) {
+                    identity = ElementIdentity.generated(lineRef, unitPrefix);
+                } else {
+                    identity = ElementIdentity.generated(
+                        (product != null ? product.getProductId() : productId) + ":" + (++ordinalCounter),
+                        unitPrefix);
                 }
             }
+            String elementRef = identity.prefixedRef();
 
-            // Apply unit prefix for mirrored compositions (makes GUIDs unique per unit)
-            if (!unitPrefix.isEmpty()) {
-                elementRef = unitPrefix + elementRef;
-            }
+            // S147: Log GUID resolution path for traceability diagnosis
+            BIMLogger.fine("TACK", "GUID {} → {} base={} (ma={}, lineRef={}, qty={})",
+                identity.guidSource(), elementRef, identity.baseGuid(),
+                (maGuids != null && qi < maGuids.length) ? maGuids[qi] : "null",
+                line.getElementRef(), qty);
 
-            // Log 3+5: LEAF with GUID — proves tack math ran and IFC GUID preserved
+            // Log 3+5: LEAF — tack math proof with transform state and actual AABB
+            double minX = Math.min(cx - iHalfW, cx + iHalfW);
+            double maxX = Math.max(cx - iHalfW, cx + iHalfW);
+            double minY = Math.min(cy - iHalfD, cy + iHalfD);
+            double maxY = Math.max(cy - iHalfD, cy + iHalfD);
+            double minZ = cz - iHalfH;
+            double maxZ = cz + iHalfH;
             if (BIMLogger.geoMatch(productId)) {
-                BIMLogger.geo("TACK", "LEAF  {} guid={} anchor=({:.4f},{:.4f},{:.4f}) + offset=({:.4f},{:.4f},{:.4f}) + half=({:.4f},{:.4f},{:.4f}) → centroid=({:.4f},{:.4f},{:.4f}) LBD=({:.4f},{:.4f},{:.4f})",
+                BIMLogger.geo("TACK", "LEAF  {} guid={} {} anchor=({:.4f},{:.4f},{:.4f}) offset=({:.4f},{:.4f},{:.4f}) half=({:.4f},{:.4f},{:.4f}) sign={} → AABB X=[{:.3f},{:.3f}] Y=[{:.3f},{:.3f}] Z=[{:.3f},{:.3f}]",
                     productId, elementRef,
+                    leafMirror.isEmpty() ? "IDENTITY" : "MIRROR:" + leafMirror,
                     anchor[0], anchor[1], anchor[2],
                     offsets[qi][0], offsets[qi][1], offsets[qi][2],
                     iHalfW, iHalfD, iHalfH,
-                    cx, cy, cz,
-                    cx - iHalfW, cy - iHalfD, cz - iHalfH);
+                    leafMirror.isEmpty() ? "+1" : "-1",
+                    minX, maxX, minY, maxY, minZ, maxZ);
                 // Log 3b: CHAIN — full ancestor path at LEAF (proves provenance)
                 BIMLogger.geo("TACK", "  CHAIN {}: {}", productId,
                     formatAncestorChain(parentBomIdStack, productId));
@@ -542,14 +559,14 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     productId,
                     iHalfW * 2000, iHalfD * 2000, iHalfH * 2000,
                     line.getAllocatedWidthMmExact(), line.getAllocatedDepthMmExact(), line.getAllocatedHeightMmExact());
-                // Log 3d: CONTAIN — is LEAF inside parent AABB? (proves no LMP drift)
+                // Log 3d: CONTAIN — is LEAF inside parent AABB? (mirror-aware)
                 double cumRotForCheck = rotationStack.isEmpty() ? 0.0 : rotationStack.peek();
-                logContainmentCheck(productId, cx, cy, cz, iHalfW, iHalfD, iHalfH, anchor, cumRotForCheck);
+                logContainmentCheck(productId, minX, minY, minZ, maxX, maxY, maxZ, anchor, cumRotForCheck, leafMirror);
             }
 
             // S144: Build GeoProofRecord — structured proof chain per element
             {
-                double[] outLBD = {cx - iHalfW, cy - iHalfD, cz - iHalfH};
+                double[] outLBD = {minX, minY, minZ};
                 double[] outCentroid = {cx, cy, cz};
                 double[] rawOffset = {line.getDx(), line.getDy(), line.getDz()};
                 double[] rotOffset = {offsets[qi][0], offsets[qi][1], offsets[qi][2]};
@@ -573,14 +590,14 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 }
                 boolean lmp = localDx0 >= -0.001 && localDy0 >= -0.001 && dz0 >= -0.001;
 
-                // Envelope check: childMAX <= parentMAX
+                // Envelope check: childMAX <= parentMAX (using actual min/max, mirror-safe)
                 boolean envelope;
                 if (pAABB == null || (pAABB[0] == 0 && pAABB[1] == 0 && pAABB[2] == 0)) {
                     envelope = true;  // unknown parent dims — can't check, assume OK
                 } else {
-                    double childMaxX = outLBD[0] + 2 * iHalfW;
-                    double childMaxY = outLBD[1] + 2 * iHalfD;
-                    double childMaxZ = outLBD[2] + 2 * iHalfH;
+                    double childMaxX = maxX;
+                    double childMaxY = maxY;
+                    double childMaxZ = maxZ;
                     double parentMaxX = pAnchor[0] + pAABB[0];
                     double parentMaxY = pAnchor[1] + pAABB[1];
                     double parentMaxZ = pAnchor[2] + pAABB[2];
@@ -620,21 +637,30 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     elementRef, ifcClass, cz, jitteredCz, jitterIndex * 2);
             }
 
+            // S147: Combine explicit rotation + mirror-equivalent rotation for LOD binding.
+            // MIRROR:X = rot=π (S145). The AABB is computed via sign negation (mirrorAxisStack),
+            // but the LOD mesh needs the actual rotation angle to render correctly.
+            double cumRotVal = rotationStack.isEmpty() ? 0.0 : rotationStack.peek();
+            if (!leafMirror.isEmpty()) {
+                cumRotVal += Math.PI;  // MIRROR:X ≡ rot=π for LOD mesh orientation
+            }
             PlacementLoader.Placement p = new PlacementLoader.Placement(
                 buildingType,
                 storey,
                 ifcClass,
                 elementRef,
                 ordinal,
-                cx - iHalfW, cx + iHalfW,
-                cy - iHalfD, cy + iHalfD,
+                minX, maxX,
+                minY, maxY,
                 jitteredCz - iHalfH, jitteredCz + iHalfH,
                 line.getOrientation(),
                 resolveDiscipline(ifcClass, ctx.discipline()),
                 materialName,
                 materialRgba,
                 line.getElementRef() != null ? line.getElementRef() : productId,  // familyRef — raw IFC name for fidelity; abstract productId for GENERATIVE
-                productId
+                productId,
+                identity,  // BBC.md §4.3 — ElementIdentity for output DB traceability
+                cumRotVal  // S147: cumulative rotation from BOM tree for LOD binding
             );
             placements.add(p);
         }
@@ -690,6 +716,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         } else if (verbRef.startsWith("SPRAY:")) {
             // SPRAY uses same expansion as TILE (semi-regular grid)
             return expandSpray(verbRef, qty, originDx, originDy, originDz);
+        } else if (verbRef.startsWith("LINE:")) {
+            return expandLine(verbRef, qty, originDx, originDy, originDz);
+        } else if (verbRef.startsWith("LINE_MULTI:")) {
+            return expandLineMulti(verbRef, qty, originDx, originDy, originDz);
         }
 
         // Unknown verb — fall back to origin position for all instances
@@ -835,6 +865,63 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     }
 
     /**
+     * LINE:axis:pos1,pos2,...,posN — explicit positions along one axis.
+     * Example: LINE:X:0.012,1.772,2.772,3.772 → 4 positions along X.
+     * Y and Z from origin (or the non-specified axes).
+     * Implementing BBC.md §4.3 — S147 DX furniture verb.
+     */
+    private static double[][] expandLine(String verbRef, int qty,
+                                         double originDx, double originDy, double originDz) {
+        // LINE:X:0.012,1.772,2.772,3.772
+        String data = verbRef.substring(5);  // skip "LINE:"
+        int colonIdx = data.indexOf(':');
+        String axis = data.substring(0, colonIdx);
+        String[] posStrs = data.substring(colonIdx + 1).split(",");
+        int n = posStrs.length;
+        double[][] result = new double[n][3];
+        for (int i = 0; i < n; i++) {
+            double pos = Double.parseDouble(posStrs[i].trim());
+            result[i] = switch (axis) {
+                case "X" -> new double[]{pos, originDy, originDz};
+                case "Y" -> new double[]{originDx, pos, originDz};
+                case "Z" -> new double[]{originDx, originDy, pos};
+                default -> new double[]{originDx, originDy, originDz};
+            };
+        }
+        return result;
+    }
+
+    /**
+     * LINE_MULTI:axis:pos1,...;axis:pos1,... — multiple groups of explicit positions.
+     * Example: LINE_MULTI:X:0.76,1.76,2.76,3.76;X:0.00,1.00,2.00,3.76
+     *   → 4+4=8 positions, first group along X, second group along X.
+     * Implementing BBC.md §4.3 — S147 DX furniture verb.
+     */
+    private static double[][] expandLineMulti(String verbRef, int qty,
+                                              double originDx, double originDy, double originDz) {
+        // LINE_MULTI:X:0.76,1.76;X:0.00,1.00
+        String data = verbRef.substring(11);  // skip "LINE_MULTI:"
+        String[] groups = data.split(";");
+        // Count total positions
+        java.util.List<double[]> all = new java.util.ArrayList<>();
+        for (String group : groups) {
+            int colonIdx = group.indexOf(':');
+            String axis = group.substring(0, colonIdx);
+            String[] posStrs = group.substring(colonIdx + 1).split(",");
+            for (String posStr : posStrs) {
+                double pos = Double.parseDouble(posStr.trim());
+                all.add(switch (axis) {
+                    case "X" -> new double[]{pos, originDy, originDz};
+                    case "Y" -> new double[]{originDx, pos, originDz};
+                    case "Z" -> new double[]{originDx, originDy, pos};
+                    default -> new double[]{originDx, originDy, originDz};
+                });
+            }
+        }
+        return all.toArray(new double[0][]);
+    }
+
+    /**
      * CP-1: Load Material Allocation GUIDs for a BOM line.
      * m_bom_line_ma stores per-instance IFC GUIDs (iDempiere M_InOutLineMA pattern).
      * Returns null if no MA rows exist (SH/DX or old BOM DBs).
@@ -886,33 +973,45 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     }
 
     /** Log AABB containment: is the placed LEAF inside the parent anchor region?
-     *  When cumRot ≠ 0, apply inverse rotation to offset before checking —
-     *  containment is verified in the parent's local frame, not world frame. */
+     *  Mirror-aware: under MIRROR:X (rot=π), child extends negatively from anchor,
+     *  so containment uses abs(offset) — distance from anchor matters, not direction. */
     private void logContainmentCheck(String productId,
-            double cx, double cy, double cz,
-            double halfW, double halfD, double halfH,
-            double[] parentAnchor, double cumRot) {
-        // LEAF LBD (min corner) relative to parent anchor
-        double dx = (cx - halfW) - parentAnchor[0];
-        double dy = (cy - halfD) - parentAnchor[1];
-        double dz = (cz - halfH) - parentAnchor[2];
+            double minX, double minY, double minZ,
+            double maxX, double maxY, double maxZ,
+            double[] parentAnchor, double cumRot, String mirror) {
+        boolean mirrored = !mirror.isEmpty();
+        // Under mirror: child can extend either direction from anchor.
+        // Check that the child AABB overlaps the parent region.
+        // Without mirror: LBD must be >= parent anchor (child extends positively).
+        double dx, dy, dz;
+        if (mirrored) {
+            // For rot=π: the child's max corner should be near the anchor,
+            // and the min corner extends away. Use absolute offset from anchor.
+            dx = Math.min(Math.abs(minX - parentAnchor[0]), Math.abs(maxX - parentAnchor[0]));
+            dy = Math.min(Math.abs(minY - parentAnchor[1]), Math.abs(maxY - parentAnchor[1]));
+            dz = minZ - parentAnchor[2];
+        } else {
+            dx = minX - parentAnchor[0];
+            dy = minY - parentAnchor[1];
+            dz = minZ - parentAnchor[2];
+        }
         // Apply inverse rotation to get offset in parent's local frame
-        // R(-θ) = [cos θ, sin θ; -sin θ, cos θ]  (inverse of the forward rotation)
         double localDx = dx, localDy = dy;
         boolean rotated = Math.abs(cumRot) > 0.01;
-        if (rotated) {
+        if (rotated && !mirrored) {
             double cos = Math.cos(-cumRot);
             double sin = Math.sin(-cumRot);
             localDx = dx * cos - dy * sin;
             localDy = dx * sin + dy * cos;
         }
         boolean contained = localDx >= -0.001 && localDy >= -0.001 && dz >= -0.001;
+        String tag = mirrored ? " [MIRROR:" + mirror + "]" : (rotated ? " [ROT=" + String.format("%.2f", cumRot) + "]" : "");
         if (contained) {
-            BIMLogger.geo("TACK", "  CONTAIN {}: OK local=({:.4f},{:.4f},{:.4f})m from parent{}",
-                productId, localDx, localDy, dz, rotated ? " [ROT=" + String.format("%.2f", cumRot) + "]" : "");
+            BIMLogger.geo("TACK", "  CONTAIN {}: OK dist=({:.4f},{:.4f},{:.4f})m from parent{}",
+                productId, localDx, localDy, dz, tag);
         } else {
-            BIMLogger.geo("TACK", "  CONTAIN {}: OVERSHOOT local=({:.4f},{:.4f},{:.4f})m — LMP candidate{}",
-                productId, localDx, localDy, dz, rotated ? " [ROT=" + String.format("%.2f", cumRot) + "]" : "");
+            BIMLogger.geo("TACK", "  CONTAIN {}: OVERSHOOT dist=({:.4f},{:.4f},{:.4f})m — LMP candidate{}",
+                productId, localDx, localDy, dz, tag);
         }
     }
 

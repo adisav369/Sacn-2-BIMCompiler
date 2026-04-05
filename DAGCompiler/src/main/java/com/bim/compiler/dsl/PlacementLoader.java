@@ -1,6 +1,7 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.bom.walker.BOMWalker;
+import com.bim.compiler.bom.walker.ElementIdentity;
 import com.bim.compiler.bom.walker.OrderLineWalker;
 import com.bim.compiler.bom.walker.PlacementCollectorVisitor;
 import com.bim.compiler.topology.Discipline;
@@ -43,6 +44,7 @@ import java.util.*;
 public class PlacementLoader {
 
     // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5-6 — Witness: W-DV-DISC-ORG
+    // S147: ElementIdentity + rotationZ added — BBC.md §4.3.
     public record Placement(
         String buildingType,
         String storey,
@@ -57,8 +59,28 @@ public class PlacementLoader {
         String materialName,
         String materialRgba,
         String familyRef,
-        String productId
+        String productId,
+        ElementIdentity identity,
+        double rotationZ  // cumulative rotation (radians) from BOM tree — 0 for IDENTITY, π for rot=π
     ) {
+        /** Backward-compat constructor — no identity, no rotation. */
+        public Placement(String buildingType, String storey, String ifcClass,
+                         String elementRef, int ordinal,
+                         double minX, double maxX, double minY, double maxY,
+                         double minZ, double maxZ, String orientation,
+                         Discipline discipline, String materialName, String materialRgba,
+                         String familyRef, String productId) {
+            this(buildingType, storey, ifcClass, elementRef, ordinal,
+                 minX, maxX, minY, maxY, minZ, maxZ, orientation,
+                 discipline, materialName, materialRgba, familyRef, productId,
+                 null, 0.0);
+        }
+
+        /** Base IFC GUID (no prefix) for output DB element_ref — matches reference DB guid. */
+        public String baseGuid() {
+            return identity != null ? identity.baseGuid() : elementRef;
+        }
+
         double cx() { return (minX + maxX) / 2; }
         double cy() { return (minY + maxY) / 2; }
         double cz() { return (minZ + maxZ) / 2; }
@@ -197,6 +219,11 @@ public class PlacementLoader {
                     walker.walkOrder(orderId, List.of(visitor), buildingType);
 
                     List<Placement> placements = visitor.getPlacements();
+
+                    // S145: Last-inch correction — disabled pending S146 envelope partition fix
+                    // LastInchCorrector lastInch = new OpeningContainmentCorrector();
+                    // placements = lastInch.correct(placements);
+
                     cache.computeIfAbsent(buildingType, k -> new ArrayList<>()).addAll(placements);
 
                     System.out.printf("[PlacementLoader] OrderLine %s (%s) → %d placements%n",
@@ -281,6 +308,11 @@ public class PlacementLoader {
                 walker.walkSelf(bom.getValue(), List.of(visitor), buildingType);
 
                 List<Placement> placements = visitor.getPlacements();
+
+                // S145: Last-inch correction — disabled pending S146 envelope partition fix
+                // LastInchCorrector lastInch = new OpeningContainmentCorrector();
+                // placements = lastInch.correct(placements);
+
                 cache.computeIfAbsent(buildingType, k -> new ArrayList<>()).addAll(placements);
 
                 System.out.printf("[PlacementLoader] %s (%s) → %d placements, worldOrigin=(%.3f,%.3f,%.3f)%n",

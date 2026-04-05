@@ -979,13 +979,20 @@ public class BuildingWriter {
                                             double tx = p.minX() - lb[0] * sX;
                                             double ty = p.minY() - lb[2] * sY;
                                             double tz = p.minZ() - lb[4] * sZ;
+                                            // S147: pass cumulative rotation from BOM tree to LOD transform
                                             String geoHash = libraryMapper.transformAndWriteGeometryScaled(
-                                                conn, cd.geometryHash(), tx, ty, tz, 0.0, sX, sY, sZ);
+                                                conn, cd.geometryHash(), tx, ty, tz, p.rotationZ(), sX, sY, sZ);
                                             if (geoHash != null) {
+                                                if (Math.abs(p.rotationZ()) > 0.01) {
+                                                    BIMLogger.info("LOD-ROTATE",
+                                                        "{} guid={} rotZ={:.4f}rad ({:.1f}°) mesh={}",
+                                                        p.ifcClass(), guid, p.rotationZ(),
+                                                        Math.toDegrees(p.rotationZ()), cd.geometryHash());
+                                                }
                                                 ep.writeElementMeta(guid, p.ifcClass(), p.familyRef(), type,
                                                     p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(),
                                                     p.minZ(), p.maxZ(), null, p.materialName(), p.materialRgba(),
-                                                    p.elementRef());
+                                                    p.baseGuid());  // §4.3: base IFC GUID (no prefix) for SpatialDiff identity matching
                                                 ep.writeInstance(guid, geoHash);
                                                 written++;
                                                 continue;
@@ -1186,21 +1193,35 @@ public class BuildingWriter {
                                             double sX = (p.maxX() - p.minX()) / meshW;
                                             double sY = (p.maxY() - p.minY()) / meshD;
                                             double sZ = (p.maxZ() - p.minZ()) / meshH;
-                                            // Align scaled mesh min-corner to placement min-corner.
-                                            // translateX = p.minX() - lb[0]*sX aligns any mesh origin.
-                                            // Rotation suppressed: applying rotation around world-space
-                                            // origin (not mesh center) overflows the placement bbox and
-                                            // fails GIC. Rotation is a Phase BOM-3 concern.
-                                            double tx = p.minX() - lb[0] * sX;
-                                            double ty = p.minY() - lb[2] * sY;
+                                            // S147: Align scaled mesh to placement AABB, with rotation.
+                                            // For rot=π the mesh min/max swap after rotation around origin,
+                                            // so translation must target the rotated mesh min at p.min.
+                                            double rotZ = p.rotationZ();
+                                            double tx, ty;
+                                            if (Math.abs(rotZ) > 0.01) {
+                                                // rot=π: rotateZ negates x,y → mesh max becomes -mesh min
+                                                // Rotated mesh min = -lb[1]*sX, -lb[3]*sY
+                                                // Want rotated min at p.minX/Y → tx = p.minX - (-lb[1]*sX)
+                                                tx = p.minX() + lb[1] * sX;
+                                                ty = p.minY() + lb[3] * sY;
+                                            } else {
+                                                tx = p.minX() - lb[0] * sX;
+                                                ty = p.minY() - lb[2] * sY;
+                                            }
                                             double tz = p.minZ() - lb[4] * sZ;
                                             String geoHash = libraryMapper.transformAndWriteGeometryScaled(
-                                                conn, cd.geometryHash(), tx, ty, tz, 0.0, sX, sY, sZ);
+                                                conn, cd.geometryHash(), tx, ty, tz, rotZ, sX, sY, sZ);
                                             if (geoHash != null) {
+                                                if (Math.abs(rotZ) > 0.01) {
+                                                    BIMLogger.info("LOD-ROTATE",
+                                                        "{} guid={} rotZ={:.4f}rad ({:.1f}°) mesh={}",
+                                                        p.ifcClass(), guid, rotZ,
+                                                        Math.toDegrees(rotZ), cd.geometryHash());
+                                                }
                                                 ep.writeElementMeta(guid, p.ifcClass(), p.familyRef(), type,
                                                     p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(),
                                                     p.minZ(), p.maxZ(), null, p.materialName(), p.materialRgba(),
-                                                    p.elementRef());
+                                                    p.baseGuid());  // §4.3: base IFC GUID (no prefix) for SpatialDiff identity matching
                                                 ep.writeInstance(guid, geoHash);
                                                 bound++;
                                                 continue;

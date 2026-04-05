@@ -1314,6 +1314,142 @@ public class CompilationPipeline {
             } else {
                 System.out.printf("[FAIL] Geometry integrity: %d failures%n", geoReport.failCount());
             }
+
+            // S145: Always run SpatialDiff (input vs output AABB) and log per-element drift
+            // S147: Modal shift + outlier detection — separate global offset from per-element errors
+            if (ctx.entry().hasReference()) {
+                try {
+                    var eyesReport = com.bim.eyes.diff.SpatialDiff.diff(
+                        ctx.entry().referenceDbPath(), ctx.entry().outputDbPath());
+                    BIMLogger.geo("LMP-DIFF", "SpatialDiff: exact={} drift={} shift={} missing={} extra={}",
+                        eyesReport.exact(), eyesReport.drift(), eyesReport.shift(),
+                        eyesReport.missing(), eyesReport.extra());
+
+                    // Modal shift: the expected global offset (most common shift vector)
+                    double[] mode = eyesReport.modalShift();
+                    BIMLogger.geo("LMP-DIFF", "Modal shift: dX={:.0f} dY={:.0f} dZ={:.0f} mm (global offset)",
+                        mode[0], mode[1], mode[2]);
+
+                    // Outlier detection: elements that deviate from the modal shift
+                    double outlierTol = com.bim.eyes.EyesConstants.SPATIAL_DRIFT_MM;
+                    int outlierCount = eyesReport.outlierCount(outlierTol);
+                    if (outlierCount > 0) {
+                        BIMLogger.geo("LMP-DIFF", "OUTLIER: {} elements deviate >{:.0f}mm from modal shift",
+                            outlierCount, outlierTol);
+                        for (var e : eyesReport.outliersByClass(outlierTol).entrySet()) {
+                            if (e.getValue()[1] > 0) {
+                                BIMLogger.geo("LMP-DIFF", "  OUTLIER {}: {}/{} shifted",
+                                    e.getKey(), e.getValue()[1], e.getValue()[0]);
+                            }
+                        }
+                        // Diagnosis: symmetric (position error) vs asymmetric (mis-paired)
+                        String diagnosis = eyesReport.diagnosis(outlierTol);
+                        if (!diagnosis.isEmpty()) {
+                            for (String line : diagnosis.split("\n")) {
+                                BIMLogger.geo("LMP-DIFF", line);
+                            }
+                        }
+
+                        // Log individual outliers (cap at 20)
+                        int shown = 0;
+                        for (var d : eyesReport.outliers(outlierTol)) {
+                            if (shown >= 20) {
+                                BIMLogger.geo("LMP-DIFF", "  ... and {} more outliers", outlierCount - 20);
+                                break;
+                            }
+                            BIMLogger.geo("LMP-DIFF", "  OUTLIER [{}] #{} dX=[{:.0f},{:.0f}] dY=[{:.0f},{:.0f}] dZ=[{:.0f},{:.0f}] mm ({}){}",
+                                d.ifcClass(), d.indexInClass(),
+                                d.deltaMinX_mm(), d.deltaMaxX_mm(),
+                                d.deltaMinY_mm(), d.deltaMaxY_mm(),
+                                d.deltaMinZ_mm(), d.deltaMaxZ_mm(),
+                                d.isSymmetric() ? "SYM" : "ASYM",
+                                d.isSymmetric() ? "" : " ← size mismatch, check pairing");
+                            shown++;
+                        }
+                    }
+
+                    // Standard per-element SHIFT log (non-outlier shifts suppressed for clarity)
+                    for (var d : eyesReport.deltas()) {
+                        if (d.band() != com.bim.eyes.diff.SpatialDiff.Band.EXACT
+                                && d.band() != com.bim.eyes.diff.SpatialDiff.Band.SHIFT) {
+                            // Log DRIFT/MISSING/EXTRA — SHIFTs already covered by modal+outlier above
+                            BIMLogger.geo("LMP-DIFF", "  {} [{}] #{} dX=[{:.0f},{:.0f}] dY=[{:.0f},{:.0f}] dZ=[{:.0f},{:.0f}] mm",
+                                d.band(), d.ifcClass(), d.indexInClass(),
+                                d.deltaMinX_mm(), d.deltaMaxX_mm(),
+                                d.deltaMinY_mm(), d.deltaMaxY_mm(),
+                                d.deltaMinZ_mm(), d.deltaMaxZ_mm());
+                        }
+                    }
+
+                    // ── SPATIAL-REPORT: structured summary for session pickup ──
+                    // Implementing BBC.md §4.3 — grep 'SPATIAL-REPORT' for fast pickup
+                    int identityMatched = eyesReport.exact() + eyesReport.drift()
+                        + (int) eyesReport.deltas().stream()
+                            .filter(d -> d.band() == com.bim.eyes.diff.SpatialDiff.Band.SHIFT)
+                            .count();
+                    int symCount = 0, asymCount = 0;
+                    for (var d : eyesReport.outliers(outlierTol)) {
+                        if (d.isSymmetric()) symCount++; else asymCount++;
+                    }
+                    String verdict = outlierCount == 0 ? "CLEAN"
+                        : asymCount > symCount ? "FIX_PAIRING"
+                        : "POSITION_ERROR";
+                    BIMLogger.info("SPATIAL-REPORT",
+                        "exact={} drift={} shift={} missing={} extra={} | modal=[{:.0f},{:.0f},{:.0f}] | outliers={} sym={} asym={} | verdict={}",
+                        eyesReport.exact(), eyesReport.drift(), eyesReport.shift(),
+                        eyesReport.missing(), eyesReport.extra(),
+                        mode[0], mode[1], mode[2],
+                        outlierCount, symCount, asymCount, verdict);
+                    // Per-class breakdown (one line per affected class)
+                    for (var e : eyesReport.outliersByClass(outlierTol).entrySet()) {
+                        int[] counts = e.getValue();
+                        if (counts[1] > 0) {
+                            int clsSym = 0, clsAsym = 0;
+                            for (var d : eyesReport.outliers(outlierTol)) {
+                                if (d.ifcClass().equals(e.getKey())) {
+                                    if (d.isSymmetric()) clsSym++; else clsAsym++;
+                                }
+                            }
+                            String action = clsAsym > clsSym ? "fix_pairing"
+                                : clsSym > 0 && clsAsym == 0 ? "trace_tack_leaf"
+                                : "mixed";
+                            BIMLogger.info("SPATIAL-REPORT",
+                                "  class={} total={} outlier={} sym={} asym={} action={}",
+                                e.getKey(), counts[0], counts[1], clsSym, clsAsym, action);
+                        }
+                    }
+                    // Missing element breakdown — why are elements in reference but not output?
+                    // MEP classes are excluded by discipline separation (§6.12.1)
+                    var missingByClass = new java.util.TreeMap<String, Integer>();
+                    for (var d : eyesReport.deltas()) {
+                        if (d.band() == com.bim.eyes.diff.SpatialDiff.Band.MISSING) {
+                            missingByClass.merge(d.ifcClass(), 1, Integer::sum);
+                        }
+                    }
+                    if (!missingByClass.isEmpty()) {
+                        var mepClasses = java.util.Set.of(
+                            "IfcFlowTerminal", "IfcFlowSegment", "IfcFlowFitting",
+                            "IfcFlowController", "IfcFlowMovingDevice", "IfcFlowStorageDevice",
+                            "IfcDistributionControlElement", "IfcEnergyConversionDevice",
+                            "IfcDistributionPort", "IfcDistributionFlowElement");
+                        int mepMissing = 0, arcMissing = 0;
+                        for (var e : missingByClass.entrySet()) {
+                            String reason = mepClasses.contains(e.getKey()) ? "DISC_EXCLUDED" : "NOT_IN_BOM";
+                            if (mepClasses.contains(e.getKey())) mepMissing += e.getValue();
+                            else arcMissing += e.getValue();
+                            BIMLogger.info("SPATIAL-REPORT",
+                                "  missing class={} count={} reason={}",
+                                e.getKey(), e.getValue(), reason);
+                        }
+                        BIMLogger.info("SPATIAL-REPORT",
+                            "  missing_summary: total={} disc_excluded={} not_in_bom={}",
+                            eyesReport.missing(), mepMissing, arcMissing);
+                    }
+                } catch (Exception e) {
+                    BIMLogger.warn("LMP-DIFF", "SpatialDiff failed: {} at {}",
+                        e.getMessage(), e.getStackTrace().length > 0 ? e.getStackTrace()[0] : "?");
+                }
+            }
         }
     }
 

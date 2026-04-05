@@ -28,7 +28,7 @@
 
 **S144 GEO White-Box Logging DONE:** GeoProofRecord + GeoProofFormatter — structured Input→Process→Output proof chain per element. 58 SH / 215 DX proof records. LMP with inverse rotation (0 FAIL). Envelope UNKNOWN (parent dims not on M_Product stubs). DX B-side rot=π negation confirmed. §6.12.1 isolation maintained. Existing TACK logs preserved.
 
-**S145 DX Mirror Placement DONE:** IFC Duplex has hybrid symmetry — exterior walls static (same Y), interior rotated about building center Y=-8.9. Neither pure rot=π nor mirror handles all. MIRROR:X chosen (negate X offset only, keep Y). PlacementCollectorVisitor: mirrorAxisStack + parseMirrorAxis(). DX 8/8 PASS, SH 8/8 PASS. B-side inside building. [DuplexAnalysis.md §Rotation Center Proof](docs/DuplexAnalysis.md).
+**S145 DX Mirror→Rotation Fix DONE:** MIRROR:X was wrong — duplex is rot=π (negate both X+Y). Three fixes: (1) walker negates both axes + flips both half-extents, (2) UNIT_B anchor Y reflected about building center (4.38→22.18), (3) ProximityMirrorPairer eliminates mis-pairing (was 6m drift on 8 walls, now zero). New: MirrorPairer interface, LastInchCorrector interface + OpeningContainmentCorrector, always-on SpatialDiff in pipeline, improved TACK LEAF logging with transform state/AABB. DX 8/8, SH 8/8, 55/55 pairs zero symmetry drift. Remaining: 3 exterior envelope walls at 208mm (half-thickness) — should be BUILDING BOM not half-unit. [DuplexAnalysis.md §S145 Learning Points](docs/DuplexAnalysis.md).
 
 ## What's Next
 
@@ -99,6 +99,25 @@
 **MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
 
 ## Session Log (recent first)
+
+**S147** (uncommitted) — DX Stair+Pantry Mirror Investigation + Logging Hardening.
+  Task 1: Stair+pantry visual discrepancy — 3-layer root cause, all fixed:
+  (1) SpatialDiff black box: 46/55 outliers were measurement artifacts (position-based pairing).
+      Fix: ElementIdentity (BBC.md §4.3) — base IFC GUID in element_ref, threshold on smaller set.
+  (2) LINE/LINE_MULTI verbs missing from expandVerb() — kitchen cabinets stacked at same position.
+      Fix: expandLine() + expandLineMulti() in PlacementCollectorVisitor.
+  (3) B-side LOD meshes not rotated — MIRROR:X returned 0.0 for rotationStack.
+      Fix: Placement carries rotationZ (π for mirrored), MeshBinder rotates around mesh center.
+      51 B-side elements now get rot=π. LOD-ROTATE log confirms each one.
+  Remaining: 15 kitchen cabinet GUID-to-position order mismatch (visual correct, identity swapped).
+  Fridge: IfcFlowTerminal (105 total), correctly DISC_EXCLUDED — Task 2 MEP.
+  New: SPATIAL-REPORT (modal shift, outlier diagnosis, missing by discipline).
+  New: BOM-SUMMARY (IFCtoBOM tree, children/instances per BOM).
+  New: rosetta_trace.sh (post-hoc cross-box correlation).
+  New: ElementIdentity.java (BBC.md §4.3, W-GUID-1/2/3 PENDING).
+  Stale: removed empty sample_house.db from output.
+  Gate: DX 8/8, SH 8/8 — zero regression.
+  Next: S148 — (a) DX MEP begin (DISC path, fridge), (b) furniture GUID order (low priority).
 
 **S142** (`a14e5f6f` + uncommitted) — DX + SH Output Quality + ERP.db From-Scratch Chain.
   Part 1 (committed): LINE verb, MEP exclusion, CLUSTER→0, product naming, DV035 ad_verb_pattern.

@@ -29,6 +29,18 @@ public class SpatialDiff {
                    Math.max(Math.abs(deltaMinZ_mm),
                             Math.abs(deltaMaxZ_mm))))));
         }
+
+        /**
+         * Symmetric: min and max shifted by ~same amount on all axes (position error, size correct).
+         * Asymmetric: min and max differ (AABB resized — wrong element paired, or real size error).
+         * Threshold: 50mm tolerance for symmetry check.
+         */
+        public boolean isSymmetric() {
+            double tol = EyesConstants.SPATIAL_DRIFT_MM;
+            return Math.abs(deltaMinX_mm - deltaMaxX_mm) <= tol
+                && Math.abs(deltaMinY_mm - deltaMaxY_mm) <= tol
+                && Math.abs(deltaMinZ_mm - deltaMaxZ_mm) <= tol;
+        }
     }
 
     public record DiffReport(
@@ -37,6 +49,125 @@ public class SpatialDiff {
     ) {
         public boolean isClean() {
             return drift == 0 && shift == 0 && missing == 0 && extra == 0;
+        }
+
+        /**
+         * Compute the modal (most common) shift vector across all SHIFT elements,
+         * rounded to 1mm. Returns [dMinX, dMinY, dMinZ] in mm, or [0,0,0] if no shifts.
+         */
+        public double[] modalShift() {
+            // Bucket shifts by rounded (dMinX, dMinY, dMinZ) — the LBD corner shift
+            Map<String, int[]> freq = new HashMap<>();
+            Map<String, double[]> values = new HashMap<>();
+            for (ElementDelta d : deltas) {
+                if (d.band == Band.SHIFT) {
+                    String key = Math.round(d.deltaMinX_mm) + "," +
+                                 Math.round(d.deltaMinY_mm) + "," +
+                                 Math.round(d.deltaMinZ_mm);
+                    freq.computeIfAbsent(key, k -> new int[]{0})[0]++;
+                    values.putIfAbsent(key, new double[]{d.deltaMinX_mm, d.deltaMinY_mm, d.deltaMinZ_mm});
+                }
+            }
+            if (freq.isEmpty()) return new double[]{0, 0, 0};
+            String best = freq.entrySet().stream()
+                .max(Map.Entry.comparingByValue((a, b) -> Integer.compare(a[0], b[0])))
+                .map(Map.Entry::getKey).orElse("0,0,0");
+            return values.getOrDefault(best, new double[]{0, 0, 0});
+        }
+
+        /**
+         * Count of SHIFT elements whose shift deviates from the modal shift by more
+         * than the given tolerance (mm). These are the real position errors, not
+         * the expected global offset.
+         */
+        public int outlierCount(double toleranceMm) {
+            double[] mode = modalShift();
+            int count = 0;
+            for (ElementDelta d : deltas) {
+                if (d.band == Band.SHIFT && isOutlier(d, mode, toleranceMm)) count++;
+            }
+            return count;
+        }
+
+        /**
+         * Return SHIFT elements that deviate from the modal shift beyond tolerance.
+         */
+        public List<ElementDelta> outliers(double toleranceMm) {
+            double[] mode = modalShift();
+            return deltas.stream()
+                .filter(d -> d.band == Band.SHIFT && isOutlier(d, mode, toleranceMm))
+                .toList();
+        }
+
+        /**
+         * Per-class outlier counts: class → [total_shift, outlier_count].
+         */
+        public Map<String, int[]> outliersByClass(double toleranceMm) {
+            double[] mode = modalShift();
+            Map<String, int[]> result = new TreeMap<>();
+            for (ElementDelta d : deltas) {
+                if (d.band == Band.SHIFT) {
+                    int[] counts = result.computeIfAbsent(d.ifcClass, k -> new int[]{0, 0});
+                    counts[0]++;
+                    if (isOutlier(d, mode, toleranceMm)) counts[1]++;
+                }
+            }
+            return result;
+        }
+
+        private static boolean isOutlier(ElementDelta d, double[] mode, double toleranceMm) {
+            return Math.abs(d.deltaMinX_mm - mode[0]) > toleranceMm
+                || Math.abs(d.deltaMaxX_mm - mode[0]) > toleranceMm
+                || Math.abs(d.deltaMinY_mm - mode[1]) > toleranceMm
+                || Math.abs(d.deltaMaxY_mm - mode[1]) > toleranceMm
+                || Math.abs(d.deltaMinZ_mm - mode[2]) > toleranceMm
+                || Math.abs(d.deltaMaxZ_mm - mode[2]) > toleranceMm;
+        }
+
+        /**
+         * Diagnosis report: classifies outliers as symmetric (position error) vs
+         * asymmetric (size mismatch = wrong pairing), then emits a per-class
+         * summary with actionable diagnosis.
+         *
+         * <p>Symmetric outlier → real compilation error (wrong offset in BOM walk).
+         * Asymmetric outlier → likely measurement artifact (SpatialDiff mis-paired
+         * elements of different sizes). Fix the pairing before investigating compilation.
+         *
+         * @return multi-line diagnosis string, or empty if no outliers
+         */
+        public String diagnosis(double toleranceMm) {
+            List<ElementDelta> outs = outliers(toleranceMm);
+            if (outs.isEmpty()) return "";
+
+            int symmetric = 0, asymmetric = 0;
+            // Per-class: [symmetric, asymmetric]
+            Map<String, int[]> byClass = new TreeMap<>();
+            for (ElementDelta d : outs) {
+                int[] counts = byClass.computeIfAbsent(d.ifcClass, k -> new int[]{0, 0});
+                if (d.isSymmetric()) { symmetric++; counts[0]++; }
+                else { asymmetric++; counts[1]++; }
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("DIAGNOSIS: %d outliers = %d symmetric (position error) + %d asymmetric (size mismatch)%n",
+                outs.size(), symmetric, asymmetric));
+
+            for (var e : byClass.entrySet()) {
+                int sym = e.getValue()[0], asym = e.getValue()[1];
+                int total = sym + asym;
+                String hint;
+                if (asym > sym) {
+                    hint = "likely mis-paired by SpatialDiff (fix black box pairing first)";
+                } else if (sym > 0 && asym == 0) {
+                    hint = "real position error (trace through white box TACK LEAF)";
+                } else {
+                    hint = "mixed — fix pairing first, then re-evaluate";
+                }
+                sb.append(String.format("  %s: %d sym + %d asym → %s%n",
+                    e.getKey(), sym, asym, hint));
+            }
+
+            return sb.toString();
         }
 
         /**
@@ -65,6 +196,23 @@ public class SpatialDiff {
                 sb.append("All elements match within 1mm.\n");
                 return sb.toString();
             }
+            // Modal shift analysis — separate expected global offset from per-element errors
+            double[] mode = modalShift();
+            double outlierTol = EyesConstants.SPATIAL_DRIFT_MM;  // 50mm
+            int outliers = outlierCount(outlierTol);
+            sb.append(String.format("  Modal shift: dX=%.0f dY=%.0f dZ=%.0f mm (global offset)%n",
+                mode[0], mode[1], mode[2]));
+            if (outliers > 0) {
+                sb.append(String.format("  OUTLIERS: %d elements deviate >%.0fmm from modal shift%n",
+                    outliers, outlierTol));
+                for (var e : outliersByClass(outlierTol).entrySet()) {
+                    if (e.getValue()[1] > 0) {
+                        sb.append(String.format("    %s: %d/%d shifted are outliers%n",
+                            e.getKey(), e.getValue()[1], e.getValue()[0]));
+                    }
+                }
+            }
+
             List<ElementDelta> issues = deltas.stream()
                 .filter(d -> d.band != Band.EXACT)
                 .sorted((a, b) -> Double.compare(b.maxDelta(), a.maxDelta()))
@@ -115,7 +263,11 @@ public class SpatialDiff {
 
         if (!refById.isEmpty() && !outById.isEmpty()) {
             long overlap = refById.keySet().stream().filter(outById::containsKey).count();
-            if (overlap > refById.size() / 4) {
+            // S147 §4.3: threshold against the SMALLER set — output may be a compiled
+            // subset of the full reference. 113/215 output = 53% is a strong signal;
+            // 113/1119 ref = 10% would incorrectly reject identity matching.
+            long smaller = Math.min(refById.size(), outById.size());
+            if (overlap > smaller / 4) {
                 return diffByIdentity(refById, outById, refDbPath, outDbPath);
             }
         }
@@ -183,8 +335,8 @@ public class SpatialDiff {
         remainClasses.addAll(unmatchedOut.keySet());
 
         for (String cls : remainClasses) {
-            List<double[]> refList = unmatchedRef.getOrDefault(cls, List.of());
-            List<double[]> outList = unmatchedOut.getOrDefault(cls, List.of());
+            List<double[]> refList = new ArrayList<>(unmatchedRef.getOrDefault(cls, List.of()));
+            List<double[]> outList = new ArrayList<>(unmatchedOut.getOrDefault(cls, List.of()));
             refList.sort(SpatialDiff::compareCoords);
             outList.sort(SpatialDiff::compareCoords);
 

@@ -23,7 +23,8 @@ Read the [MANIFESTO](MANIFESTO.md) first for the ERP world view.
 | [§2 Compilation Model](#2-the-compilation-model) | The Application Dictionary and BOM contract |
 | [§3 Compilation](#3-compilation) | BOM explosion, placement, selection cascade, ASI |
 | [§4 Tack Convention](#4-tack-convention-the-spatial-handshake) | The dx/dy/dz spatial offset model (LBD) |
-| [§5 Pipeline](#5-the-12-stage-pipeline) | 12-stage compilation pipeline |
+| [§4.3 Element Identity](#43-element-identity-contract-s147) | IFC GUID preservation contract |
+| [§5 Pipeline](#5-the-12-stage-pipeline) | 11-stage compilation pipeline |
 | [§6 Verbs](#6-bim-cobol-verb-driven-bom-mutation) | 77 domain verbs (TILE, ROUTE, FRAME, CLUSTER) |
 | [§7 Verification](#7-verification-the-rosetta-stone-gate) | 6 mathematical gates |
 | [§9 Data Flywheel](#9-the-data-flywheel-emergent-intelligence) | How 35 buildings teach the compiler |
@@ -987,6 +988,70 @@ Zero-cost foam: sits in the BOM, walker skips it, enables spatial queries.
 
 *Product classification (shape archetype, scale band, semantic category) is a
 product catalog concern — see `DATA_MODEL.md` and `component_library.db` schema.*
+
+### 4.3 Element Identity Contract (S147)
+
+Every compiled element must carry a traceable identity from IFC source to
+output DB. Without this, black box verification (SpatialDiff) cannot pair
+output elements to their IFC reference, and white box logging (TACK LEAF)
+cannot be correlated with post-hoc analysis.
+
+**Problem found:** S147 discovered that `SpatialDiff` fell back to
+position-based pairing for DX furniture (46/55 outliers were measurement
+artifacts from mis-pairing, not real errors). Root cause: the output DB
+`element_ref` carried `A_`-prefixed IFC GUIDs while the reference DB `guid`
+had no prefix → zero identity overlap → fallback to unreliable position sort.
+
+**Contract:** `ElementIdentity` value object, enforced at construction:
+
+| Field | Type | Source | Rule |
+|-------|------|--------|------|
+| `baseGuid` | String(22) | MA table (per-instance IFC GUID) | Must match `^[0-9A-Za-z_$]{22}$`. Never null. |
+| `unitPrefix` | String | Walker scope (`A_`, `B_`, or `""`) | Set by half-unit mirror scope, not by element. |
+| `guidSource` | enum | Resolution path | `MA` (Material Allocation), `LINE_REF`, `GENERATED`. Logged for traceability. |
+
+**Derived fields (computed, not stored):**
+
+| Method | Returns | Written to |
+|--------|---------|------------|
+| `prefixedRef()` | `unitPrefix + baseGuid` | `elements_meta.guid` (unique per unit) |
+| `baseGuid()` | Raw IFC GUID | `elements_meta.element_ref` (matches reference DB) |
+
+**Enforcement points:**
+
+1. **`PlacementCollectorVisitor.onLeaf()`** — constructs `ElementIdentity`
+   from MA/LINE_REF/GENERATED cascade. Replaces raw `String elementRef`.
+2. **`Placement` record** — carries `ElementIdentity` instead of
+   `String elementRef`. Compile error if any path skips it.
+3. **`BuildingWriter`** — reads `identity.prefixedRef()` for output guid,
+   `identity.baseGuid()` for element_ref. Cannot accidentally lose the
+   base GUID or conflate it with the prefixed form.
+4. **`ElementPersistence.writeElementMeta()`** — accepts `ElementIdentity`.
+   The synthetic GUID generation (`MD_LEVEL_1_146`) is eliminated; the
+   IFC GUID becomes the output GUID.
+
+**Invariants (testable):**
+
+- `I-GUID-1`: Every element in `elements_meta` has a non-empty `element_ref`
+  matching the 22-char IFC pattern.
+- `I-GUID-2`: For every `element_ref` in the output DB, there exists a `guid`
+  in the reference DB with the same value (identity overlap ≥ 95%).
+- `I-GUID-3`: `SpatialDiff.diff()` uses identity-based matching (not
+  position-based fallback) when reference DB is available.
+- `I-GUID-4`: `guidSource` is never `GENERATED` for extracted buildings
+  (all elements have IFC source GUIDs via MA).
+
+**Why a value object, not just two strings:** The previous code had `String
+elementRef` flowing through 4 classes across 2 modules. The prefix was
+applied in one place (walker line 528), consumed in another (writer line 943),
+and checked in a third (SpatialDiff line 262). A single-string design makes
+it easy to prefix once and forget that downstream consumers need the base
+form. The record makes both forms available everywhere by construction.
+
+**Witness claims:**
+- W-GUID-1: PENDING — ElementIdentity enforced in PlacementCollectorVisitor.
+- W-GUID-2: PENDING — SpatialDiff identity overlap ≥ 95% for DX.
+- W-GUID-3: PENDING — Zero GENERATED guidSource for extracted buildings.
 
 ---
 

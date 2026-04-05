@@ -378,10 +378,47 @@ Automated Drift checklist (runs after PIPELINE COMPLETE):
 [FINE ] DRIFT        SUMMARY: 6 pass, 0 fail, 2 deferred
 ```
 
+### Spatial accuracy channels (S147)
+
+Added for duplex mirror verification, applicable to all buildings:
+
+```
+[INFO ] SPATIAL-REPORT exact=0 drift=0 shift=215 missing=904 extra=0 | modal=[390,22183,1550] | outliers=16 sym=15 asym=1 | verdict=POSITION_ERROR
+[INFO ] SPATIAL-REPORT   class=IfcFurnishingElement total=61 outlier=15 sym=15 asym=0 action=trace_tack_leaf
+[INFO ] SPATIAL-REPORT   missing class=IfcFlowTerminal count=105 reason=DISC_EXCLUDED
+[INFO ] SPATIAL-REPORT   missing_summary: total=904 disc_excluded=904 not_in_bom=0
+```
+
+**Reading the report:**
+- `modal` = expected global offset (BOM-local vs IFC-world coords). Not a bug.
+- `outliers` = elements deviating from modal. `sym` = real position error, `asym` = SpatialDiff mis-pairing.
+- `verdict`: `CLEAN` (0 outliers), `FIX_PAIRING` (asym > sym), `POSITION_ERROR` (sym > asym).
+- `action`: `trace_tack_leaf` → investigate white box. `fix_pairing` → fix SpatialDiff.
+- `DISC_EXCLUDED` = MEP elements correctly excluded from ARC BOM. `NOT_IN_BOM` = genuinely missing.
+
+IFCtoBOM emits BOM tree shape (in the IFCtoBOM log, not the compilation log):
+
+```
+[INFO ] BOM-SUMMARY  type=BUILDING boms=1 total_lines=12
+[INFO ] BOM-SUMMARY  type=FLOOR boms=8 total_lines=114
+[INFO ] BOM-SUMMARY    bom=DUPLEX_SINGLE_UNIT_STD type=FLOOR children=51 instances=51
+[INFO ] BOM-SUMMARY    bom=DX_A103_SET type=SET children=5 instances=15 verbs=105chars
+```
+
+LOD rotation for mirrored half-units:
+
+```
+[INFO ] LOD-ROTATE   IfcStairFlight guid=MD_UNKNOWN_101_B rotZ=3.1416rad (180.0°) mesh=acb724912fe1015c
+```
+
 ### Quick commands
 
 ```bash
 grep VIOLATED logs/pipeline_*.log    # Find any proof failures
 grep DRIFT logs/pipeline_*.log       # Automated drift checklist results
+grep SPATIAL-REPORT logs/pipeline_*.log  # Spatial accuracy diagnosis
+grep BOM-SUMMARY logs/*ifctobom*.log # BOM tree structure
+grep LOD-ROTATE logs/pipeline_*.log  # B-side mesh rotation proof
 grep "Stage.*completed" logs/pipeline_*.log  # Stage timings
+./scripts/rosetta_trace.sh <log> <output.db> [ref.db]  # Cross-box correlation
 ```

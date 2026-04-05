@@ -3,6 +3,7 @@ package com.bim.compiler.dsl;
 import com.bim.compiler.geometry.*;
 import com.bim.compiler.library.ComponentLibrary;
 import com.bim.eyes.shape.ShapeClassifier;
+import com.bim.orm.BIMLogger;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -202,6 +203,22 @@ public class MeshBinder {
             transformed = GeometryEngine.translate(transformed, -cx, -cy, 0);
             transformed = GeometryEngine.rotateZ(transformed, Math.PI / 2);
             transformed = GeometryEngine.translate(transformed, cx, cy, 0);
+        }
+
+        // S147: BOM tree rotation (rot=π for mirrored half-units) — rotate around mesh center
+        // The AABB is already correct (walker handles via sign negation). This rotates the
+        // actual mesh triangles so LOD renders with correct orientation in Bonsai.
+        if (Math.abs(p.rotationZ()) > 0.01) {
+            BoundingBox sb = transformed.bounds();
+            double cx = (sb.minX() + sb.maxX()) / 2;
+            double cy = (sb.minY() + sb.maxY()) / 2;
+            transformed = GeometryEngine.translate(transformed, -cx, -cy, 0);
+            transformed = GeometryEngine.rotateZ(transformed, p.rotationZ());
+            transformed = GeometryEngine.translate(transformed, cx, cy, 0);
+            BIMLogger.info("LOD-ROTATE",
+                "{} guid={} rotZ={:.4f}rad ({:.1f}°) mesh={}",
+                p.ifcClass(), guid, p.rotationZ(),
+                Math.toDegrees(p.rotationZ()), refGeoHash);
         }
 
         // Translate to world position (always relative to current transformed bounds)

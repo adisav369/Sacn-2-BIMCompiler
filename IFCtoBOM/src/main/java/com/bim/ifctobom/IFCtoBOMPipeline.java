@@ -484,6 +484,40 @@ public class IFCtoBOMPipeline {
                     + composition.halfUnitLines() + composition.pairLines());
             System.out.println("[IFCtoBOM] Committed to " + bomDbPath.getFileName());
 
+            // S147: BOM-SUMMARY — structured tree overview for session pickup
+            // Implementing BBC.md §4.3 — grep 'BOM-SUMMARY' for fast pickup
+            try (var st = bomConn.createStatement()) {
+                // BOM count by type
+                try (var rs = st.executeQuery(
+                        "SELECT bom_type, COUNT(*), SUM((SELECT COUNT(*) FROM m_bom_line WHERE m_bom_id = b.m_bom_id)) "
+                        + "FROM m_bom b GROUP BY bom_type ORDER BY bom_type")) {
+                    while (rs.next()) {
+                        BIMLogger.info("BOM-SUMMARY",
+                            "type={} boms={} total_lines={}",
+                            rs.getString(1), rs.getInt(2), rs.getInt(3));
+                    }
+                }
+                // Per-BOM detail: id, type, children count, leaf count, depth hint
+                try (var rs = st.executeQuery(
+                        "SELECT b.value, b.bom_type, "
+                        + "(SELECT COUNT(*) FROM m_bom_line l WHERE l.m_bom_id = b.m_bom_id) as children, "
+                        + "(SELECT SUM(l.qty) FROM m_bom_line l WHERE l.m_bom_id = b.m_bom_id) as instances, "
+                        + "(SELECT GROUP_CONCAT(DISTINCT l.verb_ref) FROM m_bom_line l "
+                        + " WHERE l.m_bom_id = b.m_bom_id AND l.verb_ref IS NOT NULL AND l.verb_ref != '') as verbs "
+                        + "FROM m_bom b WHERE b.is_active = 1 ORDER BY b.bom_type, b.value")) {
+                    while (rs.next()) {
+                        String verbs = rs.getString(5);
+                        String verbHint = (verbs == null || verbs.isEmpty()) ? "" : " verbs=" + verbs.length() + "chars";
+                        BIMLogger.info("BOM-SUMMARY",
+                            "  bom={} type={} children={} instances={}{}",
+                            rs.getString(1), rs.getString(2),
+                            rs.getInt(3), rs.getInt(4), verbHint);
+                    }
+                }
+            } catch (Exception e) {
+                BIMLogger.fine("BOM-SUMMARY", "Summary query failed: {}", e.getMessage());
+            }
+
             // ── POST-COMMIT: Mine this building's profile back into the flywheel ──
             // DV011: Each building both uses and enriches the validation pool.
             // This makes the pipeline self-improving — no separate script needed.

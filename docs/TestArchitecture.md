@@ -127,6 +127,36 @@ to. Without this mapping, spec changes silently orphan tests.
 | #9 | Per-element axis dimensions | GeometryFidelityTest | W-AXISDIM-1 | IMPLEMENTED |
 | #8/#9 | Mesh centroid fingerprint | GeometryFidelityTest | W-MESHDIR-1 | IMPLEMENTED (advisory) |
 
+### Compilation Logging Regime (S147)
+
+Structured log channels emitted by every compilation run. Grepable, parseable,
+actionable. Designed for session pickup — any coder can read the state without
+running the pipeline again.
+
+| Channel | Emitted by | Module | What it proves |
+|---|---|---|---|
+| `SPATIAL-REPORT` | CompilationPipeline.GeometryStage | DAGCompiler (black box) | Modal shift, outlier count (sym/asym), per-class diagnosis, missing elements by discipline |
+| `BOM-SUMMARY` | IFCtoBOMPipeline (post-commit) | IFCtoBOM (white box) | BOM tree shape: type/count/children/instances/verbs per BOM |
+| `LOD-ROTATE` | MeshBinder.bind() + BuildingWriter | DAGCompiler (white box) | B-side LOD meshes received rot=π — per-element confirmation |
+| `TACK LEAF` | PlacementCollectorVisitor.onLeaf() | DAGCompiler (white box) | Per-element: anchor + offset + half-extents + AABB + transform state |
+| `TACK GUID` | PlacementCollectorVisitor.onLeaf() | DAGCompiler (white box, FINE) | GUID resolution path: MA/LINE_REF/GENERATED + base vs prefixed |
+| `LMP-DIFF` | CompilationPipeline.GeometryStage | DAGCompiler (black box) | Per-element AABB comparison (output vs reference), modal shift, outliers |
+
+**Post-hoc tooling:**
+- `rosetta_trace.sh <log> <output.db> [ref.db]` — correlates black box outliers
+  with white box TACK, DB inventories, and emits prioritised action items.
+
+**Box separation rule:** White box (GEO/TACK) logs what the walker computes.
+Black box (LMP-DIFF/SPATIAL-REPORT) compares output vs reference DBs.
+Neither inspects the other during execution. `rosetta_trace.sh` reads both
+outputs post-hoc.
+
+**Invariants (from BBC.md §4.3):**
+- I-GUID-1: Every element_ref matches 22-char IFC pattern (ElementIdentity contract).
+- I-GUID-2: SpatialDiff identity overlap ≥ 95% when reference DB available.
+- I-GUID-3: SpatialDiff uses identity-based matching (not position fallback).
+- I-GUID-4: Zero GENERATED guidSource for extracted buildings.
+
 ### BIMEyes — Geometric Comprehension
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
