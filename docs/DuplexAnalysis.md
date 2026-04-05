@@ -448,3 +448,103 @@ DX has 2 stair assemblies discovered from `rel_aggregates`:
 - DX_UN_ASM_1, DX_UN_ASM_2: each 3 children (2 IfcMember stringers + 1 IfcStairFlight)
 - Land on "Unknown" storey — correct IFC semantics (stairs span storeys)
 - Railings excluded by composition pairing (in half-unit, not structural)
+
+## S145 Learning Points — Mirror vs Rotation (2026-04-05)
+
+### 1. Duplex is rot=π, not mirror
+
+MIRROR:X (negate X only) was wrong. The IFC model rotates the B-side 180°
+about the party wall axis — this negates **both** X and Y offsets. For AABBs,
+rot=π about center (cx, cy) is equivalent to mirror X about cx + mirror Y
+about cy. A pure axis mirror keeps the cross-axis unchanged, which placed
+interior elements at wrong Y positions (up to 17m drift on elements far from
+building center Y).
+
+**Fix:** Walker negates both X and Y offsets under MIRROR:X. BOM builder
+reflects UNIT_B anchor on both axes (X about party wall, Y about building
+center). Half-extent signs flip on both axes for centroid computation.
+
+### 2. Proximity pairing eliminates mis-pairing
+
+Sort-and-zip pairing (sort A and B by cross-axis, zip by index) fails when
+multiple elements of the same product cluster at different positions. Example:
+3 instances of WALL_INT_EW_124x2900, sorted by Y — A[0]↔B[0] was correct
+but A[1]↔B[2] and A[2]↔B[1] were swapped, causing 1.6–6m GUID drift.
+
+**Fix:** `ProximityMirrorPairer` computes each A element's expected B
+position under rot=π, then greedily assigns the nearest unmatched B element.
+Interface `MirrorPairer` keeps the algorithm pluggable.
+
+**Result:** 15/18 B walls at zero drift. 4 thin walls at 15mm (cluster
+rounding). The 3 exterior walls at 208mm were resolved in S146 — moved
+to SHARED (building BOM), not half-unit. See §3 below.
+
+### 3. Envelope walls are building infrastructure, not half-unit (S146)
+
+The IFC model uses three placement strategies:
+- **Static envelope:** exterior walls at same Y both sides (don't rotate)
+- **Rotation about center:** interior elements rotate 180°
+- **Spanning:** party wall, EW walls, slabs — shared across both units
+
+**S145 residual (208mm on 3 walls) was a partition error, not an irreducible
+residual.** Envelope NS walls (417mm thick, spanning >80% of the building
+wall footprint) were incorrectly classified as A/B-side and paired into the
+half-unit. Under rot=π they shifted by half their thickness.
+
+**Fix (S146):** `CompositionBomBuilder` now detects envelope walls after
+Tier 1 classification: any IfcWall whose cross-axis extent exceeds 80% of
+the spanning walls' footprint is reclassified A/B → SHARED. Result: 8
+envelope walls (4 products × 2 sides) moved to building BOM with IDENTITY
+placement. Zero drift. DX 8/8, SH 8/8.
+
+**⚠ WARNING — Historical regression pattern:**
+The shared + 2 half-units architecture was established in `514ee302` (DX-1,
+2026-03-14) but **never had envelope detection**. The original 3-tier
+partition only checked if an element's AABB *spans* the mirror line.
+Envelope NS walls sit entirely on one side (X=[0,0.417] or X=[8.383,8.800])
+so they were always classified A/B and paired. The BOM model was too large —
+not abstract enough, not cascade-aware. Each session peeled another layer:
+
+| Session | What broke | Root cause |
+|---------|-----------|------------|
+| DX-1 `514ee302` | B-side excess excluded | Only paired B should be excluded |
+| S138 `e40e705a` | B-side rooms not under pair container | Rotation didn't cascade |
+| S142 `a14e5f6f` | MEP in composition BOM | MEP belongs to DISC path (IFCtoERP) |
+| S145 `bf6cb1ee` | MIRROR:X was wrong | Duplex is rot=π (negate both axes) |
+| S146 (this) | Envelope walls in half-unit | Site-pinned walls don't rotate |
+
+The pattern: every fix assumed one uniform transform for all elements.
+The partition must separate *what rotates* from *what doesn't* before
+applying any transform.
+
+### 4. Rotation confirmed: indistinguishable sides (S146)
+
+The rot=π reconstruction produces output that is **geometrically identical**
+when the building is turned 180°. Stairs, stringers, railings, stairwell
+walls, and adjacent rooms all land at the correct positions. The two sides
+are indistinguishable — you cannot tell which side you are looking at.
+
+This is the correct result: a duplex rotated 180° IS the same building.
+The IFC may use different meshes per side (different `geometry_hash` for
+A vs B stair flights), but the compiler reconstructs from BOM + rotation,
+not from IFC meshes. The AABB positions and midpoints confirm exact
+symmetry about center (4.4, -8.9).
+
+**Log evidence (TACK output):**
+- Stair flight midpoint: X=4.400, Y=-8.900 — exact rotation center
+- Stairwell wall midpoint: X=4.400, Y=-8.900 — exact
+- A/B stair extents: 3.805m each — identical
+- All stair assembly elements correctly placed under MIRROR:X
+
+**Lesson:** Do not use visual inference. The logs are the proof.
+
+### 5. Log-first debugging
+
+The mis-pairing was invisible to gate tests (8/8 PASS) and envelope checks
+(all inside building AABB). Only element-by-element LEAF logging with actual
+AABB coordinates (`X=[min,max] Y=[min,max]`) and comparison to IFC reference
+revealed the 6m drift. The improved TACK log now shows:
+- Transform state: `IDENTITY` vs `MIRROR:X`
+- Half-extent sign: `sign=+1` or `sign=-1`
+- Actual AABB: `X=[min,max] Y=[min,max] Z=[min,max]`
+- Mirror-aware containment check (eliminated 55 false OVERSHOOTs)

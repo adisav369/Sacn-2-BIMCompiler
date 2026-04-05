@@ -125,9 +125,79 @@ public class CompositionBomBuilder {
                 bSide.values().stream().mapToInt(List::size).sum(),
                 spanning.size(), scopeSkipped);
 
+        // ── Envelope detection: reclassify full-depth walls as SHARED ────────
+        // A wall whose cross-axis extent covers >80% of the structural depth
+        // is envelope — belongs to the building BOM, not the half-unit.
+        // Prevents rot=π drift on static cladding. DuplexAnalysis.md §S145 LP3.
+        String crossAxis = mirror.axis().toUpperCase().equals("X") ? "Y"
+                         : mirror.axis().toUpperCase().equals("Y") ? "X" : "Y";
+
+        // Reference depth from SPANNING WALLS only — they define the building
+        // wall footprint.  Slabs/coverings/roofing can overshoot the wall envelope.
+        double structMinCross = Double.MAX_VALUE;
+        double structMaxCross = -Double.MAX_VALUE;
+        for (ExtractionElement e : spanning) {
+            if (!"IfcWall".equals(e.ifcClass())
+                    && !"IfcWallStandardCase".equals(e.ifcClass())) {
+                continue;
+            }
+            structMinCross = Math.min(structMinCross, axisMin(e.minX(), e.minY(), e.minZ(), crossAxis));
+            structMaxCross = Math.max(structMaxCross, axisMax(e.maxX(), e.maxY(), e.maxZ(), crossAxis));
+        }
+        double structDepth = structMaxCross - structMinCross;
+
+        BIMLogger.pattern("COMPOSITION",
+                "ENVELOPE check: crossAxis={}, structDepth={}m (min={}, max={})",
+                crossAxis, String.format("%.3f", structDepth),
+                String.format("%.3f", structMinCross), String.format("%.3f", structMaxCross));
+
+        int envelopeReclassified = 0;
+        if (structDepth > 0) {
+            for (var sideMap : List.of(aSide, bSide)) {
+                for (List<ExtractionElement> list : sideMap.values()) {
+                    Iterator<ExtractionElement> it = list.iterator();
+                    while (it.hasNext()) {
+                        ExtractionElement e = it.next();
+                        if (!"IfcWall".equals(e.ifcClass())
+                                && !"IfcWallStandardCase".equals(e.ifcClass())) {
+                            continue;
+                        }
+                        double eCrossMin = axisMin(e.minX(), e.minY(), e.minZ(), crossAxis);
+                        double eCrossMax = axisMax(e.maxX(), e.maxY(), e.maxZ(), crossAxis);
+                        double eExtent = eCrossMax - eCrossMin;
+                        if (eExtent / structDepth > 0.80) {
+                            it.remove();
+                            spanning.add(e);
+                            envelopeReclassified++;
+                            BIMLogger.pattern("COMPOSITION",
+                                    "ENVELOPE: {} {} → SHARED ({}m = {}% of {}m)",
+                                    e.mProductId(), e.guid(),
+                                    String.format("%.1f", eExtent),
+                                    String.format("%.0f", (eExtent / structDepth) * 100),
+                                    String.format("%.1f", structDepth));
+                        }
+                    }
+                }
+            }
+        }
+        if (envelopeReclassified > 0) {
+            BIMLogger.pattern("COMPOSITION", "{} envelope wall(s) reclassified A/B → SHARED",
+                    envelopeReclassified);
+        }
+
         // ── Tier 2+3: Pair-match per (M_Product_ID, storey) ──────────────────
         // min(A, B) = paired → half-unit
         // excess from either side → SHARED (stays in structural)
+
+        // Building AABB for proximity pairer (rot=π needs cross-axis center)
+        List<ExtractionElement> allElements = new ArrayList<>();
+        storeyElements.values().forEach(allElements::addAll);
+        double bldMinY = allElements.stream().mapToDouble(ExtractionElement::minY).min().orElse(0);
+        double bldMaxY = allElements.stream().mapToDouble(ExtractionElement::maxY).max().orElse(0);
+        double bldMinZ = allElements.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
+        double bldMaxZ = allElements.stream().mapToDouble(ExtractionElement::maxZ).max().orElse(0);
+
+        MirrorPairer pairer = new ProximityMirrorPairer(mirror, bldMinY, bldMaxY, bldMinZ, bldMaxZ);
 
         List<ExtractionElement> halfUnitElements = new ArrayList<>();
         // CP-1: Track B-side counterparts for MA GUID writing (qi=0=A, qi=1=B)
@@ -139,7 +209,6 @@ public class CompositionBomBuilder {
             List<ExtractionElement> aList = aSide.getOrDefault(storey, List.of());
             List<ExtractionElement> bList = bSide.getOrDefault(storey, List.of());
 
-            // Group A and B by M_Product_ID
             Map<String, List<ExtractionElement>> aByProduct = groupByProduct(aList);
             Map<String, List<ExtractionElement>> bByProduct = groupByProduct(bList);
 
@@ -148,36 +217,17 @@ public class CompositionBomBuilder {
 
             Set<String> excludedKeys = new LinkedHashSet<>();
 
-            String axis = mirror.axis().toUpperCase();
-            double mirrorPos = mirror.position();
-
             for (String productId : allProducts) {
                 List<ExtractionElement> aGroup = new ArrayList<>(aByProduct.getOrDefault(productId, List.of()));
                 List<ExtractionElement> bGroup = new ArrayList<>(bByProduct.getOrDefault(productId, List.of()));
 
-                // Mirror-proximity pairing: for each A element, find the B element
-                // closest to its mirror position on cross-axes (Y,Z for X-mirror).
-                // This ensures true spatial mirrors pair together.
-                // IFC modelling slop is typical (~600mm median) — the shared template
-                // asserts the design intent (perfect mirror); validation corrects slop.
-                Comparator<ExtractionElement> crossAxisOrder = Comparator
-                        .comparingDouble((ExtractionElement e) -> crossAxis1(e, axis))
-                        .thenComparingDouble(e -> crossAxis2(e, axis));
-                aGroup.sort(crossAxisOrder);
-                bGroup.sort(crossAxisOrder);
+                List<MirrorPairer.ElementPair> pairs = pairer.pair(aGroup, bGroup);
 
-                int paired = Math.min(aGroup.size(), bGroup.size());
-
-                // Take 'paired' from A-side → half-unit, track B counterpart
-                for (int i = 0; i < paired; i++) {
-                    halfUnitElements.add(aGroup.get(i));
-                    bSideCounterparts.add(bGroup.get(i));
-                    excludedKeys.add(ScopeBomBuilder.elementKey(aGroup.get(i)));
-                }
-
-                // B-side paired → excluded (produced by mirror from A)
-                for (int i = 0; i < paired; i++) {
-                    excludedKeys.add(ScopeBomBuilder.elementKey(bGroup.get(i)));
+                for (MirrorPairer.ElementPair p : pairs) {
+                    halfUnitElements.add(p.a());
+                    bSideCounterparts.add(p.b());
+                    excludedKeys.add(ScopeBomBuilder.elementKey(p.a()));
+                    excludedKeys.add(ScopeBomBuilder.elementKey(p.b()));
                 }
             }
 
@@ -249,15 +299,13 @@ public class CompositionBomBuilder {
         // ── Create pair container BOM ────────────────────────────────────────
         String pairBomId = comp.pairBomId();
 
-        // Building AABB (all elements)
-        List<ExtractionElement> allElements = new ArrayList<>();
-        storeyElements.values().forEach(allElements::addAll);
+        // Building AABB — reuse allElements and Y/Z bounds from pairer setup above
         double allMinX = allElements.stream().mapToDouble(ExtractionElement::minX).min().orElse(0);
-        double allMinY = allElements.stream().mapToDouble(ExtractionElement::minY).min().orElse(0);
-        double allMinZ = allElements.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
+        double allMinY = bldMinY;
+        double allMinZ = bldMinZ;
         double allMaxX = allElements.stream().mapToDouble(ExtractionElement::maxX).max().orElse(0);
-        double allMaxY = allElements.stream().mapToDouble(ExtractionElement::maxY).max().orElse(0);
-        double allMaxZ = allElements.stream().mapToDouble(ExtractionElement::maxZ).max().orElse(0);
+        double allMaxY = bldMaxY;
+        double allMaxZ = bldMaxZ;
 
         ProductRegistrar.ensureAssemblyStub(bomConn, pairBomId, "SET");
 
@@ -276,23 +324,24 @@ public class CompositionBomBuilder {
                 "UNIT_A", 10, "0",
                 unitADx, unitADy, unitADz);
 
-        // UNIT_B: mirrored position, rot from YAML
-        // Mirror formula: reflect UNIT_A offset about the mirror position (building-relative)
+        // UNIT_B: rot=π about building center — reflect BOTH mirror axis AND cross-axis
+        // Mirror axis: reflect about the mirror plane (party wall center from YAML)
         double mirrorBuildingRel = mirror.position() - axisMin(allMinX, allMinY, allMinZ, mirror.axis());
         double unitBOffset = 2 * mirrorBuildingRel - axisValue(unitADx, unitADy, unitADz, mirror.axis());
 
+        // Cross-axis: reflect about building center (rot=π flips both axes)
+        double crossCenterY = (allMaxY - allMinY) / 2.0;
+        double crossCenterX = (allMaxX - allMinX) / 2.0;
+
         double unitBDx = unitADx, unitBDy = unitADy, unitBDz = unitADz;
         switch (mirror.axis().toUpperCase()) {
-            case "X" -> unitBDx = unitBOffset;
-            case "Y" -> unitBDy = unitBOffset;
+            case "X" -> { unitBDx = unitBOffset; unitBDy = 2 * crossCenterY - unitADy; }
+            case "Y" -> { unitBDy = unitBOffset; unitBDx = 2 * crossCenterX - unitADx; }
             case "Z" -> unitBDz = unitBOffset;
         }
 
-        // S145 finding: IFC paired elements have MIXED behaviour — some rotate about
-        // building center (interior elements), some stay at same Y (exterior walls).
-        // Neither pure rot=π nor pure mirror reflection handles all correctly.
-        // Use MIRROR:X (negate mirror-axis only) as the least-wrong approach — it keeps
-        // all elements inside the building envelope. See DuplexAnalysis.md §Rotation Center Proof.
+        // S145 fix: duplex is rot=π (negate both axes), not pure mirror.
+        // IFC paired elements rotate about building center. See DuplexAnalysis.md §Rotation Center Proof.
         insertPairChild(bomConn, pairBomId, halfUnitBomId,
                 "UNIT_B", 20, "MIRROR:" + mirror.axis().toUpperCase(),
                 unitBDx, unitBDy, unitBDz);
