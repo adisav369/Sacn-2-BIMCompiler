@@ -37,8 +37,27 @@ def topup(ifc_path: str, db_path: str, dry_run: bool = False):
         get_storey_for_element, get_space_for_element,
     )
 
+    import ifcopenshell.util.unit as ifcunit
+
+    import ifcopenshell.util.placement as ifcplace
+
     print(f"Opening IFC: {ifc_path}")
     ifc_file = ifcopenshell.open(ifc_path)
+    unit_scale = ifcunit.calculate_unit_scale(ifc_file, 'LENGTHUNIT')
+
+    # Site origin — subtract so topup coords stay consistent with a normalised DB
+    site_ox = site_oy = site_oz = 0.0
+    try:
+        sites = ifc_file.by_type('IfcSite')
+        if sites and sites[0].ObjectPlacement:
+            m = ifcplace.get_local_placement(sites[0].ObjectPlacement)
+            site_ox = float(m[0][3]) * unit_scale
+            site_oy = float(m[1][3]) * unit_scale
+            site_oz = float(m[2][3]) * unit_scale
+    except Exception:
+        pass
+    if abs(site_oz) > 1.0:
+        print(f"  Site origin: ({site_ox:.3f}, {site_oy:.3f}, {site_oz:.3f})m — will subtract")
 
     conn = sqlite3.connect(db_path)
 
@@ -100,12 +119,20 @@ def topup(ifc_path: str, db_path: str, dry_run: bool = False):
 
                 if use_bbox:
                     vblob, fblob, center, minXYZ, maxXYZ = bbox_from_placement(elem)
+                    # bbox_from_placement uses get_local_placement (native file units),
+                    # but create_shape(USE_WORLD_COORDS) returns metres — apply scale.
+                    center  = center  * unit_scale
+                    minXYZ  = minXYZ  * unit_scale
+                    maxXYZ  = maxXYZ  * unit_scale
                 else:
                     geo = shape.geometry
                     verts = np.array(geo.verts, dtype=np.float64).reshape(-1, 3)
                     faces = np.array(geo.faces, dtype=np.int32).reshape(-1, 3)
                     if len(verts) < 3 or len(faces) < 1:
                         vblob, fblob, center, minXYZ, maxXYZ = bbox_from_placement(elem)
+                        center  = center  * unit_scale
+                        minXYZ  = minXYZ  * unit_scale
+                        maxXYZ  = maxXYZ  * unit_scale
                     else:
                         minXYZ = verts.min(axis=0)
                         maxXYZ = verts.max(axis=0)
@@ -113,6 +140,11 @@ def topup(ifc_path: str, db_path: str, dry_run: bool = False):
                         v_centered = (verts - center).astype(np.float32)
                         vblob = v_centered.tobytes()
                         fblob = faces.astype(np.int32).tobytes()
+
+                # Subtract site origin so coords align with a normalised DB
+                center  = center  - np.array([site_ox, site_oy, site_oz])
+                minXYZ  = minXYZ  - np.array([site_ox, site_oy, site_oz])
+                maxXYZ  = maxXYZ  - np.array([site_ox, site_oy, site_oz])
 
                 ghash = geometry_hash(vblob, fblob)
                 guid = elem.GlobalId

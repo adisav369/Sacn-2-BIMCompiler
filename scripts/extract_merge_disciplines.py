@@ -37,7 +37,87 @@ import shutil
 from pathlib import Path
 
 
+def fix_bbox_units(tmp_db_path: Path, ifc_path: Path):
+    """Fix element_transforms and elements_rtree rows that bbox_from_placement
+    wrote in file-native units (e.g. mm) instead of metres.
+
+    create_shape(USE_WORLD_COORDS) already returns metres.
+    get_local_placement() used by bbox_from_placement returns raw file units.
+    Detect outliers (|coord| >> expected building scale) and rescale them.
+    Also subtract the site placement origin so the model sits near Z=0.
+    """
+    try:
+        import ifcopenshell
+        import ifcopenshell.util.placement as ifcplace
+        import ifcopenshell.util.unit as ifcunit
+    except ImportError:
+        return  # ifcopenshell not available — skip silently
+
+    try:
+        ifc = ifcopenshell.open(str(ifc_path))
+    except Exception:
+        return
+
+    unit_scale = ifcunit.calculate_unit_scale(ifc, 'LENGTHUNIT')  # e.g. 0.001 for mm
+
+    # Site origin in metres
+    ox = oy = oz = 0.0
+    try:
+        sites = ifc.by_type('IfcSite')
+        if sites and sites[0].ObjectPlacement:
+            m = ifcplace.get_local_placement(sites[0].ObjectPlacement)
+            ox = float(m[0][3]) * unit_scale
+            oy = float(m[1][3]) * unit_scale
+            oz = float(m[2][3]) * unit_scale
+    except Exception:
+        pass
+
+    conn = sqlite3.connect(str(tmp_db_path))
+
+    # --- 1. Fix bbox_from_placement outliers (stored in native units, not metres) ---
+    # Threshold: any coord whose magnitude exceeds 1/unit_scale * 10 is almost
+    # certainly in native units (e.g. >10 000 for a mm file with unit_scale=0.001).
+    if unit_scale < 1.0:
+        threshold = (1.0 / unit_scale) * 10  # e.g. 10 000 for mm files
+        conn.execute(
+            "UPDATE element_transforms "
+            "SET center_x = center_x * ?, center_y = center_y * ?, center_z = center_z * ? "
+            "WHERE abs(center_x) > ? OR abs(center_y) > ? OR abs(center_z) > ?",
+            (unit_scale, unit_scale, unit_scale, threshold, threshold, threshold)
+        )
+        conn.execute(
+            "UPDATE elements_rtree "
+            "SET minX=minX*?, maxX=maxX*?, minY=minY*?, maxY=maxY*?, minZ=minZ*?, maxZ=maxZ*? "
+            "WHERE abs(minX) > ? OR abs(maxX) > ? OR abs(minY) > ? "
+            "   OR abs(maxY) > ? OR abs(minZ) > ? OR abs(maxZ) > ?",
+            (unit_scale,)*6 + (threshold,)*6
+        )
+
+    # --- 2. Subtract site origin so building sits near (0,0,0) ---
+    if abs(ox) > 1.0 or abs(oy) > 1.0 or abs(oz) > 1.0:
+        conn.execute(
+            "UPDATE element_transforms "
+            "SET center_x=center_x-?, center_y=center_y-?, center_z=center_z-?",
+            (ox, oy, oz)
+        )
+        conn.execute(
+            "UPDATE elements_rtree "
+            "SET minX=minX-?, maxX=maxX-?, minY=minY-?, maxY=maxY-?, minZ=minZ-?, maxZ=maxZ-?",
+            (ox, ox, oy, oy, oz, oz)
+        )
+
+    conn.commit()
+    conn.close()
+
+    if unit_scale < 1.0 or abs(oz) > 1.0:
+        print(f"  → coord fix applied: unit_scale={unit_scale}, site_origin=({ox:.2f},{oy:.2f},{oz:.2f})m")
+
+
 SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS project_metadata (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
 CREATE TABLE IF NOT EXISTS spatial_structure (
     guid TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT,
     parent_guid TEXT, object_type TEXT, predefined_type TEXT
@@ -225,6 +305,7 @@ def main():
             print(f"  ✗ FAILED — skipping")
             continue
 
+        fix_bbox_units(tmp_db, ifc)
         merge_db(tmp_db, dst, disc)
         tmp_db.unlink()
 
@@ -232,6 +313,22 @@ def main():
     by_disc = dst.execute(
         "SELECT discipline, COUNT(*) FROM elements_meta GROUP BY discipline ORDER BY COUNT(*) DESC"
     ).fetchall()
+
+    # Store building center as camera target — loader uses this to face the building
+    try:
+        row = dst.execute(
+            "SELECT AVG(center_x), AVG(center_y), AVG(center_z) FROM element_transforms"
+        ).fetchone()
+        if row and row[0] is not None:
+            cx, cy, cz = row
+            dst.execute("INSERT OR REPLACE INTO project_metadata VALUES ('view_center_x', ?)", (str(cx),))
+            dst.execute("INSERT OR REPLACE INTO project_metadata VALUES ('view_center_y', ?)", (str(cy),))
+            dst.execute("INSERT OR REPLACE INTO project_metadata VALUES ('view_center_z', ?)", (str(cz),))
+            dst.commit()
+            print(f"  Camera target: ({cx:.2f}, {cy:.2f}, {cz:.2f})m")
+    except Exception as e:
+        print(f"  Camera target write skipped: {e}")
+
     dst.close()
 
     size_mb = output.stat().st_size / (1024 * 1024)
