@@ -173,6 +173,173 @@ the same [output.db](BOMBasedCompilation.md).
 
 ---
 
+## The Federation DB Advantage — MEP, Clash, and Beyond
+
+The `_extracted.db` is not just a viewer asset. Every dimension above runs as
+a **SQL query on SQLite** — no IFC file open, no geometry iterator, no RAM spike.
+This section documents what the DB enables for MEP coordination specifically and
+how it compares to commercial tools.
+
+### What the DB supports today
+
+| Capability | How | Latency |
+|---|---|---|
+| **Broadphase clash detection** | `elements_rtree` overlap query between discipline pairs | <100ms for 125K elements |
+| **MEP conduit routing** | Corridor R-tree query — "what's in this 500mm tunnel?" | <100ms |
+| **Bbox Preview Mode** | GPU batch draw of `elements_rtree` quads — no tessellation | <1 frame |
+| **Discipline filtering** | `WHERE discipline IN ('PLB','SAN','VENT')` | Instant |
+| **Storey-level sequencing (4D)** | `ORDER BY storey` — topological sort on `rel_aggregates` | Instant |
+| **Element census / BOQ (5D)** | `COUNT(*) GROUP BY ifc_class, discipline` | Instant |
+| **Cross-discipline reporting** | JOIN across any discipline in one DB | Instant |
+| **7D asset linkage** | `guid` preserved — JOIN to any FM/CMMS table by GUID | Instant |
+
+All computation runs on the DB. The IFC files are only needed to (re-)extract.
+
+### Competitive comparison
+
+| Tool | Approach | Broadphase speed | RAM required | Decoupled from IFC? | Cost |
+|---|---|---|---|---|---|
+| **Navisworks** | Full geometry in RAM | Minutes | 16–30 GB | No | $$$$ |
+| **Solibri** | Full IFC load | Minutes | High | No | $$$ |
+| **BIMcollab** | Cloud geometry upload | Server-side | Server | No | $$ |
+| **Trimble Connect** | Cloud full geometry | Server-side | Server | No | $$ |
+| **Revit clash** | In-process, full model | Minutes | Very high | No | $$$$ |
+| **Our Federation DB** | Pre-baked SQLite R-tree | **<100ms** | **~200MB** | **Yes** | **Free** |
+
+The key differentiator: pre-built spatial index that ships as a standalone SQLite file,
+independent of any IFC. Navisworks' bbox mode only activates *after* the full model is
+loaded. Ours is the primary access path, not a fallback.
+
+### Preview Mode — unique USP
+
+`bbox_visualization.py` draws all `elements_rtree` rows as GPU wireframe quads in a
+single Blender draw call. On LTU A-House (125,997 elements, 8 disciplines): instant.
+No geometry loaded, no IFC open. This is the first thing the user sees — before any
+tessellated mesh is requested. Not available in Bonsai core, Navisworks, Revit, or any
+other BIM tool. See [`docs/LTUAHouseAnalysis.md`](LTUAHouseAnalysis.md).
+
+### Sub-discipline tagging via `--disc-map`
+
+Standard `extractIFCtoDB.py` maps all `IfcFlowSegment / Fitting / Terminal / Controller`
+to "MEP". For multi-file projects where each IFC file IS a discipline (PLB, SAN, VENT,
+HEAT, HVAC), the per-discipline script overrides by source filename:
+
+```bash
+python3 scripts/extract_merge_disciplines.py \
+    --ifc-dir DAGCompiler/lib/input/IFC/UNMERGED \
+    --pattern "LTU_AHouse_*.ifc" \
+    --output DAGCompiler/lib/input/LTU_AHouse_extracted.db \
+    --disc-map \
+        LTU_AHouse_PLB=PLB  LTU_AHouse_SAN=SAN \
+        LTU_AHouse_HEAT=HEAT LTU_AHouse_AIR=VENT \
+        LTU_AHouse_DUCT=VENT LTU_AHouse_COOL=HVAC \
+        LTU_AHouse_ARC=ARC   LTU_AHouse_STR=STR
+```
+
+Full sub-discipline breakdown across all 116K+ MEP elements (125,997 total, 8 disciplines)
+— not available in any commercial tool without manual re-tagging in their proprietary format.
+See [`docs/LTUAHouseAnalysis.md`](LTUAHouseAnalysis.md) for the full discipline census.
+
+### Proven Scale — LTU A-House (largest reference building)
+
+**LTU A-House** (Lulea University of Technology, Sweden) — 9 IFC2x3 discipline files,
+125,997 elements, 8 sub-disciplines (ARC, STR, VOID, VENT, HVAC, HEAT, PLB, SAN).
+Largest multi-discipline building onboarded to date.
+
+| Metric | Value |
+|---|---|
+| Source | 9 IFC files, 400MB+ total |
+| Extracted DB | 232.7 MB |
+| Extraction time | ~20 min (per-discipline, DB-level merge) |
+| Blender/Bonsai RAM | 13.6 GB (full tessellated mesh, all disciplines) |
+| 3D navigation | Smooth — no frame drops, no fan noise |
+| Element selection | ~3 sec |
+| Hide/unhide discipline | Responsive |
+| Crashes | None |
+| IFC-level merge | OOM at 426MB — DB-level merge is the only viable path |
+
+Onboarding process:
+1. Download + rename per convention (`docs/LTUAHouseAnalysis.md` Steps 0-1)
+2. Extract per-discipline with `--disc-map` (Step 2)
+3. Verify coordinates in metres (Step 3)
+4. Verify discipline breakdown (Step 4)
+5. Load in Bonsai — immediate preview via rtree, full mesh on demand
+
+Full details: [`docs/LTUAHouseAnalysis.md`](LTUAHouseAnalysis.md)
+
+Java post-processor (`ExtractionPostProcessor.java`) provides automated forensic
+verification: unit scale check, discipline coherence vs ARC envelope, per-element
+outlier detail with center↔rtree consistency, structured BIMLogger output.
+
+### Shortcomings — and how each closes
+
+All gaps below are closable **without changing the DB schema** — the data needed
+is already in the IFC; it just hasn't been extracted yet. Each fix is an addition
+to `extractIFCtoDB.py` (read-only, never modify) or a new query/operator on the
+existing tables.
+
+**1. Broadphase only — bbox clash has false positives**
+*Impact:* Two pipes crossing diagonally may bbox-overlap but not actually clash.
+
+*How to close:* The `base_geometries` table already holds the full tessellated
+vertices and faces for every element. Narrowphase is a second pass: load the
+geometry for the N candidates from the broadphase result, run mesh-mesh
+intersection (OBB or GJK). Only those N candidates hit RAM — the other 124K
+elements stay on disk. Wire a `NarrowphaseClashOperator` that takes broadphase
+hits as input and re-queries `base_geometries` by `geometry_hash`.
+
+**2. No IfcPropertySet extraction — pipe diameter, pressure, flow rate absent**
+*Impact:* Can't verify 50mm clearance; 6D energy and 7D FM incomplete.
+
+*How to close:* `extractIFCtoDB.py` already opens the IFC with ifcopenshell.
+Add a `property_values` table (`guid, pset_name, prop_name, value`). One loop
+over `ifc.by_type('IfcRelDefinesByProperties')` writes every property. For LTU
+that means pipe nominal diameter, insulation thickness, fire rating — all
+already in the IFC, one extraction pass away. Diameter then drives exact
+clearance checks in the narrowphase operator.
+
+**3. No MEP system connectivity — `IfcRelConnectsPortToElement` not extracted**
+*Impact:* Can't trace a pipe circuit from inlet to outlet or identify HVAC loops.
+
+*How to close:* Add a `mep_connectivity` table (`from_guid, to_guid, port_type`).
+Extract `IfcRelConnectsPortToElement` and `IfcRelSequence` in one pass.
+The result is a directed graph in SQLite — pipe circuit tracing becomes a
+recursive CTE (`WITH RECURSIVE`). No graph database needed. This also unlocks
+flow-direction-aware clash checking (upstream vs downstream pressure zones).
+
+**4. No quantities computed — pipe lengths, duct areas, volumes absent**
+*Impact:* 5D cost estimation needs lengths; BOQ is element counts only.
+
+*How to close:* The `base_geometries` table has `vertices BLOB` for every
+element. Length of a pipe segment = distance between the two end vertices of
+its centre-line mesh. Add a `quantities` table (`guid, length_m, area_m2,
+volume_m3`) populated at extraction time by iterating the vertex blob.
+For straight segments this is a single vector magnitude. For curved ducts,
+sum of edge lengths along the spine. All computable in Python/numpy during
+extraction — no separate geometry engine needed.
+
+**5. ~~mm-unit IFC2x3 files need manual correction~~ CLOSED**
+ifcopenshell `USE_WORLD_COORDS=True` already returns metres regardless of native
+IFC units. Verified empirically on LTU A-House (IFC2x3, mm-unit Swedish files):
+columns return X=6.0–6.3m, not 6000–6300mm. The previous ×0.001 post-hoc SQL
+was causing geometry hell, not fixing it. `fix_mm_outliers()` in
+`extract_merge_disciplines.py` handles the rare edge case where
+`bbox_from_placement` fallback returns mm (299 elements in LTU STR).
+See [`docs/LTUAHouseAnalysis.md`](LTUAHouseAnalysis.md) for details.
+
+**6. 4D needs external schedule linkage**
+*Impact:* Construction sequence requires a separate schedule file joined by GUID.
+
+*How to close:* The `rel_aggregates` table already encodes BOM parent→child
+precedence (footings before columns, columns before beams). A topological sort
+on that table generates a default construction sequence with zero external input.
+Add a `schedule` table (`guid, phase, start_day, duration_days`) populated by
+the sort, with durations derived from quantity × a productivity rate table.
+External MS Project / Primavera import then overrides by GUID where a real
+schedule exists — the DB becomes the reconciliation point, not the dependency.
+
+---
+
 ## Summary — One Database, Many Views
 
 ```

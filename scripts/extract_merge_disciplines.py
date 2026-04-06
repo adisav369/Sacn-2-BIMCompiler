@@ -33,84 +33,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
-import shutil
 from pathlib import Path
-
-
-def fix_bbox_units(tmp_db_path: Path, ifc_path: Path):
-    """Fix element_transforms and elements_rtree rows that bbox_from_placement
-    wrote in file-native units (e.g. mm) instead of metres.
-
-    create_shape(USE_WORLD_COORDS) already returns metres.
-    get_local_placement() used by bbox_from_placement returns raw file units.
-    Detect outliers (|coord| >> expected building scale) and rescale them.
-    Also subtract the site placement origin so the model sits near Z=0.
-    """
-    try:
-        import ifcopenshell
-        import ifcopenshell.util.placement as ifcplace
-        import ifcopenshell.util.unit as ifcunit
-    except ImportError:
-        return  # ifcopenshell not available — skip silently
-
-    try:
-        ifc = ifcopenshell.open(str(ifc_path))
-    except Exception:
-        return
-
-    unit_scale = ifcunit.calculate_unit_scale(ifc, 'LENGTHUNIT')  # e.g. 0.001 for mm
-
-    # Site origin in metres
-    ox = oy = oz = 0.0
-    try:
-        sites = ifc.by_type('IfcSite')
-        if sites and sites[0].ObjectPlacement:
-            m = ifcplace.get_local_placement(sites[0].ObjectPlacement)
-            ox = float(m[0][3]) * unit_scale
-            oy = float(m[1][3]) * unit_scale
-            oz = float(m[2][3]) * unit_scale
-    except Exception:
-        pass
-
-    conn = sqlite3.connect(str(tmp_db_path))
-
-    # --- 1. Fix bbox_from_placement outliers (stored in native units, not metres) ---
-    # Threshold: any coord whose magnitude exceeds 1/unit_scale * 10 is almost
-    # certainly in native units (e.g. >10 000 for a mm file with unit_scale=0.001).
-    if unit_scale < 1.0:
-        threshold = (1.0 / unit_scale) * 10  # e.g. 10 000 for mm files
-        conn.execute(
-            "UPDATE element_transforms "
-            "SET center_x = center_x * ?, center_y = center_y * ?, center_z = center_z * ? "
-            "WHERE abs(center_x) > ? OR abs(center_y) > ? OR abs(center_z) > ?",
-            (unit_scale, unit_scale, unit_scale, threshold, threshold, threshold)
-        )
-        conn.execute(
-            "UPDATE elements_rtree "
-            "SET minX=minX*?, maxX=maxX*?, minY=minY*?, maxY=maxY*?, minZ=minZ*?, maxZ=maxZ*? "
-            "WHERE abs(minX) > ? OR abs(maxX) > ? OR abs(minY) > ? "
-            "   OR abs(maxY) > ? OR abs(minZ) > ? OR abs(maxZ) > ?",
-            (unit_scale,)*6 + (threshold,)*6
-        )
-
-    # --- 2. Subtract site origin so building sits near (0,0,0) ---
-    if abs(ox) > 1.0 or abs(oy) > 1.0 or abs(oz) > 1.0:
-        conn.execute(
-            "UPDATE element_transforms "
-            "SET center_x=center_x-?, center_y=center_y-?, center_z=center_z-?",
-            (ox, oy, oz)
-        )
-        conn.execute(
-            "UPDATE elements_rtree "
-            "SET minX=minX-?, maxX=maxX-?, minY=minY-?, maxY=maxY-?, minZ=minZ-?, maxZ=maxZ-?",
-            (ox, ox, oy, oy, oz, oz)
-        )
-
-    conn.commit()
-    conn.close()
-
-    if unit_scale < 1.0 or abs(oz) > 1.0:
-        print(f"  → coord fix applied: unit_scale={unit_scale}, site_origin=({ox:.2f},{oy:.2f},{oz:.2f})m")
 
 
 SCHEMA_SQL = """
@@ -166,6 +89,93 @@ CREATE TABLE IF NOT EXISTS material_layers (
     PRIMARY KEY (layer_set_name, sequence)
 );
 """
+
+
+def fix_mm_outliers(tmp_db_path: Path, ifc_path: Path):
+    """
+    ifcopenshell USE_WORLD_COORDS=True normally returns metres.  However,
+    some IFC2x3 files (e.g. LTU_AHouse_STR) contain elements whose placement
+    coordinates come through in native units (mm) despite the flag.
+
+    This function detects whether the tmp_db has coordinates in mm range
+    (any |center| > 500) and, if the IFC's LENGTHUNIT is mm (scale=0.001),
+    scales ONLY those outlier rows to metres.
+    """
+    import ifcopenshell
+    import ifcopenshell.util.unit
+
+    conn = sqlite3.connect(str(tmp_db_path))
+
+    # Check if any coordinates are in mm range
+    row = conn.execute(
+        "SELECT MAX(ABS(center_x)), MAX(ABS(center_y)), MAX(ABS(center_z)) "
+        "FROM element_transforms"
+    ).fetchone()
+    if not row or row[0] is None:
+        conn.close()
+        return
+    max_abs = max(row[0], row[1], row[2])
+    if max_abs <= 500.0:
+        conn.close()
+        return  # All in metres, nothing to do
+
+    # Confirm the IFC is actually mm-unit
+    ifc = ifcopenshell.open(str(ifc_path))
+    unit_scale = ifcopenshell.util.unit.calculate_unit_scale(ifc, "LENGTHUNIT")
+    if abs(unit_scale - 1.0) < 1e-9:
+        conn.close()
+        return  # File is metre-unit, large coords are genuine
+
+    print(f"  → mm outliers detected (max_abs={max_abs:.0f}, unit_scale={unit_scale})")
+
+    # Scale only elements whose center exceeds 500 in any axis
+    # These are the ones ifcopenshell didn't convert
+    outliers = conn.execute(
+        "SELECT guid, center_x, center_y, center_z FROM element_transforms "
+        "WHERE ABS(center_x) > 500 OR ABS(center_y) > 500 OR ABS(center_z) > 500"
+    ).fetchall()
+
+    for guid, cx, cy, cz in outliers:
+        conn.execute(
+            "UPDATE element_transforms SET center_x=?, center_y=?, center_z=? WHERE guid=?",
+            (cx * unit_scale, cy * unit_scale, cz * unit_scale, guid))
+
+    # Scale matching rtree entries
+    for guid, cx, cy, cz in outliers:
+        meta = conn.execute("SELECT id FROM elements_meta WHERE guid=?", (guid,)).fetchone()
+        if meta:
+            conn.execute(
+                "UPDATE elements_rtree SET "
+                "minX=minX*?, maxX=maxX*?, minY=minY*?, maxY=maxY*?, minZ=minZ*?, maxZ=maxZ*? "
+                "WHERE id=?",
+                (unit_scale, unit_scale, unit_scale, unit_scale, unit_scale, unit_scale, meta[0]))
+
+    # Scale matching vertex blobs — track already-scaled hashes to avoid
+    # double-scaling shared geometry (deduplication means multiple elements
+    # can reference the same geometry_hash)
+    import numpy as np
+    scaled_hashes = set()
+    for guid, cx, cy, cz in outliers:
+        row = conn.execute(
+            "SELECT ei.geometry_hash, bg.vertices, bg.vertex_count "
+            "FROM element_instances ei "
+            "JOIN base_geometries bg ON bg.geometry_hash = ei.geometry_hash "
+            "WHERE ei.guid=?", (guid,)).fetchone()
+        if row and row[1] and row[2] > 0:
+            ghash, vblob, vcount = row
+            if ghash in scaled_hashes:
+                continue  # Already scaled via another element sharing this geometry
+            verts = np.frombuffer(vblob, dtype=np.float32).reshape(-1, 3)
+            if np.abs(verts).max() > 500:
+                verts_scaled = (verts * unit_scale).astype(np.float32)
+                conn.execute(
+                    "UPDATE base_geometries SET vertices=? WHERE geometry_hash=?",
+                    (verts_scaled.tobytes(), ghash))
+            scaled_hashes.add(ghash)
+
+    conn.commit()
+    conn.close()
+    print(f"  → fixed {len(outliers)} mm-scale elements to metres")
 
 
 def merge_db(src_path: Path, dst: sqlite3.Connection, disc_label: str):
@@ -274,7 +284,19 @@ def main():
     parser.add_argument("--pattern", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--extractor", default="DAGCompiler/python/extractIFCtoDB.py")
+    parser.add_argument(
+        "--disc-map", nargs="*", metavar="STEM=DISC",
+        help="Override discipline by source filename stem. "
+             "E.g. --disc-map LTU_AHouse_PLB=PLB LTU_AHouse_SAN=SAN LTU_AHouse_HEAT=HEAT"
+    )
     args = parser.parse_args()
+
+    # Build stem→discipline override dict from --disc-map pairs
+    disc_map = {}
+    if args.disc_map:
+        for pair in args.disc_map:
+            stem, disc = pair.split("=", 1)
+            disc_map[stem.strip()] = disc.strip().upper()
 
     ifc_files = sorted(Path(args.ifc_dir).glob(args.pattern))
     if not ifc_files:
@@ -290,6 +312,8 @@ def main():
     dst.commit()
 
     print(f"Extracting {len(ifc_files)} discipline files → {output.name}")
+    if disc_map:
+        print(f"  Disc overrides: {disc_map}")
 
     for ifc in ifc_files:
         disc = ifc.stem  # e.g. Hospital_IFC4_ARC
@@ -305,7 +329,18 @@ def main():
             print(f"  ✗ FAILED — skipping")
             continue
 
-        fix_bbox_units(tmp_db, ifc)
+        # Fix elements where ifcopenshell returned mm despite USE_WORLD_COORDS
+        fix_mm_outliers(tmp_db, ifc)
+
+        # Apply discipline override: UPDATE elements_meta before merging
+        override = disc_map.get(ifc.stem)
+        if override:
+            conn = sqlite3.connect(str(tmp_db))
+            conn.execute("UPDATE elements_meta SET discipline=?", (override,))
+            conn.commit()
+            conn.close()
+            print(f"  → discipline overridden to {override}")
+
         merge_db(tmp_db, dst, disc)
         tmp_db.unlink()
 

@@ -62,6 +62,7 @@ Single-page entry point. All active docs by tier.
 | [ACInstituteAnalysis.md](ACInstituteAnalysis.md) | IN (AC Institute) 699-element institutional |
 | [DemoHouseAnalysis.md](DemoHouseAnalysis.md) | DM guardrails: 3-OrderLine compilation, SH base + FK roof + FP discipline |
 | [InfrastructureAnalysis.md](InfrastructureAnalysis.md) | Infrastructure IFC4X3, FACILITY/SEGMENT mapping |
+| [LTUAHouseAnalysis.md](LTUAHouseAnalysis.md) | **LTU A-House — largest reference building.** 125,997 elements, 8 disciplines, 232MB DB. Smooth in Bonsai (13.6GB RAM, 3s select). Extraction, verification, performance, MEP outlier analysis |
 
 ## T4 Guides — User-Facing
 
@@ -87,7 +88,7 @@ Single-page entry point. All active docs by tier.
 
 | Doc | What |
 |-----|------|
-| [Enterprise.md](Enterprise.md) | **FederatedModel Enterprise Platform**: nD dimensions (4D–8D), NLP queries, Color Studio, River IoT, HTML UI |
+| [Enterprise.md](Enterprise.md) | **FederatedModel Enterprise Platform**: nD dimensions (4D–8D), NLP queries, Color Studio, River IoT, HTML UI · **[§ Federation DB Advantage](Enterprise.md#the-federation-db-advantage--mep-clash-and-beyond)** — MEP clash/routing on pre-baked SQLite R-tree (<100ms vs minutes in Navisworks), instant Preview Mode USP, competitive comparison, `--disc-map` sub-disciplines, shortcomings |
 | [PDF_TERRAIN.md](PDF_TERRAIN.md) | Survey to 3D terrain: PDF → elevation points → IFC. Site topology for plot placement |
 | [2D_LAYOUT.md](2D_LAYOUT.md) | Architectural drawings from compiled BOM: floor plans, elevations, sections as SVG |
 

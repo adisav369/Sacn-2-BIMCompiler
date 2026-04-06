@@ -30,6 +30,18 @@
 
 **S145 DX Mirror→Rotation Fix DONE:** MIRROR:X was wrong — duplex is rot=π (negate both X+Y). Three fixes: (1) walker negates both axes + flips both half-extents, (2) UNIT_B anchor Y reflected about building center (4.38→22.18), (3) ProximityMirrorPairer eliminates mis-pairing (was 6m drift on 8 walls, now zero). New: MirrorPairer interface, LastInchCorrector interface + OpeningContainmentCorrector, always-on SpatialDiff in pipeline, improved TACK LEAF logging with transform state/AABB. DX 8/8, SH 8/8, 55/55 pairs zero symmetry drift. Remaining: 3 exterior envelope walls at 208mm (half-thickness) — should be BUILDING BOM not half-unit. [DuplexAnalysis.md §S145 Learning Points](docs/DuplexAnalysis.md).
 
+**S149c LTU A-House Onboarding DONE — Largest reference building (125,997 elements, 8 disciplines):**
+  LTU_AHouse_extracted.db: 232.7MB, 9 IFC files, ~20 min extraction via Approach A.
+  Bonsai/Blender: 13.6GB RAM, smooth 3D nav, 3s select, no crash/fan.
+  New code: `fix_mm_outliers()` in extract_merge_disciplines.py (299 STR bbox_fallback elements).
+  New code: `extractIFCtoDB_open.py` (open-filter extractor, fine-grained discipline, Pset_BIMSource).
+  New code: `merge_ifc_tagged.py` (IFC merger with Pset stamping — OOMs on 125K+, viable for small).
+  New code: `ExtractionPostProcessor.java` (unit scale fix, discipline refinement, forensic logging).
+  Clinic_extracted.db also extracted: 16,481 elements, 5 disciplines, all coherent.
+  Proved: `USE_WORLD_COORDS=True` returns metres — previous ×0.001 SQL was CAUSING geometry hell.
+  Proved: IFC-level merge OOMs at 125K+ elements — DB-level merge is the only viable path.
+  Details: [`docs/LTUAHouseAnalysis.md`](docs/LTUAHouseAnalysis.md), [`scripts/README_extraction.md`](scripts/README_extraction.md).
+
 **S148 IFC Extraction Cleanup DONE (`79a23376`, `92c16a1b`, `7557db84`):**
   Hospital_PerDisc_extracted.db: 41K→54K elements, 6 disciplines (MEP/STR/ARC/MECH/FP/ELEC).
   Fixed: MECH proxies retagged, FP added (SPR topup), ELEC→FP for FIRE.ifc DCE elements.
