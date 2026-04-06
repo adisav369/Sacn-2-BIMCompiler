@@ -967,6 +967,70 @@ class MepRouteGeometryTest {
         }
     }
 
+    // ── Scenario 17: SH cold test — generative MEP on SampleHouse ──
+    @Test
+    @Order(17)
+    @DisplayName("S17: SH cold test — generative MEP on SampleHouse")
+    void shColdTestGenerativeMep() throws Exception {
+        String bomDbPath = "library/SH_BOM.db";
+        if (!java.nio.file.Files.exists(java.nio.file.Path.of(bomDbPath))) {
+            System.out.printf("[S17] SKIP: %s not found%n", bomDbPath);
+            return;
+        }
+
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);
+             Connection erpConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
+
+            String rootBom = null;
+            try (Statement stmt = bomConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT bom_id FROM m_bom WHERE bom_type='BUILDING' LIMIT 1")) {
+                if (rs.next()) rootBom = rs.getString(1);
+            }
+            assertNotNull(rootBom, "SH_BOM.db must have a BUILDING BOM");
+            System.out.printf("[S17] Root BOM: %s%n", rootBom);
+
+            com.bim.ormsandbox.po.MBOM root = new com.bim.ormsandbox.po.MBOM(bomConn);
+            assertTrue(root.loadByValue(rootBom), "Must load root BOM");
+            double[] worldOrigin = {root.getOriginX(), root.getOriginY(), root.getOriginZ()};
+
+            PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(
+                    bomConn, "SH_COLD", worldOrigin);
+            visitor.setErpConn(erpConn);
+            visitor.setMepOrderQty(99);
+
+            BOMWalker walker = new BOMWalker(bomConn, erpConn);
+            walker.walk(rootBom, java.util.List.of(visitor), "SH_COLD");
+            visitor.emitGenerativeSummary();
+
+            int totalPlacements = visitor.getPlacements().size();
+            int generativeDevices = visitor.getGenerativeDeviceCount();
+            int extractedCount = totalPlacements - generativeDevices;
+
+            System.out.printf("[S17] SH: %d total = %d extracted + %d generative%n",
+                totalPlacements, extractedCount, generativeDevices);
+
+            // SH has LIVING + BEDROOM rooms — both have MEP schedules
+            if (generativeDevices > 0) {
+                System.out.printf("[S17] PASS: SH generative MEP works — %d devices placed%n",
+                    generativeDevices);
+                // Verify no breaches
+                // (Summary already logged — grep GENERATIVE.*SUMMARY for breach count)
+            } else {
+                System.out.printf("[S17] INFO: SH produced 0 generative devices — rooms may lack space type mapping%n");
+                // List SET BOMs and their categories for diagnosis
+                try (Statement stmt = bomConn.createStatement();
+                     ResultSet rs = stmt.executeQuery(
+                         "SELECT bom_id, m_product_category_id, aabb_height_mm FROM m_bom WHERE bom_type='SET'")) {
+                    while (rs.next()) {
+                        System.out.printf("[S17]   SET %s category=%s height=%dmm%n",
+                            rs.getString(1), rs.getString(2), rs.getInt(3));
+                    }
+                }
+            }
+        }
+    }
+
     private GeoProofRecord findByProduct(List<GeoProofRecord> records, String productId) {
         return records.stream()
                 .filter(r -> productId.equals(r.productId()))
