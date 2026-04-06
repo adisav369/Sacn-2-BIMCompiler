@@ -24,8 +24,8 @@ Single-page entry point. All active docs by tier.
 | Doc | What |
 |-----|------|
 | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) | R1-R30 gap tracking, session checklist — the distance between "it compiles" and "it ships" |
-| [TestArchitecture.md](TestArchitecture.md) | G1-G6 gates, tamper seal, traceability matrix, 35 Rosetta Stones |
 | [ShipYard.md](ShipYard.md) | **Domain-agnostic treatise:** marine hulls, tunnels, earthworks, industrial plant — same engine, different data |
+| [TestArchitecture.md](TestArchitecture.md) | G1-G6 gates, tamper seal, traceability matrix, 35 Rosetta Stones |
 
 ## T1 Foundation — Master References
 
@@ -96,8 +96,6 @@ Single-page entry point. All active docs by tier.
 
 | Doc | What |
 |-----|------|
-| [Enterprise.md](Enterprise.md) | **FederatedModel Enterprise Platform**: nD dimensions (4D–8D), NLP queries, Color Studio, River IoT, HTML UI · **[§ Federation DB Advantage](Enterprise.md#the-federation-db-advantage--mep-clash-and-beyond)** — MEP clash/routing on pre-baked SQLite R-tree (<100ms vs minutes in Navisworks), instant Preview Mode USP, competitive comparison, `--disc-map` sub-disciplines, shortcomings |
-| [4D5DAnalysis.md](4D5DAnalysis.md) | **4D/5D from extracted DB in 2 seconds.** LTU: 224 tasks + RM 67M costed. Industry value tiers, bankable finance model path. S-Curve, milestones, cash flow |
 | [PDF_TERRAIN.md](PDF_TERRAIN.md) | Survey to 3D terrain: PDF → elevation points → IFC. Site topology for plot placement |
 | [2D_LAYOUT.md](2D_LAYOUT.md) | Architectural drawings from compiled BOM: floor plans, elevations, sections as SVG |
 

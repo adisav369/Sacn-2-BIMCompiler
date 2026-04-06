@@ -63,6 +63,12 @@ nav:
       - The ERP World View: MANIFESTO.md
       - Beyond Buildings: ShipYard.md
 
+  # ─── BIM5D — the headline ─────────────────────────────
+  - BIM5D:
+      - 4D/5D Analysis: 4D5DAnalysis.md
+      - LTU A-House (125K): LTUAHouseAnalysis.md
+      - Enterprise Platform: Enterprise.md
+
   # ─── The nerdy pull ───────────────────────────────────
   - Last Mile:
       - The Drift: LAST_MILE_PROBLEM.md
@@ -123,6 +129,7 @@ nav:
       - Terminal (TE): TerminalAnalysis.md
       - Infrastructure: InfrastructureAnalysis.md
       - DemoHouse (DM): DemoHouseAnalysis.md
+      - LTU A-House: LTUAHouseAnalysis.md
 
   # ─── Guides ───────────────────────────────────────────
   - Guides:
