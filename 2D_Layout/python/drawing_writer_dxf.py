@@ -21,6 +21,7 @@ import os
 import math
 import sqlite3
 import argparse
+import datetime
 from typing import List, Tuple, Optional
 
 import ezdxf
@@ -128,6 +129,164 @@ def _new_doc(scale: int = SCALE) -> ezdxf.document.Drawing:
 def _mh(metres: float) -> float:
     """Convert metres to DXF model-space mm."""
     return metres * MM
+
+
+# ─────────────────────────────────────────────────────────────────
+# DIAGNOSTIC LOG
+# ─────────────────────────────────────────────────────────────────
+
+_LOG_LINES: List[str] = []
+
+def _log(msg: str):
+    """Append a diagnostic line (printed + buffered for log file)."""
+    print(msg)
+    _LOG_LINES.append(msg)
+
+
+def _audit_dxf(doc, out_dxf: str, view_type: str):
+    """Audit a generated DXF and log key metrics for hands-free verification.
+
+    Checks:
+      - Entity counts by type
+      - Model-space extents (bounding box)
+      - Text heights vs model extent (visibility ratio)
+      - GUID xdata count
+      - Annotation sanity: text_height / model_width should be 1-5%
+    """
+    msp = doc.modelspace()
+    counts = {}
+    min_x = min_y = float('inf')
+    max_x = max_y = float('-inf')
+    text_heights = []
+    guid_count = 0
+    guid_set = set()
+
+    for e in msp:
+        t = e.dxftype()
+        counts[t] = counts.get(t, 0) + 1
+        if t == 'LWPOLYLINE':
+            for pt in e.get_points(format='xy'):
+                min_x = min(min_x, pt[0])
+                max_x = max(max_x, pt[0])
+                min_y = min(min_y, pt[1])
+                max_y = max(max_y, pt[1])
+            try:
+                xd = e.get_xdata('BIMGUID')
+                if xd:
+                    guid_count += 1
+                    for tag in xd:
+                        if tag[0] == 1000:
+                            guid_set.add(tag[1])
+            except Exception:
+                pass
+        elif t == 'LINE':
+            min_x = min(min_x, e.dxf.start.x, e.dxf.end.x)
+            max_x = max(max_x, e.dxf.start.x, e.dxf.end.x)
+            min_y = min(min_y, e.dxf.start.y, e.dxf.end.y)
+            max_y = max(max_y, e.dxf.start.y, e.dxf.end.y)
+        elif t == 'TEXT':
+            text_heights.append(e.dxf.height)
+
+    width_mm = max_x - min_x if max_x > min_x else 1
+    height_mm = max_y - min_y if max_y > min_y else 1
+
+    _log(f"  AUDIT [{view_type}] {os.path.basename(out_dxf)}")
+    _log(f"    Entities: {dict(sorted(counts.items()))}")
+    _log(f"    Extent: {width_mm:.0f} x {height_mm:.0f} mm  "
+         f"({width_mm/1000:.1f} x {height_mm/1000:.1f} m)")
+
+    if text_heights:
+        avg_h = sum(text_heights) / len(text_heights)
+        ratio = avg_h / width_mm * 100
+        _log(f"    Text: {len(text_heights)} entities, "
+             f"avg height {avg_h:.0f}mm, "
+             f"visibility ratio {ratio:.1f}% of width")
+        if ratio < 0.5:
+            _log(f"    !! WARNING: text may be invisible (ratio < 0.5%)")
+        elif ratio > 10:
+            _log(f"    !! WARNING: text may be oversized (ratio > 10%)")
+        else:
+            _log(f"    OK: text size proportional")
+    else:
+        _log(f"    Text: NONE")
+
+    if guid_count > 0:
+        _log(f"    GUID xdata: {guid_count} polylines, "
+             f"{len(guid_set)} unique GUIDs")
+
+    # Verdict: geometry exists + text visible + no warnings
+    has_geometry = counts.get('LWPOLYLINE', 0) + counts.get('LINE', 0) > 0
+    text_ok = True
+    detail_parts = []
+
+    if not has_geometry:
+        detail_parts.append("NO GEOMETRY")
+        text_ok = False
+
+    total_entities = sum(counts.values())
+    detail_parts.append(f"{total_entities} entities")
+    detail_parts.append(f"{width_mm/1000:.1f}x{height_mm/1000:.1f}m")
+
+    if text_heights:
+        avg_h = sum(text_heights) / len(text_heights)
+        ratio = avg_h / width_mm * 100
+        if ratio < 0.5:
+            detail_parts.append(f"TEXT INVISIBLE ({ratio:.2f}%)")
+            text_ok = False
+        elif ratio > 10:
+            detail_parts.append(f"TEXT OVERSIZED ({ratio:.1f}%)")
+            text_ok = False
+        else:
+            detail_parts.append(f"text {ratio:.1f}%")
+    else:
+        detail_parts.append("no text")
+
+    if guid_count > 0:
+        detail_parts.append(f"{len(guid_set)} GUIDs")
+
+    ok = has_geometry and text_ok
+    _VERDICTS.append((view_type, ok, ", ".join(detail_parts)))
+
+
+_VERDICTS: List[Tuple[str, bool, str]] = []  # (view, pass, detail)
+
+def _write_log(out_dir: str):
+    """Flush buffered log lines + summary to a diagnostic text file."""
+    if not _LOG_LINES:
+        return
+    log_path = os.path.join(out_dir, 'dxf_diagnostic.txt')
+    stamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    # Build summary
+    summary = []
+    summary.append("")
+    summary.append("=" * 60)
+    summary.append("SUMMARY — read this section only")
+    summary.append("=" * 60)
+    passes = sum(1 for _, ok, _ in _VERDICTS if ok)
+    fails  = sum(1 for _, ok, _ in _VERDICTS if not ok)
+    for view, ok, detail in _VERDICTS:
+        tag = "PASS" if ok else "FAIL"
+        summary.append(f"  [{tag}] {view}: {detail}")
+    summary.append("")
+    if fails == 0:
+        summary.append(f"RESULT: ALL {passes} VIEWS PASS — no visual inspection needed")
+    else:
+        summary.append(f"RESULT: {fails} FAIL / {passes} PASS — inspect FAIL views")
+    summary.append("")
+
+    with open(log_path, 'w') as f:
+        f.write(f"DXF Diagnostic — {stamp}\n")
+        f.write("=" * 60 + "\n\n")
+        for line in _LOG_LINES:
+            f.write(line + "\n")
+        for line in summary:
+            f.write(line + "\n")
+
+    # Print summary to console too
+    for line in summary:
+        print(line)
+    print(f"  Diagnostic log → {log_path}")
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -242,8 +401,9 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                                              align=TextEntityAlignment.MIDDLE_CENTER)
 
     doc.saveas(out_dxf)
-    print(f"Floor plan DXF: {cut_count} cut polylines, {len(grids)} grid lines")
-    print(f"  → {out_dxf}")
+    _log(f"Floor plan DXF: {cut_count} cut polylines, {len(grids)} grid lines")
+    _log(f"  → {out_dxf}")
+    _audit_dxf(doc, out_dxf, "FLOOR PLAN")
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -460,9 +620,10 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                                              align=TextEntityAlignment.MIDDLE_CENTER)
 
     doc.saveas(out_dxf)
-    print(f"Elevation DXF ({face}): {len(face_elems)} elements, "
-          f"{len(face_grids)} grids")
-    print(f"  → {out_dxf}")
+    _log(f"Elevation DXF ({face}): {len(face_elems)} elements, "
+         f"{len(face_grids)} grids")
+    _log(f"  → {out_dxf}")
+    _audit_dxf(doc, out_dxf, f"ELEVATION {face.upper()}")
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -502,6 +663,11 @@ def main():
     if not do_plan and not do_elev:
         do_plan = True   # default: floor plan
 
+    _LOG_LINES.clear()
+    _VERDICTS.clear()
+    _log(f"DXF generation: {stem} (scale 1:{args.scale})")
+    _log(f"  Source: {args.db_path}")
+
     if do_plan:
         write_floor_plan_dxf(
             args.db_path,
@@ -513,6 +679,8 @@ def main():
             args.db_path, face,
             os.path.join(out_dir, f'{stem}_{face}_elevation.dxf'),
             scale=args.scale)
+
+    _write_log(out_dir)
 
 
 if __name__ == '__main__':
