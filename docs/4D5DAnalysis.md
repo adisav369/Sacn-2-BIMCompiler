@@ -3,7 +3,7 @@
 > **Foundation:** [Enterprise](Enterprise.md) · [LTU A-House](LTUAHouseAnalysis.md) · [DATA_MODEL](DATA_MODEL.md)
 
 <div style="max-width: 620px; margin: 32px auto; padding: 24px 40px; background: #263238; border-left: 4px solid #ff9800; text-align: center; border-radius: 4px;">
-<span style="font-size: 1.3em; line-height: 1.7; color: #eceff1; letter-spacing: 0.3px;">What was once <b style="color: #ff9800;">PRIMAVERA</b>'s domain, is now ours.</span>
+<span style="font-size: 1.3em; line-height: 1.7; color: #eceff1; letter-spacing: 0.3px;">What was once <b style="color: #ff9800;">PRIMAVERA/ORACLE</b>'s domain, is now ours.</span>
 </div>
 
 ## What We Have
