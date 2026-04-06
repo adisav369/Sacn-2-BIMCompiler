@@ -383,6 +383,16 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                             double[] dims = parentAABBStack.peek();
                             rw = dims[0]; rd = dims[1]; rh = dims[2];
                         }
+                        // S151 Bug 1 fix: bomAABB height is furniture extent, not room height.
+                        // When height < threshold, read actual ceiling height from metadata.
+                        // Implementing DuplexAnalysis.md §S150/S151 Finding 1 — Witness: W-DEVICE-PLACE
+                        if (SpaceScheduleDAO.needsCeilingOverride((int)(rh * 1000))) {
+                            double ceilingH = SpaceScheduleDAO.getCeilingHeightM(erpConn, spaceType);
+                            BIMLogger.info("GENERATIVE",
+                                "CEILING_OVERRIDE {} bomAABB_h={:.0f}mm < 2400mm → using metadata ceiling={:.0f}mm",
+                                childBomId, rh * 1000, ceilingH * 1000);
+                            rh = ceilingH;
+                        }
                         if (rw > 0.01 && rd > 0.01 && rh > 0.01) {
                             double[] roomAabb = {
                                 anchor[0], anchor[0] + rw,
@@ -392,7 +402,6 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                             String storey = storeyStack.isEmpty() ? "Unknown" : storeyStack.peek();
                             List<MEPDevicePlacer.DevicePlacement> devices =
                                 MEPDevicePlacer.placeDevices(erpConn, spaceType, roomAabb, mepOrderQty, childBomId);
-                            // Forensic: log every input to the AABB construction
                             BIMLogger.info("GENERATIVE",
                                 "ROOM {} type={} storey={} anchor=({:.4f},{:.4f},{:.4f}) bomAABB=({:.0f},{:.0f},{:.0f})mm → room=[{:.3f},{:.3f},{:.3f}]→[{:.3f},{:.3f},{:.3f}]m",
                                 childBomId, spaceType, storey,
@@ -421,15 +430,24 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                                     dp.deviceId(), dp.placementRule(), dp.anchorEnd(), disc,
                                     dp.position()[0], dp.position()[1], dp.position()[2],
                                     verdict, dp.placementRule());
+                                // S151 Bug 2 fix: read M_Product dimensions for Placement AABB
+                                // instead of hardcoded ±0.05m. DuplexAnalysis.md §S150/S151 Finding 2
+                                double hw = 0.05, hd = 0.05, hh = 0.05; // half-extents, fallback
+                                double[] prodDims = SpaceScheduleDAO.getProductDimensions(erpConn, dp.deviceId());
+                                if (prodDims != null) {
+                                    hw = prodDims[0] / 2.0;
+                                    hd = prodDims[1] / 2.0;
+                                    hh = prodDims[2] / 2.0;
+                                }
                                 PlacementLoader.Placement p = new PlacementLoader.Placement(
                                     buildingType,
                                     storey,
                                     "IfcFlowTerminal",
                                     childBomId + "_" + dp.deviceId() + "_" + (++ordinalCounter),
                                     ordinalCounter,
-                                    dp.position()[0] - 0.05, dp.position()[0] + 0.05,
-                                    dp.position()[1] - 0.05, dp.position()[1] + 0.05,
-                                    dp.position()[2] - 0.05, dp.position()[2] + 0.05,
+                                    dp.position()[0] - hw, dp.position()[0] + hw,
+                                    dp.position()[1] - hd, dp.position()[1] + hd,
+                                    dp.position()[2] - hh, dp.position()[2] + hh,
                                     null,
                                     disc,
                                     null, null,

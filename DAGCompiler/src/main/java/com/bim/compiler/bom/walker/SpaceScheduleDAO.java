@@ -123,6 +123,78 @@ public class SpaceScheduleDAO {
         return null;
     }
 
+    // ── Ceiling Height ───────────────────────────────────────────────────────
+
+    /** Minimum BOM AABB height (mm) before ceiling height override kicks in.
+     *  Any room whose furniture AABB is shorter than this gets the metadata ceiling height. */
+    private static final int MIN_ROOM_HEIGHT_MM = 2400;
+
+    /**
+     * Default ceiling height for a space type, in metres.
+     *
+     * <p>When the SET BOM's AABB height is furniture extent (e.g. 812mm sofa),
+     * the walker calls this to get the actual room ceiling height from metadata
+     * ({@code ad_space_type.default_ceiling_height_mm}).
+     *
+     * @param conn ERP.db connection
+     * @param spaceType abstract space type (e.g. "BATHROOM")
+     * @return ceiling height in metres; defaults to 2.7m if column missing or NULL
+     */
+    public static double getCeilingHeightM(Connection conn, String spaceType)
+            throws SQLException {
+        String sql = "SELECT default_ceiling_height_mm FROM ad_space_type WHERE Value = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, spaceType);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    int mm = rs.getInt(1);
+                    if (mm > 0) return mm / 1000.0;
+                }
+            }
+        }
+        return 2.7; // residential default
+    }
+
+    /**
+     * Whether the given BOM AABB height (mm) is below the threshold for
+     * ceiling height override. When true, the walker should use
+     * {@link #getCeilingHeightM} instead of the BOM AABB height.
+     */
+    public static boolean needsCeilingOverride(int aabbHeightMm) {
+        return aabbHeightMm > 0 && aabbHeightMm < MIN_ROOM_HEIGHT_MM;
+    }
+
+    // ── Product Dimensions ─────────────────────────────────────────────────
+
+    /**
+     * Read M_Product dimensions (width, depth, height) in metres.
+     *
+     * <p>Used by the generative walker to size Placement AABBs correctly
+     * (instead of hardcoded ±0.05m). Returns null if product not found
+     * or dimensions are zero.
+     *
+     * @param conn ERP.db connection
+     * @param productId product_id or Value to look up
+     * @return double[3] = {width, depth, height} in metres, or null
+     */
+    public static double[] getProductDimensions(Connection conn, String productId)
+            throws SQLException {
+        String sql = "SELECT width, depth, height FROM M_Product WHERE product_id = ? OR Value = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, productId);
+            ps.setString(2, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    double w = rs.getDouble(1);
+                    double d = rs.getDouble(2);
+                    double h = rs.getDouble(3);
+                    if (w > 0 && d > 0 && h > 0) return new double[]{w, d, h};
+                }
+            }
+        }
+        return null;
+    }
+
     // ── Space Type by Capability ────────────────────────────────────────────
 
     /**
