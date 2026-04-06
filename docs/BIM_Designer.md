@@ -1039,14 +1039,14 @@ dependency. One JSON object per line.
 **Request/response examples:**
 
 ```
-→ {"action":"compile","buildingId":"Ifc4_SampleHouse","bomDbPath":"library/_SH_compile.db"}
+→ {"action":"compile","buildingId":"SampleHouse","bomDbPath":"library/_SH_compile.db"}
 ← {"success":true,"elementCount":58,"compileTimeMs":847,"outputDbPath":"..."}
 
 → {"action":"verb","buildingId":"...","verbLine":"CHECK BOM BUILDING_SH"}
 ← {"success":true,"verb":"CHECK BOM","summary":"7 lines, 218.4m3"}
 
 → {"action":"listBuildings"}
-← [{"docTypeId":"...","name":"Ifc4_SampleHouse","docSubType":"SH","expectedElements":58,...}]
+← [{"docTypeId":"...","name":"SampleHouse","docSubType":"SH","expectedElements":58,...}]
 ```
 
 **Async push** (after ArtifactWatcher detects change + auto-recompile):
@@ -3045,7 +3045,7 @@ Federation addon: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federati
 ## 20. HTML UI — 4D/5D/6D/7D/8D (Data-Driven, Not Paint-Driven)
 
 <figure style="text-align: center; margin: 16px 0;">
-  <img src="assets/images/HTMLYAML.png" alt="BIM Designer HTML UI — BOM tree, DocAction buttons, discipline breakdown" width="680">
+  <img src="../assets/images/HTMLYAML.png" alt="BIM Designer HTML UI — BOM tree, DocAction buttons, discipline breakdown" width="680">
   <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">HTML UI (port 9878). BOM tree, DocAction lifecycle, discipline breakdown — the ERP layer alongside Bonsai's 3D viewport.</figcaption>
 </figure>
 
