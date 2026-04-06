@@ -68,8 +68,10 @@ public class ComponentLibrary implements AutoCloseable {
                         rs.getDouble("local_min_z"),
                         rs.getDouble("local_max_z")
                     ),
-                    AttachmentFace.valueOf(rs.getString("attachment_face")),
-                    Orientation.valueOf(rs.getString("orientation")),
+                    AttachmentFace.valueOf(rs.getString("attachment_face") != null
+                        ? rs.getString("attachment_face") : "CENTER"),
+                    Orientation.valueOf(rs.getString("orientation") != null
+                        ? rs.getString("orientation") : "UNKNOWN"),
                     rs.getInt("vertex_count"),
                     rs.getInt("face_count")
                 );
@@ -474,7 +476,7 @@ public class ComponentLibrary implements AutoCloseable {
      * Tries instance-level lookup first (building_type, ifc_class, storey, ordinal),
      * then falls back to type-level resolveGeometryByRef().
      *
-     * @param buildingType The building type (e.g., "Ifc4_SampleHouse")
+     * @param buildingType The building type (e.g., "SampleHouse")
      * @param ifcClass     The IFC class (e.g., "IfcFurnishingElement")
      * @param storey       The storey name (e.g., "Ground Floor")
      * @param ordinal      The position ordinal within (ifc_class, storey)

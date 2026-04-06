@@ -626,3 +626,60 @@ Stair flight, stringers, railings all rotated — visual orientation correct.
 **Logging:** `SPATIAL-REPORT` (grep pipeline log) confirms 0 wall outliers
 after identity-based matching. `BOM-SUMMARY` (grep IFCtoBOM log) shows the
 BOM tree structure including the half-unit's 51 children.
+
+## S150/S151 Generative MEP Placement
+
+**What it does:** The walker reads `ad_space_type_mep_bom` + `ad_placement_offset`
+and synthesizes MEP devices (sprinklers, outlets, fridge, etc.) in rooms with
+matching capabilities. Devices are NOT from the original IFC — they are compiled
+from building code rules. Output has 329 elements (215 extracted + 114 generative).
+
+**Room classification (S151):** `ScopeBomBuilder.inferRoleFromContent()` classifies
+rooms from furniture names when IfcSpace name is a room number (A102, B203):
+cabinet+counter→KITCHEN, vanity→BATHROOM, bed→BEDROOM, sofa→LIVING.
+
+**Generative device counts:** 20 OUTLET, 15 SWITCH, 13 SPRINKLER, 11 LIGHT,
+8 CEILING_FAN, 8 SUPPLY_DIFFUSER, 7 OUTLET_GFCI, 6 AIRCON_POINT, 6 OUTLET_20A,
+5 EXHAUST_FAN, 5 FLOOR_TRAP, 5 SINK, 3 TOILET, 2 FRIDGE.
+
+### Logging Channels
+
+| Channel | Grep pattern | What it shows |
+|---------|-------------|---------------|
+| GENERATIVE ROOM | `GENERATIVE.*ROOM` | Per-room: BOM ID, space type, anchor, AABB, device count |
+| GENERATIVE PLACE | `GENERATIVE.*PLACE` | Per-device: rule, anchor, discipline, position, IN/OUT verdict |
+| GENERATIVE BREACH | `GENERATIVE.*BREACH` | Devices outside room AABB — axis-by-axis diagnosis |
+| GENERATIVE SUMMARY | `GENERATIVE.*SUMMARY` | Total devices, rooms, breaches |
+
+### Known Findings (S151 — two issues for next session)
+
+**Finding 1: Z-axis breach — bomAABB height is furniture extent, not room height.**
+
+13/114 devices breach Z. All rooms have `bomAABB.height` = furniture max height
+(812mm sofa, 820mm vanity, 2000mm wardrobe), NOT the actual room height (2700mm).
+Placement offsets (SWITCH at 1200mm, SINK at 850mm, OUTLET_GFCI at 1000mm) exceed
+the furniture AABB. The anchor XY is correct (matches ARC furniture positions).
+
+```
+BREACH SWITCH pos=Z=2.750 room=[1.550→2.362] — offset 1.2m > room height 0.812m
+BREACH SINK   pos=Z=2.400 room=[1.550→2.370] — offset 0.85m > room height 0.82m
+```
+
+**Root cause:** `childBom.getAabbHeightMm()` returns the BOM's own AABB (computed
+from furniture child extents), not the IfcSpace height. The fix must read storey
+height from the FLOOR BOM or the extraction spatial_structure, or use a default
+storey height when bomAABB height < threshold.
+
+**Finding 2: LOD geometry — generative Placement AABB is ±0.05m hardcoded.**
+
+The `Placement` record for generative devices uses `dp.position() ± 0.05` for
+min/max on all axes. This 0.1m cube is then used by BuildingWriter to scale the
+LOD mesh. Products like FRIDGE (0.7×0.7×1.8m) get squashed into a 0.1m cube.
+Fix: use M_Product dimensions (width/depth/height from ERP.db) for the Placement
+AABB, not a hardcoded 0.05m offset.
+
+**Geometry stubs:** Products with no extraction geometry (SWITCH, OUTLET, FRIDGE,
+AIRCON_POINT, CEILING_FAN, EXHAUST_FAN, DATA_POINT, EMERGENCY_LIGHT, OUTLET_20A,
+OUTLET_GFCI) use box stub `f7051d6c5f17ad77` (8 vertices) in component_library.db.
+Products with extraction geometry (SPRINKLER, SINK, TOILET, LIGHT, FLOOR_TRAP,
+SUPPLY_DIFFUSER) resolve via LIKE match to real IFC meshes.

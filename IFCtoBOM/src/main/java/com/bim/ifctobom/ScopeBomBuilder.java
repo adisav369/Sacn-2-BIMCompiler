@@ -135,7 +135,17 @@ public class ScopeBomBuilder {
             ProductRegistrar.ensureAssemblyStub(bomConn, setBomId, "SET");
 
             // Create SET BOM header — AABB from element extents (no YAML dims)
+            // S151: deriveRole from space name first; if just a number, infer from furniture content
             String role = deriveRole(space.spaceName());
+            if (role.matches("[A-Z]?\\d+.*")) {
+                // Room number only (A102, B203, etc.) — classify from furniture content
+                String inferred = inferRoleFromContent(assigned);
+                if (inferred != null) {
+                    BIMLogger.fine("SCOPE", "space='{}' name-role='{}' → content-role='{}'",
+                        space.spaceName(), role, inferred);
+                    role = inferred;
+                }
+            }
             int catId = catLookup.getId(role);
             BomWriter.insertBom(bomConn, new BomWriter.BomRowBuilder(
                     setBomId, space.spaceName() + " SET", "SET", "ROOM")
@@ -255,5 +265,51 @@ public class ScopeBomBuilder {
         if (upper.contains("ROOF")) return "ROOF";
         // Default: use sanitized space name as role
         return spaceName.toUpperCase().replaceAll("[^A-Z0-9]", "_").replaceAll("_+", "_");
+    }
+
+    /**
+     * Infer room role from furniture content when the space name is just a number.
+     * Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 — Witness: W-DEVICE-PLACE
+     *
+     * <p>Classification from element names (case-insensitive):
+     * <ul>
+     *   <li>Cabinet + Counter/Sink → KITCHEN</li>
+     *   <li>Vanity/Basin → BATHROOM</li>
+     *   <li>Bed → BEDROOM</li>
+     *   <li>Sofa/Couch → LIVING</li>
+     *   <li>Desk/Workstation → OFFICE</li>
+     *   <li>Dining/Table (no cabinet) → DINING</li>
+     * </ul>
+     *
+     * @param elements assigned extraction elements in this space
+     * @return inferred role, or null if cannot classify
+     */
+    private static String inferRoleFromContent(List<ExtractionElement> elements) {
+        boolean hasCabinet = false, hasCounter = false, hasSink = false;
+        boolean hasVanity = false, hasBed = false, hasSofa = false;
+        boolean hasDesk = false, hasDiningTable = false;
+
+        for (ExtractionElement e : elements) {
+            String name = e.elementRef();
+            if (name == null) continue;
+            String upper = name.toUpperCase();
+
+            if (upper.contains("CABINET"))    hasCabinet = true;
+            if (upper.contains("COUNTER"))    hasCounter = true;
+            if (upper.contains("SINK"))       hasSink = true;
+            if (upper.contains("VANITY") || upper.contains("BASIN")) hasVanity = true;
+            if (upper.contains("BED") && !upper.contains("CABINET")) hasBed = true;
+            if (upper.contains("SOFA") || upper.contains("COUCH"))   hasSofa = true;
+            if (upper.contains("DESK") || upper.contains("WORKSTATION")) hasDesk = true;
+            if (upper.contains("DINING"))     hasDiningTable = true;
+        }
+
+        if (hasVanity) return "BATHROOM";  // vanity beats cabinet (bathroom vanity cabinets)
+        if (hasCabinet && (hasCounter || hasSink)) return "KITCHEN";
+        if (hasBed) return "BEDROOM";
+        if (hasSofa) return "LIVING";
+        if (hasDesk) return "OFFICE";
+        if (hasDiningTable) return "DINING";
+        return null;
     }
 }

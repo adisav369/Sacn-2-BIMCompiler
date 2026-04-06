@@ -86,6 +86,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** Count of sub-assemblies entered (onSubAssembly calls, depth > 0). */
     private int subAssemblyCount = 0;
 
+    /** MEP BOM depth counter — >0 means we're inside an MEP recipe (nested walk). §6.12.2: MEP pieces exempt from LMP. */
+    private int mepBomDepth = 0;
+
     /** Verb expansion counters for FINE logging. */
     private int placeCount = 0;
     private int clusterCount = 0;
@@ -93,6 +96,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     private int routeCount = 0;
     private int frameCount = 0;
     private int sprayCount = 0;
+    private int placeDeviceCount = 0;
     private int otherVerbCount = 0;
 
     private int ordinalCounter = 0;
@@ -103,6 +107,25 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
     /** Shim matcher for MEP tack origin resolution (§6.12.2). */
     private ShimMatcher shimMatcher;
+
+    /** ERP.db connection for generative MEP placement (ad_space_type_mep_bom + ad_placement_offset).
+     *  Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 — Witness: W-DEVICE-PLACE */
+    private Connection erpConn;
+
+    /** MEP order coverage level: 99=standard, 0=max, N=budget cap. Default 99. */
+    private int mepOrderQty = 99;
+
+    /** Count of generative MEP device placements emitted during this walk. */
+    private int generativeDeviceCount = 0;
+
+    /** Generative devices that breached their room AABB. */
+    private int generativeBreachCount = 0;
+
+    /** Per-device-type counts for generative MEP summary. */
+    private final Map<String, Integer> generativeDeviceCounts = new HashMap<>();
+
+    /** Per-room generative placement log — room BOM ID → device count. */
+    private final Map<String, Integer> generativeRoomCounts = new HashMap<>();
 
     /** IFC GloballyUniqueId: exactly 22 chars from base64url + '$'. */
     private static final Pattern IFC_GUID = Pattern.compile("^[0-9A-Za-z_$]{22}$");
@@ -125,6 +148,46 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         this.shimMatcher = matcher;
     }
 
+    /**
+     * Set ERP.db connection for generative MEP device placement.
+     * When set, the walker reads ad_space_type_mep_bom + ad_placement_offset
+     * to synthesize MEP device placements in rooms with matching capabilities.
+     */
+    public void setErpConn(Connection erpConn) {
+        this.erpConn = erpConn;
+    }
+
+    /**
+     * Set MEP order coverage level.
+     * @param qty 99=standard (default), 0=max fill, N=budget cap
+     */
+    public void setMepOrderQty(int qty) {
+        this.mepOrderQty = qty;
+    }
+
+    /** Count of generative MEP devices placed during this walk. */
+    public int getGenerativeDeviceCount() {
+        return generativeDeviceCount;
+    }
+
+    /** Emit generative MEP summary to INFO log — call after walk completes. */
+    public void emitGenerativeSummary() {
+        if (generativeDeviceCount == 0) {
+            BIMLogger.info("GENERATIVE", "SUMMARY: 0 generative devices (no rooms with MEP schedules)");
+            return;
+        }
+        BIMLogger.info("GENERATIVE", "SUMMARY: {} devices across {} rooms (orderQty={}) breaches={}",
+            generativeDeviceCount, generativeRoomCounts.size(), mepOrderQty, generativeBreachCount);
+        // Per-device breakdown sorted by count descending
+        generativeDeviceCounts.entrySet().stream()
+            .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+            .forEach(e -> BIMLogger.info("GENERATIVE", "  {} × {}",
+                e.getKey(), e.getValue()));
+        // Per-room breakdown
+        generativeRoomCounts.forEach((room, count) ->
+            BIMLogger.info("GENERATIVE", "  room {} → {} devices", room, count));
+    }
+
     public List<PlacementLoader.Placement> getPlacements() {
         return List.copyOf(placements);
     }
@@ -141,8 +204,8 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
     /** Verb breakdown string for FINE logging. */
     public String getVerbBreakdown() {
-        return String.format("%d PLACE, %d CLUSTER, %d TILE, %d ROUTE, %d FRAME, %d SPRAY, %d other",
-                placeCount, clusterCount, tileCount, routeCount, frameCount, sprayCount, otherVerbCount);
+        return String.format("%d PLACE, %d CLUSTER, %d TILE, %d ROUTE, %d FRAME, %d SPRAY, %d PLACE_DEVICE, %d other",
+                placeCount, clusterCount, tileCount, routeCount, frameCount, sprayCount, placeDeviceCount, otherVerbCount);
     }
 
     // ── BOMVisitor events ─────────────────────────────────────────
@@ -178,7 +241,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
                     // Track discipline from MEP sub-BOMs (§6.12.2 shim+joint piece walk)
                     // Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 — Witness: W-J4-MEP-WALK
-                    if ("MEP".equals(childBom.getBomType()) && childBom.getProductCategory() != null) {
+                    String cbt = childBom.getBomType();
+                    if (cbt != null && cbt.startsWith("MEP") && childBom.getProductCategory() != null) {
+                        mepBomDepth++;
                         Discipline mepDisc = Discipline.fromString(childBom.getProductCategory());
                         if (mepDisc != null) {
                             disciplineStack.push(mepDisc);
@@ -296,6 +361,99 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         } else {
             parentAABBStack.push(new double[]{0, 0, 0});  // unknown — envelope check will report UNKNOWN
         }
+
+        // ── S150: Generative MEP device placement ───────────────────
+        // When entering a SET BOM whose product category maps to a space type
+        // with MEP schedules, synthesize device placements from metadata.
+        // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 — Witness: W-DEVICE-PLACE
+        if (erpConn != null && childBomId != null) {
+            try {
+                MBOM childBom = MBOM.get(bomConn, childBomId);
+                if (childBom != null && "SET".equals(childBom.getBomType())
+                        && childBom.getProductCategory() != null) {
+                    String spaceType = MEPDevicePlacer.resolveSpaceType(erpConn, childBom.getProductCategory());
+                    if (spaceType != null) {
+                        double[] anchor = anchorStack.peek();
+                        // Use BOM header AABB (mm→m) — room envelope from extraction
+                        double rw = childBom.getAabbWidthMm() / 1000.0;
+                        double rd = childBom.getAabbDepthMm() / 1000.0;
+                        double rh = childBom.getAabbHeightMm() / 1000.0;
+                        // Fallback: parentAABBStack (M_Product dims)
+                        if (rw <= 0 || rd <= 0 || rh <= 0) {
+                            double[] dims = parentAABBStack.peek();
+                            rw = dims[0]; rd = dims[1]; rh = dims[2];
+                        }
+                        if (rw > 0.01 && rd > 0.01 && rh > 0.01) {
+                            double[] roomAabb = {
+                                anchor[0], anchor[0] + rw,
+                                anchor[1], anchor[1] + rd,
+                                anchor[2], anchor[2] + rh
+                            };
+                            String storey = storeyStack.isEmpty() ? "Unknown" : storeyStack.peek();
+                            List<MEPDevicePlacer.DevicePlacement> devices =
+                                MEPDevicePlacer.placeDevices(erpConn, spaceType, roomAabb, mepOrderQty, childBomId);
+                            // Forensic: log every input to the AABB construction
+                            BIMLogger.info("GENERATIVE",
+                                "ROOM {} type={} storey={} anchor=({:.4f},{:.4f},{:.4f}) bomAABB=({:.0f},{:.0f},{:.0f})mm → room=[{:.3f},{:.3f},{:.3f}]→[{:.3f},{:.3f},{:.3f}]m",
+                                childBomId, spaceType, storey,
+                                anchor[0], anchor[1], anchor[2],
+                                rw * 1000, rd * 1000, rh * 1000,
+                                roomAabb[0], roomAabb[2], roomAabb[4],
+                                roomAabb[1], roomAabb[3], roomAabb[5]);
+                            for (MEPDevicePlacer.DevicePlacement dp : devices) {
+                                Discipline disc = resolveDeviceDiscipline(dp.anchorEnd());
+                                // Containment check: is device inside the room AABB?
+                                boolean inX = dp.position()[0] >= roomAabb[0] && dp.position()[0] <= roomAabb[1];
+                                boolean inY = dp.position()[1] >= roomAabb[2] && dp.position()[1] <= roomAabb[3];
+                                boolean inZ = dp.position()[2] >= roomAabb[4] && dp.position()[2] <= roomAabb[5];
+                                String verdict = (inX && inY && inZ) ? "IN" : "OUT";
+                                if (!inX || !inY || !inZ) {
+                                    generativeBreachCount++;
+                                    BIMLogger.warn("GENERATIVE",
+                                        "  BREACH {} pos=({:.3f},{:.3f},{:.3f}) room=[{:.3f}→{:.3f}, {:.3f}→{:.3f}, {:.3f}→{:.3f}] X={} Y={} Z={}",
+                                        dp.deviceId(),
+                                        dp.position()[0], dp.position()[1], dp.position()[2],
+                                        roomAabb[0], roomAabb[1], roomAabb[2], roomAabb[3], roomAabb[4], roomAabb[5],
+                                        inX ? "OK" : "OUT", inY ? "OK" : "OUT", inZ ? "OK" : "OUT");
+                                }
+                                BIMLogger.info("GENERATIVE",
+                                    "  PLACE {} rule={} anchor={} disc={} pos=({:.3f},{:.3f},{:.3f}) {} source=ad_placement_offset.{}",
+                                    dp.deviceId(), dp.placementRule(), dp.anchorEnd(), disc,
+                                    dp.position()[0], dp.position()[1], dp.position()[2],
+                                    verdict, dp.placementRule());
+                                PlacementLoader.Placement p = new PlacementLoader.Placement(
+                                    buildingType,
+                                    storey,
+                                    "IfcFlowTerminal",
+                                    childBomId + "_" + dp.deviceId() + "_" + (++ordinalCounter),
+                                    ordinalCounter,
+                                    dp.position()[0] - 0.05, dp.position()[0] + 0.05,
+                                    dp.position()[1] - 0.05, dp.position()[1] + 0.05,
+                                    dp.position()[2] - 0.05, dp.position()[2] + 0.05,
+                                    null,
+                                    disc,
+                                    null, null,
+                                    dp.deviceId(),
+                                    dp.deviceId(),
+                                    ElementIdentity.generated(
+                                        childBomId + "_" + dp.deviceId() + "_" + ordinalCounter, ""),
+                                    0.0
+                                );
+                                placements.add(p);
+                                generativeDeviceCount++;
+                                placeDeviceCount++;
+                                generativeDeviceCounts.merge(dp.deviceId(), 1, Integer::sum);
+                            }
+                            if (!devices.isEmpty()) {
+                                generativeRoomCounts.put(childBomId, devices.size());
+                            }
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                BIMLogger.warn("COMPILE", "GenerativeMEP for {} — {}", childBomId, e.getMessage());
+            }
+        }
     }
 
     @Override
@@ -338,6 +496,12 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 if (childBom != null && "SET".equals(childBom.getBomType())
                         && childBom.getProductCategory() != null
                         && Discipline.fromString(childBom.getProductCategory()) != null) {
+                    if (!disciplineStack.isEmpty()) disciplineStack.pop();
+                }
+                // §6.12.2: Pop MEP depth counter on leave
+                String cbtLeave = childBom != null ? childBom.getBomType() : null;
+                if (cbtLeave != null && cbtLeave.startsWith("MEP")) {
+                    if (mepBomDepth > 0) mepBomDepth--;
                     if (!disciplineStack.isEmpty()) disciplineStack.pop();
                 }
             } catch (SQLException ex) {
@@ -463,7 +627,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         }
 
         // ── Verb expansion: compute per-instance positions ────────────
-        int qty = line.getQty();
+        // §6.12.2 §6: variable-length pieces are ONE instance at the specified length.
+        // InterimWorkshop already recomputed half-extents above; qty=2345mm means 1 piece, not 2345 pieces.
+        // Guard: qty_type=FIXED pieces keep their qty (a tee fitting with qty=2 means 2 fittings).
+        int qty = (line.isLengthBased() && "VARIABLE".equals(line.getQtyType())) ? 1 : line.getQty();
         String verbRef = line.getVerbRef();
         double[][] offsets = expandVerb(verbRef, qty, leafDx, leafDy, leafDz);
 
@@ -474,6 +641,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         else if (verbRef.startsWith("ROUTE:"))   { routeCount++; }
         else if (verbRef.startsWith("FRAME:"))   { frameCount++; }
         else if (verbRef.startsWith("SPRAY:"))   { sprayCount++; }
+        else if (verbRef.startsWith("PLACE_DEVICE:")) { placeDeviceCount++; }
         else { otherVerbCount++; }
 
         // CP-1: Load MA (Material Allocation) GUIDs for identity-based matching.
@@ -588,7 +756,14 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     localDx0 = dx0 * cosInv - dy0 * sinInv;
                     localDy0 = dx0 * sinInv + dy0 * cosInv;
                 }
-                boolean lmp = localDx0 >= -0.001 && localDy0 >= -0.001 && dz0 >= -0.001;
+                // §6.12.2: MEP pieces route both directions from shim — negative offsets are valid.
+                // Exempt from LMP containment; envelope check still applies.
+                // Detection: mepBomDepth>0 (nested walk) OR owning BOM is MEP/MEP_RECIPE (flat walk).
+                String ownerBomType = ctx.bom() != null ? ctx.bom().getBomType() : null;
+                boolean isMep = mepBomDepth > 0
+                        || (ownerBomType != null && ownerBomType.startsWith("MEP"));
+                boolean lmp = isMep
+                        || (localDx0 >= -0.001 && localDy0 >= -0.001 && dz0 >= -0.001);
 
                 // Envelope check: childMAX <= parentMAX (using actual min/max, mirror-safe)
                 boolean envelope;
@@ -720,6 +895,16 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             return expandLine(verbRef, qty, originDx, originDy, originDz);
         } else if (verbRef.startsWith("LINE_MULTI:")) {
             return expandLineMulti(verbRef, qty, originDx, originDy, originDz);
+        } else if (verbRef.startsWith("PLACE_DEVICE:")) {
+            // PLACE_DEVICE:rule — position is computed by MEPDevicePlacer from room AABB + offset.
+            // When this verb appears on an explicit BOM line (not generative), the position is
+            // already encoded as origin — the verb is a marker, not a geometry expander.
+            // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 — Witness: W-DEVICE-PLACE
+            double[][] result = new double[qty][3];
+            for (int i = 0; i < qty; i++) {
+                result[i] = new double[]{originDx, originDy, originDz};
+            }
+            return result;
         }
 
         // Unknown verb — fall back to origin position for all instances
@@ -1162,6 +1347,21 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             com.bim.compiler.validation.ProductCategory.resolve(ifcClass));
         Discipline d = Discipline.fromString(text);
         return d != null ? d : Discipline.ARC;
+    }
+
+    /**
+     * Resolve Discipline from MEP anchor type.
+     * RISER/STACK → CW/SP (plumbing), PANEL → ELEC.
+     * Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 — Witness: W-DEVICE-PLACE
+     */
+    private static Discipline resolveDeviceDiscipline(String anchorEnd) {
+        if (anchorEnd == null) return Discipline.ELEC;
+        return switch (anchorEnd) {
+            case "RISER" -> Discipline.CW;
+            case "STACK" -> Discipline.SP;
+            case "PANEL" -> Discipline.ELEC;
+            default -> Discipline.ELEC;
+        };
     }
 
     // Implementing AUDIT_20260402.txt §4 — emitGeoSummary removed.

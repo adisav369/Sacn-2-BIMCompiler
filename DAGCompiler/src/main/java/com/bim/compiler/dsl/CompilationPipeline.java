@@ -514,6 +514,15 @@ public class CompilationPipeline {
                 shimMatcher.loadShimAttributes(compConn);
                 visitor.setShimMatcher(shimMatcher);
 
+                // S150/S151: Wire ERP.db for generative MEP device placement.
+                // The walker reads ad_space_type_mep_bom + ad_placement_offset to synthesize
+                // code-required devices (sprinklers, outlets, fridge) in rooms with matching
+                // capabilities — even when those devices weren't in the original IFC.
+                // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 — Witness: W-DEVICE-PLACE
+                visitor.setErpConn(compConn);
+                int mepQty = Integer.parseInt(System.getProperty("mep.order.qty", "99"));
+                visitor.setMepOrderQty(mepQty);
+
                 BOMWalker walker = new BOMWalker(bomConn, compConn);
                 walker.walk(root.getValue(), List.of(visitor), ctx.entry().projectName());
 
@@ -528,8 +537,10 @@ public class CompilationPipeline {
                 ctx.setSpec(new BuildingSpec(ctx.entry().name(),
                     List.of(), null, List.of(), null, null));
 
-                BIMLogger.info("COMPILE", "BOM walk: {} → {} elements from {} sub-assemblies",
-                    root.getValue(), placements.size(), visitor.getSubAssemblyCount());
+                BIMLogger.info("COMPILE", "BOM walk: {} → {} elements from {} sub-assemblies (generative MEP: {})",
+                    root.getValue(), placements.size(), visitor.getSubAssemblyCount(),
+                    visitor.getGenerativeDeviceCount());
+                visitor.emitGenerativeSummary();
                 BIMLogger.fine("COMPILE", "{}: walk complete: {} placements from {} sub-assemblies",
                     ctx.entry().name(), placements.size(), visitor.getSubAssemblyCount());
                 String verbBreakdown = visitor.getVerbBreakdown();
@@ -590,8 +601,10 @@ public class CompilationPipeline {
                 OrderLineProductCallout.applyYamlOverrides(compileDb, erpDb, orderId);
 
                 // 4. Parasitic qty walk: expand discipline OrderLines with BOM children
+                //    C_BPartner_ID read from C_Order header (set by BomDropper)
                 if (inserted > 0) {
-                    int expanded = OrderLineProductCallout.expandDisciplineLines(compileDb, erpDb, orderId);
+                    int expanded = OrderLineProductCallout.expandDisciplineLines(
+                            compileDb, erpDb, orderId);
                     BIMLogger.info("ROUTE", "Parasitic qty: {} child lines expanded", expanded);
                 }
 
@@ -2305,5 +2318,33 @@ public class CompilationPipeline {
              ResultSet rs = stmt.executeQuery(sql)) {
             return rs.next() ? rs.getInt(1) : 0;
         }
+    }
+
+    /**
+     * Lookup C_BPartner_ID by Value (= projectName).
+     * iDempiere convention: resolve Value once, use _ID as FK everywhere.
+     */
+    private static int lookupBPartnerId(Connection erpDb, String projectName) throws SQLException {
+        try (PreparedStatement ps = erpDb.prepareStatement(
+                "SELECT C_BPartner_ID FROM C_BPartner WHERE Value = ?")) {
+            ps.setString(1, projectName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+            }
+        }
+        return 0;
+    }
+
+    /** Lookup C_BPartner.Value by _ID — for log display (iDempiere: report shows Value). */
+    private static String lookupBPartnerValue(Connection erpDb, int bpartnerId) throws SQLException {
+        if (bpartnerId <= 0) return "NONE";
+        try (PreparedStatement ps = erpDb.prepareStatement(
+                "SELECT Value FROM C_BPartner WHERE C_BPartner_ID = ?")) {
+            ps.setInt(1, bpartnerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getString(1);
+            }
+        }
+        return "UNKNOWN";
     }
 }
