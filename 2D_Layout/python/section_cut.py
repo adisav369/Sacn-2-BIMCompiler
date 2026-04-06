@@ -6,11 +6,11 @@ Each element's triangle mesh is intersected with a horizontal plane at Z=cut_z,
 yielding line segments that are chained into closed polylines (contours).
 
 Usage:
-    python3 2D_layout/section_cut.py output/ifc4_samplehouse.db
-    python3 2D_layout/section_cut.py output/ifc4_samplehouse.db --cut-height 1.0
-    python3 2D_layout/section_cut.py output/ifc4_samplehouse.db --svg output.svg
-    python3 2D_layout/section_cut.py output/ifc2x3_duplex.db --list-storeys
-    python3 2D_layout/section_cut.py output/ifc2x3_duplex.db --storey "Level 2"
+    python3 2D_layout/section_cut.py output/samplehouse.db
+    python3 2D_layout/section_cut.py output/samplehouse.db --cut-height 1.0
+    python3 2D_layout/section_cut.py output/samplehouse.db --svg output.svg
+    python3 2D_layout/section_cut.py output/duplex.db --list-storeys
+    python3 2D_layout/section_cut.py output/duplex.db --storey "Level 2"
 """
 
 import sqlite3

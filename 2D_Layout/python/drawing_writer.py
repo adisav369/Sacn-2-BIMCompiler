@@ -8,9 +8,9 @@ architectural drawings: floor plans, elevations, roof plans.
 Output: SVG viewable in any browser. Crisp vector at any zoom.
 
 Usage:
-    python3 tools/drawing_writer.py output/ifc4_samplehouse.db --floor-plan
-    python3 tools/drawing_writer.py output/ifc4_samplehouse.db --elevation front
-    python3 tools/drawing_writer.py output/ifc4_samplehouse.db --all
+    python3 tools/drawing_writer.py output/samplehouse.db --floor-plan
+    python3 tools/drawing_writer.py output/samplehouse.db --elevation front
+    python3 tools/drawing_writer.py output/samplehouse.db --all
 
 Style conventions follow Malaysian JKR / TB-LKTN standard drawing practice.
 Style constants are grouped for future migration to ad_drawing_style metadata table.
@@ -20,6 +20,7 @@ import sqlite3
 import sys
 import math
 import os
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import List, Tuple, Optional, Dict
 from section_cut import section_cut as run_section_cut, parse_vertices_blob
@@ -33,14 +34,20 @@ from section_cut import section_cut as run_section_cut, parse_vertices_blob
 SCALE = 100          # 1:100 scale — 1m world = 10mm paper
 PAPER_FACTOR = 1000 / SCALE  # world_m * PAPER_FACTOR = paper_mm (= 10)
 
-# Line weights (mm on paper → SVG stroke-width in paper coords)
-LW_WALL_EXT     = 0.50   # Exterior walls — bold
+# Line weights (mm on paper) — ISO 128 / TB-LKTN JKR standard
+# Wide  0.70: ground line, section-cut walls (strongest visual anchor)
+# Medium 0.50: visible building outline, eave, roof silhouette
+# Thin  0.35: interior partitions, doors, hidden edges
+# Hair  0.18: dimensions, grids, hatching, centre lines
+# Note: 0.15 is below ISO hairline — avoid (renders as 1px on screen, disappears in print)
+LW_GROUND       = 0.70   # Ground line, apron edge — boldest
+LW_WALL_EXT     = 0.50   # Exterior walls / building outline
 LW_WALL_INT     = 0.35   # Interior partitions
-LW_WALL_GLASS   = 0.18   # Curtain wall / glazing
-LW_OPENING      = 0.25   # Door arcs, window marks
+LW_WALL_GLASS   = 0.25   # Curtain wall / glazing
+LW_OPENING      = 0.35   # Door/window outlines
 LW_DIMENSION    = 0.18   # Dimension lines, extension lines
 LW_GRID         = 0.18   # Grid lines (dashed)
-LW_FURNITURE    = 0.15   # Furniture outlines (light)
+LW_FURNITURE    = 0.18   # Furniture outlines (ISO hairline — not 0.15)
 
 # Text sizes (mm on paper)
 TXT_DIM         = 2.5    # Dimension values
@@ -448,8 +455,12 @@ def roof_silhouette(db_path, face):
         verts = parse_vertices_blob(vert_blob, vertex_count)
         if face in ('front', 'rear'):
             h_vals = verts[:, 0]   # X axis horizontal
+            if face == 'rear':
+                h_vals = -h_vals   # mirror: rear viewer sees X reversed
         else:
             h_vals = verts[:, 1]   # Y axis horizontal
+            if face == 'right':
+                h_vals = -h_vals   # mirror: right viewer sees Y reversed
         z_vals = verts[:, 2]
         for h, z in zip(h_vals, z_vals):
             all_pts.append((float(h), float(z)))
@@ -464,30 +475,57 @@ def detect_levels(elements: Dict[str, List['Element']]) -> list:
     """Detect building height levels from elements for elevation annotation.
 
     Returns sorted list of (label, z_value) tuples with snapped Z values.
+    Follows TB-LKTN convention: every meaningful horizontal datum is marked —
+    GRD. FLOOR, WINDOW SILL, WINDOW HEAD / DOOR HEAD, CEILING, RIDGE.
     """
+    from collections import Counter
+
+    def snap(z): return round(z * 1000 / SNAP_MODULE) * SNAP_MODULE / 1000
+
     levels = [('FFL', 0.0)]  # Finished Floor Level always at 0
 
-    walls = elements['walls']
-    roofs = elements.get('roofs', [])
+    walls   = elements['walls']
+    roofs   = elements.get('roofs', [])
+    windows = elements.get('windows', [])
+    doors   = elements.get('doors', [])
 
-    # Ceiling level: top of interior partitions (non-exterior, non-glass)
+    # Ceiling level: mode of interior partition tops
     partition_tops = [w.max_z for w in walls
                       if not w.is_exterior and not w.is_glass]
     if partition_tops:
-        # Use mode (most common top height) — snap to nearest 100mm
-        from collections import Counter
-        rounded = [round(z * 1000 / SNAP_MODULE) * SNAP_MODULE / 1000
-                   for z in partition_tops]
+        rounded = [snap(z) for z in partition_tops]
         ceiling_z = Counter(rounded).most_common(1)[0][0]
         levels.append(('CLG', ceiling_z))
 
-    # Roof ridge level: highest point of roof elements
+    # Window sill: mode of window bottom Z (most common sill height)
+    sill_zs = [snap(w.min_z) for w in windows if w.max_z - w.min_z > 0.1]
+    if sill_zs:
+        sill_z = Counter(sill_zs).most_common(1)[0][0]
+        if sill_z > 0.05:   # ignore sills at floor level (full-height glazing)
+            levels.append(('SILL', sill_z))
+
+    # Window / door head: mode of top Z across all openings
+    # In TB-LKTN this is typically a single datum (all heads at same height)
+    head_zs = [snap(e.max_z) for e in windows + doors if e.max_z > 0.1]
+    if head_zs:
+        head_z = Counter(head_zs).most_common(1)[0][0]
+        levels.append(('HEAD', head_z))
+
+    # Roof ridge level: highest roof point
     if roofs:
-        ridge_z = max(r.max_z for r in roofs)
-        ridge_z = round(ridge_z * 1000 / SNAP_MODULE) * SNAP_MODULE / 1000
+        ridge_z = snap(max(r.max_z for r in roofs))
         levels.append(('RIDGE', ridge_z))
 
-    return sorted(levels, key=lambda lv: lv[1])
+    # Deduplicate levels that are within 100mm of each other
+    # (e.g. door head == ceiling — keep the more informative label)
+    PRIORITY = {'CLG': 0, 'RIDGE': 1, 'HEAD': 2, 'SILL': 3, 'FFL': 4}
+    merged = {}
+    for lbl, z in sorted(levels, key=lambda lv: PRIORITY.get(lv[0], 9)):
+        already = [k for k, v in merged.items() if abs(v - z) < 0.10]
+        if not already:
+            merged[lbl] = z
+
+    return sorted(merged.items(), key=lambda lv: lv[1])
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -514,6 +552,11 @@ class SVGBuilder:
         self.view_min_y = 0
         self.view_width = 100
         self.view_height = 100
+        self._defs: List[str] = []
+
+    def add_def(self, content: str):
+        """Add a raw SVG element into <defs> (patterns, markers, etc.)."""
+        self._defs.append(content)
 
     def set_viewbox(self, min_x, min_y, width, height):
         self.view_min_x = min_x
@@ -584,6 +627,13 @@ class SVGBuilder:
         else:
             self.line(layer, x - d, y - d, x + d, y + d, stroke, stroke_width)
 
+    def rect_fill(self, layer, x, y, w, h, stroke, stroke_width, fill_url, opacity=1.0):
+        """Rect with a fill referencing a <defs> pattern/gradient by URL."""
+        self._add(layer,
+            f'<rect x="{x:.3f}" y="{y:.3f}" width="{w:.3f}" height="{h:.3f}" '
+            f'stroke="{stroke}" stroke-width="{stroke_width:.3f}" '
+            f'fill="{fill_url}" opacity="{opacity}"/>')
+
     def polygon(self, layer, points, stroke, stroke_width, fill='none', opacity=1.0):
         """Draw a closed polygon from a list of (x,y) tuples."""
         pts_str = " ".join(f"{x:.3f},{y:.3f}" for x, y in points)
@@ -617,6 +667,7 @@ class SVGBuilder:
             f'style="background:{COL_BACKGROUND}">',
             f'  <defs>',
             f'    <style>text {{ font-family: "Arial", "Helvetica", sans-serif; }}</style>',
+        ] + [f'    {d}' for d in self._defs] + [
             f'  </defs>',
         ]
 
@@ -1081,15 +1132,15 @@ def draw_floor_plan(elements: Dict[str, List[Element]], db_path: str,
             # Grid bubble at top
             bubble_y = bld_oy - MARGIN_TOP + GRID_CIRCLE_R + 3
             svg.circle('grid', px, bubble_y, GRID_CIRCLE_R,
-                        COL_GRID, LW_GRID, COL_BACKGROUND)
+                        COL_WALL, LW_WALL_INT, COL_BACKGROUND)
             svg.text('grid', px, bubble_y, g.label,
-                     TXT_GRID, color=COL_GRID)
+                     TXT_GRID, color=COL_WALL)
             # Grid bubble at bottom
             bubble_y_bot = bld_oy + bld_h_paper + MARGIN_BOTTOM - GRID_CIRCLE_R - 3
             svg.circle('grid', px, bubble_y_bot, GRID_CIRCLE_R,
-                        COL_GRID, LW_GRID, COL_BACKGROUND)
+                        COL_WALL, LW_WALL_INT, COL_BACKGROUND)
             svg.text('grid', px, bubble_y_bot, g.label,
-                     TXT_GRID, color=COL_GRID)
+                     TXT_GRID, color=COL_WALL)
         else:
             _, py = to_sheet(0, g.position)
             x_left = bld_ox - MARGIN_LEFT + 5
@@ -1099,15 +1150,15 @@ def draw_floor_plan(elements: Dict[str, List[Element]], db_path: str,
             # Grid bubble at left
             bubble_x = bld_ox - MARGIN_LEFT + GRID_CIRCLE_R + 3
             svg.circle('grid', bubble_x, py, GRID_CIRCLE_R,
-                        COL_GRID, LW_GRID, COL_BACKGROUND)
+                        COL_WALL, LW_WALL_INT, COL_BACKGROUND)
             svg.text('grid', bubble_x, py, g.label,
-                     TXT_GRID, color=COL_GRID)
+                     TXT_GRID, color=COL_WALL)
             # Grid bubble at right
             bubble_x_rt = bld_ox + bld_w_paper + MARGIN_RIGHT - GRID_CIRCLE_R - 3
             svg.circle('grid', bubble_x_rt, py, GRID_CIRCLE_R,
-                        COL_GRID, LW_GRID, COL_BACKGROUND)
+                        COL_WALL, LW_WALL_INT, COL_BACKGROUND)
             svg.text('grid', bubble_x_rt, py, g.label,
-                     TXT_GRID, color=COL_GRID)
+                     TXT_GRID, color=COL_WALL)
 
     # ── Draw furniture (light, behind walls) ──
     for f in furniture:
@@ -1384,32 +1435,41 @@ def draw_elevation(elements: Dict[str, List[Element]], face: str,
     if not walls:
         return ""
 
-    # Determine which axis we're looking along and which is horizontal
-    if face in ('front', 'rear'):
-        # Looking along Y axis — horizontal = X, vertical = Z
-        h_key = lambda e: (e.min_x, e.max_x)
-        v_key = lambda e: (e.min_z, e.max_z)
-        # Filter elements on the relevant face
-        if face == 'front':
-            bld_min_y = min(e.min_y for e in walls)
-            face_elems = [e for e in walls + doors + windows
-                          if e.min_y < bld_min_y + 1.0]
-        else:
-            bld_max_y = max(e.max_y for e in walls)
-            face_elems = [e for e in walls + doors + windows
-                          if e.max_y > bld_max_y - 1.0]
-    else:
-        # Looking along X axis — horizontal = Y, vertical = Z
-        h_key = lambda e: (e.min_y, e.max_y)
-        v_key = lambda e: (e.min_z, e.max_z)
-        if face == 'left':
-            bld_min_x = min(e.min_x for e in walls)
-            face_elems = [e for e in walls + doors + windows
-                          if e.min_x < bld_min_x + 1.0]
-        else:
-            bld_max_x = max(e.max_x for e in walls)
-            face_elems = [e for e in walls + doors + windows
-                          if e.max_x > bld_max_x - 1.0]
+    # Determine view axis and horizontal coordinate.
+    # h_sign = -1 for rear/right: viewer is on the far side so the building
+    # is seen left-right REVERSED — the mirror of the front/left elevation.
+    # Without this, front and rear both show the same tilt direction.
+    v_key = lambda e: (e.min_z, e.max_z)
+    if face == 'front':
+        h_key  = lambda e: (e.min_x, e.max_x)
+        h_sign = 1
+        grid_axis = 'x'
+        bld_min_y = min(e.min_y for e in walls)
+        face_elems = [e for e in walls + doors + windows
+                      if e.min_y < bld_min_y + 1.0]
+    elif face == 'rear':
+        # Looking south from north: X is reversed — larger X is on the left
+        h_key  = lambda e: (-e.max_x, -e.min_x)
+        h_sign = -1
+        grid_axis = 'x'
+        bld_max_y = max(e.max_y for e in walls)
+        face_elems = [e for e in walls + doors + windows
+                      if e.max_y > bld_max_y - 1.0]
+    elif face == 'left':
+        h_key  = lambda e: (e.min_y, e.max_y)
+        h_sign = 1
+        grid_axis = 'y'
+        bld_min_x = min(e.min_x for e in walls)
+        face_elems = [e for e in walls + doors + windows
+                      if e.min_x < bld_min_x + 1.0]
+    else:  # right
+        # Looking west from east: Y is reversed
+        h_key  = lambda e: (-e.max_y, -e.min_y)
+        h_sign = -1
+        grid_axis = 'y'
+        bld_max_x = max(e.max_x for e in walls)
+        face_elems = [e for e in walls + doors + windows
+                      if e.max_x > bld_max_x - 1.0]
 
     svg = SVGBuilder()
 
@@ -1422,6 +1482,11 @@ def draw_elevation(elements: Dict[str, List[Element]], face: str,
     h_max = max(h_key(e)[1] for e in all_vis)
     v_min = min(v_key(e)[0] for e in all_vis)
     v_max = max(v_key(e)[1] for e in all_vis)
+
+    # Extend downward for apron/ground below FFL
+    APRON_Z   = -0.100   # concrete apron level (100mm below FFL)
+    GRD_Z     = -0.250   # natural ground (150mm below apron)
+    v_min = min(v_min, GRD_Z)
 
     elev_w = (h_max - h_min) * PAPER_FACTOR
     elev_h = (v_max - v_min) * PAPER_FACTOR
@@ -1477,12 +1542,108 @@ def draw_elevation(elements: Dict[str, List[Element]], face: str,
                          drawing_title=face_titles.get(face, face.upper()),
                          drawing_no=f'A-0{face_idx.get(face, 2)}')
 
-    # Draw ground line
-    gx1, gy1 = to_elev(h_min - 0.5, 0)
-    gx2, gy2 = to_elev(h_max + 0.5, 0)
-    svg.line('wall_stroke', gx1, gy1, gx2, gy2, COL_WALL, 0.7)
+    # ── Roof hatch pattern (vertical lines = metal roofing sheets) ──
+    hatch_spacing = 1.0   # 1mm paper = 100mm at 1:100 — dense, reads as material
+    svg.add_def(
+        f'<pattern id="roof_hatch" x="0" y="0" '
+        f'width="{hatch_spacing:.1f}" height="{hatch_spacing:.1f}" '
+        f'patternUnits="userSpaceOnUse">'
+        f'<line x1="{hatch_spacing/2:.1f}" y1="0" '
+        f'x2="{hatch_spacing/2:.1f}" y2="{hatch_spacing:.1f}" '
+        f'stroke="#000000" stroke-width="0.25"/>'
+        f'</pattern>'
+    )
 
-    # Draw walls in elevation
+    # ── Grid lines on elevation ──
+    elev_grids = snap_grids(derive_grids(walls))
+    # Apply h_sign: grid positions in world coords, flip for rear/right views
+    face_grids_raw = [g for g in elev_grids if g.axis == grid_axis]
+    face_grids = sorted(
+        [type('G', (), {'label': g.label, 'axis': g.axis,
+                        'position': g.position * h_sign})()
+         for g in face_grids_raw],
+        key=lambda g: g.position)
+
+    # Extend h_min/h_max to include grid positions
+    if face_grids:
+        h_min = min(h_min, face_grids[0].position)
+        h_max = max(h_max, face_grids[-1].position)
+
+    GRID_ABOVE  = 20.0    # mm above building top to extend grid line
+    BUBBLE_R    = GRID_CIRCLE_R
+    BUBBLE_TOP  = 5.0     # mm gap above building top before bubble centre
+
+    for g in face_grids:
+        gx_paper, gy_bldg_top = to_elev(g.position, v_max)
+        gy_line_top = gy_bldg_top - GRID_ABOVE
+        gy_grd      = to_elev(g.position, GRD_Z)[1]
+        # Vertical grid line: from below bubble to ground
+        svg.line('grid', gx_paper, gy_line_top + BUBBLE_R * 2 + BUBBLE_TOP,
+                 gx_paper, gy_grd,
+                 COL_GRID, LW_GRID, dash="4,1,1,1")
+        # Bubble (circle + label)
+        bubble_cy = gy_line_top + BUBBLE_R + BUBBLE_TOP
+        svg.circle('grid', gx_paper, bubble_cy, BUBBLE_R,
+                   COL_WALL, LW_WALL_INT, COL_BACKGROUND)
+        svg.text('grid', gx_paper, bubble_cy, g.label, TXT_GRID, color=COL_WALL)
+
+    # ── Bay dimensions above grid bubbles ──
+    if len(face_grids) >= 2:
+        _, first_top = to_elev(face_grids[0].position, v_max)
+        dim_y     = first_top - GRID_ABOVE + BUBBLE_TOP - BUBBLE_R * 2 - 4.0
+        overall_y = dim_y - 8.0
+
+        for i in range(len(face_grids) - 1):
+            xa, _ = to_elev(face_grids[i].position, 0)
+            xb, _ = to_elev(face_grids[i + 1].position, 0)
+            bay_mm  = abs(face_grids[i + 1].position - face_grids[i].position) * 1000
+            snapped = round(bay_mm / SNAP_MODULE) * SNAP_MODULE
+            mid_x   = (xa + xb) / 2
+            svg.line('dimension', xa, dim_y, xb, dim_y, COL_DIM, LW_DIMENSION)
+            svg.line('dimension', xa, dim_y - 1.5, xa, dim_y + 1.5, COL_DIM, LW_DIMENSION)
+            svg.line('dimension', xb, dim_y - 1.5, xb, dim_y + 1.5, COL_DIM, LW_DIMENSION)
+            svg.tick_mark('dimension', xa, dim_y, 'x', COL_DIM, LW_DIMENSION)
+            svg.tick_mark('dimension', xb, dim_y, 'x', COL_DIM, LW_DIMENSION)
+            svg.text('dimension', mid_x, dim_y - 2.5, f'{int(snapped)}', TXT_DIM)
+
+        x_first, _ = to_elev(face_grids[0].position, 0)
+        x_last,  _ = to_elev(face_grids[-1].position, 0)
+        total_mm      = abs(face_grids[-1].position - face_grids[0].position) * 1000
+        snapped_total = round(total_mm / SNAP_MODULE) * SNAP_MODULE
+        svg.line('dimension', x_first, overall_y, x_last, overall_y, COL_DIM, LW_DIMENSION)
+        svg.line('dimension', x_first, overall_y - 1.5, x_first, overall_y + 1.5, COL_DIM, LW_DIMENSION)
+        svg.line('dimension', x_last,  overall_y - 1.5, x_last,  overall_y + 1.5, COL_DIM, LW_DIMENSION)
+        svg.tick_mark('dimension', x_first, overall_y, 'x', COL_DIM, LW_DIMENSION)
+        svg.tick_mark('dimension', x_last,  overall_y, 'x', COL_DIM, LW_DIMENSION)
+        svg.text('dimension', (x_first + x_last) / 2, overall_y - 2.5,
+                 f'{int(snapped_total)}', TXT_DIM)
+
+    # ── GRD. LEVEL bold ground line (ISO 128: widest line = visual base) ──
+    gx1, gy_grd = to_elev(h_min - 0.5, GRD_Z)
+    gx2, _      = to_elev(h_max + 0.5, GRD_Z)
+    svg.line('wall_stroke', gx1, gy_grd, gx2, gy_grd, COL_WALL, LW_GROUND)
+
+    # ── Concrete apron step (GRD_Z to APRON_Z, slightly wider than walls) ──
+    ax1, ay_top = to_elev(h_min - 0.2, APRON_Z)
+    ax2, ay_bot = to_elev(h_max + 0.2, GRD_Z)
+    apron_w = ax2 - ax1
+    apron_h = ay_bot - ay_top
+    svg.rect('wall_fill', ax1, ay_top, apron_w, apron_h, COL_WALL, LW_WALL_INT, '#E0E0E0')
+
+    # ── GRD. FLOOR LEVEL line (FFL) ──
+    fx1, fy_ffl = to_elev(h_min - 0.3, 0.0)
+    fx2, _      = to_elev(h_max + 0.3, 0.0)
+    svg.line('wall_stroke', fx1, fy_ffl, fx2, fy_ffl, COL_WALL, 0.35)
+
+    # ── Building facade silhouette — solid grey base before individual elements ──
+    # Draw the full facade bounding box first; element rects punch openings on top.
+    sil_x, sil_y_top = to_elev(h_min, v_max)
+    _, sil_y_bot = to_elev(h_min, 0.0)   # FFL = Z 0.0
+    sil_w = (h_max - h_min) * PAPER_FACTOR
+    sil_h = sil_y_bot - sil_y_top
+    svg.rect('wall_fill', sil_x, sil_y_top, sil_w, sil_h, 'none', 0, '#D0D0D0')
+
+    # ── Draw walls in elevation ──
     for e in face_elems:
         hh = h_key(e)
         vv = v_key(e)
@@ -1496,22 +1657,32 @@ def draw_elevation(elements: Dict[str, List[Element]], face: str,
                          COL_GLASS, LW_WALL_GLASS, COL_GLASS, 0.2)
             else:
                 svg.rect('wall_fill', x1, y1, max(w, 0.5), max(h, 0.5),
-                         COL_WALL, LW_WALL_EXT, '#F8F8F8')
+                         COL_WALL, LW_WALL_EXT, '#C8C8C8')
         elif e.ifc_class == 'IfcWindow':
             svg.rect('opening', x1, y1, w, h,
-                     COL_OPENING, LW_OPENING, COL_GLASS, 0.15)
+                     COL_OPENING, LW_OPENING, '#FFFFFF', 1.0)
+            # Louvre lines (horizontal stripes, 150mm real spacing = 1.5mm paper at 1:100)
+            louvre_spacing = 1.5   # mm paper
+            n_louvres = max(1, int(h / louvre_spacing) - 1)
+            for li in range(1, n_louvres + 1):
+                ly = y1 + li * (h / (n_louvres + 1))
+                svg.line('opening', x1, ly, x1 + w, ly, COL_WALL, 0.13)
         elif e.ifc_class == 'IfcDoor':
             svg.rect('opening', x1, y1, w, h,
                      COL_OPENING, LW_OPENING, '#E8E8E8')
 
-    # Draw roof outline — mesh-based silhouette via convex hull projection
-    # Extracts actual roof shape from triangle mesh vertices, captures curves
+    # ── Draw roof outline — mesh-based silhouette via convex hull ──
     roof_hull = roof_silhouette(db_path, face)
     if roof_hull:
         hull_pts = [to_elev(h, z) for h, z in roof_hull]
-        svg.polygon('wall_stroke', hull_pts, COL_WALL, LW_WALL_EXT, '#F0F0F0')
+        # Fill with hatch pattern, then draw bold outline
+        pts_str = " ".join(f"{px:.3f},{py:.3f}" for px, py in hull_pts)
+        svg._add('wall_fill',
+            f'<polygon points="{pts_str}" stroke="none" '
+            f'fill="url(#roof_hatch)" opacity="1.0"/>')
+        svg.polygon('wall_stroke', hull_pts, COL_WALL, LW_WALL_EXT, 'none')
 
-        # Eave line — lowest edge of hull, drawn bold
+        # Eave line — bold
         eave_z_hull = min(z for _, z in roof_hull)
         eave_pts = sorted([(h, z) for h, z in roof_hull
                            if abs(z - eave_z_hull) < 0.05])
@@ -1520,42 +1691,74 @@ def draw_elevation(elements: Dict[str, List[Element]], face: str,
             ex2, ey2 = to_elev(eave_pts[-1][0], eave_pts[-1][1])
             svg.line('wall_stroke', ex1, ey1, ex2, ey2, COL_WALL, LW_WALL_EXT)
 
-    # ── Height levels: grid lines, markers, vertical dimensions ──
+    # ── Height levels: markers and vertical dimensions ──
+    # APRON and GRD are drawn as geometry (apron rect, bold ground line) but
+    # not added as label markers — they sit ~100–250mm below FFL which is
+    # only 1–2.5mm paper at 1:100, causing label crowding against the margin.
     levels = detect_levels(elements)
+    levels = sorted(levels, key=lambda lv: lv[1])
 
     LEVEL_LABELS = {
-        'FFL': 'FFL',
-        'CLG': 'CEILING LEVEL',
+        'FFL':   'GRD. FLOOR LEVEL',
+        'SILL':  'WINDOW SILL LEVEL',
+        'HEAD':  'WINDOW / DOOR HEAD',
+        'CLG':   'BEAM / CEILING LEVEL',
         'RIDGE': 'RIDGE LEVEL',
     }
+    # Dashed lines: SILL and HEAD are shorter (span only the opening zone)
+    # FFL, CLG, RIDGE span the full building width — TB-LKTN convention
+    FULL_WIDTH = {'FFL', 'CLG', 'RIDGE'}
 
     # Horizontal dashed lines at each level
     for lbl, lz in levels:
         _, ly = to_elev(h_min, lz)
-        lx_left = elev_ox - 5
-        lx_right = elev_ox + elev_w + 5
+        if lbl in FULL_WIDTH:
+            lx_left  = elev_ox - 5
+            lx_right = elev_ox + elev_w + 5
+        else:
+            # Span only to the DIM column on the right so they read as datum
+            lx_left  = elev_ox
+            lx_right = elev_ox + elev_w + DIM_OFFSET_1
         svg.line('grid', lx_left, ly, lx_right, ly,
                  COL_GRID, LW_GRID, dash="4,1,1,1")
 
-    # Level markers (left side) with elevation values
+    # Level markers (left side) — enforce minimum label spacing so closely
+    # spaced levels (APRON/GRD only 1-2mm apart at 1:100) don't overlap.
+    MIN_LABEL_GAP = TXT_DIM * 3.0   # 3 text-heights between label rows
+    marker_x = elev_ox - 5
+
+    # Build list of (paper_y, lbl, lz) sorted top-to-bottom
+    level_paper_y = []
     for lbl, lz in levels:
         _, ly = to_elev(h_min, lz)
-        marker_x = elev_ox - 5
-        # Marker line
+        level_paper_y.append([ly, lbl, lz])
+    level_paper_y.sort(key=lambda r: r[0])   # top = smaller y
+
+    # Push labels apart (downward) when they would collide
+    label_y = [r[0] for r in level_paper_y]
+    for i in range(1, len(label_y)):
+        if label_y[i] - label_y[i - 1] < MIN_LABEL_GAP:
+            label_y[i] = label_y[i - 1] + MIN_LABEL_GAP
+
+    for (ly, lbl, lz), label_ly in zip(level_paper_y, label_y):
+        # Horizontal tick at TRUE level position
         svg.line('dimension', marker_x - 18, ly, marker_x, ly,
-                 COL_DIM, LW_DIMENSION)
-        # Triangle marker
-        tri_x = marker_x
+                 COL_DIM, 0.35)
+        # Filled triangle pointer (bold, ISO 128 level marker style)
         svg.polygon('dimension',
-                    [(tri_x, ly), (tri_x - 2.5, ly - 1.5),
-                     (tri_x - 2.5, ly + 1.5)],
-                    COL_DIM, LW_DIMENSION, fill=COL_WALL)
-        # Level name
-        svg.text('label', marker_x - 19, ly - 2,
+                    [(marker_x, ly), (marker_x - 3.0, ly - 1.8),
+                     (marker_x - 3.0, ly + 1.8)],
+                    COL_WALL, 0.35, fill=COL_WALL)
+        # Leader line from label_ly to true ly if offset
+        if abs(label_ly - ly) > 0.5:
+            svg.line('dimension', marker_x - 16, ly,
+                     marker_x - 16, label_ly, COL_DIM, 0.18)
+        # Level name (above label_ly)
+        svg.text('label', marker_x - 21, label_ly - TXT_DIM * 0.7,
                  LEVEL_LABELS.get(lbl, lbl), TXT_DIM, anchor='end')
-        # Elevation value (e.g., +0.000, +2.300)
+        # Elevation value (below label_ly)
         sign = '+' if lz >= 0 else ''
-        svg.text('label', marker_x - 19, ly + 2,
+        svg.text('label', marker_x - 21, label_ly + TXT_DIM * 0.7,
                  f'{sign}{lz:.3f}', TXT_DIM, anchor='end')
 
     # Vertical height dimensions (right side)
@@ -1621,6 +1824,88 @@ def draw_elevation(elements: Dict[str, List[Element]], face: str,
           f"{len(roofs)} roof, {len(slabs)} slab")
 
     return svg.to_string()
+
+# ─────────────────────────────────────────────────────────────────
+# PAIRED ELEVATION SHEET (two elevations stacked on one A3)
+# ─────────────────────────────────────────────────────────────────
+
+def combine_elevation_svgs(svg1_str: str, svg2_str: str,
+                           face_a: str, face_b: str,
+                           gap_mm: float = 15.0) -> str:
+    """Stack two elevation SVGs vertically on one sheet.
+
+    Each SVG viewBox is in mm. The top elevation (face_a) sits above,
+    the bottom elevation (face_b) sits below, separated by gap_mm.
+    Preserves all defs (patterns, styles) from both.
+    """
+    ET.register_namespace('', 'http://www.w3.org/2000/svg')
+
+    def parse_viewbox(svg_str):
+        """Return (min_x, min_y, width, height) from SVG viewBox attribute."""
+        start = svg_str.find('viewBox="') + 9
+        end   = svg_str.find('"', start)
+        parts = svg_str[start:end].split()
+        return float(parts[0]), float(parts[1]), float(parts[2]), float(parts[3])
+
+    def extract_body(svg_str):
+        """Extract inner SVG content: defs items and layer groups."""
+        # Strip XML declaration and outer <svg> wrapper — keep <defs> + <g> elements
+        root = ET.fromstring(svg_str.encode())
+        ns = {'svg': 'http://www.w3.org/2000/svg'}
+        defs_content = []
+        groups = []
+        for child in root:
+            tag = child.tag.split('}')[-1]
+            if tag == 'defs':
+                for d in child:
+                    defs_content.append(ET.tostring(d, encoding='unicode'))
+            elif tag == 'g':
+                groups.append(ET.tostring(child, encoding='unicode'))
+        return defs_content, groups
+
+    vb1 = parse_viewbox(svg1_str)
+    vb2 = parse_viewbox(svg2_str)
+
+    w = max(vb1[2], vb2[2])
+    h = vb1[3] + gap_mm + vb2[3]
+
+    defs1, groups1 = extract_body(svg1_str)
+    defs2, groups2 = extract_body(svg2_str)
+
+    # Deduplicate defs by id
+    all_defs = {}
+    for d in defs1 + defs2:
+        key = d[:60]  # rough dedup key
+        all_defs[key] = d
+
+    px_w = int(w * 3)
+    px_h = int(h * 3)
+
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w:.2f} {h:.2f}" '
+        f'width="{px_w}" height="{px_h}" style="background:#FFFFFF">',
+        '  <defs>',
+        '    <style>text { font-family: "Arial", "Helvetica", sans-serif; }</style>',
+    ]
+    for d in all_defs.values():
+        lines.append(f'    {d}')
+    lines.append('  </defs>')
+
+    # face_a (top drawing)
+    lines.append(f'  <g id="elev_{face_a}" transform="translate(0,0)">')
+    lines.extend(f'    {g}' for g in groups1)
+    lines.append('  </g>')
+
+    # face_b (bottom drawing) — shifted down
+    y_shift = vb1[3] + gap_mm
+    lines.append(f'  <g id="elev_{face_b}" transform="translate(0,{y_shift:.2f})">')
+    lines.extend(f'    {g}' for g in groups2)
+    lines.append('  </g>')
+
+    lines.append('</svg>')
+    return '\n'.join(lines)
+
 
 # ─────────────────────────────────────────────────────────────────
 # ROOF PLAN DRAWING
@@ -1848,9 +2133,19 @@ def draw_roof_plan(elements: Dict[str, List[Element]], db_path: str,
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python3 tools/drawing_writer.py <output.db> [--floor-plan] "
-              "[--elevation front|rear|left|right] [--all]")
-        print("\nGenerates 2D architectural SVG drawings from compiled BIM database.")
+        print("Usage: python3 drawing_writer.py <output.db> [options]")
+        print()
+        print("Options:")
+        print("  --floor-plan          Generate floor plan SVG")
+        print("  --roof-plan           Generate roof plan SVG")
+        print("  --elevation FACE      Generate elevation SVG (front|rear|left|right)")
+        print("  --all                 Generate all SVG drawings")
+        print("  --dxf                 Also generate DXF files alongside SVGs")
+        print()
+        print("Examples:")
+        print("  python3 drawing_writer.py samplehouse.db --all")
+        print("  python3 drawing_writer.py samplehouse.db --all --dxf")
+        print("  python3 drawing_writer.py samplehouse.db --elevation front --dxf")
         sys.exit(1)
 
     db_path = sys.argv[1]
@@ -1862,6 +2157,7 @@ def main():
     args = sys.argv[2:]
     do_plan = '--floor-plan' in args or '--all' in args or not args
     do_roof = '--roof-plan' in args or '--all' in args
+    do_dxf  = '--dxf' in args
     do_elev = []
     if '--all' in args:
         do_elev = ['front', 'rear', 'left', 'right']
@@ -1879,6 +2175,16 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     db_stem = os.path.splitext(os.path.basename(db_path))[0]
 
+    # Lazy-import DXF writer only when --dxf requested
+    dxf_writer = None
+    if do_dxf:
+        try:
+            import drawing_writer_dxf as _dxf
+            dxf_writer = _dxf
+        except ImportError:
+            print("Warning: ezdxf not installed — skipping DXF output. "
+                  "Install with: pip3 install ezdxf", file=sys.stderr)
+
     if do_plan:
         svg_content = draw_floor_plan(elements, db_path, meta)
         if svg_content:
@@ -1886,6 +2192,9 @@ def main():
             with open(out_path, 'w') as f:
                 f.write(svg_content)
             print(f"  → {out_path}")
+        if dxf_writer:
+            dxf_writer.write_floor_plan_dxf(
+                db_path, os.path.join(out_dir, f'{db_stem}_floor_plan.dxf'))
 
     if do_roof:
         svg_content = draw_roof_plan(elements, db_path, meta)
@@ -1895,13 +2204,32 @@ def main():
                 f.write(svg_content)
             print(f"  → {out_path}")
 
+    elev_svgs = {}
     for face in do_elev:
         svg_content = draw_elevation(elements, face, db_path, meta)
         if svg_content:
+            elev_svgs[face] = svg_content
             out_path = os.path.join(out_dir, f'{db_stem}_{face}_elevation.svg')
             with open(out_path, 'w') as f:
                 f.write(svg_content)
             print(f"  → {out_path}")
+        if dxf_writer:
+            dxf_writer.write_elevation_dxf(
+                db_path, face,
+                os.path.join(out_dir, f'{db_stem}_{face}_elevation.dxf'))
+
+    # Paired sheets: front+rear on one sheet, left+right on another
+    for face_a, face_b, sheet_name in [
+        ('front', 'rear',  'frontrear_elevations'),
+        ('left',  'right', 'leftright_elevations'),
+    ]:
+        if face_a in elev_svgs and face_b in elev_svgs:
+            paired = combine_elevation_svgs(
+                elev_svgs[face_a], elev_svgs[face_b], face_a, face_b)
+            out_path = os.path.join(out_dir, f'{db_stem}_{sheet_name}.svg')
+            with open(out_path, 'w') as f:
+                f.write(paired)
+            print(f"  → {out_path}  [paired sheet]")
 
 
 if __name__ == '__main__':

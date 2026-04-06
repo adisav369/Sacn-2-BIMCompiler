@@ -257,9 +257,9 @@ Rosetta Stones (extracted DBs) are NOT inputs to 2D_Layout. Only compiled DBs ar
 
 | Source (DAGCompiler output) | Copy in 2D_Layout | Status |
 |-----------------------------|-------------------|--------|
-| `DAGCompiler/lib/output/ifc4_samplehouse.db` | `lib/input/ifc4_samplehouse.db` | **Active test target** |
-| `DAGCompiler/lib/output/ifc2x3_duplex.db` | `lib/input/ifc2x3_duplex.db` | Available, not tested yet |
-| `DAGCompiler/lib/output/sjtii_terminal.db` | `lib/input/sjtii_terminal.db` | Available, not tested yet |
+| `DAGCompiler/lib/output/samplehouse.db` | `lib/input/samplehouse.db` | **Active test target** |
+| `DAGCompiler/lib/output/duplex.db` | `lib/input/duplex.db` | Available, not tested yet |
+| `DAGCompiler/lib/output/terminal.db` | `lib/input/terminal.db` | Available, not tested yet |
 
 **Testing on SampleHouse (SH) only for now.** Get SH correct to professional standards first, then verify Duplex and Terminal.
 
@@ -284,7 +284,7 @@ Rosetta Stones (extracted DBs) are NOT inputs to 2D_Layout. Only compiled DBs ar
 | `python/drawing_writer.py` | Python prototype (reference for Java port) |
 | `python/section_cut.py` | Python mesh slicer (reference for Java port) |
 | `lib/input/2D_metadata.db` | Drawing styles, symbols, title block definitions |
-| `lib/input/ifc4_samplehouse.db` | SH compiled DB — primary test building |
+| `lib/input/samplehouse.db` | SH compiled DB — primary test building |
 
 ## 10. References
 
@@ -645,3 +645,160 @@ After 2D23D import, run the Rosetta Stone gates against the source DXF geometry:
 | 3 | Project output.db → SVG | Compare to source DXF visually |
 | 4 | Automate overlay diff (max offset metric) | W-2D-ROUNDTRIP quantified |
 | 5 | Confidence score → WF-R1/R2 state mapping in Designer | Wireframe-first UX for DXF imports |
+
+---
+
+## 14. DXF Output — Professional Architectural Format
+
+### 14.1 Why DXF alongside SVG
+
+SVG is a browser rendering sidecar. DXF is the **professional deliverable** that architects
+open in AutoCAD, ArchiCAD, FreeCAD, and QCAD. Key differences:
+
+| Property | SVG | DXF |
+|----------|-----|-----|
+| Units | ViewBox (implicit mm) | `$INSUNITS=4` (explicit mm) |
+| Coordinates | Paper-space (PAPER_FACTOR applied) | Model-space (true mm, 1:1) |
+| Layers | `<g id>` groups (no metadata) | Named layers + colour + linetype |
+| Line types | `stroke-dasharray` (hardcoded) | LTSCALE-scaled standard linetypes |
+| Dimensions | Hardcoded SVG geometry | DIMSTYLE table (auto-scaling) |
+| Round-trip | Cannot overlay on source DXF | Direct coordinate comparison |
+| App integration | Browser only | Open in any CAD tool |
+
+The round-trip proof (W-2D-ROUNDTRIP) requires DXF output: overlay derived DXF on
+source DXF and measure max offset. SVG has no equivalent overlay mechanism.
+
+### 14.2 Layer Naming — AIA Standard
+
+| Our internal layer | AIA DXF layer name | ISO 13567 |
+|--------------------|--------------------|-----------|
+| `wall_stroke` (exterior cut) | `A-WALL-FULL` | A-WL-FL |
+| `wall_stroke` (partition cut) | `A-WALL-PRTN` | A-WL-PT |
+| `wall_fill` | `A-WALL-PATT` | A-WL-PA |
+| `opening` (windows) | `A-GLAZ` | A-GL |
+| `opening` (doors) | `A-DOOR` | A-DR |
+| `grid` | `A-GRID` | A-GR |
+| `dimension` | `A-ANNO-DIMS` | A-AN-DI |
+| `label` / `room_label` | `A-ANNO-TEXT` | A-AN-TX |
+| `furniture` | `A-FURN` | A-FU |
+| `title_block` | `A-TTLB` | A-TB |
+
+### 14.3 Line Types and Weights — ISO 128
+
+DXF standard linetypes (not hardcoded dash patterns):
+
+| Element | DXF linetype | Weight (pen) |
+|---------|-------------|-------------|
+| Ground line | `CONTINUOUS` | 0.70 mm |
+| Section-cut wall outline | `CONTINUOUS` | 0.50 mm |
+| Interior partition | `CONTINUOUS` | 0.35 mm |
+| Visible (projection) | `CONTINUOUS` | 0.25 mm |
+| Hidden edges | `HIDDEN` | 0.18 mm |
+| Grid / centre lines | `CENTER` | 0.18 mm |
+| Dimensions, hatching | `CONTINUOUS` | 0.18 mm |
+
+The critical principle: **LTSCALE × linetype definition = printed dash length**.
+`LTSCALE` must equal `SCALE / 100` so patterns look correct at the drawing scale.
+Our SVG engine currently hardcodes dash lengths — these must be replaced with a
+scale-aware formula: `dash_mm = base_dash × (SCALE / 100)`.
+
+### 14.4 DXF Model Space vs Paper Space
+
+DXF geometry lives in **model space** at 1:1 (true mm). Viewports in **paper space**
+apply the scale transform. This means:
+
+- All coordinates written at world scale (× 1000 for m→mm, no PAPER_FACTOR)
+- Dimension text size = `TXT_DIM × SCALE` (2.5mm at 1:100 → 250 in model space)
+- `DIMSCALE = SCALE` in the DIMSTYLE table → all annotations scale correctly
+
+Our SVG engine applies `PAPER_FACTOR` before writing. The DXF exporter must **not**
+apply PAPER_FACTOR — write raw world coordinates.
+
+### 14.5 Implementation — `drawing_writer_dxf.py`
+
+```python
+import ezdxf
+
+def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = 100):
+    doc = ezdxf.new('R2010')
+    doc.header['$INSUNITS'] = 4   # mm
+    msp = doc.modelspace()
+
+    # Define AIA layers
+    for name, color, ltype in [
+        ('A-WALL-FULL', 7, 'CONTINUOUS'),
+        ('A-GRID',      8, 'CENTER'),
+        ('A-ANNO-DIMS', 7, 'CONTINUOUS'),
+        ...
+    ]:
+        doc.layers.add(name=name, color=color, linetype=ltype)
+
+    # LTSCALE: dash patterns scale with drawing scale
+    doc.header['$LTSCALE'] = scale / 100.0
+
+    # DIMSTYLE: text height, tick marks, scale factor
+    dimstyle = doc.dimstyles.new('ARCH')
+    dimstyle.dxf.dimscale = scale
+    dimstyle.dxf.dimtxt   = 2.5   # mm at 1:1 (= 2.5/scale on paper)
+    dimstyle.dxf.dimblk   = 'ARCHTICK'  # 45° tick, not arrow
+
+    # Write geometry in model-space mm (no PAPER_FACTOR)
+    for element in cut_elements:
+        for contour in section_cut(element):
+            points = [(x * 1000, y * 1000) for x, y in contour]
+            msp.add_lwpolyline(points, dxfattribs={'layer': 'A-WALL-FULL'})
+
+    doc.saveas(out_dxf)
+```
+
+### 14.6 Round-Trip Verification (W-2D-ROUNDTRIP)
+
+```python
+# Compare derived DXF against source DXF
+import ezdxf
+
+def overlay_diff(derived_dxf, source_dxf, tolerance_mm=50):
+    """Measure max offset between matching wall segments."""
+    derived = ezdxf.readfile(derived_dxf)
+    source  = ezdxf.readfile(source_dxf)
+    # For each wall in derived A-WALL-FULL layer:
+    #   Find closest wall segment in source
+    #   Measure centroid offset
+    # Assert max_offset <= tolerance_mm
+```
+
+Because coordinates are in model-space mm, the comparison is direct — no viewport
+inverse-transform needed. This is W-SYNTHETIC-RS-2 for SJTII T1.
+
+### 14.7 Professional Readability Standards (SVG + DXF)
+
+These apply to BOTH output formats. Defects noticed during SH review vs TBLKTN reference:
+
+**Line weights (ISO 128 pen scale at 1:100):**
+- Ground line: **0.70 mm** — boldest line, visual base of every elevation
+- Section-cut building outline: **0.50 mm**
+- Partitions, doors: **0.35 mm**
+- Glass, annotations: **0.25 mm**
+- Dimensions, grid, hatching: **0.18 mm** (ISO hairline — minimum legible in print)
+- `0.15 mm` and below: **do not use** — prints as 1px, invisible on A3
+
+**Text heights (at 1:100 on paper):**
+- Drawing title: 5.0 mm
+- Room labels: 3.5 mm
+- Grid bubble: 3.0 mm
+- Dimensions: 2.5 mm (= 250mm real — legible at arm's length on A3)
+- Elevation values: 2.5 mm
+
+**Label spacing:**
+- Minimum gap between adjacent level markers: 3× text height (7.5 mm at TXT_DIM=2.5)
+- When levels are < MIN_LABEL_GAP apart (e.g. APRON ↔ GRD only 1-2mm paper), use
+  a leader line to offset the label while the triangle marker stays at the true level
+
+**Bubble sizing:**
+- Grid circle radius: 4.0 mm (8 mm diameter) — do not reduce below 3.5 mm
+
+**Dash patterns (scale-aware):**
+- Grid CENTER line: `(4 × SCALE/100), (1 × SCALE/100), (1 × SCALE/100), (1 × SCALE/100)`
+- Hidden DASHED: `(4 × SCALE/100), (2 × SCALE/100)`
+- Currently hardcoded in SVG — must be computed from SCALE constant
+
