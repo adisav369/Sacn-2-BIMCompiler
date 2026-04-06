@@ -284,65 +284,147 @@ def _audit_dxf(doc, out_dxf: str, view_type: str):
     _VERDICTS.append((view_type, ok, ", ".join(detail_parts)))
 
     # ── TBLKLTN completeness check (post-process) ──
-    # Reference: Java SVG DrawingWriter = the target spec for a professional drawing.
-    # Each feature is tagged HAVE / MISS against the reference.
-    _log(f"    ── TBLKLTN Completeness ──")
+    # Reads 2D_metadata.db as the reference spec for a professional drawing.
+    # Compares DXF actual counts against metadata-defined expectations.
+    # Like Rosetta Stone: expected vs actual, quantitative, per feature.
+    _log(f"    ── TBLKLTN Completeness (vs 2D_metadata.db) ──")
     is_plan = 'FLOOR' in view_type or 'PLAN' in view_type
     is_elev = 'ELEV' in view_type
+    text_strs = [e[0] for e in text_entries]
 
-    features = []  # (name, have: bool)
+    # Read metadata reference counts
+    meta = _read_metadata_ref()
+
+    features = []  # (name, have: bool, actual, expected_desc)
     if is_plan:
+        n_poly = counts.get('LWPOLYLINE', 0)
+        n_grid = counts.get('LINE', 0)
+        n_circ = counts.get('CIRCLE', 0)
+        n_furn = sum(1 for e in msp if e.dxftype() == 'LWPOLYLINE'
+                     and e.dxf.layer == 'A-FURN')
+        grid_labels_found = [t for t in text_strs if len(t) == 1 and (t.isalpha() or t.isdigit())]
         features = [
-            ("Wall section outlines",   counts.get('LWPOLYLINE', 0) > 5),
-            ("Grid lines",              counts.get('LINE', 0) >= 2),
-            ("Grid bubble circles",     counts.get('CIRCLE', 0) >= 2),
-            ("Grid labels (A,B,1,2..)", any(t in [e[0] for e in text_entries]
-                                            for t in ('A','B','1','2'))),
-            ("GUID xdata for roundtrip",guid_count >= 5),
-            ("Furniture bounding boxes", any(e.dxf.layer == 'A-FURN'
-                                            for e in msp if e.dxftype() == 'LWPOLYLINE')),
-            ("Bay dimensions",          counts.get('DIMENSION', 0) > 0),
-            ("Room labels",             False),   # not yet in DXF writer
-            ("Door swing arcs",         False),   # not yet in DXF writer
-            ("Wall fill / hatch",       False),   # not yet in DXF writer
-            ("Window sill lines",       False),   # not yet in DXF writer
-            ("North arrow",             False),   # not yet in DXF writer
-            ("Title block",             False),   # not yet in DXF writer
-            ("Scale bar",               False),   # not yet in DXF writer
-            ("Door/window schedule",    False),   # not yet in DXF writer
+            ("Wall section polylines",   n_poly > 5,          str(n_poly),     ">5 from section cut"),
+            ("Grid lines",               n_grid >= 2,         str(n_grid),     f"≥2 per {meta['grid_axes']} axes"),
+            ("Grid bubbles",             n_circ >= 2,         str(n_circ),     f"2× per grid line, r={meta['bubble_r']}mm"),
+            ("Grid labels",              len(grid_labels_found) >= 4,
+                                                              f"{len(grid_labels_found)} ({','.join(sorted(set(grid_labels_found)))})",
+                                                              f"A-{meta['grid_alpha_max']}, 1-{meta['grid_num_max']}"),
+            ("GUID xdata",               guid_count >= 5,     str(guid_count), f"≥5 ARC elements"),
+            ("Furniture bboxes",          n_furn > 0,          str(n_furn),     "1 per BELOW element"),
+            ("Bay dimensions",            counts.get('DIMENSION', 0) > 0,
+                                                              str(counts.get('DIMENSION', 0)), "1 per grid bay"),
+            ("Room labels",               any(t in meta['room_types'] for t in text_strs),
+                                                              "0",             f"need: {', '.join(meta['room_types'][:5])}"),
+            ("Room areas (m²)",           any('m²' in t or 'm2' in t for t in text_strs),
+                                                              "0",             "per room from spatial data"),
+            ("Door swing arcs",           False,               "0",             f"{meta['door_symbols']} symbols in ad_drawing_symbol"),
+            ("Wall fill / hatch",         False,               "0",             f"{meta['wall_styles']} styles in ad_drawing_style"),
+            ("Door/window tags",          any(t.startswith(('D','W')) and any(c.isdigit() for c in t) for t in text_strs),
+                                                              "0",             f"tags: {meta['tag_types']}"),
+            ("North arrow",               False,               "0",             "NORTH_ARROW in ad_drawing_symbol"),
+            ("Drawing title",             any('PLAN' in t.upper() or 'PELAN' in t.upper() for t in text_strs),
+                                                              "0",             f"'{meta['plan_title']}'"),
+            ("Title block",               False,               "0",             f"{meta['title_fields']} fields in ad_title_block"),
+            ("Scale bar",                 False,               "0",             "standard bar 0-1-2-5m"),
         ]
     elif is_elev:
+        face_key = view_type.split()[-1].lower() if len(view_type.split()) > 1 else 'front'
+        elev_title = meta.get(f'elev_{face_key}_title', f'{face_key.upper()} ELEVATION')
+        n_solid = counts.get('SOLID', 0)
+        n_dim = counts.get('DIMENSION', 0)
+        level_labels = [t for t in text_strs if 'LEVEL' in t or 'GRD' in t.split()[0:1]]
+        grid_labels_found = [t for t in text_strs if len(t) == 1 and (t.isalpha() or t.isdigit())]
+        has_louvre = any(e.dxf.layer == 'A-GLAZ' for e in msp if e.dxftype() == 'LINE')
+        has_roof = any(e.dxf.layer == 'A-ROOF' for e in msp if e.dxftype() == 'LWPOLYLINE')
+        has_grd_line = any(e.dxf.layer == 'A-ELEV-LEVL' for e in msp if e.dxftype() == 'LINE')
         features = [
-            ("Wall/element outlines",   counts.get('LWPOLYLINE', 0) >= 3),
-            ("Grid lines",              counts.get('LINE', 0) >= 3),
-            ("Grid bubble circles",     counts.get('CIRCLE', 0) >= 2),
-            ("Grid labels",             any(t in [e[0] for e in text_entries]
-                                            for t in ('A','B','1','2'))),
-            ("Level markers (triangle)",counts.get('SOLID', 0) >= 3),
-            ("Level labels (GRD, CLG)", any('LEVEL' in e[0] or 'GRD' in e[0]
-                                            for e in text_entries)),
-            ("Bay dimensions",          counts.get('DIMENSION', 0) > 0),
-            ("Ground line",             any(e.dxf.layer == 'A-ELEV-LEVL'
-                                            for e in msp if e.dxftype() == 'LINE')),
-            ("Window louvre lines",     any(e.dxf.layer == 'A-GLAZ'
-                                            for e in msp if e.dxftype() == 'LINE')),
-            ("Roof silhouette",         any(e.dxf.layer == 'A-ROOF'
-                                            for e in msp if e.dxftype() == 'LWPOLYLINE')),
-            ("Title block",             False),   # not yet in DXF writer
-            ("Drawing title",           False),   # not yet in DXF writer
+            ("Element outlines",          counts.get('LWPOLYLINE', 0) >= 3,
+                                                              str(counts.get('LWPOLYLINE', 0)), "walls+doors+windows"),
+            ("Grid lines",                counts.get('LINE', 0) >= 3,
+                                                              str(counts.get('LINE', 0)), "1 per grid on face"),
+            ("Grid bubbles",              counts.get('CIRCLE', 0) >= 2,
+                                                              str(counts.get('CIRCLE', 0)), "1 per grid"),
+            ("Grid labels",               len(grid_labels_found) >= 2,
+                                                              f"{len(grid_labels_found)} ({','.join(sorted(set(grid_labels_found)))})",
+                                                              "matching grid axis"),
+            ("Level markers (▶)",         n_solid >= 3,        str(n_solid),    f"≥{meta['level_count']} from ad_level_marker"),
+            ("Level labels",              len(level_labels) >= 3,
+                                                              f"{len(level_labels)} ({', '.join(level_labels[:3])}...)",
+                                                              f"{meta['level_count']} from ad_level_marker"),
+            ("Bay dimensions",            n_dim > 0,           str(n_dim),      "1 per grid bay"),
+            ("Ground line",               has_grd_line,        "yes" if has_grd_line else "no", "A-ELEV-LEVL layer"),
+            ("Window louvres",            has_louvre,           "yes" if has_louvre else "no",  "A-GLAZ layer lines"),
+            ("Roof silhouette",           has_roof,            "yes" if has_roof else "no",    "A-ROOF layer polyline"),
+            ("Drawing title",             any(face_key.upper() in t.upper() for t in text_strs),
+                                                              "0",             f"'{elev_title}'"),
+            ("Title block",               False,               "0",             f"{meta['title_fields']} fields"),
         ]
 
-    have = sum(1 for _, h in features if h)
-    miss = sum(1 for _, h in features if not h)
-    for name, present in features:
+    have = sum(1 for _, h, _, _ in features if h)
+    for name, present, actual, expected in features:
         tag = "HAVE" if present else "MISS"
-        _log(f"      [{tag}] {name}")
+        _log(f"      [{tag}] {name}: actual={actual}, ref={expected}")
     pct = have * 100 // len(features) if features else 0
     _log(f"    Score: {have}/{len(features)} features ({pct}%)")
-    # Append score to verdict detail
     if _VERDICTS and _VERDICTS[-1][0] == view_type:
         v, o, d = _VERDICTS[-1]
         _VERDICTS[-1] = (v, o, d + f", completeness {have}/{len(features)} ({pct}%)")
+
+
+def _read_metadata_ref() -> dict:
+    """Read 2D_metadata.db and return reference counts for TBLKLTN comparison."""
+    meta_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             '..', 'lib', 'input', '2D_metadata.db')
+    ref = {
+        'grid_axes': 2, 'bubble_r': 4.0,
+        'grid_alpha_max': 'D', 'grid_num_max': '3',
+        'room_types': [], 'door_symbols': 0, 'wall_styles': 0,
+        'tag_types': '', 'plan_title': 'FLOOR PLAN',
+        'title_fields': 0, 'level_count': 0,
+    }
+    if not os.path.exists(meta_path):
+        return ref
+    try:
+        conn = sqlite3.connect(meta_path)
+        cur = conn.cursor()
+        # Room labels
+        cur.execute("SELECT DISTINCT label_text FROM ad_room_label WHERE language='EN'")
+        ref['room_types'] = [r[0] for r in cur.fetchall()]
+        # Door/window symbols
+        cur.execute("SELECT COUNT(*) FROM ad_drawing_symbol WHERE view_type='PLAN' "
+                    "AND symbol_code LIKE 'DOOR%' OR symbol_code LIKE 'WINDOW%'")
+        ref['door_symbols'] = cur.fetchone()[0]
+        # Wall styles
+        cur.execute("SELECT COUNT(*) FROM ad_drawing_style WHERE view_type='PLAN' "
+                    "AND element_match LIKE '%Wall%'")
+        ref['wall_styles'] = cur.fetchone()[0]
+        # Annotation tags
+        cur.execute("SELECT tag_prefix FROM ad_annotation_tag")
+        ref['tag_types'] = ', '.join(r[0] for r in cur.fetchall())
+        # Drawing titles
+        cur.execute("SELECT drawing_title FROM ad_drawing_type WHERE drawing_code='FLOOR_PLAN'")
+        row = cur.fetchone()
+        if row: ref['plan_title'] = row[0]
+        for face in ('front', 'rear', 'left', 'right'):
+            cur.execute("SELECT drawing_title FROM ad_drawing_type WHERE drawing_code=?",
+                        (f'{face.upper()}_ELEV',))
+            row = cur.fetchone()
+            if row: ref[f'elev_{face}_title'] = row[0]
+        # Title block
+        cur.execute("SELECT COUNT(*) FROM ad_title_block")
+        ref['title_fields'] = cur.fetchone()[0]
+        # Level markers
+        cur.execute("SELECT COUNT(*) FROM ad_level_marker")
+        ref['level_count'] = cur.fetchone()[0]
+        # Grid style
+        cur.execute("SELECT bubble_radius FROM ad_grid_style LIMIT 1")
+        row = cur.fetchone()
+        if row: ref['bubble_r'] = row[0]
+        conn.close()
+    except Exception as e:
+        _log(f"    (metadata read failed: {e})")
+    return ref
 
 
 _VERDICTS: List[Tuple[str, bool, str]] = []  # (view, pass, detail)
