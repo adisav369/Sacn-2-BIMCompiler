@@ -277,8 +277,44 @@ def _audit_dxf(doc, out_dxf: str, view_type: str):
     if guid_count > 0:
         detail_parts.append(f"{len(guid_set)} GUIDs")
 
-    if fill_pct < 10 if (width_mm > 0 and height_mm > 0 and geo_w > 0) else False:
-        detail_parts.append(f"COMPOSITION WARN: building {fill_pct:.0f}% of area")
+    # ── Composition checks (visual issues not caught by entity counts) ──
+    composition_warns = []
+    is_plan = 'FLOOR' in view_type or 'PLAN' in view_type
+    is_elev = 'ELEV' in view_type
+
+    if width_mm > 0 and height_mm > 0 and geo_w > 0:
+        fill_ratio = (geo_w * geo_h) / (width_mm * height_mm)
+        if fill_ratio < 0.20:
+            composition_warns.append(
+                f"Building occupies {fill_ratio*100:.0f}% of drawing — "
+                f"annotations dominate, building too small")
+
+    if is_elev:
+        # Check for excessive empty space below ground line
+        grd_y = 0  # GRD. LEVEL at y=0 in model space
+        below_grd = abs(min_y - grd_y) if min_y < grd_y else 0
+        total_v = height_mm
+        if total_v > 0 and below_grd / total_v > 0.25:
+            composition_warns.append(
+                f"Empty space below ground: {below_grd:.0f}mm = "
+                f"{below_grd/total_v*100:.0f}% of drawing height")
+
+        # Check if building is less than 40% of vertical extent
+        if geo_h > 0 and geo_h / total_v < 0.40:
+            composition_warns.append(
+                f"Building height {geo_h:.0f}mm = "
+                f"{geo_h/total_v*100:.0f}% of drawing height — "
+                f"grid+dim overhead squeezes building")
+
+    if is_plan and geo_h > geo_w * 2.5:
+        composition_warns.append(
+            f"Building aspect {geo_w/1000:.1f}x{geo_h/1000:.1f}m — "
+            f"multi-storey overlap? Consider per-storey plans")
+
+    if composition_warns:
+        _log(f"    ── Composition Warnings ──")
+        for w in composition_warns:
+            _log(f"      !! {w}")
 
     ok = has_geometry and text_ok
     _VERDICTS.append((view_type, ok, ", ".join(detail_parts)))
