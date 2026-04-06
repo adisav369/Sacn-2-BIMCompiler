@@ -23,7 +23,7 @@ No IFC file open, no geometry iterator, no RAM spike.
 Grand Total: RM 67M (CIDB 2024 standard rates). 133 QTO line items. Generated in ~2 seconds.
 
 <figure style="margin: 20px 0;">
-<img src="assets/images/5DCosting.png" alt="5D Costing" style="width:100%; border:1px solid #ccc;"/>
+<img src="../assets/images/5DCosting.png" alt="5D Costing" style="width:100%; border:1px solid #ccc;"/>
 <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">5D Costing — RM 67M across 8 disciplines. Cost Breakdown pie + Cost Components bar.</figcaption>
 </figure>
 
@@ -31,14 +31,14 @@ Grand Total: RM 67M (CIDB 2024 standard rates). 133 QTO line items. Generated in
 Substructure → Superstructure → MEP Rough-in → Architecture → MEP Final → Finishes.
 
 <figure style="margin: 20px 0;">
-<img src="assets/images/4DSchedule.png" alt="4D Schedule" style="width:100%; border:1px solid #ccc;"/>
+<img src="../assets/images/4DSchedule.png" alt="4D Schedule" style="width:100%; border:1px solid #ccc;"/>
 <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">4D Schedule — 224 tasks. Task Distribution by Phase + Task Count by Discipline.</figcaption>
 </figure>
 
 **4D Dashboard** — S-Curve, resource workload, milestones — all from one query on the DB.
 
 <figure style="margin: 20px 0;">
-<img src="assets/images/4DDashBoard.png" alt="4D Dashboard" style="width:100%; border:1px solid #ccc;"/>
+<img src="../assets/images/4DDashBoard.png" alt="4D Dashboard" style="width:100%; border:1px solid #ccc;"/>
 <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">BIM 5D Analytics Dashboard — Phase Duration, Resource Workload, S-Curve, Milestones.</figcaption>
 </figure>
 
