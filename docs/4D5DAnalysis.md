@@ -1,4 +1,4 @@
-# 4D/5D Analysis — Construction Schedule and Costing from Extracted DB
+# 4D/5D Analysis — Construction Schedule and Costing from the Federated Model DB
 
 > **Foundation:** [Enterprise](Enterprise.md) · [LTU A-House](LTUAHouseAnalysis.md) · [DATA_MODEL](DATA_MODEL.md)
 
@@ -8,8 +8,9 @@
 
 ## What We Have
 
-The extracted DB (`_extracted.db`) drives both 4D scheduling and 5D costing in **2 seconds**
-from a single SQLite file. No IFC open, no geometry iterator, no RAM spike.
+The [Federated Model DB](Enterprise.md) (`_extracted.db`) drives both 4D scheduling and 5D costing
+in **2 seconds** from a single SQLite file. All IFC disciplines live in this one DB.
+No IFC file open, no geometry iterator, no RAM spike.
 
 | Dimension | Script | Input | Output |
 |---|---|---|---|
@@ -18,32 +19,28 @@ from a single SQLite file. No IFC open, no geometry iterator, no RAM spike.
 
 ### Proven Results (LTU A-House — 125,997 elements, 8 disciplines)
 
-<div style="float:right; margin-left:20px; max-width:360px;">
-<img src="img/5DCosting.png" alt="5D Costing — RM 67M Executive Summary" style="width:100%; margin-bottom:10px; border:1px solid #ccc;"/>
-<img src="img/4DSchedule.png" alt="4D Schedule — 224 tasks, 8 disciplines" style="width:100%; margin-bottom:10px; border:1px solid #ccc;"/>
-<img src="img/4DDashBoard.png" alt="4D Dashboard — S-Curve, milestones, resource workload" style="width:100%; border:1px solid #ccc;"/>
-</div>
+**5D Costing** — Executive Summary with Material + Labour + Equipment per discipline.
+Grand Total: RM 67M (CIDB 2024 standard rates). 133 QTO line items. Generated in ~2 seconds.
 
-**5D Costing** (`5DCosting.png`):
-- Executive Summary: Material + Labour + Equipment per discipline
-- Grand Total: RM 67M (Malaysian Ringgit, CIDB 2024 standard rates)
-- 133 QTO line items across LINEAR/AREA/VOLUME/COUNT measurement types
-- Cost Breakdown by Discipline pie chart + Cost Components stacked bar
-- Generated in ~2 seconds
+<figure style="margin: 20px 0;">
+<img src="img/5DCosting.png" alt="5D Costing" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">5D Costing — RM 67M across 8 disciplines. Cost Breakdown pie + Cost Components bar.</figcaption>
+</figure>
 
-**4D Schedule** (`4DSchedule.png`):
-- 224 construction tasks, precedence-linked by phase
-- Phases: Substructure → Superstructure → MEP Rough-in → Architecture → MEP Final → Finishes
-- Task Distribution by Phase pie chart + Task Count by Discipline bar
-- Project name derived dynamically from DB filename
+**4D Schedule** — 224 construction tasks, precedence-linked by phase.
+Substructure → Superstructure → MEP Rough-in → Architecture → MEP Final → Finishes.
 
-**4D Dashboard** (`4DDashBoard.png`):
-- Phase Duration Analysis with horizontal bar chart
-- Resource Workload (Man-Days) by phase
-- Project S-Curve (cumulative task completion over 63 weeks)
-- Project Milestones Timeline
+<figure style="margin: 20px 0;">
+<img src="img/4DSchedule.png" alt="4D Schedule" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">4D Schedule — 224 tasks. Task Distribution by Phase + Task Count by Discipline.</figcaption>
+</figure>
 
-Screenshots: `~/Pictures/Screenshots/5DCosting.png`, `4DSchedule.png`, `4DDashBoard.png`
+**4D Dashboard** — S-Curve, resource workload, milestones — all from one query on the DB.
+
+<figure style="margin: 20px 0;">
+<img src="img/4DDashBoard.png" alt="4D Dashboard" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">BIM 5D Analytics Dashboard — Phase Duration, Resource Workload, S-Curve, Milestones.</figcaption>
+</figure>
 
 ### Current Limitation: Unknown Phase
 
@@ -57,7 +54,7 @@ Fix: map all IFC classes in `scripts/schedule_generator.py`. See
 
 ## Industry Value — What QS Firms Pay For
 
-No commercial tool produces discipline-level 4D+5D analytics from an IFC file in 2 seconds
+No commercial tool produces discipline-level 4D+5D analytics from a Federated Model DB in 2 seconds
 at zero licence cost. Here is what the industry wants and where we stand:
 
 ### Tier 1 — We Have It Now
@@ -94,7 +91,7 @@ These capabilities need only a JOIN or a new rate table on the existing DB:
 
 ### The Holy Grail
 
-**A bankable project finance model generated in 2 seconds from an IFC file.**
+**A bankable project finance model generated in 2 seconds from the [Federated Model DB](Enterprise.md).**
 
 Banks release progress payments based on:
 1. What was planned (4D schedule) — we have it
