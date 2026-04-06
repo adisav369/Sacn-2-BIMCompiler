@@ -6,7 +6,7 @@
 schema_version: 2
 
 building:
-  building_type: Ifc2x3_Duplex             # matches I_Element_Extraction.building_type
+  building_type: Duplex             # matches I_Element_Extraction.building_type
   prefix: DX
   building_bom_id: BUILDING_DX_STD
   doc_sub_type: DX
@@ -47,3 +47,6 @@ building:
   # MEP element counts from extraction (editable — reduce for partial scope)
   discipline_counts:
     MEP: 904
+
+  # MEP coverage level: 99=standard, 0=max, N=budget cap (§6.12.4 §8)
+  mep_order_qty: 99

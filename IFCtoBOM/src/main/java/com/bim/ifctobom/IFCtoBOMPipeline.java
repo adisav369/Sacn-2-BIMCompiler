@@ -452,6 +452,19 @@ public class IFCtoBOMPipeline {
                 BIMLogger.info("PIPELINE", "ad_sysconfig: MEP_DISCIPLINES={}", mepCsv);
             }
 
+            // 10c-4. Store MEP order qty — coverage level for generative placement (§6.12.4 §8)
+            // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 §8 — Witness: W-DEVICE-PLACE
+            {
+                int mepOrderQty = config.mepOrderQty();
+                try (PreparedStatement ps = bomConn.prepareStatement(
+                        "INSERT OR REPLACE INTO ad_sysconfig (config_key, config_value, description) " +
+                        "VALUES ('MEP_ORDER_QTY', ?, 'MEP coverage level: 99=standard, 0=max, N=budget cap')")) {
+                    ps.setString(1, String.valueOf(mepOrderQty));
+                    ps.executeUpdate();
+                }
+                BIMLogger.info("PIPELINE", "ad_sysconfig: MEP_ORDER_QTY={}", mepOrderQty);
+            }
+
             // 10d. Tier 2 backfill: populate Value/Name/M_BOM_ID on INTEGER PK tables.
             // Implementing BBC.md §14.3 IDV-1 Phase C — Witness: W-TIER2-BACKFILL
             // These columns are in the DDL but not written by individual builders.

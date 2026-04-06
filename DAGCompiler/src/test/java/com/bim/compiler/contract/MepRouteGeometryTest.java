@@ -889,6 +889,84 @@ class MepRouteGeometryTest {
         }
     }
 
+    // ── Scenario 16: DX BOM walk — full generative MEP with erpConn ──
+    // Walks the real DX_BOM.db with erpConn set. Triggers:
+    //   - CEILING_OVERRIDE for rooms with furniture-height AABB (812mm, 820mm)
+    //   - AABB product dimensions for every generative device
+    //   - ROOM/PLACE/BREACH/SUMMARY on GENERATIVE channel
+    // The demo: output has MORE elements than input (generative > extractive).
+    // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 — Witness: W-DEVICE-PLACE
+    @Test
+    @Order(16)
+    @DisplayName("S16: DX BOM walk — generative MEP placement on real building")
+    void dxBomWalkGenerativeMep() throws Exception {
+        String bomDbPath = "library/DX_BOM.db";
+        if (!java.nio.file.Files.exists(java.nio.file.Path.of(bomDbPath))) {
+            System.out.printf("[S16] SKIP: %s not found%n", bomDbPath);
+            return;
+        }
+
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);
+             Connection erpConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
+
+            // 1. Find root BUILDING BOM
+            String rootBom = null;
+            try (Statement stmt = bomConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT bom_id FROM m_bom WHERE bom_type='BUILDING' LIMIT 1")) {
+                if (rs.next()) rootBom = rs.getString(1);
+            }
+            assertNotNull(rootBom, "DX_BOM.db must have a BUILDING BOM");
+            System.out.printf("[S16] Root BOM: %s%n", rootBom);
+
+            // 2. Read world origin from BUILDING BOM
+            com.bim.ormsandbox.po.MBOM root = new com.bim.ormsandbox.po.MBOM(bomConn);
+            assertTrue(root.loadByValue(rootBom), "Must load root BOM");
+            double[] worldOrigin = {root.getOriginX(), root.getOriginY(), root.getOriginZ()};
+
+            // 3. Walk with erpConn — this triggers generative MEP
+            PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(
+                    bomConn, "DX_DEMO", worldOrigin);
+            visitor.setErpConn(erpConn);
+            visitor.setMepOrderQty(99); // standard coverage
+
+            BOMWalker walker = new BOMWalker(bomConn, erpConn);
+            walker.walk(rootBom, java.util.List.of(visitor), "DX_DEMO");
+
+            // 4. Emit summary — forensic log
+            visitor.emitGenerativeSummary();
+
+            int totalPlacements = visitor.getPlacements().size();
+            int generativeDevices = visitor.getGenerativeDeviceCount();
+
+            System.out.printf("[S16] Total placements: %d (extracted) + %d (generative) = %d%n",
+                totalPlacements - generativeDevices, generativeDevices, totalPlacements);
+
+            // 5. Generative devices must exist
+            assertTrue(generativeDevices > 0,
+                "DX must have generative MEP devices (rooms with space type schedules)");
+            System.out.printf("[S16] Generative devices: %d%n", generativeDevices);
+
+            // 6. Output > input — the killer assertion
+            // DX walker produces ~215 extracted placements. With generative MEP, total > extracted.
+            int extractedCount = totalPlacements - generativeDevices;
+            assertTrue(totalPlacements > extractedCount,
+                "Output must exceed extracted placements with generative MEP");
+            assertTrue(generativeDevices >= 100,
+                "DX has 11 rooms with schedules — expected ≥100 generative devices, got " + generativeDevices);
+            System.out.printf("[S16] Output > input: %d > %d (generative: %d) ✓%n",
+                totalPlacements, extractedCount, generativeDevices);
+
+            // 7. Count room types that got generative devices
+            long roomCount = visitor.getPlacements().stream()
+                .filter(p -> p.familyRef() != null && p.familyRef().contains("_SET_"))
+                .count();
+            // Actually count from the generative summary — visitor tracks per-room counts
+            System.out.printf("[S16] PASS: DX BOM walk with generative MEP — %d total, %d generative%n",
+                totalPlacements, generativeDevices);
+        }
+    }
+
     private GeoProofRecord findByProduct(List<GeoProofRecord> records, String productId) {
         return records.stream()
                 .filter(r -> productId.equals(r.productId()))

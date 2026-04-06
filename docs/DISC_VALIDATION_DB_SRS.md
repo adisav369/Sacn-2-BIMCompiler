@@ -10,9 +10,10 @@
 
 ---
 
-## 1. Schema — ERP.db (22 tables)
+## 1. Schema — ERP.db (44 tables)
 
 **Authoritative DDL:** `migration/DV001_ERP_schema.sql`, `migration/DV003_element_mep_alias.sql`
+**From-scratch rebuild:** `scripts/rebuild_erp.sh` (DV001→DV036 + W019, zero manual SQL)
 
 | Table | PK | Rows | Purpose |
 |-------|----|------|---------|
@@ -39,6 +40,15 @@
 | `ad_val_rule_param` | ad_val_rule_param_id | 1245 | Rule parameters (typical_width_mm, typical_depth_mm, typical_height_mm) |
 | `W_Calibration_Result` | id | 0 | CalibrationTest output (runtime writes) |
 | `AD_SysConfig` | Name | 3 | Schema/seed/alias version tracking |
+| `ad_verb_pattern` | pattern_id | 9 | Verb detection hints: (product_type, ifc_class) → expected verb (DV035) |
+| `ad_element_product_alias` | alias_id | 79 | Abstract product naming: ifc_class/element_name → product_id (DV034) |
+| `ad_mep_anchor` | anchor_id | 0 | MEP anchor points extracted by IFCtoERP (W019, runtime populated) |
+| `ad_mep_pattern` | pattern_id | 0 | MEP topology patterns mined by RouteWalker (W019, runtime populated) |
+
+`M_Product_Category` carries `AD_Org_ID` (DV036) wiring the discipline chain:
+`M_Product → M_Product_Category → AD_Org_ID` per §6.4. 127 seed categories
+(IFC leaf classes + discipline parents + floor/room codes). Products auto-categorized
+by `ProductRegistrar.ensureProductCatalog()` from `ifc_class` lookup.
 
 Compliance tables (AD_Val_Rule, AD_Clash_Rule, AD_Occupancy_Class, AD_Validation_Result)
 and shared discipline recipes (M_BOM, M_BOM_Line) also live in ERP.db. Full compliance
@@ -160,39 +170,75 @@ migration/
 
 ---
 
-## 6. AD_Org — Disciplines as Organizational Units
+## 6. AD_Org ↔ M_Product_Category — The Abstract Discipline Model
 
-iDempiere uses AD_Org to partition data by organizational unit. In construction,
-disciplines ARE organizational units — each is a trade with its own contractor,
-products, rules, and scope of work.
+### Core coupling
+
+Every IFC product belongs to a **category** (WHAT it is) and every category
+belongs to a **discipline** (WHO manages it). One FK each — no strings, no
+switch statements, no per-building logic.
 
 ```
-AD_Client = 'BIM_PROJECT' (tenant — the whole project)
-└── AD_Org = '*'    (shared data: building grid, space types, structural frame)
-└── AD_Org = 'ARC'  (architectural: doors, windows, furniture, finishes)
-└── AD_Org = 'STR'  (structural: beams, columns, slabs, foundations)
-└── AD_Org = 'FP'   (fire protection: sprinklers, alarms, risers)
-└── AD_Org = 'ELEC' (electrical: lights, outlets, switches, cable trays)
-└── AD_Org = 'ACMV' (HVAC: ducts, diffusers, AHUs)
-└── AD_Org = 'CW'   (cold water: pipes, fittings, valves)
-└── AD_Org = 'SP'   (sanitary/plumbing: fixtures, waste pipes)
-└── AD_Org = 'LPG'  (gas: gas pipes, meters)
+AD_Org (discipline)          M_Product_Category (taxonomy)        M_Product
+┌──────────────┐             ┌───────────────────────┐            ┌──────────────┐
+│ AD_Org_ID: 1 │◄── AD_Org_ID ──│ IFC_WALL            │◄── Cat_ID ──│ WALL_EXT_290 │
+│ Value: ARC   │             │ IFC_DOOR              │            │ DOOR_INT_810 │
+│              │             │ IFC_WINDOW            │            │ ...          │
+├──────────────┤             │ IFC_SLAB  ...13 total │            └──────────────┘
+│ AD_Org_ID: 2 │◄────────────│ IFC_BEAM              │
+│ Value: STR   │             │ IFC_COLUMN ...6 total │
+├──────────────┤             ├───────────────────────┤
+│ AD_Org_ID: 3 │◄────────────│ IFC_FIRESUPPTERM      │
+│ Value: FP    │             │ IFC_ALARM    ...2 total│
+├──────────────┤             ├───────────────────────┤
+│ AD_Org_ID: 4 │◄────────────│ IFC_LIGHTFIXTURE      │
+│ Value: ELEC  │             │ IFC_OUTLET   ...6 total│
+├──────────────┤             ├───────────────────────┤
+│ AD_Org_ID: 10│◄────────────│ IFC_DUCTSEGMENT       │
+│ Value: MEP   │             │ IFC_PIPESEGMENT       │
+│              │             │ IFC_VALVE    ...9 total│
+├──────────────┤             ├───────────────────────┤
+│ Value: ACMV  │◄────────────│ IFC_AIRTERMINAL       │
+│ Value: CW    │◄────────────│ CW (parent)           │
+│ Value: SP    │◄────────────│ IFC_SANITARYTERM      │
+│ Value: LPG   │◄────────────│ LPG (parent)          │
+│ Value: *     │◄────────────│ ASM (assembly)        │
+└──────────────┘             └───────────────────────┘
 ```
 
-**Two orthogonal axes:**
-- `M_Product_Category` = taxonomy (WHAT type: sprinkler head, pipe segment, alarm)
-- `AD_Org` = ownership (WHO manages: FP trade, ELEC trade)
+**49 categories** are linked to disciplines (DV036). Any IFC file — residential,
+commercial, industrial — drops products into these categories via `ifc_class`
+lookup. The discipline resolves automatically: `M_Product.ifc_class → M_Product_Category.IFC_Class → AD_Org_ID`.
 
-**What AD_Org replaces:**
-- `m_bom.bom_category` string → `AD_Org_ID` FK
+### Why this scales
+
+The coupling is **industry-level**, not building-level. A residential house (RE)
+and a commercial terminal (CO) share the same 49-category discipline map.
+Adding a new industry vertical means adding IFC class categories, not code.
+
+| Archetype | Example buildings | Disciplines exercised |
+|-----------|-------------------|----------------------|
+| RE (Residential) | SH, DX, FK | ARC, STR, MEP |
+| CO (Commercial) | TE (Terminal) | ARC, STR, FP, ELEC, ACMV, CW, SP, LPG |
+| IN (Infrastructure) | RD, RL | ARC, STR |
+
+**Archetype patterns** (§6.12.3) are also abstract — CW_TERMINAL_01 was mined
+from a commercial terminal but describes universal cold-water topology
+(meter → junction → junction → fixture). Any building's anchors match against it.
+
+### What AD_Org replaces
+
+All former string-based discipline resolution collapses to one FK:
+
+- `m_bom.bom_category` string → `AD_Org_ID` FK on M_Product_Category
 - `C_OrderLine.Discipline` string → `AD_Org_ID` FK
-- `component_types.discipline` string → `AD_Org_ID` FK
 - Scattered `resolveDiscipline(ifcClass)` logic → single FK lookup
 
-**iDempiere data partitioning:** Every row with `AD_Org_ID = 'FP'` is visible
-only to the FP trade. Shared infrastructure (`AD_Org = '*'`) is visible to all.
-This enables per-discipline BOM views, validation scoping, and trade-specific
-product catalogs — all from a single FK.
+### Forensic verification
+
+The pipeline emits a `[FORENSIC] DISC CHAIN` log line after every compilation
+showing the live AD_Org ↔ M_Product_Category coupling with product counts.
+Any regression (uncategorized products, missing disciplines) triggers a WARN.
 
 ### 6.1 Spatial Model — Space + Occupant + Verb + Rule
 
@@ -1372,6 +1418,38 @@ public class InterimWorkshop {
 }
 ```
 
+##### Workshop Extension — Envelope Trim (BBC §6.1)
+
+InterimWorkshop §6 above handles 1D length adjustment (pipes). The same
+pattern extends to 2D/3D fabrication — trimming products against the
+building envelope (roof, ground, perimeter walls).
+
+**Evidence (S143):** SH Sample House has 4 elements overshooting the
+curved roof (Z=3.0m base): WALL_EXT_NS at 3.828m (+828mm), WALL_EXT_EW
+at 3.291m (+291mm), curtain wall at 3.221m (+221mm). These are correct
+rectangular LODs from IFC extraction — the trim is a workshop operation.
+
+**Workshop sub-verb model:**
+
+| Sub-verb | c_uom_id | Workshop action |
+|----------|----------|-----------------|
+| (none) | EA | No workshop — place as-is |
+| (none) | MM/M | Length recompute (current InterimWorkshop) |
+| `CUT_TOP` | EA | Trim upper extent to constraining surface |
+| `CUT_BOTTOM` | EA | Trim lower extent to ground/slab |
+| `NOTCH` | EA | Rectangular cutout for penetration |
+
+Sub-verb is stored on `M_AttributeSetInstance` (per-instance, not per-product).
+The catalog product stays rectangular. Each placed instance gets an ASI with:
+`cut_face`, `cut_ref_bom_id` (constraining element), `cut_profile` (FLAT/CURVED/PITCHED),
+`cut_offset_mm` (overshoot depth).
+
+**Envelope pass:** After placement, a single pass identifies all elements whose
+AABB overshoots the building envelope (roof, ground). For each overshoot, it
+generates an ASI with the cut instruction. The constraining element (roof BOM)
+defines the cut profile. This is the same pattern as Compiere's BOM Drop +
+ASI resolution — placement first, then per-instance attributes.
+
 ##### Flat Sibling Pattern — Small BOMs
 
 MEP pieces under the shim are flat siblings, not nested chains. Each
@@ -1507,6 +1585,59 @@ Riser metadata in `ad_mep_riser_rule`:
 | RSR-FP-002 | FP | riser_diameter_mm | 65 | NFPA 13 | §8.15.1 |
 | RSR-CW-001 | CW | min_pressure_kpa | 150 | MS 1228 | §3.4 |
 | RSR-SP-001 | SP | stack_min_diameter_mm | 100 | MS 1228 | §5.7 |
+
+##### 8d. Route Direction → Piece Orientation (Triage)
+
+**Context:** In `_BOM.db` (ARC/STR), orientation is inherited from the parent BOM
+hierarchy — BUILDING → FLOOR → ROOM → LEAF. Each level carries dx/dy/dz forming
+a spatial chain. MEP mini BOMs in ERP.db have no such parent hierarchy. The
+mini BOM is standalone; bom-to-bom connection is via anchors, not tree nesting.
+
+**Extracted path (§6.12.2):** No gap. `buildMepBomRecipes()` extracts `rotation_rule`
+from IFC direction changes (atan2 of perpendicular vs along-axis). Each piece's
+dx/dy/dz encodes the run direction implicitly. The Walker reads `rotation_rule`
+from M_BOM_Line and applies it via the rotation stack. Complete.
+
+**Generated path (§6.12.3):** Gap. RouteWalker generates CW/SP c_orderline rows
+from pattern steps. Each step has `direction_axis` (X, Y, Z, GRADIENT). But
+RouteWalker does NOT set `rotation_rule` on generated lines. For horizontal
+runs (default), this works (rotation_rule defaults to 0, forward_axis aligned
+with run). For vertical drops or direction changes, rotation_rule is missing.
+
+**Walk direction per discipline** (from BBC.md §3.6):
+
+| Discipline | Walk direction | Implication |
+|------------|---------------|-------------|
+| CW | Ground up ↑ then horizontal → | Riser needs rotation_rule=PI/2 |
+| SP | Top down ↓ (gravity) | Gradient pieces: rotation_rule from dz/dx |
+| FP | Vertical ↑ then horizontal → | Same as CW |
+| ELEC | Vertical ↑ then radial → | Radial = per-room walk direction varies |
+| ACMV | Horizontal from AHU → | Usually single-axis per floor |
+| LPG | Horizontal from meter → | Single-axis, no vertical |
+
+This table is spec text only — not stored in any runtime-accessible table.
+
+**Three gaps to close:**
+
+1. **RouteWalker must set rotation_rule** on generated lines when direction_axis
+   changes between consecutive steps (horizontal → vertical, or axis change).
+   Computable: if step N is X-axis and step N+1 is Z-axis, the transition
+   piece gets rotation_rule = PI/2.
+
+2. **Walk direction as metadata:** The per-discipline walk direction (BBC.md §3.6
+   table) should be stored on the system BOM or on ad_mep_laying_rule so the
+   Walker can read it at runtime. Candidate column: `walk_direction` on M_BOM
+   WHERE AD_Org_ID > 0.
+
+3. **Piece orientation alignment:** At runtime, the Walker must align each piece's
+   `forward_axis` (from component_library.db) with the route direction. This is
+   a rotation: `rotation = angle_between(forward_axis, route_direction)`. The
+   existing rotation stack handles it — but the route_direction must be available
+   as data, not inferred.
+
+**Resolution sequence:** Gap 2 first (store walk direction as data), then Gap 1
+(RouteWalker sets rotation_rule), then Gap 3 (Walker aligns forward_axis). All
+three are data additions — no new walker logic beyond reading existing columns.
 
 #### 9. Metadata Tables — Standards as Data, Code as Abstract Walker
 
@@ -1729,13 +1860,13 @@ pattern encodes all routing intelligence. The walker only matches and emits.
 #### 4. Witness Claims
 
 **W-PATTERN-CW** — RouteWalker generates CW pipe network for RM:
-> For Revit_MEP, RouteWalker with CW_TERMINAL_01 pattern applied to METER+FIXTURE anchors
+> For HospitalAuckland, RouteWalker with CW_TERMINAL_01 pattern applied to METER+FIXTURE anchors
 > produces a connected CW network: all FIXTURE anchors reachable from at least one METER anchor,
 > zero CW pipes intersecting ARC AABB (clash=0), all generated segments horizontal or vertical (no
 > diagonal), pipe count within 20% of TE CW segment count scaled by floor area ratio.
 
 **W-PATTERN-SP** — RouteWalker generates SP pipe network for RM:
-> For Revit_MEP, RouteWalker with SP_TERMINAL_01 pattern applied to FIXTURE+STACK anchors
+> For HospitalAuckland, RouteWalker with SP_TERMINAL_01 pattern applied to FIXTURE+STACK anchors
 > produces a connected SP network: all FIXTURE anchors drain to at least one STACK anchor,
 > all generated GRADIENT segments have dz/dx ≥ 0.025 (MS 1228 §5.3), zero SP pipes intersecting
 > ARC AABB (clash=0), STACK anchor count ≥ 1 per storey.
@@ -1777,6 +1908,356 @@ mechanism for generated pipe routes. GEO comparison covers extraction-origin ele
 - GEO DRIFT proof for TE: unchanged (extracted elements, centroid matching).
 - RM FP, ACMV: continue on shim+recipe path (those IFC classes are typed).
 - RouteWalker is additive — it supplements the shim+recipe walk for CW/SP in buildings with G2.
+
+### 6.12.4 Space Identity — Room Type Bridges MEP to Furniture (S149b)
+
+**Problem:** MEP recipes (`MEP_RECIPE` BOMs in ERP.db) know how to place pipes
+geometrically but don't know which room they serve. Room SET BOMs (in `*_BOM.db`)
+contain furniture but don't claim MEP terminals. A pipe run that ends at a sink
+has no compiler-visible link to the KITCHEN room where the sink lives.
+
+**Why this matters:** Without space identity, the compiler can place all 162 DX
+pipe runs at correct offsets but cannot answer: "does every BATHROOM have a waste
+pipe to a STACK?" or "does this KITCHEN's cold water run reach the sink?" The pipe
+ends geometrically near the sink but the compiler has no proof — only coincidence.
+
+#### 1. The Abstract Model
+
+Space identity is the bridge between three existing data structures:
+
+```
+Room SET BOM (in *_BOM.db)          ad_space_type_mep_bom (in ERP.db)       MEP Recipe (in ERP.db)
+┌─────────────────────────┐         ┌───────────────────────────┐           ┌──────────────────────┐
+│ DX_A104_SET             │         │ BATHROOM needs:           │           │ D_CW_U_RUN_7         │
+│  bom_type=SET           │────────→│   TOILET  → anchor=STACK  │←──────────│  bom_type=MEP_RECIPE │
+│  role=BATHROOM          │  lookup │   SINK    → anchor=RISER  │  claimed  │  target_space=BATHROOM│
+│  children: furniture    │         │   EXHAUST → anchor=PANEL  │  by       │  anchor_end=RISER    │
+└─────────────────────────┘         └───────────────────────────┘           └──────────────────────┘
+```
+
+**Three data facts, no routing logic:**
+1. **Room capability** — inferred from fixture/pipe presence (PLUMBABLE, ELECTRIFIED, etc.)
+2. **MEP schedule** — what each concrete room type needs (`ad_space_type_mep_bom`, 186 rows) — compliance only
+3. **Recipe claim** — which capability a recipe serves (`target_space_type_id` on M_BOM)
+
+**The compiler never mentions KITCHEN or BATHROOM.** It asks: "is this room PLUMBABLE?"
+A CW pipe needs a PLUMBABLE room. An ELEC conduit needs an ELECTRIFIED room.
+Concrete names (KITCHEN, BATHROOM) live in `ad_space_type` for compliance rules and
+building code references. The crawler reads `ad_discipline_capability` to map
+discipline → capability, then matches recipes to rooms by capability.
+
+The compiler never routes pipes to rooms. It verifies that every room with a
+capability has at least one recipe claiming that capability. The geometry is already
+correct (§6.12.2 tack chain). Space identity adds the semantic proof.
+
+#### 2. Data Model — Abstract Capabilities
+
+**The Two Layers:**
+
+| Layer | Table | Contains | Used by |
+|-------|-------|----------|---------|
+| Abstract | `ad_discipline_capability` | CW→PLUMBABLE, ELEC→ELECTRIFIED | Crawler (code) |
+| Abstract | `ad_space_type.is_plumbable` etc. | Boolean capability flags per room type | Crawler (code) |
+| Concrete | `ad_space_type.Value` | KITCHEN, BATHROOM, BEDROOM | Compliance rules |
+| Concrete | `ad_space_type_mep_bom` | BATHROOM→TOILET, KITCHEN→SINK | Building code |
+
+The code path: recipe discipline (CW) → `ad_discipline_capability` → capability
+(PLUMBABLE) → rooms where `is_plumbable=1`. No room name in the code.
+
+**Capabilities** (inferred from fixture/pipe presence at extraction time):
+
+| Capability | Inferred when | Discipline |
+|-----------|--------------|-----------|
+| PLUMBABLE | sink, WC, shower, floor trap, or CW/HW/WASTE pipes | CW, SP |
+| ELECTRIFIED | outlet, light, switch, or conduit | ELEC |
+| FIRE_PROTECTED | sprinkler, smoke detector | FP |
+| VENTILATED | exhaust fan, diffuser, HVAC duct | ACMV |
+| GAS_SERVED | gas range, water heater | LPG |
+
+**M_BOM** — two columns on MEP recipes (DV040):
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `target_space_type_id` | TEXT | **Capability** this recipe serves (PLUMBABLE, not KITCHEN) |
+| `anchor_end` | TEXT | Infrastructure endpoint: RISER, STACK, or PANEL |
+
+**ad_discipline_capability** (DV041):
+
+| discipline | capability |
+|-----------|-----------|
+| CW | PLUMBABLE |
+| SP | PLUMBABLE |
+| ELEC | ELECTRIFIED |
+| FP | FIRE_PROTECTED |
+| ACMV | VENTILATED |
+| LPG | GAS_SERVED |
+
+**Why this extends to any building:** A hospital OPERATING_THEATER is PLUMBABLE +
+ELECTRIFIED + VENTILATED + FIRE_PROTECTED. A warehouse STORAGE is ELECTRIFIED +
+FIRE_PROTECTED. The capabilities are universal; the concrete names are domain-specific.
+Adding a new building type means adding rows to `ad_space_type` — no code changes.
+
+#### 3. Extraction Flow (IFCtoERP)
+
+```
+IFC extraction DB
+  │
+  ├── rel_contained_in_space → furniture in rooms → inferSpaceType()
+  │     → writes doc_sub_type on SET BOM in *_BOM.db
+  │
+  ├── IfcFlowTerminal names → classifyFixtureName()
+  │     → maps terminal to mep_product_id (SINK, TOILET, etc.)
+  │
+  └── MEP chain detection → buildMepBomRecipes()
+        → last piece in chain → nearest room AABB → room's space_type
+        → writes target_space_type_id + anchor_end on M_BOM in ERP.db
+```
+
+**GEO logging (black-box — inference):**
+```
+[MEP-SPACE] room=A104 space_type=BATHROOM capabilities={PLUMBABLE,ELECTRIFIED,VENTILATED}
+[MEP-SPACE] room=B103 space_type=KITCHEN  capabilities={PLUMBABLE,ELECTRIFIED,GAS_SERVED}
+[MEP-SPACE] room=A202 space_type=HABITABLE capabilities={ELECTRIFIED}
+```
+
+**GEO logging (white-box — linkage):**
+```
+[MEP-SPACE-LINK] recipe=D_CW_U_RUN_1 disc=CW capability=PLUMBABLE room=B103 concrete_type=KITCHEN anchor_end=RISER
+[MEP-SPACE-LINK] recipe=D_CW_U_RUN_3 disc=CW capability=PLUMBABLE room=A104 concrete_type=BATHROOM anchor_end=RISER
+[MEP-SPACE-LINK] Duplex: 12 linked, 150 no room, 0 no capability
+```
+
+Note: `concrete_type` is logged for human traceability but never stored on M_BOM.
+The recipe carries `PLUMBABLE`, not `KITCHEN`.
+
+#### 4. Compile-Time Validation
+
+At compile time, the walker reads `target_space_type_id` from the MEP recipe
+and checks that the room it serves exists in the BOM hierarchy. No routing — just
+a foreign key walk:
+
+```
+For each MEP_RECIPE M_BOM where target_space_type_id IS NOT NULL:
+  1. Find all SET BOMs where doc_sub_type = target_space_type_id
+  2. Verify at least one exists in the same building
+  3. Log: MEP-SPACE-AUDIT PASS/FAIL per recipe
+```
+
+For each Room SET BOM where doc_sub_type IS NOT NULL:
+```
+  1. Look up ad_space_type_mep_bom WHERE space_type_id = doc_sub_type
+  2. For each scheduled (mep_product_id, anchor_end) pair:
+     Find a MEP_RECIPE with matching target_space_type_id + anchor_end
+  3. Log: MEP-SPACE-COVERAGE PASS/FAIL per room
+```
+
+#### 5. Why This Is Abstract
+
+**The compiler never says KITCHEN.** It says PLUMBABLE.
+
+The model works for any building because:
+- **Capabilities** are universal: PLUMBABLE, ELECTRIFIED, FIRE_PROTECTED, VENTILATED, GAS_SERVED
+- **Concrete names** are domain-specific: KITCHEN, BATHROOM, OPERATING_THEATER — metadata only
+- **Discipline→capability** mapping is data (`ad_discipline_capability`), not code
+- **Inference** comes from fixture/pipe presence — IFC-universal, no domain knowledge in code
+- Adding a new building type = new rows in `ad_space_type` + `ad_space_type_mep_bom`. Zero code changes.
+
+A fridge is furniture. A fridge in a room with a sink makes it a KITCHEN (concrete
+name for compliance). But the compiler only sees: this room has plumbing fixtures →
+PLUMBABLE. A CW pipe recipe needs a PLUMBABLE room. Match.
+
+A hospital OPERATING_THEATER is PLUMBABLE + ELECTRIFIED + VENTILATED + FIRE_PROTECTED.
+A warehouse STORAGE is ELECTRIFIED + FIRE_PROTECTED. The code path is identical.
+
+**What a newbie needs to know:**
+1. The crawler reads `ad_discipline_capability` — never hard-codes room names
+2. Room capabilities are inferred from IFC fixtures, not from room names
+3. Concrete names (KITCHEN, BATHROOM) are compliance metadata — they appear in
+   `ad_space_type_mep_bom` for building code rules, never in crawler logic
+4. To add a new discipline: one row in `ad_discipline_capability`, one capability
+   flag on `ad_space_type`, one inference rule in `inferCapabilities()`
+
+#### 6. Rosetta Stone vs Compiled Output — What Goes Where
+
+**Critical distinction for newbies:**
+
+| Data | Where | Status | Used for |
+|------|-------|--------|----------|
+| Sink position | extracted DB (Rosetta Stone) | Reference only | Convergence proof (§6 below) |
+| Pipe recipe offsets | ERP.db (M_BOM) | Compiled | Walker placement |
+| Room capability | inferred at extraction | Metadata | Linkage + gap analysis |
+| Placement offsets | ad_placement_offset (DV042) | Metadata | Gap target computation |
+| Fixture gap INSERTs | console output | Actionable | User/script seeds missing targets |
+
+The sink in the extracted DB is a **Rosetta Stone witness** — it proves the recipe
+geometry matches reality. It is NOT a compiled product. The DX pipeline compiles
+ARC/STR only. MEP recipes are extracted into ERP.db for the walker to use.
+
+The convergence proof compares recipe endpoints against Rosetta Stone terminal
+positions to verify the extraction is correct. It does NOT mean the walker placed
+the sink — the sink was already there in the IFC.
+
+For generative buildings (no IFC source), the walker will place fixtures using
+`ad_placement_offset` rules + room AABBs. The gap analysis tells the user what's
+missing and where to put it.
+
+#### 7. How the Pipe Reaches the Sink
+
+**Q: How does the walker know where to put the sink?**
+
+The walker doesn't decide. The sink's position is already in the BOM — extracted
+from IFC. The pipe recipe's last piece offset converges on the sink's position
+because both were extracted from the same IFC model.
+
+**Extracted buildings (DX, SH, TE):**
+```
+IFC file → extractIFCtoDB → element_transforms (sink at 2.97, -10.66, 0.93)
+         → buildMepBomRecipes → chain detection → pipe recipe with offsets
+         → shim origin = first pipe position (3.55, -17.42, 2.75)
+         → last piece offset = cumulative from shim
+         → absolute position = origin + offset → (6.73, -17.42, 2.74)
+         → nearest PLUMBABLE terminal = Sink at 2.97m XY distance
+```
+
+**Generative buildings (DM, future):**
+```
+ad_space_type_mep_bom → KITCHEN needs SINK at WALL_SIDE
+RouteWalker → generates pipe from RISER anchor to SINK position
+SINK position → from placement_rule (WALL_SIDE) + room AABB
+```
+
+**Convergence proof (forensic, zero speculation):**
+
+Every pipe recipe stores its shim's world position (`origin_x/y/z` on M_BOM).
+At extraction time, `linkRecipesToSpaces` computes: absolute endpoint = origin +
+last piece offset, then finds the nearest plumbing terminal. The result:
+
+| Verdict | Distance | Meaning |
+|---------|----------|---------|
+| CONVERGED | < 1m | Pipe serves this fixture directly |
+| NEAR | 1–3m | Pipe in same room zone as fixture |
+| FAR | > 3m | Pipe is a main run, not a terminal branch |
+
+DX result: **133/162 recipes converged** (< 3m to nearest terminal).
+29 FAR = main ceiling runs between storeys, no terminal nearby.
+
+**GEO log format** (self-documenting, no human interpretation needed):
+```
+[MEP-CONVERGE] recipe=D_CW_U_RUN_3 disc=CW endpoint=(8.42,-17.41,2.75)
+               terminal=PANELBOARD at (7.39,-17.41,1.80) dist_xy=1.03m → CONVERGED
+```
+
+**The pipe is "in the wall" because the shim attaches to the wall surface.**
+`CW_CEILING_SHIM` has `host_ifc_class=IfcCovering, mount=BOTTOM`. The pipe hangs
+from the ceiling. `ELEC_WALL_SHIM` has `host_ifc_class=IfcWall, mount=SIDE`. The
+conduit runs along the wall. The shim IS the wall/ceiling attachment — no routing.
+
+#### 8. Order Qty → Room Coverage — How MEP Quantities Work
+
+The YAML order (user input) has `AD_Org=MEP` with a qty. This qty is NOT
+per-fixture — it's a **coverage level** that the walker resolves per room
+using the schedule in `ad_space_type_mep_bom`.
+
+| Order qty | Walker interpretation |
+|-----------|---------------------|
+| 99 (or blank) | Use `qty_normal` for each fixture in each room (standard fit-out) |
+| 0 | Fill to `qty_max` for all fixtures (maximum coverage — FP, ELEC, ACMV) |
+| N (specific) | Cap total fixtures at N across the building (budget constraint) |
+
+**No separate qty per sub-discipline needed.** The sub-discipline breakdown
+is implicit from room capabilities:
+
+```
+Order: AD_Org=MEP, qty=99
+  ↓
+Room A104 (BATHROOM, PLUMBABLE+ELECTRIFIED+FIRE_PROTECTED):
+  TOILET  → qty_normal=1 (from schedule)  → CW discipline, 1 pipe run
+  SINK    → qty_normal=1                  → CW discipline, 1 pipe run
+  OUTLET  → qty_normal=1                  → ELEC discipline, 1 conduit
+  LIGHT   → qty_normal=1                  → ELEC discipline, 1 circuit
+  SPRINKLER → qty_normal=1               → FP discipline, 1 drop
+```
+
+The schedule already says "1 SINK per KITCHEN (min=1, normal=1, max=2)."
+The order qty controls coverage level; the schedule controls per-room counts.
+
+**Area-based quantities** (sprinklers, outlets):
+
+When `per_area_normal > 0`, the qty is computed from room area:
+```
+Room area = AABB_width × AABB_depth (from room SET BOM)
+FP sprinkler: per_area_normal = 0.07/m²
+Room area = 12m² → 0.07 × 12 = 0.84 → round up → 1 sprinkler
+Room area = 50m² → 0.07 × 50 = 3.5 → round up → 4 sprinklers
+```
+
+| Schedule column | When used | Example |
+|----------------|-----------|---------|
+| `qty_min` | Minimum required by code (order qty irrelevant) | TOILET in BATHROOM: always ≥1 |
+| `qty_normal` | Standard fit-out (order qty=99) | OUTLET in BEDROOM: 3 |
+| `qty_max` | Maximum allowed / fill target (order qty=0) | OUTLET in BEDROOM: 4 |
+| `per_area_normal` | Area-proportional (overrides qty when > 0) | SPRINKLER: 0.07/m² |
+
+**Wiring: YAML → ad_sysconfig → Walker (S151)**
+
+The coverage level flows through one key: `MEP_ORDER_QTY` in `ad_sysconfig`.
+
+```
+YAML: mep_order_qty: 99           ← user sets coverage level
+  ↓  IFCtoBOMPipeline stage 10c
+ad_sysconfig: MEP_ORDER_QTY=99    ← stored in BOM DB
+  ↓  CompilationPipeline.BomWalkStage
+PlacementCollectorVisitor.setMepOrderQty(99) ← walker reads
+  ↓  onSubAssembly (SET BOM)
+SpaceScheduleDAO.resolveQty(99, entry, area) ← per-room resolution
+```
+
+Default: 99 (standard coverage). Fallback chain: `ad_sysconfig` → `System.getProperty("mep.order.qty")` → 99.
+
+Log channel: `GENERATIVE SUMMARY orderQty=N` traces the value used.
+
+#### 9. Fixture Gap Analysis — How Newbies Mark Targets
+
+When the pipeline runs, `emitFixtureGapAnalysis` checks every room against
+`ad_space_type_mep_bom`. For each fixture the schedule requires but the room
+doesn't have, it:
+
+1. Reads `ad_placement_offset` (DV042) for the placement rule's offsets
+2. Computes a target position from room AABB + offsets (zero hardcoded distances)
+3. Emits an INSERT statement the user can apply
+
+**Example output:**
+```
+[MEP-GAP] room=A103 type=KITCHEN fixture=FLOOR_TRAP rule=FLOOR_LOW host=FLOOR anchor=STACK
+          → GAP target=(3.852,-11.491,0.000) source=ad_placement_offset
+-- A103 needs FLOOR_TRAP at FLOOR_LOW (FLOOR surface, anchor=STACK)
+INSERT INTO fixture_target (...) VALUES ('A103', 'FLOOR_TRAP', 'FLOOR_LOW', ...);
+```
+
+**Modeller workflow:**
+1. Run the pipeline — read the GAP output
+2. For each GAP: either (a) apply the INSERT to seed the target, or
+   (b) use BonsaiBIMDesigner Outliner to drag the fixture to the correct position
+3. Re-run the pipeline — GAP becomes SATISFIED
+
+**To customise placement offsets** (e.g. different building codes):
+```sql
+-- Change sink height from 850mm to 900mm for commercial kitchens
+UPDATE ad_placement_offset SET z_offset = 0.9 WHERE placement_rule = 'WALL_SIDE';
+-- Add a new placement rule for hospital oxygen outlets
+INSERT INTO ad_placement_offset VALUES ('WALL_BED_HEAD', 'Bed head wall, 1.4m',
+    0.15, 0, 'FLOOR', 1.4, 'MIN', 'MAX', 'AS/NZS 2896', 'Oxygen 1400mm above floor');
+```
+
+All placement offsets are data. The code reads `ad_placement_offset` and computes.
+No recompilation needed to change where fixtures go.
+
+#### 10. Witnesses
+
+| Witness | What it Proves | Test |
+|---------|---------------|------|
+| W-SPACE-LINK | MEP recipes carry target_space_type_id from extraction | MepRouteGeometryTest S7 |
+| W-SPACE-COVER | Every room's MEP schedule is satisfied by at least one recipe | MepRouteGeometryTest S8 |
 
 ### 6.13 IFC-Driven Extraction
 
@@ -1958,14 +2439,14 @@ assembly structure visible only via `rel_aggregates` child_guid join.
 
 ## §11 — DISC BOM Single Source of Truth — Audit Findings (S104)
 
-**Audit scope:** Read-only forensics. Two test stones: Revit_MEP (RM) + SJTII_Terminal (TE).
-**DBs queried:** `library/ERP.db`, `DAGCompiler/lib/input/Revit_MEP_extracted.db`, `DAGCompiler/lib/input/Terminal_Extracted.db`.
+**Audit scope:** Read-only forensics. Two test stones: HospitalAuckland (RM) + Terminal (TE).
+**DBs queried:** `library/ERP.db`, `DAGCompiler/lib/input/HospitalAuckland_extracted.db`, `DAGCompiler/lib/input/Terminal_Extracted.db`.
 
 ---
 
 ### §11.1 — CW/SP Disambiguation Rule
 
-#### TE (SJTII_Terminal) — RESOLVED
+#### TE (Terminal) — RESOLVED
 
 `elements_meta.discipline` carries the sub-discipline per element row in the extraction DB.
 This column is populated at IFC extraction time and is the authoritative source.
@@ -1993,7 +2474,7 @@ IfcFireSuppressionTerminal   FP           909
 **CW/SP rule for TE:** read `elements_meta.discipline` → map to AD_Org_ID (CW=6, SP=7, FP=3, LPG=8).
 No keyword heuristic needed. No geometry needed.
 
-#### RM (Revit_MEP) — G2: CW/SP_UNRESOLVABLE
+#### RM (HospitalAuckland) — G2: CW/SP_UNRESOLVABLE
 
 RM uses IFC2x3 generic classes. All pipe/fitting elements have `discipline='MEP'` (flat, no sub-type).
 
@@ -2182,7 +2663,7 @@ and element_type keyword heuristics. Two concrete failures:
 **G3 TARGET (00t):** Routing topology branch at IFCtoERP.java line 799 still calls 2-arg `discFromClass`. Fix: pass `e.discipline`. Affects TE (CW/SP/FP/LPG correctly separated) and RM (light fixtures stopped from routing as CW).
 
 **W-TE-DISC** — IFCtoERP correctly assigns discipline from elements_meta for TE:
-> After 00t fix, `_import_joint_piece_types.discipline` breakdown for SJTII_Terminal matches
+> After 00t fix, `_import_joint_piece_types.discipline` breakdown for Terminal matches
 > `elements_meta` source counts: IfcPipeSegment CW≥619, SP≥455, FP≥2672, LPG≥75.
 > No IfcFlowTerminal rows assigned CW when element_type contains "light"/"lamp"/"fixture".
 > TE routing topology groups split correctly by discipline (not all collapsed to CW).

@@ -520,8 +520,34 @@ public class CompilationPipeline {
                 // capabilities — even when those devices weren't in the original IFC.
                 // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 — Witness: W-DEVICE-PLACE
                 visitor.setErpConn(compConn);
-                int mepQty = Integer.parseInt(System.getProperty("mep.order.qty", "99"));
+                // S151: MEP order qty — coverage level from ad_sysconfig → sysprop → 99
+                // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 §8 — Witness: W-DEVICE-PLACE
+                int mepQty = 99;
+                String mepQtySource = "default";
+                try (Statement sc = bomConn.createStatement();
+                     ResultSet scRs = sc.executeQuery(
+                         "SELECT config_value FROM ad_sysconfig WHERE config_key='MEP_ORDER_QTY'")) {
+                    if (scRs.next()) {
+                        String val = scRs.getString(1);
+                        if (val != null && !val.isBlank()) {
+                            mepQty = Integer.parseInt(val.trim());
+                            mepQtySource = "ad_sysconfig";
+                        }
+                    }
+                } catch (SQLException | NumberFormatException ignored) {
+                    // Table may not exist or value not parseable — fall through
+                }
+                if ("default".equals(mepQtySource)) {
+                    String sysProp = System.getProperty("mep.order.qty");
+                    if (sysProp != null) {
+                        try {
+                            mepQty = Integer.parseInt(sysProp.trim());
+                            mepQtySource = "system.property";
+                        } catch (NumberFormatException ignored) {}
+                    }
+                }
                 visitor.setMepOrderQty(mepQty);
+                BIMLogger.info("GENERATIVE", "MEP_ORDER_QTY={} source={}", mepQty, mepQtySource);
 
                 BOMWalker walker = new BOMWalker(bomConn, compConn);
                 walker.walk(root.getValue(), List.of(visitor), ctx.entry().projectName());

@@ -140,7 +140,8 @@ public class ClassificationYaml {
             Map<String, DisciplineConfig> disciplines,
             int geometryFailThreshold,
             String jurisdiction,
-            List<String> mepDisciplines
+            List<String> mepDisciplines,
+            int mepOrderQty  // coverage level: 99=standard, 0=max, N=budget cap (§6.12.4 §8)
     ) {}
 
     // ── Accessors ────────────────────────────────────────────────────────────
@@ -311,6 +312,10 @@ public class ClassificationYaml {
             }
         }
 
+        // S151: MEP order qty — coverage level for generative device placement
+        // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 §8 — Witness: W-DEVICE-PLACE
+        int mepOrderQty = getInt(bldg, "mep_order_qty", 99);
+
         result.building = new BuildingConfig(
                 getString(bldg, "building_type"),
                 getString(bldg, "prefix"),
@@ -323,7 +328,8 @@ public class ClassificationYaml {
                 disciplines,
                 getInt(bldg, "geometry_fail_threshold", 0),
                 getString(bldg, "jurisdiction"),
-                mepDisciplines
+                mepDisciplines,
+                mepOrderQty
         );
 
         return result;
