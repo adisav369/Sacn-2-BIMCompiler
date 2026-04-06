@@ -158,6 +158,31 @@ no spatial culling — raw scene graph. Competitive with commercial BIM viewers
 
 ---
 
+## 4D/5D — Schedule and BOQ
+
+Both 4D and 5D work on this building directly from the extracted DB.
+
+**4D Construction Schedule:**
+```bash
+python3 scripts/schedule_generator.py DAGCompiler/lib/input/LTU_AHouse_extracted.db
+```
+Produces `construction_schedule` table + Excel export with phase distribution chart
+and discipline breakdown. Project name derived from DB filename ("LTU AHouse Construction").
+All phases populated: Substructure → Superstructure → MEP Rough-in → Architecture → MEP Final → Finishes.
+
+**5D BOQ/QTO:**
+```bash
+python3 scripts/simple_qto_extract.py DAGCompiler/lib/input/LTU_AHouse_extracted.db
+```
+Produces `simple_qto` table: 133 line items, RM 47.4M grand total.
+Excel export with cost breakdown by discipline and cost components chart.
+
+Both scripts are copies from the Federation addon (`schedule/` and `boq/`), adapted for
+our extracted DB schema. See [`scripts/README_extraction.md`](../scripts/README_extraction.md)
+for full details.
+
+---
+
 ## How to Extract (for newbies)
 
 ### Step 0 — Download source files

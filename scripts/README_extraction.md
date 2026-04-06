@@ -134,3 +134,26 @@ SELECT discipline, ifc_class, storey, measurement_type, element_count,
        total_quantity, uom, total_cost_rm
 FROM simple_qto ORDER BY total_cost_rm DESC;
 ```
+
+## 4D Construction Schedule
+
+`scripts/schedule_generator.py` — copied from Federation addon (`schedule/schedule_generator.py`).
+Generates construction schedule from extracted DB using productivity rates and precedence rules.
+Project name is derived dynamically from the DB filename.
+
+```bash
+python3 scripts/schedule_generator.py DAGCompiler/lib/input/LTU_AHouse_extracted.db
+python3 scripts/schedule_generator.py DAGCompiler/lib/input/Clinic_extracted.db
+```
+
+Writes `construction_schedule` table into the extracted DB. Exports to Excel via
+`schedule/excel_export.py` (in Federation addon). Includes phase distribution, discipline
+breakdown, and Gantt chart data.
+
+| Building | Tasks | Phases | Result |
+|---|---|---|---|
+| LTU A-House | 133 | All phases populated | Excel with charts |
+| Clinic | 83 | All phases populated | Excel with charts |
+
+See `docs/Enterprise.md` §4D for the scheduling algorithm (topological sort on
+`CONSTRUCTION_SEQUENCE_RULES` by storey → phase → discipline).
