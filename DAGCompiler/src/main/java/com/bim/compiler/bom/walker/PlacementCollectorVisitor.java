@@ -468,6 +468,35 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                                 generativeDeviceCount++;
                                 placeDeviceCount++;
                                 generativeDeviceCounts.merge(dp.deviceId(), 1, Integer::sum);
+
+                                // S151: GeoProofRecord for generative devices — same proof chain as extracted
+                                // Parent = room AABB, offset = schedule metadata, no inputLBD (generative, not extracted)
+                                // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 — Witness: W-GEO-PROOF
+                                {
+                                    double[] pos = dp.position();
+                                    double[] roomDims = {rw, rd, rh};
+                                    // LMP: position inside room (already computed as inX/inY/inZ)
+                                    boolean lmpOk = inX && inY && inZ;
+                                    // Envelope: device AABB fits inside room AABB
+                                    boolean envOk = (pos[0] + hw) <= roomAabb[1] + 0.001
+                                                 && (pos[1] + hd) <= roomAabb[3] + 0.001
+                                                 && (pos[2] + hh) <= roomAabb[5] + 0.001;
+                                    String chain = childBomId + "→GENERATIVE→" + dp.deviceId();
+                                    proofRecords.add(new GeoProofRecord(
+                                        p.elementRef(), dp.deviceId(), chain,
+                                        null,  // no inputLBD — generative, not extracted
+                                        new double[]{roomAabb[0], roomAabb[2], roomAabb[4]},  // room min as anchor
+                                        0.0,   // no rotation for generative devices
+                                        new double[]{pos[0] - roomAabb[0], pos[1] - roomAabb[2], pos[2] - roomAabb[4]}, // offset from room min
+                                        new double[]{pos[0] - roomAabb[0], pos[1] - roomAabb[2], pos[2] - roomAabb[4]}, // same (no rotation)
+                                        pos,   // output centroid = position
+                                        new double[]{pos[0] - hw, pos[1] - hd, pos[2] - hh},  // output LBD
+                                        new double[]{hw, hd, hh},
+                                        roomDims,
+                                        false, // no round-trip for generative
+                                        lmpOk, envOk
+                                    ));
+                                }
                             }
                             if (!devices.isEmpty()) {
                                 generativeRoomCounts.put(childBomId, devices.size());
