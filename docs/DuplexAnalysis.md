@@ -651,35 +651,22 @@ cabinet+counter→KITCHEN, vanity→BATHROOM, bed→BEDROOM, sofa→LIVING.
 | GENERATIVE BREACH | `GENERATIVE.*BREACH` | Devices outside room AABB — axis-by-axis diagnosis |
 | GENERATIVE SUMMARY | `GENERATIVE.*SUMMARY` | Total devices, rooms, breaches |
 
-### Known Findings (S151 — two issues for next session)
+### Known Findings (S151 — RESOLVED `e09294f8`)
 
-**Finding 1: Z-axis breach — bomAABB height is furniture extent, not room height.**
+**Finding 1: Z-axis breach — FIXED.** 13/114 breaches → 0. DV044 adds
+`default_ceiling_height_mm` to `ad_space_type` (2700mm residential).
+`SpaceScheduleDAO.getCeilingHeightM()` reads it; walker overrides `rh` when
+bomAABB height < 2400mm. Logged as `GENERATIVE CEILING_OVERRIDE`.
 
-13/114 devices breach Z. All rooms have `bomAABB.height` = furniture max height
-(812mm sofa, 820mm vanity, 2000mm wardrobe), NOT the actual room height (2700mm).
-Placement offsets (SWITCH at 1200mm, SINK at 850mm, OUTLET_GFCI at 1000mm) exceed
-the furniture AABB. The anchor XY is correct (matches ARC furniture positions).
-
-```
-BREACH SWITCH pos=Z=2.750 room=[1.550→2.362] — offset 1.2m > room height 0.812m
-BREACH SINK   pos=Z=2.400 room=[1.550→2.370] — offset 0.85m > room height 0.82m
-```
-
-**Root cause:** `childBom.getAabbHeightMm()` returns the BOM's own AABB (computed
-from furniture child extents), not the IfcSpace height. The fix must read storey
-height from the FLOOR BOM or the extraction spatial_structure, or use a default
-storey height when bomAABB height < threshold.
-
-**Finding 2: LOD geometry — generative Placement AABB is ±0.05m hardcoded.**
-
-The `Placement` record for generative devices uses `dp.position() ± 0.05` for
-min/max on all axes. This 0.1m cube is then used by BuildingWriter to scale the
-LOD mesh. Products like FRIDGE (0.7×0.7×1.8m) get squashed into a 0.1m cube.
-Fix: use M_Product dimensions (width/depth/height from ERP.db) for the Placement
-AABB, not a hardcoded 0.05m offset.
+**Finding 2: LOD geometry — FIXED.** `SpaceScheduleDAO.getProductDimensions()`
+reads M_Product width/depth/height; walker uses half-extents for Placement AABB.
+FRIDGE: 0.70×0.70×1.80m (was 0.10×0.10×0.10m). Logged as `GENERATIVE AABB`.
 
 **Geometry stubs:** Products with no extraction geometry (SWITCH, OUTLET, FRIDGE,
 AIRCON_POINT, CEILING_FAN, EXHAUST_FAN, DATA_POINT, EMERGENCY_LIGHT, OUTLET_20A,
 OUTLET_GFCI) use box stub `f7051d6c5f17ad77` (8 vertices) in component_library.db.
 Products with extraction geometry (SPRINKLER, SINK, TOILET, LIGHT, FLOOR_TRAP,
 SUPPLY_DIFFUSER) resolve via LIKE match to real IFC meshes.
+
+**Witness:** MepRouteGeometryTest S15 — ceiling override + product AABB proof.
+15/15 PASS. S14: 0 gaps across 27 space types.

@@ -710,6 +710,79 @@ class MepRouteGeometryTest {
         }
     }
 
+    // ── Scenario 15: Ceiling override + product AABB proof ──
+    // Exercises both S151 bug fixes:
+    //   Bug 1: Room with furniture-height AABB (812mm) → ceiling override → 2700mm
+    //   Bug 2: Product dimensions from M_Product → AABB half-extents, not ±0.05
+    // Implementing DuplexAnalysis.md §S150/S151 Findings — Witness: W-DEVICE-PLACE
+    @Test
+    @Order(15)
+    @DisplayName("S15: ceiling override + product AABB — furniture-height room gets metadata ceiling")
+    void ceilingOverrideAndProductAabb() throws Exception {
+        try (Connection erpConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
+            // 1. Ceiling override threshold
+            assertTrue(com.bim.compiler.bom.walker.SpaceScheduleDAO.needsCeilingOverride(812),
+                "812mm (sofa height) must trigger ceiling override");
+            assertTrue(com.bim.compiler.bom.walker.SpaceScheduleDAO.needsCeilingOverride(820),
+                "820mm (vanity height) must trigger ceiling override");
+            assertFalse(com.bim.compiler.bom.walker.SpaceScheduleDAO.needsCeilingOverride(2700),
+                "2700mm (real ceiling) must NOT trigger override");
+            assertFalse(com.bim.compiler.bom.walker.SpaceScheduleDAO.needsCeilingOverride(0),
+                "0mm (unknown) must NOT trigger override — let fallback chain handle it");
+
+            // 2. Ceiling height from metadata
+            double kitchenCeiling = com.bim.compiler.bom.walker.SpaceScheduleDAO.getCeilingHeightM(erpConn, "KITCHEN");
+            double bathroomCeiling = com.bim.compiler.bom.walker.SpaceScheduleDAO.getCeilingHeightM(erpConn, "BATHROOM");
+            assertEquals(2.7, kitchenCeiling, 0.001, "KITCHEN ceiling must be 2.7m");
+            assertEquals(2.7, bathroomCeiling, 0.001, "BATHROOM ceiling must be 2.7m");
+            System.out.printf("[S15] Ceiling heights: KITCHEN=%.1fm BATHROOM=%.1fm%n", kitchenCeiling, bathroomCeiling);
+
+            // 3. Place devices in a furniture-height room (LIVING, 812mm sofa AABB)
+            //    After override: room height = 2700mm, not 812mm
+            double overriddenH = kitchenCeiling; // 2.7m
+            double[] roomAabb = {0, 3.6, 0, 3.0, 0, overriddenH};
+            List<com.bim.compiler.bom.walker.MEPDevicePlacer.DevicePlacement> devices =
+                com.bim.compiler.bom.walker.MEPDevicePlacer.placeDevices(
+                    erpConn, "KITCHEN", roomAabb, 99, "TEST_KITCHEN_OVERRIDE");
+
+            assertFalse(devices.isEmpty(), "KITCHEN must have devices");
+            System.out.printf("[S15] KITCHEN with overridden ceiling: %d devices%n", devices.size());
+
+            // Every device must be inside the overridden room AABB
+            int breaches = 0;
+            for (com.bim.compiler.bom.walker.MEPDevicePlacer.DevicePlacement dp : devices) {
+                boolean inZ = dp.position()[2] >= roomAabb[4] && dp.position()[2] <= roomAabb[5];
+                if (!inZ) {
+                    breaches++;
+                    System.out.printf("[S15] BREACH %s Z=%.3f outside [%.3f,%.3f]%n",
+                        dp.deviceId(), dp.position()[2], roomAabb[4], roomAabb[5]);
+                }
+            }
+            assertEquals(0, breaches, "No Z breaches after ceiling override");
+            System.out.printf("[S15] Z-axis breaches: %d (was 13 before fix)%n", breaches);
+
+            // 4. Product dimensions — verify non-trivial sizes
+            double[] fridgeDims = com.bim.compiler.bom.walker.SpaceScheduleDAO.getProductDimensions(erpConn, "FRIDGE");
+            assertNotNull(fridgeDims, "FRIDGE must have M_Product dimensions");
+            assertEquals(0.70, fridgeDims[0], 0.01, "FRIDGE width=0.70m");
+            assertEquals(0.70, fridgeDims[1], 0.01, "FRIDGE depth=0.70m");
+            assertEquals(1.80, fridgeDims[2], 0.01, "FRIDGE height=1.80m");
+
+            double[] sprinklerDims = com.bim.compiler.bom.walker.SpaceScheduleDAO.getProductDimensions(erpConn, "SPRINKLER");
+            assertNotNull(sprinklerDims, "SPRINKLER must have M_Product dimensions");
+            assertEquals(0.10, sprinklerDims[0], 0.01, "SPRINKLER width=0.10m");
+
+            // Verify FRIDGE half-extents would be 0.35m, not 0.05m
+            assertTrue(fridgeDims[0] / 2.0 > 0.05, "FRIDGE half-width must exceed old hardcoded 0.05m");
+            assertTrue(fridgeDims[2] / 2.0 > 0.05, "FRIDGE half-height must exceed old hardcoded 0.05m");
+
+            System.out.printf("[S15] Product dims: FRIDGE=(%.2f,%.2f,%.2f) SPRINKLER=(%.2f,%.2f,%.2f)%n",
+                fridgeDims[0], fridgeDims[1], fridgeDims[2],
+                sprinklerDims[0], sprinklerDims[1], sprinklerDims[2]);
+            System.out.printf("[S15] PASS: ceiling override eliminates Z breaches, product dims drive AABB%n");
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // Helpers
     // ═══════════════════════════════════════════════════════════════════

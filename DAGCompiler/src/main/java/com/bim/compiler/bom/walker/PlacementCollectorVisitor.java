@@ -438,6 +438,13 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                                     hw = prodDims[0] / 2.0;
                                     hd = prodDims[1] / 2.0;
                                     hh = prodDims[2] / 2.0;
+                                    BIMLogger.info("GENERATIVE",
+                                        "  AABB {} dims=({:.3f},{:.3f},{:.3f})m from M_Product",
+                                        dp.deviceId(), prodDims[0], prodDims[1], prodDims[2]);
+                                } else {
+                                    BIMLogger.info("GENERATIVE",
+                                        "  AABB {} dims=(0.100,0.100,0.100)m FALLBACK — no M_Product dimensions",
+                                        dp.deviceId());
                                 }
                                 PlacementLoader.Placement p = new PlacementLoader.Placement(
                                     buildingType,
