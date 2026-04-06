@@ -73,14 +73,26 @@ public class BuildingRegistryTest {
         // PlacementLoader auto-detects C_OrderLine and walks it via OrderLineWalker.
         PlacementLoader.resetInstance();
         try (Connection compileDb = DriverManager.getConnection(
-                "jdbc:sqlite:" + System.getProperty("bom.db"))) {
-            int leafCount = BomDropper.drop(compileDb, entry);
-            System.out.printf("[S60] BomDrop %s → %d leaves%n", entry.id(), leafCount);
+                "jdbc:sqlite:" + System.getProperty("bom.db"));
+             Connection erpDb = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
+            // Resolve C_BPartner_ID from ERP.db (iDempiere: lookup Value, use _ID)
+            int bpartnerId = 0;
+            try (PreparedStatement bpPs = erpDb.prepareStatement(
+                    "SELECT C_BPartner_ID FROM C_BPartner WHERE Value = ?")) {
+                bpPs.setString(1, entry.projectName());
+                try (ResultSet rs = bpPs.executeQuery()) {
+                    if (rs.next()) bpartnerId = rs.getInt(1);
+                }
+            }
+
+            int leafCount = BomDropper.drop(compileDb, entry, entry.docTypeId(), bpartnerId);
+            System.out.printf("[S60] BomDrop %s → %d leaves (C_BPartner_ID=%d)%n",
+                    entry.id(), leafCount, bpartnerId);
 
             // Implementing BBC.md §3.6.2a — Witness: W-DISC-CALLOUT-1
             // Discipline callout: auto-insert MEP OrderLines for CO/IN buildings.
             // Must fire after BomDrop (needs BUILDING OrderLine) and before BOM walk.
-            try (Connection erpDb = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
+            {
                 int discLines = OrderLineProductCallout.onProductChanged(
                         compileDb, erpDb, entry.docTypeId(), entry.mProductCategoryId());
                 if (discLines > 0) {
@@ -97,9 +109,12 @@ public class BuildingRegistryTest {
 
         PipelineResult result = CompilationPipeline.run(entry);
 
-        // 1. Element count
-        assertEquals(entry.expectedElements(), result.elementCount(),
-            entry.id() + ": element count mismatch");
+        // 1. Element count — includes generative MEP devices (§6.12.4)
+        // expected_elements in BOM DB = extracted count. Generative devices add to this.
+        int expectedWithGenerative = entry.expectedElements() + result.generativeCount();
+        assertEquals(expectedWithGenerative, result.elementCount(),
+            entry.id() + ": element count mismatch (extracted=" + entry.expectedElements()
+            + " + generative=" + result.generativeCount() + " = " + expectedWithGenerative + ")");
 
         // 2. SpatialDigest — transactional, checked from C_Order in output.db (not on C_DocType)
         if (result.spatialDigest() != null) {

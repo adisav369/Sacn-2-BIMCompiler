@@ -39,6 +39,7 @@ public class CompilationContext {
     private RouteExecutor.RouteReport routeReport;
     private String verbBreakdown;
     private List<GeoProofRecord> geoProofRecords;
+    private int generativeCount;
 
     public CompilationContext(BuildingEntry entry) {
         this.entry = entry;
@@ -67,12 +68,16 @@ public class CompilationContext {
         return new PipelineResult(
             entry.id(),
             elementCount,
+            generativeCount,
             digestReport != null ? digestReport.digest() : null,
             proofReport,
             geometryReport,
             proverSkipped
         );
     }
+
+    public int generativeCount() { return generativeCount; }
+    public void setGenerativeCount(int n) { this.generativeCount = n; }
 
     // --- Getters ---
     public BuildingEntry entry() { return entry; }

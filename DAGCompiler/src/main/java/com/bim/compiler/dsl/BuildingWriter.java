@@ -1209,6 +1209,16 @@ public class BuildingWriter {
                                                 ty = p.minY() - lb[2] * sY;
                                             }
                                             double tz = p.minZ() - lb[4] * sZ;
+                                            // S151: forensic LOD trace for every BOM-generated element
+                                            BIMLogger.info("LOD-BIND",
+                                                "{} familyRef={} mesh={} lb=({:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}) "
+                                                + "scale=({:.3f},{:.3f},{:.3f}) t=({:.3f},{:.3f},{:.3f}) rotZ={:.2f} "
+                                                + "placement=[{:.3f},{:.3f},{:.3f}]→[{:.3f},{:.3f},{:.3f}]",
+                                                p.ifcClass(), p.familyRef(), cd.geometryHash(),
+                                                lb[0], lb[1], lb[2], lb[3], lb[4], lb[5],
+                                                sX, sY, sZ, tx, ty, tz, rotZ,
+                                                p.minX(), p.minY(), p.minZ(),
+                                                p.maxX(), p.maxY(), p.maxZ());
                                             String geoHash = libraryMapper.transformAndWriteGeometryScaled(
                                                 conn, cd.geometryHash(), tx, ty, tz, rotZ, sX, sY, sZ);
                                             if (geoHash != null) {
@@ -1226,10 +1236,26 @@ public class BuildingWriter {
                                                 bound++;
                                                 continue;
                                             }
+                                        } else {
+                                            BIMLogger.warn("LOD-BIND",
+                                                "ZERO-MESH {} familyRef={} mesh={} lb=({:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}) — mesh dims too small",
+                                                p.ifcClass(), p.familyRef(), cd.geometryHash(),
+                                                lb[0], lb[1], lb[2], lb[3], lb[4], lb[5]);
                                         }
+                                    } else {
+                                        BIMLogger.warn("LOD-BIND",
+                                            "NO-BOUNDS {} familyRef={} mesh={} — getLocalBounds returned null",
+                                            p.ifcClass(), p.familyRef(), cd.geometryHash());
                                     }
+                                } else {
+                                    BIMLogger.warn("LOD-BIND",
+                                        "NO-MATCH {} familyRef={} — ComponentLibrary.getByName returned null",
+                                        p.ifcClass(), p.familyRef());
                                 }
-                            } catch (SQLException ex) { /* best-effort furniture LOD lookup */ }
+                            } catch (SQLException ex) {
+                                BIMLogger.warn("LOD-BIND",
+                                    "SQL-ERR {} familyRef={} — {}", p.ifcClass(), p.familyRef(), ex.getMessage());
+                            }
                         }
                         // No geometry_map entry and no furnitureLibrary LOD match.
                         //

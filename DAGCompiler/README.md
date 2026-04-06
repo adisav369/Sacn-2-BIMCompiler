@@ -2,6 +2,13 @@
 
 The compiler module of the BIM Compiler project. Contains all Java source code, reference data, and output databases.
 
+## Development Cycle
+
+1. **Follow specs before coding.** Read the relevant SRS section (`docs/DISC_VALIDATION_DB_SRS.md`, `docs/BOMBasedCompilation.md`) before touching code. The spec defines what the code must do.
+2. **Write tests before coding.** The test defines "done". If you can't write the assertion, you don't understand the requirement.
+3. **Analyse debug logs and review code to fix.** Run the pipeline, read the logs, diagnose from output — not from judgement. If the logs don't reveal the issue, improve the logging first.
+4. **If you need to change code, change specs first.** Then back to step 1. Specs are the source of truth; code implements specs, not the other way around.
+
 ## Layout
 
 ```
@@ -37,17 +44,17 @@ DAGCompiler/
 ├── lib/
 │   ├── input/
 │   │   ├── IFC/                            ← IFC source files (ground truth)
-│   │   │   ├── Ifc4_SampleHouse.ifc             Stone 1 (2.2M)
-│   │   │   ├── Ifc2x3_Duplex_Architecture.ifc   Stone 2 ARC (2.3M)
-│   │   │   ├── Ifc2x3_Duplex_MEP.ifc           Stone 2 MEP (18M)
-│   │   │   └── Ifc2x3_Duplex_Federated.ifc     Stone 2 merged ARC+MEP (49M)
-│   │   ├── Ifc4_SampleHouse_extracted.db    Stone 1 reference (55 elements)
-│   │   ├── Ifc2x3_Duplex_extracted.db      Stone 2 reference (1,085 elements)
+│   │   │   ├── SampleHouse.ifc             Stone 1 (2.2M)
+│   │   │   ├── Duplex_Architecture.ifc   Stone 2 ARC (2.3M)
+│   │   │   ├── Duplex_MEP.ifc           Stone 2 MEP (18M)
+│   │   │   └── Duplex_Federated.ifc     Stone 2 merged ARC+MEP (49M)
+│   │   ├── SampleHouse_extracted.db    Stone 1 reference (55 elements)
+│   │   ├── Duplex_extracted.db      Stone 2 reference (1,085 elements)
 │   │   └── Terminal_Extracted.db            Stone 3 reference (51,723 elements, from federation)
 │   └── output/                      ← Compiled output DBs (generated, not committed)
-│       ├── ifc4_samplehouse.db
-│       ├── ifc2x3_duplex.db
-│       └── sjtii_terminal.db
+│       ├── samplehouse.db
+│       ├── duplex.db
+│       └── terminal.db
 ├── python/                          ← Python scripts used by DAGCompiler
 │   ├── extractIFCtoDB.py                Unified IFC → reference DB extractor
 │   ├── reference_schema.sql             Canonical CREATE for reference DBs
@@ -81,32 +88,32 @@ IFC source files are processed by `extractIFCtoDB.py` into SQLite reference DBs 
 
 | Stone | IFC Source | Reference DB | Elements |
 |-------|-----------|-------------|----------|
-| SampleHouse | `lib/input/IFC/Ifc4_SampleHouse.ifc` | `lib/input/Ifc4_SampleHouse_extracted.db` | 55 |
-| Duplex | `lib/input/IFC/Ifc2x3_Duplex_Federated.ifc` | `lib/input/Ifc2x3_Duplex_extracted.db` | 1,085 |
+| SampleHouse | `lib/input/IFC/SampleHouse.ifc` | `lib/input/SampleHouse_extracted.db` | 55 |
+| Duplex | `lib/input/IFC/Duplex_Federated.ifc` | `lib/input/Duplex_extracted.db` | 1,085 |
 | Terminal | Federation of 7 IFCs | `lib/input/Terminal_Extracted.db` | 51,723 |
 
 ```bash
 # Full extraction (geometry + materials in ONE pass)
 python3 DAGCompiler/python/extractIFCtoDB.py \
-    --ifc DAGCompiler/lib/input/IFC/Ifc4_SampleHouse.ifc \
-    -o DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+    --ifc DAGCompiler/lib/input/IFC/SampleHouse.ifc \
+    -o DAGCompiler/lib/input/SampleHouse_extracted.db \
     --exclude IfcOpeningElement,IfcCovering
 
 # Enrich existing reference DB with materials from IFC
 python3 DAGCompiler/python/extractIFCtoDB.py --enrich \
-    --ifc DAGCompiler/lib/input/IFC/Ifc2x3_Duplex_Architecture.ifc \
-    --ref DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db
+    --ifc DAGCompiler/lib/input/IFC/Duplex_Architecture.ifc \
+    --ref DAGCompiler/lib/input/Duplex_extracted.db
 
 # Extract placement positions from reference → ad_element_placement
 python3 DAGCompiler/python/placement_extractor.py \
-    --reference DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
-    --building-type Ifc4_SampleHouse
+    --reference DAGCompiler/lib/input/SampleHouse_extracted.db \
+    --building-type SampleHouse
 
 # Populate ad_element_placement material columns
 python3 DAGCompiler/python/extractIFCtoDB.py --populate-placement \
-    --ref DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+    --ref DAGCompiler/lib/input/SampleHouse_extracted.db \
     --library library/component_library.db \
-    --building-type Ifc4_SampleHouse
+    --building-type SampleHouse
 ```
 
 ### Stage 2: Metadata (Reference DB → component_library.db)
@@ -135,8 +142,8 @@ The Java compiler reads DSL input, resolves metadata from `component_library.db`
 ```bash
 # Positional check (PRIMARY METRIC)
 python3 DAGCompiler/python/spatial_checker.py \
-    DAGCompiler/lib/output/ifc4_samplehouse.db \
-    DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+    DAGCompiler/lib/output/samplehouse.db \
+    DAGCompiler/lib/input/SampleHouse_extracted.db \
     --positional --discipline ARC
 ```
 

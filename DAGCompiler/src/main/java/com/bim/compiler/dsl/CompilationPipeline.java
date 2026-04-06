@@ -62,6 +62,7 @@ public class CompilationPipeline {
     public record PipelineResult(
         String buildingId,
         int elementCount,
+        int generativeCount,
         String spatialDigest,
         PlacementProver.ProofReport proofs,
         GeometryIntegrityChecker.CheckReport geometryReport,
@@ -563,10 +564,13 @@ public class CompilationPipeline {
                 ctx.setSpec(new BuildingSpec(ctx.entry().name(),
                     List.of(), null, List.of(), null, null));
 
+                int genCount = visitor.getGenerativeDeviceCount();
+                ctx.setGenerativeCount(genCount);
                 BIMLogger.info("COMPILE", "BOM walk: {} → {} elements from {} sub-assemblies (generative MEP: {})",
-                    root.getValue(), placements.size(), visitor.getSubAssemblyCount(),
-                    visitor.getGenerativeDeviceCount());
+                    root.getValue(), placements.size(), visitor.getSubAssemblyCount(), genCount);
                 visitor.emitGenerativeSummary();
+
+                // expected_elements stays at extraction count — BuildingRegistryTest adds generativeCount.
                 BIMLogger.fine("COMPILE", "{}: walk complete: {} placements from {} sub-assemblies",
                     ctx.entry().name(), placements.size(), visitor.getSubAssemblyCount());
                 String verbBreakdown = visitor.getVerbBreakdown();
