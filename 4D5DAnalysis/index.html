@@ -90,7 +90,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#4d5d-analysis-construction-schedule-and-costing-from-extracted-db" class="md-skip">
+        <a href="#4d5d-analysis-construction-schedule-and-costing-from-the-federated-model-db" class="md-skip">
           Skip to content
         </a>
       
@@ -3120,7 +3120,7 @@
   
 
 
-<h1 id="4d5d-analysis-construction-schedule-and-costing-from-extracted-db">4D/5D Analysis — Construction Schedule and Costing from Extracted DB<a class="headerlink" href="#4d5d-analysis-construction-schedule-and-costing-from-extracted-db" title="Permanent link">&para;</a></h1>
+<h1 id="4d5d-analysis-construction-schedule-and-costing-from-the-federated-model-db">4D/5D Analysis — Construction Schedule and Costing from the Federated Model DB<a class="headerlink" href="#4d5d-analysis-construction-schedule-and-costing-from-the-federated-model-db" title="Permanent link">&para;</a></h1>
 <blockquote>
 <p><strong>Foundation:</strong> <a href="../Enterprise/">Enterprise</a> · <a href="../LTUAHouseAnalysis/">LTU A-House</a> · <a href="../DATA_MODEL/">DATA_MODEL</a></p>
 </blockquote>
@@ -3129,8 +3129,9 @@
 </div>
 
 <h2 id="what-we-have">What We Have<a class="headerlink" href="#what-we-have" title="Permanent link">&para;</a></h2>
-<p>The extracted DB (<code>_extracted.db</code>) drives both 4D scheduling and 5D costing in <strong>2 seconds</strong>
-from a single SQLite file. No IFC open, no geometry iterator, no RAM spike.</p>
+<p>The <a href="../Enterprise/">Federated Model DB</a> (<code>_extracted.db</code>) drives both 4D scheduling and 5D costing
+in <strong>2 seconds</strong> from a single SQLite file. All IFC disciplines live in this one DB.
+No IFC file open, no geometry iterator, no RAM spike.</p>
 <table>
 <thead>
 <tr>
@@ -3156,29 +3157,26 @@ from a single SQLite file. No IFC open, no geometry iterator, no RAM spike.</p>
 </tbody>
 </table>
 <h3 id="proven-results-ltu-a-house-125997-elements-8-disciplines">Proven Results (LTU A-House — 125,997 elements, 8 disciplines)<a class="headerlink" href="#proven-results-ltu-a-house-125997-elements-8-disciplines" title="Permanent link">&para;</a></h3>
-<div style="float:right; margin-left:20px; max-width:360px;">
-<img src="img/5DCosting.png" alt="5D Costing — RM 67M Executive Summary" style="width:100%; margin-bottom:10px; border:1px solid #ccc;"/>
-<img src="img/4DSchedule.png" alt="4D Schedule — 224 tasks, 8 disciplines" style="width:100%; margin-bottom:10px; border:1px solid #ccc;"/>
-<img src="img/4DDashBoard.png" alt="4D Dashboard — S-Curve, milestones, resource workload" style="width:100%; border:1px solid #ccc;"/>
-</div>
+<p><strong>5D Costing</strong> — Executive Summary with Material + Labour + Equipment per discipline.
+Grand Total: RM 67M (CIDB 2024 standard rates). 133 QTO line items. Generated in ~2 seconds.</p>
+<figure style="margin: 20px 0;">
+<img src="img/5DCosting.png" alt="5D Costing" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">5D Costing — RM 67M across 8 disciplines. Cost Breakdown pie + Cost Components bar.</figcaption>
+</figure>
 
-<p><strong>5D Costing</strong> (<code>5DCosting.png</code>):
-- Executive Summary: Material + Labour + Equipment per discipline
-- Grand Total: RM 67M (Malaysian Ringgit, CIDB 2024 standard rates)
-- 133 QTO line items across LINEAR/AREA/VOLUME/COUNT measurement types
-- Cost Breakdown by Discipline pie chart + Cost Components stacked bar
-- Generated in ~2 seconds</p>
-<p><strong>4D Schedule</strong> (<code>4DSchedule.png</code>):
-- 224 construction tasks, precedence-linked by phase
-- Phases: Substructure → Superstructure → MEP Rough-in → Architecture → MEP Final → Finishes
-- Task Distribution by Phase pie chart + Task Count by Discipline bar
-- Project name derived dynamically from DB filename</p>
-<p><strong>4D Dashboard</strong> (<code>4DDashBoard.png</code>):
-- Phase Duration Analysis with horizontal bar chart
-- Resource Workload (Man-Days) by phase
-- Project S-Curve (cumulative task completion over 63 weeks)
-- Project Milestones Timeline</p>
-<p>Screenshots: <code>~/Pictures/Screenshots/5DCosting.png</code>, <code>4DSchedule.png</code>, <code>4DDashBoard.png</code></p>
+<p><strong>4D Schedule</strong> — 224 construction tasks, precedence-linked by phase.
+Substructure → Superstructure → MEP Rough-in → Architecture → MEP Final → Finishes.</p>
+<figure style="margin: 20px 0;">
+<img src="img/4DSchedule.png" alt="4D Schedule" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">4D Schedule — 224 tasks. Task Distribution by Phase + Task Count by Discipline.</figcaption>
+</figure>
+
+<p><strong>4D Dashboard</strong> — S-Curve, resource workload, milestones — all from one query on the DB.</p>
+<figure style="margin: 20px 0;">
+<img src="img/4DDashBoard.png" alt="4D Dashboard" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">BIM 5D Analytics Dashboard — Phase Duration, Resource Workload, S-Curve, Milestones.</figcaption>
+</figure>
+
 <h3 id="current-limitation-unknown-phase">Current Limitation: Unknown Phase<a class="headerlink" href="#current-limitation-unknown-phase" title="Permanent link">&para;</a></h3>
 <p>64% of LTU elements (80,788) are generic IFC2x3 classes (<code>IfcFlowSegment</code>, <code>IfcFlowFitting</code>,
 <code>IfcFlowController</code>, etc.) not mapped in <code>CONSTRUCTION_SEQUENCE_RULES</code>. These land as
@@ -3187,7 +3185,7 @@ Fix: map all IFC classes in <code>scripts/schedule_generator.py</code>. See
 <code>prompts/5D_nD_backend_readiness.md</code> for the full class list.</p>
 <hr />
 <h2 id="industry-value-what-qs-firms-pay-for">Industry Value — What QS Firms Pay For<a class="headerlink" href="#industry-value-what-qs-firms-pay-for" title="Permanent link">&para;</a></h2>
-<p>No commercial tool produces discipline-level 4D+5D analytics from an IFC file in 2 seconds
+<p>No commercial tool produces discipline-level 4D+5D analytics from a Federated Model DB in 2 seconds
 at zero licence cost. Here is what the industry wants and where we stand:</p>
 <h3 id="tier-1-we-have-it-now">Tier 1 — We Have It Now<a class="headerlink" href="#tier-1-we-have-it-now" title="Permanent link">&para;</a></h3>
 <table>
@@ -3309,7 +3307,7 @@ at zero licence cost. Here is what the industry wants and where we stand:</p>
 </tbody>
 </table>
 <h3 id="the-holy-grail">The Holy Grail<a class="headerlink" href="#the-holy-grail" title="Permanent link">&para;</a></h3>
-<p><strong>A bankable project finance model generated in 2 seconds from an IFC file.</strong></p>
+<p><strong>A bankable project finance model generated in 2 seconds from the <a href="../Enterprise/">Federated Model DB</a>.</strong></p>
 <p>Banks release progress payments based on:
 1. What was planned (4D schedule) — we have it
 2. What it should cost (5D BOQ) — we have it
