@@ -157,19 +157,31 @@ def _audit_dxf(doc, out_dxf: str, view_type: str):
     counts = {}
     min_x = min_y = float('inf')
     max_x = max_y = float('-inf')
-    text_heights = []
+    text_entries = []          # (text_str, x, y, height)
     guid_count = 0
     guid_set = set()
+    # Track geometry-only extent (LWPOLYLINE on wall/elev layers)
+    geo_min_x = geo_min_y = float('inf')
+    geo_max_x = geo_max_y = float('-inf')
 
     for e in msp:
         t = e.dxftype()
         counts[t] = counts.get(t, 0) + 1
         if t == 'LWPOLYLINE':
+            layer = e.dxf.layer
             for pt in e.get_points(format='xy'):
                 min_x = min(min_x, pt[0])
                 max_x = max(max_x, pt[0])
                 min_y = min(min_y, pt[1])
                 max_y = max(max_y, pt[1])
+                # Building geometry layers only (not grid/anno)
+                if layer.startswith('A-WALL') or layer in (
+                        'A-DOOR', 'A-GLAZ', 'A-FURN',
+                        'A-ELEV-WALL', 'A-ROOF'):
+                    geo_min_x = min(geo_min_x, pt[0])
+                    geo_max_x = max(geo_max_x, pt[0])
+                    geo_min_y = min(geo_min_y, pt[1])
+                    geo_max_y = max(geo_max_y, pt[1])
             try:
                 xd = e.get_xdata('BIMGUID')
                 if xd:
@@ -185,36 +197,57 @@ def _audit_dxf(doc, out_dxf: str, view_type: str):
             min_y = min(min_y, e.dxf.start.y, e.dxf.end.y)
             max_y = max(max_y, e.dxf.start.y, e.dxf.end.y)
         elif t == 'TEXT':
-            text_heights.append(e.dxf.height)
+            txt = e.dxf.text
+            h = e.dxf.height
+            ix, iy = e.dxf.insert.x, e.dxf.insert.y
+            text_entries.append((txt, ix, iy, h))
 
     width_mm = max_x - min_x if max_x > min_x else 1
     height_mm = max_y - min_y if max_y > min_y else 1
+    geo_w = geo_max_x - geo_min_x if geo_max_x > geo_min_x else 0
+    geo_h = geo_max_y - geo_min_y if geo_max_y > geo_min_y else 0
 
     _log(f"  AUDIT [{view_type}] {os.path.basename(out_dxf)}")
     _log(f"    Entities: {dict(sorted(counts.items()))}")
-    _log(f"    Extent: {width_mm:.0f} x {height_mm:.0f} mm  "
+    _log(f"    Total extent: {width_mm:.0f} x {height_mm:.0f} mm  "
          f"({width_mm/1000:.1f} x {height_mm/1000:.1f} m)")
+    _log(f"    Building extent: {geo_w:.0f} x {geo_h:.0f} mm  "
+         f"({geo_w/1000:.1f} x {geo_h/1000:.1f} m)")
+    if width_mm > 0 and height_mm > 0 and geo_w > 0:
+        fill_pct = (geo_w * geo_h) / (width_mm * height_mm) * 100
+        _log(f"    Building fill: {fill_pct:.0f}% of drawing area")
 
-    if text_heights:
+    text_heights = [h for _, _, _, h in text_entries]
+    if text_entries:
         avg_h = sum(text_heights) / len(text_heights)
         ratio = avg_h / width_mm * 100
-        _log(f"    Text: {len(text_heights)} entities, "
+        _log(f"    Text: {len(text_entries)} entities, "
              f"avg height {avg_h:.0f}mm, "
              f"visibility ratio {ratio:.1f}% of width")
+        # Log actual text content for traceability
+        for txt, tx, ty, th in text_entries[:8]:  # first 8 only
+            _log(f"      \"{txt}\" at ({tx:.0f},{ty:.0f}) h={th:.0f}")
+        if len(text_entries) > 8:
+            _log(f"      ... and {len(text_entries) - 8} more")
         if ratio < 0.5:
-            _log(f"    !! WARNING: text may be invisible (ratio < 0.5%)")
+            _log(f"    !! FAIL: text invisible (ratio {ratio:.2f}% < 0.5%)")
         elif ratio > 10:
-            _log(f"    !! WARNING: text may be oversized (ratio > 10%)")
+            _log(f"    !! FAIL: text oversized (ratio {ratio:.1f}% > 10%)")
         else:
-            _log(f"    OK: text size proportional")
+            _log(f"    OK: text proportional")
     else:
         _log(f"    Text: NONE")
+
+    # Check DIMENSION entities for text overlap (doubled text bug)
+    dim_count = counts.get('DIMENSION', 0)
+    if dim_count > 0:
+        _log(f"    Dimensions: {dim_count} entities")
 
     if guid_count > 0:
         _log(f"    GUID xdata: {guid_count} polylines, "
              f"{len(guid_set)} unique GUIDs")
 
-    # Verdict: geometry exists + text visible + no warnings
+    # ── Verdict ──
     has_geometry = counts.get('LWPOLYLINE', 0) + counts.get('LINE', 0) > 0
     text_ok = True
     detail_parts = []
@@ -225,9 +258,9 @@ def _audit_dxf(doc, out_dxf: str, view_type: str):
 
     total_entities = sum(counts.values())
     detail_parts.append(f"{total_entities} entities")
-    detail_parts.append(f"{width_mm/1000:.1f}x{height_mm/1000:.1f}m")
+    detail_parts.append(f"bldg {geo_w/1000:.1f}x{geo_h/1000:.1f}m")
 
-    if text_heights:
+    if text_entries:
         avg_h = sum(text_heights) / len(text_heights)
         ratio = avg_h / width_mm * 100
         if ratio < 0.5:
@@ -244,8 +277,72 @@ def _audit_dxf(doc, out_dxf: str, view_type: str):
     if guid_count > 0:
         detail_parts.append(f"{len(guid_set)} GUIDs")
 
+    if fill_pct < 10 if (width_mm > 0 and height_mm > 0 and geo_w > 0) else False:
+        detail_parts.append(f"COMPOSITION WARN: building {fill_pct:.0f}% of area")
+
     ok = has_geometry and text_ok
     _VERDICTS.append((view_type, ok, ", ".join(detail_parts)))
+
+    # ── TBLKLTN completeness check (post-process) ──
+    # Reference: Java SVG DrawingWriter = the target spec for a professional drawing.
+    # Each feature is tagged HAVE / MISS against the reference.
+    _log(f"    ── TBLKLTN Completeness ──")
+    is_plan = 'FLOOR' in view_type or 'PLAN' in view_type
+    is_elev = 'ELEV' in view_type
+
+    features = []  # (name, have: bool)
+    if is_plan:
+        features = [
+            ("Wall section outlines",   counts.get('LWPOLYLINE', 0) > 5),
+            ("Grid lines",              counts.get('LINE', 0) >= 2),
+            ("Grid bubble circles",     counts.get('CIRCLE', 0) >= 2),
+            ("Grid labels (A,B,1,2..)", any(t in [e[0] for e in text_entries]
+                                            for t in ('A','B','1','2'))),
+            ("GUID xdata for roundtrip",guid_count >= 5),
+            ("Furniture bounding boxes", any(e.dxf.layer == 'A-FURN'
+                                            for e in msp if e.dxftype() == 'LWPOLYLINE')),
+            ("Bay dimensions",          counts.get('DIMENSION', 0) > 0),
+            ("Room labels",             False),   # not yet in DXF writer
+            ("Door swing arcs",         False),   # not yet in DXF writer
+            ("Wall fill / hatch",       False),   # not yet in DXF writer
+            ("Window sill lines",       False),   # not yet in DXF writer
+            ("North arrow",             False),   # not yet in DXF writer
+            ("Title block",             False),   # not yet in DXF writer
+            ("Scale bar",               False),   # not yet in DXF writer
+            ("Door/window schedule",    False),   # not yet in DXF writer
+        ]
+    elif is_elev:
+        features = [
+            ("Wall/element outlines",   counts.get('LWPOLYLINE', 0) >= 3),
+            ("Grid lines",              counts.get('LINE', 0) >= 3),
+            ("Grid bubble circles",     counts.get('CIRCLE', 0) >= 2),
+            ("Grid labels",             any(t in [e[0] for e in text_entries]
+                                            for t in ('A','B','1','2'))),
+            ("Level markers (triangle)",counts.get('SOLID', 0) >= 3),
+            ("Level labels (GRD, CLG)", any('LEVEL' in e[0] or 'GRD' in e[0]
+                                            for e in text_entries)),
+            ("Bay dimensions",          counts.get('DIMENSION', 0) > 0),
+            ("Ground line",             any(e.dxf.layer == 'A-ELEV-LEVL'
+                                            for e in msp if e.dxftype() == 'LINE')),
+            ("Window louvre lines",     any(e.dxf.layer == 'A-GLAZ'
+                                            for e in msp if e.dxftype() == 'LINE')),
+            ("Roof silhouette",         any(e.dxf.layer == 'A-ROOF'
+                                            for e in msp if e.dxftype() == 'LWPOLYLINE')),
+            ("Title block",             False),   # not yet in DXF writer
+            ("Drawing title",           False),   # not yet in DXF writer
+        ]
+
+    have = sum(1 for _, h in features if h)
+    miss = sum(1 for _, h in features if not h)
+    for name, present in features:
+        tag = "HAVE" if present else "MISS"
+        _log(f"      [{tag}] {name}")
+    pct = have * 100 // len(features) if features else 0
+    _log(f"    Score: {have}/{len(features)} features ({pct}%)")
+    # Append score to verdict detail
+    if _VERDICTS and _VERDICTS[-1][0] == view_type:
+        v, o, d = _VERDICTS[-1]
+        _VERDICTS[-1] = (v, o, d + f", completeness {have}/{len(features)} ({pct}%)")
 
 
 _VERDICTS: List[Tuple[str, bool, str]] = []  # (view, pass, detail)
@@ -605,7 +702,7 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                     base=(0, dim_y),
                     p1=(xa, 0), p2=(xb, 0),
                     dimstyle='ARCH_JKR',
-                    override={'dimpost': f'{int(snapped)}<>'},
+                    text=str(int(snapped)),
                 )
                 dim.render()
             except Exception:
