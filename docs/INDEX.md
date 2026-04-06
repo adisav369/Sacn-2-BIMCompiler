@@ -4,6 +4,14 @@ Single-page entry point. All active docs by tier.
 
 ---
 
+## BIM5D
+
+| Doc | What |
+|-----|------|
+| [4D5DAnalysis.md](4D5DAnalysis.md) | **4D/5D from extracted DB in 2 seconds.** LTU: 224 tasks + RM 67M costed. Industry value tiers, bankable finance model path |
+| [LTUAHouseAnalysis.md](LTUAHouseAnalysis.md) | **Largest reference building.** 125,997 elements, 8 disciplines, 232MB DB. Smooth in Bonsai |
+| [Enterprise.md](Enterprise.md) | FederatedModel Enterprise Platform: nD dimensions (4D-8D), Preview Mode, competitive comparison |
+
 ## T0 Governing — Read First
 
 | Doc | What |
@@ -89,6 +97,7 @@ Single-page entry point. All active docs by tier.
 | Doc | What |
 |-----|------|
 | [Enterprise.md](Enterprise.md) | **FederatedModel Enterprise Platform**: nD dimensions (4D–8D), NLP queries, Color Studio, River IoT, HTML UI · **[§ Federation DB Advantage](Enterprise.md#the-federation-db-advantage--mep-clash-and-beyond)** — MEP clash/routing on pre-baked SQLite R-tree (<100ms vs minutes in Navisworks), instant Preview Mode USP, competitive comparison, `--disc-map` sub-disciplines, shortcomings |
+| [4D5DAnalysis.md](4D5DAnalysis.md) | **4D/5D from extracted DB in 2 seconds.** LTU: 224 tasks + RM 67M costed. Industry value tiers, bankable finance model path. S-Curve, milestones, cash flow |
 | [PDF_TERRAIN.md](PDF_TERRAIN.md) | Survey to 3D terrain: PDF → elevation points → IFC. Site topology for plot placement |
 | [2D_LAYOUT.md](2D_LAYOUT.md) | Architectural drawings from compiled BOM: floor plans, elevations, sections as SVG |
 
