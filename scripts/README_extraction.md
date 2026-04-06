@@ -111,3 +111,26 @@ No LOD or culling — raw scene graph. Competitive with Navisworks/Solibri at ze
 
 IFC-level merging (426MB merged file) OOMs on buildings this size.
 DB-level merging (Approach A) is the only viable path for 100K+ elements.
+
+## 5D BOQ / QTO
+
+`scripts/simple_qto_extract.py` — copied from Federation addon (`boq/simple_qto_extract.py`),
+adapted for our extracted DB schema. Reads `elements_meta` + `elements_rtree`, produces
+`simple_qto` table with LINEAR/AREA/VOLUME/COUNT quantities + Malaysian RM unit costs.
+
+```bash
+python3 scripts/simple_qto_extract.py DAGCompiler/lib/input/LTU_AHouse_extracted.db
+python3 scripts/simple_qto_extract.py DAGCompiler/lib/input/Clinic_extracted.db
+```
+
+| Building | QTO Lines | Grand Total (RM) |
+|---|---|---|
+| LTU A-House | 133 | 47,395,012 |
+| Clinic | 41 | 11,457,516 |
+
+The `simple_qto` table is written into the extracted DB — query it with:
+```sql
+SELECT discipline, ifc_class, storey, measurement_type, element_count,
+       total_quantity, uom, total_cost_rm
+FROM simple_qto ORDER BY total_cost_rm DESC;
+```
