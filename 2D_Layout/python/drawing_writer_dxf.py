@@ -112,13 +112,13 @@ def _new_doc(scale: int = SCALE) -> ezdxf.document.Drawing:
     # ARCH_JKR dimstyle: tick marks (JKR convention), model-space text
     try:
         ds = doc.dimstyles.new('ARCH_JKR')
-        ds.dxf.dimscale = scale          # annotative scale
-        ds.dxf.dimtxt   = TXT_DIM * scale / 100   # model-space text height
+        ds.dxf.dimscale = scale          # annotative scale (multiplies all dim geometry)
+        ds.dxf.dimtxt   = TXT_DIM       # paper-mm text height (dimscale applies)
         ds.dxf.dimblk   = 'ARCHTICK'    # 45° tick, not arrow
-        ds.dxf.dimexo   = 1.5 * scale / 100  # ext line offset
-        ds.dxf.dimexe   = 2.5 * scale / 100  # ext line extension
+        ds.dxf.dimexo   = 1.5           # ext line offset (paper mm)
+        ds.dxf.dimexe   = 2.5           # ext line extension (paper mm)
         ds.dxf.dimdle   = 0.0
-        ds.dxf.dimgap   = 1.0 * scale / 100  # text gap
+        ds.dxf.dimgap   = 1.0           # text gap (paper mm)
     except Exception:
         pass  # dimstyle fields vary by ezdxf version
 
@@ -207,7 +207,7 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     bld_max_y = max(e.max_y for e in all_elems) * MM
 
     grid_ext  = 1500   # mm extension beyond building
-    bubble_r  = BUBBLE_R_MM * scale / 100  # model-space radius
+    bubble_r  = BUBBLE_R_MM * scale  # model-space radius (4mm paper × 100 = 400mm)
 
     for g in grids:
         pos = g.position * MM
@@ -223,7 +223,7 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                                dxfattribs={'layer': 'A-GRID', 'lineweight': LW_HAIR})
                 msp.add_text(g.label,
                              dxfattribs={'layer': 'A-ANNO-TEXT',
-                                         'height': TXT_GRID * scale / 100}
+                                         'height': TXT_GRID * scale}
                              ).set_placement((pos, cy),
                                              align=TextEntityAlignment.MIDDLE_CENTER)
         else:
@@ -237,7 +237,7 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                                dxfattribs={'layer': 'A-GRID', 'lineweight': LW_HAIR})
                 msp.add_text(g.label,
                              dxfattribs={'layer': 'A-ANNO-TEXT',
-                                         'height': TXT_GRID * scale / 100}
+                                         'height': TXT_GRID * scale}
                              ).set_placement((cx, pos),
                                              align=TextEntityAlignment.MIDDLE_CENTER)
 
@@ -370,10 +370,10 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
     }
 
     marker_x = _mh(h_min_m - ext - 0.5)  # left of ground line
-    txt_h    = TXT_DIM * scale / 100       # model-space text height
+    txt_h    = TXT_DIM * scale       # model-space text height
 
     # Minimum label spacing in model-space mm
-    min_gap = TXT_DIM * 3 * scale / 100
+    min_gap = TXT_DIM * 3 * scale
     label_ys = []
     for lbl, lz in levels:
         ly = _mh(lz)
@@ -416,24 +416,24 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
 
     v_max_m = max(v_of(e)[1] for e in all_vis)
     grid_above = _mh(v_max_m + 2.0)  # extend 2m above building top
-    bubble_r   = BUBBLE_R_MM * scale / 100
+    bubble_r   = BUBBLE_R_MM * scale
 
     for g in face_grids:
         gx = _mh(g.position)
         msp.add_line((gx, _mh(GRD_Z - 0.2)), (gx, grid_above),
                      dxfattribs={'layer': 'A-GRID', 'lineweight': LW_HAIR})
-        msp.add_circle((gx, grid_above + bubble_r + 300 * scale / 100),
+        msp.add_circle((gx, grid_above + bubble_r + 300),
                        bubble_r,
                        dxfattribs={'layer': 'A-GRID', 'lineweight': LW_HAIR})
         msp.add_text(g.label,
-                     dxfattribs={'layer': 'A-ANNO-TEXT', 'height': TXT_GRID * scale / 100}
+                     dxfattribs={'layer': 'A-ANNO-TEXT', 'height': TXT_GRID * scale}
                      ).set_placement(
-                         (gx, grid_above + bubble_r + 300 * scale / 100),
+                         (gx, grid_above + bubble_r + 300),
                          align=TextEntityAlignment.MIDDLE_CENTER)
 
     # ── Bay dimensions ──
     if len(face_grids) >= 2:
-        dim_y = grid_above + bubble_r * 2 + 600 * scale / 100
+        dim_y = grid_above + bubble_r * 2 + 600
         for i in range(len(face_grids) - 1):
             xa = _mh(face_grids[i].position)
             xb = _mh(face_grids[i + 1].position)
@@ -455,8 +455,8 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                              dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': LW_HAIR})
                 msp.add_text(str(int(snapped)),
                              dxfattribs={'layer': 'A-ANNO-TEXT',
-                                         'height': TXT_DIM * scale / 100}
-                             ).set_placement((mid_x, dim_y + 200 * scale / 100),
+                                         'height': TXT_DIM * scale}
+                             ).set_placement((mid_x, dim_y + 200),
                                              align=TextEntityAlignment.MIDDLE_CENTER)
 
     doc.saveas(out_dxf)
