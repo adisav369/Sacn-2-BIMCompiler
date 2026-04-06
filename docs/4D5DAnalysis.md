@@ -2,8 +2,8 @@
 
 > **Foundation:** [Enterprise](Enterprise.md) · [LTU A-House](LTUAHouseAnalysis.md) · [DATA_MODEL](DATA_MODEL.md)
 
-<div class="bim-banner" markdown>
-<b>What was once Primavera's domain, is now ours.</b> 4D scheduling + 5D costing from an extracted DB in 2 seconds. 125,997 elements, 8 disciplines, RM 67M costed. Zero licence cost.
+<div style="max-width: 620px; margin: 32px auto; padding: 24px 40px; background: #263238; border-left: 4px solid #ff9800; text-align: center; border-radius: 4px;">
+<span style="font-size: 1.3em; line-height: 1.7; color: #eceff1; letter-spacing: 0.3px;">What was once <b style="color: #ff9800;">PRIMAVERA</b>'s domain, is now ours.</span>
 </div>
 
 ## What We Have
@@ -19,9 +19,9 @@ from a single SQLite file. No IFC open, no geometry iterator, no RAM spike.
 ### Proven Results (LTU A-House — 125,997 elements, 8 disciplines)
 
 <div style="float:right; margin-left:20px; max-width:360px;">
-<img src="../../Pictures/Screenshots/5DCosting.png" alt="5D Costing" style="width:100%; margin-bottom:10px; border:1px solid #ccc;"/>
-<img src="../../Pictures/Screenshots/4DSchedule.png" alt="4D Schedule" style="width:100%; margin-bottom:10px; border:1px solid #ccc;"/>
-<img src="../../Pictures/Screenshots/4DDashBoard.png" alt="4D Dashboard" style="width:100%; border:1px solid #ccc;"/>
+<img src="img/5DCosting.png" alt="5D Costing — RM 67M Executive Summary" style="width:100%; margin-bottom:10px; border:1px solid #ccc;"/>
+<img src="img/4DSchedule.png" alt="4D Schedule — 224 tasks, 8 disciplines" style="width:100%; margin-bottom:10px; border:1px solid #ccc;"/>
+<img src="img/4DDashBoard.png" alt="4D Dashboard — S-Curve, milestones, resource workload" style="width:100%; border:1px solid #ccc;"/>
 </div>
 
 **5D Costing** (`5DCosting.png`):
