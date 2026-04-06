@@ -60,9 +60,18 @@
   §6.12.4 Space Identity + Fixture Gap Analysis: abstract capabilities (PLUMBABLE, ELECTRIFIED, etc.) bridge MEP→rooms. DV040-DV042 (capability flags, discipline mapping, placement offsets as metadata). 3D convergence proof: 55 CONVERGED, 43 NEAR, 30 XY_ONLY (need vertical drop), 34 FAR. 22/44 fixtures SATISFIED, 22 gaps with INSERT scripts. S9: generative abstract proof — SPACE→CAPABILITY→SCHEDULE→OFFSET→POSITION chain proven from metadata only, no IFC. All placement offsets from `ad_placement_offset`. Next: S150 wires this into walker proper (DAO + PLACE_DEVICE verb + GEO white-box). [DISC_VALIDATION_DB_SRS.md §6.12.4](docs/DISC_VALIDATION_DB_SRS.md). [prompts/S150_generative_mep_walker.md](prompts/S150_generative_mep_walker.md).
   Gate: MepRouteGeometryTest 8/8. DX 8/9. SH 8/9. Zero regression.
 
-**S150 Generative MEP Walker DONE:**
-  SpaceScheduleDAO: joins ad_space_type_mep_bom + ad_placement_offset + ad_discipline_capability. computePosition() + resolveQty().
-  MEPDevicePlacer: PLACE_DEVICE verb — room AABB + schedule → device positions. Multi-instance distribution. Gap analysis with actionable INSERTs.
+**S150 Generative MEP Walker DONE:** [prompts/S150_generative_mep_walker.md](prompts/S150_generative_mep_walker.md).
+
+**S151 Generative Furniture + MEP Demo DONE:**
+  Bug 1: Z-axis breach fixed — DV044 `default_ceiling_height_mm` on `ad_space_type`. 13→0 breaches.
+  Bug 2: LOD AABB fixed — M_Product dims drive Placement AABB (was ±0.05m cube). DV045 fills 9 products.
+  MEP order qty wired: YAML `mep_order_qty` → `ad_sysconfig MEP_ORDER_QTY` → walker fallback chain.
+  DV043 products applied: SPRINKLER, OUTLET_GFCI, FRIDGE + 4 others. S14: 0 gaps across 27 types.
+  S16 DX demo: 329 placements (215 extracted + 114 generative), 11 rooms, 0 breaches, 0 FALLBACKs.
+  PHANTOM gap awareness: deferred — no BUFFER children in DX SET BOMs (Filler not run yet).
+  Forensic logs: CEILING_OVERRIDE, AABB, ROOM, PLACE, BREACH, SUMMARY on GENERATIVE channel.
+  Gate: MepRouteGeometryTest 16/16. DX 8/9 (no regression). [DuplexAnalysis.md §S150/S151](docs/DuplexAnalysis.md).
+  Next: wire `mep_order_qty` into more YAML files (SH, TE). Run Filler on DX rooms to enable PHANTOM gaps.
   PlacementCollectorVisitor: erpConn/mepOrderQty setters. PLACE_DEVICE: prefix in expandVerb(). Generative MEP expansion in onSubAssembly() for SET BOMs with space type.
   S10: 8/8 BATHROOM devices match metadata exactly (0.005mm tolerance). S9 bug fixed (FLOOR_LOW was at center, now Z=0).
   S11: resolveQty coverage levels (99→normal, 0→max, N→cap with code minimum).
