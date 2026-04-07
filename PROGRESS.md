@@ -26,7 +26,7 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
-**S152 Generative MEP Pipeline Integration DONE:** G1-COUNT now accounts for generative devices via `c_order.GenerativeCount`. DX 9/9 PASS (215+114=329 elements), SH 9/9 PASS (58+24=82 elements). MepRouteGeometryTest 18/18 (new S18: compile DB integration). Pre-existing G2/G3/G4 DX failures discovered (discipline exclusion: ref=1119 vs out=329) — previously masked by contract tests never running. [prompts/S152](prompts/S152_generative_mep_pipeline_integration.md).
+**S152 Generative MEP Pipeline Integration DONE:** G1-COUNT + GenerativeCount on c_order. LOD bridge: all 11 products have source_element_ref (DV046). Discipline resolver: connects_to from ad_assembly_connector (SPRINKLER→FP, SUPPLY_DIFFUSER→ACMV). Fixture tack-to points seeded (DV047, 13 connectors). Spec §6.12.4 §11-§12: LOD bridge, shim architecture, END-join with halt-and-recalculate, furniture collision, tack points. Next: S153 shim refactor + END-join route. [prompts/S153](prompts/S153_generative_shim_architecture.md).
 
 **S144 GEO White-Box Logging DONE:** GeoProofRecord + GeoProofFormatter — structured Input→Process→Output proof chain per element. 58 SH / 215 DX proof records. LMP with inverse rotation (0 FAIL). Envelope UNKNOWN (parent dims not on M_Product stubs). DX B-side rot=π negation confirmed. §6.12.1 isolation maintained. Existing TACK logs preserved.
 
