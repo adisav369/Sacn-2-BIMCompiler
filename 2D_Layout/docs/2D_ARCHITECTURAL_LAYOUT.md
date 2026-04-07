@@ -213,10 +213,27 @@ Two template files, user-editable:
 - `colors` — per element type
 - `level_markers` — symbol style, font height
 
-**`input/2D.db`** (SQLite, 17 tables with `2d_*` prefix) — label content:
-- Room names, annotation tags, finish codes, drawing symbols,
-  title block field labels, level marker labels, dimension/grid/heading styles,
-  sheet templates, drawing types, drawing profiles
+**`input/2D.db`** (SQLite, 20 tables with `2d_*` prefix) — the library:
+
+Style tables (existing):
+- `2d_drawing_style` (19) — stroke/fill per IFC class + view type
+- `2d_drawing_symbol` (19) — plumbing/electrical fixture symbols
+- `2d_dxf_layer` (23) — AIA layer names, colors, linetypes
+- `2d_grid_style` (2), `2d_dimension_style` (3), `2d_heading_style` (10)
+- `2d_dxf_dimstyle` (4), `2d_dxf_textstyle` (8)
+
+Content tables (existing):
+- `2d_room_label` (18), `2d_annotation_tag` (7), `2d_finish_type` (10)
+- `2d_title_block` (11), `2d_level_marker` (9), `2d_drawing_type` (8)
+- `2d_sheet_template` (4), `2d_drawing_profile` (3)
+
+Construction tables (2D_010):
+- `2d_drawing_part` (33) — WHAT: every atomic part with stroke/fill/dash/font
+- `2d_part_placement` (35) — WHERE: zone, anchor, offset per view type
+- `2d_page_composition` (103) — HOW: which parts on which page, draw order
+
+**Library rule:** Code reads these tables at runtime. No inline visual
+literals. `test_no_hardcode.py` enforces this (§10.2).
 
 ### 3.3 Traceability
 
@@ -723,56 +740,39 @@ Tests are written first (will FAIL), then code implements until they PASS.
 | Section view | §5.4 |
 | TB-LKTN additional pages: electrical plan, reflected ceiling plan | 2D.db `[2d_drawing_type]` defines 8 types, only 3 implemented |
 
-### 9.5 What Is Still Wrong (2026-04-07)
+### 9.5 What Is Still Wrong (2026-04-08)
 
-**a. Lines are not properly drawn.**
-Grid dash-dot pattern `[4,1,1,1]` in proof SVG uses `stroke-dasharray`
-scaled by `1/scale` → at 1:100 the dashes are 0.04mm on paper, invisible.
-Archive SVG uses paper-scale dashes (4mm visible). The DXF entity has
-correct linetype=DASHDOT but the proof renderer scales the dash pattern
-to model-space, making it hairline-invisible. Fix: proof renderer must
-use paper-scale dash lengths (same as archive).
+**a. Proof renderer dash patterns — FIXED (2D_010c, partial).**
+~~Grid dash-dot `1/scale` bug~~ — dasharray function rewritten to use
+paper-mm values directly from `2d_drawing_part.dasharray`. Per-entity
+linetype check added (not just layer). **Remaining:** proof renderer
+still needs full library wiring (read `2d_drawing_part` for all styles).
 
-Wall outlines rendered as `<polygon>` in proof but as `<rect>` in archive.
-Section-cut contour polygons have correct geometry but proof renderer draws
-raw model-space polylines without the closed-fill visual weight. Archive
-draws walls as filled black rectangles with clear structure hierarchy.
+**b. Floor plan deviates from BestFloorPlanReference.png.**
+Archive floor plan (Grade A) has crisp filled walls, clean grid bubbles,
+proper dash-dot, professional title block. Current proof SVG renders
+section-cut polygons (correct geometry but messy vertices) instead of
+the archive's clean rectangles. The proof renderer needs to match the
+archive's visual quality — the reference image is in `archive/BestFloorPlanReference.png`.
 
-**b. Values are not aligning to what they are supposed to be.**
-Dimension text positions in proof SVG don't match archive positions. Archive
-places dimension text centered between tick marks at tier offsets outside
-the grid bubbles. Proof renders text at raw DXF insert coordinates divided
-by scale — correct transform but no verification against archive layout.
+**c. Elevations still broken.**
+- Level marker arrowheads render as degenerate triangles (duplicate vertex)
+- Measurements don't align — dimension positions not verified against any reference
+- REAR shows same problems as FRONT; LEFT/RIGHT have no openings
+- Archive elevations are Grade D/F (not usable as reference) — must rebuild
+  from TB-LKTN standard using `2d_drawing_part` + `2d_part_placement` tables
 
-Bay dimension values (after grid fix): 4900, 4500, 4700 = 14100 overall.
-Archive shows same values. But: proof SVG text at 2.5mm height is too small
-relative to archive's visible text. Grid bubble labels (3.5mm) also smaller
-than archive visual size.
+**d. Archive comparison gap.**
+No automated positional comparison between proof SVG and archive.
+Conformity gate checks DXF structure (layers, weights) but not visual
+correspondence. Gate can PASS while drawing looks nothing like reference.
 
-**c. Reference is not followed.**
-Archive SVGs are the conformity reference (§1 R5, §9.1). Current pipeline
-generates DXF + proof SVG but never compares proof against archive. No
-automated check verifies that proof output matches archive in:
-- Entity count per type (lines, circles, texts, polygons)
-- Grid label set and positions
-- Dimension text content and positions
-- Text content (room labels, tags)
-
-The conformity gate checks DXF structure (layers, linetypes, weights) but
-not visual correspondence with archive. This means the gate can PASS while
-the drawing looks nothing like the reference.
-
-**d. Additional findings.**
-- Roof plan DXF not generated — `--all` produces floor + 4 elevations only.
-  Archive has roof plan SVG. Spec §5.0 lists A-06 ROOF PLAN. Omitting it
-  breaks regression proofing against archive.
-- Output filenames are verbose (`ifc4_sample_house_floor_plan.dxf`). Should
-  be short: `FLOOR.dxf`, `ROOF.dxf`, `FRONT.dxf` etc.
-- PNG proofs are generated alongside SVG but spec §10.0 says "PNG output is
-  no longer needed — SVG is sufficient." Wasted time and disk.
-- No output rotation — each run overwrites previous. Cannot compare current
-  vs previous to detect visible change.
-- No "Visible change YES/NO" in summary log.
+**e. Previously fixed (2D_010a-c).**
+- ~~Roof plan not in --all~~ — FIXED, SH_2D.json drives page generation
+- ~~Verbose filenames~~ — FIXED, single-term names
+- ~~PNG proofs~~ — FIXED, SVG only
+- ~~No output rotation~~ — FIXED, 2-gen pruning with timestamps
+- ~~No visible change log~~ — FIXED, YES/NO in diagnostic
 
 ### 9.6 Output Management Spec
 
@@ -924,17 +924,32 @@ Checks that every DXF entity traces to DB or template. No unknown origins.
 | GUID_XDATA | Wall polylines have BIMGUID xdata | >= 5 polylines with xdata | wall not traced to DB element |
 | LINE_WEIGHT | Layer lineweight matches template `line_weights.*` | exact match (1/100 mm) | hardcoded weight or wrong template read |
 
-### 10.2 `test_no_hardcode.py`
+### 10.2 `test_no_hardcode.py` — Library Compliance Gate
 
-Scans drawing writer source code for hardcoded numeric literals.
+**Rule:** Every visual property in drawing code must trace to `2D.db` or
+`drawing_template.json`. No inline color, line weight, dasharray, font size,
+or label string. This is the 2D equivalent of DAGCompiler's "no parametric"
+rule — the library IS the spec.
 
-| Check | What it verifies | Expected | Fail means |
-|-------|-----------------|----------|------------|
-| NO_MAGIC | No integer >= 100 in draw functions except allowed set | 0 violations | value should come from template |
-| ALLOWED_SET | Constants 100 (scale), 1000 (mm), template fallbacks | whitelist only | new constant needs justification |
+Scans all drawing functions (`write_floor_plan_dxf`, `write_elevation_dxf`,
+`write_roof_plan_dxf`, `_render_proof`, `_draw_sheet_layout`) for violations.
 
-Allowed set: `{0,1,2,3,4,5, 100, 1000, 420, 297, 120, 128}`.
-Any new value must be added to allowed set with a comment explaining why.
+| Gate | What it catches | Source of truth | Fail means |
+|------|----------------|-----------------|------------|
+| COLORS | Hex `#RRGGBB` not in DB/template | `2d_drawing_part.stroke_color`, `2d_drawing_style.stroke_color`, template `colors.*` | Hardcoded color — add to `2d_drawing_part` or template |
+| DASHARRAY | Dash pattern like `"4,1,1,1"` not in DB | `2d_drawing_part.dasharray` | Hardcoded pattern — add to `2d_drawing_part` |
+| LABELS | Bilingual or display strings not from DB | `2d_level_marker.display_text`, `2d_room_label` | Hardcoded label — add to `2D.db` table |
+| NUMBERS | Integer >= 100 not in template/DB | template numeric values, `2d_drawing_part` numeric columns | Hardcoded constant — read from template `.get()` |
+
+**Exempt patterns** (not violations):
+- Template `.get()` fallback values — these ARE library reads
+- `_lw()`, `_txt_h()`, `_hex_to_aci()` calls — library accessor functions
+- `_ACI_HEX` lookup table — DXF standard mapping
+- Comments, docstrings, log lines
+- Unit constants: `SCALE=100`, `MM=1000`
+
+**How to fix a violation:** Add the value to `2D.db` (preferred) or
+`drawing_template.json`, then read it at runtime via `SELECT` or `.get()`.
 
 ### 10.3 `test_dxf_vs_svg.py`
 
