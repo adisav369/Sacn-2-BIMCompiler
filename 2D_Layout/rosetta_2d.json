@@ -1,0 +1,303 @@
+{
+  "_comment": "2D RosettaStone — reverse-engineered from HITOS IfcAnnotation (9203 entities merged into HITOS_extracted.db) + AIA/NCS drafting conventions. Same pattern as 3D RosettaStone: we don't know the authoring tool's rules, but we infer them from the IFC output and prove them with SQL against the extracted DB.",
+
+  "_ifc_standard": {
+    "entity": "IfcAnnotation",
+    "representation": "Annotation / Annotation2D",
+    "geometry": "IfcGeometricCurveSet → IfcPolyline → IfcCartesianPoint",
+    "containment": "IfcRelContainedInSpatialStructure → IfcBuildingStorey",
+    "style": "IfcCurveStyle → IfcCurveStyleFontAndScaling (DASHED_1 for grid lines)",
+    "adoptable": "Yes — this is standard IFC. Every BIM authoring tool (Revit, ArchiCAD, Tekla) exports IfcAnnotation the same way. The structure is universal; only the content varies per project."
+  },
+
+  "_hitos_evidence": {
+    "total_annotations": 9203,
+    "extracted_polylines": 2920,
+    "merged_into": "HITOS_extracted.db (elements_meta + elements_rtree, ifc_class='IfcAnnotation')",
+    "storey_distribution": {
+      "1.etg": 2745,
+      "2.etg": 85,
+      "u.etg": 73,
+      "3.etg": 13,
+      "kjeller": 4,
+      "_insight": "Grid defined once at main floor (1.etg), sparse copies on other storeys"
+    },
+    "column_alignment": {
+      "BS04": 556,
+      "BS02": 267,
+      "BS04_ARK": 254,
+      "unnamed": 255,
+      "_insight": "1722/2920 annotations align with IfcColumn centroids within 0.3m — grid lines pass through columns"
+    },
+    "size_classes": {
+      "grid_bubble_tail": "H_170mm, V_460mm (median — short stubs at grid line ends)",
+      "grid_segment": "H_2000mm, V_1200mm (spans between columns)",
+      "full_span": "H_7604mm, V_55400mm (rare — full building width/height)"
+    }
+  },
+
+  "view_definitions": {
+    "_rule": "Each view = one cut plane + one bundle. The bundle defines which elements appear and how. A floor plan is not 'everything at Z' — it's a curated group: walls(cut) + doors(symbol) + windows(symbol) + furniture(projection). Each view type has its own bundle.",
+
+    "floor_plan": {
+      "cut_axis": "Z",
+      "cut_elevation": "storey_elevation + 1200mm",
+      "source_sql": "SELECT DISTINCT name, elevation FROM spatial_structure WHERE type='IfcBuildingStorey'",
+      "bundle": {
+        "cut": {
+          "_rule": "Elements whose Z range intersects the cut plane → drawn SOLID with cut line weight",
+          "source_sql": "SELECT m.*, r.* FROM elements_meta m JOIN elements_rtree r ON m.id=r.id WHERE r.minZ <= ?cut AND r.maxZ >= ?cut AND m.ifc_class IN ('IfcWall','IfcWallStandardCase','IfcDoor','IfcWindow','IfcColumn')",
+          "draw_style": "solid",
+          "dxf_lineweight": 50,
+          "includes": ["IfcWall (thick outline)", "IfcDoor (opening + swing arc symbol)", "IfcWindow (rectangle in wall symbol)", "IfcColumn (filled rectangle)"]
+        },
+        "projection_below": {
+          "_rule": "Elements fully below cut plane but on same storey → drawn DASHED/DOTTED with light weight",
+          "source_sql": "SELECT m.*, r.* FROM elements_meta m JOIN elements_rtree r ON m.id=r.id WHERE r.maxZ < ?cut AND r.maxZ > ?storey_elev AND m.ifc_class IN ('IfcFurnishingElement','IfcStair','IfcRamp')",
+          "draw_style": "dotted",
+          "dxf_lineweight": 13,
+          "includes": ["IfcFurnishingElement (furniture outlines)", "IfcStair (stair run)", "IfcRamp"]
+        },
+        "omit": {
+          "_rule": "Elements above cut plane or floor slabs (you're standing on them) → not drawn",
+          "includes": ["IfcSlab (floor/ceiling)", "IfcRoof", "IfcBeam (above cut)", "MEP above ceiling"]
+        }
+      },
+      "status": "PARTIAL — walls/windows/doors drawn, furniture dotted shown, but bundle not formalized"
+    },
+
+    "section": {
+      "cut_axis": "Y (or X, user-defined section line)",
+      "cut_position": "user-defined Y coordinate through building",
+      "bundle": {
+        "cut": {
+          "source_sql": "SELECT m.*, r.* FROM elements_meta m JOIN elements_rtree r ON m.id=r.id WHERE r.minY <= ?cut AND r.maxY >= ?cut",
+          "includes": ["IfcWall (profile, hatched)", "IfcSlab (cut edge, shows thickness)", "IfcStair (section profile)", "IfcBeam (structural depth visible)"]
+        },
+        "projection_beyond": {
+          "_rule": "Elements behind the cut plane, visible in depth",
+          "source_sql": "SELECT m.*, r.* FROM elements_meta m JOIN elements_rtree r ON m.id=r.id WHERE r.minY > ?cut AND m.ifc_class IN ('IfcWall','IfcWindow','IfcDoor')",
+          "draw_style": "thin solid",
+          "includes": ["Walls in background", "Windows/doors visible beyond cut"]
+        }
+      },
+      "status": "GAP"
+    },
+
+    "side_elevation": {
+      "cut_axis": "none (parallel projection from outside)",
+      "face": "Y = building.minY or building.maxY",
+      "bundle": {
+        "visible": {
+          "source_sql": "SELECT m.*, r.* FROM elements_meta m JOIN elements_rtree r ON m.id=r.id WHERE r.minY <= ?face + 0.5",
+          "includes": ["IfcWall (face elevation)", "IfcWindow (elevation symbol)", "IfcDoor (elevation symbol)", "IfcRoof (profile)"]
+        }
+      },
+      "status": "DONE"
+    },
+
+    "roof_plan": {
+      "cut_axis": "Z (above top storey)",
+      "bundle": {
+        "cut": {
+          "source_sql": "SELECT m.*, r.* FROM elements_meta m JOIN elements_rtree r ON m.id=r.id WHERE m.ifc_class IN ('IfcRoof','IfcSlab') AND m.storey=(SELECT name FROM spatial_structure WHERE type='IfcBuildingStorey' ORDER BY CAST(elevation AS REAL) DESC LIMIT 1)",
+          "includes": ["IfcRoof", "IfcSlab (top storey)"]
+        }
+      },
+      "status": "DONE"
+    }
+  },
+
+  "grid_lines": {
+    "_rule": "A grid line marks any alignment axis — where multiple elements share a coordinate. HITOS: columns. SampleHouse: wall faces and window rows. The general rule: cluster element face positions, rank by shared count, top N become grid axes.",
+    "_evidence": {
+      "hitos": "1722/2920 annotations align with IfcColumn centroids within 0.3m",
+      "sh_x_axes": {
+        "X=0.00":  "12 walls share minX — building left edge",
+        "X=0.42":  "5+4 walls share face — interior wall line",
+        "X=8.38":  "4+8 walls share face — interior wall line",
+        "X=8.80":  "9 walls share maxX — building right edge",
+        "X=0.21":  "6 windows share X — window row alignment",
+        "X=8.59":  "4 windows share X — window row alignment"
+      },
+      "sh_y_axes": {
+        "Y=0.00":  "6 walls share maxY — building front edge",
+        "Y=-0.42": "4+8 walls share face — front wall inner line",
+        "Y=-17.38":"5+4 walls share face — rear wall inner line",
+        "Y=-17.80":"9 walls share minY — building rear edge"
+      },
+      "sh_z_axes": {
+        "Z=0.00":  "6 slabs — ground floor level",
+        "Z=3.10":  "8 slabs — upper floor level",
+        "Z=5.21":  "8 doors share head height",
+        "Z=5.61":  "8 windows share head height"
+      }
+    },
+
+    "detect_grid": {
+      "_algorithm": "Universal alignment detection — works for any building, with or without columns",
+      "step_1_collect_faces": {
+        "source_sql": "SELECT ROUND(r.minX,2) as face FROM elements_meta m JOIN elements_rtree r ON m.id=r.id WHERE m.ifc_class NOT IN ('IfcAnnotation','IfcOpeningElement') UNION ALL SELECT ROUND(r.maxX,2) FROM elements_meta m JOIN elements_rtree r ON m.id=r.id WHERE m.ifc_class NOT IN ('IfcAnnotation','IfcOpeningElement')",
+        "description": "Collect all element face positions (minX, maxX, minY, maxY) into candidate pools"
+      },
+      "step_2_cluster": {
+        "method": "GROUP BY ROUND(face, 2), COUNT(*) as shared_count",
+        "description": "Group faces within 20mm tolerance, rank by how many elements share that position"
+      },
+      "step_3_filter": {
+        "min_shared": 3,
+        "description": "An axis needs >= 3 elements aligned to qualify as a grid line. Filters noise from single-element coincidences."
+      },
+      "step_4_rank": {
+        "priority": ["IfcColumn centroids (highest — structural grid)", "wall faces shared by 5+ walls", "window/door rows shared by 3+ elements", "slab edges"],
+        "description": "Columns trump walls trump openings. Within each tier, higher shared count = stronger axis."
+      },
+      "step_5_label": {
+        "vertical_axes": "A, B, C, D... (left to right by ascending X)",
+        "horizontal_axes": "1, 2, 3, 4... (bottom to top by ascending Y)",
+        "skip_I": true
+      }
+    },
+
+    "vertical_lines": {
+      "x_positions": "from detect_grid",
+      "y_start": "building_aabb.minY - extension_mm",
+      "y_end": "building_aabb.maxY + extension_mm",
+      "extension_mm": 2000,
+      "dxf_layer": "A-GRID",
+      "dxf_linetype": "DASHED",
+      "dxf_color": 1,
+      "dxf_lineweight": 13,
+      "status": "GAP"
+    },
+    "horizontal_lines": {
+      "y_positions": "from detect_grid",
+      "x_start": "building_aabb.minX - extension_mm",
+      "x_end": "building_aabb.maxX + extension_mm",
+      "extension_mm": 2000,
+      "dxf_layer": "A-GRID",
+      "dxf_linetype": "DASHED",
+      "dxf_color": 1,
+      "dxf_lineweight": 13,
+      "status": "GAP"
+    },
+    "grid_bubbles": {
+      "_rule": "Circle at each grid line terminus. Label: A,B,C... for vertical lines (left to right), 1,2,3... for horizontal lines (bottom to top). HITOS evidence: bubble tails are 170-460mm stubs.",
+      "radius_mm": 500,
+      "placement": "end of grid line, beyond extension",
+      "label_vertical_axis": "A,B,C,D,E,F,G,H,J,K (skip I)",
+      "label_horizontal_axis": "1,2,3,4,5,6,7,8,9,10",
+      "dxf_font_height_mm": 350,
+      "dxf_layer": "A-GRID",
+      "status": "GAP"
+    }
+  },
+
+  "dimension_chains": {
+    "_rule": "Three tiers outside the building outline. Reading direction: L→R (horizontal) or bottom→top (vertical). Tick marks (oblique strokes), not arrows. All values in mm, no unit suffix.",
+    "_evidence": "HITOS has zero IfcTextLiteral — dimensions are view-generated, not stored in IFC. This confirms dimensions are derived from geometry, not authored separately.",
+
+    "tier_1_overall": {
+      "_rule": "Outermost string: total building extent per axis",
+      "source_sql": "SELECT MIN(r.minX), MAX(r.maxX), MIN(r.minY), MAX(r.maxY) FROM elements_rtree r JOIN elements_meta m ON m.id=r.id WHERE m.ifc_class NOT IN ('IfcAnnotation')",
+      "offset_from_building_mm": 3500,
+      "dxf_layer": "A-DIMS",
+      "status": "GAP"
+    },
+    "tier_2_bay": {
+      "_rule": "Middle string: grid-to-grid distances (structural bay spacing)",
+      "source": "consecutive differences between grid_lines.x_positions or grid_lines.y_positions",
+      "offset_from_building_mm": 2500,
+      "dxf_layer": "A-DIMS",
+      "status": "GAP"
+    },
+    "tier_3_opening": {
+      "_rule": "Innermost string: wall-to-opening and opening widths along each wall run",
+      "source_sql": "SELECT m.ifc_class, m.element_name, r.minX, r.maxX FROM elements_meta m JOIN elements_rtree r ON m.id=r.id WHERE m.ifc_class IN ('IfcDoor','IfcWindow') AND m.storey=? ORDER BY r.minX",
+      "offset_from_building_mm": 1500,
+      "dxf_layer": "A-DIMS",
+      "status": "GAP"
+    },
+    "tick_marks": {
+      "style": "oblique_stroke",
+      "angle_deg": 45,
+      "length_mm": 200,
+      "dxf_layer": "A-DIMS"
+    },
+    "text": {
+      "dxf_font_height_mm": 250,
+      "placement": "centered_above_dim_line",
+      "value_format": "round(distance_mm, 0), no unit suffix",
+      "dxf_layer": "A-DIMS"
+    }
+  },
+
+  "label_template": {
+    "_rule": "All labels, tags, symbols, dimensions, and styles come from 2D_metadata.db — a complete template system extracted from TB-LKTN RUMAH RAKYAT. Any project plugs into this template; only the geometry changes.",
+    "template_db": "2D_Layout/lib/input/2D_metadata.db",
+    "profiles": ["JKR_Malaysian", "ISO_Standard", "ANSI_Standard"],
+    "tables": {
+      "2d_room_label":      "Bilingual room names: BILIK/BEDROOM, DAPUR/KITCHEN + codes (BLK, BM, RT)",
+      "2d_annotation_tag":  "Element tags: D1/D2 doors, W1/W2 windows, hexagon/diamond shapes",
+      "2d_dimension_style": "Tick marks 45°, 3 tier offsets (10/18/26mm), mm units, no decimals",
+      "2d_grid_style":      "ALPHA horizontal, NUMERIC vertical, bubble radius 4mm, dash-dot",
+      "2d_drawing_style":   "Line weight/color/fill per ifc_class per view type (19 entries)",
+      "2d_drawing_symbol":  "Kitchen sink, basin, WC, shower, electrical — with sizes",
+      "2d_drawing_type":    "8 view types: floor, elect, roof, 4 elevations, reflected ceiling",
+      "2d_heading_style":   "Font size/weight/alignment per label type (10 styles)",
+      "2d_finish_type":     "Material callouts: CT, CR, V1-V5, G1, R1-R2",
+      "2d_level_marker":    "GRD LEVEL, 1ST FLOOR, ROOF LEVEL with elevations",
+      "2d_sheet_template":  "A1/A3 paper sizes with margins and title block width",
+      "2d_drawing_profile": "Profile = drawing standard (JKR, ISO, ANSI)"
+    },
+    "status": "DONE — 14 tables, fully seeded from TB-LKTN"
+  },
+
+  "completeness": {
+    "_note": "SVG writer (drawing_writer.py) already implements most patterns. DXF writer (drawing_writer_dxf.py) covers floor plan + elevation only. The rosetta_2d.json documents the proven patterns, not redesigns them.",
+
+    "DONE_in_SVG": {
+      "view_definitions.floor_plan": "draw_floor_plan() — cut bundles, projection bundles",
+      "view_definitions.side_elevation": "draw_elevation() — 4 faces",
+      "view_definitions.roof_plan": "draw_roof_plan() — ridge, slope arrows, eave labels",
+      "grid_lines.detect": "derive_grids() — wall centroid clustering, merge tolerance 500mm",
+      "grid_lines.vertical + horizontal": "drawn with dashed style",
+      "grid_lines.grid_bubbles": "circles with A,B,C / 1,2,3 labels both ends",
+      "dimension_chains.tier_1_overall": "generate_dimensions() — overall extent",
+      "dimension_chains.tier_2_bay": "generate_dimensions() — bay spacing from grid",
+      "room_labels": "from 2d_room_label table, bilingual (Malay/English)",
+      "north_arrow": "draw_north_arrow()",
+      "title_block": "draw_title_block() — from 2d_title_block table",
+      "line_weights": "cut=0.70, outline=0.50, projection=0.35, hair=0.18",
+      "wall_hatching.partition": "outline only"
+    },
+
+    "DONE_in_DXF": {
+      "view_definitions.floor_plan": "write_floor_plan_dxf() — walls, doors, windows, furniture",
+      "view_definitions.side_elevation": "write_elevation_dxf()",
+      "grid_lines": "via SVG (not yet ported to DXF)",
+      "guid_xdata": "BIMGUID xdata on each polyline (Task 1 of 2D_007)"
+    },
+
+    "GAP_DXF_port": [
+      "grid_lines + bubbles (SVG done, DXF not yet)",
+      "dimension_chains (SVG done, DXF not yet)",
+      "room_labels (SVG done, DXF not yet)",
+      "element_tags (door/window — not in SVG either)",
+      "wall_hatching.structural (ANSI31 hatch — DXF specific)",
+      "title_block (paperspace — DXF specific)",
+      "north_arrow (SVG done, DXF not yet)"
+    ],
+
+    "GAP_new_features": [
+      "view_definitions.section (not implemented anywhere)",
+      "dimension_chains.tier_3_opening (opening widths — not in SVG)",
+      "element_tags (door D01/window W01 labels — not in SVG)"
+    ],
+
+    "percentage_svg": 80,
+    "percentage_dxf": 37,
+    "percentage_template": 100,
+    "next_priority": "Code alignment detection algorithm (cluster element faces, rank by shared count) → then port SVG grid/dimension/label to DXF"
+  }
+}

@@ -1,0 +1,222 @@
+{
+  "_description": "User-editable drawing template. Modify any value to change how drawings look. The drawing writer reads this at render time. Based on JKR Malaysian / ISO 128 defaults.",
+
+  "paper": {
+    "size": "A3",
+    "width_mm": 420,
+    "height_mm": 297,
+    "orientation": "landscape",
+    "margins": {
+      "left": 25,
+      "top": 10,
+      "right": 10,
+      "bottom": 10,
+      "_note": "Left margin wider for binding"
+    },
+    "title_block_width_mm": 120,
+    "border_weight_mm": 0.7,
+    "scale": "1:100"
+  },
+
+  "line_weights": {
+    "_unit": "mm (pen width on paper)",
+    "wall_exterior_cut":   0.50,
+    "wall_partition_cut":  0.35,
+    "wall_projection":     0.25,
+    "column_cut":          0.50,
+    "beam_hidden":         0.35,
+    "glass_glazing":       0.18,
+    "door_leaf":           0.25,
+    "window_frame":        0.25,
+    "furniture":           0.15,
+    "slab_cut":            0.35,
+    "dimension_line":      0.18,
+    "extension_line":      0.18,
+    "grid_line":           0.18,
+    "hatch_line":          0.13,
+    "border":              0.70
+  },
+
+  "line_styles": {
+    "_patterns": "Array of [dash, gap] in mm on paper. Empty = solid.",
+    "solid":     [],
+    "dashed":    [6, 2],
+    "dash_dot":  [4, 1, 1, 1],
+    "dotted":    [1, 1],
+    "center":    [8, 2, 2, 2],
+
+    "wall_exterior":  "solid",
+    "wall_partition":  "solid",
+    "beam_hidden":    "dashed",
+    "grid_line":      "dash_dot",
+    "furniture":      "solid",
+    "ridge_line":     "dashed",
+    "center_line":    "center"
+  },
+
+  "colors": {
+    "_format": "Hex RGB. DXF uses ACI color index (in parentheses).",
+    "wall":         "#000000",
+    "column":       "#000000",
+    "column_fill":  "#CCCCCC",
+    "glass":        "#4488CC",
+    "furniture":    "#AAAAAA",
+    "furniture_fill": "#F0F0F0",
+    "slab_fill":    "#F8F8F8",
+    "dimension":    "#000000",
+    "grid":         "#888888",
+    "label":        "#000000",
+    "title":        "#000000",
+    "scale_text":   "#888888"
+  },
+
+  "grid": {
+    "bubble_radius_mm": 4.0,
+    "bubble_stroke_mm": 0.25,
+    "bubble_fill": "#FFFFFF",
+    "label_font_height_mm": 3.5,
+    "label_font_weight": "bold",
+    "extend_beyond_building_mm": 15.0,
+    "line_style": "dash_dot",
+    "vertical_axis_labels":   "A,B,C,D,E,F,G,H,J,K,L,M,N",
+    "horizontal_axis_labels": "1,2,3,4,5,6,7,8,9,10,11,12",
+    "_note": "Skip letter I to avoid confusion with numeral 1"
+  },
+
+  "dimensions": {
+    "text_height_mm": 2.5,
+    "text_font": "Arial",
+    "text_color": "#000000",
+    "unit": "mm",
+    "show_unit_suffix": false,
+    "decimal_places": 0,
+    "snap_module_mm": 100,
+    "terminator": "tick",
+    "tick_angle_deg": 45,
+    "tick_half_length_mm": 1.5,
+    "extension_gap_mm": 2.0,
+    "extension_overshoot_mm": 2.0,
+    "tier_1_offset_mm": 26,
+    "tier_2_offset_mm": 18,
+    "tier_3_offset_mm": 10,
+    "_tier_1": "Overall building extent",
+    "_tier_2": "Bay spacing (grid to grid)",
+    "_tier_3": "Openings, wall segments, sill heights"
+  },
+
+  "room_labels": {
+    "name_font_height_mm": 3.5,
+    "name_font_weight": "normal",
+    "area_font_height_mm": 2.5,
+    "area_format": "{value} m2",
+    "area_offset_below_name_mm": 4.0,
+    "language": "EN",
+    "_note": "Room names from 2d_room_label table in 2D.db"
+  },
+
+  "annotation_tags": {
+    "door_prefix": "D",
+    "window_prefix": "W",
+    "column_prefix": "C",
+    "shape": "hexagon",
+    "size_mm": 4.0,
+    "font_height_mm": 2.0,
+    "stroke_mm": 0.18,
+    "_note": "Tags from 2d_annotation_tag table. Shape can be: hexagon, diamond, circle, triangle"
+  },
+
+  "north_arrow": {
+    "size_mm": 8.0,
+    "placement": "top_right",
+    "label": "N",
+    "font_height_mm": 3.0,
+    "fill": "#000000"
+  },
+
+  "scale_bar": {
+    "divisions": [0, 1, 2, 5],
+    "unit": "m",
+    "bar_height_mm": 2.0,
+    "font_height_mm": 2.0,
+    "placement": "below_title"
+  },
+
+  "title_block": {
+    "_note": "Field labels and order from 2d_title_block table. Values filled per project.",
+    "header": "JABATAN KERJA RAYA MALAYSIA",
+    "label_column_ratio": 0.30,
+    "value_column_ratio": 0.70,
+    "font_height_label_mm": 2.0,
+    "font_height_value_mm": 3.0,
+    "fields": [
+      { "key": "PROJEK",         "label": "PROJEK" },
+      { "key": "PEMILIK",        "label": "PEMILIK" },
+      { "key": "ARKITEK",        "label": "ARKITEK" },
+      { "key": "JENIS_BANGUNAN", "label": "JENIS BANGUNAN", "default": "RUMAH RAKYAT" },
+      { "key": "TAJUK_LUKISAN",  "label": "TAJUK LUKISAN" },
+      { "key": "DILUKIS",        "label": "DILUKIS OLEH" },
+      { "key": "UKURAN",         "label": "UKURAN", "default": "A3" },
+      { "key": "HARIBULAN",      "label": "HARIBULAN" },
+      { "key": "NO_LUKISAN",     "label": "NO. LUKISAN" },
+      { "key": "DISEMAK",        "label": "DISEMAK OLEH" },
+      { "key": "PINDAAN",        "label": "PINDAAN NO." }
+    ]
+  },
+
+  "level_markers": {
+    "symbol": "triangle_left",
+    "font_height_mm": 2.5,
+    "font_weight": "normal",
+    "line_weight_mm": 0.18,
+    "line_style": "dashed",
+    "defaults": [
+      { "label": "GRD. LEVEL",        "elevation_m":  0.00 },
+      { "label": "GRD. FLOOR LEVEL",  "elevation_m":  0.00 },
+      { "label": "1ST FLOOR LEVEL",   "elevation_m":  3.00 },
+      { "label": "ROOF LEVEL",        "elevation_m":  6.00 }
+    ]
+  },
+
+  "hatching": {
+    "structural_wall": {
+      "pattern": "ANSI31",
+      "angle_deg": 45,
+      "spacing_mm": 2.0,
+      "color": "#000000"
+    },
+    "concrete_column": {
+      "fill": "#CCCCCC",
+      "pattern": "none"
+    },
+    "glass": {
+      "fill": "#D0E8FF",
+      "opacity": 0.3
+    },
+    "earth_section": {
+      "pattern": "EARTH",
+      "angle_deg": 0,
+      "spacing_mm": 3.0
+    }
+  },
+
+  "drawing_types": [
+    { "id": "FLOOR_PLAN",    "sheet_no": "A-01", "title": "FLOOR PLAN",             "view": "PLAN",       "cut_height_m": 1.2 },
+    { "id": "FRONT_ELEV",    "sheet_no": "A-02", "title": "FRONT ELEVATION",        "view": "ELEVATION",  "face": "south" },
+    { "id": "REAR_ELEV",     "sheet_no": "A-03", "title": "REAR ELEVATION",         "view": "ELEVATION",  "face": "north" },
+    { "id": "LEFT_ELEV",     "sheet_no": "A-04", "title": "LEFT ELEVATION",         "view": "ELEVATION",  "face": "west" },
+    { "id": "RIGHT_ELEV",    "sheet_no": "A-05", "title": "RIGHT ELEVATION",        "view": "ELEVATION",  "face": "east" },
+    { "id": "ROOF_PLAN",     "sheet_no": "A-06", "title": "ROOF PLAN",              "view": "ROOF_PLAN",  "cut_height_m": null },
+    { "id": "SECTION",       "sheet_no": "A-07", "title": "SECTION",                "view": "SECTION",    "cut_height_m": null },
+    { "id": "OPENING_SCHED", "sheet_no": "A-08", "title": "OPENING SCHEDULE",       "view": "SCHEDULE",   "cut_height_m": null },
+    { "id": "ELECT_PLAN",    "sheet_no": "E-01", "title": "ELECTRICAL PLAN",        "view": "PLAN",       "cut_height_m": 2.5 },
+    { "id": "REFL_CEILING",  "sheet_no": "E-02", "title": "REFLECTED CEILING PLAN", "view": "PLAN",       "cut_height_m": null }
+  ],
+
+  "finish_codes": {
+    "_note": "Material callout tags from 2d_finish_type table",
+    "floor":   ["CT — Ceramic tiles", "CR — Cement render"],
+    "wall":    ["V1 — 100mm Teablock", "V2 — 4mm Teablock single", "V4 — 1500mm ceramic tiles"],
+    "ceiling": ["G1 — Gypsum board"],
+    "roof":    ["R1 — Metal roofing with prefab trusses", "R2 — GI flashing"]
+  }
+}

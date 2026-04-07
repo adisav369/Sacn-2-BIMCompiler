@@ -1,0 +1,19 @@
+{
+  "project": "SH",
+  "building": "ifc4_sample_house",
+  "db": "SH_extracted.db",
+  "pages": [
+    { "sheet": "A-01", "title": "FLOOR PLAN",             "file": "FLOOR",      "type": "plan",      "status": "DONE" },
+    { "sheet": "A-02", "title": "FRONT ELEVATION",        "file": "FRONT",      "type": "elevation", "status": "DONE" },
+    { "sheet": "A-03", "title": "REAR ELEVATION",         "file": "REAR",       "type": "elevation", "status": "DONE" },
+    { "sheet": "A-04", "title": "LEFT ELEVATION",         "file": "LEFT",       "type": "elevation", "status": "DONE" },
+    { "sheet": "A-05", "title": "RIGHT ELEVATION",        "file": "RIGHT",      "type": "elevation", "status": "DONE" },
+    { "sheet": "A-06", "title": "ROOF PLAN",              "file": "ROOF",       "type": "plan",      "status": "DONE" },
+    { "sheet": "A-07", "title": "SECTION",                "file": "SECTION",    "type": "section",   "status": "GAP" },
+    { "sheet": "A-08", "title": "OPENING SCHEDULE",       "file": "SCHEDULE",   "type": "schedule",  "status": "GAP" },
+    { "sheet": "E-01", "title": "ELECTRICAL PLAN",        "file": "ELECTRICAL", "type": "plan",      "status": "GAP" },
+    { "sheet": "E-02", "title": "REFLECTED CEILING PLAN", "file": "CEILING",    "type": "plan",      "status": "GAP" }
+  ],
+  "archive_check": ["FLOOR", "ROOF"],
+  "total_pages": 10
+}

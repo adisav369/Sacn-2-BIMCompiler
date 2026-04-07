@@ -1,5 +1,20 @@
 # 2D Architectural Layout — Specification
 
+> **SACRED:** Archive SVGs at `/home/red1/bim-compiler/2D_Layout/archive/`
+> are the pristine baseline reference. NEVER overwrite them. These are the
+> earliest correct version — all improvement builds from here, never digresses.
+> Do not disturb `drawing_writer.py` or `drawing_writer_dxf.py` rendering
+> without visual verification against these archive SVGs.
+>
+> **HARD STOP:** Every DXF output must visually match the archive SVG for
+> that view — panel position, grid positions, label placement, dimension
+> layout. If it doesn't match, the code is wrong. Do not commit, do not
+> continue. Compare proof SVG against archive SVG before declaring DONE.
+> PNG output is no longer needed — SVG is sufficient.
+>
+> **TOP PRIORITY:** Gridlines and remaining pages (sections, elevations) are
+> the active work. The floor/roof/side SVG rendering is locked.
+
 ## 0. What is a 2D Architectural Drawing
 
 A 2D architectural drawing is a set of **coordinated orthographic projections**
@@ -21,7 +36,7 @@ the dimensions match.
 **Grid lines are not walls.** A grid line marks where multiple building
 elements align — wall faces, column centres, window rows. The grid position
 is discovered from the building data (§4.2). The grid style is dash-dot
-(§4.3) to distinguish it from solid building outlines. The circles at each
+(§4.5) to distinguish it from solid building outlines. The circles at each
 end (bubbles) carry the label. The dimensions between grids give the builder
 the bay spacing.
 
@@ -84,9 +99,9 @@ Step 2: QUERY DB
         Read spatial_structure → storey elevations, room names
         Log: "DB loaded: {n} walls, {n} doors, {n} windows, {n} furniture"
 
-Step 3: DETECT ALIGNMENT (§4)
-        Cluster element face positions → grid axes
-        Log each axis: "Grid {label} axis={x|y} pos={position}m source={n} elements at face"
+Step 3: DETECT STRUCTURAL BAYS (§4.2)
+        Columns + boundary walls → grid axes
+        Log each axis: "Grid {label} axis={x|y} pos={position}m source={element_type}"
 
 Step 4: COMPUTE DIMENSIONS
         For each pair of consecutive grids: distance = grid[i+1].pos - grid[i].pos
@@ -119,9 +134,63 @@ must show where it came from.
 
 ## 3. Data Sources
 
+### 3.0 Directory Layout
+
+```
+2D_Layout/
+├── input/                          ← per-project inputs
+│   ├── SH_extracted.db             ← SampleHouse compiled DB
+│   ├── SH_2D.json                  ← SampleHouse output plan (master)
+│   ├── DX_extracted.db             ← Duplex (when onboarded)
+│   ├── DX_2D.json
+│   └── 2D.db                       ← TB-LKTN label content (shared)
+├── output/                         ← generated products
+│   ├── DXF/                        ← DXF deliverables (2 per view max)
+│   ├── SVG/                        ← SVG outputs (2 per view max)
+│   └── dxf_diagnostic.txt
+├── archive/                        ← sacred reference (never overwrite)
+├── drawing_template.json           ← formatting (shared, all projects)
+├── python/                         ← code
+└── docs/                           ← specs
+```
+
+**Per-project input convention:**
+1. Copy the compiled DB into `input/` with prefix: `SH_extracted.db`
+2. Create `{PREFIX}_2D.json` in `input/` — the output plan for that project
+3. Code reads the JSON to know what pages to generate and what to expect
+
+**`{PREFIX}_2D.json` — output plan per project:**
+
+```json
+{
+  "project": "SH",
+  "building": "ifc4_sample_house",
+  "db": "SH_extracted.db",
+  "pages": [
+    { "sheet": "A-01", "title": "FLOOR PLAN",             "file": "FLOOR",   "type": "plan",      "status": "DONE" },
+    { "sheet": "A-02", "title": "FRONT ELEVATION",        "file": "FRONT",   "type": "elevation", "status": "DONE" },
+    { "sheet": "A-03", "title": "REAR ELEVATION",         "file": "REAR",    "type": "elevation", "status": "DONE" },
+    { "sheet": "A-04", "title": "LEFT ELEVATION",         "file": "LEFT",    "type": "elevation", "status": "DONE" },
+    { "sheet": "A-05", "title": "RIGHT ELEVATION",        "file": "RIGHT",   "type": "elevation", "status": "DONE" },
+    { "sheet": "A-06", "title": "ROOF PLAN",              "file": "ROOF",    "type": "plan",      "status": "DONE" },
+    { "sheet": "A-07", "title": "SECTION",                "file": "SECTION", "type": "section",   "status": "GAP" },
+    { "sheet": "A-08", "title": "OPENING SCHEDULE",       "file": "SCHEDULE","type": "schedule",  "status": "GAP" },
+    { "sheet": "E-01", "title": "ELECTRICAL PLAN",        "file": "ELECTRICAL","type": "plan",     "status": "GAP" },
+    { "sheet": "E-02", "title": "REFLECTED CEILING PLAN", "file": "CEILING", "type": "plan",      "status": "GAP" }
+  ],
+  "archive_check": ["FLOOR", "ROOF"],
+  "total_pages": 10
+}
+```
+
+Code reads this JSON. Tests validate against it. Analysis references it.
+One file governs the whole cycle: generate → test → compare → log.
+When a new project is onboarded, create its `{PREFIX}_2D.json`.
+
 ### 3.1 Building DB (WHAT + WHERE)
 
-From `elements_meta` + `elements_rtree` in the compiled output DB:
+From `elements_meta` + `elements_rtree` in the compiled output DB
+(copied to `input/{PREFIX}_extracted.db`):
 - Element positions (minX/maxX/minY/maxY/minZ/maxZ)
 - Element types (ifc_class, element_name)
 - Storey containment
@@ -132,7 +201,7 @@ From `elements_meta` + `elements_rtree` in the compiled output DB:
 
 Two template files, user-editable:
 
-**`drawing_template.json`** — layout and formatting values:
+**`drawing_template.json`** — layout and formatting values (shared):
 - `paper` — size, margins, title block width, border weight, scale
 - `grid` — circle radius, extend distance, label style, line style
 - `dimensions` — tier offsets, tick angle/size, text height, snap module
@@ -144,8 +213,8 @@ Two template files, user-editable:
 - `colors` — per element type
 - `level_markers` — symbol style, font height
 
-**`2D.db`** (SQLite, 17 tables with `2d_*` prefix) — label content:
-- Room names (bilingual), annotation tags, finish codes, drawing symbols,
+**`input/2D.db`** (SQLite, 17 tables with `2d_*` prefix) — label content:
+- Room names, annotation tags, finish codes, drawing symbols,
   title block field labels, level marker labels, dimension/grid/heading styles,
   sheet templates, drawing types, drawing profiles
 
@@ -158,7 +227,7 @@ Every entity in the output must trace to one of:
 | Wall outline | DB: mesh section cut at storey elevation |
 | Door/window opening | DB: element position in host wall |
 | Furniture rectangle | DB: bounding box of below-cut element |
-| Grid line position | DB: alignment axis from element face clustering (§4) |
+| Grid line position | DB: structural bay axis from columns + boundary walls (§4.2) |
 | Grid line style | Template: `grid.line_style` |
 | Grid end circle | Template: `grid.bubble_radius_mm` |
 | Grid label text | Template: `grid.vertical_axis_labels` / `grid.horizontal_axis_labels` |
@@ -194,28 +263,38 @@ reference geometry from physical building outlines.
 
 ### 4.2 Floor Plan Grids (Vertical: A,B,C... Horizontal: 1,2,3...)
 
-Every wall that a contractor needs to locate gets a grid line. A single
-bedroom partition wall needs a grid — the contractor must measure from
-somewhere to build it. The question is not "how many elements share this
-position" but "does the contractor need a measurement here?"
+Grid lines mark **structural bay spacing** — the primary coordinate system
+of the building. They are NOT per-wall lines. A typical house has 3-6 grids
+per direction. Partition walls are *dimensioned from* the nearest grid, not
+gridded themselves.
+
+What qualifies for a grid line:
+- **Columns** — always gridded (centroid position, highest priority)
+- **Load-bearing / boundary walls** — exterior walls and primary structural
+  walls that define the building envelope and major internal divisions
+- **Partition walls** — NOT gridded. They are dimensioned from grids.
 
 ```
 Step 1: Collect structural element positions
-        → IfcColumn: centroid (center_x, center_y)
-        → IfcWall (not curtain wall/IfcPlate): centreline
-          - N-S wall → x = center_x
-          - E-W wall → y = center_y
-        → Exclude: furniture, slabs, roofs, annotations, openings
+        → IfcColumn: centroid (center_x, center_y) — always qualifies
+        → IfcWall: only boundary / load-bearing walls
+          Detection: wall face aligns with building bounding box
+          within wall-thickness tolerance (0.20m)
+          - N-S wall → x = center_x (centreline)
+          - E-W wall → y = center_y (centreline)
+        → Exclude: partition walls (interior, not at building boundary),
+          curtain wall / IfcPlate, furniture, slabs, roofs, annotations,
+          openings
 
 Step 2: Cluster within wall-thickness tolerance (0.20m)
         → Two wall faces 150mm apart = same grid at their midpoint
         → Column centroid within 0.20m of a wall face = same grid
            (column governs the position)
 
-Step 3: Every cluster becomes a grid — no minimum count filter
-        → A single partition wall = one grid line
+Step 3: Every cluster becomes a grid
         → A column = one grid line (highest priority position)
-        → Building boundary walls always included
+        → A boundary wall = one grid line
+        → No minimum count filter within the structural set
 
 Step 4: Label from template (sorted by position)
         → Vertical axes (X positions): A, B, C, D...
@@ -227,6 +306,61 @@ Step 4: Label from template (sorted by position)
 Door and window positions are NOT gridded on the floor plan — they clutter
 the main drawing. Openings are dimensioned on a dedicated **Opening Schedule**
 page (§5.5) per TB-LKTN practice.
+
+### 4.2.1 Grid Detection Forensics (2026-04-07)
+
+**Problem:** Archive floor plan has 7 grids (A,B,C,D + 1,2,3). DXF writer
+produces only 4 (A,B + 1,2). Diagnostic log confirms: `grids=4(A,B,1,2)`.
+
+**Root cause:** `derive_grids()` in `drawing_writer.py:248` filters with
+`is_exterior` (`'Ext' in name`). SampleHouse has 5 IfcWall (3 Ext, 2 Partn)
++ 6 IfcPlate (Glazed). Only 3 Ext walls contribute centerlines, which merge
+with bounding box edges → 2 X grids + 2 Y grids = 4 total.
+
+**Archive grid positions (from archive SVG, verified):**
+
+| Label | Axis | Model position | Source element |
+|-------|------|----------------|----------------|
+| A | x | -7.735m | Building bbox min_x (glass panel left edge) |
+| B | x | -2.835m | Glass-masonry junction (IfcPlate ends, IfcWall starts) |
+| C | x |  1.620m | Partition wall center_x (major internal division) |
+| D | x |  6.270m | Exterior wall center_x (right boundary) |
+| 1 | y | -1.320m | Building bbox min_y (bottom boundary, merged) |
+| 2 | y |  0.900m | Partition wall center_y (major internal division) |
+| 3 | y |  4.555m | Building bbox max_y (top boundary, merged) |
+
+**Fix spec — `derive_grids()` must produce these 7 grids:**
+
+```
+Step 1: Collect ALL opaque wall centerlines (remove is_exterior filter)
+        → Include IfcWall regardless of Ext/Partn naming
+        → Exclude IfcPlate/glass panels (is_glass check stays)
+        → NS walls → x_positions.append(center_x)
+        → EW walls → y_positions.append(center_y)
+
+Step 2: Add wall endpoints of exterior walls as structural bay boundaries
+        → For each EW exterior wall: x_positions.append(min_x), x_positions.append(max_x)
+        → For each NS exterior wall: y_positions.append(min_y), y_positions.append(max_y)
+        → This captures glass-masonry junctions where Ext wall starts/ends
+
+Step 3: Add building bounding box edges (keep existing logic)
+        → x_positions.append(bld_min_x), x_positions.append(bld_max_x)
+        → y_positions.append(bld_min_y), y_positions.append(bld_max_y)
+
+Step 4: Merge within 0.20m tolerance (keep existing logic)
+
+Step 5: Label sorted positions (keep existing logic)
+        → X: A, B, C, D...
+        → Y: 1, 2, 3...
+```
+
+**Expected result for SampleHouse:**
+- X positions: -7.735, -2.835, 1.620, 6.270 → 4 grids (A,B,C,D)
+- Y positions: -1.320, 0.900, 4.555 → 3 grids (1,2,3)
+- Total: 7 grids — matches archive
+
+Partition walls are dimensioned as offsets from the nearest grid on the
+bay dimension tier (tier 3).
 
 ### 4.3 Elevation Grids
 
@@ -280,7 +414,59 @@ circle r={radius}mm"
 
 ## 5. Views
 
-Each view = one cut plane + one bundle of elements.
+### 5.0 TB-LKTN Drawing Set (RUMAH RAKYAT)
+
+A complete TB-LKTN architectural submission is a **set of sheets**. Each
+sheet has one view, one title, one sheet number. The set is defined here.
+Every sheet follows the same sheet furniture pattern proven in the archive
+floor plan and roof plan (§9.1).
+
+| Sheet | Sheet No. | Drawing Title | Template `drawing_types.id` | Type | Status |
+|-------|-----------|---------------|-----------------------------|-----------|----|
+| 1 | A-01 | FLOOR PLAN | FLOOR_PLAN | plan | DONE (archive) |
+| 2 | A-02 | FRONT ELEVATION | FRONT_ELEV | elevation | DONE (DXF) |
+| 3 | A-03 | REAR ELEVATION | REAR_ELEV | elevation | DONE (DXF) |
+| 4 | A-04 | LEFT ELEVATION | LEFT_ELEV | elevation | DONE (DXF) |
+| 5 | A-05 | RIGHT ELEVATION | RIGHT_ELEV | elevation | DONE (DXF) |
+| 6 | A-06 | ROOF PLAN | ROOF_PLAN | plan | DONE (archive SVG), DXF GAP |
+| 7 | A-07 | SECTION | SECTION | section | GAP |
+| 8 | A-08 | OPENING SCHEDULE | OPENING_SCHED | schedule | GAP |
+| 9 | E-01 | ELECTRICAL PLAN | ELECT_PLAN | plan | GAP |
+| 10 | E-02 | REFLECTED CEILING PLAN | REFL_CEILING | plan | GAP |
+
+**Sheet furniture — universal (every sheet):**
+- Sheet border (§7.1) — `paper.margins.*`, `paper.border_weight_mm`
+- Title block panel (§7.2) — right side, field rows from template
+- Drawing title — from table above, centered below content
+- Sheet number — from table above
+- Scale text — from template `paper.scale`
+- White background — paper standard
+- Line weight hierarchy — per §0 (bold structure, thin annotation)
+
+**Sheet furniture — conditional by type:**
+
+| Furniture | plan | elevation | section | schedule |
+|-----------|------|-----------|---------|----------|
+| North arrow | YES | no | no | no |
+| Scale bar | YES | YES | YES | no |
+| Grid lines (dash-dot §4.5) | YES | YES (bay grids) | YES | no |
+| Grid bubbles + labels | YES | YES | YES | no |
+| Level markers | no | YES | YES | no |
+| Table structure | no | no | no | YES |
+
+**DXF filename convention:**
+`{building}_{drawing_type_id}.dxf` — e.g. `ifc4_sample_house_floor_plan.dxf`.
+The `drawing_type_id` suffix maps to the template `drawing_types[].id` in
+lowercase with underscores. The conformity gate uses this to look up the
+expected sheet number and drawing title.
+
+The archive floor plan (A-01) and roof plan (A-06) are the proven
+conformity reference. All other sheets must match their sheet furniture
+pattern. See §10.5 for the conformity gate that enforces this.
+
+Each view = one cut plane + one bundle of elements. View sections below
+list **content only** — sheet furniture (border, title block, etc.) is
+per §5.0 universal/conditional tables and is not repeated per view.
 
 ### 5.1 Floor Plan
 
@@ -311,17 +497,18 @@ Each view = one cut plane + one bundle of elements.
 
 | Property | Source |
 |----------|--------|
+| Bay grids | Same as floor plan (§4.4) — dash-dot, bubbles, labels |
 | Roof outline | DB: roof slab bounding box |
 | Ridge line | DB: maxZ line of roof slabs (dashed, style from template `line_styles.ridge_line`) |
 | Slope arrows | DB: evenly spaced along each slope, direction from ridge toward eave, count = one per grid bay |
 | Eave overhang | DB: roof edge - wall face (dimension value) |
-| Labels | 2D.db: bilingual (RABUNG/RIDGE, CUCURAN/EAVE) |
+| Labels | RIDGE, EAVE (from 2D.db `[2d_level_marker]` table) |
 
 ### 5.4 Section
 
 Vertical cut through building. **GAP — not yet implemented.**
 
-### 5.5 Opening Schedule (JADUAL PINTU & TINGKAP)
+### 5.5 Opening Schedule
 
 TB-LKTN dedicates a **separate sheet** to door and window details. This keeps
 the floor plan clean — openings are tagged (D1, W1) on the plan but their
@@ -439,7 +626,7 @@ Right side of sheet, width from `paper.title_block_width_mm`.
 - Label text: `title_block.font_height_label_mm`
 - Value text: `title_block.font_height_value_mm`
 - Field list and order: `title_block.fields[]` (read from template)
-- TAJUK LUKISAN value: set per drawing type (PELAN LANTAI, PANDANGAN HADAPAN, etc.)
+- TAJUK LUKISAN value: set per drawing type from §5.0 table (FLOOR PLAN, FRONT ELEVATION, etc.)
 
 ### 7.3 Annotation Placement
 
@@ -479,7 +666,7 @@ All colours from template `colors.*`. White background is paper standard.
 
 ## 9. Status
 
-### 9.1 Done (archive reference, do not modify)
+### 9.1 Done (archive reference — conformity template, do not modify)
 
 The template and drawing style follow TB-LKTN (JKR Malaysian standard for
 RUMAH RAKYAT housing). SampleHouse SVG outputs in `archive/` match this
@@ -487,6 +674,21 @@ standard. They are the proven reference:
 - Floor plan: walls, grids, dimensions, room labels, tags, title block, north arrow
 - Roof plan: ridge, slope arrows, eave labels, overhang dimension
 - 4 elevations: level markers, height dimensions, bay dimensions, roof silhouette
+
+**Conformity template.** The archive floor plan (A-01) and roof plan (A-06)
+are proven to TB-LKTN standard. They define the conformity pattern:
+- Sheet border with correct margins
+- Title block panel with all field rows populated
+- Grid lines rendered dash-dot with bubbles at both ends
+- Dimension chains with tick terminators, tiered offsets
+- Drawing title centered below content
+- North arrow (plans only)
+- Scale bar and scale text
+- White background
+
+All new views and DXF ports MUST follow this pattern. The conformity gate
+(§10.5) stops the process when any sheet deviates. This is not advisory —
+it is a hard gate.
 
 ### 9.2 Done (2D_008)
 
@@ -516,10 +718,138 @@ Tests are written first (will FAIL), then code implements until they PASS.
 |------|-------------|
 | DXF writer: roof plan | §5.3 (SVG writer has `draw_roof_plan`, DXF not yet ported) |
 | Roof plan: bay dimensions + all 4 overhang dimensions | §5.3, §6.1 |
-| Alignment detection: generalized face clustering | §4.2 (current code is wall-only) |
+| Elevation layout: building centering | §7.1.1 (building fills 2-4%, see forensics) |
 | Dimension tier 3: opening widths | §6.1 |
 | Section view | §5.4 |
 | TB-LKTN additional pages: electrical plan, reflected ceiling plan | 2D.db `[2d_drawing_type]` defines 8 types, only 3 implemented |
+
+### 9.5 What Is Still Wrong (2026-04-07)
+
+**a. Lines are not properly drawn.**
+Grid dash-dot pattern `[4,1,1,1]` in proof SVG uses `stroke-dasharray`
+scaled by `1/scale` → at 1:100 the dashes are 0.04mm on paper, invisible.
+Archive SVG uses paper-scale dashes (4mm visible). The DXF entity has
+correct linetype=DASHDOT but the proof renderer scales the dash pattern
+to model-space, making it hairline-invisible. Fix: proof renderer must
+use paper-scale dash lengths (same as archive).
+
+Wall outlines rendered as `<polygon>` in proof but as `<rect>` in archive.
+Section-cut contour polygons have correct geometry but proof renderer draws
+raw model-space polylines without the closed-fill visual weight. Archive
+draws walls as filled black rectangles with clear structure hierarchy.
+
+**b. Values are not aligning to what they are supposed to be.**
+Dimension text positions in proof SVG don't match archive positions. Archive
+places dimension text centered between tick marks at tier offsets outside
+the grid bubbles. Proof renders text at raw DXF insert coordinates divided
+by scale — correct transform but no verification against archive layout.
+
+Bay dimension values (after grid fix): 4900, 4500, 4700 = 14100 overall.
+Archive shows same values. But: proof SVG text at 2.5mm height is too small
+relative to archive's visible text. Grid bubble labels (3.5mm) also smaller
+than archive visual size.
+
+**c. Reference is not followed.**
+Archive SVGs are the conformity reference (§1 R5, §9.1). Current pipeline
+generates DXF + proof SVG but never compares proof against archive. No
+automated check verifies that proof output matches archive in:
+- Entity count per type (lines, circles, texts, polygons)
+- Grid label set and positions
+- Dimension text content and positions
+- Text content (room labels, tags)
+
+The conformity gate checks DXF structure (layers, linetypes, weights) but
+not visual correspondence with archive. This means the gate can PASS while
+the drawing looks nothing like the reference.
+
+**d. Additional findings.**
+- Roof plan DXF not generated — `--all` produces floor + 4 elevations only.
+  Archive has roof plan SVG. Spec §5.0 lists A-06 ROOF PLAN. Omitting it
+  breaks regression proofing against archive.
+- Output filenames are verbose (`ifc4_sample_house_floor_plan.dxf`). Should
+  be short: `FLOOR.dxf`, `ROOF.dxf`, `FRONT.dxf` etc.
+- PNG proofs are generated alongside SVG but spec §10.0 says "PNG output is
+  no longer needed — SVG is sufficient." Wasted time and disk.
+- No output rotation — each run overwrites previous. Cannot compare current
+  vs previous to detect visible change.
+- No "Visible change YES/NO" in summary log.
+
+### 9.6 Output Management Spec
+
+**R1 — SVG only.** No PNG.
+
+**R2 — Single-term filenames.** Same name in both folders. No suffixes,
+no decoration.
+
+**R3 — Output directory is `2D_Layout/output/`.** Two folders: `DXF/`
+and `SVG/`. Each folder keeps exactly 2 generations per view. On each
+run, oldest is removed if more than 2 exist. Timestamp in filename.
+
+```
+output/
+├── DXF/
+│   ├── FLOOR_20260407_1730.dxf    ← current
+│   ├── FLOOR_20260407_1528.dxf    ← previous (max 2 per view)
+│   ├── ROOF_20260407_1730.dxf
+│   └── ...
+├── SVG/
+│   ├── FLOOR_20260407_1730.svg
+│   ├── FLOOR_20260407_1528.svg
+│   ├── ROOF_20260407_1730.svg
+│   └── ...
+└── dxf_diagnostic.txt
+```
+
+**Master page table is `input/{PREFIX}_2D.json`.** This is the single
+source of truth. Code reads it to know what to generate. Tests read it
+to know what to validate. Analysis reads it to know what to compare.
+See §3.0 for the JSON schema. The table below is the SampleHouse instance:
+
+| # | Sheet | Title | Filename | Type | Status |
+|---|-------|-------|----------|------|--------|
+| 1 | A-01 | FLOOR PLAN | FLOOR | plan | DONE |
+| 2 | A-02 | FRONT ELEVATION | FRONT | elevation | DONE |
+| 3 | A-03 | REAR ELEVATION | REAR | elevation | DONE |
+| 4 | A-04 | LEFT ELEVATION | LEFT | elevation | DONE |
+| 5 | A-05 | RIGHT ELEVATION | RIGHT | elevation | DONE |
+| 6 | A-06 | ROOF PLAN | ROOF | plan | DONE |
+| 7 | A-07 | SECTION | SECTION | section | GAP |
+| 8 | A-08 | OPENING SCHEDULE | SCHEDULE | schedule | GAP |
+| 9 | E-01 | ELECTRICAL PLAN | ELECTRICAL | plan | GAP |
+| 10 | E-02 | REFLECTED CEILING PLAN | CEILING | plan | GAP |
+
+**Total pages: 10.** `--all` generates all non-GAP pages (currently 6).
+When a GAP page is implemented, update its status in the JSON and it
+joins `--all` automatically.
+
+**R4 — Always generate floor + roof.** Every run MUST produce FLOOR and
+ROOF. They are the archive regression reference — never drop them.
+
+**R5 — Archive regression check (FLOOR + ROOF only).** After generating
+SVGs, compare against archive:
+
+```
+For each of {FLOOR, ROOF}:
+  archive = archive/{building}_{view}.svg
+  current = SVG/{VIEW}_{timestamp}.svg
+
+  Compare:
+    1. Grid label set
+    2. Dimension values
+    3. Entity counts: lines, circles, texts, polygons
+    4. Room labels (floor only)
+
+  Log:
+    ARCHIVE CHECK [{VIEW}]: {score}/{total} — Better: YES/NO
+```
+
+**R6 — Visible change detection.** Compare current SVG against previous
+generation in same folder:
+
+```
+Summary log line:
+  VISIBLE CHANGE: YES (FLOOR: +3 grids, +6 dims) / NO (identical to prev)
+```
 
 ## 10. Tests
 
@@ -528,80 +858,150 @@ Tests are written first (will FAIL), then code implements until they PASS.
 **R1 — DXF is the deliverable.** The DXF file is what the contractor opens
 in CAD software. It is the single source of truth.
 
-**R2 — PNG is the proof.** After generating the DXF, the `--proof` flag
-reads the DXF back, transforms entities to paper-scale coordinates, and
-renders a PNG image. The PNG proves the DXF content is correct — what you
-see in the PNG is exactly what is in the DXF. No SVG intermediate step.
+**R2 — SVG is the proof.** After generating the DXF, the `--proof` flag
+reads the DXF back and transforms entities to a paper-scale SVG. This
+proof SVG is inspectable for conformity checks (entity positions, layers,
+`stroke-dasharray` for dash-dot, `<rect>` for white background). No PNG
+output — SVG is sufficient.
 
-**R3 — The SVG writer is the reference, not the proof.**
+**R3 — The archive SVG is the reference, not the proof.**
 `drawing_writer.py` produced the archive SVGs (frozen, do not regenerate).
-It is the reference for what features the DXF must contain. But the SVG
-writer must NOT be used as proof output — that tests the SVG writer, not
-the DXF writer.
+They are the reference for what the DXF output must match visually —
+panel position, grid positions, label placement, dimension layout.
 
-**R4 — Visual verification before pass.** Automated tests check entity
-counts and types. But they cannot judge visual quality. The tester MUST
-open the proof PNG and compare against the archive before declaring pass.
+**R4 — Structural verification before pass.** Automated tests check entity
+counts and types. But they cannot judge visual layout quality. The coder
+MUST do three-way verification before declaring DONE:
 
-**R5 — White background, black strokes.** The proof PNG must render on
-white background (paper convention). All building outlines in black.
-Grid lines in grey. Glass in blue. No transparent backgrounds.
+1. **Read the log** — `conformity_log.txt` and `dxf_diagnostic.txt`
+2. **Read the output** — proof SVG or DXF file (both are text, use Read tool)
+3. **Read the spec** — §5.0 (sheet furniture), §4.2 (grids), §7.1 (layout)
+
+Cross-reference all three: does the log say PASS? Does the output file
+contain entities at the positions the spec requires? Do those positions
+match the archive SVG? If any of the three disagree, the code is wrong.
+
+The coder does this themselves — do not ask the user to look. If SVG-blind,
+read the DXF directly and compare entity coordinates against archive.
+
+**R5 — White background, black strokes.** The proof SVG must have an
+explicit `<rect fill="#FFFFFF"/>` for white background. All building
+outlines in black. Grid lines in grey. Glass in blue.
 
 **R6 — Proof must show all content.** The proof renderer reads DXF
 entity coordinates, divides by the drawing scale (1:100 → ÷100), and
 renders at paper-scale mm — the same coordinate system as the archive
 SVGs. This ensures walls, text, dimensions, and grids are all visible
-and proportional. The building should fill ~60-80% of the proof image.
+and proportional.
 
 ```
 python3 drawing_writer_dxf.py <db> --all --proof
 
-# Outputs per view in python/output/:
-#   *_floor_plan.dxf        — professional deliverable (CAD software)
-#   *_floor_plan_proof.png  — PNG proof for visual review
-#   *_front_elevation.dxf   — elevation deliverable
-#   *_front_elevation_proof.png — elevation proof
+# Outputs per view in lib/output/latest/:
+#   *_floor_plan.dxf            — professional deliverable (CAD software)
+#   *_floor_plan_proof.svg      — SVG proof for visual review
+#   *_front_elevation.dxf       — elevation deliverable
+#   *_front_elevation_proof.svg — elevation proof
 #   ... (all views generated together)
 
 # The --all flag generates floor plan + 4 elevations + proofs
 # in a single run. No separate commands needed.
 ```
 
-Output in `python/output/`:
+Output in `lib/output/latest/`:
 - `*.dxf` — professional deliverables (one per view)
-- `*_proof.png` — PNG proofs for visual review (one per view)
+- `*_proof.svg` — SVG proofs for visual review (one per view)
 - `archive/*.svg` — frozen reference (do not regenerate, do not touch)
 
 ### 10.1 `test_no_invention.py`
 
-Checks that every DXF entity traces to DB or template:
-- No unknown layers
-- All text traces to template field, DB value, or dimension arithmetic
-- Wall polylines have GUID xdata (DB traceability)
-- Line weights match template values
+Checks that every DXF entity traces to DB or template. No unknown origins.
+
+| Check | What it verifies | Expected | Fail means |
+|-------|-----------------|----------|------------|
+| LAYERS | Every layer in DXF is a known AIA layer | no unknown layers | code invented a layer |
+| TEXT_TRACE | Every TEXT entity traces to template field, DB value, or dimension arithmetic | all traced | code invented a label |
+| GUID_XDATA | Wall polylines have BIMGUID xdata | >= 5 polylines with xdata | wall not traced to DB element |
+| LINE_WEIGHT | Layer lineweight matches template `line_weights.*` | exact match (1/100 mm) | hardcoded weight or wrong template read |
 
 ### 10.2 `test_no_hardcode.py`
 
-Scans drawing writer code for hardcoded numeric literals (>= 100) in drawing
-functions. Any value not from the template is a violation.
+Scans drawing writer source code for hardcoded numeric literals.
+
+| Check | What it verifies | Expected | Fail means |
+|-------|-----------------|----------|------------|
+| NO_MAGIC | No integer >= 100 in draw functions except allowed set | 0 violations | value should come from template |
+| ALLOWED_SET | Constants 100 (scale), 1000 (mm), template fallbacks | whitelist only | new constant needs justification |
+
+Allowed set: `{0,1,2,3,4,5, 100, 1000, 420, 297, 120, 128}`.
+Any new value must be added to allowed set with a comment explaining why.
 
 ### 10.3 `test_dxf_vs_svg.py`
 
-Checks DXF output has all features present in the archive SVG reference:
-- Wall sections, grid lines, circles, labels
-- Dimensions present and consistent
-- Room labels, area values
-- Door/window tags
-- Sheet border, title block panel
-- North arrow, white background
+Checks DXF output has all features present in the archive SVG reference.
 
-### 10.4 TBLKLTN Completeness Audit
+**Floor plan checks:**
+
+| Check | What it verifies | Expected |
+|-------|-----------------|----------|
+| WALL_SECTIONS | LWPOLYLINE on A-WALL-FULL/A-WALL-PRTN | >= 5 |
+| GRID_LINES | LINE on A-GRID | >= 7 (4 vertical + 3 horizontal for SampleHouse) |
+| GRID_BUBBLES | CIRCLE on A-GRID | >= 14 (7 grids x 2 ends) |
+| GRID_LABELS | TEXT A,B,C,D,1,2,3 present | all 7 present |
+| GRID_DASHDOT | A-GRID layer linetype is DASHDOT in DXF layer table | linetype name, not solid |
+| GRID_COUNT | Grid count = structural bays (boundary walls + columns) | not total wall count |
+| GRID_SORTED | Labels sorted by position (A < B < C, 1 < 2 < 3) | ascending order |
+| DIM_TEXTS | TEXT on A-ANNO-DIMS with digit values | >= 3 |
+| DIM_CHAIN | Bay dims + overall present, overall = sum of bays | arithmetic check |
+| ROOM_LABELS | RUANG TAMU, RUANG MAKAN, BILIK present | all found |
+| ROOM_AREAS | Text containing "m²" | >= 1 |
+| DOOR_TAGS | D1, D2, D3 text | >= 3 |
+| WINDOW_TAGS | W1+ text | >= 4 |
+| DOOR_ARCS | ARC on A-DOOR | >= 3 (§5.1) |
+| WINDOW_SYMBOLS | LINE on A-GLAZ | >= 12 (4 windows x 3 lines, §5.1) |
+| WALL_FILL | LWPOLYLINE/HATCH on A-WALL-PATT | >= 5 (§5.1) |
+| HEX_TAGS | 6-point LWPOLYLINE on A-ANNO-TEXT | >= 7 (§7.3) |
+| SCHEDULE_TABLE | JADUAL header + "No." data in title block | present |
+| SCALE_BAR | SOLID on A-ANNO-DIMS + "5m" text | present |
+| DRAWING_TITLE | FLOOR PLAN text | present |
+| SCALE_TEXT | "1:100" text | present |
+| BORDER | LWPOLYLINE/LINE on A-TTLB | >= 1 |
+| TITLE_BLOCK | LINE + TEXT on A-TTLB | >= 5 lines, >= 5 texts |
+| NORTH_ARROW | Text "N" | present |
+| WHITE_BG | LWPOLYLINE/SOLID on layer 0, ACI 7 | >= 1 |
+| DIM_TICKS | LINE on A-ANNO-DIMS | >= 10 |
+| GUID_COUNT | Polylines with BIMGUID xdata | >= 5 |
+
+**Elevation checks:**
+
+| Check | What it verifies | Expected |
+|-------|-----------------|----------|
+| LEVEL_GRD | "GRD" in text | present |
+| LEVEL_ROOF | "ROOF" or "RIDGE" in text | present |
+| LEVEL_UPPER | "FLOOR" or "CEILING" or "CLG" or "1ST" in text | present |
+| HEIGHT_DIMS | TEXT on A-ANNO-DIMS with digit values | >= 3 |
+| GRID_LABELS | A,B,C,D present | >= 2 |
+| BAY_DIMS | DIMENSION entities or digit texts | >= 2 |
+
+**Proof SVG checks:**
+
+| Check | What it verifies | Expected |
+|-------|-----------------|----------|
+| PROOF_EXISTS | Proof SVG file exists | `*_proof.svg` present |
+| PROOF_WHITE_BG | `<rect fill="#FFFFFF"/>` in proof SVG | explicit rect, not CSS background |
+| PROOF_DASHDOT | Grid lines in proof SVG have `stroke-dasharray` | `[4,1,1,1]` pattern from template |
+| PROOF_STRUCTURE | Coder reads proof SVG and compares positions against archive SVG | layout matches archive (§10.0 R4) |
+
+### 10.4 TB-LKTN Completeness Audit (soft — informational)
 
 The DXF writer runs a post-render audit against `2D.db` (the TB-LKTN reference
 database). For each view it logs `[HAVE]` or `[MISS]` for every professional
 drawing feature, with actual counts vs expected counts from the database.
 
-Output: `python/output/dxf_diagnostic.txt` — the forensic trail.
+This is **informational only** — it does not stop the process. Use it to
+see what features are present vs missing. The hard gate is §10.5.
+
+Output: `lib/output/latest/dxf_diagnostic.txt` — the forensic trail.
 
 Features checked (floor plan): wall sections, grid lines, grid bubbles, grid
 labels, GUID xdata, furniture, bay dimensions, room labels, room areas, door
@@ -611,6 +1011,223 @@ title block fields, scale bar.
 Features checked (elevation): element outlines, grid lines, grid bubbles, grid
 labels, level markers, level labels, bay dimensions, ground line, window
 louvres, roof silhouette, drawing title, title block.
+
+### 10.5 Conformity Gate — `test_conformity.py`
+
+**Purpose:** Every output sheet must match the sheet furniture pattern
+proven in the archive floor plan and roof plan (§9.1). This test is a
+hard gate — process stops on first infringement.
+
+**How it works (white-box):**
+
+The conformity gate reads each generated DXF file and checks it against
+the mandatory sheet furniture list from §5.0. Every check logs a line to
+the diagnostic file. On the first FAIL, the process **stops immediately**
+with exit code 1. The coder reads the log, fixes the infringement, reruns.
+No guessing — diagnosis is from the log alone.
+
+```
+Diagnostic output: lib/output/latest/conformity_log.txt
+
+Log format per check:
+  [PASS] {sheet} {check_name}: {detail}
+  [FAIL] {sheet} {check_name}: expected {expected}, got {actual}
+  [STOP] Process halted at first FAIL. Fix and rerun.
+
+Last line of log — the coder reads ONLY this:
+  ═══════════════════════════════════════
+  RESULT: PASS — 5 sheets conform to §5.0
+  ═══════════════════════════════════════
+
+  or on failure:
+  ═══════════════════════════════════════
+  RESULT: FAIL — [FAIL] A-02 SCALE_TEXT: expected "1:", got not found
+  ═══════════════════════════════════════
+
+PASS or FAIL with main reason. No further reading needed unless FAIL.
+On FAIL, read the detail lines above the summary to diagnose.
+
+The coder's debugging process:
+  1. Run: python3 test_conformity.py
+  2. Read: lib/output/latest/conformity_log.txt
+  3. Find the [FAIL] line — it tells you exactly what is wrong
+  4. Fix the code (the DXF writer, not the test)
+  5. Rerun from step 1
+  6. Repeat until all [PASS], no [FAIL]
+  7. Analysis is from the log ONLY — do not invent explanations
+```
+
+**Checks per sheet (every DXF output file):**
+
+| Check | What it verifies | Expected |
+|-------|-----------------|----------|
+| BORDER | LWPOLYLINE on A-TTLB layer exists | >= 1 |
+| TITLE_BLOCK | LINE entities on A-TTLB (separator + field rows) | >= 5 |
+| TITLE_TEXTS | TEXT on A-TTLB (field labels + values) | >= 5 |
+| TAJUK | TAJUK LUKISAN text matches §5.0 table for this sheet | exact match |
+| NO_LUKISAN | NO. LUKISAN text matches §5.0 table for this sheet | exact match |
+| DRAWING_TITLE | Drawing title text below content (from §5.0 table) | present |
+| SCALE_TEXT | Scale text (e.g. "1:100") present | present |
+| GRID_LINES | LINE entities on A-GRID layer | >= 1 per axis (not schedule) |
+| GRID_DASHDOT | A-GRID layer linetype is DASHDOT | linetype name (not schedule) |
+| GRID_BUBBLES | CIRCLE entities on A-GRID layer | >= 2 per grid (not schedule) |
+| GRID_LABELS | TEXT on A-GRID with template axis labels | sorted, matching (not schedule) |
+| WHITE_BG | LWPOLYLINE or SOLID on layer 0, ACI color 7 | >= 1 |
+| LINE_WEIGHTS | Layer lineweights match template `line_weights.*` | A-WALL-FULL=50, A-WALL-PRTN=35, A-GRID=18, A-FURN=15 |
+| NORTH_ARROW | TEXT "N" present (plans only: A-01, A-06, E-01, E-02) | conditional |
+| SCALE_BAR | SOLID entities on A-ANNO-DIMS + "5m" text | conditional (not schedule) |
+
+**Proof SVG checks (for `--proof` output):**
+
+| Check | What it verifies | Expected |
+|-------|-----------------|----------|
+| PROOF_EXISTS | Proof SVG file exists for this view | `*_proof.svg` present |
+| PROOF_WHITE_BG | `<rect fill="#FFFFFF"/>` in proof SVG | explicit rect |
+| PROOF_DASHDOT | Grid lines in proof SVG have `stroke-dasharray` | pattern present |
+
+### 10.5.1 Conformity Gate Forensics (2026-04-07)
+
+**Problem:** Gate reports "PASS — 5 sheets conform" but archive only proves
+floor plan (A-01) and roof plan (A-06). The gate checks minimums (≥1 grid
+line, ≥2 labels) rather than correct counts. It cannot catch:
+- Wrong grid count (4 vs expected 7)
+- Wrong grid labels (A,B,N vs expected A,B,C,D)
+- "N" north arrow text leaking into grid label set
+- Building too small on elevation sheets (2-4% fill)
+
+**Fix spec — add these checks to `test_conformity.py`:**
+
+| Check | What it validates | Expected |
+|-------|-------------------|----------|
+| GRID_COUNT | Total grid lines = archive count | 7 for SampleHouse floor plan |
+| GRID_LABEL_SET | Labels exactly match archive set | {A,B,C,D,1,2,3} for floor plan |
+| GRID_NO_LEAK | "N" text on A-GRID layer excluded from labels | "N" is north arrow, not grid |
+
+The archive grid reference per building is the source of truth. Grid labels
+are read from the archive SVG (text elements inside `<circle>` groups with
+`stroke-dasharray`) and stored as the expected set.
+
+For SampleHouse:
+- Floor plan: vertical={A,B,C,D}, horizontal={1,2,3}, total=7
+- Front/rear elevation: bay grids={A,B,C,D}, total=4
+- Left/right elevation: bay grids={1,2,3}, total=3
+- Roof plan: same as floor plan, total=7
+
+### 7.1.1 Elevation Layout Forensics (2026-04-07)
+
+**Problem:** Diagnostic reports "Building occupies 2-4% of drawing area"
+for elevations, "45% empty space below ground." Building is tiny on sheet.
+
+**Analysis:** At 1:100, a 14.1m × 3.5m elevation = 141mm × 35mm on A3
+(420×297mm). This IS the correct proportion — the building is short and
+wide. The 2-4% fill is the true area ratio. The visual issue is
+**vertical centering**: ground line should sit low on the sheet, with
+building and annotation above. Currently too much dead space below.
+
+**Fix spec (deferred — informational, not blocking):**
+- Vertical centering should anchor ground level at ~30% from bottom
+- Level markers + height dims extend upward into remaining space
+- This is a positioning improvement, not a conformity failure
+
+**Stop-on-fail behaviour:**
+
+The test iterates checks in order. On the first FAIL it:
+1. Writes `[FAIL]` line to log with expected vs actual
+2. Writes `[STOP] Process halted at first FAIL. Fix and rerun.`
+3. Prints the FAIL line to stderr
+4. Exits with code 1
+
+This forces the coder to fix issues one at a time, in order, from the
+log output. No batch failures to sort through. No guessing. Read the log,
+fix the code, rerun.
+
+**When to run:**
+
+After every DXF generation (`drawing_writer_dxf.py --all --proof`). The
+conformity gate is the final check before declaring a view DONE.
+
+```
+python3 drawing_writer_dxf.py <db> --all --proof
+python3 test_conformity.py
+# If exit 0: all sheets conform
+# If exit 1: read lib/output/latest/conformity_log.txt, fix, rerun
+```
+
+### 10.6 Debugging Process
+
+**White-box testing: the log is the complete picture.**
+
+The conformity gate and DXF writer logs are designed so the coder never
+needs to open a DXF file, grep source code, or interrogate the system.
+Every log line echoes the **exact string written** into the DXF — layer
+name, entity type, text content, linetype, lineweight, position. The
+coder reads the log and sees what was written vs what was expected, all
+in one place.
+
+**What the logs must contain (white-box requirement):**
+
+The DXF writer (`dxf_diagnostic.txt`) logs every entity it writes:
+```
+  WRITE layer=A-GRID type=LINE start=(x,y) end=(x,y) linetype=DASHDOT weight=18
+  WRITE layer=A-GRID type=CIRCLE center=(x,y) r=400 fill=#FFFFFF
+  WRITE layer=A-GRID type=TEXT insert=(x,y) text="A" height=350
+  WRITE layer=A-WALL-FULL type=LWPOLYLINE points=[(x,y)...] weight=50 guid=abc123
+  WRITE layer=A-TTLB type=TEXT insert=(x,y) text="FLOOR PLAN"
+```
+
+The conformity gate (`conformity_log.txt`) reads the DXF back and logs
+what it finds vs what it expects:
+```
+  [PASS] A-01 GRID_DASHDOT: layer A-GRID linetype=DASHDOT (expected DASHDOT)
+  [FAIL] A-01 LINE_WEIGHTS: layer A-GRID weight=0 (expected 18)
+  [STOP] Process halted at first FAIL. Fix and rerun.
+```
+
+Between these two logs, the coder can trace: what was written (diagnostic)
+→ what was read back (conformity) → where they diverge (the bug).
+
+**Debugging protocol:**
+```
+  1. Run the pipeline: drawing_writer_dxf.py <db> --all --proof
+  2. Run the gate:     test_conformity.py
+  3. Read the log:     lib/output/latest/conformity_log.txt
+  4. Find [FAIL]:      the log tells you WHAT failed and WHERE
+  5. Read DXF diag:    lib/output/latest/dxf_diagnostic.txt
+     — find the WRITE line for the entity that caused the fail
+     — the exact string written is in the log, no need to open DXF
+  5.1 Verify layout: read lib/output/latest/*_proof.svg (Read tool)
+     — compare entity positions and structure against archive SVG
+       at /home/red1/bim-compiler/2D_Layout/archive/
+     — if SVG-blind, read the DXF file directly (text format)
+     — check: grid positions, panel position, label placement,
+       dimension layout match the archive
+     — if discrepancy found: output findings and recommendations,
+       then STOP and await instructions to triage together
+     — the coder does this themselves — do not ask the user to look
+     — do NOT silently continue past a layout discrepancy
+  5.2 If the log lacks detail to diagnose a failure:
+     — the log itself is deficient — fix the logging FIRST
+     — add FINE-level log lines in drawing_writer_dxf.py that
+       echo the exact values written (layer, type, text, weight,
+       linetype, position)
+     — rerun pipeline from step 1 to regenerate the log
+     — THEN diagnose from the improved log
+     — each round the log must get better, never worse
+     — the goal: any future failure is diagnosable from the log
+       alone, without opening files or guessing
+  6. Fix the code:     edit drawing_writer_dxf.py
+  7. Rerun from step 1
+  8. DO NOT:
+     - Open the DXF file to inspect it manually
+     - Guess what went wrong without reading the log
+     - Invent explanations not supported by log output
+     - Skip the gate and declare DONE
+     - Fix multiple issues at once (one FAIL, one fix, one rerun)
+```
+
+The log is the forensic trail. If the log says PASS, it passes. If the
+log says FAIL, fix exactly what the log says is wrong. Analysis that is
+not grounded in log output is invention and violates §1 R1.
 
 ## 11. Key Files
 
@@ -624,4 +1241,10 @@ louvres, roof silhouette, drawing title, title block.
 | `python/test_no_invention.py` | Anti-invention test |
 | `python/test_no_hardcode.py` | No hardcoded values test |
 | `python/test_dxf_vs_svg.py` | DXF vs archive reference test |
-| `archive/` | Reference SVG outputs (proven, do not modify) |
+| `python/test_conformity.py` | Conformity gate — stops on first infringement (§10.5) |
+| `output/conformity_log.txt` | Conformity gate diagnostic log |
+| `output/dxf_diagnostic.txt` | DXF writer forensic log |
+| `archive/` | Reference SVG outputs (proven conformity template, do not modify) |
+| `input/SH_2D.json` | SampleHouse output plan (master page table, 10 pages) |
+| `input/SH_extracted.db` | SampleHouse compiled DB (copied from DAGCompiler) |
+| `internal/SpecToCode.md` | **Spec-to-code checklist** — 133 items, Y/N compliance per spec line |

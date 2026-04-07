@@ -228,7 +228,8 @@ def _build_schedule(elements: dict) -> list:
 
 
 def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y,
-                       drawing_title='', scale=SCALE, schedule_rows=None):
+                       drawing_title='', drawing_no='', scale=SCALE, schedule_rows=None,
+                       view_type='plan'):
     """Draw sheet border, white background, title block panel, north arrow.
 
     All values from drawing_template.json — no hardcoded layout.
@@ -379,6 +380,8 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
         value = field.get('default', '')
         if field.get('key') == 'TAJUK_LUKISAN' and drawing_title:
             value = drawing_title
+        if field.get('key') == 'NO_LUKISAN' and drawing_no:
+            value = drawing_no
         if value:
             value_x = div_x + (tb_w * (1 - label_ratio)) / 2
             msp.add_text(value,
@@ -387,22 +390,61 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
                                          align=TextEntityAlignment.MIDDLE_CENTER)
         y_cursor += row_h
 
-    # North arrow — size and placement from template §7.3
-    na = tpl.get('north_arrow', {})
-    na_size = na.get('size_mm', 8) * scale
-    na_font = na.get('font_height_mm', 3.0) * scale
-    # Placement: top-right of content area, offset by arrow size from edges
-    na_x = tb_left - na_size * 2
-    na_y = by1 - na_size * 3
-    tri_pts = [(na_x, na_y + na_size),
-               (na_x - na_size / 3, na_y),
-               (na_x + na_size / 3, na_y)]
-    msp.add_lwpolyline(tri_pts, close=True,
-                       dxfattribs={'layer': 'A-ANNO-TEXT', 'lineweight': lw_tb})
-    msp.add_text(na.get('label', 'N'),
-                 dxfattribs={'layer': 'A-ANNO-TEXT', 'height': na_font}
-                 ).set_placement((na_x, na_y + na_size + na_font),
+    # North arrow — §5.0b: plans only, not elevations
+    if view_type in ('plan', 'roof_plan'):
+        na = tpl.get('north_arrow', {})
+        na_size = na.get('size_mm', 8) * scale
+        na_font = na.get('font_height_mm', 3.0) * scale
+        # Placement: top-right of content area, offset by arrow size from edges
+        na_x = tb_left - na_size * 2
+        na_y = by1 - na_size * 3
+        tri_pts = [(na_x, na_y + na_size),
+                   (na_x - na_size / 3, na_y),
+                   (na_x + na_size / 3, na_y)]
+        msp.add_lwpolyline(tri_pts, close=True,
+                           dxfattribs={'layer': 'A-ANNO-TEXT', 'lineweight': lw_tb})
+        msp.add_text(na.get('label', 'N'),
+                     dxfattribs={'layer': 'A-ANNO-TEXT', 'height': na_font}
+                     ).set_placement((na_x, na_y + na_size + na_font),
+                                     align=TextEntityAlignment.MIDDLE_CENTER)
+
+    # Scale text — §5.0 universal sheet furniture
+    scale_str = tpl.get('paper', {}).get('scale', '1:100')
+    scale_txt_h = tpl.get('title_block', {}).get('font_height_value_mm', 3.0) * scale
+    scale_color = _hex_to_aci(tpl.get('colors', {}).get('scale_text', '#888888'))
+    scale_x = (bx0 + tb_left) / 2
+    scale_y = by0 + scale_txt_h * 3
+    msp.add_text(f'scale {scale_str}',
+                 dxfattribs={'layer': 'A-ANNO-TEXT',
+                             'height': scale_txt_h, 'color': scale_color}
+                 ).set_placement((scale_x, scale_y),
                                  align=TextEntityAlignment.MIDDLE_CENTER)
+
+    # Scale bar — §5.0 conditional (not schedule)
+    tpl_sb = tpl.get('scale_bar', {})
+    sb_divs = tpl_sb.get('divisions', [0, 1, 2, 5])
+    sb_unit = tpl_sb.get('unit', 'm')
+    sb_bar_h = tpl_sb.get('bar_height_mm', 2.0) * scale
+    sb_font_h = tpl_sb.get('font_height_mm', 2.0) * scale
+    sb_y = scale_y - scale_txt_h * 2
+    sb_scale_factor = 1000.0 / scale  # 1 metre in model-space mm
+    total_extent = (sb_divs[-1] - sb_divs[0]) * sb_scale_factor
+    sb_x0 = scale_x - total_extent / 2
+    for i in range(len(sb_divs) - 1):
+        x_start = sb_x0 + (sb_divs[i] - sb_divs[0]) * sb_scale_factor
+        x_end = sb_x0 + (sb_divs[i + 1] - sb_divs[0]) * sb_scale_factor
+        fill_color = 7 if i % 2 == 0 else 0
+        msp.add_solid(
+            [(x_start, sb_y), (x_end, sb_y),
+             (x_start, sb_y + sb_bar_h), (x_end, sb_y + sb_bar_h)],
+            dxfattribs={'layer': 'A-ANNO-DIMS', 'color': fill_color})
+    for d in sb_divs:
+        lx = sb_x0 + (d - sb_divs[0]) * sb_scale_factor
+        label = f'{d}{sb_unit}' if d == sb_divs[-1] else str(d)
+        msp.add_text(label,
+                     dxfattribs={'layer': 'A-ANNO-DIMS', 'height': sb_font_h}
+                     ).set_placement((lx, sb_y - sb_font_h * 0.8),
+                                     align=TextEntityAlignment.MIDDLE_CENTER)
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -773,8 +815,8 @@ _ACI_HEX = {
 }
 
 
-def _render_proof(dxf_path: str, svg_path: str, png_path: str):
-    """Read DXF, transform to paper-scale, write SVG, convert to PNG."""
+def _render_proof(dxf_path: str, svg_path: str, png_path: str = None):
+    """Read DXF, transform to paper-scale, write SVG. §9.6 R1: SVG only."""
     doc = ezdxf.readfile(dxf_path)
     msp = doc.modelspace()
     tpl = _load_template()
@@ -819,15 +861,28 @@ def _render_proof(dxf_path: str, svg_path: str, png_path: str):
     def px(mx): return mx / sc + ox
     def py(my): return -my / sc + oy
 
-    # Layer → color/weight mapping from DXF layers
+    # Layer → color/weight/linetype mapping from DXF layers
     layer_colors = {}
     layer_weights = {}
+    layer_linetypes = {}
     for layer in doc.layers:
         aci = layer.color
         layer_colors[layer.dxf.name] = _ACI_HEX.get(aci, '#000000')
         # DXF lineweight is in 1/100 mm; -1 = default
         lw = getattr(layer.dxf, 'lineweight', -1)
         layer_weights[layer.dxf.name] = max(lw, 18) / 100.0  # mm
+        layer_linetypes[layer.dxf.name] = getattr(layer.dxf, 'linetype', 'CONTINUOUS')
+
+    # §4.5: DASHDOT → stroke-dasharray [4,1,1,1] scaled to paper mm
+    def _dasharray(layer_name):
+        lt = layer_linetypes.get(layer_name, 'CONTINUOUS')
+        if lt == 'DASHDOT':
+            s = 1.0 / sc  # scale dash pattern to paper coordinates
+            return f' stroke-dasharray="{4*s:.3f},{1*s:.3f},{1*s:.3f},{1*s:.3f}"'
+        if lt == 'HIDDEN':
+            s = 1.0 / sc
+            return f' stroke-dasharray="{6*s:.3f},{2*s:.3f}"'
+        return ''
 
     svg_lines = []
     svg_lines.append(f'<?xml version="1.0" encoding="UTF-8"?>')
@@ -836,6 +891,8 @@ def _render_proof(dxf_path: str, svg_path: str, png_path: str):
                      f'width="{int(pw*3)}" height="{int(ph*3)}" '
                      f'style="background:#FFFFFF">')
     svg_lines.append(f'<defs><style>text {{ font-family: "Arial", "Helvetica", sans-serif; }}</style></defs>')
+    # §10.0 R5: explicit white background rect (CSS background unreliable in cairosvg)
+    svg_lines.append(f'<rect width="100%" height="100%" fill="#FFFFFF"/>')
 
     # Render each entity
     for e in msp:
@@ -872,10 +929,11 @@ def _render_proof(dxf_path: str, svg_path: str, png_path: str):
                 f'stroke-linejoin="round"/>')
 
         elif e.dxftype() == 'LINE':
+            da = _dasharray(layer)
             svg_lines.append(
                 f'<line x1="{px(e.dxf.start.x):.3f}" y1="{py(e.dxf.start.y):.3f}" '
                 f'x2="{px(e.dxf.end.x):.3f}" y2="{py(e.dxf.end.y):.3f}" '
-                f'stroke="{color}" stroke-width="{weight:.3f}"/>')
+                f'stroke="{color}" stroke-width="{weight:.3f}"{da}/>')
 
         elif e.dxftype() == 'CIRCLE':
             svg_lines.append(
@@ -954,12 +1012,7 @@ def _render_proof(dxf_path: str, svg_path: str, png_path: str):
     with open(svg_path, 'w') as f:
         f.write(svg_str)
 
-    # Convert to PNG
-    try:
-        import cairosvg
-        cairosvg.svg2png(url=svg_path, write_to=png_path, output_width=1800)
-    except ImportError:
-        pass
+    # §9.6 R1: SVG proof only, no PNG
 
 
 _VERDICTS: List[Tuple[str, bool, str]] = []  # (view, pass, detail)
@@ -1374,14 +1427,14 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     # ── §2 Step 7: RENDER sheet layout ──
     schedule = _build_schedule(elements)
     _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y,
-                       drawing_title='PELAN LANTAI / FLOOR PLAN', scale=scale,
-                       schedule_rows=schedule)
+                       drawing_title='FLOOR PLAN', drawing_no='A-01',
+                       scale=scale, schedule_rows=schedule)
 
     # ── Drawing title (below building) ──
     title_h = txt_title * scale
     title_x = (bld_min_x + bld_max_x) / 2
     title_y = bld_min_y - grid_ext - bubble_r * 2 - tpl_dims.get('tier_1_offset_mm', 26) * scale
-    msp.add_text('1.  PELAN LANTAI / FLOOR PLAN',
+    msp.add_text('1.  FLOOR PLAN',
                  dxfattribs={'layer': 'A-ANNO-TEXT',
                              'height': title_h}
                  ).set_placement((title_x, title_y),
@@ -1733,6 +1786,23 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                      ).set_placement((h_dim_x2 + dim_txt_h * 0.3, mid_z),
                                      align=TextEntityAlignment.MIDDLE_CENTER)
 
+    # ── §5.0: Sheet furniture (border, title block, north arrow) ──
+    _face_dt = {
+        'front': ('FRONT ELEVATION', 'A-02'),
+        'rear':  ('REAR ELEVATION',  'A-03'),
+        'left':  ('LEFT ELEVATION',  'A-04'),
+        'right': ('RIGHT ELEVATION', 'A-05'),
+    }
+    dt_title, dt_no = _face_dt.get(face, ('ELEVATION', ''))
+    # Bounding box in model-space mm for sheet layout
+    bld_h0 = _mh(h_min_m - ext)
+    bld_h1 = _mh(h_max_m + ext)
+    bld_v0 = _mh(min(lz for _, lz in levels)) if levels else 0
+    bld_v1 = _mh(max(lz for _, lz in levels)) if levels else _mh(3.5)
+    _draw_sheet_layout(doc, msp, tpl, bld_h0, bld_h1, bld_v0, bld_v1,
+                       drawing_title=dt_title, drawing_no=dt_no, scale=scale,
+                       view_type='elevation')
+
     # ── §2 Step 8: VERIFY ──
     _log(f"§2.8 Elevation {face}: {len(face_elems)} elements, "
          f"{len(face_grids)} grids, {len(height_levels)} height dims")
@@ -1742,8 +1812,372 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
 
 
 # ─────────────────────────────────────────────────────────────────
+# ROOF PLAN — §5.3, §9.6 R4
+# ─────────────────────────────────────────────────────────────────
+
+def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
+    """Generate roof plan DXF — top-down view of roof with ridge, slope arrows,
+    overhang dimensions, and grids. Ported from drawing_writer.py draw_roof_plan.
+
+    §5.3: Bay grids same as floor plan. Ridge line dashed. Slope arrows
+    from ridge toward eave. Eave overhang dimensions.
+    """
+    from section_cut import section_cut as run_section_cut
+    tpl = _load_template()
+    elements = read_elements(db_path, storey_filter=None)
+    walls = elements['walls']
+    roofs = elements['roofs']
+
+    if not roofs:
+        _log("§5.3 Roof plan: no roof elements found, skipping")
+        return
+
+    # ── Template reads ──
+    tpl_grid = tpl.get('grid', {})
+    tpl_dims = tpl.get('dimensions', {})
+    tpl_lw   = tpl.get('line_weights', {})
+    lw_wall  = int(tpl_lw.get('wall_exterior_cut', 0.50) * 100)
+    lw_part  = int(tpl_lw.get('wall_partition_cut', 0.35) * 100)
+    lw_grid  = int(tpl_lw.get('grid_line', 0.18) * 100)
+    lw_dim   = int(tpl_lw.get('dimension_line', 0.18) * 100)
+    lw_furn  = int(tpl_lw.get('furniture', 0.15) * 100)
+
+    _log(f"§2.1 Roof plan: template loaded")
+
+    # ── Roof extent ──
+    roof_min_x = min(r.min_x for r in roofs)
+    roof_max_x = max(r.max_x for r in roofs)
+    roof_min_y = min(r.min_y for r in roofs)
+    roof_max_y = max(r.max_y for r in roofs)
+    roof_max_z = max(r.max_z for r in roofs)
+
+    # ── Ridge line via section cut near peak ──
+    ridge_y = (roof_min_y + roof_max_y) / 2
+    try:
+        ridge_cut = run_section_cut(db_path, cut_z=roof_max_z - 0.1)
+        for se in ridge_cut:
+            if se.ifc_class == 'IfcRoof' and se.contours:
+                all_pts = [p for c in se.contours for p in c.points]
+                if all_pts:
+                    ridge_y = sum(p[1] for p in all_pts) / len(all_pts)
+                break
+    except Exception:
+        pass
+
+    _log(f"§5.3 Ridge Y={ridge_y:.3f}m, roof Z={roof_max_z:.3f}m")
+
+    # ── Building footprint from walls ──
+    bld_min_x = min(w.min_x for w in walls)
+    bld_max_x = max(w.max_x for w in walls)
+    bld_min_y = min(w.min_y for w in walls)
+    bld_max_y = max(w.max_y for w in walls)
+
+    # ── Create DXF ──
+    doc = _new_doc(tpl, scale)
+    msp = doc.modelspace()
+
+    # ── Building footprint (dashed, grid layer) ──
+    bf_pts = [(_mh(bld_min_x), _mh(bld_min_y)), (_mh(bld_max_x), _mh(bld_min_y)),
+              (_mh(bld_max_x), _mh(bld_max_y)), (_mh(bld_min_x), _mh(bld_max_y))]
+    msp.add_lwpolyline(bf_pts, close=True,
+                       dxfattribs={'layer': 'A-GRID', 'lineweight': lw_grid})
+
+    # ── Roof outline (bold, eave line) ──
+    ro_pts = [(_mh(roof_min_x), _mh(roof_min_y)), (_mh(roof_max_x), _mh(roof_min_y)),
+              (_mh(roof_max_x), _mh(roof_max_y)), (_mh(roof_min_x), _mh(roof_max_y))]
+    msp.add_lwpolyline(ro_pts, close=True,
+                       dxfattribs={'layer': 'A-ROOF', 'lineweight': lw_wall})
+
+    # ── Ridge line (dashed) ──
+    msp.add_line((_mh(roof_min_x), _mh(ridge_y)),
+                 (_mh(roof_max_x), _mh(ridge_y)),
+                 dxfattribs={'layer': 'A-ROOF', 'lineweight': lw_part,
+                             'linetype': 'HIDDEN'})
+    # Ridge label
+    txt_h = tpl_dims.get('text_height_mm', 2.5) * scale
+    rdg_mid_x = _mh((roof_min_x + roof_max_x) / 2)
+    msp.add_text('RABUNG / RIDGE',
+                 dxfattribs={'layer': 'A-ANNO-TEXT', 'height': txt_h}
+                 ).set_placement(
+                     (rdg_mid_x, _mh(ridge_y) + txt_h * 1.5),
+                     align=TextEntityAlignment.MIDDLE_CENTER)
+
+    # ── Eave labels ──
+    eave_mid_x = _mh((roof_min_x + roof_max_x) / 2)
+    msp.add_text('CUCURAN / EAVE',
+                 dxfattribs={'layer': 'A-ANNO-TEXT', 'height': txt_h}
+                 ).set_placement(
+                     (eave_mid_x, _mh(roof_max_y) + txt_h * 2),
+                     align=TextEntityAlignment.MIDDLE_CENTER)
+    msp.add_text('CUCURAN / EAVE',
+                 dxfattribs={'layer': 'A-ANNO-TEXT', 'height': txt_h}
+                 ).set_placement(
+                     (eave_mid_x, _mh(roof_min_y) - txt_h * 2),
+                     align=TextEntityAlignment.MIDDLE_CENTER)
+
+    # ── Slope arrows (§5.3: one per grid bay, ridge toward eave) ──
+    roof_w_mm = _mh(roof_max_x - roof_min_x)
+    arrow_spacing = roof_w_mm / 5
+    arrow_head = 1.5 * scale  # mm in model space
+    for i in range(1, 5):
+        ax = _mh(roof_min_x) + arrow_spacing * i
+        # North slope (ridge → top eave)
+        n_start = _mh(ridge_y) + 5 * scale
+        n_end = _mh(ridge_y) + (_mh(roof_max_y) - _mh(ridge_y)) * 0.6
+        msp.add_line((ax, n_start), (ax, n_end),
+                     dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+        # Arrowhead (triangle)
+        msp.add_solid([(ax, n_end), (ax - arrow_head, n_end - arrow_head * 1.5),
+                       (ax + arrow_head, n_end - arrow_head * 1.5)],
+                      dxfattribs={'layer': 'A-ANNO-DIMS'})
+        # South slope (ridge → bottom eave)
+        s_start = _mh(ridge_y) - 5 * scale
+        s_end = _mh(ridge_y) - (_mh(ridge_y) - _mh(roof_min_y)) * 0.6
+        msp.add_line((ax, s_start), (ax, s_end),
+                     dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+        msp.add_solid([(ax, s_end), (ax - arrow_head, s_end + arrow_head * 1.5),
+                       (ax + arrow_head, s_end + arrow_head * 1.5)],
+                      dxfattribs={'layer': 'A-ANNO-DIMS'})
+
+    # ── Overhang dimensions ──
+    overhang_n = (roof_max_y - bld_max_y) * 1000
+    overhang_s = (bld_min_y - roof_min_y) * 1000
+    overhang_e = (roof_max_x - bld_max_x) * 1000
+    overhang_w = (bld_min_x - roof_min_x) * 1000
+    _log(f"§5.3 Overhang N={overhang_n:.0f} S={overhang_s:.0f} "
+         f"E={overhang_e:.0f} W={overhang_w:.0f} mm")
+
+    snap = tpl_dims.get('snap_module_mm', 100)
+    dim_off = tpl_dims.get('tier_2_offset_mm', 18) * scale
+
+    # North overhang (right side)
+    if overhang_n > 50:
+        dim_x = _mh(roof_max_x) + dim_off
+        y_wall = _mh(bld_max_y)
+        y_eave = _mh(roof_max_y)
+        msp.add_line((dim_x, y_wall), (dim_x, y_eave),
+                     dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+        val = int(round(overhang_n / snap) * snap)
+        msp.add_text(str(val),
+                     dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h, 'rotation': 90}
+                     ).set_placement(
+                         (dim_x + txt_h, (y_wall + y_eave) / 2),
+                         align=TextEntityAlignment.MIDDLE_CENTER)
+
+    # ── Grids (§4.4: same bay grids as floor plan) ──
+    grids = snap_grids(derive_grids(walls))
+    grid_ext = tpl_grid.get('extend_beyond_building_mm', 15) * scale
+    bubble_r = tpl_grid.get('bubble_radius_mm', 4.0) * scale
+    bubble_lw = int(tpl_grid.get('bubble_stroke_mm', 0.25) * 100)
+    txt_grid_h = tpl_grid.get('label_font_height_mm', 3.0) * scale
+    grid_gap = tpl_dims.get('extension_gap_mm', 2.0) * scale
+
+    # Use roof extent for grid line boundaries
+    r_min_x = _mh(roof_min_x)
+    r_max_x = _mh(roof_max_x)
+    r_min_y = _mh(roof_min_y)
+    r_max_y = _mh(roof_max_y)
+
+    for g in grids:
+        pos = g.position * MM
+        if g.axis == 'x':
+            msp.add_line((pos, r_min_y - grid_ext),
+                         (pos, r_max_y + grid_ext + bubble_r * 2 + grid_gap),
+                         dxfattribs={'layer': 'A-GRID', 'lineweight': lw_grid})
+            for cy in (r_max_y + grid_ext + bubble_r,
+                       r_min_y - grid_ext - bubble_r):
+                msp.add_circle((pos, cy), bubble_r,
+                               dxfattribs={'layer': 'A-GRID', 'lineweight': bubble_lw})
+                msp.add_text(g.label,
+                             dxfattribs={'layer': 'A-ANNO-TEXT', 'height': txt_grid_h}
+                             ).set_placement((pos, cy),
+                                             align=TextEntityAlignment.MIDDLE_CENTER)
+        else:
+            msp.add_line((r_min_x - grid_ext, pos),
+                         (r_max_x + grid_ext + bubble_r * 2 + grid_gap, pos),
+                         dxfattribs={'layer': 'A-GRID', 'lineweight': lw_grid})
+            for cx in (r_max_x + grid_ext + bubble_r,
+                       r_min_x - grid_ext - bubble_r):
+                msp.add_circle((cx, pos), bubble_r,
+                               dxfattribs={'layer': 'A-GRID', 'lineweight': bubble_lw})
+                msp.add_text(g.label,
+                             dxfattribs={'layer': 'A-ANNO-TEXT', 'height': txt_grid_h}
+                             ).set_placement((cx, pos),
+                                             align=TextEntityAlignment.MIDDLE_CENTER)
+    _log(f"§2.3 Roof grids: {len(grids)}")
+
+    # ── Bay dimensions ──
+    dims = generate_dimensions(grids)
+    tick_len = tpl_dims.get('tick_half_length_mm', 1.5) * scale
+    for d in dims:
+        s = d.start * MM
+        e = d.end * MM
+        off = d.offset * scale
+        if d.axis == 'x':
+            dim_y = r_max_y + grid_ext + bubble_r * 2 + grid_gap + off
+            msp.add_line((s, dim_y), (e, dim_y),
+                         dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+            msp.add_line((s, dim_y - tick_len), (s, dim_y + tick_len),
+                         dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+            msp.add_line((e, dim_y - tick_len), (e, dim_y + tick_len),
+                         dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+            msp.add_text(d.text,
+                         dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h}
+                         ).set_placement(((s + e) / 2, dim_y + txt_h),
+                                         align=TextEntityAlignment.MIDDLE_CENTER)
+        else:
+            dim_x = r_min_x - grid_ext - bubble_r * 2 - grid_gap - off
+            msp.add_line((dim_x, s), (dim_x, e),
+                         dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+            msp.add_line((dim_x - tick_len, s), (dim_x + tick_len, s),
+                         dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+            msp.add_line((dim_x - tick_len, e), (dim_x + tick_len, e),
+                         dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+            msp.add_text(d.text,
+                         dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h,
+                                     'rotation': 90}
+                         ).set_placement((dim_x - txt_h, (s + e) / 2),
+                                         align=TextEntityAlignment.MIDDLE_CENTER)
+
+    # ── Sheet layout ──
+    _draw_sheet_layout(doc, msp, tpl, r_min_x, r_max_x, r_min_y, r_max_y,
+                       drawing_title='ROOF PLAN', drawing_no='A-06', scale=scale)
+
+    # North arrow
+    na = tpl.get('north_arrow', {})
+    na_size = na.get('size_mm', 8) * scale
+
+    _log(f"§2.8 Roof plan: {len(roofs)} roof(s), {len(grids)} grids, "
+         f"ridge Y={ridge_y:.3f}m")
+    doc.saveas(out_dxf)
+    _log(f"  → {out_dxf}")
+    _audit_dxf(doc, out_dxf, "ROOF PLAN")
+
+
+# ─────────────────────────────────────────────────────────────────
 # CLI
 # ─────────────────────────────────────────────────────────────────
+
+def _svg_fingerprint(svg_path: str) -> dict:
+    """Extract a white-box fingerprint from an SVG for comparison.
+    §9.6 R5/R6: entity counts, text content, grid labels."""
+    import re
+    if not os.path.exists(svg_path):
+        return {}
+    with open(svg_path) as f:
+        content = f.read()
+    fp = {}
+    fp['lines'] = len(re.findall(r'<line ', content))
+    fp['rects'] = len(re.findall(r'<rect ', content))
+    fp['circles'] = len(re.findall(r'<circle', content))
+    fp['texts'] = len(re.findall(r'<text ', content))
+    fp['polygons'] = len(re.findall(r'<polygon', content))
+    fp['paths'] = len(re.findall(r'<path', content))
+    fp['dasharrays'] = len(re.findall(r'stroke-dasharray', content))
+    # Extract all text content
+    text_vals = re.findall(r'>([^<]+)</text>', content)
+    fp['text_set'] = sorted(set(text_vals))
+    # Grid labels: single-char texts A-Z or 1-9
+    fp['grid_labels'] = sorted(set(t for t in text_vals
+                                    if len(t) <= 2 and t != 'N'
+                                    and (t.isalpha() or t.isdigit())))
+    # Dimension values: pure digit texts
+    fp['dim_values'] = sorted(set(t for t in text_vals if t.isdigit()))
+    return fp
+
+
+def _compare_fingerprints(current: dict, reference: dict) -> tuple:
+    """Compare two SVG fingerprints. Returns (score, total, details).
+    §9.6 R5: archive regression check."""
+    if not current or not reference:
+        return 0, 0, ['no data to compare']
+    checks = 0
+    matched = 0
+    details = []
+
+    # Grid labels
+    checks += 1
+    if current.get('grid_labels') == reference.get('grid_labels'):
+        matched += 1
+        details.append(f'  GRID_LABELS: MATCH {current["grid_labels"]}')
+    else:
+        details.append(f'  GRID_LABELS: DIFFER current={current.get("grid_labels")} '
+                       f'archive={reference.get("grid_labels")}')
+
+    # Dimension values
+    checks += 1
+    if current.get('dim_values') == reference.get('dim_values'):
+        matched += 1
+        details.append(f'  DIM_VALUES: MATCH {current["dim_values"]}')
+    else:
+        details.append(f'  DIM_VALUES: DIFFER current={current.get("dim_values")} '
+                       f'archive={reference.get("dim_values")}')
+
+    # Entity counts — dasharray count (grid rendering)
+    checks += 1
+    if current.get('dasharrays', 0) == reference.get('dasharrays', 0):
+        matched += 1
+        details.append(f'  DASHDOT_COUNT: MATCH {current["dasharrays"]}')
+    else:
+        details.append(f'  DASHDOT_COUNT: DIFFER current={current.get("dasharrays")} '
+                       f'archive={reference.get("dasharrays")}')
+
+    # Circle count (grid bubbles)
+    checks += 1
+    if current.get('circles', 0) == reference.get('circles', 0):
+        matched += 1
+        details.append(f'  CIRCLE_COUNT: MATCH {current["circles"]}')
+    else:
+        details.append(f'  CIRCLE_COUNT: DIFFER current={current.get("circles")} '
+                       f'archive={reference.get("circles")}')
+
+    # Text count
+    checks += 1
+    if current.get('texts', 0) == reference.get('texts', 0):
+        matched += 1
+        details.append(f'  TEXT_COUNT: MATCH {current["texts"]}')
+    else:
+        details.append(f'  TEXT_COUNT: DIFFER current={current.get("texts")} '
+                       f'archive={reference.get("texts")}')
+
+    return matched, checks, details
+
+
+def _prune_generations(folder: str, view: str, ext: str, keep: int = 2):
+    """§9.6 R3: keep only 2 generations per view. Remove oldest."""
+    import glob as _glob
+    pattern = os.path.join(folder, f'{view}_*.{ext}')
+    files = sorted(_glob.glob(pattern))  # oldest first (timestamp sort)
+    while len(files) > keep:
+        os.remove(files.pop(0))
+
+
+def _prev_file(folder: str, view: str, ext: str) -> str:
+    """Find previous generation file (second-newest) for a view."""
+    import glob as _glob
+    pattern = os.path.join(folder, f'{view}_*.{ext}')
+    files = sorted(_glob.glob(pattern))
+    if len(files) >= 2:
+        return files[-2]
+    return ''
+
+
+# §9.6 R2: short view names
+_VIEW_SHORT = {
+    'floor_plan': 'FLOOR',
+    'roof_plan': 'ROOF',
+    'front': 'FRONT',
+    'rear': 'REAR',
+    'left': 'LEFT',
+    'right': 'RIGHT',
+}
+
+# §9.6 R5: archive filename map (archive uses long names)
+_ARCHIVE_MAP = {
+    'FLOOR': 'floor_plan',
+    'ROOF': 'roof_plan',
+}
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -1755,11 +2189,9 @@ def main():
     parser.add_argument('--elevation', metavar='FACE',
                         help='Generate elevation DXF: front|rear|left|right')
     parser.add_argument('--all', action='store_true',
-                        help='Generate all drawings (floor plan + 4 elevations)')
+                        help='Generate all drawings (floor + roof + 4 elevations)')
     parser.add_argument('--proof', action='store_true',
-                        help='Convert DXF→SVG as visual proof (spec §10.0)')
-    parser.add_argument('--svg', action='store_true',
-                        help='(legacy) Also generate SVG from SVG writer')
+                        help='Convert DXF→SVG (spec §10.0)')
     parser.add_argument('--scale', type=int, default=100,
                         help='Drawing scale denominator (default 100 = 1:100)')
     args = parser.parse_args()
@@ -1769,99 +2201,159 @@ def main():
         sys.exit(1)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    out_dir    = os.path.join(script_dir, 'output')
-    os.makedirs(out_dir, exist_ok=True)
+    base_dir   = os.path.normpath(os.path.join(script_dir, '..'))
+    out_dir    = os.path.join(base_dir, 'output')
+    dxf_dir    = os.path.join(out_dir, 'DXF')
+    svg_dir    = os.path.join(out_dir, 'SVG')
+    os.makedirs(dxf_dir, exist_ok=True)
+    os.makedirs(svg_dir, exist_ok=True)
     stem = os.path.splitext(os.path.basename(args.db_path))[0]
+    ts = datetime.datetime.now().strftime('%Y%m%d_%H%M')
 
-    do_plan = args.floor_plan or args.all
-    do_elev = []
-    if args.all:
-        do_elev = ['front', 'rear', 'left', 'right']
-    elif args.elevation:
-        do_elev = [args.elevation]
-    if not do_plan and not do_elev:
-        do_plan = True   # default: floor plan
+    # §3.0b / §9.6 R7: Read master page table from {PREFIX}_2D.json
+    input_dir = os.path.join(base_dir, 'input')
+    page_json = None
+    if os.path.isdir(input_dir):
+        for jf in sorted(os.listdir(input_dir)):
+            if jf.endswith('_2D.json'):
+                jf_path = os.path.join(input_dir, jf)
+                with open(jf_path) as _jf:
+                    _plan = json.load(_jf)
+                    if _plan.get('db', '').replace('.db', '').replace('_extracted', '') in stem:
+                        page_json = _plan
+                        break
+
+    # Build page list from JSON (--all) or CLI args (single view)
+    _FILE_TO_FACE = {'FRONT': 'front', 'REAR': 'rear', 'LEFT': 'left', 'RIGHT': 'right'}
+    if args.all and page_json:
+        # §3.0b: iterate pages by status=DONE from master table
+        pages_todo = [p for p in page_json['pages'] if p['status'] == 'DONE']
+    elif args.all:
+        # Fallback if no JSON found: legacy hardcoded list
+        pages_todo = [
+            {'file': 'FLOOR', 'type': 'plan',      'sheet': 'A-01'},
+            {'file': 'FRONT', 'type': 'elevation',  'sheet': 'A-02'},
+            {'file': 'REAR',  'type': 'elevation',  'sheet': 'A-03'},
+            {'file': 'LEFT',  'type': 'elevation',  'sheet': 'A-04'},
+            {'file': 'RIGHT', 'type': 'elevation',  'sheet': 'A-05'},
+            {'file': 'ROOF',  'type': 'plan',        'sheet': 'A-06'},
+        ]
+    else:
+        pages_todo = []
+        if args.floor_plan:
+            pages_todo.append({'file': 'FLOOR', 'type': 'plan', 'sheet': 'A-01'})
+        if args.elevation:
+            face = args.elevation
+            short = _VIEW_SHORT.get(face, face.upper())
+            pages_todo.append({'file': short, 'type': 'elevation', 'sheet': ''})
+    if not pages_todo:
+        pages_todo = [{'file': 'FLOOR', 'type': 'plan', 'sheet': 'A-01'}]  # default
 
     _LOG_LINES.clear()
     _VERDICTS.clear()
     _log(f"DXF generation: {stem} (scale 1:{args.scale})")
     _log(f"  Source: {args.db_path}")
+    _log(f"  Output: {out_dir}/DXF/ and {out_dir}/SVG/")
+    _log(f"  Timestamp: {ts}")
+    if page_json:
+        _log(f"  Master page table: {len(pages_todo)} DONE pages from {page_json.get('project','?')}_2D.json")
+    else:
+        _log(f"  Master page table: not found, using CLI args")
 
-    if do_plan:
-        write_floor_plan_dxf(
-            args.db_path,
-            os.path.join(out_dir, f'{stem}_floor_plan.dxf'),
-            scale=args.scale)
+    # §9.6 R2: single-term filenames with timestamp
+    generated = {}  # short_name → (dxf_path, svg_path)
 
-    for face in do_elev:
-        write_elevation_dxf(
-            args.db_path, face,
-            os.path.join(out_dir, f'{stem}_{face}_elevation.dxf'),
-            scale=args.scale)
+    for page in pages_todo:
+        short = page['file']
+        ptype = page.get('type', 'plan')
+        dxf_path = os.path.join(dxf_dir, f'{short}_{ts}.dxf')
 
-    # ── DXF→proof (spec §10.0 R2, R6, R7) ──
-    # Reads DXF entities back and renders to SVG at paper-scale coordinates,
-    # then converts to PNG. Bypasses ezdxf rendering backends entirely
-    # (they produce invisible strokes at screen resolution).
+        if short == 'FLOOR':
+            write_floor_plan_dxf(args.db_path, dxf_path, scale=args.scale)
+        elif short == 'ROOF':
+            write_roof_plan_dxf(args.db_path, dxf_path, scale=args.scale)
+        elif ptype == 'elevation':
+            face = _FILE_TO_FACE.get(short, short.lower())
+            write_elevation_dxf(args.db_path, face, dxf_path, scale=args.scale)
+        else:
+            _log(f"  SKIP {short}: no generator for type={ptype}")
+            continue
+        generated[short] = dxf_path
+
+    # §9.6 R1: DXF→SVG (no PNG)
     if args.proof:
-        dxf_files = []
-        if do_plan:
-            dxf_files.append(os.path.join(out_dir, f'{stem}_floor_plan.dxf'))
-        for face in do_elev:
-            dxf_files.append(os.path.join(out_dir, f'{stem}_{face}_elevation.dxf'))
-
-        for dxf_path in dxf_files:
+        for short, dxf_path in generated.items():
             if not os.path.exists(dxf_path):
                 continue
-            proof_svg = dxf_path.replace('.dxf', '_proof.svg')
-            proof_png = dxf_path.replace('.dxf', '_proof.png')
+            svg_path = os.path.join(svg_dir, f'{short}_{ts}.svg')
             try:
-                _render_proof(dxf_path, proof_svg, proof_png)
-                _log(f"DXF→SVG proof → {proof_svg}")
-                _log(f"DXF→PNG proof → {proof_png}")
+                _render_proof(dxf_path, svg_path)
+                _log(f"DXF→SVG → {svg_path}")
             except Exception as e:
-                _log(f"DXF→proof failed for {dxf_path}: {e}")
+                _log(f"DXF→SVG failed for {short}: {e}")
                 import traceback
                 traceback.print_exc()
 
-    # ── SVG output alongside DXF (when --svg requested, legacy) ──
-    if args.svg:
-        from drawing_writer import (
-            draw_floor_plan, draw_roof_plan, draw_elevation,
-            read_drawing_metadata, combine_elevation_svgs,
-        )
-        elements_svg = read_elements(args.db_path, storey_filter='ground')
-        meta = read_drawing_metadata()
+    # §9.6 R3: prune to 2 generations per view
+    for short in generated:
+        _prune_generations(dxf_dir, short, 'dxf', keep=2)
+        _prune_generations(svg_dir, short, 'svg', keep=2)
 
-        if do_plan:
-            svg_content = draw_floor_plan(elements_svg, args.db_path, meta)
-            if svg_content:
-                svg_path = os.path.join(out_dir, f'{stem}_floor_plan.svg')
-                with open(svg_path, 'w') as f:
-                    f.write(svg_content)
-                _log(f"SVG floor plan → {svg_path}")
+    # §9.6 R6: Visible change detection (vs previous generation)
+    _log("")
+    _log("── VISIBLE CHANGE DETECTION ──")
+    any_change = False
+    change_details = []
+    for short in generated:
+        cur_svg = os.path.join(svg_dir, f'{short}_{ts}.svg')
+        prev_svg = _prev_file(svg_dir, short, 'svg')
+        cur_fp = _svg_fingerprint(cur_svg)
+        prev_fp = _svg_fingerprint(prev_svg) if prev_svg else {}
+        if not prev_fp:
+            change_details.append(f'  {short}: no previous — first run')
+            any_change = True
+        else:
+            diffs = []
+            for key in ('lines', 'circles', 'texts', 'polygons', 'dasharrays'):
+                c = cur_fp.get(key, 0)
+                p = prev_fp.get(key, 0)
+                if c != p:
+                    diffs.append(f'{key}:{p}→{c}')
+            if cur_fp.get('grid_labels') != prev_fp.get('grid_labels'):
+                diffs.append(f'grids:{prev_fp.get("grid_labels")}→{cur_fp.get("grid_labels")}')
+            if diffs:
+                any_change = True
+                change_details.append(f'  {short}: CHANGED — {", ".join(diffs)}')
+            else:
+                change_details.append(f'  {short}: identical to prev')
+    for d in change_details:
+        _log(d)
+    _log(f"VISIBLE CHANGE: {'YES' if any_change else 'NO'}")
 
-        elev_svgs = {}
-        for face in do_elev:
-            svg_content = draw_elevation(elements_svg, face, args.db_path, meta)
-            if svg_content:
-                elev_svgs[face] = svg_content
-                svg_path = os.path.join(out_dir, f'{stem}_{face}_elevation.svg')
-                with open(svg_path, 'w') as f:
-                    f.write(svg_content)
-                _log(f"SVG {face} elevation → {svg_path}")
-
-        for face_a, face_b, sheet_name in [
-            ('front', 'rear',  'frontrear_elevations'),
-            ('left',  'right', 'leftright_elevations'),
-        ]:
-            if face_a in elev_svgs and face_b in elev_svgs:
-                paired = combine_elevation_svgs(
-                    elev_svgs[face_a], elev_svgs[face_b], face_a, face_b)
-                svg_path = os.path.join(out_dir, f'{stem}_{sheet_name}.svg')
-                with open(svg_path, 'w') as f:
-                    f.write(paired)
-                _log(f"SVG paired sheet → {svg_path}")
+    # §9.6 R5: Archive regression check (FLOOR + ROOF only)
+    _log("")
+    _log("── ARCHIVE REGRESSION CHECK ──")
+    archive_dir = os.path.join(base_dir, 'archive')
+    archive_stem = page_json.get('building', stem) if page_json else stem
+    for short in ('FLOOR', 'ROOF'):
+        cur_svg = os.path.join(svg_dir, f'{short}_{ts}.svg')
+        archive_suffix = _ARCHIVE_MAP.get(short, short.lower())
+        archive_svg = os.path.join(archive_dir, f'{archive_stem}_{archive_suffix}.svg')
+        if not os.path.exists(archive_svg):
+            _log(f"  {short}: archive not found at {archive_svg}")
+            continue
+        cur_fp = _svg_fingerprint(cur_svg)
+        arc_fp = _svg_fingerprint(archive_svg)
+        matched, total, details = _compare_fingerprints(cur_fp, arc_fp)
+        for d in details:
+            _log(d)
+        prev_svg = _prev_file(svg_dir, short, 'svg')
+        prev_fp = _svg_fingerprint(prev_svg) if prev_svg else {}
+        prev_matched = 0
+        if prev_fp:
+            prev_matched, _, _ = _compare_fingerprints(prev_fp, arc_fp)
+        better = matched >= prev_matched if prev_fp else True
+        _log(f"  ARCHIVE CHECK [{short}]: {matched}/{total} — Better: {'YES' if better else 'NO'}")
 
     _write_log(out_dir)
 

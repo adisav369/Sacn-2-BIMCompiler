@@ -1,7 +1,33 @@
 # 2D Layout — Architectural Drawing Generator
 
 Generates professional 2D architectural drawings (floor plans, elevations, roof plan)
-from a compiled BIM database. Outputs SVG (browser preview) and DXF (open in CAD tools).
+from a compiled BIM database. Outputs DXF (professional deliverable) with DXF→SVG
+proof output for browser verification.
+
+---
+
+## Development Protocol
+
+Every coding session follows this cycle. No exceptions.
+
+```
+1. READ SPECS       → 2D_ARCHITECTURAL_LAYOUT.md — understand what the code must do
+2. WRITE TESTS      → Write failing test assertions BEFORE writing code
+3. RUN + READ LOGS  → Generate output (--proof), read diagnostic log + TBLKLTN audit
+4. FIX CODE         → Make failing tests pass; if spec needs updating, update spec FIRST
+5. VERIFY           → Run all 3 tests + --proof; open proof SVG in browser to confirm
+6. BACK TO 1        → Next feature: read spec, write test, run, fix, verify
+```
+
+**The proof SVG shows exactly what the DXF contains.** If the proof SVG is missing
+a feature, the DXF is missing it. No separate code path. One source of truth.
+
+```bash
+# Full cycle:
+python3 drawing_writer_dxf.py ../lib/input/ifc4_sample_house.db --all --proof
+python3 test_no_hardcode.py && python3 test_no_invention.py && python3 test_dxf_vs_svg.py
+# Open *_proof.svg in browser to visually verify
+```
 
 ---
 

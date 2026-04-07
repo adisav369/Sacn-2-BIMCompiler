@@ -13,7 +13,7 @@ Usage:
     python3 tools/drawing_writer.py output/samplehouse.db --all
 
 Style conventions follow Malaysian JKR / TB-LKTN standard drawing practice.
-Style constants are grouped for future migration to ad_drawing_style metadata table.
+Style constants are grouped for future migration to 2d_drawing_style metadata table.
 """
 
 import sqlite3
@@ -27,7 +27,7 @@ from section_cut import section_cut as run_section_cut, parse_vertices_blob
 
 # ─────────────────────────────────────────────────────────────────
 # DRAWING STYLE CONSTANTS
-# Future: these become rows in ad_drawing_style metadata table.
+# Future: these become rows in 2d_drawing_style metadata table.
 # Profile: JKR_Malaysian (default)
 # ─────────────────────────────────────────────────────────────────
 
@@ -212,7 +212,7 @@ def read_drawing_metadata() -> Optional[Dict]:
 
     # Sheet template (A3)
     row = conn.execute(
-        "SELECT * FROM ad_sheet_template "
+        'SELECT * FROM [2d_sheet_template] '
         "WHERE profile_id='JKR_Malaysian' AND paper_size='A3'"
     ).fetchone()
     if row:
@@ -220,21 +220,21 @@ def read_drawing_metadata() -> Optional[Dict]:
 
     # Title block fields
     rows = conn.execute(
-        "SELECT * FROM ad_title_block "
+        'SELECT * FROM [2d_title_block] '
         "WHERE profile_id='JKR_Malaysian' ORDER BY field_order"
     ).fetchall()
     meta['title_fields'] = [dict(r) for r in rows]
 
     # Room labels (Malay)
     rows = conn.execute(
-        "SELECT * FROM ad_room_label "
+        'SELECT * FROM [2d_room_label] '
         "WHERE profile_id='JKR_Malaysian' AND language='MS'"
     ).fetchall()
     meta['room_labels'] = {r['space_type']: dict(r) for r in rows}
 
     # Annotation tags
     rows = conn.execute(
-        "SELECT * FROM ad_annotation_tag WHERE profile_id='JKR_Malaysian'"
+        "SELECT * FROM [2d_annotation_tag] WHERE profile_id='JKR_Malaysian'"
     ).fetchall()
     meta['tags'] = {r['tag_type']: dict(r) for r in rows}
 
@@ -246,39 +246,65 @@ def read_drawing_metadata() -> Optional[Dict]:
 # ─────────────────────────────────────────────────────────────────
 
 def derive_grids(walls: List[Element]) -> List[GridLine]:
-    """Derive structural grid lines from wall positions.
+    """Derive structural bay grid lines from boundary walls and columns.
+
+    §4.2: Grids mark structural bay spacing — columns + boundary walls only.
+    Partition walls are NOT gridded; they are dimensioned from grids.
 
     Convention: Letters (A, B, C...) for vertical grids (X-axis),
                 Numbers (1, 2, 3...) for horizontal grids (Y-axis).
-    This follows Malaysian JKR practice (TB-LKTN style).
+    This follows TB-LKTN (JKR Malaysian) practice.
     """
     x_positions = []
     y_positions = []
 
+    # §4.2: compute building bounding box from all walls (including glass)
+    # to detect boundary positions
+    all_walls = [w for w in walls]
+    if not all_walls:
+        return []
+    bld_min_x = min(w.min_x for w in all_walls)
+    bld_max_x = max(w.max_x for w in all_walls)
+    bld_min_y = min(w.min_y for w in all_walls)
+    bld_max_y = max(w.max_y for w in all_walls)
+
+    # §4.2.1 Step 1: ALL opaque wall centrelines (Ext + Partn)
+    # Both exterior and major internal division walls define structural bays.
+    # Glass panels excluded — they contribute via bbox edges and wall endpoints.
     for w in walls:
         if w.is_glass:
-            continue  # Skip curtain wall panels for grid derivation
+            continue  # §4.2: exclude curtain wall panels
+        if w.is_ns_wall:
+            x_positions.append(w.center_x)
+        if w.is_ew_wall:
+            y_positions.append(w.center_y)
 
-        if w.is_exterior:
-            # Exterior walls: grid at centerline
-            if w.is_ew_wall:
-                y_positions.append(w.center_y)
-                # Also mark wall endpoints (building corners)
+    # §4.2.1 Step 2: wall endpoints of exterior walls as bay boundaries
+    # Only endpoints far from bbox edges (interior junctions like glass-masonry)
+    BOUNDARY_TOL = 0.50
+    for w in walls:
+        if w.is_glass or not w.is_exterior:
+            continue
+        if w.is_ew_wall:
+            if abs(w.min_x - bld_min_x) > BOUNDARY_TOL:
                 x_positions.append(w.min_x)
+            if abs(w.max_x - bld_max_x) > BOUNDARY_TOL:
                 x_positions.append(w.max_x)
-            if w.is_ns_wall:
-                x_positions.append(w.center_x)
+        if w.is_ns_wall:
+            if abs(w.min_y - bld_min_y) > BOUNDARY_TOL:
                 y_positions.append(w.min_y)
+            if abs(w.max_y - bld_max_y) > BOUNDARY_TOL:
                 y_positions.append(w.max_y)
-        else:
-            # Interior walls: grid at centerline
-            if w.is_ns_wall and w.width_x < 0.5:
-                x_positions.append(w.center_x)
-            elif w.is_ew_wall and w.width_y < 0.5:
-                y_positions.append(w.center_y)
 
-    # Merge positions that are within MERGE_TOL of each other (wall thickness)
-    MERGE_TOL = 0.5  # 500mm — merges both edges of a thick wall into one grid
+    # §4.2.1 Step 3: building bounding box edges are structural boundaries
+    # even if formed by glass/curtain wall — contractor needs these
+    x_positions.append(bld_min_x)
+    x_positions.append(bld_max_x)
+    y_positions.append(bld_min_y)
+    y_positions.append(bld_max_y)
+
+    # §4.2 Step 2: cluster within wall-thickness tolerance (0.20m)
+    MERGE_TOL = 0.20
 
     def merge_positions(positions):
         if not positions:
@@ -287,7 +313,6 @@ def derive_grids(walls: List[Element]) -> List[GridLine]:
         merged = [positions[0]]
         for p in positions[1:]:
             if abs(p - merged[-1]) < MERGE_TOL:
-                # Average with existing (weighted toward exterior centerline)
                 merged[-1] = (merged[-1] + p) / 2
             else:
                 merged.append(p)
@@ -296,6 +321,7 @@ def derive_grids(walls: List[Element]) -> List[GridLine]:
     x_sorted = merge_positions(x_positions)
     y_sorted = merge_positions(y_positions)
 
+    # §4.2 Step 4: label from template (sorted by position)
     grids = []
     for i, x in enumerate(x_sorted):
         label = chr(ord('A') + i)
@@ -829,7 +855,7 @@ def draw_opening_legend(svg: SVGBuilder, sheet: dict,
     tb_left = sheet['width_mm'] - sheet['margin_right'] - sheet['title_block_width']
     tb_top = sheet['margin_top']
     tb_width = sheet['title_block_width']
-    total_fields_h = 109  # sum of ad_title_block row heights
+    total_fields_h = 109  # sum of 2d_title_block" row heights
     tb_bottom = sheet['height_mm'] - sheet['margin_bottom']
 
     # Legend area: between JKR header and field rows
@@ -1119,7 +1145,7 @@ def draw_floor_plan(elements: Dict[str, List[Element]], db_path: str,
     grids = snap_grids(derive_grids(walls))
     dims = generate_dimensions(grids)
 
-    # ── Draw grid lines (dash-dot per ad_grid_style) ──
+    # ── Draw grid lines (dash-dot per 2d_grid_style) ──
     GRID_DASH = "4,1,1,1"  # dash-dot pattern per TB-LKTN
 
     for g in grids:
