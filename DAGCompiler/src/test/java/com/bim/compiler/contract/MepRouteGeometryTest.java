@@ -1061,6 +1061,111 @@ class MepRouteGeometryTest {
         }
     }
 
+    // ── Scenario 18: Compile DB integration — generative MEP through pipeline path ──
+    // Creates _compile.db the same way the pipeline script does (cp + schema overlay),
+    // walks it with erpConn, and asserts generative devices survive the compile DB copy.
+    // This test would have caught the "0 generative in pipeline" bug.
+    // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 — Witness: W-DEVICE-PLACE
+    @Test
+    @Order(18)
+    @DisplayName("S18: compile DB integration — generative MEP through pipeline path")
+    void compileDbGenerativeIntegration() throws Exception {
+        String bomDbPath = "library/DX_BOM.db";
+        String schemaPath = "library/schema_snapshot_bom.sql";
+        if (!java.nio.file.Files.exists(java.nio.file.Path.of(bomDbPath))) {
+            System.out.printf("[S18] SKIP: %s not found%n", bomDbPath);
+            return;
+        }
+
+        // 1. Create compile DB exactly as prepare_compile_db() does:
+        //    cp DX_BOM.db → temp, apply schema overlay (CREATE TABLE IF NOT EXISTS)
+        java.nio.file.Path compileDb = java.nio.file.Files.createTempFile("_DX_compile_test_", ".db");
+        java.nio.file.Files.copy(java.nio.file.Path.of(bomDbPath), compileDb,
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+        // Apply schema snapshot (IF NOT EXISTS overlay)
+        if (java.nio.file.Files.exists(java.nio.file.Path.of(schemaPath))) {
+            String schemaSql = java.nio.file.Files.readString(java.nio.file.Path.of(schemaPath));
+            schemaSql = schemaSql.replaceAll("CREATE TABLE ([^I\"])", "CREATE TABLE IF NOT EXISTS $1")
+                                 .replaceAll("CREATE TABLE \"([^I])", "CREATE TABLE IF NOT EXISTS \"$1");
+            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + compileDb);
+                 Statement stmt = conn.createStatement()) {
+                for (String ddl : schemaSql.split(";")) {
+                    if (!ddl.isBlank()) {
+                        try { stmt.execute(ddl); } catch (SQLException ignored) {}
+                    }
+                }
+            }
+        }
+
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + compileDb);
+             Connection erpConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
+
+            // 2. Verify M_Product_Category has room categories (this was the suspected root cause)
+            int catCount = 0;
+            try (Statement stmt = bomConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT COUNT(*) FROM M_Product_Category WHERE Value IN ('LIVING','KITCHEN','BEDROOM','BATHROOM')")) {
+                if (rs.next()) catCount = rs.getInt(1);
+            }
+            assertTrue(catCount >= 4,
+                "Compile DB must have room categories (LIVING, KITCHEN, BEDROOM, BATHROOM), got " + catCount);
+            System.out.printf("[S18] Room categories in compile DB: %d%n", catCount);
+
+            // 3. Find root BUILDING BOM
+            String rootBom = null;
+            try (Statement stmt = bomConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT bom_id FROM m_bom WHERE bom_type='BUILDING' LIMIT 1")) {
+                if (rs.next()) rootBom = rs.getString(1);
+            }
+            assertNotNull(rootBom, "Compile DB must have a BUILDING BOM");
+
+            com.bim.ormsandbox.po.MBOM root = new com.bim.ormsandbox.po.MBOM(bomConn);
+            assertTrue(root.loadByValue(rootBom), "Must load root BOM");
+            double[] worldOrigin = {root.getOriginX(), root.getOriginY(), root.getOriginZ()};
+
+            // 4. Walk with erpConn — same wiring as CompilationPipeline.CompileStage
+            PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(
+                    bomConn, "DX_COMPILE_TEST", worldOrigin);
+            visitor.setErpConn(erpConn);
+            visitor.setMepOrderQty(99);
+
+            BOMWalker walker = new BOMWalker(bomConn, erpConn);
+            walker.walk(rootBom, java.util.List.of(visitor), "DX_COMPILE_TEST");
+            visitor.emitGenerativeSummary();
+
+            int totalPlacements = visitor.getPlacements().size();
+            int generativeDevices = visitor.getGenerativeDeviceCount();
+
+            System.out.printf("[S18] Compile DB walk: %d total, %d generative%n",
+                totalPlacements, generativeDevices);
+
+            // 5. Key assertions — generative MEP must work through compile DB path
+            assertTrue(generativeDevices > 0,
+                "Compile DB walk must produce generative MEP devices");
+            assertTrue(generativeDevices >= 100,
+                "DX compile DB must produce ≥100 generative devices, got " + generativeDevices);
+
+            // 6. GEO proof records with GENERATIVE chain
+            List<GeoProofRecord> proofs = visitor.getProofRecords();
+            long genProofs = proofs.stream().filter(r -> r.bomChain().contains("GENERATIVE")).count();
+            assertEquals(generativeDevices, genProofs,
+                "Every generative device must have a GeoProofRecord");
+
+            // 7. LMP containment — all generative devices must be inside rooms
+            long lmpFail = proofs.stream()
+                .filter(r -> r.bomChain().contains("GENERATIVE") && !r.lmpContained())
+                .count();
+            assertEquals(0, lmpFail, "All generative devices must pass LMP containment");
+
+            System.out.printf("[S18] PASS: compile DB integration — %d generative, %d proofs, LMP 100%% OK%n",
+                generativeDevices, genProofs);
+        } finally {
+            java.nio.file.Files.deleteIfExists(compileDb);
+        }
+    }
+
     private GeoProofRecord findByProduct(List<GeoProofRecord> records, String productId) {
         return records.stream()
                 .filter(r -> productId.equals(r.productId()))

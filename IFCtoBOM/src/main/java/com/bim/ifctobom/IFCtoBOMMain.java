@@ -13,9 +13,9 @@ import java.util.*;
  * <h3>Per-building BOM database convention</h3>
  * <p>Each building produces its own clean {@code *_BOM.db}:
  * <ul>
- *   <li>{@code SH_BOM.db} — Ifc4_SampleHouse (classify_sh.yaml)</li>
- *   <li>{@code DX_BOM.db} — Ifc2x3_Duplex (classify_dx.yaml)</li>
- *   <li>{@code TE_BOM.db} — SJTII_Terminal (classify_te.yaml, future)</li>
+ *   <li>{@code SH_BOM.db} — SampleHouse (classify_sh.yaml)</li>
+ *   <li>{@code DX_BOM.db} — Duplex (classify_dx.yaml)</li>
+ *   <li>{@code TE_BOM.db} — Terminal (classify_te.yaml, future)</li>
  * </ul>
  *
  * <p>The legacy monolithic {@code BOM.db} is archived ({@code library/archive/BOM.db}).
@@ -133,6 +133,12 @@ public class IFCtoBOMMain {
                     compConn, discConn, allElements, buildingType);
             System.out.printf("[populate] Products cataloged: %d new%n", cataloged);
 
+            // 2b. Bridge source_element_ref for generative MEP products (§6.12.4 §11)
+            int lodBridged = ProductRegistrar.bridgeSourceElementRef(compConn, discConn);
+            if (lodBridged > 0) {
+                System.out.printf("[populate] LOD bridged: %d generative products%n", lodBridged);
+            }
+
             // 3. Link M_Product → geometry_hash via M_Product_Image
             int images = ProductRegistrar.ensureProductImages(compConn, buildingType);
             System.out.printf("[populate] Images linked: %d new%n", images);
@@ -177,6 +183,18 @@ public class IFCtoBOMMain {
             IFCtoERP.RecipeResult rr = IFCtoERP.buildMepBomRecipes(erpConn, buildingType);
             System.out.printf("[IFCtoERP] %s: %d MEP runs, %d recipe lines, %d shim anchors%n",
                     buildingType, rr.runsBuilt(), rr.linesWritten(), rr.shimAnchors());
+
+            // §6.12.4: Link MEP recipes to room types via space identity (Witness: W-SPACE-LINK)
+            int spaceLinked = IFCtoERP.linkRecipesToSpaces(erpConn, buildingType);
+            System.out.printf("[MEP-SPACE] %s: %d recipes linked to room types%n",
+                    buildingType, spaceLinked);
+
+            // §6.12.4 §6: Fixture gap analysis — what each room needs but doesn't have
+            int gapCount = IFCtoERP.emitFixtureGapAnalysis(erpConn, buildingType);
+            if (gapCount > 0) {
+                System.out.printf("[MEP-GAP] %s: %d fixture gaps — see INSERT script above%n",
+                        buildingType, gapCount);
+            }
         }
     }
 

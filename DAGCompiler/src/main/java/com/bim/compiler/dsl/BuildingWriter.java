@@ -331,7 +331,8 @@ public class BuildingWriter {
                     AabbHeightMm           REAL,
                     CompiledAt             TEXT,                 -- compile timestamp
                     CompilerVersion        TEXT,
-                    C_DocType_ID           TEXT                  -- FK → C_DocType.Value in BOM.db (cross-DB)
+                    C_DocType_ID           TEXT,                 -- FK → C_DocType.Value in BOM.db (cross-DB)
+                    GenerativeCount        INTEGER DEFAULT 0     -- §6.12.4: generative MEP devices placed
                 )
             """);
 

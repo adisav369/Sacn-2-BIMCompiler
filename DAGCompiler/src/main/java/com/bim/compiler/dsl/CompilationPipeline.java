@@ -1095,8 +1095,9 @@ public class CompilationPipeline {
                     ExpectedElements, Provenance, Description,
                     GeometryFailThreshold, DocStatus,
                     AabbWidthMm, AabbDepthMm, AabbHeightMm,
-                    CompiledAt, CompilerVersion, C_DocType_ID
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?,?)
+                    CompiledAt, CompilerVersion, C_DocType_ID,
+                    GenerativeCount
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?,?,?)
                 """;
 
             try (PreparedStatement ps = outConn.prepareStatement(sql)) {
@@ -1116,6 +1117,7 @@ public class CompilationPipeline {
                 ps.setObject(14, entry.aabbHeightMm() > 0 ? entry.aabbHeightMm() : null); // AabbHeightMm
                 ps.setString(15, "BIM-Compiler-1.0");                 // CompilerVersion
                 ps.setString(16, entry.docTypeId());                  // C_DocType_ID
+                ps.setInt(17, ctx.generativeCount());                  // GenerativeCount (§6.12.4)
                 ps.executeUpdate();
 
                 System.out.printf("[C_ORDER] Created C_Order for %s (DocType=%s, DocStatus=IP) in output.db%n",

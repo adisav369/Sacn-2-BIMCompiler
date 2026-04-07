@@ -1,6 +1,7 @@
 package com.bim.ifctobom;
 
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
+import com.bim.orm.BIMLogger;
 
 import java.sql.*;
 import java.util.*;
@@ -139,9 +140,31 @@ public class ProductRegistrar {
             }
         }
         if (reused > 0) {
-            System.out.printf("[ProductRegistrar] %d products reused from catalog, %d new%n",
+            BIMLogger.fine("PRODUCT_REG", "{} products reused from catalog, {} new",
                     reused, count);
         }
+
+        // Backfill M_Product_Category_ID from ifc_class → M_Product_Category.IFC_Class.
+        // Implementing DISC_VALIDATION_DB_SRS.md §6.4 — Witness: W-DISC-CAT
+        // Only on ERP.db (discConn) — component_library.db has no category column.
+        // Always run (not gated on count) — ERP.db may receive new products
+        // even when component_library.db already has them (fresh ERP.db rebuild).
+        {
+            try (Statement stmt = discConn.createStatement()) {
+                stmt.executeUpdate("""
+                        UPDATE M_Product
+                        SET M_Product_Category_ID = (
+                            SELECT c.M_Product_Category_ID
+                            FROM M_Product_Category c
+                            WHERE c.IFC_Class = M_Product.ifc_class
+                            LIMIT 1
+                        )
+                        WHERE M_Product_Category_ID IS NULL
+                          AND ifc_class IS NOT NULL
+                        """);
+            }
+        }
+
         return count;
     }
 
@@ -284,7 +307,7 @@ public class ProductRegistrar {
      * <p>Idempotent — uses INSERT OR IGNORE. Only writes, never deletes.
      *
      * @param compConn     writable connection to component_library.db
-     * @param buildingType the building_type string (e.g. "Ifc4_SampleHouse")
+     * @param buildingType the building_type string (e.g. "SampleHouse")
      * @return number of new M_Product_Image rows inserted
      */
     public static int ensureProductImages(Connection compConn,
@@ -351,6 +374,90 @@ public class ProductRegistrar {
                 return rs.next() ? rs.getInt(1) : 0;
             }
         }
+    }
+
+    /**
+     * Bridge source_element_ref for generative MEP products that have NULL values.
+     * Looks up ad_element_mep_alias (match_field='element_name') to find the IFC
+     * family name pattern, then resolves it against I_Geometry_Map in component_library.db.
+     *
+     * <p>This closes the LOD gap: generative products (TOILET, LIGHT, SINK, etc.)
+     * are inserted by migration scripts without extraction data, so source_element_ref
+     * is NULL. Without it, ensureProductImages cannot join to I_Geometry_Map and the
+     * product gets no geometry_hash — invisible at compile time.
+     *
+     * <p>Idempotent — only updates rows where source_element_ref IS NULL.
+     *
+     * // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 §11 — Witness: W-LOD-BRIDGE
+     *
+     * @param compConn writable connection to component_library.db (I_Geometry_Map source)
+     * @param discConn writable connection to ERP.db (M_Product to update)
+     * @return number of products bridged
+     */
+    public static int bridgeSourceElementRef(Connection compConn,
+                                             Connection discConn) throws SQLException {
+        // Find generative products with NULL source_element_ref
+        String findNulls = """
+                SELECT p.product_id, a.match_value
+                FROM M_Product p
+                JOIN ad_element_mep_alias a
+                  ON a.canonical_type = p.product_id
+                 AND a.match_field = 'element_name'
+                 AND a.is_active = 1
+                WHERE p.source_element_ref IS NULL
+                  AND p.is_active = 1
+                ORDER BY a.priority ASC
+                """;
+
+        // For each product, find the best matching element_ref in I_Geometry_Map
+        String findGeometry = """
+                SELECT element_ref FROM I_Geometry_Map
+                WHERE element_ref LIKE ?
+                  AND building_type IS NOT NULL
+                LIMIT 1
+                """;
+
+        String updateRef = """
+                UPDATE M_Product SET source_element_ref = ?
+                WHERE product_id = ? AND source_element_ref IS NULL
+                """;
+
+        int bridged = 0;
+        // Track which products we've already bridged (first alias match wins)
+        Set<String> done = new HashSet<>();
+
+        try (PreparedStatement findStmt = discConn.prepareStatement(findNulls);
+             PreparedStatement geoStmt = compConn.prepareStatement(findGeometry);
+             PreparedStatement updateStmt = discConn.prepareStatement(updateRef);
+             ResultSet rs = findStmt.executeQuery()) {
+
+            while (rs.next()) {
+                String productId = rs.getString(1);
+                if (done.contains(productId)) continue;
+
+                String aliasPattern = rs.getString(2); // e.g. '%Water Closet%'
+                geoStmt.setString(1, aliasPattern);
+                try (ResultSet geoRs = geoStmt.executeQuery()) {
+                    if (geoRs.next()) {
+                        String elementRef = geoRs.getString(1);
+                        updateStmt.setString(1, elementRef);
+                        updateStmt.setString(2, productId);
+                        int rows = updateStmt.executeUpdate();
+                        if (rows > 0) {
+                            bridged++;
+                            done.add(productId);
+                            BIMLogger.fine("PRODUCT_REG",
+                                    "LOD bridge: {} → {}", productId, elementRef);
+                        }
+                    }
+                }
+            }
+        }
+        if (bridged > 0) {
+            BIMLogger.info("PRODUCT_REG",
+                    "LOD bridge: {} generative products linked to geometry", bridged);
+        }
+        return bridged;
     }
 
     /**

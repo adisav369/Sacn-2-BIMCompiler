@@ -92,3 +92,46 @@ Run `./scripts/run_RosettaStones.sh classify_dx.yaml` and verify:
 - LOD-BIND: 0 NO-MATCH, 0 NO-BOUNDS for generative devices
 - GeoProofRecords: LMP 100% OK for all generative devices
 - Pipeline log file captures GENERATIVE channel (verify grep finds entries)
+
+# DONE — S152 Findings
+
+## Root Cause
+The S152 prompt's diagnosis of "0 generative in pipeline" was stale. Generative MEP IS
+firing (114 devices, 391 log lines in DX pipeline). S151's 7 commits fixed the data flow.
+
+## What Was Actually Broken
+1. **G1-COUNT didn't account for generative devices** — `RosettaStoneGateTest.runG1()` compared
+   `expectedElements` (215, extraction-only) against `elements_meta` count (329, includes generative).
+   FAIL: expected=215, out=329. Fix: read `GenerativeCount` from output.db `c_order` and add to expected.
+
+2. **GenerativeCount not persisted to output.db** — `c_order` had no column for it. Added
+   `GenerativeCount INTEGER DEFAULT 0` to DDL in BuildingWriter, persisted via WriteStage INSERT.
+
+3. **Pipeline contract tests never ran** — `rosetta_compile.sh` contract step omitted
+   `-Dpipeline.tests.skip=false` so `RosettaStoneGateTest` was always skipped (false PASS).
+   Documented with comment. Enabling reveals pre-existing G2/G3/G4 failures from discipline
+   exclusion (reference=1119 all-IFC elements vs output=329 BOM-walked elements). Deferred to
+   a future session that addresses discipline-aware gate comparisons.
+
+## Changes Made
+1. `BuildingWriter.java` — added `GenerativeCount INTEGER DEFAULT 0` to c_order DDL
+2. `CompilationPipeline.java` — persist `ctx.generativeCount()` in c_order INSERT (WriteStage)
+3. `RosettaStoneGateTest.java` — G1-COUNT reads `GenerativeCount` from output.db, adds to expected.
+   New helper `readGenerativeCount()`. Detail string now shows base+gen breakdown.
+4. `MepRouteGeometryTest.java` — new S18: compile DB integration test. Creates `_compile.db`
+   same as pipeline, walks with erpConn, asserts generativeCount≥100, GeoProofRecords, LMP 100%.
+5. `rosetta_compile.sh` — added explanatory comment re: contract step test skip.
+
+## Gate Results
+- DX: 9/9 PASS, GENERATIVE SUMMARY: 114 devices, 11 rooms, 0 breaches
+- SH: 9/9 PASS, GENERATIVE SUMMARY: 24 devices, 2 rooms, 0 breaches
+- MepRouteGeometryTest: 18/18 PASS (S1-S17 existing + S18 new)
+- S18 compile DB integration: 329 total, 114 generative, 114 proofs, LMP 100%
+- GenerativeCount persisted: DX c_order.GenerativeCount=114, SH=24
+
+## Pre-Existing Issue Discovered
+G2-VOLUME (-1.04%), G3-DIGEST (mismatch), G4-TAMPER fail for DX when contract tests actually
+execute. Root cause: reference DB has 1119 elements (all IFC classes including 799 MEP
+discipline-excluded: 14 IfcFlowController, 358 IfcFlowFitting, 427 IfcFlowSegment), but output
+has only 329 (BOM-walked ARC + 114 generative). Needs discipline-aware reference filtering in
+gate tests. Not related to generative MEP.

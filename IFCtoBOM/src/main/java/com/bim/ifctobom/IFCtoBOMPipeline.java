@@ -215,6 +215,8 @@ public class IFCtoBOMPipeline {
             // idempotent (INSERT OR IGNORE), so running them twice is harmless.
             int cataloged = ProductRegistrar.ensureProductCatalog(
                     compConn, discConn, allElements, config.buildingType());
+            // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 §11 — Witness: W-LOD-BRIDGE
+            int lodBridged = ProductRegistrar.bridgeSourceElementRef(compConn, discConn);
             int images = ProductRegistrar.ensureProductImages(compConn, config.buildingType());
             if (cataloged > 0 || images > 0) {
                 System.out.printf("[IFCtoBOM] Product catalog: %d new products, %d new image links%n",

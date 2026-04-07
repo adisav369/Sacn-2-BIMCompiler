@@ -98,6 +98,12 @@ compile_building() {
     # Contract tests — run AFTER compilation, output DB exists on disk
     echo "  [contracts] Running G3/G6/Totality/Rotation gates..."
     local CT_OUTPUT CT_RC
+    # NOTE: -Dpipeline.tests.skip not set here — contract tests (G1-G6) validate
+    # via run_tests.sh which runs the full Maven test suite. The pipeline script
+    # validates via BuildingRegistryTest (compile step) + integrity + fidelity.
+    # Enabling here reveals pre-existing G2/G3/G4 failures from discipline exclusion
+    # (reference DB has all IFC elements, output has only BOM-walked elements).
+    # S152: Will enable once G2/G3 handle discipline-excluded reference elements.
     CT_OUTPUT=$(mvn test -pl DAGCompiler \
         -Dtest="RosettaStoneGateTest,TotalityContractTest,RotationContractTest" \
         -Dbom.db="${compile_db}" \

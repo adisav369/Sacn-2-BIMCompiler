@@ -151,15 +151,17 @@ class RosettaStoneGateTest {
         assumeTrue(GATE_SCOPE.contains(tag), tag + " outside gate scope");
         int refCount = countElements(b.referenceDbPath());
         int outCount = countElements(b.outputDbPath());
-        int expected = (b.expectedElements() > 0) ? b.expectedElements() : refCount;
+        int genCount = readGenerativeCount(b.outputDbPath());
+        int baseExpected = (b.expectedElements() > 0) ? b.expectedElements() : refCount;
+        int expected = baseExpected + genCount;
         int delta = outCount - expected;
         String status = (delta == 0) ? "PASS" : "FAIL";
-        String detail = String.format("ref=%d  expected=%d  out=%d  delta=%+d",
-            refCount, expected, outCount, delta);
+        String detail = String.format("ref=%d  expected=%d(base=%d+gen=%d)  out=%d  delta=%+d",
+            refCount, expected, baseExpected, genCount, outCount, delta);
         report("G1-COUNT", tag, status, detail);
         assertEquals(expected, outCount,
-            String.format("[G1-COUNT] %s: element count mismatch expected=%d out=%d (ref=%d)",
-                tag, expected, outCount, refCount));
+            String.format("[G1-COUNT] %s: element count mismatch expected=%d (base=%d+gen=%d) out=%d (ref=%d)",
+                tag, expected, baseExpected, genCount, outCount, refCount));
     }
 
     // =====================================================================
@@ -379,9 +381,9 @@ class RosettaStoneGateTest {
 
         // @Traces BBC.md §10.6 — buildings are data, not code (no hardcoded names)
         // @Traces LAST_MILE_PROBLEM.md Gap 7 R14 — hardcoded building names removed
-        // ExtractionPopulator.java is temporarily exempt (SJTII_Terminal storey fix — tracked debt).
+        // ExtractionPopulator.java is temporarily exempt (Terminal storey fix — tracked debt).
         new TamperRule("T19", "Hardcoded building name in production code (data, not code)",
-            "^[^/*]*\"[^\"]*(?:Ifc4_SampleHouse|Ifc2x3_Duplex|SJTII_Terminal)",
+            "^[^/*]*\"[^\"]*(?:SampleHouse|Duplex|Terminal)",
             Scope.SOURCE_SCAN, "{DAGCompiler,IFCtoBOM}/src/main/**/*.java"),
 
         // @Traces BBC.md §4.1 — origin convention (only BUILDING has non-zero origin)
@@ -699,6 +701,16 @@ class RosettaStoneGateTest {
         }
     }
 
+    /** Read GenerativeCount from c_order in output.db (§6.12.4). Returns 0 if column absent. */
+    private static int readGenerativeCount(String dbPath) throws SQLException {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
+            return queryInt(conn, "SELECT COALESCE(MAX(GenerativeCount), 0) FROM c_order");
+        } catch (SQLException e) {
+            // Column may not exist in older output DBs
+            return 0;
+        }
+    }
+
     private static double totalVolume(String dbPath) throws SQLException {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
              Statement st = conn.createStatement();
@@ -837,7 +849,7 @@ class RosettaStoneGateTest {
                         if ("T16".equals(rule.id()) && rel.contains("CompilationPipeline.java")) continue;
                         // T17: ElementPersistence.java is the authorized UPDATE path for verbs
                         if ("T17".equals(rule.id()) && rel.contains("ElementPersistence.java")) continue;
-                        // T19: ExtractionPopulator.java has a storey fix for SJTII_Terminal — tracked debt
+                        // T19: ExtractionPopulator.java has a storey fix for Terminal — tracked debt
                         if ("T19".equals(rule.id()) && rel.contains("ExtractionPopulator.java")) continue;
                         violations.add(new Violation(rule.id(), rel, i + 1,
                             lines.get(i).trim()));

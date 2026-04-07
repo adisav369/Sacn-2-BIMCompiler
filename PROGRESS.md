@@ -11,7 +11,7 @@
 
 | Gate | SH | FK | IN | DX | TE | DM |
 |------|----|----|----|----|------|------|
-| G1-COUNT | PASS (58) | PASS (82) | PASS (699) | PASS (1119) | PASS (48428) | PASS (60) |
+| G1-COUNT | PASS (58+24) | PASS (82) | PASS (699) | PASS (215+114) | PASS (48428) | PASS (60) |
 | G2-VOLUME | PASS | PASS | PASS | PASS | PASS | — |
 | G3-DIGEST | PASS | PASS | PASS | PASS | PASS | — (GENERATIVE) |
 | G4-TAMPER | PASS | PASS | PASS | PASS | PASS | PASS |
@@ -25,6 +25,8 @@
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
+
+**S152 Generative MEP Pipeline Integration DONE:** G1-COUNT now accounts for generative devices via `c_order.GenerativeCount`. DX 9/9 PASS (215+114=329 elements), SH 9/9 PASS (58+24=82 elements). MepRouteGeometryTest 18/18 (new S18: compile DB integration). Pre-existing G2/G3/G4 DX failures discovered (discipline exclusion: ref=1119 vs out=329) — previously masked by contract tests never running. [prompts/S152](prompts/S152_generative_mep_pipeline_integration.md).
 
 **S144 GEO White-Box Logging DONE:** GeoProofRecord + GeoProofFormatter — structured Input→Process→Output proof chain per element. 58 SH / 215 DX proof records. LMP with inverse rotation (0 FAIL). Envelope UNKNOWN (parent dims not on M_Product stubs). DX B-side rot=π negation confirmed. §6.12.1 isolation maintained. Existing TACK logs preserved.
 

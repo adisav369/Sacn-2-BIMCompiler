@@ -2258,6 +2258,374 @@ No recompilation needed to change where fixtures go.
 |---------|---------------|------|
 | W-SPACE-LINK | MEP recipes carry target_space_type_id from extraction | MepRouteGeometryTest S7 |
 | W-SPACE-COVER | Every room's MEP schedule is satisfied by at least one recipe | MepRouteGeometryTest S8 |
+| W-LOD-BRIDGE | Every generative product has source_element_ref → LOD geometry resolves | MepRouteGeometryTest S19 |
+| W-SHIM-DEVICE | Generative devices attach via shim (not bare AABB offset) | MepRouteGeometryTest S20 |
+| W-END-JOIN | Walker routes to generative fixture tack point (last piece converges) | MepRouteGeometryTest S21 |
+| W-TACK-POINT | Every plumbed fixture has connector with non-zero position + diameter | MepRouteGeometryTest S22 |
+| W-DISC-RESOLVE | Generative device discipline matches connects_to, not anchorEnd | MepRouteGeometryTest S23 |
+
+#### 11. LOD Geometry Bridge — source_element_ref (S152)
+
+**First Principle:** Every M_Product that the compiler emits MUST resolve to LOD
+geometry. A product without `source_element_ref` renders as a flat AABB box —
+that is a first-principle failure, not a cosmetic issue.
+
+**The gap:** Generative device products (TOILET, LIGHT, SINK, FRIDGE, etc.) are
+created with `extracted_from='SHARED_RECIPE'` and `source_element_ref=NULL`.
+Meanwhile, the IFC file contains real geometry for these same devices under
+their Revit family names:
+
+| Abstract Token | IFC Family Name (in component_library) |
+|---|---|
+| TOILET | `M_Water Closet - Flush Tank:Private - 6.1 Lpf:Private - 6.1 Lpf` |
+| SINK | `M_Sink - Island - Single:455 mmx455 mm - Private:455 mmx455 mm - Private` |
+| LIGHT | `M_Pendant Light - Hemisphere:150W - 120V:150W - 120V` |
+| SWITCH | `M_Lighting Switches:Single Pole:Single Pole` |
+| OUTLET | `M_Duplex Receptacle:Duplex Receptacle:Duplex Receptacle` |
+| FRIDGE | `M_Refrigerator:850 x 760mm:850 x 760mm` |
+
+The alias system (`DV003_element_mep_alias.sql`) already maps IFC names → abstract
+tokens. But this mapping is used only at extraction time (IFC name → product_id).
+It is never used in reverse (product_id → source_element_ref → geometry_hash).
+
+**Root cause:** `ProductRegistrar.ensureProductCatalog()` creates products from
+two paths: (A) `ExtractionElement` objects that carry `elementRef` → sets
+`source_element_ref`, and (B) schedule/recipe products that carry only the
+abstract token → `source_element_ref` stays NULL. Path B never looks up the
+alias table to find a matching IFC family name.
+
+**Fix:** When creating or updating a SHARED_RECIPE M_Product with NULL
+source_element_ref, reverse-lookup the alias table:
+
+```
+SELECT element_ref FROM ad_element_mep_alias
+WHERE mep_product_id = 'TOILET' LIMIT 1
+```
+
+If found, set `source_element_ref = element_ref`. This closes the bridge:
+
+```
+M_Product.source_element_ref → I_Geometry_Map.element_ref → geometry_hash → mesh
+```
+
+**Invariant (test-first):** After IFCtoERP completes, every product referenced
+in `ad_space_type_mep_bom` MUST have either:
+- `source_element_ref IS NOT NULL`, OR
+- A corresponding row in `M_Product_Image`
+
+A NULL source_element_ref with no M_Product_Image is a test FAIL.
+
+**Test spec (W-LOD-BRIDGE, S19):**
+```
+1. Run IFCtoERP for DX (or any building with MEP terminals)
+2. For each mep_product_id in ad_space_type_mep_bom:
+   a. SELECT source_element_ref FROM M_Product WHERE product_id = mep_product_id
+   b. Assert source_element_ref IS NOT NULL
+   c. SELECT geometry_hash FROM I_Geometry_Map WHERE element_ref = source_element_ref
+   d. Assert at least one geometry_hash exists
+3. FAIL message: "{product_id} has no LOD geometry bridge — source_element_ref missing"
+```
+
+#### 12. Generative Device Shim Architecture — Place Then Route (S152)
+
+**First Principle:** The compiler's output is always Walker-compiled. Input
+sources differ (IFC file, schedule data, YAML order) but the output is
+c_orderline with positions. **Input** = IFC + YAML + ERP.db rules.
+**Output** = compiled ARC/STR from BOM walk + MEP from Walker. No
+"extracted" vs "generative" distinction in the output.
+
+**Problem (three findings, one root cause):**
+
+| Finding | Symptom | Root cause |
+|---------|---------|------------|
+| Toilet inside cupboard | No furniture collision check | PLACE_DEVICE ignores sibling furniture |
+| Toilet not facing right | No rotation on generative devices | No shim → no wall-normal → no facing |
+| Pipe doesn't reach toilet | No route to generative fixture | Fixture placed but no END-join route |
+
+All three resolve from one architectural decision: **generative devices must go
+through shims, not bare AABB placement.**
+
+**12a. Shim-Based Device Placement**
+
+Current (wrong):
+```
+Walker enters SET BOM (BATHROOM)
+  → MEPDevicePlacer computes position from room AABB + ad_placement_offset
+  → Creates Placement directly (no shim, no rotation, no collision check)
+  → Pipe recipes from ERP.db target original IFC positions, not generative positions
+```
+
+Correct:
+```
+Walker enters SET BOM (BATHROOM)
+  1. Read schedule: ad_space_type_mep_bom → BATHROOM needs TOILET at WALL_BACK
+  2. Select target wall from placement_rule (WALL_BACK → Y-MAX wall of room AABB)
+  3. Check wall zone for existing furniture (sibling LEAFs under same SET BOM)
+     → If occupied, shift along wall or flag as CONFLICT
+  4. Create phantom SHIM on target wall:
+     → host_ifc_class from placement_rule (WALL for WALL_BACK, CEILING for CEILING_CENTER)
+     → mount = SIDE (wall) or BOTTOM (ceiling) or TOP (floor)
+     → shim origin = wall surface point at placement offset
+  5. Attach device as child of SHIM:
+     → offset = standoff distance (e.g. 5mm from wall for toilet)
+     → facing = inherited from shim's wall normal (no rotation math needed)
+  6. Device now has world position = shim origin + child offset
+     → same code path as existing MEP shim walk
+```
+
+**12b. Fixture Tack Points — Where the Pipe Connects**
+
+A pipe's last piece must connect to a specific point on the fixture body,
+not to the fixture's AABB center. A toilet has a waste shank at the bottom-
+rear; a sink has a drain at the bottom-center and supply valves underneath.
+Without tack points, the pipe has nowhere to aim.
+
+**Existing infrastructure:** `ad_assembly_connector` already has the right
+schema (face, connector_type, position_x/y/z, diameter_mm, connects_to).
+It has room-level entries (TOILET_BLOCK_FIXTURES → WASTE_OUT 100mm → STACK)
+but not individual M_Product-level entries. Positions are `(0,0,0)` placeholders.
+
+**What's needed:** Populate `ad_assembly_connector` for individual M_Products:
+
+```
+TOILET → WASTE_OUT  face=BOTTOM  pos=(0.0, -0.15, 0.05)  dia=100mm  → PLUMBING_STACK
+TOILET → SUPPLY_IN  face=BOTTOM  pos=(-0.15, -0.15, 0.15) dia=15mm  → WATER_RISER
+SINK   → WASTE_OUT  face=BOTTOM  pos=(0.0, 0.0, 0.0)      dia=40mm  → PLUMBING_STACK
+SINK   → SUPPLY_IN  face=BOTTOM  pos=(0.0, 0.0, 0.15)     dia=15mm  → WATER_RISER
+LIGHT  → SUPPLY_IN  face=TOP     pos=(0.0, 0.0, 0.0)      dia=20mm  → ELEC_CONDUIT
+OUTLET → SUPPLY_IN  face=BACK    pos=(0.0, 0.0, 0.0)      dia=20mm  → ELEC_CONDUIT
+```
+
+Positions are relative to the fixture's local origin (same frame as
+`component_definitions` local_min/max). The Walker reads the tack point
+to compute the pipe's final segment offset.
+
+**Tack point resolution chain:**
+```
+M_Product (TOILET) → ad_assembly_connector WHERE assembly_id = 'TOILET'
+  → connector_type = 'WASTE_OUT'
+  → tack point = fixture_world_position + connector.position (rotated by shim normal)
+  → pipe last piece targets this tack point
+```
+
+**Data source:** For input buildings with IFC, tack points can be extracted
+from `IfcDistributionPort` (if present) or inferred from fixture AABB +
+connector face. For schedule-only buildings, tack points come from the
+product catalog (seeded once, reused across buildings).
+
+**Invariant:** Every M_Product referenced in `ad_space_type_mep_bom` that
+has `anchor_end` (STACK, RISER, PANEL) MUST have at least one connector
+in `ad_assembly_connector` with a non-zero position. Zero-position = test FAIL.
+
+**Test spec (W-TACK-POINT, S22):**
+```
+1. For each mep_product_id in ad_space_type_mep_bom WHERE anchor_end IS NOT NULL:
+   a. SELECT * FROM ad_assembly_connector WHERE assembly_id = mep_product_id
+   b. Assert at least one connector exists
+   c. Assert position is non-zero (not placeholder 0,0,0)
+   d. Assert diameter_mm > 0
+   e. Assert connects_to matches anchor_end pattern (WASTE_OUT→STACK, SUPPLY_IN→RISER)
+2. FAIL message: "{product_id} has no tack point — pipe cannot connect"
+```
+
+**12c. END-Join Route — Walker Routes to Tack Point**
+
+After PLACE_DEVICE creates the fixture at its shim-anchored position, the
+Walker must generate a pipe/conduit route from infrastructure to the
+fixture's tack-to point (not its center).
+
+**Every fixture is a mini BOM with tack metadata:**
+```
+TOILET (mini BOM):
+  ├── shim → WALL_BACK (solves position + facing)
+  ├── tack-FROM: shim origin (where it sits)
+  └── tack-TO:   WASTE_OUT at (0, -0.15, 0.05) — shank connection
+                 SUPPLY_IN at (-0.15, -0.15, 0.15) — valve connection
+                 ↑ incoming pipes look for these points
+
+LIGHT (mini BOM):
+  ├── shim → CEILING_CENTER (hangs from ceiling)
+  └── tack-TO:   SUPPLY_IN at (0, 0, 0) on TOP — junction box
+                 ↑ conduit from panel END-joins here
+```
+
+The tack-to points live in `ad_assembly_connector` at the **M_Product level**
+(not room assembly level). Each fixture declares its connection points:
+
+| assembly_id | face | connector_type | position (local) | dia_mm | connects_to |
+|---|---|---|---|---|---|
+| TOILET | BOTTOM | WASTE_OUT | (0, -0.15, 0.05) | 100 | PLUMBING_STACK |
+| TOILET | BOTTOM | SUPPLY_IN | (-0.15, -0.15, 0.15) | 15 | WATER_RISER |
+| SINK | BOTTOM | WASTE_OUT | (0, 0, -0.05) | 40 | PLUMBING_STACK |
+| SINK | BOTTOM | SUPPLY_IN | (-0.1, 0, 0.15) | 15 | WATER_RISER |
+| LIGHT | TOP | SUPPLY_IN | (0, 0, 0) | 20 | ELEC_CONDUIT |
+| OUTLET | BACK | SUPPLY_IN | (0, 0, 0) | 20 | ELEC_CONDUIT |
+
+`connects_to` tells the Walker which infrastructure to route FROM: PLUMBING_STACK
+→ find nearest stack anchor, WATER_RISER → find nearest riser, ELEC_CONDUIT →
+find nearest panel.
+
+**The route sequence:**
+```
+Walker has placed TOILET at position T = (3.2, 8.1, 0.2) via shim
+TOILET.WASTE_OUT tack-to = T + rotated(0.0, -0.15, 0.05) = (3.2, 7.95, 0.25)
+
+  1. Read fixture's tack-to from ad_assembly_connector:
+     → assembly_id='TOILET', connector_type='WASTE_OUT'
+     → tack-to world pos P = fixture_origin + rotated(connector.position)
+
+  2. Find nearest infrastructure anchor:
+     → connects_to = PLUMBING_STACK → find nearest STACK in ad_mep_anchor
+     → anchor world pos A = (3.5, 5.0, 2.75)
+
+  3. Generate route segments from A toward P:
+     → Horizontal run along ceiling from A
+     → Vertical drop toward P height
+     → Standard-length pieces from joint vocabulary (PIPE_STRAIGHT, PIPE_ELBOW)
+```
+
+**Step 4 — Halt and Recalculate (last mile):**
+
+The Walker MUST NOT blindly extend the last segment. Standard pieces have
+fixed lengths from the joint vocabulary. The gap between the penultimate
+piece's endpoint and the tack-to point P is almost never an exact multiple
+of a standard piece length. Without a halt, the pipe overshoots past P.
+
+```
+  4. Halt before overshoot:
+     → After each segment, compute remaining_distance to P
+     → When remaining_distance < next_standard_piece_length:
+        a. STOP generating standard pieces
+        b. Create a VARIABLE-length terminal piece:
+           → c_uom_id = MM, qty_type = VARIABLE, qty = remaining_distance_mm
+           → InterimWorkshop recomputes primitive to exact length (§6)
+        c. Terminal piece endpoint = P (the tack-to point, exactly)
+
+  5. Convergence proof:
+     → Assert: terminal piece endpoint == P within 1mm
+     → Same CONVERGED proof as §7 but with 1mm tolerance (not 1m)
+     → This is a JOIN, not a proximity check — pipe meets fixture
+```
+
+**Why InterimWorkshop (§6):** The terminal piece is a VARIABLE-length
+pipe straight, same as a contractor cutting pipe from stock to fit the
+remaining gap. `c_uom_id=MM` + `qty_type=VARIABLE` triggers InterimWorkshop
+— no CUT verb, no special code path. The UOM is the signal.
+
+**Overshoot detection (test invariant):** If any route's terminal piece
+endpoint exceeds P by more than 1mm on any axis, the test FAILs with
+`OVERSHOOT: pipe extends {N}mm past fixture tack-to point`. This is not
+a warning — overshoot means the pipe goes through the wall or into the
+next room.
+
+The sequence is: **place fixture → read tack-to → route toward it →
+halt at last mile → trim terminal piece to exact length → join.**
+
+**12d. Discipline Resolution — connects_to, Not anchorEnd**
+
+`resolveDeviceDiscipline()` (PlacementCollectorVisitor:1411) maps discipline
+from `anchorEnd` (PANEL/RISER/STACK). This is wrong — `anchorEnd` is an
+infrastructure endpoint type, not a discipline. SPRINKLER connects to a
+FP panel, not an electrical panel. All PANEL devices default to ELEC.
+
+**Fix:** Read `connects_to` from `ad_assembly_connector` (seeded by DV047):
+
+| connects_to | Discipline |
+|---|---|
+| ELEC_CONDUIT | ELEC |
+| WATER_RISER | CW |
+| PLUMBING_STACK | SP |
+| FP_MAIN | FP |
+| ACMV_DUCT | ACMV |
+
+The resolver should query `ad_assembly_connector WHERE assembly_id = deviceId`
+and map `connects_to` → discipline. Fallback to ELEC only if no connector row.
+
+**Test spec (W-DISC-RESOLVE, S23):**
+```
+1. For each generative device in SH/DX pipeline output:
+   a. Read Discipline from c_orderline
+   b. Read connects_to from ad_assembly_connector WHERE assembly_id = productId
+   c. Assert discipline matches connects_to mapping:
+      SPRINKLER → FP (not ELEC)
+      EXHAUST_FAN → ACMV (not ELEC)
+      SUPPLY_DIFFUSER → ACMV (not ELEC)
+      LIGHT → ELEC
+      OUTLET → ELEC
+2. FAIL: "{device} discipline={actual} but connects_to={infra} → expected {correct}"
+```
+
+**12e. Furniture Collision Avoidance**
+
+When selecting a wall zone for device placement (step 3 above), the placer
+must check for existing furniture occupying that zone.
+
+```
+Room SET BOM children (already walked):
+  CUPBOARD at (2.8, 7.9, 0.0) AABB 0.6×0.4×2.0m  ← occupies WALL_BACK zone
+
+PLACE_DEVICE wants TOILET at WALL_BACK:
+  1. Compute candidate position from ad_placement_offset
+  2. Check: does candidate AABB overlap any sibling furniture AABB?
+  3. If overlap:
+     a. Shift along wall (try next available segment)
+     b. If no space on target wall: try adjacent wall with same orientation
+     c. If no wall available: emit CONFLICT warning (do not invent position)
+  4. Log: GENERATIVE COLLISION_CHECK {device} zone={wall} siblings={N} result={OK|SHIFT|CONFLICT}
+```
+
+**Invariant:** A generative device MUST NOT overlap with any existing furniture
+LEAF. Overlap = test FAIL.
+
+**12f. Test Specs**
+
+**W-SHIM-DEVICE (S20):** Generative devices use shim architecture
+```
+1. Walk DX_BOM.db with erpConn (same as S16)
+2. For each generative placement:
+   a. Assert it has a parent shim in the placement hierarchy
+   b. Assert shim has host_ifc_class (WALL, CEILING, or SLAB)
+   c. Assert device offset from shim is small (<0.5m) — standoff, not room-scale
+   d. Assert device facing direction matches shim wall normal
+3. For each room with generative devices:
+   a. Assert no generative device AABB overlaps any furniture LEAF AABB
+   b. Log any SHIFT events (device moved to avoid furniture)
+```
+
+**W-END-JOIN (S21):** Walker routes to generative fixture tack-to points
+```
+1. Walk DX_BOM.db with erpConn and route generation enabled
+2. For each generative PLUMBABLE fixture (TOILET, SINK):
+   a. Read tack-to from ad_assembly_connector (WASTE_OUT or SUPPLY_IN)
+   b. Compute tack-to world pos P = fixture_origin + rotated(connector.position)
+   c. Assert a pipe route exists from infrastructure anchor to P
+   d. Assert terminal piece is VARIABLE (c_uom_id=MM, qty_type=VARIABLE)
+   e. Assert terminal piece endpoint == P within 1mm (exact join, not proximity)
+   f. Assert NO OVERSHOOT: terminal endpoint must not exceed P on any axis by >1mm
+3. For each generative ELECTRIFIED fixture (OUTLET, LIGHT, SWITCH):
+   a. Read tack-to from ad_assembly_connector (SUPPLY_IN)
+   b. Assert conduit route from PANEL anchor to tack-to point
+   c. Assert terminal piece endpoint == tack-to within 1mm
+   d. Assert no overshoot
+4. FAIL if any fixture has no route (gap = test failure, not a warning)
+5. FAIL if any route overshoots: "OVERSHOOT: pipe extends {N}mm past tack-to"
+```
+
+**W-TACK-POINT (S22):** Fixture tack points exist and are non-placeholder
+```
+1. For each mep_product_id in ad_space_type_mep_bom WHERE anchor_end IS NOT NULL:
+   a. SELECT * FROM ad_assembly_connector WHERE assembly_id = mep_product_id
+   b. Assert at least one connector row exists
+   c. Assert position is non-zero (not placeholder 0,0,0)
+   d. Assert diameter_mm > 0
+   e. Assert connects_to matches discipline pattern:
+      WASTE_OUT → PLUMBING_STACK, SUPPLY_IN → WATER_RISER/ELEC_CONDUIT
+2. For TOILET specifically:
+   a. Assert WASTE_OUT connector exists (shank)
+   b. Assert SUPPLY_IN connector exists (valve)
+   c. Assert positions are physically plausible (within fixture AABB)
+3. FAIL message: "{product_id} has no tack point — pipe cannot connect"
+```
 
 ### 6.13 IFC-Driven Extraction
 

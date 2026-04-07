@@ -8,6 +8,8 @@ import com.bim.ormsandbox.po.MBOMLine;
 import com.bim.ormsandbox.po.MProduct;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -410,7 +412,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                                 roomAabb[0], roomAabb[2], roomAabb[4],
                                 roomAabb[1], roomAabb[3], roomAabb[5]);
                             for (MEPDevicePlacer.DevicePlacement dp : devices) {
-                                Discipline disc = resolveDeviceDiscipline(dp.anchorEnd());
+                                Discipline disc = resolveDeviceDiscipline(erpConn, dp.deviceId(), dp.anchorEnd());
                                 // Containment check: is device inside the room AABB?
                                 boolean inX = dp.position()[0] >= roomAabb[0] && dp.position()[0] <= roomAabb[1];
                                 boolean inY = dp.position()[1] >= roomAabb[2] && dp.position()[1] <= roomAabb[3];
@@ -1405,10 +1407,36 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
     /**
      * Resolve Discipline from MEP anchor type.
-     * RISER/STACK → CW/SP (plumbing), PANEL → ELEC.
-     * Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 — Witness: W-DEVICE-PLACE
+     * Reads connects_to from ad_assembly_connector for accurate discipline.
+     * Fallback: anchorEnd mapping (RISER→CW, STACK→SP, PANEL→ELEC).
+     * Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 §12d — Witness: W-DISC-RESOLVE
      */
-    private static Discipline resolveDeviceDiscipline(String anchorEnd) {
+    private static Discipline resolveDeviceDiscipline(Connection erpConn, String deviceId, String anchorEnd) {
+        // Primary: resolve from ad_assembly_connector.connects_to (DV047)
+        if (erpConn != null && deviceId != null) {
+            try (PreparedStatement ps = erpConn.prepareStatement(
+                    "SELECT connects_to FROM ad_assembly_connector WHERE assembly_id = ? LIMIT 1")) {
+                ps.setString(1, deviceId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        String connectsTo = rs.getString(1);
+                        if (connectsTo != null) {
+                            return switch (connectsTo) {
+                                case "ELEC_CONDUIT" -> Discipline.ELEC;
+                                case "WATER_RISER" -> Discipline.CW;
+                                case "PLUMBING_STACK" -> Discipline.SP;
+                                case "FP_MAIN" -> Discipline.FP;
+                                case "ACMV_DUCT" -> Discipline.ACMV;
+                                default -> Discipline.ELEC;
+                            };
+                        }
+                    }
+                }
+            } catch (SQLException ignored) {
+                // Table may not exist — fall through to anchorEnd
+            }
+        }
+        // Fallback: anchorEnd mapping
         if (anchorEnd == null) return Discipline.ELEC;
         return switch (anchorEnd) {
             case "RISER" -> Discipline.CW;
