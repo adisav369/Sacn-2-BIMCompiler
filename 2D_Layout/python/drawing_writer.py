@@ -47,7 +47,7 @@ LW_WALL_GLASS   = 0.25   # Curtain wall / glazing
 LW_OPENING      = 0.35   # Door/window outlines
 LW_DIMENSION    = 0.18   # Dimension lines, extension lines
 LW_GRID         = 0.18   # Grid lines (dashed)
-LW_FURNITURE    = 0.18   # Furniture outlines (ISO hairline — not 0.15)
+LW_FURNITURE    = 0.15   # Furniture outlines — per template + 2d_drawing_style
 
 # Text sizes (mm on paper)
 TXT_DIM         = 2.5    # Dimension values

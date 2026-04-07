@@ -113,6 +113,19 @@ def _hexagon_pts(cx: float, cy: float, r: float) -> list:
     return pts
 
 
+def _draw_tag_shape(msp, shape: str, cx: float, cy: float, r: float,
+                    layer: str, lw: int):
+    """§7.3g: Draw tag shape from template annotation_tags.shape."""
+    if shape == 'circle':
+        msp.add_circle((cx, cy), r, dxfattribs={'layer': layer, 'lineweight': lw})
+    elif shape == 'diamond':
+        pts = [(cx, cy + r), (cx + r, cy), (cx, cy - r), (cx - r, cy)]
+        msp.add_lwpolyline(pts, close=True, dxfattribs={'layer': layer, 'lineweight': lw})
+    else:  # hexagon (default)
+        pts = _hexagon_pts(cx, cy, r)
+        msp.add_lwpolyline(pts, close=True, dxfattribs={'layer': layer, 'lineweight': lw})
+
+
 def _lw(tpl: dict, key: str) -> int:
     """Read line weight from template, return DXF lineweight integer.
     Spec §1 R4: all line weights from template line_weights.*"""
@@ -1365,6 +1378,10 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     dims = generate_dimensions(grids)
     dim_count = 0
     tick_len = tpl_dims.get('tick_half_length_mm', 1.5) * scale
+    # §6.3a: tick angle from template (default 45°)
+    tick_angle = math.radians(tpl_dims.get('tick_angle_deg', 45))
+    tick_dx = tick_len * math.cos(tick_angle)
+    tick_dy = tick_len * math.sin(tick_angle)
     txt_h    = tpl_dims.get('text_height_mm', 2.5) * scale
 
     for d in dims:
@@ -1382,8 +1399,8 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
             msp.add_line((e, bld_max_y + grid_ext), (e, dim_y),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             for tx in (s, e):
-                msp.add_line((tx - tick_len, dim_y - tick_len),
-                             (tx + tick_len, dim_y + tick_len),
+                msp.add_line((tx - tick_dx, dim_y - tick_dy),
+                             (tx + tick_dx, dim_y + tick_dy),
                              dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             mid_x = (s + e) / 2
             msp.add_text(d.text,
@@ -1399,8 +1416,8 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
             msp.add_line((bld_min_x - grid_ext, e), (dim_x, e),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             for ty in (s, e):
-                msp.add_line((dim_x - tick_len, ty - tick_len),
-                             (dim_x + tick_len, ty + tick_len),
+                msp.add_line((dim_x - tick_dx, ty - tick_dy),
+                             (dim_x + tick_dx, ty + tick_dy),
                              dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             mid_y = (s + e) / 2
             msp.add_text(d.text,
@@ -1454,10 +1471,9 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
         else:
             tcx += _mh(host.width_x / 2) + tag_r + grid_gap
 
-        # §7.3: hexagonal tag shape per template annotation_tags.shape
-        hex_pts = _hexagon_pts(tcx, tcy, tag_r)
-        msp.add_lwpolyline(hex_pts, close=True,
-                           dxfattribs={'layer': 'A-ANNO-TEXT', 'lineweight': tag_lw})
+        # §7.3g: tag shape from template annotation_tags.shape
+        _draw_tag_shape(msp, tpl_tags.get('shape', 'hexagon'),
+                        tcx, tcy, tag_r, 'A-ANNO-TEXT', tag_lw)
         msp.add_text(tag_label,
                      dxfattribs={'layer': 'A-ANNO-TEXT',
                                  'height': tag_txt_h}
@@ -1479,10 +1495,9 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
         else:
             tcx -= _mh(host.width_x / 2) + tag_r + grid_gap
 
-        # §7.3: hexagonal tag shape per template annotation_tags.shape
-        hex_pts = _hexagon_pts(tcx, tcy, tag_r)
-        msp.add_lwpolyline(hex_pts, close=True,
-                           dxfattribs={'layer': 'A-ANNO-TEXT', 'lineweight': tag_lw})
+        # §7.3g: tag shape from template annotation_tags.shape
+        _draw_tag_shape(msp, tpl_tags.get('shape', 'hexagon'),
+                        tcx, tcy, tag_r, 'A-ANNO-TEXT', tag_lw)
         msp.add_text(tag_label,
                      dxfattribs={'layer': 'A-ANNO-TEXT',
                                  'height': tag_txt_h}
@@ -1586,6 +1601,9 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
     bubble_lw  = int(tpl_grid.get('bubble_stroke_mm', 0.25) * 100)
     grid_gap   = tpl_dims.get('extension_gap_mm', 2.0) * scale
     tick_len   = tpl_dims.get('tick_half_length_mm', 1.5) * scale
+    tick_angle = math.radians(tpl_dims.get('tick_angle_deg', 45))
+    tick_dx = tick_len * math.cos(tick_angle)
+    tick_dy = tick_len * math.sin(tick_angle)
 
     # Dimension tier offsets from template §6.1
     # Tier 2 = bay (inner, closer to building), Tier 1 = overall (outer)
@@ -1817,8 +1835,8 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
             msp.add_line((_mh(h_max_m + ext), z1), (h_dim_x, z1),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             for tz in (z0, z1):
-                msp.add_line((h_dim_x - tick_len, tz - tick_len),
-                             (h_dim_x + tick_len, tz + tick_len),
+                msp.add_line((h_dim_x - tick_dx, tz - tick_dy),
+                             (h_dim_x + tick_dx, tz + tick_dy),
                              dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             mid_z = (z0 + z1) / 2
             msp.add_text(str(int(snapped)),
@@ -1840,8 +1858,8 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
         msp.add_line((h_dim_x, z_top), (h_dim_x2, z_top),
                      dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
         for tz in (z_bot, z_top):
-            msp.add_line((h_dim_x2 - tick_len, tz - tick_len),
-                         (h_dim_x2 + tick_len, tz + tick_len),
+            msp.add_line((h_dim_x2 - tick_dx, tz - tick_dy),
+                         (h_dim_x2 + tick_dx, tz + tick_dy),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
         mid_z = (z_bot + z_top) / 2
         msp.add_text(str(int(total_snapped)),
@@ -2079,6 +2097,9 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     # ── Bay dimensions ──
     dims = generate_dimensions(grids)
     tick_len = tpl_dims.get('tick_half_length_mm', 1.5) * scale
+    tick_angle = math.radians(tpl_dims.get('tick_angle_deg', 45))
+    tick_dx = tick_len * math.cos(tick_angle)
+    tick_dy = tick_len * math.sin(tick_angle)
     for d in dims:
         s = d.start * MM
         e = d.end * MM
@@ -2087,9 +2108,9 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
             dim_y = r_max_y + grid_ext + bubble_r * 2 + grid_gap + off
             msp.add_line((s, dim_y), (e, dim_y),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            msp.add_line((s, dim_y - tick_len), (s, dim_y + tick_len),
+            msp.add_line((s - tick_dx, dim_y - tick_dy), (s + tick_dx, dim_y + tick_dy),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            msp.add_line((e, dim_y - tick_len), (e, dim_y + tick_len),
+            msp.add_line((e - tick_dx, dim_y - tick_dy), (e + tick_dx, dim_y + tick_dy),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             msp.add_text(d.text,
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h}
@@ -2099,9 +2120,9 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
             dim_x = r_min_x - grid_ext - bubble_r * 2 - grid_gap - off
             msp.add_line((dim_x, s), (dim_x, e),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            msp.add_line((dim_x - tick_len, s), (dim_x + tick_len, s),
+            msp.add_line((dim_x - tick_dx, s - tick_dy), (dim_x + tick_dx, s + tick_dy),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            msp.add_line((dim_x - tick_len, e), (dim_x + tick_len, e),
+            msp.add_line((dim_x - tick_dx, e - tick_dy), (dim_x + tick_dx, e + tick_dy),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             msp.add_text(d.text,
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h,

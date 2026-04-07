@@ -12,7 +12,7 @@
 | 0.2 | Medium 0.35mm partitions | Y | | dxf:1081 `_lw(tpl,'wall_partition_cut')` → 35. A-WALL-PRTN layer. Conformity: `[PASS] LINE_WEIGHTS` |
 | 0.3 | Light 0.25mm door/window frames | Y | | dxf:1082 `_lw(tpl,'window_frame')` → 25. A-DOOR/A-GLAZ. Conformity: `[PASS] LINE_WEIGHTS` |
 | 0.4 | Thin 0.18mm annotations/grids | Y | | dxf:1085-1086 `_lw(tpl,'dimension_line')` + `_lw(tpl,'grid_line')` → 18. Conformity: `[PASS] LINE_WEIGHTS` |
-| 0.5 | Hairline 0.13-0.15mm furniture | N | 7 | dxf:1084 `_lw(tpl,'furniture')` → 15 ✓. SVG writer svg:50 hardcodes `LW_FURNITURE=0.18`. SVG only issue. |
+| 0.5 | Hairline 0.13-0.15mm furniture | Y | | SVG `LW_FURNITURE=0.15` matches template + 2d_drawing_style. DXF `_lw(tpl,'furniture')` → 15. |
 
 ## §1 Prime Rules
 
@@ -109,7 +109,7 @@
 | 6.1b | Tier 2 bay spacing | Y | | svg:352-357 bay dims. Diag: `§2.4 Dim x -7.735→-2.835 = 4900mm` (3 bays). |
 | 6.1c | Tier 3 opening widths: GAP | Y | | Spec says GAP. No code — correct. |
 | 6.2 | Height dimensions between levels | Y | | dxf:1732-1785. Diag: `§2.4 Height FFL→SILL = 900mm` (4 height dims). |
-| 6.3a | Tick marks: tick_angle_deg from template | N | 7 | dxf:1316-1318 always 45° diagonal tick. Does not read `tpl_dims.get('tick_angle_deg')`. Template value is 45 so visually correct but not traced. |
+| 6.3a | Tick marks: tick_angle_deg from template | Y | | Reads `tpl_dims.get('tick_angle_deg', 45)`, computes `tick_dx/tick_dy` via trig. All 3 functions (floor, elev, roof). |
 | 6.3b | Text: text_height_mm centered | Y | | dxf:1299 `tpl_dims.get('text_height_mm', 2.5)`. dxf:1320-1323 `MIDDLE_CENTER` alignment. |
 | 6.3c | Extension lines: gap and overshoot from template | N | 7 | dxf:1262 reads `extension_gap_mm` for grid_gap. But manual dim lines at dxf:1311-1313 don't apply gap — extension runs from grid_ext directly. |
 | 6.3d | Snap: snap_module_mm | Y | | svg:86 `SNAP_MODULE = 100`. Used in elevations at dxf:1715 and detect_levels at svg:509. |
@@ -127,7 +127,7 @@
 | 7.3d | Dim tier offsets from template | Y | | dxf:1524-1525 `tpl_dims.get('tier_2_offset_mm', 18)` + `tier_1_offset_mm`. |
 | 7.3e | Room label font from template | Y | | dxf:1090 `tpl_rooms.get('name_font_height_mm', 3.5)`. |
 | 7.3f | North arrow placement from template | N | 7 | dxf:393-397 reads `north_arrow.size_mm` and `font_height_mm` from template ✓. But position computed relative to content area (dxf:397-398), not read from template `north_arrow.placement`. |
-| 7.3g | Tag shape from template annotation_tags.shape | N | 7 | dxf:1390 always calls `_hexagon_pts()`. Does not read `tpl_tags.get('shape')` to select shape. Template value is 'hexagon' so visually correct but not traced. |
+| 7.3g | Tag shape from template annotation_tags.shape | Y | | `_draw_tag_shape()` reads template shape, dispatches to hexagon/circle/diamond. Both door + window tags. |
 
 ## §8 Colours
 
@@ -222,9 +222,9 @@
 | §9.6 Output | 8 | 0 | 8 |
 | §10 Tests | 14 | 0 | 14 |
 | §11 Key files | 12 | 0 | 12 |
-| **Total** | **112** | **22** | **134** |
+| **Total** | **115** | **19** | **134** |
 
-**Compliance: 112/134 (84%)**
+**Compliance: 115/134 (86%)**
 
 ## Priority Triage (42 N items by priority)
 
@@ -256,7 +256,7 @@
 ### Pri 6 — Visual quality
 | # | What | Impact |
 |---|------|--------|
-| 0.5 | Furniture hairline 0.15 in SVG | SVG hardcodes 0.18. DXF correct. |
+| ~~0.5~~ | ~~Furniture hairline~~ | **FIXED 2D_010c** |
 | 1.4 | SVG writer ignores template | SVG writer is reference only — DXF is deliverable. Low priority. |
 | 4.5a | Dash-dot pattern explicit | DXF uses ezdxf default DASHDOT. Proof SVG scales wrong. |
 | 4.5c | Bubble filled white in DXF | DXF CIRCLE lacks fill. Proof SVG fills correctly. |
@@ -266,10 +266,10 @@
 ### Pri 7 — Template tracing (visually correct but untraceable)
 | # | What | Impact |
 |---|------|--------|
-| 6.3a | tick_angle_deg from template | Always 45°. Template says 45°. Correct but not traced. |
+| ~~6.3a~~ | ~~tick_angle_deg from template~~ | **FIXED 2D_010c** |
 | 6.3c | Extension gap/overshoot applied | Read but not applied to manual dims. |
 | 7.3f | North arrow placement from template | Position computed, not read. |
-| 7.3g | Tag shape from template | Always hexagon. Template says hexagon. Correct but not traced. |
+| ~~7.3g~~ | ~~Tag shape from template~~ | **FIXED 2D_010c** |
 
 ### Pri 8 — Archive comparison
 | # | What | Impact |
