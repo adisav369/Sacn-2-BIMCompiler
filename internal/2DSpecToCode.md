@@ -29,7 +29,7 @@
 
 | # | Spec requirement | Y/N | Pri | Proof / Code ref |
 |---|-----------------|-----|-----|------------------|
-| 2.1 | Step 1 Load template + 2D.db, log paper/scale/profile | N | 4 | dxf:1067-1077 loads template, logs paper+scale ✓. But 2D.db loaded at Step 6 (dxf:1345) not Step 1. Spec says load both at Step 1. |
+| 2.1 | Step 1 Load template + 2D.db, log paper/scale/profile | Y | | `meta = read_drawing_metadata()` moved to Step 1 (after template load). Logged as `2D.db=loaded`. |
 | 2.2 | Step 2 Query DB, log element counts | Y | | dxf:1100-1106 `read_elements()`. Diag: `§2.2 DB loaded: 11 walls, 3 doors, 4 windows, 14 furniture` |
 | 2.3 | Step 3 Detect grids, log each axis | Y | | dxf:1248-1251 `snap_grids(derive_grids(walls))`. Diag: `§2.3 Grid A axis=x pos=-7.735m` (7 lines). |
 | 2.4 | Step 4 Compute dimensions, log each | Y | | dxf:1296-1342 `generate_dimensions()`. Diag: `§2.4 Dim x -7.735→-2.835 = 4900mm` (7 lines). |
@@ -63,7 +63,7 @@
 | 4.3a | Elevation bay grids: front/rear=A,B,C,D left/right=1,2,3 | Y | | dxf:1681-1687 filters by `grid_axis = 'x' if face in ('front','rear') else 'y'`. Conformity: Front `vertical=['A','B','C','D']`, Left `horizontal=['1','2','3']`. |
 | 4.3b | Level lines: FFL,SILL,HEAD,CLG,EAVE,RIDGE | Y | | `detect_levels()` adds EAVE from `min(r.min_z for r in roofs)` with >0.5m guard. Priority table updated to include EAVE. |
 | 4.3c | Level labels from 2D.db [2d_level_marker] | Y | | `_read_2d_db_levels()` reads `2d_level_marker` table, maps codes to display_text. Elevation writer uses DB labels with template fallback. |
-| 4.3d | Level markers: triangle + dashed line across | N | 5 | dxf:1661-1663 triangle ✓. Line is short leader (`marker_x - _mh(1.8)` to `marker_x`), not dashed across full width. |
+| 4.3d | Level markers: triangle + dashed line across | Y | | Full-width dashed line from triangle (marker_x) to building right edge (h_max_m + ext). Linetype HIDDEN, lw from template. |
 | 4.4a | Roof grids same as floor plan | Y | | dxf:1964-1965 `grids = snap_grids(derive_grids(walls))` — same function. Conformity: `GRID_LINES: 7` on both A-01 and A-06. |
 | 4.4b | Eave overhang per grid bay, all 4 sides | N | 4 | dxf:1950-1962 only north overhang drawn. S/E/W computed (dxf:1940-1943) but not rendered. |
 | 4.5a | Dash-dot pattern [4,1,1,1] | N | 6 | DXF: dxf:144 `DASHDOT` linetype defined with `[0.0]` empty pattern (ezdxf default). Real pattern from `$LTSCALE`. SVG proof: dxf:878 uses `s = 1.0/sc` → 0.04mm dashes (invisible). |
@@ -80,13 +80,13 @@
 | 5.0c | Scale bar: not on schedule | Y | | No schedule sheet exists yet (GAP). Scale bar code in `_draw_sheet_layout()` runs on all sheets that exist. Will need gating when A-08 is implemented. |
 | 5.0d | DXF filename: {building}_{type}.dxf | Y | | dxf:2227-2231 uses `FLOOR_{ts}.dxf` per §9.6 R2. Spec §5.0d conflicts with §9.6; code follows §9.6 (newer). |
 | 5.1a | Floor plan cut height 1.2m | Y | | dxf:1121 `cut_z = 1.2`. Diag: `§2.5 Section cut Z=1.2m`. |
-| 5.1b | Cut elements: wall/door/window/column | N | 5 | dxf:1133-1145 handles IfcWall, IfcPlate, IfcDoor, IfcWindow. IfcColumn falls through to `A-WALL-PRTN` default — no dedicated layer. |
+| 5.1b | Cut elements: wall/door/window/column | Y | | IfcColumn gets `A-WALL-FULL` layer with `lw_wall_ext` (bold). Per `2d_drawing_style` IfcColumn=0.50mm. |
 | 5.1c | Below elements: furniture, stair | Y | | dxf:1162-1170 BELOW elements on A-FURN layer. Diag: `15 BELOW`. |
 | 5.1d | Door swing arcs | Y | | dxf:1172-1245 leaf line + quarter-arc. Diag: `§5.1 Door swing arcs: 3`. Conformity: `ARC: 3` in entity counts. |
 | 5.1e | Window double-line symbol | Y | | dxf:1182-1228 parallel lines + glass center on A-GLAZ. Diag: `Window symbols: 4`. |
 | 5.1f | Wall solid fill (filled polygons) | N | 6 | dxf:1156-1159 LWPOLYLINE on A-WALL-PATT — closed polygon, not HATCH. DXF LWPOLYLINE has no fill. SVG proof renders as polygon fill=black (dxf:919-921). Visual only via proof, not in DXF. |
 | 5.2a | Elevation face selection within 1.0m | Y | | dxf:1542-1565 e.g. `face_elems = [e for e in ... if e.min_y < bld_min_y + 1.0]`. |
-| 5.2b | Level markers: triangle + dashed line | N | 5 | dxf:1664-1667 triangle SOLID ✓. dxf:1661-1663 line is short leader (1.8m), not full-width dashed. |
+| 5.2b | Level markers: triangle + dashed line | Y | | Same fix as 4.3d — full-width HIDDEN dashed line from triangle to right edge. |
 | 5.2c | Level labels from 2D.db | Y | | Same fix as 4.3c — `_read_2d_db_levels()` provides labels from `2d_level_marker` table. |
 | 5.2d | Height dimensions | Y | | dxf:1732-1785 tier 1+2. Diag: `§2.4 Height FFL→SILL = 900mm` etc. |
 | 5.2e | Bay dimensions | Y | | dxf:1707-1730 via DIMENSION entities or fallback LINE+TEXT. Diag: `§2.4 Bay dim A→B = 4900mm`. |
@@ -210,11 +210,11 @@
 | Section | Y | N | Total |
 |---------|---|---|-------|
 | §0 Line weights | 4 | 1 | 5 |
-| §1 Prime rules | 3 | 3 | 6 |
-| §2 Process | 6 | 2 | 8 |
+| §1 Prime rules | 4 | 2 | 6 |
+| §2 Process | 7 | 1 | 8 |
 | §3 Data sources | 4 | 2 | 6 |
-| §4 Grid lines | 12 | 6 | 18 |
-| §5 Views | 19 | 8 | 27 |
+| §4 Grid lines | 13 | 5 | 18 |
+| §5 Views | 22 | 5 | 27 |
 | §6 Dimensions | 5 | 2 | 7 |
 | §7 Composition | 8 | 2 | 10 |
 | §8 Colours | 8 | 0 | 8 |
@@ -222,9 +222,9 @@
 | §9.6 Output | 8 | 0 | 8 |
 | §10 Tests | 14 | 0 | 14 |
 | §11 Key files | 12 | 0 | 12 |
-| **Total** | **108** | **26** | **134** |
+| **Total** | **112** | **22** | **134** |
 
-**Compliance: 108/134 (81%)**
+**Compliance: 112/134 (84%)**
 
 ## Priority Triage (42 N items by priority)
 
@@ -235,7 +235,7 @@
 ### Pri 4 — Data source wiring
 | # | What | Impact |
 |---|------|--------|
-| 2.1 | Load 2D.db at Step 1 not Step 6 | Process order wrong. Cosmetic but spec-violating. |
+| ~~2.1~~ | ~~Load 2D.db at Step 1 not Step 6~~ | **FIXED 2D_010c** |
 | 3.0a | Enforce input/ directory | No path enforcement. Minor. |
 | ~~4.3c~~ | ~~Level labels from 2D.db~~ | **FIXED 2D_010c** |
 | 4.4b | Eave overhang all 4 sides | Only north drawn. 3 sides missing. |
@@ -246,9 +246,9 @@
 | # | What | Impact |
 |---|------|--------|
 | ~~1.3~~ | ~~APRON_Z/GRD_Z from DB~~ | **FIXED 2D_010c:** `_read_2d_db_levels()` reads `typical_z`. Constants kept as fallback. |
-| 4.3d | Level line full-width dashed | Short leader, not full-width dashed line. |
-| 5.1b | IfcColumn dedicated handling | Falls to default A-WALL-PRTN. No SH impact. |
-| 5.2b | Level markers dashed line | Same as 4.3d. |
+| ~~4.3d~~ | ~~Level line full-width dashed~~ | **FIXED 2D_010c** |
+| ~~5.1b~~ | ~~IfcColumn dedicated handling~~ | **FIXED 2D_010c** |
+| ~~5.2b~~ | ~~Level markers dashed line~~ | **FIXED 2D_010c** |
 | ~~5.3b~~ | ~~Ridge linetype from template~~ | **FIXED 2D_010c:** reads `tpl.line_styles.ridge_line` via `_linestyle_to_dxf()`. |
 | ~~5.3c~~ | ~~Slope arrows per grid bay~~ | **FIXED 2D_010c:** `n_bays = len(x_grids)-1`, loop `range(1, n_bays+1)`. |
 | ~~5.3e~~ | ~~RIDGE/EAVE from 2D.db~~ | **FIXED 2D_010c:** `_read_2d_db_levels()` reads labels from `2d_level_marker`. |

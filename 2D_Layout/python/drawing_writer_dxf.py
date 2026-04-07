@@ -1133,9 +1133,12 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     tpl_tags  = tpl.get('annotation_tags', {})
     tpl_rooms = tpl.get('room_labels', {})
     tpl_na    = tpl.get('north_arrow', {})
+    # §2.1: load 2D.db at Step 1 (not Step 6)
+    meta = read_drawing_metadata()
     _log(f"§2.1 Template loaded: paper={tpl_paper.get('size','?')}, "
          f"scale={tpl_paper.get('scale','?')}, "
-         f"line_weights={len(tpl.get('line_weights',{}))} entries")
+         f"line_weights={len(tpl.get('line_weights',{}))} entries, "
+         f"2D.db={'loaded' if meta else 'not found'}")
 
     # Line weights from template §1 R4
     lw_wall_ext = _lw(tpl, 'wall_exterior_cut')   # 0.50mm → 50
@@ -1203,6 +1206,9 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
             layer, lw = 'A-DOOR', lw_opening
         elif es.ifc_class == 'IfcWindow':
             layer, lw = 'A-GLAZ', lw_opening
+        elif es.ifc_class == 'IfcColumn':
+            # §5.1b: IfcColumn — bold with gray fill, per 2d_drawing_style
+            layer, lw = 'A-WALL-FULL', lw_wall_ext
         else:
             layer, lw = 'A-WALL-PRTN', lw_wall_int
 
@@ -1405,7 +1411,6 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
         dim_count += 1
 
     # ── §2 Step 6: INFER ROOMS ──
-    meta = read_drawing_metadata()
     room_labels_meta = meta.get('room_labels', {}) if meta else {}
     rooms = infer_rooms(furniture, walls)
     room_count = 0
@@ -1709,11 +1714,18 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
             ly = label_ys[-1] + min_gap
         label_ys.append(ly)
 
+    # §4.3d/§5.2b: level line = dashed, full width of drawing (not short leader)
+    level_line_right = _mh(h_max_m + ext)  # right edge of drawing
+    level_lw = _lw(tpl, 'dimension_line')  # 0.18mm per 2d_drawing_part LEVEL_LINE
+
     for (lbl, lz), label_ly in zip(levels, label_ys):
         true_ly = _mh(lz)
-        msp.add_line((marker_x - _mh(1.8), true_ly),
-                     (marker_x, true_ly),
-                     dxfattribs={'layer': 'A-ELEV-LEVL', 'lineweight': lw_wall_int})
+        # Full-width dashed line from triangle to right edge
+        msp.add_line((marker_x, true_ly),
+                     (level_line_right, true_ly),
+                     dxfattribs={'layer': 'A-ELEV-LEVL', 'lineweight': level_lw,
+                                 'linetype': 'HIDDEN'})
+        # Triangle at left edge, pointing left
         tri = [(marker_x, true_ly),
                (marker_x - _mh(0.3), true_ly - _mh(0.18)),
                (marker_x - _mh(0.3), true_ly + _mh(0.18))]
