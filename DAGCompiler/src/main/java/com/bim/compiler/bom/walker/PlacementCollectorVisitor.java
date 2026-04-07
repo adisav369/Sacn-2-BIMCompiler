@@ -117,7 +117,8 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** MEP order coverage level: 99=standard, 0=max, N=budget cap. Default 99. */
     private int mepOrderQty = 99;
 
-    /** Count of generative MEP device placements emitted during this walk. */
+    /** Count of generative MEP placements (shims + devices) emitted during this walk.
+     *  Used by G1-COUNT to adjust expected element count. */
     private int generativeDeviceCount = 0;
 
     /** Generative devices that breached their room AABB. */
@@ -128,6 +129,30 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
     /** Per-room generative placement log — room BOM ID → device count. */
     private final Map<String, Integer> generativeRoomCounts = new HashMap<>();
+
+    /** §12g hardened summary counters — accumulated across all rooms. */
+    private int totalCollisionShifts = 0;
+    private int totalCollisionConflicts = 0;
+    private int totalArcSnaps = 0;
+    private int totalArcMisses = 0;
+    private int totalNarrowRooms = 0;
+
+    // §12g GAP-1+6: Pending generative room context — captured at onSubAssembly,
+    // consumed at onSubAssemblyComplete AFTER furniture children are walked.
+    // This allows furniture collision checks against already-placed siblings.
+    private PendingGenerativeRoom pendingGenRoom = null;
+
+    /** Furniture placements index: room BOM ID → start index in placements list.
+     *  Set when a generative room enters; furniture added during child walk falls after this index. */
+    private int furnitureStartIndex = -1;
+
+    /** Captured room context for deferred generative placement (§12g GAP-1+6). */
+    private record PendingGenerativeRoom(
+        String childBomId, String spaceType, String storey,
+        double[] anchor, double[] roomAabb,
+        double rw, double rd, double rh,
+        double cumRotation
+    ) {}
 
     /** IFC GloballyUniqueId: exactly 22 chars from base64url + '$'. */
     private static final Pattern IFC_GUID = Pattern.compile("^[0-9A-Za-z_$]{22}$");
@@ -178,8 +203,12 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             BIMLogger.info("GENERATIVE", "SUMMARY: 0 generative devices (no rooms with MEP schedules)");
             return;
         }
-        BIMLogger.info("GENERATIVE", "SUMMARY: {} devices across {} rooms (orderQty={}) breaches={}",
-            generativeDeviceCount, generativeRoomCounts.size(), mepOrderQty, generativeBreachCount);
+        // Use WARN level so SUMMARY survives Maven -q (which suppresses INFO stdout)
+        BIMLogger.warn("GENERATIVE",
+            "SUMMARY {} devices {} rooms orderQty={} breaches={} collisionShifts={} collisionConflicts={} arcSnaps={} arcMisses={} narrowRooms={}",
+            generativeDeviceCount, generativeRoomCounts.size(), mepOrderQty,
+            generativeBreachCount, totalCollisionShifts, totalCollisionConflicts,
+            totalArcSnaps, totalArcMisses, totalNarrowRooms);
         // Per-device breakdown sorted by count descending
         generativeDeviceCounts.entrySet().stream()
             .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
@@ -188,6 +217,27 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         // Per-room breakdown
         generativeRoomCounts.forEach((room, count) ->
             BIMLogger.info("GENERATIVE", "  room {} → {} devices", room, count));
+        // §12g Diagnostic: flag actionable issues for next session
+        if (totalCollisionConflicts > 0) {
+            BIMLogger.warn("GENERATIVE",
+                "DIAGNOSTIC: {} devices could not avoid furniture — wall zone selection needs wider search or alternative walls",
+                totalCollisionConflicts);
+        }
+        if (generativeBreachCount > 0) {
+            BIMLogger.warn("GENERATIVE",
+                "DIAGNOSTIC: {} devices breach room AABB — likely Z-offset metadata assumes floor-relative coords but room anchor is building-relative. Check ad_placement_offset z_offset values vs actual room height.",
+                generativeBreachCount);
+        }
+        if (totalArcMisses > 0) {
+            BIMLogger.warn("GENERATIVE",
+                "DIAGNOSTIC: {} rooms have no ARC ceiling in BOM — ShimMatcher found no CEILING/Covering elements. Check if room is under a shared structural BOM (DUPLEX_SINGLE_UNIT_STD) rather than per-storey BOM.",
+                totalArcMisses);
+        }
+        if (totalNarrowRooms > 0) {
+            BIMLogger.warn("GENERATIVE",
+                "DIAGNOSTIC: {} rooms have SET BOM AABB < 1m (furniture extent, not room footprint). Collision check skipped. Fix: extract IfcSpace room footprint into SET BOM header.",
+                totalNarrowRooms);
+        }
     }
 
     public List<PlacementLoader.Placement> getPlacements() {
@@ -367,6 +417,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         // ── S150: Generative MEP device placement ───────────────────
         // When entering a SET BOM whose product category maps to a space type
         // with MEP schedules, synthesize device placements from metadata.
+        // §12g GAP-1+6: Capture room context for deferred generative placement.
+        // Generative MEP placement is deferred to onSubAssemblyComplete so that
+        // furniture children are walked FIRST — enabling furniture collision checks.
         // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 — Witness: W-DEVICE-PLACE
         if (erpConn != null && childBomId != null) {
             try {
@@ -375,19 +428,21 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                         && childBom.getProductCategory() != null) {
                     String spaceType = MEPDevicePlacer.resolveSpaceType(erpConn, childBom.getProductCategory());
                     if (spaceType != null) {
-                        double[] anchor = anchorStack.peek();
-                        // Use BOM header AABB (mm→m) — room envelope from extraction
+                        double[] anchor = anchorStack.peek().clone();
+                        // §12g diagnostic: trace anchor accumulation for ceiling Z analysis
+                        BIMLogger.info("GENERATIVE",
+                            "ANCHOR_TRACE {} stackDepth={} anchor=({:.4f},{:.4f},{:.4f}) worldOrigin=({:.4f},{:.4f},{:.4f})",
+                            childBomId, anchorStack.size(), anchor[0], anchor[1], anchor[2],
+                            worldOrigin[0], worldOrigin[1], worldOrigin[2]);
                         double rw = childBom.getAabbWidthMm() / 1000.0;
                         double rd = childBom.getAabbDepthMm() / 1000.0;
                         double rh = childBom.getAabbHeightMm() / 1000.0;
-                        // Fallback: parentAABBStack (M_Product dims)
                         if (rw <= 0 || rd <= 0 || rh <= 0) {
                             double[] dims = parentAABBStack.peek();
                             rw = dims[0]; rd = dims[1]; rh = dims[2];
                         }
                         // S151 Bug 1 fix: bomAABB height is furniture extent, not room height.
-                        // When height < threshold, read actual ceiling height from metadata.
-                        // Implementing DuplexAnalysis.md §S150/S151 Finding 1 — Witness: W-DEVICE-PLACE
+                        // §12g GAP-2: Use actual ARC ceiling Z when available, metadata as fallback.
                         if (SpaceScheduleDAO.needsCeilingOverride((int)(rh * 1000))) {
                             double ceilingH = SpaceScheduleDAO.getCeilingHeightM(erpConn, spaceType);
                             BIMLogger.info("GENERATIVE",
@@ -402,118 +457,40 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                                 anchor[2], anchor[2] + rh
                             };
                             String storey = storeyStack.isEmpty() ? "Unknown" : storeyStack.peek();
-                            List<MEPDevicePlacer.DevicePlacement> devices =
-                                MEPDevicePlacer.placeDevices(erpConn, spaceType, roomAabb, mepOrderQty, childBomId);
+                            double genCumRot = rotationStack.isEmpty() ? 0.0 : rotationStack.peek();
+                            // Capture context — defer placement to onSubAssemblyComplete
+                            pendingGenRoom = new PendingGenerativeRoom(
+                                childBomId, spaceType, storey, anchor, roomAabb, rw, rd, rh, genCumRot);
+                            furnitureStartIndex = placements.size();
                             BIMLogger.info("GENERATIVE",
-                                "ROOM {} type={} storey={} anchor=({:.4f},{:.4f},{:.4f}) bomAABB=({:.0f},{:.0f},{:.0f})mm → room=[{:.3f},{:.3f},{:.3f}]→[{:.3f},{:.3f},{:.3f}]m",
+                                "ROOM_ENTER {} type={} storey={} anchor=({:.4f},{:.4f},{:.4f}) room=[{:.3f},{:.3f},{:.3f}]→[{:.3f},{:.3f},{:.3f}]m — deferring MEP to after furniture walk",
                                 childBomId, spaceType, storey,
                                 anchor[0], anchor[1], anchor[2],
-                                rw * 1000, rd * 1000, rh * 1000,
                                 roomAabb[0], roomAabb[2], roomAabb[4],
                                 roomAabb[1], roomAabb[3], roomAabb[5]);
-                            for (MEPDevicePlacer.DevicePlacement dp : devices) {
-                                Discipline disc = resolveDeviceDiscipline(erpConn, dp.deviceId(), dp.anchorEnd());
-                                // Containment check: is device inside the room AABB?
-                                boolean inX = dp.position()[0] >= roomAabb[0] && dp.position()[0] <= roomAabb[1];
-                                boolean inY = dp.position()[1] >= roomAabb[2] && dp.position()[1] <= roomAabb[3];
-                                boolean inZ = dp.position()[2] >= roomAabb[4] && dp.position()[2] <= roomAabb[5];
-                                String verdict = (inX && inY && inZ) ? "IN" : "OUT";
-                                if (!inX || !inY || !inZ) {
-                                    generativeBreachCount++;
-                                    BIMLogger.warn("GENERATIVE",
-                                        "  BREACH {} pos=({:.3f},{:.3f},{:.3f}) room=[{:.3f}→{:.3f}, {:.3f}→{:.3f}, {:.3f}→{:.3f}] X={} Y={} Z={}",
-                                        dp.deviceId(),
-                                        dp.position()[0], dp.position()[1], dp.position()[2],
-                                        roomAabb[0], roomAabb[1], roomAabb[2], roomAabb[3], roomAabb[4], roomAabb[5],
-                                        inX ? "OK" : "OUT", inY ? "OK" : "OUT", inZ ? "OK" : "OUT");
-                                }
-                                BIMLogger.info("GENERATIVE",
-                                    "  PLACE {} rule={} anchor={} disc={} pos=({:.3f},{:.3f},{:.3f}) {} source=ad_placement_offset.{}",
-                                    dp.deviceId(), dp.placementRule(), dp.anchorEnd(), disc,
-                                    dp.position()[0], dp.position()[1], dp.position()[2],
-                                    verdict, dp.placementRule());
-                                // S151 Bug 2 fix: read M_Product dimensions for Placement AABB
-                                // instead of hardcoded ±0.05m. DuplexAnalysis.md §S150/S151 Finding 2
-                                double hw = 0.05, hd = 0.05, hh = 0.05; // half-extents, fallback
-                                double[] prodDims = SpaceScheduleDAO.getProductDimensions(erpConn, dp.deviceId());
-                                if (prodDims != null) {
-                                    hw = prodDims[0] / 2.0;
-                                    hd = prodDims[1] / 2.0;
-                                    hh = prodDims[2] / 2.0;
-                                    BIMLogger.info("GENERATIVE",
-                                        "  AABB {} dims=({:.3f},{:.3f},{:.3f})m from M_Product",
-                                        dp.deviceId(), prodDims[0], prodDims[1], prodDims[2]);
-                                } else {
-                                    BIMLogger.info("GENERATIVE",
-                                        "  AABB {} dims=(0.100,0.100,0.100)m FALLBACK — no M_Product dimensions",
-                                        dp.deviceId());
-                                }
-                                PlacementLoader.Placement p = new PlacementLoader.Placement(
-                                    buildingType,
-                                    storey,
-                                    "IfcFlowTerminal",
-                                    childBomId + "_" + dp.deviceId() + "_" + (++ordinalCounter),
-                                    ordinalCounter,
-                                    dp.position()[0] - hw, dp.position()[0] + hw,
-                                    dp.position()[1] - hd, dp.position()[1] + hd,
-                                    dp.position()[2] - hh, dp.position()[2] + hh,
-                                    null,
-                                    disc,
-                                    null, null,
-                                    dp.deviceId(),
-                                    dp.deviceId(),
-                                    ElementIdentity.generated(
-                                        childBomId + "_" + dp.deviceId() + "_" + ordinalCounter, ""),
-                                    0.0
-                                );
-                                placements.add(p);
-                                generativeDeviceCount++;
-                                placeDeviceCount++;
-                                generativeDeviceCounts.merge(dp.deviceId(), 1, Integer::sum);
-
-                                // S151: GeoProofRecord for generative devices — same proof chain as extracted
-                                // Parent = room AABB, offset = schedule metadata, no inputLBD (generative, not extracted)
-                                // Implementing DISC_VALIDATION_DB_SRS.md §6.12.4 — Witness: W-GEO-PROOF
-                                {
-                                    double[] pos = dp.position();
-                                    double[] roomDims = {rw, rd, rh};
-                                    // LMP: position inside room (already computed as inX/inY/inZ)
-                                    boolean lmpOk = inX && inY && inZ;
-                                    // Envelope: device AABB fits inside room AABB
-                                    boolean envOk = (pos[0] + hw) <= roomAabb[1] + 0.001
-                                                 && (pos[1] + hd) <= roomAabb[3] + 0.001
-                                                 && (pos[2] + hh) <= roomAabb[5] + 0.001;
-                                    String chain = childBomId + "→GENERATIVE→" + dp.deviceId();
-                                    proofRecords.add(new GeoProofRecord(
-                                        p.elementRef(), dp.deviceId(), chain,
-                                        null,  // no inputLBD — generative, not extracted
-                                        new double[]{roomAabb[0], roomAabb[2], roomAabb[4]},  // room min as anchor
-                                        0.0,   // no rotation for generative devices
-                                        new double[]{pos[0] - roomAabb[0], pos[1] - roomAabb[2], pos[2] - roomAabb[4]}, // offset from room min
-                                        new double[]{pos[0] - roomAabb[0], pos[1] - roomAabb[2], pos[2] - roomAabb[4]}, // same (no rotation)
-                                        pos,   // output centroid = position
-                                        new double[]{pos[0] - hw, pos[1] - hd, pos[2] - hh},  // output LBD
-                                        new double[]{hw, hd, hh},
-                                        roomDims,
-                                        false, // no round-trip for generative
-                                        lmpOk, envOk
-                                    ));
-                                }
-                            }
-                            if (!devices.isEmpty()) {
-                                generativeRoomCounts.put(childBomId, devices.size());
-                            }
                         }
                     }
                 }
             } catch (SQLException e) {
-                BIMLogger.warn("COMPILE", "GenerativeMEP for {} — {}", childBomId, e.getMessage());
+                BIMLogger.warn("COMPILE", "GenerativeMEP capture for {} — {}", childBomId, e.getMessage());
             }
         }
     }
 
     @Override
     public void onSubAssemblyComplete(BOMWalker.NodeContext ctx) {
+        // §12g GAP-1+6: Execute deferred generative MEP placement BEFORE stack pops.
+        // Furniture children have been walked — their AABBs are now in placements list.
+        if (pendingGenRoom != null) {
+            PendingGenerativeRoom room = pendingGenRoom;
+            pendingGenRoom = null;
+            try {
+                placeGenerativeDevices(room);
+            } catch (SQLException e) {
+                BIMLogger.warn("COMPILE", "GenerativeMEP deferred for {} — {}", room.childBomId(), e.getMessage());
+            }
+        }
+
         // Pop parent BOM tracker
         if (!parentBomIdStack.isEmpty()) parentBomIdStack.pop();
 
@@ -564,6 +541,428 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 // Best effort — storey/discipline tracking is informational
             }
         }
+    }
+
+    /**
+     * Deferred generative MEP device placement — runs AFTER furniture children are walked.
+     * §12g GAP-1: furniture AABBs are now available for collision checks.
+     * §12g GAP-2: queries compiled ARC ceiling Z when available.
+     * §12g GAP-3: uses ShimMatcher for surface snapping (if loaded).
+     * Implementing DISC_VALIDATION_DB_SRS.md §12a-§12g — Witness: W-SHIM-DEVICE
+     */
+    private void placeGenerativeDevices(PendingGenerativeRoom room) throws SQLException {
+        double[] roomAabb = room.roomAabb();
+
+        // §12g GAP-2: Try to resolve actual ceiling Z from compiled ARC output.
+        // The metadata default (2700mm residential) may not match the actual gypsum board Z.
+        double resolvedCeilingZ = roomAabb[5]; // default: room AABB maxZ
+        if (shimMatcher != null) {
+            // ShimMatcher has ARC hosts loaded — find IfcCovering in this room's column
+            Double arcCeilingZ = shimMatcher.findCeilingZ(
+                roomAabb[0], roomAabb[1], roomAabb[2], roomAabb[3], roomAabb[4]);
+            if (arcCeilingZ != null) {
+                double oldZ = resolvedCeilingZ;
+                resolvedCeilingZ = arcCeilingZ;
+                // Rebuild room AABB with actual ceiling Z
+                roomAabb = new double[]{
+                    roomAabb[0], roomAabb[1],
+                    roomAabb[2], roomAabb[3],
+                    roomAabb[4], resolvedCeilingZ
+                };
+                totalArcSnaps++;
+                BIMLogger.info("GENERATIVE",
+                    "CEILING_ARC {} arcZ={:.3f}m metadataZ={:.3f}m delta={:.1f}mm — using ARC surface",
+                    room.childBomId(), resolvedCeilingZ, oldZ, (resolvedCeilingZ - oldZ) * 1000);
+            } else {
+                totalArcMisses++;
+                BIMLogger.info("GENERATIVE",
+                    "CEILING_ARC {} — no ARC IfcCovering found in room column, using metadata Z={:.3f}m",
+                    room.childBomId(), resolvedCeilingZ);
+            }
+        }
+
+        // §12g GAP-1: Collect furniture AABBs from placements added during child walk
+        List<double[]> furnitureBoxes = new ArrayList<>();
+        if (furnitureStartIndex >= 0) {
+            for (int i = furnitureStartIndex; i < placements.size(); i++) {
+                PlacementLoader.Placement fp = placements.get(i);
+                furnitureBoxes.add(new double[]{
+                    fp.minX(), fp.maxX(), fp.minY(), fp.maxY(), fp.minZ(), fp.maxZ()
+                });
+            }
+        }
+        furnitureStartIndex = -1;
+
+        // §12g GAP-7: Detect rooms where AABB is furniture extent, not room footprint.
+        // When width or depth < 1m, collision check is meaningless — skip it.
+        double roomW = roomAabb[1] - roomAabb[0];
+        double roomD = roomAabb[3] - roomAabb[2];
+        boolean roomTooNarrow = roomW < 1.0 || roomD < 1.0;
+        if (roomTooNarrow) {
+            totalNarrowRooms++;
+            BIMLogger.warn("GENERATIVE",
+                "ROOM_NARROW {} dims=({:.3f}×{:.3f})m — SET BOM AABB is furniture extent, not room footprint. Skipping collision check.",
+                room.childBomId(), roomW, roomD);
+            furnitureBoxes.clear(); // disable collision check
+        }
+
+        List<MEPDevicePlacer.DevicePlacement> devices =
+            MEPDevicePlacer.placeDevices(erpConn, room.spaceType(), roomAabb, mepOrderQty, room.childBomId());
+
+        BIMLogger.info("GENERATIVE",
+            "ROOM_PLACE {} type={} storey={} devices={} furniture={} roomZ=[{:.3f}→{:.3f}]",
+            room.childBomId(), room.spaceType(), room.storey(),
+            devices.size(), furnitureBoxes.size(), roomAabb[4], roomAabb[5]);
+
+        int collisionShifts = 0;
+        int collisionConflicts = 0;
+        // Track per-position device count to offset co-located devices (avoid P05 same-centroid).
+        // Key: rounded position string, Value: count at that position.
+        Map<String, Integer> positionCount = new HashMap<>();
+
+        for (MEPDevicePlacer.DevicePlacement dp : devices) {
+            Discipline disc = resolveDeviceDiscipline(erpConn, dp.deviceId(), dp.anchorEnd());
+
+            // §12g GAP-3: Snap to ARC host surface via ShimMatcher if available
+            double[] pos = dp.position().clone();
+            String snapVerdict = "RAW";
+            if (shimMatcher != null) {
+                String hostClass = dp.hostSurface() != null ? dp.hostSurface() : "IfcCovering";
+                Double adjZ = shimMatcher.matchHostZ(hostClass, dp.placementRule(), pos[0], pos[1], pos[2],
+                    roomAabb[0], roomAabb[1], roomAabb[2], roomAabb[3]);
+                if (adjZ != null) {
+                    double oldZ = pos[2];
+                    pos[2] = adjZ;
+                    snapVerdict = String.format("SNAP dz=%.1fmm", (adjZ - oldZ) * 1000);
+                }
+            }
+
+            // §12e: Furniture collision check — shift along wall if overlapping
+            double hw = 0.05, hd = 0.05, hh = 0.05;
+            double[] prodDims = SpaceScheduleDAO.getProductDimensions(erpConn, dp.deviceId());
+            if (prodDims != null) {
+                hw = prodDims[0] / 2.0; hd = prodDims[1] / 2.0; hh = prodDims[2] / 2.0;
+            }
+            double[] deviceBox = {
+                pos[0] - hw, pos[0] + hw, pos[1] - hd, pos[1] + hd, pos[2] - hh, pos[2] + hh
+            };
+            boolean collides = false;
+            for (double[] fb : furnitureBoxes) {
+                if (aabbOverlap(deviceBox, fb)) {
+                    collides = true;
+                    break;
+                }
+            }
+            if (collides) {
+                // Try shifting in 4 directions: +X, -X, +Y, -Y (room-axis-aligned)
+                double shiftStep = hw * 2 + 0.1; // device width + 100mm clearance
+                boolean resolved = false;
+                double[][] directions = {{1,0},{-1,0},{0,1},{0,-1}};
+                outer:
+                for (double[] dir : directions) {
+                    for (int attempt = 1; attempt <= 5; attempt++) {
+                        double shift = shiftStep * attempt;
+                        double tryX = pos[0] + dir[0] * shift;
+                        double tryY = pos[1] + dir[1] * shift;
+                        // Bounds check — must stay inside room
+                        if (tryX - hw < roomAabb[0] || tryX + hw > roomAabb[1]) continue;
+                        if (tryY - hd < roomAabb[2] || tryY + hd > roomAabb[3]) continue;
+                        double[] tryBox = {
+                            tryX - hw, tryX + hw, tryY - hd, tryY + hd, pos[2] - hh, pos[2] + hh
+                        };
+                        boolean stillCollides = false;
+                        for (double[] fb : furnitureBoxes) {
+                            if (aabbOverlap(tryBox, fb)) { stillCollides = true; break; }
+                        }
+                        if (!stillCollides) {
+                            BIMLogger.info("GENERATIVE",
+                                "  COLLISION_SHIFT {} from ({:.3f},{:.3f}) → ({:.3f},{:.3f}) dir=({:.0f},{:.0f}) attempt={}",
+                                dp.deviceId(), pos[0], pos[1], tryX, tryY, dir[0], dir[1], attempt);
+                            pos[0] = tryX; pos[1] = tryY;
+                            collisionShifts++;
+                            resolved = true;
+                            break outer;
+                        }
+                    }
+                }
+                if (!resolved) {
+                    // Last resort: try opposite wall (flip to other side of room)
+                    double flipX = roomAabb[0] + roomAabb[1] - pos[0]; // mirror X within room
+                    double flipY = roomAabb[2] + roomAabb[3] - pos[1]; // mirror Y within room
+                    double[][] flipCandidates = {{flipX, pos[1]}, {pos[0], flipY}, {flipX, flipY}};
+                    for (double[] fc : flipCandidates) {
+                        if (fc[0] - hw < roomAabb[0] || fc[0] + hw > roomAabb[1]) continue;
+                        if (fc[1] - hd < roomAabb[2] || fc[1] + hd > roomAabb[3]) continue;
+                        double[] flipBox = {
+                            fc[0] - hw, fc[0] + hw, fc[1] - hd, fc[1] + hd, pos[2] - hh, pos[2] + hh
+                        };
+                        boolean flipCollides = false;
+                        for (double[] fb : furnitureBoxes) {
+                            if (aabbOverlap(flipBox, fb)) { flipCollides = true; break; }
+                        }
+                        if (!flipCollides) {
+                            BIMLogger.info("GENERATIVE",
+                                "  COLLISION_FLIP {} from ({:.3f},{:.3f}) → ({:.3f},{:.3f}) — opposite wall",
+                                dp.deviceId(), pos[0], pos[1], fc[0], fc[1]);
+                            pos[0] = fc[0]; pos[1] = fc[1];
+                            collisionShifts++;
+                            resolved = true;
+                            break;
+                        }
+                    }
+                }
+                if (!resolved) {
+                    // Log which furniture it collides with for next-session diagnosis
+                    for (double[] fb : furnitureBoxes) {
+                        if (aabbOverlap(deviceBox, fb)) {
+                            BIMLogger.warn("GENERATIVE",
+                                "  COLLISION_DETAIL {} at ({:.3f},{:.3f},{:.3f}) overlaps furniture [{:.3f}→{:.3f},{:.3f}→{:.3f},{:.3f}→{:.3f}]",
+                                dp.deviceId(), pos[0], pos[1], pos[2],
+                                fb[0], fb[1], fb[2], fb[3], fb[4], fb[5]);
+                            break; // log first collision only
+                        }
+                    }
+                    collisionConflicts++;
+                    BIMLogger.warn("GENERATIVE",
+                        "  COLLISION_CONFLICT {} at ({:.3f},{:.3f},{:.3f}) — no free zone in 4 dirs + flip",
+                        dp.deviceId(), pos[0], pos[1], pos[2]);
+                }
+            }
+
+            // Containment check — §12g GAP-8: 5mm Z tolerance for floor snap rounding
+            boolean inX = pos[0] >= roomAabb[0] && pos[0] <= roomAabb[1];
+            boolean inY = pos[1] >= roomAabb[2] && pos[1] <= roomAabb[3];
+            boolean inZ = pos[2] >= roomAabb[4] - 0.005 && pos[2] <= roomAabb[5] + 0.005;
+            String verdict = (inX && inY && inZ) ? "IN" : "OUT";
+            if (!inX || !inY || !inZ) {
+                generativeBreachCount++;
+                BIMLogger.warn("GENERATIVE",
+                    "  BREACH {} pos=({:.3f},{:.3f},{:.3f}) room=[{:.3f}→{:.3f}, {:.3f}→{:.3f}, {:.3f}→{:.3f}] X={} Y={} Z={}",
+                    dp.deviceId(), pos[0], pos[1], pos[2],
+                    roomAabb[0], roomAabb[1], roomAabb[2], roomAabb[3], roomAabb[4], roomAabb[5],
+                    inX ? "OK" : "OUT", inY ? "OK" : "OUT", inZ ? "OK" : "OUT");
+            }
+
+            // §12a.4-6: Facing direction + standoff offset
+            double facing = facingDirection(dp.placementRule());
+            double standoff = standoffOffset(dp.hostSurface());
+
+            BIMLogger.info("GENERATIVE",
+                "  PLACE {} rule={} anchor={} disc={} pos=({:.3f},{:.3f},{:.3f}) {} {} facing={:.3f}rad standoff={:.3f}m source=ad_placement_offset.{}",
+                dp.deviceId(), dp.placementRule(), dp.anchorEnd(), disc,
+                pos[0], pos[1], pos[2], verdict, snapVerdict, facing, standoff, dp.placementRule());
+
+            if (prodDims != null) {
+                BIMLogger.fine("GENERATIVE",
+                    "  AABB {} dims=({:.3f},{:.3f},{:.3f})m from M_Product",
+                    dp.deviceId(), prodDims[0], prodDims[1], prodDims[2]);
+            }
+
+            // §12a.4: Create phantom SHIM on target surface — IfcVirtualElement, not rendered.
+            // Shim carries host IFC class + surface info; device is child of shim.
+            String hostIfc = hostIfcClass(dp.hostSurface());
+            String shimDiscMount = (disc != null ? disc.name() : "MEP") + "_"
+                + hostIfc + "_"
+                + (dp.hostSurface() != null ? dp.hostSurface() : "WALL") + "_SHIM";
+
+            // §12a.4c + §12a.5a: Shim ON wall surface, device offset along facing axis
+            double[] shimDev = shimAndDevicePositions(
+                dp.placementRule(), dp.hostSurface(), pos, roomAabb, standoff);
+            double shimX = shimDev[0], shimY = shimDev[1], shimZ = shimDev[2];
+            double devX = shimDev[3], devY = shimDev[4], devZ = shimDev[5];
+
+            // Multiple devices sharing the same placement_rule get identical positions.
+            // Offset co-located devices by 100mm along X to avoid P05 same-centroid.
+            String posKey = String.format("%.2f_%.2f_%.2f", devX, devY, devZ);
+            int posIdx = positionCount.merge(posKey, 1, Integer::sum) - 1;
+            if (posIdx > 0) {
+                double colocOffset = posIdx * 0.100;
+                shimX += colocOffset; devX += colocOffset;
+            }
+
+            String shimRef = room.childBomId() + "_SHIM_" + dp.deviceId() + "_" + (++ordinalCounter);
+            PlacementLoader.Placement shim = new PlacementLoader.Placement(
+                buildingType,
+                room.storey(),
+                "IfcVirtualElement",
+                shimRef,
+                ordinalCounter,
+                shimX - 0.001, shimX + 0.001,  // phantom: 2mm cube at wall surface
+                shimY - 0.001, shimY + 0.001,
+                shimZ - 0.001, shimZ + 0.001,
+                null,
+                disc,
+                null, null,
+                shimDiscMount,       // familyRef = "SP_IfcWallStandardCase_WALL_SHIM" etc.
+                shimDiscMount,       // productId = same
+                ElementIdentity.generated(shimRef, ""),
+                facing               // shim carries the wall normal as rotationZ
+            );
+            placements.add(shim);
+            // Shim is phantom (IfcVirtualElement) — NOT written to output DB, NOT counted in G1-COUNT.
+
+            String deviceRef = room.childBomId() + "_" + dp.deviceId() + "_" + (++ordinalCounter);
+            PlacementLoader.Placement p = new PlacementLoader.Placement(
+                buildingType,
+                room.storey(),
+                "IfcFlowTerminal",
+                deviceRef,
+                ordinalCounter,
+                devX - hw, devX + hw,
+                devY - hd, devY + hd,
+                devZ - hh, devZ + hh,
+                null,
+                disc,
+                null, null,
+                dp.deviceId(),
+                dp.deviceId(),
+                ElementIdentity.generated(deviceRef, ""),
+                facing
+            );
+            placements.add(p);
+            generativeDeviceCount++;
+            placeDeviceCount++;
+            generativeDeviceCounts.merge(dp.deviceId(), 1, Integer::sum);
+
+            // GeoProofRecord for generative devices (uses device position, not shim position)
+            {
+                // Use ARC-adjusted room AABB dimensions (not original PendingGenerativeRoom dims)
+                double[] roomDims = {roomAabb[1] - roomAabb[0], roomAabb[3] - roomAabb[2], roomAabb[5] - roomAabb[4]};
+                boolean lmpOk = inX && inY && inZ;
+                boolean envOk = (devX + hw) <= roomAabb[1] + 0.001
+                             && (devY + hd) <= roomAabb[3] + 0.001
+                             && (devZ + hh) <= roomAabb[5] + 0.001;
+                String chain = room.childBomId() + "→SHIM→" + dp.deviceId();
+                proofRecords.add(new GeoProofRecord(
+                    p.elementRef(), dp.deviceId(), chain,
+                    null,
+                    new double[]{roomAabb[0], roomAabb[2], roomAabb[4]},
+                    facing,
+                    new double[]{devX - roomAabb[0], devY - roomAabb[2], devZ - roomAabb[4]},
+                    new double[]{devX - roomAabb[0], devY - roomAabb[2], devZ - roomAabb[4]},
+                    new double[]{devX, devY, devZ},
+                    new double[]{devX - hw, devY - hd, devZ - hh},
+                    new double[]{hw, hd, hh},
+                    roomDims,
+                    false,
+                    lmpOk, envOk
+                ));
+            }
+        }
+        if (!devices.isEmpty()) {
+            generativeRoomCounts.put(room.childBomId(), devices.size());
+        }
+        totalCollisionShifts += collisionShifts;
+        totalCollisionConflicts += collisionConflicts;
+        // §12g hardened summary per room — one line, all diagnostics
+        BIMLogger.info("GENERATIVE",
+            "ROOM_DONE {} type={} devices={} shifts={} conflicts={} breaches={} ceilingZ={:.3f}m",
+            room.childBomId(), room.spaceType(), devices.size(),
+            collisionShifts, collisionConflicts, generativeBreachCount, resolvedCeilingZ);
+    }
+
+    // §12a.4: Facing direction from placement_rule (§12g GAP-4 table).
+    // Returns rotationZ in radians: 0 = faces -Y (into room), π = faces +Y, π/2 = faces -X, -π/2 = faces +X.
+    // CEILING_* and FLOOR_* always 0 (pendant/upright, no horizontal rotation).
+    // Implementing DISC_VALIDATION_DB_SRS.md §12g GAP-4 — Witness: W-SHIM-DEVICE
+    private static double facingDirection(String placementRule) {
+        if (placementRule == null) return 0.0;
+        // yRef=MAX rules (back wall): face -Y into room = 0
+        // yRef=MIN rules (entry wall): face +Y into room = π
+        // xRef=MIN rules (side wall): face +X into room = -π/2
+        boolean isMaxY = "WALL_BACK".equals(placementRule)
+                      || "WALL_COOKER".equals(placementRule)
+                      || "COUNTER_BACK".equals(placementRule);
+        boolean isMinY = "WALL_ENTRY".equals(placementRule);
+        if (isMaxY) return 0.0;
+        if (isMinY) return Math.PI;
+        if (placementRule.startsWith("WALL_") || placementRule.startsWith("COUNTER_")) {
+            return -Math.PI / 2;  // xRef=MIN wall: face +X into room
+        }
+        return 0.0; // CEILING_*, FLOOR_*, AUTO
+    }
+
+    // §12a.4-5: Standoff offset (metres) from host surface.
+    // WALL devices: 5mm (device sits just off the wall).
+    // CEILING devices: 50mm (pendant hang gap).
+    // FLOOR devices: 0mm (sitting on surface).
+    private static double standoffOffset(String hostSurface) {
+        if (hostSurface == null) return 0.005;
+        return switch (hostSurface) {
+            case "WALL"    -> 0.005;
+            case "CEILING" -> 0.050;
+            case "FLOOR"   -> 0.0;
+            default        -> 0.005;
+        };
+    }
+
+    // §12a.4a: Map host surface to IFC class for shim familyRef.
+    // Implementing DISC_VALIDATION_DB_SRS.md §12a.4a — Witness: W-SHIM-DEVICE
+    private static String hostIfcClass(String hostSurface) {
+        if (hostSurface == null) return "IfcWallStandardCase";
+        return switch (hostSurface) {
+            case "WALL"    -> "IfcWallStandardCase";
+            case "CEILING" -> "IfcCovering";
+            case "FLOOR"   -> "IfcSlab";
+            default        -> "IfcWallStandardCase";
+        };
+    }
+
+    // §12a.4c: Compute shim position ON the wall/ceiling/floor surface.
+    // §12a.5a: Compute device position offset from shim along facing direction.
+    // Uses hostSurface + ad_placement_offset xRef/yRef convention to determine which
+    // room boundary the shim sits on. roomAabb = [minX, maxX, minY, maxY, minZ, maxZ].
+    // Returns [shimX, shimY, shimZ, devX, devY, devZ].
+    // Implementing DISC_VALIDATION_DB_SRS.md §12a.4c, §12a.5a — Witness: W-SHIM-DEVICE
+    //
+    // Wall mapping (from ad_placement_offset xRef/yRef):
+    //   yRef=MAX → back wall at roomMaxY:  WALL_BACK, WALL_COOKER, COUNTER_BACK
+    //   yRef=MIN → entry wall at roomMinY: WALL_ENTRY
+    //   xRef=MIN → side wall at roomMinX:  WALL_SIDE, WALL_SINK, WALL_FLOOR, WALL_HIGH, WALL_SPACED, COUNTER_SINK
+    //   CEILING  → ceiling at roomMaxZ
+    //   FLOOR    → floor at roomMinZ
+    private static double[] shimAndDevicePositions(String placementRule, String hostSurface,
+                                                    double[] pos, double[] roomAabb, double standoff) {
+        double shimX = pos[0], shimY = pos[1], shimZ = pos[2];
+        double devX = pos[0], devY = pos[1], devZ = pos[2];
+
+        if ("CEILING".equals(hostSurface)) {
+            shimZ = roomAabb[5];               // shim ON ceiling
+            devZ = shimZ - standoff;           // pendant hangs below
+        } else if ("FLOOR".equals(hostSurface)) {
+            shimZ = roomAabb[4];               // shim ON floor
+            devZ = shimZ + standoff;           // device on surface (standoff=0)
+        } else if (placementRule != null && placementRule.startsWith("WALL_") || placementRule != null && placementRule.startsWith("COUNTER_")) {
+            // Determine which wall from the xRef/yRef convention in ad_placement_offset.
+            // yRef=MAX rules: device is on the back (maxY) wall.
+            // yRef=MIN rules: device is on the entry (minY) wall.
+            // xRef=MIN rules: device is on the side (minX) wall.
+            boolean isMaxY = "WALL_BACK".equals(placementRule)
+                          || "WALL_COOKER".equals(placementRule)
+                          || "COUNTER_BACK".equals(placementRule);
+            boolean isMinY = "WALL_ENTRY".equals(placementRule);
+
+            if (isMaxY) {
+                shimY = roomAabb[3];           // shim ON maxY wall
+                devY = shimY - standoff;       // device offset into room (-Y)
+            } else if (isMinY) {
+                shimY = roomAabb[2];           // shim ON minY wall
+                devY = shimY + standoff;       // device offset into room (+Y)
+            } else {
+                // All other WALL_*/COUNTER_* rules: xRef=MIN → minX wall
+                shimX = roomAabb[0];           // shim ON minX wall
+                devX = shimX + standoff;       // device offset into room (+X)
+            }
+        }
+        // AUTO/unknown: keep pos as-is (center placement, no wall snap)
+        return new double[]{shimX, shimY, shimZ, devX, devY, devZ};
+    }
+
+    /** AABB overlap test (6-element arrays: minX,maxX,minY,maxY,minZ,maxZ). */
+    private static boolean aabbOverlap(double[] a, double[] b) {
+        return a[0] < b[1] && a[1] > b[0]   // X overlap
+            && a[2] < b[3] && a[3] > b[2]   // Y overlap
+            && a[4] < b[5] && a[5] > b[4];  // Z overlap
     }
 
     // FACTORIZE-v1 F-2: verb expansion.

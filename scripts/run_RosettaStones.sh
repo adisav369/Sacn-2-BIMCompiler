@@ -56,6 +56,9 @@ if sqlite3 "$comp_db" "SELECT 1 FROM ad_geometry_map LIMIT 1" 2>/dev/null; then
     sqlite3 "$comp_db" < migration/migration_rename_geometry_map.sql
 fi
 
+# Seed M_Product_Image for generative MEP products (CL_001 — idempotent)
+sqlite3 "$comp_db" < migration/CL_001_generative_product_images.sql 2>/dev/null
+
 # ── Parse arguments ─────────────────────────────────────────
 YAML_FILES=()
 DELTA_ONLY=false
@@ -234,7 +237,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
                 -Dexec.mainClass="com.bim.ifctobom.IFCtoBOMMain" \
                 -Dexec.args="--joint-extract --classify ${yaml_file}" \
                 -q 2>&1) && JE_RC=0 || JE_RC=$?
-            echo "$JE_OUTPUT" | grep -E '^\[joint-extract\]|^\[IFCtoERP\]' || true
+            echo "$JE_OUTPUT" | grep -E '^\[joint-extract\]|^\[IFCtoERP\]|^\[MEP-SPACE' || true
 
             if [ "$JE_RC" -ne 0 ]; then
                 verdict "JOINT_EXTRACT_${PREFIX}" "FAIL" "joint piece extraction failed"

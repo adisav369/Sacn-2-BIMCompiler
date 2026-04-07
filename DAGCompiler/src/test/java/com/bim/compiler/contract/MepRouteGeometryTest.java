@@ -8,11 +8,15 @@ import com.bim.compiler.bom.walker.GeoProofFormatter;
 import com.bim.compiler.bom.walker.GeoProofRecord;
 import com.bim.compiler.bom.walker.PlacementCollectorVisitor;
 import com.bim.compiler.bom.walker.BOMWalker;
+import com.bim.compiler.bom.walker.ShimMatcher;
+import com.bim.compiler.dsl.PlacementLoader;
 import org.junit.jupiter.api.*;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -999,6 +1003,12 @@ class MepRouteGeometryTest {
             visitor.setErpConn(erpConn);
             visitor.setMepOrderQty(99);
 
+            // §12g: Wire ShimMatcher for ARC surface snapping
+            ShimMatcher shimMatcher = new ShimMatcher();
+            shimMatcher.loadShimAttributes(erpConn);
+            shimMatcher.loadArcHostsFromBom(bomConn);
+            visitor.setShimMatcher(shimMatcher);
+
             BOMWalker walker = new BOMWalker(bomConn, erpConn);
             walker.walk(rootBom, java.util.List.of(visitor), "SH_COLD");
             visitor.emitGenerativeSummary();
@@ -1163,6 +1173,368 @@ class MepRouteGeometryTest {
                 generativeDevices, genProofs);
         } finally {
             java.nio.file.Files.deleteIfExists(compileDb);
+        }
+    }
+
+    // ── Scenario 20: W-SHIM-DEVICE — generative devices deferred after furniture, no overlap ──
+    // §12g GAP-1: Verifies that generative MEP placement happens AFTER furniture children,
+    // enabling collision checks. Devices must not overlap furniture AABBs.
+    // Implementing DISC_VALIDATION_DB_SRS.md §12f S20 — Witness: W-SHIM-DEVICE
+    @Test
+    @Order(20)
+    @DisplayName("S20: W-SHIM-DEVICE — generative devices after furniture, no overlap")
+    void shimDeviceNoOverlap() throws Exception {
+        String bomDbPath = "library/DX_BOM.db";
+        if (!java.nio.file.Files.exists(java.nio.file.Path.of(bomDbPath))) {
+            System.out.printf("[S20] SKIP: %s not found%n", bomDbPath);
+            return;
+        }
+
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);
+             Connection erpConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
+
+            String rootBom = null;
+            try (Statement stmt = bomConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT bom_id FROM m_bom WHERE bom_type='BUILDING' LIMIT 1")) {
+                if (rs.next()) rootBom = rs.getString(1);
+            }
+            assertNotNull(rootBom, "DX_BOM.db must have a BUILDING BOM");
+
+            com.bim.ormsandbox.po.MBOM root = new com.bim.ormsandbox.po.MBOM(bomConn);
+            assertTrue(root.loadByValue(rootBom), "Must load root BOM");
+            double[] worldOrigin = {root.getOriginX(), root.getOriginY(), root.getOriginZ()};
+
+            PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(
+                    bomConn, "DX_S20", worldOrigin);
+            visitor.setErpConn(erpConn);
+            visitor.setMepOrderQty(99);
+
+            // §12g GAP-2+3: Wire ShimMatcher with ARC hosts from BOM for surface snapping
+            ShimMatcher shimMatcher = new ShimMatcher();
+            shimMatcher.loadShimAttributes(erpConn);
+            shimMatcher.loadArcHostsFromBom(bomConn);
+            visitor.setShimMatcher(shimMatcher);
+
+            BOMWalker walker = new BOMWalker(bomConn, erpConn);
+            walker.walk(rootBom, java.util.List.of(visitor), "DX_S20");
+            visitor.emitGenerativeSummary();
+
+            int gen = visitor.getGenerativeDeviceCount();
+            assertTrue(gen > 0, "DX must produce generative devices");
+
+            // Separate furniture, shims, and generative devices
+            // Generative devices: IfcFlowTerminal with GeoProofRecord in SHIM chain
+            java.util.Set<String> generativeRefs = new java.util.HashSet<>();
+            for (GeoProofRecord r : visitor.getProofRecords()) {
+                if (r.bomChain().contains("SHIM")) {
+                    generativeRefs.add(r.guid());
+                }
+            }
+            List<PlacementLoader.Placement> furniture = new ArrayList<>();
+            List<PlacementLoader.Placement> generative = new ArrayList<>();
+            List<PlacementLoader.Placement> shims = new ArrayList<>();
+            for (PlacementLoader.Placement p : visitor.getPlacements()) {
+                if ("IfcVirtualElement".equals(p.ifcClass())) {
+                    shims.add(p);
+                } else if (generativeRefs.contains(p.elementRef())) {
+                    generative.add(p);
+                } else if (p.ifcClass() != null && !"IfcFlowTerminal".equals(p.ifcClass())) {
+                    furniture.add(p);
+                }
+            }
+
+            // §12a.4: Assert parent shim exists for each generative device
+            // Shims and devices are emitted in pairs: shim first, device second.
+            // Each shim's elementRef contains "_SHIM_" and each device follows its shim.
+            assertTrue(shims.size() >= generative.size(),
+                "Each generative device must have a parent shim. Shims=" + shims.size()
+                + " Devices=" + generative.size());
+            System.out.printf("[S20] §12a.4: %d shims for %d devices%n", shims.size(), generative.size());
+
+            // §12a.4a: Assert shim familyRef contains actual host IFC class
+            // Expected pattern: "{DISC}_{IfcClass}_{SURFACE}_SHIM"
+            // e.g. "SP_IfcWallStandardCase_WALL_SHIM", "FP_IfcCovering_CEILING_SHIM"
+            int ifcClassOk = 0;
+            for (PlacementLoader.Placement s : shims) {
+                assertNotNull(s.familyRef(), "Shim must have familyRef");
+                assertTrue(s.familyRef().endsWith("_SHIM"),
+                    "Shim familyRef must end with _SHIM, got: " + s.familyRef());
+                boolean hasIfcClass = s.familyRef().contains("IfcWallStandardCase")
+                    || s.familyRef().contains("IfcCovering")
+                    || s.familyRef().contains("IfcSlab");
+                assertTrue(hasIfcClass,
+                    "Shim familyRef must contain host IFC class (IfcWallStandardCase/IfcCovering/IfcSlab), got: "
+                    + s.familyRef());
+                ifcClassOk++;
+            }
+            System.out.printf("[S20] §12a.4a: all %d shims have host IFC class in familyRef%n", ifcClassOk);
+
+            // §12a.4c: Assert shim is ON the wall/ceiling/floor surface (within 2mm tolerance)
+            // Shim centroid must touch room AABB boundary on the wall-normal axis.
+            // Use GeoProofRecords to get room AABB for each device.
+            // parentAnchor = room min [x,y,z], parentAABB = [w,d,h] in metres.
+            int shimSurfaceOk = 0;
+            int shimSurfaceFail = 0;
+            java.util.Map<String, GeoProofRecord> proofByRef = new java.util.HashMap<>();
+            for (GeoProofRecord r : visitor.getProofRecords()) {
+                proofByRef.put(r.guid(), r);
+            }
+            for (int si = 0; si < shims.size() && si < generative.size(); si++) {
+                PlacementLoader.Placement sp = shims.get(si);
+                PlacementLoader.Placement gp = generative.get(si);
+                GeoProofRecord proof = proofByRef.get(gp.elementRef());
+                if (proof == null || proof.parentAnchor() == null || proof.parentAABB() == null) continue;
+                double roomMinX = proof.parentAnchor()[0];
+                double roomMinY = proof.parentAnchor()[1];
+                double roomMinZ = proof.parentAnchor()[2];
+                double roomMaxX = roomMinX + proof.parentAABB()[0];
+                double roomMaxY = roomMinY + proof.parentAABB()[1];
+                double roomMaxZ = roomMinZ + proof.parentAABB()[2];
+                double shimCx = (sp.minX() + sp.maxX()) / 2;
+                double shimCy = (sp.minY() + sp.maxY()) / 2;
+                double shimCz = (sp.minZ() + sp.maxZ()) / 2;
+                // Shim must touch one room boundary (within 2mm)
+                boolean touchesWall = Math.abs(shimCx - roomMinX) < 0.002
+                    || Math.abs(shimCx - roomMaxX) < 0.002
+                    || Math.abs(shimCy - roomMinY) < 0.002
+                    || Math.abs(shimCy - roomMaxY) < 0.002
+                    || Math.abs(shimCz - roomMinZ) < 0.002
+                    || Math.abs(shimCz - roomMaxZ) < 0.002;
+                if (touchesWall) {
+                    shimSurfaceOk++;
+                } else {
+                    shimSurfaceFail++;
+                    System.out.printf("[S20] SURFACE_FAIL: shim %s at (%.3f,%.3f,%.3f) not on room boundary [%.3f→%.3f, %.3f→%.3f, %.3f→%.3f]%n",
+                        sp.familyRef(), shimCx, shimCy, shimCz,
+                        roomMinX, roomMaxX, roomMinY, roomMaxY, roomMinZ, roomMaxZ);
+                }
+            }
+            assertEquals(0, shimSurfaceFail,
+                "Shim must be on wall/ceiling/floor surface. Failures=" + shimSurfaceFail);
+            System.out.printf("[S20] §12a.4c: %d shims on surface, %d failures%n", shimSurfaceOk, shimSurfaceFail);
+
+            // §12a.5a: Assert device offset from shim is along facing direction axis only
+            // For WALL devices: offset must be perpendicular to wall (not along wall).
+            // Standoff = 5mm wall, 50mm ceiling, 0mm floor. Tolerance 2mm.
+            int shimIdx = 0;
+            int offsetViolations = 0;
+            for (PlacementLoader.Placement gp : generative) {
+                if (shimIdx < shims.size()) {
+                    PlacementLoader.Placement sp = shims.get(shimIdx);
+                    double shimCx = (sp.minX() + sp.maxX()) / 2;
+                    double shimCy = (sp.minY() + sp.maxY()) / 2;
+                    double shimCz = (sp.minZ() + sp.maxZ()) / 2;
+                    double devCx = (gp.minX() + gp.maxX()) / 2;
+                    double devCy = (gp.minY() + gp.maxY()) / 2;
+                    double devCz = (gp.minZ() + gp.maxZ()) / 2;
+                    double dist = Math.sqrt(
+                        Math.pow(devCx - shimCx, 2) + Math.pow(devCy - shimCy, 2) + Math.pow(devCz - shimCz, 2));
+                    // Device must be within 0.5m of its shim (standoff + collision shift tolerance)
+                    if (dist > 0.5) {
+                        offsetViolations++;
+                        System.out.printf("[S20] OFFSET_FAIL: %s dist=%.3fm from shim %s%n",
+                            gp.familyRef(), dist, sp.familyRef());
+                    }
+                    // Facing direction must match: shim and device must share the same rotationZ
+                    assertEquals(sp.rotationZ(), gp.rotationZ(), 0.001,
+                        "Device rotationZ must match shim rotationZ for " + gp.familyRef());
+                    shimIdx++;
+                }
+            }
+            assertEquals(0, offsetViolations,
+                "Device offset from parent shim must be < 0.5m. Violations=" + offsetViolations);
+            System.out.printf("[S20] §12a.5a: all %d device offsets < 0.5m, facing matches shim%n", generative.size());
+
+            // Check no generative device AABB overlaps any furniture AABB in the same room
+            int overlapCount = 0;
+            for (PlacementLoader.Placement gp : generative) {
+                for (PlacementLoader.Placement fp : furniture) {
+                    // Same storey check (coarse room proximity)
+                    if (gp.storey() != null && !gp.storey().equals(fp.storey())) continue;
+                    boolean xOvl = gp.minX() < fp.maxX() && gp.maxX() > fp.minX();
+                    boolean yOvl = gp.minY() < fp.maxY() && gp.maxY() > fp.minY();
+                    boolean zOvl = gp.minZ() < fp.maxZ() && gp.maxZ() > fp.minZ();
+                    if (xOvl && yOvl && zOvl) {
+                        overlapCount++;
+                        System.out.printf("[S20] OVERLAP: %s [%.2f,%.2f,%.2f→%.2f,%.2f,%.2f] vs %s [%.2f,%.2f,%.2f→%.2f,%.2f,%.2f]%n",
+                            gp.familyRef(), gp.minX(), gp.minY(), gp.minZ(), gp.maxX(), gp.maxY(), gp.maxZ(),
+                            fp.familyRef(), fp.minX(), fp.minY(), fp.minZ(), fp.maxX(), fp.maxY(), fp.maxZ());
+                    }
+                }
+            }
+
+            System.out.printf("[S20] DX: %d generative, %d shims, %d furniture, %d overlaps%n",
+                generative.size(), shims.size(), furniture.size(), overlapCount);
+            assertEquals(0, overlapCount,
+                "Generative devices must not overlap furniture (§12e collision avoidance). Found " + overlapCount);
+
+            System.out.printf("[S20] PASS: %d devices + %d shims, 0 furniture overlaps%n", gen, shims.size());
+        }
+    }
+
+    // ── Scenario 22: W-TACK-POINT — fixture tack points exist and are non-placeholder ──
+    // Implementing DISC_VALIDATION_DB_SRS.md §12f S22 — Witness: W-TACK-POINT
+    @Test
+    @Order(22)
+    @DisplayName("S22: W-TACK-POINT — fixture tack points non-placeholder")
+    void tackPointsNonPlaceholder() throws Exception {
+        try (Connection erpConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
+            // Read all fixtures from schedule that have anchor_end
+            List<String[]> fixtures = new ArrayList<>(); // [mep_product_id, anchor_end]
+            try (Statement stmt = erpConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT DISTINCT mep_product_id, anchor_end FROM ad_space_type_mep_bom "
+                     + "WHERE anchor_end IS NOT NULL AND anchor_end != ''")) {
+                while (rs.next()) {
+                    fixtures.add(new String[]{rs.getString(1), rs.getString(2)});
+                }
+            }
+            assertFalse(fixtures.isEmpty(), "Schedule must have fixtures with anchor_end");
+            System.out.printf("[S22] Fixtures with anchor_end: %d%n", fixtures.size());
+
+            int fail = 0;
+            int pass = 0;
+            for (String[] fix : fixtures) {
+                String productId = fix[0];
+                try (PreparedStatement ps = erpConn.prepareStatement(
+                        "SELECT connector_type, position_x, position_y, position_z, diameter_mm, connects_to "
+                        + "FROM ad_assembly_connector WHERE assembly_id = ?")) {
+                    ps.setString(1, productId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        boolean hasConnector = false;
+                        while (rs.next()) {
+                            hasConnector = true;
+                            double px = rs.getDouble("position_x");
+                            double py = rs.getDouble("position_y");
+                            double pz = rs.getDouble("position_z");
+                            double dia = rs.getDouble("diameter_mm");
+                            String connectsTo = rs.getString("connects_to");
+
+                            // Position must not be all-zero (placeholder)
+                            boolean posNonZero = Math.abs(px) > 0.001 || Math.abs(py) > 0.001 || Math.abs(pz) > 0.001;
+                            if (!posNonZero) {
+                                // TOP face connectors at (0,0,0) are valid for ceiling-mounted devices
+                                String face = null;
+                                try (PreparedStatement psFace = erpConn.prepareStatement(
+                                        "SELECT face FROM ad_assembly_connector WHERE assembly_id = ? AND connector_type = ?")) {
+                                    psFace.setString(1, productId);
+                                    psFace.setString(2, rs.getString("connector_type"));
+                                    try (ResultSet rsFace = psFace.executeQuery()) {
+                                        if (rsFace.next()) face = rsFace.getString("face");
+                                    }
+                                }
+                                // Accept (0,0,0) for TOP/BACK face connectors (junction box at origin is valid)
+                                if ("TOP".equals(face) || "BACK".equals(face)) {
+                                    posNonZero = true;
+                                }
+                            }
+
+                            boolean diaOk = dia > 0;
+                            boolean connectsOk = connectsTo != null && !connectsTo.isEmpty();
+
+                            if (!posNonZero || !diaOk || !connectsOk) {
+                                fail++;
+                                System.out.printf("[S22] FAIL: %s connector=%s pos=(%.3f,%.3f,%.3f) dia=%.0f connects=%s%n",
+                                    productId, rs.getString("connector_type"), px, py, pz, dia, connectsTo);
+                            } else {
+                                pass++;
+                            }
+                        }
+                        if (!hasConnector) {
+                            fail++;
+                            System.out.printf("[S22] FAIL: %s — no connector row in ad_assembly_connector%n", productId);
+                        }
+                    }
+                }
+            }
+            System.out.printf("[S22] Tack points: %d PASS, %d FAIL%n", pass, fail);
+            assertEquals(0, fail, "All scheduled fixtures with anchor_end must have valid tack points");
+            System.out.printf("[S22] PASS: all %d tack points non-placeholder%n", pass);
+        }
+    }
+
+    // ── Scenario 23: W-DISC-RESOLVE — discipline matches connects_to ──
+    // Implementing DISC_VALIDATION_DB_SRS.md §12f S23 — Witness: W-DISC-RESOLVE
+    @Test
+    @Order(23)
+    @DisplayName("S23: W-DISC-RESOLVE — discipline matches connects_to mapping")
+    void discResolveMatchesConnectsTo() throws Exception {
+        String bomDbPath = "library/DX_BOM.db";
+        if (!java.nio.file.Files.exists(java.nio.file.Path.of(bomDbPath))) {
+            System.out.printf("[S23] SKIP: %s not found%n", bomDbPath);
+            return;
+        }
+
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);
+             Connection erpConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
+
+            String rootBom = null;
+            try (Statement stmt = bomConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT bom_id FROM m_bom WHERE bom_type='BUILDING' LIMIT 1")) {
+                if (rs.next()) rootBom = rs.getString(1);
+            }
+            assertNotNull(rootBom);
+
+            com.bim.ormsandbox.po.MBOM root = new com.bim.ormsandbox.po.MBOM(bomConn);
+            assertTrue(root.loadByValue(rootBom));
+            double[] worldOrigin = {root.getOriginX(), root.getOriginY(), root.getOriginZ()};
+
+            PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(
+                    bomConn, "DX_S23", worldOrigin);
+            visitor.setErpConn(erpConn);
+            visitor.setMepOrderQty(99);
+
+            BOMWalker walker = new BOMWalker(bomConn, erpConn);
+            walker.walk(rootBom, java.util.List.of(visitor), "DX_S23");
+
+            // Build connects_to → expected discipline mapping
+            Map<String, String> connectsToDisc = new HashMap<>();
+            connectsToDisc.put("ELEC_CONDUIT", "ELEC");
+            connectsToDisc.put("WATER_RISER", "CW");
+            connectsToDisc.put("PLUMBING_STACK", "SP");
+            connectsToDisc.put("FP_MAIN", "FP");
+            connectsToDisc.put("ACMV_DUCT", "ACMV");
+
+            // Identify generative devices via GeoProofRecord chain
+            java.util.Set<String> genRefs = new java.util.HashSet<>();
+            for (GeoProofRecord r : visitor.getProofRecords()) {
+                if (r.bomChain().contains("GENERATIVE")) genRefs.add(r.guid());
+            }
+
+            // For each generative device, check discipline matches connects_to
+            int checked = 0, mismatch = 0;
+            for (PlacementLoader.Placement p : visitor.getPlacements()) {
+                if (!genRefs.contains(p.elementRef())) continue;
+                if (p.discipline() == null) continue;
+                String productId = p.familyRef();
+                if (productId == null) continue;
+
+                // Look up connects_to from ad_assembly_connector
+                try (PreparedStatement ps = erpConn.prepareStatement(
+                        "SELECT connects_to FROM ad_assembly_connector WHERE assembly_id = ? LIMIT 1")) {
+                    ps.setString(1, productId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            String connectsTo = rs.getString("connects_to");
+                            String expectedDisc = connectsToDisc.get(connectsTo);
+                            if (expectedDisc != null && !expectedDisc.equals(p.discipline().name())) {
+                                mismatch++;
+                                System.out.printf("[S23] MISMATCH: %s disc=%s connects_to=%s expected=%s%n",
+                                    productId, p.discipline(), connectsTo, expectedDisc);
+                            } else {
+                                checked++;
+                            }
+                        }
+                    }
+                }
+            }
+            System.out.printf("[S23] Discipline checks: %d OK, %d mismatch%n", checked, mismatch);
+            assertEquals(0, mismatch,
+                "All generative device disciplines must match connects_to mapping (§12d)");
+            assertTrue(checked > 0, "Must have checked at least one generative device discipline");
+            System.out.printf("[S23] PASS: %d devices, discipline matches connects_to%n", checked);
         }
     }
 

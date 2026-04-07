@@ -909,6 +909,10 @@ public class BuildingWriter {
 
         int written = 0;
         for (PlacementLoader.Placement p : placements) {
+            // §12a.4: Skip phantom shim placements — IfcVirtualElement is metadata only, not rendered.
+            if ("IfcVirtualElement".equals(p.ifcClass())) {
+                continue;
+            }
             // GUID: use element_ref (IFC GUID from MA rows or generated)
             String guid = p.elementRef();
             if (guid == null || guid.isEmpty()) {
