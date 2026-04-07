@@ -144,6 +144,7 @@
   "title_block": {
     "_note": "Field labels and order from 2d_title_block table. Values filled per project.",
     "header": "JABATAN KERJA RAYA MALAYSIA",
+    "schedule_header": "DOOR & WINDOW SCHEDULE",
     "label_column_ratio": 0.30,
     "value_column_ratio": 0.70,
     "font_height_label_mm": 2.0,

@@ -335,11 +335,9 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
         sch_y = sch_top
         msp.add_line((tb_left, sch_y), (bx1, sch_y),
                      dxfattribs={'layer': 'A-TTLB', 'lineweight': lw_tb})
-        msp.add_text('JADUAL PINTU & TINGKAP',
-                     dxfattribs={'layer': 'A-TTLB', 'height': val_h * 0.85}
-                     ).set_placement((hx, sch_y - sch_hdr_h * 0.35),
-                                     align=TextEntityAlignment.MIDDLE_CENTER)
-        msp.add_text('DOOR & WINDOW SCHEDULE',
+        sch_title = tpl.get('title_block', {}).get('schedule_header',
+                                                    'DOOR & WINDOW SCHEDULE')
+        msp.add_text(sch_title,
                      dxfattribs={'layer': 'A-TTLB', 'height': sch_small,
                                  'color': 8}
                      ).set_placement((hx, sch_y - sch_hdr_h * 0.8),
@@ -945,15 +943,27 @@ def _render_proof(dxf_path: str, svg_path: str, png_path: str = None):
         layer_weights[layer.dxf.name] = max(lw, 18) / 100.0  # mm
         layer_linetypes[layer.dxf.name] = getattr(layer.dxf, 'linetype', 'CONTINUOUS')
 
-    # §4.5: DASHDOT → stroke-dasharray [4,1,1,1] scaled to paper mm
-    def _dasharray(layer_name):
-        lt = layer_linetypes.get(layer_name, 'CONTINUOUS')
+    # §4.5: DASHDOT → stroke-dasharray [4,1,1,1] in paper mm
+    # Values are already paper-mm — no scaling needed (px/py handles model→paper)
+    def _dasharray(layer_name, entity=None):
+        # Check entity-level linetype first, then layer
+        lt = 'CONTINUOUS'
+        if entity:
+            elt = getattr(entity.dxf, 'linetype', None)
+            if elt and elt != 'ByLayer' and elt != 'BYLAYER':
+                lt = elt
+            else:
+                lt = layer_linetypes.get(layer_name, 'CONTINUOUS')
+        else:
+            lt = layer_linetypes.get(layer_name, 'CONTINUOUS')
         if lt == 'DASHDOT':
-            s = 1.0 / sc  # scale dash pattern to paper coordinates
-            return f' stroke-dasharray="{4*s:.3f},{1*s:.3f},{1*s:.3f},{1*s:.3f}"'
-        if lt == 'HIDDEN':
-            s = 1.0 / sc
-            return f' stroke-dasharray="{6*s:.3f},{2*s:.3f}"'
+            return ' stroke-dasharray="4,1,1,1"'
+        if lt in ('HIDDEN', 'DASHED'):
+            return ' stroke-dasharray="6,2"'
+        if lt == 'CENTER':
+            return ' stroke-dasharray="8,2,2,2"'
+        if lt == 'DOT':
+            return ' stroke-dasharray="1,1"'
         return ''
 
     svg_lines = []
