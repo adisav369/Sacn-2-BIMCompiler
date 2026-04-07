@@ -20,7 +20,7 @@
 |---|-----------------|-----|-----|------------------|
 | 1.1 | R1 No invention — every entity traces to DB or template | Y | | dxf:1153 `set_xdata('BIMGUID',...)`. Diag: `GUID xdata: 55 polylines, 18 unique GUIDs`. Grid/dim from DB arithmetic (§2.3/§2.4 log lines). |
 | 1.2 | R2 Measurements on paper — arithmetic from DB coords | Y | | dxf:1296 `generate_dimensions(grids)`. svg:340-383 `generate_dimensions()`. Diag logs `§2.4 Dim x -7.735→-2.835 = 4900mm` etc. |
-| 1.3 | R3 Two sources only — DB + template | N | 5 | dxf:51-52 hardcodes `APRON_Z=-0.100`, `GRD_Z=-0.250`. Should come from DB or 2D.db. |
+| 1.3 | R3 Two sources only — DB + template | Y | | `_read_2d_db_levels()` reads APRON/GRD from `2d_level_marker.typical_z`. dxf:51-52 constants kept as fallback only. |
 | 1.4 | R4 Template governs all formatting | N | 6 | DXF writer reads template ✓. SVG writer svg:37-86 hardcodes ALL constants (LW_*, TXT_*, COL_*, GRID_*). SVG-only issue. |
 | 1.5 | R5 Reference is the archive | N | 8 | `_compare_fingerprints()` dxf:2086-2140 checks counts but not positions. No entity-position comparison against archive. |
 | 1.6 | R6 Code logs forensically | N | 8 | DXF writer has `_log()` throughout (dxf:454-457). SVG writer svg:1-2262 has zero `_log()` calls. SVG-only issue. |
@@ -46,7 +46,7 @@
 | 3.0b | Code reads {PREFIX}_2D.json for page list | Y | | dxf:2210-2240 reads `{PREFIX}_2D.json`, iterates `status=DONE` pages. Log: `Master page table: 6 DONE pages from SH_2D.json`. |
 | 3.1 | Building DB: elements_meta + elements_rtree | Y | | svg:163-168 `read_elements()` queries both tables. Used by all views. |
 | 3.2a | Template: drawing_template.json | Y | | dxf:184-191 `_load_template()`. Every write_* function starts with `tpl = _load_template()`. |
-| 3.2b | Template: input/2D.db (17 tables, 2d_* prefix) | N | 3 | svg:204 reads `"2D_metadata.db"` not `"2D.db"`. Wrong filename, wrong path (python/ not input/). |
+| 3.2b | Template: input/2D.db (17 tables, 2d_* prefix) | Y | | svg:204 reads `../input/2D.db` with fallback to `../lib/input/2D.db`. Fixed from `2D_metadata.db`. |
 | 3.3 | Traceability: every entity traces to source | N | 9 | Only wall polylines have GUID xdata (dxf:1153). Grids, dims, text, furniture lack source markers. |
 
 ## §4 Grid Lines
@@ -54,15 +54,15 @@
 | # | Spec requirement | Y/N | Pri | Proof / Code ref |
 |---|-----------------|-----|-----|------------------|
 | 4.1 | Grid on every view, dash-dot | Y | | Floor: dxf:1266. Elev: dxf:1693-1697. Roof: dxf:1978. All use A-GRID layer with DASHDOT. Conformity: `[PASS] GRID_DASHDOT` on all 6 sheets. |
-| 4.2a | IfcColumn always gridded (highest priority) | N | 3 | svg:248 `derive_grids(walls)` — receives walls only. svg:184 `IfcColumn` goes to `result['other']`. Columns not passed. |
+| 4.2a | IfcColumn always gridded (highest priority) | Y | | `derive_grids(walls, columns=columns)` — columns extracted from `elements['other']` and passed. All 3 call sites (floor, elev, roof) updated in both writers. |
 | 4.2b | Boundary walls gridded, partitions NOT | Y | | svg:271-297 includes ALL opaque walls per §4.2.1 fix. Spec §4.2 says "partitions NOT" but §4.2.1 overrides to include interior junction endpoints. Code follows §4.2.1. |
 | 4.2c | Cluster merge tolerance 0.20m | Y | | svg:307 `MERGE_TOL = 0.20`. |
-| 4.2d | Labels from template vertical/horizontal_axis_labels | N | 3 | svg:327 `label = chr(ord('A') + i)` — generates labels, does NOT read `tpl_grid['vertical_axis_labels']`. Will produce 'I' on 9th grid (template skips I). |
+| 4.2d | Labels from template vertical/horizontal_axis_labels | Y | | `derive_grids()` accepts `template` param, reads `grid.vertical_axis_labels` / `horizontal_axis_labels`. Splits on comma, skips I per TB-LKTN. |
 | 4.2.1 | Fix: include all opaque walls + interior junction endpoints | Y | | svg:271-297 implements Steps 1-3 of §4.2.1 fix. |
 | 4.2.1b | Expected 7 grids for SampleHouse | Y | | Conformity: `[PASS] GRID_LINES: 7 lines on A-GRID`. Diag: 7 §2.3 log lines. |
 | 4.3a | Elevation bay grids: front/rear=A,B,C,D left/right=1,2,3 | Y | | dxf:1681-1687 filters by `grid_axis = 'x' if face in ('front','rear') else 'y'`. Conformity: Front `vertical=['A','B','C','D']`, Left `horizontal=['1','2','3']`. |
-| 4.3b | Level lines: FFL,SILL,HEAD,CLG,EAVE,RIDGE | N | 3 | svg:500-550 `detect_levels()` returns FFL,SILL,HEAD,CLG,RIDGE but no EAVE (roof.minZ). Missing one level. |
-| 4.3c | Level labels from 2D.db [2d_level_marker] | N | 4 | dxf:1636-1647 reads template `level_markers.defaults[]` NOT 2D.db. Hardcoded label mapping. |
+| 4.3b | Level lines: FFL,SILL,HEAD,CLG,EAVE,RIDGE | Y | | `detect_levels()` adds EAVE from `min(r.min_z for r in roofs)` with >0.5m guard. Priority table updated to include EAVE. |
+| 4.3c | Level labels from 2D.db [2d_level_marker] | Y | | `_read_2d_db_levels()` reads `2d_level_marker` table, maps codes to display_text. Elevation writer uses DB labels with template fallback. |
 | 4.3d | Level markers: triangle + dashed line across | N | 5 | dxf:1661-1663 triangle ✓. Line is short leader (`marker_x - _mh(1.8)` to `marker_x`), not dashed across full width. |
 | 4.4a | Roof grids same as floor plan | Y | | dxf:1964-1965 `grids = snap_grids(derive_grids(walls))` — same function. Conformity: `GRID_LINES: 7` on both A-01 and A-06. |
 | 4.4b | Eave overhang per grid bay, all 4 sides | N | 4 | dxf:1950-1962 only north overhang drawn. S/E/W computed (dxf:1940-1943) but not rendered. |
@@ -87,16 +87,16 @@
 | 5.1f | Wall solid fill (filled polygons) | N | 6 | dxf:1156-1159 LWPOLYLINE on A-WALL-PATT — closed polygon, not HATCH. DXF LWPOLYLINE has no fill. SVG proof renders as polygon fill=black (dxf:919-921). Visual only via proof, not in DXF. |
 | 5.2a | Elevation face selection within 1.0m | Y | | dxf:1542-1565 e.g. `face_elems = [e for e in ... if e.min_y < bld_min_y + 1.0]`. |
 | 5.2b | Level markers: triangle + dashed line | N | 5 | dxf:1664-1667 triangle SOLID ✓. dxf:1661-1663 line is short leader (1.8m), not full-width dashed. |
-| 5.2c | Level labels from 2D.db | N | 4 | dxf:1636-1647 reads template `level_markers.defaults[]` then hardcoded fallback. Does not query 2D.db `[2d_level_marker]`. |
+| 5.2c | Level labels from 2D.db | Y | | Same fix as 4.3c — `_read_2d_db_levels()` provides labels from `2d_level_marker` table. |
 | 5.2d | Height dimensions | Y | | dxf:1732-1785 tier 1+2. Diag: `§2.4 Height FFL→SILL = 900mm` etc. |
 | 5.2e | Bay dimensions | Y | | dxf:1707-1730 via DIMENSION entities or fallback LINE+TEXT. Diag: `§2.4 Bay dim A→B = 4900mm`. |
 | 5.2f | Roof silhouette | Y | | dxf:1602-1607 `roof_silhouette(db_path, face)` → A-ROOF LWPOLYLINE. Diag: `[HAVE] Roof silhouette: actual=yes`. |
 | 5.2g | Window louvre lines | Y | | dxf:1588-1593 horizontal lines inside window rect on A-GLAZ. Diag front: `[HAVE] Window louvres: actual=yes`. |
 | 5.3a | Roof outline (eave line) | Y | | dxf:1882-1886 A-ROOF bold (`lw_wall`=50). |
-| 5.3b | Ridge line dashed from template line_styles.ridge_line | N | 5 | dxf:1891-1892 hardcodes `linetype: 'HIDDEN'`. Template says `line_styles.ridge_line = "dashed"` → maps to HIDDEN ✓ but code hardcodes the string, doesn't read template. |
-| 5.3c | Slope arrows: one per grid bay | N | 5 | dxf:1917-1919 hardcodes `range(1, 5)` = 4 arrows. Should be `len(x_grids)-1` per grid bay count. |
+| 5.3b | Ridge line dashed from template line_styles.ridge_line | Y | | Reads `tpl.line_styles.ridge_line` via `_linestyle_to_dxf()`. No hardcoded string. |
+| 5.3c | Slope arrows: one per grid bay | Y | | `n_bays = len(x_grids) - 1`, loop `range(1, n_bays + 1)`. Grid-bay-driven, not hardcoded. |
 | 5.3d | Eave overhang: all 4 sides | N | 4 | dxf:1950-1962 only north side rendered. S/E/W overhangs computed at dxf:1940-1943 but not drawn. |
-| 5.3e | Labels RIDGE/EAVE from 2D.db | N | 5 | dxf:1896 hardcodes `'RABUNG / RIDGE'`. dxf:1904 hardcodes `'CUCURAN / EAVE'`. Should query `[2d_level_marker]`. |
+| 5.3e | Labels RIDGE/EAVE from 2D.db | Y | | `_read_2d_db_levels()` reads `2d_level_marker.display_text` for RIDGE and EAVE labels. |
 | 5.4 | Section: GAP | Y | | Spec says GAP. No code — correct. |
 | 5.5a | Schedule summary in title block | Y | | dxf:194-227 `_build_schedule()`. dxf:314-363 schedule rows in title block panel. Diag: `JADUAL PINTU & TINGKAP` header present. |
 | 5.5b | Dedicated A-08 schedule sheet | N | 10 | Not implemented. Status=GAP in SH_2D.json. |
@@ -210,11 +210,11 @@
 | Section | Y | N | Total |
 |---------|---|---|-------|
 | §0 Line weights | 4 | 1 | 5 |
-| §1 Prime rules | 2 | 4 | 6 |
+| §1 Prime rules | 3 | 3 | 6 |
 | §2 Process | 6 | 2 | 8 |
-| §3 Data sources | 3 | 3 | 6 |
-| §4 Grid lines | 8 | 10 | 18 |
-| §5 Views | 15 | 12 | 27 |
+| §3 Data sources | 4 | 2 | 6 |
+| §4 Grid lines | 12 | 6 | 18 |
+| §5 Views | 19 | 8 | 27 |
 | §6 Dimensions | 5 | 2 | 7 |
 | §7 Composition | 8 | 2 | 10 |
 | §8 Colours | 8 | 0 | 8 |
@@ -222,42 +222,36 @@
 | §9.6 Output | 8 | 0 | 8 |
 | §10 Tests | 14 | 0 | 14 |
 | §11 Key files | 12 | 0 | 12 |
-| **Total** | **94** | **39** | **133** |
+| **Total** | **108** | **26** | **134** |
 
-**Compliance: 94/133 (71%)**
+**Compliance: 108/134 (81%)**
 
 ## Priority Triage (42 N items by priority)
 
 ### Pri 2 — DONE (2D_010b)
 
-### Pri 3 — Grid correctness
-| # | What | Impact |
-|---|------|--------|
-| 3.2b | 2D_metadata.db → input/2D.db path | Room labels, tags, level markers all read wrong file. |
-| 4.2a | IfcColumn in grid detection | Columns not gridded. SH has no columns so no visible break yet. |
-| 4.2d | Grid labels from template (skip I) | Labels generated, not read. Will break at 9+ grids. |
-| 4.3b | detect_levels() missing EAVE | EAVE level (roof.minZ) not shown on elevations. |
+### Pri 3 — DONE (2D_010c)
 
 ### Pri 4 — Data source wiring
 | # | What | Impact |
 |---|------|--------|
 | 2.1 | Load 2D.db at Step 1 not Step 6 | Process order wrong. Cosmetic but spec-violating. |
 | 3.0a | Enforce input/ directory | No path enforcement. Minor. |
-| 4.3c | Level labels from 2D.db | Labels from template defaults, not authoritative 2D.db. |
+| ~~4.3c~~ | ~~Level labels from 2D.db~~ | **FIXED 2D_010c** |
 | 4.4b | Eave overhang all 4 sides | Only north drawn. 3 sides missing. |
-| 5.2c | Level labels from 2D.db | Same issue as 4.3c in elevation context. |
+| ~~5.2c~~ | ~~Level labels from 2D.db~~ | **FIXED 2D_010c** |
 | 5.3d | Eave overhang all 4 sides | Same as 4.4b in roof plan context. |
 
 ### Pri 5 — Rendering accuracy
 | # | What | Impact |
 |---|------|--------|
-| 1.3 | APRON_Z/GRD_Z from DB | Two hardcoded constants. |
+| ~~1.3~~ | ~~APRON_Z/GRD_Z from DB~~ | **FIXED 2D_010c:** `_read_2d_db_levels()` reads `typical_z`. Constants kept as fallback. |
 | 4.3d | Level line full-width dashed | Short leader, not full-width dashed line. |
 | 5.1b | IfcColumn dedicated handling | Falls to default A-WALL-PRTN. No SH impact. |
 | 5.2b | Level markers dashed line | Same as 4.3d. |
-| 5.3b | Ridge linetype from template | Hardcoded 'HIDDEN' not read from template. Visually correct. |
-| 5.3c | Slope arrows per grid bay | Hardcoded 4, should be `len(x_grids)-1`. |
-| 5.3e | RIDGE/EAVE from 2D.db | Hardcoded bilingual strings. |
+| ~~5.3b~~ | ~~Ridge linetype from template~~ | **FIXED 2D_010c:** reads `tpl.line_styles.ridge_line` via `_linestyle_to_dxf()`. |
+| ~~5.3c~~ | ~~Slope arrows per grid bay~~ | **FIXED 2D_010c:** `n_bays = len(x_grids)-1`, loop `range(1, n_bays+1)`. |
+| ~~5.3e~~ | ~~RIDGE/EAVE from 2D.db~~ | **FIXED 2D_010c:** `_read_2d_db_levels()` reads labels from `2d_level_marker`. |
 
 ### Pri 6 — Visual quality
 | # | What | Impact |

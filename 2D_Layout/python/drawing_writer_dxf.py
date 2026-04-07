@@ -801,6 +801,65 @@ def _read_metadata_ref() -> dict:
     return ref
 
 
+def _read_2d_db_levels() -> dict:
+    """Read level markers and reference elevations from 2D.db.
+    Returns dict with 'level_labels' mapping (code→display_text),
+    'level_elevations' mapping (code→z), and 'roof_labels' dict."""
+    result = {
+        'level_labels': {},     # e.g. 'FFL' → 'GRD. FLOOR LEVEL'
+        'level_elevations': {}, # e.g. 'GRD' → -0.15
+        'roof_labels': {'ridge': 'RABUNG / RIDGE', 'eave': 'CUCURAN / EAVE'},
+    }
+    for try_path in [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'input', '2D.db'),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'lib', 'input', '2D.db'),
+    ]:
+        if os.path.exists(try_path):
+            try:
+                conn = sqlite3.connect(try_path)
+                cur = conn.cursor()
+                cur.execute("SELECT level_code, display_text, typical_z FROM [2d_level_marker]")
+                for code, text, z in cur.fetchall():
+                    # Map DB codes to detect_levels() codes
+                    key = code.replace('_LEVEL', '').replace('_FLOOR', '')
+                    if 'GRD_FLOOR' in code or 'GRD_FLOOR' in code:
+                        key = 'FFL'
+                    elif 'GRD' in code:
+                        key = 'GRD'
+                    elif 'APRON' in code:
+                        key = 'APRON'
+                    elif 'BEAM' in code or 'CEILING' in code:
+                        key = 'CLG'
+                    elif 'ROOF' in code or 'RIDGE' in code:
+                        key = 'RIDGE'
+                    elif 'SILL' in code:
+                        key = 'SILL'
+                    elif 'HEAD' in code:
+                        key = 'HEAD'
+                    elif 'EAVE' in code:
+                        key = 'EAVE'
+                    elif 'FIRST' in code:
+                        key = 'CLG'
+                    result['level_labels'][key] = text
+                    result['level_elevations'][key] = z
+                # Read roof labels from 2d_drawing_part if available
+                try:
+                    cur.execute("SELECT part_code, description FROM [2d_drawing_part] "
+                                "WHERE part_code IN ('RIDGE_LINE','ROOF_OUTLINE')")
+                    for pc, desc in cur.fetchall():
+                        if 'RIDGE' in pc:
+                            result['roof_labels']['ridge'] = result['level_labels'].get('RIDGE', 'RABUNG / RIDGE')
+                        # eave stays as default
+                except Exception:
+                    pass
+                conn.close()
+                _log(f"§3.2 2D.db: {len(result['level_labels'])} level markers loaded")
+            except Exception as e:
+                _log(f"§3.2 2D.db read failed: {e}")
+            break
+    return result
+
+
 # ─────────────────────────────────────────────────────────────────
 # DXF→PROOF RENDERER (§10.0 R6, R7)
 # Reads DXF entities back and renders to paper-scale SVG/PNG.
@@ -1104,8 +1163,9 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     doors    = elements['doors']
     windows  = elements['windows']
     furniture = elements['furniture']
+    columns  = [e for e in elements.get('other', []) if e.ifc_class == 'IfcColumn']
     _log(f"§2.2 DB loaded: {len(walls)} walls, {len(doors)} doors, "
-         f"{len(windows)} windows, {len(furniture)} furniture")
+         f"{len(windows)} windows, {len(furniture)} furniture, {len(columns)} columns")
 
     if not walls:
         print("No walls — skipping floor plan DXF", file=sys.stderr)
@@ -1248,7 +1308,8 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     _log(f"§5.1 Door swing arcs: {arc_count}, Window symbols: {win_sym_count}")
 
     # ── §2 Step 3: DETECT ALIGNMENT (grid lines) ──
-    grids = snap_grids(derive_grids(walls))
+    # §4.2a: columns + walls. §4.2d: labels from template (skip I)
+    grids = snap_grids(derive_grids(walls, columns=columns, template=tpl))
     for g in grids:
         _log(f"§2.3 Grid {g.label} axis={g.axis} pos={g.position:.3f}m")
 
@@ -1618,9 +1679,15 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
     h_max_m = max(h_of(e)[1] for e in all_vis)
     ext = 0.5  # m extension each side
 
+    # ── Level data from 2D.db (§3.2b, §4.3c, §5.2c) ──
+    db_levels = _read_2d_db_levels()
+    level_labels = db_levels['level_labels']
+    apron_z = db_levels['level_elevations'].get('APRON', APRON_Z)
+    grd_z   = db_levels['level_elevations'].get('GRD', GRD_Z)
+
     # GRD. LEVEL line — boldest (border weight)
-    msp.add_line((_mh(h_min_m - ext), _mh(GRD_Z)),
-                 (_mh(h_max_m + ext), _mh(GRD_Z)),
+    msp.add_line((_mh(h_min_m - ext), _mh(grd_z)),
+                 (_mh(h_max_m + ext), _mh(grd_z)),
                  dxfattribs={'layer': 'A-ELEV-LEVL', 'lineweight': lw_border})
     # FFL line — medium
     msp.add_line((_mh(h_min_m - 0.3), 0.0),
@@ -1629,24 +1696,8 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
 
     # ── Level markers — §5.2, §3.2: text + triangle on left side ──
     levels = detect_levels(elements)
-    levels = sorted(levels + [('APRON', APRON_Z), ('GRD', GRD_Z)],
+    levels = sorted(levels + [('APRON', apron_z), ('GRD', grd_z)],
                     key=lambda lv: lv[1])
-
-    # Level label lookup — spec §3.2: should come from 2D.db [2d_level_marker]
-    # Fallback to template level_markers.defaults[]
-    level_labels = {}
-    for lm in tpl_lm.get('defaults', []):
-        # Map by matching elevation
-        label = lm.get('label', '')
-        if 'GRD. FLOOR' in label: level_labels['FFL'] = label
-        elif 'ROOF' in label or 'RIDGE' in label: level_labels['RIDGE'] = label
-        elif '1ST' in label: level_labels['CLG'] = label
-        elif 'GRD' in label: level_labels['GRD'] = label
-    level_labels.setdefault('FFL',   'GRD. FLOOR LEVEL')
-    level_labels.setdefault('CLG',   'BEAM/CEILING LEVEL')
-    level_labels.setdefault('RIDGE', 'RIDGE LEVEL')
-    level_labels.setdefault('APRON', 'APRON LEVEL')
-    level_labels.setdefault('GRD',   'GRD. LEVEL')
 
     marker_x = _mh(h_min_m - ext - 0.5)
     txt_h = txt_level * scale
@@ -1681,7 +1732,8 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
 
     # ── §2 Step 3: Grid lines on elevation ──
     grid_axis = 'x' if face in ('front', 'rear') else 'y'
-    elev_grids = snap_grids(derive_grids(walls))
+    columns = [e for e in elements.get('other', []) if e.ifc_class == 'IfcColumn']
+    elev_grids = snap_grids(derive_grids(walls, columns=columns, template=tpl))
     face_grids_raw = [g for g in elev_grids if g.axis == grid_axis]
     face_grids = sorted(
         [type('G', (), {'label': g.label, 'position': g.position * h_sign})()
@@ -1695,7 +1747,7 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
     for g in face_grids:
         gx = _mh(g.position)
         _log(f"§2.3 Grid {g.label} at {g.position:.3f}m")
-        msp.add_line((gx, _mh(GRD_Z - 0.2)), (gx, grid_above),
+        msp.add_line((gx, _mh(grd_z - 0.2)), (gx, grid_above),
                      dxfattribs={'layer': 'A-GRID', 'lineweight': lw_grid})
         msp.add_circle((gx, grid_above + bubble_r + grid_gap),
                        bubble_r,
@@ -1892,11 +1944,14 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     msp.add_line((_mh(roof_min_x), _mh(ridge_y)),
                  (_mh(roof_max_x), _mh(ridge_y)),
                  dxfattribs={'layer': 'A-ROOF', 'lineweight': lw_part,
-                             'linetype': 'HIDDEN'})
-    # Ridge label
+                             'linetype': _linestyle_to_dxf(tpl.get('line_styles', {}).get('ridge_line', 'dashed'))})
+    # §5.3e: Ridge/Eave labels from 2D.db
+    db_levels = _read_2d_db_levels()
+    ridge_label = db_levels['level_labels'].get('RIDGE', 'RABUNG / RIDGE')
+    eave_label  = db_levels['level_labels'].get('EAVE', 'CUCURAN / EAVE')
     txt_h = tpl_dims.get('text_height_mm', 2.5) * scale
     rdg_mid_x = _mh((roof_min_x + roof_max_x) / 2)
-    msp.add_text('RABUNG / RIDGE',
+    msp.add_text(ridge_label,
                  dxfattribs={'layer': 'A-ANNO-TEXT', 'height': txt_h}
                  ).set_placement(
                      (rdg_mid_x, _mh(ridge_y) + txt_h * 1.5),
@@ -1904,22 +1959,24 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
 
     # ── Eave labels ──
     eave_mid_x = _mh((roof_min_x + roof_max_x) / 2)
-    msp.add_text('CUCURAN / EAVE',
+    msp.add_text(eave_label,
                  dxfattribs={'layer': 'A-ANNO-TEXT', 'height': txt_h}
                  ).set_placement(
                      (eave_mid_x, _mh(roof_max_y) + txt_h * 2),
                      align=TextEntityAlignment.MIDDLE_CENTER)
-    msp.add_text('CUCURAN / EAVE',
+    msp.add_text(eave_label,
                  dxfattribs={'layer': 'A-ANNO-TEXT', 'height': txt_h}
                  ).set_placement(
                      (eave_mid_x, _mh(roof_min_y) - txt_h * 2),
                      align=TextEntityAlignment.MIDDLE_CENTER)
 
-    # ── Slope arrows (§5.3: one per grid bay, ridge toward eave) ──
+    # ── Slope arrows (§5.3c: one per grid bay, ridge toward eave) ──
+    x_grids = sorted([g for g in grids if g.axis == 'x'], key=lambda g: g.position)
+    n_bays = max(len(x_grids) - 1, 1)
     roof_w_mm = _mh(roof_max_x - roof_min_x)
-    arrow_spacing = roof_w_mm / 5
+    arrow_spacing = roof_w_mm / (n_bays + 1)
     arrow_head = 1.5 * scale  # mm in model space
-    for i in range(1, 5):
+    for i in range(1, n_bays + 1):
         ax = _mh(roof_min_x) + arrow_spacing * i
         # North slope (ridge → top eave)
         n_start = _mh(ridge_y) + 5 * scale
@@ -1965,7 +2022,8 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                          align=TextEntityAlignment.MIDDLE_CENTER)
 
     # ── Grids (§4.4: same bay grids as floor plan) ──
-    grids = snap_grids(derive_grids(walls))
+    columns = [e for e in elements.get('other', []) if e.ifc_class == 'IfcColumn']
+    grids = snap_grids(derive_grids(walls, columns=columns, template=tpl))
     grid_ext = tpl_grid.get('extend_beyond_building_mm', 15) * scale
     bubble_r = tpl_grid.get('bubble_radius_mm', 4.0) * scale
     bubble_lw = int(tpl_grid.get('bubble_stroke_mm', 0.25) * 100)

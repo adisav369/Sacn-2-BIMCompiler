@@ -200,10 +200,16 @@ def read_elements(db_path: str, storey_filter: str = None) -> Dict[str, List[Ele
 
 
 def read_drawing_metadata() -> Optional[Dict]:
-    """Load JKR drawing metadata from 2D_metadata.db."""
-    meta_db = os.path.join(os.path.dirname(os.path.abspath(__file__)), '2D_metadata.db')
+    """Load JKR drawing metadata from input/2D.db.
+    §3.2b: path is input/2D.db (relative to 2D_Layout/), not python/2D_metadata.db."""
+    meta_db = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           '..', 'input', '2D.db')
     if not os.path.exists(meta_db):
-        print(f"  Warning: {meta_db} not found, using defaults", file=sys.stderr)
+        # Fallback to lib/input/2D.db (git-tracked location)
+        meta_db = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               '..', 'lib', 'input', '2D.db')
+    if not os.path.exists(meta_db):
+        print(f"  Warning: 2D.db not found, using defaults", file=sys.stderr)
         return None
 
     conn = sqlite3.connect(meta_db)
@@ -245,11 +251,14 @@ def read_drawing_metadata() -> Optional[Dict]:
 # GRID DERIVATION
 # ─────────────────────────────────────────────────────────────────
 
-def derive_grids(walls: List[Element]) -> List[GridLine]:
+def derive_grids(walls: List[Element], columns: Optional[List[Element]] = None,
+                 template: Optional[Dict] = None) -> List[GridLine]:
     """Derive structural bay grid lines from boundary walls and columns.
 
     §4.2: Grids mark structural bay spacing — columns + boundary walls only.
     Partition walls are NOT gridded; they are dimensioned from grids.
+    §4.2a: IfcColumn always gridded (highest priority).
+    §4.2d: Labels from template vertical/horizontal_axis_labels (skip I).
 
     Convention: Letters (A, B, C...) for vertical grids (X-axis),
                 Numbers (1, 2, 3...) for horizontal grids (Y-axis).
@@ -267,6 +276,12 @@ def derive_grids(walls: List[Element]) -> List[GridLine]:
     bld_max_x = max(w.max_x for w in all_walls)
     bld_min_y = min(w.min_y for w in all_walls)
     bld_max_y = max(w.max_y for w in all_walls)
+
+    # §4.2a: IfcColumn always gridded — columns define grid intersections
+    if columns:
+        for c in columns:
+            x_positions.append(c.center_x)
+            y_positions.append(c.center_y)
 
     # §4.2.1 Step 1: ALL opaque wall centrelines (Ext + Partn)
     # Both exterior and major internal division walls define structural bays.
@@ -321,14 +336,18 @@ def derive_grids(walls: List[Element]) -> List[GridLine]:
     x_sorted = merge_positions(x_positions)
     y_sorted = merge_positions(y_positions)
 
-    # §4.2 Step 4: label from template (sorted by position)
+    # §4.2d: labels from template axis_labels (skip I per TB-LKTN)
+    tpl_grid = (template or {}).get('grid', {})
+    v_labels = tpl_grid.get('vertical_axis_labels', 'A,B,C,D,E,F,G,H,J,K,L,M,N').split(',')
+    h_labels = tpl_grid.get('horizontal_axis_labels', '1,2,3,4,5,6,7,8,9,10,11,12').split(',')
+
     grids = []
     for i, x in enumerate(x_sorted):
-        label = chr(ord('A') + i)
+        label = v_labels[i] if i < len(v_labels) else chr(ord('A') + i)
         grids.append(GridLine(label, 'x', x))
 
     for i, y in enumerate(y_sorted):
-        label = str(i + 1)
+        label = h_labels[i] if i < len(h_labels) else str(i + 1)
         grids.append(GridLine(label, 'y', y))
 
     return grids
@@ -537,6 +556,12 @@ def detect_levels(elements: Dict[str, List['Element']]) -> list:
         head_z = Counter(head_zs).most_common(1)[0][0]
         levels.append(('HEAD', head_z))
 
+    # §4.3b: Eave level — lowest roof Z (top of wall / bottom of roof overhang)
+    if roofs:
+        eave_z = snap(min(r.min_z for r in roofs))
+        if eave_z > 0.5:  # ignore ground-touching roofs
+            levels.append(('EAVE', eave_z))
+
     # Roof ridge level: highest roof point
     if roofs:
         ridge_z = snap(max(r.max_z for r in roofs))
@@ -544,7 +569,7 @@ def detect_levels(elements: Dict[str, List['Element']]) -> list:
 
     # Deduplicate levels that are within 100mm of each other
     # (e.g. door head == ceiling — keep the more informative label)
-    PRIORITY = {'CLG': 0, 'RIDGE': 1, 'HEAD': 2, 'SILL': 3, 'FFL': 4}
+    PRIORITY = {'CLG': 0, 'RIDGE': 1, 'EAVE': 2, 'HEAD': 3, 'SILL': 4, 'FFL': 5}
     merged = {}
     for lbl, z in sorted(levels, key=lambda lv: PRIORITY.get(lv[0], 9)):
         already = [k for k, v in merged.items() if abs(v - z) < 0.10]
@@ -1142,7 +1167,9 @@ def draw_floor_plan(elements: Dict[str, List[Element]], db_path: str,
     draw_north_arrow(svg, content_right - 10, content_top + 15)
 
     # ── Derive grids (snap to clean numbers) ──
-    grids = snap_grids(derive_grids(walls))
+    # §4.2a: columns always gridded. §4.2d: labels from template (skip I)
+    columns = [e for e in elements.get('other', []) if e.ifc_class == 'IfcColumn']
+    grids = snap_grids(derive_grids(walls, columns=columns))
     dims = generate_dimensions(grids)
 
     # ── Draw grid lines (dash-dot per 2d_grid_style) ──
