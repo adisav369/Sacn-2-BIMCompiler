@@ -2627,6 +2627,254 @@ LEAF. Overlap = test FAIL.
 3. FAIL message: "{product_id} has no tack point — pipe cannot connect"
 ```
 
+**12g. Gap Analysis — Six Spec Gaps Found (S153 Pre-Flight)**
+
+The following gaps were identified by cross-referencing §12a-§12f against the
+actual code (`PlacementCollectorVisitor`, `MEPDevicePlacer`, `SpaceScheduleDAO`,
+`ShimMatcher`, `RouteWalker`) and the DX extracted database. Each gap would cause
+incorrect placement if not addressed before coding.
+
+**GAP-1: Walk Ordering — MEP Devices Placed Before Furniture Children**
+
+`PlacementCollectorVisitor.onSubAssembly()` fires generative device placement
+(line 406: `MEPDevicePlacer.placeDevices()`) BEFORE `BOMWalker.walkChildren()`
+processes the SET BOM's LEAF children. Furniture placements are collected in
+`onLeaf()`, which fires during `walkChildren()`. Therefore furniture positions
+do NOT exist when §12e collision check executes.
+
+**Fix:** Move generative MEP placement from `onSubAssembly()` to
+`onSubAssemblyComplete()` for SET BOMs. At that point, all furniture LEAFs
+have been walked and their `Placement` records exist in the `placements` list.
+The collision check (§12e) can then iterate over already-collected furniture
+AABBs for the current room.
+
+**Ordering after fix:**
+```
+Room SET BOM ENTER (onSubAssembly)
+  → Walk children: furniture LEAFs placed (onLeaf per child)
+Room SET BOM EXIT (onSubAssemblyComplete)
+  → Read room context from stacks (anchor, rotation, AABB — still available)
+  → Collect furniture AABBs from placements added during child walk
+  → MEPDevicePlacer.placeDevices() — with furniture collision data
+  → Create shim + device placements
+```
+
+**Invariant (test-first):** S20 collision check MUST have furniture AABBs
+available. A test that places a device overlapping furniture MUST FAIL.
+
+---
+
+**GAP-2: Ceiling Z Uses Metadata Default, Not Extracted ARC Surface**
+
+`SpaceScheduleDAO.getCeilingHeightM()` returns `ad_space_type.default_ceiling_height_mm`
+(2700mm for residential). DX extracted data shows:
+
+| Surface | Actual Z (metres) |
+|---------|------------------|
+| L1 Gypsum ceiling (IfcCovering) | **2.629m** |
+| L1 Structural slab (IfcSlab wood joist) | 2.948m |
+| Metadata default | 2.700m |
+
+A CEILING device placed at `2.700 - 0.050 = 2.650m` floats **21mm above**
+the actual gypsum board at 2.629m. This is the "floating elements" symptom.
+
+**Fix:** After ARC walk completes (guaranteed by GAP-1 reorder), query
+compiled ARC output for the actual ceiling surface Z in the room's column:
+
+```
+SELECT MIN(dz) FROM c_orderline
+WHERE Discipline = 'ARC'
+  AND family_ref LIKE '%Ceiling%' OR family_ref LIKE '%Covering%'
+  AND dz > room_floor_z
+  AND dz < room_floor_z + 5.0
+```
+
+Resolution chain:
+1. **Primary:** Query compiled IfcCovering (gypsum board) in same storey → use its Z
+2. **Secondary:** Query compiled IfcSlab above room floor Z → use bottom face
+3. **Fallback:** Use metadata `default_ceiling_height_mm` (current behaviour) + log WARNING
+
+**Store resolved ceiling Z on the room context** so all devices in the same
+room use the same value. Do NOT re-query per device.
+
+The same pattern applies to FLOOR (use actual slab top Z) and WALL (use
+actual wall face position). For DX, floor finish surfaces exist at Z=0.007m
+(ceramic) and Z=0.010m (wood) — not exactly 0.000m.
+
+---
+
+**GAP-3: ShimMatcher Not Used for Generative Placement**
+
+`ShimMatcher.matchHost()` exists and works for extracted MEP (matches shim
+to nearest ARC host by IFC class + proximity). But `MEPDevicePlacer` never
+calls it. Generative devices compute positions from room AABB + metadata
+offsets only — no ARC host snapping.
+
+**Fix:** After computing candidate position from `ad_placement_offset`,
+pass the position through `ShimMatcher.matchHost()` to snap the shim
+origin to the nearest actual ARC surface. ShimMatcher already handles
+mount-aware Z adjustment (BOTTOM/TOP/SIDE).
+
+Flow:
+```
+1. SpaceScheduleDAO.computePosition(roomAabb, entry)  → candidate position
+2. ShimMatcher.matchHost(shimProduct, candX, candY, candZ, compileDb) → snapped position
+3. If SHIM_MISS: use candidate + log WARNING (no ARC host found)
+4. If SHIM_MATCH: use adjusted position (Z snapped to actual surface)
+```
+
+This eliminates the 21mm float because ShimMatcher will find the gypsum
+board at 2.629m and adjust Z accordingly.
+
+---
+
+**GAP-4: Facing Direction Computation Unspecified**
+
+§12a step 5 says "facing = inherited from shim's wall normal (no rotation
+math needed)" but the spec never defines how wall normal is computed from
+ARC host data. ShimMatcher returns a matched ARC host position but not its
+orientation.
+
+**Fix:** For WALL mounts, compute facing normal from the wall's AABB
+orientation. DX walls are axis-aligned, so:
+- Wall along X-axis (width >> depth): normal = ±Y
+- Wall along Y-axis (depth >> width): normal = ±X
+- Sign = direction from wall center to device center
+
+For CEILING/FLOOR mounts, facing is always -Z (pendant) or +Z (upright).
+
+Store the facing vector on the shim BOM line or on DevicePlacement.
+The device inherits it — no per-device rotation computation.
+
+**For DX/SH (axis-aligned rooms):** Wall normal is always ±X or ±Y.
+No arbitrary angles needed. The placement_rule already encodes which
+wall (WALL_BACK=Y-MAX, WALL_SIDE=X-MAX, etc.) — the normal is implicit.
+
+| Placement Rule | Wall | Normal |
+|---------------|------|--------|
+| WALL_BACK | Y-MAX face | (0, -1, 0) — faces into room |
+| WALL_ENTRY | Y-MIN face | (0, +1, 0) |
+| WALL_SIDE | X-MAX face | (-1, 0, 0) |
+| WALL_SINK | X-MIN face | (+1, 0, 0) |
+| CEILING_* | — | (0, 0, -1) pendant |
+| FLOOR_* | — | (0, 0, +1) upright |
+
+---
+
+**GAP-5: Infrastructure Anchor Discovery for END-Join Routing**
+
+§12c step 2 says "find nearest infrastructure anchor → find nearest STACK
+in ad_mep_anchor". But `ad_mep_anchor` is populated by IFCtoERP extraction
+for specific buildings. The spec doesn't define:
+
+a) **Which anchors serve which rooms** — a PLUMBING_STACK at (5, 10, 2.9)
+   could be in any room. The END-join route needs the nearest anchor that
+   is reachable from the fixture's room (not just geometrically nearest
+   — an anchor in a different room behind a wall is not reachable).
+
+b) **Anchor Z for vertical drops** — a ceiling pipe must drop vertically
+   to reach a floor-level fixture. The anchor is at ceiling Z, the fixture
+   tack-to is at floor Z. The route needs a vertical segment. The spec
+   describes this in §8c (risers) but not for per-room vertical drops.
+
+c) **DX/SH anchor availability** — DX has 358 IfcFlowFitting + 427
+   IfcFlowSegment + 105 IfcFlowTerminal elements in the extracted DB.
+   Are these already loaded into `ad_mep_anchor`? Or must the END-join
+   route discover anchors from compiled c_orderline WHERE Discipline='CW'?
+
+**Fix:** Define anchor resolution as a two-step process:
+
+1. **Room-scoped anchor search:** For each fixture's `connects_to` type,
+   find anchors whose XY position falls within the room AABB (or the room's
+   parent storey). This eliminates cross-room false matches.
+
+2. **Fallback to storey-scoped:** If no room-level anchor found, search
+   storey-wide (e.g., shared risers, common stacks). Log STOREY_FALLBACK.
+
+3. **Fallback to synthetic anchor:** If no extracted anchor exists (pure
+   generative building), create a synthetic anchor at a canonical position
+   (e.g., PLUMBING_STACK at room corner nearest to wet wall). Log SYNTHETIC.
+
+For DX/SH: extracted infrastructure positions already exist in compiled
+output. Route from compiled MEP anchor to generative fixture tack-to.
+
+---
+
+**GAP-6: Room Context Loss at onSubAssemblyComplete**
+
+If generative placement moves to `onSubAssemblyComplete` (GAP-1 fix), the
+room's coordinate context (anchor position, rotation, AABB) must still be
+available. Currently `onSubAssemblyComplete` pops all stacks:
+
+```java
+anchorStack.pop();
+rotationStack.pop();
+parentAABBStack.pop();
+```
+
+If MEP placement fires AFTER these pops, the room context is lost.
+
+**Fix:** Place MEP devices BEFORE the stack pops, but after child walk
+completes. Sequence in `onSubAssemblyComplete` for SET BOMs:
+
+```
+1. [DO NOT pop yet]
+2. Detect SET BOM with space type (same check as current onSubAssembly)
+3. Collect furniture AABBs from placements (children just walked)
+4. Run MEPDevicePlacer.placeDevices() with room context from stacks
+5. Create shim + device placements
+6. THEN pop stacks (existing cleanup)
+```
+
+Alternatively, capture room context (anchor, AABB, rotation) into local
+variables at `onSubAssembly` and pass them through to `onSubAssemblyComplete`
+via a field (e.g., `pendingGenerativeRoom`). Cleaner: avoids relying on
+stack pop ordering.
+
+---
+
+**GAP-7: Bathroom SET BOM AABB Is Furniture Extent, Not Room Footprint**
+
+DX bathroom SET BOMs (A104, B104, A204, B204) have AABB width=475mm, depth=450mm.
+This is the furniture bounding box (one vanity/WC unit), not the actual room
+footprint (~2×2m). When the collision check tries to shift a TOILET away from
+furniture, there's nowhere to go — the room AABB IS the furniture.
+
+The collision check must detect this case: when room AABB width OR depth is
+below a minimum threshold (1.0m), the SET BOM AABB represents furniture extent,
+not room geometry. In this case:
+
+1. Log `ROOM_NARROW` with dimensions — flags for BOM data review
+2. Skip furniture collision check (the room footprint is unknown)
+3. Place devices at schedule positions regardless (best guess with wrong data)
+4. Do NOT count as COLLISION_CONFLICT (not a placement algorithm failure)
+
+The proper fix (deferred) is to extract room footprint from the IFC spatial
+container and store it on the SET BOM, separate from the furniture AABB. This
+requires IFCtoERP to read `IfcSpace` geometry bounds and write them as
+`room_width_mm / room_depth_mm` on the SET BOM header.
+
+**GAP-8: FLOOR_TRAP 3mm Z Breach — Snap Tolerance**
+
+When `findFloorZ` snaps to a finish floor slab, the slab top may be 1-3mm
+below the room anchor Z (due to different accumulation paths: room anchor
+through BOM tack vs slab through structural BOM). The breach check flags
+this as Z=OUT but it's a rounding/path difference, not a real breach.
+
+**Fix:** Add a 5mm tolerance to the Z containment check for floor-level
+devices. If device Z is within 5mm of room minZ, treat as IN.
+
+**Summary: Gap Impact on Floating Elements**
+
+| Gap | Floating symptom | Severity |
+|-----|-----------------|----------|
+| GAP-1 (walk ordering) | Devices ignore furniture → overlap | HIGH — collision broken |
+| GAP-2 (ceiling Z) | Devices at 2.65m, ceiling at 2.63m → 21mm float | HIGH — visible |
+| GAP-3 (no ShimMatcher) | No snap to ARC surfaces → systematic offset | HIGH — root cause |
+| GAP-4 (facing direction) | Devices face wrong way → visual defect | MEDIUM |
+| GAP-5 (anchor discovery) | Routes can't find targets → no END-join | HIGH — Phase 3 blocked |
+| GAP-6 (context loss) | Fix for GAP-1 breaks if stacks pop first | HIGH — implementation trap |
+
 ### 6.13 IFC-Driven Extraction
 
 **Status:** DONE (S100-p125, commit [3e056227](https://github.com/red1oon/BIMCompiler/commit/3e056227)). SH IFC-driven, FK scope box fallback.
@@ -3047,3 +3295,59 @@ and element_type keyword heuristics. Two concrete failures:
 **00q prerequisite:** G1 (schema) + G3 (discipline read) must be fixed before writing ROUTE lines
 for ELEC/ACMV/CW/SP/GAS. Otherwise the staging table cannot carry AD_Org_ID per row and the
 single-source-of-truth architecture is broken.
+
+---
+
+**12h. C_BPartner for Generative Devices (S157 — Spec Only)**
+
+Each generative product should be associated with a `C_BPartner` (supplier/distributor)
+so that building-jurisdiction-specific product catalogs can be filtered in BIM Designer.
+
+**Concept:**
+- SH residential gets SH-appropriate products (NZ residential supplier).
+- DX duplex gets DX-appropriate products (US residential supplier).
+- BIM Designer: user selects a building → sees products from the matching BPartner catalog.
+
+**Schema change:**
+
+```sql
+-- DV049: Add C_BPartner_ID to M_Product (FK to C_BPartner supplier table)
+ALTER TABLE M_Product ADD COLUMN C_BPartner_ID TEXT REFERENCES C_BPartner(C_BPartner_ID);
+CREATE INDEX idx_m_product_bpartner ON M_Product(C_BPartner_ID);
+```
+
+**Schedule lookup with BPartner filter:**
+
+```sql
+-- MEP schedule lookup includes BPartner filter:
+SELECT mep_product_id, qty_normal FROM ad_space_type_mep_bom
+WHERE space_type_id = :space_type
+  AND mep_product_id IN (
+      SELECT M_Product_ID FROM M_Product
+      WHERE C_BPartner_ID = :jurisdiction_bpartner_id
+         OR C_BPartner_ID IS NULL  -- universal products (no jurisdiction filter)
+  )
+```
+
+**Migration plan:**
+
+- `DV050_c_bpartner_seed.sql` — seed C_BPartner rows for SH jurisdiction (NZ residential),
+  DX jurisdiction (US residential), and a NULL/universal default.
+- `DV051_m_product_bpartner.sql` — UPDATE M_Product.C_BPartner_ID for existing generative
+  products (TOILET/SINK/etc → SH-jurisdiction; FRIDGE/OUTLET_GFCI → DX-jurisdiction).
+
+**Test spec:**
+
+- **S24: W-BPARTNER** — All generative devices produced by SH compilation use
+  C_BPartner_ID matching the SH jurisdiction; DX compilation uses DX-jurisdiction products.
+- Verification: after each pipeline run, query `elements_meta JOIN M_Product ON productId`
+  and assert `C_BPartner_ID = expected_jurisdiction` for every GENERATIVE element.
+
+**BIM Designer integration:**
+
+- §28 Order catalog browse: filter `M_Product` by `C_BPartner_ID` matching the active
+  building's jurisdiction field (from `ad_building.jurisdiction_code`).
+- User sees only products valid for their building's jurisdiction/code context.
+
+**Not in scope for S157 code:** No Java or SQL changes yet. Spec only — implementation deferred to S158+.
+

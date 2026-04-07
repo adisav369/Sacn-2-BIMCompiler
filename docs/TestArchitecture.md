@@ -183,6 +183,7 @@ outputs post-hoc.
 |---|---|---|---|---|
 | §6 Phase 1 | Schema + seed + references | DiscValidationDBTest | W-DV-DB-* | PASS |
 | §6 Phase 2 | CalibrationDAO reads from ERP.db | DiscValidationDBTest | W-DV-DB-DUAL-READ | PASS |
+| §12h C_BPartner | Generative devices have C_BPartner_ID matching jurisdiction | — | W-BPARTNER | SPEC ONLY |
 
 ### Gap Summary
 
@@ -380,6 +381,6 @@ bcd2af85  rosetta_fidelity.sh
 > tack overflows (W-TACK-1), 14/50 SET BOMs unbalanced (W-BUFFER-1). TE_BOM.db
 > empty → BomDrop never runs → c_order=0, c_orderline=0 in output. Gates pass
 > because output DB IS the federation extraction (same as reference). SH/FK/DM
-> are real BOM compilations. See `logs/pipeline_SJTII_Terminal_ifctobom_*.log`.
+> are real BOM compilations. See `logs/pipeline_Terminal_ifctobom_*.log`.
 
 **Remaining debt:** G5 GEO_ (RA/JE/ES), C9 axis swaps (JE/HI/SC) — position-based matching implemented for RM (W-RM-C9); JE/HI/SC still WARN (different root cause). TE BOM compilation (IFCtoBOM tack fix).

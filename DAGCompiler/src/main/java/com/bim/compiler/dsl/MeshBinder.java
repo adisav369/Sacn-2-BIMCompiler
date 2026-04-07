@@ -230,7 +230,13 @@ public class MeshBinder {
 
         // mm-precision integers — matches ElementPersistence.computeGeometryHash() rounding.
         // Avoids hash collision from centimetre-level String.format("%.2f") truncation.
-        String geoHash = "LOD_" + refGeoHash + "_" +
+        // CL_001/I_Geometry_Map EXTRACTED rows store LOD-prefixed hashes. Strip outer LOD_
+        // and position/scale suffix to recover raw hex — prevents LOD_LOD_ double-prefix.
+        // Format: LOD_<hex16>_<x>_<y>_<z>_s<sx>_<sy>_<sz>
+        String rawRefForHash = refGeoHash.startsWith("LOD_")
+            ? refGeoHash.substring(4).split("_")[0]
+            : refGeoHash;
+        String geoHash = "LOD_" + rawRefForHash + "_" +
             Math.round(translateX * 1000) + "_" +
             Math.round(translateY * 1000) + "_" +
             Math.round(translateZ * 1000) + "_s" +

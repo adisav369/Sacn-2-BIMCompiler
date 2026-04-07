@@ -106,7 +106,9 @@ public class ScopeBomBuilder {
                 }
             }
 
-            if (assigned.isEmpty()) continue;
+            // Empty rooms (0 assigned elements) still get a SET BOM so the
+            // generative MEP walker can fill them via ad_space_type_mep_bom schedule.
+            // Use storey element extent as AABB fallback — walker needs rw/rd/rh > 0.01m.
 
             // Mark as excluded from structural BOM
             for (ExtractionElement e : assigned) {
@@ -116,13 +118,16 @@ public class ScopeBomBuilder {
             // Auto-generate SET BOM ID from prefix + space name
             String setBomId = generateSetBomId(prefix, space.spaceName());
 
-            // Compute SET AABB from assigned element extents
-            double minX = assigned.stream().mapToDouble(ExtractionElement::minX).min().orElse(0);
-            double maxX = assigned.stream().mapToDouble(ExtractionElement::maxX).max().orElse(0);
-            double minY = assigned.stream().mapToDouble(ExtractionElement::minY).min().orElse(0);
-            double maxY = assigned.stream().mapToDouble(ExtractionElement::maxY).max().orElse(0);
-            double minZ = assigned.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
-            double maxZ = assigned.stream().mapToDouble(ExtractionElement::maxZ).max().orElse(0);
+            // Compute SET AABB from assigned element extents.
+            // For empty rooms: fall back to storey element extents so the MEP walker
+            // receives a valid room size (avoids rw=0 → no-generative condition).
+            List<ExtractionElement> aabbSource = assigned.isEmpty() ? elems : assigned;
+            double minX = aabbSource.stream().mapToDouble(ExtractionElement::minX).min().orElse(0);
+            double maxX = aabbSource.stream().mapToDouble(ExtractionElement::maxX).max().orElse(0);
+            double minY = aabbSource.stream().mapToDouble(ExtractionElement::minY).min().orElse(0);
+            double maxY = aabbSource.stream().mapToDouble(ExtractionElement::maxY).max().orElse(0);
+            double minZ = aabbSource.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
+            double maxZ = aabbSource.stream().mapToDouble(ExtractionElement::maxZ).max().orElse(0);
 
             double setAabbW = (maxX - minX) * 1000;
             double setAabbD = (maxY - minY) * 1000;
@@ -204,12 +209,14 @@ public class ScopeBomBuilder {
                 }
             }
 
-            // Load IfcSpaces with their parent storey and contained element GUIDs
+            // Load IfcSpaces with their parent storey and contained element GUIDs.
+            // LEFT JOIN: spaces with 0 contained elements are included (empty rooms
+            // still need a SET BOM so the generative MEP walker can fill them).
             try (Statement stmt = extractionConn.createStatement();
                  ResultSet rs = stmt.executeQuery(
                     "SELECT ss.name, ss.parent_guid, rc.element_guid "
                     + "FROM spatial_structure ss "
-                    + "JOIN rel_contained_in_space rc ON rc.space_guid = ss.guid "
+                    + "LEFT JOIN rel_contained_in_space rc ON rc.space_guid = ss.guid "
                     + "WHERE ss.type = 'IfcSpace' "
                     + "ORDER BY ss.name")) {
                 Map<String, Set<String>> guidsBySpace = new LinkedHashMap<>();
@@ -217,8 +224,11 @@ public class ScopeBomBuilder {
                 while (rs.next()) {
                     String spaceName = rs.getString(1);
                     String parentGuid = rs.getString(2);
-                    String elementGuid = rs.getString(3);
-                    guidsBySpace.computeIfAbsent(spaceName, k -> new LinkedHashSet<>()).add(elementGuid);
+                    String elementGuid = rs.getString(3);  // NULL for empty rooms
+                    guidsBySpace.computeIfAbsent(spaceName, k -> new LinkedHashSet<>());
+                    if (elementGuid != null) {
+                        guidsBySpace.get(spaceName).add(elementGuid);
+                    }
                     parentBySpace.putIfAbsent(spaceName, parentGuid);
                 }
 
@@ -259,7 +269,9 @@ public class ScopeBomBuilder {
         if (upper.contains("KITCHEN")) return "KITCHEN";
         if (upper.contains("BATH") || upper.contains("TOILET") || upper.contains("WC")) return "BATHROOM";
         if (upper.contains("DINING")) return "DINING";
-        if (upper.contains("HALL") || upper.contains("ENTRANCE") || upper.contains("LOBBY")) return "HALL";
+        // HALL/ENTRANCE/LOBBY → CORRIDOR: CORRIDOR exists in M_Product_Category and
+        // ad_space_type, enabling MEP device generation (LIGHT, SWITCH, CEILING_FAN).
+        if (upper.contains("HALL") || upper.contains("ENTRANCE") || upper.contains("LOBBY")) return "CORRIDOR";
         if (upper.contains("GARAGE")) return "GARAGE";
         if (upper.contains("OFFICE") || upper.contains("STUDY")) return "OFFICE";
         if (upper.contains("ROOF")) return "ROOF";
