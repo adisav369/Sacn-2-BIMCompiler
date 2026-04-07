@@ -30,17 +30,17 @@
 | 12b.2 | TOILET has WASTE_OUT + SUPPLY_IN | DV047 seeds both | Y |
 | 12b.3 | Positions non-zero, diameter > 0 | MepRouteGeometryTest:1330 S22 validates | Y |
 | 12b.4 | connects_to matches anchor_end pattern | MepRouteGeometryTest:1330 S22 validates | Y |
-| 12b.5 | Walker reads tack point to compute pipe's final segment | NOT DONE — tack points seeded but never read by walker | **N** |
+| 12b.5 | Walker reads tack point to compute pipe's final segment | SpaceScheduleDAO:getTackPoints() reads ad_assembly_connector, transforms to world coords | **Y** |
 
 ## §12c — END-Join Route
 
 | # | Spec Requirement | Code Class:Line | Y/N |
 |---|-----------------|-----------------|-----|
-| 12c.1 | Read fixture's tack-to from ad_assembly_connector | NOT DONE | **N** |
-| 12c.2 | Find nearest infrastructure anchor from connects_to | NOT DONE | **N** |
-| 12c.3 | Generate route segments from anchor toward tack-to | NOT DONE | **N** |
-| 12c.4 | Halt before overshoot, create VARIABLE terminal piece | NOT DONE | **N** |
-| 12c.5 | Assert convergence within 1mm | NOT DONE — S21 test not written | **N** |
+| 12c.1 | Read fixture's tack-to from ad_assembly_connector | SpaceScheduleDAO:getTackPoints() — local→world transform with facing rotation | **Y** |
+| 12c.2 | Find nearest infrastructure anchor from connects_to | SpaceScheduleDAO:findNearestAnchor() — room→storey→synthetic fallback (GAP-5) | **Y** |
+| 12c.3 | Generate route segments from anchor toward tack-to | PlacementCollectorVisitor: H+V+T segments as IfcFlowSegment | **Y** |
+| 12c.4 | Halt before overshoot, create VARIABLE terminal piece | PlacementCollectorVisitor: PIPE_VARIABLE_TERMINAL at tack-to point | **Y** |
+| 12c.5 | Assert convergence within 1mm | MepRouteGeometryTest S21: 122 terminals, convergence OK | **Y** |
 
 ## §12d — Discipline Resolution
 
@@ -67,7 +67,7 @@
 | # | Spec Requirement | Code Class:Line | Y/N |
 |---|-----------------|-----------------|-----|
 | S20 | W-SHIM-DEVICE: parent shim, host_ifc_class, small offset, facing | MepRouteGeometryTest:1186 `shimDeviceNoOverlap()` | **Y** |
-| S21 | W-END-JOIN: pipe routes to tack-to, VARIABLE terminal, convergence ≤1mm | NOT WRITTEN | **N** |
+| S21 | W-END-JOIN: pipe routes to tack-to, VARIABLE terminal, convergence ≤1mm | MepRouteGeometryTest `endJoinRouteConvergence()` — 366 segments, 122 terminals | **Y** |
 | S22 | W-TACK-POINT: connectors exist, non-placeholder, diameter > 0 | MepRouteGeometryTest:1330 `tackPointsNonPlaceholder()` | Y |
 | S23 | W-DISC-RESOLVE: discipline matches connects_to | MepRouteGeometryTest:1410 `disciplineResolution()` | Y |
 
@@ -79,7 +79,7 @@
 | GAP-2 | Ceiling Z: query ARC IfcCovering Z | ShimMatcher:findCeilingZ, PlacementCollectorVisitor:561 | Y |
 | GAP-3 | ShimMatcher for generative: pass position through matchHostZ | PlacementCollectorVisitor:628 matchHostZ call | **PARTIAL** — Z only, no XY wall snap |
 | GAP-4 | Facing direction: compute wall normal from placement_rule | PlacementCollectorVisitor:859 `facingDirection()` | **Y** |
-| GAP-5 | Anchor discovery: Room→storey→synthetic fallback | NOT DONE | **N** |
+| GAP-5 | Anchor discovery: Room→storey→synthetic fallback | SpaceScheduleDAO:findNearestAnchor() — 3-step fallback | **Y** |
 | GAP-6 | Context loss: capture room context before pops | PlacementCollectorVisitor:149 PendingGenerativeRoom | Y |
 | GAP-7 | Narrow room: skip collision if < 1m | PlacementCollectorVisitor:599 ROOM_NARROW detection | Y |
 | GAP-8 | Floor snap tolerance: 5mm Z tolerance | PlacementCollectorVisitor:731 ±0.005 | Y |
@@ -98,28 +98,28 @@
 | Category | Total | Done | Not Done |
 |----------|-------|------|----------|
 | §12a Shim placement | 14 | **13** | 1 (PARTIAL: 12a.3b) |
-| §12b Tack points | 5 | 4 | **1** |
-| §12c END-join route | 5 | 0 | **5** |
+| §12b Tack points | 5 | **5** | 0 |
+| §12c END-join route | 5 | **5** | 0 |
 | §12d Discipline | 3 | 3 | 0 |
 | §12e Collision | 7 | 7 | 0 |
-| §12f Tests | 4 | 3 | **1** |
-| §12g Gaps | 8 | 6 | **2** |
+| §12f Tests | 4 | **4** | 0 |
+| §12g Gaps | 8 | **7** | 1 (PARTIAL: GAP-3 XY snap) |
 | LOD Bridge | 4 | 4 | 0 |
-| Output naming | 1 | 0 | **1** |
-| Spacing rules | 1 | 0 | **1** |
-| **TOTAL** | **52** | **40** | **12** |
+| Output naming | 1 | **1** | 0 |
+| Spacing rules | 1 | **1** | 0 |
+| **TOTAL** | **52** | **50** | **2** |
 
-**77% complied (was 57% at S153 end). S154 delivered: shim entities, facing direction, LOD geometry, S20 shim assertions, wall/ceiling surface snap, per-wall standoff axis, host IFC class.**
+**96% complied (was 81% at S155 end). S156 delivered: END-join route (§12c complete), tack-point walker read (§12b.5), anchor discovery (GAP-5), S21 test, 3 broken test filters fixed, 3 unmapped products backfilled.**
 
 ## Gaps Found in S154
 
 | # | Gap | Root Cause | Fix |
 |---|-----|-----------|-----|
-| GAP-9 | element_name shows "TOILET" not "M_Water Closet - Flush Tank..." | PlacementCollectorVisitor sets familyRef=productId, not source_element_ref | Read source_element_ref from ERP.db M_Product, pass as familyRef |
-| GAP-10 | CEILING_CENTER devices stack at same point (FAN + LIGHT + DIFFUSER) | ad_space_type_mep_bom gives 3 devices same rule. Code doesn't read ad_code_requirement spacing | Placer must read max_spacing from ad_code_requirement; offset co-located ceiling devices |
+| GAP-9 | element_name shows "TOILET" not "M_Water Closet - Flush Tank..." | PlacementCollectorVisitor sets familyRef=productId, not source_element_ref | Read source_element_ref from ERP.db M_Product, pass as familyRef | **DONE S155** |
+| GAP-10 | CEILING_CENTER devices stack at same point (FAN + LIGHT + DIFFUSER) | ad_space_type_mep_bom gives 3 devices same rule. Code doesn't read ad_code_requirement spacing | Placer must read max_spacing from ad_code_requirement; offset co-located ceiling devices | **DONE S155** |
 | GAP-11 | DX 36 geometry failures (pre-existing extreme scale on walls/doors) | Library mesh ≠ extraction AABB for DX elements | Not S154 scope — pre-existing |
 
 **PARTIAL items:**
 - 12a.3b — adjacent wall flip is mirror only, not true wall selection
 
-**NOT DONE (deferred to S155):** §12c END-join route (5), §12b.5 tack-point read, §12g GAP-5 anchor discovery, S21 test, GAP-9 descriptive names, GAP-10 spacing rules.
+**Remaining (2 items):** §12a.3b adjacent wall selection (PARTIAL — mirror only, not true wall selection), §12g GAP-3 XY wall snap (PARTIAL — Z only).

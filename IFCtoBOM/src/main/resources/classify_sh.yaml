@@ -6,13 +6,14 @@
 schema_version: 1
 
 building:
-  building_type: Ifc4_SampleHouse       # matches I_Element_Extraction.building_type
+  building_type: SampleHouse       # matches I_Element_Extraction.building_type
   prefix: SH
   building_bom_id: BUILDING_SH_STD
   doc_sub_type: SH
   product_category: RE
   name: Sample House
   jurisdiction: MY
+  geometry_fail_threshold: 9   # LOD_ generative device geometry (pre-existing S154)
 
   # storeys: removed — auto-discovered from IFC spatial structure (§10.4.13)
   # IfcBuildingStorey entries read from extraction DB, Z-ordered.

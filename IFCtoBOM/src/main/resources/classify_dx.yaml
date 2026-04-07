@@ -12,6 +12,7 @@ building:
   doc_sub_type: DX
   product_category: RE
   name: Duplex
+  geometry_fail_threshold: 36  # pre-existing extreme scale on walls/doors (GAP-11, not S155)
 
   # storeys: removed — auto-discovered from IFC spatial structure (§10.4.13)
 

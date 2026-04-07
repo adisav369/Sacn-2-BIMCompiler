@@ -910,7 +910,8 @@ public class BuildingWriter {
         int written = 0;
         for (PlacementLoader.Placement p : placements) {
             // §12a.4: Skip phantom shim placements — IfcVirtualElement is metadata only, not rendered.
-            if ("IfcVirtualElement".equals(p.ifcClass())) {
+            // §12c: Skip END-join route segments — IfcFlowSegment routing metadata, no library geometry yet.
+            if ("IfcVirtualElement".equals(p.ifcClass()) || "IfcFlowSegment".equals(p.ifcClass())) {
                 continue;
             }
             // GUID: use element_ref (IFC GUID from MA rows or generated)

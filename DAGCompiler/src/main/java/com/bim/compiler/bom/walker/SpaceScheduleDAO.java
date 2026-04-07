@@ -312,5 +312,229 @@ public class SpaceScheduleDAO {
         return Math.max(entry.qtyMin(), qty);
     }
 
+    // ── Source Element Ref (GAP-9) ───────────────────────────────────────
+
+    /**
+     * Read M_Product.source_element_ref — the descriptive IFC family name.
+     *
+     * <p>Generative devices use abstract tokens (TOILET, SINK) as product_id.
+     * DV046 backfilled the actual IFC family name into source_element_ref
+     * (e.g. "M_Water Closet - Flush Tank:Private - 6.1 Lpf").
+     * BuildingWriter writes familyRef → element_name in output DB, so passing
+     * source_element_ref as familyRef gives users descriptive hover labels.
+     *
+     * @param conn ERP.db connection
+     * @param productId product_id or Value to look up
+     * @return source_element_ref if non-null, else productId as fallback
+     */
+    public static String getSourceElementRef(Connection conn, String productId)
+            throws SQLException {
+        String sql = "SELECT source_element_ref FROM M_Product WHERE product_id = ? OR Value = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, productId);
+            ps.setString(2, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String ref = rs.getString(1);
+                    if (ref != null && !ref.isEmpty()) return ref;
+                }
+            }
+        }
+        return productId; // fallback: keep abstract token
+    }
+
+    // ── Code Requirement Spacing (GAP-10) ─────────────────────────────────
+
+    /**
+     * Read max_spacing_m from ad_code_requirement for a device type in a space type.
+     *
+     * <p>Falls back to space_type='ANY' if no specific rule exists.
+     * Returns 0 if no rule found (caller uses default fallback).
+     *
+     * @param conn ERP.db connection
+     * @param elementType device type (e.g. "SPRINKLER", "LIGHT")
+     * @param spaceType space type (e.g. "BATHROOM", "BEDROOM")
+     * @return max_spacing_m from code requirement, or 0 if no rule
+     */
+    public static double getMaxSpacing(Connection conn, String elementType, String spaceType)
+            throws SQLException {
+        // Try specific space_type first, then ANY
+        String sql = "SELECT max_spacing_m FROM ad_code_requirement "
+            + "WHERE element_type = ? AND (space_type = ? OR space_type = 'ANY') "
+            + "AND max_spacing_m IS NOT NULL AND max_spacing_m > 0 "
+            + "ORDER BY CASE WHEN space_type = ? THEN 0 ELSE 1 END LIMIT 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, elementType);
+            ps.setString(2, spaceType);
+            ps.setString(3, spaceType);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getDouble(1);
+            }
+        }
+        return 0;
+    }
+
+    // ── Anchor Discovery (GAP-5) ────────────────────────────────────────
+
+    /** An infrastructure anchor point for END-join routing. */
+    public record InfraAnchor(
+        String anchorId,
+        String anchorType,
+        double x, double y, double z,
+        String storey,
+        double distance  // distance to query point (filled at query time)
+    ) {}
+
+    /**
+     * Find the nearest infrastructure anchor for END-join routing.
+     *
+     * <p>Implements §12g GAP-5: room-scoped → storey-scoped → synthetic fallback.
+     * Given a fixture position and its connects_to type, returns the nearest
+     * anchor from ad_mep_anchor that is on the same storey.
+     *
+     * @param conn ERP.db connection
+     * @param buildingType building type for anchor lookup (e.g. "Duplex", "SampleHouse")
+     * @param connectsTo infrastructure type (PLUMBING_STACK, WATER_RISER, ELEC_CONDUIT, etc.)
+     * @param fixtureX fixture world X position
+     * @param fixtureY fixture world Y position
+     * @param fixtureZ fixture world Z position
+     * @param roomAabb room AABB [minX, maxX, minY, maxY, minZ, maxZ] for room-scoped search
+     * @param storey storey name for storey-scoped fallback
+     * @return nearest anchor, or a synthetic anchor at room corner if none found
+     */
+    public static InfraAnchor findNearestAnchor(Connection conn, String buildingType,
+            String connectsTo, double fixtureX, double fixtureY, double fixtureZ,
+            double[] roomAabb, String storey) throws SQLException {
+
+        // Step 1: Room-scoped — anchors whose XY falls within room AABB, same storey
+        InfraAnchor roomAnchor = findAnchorInScope(conn, buildingType, storey,
+            roomAabb[0], roomAabb[1], roomAabb[2], roomAabb[3],
+            fixtureX, fixtureY, fixtureZ);
+        if (roomAnchor != null) {
+            BIMLogger.fine("GENERATIVE",
+                "  ANCHOR_ROOM {} dist={:.3f}m type={} at ({:.3f},{:.3f},{:.3f})",
+                roomAnchor.anchorId(), roomAnchor.distance(), roomAnchor.anchorType(),
+                roomAnchor.x(), roomAnchor.y(), roomAnchor.z());
+            return roomAnchor;
+        }
+
+        // Step 2: Storey-scoped — any anchor on the same storey
+        InfraAnchor storeyAnchor = findAnchorInScope(conn, buildingType, storey,
+            Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY,
+            Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY,
+            fixtureX, fixtureY, fixtureZ);
+        if (storeyAnchor != null) {
+            BIMLogger.fine("GENERATIVE",
+                "  ANCHOR_STOREY {} dist={:.3f}m type={} — storey fallback",
+                storeyAnchor.anchorId(), storeyAnchor.distance(), storeyAnchor.anchorType());
+            return storeyAnchor;
+        }
+
+        // Step 3: Synthetic — place anchor at room corner nearest to wet wall (minY, maxZ)
+        double synX = roomAabb[0]; // room minX corner
+        double synY = roomAabb[2]; // room minY (entry wall — wet wall typically opposite)
+        double synZ = roomAabb[5]; // ceiling
+        double dist = Math.sqrt(sq(fixtureX - synX) + sq(fixtureY - synY) + sq(fixtureZ - synZ));
+        BIMLogger.info("GENERATIVE",
+            "  ANCHOR_SYNTHETIC at ({:.3f},{:.3f},{:.3f}) dist={:.3f}m — no extracted anchor found",
+            synX, synY, synZ, dist);
+        return new InfraAnchor("SYNTHETIC_" + storey, "SYNTHETIC", synX, synY, synZ, storey, dist);
+    }
+
+    private static InfraAnchor findAnchorInScope(Connection conn, String buildingType,
+            String storey, double minX, double maxX, double minY, double maxY,
+            double fx, double fy, double fz) throws SQLException {
+        String sql = "SELECT anchor_id, anchor_type, x_m, y_m, z_m, storey "
+            + "FROM ad_mep_anchor WHERE source_building = ? "
+            + "AND (storey = ? OR storey IS NULL) "
+            + "AND x_m BETWEEN ? AND ? AND y_m BETWEEN ? AND ?";
+        InfraAnchor best = null;
+        double bestDist = Double.MAX_VALUE;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, buildingType);
+            ps.setString(2, storey);
+            ps.setDouble(3, minX);
+            ps.setDouble(4, maxX);
+            ps.setDouble(5, minY);
+            ps.setDouble(6, maxY);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    double ax = rs.getDouble("x_m"), ay = rs.getDouble("y_m"), az = rs.getDouble("z_m");
+                    double dist = Math.sqrt(sq(fx - ax) + sq(fy - ay) + sq(fz - az));
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        best = new InfraAnchor(rs.getString("anchor_id"), rs.getString("anchor_type"),
+                            ax, ay, az, rs.getString("storey"), dist);
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    private static double sq(double v) { return v * v; }
+
+    // ── Tack-Point Reader (§12b.5) ────────────────────────────────────────
+
+    /** A fixture tack-to connection point in world coordinates. */
+    public record TackPoint(
+        String connectorType,  // WASTE_OUT, SUPPLY_IN
+        String connectsTo,     // PLUMBING_STACK, WATER_RISER, ELEC_CONDUIT, etc.
+        double worldX, double worldY, double worldZ,  // world position
+        double diameterMm,
+        String face            // TOP, BOTTOM, BACK
+    ) {}
+
+    /**
+     * Read tack-to points for a fixture and transform to world coordinates.
+     *
+     * <p>Implements §12b.5: Walker reads tack points from ad_assembly_connector
+     * and transforms local positions to world coordinates using the fixture's
+     * world position and facing direction.
+     *
+     * <p>Local → world transform: rotate local offset by facing, then add fixture origin.
+     * For facing=0 (faces -Y), local (lx, ly, lz) → world (fx+lx, fy+ly, fz+lz).
+     * For facing=π (faces +Y), local (lx, ly, lz) → world (fx-lx, fy-ly, fz+lz).
+     *
+     * @param conn ERP.db connection
+     * @param productId fixture product_id (e.g. "TOILET")
+     * @param fixtureX fixture world X
+     * @param fixtureY fixture world Y
+     * @param fixtureZ fixture world Z
+     * @param facing facing direction in radians (rotationZ from placement)
+     * @return list of tack-to points in world coordinates
+     */
+    public static List<TackPoint> getTackPoints(Connection conn, String productId,
+            double fixtureX, double fixtureY, double fixtureZ, double facing)
+            throws SQLException {
+        String sql = "SELECT connector_type, connects_to, position_x, position_y, position_z, "
+            + "diameter_mm, face FROM ad_assembly_connector WHERE assembly_id = ?";
+        List<TackPoint> points = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    double lx = rs.getDouble("position_x");
+                    double ly = rs.getDouble("position_y");
+                    double lz = rs.getDouble("position_z");
+                    // Rotate local offset by facing (2D rotation around Z axis)
+                    double cos = Math.cos(facing);
+                    double sin = Math.sin(facing);
+                    double wx = fixtureX + lx * cos - ly * sin;
+                    double wy = fixtureY + lx * sin + ly * cos;
+                    double wz = fixtureZ + lz;
+                    points.add(new TackPoint(
+                        rs.getString("connector_type"),
+                        rs.getString("connects_to"),
+                        wx, wy, wz,
+                        rs.getDouble("diameter_mm"),
+                        rs.getString("face")
+                    ));
+                }
+            }
+        }
+        return points;
+    }
+
     private SpaceScheduleDAO() {} // static utility
 }

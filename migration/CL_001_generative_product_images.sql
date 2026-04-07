@@ -72,3 +72,19 @@ INSERT OR IGNORE INTO M_Product_Image (M_Product_ID, geometry_hash)
 SELECT 'AIRCON_POINT', geometry_hash FROM I_Geometry_Map
 WHERE element_ref = 'Fancoil Unit:ACSU-02'
 LIMIT 1;
+
+-- DV048/S156: Remaining 3 unmapped generative products
+INSERT OR IGNORE INTO M_Product_Image (M_Product_ID, geometry_hash)
+SELECT 'FLOOR_TRAP', geometry_hash FROM I_Geometry_Map
+WHERE element_ref LIKE '%Floor Trap%'
+LIMIT 1;
+
+INSERT OR IGNORE INTO M_Product_Image (M_Product_ID, geometry_hash)
+SELECT 'OUTLET_20A', geometry_hash FROM I_Geometry_Map
+WHERE element_ref = 'M_Duplex Receptacle:Standard'
+LIMIT 1;
+
+INSERT OR IGNORE INTO M_Product_Image (M_Product_ID, geometry_hash)
+SELECT 'OUTLET_GFCI', geometry_hash FROM I_Geometry_Map
+WHERE element_ref = 'M_Duplex Receptacle:GFCI'
+LIMIT 1;

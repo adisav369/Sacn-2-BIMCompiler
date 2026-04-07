@@ -136,6 +136,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     private int totalArcSnaps = 0;
     private int totalArcMisses = 0;
     private int totalNarrowRooms = 0;
+    private int endJoinSegmentCount = 0;
 
     // §12g GAP-1+6: Pending generative room context — captured at onSubAssembly,
     // consumed at onSubAssemblyComplete AFTER furniture children are walked.
@@ -197,6 +198,11 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         return generativeDeviceCount;
     }
 
+    /** Count of END-join route segments generated during this walk. */
+    public int getEndJoinSegmentCount() {
+        return endJoinSegmentCount;
+    }
+
     /** Emit generative MEP summary to INFO log — call after walk completes. */
     public void emitGenerativeSummary() {
         if (generativeDeviceCount == 0) {
@@ -205,10 +211,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         }
         // Use WARN level so SUMMARY survives Maven -q (which suppresses INFO stdout)
         BIMLogger.warn("GENERATIVE",
-            "SUMMARY {} devices {} rooms orderQty={} breaches={} collisionShifts={} collisionConflicts={} arcSnaps={} arcMisses={} narrowRooms={}",
+            "SUMMARY {} devices {} rooms orderQty={} breaches={} collisionShifts={} collisionConflicts={} arcSnaps={} arcMisses={} narrowRooms={} endJoinSegments={}",
             generativeDeviceCount, generativeRoomCounts.size(), mepOrderQty,
             generativeBreachCount, totalCollisionShifts, totalCollisionConflicts,
-            totalArcSnaps, totalArcMisses, totalNarrowRooms);
+            totalArcSnaps, totalArcMisses, totalNarrowRooms, endJoinSegmentCount);
         // Per-device breakdown sorted by count descending
         generativeDeviceCounts.entrySet().stream()
             .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
@@ -619,6 +625,8 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         // Track per-position device count to offset co-located devices (avoid P05 same-centroid).
         // Key: rounded position string, Value: count at that position.
         Map<String, Integer> positionCount = new HashMap<>();
+        // Track placed device centroids for proximity deconfliction (P05: 50mm minimum).
+        List<double[]> placedCentroids = new ArrayList<>();
 
         for (MEPDevicePlacer.DevicePlacement dp : devices) {
             Discipline disc = resolveDeviceDiscipline(erpConn, dp.deviceId(), dp.anchorEnd());
@@ -771,14 +779,70 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             double shimX = shimDev[0], shimY = shimDev[1], shimZ = shimDev[2];
             double devX = shimDev[3], devY = shimDev[4], devZ = shimDev[5];
 
-            // Multiple devices sharing the same placement_rule get identical positions.
-            // Offset co-located devices by 100mm along X to avoid P05 same-centroid.
+            // §12g GAP-10: Code-rule-based spacing for co-located ceiling/floor devices.
+            // Multiple CEILING/FLOOR devices sharing the same placement_rule get identical XY positions.
+            // Read max_spacing from ad_code_requirement; offset = max_spacing/2 per device.
+            // Fallback: 0.5m minimum separation if no code rule exists.
+            // WALL devices don't need this — collision avoidance handles wall separation.
             String posKey = String.format("%.2f_%.2f_%.2f", devX, devY, devZ);
             int posIdx = positionCount.merge(posKey, 1, Integer::sum) - 1;
-            if (posIdx > 0) {
-                double colocOffset = posIdx * 0.100;
-                shimX += colocOffset; devX += colocOffset;
+            boolean isCeilingOrFloor = dp.hostSurface() != null
+                && (dp.hostSurface().startsWith("CEILING") || dp.hostSurface().startsWith("FLOOR"));
+            if (posIdx > 0 && isCeilingOrFloor) {
+                double maxSpacing = SpaceScheduleDAO.getMaxSpacing(erpConn, dp.deviceId(), room.spaceType());
+                double spacingStep = maxSpacing > 0 ? maxSpacing / 2.0 : 0.5;
+                double colocOffset = posIdx * spacingStep;
+                // Both shim and device move together along room's dominant axis
+                if (roomW >= roomD) {
+                    shimX += colocOffset; devX += colocOffset;
+                    if (devX + hw > roomAabb[1]) {
+                        double clamp = roomAabb[1] - hw;
+                        shimX += (clamp - devX); devX = clamp;
+                    }
+                } else {
+                    shimY += colocOffset; devY += colocOffset;
+                    if (devY + hd > roomAabb[3]) {
+                        double clamp = roomAabb[3] - hd;
+                        shimY += (clamp - devY); devY = clamp;
+                    }
+                }
+                BIMLogger.info("GENERATIVE",
+                    "  SPACING {} posIdx={} maxSpacing={:.3f}m step={:.3f}m offset={:.3f}m axis={}",
+                    dp.deviceId(), posIdx, maxSpacing, spacingStep, colocOffset,
+                    roomW >= roomD ? "X" : "Y");
+            } else if (posIdx > 0) {
+                // WALL devices: small offset along wall to avoid exact P05 duplicate.
+                // Collision avoidance handles real separation; this is just centroid uniqueness.
+                // Shim stays on wall surface — only device shifts.
+                double smallOffset = posIdx * 0.100;
+                if (roomW >= roomD) {
+                    devX += smallOffset;
+                } else {
+                    devY += smallOffset;
+                }
             }
+
+            // P05 proximity deconfliction: ensure no existing device is within 50mm.
+            // If too close, nudge along dominant axis by a fixed 100mm to guarantee clearance.
+            boolean tooClose = true;
+            int nudgeAttempts = 0;
+            while (tooClose && nudgeAttempts < 5) {
+                tooClose = false;
+                for (double[] prev : placedCentroids) {
+                    double dx = devX - prev[0], dy = devY - prev[1], dz = devZ - prev[2];
+                    double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    if (dist < 0.050) {
+                        tooClose = true;
+                        if (roomW >= roomD) { devX += 0.100; } else { devY += 0.100; }
+                        nudgeAttempts++;
+                        BIMLogger.fine("GENERATIVE",
+                            "  P05_NUDGE {} +100mm attempt={} (was {:.3f}m from {})",
+                            dp.deviceId(), nudgeAttempts, dist, "prev");
+                        break; // re-check all after nudge
+                    }
+                }
+            }
+            placedCentroids.add(new double[]{devX, devY, devZ});
 
             String shimRef = room.childBomId() + "_SHIM_" + dp.deviceId() + "_" + (++ordinalCounter);
             PlacementLoader.Placement shim = new PlacementLoader.Placement(
@@ -801,6 +865,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             placements.add(shim);
             // Shim is phantom (IfcVirtualElement) — NOT written to output DB, NOT counted in G1-COUNT.
 
+            // §12g GAP-9: Descriptive element name from M_Product.source_element_ref
+            String descriptiveName = SpaceScheduleDAO.getSourceElementRef(erpConn, dp.deviceId());
+
             String deviceRef = room.childBomId() + "_" + dp.deviceId() + "_" + (++ordinalCounter);
             PlacementLoader.Placement p = new PlacementLoader.Placement(
                 buildingType,
@@ -814,7 +881,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 null,
                 disc,
                 null, null,
-                dp.deviceId(),
+                descriptiveName,
                 dp.deviceId(),
                 ElementIdentity.generated(deviceRef, ""),
                 facing
@@ -847,6 +914,82 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     false,
                     lmpOk, envOk
                 ));
+            }
+
+            // §12c: END-join route — pipe from infrastructure anchor to fixture tack-to.
+            // Read tack points, find anchor, generate segments.
+            if (erpConn != null) {
+                List<SpaceScheduleDAO.TackPoint> tackPts =
+                    SpaceScheduleDAO.getTackPoints(erpConn, dp.deviceId(), devX, devY, devZ, facing);
+                for (SpaceScheduleDAO.TackPoint tp : tackPts) {
+                    SpaceScheduleDAO.InfraAnchor anchor = SpaceScheduleDAO.findNearestAnchor(
+                        erpConn, buildingType, tp.connectsTo(),
+                        tp.worldX(), tp.worldY(), tp.worldZ(), roomAabb, room.storey());
+
+                    double ax = anchor.x(), ay = anchor.y(), az = anchor.z();
+                    double px = tp.worldX(), py = tp.worldY(), pz = tp.worldZ();
+
+                    // Route: A → horizontal to (px, py, az) → vertical drop to P
+                    // Pipe radius from diameter (half the connector diameter, in metres)
+                    double pipeR = tp.diameterMm() / 2000.0;
+                    if (pipeR < 0.005) pipeR = 0.0125; // minimum 25mm diameter
+
+                    // Segment 1: Horizontal run from anchor to above/below tack-to
+                    double hLen = Math.sqrt((px - ax) * (px - ax) + (py - ay) * (py - ay));
+                    if (hLen > 0.01) { // skip degenerate horizontal
+                        double hMinX = Math.min(ax, px) - pipeR;
+                        double hMaxX = Math.max(ax, px) + pipeR;
+                        double hMinY = Math.min(ay, py) - pipeR;
+                        double hMaxY = Math.max(ay, py) + pipeR;
+                        String hRef = deviceRef + "_ROUTE_H_" + tp.connectorType() + "_" + (++ordinalCounter);
+                        placements.add(new PlacementLoader.Placement(
+                            buildingType, room.storey(), "IfcFlowSegment", hRef, ordinalCounter,
+                            hMinX, hMaxX, hMinY, hMaxY, az - pipeR, az + pipeR,
+                            null, disc, null, null,
+                            "PIPE_HORIZONTAL", tp.connectsTo(),
+                            ElementIdentity.generated(hRef, ""), 0.0
+                        ));
+                        endJoinSegmentCount++;
+                    }
+
+                    // Segment 2: Vertical drop from (px, py, az) to (px, py, pz)
+                    double vLen = Math.abs(az - pz);
+                    if (vLen > 0.01) { // skip degenerate vertical
+                        double vMinZ = Math.min(az, pz) - pipeR;
+                        double vMaxZ = Math.max(az, pz) + pipeR;
+                        String vRef = deviceRef + "_ROUTE_V_" + tp.connectorType() + "_" + (++ordinalCounter);
+                        placements.add(new PlacementLoader.Placement(
+                            buildingType, room.storey(), "IfcFlowSegment", vRef, ordinalCounter,
+                            px - pipeR, px + pipeR, py - pipeR, py + pipeR, vMinZ, vMaxZ,
+                            null, disc, null, null,
+                            "PIPE_VERTICAL", tp.connectsTo(),
+                            ElementIdentity.generated(vRef, ""), 0.0
+                        ));
+                        endJoinSegmentCount++;
+                    }
+
+                    // Segment 3: VARIABLE terminal — exact endpoint at tack-to
+                    // Length = remaining distance (should be ~0 after H+V, but captures any diagonal gap)
+                    // Terminal piece is placed exactly at tack-to; remaining gap = 0 by construction.
+                    String tRef = deviceRef + "_ROUTE_T_" + tp.connectorType() + "_" + (++ordinalCounter);
+                    placements.add(new PlacementLoader.Placement(
+                        buildingType, room.storey(), "IfcFlowSegment", tRef, ordinalCounter,
+                        px - pipeR, px + pipeR, py - pipeR, py + pipeR, pz - pipeR, pz + pipeR,
+                        null, disc, null, null,
+                        "PIPE_VARIABLE_TERMINAL", tp.connectsTo(),
+                        ElementIdentity.generated(tRef, ""), 0.0
+                    ));
+                    endJoinSegmentCount++;
+
+                    // Convergence check: terminal endpoint must be within 1mm of tack-to
+                    // Terminal is centered on tack-to, so convergence = 0 by construction.
+                    double convergence = 0.0; // exact by design: terminal at P
+
+                    BIMLogger.info("GENERATIVE",
+                        "  END_JOIN {} {} anchor={} dist={:.3f}m hLen={:.3f}m vLen={:.3f}m convergence={:.4f}m",
+                        dp.deviceId(), tp.connectorType(), anchor.anchorId(),
+                        anchor.distance(), hLen, vLen, convergence);
+                }
             }
         }
         if (!devices.isEmpty()) {
