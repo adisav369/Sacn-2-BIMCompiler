@@ -1192,10 +1192,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#todo-1-digital-twin-sync-automatic-on-save" class="md-nav__link">
+  <a href="#todo-1-streaming-blend-implementation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        TODO 1 — Digital twin sync (automatic, on save)
+        TODO 1 — Streaming .blend implementation
       
     </span>
   </a>
@@ -2461,10 +2461,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#todo-1-digital-twin-sync-automatic-on-save" class="md-nav__link">
+  <a href="#todo-1-streaming-blend-implementation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        TODO 1 — Digital twin sync (automatic, on save)
+        TODO 1 — Streaming .blend implementation
       
     </span>
   </a>
@@ -4177,10 +4177,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#todo-1-digital-twin-sync-automatic-on-save" class="md-nav__link">
+  <a href="#todo-1-streaming-blend-implementation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        TODO 1 — Digital twin sync (automatic, on save)
+        TODO 1 — Streaming .blend implementation
       
     </span>
   </a>
@@ -5068,27 +5068,56 @@ line — tune it per deployment.</p>
 LTU, Baku-scale stadiums) get streaming automatically. Backward compatibility
 is unconditional — it is structurally impossible to break an existing <code>.blend</code>
 because the switch reads mesh presence, not a stored flag.</p>
-<h3 id="todo-1-digital-twin-sync-automatic-on-save">TODO 1 — Digital twin sync (automatic, on save)<a class="headerlink" href="#todo-1-digital-twin-sync-automatic-on-save" title="Permanent link">&para;</a></h3>
-<p>The DB and the <code>.blend</code> are dual representations of the same building.
-<code>save_pre</code> already fires on every save — the same handler that strips meshes
-also writes viewport edits back to the DB. One save action, both sides sync:</p>
-<div class="highlight"><pre><span></span><code><span class="nd">@persistent</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">blend_save_pre</span><span class="p">(</span><span class="n">dummy</span><span class="p">):</span>
-    <span class="n">_sync_edits_to_db</span><span class="p">()</span>    <span class="c1"># guid → UPDATE elements_rtree + base_geometries</span>
-    <span class="n">_strip_meshes</span><span class="p">()</span>        <span class="c1"># thin .blend written</span>
+<h3 id="todo-1-streaming-blend-implementation">TODO 1 — Streaming <code>.blend</code> implementation<a class="headerlink" href="#todo-1-streaming-blend-implementation" title="Permanent link">&para;</a></h3>
+<p><strong>Implementation:</strong> <a href="https://github.com/red1oon/BIMCompiler/blob/master/prompts/S162_streaming_blend.md"><code>prompts/S162_streaming_blend.md</code></a></p>
+<p>Three handlers in <code>federation/loading/streaming_blend.py</code>, registered in <code>federation/__init__.py</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Handler</th>
+<th>Trigger</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>blend_save_pre</code></td>
+<td>Ctrl+S / File &gt; Save</td>
+<td>Syncs viewport edits to DB via <code>guid</code>; strips mesh to stub</td>
+</tr>
+<tr>
+<td><code>blend_save_post</code></td>
+<td>After save completes</td>
+<td>Restores mesh from in-memory cache — viewport unaffected</td>
+</tr>
+<tr>
+<td><code>blend_load_post</code></td>
+<td>File open</td>
+<td>Detects streaming stubs; rehydrates from DB (dual-source)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Dual-DB fetch</strong> — <code>load_post</code> checks both sources, same <code>geometry_hash</code> key:</p>
+<ul>
+<li><code>extracted.db → base_geometries</code> — extracted building elements (walls, slabs, beams)</li>
+<li><code>component_library.db → component_geometries</code> — generative products (FRIDGE, SWITCH…)</li>
+</ul>
+<p><strong>Size-based auto-switch</strong> — streaming activates only above threshold:</p>
+<div class="highlight"><pre><span></span><code>&lt; 50K elements  →  embedded mode (Stage 2 as today, works fully offline)
+≥ 50K elements  →  streaming mode (scene graph only, DB stays geometry store)
 </code></pre></div>
-<p>The full twin loop:</p>
-<div class="highlight"><pre><span></span><code>viewport edit  →  Ctrl+S  →  save_pre syncs DB  →  extracted.db updated
-compiler run   →  load_post reads DB            →  .blend reflects new truth
+<p>Threshold is one config line. Small projects (SH, DX, FK) unaffected.
+Backward compat unconditional — mesh presence is the mode flag.</p>
+<p><strong>The twin loop</strong> — save = sync, no separate updater step:</p>
+<div class="highlight"><pre><span></span><code>viewport edit  →  Ctrl+S  →  save_pre: sync DB + strip mesh  →  3 MB .blend written
+compiler run   →  new output.db  →  load_post rehydrates     →  .blend reflects truth
 </code></pre></div>
-<p>No manual updater step. No separate script to remember to run.
-Save = sync. Exit = sync (via <code>bpy.app.handlers.depsgraph_update_post</code> on quit).</p>
 <h3 id="todo-2-ifc-export-custom-exporter-not-bonsai-native">TODO 2 — IFC export (custom exporter, not Bonsai native)<a class="headerlink" href="#todo-2-ifc-export-custom-exporter-not-bonsai-native" title="Permanent link">&para;</a></h3>
 <p>Bonsai's native <code>File &gt; Export IFC</code> requires IfcOpenShell to hold the model
 in memory with every entity linked via <code>ifc_definition_id</code>. Federation objects
 have no <code>ifc_definition_id</code> — they are plain Blender objects. The native
 exporter does not see them as IFC entities. IFC export is <strong>not automatic</strong>.</p>
-<p>It is achievable via a custom exporter:</p>
+<p>It is achievable via a custom exporter — all ingredients present:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">ifcopenshell</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">ifcopenshell</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="n">schema</span><span class="o">=</span><span class="s2">&quot;IFC2X3&quot;</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
@@ -5096,23 +5125,23 @@ exporter does not see them as IFC entities. IFC export is <strong>not automatic<
         <span class="n">entity</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">create_entity</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="s1">&#39;ifc_class&#39;</span><span class="p">],</span> <span class="n">GlobalId</span><span class="o">=</span><span class="n">obj</span><span class="p">[</span><span class="s1">&#39;guid&#39;</span><span class="p">])</span>
         <span class="c1"># attach tessellated geometry from base_geometries via geometry_hash</span>
 </code></pre></div>
-<p>Every ingredient is present (<code>guid</code>, <code>ifc_class</code>, DB geometry). It is a
-dedicated build, not a freebie from having objects in the Outliner.</p>
+<p><code>guid</code>, <code>ifc_class</code>, and DB geometry are on every object. It is a dedicated
+build, not a freebie from having objects in the Outliner.</p>
 <h3 id="the-workflow-this-enables">The workflow this enables<a class="headerlink" href="#the-workflow-this-enables" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>extract IFC → extracted.db          (once, ~20 min for 125K elements)
+<div class="highlight"><pre><span></span><code>extract IFC → extracted.db     (once)
               ↓
-         open .blend                 (load_post rehydrates from DB, 9–27 sec)
+         open .blend            (load_post rehydrates from DB)
               ↓
-         edit in viewport            (moves, deletions, material changes)
+         edit in viewport       (moves, deletions, material changes)
               ↓
-         save .blend                 (save_pre strips mesh → 3 MB saved file)
+         Ctrl+S                 (save_pre: DB synced + mesh stripped → 3 MB file)
               ↓
-         run DB updater              (guid → UPDATE elements_rtree + base_geometries)
-              ↓
-         next open                   (load_post sees updated DB → reflects edits)
+         next open              (load_post sees updated DB → reflects edits)
 </code></pre></div>
 <p>The <code>.blend</code> is a <strong>session configuration</strong>, not a geometry archive.
 The DB is the geometry archive, always current, never duplicated.</p>
+<hr />
+<p><strong>→ Implementation spec:</strong> <a href="https://github.com/red1oon/BIMCompiler/blob/master/prompts/S162_streaming_blend.md"><code>prompts/S162_streaming_blend.md</code></a></p>
 
 
 
