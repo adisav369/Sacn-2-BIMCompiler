@@ -4912,6 +4912,27 @@ graph diffs only.</p>
 Blender session, or a botched file transfer — because they are not in the <code>.blend</code>.
 The DB is the single source of truth; the <code>.blend</code> is disposable. Lose the <code>.blend</code>,
 recreate it in one <code>load_post</code>. Lose nothing of the geometry.</p>
+<p><strong>Cloud geometry library on OCI.</strong> Because the DB is a single SQLite file and
+<code>load_post</code> fetches it once per session, the geometry store can live anywhere —
+including Oracle Cloud Infrastructure object storage. The <code>.blend</code> holds only the
+scene graph; <code>load_post</code> downloads the DB on first open, caches it locally, and
+every subsequent session reads from the local cache. The cloud copy is the master;
+local is a read-through cache.</p>
+<p>This turns <code>component_library.db</code> into a <strong>shared industry geometry library</strong>:
+one authoritative copy of 2,475+ products (walls, slabs, fixtures, MEP devices),
+maintained centrally, versioned, downloaded once per workstation. Every team member
+opening any <code>.blend</code> gets the same certified LOD meshes — no per-project geometry
+copying, no version drift between offices. A geometry update on OCI propagates to
+every workstation on next open, automatically.</p>
+<div class="highlight"><pre><span></span><code>OCI Object Storage
+  └── component_library.db  (master, versioned)
+        ↓  download once → local cache
+  Blender load_post
+        ↓  geometry_hash lookup
+  Streaming .blend  (3 MB scene graph, shared by git/email)
+</code></pre></div>
+<p>The <code>.blend</code> file becomes what a web page is to a browser — a lightweight document
+that references assets, not a monolithic bundle that contains them.</p>
 <h3 id="is-it-safe-to-implement">Is it safe to implement?<a class="headerlink" href="#is-it-safe-to-implement" title="Permanent link">&para;</a></h3>
 <p>Yes — with one guard. <code>save_pre</code> must not leave objects meshless if the save
 crashes mid-write. The fix: keep an in-memory mesh cache and restore it in
