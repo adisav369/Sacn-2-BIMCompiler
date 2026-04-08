@@ -4895,9 +4895,23 @@ count, not geometric complexity.</p>
 <p><strong>Open time: same.</strong> <code>load_post</code> fetches every geometry BLOB from DB, unpacks
 float32 arrays, and builds meshes — identical data volume to Stage 2 today.
 No free lunch here.</p>
-<p><strong>Save is 50–200× faster.</strong> Blender currently serialises 100+ MB of mesh data to
-disk. With streaming, it writes kilobytes of object transforms and custom properties.
+<p><strong>Save is 50–200× faster.</strong> Blender serialises 100+ MB of mesh data to disk today.
+With streaming it writes kilobytes — object transforms and custom properties only.
 A 94 MB Hospital save becomes a 2 MB write.</p>
+<p><strong>Portability and sharing are transformed.</strong> The <code>.blend</code> is now a lightweight scene
+configuration — email it, commit it to git, put it in a shared drive, send it over
+Slack. A 125K-element LTU A-House goes from a 107 MB attachment nobody can send to a
+3 MB file anyone can open in seconds. The geometry stays in the DB, which lives on
+a shared drive, a local server, or alongside the <code>.blend</code> — one SQLite file, not a
+folder of IFC disciplines.</p>
+<p><strong>Download speed follows.</strong> A team member pulling the latest design scene gets 3 MB
+instead of 107 MB. On a 10 Mbps connection: 0.3 seconds instead of 90 seconds.
+The DB itself only needs to transfer once — subsequent <code>.blend</code> updates are scene
+graph diffs only.</p>
+<p><strong>Safety through separation.</strong> The LODs cannot be corrupted by a bad save, a crashed
+Blender session, or a botched file transfer — because they are not in the <code>.blend</code>.
+The DB is the single source of truth; the <code>.blend</code> is disposable. Lose the <code>.blend</code>,
+recreate it in one <code>load_post</code>. Lose nothing of the geometry.</p>
 <h3 id="is-it-safe-to-implement">Is it safe to implement?<a class="headerlink" href="#is-it-safe-to-implement" title="Permanent link">&para;</a></h3>
 <p>Yes — with one guard. <code>save_pre</code> must not leave objects meshless if the save
 crashes mid-write. The fix: keep an in-memory mesh cache and restore it in
