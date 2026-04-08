@@ -1203,10 +1203,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#todo-3-ifc-export-custom-exporter-not-bonsai-native" class="md-nav__link">
+  <a href="#todo-2-ifc-export-custom-exporter-not-bonsai-native" class="md-nav__link">
     <span class="md-ellipsis">
       
-        TODO 3 — IFC export (custom exporter, not Bonsai native)
+        TODO 2 — IFC export (custom exporter, not Bonsai native)
       
     </span>
   </a>
@@ -2472,10 +2472,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#todo-3-ifc-export-custom-exporter-not-bonsai-native" class="md-nav__link">
+  <a href="#todo-2-ifc-export-custom-exporter-not-bonsai-native" class="md-nav__link">
     <span class="md-ellipsis">
       
-        TODO 3 — IFC export (custom exporter, not Bonsai native)
+        TODO 2 — IFC export (custom exporter, not Bonsai native)
       
     </span>
   </a>
@@ -4188,10 +4188,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#todo-3-ifc-export-custom-exporter-not-bonsai-native" class="md-nav__link">
+  <a href="#todo-2-ifc-export-custom-exporter-not-bonsai-native" class="md-nav__link">
     <span class="md-ellipsis">
       
-        TODO 3 — IFC export (custom exporter, not Bonsai native)
+        TODO 2 — IFC export (custom exporter, not Bonsai native)
       
     </span>
   </a>
@@ -4980,6 +4980,15 @@ The DB is the single source of truth; the <code>.blend</code> is recoverable. Lo
 re-run Stage 2 against the DB — full scene rebuilt in 9–27 sec, geometry intact.
 Lose nothing of the geometry. Compare to traditional Bonsai: lose the <code>.blend</code> there
 and you need the IFC file present to reimport from scratch.</p>
+<p><strong>Two geometry sources, one fetch path.</strong> Extracted buildings (stadiums, hospitals,
+airports) store unique element geometry in <code>extracted.db → base_geometries</code>.
+Generative buildings store standard product geometry in
+<code>component_library.db → component_geometries</code>. Both use the same <code>geometry_hash</code>
+key and the same binary BLOB format — <code>load_post</code> checks <code>extracted.db</code> first,
+falls through to <code>component_library.db</code>. For a stadium like Baku Olympic, most
+elements are bespoke (curved trusses, unique façade panels) — low instancing ratio,
+small <code>component_library.db</code>, bulk in <code>extracted.db</code>. Streaming helps most here
+precisely because the unique geometry would otherwise bloat the <code>.blend</code> the most.</p>
 <p><strong>Cloud geometry library on OCI.</strong> Because the DB is a single SQLite file and
 <code>load_post</code> fetches it once per session, the geometry store can live anywhere —
 including Oracle Cloud Infrastructure object storage. The <code>.blend</code> holds only the
@@ -5056,7 +5065,7 @@ compiler run   →  load_post reads DB            →  .blend reflects new truth
 </code></pre></div>
 <p>No manual updater step. No separate script to remember to run.
 Save = sync. Exit = sync (via <code>bpy.app.handlers.depsgraph_update_post</code> on quit).</p>
-<h3 id="todo-3-ifc-export-custom-exporter-not-bonsai-native">TODO 3 — IFC export (custom exporter, not Bonsai native)<a class="headerlink" href="#todo-3-ifc-export-custom-exporter-not-bonsai-native" title="Permanent link">&para;</a></h3>
+<h3 id="todo-2-ifc-export-custom-exporter-not-bonsai-native">TODO 2 — IFC export (custom exporter, not Bonsai native)<a class="headerlink" href="#todo-2-ifc-export-custom-exporter-not-bonsai-native" title="Permanent link">&para;</a></h3>
 <p>Bonsai's native <code>File &gt; Export IFC</code> requires IfcOpenShell to hold the model
 in memory with every entity linked via <code>ifc_definition_id</code>. Federation objects
 have no <code>ifc_definition_id</code> — they are plain Blender objects. The native
