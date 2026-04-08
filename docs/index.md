@@ -51,7 +51,7 @@ Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://w
 
     [:octicons-arrow-right-24: See the buildings](SampleHouseAnalysis.md)
 
--   **76 Verbs, 2,475 Products**
+-   **77 Verbs, 2,475 Products**
 
     ---
 

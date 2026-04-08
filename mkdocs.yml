@@ -81,7 +81,7 @@ nav:
       - BOM Compilation: BOMBasedCompilation.md
       - Data Model: DATA_MODEL.md
       - Rosetta Stones: TheRosettaStoneStrategy.md
-      - BIM COBOL (76 Verbs): BIM_COBOL.md
+      - BIM COBOL (77 Verbs): BIM_COBOL.md
       - Source Code Guide: SourceCodeGuide.md
 
   # ─── BIM Designer ─────────────────────────────────────

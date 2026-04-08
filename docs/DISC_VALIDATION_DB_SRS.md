@@ -3298,56 +3298,77 @@ single-source-of-truth architecture is broken.
 
 ---
 
-**12h. C_BPartner for Generative Devices (S157 — Spec Only)**
+**12h. C_BPartner Catalog Segregation — RE vs CO**
 
-Each generative product should be associated with a `C_BPartner` (supplier/distributor)
-so that building-jurisdiction-specific product catalogs can be filtered in BIM Designer.
+C_BPartner gates which product catalog is visible per building category.
+The segregation is at the **building product_category level** (RE / CO), not per individual building.
 
-**Concept:**
-- SH residential gets SH-appropriate products (NZ residential supplier).
-- DX duplex gets DX-appropriate products (US residential supplier).
-- BIM Designer: user selects a building → sees products from the matching BPartner catalog.
+**Two catalog tiers:**
 
-**Schema change:**
+| Building category | C_BPartner reference | Buildings now | Buildings future |
+|---|---|---|---|
+| RE (Residential) | `Duplex` | SH, DX, FK, IN… | any RE harvest |
+| CO (Commercial) | `HospitalAuckland` (seed) | — | TE, Hospital when onboarded |
+| Universal | NULL | SPRINKLER, LIGHT… | any product valid in both |
+
+**Rule:** Every RE building compilation ONLY places products where
+`C_BPartner_ID = Duplex OR C_BPartner_ID IS NULL`.
+Every CO compilation ONLY places products where
+`C_BPartner_ID = (CO reference) OR C_BPartner_ID IS NULL`.
+
+DX is the reference catalog for RE — products seeded from DX IFC carry `C_BPartner_ID = Duplex`.
+When TE and Hospital are harvested and onboarded as CO, their products carry `C_BPartner_ID = HospitalAuckland`
+(or a new consolidated `CO` BPartner to be decided at onboarding time).
+
+**Schema — already live (DV038):**
 
 ```sql
--- DV049: Add C_BPartner_ID to M_Product (FK to C_BPartner supplier table)
-ALTER TABLE M_Product ADD COLUMN C_BPartner_ID TEXT REFERENCES C_BPartner(C_BPartner_ID);
-CREATE INDEX idx_m_product_bpartner ON M_Product(C_BPartner_ID);
+-- C_BPartner table: Value = 'Duplex', 'HospitalAuckland', 'Terminal', 'SampleHouse'
+-- M_Product.C_BPartner_ID INTEGER REFERENCES C_BPartner(C_BPartner_ID)
+-- NULL = universal (placed by any building category)
 ```
 
-**Schedule lookup with BPartner filter:**
+**Schedule lookup with BPartner filter (to be implemented in SpaceScheduleDAO):**
 
 ```sql
--- MEP schedule lookup includes BPartner filter:
-SELECT mep_product_id, qty_normal FROM ad_space_type_mep_bom
-WHERE space_type_id = :space_type
-  AND mep_product_id IN (
-      SELECT M_Product_ID FROM M_Product
-      WHERE C_BPartner_ID = :jurisdiction_bpartner_id
-         OR C_BPartner_ID IS NULL  -- universal products (no jurisdiction filter)
-  )
+-- :building_bpartner_id resolved from building product_category:
+--   RE → C_BPartner.Value='Duplex' → ID=1
+--   CO → C_BPartner.Value='HospitalAuckland' → ID=2
+SELECT s.mep_product_id, s.placement_rule, s.host_surface, ...
+FROM ad_space_type_mep_bom s
+JOIN M_Product p ON p.product_id = s.mep_product_id
+WHERE s.space_type_id = :space_type
+  AND (p.C_BPartner_ID = :building_bpartner_id OR p.C_BPartner_ID IS NULL)
 ```
 
-**Migration plan:**
+**Migration (DONE S160):**
 
-- `DV050_c_bpartner_seed.sql` — seed C_BPartner rows for SH jurisdiction (NZ residential),
-  DX jurisdiction (US residential), and a NULL/universal default.
-- `DV051_m_product_bpartner.sql` — UPDATE M_Product.C_BPartner_ID for existing generative
-  products (TOILET/SINK/etc → SH-jurisdiction; FRIDGE/OUTLET_GFCI → DX-jurisdiction).
+- `DV051_m_product_bpartner.sql` — UPDATE M_Product.C_BPartner_ID (**applied**):
+  - RE generative fixtures from DX IFC → `Duplex` (ID=1):
+    FRIDGE, OUTLET_20A, OUTLET_GFCI, OUTLET, CEILING_FAN, EXHAUST_FAN,
+    FLOOR_TRAP, SINK, SWITCH, TOILET, WASHING_TAP, AIRCON_POINT
+  - Universal (both RE and CO) → NULL:
+    SPRINKLER, LIGHT, SUPPLY_DIFFUSER, DATA_POINT, EMERGENCY_LIGHT
+  - CO-specific → `HospitalAuckland` (ID=2): (none yet — populated at TE/Hospital onboarding)
 
-**Test spec:**
+See [DuplexAnalysis.md §C_BPartner](DuplexAnalysis.md#c_bpartner-catalog-segregation-s159s160-2026-04-08) for catalog table and RE/CO tier definitions.
 
-- **S24: W-BPARTNER** — All generative devices produced by SH compilation use
-  C_BPartner_ID matching the SH jurisdiction; DX compilation uses DX-jurisdiction products.
-- Verification: after each pipeline run, query `elements_meta JOIN M_Product ON productId`
-  and assert `C_BPartner_ID = expected_jurisdiction` for every GENERATIVE element.
+**Test spec — Witness W-BPARTNER-RE:**
 
-**BIM Designer integration:**
+```
+Test class: BPartnerCatalogTest (DAGCompiler contract tests)
+Witness:    W-BPARTNER-RE
+Claim:      Every generative element in an RE building output has
+            C_BPartner_ID = Duplex OR C_BPartner_ID IS NULL.
+            No CO-only product appears in SH or DX compilation.
+Method:
+  1. Open samplehouse.db and duplex.db output.
+  2. For each GENERATIVE guid (guid LIKE '%_MD_%'), join to M_Product via element_ref.
+  3. Assert C_BPartner_ID IN (1 /*Duplex*/, NULL) for every row.
+  4. Assert count(generative) > 0 (schedule ran).
+Counterpart W-BPARTNER-CO: same logic for CO buildings once onboarded.
+```
 
-- §28 Order catalog browse: filter `M_Product` by `C_BPartner_ID` matching the active
-  building's jurisdiction field (from `ad_building.jurisdiction_code`).
-- User sees only products valid for their building's jurisdiction/code context.
-
-**Not in scope for S157 code:** No Java or SQL changes yet. Spec only — implementation deferred to S158+.
+**Status (S160 DONE):** DV051 applied. BPartnerCatalogTest 4/4 PASS. SH 9/9, DX 9/9.
+SpaceScheduleDAO BPartner filter: next step when CO buildings (TE/Hospital) are onboarded.
 

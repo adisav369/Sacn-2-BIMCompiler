@@ -651,6 +651,13 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             if (prodDims != null) {
                 hw = prodDims[0] / 2.0; hd = prodDims[1] / 2.0; hh = prodDims[2] / 2.0;
             }
+            // W-FRIDGE-Z: FLOOR-standing — zOffset is BOTTOM above floor, not CENTER.
+            // computePosition returns floor+zOffset (= floor when zOffset=0).
+            // Lift by half-height so bottom sits on floor, not center on floor.
+            // Implementing S160 — Witness: W-FRIDGE-Z
+            if ("FLOOR".equals(dp.hostSurface()) && prodDims != null) {
+                pos[2] += hh;
+            }
             double[] deviceBox = {
                 pos[0] - hw, pos[0] + hw, pos[1] - hd, pos[1] + hd, pos[2] - hh, pos[2] + hh
             };

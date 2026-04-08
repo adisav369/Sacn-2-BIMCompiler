@@ -370,7 +370,7 @@ bcd2af85  rosetta_fidelity.sh
 
 | Gate | SH | FK | IN | DX | TE † | DM |
 |------|----|----|----|----|-------|------|
-| G1-COUNT | PASS (58) | PASS (82) | PASS (699) | PASS (1099) | PASS† (48428) | PASS (60) |
+| G1-COUNT | PASS (58+24) | PASS (82) | PASS (699) | PASS (215+114) | PASS† (48428) | PASS (60) |
 | G2-VOLUME | PASS | PASS | PASS | PASS | PASS† | — |
 | G3-DIGEST | PASS | PASS | PASS | PASS | PASS† | — (GENERATIVE) |
 | G4-TAMPER | PASS | PASS | PASS | PASS | PASS | PASS |

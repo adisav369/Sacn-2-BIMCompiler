@@ -7,7 +7,8 @@
 > which runs inside [Blender](https://www.blender.org/) (the open-source 3D platform).
 
 <div class="bim-banner" markdown>
-<b>Bonsai/Blender as a spatial ERP viewport, not just a BIM viewer.</b> Python addon replacing IFC file access with a FederatedModel Spatial Database for queryable geometry.
+⚡ <b>IFC files don't scale. The FederatedModel DB does.</b><br>
+A 30K-element IFC takes minutes to open, spikes RAM, and locks the viewport. Extract once to SQLite — instant preview, GPU-instanced meshes, spatial queries in &lt;100ms. <a href="#federation-vs-traditional-bonsai--file-size-and-viewport-performance">See the numbers →</a>
 </div>
 
 ---
@@ -39,45 +40,10 @@ Every dimension below reads from the same
 The Java [output.db](BOMBasedCompilation.md) is the compiled source of truth;
 these extensions are the viewport and export layer.
 
-### 4D — Construction Schedule
+### 4D + 5D — Schedule and Cost
 
-**Module:** `federation/schedule/`
-
-The construction sequence is a [topological sort](https://en.wikipedia.org/wiki/Topological_sorting)
-of the BOM tree. Footings before columns, columns before beams, beams before
-slabs, slabs before MEP rough-in. The BOM's parent-child relationships already
-encode precedence — the 4D schedule is a **query** on that tree, not a
-separate model.
-
-| Feature | How |
-|---------|-----|
-| Sequence generation | IFC class → phase → predecessors (precedence rules) |
-| Duration calculation | Element quantity × labor productivity rates from [5D BOQ](#5d-bill-of-quantities) |
-| Animation | Blender timeline keyframes — elements appear in construction order |
-| Export | Excel, MS Project (.mpp) |
-
-**ERP parallel:** This is what [Primavera](https://www.oracle.com/construction-engineering/)
-does — but here the schedule comes from the BOM itself, not from a separate
-scheduling tool. [ProjectOrderBlueprint.md §5.1](ProjectOrderBlueprint.md#51-4d-schedule-topological-sort-of-bom-tree).
-
-### 5D — Bill of Quantities / Cost
-
-**Module:** `federation/boq/`
-
-Every [M_Product](DATA_MODEL.md) has a price. The cost of a building is
-`SUM(price × qty)` — a query, not a feature. The BOQ module exports this
-with CIDB Malaysia 2024 labor rates and 3-component cost breakdown
-(material + labour + equipment).
-
-| Feature | How |
-|---------|-----|
-| Quantity extraction | IFC element volumes, areas, lengths from spatial DB |
-| Cost breakdown | Material + labour + equipment per element type |
-| Labor rates | CIDB Malaysia 2024 productivity data |
-| Export | Excel with discipline/storey/type grouping |
-
-**ERP parallel:** This is [M_PriceList](https://wiki.idempiere.org/en/M_PriceList)
-applied to construction. [ProjectOrderBlueprint.md §5.2](ProjectOrderBlueprint.md#52-5d-cost-inherent-in-the-data-model).
+Construction sequence (BOM tree topological sort) and Bill of Quantities
+(price × qty query) are covered in the [**4D/5D Analysis paper →**](4D5DAnalysis.md)
 
 ### 6D — Sustainability
 
@@ -170,6 +136,118 @@ non-Blender users — the project manager who approves construction orders,
 the QS who reviews 5D cost breakdowns, the sustainability officer checking
 6D carbon. Bonsai stays for 3D design work. Both read from and write to
 the same [output.db](BOMBasedCompilation.md).
+
+---
+
+## Federation vs Traditional Bonsai — File Size and Viewport Performance
+
+**The problem every Bonsai user knows:** open a 30,000-element IFC file. Bonsai
+parses every entity in the file sequentially — IfcOpenShell builds 30K Python objects
+in RAM, one per element. Then it tessellates every shape individually and writes each
+mesh as a separate Blender data block. On a typical workstation this takes **3–8 minutes**,
+consumes **8–16 GB RAM**, and leaves the viewport sluggish because the dependency graph
+is tracking 30K independent mesh data blocks. Discipline filtering means hiding objects
+one by one. Spatial queries don't exist — you iterate Python objects.
+The IFC file itself must stay on disk at its original path or the BIM properties panel
+breaks. Change anything and you cannot export it back to IFC without the full
+IfcOpenShell model still in memory.
+
+Federation extracts the IFC **once** to a SQLite DB (one-time cost, ~20 min for 125K
+elements). After that the IFC file is never touched again. Blender loads from the DB
+with GPU instancing — one mesh per unique geometry, N objects share it. The same 30K
+elements open in **under 30 seconds**, spatial queries run in under 100ms, and the
+`.blend` file is self-contained.
+
+### File sizes — real measurements
+
+| Building | Elements | IFC source | Federation `.blend` | Traditional Bonsai `.blend`¹ |
+|----------|---------|-----------|--------------------|-----------------------------|
+| AC Institute | ~700 | 2.8 MB | **361 KB** | ~4–8 MB |
+| Sample House | ~58 | 2.2 MB | **493 KB** | ~3–5 MB |
+| HospitalGarage | — | 6.2 MB | **1.3 MB** | ~15–25 MB |
+| HHS Office ARC | — | 13 MB | **2.1 MB** | ~25–50 MB |
+| Ifc4 Revit | — | 52 MB | **24 MB** | ~80–150 MB |
+| Hospital (multi-disc) | — | 215 MB | **94 MB** | ~400–700 MB |
+| LTU A-House | 125,997 | 426 MB | **107 MB** | ~500 MB–1 GB+ |
+
+¹ Indicative — traditional import embeds one mesh block per element with no instancing deduplication. Not directly measured.
+
+The IFC source is a compact text format (CSG/swept solid descriptions). When fully
+tessellated to vertex arrays, sizes expand — which is why the federation `.blend` can
+still be larger than the source IFC for complex low-repetition geometry. But the
+traditional Bonsai `.blend` is always the worst case: every element tessellated AND stored
+separately.
+
+### What is inside each `.blend` — and where the LODs live
+
+The LOD meshes (tessellated vertices and faces) **are embedded in the federation `.blend`**,
+but in GPU-instanced format: one `bpy.data.mesh` block per unique geometry hash,
+shared by all instances of that shape. 500 identical windows = **1 mesh block** in the
+`.blend`, 500 object references pointing to it. Traditional Bonsai stores one mesh block
+per element regardless — 500 windows = 500 separate blocks.
+
+| Content | Traditional Bonsai import | Federation load |
+|---------|--------------------------|-----------------|
+| **IFC file** | Path only (not embedded) — must stay on disk | Not involved at all |
+| **LOD mesh data** | One mesh block per element, duplicated for repeats | **One mesh block per unique geometry — GPU instanced** |
+| **Outliner objects** | IFC entities with BIM properties panel (Pset, Qto…) | Plain Blender objects — `guid`, `ifc_class`, `discipline` as custom props only |
+| **Identity per object** | `ifc_definition_id` (volatile numeric, needs IFC in memory) | `guid` string — stable, self-contained |
+| **Materials** | Full IfcPresentationStyle → Blender material | `material_rgba` 4-float color from DB |
+| **Re-open without source** | Geometry visible, BIM panel needs IFC file present | Geometry visible — DB needed only for filtering/clash panel |
+
+### Can you open the `.blend` without the database?
+
+**Yes.** All mesh geometry is embedded at save time. Objects render immediately.
+The federation filtering panel rebuilds its spatial index from the DB if found at the
+stored path — if missing, that panel is inactive but the 3D view works fine.
+
+### The IFC export gap — and why it is not a gap for us
+
+**Traditional Bonsai:** edits in the viewport write back to the live IfcOpenShell
+model in memory → `File > Export IFC` produces an updated IFC file.
+The Outliner shows IFC entities; the BIM properties panel shows Psets.
+
+**Federation:** edits in the viewport write to the `.blend` only.
+The Outliner shows plain Blender objects (no BIM properties panel, no Pset sidebar).
+There is no IFC file in memory to export to.
+
+This looks like a gap — but it is not a gap **for this workflow**, because we do not
+use IFC as the source of truth. The source of truth is the DB. The gap is purely
+internal and closes with a single incremental updater script:
+
+```python
+# For each modified object in the Blender scene:
+guid = obj['guid']                          # already on every object
+new_aabb = compute_aabb(obj)                # from modified mesh bounds
+conn.execute(
+    "UPDATE elements_rtree SET minX=?,maxX=?,minY=?,maxY=?,minZ=?,maxZ=? WHERE id=...",
+    new_aabb)
+# Optionally: reserialise vertex BLOB back to base_geometries
+```
+
+The `guid` custom property set on every object at load time is the stable foreign key.
+No IFC round-trip needed. The DB stays the single source of truth; the `.blend` is the
+working canvas; the updater syncs the two incrementally.
+
+### Why the viewport is more responsive
+
+Three structural reasons the federation `.blend` handles large models better:
+
+**1. GPU instancing** — Blender sends one mesh to the GPU per unique geometry hash.
+500 identical windows = 1 GPU upload, 500 draw calls. Traditional import = 500 uploads.
+
+**2. No IfcOpenShell object tree in RAM** — Traditional Bonsai keeps the entire IFC
+entity graph alive in Python (every `IfcWall`, `IfcWindow`, `IfcPropertySet`).
+For LTU that is 125K Python objects. Federation: the DB connection closes after
+Stage 2 loads. Working set = Blender mesh data only.
+
+**3. Flat custom properties** — Traditional objects carry 20–50 Pset properties each
+(`Pset_WallCommon`, `Qto_WallBaseQuantities`, …). Federation objects carry 5 flat
+strings. Lighter dependency graph evaluation, faster property panel rendering.
+
+**Blender RAM at runtime** (not `.blend` size) — LTU A-House 125K elements:
+13.6 GB with full tessellated meshes loaded, smooth navigation, no crashes.
+Equivalent Navisworks/Revit load: 16–30 GB, minutes to open, no spatial queries.
 
 ---
 
@@ -327,24 +405,20 @@ was causing geometry hell, not fixing it. `fix_mm_outliers()` in
 `bbox_from_placement` fallback returns mm (299 elements in LTU STR).
 See [`docs/LTUAHouseAnalysis.md`](LTUAHouseAnalysis.md) for details.
 
-**6. 4D needs external schedule linkage**
-*Impact:* Construction sequence requires a separate schedule file joined by GUID.
+**6. 4D/5D needs external schedule and cost linkage**
+*Impact:* Construction sequence and BOQ require additional extraction passes.
 
-*How to close:* The `rel_aggregates` table already encodes BOM parent→child
-precedence (footings before columns, columns before beams). A topological sort
-on that table generates a default construction sequence with zero external input.
-Add a `schedule` table (`guid, phase, start_day, duration_days`) populated by
-the sort, with durations derived from quantity × a productivity rate table.
-External MS Project / Primavera import then overrides by GUID where a real
-schedule exists — the DB becomes the reconciliation point, not the dependency.
+*How to close:* See [4D5DAnalysis.md](4D5DAnalysis.md) — the `rel_aggregates`
+table already encodes BOM precedence; a topological sort generates a default
+sequence with zero external input. BOQ is `COUNT(*) GROUP BY ifc_class` with a
+price-list join. Both are queries, not features.
 
 ---
 
 ## Summary — One Database, Many Views
 
 ```
-                    ┌─ 4D Schedule (topological sort)
-                    ├─ 5D Cost (price × qty query)
+                    ┌─ 4D/5D Schedule + Cost  →  4D5DAnalysis.md
                     ├─ 6D Carbon (material passport)
 compiled output.db ─┤─ 7D Facility Mgmt (asset register)
                     ├─ 8D ERP (iDempiere write-back)

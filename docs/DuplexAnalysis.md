@@ -670,3 +670,23 @@ SUPPLY_DIFFUSER) resolve via LIKE match to real IFC meshes.
 
 **Witness:** MepRouteGeometryTest S15 — ceiling override + product AABB proof.
 15/15 PASS. S14: 0 gaps across 27 space types.
+
+## C_BPartner Catalog Segregation (S159–S160, 2026-04-08)
+
+DX is the **RE reference catalog** — the authoritative source of residential product assignments.
+
+**Two tiers:**
+
+| Tier | C_BPartner_ID | Value | Products |
+|------|--------------|-------|----------|
+| RE (Residential) | 1 | Duplex | FRIDGE, OUTLET, OUTLET_20A, OUTLET_GFCI, CEILING_FAN, EXHAUST_FAN, FLOOR_TRAP, SINK, SWITCH, TOILET, WASHING_TAP, AIRCON_POINT |
+| Universal | NULL | — | SPRINKLER, LIGHT, SUPPLY_DIFFUSER, DATA_POINT, EMERGENCY_LIGHT |
+| CO (Commercial) | 2 | HospitalAuckland | — (populated when TE/Hospital onboarded) |
+
+**Rule:** RE building compilations (SH, DX, FK, IN…) only place products where
+`C_BPartner_ID = 1 (Duplex) OR C_BPartner_ID IS NULL`.
+
+**Migration:** DV051 seeds the RE assignments above. DV038 created the C_BPartner table.
+
+**Test:** `BPartnerCatalogTest` — 4/4 PASS (W-BPARTNER-RE SH, W-BPARTNER-RE DX,
+W-BPARTNER-SCHEDULE, W-BPARTNER-COMPLETENESS). See [DISC_VALIDATION_DB_SRS.md §12h](DISC_VALIDATION_DB_SRS.md#12h-c_bpartner-catalog-segregation--re-vs-co).
