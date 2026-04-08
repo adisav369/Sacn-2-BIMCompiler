@@ -1192,6 +1192,39 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#todo-1-db-updater-edit-write-back" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TODO 1 — DB updater (edit write-back)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#todo-2-bidirectional-sync-digital-twin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TODO 2 — Bidirectional sync (digital twin)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#todo-3-ifc-export-custom-exporter-not-bonsai-native" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TODO 3 — IFC export (custom exporter, not Bonsai native)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-workflow-this-enables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2432,6 +2465,39 @@
     <span class="md-ellipsis">
       
         Fallback — existing .blend files work unchanged
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#todo-1-db-updater-edit-write-back" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TODO 1 — DB updater (edit write-back)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#todo-2-bidirectional-sync-digital-twin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TODO 2 — Bidirectional sync (digital twin)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#todo-3-ifc-export-custom-exporter-not-bonsai-native" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TODO 3 — IFC export (custom exporter, not Bonsai native)
       
     </span>
   </a>
@@ -4133,6 +4199,39 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#todo-1-db-updater-edit-write-back" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TODO 1 — DB updater (edit write-back)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#todo-2-bidirectional-sync-digital-twin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TODO 2 — Bidirectional sync (digital twin)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#todo-3-ifc-export-custom-exporter-not-bonsai-native" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TODO 3 — IFC export (custom exporter, not Bonsai native)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-workflow-this-enables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4959,6 +5058,34 @@ Zero changes to Bonsai core, zero risk to the existing Bonsai IFC workflow.</p>
 </code></pre></div>
 <p>Old <code>.blend</code> files with embedded LODs continue to open exactly as before.
 New saves become thin. The two modes coexist without conflict.</p>
+<h3 id="todo-1-db-updater-edit-write-back">TODO 1 — DB updater (edit write-back)<a class="headerlink" href="#todo-1-db-updater-edit-write-back" title="Permanent link">&para;</a></h3>
+<p>Edits in the Blender viewport (move a wall, resize a room) write back to the DB
+via <code>guid</code> → <code>UPDATE elements_rtree</code> + optionally re-serialise <code>base_geometries</code>.
+The <code>.blend</code> stays the working canvas; the DB stays the truth.</p>
+<h3 id="todo-2-bidirectional-sync-digital-twin">TODO 2 — Bidirectional sync (digital twin)<a class="headerlink" href="#todo-2-bidirectional-sync-digital-twin" title="Permanent link">&para;</a></h3>
+<p>The DB and the <code>.blend</code> are dual representations of the same building.
+Once TODO 1 exists, the sync loop closes:</p>
+<div class="highlight"><pre><span></span><code>.blend edit  →  DB updater  →  extracted.db  (viewport → truth)
+compiler run →  new output.db  →  load_post   →  .blend  (truth → viewport)
+</code></pre></div>
+<p>The DB is the digital twin of the <code>.blend</code>. A recompile by the Java pipeline
+is reflected in the viewport on next open. A viewport edit is reflected in the
+DB immediately. Neither side is master — they stay in sync.</p>
+<h3 id="todo-3-ifc-export-custom-exporter-not-bonsai-native">TODO 3 — IFC export (custom exporter, not Bonsai native)<a class="headerlink" href="#todo-3-ifc-export-custom-exporter-not-bonsai-native" title="Permanent link">&para;</a></h3>
+<p>Bonsai's native <code>File &gt; Export IFC</code> requires IfcOpenShell to hold the model
+in memory with every entity linked via <code>ifc_definition_id</code>. Federation objects
+have no <code>ifc_definition_id</code> — they are plain Blender objects. The native
+exporter does not see them as IFC entities. IFC export is <strong>not automatic</strong>.</p>
+<p>It is achievable via a custom exporter:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">ifcopenshell</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">ifcopenshell</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="n">schema</span><span class="o">=</span><span class="s2">&quot;IFC2X3&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;guid&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ifc_class&#39;</span><span class="p">):</span>
+        <span class="n">entity</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">create_entity</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="s1">&#39;ifc_class&#39;</span><span class="p">],</span> <span class="n">GlobalId</span><span class="o">=</span><span class="n">obj</span><span class="p">[</span><span class="s1">&#39;guid&#39;</span><span class="p">])</span>
+        <span class="c1"># attach tessellated geometry from base_geometries via geometry_hash</span>
+</code></pre></div>
+<p>Every ingredient is present (<code>guid</code>, <code>ifc_class</code>, DB geometry). It is a
+dedicated build, not a freebie from having objects in the Outliner.</p>
 <h3 id="the-workflow-this-enables">The workflow this enables<a class="headerlink" href="#the-workflow-this-enables" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>extract IFC → extracted.db          (once, ~20 min for 125K elements)
               ↓
