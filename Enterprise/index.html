@@ -1192,21 +1192,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#todo-1-db-updater-edit-write-back" class="md-nav__link">
+  <a href="#todo-1-digital-twin-sync-automatic-on-save" class="md-nav__link">
     <span class="md-ellipsis">
       
-        TODO 1 — DB updater (edit write-back)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#todo-2-bidirectional-sync-digital-twin" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TODO 2 — Bidirectional sync (digital twin)
+        TODO 1 — Digital twin sync (automatic, on save)
       
     </span>
   </a>
@@ -2472,21 +2461,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#todo-1-db-updater-edit-write-back" class="md-nav__link">
+  <a href="#todo-1-digital-twin-sync-automatic-on-save" class="md-nav__link">
     <span class="md-ellipsis">
       
-        TODO 1 — DB updater (edit write-back)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#todo-2-bidirectional-sync-digital-twin" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TODO 2 — Bidirectional sync (digital twin)
+        TODO 1 — Digital twin sync (automatic, on save)
       
     </span>
   </a>
@@ -4199,21 +4177,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#todo-1-db-updater-edit-write-back" class="md-nav__link">
+  <a href="#todo-1-digital-twin-sync-automatic-on-save" class="md-nav__link">
     <span class="md-ellipsis">
       
-        TODO 1 — DB updater (edit write-back)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#todo-2-bidirectional-sync-digital-twin" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TODO 2 — Bidirectional sync (digital twin)
+        TODO 1 — Digital twin sync (automatic, on save)
       
     </span>
   </a>
@@ -5058,19 +5025,21 @@ Zero changes to Bonsai core, zero risk to the existing Bonsai IFC workflow.</p>
 </code></pre></div>
 <p>Old <code>.blend</code> files with embedded LODs continue to open exactly as before.
 New saves become thin. The two modes coexist without conflict.</p>
-<h3 id="todo-1-db-updater-edit-write-back">TODO 1 — DB updater (edit write-back)<a class="headerlink" href="#todo-1-db-updater-edit-write-back" title="Permanent link">&para;</a></h3>
-<p>Edits in the Blender viewport (move a wall, resize a room) write back to the DB
-via <code>guid</code> → <code>UPDATE elements_rtree</code> + optionally re-serialise <code>base_geometries</code>.
-The <code>.blend</code> stays the working canvas; the DB stays the truth.</p>
-<h3 id="todo-2-bidirectional-sync-digital-twin">TODO 2 — Bidirectional sync (digital twin)<a class="headerlink" href="#todo-2-bidirectional-sync-digital-twin" title="Permanent link">&para;</a></h3>
+<h3 id="todo-1-digital-twin-sync-automatic-on-save">TODO 1 — Digital twin sync (automatic, on save)<a class="headerlink" href="#todo-1-digital-twin-sync-automatic-on-save" title="Permanent link">&para;</a></h3>
 <p>The DB and the <code>.blend</code> are dual representations of the same building.
-Once TODO 1 exists, the sync loop closes:</p>
-<div class="highlight"><pre><span></span><code>.blend edit  →  DB updater  →  extracted.db  (viewport → truth)
-compiler run →  new output.db  →  load_post   →  .blend  (truth → viewport)
+<code>save_pre</code> already fires on every save — the same handler that strips meshes
+also writes viewport edits back to the DB. One save action, both sides sync:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@persistent</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">blend_save_pre</span><span class="p">(</span><span class="n">dummy</span><span class="p">):</span>
+    <span class="n">_sync_edits_to_db</span><span class="p">()</span>    <span class="c1"># guid → UPDATE elements_rtree + base_geometries</span>
+    <span class="n">_strip_meshes</span><span class="p">()</span>        <span class="c1"># thin .blend written</span>
 </code></pre></div>
-<p>The DB is the digital twin of the <code>.blend</code>. A recompile by the Java pipeline
-is reflected in the viewport on next open. A viewport edit is reflected in the
-DB immediately. Neither side is master — they stay in sync.</p>
+<p>The full twin loop:</p>
+<div class="highlight"><pre><span></span><code>viewport edit  →  Ctrl+S  →  save_pre syncs DB  →  extracted.db updated
+compiler run   →  load_post reads DB            →  .blend reflects new truth
+</code></pre></div>
+<p>No manual updater step. No separate script to remember to run.
+Save = sync. Exit = sync (via <code>bpy.app.handlers.depsgraph_update_post</code> on quit).</p>
 <h3 id="todo-3-ifc-export-custom-exporter-not-bonsai-native">TODO 3 — IFC export (custom exporter, not Bonsai native)<a class="headerlink" href="#todo-3-ifc-export-custom-exporter-not-bonsai-native" title="Permanent link">&para;</a></h3>
 <p>Bonsai's native <code>File &gt; Export IFC</code> requires IfcOpenShell to hold the model
 in memory with every entity linked via <code>ifc_definition_id</code>. Federation objects
