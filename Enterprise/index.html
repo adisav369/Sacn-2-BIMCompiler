@@ -960,10 +960,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#what-is-inside-each-blend" class="md-nav__link">
+  <a href="#what-is-inside-each-blend-and-where-the-lods-live" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What is inside each .blend
+        What is inside each .blend — and where the LODs live
       
     </span>
   </a>
@@ -975,6 +975,17 @@
     <span class="md-ellipsis">
       
         Can you open the .blend without the database?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-ifc-export-gap-and-why-it-is-not-a-gap-for-us" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The IFC export gap — and why it is not a gap for us
       
     </span>
   </a>
@@ -2091,10 +2102,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#what-is-inside-each-blend" class="md-nav__link">
+  <a href="#what-is-inside-each-blend-and-where-the-lods-live" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What is inside each .blend
+        What is inside each .blend — and where the LODs live
       
     </span>
   </a>
@@ -2106,6 +2117,17 @@
     <span class="md-ellipsis">
       
         Can you open the .blend without the database?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-ifc-export-gap-and-why-it-is-not-a-gap-for-us" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The IFC export gap — and why it is not a gap for us
       
     </span>
   </a>
@@ -3669,10 +3691,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#what-is-inside-each-blend" class="md-nav__link">
+  <a href="#what-is-inside-each-blend-and-where-the-lods-live" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What is inside each .blend
+        What is inside each .blend — and where the LODs live
       
     </span>
   </a>
@@ -3684,6 +3706,17 @@
     <span class="md-ellipsis">
       
         Can you open the .blend without the database?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-ifc-export-gap-and-why-it-is-not-a-gap-for-us" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The IFC export gap — and why it is not a gap for us
       
     </span>
   </a>
@@ -3994,7 +4027,12 @@ tessellated to vertex arrays, sizes expand — which is why the federation <code
 still be larger than the source IFC for complex low-repetition geometry. But the
 traditional Bonsai <code>.blend</code> is always the worst case: every element tessellated AND stored
 separately.</p>
-<h3 id="what-is-inside-each-blend">What is inside each <code>.blend</code><a class="headerlink" href="#what-is-inside-each-blend" title="Permanent link">&para;</a></h3>
+<h3 id="what-is-inside-each-blend-and-where-the-lods-live">What is inside each <code>.blend</code> — and where the LODs live<a class="headerlink" href="#what-is-inside-each-blend-and-where-the-lods-live" title="Permanent link">&para;</a></h3>
+<p>The LOD meshes (tessellated vertices and faces) <strong>are embedded in the federation <code>.blend</code></strong>,
+but in GPU-instanced format: one <code>bpy.data.mesh</code> block per unique geometry hash,
+shared by all instances of that shape. 500 identical windows = <strong>1 mesh block</strong> in the
+<code>.blend</code>, 500 object references pointing to it. Traditional Bonsai stores one mesh block
+per element regardless — 500 windows = 500 separate blocks.</p>
 <table>
 <thead>
 <tr>
@@ -4010,14 +4048,19 @@ separately.</p>
 <td>Not involved at all</td>
 </tr>
 <tr>
-<td><strong>Mesh data</strong></td>
-<td>One mesh data block per element, even for duplicates</td>
-<td>One mesh per unique geometry hash — shared by all instances</td>
+<td><strong>LOD mesh data</strong></td>
+<td>One mesh block per element, duplicated for repeats</td>
+<td><strong>One mesh block per unique geometry — GPU instanced</strong></td>
+</tr>
+<tr>
+<td><strong>Outliner objects</strong></td>
+<td>IFC entities with BIM properties panel (Pset, Qto…)</td>
+<td>Plain Blender objects — <code>guid</code>, <code>ifc_class</code>, <code>discipline</code> as custom props only</td>
 </tr>
 <tr>
 <td><strong>Identity per object</strong></td>
-<td><code>ifc_definition_id</code> (volatile numeric ID, requires IFC in memory)</td>
-<td><code>guid</code>, <code>ifc_class</code>, <code>discipline</code>, <code>geometry_hash</code> — self-contained strings</td>
+<td><code>ifc_definition_id</code> (volatile numeric, needs IFC in memory)</td>
+<td><code>guid</code> string — stable, self-contained</td>
 </tr>
 <tr>
 <td><strong>Materials</strong></td>
@@ -4026,21 +4069,36 @@ separately.</p>
 </tr>
 <tr>
 <td><strong>Re-open without source</strong></td>
-<td>Geometry visible, but BIM panel needs IFC file present</td>
+<td>Geometry visible, BIM panel needs IFC file present</td>
 <td>Geometry visible — DB needed only for filtering/clash panel</td>
 </tr>
 </tbody>
 </table>
 <h3 id="can-you-open-the-blend-without-the-database">Can you open the <code>.blend</code> without the database?<a class="headerlink" href="#can-you-open-the-blend-without-the-database" title="Permanent link">&para;</a></h3>
-<p><strong>Yes.</strong> All mesh geometry is embedded at save time. When you reopen:</p>
-<ul>
-<li>Objects render immediately — vertices and faces are in the <code>.blend</code></li>
-<li>Each object carries <code>guid</code>, <code>ifc_class</code>, <code>discipline</code> as plain custom properties</li>
-<li>The federation filtering panel rebuilds its spatial index from the DB if it finds it at the stored path — if missing, that panel is inactive but the 3D view works fine</li>
-</ul>
-<p>The <code>guid</code> custom property on every object is the stable key back to any DB row,
-enabling a future write-back script to push edits from Blender back to <code>elements_rtree</code>
-and <code>base_geometries</code> without reopening the IFC.</p>
+<p><strong>Yes.</strong> All mesh geometry is embedded at save time. Objects render immediately.
+The federation filtering panel rebuilds its spatial index from the DB if found at the
+stored path — if missing, that panel is inactive but the 3D view works fine.</p>
+<h3 id="the-ifc-export-gap-and-why-it-is-not-a-gap-for-us">The IFC export gap — and why it is not a gap for us<a class="headerlink" href="#the-ifc-export-gap-and-why-it-is-not-a-gap-for-us" title="Permanent link">&para;</a></h3>
+<p><strong>Traditional Bonsai:</strong> edits in the viewport write back to the live IfcOpenShell
+model in memory → <code>File &gt; Export IFC</code> produces an updated IFC file.
+The Outliner shows IFC entities; the BIM properties panel shows Psets.</p>
+<p><strong>Federation:</strong> edits in the viewport write to the <code>.blend</code> only.
+The Outliner shows plain Blender objects (no BIM properties panel, no Pset sidebar).
+There is no IFC file in memory to export to.</p>
+<p>This looks like a gap — but it is not a gap <strong>for this workflow</strong>, because we do not
+use IFC as the source of truth. The source of truth is the DB. The gap is purely
+internal and closes with a single incremental updater script:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># For each modified object in the Blender scene:</span>
+<span class="n">guid</span> <span class="o">=</span> <span class="n">obj</span><span class="p">[</span><span class="s1">&#39;guid&#39;</span><span class="p">]</span>                          <span class="c1"># already on every object</span>
+<span class="n">new_aabb</span> <span class="o">=</span> <span class="n">compute_aabb</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>                <span class="c1"># from modified mesh bounds</span>
+<span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+    <span class="s2">&quot;UPDATE elements_rtree SET minX=?,maxX=?,minY=?,maxY=?,minZ=?,maxZ=? WHERE id=...&quot;</span><span class="p">,</span>
+    <span class="n">new_aabb</span><span class="p">)</span>
+<span class="c1"># Optionally: reserialise vertex BLOB back to base_geometries</span>
+</code></pre></div>
+<p>The <code>guid</code> custom property set on every object at load time is the stable foreign key.
+No IFC round-trip needed. The DB stays the single source of truth; the <code>.blend</code> is the
+working canvas; the updater syncs the two incrementally.</p>
 <h3 id="why-the-viewport-is-more-responsive">Why the viewport is more responsive<a class="headerlink" href="#why-the-viewport-is-more-responsive" title="Permanent link">&para;</a></h3>
 <p>Three structural reasons the federation <code>.blend</code> handles large models better:</p>
 <p><strong>1. GPU instancing</strong> — Blender sends one mesh to the GPU per unique geometry hash.
