@@ -3861,7 +3861,8 @@
 which runs inside <a href="https://www.blender.org/">Blender</a> (the open-source 3D platform).</p>
 </blockquote>
 <div class="bim-banner">
-<p><b>Bonsai/Blender as a spatial ERP viewport, not just a BIM viewer.</b> Python addon replacing IFC file access with a FederatedModel Spatial Database for queryable geometry.</p>
+<p>⚡ <b>IFC files don't scale. The FederatedModel DB does.</b><br>
+A 30K-element IFC takes minutes to open, spikes RAM, and locks the viewport. Extract once to SQLite — instant preview, GPU-instanced meshes, spatial queries in &lt;100ms. <a href="#federation-vs-traditional-bonsai--file-size-and-viewport-performance">See the numbers →</a></p>
 </div>
 <hr />
 <h2 id="what-is-the-federation-addon">What Is the Federation Addon<a class="headerlink" href="#what-is-the-federation-addon" title="Permanent link">&para;</a></h2>
@@ -3953,11 +3954,21 @@ the QS who reviews 5D cost breakdowns, the sustainability officer checking
 the same <a href="../BOMBasedCompilation/">output.db</a>.</p>
 <hr />
 <h2 id="federation-vs-traditional-bonsai-file-size-and-viewport-performance">Federation vs Traditional Bonsai — File Size and Viewport Performance<a class="headerlink" href="#federation-vs-traditional-bonsai-file-size-and-viewport-performance" title="Permanent link">&para;</a></h2>
-<p>This is the most concrete difference for Bonsai users. Traditional Bonsai import
-loads the IFC file into memory via IfcOpenShell and writes every element's full mesh
-as a separate data block in the <code>.blend</code>. Federation extracts once to a SQLite DB,
-then loads into Blender with GPU instancing — one mesh per unique geometry, N objects
-share it.</p>
+<p><strong>The problem every Bonsai user knows:</strong> open a 30,000-element IFC file. Bonsai
+parses every entity in the file sequentially — IfcOpenShell builds 30K Python objects
+in RAM, one per element. Then it tessellates every shape individually and writes each
+mesh as a separate Blender data block. On a typical workstation this takes <strong>3–8 minutes</strong>,
+consumes <strong>8–16 GB RAM</strong>, and leaves the viewport sluggish because the dependency graph
+is tracking 30K independent mesh data blocks. Discipline filtering means hiding objects
+one by one. Spatial queries don't exist — you iterate Python objects.
+The IFC file itself must stay on disk at its original path or the BIM properties panel
+breaks. Change anything and you cannot export it back to IFC without the full
+IfcOpenShell model still in memory.</p>
+<p>Federation extracts the IFC <strong>once</strong> to a SQLite DB (one-time cost, ~20 min for 125K
+elements). After that the IFC file is never touched again. Blender loads from the DB
+with GPU instancing — one mesh per unique geometry, N objects share it. The same 30K
+elements open in <strong>under 30 seconds</strong>, spatial queries run in under 100ms, and the
+<code>.blend</code> file is self-contained.</p>
 <h3 id="file-sizes-real-measurements">File sizes — real measurements<a class="headerlink" href="#file-sizes-real-measurements" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
