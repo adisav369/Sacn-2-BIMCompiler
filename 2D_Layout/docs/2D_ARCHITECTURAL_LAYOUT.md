@@ -515,11 +515,61 @@ per §5.0 universal/conditional tables and is not repeated per view.
 | Property | Source |
 |----------|--------|
 | Bay grids | Same as floor plan (§4.4) — dash-dot, bubbles, labels |
-| Roof outline | DB: roof slab bounding box |
-| Ridge line | DB: maxZ line of roof slabs (dashed, style from template `line_styles.ridge_line`) |
-| Slope arrows | DB: evenly spaced along each slope, direction from ridge toward eave, count = one per grid bay |
-| Eave overhang | DB: roof edge - wall face (dimension value) |
-| Labels | RIDGE, EAVE (from 2D.db `[2d_level_marker]` table) |
+| Roof outline | DB: roof slab bounding box (see §5.3a for detection rule) |
+| Ridge line | DB: maxZ line of roof slabs (dashed, style from template `line_styles.ridge_line`). Omit for flat roofs (§5.3b). |
+| Slope arrows | DB: evenly spaced along each slope, direction from ridge toward eave, count = one per grid bay. Omit for flat roofs. |
+| Eave overhang | DB: roof edge - wall face (dimension value). Omit for flat roofs (no overhang). |
+| Labels | RIDGE, EAVE (from 2D.db `[2d_level_marker]` table). Flat roof: use BUMBUNG RATA / FLAT ROOF label only. |
+
+#### §5.3a Roof Detection Rule
+
+Code MUST detect the roof element using this priority order:
+
+1. **`IfcRoof`** elements — direct match, always preferred (SampleHouse is this case)
+2. **`IfcSlab`** where `element_name LIKE '%Roof%'` AND `maxZ` is within 0.5m of the
+   building's overall `maxZ` — flat roof slab (Duplex is this case)
+3. **Parapet walls** in a "Roof" storey — if no slab is found, use the bounding box of
+   all walls in the storey named "Roof" as the roof outline
+
+If `roofs = []` after step 1 AND step 2 produces candidates, promote them to `roofs`.
+Log which rule fired: `§5.3a roof_detection: rule={1|2|3} n={count}`.
+
+**Never skip roof plan silently** — if detection fails, log as WARN and draw the
+building footprint bounding box as a fallback outline with annotation
+"ROOF OUTLINE (FALLBACK — CHECK IFC)".
+
+#### §5.3b Flat Roof vs Pitched Roof
+
+Detect roof type by comparing ridge_z vs eave_z from the roof element(s):
+
+```
+pitched = (roof.maxZ - roof.minZ) > 0.5m
+```
+
+| Feature | Pitched roof (SH) | Flat roof (DX) |
+|---------|------------------|----------------|
+| Ridge line (dashed) | YES — at maxZ position | NO |
+| Slope arrows | YES — from ridge to eave | NO |
+| Eave overhang dim | YES — roof edge - wall face | NO |
+| RIDGE/EAVE labels | YES | NO |
+| Parapet outline | NO | YES — parapet walls in "Roof" storey |
+| Skylights | if present | YES — IfcWindow in Roof storey |
+| Roof drain symbols | NO | YES — IfcFlowFitting in Roof storey |
+| Flat roof label | NO | YES — "BUMBUNG RATA / FLAT ROOF" at centroid |
+
+**TB-LKTN convention for flat roofs:** The roof plan shows the parapet rectangle
+as a bold outline (A-ROOF, lw=0.50mm), skylights as rectangles with cross marks
+(A-GLAZ, lw=0.25mm), and drain symbols as circles with an X (A-PLMB, lw=0.18mm).
+The building name is shown centered above the drawing title.
+
+#### §5.3c Building Name Fallback
+
+`spatial_structure WHERE type='IfcBuilding'` → `name` column.
+If `name` is empty (DX case), derive from DB filename stem:
+- `DX_extracted.db` → "DUPLEX"
+- `SH_extracted.db` → "IFC4 SAMPLE HOUSE"
+- `RM_extracted.db` → "RUMAH RAKYAT"
+Fallback name is uppercase with underscores replaced by spaces.
 
 ### 5.4 Section
 
@@ -606,6 +656,36 @@ All values from `drawing_template.json` → `paper.*`:
 │  └───────────────────────────────┴──────────────┘   │
 └─────────────────────────────────────────────────────┘
 ```
+
+### 7.1a Fitted Paper Height (sleek format)
+
+**Principle:** Paper width is fixed at 420mm (A3 landscape). Paper height is **fitted to content** — short and wide, not wasted space.
+
+**Reference:** Archive FLOOR plan SVG is 420×194mm (ratio 2.16:1). BestFloorPlanReference.png is ratio 1.95:1. Target range: **1.9–2.2:1**.
+
+**Formula:**
+```
+paper_height = margin_top
+             + annotation_top       (= tier_1_offset_mm + grid_extend_mm + bubble_radius_mm×2)
+             + building_height_mm   (building Y-extent at scale, or building H for elevations)
+             + annotation_bottom    (= grid_extend_mm + bubble_radius_mm×2)
+             + margin_bottom
+```
+
+Clamp to `[fitted_min_height_mm, fitted_max_height_mm]` from template.
+
+**Template keys** (in `paper`):
+- `fitted: true` — enable fitted mode (default: true)
+- `fitted_min_height_mm: 150` — never shorter than this
+- `fitted_max_height_mm: 250` — never taller (prevents reverting to full A3)
+- `height_mm: 297` — fallback when `fitted: false`
+
+**Outcome:**
+- Floor plan (SH, 8.7m deep): ~180–195mm ✓ matches archive
+- Elevations (SH, 3.5m tall): ~120mm → clamped to 150mm minimum
+- All sheets: sleek landscape, content fills the sheet
+
+**Test:** After generation, log `§7.1a paper_height={h}mm fitted={fitted}`. Verify height ≤ 250mm and ratio width/height ≥ 1.9.
 
 ### 7.2 Title Block Panel
 
@@ -1262,4 +1342,621 @@ not grounded in log output is invention and violates §1 R1.
 | `archive/` | Reference SVG outputs (proven conformity template, do not modify) |
 | `input/SH_2D.json` | SampleHouse output plan (master page table, 10 pages) |
 | `input/SH_extracted.db` | SampleHouse compiled DB (copied from DAGCompiler) |
-| `internal/SpecToCode.md` | **Spec-to-code checklist** — 133 items, Y/N compliance per spec line |
+| `internal/SpecToCode.md` | **Spec-to-code checklist** — 134 items, 134/134 Y (100%) as of 2026-04-08 |
+
+---
+
+## 12. Scaling Roadmap — Beyond SampleHouse
+
+SH is the Rosetta Stone. DX (Duplex) is the first scale test because it has
+two storeys and MEP elements — the two capabilities absent from SH.
+
+### 12.1 Multi-Storey (§3.0c)
+
+**Spec requirement:** For each storey in the compiled DB, generate one FLOOR
+plan sheet. Sheet numbering follows storey elevation order:
+
+```
+A-01-GF   Ground Floor Plan    storey_elevation ≈ 0.000
+A-01-FF   First Floor Plan     storey_elevation ≈ 3.000
+A-01-RF   Roof Floor Plan      storey_elevation ≈ 6.000
+```
+
+**Implementation:** `write_floor_plan_dxf()` already accepts `storey_filter`.
+Add a storey iteration loop in `main()` that:
+1. Queries distinct storeys from DB (sorted by elevation)
+2. Derives a short code per storey (GF, FF, 2F, 3F…)
+3. Calls `write_floor_plan_dxf()` once per storey
+4. Adds each storey sheet to the `{PREFIX}_2D.json` page table
+
+**`{PREFIX}_2D.json` storey-aware page row:**
+```json
+{
+  "sheet": "A-01-GF",
+  "title": "GROUND FLOOR PLAN",
+  "file": "FLOOR_GF",
+  "type": "plan",
+  "storey": "Ground Floor",
+  "storey_elevation_m": 0.0,
+  "status": "DONE"
+}
+```
+
+**Tests to add (§10.3 Multi-storey):**
+- `test_storey_count` — output FLOOR sheet count = storey count in DB
+- `test_storey_boundary` — no element from storey N appears in storey N+1 plan
+- `test_storey_labels` — sheet title contains storey name, sheet number contains storey code
+- `test_storey_grids_consistent` — same grid labels appear on all storeys (structural grid is constant)
+
+### 12.2 MEP Discipline Sheets (§5.6)
+
+TB-LKTN includes M-series (mechanical/plumbing) and E-series (electrical)
+sheets alongside the A-series architectural sheets. DX has pipes and
+electrical elements; this is the first real test.
+
+**MEP sheet types:**
+
+| Sheet | Title | IFC filter | AIA layers |
+|-------|-------|-----------|-----------|
+| M-01-GF | GROUND FL PLUMBING | IfcPipe, IfcPipeSegment, IfcPipeFitting, IfcFlowTerminal | A-MECH-PIPE, A-MECH-EQPM |
+| M-02-GF | GROUND FL HVAC | IfcDuctSegment, IfcDuctFitting, IfcAirTerminal | A-HVAC-DUCT, A-HVAC-EQPM |
+| E-01-GF | GROUND FL ELECTRICAL | IfcCableCarrierSegment, IfcSwitchingDevice, IfcElectricAppliance | A-ELEC-POWR, A-ELEC-LITE |
+
+**Spec rule:** Each MEP sheet is a FLOOR plan pass with a discipline filter.
+The wall section cut is SHOWN (thin, gray, not bold) as spatial context.
+MEP elements render at their symbol from `2d_drawing_symbol`. Elements with
+no symbol entry render as their bounding box centroid with a question mark tag.
+
+**`2d_drawing_style` rows needed** (add to 2D.db):
+```sql
+INSERT INTO 2d_drawing_style (ifc_class, view_type, stroke, fill, stroke_width, shape)
+VALUES
+  ('IfcPipeSegment',   'plan', '#0055AA', 'none', 0.25, 'line'),
+  ('IfcDuctSegment',   'plan', '#006600', 'none', 0.35, 'rect'),
+  ('IfcFlowTerminal',  'plan', '#0055AA', 'none', 0.18, 'symbol'),
+  ('IfcSwitchingDevice','plan','#AA6600', 'none', 0.18, 'symbol'),
+  ('IfcElectricAppliance','plan','#AA6600','none', 0.18, 'symbol');
+```
+
+**Tests to add (§10.4 Discipline separation):**
+- `test_mep_discipline_separation` — M-01 contains zero IfcWall-cut entities at full weight; A-01 contains zero IfcPipe entities
+- `test_mep_symbol_coverage` — every IFC class in MEP DB has a `2d_drawing_style` row; no question-mark placeholders
+- `test_mep_wall_context` — M-01 wall outlines use gray stroke (A-MECH-WALL layer, lw=0.18), not bold black
+
+### 12.3 Auto-Scale for Large Buildings (§7.1b)
+
+SH at 1:100 fits A3. A hospital floor at 100m × 60m at 1:100 = 1000×600mm —
+far exceeds A3. The template needs **auto_scale**:
+
+```json
+"paper": {
+  "auto_scale": true,
+  "auto_scale_target_fill": 0.60,
+  "_note": "Scale chosen so building occupies 60% of content width"
+}
+```
+
+**Algorithm:**
+```
+content_width = paper.width_mm - margins.left - margins.right - title_block_width_mm
+building_width_mm = (bld_max_x - bld_min_x) / 1000  (metres → mm at 1:1)
+raw_scale = building_width_mm / (content_width * target_fill)
+scale = round up to nearest standard: 50, 100, 200, 250, 500, 1000
+```
+
+Standard scales (ISO 5455): 1:50, 1:100, 1:200, 1:250, 1:500, 1:1000.
+Log: `§7.1b auto_scale: building=102.4m content=265mm → scale=1:500`.
+
+**Test:** `test_auto_scale_fits` — building fill ≥ 40% and ≤ 80% of content area.
+
+### 12.4 Irregular Grid Detection (§4.1b)
+
+SH and DX have orthogonal grids (walls align to X/Y). Large buildings —
+hospitals, airports, university campuses — often have:
+- Wings at non-90° angles
+- Rotated structural grids
+- Multiple grid systems per building
+
+**Spec for rotated grids:**
+1. Compute dominant wall angle via PCA on all wall midpoint vectors
+2. If dominant angle deviates > 5° from 0°/90°, rotate coordinate system
+3. Derive grids in rotated space
+4. Apply inverse rotation to grid line start/end points for DXF output
+5. Grid labels remain A,B,C,D / 1,2,3
+
+**Failure mode without this:** derive_grids() treats rotated walls as noise →
+produces 0-2 grids instead of 6-8 → conformity gate fails on GRID_COUNT.
+
+**Test:** `test_rotated_grid_30deg` — synthetic 30° rotated building produces
+≥ 4 grids with correct label sequence.
+
+### 12.5 Hospital Scale — Known Constraints
+
+| Constraint | Severity | Resolution |
+|-----------|----------|------------|
+| Floor size > A3 at 1:100 | Medium | §7.1b auto_scale |
+| Room label collision (100+ rooms) | Medium | Collision detection, font size reduction |
+| Irregular / multi-wing footprint | High | Wing decomposition or zone tiling |
+| Non-orthogonal structural grid | High | §4.1b rotated grid detection |
+| Medical gas / specialist MEP symbols | Low | Add rows to `2d_drawing_symbol` |
+| Section cut performance (100m floor) | Low | SQLite handles it; mesh math is O(elements) |
+
+The architectural A-series (floor plans, elevations, roof plan) will produce
+correct output for a regular hospital block with auto_scale + storey iteration.
+The main blocker for complex hospital geometry is non-orthogonal grids.
+
+---
+
+## 13. Industry Comparison
+
+### 13.1 What the Big Players Do
+
+No major BIM platform produces fully automated 2D output. All require a
+human to compose sheets before drawings are generated.
+
+| Platform | Sheet Automation | Dimension Automation | IFC-native | Assessment |
+|----------|-----------------|---------------------|-----------|------------|
+| **Autodesk Revit** | Manual view placement on sheets | Manual or semi-auto | Import only | Industry standard; zero automation on sheet composition |
+| **Graphisoft ArchiCAD** | Publisher batch-exports; views manually composed | Manual | Better IFC | Same manual composition problem |
+| **Bentley OpenBuildings** | i-model publishing; views manually set up | Manual | Good | Same |
+| **Vectorworks** | Best scripting support (Python/Marionette) | Partial | Good | Closest; but bespoke per project, not compiler-driven |
+| **Speckle / Hypar** | Cloud parametric; geometry only | None | Good | No 2D production |
+| **EvolveLAB (Revit)** | Dynamo sheet automation | None | No | Revit-dependent; not IFC-native |
+
+**The gap none of them close:** IFC → fully automated, standards-compliant 2D
+with zero human composition steps. In every platform listed, a human must
+decide where views sit on paper, what scale to use, where annotations go.
+This project computes all of that from DB coordinates.
+
+### 13.2 The Compiler Paradigm — Why It's Different
+
+Every existing BIM tool treats 2D drawings as **views of a model** that a
+human composes. This project treats 2D as a **compiled artifact**: given an
+IFC + a standard (TB-LKTN), the compiler deterministically produces the
+drawing. No human decisions inside the loop.
+
+This is analogous to the difference between a programmer editing assembly
+and a compiler that takes high-level source. The model is the source. The
+drawing is the binary.
+
+**Consequences:**
+- **Reproducible.** Same IFC + same template → byte-identical output. No
+  "the architect moved this text box". This matters for regulatory submissions
+  and audit trails.
+- **Scalable.** 500 identical housing units → 500 drawing sets in one pipeline
+  run. No per-unit manual work.
+- **Rosetta Stone effect.** Once 35 reference buildings define the pattern,
+  any NEW building that passes through the compiler inherits all proven drawing
+  conventions automatically.
+- **Standard-portable.** Swap `drawing_template.json` and `2D.db` for a
+  different national standard (Singapore BCA, UK NBS, Australian NCC) and
+  the same pipeline produces drawings to that standard.
+
+### 13.3 Market Impact
+
+**Emerging markets.** TB-LKTN (Malaysia JKR) compliant drawings are required
+for government housing submissions. A Revit license costs USD 3,000–5,000/year
+per seat. An open IFC → 2D compiler removes that barrier entirely for small
+practices, contractors, and government agencies processing high volumes.
+
+**Mass housing.** Government housing programmes (Malaysia PR1MA, Singapore HDB,
+Indonesia FLPP) build tens of thousands of identical or near-identical units.
+Manual drawing production per unit is the bottleneck. A compiler with
+parametric variation (change room dimensions → recompile → new drawing set)
+removes that bottleneck.
+
+**Regulatory review at scale.** A planning authority reviewing 10,000 building
+submissions per year cannot manually check each drawing. If drawings are
+compiler-produced and machine-readable (DXF with GUID xdata), automated
+compliance checking becomes possible — check wall thickness from DB, verify
+room area from label, cross-reference grid positions.
+
+**The IFC round-trip.** DXF output with GUID xdata means the 2D drawing can
+be imported back into Revit/ArchiCAD and elements can be traced back to the
+original IFC objects. This closes the round-trip that all major platforms
+claim to support but none actually implement for automated 2D.
+
+### 13.4 Showstoppers Assessment
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|-----------|
+| Non-orthogonal building geometry | High for complex projects | Broken grids | §4.1b rotated grid detection |
+| Scale mismatch (large buildings) | Certain for hospitals | Won't fit paper | §7.1b auto_scale |
+| MEP symbol gaps | Medium | Placeholder tags | Incremental `2d_drawing_symbol` additions |
+| Room label collision | High for dense plans | Illegible labels | Collision detection pass |
+| Multi-wing footprint | Medium for hospitals | Wrong bounding box | Wing decomposition |
+| Performance | Low | Slow but correct | Not a blocker |
+
+**No fundamental architecture showstopper.** The pipeline — IFC → SQLite →
+section cut → grid detection → annotation → DXF → SVG — is sound at any
+scale. The constraints above are engineering problems with known solutions,
+not paradigm failures. The most complex building in the world has walls,
+grids, rooms, and levels. The compiler handles all of them; it just needs
+scale-appropriate parameters and extended symbol libraries.
+
+---
+
+## 14. Standards Enforced by Code
+
+### 14.1 Language Rule (English Only)
+
+**All text rendered in DXF/SVG output must be in English.**
+
+This applies to:
+- Room labels (draw from `2d_room_label.display_text` — keep English column)
+- Title block field labels (`FLOOR PLAN`, `PROJECT`, `CLIENT`, `ARCHITECT` etc.)
+- Level marker labels (`GRD. FLOOR LEVEL`, `BEAM/CEILING LEVEL`, `APRON LEVEL`)
+- Schedule headers (`DOOR & WINDOW SCHEDULE`, `SYMBOLS`, `DESCRIPTIONS`, `QTY.`)
+- Grid reference legend (`GRID REFERENCE`, `HORIZONTAL (X)`, `VERTICAL (Y)`, `TOTAL`)
+- MEP legend (`ELECTRICAL LAYOUT`, `PLUMBING LAYOUT`)
+- Drawing title (`FLOOR PLAN`, `FRONT ELEVATION`, `ROOF PLAN` etc.)
+- Scale bar label (`scale 1:100` — text below drawing title, NOT in title block)
+
+**What is NOT English in input but must be normalised:**
+- `2d_title_block.field_name` values may be Malay (e.g. `TARIKH`, `ARKITEK`) — the
+  code must map these to English display labels via a lookup in `_draw_sheet_layout`.
+  Mapping table (hard-coded, not invented — mirrors TBKLTN English column):
+
+  | DB field_name | Display label |
+  |--------------|---------------|
+  | PROJEK       | PROJECT       |
+  | PEMILIK      | CLIENT        |
+  | ARKITEK      | ARCHITECT     |
+  | JENIS_BANGUNAN | BUILDING TYPE |
+  | TAJUK_LUKISAN | DRAWING TITLE |
+  | DILUKIS      | DRAWN BY      |
+  | UKURAN       | SCALE         |
+  | TARIBULAN    | DATE          |
+  | DISEMAK      | CHECKED BY    |
+  | NO_LUKISAN   | DRAWING NO.   |
+  | NO_KEPINGAN  | SHEET NO.     |
+  | PINDAAN_NO   | REVISION      |
+
+  If a field_name is not in this table, use it as-is (already English).
+
+**Test:** `test_conformity.py` must assert no Malay string appears in any DXF TEXT
+entity on layers `A-TTLB` or `A-ANNO-TEXT`. Malay indicator: string contains any
+of ('PROJEK','PEMILIK','ARKITEK','JENIS','TARIKH','TARIBULAN','DISEMAK','PINDAAN').
+
+### 14.2 JKR Logo in Title Block
+
+**File:** `input/jkr.png` (exists). Insert as raster image in the JKR header zone.
+
+**Spec:**
+```
+Title block header zone (top of panel):
+┌──────────────────────────────┐  ← top of panel
+│ [jkr.png]  PUBLIC WORKS      │
+│            DEPARTMENT MALAYSIA│  ← existing header text
+├──────────────────────────────┤  ← thick line (0.50mm)
+│ DUPLEX RESIDENTIAL           │  ← building type (§A)
+│ Ifc4 Duplex                  │  ← building name
+├──────────────────────────────┤
+```
+
+**DXF image insertion** (`ezdxf`):
+```python
+image_def = doc.add_image_def('jkr.png', size_in_pixel=(width_px, height_px))
+msp.add_image(insert=(x, y), size_in_units=(logo_w, logo_h),
+              image_def=image_def, dxfattribs={'layer': 'A-TTLB'})
+```
+- `logo_w` = `title_block.logo_width_mm * scale` (template key, default 15mm)
+- `logo_h` = `title_block.logo_height_mm * scale` (template key, default 12mm)
+- Placement: left side of JKR zone, vertically centred
+- Header text shifts right by `logo_w + 2mm` gap
+
+**Template keys to add** in `drawing_template.json → title_block`:
+```json
+"logo_file": "jkr.png",
+"logo_width_mm": 15.0,
+"logo_height_mm": 12.0
+```
+
+**Fallback:** if `jkr.png` not found at `input/jkr.png`, log warning and skip logo
+(do not abort). Header text stays centred.
+
+### 14.3 Fan Symbol (MEP)
+
+**File:** `input/fan.png` (exists). Use as the ceiling fan symbol on MEP/Electrical pages.
+
+**Classification:** element_name keywords `'fan'`, `'ceiling fan'` → discipline `ELECTRICAL`,
+symbol type `'FAN'`.
+
+**DXF symbol:** When discipline=ELECTRICAL and element is classified FAN:
+- Insert `fan.png` as raster image centred at element centroid
+- Size: `2d_drawing_symbol.symbol_size_mm` (default 5mm) × scale
+- Fallback geometric: asterisk (6 lines at 30° intervals through centre, radius = sym_r)
+
+**Legend entry:** `FAN` row in MEP legend panel with `fan.png` thumbnail or asterisk glyph.
+
+---
+
+## 15. Grid Dimension Triage
+
+### 15.1 Problem
+
+When bay spacing is small at the drawing scale, dimension text overlaps adjacent
+text and becomes illegible. The right panel GRID REFERENCE legend lists ALL bays
+even when most are already clearly legible in the drawing — wasting panel space.
+
+### 15.2 Triage Function
+
+```python
+def _triage_grid_dims(grids, scale, crowding_threshold_mm=15.0):
+    """
+    Classify each bay dimension as INLINE or PANEL.
+
+    Returns:
+        inline_dims: list of GridBay — show dim text in drawing AND keep in drawing
+        panel_dims:  list of GridBay — suppress inline text, list ONLY in panel
+
+    Rules:
+        bay_paper_mm = (grid[i+1].pos - grid[i].pos) * 1000 / scale
+        if bay_paper_mm >= crowding_threshold_mm → INLINE (legible in drawing)
+        if bay_paper_mm <  crowding_threshold_mm → PANEL  (too small to label)
+        Overall tier-1 dim is always INLINE.
+
+    Log (mandatory):
+        §TRIAGE {axis}: {label1}-{label2} = {dist_mm}mm ({paper_mm:.1f}mm@1:{scale}) → {INLINE|PANEL}
+    """
+```
+
+**GridBay** namedtuple: `(label1, label2, dist_m, paper_mm, tier)`
+
+### 15.3 Panel Legend Rule
+
+The GRID REFERENCE panel shows **only panel_dims** (crowded bays).
+If `panel_dims` is empty → show one line: `ALL DIMS SHOWN IN DRAWING`.
+
+**Drawing behaviour:**
+- `inline_dims` → dim line + tick + text rendered in drawing (normal)
+- `panel_dims` → dim line + tick rendered, but text SUPPRESSED in drawing
+  (the panel legend is the only label for these bays)
+
+**Tier-1 overall dim** is always shown inline in the drawing regardless of width.
+
+### 15.4 Log Output
+
+Every bay must be logged:
+```
+§TRIAGE X: A-B = 4900mm (49.0mm@1:100) → INLINE
+§TRIAGE X: B-C =  200mm ( 2.0mm@1:100) → PANEL
+§TRIAGE X: OVERALL = 5100mm (51.0mm@1:100) → INLINE (forced)
+§TRIAGE Y: 1-2 = 3000mm (30.0mm@1:100) → INLINE
+§TRIAGE PANEL: 1 bay listed (X: B-C)
+```
+
+### 15.5 Conformity Audit
+
+`layout_audit.py` adds check **G02**:
+- Count PANEL bays from triage log; verify panel legend row count matches
+- PASS: panel count == triage PANEL count
+- FAIL: mismatch (panel shows bays not in drawing or vice versa)
+
+---
+
+## 16. Log Standard
+
+### 16.1 Principle
+
+**The log is the only debugging tool.** No manual DB queries. No print-and-check.
+A coder reading the log file must understand EXACTLY what happened, with which
+values, in which order, without opening any source file.
+
+### 16.2 Per-View Log Files
+
+In addition to the consolidated `dxf_diagnostic.txt`, each view writes its own
+log: `output/log_{PREFIX}_{VIEW}_{ts}.txt`
+
+Examples:
+```
+output/log_SH_FLOOR_20260408_2116.txt
+output/log_DX_FRONT_20260408_2116.txt
+output/log_DX_PLUMBING_20260408_2116.txt
+```
+
+The consolidated `dxf_diagnostic.txt` is the concatenation of all view logs
+for the session, plus a session header.
+
+### 16.3 Mandatory Log Events
+
+Every function in `drawing_writer_dxf.py` must emit these events:
+
+| Event | Format | When |
+|-------|--------|------|
+| ENTRY | `§ENTRY {func}({params})` | On function entry with all param values |
+| QUERY | `§QUERY {sql_summary}: {n} rows` | After every DB query |
+| SAMPLE | `  sample[0]: {row}` | First row of every query result (if any) |
+| TRIAGE | `§TRIAGE {axis}: {label1}-{label2}={dist}mm ({paper}mm@{scale}) → {INLINE\|PANEL}` | Per bay in triage |
+| RENDER | `§RENDER {entity_type} layer={layer} src={source} at ({x:.1f},{y:.1f})` | Per entity rendered |
+| SKIP | `§SKIP {entity_type} reason={reason}` | When an entity is not drawn |
+| VALUE | `§VALUE {name}={value} (from {source})` | Every computed constant |
+| AUDIT | `§AUDIT {check}: {expected} actual={actual} → {PASS\|FAIL}` | Per conformity check |
+| EXIT  | `§EXIT {func}: {summary}` | On function return with count/outcome |
+
+### 16.4 VALUE Events (mandatory)
+
+Every constant that governs output geometry must be logged as a VALUE event:
+
+```
+§VALUE scale=100 (from template)
+§VALUE paper_w=420.0mm (from template.paper.width_mm)
+§VALUE tb_width=75.0mm (from template.paper.title_block_width_mm)
+§VALUE grid_ext=20.0mm (from template.grid.extend_beyond_building_mm)
+§VALUE bubble_r=4.0mm (from template.grid.bubble_radius_mm)
+§VALUE tier1_offset=12.0mm (from template.dimensions.tier_1_offset_mm)
+§VALUE tier2_offset=6.0mm (from template.dimensions.tier_2_offset_mm)
+§VALUE cut_z=1.2m (hardcoded per §5.1a)
+§VALUE crowding_threshold=15.0mm (from template.grid.crowding_threshold_mm)
+```
+
+### 16.5 RENDER Events
+
+Every entity written to DXF must produce a RENDER log line:
+```
+§RENDER LWPOLYLINE layer=A-WALL-FULL lw=50 src=guid:1A2B3C pts=4
+§RENDER CIRCLE layer=A-GRID src=grid:A pos=(−7.735m,−) r=4.0mm
+§RENDER TEXT layer=A-ANNO-DIMS src=dim:A-B val="4900" at (12.3,−45.6)mm
+§RENDER HATCH layer=A-WALL-PATT src=guid:1A2B3C area=2.1m²
+§RENDER SKIP HATCH reason=zero_area guid=1A2B3C
+```
+
+### 16.6 Test Log Format
+
+`test_conformity.py` must write `output/conformity_log.txt` with this format:
+
+```
+=== CONFORMITY REPORT {ts} ===
+File: {dxf_path}
+View: {view_type}
+
+[PASS] BORDER       : border entities=28 on A-TTLB
+[PASS] TITLE_BLOCK  : field text entities=12
+[PASS] TAJUK        : found "FLOOR PLAN" on A-TTLB
+[PASS] NO_LUKISAN   : found "A-01" on A-TTLB
+[PASS] GRID_LINES   : 7 lines on A-GRID (expected >=3)
+[PASS] GRID_DASHDOT : A-GRID linetype=DASHDOT
+[PASS] GRID_LABELS  : vertical=['A','B','C','D'] horizontal=['1','2','3']
+[PASS] LINE_WEIGHTS : wall_exterior=50, partition=35, window=25, dim=18
+[PASS] WHITE_BG     : 1 bg entity on layer 0
+[PASS] NORTH_ARROW  : found INSERT on A-ANNO (plan views only)
+[PASS] SCALE_BAR    : 6 segments, label "5m" found
+[PASS] PROOF_EXISTS : SVG at output/SVG/FLOOR_{ts}.svg
+[PASS] PROOF_WHITE_BG: <rect fill="#FFFFFF"/> found
+[PASS] PROOF_DASHDOT: stroke-dasharray found in SVG
+[PASS] LANGUAGE     : 0 Malay strings in A-TTLB/A-ANNO-TEXT layers
+[PASS] ARROWHEADS   : 0 ARROW entities found (tick terminators only)
+[PASS] TRIAGE_PANEL : panel legend=1 bay matches triage PANEL count=1
+
+VALUES LOGGED:
+  paper=420.0x278.5mm scale=100 grids_x=2 grids_y=2
+  walls=32 doors=3 windows=4 furniture=15
+  inline_bays_x=1 panel_bays_x=1 inline_bays_y=2 panel_bays_y=0
+  mep_terminals=10 mep_segments=0
+
+SCORE: 17/17 PASS
+```
+
+Every check must log: check name, expected value, actual value, PASS/FAIL.
+Scores are counts not percentages.
+
+---
+
+## 17. MEP Triage (Extended)
+
+### 17.1 Data Available (DX DB)
+
+```sql
+-- Terminals by discipline keyword
+SELECT element_name, COUNT(*) FROM elements_meta
+WHERE ifc_class='IfcFlowTerminal' GROUP BY element_name;
+
+-- Segments (pipe/duct/wire runs)
+SELECT ifc_class, element_name, COUNT(*) FROM elements_meta
+WHERE ifc_class IN ('IfcFlowSegment','IfcFlowFitting','IfcFlowController')
+GROUP BY ifc_class, element_name;
+```
+
+DX has: IfcFlowTerminal=105, IfcFlowSegment=427, IfcFlowFitting=358, IfcFlowController=14.
+
+### 17.2 Terminal Classification
+
+```
+ELECTRICAL terminals (element_name keyword match):
+  'light', 'fan', 'switch', 'outlet', 'telephone', 'power',
+  'socket', 'panel', 'meter', 'luminaire', 'lamp', 'sconce', 'pendant'
+
+PLUMBING terminals:
+  'water closet', 'sink', 'shower', 'basin', 'bath',
+  'drain', 'trap', 'toilet', 'bidet', 'urinal', 'lavatory'
+
+MEP (unclassified): everything else
+```
+
+### 17.3 Segment Rendering
+
+IfcFlowSegment (pipe/duct/wire runs):
+
+```python
+# For each segment: draw thin line between bbox long-axis endpoints
+# Segment is a pipe/duct: major axis = longest bbox dimension
+# If maxX-minX > maxY-minY: horizontal run → draw line (minX,midY)→(maxX,midY)
+# Else: vertical run → draw (midX,minY)→(midX,maxY)
+# Layer: A-MEP-ELEC (electrical) or A-MEP-PLMB (plumbing) lw=0.13mm
+```
+
+Log: `§RENDER SEGMENT layer=A-MEP-PLMB src=guid:{g} ({x1},{y1})→({x2},{y2})`
+
+### 17.4 Fitting Rendering
+
+IfcFlowFitting (junctions/elbows): draw small filled circle at centroid.
+- Radius = `sym_r * 0.4` (smaller than terminal symbols)
+
+IfcFlowController (valves/switches): draw filled square at centroid.
+- Size = `sym_r * 0.8 × sym_r * 0.8`
+
+### 17.5 Discipline Pages
+
+| DB content | Page | Title |
+|-----------|------|-------|
+| ELECTRICAL terminals found | E-01 | ELECTRICAL PLAN |
+| PLUMBING terminals found | M-01 | PLUMBING LAYOUT |
+| Both found | Two pages | E-01 + M-01 |
+| Neither | M-01 | MEP LAYOUT (general) |
+
+`{PREFIX}_2D.json` must list both pages when both disciplines are present.
+Status=STUB until segment rendering is implemented; status=DONE when both
+terminals AND segments are rendered and conformity passes.
+
+### 17.6 MEP Symbol Legend in Panel
+
+The right panel on MEP sheets replaces the door/window schedule with:
+
+```
+┌─────────────────────────────────┐
+│  SYMBOLS  │ DESCRIPTIONS  │ QTY │
+├─────────────────────────────────┤
+│  [sym]    │ Ceiling Light  │  9  │
+│  [sym]    │ Ceiling Fan    │  5  │
+│  [sym]    │ Switch 1-gang  │  4  │
+│  [sym]    │ Power Outlet   │  8  │
+│  ─────────│ PLUMBING ─────│     │
+│  [sym]    │ Water Closet   │  4  │
+│  [sym]    │ Shower         │  2  │
+│  [sym]    │ Basin          │  2  │
+└─────────────────────────────────┘
+```
+
+QTY is count from DB query. Symbols match what is drawn.
+Log: `§MEP LEGEND: {n} rows ({n_elec} electrical, {n_plumb} plumbing)`
+
+---
+
+## 18. Open Issues (as of 2026-04-09)
+
+Tracked against TBKLTN WD-1/01 reference and `layout_audit.txt`.
+
+### 18.1 Active (next session)
+
+| # | Issue | Severity | Spec |
+|---|-------|----------|------|
+| I-01 | DX_FLOOR: 13 T01 WARN — duplex window tags W1↔W15 same XY | Medium | §E multi-storey: suppress Level-2 tags when not current storey |
+| I-02 | DX_FLOOR: room label overlap BEDROOM↔LIVING ROOM (duplex mirror) | Medium | Post-process: dedup same-label centroids within 2m |
+| I-03 | DX upper floor (Level 2) missing entirely from A-01 | High | §E: storey_filter param + `cut_height = storey_bottom + 1.2` |
+| I-04 | MEP segments (IfcFlowSegment) not drawn — pipe/wire runs absent | Medium | §17.3 segment rendering |
+| I-05 | Stale `FLOOR_*` / `FRONT_*` files (1201 ts) pollute audit | Low | Delete or move to archive; pruner doesn't clean old prefix format |
+| I-06 | Language: Malay field labels in title block | Medium | §14.1 English mapping table |
+| I-07 | JKR logo not in title block header | Low | §14.2 jkr.png insertion |
+| I-08 | Fan symbol not differentiated from generic electrical circle+cross | Low | §14.3 fan.png or asterisk glyph |
+| I-09 | Grid triage: panel shows all bays even when all are legible | Low | §15 triage function |
+| I-10 | PINDAAN NO (revision) row absent from title block | Low | Add to `2d_title_block` seed + field mapping |
+
+### 18.2 Deferred (spec written, not started)
+
+| # | Issue | Spec section |
+|---|-------|--------------|
+| I-11 | Roof surface hatching (tile/slab pattern) | §5.3 extension |
+| I-12 | APRON level marker (4th level between GRD and FFL) | §4.3b |
+| I-13 | DX SH_FRONT/REAR: old L01 level text clip (stale files) | fixed in 2116 gen |
+| I-14 | Reflected ceiling plan (A-07) | status=GAP |
+

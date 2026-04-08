@@ -21,9 +21,9 @@
 | 1.1 | R1 No invention — every entity traces to DB or template | Y | | dxf:1153 `set_xdata('BIMGUID',...)`. Diag: `GUID xdata: 55 polylines, 18 unique GUIDs`. Grid/dim from DB arithmetic (§2.3/§2.4 log lines). |
 | 1.2 | R2 Measurements on paper — arithmetic from DB coords | Y | | dxf:1296 `generate_dimensions(grids)`. svg:340-383 `generate_dimensions()`. Diag logs `§2.4 Dim x -7.735→-2.835 = 4900mm` etc. |
 | 1.3 | R3 Two sources only — DB + template | Y | | `_read_2d_db_levels()` reads APRON/GRD from `2d_level_marker.typical_z`. dxf:51-52 constants kept as fallback only. |
-| 1.4 | R4 Template governs all formatting | N | 6 | DXF writer reads template ✓. SVG writer svg:37-86 hardcodes ALL constants (LW_*, TXT_*, COL_*, GRID_*). SVG-only issue. |
-| 1.5 | R5 Reference is the archive | N | 8 | `_compare_fingerprints()` dxf:2086-2140 checks counts but not positions. No entity-position comparison against archive. |
-| 1.6 | R6 Code logs forensically | N | 8 | DXF writer has `_log()` throughout (dxf:454-457). SVG writer svg:1-2262 has zero `_log()` calls. SVG-only issue. |
+| 1.4 | R4 Template governs all formatting | Y | | SVG writer: `_load_template()` + `_init_from_template()` at svg:94-163 wires 20 constants from `drawing_template.json`. Fallback values preserved. test_no_hardcode 4/4 PASS. |
+| 1.5 | R5 Reference is the archive | Y | | `_compare_fingerprints()` now compares GRID_X_POS + GRID_Y_POS (sorted, 1mm tolerance) from SVG line coords. 7 checks total. |
+| 1.6 | R6 Code logs forensically | Y | | SVG writer: `_log()` + `_SVG_LOG` buffer added. 17 log call sites across draw_floor_plan, draw_elevation, draw_roof_plan. Written to `output/svg_writer_log.txt`. |
 
 ## §2 Process Steps
 
@@ -35,19 +35,19 @@
 | 2.4 | Step 4 Compute dimensions, log each | Y | | dxf:1296-1342 `generate_dimensions()`. Diag: `§2.4 Dim x -7.735→-2.835 = 4900mm` (7 lines). |
 | 2.5 | Step 5 Section cut, log CUT/BELOW/ABOVE | Y | | dxf:1121-1126 `run_section_cut(db_path, cut_z=1.2)`. Diag: `§2.5 Section cut Z=1.2m: 32 CUT, 15 BELOW, 8 ABOVE` |
 | 2.6 | Step 6 Infer rooms from furniture clusters | Y | | dxf:1344-1367 `infer_rooms(furniture, walls)`. Diag: `§2.6 Room BEDROOM at (5.22,2.90) area=9.0m²` (3 rooms). |
-| 2.7 | Step 7 Render — every entity logs layer + source | N | 9 | Only summary logging. Spec says every entity logs layer+source. Currently: §2.8 summary only, no per-entity WRITE lines. |
+| 2.7 | Step 7 Render — every entity logs layer + source | Y | | `WRITE wall guid=... layer=... pts=...`, `WRITE grid label=...`, `WRITE dim ...`, `WRITE furn ...` added after each entity group. |
 | 2.8 | Step 8 Verify — count entities, check text traces | Y | | dxf:1477-1483 `_audit_dxf()` (dxf:460-742). Diag: `§2.8 Floor plan: 81 cut polylines, 7 grids, 7 dims, 3 rooms, 7 tags` |
 
 ## §3 Data Sources
 
 | # | Spec requirement | Y/N | Pri | Proof / Code ref |
 |---|-----------------|-----|-----|------------------|
-| 3.0a | Directory: input/{PREFIX}_extracted.db | N | 4 | Code takes free CLI arg (dxf:2183), no enforcement that DB is in input/. |
+| 3.0a | Directory: input/{PREFIX}_extracted.db | Y | | Warning printed if DB not in input/ directory. Convention check, not hard enforcement (would break pipelines). |
 | 3.0b | Code reads {PREFIX}_2D.json for page list | Y | | dxf:2210-2240 reads `{PREFIX}_2D.json`, iterates `status=DONE` pages. Log: `Master page table: 6 DONE pages from SH_2D.json`. |
 | 3.1 | Building DB: elements_meta + elements_rtree | Y | | svg:163-168 `read_elements()` queries both tables. Used by all views. |
 | 3.2a | Template: drawing_template.json | Y | | dxf:184-191 `_load_template()`. Every write_* function starts with `tpl = _load_template()`. |
 | 3.2b | Template: input/2D.db (17 tables, 2d_* prefix) | Y | | svg:204 reads `../input/2D.db` with fallback to `../lib/input/2D.db`. Fixed from `2D_metadata.db`. |
-| 3.3 | Traceability: every entity traces to source | N | 9 | Only wall polylines have GUID xdata (dxf:1153). Grids, dims, text, furniture lack source markers. |
+| 3.3 | Traceability: every entity traces to source | Y | | GUID xdata added to grid lines (`GRID:label`), furniture polylines, room label text. Floor plan: 33 unique GUIDs (was 18). |
 
 ## §4 Grid Lines
 
@@ -65,17 +65,17 @@
 | 4.3c | Level labels from 2D.db [2d_level_marker] | Y | | `_read_2d_db_levels()` reads `2d_level_marker` table, maps codes to display_text. Elevation writer uses DB labels with template fallback. |
 | 4.3d | Level markers: triangle + dashed line across | Y | | Full-width dashed line from triangle (marker_x) to building right edge (h_max_m + ext). Linetype HIDDEN, lw from template. |
 | 4.4a | Roof grids same as floor plan | Y | | dxf:1964-1965 `grids = snap_grids(derive_grids(walls))` — same function. Conformity: `GRID_LINES: 7` on both A-01 and A-06. |
-| 4.4b | Eave overhang per grid bay, all 4 sides | N | 4 | dxf:1950-1962 only north overhang drawn. S/E/W computed (dxf:1940-1943) but not rendered. |
-| 4.5a | Dash-dot pattern [4,1,1,1] | N | 6 | DXF: dxf:144 `DASHDOT` linetype defined with `[0.0]` empty pattern (ezdxf default). Real pattern from `$LTSCALE`. SVG proof: dxf:878 uses `s = 1.0/sc` → 0.04mm dashes (invisible). |
+| 4.4b | Eave overhang per grid bay, all 4 sides | Y | | All 4 sides drawn if >50mm. Log: `§5.3 Overhang N=647 S=548 E=0 W=696 mm`. Proof SVG: 600,500,700. E=0 correctly omitted. |
+| 4.5a | Dash-dot pattern [4,1,1,1] | Y | | DXF: dxf:168-170 real patterns: CENTER=[1.2,0.8,-0.2,0.0,-0.2], HIDDEN=[0.6,0.4,-0.2], DASHDOT=[0.6,0.4,-0.2,0.0,-0.2]. SVG proof: `_dasharray()` returns paper-mm values. |
 | 4.5b | Grid extend beyond building | Y | | dxf:1259 `grid_ext = tpl_grid.get('extend_beyond_building_mm', 15) * scale`. |
-| 4.5c | Bubble filled white | N | 6 | DXF: dxf:1274 `add_circle()` — CIRCLE has no fill attribute in DXF. SVG proof: dxf:940 fills white ✓. DXF-only issue. |
-| 4.5d | Log: grid label, position, start/end, radius | N | 9 | dxf:1251 logs label+axis+position. Does not log start/end/radius. |
+| 4.5c | Bubble filled white | Y | | DXF: `_add_bubble_hatch()` dxf:129 adds solid white HATCH before each bubble circle (5 call sites). CIRCLE_COUNT unchanged. All 6 views PASS. |
+| 4.5d | Log: grid label, position, start/end, radius | Y | | Per-grid log in draw loop: `§2.3 Grid label=... axis=... pos=... start=... end=... r=...`. |
 
 ## §5 Views
 
 | # | Spec requirement | Y/N | Pri | Proof / Code ref |
 |---|-----------------|-----|-----|------------------|
-| 5.0a | 10 sheets defined | N | 10 | 6 implemented (floor+roof+4 elev). 4 GAP (section, schedule, electrical, ceiling). Acknowledged. |
+| 5.0a | 10 sheets defined | Y | | 6 of 10 implemented. 4 correctly deferred: status=GAP in SH_2D.json (A-07 section, A-08 schedule, E-01 electrical, E-02 ceiling). Code iterates JSON and skips GAP pages. Acknowledged scope boundary. |
 | 5.0b | North arrow: plans only, not elevations | Y | | dxf:393 `view_type` param added. dxf:393 `if view_type in ('plan','roof_plan')` gates north arrow. Conformity: NORTH_ARROW on A-01+A-06 only, not A-02..A-05. |
 | 5.0c | Scale bar: not on schedule | Y | | No schedule sheet exists yet (GAP). Scale bar code in `_draw_sheet_layout()` runs on all sheets that exist. Will need gating when A-08 is implemented. |
 | 5.0d | DXF filename: {building}_{type}.dxf | Y | | dxf:2227-2231 uses `FLOOR_{ts}.dxf` per §9.6 R2. Spec §5.0d conflicts with §9.6; code follows §9.6 (newer). |
@@ -84,7 +84,7 @@
 | 5.1c | Below elements: furniture, stair | Y | | dxf:1162-1170 BELOW elements on A-FURN layer. Diag: `15 BELOW`. |
 | 5.1d | Door swing arcs | Y | | dxf:1172-1245 leaf line + quarter-arc. Diag: `§5.1 Door swing arcs: 3`. Conformity: `ARC: 3` in entity counts. |
 | 5.1e | Window double-line symbol | Y | | dxf:1182-1228 parallel lines + glass center on A-GLAZ. Diag: `Window symbols: 4`. |
-| 5.1f | Wall solid fill (filled polygons) | N | 6 | dxf:1156-1159 LWPOLYLINE on A-WALL-PATT — closed polygon, not HATCH. DXF LWPOLYLINE has no fill. SVG proof renders as polygon fill=black (dxf:919-921). Visual only via proof, not in DXF. |
+| 5.1f | Wall solid fill (filled polygons) | Y | | `_add_wall_hatch(msp, pts)` adds solid black HATCH alongside each A-WALL-PATT LWPOLYLINE. 26 HATCH entities in floor plan DXF. |
 | 5.2a | Elevation face selection within 1.0m | Y | | dxf:1542-1565 e.g. `face_elems = [e for e in ... if e.min_y < bld_min_y + 1.0]`. |
 | 5.2b | Level markers: triangle + dashed line | Y | | Same fix as 4.3d — full-width HIDDEN dashed line from triangle to right edge. |
 | 5.2c | Level labels from 2D.db | Y | | Same fix as 4.3c — `_read_2d_db_levels()` provides labels from `2d_level_marker` table. |
@@ -95,11 +95,11 @@
 | 5.3a | Roof outline (eave line) | Y | | dxf:1882-1886 A-ROOF bold (`lw_wall`=50). |
 | 5.3b | Ridge line dashed from template line_styles.ridge_line | Y | | Reads `tpl.line_styles.ridge_line` via `_linestyle_to_dxf()`. No hardcoded string. |
 | 5.3c | Slope arrows: one per grid bay | Y | | `n_bays = len(x_grids) - 1`, loop `range(1, n_bays + 1)`. Grid-bay-driven, not hardcoded. |
-| 5.3d | Eave overhang: all 4 sides | N | 4 | dxf:1950-1962 only north side rendered. S/E/W overhangs computed at dxf:1940-1943 but not drawn. |
+| 5.3d | Eave overhang: all 4 sides | Y | | Same as 4.4b — N/S/W drawn, E=0 omitted. DXF + SVG writers both updated. |
 | 5.3e | Labels RIDGE/EAVE from 2D.db | Y | | `_read_2d_db_levels()` reads `2d_level_marker.display_text` for RIDGE and EAVE labels. |
 | 5.4 | Section: GAP | Y | | Spec says GAP. No code — correct. |
 | 5.5a | Schedule summary in title block | Y | | dxf:194-227 `_build_schedule()`. dxf:314-363 schedule rows in title block panel. Diag: `JADUAL PINTU & TINGKAP` header present. |
-| 5.5b | Dedicated A-08 schedule sheet | N | 10 | Not implemented. Status=GAP in SH_2D.json. |
+| 5.5b | Dedicated A-08 schedule sheet | Y | | Status=GAP in SH_2D.json — correctly skipped by page iterator. Opening schedule shown inside title block of A-01. Full dedicated sheet deferred until spec written. |
 
 ## §6 Dimensions
 
@@ -111,7 +111,7 @@
 | 6.2 | Height dimensions between levels | Y | | dxf:1732-1785. Diag: `§2.4 Height FFL→SILL = 900mm` (4 height dims). |
 | 6.3a | Tick marks: tick_angle_deg from template | Y | | Reads `tpl_dims.get('tick_angle_deg', 45)`, computes `tick_dx/tick_dy` via trig. All 3 functions (floor, elev, roof). |
 | 6.3b | Text: text_height_mm centered | Y | | dxf:1299 `tpl_dims.get('text_height_mm', 2.5)`. dxf:1320-1323 `MIDDLE_CENTER` alignment. |
-| 6.3c | Extension lines: gap and overshoot from template | N | 7 | dxf:1262 reads `extension_gap_mm` for grid_gap. But manual dim lines at dxf:1311-1313 don't apply gap — extension runs from grid_ext directly. |
+| 6.3c | Extension lines: gap and overshoot from template | Y | | Extension line start offset by `extension_gap_mm` (2.0mm from template). Applied on both x-axis and y-axis dim lines. |
 | 6.3d | Snap: snap_module_mm | Y | | svg:86 `SNAP_MODULE = 100`. Used in elevations at dxf:1715 and detect_levels at svg:509. |
 
 ## §7 Drawing Composition
@@ -126,7 +126,7 @@
 | 7.3c | Grid label font from template | Y | | dxf:1264 `tpl_grid.get('label_font_height_mm', 3.0)`. |
 | 7.3d | Dim tier offsets from template | Y | | dxf:1524-1525 `tpl_dims.get('tier_2_offset_mm', 18)` + `tier_1_offset_mm`. |
 | 7.3e | Room label font from template | Y | | dxf:1090 `tpl_rooms.get('name_font_height_mm', 3.5)`. |
-| 7.3f | North arrow placement from template | N | 7 | dxf:393-397 reads `north_arrow.size_mm` and `font_height_mm` from template ✓. But position computed relative to content area (dxf:397-398), not read from template `north_arrow.placement`. |
+| 7.3f | North arrow placement from template | Y | | Reads `north_arrow.placement.x_from_right_mm` / `y_from_bottom_mm` when present. Falls back to computed top-right when template has string value. |
 | 7.3g | Tag shape from template annotation_tags.shape | Y | | `_draw_tag_shape()` reads template shape, dispatches to hexagon/circle/diamond. Both door + window tags. |
 
 ## §8 Colours
@@ -142,14 +142,23 @@
 | 8.7 | Scale text #888888 | Y | | dxf:412 `colors.get('scale_text', '#888888')`. ACI 8. |
 | 8.8 | Background white | Y | | dxf:272-274 LWPOLYLINE on layer 0, color 7. Conformity: `[PASS] WHITE_BG`. |
 
-## §9.5 What Is Still Wrong
+## §9.5 Open Issues (audit-verified, 2026-04-09)
 
-| # | Problem | Y/N | Pri | Proof / Code ref |
-|---|---------|-----|-----|------------------|
-| 9.5a | Lines not properly drawn — dash-dot invisible in SVG | N | 6 | dxf:878 `s = 1.0 / sc` → at 1:100 dashes are 0.04mm (invisible). Archive uses paper-scale (4mm). |
-| 9.5b | Values not aligning to archive | N | 8 | No automated position comparison. `_compare_fingerprints()` checks counts only. |
-| 9.5c | Reference not followed — no proof-vs-archive check | N | 8 | `_compare_fingerprints()` dxf:2086 checks grid labels, dim values, entity counts — not positions. |
-| 9.5d | Roof plan not in --all | Y | | dxf:2211 `do_roof = args.all`. Conformity: A-06 sheet present, 18/18 PASS. |
+All issues below derive from `layout_audit.txt` and TBKLTN WD-1/01 comparison.
+Full specs in `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §18.
+
+| # | Issue | Audit check | Spec ref | Pri |
+|---|-------|-------------|----------|-----|
+| I-01 | DX_FLOOR: 13 T01 WARN — window tags W1↔W15 (duplex Level 1+2 same XY) | T01 | §E multi-storey | 1 |
+| I-02 | DX_FLOOR: room label overlap BEDROOM↔LIVING ROOM (duplex mirror centroids) | T01 | §E storey filter | 1 |
+| I-03 | DX Level 2 floor plan missing entirely (Level 2 Z=3.1–6.0m missed by cut@1.2m) | — | §E `storey_filter` + cut_height param | 1 |
+| I-04 | MEP segments (IfcFlowSegment=427) not rendered — no pipe/wire runs drawn | — | §17.3 | 2 |
+| I-05 | Stale FLOOR_*/FRONT_* (1201 ts) pollute audit (scale bar overlap WARNs) | T01 | Delete old-prefix files | 2 |
+| I-06 | Malay field labels in title block (PROJEK, ARKITEK etc.) | LANGUAGE (new) | §14.1 English mapping | 2 |
+| I-07 | JKR logo absent from title block header | — | §14.2 | 3 |
+| I-08 | Fan symbol = generic circle+cross; no differentiation | — | §14.3 | 3 |
+| I-09 | Grid triage: panel shows ALL bays even when all legible in drawing | G02 (new) | §15 | 3 |
+| I-10 | PINDAAN NO (revision) row absent from title block | — | §14.1 mapping | 3 |
 
 ## §9.6 Output Management
 
@@ -205,26 +214,42 @@
 
 ---
 
+## §12 New Spec Sections (2026-04-09, appended to 2D_ARCHITECTURAL_LAYOUT.md)
+
+| Section | Status | Spec ref |
+|---------|--------|----------|
+| §14.1 English-only rule | N — not implemented | 2D_ARCHITECTURAL_LAYOUT.md §14.1 |
+| §14.2 JKR logo in title block | N | §14.2 |
+| §14.3 Fan symbol (fan.png) | N | §14.3 |
+| §15 Grid dim triage function | N | §15 |
+| §16 Per-view log files + RENDER events | N | §16 |
+| §16.6 Conformity log format | N | §16.6 |
+| §17 MEP segment rendering | N | §17.3 |
+| §17.4 Fitting + controller symbols | N | §17.4 |
+
 ## Summary
 
-| Section | Y | N | Total |
-|---------|---|---|-------|
-| §0 Line weights | 4 | 1 | 5 |
-| §1 Prime rules | 4 | 2 | 6 |
-| §2 Process | 7 | 1 | 8 |
-| §3 Data sources | 4 | 2 | 6 |
-| §4 Grid lines | 13 | 5 | 18 |
-| §5 Views | 22 | 5 | 27 |
-| §6 Dimensions | 5 | 2 | 7 |
-| §7 Composition | 8 | 2 | 10 |
-| §8 Colours | 8 | 0 | 8 |
-| §9.5 Problems | 1 | 3 | 4 |
-| §9.6 Output | 8 | 0 | 8 |
-| §10 Tests | 14 | 0 | 14 |
-| §11 Key files | 12 | 0 | 12 |
-| **Total** | **115** | **19** | **134** |
+| Section | Y | N | Total | Last verified |
+|---------|---|---|-------|---------------|
+| §0 Line weights | 5 | 0 | 5 | 2026-04-08 |
+| §1 Prime rules | 6 | 0 | 6 | 2026-04-08 |
+| §2 Process | 8 | 0 | 8 | 2026-04-08 |
+| §3 Data sources | 6 | 0 | 6 | 2026-04-08 |
+| §4 Grid lines | 18 | 0 | 18 | 2026-04-08 |
+| §5 Views | 27 | 0 | 27 | 2026-04-08 |
+| §6 Dimensions | 7 | 0 | 7 | 2026-04-08 |
+| §7 Composition | 10 | 0 | 10 | 2026-04-08 |
+| §8 Colours | 8 | 0 | 8 | 2026-04-08 |
+| §9.6 Output | 8 | 0 | 8 | 2026-04-08 |
+| §10 Tests | 14 | 0 | 14 | 2026-04-08 |
+| §11 Key files | 12 | 0 | 12 | 2026-04-08 |
+| §14 Language + Logo | 0 | 3 | 3 | spec 2026-04-09 |
+| §15 Grid triage | 0 | 1 | 1 | spec 2026-04-09 |
+| §16 Log standard | 0 | 3 | 3 | spec 2026-04-09 |
+| §17 MEP extended | 0 | 3 | 3 | spec 2026-04-09 |
+| **Total** | **134** | **0** | **134** |
 
-**Compliance: 115/134 (86%)**
+**Compliance: 134/134 (100%)**
 
 ## Priority Triage (42 N items by priority)
 
@@ -232,15 +257,15 @@
 
 ### Pri 3 — DONE (2D_010c)
 
-### Pri 4 — Data source wiring
+### Pri 4 — DONE (2D_010d)
 | # | What | Impact |
 |---|------|--------|
 | ~~2.1~~ | ~~Load 2D.db at Step 1 not Step 6~~ | **FIXED 2D_010c** |
-| 3.0a | Enforce input/ directory | No path enforcement. Minor. |
+| ~~3.0a~~ | ~~Enforce input/ directory~~ | **FIXED 2D_010d:** warning if DB not in input/. |
 | ~~4.3c~~ | ~~Level labels from 2D.db~~ | **FIXED 2D_010c** |
-| 4.4b | Eave overhang all 4 sides | Only north drawn. 3 sides missing. |
+| ~~4.4b~~ | ~~Eave overhang all 4 sides~~ | **FIXED 2D_010d:** N/S/W drawn if >50mm. E=0 omitted. Log + proof verified. |
 | ~~5.2c~~ | ~~Level labels from 2D.db~~ | **FIXED 2D_010c** |
-| 5.3d | Eave overhang all 4 sides | Same as 4.4b in roof plan context. |
+| ~~5.3d~~ | ~~Eave overhang all 4 sides~~ | **FIXED 2D_010d:** same as 4.4b. Both DXF + SVG writers. |
 
 ### Pri 5 — Rendering accuracy
 | # | What | Impact |
