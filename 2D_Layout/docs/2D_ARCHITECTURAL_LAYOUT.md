@@ -3088,3 +3088,237 @@ Log:  [PASS] NON_DESTRUCTIVE: DXF_C matches DXF_A after undo (geometry = f(inten
 must pass before the reverse path is declared DONE.
 
 Test file: `python/test_2d_bim_roundtrip.py`
+
+
+## 21. IFC 2D Annotation Extraction (§21)
+
+> **Status:** SPEC ONLY — not implemented. Findings from DeepSeek analysis +
+> HITOS evidence (2,920 IfcAnnotation rows in extracted DB).
+
+### 21.1 Problem
+
+The DXF writer derives all 2D content (grids, dims, rooms) from 3D spatial
+data. Professional IFC files already contain the architect's 2D annotations
+— grid positions, dimension strings, room labels, hatching — as
+`IfcAnnotation` entities with embedded geometry. Currently `extractIFCtoDB.py`
+classifies `IfcAnnotation` as `NON_GEOMETRIC_CLASSES` — metadata stored,
+geometry skipped.
+
+### 21.2 IFC Schema Chain
+
+```
+IfcProject
+  └─ IfcGeometricRepresentationContext (3D "Model")
+      └─ IfcGeometricRepresentationSubContext
+           ContextIdentifier = "Annotation"
+           TargetView = PLAN_VIEW | ELEVATION_VIEW | SECTION_VIEW
+           TargetScale = 1:100
+
+IfcAnnotation
+  └─ Representation → IfcShapeRepresentation
+       RepresentationIdentifier = "Annotation"
+       Items: IfcGeometricCurveSet | IfcTextLiteral | IfcAnnotationFillArea
+  └─ ContainedInStructure → IfcBuildingStorey
+  └─ IfcPresentationLayerAssignment (CAD layer name from authoring tool)
+```
+
+### 21.3 Extraction Schema (proposed)
+
+```sql
+CREATE TABLE annotation_meta (
+    id           INTEGER PRIMARY KEY,
+    guid         TEXT NOT NULL,
+    ifc_class    TEXT NOT NULL,   -- 'IfcAnnotation'
+    parent_guid  TEXT,            -- element this annotates (via IfcRelAssociates)
+    target_view  TEXT,            -- PLAN_VIEW, ELEVATION_VIEW, SECTION_VIEW
+    layer_name   TEXT,            -- from IfcPresentationLayerAssignment
+    storey       TEXT,
+    ann_type     TEXT             -- 'GRID'|'DIM'|'ROOM_LABEL'|'HATCH'|'TEXT'|'OTHER'
+);
+
+CREATE TABLE annotation_geometry (
+    id              INTEGER PRIMARY KEY,
+    annotation_id   INTEGER REFERENCES annotation_meta(id),
+    geom_type       TEXT,    -- 'POLYLINE'|'CIRCLE'|'ARC'|'TEXT'
+    points_json     TEXT,    -- [[x,y],[x,y],...] for curves
+    text_content    TEXT,    -- for IfcTextLiteral
+    insertion_x     REAL,
+    insertion_y     REAL,
+    rotation        REAL,
+    scale           REAL
+);
+```
+
+### 21.4 Reconciliation Priority
+
+When both derived and annotated data exist for the same entity type:
+
+1. **Grids:** Annotated grid positions are authoritative (architect placed
+   them intentionally). Match by nearest position within 0.20m tolerance.
+   If matched: use annotated position, keep derived `source_guids` for
+   traceability. If unmatched: keep derived grid.
+2. **Dimensions:** Annotated dims are authoritative for text values.
+   Verify against derived dim for consistency (warn if > 1mm delta).
+3. **Room labels:** Annotated labels override `infer_rooms()` output.
+4. **Hatching:** Annotated fill areas used directly; no derived equivalent.
+
+```
+if has_annotations(db, target_view):
+    grids = reconcile_grids(annotated_grids, derived_grids, tol=0.20)
+    dims  = annotated_dims  # authoritative
+    rooms = annotated_rooms # authoritative
+else:
+    grids = derive_grids(walls, columns)  # fallback
+    dims  = generate_dimensions(grids)
+    rooms = infer_rooms(furniture, walls)
+```
+
+### 21.5 BIMSRC Extension
+
+BIMSRC xdata gains `source` field to distinguish provenance:
+- `source:derived` — computed from 3D spatial data (current)
+- `source:annotated` — extracted from IFC IfcAnnotation entity
+
+### 21.6 Evidence
+
+| Building | DB | IfcAnnotation rows | Notes |
+|----------|----|--------------------|-------|
+| HITOS | HITOS_extracted.db (5.9MB) | 2,920 | Only DB with annotation data found |
+| Hospital | Hospital_extracted.db (124MB) | 0 | Geometry-only export |
+| SampleHouse | SH_extracted.db (672KB) | 0 | Minimal IFC4 model |
+| Duplex | DX_extracted.db (6.2MB) | 0 | Architecture discipline only |
+
+### 21.7 Triage Query
+
+To check any new IFC building for annotation content:
+```sql
+SELECT count(*) FROM elements_meta WHERE ifc_class = 'IfcAnnotation';
+-- If > 0: extraction candidate for §21 pipeline
+```
+
+
+## 22. Interactive Browser Editor (§22)
+
+> **Status:** SPEC ONLY — deferred. Depends on §20 (BIMSRC xdata, DONE)
+> and BonsaiBIMDesigner REST API (exists).
+
+### 22.1 Three Output Tiers
+
+| Tier | Format | Purpose | Interactivity |
+|------|--------|---------|---------------|
+| 1 | DXF | Fabrication deliverable (CNC, laser, print) | None |
+| 2 | SVG | Visual proof / verification | View only |
+| 3 | **Browser** | Live editing + recompile | Full |
+
+### 22.2 Architecture
+
+```
+Browser (JS)                    Server (Java)
+┌──────────────────┐           ┌──────────────────┐
+│ DXF → SVG/Canvas │           │ DesignerServer   │
+│ BIMSRC overlay   │──POST────▶│ CompileRequest   │
+│ Drag grid/dim    │  deltas   │ recompile        │
+│ Room label edit  │◀──DXF─────│ return new DXF   │
+└──────────────────┘           └──────────────────┘
+```
+
+**Frontend:** Parse DXF client-side (JS `dxf-parser` or server-side
+conversion to SVG). Overlay draggable handles on BIMSRC-tagged entities.
+Each handle knows its `type` (GRID/DIM/ROOM), `source_guids`, and
+current position from xdata.
+
+**Edit cycle:**
+1. User drags grid line A from x=-7.735 to x=-7.500
+2. JS collects delta: `{type: 'GRID', label: 'A', axis: 'x', new_pos: -7.500}`
+3. POST to `/api/compile` with delta payload
+4. Server updates DB positions, recompiles via pipeline
+5. Returns fresh DXF → browser re-renders
+
+**Existing infrastructure:**
+- `BonsaiBIMDesigner/src/main/java/com/bim/designer/api/DesignerServer.java` — REST server
+- `BonsaiBIMDesigner/src/main/java/com/bim/designer/api/CompileRequest.java` — compile endpoint
+- `BonsaiBIMDesigner/src/main/python/bonsai_bim_designer/client.py` — Python client
+- BIMSRC xdata (§20) — entity↔DB mapping already live
+
+### 22.3 Why Browser Wins
+
+- **No install:** works on tablet, phone, client laptop
+- **Demo impact:** investor drags a wall, sees dims update live
+- **Collaboration:** share URL, not a DXF file
+- **Round-trip proof:** the BIMSRC chain (§20) is the same whether
+  the edit comes from a browser drag or a Bonsai plugin
+
+### 22.4 Scope Boundary
+
+This section does NOT cover:
+- 3D viewport in browser (that's a separate BIMEyes concern)
+- Structural analysis feedback (load-bearing wall constraints)
+- Multi-user concurrent editing
+
+It covers: 2D floor plan view, grid/dim/room editing, single-user,
+compile-on-demand. The simplest useful thing.
+
+
+## 23. Bonsai Asset Extraction (§23)
+
+> **Status:** SPEC ONLY. Source: Bonsai drawing module at
+> `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/drawing/`
+
+### 23.1 Rationale
+
+Bonsai's drawing module contains professional-grade assets (hatch patterns,
+tag symbols, annotation type classifications) developed by the IfcOpenShell
+community. Extracting these into our DXF writer avoids reinventing geometry
+that architects already expect to see.
+
+### 23.2 Hatch Patterns
+
+**Source:** `bim/data/assets/patterns.svg` (71KB, 30+ patterns)
+
+| Pattern | Use case | Priority |
+|---------|----------|----------|
+| concrete | Wall/slab section cuts | P1 |
+| brick | Brick wall sections | P1 |
+| insulation | Cavity wall fill | P2 |
+| wood | Timber sections | P2 |
+| earth | Site/foundation sections | P3 |
+
+**Conversion:** SVG `<pattern>` → ezdxf custom HATCH pattern definition.
+Each SVG pattern contains `<line>` or `<path>` elements defining the
+repeat tile. Convert to ezdxf format:
+`[angle, base_point, offset, dash_length_items]`.
+
+**Integration:** In wall rendering loop, select pattern by `material_name`
+from `ElementSection`. Fallback to solid black when material unknown.
+
+### 23.3 Tag Symbols
+
+**Source:** `bim/data/assets/symbols.svg` (18+ symbols)
+
+| Symbol | Our use | Replaces |
+|--------|---------|----------|
+| door-tag | Door annotation tag | `_draw_tag_shape()` hexagon |
+| window-tag | Window annotation tag | `_draw_tag_shape()` diamond |
+| section-arrow | Section cut marker | future §5.4 |
+| elevation-tag | Elevation reference | future elevation callout |
+
+**Conversion:** SVG `<symbol>` → DXF BLOCK definition in `_new_doc()`.
+Insert via `msp.add_blockref()` instead of procedural drawing.
+
+### 23.4 Annotation Type Classification
+
+**Source:** `bim/module/drawing/tool/drawing.py` lines 94-113
+
+Bonsai defines 17 annotation types. Mapping to our §21 `ann_type` column:
+
+| Bonsai type | Our ann_type | Notes |
+|-------------|-------------|-------|
+| DIMENSION, ANGLE, RADIUS, DIAMETER | DIM | All dimension variants |
+| TEXT, TEXT_LEADER | TEXT | Labels and callouts |
+| LINEWORK | GRID | Grid lines when in grid context |
+| FILL_AREA | HATCH | Section fill patterns |
+| SYMBOL, MULTI_SYMBOL | OTHER | Generic symbols |
+| STAIR_ARROW, BREAKLINE | OTHER | View-specific annotations |
+| PLAN_LEVEL, SECTION_LEVEL | TEXT | Level markers |
+| REVISION_CLOUD | OTHER | QA markup |
+| FALL, BATTING, IMAGE | OTHER | Specialized |

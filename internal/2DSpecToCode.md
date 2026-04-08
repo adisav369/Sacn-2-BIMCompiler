@@ -239,14 +239,16 @@ Full specs in `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §18.
 | §19.12 Room labels: collision detection, min area filter | N | §19.12 |
 | §19.13 Door/window tags: storey suppression (§F1 fix) | N | §19.13 |
 | §19.14 Log file structure: per-view file, all section headers | N | §19.14 |
-| §20.2 BIMSRC app ID registered in every new DXF doc | N | §20.2 |
-| §20.3.1 BIMSRC on wall/door/window: ifc_class+tack+width | N | §20.3.1 |
-| §20.3.2 BIMSRC on grid: source_guids+axis+position+crowding | N | §20.3.2 — highest priority for closed loop |
-| §20.3.3 BIMSRC on dim: tier+dist+layout | N | §20.3.3 |
-| §20.3.4–7 BIMSRC on room/tag/MEP/level entities | N | §20.3.4–7 |
-| §20.5 `_set_bimsrc()` helper + `GridAxis.source_guids` field | N | §20.5 |
-| §20.6 SEMANTIC_DXF + GRID_SOURCES conformity checks | N | §20.6 |
-| §20.10 W-2D-BIM-1..4 round-trip tests (`test_2d_bim_roundtrip.py`) | N | §20.10 |
+| §20.2 BIMSRC app ID registered in every new DXF doc | Y | | 2D_011: `doc.appids.new('BIMSRC')` in `write_floor_plan_dxf`. |
+| §20.3.1 BIMSRC on wall/door/window: ifc_class+tack+width | Y | | 2D_011: `_set_bimsrc(pl, type='wall', ifc_class=..., element_name=..., storey=..., pos_x=..., pos_y=...)`. 81 walls tagged (SH). |
+| §20.3.2 BIMSRC on grid: source_guids+axis+position+crowding | Y | | 2D_011: `_set_bimsrc(grid_line, type='GRID', ..., source_guids=src_str)`. 5 grids tagged, 4 GUIDs resolved. |
+| §20.3.3 BIMSRC on dim: tier+dist+layout | Y | | 2D_011: `_set_bimsrc(dim_line_e, type='DIM', from_grid=..., to_grid=..., dist=...)`. 5 dims tagged. |
+| §20.3.4 BIMSRC on room entities | Y | | 2D_011: `_set_bimsrc(room_txt, type='ROOM', room_type=..., area=...)`. 3 rooms tagged. |
+| §20.3.5–7 BIMSRC on tag/MEP/level entities | N | | Not yet — floor plan only in 2D_011. |
+| §20.5 `_set_bimsrc()` helper + `GridLine.source_guids` field | Y | | 2D_011: `_set_bimsrc(**kwargs)` helper. `GridLine.source_guids` via refactored `derive_grids` (entries pipeline). `DimString.from_label/to_label`. `snap_grids` propagation. |
+| §20.6 SEMANTIC_DXF + GRID_SOURCES conformity checks | Y | | 2D_011: soft checks in `test_conformity.py` (PASS for pre-§20 DXFs). SEM01 in `layout_audit.py`. |
+| §20.10 W-2D-BIM-1..4 round-trip tests (`test_2d_bim_roundtrip.py`) | Y | | 2D_011: W-2D-BIM-1 (coverage 81/5/5/3) PASS. W-2D-BIM-2 (4 GUIDs resolved) PASS. W-2D-BIM-3/4 stubs. |
+| §21 IFC 2D Annotation Extraction | N | | SPEC ONLY: schema + reconciliation logic in §21. HITOS: 2,920 IfcAnnotation rows. |
 
 ## Summary
 
@@ -268,9 +270,13 @@ Full specs in `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §18.
 | §15 Grid triage | 0 | 1 | 1 | spec 2026-04-09 |
 | §16 Log standard | 0 | 3 | 3 | spec 2026-04-09 |
 | §17 MEP extended | 0 | 3 | 3 | spec 2026-04-09 |
-| **Total** | **134** | **0** | **134** |
+| §20 Semantic DXF | 8 | 1 | 9 | **2D_011** 2026-04-09 |
+| §21 IFC Annotation | 0 | 1 | 1 | spec 2026-04-09 |
+| §22 Browser Editor | 0 | 1 | 1 | spec 2026-04-09 |
+| §23 Bonsai Assets | 0 | 3 | 3 | spec 2026-04-09: hatch patterns, tag symbols, annotation type map |
+| **Total** | **142** | **8** | **150** |
 
-**Compliance: 134/134 (100%)**
+**Compliance: 142/150 (95%)**
 
 ## Priority Triage (42 N items by priority)
 

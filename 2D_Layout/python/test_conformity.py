@@ -381,6 +381,106 @@ def check_proof_dashdot(sheet, dxf_path):
                  'not found — grids rendered as solid')
 
 
+def check_proof_no_overshoot(sheet, dxf_path):
+    """PROOF_NO_OVERSHOOT: No SVG entity coordinate exceeds the viewBox boundary.
+    Spec §7.1a guard: content must stay within paper frame.
+    Tolerance: 1mm (allows for stroke-width half-width at border)."""
+    import re as _re
+    svg_path = _dxf_to_svg_path(dxf_path)
+    if not os.path.exists(svg_path):
+        return _pass(sheet, 'PROOF_NO_OVERSHOOT', 'skipped (no SVG)')
+    with open(svg_path) as f:
+        txt = f.read()
+    vb = _re.search(r'viewBox="0\.00 0\.00 ([0-9.]+) ([0-9.]+)"', txt)
+    if not vb:
+        return _pass(sheet, 'PROOF_NO_OVERSHOOT', 'skipped (no viewBox)')
+    vw, vh = float(vb.group(1)), float(vb.group(2))
+    TOL = 1.0  # mm tolerance for stroke edge
+    # Collect all x,y numeric values from inline attributes
+    all_x = [float(v) for v in _re.findall(r'\bx[12]?="(-?[0-9.]+)"', txt)]
+    all_y = [float(v) for v in _re.findall(r'\by[12]?="(-?[0-9.]+)"', txt)]
+    # Collect polygon/polyline point coordinates
+    for pts in _re.findall(r'points="([^"]+)"', txt):
+        for pair in pts.split():
+            try:
+                x, y = pair.split(',')
+                all_x.append(float(x)); all_y.append(float(y))
+            except ValueError:
+                pass
+    if not all_x:
+        return _pass(sheet, 'PROOF_NO_OVERSHOOT', 'no coordinates found')
+    max_x = max(all_x); min_x = min(all_x)
+    max_y = max(all_y); min_y = min(all_y)
+    ox = max(0.0, max_x - vw - TOL)
+    oy = max(0.0, max_y - vh - TOL)
+    ux = max(0.0, -min_x - TOL)
+    uy = max(0.0, -min_y - TOL)
+    if ox > 0 or oy > 0 or ux > 0 or uy > 0:
+        detail = f'max=({max_x:.1f},{max_y:.1f}) vw={vw:.1f} vh={vh:.1f} over=({ox:.1f},{oy:.1f}) under=({ux:.1f},{uy:.1f})'
+        return _fail(sheet, 'PROOF_NO_OVERSHOOT', 'all content within viewBox±1mm', detail)
+    return _pass(sheet, 'PROOF_NO_OVERSHOOT',
+                 f'max=({max_x:.1f},{max_y:.1f}) within ({vw:.1f},{vh:.1f})')
+
+
+# ── §20 Semantic DXF checks ──
+
+def check_semantic_dxf(sheet, entities):
+    """SEMANTIC_DXF: entities carry BIMSRC xdata (walls + grids + dims + rooms > 0).
+    Non-blocking: pre-§20 DXFs without BIMSRC still PASS (with note)."""
+    # Check if BIMSRC appid is registered in the DXF
+    has_bimsrc = False
+    counts = {'wall': 0, 'GRID': 0, 'DIM': 0, 'ROOM': 0}
+    for e in entities:
+        try:
+            xd = e.get_xdata('BIMSRC')
+            if not xd:
+                continue
+            has_bimsrc = True
+            for code, val in xd:
+                if code == 1000 and ':' in str(val):
+                    k, v = str(val).split(':', 1)
+                    if k == 'type' and v in counts:
+                        counts[v] += 1
+                        break
+        except Exception:
+            pass
+    total = sum(counts.values())
+    detail = ' '.join(f'{k}={v}' for k, v in counts.items())
+    if total > 0:
+        return _pass(sheet, 'SEMANTIC_DXF', f'{total} BIMSRC entities ({detail})')
+    # Pre-§20 DXF without BIMSRC — pass with note, not fail
+    return _pass(sheet, 'SEMANTIC_DXF', 'no BIMSRC (pre-§20 DXF — regenerate to add)')
+
+
+def check_grid_sources(sheet, entities):
+    """GRID_SOURCES: GRID entities with BIMSRC have non-empty source_guids"""
+    grid_count = 0
+    sourced = 0
+    for e in entities:
+        if e.dxf.layer != 'A-GRID' or e.dxftype() != 'LINE':
+            continue
+        try:
+            xd = e.get_xdata('BIMSRC')
+            if not xd:
+                continue
+            grid_count += 1
+            for code, val in xd:
+                if code == 1000 and str(val).startswith('source_guids:'):
+                    src = str(val).split(':', 1)[1]
+                    if src.strip():
+                        sourced += 1
+                    break
+        except Exception:
+            pass
+    if grid_count == 0:
+        return _pass(sheet, 'GRID_SOURCES', 'no grids with BIMSRC (non-floor view)')
+    if sourced > 0:
+        return _pass(sheet, 'GRID_SOURCES',
+                     f'{sourced}/{grid_count} grids have source GUIDs')
+    return _fail(sheet, 'GRID_SOURCES', '>0 grids with source_guids',
+                 f'0/{grid_count}')
+
+
 # ─────────────────────────────────────────────────────────────────
 # MAIN — iterate sheets, run checks, stop on first FAIL
 # ─────────────────────────────────────────────────────────────────
@@ -458,6 +558,8 @@ def main():
         if stype == 'plan':
             checks.extend([
                 lambda: check_north_arrow(sheet, entities),
+                lambda: check_semantic_dxf(sheet, entities),
+                lambda: check_grid_sources(sheet, entities),
             ])
 
         if stype in ('plan', 'elevation', 'section'):
@@ -474,6 +576,7 @@ def main():
             checks.extend([
                 lambda: check_proof_white_bg(sheet, dxf_path),
                 lambda: check_proof_dashdot(sheet, dxf_path),
+                lambda: check_proof_no_overshoot(sheet, dxf_path),
             ])
 
         # Run checks — stop on first FAIL

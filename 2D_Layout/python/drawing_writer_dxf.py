@@ -501,7 +501,11 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
     leg_row_h = lbl_h * 1.5
     _has_leg = bool(grids and (n_x_bays + n_y_bays) > 0)
     legend_h = (n_x_bays + n_y_bays + 7) * leg_row_h if _has_leg else 0.0
-    row_h = (panel_h - header_zone - legend_h) / max(n_fields, 1)
+    # §F3 fix: pre-compute schedule height so field rows don't overlap with schedule rows
+    sch_row_h = lbl_h * 3.5
+    sch_hdr_h = lbl_h * 2.5
+    sch_total_h = (sch_hdr_h + (1 + len(schedule_rows)) * sch_row_h) if schedule_rows else 0.0
+    row_h = (panel_h - header_zone - legend_h - sch_total_h) / max(n_fields, 1)
 
     hx = tb_left + tb_w / 2   # panel horizontal centre
 
@@ -554,8 +558,6 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
     # Door & window schedule (between header+identity block and field rows)
     if schedule_rows:
         sch_top = by1 - header_zone  # below header zone (includes id_zone)
-        sch_row_h = lbl_h * 3.5      # row height for schedule
-        sch_hdr_h = lbl_h * 2.5      # schedule title height
         sch_small = lbl_h * 0.9      # small text for descriptions
         # Schedule title
         sch_y = sch_top
@@ -723,6 +725,22 @@ def _log(msg: str):
     """Append a diagnostic line (printed + buffered for log file)."""
     print(msg)
     _LOG_LINES.append(msg)
+
+
+def _set_bimsrc(entity, **kwargs):
+    """Write BIMSRC xdata for BIM round-trip provenance. See spec §20.5."""
+    groups = []
+    for k, v in kwargs.items():
+        if isinstance(v, float):
+            groups += [(1000, k), (1040, v)]
+        elif isinstance(v, int):
+            groups += [(1000, k), (1070, v)]
+        else:
+            groups.append((1000, f'{k}:{v}'))
+    try:
+        entity.set_xdata('BIMSRC', groups)
+    except Exception as e:
+        _log(f'§XDATA BIMSRC WARN: {e}')
 
 
 def _audit_dxf(doc, out_dxf: str, view_type: str):
@@ -1516,11 +1534,15 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
 
     doc = _new_doc(tpl, scale)
     doc.appids.new('BIMGUID')
+    doc.appids.new('BIMSRC')
     msp = doc.modelspace()
 
     # ARC ifc_classes eligible for GUID xdata (roundtrip scope)
     _ARC_CLASSES = {'IfcWall', 'IfcWallStandardCase', 'IfcSlab',
                     'IfcDoor', 'IfcWindow', 'IfcPlate'}
+
+    # §20: BIMSRC xdata counters
+    n_bimsrc_wall = n_bimsrc_grid = n_bimsrc_dim = n_bimsrc_room = 0
 
     # ── §2 Step 5: SECTION CUT ──
     cut_z = 1.2  # spec §5.1: storey_elevation + 1.2m (ground = 0.0)
@@ -1560,6 +1582,12 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                                         dxfattribs={'layer': layer, 'lineweight': lw})
                 if es.ifc_class in _ARC_CLASSES and es.guid:
                     pl.set_xdata('BIMGUID', [(1000, es.guid)])
+                # §20.3.1: BIMSRC xdata on wall entities
+                _set_bimsrc(pl, type='wall', ifc_class=es.ifc_class,
+                            element_name=es.element_name or '',
+                            storey=es.storey or '',
+                            pos_x=float(es.bbox_2d[0]), pos_y=float(es.bbox_2d[1]))
+                n_bimsrc_wall += 1
                 # §5.1: Wall solid fill on A-WALL-PATT (SVG ref: fill=COL_WALL)
                 # stroke-width must match wall weight (0.50 ext / 0.35 int) — archive uses 0.500
                 if es.ifc_class in ('IfcWall', 'IfcWallStandardCase'):
@@ -1697,8 +1725,15 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                 grid_line.set_xdata('BIMGUID', [(1000, f'GRID:{g.label}')])
             except Exception:
                 pass
+            # §20.3.2: BIMSRC xdata on grid line
+            src_str = ','.join(g.source_guids) if g.source_guids else ''
+            _set_bimsrc(grid_line, type='GRID', label=g.label, axis=g.axis,
+                        pos=float(g.position), source_guids=src_str,
+                        intent_param=f'position_{g.axis}')
+            n_bimsrc_grid += 1
             _log(f"§2.3 Grid {g.label} axis={g.axis} pos={g.position:.3f}m "
-                 f"start=({x0:.0f},{y0:.0f}) end=({x1:.0f},{y1:.0f}) r={bubble_r:.0f}")
+                 f"start=({x0:.0f},{y0:.0f}) end=({x1:.0f},{y1:.0f}) r={bubble_r:.0f}"
+                 f" src=[{src_str}]")
             _log(f"  WRITE grid label={g.label} layer=A-GRID")
             for cy in (bld_max_y + grid_ext + bubble_r,
                        bld_min_y - grid_ext - bubble_r):
@@ -1720,8 +1755,15 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                 grid_line.set_xdata('BIMGUID', [(1000, f'GRID:{g.label}')])
             except Exception:
                 pass
+            # §20.3.2: BIMSRC xdata on grid line
+            src_str = ','.join(g.source_guids) if g.source_guids else ''
+            _set_bimsrc(grid_line, type='GRID', label=g.label, axis=g.axis,
+                        pos=float(g.position), source_guids=src_str,
+                        intent_param=f'position_{g.axis}')
+            n_bimsrc_grid += 1
             _log(f"§2.3 Grid {g.label} axis={g.axis} pos={g.position:.3f}m "
-                 f"start=({x0:.0f},{y0:.0f}) end=({x1:.0f},{y1:.0f}) r={bubble_r:.0f}")
+                 f"start=({x0:.0f},{y0:.0f}) end=({x1:.0f},{y1:.0f}) r={bubble_r:.0f}"
+                 f" src=[{src_str}]")
             _log(f"  WRITE grid label={g.label} layer=A-GRID")
             for cx in (bld_max_x + grid_ext + bubble_r,
                        bld_min_x - grid_ext - bubble_r):
@@ -1756,7 +1798,7 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
         if d.axis == 'x':
             # §B: dim measured from building edge; bubble is outermost beyond grid_ext
             dim_y = bld_max_y + off
-            msp.add_line((s, dim_y), (e, dim_y),
+            dim_line_e = msp.add_line((s, dim_y), (e, dim_y),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             # Extension lines: start just above building top, end at dim_y + overshoot
             msp.add_line((s, bld_max_y + dim_gap), (s, dim_y + dim_gap),
@@ -1772,11 +1814,16 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h}
                          ).set_placement((mid_x, dim_y + txt_h * 0.3),
                                          align=TextEntityAlignment.MIDDLE_CENTER)
+            # §20.3.3: BIMSRC xdata on dimension line
+            _set_bimsrc(dim_line_e, type='DIM', axis=d.axis,
+                        from_grid=d.from_label, to_grid=d.to_label,
+                        dist=float(d.end - d.start))
+            n_bimsrc_dim += 1
             _log(f"  WRITE dim {d.text} layer=A-DIMS")
         else:
             # §B: dim measured from building edge (left); bubble outermost left
             dim_x = bld_min_x - off
-            msp.add_line((dim_x, s), (dim_x, e),
+            dim_line_e = msp.add_line((dim_x, s), (dim_x, e),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             # Extension lines: start just left of building, end at dim_x - overshoot
             msp.add_line((bld_min_x - dim_gap, s), (dim_x - dim_gap, s),
@@ -1793,6 +1840,11 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                                      'rotation': 90}
                          ).set_placement((dim_x - txt_h * 0.3, mid_y),
                                          align=TextEntityAlignment.MIDDLE_CENTER)
+            # §20.3.3: BIMSRC xdata on dimension line
+            _set_bimsrc(dim_line_e, type='DIM', axis=d.axis,
+                        from_grid=d.from_label, to_grid=d.to_label,
+                        dist=float(d.end - d.start))
+            n_bimsrc_dim += 1
             _log(f"  WRITE dim {d.text} layer=A-DIMS")
         dim_count += 1
 
@@ -1818,6 +1870,10 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
             room_txt.set_xdata('BIMGUID', [(1000, f'ROOM:{room_type}')])
         except Exception:
             pass
+        # §20.3.4: BIMSRC xdata on room label
+        _set_bimsrc(room_txt, type='ROOM', room_type=room_type,
+                    pos_x=float(cx), pos_y=float(cy), area=float(area))
+        n_bimsrc_room += 1
         msp.add_text(f'{area:.1f} m\u00b2',
                      dxfattribs={'layer': 'A-ANNO-TEXT',
                                  'height': area_h}
@@ -1886,6 +1942,10 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                        drawing_title='FLOOR PLAN', drawing_no='A-01',
                        scale=scale, schedule_rows=schedule,
                        building_type=bld_type, building_name=bld_name, grids=grids)
+
+    # §20: BIMSRC summary
+    _log(f'§XDATA SUMMARY: {n_bimsrc_wall} walls {n_bimsrc_grid} grids '
+         f'{n_bimsrc_dim} dims {n_bimsrc_room} rooms tagged')
 
     # ── §2 Step 8: VERIFY ──
     _log(f"§2.8 Floor plan: {cut_count} cut polylines, {len(grids)} grids, "
@@ -2161,20 +2221,21 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
             bay_mm = abs(face_grids[i + 1].position - face_grids[i].position) * 1000
             snapped = round(bay_mm / SNAP_MODULE) * SNAP_MODULE
             _log(f"§2.4 Bay dim {face_grids[i].label}→{face_grids[i+1].label} = {int(snapped)}mm")
-            try:
-                dim = msp.add_linear_dim(
-                    base=(0, dim_y), p1=(xa, 0), p2=(xb, 0),
-                    dimstyle='ARCH_JKR', text=str(int(snapped)))
-                dim.render()
-            except Exception:
-                mid_x = (xa + xb) / 2
-                msp.add_line((xa, dim_y), (xb, dim_y),
+            # §H: manual tick pattern — consistent with floor/roof plan dims
+            mid_x = (xa + xb) / 2
+            msp.add_line((xa, dim_y), (xb, dim_y),
+                         dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+            ext_bot = grid_above + bubble_r * 2 + grid_gap
+            for tx in (xa, xb):
+                msp.add_line((tx, ext_bot), (tx, dim_y + grid_gap),
                              dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-                msp.add_text(str(int(snapped)),
-                             dxfattribs={'layer': 'A-ANNO-DIMS',
-                                         'height': dim_txt_h}
-                             ).set_placement((mid_x, dim_y + grid_gap),
-                                             align=TextEntityAlignment.MIDDLE_CENTER)
+                msp.add_line((tx - tick_dx, dim_y - tick_dy),
+                             (tx + tick_dx, dim_y + tick_dy),
+                             dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+            msp.add_text(str(int(snapped)),
+                         dxfattribs={'layer': 'A-ANNO-DIMS', 'height': dim_txt_h}
+                         ).set_placement((mid_x, dim_y - dim_txt_h * 2.5),
+                                         align=TextEntityAlignment.MIDDLE_CENTER)
 
     # ── §6.2 Height dimension chain (right side) ──
     # F2: compute title-block left boundary in model-space to clamp dim position
@@ -2728,12 +2789,13 @@ def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
 
     _log(f"§D MEP plan discipline={discipline}: {elem_count} terminals drawn")
 
-    # ── Legend in schedule rows slot ──
+    # ── Legend in schedule rows slot — dicts matching _draw_sheet_layout format ──
     legend_rows = []
     for disc, names in sorted(legend_items.items()):
-        legend_rows.append(('', f'── {disc} ──'))
+        legend_rows.append({'tag': '', 'size': '', 'desc': f'── {disc} ──', 'qty': ''})
         for n in sorted(names)[:8]:
-            legend_rows.append(('○' if disc == 'ELECTRICAL' else '●', n))
+            sym = '○' if disc == 'ELECTRICAL' else '●'
+            legend_rows.append({'tag': sym, 'size': '', 'desc': n, 'qty': ''})
 
     # ── Sheet layout (no door/window schedule; use MEP legend rows) ──
     title = f'{discipline} LAYOUT'
@@ -2984,7 +3046,7 @@ def main():
     _FILE_TO_FACE = {'FRONT': 'front', 'REAR': 'rear', 'LEFT': 'left', 'RIGHT': 'right'}
     if args.all and page_json:
         # §3.0b: iterate pages by status=DONE from master table
-        pages_todo = [p for p in page_json['pages'] if p['status'] == 'DONE']
+        pages_todo = [p for p in page_json['pages'] if p['status'] in ('DONE', 'STUB')]
     elif args.all:
         # Fallback if no JSON found: legacy hardcoded list
         pages_todo = [

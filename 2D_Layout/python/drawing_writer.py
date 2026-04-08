@@ -20,10 +20,23 @@ import sqlite3
 import sys
 import math
 import os
+import json
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import List, Tuple, Optional, Dict
 from section_cut import section_cut as run_section_cut, parse_vertices_blob
+
+# ─────────────────────────────────────────────────────────────────
+# FORENSIC LOG  (spec R6)
+# ─────────────────────────────────────────────────────────────────
+
+_SVG_LOG: list = []
+
+
+def _log(msg: str) -> None:
+    """Append a diagnostic line to the session log buffer."""
+    _SVG_LOG.append(msg)
+
 
 # ─────────────────────────────────────────────────────────────────
 # DRAWING STYLE CONSTANTS
@@ -85,6 +98,82 @@ MARGIN_BOTTOM   = 25.0
 # Dimension rounding — snap bay dimensions to nearest module for clean numbers
 SNAP_MODULE     = 100    # mm — snap to nearest 100mm (standard housing module)
 
+
+# ─────────────────────────────────────────────────────────────────
+# TEMPLATE LOADER — overrides defaults above from drawing_template.json
+# ─────────────────────────────────────────────────────────────────
+
+def _load_template() -> dict:
+    """Load drawing_template.json — user-editable drawing CSS.
+    Mirrors the same loader used in drawing_writer_dxf.py."""
+    tpl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            '..', 'drawing_template.json')
+    if os.path.exists(tpl_path):
+        with open(tpl_path) as f:
+            return json.load(f)
+    return {}
+
+
+def _init_from_template():
+    """Wire module-level style constants from drawing_template.json.
+    Keeps constant names intact (other modules import them by name).
+    Fallbacks are the ISO 128 / JKR defaults already set above."""
+    global LW_GROUND, LW_WALL_EXT, LW_WALL_INT, LW_WALL_GLASS
+    global LW_OPENING, LW_DIMENSION, LW_GRID, LW_FURNITURE
+    global TXT_DIM, TXT_ROOM, TXT_GRID, TXT_TITLE
+    global GRID_CIRCLE_R, GRID_EXTEND
+    global COL_WALL, COL_GLASS, COL_OPENING, COL_DIM
+    global COL_GRID, COL_FURNITURE, COL_FURN_FILL, COL_BACKGROUND
+    global MARGIN_LEFT, MARGIN_RIGHT, MARGIN_TOP, MARGIN_BOTTOM
+    global SNAP_MODULE
+
+    tpl = _load_template()
+    if not tpl:
+        return  # no template file — keep hardcoded defaults
+
+    lw = tpl.get('line_weights', {})
+    LW_GROUND     = lw.get('border',              LW_GROUND)
+    LW_WALL_EXT   = lw.get('wall_exterior_cut',   LW_WALL_EXT)
+    LW_WALL_INT   = lw.get('wall_partition_cut',  LW_WALL_INT)
+    LW_WALL_GLASS = lw.get('glass_glazing',        LW_WALL_GLASS)
+    LW_OPENING    = lw.get('window_frame',         LW_OPENING)
+    LW_DIMENSION  = lw.get('dimension_line',       LW_DIMENSION)
+    LW_GRID       = lw.get('grid_line',            LW_GRID)
+    LW_FURNITURE  = lw.get('furniture',            LW_FURNITURE)
+
+    col = tpl.get('colors', {})
+    COL_WALL      = col.get('wall',           COL_WALL)
+    COL_GLASS     = col.get('glass',          COL_GLASS)
+    COL_OPENING   = col.get('wall',           COL_OPENING)   # openings share wall color
+    COL_DIM       = col.get('dimension',      COL_DIM)
+    COL_GRID      = col.get('grid',           COL_GRID)
+    COL_FURNITURE = col.get('furniture',      COL_FURNITURE)
+    COL_FURN_FILL = col.get('furniture_fill', COL_FURN_FILL)
+    # COL_BACKGROUND has no template key — keep hardcoded white
+
+    grid = tpl.get('grid', {})
+    GRID_CIRCLE_R = grid.get('bubble_radius_mm',          GRID_CIRCLE_R)
+    GRID_EXTEND   = grid.get('extend_beyond_building_mm', GRID_EXTEND)
+    TXT_GRID      = grid.get('label_font_height_mm',      TXT_GRID)
+
+    dims = tpl.get('dimensions', {})
+    TXT_DIM      = dims.get('text_height_mm',        TXT_DIM)
+    DIM_GAP_val  = dims.get('extension_gap_mm',      None)   # local only — not global
+    SNAP_MODULE  = dims.get('snap_module_mm',         SNAP_MODULE)
+
+    rl = tpl.get('room_labels', {})
+    TXT_ROOM     = rl.get('name_font_height_mm', TXT_ROOM)
+
+    paper = tpl.get('paper', {})
+    margins = paper.get('margins', {})
+    MARGIN_LEFT   = margins.get('left',   MARGIN_LEFT)
+    MARGIN_RIGHT  = margins.get('right',  MARGIN_RIGHT)
+    MARGIN_TOP    = margins.get('top',    MARGIN_TOP)
+    MARGIN_BOTTOM = margins.get('bottom', MARGIN_BOTTOM)
+
+
+_init_from_template()
+
 # ─────────────────────────────────────────────────────────────────
 # DATA CLASSES
 # ─────────────────────────────────────────────────────────────────
@@ -101,6 +190,7 @@ class Element:
     max_y: float
     min_z: float
     max_z: float
+    guid: str = ''
 
     @property
     def width_x(self): return abs(self.max_x - self.min_x)
@@ -142,6 +232,7 @@ class GridLine:
     label: str
     axis: str       # 'x' (vertical line) or 'y' (horizontal line)
     position: float  # world coordinate
+    source_guids: list = field(default_factory=list)
 
 @dataclass
 class DimString:
@@ -151,6 +242,8 @@ class DimString:
     offset: float    # perpendicular offset (paper mm from building edge)
     axis: str        # 'x' (horizontal dim) or 'y' (vertical dim)
     text: str        # formatted dimension value
+    from_label: str = ''  # §20: grid label at start
+    to_label: str = ''    # §20: grid label at end
 
 # ─────────────────────────────────────────────────────────────────
 # DATABASE READER
@@ -162,7 +255,8 @@ def read_elements(db_path: str, storey_filter: str = None) -> Dict[str, List[Ele
 
     query = """
         SELECT m.ifc_class, m.element_name, m.storey,
-               r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+               r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
+               m.guid
         FROM elements_meta m
         JOIN elements_rtree r ON m.id = r.id
         ORDER BY m.ifc_class, m.element_name
@@ -195,6 +289,17 @@ def read_elements(db_path: str, storey_filter: str = None) -> Dict[str, List[Ele
             result['roofs'].append(e)
         else:
             result['other'].append(e)
+
+    # §5.3a rule 2: if no IfcRoof, promote IfcSlab named '*Roof*' at building top-Z
+    if not result['roofs'] and result['slabs']:
+        all_max_z = max((e.max_z for e in result['slabs'] + result['other']
+                         if hasattr(e, 'max_z')), default=0)
+        roof_slabs = [e for e in result['slabs']
+                      if 'Roof' in (e.name or '')
+                      and e.max_z >= all_max_z - 0.5]
+        if roof_slabs:
+            result['roofs'] = roof_slabs
+            result['slabs'] = [e for e in result['slabs'] if e not in roof_slabs]
 
     return result
 
@@ -231,10 +336,10 @@ def read_drawing_metadata() -> Optional[Dict]:
     ).fetchall()
     meta['title_fields'] = [dict(r) for r in rows]
 
-    # Room labels (Malay)
+    # Room labels (English)
     rows = conn.execute(
         'SELECT * FROM [2d_room_label] '
-        "WHERE profile_id='JKR_Malaysian' AND language='MS'"
+        "WHERE profile_id='JKR_Malaysian' AND language='EN'"
     ).fetchall()
     meta['room_labels'] = {r['space_type']: dict(r) for r in rows}
 
@@ -264,8 +369,9 @@ def derive_grids(walls: List[Element], columns: Optional[List[Element]] = None,
                 Numbers (1, 2, 3...) for horizontal grids (Y-axis).
     This follows TB-LKTN (JKR Malaysian) practice.
     """
-    x_positions = []
-    y_positions = []
+    # §20.2: entries are (position, guid) tuples for source_guids tracking
+    x_entries = []
+    y_entries = []
 
     # §4.2: compute building bounding box from all walls (including glass)
     # to detect boundary positions
@@ -280,19 +386,18 @@ def derive_grids(walls: List[Element], columns: Optional[List[Element]] = None,
     # §4.2a: IfcColumn always gridded — columns define grid intersections
     if columns:
         for c in columns:
-            x_positions.append(c.center_x)
-            y_positions.append(c.center_y)
+            x_entries.append((c.center_x, c.guid))
+            y_entries.append((c.center_y, c.guid))
 
-    # §4.2.1 Step 1: ALL opaque wall centrelines (Ext + Partn)
-    # Both exterior and major internal division walls define structural bays.
-    # Glass panels excluded — they contribute via bbox edges and wall endpoints.
+    # §4.2.1 Step 1: exterior wall centrelines only — partition walls are NOT gridded
+    # (spec §4.2: "Grids mark structural bay spacing — columns + boundary walls only")
     for w in walls:
-        if w.is_glass:
-            continue  # §4.2: exclude curtain wall panels
+        if w.is_glass or not w.is_exterior:
+            continue
         if w.is_ns_wall:
-            x_positions.append(w.center_x)
+            x_entries.append((w.center_x, w.guid))
         if w.is_ew_wall:
-            y_positions.append(w.center_y)
+            y_entries.append((w.center_y, w.guid))
 
     # §4.2.1 Step 2: wall endpoints of exterior walls as bay boundaries
     # Only endpoints far from bbox edges (interior junctions like glass-masonry)
@@ -302,39 +407,65 @@ def derive_grids(walls: List[Element], columns: Optional[List[Element]] = None,
             continue
         if w.is_ew_wall:
             if abs(w.min_x - bld_min_x) > BOUNDARY_TOL:
-                x_positions.append(w.min_x)
+                x_entries.append((w.min_x, w.guid))
             if abs(w.max_x - bld_max_x) > BOUNDARY_TOL:
-                x_positions.append(w.max_x)
+                x_entries.append((w.max_x, w.guid))
         if w.is_ns_wall:
             if abs(w.min_y - bld_min_y) > BOUNDARY_TOL:
-                y_positions.append(w.min_y)
+                y_entries.append((w.min_y, w.guid))
             if abs(w.max_y - bld_max_y) > BOUNDARY_TOL:
-                y_positions.append(w.max_y)
+                y_entries.append((w.max_y, w.guid))
 
     # §4.2.1 Step 3: building bounding box edges are structural boundaries
     # even if formed by glass/curtain wall — contractor needs these
-    x_positions.append(bld_min_x)
-    x_positions.append(bld_max_x)
-    y_positions.append(bld_min_y)
-    y_positions.append(bld_max_y)
+    x_entries.append((bld_min_x, ''))
+    x_entries.append((bld_max_x, ''))
+    y_entries.append((bld_min_y, ''))
+    y_entries.append((bld_max_y, ''))
 
     # §4.2 Step 2: cluster within wall-thickness tolerance (0.20m)
     MERGE_TOL = 0.20
 
-    def merge_positions(positions):
-        if not positions:
+    def merge_entries(entries):
+        """Merge (pos, guid) tuples within MERGE_TOL, accumulating guids."""
+        if not entries:
             return []
-        positions = sorted(positions)
-        merged = [positions[0]]
-        for p in positions[1:]:
-            if abs(p - merged[-1]) < MERGE_TOL:
-                merged[-1] = (merged[-1] + p) / 2
+        entries = sorted(entries, key=lambda e: e[0])
+        # merged: list of (position, [guids])
+        merged = [(entries[0][0], [entries[0][1]])]
+        for pos, guid in entries[1:]:
+            if abs(pos - merged[-1][0]) < MERGE_TOL:
+                avg = (merged[-1][0] + pos) / 2
+                merged[-1] = (avg, merged[-1][1] + [guid])
             else:
-                merged.append(p)
+                merged.append((pos, [guid]))
         return merged
 
-    x_sorted = merge_positions(x_positions)
-    y_sorted = merge_positions(y_positions)
+    x_merged = merge_entries(x_entries)
+    y_merged = merge_entries(y_entries)
+
+    # §4.2e: prune bays narrower than min_structural_bay_m — wall-thickness artifacts
+    min_bay = (template or {}).get('grid', {}).get('min_structural_bay_m', 1.0)
+
+    def prune_small_bays(merged):
+        """Keep first + last; skip interior positions creating bays < min_bay.
+        Each element is (position, [guids])."""
+        if len(merged) <= 2:
+            return merged
+        kept = [merged[0]]
+        for pos, guids in merged[1:-1]:
+            if pos - kept[-1][0] >= min_bay:
+                kept.append((pos, guids))
+        last_pos, last_guids = merged[-1]
+        if last_pos - kept[-1][0] < min_bay and len(kept) > 1:
+            # last building edge too close to previous — replace last kept with edge
+            kept[-1] = (last_pos, kept[-1][1] + last_guids)
+        else:
+            kept.append((last_pos, last_guids))
+        return kept
+
+    x_merged = prune_small_bays(x_merged)
+    y_merged = prune_small_bays(y_merged)
 
     # §4.2d: labels from template axis_labels (skip I per TB-LKTN)
     tpl_grid = (template or {}).get('grid', {})
@@ -342,13 +473,15 @@ def derive_grids(walls: List[Element], columns: Optional[List[Element]] = None,
     h_labels = tpl_grid.get('horizontal_axis_labels', '1,2,3,4,5,6,7,8,9,10,11,12').split(',')
 
     grids = []
-    for i, x in enumerate(x_sorted):
+    for i, (x, guids) in enumerate(x_merged):
         label = v_labels[i] if i < len(v_labels) else chr(ord('A') + i)
-        grids.append(GridLine(label, 'x', x))
+        clean_guids = [g for g in guids if g]
+        grids.append(GridLine(label, 'x', x, source_guids=clean_guids))
 
-    for i, y in enumerate(y_sorted):
+    for i, (y, guids) in enumerate(y_merged):
         label = h_labels[i] if i < len(h_labels) else str(i + 1)
-        grids.append(GridLine(label, 'y', y))
+        clean_guids = [g for g in guids if g]
+        grids.append(GridLine(label, 'y', y, source_guids=clean_guids))
 
     return grids
 
@@ -372,7 +505,8 @@ def generate_dimensions(grids: List[GridLine]) -> List[DimString]:
         dist = x_grids[i + 1].position - x_grids[i].position
         dims.append(DimString(
             x_grids[i].position, x_grids[i + 1].position,
-            DIM_OFFSET_1, 'x', format_dim(dist)
+            DIM_OFFSET_1, 'x', format_dim(dist),
+            from_label=x_grids[i].label, to_label=x_grids[i + 1].label
         ))
 
     # X-axis overall dimension
@@ -380,7 +514,8 @@ def generate_dimensions(grids: List[GridLine]) -> List[DimString]:
         dist = x_grids[-1].position - x_grids[0].position
         dims.append(DimString(
             x_grids[0].position, x_grids[-1].position,
-            DIM_OFFSET_2, 'x', format_dim(dist)
+            DIM_OFFSET_2, 'x', format_dim(dist),
+            from_label=x_grids[0].label, to_label=x_grids[-1].label
         ))
 
     # Y-axis bay dimensions (vertical, shown left of building)
@@ -388,7 +523,8 @@ def generate_dimensions(grids: List[GridLine]) -> List[DimString]:
         dist = y_grids[i + 1].position - y_grids[i].position
         dims.append(DimString(
             y_grids[i].position, y_grids[i + 1].position,
-            DIM_OFFSET_1, 'y', format_dim(dist)
+            DIM_OFFSET_1, 'y', format_dim(dist),
+            from_label=y_grids[i].label, to_label=y_grids[i + 1].label
         ))
 
     # Y-axis overall dimension
@@ -396,7 +532,8 @@ def generate_dimensions(grids: List[GridLine]) -> List[DimString]:
         dist = y_grids[-1].position - y_grids[0].position
         dims.append(DimString(
             y_grids[0].position, y_grids[-1].position,
-            DIM_OFFSET_2, 'y', format_dim(dist)
+            DIM_OFFSET_2, 'y', format_dim(dist),
+            from_label=y_grids[0].label, to_label=y_grids[-1].label
         ))
 
     return dims
@@ -438,7 +575,8 @@ def snap_grids(grids: List[GridLine]) -> List[GridLine]:
             if snapped_bay_mm < SNAP_MODULE:
                 snapped_bay_mm = SNAP_MODULE
             new_pos = snapped[-1].position + snapped_bay_mm / 1000
-            snapped.append(GridLine(axis_grids[i].label, axis, new_pos))
+            snapped.append(GridLine(axis_grids[i].label, axis, new_pos,
+                                    source_guids=axis_grids[i].source_guids))
 
         result.extend(snapped)
 
@@ -1091,11 +1229,17 @@ def find_host_wall(opening: Element, walls: List[Element]) -> Optional[Element]:
 def draw_floor_plan(elements: Dict[str, List[Element]], db_path: str,
                     meta: Optional[Dict]) -> str:
     """Generate floor plan SVG on A3 sheet with JKR title block and annotations."""
+    _SVG_LOG.clear()
+    _log(f"SVG writer: {db_path} scale=1:{SCALE}")
 
     walls = elements['walls']
     doors = elements['doors']
     windows = elements['windows']
     furniture = elements['furniture']
+
+    _log(f"  elements: {len(walls)} walls, {len(furniture)} furniture, "
+         f"{len(doors)+len(windows)} openings "
+         f"({len(doors)} doors, {len(windows)} windows)")
 
     if not walls:
         print("No walls found in database.", file=sys.stderr)
@@ -1171,6 +1315,7 @@ def draw_floor_plan(elements: Dict[str, List[Element]], db_path: str,
     columns = [e for e in elements.get('other', []) if e.ifc_class == 'IfcColumn']
     grids = snap_grids(derive_grids(walls, columns=columns))
     dims = generate_dimensions(grids)
+    _log(f"  grids: {len(grids)} ({', '.join(g.label for g in grids)})")
 
     # ── Draw grid lines (dash-dot per 2d_grid_style) ──
     GRID_DASH = "4,1,1,1"  # dash-dot pattern per TB-LKTN
@@ -1220,6 +1365,7 @@ def draw_floor_plan(elements: Dict[str, List[Element]], db_path: str,
         h = f.width_y * PAPER_FACTOR
         svg.rect('furniture', sx, sy, w, h,
                  COL_FURNITURE, LW_FURNITURE, COL_FURN_FILL)
+    _log(f"  drew furniture: {len(furniture)} entities")
 
     # ── Draw walls from mesh section contours ──
     section_elements = run_section_cut(db_path, cut_z=1.0)
@@ -1255,6 +1401,7 @@ def draw_floor_plan(elements: Dict[str, List[Element]], db_path: str,
                 wall_contour_count += 1
 
     print(f"  Section cut contours drawn: {wall_contour_count}")
+    _log(f"  drew walls: {wall_contour_count} section-cut contours")
 
     # ── Draw openings (doors + windows) ──
     for opening in doors + windows:
@@ -1385,6 +1532,7 @@ def draw_floor_plan(elements: Dict[str, List[Element]], db_path: str,
         svg.hexagon('label', tcx, tcy, tag_r,
                      COL_WALL, window_tag['stroke_weight'], COL_BACKGROUND)
         svg.text('label', tcx, tcy, tag_label, window_tag['text_size'])
+    _log(f"  drew openings: {d_num} door tags, {w_num} window tags")
 
     # ── Draw dimensions ──
     for dim in dims:
@@ -1431,6 +1579,8 @@ def draw_floor_plan(elements: Dict[str, List[Element]], db_path: str,
             svg.text('dimension', dx - TXT_DIM * 0.7, mid_y, dim.text, TXT_DIM,
                      rotate=-90)
 
+    _log(f"  drew dims: {len(dims)} dimension strings")
+
     # ── Room labels ──
     room_labels = meta.get('room_labels', {}) if meta else {}
     rooms = infer_rooms(furniture, walls)
@@ -1466,6 +1616,13 @@ def draw_floor_plan(elements: Dict[str, List[Element]], db_path: str,
     print(f"  Annotations: {d_num} door tags, {w_num} window tags, "
           f"{len(rooms)} room labels")
 
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    out_dir = os.path.join(script_dir, 'output')
+    svg_path = os.path.join(out_dir,
+                            os.path.splitext(os.path.basename(db_path))[0]
+                            + '_floor_plan.svg')
+    _log(f"  SVG written: {svg_path}")
+
     return svg.to_string()
 
 # ─────────────────────────────────────────────────────────────────
@@ -1479,11 +1636,15 @@ def draw_elevation(elements: Dict[str, List[Element]], face: str,
     face: 'front' (south/-Y), 'rear' (north/+Y),
           'left' (west/-X), 'right' (east/+X)
     """
+    _log(f"SVG writer elevation ({face}): {db_path} scale=1:{SCALE}")
     walls = elements['walls']
     doors = elements['doors']
     windows = elements['windows']
     roofs = elements['roofs']
     slabs = elements['slabs']
+
+    _log(f"  elements: {len(walls)} walls, {len(doors)+len(windows)} openings, "
+         f"{len(roofs)} roofs, {len(slabs)} slabs")
 
     if not walls:
         return ""
@@ -1609,6 +1770,7 @@ def draw_elevation(elements: Dict[str, List[Element]], face: str,
 
     # ── Grid lines on elevation ──
     elev_grids = snap_grids(derive_grids(walls))
+    _log(f"  grids: {len(elev_grids)} ({', '.join(g.label for g in elev_grids)})")
     # Apply h_sign: grid positions in world coords, flip for rear/right views
     face_grids_raw = [g for g in elev_grids if g.axis == grid_axis]
     face_grids = sorted(
@@ -1723,6 +1885,8 @@ def draw_elevation(elements: Dict[str, List[Element]], face: str,
         elif e.ifc_class == 'IfcDoor':
             svg.rect('opening', x1, y1, w, h,
                      COL_OPENING, LW_OPENING, '#E8E8E8')
+
+    _log(f"  drew walls: {len(face_elems)} elevation elements")
 
     # ── Draw roof outline — mesh-based silhouette via convex hull ──
     roof_hull = roof_silhouette(db_path, face)
@@ -1876,6 +2040,13 @@ def draw_elevation(elements: Dict[str, List[Element]], face: str,
     print(f"Elevation ({face}): {len(face_elems)} elements, "
           f"{len(roofs)} roof, {len(slabs)} slab")
 
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    out_dir = os.path.join(script_dir, 'output')
+    svg_path = os.path.join(out_dir,
+                            os.path.splitext(os.path.basename(db_path))[0]
+                            + f'_{face}_elevation.svg')
+    _log(f"  SVG written: {svg_path}")
+
     return svg.to_string()
 
 # ─────────────────────────────────────────────────────────────────
@@ -1967,9 +2138,12 @@ def combine_elevation_svgs(svg1_str: str, svg2_str: str,
 def draw_roof_plan(elements: Dict[str, List[Element]], db_path: str,
                    meta: Optional[Dict]) -> str:
     """Generate roof plan SVG — top-down view of roof with ridge, slope arrows."""
+    _log(f"SVG writer roof plan: {db_path} scale=1:{SCALE}")
 
     walls = elements['walls']
     roofs = elements['roofs']
+
+    _log(f"  elements: {len(walls)} walls, {len(roofs)} roofs")
 
     if not roofs:
         print("No roof elements found.", file=sys.stderr)
@@ -2112,8 +2286,8 @@ def draw_roof_plan(elements: Dict[str, List[Element]], db_path: str,
     overhang_e = (roof_max_x - bld_max_x) * 1000
     overhang_w = (bld_min_x - roof_min_x) * 1000
 
-    # North overhang dimension (right side)
-    if overhang_n > 50:  # only show if > 50mm
+    # North overhang dimension (right side, vertical)
+    if overhang_n > 50:
         _, oy_wall = to_sheet(0, bld_max_y)
         _, oy_eave = to_sheet(0, roof_max_y)
         ox_dim = rx2 + DIM_OFFSET_1
@@ -2130,8 +2304,63 @@ def draw_roof_plan(elements: Dict[str, List[Element]], db_path: str,
                  f'{int(round(overhang_n / SNAP_MODULE) * SNAP_MODULE)}',
                  TXT_DIM, rotate=90)
 
+    # South overhang dimension (right side, vertical)
+    if overhang_s > 50:
+        _, oy_wall = to_sheet(0, bld_min_y)
+        _, oy_eave = to_sheet(0, roof_min_y)
+        ox_dim = rx2 + DIM_OFFSET_1
+        svg.line('dimension', ox_dim, oy_wall, ox_dim, oy_eave,
+                 COL_DIM, LW_DIMENSION)
+        svg.line('dimension', rx2 + DIM_GAP, oy_wall,
+                 ox_dim + DIM_EXTEND, oy_wall, COL_DIM, LW_DIMENSION)
+        svg.line('dimension', rx2 + DIM_GAP, oy_eave,
+                 ox_dim + DIM_EXTEND, oy_eave, COL_DIM, LW_DIMENSION)
+        svg.tick_mark('dimension', ox_dim, oy_wall, 'y', COL_DIM, LW_DIMENSION)
+        svg.tick_mark('dimension', ox_dim, oy_eave, 'y', COL_DIM, LW_DIMENSION)
+        mid_ov = (oy_wall + oy_eave) / 2
+        svg.text('dimension', ox_dim + TXT_DIM * 0.7, mid_ov,
+                 f'{int(round(overhang_s / SNAP_MODULE) * SNAP_MODULE)}',
+                 TXT_DIM, rotate=90)
+
+    # East overhang dimension (top side, horizontal)
+    if overhang_e > 50:
+        ox_wall, _ = to_sheet(bld_max_x, 0)
+        ox_eave, _ = to_sheet(roof_max_x, 0)
+        oy_dim = ry1 - DIM_OFFSET_1
+        svg.line('dimension', ox_wall, oy_dim, ox_eave, oy_dim,
+                 COL_DIM, LW_DIMENSION)
+        svg.line('dimension', ox_wall, ry1 - DIM_GAP,
+                 ox_wall, oy_dim - DIM_EXTEND, COL_DIM, LW_DIMENSION)
+        svg.line('dimension', ox_eave, ry1 - DIM_GAP,
+                 ox_eave, oy_dim - DIM_EXTEND, COL_DIM, LW_DIMENSION)
+        svg.tick_mark('dimension', ox_wall, oy_dim, 'x', COL_DIM, LW_DIMENSION)
+        svg.tick_mark('dimension', ox_eave, oy_dim, 'x', COL_DIM, LW_DIMENSION)
+        mid_ov = (ox_wall + ox_eave) / 2
+        svg.text('dimension', mid_ov, oy_dim - TXT_DIM * 0.7,
+                 f'{int(round(overhang_e / SNAP_MODULE) * SNAP_MODULE)}',
+                 TXT_DIM)
+
+    # West overhang dimension (top side, horizontal)
+    if overhang_w > 50:
+        ox_eave, _ = to_sheet(roof_min_x, 0)
+        ox_wall, _ = to_sheet(bld_min_x, 0)
+        oy_dim = ry1 - DIM_OFFSET_1
+        svg.line('dimension', ox_eave, oy_dim, ox_wall, oy_dim,
+                 COL_DIM, LW_DIMENSION)
+        svg.line('dimension', ox_eave, ry1 - DIM_GAP,
+                 ox_eave, oy_dim - DIM_EXTEND, COL_DIM, LW_DIMENSION)
+        svg.line('dimension', ox_wall, ry1 - DIM_GAP,
+                 ox_wall, oy_dim - DIM_EXTEND, COL_DIM, LW_DIMENSION)
+        svg.tick_mark('dimension', ox_eave, oy_dim, 'x', COL_DIM, LW_DIMENSION)
+        svg.tick_mark('dimension', ox_wall, oy_dim, 'x', COL_DIM, LW_DIMENSION)
+        mid_ov = (ox_eave + ox_wall) / 2
+        svg.text('dimension', mid_ov, oy_dim - TXT_DIM * 0.7,
+                 f'{int(round(overhang_w / SNAP_MODULE) * SNAP_MODULE)}',
+                 TXT_DIM)
+
     # ── Grids ──
     grids = snap_grids(derive_grids(walls))
+    _log(f"  grids: {len(grids)} ({', '.join(g.label for g in grids)})")
     GRID_DASH = "4,1,1,1"
 
     for g in grids:
@@ -2177,7 +2406,34 @@ def draw_roof_plan(elements: Dict[str, List[Element]], db_path: str,
           f"overhang N={overhang_n:.0f} S={overhang_s:.0f} "
           f"E={overhang_e:.0f} W={overhang_w:.0f} mm")
 
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    out_dir = os.path.join(script_dir, 'output')
+    svg_path = os.path.join(out_dir,
+                            os.path.splitext(os.path.basename(db_path))[0]
+                            + '_roof_plan.svg')
+    _log(f"  SVG written: {svg_path}")
+
     return svg.to_string()
+
+
+# ─────────────────────────────────────────────────────────────────
+# LOG FLUSH
+# ─────────────────────────────────────────────────────────────────
+
+def _write_svg_log(out_dir: str) -> None:
+    """Write buffered _SVG_LOG lines to output/svg_writer_log.txt."""
+    if not _SVG_LOG:
+        return
+    import datetime
+    os.makedirs(out_dir, exist_ok=True)
+    log_path = os.path.join(out_dir, 'svg_writer_log.txt')
+    stamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    with open(log_path, 'w') as f:
+        f.write(f"SVG Writer Log — {stamp}\n")
+        f.write("=" * 60 + "\n\n")
+        for line in _SVG_LOG:
+            f.write(line + "\n")
+    print(f"  Log: {log_path}")
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -2283,6 +2539,8 @@ def main():
             with open(out_path, 'w') as f:
                 f.write(paired)
             print(f"  → {out_path}  [paired sheet]")
+
+    _write_svg_log(out_dir)
 
 
 if __name__ == '__main__':

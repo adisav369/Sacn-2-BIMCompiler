@@ -339,6 +339,21 @@ def audit_dxf(dxf_path, tpl, cfg, log):
     if has_bld_type_field and has_identity_block:
         warn('S01', 'BUILDING TYPE field row shows generic value AND identity block shows specific type — redundant/conflicting')
 
+    # SEM01 — §20: BIMSRC xdata coverage
+    bimsrc_count = 0
+    for e in msp:
+        try:
+            xd = e.get_xdata('BIMSRC')
+            if xd:
+                bimsrc_count += 1
+        except Exception:
+            pass
+    if bimsrc_count > 0:
+        ok('SEM01', f'{bimsrc_count} entities with BIMSRC xdata')
+    else:
+        # Only floor plans have BIMSRC currently — info, not fail
+        info.append(f'  INFO SEM01  0 BIMSRC entities (non-floor view or pre-§20 DXF)')
+
     # Summary
     n_fail = sum(1 for l in issues if 'FAIL' in l)
     n_warn = sum(1 for l in issues if 'WARN' in l)
