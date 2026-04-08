@@ -811,48 +811,31 @@ Tests are written first (will FAIL), then code implements until they PASS.
 
 ### 9.4 Remaining — Other Views and Features
 
-| Task | Spec section |
-|------|-------------|
-| DXF writer: roof plan | §5.3 (SVG writer has `draw_roof_plan`, DXF not yet ported) |
-| Roof plan: bay dimensions + all 4 overhang dimensions | §5.3, §6.1 |
-| Elevation layout: building centering | §7.1.1 (building fills 2-4%, see forensics) |
-| Dimension tier 3: opening widths | §6.1 |
-| Section view | §5.4 |
-| TB-LKTN additional pages: electrical plan, reflected ceiling plan | 2D.db `[2d_drawing_type]` defines 8 types, only 3 implemented |
+| Task | Spec section | Status |
+|------|-------------|--------|
+| Roof plan: DXF implementation | §5.3 | DONE (S162) |
+| Roof plan: bay dims + overhang dims | §5.3, §6.1 | DONE (S162) |
+| All 4 elevations: DXF | §5.2 | DONE (S161) |
+| Elevation layout: building centering | §7.1.1 | DONE (S162 fill audit) |
+| DX multi-storey floor plan (Level 2) | §5.1 | GAP — §18 I-03 |
+| Dimension tier 3: opening widths | §6.1c | GAP — no schedule yet |
+| Section view (A-07) | §5.4 | GAP |
+| MEP electrical plan (E-01) | §17 | STUB (S163) |
+| MEP plumbing plan (M-01) | §17 | STUB (S163) |
+| Reflected ceiling plan (E-02) | §5.0 | GAP |
 
-### 9.5 What Is Still Wrong (2026-04-08)
+### 9.5 Open Issues
 
-**a. Proof renderer dash patterns — FIXED (2D_010c, partial).**
-~~Grid dash-dot `1/scale` bug~~ — dasharray function rewritten to use
-paper-mm values directly from `2d_drawing_part.dasharray`. Per-entity
-linetype check added (not just layer). **Remaining:** proof renderer
-still needs full library wiring (read `2d_drawing_part` for all styles).
+Current audit-verified open issues. **Authoritative list is §18.**
+This section is a summary pointer only — do not duplicate details here.
 
-**b. Floor plan deviates from BestFloorPlanReference.png.**
-Archive floor plan (Grade A) has crisp filled walls, clean grid bubbles,
-proper dash-dot, professional title block. Current proof SVG renders
-section-cut polygons (correct geometry but messy vertices) instead of
-the archive's clean rectangles. The proof renderer needs to match the
-archive's visual quality — the reference image is in `archive/BestFloorPlanReference.png`.
+| Priority | Issues |
+|----------|--------|
+| P1 — fix now | I-01 DX window tag overlaps, I-02 room label overlaps, I-03 DX Level 2 missing |
+| P2 — next session | I-04 MEP segments, I-05 stale files, I-06 Malay labels, I-09 grid triage |
+| P3 — backlog | I-07 JKR logo, I-08 fan symbol, I-10 PINDAAN NO row |
 
-**c. Elevations still broken.**
-- Level marker arrowheads render as degenerate triangles (duplicate vertex)
-- Measurements don't align — dimension positions not verified against any reference
-- REAR shows same problems as FRONT; LEFT/RIGHT have no openings
-- Archive elevations are Grade D/F (not usable as reference) — must rebuild
-  from TB-LKTN standard using `2d_drawing_part` + `2d_part_placement` tables
-
-**d. Archive comparison gap.**
-No automated positional comparison between proof SVG and archive.
-Conformity gate checks DXF structure (layers, weights) but not visual
-correspondence. Gate can PASS while drawing looks nothing like reference.
-
-**e. Previously fixed (2D_010a-c).**
-- ~~Roof plan not in --all~~ — FIXED, SH_2D.json drives page generation
-- ~~Verbose filenames~~ — FIXED, single-term names
-- ~~PNG proofs~~ — FIXED, SVG only
-- ~~No output rotation~~ — FIXED, 2-gen pruning with timestamps
-- ~~No visible change log~~ — FIXED, YES/NO in diagnostic
+See §18 for full descriptions and spec cross-references.
 
 ### 9.6 Output Management Spec
 
@@ -1825,7 +1808,7 @@ View: {view_type}
 [PASS] PROOF_WHITE_BG: <rect fill="#FFFFFF"/> found
 [PASS] PROOF_DASHDOT: stroke-dasharray found in SVG
 [PASS] LANGUAGE     : 0 Malay strings in A-TTLB/A-ANNO-TEXT layers
-[PASS] ARROWHEADS   : 0 ARROW entities found (tick terminators only)
+[PASS] ARROWHEADS   : 0 ARROW entities found outside A-ROOF (slope arrows on A-ROOF are permitted)
 [PASS] TRIAGE_PANEL : panel legend=1 bay matches triage PANEL count=1
 
 VALUES LOGGED:
@@ -2173,7 +2156,7 @@ if text would overlap neighbour: offset outward with leader line (Tier 3)
 §RENDER LINE layer=A-ANNO-DIMS src=dim:A-B extline_left from=-7735,{gap} to=-7735,{overshoot}
 §RENDER LINE layer=A-ANNO-DIMS src=dim:A-B tick_left from=(-7735-{dx},{dim_y}-{dy}) to=(-7735+{dx},{dim_y}+{dy})
 §RENDER TEXT layer=A-ANNO-DIMS src=dim:A-B val="4900" at (-5285,{txt_y:.1f})
-§AUDIT ARROWHEADS: 0 ARROW entities → PASS
+§AUDIT ARROWHEADS: 0 ARROW entities outside A-ROOF layer → PASS  (slope arrows on A-ROOF exempted)
 ```
 
 ---
@@ -2678,7 +2661,7 @@ DB:        input/SH_extracted.db
 §AUDIT BORDER: 28 entities on A-TTLB → PASS
 §AUDIT GRID_LINES: 7 on A-GRID → PASS
 §AUDIT LANGUAGE: 0 Malay strings → PASS
-§AUDIT ARROWHEADS: 0 ARROW entities → PASS
+§AUDIT ARROWHEADS: 0 ARROW entities outside A-ROOF layer → PASS  (slope arrows on A-ROOF exempted)
 §AUDIT TRIAGE_PANEL: 0 bays listed = triage PANEL count 0 → PASS
 ...
 
@@ -2692,3 +2675,416 @@ DB:        input/SH_extracted.db
 `§AUDIT FILL: fill_x=8% < 10% → FAIL (building too small for scale — try scale=50)`
 A coder reads one line and knows exactly what to change.
 
+
+---
+
+## 20. Reverse Path: DXF as Semantic Document
+
+### 20.1 Design Principle
+
+> **The DXF is not just a drawing. It is a semantic document.**
+
+Every entity in the DXF carries xdata that maps it back to:
+1. Its IFC source element (GUID)
+2. Its intent parameter in the Unified Formula `B = f(Ω, Φ, Ψ, Λ, J)`
+3. Its current value in model coordinates
+
+This mirrors the XML principle: every element carries its own attributes.
+You can pick up any DXF file, parse its xdata, and reconstruct the full
+relationship graph — no sidecar files, no separate database.
+
+```
+Traditional DXF:    geometry only — lines, arcs, text
+Semantic DXF:       geometry + intent — lines with BIMGUID + BIMSRC attributes
+```
+
+This enables the closed loop: a grid moved in the DXF → parse xdata → know
+exactly which OrderLine parameters to update → recompile → new DXF.
+
+The round-trip is consistent with Rosetta Stone Truth (§docs/unified_mathematical_formulation.txt):
+geometry is always `f(intent)`. The DXF edit does NOT store new geometry as
+source — it is translated into an intent change (Ω update), which then
+recompiles to produce new geometry.
+
+```
+2D DXF edit
+    ↓
+xdata.parse() → {source_guid, intent_param, old_value, new_value}
+    ↓
+Ω_new = Ω.update(source_guid, intent_param, new_value)
+    ↓
+C(Ω_new, Φ, Ψ, Λ, J) → output.db  [geometry still ephemeral, f(intent)]
+    ↓
+new DXF [geometry regenerated from updated intent]
+```
+
+### 20.2 Two Application IDs
+
+```
+BIMGUID  (existing) — primary entity identifier
+           Wall/door/window: actual IFC GUID (e.g. '1A2B3C...')
+           Grid line:        synthetic 'GRID:A'
+           Room label:       synthetic 'ROOM:BEDROOM'
+           Dim entity:       synthetic 'DIM:X:A-B:tier2'
+           Scale bar:        synthetic 'SCALEBAR'
+           North arrow:      synthetic 'NORTHARROW'
+
+BIMSRC   (new) — full semantic payload for reverse mapping
+           Key=value strings (group code 1000)
+           Floats for coordinates (group code 1040)
+           Integers for counts (group code 1070)
+```
+
+Register both app IDs at document creation:
+```python
+doc.appids.new('BIMGUID')   # existing
+doc.appids.new('BIMSRC')    # new — §20
+```
+
+### 20.3 xdata Schema by Entity Type
+
+#### 20.3.1 Wall / Column / Door / Window (IFC elements)
+
+```
+BIMGUID: [(1000, '{ifc_guid}')]
+
+BIMSRC:  [(1000, 'ifc_class:{IfcWall}'),
+          (1000, 'element_name:{Basic Wall:Generic 200mm}'),
+          (1000, 'storey:{Level 1}'),
+          (1040, minX), (1040, minY), (1040, maxX), (1040, maxY),   ← model coords, metres
+          (1000, 'intent_param:tack_x'),
+          (1040, tack_x_value),
+          (1000, 'intent_param:tack_y'),
+          (1040, tack_y_value),
+          (1000, 'intent_param:width'),
+          (1040, width_value)]
+```
+
+Log: `§XDATA guid:{g} BIMSRC written: ifc_class={cls} tack=({x:.3f},{y:.3f})`
+
+#### 20.3.2 Grid Line + Bubble
+
+This is the most critical entity for the closed loop. The grid label `GRID:A`
+is synthetic — it does NOT trace to a single IFC element. The `BIMSRC` payload
+must record WHICH IFC elements (walls, columns) contributed to this axis.
+
+```
+BIMGUID: [(1000, 'GRID:{label}')]   ← e.g. 'GRID:A'
+
+BIMSRC:  [(1000, 'type:GRID'),
+          (1000, 'label:{A}'),
+          (1000, 'axis:{x}'),                         ← 'x' or 'y'
+          (1040, position_m),                         ← axis position in metres
+          (1000, 'source_guids:{g1},{g2},{g3}'),      ← comma-separated IFC GUIDs
+          (1000, 'intent_param:position_{x}'),        ← which param a grid edit changes
+          (1070, tier),                               ← 1=structural, 2=derived
+          (1000, 'crowding:{INLINE|PANEL}')]          ← from §15 triage result
+```
+
+**`source_guids`** — the walls and columns whose centreline defines this axis.
+Populated by extending `GridAxis` namedtuple in `derive_grids()`:
+```python
+GridAxis = namedtuple('GridAxis', ['label','axis','position','source_guids'])
+```
+`derive_grids()` already collects the contributing elements — it just discards
+them after returning. Keep them.
+
+Log: `§XDATA GRID:A BIMSRC written: axis=x pos=-7.735m src=[guid1,guid2] crowding=INLINE`
+
+#### 20.3.3 Dimension Entity (per span)
+
+```
+BIMGUID: [(1000, 'DIM:{axis}:{from}-{to}:tier{n}')]
+
+BIMSRC:  [(1000, 'type:DIM'),
+          (1000, 'axis:{x}'),
+          (1000, 'from_grid:{A}'),
+          (1000, 'to_grid:{B}'),
+          (1070, tier),                 ← 1=overall, 2=bay, 3=opening
+          (1040, dist_m),              ← distance in metres
+          (1070, dist_mm),             ← rounded mm value (what is printed)
+          (1000, 'layout:{INLINE|PANEL}')]
+```
+
+Log: `§XDATA DIM:X:A-B:tier2 BIMSRC written: dist=4.900m (4900mm) INLINE`
+
+#### 20.3.4 Room Label
+
+```
+BIMGUID: [(1000, 'ROOM:{room_type}')]
+
+BIMSRC:  [(1000, 'type:ROOM'),
+          (1000, 'room_type:{BEDROOM}'),
+          (1040, centroid_x),
+          (1040, centroid_y),
+          (1040, area_m2),
+          (1000, 'source_guids:{f1},{f2},{f3}'),     ← furniture GUIDs defining room
+          (1000, 'storey:{Level 1}'),
+          (1000, 'label_src:2d_room_label:{pk}')]    ← DB row that provided display text
+```
+
+#### 20.3.5 Door / Window Tag
+
+```
+BIMGUID: [(1000, '{tag_code}')]     ← e.g. 'D1', 'W3'
+
+BIMSRC:  [(1000, 'type:TAG'),
+          (1000, 'tag_code:{D1}'),
+          (1000, 'element_guid:{ifc_guid}'),
+          (1000, 'element_class:{IfcDoor}'),
+          (1000, 'storey:{Level 1}'),
+          (1000, 'shape:{circle|hexagon}')]
+```
+
+#### 20.3.6 MEP Terminal
+
+```
+BIMGUID: [(1000, '{ifc_guid}')]
+
+BIMSRC:  [(1000, 'type:MEP_TERMINAL'),
+          (1000, 'ifc_class:IfcFlowTerminal'),
+          (1000, 'element_name:{Ceiling Light:Standard}'),
+          (1000, 'discipline:{ELECTRICAL}'),
+          (1000, 'symbol_type:{CEILING_LIGHT}'),
+          (1040, centroid_x),
+          (1040, centroid_y),
+          (1000, 'storey:{Level 1}')]
+```
+
+#### 20.3.7 MEP Segment (pipe / wire run)
+
+```
+BIMGUID: [(1000, '{ifc_guid}')]
+
+BIMSRC:  [(1000, 'type:MEP_SEGMENT'),
+          (1000, 'ifc_class:IfcFlowSegment'),
+          (1000, 'element_name:{Soil Pipe:100mm}'),
+          (1000, 'discipline:{PLUMBING}'),
+          (1000, 'pipe_type:{SOIL|WASTE|COLD|HOT}'),
+          (1000, 'orientation:{H|V}'),               ← horizontal or vertical
+          (1040, x1), (1040, y1),                    ← drawn start in metres
+          (1040, x2), (1040, y2)]                    ← drawn end in metres
+```
+
+#### 20.3.8 Level Marker
+
+```
+BIMGUID: [(1000, 'LEVEL:{code}')]   ← e.g. 'LEVEL:FFL'
+
+BIMSRC:  [(1000, 'type:LEVEL'),
+          (1000, 'code:{FFL}'),
+          (1000, 'display_text:{GRD. FLOOR LEVEL}'),
+          (1040, elevation_m),                       ← metres above datum
+          (1000, 'src:{2d_level_marker|detect_levels}')]
+```
+
+### 20.4 Parsing xdata (Reverse Direction)
+
+A reverse-path parser reads the DXF and reconstructs the intent map:
+
+```python
+def parse_semantic_dxf(dxf_path: str) -> dict:
+    """
+    Read DXF xdata and return entity intent map.
+    Returns: {handle: {bimguid, type, intent_params: {param: value}, source_guids: [...]}}
+    """
+    doc = ezdxf.readfile(dxf_path)
+    result = {}
+    for entity in doc.modelspace():
+        bimguid = _read_xdata_str(entity, 'BIMGUID')
+        bimsrc  = _read_xdata_dict(entity, 'BIMSRC')
+        if bimguid or bimsrc:
+            result[entity.dxf.handle] = {
+                'bimguid': bimguid,
+                'type':    bimsrc.get('type'),
+                'source_guids': bimsrc.get('source_guids','').split(','),
+                'intent_param': bimsrc.get('intent_param'),
+                'position_m': (bimsrc.get('pos_x'), bimsrc.get('pos_y')),
+            }
+    return result
+```
+
+**A grid edit becomes:**
+```python
+# User moves Grid A from x=-7.735m to x=-7.900m in DXF
+delta_m = -7.900 - (-7.735)   # = -0.165m
+
+entity_map = parse_semantic_dxf('SH_FLOOR_xxx.dxf')
+grid_a = [e for e in entity_map.values() if e['bimguid'] == 'GRID:A'][0]
+source_guids = grid_a['source_guids']   # ['guid_wall1', 'guid_column1']
+param = grid_a['intent_param']          # 'position_x'
+
+# Update intent in DB:
+for guid in source_guids:
+    db.execute(f"UPDATE elements_rtree SET minX=minX+{delta_m}, maxX=maxX+{delta_m}
+                 WHERE id=(SELECT id FROM elements_meta WHERE guid=?)", [guid])
+# Then recompile:
+# C(Ω_updated, Φ, Ψ, Λ, J) → new output.db → new DXF
+```
+
+### 20.5 Implementation in Drawing Writer
+
+#### New app ID registration (once per document)
+```python
+# In _new_doc():
+doc.appids.new('BIMGUID')
+doc.appids.new('BIMSRC')   # §20 — add alongside existing BIMGUID
+```
+
+#### Helper to write BIMSRC
+```python
+def _set_bimsrc(entity, **kwargs):
+    """
+    Write BIMSRC xdata. kwargs become key=value string pairs (1000).
+    Float values use group code 1040. Int values use 1070.
+    """
+    groups = []
+    for k, v in kwargs.items():
+        if isinstance(v, float):
+            groups.append((1000, k))
+            groups.append((1040, v))
+        elif isinstance(v, int):
+            groups.append((1000, k))
+            groups.append((1070, v))
+        else:
+            groups.append((1000, f'{k}:{v}'))
+    entity.set_xdata('BIMSRC', groups)
+```
+
+#### GridAxis extension
+```python
+# In derive_grids() — keep source_guids instead of discarding:
+GridAxis = namedtuple('GridAxis', ['label', 'axis', 'position', 'source_guids'])
+# source_guids: list of IFC GUIDs of walls/columns that contributed this axis
+```
+
+### 20.6 Conformity Check
+
+`test_conformity.py` adds check **SEMANTIC_DXF**:
+
+```
+[PASS] SEMANTIC_DXF : BIMSRC xdata present on {n} entities
+                      Walls={n} Grids={n} Dims={n} Rooms={n} MEP={n}
+[PASS] GRID_SOURCES : all GRID:* entities have non-empty source_guids
+[FAIL] GRID_SOURCES : GRID:A has empty source_guids → reverse path broken
+```
+
+Minimum coverage: every wall, every grid line, every dim entity, every room
+label must carry BIMSRC. Scale bar and north arrow may omit BIMSRC (they
+have no IFC source and no intent parameter to edit).
+
+### 20.7 Log Events
+
+```
+§XDATA BIMSRC wall guid=1A2B3C: ifc_class=IfcWall tack=(-7.735,-1.320) width=0.200m
+§XDATA BIMSRC GRID:A: axis=x pos=-7.735m src=[guid1,guid2] crowding=INLINE intent=position_x
+§XDATA BIMSRC DIM:X:A-B:tier2: dist=4900mm layout=INLINE
+§XDATA BIMSRC ROOM:BEDROOM: centroid=(-4.1,-0.5) area=12.3m² src=[f1,f2,f3]
+§XDATA BIMSRC LEVEL:FFL: elev=0.000m src=2d_level_marker
+§XDATA BIMSRC MEP guid=E001: type=MEP_TERMINAL discipline=ELECTRICAL symbol=CEILING_LIGHT
+§XDATA SUMMARY: {n_wall} walls, {n_grid} grids, {n_dim} dims, {n_room} rooms, {n_mep} MEP entities tagged
+```
+
+### 20.8 What This Does NOT Change
+
+- **DXF geometry is unchanged** — xdata is invisible to CAD viewers; drawing looks identical
+- **DXF file size** — xdata adds ~50–200 bytes per entity; negligible for typical drawings
+- **Existing BIMGUID** — backward compatible; BIMSRC is additive
+- **Pipeline** — no new files, no new steps; xdata written during the existing render loop
+- **Unified Formula** — geometry remains `f(intent)`; the 2D edit pathway modifies Ω, not stored geometry
+
+### 20.9 Future: BIM Designer Integration
+
+When the BIM Designer (Bonsai/BlenderBIM) gains a DXF import plugin:
+1. User opens DXF in viewer (LibreCAD, QCAD, or BIM Designer viewport)
+2. User drags grid line
+3. Plugin calls `parse_semantic_dxf()` → gets intent delta
+4. Plugin calls `update_intent(source_guids, param, new_value)` → updates `_BOM.db`
+5. BIM Designer triggers recompile → new `output.db` → new DXF generated
+6. DXF reloads in viewer
+
+This closes the loop from 2D paper space back into the 3D BIM model without
+storing any coordinates as source — consistent with Rosetta Stone Truth.
+
+
+### 20.10 Test Specification: 2D → BIM Round-Trip Protocol
+
+#### Test W-2D-BIM-1: BIMSRC Coverage
+
+**Claim:** Every wall, grid, dim, room, and MEP entity in a generated DXF
+carries BIMSRC xdata with non-empty type field.
+
+```
+Setup:    Generate SH_FLOOR_{ts}.dxf
+Action:   parse_semantic_dxf(dxf_path) → entity_map
+Assert:
+  walls  = [e for e in entity_map if e['type']=='wall']   → count >= 11
+  grids  = [e for e in entity_map if e['type']=='GRID']   → count == 7 (SH)
+  dims   = [e for e in entity_map if e['type']=='DIM']    → count >= 7
+  rooms  = [e for e in entity_map if e['type']=='ROOM']   → count >= 2
+  all([e['type'] is not None for e in entity_map.values()]) → True
+Log:  [PASS] SEMANTIC_DXF: walls=11 grids=7 dims=7 rooms=3 all-typed → PASS
+```
+
+#### Test W-2D-BIM-2: Grid Source GUID Traceability
+
+**Claim:** Every GRID entity's `source_guids` resolves to real elements in the
+source DB.
+
+```
+Setup:    Generate SH_FLOOR_{ts}.dxf; have SH_extracted.db
+Action:   for each GRID entity in parse_semantic_dxf():
+            source_guids = entity['source_guids']
+            for guid in source_guids:
+              rows = db.execute("SELECT id FROM elements_meta WHERE guid=?", [guid])
+              assert len(rows) > 0, f"GRID:{label} source guid {guid} not in DB"
+Assert:   0 broken source GUID references
+Log:  [PASS] GRID_SOURCES: 7 grids, all source_guids resolve in DB
+```
+
+#### Test W-2D-BIM-3: Intent Round-Trip (Grid Edit → Recompile → Verify)
+
+**Claim:** Moving a grid 100mm in 2D and propagating to DB produces a
+recompiled drawing where that grid is at the new position.
+
+```
+Setup:    Generate SH_FLOOR_A.dxf; record Grid B position = -2.835m
+Action:
+  1. Simulate edit: new_pos = -2.835 + 0.100 = -2.735m
+  2. entity_map = parse_semantic_dxf('SH_FLOOR_A.dxf')
+  3. grid_b = [e for e in entity_map if e['bimguid']=='GRID:B'][0]
+  4. delta = 0.100
+  5. for guid in grid_b['source_guids']:
+       db.execute("UPDATE elements_rtree SET minX=minX+?, maxX=maxX+? WHERE ...", [delta,delta])
+  6. Generate SH_FLOOR_B.dxf from updated DB
+  7. entity_map_B = parse_semantic_dxf('SH_FLOOR_B.dxf')
+  8. grid_b_new = [e for e in entity_map_B if e['bimguid']=='GRID:B'][0]
+Assert:
+  abs(grid_b_new['position_m'] - (-2.735)) < 0.001    ← grid moved
+  dim_AB_new = [d for d in entity_map_B if d['bimguid']=='DIM:X:A-B:tier2'][0]
+  abs(dim_AB_new['dist_m'] - 4.800) < 0.001            ← dim updated (was 4.900)
+Log:  [PASS] ROUND_TRIP: Grid B moved 100mm, dim A-B updated from 4900 to 4800mm
+```
+
+#### Test W-2D-BIM-4: Non-Destructive Verify (Geometry = f(Intent))
+
+**Claim:** If we restore the original intent (undo the grid move), the DXF
+produced is identical to the original.
+
+```
+Setup:    DXF_A (original), DXF_B (after grid edit)
+Action:
+  1. Restore DB: reverse the delta (minX -= 0.100 for same GUIDs)
+  2. Generate DXF_C from restored DB
+  3. Compare parse_semantic_dxf(DXF_A) vs parse_semantic_dxf(DXF_C)
+Assert:
+  for each 'GRID' entity: |posC - posA| < 0.001
+  for each 'DIM' entity: |distC - distA| < 0.001
+Log:  [PASS] NON_DESTRUCTIVE: DXF_C matches DXF_A after undo (geometry = f(intent))
+```
+
+**These 4 tests constitute the 2D→BIM integration gate.** They run after
+`test_conformity.py` (structural) and `layout_audit.py` (visual). All 4
+must pass before the reverse path is declared DONE.
+
+Test file: `python/test_2d_bim_roundtrip.py`

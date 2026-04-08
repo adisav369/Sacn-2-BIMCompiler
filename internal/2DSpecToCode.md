@@ -239,6 +239,14 @@ Full specs in `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §18.
 | §19.12 Room labels: collision detection, min area filter | N | §19.12 |
 | §19.13 Door/window tags: storey suppression (§F1 fix) | N | §19.13 |
 | §19.14 Log file structure: per-view file, all section headers | N | §19.14 |
+| §20.2 BIMSRC app ID registered in every new DXF doc | N | §20.2 |
+| §20.3.1 BIMSRC on wall/door/window: ifc_class+tack+width | N | §20.3.1 |
+| §20.3.2 BIMSRC on grid: source_guids+axis+position+crowding | N | §20.3.2 — highest priority for closed loop |
+| §20.3.3 BIMSRC on dim: tier+dist+layout | N | §20.3.3 |
+| §20.3.4–7 BIMSRC on room/tag/MEP/level entities | N | §20.3.4–7 |
+| §20.5 `_set_bimsrc()` helper + `GridAxis.source_guids` field | N | §20.5 |
+| §20.6 SEMANTIC_DXF + GRID_SOURCES conformity checks | N | §20.6 |
+| §20.10 W-2D-BIM-1..4 round-trip tests (`test_2d_bim_roundtrip.py`) | N | §20.10 |
 
 ## Summary
 
