@@ -1104,7 +1104,7 @@
   <span class="md-ellipsis">
     
   
-    BIM COBOL (76 Verbs)
+    BIM COBOL (77 Verbs)
   
 
     
@@ -3297,7 +3297,7 @@ were removed.</p>
     &quot;delta&quot;:{&quot;added&quot;:[],&quot;modified&quot;:[&quot;guid_1234&quot;,&quot;guid_5678&quot;],&quot;removed&quot;:[]}}
 </code></pre></div>
 <p>BlenderBridge applies the delta:</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">apply_delta</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">apply_delta</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Patch viewport — don&#39;t rebuild everything.&quot;&quot;&quot;</span>
     <span class="n">conn</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span>
 
@@ -3329,7 +3329,7 @@ The delta is typically 1-50 elements, not 48K. Viewport update: &lt;0.5s.</p>
 <h3 id="31-the-problem-for-addon-devs">3.1 The Problem for Addon Devs<a class="headerlink" href="#31-the-problem-for-addon-devs" title="Permanent link">&para;</a></h3>
 <p>Raw bpy for a simple BIM operation:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Place a wall — 15 lines of bpy boilerplate</span>
-<span class="kn">import</span> <span class="nn">bpy</span><span class="o">,</span> <span class="nn">bmesh</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">bpy</span><span class="o">,</span><span class="w"> </span><span class="nn">bmesh</span>
 <span class="n">mesh</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">meshes</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s2">&quot;wall_north&quot;</span><span class="p">)</span>
 <span class="n">bm</span> <span class="o">=</span> <span class="n">bmesh</span><span class="o">.</span><span class="n">new</span><span class="p">()</span>
 <span class="n">bmesh</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">create_cube</span><span class="p">(</span><span class="n">bm</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
@@ -3470,18 +3470,18 @@ other verb execution.</p>
 main thread. The DesignerServer pushes compile results on a background
 <code>threading.Thread</code>. BlenderBridge uses <code>bpy.app.timers</code> to schedule viewport
 updates on the main thread:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">bpy</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">bpy</span>
 
-<span class="k">class</span> <span class="nc">BlenderBridge</span><span class="p">:</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BlenderBridge</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_pending_deltas</span> <span class="o">=</span> <span class="p">[]</span>
 
-    <span class="k">def</span> <span class="nf">schedule_delta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">schedule_delta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Called from background thread. Queues for main thread.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_pending_deltas</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span><span class="p">))</span>
         <span class="n">bpy</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">timers</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_process_pending</span><span class="p">,</span> <span class="n">first_interval</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_process_pending</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_process_pending</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Runs on Blender main thread via timer.&quot;&quot;&quot;</span>
         <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pending_deltas</span><span class="p">:</span>
             <span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pending_deltas</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
@@ -3496,7 +3496,7 @@ parse, main-thread object creation.</p>
 50 slabs). BlenderBridge caches materials by name:</p>
 <div class="highlight"><pre><span></span><code><span class="n">_material_cache</span> <span class="o">=</span> <span class="p">{}</span>
 
-<span class="k">def</span> <span class="nf">get_or_create_material</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">rgba</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_or_create_material</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">rgba</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_material_cache</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">_material_cache</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
     <span class="n">mat</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">materials</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
@@ -3516,7 +3516,7 @@ data block. The compiler's <code>base_geometries</code> table already deduplicat
 by <code>geometry_hash</code>. BlenderBridge maps this directly:</p>
 <div class="highlight"><pre><span></span><code><span class="n">_mesh_cache</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># geometry_hash → bpy.types.Mesh</span>
 
-<span class="k">def</span> <span class="nf">get_or_create_mesh</span><span class="p">(</span><span class="n">geometry_hash</span><span class="p">,</span> <span class="n">vertices</span><span class="p">,</span> <span class="n">faces</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_or_create_mesh</span><span class="p">(</span><span class="n">geometry_hash</span><span class="p">,</span> <span class="n">vertices</span><span class="p">,</span> <span class="n">faces</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">geometry_hash</span> <span class="ow">in</span> <span class="n">_mesh_cache</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">_mesh_cache</span><span class="p">[</span><span class="n">geometry_hash</span><span class="p">]</span>
     <span class="n">mesh</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">meshes</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">geometry_hash</span><span class="p">)</span>

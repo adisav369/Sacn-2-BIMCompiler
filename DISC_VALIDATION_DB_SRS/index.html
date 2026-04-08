@@ -1104,7 +1104,7 @@
   <span class="md-ellipsis">
     
   
-    BIM COBOL (76 Verbs)
+    BIM COBOL (77 Verbs)
   
 
     
@@ -2975,6 +2975,28 @@
     <span class="md-ellipsis">
       
         10. Witnesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#11-lod-geometry-bridge-source_element_ref-s152" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. LOD Geometry Bridge — source_element_ref (S152)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-generative-device-shim-architecture-place-then-route-s152" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Generative Device Shim Architecture — Place Then Route (S152)
       
     </span>
   </a>
@@ -5419,6 +5441,28 @@
     <span class="md-ellipsis">
       
         10. Witnesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#11-lod-geometry-bridge-source_element_ref-s152" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. LOD Geometry Bridge — source_element_ref (S152)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-generative-device-shim-architecture-place-then-route-s152" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Generative Device Shim Architecture — Place Then Route (S152)
       
     </span>
   </a>
@@ -9068,6 +9112,18 @@ Room area = 50m² → 0.07 × 50 = 3.5 → round up → 4 sprinklers
 </tr>
 </tbody>
 </table>
+<p><strong>Wiring: YAML → ad_sysconfig → Walker (S151)</strong></p>
+<p>The coverage level flows through one key: <code>MEP_ORDER_QTY</code> in <code>ad_sysconfig</code>.</p>
+<div class="highlight"><pre><span></span><code>YAML: mep_order_qty: 99           ← user sets coverage level
+  ↓  IFCtoBOMPipeline stage 10c
+ad_sysconfig: MEP_ORDER_QTY=99    ← stored in BOM DB
+  ↓  CompilationPipeline.BomWalkStage
+PlacementCollectorVisitor.setMepOrderQty(99) ← walker reads
+  ↓  onSubAssembly (SET BOM)
+SpaceScheduleDAO.resolveQty(99, entry, area) ← per-room resolution
+</code></pre></div>
+<p>Default: 99 (standard coverage). Fallback chain: <code>ad_sysconfig</code> → <code>System.getProperty("mep.order.qty")</code> → 99.</p>
+<p>Log channel: <code>GENERATIVE SUMMARY orderQty=N</code> traces the value used.</p>
 <h4 id="9-fixture-gap-analysis-how-newbies-mark-targets">9. Fixture Gap Analysis — How Newbies Mark Targets<a class="headerlink" href="#9-fixture-gap-analysis-how-newbies-mark-targets" title="Permanent link">&para;</a></h4>
 <p>When the pipeline runs, <code>emitFixtureGapAnalysis</code> checks every room against
 <code>ad_space_type_mep_bom</code>. For each fixture the schedule requires but the room
@@ -9116,6 +9172,719 @@ No recompilation needed to change where fixtures go.</p>
 <td>W-SPACE-COVER</td>
 <td>Every room's MEP schedule is satisfied by at least one recipe</td>
 <td>MepRouteGeometryTest S8</td>
+</tr>
+<tr>
+<td>W-LOD-BRIDGE</td>
+<td>Every generative product has source_element_ref → LOD geometry resolves</td>
+<td>MepRouteGeometryTest S19</td>
+</tr>
+<tr>
+<td>W-SHIM-DEVICE</td>
+<td>Generative devices attach via shim (not bare AABB offset)</td>
+<td>MepRouteGeometryTest S20</td>
+</tr>
+<tr>
+<td>W-END-JOIN</td>
+<td>Walker routes to generative fixture tack point (last piece converges)</td>
+<td>MepRouteGeometryTest S21</td>
+</tr>
+<tr>
+<td>W-TACK-POINT</td>
+<td>Every plumbed fixture has connector with non-zero position + diameter</td>
+<td>MepRouteGeometryTest S22</td>
+</tr>
+<tr>
+<td>W-DISC-RESOLVE</td>
+<td>Generative device discipline matches connects_to, not anchorEnd</td>
+<td>MepRouteGeometryTest S23</td>
+</tr>
+</tbody>
+</table>
+<h4 id="11-lod-geometry-bridge-source_element_ref-s152">11. LOD Geometry Bridge — source_element_ref (S152)<a class="headerlink" href="#11-lod-geometry-bridge-source_element_ref-s152" title="Permanent link">&para;</a></h4>
+<p><strong>First Principle:</strong> Every M_Product that the compiler emits MUST resolve to LOD
+geometry. A product without <code>source_element_ref</code> renders as a flat AABB box —
+that is a first-principle failure, not a cosmetic issue.</p>
+<p><strong>The gap:</strong> Generative device products (TOILET, LIGHT, SINK, FRIDGE, etc.) are
+created with <code>extracted_from='SHARED_RECIPE'</code> and <code>source_element_ref=NULL</code>.
+Meanwhile, the IFC file contains real geometry for these same devices under
+their Revit family names:</p>
+<table>
+<thead>
+<tr>
+<th>Abstract Token</th>
+<th>IFC Family Name (in component_library)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TOILET</td>
+<td><code>M_Water Closet - Flush Tank:Private - 6.1 Lpf:Private - 6.1 Lpf</code></td>
+</tr>
+<tr>
+<td>SINK</td>
+<td><code>M_Sink - Island - Single:455 mmx455 mm - Private:455 mmx455 mm - Private</code></td>
+</tr>
+<tr>
+<td>LIGHT</td>
+<td><code>M_Pendant Light - Hemisphere:150W - 120V:150W - 120V</code></td>
+</tr>
+<tr>
+<td>SWITCH</td>
+<td><code>M_Lighting Switches:Single Pole:Single Pole</code></td>
+</tr>
+<tr>
+<td>OUTLET</td>
+<td><code>M_Duplex Receptacle:Duplex Receptacle:Duplex Receptacle</code></td>
+</tr>
+<tr>
+<td>FRIDGE</td>
+<td><code>M_Refrigerator:850 x 760mm:850 x 760mm</code></td>
+</tr>
+</tbody>
+</table>
+<p>The alias system (<code>DV003_element_mep_alias.sql</code>) already maps IFC names → abstract
+tokens. But this mapping is used only at extraction time (IFC name → product_id).
+It is never used in reverse (product_id → source_element_ref → geometry_hash).</p>
+<p><strong>Root cause:</strong> <code>ProductRegistrar.ensureProductCatalog()</code> creates products from
+two paths: (A) <code>ExtractionElement</code> objects that carry <code>elementRef</code> → sets
+<code>source_element_ref</code>, and (B) schedule/recipe products that carry only the
+abstract token → <code>source_element_ref</code> stays NULL. Path B never looks up the
+alias table to find a matching IFC family name.</p>
+<p><strong>Fix:</strong> When creating or updating a SHARED_RECIPE M_Product with NULL
+source_element_ref, reverse-lookup the alias table:</p>
+<div class="highlight"><pre><span></span><code>SELECT element_ref FROM ad_element_mep_alias
+WHERE mep_product_id = &#39;TOILET&#39; LIMIT 1
+</code></pre></div>
+<p>If found, set <code>source_element_ref = element_ref</code>. This closes the bridge:</p>
+<div class="highlight"><pre><span></span><code>M_Product.source_element_ref → I_Geometry_Map.element_ref → geometry_hash → mesh
+</code></pre></div>
+<p><strong>Invariant (test-first):</strong> After IFCtoERP completes, every product referenced
+in <code>ad_space_type_mep_bom</code> MUST have either:
+- <code>source_element_ref IS NOT NULL</code>, OR
+- A corresponding row in <code>M_Product_Image</code></p>
+<p>A NULL source_element_ref with no M_Product_Image is a test FAIL.</p>
+<p><strong>Test spec (W-LOD-BRIDGE, S19):</strong>
+<div class="highlight"><pre><span></span><code>1. Run IFCtoERP for DX (or any building with MEP terminals)
+2. For each mep_product_id in ad_space_type_mep_bom:
+   a. SELECT source_element_ref FROM M_Product WHERE product_id = mep_product_id
+   b. Assert source_element_ref IS NOT NULL
+   c. SELECT geometry_hash FROM I_Geometry_Map WHERE element_ref = source_element_ref
+   d. Assert at least one geometry_hash exists
+3. FAIL message: &quot;{product_id} has no LOD geometry bridge — source_element_ref missing&quot;
+</code></pre></div></p>
+<h4 id="12-generative-device-shim-architecture-place-then-route-s152">12. Generative Device Shim Architecture — Place Then Route (S152)<a class="headerlink" href="#12-generative-device-shim-architecture-place-then-route-s152" title="Permanent link">&para;</a></h4>
+<p><strong>First Principle:</strong> The compiler's output is always Walker-compiled. Input
+sources differ (IFC file, schedule data, YAML order) but the output is
+c_orderline with positions. <strong>Input</strong> = IFC + YAML + ERP.db rules.
+<strong>Output</strong> = compiled ARC/STR from BOM walk + MEP from Walker. No
+"extracted" vs "generative" distinction in the output.</p>
+<p><strong>Problem (three findings, one root cause):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Finding</th>
+<th>Symptom</th>
+<th>Root cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Toilet inside cupboard</td>
+<td>No furniture collision check</td>
+<td>PLACE_DEVICE ignores sibling furniture</td>
+</tr>
+<tr>
+<td>Toilet not facing right</td>
+<td>No rotation on generative devices</td>
+<td>No shim → no wall-normal → no facing</td>
+</tr>
+<tr>
+<td>Pipe doesn't reach toilet</td>
+<td>No route to generative fixture</td>
+<td>Fixture placed but no END-join route</td>
+</tr>
+</tbody>
+</table>
+<p>All three resolve from one architectural decision: <strong>generative devices must go
+through shims, not bare AABB placement.</strong></p>
+<p><strong>12a. Shim-Based Device Placement</strong></p>
+<p>Current (wrong):
+<div class="highlight"><pre><span></span><code>Walker enters SET BOM (BATHROOM)
+  → MEPDevicePlacer computes position from room AABB + ad_placement_offset
+  → Creates Placement directly (no shim, no rotation, no collision check)
+  → Pipe recipes from ERP.db target original IFC positions, not generative positions
+</code></pre></div></p>
+<p>Correct:
+<div class="highlight"><pre><span></span><code>Walker enters SET BOM (BATHROOM)
+  1. Read schedule: ad_space_type_mep_bom → BATHROOM needs TOILET at WALL_BACK
+  2. Select target wall from placement_rule (WALL_BACK → Y-MAX wall of room AABB)
+  3. Check wall zone for existing furniture (sibling LEAFs under same SET BOM)
+     → If occupied, shift along wall or flag as CONFLICT
+  4. Create phantom SHIM on target wall:
+     → host_ifc_class from placement_rule (WALL for WALL_BACK, CEILING for CEILING_CENTER)
+     → mount = SIDE (wall) or BOTTOM (ceiling) or TOP (floor)
+     → shim origin = wall surface point at placement offset
+  5. Attach device as child of SHIM:
+     → offset = standoff distance (e.g. 5mm from wall for toilet)
+     → facing = inherited from shim&#39;s wall normal (no rotation math needed)
+  6. Device now has world position = shim origin + child offset
+     → same code path as existing MEP shim walk
+</code></pre></div></p>
+<p><strong>12b. Fixture Tack Points — Where the Pipe Connects</strong></p>
+<p>A pipe's last piece must connect to a specific point on the fixture body,
+not to the fixture's AABB center. A toilet has a waste shank at the bottom-
+rear; a sink has a drain at the bottom-center and supply valves underneath.
+Without tack points, the pipe has nowhere to aim.</p>
+<p><strong>Existing infrastructure:</strong> <code>ad_assembly_connector</code> already has the right
+schema (face, connector_type, position_x/y/z, diameter_mm, connects_to).
+It has room-level entries (TOILET_BLOCK_FIXTURES → WASTE_OUT 100mm → STACK)
+but not individual M_Product-level entries. Positions are <code>(0,0,0)</code> placeholders.</p>
+<p><strong>What's needed:</strong> Populate <code>ad_assembly_connector</code> for individual M_Products:</p>
+<div class="highlight"><pre><span></span><code>TOILET → WASTE_OUT  face=BOTTOM  pos=(0.0, -0.15, 0.05)  dia=100mm  → PLUMBING_STACK
+TOILET → SUPPLY_IN  face=BOTTOM  pos=(-0.15, -0.15, 0.15) dia=15mm  → WATER_RISER
+SINK   → WASTE_OUT  face=BOTTOM  pos=(0.0, 0.0, 0.0)      dia=40mm  → PLUMBING_STACK
+SINK   → SUPPLY_IN  face=BOTTOM  pos=(0.0, 0.0, 0.15)     dia=15mm  → WATER_RISER
+LIGHT  → SUPPLY_IN  face=TOP     pos=(0.0, 0.0, 0.0)      dia=20mm  → ELEC_CONDUIT
+OUTLET → SUPPLY_IN  face=BACK    pos=(0.0, 0.0, 0.0)      dia=20mm  → ELEC_CONDUIT
+</code></pre></div>
+<p>Positions are relative to the fixture's local origin (same frame as
+<code>component_definitions</code> local_min/max). The Walker reads the tack point
+to compute the pipe's final segment offset.</p>
+<p><strong>Tack point resolution chain:</strong>
+<div class="highlight"><pre><span></span><code>M_Product (TOILET) → ad_assembly_connector WHERE assembly_id = &#39;TOILET&#39;
+  → connector_type = &#39;WASTE_OUT&#39;
+  → tack point = fixture_world_position + connector.position (rotated by shim normal)
+  → pipe last piece targets this tack point
+</code></pre></div></p>
+<p><strong>Data source:</strong> For input buildings with IFC, tack points can be extracted
+from <code>IfcDistributionPort</code> (if present) or inferred from fixture AABB +
+connector face. For schedule-only buildings, tack points come from the
+product catalog (seeded once, reused across buildings).</p>
+<p><strong>Invariant:</strong> Every M_Product referenced in <code>ad_space_type_mep_bom</code> that
+has <code>anchor_end</code> (STACK, RISER, PANEL) MUST have at least one connector
+in <code>ad_assembly_connector</code> with a non-zero position. Zero-position = test FAIL.</p>
+<p><strong>Test spec (W-TACK-POINT, S22):</strong>
+<div class="highlight"><pre><span></span><code>1. For each mep_product_id in ad_space_type_mep_bom WHERE anchor_end IS NOT NULL:
+   a. SELECT * FROM ad_assembly_connector WHERE assembly_id = mep_product_id
+   b. Assert at least one connector exists
+   c. Assert position is non-zero (not placeholder 0,0,0)
+   d. Assert diameter_mm &gt; 0
+   e. Assert connects_to matches anchor_end pattern (WASTE_OUT→STACK, SUPPLY_IN→RISER)
+2. FAIL message: &quot;{product_id} has no tack point — pipe cannot connect&quot;
+</code></pre></div></p>
+<p><strong>12c. END-Join Route — Walker Routes to Tack Point</strong></p>
+<p>After PLACE_DEVICE creates the fixture at its shim-anchored position, the
+Walker must generate a pipe/conduit route from infrastructure to the
+fixture's tack-to point (not its center).</p>
+<p><strong>Every fixture is a mini BOM with tack metadata:</strong>
+<div class="highlight"><pre><span></span><code>TOILET (mini BOM):
+  ├── shim → WALL_BACK (solves position + facing)
+  ├── tack-FROM: shim origin (where it sits)
+  └── tack-TO:   WASTE_OUT at (0, -0.15, 0.05) — shank connection
+                 SUPPLY_IN at (-0.15, -0.15, 0.15) — valve connection
+                 ↑ incoming pipes look for these points
+
+LIGHT (mini BOM):
+  ├── shim → CEILING_CENTER (hangs from ceiling)
+  └── tack-TO:   SUPPLY_IN at (0, 0, 0) on TOP — junction box
+                 ↑ conduit from panel END-joins here
+</code></pre></div></p>
+<p>The tack-to points live in <code>ad_assembly_connector</code> at the <strong>M_Product level</strong>
+(not room assembly level). Each fixture declares its connection points:</p>
+<table>
+<thead>
+<tr>
+<th>assembly_id</th>
+<th>face</th>
+<th>connector_type</th>
+<th>position (local)</th>
+<th>dia_mm</th>
+<th>connects_to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TOILET</td>
+<td>BOTTOM</td>
+<td>WASTE_OUT</td>
+<td>(0, -0.15, 0.05)</td>
+<td>100</td>
+<td>PLUMBING_STACK</td>
+</tr>
+<tr>
+<td>TOILET</td>
+<td>BOTTOM</td>
+<td>SUPPLY_IN</td>
+<td>(-0.15, -0.15, 0.15)</td>
+<td>15</td>
+<td>WATER_RISER</td>
+</tr>
+<tr>
+<td>SINK</td>
+<td>BOTTOM</td>
+<td>WASTE_OUT</td>
+<td>(0, 0, -0.05)</td>
+<td>40</td>
+<td>PLUMBING_STACK</td>
+</tr>
+<tr>
+<td>SINK</td>
+<td>BOTTOM</td>
+<td>SUPPLY_IN</td>
+<td>(-0.1, 0, 0.15)</td>
+<td>15</td>
+<td>WATER_RISER</td>
+</tr>
+<tr>
+<td>LIGHT</td>
+<td>TOP</td>
+<td>SUPPLY_IN</td>
+<td>(0, 0, 0)</td>
+<td>20</td>
+<td>ELEC_CONDUIT</td>
+</tr>
+<tr>
+<td>OUTLET</td>
+<td>BACK</td>
+<td>SUPPLY_IN</td>
+<td>(0, 0, 0)</td>
+<td>20</td>
+<td>ELEC_CONDUIT</td>
+</tr>
+</tbody>
+</table>
+<p><code>connects_to</code> tells the Walker which infrastructure to route FROM: PLUMBING_STACK
+→ find nearest stack anchor, WATER_RISER → find nearest riser, ELEC_CONDUIT →
+find nearest panel.</p>
+<p><strong>The route sequence:</strong>
+<div class="highlight"><pre><span></span><code>Walker has placed TOILET at position T = (3.2, 8.1, 0.2) via shim
+TOILET.WASTE_OUT tack-to = T + rotated(0.0, -0.15, 0.05) = (3.2, 7.95, 0.25)
+
+  1. Read fixture&#39;s tack-to from ad_assembly_connector:
+     → assembly_id=&#39;TOILET&#39;, connector_type=&#39;WASTE_OUT&#39;
+     → tack-to world pos P = fixture_origin + rotated(connector.position)
+
+  2. Find nearest infrastructure anchor:
+     → connects_to = PLUMBING_STACK → find nearest STACK in ad_mep_anchor
+     → anchor world pos A = (3.5, 5.0, 2.75)
+
+  3. Generate route segments from A toward P:
+     → Horizontal run along ceiling from A
+     → Vertical drop toward P height
+     → Standard-length pieces from joint vocabulary (PIPE_STRAIGHT, PIPE_ELBOW)
+</code></pre></div></p>
+<p><strong>Step 4 — Halt and Recalculate (last mile):</strong></p>
+<p>The Walker MUST NOT blindly extend the last segment. Standard pieces have
+fixed lengths from the joint vocabulary. The gap between the penultimate
+piece's endpoint and the tack-to point P is almost never an exact multiple
+of a standard piece length. Without a halt, the pipe overshoots past P.</p>
+<div class="highlight"><pre><span></span><code>  4. Halt before overshoot:
+     → After each segment, compute remaining_distance to P
+     → When remaining_distance &lt; next_standard_piece_length:
+        a. STOP generating standard pieces
+        b. Create a VARIABLE-length terminal piece:
+           → c_uom_id = MM, qty_type = VARIABLE, qty = remaining_distance_mm
+           → InterimWorkshop recomputes primitive to exact length (§6)
+        c. Terminal piece endpoint = P (the tack-to point, exactly)
+
+  5. Convergence proof:
+     → Assert: terminal piece endpoint == P within 1mm
+     → Same CONVERGED proof as §7 but with 1mm tolerance (not 1m)
+     → This is a JOIN, not a proximity check — pipe meets fixture
+</code></pre></div>
+<p><strong>Why InterimWorkshop (§6):</strong> The terminal piece is a VARIABLE-length
+pipe straight, same as a contractor cutting pipe from stock to fit the
+remaining gap. <code>c_uom_id=MM</code> + <code>qty_type=VARIABLE</code> triggers InterimWorkshop
+— no CUT verb, no special code path. The UOM is the signal.</p>
+<p><strong>Overshoot detection (test invariant):</strong> If any route's terminal piece
+endpoint exceeds P by more than 1mm on any axis, the test FAILs with
+<code>OVERSHOOT: pipe extends {N}mm past fixture tack-to point</code>. This is not
+a warning — overshoot means the pipe goes through the wall or into the
+next room.</p>
+<p>The sequence is: <strong>place fixture → read tack-to → route toward it →
+halt at last mile → trim terminal piece to exact length → join.</strong></p>
+<p><strong>12d. Discipline Resolution — connects_to, Not anchorEnd</strong></p>
+<p><code>resolveDeviceDiscipline()</code> (PlacementCollectorVisitor:1411) maps discipline
+from <code>anchorEnd</code> (PANEL/RISER/STACK). This is wrong — <code>anchorEnd</code> is an
+infrastructure endpoint type, not a discipline. SPRINKLER connects to a
+FP panel, not an electrical panel. All PANEL devices default to ELEC.</p>
+<p><strong>Fix:</strong> Read <code>connects_to</code> from <code>ad_assembly_connector</code> (seeded by DV047):</p>
+<table>
+<thead>
+<tr>
+<th>connects_to</th>
+<th>Discipline</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ELEC_CONDUIT</td>
+<td>ELEC</td>
+</tr>
+<tr>
+<td>WATER_RISER</td>
+<td>CW</td>
+</tr>
+<tr>
+<td>PLUMBING_STACK</td>
+<td>SP</td>
+</tr>
+<tr>
+<td>FP_MAIN</td>
+<td>FP</td>
+</tr>
+<tr>
+<td>ACMV_DUCT</td>
+<td>ACMV</td>
+</tr>
+</tbody>
+</table>
+<p>The resolver should query <code>ad_assembly_connector WHERE assembly_id = deviceId</code>
+and map <code>connects_to</code> → discipline. Fallback to ELEC only if no connector row.</p>
+<p><strong>Test spec (W-DISC-RESOLVE, S23):</strong>
+<div class="highlight"><pre><span></span><code>1. For each generative device in SH/DX pipeline output:
+   a. Read Discipline from c_orderline
+   b. Read connects_to from ad_assembly_connector WHERE assembly_id = productId
+   c. Assert discipline matches connects_to mapping:
+      SPRINKLER → FP (not ELEC)
+      EXHAUST_FAN → ACMV (not ELEC)
+      SUPPLY_DIFFUSER → ACMV (not ELEC)
+      LIGHT → ELEC
+      OUTLET → ELEC
+2. FAIL: &quot;{device} discipline={actual} but connects_to={infra} → expected {correct}&quot;
+</code></pre></div></p>
+<p><strong>12e. Furniture Collision Avoidance</strong></p>
+<p>When selecting a wall zone for device placement (step 3 above), the placer
+must check for existing furniture occupying that zone.</p>
+<div class="highlight"><pre><span></span><code>Room SET BOM children (already walked):
+  CUPBOARD at (2.8, 7.9, 0.0) AABB 0.6×0.4×2.0m  ← occupies WALL_BACK zone
+
+PLACE_DEVICE wants TOILET at WALL_BACK:
+  1. Compute candidate position from ad_placement_offset
+  2. Check: does candidate AABB overlap any sibling furniture AABB?
+  3. If overlap:
+     a. Shift along wall (try next available segment)
+     b. If no space on target wall: try adjacent wall with same orientation
+     c. If no wall available: emit CONFLICT warning (do not invent position)
+  4. Log: GENERATIVE COLLISION_CHECK {device} zone={wall} siblings={N} result={OK|SHIFT|CONFLICT}
+</code></pre></div>
+<p><strong>Invariant:</strong> A generative device MUST NOT overlap with any existing furniture
+LEAF. Overlap = test FAIL.</p>
+<p><strong>12f. Test Specs</strong></p>
+<p><strong>W-SHIM-DEVICE (S20):</strong> Generative devices use shim architecture
+<div class="highlight"><pre><span></span><code>1. Walk DX_BOM.db with erpConn (same as S16)
+2. For each generative placement:
+   a. Assert it has a parent shim in the placement hierarchy
+   b. Assert shim has host_ifc_class (WALL, CEILING, or SLAB)
+   c. Assert device offset from shim is small (&lt;0.5m) — standoff, not room-scale
+   d. Assert device facing direction matches shim wall normal
+3. For each room with generative devices:
+   a. Assert no generative device AABB overlaps any furniture LEAF AABB
+   b. Log any SHIFT events (device moved to avoid furniture)
+</code></pre></div></p>
+<p><strong>W-END-JOIN (S21):</strong> Walker routes to generative fixture tack-to points
+<div class="highlight"><pre><span></span><code>1. Walk DX_BOM.db with erpConn and route generation enabled
+2. For each generative PLUMBABLE fixture (TOILET, SINK):
+   a. Read tack-to from ad_assembly_connector (WASTE_OUT or SUPPLY_IN)
+   b. Compute tack-to world pos P = fixture_origin + rotated(connector.position)
+   c. Assert a pipe route exists from infrastructure anchor to P
+   d. Assert terminal piece is VARIABLE (c_uom_id=MM, qty_type=VARIABLE)
+   e. Assert terminal piece endpoint == P within 1mm (exact join, not proximity)
+   f. Assert NO OVERSHOOT: terminal endpoint must not exceed P on any axis by &gt;1mm
+3. For each generative ELECTRIFIED fixture (OUTLET, LIGHT, SWITCH):
+   a. Read tack-to from ad_assembly_connector (SUPPLY_IN)
+   b. Assert conduit route from PANEL anchor to tack-to point
+   c. Assert terminal piece endpoint == tack-to within 1mm
+   d. Assert no overshoot
+4. FAIL if any fixture has no route (gap = test failure, not a warning)
+5. FAIL if any route overshoots: &quot;OVERSHOOT: pipe extends {N}mm past tack-to&quot;
+</code></pre></div></p>
+<p><strong>W-TACK-POINT (S22):</strong> Fixture tack points exist and are non-placeholder
+<div class="highlight"><pre><span></span><code>1. For each mep_product_id in ad_space_type_mep_bom WHERE anchor_end IS NOT NULL:
+   a. SELECT * FROM ad_assembly_connector WHERE assembly_id = mep_product_id
+   b. Assert at least one connector row exists
+   c. Assert position is non-zero (not placeholder 0,0,0)
+   d. Assert diameter_mm &gt; 0
+   e. Assert connects_to matches discipline pattern:
+      WASTE_OUT → PLUMBING_STACK, SUPPLY_IN → WATER_RISER/ELEC_CONDUIT
+2. For TOILET specifically:
+   a. Assert WASTE_OUT connector exists (shank)
+   b. Assert SUPPLY_IN connector exists (valve)
+   c. Assert positions are physically plausible (within fixture AABB)
+3. FAIL message: &quot;{product_id} has no tack point — pipe cannot connect&quot;
+</code></pre></div></p>
+<p><strong>12g. Gap Analysis — Six Spec Gaps Found (S153 Pre-Flight)</strong></p>
+<p>The following gaps were identified by cross-referencing §12a-§12f against the
+actual code (<code>PlacementCollectorVisitor</code>, <code>MEPDevicePlacer</code>, <code>SpaceScheduleDAO</code>,
+<code>ShimMatcher</code>, <code>RouteWalker</code>) and the DX extracted database. Each gap would cause
+incorrect placement if not addressed before coding.</p>
+<p><strong>GAP-1: Walk Ordering — MEP Devices Placed Before Furniture Children</strong></p>
+<p><code>PlacementCollectorVisitor.onSubAssembly()</code> fires generative device placement
+(line 406: <code>MEPDevicePlacer.placeDevices()</code>) BEFORE <code>BOMWalker.walkChildren()</code>
+processes the SET BOM's LEAF children. Furniture placements are collected in
+<code>onLeaf()</code>, which fires during <code>walkChildren()</code>. Therefore furniture positions
+do NOT exist when §12e collision check executes.</p>
+<p><strong>Fix:</strong> Move generative MEP placement from <code>onSubAssembly()</code> to
+<code>onSubAssemblyComplete()</code> for SET BOMs. At that point, all furniture LEAFs
+have been walked and their <code>Placement</code> records exist in the <code>placements</code> list.
+The collision check (§12e) can then iterate over already-collected furniture
+AABBs for the current room.</p>
+<p><strong>Ordering after fix:</strong>
+<div class="highlight"><pre><span></span><code>Room SET BOM ENTER (onSubAssembly)
+  → Walk children: furniture LEAFs placed (onLeaf per child)
+Room SET BOM EXIT (onSubAssemblyComplete)
+  → Read room context from stacks (anchor, rotation, AABB — still available)
+  → Collect furniture AABBs from placements added during child walk
+  → MEPDevicePlacer.placeDevices() — with furniture collision data
+  → Create shim + device placements
+</code></pre></div></p>
+<p><strong>Invariant (test-first):</strong> S20 collision check MUST have furniture AABBs
+available. A test that places a device overlapping furniture MUST FAIL.</p>
+<hr />
+<p><strong>GAP-2: Ceiling Z Uses Metadata Default, Not Extracted ARC Surface</strong></p>
+<p><code>SpaceScheduleDAO.getCeilingHeightM()</code> returns <code>ad_space_type.default_ceiling_height_mm</code>
+(2700mm for residential). DX extracted data shows:</p>
+<table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Actual Z (metres)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>L1 Gypsum ceiling (IfcCovering)</td>
+<td><strong>2.629m</strong></td>
+</tr>
+<tr>
+<td>L1 Structural slab (IfcSlab wood joist)</td>
+<td>2.948m</td>
+</tr>
+<tr>
+<td>Metadata default</td>
+<td>2.700m</td>
+</tr>
+</tbody>
+</table>
+<p>A CEILING device placed at <code>2.700 - 0.050 = 2.650m</code> floats <strong>21mm above</strong>
+the actual gypsum board at 2.629m. This is the "floating elements" symptom.</p>
+<p><strong>Fix:</strong> After ARC walk completes (guaranteed by GAP-1 reorder), query
+compiled ARC output for the actual ceiling surface Z in the room's column:</p>
+<div class="highlight"><pre><span></span><code>SELECT MIN(dz) FROM c_orderline
+WHERE Discipline = &#39;ARC&#39;
+  AND family_ref LIKE &#39;%Ceiling%&#39; OR family_ref LIKE &#39;%Covering%&#39;
+  AND dz &gt; room_floor_z
+  AND dz &lt; room_floor_z + 5.0
+</code></pre></div>
+<p>Resolution chain:
+1. <strong>Primary:</strong> Query compiled IfcCovering (gypsum board) in same storey → use its Z
+2. <strong>Secondary:</strong> Query compiled IfcSlab above room floor Z → use bottom face
+3. <strong>Fallback:</strong> Use metadata <code>default_ceiling_height_mm</code> (current behaviour) + log WARNING</p>
+<p><strong>Store resolved ceiling Z on the room context</strong> so all devices in the same
+room use the same value. Do NOT re-query per device.</p>
+<p>The same pattern applies to FLOOR (use actual slab top Z) and WALL (use
+actual wall face position). For DX, floor finish surfaces exist at Z=0.007m
+(ceramic) and Z=0.010m (wood) — not exactly 0.000m.</p>
+<hr />
+<p><strong>GAP-3: ShimMatcher Not Used for Generative Placement</strong></p>
+<p><code>ShimMatcher.matchHost()</code> exists and works for extracted MEP (matches shim
+to nearest ARC host by IFC class + proximity). But <code>MEPDevicePlacer</code> never
+calls it. Generative devices compute positions from room AABB + metadata
+offsets only — no ARC host snapping.</p>
+<p><strong>Fix:</strong> After computing candidate position from <code>ad_placement_offset</code>,
+pass the position through <code>ShimMatcher.matchHost()</code> to snap the shim
+origin to the nearest actual ARC surface. ShimMatcher already handles
+mount-aware Z adjustment (BOTTOM/TOP/SIDE).</p>
+<p>Flow:
+<div class="highlight"><pre><span></span><code>1. SpaceScheduleDAO.computePosition(roomAabb, entry)  → candidate position
+2. ShimMatcher.matchHost(shimProduct, candX, candY, candZ, compileDb) → snapped position
+3. If SHIM_MISS: use candidate + log WARNING (no ARC host found)
+4. If SHIM_MATCH: use adjusted position (Z snapped to actual surface)
+</code></pre></div></p>
+<p>This eliminates the 21mm float because ShimMatcher will find the gypsum
+board at 2.629m and adjust Z accordingly.</p>
+<hr />
+<p><strong>GAP-4: Facing Direction Computation Unspecified</strong></p>
+<p>§12a step 5 says "facing = inherited from shim's wall normal (no rotation
+math needed)" but the spec never defines how wall normal is computed from
+ARC host data. ShimMatcher returns a matched ARC host position but not its
+orientation.</p>
+<p><strong>Fix:</strong> For WALL mounts, compute facing normal from the wall's AABB
+orientation. DX walls are axis-aligned, so:
+- Wall along X-axis (width &gt;&gt; depth): normal = ±Y
+- Wall along Y-axis (depth &gt;&gt; width): normal = ±X
+- Sign = direction from wall center to device center</p>
+<p>For CEILING/FLOOR mounts, facing is always -Z (pendant) or +Z (upright).</p>
+<p>Store the facing vector on the shim BOM line or on DevicePlacement.
+The device inherits it — no per-device rotation computation.</p>
+<p><strong>For DX/SH (axis-aligned rooms):</strong> Wall normal is always ±X or ±Y.
+No arbitrary angles needed. The placement_rule already encodes which
+wall (WALL_BACK=Y-MAX, WALL_SIDE=X-MAX, etc.) — the normal is implicit.</p>
+<table>
+<thead>
+<tr>
+<th>Placement Rule</th>
+<th>Wall</th>
+<th>Normal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WALL_BACK</td>
+<td>Y-MAX face</td>
+<td>(0, -1, 0) — faces into room</td>
+</tr>
+<tr>
+<td>WALL_ENTRY</td>
+<td>Y-MIN face</td>
+<td>(0, +1, 0)</td>
+</tr>
+<tr>
+<td>WALL_SIDE</td>
+<td>X-MAX face</td>
+<td>(-1, 0, 0)</td>
+</tr>
+<tr>
+<td>WALL_SINK</td>
+<td>X-MIN face</td>
+<td>(+1, 0, 0)</td>
+</tr>
+<tr>
+<td>CEILING_*</td>
+<td>—</td>
+<td>(0, 0, -1) pendant</td>
+</tr>
+<tr>
+<td>FLOOR_*</td>
+<td>—</td>
+<td>(0, 0, +1) upright</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><strong>GAP-5: Infrastructure Anchor Discovery for END-Join Routing</strong></p>
+<p>§12c step 2 says "find nearest infrastructure anchor → find nearest STACK
+in ad_mep_anchor". But <code>ad_mep_anchor</code> is populated by IFCtoERP extraction
+for specific buildings. The spec doesn't define:</p>
+<p>a) <strong>Which anchors serve which rooms</strong> — a PLUMBING_STACK at (5, 10, 2.9)
+   could be in any room. The END-join route needs the nearest anchor that
+   is reachable from the fixture's room (not just geometrically nearest
+   — an anchor in a different room behind a wall is not reachable).</p>
+<p>b) <strong>Anchor Z for vertical drops</strong> — a ceiling pipe must drop vertically
+   to reach a floor-level fixture. The anchor is at ceiling Z, the fixture
+   tack-to is at floor Z. The route needs a vertical segment. The spec
+   describes this in §8c (risers) but not for per-room vertical drops.</p>
+<p>c) <strong>DX/SH anchor availability</strong> — DX has 358 IfcFlowFitting + 427
+   IfcFlowSegment + 105 IfcFlowTerminal elements in the extracted DB.
+   Are these already loaded into <code>ad_mep_anchor</code>? Or must the END-join
+   route discover anchors from compiled c_orderline WHERE Discipline='CW'?</p>
+<p><strong>Fix:</strong> Define anchor resolution as a two-step process:</p>
+<ol>
+<li>
+<p><strong>Room-scoped anchor search:</strong> For each fixture's <code>connects_to</code> type,
+   find anchors whose XY position falls within the room AABB (or the room's
+   parent storey). This eliminates cross-room false matches.</p>
+</li>
+<li>
+<p><strong>Fallback to storey-scoped:</strong> If no room-level anchor found, search
+   storey-wide (e.g., shared risers, common stacks). Log STOREY_FALLBACK.</p>
+</li>
+<li>
+<p><strong>Fallback to synthetic anchor:</strong> If no extracted anchor exists (pure
+   generative building), create a synthetic anchor at a canonical position
+   (e.g., PLUMBING_STACK at room corner nearest to wet wall). Log SYNTHETIC.</p>
+</li>
+</ol>
+<p>For DX/SH: extracted infrastructure positions already exist in compiled
+output. Route from compiled MEP anchor to generative fixture tack-to.</p>
+<hr />
+<p><strong>GAP-6: Room Context Loss at onSubAssemblyComplete</strong></p>
+<p>If generative placement moves to <code>onSubAssemblyComplete</code> (GAP-1 fix), the
+room's coordinate context (anchor position, rotation, AABB) must still be
+available. Currently <code>onSubAssemblyComplete</code> pops all stacks:</p>
+<div class="highlight"><pre><span></span><code><span class="n">anchorStack</span><span class="p">.</span><span class="na">pop</span><span class="p">();</span>
+<span class="n">rotationStack</span><span class="p">.</span><span class="na">pop</span><span class="p">();</span>
+<span class="n">parentAABBStack</span><span class="p">.</span><span class="na">pop</span><span class="p">();</span>
+</code></pre></div>
+<p>If MEP placement fires AFTER these pops, the room context is lost.</p>
+<p><strong>Fix:</strong> Place MEP devices BEFORE the stack pops, but after child walk
+completes. Sequence in <code>onSubAssemblyComplete</code> for SET BOMs:</p>
+<div class="highlight"><pre><span></span><code>1. [DO NOT pop yet]
+2. Detect SET BOM with space type (same check as current onSubAssembly)
+3. Collect furniture AABBs from placements (children just walked)
+4. Run MEPDevicePlacer.placeDevices() with room context from stacks
+5. Create shim + device placements
+6. THEN pop stacks (existing cleanup)
+</code></pre></div>
+<p>Alternatively, capture room context (anchor, AABB, rotation) into local
+variables at <code>onSubAssembly</code> and pass them through to <code>onSubAssemblyComplete</code>
+via a field (e.g., <code>pendingGenerativeRoom</code>). Cleaner: avoids relying on
+stack pop ordering.</p>
+<hr />
+<p><strong>GAP-7: Bathroom SET BOM AABB Is Furniture Extent, Not Room Footprint</strong></p>
+<p>DX bathroom SET BOMs (A104, B104, A204, B204) have AABB width=475mm, depth=450mm.
+This is the furniture bounding box (one vanity/WC unit), not the actual room
+footprint (~2×2m). When the collision check tries to shift a TOILET away from
+furniture, there's nowhere to go — the room AABB IS the furniture.</p>
+<p>The collision check must detect this case: when room AABB width OR depth is
+below a minimum threshold (1.0m), the SET BOM AABB represents furniture extent,
+not room geometry. In this case:</p>
+<ol>
+<li>Log <code>ROOM_NARROW</code> with dimensions — flags for BOM data review</li>
+<li>Skip furniture collision check (the room footprint is unknown)</li>
+<li>Place devices at schedule positions regardless (best guess with wrong data)</li>
+<li>Do NOT count as COLLISION_CONFLICT (not a placement algorithm failure)</li>
+</ol>
+<p>The proper fix (deferred) is to extract room footprint from the IFC spatial
+container and store it on the SET BOM, separate from the furniture AABB. This
+requires IFCtoERP to read <code>IfcSpace</code> geometry bounds and write them as
+<code>room_width_mm / room_depth_mm</code> on the SET BOM header.</p>
+<p><strong>GAP-8: FLOOR_TRAP 3mm Z Breach — Snap Tolerance</strong></p>
+<p>When <code>findFloorZ</code> snaps to a finish floor slab, the slab top may be 1-3mm
+below the room anchor Z (due to different accumulation paths: room anchor
+through BOM tack vs slab through structural BOM). The breach check flags
+this as Z=OUT but it's a rounding/path difference, not a real breach.</p>
+<p><strong>Fix:</strong> Add a 5mm tolerance to the Z containment check for floor-level
+devices. If device Z is within 5mm of room minZ, treat as IN.</p>
+<p><strong>Summary: Gap Impact on Floating Elements</strong></p>
+<table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Floating symptom</th>
+<th>Severity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GAP-1 (walk ordering)</td>
+<td>Devices ignore furniture → overlap</td>
+<td>HIGH — collision broken</td>
+</tr>
+<tr>
+<td>GAP-2 (ceiling Z)</td>
+<td>Devices at 2.65m, ceiling at 2.63m → 21mm float</td>
+<td>HIGH — visible</td>
+</tr>
+<tr>
+<td>GAP-3 (no ShimMatcher)</td>
+<td>No snap to ARC surfaces → systematic offset</td>
+<td>HIGH — root cause</td>
+</tr>
+<tr>
+<td>GAP-4 (facing direction)</td>
+<td>Devices face wrong way → visual defect</td>
+<td>MEDIUM</td>
+</tr>
+<tr>
+<td>GAP-5 (anchor discovery)</td>
+<td>Routes can't find targets → no END-join</td>
+<td>HIGH — Phase 3 blocked</td>
+</tr>
+<tr>
+<td>GAP-6 (context loss)</td>
+<td>Fix for GAP-1 breaks if stacks pop first</td>
+<td>HIGH — implementation trap</td>
 </tr>
 </tbody>
 </table>
@@ -9507,6 +10276,89 @@ TE routing topology groups split correctly by discipline (not all collapsed to C
 <p><strong>00q prerequisite:</strong> G1 (schema) + G3 (discipline read) must be fixed before writing ROUTE lines
 for ELEC/ACMV/CW/SP/GAS. Otherwise the staging table cannot carry AD_Org_ID per row and the
 single-source-of-truth architecture is broken.</p>
+<hr />
+<p><strong>12h. C_BPartner Catalog Segregation — RE vs CO</strong></p>
+<p>C_BPartner gates which product catalog is visible per building category.
+The segregation is at the <strong>building product_category level</strong> (RE / CO), not per individual building.</p>
+<p><strong>Two catalog tiers:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Building category</th>
+<th>C_BPartner reference</th>
+<th>Buildings now</th>
+<th>Buildings future</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RE (Residential)</td>
+<td><code>Duplex</code></td>
+<td>SH, DX, FK, IN…</td>
+<td>any RE harvest</td>
+</tr>
+<tr>
+<td>CO (Commercial)</td>
+<td><code>HospitalAuckland</code> (seed)</td>
+<td>—</td>
+<td>TE, Hospital when onboarded</td>
+</tr>
+<tr>
+<td>Universal</td>
+<td>NULL</td>
+<td>SPRINKLER, LIGHT…</td>
+<td>any product valid in both</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rule:</strong> Every RE building compilation ONLY places products where
+<code>C_BPartner_ID = Duplex OR C_BPartner_ID IS NULL</code>.
+Every CO compilation ONLY places products where
+<code>C_BPartner_ID = (CO reference) OR C_BPartner_ID IS NULL</code>.</p>
+<p>DX is the reference catalog for RE — products seeded from DX IFC carry <code>C_BPartner_ID = Duplex</code>.
+When TE and Hospital are harvested and onboarded as CO, their products carry <code>C_BPartner_ID = HospitalAuckland</code>
+(or a new consolidated <code>CO</code> BPartner to be decided at onboarding time).</p>
+<p><strong>Schema — already live (DV038):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- C_BPartner table: Value = &#39;Duplex&#39;, &#39;HospitalAuckland&#39;, &#39;Terminal&#39;, &#39;SampleHouse&#39;</span>
+<span class="c1">-- M_Product.C_BPartner_ID INTEGER REFERENCES C_BPartner(C_BPartner_ID)</span>
+<span class="c1">-- NULL = universal (placed by any building category)</span>
+</code></pre></div>
+<p><strong>Schedule lookup with BPartner filter (to be implemented in SpaceScheduleDAO):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- :building_bpartner_id resolved from building product_category:</span>
+<span class="c1">--   RE → C_BPartner.Value=&#39;Duplex&#39; → ID=1</span>
+<span class="c1">--   CO → C_BPartner.Value=&#39;HospitalAuckland&#39; → ID=2</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">mep_product_id</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">placement_rule</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">host_surface</span><span class="p">,</span><span class="w"> </span><span class="p">...</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">ad_space_type_mep_bom</span><span class="w"> </span><span class="n">s</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">product_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">mep_product_id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">space_type_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">:</span><span class="n">space_type</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">C_BPartner_ID</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">:</span><span class="n">building_bpartner_id</span><span class="w"> </span><span class="k">OR</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">C_BPartner_ID</span><span class="w"> </span><span class="k">IS</span><span class="w"> </span><span class="k">NULL</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Migration (DONE S160):</strong></p>
+<ul>
+<li><code>DV051_m_product_bpartner.sql</code> — UPDATE M_Product.C_BPartner_ID (<strong>applied</strong>):</li>
+<li>RE generative fixtures from DX IFC → <code>Duplex</code> (ID=1):
+    FRIDGE, OUTLET_20A, OUTLET_GFCI, OUTLET, CEILING_FAN, EXHAUST_FAN,
+    FLOOR_TRAP, SINK, SWITCH, TOILET, WASHING_TAP, AIRCON_POINT</li>
+<li>Universal (both RE and CO) → NULL:
+    SPRINKLER, LIGHT, SUPPLY_DIFFUSER, DATA_POINT, EMERGENCY_LIGHT</li>
+<li>CO-specific → <code>HospitalAuckland</code> (ID=2): (none yet — populated at TE/Hospital onboarding)</li>
+</ul>
+<p>See <a href="../DuplexAnalysis/#c_bpartner-catalog-segregation-s159s160-2026-04-08">DuplexAnalysis.md §C_BPartner</a> for catalog table and RE/CO tier definitions.</p>
+<p><strong>Test spec — Witness W-BPARTNER-RE:</strong></p>
+<div class="highlight"><pre><span></span><code>Test class: BPartnerCatalogTest (DAGCompiler contract tests)
+Witness:    W-BPARTNER-RE
+Claim:      Every generative element in an RE building output has
+            C_BPartner_ID = Duplex OR C_BPartner_ID IS NULL.
+            No CO-only product appears in SH or DX compilation.
+Method:
+  1. Open samplehouse.db and duplex.db output.
+  2. For each GENERATIVE guid (guid LIKE &#39;%_MD_%&#39;), join to M_Product via element_ref.
+  3. Assert C_BPartner_ID IN (1 /*Duplex*/, NULL) for every row.
+  4. Assert count(generative) &gt; 0 (schedule ran).
+Counterpart W-BPARTNER-CO: same logic for CO buildings once onboarded.
+</code></pre></div>
+<p><strong>Status (S160 DONE):</strong> DV051 applied. BPartnerCatalogTest 4/4 PASS. SH 9/9, DX 9/9.
+SpaceScheduleDAO BPartner filter: next step when CO buildings (TE/Hospital) are onboarded.</p>
 
 
 

@@ -1104,7 +1104,7 @@
   <span class="md-ellipsis">
     
   
-    BIM COBOL (76 Verbs)
+    BIM COBOL (77 Verbs)
   
 
     
@@ -4034,7 +4034,7 @@ rows and creates handles dynamically.</p>
 </tbody>
 </table>
 <p><strong>The generic Python gizmo class (ForgeGizmoGroup):</strong></p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">ForgeGizmoGroup</span><span class="p">(</span><span class="n">BaseParametricGizmoGroup</span><span class="p">,</span> <span class="n">bpy</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">GizmoGroup</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ForgeGizmoGroup</span><span class="p">(</span><span class="n">BaseParametricGizmoGroup</span><span class="p">,</span> <span class="n">bpy</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">GizmoGroup</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Metadata-driven gizmo group for all forge piece types.</span>
 <span class="sd">    Reads ad_forge_gizmo rows from DB → creates DimensionGizmoConfig per row.</span>
@@ -4046,7 +4046,7 @@ rows and creates handles dynamically.</p>
     <span class="c1"># Dynamic — built from DB at setup time</span>
     <span class="n">dimension_gizmo_props</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># populated from ad_forge_gizmo</span>
 
-    <span class="k">def</span> <span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
         <span class="n">piece_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_piece_type</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
         <span class="n">rows</span> <span class="o">=</span> <span class="n">read_forge_gizmo_rows</span><span class="p">(</span><span class="n">piece_type</span><span class="p">)</span>  <span class="c1"># DB query</span>
         <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
@@ -4625,7 +4625,7 @@ ForgeVerb (76th verb) registered in VerbRegistry. W-FORGE-1..11 PASS.</p>
 <p><strong>Implementation approach:</strong></p>
 <p>For <strong>elongated members</strong> (rafter, stringer, pipe):
 <div class="highlight"><pre><span></span><code><span class="c1"># Python side — receives ForgeResult via BlenderBridge</span>
-<span class="k">def</span> <span class="nf">forge_mesh_extrude</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">forge_mesh_extrude</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
     <span class="n">rec</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">records</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">profile</span> <span class="o">=</span> <span class="n">ShapeBuilder</span><span class="o">.</span><span class="n">rectangle</span><span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">width_mm</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">depth_mm</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
     <span class="n">body</span> <span class="o">=</span> <span class="n">ShapeBuilder</span><span class="o">.</span><span class="n">extrude</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">length_mm</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
@@ -4637,7 +4637,7 @@ ForgeVerb (76th verb) registered in VerbRegistry. W-FORGE-1..11 PASS.</p>
     <span class="k">return</span> <span class="n">body</span>
 </code></pre></div></p>
 <p>For <strong>panel arrays</strong> (dome sections, vault segments):
-<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">forge_mesh_panels</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">forge_mesh_panels</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
     <span class="n">objects</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">records</span><span class="p">:</span>
         <span class="n">panel</span> <span class="o">=</span> <span class="n">bmesh</span><span class="o">.</span><span class="n">new</span><span class="p">()</span>

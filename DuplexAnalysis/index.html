@@ -1104,7 +1104,7 @@
   <span class="md-ellipsis">
     
   
-    BIM COBOL (76 Verbs)
+    BIM COBOL (77 Verbs)
   
 
     
@@ -2830,6 +2830,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#c_bpartner-catalog-segregation-s159s160-2026-04-08" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C_BPartner Catalog Segregation (S159–S160, 2026-04-08)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3830,6 +3841,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#c_bpartner-catalog-segregation-s159s160-2026-04-08" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C_BPartner Catalog Segregation (S159–S160, 2026-04-08)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4776,6 +4798,44 @@ Products with extraction geometry (SPRINKLER, SINK, TOILET, LIGHT, FLOOR_TRAP,
 SUPPLY_DIFFUSER) resolve via LIKE match to real IFC meshes.</p>
 <p><strong>Witness:</strong> MepRouteGeometryTest S15 — ceiling override + product AABB proof.
 15/15 PASS. S14: 0 gaps across 27 space types.</p>
+<h2 id="c_bpartner-catalog-segregation-s159s160-2026-04-08">C_BPartner Catalog Segregation (S159–S160, 2026-04-08)<a class="headerlink" href="#c_bpartner-catalog-segregation-s159s160-2026-04-08" title="Permanent link">&para;</a></h2>
+<p>DX is the <strong>RE reference catalog</strong> — the authoritative source of residential product assignments.</p>
+<p><strong>Two tiers:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>C_BPartner_ID</th>
+<th>Value</th>
+<th>Products</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RE (Residential)</td>
+<td>1</td>
+<td>Duplex</td>
+<td>FRIDGE, OUTLET, OUTLET_20A, OUTLET_GFCI, CEILING_FAN, EXHAUST_FAN, FLOOR_TRAP, SINK, SWITCH, TOILET, WASHING_TAP, AIRCON_POINT</td>
+</tr>
+<tr>
+<td>Universal</td>
+<td>NULL</td>
+<td>—</td>
+<td>SPRINKLER, LIGHT, SUPPLY_DIFFUSER, DATA_POINT, EMERGENCY_LIGHT</td>
+</tr>
+<tr>
+<td>CO (Commercial)</td>
+<td>2</td>
+<td>HospitalAuckland</td>
+<td>— (populated when TE/Hospital onboarded)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rule:</strong> RE building compilations (SH, DX, FK, IN…) only place products where
+<code>C_BPartner_ID = 1 (Duplex) OR C_BPartner_ID IS NULL</code>.</p>
+<p><strong>Migration:</strong> DV051 seeds the RE assignments above. DV038 created the C_BPartner table.</p>
+<p><strong>Test:</strong> <code>BPartnerCatalogTest</code> — 4/4 PASS (W-BPARTNER-RE SH, W-BPARTNER-RE DX,
+W-BPARTNER-SCHEDULE, W-BPARTNER-COMPLETENESS). See <a href="../DISC_VALIDATION_DB_SRS/#12h-c_bpartner-catalog-segregation--re-vs-co">DISC_VALIDATION_DB_SRS.md §12h</a>.</p>
 
 
 
