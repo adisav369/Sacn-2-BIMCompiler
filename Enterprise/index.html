@@ -4892,11 +4892,9 @@ scene graph:</p>
 five custom property strings per object), not the geometry. It scales with element
 count, not geometric complexity.</p>
 <h3 id="is-it-faster">Is it faster?<a class="headerlink" href="#is-it-faster" title="Permanent link">&para;</a></h3>
-<p>Open time is the same as today — <code>load_post</code> does the same DB geometry fetch and
-mesh build that Stage 2 does, but skips everything else (object creation, collection
-linking, custom property setting — those already exist in the scene graph).
-Re-open after an edit session is faster because the scene graph is already
-fully configured.</p>
+<p><strong>Open time: same.</strong> <code>load_post</code> fetches every geometry BLOB from DB, unpacks
+float32 arrays, and builds meshes — identical data volume to Stage 2 today.
+No free lunch here.</p>
 <p><strong>Save is 50–200× faster.</strong> Blender currently serialises 100+ MB of mesh data to
 disk. With streaming, it writes kilobytes of object transforms and custom properties.
 A 94 MB Hospital save becomes a 2 MB write.</p>
