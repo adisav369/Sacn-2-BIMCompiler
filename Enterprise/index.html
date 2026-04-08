@@ -4910,8 +4910,10 @@ The DB itself only needs to transfer once — subsequent <code>.blend</code> upd
 graph diffs only.</p>
 <p><strong>Safety through separation.</strong> The LODs cannot be corrupted by a bad save, a crashed
 Blender session, or a botched file transfer — because they are not in the <code>.blend</code>.
-The DB is the single source of truth; the <code>.blend</code> is disposable. Lose the <code>.blend</code>,
-recreate it in one <code>load_post</code>. Lose nothing of the geometry.</p>
+The DB is the single source of truth; the <code>.blend</code> is recoverable. Lose the <code>.blend</code>,
+re-run Stage 2 against the DB — full scene rebuilt in 9–27 sec, geometry intact.
+Lose nothing of the geometry. Compare to traditional Bonsai: lose the <code>.blend</code> there
+and you need the IFC file present to reimport from scratch.</p>
 <p><strong>Cloud geometry library on OCI.</strong> Because the DB is a single SQLite file and
 <code>load_post</code> fetches it once per session, the geometry store can live anywhere —
 including Oracle Cloud Infrastructure object storage. The <code>.blend</code> holds only the
