@@ -1148,6 +1148,50 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#is-it-faster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Is it faster?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#is-it-safe-to-implement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Is it safe to implement?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#does-it-touch-bonsai-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Does it touch Bonsai core?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fallback-existing-blend-files-work-unchanged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fallback — existing .blend files work unchanged
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-workflow-this-enables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2344,6 +2388,50 @@
     <span class="md-ellipsis">
       
         How much smaller
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#is-it-faster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Is it faster?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#is-it-safe-to-implement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Is it safe to implement?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#does-it-touch-bonsai-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Does it touch Bonsai core?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fallback-existing-blend-files-work-unchanged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fallback — existing .blend files work unchanged
       
     </span>
   </a>
@@ -4001,6 +4089,50 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#is-it-faster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Is it faster?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#is-it-safe-to-implement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Is it safe to implement?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#does-it-touch-bonsai-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Does it touch Bonsai core?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fallback-existing-blend-files-work-unchanged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fallback — existing .blend files work unchanged
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-workflow-this-enables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4759,6 +4891,39 @@ scene graph:</p>
 <p>The streaming <code>.blend</code> size is dominated by the object count (one transform matrix +
 five custom property strings per object), not the geometry. It scales with element
 count, not geometric complexity.</p>
+<h3 id="is-it-faster">Is it faster?<a class="headerlink" href="#is-it-faster" title="Permanent link">&para;</a></h3>
+<p>Open time is the same as today — <code>load_post</code> does the same DB geometry fetch and
+mesh build that Stage 2 does, but skips everything else (object creation, collection
+linking, custom property setting — those already exist in the scene graph).
+Re-open after an edit session is faster because the scene graph is already
+fully configured.</p>
+<p><strong>Save is 50–200× faster.</strong> Blender currently serialises 100+ MB of mesh data to
+disk. With streaming, it writes kilobytes of object transforms and custom properties.
+A 94 MB Hospital save becomes a 2 MB write.</p>
+<h3 id="is-it-safe-to-implement">Is it safe to implement?<a class="headerlink" href="#is-it-safe-to-implement" title="Permanent link">&para;</a></h3>
+<p>Yes — with one guard. <code>save_pre</code> must not leave objects meshless if the save
+crashes mid-write. The fix: keep an in-memory mesh cache and restore it in
+<code>save_post</code>:</p>
+<div class="highlight"><pre><span></span><code>save_pre  → strip mesh to stub, cache {geometry_hash: mesh} in memory
+Blender   → writes thin .blend (can crash here — in-memory cache intact)
+save_post → restore mesh from cache → viewport never loses geometry
+</code></pre></div>
+<p>If the DB is missing on <code>load_post</code>, objects get empty stub meshes — no crash,
+just invisible geometry. Fully graceful.</p>
+<h3 id="does-it-touch-bonsai-core">Does it touch Bonsai core?<a class="headerlink" href="#does-it-touch-bonsai-core" title="Permanent link">&para;</a></h3>
+<p><strong>No.</strong> <code>bpy.app.handlers.save_pre</code>, <code>save_post</code>, and <code>load_post</code> are
+addon-level hooks — standard Blender API. All changes land in
+<code>federation/__init__.py</code>, which already registers <code>load_post</code> handlers today.
+Zero changes to Bonsai core, zero risk to the existing Bonsai IFC workflow.</p>
+<h3 id="fallback-existing-blend-files-work-unchanged">Fallback — existing <code>.blend</code> files work unchanged<a class="headerlink" href="#fallback-existing-blend-files-work-unchanged" title="Permanent link">&para;</a></h3>
+<p>Detection is one line per object:</p>
+<div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;geometry_hash&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">vertices</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="c1"># streaming .blend — stub mesh, rehydrate from DB</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># legacy embedded .blend — mesh already present, leave as-is</span>
+</code></pre></div>
+<p>Old <code>.blend</code> files with embedded LODs continue to open exactly as before.
+New saves become thin. The two modes coexist without conflict.</p>
 <h3 id="the-workflow-this-enables">The workflow this enables<a class="headerlink" href="#the-workflow-this-enables" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>extract IFC → extracted.db          (once, ~20 min for 125K elements)
               ↓
