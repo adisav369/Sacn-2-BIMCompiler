@@ -1224,6 +1224,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#todo-3-demo-mega-db-baku-scale-proof-without-baku" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TODO 3 — Demo Mega-DB (Baku-scale proof without Baku)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2487,6 +2498,17 @@
     <span class="md-ellipsis">
       
         The workflow this enables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#todo-3-demo-mega-db-baku-scale-proof-without-baku" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TODO 3 — Demo Mega-DB (Baku-scale proof without Baku)
       
     </span>
   </a>
@@ -4209,6 +4231,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#todo-3-demo-mega-db-baku-scale-proof-without-baku" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TODO 3 — Demo Mega-DB (Baku-scale proof without Baku)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5142,6 +5175,107 @@ build, not a freebie from having objects in the Outliner.</p>
 The DB is the geometry archive, always current, never duplicated.</p>
 <hr />
 <p><strong>→ Implementation spec:</strong> <a href="https://github.com/red1oon/BIMCompiler/blob/master/prompts/S162_streaming_blend.md"><code>prompts/S162_streaming_blend.md</code></a></p>
+<h3 id="todo-3-demo-mega-db-baku-scale-proof-without-baku">TODO 3 — Demo Mega-DB (Baku-scale proof without Baku)<a class="headerlink" href="#todo-3-demo-mega-db-baku-scale-proof-without-baku" title="Permanent link">&para;</a></h3>
+<p>Baku Olympic Stadium IFC is not yet available. But we already have enough extracted
+buildings to assemble a demo database that proves streaming at comparable scale —
+and tells a better story: a <strong>real mixed-use precinct</strong> on terrain.</p>
+<p><strong>Available assets:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>File</th>
+<th>Elements</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hospital (multi-disc)</td>
+<td><code>Hospital_extracted.db</code></td>
+<td>~60K</td>
+<td>124 MB</td>
+</tr>
+<tr>
+<td>LTU A-House</td>
+<td><code>LTU_AHouse_extracted.db</code></td>
+<td>125,997</td>
+<td>233 MB</td>
+</tr>
+<tr>
+<td>Clinic (federated)</td>
+<td><code>Clinic_extracted.db</code></td>
+<td>~16K</td>
+<td>56 MB</td>
+</tr>
+<tr>
+<td>HITOS</td>
+<td><code>HITOS_extracted.db</code></td>
+<td>—</td>
+<td>5.9 MB</td>
+</tr>
+<tr>
+<td>Hospital Auckland</td>
+<td><code>HospitalAuckland_extracted.db</code></td>
+<td>—</td>
+<td>4.7 MB</td>
+</tr>
+<tr>
+<td>Hospital Garage</td>
+<td><code>HospitalGarage_extracted.db</code></td>
+<td>—</td>
+<td>1.7 MB</td>
+</tr>
+<tr>
+<td>PDF Terrain</td>
+<td><code>pdf2blend/samples/sample_output.json</code></td>
+<td>—</td>
+<td>topography mesh</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Combined: ~200K+ elements, ~425 MB source DBs.</strong>
+Streaming <code>.blend</code> target: <strong>under 10 MB</strong>.</p>
+<p><strong>Implementation: a config-driven merge script</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># demo_precinct.yaml — which buildings go where</span>
+<span class="nt">precinct_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Demo Medical Precinct</span>
+<span class="nt">output_db</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">demo_precinct_merged.db</span>
+<span class="nt">buildings</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Hospital_extracted.db</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Main Hospital</span>
+<span class="w">    </span><span class="nt">offset_x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">    </span><span class="nt">offset_y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HospitalGarage_extracted.db</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Parking Garage</span>
+<span class="w">    </span><span class="nt">offset_x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">120</span>
+<span class="w">    </span><span class="nt">offset_y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Clinic_extracted.db</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Outpatient Clinic</span>
+<span class="w">    </span><span class="nt">offset_x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">    </span><span class="nt">offset_y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HITOS_extracted.db</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HITOS Block</span>
+<span class="w">    </span><span class="nt">offset_x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">200</span>
+<span class="w">    </span><span class="nt">offset_y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HospitalAuckland_extracted.db</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Auckland Wing</span>
+<span class="w">    </span><span class="nt">offset_x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">    </span><span class="nt">offset_y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">200</span>
+<span class="nt">terrain</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pdf2blend/samples/sample_output.json</span>
+<span class="w">    </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Site Terrain</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">json_elevation_grid</span>
+</code></pre></div>
+<p>The merge script reads the YAML, applies XY offsets to <code>element_transforms</code> and
+<code>elements_rtree</code>, and writes a single <code>demo_precinct_merged.db</code>. Discipline tags
+and GUIDs are preserved — prefixed with the source label to avoid collisions.</p>
+<p><strong>What this demonstrates:</strong>
+- Streaming <code>.blend</code> at 200K+ elements → under 10 MB file
+- Mixed disciplines across buildings in one queryable DB
+- Terrain + buildings in the same spatial index
+- Broadphase clash detection across building boundaries
+- OCI upload of <code>demo_precinct_merged.db</code> as the shared cloud geometry library</p>
+<p><strong>→ Implementation spec:</strong> <code>prompts/S163_demo_precinct.md</code> (to be written after S162)</p>
 
 
 
