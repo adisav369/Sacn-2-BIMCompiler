@@ -1960,3 +1960,735 @@ Tracked against TBKLTN WD-1/01 reference and `layout_audit.txt`.
 | I-13 | DX SH_FRONT/REAR: old L01 level text clip (stale files) | fixed in 2116 gen |
 | I-14 | Reflected ceiling plan (A-07) | status=GAP |
 
+
+---
+
+## 19. Professional Drawing Component Standards
+
+> **Purpose:** This section defines every drawing component to professional
+> Malaysian JKR standard, as this system cannot visually inspect its own output.
+> For each component: exact geometry, template keys, DB source, mandatory log
+> lines, and audit check. A coder reading the log must be able to confirm the
+> drawing is correct WITHOUT opening the DXF file.
+
+---
+
+### 19.1 Sheet Composition
+
+**What it must look like (professional standard):**
+A3 landscape sheet. 10mm border all sides (25mm left for binding).
+Title block panel: right side, 75mm wide, full sheet height.
+Drawing area: everything left of title block separator line.
+Drawing centred in the drawing area with visible margin on all four sides.
+
+**Template keys:**
+```json
+"paper": {
+  "width_mm": 420, "height_mm": 297,
+  "margin_left_mm": 25, "margin_right_mm": 10,
+  "margin_top_mm": 10, "margin_bottom_mm": 10,
+  "title_block_width_mm": 75,
+  "border_weight_mm": 0.50
+}
+```
+
+**Log proof (mandatory):**
+```
+§VALUE paper=420.0x297.0mm margins=25/10/10/10mm title_block=75.0mm (template)
+§VALUE drawing_area_w=305.0mm drawing_area_h=277.0mm (paper - margins - title_block)
+§VALUE building_w={W}mm building_h={H}mm fill_x={pct}% fill_y={pct}% (DB extents vs drawing area)
+§AUDIT FILL: fill_x={pct}% in [10%,70%] → PASS/FAIL
+§AUDIT ASPECT: ratio={r} in [1.2,4.0] → PASS/FAIL
+```
+
+Fill target: building occupies 30–65% of drawing area width and 25–65% of height.
+If fill_x < 10%: building is too small → scale is too small (auto_scale flag).
+If fill_x > 70%: building is too large → margins squeezed.
+
+**Audit check P02:** `layout_audit.py` verifies fill 10%–70%. Currently checks
+"within limit" without logging the exact percentages — must log both values.
+
+---
+
+### 19.2 Title Block Panel
+
+**What it must look like:**
+
+```
+┌─────────────────────────────────┐  ← top of sheet (margin_top)
+│  [jkr.png 15x12mm]              │
+│  PUBLIC WORKS DEPARTMENT MALAYSIA│  ← 3.5mm bold, centred
+│  ─────────────────────────────  │  ← lw 0.50mm
+│                                 │
+│  DUPLEX RESIDENTIAL             │  ← 5.0mm bold (building type §A)
+│  Ifc4 Duplex                    │  ← 3.0mm normal (building name)
+│  ─────────────────────────────  │  ← lw 0.35mm
+│                                 │
+│  PROJECT     │                  │  ← 2.0mm label / 3.0mm value
+│  ────────────────────────────── │
+│  CLIENT      │                  │
+│  ────────────────────────────── │
+│  ARCHITECT   │                  │
+│  ────────────────────────────── │
+│       [architect stamp area]    │  ← reserved zone, 25mm tall
+│  ────────────────────────────── │
+│  BUILDING TYPE │ DUPLEX RESID.  │
+│  ────────────────────────────── │
+│  DRAWING TITLE │ FLOOR PLAN     │
+│  ────────────────────────────── │
+│  DRAWN BY    │                  │
+│  SCALE       │ 1:100            │
+│  DATE        │                  │
+│  CHECKED BY  │                  │
+│  ────────────────────────────── │
+│  DRAWING NO. │ SHEET NO.        │
+│              │ A-01             │
+│  ────────────────────────────── │
+│  REVISION    │                  │  ← PINDAAN NO
+└─────────────────────────────────┘  ← bottom of sheet (margin_bottom)
+```
+
+**Field label mapping (English — §14.1):**
+All labels display in English regardless of `field_name` in DB.
+`SCALE` field value = `f"1:{scale}"` (integer, from template).
+`DATE` field value = from `2d_title_block.default_value WHERE field_name='TARIBULAN'`.
+`DRAWING NO.` + `SHEET NO.` share one row, divided at 50/50 of panel width.
+
+**Architect stamp zone:** 25mm tall reserved rectangle (no text, just border lines).
+Template key: `title_block.stamp_height_mm: 25.0`. Log: `§VALUE stamp_zone=25.0mm`.
+
+**Revision row:** Single row at bottom. `REVISION` label + empty value cell.
+If revisions exist in DB: list `Rev.A`, `Rev.B` etc.
+
+**Log proof:**
+```
+§RENDER TITLEBLOCK fields=12 logo=YES stamp_zone=25mm lang=EN
+§VALUE field[0] label="PROJECT" value="" y={y:.1f}mm
+§VALUE field[1] label="CLIENT" value="" y={y:.1f}mm
+...
+§VALUE field[11] label="REVISION" value="" y={y:.1f}mm
+§AUDIT LANGUAGE: 0 Malay strings in A-TTLB → PASS
+§AUDIT TITLEBLOCK: 12 field rows drawn → PASS
+```
+
+**Critical:** `SCALE` value must be drawn as `1:100` not just `100`.
+`DRAWING TITLE` value must exactly match `{PREFIX}_2D.json pages[].title`.
+
+---
+
+### 19.3 Grid Lines and Bubbles
+
+**What it must look like:**
+
+```
+       (A)  ←─ bubble: circle r=4mm, white fill, label centred
+        │         bubble sits OUTERMOST (beyond all dim lines)
+    ─ ─ ┼ ─ ─    dash-dot line, colour #888888, lw=0.18mm
+        │         line extends 20mm beyond building each side
+ ───────┼─────── building boundary
+        │
+ ─ ─ ─ ┼ ─ ─ ─
+        │
+       (A)  ←─ bubble at other end
+```
+
+**Positioning rule (absolute):**
+Grid line runs from `bld_edge - grid_ext` to `bld_edge + grid_ext + bubble_r*2`.
+Bubble centre at `bld_edge + grid_ext + bubble_r`.
+Dimension lines (tiers) sit BETWEEN building edge and bubble.
+Tier-1 (outer) dim at `bld_edge + tier1_offset_mm`.
+Tier-2 (inner) dim at `bld_edge + tier2_offset_mm`.
+Constraint: `tier2_offset < tier1_offset < grid_ext`.
+
+Current values (template): `tier1=12mm, tier2=6mm, grid_ext=20mm`. ✓
+
+**Label skip rules:** Skip `I` (looks like 1), skip `O` (looks like 0).
+Template provides full sequence; code uses it as-is from `vertical_axis_labels`.
+
+**Dash-dot pattern:** 4mm dash, 1mm gap, 1mm dot, 1mm gap — at paper scale.
+In model space: multiply all values by `scale`. DXF linetype DASHDOT.
+
+**Log proof:**
+```
+§GRID X: 4 axes detected (A,B,C,D) from {n} structural elements
+§RENDER CIRCLE layer=A-GRID src=grid:A pos=(-7735,-) r=400 (model units)
+§RENDER HATCH layer=A-GRID fill=white src=grid:A (bubble white fill)
+§RENDER LINE layer=A-GRID src=grid:A from=(-7735,-14200) to=(-7735,5755) linetype=DASHDOT
+§RENDER TEXT layer=A-GRID src=grid:A label="A" at (-7735,5155) h=300
+§AUDIT GRID_LINES: 7 lines on A-GRID (expected >=3) → PASS
+§AUDIT GRID_DASHDOT: A-GRID linetype=DASHDOT → PASS
+§AUDIT GRID_LABELS: vertical=['A','B','C','D'] horizontal=['1','2','3'] → PASS
+```
+
+---
+
+### 19.4 Dimension Chains (Three Tiers)
+
+**What it must look like:**
+
+```
+(A)─────────────────────────────────────────────────────────(B)
+         │◄─────────── 9900 ─────────────────────►│       ← Tier 1: overall
+         │◄── 3100 ──►│◄──── 3700 ────►│◄── 3100 ►│       ← Tier 2: bay spacing
+         │◄─1300─►│                   │                    ← Tier 3: opening sub-dims
+                  ↑                   ↑
+           45° tick                 45° tick
+```
+
+**Tier definitions:**
+- **Tier 1 (outermost):** overall building dimension. Single span, always INLINE.
+- **Tier 2 (middle):** grid-to-grid bay spacing. Multiple spans. INLINE if bay ≥ 15mm paper; PANEL if < 15mm.
+- **Tier 3 (innermost, adjacent to building):** sub-bay dimensions — door/window openings within a bay, partition wall offsets. **Currently GAP.**
+
+**Terminator geometry (NO arrowheads):**
+```
+Tick = diagonal line at 45°, crossing the dim line.
+half_length = dimensions.tick_half_length_mm (default 1.5mm) × scale
+tick_dx = half_length × cos(45°) = half_length × 0.7071
+tick_dy = half_length × sin(45°) = half_length × 0.7071
+tick line: (dim_x - tick_dx, dim_y - tick_dy) → (dim_x + tick_dx, dim_y + tick_dy)
+```
+
+**Extension line geometry:**
+```
+extension_gap_mm = 2.0mm × scale   (gap between building face and ext line start)
+extension_overshoot_mm = 2.0mm × scale (ext line extends beyond dim line)
+ext_line: from (grid_x, bld_edge + extension_gap) to (grid_x, dim_y + extension_overshoot)
+```
+
+**Text placement:**
+```
+text centred on dim line: x = (grid1.pos + grid2.pos) / 2
+text y = dim_y + dim_txt_h × 0.4  (just above the dim line)
+if bay_paper_mm < crowding_threshold: suppress text (§15 triage)
+if text would overlap neighbour: offset outward with leader line (Tier 3)
+```
+
+**Log proof (per dimension):**
+```
+§DIM X tier=1 A-D: from=-7735 to=6270 dist=14005mm paper=140.1mm@1:100 → INLINE text="14005"
+§DIM X tier=2 A-B: from=-7735 to=-2835 dist=4900mm paper=49.0mm@1:100 → INLINE text="4900"
+§DIM X tier=2 B-C: from=-2835 to=1620 dist=4455mm paper=44.6mm@1:100 → INLINE text="4455"
+§RENDER LINE layer=A-ANNO-DIMS src=dim:A-B y={dim_y:.1f} from=-7735 to=-2835 lw=18
+§RENDER LINE layer=A-ANNO-DIMS src=dim:A-B extline_left from=-7735,{gap} to=-7735,{overshoot}
+§RENDER LINE layer=A-ANNO-DIMS src=dim:A-B tick_left from=(-7735-{dx},{dim_y}-{dy}) to=(-7735+{dx},{dim_y}+{dy})
+§RENDER TEXT layer=A-ANNO-DIMS src=dim:A-B val="4900" at (-5285,{txt_y:.1f})
+§AUDIT ARROWHEADS: 0 ARROW entities → PASS
+```
+
+---
+
+### 19.5 Floor Plan Section Cut
+
+**What it must look like:**
+
+```
+Wall at cut:          ████████████████  ← bold (0.50mm) solid filled black polygon
+Partition at cut:     ▓▓▓▓▓▓▓▓▓▓▓▓▓▓  ← medium (0.35mm) solid filled grey
+Door at cut:          [ opening ]─ ─ ─  ← opening gap + swing arc + leaf line
+Window at cut:        │═══════│         ← double line (frame) + centre glass line
+Furniture (below):    ┌──────┐          ← thin (0.18mm) rectangle
+Room label:           BEDROOM           ← 3.5mm, centred in room
+Room area:            12.3 m²           ← 2.5mm, below room name
+Tag (door):           ①               ← circle with number, A-ANNO-TEXT
+Tag (window):         W1              ← hexagon with code, A-ANNO-TEXT
+```
+
+**Door symbol (professional standard):**
+```
+1. Door leaf: line from hinge point to open position
+   Length = door_width (from DB: element maxX - minX or maxY - minY)
+   Hinge at wall end (determined by which wall face door is in)
+2. Swing arc: quarter-circle from closed to open
+   Centre = hinge point, radius = door_width
+   Arc spans 90° from closed direction to open direction
+   Room side: arc opens toward the larger room (DB: spatial containment or centroid heuristic)
+3. Layer: A-DOOR, lw = 0.25mm
+4. Opening gap: remove wall segment within door width
+```
+
+**Window symbol (professional standard):**
+```
+1. Wall opening gap (same as door)
+2. Two frame lines: parallel to wall face, at wall outer and inner surfaces
+   Offset = wall_thickness × 0.1 (10% of wall thickness = frame reveal)
+3. Glass centre line: single line at wall centre, full opening width
+   Layer: A-GLAZ, lw = 0.25mm
+4. Louvre lines (elevation only): horizontal lines at 3mm spacing inside window rect
+```
+
+**Wall fill (professional standard):**
+```
+Exterior walls: HATCH pattern SOLID on A-WALL-PATT, fill=black
+Interior walls: HATCH pattern SOLID on A-WALL-PRTN, fill=50% grey (ACI colour 9)
+  - Both require LWPOLYLINE on main layer + HATCH on fill layer
+  - HATCH uses same polyline as boundary
+```
+
+**Log proof:**
+```
+§SECTION cut_z=1.2m: 32 CUT, 15 BELOW, 8 ABOVE (DB: 55 elements total)
+§RENDER LWPOLYLINE layer=A-WALL-FULL src=guid:1A2B3C pts=4 lw=50 (exterior cut)
+§RENDER HATCH layer=A-WALL-PATT src=guid:1A2B3C pattern=SOLID fill=black
+§RENDER ARC layer=A-DOOR src=guid:D001 hinge=(-5.2,-1.3) r=0.9m span=90° side=ROOM
+§RENDER LINE layer=A-GLAZ src=guid:W001 glass_centre at y=-0.95 x=(-3.2 to -1.8)
+§RENDER TEXT layer=A-ANNO-TEXT src=2d_room_label:BEDROOM val="BEDROOM" at (-4.1,-0.5) h=350
+§RENDER TEXT layer=A-ANNO-TEXT src=computed val="12.3 m²" at (-4.1,-1.2) h=250
+§AUDIT DOORS: 3 arcs on A-DOOR → PASS (matches door count=3)
+§AUDIT WINDOWS: 12 lines on A-GLAZ → PASS (4 windows × 3 lines each)
+```
+
+---
+
+### 19.6 Elevation View
+
+**What it must look like:**
+
+```
+     (A)       (B)       (C)       (D)
+      │         │         │         │        ← vertical grid lines, dash-dot
+──────┤         │         │         ├──      ← BEAM/CEILING LEVEL ▽ +2.300
+      │  ┌────┐ │ ┌──────┐│ ┌────┐  │        ← wall openings (windows/doors)
+      │  │////│ │ │//////││ │////│  │        ← window glass hatching (horizontal)
+──────┤  └────┘ │ └──────┘│ └────┘  ├──      ← GRD. FLOOR LEVEL ▽ +0.000
+══════╪═════════╪═════════╪═════════╪══      ← thick ground line (0.50mm)
+ ─────┼─────────┼─────────┼─────────┼──      ← APRON LEVEL (150mm below FFL)
+──────┴─────────┴─────────┴─────────┴──      ← GRD. LEVEL ▽ -0.150
+```
+
+**Level markers (professional standard):**
+```
+Symbol: equilateral triangle pointing DOWN toward the level line
+Triangle dimensions: base = 4mm × scale, height = 3mm × scale
+Tip at: (marker_x, level_z × 1000) — the exact elevation
+Dashed line: full width of drawing area at level_z × 1000
+  from (bld_min_x - 5mm × scale) to (bld_max_x + 5mm × scale)
+  layer=A-GRID, linetype=HIDDEN, lw=0.18mm
+Label: "GRD. FLOOR LEVEL  +0.000" — right of triangle, 2.5mm text
+  offset from marker_x: template.level_markers.text_right_offset_m × 1000
+
+Four mandatory levels for single-storey (from DB):
+  GRD. LEVEL:         -0.150m (150mm below FFL — apron drain level)
+  APRON LEVEL:        -0.000m (apron / path finish level, JKR convention 150mm)
+  GRD. FLOOR LEVEL:   +0.000m (FFl, storey_elevation from spatial_structure)
+  BEAM/CEILING LEVEL: detect from IfcBeam maxZ or storey height (typically +2.3 to +3.0m)
+```
+
+**Height dimension (professional standard):**
+```
+Height dim between consecutive levels:
+  dim line: vertical, at x = marker_x - 10mm × scale (left of building)
+  two extension lines: horizontal at each level, from bld_min_x to dim_x
+  tick marks: 45° at each end
+  text: "3000" centered on dim line, rotated 90° or horizontal beside it
+  (Malaysian practice: horizontal text beside dim line, not rotated)
+```
+
+**Log proof:**
+```
+§LEVELS detected: GRD=-150mm APRON=0mm FFL=0mm CLG=2300mm (from DB)
+§RENDER TRIANGLE layer=A-GRID src=level:FFL tip=(-7735,0) base_w=4000 h=3000
+§RENDER LINE layer=A-GRID src=level:FFL dashed full_width from=-8235 to=6770 y=0
+§RENDER TEXT layer=A-ANNO-TEXT src=2d_level_marker:FFL val="GRD. FLOOR LEVEL  +0.000" at (-6935,200)
+§DIM HEIGHT FFL→CLG: 0→2300mm = 2300mm
+§RENDER LINE layer=A-ANNO-DIMS src=dim:FFL-CLG vertical x=-8735 from=0 to=2300
+§RENDER TEXT layer=A-ANNO-DIMS src=dim:FFL-CLG val="2300" at (-9235,1150) h=250
+§AUDIT LEVELS: 4 triangle markers on A-GRID → PASS
+§AUDIT LEVEL_LABELS: "GRD. FLOOR LEVEL", "BEAM/CEILING LEVEL" found → PASS
+```
+
+---
+
+### 19.7 Roof Plan
+
+**What it must look like:**
+
+```
+        (A)      (B)      (C)      (D)
+    700↓  ╔══════════════════════╗ ↓700     ← eave overhang dim (all sides)
+         ║╲                    /║
+         ║ ╲                  / ║
+         ║  ╲                /  ║            ← ridge line (dashed)
+         ║   ╲              /   ║
+         ║    ╲────────────/    ║
+         ║     slope arrows ↓  ║            ← one per bay
+    700→ ╚══════════════════════╝ ←700
+```
+
+**Ridge line:** dashed, linetype HIDDEN or DASHED.
+Detected as the line connecting the highest Z points of roof elements.
+For gable: one horizontal ridge line at mid-span.
+For hip: four ridge lines meeting at centre point.
+
+**Slope arrows (professional standard):**
+```
+One arrow per bay. Positioned at bay centre.
+Arrow: thin line (0.18mm) pointing DOWNSLOPE (toward eave)
+Length: 3mm × scale
+Arrowhead: small filled triangle at the downslope end (exception to no-arrowhead rule:
+  slope arrows ARE arrowheads — they indicate direction of water run-off)
+Label: "1:X" slope ratio beside arrow (if slope ratio available from DB; else omit)
+```
+
+**Eave overhang dim (professional standard):**
+```
+For each side with overhang > 50mm:
+  dim line parallel to building face, outside eave line
+  value = eave_edge_to_wall_face_mm (not eave_to_grid)
+  tick terminators (standard dim style)
+  value logged: §DIM OVERHANG N=700mm S=700mm E=0mm W=700mm
+```
+
+**Log proof:**
+```
+§RIDGE detected: type=gable ridge_y=0.0m (mid-span) at z=4500mm
+§RENDER LINE layer=A-ROOF src=ridge dashed from=(-7735,0) to=(6270,0) y=0
+§RENDER ARROW layer=A-ROOF src=slope:bay_AB at (-5285,-500) dir=S len=3000
+§RENDER TEXT layer=A-ANNO-DIMS src=dim:overhang-N val="700" at (0,{y})
+§AUDIT RIDGE: 1 dashed line on A-ROOF → PASS
+§AUDIT SLOPE_ARROWS: 3 arrows (= n_bays=3) on A-ROOF → PASS
+§AUDIT OVERHANG_DIMS: 3 sides (N,S,W; E=0→omitted) → PASS
+```
+
+---
+
+### 19.8 MEP Electrical Plan
+
+**What it must look like (from TBKLTN E-01):**
+
+```
+  Symbols (paper size: symbol circle ≈ 5mm dia):
+
+  Ceiling light:   ⊕  circle + cross (4 lines at 90°)
+  Ceiling fan:     ⊛  circle + asterisk (fan.png or 4 arcs at 45°)
+  Switch 1-gang:   ─⌒  line + arc (open semicircle)
+  Switch 2-gang:   ─⌒⌒ line + double arc
+  Switch 3-gang:   ─⌒⌒⌒
+  Power outlet:    ⊐─  D-shape + line (socket symbol)
+  Dist. board:     ▼   filled triangle (large, 8mm paper)
+  Elec. meter:     ⓜ   circle with M
+  Wall light:      ◑   half-circle at wall face
+
+  Wiring:          ─────────────  solid thin line (0.13mm) connecting fixtures to DB
+```
+
+**Symbol construction (DXF geometry):**
+```python
+r = 2.5 * scale  # 2.5mm paper radius
+
+CEILING_LIGHT: circle(r) + line(-r,0)(+r,0) + line(0,-r)(0,+r)
+CEILING_FAN:   circle(r) + [if fan.png: insert image else: 4 lines at 45° intervals]
+SWITCH_1:      line(-r,0)(0,0) + arc centre=(0,0) r=r from=0° to=180° (open top)
+POWER_OUTLET:  arc centre=(0,0) r=r from=-90° to=90° + line(r,0)(r+r*0.5,0)
+DIST_BOARD:    filled triangle: pts=[(0,+r*1.5),(-r,−r),(+r,−r)] layer=A-ELEC-POWR
+WALL_LIGHT:    arc at wall face, half-circle into room
+```
+
+**Wiring logic:**
+```
+For each room: collect all electrical terminals in that room.
+Connect each terminal to the nearest switch in same room with a thin line.
+Connect each switch to the distribution board (triangle symbol).
+Route: straight lines (no bend routing in first implementation).
+Layer: A-ELEC-POWR, lw = 0.13mm.
+```
+
+**Circuit grouping (future):** Identify circuits by DB element grouping or spatial proximity.
+
+**Log proof:**
+```
+§MEP ELECTRICAL: 9 ceiling lights, 5 fans, 4 switches, 8 outlets, 1 dist_board
+§RENDER SYMBOL layer=A-MEP-ELEC type=CEILING_LIGHT src=guid:EL001 at (cx,cy) r=250
+§RENDER SYMBOL layer=A-MEP-ELEC type=CEILING_FAN src=fan.png at (cx,cy) size=500x500
+§RENDER LINE layer=A-ELEC-POWR src=wiring dist=3.5m from=(cx1,cy1) to=(cx2,cy2)
+§MEP WIRING: 14 run lines drawn (9 lights + 5 fans → nearest switch → dist_board)
+§AUDIT MEP_ELEC: 9 CEILING_LIGHT + 5 FAN + 4 SWITCH + 8 OUTLET + 1 DIST_BOARD → PASS
+§MEP LEGEND: 5 types, 27 elements total
+```
+
+---
+
+### 19.9 MEP Plumbing Plan
+
+**What it must look like (from TBKLTN page 1 legend):**
+
+```
+  Fixtures (paper size: symbol ≈ 5mm):
+
+  WC (Water Closet):    □─  rectangle + connector line
+  Basin:                ○   oval
+  Sink:                 [─]  rectangle with drain
+  Shower:               ╳   X in circle
+  Bath:                 [──]  elongated rectangle
+  Floor trap:           ⊟   square with X
+  Tap:                  ─╮  line + arc
+
+  Pipe runs:
+    Soil pipe:          ─ ─ ─  dashed (lw 0.35mm)
+    Waste pipe:         ─────  solid (lw 0.25mm)
+```
+
+**WC symbol (professional standard):**
+```
+Rectangle: 500mm × 350mm (typical WC footprint), centred at element centroid
+Bowl: ellipse inside rectangle (rear half)
+Tank: smaller rectangle at rear (wall side)
+All at lw = 0.18mm, layer = A-MEP-PLMB
+Orientation: aligned with element bounding box long axis
+```
+
+**Pipe run symbol:**
+```
+IfcFlowSegment: draw along long axis of bbox
+  Horizontal (maxX-minX > maxY-minY): line (minX,midY)→(maxX,midY)
+  Vertical: line (midX,minY)→(midX,maxY)
+  Soil (from toilet): DASHED, lw=35
+  Waste (from sink/basin): solid, lw=25
+  Classification: soil = element_name contains 'soil' or connected to WC
+```
+
+**Log proof:**
+```
+§MEP PLUMBING: 4 WC, 2 sink, 2 shower, 2 basin, 1 bath (DB terminals)
+§MEP SEGMENTS: 427 IfcFlowSegment → {n} horizontal + {m} vertical drawn
+§RENDER SYMBOL layer=A-MEP-PLMB type=WC src=guid:P001 at (cx,cy) box=500x350 orient=NS
+§RENDER LINE layer=A-MEP-PLMB src=guid:S001 type=soil from=(x1,y1) to=(x2,y2) lw=35 DASHED
+§AUDIT MEP_PLMB: 4 WC + 2 SINK + 2 SHOWER + 2 BASIN → PASS
+§AUDIT MEP_SEGMENTS: {n} lines on A-MEP-PLMB → PASS (expected > 0)
+```
+
+---
+
+### 19.10 North Arrow
+
+**What it must look like:**
+
+```
+      ▲
+     /│\
+    / │ \        ← right half filled black, left half white
+   /  │  \
+  /   │   \
+ /    N    \
+└───────────┘   (no base — just the arrow head)
+```
+
+**Professional geometry:**
+```
+Arrow is a composite symbol: split diamond (left=white, right=black)
+Centre at placement point (top-right of drawing area, inside border)
+Size: north_arrow.size_mm × scale (default 10mm)
+
+Black (right) half: polygon [(0,0),(size*0.3,0),(0,size),(0,0)]
+White (left) half:  polygon [(0,0),(-size*0.3,0),(0,size),(0,0)]
+"N" label: centred at (0, -size*0.4), h = size*0.4
+
+Layer: A-ANNO (inserted as block in DXF: INSERT entity referencing BLOCK "NORTH_ARROW")
+```
+
+**Log proof:**
+```
+§RENDER NORTH_ARROW at ({x:.1f},{y:.1f}) size={sz}mm layer=A-ANNO
+§AUDIT NORTH_ARROW: 1 INSERT on A-ANNO (plan views only) → PASS
+```
+
+---
+
+### 19.11 Scale Bar
+
+**What it must look like:**
+
+```
+├──┼──┼──┼──┼──┤   ← alternating filled/empty segments
+0  1  2  3  4  5m
+   scale 1:100
+```
+
+**Professional geometry:**
+```
+Total length: 5m at current scale → 5m / scale × 1000 = 50mm paper at 1:100
+Segments: 5 × 10mm paper each (alternating filled/empty)
+Height: 2mm paper
+Alternating fill: SOLID hatch, segments 0,2,4 = black; 1,3 = white
+Tick marks: vertical line at each segment boundary, height = 3mm
+Labels: "0", "1", "2", "3", "4", "5m" below each tick mark (2.0mm text)
+  Note: "5m" appended with unit; others are bare numbers
+Text baseline: 1mm below tick mark bottom
+"scale 1:{scale}" centred below bar (2.5mm, ACI 8 grey)
+Placement: bottom-left of drawing area, 10mm from left border, 5mm from bottom border
+```
+
+**Current bug pattern (seen in 1201 stale files):**
+Scale bar labels "0","1","2","5m" overlap → caused by `sb_scale_factor = 1000/scale`
+instead of `MM`. Fix already applied in 2116 generation. Log must confirm separation:
+
+**Log proof:**
+```
+§SCALE_BAR: total=50.0mm paper segments=5 each=10.0mm at x0={x:.1f} y0={y:.1f}
+§RENDER HATCH layer=A-ANNO src=scale_bar seg=0 fill=black x=({x0},{x0+10})
+§RENDER HATCH layer=A-ANNO src=scale_bar seg=1 fill=white x=({x1},{x1+10})
+§RENDER TEXT layer=A-ANNO-DIMS src=scale_bar val="0" at ({x0},{y_lbl:.1f}) sep={sep:.1f}mm
+§RENDER TEXT layer=A-ANNO-DIMS src=scale_bar val="1" at ({x1},{y_lbl:.1f}) sep={sep:.1f}mm
+§RENDER TEXT layer=A-ANNO-DIMS src=scale_bar val="5m" at ({x5},{y_lbl:.1f}) sep={sep:.1f}mm
+§AUDIT SCALE_BAR: 5 segments, label "5m" found, min_sep={sep:.1f}mm (expected >5mm) → PASS
+```
+
+`min_sep` is minimum gap between adjacent label bboxes. Must be > 5mm paper. If < 0: overlap.
+
+---
+
+### 19.12 Room Labels
+
+**What it must look like:**
+
+```
+┌─────────────────────┐
+│                     │
+│      BEDROOM        │  ← room name: 3.5mm, centred in room
+│       12.3 m²       │  ← area: 2.5mm, below name, greyed
+│                     │
+└─────────────────────┘
+```
+
+**Room detection from DB:**
+```
+1. `infer_rooms()` clusters furniture by type → room centroid
+2. Look up display_text from `2d_room_label WHERE room_type LIKE '%{type}%'`
+3. Area = convex hull of furniture cluster bounding boxes (approximate)
+4. If two rooms overlap by > 50% of smaller room → merge, use primary room label
+5. If same label at two centroids within 2m (duplex mirror) → keep only first storey's
+```
+
+**Collision detection (professional requirement):**
+```
+After all labels placed: compute text bboxes
+For any overlapping pair:
+  Option A: offset one label by half room height (vertical push)
+  Option B: if room too small for label, place leader line to margin
+  Option C: suppress if area < min_room_area_m2 (template key)
+Min room area threshold: room_labels.min_room_area_m2 (default 1.5)
+```
+
+**Log proof:**
+```
+§ROOM BEDROOM: centroid=(-4.1,-0.5) area=12.3m² src=2d_room_label:BEDROOM
+§ROOM LIVING ROOM: centroid=(-1.2,-0.5) area=24.1m² src=2d_room_label:LIVING_AREA
+§ROOM COLLISION: BEDROOM↔LIVING ROOM overlap=2.1mm → shift BEDROOM by +3.5mm
+§RENDER TEXT layer=A-ANNO-TEXT src=room:BEDROOM val="BEDROOM" at (-4.1,0.8) h=350
+§RENDER TEXT layer=A-ANNO-TEXT src=room:BEDROOM val="12.3 m²" at (-4.1,0.0) h=250
+§AUDIT ROOMS: 3 room labels placed, 0 collisions after adjustment → PASS
+```
+
+---
+
+### 19.13 Door and Window Tags
+
+**What it must look like (TB-LKTN):**
+
+```
+Door tag:   circle with bold number    D1  D2  D3...
+Window tag: hexagon with W code        W1  W2  W3...
+Placed adjacent to element, outside room (toward nearest wall)
+Connected with short leader line when space is tight
+```
+
+**Tag numbering:**
+```
+Doors: D1, D2... (sequential per floor plan, left-to-right top-to-bottom)
+Windows: W1, W2... (same order)
+Multi-storey: suffix storey indicator or use separate sequence per storey
+  (to avoid W1 Level1 ↔ W15 Level2 overlap — §F1 fix)
+Storey prefix option: Level 1 = W1..W14, Level 2 = W1..W14 (suppress Level 2 on A-01)
+```
+
+**Tag geometry:**
+```
+Tag shape from template annotation_tags.shape:
+  circle: centre + bold number text, r = annotation_tags.size_mm × scale / 2
+  hexagon: 6-sided polygon, inscribed circle r = size_mm × scale / 2
+
+Leader line: from tag centre to element centroid
+  Length: clipped to fit between tag edge and element face
+  Only drawn if distance > tag_size × 2
+
+Layer: A-ANNO-TEXT, lw = 0.18mm
+```
+
+**Log proof:**
+```
+§TAG D1: door guid:D001 at (x,y) tag_centre=({tx},{ty}) storey=Level 1
+§TAG W1: window guid:W001 at (x,y) shape=hexagon storey=Level 1
+§TAG SUPPRESS: W15 storey=Level 2 suppressed (current sheet=Level 1, §F1 fix)
+§RENDER TEXT layer=A-ANNO-TEXT src=guid:D001 val="D1" at ({tx},{ty}) shape=circle r=200
+§AUDIT TAGS: 3 D-tags, 4 W-tags, 0 duplicates on current storey → PASS
+```
+
+---
+
+### 19.14 Log File Structure
+
+Every `write_*` function produces a per-view log. Structure:
+
+```
+=== LOG: {PREFIX}_{VIEW}_{ts}.txt ===
+Generated: {datetime}
+Function:  write_floor_plan_dxf
+DB:        input/SH_extracted.db
+
+--- §ENTRY ---
+§ENTRY write_floor_plan_dxf(db_path='input/SH_extracted.db', out_dxf='output/DXF/SH_FLOOR_xxx.dxf', scale=100)
+
+--- §VALUE (layout constants) ---
+§VALUE paper_w=420.0mm (template.paper.width_mm)
+§VALUE paper_h=297.0mm (template.paper.height_mm)
+§VALUE margin_l=25.0mm margin_r=10.0mm (template.paper.margins)
+§VALUE tb_width=75.0mm (template.paper.title_block_width_mm)
+§VALUE drawing_area_w=305.0mm drawing_area_h=277.0mm (computed)
+§VALUE scale=100 (template or arg)
+§VALUE grid_ext=20.0mm bubble_r=4.0mm (template.grid)
+§VALUE tier1=12.0mm tier2=6.0mm ext_gap=2.0mm (template.dimensions)
+§VALUE crowding_threshold=15.0mm (template.grid.crowding_threshold_mm)
+§VALUE cut_z=1.2m (drafting convention §5.1a)
+
+--- §QUERY (DB reads) ---
+§QUERY elements_meta+elements_rtree: 55 rows (11 walls, 3 doors, 4 windows, 14 furniture, 23 other)
+  sample[0]: IfcWall guid=1A2B3C element_name='Basic Wall:Generic 200mm' bbox=(-7.735,-1.320,-7.535,4.555)
+§QUERY 2d_level_marker: 9 rows loaded
+  sample[0]: code=FFL display_text='GRD. FLOOR LEVEL' typical_z=0.0
+
+--- §SECTION ---
+§SECTION cut_z=1.2m: 32 CUT, 15 BELOW, 8 ABOVE
+
+--- §GRID ---
+§GRID X: 4 axes (A,B,C,D) from 11 structural elements
+§GRID Y: 3 axes (1,2,3)
+§TRIAGE X: A-B=4900mm (49.0mm@1:100) → INLINE
+§TRIAGE X: B-C=4455mm (44.6mm@1:100) → INLINE
+...
+§TRIAGE PANEL: 0 bays listed → ALL DIMS SHOWN IN DRAWING
+
+--- §RENDER (entities written) ---
+§RENDER LWPOLYLINE layer=A-WALL-FULL src=guid:1A2B3C pts=4 lw=50
+§RENDER HATCH layer=A-WALL-PATT src=guid:1A2B3C fill=solid
+§RENDER ARC layer=A-DOOR src=guid:D001 hinge=(-5.2,-1.3) r=900 span=90°
+...
+(one line per entity — truncated in this spec for brevity)
+
+--- §AUDIT ---
+§AUDIT BORDER: 28 entities on A-TTLB → PASS
+§AUDIT GRID_LINES: 7 on A-GRID → PASS
+§AUDIT LANGUAGE: 0 Malay strings → PASS
+§AUDIT ARROWHEADS: 0 ARROW entities → PASS
+§AUDIT TRIAGE_PANEL: 0 bays listed = triage PANEL count 0 → PASS
+...
+
+--- §EXIT ---
+§EXIT write_floor_plan_dxf: 247 entities written to SH_FLOOR_xxx.dxf
+  walls=32 grids=7 dims=7 rooms=3 tags=7 title_block=38 border=4 north=3 scalebar=12
+=== END ===
+```
+
+**Rule:** if a check is FAIL, the log MUST include the exact values that failed.
+`§AUDIT FILL: fill_x=8% < 10% → FAIL (building too small for scale — try scale=50)`
+A coder reads one line and knows exactly what to change.
+

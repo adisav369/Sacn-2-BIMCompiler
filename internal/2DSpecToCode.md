@@ -218,14 +218,27 @@ Full specs in `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §18.
 
 | Section | Status | Spec ref |
 |---------|--------|----------|
-| §14.1 English-only rule | N — not implemented | 2D_ARCHITECTURAL_LAYOUT.md §14.1 |
-| §14.2 JKR logo in title block | N | §14.2 |
-| §14.3 Fan symbol (fan.png) | N | §14.3 |
+| §14.1 English-only rule + field label mapping | N | §14.1 |
+| §14.2 JKR logo in title block (jkr.png) | N | §14.2 |
+| §14.3 Fan symbol (fan.png / asterisk fallback) | N | §14.3 |
 | §15 Grid dim triage function | N | §15 |
-| §16 Per-view log files + RENDER events | N | §16 |
-| §16.6 Conformity log format | N | §16.6 |
-| §17 MEP segment rendering | N | §17.3 |
-| §17.4 Fitting + controller symbols | N | §17.4 |
+| §16 Per-view log files + mandatory event types | N | §16 |
+| §16.6 Conformity log format with VALUES | N | §16.6 |
+| §17 MEP segment/fitting/controller rendering | N | §17.3–17.4 |
+| §19.1 Sheet composition proof (log fill% + aspect) | N | §19.1 |
+| §19.2 Title block: stamp zone, REVISION row, SCALE value | N | §19.2 |
+| §19.3 Grid bubble log proof (§RENDER CIRCLE + HATCH per bubble) | N | §19.3 |
+| §19.4 Dim chain log proof (§DIM per span, §RENDER per entity) | N | §19.4 |
+| §19.5 Floor plan: wall fill, door swing, window glass log | N | §19.5 |
+| §19.6 Elevation: 4 level markers, height dim log proof | N | §19.6 |
+| §19.7 Roof plan: ridge, slope arrows, overhang log proof | N | §19.7 |
+| §19.8 Electrical: symbol geometry, wiring lines, legend QTY | N | §19.8 |
+| §19.9 Plumbing: WC/sink symbols, soil vs waste pipe style | N | §19.9 |
+| §19.10 North arrow: split diamond geometry, block insert | N | §19.10 |
+| §19.11 Scale bar: alternating fill, min_sep audit, lw=13 | N | §19.11 |
+| §19.12 Room labels: collision detection, min area filter | N | §19.12 |
+| §19.13 Door/window tags: storey suppression (§F1 fix) | N | §19.13 |
+| §19.14 Log file structure: per-view file, all section headers | N | §19.14 |
 
 ## Summary
 
