@@ -1181,10 +1181,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fallback-existing-blend-files-work-unchanged" class="md-nav__link">
+  <a href="#fallback-existing-blend-files-and-small-projects-work-unchanged" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fallback — existing .blend files work unchanged
+        Fallback — existing .blend files and small projects work unchanged
       
     </span>
   </a>
@@ -2450,10 +2450,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fallback-existing-blend-files-work-unchanged" class="md-nav__link">
+  <a href="#fallback-existing-blend-files-and-small-projects-work-unchanged" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fallback — existing .blend files work unchanged
+        Fallback — existing .blend files and small projects work unchanged
       
     </span>
   </a>
@@ -4166,10 +4166,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fallback-existing-blend-files-work-unchanged" class="md-nav__link">
+  <a href="#fallback-existing-blend-files-and-small-projects-work-unchanged" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fallback — existing .blend files work unchanged
+        Fallback — existing .blend files and small projects work unchanged
       
     </span>
   </a>
@@ -5016,15 +5016,31 @@ just invisible geometry. Fully graceful.</p>
 addon-level hooks — standard Blender API. All changes land in
 <code>federation/__init__.py</code>, which already registers <code>load_post</code> handlers today.
 Zero changes to Bonsai core, zero risk to the existing Bonsai IFC workflow.</p>
-<h3 id="fallback-existing-blend-files-work-unchanged">Fallback — existing <code>.blend</code> files work unchanged<a class="headerlink" href="#fallback-existing-blend-files-work-unchanged" title="Permanent link">&para;</a></h3>
+<h3 id="fallback-existing-blend-files-and-small-projects-work-unchanged">Fallback — existing <code>.blend</code> files and small projects work unchanged<a class="headerlink" href="#fallback-existing-blend-files-and-small-projects-work-unchanged" title="Permanent link">&para;</a></h3>
 <p>Detection is one line per object:</p>
 <div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;geometry_hash&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">vertices</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
     <span class="c1"># streaming .blend — stub mesh, rehydrate from DB</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="c1"># legacy embedded .blend — mesh already present, leave as-is</span>
 </code></pre></div>
-<p>Old <code>.blend</code> files with embedded LODs continue to open exactly as before.
-New saves become thin. The two modes coexist without conflict.</p>
+<p>Old <code>.blend</code> files with embedded LODs open exactly as before. The mesh presence
+IS the mode flag — no version field needed.</p>
+<p><strong>Size-based auto-switch</strong> — streaming activates automatically above a threshold:</p>
+<div class="highlight"><pre><span></span><code><span class="n">STREAMING_THRESHOLD</span> <span class="o">=</span> <span class="mi">50_000</span>  <span class="c1"># elements — configurable</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">should_stream</span><span class="p">(</span><span class="n">db_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="s2">&quot;SELECT COUNT(*) FROM elements_meta&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">count</span> <span class="o">&gt;=</span> <span class="n">STREAMING_THRESHOLD</span>
+</code></pre></div>
+<p>Below 50K elements: Stage 2 embeds meshes as today — fast open, works fully
+offline, no DB dependency at runtime. Above 50K: streaming mode activates,
+scene graph only, DB stays the geometry store. The threshold is one config
+line — tune it per deployment.</p>
+<p>This means small projects (SH, DX, FK) are unaffected. Large projects (Hospital,
+LTU, Baku-scale stadiums) get streaming automatically. Backward compatibility
+is unconditional — it is structurally impossible to break an existing <code>.blend</code>
+because the switch reads mesh presence, not a stored flag.</p>
 <h3 id="todo-1-digital-twin-sync-automatic-on-save">TODO 1 — Digital twin sync (automatic, on save)<a class="headerlink" href="#todo-1-digital-twin-sync-automatic-on-save" title="Permanent link">&para;</a></h3>
 <p>The DB and the <code>.blend</code> are dual representations of the same building.
 <code>save_pre</code> already fires on every save — the same handler that strips meshes
