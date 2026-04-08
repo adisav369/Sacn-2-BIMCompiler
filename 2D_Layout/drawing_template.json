@@ -5,7 +5,13 @@
     "size": "A3",
     "width_mm": 420,
     "height_mm": 297,
+    "_height_note": "Fallback only. When fitted=true, height is computed per §7.1a.",
     "orientation": "landscape",
+    "fitted": true,
+    "fitted_min_height_mm": 150,
+    "fitted_max_height_mm": 290,
+    "fitted_extra_bottom_mm": 20,
+    "_fitted_extra_bottom_note": "Extra breathing room below building in fitted mode. Increase if drawing feels tight.",
     "margins": {
       "left": 25,
       "top": 10,
@@ -76,7 +82,8 @@
     "bubble_fill": "#FFFFFF",
     "label_font_height_mm": 3.5,
     "label_font_weight": "bold",
-    "extend_beyond_building_mm": 15.0,
+    "extend_beyond_building_mm": 20.0,
+    "min_structural_bay_m": 1.0,
     "line_style": "dash_dot",
     "vertical_axis_labels":   "A,B,C,D,E,F,G,H,J,K,L,M,N",
     "horizontal_axis_labels": "1,2,3,4,5,6,7,8,9,10,11,12",
@@ -96,9 +103,10 @@
     "tick_half_length_mm": 1.5,
     "extension_gap_mm": 2.0,
     "extension_overshoot_mm": 2.0,
-    "tier_1_offset_mm": 26,
-    "tier_2_offset_mm": 18,
-    "tier_3_offset_mm": 10,
+    "tier_1_offset_mm": 12,
+    "tier_2_offset_mm": 6,
+    "tier_3_offset_mm": 2,
+    "panel_clearance_mm": 5.0,
     "_tier_1": "Overall building extent",
     "_tier_2": "Bay spacing (grid to grid)",
     "_tier_3": "Openings, wall segments, sill heights"
@@ -138,29 +146,33 @@
     "unit": "m",
     "bar_height_mm": 2.0,
     "font_height_mm": 2.0,
-    "placement": "below_title"
+    "placement": "below_title",
+    "label_stagger": true
   },
 
   "title_block": {
-    "_note": "Field labels and order from 2d_title_block table. Values filled per project.",
-    "header": "JABATAN KERJA RAYA MALAYSIA",
+    "_note": "Field labels in English (TB-LKTN / JKR standard, English edition).",
+    "header": "PUBLIC WORKS DEPARTMENT MALAYSIA",
     "schedule_header": "DOOR & WINDOW SCHEDULE",
     "label_column_ratio": 0.30,
     "value_column_ratio": 0.70,
     "font_height_label_mm": 2.0,
     "font_height_value_mm": 3.0,
+    "font_height_building_type_mm": 5.0,
+    "font_height_building_name_mm": 3.0,
+    "sync_building_type_field": true,
     "fields": [
-      { "key": "PROJEK",         "label": "PROJEK" },
-      { "key": "PEMILIK",        "label": "PEMILIK" },
-      { "key": "ARKITEK",        "label": "ARKITEK" },
-      { "key": "JENIS_BANGUNAN", "label": "JENIS BANGUNAN", "default": "RUMAH RAKYAT" },
-      { "key": "TAJUK_LUKISAN",  "label": "TAJUK LUKISAN" },
-      { "key": "DILUKIS",        "label": "DILUKIS OLEH" },
-      { "key": "UKURAN",         "label": "UKURAN", "default": "A3" },
-      { "key": "HARIBULAN",      "label": "HARIBULAN" },
-      { "key": "NO_LUKISAN",     "label": "NO. LUKISAN" },
-      { "key": "DISEMAK",        "label": "DISEMAK OLEH" },
-      { "key": "PINDAAN",        "label": "PINDAAN NO." }
+      { "key": "PROJEK",         "label": "PROJECT" },
+      { "key": "PEMILIK",        "label": "CLIENT" },
+      { "key": "ARKITEK",        "label": "ARCHITECT" },
+      { "key": "JENIS_BANGUNAN", "label": "BUILDING TYPE", "default": "RESIDENTIAL" },
+      { "key": "TAJUK_LUKISAN",  "label": "DRAWING TITLE" },
+      { "key": "DILUKIS",        "label": "DRAWN BY" },
+      { "key": "UKURAN",         "label": "SCALE", "default": "1:100" },
+      { "key": "HARIBULAN",      "label": "DATE" },
+      { "key": "NO_LUKISAN",     "label": "DRAWING NO." },
+      { "key": "DISEMAK",        "label": "CHECKED BY" },
+      { "key": "PINDAAN",        "label": "REVISION NO." }
     ]
   },
 
@@ -170,6 +182,18 @@
     "font_weight": "normal",
     "line_weight_mm": 0.18,
     "line_style": "dashed",
+    "text_right_offset_m": 0.8,
+    "label_abbreviations": {
+      "ROOF LEVEL":        "ROOF LVL",
+      "BEAM/CEILING LEVEL": "CEIL. LVL",
+      "HEAD LEVEL":        "HEAD LVL",
+      "SILL LEVEL":        "SILL LVL",
+      "GRD. FLOOR LEVEL":  "FL. LVL",
+      "GRD. LEVEL":        "GRD. LVL",
+      "EAVE LEVEL":        "EAVE LVL",
+      "1ST FLOOR LEVEL":   "1/F LVL",
+      "2ND FLOOR LEVEL":   "2/F LVL"
+    },
     "defaults": [
       { "label": "GRD. LEVEL",        "elevation_m":  0.00 },
       { "label": "GRD. FLOOR LEVEL",  "elevation_m":  0.00 },
@@ -219,5 +243,19 @@
     "wall":    ["V1 — 100mm Teablock", "V2 — 4mm Teablock single", "V4 — 1500mm ceramic tiles"],
     "ceiling": ["G1 — Gypsum board"],
     "roof":    ["R1 — Metal roofing with prefab trusses", "R2 — GI flashing"]
+  },
+
+  "proof_render": {
+    "_note": "Controls DXF→SVG proof renderer. Separation of concern: DXF layers are for CAD software, proof_render controls what the human sees.",
+    "skip_entity_types": ["HATCH"],
+    "_skip_hatch_reason": "HATCH = DXF fill for CAD viewers. LWPOLYLINE on A-WALL-PATT already provides fill=black in SVG. HATCH duplicates geometry and adds visual noise.",
+    "skip_layers": ["A-WALL-FULL", "A-WALL-PRTN"],
+    "_skip_wall_layers_reason": "A-WALL-FULL and A-WALL-PRTN are outline-only polygons. A-WALL-PATT provides fill=black+stroke=black — one polygon per wall. Skipping outline layers removes 30+ duplicate fill=none polygons that cause blurry/heavy edges.",
+    "furniture_fill": "#F0F0F0",
+    "_furniture_fill_reason": "Match reference: furniture as light gray filled rectangles with gray stroke. Reference archive has 14 F0F0F0 fills for furniture.",
+    "wall_fill_layer": "A-WALL-PATT",
+    "_wall_fill_layer_reason": "The canonical wall fill layer. Proof renderer uses fill=#000000 + stroke=#000000 on this layer only.",
+    "bold_text_min_height_mm": 3.0,
+    "_bold_text_reason": "Text with paper-height >= this value renders as font-weight=bold. Applies to drawing title (4.5mm), room labels (3.5mm), title block values (3.0mm). Labels and dim text (2.0-2.5mm) stay normal."
   }
 }
