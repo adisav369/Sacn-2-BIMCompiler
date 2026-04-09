@@ -481,6 +481,43 @@ def check_grid_sources(sheet, entities):
                  f'0/{grid_count}')
 
 
+# ── I-11: MEP bleed check ──
+
+# MEP layers that must NOT appear on architectural floor plan (A-01)
+_MEP_LAYERS = frozenset({'A-MEP-ELEC', 'A-MEP-PLMB'})
+
+def check_no_mep_on_arch(sheet, entities, dt):
+    """NO_MEP_BLEED: architectural floor plan must not contain MEP entities.
+    I-11: IfcFlow* elements belong on MEP pages only (E-01, M-01)."""
+    if dt.get('id') not in ('FLOOR_PLAN',):
+        return _pass(sheet, 'NO_MEP_BLEED', 'non-floor-plan sheet — skip')
+    mep_count = sum(1 for e in entities if e.dxf.layer in _MEP_LAYERS)
+    if mep_count == 0:
+        return _pass(sheet, 'NO_MEP_BLEED', '0 entities on MEP layers')
+    return _fail(sheet, 'NO_MEP_BLEED', '0 MEP entities on A-01',
+                 f'{mep_count} entities on MEP layers')
+
+
+# ── §14.1 Language check ──
+
+_MALAY_INDICATORS = ('PROJEK', 'PEMILIK', 'ARKITEK', 'JENIS', 'TARIBULAN',
+                     'DILUKIS', 'DISEMAK', 'PINDAAN')
+
+def check_language(sheet, entities):
+    """LANGUAGE: no Malay strings in title block or annotation text layers.
+    §14.1: all DXF text must be English."""
+    text_entities = [e.dxf.text for e in entities
+                     if e.dxftype() in ('TEXT', 'MTEXT')
+                     and hasattr(e.dxf, 'text')
+                     and e.dxf.layer in ('A-TTLB', 'A-ANNO-TEXT')]
+    malay_hits = [t for t in text_entities
+                  if any(m in t.upper() for m in _MALAY_INDICATORS)]
+    if len(malay_hits) == 0:
+        return _pass(sheet, 'LANGUAGE', f'0 Malay strings in A-TTLB/A-ANNO-TEXT')
+    return _fail(sheet, 'LANGUAGE', '0 Malay strings',
+                 f'{len(malay_hits)} found: {malay_hits[:3]}')
+
+
 # ─────────────────────────────────────────────────────────────────
 # MAIN — iterate sheets, run checks, stop on first FAIL
 # ─────────────────────────────────────────────────────────────────
@@ -544,6 +581,8 @@ def main():
             lambda: check_scale_text(sheet, entities),
             lambda: check_white_bg(sheet, entities),
             lambda: check_line_weights(sheet, doc, tpl),
+            lambda: check_language(sheet, entities),
+            lambda: check_no_mep_on_arch(sheet, entities, dt),
         ]
 
         # Conditional checks by sheet type (§5.0 conditional table)

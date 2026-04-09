@@ -921,11 +921,12 @@ Summary log line:
 **R1 — DXF is the deliverable.** The DXF file is what the contractor opens
 in CAD software. It is the single source of truth.
 
-**R2 — SVG is the proof.** After generating the DXF, the `--proof` flag
-reads the DXF back and transforms entities to a paper-scale SVG. This
-proof SVG is inspectable for conformity checks (entity positions, layers,
-`stroke-dasharray` for dash-dot, `<rect>` for white background). No PNG
-output — SVG is sufficient.
+**R2 — SVG is the proof.** `--all` implies `--proof` — SVG proof renders
+are always generated alongside DXF. The proof SVG is read back from the
+DXF and transformed to paper-scale for conformity inspection (entity
+positions, layers, `stroke-dasharray` for dash-dot, `<rect>` for white
+background). No PNG output — SVG is sufficient. For single-view runs
+(e.g. `--floor-plan`), add `--proof` explicitly.
 
 **R3 — The archive SVG is the reference, not the proof.**
 `drawing_writer.py` produced the archive SVGs (frozen, do not regenerate).
@@ -958,14 +959,12 @@ SVGs. This ensures walls, text, dimensions, and grids are all visible
 and proportional.
 
 ```
-python3 drawing_writer_dxf.py <db> --all --proof
+python3 drawing_writer_dxf.py <db> --all     # DXF + SVG proof (--proof implied)
 
-# Outputs per view in lib/output/latest/:
-#   *_floor_plan.dxf            — professional deliverable (CAD software)
-#   *_floor_plan_proof.svg      — SVG proof for visual review
-#   *_front_elevation.dxf       — elevation deliverable
-#   *_front_elevation_proof.svg — elevation proof
-#   ... (all views generated together)
+# Output per view:
+#   output/DXF/{PREFIX}_{VIEW}_{ts}.dxf       — professional deliverable
+#   output/SVG/{PREFIX}_{VIEW}_{ts}.svg       — SVG proof for visual QA
+#   output/DXF/log_{PREFIX}_{VIEW}_{ts}.txt   — per-view diagnostic log
 
 # The --all flag generates floor plan + 4 elevations + proofs
 # in a single run. No separate commands needed.
@@ -1926,22 +1925,25 @@ Tracked against TBKLTN WD-1/01 reference and `layout_audit.txt`.
 | I-01 | DX_FLOOR: 13 T01 WARN — duplex window tags W1↔W15 same XY | Medium | §E multi-storey: suppress Level-2 tags when not current storey |
 | I-02 | DX_FLOOR: room label overlap BEDROOM↔LIVING ROOM (duplex mirror) | Medium | Post-process: dedup same-label centroids within 2m |
 | I-03 | DX upper floor (Level 2) missing entirely from A-01 | High | §E: storey_filter param + `cut_height = storey_bottom + 1.2` |
-| I-04 | MEP segments (IfcFlowSegment) not drawn — pipe/wire runs absent | Medium | §17.3 segment rendering |
+| I-04 | ~~MEP segments not drawn~~ | ~~Medium~~ | **DONE** 2D_012 §17.3 — 407 segments rendered on DX M-01 |
 | I-05 | Stale `FLOOR_*` / `FRONT_*` files (1201 ts) pollute audit | Low | Delete or move to archive; pruner doesn't clean old prefix format |
-| I-06 | Language: Malay field labels in title block | Medium | §14.1 English mapping table |
+| I-06 | ~~Language: Malay field labels~~ | ~~Medium~~ | **DONE** 2D_012 §14.1 — `_FIELD_LABEL_EN` mapping, LANGUAGE conformity check |
 | I-07 | JKR logo not in title block header | Low | §14.2 jkr.png insertion |
-| I-08 | Fan symbol not differentiated from generic electrical circle+cross | Low | §14.3 fan.png or asterisk glyph |
-| I-09 | Grid triage: panel shows all bays even when all are legible | Low | §15 triage function |
+| I-08 | `fan.png` exists in `input/` but never used by code | Low | §14.3 fan symbol on E-01 electrical page |
+| I-09 | ~~Grid triage: panel shows all bays~~ | ~~Low~~ | **DONE** 2D_012 §15 — `_triage_grid_dims()`, panel="ALL DIMS SHOWN IN DRAWING" |
 | I-10 | PINDAAN NO (revision) row absent from title block | Low | Add to `2d_title_block` seed + field mapping |
+| I-11 | **MEP bleed on floor plan:** 282 IfcFlow* elements (pipes, fittings, terminals) render as furniture bboxes on DX A-01 — pipe runs 4.5m×0.05m form visible "black cross" pattern. `_BELOW_SKIP` lacks `IfcFlowTerminal/Segment/Fitting/Controller`. MEP elements must not appear on architectural floor plan. | High | §5.1 BELOW skip set |
+| I-12 | **MEP template gap:** `drawing_template.json` has zero MEP keys — no symbol definitions, no line weights, no legend template, no discipline classification rules. All MEP rendering uses hardcoded values in `_draw_mep_symbol()` and `_classify_mep()`. Must add `mep` section to template. | High | §17 |
+| I-13 | **MEP page has no discernible symbols or legend:** DX M-01 renders 10 circles+dots (all identical) and 407 thin lines (all identical). No way to distinguish water closet from basin from shower. No icon differentiation, no label, no grouped legend with QTY. | High | §17.6 MEP legend |
 
 ### 18.2 Deferred (spec written, not started)
 
 | # | Issue | Spec section |
 |---|-------|--------------|
-| I-11 | Roof surface hatching (tile/slab pattern) | §5.3 extension |
-| I-12 | APRON level marker (4th level between GRD and FFL) | §4.3b |
-| I-13 | DX SH_FRONT/REAR: old L01 level text clip (stale files) | fixed in 2116 gen |
-| I-14 | Reflected ceiling plan (A-07) | status=GAP |
+| I-20 | Roof surface hatching (tile/slab pattern) | §5.3 extension |
+| I-21 | APRON level marker (4th level between GRD and FFL) | §4.3b |
+| I-22 | DX SH_FRONT/REAR: old L01 level text clip (stale files) | fixed in 2116 gen |
+| I-23 | Reflected ceiling plan (A-07) | status=GAP |
 
 
 ---
@@ -3307,18 +3309,22 @@ Insert via `msp.add_blockref()` instead of procedural drawing.
 
 ### 23.4 Annotation Type Classification
 
-**Source:** `bim/module/drawing/tool/drawing.py` lines 94-113
+**Source:** `bim/module/drawing/decoration.py` objecttype class attributes (20 types).
+Constant: `drawing_writer_dxf.py` `_BONSAI_ANN_TYPE_MAP`.
 
-Bonsai defines 17 annotation types. Mapping to our §21 `ann_type` column:
+Bonsai defines 20 annotation types. Mapping to our §21 `ann_type` column:
 
 | Bonsai type | Our ann_type | Notes |
 |-------------|-------------|-------|
 | DIMENSION, ANGLE, RADIUS, DIAMETER | DIM | All dimension variants |
 | TEXT, TEXT_LEADER | TEXT | Labels and callouts |
-| LINEWORK | GRID | Grid lines when in grid context |
-| FILL_AREA | HATCH | Section fill patterns |
-| SYMBOL, MULTI_SYMBOL | OTHER | Generic symbols |
-| STAIR_ARROW, BREAKLINE | OTHER | View-specific annotations |
 | PLAN_LEVEL, SECTION_LEVEL | TEXT | Level markers |
+| GRID | GRID | Grid lines |
+| FILL_AREA, BATTING | HATCH | Section fill patterns / insulation |
+| STAIR_ARROW, BREAKLINE | OTHER | View-specific annotations |
+| SYMBOL | OTHER | Generic symbols |
+| FALL | OTHER | Slope indicators |
 | REVISION_CLOUD | OTHER | QA markup |
-| FALL, BATTING, IMAGE | OTHER | Specialized |
+| HIDDEN_LINE | OTHER | Hidden edges |
+| ELEVATION, SECTION | OTHER | Reference markers |
+| MISC, NOTDEFINED | OTHER | Catch-all |

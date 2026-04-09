@@ -214,4 +214,48 @@ External reference: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federa
 - Append findings after `# DONE` below for watchdog review
 
 ## # DONE
-(append findings here after each item)
+
+### P0a — Hatch patterns (2026-04-09)
+- Extracted `brick` and `earth` patterns from Bonsai `patterns.svg` (line-based SVG → ezdxf pattern defs)
+- `concrete` and `wood` patterns use complex SVG Bezier paths — NOT convertible to ezdxf line-based hatch. Solid fill fallback kept.
+- `insulation` pattern does not exist in Bonsai assets.
+- SH result: BRICK: 8 walls (exterior, material="Brick, Common"), solid: 4 walls (partitions)
+- `_add_wall_hatch()` now accepts `material_name`, looks up via `_MATERIAL_TO_PATTERN`
+- Material queried from `elements_meta.material_name` by GUID
+
+### P0b — Tag symbol blocks (2026-04-09)
+- Extracted 4 symbols from Bonsai `symbols.svg` as DXF BLOCKs: DOOR_TAG, WINDOW_TAG, SECTION_ARROW, ELEVATION_TAG
+- `_draw_tag_shape()` now uses block references when block exists; procedural fallback for diamond
+- SH: 7 WINDOW_TAG block refs rendered (template uses hexagon → maps to WINDOW_TAG)
+- Bonsai door-tag = circle+divider, window-tag = hexagon (matches our existing tag shape)
+
+### P0c — Annotation type map (2026-04-09)
+- Extracted 20 annotation types from Bonsai `decoration.py` objecttype attributes (not 17 as originally estimated)
+- Added `_BONSAI_ANN_TYPE_MAP` constant mapping 20 Bonsai types → 6 §21 ann_type categories
+- Updated spec table at §21.3 in `2D_ARCHITECTURAL_LAYOUT.md`
+
+### P2 — Grid triage (2026-04-09)
+- `_triage_grid_dims(grids, scale, crowding_threshold_mm)` implemented with §TRIAGE log events
+- SH: all bays >= 15mm → all INLINE, panel shows "ALL DIMS SHOWN IN DRAWING"
+- PANEL bays: dim line+tick rendered but text suppressed; panel legend shows only panel bays
+- Wired into both floor plan and roof plan
+
+### P3 — English labels (2026-04-09)
+- `_FIELD_LABEL_EN` mapping (12 Malay→English entries) applied in `_draw_sheet_layout()`
+- SCALE field shows "1:100" format
+- `check_language()` added to `test_conformity.py` — 6/6 sheets PASS, 0 Malay strings
+- W-LANG verified
+
+### P4 — Per-view logs (2026-04-09)
+- `_start_view_log()` / `_flush_view_log()` for per-view log files
+- Floor plan emits: §ENTRY (1), §VALUE (9), §TRIAGE (6), §HATCH (1), §EXIT (1)
+- Output: `output/DXF/log_SH_FLOOR_{ts}.txt`
+- W-LOG verified
+
+### P5 — MEP segments (2026-04-09)
+- IfcFlowSegment query + thin line rendering in `write_mep_plan_dxf()`
+- Orientation by long bbox axis (horizontal vs vertical run)
+- Layer: A-MEP-ELEC or A-MEP-PLMB based on element_name classification
+- Added 'pipe'/'plumbing' to `_PLUMB_KEYWORDS` (segments have "Pipe" in element_name)
+- DX result: 407 segments rendered on M-01, 10 terminals. §RENDER SEGMENT log per entity.
+- W-MEP-SEG verified

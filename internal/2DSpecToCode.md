@@ -218,13 +218,13 @@ Full specs in `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §18.
 
 | Section | Status | Spec ref |
 |---------|--------|----------|
-| §14.1 English-only rule + field label mapping | N | §14.1 |
+| §14.1 English-only rule + field label mapping | Y | | 2D_012: `_FIELD_LABEL_EN` mapping, `check_language()` in conformity. 6/6 PASS. |
 | §14.2 JKR logo in title block (jkr.png) | N | §14.2 |
 | §14.3 Fan symbol (fan.png / asterisk fallback) | N | §14.3 |
-| §15 Grid dim triage function | N | §15 |
-| §16 Per-view log files + mandatory event types | N | §16 |
+| §15 Grid dim triage function | Y | | 2D_012: `_triage_grid_dims()`, PANEL bays suppressed in dim text. SH all INLINE. Legend shows "ALL DIMS SHOWN IN DRAWING". |
+| §16 Per-view log files + mandatory event types | Y | | 2D_012: `_start_view_log()`/`_flush_view_log()`. `log_SH_FLOOR_{ts}.txt` with §ENTRY, §VALUE, §TRIAGE, §EXIT events. |
 | §16.6 Conformity log format with VALUES | N | §16.6 |
-| §17 MEP segment/fitting/controller rendering | N | §17.3–17.4 |
+| §17 MEP segment/fitting/controller rendering | Y | | 2D_012: IfcFlowSegment rendered as thin lines. DX: 407 segments. SH: 0 (no MEP data). |
 | §19.1 Sheet composition proof (log fill% + aspect) | N | §19.1 |
 | §19.2 Title block: stamp zone, REVISION row, SCALE value | N | §19.2 |
 | §19.3 Grid bubble log proof (§RENDER CIRCLE + HATCH per bubble) | N | §19.3 |
@@ -266,15 +266,15 @@ Full specs in `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §18.
 | §9.6 Output | 8 | 0 | 8 | 2026-04-08 |
 | §10 Tests | 14 | 0 | 14 | 2026-04-08 |
 | §11 Key files | 12 | 0 | 12 | 2026-04-08 |
-| §14 Language + Logo | 0 | 3 | 3 | spec 2026-04-09 |
-| §15 Grid triage | 0 | 1 | 1 | spec 2026-04-09 |
-| §16 Log standard | 0 | 3 | 3 | spec 2026-04-09 |
-| §17 MEP extended | 0 | 3 | 3 | spec 2026-04-09 |
+| §14 Language + Logo | 1 | 2 | 3 | **2D_012** §14.1 done, §14.2/§14.3 remain |
+| §15 Grid triage | 1 | 0 | 1 | **2D_012** |
+| §16 Log standard | 1 | 2 | 3 | **2D_012** per-view logs done, §16.6 format remains |
+| §17 MEP extended | 1 | 2 | 3 | **2D_012** segments done, fitting/controller remain |
 | §20 Semantic DXF | 8 | 1 | 9 | **2D_011** 2026-04-09 |
 | §21 IFC Annotation | 0 | 1 | 1 | spec 2026-04-09 |
 | §22 Browser Editor | 0 | 1 | 1 | spec 2026-04-09 |
-| §23 Bonsai Assets | 0 | 3 | 3 | spec 2026-04-09: hatch patterns, tag symbols, annotation type map |
-| **Total** | **142** | **8** | **150** |
+| §23 Bonsai Assets | 3 | 0 | 3 | **2D_012** hatch, tags, ann_type_map |
+| **Total** | **149** | **5** | **154** |
 
 **Compliance: 142/150 (95%)**
 

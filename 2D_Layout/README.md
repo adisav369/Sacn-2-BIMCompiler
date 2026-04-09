@@ -13,20 +13,23 @@ Every coding session follows this cycle. No exceptions.
 ```
 1. READ SPECS       → 2D_ARCHITECTURAL_LAYOUT.md — understand what the code must do
 2. WRITE TESTS      → Write failing test assertions BEFORE writing code
-3. RUN + READ LOGS  → Generate output (--proof), read diagnostic log + TBLKLTN audit
+3. RUN + READ LOGS  → Generate output (--all), read diagnostic log + conformity
 4. FIX CODE         → Make failing tests pass; if spec needs updating, update spec FIRST
-5. VERIFY           → Run all 3 tests + --proof; open proof SVG in browser to confirm
+5. VERIFY           → Run all 3 validators; open proof SVG in browser to confirm
 6. BACK TO 1        → Next feature: read spec, write test, run, fix, verify
 ```
 
-**The proof SVG shows exactly what the DXF contains.** If the proof SVG is missing
-a feature, the DXF is missing it. No separate code path. One source of truth.
+**The proof SVG shows exactly what the DXF contains.** `--all` generates DXF + SVG
+proof automatically. If the proof SVG is missing a feature, the DXF is missing it.
 
 ```bash
 # Full cycle:
-python3 drawing_writer_dxf.py ../lib/input/ifc4_sample_house.db --all --proof
-python3 test_no_hardcode.py && python3 test_no_invention.py && python3 test_dxf_vs_svg.py
-# Open *_proof.svg in browser to visually verify
+cd 2D_Layout/python
+python3 drawing_writer_dxf.py ../input/SH_extracted.db --all
+python3 layout_audit.py          # layout quality: 0 FAIL required
+python3 test_conformity.py       # sheet furniture: exit 0 required
+python3 test_2d_bim_roundtrip.py ../input/SH_extracted.db  # semantic: 4/4 PASS
+# Open output/SVG/*.svg in browser to visually verify
 ```
 
 ---
@@ -36,55 +39,65 @@ python3 test_no_hardcode.py && python3 test_no_invention.py && python3 test_dxf_
 ```bash
 cd 2D_Layout/python
 
-# Generate all drawings for SampleHouse — SVG only (browser preview)
-python3 drawing_writer.py ../lib/input/ifc4_sample_house.db --all
+# Generate all drawings for SampleHouse (DXF + SVG proof + per-view logs)
+python3 drawing_writer_dxf.py ../input/SH_extracted.db --all
 
-# Generate all drawings — SVG + DXF (professional CAD format)
-python3 drawing_writer.py ../lib/input/ifc4_sample_house.db --all --dxf
+# Generate all drawings for Duplex
+python3 drawing_writer_dxf.py ../input/DX_extracted.db --all
+
+# Generate single view (DXF only; add --proof for SVG)
+python3 drawing_writer_dxf.py ../input/SH_extracted.db --floor-plan --proof
 ```
 
-Outputs land in `2D_Layout/python/output/`. Open `.svg` in any browser, `.dxf` in FreeCAD, QCAD, AutoCAD, or LibreCAD.
+Output:
+```
+output/DXF/{PREFIX}_{VIEW}_{ts}.dxf        — professional deliverable (CAD)
+output/SVG/{PREFIX}_{VIEW}_{ts}.svg        — proof render (open in browser)
+output/DXF/log_{PREFIX}_{VIEW}_{ts}.txt    — per-view diagnostic log
+output/dxf_diagnostic.txt                  — consolidated session log
+output/conformity_log.txt                  — conformity gate results
+output/layout_audit.txt                    — layout quality audit
+```
+
+Open `.svg` in any browser, `.dxf` in FreeCAD, QCAD, AutoCAD, or LibreCAD.
 
 ---
 
 ## What Gets Generated
 
-| File | Format | What it shows |
-|------|--------|--------------|
-| `*_floor_plan.svg/dxf` | Floor plan | Horizontal section at 1.0m above floor — walls, doors, windows, furniture |
-| `*_front_elevation.svg/dxf` | Front elevation | South face of building |
-| `*_rear_elevation.svg/dxf` | Rear elevation | North face (mirrored left-right vs front) |
-| `*_left_elevation.svg/dxf` | Left elevation | West face |
-| `*_right_elevation.svg/dxf` | Right elevation | East face (mirrored vs left) |
-| `*_roof_plan.svg` | Roof plan | Top-down view with ridge, slope arrows, overhangs |
-| `*_frontrear_elevations.svg` | Paired sheet | Front + Rear stacked on one A3 sheet |
-| `*_leftright_elevations.svg` | Paired sheet | Left + Right stacked on one A3 sheet |
+| Sheet | View | DXF + SVG |
+|-------|------|-----------|
+| A-01 | Floor plan | Horizontal section at 1.2m — walls, doors, windows, furniture, room labels |
+| A-02 | Front elevation | South face — wall outlines, roof silhouette, level markers |
+| A-03 | Rear elevation | North face (mirrored) |
+| A-04 | Left elevation | West face |
+| A-05 | Right elevation | East face (mirrored) |
+| A-06 | Roof plan | Top-down — ridge, slope arrows, overhangs, eave outline |
+| E-01 | Electrical plan | Floor plan + electrical terminal symbols + legend |
+| M-01 | Plumbing layout | Floor plan + plumbing terminals + pipe segments + legend |
+
+Pages are driven by `input/{PREFIX}_2D.json`. Only `status=DONE` pages are generated.
 
 ---
 
 ## Command Reference
 
 ```
-python3 drawing_writer.py <database.db> [options]
+python3 drawing_writer_dxf.py <database.db> [options]
 
 Options:
-  --floor-plan          Floor plan only
-  --roof-plan           Roof plan only
+  --floor-plan          Floor plan only (DXF)
+  --roof-plan           Roof plan only (DXF)
   --elevation FACE      One elevation: front | rear | left | right
-  --all                 All drawings (floor plan + 4 elevations + roof plan)
-  --dxf                 Also write DXF files alongside SVGs
+  --all                 All pages from {PREFIX}_2D.json (DXF + SVG proof)
+  --proof               Generate SVG proof (implied by --all)
+  --scale N             Drawing scale denominator (default 100 = 1:100)
 
 Examples:
-  python3 drawing_writer.py samplehouse.db --all
-  python3 drawing_writer.py samplehouse.db --all --dxf
-  python3 drawing_writer.py samplehouse.db --elevation front
-  python3 drawing_writer.py samplehouse.db --elevation front --dxf
-  python3 drawing_writer.py samplehouse.db --floor-plan --dxf
-```
-
-Or use the DXF writer directly (same options, DXF only):
-```
-python3 drawing_writer_dxf.py <database.db> --all
+  python3 drawing_writer_dxf.py ../input/SH_extracted.db --all
+  python3 drawing_writer_dxf.py ../input/DX_extracted.db --all
+  python3 drawing_writer_dxf.py ../input/SH_extracted.db --floor-plan --proof
+  python3 drawing_writer_dxf.py ../input/SH_extracted.db --elevation front
 ```
 
 ---
@@ -94,13 +107,14 @@ python3 drawing_writer_dxf.py <database.db> --all
 The `.db` file is produced by the BIM compiler pipeline:
 
 ```
-IFC file  →  DAGCompiler  →  output.db  →  drawing_writer.py  →  SVG / DXF
+IFC file  →  extractIFCtoDB.py  →  {PREFIX}_extracted.db  →  drawing_writer_dxf.py  →  DXF + SVG
 ```
 
-Pre-compiled sample databases are in `lib/input/`:
-- `ifc4_sample_house.db` — 1-storey residential (SampleHouse IFC reference model)
+Extracted databases go in `input/`:
+- `SH_extracted.db` — SampleHouse (IFC4 1-storey residential)
+- `DX_extracted.db` — Duplex (IFC4 2-storey residential)
 
-To compile a new IFC file, see `docs/IFC_ONBOARDING_RUNBOOK.md` in the project root.
+To extract a new IFC file, see `docs/IFC_ONBOARDING_RUNBOOK.md` in the project root.
 
 ---
 
@@ -210,17 +224,37 @@ pip3 install ezdxf
 
 ---
 
+## Validation
+
+Three independent validators must all pass before declaring DONE:
+
+```bash
+# 1. Layout quality — entity overlap, text bleed, grid count
+python3 layout_audit.py                                   # 0 FAIL required
+
+# 2. Conformity gate — sheet furniture per §5.0 (border, title block, grids, scale bar)
+python3 test_conformity.py                                # exit 0 required
+
+# 3. Semantic round-trip — BIMSRC xdata (wall/grid/dim/room provenance)
+python3 test_2d_bim_roundtrip.py ../input/SH_extracted.db # 4/4 PASS required
+```
+
 ## File Structure
 
 ```
 2D_Layout/
 ├── python/
-│   ├── drawing_writer.py       ← main script (SVG + optional DXF via --dxf)
-│   ├── drawing_writer_dxf.py   ← DXF exporter (ezdxf, AIA layers, model-space mm)
+│   ├── drawing_writer_dxf.py   ← main DXF+SVG generator (run this)
+│   ├── drawing_writer.py       ← shared: read_elements, derive_grids, infer_rooms
 │   ├── section_cut.py          ← mesh-plane intersection engine
-│   └── output/                 ← generated SVG and DXF files
-├── lib/
-│   └── input/                  ← compiled .db files go here
+│   ├── layout_audit.py         ← layout quality checker
+│   ├── test_conformity.py      ← conformity gate (§10.5)
+│   └── test_2d_bim_roundtrip.py← semantic round-trip test
+├── input/                      ← extracted .db files go here
+├── output/
+│   ├── DXF/                    ← generated DXF files + per-view logs
+│   └── SVG/                    ← proof SVG renders
+├── drawing_template.json       ← all formatting constants
 ├── docs/
 │   └── 2D_ARCHITECTURAL_LAYOUT.md   ← full technical spec
 └── README.md                   ← this file

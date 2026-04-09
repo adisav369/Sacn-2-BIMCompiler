@@ -9,11 +9,14 @@ Spec: 2D_ARCHITECTURAL_LAYOUT.md §14
 Witnesses: W-2D-ROUNDTRIP (partial — DXF exists for overlay diff)
 
 Usage:
-    python3 drawing_writer_dxf.py lib/input/ifc4_sample_house.db --floor-plan
-    python3 drawing_writer_dxf.py lib/input/ifc4_sample_house.db --elevation front
-    python3 drawing_writer_dxf.py lib/input/ifc4_sample_house.db --all
+    python3 drawing_writer_dxf.py ../input/SH_extracted.db --all          # DXF + SVG proof
+    python3 drawing_writer_dxf.py ../input/SH_extracted.db --floor-plan   # single view DXF
+    python3 drawing_writer_dxf.py ../input/SH_extracted.db --floor-plan --proof  # single + SVG
 
-Output: DXF R2010 files in python/output/  (open in FreeCAD, QCAD, AutoCAD, LibreCAD)
+Output:
+    DXF → output/DXF/{PREFIX}_{VIEW}_{ts}.dxf   (open in FreeCAD, QCAD, AutoCAD, LibreCAD)
+    SVG → output/SVG/{PREFIX}_{VIEW}_{ts}.svg    (proof render for visual QA)
+    Log → output/DXF/log_{PREFIX}_{VIEW}_{ts}.txt (per-view diagnostic log)
 """
 
 import sys
@@ -30,6 +33,7 @@ from ezdxf.enums import TextEntityAlignment
 # Add parent dir so we can import section_cut and drawing_writer helpers
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from section_cut import section_cut as run_section_cut, parse_vertices_blob, parse_faces_blob
+from collections import namedtuple
 from drawing_writer import (
     read_elements, derive_grids, snap_grids, detect_levels, _convex_hull_2d,
     roof_silhouette, generate_dimensions, format_dim,
@@ -37,6 +41,9 @@ from drawing_writer import (
     infer_rooms, find_host_wall, _get_room_side_ew, _get_room_side_ns,
     read_drawing_metadata,
 )
+
+# §15.2 Grid dimension triage
+GridBay = namedtuple('GridBay', ['label1', 'label2', 'dist_m', 'paper_mm', 'tier'])
 
 # ─────────────────────────────────────────────────────────────────
 # CONSTANTS — only unit conversions and DB-sourced elevations here.
@@ -50,6 +57,59 @@ MM          = 1000.0  # world metres × MM → model-space mm
 # Level markers — DB-sourced reference elevations (metres)
 APRON_Z = -0.100    # concrete apron
 GRD_Z   = -0.250    # natural ground
+
+# ─────────────────────────────────────────────────────────────────
+# §23 P0a: Hatch patterns extracted from Bonsai bim/data/assets/patterns.svg
+# Only line-based patterns are convertible; concrete/wood use complex SVG
+# paths (Bezier curves) — those fall back to solid fill.
+# ─────────────────────────────────────────────────────────────────
+_BONSAI_HATCH_PATTERNS = {
+    # Bonsai id="brick" (rotate 45°, 3×3 cell, 2 vertical lines at x=1,x=2)
+    # ezdxf format: [angle, (base_x,base_y), (delta_x,delta_y), [dash_items]]
+    'BRICK': [
+        [45.0, (0.0, 0.0), (0.0, 3.0), []],   # line family 1: 45°, 3-unit spacing
+        [45.0, (0.0, 1.0), (0.0, 3.0), []],   # line family 2: offset 1 unit
+    ],
+    # Bonsai id="earth" (6×6 cell, H+V lines in quadrant pattern → cross-hatch)
+    'EARTH': [
+        [0.0,  (0.0, 0.0), (0.0, 2.0), []],    # horizontal lines, 2-unit spacing
+        [90.0, (0.0, 0.0), (0.0, 2.0), []],    # vertical lines, 2-unit spacing
+    ],
+}
+
+# elements_meta.material_name keyword → hatch pattern name
+# Lowercase first token before comma is matched.
+_MATERIAL_TO_PATTERN = {
+    'brick': 'BRICK',
+    'earth': 'EARTH',
+    # concrete, wood, insulation: Bonsai SVG paths not convertible → solid fill
+}
+
+# §23 P0c: Bonsai annotation types (from bim/module/drawing/decoration.py objecttype)
+# mapped to our §21 ann_type classification.
+_BONSAI_ANN_TYPE_MAP = {
+    'DIMENSION':      'DIM',
+    'ANGLE':          'DIM',
+    'RADIUS':         'DIM',
+    'DIAMETER':       'DIM',
+    'TEXT':           'TEXT',
+    'TEXT_LEADER':    'TEXT',
+    'PLAN_LEVEL':     'TEXT',
+    'SECTION_LEVEL':  'TEXT',
+    'GRID':           'GRID',
+    'FILL_AREA':      'HATCH',
+    'BATTING':        'HATCH',
+    'STAIR_ARROW':    'OTHER',
+    'BREAKLINE':      'OTHER',
+    'SYMBOL':         'OTHER',
+    'FALL':           'OTHER',
+    'REVISION_CLOUD': 'OTHER',
+    'HIDDEN_LINE':    'OTHER',
+    'ELEVATION':      'OTHER',
+    'SECTION':        'OTHER',
+    'MISC':           'OTHER',
+    'NOTDEFINED':     'OTHER',
+}
 
 
 def _hex_to_aci(hex_color: str) -> int:
@@ -115,7 +175,21 @@ def _hexagon_pts(cx: float, cy: float, r: float) -> list:
 
 def _draw_tag_shape(msp, shape: str, cx: float, cy: float, r: float,
                     layer: str, lw: int):
-    """§7.3g: Draw tag shape from template annotation_tags.shape."""
+    """§7.3g / §23 P0b: Draw tag shape using Bonsai symbol BLOCKs.
+    Falls back to procedural drawing if block not found."""
+    # §23 P0b: map shape name to Bonsai-extracted BLOCK name
+    _SHAPE_TO_BLOCK = {
+        'circle': 'DOOR_TAG',
+        'hexagon': 'WINDOW_TAG',
+    }
+    block_name = _SHAPE_TO_BLOCK.get(shape)
+    doc = msp.doc if hasattr(msp, 'doc') else None
+    if block_name and doc and block_name in doc.blocks:
+        msp.add_blockref(block_name, insert=(cx, cy),
+                         dxfattribs={'layer': layer, 'xscale': r, 'yscale': r})
+        _log(f"  §RENDER TAG block={block_name} at ({cx:.1f},{cy:.1f})")
+        return
+    # Procedural fallback
     if shape == 'circle':
         msp.add_circle((cx, cy), r, dxfattribs={'layer': layer, 'lineweight': lw})
     elif shape == 'diamond':
@@ -124,6 +198,49 @@ def _draw_tag_shape(msp, shape: str, cx: float, cy: float, r: float,
     else:  # hexagon (default)
         pts = _hexagon_pts(cx, cy, r)
         msp.add_lwpolyline(pts, close=True, dxfattribs={'layer': layer, 'lineweight': lw})
+
+
+def _triage_grid_dims(grids: list, scale: int, crowding_threshold_mm: float = 15.0):
+    """§15.2: Classify each bay dimension as INLINE or PANEL.
+
+    Returns:
+        inline_dims: list of GridBay — show dim text in drawing
+        panel_dims:  list of GridBay — suppress inline text, list in panel only
+    """
+    inline_dims = []
+    panel_dims = []
+    for axis in ('x', 'y'):
+        axis_grids = sorted([g for g in grids if g.axis == axis],
+                            key=lambda g: g.position)
+        for i in range(len(axis_grids) - 1):
+            g1 = axis_grids[i]
+            g2 = axis_grids[i + 1]
+            dist_m = g2.position - g1.position
+            paper_mm = dist_m * 1000 / scale
+            bay = GridBay(g1.label, g2.label, dist_m, paper_mm, tier=2)
+            if paper_mm >= crowding_threshold_mm:
+                inline_dims.append(bay)
+                _log(f"§TRIAGE {axis.upper()}: {g1.label}-{g2.label} = "
+                     f"{int(dist_m*1000)}mm ({paper_mm:.1f}mm@1:{scale}) → INLINE")
+            else:
+                panel_dims.append(bay)
+                _log(f"§TRIAGE {axis.upper()}: {g1.label}-{g2.label} = "
+                     f"{int(dist_m*1000)}mm ({paper_mm:.1f}mm@1:{scale}) → PANEL")
+        # Overall tier-1 is always INLINE (forced)
+        if len(axis_grids) >= 2:
+            g_first = axis_grids[0]
+            g_last = axis_grids[-1]
+            total_m = g_last.position - g_first.position
+            total_mm = total_m * 1000 / scale
+            _log(f"§TRIAGE {axis.upper()}: OVERALL = {int(total_m*1000)}mm "
+                 f"({total_mm:.1f}mm@1:{scale}) → INLINE (forced)")
+    n_panel = len(panel_dims)
+    if n_panel > 0:
+        labels = ', '.join(f'{b.label1}-{b.label2}' for b in panel_dims)
+        _log(f"§TRIAGE PANEL: {n_panel} bay(s) listed ({labels})")
+    else:
+        _log("§TRIAGE PANEL: 0 bays — all dims shown in drawing")
+    return inline_dims, panel_dims
 
 
 def _add_bubble_hatch(msp, cx: float, cy: float, r: float):
@@ -139,14 +256,23 @@ def _add_bubble_hatch(msp, cx: float, cy: float, r: float):
     hatch.paths.add_polyline_path(pts, is_closed=True)
 
 
-def _add_wall_hatch(msp, pts):
-    """§5.1f: Add solid black HATCH fill for wall section-cut polygon.
-    Drawn alongside each LWPOLYLINE on A-WALL-PATT so CAD software
-    shows filled walls, not just outlines. ACI 0 = BYBLOCK = black."""
-    hatch = msp.add_hatch(color=0)
+def _add_wall_hatch(msp, pts, material_name=''):
+    """§5.1f / §23 P0a: HATCH fill for wall section-cut polygon.
+    Uses material-based pattern (from Bonsai patterns.svg) when known,
+    falls back to solid black fill.  ACI 0 = BYBLOCK = black."""
+    mat_key = (material_name or '').lower().split(',')[0].strip()
+    pat_name = _MATERIAL_TO_PATTERN.get(mat_key)
+    pat_def = _BONSAI_HATCH_PATTERNS.get(pat_name) if pat_name else None
+
+    hatch = msp.add_hatch()
     hatch.dxf.layer = 'A-WALL-PATT'
-    hatch.set_solid_fill(color=0)
+    if pat_def:
+        hatch.set_pattern_fill(pat_name, definition=pat_def, scale=1.0)
+        hatch.dxf.color = 0   # black pattern lines
+    else:
+        hatch.set_solid_fill(color=0)
     hatch.paths.add_polyline_path(pts, is_closed=True)
+    return pat_name  # None → solid, else pattern used
 
 
 def _lw(tpl: dict, key: str) -> int:
@@ -202,6 +328,30 @@ def _new_doc(tpl: dict, scale: int = SCALE) -> ezdxf.document.Drawing:
         ds.dxf.dimgap   = 1.0
     except Exception:
         pass
+
+    # §23 P0b: Tag symbol BLOCKs extracted from Bonsai bim/data/assets/symbols.svg
+    # Each block is at unit scale (radius=1); scale at insertion via xscale/yscale.
+    _lw_sym = int(0.25 * 100)  # 0.25mm stroke from Bonsai symbols
+
+    # DOOR_TAG: circle r=1, horizontal divider, two text zones (Bonsai id="door-tag")
+    blk = doc.blocks.new(name='DOOR_TAG')
+    blk.add_circle((0, 0), 1, dxfattribs={'lineweight': _lw_sym})
+    blk.add_line((-1, 0), (1, 0), dxfattribs={'lineweight': _lw_sym})
+
+    # WINDOW_TAG: hexagon (Bonsai id="window-tag", matches our existing hexagon shape)
+    blk = doc.blocks.new(name='WINDOW_TAG')
+    hex_pts = _hexagon_pts(0, 0, 1)
+    blk.add_lwpolyline(hex_pts, close=True, dxfattribs={'lineweight': _lw_sym})
+
+    # SECTION_ARROW: filled triangle pointing up (Bonsai id="section-arrow")
+    blk = doc.blocks.new(name='SECTION_ARROW')
+    blk.add_lwpolyline([(-1, 0), (0, 1.414), (1, 0)], close=True,
+                        dxfattribs={'lineweight': _lw_sym})
+
+    # ELEVATION_TAG: circle + horizontal divider (Bonsai id="elevation-tag")
+    blk = doc.blocks.new(name='ELEVATION_TAG')
+    blk.add_circle((0, 0), 1, dxfattribs={'lineweight': _lw_sym})
+    blk.add_line((-1, 0), (1, 0), dxfattribs={'lineweight': _lw_sym})
 
     return doc
 
@@ -296,8 +446,11 @@ def _infer_building_identity(db_path: str):
 
 
 def _draw_grid_legend_panel(msp, x_grids, y_grids, x0, x1, bot_y, height,
-                             scale, lbl_h, leg_row_h, lw_thin, lw_med, lw_bold):
-    """§C spec: Draw GRID REFERENCE legend at bottom of title block panel."""
+                             scale, lbl_h, leg_row_h, lw_thin, lw_med, lw_bold,
+                             panel_bays=None):
+    """§C / §15.3: Draw GRID REFERENCE legend at bottom of title block panel.
+    If panel_bays is empty, shows 'ALL DIMS SHOWN IN DRAWING'.
+    If panel_bays is provided, shows only those bays (crowded ones)."""
     # Draw bounding box line at top of legend zone
     msp.add_line((x0, bot_y + height), (x1, bot_y + height),
                  dxfattribs={'layer': 'A-TTLB', 'lineweight': lw_bold})
@@ -316,6 +469,18 @@ def _draw_grid_legend_panel(msp, x_grids, y_grids, x0, x1, bot_y, height,
     y -= leg_row_h * 0.5
     msp.add_line((x0, y), (x1, y), dxfattribs={'layer': 'A-TTLB', 'lineweight': lw_med})
 
+    # §15.3: if no panel bays, show single-line message
+    if panel_bays is not None and len(panel_bays) == 0:
+        y -= leg_row_h
+        msp.add_text('ALL DIMS SHOWN IN DRAWING',
+                     dxfattribs={'layer': 'A-TTLB', 'height': lbl_h}
+                     ).set_placement((cx, y), align=TextEntityAlignment.MIDDLE_CENTER)
+        return
+
+    # Build set of panel bay keys for filtering when panel_bays provided
+    _pbay_keys = (frozenset((b.label1, b.label2) for b in panel_bays)
+                  if panel_bays else None)
+
     def _axis_block(axis_label, grid_list):
         nonlocal y
         y -= leg_row_h
@@ -324,11 +489,15 @@ def _draw_grid_legend_panel(msp, x_grids, y_grids, x0, x1, bot_y, height,
                      ).set_placement((x0 + pw * 0.04, y),
                                      align=TextEntityAlignment.LEFT)
         total_m = 0.0
+        shown = 0
         for i in range(len(grid_list) - 1):
             g1 = grid_list[i]
             g2 = grid_list[i + 1]
             dist = g2.position - g1.position
             total_m += dist
+            # §15.3: when panel_bays provided, only show panel bays
+            if _pbay_keys and (g1.label, g2.label) not in _pbay_keys:
+                continue
             y -= leg_row_h
             msp.add_text(f'{g1.label} - {g2.label}',
                          dxfattribs={'layer': 'A-TTLB', 'height': lbl_h}
@@ -338,15 +507,17 @@ def _draw_grid_legend_panel(msp, x_grids, y_grids, x0, x1, bot_y, height,
                          dxfattribs={'layer': 'A-TTLB', 'height': lbl_h}
                          ).set_placement((x1 - pw * 0.04, y),
                                          align=TextEntityAlignment.RIGHT)
-        y -= leg_row_h
-        msp.add_text('TOTAL:',
-                     dxfattribs={'layer': 'A-TTLB', 'height': lbl_h}
-                     ).set_placement((x0 + pw * 0.06, y),
-                                     align=TextEntityAlignment.LEFT)
-        msp.add_text(format_dim(total_m),
-                     dxfattribs={'layer': 'A-TTLB', 'height': lbl_h}
-                     ).set_placement((x1 - pw * 0.04, y),
-                                     align=TextEntityAlignment.RIGHT)
+            shown += 1
+        if shown > 0 or not _pbay_keys:
+            y -= leg_row_h
+            msp.add_text('TOTAL:',
+                         dxfattribs={'layer': 'A-TTLB', 'height': lbl_h}
+                         ).set_placement((x0 + pw * 0.06, y),
+                                         align=TextEntityAlignment.LEFT)
+            msp.add_text(format_dim(total_m),
+                         dxfattribs={'layer': 'A-TTLB', 'height': lbl_h}
+                         ).set_placement((x1 - pw * 0.04, y),
+                                         align=TextEntityAlignment.RIGHT)
         y -= leg_row_h * 0.5
         msp.add_line((x0, y), (x1, y),
                      dxfattribs={'layer': 'A-TTLB', 'lineweight': lw_thin})
@@ -357,9 +528,20 @@ def _draw_grid_legend_panel(msp, x_grids, y_grids, x0, x1, bot_y, height,
         _axis_block('VERTICAL (Y)', y_grids)
 
 
+# §14.1: Malay field_name → English display label (from 2d_title_block / TBKLTN spec)
+_FIELD_LABEL_EN = {
+    'PROJEK': 'PROJECT', 'PEMILIK': 'CLIENT', 'ARKITEK': 'ARCHITECT',
+    'JENIS_BANGUNAN': 'BUILDING TYPE', 'TAJUK_LUKISAN': 'DRAWING TITLE',
+    'DILUKIS': 'DRAWN BY', 'UKURAN': 'SCALE', 'TARIBULAN': 'DATE',
+    'DISEMAK': 'CHECKED BY', 'NO_LUKISAN': 'DRAWING NO.',
+    'NO_KEPINGAN': 'SHEET NO.', 'PINDAAN_NO': 'REVISION',
+}
+
+
 def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y,
                        drawing_title='', drawing_no='', scale=SCALE, schedule_rows=None,
-                       view_type='plan', building_type='', building_name='', grids=None):
+                       view_type='plan', building_type='', building_name='', grids=None,
+                       panel_bays=None):
     """Draw sheet border, white background, title block panel, north arrow.
 
     All values from drawing_template.json — no hardcoded layout.
@@ -616,7 +798,9 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
                      dxfattribs={'layer': 'A-TTLB', 'lineweight': lw_tb})
         label_x = tb_left + tb_w * label_ratio / 2
         label_y = y_cursor + row_h / 2
-        msp.add_text(field['label'],
+        # §14.1: map Malay field labels to English
+        display_label = _FIELD_LABEL_EN.get(field['key'], field['label'])
+        msp.add_text(display_label,
                      dxfattribs={'layer': 'A-TTLB', 'height': field['lbl_size']}
                      ).set_placement((label_x, label_y),
                                      align=TextEntityAlignment.MIDDLE_CENTER)
@@ -629,6 +813,9 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
         if (field['key'] == 'JENIS_BANGUNAN' and building_type
                 and title_block.get('sync_building_type_field', True)):
             value = building_type
+        # §14.1: SCALE field shows "1:N" format
+        if field['key'] == 'UKURAN':
+            value = f'1:{scale}'
         if value:
             value_x = div_x + (tb_w * (1 - label_ratio)) / 2
             msp.add_text(value,
@@ -638,12 +825,13 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
         y_cursor += row_h
         prev_required = req
 
-    # §C: Grid reference legend at bottom of panel
+    # §C / §15.3: Grid reference legend at bottom of panel
     if _has_leg:
         _draw_grid_legend_panel(msp, _x_grids, _y_grids,
                                 tb_left, bx1, by0, legend_h,
                                 scale, lbl_h, leg_row_h,
-                                lw_tb, lw_tb_med, lw_tb_bold)
+                                lw_tb, lw_tb_med, lw_tb_bold,
+                                panel_bays=panel_bays)
 
     # North arrow — §5.0b: plans only, not elevations
     if view_type in ('plan', 'roof_plan'):
@@ -720,11 +908,35 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
 # ─────────────────────────────────────────────────────────────────
 
 _LOG_LINES: List[str] = []
+_LOG_VIEW: str = ''       # §16.2: current view name for per-view log files
+_LOG_VIEW_LINES: List[str] = []  # lines for the current view only
 
 def _log(msg: str):
     """Append a diagnostic line (printed + buffered for log file)."""
     print(msg)
     _LOG_LINES.append(msg)
+    _LOG_VIEW_LINES.append(msg)
+
+
+def _start_view_log(view_name: str):
+    """§16.2: Begin a new per-view log section."""
+    global _LOG_VIEW
+    _LOG_VIEW = view_name
+    _LOG_VIEW_LINES.clear()
+
+
+def _flush_view_log(out_dir: str, prefix: str):
+    """§16.2: Write per-view log file: output/log_{PREFIX}_{VIEW}_{ts}.txt"""
+    if not _LOG_VIEW_LINES or not _LOG_VIEW:
+        return
+    ts = datetime.datetime.now().strftime('%Y%m%d_%H%M')
+    log_name = f'log_{prefix}_{_LOG_VIEW}_{ts}.txt'
+    log_path = os.path.join(out_dir, log_name)
+    os.makedirs(out_dir, exist_ok=True)
+    with open(log_path, 'w') as f:
+        for line in _LOG_VIEW_LINES:
+            f.write(line + '\n')
+    _log(f"  Per-view log → {log_path}")
 
 
 def _set_bimsrc(entity, **kwargs):
@@ -1447,16 +1659,19 @@ def _write_log(out_dir: str):
     summary.append("=" * 60)
     summary.append("SUMMARY — read this section only")
     summary.append("=" * 60)
+    n_pages = len(_VERDICTS)
     passes = sum(1 for _, ok, _ in _VERDICTS if ok)
     fails  = sum(1 for _, ok, _ in _VERDICTS if not ok)
+    summary.append(f"Pages processed: {n_pages}")
+    summary.append("")
     for view, ok, detail in _VERDICTS:
         tag = "PASS" if ok else "FAIL"
         summary.append(f"  [{tag}] {view}: {detail}")
     summary.append("")
     if fails == 0:
-        summary.append(f"RESULT: ALL {passes} VIEWS PASS — no visual inspection needed")
+        summary.append(f"RESULT: ALL {passes}/{n_pages} VIEWS PASS — no visual inspection needed")
     else:
-        summary.append(f"RESULT: {fails} FAIL / {passes} PASS — inspect FAIL views")
+        summary.append(f"RESULT: {fails} FAIL / {passes} PASS out of {n_pages} pages — inspect FAIL views")
     summary.append("")
 
     with open(log_path, 'w') as f:
@@ -1483,6 +1698,10 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     Coordinates in model-space mm (no PAPER_FACTOR).
     Spec: 2D_ARCHITECTURAL_LAYOUT.md §5.1, §2 Process
     """
+    # §16.2: start per-view log
+    _start_view_log('FLOOR')
+    _log(f"§ENTRY write_floor_plan_dxf(db_path={db_path}, out_dxf={out_dxf}, scale={scale})")
+
     # ── §2 Step 1: LOAD TEMPLATE ──
     tpl = _load_template()
     tpl_paper = tpl.get('paper', {})
@@ -1497,6 +1716,17 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
          f"scale={tpl_paper.get('scale','?')}, "
          f"line_weights={len(tpl.get('line_weights',{}))} entries, "
          f"2D.db={'loaded' if meta else 'not found'}")
+
+    # §16.4: VALUE events for all governing constants
+    _log(f"§VALUE scale={scale} (from template)")
+    _log(f"§VALUE paper_w={tpl_paper.get('width_mm', 420)}mm (from template.paper.width_mm)")
+    _log(f"§VALUE tb_width={tpl_paper.get('title_block_width_mm', 120)}mm (from template.paper.title_block_width_mm)")
+    _log(f"§VALUE grid_ext={tpl_grid.get('extend_beyond_building_mm', 20)}mm (from template.grid.extend_beyond_building_mm)")
+    _log(f"§VALUE bubble_r={tpl_grid.get('bubble_radius_mm', 4.0)}mm (from template.grid.bubble_radius_mm)")
+    _log(f"§VALUE tier1_offset={tpl_dims.get('tier_1_offset_mm', 12)}mm (from template.dimensions.tier_1_offset_mm)")
+    _log(f"§VALUE tier2_offset={tpl_dims.get('tier_2_offset_mm', 6)}mm (from template.dimensions.tier_2_offset_mm)")
+    _log(f"§VALUE cut_z=1.2m (hardcoded per §5.1a)")
+    _log(f"§VALUE crowding_threshold={tpl_grid.get('crowding_threshold_mm', 15.0)}mm (from template.grid.crowding_threshold_mm)")
 
     # Line weights from template §1 R4
     lw_wall_ext = _lw(tpl, 'wall_exterior_cut')   # 0.50mm → 50
@@ -1552,6 +1782,15 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     n_above = sum(1 for es in cut_results if es.category == 'ABOVE')
     _log(f"§2.5 Section cut Z={cut_z}m: {n_cut} CUT, {n_below} BELOW, {n_above} ABOVE")
 
+    # §23 P0a: material lookup for hatch patterns
+    _mat_conn = sqlite3.connect(db_path)
+    _mat_cur = _mat_conn.cursor()
+    _mat_cur.execute("SELECT guid, material_name FROM elements_meta "
+                     "WHERE material_name IS NOT NULL AND material_name != ''")
+    _material_by_guid = {r[0]: r[1] for r in _mat_cur.fetchall()}
+    _mat_conn.close()
+    _hatch_counts = {}  # pattern_name → count
+
     cut_count = 0
     lw_hatch = _lw(tpl, 'hatch_line')
     for es in cut_results:
@@ -1594,13 +1833,23 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                     msp.add_lwpolyline(pts, close=True,
                                        dxfattribs={'layer': 'A-WALL-PATT',
                                                    'lineweight': lw})
-                    _add_wall_hatch(msp, pts)  # §5.1f: solid black HATCH fill for CAD viewers
+                    # §23 P0a: material-based hatch (Bonsai pattern or solid fallback)
+                    _wall_mat = _material_by_guid.get(es.guid, '')
+                    _used_pat = _add_wall_hatch(msp, pts, material_name=_wall_mat)
+                    _hatch_counts[_used_pat or 'solid'] = _hatch_counts.get(
+                        _used_pat or 'solid', 0) + 1
                 _log(f"  WRITE wall guid={es.guid} layer={layer} pts={len(pts)}")
                 cut_count += 1
 
+    # §23 P0a: log hatch pattern summary
+    _hatch_summary = ', '.join(f'{k}: {v} walls' for k, v in sorted(_hatch_counts.items()))
+    _log(f"§HATCH {_hatch_summary}")
+
     # ── BELOW elements: bounding box on A-FURN ──
-    # Skip structural/slab classes that produce floor-size rectangles (not furniture)
-    _BELOW_SKIP = frozenset({'IfcSlab', 'IfcRoof', 'IfcFoundation', 'IfcFooting'})
+    # Skip structural/slab classes + MEP (I-11: MEP belongs on MEP pages only)
+    _BELOW_SKIP = frozenset({'IfcSlab', 'IfcRoof', 'IfcFoundation', 'IfcFooting',
+                             'IfcFlowTerminal', 'IfcFlowSegment', 'IfcFlowFitting',
+                             'IfcFlowController'})
     for es in cut_results:
         if es.category != 'BELOW':
             continue
@@ -1778,6 +2027,10 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
 
     # ── §2 Step 4: COMPUTE DIMENSIONS ──
     dims = generate_dimensions(grids)
+    # §15.2: triage grid dims — PANEL bays suppress inline text
+    crowding_mm = tpl.get('grid', {}).get('crowding_threshold_mm', 15.0)
+    _inline_bays, _panel_bays = _triage_grid_dims(grids, scale, crowding_mm)
+    _panel_keys = frozenset((b.label1, b.label2) for b in _panel_bays)
     dim_count = 0
     tick_len = tpl_dims.get('tick_half_length_mm', 1.5) * scale
     # §6.3a: tick angle from template (default 45°)
@@ -1791,6 +2044,9 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
         e = d.end * MM
         off = d.offset * scale
         _log(f"§2.4 Dim {d.axis} {d.start:.3f}→{d.end:.3f} = {d.text}mm")
+
+        # §15.2: suppress dim text for PANEL bays (line + tick still drawn)
+        _is_panel = (d.from_label, d.to_label) in _panel_keys
 
         # §6.3c: extension_gap_mm from template — extension line starts DIM_GAP
         # away from the grid position (not touching the grid line).
@@ -1809,17 +2065,18 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                 msp.add_line((tx - tick_dx, dim_y - tick_dy),
                              (tx + tick_dx, dim_y + tick_dy),
                              dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            mid_x = (s + e) / 2
-            msp.add_text(d.text,
-                         dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h}
-                         ).set_placement((mid_x, dim_y + txt_h * 0.3),
-                                         align=TextEntityAlignment.MIDDLE_CENTER)
+            if not _is_panel:
+                mid_x = (s + e) / 2
+                msp.add_text(d.text,
+                             dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h}
+                             ).set_placement((mid_x, dim_y + txt_h * 0.3),
+                                             align=TextEntityAlignment.MIDDLE_CENTER)
             # §20.3.3: BIMSRC xdata on dimension line
             _set_bimsrc(dim_line_e, type='DIM', axis=d.axis,
                         from_grid=d.from_label, to_grid=d.to_label,
                         dist=float(d.end - d.start))
             n_bimsrc_dim += 1
-            _log(f"  WRITE dim {d.text} layer=A-DIMS")
+            _log(f"  WRITE dim {d.text} layer=A-DIMS{' (PANEL-suppressed)' if _is_panel else ''}")
         else:
             # §B: dim measured from building edge (left); bubble outermost left
             dim_x = bld_min_x - off
@@ -1834,12 +2091,13 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                 msp.add_line((dim_x - tick_dx, ty - tick_dy),
                              (dim_x + tick_dx, ty + tick_dy),
                              dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            mid_y = (s + e) / 2
-            msp.add_text(d.text,
-                         dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h,
-                                     'rotation': 90}
-                         ).set_placement((dim_x - txt_h * 0.3, mid_y),
-                                         align=TextEntityAlignment.MIDDLE_CENTER)
+            if not _is_panel:
+                mid_y = (s + e) / 2
+                msp.add_text(d.text,
+                             dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h,
+                                         'rotation': 90}
+                             ).set_placement((dim_x - txt_h * 0.3, mid_y),
+                                             align=TextEntityAlignment.MIDDLE_CENTER)
             # §20.3.3: BIMSRC xdata on dimension line
             _set_bimsrc(dim_line_e, type='DIM', axis=d.axis,
                         from_grid=d.from_label, to_grid=d.to_label,
@@ -1941,7 +2199,8 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y,
                        drawing_title='FLOOR PLAN', drawing_no='A-01',
                        scale=scale, schedule_rows=schedule,
-                       building_type=bld_type, building_name=bld_name, grids=grids)
+                       building_type=bld_type, building_name=bld_name, grids=grids,
+                       panel_bays=_panel_bays)
 
     # §20: BIMSRC summary
     _log(f'§XDATA SUMMARY: {n_bimsrc_wall} walls {n_bimsrc_grid} grids '
@@ -1950,9 +2209,13 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     # ── §2 Step 8: VERIFY ──
     _log(f"§2.8 Floor plan: {cut_count} cut polylines, {len(grids)} grids, "
          f"{dim_count} dims, {room_count} rooms, {tag_count} tags")
+    _log(f"§EXIT write_floor_plan_dxf: {cut_count} walls, {dim_count} dims, "
+         f"{room_count} rooms, {tag_count} tags")
     doc.saveas(out_dxf)
     _log(f"  → {out_dxf}")
-    _log(f"  → {out_dxf}")
+    # §16.2: flush per-view log
+    _prefix = os.path.basename(db_path).replace('_extracted.db', '').upper()
+    _flush_view_log(os.path.dirname(out_dxf), _prefix)
     _audit_dxf(doc, out_dxf, "FLOOR PLAN")
 
 
@@ -2642,6 +2905,10 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
 
     # ── Bay dimensions ──
     dims = generate_dimensions(grids)
+    # §15.2: triage grid dims for roof plan
+    crowding_mm = tpl.get('grid', {}).get('crowding_threshold_mm', 15.0)
+    _roof_inline, _roof_panel = _triage_grid_dims(grids, scale, crowding_mm)
+    _roof_panel_keys = frozenset((b.label1, b.label2) for b in _roof_panel)
     tick_len = tpl_dims.get('tick_half_length_mm', 1.5) * scale
     tick_angle = math.radians(tpl_dims.get('tick_angle_deg', 45))
     tick_dx = tick_len * math.cos(tick_angle)
@@ -2650,6 +2917,7 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
         s = d.start * MM
         e = d.end * MM
         off = d.offset * scale
+        _is_panel = (d.from_label, d.to_label) in _roof_panel_keys
         if d.axis == 'x':
             # §B: dim from building edge; bubble outermost
             dim_y = r_max_y + off
@@ -2659,10 +2927,11 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             msp.add_line((e - tick_dx, dim_y - tick_dy), (e + tick_dx, dim_y + tick_dy),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            msp.add_text(d.text,
-                         dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h}
-                         ).set_placement(((s + e) / 2, dim_y + txt_h),
-                                         align=TextEntityAlignment.MIDDLE_CENTER)
+            if not _is_panel:
+                msp.add_text(d.text,
+                             dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h}
+                             ).set_placement(((s + e) / 2, dim_y + txt_h),
+                                             align=TextEntityAlignment.MIDDLE_CENTER)
         else:
             # §B: dim from building left edge; bubble outermost left
             dim_x = r_min_x - off
@@ -2672,17 +2941,19 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             msp.add_line((dim_x - tick_dx, e - tick_dy), (dim_x + tick_dx, e + tick_dy),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            msp.add_text(d.text,
-                         dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h,
-                                     'rotation': 90}
-                         ).set_placement((dim_x - txt_h, (s + e) / 2),
-                                         align=TextEntityAlignment.MIDDLE_CENTER)
+            if not _is_panel:
+                msp.add_text(d.text,
+                             dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h,
+                                         'rotation': 90}
+                             ).set_placement((dim_x - txt_h, (s + e) / 2),
+                                             align=TextEntityAlignment.MIDDLE_CENTER)
 
     # ── Sheet layout ──
     bld_type, bld_name = _infer_building_identity(db_path)
     _draw_sheet_layout(doc, msp, tpl, r_min_x, r_max_x, r_min_y, r_max_y,
                        drawing_title='ROOF PLAN', drawing_no='A-06', scale=scale,
-                       building_type=bld_type, building_name=bld_name, grids=grids)
+                       building_type=bld_type, building_name=bld_name, grids=grids,
+                       panel_bays=_roof_panel)
 
     _log(f"§2.8 Roof plan: {len(roofs)} roof(s), {len(grids)} grids, "
          f"type={'FLAT' if is_flat else 'PITCHED'}")
@@ -2699,7 +2970,8 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
 _ELEC_KEYWORDS = ('light', 'fan', 'switch', 'outlet', 'telephone', 'power',
                   'socket', 'panel', 'meter', 'luminaire', 'lamp')
 _PLUMB_KEYWORDS = ('water closet', 'sink', 'shower', 'basin', 'bath',
-                   'drain', 'trap', 'toilet', 'bidet', 'urinal')
+                   'drain', 'trap', 'toilet', 'bidet', 'urinal',
+                   'pipe', 'plumbing')
 
 
 def _classify_mep(element_name: str) -> str:
@@ -2773,7 +3045,6 @@ def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
         WHERE m.ifc_class = 'IfcFlowTerminal'
     """)
     rows = cur.fetchall()
-    conn.close()
 
     legend_items = {}  # discipline → set of display names
     elem_count = 0
@@ -2788,6 +3059,40 @@ def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
         elem_count += 1
 
     _log(f"§D MEP plan discipline={discipline}: {elem_count} terminals drawn")
+
+    # §17.3 P5: IfcFlowSegment rendering — thin lines along major bbox axis
+    lw_seg = int(0.13 * 100)  # 0.13mm hairline per §17.3
+    cur.execute("""
+        SELECT m.guid, m.element_name, m.ifc_class,
+               r.minX, r.maxX, r.minY, r.maxY
+        FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
+        WHERE m.ifc_class = 'IfcFlowSegment'
+    """)
+    seg_rows = cur.fetchall()
+    conn.close()
+    seg_count = 0
+    for guid, name, ifc_class, minX, maxX, minY, maxY in seg_rows:
+        disc = _classify_mep(name or '')
+        if discipline != 'MEP' and disc != discipline:
+            continue
+        layer = 'A-MEP-ELEC' if disc == 'ELECTRICAL' else 'A-MEP-PLMB'
+        # Orient by long axis: draw thin line between bbox long-axis endpoints
+        dx = maxX - minX
+        dy = maxY - minY
+        if dx >= dy:
+            # Horizontal run
+            x1, y1 = _mh(minX), _mh((minY + maxY) / 2)
+            x2, y2 = _mh(maxX), _mh((minY + maxY) / 2)
+        else:
+            # Vertical run
+            x1, y1 = _mh((minX + maxX) / 2), _mh(minY)
+            x2, y2 = _mh((minX + maxX) / 2), _mh(maxY)
+        msp.add_line((x1, y1), (x2, y2),
+                     dxfattribs={'layer': layer, 'lineweight': lw_seg})
+        _log(f"§RENDER SEGMENT layer={layer} src=guid:{guid} "
+             f"({x1:.0f},{y1:.0f})→({x2:.0f},{y2:.0f})")
+        seg_count += 1
+    _log(f"§D MEP segments: {seg_count} flow segments drawn")
 
     # ── Legend in schedule rows slot — dicts matching _draw_sheet_layout format ──
     legend_rows = []
@@ -3000,9 +3305,9 @@ def main():
     parser.add_argument('--elevation', metavar='FACE',
                         help='Generate elevation DXF: front|rear|left|right')
     parser.add_argument('--all', action='store_true',
-                        help='Generate all drawings (floor + roof + 4 elevations)')
+                        help='Generate all drawings (floor + roof + 4 elevations) + SVG proof')
     parser.add_argument('--proof', action='store_true',
-                        help='Convert DXF→SVG (spec §10.0)')
+                        help='Convert DXF→SVG proof renders (implied by --all)')
     parser.add_argument('--scale', type=int, default=100,
                         help='Drawing scale denominator (default 100 = 1:100)')
     args = parser.parse_args()
@@ -3104,7 +3409,7 @@ def main():
         generated[short] = dxf_path
 
     # §9.6 R1: DXF→SVG (no PNG)
-    if args.proof:
+    if args.proof or args.all:
         for short, dxf_path in generated.items():
             if not os.path.exists(dxf_path):
                 continue
