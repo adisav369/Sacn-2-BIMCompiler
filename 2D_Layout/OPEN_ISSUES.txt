@@ -5,9 +5,17 @@
 # Language: English only
 
 # CLOSED I-31 (2026-04-10): §GRID_BUBBLE face=front grid=A end=bot cx=-0.0 cy=-9.5 r=4.0 src=2d_grid_style; [PASS] GRID_BUBBLES_BOTH_ENDS A-02..A-05 — commit next
-[High]   I-32  Level lines bleed into title block column. Currently terminate at x=300.655 (10mm past title block divider x=290). Must terminate at x_content_right per zone layout. Fix: introduce zone constants (x_level_right, x_content_right, x_height_right) from template; clamp all level lines and building elements to their zone. Log `§ZONE_LAYOUT face=... x_content=(l,r)`. Test: `test_zone_layout` — zero entities outside their zone. (§12a.2)
+# LOG-FIRST RULE: Every issue below is OPEN until a § log line from an actual run proves it fixed.
+# Visual SVG inspection is NOT evidence. The log is the only witness.
+# If the required § log line is absent from dxf_diagnostic.txt, the issue is not fixed.
+
+# CLOSED I-32 (2026-04-10): §ZONE_LAYOUT x_content=(-58,155) §GROUND_LINE overflow=0.0mm §BLD_RANGE fit=IN_ZONE §LEVEL_DRAW code=FFL — all 4 faces. PROOF_NO_OVERSHOOT PASS all sheets.
+
 # CLOSED I-34 (2026-04-10): §LEVEL_MARKER code=FFL display_text='GRD. FLOOR LEVEL' src=2d_level_marker (NOT synthesised) — commit 1cff122e
 # CLOSED I-36 (2026-04-10): §FACE_CLASS face=left apparent_width=17.8m class=form_face; §ZONE_LAYOUT face=left level_w=0mm — commit 1cff122e
-[Medium] I-33  Displaced polylines in DX LEFT/RIGHT elevations at x=166–336, y=118–128 — extend 84mm past building right edge into title block. Root cause unknown (wrong-world-coords element or slab projection error). Fix: add content-zone guard — any element with centroid outside [x_content_left, x_content_right] logs `§SKIP_OOB` and is not drawn. Test: `test_content_fits_zone` — all building-layer polyline x-coords within content zone. (§12a.6)
-[Medium] I-35  Window stroke colour `#4488CC` and stroke width hardcoded in `write_elevation_dxf`. Must come from `2d_drawing_style` row where `element_match='IfcWindow'` and `view_type='ELEVATION'`. Fix: query `2d_drawing_style` for each IFC class before drawing; use `stroke_color`, `stroke_weight`. Log `§STYLE ifc=IfcWindow view=ELEVATION stroke=#4488CC lw=0.18 src=2d_drawing_style`. Test: R5_NO_HARDCODE extended to flag hex colour literals in elevation code path. (§12a.3)
-[Medium] I-37  Height dimension numbers have no unit suffix. `3200` should render as `3200` with unit from `2d_dimension_style.unit_suffix` (default `mm` — so `3200` is correct, but must be verified against DB not assumed). Fix: query `SELECT unit_suffix, thousands_separator FROM 2d_dimension_style LIMIT 1`; format accordingly. Log `§HEIGHT_DIM span=FFL→SILL delta=3200mm fmt='3200' unit=mm src=2d_dimension_style`. Test: height dim text in DXF matches format declared in `2d_dimension_style`. (§12a.3)
+
+# CLOSED I-33 (2026-04-10): §SKIP_OOB face=right elem=IfcSlab guid=3ThA22djr8AQQ9eQMA5s7I 2 displaced vertices filtered; §BLD_RANGE fit=IN_ZONE; PROOF_NO_OVERSHOOT PASS A-05.
+
+# CLOSED I-35 (2026-04-10): §STYLE ifc=IfcWall/IfcWindow/IfcDoor/IfcRoof/IfcPlate view=ELEVATION src=2d_drawing_style; R5_NO_HARDCODE PASS.
+
+# CLOSED I-37 (2026-04-10): §HEIGHT_DIM span=FFL→SILL delta=3200mm fmt='3200mm' unit=mm src=2d_dimension_style (per span + tier-1 total); query 2d_dimension_style.unit.

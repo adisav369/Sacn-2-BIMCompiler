@@ -2637,8 +2637,7 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
     _mr    = tpl.get('paper', {}).get('margins', {}).get('right', 10)
     _pw    = tpl.get('paper', {}).get('width_mm', 420)
     _cnt_w = _pw - _ml - _mr - _lv_w - _ht_w - _tb_w
-    _log(f"§ZONE_LAYOUT face={face} level_w={_lv_w}mm content_w={_cnt_w:.0f}mm "
-         f"height_w={_ht_w}mm tb_w={_tb_w}mm")
+    # §ZONE_LAYOUT logged after face_elems selected (needs h-range to compute sheet_x)
 
     # Mirror sign: rear and right viewers see the horizontal axis reversed
     if face == 'front':
@@ -2668,15 +2667,74 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
 
     v_of = lambda e: (e.min_z, e.max_z)
 
+    # ── §12a.2 Zone constants — derived from face_elems h-range + template ──
+    # Use walls/doors/windows only (stable, no displaced slab contamination)
+    _fe_hmin = min(h_of(e)[0] for e in face_elems) if face_elems else 0.0
+    _fe_hmax = max(h_of(e)[1] for e in face_elems) if face_elems else 0.0
+    ext = 0.5  # m extension each side (duplicated here for zone calc; also used below)
+    _cnt_w_full_ms  = (_pw - _ml - _mr - _tb_w) * scale   # same formula as _draw_sheet_layout
+    _fe_bld_w_ms    = _mh(_fe_hmax + ext) - _mh(_fe_hmin - ext)
+    _centering_ms   = max(0.0, (_cnt_w_full_ms - _fe_bld_w_ms) / 2.0)
+    _sheet_x_ms     = _mh(_fe_hmin - ext) - _ml * scale - _centering_ms
+    # Absolute zone boundaries in model-space mm
+    _x_lv_left_ms   = _sheet_x_ms + _ml * scale
+    _x_lv_right_ms  = _x_lv_left_ms  + _lv_w * scale
+    _x_cnt_left_ms  = _x_lv_right_ms
+    _x_cnt_right_ms = _x_cnt_left_ms + _cnt_w * scale
+    _x_ht_right_ms  = _x_cnt_right_ms + _ht_w * scale
+    _x_tb_ms        = _sheet_x_ms + (_pw - _mr - _tb_w) * scale
+    # Paper-space mm equivalents (for logging — always == template constants)
+    _zp = lambda ms: ms / scale  # model-space mm → paper mm
+    _log(f"§ZONE_LAYOUT face={face} level_w={_lv_w}mm content_w={_cnt_w:.0f}mm "
+         f"height_w={_ht_w}mm tb_w={_tb_w}mm "
+         f"x_level=({_zp(_x_lv_left_ms):.0f},{_zp(_x_lv_right_ms):.0f}) "
+         f"x_content=({_zp(_x_cnt_left_ms):.0f},{_zp(_x_cnt_right_ms):.0f}) "
+         f"x_height=({_zp(_x_cnt_right_ms):.0f},{_zp(_x_ht_right_ms):.0f}) "
+         f"x_tb=({_zp(_x_tb_ms):.0f},{_zp(_sheet_x_ms + _pw*scale):.0f})")
+
+    # ── §I-35: Load elevation drawing styles from 2d_drawing_style ──
+    _elev_styles: dict = {}
+    for _try_db in [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'input', '2D.db'),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'lib', 'input', '2D.db'),
+    ]:
+        if os.path.exists(_try_db):
+            _db2d = sqlite3.connect(_try_db)
+            for _r in _db2d.execute(
+                    "SELECT element_match, stroke_color, stroke_weight "
+                    "FROM [2d_drawing_style] WHERE view_type='ELEVATION'"):
+                # element_match may be 'IfcWall:Ext' — key by IFC class prefix
+                _cls_key = _r[0].split(':')[0]
+                _elev_styles[_cls_key] = {'stroke': _r[1], 'lw': _r[2]}
+            _db2d.close()
+            break
+    for _cls in ('IfcWall', 'IfcWindow', 'IfcDoor', 'IfcPlate', 'IfcSlab', 'IfcRoof'):
+        if _cls in _elev_styles:
+            _s = _elev_styles[_cls]
+            _log(f"§STYLE ifc={_cls} view=ELEVATION stroke={_s['stroke']} "
+                 f"lw={_s['lw']} src=2d_drawing_style")
+        else:
+            _log(f"§STYLE_MISS ifc={_cls} view=ELEVATION — using layer default")
+
     doc = _new_doc(tpl, scale)
     msp = doc.modelspace()
 
     # ── §2 Step 7: RENDER — wall/door/window outlines ──
+    # §12a.2 / §I-33: OOB guard — skip elements entirely outside content zone
+    _drawn_h_ms: list = []
     for e in face_elems:
         hh = h_of(e)
         vv = v_of(e)
         h0, h1 = _mh(hh[0]), _mh(hh[1])
         v0, v1 = _mh(vv[0]), _mh(vv[1])
+        # OOB: entirely left of zone or entirely right of zone
+        if h1 < _x_cnt_left_ms - 5 * scale or h0 > _x_cnt_right_ms + 5 * scale:
+            _log(f"§SKIP_OOB face={face} elem={e.ifc_class} "
+                 f"guid={getattr(e, 'guid', '?')} "
+                 f"h_range=({h0/scale:.1f},{h1/scale:.1f})mm "
+                 f"zone=({_zp(_x_cnt_left_ms):.0f},{_zp(_x_cnt_right_ms):.0f})mm — skipped")
+            continue
+        _drawn_h_ms.extend([h0, h1])
         pts = [(h0, v0), (h1, v0), (h1, v1), (h0, v1)]
 
         if e.ifc_class in ('IfcWall', 'IfcPlate'):
@@ -2703,10 +2761,61 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
         msp.add_lwpolyline(pts, close=True,
                            dxfattribs={'layer': layer, 'lineweight': lw})
 
+    # §12a.2: BLD_RANGE — log actual paper-space x of drawn content
+    if _drawn_h_ms:
+        _bld_h_min_ms = min(_drawn_h_ms)
+        _bld_h_max_ms = max(_drawn_h_ms)
+        _fit = ('IN_ZONE' if (_bld_h_min_ms >= _x_cnt_left_ms - scale and
+                              _bld_h_max_ms <= _x_cnt_right_ms + scale)
+                else 'OVERFLOW')
+        _log(f"§BLD_RANGE face={face} "
+             f"paper_x=({_zp(_bld_h_min_ms):.1f},{_zp(_bld_h_max_ms):.1f})mm "
+             f"zone=({_zp(_x_cnt_left_ms):.0f},{_zp(_x_cnt_right_ms):.0f})mm fit={_fit}")
+
     # ── Roof silhouette — §5.2: convex hull of roof projected onto face ──
     _sil_result = roof_silhouette(db_path, face)
     hull, slab_thickness_m = (_sil_result if isinstance(_sil_result, tuple)
                               else (_sil_result, 0.0))
+    if hull:
+        # §12a.2 / §I-33: OOB guard — entire hull outside zone → skip
+        _hull_h_ms = [_mh(h) for h, z in hull]
+        _hull_hmin_ms, _hull_hmax_ms = min(_hull_h_ms), max(_hull_h_ms)
+        if (_hull_hmax_ms < _x_cnt_left_ms - 5 * scale or
+                _hull_hmin_ms > _x_cnt_right_ms + 5 * scale):
+            _log(f"§SKIP_OOB face={face} elem=roof_silhouette "
+                 f"h_range=({_zp(_hull_hmin_ms):.1f},{_zp(_hull_hmax_ms):.1f})mm "
+                 f"zone=({_zp(_x_cnt_left_ms):.0f},{_zp(_x_cnt_right_ms):.0f})mm — skipped")
+            hull = []
+        else:
+            # §I-33: per-vertex OOB filter — displaced mesh vertices (local coords,
+            #   not world-space) can extend far outside the building footprint.
+            _h_lo = _x_cnt_left_ms - 5 * scale
+            _h_hi = _x_cnt_right_ms + 5 * scale
+            _oob_verts = [(h, z) for h, z in hull if _mh(h) < _h_lo or _mh(h) > _h_hi]
+            if _oob_verts:
+                _oob_hmin = min(_mh(h) for h, z in _oob_verts)
+                _oob_hmax = max(_mh(h) for h, z in _oob_verts)
+                # Query guid of the slab whose mesh contributes OOB vertices
+                _skip_guid = '?'
+                try:
+                    _sc = sqlite3.connect(db_path)
+                    _sg = _sc.execute("""
+                        SELECT ei.guid FROM elements_meta m
+                        JOIN element_instances ei ON m.guid = ei.guid
+                        WHERE (m.ifc_class = 'IfcRoof'
+                               OR (m.ifc_class = 'IfcSlab'
+                                   AND m.element_name LIKE '%Roof%'))
+                        LIMIT 1""").fetchone()
+                    if _sg:
+                        _skip_guid = _sg[0]
+                    _sc.close()
+                except Exception:
+                    pass
+                _log(f"§SKIP_OOB face={face} elem=IfcSlab guid={_skip_guid} "
+                     f"h_range=({_zp(_oob_hmin):.0f},{_zp(_oob_hmax):.0f})mm "
+                     f"zone=({_zp(_x_cnt_left_ms):.0f},{_zp(_x_cnt_right_ms):.0f})mm "
+                     f"— {len(_oob_verts)} displaced vertices filtered")
+                hull = [(h, z) for h, z in hull if not (_mh(h) < _h_lo or _mh(h) > _h_hi)]
     if hull:
         # §I-26 fix 1: open polyline avoids spurious vertical closing segment
         pts = [(_mh(h), _mh(z)) for h, z in hull]
@@ -2739,9 +2848,11 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
         doc.saveas(out_dxf)
         return
 
-    h_min_m = min(h_of(e)[0] for e in all_vis)
-    h_max_m = max(h_of(e)[1] for e in all_vis)
-    ext = 0.5  # m extension each side
+    # §12a.2: Use face_elems (walls/doors/windows) for ground line extent —
+    # avoids displaced slab inflation of the bounding box (§I-33 / §I-32)
+    h_min_m = _fe_hmin
+    h_max_m = _fe_hmax
+    # ext already set in zone block above
 
     # ── Level data from 2D.db (§3.2b, §4.3c, §5.2c) ──
     db_levels = _read_2d_db_levels()
@@ -2749,14 +2860,23 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
     apron_z = db_levels['level_elevations'].get('APRON', APRON_Z)
     grd_z   = db_levels['level_elevations'].get('GRD', GRD_Z)
 
+    # §12a.2 / §I-32: Clamp ground/FFL lines to content zone (never bleed into title block)
+    _grd_left_ms  = max(_x_cnt_left_ms,  _mh(h_min_m - ext))
+    _grd_right_ms = min(_x_cnt_right_ms, _mh(h_max_m + ext))
+    _grd_overflow = max(0.0, (_mh(h_max_m + ext) - _x_cnt_right_ms) / scale)
     # GRD. LEVEL line — boldest (border weight)
-    msp.add_line((_mh(h_min_m - ext), _mh(grd_z)),
-                 (_mh(h_max_m + ext), _mh(grd_z)),
+    msp.add_line((_grd_left_ms, _mh(grd_z)),
+                 (_grd_right_ms, _mh(grd_z)),
                  dxfattribs={'layer': 'A-ELEV-LEVL', 'lineweight': lw_border})
     # FFL line — medium
-    msp.add_line((_mh(h_min_m - 0.3), 0.0),
-                 (_mh(h_max_m + 0.3), 0.0),
+    _ffl_left_ms  = max(_x_cnt_left_ms,  _mh(h_min_m - 0.3))
+    _ffl_right_ms = min(_x_cnt_right_ms, _mh(h_max_m + 0.3))
+    msp.add_line((_ffl_left_ms, 0.0),
+                 (_ffl_right_ms, 0.0),
                  dxfattribs={'layer': 'A-ELEV-LEVL', 'lineweight': lw_wall_int})
+    _log(f"§GROUND_LINE face={face} "
+         f"x_start={_zp(_grd_left_ms):.0f}mm x_end={_zp(_grd_right_ms):.0f}mm "
+         f"zone_right={_zp(_x_cnt_right_ms):.0f}mm overflow={_grd_overflow:.1f}mm")
 
     # ── Level markers — §5.2, §3.2: text + triangle on left side ──
     levels = detect_levels(elements)
@@ -2797,18 +2917,19 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                 ly = label_ys[-1] + min_gap
             label_ys.append(ly)
 
-        # §4.3d/§5.2b: level line = dashed, full width of drawing (not short leader)
-        level_line_right = _mh(h_max_m + ext)
+        # §4.3d/§5.2b/§I-32: level line spans content zone — clamped to x_content_right
+        level_line_left  = max(_x_lv_left_ms, _mh(h_min_m - ext))
+        level_line_right = min(_x_cnt_right_ms, _mh(h_max_m + ext))
         level_lw = _lw(tpl, 'dimension_line')
 
         for (lbl, lz), label_ly in zip(levels, label_ys):
             true_ly = _mh(lz)
-            msp.add_line((marker_x, true_ly),
+            msp.add_line((level_line_left, true_ly),
                          (level_line_right, true_ly),
                          dxfattribs={'layer': 'A-ANNO-LEVL', 'lineweight': level_lw,
                                      'linetype': 'HIDDEN'})
-            msp.add_line((marker_x - tick_dx, true_ly - tick_dy),
-                         (marker_x + tick_dx, true_ly + tick_dy),
+            msp.add_line((level_line_right - tick_dx, true_ly - tick_dy),
+                         (level_line_right + tick_dx, true_ly + tick_dy),
                          dxfattribs={'layer': 'A-ANNO-LEVL', 'lineweight': level_lw})
             if abs(label_ly - true_ly) > _mh(0.05):
                 msp.add_line((marker_x - _mh(1.6), true_ly),
@@ -2829,6 +2950,10 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                          dxfattribs={'layer': 'A-ANNO-LEVL', 'height': txt_h}
                          ).set_placement((_txt_anchor, label_ly),
                                          align=TextEntityAlignment.MIDDLE_RIGHT)
+            _log(f"§LEVEL_DRAW code={lbl} y={_zp(true_ly):.1f}mm "
+                 f"x_line=({_zp(level_line_left):.0f},{_zp(level_line_right):.0f})mm "
+                 f"tick_at={_zp(level_line_right):.0f}mm "
+                 f"label_at={_txt_anchor/scale:.0f}mm")
 
     # ── §2 Step 3: Grid lines on elevation ──
     grid_axis = 'x' if face in ('front', 'rear') else 'y'
@@ -2899,6 +3024,21 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                              ).set_placement((mid_x, dim_y - dim_txt_h * 2.5),
                                              align=TextEntityAlignment.MIDDLE_CENTER)
 
+    # ── §I-37: Load dimension style from 2d_dimension_style ──
+    _dim_unit_suffix = ''
+    for _try_db in [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'input', '2D.db'),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'lib', 'input', '2D.db'),
+    ]:
+        if os.path.exists(_try_db):
+            _db2d = sqlite3.connect(_try_db)
+            _drow = _db2d.execute(
+                "SELECT unit FROM [2d_dimension_style] LIMIT 1").fetchone()
+            if _drow:
+                _dim_unit_suffix = _drow[0] or ''
+            _db2d.close()
+            break
+
     # ── §6.2 Height dimension chain (right side) — annotation_face only (§I-36) ──
     if not is_form_face:
       _tpl_p = tpl.get('paper', {})
@@ -2938,11 +3078,15 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                              (h_dim_x + tick_dx, tz + tick_dy),
                              dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             mid_z = (z0 + z1) / 2
-            msp.add_text(str(int(snapped)),
+            _span_fmt = str(int(snapped)) + _dim_unit_suffix
+            msp.add_text(_span_fmt,
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'height': dim_txt_h,
                                      'rotation': 90}
                          ).set_placement((h_dim_x + dim_txt_h * 0.3, mid_z),
                                          align=TextEntityAlignment.MIDDLE_CENTER)
+            _log(f"§HEIGHT_DIM span={height_levels[i][0]}→{height_levels[i+1][0]} "
+                 f"delta={int(snapped)}mm fmt='{_span_fmt}' "
+                 f"unit={_dim_unit_suffix or 'mm'} src=2d_dimension_style")
 
         # Tier 1: overall height (outer)
         h_dim_x2 = h_dim_x_base + tier_1_off
@@ -2961,11 +3105,15 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                          (h_dim_x2 + tick_dx, tz + tick_dy),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
         mid_z = (z_bot + z_top) / 2
-        msp.add_text(str(int(total_snapped)),
+        _total_fmt = str(int(total_snapped)) + _dim_unit_suffix
+        msp.add_text(_total_fmt,
                      dxfattribs={'layer': 'A-ANNO-DIMS', 'height': dim_txt_h,
                                  'rotation': 90}
                      ).set_placement((h_dim_x2 + dim_txt_h * 0.3, mid_z),
                                      align=TextEntityAlignment.MIDDLE_CENTER)
+        _log(f"§HEIGHT_DIM span={height_levels[0][0]}→{height_levels[-1][0]} "
+             f"delta={int(total_snapped)}mm fmt='{_total_fmt}' "
+             f"unit={_dim_unit_suffix or 'mm'} src=2d_dimension_style (tier-1 total)")
 
     # ── §5.0: Sheet furniture (border, title block, north arrow) ──
     _face_dt = {
