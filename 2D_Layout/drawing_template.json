@@ -134,11 +134,41 @@
   },
 
   "north_arrow": {
+    "shape": "triangle",
     "size_mm": 8.0,
-    "placement": "top_right",
+    "width_ratio": 0.33,
     "label": "N",
     "font_height_mm": 3.0,
-    "fill": "#000000"
+    "fill": "#000000",
+    "placement": "top_right"
+  },
+
+  "roof_plan": {
+    "slope_arrow_head_mm": 1.5,
+    "slope_arrow_line_weight_mm": 0.18,
+    "drain_symbol_radius_mm": 2.0,
+    "ridge_label": "RIDGE"
+  },
+
+  "mep": {
+    "terminal_symbol_radius_mm": 2.5,
+    "segment_line_weight_mm": 0.13,
+    "terminal_line_weight_mm": 0.18,
+    "fitting_radius_factor": 0.4,
+    "controller_size_factor": 0.8,
+    "electrical_keywords": ["light", "fan", "switch", "outlet", "telephone",
+        "power", "socket", "panel", "meter", "luminaire", "lamp", "sconce",
+        "pendant", "conduit"],
+    "plumbing_keywords": ["water closet", "sink", "shower", "basin", "bath",
+        "drain", "trap", "toilet", "bidet", "urinal", "lavatory", "pipe",
+        "plumbing"],
+    "symbols": {
+      "ELECTRICAL": { "shape": "circle_cross", "layer": "A-MEP-ELEC" },
+      "PLUMBING":   { "shape": "circle_dot",   "layer": "A-MEP-PLMB" },
+      "MEP":        { "shape": "circle_dot",   "layer": "A-MEP-PLMB" }
+    },
+    "legend_header": "SYMBOLS",
+    "legend_columns": ["SYMBOL", "DESCRIPTION", "QTY"]
   },
 
   "scale_bar": {

@@ -838,6 +838,9 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
         na = tpl.get('north_arrow', {})
         na_size = na.get('size_mm', 8) * scale
         na_font = na.get('font_height_mm', 3.0) * scale
+        na_width_ratio = na.get('width_ratio', 0.33)
+        _log(f"§VALUE north_arrow.size_mm={na.get('size_mm', 8)} (from template)")
+        _log(f"§VALUE north_arrow.width_ratio={na_width_ratio} (from template)")
         # §7.3f: Placement from template north_arrow.placement if it has
         # x_from_right_mm / y_from_bottom_mm keys; else fall back to default.
         na_placement = na.get('placement', {})
@@ -850,15 +853,19 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
             # Default: top-right of content area, offset by arrow size from edges
             na_x = tb_left - na_size * 2
             na_y = by1 - na_size * 3
+        na_half_w = na_size * na_width_ratio
         tri_pts = [(na_x, na_y + na_size),
-                   (na_x - na_size / 3, na_y),
-                   (na_x + na_size / 3, na_y)]
+                   (na_x - na_half_w, na_y),
+                   (na_x + na_half_w, na_y)]
         msp.add_lwpolyline(tri_pts, close=True,
                            dxfattribs={'layer': 'A-ANNO-TEXT', 'lineweight': lw_tb})
         msp.add_text(na.get('label', 'N'),
                      dxfattribs={'layer': 'A-ANNO-TEXT', 'height': na_font}
                      ).set_placement((na_x, na_y + na_size + na_font),
                                      align=TextEntityAlignment.MIDDLE_CENTER)
+        _log(f"§RENDER NORTH_ARROW shape=triangle size={na.get('size_mm', 8)}mm "
+             f"width_ratio={na_width_ratio} at ({na_x:.0f},{na_y:.0f}) "
+             f"src=template.north_arrow")
 
     # Scale text — §5.0 universal sheet furniture
     scale_str = tpl.get('paper', {}).get('scale', '1:100')
@@ -1990,6 +1997,8 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
                 _add_bubble_hatch(msp, pos, cy, bubble_r)
                 msp.add_circle((pos, cy), bubble_r,
                                dxfattribs={'layer': 'A-GRID', 'lineweight': bubble_lw})
+                _log(f"§RENDER BUBBLE layer=A-GRID r={bubble_r/scale:.1f}mm "
+                     f"at ({pos:.0f},{cy:.0f}) src=template.grid.bubble_radius_mm")
                 msp.add_text(g.label,
                              dxfattribs={'layer': 'A-ANNO-TEXT',
                                          'height': txt_grid_h}
@@ -2039,6 +2048,9 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     tick_dx = tick_len * math.cos(tick_angle)
     tick_dy = tick_len * math.sin(tick_angle)
     txt_h    = tpl_dims.get('text_height_mm', 2.5) * scale
+    _log(f"§RENDER DIM_TICK angle={tpl_dims.get('tick_angle_deg', 45)}° "
+         f"len={tpl_dims.get('tick_half_length_mm', 1.5)}mm "
+         f"src=template.dimensions.tick_angle_deg")
 
     for d in dims:
         s = d.start * MM
@@ -2710,9 +2722,14 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
         # Roof drains — IfcFlowFitting in Roof storey / Unknown at top-Z
         drains = [e for e in elements['other']
                   if 'Drain' in (e.name or '') and e.max_z >= roof_min_z]
+        tpl_roof_drain = tpl.get('roof_plan', {})
+        _dr_mm = tpl_roof_drain.get('drain_symbol_radius_mm', 2.0)
+        _log(f"§VALUE roof_plan.drain_symbol_radius_mm={_dr_mm} (from template)")
         for d in drains:
             cx, cy = _mh(d.center_x), _mh(d.center_y)
-            dr = 2.0 * scale  # drain symbol radius
+            dr = _dr_mm * scale
+            _log(f"§RENDER DRAIN_SYMBOL r={_dr_mm}mm at ({cx:.0f},{cy:.0f}) "
+                 f"src=template.roof_plan.drain_symbol_radius_mm")
             msp.add_circle((cx, cy), dr,
                            dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             msp.add_line((cx - dr, cy), (cx + dr, cy),
@@ -2775,7 +2792,10 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
         n_bays = max(len(x_grids) - 1, 1)
         roof_w_mm = _mh(roof_max_x - roof_min_x)
         arrow_spacing = roof_w_mm / (n_bays + 1)
-        arrow_head = 1.5 * scale
+        tpl_roof = tpl.get('roof_plan', {})
+        _ah_mm = tpl_roof.get('slope_arrow_head_mm', 1.5)
+        arrow_head = _ah_mm * scale
+        _log(f"§VALUE roof_plan.slope_arrow_head_mm={_ah_mm} (from template)")
         for i in range(1, n_bays + 1):
             ax = _mh(roof_min_x) + arrow_spacing * i
             n_start = _mh(ridge_y) + 5 * scale
@@ -2792,6 +2812,8 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
             msp.add_solid([(ax, s_end), (ax - arrow_head, s_end + arrow_head * 1.5),
                            (ax + arrow_head, s_end + arrow_head * 1.5)],
                           dxfattribs={'layer': 'A-ANNO-DIMS'})
+            _log(f"§RENDER SLOPE_ARROW head={_ah_mm}mm at ({ax:.0f},{n_end:.0f}) "
+                 f"src=template.roof_plan.slope_arrow_head_mm")
 
     # ── Grids (§4.4: same bay grids as floor plan) — shared by both roof types ──
     columns = [e for e in elements.get('other', []) if e.ifc_class == 'IfcColumn']
@@ -2968,38 +2990,49 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
 # ─────────────────────────────────────────────────────────────────
 
 # Keyword classifiers for IfcFlowTerminal element_name
-_ELEC_KEYWORDS = ('light', 'fan', 'switch', 'outlet', 'telephone', 'power',
-                  'socket', 'panel', 'meter', 'luminaire', 'lamp')
-_PLUMB_KEYWORDS = ('water closet', 'sink', 'shower', 'basin', 'bath',
-                   'drain', 'trap', 'toilet', 'bidet', 'urinal',
-                   'pipe', 'plumbing')
-
-
-def _classify_mep(element_name: str) -> str:
-    """Return 'ELECTRICAL', 'PLUMBING', or 'MEP' (general)."""
+def _classify_mep(element_name: str, tpl: dict) -> str:
+    """Return 'ELECTRICAL', 'PLUMBING', or 'MEP' (general).
+    Keywords read from tpl['mep']['electrical_keywords'] / ['plumbing_keywords'].
+    """
+    tpl_mep = tpl.get('mep', {})
+    elec_kw = tpl_mep.get('electrical_keywords',
+                          ['light', 'fan', 'switch', 'outlet', 'telephone', 'power',
+                           'socket', 'panel', 'meter', 'luminaire', 'lamp'])
+    plmb_kw = tpl_mep.get('plumbing_keywords',
+                          ['water closet', 'sink', 'shower', 'basin', 'bath',
+                           'drain', 'trap', 'toilet', 'bidet', 'urinal',
+                           'pipe', 'plumbing'])
     low = element_name.lower()
-    if any(k in low for k in _ELEC_KEYWORDS):
+    if any(k in low for k in elec_kw):
         return 'ELECTRICAL'
-    if any(k in low for k in _PLUMB_KEYWORDS):
+    if any(k in low for k in plmb_kw):
         return 'PLUMBING'
     return 'MEP'
 
 
 def _draw_mep_symbol(msp, cx: float, cy: float, discipline: str,
-                     r: float, lw: int):
-    """Draw a simple geometric symbol for an MEP element at model (cx, cy)."""
-    if discipline == 'ELECTRICAL':
-        # Circle + cross
-        msp.add_circle((cx, cy), r, dxfattribs={'layer': 'A-MEP-ELEC', 'lineweight': lw})
+                     r: float, lw: int, tpl: dict):
+    """Draw a geometric symbol for an MEP element at model (cx, cy).
+    Shape and layer read from tpl['mep']['symbols'][discipline].
+    """
+    tpl_mep = tpl.get('mep', {})
+    sym_def = tpl_mep.get('symbols', {}).get(discipline,
+              {'shape': 'circle_dot', 'layer': 'A-MEP-PLMB'})
+    shape = sym_def.get('shape', 'circle_dot')
+    layer = sym_def.get('layer', 'A-MEP-PLMB')
+    _log(f"§RENDER MEP_SYMBOL shape={shape} r={r/SCALE:.2f}mm layer={layer} "
+         f"at ({cx:.0f},{cy:.0f}) src=template.mep.symbols.{discipline}")
+    if shape == 'circle_cross':
+        msp.add_circle((cx, cy), r, dxfattribs={'layer': layer, 'lineweight': lw})
         msp.add_line((cx - r, cy), (cx + r, cy),
-                     dxfattribs={'layer': 'A-MEP-ELEC', 'lineweight': lw})
+                     dxfattribs={'layer': layer, 'lineweight': lw})
         msp.add_line((cx, cy - r), (cx, cy + r),
-                     dxfattribs={'layer': 'A-MEP-ELEC', 'lineweight': lw})
+                     dxfattribs={'layer': layer, 'lineweight': lw})
     else:
-        # Circle + dot
-        msp.add_circle((cx, cy), r, dxfattribs={'layer': 'A-MEP-PLMB', 'lineweight': lw})
+        # circle_dot (default for PLUMBING and MEP)
+        msp.add_circle((cx, cy), r, dxfattribs={'layer': layer, 'lineweight': lw})
         msp.add_circle((cx, cy), r * 0.25,
-                       dxfattribs={'layer': 'A-MEP-PLMB', 'lineweight': lw})
+                       dxfattribs={'layer': layer, 'lineweight': lw})
 
 
 def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
@@ -3015,10 +3048,15 @@ def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
 
     doc = _new_doc(tpl, scale)
     msp = doc.modelspace()
-    lw_wall = _lw(tpl, 'wall_partition_cut')
-    lw_mep  = int(0.18 * 100)
-    sym_r   = 2.5 * scale  # symbol radius in model-space mm (2.5mm paper)
-    txt_h   = tpl.get('dimensions', {}).get('text_height_mm', 2.5) * scale
+    lw_wall  = _lw(tpl, 'wall_partition_cut')
+    tpl_mep  = tpl.get('mep', {})
+    _lw_mep_mm = tpl_mep.get('terminal_line_weight_mm', 0.18)
+    lw_mep   = int(_lw_mep_mm * 100)
+    _sym_r_mm = tpl_mep.get('terminal_symbol_radius_mm', 2.5)
+    sym_r    = _sym_r_mm * scale  # symbol radius in model-space mm
+    txt_h    = tpl.get('dimensions', {}).get('text_height_mm', 2.5) * scale
+    _log(f"§VALUE mep.terminal_symbol_radius_mm={_sym_r_mm} (from template)")
+    _log(f"§VALUE mep.terminal_line_weight_mm={_lw_mep_mm} (from template)")
 
     # ── Background: walls ──
     walls = read_elements(db_path)['walls']
@@ -3050,19 +3088,21 @@ def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
     legend_items = {}  # discipline → set of display names
     elem_count = 0
     for name, cx, cy in rows:
-        disc = _classify_mep(name or '')
+        disc = _classify_mep(name or '', tpl)
         if discipline != 'MEP' and disc != discipline:
             continue
         # Short display label for legend
         short = (name or '').split(':')[0].split(' - ')[0][:30]
         legend_items.setdefault(disc, set()).add(short)
-        _draw_mep_symbol(msp, _mh(cx), _mh(cy), disc, sym_r, lw_mep)
+        _draw_mep_symbol(msp, _mh(cx), _mh(cy), disc, sym_r, lw_mep, tpl)
         elem_count += 1
 
     _log(f"§D MEP plan discipline={discipline}: {elem_count} terminals drawn")
 
     # §17.3 P5: IfcFlowSegment rendering — thin lines along major bbox axis
-    lw_seg = int(0.13 * 100)  # 0.13mm hairline per §17.3
+    _lw_seg_mm = tpl_mep.get('segment_line_weight_mm', 0.13)
+    lw_seg = int(_lw_seg_mm * 100)
+    _log(f"§VALUE mep.segment_line_weight_mm={_lw_seg_mm} (from template)")
     cur.execute("""
         SELECT m.guid, m.element_name, m.ifc_class,
                r.minX, r.maxX, r.minY, r.maxY
@@ -3073,10 +3113,11 @@ def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
     conn.close()
     seg_count = 0
     for guid, name, ifc_class, minX, maxX, minY, maxY in seg_rows:
-        disc = _classify_mep(name or '')
+        disc = _classify_mep(name or '', tpl)
         if discipline != 'MEP' and disc != discipline:
             continue
-        layer = 'A-MEP-ELEC' if disc == 'ELECTRICAL' else 'A-MEP-PLMB'
+        sym_def = tpl_mep.get('symbols', {}).get(disc, {'layer': 'A-MEP-PLMB'})
+        layer = sym_def.get('layer', 'A-MEP-PLMB')
         # Orient by long axis: draw thin line between bbox long-axis endpoints
         dx = maxX - minX
         dy = maxY - minY
