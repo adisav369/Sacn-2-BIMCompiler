@@ -1953,6 +1953,53 @@ Log: `§MEP LEGEND: {n} rows ({n_elec} electrical, {n_plumb} plumbing)`
 
 ---
 
+### 17.7 Abstract Element Footprint Rule (symbol rendering)
+
+**Principle:** Every element already has geometry. Use it. Do not map names to
+hardcoded shapes. Do not maintain a symbol library of circles and crosses.
+
+For any IfcFlowTerminal, IfcFurniture, or fixture in plan view:
+
+```
+symbol = project element bounding box onto the plan plane
+         → LWPOLYLINE: (minX,minY)→(maxX,minY)→(maxX,maxY)→(minX,maxY)→close
+         layer: per discipline (A-MEP-ELEC / A-MEP-PLMB / A-FURN)
+         lineweight: terminal_line_weight_mm from template
+```
+
+No keyword-to-symbol mapping. No symbol_code lookup. No geometry invention.
+The IFC already contains the element's real footprint — that IS the symbol.
+
+**Why this generalises:** Any building, any fixture type, any country standard.
+A Malaysian bath tub, a Japanese toilet, a European shower unit — all render
+correctly because the geometry comes from the IFC, not from a lookup table.
+
+**Sized correctly:** `elements_rtree` gives minX/maxX/minY/maxY in world
+metres. Project to plan-space mm via `_mh()`. The outline is the element.
+
+**Legend:** The element_name (trimmed at first `:`) is the description.
+QTY is count of identical element_name prefixes per discipline.
+
+```python
+# Mandatory log per terminal:
+§SYMBOL_FOOTPRINT guid={guid} element='{name}' bbox=({w:.0f}×{h:.0f}mm)
+                  layer={layer} at ({cx:.0f},{cy:.0f})
+```
+
+**Fallback (no rtree data):** single circle, radius = `terminal_symbol_radius_mm`,
+log `§SYMBOL_FALLBACK guid={guid} reason=no_rtree`.
+
+**Test (§10.x):** For each rendered MEP terminal:
+- Verify an LWPOLYLINE exists on the MEP layer within ±1mm of element centroid
+- Verify LWPOLYLINE width = `maxX-minX` and height = `maxY-minY` (±5%)
+- Zero circles on MEP layer = pass (circles indicate fallback, not footprint)
+- Log line `§SYMBOL_FOOTPRINT` must appear once per terminal
+
+This replaces the `_draw_mep_symbol()` / `_lookup_symbol_code()` approach
+committed in [2D_018] — that was a stepping stone, this is the spec.
+
+---
+
 ## 18. Open Issues (as of 2026-04-09)
 
 Tracked against TBKLTN WD-1/01 reference and `layout_audit.txt`.
@@ -1970,20 +2017,10 @@ Tracked against TBKLTN WD-1/01 reference and `layout_audit.txt`.
 - "Run `git diff --stat` before finishing — if >20 lines changed outside
   the target functions, STOP and explain"
 
-### 18.1 Active (next session)
+### 18.1 Active
 
-| # | Issue | Severity | Spec |
-|---|-------|----------|------|
-| I-01 | DX_FLOOR: 13 T01 WARN — duplex window tags W1↔W15 same XY | Medium | §E multi-storey: suppress Level-2 tags when not current storey |
-| I-02 | DX_FLOOR: room label overlap BEDROOM↔LIVING ROOM (duplex mirror) | Medium | Post-process: dedup same-label centroids within 2m |
-| I-03 | DX upper floor (Level 2) missing entirely from A-01 | High | §E: storey_filter param + `cut_height = storey_bottom + 1.2` |
-| I-07 | JKR logo not in title block header | Low | §14.2 jkr.png insertion |
-| I-08 | `fan.png` exists in `input/` but never used by code | Low | §14.3 fan symbol on E-01 electrical page |
-| I-10 | PINDAAN NO (revision) row absent from title block | Low | Add to `2d_title_block` seed + field mapping |
-| I-11 | **MEP bleed on floor plan:** 282 IfcFlow* elements render as furniture bboxes on DX A-01. `_BELOW_SKIP` lacks `IfcFlowTerminal/Segment/Fitting/Controller`. | High | §5.1 BELOW skip set |
-| I-12 | **MEP template gap:** `drawing_template.json` has zero MEP keys. All MEP rendering uses hardcoded values. | High | §17 |
-| I-13 | **MEP page has no discernible symbols or legend.** | High | §17.6 MEP legend |
-| I-14 | **Hardcoded symbols in code (violates R5).** Must refactor to template keys + `§VALUE` log. | High | §1 R5 |
+**Single source of truth: `2D_Layout/OPEN_ISSUES.txt`**
+Do not duplicate issues here. Add to that file, not this section.
 
 ### 18.2 Done (reference only — one-line pointers)
 
@@ -1996,6 +2033,9 @@ Tracked against TBKLTN WD-1/01 reference and `layout_audit.txt`.
 | I-15 | 2D_015 | Curved roof mesh hull + offset thickness |
 | I-16 | 2D_015 | R8 reuse rule added to §1 |
 | I-17 | 2D_016 | SpecToCode re-audit: line refs updated (3722), R8/R9/R10 + ROOF_NOT_INVENTED/NO_MEP_BLEED/LANGUAGE rows added. FLAG: `_inward_offset_hull` inner hull synthetic (R9 low-priority). |
+| I-11 | 2D_017 | MEP bleed: `_BELOW_SKIP` had all 4 IfcFlow* classes. DX_FLOOR confirmed 0 MEP entities. Conformity grouping bug fixed — NO_MEP_BLEED now verifiable. |
+| I-12 | 2D_017 | MEP template gap: `mep` section added with all keys. Remaining hardcodes `r*0.25` → `inner_dot_radius_factor=0.25` and `'○'`/`'●'` → `legend_char` per symbol now template-driven. |
+| I-14 | 2D_017 | Hardcoded symbols: `write_mep_plan_dxf` + `_draw_mep_symbol` added to `SCAN_FUNCTIONS`. `test_no_hardcode.py` → ALL PASS. |
 
 ### 18.3 Deferred (spec written, not started)
 

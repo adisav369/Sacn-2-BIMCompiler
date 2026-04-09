@@ -4,7 +4,9 @@
 # Format: [severity] I-## description (spec ref)
 # Language: English only
 
-[High]   I-21  All MEP symbols (fan, switch, socket, light etc.) not sourced from IFC extraction, not stored in input DB, not placed from template. fan.png exists unused. Must extract from IFC, store in 2D.db, render from template — request user for any symbols not in IFC. (§17, §14.3)
-[High]   I-22  SH floor plan and right panel (title block, schedule) are correct and consistent. DX and other buildings do not follow the same standard — suspect extraction rules are building-specific not abstract. All buildings must use the same generic extraction path. (§3 extraction rules)
+[High]   I-21  MEP terminal symbols must use element footprint from elements_rtree (§17.7), not symbol_code lookup. Current code draws circles/crosses per keyword match — replace with LWPOLYLINE of element bounding box. Test: §SYMBOL_FOOTPRINT log per terminal, zero circles on MEP layer. (§17.7)
+[High]   I-22  Elevations (all 4 faces, both buildings) are missing: (a) title block panel, (b) level label text alongside level marker arrows, (c) bay dimension text above grid bubbles. DX elevations additionally missing roof silhouette. Roof plan completeness check incorrectly applies floor plan checks (rooms, furniture, door arcs, wall hatch) — these must be excluded for plan_type=roof. One template path, all buildings, no building-specific branches. (§3, §6.1, §7.2, §5.2)
+[Medium] I-25  Dimension arrowheads (tick marks) style or visibility issue — user flagged. Verify tick marks render correctly on all views and are the correct architectural standard (45° oblique, not arrowhead). (§6.3)
+[Medium] I-26  Curved roof section: (a) not showing real wall/slab thickness as in floor plan, (b) imaginary connecting line visible on curved hull. Roof mesh outline should show actual structural thickness; spurious line from hull algorithm must be removed. (§5.3)
 [Low]    I-07  JKR logo not in title block header. (§14.2)
 [Low]    I-10  PINDAAN NO revision row absent from title block. (§14.1)
