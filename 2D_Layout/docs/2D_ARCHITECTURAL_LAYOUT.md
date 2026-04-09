@@ -1508,6 +1508,240 @@ The main blocker for complex hospital geometry is non-orthogonal grids.
 
 ---
 
+## 12a. Layout Engine — Elevation Zone Allocation
+
+> **Purpose:** Define how every elevation sheet allocates its horizontal space
+> and which face carries which annotation. All values come from the template and
+> DB — zero per-view hardcoding permitted.
+
+---
+
+### 12a.1 Face Classification
+
+Every building has two face classes. The engine derives them from DB geometry —
+never from a hardcoded face name.
+
+```
+annotation_face  = the face whose apparent_width is SMALLER
+                   (shows building depth / cross-section)
+form_face        = the face whose apparent_width is LARGER
+                   (shows building length / longitudinal profile)
+```
+
+For a rectangular building:
+
+| Face pair | Apparent width | Class | Carries |
+|-----------|---------------|-------|---------|
+| FRONT / REAR | building_width (shorter) | annotation_face | level markers, height dim chain |
+| LEFT / RIGHT | building_length (longer) | form_face | grid bubbles only, opening widths, bay dims |
+
+**Derivation (DB source):**
+```sql
+-- apparent_width per face = extent of building bounding box in the face's
+-- horizontal axis (X for FRONT/REAR, Y for LEFT/RIGHT)
+SELECT face,
+       CASE WHEN face IN ('front','rear')
+            THEN (max_x - min_x)          -- building width axis
+            ELSE (max_y - min_y) END       -- building depth axis
+  AS apparent_width_m
+FROM elements_rtree  -- global bbox from all IfcWall elements
+```
+
+**Template key (drawing_template.json → elevation):**
+```json
+"elevation": {
+  "annotation_faces": ["front", "rear"],
+  "form_faces":       ["left",  "right"],
+  "_note": "Engine may override if building is square (aspect ratio < 1.2)"
+}
+```
+
+**Log (mandatory):**
+```
+§FACE_CLASS face=front apparent_width=8.9m class=annotation_face
+§FACE_CLASS face=left  apparent_width=17.8m class=form_face
+```
+
+**Test — `test_face_classification`:**
+- `annotation_face` apparent_width ≤ `form_face` apparent_width (or within 20% if near-square)
+- Log line `§FACE_CLASS` present for every generated elevation face
+
+---
+
+### 12a.2 Zone Layout
+
+Every elevation sheet is divided into **five fixed horizontal zones**.
+Widths are declared in the template — never computed per building.
+
+```
+┌──────────────┬──────────────────────────────┬───────────────┬──────────────┐
+│  LEVEL ZONE  │       CONTENT ZONE           │  HEIGHT ZONE  │  TITLE BLOCK │
+│  (left strip)│  (building elevation drawing)│  (right strip)│              │
+│  level_w mm  │        content_w mm          │   height_w mm │  tb_w mm     │
+└──────────────┴──────────────────────────────┴───────────────┴──────────────┘
+```
+
+```
+level_w    = template["elevation"]["level_zone_width_mm"]      # default 30mm
+height_w   = template["elevation"]["height_zone_width_mm"]     # default 22mm
+tb_w       = template["title_block"]["width_mm"]               # existing key
+margin_l   = template["paper"]["margins"]["left"]
+margin_r   = template["paper"]["margins"]["right"]
+content_w  = paper_width - margin_l - margin_r - level_w - height_w - tb_w
+```
+
+**Absolute x-coordinates (model space mm at 1:1 paper):**
+```
+x_level_left   = margin_l
+x_level_right  = margin_l + level_w           ← level text and ticks terminate here
+x_content_left = x_level_right
+x_content_right= x_level_right + content_w    ← building drawing terminates here
+x_height_left  = x_content_right
+x_height_right = x_content_right + height_w   ← height dims terminate here
+x_tb           = paper_width - margin_r - tb_w
+```
+
+**Rule: nothing crosses a zone boundary.**
+- Level markers: x ∈ [x_level_left, x_level_right]
+- Building polylines, grid lines, window outlines: x ∈ [x_content_left, x_content_right]
+- Height dimension lines and text: x ∈ [x_height_left, x_height_right]
+- Grid lines extend ± bubble beyond content zone into dimension space only, never into title block
+
+**Mandatory log per elevation:**
+```
+§ZONE_LAYOUT face=front level_w=30mm content_w=215mm height_w=22mm tb_w=120mm
+             x_level=(10,40) x_content=(40,255) x_height=(255,277) x_tb=(290,410)
+```
+
+**Tests — `test_zone_layout`:**
+- Every entity on A-ANNO-LEVL layer: x ∈ [x_level_left - 1, x_level_right + 1]
+- Every entity on A-ELEV-WALL / A-DOOR / A-GLAZ / A-ROOF layers: x ∈ [x_content_left - 1, x_content_right + 1]
+- Every entity on A-ANNO-DIMS layer: x ∈ [x_level_left - 1, x_height_right + 1]
+- Zero entities on any non-title-block layer with x > x_tb − 1
+
+---
+
+### 12a.3 Annotation Face — What It Carries
+
+The `annotation_face` (FRONT / REAR) carries the full annotation stack:
+
+**Level markers (left zone):**
+- Source: `2d_level_marker` table, columns: `code`, `display_text`, `typical_z`
+- Text rendered verbatim from `display_text` — never synthesised in code
+- Each marker: horizontal dash-dot line at height z (full content width), 45° tick
+  at x_level_right, label at x=(x_level_left + x_level_right)/2
+- Layer: `A-ANNO-LEVL`
+
+```
+§LEVEL_MARKER code=FFL display_text='GRD. FLOOR LEVEL' z=0.000m
+              y_svg=121.0 x_line=(40,255) tick_at=255 label_at=25
+              src=2d_level_marker (NOT synthesised)
+```
+
+**Height dimension chain (right zone):**
+- Spans between consecutive level markers in DB order
+- Value = (upper_z - lower_z) × 1000 formatted per `2d_dimension_style.unit_suffix`
+  (default `mm`) with `2d_dimension_style.thousands_separator` (default none for mm)
+- Dim line: vertical at x_height_left + 2mm, ticks at each level y
+- Text: rotated 90°, centred on span, at x_height_left + height_w/2
+
+```
+§HEIGHT_DIM span=FFL→SILL delta=3200mm fmt='3200' unit=mm
+            x=266 y_top=89 y_bot=121 src=2d_dimension_style
+```
+
+---
+
+### 12a.4 Form Face — What It Carries
+
+The `form_face` (LEFT / RIGHT) carries only what is geometrically unique to that face:
+
+- **Structural grid bubbles** (top AND bottom of each grid line) — §12a.5
+- **Bay dimensions** (horizontal, between grid lines) — tier 1 above building, tier 2 further
+- **Opening widths** (window / door w-tags) — optional, from door/window schedule
+- **NO level markers** — they are redundant with annotation_face and cause zone squeeze
+- **NO height dimension chain** — same reason
+
+The content zone width for a form face is the same formula as §12a.2, but `level_w = 0` and `height_w = 0` — those strips collapse. The saved space goes into `content_w`, giving the long building more room to breathe.
+
+```json
+"elevation": {
+  "form_face_level_zone_width_mm":  0,
+  "form_face_height_zone_width_mm": 0
+}
+```
+
+```
+§ZONE_LAYOUT face=left level_w=0mm content_w=267mm height_w=0mm tb_w=120mm
+```
+
+**Tests — `test_form_face_clean`:**
+- Zero entities on `A-ANNO-LEVL` layer in LEFT / RIGHT DXF
+- Zero height dim vertical lines outside content zone in LEFT / RIGHT DXF
+- `§ZONE_LAYOUT face=left level_w=0` log line present
+
+---
+
+### 12a.5 Grid Bubbles — Both Ends
+
+Every structural grid line in every elevation carries bubbles at **both** ends:
+top (above building + dim tiers) and bottom (below building + dim tiers).
+
+```
+top_bubble_y    = bld_top_y    - tier_2_offset_mm - bubble_radius_mm - gap_mm
+bottom_bubble_y = bld_bottom_y + tier_2_offset_mm + bubble_radius_mm + gap_mm
+```
+
+Both use `_draw_grid_bubble()` (extracted in I-29). Same label, same radius,
+same layer (`A-GRID`). The grid line extends from `bottom_bubble_y + r` to
+`top_bubble_y - r` (not past the bubble centre).
+
+**Log (mandatory, per grid line, per end):**
+```
+§GRID_BUBBLE face=front grid=A end=top  cx=73.8 cy=6.6  r=4.0 src=2d_grid_style
+§GRID_BUBBLE face=front grid=A end=bot  cx=73.8 cy=138.4 r=4.0 src=2d_grid_style
+```
+
+**Test — `test_grid_bubbles_both_ends`:**
+- For each grid label found in DXF: exactly 2 circles on `A-GRID` layer
+  with matching centre-x (±1mm), one above building bbox, one below
+- Bubble centre-y outside paper boundary → FAIL
+
+---
+
+### 12a.6 Content Fit Guard
+
+If `building_apparent_width / scale > content_w` the building overflows
+the content zone. The engine must auto-scale before rendering.
+
+```python
+required_scale = ceil_to_standard(building_apparent_width_mm / content_w)
+# standard scales: 50, 100, 200, 250, 500
+if required_scale > current_scale:
+    log §AUTO_SCALE face=left bldg=17800mm content=267mm → scale=1:100
+    rerender at required_scale
+```
+
+**Test — `test_content_fits_zone`:**
+- All building polyline x-coordinates within [x_content_left−1, x_content_right+1]
+- `§AUTO_SCALE` log present if scale was changed; absent if original scale fits
+
+---
+
+### 12a.7 Open Items Resolved by This Spec
+
+| Issue | Resolved by |
+|-------|-------------|
+| I-31 Grid bubbles missing at bottom | §12a.5 |
+| I-32 Level lines bleed into title block | §12a.2 zone boundary rule |
+| I-33 Displaced polylines outside building footprint | §12a.2 content zone guard (element outside zone → skip + warn) |
+| I-34 Level label text synthesised in code | §12a.3 `display_text` from `2d_level_marker` |
+| I-35 Window stroke colour hardcoded | §12a.3 layer `A-GLAZ` style from `2d_drawing_style` |
+| I-36 Wide elevation annotation squeeze | §12a.4 form_face_level/height_zone_width_mm = 0 |
+| I-37 Height dim numbers missing unit suffix | §12a.3 `2d_dimension_style.unit_suffix` |
+
+---
+
 ## 13. Industry Comparison
 
 ### 13.1 What the Big Players Do
