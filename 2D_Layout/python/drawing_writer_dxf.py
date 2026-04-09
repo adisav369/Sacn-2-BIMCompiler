@@ -2615,6 +2615,31 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
     _log(f"§2.2 DB loaded: {len(walls)} walls, {len(doors)} doors, "
          f"{len(windows)} windows, {len(roofs)} roofs")
 
+    # ── §12a.1 Face classification — derive from apparent_width, not face name ──
+    tpl_elev = tpl.get('elevation', {})
+    _aspect_thresh = tpl_elev.get('_aspect_ratio_threshold', 1.2)
+    _bld_x_ext = max(e.max_x for e in walls) - min(e.min_x for e in walls)
+    _bld_y_ext = max(e.max_y for e in walls) - min(e.min_y for e in walls)
+    _face_app_w = _bld_x_ext if face in ('front', 'rear') else _bld_y_ext
+    _other_w    = _bld_y_ext if face in ('front', 'rear') else _bld_x_ext
+    _aspect     = max(_face_app_w, _other_w) / max(min(_face_app_w, _other_w), 0.001)
+    is_form_face = (_face_app_w > _other_w) and (_aspect >= _aspect_thresh)
+    _face_class  = 'form_face' if is_form_face else 'annotation_face'
+    _log(f"§FACE_CLASS face={face} apparent_width={_face_app_w:.1f}m "
+         f"other={_other_w:.1f}m aspect={_aspect:.2f} class={_face_class}")
+    # Zone widths from template — §12a.2 / §12a.4
+    _lv_w  = (tpl_elev.get('form_face_level_zone_width_mm', 0) if is_form_face
+              else tpl_elev.get('level_zone_width_mm', 30))
+    _ht_w  = (tpl_elev.get('form_face_height_zone_width_mm', 0) if is_form_face
+              else tpl_elev.get('height_zone_width_mm', 22))
+    _tb_w  = tpl.get('paper', {}).get('title_block_width_mm', 120)
+    _ml    = tpl.get('paper', {}).get('margins', {}).get('left', 25)
+    _mr    = tpl.get('paper', {}).get('margins', {}).get('right', 10)
+    _pw    = tpl.get('paper', {}).get('width_mm', 420)
+    _cnt_w = _pw - _ml - _mr - _lv_w - _ht_w - _tb_w
+    _log(f"§ZONE_LAYOUT face={face} level_w={_lv_w}mm content_w={_cnt_w:.0f}mm "
+         f"height_w={_ht_w}mm tb_w={_tb_w}mm")
+
     # Mirror sign: rear and right viewers see the horizontal axis reversed
     if face == 'front':
         h_of  = lambda e: (e.min_x, e.max_x)
@@ -2746,68 +2771,64 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
         _deduped.append((_lbl, _lz))
     levels = _deduped
 
-    marker_x = _mh(h_min_m - ext - 0.5)
-    txt_h = txt_level * scale
-    min_gap = txt_level * 3 * scale
+    # ── §12a.3/§12a.4: Level marker rendering — annotation_face only (§I-36) ──
+    if not is_form_face:
+        marker_x = _mh(h_min_m - ext - 0.5)
+        txt_h = txt_level * scale
+        min_gap = txt_level * 3 * scale
 
-    # Pre-compute border left so level text can be clamped inside border (fixes L01/T02)
-    _elev_bld_h0 = _mh(h_min_m - ext)
-    _elev_bld_h1 = _mh(h_max_m + ext)
-    _elev_ml = tpl.get('paper', {}).get('margins', {}).get('left', 25) * scale
-    _elev_mr = tpl.get('paper', {}).get('margins', {}).get('right', 10) * scale
-    _elev_tb = tpl.get('paper', {}).get('title_block_width_mm', 120) * scale
-    _elev_pw = tpl.get('paper', {}).get('width_mm', 420) * scale
-    _elev_content_w = _elev_pw - _elev_ml - _elev_mr - _elev_tb
-    _elev_bld_w = _elev_bld_h1 - _elev_bld_h0
-    _elev_centering = max(0.0, (_elev_content_w - _elev_bld_w) / 2.0)
-    _elev_border_left = _elev_bld_h0 - _elev_centering
-    _lv_txt_clear = tpl_lm.get('font_height_mm', 2.5) * scale  # min clearance from border
+        # Pre-compute border left so level text can be clamped inside border (fixes L01/T02)
+        _elev_bld_h0 = _mh(h_min_m - ext)
+        _elev_bld_h1 = _mh(h_max_m + ext)
+        _elev_ml = tpl.get('paper', {}).get('margins', {}).get('left', 25) * scale
+        _elev_mr = tpl.get('paper', {}).get('margins', {}).get('right', 10) * scale
+        _elev_tb = tpl.get('paper', {}).get('title_block_width_mm', 120) * scale
+        _elev_pw = tpl.get('paper', {}).get('width_mm', 420) * scale
+        _elev_content_w = _elev_pw - _elev_ml - _elev_mr - _elev_tb
+        _elev_bld_w = _elev_bld_h1 - _elev_bld_h0
+        _elev_centering = max(0.0, (_elev_content_w - _elev_bld_w) / 2.0)
+        _elev_border_left = _elev_bld_h0 - _elev_centering
+        _lv_txt_clear = tpl_lm.get('font_height_mm', 2.5) * scale
 
-    label_ys = []
-    for lbl, lz in levels:
-        ly = _mh(lz)
-        if label_ys and ly - label_ys[-1] < min_gap:
-            ly = label_ys[-1] + min_gap
-        label_ys.append(ly)
+        label_ys = []
+        for lbl, lz in levels:
+            ly = _mh(lz)
+            if label_ys and ly - label_ys[-1] < min_gap:
+                ly = label_ys[-1] + min_gap
+            label_ys.append(ly)
 
-    # §4.3d/§5.2b: level line = dashed, full width of drawing (not short leader)
-    level_line_right = _mh(h_max_m + ext)  # right edge of drawing
-    level_lw = _lw(tpl, 'dimension_line')  # 0.18mm per 2d_drawing_part LEVEL_LINE
+        # §4.3d/§5.2b: level line = dashed, full width of drawing (not short leader)
+        level_line_right = _mh(h_max_m + ext)
+        level_lw = _lw(tpl, 'dimension_line')
 
-    for (lbl, lz), label_ly in zip(levels, label_ys):
-        true_ly = _mh(lz)
-        # Full-width dashed line from triangle to right edge
-        msp.add_line((marker_x, true_ly),
-                     (level_line_right, true_ly),
-                     dxfattribs={'layer': 'A-ELEV-LEVL', 'lineweight': level_lw,
-                                 'linetype': 'HIDDEN'})
-        # §I-25: 45° oblique tick at level marker position (no fill, 2 lines)
-        # Same tick style as dimension tick marks — tick_dx/tick_dy from template
-        msp.add_line((marker_x - tick_dx, true_ly - tick_dy),
-                     (marker_x + tick_dx, true_ly + tick_dy),
-                     dxfattribs={'layer': 'A-ELEV-LEVL', 'lineweight': level_lw})
-        _log(f"§I-25 Level {lbl} marker: 45° tick at ({marker_x:.0f},{true_ly:.0f})")
-        if abs(label_ly - true_ly) > _mh(0.05):
-            msp.add_line((marker_x - _mh(1.6), true_ly),
-                         (marker_x - _mh(1.6), label_ly),
-                         dxfattribs={'layer': 'A-ELEV-LEVL', 'lineweight': lw_dim})
-        sign = '+' if lz >= 0 else ''
-        raw_label = level_labels.get(lbl, lbl)
-        # F3: abbreviate long labels from template level_markers.label_abbreviations
-        abbrevs = tpl_lm.get('label_abbreviations', {})
-        short_label = abbrevs.get(raw_label, raw_label)
-        label_str = f"{short_label}  {sign}{lz:.3f}"
-        _log(f"§2.7 Level {lbl} at {lz:.3f}m → {label_str}")
-        # F3: text_right_offset_m from template; clamp so text stays inside border (L01/T02 fix)
-        txt_offset = tpl_lm.get('text_right_offset_m', 0.8)
-        _txt_anchor_pref = marker_x - _mh(txt_offset)
-        _est_txt_w = txt_h * len(label_str) * 0.6
-        _min_anchor = _elev_border_left + _lv_txt_clear + _est_txt_w
-        _txt_anchor = max(_txt_anchor_pref, _min_anchor)
-        msp.add_text(label_str,
-                     dxfattribs={'layer': 'A-ANNO-TEXT', 'height': txt_h}
-                     ).set_placement((_txt_anchor, label_ly),
-                                     align=TextEntityAlignment.MIDDLE_RIGHT)
+        for (lbl, lz), label_ly in zip(levels, label_ys):
+            true_ly = _mh(lz)
+            msp.add_line((marker_x, true_ly),
+                         (level_line_right, true_ly),
+                         dxfattribs={'layer': 'A-ANNO-LEVL', 'lineweight': level_lw,
+                                     'linetype': 'HIDDEN'})
+            msp.add_line((marker_x - tick_dx, true_ly - tick_dy),
+                         (marker_x + tick_dx, true_ly + tick_dy),
+                         dxfattribs={'layer': 'A-ANNO-LEVL', 'lineweight': level_lw})
+            if abs(label_ly - true_ly) > _mh(0.05):
+                msp.add_line((marker_x - _mh(1.6), true_ly),
+                             (marker_x - _mh(1.6), label_ly),
+                             dxfattribs={'layer': 'A-ANNO-LEVL', 'lineweight': lw_dim})
+            # §12a.3 I-34: display_text verbatim from 2d_level_marker, not synthesised
+            display_text = level_labels.get(lbl, lbl)
+            sign = '+' if lz >= 0 else ''
+            label_str = f"{display_text}  {sign}{lz:.3f}"
+            _log(f"§LEVEL_MARKER code={lbl} display_text='{display_text}' z={lz:.3f}m "
+                 f"src=2d_level_marker (NOT synthesised)")
+            txt_offset = tpl_lm.get('text_right_offset_m', 0.8)
+            _txt_anchor_pref = marker_x - _mh(txt_offset)
+            _est_txt_w = txt_h * len(label_str) * 0.6
+            _min_anchor = _elev_border_left + _lv_txt_clear + _est_txt_w
+            _txt_anchor = max(_txt_anchor_pref, _min_anchor)
+            msp.add_text(label_str,
+                         dxfattribs={'layer': 'A-ANNO-LEVL', 'height': txt_h}
+                         ).set_placement((_txt_anchor, label_ly),
+                                         align=TextEntityAlignment.MIDDLE_RIGHT)
 
     # ── §2 Step 3: Grid lines on elevation ──
     grid_axis = 'x' if face in ('front', 'rear') else 'y'
@@ -2872,24 +2893,24 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                              ).set_placement((mid_x, dim_y - dim_txt_h * 2.5),
                                              align=TextEntityAlignment.MIDDLE_CENTER)
 
-    # ── §6.2 Height dimension chain (right side) ──
-    # F2: compute title-block left boundary in model-space to clamp dim position
-    _tpl_p = tpl.get('paper', {})
-    _ml_mm = _tpl_p.get('margins', {}).get('left', 25)
-    _mr_mm = _tpl_p.get('margins', {}).get('right', 10)
-    _pw_mm = _tpl_p.get('width_mm', 420)
-    _tb_w_mm = _tpl_p.get('title_block_width_mm', 120)
-    _content_w = (_pw_mm - _ml_mm - _mr_mm - _tb_w_mm) * scale
-    _bld_w = _mh(h_max_m + ext) - _mh(h_min_m - ext)
-    _sheet_x = _mh(h_min_m - ext) - _ml_mm * scale - max(0, (_content_w - _bld_w) / 2)
-    _tb_left_model = _sheet_x + _pw_mm * scale - _mr_mm * scale - _tb_w_mm * scale
-    _panel_gap = tpl_dims.get('panel_clearance_mm', 5.0) * scale
-    _dim_right_max = _tb_left_model - _panel_gap - tier_1_off
+    # ── §6.2 Height dimension chain (right side) — annotation_face only (§I-36) ──
+    if not is_form_face:
+      _tpl_p = tpl.get('paper', {})
+      _ml_mm = _tpl_p.get('margins', {}).get('left', 25)
+      _mr_mm = _tpl_p.get('margins', {}).get('right', 10)
+      _pw_mm = _tpl_p.get('width_mm', 420)
+      _tb_w_mm = _tpl_p.get('title_block_width_mm', 120)
+      _content_w = (_pw_mm - _ml_mm - _mr_mm - _tb_w_mm) * scale
+      _bld_w = _mh(h_max_m + ext) - _mh(h_min_m - ext)
+      _sheet_x = _mh(h_min_m - ext) - _ml_mm * scale - max(0, (_content_w - _bld_w) / 2)
+      _tb_left_model = _sheet_x + _pw_mm * scale - _mr_mm * scale - _tb_w_mm * scale
+      _panel_gap = tpl_dims.get('panel_clearance_mm', 5.0) * scale
+      _dim_right_max = _tb_left_model - _panel_gap - tier_1_off
 
-    height_levels = [(lbl, lz) for lbl, lz in levels if lbl not in ('APRON', 'GRD')]
-    height_levels = sorted(height_levels, key=lambda x: x[1])
+      height_levels = [(lbl, lz) for lbl, lz in levels if lbl not in ('APRON', 'GRD')]
+      height_levels = sorted(height_levels, key=lambda x: x[1])
 
-    if len(height_levels) >= 2:
+      if len(height_levels) >= 2:
         h_dim_x_base = min(_mh(h_max_m + ext + 0.5), _dim_right_max)
 
         # Tier 2: individual height diffs (inner)
@@ -2960,8 +2981,8 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                        building_type=bld_type, building_name=bld_name)
 
     # ── §2 Step 8: VERIFY ──
-    _log(f"§2.8 Elevation {face}: {len(face_elems)} elements, "
-         f"{len(face_grids)} grids, {len(height_levels)} height dims")
+    _log(f"§2.8 Elevation {face} ({_face_class}): {len(face_elems)} elements, "
+         f"{len(face_grids)} grids")
     doc.saveas(out_dxf)
     _log(f"  → {out_dxf}")
     _audit_dxf(doc, out_dxf, f"ELEVATION {face.upper()}")

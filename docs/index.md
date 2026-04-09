@@ -162,7 +162,7 @@ mvn compile -q                              # Compile all modules
 
 <figure style="float: right; margin: -8px 0 8px 20px; max-width: 560px; text-align: center;">
   <img src="assets/images/2D_FLOOR_SAMPLEHOUSE.png" alt="Sample House 2D floor plan — Pelan Lantai" width="560">
-  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">Sample House floor plan (Pelan Lantai) — generated from 1D BOM → 3D compilation → <a href="2D_LAYOUT.html">2D drawing</a>. The round-trip proof.</figcaption>
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">Sample House floor plan (Pelan Lantai) — generated from 1D BOM → 3D compilation → <a href="2D_LAYOUT/">2D drawing</a>. The round-trip proof.</figcaption>
 </figure>
 
 | I want to... | Start here |

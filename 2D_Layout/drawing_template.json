@@ -479,6 +479,16 @@
       "R2 \u2014 GI flashing"
     ]
   },
+  "elevation": {
+    "_note": "§12a Layout Engine — Elevation Zone Allocation. All widths in mm (paper space). Engine reads these; never hardcode in drawing_writer_dxf.py.",
+    "level_zone_width_mm": 30,
+    "height_zone_width_mm": 22,
+    "form_face_level_zone_width_mm": 0,
+    "form_face_height_zone_width_mm": 0,
+    "_form_face_note": "Form faces (longer apparent_width) carry NO level markers and NO height dim chain. Zones collapse to 0mm.",
+    "_aspect_ratio_threshold": 1.2,
+    "_aspect_ratio_note": "If building_length / building_width < 1.2 (near-square), treat all faces as annotation_face."
+  },
   "proof_render": {
     "_note": "Controls DXF\u2192SVG proof renderer. Separation of concern: DXF layers are for CAD software, proof_render controls what the human sees.",
     "skip_entity_types": [
