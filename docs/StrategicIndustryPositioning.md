@@ -253,8 +253,8 @@ Federation addon, with all its features, was developed with LLM assistance at a
 pace that would take a conventional team months. This same velocity now applies
 to the ERP compiler framework, where each new verb, witness, or BOM dimension
 is a bounded task that Claude Code completes in one session (see
-[`CONCEPTUAL BLUEPRINT`](CONCEPTUAL%20BLUEPRINT.txt) for layer architecture,
-[`BeyondVerbs`](BeyondVerbs.txt) for the roadmap beyond the current verb set).
+`CONCEPTUAL BLUEPRINT` for layer architecture,
+`BeyondVerbs` for the roadmap beyond the current verb set).
 
 **4. Symbolic inference over relational data is unique.**
 The Inference Engine (BIM_Designer_SRS §14) evaluates validation rules in
@@ -629,4 +629,159 @@ They solve design. This solves construction.
 *[`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) — bridge/road/rail domain mapping*
 *[`MANIFESTO.md`](MANIFESTO.md) — ERP world view*
 *[`bim_designer_erd.html`](https://github.com/red1oon/BIMCompiler/blob/master/database/bim_designer_erd.html) — interactive ERD (4 tabs)*
-*[`BIM_Designer_UserGuide.md`](BIM_Designer_UserGuide.md) — setup + usage guide (v0.4)*
+*[`BIM_Designer_UserGuide.md`](BIM_Designer_UserGuide.md) — setup + usage guide (v0.4)*huge
+
+See Enterprise.md about DB scaling progressive loading of very large IFC projects
+
+DEEPSEEK strategic advice:
+
+You're making the **right strategic decision**. The passing interest → silence pattern is telling you something important: the community doesn't yet *see* what you're building because they can't *use* it in their workflow. Let me validate your instinct and help you identify what "substantial enough" actually means.
+
+## 🔍 Why They're Silent (And Why Waiting Is Smart)
+
+### The Hard Truth About Open Source BIM Adoption
+
+| Reason | Explanation |
+|--------|-------------|
+| **GPLv3 friction** | Many commercial BIM users avoid GPLv3 due to legal uncertainty. IfcOpenShell gets away with it because it's a *library*, not a *workflow tool*. Your compiler is a *workflow tool*—different risk profile. |
+| **"Vibe coding" skepticism** | The term "Claude Code vibe help" triggers immediate dismissal from traditional developers. They hear "AI-generated spaghetti" not "expert-directed acceleration." You need to let the code speak, not the origin story. |
+| **No roundtrip = no trust** | Passing interest means they looked, saw "extracts IFC → DB → view," and thought "another viewer." Without *edit → write back → re-export*, you're not in their consideration set. |
+| **They're overwhelmed** | The Bonsai/IfcOpenShell maintainers are drowning. They don't have time to evaluate every interesting project. "Silence" doesn't mean rejection—it means "not urgent." |
+
+### The Proof Point That Will Break Through
+
+**What they need to see** (and what will make them pay attention):
+
+> "Open IFC → edit 500 window positions in 30 seconds via spreadsheet → write back to IFC → re-import into Revit with changes preserved"
+
+Not a viewer. Not a query engine. A **bidirectional editing pipeline at macro scale**.
+
+## 🎯 The "Substantial Roundtrip Demo" You Should Build
+
+Based on your existing architecture, here's the minimal viable demo that will force attention:
+
+### Demo Scenario: 10x Faster Space Planning
+
+| Step | What You Build | Why It Matters |
+|------|----------------|----------------|
+| 1 | Load LTU A-House (125K elements) | Proves scale |
+| 2 | User filters: "all rooms on floor 3" | Your <100ms spatial query |
+| 3 | User edits in table: "room_341: width 4.2m → 5.0m" | **This is the missing piece** |
+| 4 | Compiler regenerates affected geometry (walls, slabs, doors) | Your BOM-first paradigm shines |
+| 5 | Write back to IFC via IfcOpenShell | **Roundtrip complete** |
+| 6 | Re-import to Revit/Navisworks | Proves interoperability |
+
+**Time for 500 edits:** 30 seconds vs. 4 hours in Revit.
+
+### The Technical Gap You Need to Close
+
+Your documentation mentions:
+
+> *"The custom exporter you described (mapping guid → geometry_hash → IFC entity) is entirely feasible"*
+
+**This is not enough.** You need:
+
+```python
+# Not just export—bidirectional sync
+def sync_roundtrip(original_ifc_path, compiled_db, output_ifc_path):
+    # 1. Parse original IFC with IfcOpenShell
+    original_model = ifcopenshell.open(original_ifc_path)
+    
+    # 2. For each modified element in compiled_db:
+    for guid, new_geometry in get_modified_elements(compiled_db):
+        # 3. Find corresponding IFC entity
+        entity = original_model.by_guid(guid)
+        
+        # 4. Update geometry representation
+        ifcopenshell.api.run("geometry.edit_representation", ...)
+        
+        # 5. Preserve all non-geometry properties (Psets, Qtos)
+        # This is the hard part—don't lose data
+    
+    # 6. Write back
+    original_model.write(output_ifc_path)
+```
+
+### Why This Changes Everything
+
+| Without Roundtrip | With Roundtrip |
+|------------------|----------------|
+| "Another IFC viewer" | "A real BIM editor" |
+| "Query-only tool" | "Design tool" |
+| "Nice for clash detection" | "Replaces Revit for mass edits" |
+| "Why GPLv3?" | "Worth the license risk" |
+
+## 📋 Your "Finish Line" Checklist
+
+Based on your current state, here's what "substantial enough" looks like:
+
+### Phase 1: Core Roundtrip (2-4 weeks)
+
+| Task | Status | Priority |
+|------|--------|----------|
+| Edit geometry in Blender → capture changes via handlers | Not started | 🔴 Critical |
+| Map GUID to IfcOpenShell entity | Partial (you have GUIDs) | 🔴 Critical |
+| Update IFC geometry representation | Not started | 🔴 Critical |
+| Preserve non-geometry properties (Psets) | Not started | 🔴 Critical |
+| Write back to IFC file | Not started | 🔴 Critical |
+
+### Phase 2: Macro Editing Interface (1-2 weeks)
+
+| Task | Status | Priority |
+|------|--------|----------|
+| Spreadsheet-style table editor (HTML UI you already have) | Partial (needs write binding) | 🟡 High |
+| Bulk edit by filter: "all doors on floor 2 → width 0.9m" | Not started | 🟡 High |
+| Parametric constraints: "if wall length changes, update doors" | Not started | 🟢 Medium |
+
+### Phase 3: The Demo Script (1 week)
+
+| Task | Status | Priority |
+|------|--------|----------|
+| Record 5-minute video showing roundtrip | Not started | 🟡 High |
+| Prepare before/after comparison (Revit vs. Compiler) | Not started | 🟡 High |
+| Write "How It Works" technical note | Partial (your docs are good) | 🟢 Medium |
+
+## 🚀 The Strategic Pivot You Need
+
+### Stop Marketing "BOM-First" (For Now)
+
+The industry isn't ready to hear "drawing is dead." Lead with what they *do* understand:
+
+**Old message (too radical):**
+> "Construction = BOM + (x,y,z). Count first, draw second."
+
+**New message (palatable):**
+> "Macro-scale IFC editing: change 500 windows in 30 seconds, roundtrip back to Revit. Built on IfcOpenShell."
+
+The BOM-first paradigm is your secret weapon, but it's the *performance* that will open doors. Once they trust the roundtrip, they'll ask *how* it's so fast. *Then* you explain the BOM foundation.
+
+### License Strategy: Keep GPLv3 but Add Exception
+
+Consider adding a **linking exception** (like GCC's runtime library exception):
+
+```
+*As a special exception, the output of BIM Compiler (compiled .blend files, 
+output.db databases, and generated IFC files) is not considered a derived work. 
+Only the compiler source code itself is subject to GPLv3.*
+```
+
+This is legally sound (output vs. source) and removes the adoption barrier. IfcOpenShell doesn't need this because it's a library; you need it because you're a tool.
+
+## ⏰ Your Real Timeline
+
+| Milestone | Estimated Time | Confidence |
+|-----------|---------------|------------|
+| Basic roundtrip (edit 1 element → write back) | 1 week | High (you have the pieces) |
+| Bulk edit via HTML table | 1 week | High (UI exists, needs DB write) |
+| Full demo script (500 edits, roundtrip to Revit) | 1 week | Medium (Revit import is wildcard) |
+| **Ready to re-engage community** | **3-4 weeks** | **High** |
+
+## 🎯 The Verdict
+
+**You were right to wait.** Passing interest then silence means you showed them a *viewer* when they need an *editor*. 
+
+**The roundtrip is not optional.** It's the difference between "interesting research project" and "tool I can use tomorrow."
+
+**Your "vibe coding" origin story doesn't matter** if the code works. Let the 408 passing tests speak. Let the 48K airport terminal speak. Let the sub-100ms spatial queries speak. The moment you demonstrate bidirectional IFC editing at macro scale, the silence will break—not because you asked, but because you *solved a problem they have right now*.
+
+Finish the roundtrip. Everything else is already there.

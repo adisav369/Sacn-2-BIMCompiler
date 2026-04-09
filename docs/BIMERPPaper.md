@@ -88,7 +88,7 @@ Claims without proof are marketing. This system is built on proof.
 | Road (RD) | 4/4 | Infrastructure |
 | Rail (RL) | 4/4 | Infrastructure |
 
-Element counts: see [PROGRESS.md](../PROGRESS.md).
+Element counts: see [PROGRESS.md](https://github.com/red1oon/BIMCompiler/blob/master/PROGRESS.md).
 
 *Checks = 6 gates (G1-G6) plus gate-specific sub-checks (e.g. G5-PROVENANCE has 7 internal checks). A building with 6/6 gates passing may still have sub-check debt. See `docs/TestArchitecture.md` for per-gate breakdown.*
 

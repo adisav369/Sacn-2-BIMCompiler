@@ -106,22 +106,53 @@ is the stone, the compiler-generated drawing is the translation. Match = proof.
 | **[7D](TIER1_SRS.md)** | Facility management drawings from the same compiled model |
 | **[AD_PrintFormat](https://wiki.idempiere.org/en/AD_PrintFormat)** | iDempiere's output selection pattern — which elements render, which hide |
 
+## Layout Engine (§12a)
+
+The elevation engine is **metadata-driven** — it reads zone widths and face
+class rules from `drawing_template.json`, not from hardcoded face names.
+
+**Face classification** derives from apparent width (DB geometry, not name):
+
+| Face class | Apparent width | Carries |
+|------------|---------------|---------|
+| `annotation_face` | Shorter dimension (building depth) | Level markers, height dim chain |
+| `form_face` | Longer dimension (building length) | Grid bubbles only — no markers |
+
+For DX Duplex: FRONT/REAR are annotation faces (8.8m), LEFT/RIGHT are form faces (17.8m).
+For SH Sample House: FRONT/REAR are form faces (14.1m), LEFT/RIGHT are annotation faces (6.1m).
+
+The engine classifies both correctly from geometry — same code path, different output.
+
+**Template keys driving the engine:**
+```json
+"elevation": {
+  "level_zone_width_mm": 30,
+  "height_zone_width_mm": 22,
+  "form_face_level_zone_width_mm": 0,
+  "form_face_height_zone_width_mm": 0
+}
+```
+
+**Level labels** come verbatim from `2d_level_marker.display_text` (2D.db) — never
+synthesised or abbreviated in code.
+
 ## Current State
 
 | Deliverable | Status | Evidence |
 |-------------|--------|----------|
-| Floor plan (SH) | POC — SVG generated from mesh section cut | See Pelan Lantai above |
-| Roof plan (SH) | POC — SVG generated from top-down projection | See Pelan Bumbung above |
-| Elevations | Designed — no ceiling overlap, level markers | SVGs in `2D_Layout/archive/` (front, rear, left, right) |
+| Floor plan (SH, DX) | DONE — DXF + SVG proof | See Pelan Lantai above |
+| Roof plan (SH, DX) | DONE — DXF + SVG proof | See Pelan Bumbung above |
+| Elevations (all faces) | DONE — face classification + zone layout engine | `§FACE_CLASS` + `§ZONE_LAYOUT` in diagnostic log |
+| Level markers (annotation faces) | DONE — verbatim from `2d_level_marker.display_text` | `§LEVEL_MARKER src=2d_level_marker` |
+| Grid bubbles (bottom) | In progress — I-31 | Top bubble done; bottom pending |
+| Zone boundary enforcement | In progress — I-32 | `§ZONE_LAYOUT` logged; clamping TBD |
 | Sections | Stub — hatching per material pending | — |
-| Annotations | Designed — grid lines, dimensions, room labels | Visible in floor plan |
 | Java port | 6 stub classes created, Python prototype as reference | `2D_Layout/src/main/java/com/bim/layout/` |
 
 ## Source
 
 **Module:** `2D_Layout/` in [BIMCompiler](https://github.com/red1oon/BIMCompiler) repository.
-See `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` for the full technical spec
-(mesh section cut algorithm, annotation overlay, JKR/ISO conventions).
+Full technical spec: `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` (§12a Layout Engine,
+mesh section cut algorithm, JKR/ISO conventions).
 
-**SVG archive:** `2D_Layout/archive/` contains generated floor plan, roof plan,
-and 4 elevation SVGs for the Sample House.
+**DXF/SVG output:** `2D_Layout/output/` — floor plan, roof plan, 4 elevation DXFs + SVG proofs.

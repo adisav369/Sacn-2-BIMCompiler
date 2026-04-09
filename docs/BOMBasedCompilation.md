@@ -499,7 +499,7 @@ No new columns. No cross-references. The existing product taxonomy IS the
 wiring between ARC shell and MEP disciplines.
 
 **Root BOM tack origins** — where each discipline's root product attaches
-(TE reference data from SJTII_Terminal extraction, world coordinates):
+(TE reference data from Terminal extraction, world coordinates):
 
 | OrderLine | Root BOM | Tacks to (ARC room) | M_Product_Category | Origin (world m) | Walk direction |
 |-----------|----------|--------------------|--------------------|-----------------|----------------|
@@ -1155,7 +1155,7 @@ and generates ASI per instance.
 
 > **Verification gates:** See [`TestArchitecture.md`](TestArchitecture.md) §Verification for the complete G1-G6 gate specification, tamper rules (T1-T16), and the 4-layer defense model.
 
-All 6 gates GREEN for SH and DX. Current counts in [PROGRESS.md](../PROGRESS.md).
+All 6 gates GREEN for SH and DX. Current counts in [PROGRESS.md](https://github.com/red1oon/BIMCompiler/blob/master/PROGRESS.md).
 
 ---
 

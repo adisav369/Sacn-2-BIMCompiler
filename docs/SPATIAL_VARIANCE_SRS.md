@@ -6,7 +6,7 @@
 [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §26 (WF-R1..R3), §28.17 (Completion Tools),
 §33 (Verb Emission), §34 (2D Projection),
 [ProjectOrderBlueprint.md](ProjectOrderBlueprint.md) §1 (exception-based ordering),
-[unified_mathematical_formulation.txt](../internal/unified_mathematical_formulation.txt) §2 (Stage P)
+[unified_mathematical_formulation.txt](unified_mathematical_formulation.txt) §2 (Stage P)
 
 ---
 
@@ -523,6 +523,6 @@ earliest end-to-end proof of the full pipeline.
 [BIM_Designer_SRS.md §28.17](BIM_Designer_SRS.md) (Completion Tools roadmap) |
 [BIM_Designer_SRS.md §33](BIM_Designer_SRS.md) (Verb Emission Protocol) |
 [BIM_Designer_SRS.md §34](BIM_Designer_SRS.md) (2D Projection) |
-[2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §12–§13](../2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md) (Math foundation, 2D23D) |
+[2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §12–§13](2D_LAYOUT.md) (Math foundation, 2D23D) |
 [ProjectOrderBlueprint.md §1](ProjectOrderBlueprint.md) (Exception-based ordering) |
 [TestArchitecture.md](TestArchitecture.md) (G1-G6 gates, Rosetta Stone coverage)*

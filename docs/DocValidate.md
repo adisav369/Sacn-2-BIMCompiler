@@ -690,8 +690,8 @@ Concrete SQL queries against Terminal extracted data to seed rules:
 SELECT a.element_ref, b.element_ref,
        SQRT(POW(a.min_x - b.min_x, 2) + POW(a.min_y - b.min_y, 2)) as dist_mm
 FROM I_Element_Extraction a, I_Element_Extraction b
-WHERE a.building_type = 'SJTII_Terminal'
-  AND b.building_type = 'SJTII_Terminal'
+WHERE a.building_type = 'Terminal'
+  AND b.building_type = 'Terminal'
   AND a.ifc_class = 'IfcFireSuppressionTerminal'
   AND b.ifc_class = 'IfcFireSuppressionTerminal'
   AND a.storey = b.storey
@@ -707,8 +707,8 @@ SELECT MIN(CASE
     WHEN b.max_x < a.min_x THEN a.min_x - b.max_x
     ELSE 0 END) as clearance_x_mm
 FROM I_Element_Extraction a, I_Element_Extraction b
-WHERE a.building_type = 'SJTII_Terminal'
-  AND b.building_type = 'SJTII_Terminal'
+WHERE a.building_type = 'Terminal'
+  AND b.building_type = 'Terminal'
   AND a.discipline = 'ELEC'
   AND b.discipline = 'SP'
   AND a.storey = b.storey;
@@ -1347,7 +1347,7 @@ SELECT a.ifc_class, a.discipline,
        COUNT(DISTINCT a.storey) as storey_count,
        GROUP_CONCAT(DISTINCT a.storey) as storeys
 FROM I_Element_Extraction a
-WHERE a.building_type = 'SJTII_Terminal'
+WHERE a.building_type = 'Terminal'
   AND a.ifc_class IN ('IfcPipeSegment', 'IfcDuctSegment',
                        'IfcColumn', 'IfcWall')
 GROUP BY a.ifc_class, a.discipline,
@@ -1363,7 +1363,7 @@ ORDER BY storey_count DESC;
 SELECT a.ifc_class, a.storey, a.min_x, a.min_y,
        ABS(a.min_x - 4.400) as mirror_dist
 FROM I_Element_Extraction a
-WHERE a.building_type = 'Ifc2x3_Duplex'
+WHERE a.building_type = 'Duplex'
   AND a.discipline IN ('CW', 'SP')
   AND ABS(a.min_x - 4.400) < 0.5  -- within 500mm of party wall
 ORDER BY a.storey, a.min_y;
@@ -1974,7 +1974,7 @@ predicate upgrades internally (AABB fallback → FK join) without changing calle
 [BBC.md](BOMBasedCompilation.md) §1 (C_Order model) |
 [BIM_Designer.md](BIM_Designer.md) §4 (compliance as compilation constraint), §9 (container rules), §11 (BonsaiBIMDesigner) |
 [TestArchitecture.md](TestArchitecture.md) (ProveStage gates) |
-[phase27-tb-lktn/DSL_DICTIONARY.md](phase27-tb-lktn/DSL_DICTIONARY.md) (TB-LKTN generative reference) |
+`phase27-tb-lktn/DSL_DICTIONARY.md` (TB-LKTN generative reference) |
 tools/cross_discipline_checker.py (existing checker) |
 [BOMBasedCompilation.md](BOMBasedCompilation.md) §3.3 (EN-BLOC), §4 (tack convention) |
 [TerminalAnalysis.md](TerminalAnalysis.md) (discipline inventory, verb patterns)*

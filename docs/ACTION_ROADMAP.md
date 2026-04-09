@@ -103,7 +103,7 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §28–§35 | [SPATIAL_VARIANCE_
 | **6D Carbon** | 2d | Schema exists (V010) | Wire SustainabilityDAO, carbon rollup, UI panel |
 | **7D Facility Mgmt** | 2d | Schema exists (V010) | Wire FacilityMgmtDAO, maintenance schedule, UI panel |
 | **8D ERP Integration** | — | iDempiere table alignment DONE | Live sync to iDempiere instance |
-| **2D Layout** | 5d | Python prototype DONE (6 SVGs, SH). Java port pending. [2D_ARCHITECTURAL_LAYOUT.md](../2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md) |
+| **2D Layout** | 5d | Python prototype DONE (6 SVGs, SH). Java port pending. [2D_ARCHITECTURAL_LAYOUT.md](2D_LAYOUT.md) |
 | **Synthetic Rosetta Stone** | 2d | panel→variance→compile→project→measure. Closes compiler-modeller loop. [SPATIAL_VARIANCE_SRS.md §12](SPATIAL_VARIANCE_SRS.md) |
 | **PDF Terrain** | 5d | Specced | Survey PDF → elevation points → IFC site topology. [PDF_TERRAIN](PDF_TERRAIN.md) |
 | **Audit trail** | 3d | Schema specced (V011) | ChangelogDAO, interceptor, history panel |
@@ -200,4 +200,4 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §28–§35 | [SPATIAL_VARIANCE_
 | **Data model** | [DATA_MODEL.md](DATA_MODEL.md) |
 | **Type-Safe Design Language** | [SPATIAL_VARIANCE_SRS.md](SPATIAL_VARIANCE_SRS.md) — gesture→verb→variance→compile loop |
 | **Finish Walls** | [FINISH_WALLS_SRS.md](FINISH_WALLS_SRS.md) — detect + complete missing ARC walls |
-| **2D Projection** | [2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md](../2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md) §12–§13 |
+| **2D Projection** | [2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md](2D_LAYOUT.md) §12–§13 |

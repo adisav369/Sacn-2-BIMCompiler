@@ -30,7 +30,7 @@ Priority: **P0** = must-have for first usable demo, **P1** = needed for daily us
 ### 1.1 Foundation Guarantee — Zero Delta Compilation
 
 All five Rosetta Stone buildings compile with verified volume:
-SH, FK, IN, DX, TE (counts in [PROGRESS.md](../PROGRESS.md)). The compiler is a pure
+SH, FK, IN, DX, TE (counts in [PROGRESS.md](https://github.com/red1oon/BIMCompiler/blob/master/PROGRESS.md)). The compiler is a pure
 function: same input → same output, always. Every UX claim in this document
 rests on this guarantee. See [MANIFESTO.md §Why This Matters](MANIFESTO.md).
 
@@ -2958,7 +2958,7 @@ panel input → variance → compile → 2D projection → measured dimension ma
 ## §35 — 2D Projection: The Compiler's Natural Output
 
 **Version:** 1.0 (2026-04-03)
-**Full spec:** [2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §12–§13](../2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md)
+**Full spec:** [2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §12–§13](2D_LAYOUT.md)
 **Type-Safe Design:** [SPATIAL_VARIANCE_SRS.md §11](SPATIAL_VARIANCE_SRS.md) (variance → 2D update loop)
 **Prototype:** `2D_Layout/python/drawing_writer.py` — 6 SVG drawings (floor plan, roof plan, 4 elevations) from SH output.db
 

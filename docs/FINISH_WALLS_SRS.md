@@ -413,6 +413,6 @@ Declare first, prove counts, then a separate session for wall placement.
 [BIM_Designer_SRS.md §28.17](BIM_Designer_SRS.md) (parent spec — §28.17.1-28.17.7) |
 [SPATIAL_VARIANCE_SRS.md §3](SPATIAL_VARIANCE_SRS.md) (Type Resolution Ladder) |
 [SPATIAL_VARIANCE_SRS.md §6](SPATIAL_VARIANCE_SRS.md) (Variance Stack) |
-[2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §12](../2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md) (floor plan projection) |
+[2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §12](2D_LAYOUT.md) (floor plan projection) |
 [DISC_VALIDATION_DB_SRS.md §6.12.3](DISC_VALIDATION_DB_SRS.md) (discipline isolation) |
 [TestArchitecture.md](TestArchitecture.md) (G1-G6 gates)*

@@ -192,7 +192,7 @@ child.save();        // → INSERT
 | **DX** | IFC2x3 | Paired duplex, 2-storey | USA |
 | **TE** | IFC2x3 | Airport terminal | Malaysia |
 
-Element counts: see [PROGRESS.md](../PROGRESS.md) gate table.
+Element counts: see [PROGRESS.md](https://github.com/red1oon/BIMCompiler/blob/master/PROGRESS.md) gate table.
 
 ### The 6 Gates
 
@@ -701,7 +701,7 @@ VERIFIED ✓ (or drift detected ✗)
 - MeshBinder `isNS`: mesh-proximity comparison, NOT bbox aspect ratio
 - GUID ordinal: ALWAYS use `++ordinalCounter`, NEVER `line.getOrdinal()`
 - BOM furniture LOD: `tx=p.minX()-lb[0]*sX` (min-corner, NOT center)
-- DX compiles as "Ifc2x3_Duplex" (NOT MULTI_UNIT)
+- DX compiles as "Duplex" (NOT MULTI_UNIT)
 - Metadata buildings: roof via `overrideRoofPosition()` ONLY — `BuildingSpec.roof()` NOT called
 
 ### Geometry / Coord

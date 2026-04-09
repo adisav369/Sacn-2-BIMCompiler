@@ -178,7 +178,7 @@ Produces `simple_qto` table: 133 line items, RM 47.4M grand total.
 Excel export with cost breakdown by discipline and cost components chart.
 
 Both scripts are copies from the Federation addon (`schedule/` and `boq/`), adapted for
-our extracted DB schema. See [`scripts/README_extraction.md`](../scripts/README_extraction.md)
+our extracted DB schema. See `scripts/README_extraction.md`
 for full details.
 
 ---

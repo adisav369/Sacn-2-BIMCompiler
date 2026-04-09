@@ -22,6 +22,20 @@
 > IFC extraction is IFC-driven (family types, spatial containment). YAML defines
 > the Order: how extracted elements are organised into the BOM tree.
 
+## Quick Start — Fresh Install
+
+If starting from scratch (no `library/ERP.db`), build the seed database first:
+
+```bash
+./scripts/rebuild_erp.sh              # Creates ERP.db with all reference data
+./scripts/onboard_ifc.sh --prefix XX --type MyBuilding --name "My Building" \
+    --base RE --ifc path/to/building.ifc
+```
+
+`rebuild_erp.sh` creates the Application Dictionary seed (M_Product_Category, AD_Org,
+aliases, patterns, recipes). `onboard_ifc.sh` then processes any IFC file — no manual
+SQL needed. See [DEPLOYMENT.md](DEPLOYMENT.md#erpdb--from-scratch-rebuild) for details.
+
 ## Quick Start — For Users
 
 Everything is already built. 34 buildings are onboarded, BOMs are generated, the
@@ -152,10 +166,10 @@ products and geometry links (skips if already done), runs IFCtoBOM to produce
 
 | File | Schema | Status |
 |------|--------|--------|
-| `Ifc4_SampleHouse.ifc` | IFC4 | Onboarded (SH) |
+| `SampleHouse.ifc` | IFC4 | Onboarded (SH) |
 | `FZK_Haus_IFC4.ifc` | IFC4 | Onboarded (FK) |
 | `AC11_Institute_IFC2x3.ifc` | IFC2x3 | Onboarded (IN) |
-| `Ifc2x3_Duplex_*.ifc` | IFC2x3 | Onboarded (DX) |
+| `Duplex_*.ifc` | IFC2x3 | Onboarded (DX) |
 | `SJTII-*.ifc` (7 discipline files) | IFC2x3 | Onboarded (TE) |
 | `PCERT_Infra_Bridge_IFC4X3.ifc` | IFC4X3 | Onboarded (BR) |
 | `PCERT_Infra_Road_IFC4X3.ifc` | IFC4X3 | Onboarded (RD) |
@@ -180,11 +194,11 @@ mvn exec:java -pl IFCtoBOM \
 
 **Classification YAML files:**
 
-- `classify_sh.yaml` — Ifc4_SampleHouse
-- `classify_dx.yaml` — Ifc2x3_Duplex (1,099 elements)
+- `classify_sh.yaml` — SampleHouse
+- `classify_dx.yaml` — Duplex (1,099 elements)
 - `classify_fk.yaml` — Ifc4_FZKHaus (82 elements)
 - `classify_in.yaml` — Ifc2x3_AC11Institute (699 elements)
-- `classify_te.yaml` — SJTII_Terminal (48,428 elements)
+- `classify_te.yaml` — Terminal (48,428 elements)
 - `classify_br.yaml` — PCERT_Infra_Bridge (48 elements)
 - `classify_rd.yaml` — PCERT_Infra_Road (53 elements)
 - `classify_rl.yaml` — PCERT_Infra_Rail (73 elements)
@@ -832,10 +846,10 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.
 | Topic | Document |
 |-------|----------|
 | ERP model (C_Order, BOM, decisions) | [`MANIFESTO.md`](MANIFESTO.md) |
-| Spatial MRP (construction as ERP II) | [`ConstructionAsERPII.txt`](ConstructionAsERPII.txt) |
+| Spatial MRP (construction as ERP II) | `ConstructionAsERPII.txt` |
 | BOM compilation, tack §4 | [`BOMBasedCompilation.md`](BOMBasedCompilation.md) |
 | BIM as BOM concept | [`MANIFESTO.md`](MANIFESTO.md) §The Pattern |
-| Conceptual blueprint | [`CONCEPTUAL BLUEPRINT.txt`](CONCEPTUAL%20BLUEPRINT.txt) |
+| Conceptual blueprint | `CONCEPTUAL BLUEPRINT.txt` |
 | Rosetta Stone strategy | [`TheRosettaStoneStrategy.md`](TheRosettaStoneStrategy.md) |
 | BIM Designer vision | [`BIM_Designer.md`](BIM_Designer.md) |
 

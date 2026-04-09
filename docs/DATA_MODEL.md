@@ -43,10 +43,10 @@ and a resolved `M_Product_ID` linking to the product catalog.
 
 | Building | building_type | Type |
 |----------|--------------|------|
-| Sample House | Ifc4_SampleHouse | Single-storey residential |
-| Duplex | Ifc2x3_Duplex | Paired duplex, 2-storey |
+| Sample House | SampleHouse | Single-storey residential |
+| Duplex | Duplex | Paired duplex, 2-storey |
 
-Element counts and storey breakdowns: see [PROGRESS.md](../PROGRESS.md) gate table.
+Element counts and storey breakdowns: see [PROGRESS.md](https://github.com/red1oon/BIMCompiler/blob/master/PROGRESS.md) gate table.
 
 ### 1.2 Tack Convention
 
@@ -73,7 +73,7 @@ is a facility part (`IfcBridgePart`, `IfcRoadPart`, `IfcRailwayPart`). The `stor
 column in `elements_meta` stores the segment name regardless of domain.
 See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §4 for the hierarchy mapping.
 
-**SH (Ifc4_SampleHouse):**
+**SH (SampleHouse):**
 
 | Storey | Floor BOM ID | bom_category | Elements |
 |--------|-------------|-------------|----------|
@@ -81,7 +81,7 @@ See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §4 for the hierarc
 | Roof | SH_ROOF_STR | RF | 2 |
 | Unknown | SH_CW_STR | CW | 26 |
 
-**DX (Ifc2x3_Duplex):**
+**DX (Duplex):**
 
 | Storey | Floor BOM ID | bom_category | Elements |
 |--------|-------------|-------------|----------|
@@ -292,7 +292,10 @@ the same BOM level — you never need to traverse a category tree.
 > **Note:** `Parent_Category_ID` is legacy — the [BOM cascade](MANIFESTO.md#what-m_product_category-classification--ad_org-discipline)
 > already expresses hierarchy through M_BOM_Line parent-child relationships.
 
-117 rows total (DV018 migration). Representative categories:
+127 rows total (DV018 hierarchy + DV031 disciplines + DV027 PK migration).
+`AD_Org_ID` column (DV036) wires `M_Product → M_Product_Category → AD_Org_ID`
+per [DISC_VALIDATION_DB_SRS.md §6.4](DISC_VALIDATION_DB_SRS.md#64-bom-tree-structure).
+Representative categories:
 
 | Level | M_Product_Category_ID | Name | Example Buildings |
 |-------|----------------------|------|-------------------|
@@ -325,7 +328,7 @@ Read by the IFCtoBOM Java pipeline (SH/DX) or `RosettaStoneToBOM.py` (TE legacy)
 | Column | Type | Notes |
 |--------|------|-------|
 | placement_id | INTEGER PK | |
-| building_type | TEXT | Ifc4_SampleHouse / Ifc2x3_Duplex |
+| building_type | TEXT | SampleHouse / Duplex |
 | storey | TEXT | Storey name |
 | ifc_class | TEXT | IFC entity type |
 | element_ref | TEXT | Element reference |

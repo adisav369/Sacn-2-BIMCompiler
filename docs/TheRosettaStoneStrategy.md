@@ -33,7 +33,7 @@ The reference DB has every answer. Read it. Match it. Not through cheating or co
 
 ALL stones must pass. Not 2 of 3. Not "residential only."
 
-Element counts and gate status: see [PROGRESS.md](../PROGRESS.md).
+Element counts and gate status: see [PROGRESS.md](https://github.com/red1oon/BIMCompiler/blob/master/PROGRESS.md).
 Full coverage table: [TestArchitecture.md §Rosetta Stone Coverage](TestArchitecture.md#rosetta-stone-coverage-s58c).
 
 ---
