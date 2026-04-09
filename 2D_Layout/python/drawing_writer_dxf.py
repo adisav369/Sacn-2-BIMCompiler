@@ -1292,7 +1292,7 @@ def _audit_dxf(doc, out_dxf: str, view_type: str):
                                                               f"A-{meta['grid_alpha_max']}, 1-{meta['grid_num_max']}"),
             ("GUID xdata",               guid_count >= 5,     str(guid_count), f"≥5 ARC elements"),
             ("Furniture bboxes",          n_furn > 0,          str(n_furn),     "1 per BELOW element"),
-            ("Bay dimensions",            len(dim_texts) >= 3,
+            ("Bay dimensions",            len(dim_texts) >= 2,
                                                               str(len(dim_texts)), "1 per grid bay"),
             ("Room labels",               any(t in meta['room_types'] for t in text_strs)
                                           or any('RUANG' in t or 'BILIK' in t for t in text_strs),
@@ -2211,6 +2211,13 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE,
 
     # ── §2 Step 4: COMPUTE DIMENSIONS ──
     dims = generate_dimensions(grids)
+    # §6.1 I-23: log suppressed tier-2 axes (single-bay axes have no bay dim entry)
+    _x_grids = [g for g in grids if g.axis == 'x']
+    _y_grids = [g for g in grids if g.axis == 'y']
+    if len(_x_grids) == 2:
+        _log(f"§I-23 FLOOR tier-2 suppressed x-axis: single bay {_x_grids[0].label}→{_x_grids[-1].label}")
+    if len(_y_grids) == 2:
+        _log(f"§I-23 FLOOR tier-2 suppressed y-axis: single bay {_y_grids[0].label}→{_y_grids[-1].label}")
     # §15.2: triage grid dims — PANEL bays suppress inline text
     crowding_mm = tpl.get('grid', {}).get('crowding_threshold_mm', 15.0)
     _inline_bays, _panel_bays = _triage_grid_dims(grids, scale, crowding_mm)
@@ -2219,6 +2226,9 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE,
     tick_len = tpl_dims.get('tick_half_length_mm', 1.5) * scale
     # §6.3a: tick angle from template (default 45°)
     tick_angle = math.radians(tpl_dims.get('tick_angle_deg', 45))
+    # §6.1 I-24: one tick per endpoint per dim row — track drawn positions to suppress duplicates
+    _drawn_ticks: set = set()  # (round(dim_row), round(pos)) per axis
+    _ticks_skipped = 0
     tick_dx = tick_len * math.cos(tick_angle)
     tick_dy = tick_len * math.sin(tick_angle)
     txt_h    = tpl_dims.get('text_height_mm', 2.5) * scale
@@ -2248,10 +2258,16 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE,
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             msp.add_line((e, bld_max_y + dim_gap), (e, dim_y + dim_gap),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+            # §6.1 I-24: one tick per endpoint per dim row — skip if already drawn at this pos
             for tx in (s, e):
-                msp.add_line((tx - tick_dx, dim_y - tick_dy),
-                             (tx + tick_dx, dim_y + tick_dy),
-                             dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+                _tk = (round(dim_y, 2), round(tx, 2))
+                if _tk not in _drawn_ticks:
+                    _drawn_ticks.add(_tk)
+                    msp.add_line((tx - tick_dx, dim_y - tick_dy),
+                                 (tx + tick_dx, dim_y + tick_dy),
+                                 dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+                else:
+                    _ticks_skipped += 1
             if not _is_panel:
                 mid_x = (s + e) / 2
                 msp.add_text(d.text,
@@ -2274,10 +2290,16 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE,
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             msp.add_line((bld_min_x - dim_gap, e), (dim_x - dim_gap, e),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+            # §6.1 I-24: one tick per endpoint per dim row — skip if already drawn at this pos
             for ty in (s, e):
-                msp.add_line((dim_x - tick_dx, ty - tick_dy),
-                             (dim_x + tick_dx, ty + tick_dy),
-                             dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+                _tk = (round(dim_x, 2), round(ty, 2))
+                if _tk not in _drawn_ticks:
+                    _drawn_ticks.add(_tk)
+                    msp.add_line((dim_x - tick_dx, ty - tick_dy),
+                                 (dim_x + tick_dx, ty + tick_dy),
+                                 dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+                else:
+                    _ticks_skipped += 1
             if not _is_panel:
                 mid_y = (s + e) / 2
                 msp.add_text(d.text,
@@ -2292,6 +2314,7 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE,
             n_bimsrc_dim += 1
             _log(f"  WRITE dim {d.text} layer=A-DIMS")
         dim_count += 1
+    _log(f"§I-24 FLOOR tick dedup: {_ticks_skipped} duplicate ticks suppressed at shared endpoints")
 
     # ── §2 Step 6: INFER ROOMS ──
     room_labels_meta = meta.get('room_labels', {}) if meta else {}
@@ -2703,27 +2726,34 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
     dim_txt_h = txt_dim * scale
     if len(face_grids) >= 2:
         dim_y = grid_above + bubble_r * 2 + tier_2_off
-        for i in range(len(face_grids) - 1):
-            xa = _mh(face_grids[i].position)
-            xb = _mh(face_grids[i + 1].position)
-            bay_mm = abs(face_grids[i + 1].position - face_grids[i].position) * 1000
-            snapped = round(bay_mm / SNAP_MODULE) * SNAP_MODULE
-            _log(f"§2.4 Bay dim {face_grids[i].label}→{face_grids[i+1].label} = {int(snapped)}mm")
-            # §H: manual tick pattern — consistent with floor/roof plan dims
-            mid_x = (xa + xb) / 2
-            msp.add_line((xa, dim_y), (xb, dim_y),
-                         dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            ext_bot = grid_above + bubble_r * 2 + grid_gap
-            for tx in (xa, xb):
-                msp.add_line((tx, ext_bot), (tx, dim_y + grid_gap),
+        # §6.1 I-24: one tick per endpoint — skip if already drawn at this (dim_y, x)
+        _elev_drawn_ticks: set = set()
+        # §6.1 I-23: only draw bay dims when more than 1 bay (suppress tier-2 = tier-1)
+        if len(face_grids) > 2:
+            for i in range(len(face_grids) - 1):
+                xa = _mh(face_grids[i].position)
+                xb = _mh(face_grids[i + 1].position)
+                bay_mm = abs(face_grids[i + 1].position - face_grids[i].position) * 1000
+                snapped = round(bay_mm / SNAP_MODULE) * SNAP_MODULE
+                _log(f"§2.4 Bay dim {face_grids[i].label}→{face_grids[i+1].label} = {int(snapped)}mm")
+                # §H: manual tick pattern — consistent with floor/roof plan dims
+                mid_x = (xa + xb) / 2
+                msp.add_line((xa, dim_y), (xb, dim_y),
                              dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-                msp.add_line((tx - tick_dx, dim_y - tick_dy),
-                             (tx + tick_dx, dim_y + tick_dy),
-                             dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            msp.add_text(str(int(snapped)),
-                         dxfattribs={'layer': 'A-ANNO-DIMS', 'height': dim_txt_h}
-                         ).set_placement((mid_x, dim_y - dim_txt_h * 2.5),
-                                         align=TextEntityAlignment.MIDDLE_CENTER)
+                ext_bot = grid_above + bubble_r * 2 + grid_gap
+                for tx in (xa, xb):
+                    msp.add_line((tx, ext_bot), (tx, dim_y + grid_gap),
+                                 dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+                    _tk = (round(dim_y, 2), round(tx, 2))
+                    if _tk not in _elev_drawn_ticks:
+                        _elev_drawn_ticks.add(_tk)
+                        msp.add_line((tx - tick_dx, dim_y - tick_dy),
+                                     (tx + tick_dx, dim_y + tick_dy),
+                                     dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+                msp.add_text(str(int(snapped)),
+                             dxfattribs={'layer': 'A-ANNO-DIMS', 'height': dim_txt_h}
+                             ).set_placement((mid_x, dim_y - dim_txt_h * 2.5),
+                                             align=TextEntityAlignment.MIDDLE_CENTER)
 
     # ── §6.2 Height dimension chain (right side) ──
     # F2: compute title-block left boundary in model-space to clamp dim position
@@ -3224,6 +3254,8 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     tick_angle = math.radians(tpl_dims.get('tick_angle_deg', 45))
     tick_dx = tick_len * math.cos(tick_angle)
     tick_dy = tick_len * math.sin(tick_angle)
+    # §6.1 I-24: one tick per endpoint per dim row
+    _roof_drawn_ticks: set = set()
     for d in dims:
         s = d.start * MM
         e = d.end * MM
@@ -3234,10 +3266,12 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
             dim_y = r_max_y + off
             msp.add_line((s, dim_y), (e, dim_y),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            msp.add_line((s - tick_dx, dim_y - tick_dy), (s + tick_dx, dim_y + tick_dy),
-                         dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            msp.add_line((e - tick_dx, dim_y - tick_dy), (e + tick_dx, dim_y + tick_dy),
-                         dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+            for tx in (s, e):
+                _tk = (round(dim_y, 2), round(tx, 2))
+                if _tk not in _roof_drawn_ticks:
+                    _roof_drawn_ticks.add(_tk)
+                    msp.add_line((tx - tick_dx, dim_y - tick_dy), (tx + tick_dx, dim_y + tick_dy),
+                                 dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             if not _is_panel:
                 msp.add_text(d.text,
                              dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h}
@@ -3248,10 +3282,12 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
             dim_x = r_min_x - off
             msp.add_line((dim_x, s), (dim_x, e),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            msp.add_line((dim_x - tick_dx, s - tick_dy), (dim_x + tick_dx, s + tick_dy),
-                         dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            msp.add_line((dim_x - tick_dx, e - tick_dy), (dim_x + tick_dx, e + tick_dy),
-                         dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
+            for ty in (s, e):
+                _tk = (round(dim_x, 2), round(ty, 2))
+                if _tk not in _roof_drawn_ticks:
+                    _roof_drawn_ticks.add(_tk)
+                    msp.add_line((dim_x - tick_dx, ty - tick_dy), (dim_x + tick_dx, ty + tick_dy),
+                                 dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
             if not _is_panel:
                 msp.add_text(d.text,
                              dxfattribs={'layer': 'A-ANNO-DIMS', 'height': txt_h,

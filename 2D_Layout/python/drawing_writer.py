@@ -500,14 +500,16 @@ def generate_dimensions(grids: List[GridLine]) -> List[DimString]:
     x_grids = sorted([g for g in grids if g.axis == 'x'], key=lambda g: g.position)
     y_grids = sorted([g for g in grids if g.axis == 'y'], key=lambda g: g.position)
 
+    # §6.1 I-23: suppress tier-2 bay dims when only 1 bay — tier-2 would equal tier-1
     # X-axis bay dimensions (horizontal, shown above building)
-    for i in range(len(x_grids) - 1):
-        dist = x_grids[i + 1].position - x_grids[i].position
-        dims.append(DimString(
-            x_grids[i].position, x_grids[i + 1].position,
-            DIM_OFFSET_1, 'x', format_dim(dist),
-            from_label=x_grids[i].label, to_label=x_grids[i + 1].label
-        ))
+    if len(x_grids) > 2:
+        for i in range(len(x_grids) - 1):
+            dist = x_grids[i + 1].position - x_grids[i].position
+            dims.append(DimString(
+                x_grids[i].position, x_grids[i + 1].position,
+                DIM_OFFSET_1, 'x', format_dim(dist),
+                from_label=x_grids[i].label, to_label=x_grids[i + 1].label
+            ))
 
     # X-axis overall dimension
     if len(x_grids) >= 2:
@@ -518,14 +520,16 @@ def generate_dimensions(grids: List[GridLine]) -> List[DimString]:
             from_label=x_grids[0].label, to_label=x_grids[-1].label
         ))
 
+    # §6.1 I-23: suppress tier-2 bay dims when only 1 bay — tier-2 would equal tier-1
     # Y-axis bay dimensions (vertical, shown left of building)
-    for i in range(len(y_grids) - 1):
-        dist = y_grids[i + 1].position - y_grids[i].position
-        dims.append(DimString(
-            y_grids[i].position, y_grids[i + 1].position,
-            DIM_OFFSET_1, 'y', format_dim(dist),
-            from_label=y_grids[i].label, to_label=y_grids[i + 1].label
-        ))
+    if len(y_grids) > 2:
+        for i in range(len(y_grids) - 1):
+            dist = y_grids[i + 1].position - y_grids[i].position
+            dims.append(DimString(
+                y_grids[i].position, y_grids[i + 1].position,
+                DIM_OFFSET_1, 'y', format_dim(dist),
+                from_label=y_grids[i].label, to_label=y_grids[i + 1].label
+            ))
 
     # Y-axis overall dimension
     if len(y_grids) >= 2:
