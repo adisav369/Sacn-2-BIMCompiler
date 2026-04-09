@@ -4,8 +4,4 @@
 # Format: [severity] I-## description (spec ref)
 # Language: English only
 
-[High]   I-21  MEP terminal symbols must use element footprint from elements_rtree (§17.7), not symbol_code lookup. Current code draws circles/crosses per keyword match — replace with LWPOLYLINE of element bounding box. Test: §SYMBOL_FOOTPRINT log per terminal, zero circles on MEP layer. (§17.7)
-[High]   I-27  DX multi-storey floor plan title is hardcoded "FLOOR PLAN" for both GF and FF. Must be storey-qualified: "GROUND FLOOR PLAN" / "FIRST FLOOR PLAN" — derive from `2d_drawing_type.drawing_title` for each storey code (GF→"GROUND FLOOR PLAN", FF→"FIRST FLOOR PLAN"). Drawing number also needs storey suffix (A-01-GF, A-01-FF). Spec §12.1 test_storey_labels: "sheet title contains storey name, sheet number contains storey code". (§12.1)
-[High]   I-28  MEP plan drawing title is hardcoded `f'{discipline} LAYOUT'` → "PLUMBING LAYOUT". Title must come from `2d_drawing_type.drawing_title` (add rows: M-01="GROUND FL PLUMBING", E-01="GROUND FL ELECTRICAL"). Caller reads title from page table (`DX_2D.json`), passes to `write_mep_plan_dxf(drawing_title=...)`. Log label `§D MEP plan discipline=PLUMBING` must also use friendly display name from `2d_drawing_type.description`. (§12.2)
-[High]   I-30  `2d_drawing_symbol` and `2d_drawing_style` rows for MEP IFC classes missing from 2D.db. Without these, I-21 cannot be completed (no footprint source) and all MEP elements render as fallback circles. Spec §12.2 gives explicit SQL for IfcPipeSegment, IfcDuctSegment, IfcFlowTerminal, IfcSwitchingDevice, IfcElectricAppliance. Add as DB migration. Test: `test_mep_symbol_coverage` — every MEP IFC class has a `2d_drawing_style` row. (§12.2)
 [Low]    I-07  JKR logo not in title block header. (§14.2)

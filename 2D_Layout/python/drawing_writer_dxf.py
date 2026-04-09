@@ -1900,6 +1900,14 @@ def _write_log(out_dir: str):
 # ─────────────────────────────────────────────────────────────────
 
 _STOREY_CODES = ['GF', 'FF', '2F', '3F', '4F', '5F']
+_STOREY_TITLES = {
+    'GF': 'GROUND FLOOR PLAN',
+    'FF': 'FIRST FLOOR PLAN',
+    '2F': '2ND FLOOR PLAN',
+    '3F': '3RD FLOOR PLAN',
+    '4F': '4TH FLOOR PLAN',
+    '5F': '5TH FLOOR PLAN',
+}
 
 
 def _detect_floor_storeys(db_path: str) -> list:
@@ -1926,7 +1934,8 @@ def _detect_floor_storeys(db_path: str) -> list:
 
 
 def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE,
-                         storey_name: str = None, storey_floor_z: float = 0.0):
+                         storey_name: str = None, storey_floor_z: float = 0.0,
+                         drawing_title: str = 'FLOOR PLAN', drawing_no: str = 'A-01'):
     """Generate floor plan DXF from compiled output.db.
 
     Coordinates in model-space mm (no PAPER_FACTOR).
@@ -1937,6 +1946,7 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE,
     _start_view_log(f'FLOOR{_suf}')
     _log(f"§ENTRY write_floor_plan_dxf(db_path={db_path}, out_dxf={out_dxf}, scale={scale}, "
          f"storey_name={storey_name!r}, storey_floor_z={storey_floor_z})")
+    _log(f"§I-27 floor plan title={drawing_title!r} sheet={drawing_no!r} storey={storey_name!r}")
 
     # ── §2 Step 1: LOAD TEMPLATE ──
     tpl = _load_template()
@@ -2480,7 +2490,7 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE,
                                 'walls': walls, 'furniture': furniture})
     bld_type, bld_name = _infer_building_identity(db_path)
     _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y,
-                       drawing_title='FLOOR PLAN', drawing_no='A-01',
+                       drawing_title=drawing_title, drawing_no=drawing_no,
                        scale=scale, schedule_rows=schedule,
                        building_type=bld_type, building_name=bld_name, grids=grids,
                        panel_bays=_panel_bays)
@@ -3506,7 +3516,8 @@ def _draw_mep_symbol(msp, cx: float, cy: float, discipline: str,
 
 
 def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
-                       scale: int = SCALE):
+                       scale: int = SCALE,
+                       drawing_title: str = None, drawing_no: str = None):
     """§D stub: MEP plan — floor plan background + flow terminal symbols + legend.
     discipline = 'PLUMBING' | 'ELECTRICAL' | 'MEP'
     Spec: S159 §D.
@@ -3566,49 +3577,57 @@ def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
         _sym_lib = {}
         _log(f"§I-21 symbol library: 2D.db not found — all terminals will FALLBACK")
 
-    # ── MEP terminals from elements_rtree ──
+    # ── MEP terminals from elements_rtree — §17.7 footprint LWPOLYLINE ──
     cur.execute("""
-        SELECT m.element_name, (r.minX+r.maxX)/2, (r.minY+r.maxY)/2
+        SELECT m.guid, m.element_name, r.minX, r.maxX, r.minY, r.maxY
         FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
         WHERE m.ifc_class = 'IfcFlowTerminal'
     """)
     rows = cur.fetchall()
 
-    # §I-21: legend keyed by symbol_code → {name, count} for symbol_name display
-    legend_items = {}   # discipline → {symbol_code: {'name': str, 'count': int}}
-    gap_names = []      # element_names that matched no symbol_code
+    # Legend keyed by element_name prefix → {name, count}
+    legend_items = {}   # discipline → {name_key: {'name': str, 'count': int}}
+    fallback_count = 0
     elem_count = 0
-    for name, cx, cy in rows:
+    for guid, name, minX, maxX, minY, maxY in rows:
         disc = _classify_mep(name or '', tpl)
         if discipline != 'MEP' and disc != discipline:
             continue
-        # §I-21: resolve element_name → symbol_code via template keyword_to_symbol
-        sym_code = _lookup_symbol_code(name or '', tpl)
-        if sym_code:
-            lib_entry = _sym_lib.get(sym_code, {})
-            sym_name  = lib_entry.get('name', sym_code)
-            sym_r_use = (lib_entry.get('width_mm', _sym_r_mm * 2) / 2) * scale
-            _log(f"§SYMBOL_LOOKUP element='{name}' → symbol_code={sym_code} "
-                 f"name='{sym_name}' r={sym_r_use/scale:.1f}mm src=2d_drawing_symbol")
-            disc_legend = legend_items.setdefault(disc, {})
-            if sym_code not in disc_legend:
-                disc_legend[sym_code] = {'name': sym_name, 'count': 0}
-            disc_legend[sym_code]['count'] += 1
+        sym_def = tpl_mep.get('symbols', {}).get(disc,
+                  tpl_mep.get('symbols', {}).get('MEP', {'layer': 'A-MEP-PLMB'}))
+        layer = sym_def.get('layer', 'A-MEP-PLMB')
+        cx = (minX + maxX) / 2
+        cy = (minY + maxY) / 2
+        w_m = maxX - minX
+        h_m = maxY - minY
+        # §17.7: use IFC footprint bbox → LWPOLYLINE. Fallback if degenerate.
+        _min_dim_m = 0.01  # 10mm minimum footprint to be meaningful
+        if w_m >= _min_dim_m or h_m >= _min_dim_m:
+            mx0, mx1 = _mh(minX), _mh(maxX)
+            my0, my1 = _mh(minY), _mh(maxY)
+            pts = [(mx0, my0), (mx1, my0), (mx1, my1), (mx0, my1)]
+            poly = msp.add_lwpolyline(pts, dxfattribs={'layer': layer, 'lineweight': lw_mep})
+            poly.close(True)
+            _log(f"§SYMBOL_FOOTPRINT guid={guid} element='{name}' "
+                 f"bbox=({w_m*1000:.0f}×{h_m*1000:.0f}mm) layer={layer} "
+                 f"at ({_mh(cx):.0f},{_mh(cy):.0f})")
         else:
-            sym_r_use = sym_r
-            _log(f"§SYMBOL_GAP element='{name}' → no symbol_code match "
-                 f"(FALLBACK discipline={disc}) src=template.mep.keyword_to_symbol")
-            gap_names.append(name or '')
-            disc_legend = legend_items.setdefault(disc, {})
-            if 'UNKNOWN' not in disc_legend:
-                disc_legend['UNKNOWN'] = {'name': 'Unknown Terminal', 'count': 0}
-            disc_legend['UNKNOWN']['count'] += 1
-        _draw_mep_symbol(msp, _mh(cx), _mh(cy), disc, sym_r_use, lw_mep, tpl,
-                         symbol_code=sym_code)
+            # Degenerate bbox — fall back to circle
+            msp.add_circle((_mh(cx), _mh(cy)), sym_r,
+                           dxfattribs={'layer': layer, 'lineweight': lw_mep})
+            _log(f"§SYMBOL_FALLBACK guid={guid} element='{name}' reason=no_rtree "
+                 f"(w={w_m*1000:.0f}mm h={h_m*1000:.0f}mm < {_min_dim_m*1000:.0f}mm threshold)")
+            fallback_count += 1
+        # Legend: key by name prefix (up to first ':')
+        name_key = (name or 'Unknown').split(':')[0].strip()
+        disc_legend = legend_items.setdefault(disc, {})
+        if name_key not in disc_legend:
+            disc_legend[name_key] = {'name': name_key, 'count': 0}
+        disc_legend[name_key]['count'] += 1
         elem_count += 1
 
     _log(f"§D MEP plan discipline={discipline}: {elem_count} terminals drawn, "
-         f"{len(gap_names)} SYMBOL_GAP (no match in keyword_to_symbol)")
+         f"{fallback_count} SYMBOL_FALLBACK (no_rtree)")
 
     # §17.3 P5: IfcFlowSegment rendering — thin lines along major bbox axis
     _lw_seg_mm = tpl_mep.get('segment_line_weight_mm', 0.13)
@@ -3660,8 +3679,9 @@ def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
                                  'qty': str(entry['count'])})
 
     # ── Sheet layout (no door/window schedule; use MEP legend rows) ──
-    title = f'{discipline} LAYOUT'
-    sheet_no = 'E-01' if discipline == 'ELECTRICAL' else 'M-01'
+    title = drawing_title if drawing_title else f'{discipline} LAYOUT'
+    sheet_no = drawing_no if drawing_no else ('E-01' if discipline == 'ELECTRICAL' else 'M-01')
+    _log(f"§I-28 MEP plan title={title!r} sheet={sheet_no!r} src={'page_json' if drawing_title else 'hardcoded'}")
     bld_type, bld_name = _infer_building_identity(db_path)
     _draw_sheet_layout(doc, msp, tpl,
                        _mh(bld_min_x), _mh(bld_max_x),
@@ -3965,9 +3985,13 @@ def main():
                     _scode = _STOREY_CODES[_idx] if _idx < len(_STOREY_CODES) else f'{_idx+1}F'
                     _short = f'FLOOR_{_scode}'
                     _sp = os.path.join(dxf_dir, f'{proj}_{_short}_{ts}.dxf')
-                    _log(f"§STOREY_PLAN storey={_sname!r} code={_scode} floor_z={_sz:.2f}m → {_sp}")
+                    _stitle = _STOREY_TITLES.get(_scode, f'{_scode} FLOOR PLAN')
+                    _sno = f'A-01-{_scode}'
+                    _log(f"§STOREY_PLAN storey={_sname!r} code={_scode} floor_z={_sz:.2f}m "
+                         f"title={_stitle!r} sheet={_sno!r} → {_sp}")
                     write_floor_plan_dxf(args.db_path, _sp, scale=args.scale,
-                                         storey_name=_sname, storey_floor_z=_sz)
+                                         storey_name=_sname, storey_floor_z=_sz,
+                                         drawing_title=_stitle, drawing_no=_sno)
                     generated[_short] = _sp
             continue
         elif short == 'ROOF':
@@ -3978,7 +4002,10 @@ def main():
         elif ptype == 'mep':
             # §D: MEP plan — discipline from file key (PLUMBING, ELECTRICAL, MEP)
             disc = short.upper() if short.upper() in ('PLUMBING', 'ELECTRICAL') else 'MEP'
-            write_mep_plan_dxf(args.db_path, disc, dxf_path, scale=args.scale)
+            _mep_title = page.get('title')   # from DX_2D.json §12.2
+            _mep_no    = page.get('sheet')   # e.g. M-01-GF
+            write_mep_plan_dxf(args.db_path, disc, dxf_path, scale=args.scale,
+                               drawing_title=_mep_title, drawing_no=_mep_no)
         else:
             _log(f"  SKIP {short}: no generator for type={ptype}")
             continue

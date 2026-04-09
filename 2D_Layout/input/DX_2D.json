@@ -11,7 +11,7 @@
     { "sheet": "A-06", "title": "ROOF PLAN",              "file": "ROOF",     "type": "plan",      "status": "DONE" },
     { "sheet": "A-07", "title": "SECTION",                "file": "SECTION",  "type": "section",   "status": "GAP" },
     { "sheet": "A-08", "title": "OPENING SCHEDULE",       "file": "SCHEDULE", "type": "schedule",  "status": "GAP" },
-    { "sheet": "M-01", "title": "PLUMBING LAYOUT",        "file": "PLUMBING", "type": "mep",       "status": "GAP" }
+    { "sheet": "M-01-GF", "title": "GROUND FL PLUMBING",   "file": "PLUMBING", "type": "mep",       "status": "STUB" }
   ],
   "archive_check": ["FLOOR", "ROOF"],
   "total_pages": 9

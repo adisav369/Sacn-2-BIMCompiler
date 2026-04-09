@@ -50,6 +50,24 @@ def check_r5_no_hardcode():
                     break
     return len(violations) == 0, violations
 
+def check_mep_symbol_coverage():
+    """I-30 / §12.2: every MEP IFC class must have a 2d_drawing_style row in 2D.db.
+    Returns (ok: bool, missing: list[str]).
+    """
+    if not os.path.exists(_DB_2D_PATH):
+        return True, []  # skip if 2D.db not found
+    import sqlite3 as _sql
+    conn = _sql.connect(_DB_2D_PATH)
+    cur = conn.cursor()
+    missing = []
+    for ifc_class in _MEP_IFC_REQUIRED:
+        cur.execute("SELECT COUNT(*) FROM [2d_drawing_style] WHERE element_match=? AND view_type='PLAN'",
+                    (ifc_class,))
+        if cur.fetchone()[0] == 0:
+            missing.append(ifc_class)
+    conn.close()
+    return len(missing) == 0, missing
+
 # ─────────────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────────────
@@ -57,6 +75,13 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(SCRIPT_DIR, '..', 'output')
 TPL_PATH = os.path.join(SCRIPT_DIR, '..', 'drawing_template.json')
 LOG_PATH = os.path.join(OUT_DIR, 'conformity_log.txt')
+_DB_2D_PATH = os.path.join(SCRIPT_DIR, '..', 'input', '2D.db')
+
+# MEP IFC classes that must have a 2d_drawing_style row (I-30 / §12.2)
+_MEP_IFC_REQUIRED = [
+    'IfcPipeSegment', 'IfcDuctSegment', 'IfcFlowTerminal',
+    'IfcSwitchingDevice', 'IfcElectricAppliance',
+]
 
 # ─────────────────────────────────────────────────────────────────
 # TEMPLATE
@@ -98,8 +123,16 @@ def _identify_drawing_type(dxf_filename, tpl):
     Supports timestamped names (FLOOR_20260407_1730.dxf),
     short names (FLOOR.dxf), and long names per §9.6 R2."""
     base = os.path.basename(dxf_filename).replace('.dxf', '')
-    # Extract view name before timestamp: FLOOR_20260407_1730 → FLOOR
-    view = base.split('_')[0] if '_' in base else base
+    # Extract view token: try each underscore-split part against _SHORT_TO_ID
+    # Handles FLOOR_20260407_1730 and DX_FLOOR_20260409_0920 (building prefix)
+    parts = base.split('_')
+    view = None
+    for part in parts:
+        if part in _SHORT_TO_ID:
+            view = part
+            break
+    if view is None:
+        view = parts[0]
     # Try short name first
     dt_id = _SHORT_TO_ID.get(view) or _SHORT_TO_ID.get(base)
     if dt_id:
@@ -666,10 +699,13 @@ def main():
     if os.path.isdir(search_dir):
         import glob as _glob
         all_dxf = sorted(f for f in os.listdir(search_dir) if f.endswith('.dxf'))
-        # Group by view name, take latest (last in sorted order)
+        # Group by building+view key, take latest (last in sorted order)
+        # DX_FLOOR_20260409_0920.dxf → key 'DX_FLOOR'
+        # FLOOR_20260407_1730.dxf   → key 'FLOOR'
         seen = {}
         for f in all_dxf:
-            view = f.split('_')[0]  # FLOOR_20260407_1730.dxf → FLOOR
+            parts = f.replace('.dxf', '').split('_')
+            view = '_'.join(parts[:2]) if len(parts) >= 2 else parts[0]
             seen[view] = f
         dxf_files = sorted(seen.values())
 
@@ -694,11 +730,18 @@ def main():
               file=sys.stderr)
         return 1
 
+    # ── Pre-flight: I-30 MEP symbol coverage ──
+    mep_ok, mep_missing = check_mep_symbol_coverage()
+    if mep_ok:
+        _log(f"§I-30 test_mep_symbol_coverage: all {len(_MEP_IFC_REQUIRED)} MEP IFC classes have 2d_drawing_style rows")
+    else:
+        _log(f"[FAIL] I-30 test_mep_symbol_coverage: missing rows for: {mep_missing}")
+
     _log(f"Conformity Gate — checking {len(dxf_files)} DXF files")
     _log(f"Template: {TPL_PATH}")
     _log("")
 
-    all_pass = True
+    all_pass = mep_ok
 
     for dxf_file in dxf_files:
         dxf_path = os.path.join(search_dir, dxf_file)
