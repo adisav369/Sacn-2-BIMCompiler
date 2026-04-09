@@ -4595,8 +4595,8 @@ Federation addon, with all its features, was developed with LLM assistance at a
 pace that would take a conventional team months. This same velocity now applies
 to the ERP compiler framework, where each new verb, witness, or BOM dimension
 is a bounded task that Claude Code completes in one session (see
-<a href="CONCEPTUAL%20BLUEPRINT.txt"><code>CONCEPTUAL BLUEPRINT</code></a> for layer architecture,
-<a href="BeyondVerbs.txt"><code>BeyondVerbs</code></a> for the roadmap beyond the current verb set).</p>
+<code>CONCEPTUAL BLUEPRINT</code> for layer architecture,
+<code>BeyondVerbs</code> for the roadmap beyond the current verb set).</p>
 <p><strong>4. Symbolic inference over relational data is unique.</strong>
 The Inference Engine (BIM_Designer_SRS §14) evaluates validation rules in
 dependency order using Kahn's topological sort, produces proof trees with
@@ -5269,7 +5269,7 @@ They solve design. This solves construction.</p>
 </blockquote>
 <p><strong>This is not enough.</strong> You need:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Not just export—bidirectional sync</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">sync_roundtrip</span><span class="p">(</span><span class="n">original_ifc_path</span><span class="p">,</span> <span class="n">compiled_db</span><span class="p">,</span> <span class="n">output_ifc_path</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">sync_roundtrip</span><span class="p">(</span><span class="n">original_ifc_path</span><span class="p">,</span> <span class="n">compiled_db</span><span class="p">,</span> <span class="n">output_ifc_path</span><span class="p">):</span>
     <span class="c1"># 1. Parse original IFC with IfcOpenShell</span>
     <span class="n">original_model</span> <span class="o">=</span> <span class="n">ifcopenshell</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">original_ifc_path</span><span class="p">)</span>
 

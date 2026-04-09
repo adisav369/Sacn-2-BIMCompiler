@@ -3759,7 +3759,7 @@
 - Opening widths (doors/windows)
 - Overall building dimensions</p>
 <p><strong>SVG Implementation:</strong>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">draw_dimension</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">draw_dimension</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Draw dimension string with extension lines, arrows, and text.</span>
 
@@ -3776,7 +3776,7 @@
 </code></pre></div></p>
 <h4 id="priority-3-door-swings">Priority 3: Door Swings<a class="headerlink" href="#priority-3-door-swings" title="Permanent link">&para;</a></h4>
 <p><strong>Implementation:</strong> Add arc for door swing (90° or 180°).</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">draw_door_swing</span><span class="p">(</span><span class="n">door_pos</span><span class="p">,</span> <span class="n">door_width</span><span class="p">,</span> <span class="n">wall_direction</span><span class="p">,</span> <span class="n">swing_angle</span><span class="o">=</span><span class="mi">90</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">draw_door_swing</span><span class="p">(</span><span class="n">door_pos</span><span class="p">,</span> <span class="n">door_width</span><span class="p">,</span> <span class="n">wall_direction</span><span class="p">,</span> <span class="n">swing_angle</span><span class="o">=</span><span class="mi">90</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Draw door swing arc.</span>
 
@@ -3790,7 +3790,7 @@
 </code></pre></div>
 <h4 id="priority-4-section-cut-indicators">Priority 4: Section Cut Indicators<a class="headerlink" href="#priority-4-section-cut-indicators" title="Permanent link">&para;</a></h4>
 <p><strong>Implementation:</strong> Add cut line on floor plan showing section location.</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">draw_section_indicator</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">section_name</span><span class="p">,</span> <span class="n">view_direction</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">draw_section_indicator</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">section_name</span><span class="p">,</span> <span class="n">view_direction</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Draw section cut line with arrows showing view direction.</span>
 

@@ -3982,7 +3982,7 @@ whitelisted fields: <code>schemeName</code>, <code>objectName</code>, <code>guid
 
 <span class="c1"># RIGHT:</span>
 <span class="n">_sync_active</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># module level</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">my_function</span><span class="p">():</span>
+<span class="k">def</span> <span class="nf">my_function</span><span class="p">():</span>
     <span class="k">global</span> <span class="n">_sync_active</span>
     <span class="n">_sync_active</span> <span class="o">=</span> <span class="kc">True</span>
 </code></pre></div>
@@ -3990,7 +3990,7 @@ whitelisted fields: <code>schemeName</code>, <code>objectName</code>, <code>guid
 or Python raises <code>SyntaxError: name used prior to global declaration</code>.</p>
 <h3 id="73-federation-module-import-chain-one-crash-kills-all-panels">7.3 Federation Module Import Chain — One Crash Kills All Panels<a class="headerlink" href="#73-federation-module-import-chain-one-crash-kills-all-panels" title="Permanent link">&para;</a></h3>
 <p><code>federation/__init__.py</code> line 42 imports ALL submodules in one line:
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">ui</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">operator</span><span class="p">,</span> <span class="n">discipline_legend</span><span class="p">,</span> <span class="n">cache_monitor</span><span class="p">,</span> <span class="n">color_palette</span><span class="p">,</span> <span class="n">crud_operators</span><span class="p">,</span> <span class="n">webui_sync</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">ui</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">operator</span><span class="p">,</span> <span class="n">discipline_legend</span><span class="p">,</span> <span class="n">cache_monitor</span><span class="p">,</span> <span class="n">color_palette</span><span class="p">,</span> <span class="n">crud_operators</span><span class="p">,</span> <span class="n">webui_sync</span>
 </code></pre></div></p>
 <p>If <strong>any</strong> submodule has a SyntaxError or ImportError, the <strong>entire federation module</strong>
 fails to register. All 10+ federation panels disappear from Bonsai. The <code>mep_engineering</code>

@@ -4851,7 +4851,7 @@ DB      =  geometry store    (vertex/face BLOBs, looked up by geometry_hash)
 <p>Two Blender persistent handlers — already registered in <code>federation/__init__.py</code> —
 close the loop:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@persistent</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">save_pre</span><span class="p">(</span><span class="n">dummy</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">save_pre</span><span class="p">(</span><span class="n">dummy</span><span class="p">):</span>
     <span class="c1"># Before saving: strip mesh data from every federation object</span>
     <span class="c1"># Object keeps guid + geometry_hash custom props — those are the DB keys</span>
     <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
@@ -4859,7 +4859,7 @@ close the loop:</p>
             <span class="n">obj</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">meshes</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s2">&quot;stub&quot;</span><span class="p">)</span>   <span class="c1"># empty placeholder</span>
 
 <span class="nd">@persistent</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">load_post</span><span class="p">(</span><span class="n">dummy</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">load_post</span><span class="p">(</span><span class="n">dummy</span><span class="p">):</span>
     <span class="c1"># After opening: rehydrate meshes from DB using geometry_hash</span>
     <span class="c1"># GPU instancing preserved — same hash → same mesh object shared by all instances</span>
     <span class="n">db</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">props</span><span class="o">.</span><span class="n">federation_database_path</span><span class="p">)</span>
@@ -5088,7 +5088,7 @@ IS the mode flag — no version field needed.</p>
 <p><strong>Size-based auto-switch</strong> — streaming activates automatically above a threshold:</p>
 <div class="highlight"><pre><span></span><code><span class="n">STREAMING_THRESHOLD</span> <span class="o">=</span> <span class="mi">50_000</span>  <span class="c1"># elements — configurable</span>
 
-<span class="k">def</span><span class="w"> </span><span class="nf">should_stream</span><span class="p">(</span><span class="n">db_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="k">def</span> <span class="nf">should_stream</span><span class="p">(</span><span class="n">db_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
     <span class="n">count</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
         <span class="s2">&quot;SELECT COUNT(*) FROM elements_meta&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
     <span class="k">return</span> <span class="n">count</span> <span class="o">&gt;=</span> <span class="n">STREAMING_THRESHOLD</span>
@@ -5151,7 +5151,7 @@ in memory with every entity linked via <code>ifc_definition_id</code>. Federatio
 have no <code>ifc_definition_id</code> — they are plain Blender objects. The native
 exporter does not see them as IFC entities. IFC export is <strong>not automatic</strong>.</p>
 <p>It is achievable via a custom exporter — all ingredients present:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">ifcopenshell</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">ifcopenshell</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">ifcopenshell</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="n">schema</span><span class="o">=</span><span class="s2">&quot;IFC2X3&quot;</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;guid&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ifc_class&#39;</span><span class="p">):</span>
