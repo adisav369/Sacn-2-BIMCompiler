@@ -24,16 +24,16 @@ Before ending, update PROGRESS.md with:
 - Run space contract check — if `space_contract` FAIL, fix before committing
 
 ### Housekeeping (every session end)
-- Changed verb/witness count → update MEMORY.md. Changed schema row counts → update SCHEMA_QUICKREF.md
-- Obsolete topic file → delete + remove from MEMORY.md. New pattern → add to topic file or MEMORY.md
-- Keep MEMORY.md under 80 lines, CLAUDE.md under 45 lines. Screenshots: `~/Pictures/Screenshots/`
+- Update MEMORY.md (witness/verb counts), SCHEMA_QUICKREF.md (row counts). Delete obsolete topic files. Keep MEMORY.md ≤80 lines, CLAUDE.md ≤45 lines. Screenshots: `~/Pictures/Screenshots/`
 - If PROGRESS.md > 80 lines, archive DONE items as single-line pointers to spec docs
 
 ## Standing Rules
 - One bounded task per session
 - Witnesses prove; SanityCheck is fallback
-- All geometry is a maths issue — verify numerically
-- New features: write witness claim FIRST, then implement
+- All geometry is a maths issue — verify numerically via pipeline logs, not manual DB queries
+- **Log Mandate:** After ANY run, read the output log before conclusions — exit code is not evidence. Improve FINE logging to reveal issues; extract insights from log only, never invent. Every prompt file opens with `# ⚠ DO NOT REMOVE` block stating scope + "read the log." Honour until DONE.
+- **Spec-First (ALL work):** Spec before code, spec before tests, spec before prompts. No implementation without a written spec section. New features: witness claim first, then implement.
+- **Tests expose issues:** Every test must name the issue it proves or disproves. A test that passes without revealing whether the issue is solved is not a test.
 - **Anti-Drift Policy:** Read `docs/TestArchitecture.md` §Anti-Drift before adding BOMs, products, or geometry paths
 - **Pre-Flight Citation:** Before code changes, cite the spec: `// Implementing BBC.md §X.Y — Witness: W-NAME`
 - **Traceability:** Check `TestArchitecture.md` §Traceability Matrix before and after changes
