@@ -2011,6 +2011,16 @@ Tracked against TBKLTN WD-1/01 reference and `layout_audit.txt`.
 4. Every spec change must have a matching `internal/2DSpecToCode.md` row in
    the same session
 
+**Log self-sufficiency rule:** Every `§`-tagged log line must contain all values
+needed to verify the claim — no "look at the SVG" required. A developer reading
+only the log must be able to confirm or refute any spec claim. Format:
+`§TAG context: value=X expected=Y result=(PASS/FAIL)`. If a claim needs visual
+inspection to verify — add more logging instead.
+
+**Log-first rule:** Do not rerun the pipeline merely to get a fresh log. Read the
+most recent log file in `2D_Layout/output/` first. Only rerun if the log is stale
+(older than your last code change) or absent.
+
 **Agent scope rule:** Multi-agent prompts must include:
 - "ONLY modify the specific code blocks described below"
 - "Do NOT delete, rename, or refactor any function not named in this prompt"
@@ -2036,6 +2046,7 @@ Do not duplicate issues here. Add to that file, not this section.
 | I-11 | 2D_017 | MEP bleed: `_BELOW_SKIP` had all 4 IfcFlow* classes. DX_FLOOR confirmed 0 MEP entities. Conformity grouping bug fixed — NO_MEP_BLEED now verifiable. |
 | I-12 | 2D_017 | MEP template gap: `mep` section added with all keys. Remaining hardcodes `r*0.25` → `inner_dot_radius_factor=0.25` and `'○'`/`'●'` → `legend_char` per symbol now template-driven. |
 | I-14 | 2D_017 | Hardcoded symbols: `write_mep_plan_dxf` + `_draw_mep_symbol` added to `SCAN_FUNCTIONS`. `test_no_hardcode.py` → ALL PASS. |
+| I-29 | 2D_018 | Grid bubbles inside dim tiers: bubble moved beyond tier_1 dim on all views. `_draw_grid_bubble()` helper extracted. §GRID_BUBBLE_Y proof log added. |
 
 ### 18.3 Deferred (spec written, not started)
 

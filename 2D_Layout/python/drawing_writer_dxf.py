@@ -38,6 +38,7 @@ from drawing_writer import (
     read_elements, derive_grids, snap_grids, detect_levels, _convex_hull_2d,
     roof_silhouette, generate_dimensions, format_dim,
     DimString, GridLine, SNAP_MODULE,
+    DIM_OFFSET_1, DIM_OFFSET_2,
     infer_rooms, find_host_wall, _get_room_side_ew, _get_room_side_ns,
     read_drawing_metadata,
 )
@@ -305,6 +306,20 @@ def _add_bubble_hatch(msp, cx: float, cy: float, r: float):
             cy + r * math.sin(i * math.pi / 18))
            for i in range(36)]
     hatch.paths.add_polyline_path(pts, is_closed=True)
+
+
+def _draw_grid_bubble(msp, cx: float, cy: float, r: float, label: str,
+                      txt_h: float, bubble_lw: int):
+    """Draw one grid bubble: white hatch + circle + centred label.
+    Reused across floor plan, roof plan, and elevation code paths.
+    """
+    _add_bubble_hatch(msp, cx, cy, r)
+    msp.add_circle((cx, cy), r,
+                   dxfattribs={'layer': 'A-GRID', 'lineweight': bubble_lw})
+    msp.add_text(label,
+                 dxfattribs={'layer': 'A-ANNO-TEXT', 'height': txt_h}
+                 ).set_placement((cx, cy),
+                                 align=TextEntityAlignment.MIDDLE_CENTER)
 
 
 def _add_wall_hatch(msp, pts, material_name=''):
@@ -607,13 +622,13 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
         tpl_grid = tpl.get('grid', {})
         tpl_dims = tpl.get('dimensions', {})
         bld_h_mm = (bld_max_y - bld_min_y) / scale  # model → paper mm
-        # §B: bubble is outermost; dims sit between building and bubble.
-        # ann_top = grid extension + bubble diameter + gap to grid line end + 2mm clearance.
-        ann_top = (tpl_grid.get('extend_beyond_building_mm', 20)
-                   + tpl_grid.get('bubble_radius_mm', 4.0) * 2
-                   + tpl_dims.get('extension_gap_mm', 2.0)
-                   + 2.0)
-        ann_bot = (tpl_grid.get('extend_beyond_building_mm', 15)
+        # §I-29: bubble at FAR END beyond tier_1 dim.
+        # ann_top = tier_1_offset + grid_extend + bubble_diameter  (§7.1a formula)
+        _t1 = tpl_dims.get('tier_1_offset_mm', DIM_OFFSET_2)
+        ann_top = (_t1
+                   + tpl_grid.get('extend_beyond_building_mm', 20)
+                   + tpl_grid.get('bubble_radius_mm', 4.0) * 2)
+        ann_bot = (tpl_grid.get('extend_beyond_building_mm', 20)
                    + tpl_grid.get('bubble_radius_mm', 4.0) * 2)
         margin_top_mm = paper.get('margins', {}).get('top', 10)
         margin_bot_mm = paper.get('margins', {}).get('bottom', 10)
@@ -2201,12 +2216,16 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE,
     grid_gap   = tpl_dims.get('extension_gap_mm', 2.0) * scale
     tag_size   = tpl_tags.get('size_mm', 4.0) * scale
     txt_grid_h = tpl_grid.get('label_font_height_mm', 3.0) * scale
+    # §I-29: bubble must be beyond tier_1 dim. tier_1 = DIM_OFFSET_2 from building edge.
+    _t1_model = DIM_OFFSET_2 * scale   # tier-1 overall dim offset (model mm)
+    _t2_model = DIM_OFFSET_1 * scale   # tier-2 bay dim offset (model mm)
 
     for g in grids:
         pos = g.position * MM
         if g.axis == 'x':
-            x0 = pos; y0 = bld_min_y - grid_ext
-            x1 = pos; y1 = bld_max_y + grid_ext + bubble_r * 2 + grid_gap
+            # §I-29: grid line extends from short bottom extension to beyond tier_1+bubble
+            x0 = pos; y0 = bld_min_y - grid_ext - bubble_r * 2
+            x1 = pos; y1 = bld_max_y + _t1_model + grid_ext + bubble_r * 2
             grid_line = msp.add_line((x0, y0), (x1, y1),
                          dxfattribs={'layer': 'A-GRID', 'lineweight': lw_grid})
             # §3.3: GUID xdata on grid line
@@ -2224,21 +2243,17 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE,
                  f"start=({x0:.0f},{y0:.0f}) end=({x1:.0f},{y1:.0f}) r={bubble_r:.0f}"
                  f" src=[{src_str}]")
             _log(f"  WRITE grid label={g.label} layer=A-GRID")
-            for cy in (bld_max_y + grid_ext + bubble_r,
-                       bld_min_y - grid_ext - bubble_r):
-                _add_bubble_hatch(msp, pos, cy, bubble_r)
-                msp.add_circle((pos, cy), bubble_r,
-                               dxfattribs={'layer': 'A-GRID', 'lineweight': bubble_lw})
+            # Top bubble: beyond tier_1 dim. Bottom bubble: short extension, no dims.
+            cy_top = bld_max_y + _t1_model + grid_ext + bubble_r
+            cy_bot = bld_min_y - grid_ext - bubble_r
+            for cy in (cy_top, cy_bot):
+                _draw_grid_bubble(msp, pos, cy, bubble_r, g.label, txt_grid_h, bubble_lw)
                 _log(f"§RENDER BUBBLE layer=A-GRID r={bubble_r/scale:.1f}mm "
                      f"at ({pos:.0f},{cy:.0f}) src=template.grid.bubble_radius_mm")
-                msp.add_text(g.label,
-                             dxfattribs={'layer': 'A-ANNO-TEXT',
-                                         'height': txt_grid_h}
-                             ).set_placement((pos, cy),
-                                             align=TextEntityAlignment.MIDDLE_CENTER)
         else:
-            x0 = bld_min_x - grid_ext; y0 = pos
-            x1 = bld_max_x + grid_ext + bubble_r * 2 + grid_gap; y1 = pos
+            # §I-29: y-axis dims to left → left bubble beyond tier_1; right bubble short
+            x0 = bld_min_x - _t1_model - grid_ext - bubble_r * 2; y0 = pos
+            x1 = bld_max_x + grid_ext + bubble_r * 2; y1 = pos
             grid_line = msp.add_line((x0, y0), (x1, y1),
                          dxfattribs={'layer': 'A-GRID', 'lineweight': lw_grid})
             # §3.3: GUID xdata on grid line
@@ -2256,16 +2271,14 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE,
                  f"start=({x0:.0f},{y0:.0f}) end=({x1:.0f},{y1:.0f}) r={bubble_r:.0f}"
                  f" src=[{src_str}]")
             _log(f"  WRITE grid label={g.label} layer=A-GRID")
-            for cx in (bld_max_x + grid_ext + bubble_r,
-                       bld_min_x - grid_ext - bubble_r):
-                _add_bubble_hatch(msp, cx, pos, bubble_r)
-                msp.add_circle((cx, pos), bubble_r,
-                               dxfattribs={'layer': 'A-GRID', 'lineweight': bubble_lw})
-                msp.add_text(g.label,
-                             dxfattribs={'layer': 'A-ANNO-TEXT',
-                                         'height': txt_grid_h}
-                             ).set_placement((cx, pos),
-                                             align=TextEntityAlignment.MIDDLE_CENTER)
+            cx_left  = bld_min_x - _t1_model - grid_ext - bubble_r
+            cx_right = bld_max_x + grid_ext + bubble_r
+            for cx in (cx_right, cx_left):
+                _draw_grid_bubble(msp, cx, pos, bubble_r, g.label, txt_grid_h, bubble_lw)
+    # §I-29 proof: bubble beyond tier_1 dim beyond tier_2 dim beyond building edge
+    _log(f"§GRID_BUBBLE_Y FLOOR x-axis: bubble={DIM_OFFSET_2 + grid_ext/scale + bubble_r/scale:.0f}mm "
+         f"tier_1={DIM_OFFSET_2:.0f}mm tier_2={DIM_OFFSET_1:.0f}mm building_edge=0 "
+         f"(bubble>t1>t2>edge: {DIM_OFFSET_2 + grid_ext/scale + bubble_r/scale > DIM_OFFSET_2 > DIM_OFFSET_1 > 0})")
 
     # ── §2 Step 4: COMPUTE DIMENSIONS ──
     dims = generate_dimensions(grids)
@@ -2500,10 +2513,10 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE,
         _pw = tpl_paper.get('width_mm', 420)  # paper mm
         if tpl_paper.get('fitted', True):
             _bld_h_mm = (bld_max_y - bld_min_y) / scale
-            _ann_top = (tpl_grid.get('extend_beyond_building_mm', 20)
-                        + tpl_grid.get('bubble_radius_mm', 4.0) * 2
-                        + tpl_dims.get('extension_gap_mm', 2.0) + 2.0)
-            _ann_bot = (tpl_grid.get('extend_beyond_building_mm', 15)
+            _t1b = tpl_dims.get('tier_1_offset_mm', DIM_OFFSET_2)
+            _ann_top = (_t1b + tpl_grid.get('extend_beyond_building_mm', 20)
+                        + tpl_grid.get('bubble_radius_mm', 4.0) * 2)
+            _ann_bot = (tpl_grid.get('extend_beyond_building_mm', 20)
                         + tpl_grid.get('bubble_radius_mm', 4.0) * 2)
             _ph = (tpl_paper.get('margins', {}).get('top', 10) + _ann_top
                    + _bld_h_mm + _ann_bot + tpl_paper.get('margins', {}).get('bottom', 10))
@@ -2790,26 +2803,27 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
     v_max_m = max(v_of(e)[1] for e in all_vis)
     grid_above = _mh(v_max_m + 2.0)
     txt_grid_h = txt_grid * scale
+    # §I-29: bubble beyond tier_1 dim. Dims sit between grid_above and bubble.
+    _elev_bub_cy = grid_above + tier_1_off + bubble_r + grid_gap  # bubble centre
 
     for g in face_grids:
         gx = _mh(g.position)
         _log(f"§2.3 Grid {g.label} at {g.position:.3f}m")
-        msp.add_line((gx, _mh(grd_z - 0.2)), (gx, grid_above),
+        # Extend grid line to cover both dim tiers and bubble
+        msp.add_line((gx, _mh(grd_z - 0.2)),
+                     (gx, _elev_bub_cy + bubble_r),
                      dxfattribs={'layer': 'A-GRID', 'lineweight': lw_grid})
-        _add_bubble_hatch(msp, gx, grid_above + bubble_r + grid_gap, bubble_r)
-        msp.add_circle((gx, grid_above + bubble_r + grid_gap),
-                       bubble_r,
-                       dxfattribs={'layer': 'A-GRID', 'lineweight': bubble_lw})
-        msp.add_text(g.label,
-                     dxfattribs={'layer': 'A-ANNO-TEXT', 'height': txt_grid_h}
-                     ).set_placement(
-                         (gx, grid_above + bubble_r + grid_gap),
-                         align=TextEntityAlignment.MIDDLE_CENTER)
+        _draw_grid_bubble(msp, gx, _elev_bub_cy, bubble_r, g.label, txt_grid_h, bubble_lw)
+    _log(f"§GRID_BUBBLE_Y ELEV: bubble_y={_elev_bub_cy/scale:.1f}mm "
+         f"tier_1_y={(grid_above + tier_1_off)/scale:.1f}mm "
+         f"tier_2_y={(grid_above + tier_2_off)/scale:.1f}mm "
+         f"grid_above={grid_above/scale:.1f}mm "
+         f"(bubble>t1>t2>grid_above: {_elev_bub_cy > grid_above + tier_1_off > grid_above + tier_2_off > grid_above})")
 
-    # ── §6.1 Bay dimensions — tier 2 (inner) above grid bubbles ──
+    # ── §6.1 Bay dimensions — tier 2 between grid_above and bubble (§I-29) ──
     dim_txt_h = txt_dim * scale
     if len(face_grids) >= 2:
-        dim_y = grid_above + bubble_r * 2 + tier_2_off
+        dim_y = grid_above + tier_2_off  # §I-29: dim BELOW bubble
         # §6.1 I-24: one tick per endpoint — skip if already drawn at this (dim_y, x)
         _elev_drawn_ticks: set = set()
         # §6.1 I-23: only draw bay dims when more than 1 bay (suppress tier-2 = tier-1)
@@ -2824,7 +2838,7 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                 mid_x = (xa + xb) / 2
                 msp.add_line((xa, dim_y), (xb, dim_y),
                              dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-                ext_bot = grid_above + bubble_r * 2 + grid_gap
+                ext_bot = grid_above + grid_gap
                 for tx in (xa, xb):
                     msp.add_line((tx, ext_bot), (tx, dim_y + grid_gap),
                                  dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
@@ -3297,35 +3311,25 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     r_max_x = _mh(roof_max_x)
     r_min_y = _mh(roof_min_y)
     r_max_y = _mh(roof_max_y)
+    # §I-29: bubble beyond tier_1 dim
+    _t1r = DIM_OFFSET_2 * scale
 
     for g in grids:
         pos = g.position * MM
         if g.axis == 'x':
-            msp.add_line((pos, r_min_y - grid_ext),
-                         (pos, r_max_y + grid_ext + bubble_r * 2 + grid_gap),
+            msp.add_line((pos, r_min_y - grid_ext - bubble_r * 2),
+                         (pos, r_max_y + _t1r + grid_ext + bubble_r * 2),
                          dxfattribs={'layer': 'A-GRID', 'lineweight': lw_grid})
-            for cy in (r_max_y + grid_ext + bubble_r,
+            for cy in (r_max_y + _t1r + grid_ext + bubble_r,
                        r_min_y - grid_ext - bubble_r):
-                _add_bubble_hatch(msp, pos, cy, bubble_r)
-                msp.add_circle((pos, cy), bubble_r,
-                               dxfattribs={'layer': 'A-GRID', 'lineweight': bubble_lw})
-                msp.add_text(g.label,
-                             dxfattribs={'layer': 'A-ANNO-TEXT', 'height': txt_grid_h}
-                             ).set_placement((pos, cy),
-                                             align=TextEntityAlignment.MIDDLE_CENTER)
+                _draw_grid_bubble(msp, pos, cy, bubble_r, g.label, txt_grid_h, bubble_lw)
         else:
-            msp.add_line((r_min_x - grid_ext, pos),
-                         (r_max_x + grid_ext + bubble_r * 2 + grid_gap, pos),
+            msp.add_line((r_min_x - _t1r - grid_ext - bubble_r * 2, pos),
+                         (r_max_x + grid_ext + bubble_r * 2, pos),
                          dxfattribs={'layer': 'A-GRID', 'lineweight': lw_grid})
             for cx in (r_max_x + grid_ext + bubble_r,
-                       r_min_x - grid_ext - bubble_r):
-                _add_bubble_hatch(msp, cx, pos, bubble_r)
-                msp.add_circle((cx, pos), bubble_r,
-                               dxfattribs={'layer': 'A-GRID', 'lineweight': bubble_lw})
-                msp.add_text(g.label,
-                             dxfattribs={'layer': 'A-ANNO-TEXT', 'height': txt_grid_h}
-                             ).set_placement((cx, pos),
-                                             align=TextEntityAlignment.MIDDLE_CENTER)
+                       r_min_x - _t1r - grid_ext - bubble_r):
+                _draw_grid_bubble(msp, cx, pos, bubble_r, g.label, txt_grid_h, bubble_lw)
     _log(f"§2.3 Roof grids: {len(grids)}")
 
     # ── Bay dimensions ──
