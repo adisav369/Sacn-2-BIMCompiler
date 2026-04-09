@@ -4,7 +4,7 @@
     "size": "A3",
     "width_mm": 420,
     "height_mm": 297,
-    "_height_note": "Fallback only. When fitted=true, height is computed per §7.1a.",
+    "_height_note": "Fallback only. When fitted=true, height is computed per \u00a77.1a.",
     "orientation": "landscape",
     "fitted": true,
     "fitted_min_height_mm": 150,
@@ -196,17 +196,17 @@
       "ELECTRICAL": {
         "shape": "circle_cross",
         "layer": "A-MEP-ELEC",
-        "legend_char": "○"
+        "legend_char": "\u25cb"
       },
       "PLUMBING": {
         "shape": "circle_dot",
         "layer": "A-MEP-PLMB",
-        "legend_char": "●"
+        "legend_char": "\u25cf"
       },
       "MEP": {
         "shape": "circle_dot",
         "layer": "A-MEP-PLMB",
-        "legend_char": "●"
+        "legend_char": "\u25cf"
       }
     },
     "legend_header": "SYMBOLS",
@@ -216,7 +216,7 @@
       "QTY"
     ],
     "inner_dot_radius_factor": 0.25,
-    "_keyword_to_symbol_note": "Longest-match wins. Maps element_name keyword → 2d_drawing_symbol.symbol_code",
+    "_keyword_to_symbol_note": "Longest-match wins. Maps element_name keyword \u2192 2d_drawing_symbol.symbol_code",
     "keyword_to_symbol": {
       "ceiling fan": "CEILING_FAN",
       "fan": "CEILING_FAN",
@@ -282,49 +282,49 @@
     "logo_gap_mm": 2.0,
     "fields": [
       {
-        "key": "PROJEK",
+        "key": "PROJECT",
         "label": "PROJECT"
       },
       {
-        "key": "PEMILIK",
+        "key": "CLIENT",
         "label": "CLIENT"
       },
       {
-        "key": "ARKITEK",
+        "key": "ARCHITECT",
         "label": "ARCHITECT"
       },
       {
-        "key": "JENIS_BANGUNAN",
+        "key": "BUILDING_TYPE",
         "label": "BUILDING TYPE",
         "default": "RESIDENTIAL"
       },
       {
-        "key": "TAJUK_LUKISAN",
+        "key": "DRAWING_TITLE",
         "label": "DRAWING TITLE"
       },
       {
-        "key": "DILUKIS",
+        "key": "DRAWN_BY",
         "label": "DRAWN BY"
       },
       {
-        "key": "UKURAN",
+        "key": "SCALE",
         "label": "SCALE",
         "default": "1:100"
       },
       {
-        "key": "HARIBULAN",
+        "key": "DATE",
         "label": "DATE"
       },
       {
-        "key": "NO_LUKISAN",
+        "key": "DRAWING_NO",
         "label": "DRAWING NO."
       },
       {
-        "key": "DISEMAK",
+        "key": "CHECKED_BY",
         "label": "CHECKED BY"
       },
       {
-        "key": "PINDAAN_NO",
+        "key": "REVISION_NO",
         "label": "REVISION NO.",
         "default": "0"
       }
@@ -463,24 +463,24 @@
   "finish_codes": {
     "_note": "Material callout tags from 2d_finish_type table",
     "floor": [
-      "CT — Ceramic tiles",
-      "CR — Cement render"
+      "CT \u2014 Ceramic tiles",
+      "CR \u2014 Cement render"
     ],
     "wall": [
-      "V1 — 100mm Teablock",
-      "V2 — 4mm Teablock single",
-      "V4 — 1500mm ceramic tiles"
+      "V1 \u2014 100mm Teablock",
+      "V2 \u2014 4mm Teablock single",
+      "V4 \u2014 1500mm ceramic tiles"
     ],
     "ceiling": [
-      "G1 — Gypsum board"
+      "G1 \u2014 Gypsum board"
     ],
     "roof": [
-      "R1 — Metal roofing with prefab trusses",
-      "R2 — GI flashing"
+      "R1 \u2014 Metal roofing with prefab trusses",
+      "R2 \u2014 GI flashing"
     ]
   },
   "proof_render": {
-    "_note": "Controls DXF→SVG proof renderer. Separation of concern: DXF layers are for CAD software, proof_render controls what the human sees.",
+    "_note": "Controls DXF\u2192SVG proof renderer. Separation of concern: DXF layers are for CAD software, proof_render controls what the human sees.",
     "skip_entity_types": [
       "HATCH"
     ],
@@ -489,7 +489,7 @@
       "A-WALL-FULL",
       "A-WALL-PRTN"
     ],
-    "_skip_wall_layers_reason": "A-WALL-FULL and A-WALL-PRTN are outline-only polygons. A-WALL-PATT provides fill=black+stroke=black — one polygon per wall. Skipping outline layers removes 30+ duplicate fill=none polygons that cause blurry/heavy edges.",
+    "_skip_wall_layers_reason": "A-WALL-FULL and A-WALL-PRTN are outline-only polygons. A-WALL-PATT provides fill=black+stroke=black \u2014 one polygon per wall. Skipping outline layers removes 30+ duplicate fill=none polygons that cause blurry/heavy edges.",
     "furniture_fill": "#F0F0F0",
     "_furniture_fill_reason": "Match reference: furniture as light gray filled rectangles with gray stroke. Reference archive has 14 F0F0F0 fills for furniture.",
     "wall_fill_layer": "A-WALL-PATT",

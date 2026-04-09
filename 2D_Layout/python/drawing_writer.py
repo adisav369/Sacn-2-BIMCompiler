@@ -622,10 +622,15 @@ def roof_silhouette(db_path, face):
     onto the elevation plane, and computes the 2D convex hull — giving the
     true roof silhouette including curves, hips, and overhangs.
 
+    §5.3a detection priority:
+      1. IfcRoof elements — direct match
+      2. IfcSlab WHERE element_name LIKE '%Roof%' (flat roof slab)
+
     Returns list of (h, z) points forming the convex hull outline.
     h = horizontal position in the view, z = vertical (height).
     """
     conn = sqlite3.connect(db_path)
+    # §5.3a rule 1: IfcRoof
     rows = conn.execute("""
         SELECT bg.vertices, bg.vertex_count
         FROM elements_meta m
@@ -633,6 +638,16 @@ def roof_silhouette(db_path, face):
         JOIN base_geometries bg ON ei.geometry_hash = bg.geometry_hash
         WHERE m.ifc_class = 'IfcRoof'
     """).fetchall()
+    # §5.3a rule 2: IfcSlab with 'Roof' in name (flat roof)
+    if not rows:
+        rows = conn.execute("""
+            SELECT bg.vertices, bg.vertex_count
+            FROM elements_meta m
+            JOIN element_instances ei ON m.guid = ei.guid
+            JOIN base_geometries bg ON ei.geometry_hash = bg.geometry_hash
+            WHERE m.ifc_class = 'IfcSlab'
+              AND m.element_name LIKE '%Roof%'
+        """).fetchall()
     conn.close()
 
     all_pts = []
@@ -655,7 +670,35 @@ def roof_silhouette(db_path, face):
     if len(all_pts) < 3:
         return []
 
-    return _convex_hull_2d(all_pts)
+    # §I-26: also return slab thickness (measured at boundary edges)
+    # thickness = min Z-span found at any boundary edge of any roof mesh
+    thicknesses = []
+    conn2 = sqlite3.connect(db_path)
+    rows2 = conn2.execute("""
+        SELECT bg.vertices, bg.vertex_count
+        FROM elements_meta m
+        JOIN element_instances ei ON m.guid = ei.guid
+        JOIN base_geometries bg ON ei.geometry_hash = bg.geometry_hash
+        WHERE m.ifc_class IN ('IfcRoof', 'IfcSlab')
+          AND (m.ifc_class = 'IfcRoof' OR m.element_name LIKE '%Roof%')
+    """).fetchall()
+    conn2.close()
+    import numpy as _np
+    for vb, vc in rows2:
+        if vb is None:
+            continue
+        verts = parse_vertices_blob(vb, vc)
+        for axis in (0, 1):
+            for edge_val in (float(verts[:, axis].min()), float(verts[:, axis].max())):
+                ev = verts[abs(verts[:, axis] - edge_val) < 0.05]
+                if len(ev) >= 2:
+                    zspan = float(ev[:, 2].max() - ev[:, 2].min())
+                    if 0.05 < zspan < 1.0:
+                        thicknesses.append(zspan)
+    thickness_m = min(thicknesses) if thicknesses else 0.0
+
+    hull = _convex_hull_2d(all_pts)
+    return hull, thickness_m
 
 
 def detect_levels(elements: Dict[str, List['Element']]) -> list:

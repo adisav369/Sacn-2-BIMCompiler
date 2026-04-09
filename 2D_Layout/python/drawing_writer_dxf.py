@@ -579,14 +579,6 @@ def _draw_grid_legend_panel(msp, x_grids, y_grids, x0, x1, bot_y, height,
         _axis_block('VERTICAL (Y)', y_grids)
 
 
-# §14.1: Malay field_name → English display label (from 2d_title_block / TBKLTN spec)
-_FIELD_LABEL_EN = {
-    'PROJEK': 'PROJECT', 'PEMILIK': 'CLIENT', 'ARKITEK': 'ARCHITECT',
-    'JENIS_BANGUNAN': 'BUILDING TYPE', 'TAJUK_LUKISAN': 'DRAWING TITLE',
-    'DILUKIS': 'DRAWN BY', 'UKURAN': 'SCALE', 'TARIBULAN': 'DATE',
-    'DISEMAK': 'CHECKED BY', 'NO_LUKISAN': 'DRAWING NO.',
-    'NO_KEPINGAN': 'SHEET NO.', 'PINDAAN_NO': 'REVISION',
-}
 
 
 def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y,
@@ -905,29 +897,28 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
                      dxfattribs={'layer': 'A-TTLB', 'lineweight': lw_tb})
         label_x = tb_left + tb_w * label_ratio / 2
         label_y = y_cursor + row_h / 2
-        # §14.1: map Malay field labels to English
-        display_label = _FIELD_LABEL_EN.get(field['key'], field['label'])
+        display_label = field['label']
         msp.add_text(display_label,
                      dxfattribs={'layer': 'A-TTLB', 'height': field['lbl_size']}
                      ).set_placement((label_x, label_y),
                                      align=TextEntityAlignment.MIDDLE_CENTER)
         value = field['default']
-        if field['key'] == 'TAJUK_LUKISAN' and drawing_title:
+        if field['key'] == 'DRAWING_TITLE' and drawing_title:
             value = drawing_title
-        if field['key'] == 'NO_LUKISAN' and drawing_no:
+        if field['key'] == 'DRAWING_NO' and drawing_no:
             value = drawing_no
         # W2: sync BUILDING TYPE field with identity block value
-        if (field['key'] == 'JENIS_BANGUNAN' and building_type
+        if (field['key'] == 'BUILDING_TYPE' and building_type
                 and title_block.get('sync_building_type_field', True)):
             value = building_type
         # §14.1: SCALE field shows "1:N" format
-        if field['key'] == 'UKURAN':
+        if field['key'] == 'SCALE':
             value = f'1:{scale}'
-        # §I-10: PINDAAN_NO (revision) — default "0" if no value from DB
-        if field['key'] == 'PINDAAN_NO':
+        # §I-10: REVISION_NO — default "0" if no value from DB
+        if field['key'] == 'REVISION_NO':
             if not value:
                 value = '0'
-            _log(f"§RENDER TITLE_BLOCK pindaan_no value={value} "
+            _log(f"§RENDER TITLE_BLOCK revision_no value={value} "
                  f"src=2d_title_block.default_value")
         if value:
             value_x = div_x + (tb_w * (1 - label_ratio)) / 2
@@ -1256,7 +1247,8 @@ def _audit_dxf(doc, out_dxf: str, view_type: str):
     # Compares DXF actual counts against metadata-defined expectations.
     # Like Rosetta Stone: expected vs actual, quantitative, per feature.
     _log(f"    ── TBLKLTN Completeness (vs 2D.db) ──")
-    is_plan = 'FLOOR' in view_type or 'PLAN' in view_type
+    is_plan = 'FLOOR' in view_type
+    is_roof = 'ROOF' in view_type
     is_elev = 'ELEV' in view_type
     text_strs = [e[0] for e in text_entries]
 
@@ -1320,12 +1312,17 @@ def _audit_dxf(doc, out_dxf: str, view_type: str):
         face_key = view_type.split()[-1].lower() if len(view_type.split()) > 1 else 'front'
         elev_title = meta.get(f'elev_{face_key}_title', f'{face_key.upper()} ELEVATION')
         n_solid = counts.get('SOLID', 0)
-        n_dim = counts.get('DIMENSION', 0)
-        level_labels = [t for t in text_strs if 'LEVEL' in t or 'GRD' in t.split()[0:1]]
+        # Level label texts: code renders "GRD. LVL  ±N.NNN" — check for LVL or LEVEL in text
+        level_labels = [t for t in text_strs if 'LVL' in t or 'LEVEL' in t]
         grid_labels_found = [t for t in text_strs if len(t) == 1 and (t.isalpha() or t.isdigit())]
-        has_louvre = any(e.dxf.layer == 'A-GLAZ' for e in msp if e.dxftype() == 'LINE')
-        has_roof = any(e.dxf.layer == 'A-ROOF' for e in msp if e.dxftype() == 'LWPOLYLINE')
+        has_glaz_poly = any(e.dxf.layer == 'A-GLAZ' for e in msp if e.dxftype() == 'LWPOLYLINE')
+        has_louvre = (not has_glaz_poly) or any(e.dxf.layer == 'A-GLAZ'
+                                                 for e in msp if e.dxftype() == 'LINE')
+        has_roof_sil = any(e.dxf.layer == 'A-ROOF' for e in msp if e.dxftype() == 'LWPOLYLINE')
         has_grd_line = any(e.dxf.layer == 'A-ELEV-LEVL' for e in msp if e.dxftype() == 'LINE')
+        # Bay dims rendered as LINE+TEXT (not DIMENSION entities)
+        elev_dim_texts = [t for t in text_strs if t.isdigit() and len(t) >= 3]
+        n_ttlb_elev = sum(1 for e in msp if e.dxftype() == 'TEXT' and e.dxf.layer == 'A-TTLB')
         features = [
             ("Element outlines",          counts.get('LWPOLYLINE', 0) >= 3,
                                                               str(counts.get('LWPOLYLINE', 0)), "walls+doors+windows"),
@@ -1336,17 +1333,59 @@ def _audit_dxf(doc, out_dxf: str, view_type: str):
             ("Grid labels",               len(grid_labels_found) >= 2,
                                                               f"{len(grid_labels_found)} ({','.join(sorted(set(grid_labels_found)))})",
                                                               "matching grid axis"),
-            ("Level markers (▶)",         n_solid >= 3,        str(n_solid),    f"≥{meta['level_count']} from ad_level_marker"),
+            ("Level markers (tick)",       counts.get('LINE', 0) >= 3,
+                                                              str(counts.get('LINE', 0)), f"≥{meta['level_count']} 45° ticks, A-ELEV-LEVL"),
             ("Level labels",              len(level_labels) >= 3,
                                                               f"{len(level_labels)} ({', '.join(level_labels[:3])}...)",
                                                               f"{meta['level_count']} from ad_level_marker"),
-            ("Bay dimensions",            n_dim > 0,           str(n_dim),      "1 per grid bay"),
+            ("Bay dimensions",            len(elev_dim_texts) > 0,
+                                                              str(len(elev_dim_texts)), "1 per grid bay (LINE+TEXT)"),
             ("Ground line",               has_grd_line,        "yes" if has_grd_line else "no", "A-ELEV-LEVL layer"),
             ("Window louvres",            has_louvre,           "yes" if has_louvre else "no",  "A-GLAZ layer lines"),
-            ("Roof silhouette",           has_roof,            "yes" if has_roof else "no",    "A-ROOF layer polyline"),
+            ("Roof silhouette",           has_roof_sil,        "yes" if has_roof_sil else "no", "A-ROOF layer polyline"),
             ("Drawing title",             any(face_key.upper() in t.upper() for t in text_strs),
-                                                              "0",             f"'{elev_title}'"),
-            ("Title block",               False,               "0",             f"{meta['title_fields']} fields"),
+                                                              "yes" if any(face_key.upper() in t.upper() for t in text_strs) else "no",
+                                                              f"'{elev_title}'"),
+            ("Title block",               n_ttlb_elev >= 5,    str(n_ttlb_elev),
+                                                              f"{meta['title_fields']} fields in 2d_title_block"),
+        ]
+    elif is_roof:
+        # §5.3: Roof plan features — excludes floor-plan-only checks (rooms, furniture, doors)
+        n_poly_r = counts.get('LWPOLYLINE', 0)
+        n_circ_r = counts.get('CIRCLE', 0)
+        has_roof_outline = any(e.dxf.layer in ('A-ROOF', 'A-WALL')
+                               for e in msp if e.dxftype() == 'LWPOLYLINE')
+        # Ridge can be text ('RIDGE','RABUNG','ROOF LEVEL','EAVE') or A-ROOF LINE (dashed ridge)
+        has_ridge_line = any(e.dxf.layer == 'A-ROOF' for e in msp if e.dxftype() == 'LINE')
+        has_ridge = (any('RIDGE' in t or 'RABUNG' in t or 'EAVE' in t for t in text_strs)
+                     or has_ridge_line)
+        # Flat roof: no ridge expected — pass automatically if "FLAT ROOF"/"BUMBUNG" present
+        has_flat_marker = any('FLAT' in t or 'BUMBUNG' in t for t in text_strs)
+        if has_flat_marker:
+            has_ridge = True
+        dim_texts_r = [t for t in text_strs if t.isdigit() and len(t) >= 3]
+        grid_labels_r = [t for t in text_strs if len(t) == 1 and (t.isalpha() or t.isdigit())]
+        n_ttlb_r = sum(1 for e in msp if e.dxftype() == 'TEXT' and e.dxf.layer == 'A-TTLB')
+        has_north_r = any(t == 'N' for t in text_strs)
+        features = [
+            ("Roof outline",              has_roof_outline,    str(n_poly_r),   "§5.3 hull LWPOLYLINE A-ROOF/A-WALL"),
+            ("Grid lines",                counts.get('LINE', 0) >= 2,
+                                                              str(counts.get('LINE', 0)), "dash-dot grids"),
+            ("Grid bubbles",              n_circ_r >= 2,       str(n_circ_r),   "1 per grid line"),
+            ("Grid labels",               len(grid_labels_r) >= 2,
+                                                              f"{len(grid_labels_r)} ({','.join(sorted(set(grid_labels_r)))})",
+                                                              "A–D / 1–3"),
+            ("Bay dimensions",            len(dim_texts_r) >= 2,
+                                                              str(len(dim_texts_r)), "1 per grid bay"),
+            ("Ridge/label text",          has_ridge,           "yes" if has_ridge else "no",
+                                                              "RIDGE from 2d_level_marker"),
+            ("North arrow",               has_north_r,         "yes" if has_north_r else "no",
+                                                              "NORTH_ARROW in 2d_drawing_symbol"),
+            ("Drawing title",             any('ROOF' in t.upper() for t in text_strs),
+                                                              "yes" if any('ROOF' in t.upper() for t in text_strs) else "no",
+                                                              "'ROOF PLAN'"),
+            ("Title block",               n_ttlb_r >= 5,       str(n_ttlb_r),
+                                                              f"{meta['title_fields']} fields in 2d_title_block"),
         ]
 
     have = sum(1 for _, h, _, _ in features if h)
@@ -1670,10 +1709,17 @@ def _render_proof(dxf_path: str, svg_path: str, png_path: str = None):
                 color = '#000000'
             elif layer == 'A-FURN':
                 fill = _FURN_FILL  # §proof_render.furniture_fill from template
-            svg_lines.append(
-                f'<polygon points="{points_str}" stroke="{color}" '
-                f'stroke-width="{weight:.3f}" fill="{fill}" '
-                f'stroke-linejoin="round"/>')
+            # §I-26: open polylines use <polyline> (no auto-close); closed use <polygon>
+            if is_closed:
+                svg_lines.append(
+                    f'<polygon points="{points_str}" stroke="{color}" '
+                    f'stroke-width="{weight:.3f}" fill="{fill}" '
+                    f'stroke-linejoin="round"/>')
+            else:
+                svg_lines.append(
+                    f'<polyline points="{points_str}" stroke="{color}" '
+                    f'stroke-width="{weight:.3f}" fill="none" '
+                    f'stroke-linejoin="round"/>')
 
         elif e.dxftype() == 'LINE':
             da = _dasharray(layer)
@@ -2566,7 +2612,9 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
 
         if e.ifc_class in ('IfcWall', 'IfcPlate'):
             if 'Glazed' in (e.name or '') or 'Curtain' in (e.name or ''):
-                layer, lw = 'A-GLAZ', lw_glass
+                # IfcPlate curtain wall — use A-CURT (not A-GLAZ) so louvre check
+                # only triggers for true IfcWindow elements
+                layer, lw = 'A-CURT', lw_glass
             else:
                 layer, lw = 'A-ELEV-WALL', lw_wall_ext
         elif e.ifc_class == 'IfcWindow':
@@ -2587,11 +2635,21 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                            dxfattribs={'layer': layer, 'lineweight': lw})
 
     # ── Roof silhouette — §5.2: convex hull of roof projected onto face ──
-    hull = roof_silhouette(db_path, face)
+    _sil_result = roof_silhouette(db_path, face)
+    hull, slab_thickness_m = (_sil_result if isinstance(_sil_result, tuple)
+                              else (_sil_result, 0.0))
     if hull:
+        # §I-26 fix 1: open polyline (no close=True) avoids spurious vertical closing segment
         pts = [(_mh(h), _mh(z)) for h, z in hull]
-        msp.add_lwpolyline(pts, close=True,
+        msp.add_lwpolyline(pts, close=False,
                            dxfattribs={'layer': 'A-ROOF', 'lineweight': lw_wall_ext})
+        _log(f"§I-26 Roof silhouette: {len(hull)} pts, close=False (no spurious close)")
+        # §I-26 fix 2: inner face (slab bottom) — outer hull shifted down by slab thickness
+        if slab_thickness_m > 0.05:
+            inner_pts = [(_mh(h), _mh(z - slab_thickness_m)) for h, z in hull]
+            msp.add_lwpolyline(inner_pts, close=False,
+                               dxfattribs={'layer': 'A-ROOF', 'lineweight': lw_wall_int})
+            _log(f"§I-26 Inner slab face: thickness={slab_thickness_m:.3f}m")
 
     # ── Ground + FFL lines ──
     all_vis = face_elems + roofs + slabs
@@ -2666,11 +2724,12 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                      (level_line_right, true_ly),
                      dxfattribs={'layer': 'A-ELEV-LEVL', 'lineweight': level_lw,
                                  'linetype': 'HIDDEN'})
-        # Triangle at left edge, pointing left
-        tri = [(marker_x, true_ly),
-               (marker_x - _mh(0.3), true_ly - _mh(0.18)),
-               (marker_x - _mh(0.3), true_ly + _mh(0.18))]
-        msp.add_solid(tri, dxfattribs={'layer': 'A-ELEV-LEVL'})
+        # §I-25: 45° oblique tick at level marker position (no fill, 2 lines)
+        # Same tick style as dimension tick marks — tick_dx/tick_dy from template
+        msp.add_line((marker_x - tick_dx, true_ly - tick_dy),
+                     (marker_x + tick_dx, true_ly + tick_dy),
+                     dxfattribs={'layer': 'A-ELEV-LEVL', 'lineweight': level_lw})
+        _log(f"§I-25 Level {lbl} marker: 45° tick at ({marker_x:.0f},{true_ly:.0f})")
         if abs(label_ly - true_ly) > _mh(0.05):
             msp.add_line((marker_x - _mh(1.6), true_ly),
                          (marker_x - _mh(1.6), label_ly),
