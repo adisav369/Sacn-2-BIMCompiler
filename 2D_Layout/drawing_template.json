@@ -145,6 +145,7 @@
 
   "roof_plan": {
     "slope_arrow_head_mm": 1.5,
+    "slope_arrow_aspect_ratio": 1.5,
     "slope_arrow_line_weight_mm": 0.18,
     "drain_symbol_radius_mm": 2.0,
     "ridge_label": "RIDGE"

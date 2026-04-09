@@ -2794,26 +2794,29 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
         arrow_spacing = roof_w_mm / (n_bays + 1)
         tpl_roof = tpl.get('roof_plan', {})
         _ah_mm = tpl_roof.get('slope_arrow_head_mm', 1.5)
+        _ah_ratio = tpl_roof.get('slope_arrow_aspect_ratio', 1.5)
         arrow_head = _ah_mm * scale
         _log(f"§VALUE roof_plan.slope_arrow_head_mm={_ah_mm} (from template)")
+        _log(f"§VALUE roof_plan.slope_arrow_aspect_ratio={_ah_ratio} (from template)")
         for i in range(1, n_bays + 1):
             ax = _mh(roof_min_x) + arrow_spacing * i
             n_start = _mh(ridge_y) + 5 * scale
             n_end   = _mh(ridge_y) + (_mh(roof_max_y) - _mh(ridge_y)) * 0.6
             msp.add_line((ax, n_start), (ax, n_end),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            msp.add_solid([(ax, n_end), (ax - arrow_head, n_end - arrow_head * 1.5),
-                           (ax + arrow_head, n_end - arrow_head * 1.5)],
+            msp.add_solid([(ax, n_end), (ax - arrow_head, n_end - arrow_head * _ah_ratio),
+                           (ax + arrow_head, n_end - arrow_head * _ah_ratio)],
                           dxfattribs={'layer': 'A-ANNO-DIMS'})
             s_start = _mh(ridge_y) - 5 * scale
             s_end   = _mh(ridge_y) - (_mh(ridge_y) - _mh(roof_min_y)) * 0.6
             msp.add_line((ax, s_start), (ax, s_end),
                          dxfattribs={'layer': 'A-ANNO-DIMS', 'lineweight': lw_dim})
-            msp.add_solid([(ax, s_end), (ax - arrow_head, s_end + arrow_head * 1.5),
-                           (ax + arrow_head, s_end + arrow_head * 1.5)],
+            msp.add_solid([(ax, s_end), (ax - arrow_head, s_end + arrow_head * _ah_ratio),
+                           (ax + arrow_head, s_end + arrow_head * _ah_ratio)],
                           dxfattribs={'layer': 'A-ANNO-DIMS'})
-            _log(f"§RENDER SLOPE_ARROW head={_ah_mm}mm at ({ax:.0f},{n_end:.0f}) "
-                 f"src=template.roof_plan.slope_arrow_head_mm")
+            _log(f"§RENDER SLOPE_ARROW head={_ah_mm}mm ratio={_ah_ratio} "
+                 f"at ({ax:.0f},{n_end:.0f}) "
+                 f"src=template.roof_plan.slope_arrow_head_mm+aspect_ratio")
 
     # ── Grids (§4.4: same bay grids as floor plan) — shared by both roof types ──
     columns = [e for e in elements.get('other', []) if e.ifc_class == 'IfcColumn']

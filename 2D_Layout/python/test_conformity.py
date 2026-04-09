@@ -22,8 +22,10 @@ _WRITER_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 # Patterns that indicate hardcoded geometry (not unit conversions)
 _R5_PATTERNS = [
-    re.compile(r'int\([0-9]+\.[0-9]+ \* 100\)'),   # int(N.N * 100)
-    re.compile(r'= [0-9]+\.[0-9]+ \* scale'),       # = N.N * scale
+    re.compile(r'int\([0-9]+\.[0-9]+ \* 100\)'),         # int(N.N * 100)
+    re.compile(r'= [0-9]+\.[0-9]+ \* scale'),             # = N.N * scale
+    re.compile(r'add_solid.*\* [0-9]+\.[0-9]+'),          # add_solid geometry multiplier
+    re.compile(r'add_lwpolyline.*\* [0-9]+\.[0-9]+'),     # add_lwpolyline geometry multiplier
 ]
 
 def check_r5_no_hardcode():
@@ -515,6 +517,88 @@ def check_grid_sources(sheet, entities):
                  f'0/{grid_count}')
 
 
+# ── No-invention check: roof outline must not be a bbox rectangle for curved roofs ──
+
+# Threshold: a roof element with more than this many mesh vertices cannot be a simple box.
+# A rectangular box has 8 vertices. Curved roofs have 10x+ more.
+_CURVED_ROOF_VERTEX_THRESHOLD = 20
+
+def _is_rect_aligned(points, tol=1.0):
+    """Return True if 'points' (list of (x,y)) form an axis-aligned rectangle.
+    Checks: exactly 4 unique points, all right-angle corners, sides parallel to axes.
+    tol: model-space mm tolerance for floating-point equality."""
+    unique = list({(round(x / tol) * tol, round(y / tol) * tol) for x, y in points})
+    if len(unique) != 4:
+        return False
+    xs = sorted(set(p[0] for p in unique))
+    ys = sorted(set(p[1] for p in unique))
+    if len(xs) != 2 or len(ys) != 2:
+        return False
+    expected = {(xs[0], ys[0]), (xs[0], ys[1]), (xs[1], ys[0]), (xs[1], ys[1])}
+    return set(map(tuple, unique)) == expected
+
+
+def check_roof_outline_not_invented(sheet, entities, dt, db_path):
+    """ROOF_NOT_INVENTED: for roof plan sheets, verify no roof outline is a bbox
+    rectangle when the source element has curved geometry (>N mesh vertices).
+
+    §1 R1: every line must trace to an actual building element.
+    A curved IfcRoof drawn as a 4-corner box invents two straight edge lines
+    (the end caps) that have no corresponding element face. FAIL if detected.
+
+    db_path: path to the extracted DB used to generate this DXF.
+    """
+    if dt.get('id') != 'ROOF_PLAN':
+        return _pass(sheet, 'ROOF_NOT_INVENTED', 'not a roof plan — skip')
+
+    if db_path is None or not os.path.exists(db_path):
+        return _pass(sheet, 'ROOF_NOT_INVENTED', 'no db_path — skip')
+
+    # Query roof vertex count from extracted DB
+    import sqlite3 as _sql
+    try:
+        conn = _sql.connect(db_path)
+        rows = conn.execute("""
+            SELECT bg.vertex_count
+            FROM elements_meta m
+            JOIN element_instances ei ON m.guid = ei.guid
+            JOIN base_geometries bg ON ei.geometry_hash = bg.geometry_hash
+            WHERE m.ifc_class = 'IfcRoof'
+        """).fetchall()
+        conn.close()
+    except Exception as ex:
+        return _pass(sheet, 'ROOF_NOT_INVENTED', f'db query failed: {ex}')
+
+    if not rows:
+        return _pass(sheet, 'ROOF_NOT_INVENTED', 'no IfcRoof in DB — skip')
+
+    max_verts = max(r[0] for r in rows if r[0])
+    if max_verts <= _CURVED_ROOF_VERTEX_THRESHOLD:
+        return _pass(sheet, 'ROOF_NOT_INVENTED',
+                     f'roof vertex_count={max_verts} ≤ {_CURVED_ROOF_VERTEX_THRESHOLD} — simple box OK')
+
+    # Curved roof confirmed. Now check the DXF A-ROOF entities.
+    roof_polys = [e for e in entities
+                  if e.dxftype() == 'LWPOLYLINE' and e.dxf.layer == 'A-ROOF']
+
+    if not roof_polys:
+        return _pass(sheet, 'ROOF_NOT_INVENTED', 'no A-ROOF LWPOLYLINE — skip')
+
+    rect_count = 0
+    for poly in roof_polys:
+        pts = list(poly.get_points('xy'))
+        if _is_rect_aligned(pts):
+            rect_count += 1
+
+    if rect_count > 0:
+        return _fail(sheet, 'ROOF_NOT_INVENTED',
+                     f'non-rectangular outline (roof has {max_verts} mesh vertices)',
+                     f'{rect_count} bbox rectangle(s) on A-ROOF — end caps are invented')
+
+    return _pass(sheet, 'ROOF_NOT_INVENTED',
+                 f'roof outline is non-rectangular (vertex_count={max_verts})')
+
+
 # ── I-11: MEP bleed check ──
 
 # MEP layers that must NOT appear on architectural floor plan (A-01)
@@ -557,6 +641,13 @@ def check_language(sheet, entities):
 # ─────────────────────────────────────────────────────────────────
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description='2D conformity gate')
+    parser.add_argument('--db', default=None,
+                        help='Path to extracted DB (for ROOF_NOT_INVENTED check)')
+    args = parser.parse_args()
+    db_path = args.db
+
     tpl = _load_template()
 
     # §9.6 R3: DXF files are in lib/output/DXF/
@@ -647,6 +738,7 @@ def main():
                 lambda: check_north_arrow(sheet, entities),
                 lambda: check_semantic_dxf(sheet, entities),
                 lambda: check_grid_sources(sheet, entities),
+                lambda: check_roof_outline_not_invented(sheet, entities, dt, db_path),
             ])
 
         if stype in ('plan', 'elevation', 'section'):
