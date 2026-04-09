@@ -1701,7 +1701,7 @@ def _render_proof(dxf_path: str, svg_path: str, png_path: str = None):
             if len(pts) < 2:
                 continue
             points_str = ' '.join(f'{px(p[0]):.3f},{py(p[1]):.3f}' for p in pts)
-            is_closed = e.close
+            is_closed = e.closed  # e.close is a method; e.closed is the boolean
             fill = 'none'
             # Wall fill layer: solid black fill
             if layer == 'A-WALL-PATT':
@@ -1710,7 +1710,19 @@ def _render_proof(dxf_path: str, svg_path: str, png_path: str = None):
             elif layer == 'A-FURN':
                 fill = _FURN_FILL  # §proof_render.furniture_fill from template
             # §I-26: open polylines use <polyline> (no auto-close); closed use <polygon>
-            if is_closed:
+            # §GUARD: for hull layers (A-ROOF), warn if closed polygon's first≠last
+            # — closing a convex hull silhouette invents geometry not in the data
+            if is_closed and layer == 'A-ROOF':
+                if len(pts) >= 2:
+                    _fp = (px(pts[0][0]), py(pts[0][1]))
+                    _lp = (px(pts[-1][0]), py(pts[-1][1]))
+                    _svg_gap = ((_fp[0]-_lp[0])**2 + (_fp[1]-_lp[1])**2)**0.5
+                    if _svg_gap > 0.5:  # >0.5px gap → closing segment invents geometry
+                        svg_lines.append(
+                            f'<!-- §WARN A-ROOF polygon_invents_segment '
+                            f'gap={_svg_gap:.2f}px first=({_fp[0]:.2f},{_fp[1]:.2f}) '
+                            f'last=({_lp[0]:.2f},{_lp[1]:.2f}) '
+                            f'fix: use close=False in DXF writer -->')
                 svg_lines.append(
                     f'<polygon points="{points_str}" stroke="{color}" '
                     f'stroke-width="{weight:.3f}" fill="{fill}" '
@@ -2639,17 +2651,30 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
     hull, slab_thickness_m = (_sil_result if isinstance(_sil_result, tuple)
                               else (_sil_result, 0.0))
     if hull:
-        # §I-26 fix 1: open polyline (no close=True) avoids spurious vertical closing segment
+        # §I-26 fix 1: open polyline avoids spurious vertical closing segment
         pts = [(_mh(h), _mh(z)) for h, z in hull]
+        # §GUARD: detect if close=True would invent a non-data segment
+        first_h, last_h = pts[0][0], pts[-1][0]
+        first_z, last_z = pts[0][1], pts[-1][1]
+        _close_dist = ((first_h - last_h) ** 2 + (first_z - last_z) ** 2) ** 0.5
+        if _close_dist > 1.0:  # > 1mm model-space gap → closing would invent geometry
+            _log(f"§WARN hull_close_SUPPRESSED: first=({first_h:.1f},{first_z:.1f}) "
+                 f"last=({last_h:.1f},{last_z:.1f}) gap={_close_dist:.1f}mm — "
+                 f"close=True would draw {_close_dist:.1f}mm imaginary segment")
         msp.add_lwpolyline(pts, close=False,
                            dxfattribs={'layer': 'A-ROOF', 'lineweight': lw_wall_ext})
-        _log(f"§I-26 Roof silhouette: {len(hull)} pts, close=False (no spurious close)")
+        _log(f"§I-26 Roof silhouette: {len(hull)} pts, open polyline, "
+             f"gap={_close_dist:.1f}mm (no invented close segment)")
         # §I-26 fix 2: inner face (slab bottom) — outer hull shifted down by slab thickness
         if slab_thickness_m > 0.05:
             inner_pts = [(_mh(h), _mh(z - slab_thickness_m)) for h, z in hull]
             msp.add_lwpolyline(inner_pts, close=False,
                                dxfattribs={'layer': 'A-ROOF', 'lineweight': lw_wall_int})
-            _log(f"§I-26 Inner slab face: thickness={slab_thickness_m:.3f}m")
+            _log(f"§I-26 Inner slab face: thickness={slab_thickness_m:.3f}m "
+                 f"({int(slab_thickness_m*1000)}mm) src=mesh_edge_Z_span")
+        else:
+            _log(f"§WARN slab_thickness_MISSING: thickness={slab_thickness_m:.3f}m — "
+                 f"inner face not drawn (no shell thickness from DB mesh)")
 
     # ── Ground + FFL lines ──
     all_vis = face_elems + roofs + slabs
