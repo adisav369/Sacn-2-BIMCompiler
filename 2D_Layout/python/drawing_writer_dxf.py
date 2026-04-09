@@ -779,8 +779,8 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
                               image_def=image_def,
                               dxfattribs={'layer': 'A-TTLB'})
                 logo_inserted = True
-                _log(f"§RENDER TITLE_BLOCK jkr_logo inserted "
-                     f"w={logo_w_mm}mm h={logo_h_mm}mm src=template.title_block.logo_file")
+                _log(f"§I-07 JKR logo inserted w={logo_w_mm}mm h={logo_h_mm}mm "
+                     f"layer=A-TTLB src=template.title_block.logo_file")
             except Exception as _img_err:
                 _log(f"§WARN JKR logo raster insert failed ({_img_err}); "
                      f"using placeholder — manual step required")
@@ -1322,6 +1322,9 @@ def _audit_dxf(doc, out_dxf: str, view_type: str):
                                                               f"{meta['title_fields']} fields in 2d_title_block"),
             ("Scale bar",                 n_scalebar >= 2,     str(n_scalebar),
                                                               "standard bar 0-1-2-5m"),
+            ("JKR logo (IMAGE entity)",   counts.get('IMAGE', 0) >= 1,
+                                                              str(counts.get('IMAGE', 0)),
+                                                              "jkr.png raster in title block"),
         ]
     elif is_elev:
         face_key = view_type.split()[-1].lower() if len(view_type.split()) > 1 else 'front'
@@ -1363,6 +1366,9 @@ def _audit_dxf(doc, out_dxf: str, view_type: str):
                                                               f"'{elev_title}'"),
             ("Title block",               n_ttlb_elev >= 5,    str(n_ttlb_elev),
                                                               f"{meta['title_fields']} fields in 2d_title_block"),
+            ("JKR logo (IMAGE entity)",   counts.get('IMAGE', 0) >= 1,
+                                                              str(counts.get('IMAGE', 0)),
+                                                              "jkr.png raster in title block"),
         ]
     elif is_roof:
         # §5.3: Roof plan features — excludes floor-plan-only checks (rooms, furniture, doors)
@@ -1401,6 +1407,9 @@ def _audit_dxf(doc, out_dxf: str, view_type: str):
                                                               "'ROOF PLAN'"),
             ("Title block",               n_ttlb_r >= 5,       str(n_ttlb_r),
                                                               f"{meta['title_fields']} fields in 2d_title_block"),
+            ("JKR logo (IMAGE entity)",   counts.get('IMAGE', 0) >= 1,
+                                                              str(counts.get('IMAGE', 0)),
+                                                              "jkr.png raster in title block"),
         ]
 
     have = sum(1 for _, h, _, _ in features if h)

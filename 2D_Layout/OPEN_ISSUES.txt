@@ -4,4 +4,3 @@
 # Format: [severity] I-## description (spec ref)
 # Language: English only
 
-[Low]    I-07  JKR logo not in title block header. (§14.2)
