@@ -2843,20 +2843,26 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
     v_max_m = max(v_of(e)[1] for e in all_vis)
     grid_above = _mh(v_max_m + 2.0)
     txt_grid_h = txt_grid * scale
-    # §I-29: bubble beyond tier_1 dim. Dims sit between grid_above and bubble.
-    _elev_bub_cy = grid_above + tier_1_off + bubble_r + grid_gap  # bubble centre
+    # §I-29: top bubble beyond tier_1 dim. Dims sit between grid_above and bubble.
+    _elev_bub_cy  = grid_above + tier_1_off + bubble_r + grid_gap  # top bubble centre
+    # §12a.5 I-31: bottom bubble below ground line
+    _elev_bub_bot = _mh(grd_z - 0.2) - grid_gap - bubble_r        # bottom bubble centre
 
     for g in face_grids:
         gx = _mh(g.position)
         _log(f"§2.3 Grid {g.label} at {g.position:.3f}m")
-        # Extend grid line to cover both dim tiers and bubble
-        msp.add_line((gx, _mh(grd_z - 0.2)),
+        # Grid line spans both bubbles (§12a.5: bot bubble edge → top bubble edge)
+        msp.add_line((gx, _elev_bub_bot - bubble_r),
                      (gx, _elev_bub_cy + bubble_r),
                      dxfattribs={'layer': 'A-GRID', 'lineweight': lw_grid})
         _draw_grid_bubble(msp, gx, _elev_bub_cy, bubble_r, g.label, txt_grid_h, bubble_lw)
-    _log(f"§GRID_BUBBLE_Y ELEV: bubble_y={_elev_bub_cy/scale:.1f}mm "
+        _log(f"§GRID_BUBBLE face={face} grid={g.label} end=top "
+             f"cx={gx/scale:.1f} cy={_elev_bub_cy/scale:.1f} r={bubble_r/scale:.1f} src=2d_grid_style")
+        _draw_grid_bubble(msp, gx, _elev_bub_bot, bubble_r, g.label, txt_grid_h, bubble_lw)
+        _log(f"§GRID_BUBBLE face={face} grid={g.label} end=bot "
+             f"cx={gx/scale:.1f} cy={_elev_bub_bot/scale:.1f} r={bubble_r/scale:.1f} src=2d_grid_style")
+    _log(f"§GRID_BUBBLE_Y ELEV: top_cy={_elev_bub_cy/scale:.1f}mm bot_cy={_elev_bub_bot/scale:.1f}mm "
          f"tier_1_y={(grid_above + tier_1_off)/scale:.1f}mm "
-         f"tier_2_y={(grid_above + tier_2_off)/scale:.1f}mm "
          f"grid_above={grid_above/scale:.1f}mm "
          f"(bubble>t1>t2>grid_above: {_elev_bub_cy > grid_above + tier_1_off > grid_above + tier_2_off > grid_above})")
 

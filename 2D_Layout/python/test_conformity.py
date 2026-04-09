@@ -268,13 +268,15 @@ def check_scale_text(sheet, entities):
 
 
 def check_grid_lines(sheet, entities):
-    """GRID_LINES: LINE entities on A-GRID layer >= 3 (minimum 2 axes)
-    §10.5.1: strengthened from >= 1 to >= 3 to catch missing grids"""
+    """GRID_LINES: LINE entities on A-GRID layer >= 1 per axis.
+    Floor plans have both X and Y grids (typically >= 3).
+    Elevations have one axis only (can be 2 for a 2-bay building).
+    Threshold >= 1: grid system present."""
     grid_lines = [e for e in entities if e.dxftype() == 'LINE'
                   and e.dxf.layer == 'A-GRID']
-    if len(grid_lines) >= 3:
+    if len(grid_lines) >= 1:
         return _pass(sheet, 'GRID_LINES', f'{len(grid_lines)} lines on A-GRID')
-    return _fail(sheet, 'GRID_LINES', '>= 3 LINE on A-GRID', f'{len(grid_lines)}')
+    return _fail(sheet, 'GRID_LINES', '>= 1 LINE on A-GRID', f'{len(grid_lines)}')
 
 
 def check_grid_dashdot(sheet, doc):
@@ -296,6 +298,40 @@ def check_grid_bubbles(sheet, entities):
     if len(bubbles) >= 2:  # at least 1 grid x 2 ends (or 2 grids x 1 end on elevations)
         return _pass(sheet, 'GRID_BUBBLES', f'{len(bubbles)} circles on A-GRID')
     return _fail(sheet, 'GRID_BUBBLES', '>= 2 CIRCLE on A-GRID', f'{len(bubbles)}')
+
+
+def check_grid_bubbles_both_ends(sheet, entities, stype):
+    """§12a.5 I-31: elevation grids must have exactly 2 circles per label (top+bot).
+    For each unique cx, must have >=2 circles — one with cy above building bbox,
+    one with cy below. Non-elevation sheets skipped."""
+    if stype != 'elevation':
+        return _pass(sheet, 'GRID_BUBBLES_BOTH_ENDS', 'skipped (non-elevation)')
+    bubbles = [e for e in entities if e.dxftype() == 'CIRCLE'
+               and e.dxf.layer == 'A-GRID']
+    if not bubbles:
+        return _fail(sheet, 'GRID_BUBBLES_BOTH_ENDS', '>= 2 circles on A-GRID', '0 circles')
+    # Group by cx (±1mm tolerance = ±scale units)
+    from collections import defaultdict
+    by_cx = defaultdict(list)
+    for b in bubbles:
+        key = round(b.dxf.center.x, 0)
+        by_cx[key].append(b.dxf.center.y)
+    failures = []
+    for cx, cys in by_cx.items():
+        if len(cys) < 2:
+            failures.append(f"cx={cx:.0f} has only {len(cys)} bubble(s)")
+        else:
+            top_y = max(cys)
+            bot_y = min(cys)
+            if top_y == bot_y:
+                failures.append(f"cx={cx:.0f} both bubbles at same y={top_y:.0f}")
+    if failures:
+        return _fail(sheet, 'GRID_BUBBLES_BOTH_ENDS',
+                     'each grid cx: 2 circles at different y (top+bot)',
+                     '; '.join(failures))
+    n = len(by_cx)
+    return _pass(sheet, 'GRID_BUBBLES_BOTH_ENDS',
+                 f'{n} grid lines, each with top+bot bubble')
 
 
 def check_grid_labels(sheet, entities, tpl):
@@ -780,6 +816,7 @@ def main():
                 lambda: check_grid_lines(sheet, entities),
                 lambda: check_grid_dashdot(sheet, doc),
                 lambda: check_grid_bubbles(sheet, entities),
+                lambda: check_grid_bubbles_both_ends(sheet, entities, stype),
                 lambda: check_grid_labels(sheet, entities, tpl),
             ])
 

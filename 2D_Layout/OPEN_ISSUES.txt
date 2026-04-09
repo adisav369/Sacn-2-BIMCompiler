@@ -4,7 +4,7 @@
 # Format: [severity] I-## description (spec ref)
 # Language: English only
 
-[High]   I-31  Grid bubbles missing at bottom of every grid line in all elevations. Both ends required: top bubble (above building + dim tiers) AND bottom bubble (below building). `_draw_grid_bubble()` called only once per grid line. Fix: call for both ends; log `§GRID_BUBBLE face=X grid=Y end=top/bot cx cy r`. Test: `test_grid_bubbles_both_ends` — exactly 2 circles per grid label per face, one above bbox, one below. (§12a.5)
+# CLOSED I-31 (2026-04-10): §GRID_BUBBLE face=front grid=A end=bot cx=-0.0 cy=-9.5 r=4.0 src=2d_grid_style; [PASS] GRID_BUBBLES_BOTH_ENDS A-02..A-05 — commit next
 [High]   I-32  Level lines bleed into title block column. Currently terminate at x=300.655 (10mm past title block divider x=290). Must terminate at x_content_right per zone layout. Fix: introduce zone constants (x_level_right, x_content_right, x_height_right) from template; clamp all level lines and building elements to their zone. Log `§ZONE_LAYOUT face=... x_content=(l,r)`. Test: `test_zone_layout` — zero entities outside their zone. (§12a.2)
 # CLOSED I-34 (2026-04-10): §LEVEL_MARKER code=FFL display_text='GRD. FLOOR LEVEL' src=2d_level_marker (NOT synthesised) — commit 1cff122e
 # CLOSED I-36 (2026-04-10): §FACE_CLASS face=left apparent_width=17.8m class=form_face; §ZONE_LAYOUT face=left level_w=0mm — commit 1cff122e
