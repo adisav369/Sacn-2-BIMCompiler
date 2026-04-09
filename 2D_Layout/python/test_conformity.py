@@ -651,6 +651,8 @@ def main():
     _log("═══════════════════════════════════════")
     _log(f"RESULT: PASS — {len(dxf_files)} sheets conform to §5.0")
     _log("═══════════════════════════════════════")
+    _log("")
+    _log("CHECK PROBLEMS SECTION §18.1 IF LOGS PASSED THEM")
 
     _write_log()
     return 0

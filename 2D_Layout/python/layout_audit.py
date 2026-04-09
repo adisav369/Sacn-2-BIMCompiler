@@ -392,7 +392,9 @@ def main():
             audit_dxf(path, tpl, cfg, log)
             log.flush()
         log.write('\n\nDONE\n')
+        log.write('\nCHECK PROBLEMS SECTION §18.1 IF LOGS PASSED THEM\n')
     print(f'Audit written to {LOG_PATH}')
+    print('CHECK PROBLEMS SECTION §18.1 IF LOGS PASSED THEM')
 
 
 if __name__ == '__main__':

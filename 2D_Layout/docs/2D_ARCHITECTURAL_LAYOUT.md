@@ -77,11 +77,20 @@ standard: bold cut walls (0.50mm), medium partitions (0.35mm), thin annotations
 (0.18mm). The visual hierarchy — thick for structure, thin for annotation —
 is what makes the drawing readable. Preserve this hierarchy.
 
-**R5 — Reference is the archive.** The SVG outputs in `archive/` are the proven
+**R5 — No hardcoded symbols.** The code must not contain hardcoded geometry
+for any visual element — no inline triangle vertices, no magic radius values,
+no ad-hoc polygon points. Every symbol (grid bubble, north arrow, dimension
+tick, slope arrow, MEP icon, tag shape) must be defined in
+`drawing_template.json` or `2D.db` and read at render time. If the template
+lacks a key, add the key to the template first — do not hardcode a fallback
+in code. The log must report `§VALUE` for every symbol parameter read from
+template, so the coder can verify from logs alone what was drawn.
+
+**R6 — Reference is the archive.** The SVG outputs in `archive/` are the proven
 reference. Any new output (DXF or SVG) must match the archive in content and
 layout. Tests enforce this.
 
-**R6 — Code logs forensically.** Every derivation is logged. If a line appears
+**R7 — Code logs forensically.** Every derivation is logged. If a line appears
 in the output, the log shows where it came from. No external checking needed.
 
 ## 2. Process
@@ -1935,6 +1944,7 @@ Tracked against TBKLTN WD-1/01 reference and `layout_audit.txt`.
 | I-11 | **MEP bleed on floor plan:** 282 IfcFlow* elements (pipes, fittings, terminals) render as furniture bboxes on DX A-01 — pipe runs 4.5m×0.05m form visible "black cross" pattern. `_BELOW_SKIP` lacks `IfcFlowTerminal/Segment/Fitting/Controller`. MEP elements must not appear on architectural floor plan. | High | §5.1 BELOW skip set |
 | I-12 | **MEP template gap:** `drawing_template.json` has zero MEP keys — no symbol definitions, no line weights, no legend template, no discipline classification rules. All MEP rendering uses hardcoded values in `_draw_mep_symbol()` and `_classify_mep()`. Must add `mep` section to template. | High | §17 |
 | I-13 | **MEP page has no discernible symbols or legend:** DX M-01 renders 10 circles+dots (all identical) and 407 thin lines (all identical). No way to distinguish water closet from basin from shower. No icon differentiation, no label, no grouped legend with QTY. | High | §17.6 MEP legend |
+| I-14 | **Hardcoded symbols in code (violates R5):** North arrow triangle vertices, slope arrow geometry, dimension tick angles, MEP circle+cross, grid bubble radius — all inline in code instead of read from template/2D.db. Coder cannot detect wrong symbols from logs because no `§VALUE` is emitted for symbol parameters. Must refactor all symbol geometry to template keys. Log must report what was read. | High | §1 R5 |
 
 ### 18.2 Deferred (spec written, not started)
 

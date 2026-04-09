@@ -1673,6 +1673,7 @@ def _write_log(out_dir: str):
     else:
         summary.append(f"RESULT: {fails} FAIL / {passes} PASS out of {n_pages} pages — inspect FAIL views")
     summary.append("")
+    summary.append("CHECK PROBLEMS SECTION §18.1 IF LOGS PASSED THEM")
 
     with open(log_path, 'w') as f:
         f.write(f"DXF Diagnostic — {stamp}\n")
