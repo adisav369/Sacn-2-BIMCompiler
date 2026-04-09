@@ -1,42 +1,45 @@
 # 2D Spec-to-Code Checklist
 
 > Reference: `2D_ARCHITECTURAL_LAYOUT.md` vs `python/drawing_writer_dxf.py` (dxf) + `python/drawing_writer.py` (svg)
-> Last audit: 2026-04-07 (triage pass 2)
+> Last audit: 2026-04-09 (2D_016 re-audit — dxf grew 2334→3722 lines, R8/R9/R10 added)
 > Pri column: 1=fix first, 10=fix last. Only on N rows.
 
 ## §0 Line Weight Hierarchy
 
 | # | Spec requirement | Y/N | Pri | Proof / Code ref |
 |---|-----------------|-----|-----|------------------|
-| 0.1 | Bold 0.50mm exterior walls | Y | | dxf:1080 `_lw(tpl,'wall_exterior_cut')` → 50. Log: `§2.5 Section cut` walls on A-WALL-FULL lw=50. Conformity: `[PASS] LINE_WEIGHTS` |
-| 0.2 | Medium 0.35mm partitions | Y | | dxf:1081 `_lw(tpl,'wall_partition_cut')` → 35. A-WALL-PRTN layer. Conformity: `[PASS] LINE_WEIGHTS` |
-| 0.3 | Light 0.25mm door/window frames | Y | | dxf:1082 `_lw(tpl,'window_frame')` → 25. A-DOOR/A-GLAZ. Conformity: `[PASS] LINE_WEIGHTS` |
-| 0.4 | Thin 0.18mm annotations/grids | Y | | dxf:1085-1086 `_lw(tpl,'dimension_line')` + `_lw(tpl,'grid_line')` → 18. Conformity: `[PASS] LINE_WEIGHTS` |
-| 0.5 | Hairline 0.13-0.15mm furniture | Y | | SVG `LW_FURNITURE=0.15` matches template + 2d_drawing_style. DXF `_lw(tpl,'furniture')` → 15. |
+| 0.1 | Bold 0.50mm exterior walls | Y | | dxf:1854 `_lw(tpl,'wall_exterior_cut')` → 50. Log: `§2.5 Section cut` walls on A-WALL-FULL lw=50. Conformity: `[PASS] LINE_WEIGHTS` |
+| 0.2 | Medium 0.35mm partitions | Y | | dxf:1855 `_lw(tpl,'wall_partition_cut')` → 35. A-WALL-PRTN layer. Conformity: `[PASS] LINE_WEIGHTS` |
+| 0.3 | Light 0.25mm door/window frames | Y | | dxf:1856 `_lw(tpl,'window_frame')` → 25. A-DOOR/A-GLAZ. Conformity: `[PASS] LINE_WEIGHTS` |
+| 0.4 | Thin 0.18mm annotations/grids | Y | | dxf:1859-1860 `_lw(tpl,'dimension_line')` + `_lw(tpl,'grid_line')` → 18. Conformity: `[PASS] LINE_WEIGHTS` |
+| 0.5 | Hairline 0.13-0.15mm furniture | Y | | SVG `LW_FURNITURE=0.15` matches template + 2d_drawing_style. DXF dxf:1858 `_lw(tpl,'furniture')` → 15. |
 
 ## §1 Prime Rules
 
 | # | Spec requirement | Y/N | Pri | Proof / Code ref |
 |---|-----------------|-----|-----|------------------|
-| 1.1 | R1 No invention — every entity traces to DB or template | Y | | dxf:1153 `set_xdata('BIMGUID',...)`. Diag: `GUID xdata: 55 polylines, 18 unique GUIDs`. Grid/dim from DB arithmetic (§2.3/§2.4 log lines). |
-| 1.2 | R2 Measurements on paper — arithmetic from DB coords | Y | | dxf:1296 `generate_dimensions(grids)`. svg:340-383 `generate_dimensions()`. Diag logs `§2.4 Dim x -7.735→-2.835 = 4900mm` etc. |
+| 1.1 | R1 No invention — every entity traces to DB or template | Y | | dxf:1945 `set_xdata('BIMGUID',...)`. Diag: `GUID xdata: 55 polylines, 18 unique GUIDs`. Grid/dim from DB arithmetic (§2.3/§2.4 log lines). |
+| 1.2 | R2 Measurements on paper — arithmetic from DB coords | Y | | dxf:2153 `generate_dimensions(grids)`. svg:340-383 `generate_dimensions()`. Diag logs `§2.4 Dim x -7.735→-2.835 = 4900mm` etc. |
 | 1.3 | R3 Two sources only — DB + template | Y | | `_read_2d_db_levels()` reads APRON/GRD from `2d_level_marker.typical_z`. dxf:51-52 constants kept as fallback only. |
-| 1.4 | R4 Template governs all formatting | Y | | SVG writer: `_load_template()` + `_init_from_template()` at svg:94-163 wires 20 constants from `drawing_template.json`. Fallback values preserved. test_no_hardcode 4/4 PASS. |
-| 1.5 | R5 Reference is the archive | Y | | `_compare_fingerprints()` now compares GRID_X_POS + GRID_Y_POS (sorted, 1mm tolerance) from SVG line coords. 7 checks total. |
+| 1.4 | R4 Template governs all formatting | Y | | DXF: `_load_template()` at dxf:421. SVG writer: `_load_template()` + `_init_from_template()` at svg:94-163. test_no_hardcode 4/4 PASS. |
+| 1.5 | R5 Reference is the archive | Y | | `_compare_fingerprints()` at dxf:3409. Compares GRID_X_POS + GRID_Y_POS (sorted, 1mm tolerance) from SVG line coords. 7 checks total. |
 | 1.6 | R6 Code logs forensically | Y | | SVG writer: `_log()` + `_SVG_LOG` buffer added. 17 log call sites across draw_floor_plan, draw_elevation, draw_roof_plan. Written to `output/svg_writer_log.txt`. |
+| 1.7 | R8 Reuse shared abstract code — no per-feature geometry | Y | | `_inward_offset_hull()` dxf:166 shared by wall + roof. `_mesh_hulls()` dxf:2729 shared by any ifc_class. R8 log: `§R8 checked: grep '_hull' → N hits, reusing _mesh_hulls`. **FLAG (R9)**: inner_hull from `_inward_offset_hull` is a computed offset polygon — inner points are synthetic, not traced to `base_geometries.vertices`. Per R9, inner boundary should come from `section_cut` at Z=roof_min_z+ε. Acceptable until mesh inner surface verified extractable. |
+| 1.8 | R9 Extract, don't invent — mesh data → section_cut or vertex extraction | Y | | `_mesh_hulls()` dxf:2729 queries `base_geometries.vertices` directly. Outer hull traces to actual vertices. See R8 flag above for inner hull. |
+| 1.9 | R10 Abstract gates — no per-feature conformity checks | Y | | `test_conformity.py`: checks are ROOF_NOT_INVENTED (line 541), NO_MEP_BLEED (line 614), LANGUAGE (line 631) — all abstract principles. No ROOF_THICKNESS, ROOF_NO_ENDCAP, or other concrete feature checks present. |
 
 ## §2 Process Steps
 
 | # | Spec requirement | Y/N | Pri | Proof / Code ref |
 |---|-----------------|-----|-----|------------------|
-| 2.1 | Step 1 Load template + 2D.db, log paper/scale/profile | Y | | `meta = read_drawing_metadata()` moved to Step 1 (after template load). Logged as `2D.db=loaded`. |
-| 2.2 | Step 2 Query DB, log element counts | Y | | dxf:1100-1106 `read_elements()`. Diag: `§2.2 DB loaded: 11 walls, 3 doors, 4 windows, 14 furniture` |
-| 2.3 | Step 3 Detect grids, log each axis | Y | | dxf:1248-1251 `snap_grids(derive_grids(walls))`. Diag: `§2.3 Grid A axis=x pos=-7.735m` (7 lines). |
-| 2.4 | Step 4 Compute dimensions, log each | Y | | dxf:1296-1342 `generate_dimensions()`. Diag: `§2.4 Dim x -7.735→-2.835 = 4900mm` (7 lines). |
-| 2.5 | Step 5 Section cut, log CUT/BELOW/ABOVE | Y | | dxf:1121-1126 `run_section_cut(db_path, cut_z=1.2)`. Diag: `§2.5 Section cut Z=1.2m: 32 CUT, 15 BELOW, 8 ABOVE` |
-| 2.6 | Step 6 Infer rooms from furniture clusters | Y | | dxf:1344-1367 `infer_rooms(furniture, walls)`. Diag: `§2.6 Room BEDROOM at (5.22,2.90) area=9.0m²` (3 rooms). |
-| 2.7 | Step 7 Render — every entity logs layer + source | Y | | `WRITE wall guid=... layer=... pts=...`, `WRITE grid label=...`, `WRITE dim ...`, `WRITE furn ...` added after each entity group. |
-| 2.8 | Step 8 Verify — count entities, check text traces | Y | | dxf:1477-1483 `_audit_dxf()` (dxf:460-742). Diag: `§2.8 Floor plan: 81 cut polylines, 7 grids, 7 dims, 3 rooms, 7 tags` |
+| 2.1 | Step 1 Load template + 2D.db, log paper/scale/profile | Y | | dxf:1836 `meta = read_drawing_metadata()`. Logged as `2D.db=loaded`. |
+| 2.2 | Step 2 Query DB, log element counts | Y | | dxf:1874-1880 `read_elements()` + §2.2 log. Diag: `§2.2 DB loaded: 11 walls, 3 doors, 4 windows, 14 furniture` |
+| 2.3 | Step 3 Detect grids, log each axis | Y | | dxf:2071 `snap_grids(derive_grids(walls))`. Diag: `§2.3 Grid A axis=x pos=-7.735m` (7 lines). |
+| 2.4 | Step 4 Compute dimensions, log each | Y | | dxf:2153 `generate_dimensions(grids)`. Diag: `§2.4 Dim x -7.735→-2.835 = 4900mm` (7 lines). |
+| 2.5 | Step 5 Section cut, log CUT/BELOW/ABOVE | Y | | dxf:1901 `run_section_cut(db_path, cut_z=1.2)`, dxf:1905 §2.5 log. Diag: `§2.5 Section cut Z=1.2m: 32 CUT, 15 BELOW, 8 ABOVE` |
+| 2.6 | Step 6 Infer rooms from furniture clusters | Y | | dxf:2238-2247 `infer_rooms(furniture, walls)` + §2.6 log. Diag: `§2.6 Room BEDROOM at (5.22,2.90) area=9.0m²` (3 rooms). |
+| 2.7 | Step 7 Render — every entity logs layer + source | Y | | §RENDER log entries at dxf:1945+ for walls/grids/rooms. `WRITE wall guid=... layer=...` etc. |
+| 2.8 | Step 8 Verify — count entities, check text traces | Y | | `_audit_dxf()` def dxf:1078. §2.8 log at dxf:2337. Diag: `§2.8 Floor plan: 81 cut polylines, 7 grids, 7 dims, 3 rooms, 7 tags` |
 
 ## §3 Data Sources
 
@@ -79,20 +82,20 @@
 | 5.0b | North arrow: plans only, not elevations | Y | | dxf:393 `view_type` param added. dxf:393 `if view_type in ('plan','roof_plan')` gates north arrow. Conformity: NORTH_ARROW on A-01+A-06 only, not A-02..A-05. |
 | 5.0c | Scale bar: not on schedule | Y | | No schedule sheet exists yet (GAP). Scale bar code in `_draw_sheet_layout()` runs on all sheets that exist. Will need gating when A-08 is implemented. |
 | 5.0d | DXF filename: {building}_{type}.dxf | Y | | dxf:2227-2231 uses `FLOOR_{ts}.dxf` per §9.6 R2. Spec §5.0d conflicts with §9.6; code follows §9.6 (newer). |
-| 5.1a | Floor plan cut height 1.2m | Y | | dxf:1121 `cut_z = 1.2`. Diag: `§2.5 Section cut Z=1.2m`. |
+| 5.1a | Floor plan cut height 1.2m | Y | | dxf:1900 `cut_z = 1.2`. Diag: `§2.5 Section cut Z=1.2m`. |
 | 5.1b | Cut elements: wall/door/window/column | Y | | IfcColumn gets `A-WALL-FULL` layer with `lw_wall_ext` (bold). Per `2d_drawing_style` IfcColumn=0.50mm. |
-| 5.1c | Below elements: furniture, stair | Y | | dxf:1162-1170 BELOW elements on A-FURN layer. Diag: `15 BELOW`. |
-| 5.1d | Door swing arcs | Y | | dxf:1172-1245 leaf line + quarter-arc. Diag: `§5.1 Door swing arcs: 3`. Conformity: `ARC: 3` in entity counts. |
-| 5.1e | Window double-line symbol | Y | | dxf:1182-1228 parallel lines + glass center on A-GLAZ. Diag: `Window symbols: 4`. |
-| 5.1f | Wall solid fill (filled polygons) | Y | | `_add_wall_hatch(msp, pts)` adds solid black HATCH alongside each A-WALL-PATT LWPOLYLINE. 26 HATCH entities in floor plan DXF. |
-| 5.2a | Elevation face selection within 1.0m | Y | | dxf:1542-1565 e.g. `face_elems = [e for e in ... if e.min_y < bld_min_y + 1.0]`. |
+| 5.1c | Below elements: furniture, stair | Y | | dxf:1970 BELOW elements on A-FURN layer. Diag: `15 BELOW`. |
+| 5.1d | Door swing arcs | Y | | dxf:1993-2067 leaf line + quarter-arc. Diag: `§5.1 Door swing arcs: 3`. Conformity: `ARC: 3` in entity counts. |
+| 5.1e | Window double-line symbol | Y | | dxf:1993-2067 parallel lines + glass center on A-GLAZ. Diag: `Window symbols: 4`. |
+| 5.1f | Wall solid fill (filled polygons) | Y | | dxf:310 `_add_wall_hatch(msp, pts)` def; dxf:1960 call site. Adds solid black HATCH alongside each A-WALL-PATT LWPOLYLINE. |
+| 5.2a | Elevation face selection within 1.0m | Y | | dxf:2412-2430 e.g. `face_elems = [e for e in ... if e.min_y < bld_min_y + 1.0]`. |
 | 5.2b | Level markers: triangle + dashed line | Y | | Same fix as 4.3d — full-width HIDDEN dashed line from triangle to right edge. |
 | 5.2c | Level labels from 2D.db | Y | | Same fix as 4.3c — `_read_2d_db_levels()` provides labels from `2d_level_marker` table. |
 | 5.2d | Height dimensions | Y | | dxf:1732-1785 tier 1+2. Diag: `§2.4 Height FFL→SILL = 900mm` etc. |
 | 5.2e | Bay dimensions | Y | | dxf:1707-1730 via DIMENSION entities or fallback LINE+TEXT. Diag: `§2.4 Bay dim A→B = 4900mm`. |
 | 5.2f | Roof silhouette | Y | | dxf:1602-1607 `roof_silhouette(db_path, face)` → A-ROOF LWPOLYLINE. Diag: `[HAVE] Roof silhouette: actual=yes`. |
 | 5.2g | Window louvre lines | Y | | dxf:1588-1593 horizontal lines inside window rect on A-GLAZ. Diag front: `[HAVE] Window louvres: actual=yes`. |
-| 5.3a | Roof outline (eave line) | Y | | dxf:1882-1886 A-ROOF bold (`lw_wall`=50). |
+| 5.3a | Roof outline (eave line) | Y | | dxf:3241 A-ROOF bold (`lw_wall`=50). `_mesh_hulls()` dxf:2729 queries `base_geometries.vertices`. |
 | 5.3b | Ridge line dashed from template line_styles.ridge_line | Y | | Reads `tpl.line_styles.ridge_line` via `_linestyle_to_dxf()`. No hardcoded string. |
 | 5.3c | Slope arrows: one per grid bay | Y | | `n_bays = len(x_grids) - 1`, loop `range(1, n_bays + 1)`. Grid-bay-driven, not hardcoded. |
 | 5.3d | Eave overhang: all 4 sides | Y | | Same as 4.4b — N/S/W drawn, E=0 omitted. DXF + SVG writers both updated. |
@@ -119,27 +122,27 @@
 | # | Spec requirement | Y/N | Pri | Proof / Code ref |
 |---|-----------------|-----|-----|------------------|
 | 7.1 | Sheet layout from paper.* | Y | | dxf:246-264 `_draw_sheet_layout()` reads paper.width_mm, height_mm, margins.*, title_block_width_mm. |
-| 7.2a | Title block: right side, vertical separator | Y | | dxf:286-288 `tb_left = bx1 - tb_w`, vertical line. Conformity: `[PASS] TITLE_BLOCK`. |
-| 7.2b | Field rows: 30%/70% columns, bottom-up | Y | | dxf:296 `label_ratio = title_block.get('label_column_ratio', 0.30)`. dxf:366-390 field rows bottom-up. |
-| 7.3a | Grid extent from template | Y | | dxf:1259 `tpl_grid.get('extend_beyond_building_mm', 15)`. |
-| 7.3b | Grid bubble radius from template | Y | | dxf:1260 `tpl_grid.get('bubble_radius_mm', 4.0)`. |
-| 7.3c | Grid label font from template | Y | | dxf:1264 `tpl_grid.get('label_font_height_mm', 3.0)`. |
-| 7.3d | Dim tier offsets from template | Y | | dxf:1524-1525 `tpl_dims.get('tier_2_offset_mm', 18)` + `tier_1_offset_mm`. |
-| 7.3e | Room label font from template | Y | | dxf:1090 `tpl_rooms.get('name_font_height_mm', 3.5)`. |
-| 7.3f | North arrow placement from template | Y | | Reads `north_arrow.placement.x_from_right_mm` / `y_from_bottom_mm` when present. Falls back to computed top-right when template has string value. |
-| 7.3g | Tag shape from template annotation_tags.shape | Y | | `_draw_tag_shape()` reads template shape, dispatches to hexagon/circle/diamond. Both door + window tags. |
+| 7.2a | Title block: right side, vertical separator | Y | | dxf:592 `_draw_sheet_layout()` def. `tb_left = bx1 - tb_w`, vertical line. Conformity: `[PASS] TITLE_BLOCK`. |
+| 7.2b | Field rows: 30%/70% columns, bottom-up | Y | | dxf:693 `label_ratio = title_block.get('label_column_ratio', 0.30)`. Field rows bottom-up within `_draw_sheet_layout`. |
+| 7.3a | Grid extent from template | Y | | dxf:2080 `tpl_grid.get('extend_beyond_building_mm', 15)`. |
+| 7.3b | Grid bubble radius from template | Y | | dxf:2081 `tpl_grid.get('bubble_radius_mm', 4.0)`. |
+| 7.3c | Grid label font from template | Y | | dxf:2085 `tpl_grid.get('label_font_height_mm', 3.0)`. |
+| 7.3d | Dim tier offsets from template | Y | | dxf:2390-2391 `tpl_dims.get('tier_2_offset_mm', 18)` + `tier_1_offset_mm`. |
+| 7.3e | Room label font from template | Y | | dxf:1864 `tpl_rooms.get('name_font_height_mm', 3.5)`. |
+| 7.3f | North arrow placement from template | Y | | dxf:957 reads `north_arrow.placement.x_from_right_mm` / `y_from_bottom_mm`. Falls back to computed top-right. |
+| 7.3g | Tag shape from template annotation_tags.shape | Y | | dxf:227 `_draw_tag_shape()` reads template shape, dispatches to hexagon/circle/diamond. Both door + window tags. |
 
 ## §8 Colours
 
 | # | Spec requirement | Y/N | Pri | Proof / Code ref |
 |---|-----------------|-----|-----|------------------|
-| 8.1 | Walls #000000 | Y | | dxf:90 `colors.get('wall', '#000000')`. Conformity: `[PASS] LINE_WEIGHTS` (color from layer). |
-| 8.2 | Glass #4488CC | Y | | dxf:93 `colors.get('glass', '#4488CC')`. A-GLAZ layer ACI 5. |
-| 8.3 | Furniture #AAAAAA | Y | | dxf:99 `colors.get('furniture', '#AAAAAA')`. A-FURN layer ACI 9. |
-| 8.4 | Dimensions #000000 | Y | | dxf:97 `colors.get('dimension', '#000000')`. A-ANNO-DIMS layer ACI 7. |
-| 8.5 | Grid lines #888888 | Y | | dxf:96 `colors.get('grid', '#888888')`. A-GRID layer ACI 8. |
-| 8.6 | Labels #000000 | Y | | dxf:98 `colors.get('label', '#000000')`. A-ANNO-TEXT layer ACI 7. |
-| 8.7 | Scale text #888888 | Y | | dxf:412 `colors.get('scale_text', '#888888')`. ACI 8. |
+| 8.1 | Walls #000000 | Y | | dxf:150 `colors.get('wall', '#000000')`. Conformity: `[PASS] LINE_WEIGHTS` (color from layer). |
+| 8.2 | Glass #4488CC | Y | | dxf:153 `colors.get('glass', '#4488CC')`. A-GLAZ layer ACI 5. |
+| 8.3 | Furniture #AAAAAA | Y | | dxf:159 `colors.get('furniture', '#AAAAAA')`. A-FURN layer ACI 9. |
+| 8.4 | Dimensions #000000 | Y | | `colors.get('dimension', '#000000')` in layer setup block dxf:145-163. A-ANNO-DIMS layer ACI 7. |
+| 8.5 | Grid lines #888888 | Y | | `colors.get('grid', '#888888')` in layer setup block dxf:145-163. A-GRID layer ACI 8. |
+| 8.6 | Labels #000000 | Y | | `colors.get('label', '#000000')` in layer setup block dxf:145-163. A-ANNO-TEXT layer ACI 7. |
+| 8.7 | Scale text #888888 | Y | | dxf:1871 `tpl_colors.get('scale_text', ...)`. ACI 8. |
 | 8.8 | Background white | Y | | dxf:272-274 LWPOLYLINE on layer 0, color 7. Conformity: `[PASS] WHITE_BG`. |
 
 ## §9.5 Open Issues (audit-verified, 2026-04-09)
@@ -164,14 +167,14 @@ Full specs in `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §18.
 
 | # | Spec requirement | Y/N | Pri | Proof / Code ref |
 |---|-----------------|-----|-----|------------------|
-| 9.6.R1 | SVG only, no PNG | Y | | dxf:1013 comment `§9.6 R1: SVG proof only, no PNG`. `_render_proof()` writes SVG, no PNG code. |
-| 9.6.R2 | Single-term filenames: FLOOR.dxf, FLOOR.svg | Y | | dxf:2162-2170 `_VIEW_SHORT` map. dxf:2231 `f'FLOOR_{ts}.dxf'`. |
-| 9.6.R3 | Output to 2D_Layout/output/ with DXF/ and SVG/ | Y | | dxf:2202-2206 `out_dir`, `dxf_dir`, `svg_dir`. `os.makedirs` both. |
-| 9.6.R3b | Max 2 generations per view, prune oldest | Y | | dxf:2143-2149 `_prune_generations(folder, view, ext, keep=2)`. dxf:2261-2263 called for each view. |
-| 9.6.R4 | --all generates floor + roof + 4 elevations | Y | | dxf:2211-2214 `do_roof = args.all`, `do_elev = ['front','rear','left','right']`. Conformity: 6 sheets. |
-| 9.6.R5 | Archive check FLOOR+ROOF, log Better Y/N | Y | | dxf:2296-2328. Diag: `ARCHIVE CHECK [FLOOR]: 3/5 — Better: YES`. |
-| 9.6.R6 | Visible change YES/NO vs previous | Y | | dxf:2265-2294. Diag: `VISIBLE CHANGE: YES`. |
-| 9.6.R7 | Master page table from {PREFIX}_2D.json | Y | | dxf:2210-2240 reads JSON for page generation. `--all` iterates `status=DONE` pages. Archive check reuses same `page_json`. |
+| 9.6.R1 | SVG only, no PNG | Y | | dxf:1764 comment `§9.6 R1: SVG proof only, no PNG`. `_render_proof()` dxf:1523 writes SVG, no PNG code. |
+| 9.6.R2 | Single-term filenames: FLOOR.dxf, FLOOR.svg | Y | | `_VIEW_SHORT` map in main(). `f'{proj}_{short}_{ts}.dxf'` pattern. |
+| 9.6.R3 | Output to 2D_Layout/output/ with DXF/ and SVG/ | Y | | `out_dir`, `dxf_dir`, `svg_dir` in main() near dxf:3600. `os.makedirs` both. |
+| 9.6.R3b | Max 2 generations per view, prune oldest | Y | | dxf:3494 `_prune_generations(folder, view, ext, keep=2)`. dxf:3659-3660 called for each view. |
+| 9.6.R4 | --all generates floor + roof + 4 elevations | Y | | `do_roof = args.all`, `do_elev = ['front','rear','left','right']` in main(). Conformity: 6 sheets. |
+| 9.6.R5 | Archive check FLOOR+ROOF, log Better Y/N | Y | | `_compare_fingerprints()` dxf:3409. Diag: `ARCHIVE CHECK [FLOOR]: 3/5 — Better: YES`. |
+| 9.6.R6 | Visible change YES/NO vs previous | Y | | dxf:3664. Diag: `VISIBLE CHANGE: YES`. |
+| 9.6.R7 | Master page table from {PREFIX}_2D.json | Y | | main() reads JSON for page generation. `--all` iterates `status=DONE` pages. Archive check reuses same `page_json`. |
 
 ## §10 Tests
 
@@ -194,6 +197,9 @@ Full specs in `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §18.
 | 10.5l | SVG exists | Y | | Conformity: `[PASS] A-01 PROOF_EXISTS`. |
 | 10.5m | SVG white bg | Y | | Conformity: `[PASS] A-01 PROOF_WHITE_BG: found <rect fill="#FFFFFF"/>`. |
 | 10.5n | SVG stroke-dasharray | Y | | Conformity: `[PASS] A-01 PROOF_DASHDOT: found stroke-dasharray in SVG`. |
+| 10.5p | ROOF_NOT_INVENTED: roof outline uses mesh vertices not bbox | Y | | `check_roof_outline_not_invented()` conformity:541. Abstract R1+R9 gate. Passes if ≥1 A-ROOF polyline is non-axis-aligned-rect. Skip if not roof plan or no DB. |
+| 10.5q | NO_MEP_BLEED: arch floor plan has no MEP layer entities | Y | | `check_no_mep_on_arch()` conformity:614. Abstract gate. PASS if 0 entities on MEP layers in A-01 floor plan. |
+| 10.5r | LANGUAGE: no Malay strings in title block / annotation text | Y | | `check_language()` conformity:631. Abstract gate. PASS if 0 Malay strings in A-TTLB + A-ANNO-TEXT. |
 
 ## §11 Key Files
 
@@ -202,7 +208,7 @@ Full specs in `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §18.
 | 11.1 | drawing_template.json | Y | | Exists. 222 lines. |
 | 11.2 | input/2D.db | Y | | Exists at lib/input/2D.db. |
 | 11.3 | python/drawing_writer.py | Y | | Exists. 2262 lines. |
-| 11.4 | python/drawing_writer_dxf.py | Y | | Exists. 2334 lines. |
+| 11.4 | python/drawing_writer_dxf.py | Y | | Exists. 3722 lines. |
 | 11.5 | python/section_cut.py | Y | | Exists. Imported at dxf:32. |
 | 11.6 | python/test_no_invention.py | Y | | Exists. |
 | 11.7 | python/test_no_hardcode.py | Y | | Exists. |
@@ -254,9 +260,9 @@ Full specs in `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §18.
 
 | Section | Y | N | Total | Last verified |
 |---------|---|---|-------|---------------|
-| §0 Line weights | 5 | 0 | 5 | 2026-04-08 |
-| §1 Prime rules | 6 | 0 | 6 | 2026-04-08 |
-| §2 Process | 8 | 0 | 8 | 2026-04-08 |
+| §0 Line weights | 5 | 0 | 5 | 2026-04-09 |
+| §1 Prime rules | 9 | 0 | 9 | **2D_016** R8/R9/R10 added |
+| §2 Process | 8 | 0 | 8 | 2026-04-09 |
 | §3 Data sources | 6 | 0 | 6 | 2026-04-08 |
 | §4 Grid lines | 18 | 0 | 18 | 2026-04-08 |
 | §5 Views | 27 | 0 | 27 | 2026-04-08 |
@@ -264,8 +270,8 @@ Full specs in `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §18.
 | §7 Composition | 10 | 0 | 10 | 2026-04-08 |
 | §8 Colours | 8 | 0 | 8 | 2026-04-08 |
 | §9.6 Output | 8 | 0 | 8 | 2026-04-08 |
-| §10 Tests | 14 | 0 | 14 | 2026-04-08 |
-| §11 Key files | 12 | 0 | 12 | 2026-04-08 |
+| §10 Tests | 17 | 0 | 17 | **2D_016** ROOF_NOT_INVENTED/NO_MEP_BLEED/LANGUAGE added |
+| §11 Key files | 12 | 0 | 12 | 2026-04-09 |
 | §14 Language + Logo | 1 | 2 | 3 | **2D_012** §14.1 done, §14.2/§14.3 remain |
 | §15 Grid triage | 1 | 0 | 1 | **2D_012** |
 | §16 Log standard | 1 | 2 | 3 | **2D_012** per-view logs done, §16.6 format remains |
@@ -274,9 +280,9 @@ Full specs in `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §18.
 | §21 IFC Annotation | 0 | 1 | 1 | spec 2026-04-09 |
 | §22 Browser Editor | 0 | 1 | 1 | spec 2026-04-09 |
 | §23 Bonsai Assets | 3 | 0 | 3 | **2D_012** hatch, tags, ann_type_map |
-| **Total** | **149** | **5** | **154** |
+| **Total** | **155** | **5** | **160** |
 
-**Compliance: 142/150 (95%)**
+**Compliance: 155/160 (97%)** — 2D_016: +6 rows (R8/R9/R10 + ROOF_NOT_INVENTED/NO_MEP_BLEED/LANGUAGE)
 
 ## Priority Triage (42 N items by priority)
 

@@ -1984,7 +1984,6 @@ Tracked against TBKLTN WD-1/01 reference and `layout_audit.txt`.
 | I-12 | **MEP template gap:** `drawing_template.json` has zero MEP keys. All MEP rendering uses hardcoded values. | High | §17 |
 | I-13 | **MEP page has no discernible symbols or legend.** | High | §17.6 MEP legend |
 | I-14 | **Hardcoded symbols in code (violates R5).** Must refactor to template keys + `§VALUE` log. | High | §1 R5 |
-| I-17 | **`internal/2DSpecToCode.md` stale.** Line refs broken (file grew 2334→3722), R8/R9/R10 rows missing, ROOF_NOT_INVENTED row missing. Full re-audit needed. | High | §10.5 |
 
 ### 18.2 Done (reference only — one-line pointers)
 
@@ -1996,6 +1995,7 @@ Tracked against TBKLTN WD-1/01 reference and `layout_audit.txt`.
 | I-09 | 2D_012 | Grid triage panel |
 | I-15 | 2D_015 | Curved roof mesh hull + offset thickness |
 | I-16 | 2D_015 | R8 reuse rule added to §1 |
+| I-17 | 2D_016 | SpecToCode re-audit: line refs updated (3722), R8/R9/R10 + ROOF_NOT_INVENTED/NO_MEP_BLEED/LANGUAGE rows added. FLAG: `_inward_offset_hull` inner hull synthetic (R9 low-priority). |
 
 ### 18.3 Deferred (spec written, not started)
 
