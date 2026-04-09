@@ -164,7 +164,7 @@ def _build_layers(tpl: dict) -> list:
 
 
 def _inward_offset_hull(hull, thickness_m):
-    """§1 R7: Shared cross-section thickness — inward-offset a convex hull.
+    """§1 R8: Shared cross-section thickness — inward-offset a convex hull.
     Used by wall section-cut (floor plan) and roof slab (roof plan).
 
     hull: list of (x, y) CCW-ordered convex hull points (world metres).
@@ -2727,10 +2727,10 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
 # ─────────────────────────────────────────────────────────────────
 
 def _mesh_hulls(db_path, ifc_class):
-    """§1 R7: Shared mesh-to-hull extraction for any element type.
+    """§1 R8: Shared mesh-to-hull extraction for any element type.
     Returns (outer_hull, inner_hull, thickness_m).
     outer_hull: XY convex hull of all mesh vertices.
-    inner_hull: outer_hull offset inward by slab thickness (§1 R7 shared code).
+    inner_hull: outer_hull offset inward by slab thickness (§1 R8 shared code).
     thickness_m: measured from mesh edge Z-range at boundary vertices.
     """
     conn = sqlite3.connect(db_path)
@@ -2853,7 +2853,7 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     msp.add_lwpolyline(bf_pts, close=True,
                        dxfattribs={'layer': 'A-GRID', 'lineweight': lw_grid})
 
-    # ── Roof outline: mesh hull (§1 R1 — no bbox invention, §1 R7 shared) ──
+    # ── Roof outline: mesh hull (§1 R1 — no bbox invention, §1 R8 shared) ──
     outer_hull, inner_hull, _thickness = _mesh_hulls(db_path, 'IfcRoof')
     if len(outer_hull) >= 3:
         outer_pts = [(_mh(x), _mh(y)) for x, y in outer_hull]

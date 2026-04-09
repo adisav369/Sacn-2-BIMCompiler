@@ -1,0 +1,43 @@
+# 2D_016 — Coder Discipline Audit
+
+## What this session does
+
+Audit and fix process violations found in 2D_015. Rules are now in spec.
+This session verifies compliance and updates `internal/2DSpecToCode.md`.
+
+## Pre-flight
+
+1. Read `2D_ARCHITECTURAL_LAYOUT.md` §1 R8-R10 (new rules from 2D_015)
+2. Read `2D_ARCHITECTURAL_LAYOUT.md` §18 (issue-tracking + agent rules)
+3. Read `internal/2DSpecToCode.md` (stale — needs full re-audit, I-17)
+
+## Tasks
+
+### 1. Re-audit `internal/2DSpecToCode.md`
+File line refs are broken (dxf grew 2334→3722 lines). For each Y row:
+- Verify the function/line still exists at the cited location
+- Update line numbers to current code
+- Add rows for: R8 (shared code), R9 (extract not invent), R10 (abstract gates)
+- Add row for ROOF_NOT_INVENTED, NO_MEP_BLEED, LANGUAGE conformity checks
+
+### 2. Verify `_inward_offset_hull` uses extracted data
+- Check: does `_inward_offset_hull` rely on invented geometry or extracted vertices?
+- If it computes synthetic points not in the mesh → flag for replacement with `section_cut`
+- If all points trace to actual mesh boundaries → acceptable under R9
+
+### 3. Verify no concrete per-feature conformity checks
+- `grep` test_conformity.py for check function names
+- All must be abstract (ROOF_NOT_INVENTED, NO_MEP_BLEED, LANGUAGE, etc.)
+- None should be feature-specific (no ROOF_THICKNESS, ROOF_NO_ENDCAP, etc.)
+
+## Verification
+
+- [ ] `internal/2DSpecToCode.md` line refs current
+- [ ] R8, R9, R10 rows present in SpecToCode
+- [ ] ROOF_NOT_INVENTED, NO_MEP_BLEED, LANGUAGE rows present in SpecToCode
+- [ ] `python3 test_conformity.py --db ../input/SH_extracted.db` → exit 0
+- [ ] `python3 test_conformity.py --db ../input/DX_extracted.db` → exit 0
+
+## Session closeout
+- Commit: `[2D_016] SpecToCode re-audit + R8-R10 traceability`
+- Append findings after `# DONE`
