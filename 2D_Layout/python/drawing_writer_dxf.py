@@ -331,7 +331,7 @@ def _new_doc(tpl: dict, scale: int = SCALE) -> ezdxf.document.Drawing:
 
     # §23 P0b: Tag symbol BLOCKs extracted from Bonsai bim/data/assets/symbols.svg
     # Each block is at unit scale (radius=1); scale at insertion via xscale/yscale.
-    _lw_sym = int(0.25 * 100)  # 0.25mm stroke from Bonsai symbols
+    _lw_sym = int(0.25 * 100)  # R5-ALLOW: Bonsai SVG block stroke — no template key yet
 
     # DOOR_TAG: circle r=1, horizontal divider, two text zones (Bonsai id="door-tag")
     blk = doc.blocks.new(name='DOOR_TAG')
@@ -634,8 +634,8 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
 
     # Line weights for title block — thin for minor rows, medium for required rows
     lw_tb      = _lw(tpl, 'dimension_line')   # 0.18mm — minor separators
-    lw_tb_med  = int(0.35 * 100)              # 0.35mm — section breaks
-    lw_tb_bold = int(0.50 * 100)              # 0.50mm — outer frame / required row caps
+    lw_tb_med  = int(0.35 * 100)  # R5-ALLOW: title block section break — no template key yet
+    lw_tb_bold = int(0.50 * 100)  # R5-ALLOW: title block outer frame — no template key yet
 
     # Title block layout from template
     title_block = tpl.get('title_block', {})

@@ -15,6 +15,40 @@ import sys, os, json, re
 import ezdxf
 
 # ─────────────────────────────────────────────────────────────────
+# R5 STATIC CHECK — §1 R5: no hardcoded symbol geometry
+# ─────────────────────────────────────────────────────────────────
+_WRITER_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            'drawing_writer_dxf.py')
+
+# Patterns that indicate hardcoded geometry (not unit conversions)
+_R5_PATTERNS = [
+    re.compile(r'int\([0-9]+\.[0-9]+ \* 100\)'),   # int(N.N * 100)
+    re.compile(r'= [0-9]+\.[0-9]+ \* scale'),       # = N.N * scale
+]
+
+def check_r5_no_hardcode():
+    """R5: drawing_writer_dxf.py must not contain unapproved hardcoded geometry.
+    Violations = lines matching geometry patterns that lack .get( (template read)
+    and lack # R5-ALLOW: (documented exception).
+    Returns (ok: bool, violations: list[str]).
+    """
+    violations = []
+    with open(_WRITER_PATH) as f:
+        for lineno, line in enumerate(f, 1):
+            stripped = line.rstrip()
+            # Skip template-driven reads (contain .get()
+            if '.get(' in stripped:
+                continue
+            # Skip approved exceptions
+            if 'R5-ALLOW:' in stripped:
+                continue
+            for pat in _R5_PATTERNS:
+                if pat.search(stripped):
+                    violations.append(f"L{lineno}: {stripped.strip()}")
+                    break
+    return len(violations) == 0, violations
+
+# ─────────────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────────────
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -546,6 +580,20 @@ def main():
         _log("[STOP] Process halted. Run drawing_writer_dxf.py --all --proof first.")
         _write_log()
         print("[FAIL] No DXF files found. See conformity_log.txt", file=sys.stderr)
+        return 1
+
+    # ── Pre-flight: R5 static source check ──
+    r5_ok, r5_violations = check_r5_no_hardcode()
+    if r5_ok:
+        _log(f"[PASS] R5_NO_HARDCODE: 0 unapproved hardcoded geometry values")
+    else:
+        _log(f"[FAIL] R5_NO_HARDCODE: {len(r5_violations)} unapproved hardcoded values:")
+        for v in r5_violations:
+            _log(f"  {v}")
+        _log("[STOP] Fix hardcoded geometry before checking DXF output.")
+        _write_log()
+        print(f"[FAIL] R5: {len(r5_violations)} hardcoded values — see conformity_log.txt",
+              file=sys.stderr)
         return 1
 
     _log(f"Conformity Gate — checking {len(dxf_files)} DXF files")
