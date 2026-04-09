@@ -585,18 +585,25 @@ def check_roof_outline_not_invented(sheet, entities, dt, db_path):
         return _pass(sheet, 'ROOF_NOT_INVENTED', 'no A-ROOF LWPOLYLINE — skip')
 
     rect_count = 0
+    non_rect_count = 0
     for poly in roof_polys:
         pts = list(poly.get_points('xy'))
         if _is_rect_aligned(pts):
             rect_count += 1
+        else:
+            non_rect_count += 1
 
-    if rect_count > 0:
+    # If at least one non-rectangular polyline exists on A-ROOF, the mesh
+    # hull was used — a rectangular outer hull is legitimate (barrel vault).
+    # Only fail when ALL polylines are rectangles (pure bbox invention).
+    if rect_count > 0 and non_rect_count == 0:
         return _fail(sheet, 'ROOF_NOT_INVENTED',
                      f'non-rectangular outline (roof has {max_verts} mesh vertices)',
                      f'{rect_count} bbox rectangle(s) on A-ROOF — end caps are invented')
 
     return _pass(sheet, 'ROOF_NOT_INVENTED',
-                 f'roof outline is non-rectangular (vertex_count={max_verts})')
+                 f'roof outline: {non_rect_count} mesh-hull + {rect_count} rect '
+                 f'(vertex_count={max_verts})')
 
 
 # ── I-11: MEP bleed check ──

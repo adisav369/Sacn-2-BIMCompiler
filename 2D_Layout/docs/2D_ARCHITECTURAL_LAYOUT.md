@@ -90,6 +90,14 @@ template, so the coder can verify from logs alone what was drawn.
 reference. Any new output (DXF or SVG) must match the archive in content and
 layout. Tests enforce this.
 
+**R7 — Reuse shared abstract code.** Thickness rendering (wall section-cut,
+roof cross-section), hull projection, hatch fill, and other geometric
+primitives must be shared helper functions. Coder must not write custom
+geometry for each new request. If a new function duplicates >5 lines of an
+existing function, refactor into a shared helper. This prevents drift between
+views that render the same concept (e.g. wall thickness on floor plan vs
+roof thickness on roof plan).
+
 **R7 — Code logs forensically.** Every derivation is logged. If a line appears
 in the output, the log shows where it came from. No external checking needed.
 
@@ -524,7 +532,8 @@ per §5.0 universal/conditional tables and is not repeated per view.
 | Property | Source |
 |----------|--------|
 | Bay grids | Same as floor plan (§4.4) — dash-dot, bubbles, labels |
-| Roof outline | DB: roof slab bounding box (see §5.3a for detection rule) |
+| Roof outline (outer) | DB: XY convex hull of `base_geometries.vertices` for IfcRoof (see §5.3a). Thickness from mesh edge Z-span → `_inward_offset_hull` (§1 R7 shared). **Extract, validate, draw — never invent.** |
+| Roof outline (inner) | DB: outer hull offset inward by measured slab thickness. Same `_inward_offset_hull` used by wall section-cut. Log thickness: `§DATA thickness=N.NNNm` |
 | Ridge line | DB: maxZ line of roof slabs (dashed, style from template `line_styles.ridge_line`). Omit for flat roofs (§5.3b). |
 | Slope arrows | DB: evenly spaced along each slope, direction from ridge toward eave, count = one per grid bay. Omit for flat roofs. |
 | Eave overhang | DB: roof edge - wall face (dimension value). Omit for flat roofs (no overhang). |
@@ -1935,7 +1944,7 @@ Tracked against TBKLTN WD-1/01 reference and `layout_audit.txt`.
 | I-02 | DX_FLOOR: room label overlap BEDROOM↔LIVING ROOM (duplex mirror) | Medium | Post-process: dedup same-label centroids within 2m |
 | I-03 | DX upper floor (Level 2) missing entirely from A-01 | High | §E: storey_filter param + `cut_height = storey_bottom + 1.2` |
 | I-04 | ~~MEP segments not drawn~~ | ~~Medium~~ | **DONE** 2D_012 §17.3 — 407 segments rendered on DX M-01 |
-| I-05 | Stale `FLOOR_*` / `FRONT_*` files (1201 ts) pollute audit | Low | Delete or move to archive; pruner doesn't clean old prefix format |
+| I-05 | ~~Stale `FLOOR_*` / `FRONT_*` files (1201 ts) pollute audit~~ | ~~Low~~ | **DONE** 2D_015 — old unprefixed files removed, 2-version retention rule |
 | I-06 | ~~Language: Malay field labels~~ | ~~Medium~~ | **DONE** 2D_012 §14.1 — `_FIELD_LABEL_EN` mapping, LANGUAGE conformity check |
 | I-07 | JKR logo not in title block header | Low | §14.2 jkr.png insertion |
 | I-08 | `fan.png` exists in `input/` but never used by code | Low | §14.3 fan symbol on E-01 electrical page |
@@ -1945,6 +1954,8 @@ Tracked against TBKLTN WD-1/01 reference and `layout_audit.txt`.
 | I-12 | **MEP template gap:** `drawing_template.json` has zero MEP keys — no symbol definitions, no line weights, no legend template, no discipline classification rules. All MEP rendering uses hardcoded values in `_draw_mep_symbol()` and `_classify_mep()`. Must add `mep` section to template. | High | §17 |
 | I-13 | **MEP page has no discernible symbols or legend:** DX M-01 renders 10 circles+dots (all identical) and 407 thin lines (all identical). No way to distinguish water closet from basin from shower. No icon differentiation, no label, no grouped legend with QTY. | High | §17.6 MEP legend |
 | I-14 | **Hardcoded symbols in code (violates R5):** North arrow triangle vertices, slope arrow geometry, dimension tick angles, MEP circle+cross, grid bubble radius — all inline in code instead of read from template/2D.db. Coder cannot detect wrong symbols from logs because no `§VALUE` is emitted for symbol parameters. Must refactor all symbol geometry to template keys. Log must report what was read. | High | §1 R5 |
+| I-15 | ~~**Curved roof: mesh hull + thickness.**~~ SH IfcRoof (197 vertices) now drawn from `_mesh_hulls` (extract) + `_inward_offset_hull` (§1 R7 shared thickness). Conformity: `ROOF_NOT_INVENTED` checks no pure-bbox when mesh is curved. | ~~High~~ | **DONE** 2D_015 — `_mesh_hulls`, `_inward_offset_hull` |
+| I-16 | **R6: Reuse shared abstract code.** Coder must not write custom geometry for each request. Thickness (wall section, roof cross-section), hull projection, hatch fill — all must call shared helpers. Gate: code review — if a new function duplicates >5 lines of an existing function, FAIL. | Medium | §1 R6 |
 
 ### 18.2 Deferred (spec written, not started)
 

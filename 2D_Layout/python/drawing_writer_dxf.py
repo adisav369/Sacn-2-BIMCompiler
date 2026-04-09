@@ -163,6 +163,57 @@ def _build_layers(tpl: dict) -> list:
     ]
 
 
+def _inward_offset_hull(hull, thickness_m):
+    """§1 R7: Shared cross-section thickness — inward-offset a convex hull.
+    Used by wall section-cut (floor plan) and roof slab (roof plan).
+
+    hull: list of (x, y) CCW-ordered convex hull points (world metres).
+    thickness_m: inward offset distance in metres.
+    Returns: list of (x, y) points forming the inner boundary, or [] if
+    the offset collapses (thickness ≥ half the smallest dimension).
+    """
+    import math as _m
+    n = len(hull)
+    if n < 3 or thickness_m <= 0:
+        return list(hull)
+
+    # Compute inward-offset edges (each edge shifted inward by thickness)
+    edges = []  # list of (px, py, nx, ny) — point on offset line + normal
+    for i in range(n):
+        x0, y0 = hull[i]
+        x1, y1 = hull[(i + 1) % n]
+        dx, dy = x1 - x0, y1 - y0
+        length = _m.hypot(dx, dy)
+        if length < 1e-9:
+            continue
+        # Inward normal for CCW hull: rotate edge 90° clockwise
+        nx, ny = dy / length, -dx / length
+        # Offset point
+        edges.append((x0 + nx * thickness_m, y0 + ny * thickness_m,
+                       x1 + nx * thickness_m, y1 + ny * thickness_m))
+
+    if len(edges) < 3:
+        return []
+
+    # Intersect consecutive offset edges to get inner hull vertices
+    inner = []
+    for i in range(len(edges)):
+        ax0, ay0, ax1, ay1 = edges[i]
+        bx0, by0, bx1, by1 = edges[(i + 1) % len(edges)]
+        # Line-line intersection
+        dax, day = ax1 - ax0, ay1 - ay0
+        dbx, dby = bx1 - bx0, by1 - by0
+        denom = dax * dby - day * dbx
+        if abs(denom) < 1e-12:
+            continue  # parallel edges — skip
+        t = ((bx0 - ax0) * dby - (by0 - ay0) * dbx) / denom
+        ix = ax0 + t * dax
+        iy = ay0 + t * day
+        inner.append((ix, iy))
+
+    return inner if len(inner) >= 3 else []
+
+
 def _hexagon_pts(cx: float, cy: float, r: float) -> list:
     """Return 6 vertices of a flat-top hexagon centered at (cx, cy) with radius r.
     Spec §7.3: annotation_tags.shape = 'hexagon'. Matches archive SVG hexagons."""
@@ -695,6 +746,62 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
     header = title_block.get('header', '')
     if header:
         hy = by1 - jkr_zone / 2
+
+        # §14.2: JKR logo in header zone (left side, text shifts right)
+        logo_file = title_block.get('logo_file', 'jkr.png')
+        logo_w_mm = title_block.get('logo_width_mm', 15.0)
+        logo_h_mm = title_block.get('logo_height_mm', 12.0)
+        logo_w = logo_w_mm * scale
+        logo_h = logo_h_mm * scale
+        logo_gap = title_block.get('logo_gap_mm', 2.0) * scale
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 '..', 'input', logo_file)
+        logo_inserted = False
+        if os.path.exists(logo_path):
+            try:
+                from PIL import Image as _PILImage
+                _pil_img = _PILImage.open(logo_path)
+                _px_w, _px_h = _pil_img.size
+                _pil_img.close()
+                image_def = doc.add_image_def(logo_path,
+                                              size_in_pixel=(_px_w, _px_h))
+                logo_x = tb_left + logo_gap
+                logo_y = hy - logo_h / 2
+                msp.add_image(insert=(logo_x, logo_y),
+                              size_in_units=(logo_w, logo_h),
+                              image_def=image_def,
+                              dxfattribs={'layer': 'A-TTLB'})
+                logo_inserted = True
+                _log(f"§RENDER TITLE_BLOCK jkr_logo inserted "
+                     f"w={logo_w_mm}mm h={logo_h_mm}mm src=template.title_block.logo_file")
+            except Exception as _img_err:
+                _log(f"§WARN JKR logo raster insert failed ({_img_err}); "
+                     f"using placeholder — manual step required")
+        else:
+            _log(f"§WARN JKR logo file not found: {logo_path}; skipping logo")
+
+        if not logo_inserted and os.path.exists(logo_path):
+            # Fallback: placeholder rectangle + "JKR LOGO" text
+            _pl_x0 = tb_left + logo_gap
+            _pl_y0 = hy - logo_h / 2
+            _pl_pts = [(_pl_x0, _pl_y0), (_pl_x0 + logo_w, _pl_y0),
+                       (_pl_x0 + logo_w, _pl_y0 + logo_h), (_pl_x0, _pl_y0 + logo_h)]
+            msp.add_lwpolyline(_pl_pts, close=True,
+                               dxfattribs={'layer': 'A-TTLB', 'lineweight': lw_tb})
+            msp.add_text('JKR LOGO',
+                         dxfattribs={'layer': 'A-TTLB', 'height': lbl_h}
+                         ).set_placement((_pl_x0 + logo_w / 2, hy),
+                                         align=TextEntityAlignment.MIDDLE_CENTER)
+            logo_inserted = True
+            _log(f"§RENDER TITLE_BLOCK jkr_logo placeholder "
+                 f"w={logo_w_mm}mm h={logo_h_mm}mm src=template.title_block.logo_file")
+
+        # §14.2: Shift header text right if logo was placed
+        text_cx = hx
+        if logo_inserted:
+            text_left = tb_left + logo_gap + logo_w + logo_gap
+            text_cx = (text_left + bx1) / 2
+
         # Two lines if header contains whitespace — split at natural break
         words = header.split()
         if len(words) > 3:
@@ -703,16 +810,16 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
             line2 = ' '.join(words[mid:])
             msp.add_text(line1,
                          dxfattribs={'layer': 'A-TTLB', 'height': hdr_h}
-                         ).set_placement((hx, hy + hdr_h * 0.5),
+                         ).set_placement((text_cx, hy + hdr_h * 0.5),
                                          align=TextEntityAlignment.MIDDLE_CENTER)
             msp.add_text(line2,
                          dxfattribs={'layer': 'A-TTLB', 'height': hdr_h}
-                         ).set_placement((hx, hy - hdr_h * 0.5),
+                         ).set_placement((text_cx, hy - hdr_h * 0.5),
                                          align=TextEntityAlignment.MIDDLE_CENTER)
         else:
             msp.add_text(header,
                          dxfattribs={'layer': 'A-TTLB', 'height': hdr_h}
-                         ).set_placement((hx, hy), align=TextEntityAlignment.MIDDLE_CENTER)
+                         ).set_placement((text_cx, hy), align=TextEntityAlignment.MIDDLE_CENTER)
         # Thick line under JKR header (above identity block or schedule)
         msp.add_line((tb_left, by1 - jkr_zone),
                      (bx1,     by1 - jkr_zone),
@@ -816,6 +923,12 @@ def _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y
         # §14.1: SCALE field shows "1:N" format
         if field['key'] == 'UKURAN':
             value = f'1:{scale}'
+        # §I-10: PINDAAN_NO (revision) — default "0" if no value from DB
+        if field['key'] == 'PINDAAN_NO':
+            if not value:
+                value = '0'
+            _log(f"§RENDER TITLE_BLOCK pindaan_no value={value} "
+                 f"src=2d_title_block.default_value")
         if value:
             value_x = div_x + (tb_w * (1 - label_ratio)) / 2
             msp.add_text(value,
@@ -1681,6 +1794,7 @@ def _write_log(out_dir: str):
         summary.append(f"RESULT: {fails} FAIL / {passes} PASS out of {n_pages} pages — inspect FAIL views")
     summary.append("")
     summary.append("CHECK PROBLEMS SECTION §18.1 IF LOGS PASSED THEM")
+    summary.append("REMOVE 2 VERSIONS OLDER OUTPUT")
 
     with open(log_path, 'w') as f:
         f.write(f"DXF Diagnostic — {stamp}\n")
@@ -2609,6 +2723,68 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
 
 
 # ─────────────────────────────────────────────────────────────────
+# ROOF MESH HULL — §5.3, §1 R1 (no invention)
+# ─────────────────────────────────────────────────────────────────
+
+def _mesh_hulls(db_path, ifc_class):
+    """§1 R7: Shared mesh-to-hull extraction for any element type.
+    Returns (outer_hull, inner_hull, thickness_m).
+    outer_hull: XY convex hull of all mesh vertices.
+    inner_hull: outer_hull offset inward by slab thickness (§1 R7 shared code).
+    thickness_m: measured from mesh edge Z-range at boundary vertices.
+    """
+    conn = sqlite3.connect(db_path)
+    rows = conn.execute("""
+        SELECT bg.vertices, bg.vertex_count
+        FROM elements_meta m
+        JOIN element_instances ei ON m.guid = ei.guid
+        JOIN base_geometries bg   ON ei.geometry_hash = bg.geometry_hash
+        WHERE m.ifc_class = ?
+    """, (ifc_class,)).fetchall()
+    conn.close()
+
+    all_verts = []
+    for vert_blob, vertex_count in rows:
+        if vert_blob is None:
+            continue
+        verts = parse_vertices_blob(vert_blob, vertex_count)
+        all_verts.append(verts)
+
+    if not all_verts:
+        _log(f"§DATA {ifc_class} mesh: 0 vertices — no mesh data")
+        return ([], [], 0.0)
+
+    import numpy as np
+    combined = np.concatenate(all_verts)
+    all_xy = [(float(x), float(y)) for x, y in combined[:, :2]]
+    outer_hull = _convex_hull_2d(all_xy)
+
+    if len(outer_hull) < 3:
+        return ([], [], 0.0)
+
+    # Measure slab thickness from boundary vertex Z-range
+    # At each hull edge midpoint, find nearby vertices and measure Z span
+    thicknesses = []
+    for verts in all_verts:
+        y_min, y_max = float(verts[:, 1].min()), float(verts[:, 1].max())
+        x_min, x_max = float(verts[:, 0].min()), float(verts[:, 0].max())
+        for edge_val, axis in [(y_min, 1), (y_max, 1), (x_min, 0), (x_max, 0)]:
+            edge_verts = verts[abs(verts[:, axis] - edge_val) < 0.01]
+            if len(edge_verts) >= 2:
+                z_span = float(edge_verts[:, 2].max() - edge_verts[:, 2].min())
+                if z_span > 0.01:
+                    thicknesses.append(z_span)
+
+    thickness_m = min(thicknesses) if thicknesses else 0.0
+    inner_hull = _inward_offset_hull(outer_hull, thickness_m) if thickness_m > 0.01 else []
+
+    n_verts = len(all_xy)
+    _log(f"§DATA {ifc_class} mesh: {n_verts} vertices, thickness={thickness_m:.3f}m")
+    _log(f"§DATA outer hull: {len(outer_hull)} pts, inner hull: {len(inner_hull)} pts")
+    return (outer_hull, inner_hull, thickness_m)
+
+
+# ─────────────────────────────────────────────────────────────────
 # ROOF PLAN — §5.3, §9.6 R4
 # ─────────────────────────────────────────────────────────────────
 
@@ -2677,11 +2853,22 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     msp.add_lwpolyline(bf_pts, close=True,
                        dxfattribs={'layer': 'A-GRID', 'lineweight': lw_grid})
 
-    # ── Roof outline (bold) ──
-    ro_pts = [(_mh(roof_min_x), _mh(roof_min_y)), (_mh(roof_max_x), _mh(roof_min_y)),
-              (_mh(roof_max_x), _mh(roof_max_y)), (_mh(roof_min_x), _mh(roof_max_y))]
-    msp.add_lwpolyline(ro_pts, close=True,
-                       dxfattribs={'layer': 'A-ROOF', 'lineweight': lw_wall})
+    # ── Roof outline: mesh hull (§1 R1 — no bbox invention, §1 R7 shared) ──
+    outer_hull, inner_hull, _thickness = _mesh_hulls(db_path, 'IfcRoof')
+    if len(outer_hull) >= 3:
+        outer_pts = [(_mh(x), _mh(y)) for x, y in outer_hull]
+        msp.add_lwpolyline(outer_pts, close=True,
+                           dxfattribs={'layer': 'A-ROOF', 'lineweight': lw_wall})
+        _log(f"§RENDER ROOF_OUTER hull={len(outer_pts)} pts src=base_geometries.vertices")
+    else:
+        # Fallback: only if no mesh data at all (not an excuse to invent)
+        _log("§WARN ROOF_OUTER no mesh data — skipping outline (R1: no invention)")
+
+    if len(inner_hull) >= 3:
+        inner_pts = [(_mh(x), _mh(y)) for x, y in inner_hull]
+        msp.add_lwpolyline(inner_pts, close=True,
+                           dxfattribs={'layer': 'A-ROOF', 'lineweight': lw_part})
+        _log(f"§RENDER ROOF_INNER hull={len(inner_pts)} pts src=base_geometries.vertices")
 
     db_levels = _read_2d_db_levels()
 
