@@ -391,14 +391,21 @@ def section_cut(db_path, cut_z=None, storey_name=None):
     results = []
 
     # CUT elements: load meshes and slice
+    # LEFT JOIN element_transforms to get element origin (center) in world space.
+    # Mesh vertices are in LOCAL element space; world = local + center.
+    # Slice must be done in LOCAL space: local_cut_z = world_cut_z - center_z.
+    # XY contour points must then be translated to world space: + center_xy.
     cut_query = """
         SELECT m.guid, m.ifc_class, m.element_name, m.storey,
                bg.vertices, bg.faces, bg.vertex_count, bg.face_count,
-               r.minX, r.maxX, r.minY, r.maxY
+               r.minX, r.maxX, r.minY, r.maxY,
+               COALESCE(et.center_x, 0.0), COALESCE(et.center_y, 0.0),
+               COALESCE(et.center_z, 0.0)
         FROM elements_meta m
         JOIN element_instances ei ON m.guid = ei.guid
         JOIN base_geometries bg ON ei.geometry_hash = bg.geometry_hash
         JOIN elements_rtree r ON m.id = r.id
+        LEFT JOIN element_transforms et ON m.guid = et.guid
         WHERE r.minZ < :cut_z AND r.maxZ > :cut_z
     """
     cut_rows = conn.execute(cut_query, {"cut_z": cut_z}).fetchall()
@@ -409,6 +416,7 @@ def section_cut(db_path, cut_z=None, storey_name=None):
         vert_blob, face_blob = row[4], row[5]
         vertex_count, face_count = row[6], row[7]
         minX, maxX, minY, maxY = row[8], row[9], row[10], row[11]
+        cx, cy, cz = float(row[12]), float(row[13]), float(row[14])
 
         if vert_blob is None or face_blob is None:
             continue
@@ -416,7 +424,9 @@ def section_cut(db_path, cut_z=None, storey_name=None):
         vertices = parse_vertices_blob(vert_blob, vertex_count)
         faces = parse_faces_blob(face_blob, face_count)
 
-        segments = slice_mesh(vertices, faces, cut_z)
+        # Convert world cut_z → local cut_z for this element's coordinate frame
+        local_cut_z = cut_z - cz
+        segments = slice_mesh(vertices, faces, local_cut_z)
 
         contours = []
         if len(segments) > 0:
@@ -427,7 +437,8 @@ def section_cut(db_path, cut_z=None, storey_name=None):
                 if len(chain) < 4 or abs(area) < 1e-6:
                     continue
                 is_outer = area > 0
-                pts = [(float(p[0]), float(p[1])) for p in chain]
+                # Translate local XY → world XY by adding element center
+                pts = [(float(p[0]) + cx, float(p[1]) + cy) for p in chain]
                 contours.append(SectionContour(points=pts, is_outer=is_outer))
 
         elem = ElementSection(

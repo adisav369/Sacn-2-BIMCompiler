@@ -1789,12 +1789,24 @@ def _write_log(out_dir: str):
         summary.append(f"  [{tag}] {view}: {detail}")
     summary.append("")
     if fails == 0:
-        summary.append(f"RESULT: ALL {passes}/{n_pages} VIEWS PASS — no visual inspection needed")
+        summary.append(f"RESULT: ALL {passes}/{n_pages} VIEWS PASS — spec tests passed")
     else:
-        summary.append(f"RESULT: {fails} FAIL / {passes} PASS out of {n_pages} pages — inspect FAIL views")
-    summary.append("")
-    summary.append("CHECK PROBLEMS SECTION §18.1 IF LOGS PASSED THEM")
-    summary.append("REMOVE 2 VERSIONS OLDER OUTPUT")
+        summary.append(f"RESULT: {fails} FAIL / {passes} PASS out of {n_pages} pages — fix failures first")
+    summary.append("  !! STILL OPEN: inspect SVG/DXF visually — tests prove spec compliance, NOT visual correctness !!")
+    summary.append("  !! Problems visible in SVG but not caught by tests must be added to OPEN_ISSUES.txt !!")
+    summary.append("SCRIPT AUTO-DELETED OLDER GENERATIONS — only 2 kept per view (DXF + SVG)")
+
+    # Permanent open issues — printed every run until the file is empty
+    _issues_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                'OPEN_ISSUES.txt')
+    if os.path.exists(_issues_path):
+        with open(_issues_path) as _f:
+            issues = [l.rstrip() for l in _f if l.strip() and not l.startswith('#')]
+        if issues:
+            summary.append("")
+            summary.append("!! OPEN ISSUES — still unresolved (edit OPEN_ISSUES.txt to clear) !!")
+            for iss in issues:
+                summary.append(f"  {iss}")
 
     with open(log_path, 'w') as f:
         f.write(f"DXF Diagnostic — {stamp}\n")
@@ -1814,15 +1826,44 @@ def _write_log(out_dir: str):
 # FLOOR PLAN
 # ─────────────────────────────────────────────────────────────────
 
-def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
+_STOREY_CODES = ['GF', 'FF', '2F', '3F', '4F', '5F']
+
+
+def _detect_floor_storeys(db_path: str) -> list:
+    """Return [(name, floor_z)] for habitable storeys sorted by elevation.
+
+    Excludes Roof, T/FDN and any storey that contains only structural elements
+    (no walls/doors/windows/furniture). Spec §E storey_filter.
+    """
+    conn = sqlite3.connect(db_path)
+    rows = conn.execute("""
+        SELECT m.storey, MIN(r.minZ) AS floor_z
+        FROM elements_meta m
+        JOIN elements_rtree r ON m.id = r.id
+        WHERE m.storey IS NOT NULL
+          AND m.ifc_class IN ('IfcWall', 'IfcWallStandardCase', 'IfcPlate',
+                               'IfcDoor', 'IfcWindow', 'IfcFurnishingElement')
+        GROUP BY m.storey
+        ORDER BY floor_z
+    """).fetchall()
+    conn.close()
+    # Exclude storeys whose name suggests non-habitable levels
+    excluded = {'Roof', 'T/FDN', 'Unknown'}
+    return [(r[0], float(r[1])) for r in rows if r[0] not in excluded]
+
+
+def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE,
+                         storey_name: str = None, storey_floor_z: float = 0.0):
     """Generate floor plan DXF from compiled output.db.
 
     Coordinates in model-space mm (no PAPER_FACTOR).
     Spec: 2D_ARCHITECTURAL_LAYOUT.md §5.1, §2 Process
     """
-    # §16.2: start per-view log
-    _start_view_log('FLOOR')
-    _log(f"§ENTRY write_floor_plan_dxf(db_path={db_path}, out_dxf={out_dxf}, scale={scale})")
+    # §16.2: start per-view log (storey suffix for multi-storey buildings)
+    _suf = ('_' + storey_name.replace(' ', '').replace('/', '')) if storey_name else ''
+    _start_view_log(f'FLOOR{_suf}')
+    _log(f"§ENTRY write_floor_plan_dxf(db_path={db_path}, out_dxf={out_dxf}, scale={scale}, "
+         f"storey_name={storey_name!r}, storey_floor_z={storey_floor_z})")
 
     # ── §2 Step 1: LOAD TEMPLATE ──
     tpl = _load_template()
@@ -1847,7 +1888,7 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     _log(f"§VALUE bubble_r={tpl_grid.get('bubble_radius_mm', 4.0)}mm (from template.grid.bubble_radius_mm)")
     _log(f"§VALUE tier1_offset={tpl_dims.get('tier_1_offset_mm', 12)}mm (from template.dimensions.tier_1_offset_mm)")
     _log(f"§VALUE tier2_offset={tpl_dims.get('tier_2_offset_mm', 6)}mm (from template.dimensions.tier_2_offset_mm)")
-    _log(f"§VALUE cut_z=1.2m (hardcoded per §5.1a)")
+    _log(f"§VALUE cut_z={storey_floor_z + 1.2:.2f}m (floor_z={storey_floor_z:.2f}m + 1.2m per §5.1a)")
     _log(f"§VALUE crowding_threshold={tpl_grid.get('crowding_threshold_mm', 15.0)}mm (from template.grid.crowding_threshold_mm)")
 
     # Line weights from template §1 R4
@@ -1880,6 +1921,19 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     _log(f"§2.2 DB loaded: {len(walls)} walls, {len(doors)} doors, "
          f"{len(windows)} windows, {len(furniture)} furniture, {len(columns)} columns")
 
+    # §E storey_filter: restrict elements to target storey when generating per-storey plans
+    if storey_name:
+        def _is_target_storey(e):
+            return not e.storey or e.storey == storey_name
+        walls     = [e for e in walls     if _is_target_storey(e)]
+        doors     = [e for e in doors     if _is_target_storey(e)]
+        windows   = [e for e in windows   if _is_target_storey(e)]
+        furniture = [e for e in furniture if _is_target_storey(e)]
+        columns   = [e for e in columns   if _is_target_storey(e)]
+        _log(f"§STOREY_FILTER storey={storey_name!r}: {len(walls)} walls, "
+             f"{len(doors)} doors, {len(windows)} windows, "
+             f"{len(furniture)} furniture after filter")
+
     if not walls:
         print("No walls — skipping floor plan DXF", file=sys.stderr)
         return
@@ -1897,12 +1951,18 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     n_bimsrc_wall = n_bimsrc_grid = n_bimsrc_dim = n_bimsrc_room = 0
 
     # ── §2 Step 5: SECTION CUT ──
-    cut_z = 1.2  # spec §5.1: storey_elevation + 1.2m (ground = 0.0)
+    cut_z = storey_floor_z + 1.2  # spec §5.1: storey_elevation + 1.2m
     cut_results = run_section_cut(db_path, cut_z=cut_z)
+    # §E storey_filter: after section cut, filter results to target storey
+    # (prevents Level 1 walls — which straddle a Level 2 cut_z — appearing on Level 2 plan)
+    if storey_name:
+        cut_results = [es for es in cut_results
+                       if not es.storey or es.storey == storey_name]
     n_cut   = sum(1 for es in cut_results if es.category == 'CUT')
     n_below = sum(1 for es in cut_results if es.category == 'BELOW')
     n_above = sum(1 for es in cut_results if es.category == 'ABOVE')
-    _log(f"§2.5 Section cut Z={cut_z}m: {n_cut} CUT, {n_below} BELOW, {n_above} ABOVE")
+    _log(f"§2.5 Section cut Z={cut_z:.2f}m storey={storey_name or 'all'}: "
+         f"{n_cut} CUT, {n_below} BELOW, {n_above} ABOVE")
 
     # §23 P0a: material lookup for hatch patterns
     _mat_conn = sqlite3.connect(db_path)
@@ -2273,7 +2333,7 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
     tag_txt_h = txt_tag * scale
 
     d_num = 0
-    for opening in elements['doors']:
+    for opening in doors:
         host = find_host_wall(opening, walls)
         if not host:
             continue
@@ -2297,7 +2357,7 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
         tag_count += 1
 
     w_num = 0
-    for opening in elements['windows']:
+    for opening in windows:
         host = find_host_wall(opening, walls)
         if not host:
             continue
@@ -2321,7 +2381,9 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
         tag_count += 1
 
     # ── §2 Step 7: RENDER sheet layout ──
-    schedule = _build_schedule(elements)
+    schedule = _build_schedule({**elements,
+                                'doors': doors, 'windows': windows,
+                                'walls': walls, 'furniture': furniture})
     bld_type, bld_name = _infer_building_identity(db_path)
     _draw_sheet_layout(doc, msp, tpl, bld_min_x, bld_max_x, bld_min_y, bld_max_y,
                        drawing_title='FLOOR PLAN', drawing_no='A-01',
@@ -2338,6 +2400,42 @@ def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
          f"{dim_count} dims, {room_count} rooms, {tag_count} tags")
     _log(f"§EXIT write_floor_plan_dxf: {cut_count} walls, {dim_count} dims, "
          f"{room_count} rooms, {tag_count} tags")
+    # §R7 bounds check — every entity in modelspace, report min/max, warn if outside viewBox
+    _all_x, _all_y = [], []
+    for _e in msp:
+        try:
+            if hasattr(_e.dxf, 'insert'):
+                _all_x.append(_e.dxf.insert.x); _all_y.append(_e.dxf.insert.y)
+            elif hasattr(_e.dxf, 'start'):
+                _all_x += [_e.dxf.start.x, _e.dxf.end.x]
+                _all_y += [_e.dxf.start.y, _e.dxf.end.y]
+            elif hasattr(_e.dxf, 'center'):
+                _all_x.append(_e.dxf.center.x); _all_y.append(_e.dxf.center.y)
+        except Exception:
+            pass
+    if _all_x:
+        _bx0, _bx1 = min(_all_x) / scale, max(_all_x) / scale
+        _by0, _by1 = min(_all_y) / scale, max(_all_y) / scale
+        _pw = tpl_paper.get('width_mm', 420)  # paper mm
+        if tpl_paper.get('fitted', True):
+            _bld_h_mm = (bld_max_y - bld_min_y) / scale
+            _ann_top = (tpl_grid.get('extend_beyond_building_mm', 20)
+                        + tpl_grid.get('bubble_radius_mm', 4.0) * 2
+                        + tpl_dims.get('extension_gap_mm', 2.0) + 2.0)
+            _ann_bot = (tpl_grid.get('extend_beyond_building_mm', 15)
+                        + tpl_grid.get('bubble_radius_mm', 4.0) * 2)
+            _ph = (tpl_paper.get('margins', {}).get('top', 10) + _ann_top
+                   + _bld_h_mm + _ann_bot + tpl_paper.get('margins', {}).get('bottom', 10))
+            _ph = max(tpl_paper.get('fitted_min_height_mm', 150),
+                      min(tpl_paper.get('fitted_max_height_mm', 250), _ph))
+        else:
+            _ph = tpl_paper.get('height_mm', 297)
+        _warn = ' WARN: y_min outside viewBox' if _by0 < -1.0 else ''
+        _warn += ' WARN: y_max outside viewBox' if _by1 > _ph + 1.0 else ''
+        _warn += ' WARN: x_min outside viewBox' if _bx0 < -1.0 else ''
+        _warn += ' WARN: x_max outside viewBox' if _bx1 > _pw + 1.0 else ''
+        _log(f"§BOUNDS x=({_bx0:.1f},{_bx1:.1f})mm y=({_by0:.1f},{_by1:.1f})mm "
+             f"viewBox=({_pw:.1f},{_ph:.1f})mm{_warn}")
     doc.saveas(out_dxf)
     _log(f"  → {out_dxf}")
     # §16.2: flush per-view log
@@ -3210,8 +3308,10 @@ def _draw_mep_symbol(msp, cx: float, cy: float, discipline: str,
               {'shape': 'circle_dot', 'layer': 'A-MEP-PLMB'})
     shape = sym_def.get('shape', 'circle_dot')
     layer = sym_def.get('layer', 'A-MEP-PLMB')
+    inner_dot_r_factor = tpl_mep.get('inner_dot_radius_factor', 0.25)
     _log(f"§RENDER MEP_SYMBOL shape={shape} r={r/SCALE:.2f}mm layer={layer} "
          f"at ({cx:.0f},{cy:.0f}) src=template.mep.symbols.{discipline}")
+    _log(f"§VALUE mep.inner_dot_radius_factor={inner_dot_r_factor} (from template)")
     if shape == 'circle_cross':
         msp.add_circle((cx, cy), r, dxfattribs={'layer': layer, 'lineweight': lw})
         msp.add_line((cx - r, cy), (cx + r, cy),
@@ -3221,7 +3321,7 @@ def _draw_mep_symbol(msp, cx: float, cy: float, discipline: str,
     else:
         # circle_dot (default for PLUMBING and MEP)
         msp.add_circle((cx, cy), r, dxfattribs={'layer': layer, 'lineweight': lw})
-        msp.add_circle((cx, cy), r * 0.25,
+        msp.add_circle((cx, cy), r * inner_dot_r_factor,
                        dxfattribs={'layer': layer, 'lineweight': lw})
 
 
@@ -3327,11 +3427,13 @@ def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
     _log(f"§D MEP segments: {seg_count} flow segments drawn")
 
     # ── Legend in schedule rows slot — dicts matching _draw_sheet_layout format ──
+    _tpl_syms = tpl_mep.get('symbols', {})
     legend_rows = []
     for disc, names in sorted(legend_items.items()):
         legend_rows.append({'tag': '', 'size': '', 'desc': f'── {disc} ──', 'qty': ''})
         for n in sorted(names)[:8]:
-            sym = '○' if disc == 'ELECTRICAL' else '●'
+            sym = _tpl_syms.get(disc, {}).get('legend_char', '\u25cf')
+            _log(f"§VALUE mep.symbols.{disc}.legend_char={sym!r} (from template)")
             legend_rows.append({'tag': sym, 'size': '', 'desc': n, 'qty': ''})
 
     # ── Sheet layout (no door/window schedule; use MEP legend rows) ──
@@ -3491,13 +3593,16 @@ def _compare_fingerprints(current: dict, reference: dict) -> tuple:
     return matched, checks, details
 
 
-def _prune_generations(folder: str, view: str, ext: str, keep: int = 2):
-    """§9.6 R3: keep only 2 generations per view. Remove oldest."""
+def _prune_generations(folder: str, view: str, ext: str, keep: int = 2) -> int:
+    """§9.6 R3: keep only 2 generations per view. Remove oldest. Returns count deleted."""
     import glob as _glob
     pattern = os.path.join(folder, f'{view}_*.{ext}')
     files = sorted(_glob.glob(pattern))  # oldest first (timestamp sort)
+    removed = 0
     while len(files) > keep:
         os.remove(files.pop(0))
+        removed += 1
+    return removed
 
 
 def _prev_file(folder: str, view: str, ext: str) -> str:
@@ -3625,7 +3730,23 @@ def main():
         dxf_path = os.path.join(dxf_dir, f'{proj}_{short}_{ts}.dxf')
 
         if short == 'FLOOR':
-            write_floor_plan_dxf(args.db_path, dxf_path, scale=args.scale)
+            # §E: multi-storey — one floor plan per habitable storey
+            _storeys = _detect_floor_storeys(args.db_path)
+            if len(_storeys) <= 1:
+                # Single-storey building (e.g. SH): generate as before
+                write_floor_plan_dxf(args.db_path, dxf_path, scale=args.scale)
+                generated[short] = dxf_path
+            else:
+                # Multi-storey: generate FLOOR_GF, FLOOR_FF, etc.
+                for _idx, (_sname, _sz) in enumerate(_storeys):
+                    _scode = _STOREY_CODES[_idx] if _idx < len(_STOREY_CODES) else f'{_idx+1}F'
+                    _short = f'FLOOR_{_scode}'
+                    _sp = os.path.join(dxf_dir, f'{proj}_{_short}_{ts}.dxf')
+                    _log(f"§STOREY_PLAN storey={_sname!r} code={_scode} floor_z={_sz:.2f}m → {_sp}")
+                    write_floor_plan_dxf(args.db_path, _sp, scale=args.scale,
+                                         storey_name=_sname, storey_floor_z=_sz)
+                    generated[_short] = _sp
+            continue
         elif short == 'ROOF':
             write_roof_plan_dxf(args.db_path, dxf_path, scale=args.scale)
         elif ptype == 'elevation':
@@ -3654,10 +3775,18 @@ def main():
                 import traceback
                 traceback.print_exc()
 
-    # §9.6 R3: prune to 2 generations per view
+    # §9.6 R3: prune to 2 generations per view (current prefix naming)
     for short in generated:
-        _prune_generations(dxf_dir, f'{proj}_{short}', 'dxf', keep=2)
-        _prune_generations(svg_dir, f'{proj}_{short}', 'svg', keep=2)
+        removed_dxf = _prune_generations(dxf_dir, f'{proj}_{short}', 'dxf', keep=2)
+        removed_svg = _prune_generations(svg_dir, f'{proj}_{short}', 'svg', keep=2)
+        if removed_dxf or removed_svg:
+            _log(f"§PRUNE {proj}_{short}: script deleted {removed_dxf} old DXF, {removed_svg} old SVG")
+    # §9.6 R3b: also prune orphan un-prefixed files (pre-prefix naming convention)
+    for short in generated:
+        removed_dxf = _prune_generations(dxf_dir, short, 'dxf', keep=0)
+        removed_svg = _prune_generations(svg_dir, short, 'svg', keep=0)
+        if removed_dxf or removed_svg:
+            _log(f"§PRUNE orphan {short}: script deleted {removed_dxf} un-prefixed DXF, {removed_svg} un-prefixed SVG")
 
     # §9.6 R6: Visible change detection (vs previous generation)
     _log("")

@@ -1,0 +1,12 @@
+# OPEN ISSUES — single source of truth
+# Coder: cannot close session while High issues exist without Watchdog sign-off
+# Watchdog: removes a line only when a § log line in the session proves it fixed
+# Format: [severity] I-## description (spec ref)
+# Language: English only
+
+[High]   I-21  All MEP symbols (fan, switch, socket, light etc.) not sourced from IFC extraction, not stored in input DB, not placed from template. fan.png exists unused. Must extract from IFC, store in 2D.db, render from template — request user for any symbols not in IFC. (§17, §14.3)
+[High]   I-22  SH floor plan and right panel (title block, schedule) are correct and consistent. DX and other buildings do not follow the same standard — suspect extraction rules are building-specific not abstract. All buildings must use the same generic extraction path. (§3 extraction rules)
+[Medium] I-23  All buildings: dimension tier 1 and tier 2 show identical measurement when building has only one bay. Two lines, same number — redundant. Suppress tier 2 when it equals tier 1. (§6.1)
+[Medium] I-24  All buildings: dimension tick marks (45 degree) accumulate at shared endpoints when tier 1 and tier 2 lines share the same building edge. Appears as doubled marks. SH also affected. Fix: one tick per endpoint regardless of tier count. (§6.1)
+[Low]    I-07  JKR logo not in title block header. (§14.2)
+[Low]    I-10  PINDAAN NO revision row absent from title block. (§14.1)
