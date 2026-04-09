@@ -1,6 +1,5 @@
 {
   "_description": "User-editable drawing template. Modify any value to change how drawings look. The drawing writer reads this at render time. Based on JKR Malaysian / ISO 128 defaults.",
-
   "paper": {
     "size": "A3",
     "width_mm": 420,
@@ -23,59 +22,70 @@
     "border_weight_mm": 0.7,
     "scale": "1:100"
   },
-
   "line_weights": {
     "_unit": "mm (pen width on paper)",
-    "wall_exterior_cut":   0.50,
-    "wall_partition_cut":  0.35,
-    "wall_projection":     0.25,
-    "column_cut":          0.50,
-    "beam_hidden":         0.35,
-    "glass_glazing":       0.18,
-    "door_leaf":           0.25,
-    "window_frame":        0.25,
-    "furniture":           0.15,
-    "slab_cut":            0.35,
-    "dimension_line":      0.18,
-    "extension_line":      0.18,
-    "grid_line":           0.18,
-    "hatch_line":          0.13,
-    "border":              0.70
+    "wall_exterior_cut": 0.5,
+    "wall_partition_cut": 0.35,
+    "wall_projection": 0.25,
+    "column_cut": 0.5,
+    "beam_hidden": 0.35,
+    "glass_glazing": 0.18,
+    "door_leaf": 0.25,
+    "window_frame": 0.25,
+    "furniture": 0.15,
+    "slab_cut": 0.35,
+    "dimension_line": 0.18,
+    "extension_line": 0.18,
+    "grid_line": 0.18,
+    "hatch_line": 0.13,
+    "border": 0.7
   },
-
   "line_styles": {
     "_patterns": "Array of [dash, gap] in mm on paper. Empty = solid.",
-    "solid":     [],
-    "dashed":    [6, 2],
-    "dash_dot":  [4, 1, 1, 1],
-    "dotted":    [1, 1],
-    "center":    [8, 2, 2, 2],
-
-    "wall_exterior":  "solid",
-    "wall_partition":  "solid",
-    "beam_hidden":    "dashed",
-    "grid_line":      "dash_dot",
-    "furniture":      "solid",
-    "ridge_line":     "dashed",
-    "center_line":    "center"
+    "solid": [],
+    "dashed": [
+      6,
+      2
+    ],
+    "dash_dot": [
+      4,
+      1,
+      1,
+      1
+    ],
+    "dotted": [
+      1,
+      1
+    ],
+    "center": [
+      8,
+      2,
+      2,
+      2
+    ],
+    "wall_exterior": "solid",
+    "wall_partition": "solid",
+    "beam_hidden": "dashed",
+    "grid_line": "dash_dot",
+    "furniture": "solid",
+    "ridge_line": "dashed",
+    "center_line": "center"
   },
-
   "colors": {
     "_format": "Hex RGB. DXF uses ACI color index (in parentheses).",
-    "wall":         "#000000",
-    "column":       "#000000",
-    "column_fill":  "#CCCCCC",
-    "glass":        "#4488CC",
-    "furniture":    "#AAAAAA",
+    "wall": "#000000",
+    "column": "#000000",
+    "column_fill": "#CCCCCC",
+    "glass": "#4488CC",
+    "furniture": "#AAAAAA",
     "furniture_fill": "#F0F0F0",
-    "slab_fill":    "#F8F8F8",
-    "dimension":    "#000000",
-    "grid":         "#888888",
-    "label":        "#000000",
-    "title":        "#000000",
-    "scale_text":   "#888888"
+    "slab_fill": "#F8F8F8",
+    "dimension": "#000000",
+    "grid": "#888888",
+    "label": "#000000",
+    "title": "#000000",
+    "scale_text": "#888888"
   },
-
   "grid": {
     "bubble_radius_mm": 4.0,
     "bubble_stroke_mm": 0.25,
@@ -85,11 +95,10 @@
     "extend_beyond_building_mm": 20.0,
     "min_structural_bay_m": 1.0,
     "line_style": "dash_dot",
-    "vertical_axis_labels":   "A,B,C,D,E,F,G,H,J,K,L,M,N",
+    "vertical_axis_labels": "A,B,C,D,E,F,G,H,J,K,L,M,N",
     "horizontal_axis_labels": "1,2,3,4,5,6,7,8,9,10,11,12",
     "_note": "Skip letter I to avoid confusion with numeral 1"
   },
-
   "dimensions": {
     "text_height_mm": 2.5,
     "text_font": "Arial",
@@ -111,7 +120,6 @@
     "_tier_2": "Bay spacing (grid to grid)",
     "_tier_3": "Openings, wall segments, sill heights"
   },
-
   "room_labels": {
     "name_font_height_mm": 3.5,
     "name_font_weight": "normal",
@@ -121,7 +129,6 @@
     "language": "EN",
     "_note": "Room names from 2d_room_label table in 2D.db"
   },
-
   "annotation_tags": {
     "door_prefix": "D",
     "window_prefix": "W",
@@ -132,7 +139,6 @@
     "stroke_mm": 0.18,
     "_note": "Tags from 2d_annotation_tag table. Shape can be: hexagon, diamond, circle, triangle"
   },
-
   "north_arrow": {
     "shape": "triangle",
     "size_mm": 8.0,
@@ -142,7 +148,6 @@
     "fill": "#000000",
     "placement": "top_right"
   },
-
   "roof_plan": {
     "slope_arrow_head_mm": 1.5,
     "slope_arrow_aspect_ratio": 1.5,
@@ -150,63 +155,181 @@
     "drain_symbol_radius_mm": 2.0,
     "ridge_label": "RIDGE"
   },
-
   "mep": {
     "terminal_symbol_radius_mm": 2.5,
     "segment_line_weight_mm": 0.13,
     "terminal_line_weight_mm": 0.18,
     "fitting_radius_factor": 0.4,
     "controller_size_factor": 0.8,
-    "electrical_keywords": ["light", "fan", "switch", "outlet", "telephone",
-        "power", "socket", "panel", "meter", "luminaire", "lamp", "sconce",
-        "pendant", "conduit"],
-    "plumbing_keywords": ["water closet", "sink", "shower", "basin", "bath",
-        "drain", "trap", "toilet", "bidet", "urinal", "lavatory", "pipe",
-        "plumbing"],
+    "electrical_keywords": [
+      "light",
+      "fan",
+      "switch",
+      "outlet",
+      "telephone",
+      "power",
+      "socket",
+      "panel",
+      "meter",
+      "luminaire",
+      "lamp",
+      "sconce",
+      "pendant",
+      "conduit"
+    ],
+    "plumbing_keywords": [
+      "water closet",
+      "sink",
+      "shower",
+      "basin",
+      "bath",
+      "drain",
+      "trap",
+      "toilet",
+      "bidet",
+      "urinal",
+      "lavatory",
+      "pipe",
+      "plumbing"
+    ],
     "symbols": {
-      "ELECTRICAL": { "shape": "circle_cross", "layer": "A-MEP-ELEC" },
-      "PLUMBING":   { "shape": "circle_dot",   "layer": "A-MEP-PLMB" },
-      "MEP":        { "shape": "circle_dot",   "layer": "A-MEP-PLMB" }
+      "ELECTRICAL": {
+        "shape": "circle_cross",
+        "layer": "A-MEP-ELEC",
+        "legend_char": "○"
+      },
+      "PLUMBING": {
+        "shape": "circle_dot",
+        "layer": "A-MEP-PLMB",
+        "legend_char": "●"
+      },
+      "MEP": {
+        "shape": "circle_dot",
+        "layer": "A-MEP-PLMB",
+        "legend_char": "●"
+      }
     },
     "legend_header": "SYMBOLS",
-    "legend_columns": ["SYMBOL", "DESCRIPTION", "QTY"]
+    "legend_columns": [
+      "SYMBOL",
+      "DESCRIPTION",
+      "QTY"
+    ],
+    "inner_dot_radius_factor": 0.25,
+    "_keyword_to_symbol_note": "Longest-match wins. Maps element_name keyword → 2d_drawing_symbol.symbol_code",
+    "keyword_to_symbol": {
+      "ceiling fan": "CEILING_FAN",
+      "fan": "CEILING_FAN",
+      "wall light": "WALL_LIGHT",
+      "light": "CEILING_LIGHT",
+      "luminaire": "CEILING_LIGHT",
+      "lamp": "CEILING_LIGHT",
+      "pendant": "CEILING_LIGHT",
+      "sconce": "CEILING_LIGHT",
+      "switch": "SWITCH_1G",
+      "power point": "POWER_POINT",
+      "power": "POWER_POINT",
+      "outlet": "POWER_POINT",
+      "socket": "POWER_POINT",
+      "meter": "ELEC_METER",
+      "distribution board": "FUSE_BOARD",
+      "fuse board": "FUSE_BOARD",
+      "panel": "FUSE_BOARD",
+      "water closet": "WC_SEAT",
+      "toilet": "WC_SEAT",
+      "kitchen sink": "KITCHEN_SINK",
+      "sink": "KITCHEN_SINK",
+      "lavatory": "BASIN",
+      "basin": "BASIN",
+      "bath tub": "BASIN",
+      "bathtub": "BASIN",
+      "bath": "BASIN",
+      "shower": "SHOWER",
+      "floor trap": "FLOOR_TRAP",
+      "gully trap": "GULLY_TRAP",
+      "drain": "FLOOR_TRAP",
+      "trap": "FLOOR_TRAP",
+      "tap": "TAP"
+    }
   },
-
   "scale_bar": {
-    "divisions": [0, 1, 2, 5],
+    "divisions": [
+      0,
+      1,
+      2,
+      5
+    ],
     "unit": "m",
     "bar_height_mm": 2.0,
     "font_height_mm": 2.0,
     "placement": "below_title",
     "label_stagger": true
   },
-
   "title_block": {
     "_note": "Field labels in English (TB-LKTN / JKR standard, English edition).",
     "header": "PUBLIC WORKS DEPARTMENT MALAYSIA",
     "schedule_header": "DOOR & WINDOW SCHEDULE",
-    "label_column_ratio": 0.30,
-    "value_column_ratio": 0.70,
+    "label_column_ratio": 0.3,
+    "value_column_ratio": 0.7,
     "font_height_label_mm": 2.0,
     "font_height_value_mm": 3.0,
     "font_height_building_type_mm": 5.0,
     "font_height_building_name_mm": 3.0,
     "sync_building_type_field": true,
+    "logo_file": "jkr.png",
+    "logo_width_mm": 15.0,
+    "logo_height_mm": 12.0,
+    "logo_gap_mm": 2.0,
     "fields": [
-      { "key": "PROJEK",         "label": "PROJECT" },
-      { "key": "PEMILIK",        "label": "CLIENT" },
-      { "key": "ARKITEK",        "label": "ARCHITECT" },
-      { "key": "JENIS_BANGUNAN", "label": "BUILDING TYPE", "default": "RESIDENTIAL" },
-      { "key": "TAJUK_LUKISAN",  "label": "DRAWING TITLE" },
-      { "key": "DILUKIS",        "label": "DRAWN BY" },
-      { "key": "UKURAN",         "label": "SCALE", "default": "1:100" },
-      { "key": "HARIBULAN",      "label": "DATE" },
-      { "key": "NO_LUKISAN",     "label": "DRAWING NO." },
-      { "key": "DISEMAK",        "label": "CHECKED BY" },
-      { "key": "PINDAAN",        "label": "REVISION NO." }
+      {
+        "key": "PROJEK",
+        "label": "PROJECT"
+      },
+      {
+        "key": "PEMILIK",
+        "label": "CLIENT"
+      },
+      {
+        "key": "ARKITEK",
+        "label": "ARCHITECT"
+      },
+      {
+        "key": "JENIS_BANGUNAN",
+        "label": "BUILDING TYPE",
+        "default": "RESIDENTIAL"
+      },
+      {
+        "key": "TAJUK_LUKISAN",
+        "label": "DRAWING TITLE"
+      },
+      {
+        "key": "DILUKIS",
+        "label": "DRAWN BY"
+      },
+      {
+        "key": "UKURAN",
+        "label": "SCALE",
+        "default": "1:100"
+      },
+      {
+        "key": "HARIBULAN",
+        "label": "DATE"
+      },
+      {
+        "key": "NO_LUKISAN",
+        "label": "DRAWING NO."
+      },
+      {
+        "key": "DISEMAK",
+        "label": "CHECKED BY"
+      },
+      {
+        "key": "PINDAAN_NO",
+        "label": "REVISION NO.",
+        "default": "0"
+      }
     ]
   },
-
   "level_markers": {
     "symbol": "triangle_left",
     "font_height_mm": 2.5,
@@ -215,24 +338,35 @@
     "line_style": "dashed",
     "text_right_offset_m": 0.8,
     "label_abbreviations": {
-      "ROOF LEVEL":        "ROOF LVL",
+      "ROOF LEVEL": "ROOF LVL",
       "BEAM/CEILING LEVEL": "CEIL. LVL",
-      "HEAD LEVEL":        "HEAD LVL",
-      "SILL LEVEL":        "SILL LVL",
-      "GRD. FLOOR LEVEL":  "FL. LVL",
-      "GRD. LEVEL":        "GRD. LVL",
-      "EAVE LEVEL":        "EAVE LVL",
-      "1ST FLOOR LEVEL":   "1/F LVL",
-      "2ND FLOOR LEVEL":   "2/F LVL"
+      "HEAD LEVEL": "HEAD LVL",
+      "SILL LEVEL": "SILL LVL",
+      "GRD. FLOOR LEVEL": "FL. LVL",
+      "GRD. LEVEL": "GRD. LVL",
+      "EAVE LEVEL": "EAVE LVL",
+      "1ST FLOOR LEVEL": "1/F LVL",
+      "2ND FLOOR LEVEL": "2/F LVL"
     },
     "defaults": [
-      { "label": "GRD. LEVEL",        "elevation_m":  0.00 },
-      { "label": "GRD. FLOOR LEVEL",  "elevation_m":  0.00 },
-      { "label": "1ST FLOOR LEVEL",   "elevation_m":  3.00 },
-      { "label": "ROOF LEVEL",        "elevation_m":  6.00 }
+      {
+        "label": "GRD. LEVEL",
+        "elevation_m": 0.0
+      },
+      {
+        "label": "GRD. FLOOR LEVEL",
+        "elevation_m": 0.0
+      },
+      {
+        "label": "1ST FLOOR LEVEL",
+        "elevation_m": 3.0
+      },
+      {
+        "label": "ROOF LEVEL",
+        "elevation_m": 6.0
+      }
     ]
   },
-
   "hatching": {
     "structural_wall": {
       "pattern": "ANSI31",
@@ -254,33 +388,107 @@
       "spacing_mm": 3.0
     }
   },
-
   "drawing_types": [
-    { "id": "FLOOR_PLAN",    "sheet_no": "A-01", "title": "FLOOR PLAN",             "view": "PLAN",       "cut_height_m": 1.2 },
-    { "id": "FRONT_ELEV",    "sheet_no": "A-02", "title": "FRONT ELEVATION",        "view": "ELEVATION",  "face": "south" },
-    { "id": "REAR_ELEV",     "sheet_no": "A-03", "title": "REAR ELEVATION",         "view": "ELEVATION",  "face": "north" },
-    { "id": "LEFT_ELEV",     "sheet_no": "A-04", "title": "LEFT ELEVATION",         "view": "ELEVATION",  "face": "west" },
-    { "id": "RIGHT_ELEV",    "sheet_no": "A-05", "title": "RIGHT ELEVATION",        "view": "ELEVATION",  "face": "east" },
-    { "id": "ROOF_PLAN",     "sheet_no": "A-06", "title": "ROOF PLAN",              "view": "ROOF_PLAN",  "cut_height_m": null },
-    { "id": "SECTION",       "sheet_no": "A-07", "title": "SECTION",                "view": "SECTION",    "cut_height_m": null },
-    { "id": "OPENING_SCHED", "sheet_no": "A-08", "title": "OPENING SCHEDULE",       "view": "SCHEDULE",   "cut_height_m": null },
-    { "id": "ELECT_PLAN",    "sheet_no": "E-01", "title": "ELECTRICAL PLAN",        "view": "PLAN",       "cut_height_m": 2.5 },
-    { "id": "REFL_CEILING",  "sheet_no": "E-02", "title": "REFLECTED CEILING PLAN", "view": "PLAN",       "cut_height_m": null }
+    {
+      "id": "FLOOR_PLAN",
+      "sheet_no": "A-01",
+      "title": "FLOOR PLAN",
+      "view": "PLAN",
+      "cut_height_m": 1.2
+    },
+    {
+      "id": "FRONT_ELEV",
+      "sheet_no": "A-02",
+      "title": "FRONT ELEVATION",
+      "view": "ELEVATION",
+      "face": "south"
+    },
+    {
+      "id": "REAR_ELEV",
+      "sheet_no": "A-03",
+      "title": "REAR ELEVATION",
+      "view": "ELEVATION",
+      "face": "north"
+    },
+    {
+      "id": "LEFT_ELEV",
+      "sheet_no": "A-04",
+      "title": "LEFT ELEVATION",
+      "view": "ELEVATION",
+      "face": "west"
+    },
+    {
+      "id": "RIGHT_ELEV",
+      "sheet_no": "A-05",
+      "title": "RIGHT ELEVATION",
+      "view": "ELEVATION",
+      "face": "east"
+    },
+    {
+      "id": "ROOF_PLAN",
+      "sheet_no": "A-06",
+      "title": "ROOF PLAN",
+      "view": "ROOF_PLAN",
+      "cut_height_m": null
+    },
+    {
+      "id": "SECTION",
+      "sheet_no": "A-07",
+      "title": "SECTION",
+      "view": "SECTION",
+      "cut_height_m": null
+    },
+    {
+      "id": "OPENING_SCHED",
+      "sheet_no": "A-08",
+      "title": "OPENING SCHEDULE",
+      "view": "SCHEDULE",
+      "cut_height_m": null
+    },
+    {
+      "id": "ELECT_PLAN",
+      "sheet_no": "E-01",
+      "title": "ELECTRICAL PLAN",
+      "view": "PLAN",
+      "cut_height_m": 2.5
+    },
+    {
+      "id": "REFL_CEILING",
+      "sheet_no": "E-02",
+      "title": "REFLECTED CEILING PLAN",
+      "view": "PLAN",
+      "cut_height_m": null
+    }
   ],
-
   "finish_codes": {
     "_note": "Material callout tags from 2d_finish_type table",
-    "floor":   ["CT — Ceramic tiles", "CR — Cement render"],
-    "wall":    ["V1 — 100mm Teablock", "V2 — 4mm Teablock single", "V4 — 1500mm ceramic tiles"],
-    "ceiling": ["G1 — Gypsum board"],
-    "roof":    ["R1 — Metal roofing with prefab trusses", "R2 — GI flashing"]
+    "floor": [
+      "CT — Ceramic tiles",
+      "CR — Cement render"
+    ],
+    "wall": [
+      "V1 — 100mm Teablock",
+      "V2 — 4mm Teablock single",
+      "V4 — 1500mm ceramic tiles"
+    ],
+    "ceiling": [
+      "G1 — Gypsum board"
+    ],
+    "roof": [
+      "R1 — Metal roofing with prefab trusses",
+      "R2 — GI flashing"
+    ]
   },
-
   "proof_render": {
     "_note": "Controls DXF→SVG proof renderer. Separation of concern: DXF layers are for CAD software, proof_render controls what the human sees.",
-    "skip_entity_types": ["HATCH"],
+    "skip_entity_types": [
+      "HATCH"
+    ],
     "_skip_hatch_reason": "HATCH = DXF fill for CAD viewers. LWPOLYLINE on A-WALL-PATT already provides fill=black in SVG. HATCH duplicates geometry and adds visual noise.",
-    "skip_layers": ["A-WALL-FULL", "A-WALL-PRTN"],
+    "skip_layers": [
+      "A-WALL-FULL",
+      "A-WALL-PRTN"
+    ],
     "_skip_wall_layers_reason": "A-WALL-FULL and A-WALL-PRTN are outline-only polygons. A-WALL-PATT provides fill=black+stroke=black — one polygon per wall. Skipping outline layers removes 30+ duplicate fill=none polygons that cause blurry/heavy edges.",
     "furniture_fill": "#F0F0F0",
     "_furniture_fill_reason": "Match reference: furniture as light gray filled rectangles with gray stroke. Reference archive has 14 F0F0F0 fills for furniture.",

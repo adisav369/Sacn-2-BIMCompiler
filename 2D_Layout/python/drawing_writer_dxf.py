@@ -3313,6 +3313,18 @@ def write_roof_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
 # MEP PLAN  (§D stub — S159)
 # ─────────────────────────────────────────────────────────────────
 
+# §I-21: lookup symbol_code from 2d_drawing_symbol via template keyword_to_symbol map.
+# Longest-match wins (sorted descending by key length).
+def _lookup_symbol_code(element_name: str, tpl: dict) -> str | None:
+    """Return symbol_code from template.mep.keyword_to_symbol or None if no match."""
+    mapping = tpl.get('mep', {}).get('keyword_to_symbol', {})
+    low = (element_name or '').lower()
+    for kw in sorted(mapping, key=len, reverse=True):
+        if kw in low:
+            return mapping[kw]
+    return None
+
+
 # Keyword classifiers for IfcFlowTerminal element_name
 def _classify_mep(element_name: str, tpl: dict) -> str:
     """Return 'ELECTRICAL', 'PLUMBING', or 'MEP' (general).
@@ -3335,30 +3347,74 @@ def _classify_mep(element_name: str, tpl: dict) -> str:
 
 
 def _draw_mep_symbol(msp, cx: float, cy: float, discipline: str,
-                     r: float, lw: int, tpl: dict):
-    """Draw a geometric symbol for an MEP element at model (cx, cy).
-    Shape and layer read from tpl['mep']['symbols'][discipline].
+                     r: float, lw: int, tpl: dict, symbol_code: str | None = None):
+    """Draw a geometric symbol for an MEP terminal at model (cx, cy).
+    §I-21: when symbol_code is set, draw per-code geometry (§14.3, §17.2).
+    Fallback: discipline-level generic shape from template.mep.symbols.
     """
     tpl_mep = tpl.get('mep', {})
     sym_def = tpl_mep.get('symbols', {}).get(discipline,
               {'shape': 'circle_dot', 'layer': 'A-MEP-PLMB'})
-    shape = sym_def.get('shape', 'circle_dot')
     layer = sym_def.get('layer', 'A-MEP-PLMB')
     inner_dot_r_factor = tpl_mep.get('inner_dot_radius_factor', 0.25)
-    _log(f"§RENDER MEP_SYMBOL shape={shape} r={r/SCALE:.2f}mm layer={layer} "
-         f"at ({cx:.0f},{cy:.0f}) src=template.mep.symbols.{discipline}")
-    _log(f"§VALUE mep.inner_dot_radius_factor={inner_dot_r_factor} (from template)")
-    if shape == 'circle_cross':
+
+    if symbol_code == 'CEILING_FAN':
+        # §14.3: asterisk — 6 lines at 30° intervals through centre
+        _log(f"§RENDER MEP_SYMBOL code=CEILING_FAN shape=asterisk6 r={r/SCALE:.2f}mm "
+             f"layer={layer} at ({cx:.0f},{cy:.0f}) src=2d_drawing_symbol+template.mep.keyword_to_symbol")
+        for i in range(6):
+            angle = math.radians(i * 30)
+            msp.add_line((cx + r * math.cos(angle), cy + r * math.sin(angle)),
+                         (cx - r * math.cos(angle), cy - r * math.sin(angle)),
+                         dxfattribs={'layer': layer, 'lineweight': lw})
+    elif symbol_code == 'CEILING_LIGHT':
+        # Circle with centre dot
+        _log(f"§RENDER MEP_SYMBOL code=CEILING_LIGHT shape=circle_dot r={r/SCALE:.2f}mm "
+             f"layer={layer} at ({cx:.0f},{cy:.0f}) src=2d_drawing_symbol+template.mep.keyword_to_symbol")
+        msp.add_circle((cx, cy), r, dxfattribs={'layer': layer, 'lineweight': lw})
+        msp.add_circle((cx, cy), r * inner_dot_r_factor,
+                       dxfattribs={'layer': layer, 'lineweight': lw})
+    elif symbol_code in ('SWITCH_1G', 'SWITCH_2G', 'SWITCH_3G'):
+        # Line segment with small filled circle at one end (standard switch symbol)
+        _log(f"§RENDER MEP_SYMBOL code={symbol_code} shape=switch_line r={r/SCALE:.2f}mm "
+             f"layer={layer} at ({cx:.0f},{cy:.0f}) src=2d_drawing_symbol+template.mep.keyword_to_symbol")
+        msp.add_line((cx, cy), (cx + r, cy + r),
+                     dxfattribs={'layer': layer, 'lineweight': lw})
+        msp.add_circle((cx, cy), r * 0.2,
+                       dxfattribs={'layer': layer, 'lineweight': lw})
+    elif symbol_code == 'POWER_POINT':
+        # Circle with cross (standard power outlet)
+        _log(f"§RENDER MEP_SYMBOL code=POWER_POINT shape=circle_cross r={r/SCALE:.2f}mm "
+             f"layer={layer} at ({cx:.0f},{cy:.0f}) src=2d_drawing_symbol+template.mep.keyword_to_symbol")
         msp.add_circle((cx, cy), r, dxfattribs={'layer': layer, 'lineweight': lw})
         msp.add_line((cx - r, cy), (cx + r, cy),
                      dxfattribs={'layer': layer, 'lineweight': lw})
         msp.add_line((cx, cy - r), (cx, cy + r),
                      dxfattribs={'layer': layer, 'lineweight': lw})
-    else:
-        # circle_dot (default for PLUMBING and MEP)
+    elif symbol_code in ('ELEC_METER', 'FUSE_BOARD', 'WALL_LIGHT',
+                         'WC_SEAT', 'KITCHEN_SINK', 'BASIN',
+                         'SHOWER', 'FLOOR_TRAP', 'GULLY_TRAP', 'TAP'):
+        # Generic circle_dot for remaining library symbols — distinguishable from UNKNOWN
+        _log(f"§RENDER MEP_SYMBOL code={symbol_code} shape=circle_dot r={r/SCALE:.2f}mm "
+             f"layer={layer} at ({cx:.0f},{cy:.0f}) src=2d_drawing_symbol+template.mep.keyword_to_symbol")
         msp.add_circle((cx, cy), r, dxfattribs={'layer': layer, 'lineweight': lw})
         msp.add_circle((cx, cy), r * inner_dot_r_factor,
                        dxfattribs={'layer': layer, 'lineweight': lw})
+    else:
+        # Fallback: discipline-level generic shape — symbol not in 2d_drawing_symbol
+        shape = sym_def.get('shape', 'circle_dot')
+        _log(f"§RENDER MEP_SYMBOL code=FALLBACK shape={shape} r={r/SCALE:.2f}mm "
+             f"layer={layer} at ({cx:.0f},{cy:.0f}) src=template.mep.symbols.{discipline}")
+        if shape == 'circle_cross':
+            msp.add_circle((cx, cy), r, dxfattribs={'layer': layer, 'lineweight': lw})
+            msp.add_line((cx - r, cy), (cx + r, cy),
+                         dxfattribs={'layer': layer, 'lineweight': lw})
+            msp.add_line((cx, cy - r), (cx, cy + r),
+                         dxfattribs={'layer': layer, 'lineweight': lw})
+        else:
+            msp.add_circle((cx, cy), r, dxfattribs={'layer': layer, 'lineweight': lw})
+            msp.add_circle((cx, cy), r * inner_dot_r_factor,
+                           dxfattribs={'layer': layer, 'lineweight': lw})
 
 
 def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
@@ -3403,6 +3459,25 @@ def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
     bld_min_y = min(w.min_y for w in walls)
     bld_max_y = max(w.max_y for w in walls)
 
+    # §I-21: load 2d_drawing_symbol library (symbol_code → symbol_name, width_mm)
+    _2d_db_candidates = [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'input', '2D.db'),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'lib', 'input', '2D.db'),
+    ]
+    _2d_db_path = next((p for p in _2d_db_candidates if os.path.exists(p)), None)
+    _lib_conn = sqlite3.connect(_2d_db_path) if _2d_db_path else None
+    _lib_cur  = _lib_conn.cursor() if _lib_conn else None
+    if _lib_cur:
+        _lib_cur.execute("SELECT symbol_code, symbol_name, width_mm FROM [2d_drawing_symbol]")
+        _sym_lib = {row[0]: {'name': row[1], 'width_mm': row[2] or _sym_r_mm * 2}
+                    for row in _lib_cur.fetchall()}
+        _lib_conn.close()
+        _log(f"§I-21 symbol library loaded: {len(_sym_lib)} entries from 2d_drawing_symbol "
+             f"src={_2d_db_path}")
+    else:
+        _sym_lib = {}
+        _log(f"§I-21 symbol library: 2D.db not found — all terminals will FALLBACK")
+
     # ── MEP terminals from elements_rtree ──
     cur.execute("""
         SELECT m.element_name, (r.minX+r.maxX)/2, (r.minY+r.maxY)/2
@@ -3411,19 +3486,41 @@ def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
     """)
     rows = cur.fetchall()
 
-    legend_items = {}  # discipline → set of display names
+    # §I-21: legend keyed by symbol_code → {name, count} for symbol_name display
+    legend_items = {}   # discipline → {symbol_code: {'name': str, 'count': int}}
+    gap_names = []      # element_names that matched no symbol_code
     elem_count = 0
     for name, cx, cy in rows:
         disc = _classify_mep(name or '', tpl)
         if discipline != 'MEP' and disc != discipline:
             continue
-        # Short display label for legend
-        short = (name or '').split(':')[0].split(' - ')[0][:30]
-        legend_items.setdefault(disc, set()).add(short)
-        _draw_mep_symbol(msp, _mh(cx), _mh(cy), disc, sym_r, lw_mep, tpl)
+        # §I-21: resolve element_name → symbol_code via template keyword_to_symbol
+        sym_code = _lookup_symbol_code(name or '', tpl)
+        if sym_code:
+            lib_entry = _sym_lib.get(sym_code, {})
+            sym_name  = lib_entry.get('name', sym_code)
+            sym_r_use = (lib_entry.get('width_mm', _sym_r_mm * 2) / 2) * scale
+            _log(f"§SYMBOL_LOOKUP element='{name}' → symbol_code={sym_code} "
+                 f"name='{sym_name}' r={sym_r_use/scale:.1f}mm src=2d_drawing_symbol")
+            disc_legend = legend_items.setdefault(disc, {})
+            if sym_code not in disc_legend:
+                disc_legend[sym_code] = {'name': sym_name, 'count': 0}
+            disc_legend[sym_code]['count'] += 1
+        else:
+            sym_r_use = sym_r
+            _log(f"§SYMBOL_GAP element='{name}' → no symbol_code match "
+                 f"(FALLBACK discipline={disc}) src=template.mep.keyword_to_symbol")
+            gap_names.append(name or '')
+            disc_legend = legend_items.setdefault(disc, {})
+            if 'UNKNOWN' not in disc_legend:
+                disc_legend['UNKNOWN'] = {'name': 'Unknown Terminal', 'count': 0}
+            disc_legend['UNKNOWN']['count'] += 1
+        _draw_mep_symbol(msp, _mh(cx), _mh(cy), disc, sym_r_use, lw_mep, tpl,
+                         symbol_code=sym_code)
         elem_count += 1
 
-    _log(f"§D MEP plan discipline={discipline}: {elem_count} terminals drawn")
+    _log(f"§D MEP plan discipline={discipline}: {elem_count} terminals drawn, "
+         f"{len(gap_names)} SYMBOL_GAP (no match in keyword_to_symbol)")
 
     # §17.3 P5: IfcFlowSegment rendering — thin lines along major bbox axis
     _lw_seg_mm = tpl_mep.get('segment_line_weight_mm', 0.13)
@@ -3462,15 +3559,17 @@ def write_mep_plan_dxf(db_path: str, discipline: str, out_dxf: str,
         seg_count += 1
     _log(f"§D MEP segments: {seg_count} flow segments drawn")
 
-    # ── Legend in schedule rows slot — dicts matching _draw_sheet_layout format ──
+    # ── §I-21 Legend: symbol_name from 2d_drawing_symbol, qty from count ──
     _tpl_syms = tpl_mep.get('symbols', {})
     legend_rows = []
-    for disc, names in sorted(legend_items.items()):
+    for disc, sym_codes in sorted(legend_items.items()):
         legend_rows.append({'tag': '', 'size': '', 'desc': f'── {disc} ──', 'qty': ''})
-        for n in sorted(names)[:8]:
+        for code, entry in sorted(sym_codes.items())[:10]:
             sym = _tpl_syms.get(disc, {}).get('legend_char', '\u25cf')
-            _log(f"§VALUE mep.symbols.{disc}.legend_char={sym!r} (from template)")
-            legend_rows.append({'tag': sym, 'size': '', 'desc': n, 'qty': ''})
+            _log(f"§LEGEND code={code} name='{entry['name']}' qty={entry['count']} "
+                 f"src=2d_drawing_symbol")
+            legend_rows.append({'tag': sym, 'size': '', 'desc': entry['name'],
+                                 'qty': str(entry['count'])})
 
     # ── Sheet layout (no door/window schedule; use MEP legend rows) ──
     title = f'{discipline} LAYOUT'
