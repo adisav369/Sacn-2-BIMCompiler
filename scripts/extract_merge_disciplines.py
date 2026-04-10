@@ -64,7 +64,8 @@ CREATE TABLE IF NOT EXISTS element_instances (
 );
 CREATE TABLE IF NOT EXISTS element_transforms (
     guid TEXT PRIMARY KEY,
-    center_x REAL, center_y REAL, center_z REAL, transform_source TEXT
+    center_x REAL, center_y REAL, center_z REAL, transform_source TEXT,
+    rotation_x REAL DEFAULT 0, rotation_y REAL DEFAULT 0, rotation_z REAL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS rel_contained_in_space (
     element_guid TEXT, space_guid TEXT,
@@ -178,9 +179,73 @@ def fix_mm_outliers(tmp_db_path: Path, ifc_path: Path):
     print(f"  → fixed {len(outliers)} mm-scale elements to metres")
 
 
-def merge_db(src_path: Path, dst: sqlite3.Connection, disc_label: str):
+def _read_geolocation(ifc_path: Path):
+    """Read geolocation origin from an IFC file using the community's
+    auto_xyz2enh (same logic as MergeProjects in IfcPatch).
+
+    Returns dict with:
+        enh: (easting, northing, height) — real-world coords of IFC origin
+        grid_north: angle in degrees
+        ifc: opened ifcopenshell.file (reused by caller)
+    """
+    import ifcopenshell
+    import ifcopenshell.util.geolocation as geo
+    try:
+        ifc = ifcopenshell.open(str(ifc_path))
+        enh = geo.auto_xyz2enh(ifc, 0, 0, 0, should_return_in_map_units=False)
+        north = geo.get_grid_north(ifc)
+        return {'enh': tuple(enh), 'grid_north': north, 'ifc': ifc}
+    except Exception as e:
+        print(f"  Warning: geolocation read failed for {ifc_path.name}: {e}")
+        return {'enh': (0.0, 0.0, 0.0), 'grid_north': 0.0, 'ifc': None}
+
+
+def _compute_alignment(ref_geo, other_geo):
+    """Compute XYZ correction to align other discipline to reference.
+
+    Uses the same logic as MergeProjects: compare real-world origins
+    (auto_xyz2enh) and compute the XYZ shift needed in local coords.
+
+    Returns (dx, dy, dz) to ADD to other's element coordinates.
+    """
+    import numpy as np
+    import ifcopenshell.util.geolocation as geo
+
+    ref_enh = np.array(ref_geo['enh'])
+    other_enh = np.array(other_geo['enh'])
+
+    if np.allclose(ref_enh, other_enh, atol=0.01) and \
+       np.isclose(ref_geo['grid_north'], other_geo['grid_north'], atol=0.01):
+        return (0.0, 0.0, 0.0)  # Already aligned
+
+    # Convert reference origin into other's local coordinate system
+    other_ifc = other_geo['ifc']
+    if other_ifc is None:
+        return (0.0, 0.0, 0.0)
+
+    try:
+        # Where does the reference origin land in other's local coords?
+        x, y, z = geo.auto_enh2xyz(other_ifc, *ref_enh, is_specified_in_map_units=False)
+        # The correction is: element should be at (element_local + correction)
+        # where correction = (x, y, z) because that's where (0,0,0) of ref maps to in other
+        return (float(x), float(y), float(z))
+    except Exception as e:
+        # Fallback: simple subtraction
+        dx = ref_enh[0] - other_enh[0]
+        dy = ref_enh[1] - other_enh[1]
+        dz = ref_enh[2] - other_enh[2]
+        print(f"  Warning: auto_enh2xyz failed ({e}), using simple offset ({dx:.1f}, {dy:.1f}, {dz:.1f})")
+        return (dx, dy, dz)
+
+
+def merge_db(src_path: Path, dst: sqlite3.Connection, disc_label: str,
+             correction=(0.0, 0.0, 0.0)):
+    """Merge src DB into dst. Applies coordinate correction (dx, dy, dz)
+    to align this discipline's elements to the reference coordinate system."""
     src = sqlite3.connect(src_path)
     src.row_factory = sqlite3.Row
+    dx, dy, dz = correction
+    has_offset = abs(dx) > 0.01 or abs(dy) > 0.01 or abs(dz) > 0.01
 
     # base_geometries — deduplicate by hash
     for row in src.execute("SELECT * FROM base_geometries"):
@@ -211,15 +276,24 @@ def merge_db(src_path: Path, dst: sqlite3.Connection, disc_label: str):
             (row["guid"], row["geometry_hash"])
         )
 
-    # element_transforms
+    # element_transforms — apply site offset correction + copy rotation
+    # Check if source has rotation columns
+    src_cols = {r[1] for r in src.execute("PRAGMA table_info(element_transforms)").fetchall()}
+    has_rot = 'rotation_x' in src_cols
+
     for row in src.execute("SELECT * FROM element_transforms"):
+        cx = (row["center_x"] or 0.0) + dx
+        cy = (row["center_y"] or 0.0) + dy
+        cz = (row["center_z"] or 0.0) + dz
+        rx = float(row["rotation_x"] or 0.0) if has_rot else 0.0
+        ry = float(row["rotation_y"] or 0.0) if has_rot else 0.0
+        rz = float(row["rotation_z"] or 0.0) if has_rot else 0.0
         dst.execute(
-            "INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?)",
-            (row["guid"], row["center_x"], row["center_y"],
-             row["center_z"], row["transform_source"])
+            "INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?,?,?,?)",
+            (row["guid"], cx, cy, cz, row["transform_source"], rx, ry, rz)
         )
 
-    # elements_rtree — use meta id from destination
+    # elements_rtree — apply same offset, use meta id from destination
     for row in src.execute("SELECT * FROM element_transforms"):
         meta = dst.execute(
             "SELECT id FROM elements_meta WHERE guid=?", (row["guid"],)
@@ -234,7 +308,7 @@ def merge_db(src_path: Path, dst: sqlite3.Connection, disc_label: str):
             try:
                 dst.execute(
                     "INSERT OR IGNORE INTO elements_rtree VALUES (?,?,?,?,?,?,?)",
-                    (meta[0], bbox[0], bbox[1], bbox[2], bbox[3], bbox[4], bbox[5])
+                    (meta[0], bbox[0]+dx, bbox[1]+dx, bbox[2]+dy, bbox[3]+dy, bbox[4]+dz, bbox[5]+dz)
                 )
             except Exception:
                 pass
@@ -416,6 +490,34 @@ def main():
     extract_time = _time.time() - t0
     print(f"\n  All {len(jobs)} extractions done in {extract_time:.0f}s")
 
+    # ── Geolocation alignment (same logic as IfcPatch MergeProjects) ──
+    # Read geolocation from each IFC, compute corrections relative to reference
+    print(f"\n  §ALIGN Reading geolocation from {len(jobs)} discipline IFCs...")
+    geo_data = {}  # ifc_stem -> geo dict
+    for ifc, tmp_db, proc, log_file in jobs:
+        if tmp_db.exists() and tmp_db.stat().st_size > 0:
+            geo = _read_geolocation(ifc)
+            geo_data[ifc.stem] = geo
+            enh = geo['enh']
+            print(f"    {ifc.stem:45s} enh=({enh[0]:>10.2f}, {enh[1]:>10.2f}, {enh[2]:>10.2f})  north={geo['grid_north']:.1f}")
+
+    # Pick reference: first file (consistent with MergeProjects behavior)
+    ref_stem = list(geo_data.keys())[0] if geo_data else None
+    ref_geo = geo_data.get(ref_stem)
+    if ref_geo:
+        print(f"  §ALIGN Reference: {ref_stem}")
+
+    # Compute corrections
+    corrections = {}  # ifc_stem -> (dx, dy, dz)
+    for stem, geo in geo_data.items():
+        if stem == ref_stem:
+            corrections[stem] = (0.0, 0.0, 0.0)
+        else:
+            corr = _compute_alignment(ref_geo, geo)
+            corrections[stem] = corr
+            if abs(corr[0]) > 0.01 or abs(corr[1]) > 0.01 or abs(corr[2]) > 0.01:
+                print(f"    {stem:45s} correction=({corr[0]:>10.2f}, {corr[1]:>10.2f}, {corr[2]:>10.2f})")
+
     # ── Sequential merge (fast — just DB row copies) ──
     merge_t0 = _time.time()
     for ifc, tmp_db, proc, log_file in jobs:
@@ -434,9 +536,9 @@ def main():
             conn.close()
             print(f"  [{disc}] → discipline overridden to {override}")
 
-        merge_db(tmp_db, dst, disc)
+        corr = corrections.get(ifc.stem, (0.0, 0.0, 0.0))
+        merge_db(tmp_db, dst, disc, correction=corr)
         tmp_db.unlink()
-        # Clean up log
         log_path = Path(str(tmp_db) + ".log")
         if log_path.exists():
             log_path.unlink()
