@@ -360,38 +360,89 @@ def main():
     dst.executescript(SCHEMA_SQL)
     dst.commit()
 
+    import time as _time
+    t0 = _time.time()
+
     print(f"Extracting {len(ifc_files)} discipline files → {output.name}")
     if disc_map:
         print(f"  Disc overrides: {disc_map}")
 
+    # ── S172: Parallel extraction — launch all disciplines concurrently ──
+    # Each discipline IFC is extracted to its own temp DB in parallel.
+    # Then merge sequentially (fast, just DB row copies).
+    jobs = []  # (ifc, tmp_db, process)
     for ifc in ifc_files:
-        disc = ifc.stem  # e.g. Hospital_IFC4_ARC
-        tmp_db = Path(tempfile.mktemp(suffix=".db"))
-        print(f"\n[{disc}] Extracting {ifc.name} ({ifc.stat().st_size/1024/1024:.1f}MB)...")
-
+        tmp_db = Path(tempfile.mktemp(suffix=f"_{ifc.stem}.db"))
         cmd = [sys.executable, args.extractor, "--ifc", str(ifc), "-o", str(tmp_db)]
         if args.library:
             cmd.extend(["--library", args.library])
-        result = subprocess.run(cmd, capture_output=False)
+        log_file = open(str(tmp_db) + ".log", 'w')
+        proc = subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
+        jobs.append((ifc, tmp_db, proc, log_file))
+        size_mb = ifc.stat().st_size / 1024 / 1024
+        print(f"  [PID {proc.pid}] {ifc.stem} ({size_mb:.1f} MB) → {tmp_db.name}")
 
-        if result.returncode != 0 or not tmp_db.exists():
-            print(f"  ✗ FAILED — skipping")
+    print(f"\n  {len(jobs)} extractions running in parallel...")
+
+    # Wait for all to finish, report as they complete
+    completed = set()
+    while len(completed) < len(jobs):
+        for i, (ifc, tmp_db, proc, log_file) in enumerate(jobs):
+            if i in completed:
+                continue
+            ret = proc.poll()
+            if ret is not None:
+                log_file.close()
+                elapsed = _time.time() - t0
+                if ret == 0 and tmp_db.exists() and tmp_db.stat().st_size > 0:
+                    # Read element count from log
+                    log_path = str(tmp_db) + ".log"
+                    elems = "?"
+                    try:
+                        with open(log_path) as lf:
+                            for line in lf:
+                                if "§EXTRACT Elements:" in line:
+                                    elems = line.strip()
+                                    break
+                    except:
+                        pass
+                    print(f"  ✓ [{int(elapsed)}s] {ifc.stem} done — {elems}")
+                else:
+                    print(f"  ✗ [{int(elapsed)}s] {ifc.stem} FAILED (exit={ret})")
+                completed.add(i)
+        if len(completed) < len(jobs):
+            _time.sleep(1)
+
+    extract_time = _time.time() - t0
+    print(f"\n  All {len(jobs)} extractions done in {extract_time:.0f}s")
+
+    # ── Sequential merge (fast — just DB row copies) ──
+    merge_t0 = _time.time()
+    for ifc, tmp_db, proc, log_file in jobs:
+        disc = ifc.stem
+        if not tmp_db.exists() or tmp_db.stat().st_size == 0:
             continue
 
-        # Fix elements where ifcopenshell returned mm despite USE_WORLD_COORDS
         fix_mm_outliers(tmp_db, ifc)
 
-        # Apply discipline override: UPDATE elements_meta before merging
+        # Apply discipline override
         override = disc_map.get(ifc.stem)
         if override:
             conn = sqlite3.connect(str(tmp_db))
             conn.execute("UPDATE elements_meta SET discipline=?", (override,))
             conn.commit()
             conn.close()
-            print(f"  → discipline overridden to {override}")
+            print(f"  [{disc}] → discipline overridden to {override}")
 
         merge_db(tmp_db, dst, disc)
         tmp_db.unlink()
+        # Clean up log
+        log_path = Path(str(tmp_db) + ".log")
+        if log_path.exists():
+            log_path.unlink()
+
+    merge_time = _time.time() - merge_t0
+    print(f"  Merge phase: {merge_time:.1f}s")
 
     total = dst.execute("SELECT COUNT(*) FROM elements_meta").fetchone()[0]
     by_disc = dst.execute(
