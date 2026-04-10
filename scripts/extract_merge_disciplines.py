@@ -131,29 +131,6 @@ def fix_unit_scale(tmp_db_path: Path, ifc_path: Path):
             minZ = minZ * ?, maxZ = maxZ * ?
     """, (unit_scale, unit_scale, unit_scale, unit_scale, unit_scale, unit_scale))
 
-    # Scale matching vertex blobs — track already-scaled hashes to avoid
-    # double-scaling shared geometry (deduplication means multiple elements
-    # can reference the same geometry_hash)
-    import numpy as np
-    scaled_hashes = set()
-    for guid, cx, cy, cz in outliers:
-        row = conn.execute(
-            "SELECT ei.geometry_hash, bg.vertices, bg.vertex_count "
-            "FROM element_instances ei "
-            "JOIN base_geometries bg ON bg.geometry_hash = ei.geometry_hash "
-            "WHERE ei.guid=?", (guid,)).fetchone()
-        if row and row[1] and row[2] > 0:
-            ghash, vblob, vcount = row
-            if ghash in scaled_hashes:
-                continue  # Already scaled via another element sharing this geometry
-            verts = np.frombuffer(vblob, dtype=np.float32).reshape(-1, 3)
-            if np.abs(verts).max() > 500:
-                verts_scaled = (verts * unit_scale).astype(np.float32)
-                conn.execute(
-                    "UPDATE base_geometries SET vertices=? WHERE geometry_hash=?",
-                    (verts_scaled.tobytes(), ghash))
-            scaled_hashes.add(ghash)
-
     # Scale vertex BLOBs in base_geometries
     import numpy as np
     scaled_hashes = set()
