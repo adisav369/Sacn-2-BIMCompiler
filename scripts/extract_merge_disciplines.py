@@ -449,12 +449,38 @@ def main():
         "SELECT discipline, COUNT(*) FROM elements_meta GROUP BY discipline ORDER BY COUNT(*) DESC"
     ).fetchall()
 
-    # Post-action: subtract site origin Z so elements sit near ground level.
-    # Reads IfcSite.ObjectPlacement from the first discipline IFC.
-    # If |site_oz| > 1m, subtracts from element_transforms + elements_rtree.
-    # Camera target is computed AFTER this fix so it self-corrects (W-SITE-Z-1).
-    # Logic source: scripts/topup_extracted_db.py lines 49-147.
+    # Post-action 1: Legacy Z-only normalization from IfcSite placement
     post_normalise_site_origin(dst, ifc_files[0])
+
+    # Post-action 2 (S172): Full XYZ re-normalization of merged DB.
+    # Each discipline was normalized to its own centroid during extraction.
+    # After merge, re-center ALL elements to a single shared origin.
+    row = dst.execute("""
+        SELECT AVG(center_x), AVG(center_y), MIN(center_z)
+        FROM element_transforms
+    """).fetchone()
+    if row and row[0] is not None:
+        ox, oy, oz = row[0], row[1], row[2]
+        if abs(ox) > 100 or abs(oy) > 100 or abs(oz) > 100:
+            print(f"  §NORMALIZE merged centroid far from origin: ({ox:.1f}, {oy:.1f}, {oz:.1f})")
+            dst.execute("""
+                UPDATE element_transforms
+                SET center_x = center_x - ?, center_y = center_y - ?, center_z = center_z - ?
+            """, (ox, oy, oz))
+            dst.execute("""
+                UPDATE elements_rtree
+                SET minX = minX - ?, maxX = maxX - ?,
+                    minY = minY - ?, maxY = maxY - ?,
+                    minZ = minZ - ?, maxZ = maxZ - ?
+            """, (ox, ox, oy, oy, oz, oz))
+            dst.execute("INSERT OR REPLACE INTO project_metadata VALUES ('merge_offset_x', ?)", (str(round(ox,4)),))
+            dst.execute("INSERT OR REPLACE INTO project_metadata VALUES ('merge_offset_y', ?)", (str(round(oy,4)),))
+            dst.execute("INSERT OR REPLACE INTO project_metadata VALUES ('merge_offset_z', ?)", (str(round(oz,4)),))
+            dst.commit()
+            vrow = dst.execute("SELECT AVG(center_x), AVG(center_y), MIN(center_z) FROM element_transforms").fetchone()
+            print(f"  §NORMALIZE after: centroid=({vrow[0]:.1f}, {vrow[1]:.1f}, {vrow[2]:.1f})")
+        else:
+            print(f"  §NORMALIZE merged centroid near origin: ({ox:.1f}, {oy:.1f}, {oz:.1f}) — skip")
 
     # Store building center + view distance as camera target for the loader.
     # Must run AFTER post_normalise_site_origin so camera tracks corrected coords.

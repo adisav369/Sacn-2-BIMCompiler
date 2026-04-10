@@ -52,6 +52,29 @@ Standalone copy of the pristine extractor with three additions:
 
 5. **project_metadata** populated with unit_scale, extractor tag, element counts, camera target
 
+### `post_normalise_site_origin()` in `extract_merge_disciplines.py`
+
+Post-action added at the end of `extract_merge_disciplines.py`, after all disciplines are
+merged and **before** the camera target is written to `project_metadata`.
+
+**Problem:** `USE_WORLD_COORDS=True` bakes the full IFC placement chain — including
+`IfcSite.ObjectPlacement` — into every element coordinate. GIS-located buildings
+(e.g. Hospital: site Z = 165.8m) produce element Z ranges like 165–203m. The camera
+target inherits this offset, placing it at `view_center_z=181m`.
+
+**Fix:** Read `IfcSite.ObjectPlacement` from the first discipline IFC via
+`ifcopenshell.util.placement.get_local_placement()`. If `|site_oz| > 1.0m`, subtract
+from all rows in `element_transforms.center_z` and `elements_rtree.minZ/maxZ`.
+The camera target is then computed from the corrected `element_transforms` — no separate
+camera fix needed, it self-corrects.
+
+**Universal:** site at Z=0 → offset=0 → no-op. Works for any building.
+
+**Logic source:** `scripts/topup_extracted_db.py` lines 49–147 (proven, same pattern).
+
+**Witness:** W-SITE-Z-1 in `scripts/verify_extraction.sh` —
+asserts `view_center_z < 50m` AND within element Z range after extraction.
+
 ### `scripts/merge_ifc_tagged.py`
 
 IFC merger that stamps `Pset_BIMSource` (Discipline + SourceFile) on each IfcProduct
@@ -78,25 +101,37 @@ Compiles clean in DAGCompiler module. Uses existing BIMLogger + sqlite-jdbc patt
 
 ## File Inventory
 
-| File | What it does | Modifies original? |
+| File | What it does | Status |
 |---|---|---|
-| `DAGCompiler/python/extractIFCtoDB.py` | Pristine single-file extractor | **NEVER TOUCH** |
-| `scripts/extract_merge_disciplines.py` | Per-discipline orchestrator + `fix_vertex_scale()` | Extended (new function added) |
-| `scripts/extractIFCtoDB_open.py` | Open-filter extractor with fine-grained discipline | New file (copy of pristine) |
-| `scripts/merge_ifc_tagged.py` | IFC merger with Pset_BIMSource stamping | New file |
-| `DAGCompiler/.../db/ExtractionPostProcessor.java` | Java post-processor for any extracted DB | New file |
-| `docs/LTUAHouseAnalysis.md` | Updated Step 3 (legacy fix label) + camera note | Updated |
+| `DAGCompiler/python/extractIFCtoDB.py` | Core extractor: `geom.iterator()` (S172), local coords (S168), rotation (S169), batch-commit (S170), site normalization | **Primary — all features here** |
+| `scripts/extract_merge_disciplines.py` | Per-discipline orchestrator: parallel extraction (S172), `--library`, `--disc-map`, merge at DB level | **Primary — use for multi-discipline buildings** |
+| `scripts/topup_extracted_db.py` | Add missed IFC classes to existing DB without re-extracting | Utility |
+| `scripts/extractIFCtoDB_open.py` | Legacy open-filter extractor with Swedish keyword heuristics | Archive — features merged into main extractor |
+| `scripts/merge_ifc_tagged.py` | IFC merger with Pset_BIMSource stamping | Archive — prefer DB-level merge |
+| `DAGCompiler/.../db/ExtractionPostProcessor.java` | Java post-processor for existing DBs | Utility |
 
 ## Which Approach to Use
 
-| Scenario | Use |
+| Scenario | Command |
 |---|---|
-| Multi-discipline building (production) | `extract_merge_disciplines.py` with `--disc-map` (Approach A) |
-| Small merged IFC with Pset tagging | `merge_ifc_tagged.py` then `extractIFCtoDB_open.py` (Approach B) |
-| Fix existing DB without re-extraction | `ExtractionPostProcessor.java` (Approach C) |
-| Single-file metre-unit IFC | `extractIFCtoDB.py` directly (original, untouched) |
+| **Multi-discipline building** (recommended) | `python3 scripts/extract_merge_disciplines.py --ifc-dir IFC/UNMERGED --pattern "Hospital_IFC4_*.ifc" --output Hospital_extracted.db --library library/component_library.db --disc-map Hospital_IFC4_ARC=ARC Hospital_IFC4_MECH=MEP` |
+| **Single IFC file** | `python3 DAGCompiler/python/extractIFCtoDB.py --ifc model.ifc -o model_extracted.db --library library/component_library.db` |
+| **Add missed classes** | `python3 scripts/topup_extracted_db.py --ifc source.ifc --db existing_extracted.db --classes IfcRoof,IfcBeam` |
+| **Fix existing DB** | `ExtractionPostProcessor.java` (unit scale, discipline refinement) |
 
 Building-specific extraction commands: see each `docs/{Building}Analysis.md`.
+
+## Key Design Decisions (S168-S172)
+
+1. **`geom.iterator()` not `create_shape()`** — iterator has built-in C++ dedup + instancing (S172)
+2. **`USE_WORLD_COORDS=False`** — local coords for mesh dedup. Same door = same hash (S168)
+3. **Mesh BLOBs in `component_library.db`** — singleton library, not per-building (S168)
+4. **Parallel discipline extraction** — all disciplines concurrently, merge at DB level (S172)
+5. **Batch-commit every 1000 elements** — enables concurrent extractions (S170)
+6. **Site normalization** — subtract centroid for georeferenced IFC files (S169)
+7. **DB-level merge preferred over IFC merge** — avoids dropped disciplines (Clinic lesson)
+
+See `reference/README.md` §IfcOpenShell/Bonsai for community alignment.
 
 ## Proven Scale
 
