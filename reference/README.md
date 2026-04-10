@@ -13,9 +13,9 @@ from metadata alone.
 
 | File | IFC Version | Elements | Role |
 |------|-------------|----------|------|
-| `Ifc2x3_Duplex_Architecture.ifc` | 2x3 | 218 | Walls, doors, windows, furniture, stairs, slabs |
-| `Ifc2x3_Duplex_MEP.ifc` | 2x3 | ~900 | Plumbing, electrical, HVAC piping |
-| `Ifc4_SampleHouse.ifc` | 4.0 | ~100 | Single-storey house — simplest grammar test |
+| `Duplex_Architecture.ifc` | 2x3 | 218 | Walls, doors, windows, furniture, stairs, slabs |
+| `Duplex_MEP.ifc` | 2x3 | ~900 | Plumbing, electrical, HVAC piping |
+| `SampleHouse.ifc` | 4.0 | ~100 | Single-storey house — simplest grammar test |
 | `Ifc4_WallElementedCase.ifc` | 4.0 | ~10 | Wall construction layers — stud/cladding detail |
 
 **Source:** youshengCode IFC samples (open license)
@@ -64,3 +64,51 @@ from metadata alone.
 
 The grammar is complete when ALL reference entities can be reproduced from
 metadata catalog selection alone, with zero hardcoded geometry.
+
+---
+
+## IfcOpenShell / Bonsai Community Alignment
+
+We are a **BIM Compiler** (IFC → DB → BOM → ERP). Bonsai is a **BIM Editor**
+(IFC ↔ Blender ↔ IFC). Different goals, but we share the IfcOpenShell stack
+and should use its optimizations rather than reinventing them.
+
+### What we use from IfcOpenShell (keep current)
+
+| Feature | Our usage | Community API |
+|---------|-----------|---------------|
+| Geometry tessellation | `extractIFCtoDB.py` | `geom.iterator()` (v0.8 built-in dedup + instancing) |
+| IFC merging | `federation_preprocessor.py` | IfcPatch `MergeProjects` recipe |
+| Coordinate modes | `USE_WORLD_COORDS=False` | Local coords for mesh dedup (community best practice) |
+| Schema parsing | Element metadata extraction | `by_type()`, `IsDefinedBy`, `ContainedInStructure` |
+
+### Community features to adopt (backlog)
+
+| Feature | What it does | Our benefit | Reference |
+|---------|-------------|-------------|-----------|
+| **IfcPatch recipes** | Automated IFC pre-cleaning (fix spatial containers, normalize units) | Cleaner input before extraction | `ifcpatch` CLI |
+| **IfcPropertyTemplate** | Validate incoming IFC has required properties | Pre-flight check in onboarding script | IFC4 schema |
+| **IfcDiff (compare module)** | Detect changes between IFC revisions | Incremental DB update instead of full re-extract | `ifcopenshell.util.diff` |
+| **HDF5 geometry cache** | Binary mesh cache for repeated loads | Evaluate vs our SQLite `component_library.db` | Bonsai issue #1785 |
+| **Hybrid kernel** | `--kernel hybrid-cgal-simple-opencascade` | Faster tessellation for mesh-heavy IFCs | IfcOpenShell v0.8 |
+| **BVH raycasting** | Faster element selection in viewport | Evaluate vs our R-tree | IfcOpenShell issue #4279 |
+| **Taxonomy layer** | Detect geometric similarity beyond IfcMappedItem | Further mesh dedup in library | IfcOpenShell v0.8 |
+
+### Where we diverge (by design, not oversight)
+
+| Area | Bonsai approach | Our approach | Why we differ |
+|------|----------------|-------------|---------------|
+| Data flow | Bidirectional (IFC ↔ edit ↔ save) | One-way compiler (IFC → DB → BOM) | We compile, not edit |
+| 4D/5D | Manual entry via IFC schemas | Auto-generated from extracted DB + productivity rates | Speed + Malaysian market rates |
+| Scale | Single IFC, ~50K elements max | 28 buildings federated, 1M elements | GN instances + LOD (S165/S170) |
+| Mesh storage | HDF5 cache or in .blend | `component_library.db` singleton | BOM separation (WHAT vs WHERE) |
+| Schedule | IfcWorkSchedule entities | Construction sequence rules + labour database | Auto vs manual |
+
+### Rules
+
+1. **Check IfcOpenShell API before implementing** — the iterator, not create_shape.
+   The community has already solved most geometry performance problems in C++.
+2. **Use IfcPatch for pre-processing** — don't write custom IFC fixers.
+3. **Watch IfcOpenShell releases** — v0.8 taxonomy, hybrid kernel, BVH are all relevant.
+4. **Our value-add is the compiler pipeline** (BOM, ERP, productivity, federation scale)
+   — not reimplementing what the geometry kernel already does.

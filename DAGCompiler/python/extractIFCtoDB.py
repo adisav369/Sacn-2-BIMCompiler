@@ -787,76 +787,58 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
     lib_geo_new = lib_igm_new = lib_prod_new = 0  # S168 counters
     ordinal_counter = {}  # S168: (ifc_class, storey) → next ordinal
 
-    # S171: Pre-scan for MappingSource dedup — tessellate once per unique shape
-    t_dedup_scan = time.time()
-    mapping_source_cache = {}   # MappingSource entity id → (vblob, fblob)
-    elem_to_source_id = {}      # element id → MappingSource entity id
-    dedup_n_fast = dedup_n_slow = 0
-    dedup_t_fast = dedup_t_slow = 0.0
+    # ── S172: Geometry iterator (replaces per-element create_shape) ──────
+    # The iterator has built-in C++ dedup, instancing, and caching.
+    # It processes all elements in one pass, returning geometry + transform.
+    import math
 
+    t_iter_start = time.time()
+    exclude_list = list(skip_classes)
+    iterator = ifcopenshell.geom.iterator(settings, ifc_file, exclude=exclude_list)
+
+    if not iterator.initialize():
+        print("  §ITER WARNING: iterator.initialize() returned False — falling back")
+        iterator = None
+
+    # Build GUID→element lookup for metadata extraction
+    guid_to_elem = {}
     for elem in ifc_file.by_type("IfcProduct"):
-        if elem.Representation is None:
-            continue
-        for sub_rep in elem.Representation.Representations:
-            for item in sub_rep.Items:
-                if item.is_a('IfcMappedItem'):
-                    elem_to_source_id[elem.id()] = item.MappingSource.id()
+        guid_to_elem[elem.GlobalId] = elem
+
+    if iterator:
+        print(f"  §ITER using geometry iterator (v{ifcopenshell.version}, built-in dedup)")
+        while True:
+            shape = iterator.get()
+            elem = guid_to_elem.get(shape.guid)
+            if elem is None:
+                if not iterator.next():
                     break
-            if elem.id() in elem_to_source_id:
-                break
+                continue
 
-    # Count reuse
-    source_counts = {}
-    for src_id in elem_to_source_id.values():
-        source_counts[src_id] = source_counts.get(src_id, 0) + 1
-    total_mapped = len(elem_to_source_id)
-    unique_sources = len(source_counts)
-    reuse_ratio = total_mapped / max(unique_sources, 1)
-    skippable = total_mapped - unique_sources
-    t_scan_elapsed = time.time() - t_dedup_scan
-    print(f"  §DEDUP_SCAN  {total_mapped:,} IfcMappedItem, {unique_sources:,} unique sources "
-          f"({reuse_ratio:.1f}x reuse, {skippable:,} skippable) in {t_scan_elapsed:.1f}s")
-
-    # Collect all unique concrete IFC classes present in the file,
-    # excluding known non-geometric types. This replaces the old whitelist.
-    all_classes = set()
-    for elem in ifc_file.by_type("IfcProduct"):
-        c = elem.is_a()
-        if c not in skip_classes and elem.Representation is not None:
-            all_classes.add(c)
-
-    for cls in sorted(all_classes):
-        try:
-            elements = [e for e in ifc_file.by_type(cls)
-                        if e.is_a() == cls and e.Representation is not None]
-        except RuntimeError:
-            continue
-        for elem in elements:
+            cls = shape.type  # IFC class
             try:
-                # S171: Check MappingSource cache before tessellating
-                source_id = elem_to_source_id.get(elem.id())
-                cached_geo = mapping_source_cache.get(source_id) if source_id else None
+                geo = shape.geometry
+                verts = np.array(geo.verts, dtype=np.float64).reshape(-1, 3)
+                faces = np.array(geo.faces, dtype=np.int32).reshape(-1, 3)
 
-                # S169: rotation from transform matrix (0 for bbox fallback)
                 rot_x = rot_y = rot_z = 0.0
 
-                if cached_geo is not None:
-                    # ── S171 FAST PATH: reuse cached mesh, extract placement
-                    #    from IFC directly (NO tessellation) ──
-                    t_fast_start = time.time()
-                    vblob, fblob = cached_geo
-                    import math
+                if len(verts) < 3 or len(faces) < 1:
+                    vblob, fblob, center, minXYZ, maxXYZ = bbox_from_placement(elem)
+                    bbox_fallback += 1
+                else:
+                    vblob = verts.astype(np.float32).tobytes()
+                    fblob = faces.astype(np.int32).tobytes()
 
-                    # Get world placement matrix from IFC ObjectPlacement
-                    # This is pure IFC data traversal — no OpenCASCADE
-                    mat4 = _placement_matrix(elem)
+                    # Transform from iterator (4x4 column-major in v0.8)
+                    mat_flat = list(shape.transformation.matrix)
+                    mat4 = np.array(mat_flat, dtype=np.float64).reshape(4, 4).T
                     rot3 = mat4[:3, :3]
                     center = mat4[:3, 3]
 
-                    # World-space bbox from cached local verts
-                    local_verts = np.frombuffer(vblob, dtype=np.float32).reshape(-1, 3)
-                    local_min = local_verts.min(axis=0)
-                    local_max = local_verts.max(axis=0)
+                    # World-space bbox
+                    local_min = verts.min(axis=0)
+                    local_max = verts.max(axis=0)
                     corners = np.array([
                         [local_min[0], local_min[1], local_min[2]],
                         [local_max[0], local_min[1], local_min[2]],
@@ -867,11 +849,11 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                         [local_min[0], local_max[1], local_max[2]],
                         [local_max[0], local_max[1], local_max[2]],
                     ])
-                    world_corners = (rot3 @ corners.T).T + center
+                    world_corners = (rot3 @ corners.T).T + mat4[:3, 3]
                     minXYZ = world_corners.min(axis=0)
                     maxXYZ = world_corners.max(axis=0)
 
-                    # Euler rotation from placement matrix
+                    # Euler rotation
                     sy = math.sqrt(rot3[0, 0]**2 + rot3[1, 0]**2)
                     if sy > 1e-6:
                         rot_x = math.atan2(rot3[2, 1], rot3[2, 2])
@@ -882,86 +864,9 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                         rot_y = math.atan2(-rot3[2, 0], sy)
                         rot_z = 0.0
 
-                    dedup_t_fast += time.time() - t_fast_start
-                    dedup_n_fast += 1
-
-                else:
-                    # ── SLOW PATH: full tessellation (existing code) ──
-                    t_slow_start = time.time()
-                    use_bbox = False
-                    depth = element_boolean_depth(elem)
-                    if depth > BOOL_DEPTH_THRESHOLD:
-                        try:
-                            shape = ifcopenshell.geom.create_shape(settings_no_bool, elem)
-                            simplified += 1
-                        except Exception:
-                            use_bbox = True
-                    else:
-                        try:
-                            shape = ifcopenshell.geom.create_shape(settings, elem)
-                        except Exception:
-                            try:
-                                shape = ifcopenshell.geom.create_shape(settings_no_bool, elem)
-                                simplified += 1
-                            except Exception:
-                                use_bbox = True
-
-                    if use_bbox:
-                        vblob, fblob, center, minXYZ, maxXYZ = bbox_from_placement(elem)
-                        bbox_fallback += 1
-                    else:
-                        geo = shape.geometry
-                        verts = np.array(geo.verts, dtype=np.float64).reshape(-1, 3)
-                        faces = np.array(geo.faces, dtype=np.int32).reshape(-1, 3)
-                        if len(verts) < 3 or len(faces) < 1:
-                            vblob, fblob, center, minXYZ, maxXYZ = bbox_from_placement(elem)
-                            bbox_fallback += 1
-                        else:
-                            vblob = verts.astype(np.float32).tobytes()
-                            fblob = faces.astype(np.int32).tobytes()
-
-                            mat_flat = list(shape.transformation.matrix)
-                            mat4 = np.array(mat_flat, dtype=np.float64).reshape(4, 4).T
-                            rot3 = mat4[:3, :3]
-                            center = mat4[:3, 3]
-
-                            local_min = verts.min(axis=0)
-                            local_max = verts.max(axis=0)
-                            corners = np.array([
-                                [local_min[0], local_min[1], local_min[2]],
-                                [local_max[0], local_min[1], local_min[2]],
-                                [local_min[0], local_max[1], local_min[2]],
-                                [local_max[0], local_max[1], local_min[2]],
-                                [local_min[0], local_min[1], local_max[2]],
-                                [local_max[0], local_min[1], local_max[2]],
-                                [local_min[0], local_max[1], local_max[2]],
-                                [local_max[0], local_max[1], local_max[2]],
-                            ])
-                            world_corners = (rot3 @ corners.T).T + mat4[:3, 3]
-                            minXYZ = world_corners.min(axis=0)
-                            maxXYZ = world_corners.max(axis=0)
-
-                            import math
-                            sy = math.sqrt(rot3[0, 0]**2 + rot3[1, 0]**2)
-                            if sy > 1e-6:
-                                rot_x = math.atan2(rot3[2, 1], rot3[2, 2])
-                                rot_y = math.atan2(-rot3[2, 0], sy)
-                                rot_z = math.atan2(rot3[1, 0], rot3[0, 0])
-                            else:
-                                rot_x = math.atan2(-rot3[1, 2], rot3[1, 1])
-                                rot_y = math.atan2(-rot3[2, 0], sy)
-                                rot_z = 0.0
-
-                            # S171: Cache this tessellation for future instances
-                            if source_id and source_id not in mapping_source_cache:
-                                mapping_source_cache[source_id] = (vblob, fblob)
-
-                    dedup_t_slow += time.time() - t_slow_start
-                    dedup_n_slow += 1
-
                 ghash = geometry_hash(vblob, fblob)
 
-                guid = elem.GlobalId
+                guid = shape.guid
                 name = getattr(elem, "Name", None)
                 storey = get_storey_for_element(elem)
                 discipline = infer_discipline(cls)
@@ -974,7 +879,6 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 except (AttributeError, TypeError):
                     pass
 
-                # Material + colour in SAME pass
                 material_name = get_material_for_element(elem)
                 material_rgba = get_colour_for_element(elem)
                 if material_name:
@@ -1104,7 +1008,6 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 imported += 1
 
                 # S170: batch-commit every 1000 elements to release write lock
-                # Enables concurrent extractions against same component_library.db
                 if imported % 1000 == 0 and not dry_run:
                     conn.commit()
                     if lib_conn:
@@ -1114,6 +1017,13 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 failed += 1
                 if failed <= 5:
                     print(f"  §FAIL {cls} {getattr(elem, 'GlobalId', '?')}: {exc}")
+
+            if not iterator.next():
+                break
+
+        t_iter_elapsed = time.time() - t_iter_start
+        print(f"  §ITER done: {imported:,} elements in {t_iter_elapsed:.1f}s "
+              f"({imported/max(t_iter_elapsed,0.01):.0f} elem/s)")
 
     if not dry_run:
         conn.commit()
@@ -1209,18 +1119,6 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
             "SELECT COUNT(*) FROM element_instances").fetchone()[0]
         reuse_ratio = total_instances / max(unique_hashes, 1)
         print(f"  §DEDUP {unique_hashes} unique hashes / {total_instances} instances (reuse ratio: {reuse_ratio:.1f}x)")
-
-    # S171: Dedup timing summary
-    if dedup_n_fast + dedup_n_slow > 0:
-        avg_slow = dedup_t_slow / max(dedup_n_slow, 1)
-        est_without = (dedup_n_fast + dedup_n_slow) * avg_slow
-        speedup = est_without / max(dedup_t_slow + dedup_t_fast, 0.001)
-        print(f"  §DEDUP_TIME  slow_path: {dedup_t_slow:.1f}s for {dedup_n_slow:,} tessellations "
-              f"({avg_slow*1000:.1f}ms/tess)")
-        print(f"  §DEDUP_TIME  fast_path: {dedup_t_fast:.1f}s for {dedup_n_fast:,} cache hits "
-              f"({dedup_t_fast/max(dedup_n_fast,1)*1000:.1f}ms/hit)")
-        print(f"  §DEDUP_TIME  speedup: {speedup:.1f}x "
-              f"(est {est_without:.0f}s without dedup → {dedup_t_slow + dedup_t_fast:.0f}s with)")
 
     # Rotation stats
     if not dry_run:
