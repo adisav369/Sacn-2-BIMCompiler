@@ -278,12 +278,61 @@ def merge_db(src_path: Path, dst: sqlite3.Connection, disc_label: str):
     print(f"  → merged {disc_label}: running total {count} elements")
 
 
+def post_normalise_site_origin(dst: sqlite3.Connection, first_ifc: Path):
+    """
+    Subtract IfcSite placement origin from all element coordinates so the building
+    sits near ground level rather than at a real-world datum (e.g. 165m elevation).
+
+    Updates element_transforms and elements_rtree together.
+    Camera target is computed by the caller AFTER this function, so it self-corrects.
+    No-op when |site_oz| <= 1.0m (site at or near origin).
+
+    Logic source: scripts/topup_extracted_db.py lines 49-147.
+    Witness: W-SITE-Z-1 in scripts/verify_extraction.sh.
+    """
+    try:
+        import ifcopenshell
+        import ifcopenshell.util.placement as ifcplace
+        import ifcopenshell.util.unit as ifcunit
+    except ImportError:
+        print("  post_normalise_site_origin: ifcopenshell not available — skipping")
+        return
+
+    try:
+        ifc = ifcopenshell.open(str(first_ifc))
+        unit_scale = ifcunit.calculate_unit_scale(ifc, 'LENGTHUNIT')
+        sites = ifc.by_type('IfcSite')
+        if not sites or not sites[0].ObjectPlacement:
+            return
+        m = ifcplace.get_local_placement(sites[0].ObjectPlacement)
+        site_oz = float(m[2][3]) * unit_scale
+    except Exception as e:
+        print(f"  post_normalise_site_origin: could not read site placement ({e}) — skipping")
+        return
+
+    if abs(site_oz) <= 1.0:
+        return
+
+    print(f"  Site origin Z={site_oz:.3f}m — subtracting from all element coordinates")
+    dst.execute("UPDATE element_transforms SET center_z = center_z - ?", (site_oz,))
+    dst.execute("""
+        UPDATE elements_rtree SET
+            minZ = minZ - ?,
+            maxZ = maxZ - ?
+    """, (site_oz, site_oz))
+    dst.execute("INSERT OR REPLACE INTO project_metadata VALUES ('site_offset_z', ?)",
+                (str(round(site_oz, 4)),))
+    dst.commit()
+    print(f"  → Z normalised. site_offset_z={site_oz:.3f}m stored in project_metadata")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ifc-dir", required=True)
     parser.add_argument("--pattern", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--extractor", default="DAGCompiler/python/extractIFCtoDB.py")
+    parser.add_argument("--library", help="Component library DB path (passed to extractor as --library)")
     parser.add_argument(
         "--disc-map", nargs="*", metavar="STEM=DISC",
         help="Override discipline by source filename stem. "
@@ -320,10 +369,10 @@ def main():
         tmp_db = Path(tempfile.mktemp(suffix=".db"))
         print(f"\n[{disc}] Extracting {ifc.name} ({ifc.stat().st_size/1024/1024:.1f}MB)...")
 
-        result = subprocess.run(
-            [sys.executable, args.extractor, "--ifc", str(ifc), "-o", str(tmp_db)],
-            capture_output=False
-        )
+        cmd = [sys.executable, args.extractor, "--ifc", str(ifc), "-o", str(tmp_db)]
+        if args.library:
+            cmd.extend(["--library", args.library])
+        result = subprocess.run(cmd, capture_output=False)
 
         if result.returncode != 0 or not tmp_db.exists():
             print(f"  ✗ FAILED — skipping")
@@ -349,7 +398,15 @@ def main():
         "SELECT discipline, COUNT(*) FROM elements_meta GROUP BY discipline ORDER BY COUNT(*) DESC"
     ).fetchall()
 
-    # Store building center + view distance as camera target for the loader
+    # Post-action: subtract site origin Z so elements sit near ground level.
+    # Reads IfcSite.ObjectPlacement from the first discipline IFC.
+    # If |site_oz| > 1m, subtracts from element_transforms + elements_rtree.
+    # Camera target is computed AFTER this fix so it self-corrects (W-SITE-Z-1).
+    # Logic source: scripts/topup_extracted_db.py lines 49-147.
+    post_normalise_site_origin(dst, ifc_files[0])
+
+    # Store building center + view distance as camera target for the loader.
+    # Must run AFTER post_normalise_site_origin so camera tracks corrected coords.
     try:
         row = dst.execute("""
             SELECT (MIN(center_x)+MAX(center_x))/2.0,

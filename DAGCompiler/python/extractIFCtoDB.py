@@ -50,8 +50,59 @@ import os
 import sqlite3
 import struct
 import sys
+import time
 
 import numpy as np
+
+
+# ---------------------------------------------------------------------------
+# S171: Extract world placement matrix from IFC ObjectPlacement chain
+# (no tessellation — pure IFC data traversal)
+# ---------------------------------------------------------------------------
+
+def _placement_matrix(elem):
+    """Return 4x4 world transform matrix from IfcLocalPlacement chain."""
+    mat = np.eye(4, dtype=np.float64)
+    placement = getattr(elem, 'ObjectPlacement', None)
+    placements = []
+    while placement and placement.is_a('IfcLocalPlacement'):
+        placements.append(placement)
+        placement = placement.PlacementRelTo
+    # Apply from root to leaf (outermost first)
+    for p in reversed(placements):
+        rp = p.RelativePlacement
+        if rp is None:
+            continue
+        local = np.eye(4, dtype=np.float64)
+        loc = rp.Location
+        if loc:
+            coords = list(loc.Coordinates)
+            if len(coords) == 2:
+                coords.append(0.0)
+            local[0, 3] = coords[0]
+            local[1, 3] = coords[1]
+            local[2, 3] = coords[2]
+        axis = getattr(rp, 'Axis', None)
+        ref_dir = getattr(rp, 'RefDirection', None)
+        if axis and axis.DirectionRatios:
+            z = np.array(list(axis.DirectionRatios)[:3], dtype=np.float64)
+            z = z / max(np.linalg.norm(z), 1e-12)
+        else:
+            z = np.array([0, 0, 1], dtype=np.float64)
+        if ref_dir and ref_dir.DirectionRatios:
+            x = np.array(list(ref_dir.DirectionRatios)[:3], dtype=np.float64)
+            x = x / max(np.linalg.norm(x), 1e-12)
+        else:
+            x = np.array([1, 0, 0], dtype=np.float64)
+        y = np.cross(z, x)
+        y = y / max(np.linalg.norm(y), 1e-12)
+        x = np.cross(y, z)
+        x = x / max(np.linalg.norm(x), 1e-12)
+        local[:3, 0] = x
+        local[:3, 1] = y
+        local[:3, 2] = z
+        mat = mat @ local
+    return mat
 
 
 # ---------------------------------------------------------------------------
@@ -736,6 +787,36 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
     lib_geo_new = lib_igm_new = lib_prod_new = 0  # S168 counters
     ordinal_counter = {}  # S168: (ifc_class, storey) → next ordinal
 
+    # S171: Pre-scan for MappingSource dedup — tessellate once per unique shape
+    t_dedup_scan = time.time()
+    mapping_source_cache = {}   # MappingSource entity id → (vblob, fblob)
+    elem_to_source_id = {}      # element id → MappingSource entity id
+    dedup_n_fast = dedup_n_slow = 0
+    dedup_t_fast = dedup_t_slow = 0.0
+
+    for elem in ifc_file.by_type("IfcProduct"):
+        if elem.Representation is None:
+            continue
+        for sub_rep in elem.Representation.Representations:
+            for item in sub_rep.Items:
+                if item.is_a('IfcMappedItem'):
+                    elem_to_source_id[elem.id()] = item.MappingSource.id()
+                    break
+            if elem.id() in elem_to_source_id:
+                break
+
+    # Count reuse
+    source_counts = {}
+    for src_id in elem_to_source_id.values():
+        source_counts[src_id] = source_counts.get(src_id, 0) + 1
+    total_mapped = len(elem_to_source_id)
+    unique_sources = len(source_counts)
+    reuse_ratio = total_mapped / max(unique_sources, 1)
+    skippable = total_mapped - unique_sources
+    t_scan_elapsed = time.time() - t_dedup_scan
+    print(f"  §DEDUP_SCAN  {total_mapped:,} IfcMappedItem, {unique_sources:,} unique sources "
+          f"({reuse_ratio:.1f}x reuse, {skippable:,} skippable) in {t_scan_elapsed:.1f}s")
+
     # Collect all unique concrete IFC classes present in the file,
     # excluding known non-geometric types. This replaces the old whitelist.
     all_classes = set()
@@ -752,85 +833,131 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
             continue
         for elem in elements:
             try:
-                # --- Tier selection: pre-scan boolean depth ---
-                use_bbox = False
-                depth = element_boolean_depth(elem)
-                if depth > BOOL_DEPTH_THRESHOLD:
-                    # Tier 2: skip full CSG, tessellate base shape only
-                    try:
-                        shape = ifcopenshell.geom.create_shape(settings_no_bool, elem)
-                        simplified += 1
-                    except Exception:
-                        use_bbox = True
+                # S171: Check MappingSource cache before tessellating
+                source_id = elem_to_source_id.get(elem.id())
+                cached_geo = mapping_source_cache.get(source_id) if source_id else None
+
+                # S169: rotation from transform matrix (0 for bbox fallback)
+                rot_x = rot_y = rot_z = 0.0
+
+                if cached_geo is not None:
+                    # ── S171 FAST PATH: reuse cached mesh, extract placement
+                    #    from IFC directly (NO tessellation) ──
+                    t_fast_start = time.time()
+                    vblob, fblob = cached_geo
+                    import math
+
+                    # Get world placement matrix from IFC ObjectPlacement
+                    # This is pure IFC data traversal — no OpenCASCADE
+                    mat4 = _placement_matrix(elem)
+                    rot3 = mat4[:3, :3]
+                    center = mat4[:3, 3]
+
+                    # World-space bbox from cached local verts
+                    local_verts = np.frombuffer(vblob, dtype=np.float32).reshape(-1, 3)
+                    local_min = local_verts.min(axis=0)
+                    local_max = local_verts.max(axis=0)
+                    corners = np.array([
+                        [local_min[0], local_min[1], local_min[2]],
+                        [local_max[0], local_min[1], local_min[2]],
+                        [local_min[0], local_max[1], local_min[2]],
+                        [local_max[0], local_max[1], local_min[2]],
+                        [local_min[0], local_min[1], local_max[2]],
+                        [local_max[0], local_min[1], local_max[2]],
+                        [local_min[0], local_max[1], local_max[2]],
+                        [local_max[0], local_max[1], local_max[2]],
+                    ])
+                    world_corners = (rot3 @ corners.T).T + center
+                    minXYZ = world_corners.min(axis=0)
+                    maxXYZ = world_corners.max(axis=0)
+
+                    # Euler rotation from placement matrix
+                    sy = math.sqrt(rot3[0, 0]**2 + rot3[1, 0]**2)
+                    if sy > 1e-6:
+                        rot_x = math.atan2(rot3[2, 1], rot3[2, 2])
+                        rot_y = math.atan2(-rot3[2, 0], sy)
+                        rot_z = math.atan2(rot3[1, 0], rot3[0, 0])
+                    else:
+                        rot_x = math.atan2(-rot3[1, 2], rot3[1, 1])
+                        rot_y = math.atan2(-rot3[2, 0], sy)
+                        rot_z = 0.0
+
+                    dedup_t_fast += time.time() - t_fast_start
+                    dedup_n_fast += 1
+
                 else:
-                    # Tier 1: full tessellation
-                    try:
-                        shape = ifcopenshell.geom.create_shape(settings, elem)
-                    except Exception:
-                        # Tier 2 on failure
+                    # ── SLOW PATH: full tessellation (existing code) ──
+                    t_slow_start = time.time()
+                    use_bbox = False
+                    depth = element_boolean_depth(elem)
+                    if depth > BOOL_DEPTH_THRESHOLD:
                         try:
                             shape = ifcopenshell.geom.create_shape(settings_no_bool, elem)
                             simplified += 1
                         except Exception:
                             use_bbox = True
+                    else:
+                        try:
+                            shape = ifcopenshell.geom.create_shape(settings, elem)
+                        except Exception:
+                            try:
+                                shape = ifcopenshell.geom.create_shape(settings_no_bool, elem)
+                                simplified += 1
+                            except Exception:
+                                use_bbox = True
 
-                # S169: rotation from transform matrix (0 for bbox fallback)
-                rot_x = rot_y = rot_z = 0.0
-
-                if use_bbox:
-                    # Tier 3: placement bbox
-                    vblob, fblob, center, minXYZ, maxXYZ = bbox_from_placement(elem)
-                    bbox_fallback += 1
-                else:
-                    geo = shape.geometry
-                    verts = np.array(geo.verts, dtype=np.float64).reshape(-1, 3)
-                    faces = np.array(geo.faces, dtype=np.int32).reshape(-1, 3)
-                    if len(verts) < 3 or len(faces) < 1:
+                    if use_bbox:
                         vblob, fblob, center, minXYZ, maxXYZ = bbox_from_placement(elem)
                         bbox_fallback += 1
                     else:
-                        # S169: LOCAL coords — origin = IFC tack point (BOM granted)
-                        # DO NOT re-center. Local (0,0,0) = placement origin
-                        # (door hinge, pipe connection, attachment face)
-                        vblob = verts.astype(np.float32).tobytes()
-                        fblob = faces.astype(np.int32).tobytes()
-
-                        # World transform from shape placement matrix
-                        mat_flat = list(shape.transformation.matrix)
-                        mat4 = np.array(mat_flat, dtype=np.float64).reshape(4, 4).T
-                        rot3 = mat4[:3, :3]
-                        # Tack point world position = matrix translation directly
-                        center = mat4[:3, 3]
-
-                        # World-space bbox for R-tree (transform local bbox corners)
-                        local_min = verts.min(axis=0)
-                        local_max = verts.max(axis=0)
-                        corners = np.array([
-                            [local_min[0], local_min[1], local_min[2]],
-                            [local_max[0], local_min[1], local_min[2]],
-                            [local_min[0], local_max[1], local_min[2]],
-                            [local_max[0], local_max[1], local_min[2]],
-                            [local_min[0], local_min[1], local_max[2]],
-                            [local_max[0], local_min[1], local_max[2]],
-                            [local_min[0], local_max[1], local_max[2]],
-                            [local_max[0], local_max[1], local_max[2]],
-                        ])
-                        world_corners = (rot3 @ corners.T).T + mat4[:3, 3]
-                        minXYZ = world_corners.min(axis=0)
-                        maxXYZ = world_corners.max(axis=0)
-
-                        # Decompose rotation to Euler XYZ (radians)
-                        import math
-                        # From rotation matrix to Euler XYZ
-                        sy = math.sqrt(rot3[0, 0]**2 + rot3[1, 0]**2)
-                        if sy > 1e-6:
-                            rot_x = math.atan2(rot3[2, 1], rot3[2, 2])
-                            rot_y = math.atan2(-rot3[2, 0], sy)
-                            rot_z = math.atan2(rot3[1, 0], rot3[0, 0])
+                        geo = shape.geometry
+                        verts = np.array(geo.verts, dtype=np.float64).reshape(-1, 3)
+                        faces = np.array(geo.faces, dtype=np.int32).reshape(-1, 3)
+                        if len(verts) < 3 or len(faces) < 1:
+                            vblob, fblob, center, minXYZ, maxXYZ = bbox_from_placement(elem)
+                            bbox_fallback += 1
                         else:
-                            rot_x = math.atan2(-rot3[1, 2], rot3[1, 1])
-                            rot_y = math.atan2(-rot3[2, 0], sy)
-                            rot_z = 0.0
+                            vblob = verts.astype(np.float32).tobytes()
+                            fblob = faces.astype(np.int32).tobytes()
+
+                            mat_flat = list(shape.transformation.matrix)
+                            mat4 = np.array(mat_flat, dtype=np.float64).reshape(4, 4).T
+                            rot3 = mat4[:3, :3]
+                            center = mat4[:3, 3]
+
+                            local_min = verts.min(axis=0)
+                            local_max = verts.max(axis=0)
+                            corners = np.array([
+                                [local_min[0], local_min[1], local_min[2]],
+                                [local_max[0], local_min[1], local_min[2]],
+                                [local_min[0], local_max[1], local_min[2]],
+                                [local_max[0], local_max[1], local_min[2]],
+                                [local_min[0], local_min[1], local_max[2]],
+                                [local_max[0], local_min[1], local_max[2]],
+                                [local_min[0], local_max[1], local_max[2]],
+                                [local_max[0], local_max[1], local_max[2]],
+                            ])
+                            world_corners = (rot3 @ corners.T).T + mat4[:3, 3]
+                            minXYZ = world_corners.min(axis=0)
+                            maxXYZ = world_corners.max(axis=0)
+
+                            import math
+                            sy = math.sqrt(rot3[0, 0]**2 + rot3[1, 0]**2)
+                            if sy > 1e-6:
+                                rot_x = math.atan2(rot3[2, 1], rot3[2, 2])
+                                rot_y = math.atan2(-rot3[2, 0], sy)
+                                rot_z = math.atan2(rot3[1, 0], rot3[0, 0])
+                            else:
+                                rot_x = math.atan2(-rot3[1, 2], rot3[1, 1])
+                                rot_y = math.atan2(-rot3[2, 0], sy)
+                                rot_z = 0.0
+
+                            # S171: Cache this tessellation for future instances
+                            if source_id and source_id not in mapping_source_cache:
+                                mapping_source_cache[source_id] = (vblob, fblob)
+
+                    dedup_t_slow += time.time() - t_slow_start
+                    dedup_n_slow += 1
 
                 ghash = geometry_hash(vblob, fblob)
 
@@ -1005,7 +1132,7 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
             # Only normalize if significantly far from origin (> 100m)
             if abs(ox) > 100 or abs(oy) > 100 or abs(oz) > 100:
                 print(f"  §NORMALIZE origin far from (0,0,0): centroid=({ox:.1f}, {oy:.1f}, {oz:.1f})")
-                print(f"  §NORMALIZE subtracting to re-center building")
+                print(f"  §NORMALIZE subtracting offset to re-center building at origin")
                 conn.execute("""
                     UPDATE element_transforms
                     SET center_x = center_x - ?,
@@ -1028,7 +1155,15 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 conn.execute("INSERT OR REPLACE INTO site_normalization VALUES ('offset_y', ?)", (oy,))
                 conn.execute("INSERT OR REPLACE INTO site_normalization VALUES ('offset_z', ?)", (oz,))
                 conn.commit()
-                print(f"  §NORMALIZE offset stored in site_normalization for IFC export round-trip")
+                # Verify
+                vrow = conn.execute("""
+                    SELECT AVG(center_x), AVG(center_y), MIN(center_z)
+                    FROM element_transforms
+                """).fetchone()
+                print(f"  §NORMALIZE offset=({ox:.1f}, {oy:.1f}, {oz:.1f}) stored in site_normalization")
+                print(f"  §NORMALIZE after: centroid=({vrow[0]:.1f}, {vrow[1]:.1f}, {vrow[2]:.1f}) — should be near (0,0,0)")
+            else:
+                print(f"  §NORMALIZE skip — centroid=({ox:.1f}, {oy:.1f}, {oz:.1f}) already near origin")
 
     # Extract IfcRelAggregates — parent-child decomposition
     agg_count = 0
@@ -1074,6 +1209,18 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
             "SELECT COUNT(*) FROM element_instances").fetchone()[0]
         reuse_ratio = total_instances / max(unique_hashes, 1)
         print(f"  §DEDUP {unique_hashes} unique hashes / {total_instances} instances (reuse ratio: {reuse_ratio:.1f}x)")
+
+    # S171: Dedup timing summary
+    if dedup_n_fast + dedup_n_slow > 0:
+        avg_slow = dedup_t_slow / max(dedup_n_slow, 1)
+        est_without = (dedup_n_fast + dedup_n_slow) * avg_slow
+        speedup = est_without / max(dedup_t_slow + dedup_t_fast, 0.001)
+        print(f"  §DEDUP_TIME  slow_path: {dedup_t_slow:.1f}s for {dedup_n_slow:,} tessellations "
+              f"({avg_slow*1000:.1f}ms/tess)")
+        print(f"  §DEDUP_TIME  fast_path: {dedup_t_fast:.1f}s for {dedup_n_fast:,} cache hits "
+              f"({dedup_t_fast/max(dedup_n_fast,1)*1000:.1f}ms/hit)")
+        print(f"  §DEDUP_TIME  speedup: {speedup:.1f}x "
+              f"(est {est_without:.0f}s without dedup → {dedup_t_slow + dedup_t_fast:.0f}s with)")
 
     # Rotation stats
     if not dry_run:
