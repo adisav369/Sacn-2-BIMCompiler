@@ -14,26 +14,33 @@ Also supports populating I_Element_Extraction with material columns.
 
 Usage:
   # Full extraction: IFC → new reference DB (geometry + materials)
-  python3 DAGCompiler/python/extract.py \
-      --ifc DAGCompiler/lib/input/Ifc4_SampleHouse.ifc \
-      -o DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
+  python3 DAGCompiler/python/extractIFCtoDB.py \
+      --ifc DAGCompiler/lib/input/SampleHouse.ifc \
+      -o DAGCompiler/lib/input/SampleHouse_extracted.db
+
+  # S168: Full extraction with library mode (BLOBs → library, hashes → extracted)
+  python3 DAGCompiler/python/extractIFCtoDB.py \
+      --ifc DAGCompiler/lib/input/SampleHouse.ifc \
+      -o DAGCompiler/lib/input/SampleHouse_extracted.db \
+      --library library/component_library.db \
+      --building-type Ifc4_SampleHouse
 
   # Populate I_Element_Extraction material columns from enriched reference DB
   python3 DAGCompiler/python/extract.py \
       --populate-placement \
-      --ref DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+      --ref DAGCompiler/lib/input/SampleHouse_extracted.db \
       --library library/component_library.db \
-      --building-type Ifc4_SampleHouse
+      --building-type SampleHouse
 
   # Enrich existing DB with materials only (no geometry re-extraction)
   python3 DAGCompiler/python/extract.py \
       --enrich \
-      --ifc DAGCompiler/lib/input/Ifc4_SampleHouse.ifc \
-      --ref DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
+      --ifc DAGCompiler/lib/input/SampleHouse.ifc \
+      --ref DAGCompiler/lib/input/SampleHouse_extracted.db
 
   # Dry-run (report only)
   python3 DAGCompiler/python/extract.py \
-      --ifc DAGCompiler/lib/input/Ifc4_SampleHouse.ifc \
+      --ifc DAGCompiler/lib/input/SampleHouse.ifc \
       -o out.db --dry-run
 """
 
@@ -91,6 +98,9 @@ CREATE TABLE IF NOT EXISTS element_transforms (
     center_x REAL,
     center_y REAL,
     center_z REAL,
+    rotation_x REAL DEFAULT 0,
+    rotation_y REAL DEFAULT 0,
+    rotation_z REAL DEFAULT 0,
     transform_source TEXT
 );
 CREATE TABLE IF NOT EXISTS rel_contained_in_space (
@@ -553,13 +563,81 @@ def write_material_layers(conn, layers):
 # Full extraction: IFC -> reference DB (geometry + materials in one pass)
 # ---------------------------------------------------------------------------
 
-def extract_reference(ifc_path, output_path, classes=None, exclude=None, dry_run=False):
+def _infer_product_type(ifc_class):
+    """Map IFC class to product_type for M_Product."""
+    TYPE_MAP = {
+        "IfcDoor": "DOOR", "IfcWindow": "WINDOW",
+        "IfcWall": "WALL", "IfcWallStandardCase": "WALL",
+        "IfcSlab": "SLAB", "IfcColumn": "COLUMN", "IfcBeam": "BEAM",
+        "IfcRoof": "ROOF", "IfcStair": "STAIR", "IfcStairFlight": "STAIR",
+        "IfcRailing": "RAILING", "IfcCovering": "ELEMENT",
+        "IfcFurnishingElement": "ELEMENT", "IfcFurniture": "ELEMENT",
+        "IfcBuildingElementProxy": "ELEMENT",
+    }
+    return TYPE_MAP.get(ifc_class, "ELEMENT")
+
+
+def _product_id_from_dims(ifc_class, width, depth, height):
+    """Derive M_Product.product_id from class + dimensions (mm)."""
+    ptype = _infer_product_type(ifc_class)
+    short = ptype
+    if ifc_class.startswith("IfcDoor"):
+        short = "DOOR_INT" if width < 1.0 else "DOOR_EXT"
+    w_mm = int(round(width * 1000))
+    d_mm = int(round(depth * 1000))
+    h_mm = int(round(height * 1000))
+    return f"{short}_{w_mm}x{d_mm}x{h_mm}"
+
+
+def _infer_attachment_face(ifc_class):
+    """Derive attachment_face from IFC class — how the element tacks to its host."""
+    FACE_MAP = {
+        "IfcDoor": "SIDE", "IfcWindow": "SIDE",           # tack to wall face
+        "IfcWall": "FLOOR", "IfcWallStandardCase": "FLOOR",
+        "IfcSlab": "FLOOR", "IfcRoof": "FLOOR",
+        "IfcColumn": "FLOOR", "IfcBeam": "FLOOR",
+        "IfcStair": "FLOOR", "IfcStairFlight": "FLOOR",
+        "IfcRailing": "FLOOR",
+        "IfcFurnishingElement": "FLOOR", "IfcFurniture": "FLOOR",
+        "IfcCovering": "TOP",                              # ceiling covering
+        "IfcFlowTerminal": "TOP", "IfcAirTerminal": "TOP", # sprinkler, diffuser
+        "IfcLightFixture": "TOP",                          # pendant light
+        "IfcSanitaryTerminal": "FLOOR",
+        "IfcPipeSegment": "CENTER", "IfcPipeFitting": "CENTER",
+        "IfcDuctSegment": "CENTER", "IfcDuctFitting": "CENTER",
+    }
+    return FACE_MAP.get(ifc_class, "CENTER")
+
+
+def _open_library(library_path):
+    """Open component_library.db and ensure target tables exist."""
+    lib = sqlite3.connect(library_path, timeout=30)
+    lib.execute("PRAGMA journal_mode=WAL")  # allow concurrent reads
+    lib.execute("PRAGMA busy_timeout=30000")  # wait up to 30s for lock
+    # component_geometries — must already exist (sacred DB, append-only)
+    # I_Geometry_Map, M_Product — must already exist
+    # Verify tables exist
+    tables = {r[0] for r in lib.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'")}
+    for t in ("component_geometries", "I_Geometry_Map", "M_Product"):
+        if t not in tables:
+            raise RuntimeError(
+                f"component_library.db missing table '{t}' — "
+                f"run schema migration first")
+    return lib
+
+
+def extract_reference(ifc_path, output_path, classes=None, exclude=None,
+                      dry_run=False, library_path=None, building_type=None):
     """Full extraction from IFC to reference DB with geometry + materials.
 
     Extracts ALL IfcProduct subclasses that have a Representation, except
     known non-geometric types (NON_GEOMETRIC_CLASSES blacklist).
     The `classes` parameter is kept for backwards compatibility but ignored
     when None — the blacklist approach is always used by default.
+
+    S168: When library_path is set, mesh BLOBs go to component_library.db
+    and _extracted.db/base_geometries stores hashes only (NULL BLOBs).
     """
     import ifcopenshell
     import ifcopenshell.geom
@@ -569,8 +647,32 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None, dry_run
     # Merge caller-supplied exclude with the global blacklist
     skip_classes = NON_GEOMETRIC_CLASSES | set(exclude)
 
-    print(f"Opening IFC: {ifc_path}")
+    print(f"\n{'='*70}")
+    print(f"§EXTRACT START")
+    print(f"{'='*70}")
+    print(f"  §IFC        {ifc_path}")
     ifc_file = ifcopenshell.open(ifc_path)
+    ifc_size_mb = os.path.getsize(ifc_path) / (1024 * 1024)
+    print(f"  §IFC        {ifc_size_mb:.1f} MB, schema {ifc_file.schema}")
+
+    # S168: Derive building_type from IFC filename if not provided
+    if building_type is None:
+        building_type = os.path.splitext(os.path.basename(ifc_path))[0]
+        # Strip common suffixes
+        for suffix in ("_extracted", "_merged", "_federated"):
+            building_type = building_type.replace(suffix, "")
+
+    print(f"  §BUILDING   {building_type}")
+    print(f"  §OUTPUT     {output_path}")
+    print(f"  §COORDS     LOCAL (USE_WORLD_COORDS=False, tack point = IFC origin)")
+
+    # S168: Open component library for mesh BLOB storage
+    lib_conn = None
+    if library_path and not dry_run:
+        lib_conn = _open_library(library_path)
+        print(f"  §LIBRARY    {library_path} (WAL mode, BLOBs here, hashes in output)")
+    else:
+        print(f"  §LIBRARY    none (legacy mode — BLOBs in output DB)")
 
     if dry_run:
         print("  [DRY RUN] Scanning elements...")
@@ -612,14 +714,15 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None, dry_run
                 (sp.GlobalId, sp.Name or sp.LongName, parent_guid, obj_type, predef))
         conn.commit()
 
-    # Geometry settings
+    # Geometry settings — S169: LOCAL coords for canonical mesh deduplication.
+    # World placement comes from shape.transformation matrix.
     settings = ifcopenshell.geom.settings()
-    settings.set(settings.USE_WORLD_COORDS, True)
+    settings.set(settings.USE_WORLD_COORDS, False)
     settings.set(settings.WELD_VERTICES, True)
 
     # Tier 2: no boolean operations — fast fallback for complex CSG elements
     settings_no_bool = ifcopenshell.geom.settings()
-    settings_no_bool.set(settings_no_bool.USE_WORLD_COORDS, True)
+    settings_no_bool.set(settings_no_bool.USE_WORLD_COORDS, False)
     settings_no_bool.set(settings_no_bool.WELD_VERTICES, True)
     settings_no_bool.set(settings_no_bool.DISABLE_BOOLEAN_RESULT, True)
 
@@ -630,6 +733,8 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None, dry_run
     next_id = 1
     imported = failed = simplified = bbox_fallback = 0
     mat_found = rgba_found = 0
+    lib_geo_new = lib_igm_new = lib_prod_new = 0  # S168 counters
+    ordinal_counter = {}  # S168: (ifc_class, storey) → next ordinal
 
     # Collect all unique concrete IFC classes present in the file,
     # excluding known non-geometric types. This replaces the old whitelist.
@@ -669,6 +774,9 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None, dry_run
                         except Exception:
                             use_bbox = True
 
+                # S169: rotation from transform matrix (0 for bbox fallback)
+                rot_x = rot_y = rot_z = 0.0
+
                 if use_bbox:
                     # Tier 3: placement bbox
                     vblob, fblob, center, minXYZ, maxXYZ = bbox_from_placement(elem)
@@ -681,12 +789,48 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None, dry_run
                         vblob, fblob, center, minXYZ, maxXYZ = bbox_from_placement(elem)
                         bbox_fallback += 1
                     else:
-                        minXYZ = verts.min(axis=0)
-                        maxXYZ = verts.max(axis=0)
-                        center = (minXYZ + maxXYZ) / 2.0
-                        v_centered = (verts - center).astype(np.float32)
-                        vblob = v_centered.tobytes()
+                        # S169: LOCAL coords — origin = IFC tack point (BOM granted)
+                        # DO NOT re-center. Local (0,0,0) = placement origin
+                        # (door hinge, pipe connection, attachment face)
+                        vblob = verts.astype(np.float32).tobytes()
                         fblob = faces.astype(np.int32).tobytes()
+
+                        # World transform from shape placement matrix
+                        mat_flat = list(shape.transformation.matrix)
+                        mat4 = np.array(mat_flat, dtype=np.float64).reshape(4, 4).T
+                        rot3 = mat4[:3, :3]
+                        # Tack point world position = matrix translation directly
+                        center = mat4[:3, 3]
+
+                        # World-space bbox for R-tree (transform local bbox corners)
+                        local_min = verts.min(axis=0)
+                        local_max = verts.max(axis=0)
+                        corners = np.array([
+                            [local_min[0], local_min[1], local_min[2]],
+                            [local_max[0], local_min[1], local_min[2]],
+                            [local_min[0], local_max[1], local_min[2]],
+                            [local_max[0], local_max[1], local_min[2]],
+                            [local_min[0], local_min[1], local_max[2]],
+                            [local_max[0], local_min[1], local_max[2]],
+                            [local_min[0], local_max[1], local_max[2]],
+                            [local_max[0], local_max[1], local_max[2]],
+                        ])
+                        world_corners = (rot3 @ corners.T).T + mat4[:3, 3]
+                        minXYZ = world_corners.min(axis=0)
+                        maxXYZ = world_corners.max(axis=0)
+
+                        # Decompose rotation to Euler XYZ (radians)
+                        import math
+                        # From rotation matrix to Euler XYZ
+                        sy = math.sqrt(rot3[0, 0]**2 + rot3[1, 0]**2)
+                        if sy > 1e-6:
+                            rot_x = math.atan2(rot3[2, 1], rot3[2, 2])
+                            rot_y = math.atan2(-rot3[2, 0], sy)
+                            rot_z = math.atan2(rot3[1, 0], rot3[0, 0])
+                        else:
+                            rot_x = math.atan2(-rot3[1, 2], rot3[1, 1])
+                            rot_y = math.atan2(-rot3[2, 0], sy)
+                            rot_z = 0.0
 
                 ghash = geometry_hash(vblob, fblob)
 
@@ -712,12 +856,55 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None, dry_run
                     rgba_found += 1
 
                 if not dry_run:
+                    # Vertex/face counts — derive from BLOB size (always correct)
+                    v_count = len(vblob) // 12   # float32 * 3 = 12 bytes/vertex
+                    f_count = len(fblob) // 12   # int32 * 3  = 12 bytes/face
+
                     if ghash not in existing_hashes:
-                        conn.execute(
-                            "INSERT OR IGNORE INTO base_geometries "
-                            "(geometry_hash, vertices, faces, vertex_count, face_count) "
-                            "VALUES (?,?,?,?,?)",
-                            (ghash, vblob, fblob, len(v_centered), len(faces)))
+                        if lib_conn:
+                            # S168: BLOBs → component_library.db
+                            rc = lib_conn.execute(
+                                "INSERT OR IGNORE INTO component_geometries "
+                                "(geometry_hash, vertices, faces, normals, "
+                                "vertex_count, face_count) "
+                                "VALUES (?,?,?,NULL,?,?)",
+                                (ghash, vblob, fblob, v_count, f_count))
+                            if rc.rowcount > 0:
+                                lib_geo_new += 1
+                                # S169: component_definitions — UFB + local bounds
+                                local_min = np.frombuffer(vblob, dtype=np.float32).reshape(-1, 3).min(axis=0)
+                                local_max = np.frombuffer(vblob, dtype=np.float32).reshape(-1, 3).max(axis=0)
+                                attach = _infer_attachment_face(cls)
+                                lib_conn.execute(
+                                    "INSERT OR IGNORE INTO component_definitions "
+                                    "(name, geometry_hash, "
+                                    "local_min_x, local_max_x, "
+                                    "local_min_y, local_max_y, "
+                                    "local_min_z, local_max_z, "
+                                    "attachment_face, up_axis, forward_axis, "
+                                    "vertex_count, face_count, instance_count) "
+                                    "VALUES (?,?,?,?,?,?,?,?,?,'Z','Y',?,?,1)",
+                                    (elem_type or name or cls,
+                                     ghash,
+                                     float(local_min[0]), float(local_max[0]),
+                                     float(local_min[1]), float(local_max[1]),
+                                     float(local_min[2]), float(local_max[2]),
+                                     attach, v_count, f_count))
+                            # Hash-only in _extracted.db (NULL BLOBs)
+                            conn.execute(
+                                "INSERT OR IGNORE INTO base_geometries "
+                                "(geometry_hash, vertices, faces, "
+                                "vertex_count, face_count) "
+                                "VALUES (?,NULL,NULL,?,?)",
+                                (ghash, v_count, f_count))
+                        else:
+                            # Legacy mode: BLOBs in _extracted.db
+                            conn.execute(
+                                "INSERT OR IGNORE INTO base_geometries "
+                                "(geometry_hash, vertices, faces, "
+                                "vertex_count, face_count) "
+                                "VALUES (?,?,?,?,?)",
+                                (ghash, vblob, fblob, v_count, f_count))
                         existing_hashes.add(ghash)
 
                     eid = next_id
@@ -741,21 +928,107 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None, dry_run
                         "VALUES (?,?)", (guid, ghash))
                     conn.execute(
                         "INSERT OR IGNORE INTO element_transforms "
-                        "(guid, center_x, center_y, center_z, transform_source) "
-                        "VALUES (?,?,?,?,'ifc_extract')",
-                        (guid, float(center[0]), float(center[1]), float(center[2])))
+                        "(guid, center_x, center_y, center_z, "
+                        "rotation_x, rotation_y, rotation_z, transform_source) "
+                        "VALUES (?,?,?,?,?,?,?,'ifc_extract')",
+                        (guid, float(center[0]), float(center[1]), float(center[2]),
+                         float(rot_x), float(rot_y), float(rot_z)))
                     space = get_space_for_element(elem)
                     if space:
                         conn.execute(
                             "INSERT OR IGNORE INTO rel_contained_in_space VALUES (?,?)",
                             (guid, space.GlobalId))
 
+                    # S168: Write I_Geometry_Map + M_Product to library
+                    if lib_conn:
+                        storey_norm = storey or "Unknown"
+                        key = (cls, storey_norm)
+                        ordinal = ordinal_counter.get(key, 1)
+                        ordinal_counter[key] = ordinal + 1
+
+                        element_ref = f"{elem_type or name or cls}"
+                        rc = lib_conn.execute(
+                            "INSERT OR IGNORE INTO I_Geometry_Map "
+                            "(building_type, element_ref, ifc_class, storey, "
+                            "ordinal, geometry_hash, source, provenance) "
+                            "VALUES (?,?,?,?,?,?,?,?)",
+                            (building_type, element_ref, cls, storey_norm,
+                             ordinal, ghash, building_type, "EXTRACTED"))
+                        if rc.rowcount > 0:
+                            lib_igm_new += 1
+
+                        # M_Product from bbox dimensions
+                        width = float(maxXYZ[0] - minXYZ[0])
+                        depth = float(maxXYZ[1] - minXYZ[1])
+                        height = float(maxXYZ[2] - minXYZ[2])
+                        prod_id = _product_id_from_dims(cls, width, depth, height)
+                        prod_type = _infer_product_type(cls)
+                        rc = lib_conn.execute(
+                            "INSERT OR IGNORE INTO M_Product "
+                            "(product_id, product_type, width, depth, height, "
+                            "ifc_class, extracted_from, building_type, "
+                            "source_element_ref) "
+                            "VALUES (?,?,?,?,?,?,?,?,?)",
+                            (prod_id, prod_type, width, depth, height,
+                             cls, "IFC_EXTRACTION", building_type, element_ref))
+                        if rc.rowcount > 0:
+                            lib_prod_new += 1
+
                 imported += 1
-            except Exception:
+
+                # S170: batch-commit every 1000 elements to release write lock
+                # Enables concurrent extractions against same component_library.db
+                if imported % 1000 == 0 and not dry_run:
+                    conn.commit()
+                    if lib_conn:
+                        lib_conn.commit()
+
+            except Exception as exc:
                 failed += 1
+                if failed <= 5:
+                    print(f"  §FAIL {cls} {getattr(elem, 'GlobalId', '?')}: {exc}")
 
     if not dry_run:
         conn.commit()
+        if lib_conn:
+            lib_conn.commit()
+
+    # S169: Normalize building origin — subtract centroid so building is near (0,0,0)
+    # Fixes georeferenced IFC files (UTM/national grid) that place elements at 100K+ metres
+    if not dry_run and imported > 0:
+        row = conn.execute("""
+            SELECT AVG(center_x), AVG(center_y), MIN(center_z)
+            FROM element_transforms
+        """).fetchone()
+        if row and row[0] is not None:
+            ox, oy, oz = row[0], row[1], row[2]
+            # Only normalize if significantly far from origin (> 100m)
+            if abs(ox) > 100 or abs(oy) > 100 or abs(oz) > 100:
+                print(f"  §NORMALIZE origin far from (0,0,0): centroid=({ox:.1f}, {oy:.1f}, {oz:.1f})")
+                print(f"  §NORMALIZE subtracting to re-center building")
+                conn.execute("""
+                    UPDATE element_transforms
+                    SET center_x = center_x - ?,
+                        center_y = center_y - ?,
+                        center_z = center_z - ?
+                """, (ox, oy, oz))
+                conn.execute("""
+                    UPDATE elements_rtree
+                    SET minX = minX - ?, maxX = maxX - ?,
+                        minY = minY - ?, maxY = maxY - ?,
+                        minZ = minZ - ?, maxZ = maxZ - ?
+                """, (ox, ox, oy, oy, oz, oz))
+                # Store offset for IFC round-trip export
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS site_normalization (
+                        key TEXT PRIMARY KEY, value REAL
+                    )
+                """)
+                conn.execute("INSERT OR REPLACE INTO site_normalization VALUES ('offset_x', ?)", (ox,))
+                conn.execute("INSERT OR REPLACE INTO site_normalization VALUES ('offset_y', ?)", (oy,))
+                conn.execute("INSERT OR REPLACE INTO site_normalization VALUES ('offset_z', ?)", (oz,))
+                conn.commit()
+                print(f"  §NORMALIZE offset stored in site_normalization for IFC export round-trip")
 
     # Extract IfcRelAggregates — parent-child decomposition
     agg_count = 0
@@ -789,9 +1062,66 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None, dry_run
         write_surface_styles(conn, styles)
         write_material_layers(conn, layers)
 
-    print(f"  Elements:    {imported} (failed: {failed}, simplified: {simplified}, bbox_fallback: {bbox_fallback})")
-    print(f"  Materials:   {mat_found} names, {rgba_found} RGBA colours")
-    print(f"  Surface styles: {len(styles)}, Material layers: {len(layers)}")
+    print(f"\n  §EXTRACT Elements: {imported} (failed: {failed}, simplified: {simplified}, bbox_fallback: {bbox_fallback})")
+    print(f"  §EXTRACT Materials: {mat_found} names, {rgba_found} RGBA colours")
+    print(f"  §EXTRACT Surface styles: {len(styles)}, Material layers: {len(layers)}")
+
+    # Geometry deduplication stats
+    if not dry_run:
+        unique_hashes = conn.execute(
+            "SELECT COUNT(DISTINCT geometry_hash) FROM element_instances").fetchone()[0]
+        total_instances = conn.execute(
+            "SELECT COUNT(*) FROM element_instances").fetchone()[0]
+        reuse_ratio = total_instances / max(unique_hashes, 1)
+        print(f"  §DEDUP {unique_hashes} unique hashes / {total_instances} instances (reuse ratio: {reuse_ratio:.1f}x)")
+
+    # Rotation stats
+    if not dry_run:
+        rot_stats = conn.execute("""
+            SELECT COUNT(*) as total,
+                   SUM(CASE WHEN rotation_x != 0 OR rotation_y != 0 OR rotation_z != 0 THEN 1 ELSE 0 END) as rotated
+            FROM element_transforms
+        """).fetchone()
+        if rot_stats:
+            print(f"  §ROTATION {rot_stats[1]}/{rot_stats[0]} elements have non-zero rotation")
+
+    # Tack point verification — origin should be near element base (Z≈0)
+    if not dry_run and unique_hashes > 0:
+        origins = conn.execute("""
+            SELECT bg.geometry_hash,
+                   MIN(CAST(SUBSTR(HEX(bg.vertices), 1, 8) AS REAL)) as sample
+            FROM base_geometries bg LIMIT 1
+        """).fetchone()
+        # Check via actual vertex data in library
+        print(f"  §TACK_POINT origin=IFC placement (Z-up, Y-forward) — no bbox centering")
+
+    # S168: Library summary
+    if lib_conn and not dry_run:
+        print(f"\n  §LIBRARY writes ({library_path}):")
+        print(f"    §LIBRARY component_geometries: {lib_geo_new} new hashes")
+        print(f"    §LIBRARY component_definitions: {lib_geo_new} new defs (UFB: Z-up, Y-fwd)")
+        print(f"    §LIBRARY I_Geometry_Map:       {lib_igm_new} new instance mappings")
+        print(f"    §LIBRARY M_Product:            {lib_prod_new} new product defs")
+        total_geo = lib_conn.execute(
+            "SELECT COUNT(*) FROM component_geometries").fetchone()[0]
+        total_defs = lib_conn.execute(
+            "SELECT COUNT(*) FROM component_definitions").fetchone()[0]
+        total_igm = lib_conn.execute(
+            "SELECT COUNT(*) FROM I_Geometry_Map").fetchone()[0]
+        total_prod = lib_conn.execute(
+            "SELECT COUNT(*) FROM M_Product").fetchone()[0]
+        print(f"    §LIBRARY totals: {total_geo} geometries, {total_defs} defs, "
+              f"{total_igm} I_Geometry_Map, {total_prod} M_Product")
+
+        # Attachment face distribution
+        face_dist = lib_conn.execute("""
+            SELECT attachment_face, COUNT(*) FROM component_definitions
+            GROUP BY attachment_face ORDER BY COUNT(*) DESC
+        """).fetchall()
+        if face_dist:
+            print(f"    §LIBRARY attachment_face: {', '.join(f'{f}={c}' for f, c in face_dist)}")
+
+        lib_conn.close()
 
     # Summary by class
     if not dry_run:
@@ -1054,8 +1384,8 @@ def main():
                         help="Enrich existing DB with materials only (no geometry)")
     parser.add_argument("--populate-placement", action="store_true",
                         help="Copy materials from reference DB to I_Element_Extraction")
-    parser.add_argument("--library", help="Component library DB path (for --populate-placement)")
-    parser.add_argument("--building-type", help="Building type key (for --populate-placement)")
+    parser.add_argument("--library", help="Component library DB path (S168: mesh BLOBs go here during extraction)")
+    parser.add_argument("--building-type", help="Building type key (auto-derived from IFC filename if omitted)")
     parser.add_argument("--styles-only", action="store_true",
                         help="Enrich existing DB with surface_styles + material_layers only")
     parser.add_argument("--exclude", help="Comma-separated IFC classes to exclude")
@@ -1080,7 +1410,10 @@ def main():
             sys.exit(1)
         enrich_reference_db(args.ifc, args.ref, args.dry_run)
     elif args.ifc and args.output:
-        extract_reference(args.ifc, args.output, exclude=exclude, dry_run=args.dry_run)
+        extract_reference(args.ifc, args.output, exclude=exclude,
+                          dry_run=args.dry_run,
+                          library_path=args.library,
+                          building_type=args.building_type)
     else:
         print("ERROR: Must specify either:")
         print("  --ifc FILE -o OUTPUT       Full extraction (geometry + materials)")

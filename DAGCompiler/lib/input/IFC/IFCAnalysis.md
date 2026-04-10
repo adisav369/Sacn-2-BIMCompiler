@@ -9,10 +9,26 @@
 Real-world projects export one IFC per discipline (ARC, MEP, STR). The pipeline
 needs a single federated IFC per building.
 
-**Script:** `tools/federation_preprocessor.py` — IfcPatch MergeProjects, GUID-preserving.
+**Option A — IFC-level merge** (single merged IFC):
+`tools/federation_preprocessor.py` — IfcPatch MergeProjects, GUID-preserving.
+Source: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/federation_preprocessor.py`.
 
-**Source of truth:** copied from
-`/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/federation_preprocessor.py`.
+**Option B — DB-level merge** (preferred for large/complex models):
+`scripts/extract_merge_disciplines.py` — extracts each discipline IFC separately,
+merges at DB level. Avoids OOM on large merged IFCs and captures elements that
+IFC-level merging can drop (e.g. IfcRoof in structural discipline).
+
+```bash
+# Example: Clinic has 5 discipline IFCs in UNMERGED/
+python3 scripts/extract_merge_disciplines.py \
+    --ifc-dir DAGCompiler/lib/input/IFC/UNMERGED \
+    --pattern "Clinic_*.ifc" \
+    --output DAGCompiler/lib/input/Clinic_extracted.db \
+    --library library/component_library.db
+```
+
+**Option C — Top-up existing DB** (add missed classes without re-extracting):
+`scripts/topup_extracted_db.py` — incrementally adds elements from an IFC to an existing DB.
 
 **Folder layout:**
 
@@ -22,7 +38,7 @@ IFC/UNMERGED/           ← raw per-discipline exports (federation input)
 ```
 
 **Revit models** (3 UNMERGED IFCs: ARC, MEP, STR) are not yet merged — RM currently
-runs on `Ifc4_Revit_MEP.ifc` alone. Full federation pending (PROGRESS.md S104).
+runs on `Ifc4_HospitalAuckland.ifc` alone. Full federation pending (PROGRESS.md S104).
 
 ---
 
@@ -32,10 +48,10 @@ These models have Rosetta Stone YAMLs and run through the pipeline today.
 
 | Alias | File | Schema | Size | Entities | Storeys | Walls | Doors | Windows | Slabs | PSets | Rels | Quality |
 |-------|------|--------|------|----------|---------|-------|-------|---------|-------|-------|------|---------|
-| **SH** | Ifc4_SampleHouse.ifc | IFC4 | 2.3 MB | 47,309 | 2 | — | — | — | — | 1,259 | 518 | A |
-| **DX-Arch** | Ifc2x3_Duplex_Architecture.ifc | IFC2X3 | 2.4 MB | 38,898 | 4 | 56 | — | — | — | 6,672 | 2,068 | A |
-| **DX-MEP** | Ifc2x3_Duplex_MEP.ifc | IFC2X3 | 17.9 MB | 311,480 | 3 | — | — | — | — | 34,567 | 7,031 | A |
-| **DX-Fed** | Ifc2x3_Duplex_Federated.ifc | IFC2X3 | 51.0 MB | 973,208 | 4 | — | 427 seg | — | — | 40,216 | 8,486 | A |
+| **SH** | SampleHouse.ifc | IFC4 | 2.3 MB | 47,309 | 2 | — | — | — | — | 1,259 | 518 | A |
+| **DX-Arch** | Duplex_Architecture.ifc | IFC2X3 | 2.4 MB | 38,898 | 4 | 56 | — | — | — | 6,672 | 2,068 | A |
+| **DX-MEP** | Duplex_MEP.ifc | IFC2X3 | 17.9 MB | 311,480 | 3 | — | — | — | — | 34,567 | 7,031 | A |
+| **DX-Fed** | Duplex_Federated.ifc | IFC2X3 | 51.0 MB | 973,208 | 4 | — | 427 seg | — | — | 40,216 | 8,486 | A |
 | **TE-ACMV** | SJTII-ACMV-A-TER1-00-R0-Clean.ifc | IFC4 | 63.3 MB | 534,994 | 7 | — | — | — | — | 3,404 | 7,818 | A |
 | **TE-CW** | SJTII-CW-A-TER1-00-R0-Clean.ifc | IFC4 | 25.5 MB | 251,795 | 9 | — | — | — | — | 4,145 | 7,558 | A |
 | **TE-ELEC** | SJTII-ELEC-A-TER1-00-R0-Clean.ifc | IFC4 | 3.5 MB | 39,127 | 13 | — | — | — | — | 2,388 | 4,468 | A |
@@ -193,7 +209,7 @@ checked against typical ranges mined from 20 onboarded buildings:
 min/max range across all buildings. Example from SH pipeline run:
 
 ```
-[DimRange] Ifc4_SampleHouse: 55/55 checked, 27 PASS, 28 outliers
+[DimRange] SampleHouse: 55/55 checked, 27 PASS, 28 outliers
   IfcWall: Wall-Partn W=95mm (range [800-10269]mm)   ← thin partition
   IfcMember: Curtain_Wall W=30mm (range [457-1782]mm) ← curtain wall mullion
 ```
