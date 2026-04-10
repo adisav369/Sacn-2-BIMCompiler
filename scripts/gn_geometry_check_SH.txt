@@ -1,0 +1,9 @@
+================================================================
+GI GEOMETRY INTEGRITY CHECK — SampleHouse
+================================================================
+
+Checked: 58 elements
+Max drift: 0.0000m (element 3cUkl32yn9qRSPvBJVyWgQ)
+Errors (>0.1m drift): 0
+Result: PASS
+================================================================
