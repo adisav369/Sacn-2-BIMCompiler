@@ -1,4 +1,4 @@
-# Terminal Recomposition — SJTII_Terminal Forensics
+# Terminal Recomposition — Terminal Forensics
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 <div class="bim-banner" markdown>
@@ -34,7 +34,7 @@ sections below. Code changes spec in `ACTION_ROADMAP.md` §Pre-Code Specs.
 | Property | Value |
 |----------|-------|
 | Stone | 3 of 3 (largest) |
-| Name | SJTII_Terminal (Sultan Johor Terminal II) |
+| Name | Terminal (Sultan Johor Terminal II) |
 | IFC version | IFC2x3 (federated from 9 discipline models) |
 | Country | Malaysia |
 | Type | Airport terminal, 4+ storeys, institutional |
@@ -292,7 +292,7 @@ TE Airport Terminal (BUILDING) — 7 FLOOR children, origin (84.6, -51.2, -30.7)
 **Floor origins are zeroed** (R16 fix) — offsets stored on BUILDING→FLOOR
 TACK lines as dx/dy/dz. BUILDING origin holds the world LBD anchor.
 
-### Compiled Output (`sjtii_terminal.db`)
+### Compiled Output (`terminal.db`)
 
 | Table | Predicted | Actual | Notes |
 |-------|-----------|--------|-------|
@@ -454,7 +454,7 @@ by this architecture. YAML is Order input only (not IFCtoBOM source — feedback
 
 > **Removed (2026-03-18):** IfcSensor (4 metadata-only elements, no spatial coords)
 > is a Federation addon that generates onto finished construction — like rebar, it
-> does not need compilation. Removed from SJTII_Terminal_extracted.db to enable
+> does not need compilation. Removed from Terminal_extracted.db to enable
 > G3-DIGEST verification. Total ref elements: 48,432 → 48,428 (matches output exactly).
 
 ### Verb: WIRE LIGHTING (electrical — 814 elements)
@@ -972,7 +972,7 @@ L0: BUILDING_TE_STD (BUILDING, M_Product_Category=CO)
 
 - **BOM walk compiler LIVE (S100-p72).** All buildings compile via single BOM walk path.
 - **Gate: 6/7 PASS, 1 WARN (C9).** G0-COMPILED PASS. G1-G6 PASS. C8 PASS. C9 WARN (60 axis swaps).
-- **Output:** `DAGCompiler/lib/output/sjtii_terminal.db` — 48,428 elements, 251MB.
+- **Output:** `DAGCompiler/lib/output/terminal.db` — 48,428 elements, 251MB.
 - **No cheating detected (S100-p84 forensic audit).** Single write path, no extraction DB access, no TE-conditional logic in compilation, tamper seal INTACT (73 files).
 
 **Rosetta Stone (2026-03-28 08:50):** IFCtoBOM QA all PASS. BOM walk 339ms. Write 8.3s. Total pipeline 13s.
@@ -1718,7 +1718,7 @@ point, what TE produces at that step, and where the failure or bypass occurs.
 STEP 1: EXTRACT (Python — external, not our code)
 ────────────────────────────────────────────────────
   Entry:  IfcOpenShell federation/extract.py
-  Reads:  SJTII_Terminal.ifc (9 federated discipline models)
+  Reads:  Terminal.ifc (9 federated discipline models)
   Writes: component_library.db
           → I_Element_Extraction: 48,428 rows (active)
           → I_Geometry_Map: mesh vertices + faces
@@ -1729,7 +1729,7 @@ STEP 2: CLASSIFY (YAML — human-authored)
 ────────────────────────────────────────────────────
   File:   IFCtoBOM/src/main/resources/classify_te.yaml
   Reads:  nothing (pure declaration)
-  Declares: building_type=SJTII_Terminal, m_product_category=CO,
+  Declares: building_type=Terminal, m_product_category=CO,
             8 disciplines, 7 storey bands, dsl_file
   TE:     ✅ PASS — correct
 
@@ -1940,6 +1940,110 @@ the FINE log — that's the point.
 **After Phase 5:** All tables follow iDempiere convention. `_ID` is opaque
 INTEGER (never shown to users). `Value` is the search key. `Name` is the
 display name. FKs reference `_ID`. DB integrity enforced at the schema level.
+
+---
+
+## S174 Multi-Discipline Extraction — Geometry Alignment
+
+**Date:** 2026-04-11 | **Pipeline:** `scripts/pipeline_library.sh Terminal`
+
+### Recurring Issue: Discipline Origin Hell
+
+Terminal's 8 discipline IFC files each have their own survey point / project origin.
+When extracted separately and merged, elements scatter across km-scale offsets unless
+corrections are applied.
+
+### Root Cause Found (S174)
+
+`_compute_alignment()` in `extract_merge_disciplines.py` uses IfcOpenShell's
+`auto_enh2xyz()` to compute XYZ corrections. This function returns values in the
+**IFC file's local unit** (millimetres for Terminal, `unit_scale=0.001`). But our
+extracted element coordinates are always in **metres** (because `geom.iterator()`
+returns metres natively since S172).
+
+The correction was 1000× too large. ARC correction was -244,356m instead of -244.36m.
+
+**Fix:** Multiply `auto_enh2xyz` output by `unit_scale` before applying as correction.
+
+```
+correction_m = correction_raw × unit_scale
+```
+
+**Why never caught before:** Hospital has `enh=(0,0,0)` for all disciplines — zero
+corrections, so the missing scale was invisible. Terminal is the first building with
+real geolocation data through this path.
+
+### Results After Fix
+
+| Discipline | Elements | X range (m) | Y range (m) | Aligned? |
+|-----------|----------|-------------|-------------|----------|
+| ACMV (ref) | 289 | [346, 401] | [-220, -180] | Reference |
+| FP | 995 | [342, 400] | [-220, -180] | YES ✓ |
+| LPG | 209 | similar | similar | YES ✓ |
+| SP | 979 | [0, 150] | [-41, 4] | YES ✓ |
+| STR | 34,356 | [-238, 344] | [-219, 86] | YES ✓ |
+| ARC | 2,853 | [-238, 402] | [-220, 92] | YES ✓ |
+| MEP | 9,733 | [239, 401] | [-231, -176] | YES ✓ |
+| **ELEC** | **833** | **[135, 175]** | **[34, 94]** | **NO — grid_north=-38° vs 52°** |
+
+49,059 elements total. 48,226 (98.3%) correctly aligned in metre-scale.
+
+### ELEC Grid North Mismatch
+
+ELEC has `grid_north=-38°` while all other disciplines have `grid_north=52°`.
+A simple XYZ translation cannot fix a 90° rotation difference. The `auto_enh2xyz`
+correction handles the translation component but the element coordinates in the
+extracted DB are in the IFC local frame — not rotated to match the reference frame.
+
+**Resolution path:** IfcOpenShell's `MergeProjects` (IfcPatch) handles this correctly.
+The reference implementation is at:
+
+```
+IfcOpenShell/src/ifcpatch/ifcpatch/recipes/MergeProjects.py (lines 82-122)
+```
+
+Key logic (lines 85-89):
+```python
+model_rotation = existing_angle - other_angle
+if model_rotation > 180:
+    model_rotation = (360 - model_rotation) * -1
+elif model_rotation < -180:
+    model_rotation = (model_rotation * -1) - 360
+```
+
+It then calls `SetFalseOrigin(other, ..., rotate_angle=model_rotation).patch()` which
+applies a full rotation+translation transform to all geometry placements **at the IFC
+level** before merging. This is the step our `_compute_alignment()` is missing — it
+does translation (`auto_enh2xyz`) but not rotation.
+
+**Options (in order of preference):**
+
+1. **Apply grid_north rotation in `merge_db()`** — compute `θ = ref_north - other_north`,
+   apply 2D rotation matrix to `(center_x, center_y)` and adjust `rotation_z += θ`.
+   Same math as MergeProjects but at the DB level (post-extraction):
+   ```python
+   θ = math.radians(ref_north - other_north)
+   new_x = cx * cos(θ) - cy * sin(θ)
+   new_y = cx * sin(θ) + cy * cos(θ)
+   new_rz = rz + θ
+   ```
+2. **Use merged IFC** for Terminal (proven, bypasses alignment entirely)
+3. **Accept ELEC offset** — 833 elements (1.7%), visually separated but data intact
+
+### Proof Log Tags
+
+```
+§ALIGN_DETAIL correction_raw=(-244356.2,132191.1,-3114.9) unit_scale=0.001 correction_m=(-244.36,132.19,-3.11)
+§NORMALIZE merged centroid far from origin: (-251.2, 180.1, -44.9)
+§NORMALIZE after: centroid=(-0.0, 0.0, 0.0)
+§PROOF BBOX_RECONSTRUCT PASS  500 ok, 0 fail  worst=0.0001m
+```
+
+### Pipeline Command
+
+```bash
+./scripts/pipeline_library.sh Terminal    # uses SJTII-*-Clean.ifc pattern
+```
 
 ---
 

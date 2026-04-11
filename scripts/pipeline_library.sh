@@ -42,6 +42,16 @@ case "$BUILDING" in
         IFC_PATTERN="Ifc4_SampleHouse.ifc"
         OUTPUT_DB="$PROJECT_ROOT/DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db"
         ;;
+    Clinic)
+        IFC_DIR="$PROJECT_ROOT/DAGCompiler/lib/input/IFC/UNMERGED"
+        IFC_PATTERN="Clinic_*.ifc"
+        OUTPUT_DB="$PROJECT_ROOT/DAGCompiler/lib/input/Clinic_extracted.db"
+        ;;
+    Terminal|SJTII)
+        IFC_DIR="$PROJECT_ROOT/DAGCompiler/lib/input/IFC"
+        IFC_PATTERN="TerminalMerged.ifc"
+        OUTPUT_DB="$PROJECT_ROOT/DAGCompiler/lib/input/Terminal_extracted.db"
+        ;;
     *)
         # Generic: look for IFC files matching the name
         IFC_DIR="$PROJECT_ROOT/DAGCompiler/lib/input/IFC/UNMERGED"

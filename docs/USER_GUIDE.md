@@ -73,8 +73,8 @@ mvn exec:java -pl DAGCompiler \
 
 # Check spatial fidelity against reference
 python3 DAGCompiler/python/spatial_checker.py \
-  DAGCompiler/lib/output/ifc4_samplehouse.db \
-  DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+  DAGCompiler/lib/output/samplehouse.db \
+  DAGCompiler/lib/input/SampleHouse_extracted.db \
   --discipline ARC
 ```
 
@@ -435,7 +435,7 @@ Pipe sizing follows NFPA 13 (Light Hazard).
 | `spatial_structure` | Building hierarchy (Project > Site > Building > Storey) |
 | `elements_meta` | Element metadata: guid, ifc_class, name, storey, discipline, material_name, material_rgba |
 | `elements_rtree` | Spatial index: id, minX, maxX, minY, maxY, minZ, maxZ |
-| `base_geometries` | Shared geometry (vertices/faces BLOBs, float32/int32 arrays) |
+| `base_geometries` | Shared geometry hashes (BLOBs stored in `component_library.db`, not extracted DBs — meshless since S173) |
 | `element_geometry` | Per-element geometry hash link |
 | `element_transforms` | Per-element world position (center_x/y/z) |
 | `surface_styles` | Material rendering properties (transparency, specularity) |
@@ -450,9 +450,9 @@ All output goes to `DAGCompiler/lib/output/`:
 
 | File | Description |
 |------|-------------|
-| `ifc4_samplehouse.db` | SampleHouse compiled output |
-| `ifc2x3_duplex.db` | Duplex compiled output |
-| `sjtii_terminal.db` | Terminal compiled output |
+| `samplehouse.db` | SampleHouse compiled output |
+| `duplex.db` | Duplex compiled output |
+| `terminal.db` | Terminal compiled output |
 | `tb_lktn.db` | TB-LKTN compiled output |
 
 ### Viewing Output
@@ -605,8 +605,8 @@ Dimensions are sorted descending and bucketed to 10mm. Two matching modes:
 
 ```bash
 python3 DAGCompiler/python/spatial_checker.py \
-  DAGCompiler/lib/output/ifc4_samplehouse.db \
-  DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+  DAGCompiler/lib/output/samplehouse.db \
+  DAGCompiler/lib/input/SampleHouse_extracted.db \
   --discipline ARC
 ```
 
@@ -683,16 +683,16 @@ mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNEndTo
 
 # Spatial fidelity check
 python3 DAGCompiler/python/spatial_checker.py \
-  DAGCompiler/lib/output/ifc4_samplehouse.db \
-  DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+  DAGCompiler/lib/output/samplehouse.db \
+  DAGCompiler/lib/input/SampleHouse_extracted.db \
   --discipline ARC
 
 # Query element count
-sqlite3 DAGCompiler/lib/output/ifc4_samplehouse.db \
+sqlite3 DAGCompiler/lib/output/samplehouse.db \
   "SELECT ifc_class, COUNT(*) FROM elements_meta GROUP BY ifc_class"
 
 # Query materials
-sqlite3 DAGCompiler/lib/output/ifc4_samplehouse.db \
+sqlite3 DAGCompiler/lib/output/samplehouse.db \
   "SELECT material_name, material_rgba FROM elements_meta WHERE material_name IS NOT NULL"
 ```
 

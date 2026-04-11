@@ -368,9 +368,14 @@ I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrate
 | Column | Type | Notes |
 |--------|------|-------|
 | geometry_hash | TEXT PK | SHA-256 of geometry |
-| vertices | BLOB | Vertex data |
-| faces | BLOB | Face indices |
+| vertices | BLOB | Vertex data (read only by `bake_library_blend.py`, never at runtime) |
+| faces | BLOB | Face indices (read only by `bake_library_blend.py`, never at runtime) |
 | vertex_count, face_count | INTEGER | |
+
+> **S173 note:** BLOBs are consumed once by the bake script to produce
+> `library/library.blend`. At runtime, meshes are linked from library.blend —
+> no BLOB reads, no `from_pydata()`. Extracted DBs are meshless (NULL BLOBs)
+> to keep file size small (e.g. Hospital: 8MB vs 232MB with BLOBs).
 
 ---
 

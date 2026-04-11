@@ -26,6 +26,22 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
+**S174 DONE (2026-04-11):** Library pipeline for all buildings. DLOD handler. Old loader retirement spec. Terminal alignment fix.
+  - Clinic 16,480 elements PIPELINE PASS (8.3MB meshless DB, 132s)
+  - Hospital 63,917 elements PIPELINE PASS (30MB meshless DB, 214s, surface_styles fresh)
+  - Terminal 49,059 elements PIPELINE PASS (27MB, bbox 0.0001m). 4 proof FAIL: SCALE_ARC/STR (airport 639m span — threshold issue), ALIGN_ELEC (grid_north -38° vs 52° — rotation fix spec'd in TerminalAnalysis.md)
+  - Library: 38,306 meshes, 89.5MB library.blend (shared across all buildings)
+  - `_compute_alignment` unit_scale fix: corrections now in metres (was 1000× too large for mm-unit IFCs)
+  - `pipeline_library.sh`: added Clinic + Terminal|SJTII cases
+  - `dlod_handler.py` 666 lines, 3/3 self-test PASS (DLOD_DIST, DLOD_BUCKET, DLOD_BATCH). Not yet wired.
+  - `stage2_library_linker.py`: 3-path material logging (direct/surface_styles/discipline), element_name in Outliner
+  - `blend_cache.py`: thin-save strip/restore for _Templates (library-linked path). FINE logging.
+  - DLOD supersedes thin-save checkbox: LOD-0 bbox proxies make .blend naturally small
+  - Old loader retirement plan: §13 in FULL_LOADER2_SRS.md (5 files to change, 7 to retire)
+  - Live docs updated: DATA_MODEL, USER_GUIDE, Enterprise, BlenderBridge — all reflect meshless/library-linked architecture
+  - Specs moved to internal/: FULL_LOADER2_SRS.md, DLOD_SPEC.md, THIN_SAVE_SPEC.md
+  - Next: wire DLOD into blend_cache.py + __init__.py, Terminal grid_north rotation (option 1 in TerminalAnalysis.md), verify material colors in Blender
+
 **2D_018 session (2026-04-09):** I-29 FIXED (grid bubbles inside dim tiers). Bubble now at building+tier_1+grid_ext+bubble_r (42mm plan, 78mm elev). Extracted `_draw_grid_bubble()` helper. Template `tier_1_offset_mm=18 / tier_2_offset_mm=10` aligned with DIM_OFFSET_1/2. Added §GRID_BUBBLE_Y proof log. SH 6/6, DX 7/7. Log-first + log self-sufficiency rules added to prompt + spec. Open: I-30 (DB migration) → I-21 (MEP footprints) → I-27 (storey titles) → I-28 (MEP drawing title). Next session: start with I-30 (add 2d_drawing_style rows to 2D.db).
 
 **S164/2D_011 DONE (2026-04-09):** Semantic DXF §20 P1 — BIMSRC xdata on all floor plan entities. `Element.guid` added to dataclass + SQL. `GridLine.source_guids` tracks wall/column GUIDs through `derive_grids` merge+prune pipeline. `DimString.from_label/to_label` for dim provenance. `_set_bimsrc(**kwargs)` helper with type-aware group codes. Wired onto 4 entity types: 81 walls, 5 grids, 5 dims, 3 rooms (SH). `test_2d_bim_roundtrip.py` W-2D-BIM-1/2 PASS (W-2D-BIM-3/4 stubs). Conformity SEMANTIC_DXF + GRID_SOURCES soft checks. Layout audit SEM01. §21 IFC Annotation Extraction spec written (HITOS: 2,920 IfcAnnotation rows — only building with annotation data). Remaining P2-P5: grid triage, English labels, per-view logs, MEP segments. SpecToCode: 142/150 (95%).

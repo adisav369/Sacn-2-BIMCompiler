@@ -240,31 +240,30 @@ creating 48K material objects.
 
 ---
 
-## 5. Mesh Instancing — Blender's Secret Weapon
+## 5. Mesh Instancing — Library-Linked (S173)
 
 Blender has native mesh instancing: 500 identical chairs share one mesh
-data block. The compiler's `base_geometries` table already deduplicates
-by `geometry_hash`. BlenderBridge maps this directly:
+data block. The compiler's `component_library.db` deduplicates geometry
+by `geometry_hash`. Since S173, meshes are pre-baked into `library/library.blend`
+and linked at runtime — no BLOB reads, no `from_pydata()`:
 
 ```python
-_mesh_cache = {}  # geometry_hash → bpy.types.Mesh
+# Pre-bake (offline, once): bake_library_blend.py
+#   component_library.db → library.blend (one Mesh per geometry_hash)
 
-def get_or_create_mesh(geometry_hash, vertices, faces):
-    if geometry_hash in _mesh_cache:
-        return _mesh_cache[geometry_hash]
-    mesh = bpy.data.meshes.new(geometry_hash)
-    mesh.from_pydata(vertices, [], faces)
-    mesh.update()
-    _mesh_cache[geometry_hash] = mesh
-    return mesh
+# Runtime (instant): stage2_library_linker.py
+with bpy.data.libraries.load(library_blend, link=True) as (src, dst):
+    dst.meshes = [h for h in src.meshes if h in needed_hashes]
+# GN "Instance on Points" assigns mesh by hash_index per point
 ```
 
 **Impact at TE scale:** 48K elements but ~2,500 unique geometries.
-Without instancing: 48K mesh objects (~4GB RAM).
-With instancing: 2,500 mesh data blocks + 48K lightweight object wrappers (~400MB RAM).
+Library link: <0.1s for all 2,500 meshes (vs 13s with old BLOB unpack).
+GN point cloud: one point per element, mesh assigned by `hash_index` attribute.
+Scene save: ~116KB (meshless — GN tree + transforms only).
 
-This is why the compiler's `base_geometries` + `element_instances` split
-exists — it maps 1:1 to Blender's mesh instancing model.
+This is why the compiler's `component_library.db` + `element_instances` split
+exists — it maps 1:1 to Blender's library-linked instancing model.
 
 ---
 

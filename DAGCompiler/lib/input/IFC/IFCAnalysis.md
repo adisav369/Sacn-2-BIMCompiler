@@ -13,10 +13,43 @@ needs a single federated IFC per building.
 `tools/federation_preprocessor.py` — IfcPatch MergeProjects, GUID-preserving.
 Source: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/federation_preprocessor.py`.
 
-**Option B — DB-level merge** (preferred for large/complex models):
+**WARNING:** IFC-level merge can silently drop entire disciplines. Example: Clinic's
+`Clinic_Federated.ifc` contained only the ARC discipline (3,298 elements) — the entire
+STR discipline (1,100 elements including 12 IfcRoof, 738 beams, 195 columns) was lost.
+MergeProjects fails when spatial structures conflict or GUIDs collide across disciplines.
+
+**DELETED (2026-04-11):** `Clinic_Federated.ifc` and `HHS_Office_Federated.ifc` removed —
+both were incomplete merges that dropped disciplines. Use Option B (DB-level merge from
+individual discipline IFCs in `UNMERGED/`) instead.
+
+**Option B — DB-level merge** (preferred, avoids data loss):
 `scripts/extract_merge_disciplines.py` — extracts each discipline IFC separately,
-merges at DB level. Avoids OOM on large merged IFCs and captures elements that
-IFC-level merging can drop (e.g. IfcRoof in structural discipline).
+merges at DB level (row-by-row, dedup by geometry_hash). No IFC spatial tree
+re-parenting, no GUID collision risk — every element from every discipline makes
+it into the final DB.
+
+> **⚠ CRITICAL — S173 Unit Scale Finding:**
+> `ifcopenshell.geom.iterator()` returns ALL coordinates in **metres** regardless
+> of the IFC file's native length unit (mm, feet, etc.). The iterator applies
+> `unit_scale` internally. **Do NOT multiply by `unit_scale` again** — that was
+> the S172 bug that caused geometry hell (ARC/STR appeared as a dot at origin
+> while MEP was full-size). The old `fix_unit_scale()` post-processing step has
+> been removed. This applies to vertices, transform matrices, and bounding boxes.
+> Note: `create_shape()` (pre-S172) returned native IFC units — the iterator
+> behaves differently.
+
+> **⚠ CRITICAL — Material Color in Blender SOLID Mode:**
+> Blender's SOLID viewport mode reads `material.diffuse_color`, NOT the Principled
+> BSDF node's Base Color input. Setting only the BSDF node produces correct colors
+> in Material Preview but **invisible colors in SOLID mode** (everything appears gray).
+> Every material creation path must set BOTH:
+> ```python
+> mat.diffuse_color = rgba            # SOLID mode reads this
+> bsdf.inputs["Base Color"].default_value = rgba  # Material Preview reads this
+> ```
+> This was fixed in the old tessellation loader (S14x) and must be replicated in any
+> new loader (library linker, GN cache, etc.). The `diffuse_color` trap is silent —
+> materials appear correctly created in the log but invisible in the viewport.
 
 ```bash
 # Example: Clinic has 5 discipline IFCs in UNMERGED/
@@ -39,6 +72,49 @@ IFC/UNMERGED/           ← raw per-discipline exports (federation input)
 
 **Revit models** (3 UNMERGED IFCs: ARC, MEP, STR) are not yet merged — RM currently
 runs on `Ifc4_HospitalAuckland.ifc` alone. Full federation pending (PROGRESS.md S104).
+
+**S171/S172 — Extraction performance:**
+Switched from `create_shape()` to `geom.iterator()` (v0.8 built-in C++ dedup).
+Benchmark: 1.7x faster on low-reuse, more on high-reuse (Hospital 12.7x).
+
+**Extracted DB ↔ Mesh connection:**
+
+```
+IFC file
+  ↓  geom.iterator() (USE_WORLD_COORDS=False, WELD_VERTICES=True)
+  ↓
+  ├─ vertices (local coords, tack point origin) ──→ geometry_hash (SHA256)
+  ├─ faces (triangle indices)
+  └─ transformation.matrix (4x4, world placement + rotation)
+
+geometry_hash is the KEY that connects everything:
+
+  _extracted.db                         component_library.db
+  ┌─────────────────────┐              ┌──────────────────────────┐
+  │ element_instances    │              │ component_geometries     │
+  │   guid ──→ geometry_hash ─────────→│   geometry_hash (PK)     │
+  │                      │              │   vertices BLOB (float32)│
+  │ element_transforms   │              │   faces BLOB (int32)     │
+  │   guid               │              │   vertex_count, face_count│
+  │   center_x/y/z       │              ├──────────────────────────┤
+  │   rotation_x/y/z     │              │ component_definitions    │
+  │                      │              │   geometry_hash          │
+  │ base_geometries      │              │   local bounds (min/max) │
+  │   geometry_hash      │              │   attachment_face        │
+  │   vertices = NULL    │              │   up_axis, forward_axis  │
+  │   (hash-only, S168)  │              └──────────────────────────┘
+  └─────────────────────┘
+
+  _extracted.db has the WHAT + WHERE (element identity, position, rotation)
+  component_library.db has the SHAPE (canonical mesh, one per unique geometry)
+  Same geometry_hash = same mesh = BOM deduplication
+```
+
+Blender loads this via `blend_cache.py`:
+- Template mesh per geometry_hash → `_GN_Templates` collection
+- Point mesh per discipline → vertex at center_x/y/z, attributes: instance_index, rotation
+- GN `Instance on Points` picks template by index, applies Euler rotation
+- S170 LOD: templates start empty, filled on demand by discipline toggle + camera distance
 
 ---
 

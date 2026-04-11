@@ -29,6 +29,7 @@ Why per-discipline:
 """
 
 import argparse
+import math
 import os
 import sqlite3
 import subprocess
@@ -142,51 +143,95 @@ def _read_geolocation(ifc_path: Path):
 
 
 def _compute_alignment(ref_geo, other_geo):
-    """Compute XYZ correction to align other discipline to reference.
+    """Compute XYZ correction + rotation to align other discipline to reference.
 
     Uses the same logic as MergeProjects: compare real-world origins
     (auto_xyz2enh) and compute the XYZ shift needed in local coords.
+    Also computes grid_north rotation difference (MergeProjects lines 82-89).
 
-    Returns (dx, dy, dz) to ADD to other's element coordinates.
+    S174 fix: auto_enh2xyz returns values in the IFC file's local unit
+    (e.g. mm for unit_scale=0.001). Our extracted coordinates are always
+    in metres (geom.iterator returns metres). Scale the correction by
+    unit_scale so it matches.
+
+    Returns (dx, dy, dz, rotation_deg) in METRES / DEGREES to apply to
+    other's element coordinates. rotation_deg is the angle to rotate the
+    other discipline's coordinates to match the reference grid north.
     """
     import numpy as np
     import ifcopenshell.util.geolocation as geo
+    import ifcopenshell.util.unit
 
     ref_enh = np.array(ref_geo['enh'])
     other_enh = np.array(other_geo['enh'])
 
+    # Compute rotation: same wrapping as MergeProjects lines 85-89
+    ref_north = ref_geo['grid_north']
+    other_north = other_geo['grid_north']
+    model_rotation = ref_north - other_north
+    if model_rotation > 180:
+        model_rotation = (360 - model_rotation) * -1
+    elif model_rotation < -180:
+        model_rotation = (model_rotation * -1) - 360
+
+    if FINE and abs(model_rotation) > 0.01:
+        print(f"    §ALIGN_ROTATION ref_north={ref_north:.1f} other_north={other_north:.1f} "
+              f"model_rotation={model_rotation:.1f}\u00b0")
+
     if np.allclose(ref_enh, other_enh, atol=0.01) and \
-       np.isclose(ref_geo['grid_north'], other_geo['grid_north'], atol=0.01):
-        return (0.0, 0.0, 0.0)  # Already aligned
+       np.isclose(ref_north, other_north, atol=0.01):
+        return (0.0, 0.0, 0.0, 0.0)  # Already aligned
 
     # Convert reference origin into other's local coordinate system
     other_ifc = other_geo['ifc']
     if other_ifc is None:
-        return (0.0, 0.0, 0.0)
+        return (0.0, 0.0, 0.0, model_rotation)
+
+    # auto_enh2xyz returns values in IFC local unit (mm if unit_scale=0.001)
+    # Our element coords are always in metres, so scale the correction
+    unit_scale = ifcopenshell.util.unit.calculate_unit_scale(other_ifc, "LENGTHUNIT")
 
     try:
         # Where does the reference origin land in other's local coords?
         x, y, z = geo.auto_enh2xyz(other_ifc, *ref_enh, is_specified_in_map_units=False)
-        # The correction is: element should be at (element_local + correction)
-        # where correction = (x, y, z) because that's where (0,0,0) of ref maps to in other
-        return (float(x), float(y), float(z))
+        # Scale from IFC local unit to metres
+        x_m, y_m, z_m = float(x) * unit_scale, float(y) * unit_scale, float(z) * unit_scale
+        print(f"    §ALIGN_DETAIL correction_raw=({x:.1f},{y:.1f},{z:.1f}) "
+              f"unit_scale={unit_scale} correction_m=({x_m:.2f},{y_m:.2f},{z_m:.2f})"
+              f" rotation={model_rotation:.1f}\u00b0")
+        return (x_m, y_m, z_m, model_rotation)
     except Exception as e:
-        # Fallback: simple subtraction
-        dx = ref_enh[0] - other_enh[0]
-        dy = ref_enh[1] - other_enh[1]
-        dz = ref_enh[2] - other_enh[2]
-        print(f"  Warning: auto_enh2xyz failed ({e}), using simple offset ({dx:.1f}, {dy:.1f}, {dz:.1f})")
-        return (dx, dy, dz)
+        # Fallback: simple subtraction (ENH is in metres when should_return_in_map_units=False)
+        dx = (ref_enh[0] - other_enh[0])
+        dy = (ref_enh[1] - other_enh[1])
+        dz = (ref_enh[2] - other_enh[2])
+        print(f"  Warning: auto_enh2xyz failed ({e}), using simple offset "
+              f"({dx:.1f}, {dy:.1f}, {dz:.1f}) rotation={model_rotation:.1f}\u00b0")
+        return (dx, dy, dz, model_rotation)
 
 
 def merge_db(src_path: Path, dst: sqlite3.Connection, disc_label: str,
-             correction=(0.0, 0.0, 0.0)):
+             correction=(0.0, 0.0, 0.0, 0.0)):
     """Merge src DB into dst. Applies coordinate correction (dx, dy, dz)
-    to align this discipline's elements to the reference coordinate system."""
+    and grid_north rotation (rotation_deg) to align this discipline's
+    elements to the reference coordinate system.
+
+    Rotation is applied BEFORE translation (rotate around discipline's
+    own origin, then shift into position)."""
     src = sqlite3.connect(src_path)
     src.row_factory = sqlite3.Row
-    dx, dy, dz = correction
+    dx, dy, dz = correction[0], correction[1], correction[2]
+    rotation_deg = correction[3] if len(correction) > 3 else 0.0
     has_offset = abs(dx) > 0.01 or abs(dy) > 0.01 or abs(dz) > 0.01
+    has_rotation = abs(rotation_deg) > 0.01
+
+    # Precompute rotation matrix coefficients
+    if has_rotation:
+        theta = math.radians(rotation_deg)
+        cos_t, sin_t = math.cos(theta), math.sin(theta)
+    else:
+        theta = 0.0
+        cos_t, sin_t = 1.0, 0.0
 
     # base_geometries — deduplicate by hash
     # When --library is used, store NULL BLOBs (meshless DB — meshes live in library)
@@ -218,24 +263,46 @@ def merge_db(src_path: Path, dst: sqlite3.Connection, disc_label: str,
             (row["guid"], row["geometry_hash"])
         )
 
-    # element_transforms — apply site offset correction + copy rotation
+    # element_transforms — apply rotation + site offset correction + copy rotation
     # Check if source has rotation columns
     src_cols = {r[1] for r in src.execute("PRAGMA table_info(element_transforms)").fetchall()}
     has_rot = 'rotation_x' in src_cols
+    rotated_count = 0
 
     for row in src.execute("SELECT * FROM element_transforms"):
-        cx = (row["center_x"] or 0.0) + dx
-        cy = (row["center_y"] or 0.0) + dy
-        cz = (row["center_z"] or 0.0) + dz
+        raw_cx = row["center_x"] or 0.0
+        raw_cy = row["center_y"] or 0.0
+        raw_cz = row["center_z"] or 0.0
         rx = float(row["rotation_x"] or 0.0) if has_rot else 0.0
         ry = float(row["rotation_y"] or 0.0) if has_rot else 0.0
         rz = float(row["rotation_z"] or 0.0) if has_rot else 0.0
+
+        if has_rotation:
+            # Rotate centre around discipline origin BEFORE adding translation
+            cx = raw_cx * cos_t - raw_cy * sin_t
+            cy = raw_cx * sin_t + raw_cy * cos_t
+            cz = raw_cz
+            # Adjust element rotation_z by the grid north difference
+            rz = rz + theta
+            rotated_count += 1
+        else:
+            cx, cy, cz = raw_cx, raw_cy, raw_cz
+
+        # Then apply translation
+        cx += dx
+        cy += dy
+        cz += dz
+
         dst.execute(
             "INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?,?,?,?)",
             (row["guid"], cx, cy, cz, row["transform_source"], rx, ry, rz)
         )
 
-    # elements_rtree — apply same offset, use meta id from destination
+    if has_rotation and FINE:
+        print(f"  §MERGE_ROTATE disc={disc_label} n={rotated_count} "
+              f"theta={rotation_deg:.1f}\u00b0 (applied 2D rotation to centres + rotation_z)")
+
+    # elements_rtree — apply rotation + offset, use meta id from destination
     for row in src.execute("SELECT * FROM element_transforms"):
         meta = dst.execute(
             "SELECT id FROM elements_meta WHERE guid=?", (row["guid"],)
@@ -248,9 +315,18 @@ def merge_db(src_path: Path, dst: sqlite3.Connection, disc_label: str,
         ).fetchone()
         if bbox:
             try:
+                bminX, bmaxX, bminY, bmaxY, bminZ, bmaxZ = bbox
+                if has_rotation:
+                    # Rotate all 4 bbox corners, then re-derive AABB
+                    corners_x = [bminX, bminX, bmaxX, bmaxX]
+                    corners_y = [bminY, bmaxY, bminY, bmaxY]
+                    rot_xs = [cx * cos_t - cy * sin_t for cx, cy in zip(corners_x, corners_y)]
+                    rot_ys = [cx * sin_t + cy * cos_t for cx, cy in zip(corners_x, corners_y)]
+                    bminX, bmaxX = min(rot_xs), max(rot_xs)
+                    bminY, bmaxY = min(rot_ys), max(rot_ys)
                 dst.execute(
                     "INSERT OR IGNORE INTO elements_rtree VALUES (?,?,?,?,?,?,?)",
-                    (meta[0], bbox[0]+dx, bbox[1]+dx, bbox[2]+dy, bbox[3]+dy, bbox[4]+dz, bbox[5]+dz)
+                    (meta[0], bminX+dx, bmaxX+dx, bminY+dy, bmaxY+dy, bminZ+dz, bmaxZ+dz)
                 )
             except Exception:
                 pass
@@ -491,15 +567,18 @@ def main():
         print(f"  §ALIGN Reference: {ref_stem}")
 
     # Compute corrections
-    corrections = {}  # ifc_stem -> (dx, dy, dz)
+    corrections = {}  # ifc_stem -> (dx, dy, dz, rotation_deg)
     for stem, geo in geo_data.items():
         if stem == ref_stem:
-            corrections[stem] = (0.0, 0.0, 0.0)
+            corrections[stem] = (0.0, 0.0, 0.0, 0.0)
         else:
             corr = _compute_alignment(ref_geo, geo)
             corrections[stem] = corr
-            if abs(corr[0]) > 0.01 or abs(corr[1]) > 0.01 or abs(corr[2]) > 0.01:
-                print(f"    {stem:45s} correction=({corr[0]:>10.2f}, {corr[1]:>10.2f}, {corr[2]:>10.2f})")
+            has_shift = abs(corr[0]) > 0.01 or abs(corr[1]) > 0.01 or abs(corr[2]) > 0.01
+            has_rot = abs(corr[3]) > 0.01
+            if has_shift or has_rot:
+                rot_str = f" rotation={corr[3]:.1f}\u00b0" if has_rot else ""
+                print(f"    {stem:45s} correction=({corr[0]:>10.2f}, {corr[1]:>10.2f}, {corr[2]:>10.2f}){rot_str}")
 
     # ── Sequential merge (fast — just DB row copies) ──
     merge_t0 = _time.time()
@@ -519,7 +598,7 @@ def main():
             conn.close()
             print(f"  [{disc}] → discipline overridden to {override}")
 
-        corr = corrections.get(ifc.stem, (0.0, 0.0, 0.0))
+        corr = corrections.get(ifc.stem, (0.0, 0.0, 0.0, 0.0))
         merge_db(tmp_db, dst, disc, correction=corr)
 
         # S173: Copy BLOBs from temp DB → library (sequential, no lock contention)

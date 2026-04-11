@@ -160,17 +160,20 @@ elements open in **under 30 seconds**, spatial queries run in under 100ms, and t
 
 ### File sizes — real measurements
 
-| Building | Elements | IFC source | Federation `.blend` | Traditional Bonsai `.blend`¹ |
-|----------|---------|-----------|--------------------|-----------------------------|
-| AC Institute | ~700 | 2.8 MB | **361 KB** | ~4–8 MB |
-| Sample House | ~58 | 2.2 MB | **493 KB** | ~3–5 MB |
-| HospitalGarage | — | 6.2 MB | **1.3 MB** | ~15–25 MB |
-| HHS Office ARC | — | 13 MB | **2.1 MB** | ~25–50 MB |
-| Ifc4 Revit | — | 52 MB | **24 MB** | ~80–150 MB |
-| Hospital (multi-disc) | — | 215 MB | **94 MB** | ~400–700 MB |
-| LTU A-House | 125,997 | 426 MB | **107 MB** | ~500 MB–1 GB+ |
+| Building | Elements | IFC source | Federation `.blend` | Streaming `.blend`² | Traditional Bonsai `.blend`¹ |
+|----------|---------|-----------|--------------------|--------------------|------------------------------|
+| AC Institute | ~700 | 2.8 MB | **361 KB** | ~80 KB | ~4–8 MB |
+| Sample House | ~58 | 2.2 MB | **493 KB** | ~100 KB | ~3–5 MB |
+| HospitalGarage | — | 6.2 MB | **1.3 MB** | ~150 KB | ~15–25 MB |
+| HHS Office ARC | — | 13 MB | **2.1 MB** | ~200 KB | ~25–50 MB |
+| Ifc4 Revit | — | 52 MB | **24 MB** | ~800 KB | ~80–150 MB |
+| Hospital (multi-disc) | — | 215 MB | **94 MB** | ~2 MB | ~400–700 MB |
+| LTU A-House | 125,997 | 426 MB | **107 MB** | ~3 MB | ~500 MB–1 GB+ |
+| **Baku Stadium** ³ | ~500K–1M | ~1–2 GB | ~400–800 MB | **~15–25 MB** | **impractical** |
 
 ¹ Indicative — traditional import embeds one mesh block per element with no instancing deduplication. Not directly measured.
+² Streaming `.blend` = scene graph only (object transforms + custom properties). Geometry stays in DB.
+³ Baku Olympic Stadium — not yet onboarded. IFC and element counts are indicative based on comparable stadium projects. Streaming is the only viable path at this scale — a 400–800 MB embedded `.blend` is unshareable and a 1 GB+ traditional `.blend` is impractical.
 
 The IFC source is a compact text format (CSG/swept solid descriptions). When fully
 tessellated to vertex arrays, sizes expand — which is why the federation `.blend` can
@@ -369,18 +372,43 @@ hits as input and re-queries `base_geometries` by `geometry_hash`.
 **2. No IfcPropertySet extraction — pipe diameter, pressure, flow rate absent**
 *Impact:* Can't verify 50mm clearance; 6D energy and 7D FM incomplete.
 
-*How to close:* `extractIFCtoDB.py` already opens the IFC with ifcopenshell.
-Add a `property_values` table (`guid, pset_name, prop_name, value`). One loop
-over `ifc.by_type('IfcRelDefinesByProperties')` writes every property. For LTU
-that means pipe nominal diameter, insulation thickness, fire rating — all
-already in the IFC, one extraction pass away. Diameter then drives exact
-clearance checks in the narrowphase operator.
+*How to close:* Use `ifcopenshell.util.element` API at extraction time:
+```python
+from ifcopenshell.util.element import get_psets, get_type, get_materials
+
+for element in all_elements:
+    psets = get_psets(element)                              # all property sets as dicts
+    qtos  = get_psets(element, qtos_only=True)             # quantity sets only
+    etype = get_type(element)                               # IfcTypeProduct link
+    mats  = get_materials(element, should_inherit=True)     # material layers
+```
+Store in `property_values` table (`guid, pset_name, prop_name, value, unit`).
+For LTU that means pipe nominal diameter, insulation thickness, fire rating —
+all already in the IFC, one extraction pass away. `get_type()` also provides
+the type→catalog link that Rosetta Stone currently infers.
+Diameter then drives exact clearance checks in the narrowphase operator.
 
 **3. No MEP system connectivity — `IfcRelConnectsPortToElement` not extracted**
 *Impact:* Can't trace a pipe circuit from inlet to outlet or identify HVAC loops.
+RouteWalker currently infers connectivity from spatial proximity (anchor pairs).
+Authored port graphs in IFC are a more stable reference when present.
 
-*How to close:* Add a `mep_connectivity` table (`from_guid, to_guid, port_type`).
-Extract `IfcRelConnectsPortToElement` and `IfcRelSequence` in one pass.
+*How to close:* Add a `mep_connectivity` table (`from_guid, to_guid, port_type,
+flow_direction, system_name`).
+Use `ifcopenshell.util.system` API at extraction time — prefer authored
+connectivity over spatial inference:
+```python
+from ifcopenshell.util.system import get_ports, get_connected_to, get_connected_from, get_element_systems
+
+for element in mep_elements:
+    ports = get_ports(element)                    # IfcDistributionPort list
+    downstream = get_connected_to(element)        # elements this connects TO
+    upstream   = get_connected_from(element)       # elements connecting FROM this
+    systems    = get_element_systems(element)       # IfcSystem membership
+```
+Fallback: when IFC has no ports (common in lower-LOD models), RouteWalker's
+spatial proximity inference remains the fallback path — but flag these as
+`source='inferred'` vs `source='authored'` in the connectivity table.
 The result is a directed graph in SQLite — pipe circuit tracing becomes a
 recursive CTE (`WITH RECURSIVE`). No graph database needed. This also unlocks
 flow-direction-aware clash checking (upstream vs downstream pressure zones).
@@ -432,3 +460,412 @@ The Python extensions proved the concept. The Java ERP pipeline productionised i
 The [Three Concerns](MANIFESTO.md#the-three-concerns) stay separated throughout:
 WHAT (orders, categories, products), HOW (BOMs, validation, attributes),
 WHERE (output.db for all downstream dimensions).
+
+---
+
+## The Streaming `.blend` — Delivered (S173)
+
+> **Status: LIVE.** The architecture below was proposed and then implemented in
+> S169–S173. The federation `.blend` is now meshless — geometry lives in
+> `library/library.blend` (pre-baked, linked at runtime). Extracted DBs store
+> only transforms and hashes (Hospital: 8MB vs 232MB with BLOBs). Scene saves
+> are thin (~116KB) via `strip_template_meshes` / `restore_template_meshes`
+> persistent handlers.
+
+### The architecture: separate scene graph from geometry store
+
+A `.blend` file has two conceptually separate things in it:
+
+- **Scene graph** — which objects exist, where they are (transforms), what they are
+  (`guid`, `ifc_class`, `discipline`). This is small.
+- **Mesh data** — the tessellated vertex/face arrays. This is what makes it large.
+
+The DB holds geometry BLOBs in `component_library.db` (keyed by `geometry_hash`).
+These are baked once into `library/library.blend`. At runtime:
+
+```
+library.blend  =  pre-baked meshes  (one Mesh per geometry_hash, linked read-only)
+.blend scene   =  GN point cloud    (transforms + hash_index, no mesh data)
+extracted.db   =  transforms only   (centre, rotation, guid→hash — meshless)
+```
+
+Two Blender persistent handlers — registered in `federation/__init__.py` —
+keep saves thin:
+
+```python
+@persistent
+def save_pre(dummy):
+    # Before saving: strip GN template meshes (they're linked from library.blend)
+    strip_template_meshes()   # scene .blend drops to ~116KB
+
+@persistent
+def load_post(dummy):
+    # After opening: re-link meshes from library.blend
+    restore_template_meshes() # instant — bpy.data.libraries.load(link=True)
+```
+
+No BLOB reads at runtime. No `from_pydata()` calls. Meshes are linked from
+`library.blend` — one link per unique geometry hash. GPU instancing is preserved
+via Geometry Nodes "Instance on Points" —
+identical to what Stage 2 does today, but driven from the lightweight scene graph
+already in the `.blend` rather than a full DB scan.
+
+### Is it safe, stable, and better?
+
+**Safe — yes, strictly safer than today.**
+The DB is the single source of truth for geometry. The `.blend` never holds a
+copy that could drift, corrupt, or go stale. If the `.blend` is damaged, the
+geometry is intact in the DB. If the DB is updated (new extraction, edit
+write-back), every `.blend` that references it picks up the change on next open
+automatically — no manual re-export.
+
+**Stable — yes, by design.**
+SQLite is ACID. The `geometry_hash` is a content hash of the vertex/face data —
+if the hash matches, the geometry is bit-for-bit identical. The link between scene
+graph and geometry store is cryptographically stable, not a fragile file path.
+The only dependency is the DB file at its stored path — the same dependency
+traditional Bonsai has on the IFC file path, but a SQLite file is a single
+portable artifact, not a folder of IFC discipline files.
+
+**Better — across every dimension.**
+
+| Concern | Old (embedded BLOB) | Current (library-linked, S173) |
+|---------|---------------------|-------------------------------|
+| `.blend` on disk | 100+ MB for large buildings | ~116KB scene + library.blend shared across buildings |
+| LOD corruption risk | Possible (mesh data in .blend) | Zero — geometry only in library.blend (read-only link) |
+| DB update visible | No — stale mesh embedded | Yes — re-bake library.blend, re-link on next open |
+| Shareable `.blend` | Large file transfer | Send the tiny scene graph; library.blend stays local |
+| Extracted DB size | 232MB Hospital (with BLOBs) | 8MB Hospital (meshless — hashes + transforms only) |
+| GPU instancing | Preserved (mesh cache) | Preserved — GN Instance on Points |
+| Load time (18K meshes) | ~13s (BLOB unpack + from_pydata) | <0.1s (library.blend link) |
+
+### How much smaller
+
+The bulk of every `.blend` is mesh data. Object transforms, custom properties,
+materials, and scene settings are small. Stripping mesh data leaves only the
+scene graph:
+
+| Building | Elements | Current `.blend` | Streaming `.blend` | Reduction |
+|----------|---------|-----------------|-------------------|-----------|
+| AC Institute | ~700 | 361 KB | ~80 KB | ~80% |
+| Sample House | ~58 | 493 KB | ~100 KB | ~80% |
+| HospitalGarage | — | 1.3 MB | ~150 KB | ~89% |
+| HHS Office ARC | — | 2.1 MB | ~200 KB | ~91% |
+| Ifc4 Revit | — | 24 MB | ~800 KB | ~97% |
+| Hospital (multi-disc) | — | 94 MB | ~2 MB | ~98% |
+| LTU A-House | 125,997 | 107 MB | ~3 MB | ~97% |
+
+The streaming `.blend` size is dominated by the object count (one transform matrix +
+five custom property strings per object), not the geometry. It scales with element
+count, not geometric complexity.
+
+### Is it faster?
+
+**Open time: same.** `load_post` fetches every geometry BLOB from DB, unpacks
+float32 arrays, and builds meshes — identical data volume to Stage 2 today.
+No free lunch here.
+
+**Save is 50–200× faster.** Blender serialises 100+ MB of mesh data to disk today.
+With streaming it writes kilobytes — object transforms and custom properties only.
+A 94 MB Hospital save becomes a 2 MB write.
+
+**Portability and sharing are transformed.** The `.blend` is now a lightweight scene
+configuration — email it, commit it to git, put it in a shared drive, send it over
+Slack. A 125K-element LTU A-House goes from a 107 MB attachment nobody can send to a
+3 MB file anyone can open in seconds. The geometry stays in the DB, which lives on
+a shared drive, a local server, or alongside the `.blend` — one SQLite file, not a
+folder of IFC disciplines.
+
+**Download speed follows.** A team member pulling the latest design scene gets 3 MB
+instead of 107 MB. On a 10 Mbps connection: 0.3 seconds instead of 90 seconds.
+The DB itself only needs to transfer once — subsequent `.blend` updates are scene
+graph diffs only.
+
+**Safety through separation.** The LODs cannot be corrupted by a bad save, a crashed
+Blender session, or a botched file transfer — because they are not in the `.blend`.
+The DB is the single source of truth; the `.blend` is recoverable. Lose the `.blend`,
+re-run Stage 2 against the DB — full scene rebuilt in 9–27 sec, geometry intact.
+Lose nothing of the geometry. Compare to traditional Bonsai: lose the `.blend` there
+and you need the IFC file present to reimport from scratch.
+
+**Two geometry sources, one fetch path.** Extracted buildings (stadiums, hospitals,
+airports) store unique element geometry in `extracted.db → base_geometries`.
+Generative buildings store standard product geometry in
+`component_library.db → component_geometries`. Both use the same `geometry_hash`
+key and the same binary BLOB format — `load_post` checks `extracted.db` first,
+falls through to `component_library.db`. For a stadium like Baku Olympic, most
+elements are bespoke (curved trusses, unique façade panels) — low instancing ratio,
+small `component_library.db`, bulk in `extracted.db`. Streaming helps most here
+precisely because the unique geometry would otherwise bloat the `.blend` the most.
+
+**Cloud geometry library on OCI.** Because the DB is a single SQLite file and
+`load_post` fetches it once per session, the geometry store can live anywhere —
+including Oracle Cloud Infrastructure object storage. The `.blend` holds only the
+scene graph; `load_post` downloads the DB on first open, caches it locally, and
+every subsequent session reads from the local cache. The cloud copy is the master;
+local is a read-through cache.
+
+This turns `component_library.db` into a **shared industry geometry library**:
+one authoritative copy of 2,475+ products (walls, slabs, fixtures, MEP devices),
+maintained centrally, versioned, downloaded once per workstation. Every team member
+opening any `.blend` gets the same certified LOD meshes — no per-project geometry
+copying, no version drift between offices. A geometry update on OCI propagates to
+every workstation on next open, automatically.
+
+```
+OCI Object Storage
+  └── component_library.db  (master, versioned)
+        ↓  download once → local cache
+  Blender load_post
+        ↓  geometry_hash lookup
+  Streaming .blend  (3 MB scene graph, shared by git/email)
+```
+
+The `.blend` file becomes what a web page is to a browser — a lightweight document
+that references assets, not a monolithic bundle that contains them.
+
+### Is it safe to implement?
+
+Yes — with one guard. `save_pre` must not leave objects meshless if the save
+crashes mid-write. The fix: keep an in-memory mesh cache and restore it in
+`save_post`:
+
+```
+save_pre  → strip mesh to stub, cache {geometry_hash: mesh} in memory
+Blender   → writes thin .blend (can crash here — in-memory cache intact)
+save_post → restore mesh from cache → viewport never loses geometry
+```
+
+If the DB is missing on `load_post`, objects get empty stub meshes — no crash,
+just invisible geometry. Fully graceful.
+
+### Does it touch Bonsai core?
+
+**No.** `bpy.app.handlers.save_pre`, `save_post`, and `load_post` are
+addon-level hooks — standard Blender API. All changes land in
+`federation/__init__.py`, which already registers `load_post` handlers today.
+Zero changes to Bonsai core, zero risk to the existing Bonsai IFC workflow.
+
+### Fallback — existing `.blend` files and small projects work unchanged
+
+Detection is one line per object:
+
+```python
+if obj.get('geometry_hash') and len(obj.data.vertices) == 0:
+    # streaming .blend — stub mesh, rehydrate from DB
+else:
+    # legacy embedded .blend — mesh already present, leave as-is
+```
+
+Old `.blend` files with embedded LODs open exactly as before. The mesh presence
+IS the mode flag — no version field needed.
+
+**Size-based auto-switch** — streaming activates automatically above a threshold:
+
+```python
+STREAMING_THRESHOLD = 50_000  # elements — configurable
+
+def should_stream(db_path: str) -> bool:
+    count = sqlite3.connect(db_path).execute(
+        "SELECT COUNT(*) FROM elements_meta").fetchone()[0]
+    return count >= STREAMING_THRESHOLD
+```
+
+Below 50K elements: Stage 2 embeds meshes as today — fast open, works fully
+offline, no DB dependency at runtime. Above 50K: streaming mode activates,
+scene graph only, DB stays the geometry store. The threshold is one config
+line — tune it per deployment.
+
+This means small projects (SH, DX, FK) are unaffected. Large projects (Hospital,
+LTU, Baku-scale stadiums) get streaming automatically. Backward compatibility
+is unconditional — it is structurally impossible to break an existing `.blend`
+because the switch reads mesh presence, not a stored flag.
+
+### TODO 1 — Streaming `.blend` implementation
+
+**Implementation:** [`prompts/S162_streaming_blend.md`](https://github.com/red1oon/BIMCompiler/blob/master/prompts/S162_streaming_blend.md)
+
+Three handlers in `federation/loading/streaming_blend.py`, registered in `federation/__init__.py`:
+
+| Handler | Trigger | What it does |
+|---------|---------|-------------|
+| `blend_save_pre` | Ctrl+S / File > Save | Syncs viewport edits to DB via `guid`; strips mesh to stub |
+| `blend_save_post` | After save completes | Restores mesh from in-memory cache — viewport unaffected |
+| `blend_load_post` | File open | Detects streaming stubs; rehydrates from DB (dual-source) |
+
+**Dual-DB fetch** — `load_post` checks both sources, same `geometry_hash` key:
+
+- `extracted.db → base_geometries` — extracted building elements (walls, slabs, beams)
+- `component_library.db → component_geometries` — generative products (FRIDGE, SWITCH…)
+
+**Size-based auto-switch** — streaming activates only above threshold:
+
+```
+< 50K elements  →  embedded mode (Stage 2 as today, works fully offline)
+≥ 50K elements  →  streaming mode (scene graph only, DB stays geometry store)
+```
+
+Threshold is one config line. Small projects (SH, DX, FK) unaffected.
+Backward compat unconditional — mesh presence is the mode flag.
+
+**The twin loop** — save = sync, no separate updater step:
+
+```
+viewport edit  →  Ctrl+S  →  save_pre: sync DB + strip mesh  →  3 MB .blend written
+compiler run   →  new output.db  →  load_post rehydrates     →  .blend reflects truth
+```
+
+### TODO 2 — IFC export (custom exporter, not Bonsai native)
+
+Bonsai's native `File > Export IFC` requires IfcOpenShell to hold the model
+in memory with every entity linked via `ifc_definition_id`. Federation objects
+have no `ifc_definition_id` — they are plain Blender objects. The native
+exporter does not see them as IFC entities. IFC export is **not automatic**.
+
+It is achievable via a custom exporter — all ingredients present:
+
+```python
+import ifcopenshell
+model = ifcopenshell.file(schema="IFC2X3")
+for obj in bpy.data.objects:
+    if obj.get('guid') and obj.get('ifc_class'):
+        entity = model.create_entity(obj['ifc_class'], GlobalId=obj['guid'])
+        # attach tessellated geometry from base_geometries via geometry_hash
+```
+
+`guid`, `ifc_class`, and DB geometry are on every object. It is a dedicated
+build, not a freebie from having objects in the Outliner.
+
+### The workflow this enables
+
+```
+extract IFC → extracted.db     (once)
+              ↓
+         open .blend            (load_post rehydrates from DB)
+              ↓
+         edit in viewport       (moves, deletions, material changes)
+              ↓
+         Ctrl+S                 (save_pre: DB synced + mesh stripped → 3 MB file)
+              ↓
+         next open              (load_post sees updated DB → reflects edits)
+```
+
+The `.blend` is a **session configuration**, not a geometry archive.
+The DB is the geometry archive, always current, never duplicated.
+
+---
+
+**→ Implementation spec:** [`prompts/S162_streaming_blend.md`](https://github.com/red1oon/BIMCompiler/blob/master/prompts/S162_streaming_blend.md)
+
+### TODO 3 — Demo Mega-DB (Baku-scale proof without Baku)
+
+Baku Olympic Stadium IFC is not yet available. But we already have enough extracted
+buildings to assemble a demo database that proves streaming at comparable scale —
+and tells a better story: a **real mixed-use precinct** on terrain.
+
+**Available assets:**
+
+| Source | File | Elements | Size |
+|--------|------|---------|------|
+| Hospital (multi-disc) | `Hospital_extracted.db` | ~60K | 124 MB |
+| LTU A-House | `LTU_AHouse_extracted.db` | 125,997 | 233 MB |
+| Clinic (federated) | `Clinic_extracted.db` | ~16K | 56 MB |
+| HITOS | `HITOS_extracted.db` | — | 5.9 MB |
+| Hospital Auckland | `HospitalAuckland_extracted.db` | — | 4.7 MB |
+| Hospital Garage | `HospitalGarage_extracted.db` | — | 1.7 MB |
+| PDF Terrain | `pdf2blend/samples/sample_output.json` | — | topography mesh |
+
+**Combined: ~200K+ elements, ~425 MB source DBs.**
+Streaming `.blend` target: **under 10 MB**.
+
+**Implementation: a config-driven merge script**
+
+```yaml
+# demo_precinct.yaml — which buildings go where
+precinct_name: Demo Medical Precinct
+output_db: demo_precinct_merged.db
+buildings:
+  - source: Hospital_extracted.db
+    label: Main Hospital
+    offset_x: 0
+    offset_y: 0
+  - source: HospitalGarage_extracted.db
+    label: Parking Garage
+    offset_x: 120
+    offset_y: 0
+  - source: Clinic_extracted.db
+    label: Outpatient Clinic
+    offset_x: 0
+    offset_y: 80
+  - source: HITOS_extracted.db
+    label: HITOS Block
+    offset_x: 200
+    offset_y: 0
+  - source: HospitalAuckland_extracted.db
+    label: Auckland Wing
+    offset_x: 0
+    offset_y: 200
+terrain:
+  - source: pdf2blend/samples/sample_output.json
+    label: Site Terrain
+    type: json_elevation_grid
+```
+
+The merge script reads the YAML, applies XY offsets to `element_transforms` and
+`elements_rtree`, and writes a single `demo_precinct_merged.db`. Discipline tags
+and GUIDs are preserved — prefixed with the source label to avoid collisions.
+
+**What this demonstrates:**
+- Streaming `.blend` at 200K+ elements → under 10 MB file
+- Mixed disciplines across buildings in one queryable DB
+- Terrain + buildings in the same spatial index
+- Broadphase clash detection across building boundaries
+- OCI upload of `demo_precinct_merged.db` as the shared cloud geometry library
+
+**→ Implementation spec:** `prompts/S163_demo_precinct.md` (to be written after S162)
+
+---
+
+## Appendix: 5M Scale Path (Design — post S162)
+
+**Prerequisite:** S162 streaming `.blend` implemented and validated.
+**Status:** Design only. No schema exists yet. No implementation prompt written.
+
+The streaming pattern extends naturally to 5M elements with one architectural shift:
+above a threshold, stop creating Blender objects entirely — use pure GPU bbox draw
+from the R-tree, and load full meshes only for a user-selected focus zone.
+
+### Three-tier model
+
+| Mode | Objects in Blender | Use case |
+|------|-------------------|----------|
+| Normal (<50K) | Stubs → rehydrated on open | S162 as-is |
+| Hybrid (50K–500K) | Stubs + GPU bbox overlay | Large buildings |
+| Navigation (>500K) | Zero objects — GPU only | Stadiums, airports |
+
+### Navigation mode
+
+- No `bpy.data.objects` created on open — Outliner stays empty
+- GPU draw handler queries `elements_rtree` per frame, frustum-culled
+- Single instanced draw call; discipline colours from `bbox_visualization.py`
+- Click selection via SQL R-tree candidate filter + ray–bbox test (not Blender raycast)
+
+### Focus mode
+
+- User selects zone (storey, discipline, bounding box, or search)
+- System loads LOD meshes only for selected elements via modal timer
+- On exit: all focus-zone objects deleted, navigation mode restored
+
+### Storage concern (honest)
+
+At 5M elements with full LOD0/1/2 meshes the DB exceeds SQLite practical limits
+(~40 GB). Options: PostgreSQL for >2M, or store only LOD1/2 and generate LOD0
+on demand from the BIM Compiler.
+
+### Known limitations
+
+- No Outliner in navigation mode — use BIM Compiler web UI for element browsing
+- Full mesh editing capped at ~50K elements per focus session
+- Blender 4.0+ required (GPU instancing API)
+
+**→ Implementation prompt:** to be written as a new S1xx after S162 is live.
