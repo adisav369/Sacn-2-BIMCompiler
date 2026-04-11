@@ -26,6 +26,22 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
+**S175 SESSION 2 (2026-04-12):** GN streaming — geo hell root cause found and architectured.
+  - **Library expanded:** 41K → 120,471 meshes. 25 buildings added (14 BLOB-copy, 11 IFC re-extract). 276MB library.blend.
+  - **Sandbox rebuilt:** 1,061,736 elements, 108,440 unique hashes, 100% library coverage (was 58%).
+  - **HITOS origin fixed:** 3 outlier elements at 254km removed, building recentred to 298m×98m box.
+  - **Geo hell root causes found (3 layers):**
+    1. `bbox_index = len(mesh_by_hash)` → modular wrapping (23000 % 101 = random mesh)
+    2. Collection mutations while GN live → index shift → stale instance_index
+    3. GN Collection Info sorts ALPHABETICALLY, not insertion order → `_bbox_proxy` at end not slot 0
+  - **Pre-populate architecture implemented:** All template objects created at load (bbox mesh), FINAL instance_index set once. Streamer only swaps `obj.data`. Collection never mutates. 15/15 proof tests pass.
+  - **GN pause/resume pattern:** Disable GN → batch 200 mesh swaps → re-enable → ONE re-eval per batch (was 1000/sec).
+  - **BLOCKER: GN Collection Info at scale.** 7K+ objects in collection hangs viewport on re-eval. GeoScatter works at <100 assets. Our 7K-23K templates exceed Collection Info's design limit.
+  - **Non-GN loader stable:** 60K elements, fast save, production-ready. R-tree: 1M elements, 13s.
+  - Scripts: `bake_all_sandbox.sh`, `test_gn_index_proof.py`, `build_sandbox_1M.py` (Terminal_Extracted typo fixed)
+  - Next: GN topology redesign (chunked sub-collections, Realize Instances, or Bake Node) — dedicated session
+  - Ref: DeepSeek game engine analysis (Unreal World Partition, Unity DOTS, GeoScatter patterns)
+
 **S174 DONE (2026-04-11):** Library pipeline for all buildings. DLOD handler. Old loader retirement spec. Terminal alignment fix.
   - Clinic 16,480 elements PIPELINE PASS (8.3MB meshless DB, 132s)
   - Hospital 63,917 elements PIPELINE PASS (30MB meshless DB, 214s, surface_styles fresh)

@@ -26,20 +26,20 @@ TILE_ROWS  = 1
 # ── CITY LAYOUT ──────────────────────────────────────────────
 # CBD core: big buildings in the centre
 CBD_BUILDINGS = [
-    "HospitalGarage_extracted.db",     # 1,454  — left flank
+    "HospitalGarage_extracted.db",     # 1,463  — left flank
     "Hospital_extracted.db",           # 63,917 — left hospital
-    "LTU_AHouse_extracted.db",         # 125,997
-    "Terminal_Extracted.db",           # 48,428
+    "LTU_AHouse_extracted.db",         # 4,785
+    "Terminal_extracted.db",           # 48,428
     "Hospital_extracted.db",           # 63,917 — right hospital (2nd copy)
-    "HospitalGarage_extracted.db",     # 1,454  — right flank
+    "HospitalGarage_extracted.db",     # 1,463  — right flank
 ]
 
-# Clinics/offices ring: medium buildings around CBD
+# Clinics/offices ring: medium buildings in CBD strip
 CLINIC_BUILDINGS = [
-    "Clinic_extracted.db",             # 16,481
-    "Ifc4_Revit_extracted.db",         # 11,505
-    "WBDG_Office_MEP_extracted.db",    # 5,668
-    "HITOS_extracted.db",              # 5,493
+    "Clinic_extracted.db",             # 16,480
+    "Ifc4_Revit_extracted.db",         # 5,002
+    "WBDG_Office_MEP_extracted.db",    # 5,678
+    "HITOS_extracted.db",              # 1,000
     "HHS_Office_MEP_extracted.db",     # 3,964
     "HHS_Office_ARC_extracted.db",     # 2,745
     "Esplanades_extracted.db",         # 2,544
@@ -48,28 +48,28 @@ CLINIC_ROWS = 2  # 2 rows of clinics flanking CBD
 
 # Suburbs: houses repeating in wide rows
 SUBURB_BUILDINGS = [
-    "Duplex_extracted.db",             # 1,119
-    "SampleHouse_extracted.db",        # 58
+    "Duplex_extracted.db",             # 1,169
+    "SampleHouse_extracted.db",        # 65
     "AC90_Jasmin_extracted.db",        # 82
     "AC90_Niedriha_extracted.db",      # 136
     "AC9_HausGH_extracted.db",         # 256
     "Ifc4_FZKHaus_extracted.db",       # 98
     "Jesse_extracted.db",              # 676
-    "VogelGesamt_extracted.db",        # 157
+    "VogelGesamt_extracted.db",        # 160
     "BimWhale_Basic_extracted.db",     # 153
     "Schependomlaan_extracted.db",     # 3,284
     "SampleCastle_extracted.db",       # 3,284
     "Molio_extracted.db",              # 2,791
     "BimWhale_Advanced_extracted.db",  # 2,176
-    "SmileyWest_extracted.db",         # 521
+    "SmileyWest_extracted.db",         # 531
     "HospitalAuckland_extracted.db",   # 442
     "BimWhale_Large_extracted.db",     # 174
     "BimWhale_Tall_extracted.db",      # 81
     "Ifc2x3_AC11Institute_extracted.db", # 986
 ]
-SUBURB_ROWS = 43  # enough rows to reach ~1M
+SUBURB_ROWS = 45  # S175: 45 rows needed for ~1M with current building counts
 
-BUILDINGS = CBD_BUILDINGS  # place_buildings uses CBD for the main strip
+BUILDINGS = CBD_BUILDINGS + CLINIC_BUILDINGS  # CBD + Clinics in main strip
 
 
 def log(msg, f=None):
@@ -363,12 +363,18 @@ def main():
         out_conn.commit()
         suburb_width = suburb_cursor_x
         if suburb_placed:
-            # Repeat suburb strip across the full CBD width, multiple rows
-            suburb_cols = max(1, int(tile_spacing_x * TILE_COLS / max(suburb_width, 1)))
-            log(f"\nWriting {SUBURB_ROWS} suburb rows ({len(suburb_placed)} houses × {suburb_cols} repeats)...", logf)
+            TARGET = 1_050_000  # slightly over 1M to guarantee we hit it
+            elements_so_far = current_id - 1
+            suburb_per_tile = sum(len(p[1]) for p in suburb_placed)
+            tiles_needed = max(1, (TARGET - elements_so_far) // suburb_per_tile + 1)
+            # Spread tiles into a grid: 1 col deep, N rows
+            suburb_cols = 1
+            suburb_rows = tiles_needed
+            log(f"\nWriting {suburb_rows} suburb rows ({len(suburb_placed)} houses × {suburb_cols} col, {suburb_per_tile:,}/row)...", logf)
+            log(f"  CBD elements: {elements_so_far:,}, target: {TARGET:,}, suburb tiles: {tiles_needed}", logf)
 
             suburb_y_start = TILE_ROWS * tile_spacing_y  # behind CBD
-            for srow in range(SUBURB_ROWS):
+            for srow in range(suburb_rows):
                 for scol in range(suburb_cols):
                     tile_label = f"S{srow}_{scol}"
                     tx = scol * (suburb_width + SUBURB_GAP)
