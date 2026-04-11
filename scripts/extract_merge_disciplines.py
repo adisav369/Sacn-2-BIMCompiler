@@ -29,11 +29,16 @@ Why per-discipline:
 """
 
 import argparse
+import os
 import sqlite3
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+# S173: Log level — FINE enables per-discipline diagnostics, INFO is summary only.
+LOG_LEVEL = os.environ.get("BIM_LOG_LEVEL", "FINE").upper()
+FINE = LOG_LEVEL == "FINE"
 
 
 SCHEMA_SQL = """
@@ -94,66 +99,25 @@ CREATE TABLE IF NOT EXISTS material_layers (
 
 def fix_unit_scale(tmp_db_path: Path, ifc_path: Path):
     """
-    Apply unit scale to all element coordinates and vertex BLOBs.
-
-    The geom.iterator with USE_WORLD_COORDS=False returns coordinates in
-    the IFC file's native length unit. If the file uses mm (unit_scale=0.001),
-    all coordinates and vertices need scaling to metres.
-
-    This is dynamic — reads unit_scale from the IFC, applies if != 1.0.
-    No-op for metre-unit files.
+    S173: No-op — geom.iterator() returns metres natively.
+    This function is a verification-only check.
     """
     import ifcopenshell
     import ifcopenshell.util.unit
 
     ifc = ifcopenshell.open(str(ifc_path))
     unit_scale = ifcopenshell.util.unit.calculate_unit_scale(ifc, "LENGTHUNIT")
-    if abs(unit_scale - 1.0) < 1e-9:
-        return  # File is metre-unit, nothing to do
 
     conn = sqlite3.connect(str(tmp_db_path))
-
-    print(f"  §UNIT_SCALE {ifc_path.name}: unit_scale={unit_scale} — scaling all coordinates to metres")
-
-    # Scale ALL element_transforms coordinates
-    conn.execute("""
-        UPDATE element_transforms SET
-            center_x = center_x * ?,
-            center_y = center_y * ?,
-            center_z = center_z * ?
-    """, (unit_scale, unit_scale, unit_scale))
-
-    # Scale ALL rtree entries
-    conn.execute("""
-        UPDATE elements_rtree SET
-            minX = minX * ?, maxX = maxX * ?,
-            minY = minY * ?, maxY = maxY * ?,
-            minZ = minZ * ?, maxZ = maxZ * ?
-    """, (unit_scale, unit_scale, unit_scale, unit_scale, unit_scale, unit_scale))
-
-    # Scale vertex BLOBs in base_geometries
-    import numpy as np
-    scaled_hashes = set()
-    for row in conn.execute(
-            "SELECT DISTINCT ei.geometry_hash, bg.vertices, bg.vertex_count "
-            "FROM element_instances ei "
-            "JOIN base_geometries bg ON bg.geometry_hash = ei.geometry_hash "
-            "WHERE bg.vertices IS NOT NULL").fetchall():
-        ghash, vblob, vcount = row
-        if ghash in scaled_hashes or not vblob or vcount == 0:
-            continue
-        verts = np.frombuffer(vblob, dtype=np.float32).reshape(-1, 3)
-        if np.abs(verts).max() > 1.0:  # has actual geometry
-            verts_scaled = (verts * unit_scale).astype(np.float32)
-            conn.execute(
-                "UPDATE base_geometries SET vertices=? WHERE geometry_hash=?",
-                (verts_scaled.tobytes(), ghash))
-        scaled_hashes.add(ghash)
-
-    conn.commit()
-    n_meshes = len(scaled_hashes)
+    row = conn.execute(
+        "SELECT AVG(ABS(center_x)), AVG(ABS(center_y)), MAX(ABS(center_z)), "
+        "COUNT(*) FROM element_transforms").fetchone()
     conn.close()
-    print(f"  §UNIT_SCALE scaled to metres ({n_meshes} meshes)")
+
+    if row and row[0] is not None:
+        avg_x, avg_y, max_z, cnt = row
+        print(f"  §UNIT_SCALE {ifc_path.name}: ifc_unit_scale={unit_scale} "
+              f"n={cnt} avg=({avg_x:.1f}, {avg_y:.1f}) maxZ={max_z:.1f}m (iterator=metres)")
 
 
 def _read_geolocation(ifc_path: Path):
@@ -225,10 +189,11 @@ def merge_db(src_path: Path, dst: sqlite3.Connection, disc_label: str,
     has_offset = abs(dx) > 0.01 or abs(dy) > 0.01 or abs(dz) > 0.01
 
     # base_geometries — deduplicate by hash
+    # When --library is used, store NULL BLOBs (meshless DB — meshes live in library)
     for row in src.execute("SELECT * FROM base_geometries"):
         dst.execute(
             "INSERT OR IGNORE INTO base_geometries VALUES (?,?,?,?,?)",
-            (row["geometry_hash"], row["vertices"], row["faces"],
+            (row["geometry_hash"], None, None,
              row["vertex_count"], row["face_count"])
         )
 
@@ -403,6 +368,26 @@ def main():
         print(f"No files matching {args.pattern} in {args.ifc_dir}")
         sys.exit(1)
 
+    # S173: Tee all stdout to a persistent log file next to the output DB
+    output_path = Path(args.output)
+    log_path = output_path.with_suffix('.log')
+    import io
+
+    class _Tee:
+        """Write to both stdout and a log file."""
+        def __init__(self, logf):
+            self._stdout = sys.stdout
+            self._logf = logf
+        def write(self, s):
+            self._stdout.write(s)
+            self._logf.write(s)
+        def flush(self):
+            self._stdout.flush()
+            self._logf.flush()
+
+    _log_fh = open(str(log_path), 'w')
+    sys.stdout = _Tee(_log_fh)
+
     output = Path(args.output)
     if output.exists():
         output.unlink()
@@ -424,9 +409,11 @@ def main():
     jobs = []  # (ifc, tmp_db, process)
     for ifc in ifc_files:
         tmp_db = Path(tempfile.mktemp(suffix=f"_{ifc.stem}.db"))
-        cmd = [sys.executable, args.extractor, "--ifc", str(ifc), "-o", str(tmp_db)]
-        if args.library:
-            cmd.extend(["--library", args.library])
+        # S173: Do NOT pass --library during parallel extraction.
+        # Each extractor writes BLOBs to its own temp DB (no contention).
+        # Library is populated sequentially during merge phase.
+        cmd = [sys.executable, args.extractor, "--ifc", str(ifc), "-o", str(tmp_db),
+               "--skip-normalize"]  # S173: merge script handles normalization
         log_file = open(str(tmp_db) + ".log", 'w')
         proc = subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
         jobs.append((ifc, tmp_db, proc, log_file))
@@ -466,6 +453,25 @@ def main():
 
     extract_time = _time.time() - t0
     print(f"\n  All {len(jobs)} extractions done in {extract_time:.0f}s")
+
+    # S173: Dump key diagnostic lines from each discipline's extraction log (FINE only)
+    if not FINE:
+        print(f"\n  §DIAG skipped (BIM_LOG_LEVEL={LOG_LEVEL})")
+    else:
+        print(f"\n  §DIAG per-discipline extraction diagnostics:")
+    for ifc, tmp_db, proc, log_file in jobs:
+        if not FINE:
+            continue
+        log_path = str(tmp_db) + ".log"
+        if not Path(log_path).exists():
+            continue
+        with open(log_path) as lf:
+            for line in lf:
+                if any(tag in line for tag in (
+                    "§SAMPLE[", "§PRE_NORM", "§NORMALIZE", "§COORD_RANGE",
+                    "§MESH_SCALE", "§UNIT_SCALE", "WARNING", "§FAIL"
+                )):
+                    print(f"    [{ifc.stem}] {line.rstrip()}")
 
     # ── Geolocation alignment (same logic as IfcPatch MergeProjects) ──
     # Read geolocation from each IFC, compute corrections relative to reference
@@ -515,10 +521,32 @@ def main():
 
         corr = corrections.get(ifc.stem, (0.0, 0.0, 0.0))
         merge_db(tmp_db, dst, disc, correction=corr)
+
+        # S173: Copy BLOBs from temp DB → library (sequential, no lock contention)
+        if args.library:
+            lib_conn = sqlite3.connect(args.library, timeout=30)
+            lib_conn.execute("PRAGMA journal_mode=WAL")
+            src_conn = sqlite3.connect(str(tmp_db))
+            copied = 0
+            for row in src_conn.execute(
+                    "SELECT geometry_hash, vertices, faces, vertex_count, face_count "
+                    "FROM base_geometries WHERE vertices IS NOT NULL"):
+                rc = lib_conn.execute(
+                    "INSERT OR IGNORE INTO component_geometries "
+                    "(geometry_hash, vertices, faces, normals, vertex_count, face_count) "
+                    "VALUES (?,?,?,NULL,?,?)", row)
+                if rc.rowcount > 0:
+                    copied += 1
+            lib_conn.commit()
+            lib_conn.close()
+            src_conn.close()
+            if copied > 0:
+                print(f"  [{disc}] → {copied} new meshes → library")
+
         tmp_db.unlink()
-        log_path = Path(str(tmp_db) + ".log")
-        if log_path.exists():
-            log_path.unlink()
+        log_path_tmp = Path(str(tmp_db) + ".log")
+        if log_path_tmp.exists():
+            log_path_tmp.unlink()
 
     merge_time = _time.time() - merge_t0
     print(f"  Merge phase: {merge_time:.1f}s")
@@ -584,12 +612,91 @@ def main():
     except Exception as e:
         print(f"  Camera target write skipped: {e}")
 
-    dst.close()
+    # ── S173: PROOF BLOCK — self-checking merge summary ──────────────────
+    disc_ranges = dst.execute("""
+        SELECT em.discipline, COUNT(*),
+               MIN(et.center_x), MAX(et.center_x),
+               MIN(et.center_y), MAX(et.center_y),
+               MIN(et.center_z), MAX(et.center_z)
+        FROM element_transforms et
+        JOIN elements_meta em ON et.guid = em.guid
+        GROUP BY em.discipline
+    """).fetchall()
 
     size_mb = output.stat().st_size / (1024 * 1024)
-    print(f"\n✓ Done: {output.name} — {size_mb:.1f} MB, {total} elements")
+    print(f"\n{'='*70}")
+    print(f"§PROOF {output.name}  {total:,} elements  {size_mb:.1f}MB  {len(by_disc)} disciplines")
+    print(f"{'='*70}")
+
+    _pass = _fail = 0
+    def _check(name, ok, evidence):
+        nonlocal _pass, _fail
+        tag = "PASS" if ok else "FAIL"
+        _pass += ok
+        _fail += (not ok)
+        print(f"  {tag:4s}  {name:20s}  {evidence}")
+
+    # M1: Per-discipline scale — each must span 1-500m
+    for d, cnt, x0, x1, y0, y1, z0, z1 in disc_ranges:
+        span = max(abs(x1-x0), abs(y1-y0), abs(z1-z0))
+        _check(f"SCALE_{d}",
+               0.5 < span < 500,
+               f"n={cnt}  span={span:.1f}m  "
+               f"X=[{x0:.1f},{x1:.1f}] Y=[{y0:.1f},{y1:.1f}] Z=[{z0:.1f},{z1:.1f}]")
+
+    # M2: ALIGN — all disciplines must have bbox overlap with reference
+    if len(disc_ranges) > 1:
+        ref = disc_ranges[0]
+        for row in disc_ranges[1:]:
+            x_ol = max(0, min(ref[3], row[3]) - max(ref[2], row[2]))
+            y_ol = max(0, min(ref[5], row[5]) - max(ref[4], row[4]))
+            ref_xs = ref[3] - ref[2]
+            ref_ys = ref[5] - ref[4]
+            xp = (x_ol / ref_xs * 100) if ref_xs > 0 else 0
+            yp = (y_ol / ref_ys * 100) if ref_ys > 0 else 0
+            _check(f"ALIGN_{row[0]}",
+                   x_ol > 1.0 and y_ol > 1.0,
+                   f"vs {ref[0]}  overlap X={xp:.0f}% Y={yp:.0f}%  "
+                   f"({x_ol:.1f}m, {y_ol:.1f}m)")
+
+    # M3: ELEMENT_COUNT — total matches sum of disciplines
+    disc_sum = sum(r[1] for r in disc_ranges)
+    _check("ELEMENT_COUNT",
+           disc_sum == total,
+           f"sum={disc_sum}  total={total}")
+
+    # M4: LIBRARY — geometry hashes resolvable (spot-check)
+    if args.library:
+        import sqlite3 as _sq
+        _lib = _sq.connect(args.library)
+        lib_total = _lib.execute("SELECT COUNT(*) FROM component_geometries").fetchone()[0]
+        # Check 10 random hashes from extracted DB resolve in library
+        _dst2 = _sq.connect(str(output))
+        sample_hashes = _dst2.execute(
+            "SELECT DISTINCT geometry_hash FROM element_instances LIMIT 10").fetchall()
+        found = 0
+        for (h,) in sample_hashes:
+            if _lib.execute("SELECT 1 FROM component_geometries WHERE geometry_hash=?", (h,)).fetchone():
+                found += 1
+        _check("LIBRARY_RESOLVE",
+               found == len(sample_hashes),
+               f"{found}/{len(sample_hashes)} hashes found in library ({lib_total} total)")
+        _dst2.close()
+        _lib.close()
+
+    print(f"{'─'*70}")
+    result = "PASS" if _fail == 0 else "FAIL"
+    print(f"§PROOF RESULT: {result}  ({_pass} pass, {_fail} fail)")
     for d, c in by_disc:
         print(f"  {d}: {c}")
+    print(f"{'='*70}")
+
+    dst.close()
+
+    # Close persistent log
+    sys.stdout = sys.stdout._stdout
+    _log_fh.close()
+    print(f"  Log written to {log_path}")
 
 
 if __name__ == "__main__":

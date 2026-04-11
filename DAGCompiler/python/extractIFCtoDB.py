@@ -49,6 +49,10 @@ import hashlib
 import os
 import sqlite3
 import struct
+
+# S173: Log level — FINE enables detailed proofs, INFO is summary only.
+LOG_LEVEL = os.environ.get("BIM_LOG_LEVEL", "FINE").upper()
+FINE = LOG_LEVEL == "FINE"
 import sys
 import time
 
@@ -153,6 +157,19 @@ CREATE TABLE IF NOT EXISTS element_transforms (
     rotation_y REAL DEFAULT 0,
     rotation_z REAL DEFAULT 0,
     transform_source TEXT
+);
+CREATE TABLE IF NOT EXISTS port_elements (
+    port_guid TEXT PRIMARY KEY,
+    element_guid TEXT NOT NULL,
+    flow_direction TEXT,
+    local_x REAL,
+    local_y REAL,
+    local_z REAL
+);
+CREATE TABLE IF NOT EXISTS port_connections (
+    port_a_guid TEXT NOT NULL,
+    port_b_guid TEXT NOT NULL,
+    PRIMARY KEY (port_a_guid, port_b_guid)
 );
 CREATE TABLE IF NOT EXISTS rel_contained_in_space (
     element_guid TEXT,
@@ -679,7 +696,8 @@ def _open_library(library_path):
 
 
 def extract_reference(ifc_path, output_path, classes=None, exclude=None,
-                      dry_run=False, library_path=None, building_type=None):
+                      dry_run=False, library_path=None, building_type=None,
+                      skip_normalize=False):
     """Full extraction from IFC to reference DB with geometry + materials.
 
     Extracts ALL IfcProduct subclasses that have a Representation, except
@@ -705,6 +723,13 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
     ifc_file = ifcopenshell.open(ifc_path)
     ifc_size_mb = os.path.getsize(ifc_path) / (1024 * 1024)
     print(f"  §IFC        {ifc_size_mb:.1f} MB, schema {ifc_file.schema}")
+
+    # S173: geom.iterator() returns metres natively (applies unit_scale
+    # internally), regardless of the IFC file's native length unit.
+    # No manual scaling needed. unit_scale is read for logging only.
+    import ifcopenshell.util.unit as _ifcunit
+    unit_scale = _ifcunit.calculate_unit_scale(ifc_file, "LENGTHUNIT")
+    print(f"  §UNIT_SCALE {unit_scale} (iterator returns metres — no manual scaling)")
 
     # S168: Derive building_type from IFC filename if not provided
     if building_type is None:
@@ -805,6 +830,12 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
     for elem in ifc_file.by_type("IfcProduct"):
         guid_to_elem[elem.GlobalId] = elem
 
+    # S173: Running stats for debug summary
+    _cx_min = _cy_min = _cz_min = float('inf')
+    _cx_max = _cy_max = _cz_max = float('-inf')
+    _vmax_global = 0.0
+    _rot_ok = _rot_fail = 0
+
     if iterator:
         print(f"  §ITER using geometry iterator (v{ifcopenshell.version}, built-in dedup)")
         while True:
@@ -827,6 +858,7 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                     vblob, fblob, center, minXYZ, maxXYZ = bbox_from_placement(elem)
                     bbox_fallback += 1
                 else:
+                    # S173: iterator returns metres natively — no scaling
                     vblob = verts.astype(np.float32).tobytes()
                     fblob = faces.astype(np.int32).tobytes()
 
@@ -836,7 +868,7 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                     rot3 = mat4[:3, :3]
                     center = mat4[:3, 3]
 
-                    # World-space bbox
+                    # World-space bbox (from original verts + original centre)
                     local_min = verts.min(axis=0)
                     local_max = verts.max(axis=0)
                     corners = np.array([
@@ -864,6 +896,42 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                         rot_y = math.atan2(-rot3[2, 0], sy)
                         rot_z = 0.0
 
+                    # S173: ROTATION TRUTH — at the event, compare Euler→matrix vs original rot3
+                    if FINE:
+                        a, b, c = rot_x, rot_y, rot_z
+                        R_recon = np.array([
+                            [math.cos(b)*math.cos(c), math.sin(a)*math.sin(b)*math.cos(c)-math.cos(a)*math.sin(c), math.cos(a)*math.sin(b)*math.cos(c)+math.sin(a)*math.sin(c)],
+                            [math.cos(b)*math.sin(c), math.sin(a)*math.sin(b)*math.sin(c)+math.cos(a)*math.cos(c), math.cos(a)*math.sin(b)*math.sin(c)-math.sin(a)*math.cos(c)],
+                            [-math.sin(b),             math.sin(a)*math.cos(b),                                      math.cos(a)*math.cos(b)]
+                        ])
+                        rot_err = np.abs(R_recon - rot3).max()
+                        if rot_err > 1e-6:
+                            _rot_fail += 1
+                            if _rot_fail <= 3:
+                                print(f"    §ROT_FAIL {shape.guid[:16]} err={rot_err:.6f} "
+                                      f"euler=({rot_x:.4f},{rot_y:.4f},{rot_z:.4f})")
+                        else:
+                            _rot_ok += 1
+
+                # S173: track running stats + log first 3 elements for diagnostics
+                _vmax_local = np.abs(verts).max() if len(verts) > 0 else 0.0
+                if _vmax_local > _vmax_global:
+                    _vmax_global = _vmax_local
+                _cx_min = min(_cx_min, float(center[0]))
+                _cx_max = max(_cx_max, float(center[0]))
+                _cy_min = min(_cy_min, float(center[1]))
+                _cy_max = max(_cy_max, float(center[1]))
+                _cz_min = min(_cz_min, float(center[2]))
+                _cz_max = max(_cz_max, float(center[2]))
+
+                if FINE and imported < 3:
+                    print(f"    §SAMPLE[{imported}] {cls} "
+                          f"centre=({float(center[0]):.2f},{float(center[1]):.2f},{float(center[2]):.2f})m "
+                          f"vmax={_vmax_local:.3f}m "
+                          f"bbox=[{float(minXYZ[0]):.2f},{float(maxXYZ[0]):.2f}]x"
+                          f"[{float(minXYZ[1]):.2f},{float(maxXYZ[1]):.2f}]x"
+                          f"[{float(minXYZ[2]):.2f},{float(maxXYZ[2]):.2f}]")
+
                 ghash = geometry_hash(vblob, fblob)
 
                 guid = shape.guid
@@ -886,12 +954,28 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 if material_rgba:
                     rgba_found += 1
 
+                # S173: progress every 5000 elements (FINE only)
+                if FINE and imported > 0 and imported % 5000 == 0:
+                    elapsed = time.time() - t_iter_start
+                    print(f"    §PROGRESS {imported:,} elements  "
+                          f"{elapsed:.0f}s  {imported/max(elapsed,0.01):.0f} elem/s  "
+                          f"fail={failed}")
+
                 if not dry_run:
                     # Vertex/face counts — derive from BLOB size (always correct)
                     v_count = len(vblob) // 12   # float32 * 3 = 12 bytes/vertex
                     f_count = len(fblob) // 12   # int32 * 3  = 12 bytes/face
 
                     if ghash not in existing_hashes:
+                        # S173: spot-check vertex scale for first 5 new hashes (FINE only)
+                        if FINE and len(existing_hashes) < 5 and v_count > 3:
+                            _sv = np.frombuffer(vblob, dtype=np.float32).reshape(-1, 3)
+                            _vmax = np.abs(_sv).max()
+                            print(f"    §MESH_SCALE hash={ghash[:12]} "
+                                  f"vc={v_count} vmax={_vmax:.3f}m "
+                                  f"centre=({float(center[0]):.2f},{float(center[1]):.2f},{float(center[2]):.2f})m "
+                                  f"unit_scale={unit_scale}")
+
                         if lib_conn:
                             # S168: BLOBs → component_library.db
                             rc = lib_conn.execute(
@@ -1024,6 +1108,16 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
         t_iter_elapsed = time.time() - t_iter_start
         print(f"  §ITER done: {imported:,} elements in {t_iter_elapsed:.1f}s "
               f"({imported/max(t_iter_elapsed,0.01):.0f} elem/s)")
+        # S173: Pre-normalize coordinate summary (FINE only)
+        if FINE and imported > 0:
+            cx_span = _cx_max - _cx_min
+            cy_span = _cy_max - _cy_min
+            cz_span = _cz_max - _cz_min
+            print(f"  §PRE_NORM centre X=[{_cx_min:.2f},{_cx_max:.2f}] "
+                  f"Y=[{_cy_min:.2f},{_cy_max:.2f}] "
+                  f"Z=[{_cz_min:.2f},{_cz_max:.2f}]")
+            print(f"  §PRE_NORM span=({cx_span:.1f}, {cy_span:.1f}, {cz_span:.1f})m  "
+                  f"vmax_global={_vmax_global:.3f}m")
 
     if not dry_run:
         conn.commit()
@@ -1032,7 +1126,11 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
 
     # S169: Normalize building origin — subtract centroid so building is near (0,0,0)
     # Fixes georeferenced IFC files (UTM/national grid) that place elements at 100K+ metres
-    if not dry_run and imported > 0:
+    # S173: SKIP when called from merge script — merge does its own post-merge normalization.
+    # Per-discipline normalization destroys inter-discipline alignment.
+    if skip_normalize:
+        print(f"  §NORMALIZE skip (--skip-normalize: merge script handles post-merge normalization)")
+    elif not dry_run and imported > 0:
         row = conn.execute("""
             SELECT AVG(center_x), AVG(center_y), MIN(center_z)
             FROM element_transforms
@@ -1107,66 +1205,113 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
         write_surface_styles(conn, styles)
         write_material_layers(conn, layers)
 
-    print(f"\n  §EXTRACT Elements: {imported} (failed: {failed}, simplified: {simplified}, bbox_fallback: {bbox_fallback})")
-    print(f"  §EXTRACT Materials: {mat_found} names, {rgba_found} RGBA colours")
-    print(f"  §EXTRACT Surface styles: {len(styles)}, Material layers: {len(layers)}")
+    # ── S173: PROOF BLOCK — self-checking summary ──────────────────────────
+    # Each check prints PASS/FAIL with evidence. Read this block only.
+    print(f"\n  {'─'*60}")
+    print(f"  §PROOF {os.path.basename(ifc_path)}  elements={imported}  "
+          f"failed={failed}  bbox_fallback={bbox_fallback}")
+    print(f"  {'─'*60}")
 
-    # Geometry deduplication stats
-    if not dry_run:
+    _proof_pass = 0
+    _proof_fail = 0
+
+    def _check(name, ok, evidence):
+        nonlocal _proof_pass, _proof_fail
+        tag = "PASS" if ok else "FAIL"
+        if ok:
+            _proof_pass += 1
+        else:
+            _proof_fail += 1
+        print(f"    {tag:4s}  {name:20s}  {evidence}")
+
+    if not dry_run and imported > 0:
+        # P1: SCALE — coordinates in metres (span 1-500m for real buildings)
+        cr = conn.execute("""
+            SELECT MIN(center_x), MAX(center_x),
+                   MIN(center_y), MAX(center_y),
+                   MIN(center_z), MAX(center_z)
+            FROM element_transforms
+        """).fetchone()
+        span_x = abs(cr[1]-cr[0])
+        span_y = abs(cr[3]-cr[2])
+        span_z = abs(cr[5]-cr[4])
+        span = max(span_x, span_y, span_z)
+        _check("SCALE",
+               0.5 < span < 500,
+               f"span=({span_x:.1f},{span_y:.1f},{span_z:.1f})m  "
+               f"X=[{cr[0]:.1f},{cr[1]:.1f}] Y=[{cr[2]:.1f},{cr[3]:.1f}] Z=[{cr[4]:.1f},{cr[5]:.1f}]")
+
+        # P2: MESH_SCALE — vertex BLOBs in metres (vmax < 200m)
+        _check("MESH_SCALE",
+               0.001 < _vmax_global < 500,
+               f"vmax_global={_vmax_global:.3f}m  unit_scale={unit_scale}")
+
+        # P3: DEDUP — geometry deduplication working
         unique_hashes = conn.execute(
             "SELECT COUNT(DISTINCT geometry_hash) FROM element_instances").fetchone()[0]
         total_instances = conn.execute(
             "SELECT COUNT(*) FROM element_instances").fetchone()[0]
-        reuse_ratio = total_instances / max(unique_hashes, 1)
-        print(f"  §DEDUP {unique_hashes} unique hashes / {total_instances} instances (reuse ratio: {reuse_ratio:.1f}x)")
+        reuse = total_instances / max(unique_hashes, 1)
+        _check("DEDUP",
+               unique_hashes > 0,
+               f"{unique_hashes} hashes / {total_instances} instances  reuse={reuse:.1f}x")
 
-    # Rotation stats
-    if not dry_run:
-        rot_stats = conn.execute("""
-            SELECT COUNT(*) as total,
-                   SUM(CASE WHEN rotation_x != 0 OR rotation_y != 0 OR rotation_z != 0 THEN 1 ELSE 0 END) as rotated
-            FROM element_transforms
-        """).fetchone()
-        if rot_stats:
-            print(f"  §ROTATION {rot_stats[1]}/{rot_stats[0]} elements have non-zero rotation")
+        # P4: ROT_TRUTH — Euler→matrix matches original IFC matrix (checked at event)
+        _check("ROT_TRUTH",
+               _rot_fail == 0 and _rot_ok > 0,
+               f"{_rot_ok} ok, {_rot_fail} fail  "
+               f"(Euler decompose→reconstruct vs IFC iterator matrix)")
 
-    # Tack point verification — origin should be near element base (Z≈0)
-    if not dry_run and unique_hashes > 0:
-        origins = conn.execute("""
-            SELECT bg.geometry_hash,
-                   MIN(CAST(SUBSTR(HEX(bg.vertices), 1, 8) AS REAL)) as sample
-            FROM base_geometries bg LIMIT 1
-        """).fetchone()
-        # Check via actual vertex data in library
-        print(f"  §TACK_POINT origin=IFC placement (Z-up, Y-forward) — no bbox centering")
+        # P5: FAIL_RATE — extraction failures below 1%
+        fail_pct = (failed / max(imported + failed, 1)) * 100
+        _check("FAIL_RATE",
+               fail_pct < 1.0,
+               f"{failed}/{imported+failed} ({fail_pct:.2f}%)")
 
-    # S168: Library summary
+        # P6: MATERIALS — some materials found
+        _check("MATERIALS",
+               mat_found > 0 or rgba_found > 0,
+               f"{mat_found} names, {rgba_found} rgba, {len(styles)} styles, {len(layers)} layers")
+
+    # P7: LIBRARY — writes succeeded (when using library mode)
     if lib_conn and not dry_run:
-        print(f"\n  §LIBRARY writes ({library_path}):")
-        print(f"    §LIBRARY component_geometries: {lib_geo_new} new hashes")
-        print(f"    §LIBRARY component_definitions: {lib_geo_new} new defs (UFB: Z-up, Y-fwd)")
-        print(f"    §LIBRARY I_Geometry_Map:       {lib_igm_new} new instance mappings")
-        print(f"    §LIBRARY M_Product:            {lib_prod_new} new product defs")
         total_geo = lib_conn.execute(
             "SELECT COUNT(*) FROM component_geometries").fetchone()[0]
-        total_defs = lib_conn.execute(
-            "SELECT COUNT(*) FROM component_definitions").fetchone()[0]
         total_igm = lib_conn.execute(
             "SELECT COUNT(*) FROM I_Geometry_Map").fetchone()[0]
-        total_prod = lib_conn.execute(
-            "SELECT COUNT(*) FROM M_Product").fetchone()[0]
-        print(f"    §LIBRARY totals: {total_geo} geometries, {total_defs} defs, "
-              f"{total_igm} I_Geometry_Map, {total_prod} M_Product")
+        _check("LIBRARY",
+               lib_geo_new > 0 or total_geo > 0,
+               f"+{lib_geo_new} new hashes, +{lib_igm_new} mappings  "
+               f"totals: {total_geo} geo, {total_igm} map")
 
-        # Attachment face distribution
-        face_dist = lib_conn.execute("""
-            SELECT attachment_face, COUNT(*) FROM component_definitions
-            GROUP BY attachment_face ORDER BY COUNT(*) DESC
+        # P8: LIBRARY_SCALE — spot-check vertex scale in library
+        sample = lib_conn.execute("""
+            SELECT vertices, vertex_count FROM component_geometries
+            WHERE vertices IS NOT NULL AND vertex_count > 3
+            ORDER BY RANDOM() LIMIT 5
         """).fetchall()
-        if face_dist:
-            print(f"    §LIBRARY attachment_face: {', '.join(f'{f}={c}' for f, c in face_dist)}")
+        lib_scale_ok = True
+        worst_vmax = 0.0
+        for vblob, vc in sample:
+            if vblob:
+                sv = np.frombuffer(vblob, dtype=np.float32).reshape(-1, 3)
+                vm = np.abs(sv).max()
+                if vm > worst_vmax:
+                    worst_vmax = vm
+                if vm > 500:
+                    lib_scale_ok = False
+        _check("LIBRARY_SCALE",
+               lib_scale_ok,
+               f"spot-check {len(sample)} meshes  worst_vmax={worst_vmax:.3f}m")
+
+        # NOTE: RECONSTRUCT + IFC_TRUTH proofs run at LOAD TIME (stress_blender_test.py)
+        # not here — extraction has the IFC so it can't fail here.
 
         lib_conn.close()
+
+    print(f"  {'─'*60}")
+    print(f"  §PROOF RESULT: {_proof_pass} PASS, {_proof_fail} FAIL")
+    print(f"  {'─'*60}")
 
     # Summary by class
     if not dry_run:
@@ -1434,6 +1579,8 @@ def main():
     parser.add_argument("--styles-only", action="store_true",
                         help="Enrich existing DB with surface_styles + material_layers only")
     parser.add_argument("--exclude", help="Comma-separated IFC classes to exclude")
+    parser.add_argument("--skip-normalize", action="store_true",
+                        help="Skip centroid normalization (merge script does its own)")
     parser.add_argument("--dry-run", action="store_true", help="Report only, no writes")
     args = parser.parse_args()
 
@@ -1458,7 +1605,8 @@ def main():
         extract_reference(args.ifc, args.output, exclude=exclude,
                           dry_run=args.dry_run,
                           library_path=args.library,
-                          building_type=args.building_type)
+                          building_type=args.building_type,
+                          skip_normalize=args.skip_normalize)
     else:
         print("ERROR: Must specify either:")
         print("  --ifc FILE -o OUTPUT       Full extraction (geometry + materials)")
