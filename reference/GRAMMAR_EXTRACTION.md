@@ -54,8 +54,8 @@ and the BOM recipe provides the assembly structure within that class.
 
 ## 2. Duplex IFC Decode — The Complete Inventory
 
-Source: `reference/residential/Ifc2x3_Duplex_Architecture.ifc` (218 arch entities)
-+ `reference/residential/Ifc2x3_Duplex_MEP.ifc` (~900 MEP entities)
+Source: `reference/residential/Duplex_Architecture.ifc` (218 arch entities)
++ `reference/residential/Duplex_MEP.ifc` (~900 MEP entities)
 Extracted to: `database/Stacked_Duplex.db` (1,085 total elements)
 
 ### 2.1 Spatial Grammar (Dewey 000)
@@ -298,7 +298,7 @@ Cross-referencing Duplex IFC entities against grammar tables:
 
 ## 5. Sample House — Next Corpus Entry
 
-`reference/residential/Ifc4_SampleHouse.ifc` — single-storey house, simplest grammar test.
+`reference/residential/SampleHouse.ifc` — single-storey house, simplest grammar test.
 Maps directly to TB-LKTN building template. Extraction pending → will produce
 `database/SampleHouse.db` reference for grammar validation.
 

@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
  * <pre>{@code
  * BuildingInspector inspector = new BuildingInspector(System.getProperty("bom.db"));
  * inspector.dumpBomChain("BED_SET_MASTER");
- * inspector.dumpRoomBoundaries("Ifc4_SampleHouse");
+ * inspector.dumpRoomBoundaries("SampleHouse");
  * inspector.dumpElementRules("TB_LKTN");
  * inspector.close();
  * }</pre>
@@ -610,11 +610,11 @@ public class BuildingInspector {
      * <pre>
      *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db buildings
      *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db bom BED_SET_MASTER
-     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db rooms Ifc4_SampleHouse
+     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db rooms SampleHouse
      *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db rules TB_LKTN
      *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db slots BEDROOM
      *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db product FURN_DINING_CHAIR
-     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db preflight Ifc2x3_Duplex
+     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db preflight Duplex
      * </pre>
      */
     public static void main(String[] args) throws Exception {

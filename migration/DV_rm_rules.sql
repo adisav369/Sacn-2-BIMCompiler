@@ -1,6 +1,6 @@
 -- ════════════════════════════════════════════════════════
--- RM: Revit MEP (Revit_MEP)
--- Source: DAGCompiler/lib/output/revit_mep_enbloc.db
+-- RM: Revit MEP (HospitalAuckland)
+-- Source: DAGCompiler/lib/output/hospitalauckland_enbloc.db
 -- Generated: 2026-03-21 09:22
 -- ════════════════════════════════════════════════════════
 
@@ -100,7 +100,7 @@
 --     description, provenance)
 -- VALUES ('IfcMember_Unknown', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcMember on Unknown: 1450 instances, avg W=851.0 D=564.0 H=851.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '851.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -113,7 +113,7 @@
 --     description, provenance)
 -- VALUES ('IfcPlate_Unknown', 'IfcPlate', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPlate on Unknown: 629 instances, avg W=1986.0 D=1112.0 H=1778.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1986.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -126,7 +126,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctFitting_Level_2', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctFitting on Level 2: 328 instances, avg W=259.0 D=249.0 H=275.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '259.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -139,7 +139,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctFitting_Level_3', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctFitting on Level 3: 319 instances, avg W=253.0 D=243.0 H=274.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '253.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -152,7 +152,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctSegment_Level_2', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctSegment on Level 2: 298 instances, avg W=1068.0 D=1099.0 H=342.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1068.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -165,7 +165,7 @@
 --     description, provenance)
 -- VALUES ('IfcBuildingElementProxy_Level_2', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBuildingElementProxy on Level 2: 282 instances, avg W=228.0 D=329.0 H=2185.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '228.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -178,7 +178,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctFitting_Level_1', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctFitting on Level 1: 281 instances, avg W=290.0 D=295.0 H=266.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '290.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -191,7 +191,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctSegment_Level_3', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctSegment on Level 3: 277 instances, avg W=1036.0 D=1102.0 H=361.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1036.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -204,7 +204,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctSegment_Level_1', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctSegment on Level 1: 253 instances, avg W=1108.0 D=1279.0 H=308.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1108.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -217,7 +217,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowFitting_Level_2', 'IfcFlowFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowFitting on Level 2: 226 instances, avg W=52.0 D=54.0 H=54.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '52.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -230,7 +230,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowSegment_Level_2', 'IfcFlowSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowSegment on Level 2: 214 instances, avg W=944.0 D=530.0 H=148.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '944.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -243,7 +243,7 @@
 --     description, provenance)
 -- VALUES ('IfcBuildingElementProxy_Level_1', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBuildingElementProxy on Level 1: 193 instances, avg W=1133.0 D=1414.0 H=479.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1133.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -256,7 +256,7 @@
 --     description, provenance)
 -- VALUES ('IfcBuildingElementProxy_Level_3', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBuildingElementProxy on Level 3: 174 instances, avg W=207.0 D=136.0 H=204.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '207.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -269,7 +269,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowFitting_Level_1', 'IfcFlowFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowFitting on Level 1: 166 instances, avg W=64.0 D=62.0 H=72.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '64.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -282,7 +282,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowSegment_Level_1', 'IfcFlowSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowSegment on Level 1: 154 instances, avg W=1172.0 D=652.0 H=204.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1172.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -295,7 +295,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowTerminal_Level_2', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowTerminal on Level 2: 151 instances, avg W=641.0 D=488.0 H=305.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '641.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -308,7 +308,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowTerminal_Level_3', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowTerminal on Level 3: 151 instances, avg W=534.0 D=531.0 H=237.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '534.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -321,7 +321,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowFitting_Level_3', 'IfcFlowFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowFitting on Level 3: 143 instances, avg W=55.0 D=58.0 H=56.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '55.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -334,7 +334,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowTerminal_Level_1', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowTerminal on Level 1: 119 instances, avg W=1072.0 D=673.0 H=414.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1072.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -347,7 +347,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowSegment_Level_3', 'IfcFlowSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowSegment on Level 3: 118 instances, avg W=1296.0 D=828.0 H=223.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1296.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -360,7 +360,7 @@
 --     description, provenance)
 -- VALUES ('IfcAirTerminal_Level_1', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAirTerminal on Level 1: 105 instances, avg W=278.0 D=269.0 H=264.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '278.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -373,7 +373,7 @@
 --     description, provenance)
 -- VALUES ('IfcAirTerminal_Level_2', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAirTerminal on Level 2: 104 instances, avg W=550.0 D=542.0 H=101.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '550.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -386,7 +386,7 @@
 --     description, provenance)
 -- VALUES ('IfcAirTerminal_Level_3', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAirTerminal on Level 3: 100 instances, avg W=558.0 D=591.0 H=85.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '558.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -399,7 +399,7 @@
 --     description, provenance)
 -- VALUES ('IfcWall_Level_2', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWall on Level 2: 53 instances, avg W=3171.0 D=3772.0 H=3530.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3171.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -412,7 +412,7 @@
 --     description, provenance)
 -- VALUES ('IfcWall_Level_1', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWall on Level 1: 48 instances, avg W=3676.0 D=3851.0 H=4779.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3676.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -425,7 +425,7 @@
 --     description, provenance)
 -- VALUES ('IfcColumn_Level_1', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcColumn on Level 1: 46 instances, avg W=300.0 D=300.0 H=3406.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '300.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -438,7 +438,7 @@
 --     description, provenance)
 -- VALUES ('IfcColumn_Level_2', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcColumn on Level 2: 44 instances, avg W=300.0 D=300.0 H=3480.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '300.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -451,7 +451,7 @@
 --     description, provenance)
 -- VALUES ('IfcColumn_Level_3', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcColumn on Level 3: 41 instances, avg W=300.0 D=300.0 H=3300.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '300.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -464,7 +464,7 @@
 --     description, provenance)
 -- VALUES ('IfcDoor_Level_2', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDoor on Level 2: 40 instances, avg W=732.0 D=427.0 H=2139.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '732.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -477,7 +477,7 @@
 --     description, provenance)
 -- VALUES ('IfcDoor_Level_1', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDoor on Level 1: 36 instances, avg W=767.0 D=383.0 H=2134.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '767.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -490,7 +490,7 @@
 --     description, provenance)
 -- VALUES ('IfcWall_Level_3', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWall on Level 3: 32 instances, avg W=4123.0 D=3959.0 H=3297.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '4123.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -503,7 +503,7 @@
 --     description, provenance)
 -- VALUES ('IfcDoor_Level_3', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDoor on Level 3: 31 instances, avg W=709.0 D=437.0 H=2144.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '709.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -516,7 +516,7 @@
 --     description, provenance)
 -- VALUES ('IfcCovering_Level_2', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcCovering on Level 2: 25 instances, avg W=4579.0 D=6336.0 H=50.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '4579.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -529,7 +529,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowSegment_Roof_Level', 'IfcFlowSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowSegment on Roof Level: 25 instances, avg W=486.0 D=315.0 H=1123.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '486.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -542,7 +542,7 @@
 --     description, provenance)
 -- VALUES ('IfcCovering_Level_3', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcCovering on Level 3: 18 instances, avg W=7027.0 D=7662.0 H=50.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '7027.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -555,7 +555,7 @@
 --     description, provenance)
 -- VALUES ('IfcDoor_Unknown', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDoor on Unknown: 17 instances, avg W=979.0 D=668.0 H=2283.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '979.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -568,7 +568,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowFitting_Roof_Level', 'IfcFlowFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowFitting on Roof Level: 14 instances, avg W=70.0 D=81.0 H=81.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '70.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -581,7 +581,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctSegment_Roof_Level', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctSegment on Roof Level: 9 instances, avg W=2056.0 D=825.0 H=2118.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2056.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -594,7 +594,7 @@
 --     description, provenance)
 -- VALUES ('IfcRailing_Unknown', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcRailing on Unknown: 8 instances, avg W=40.0 D=7548.0 H=4411.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '40.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -607,7 +607,7 @@
 --     description, provenance)
 -- VALUES ('IfcSlab_Level_2', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcSlab on Level 2: 8 instances, avg W=36040.0 D=34852.0 H=163.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '36040.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -620,7 +620,7 @@
 --     description, provenance)
 -- VALUES ('IfcStairFlight_Unknown', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcStairFlight on Unknown: 8 instances, avg W=1600.0 D=5094.0 H=2696.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1600.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -633,7 +633,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctFitting_Roof_Level', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctFitting on Roof Level: 7 instances, avg W=1161.0 D=1429.0 H=1327.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1161.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -646,7 +646,7 @@
 --     description, provenance)
 -- VALUES ('IfcSlab_Level_1', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcSlab on Level 1: 7 instances, avg W=33656.0 D=36741.0 H=171.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '33656.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -659,7 +659,7 @@
 --     description, provenance)
 -- VALUES ('IfcFireSuppressionTerminal_Level_2', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFireSuppressionTerminal on Level 2: 6 instances, avg W=15.0 D=15.0 H=54.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '15.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -672,7 +672,7 @@
 --     description, provenance)
 -- VALUES ('IfcBuildingElementProxy_Roof_Level', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBuildingElementProxy on Roof Level: 5 instances, avg W=2594.0 D=1627.0 H=2050.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2594.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -685,7 +685,7 @@
 --     description, provenance)
 -- VALUES ('IfcColumn_Roof_Level', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcColumn on Roof Level: 4 instances, avg W=38.0 D=38.0 H=2000.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '38.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -698,7 +698,7 @@
 --     description, provenance)
 -- VALUES ('IfcSlab_Level_3', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcSlab on Level 3: 4 instances, avg W=49858.0 D=50554.0 H=175.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '49858.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -711,7 +711,7 @@
 --     description, provenance)
 -- VALUES ('IfcSlab_Unknown', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcSlab on Unknown: 4 instances, avg W=1600.0 D=2138.0 H=30.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1600.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -724,7 +724,7 @@
 --     description, provenance)
 -- VALUES ('IfcRailing_Level_2', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcRailing on Level 2: 3 instances, avg W=2196.0 D=7998.0 H=917.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2196.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -737,7 +737,7 @@
 --     description, provenance)
 -- VALUES ('IfcRailing_Level_3', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcRailing on Level 3: 3 instances, avg W=2780.0 D=7998.0 H=917.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2780.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -750,7 +750,7 @@
 --     description, provenance)
 -- VALUES ('IfcStair_Level_1', 'IfcStair', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcStair on Level 1: 3 instances, avg W=2458.0 D=4241.0 H=3806.0mm',
---     'Revit_MEP');
+--     'HospitalAuckland');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2458.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)

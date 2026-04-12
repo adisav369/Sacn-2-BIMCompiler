@@ -330,9 +330,9 @@ def process_ifc_file(ifc_path, conn):
 
 def main():
     ifc_files = sys.argv[1:] if len(sys.argv) > 1 else [
-        "/tmp/ifc-samples/IfcSampleFiles-main/Ifc2x3_Duplex_Architecture.ifc",
+        "/tmp/ifc-samples/IfcSampleFiles-main/Duplex_Architecture.ifc",
         "/tmp/ifc-samples/IfcSampleFiles-main/Ifc4_Revit_ARC.ifc",
-        "/tmp/ifc-samples/IfcSampleFiles-main/Ifc4_SampleHouse.ifc",
+        "/tmp/ifc-samples/IfcSampleFiles-main/SampleHouse.ifc",
     ]
 
     conn = sqlite3.connect(LIB_DB)

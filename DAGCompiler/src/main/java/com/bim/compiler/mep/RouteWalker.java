@@ -27,7 +27,7 @@ public class RouteWalker {
      *
      * @param compileDb    connection to the compile DB (c_orderline for ARC envelope + write target)
      * @param erpDb        connection to ERP.db (ad_mep_anchor + ad_mep_pattern)
-     * @param buildingType source_building name (e.g. "Revit_MEP")
+     * @param buildingType source_building name (e.g. "HospitalAuckland")
      * @param orderId      C_Order_ID to use for emitted rows
      */
     public static WalkResult walk(Connection compileDb, Connection erpDb,

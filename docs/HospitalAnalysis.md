@@ -329,7 +329,7 @@ demonstrable edge over any generic quantity surveyor tool.
 
 | Building | Elements | Type | MEP | FP Network |
 |----------|----------|------|-----|-----------|
-| SJTII_Terminal | 48,428 | Airport | Yes | 6,863 |
+| Terminal | 48,428 | Airport | Yes | 6,863 |
 | **Hospital** | **62,291** | **Healthcare** | **41,126** | **13,490 (SPR)** |
 | Clinic | ~15K | Healthcare (small) | Partial | No |
 | BimWhale_Advanced | ~29K | Commercial | No | No |

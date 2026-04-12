@@ -46,7 +46,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 class CalibrationTest {
 
     static final Path TE_BOM_DB = Path.of("library/TE_BOM.db");
-    static final Path TE_REF_DB = Path.of("DAGCompiler/lib/input/SJTII_Terminal_extracted.db");
+    static final Path TE_REF_DB = Path.of("DAGCompiler/lib/input/Terminal_extracted.db");
     static final Path VALIDATION_DB = Path.of("library/validation.db");
     static final Path COMPONENT_DB = Path.of("library/component_library.db");
     static final Path DISC_DB = Path.of("library/ERP.db");

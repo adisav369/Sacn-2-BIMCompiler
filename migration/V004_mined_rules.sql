@@ -1,6 +1,6 @@
 -- V004_mined_rules.sql
 -- Seed AD_Val_Rule for mined rules M1-M17 (DocValidate.md §15.5)
--- Source: SJTII_Terminal (48,428 elements), Ifc2x3_Duplex (1,099 elements)
+-- Source: Terminal (48,428 elements), Duplex (1,099 elements)
 -- Mining results: TE_MINING_RESULTS.md
 -- APPEND-ONLY: never modify this migration after first run
 
@@ -24,7 +24,7 @@
 INSERT INTO AD_Val_Rule VALUES (801, 'MINED_FP_BRANCH_MAX_LENGTH',
     'Fire sprinkler branch pipe max run length',
     'COMPLIANCE', 'FPR', 'NFPA 13 §8.15 (inferred)', 'INTL',
-    'MINED:SJTII_Terminal', NULL, NULL, 1);
+    'MINED:Terminal', NULL, NULL, 1);
 
 INSERT INTO AD_Val_Rule_Param VALUES (8011, 801, 'max_run_length_mm', '12000', 'NUM', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8012, 801, 'ifc_class', 'IfcPipeSegment', 'TEXT', NULL);
@@ -33,7 +33,7 @@ INSERT INTO AD_Val_Rule_Param VALUES (8013, 801, 'check_method', 'ROUTE_SEGMENT_
 INSERT INTO AD_Val_Rule_Occupancy VALUES (801, 1);  -- Light Hazard
 INSERT INTO AD_Val_Rule_Occupancy VALUES (801, 6);  -- Airport Terminal
 
-INSERT INTO AD_Val_Rule_Mining_Source VALUES (801, 'SJTII_Terminal', 455, NULL, NULL, NULL, NULL, 'mm',
+INSERT INTO AD_Val_Rule_Mining_Source VALUES (801, 'Terminal', 455, NULL, NULL, NULL, NULL, 'mm',
     'Sum of ROUTE segment lengths per branch run from TEE to last head', datetime('now'));
 
 -- ============================================================
@@ -42,7 +42,7 @@ INSERT INTO AD_Val_Rule_Mining_Source VALUES (801, 'SJTII_Terminal', 455, NULL, 
 INSERT INTO AD_Val_Rule VALUES (802, 'MINED_FP_RISER_DIAMETER',
     'Fire protection riser minimum diameter',
     'COMPLIANCE', 'FPR', 'NFPA 13 §8.15 (inferred)', 'INTL',
-    'MINED:SJTII_Terminal', NULL, NULL, 1);
+    'MINED:Terminal', NULL, NULL, 1);
 
 INSERT INTO AD_Val_Rule_Param VALUES (8021, 802, 'min_main_diameter_mm', '50', 'NUM', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8022, 802, 'min_branch_diameter_mm', '25', 'NUM', NULL);
@@ -51,7 +51,7 @@ INSERT INTO AD_Val_Rule_Param VALUES (8024, 802, 'check_method', 'M_PRODUCT_CROS
 
 INSERT INTO AD_Val_Rule_Occupancy VALUES (802, 1);
 
-INSERT INTO AD_Val_Rule_Mining_Source VALUES (802, 'SJTII_Terminal', 455, 25, 343, 106, 250, 'mm',
+INSERT INTO AD_Val_Rule_Mining_Source VALUES (802, 'Terminal', 455, 25, 343, 106, 250, 'mm',
     'MIN(width, depth) of IfcPipeSegment in FP discipline — cross-section diameter', datetime('now'));
 
 -- ============================================================
@@ -60,7 +60,7 @@ INSERT INTO AD_Val_Rule_Mining_Source VALUES (802, 'SJTII_Terminal', 455, 25, 34
 INSERT INTO AD_Val_Rule VALUES (803, 'MINED_ELEC_LIGHT_SPACING',
     'Light fixture NN spacing (mined from TE)',
     'COMPLIANCE', 'ELEC', 'IES RP-1 (observed)', 'INTL',
-    'MINED:SJTII_Terminal', NULL, NULL, 1);
+    'MINED:Terminal', NULL, NULL, 1);
 
 INSERT INTO AD_Val_Rule_Param VALUES (8031, 803, 'max_spacing_mm', '5000', 'NUM', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8032, 803, 'ifc_class', 'IfcLightFixture', 'TEXT', NULL);
@@ -69,7 +69,7 @@ INSERT INTO AD_Val_Rule_Param VALUES (8033, 803, 'verdict', 'WARN', 'TEXT', NULL
 INSERT INTO AD_Val_Rule_Occupancy VALUES (803, 1);
 INSERT INTO AD_Val_Rule_Occupancy VALUES (803, 6);
 
-INSERT INTO AD_Val_Rule_Mining_Source VALUES (803, 'SJTII_Terminal', 814, 0, 5999, 3964, 5200, 'mm',
+INSERT INTO AD_Val_Rule_Mining_Source VALUES (803, 'Terminal', 814, 0, 5999, 3964, 5200, 'mm',
     'NN centroid distance between IfcLightFixture on same storey', datetime('now'));
 
 -- ============================================================
@@ -78,14 +78,14 @@ INSERT INTO AD_Val_Rule_Mining_Source VALUES (803, 'SJTII_Terminal', 814, 0, 599
 INSERT INTO AD_Val_Rule VALUES (804, 'MINED_ELEC_CEILING_OFFSET',
     'Light fixture Z-offset consistency per storey (mined from TE)',
     'COMPLIANCE', 'ELEC', 'IES (observed)', 'INTL',
-    'MINED:SJTII_Terminal', NULL, NULL, 1);
+    'MINED:Terminal', NULL, NULL, 1);
 
 INSERT INTO AD_Val_Rule_Param VALUES (8041, 804, 'max_z_deviation_mm', '200', 'NUM', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8042, 804, 'ifc_class', 'IfcLightFixture', 'TEXT', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8043, 804, 'check_method', 'PER_STOREY_Z_CONSISTENCY', 'TEXT', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8044, 804, 'verdict', 'WARN', 'TEXT', NULL);
 
-INSERT INTO AD_Val_Rule_Mining_Source VALUES (804, 'SJTII_Terminal', 814, 89, 534, 100, 200, 'mm',
+INSERT INTO AD_Val_Rule_Mining_Source VALUES (804, 'Terminal', 814, 89, 534, 100, 200, 'mm',
     'Std dev of IfcLightFixture Z relative to storey slab soffit, per storey', datetime('now'));
 
 -- ============================================================
@@ -94,14 +94,14 @@ INSERT INTO AD_Val_Rule_Mining_Source VALUES (804, 'SJTII_Terminal', 814, 89, 53
 INSERT INTO AD_Val_Rule VALUES (805, 'MINED_STR_COLUMN_BAY',
     'Structural column bay spacing (mined from TE — advisory)',
     'COMPLIANCE', 'STR', 'Engineering practice (observed)', 'INTL',
-    'MINED:SJTII_Terminal', NULL, NULL, 1);
+    'MINED:Terminal', NULL, NULL, 1);
 
 INSERT INTO AD_Val_Rule_Param VALUES (8051, 805, 'typical_bay_mm', '8500', 'NUM', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8052, 805, 'bay_tolerance_mm', '2000', 'NUM', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8053, 805, 'ifc_class', 'IfcColumn', 'TEXT', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8054, 805, 'verdict', 'WARN', 'TEXT', NULL);
 
-INSERT INTO AD_Val_Rule_Mining_Source VALUES (805, 'SJTII_Terminal', 758, 0, 14000, 8500, 13000, 'mm',
+INSERT INTO AD_Val_Rule_Mining_Source VALUES (805, 'Terminal', 758, 0, 14000, 8500, 13000, 'mm',
     'NN column centroid distance per storey — multi-modal: 5000/8500/12000mm', datetime('now'));
 
 -- ============================================================
@@ -110,13 +110,13 @@ INSERT INTO AD_Val_Rule_Mining_Source VALUES (805, 'SJTII_Terminal', 758, 0, 140
 INSERT INTO AD_Val_Rule VALUES (806, 'MINED_STR_BEAM_SPAN',
     'Beam span must not exceed column bay width',
     'COMPLIANCE', 'STR', 'Engineering practice', 'INTL',
-    'MINED:SJTII_Terminal', NULL, NULL, 1);
+    'MINED:Terminal', NULL, NULL, 1);
 
 INSERT INTO AD_Val_Rule_Param VALUES (8061, 806, 'check_method', 'BEAM_LENGTH_VS_BAY', 'TEXT', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8062, 806, 'ifc_class', 'IfcBeam', 'TEXT', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8063, 806, 'tolerance_pct', '5', 'NUM', NULL);
 
-INSERT INTO AD_Val_Rule_Mining_Source VALUES (806, 'SJTII_Terminal', 758, NULL, NULL, NULL, NULL, 'mm',
+INSERT INTO AD_Val_Rule_Mining_Source VALUES (806, 'Terminal', 758, NULL, NULL, NULL, NULL, 'mm',
     'Beam M_Product.width vs nearest column pair spacing', datetime('now'));
 
 -- ============================================================
@@ -125,7 +125,7 @@ INSERT INTO AD_Val_Rule_Mining_Source VALUES (806, 'SJTII_Terminal', 758, NULL, 
 INSERT INTO AD_Val_Rule VALUES (807, 'MINED_ARC_TILE_PITCH',
     'Roof tile pitch consistency (TILE verb: 0.0mm fidelity)',
     'COMPLIANCE', 'ARC', 'Architectural practice (verified)', 'INTL',
-    'MINED:SJTII_Terminal', NULL, NULL, 1);
+    'MINED:Terminal', NULL, NULL, 1);
 
 INSERT INTO AD_Val_Rule_Param VALUES (8071, 807, 'tile_width_mm', '495', 'NUM', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8072, 807, 'tile_depth_mm', '150', 'NUM', NULL);
@@ -133,7 +133,7 @@ INSERT INTO AD_Val_Rule_Param VALUES (8073, 807, 'step_mm', '495', 'NUM', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8074, 807, 'ifc_class', 'IfcPlate', 'TEXT', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8075, 807, 'check_method', 'TILE_VERB_FIDELITY', 'TEXT', NULL);
 
-INSERT INTO AD_Val_Rule_Mining_Source VALUES (807, 'SJTII_Terminal', 33324, 495, 495, 495, 495, 'mm',
+INSERT INTO AD_Val_Rule_Mining_Source VALUES (807, 'Terminal', 33324, 495, 495, 495, 495, 'mm',
     'IfcPlate avg width 495.5mm, avg depth 149.6mm — TILE(15x294, 495mm step)', datetime('now'));
 
 -- ============================================================
@@ -161,14 +161,14 @@ INSERT INTO AD_Clash_Rule VALUES (8, 'ACMV', 'ARC',
 INSERT INTO AD_Val_Rule VALUES (809, 'VERT_CW_RISER_CONTINUITY',
     'Cold water riser X,Y alignment across storeys',
     'CONTINUITY', 'CW', 'Engineering practice', 'INTL',
-    'MINED:SJTII_Terminal', NULL, NULL, 1);
+    'MINED:Terminal', NULL, NULL, 1);
 
 INSERT INTO AD_Val_Rule_Param VALUES (8091, 809, 'element_classes', 'IfcPipeSegment', 'TEXT', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8092, 809, 'max_xy_drift_mm', '50', 'NUM', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8093, 809, 'check_across', 'STOREY', 'TEXT', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8094, 809, 'min_storey_span', '3', 'NUM', NULL);
 
-INSERT INTO AD_Val_Rule_Mining_Source VALUES (809, 'SJTII_Terminal', NULL, NULL, NULL, NULL, NULL, 'mm',
+INSERT INTO AD_Val_Rule_Mining_Source VALUES (809, 'Terminal', NULL, NULL, NULL, NULL, NULL, 'mm',
     'Elements at same ROUND(x,1), ROUND(y,1) across >=3 storeys — CW pipes', datetime('now'));
 
 -- ============================================================
@@ -177,14 +177,14 @@ INSERT INTO AD_Val_Rule_Mining_Source VALUES (809, 'SJTII_Terminal', NULL, NULL,
 INSERT INTO AD_Val_Rule VALUES (810, 'VERT_STR_COLUMN_CONTINUITY',
     'Column grid X,Y alignment across storeys (max 25mm drift)',
     'CONTINUITY', 'STR', 'Engineering practice', 'INTL',
-    'MINED:SJTII_Terminal', NULL, NULL, 1);
+    'MINED:Terminal', NULL, NULL, 1);
 
 INSERT INTO AD_Val_Rule_Param VALUES (8101, 810, 'element_classes', 'IfcColumn', 'TEXT', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8102, 810, 'max_xy_drift_mm', '25', 'NUM', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8103, 810, 'check_across', 'STOREY', 'TEXT', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8104, 810, 'min_storey_span', '2', 'NUM', NULL);
 
-INSERT INTO AD_Val_Rule_Mining_Source VALUES (810, 'SJTII_Terminal', 758, NULL, NULL, NULL, NULL, 'mm',
+INSERT INTO AD_Val_Rule_Mining_Source VALUES (810, 'Terminal', 758, NULL, NULL, NULL, NULL, 'mm',
     'Column centroid X,Y grouped by ROUND(x,1), ROUND(y,1) — check drift across storeys', datetime('now'));
 
 -- ============================================================
@@ -193,14 +193,14 @@ INSERT INTO AD_Val_Rule_Mining_Source VALUES (810, 'SJTII_Terminal', 758, NULL, 
 INSERT INTO AD_Val_Rule VALUES (811, 'VERT_FP_RISER_CONTINUITY',
     'Fire protection riser X,Y alignment across storeys',
     'CONTINUITY', 'FPR', 'Engineering practice', 'INTL',
-    'MINED:SJTII_Terminal', NULL, NULL, 1);
+    'MINED:Terminal', NULL, NULL, 1);
 
 INSERT INTO AD_Val_Rule_Param VALUES (8111, 811, 'element_classes', 'IfcPipeSegment', 'TEXT', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8112, 811, 'max_xy_drift_mm', '50', 'NUM', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8113, 811, 'check_across', 'STOREY', 'TEXT', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8114, 811, 'min_storey_span', '3', 'NUM', NULL);
 
-INSERT INTO AD_Val_Rule_Mining_Source VALUES (811, 'SJTII_Terminal', NULL, NULL, NULL, NULL, NULL, 'mm',
+INSERT INTO AD_Val_Rule_Mining_Source VALUES (811, 'Terminal', NULL, NULL, NULL, NULL, NULL, 'mm',
     'Elements at same ROUND(x,1), ROUND(y,1) across >=3 storeys — FP pipes', datetime('now'));
 
 -- ============================================================
@@ -209,7 +209,7 @@ INSERT INTO AD_Val_Rule_Mining_Source VALUES (811, 'SJTII_Terminal', NULL, NULL,
 INSERT INTO AD_Val_Rule VALUES (812, 'MINED_ARC_OPENING_FACE_ANCHOR',
     'Opening centroid depth vs host wall center — face anchor consistency',
     'COMPLIANCE', 'ARC', 'Architectural practice (observed)', 'INTL',
-    'MINED:SJTII_Terminal', NULL, NULL, 1);
+    'MINED:Terminal', NULL, NULL, 1);
 
 INSERT INTO AD_Val_Rule_Param VALUES (8121, 812, 'max_depth_offset_mm', '10', 'NUM', NULL);
 -- Widened from 5mm → 10mm per Non-Disturbance analysis (G4_SRS §6.1):
@@ -231,7 +231,7 @@ INSERT INTO AD_Val_Rule_Param VALUES (8127, 812, 'depth_axis_method', 'MIN_WD', 
 INSERT INTO AD_Val_Rule VALUES (813, 'MINED_ARC_OPENING_HOST',
     'Every IfcDoor/IfcWindow must have a host IfcWall',
     'COMPLIANCE', 'ARC', 'IFC schema (IfcRelVoidsElement)', 'INTL',
-    'MINED:SJTII_Terminal', NULL, NULL, 1);
+    'MINED:Terminal', NULL, NULL, 1);
 
 INSERT INTO AD_Val_Rule_Param VALUES (8131, 813, 'ifc_classes', 'IfcDoor,IfcWindow', 'TEXT', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (8132, 813, 'host_ifc_class', 'IfcWall', 'TEXT', NULL);
@@ -251,22 +251,22 @@ INSERT INTO AD_Val_Rule_Param VALUES (8134, 813, 'proximity_tolerance_mm', '200'
 -- MINING SOURCE: Terminal M12 under-150mm exceptions
 -- 35 pairs under 150mm on lower floors — design intent
 -- ============================================================
-INSERT INTO AD_Val_Rule_Exception VALUES (3, 'SJTII_Terminal', 603,
+INSERT INTO AD_Val_Rule_Exception VALUES (3, 'Terminal', 603,
     'Ground Floor ELEC-SP pairs under 150mm', 21,
     'Original engineer', 'Co-routed MEP in Ground Floor ceiling plenum — tight spacing is design intent', datetime('now'));
 
-INSERT INTO AD_Val_Rule_Exception VALUES (4, 'SJTII_Terminal', 603,
+INSERT INTO AD_Val_Rule_Exception VALUES (4, 'Terminal', 603,
     'Level 1 ELEC-SP pairs under 150mm', 7,
     'Original engineer', 'Branch connections at MEP junction boxes', datetime('now'));
 
-INSERT INTO AD_Val_Rule_Exception VALUES (5, 'SJTII_Terminal', 603,
+INSERT INTO AD_Val_Rule_Exception VALUES (5, 'Terminal', 603,
     'Level 2 ELEC-SP pairs under 150mm', 7,
     'Original engineer', 'Branch connections at MEP junction boxes', datetime('now'));
 
 -- ============================================================
 -- M16 exceptions from Non-Disturbance analysis (G4_SRS §6.1)
 -- ============================================================
-INSERT INTO AD_Val_Rule_Exception VALUES (6, 'Ifc4_SampleHouse', 812,
+INSERT INTO AD_Val_Rule_Exception VALUES (6, 'SampleHouse', 812,
     'Exterior door flush-face', 1,
     'Original engineer', 'Exterior door at 75mm offset — flush with EXT face, not centered', datetime('now'));
 

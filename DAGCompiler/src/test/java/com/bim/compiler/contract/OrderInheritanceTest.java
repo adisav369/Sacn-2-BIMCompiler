@@ -31,7 +31,7 @@ public class OrderInheritanceTest {
     private static final BuildingEntry ENTRY = new BuildingEntry(
             "RE_DX", "TestDuplex", "Test Duplex",
             "RE", "DX",
-            null, null, null,
+            null, null,
             true, 10, 0,
             "GENERATIVE", "test", 0,
             12000, 10000, 8000,

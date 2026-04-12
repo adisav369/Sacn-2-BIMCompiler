@@ -11,8 +11,8 @@ Usage:
 Example:
     python3 scripts/geo_verify.py \
         "logs/pipeline_Sample House_extracted_20260330_033940.log" \
-        DAGCompiler/lib/output/ifc4_samplehouse.db \
-        DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
+        DAGCompiler/lib/output/samplehouse.db \
+        DAGCompiler/lib/input/SampleHouse_extracted.db
 
 Evidence: SH 58 elements, 1653 pairs, 0.002mm worst, ZERO DRIFT.
           DX 179 elements (GUID-matched), 15931 pairs, 0.004mm worst, ZERO DRIFT.

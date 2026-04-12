@@ -18,7 +18,7 @@ BIM compilation. How the BOM recipe pipeline and DocEvent Validation interact.
 > ERP.db. Adding a new rule = SQL INSERT. Adding a new jurisdiction = SQL
 > INSERT. The Java code changes only when the ENGINE changes, not when RULES change.
 
-> **Terminal as oracle:** The SJTII_Terminal (48,428 elements, 8 disciplines, 7+ storeys)
+> **Terminal as oracle:** The Terminal (48,428 elements, 8 disciplines, 7+ storeys)
 > is the primary rule source. Every mined rule must pass Non-Disturbance against
 > Terminal before activation. The building is ground truth; the rule adapts.
 
@@ -486,7 +486,7 @@ Same as adding a new country to iDempiere — data only, no code:
 #### Mined Rules — Terminal as Calibration
 
 Mined rules (M1-M17) from Terminal carry `jurisdiction='INTL'` and
-`valid_from='MINED:SJTII_Terminal'`. They represent observed engineering
+`valid_from='MINED:Terminal'`. They represent observed engineering
 practice from a real building — not a specific code. They serve as:
 
 1. **Calibration** — the Terminal values confirm what spacing/clearance

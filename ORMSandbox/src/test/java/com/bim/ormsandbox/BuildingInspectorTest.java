@@ -90,7 +90,7 @@ class BuildingInspectorTest {
     @Test
     @DisplayName("S-ORM-5: M_AdRoomBoundary centroid helpers return midpoint")
     void roomBoundaryCentroid() throws SQLException {
-        List<M_AdRoomBoundary> rooms = M_AdRoomBoundary.getByBuilding(conn, "Ifc4_SampleHouse");
+        List<M_AdRoomBoundary> rooms = M_AdRoomBoundary.getByBuilding(conn, "SampleHouse");
         if (rooms.isEmpty()) rooms = M_AdRoomBoundary.getByBuilding(conn, "SH");
         if (rooms.isEmpty()) return;
 
@@ -115,9 +115,9 @@ class BuildingInspectorTest {
     @Test
     @DisplayName("S-ORM-7: M_IGeometryMap.getByBuilding() returns entries for DX and SH")
     void geometryMapLoadsForBuildings() throws SQLException {
-        List<M_IGeometryMap> dxEntries = M_IGeometryMap.getByBuilding(lodConn, "Ifc2x3_Duplex");
+        List<M_IGeometryMap> dxEntries = M_IGeometryMap.getByBuilding(lodConn, "Duplex");
         assertFalse(dxEntries.isEmpty(),
-            "Ifc2x3_Duplex must have geometry_map entries");
+            "Duplex must have geometry_map entries");
         for (M_IGeometryMap e : dxEntries) {
             assertNotNull(e.getElementRef(), "element_ref must not be null");
             assertNotNull(e.getIfcClass(),   "ifc_class must not be null");
@@ -126,16 +126,16 @@ class BuildingInspectorTest {
         }
 
         // No orphans — FK constraint guarantees this but verify via PO layer
-        List<M_IGeometryMap> orphans = M_IGeometryMap.getOrphans(lodConn, "Ifc2x3_Duplex");
+        List<M_IGeometryMap> orphans = M_IGeometryMap.getOrphans(lodConn, "Duplex");
         assertTrue(orphans.isEmpty(),
-            "Ifc2x3_Duplex must have zero orphaned geometry_hash entries, got "
+            "Duplex must have zero orphaned geometry_hash entries, got "
             + orphans.size());
     }
 
     // ── S-ORM-8: dumpPreflight() completes for all 4 buildings, warns on known issues ──
 
     @ParameterizedTest
-    @ValueSource(strings = {"Ifc4_SampleHouse", "Ifc2x3_Duplex"})
+    @ValueSource(strings = {"SampleHouse", "Duplex"})
     @DisplayName("S-ORM-8: dumpPreflight() completes without exception for SH and DX")
     void preflightCompletesWithoutException(String buildingType) {
         BuildingInspector inspector = new BuildingInspector(conn);
@@ -148,7 +148,7 @@ class BuildingInspectorTest {
     @DisplayName("S-ORM-8b: dumpPreflight() for DX warns on known regression patterns")
     void preflightDxWarnsOnKnownRegressions() throws SQLException {
         BuildingInspector inspector = new BuildingInspector(conn);
-        int warnings = inspector.dumpPreflight("Ifc2x3_Duplex");
+        int warnings = inspector.dumpPreflight("Duplex");
         // Must warn on: blank namePattern BOMs (Check A), LOCAL_MM rooms (Check B),
         // GEN-BOX elements (Check D), and ROOM_Level_* FURN regression (Check F)
         assertTrue(warnings > 0,
@@ -162,7 +162,7 @@ class BuildingInspectorTest {
         // Check F specifically: DX has active ARC rules with FURN_ family_refs from the
         // incorrectly re-activated ROOM_Level_* migration. Preflight must surface this.
         // This is the root cause of X1 (48 BBox-only FURN elements) in PROGRESS.md.
-        int warnings = inspector.dumpPreflight("Ifc2x3_Duplex");
+        int warnings = inspector.dumpPreflight("Duplex");
         // The check F warnings are counted in the total; we verify the method runs and warns
         assertTrue(warnings >= 3,
             "DX preflight must have ≥3 distinct warning categories (BOM, rooms, regression)");
@@ -179,10 +179,10 @@ class BuildingInspectorTest {
         // Known architecture gap: ad_room_slot has no building_type column —
         // SH-specific assemblies (SH_LIVING_SET etc.) are reachable from any building
         // with a matching room_type. Check H surfaces this as a FIRST-PRINCIPLES warning.
-        assertDoesNotThrow(() -> inspector.dumpPreflight("Ifc4_SampleHouse"),
-            "Check H must not throw for Ifc4_SampleHouse");
-        assertDoesNotThrow(() -> inspector.dumpPreflight("Ifc2x3_Duplex"),
-            "Check H must not throw for Ifc2x3_Duplex");
+        assertDoesNotThrow(() -> inspector.dumpPreflight("SampleHouse"),
+            "Check H must not throw for SampleHouse");
+        assertDoesNotThrow(() -> inspector.dumpPreflight("Duplex"),
+            "Check H must not throw for Duplex");
     }
 
     @Test

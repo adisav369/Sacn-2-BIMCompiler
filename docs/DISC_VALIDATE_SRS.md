@@ -308,6 +308,26 @@ Future columns or m_attribute entries:
 Not needed for extraction (positions are explicit). Required for generative MEP
 routing where the compiler must chain segments through fittings.
 
+#### 6.2.1 Port-Graph Extraction (S173)
+
+IFC authored connectivity is available via `IfcDistributionPort`, `IfcRelConnectsPorts`,
+`IfcRelConnectsPortToElement`. Hospital MECH alone has 39,532 ports, 19,766 connections
+with SOURCE/SINK flow direction and exact world positions (connected ports = 0.0m distance).
+
+**Schema** (in extracted DB): `port_elements` (port_guid, element_guid, flow_direction,
+local_x/y/z) + `port_connections` (port_a_guid, port_b_guid). Added to `extractIFCtoDB.py`
+REFERENCE_SCHEMA. Extraction: TODO.
+
+**Rotation proof** — at load time, for sampled connected port pairs, reconstruct world
+position via `rot(elem) @ local_port + centre(elem)` for both sides; connected ports must
+meet within 10mm. No IFC needed. See `scripts/stress_blender_test.py` §PROOF PORT_CONNECT.
+
+**RouteWalker reuse** — same tables feed `RouteWalker.java` and `MepRouteGeometryTest.java`
+via DB query. Replaces synthetic `ad_mep_anchor` with authored IFC connectivity.
+
+**Full spec:** `docs/DISC_VALIDATION_DB_SRS.md` §1b Port-Graph Enrichment — includes
+`mep_connectivity` table, LOD matrix, RouteWalker integration, cross-check gate.
+
 ---
 
 ## 7. Implementation Sequence
@@ -897,7 +917,7 @@ with walls but no IfcSpace. Fleet audit as of S136:
 | Building | Elements | Walls | IfcSpace | DECLARE ROOMS needed? |
 |----------|----------|-------|----------|----------------------|
 | Hospital | 62,291 | 1,468 | 0 | **YES — HO_002** |
-| SJTII_Terminal | 48,428 | 333 | 0 | **YES** (discipline-only model, no arch zones) |
+| Terminal | 48,428 | 333 | 0 | **YES** (discipline-only model, no arch zones) |
 | Schependomlaan | 3,214 | 631 | 0 | **YES** (residential — missing spatial zones) |
 | HITOS | 2,068 | 838 | 0 | **YES** |
 | SampleCastle | 3,284 | 879 | 100 | No (partial, may still benefit) |

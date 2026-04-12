@@ -255,7 +255,7 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
         <code>C_DocType_ID</code> → <code>C_DocType</code> (in {PREFIX}_BOM.db). DocBaseType drives template selection (RE→Residential). DocSubType scopes which BOMs are visible (SH/DX/TB).<br>
         <code>C_BPartner</code> in iDempiere = the customer who placed the order (contractor, architect, client). Present at release.<br>
         <div class="pipe-eg">
-          <span class="hl">C_Order</span>  Ifc2x3_Duplex<br>
+          <span class="hl">C_Order</span>  Duplex<br>
           &nbsp;&nbsp;C_DocType_ID   = <span class="yw">'RE_DX'</span>      ← DocSubType=DX (WHO)<br>
           &nbsp;&nbsp;aabb_width_mm  = <span class="gr">14000</span><br>
           &nbsp;&nbsp;aabb_depth_mm  = <span class="gr">10000</span><br>
@@ -350,7 +350,7 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
         <strong>ST mode:</strong> L2 lines written from template leaf selections. Header marked CO when composition complete.<br>
         <div class="pipe-eg">
           <span class="hl">co_empty_space</span><br>
-          &nbsp;&nbsp;c_order_id       = <span class="yw">'Ifc2x3_Duplex'</span><br>
+          &nbsp;&nbsp;c_order_id       = <span class="yw">'Duplex'</span><br>
           &nbsp;&nbsp;aabb_*_mm        = <span class="gr">14000 × 10000 × 7000</span><br>
           &nbsp;&nbsp;is_available     = <span class="yw">Y</span>   → <span class="gr">N</span> after compile+tests pass
         </div>

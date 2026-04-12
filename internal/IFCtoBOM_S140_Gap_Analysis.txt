@@ -61,12 +61,12 @@ This analysis is about the NEXT stage: IFCtoBOM + IFCtoERP.
   M_BOM: 3942 rows
     6 system BOMs: FP_SYSTEM, ACMV_SYSTEM, ELEC_SYSTEM, CW_SYSTEM, SP_SYSTEM, LPG_SYSTEM
     3936 MEP_RECIPE BOMs, broken by source_building:
-      Revit_MEP: 783 recipes (ACMV=441, CW=341, FP=1)
-      Ifc2x3_Duplex: 162 recipes
-      SJTII_Terminal: 964 recipes
+      HospitalAuckland: 783 recipes (ACMV=441, CW=341, FP=1)
+      Duplex: 162 recipes
+      Terminal: 964 recipes
       Clinic_*: 2027 recipes (CE=434, CH=588, CP=1005)
 
-  M_BOM_Line for RM (Revit_MEP):
+  M_BOM_Line for RM (HospitalAuckland):
     3157 lines. child_product_ids are abstract shim names:
       "DUCT_STRAIGHT_325MM", "DUCT_FITTING_150MM", "ACMV_CEILING_SHIM"
     These are GOOD — abstract, not Revit-specific.
@@ -74,7 +74,7 @@ This analysis is about the NEXT stage: IFCtoBOM + IFCtoERP.
     c_uom_id: EA or MM (length-based for straights)
 
   M_Product: 4202 rows total
-    RM products: building_type='Revit_MEP', product_id = Revit family:type name
+    RM products: building_type='HospitalAuckland', product_id = Revit family:type name
     These are building-specific, not abstract catalog entries.
 
   AD_Org: 16 discipline orgs (ARC=1, STR=2, FP=3, ELEC=4, ACMV=5, CW=6, SP=7, LPG=8...)
@@ -96,7 +96,7 @@ GAP-A: child_product_id in BOM.db is IFC-source-specific, not abstract
 GAP-B: MEP_RECIPE bom_ids are building-stamped
 -----------------------------------------------
   Every MEP recipe in ERP.db has prefix "RM_", "DX_", "CE_", etc.
-  "RM_ACMV_L1_RUN_1" is specific to Revit_MEP building.
+  "RM_ACMV_L1_RUN_1" is specific to HospitalAuckland building.
   Same duct run pattern recurring in another building gets a new recipe.
   No pattern reuse across the fleet — each building reinvents its recipes.
 
@@ -105,8 +105,8 @@ GAP-B: MEP_RECIPE bom_ids are building-stamped
 
 GAP-C: M_Product in ERP.db is building-tagged, not catalog
 -----------------------------------------------------------
-  M_Product.building_type = 'Revit_MEP' ties products to one source.
-  "M_Duplex Receptacle:Standard" in Revit_MEP is the same physical product as
+  M_Product.building_type = 'HospitalAuckland' ties products to one source.
+  "M_Duplex Receptacle:Standard" in HospitalAuckland is the same physical product as
   "Duplex Receptacle" in any other IFC source — but they get separate M_Product rows.
 
 GAP-D: No IfcRelAggregates consumption in RM

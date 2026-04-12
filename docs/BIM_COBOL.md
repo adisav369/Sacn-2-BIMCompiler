@@ -269,7 +269,7 @@ Validates BIM COBOL geometry against real IFC extracted data — the extracted b
 
 **Data sources:**
 - `Terminal_Extracted.db` — 49,059 elements, 909 sprinkler heads (697 pendant + 202 upright), 3,821 pipe segments, 814 light fixtures
-- `Ifc2x3_Duplex_extracted.db` — 1,099 elements, 427 pipes, 358 fittings, 47 receptacles, 14 switches
+- `Duplex_extracted.db` — 1,099 elements, 427 pipes, 358 fittings, 47 receptacles, 14 switches
 
 **Grid pattern discovery (Terminal z=14.9 level, 213 pendant heads):** X spacing histogram: **3.0m = 91%** (172/189 measurements). Y spacing varies 0.6–3.6m (multiple zones). AABB spans 57m × 36m. This proves the 3.0m default in our verb matches real-world practice.
 
@@ -1107,10 +1107,10 @@ CREATE TABLE W_Verb_NodeProduct (
 
 | W_Verb_Node_ID | C_Order_ID | SeqNo | Name (verb) | Description (COBOL source) | DocStatus |
 |---|---|---|---|---|---|
-| 1 | SJTII_Terminal | 10 | TILE SURFACE | ROOF_DECK_Z19_WEST WITH PLATE... GRID 15 294 STEP 495 150 | DR |
-| 2 | SJTII_Terminal | 20 | TILE SURFACE | ROOF_DECK_Z19_CENTRAL WITH PLATE... GRID 14 174 STEP 495 150 | DR |
-| 3 | SJTII_Terminal | 30 | ARRAY | SLAB_TE_GF_001 WITH REBAR_T16 LENGTH 6000 SPACING 150 COVER 40 | DR |
-| 4 | SJTII_Terminal | 40 | ROUTE SPRINKLERS | SJTII_Terminal "Departure Hall" SPACING 3000 | DR |
+| 1 | Terminal | 10 | TILE SURFACE | ROOF_DECK_Z19_WEST WITH PLATE... GRID 15 294 STEP 495 150 | DR |
+| 2 | Terminal | 20 | TILE SURFACE | ROOF_DECK_Z19_CENTRAL WITH PLATE... GRID 14 174 STEP 495 150 | DR |
+| 3 | Terminal | 30 | ARRAY | SLAB_TE_GF_001 WITH REBAR_T16 LENGTH 6000 SPACING 150 COVER 40 | DR |
+| 4 | Terminal | 40 | ROUTE SPRINKLERS | Terminal "Departure Hall" SPACING 3000 | DR |
 
 **Corresponding W_Verb_NodeProduct rows for W_Verb_Node_ID=1:**
 

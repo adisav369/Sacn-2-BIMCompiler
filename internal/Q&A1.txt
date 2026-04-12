@@ -123,7 +123,7 @@ ROUND 4
 **The issues mostly occur at walls/openings/furniture orientation,rotations,placements. So i reckoned something to check against all such drifts. Welcome your ideas. But since they must extract the components and place in the output.db which must corelate to the extracted db, then take a certain x-cross sampling that must be exact. i.e. a piano orientation, a furniture spatial distance from another. Another type of error is been none LOD, but BBox, no material and invented drawing. Thus that LOD to LOD check should cover all that. We been going thru series of tests. But in essense it is just those.**
 
   Q2. Furniture product_id matching: how does the compiler select?
-  Currently ST_SH picks bed_1980x2032x634mm where SH has bed_2032x1980x500mm. The exact SH items exist in component_library (e.g. IfcDoor_Ifc4_SampleHouse_c5357415). Should the ST_SH
+  Currently ST_SH picks bed_1980x2032x634mm where SH has bed_2032x1980x500mm. The exact SH items exist in component_library (e.g. IfcDoor_SampleHouse_c5357415). Should the ST_SH
   BOM explicitly reference these SH-extracted product_ids? Or should the compiler match by type+AABB and we need to fix the matching algorithm? **It should pick by exact AABB as we are still singularity stage where there cannot be another similar size bed. If there is, it is still OK, but i also shared in previous chat session that if the parent so happens to fit AABB then take en bloc all their furniture sets. This is to avoid buffer filler replacings which can misplace and break the tests. This is not an hard code but feature allowing non parent fit to recalculate furniture sets placing. For example in SH living room, the AABB is exact, thus take all the contents in priority (dining, sofa, piano) sets with their buffer fillers. In TBKLTN the living room AABB doesn't fit, thus spawn 3 orderlines with attending EmptySpaceLines for each set in priority: Dining first put as ESLine given a good central or best spot first priority. Then it looks for any further room if any fit in the sofa. If it can't fit try fitting the others - piano, the ESline provide a calculated remaining spot which won't clash the piano bbox with others. This is first time i am going into the specifics which only happens during TBKLTN. So this gives u more context. For our Stones cases, as explained a parent (living room) AABB fit allows wholesale port, thus only one ESLine at that room orderline.
 
 The TBKLTN will have fillers added in between if that TBKLTN living room is to be committed as a new BOM to {PREFIX}_BOM.db (can be an option later)**
@@ -158,8 +158,8 @@ Q1. Wholesale port trigger: exact AABB or within tolerance?
   the kitchen cabinets, or are flow terminals intentional for toilet plumbing? **Classify them correctly then. Use your discretion.**
 
   Q5. Furniture matching for Rosetta Stone: by product_id name or by AABB? **By AABB and same inferred category = Residential and their BOM 'DX' nature. (please stitch this somewhere were BOMCategory DocType is 'Residential' etc. Otherwise when one day we have an AABB for let's say vehicle it surely be looking for different categories.**
-  You said "pick by exact AABB." Currently the SH furniture items exist in component_library with names like IfcDoor_Ifc4_SampleHouse_c5357415. Should the compiler match by:
-  - (a) Product name/ID containing the building source (e.g. _Ifc4_SampleHouse_)
+  You said "pick by exact AABB." Currently the SH furniture items exist in component_library with names like IfcDoor_SampleHouse_c5357415. Should the compiler match by:
+  - (a) Product name/ID containing the building source (e.g. _SampleHouse_)
   - (b) Pure AABB match against component_library
   - (c) m_bom_line explicitly references the SH-extracted product_id
   **Unless otherwise, i would say space size and category will pick out the right intended item. Again as we only have singularity sample, it be sufficient to be the same.**

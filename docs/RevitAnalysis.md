@@ -1,13 +1,13 @@
 # Revit MEP (RM) — Analysis
 
-**Prefix:** RM | **Building type:** Revit_MEP | **Schema:** IFC4
+**Prefix:** RM | **Building type:** HospitalAuckland | **Schema:** IFC4
 
 ## Source Files
 
 Three discipline IFCs in `DAGCompiler/lib/input/IFC/UNMERGED/`:
 - `Ifc4_Revit_ARC.ifc` — Architectural
 - `Ifc4_Revit_STR.ifc` — Structural
-- `Ifc4_Revit_MEP.ifc` — MEP
+- `Ifc4_HospitalAuckland.ifc` — MEP
 
 **Merged:** `DAGCompiler/lib/input/IFC/Ifc4_Revit_Federated.ifc` (S144, 13.7 MB, 126K entities)
 Merged via `tools/federation_preprocessor.py` (IfcPatch MergeProjects, GUID-preserving).

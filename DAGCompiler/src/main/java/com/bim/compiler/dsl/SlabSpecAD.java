@@ -27,7 +27,7 @@ class SlabSpecAD {
         // Exact match first
         SlabEntry entry = cache.get(buildingType + "|" + slabRole);
         if (entry != null) return entry;
-        // Phase A: Prefix fallback for multi-unit sub-buildings (e.g. "Ifc2x3_Duplex_A" → "Ifc2x3_Duplex")
+        // Phase A: Prefix fallback for multi-unit sub-buildings (e.g. "Duplex_A" → "Duplex")
         int lastUnderscore = buildingType.lastIndexOf('_');
         if (lastUnderscore > 0) {
             String parent = buildingType.substring(0, lastUnderscore);

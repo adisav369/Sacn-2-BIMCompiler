@@ -13,16 +13,16 @@ Usage:
 
 Example:
   python3 tools/placement_extractor.py \
-    --reference reference/rosetta/Ifc4_SampleHouse_extracted.db \
-    --building-type Ifc4_SampleHouse
+    --reference reference/rosetta/SampleHouse_extracted.db \
+    --building-type SampleHouse
 
   python3 tools/placement_extractor.py \
-    --reference reference/rosetta/Ifc2x3_Duplex_extracted.db \
-    --building-type Ifc2x3_Duplex
+    --reference reference/rosetta/Duplex_extracted.db \
+    --building-type Duplex
 
   python3 tools/placement_extractor.py \
-    --reference reference/rosetta/SJTII_Terminal_extracted.db \
-    --building-type SJTII_Terminal
+    --reference reference/rosetta/Terminal_extracted.db \
+    --building-type Terminal
 """
 
 import argparse
@@ -53,7 +53,44 @@ def classify_orientation(dx, dy):
         return "POINT"  # roughly square (column-like or small)
 
 
-def extract_placements(ref_db, building_type):
+def benchmark(ref_db, building_type, ctx_size=16384):
+    """Benchmark extraction performance"""
+    import time
+    start_time = time.time()
+    
+    conn = sqlite3.connect(ref_db)
+    c = conn.cursor()
+    
+    # Using faster batch processing
+    c.execute('''
+        SELECT m.id, m.ifc_class, m.element_name, m.storey, m.discipline,
+               r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+        FROM elements_meta m
+        JOIN elements_rtree r ON m.id = r.id
+        ORDER BY m.ifc_class, m.storey, r.minX, r.minY, r.minZ
+    ''')
+    
+    # Process in batches
+    batch_size = ctx_size
+    rows = []
+    while True:
+        batch = c.fetchmany(batch_size)
+        if not batch:
+            break
+        rows.extend(batch)
+    
+    conn.close()
+    
+    # Process results
+    groups = defaultdict(list)
+    for row in rows:
+        key = (row[1], row[3] or "Unknown")
+        groups[key].append(row)
+    
+    total_time = time.time() - start_time
+    return total_time, len(rows)
+
+def extract_placements(ref_db, building_type, ctx_size=16384):
     """Extract element placements from reference DB."""
     conn = sqlite3.connect(ref_db)
     c = conn.cursor()
@@ -141,7 +178,7 @@ def generate_schema_sql():
 -- Each row = one element to emit. The metadata IS the production list.
 CREATE TABLE IF NOT EXISTS I_Element_Extraction (
     placement_id  INTEGER PRIMARY KEY AUTOINCREMENT,
-    building_type TEXT NOT NULL,        -- e.g., 'Ifc4_SampleHouse'
+    building_type TEXT NOT NULL,        -- e.g., 'SampleHouse'
     storey        TEXT NOT NULL,        -- e.g., 'Ground Floor'
     ifc_class     TEXT NOT NULL,        -- e.g., 'IfcWall'
     element_ref   TEXT NOT NULL,        -- descriptive key (type name, no instance ID)
@@ -234,6 +271,10 @@ def print_audit(placements):
 
 def main():
     parser = argparse.ArgumentParser(description="Extract element placements from Rosetta Stone reference DB")
+    parser.add_argument("--n-gpu-layers", type=int, default=15, 
+                       help="Number of GPU acceleration layers")
+    parser.add_argument("--ctx-size", type=int, default=16384,
+                       help="Context size for parallel processing")
     parser.add_argument("--reference", required=True, help="Path to reference DB")
     parser.add_argument("--building-type", required=True, help="Building type identifier")
     parser.add_argument("--audit-only", action="store_true", help="Print audit without generating SQL")

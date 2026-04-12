@@ -18,8 +18,8 @@
 #
 # Usage:
 #   ./scripts/run.sh TB_LKTN              # compile TB_LKTN
-#   ./scripts/run.sh Ifc4_SampleHouse     # compile SH
-#   ./scripts/run.sh Ifc2x3_Duplex        # compile DX
+#   ./scripts/run.sh SampleHouse     # compile SH
+#   ./scripts/run.sh Duplex        # compile DX
 #   ./scripts/run.sh --list               # list available buildings
 #   ./scripts/run.sh --init TB_LKTN       # init only (no compile)
 # ============================================================

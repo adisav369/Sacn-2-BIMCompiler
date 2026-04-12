@@ -21,7 +21,7 @@ class ClassificationYamlTest {
 
         var b = cy.getBuilding();
         assertNotNull(b);
-        assertEquals("Ifc4_SampleHouse", b.buildingType());
+        assertEquals("SampleHouse", b.buildingType());
         assertEquals("SH", b.prefix());
         assertEquals("BUILDING_SH_STD", b.buildingBomId());
         assertEquals("SH", b.docSubType());

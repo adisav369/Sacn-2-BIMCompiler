@@ -40,16 +40,16 @@ LIBRARY_DB = PROJECT_ROOT / "library" / "component_library.db"
 # Rosetta Stone reference DBs and their building types
 ROSETTA_STONES = [
     {
-        "ref_db": PROJECT_ROOT / "reference" / "rosetta" / "Ifc4_SampleHouse_extracted.db",
-        "building_type": "Ifc4_SampleHouse",
+        "ref_db": PROJECT_ROOT / "reference" / "rosetta" / "SampleHouse_extracted.db",
+        "building_type": "SampleHouse",
     },
     {
-        "ref_db": PROJECT_ROOT / "reference" / "rosetta" / "Ifc2x3_Duplex_extracted.db",
-        "building_type": "Ifc2x3_Duplex",
+        "ref_db": PROJECT_ROOT / "reference" / "rosetta" / "Duplex_extracted.db",
+        "building_type": "Duplex",
     },
     {
         "ref_db": PROJECT_ROOT / "reference" / "rosetta" / "Terminal_Extracted.db",
-        "building_type": "SJTII_Terminal",
+        "building_type": "Terminal",
     },
 ]
 
@@ -484,7 +484,7 @@ def main():
     parser = argparse.ArgumentParser(description="Extract geometry from Rosetta Stone reference DBs")
     parser.add_argument("--ifc-class", help="Filter to specific IFC class (e.g. IfcRoof)")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be done without modifying DB")
-    parser.add_argument("--stone", help="Process only this stone (e.g. Ifc4_SampleHouse)")
+    parser.add_argument("--stone", help="Process only this stone (e.g. SampleHouse)")
     parser.add_argument("--instance", action="store_true",
                         help="Per-instance mode: map (building_type, ifc_class, storey, ordinal) → geometry_hash")
     args = parser.parse_args()

@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS AD_Val_Rule (
     discipline        TEXT,                    -- 'FPR', 'ELC', 'PLB', NULL=any
     standard_ref      TEXT,                    -- 'NFPA 13 §8.6.2.2.1'
     jurisdiction      TEXT,                    -- 'US', 'SG', 'MY', 'INTL'
-    provenance        TEXT,                    -- 'MINED:SJTII_Terminal', 'RESEARCHED', 'UBBL'
+    provenance        TEXT,                    -- 'MINED:Terminal', 'RESEARCHED', 'UBBL'
     valid_from        TEXT,                    -- code edition date
     valid_to          TEXT,                    -- NULL = current
     is_active         INTEGER DEFAULT 1
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS AD_Val_Rule_Exception (
 -- Separation layer: mining queries record their source here, not in the rule itself
 CREATE TABLE IF NOT EXISTS AD_Val_Rule_Mining_Source (
     ad_val_rule_id     INTEGER NOT NULL REFERENCES AD_Val_Rule,
-    building_type      TEXT NOT NULL,         -- 'SJTII_Terminal', 'Ifc2x3_Duplex'
+    building_type      TEXT NOT NULL,         -- 'Terminal', 'Duplex'
     element_count      INTEGER,               -- how many elements were sampled
     measured_min       REAL,                   -- observed minimum
     measured_max       REAL,                   -- observed maximum

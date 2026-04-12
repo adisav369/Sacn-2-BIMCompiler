@@ -176,7 +176,7 @@ CREATE TABLE surface_styles (style_name TEXT PRIMARY KEY, surface_r REAL, surfac
 CREATE TABLE material_layers (layer_set_name TEXT NOT NULL, sequence INTEGER NOT NULL, material_name TEXT, thickness_m REAL, is_ventilated INTEGER DEFAULT 0, PRIMARY KEY (layer_set_name, sequence));
 CREATE TABLE ad_building_grid (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    building_type TEXT NOT NULL,       -- 'Ifc4_SampleHouse', 'Ifc2x3_Duplex'
+    building_type TEXT NOT NULL,       -- 'SampleHouse', 'Duplex'
     axis          TEXT NOT NULL,       -- 'X' or 'Y'
     grid_label    TEXT NOT NULL,       -- 'A', 'B', '1', '2' etc.
     position_mm   REAL NOT NULL,       -- absolute position in mm from building origin

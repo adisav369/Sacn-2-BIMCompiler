@@ -377,7 +377,7 @@ class ASIAuthoringTest {
             // Building type
             s.execute("""
                 INSERT INTO C_DocType VALUES
-                ('RE_SH', 'Ifc4_SampleHouse', 'Sample House', 'SH', 1, 10, 55)
+                ('RE_SH', 'SampleHouse', 'Sample House', 'SH', 1, 10, 55)
                 """);
 
             // SET BOMs — room content packs with m_product_category_id

@@ -99,7 +99,7 @@ iDempiere MFG captures this for manufacturing. The same model applies here witho
 
 The BOM Drop is not a one-time room-level event. It must fire at **every tree level** — each parent producing Orderlines that declare the position of its children relative to its own space bbox. The tree walker (`getParentBOM()/getChildren()`) handles all depths; no fixed vocabulary needed (BBC.md §1).
 
-### The Chain — SH (Ifc4_SampleHouse, actual data)
+### The Chain — SH (SampleHouse, actual data)
 
 ```
 BUILDING_SH_STD                       ← building unit C_OrderLine
@@ -130,7 +130,7 @@ BUILDING_SH_STD                       ← building unit C_OrderLine
         └── Side_Table     dx=0.98, dy=0.0
 ```
 
-### The Chain — DX (Ifc2x3_Duplex, actual data — two floors)
+### The Chain — DX (Duplex, actual data — two floors)
 
 ```
 BUILDING_DX_STD                    ← building unit Orderline
@@ -199,7 +199,7 @@ BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` 
 
 | Layer | BIM Table | iDempiere | SH example | DX example |
 |---|---|---|---|---|
-| Building order | BIM (`ad_building`) | C_Order | `Ifc4_SampleHouse` | `Ifc2x3_Duplex` |
+| Building order | BIM (`ad_building`) | C_Order | `SampleHouse` | `Duplex` |
 | Order line | C_OrderLine | C_OrderLine | placement instance | placement instance |
 | Assembly (product+BOM) | M_BOM (`m_bom`) | M_Product + M_BOM | `LIVING_4645x3308` | `BUILDING_DX_STD` |
 | Assembly child | M_BOM_Line (`m_bom_line`) | M_BOM_Line | seq 1: Piano | seq 1: Dining_Table |
@@ -1154,7 +1154,7 @@ per room via the `coordinate_frame` column — not per building, not per compile
 ```
 coordinate_frame = IFC_GLOBAL_MM
 All room boundaries extracted from a reference IFC
-Examples: SH (Ifc4_SampleHouse), DX (Ifc2x3_Duplex)
+Examples: SH (SampleHouse), DX (Duplex)
 ```
 Every room has a verified `ad_room_boundary` row with `coordinate_frame = 'IFC_GLOBAL_MM'`.
 The compiler reads world coordinates directly from `v_verified_room_boundary`. No derivation

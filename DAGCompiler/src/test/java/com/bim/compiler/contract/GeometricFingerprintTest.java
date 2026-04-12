@@ -42,16 +42,16 @@ class GeometricFingerprintTest {
     // =====================================================================
 
     private static final String[][] BUILDINGS = {
-        {"SH", "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db",
-               "DAGCompiler/lib/output/ifc4_samplehouse.db"},
-        {"DX", "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db",
-               "DAGCompiler/lib/output/ifc2x3_duplex.db"},
+        {"SH", "DAGCompiler/lib/input/SampleHouse_extracted.db",
+               "DAGCompiler/lib/output/samplehouse.db"},
+        {"DX", "DAGCompiler/lib/input/Duplex_extracted.db",
+               "DAGCompiler/lib/output/duplex.db"},
     };
 
     /** All building pairs with both extracted and compiled DBs. */
     private static final String[][] ALL_BUILDINGS = {
-        {"SH",  "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db",     "DAGCompiler/lib/output/ifc4_samplehouse.db"},
-        {"DX",  "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db",        "DAGCompiler/lib/output/ifc2x3_duplex.db"},
+        {"SH",  "DAGCompiler/lib/input/SampleHouse_extracted.db",     "DAGCompiler/lib/output/samplehouse.db"},
+        {"DX",  "DAGCompiler/lib/input/Duplex_extracted.db",        "DAGCompiler/lib/output/duplex.db"},
         {"FK",  "DAGCompiler/lib/input/Ifc4_FZKHaus_extracted.db",          "DAGCompiler/lib/output/ifc4_fzkhaus.db"},
         {"IN",  "DAGCompiler/lib/input/Ifc2x3_AC11Institute_extracted.db",  "DAGCompiler/lib/output/ifc2x3_ac11institute.db"},
         {"BR",  "DAGCompiler/lib/input/Infra_Bridge_extracted.db",          "DAGCompiler/lib/output/infra_bridge.db"},
@@ -77,11 +77,11 @@ class GeometricFingerprintTest {
         {"WT",  "DAGCompiler/lib/input/BimWhale_Tall_extracted.db",         "DAGCompiler/lib/output/bimwhale_tall.db"},
         {"WA",  "DAGCompiler/lib/input/BimWhale_Advanced_extracted.db",     "DAGCompiler/lib/output/bimwhale_advanced.db"},
         {"RA",  "DAGCompiler/lib/input/Revit_ARC_extracted.db",             "DAGCompiler/lib/output/revit_arc.db"},
-        {"RM",  "DAGCompiler/lib/input/Revit_MEP_extracted.db",             "DAGCompiler/lib/output/revit_mep.db"},
+        {"RM",  "DAGCompiler/lib/input/HospitalAuckland_extracted.db",             "DAGCompiler/lib/output/hospitalauckland.db"},
         {"RS",  "DAGCompiler/lib/input/Revit_STR_extracted.db",             "DAGCompiler/lib/output/revit_str.db"},
         {"CL",  "DAGCompiler/lib/input/SampleCastle_extracted.db",          "DAGCompiler/lib/output/samplecastle.db"},
         {"HI",  "DAGCompiler/lib/input/HITOS_extracted.db",                 "DAGCompiler/lib/output/hitos.db"},
-        {"TE",  "DAGCompiler/lib/input/SJTII_Terminal_extracted.db",        "DAGCompiler/lib/output/sjtii_terminal.db"},
+        {"TE",  "DAGCompiler/lib/input/Terminal_extracted.db",        "DAGCompiler/lib/output/terminal.db"},
     };
 
     // =====================================================================

@@ -1688,8 +1688,8 @@ def main():
 
     # Parse arguments: positional [output_db] [reference_db] and flags
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    output_db = args[0] if len(args) > 0 else "output/ifc2x3_duplex.db"
-    reference_db = args[1] if len(args) > 1 else "reference/rosetta/Ifc2x3_Duplex_extracted.db"
+    output_db = args[0] if len(args) > 0 else "output/duplex.db"
+    reference_db = args[1] if len(args) > 1 else "reference/rosetta/Duplex_extracted.db"
 
     # Parse flags
     mode_positional = "--positional" in sys.argv

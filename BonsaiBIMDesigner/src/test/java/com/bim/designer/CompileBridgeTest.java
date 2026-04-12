@@ -169,8 +169,8 @@ class CompileBridgeTest {
             }
 
             // 6. Insert C_DocType row
-            String outputPath = outputDir + "/ifc4_samplehouse.db";
-            String refPath = "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
+            String outputPath = outputDir + "/samplehouse.db";
+            String refPath = "DAGCompiler/lib/input/SampleHouse_extracted.db";
             try (var ps = conn.prepareStatement("""
                     INSERT OR REPLACE INTO C_DocType (
                         Value, Name, doc_sub_type, IsActive,
@@ -182,7 +182,7 @@ class CompileBridgeTest {
                 ps.setString(1, "RE_SH");
                 ps.setString(2, "Sample House");
                 ps.setString(3, "SH");
-                ps.setString(4, "Ifc4_SampleHouse");
+                ps.setString(4, "SampleHouse");
                 ps.setString(5, outputPath);
                 ps.setString(6, refPath);
                 ps.setInt(7, expectedElements);
@@ -201,7 +201,7 @@ class CompileBridgeTest {
     @DisplayName("W-COMPILE-1: compile() with SH_BOM.db produces output.db with 58 elements")
     void w_compile_1_pipeline_produces_elements() {
         CompileRequest request = new CompileRequest(
-                "Ifc4_SampleHouse",
+                "SampleHouse",
                 compileDbPath,
                 "library/component_library.db",
                 outputDir + "/"

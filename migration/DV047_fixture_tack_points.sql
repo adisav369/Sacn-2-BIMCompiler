@@ -88,3 +88,43 @@ INSERT OR IGNORE INTO ad_assembly_connector
     (assembly_id, version, face, connector_type, position_x, position_y, position_z, diameter_mm, connects_to)
 VALUES
     ('SUPPLY_DIFFUSER', '1.0.0', 'TOP', 'DUCT_IN', 0.0, 0.0, 0.0, 250.0, 'ACMV_DUCT');
+
+-- ── ADDITIONAL PLUMBING ─────────────────────────────────────────────────
+
+-- FLOOR_TRAP (0.15w × 0.15d × 0.1h) — drain at bottom-center
+INSERT OR IGNORE INTO ad_assembly_connector
+    (assembly_id, version, face, connector_type, position_x, position_y, position_z, diameter_mm, connects_to)
+VALUES
+    ('FLOOR_TRAP', '1.0.0', 'BOTTOM', 'WASTE_OUT', 0.0, 0.0, -0.05, 50.0, 'PLUMBING_STACK');
+
+-- WASHING_TAP (0.05w × 0.05d × 0.15h) — supply at back
+INSERT OR IGNORE INTO ad_assembly_connector
+    (assembly_id, version, face, connector_type, position_x, position_y, position_z, diameter_mm, connects_to)
+VALUES
+    ('WASHING_TAP', '1.0.0', 'BACK', 'SUPPLY_IN', 0.0, 0.0, 0.0, 15.0, 'WATER_RISER');
+
+-- ── ADDITIONAL ELECTRICAL ───────────────────────────────────────────────
+
+-- OUTLET_GFCI (0.07w × 0.04d × 0.12h) — wiring entry at back
+INSERT OR IGNORE INTO ad_assembly_connector
+    (assembly_id, version, face, connector_type, position_x, position_y, position_z, diameter_mm, connects_to)
+VALUES
+    ('OUTLET_GFCI', '1.0.0', 'BACK', 'SUPPLY_IN', 0.0, 0.0, 0.0, 20.0, 'ELEC_CONDUIT');
+
+-- OUTLET_20A (0.07w × 0.04d × 0.12h) — wiring entry at back
+INSERT OR IGNORE INTO ad_assembly_connector
+    (assembly_id, version, face, connector_type, position_x, position_y, position_z, diameter_mm, connects_to)
+VALUES
+    ('OUTLET_20A', '1.0.0', 'BACK', 'SUPPLY_IN', 0.0, 0.0, 0.0, 20.0, 'ELEC_CONDUIT');
+
+-- DATA_POINT (0.07w × 0.04d × 0.08h) — wiring entry at back
+INSERT OR IGNORE INTO ad_assembly_connector
+    (assembly_id, version, face, connector_type, position_x, position_y, position_z, diameter_mm, connects_to)
+VALUES
+    ('DATA_POINT', '1.0.0', 'BACK', 'SUPPLY_IN', 0.0, 0.0, 0.0, 20.0, 'ELEC_CONDUIT');
+
+-- EMERGENCY_LIGHT (0.3w × 0.1d × 0.1h) — wiring at top (ceiling-mounted)
+INSERT OR IGNORE INTO ad_assembly_connector
+    (assembly_id, version, face, connector_type, position_x, position_y, position_z, diameter_mm, connects_to)
+VALUES
+    ('EMERGENCY_LIGHT', '1.0.0', 'TOP', 'SUPPLY_IN', 0.0, 0.0, 0.0, 20.0, 'ELEC_CONDUIT');

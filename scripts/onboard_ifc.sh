@@ -35,7 +35,19 @@
 # Prerequisites:
 #   - Python3 with ifcopenshell
 #   - mvn compile passes
-#   - See docs/IFC_ONBOARDING_RUNBOOK.md for full guide
+#   - library/ERP.db exists (run scripts/rebuild_erp.sh if missing)
+#   - See docs/WorkOrderGuide.md for full guide
+#
+# What happens automatically (no manual SQL or migration needed):
+#   - ProductRegistrar creates M_Product rows from your IFC extraction
+#   - M_Product_Category_ID is auto-assigned from ifc_class
+#   - Discipline chain (M_Product → M_Product_Category → AD_Org_ID)
+#     resolves automatically per DISC_VALIDATION_DB_SRS.md §6.4
+#   - IFCtoERP extracts MEP joint pieces + anchors for RouteWalker
+#   - Validation rules are mined from output and applied to ERP.db
+#
+# The ONLY human-crafted artifact is classify_XX.yaml — everything
+# else is extracted or computed from the IFC file deterministically.
 # ============================================================
 
 set -e

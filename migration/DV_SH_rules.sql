@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
--- SH: Sample House (Ifc4_SampleHouse)
--- Source: DAGCompiler/lib/output/ifc4_samplehouse.db
--- Generated: 2026-04-04 16:30
+-- SH: Sample House (SampleHouse)
+-- Source: DAGCompiler/lib/output/samplehouse.db
+-- Generated: 2026-04-08 13:51
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -9,6 +9,7 @@
 
 -- ifc_class             storey        cnt  avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
 -- --------------------  ------------  ---  --------  --------  --------  --------  --------
+-- IfcFlowTerminal       ROOM GF       43   264.0     252.0     154.0     70.0      1200.0  
 -- IfcMember             Unknown       20   499.0     581.0     1226.0    30.0      1603.0  
 -- IfcFurnishingElement  Ground Floor  14   1136.0    795.0     984.0     427.0     2287.0  
 -- IfcPlate              Unknown       6    829.0     955.0     3027.0    25.0      1633.0  
@@ -45,25 +46,41 @@
 
 -- ifc_class             discipline  cnt
 -- --------------------  ----------  ---
+-- IfcFlowTerminal       ELEC        28 
 -- IfcMember             STR         20 
 -- IfcFurnishingElement  ARC         14 
+-- IfcFlowTerminal       FP          12 
 -- IfcPlate              STR         6  
 -- IfcWall               STR         5  
 -- IfcWindow             ARC         4  
 -- IfcCovering           ARC         3  
 -- IfcDoor               ARC         3  
+-- IfcFlowTerminal       ACMV        3  
 -- IfcSlab               STR         2  
 -- IfcRoof               ARC         1  
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
+-- Rule: IfcFlowTerminal_ROOM_GF (43 instances, avg 264.0x252.0x154.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_ROOM_GF', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on ROOM GF: 43 instances, avg W=264.0 D=252.0 H=154.0mm',
+--     'SampleHouse');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '264.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '252.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '154.0');
+
 -- Rule: IfcMember_Unknown (20 instances, avg 499.0x581.0x1226.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
 -- VALUES ('IfcMember_Unknown', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcMember on Unknown: 20 instances, avg W=499.0 D=581.0 H=1226.0mm',
---     'Ifc4_SampleHouse');
+--     'SampleHouse');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '499.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -76,7 +93,7 @@
 --     description, provenance)
 -- VALUES ('IfcFurnishingElement_Ground_Floor', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFurnishingElement on Ground Floor: 14 instances, avg W=1136.0 D=795.0 H=984.0mm',
---     'Ifc4_SampleHouse');
+--     'SampleHouse');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1136.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -89,7 +106,7 @@
 --     description, provenance)
 -- VALUES ('IfcPlate_Unknown', 'IfcPlate', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPlate on Unknown: 6 instances, avg W=829.0 D=955.0 H=3027.0mm',
---     'Ifc4_SampleHouse');
+--     'SampleHouse');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '829.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -102,7 +119,7 @@
 --     description, provenance)
 -- VALUES ('IfcWall_Ground_Floor', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWall on Ground Floor: 5 instances, avg W=5588.0 D=2397.0 H=2665.0mm',
---     'Ifc4_SampleHouse');
+--     'SampleHouse');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '5588.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -115,7 +132,7 @@
 --     description, provenance)
 -- VALUES ('IfcWindow_Ground_Floor', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWindow on Ground Floor: 4 instances, avg W=1860.0 D=353.0 H=1210.0mm',
---     'Ifc4_SampleHouse');
+--     'SampleHouse');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1860.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -128,7 +145,7 @@
 --     description, provenance)
 -- VALUES ('IfcCovering_Ground_Floor', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcCovering on Ground Floor: 3 instances, avg W=6071.0 D=3690.0 H=57.0mm',
---     'Ifc4_SampleHouse');
+--     'SampleHouse');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '6071.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -141,7 +158,7 @@
 --     description, provenance)
 -- VALUES ('IfcDoor_Ground_Floor', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDoor on Ground Floor: 3 instances, avg W=739.0 D=653.0 H=2133.0mm',
---     'Ifc4_SampleHouse');
+--     'SampleHouse');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '739.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)

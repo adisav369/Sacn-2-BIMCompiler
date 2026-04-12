@@ -6,7 +6,7 @@
 schema_version: 1
 
 building:
-  building_type: Revit_MEP
+  building_type: HospitalAuckland
   prefix: RM
   building_bom_id: BUILDING_RM_STD
   doc_sub_type: RM

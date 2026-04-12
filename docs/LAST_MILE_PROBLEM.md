@@ -172,8 +172,8 @@ relative offsets, reports MATCH/DRIFT. Verified results:
 ```bash
 python3 scripts/geo_verify.py \
     "logs/pipeline_Sample House_extracted_20260330_033940.log" \
-    DAGCompiler/lib/output/ifc4_samplehouse.db \
-    DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
+    DAGCompiler/lib/output/samplehouse.db \
+    DAGCompiler/lib/input/SampleHouse_extracted.db
 ```
 
 **Next step for coder:** add a `[GEO] SUMMARY` line at end of compilation

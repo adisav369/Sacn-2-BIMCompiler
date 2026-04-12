@@ -45,20 +45,16 @@ public class BomDropper {
      */
     // Implementing ProjectOrderBlueprint.md §14.3 Session 0 — Witness: W-PROJ-ID-1
     public static int drop(Connection compileDb, BuildingEntry entry) throws SQLException {
-        return drop(compileDb, entry, entry.docTypeId());
+        return drop(compileDb, entry, entry.docTypeId(), Map.of(), 0);
     }
 
-    /**
-     * Explode a building's BOM tree into C_Order + C_OrderLine in the compile DB.
-     *
-     * @param compileDb  connection to the compile DB (has m_bom, m_bom_line, C_Order, C_OrderLine)
-     * @param entry      building entry from C_DocType registry
-     * @param orderId    explicit C_Order_ID (allows multiple orders of the same DocType)
-     * @return number of leaf elements (sum of qty across all LEAF C_OrderLines)
-     */
-    // Implementing ProjectOrderBlueprint.md §14.3 Session 0 — Witness: W-PROJ-ID-1
     public static int drop(Connection compileDb, BuildingEntry entry, String orderId) throws SQLException {
-        return drop(compileDb, entry, orderId, Map.of());
+        return drop(compileDb, entry, orderId, Map.of(), 0);
+    }
+
+    /** Full overload with C_BPartner_ID — sets it on C_Order header. */
+    public static int drop(Connection compileDb, BuildingEntry entry, String orderId, int bpartnerId) throws SQLException {
+        return drop(compileDb, entry, orderId, Map.of(), bpartnerId);
     }
 
     /**
@@ -98,6 +94,12 @@ public class BomDropper {
     // Implementing ProjectOrderBlueprint.md §14.3 Session D — Witness: W-EXCEPTION-1
     public static int drop(Connection compileDb, BuildingEntry entry, String orderId,
                            Map<String, ExceptionLine> exceptions) throws SQLException {
+        return drop(compileDb, entry, orderId, exceptions, 0);
+    }
+
+    /** Core drop — bpartnerId is set on C_Order header (0 = unknown). */
+    private static int drop(Connection compileDb, BuildingEntry entry, String orderId,
+                           Map<String, ExceptionLine> exceptions, int bpartnerId) throws SQLException {
         // Find the BUILDING BOM for this entry via m_product_category_id + doc_sub_type
         String buildingBomId = findBuildingBom(compileDb, entry);
         if (buildingBomId == null) {
@@ -109,8 +111,8 @@ public class BomDropper {
         BIMLogger.fine("BOMDROP", "{}: root BOM={}, category={}, doc_sub_type={}",
                 entry.id(), buildingBomId, entry.mProductCategoryId(), entry.docSubType());
 
-        // Create C_Order
-        createOrder(compileDb, orderId, entry);
+        // Create C_Order (iDempiere: header carries C_BPartner_ID)
+        createOrder(compileDb, orderId, entry, bpartnerId);
 
         // Explode BOM tree → C_OrderLine (with locator_ref path building)
         int[] leafCount = {0};
@@ -215,7 +217,7 @@ public class BomDropper {
     /**
      * Create C_Order row for this compilation.
      */
-    private static void createOrder(Connection conn, String orderId, BuildingEntry entry)
+    private static void createOrder(Connection conn, String orderId, BuildingEntry entry, int bpartnerId)
             throws SQLException {
         // Ensure C_Order + C_OrderLine tables exist (test path may skip schema init)
         // Delete any existing order (re-drop is idempotent)
@@ -225,7 +227,7 @@ public class BomDropper {
                     + "C_Order_ID INTEGER PRIMARY KEY AUTOINCREMENT, "
                     + "Value TEXT NOT NULL UNIQUE, C_DocType_ID TEXT, Name TEXT, DocStatus TEXT, "
                     + "aabb_width_mm REAL, aabb_depth_mm REAL, aabb_height_mm REAL, "
-                    + "Ref_Order_ID TEXT)");
+                    + "C_BPartner_ID INTEGER, Ref_Order_ID TEXT)");
             stmt.execute("CREATE TABLE IF NOT EXISTS C_OrderLine ("
                     + "C_OrderLine_ID INTEGER PRIMARY KEY AUTOINCREMENT, "
                     + "C_Order_ID TEXT, Parent_OrderLine_ID INTEGER, Line INTEGER, "
@@ -237,12 +239,11 @@ public class BomDropper {
                     + "IsActive TEXT DEFAULT 'Y')");
             stmt.execute("DELETE FROM C_OrderLine WHERE C_Order_ID = '" + orderId + "'");
             stmt.execute("DELETE FROM C_Order WHERE Value = '" + orderId + "'");
-            // Note: C_OrderLine.C_Order_ID stores text key (Value). C_Order PK is INTEGER.
         }
 
         String sql = "INSERT INTO C_Order (Value, C_DocType_ID, Name, DocStatus, "
-                   + "aabb_width_mm, aabb_depth_mm, aabb_height_mm) "
-                   + "VALUES (?, ?, ?, 'DR', ?, ?, ?)";
+                   + "aabb_width_mm, aabb_depth_mm, aabb_height_mm, C_BPartner_ID) "
+                   + "VALUES (?, ?, ?, 'DR', ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, orderId);
             ps.setString(2, entry.docTypeId());
@@ -250,6 +251,7 @@ public class BomDropper {
             ps.setDouble(4, entry.aabbWidthMm());
             ps.setDouble(5, entry.aabbDepthMm());
             ps.setDouble(6, entry.aabbHeightMm());
+            if (bpartnerId > 0) ps.setInt(7, bpartnerId); else ps.setNull(7, java.sql.Types.INTEGER);
             ps.executeUpdate();
         }
     }

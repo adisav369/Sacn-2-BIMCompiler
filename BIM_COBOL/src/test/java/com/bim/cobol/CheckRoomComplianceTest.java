@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class CheckRoomComplianceTest {
 
     private static final String DUPLEX_EXTRACTED =
-            "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db";
+            "DAGCompiler/lib/input/Duplex_extracted.db";
 
     private static Connection bomConn;
 

@@ -9,7 +9,7 @@
 -- One row per (building, ifc_class) observation
 CREATE TABLE IF NOT EXISTS ad_building_profile (
     ad_building_profile_id  INTEGER PRIMARY KEY AUTOINCREMENT,
-    building_type           TEXT NOT NULL,       -- 'Ifc4_SampleHouse', 'Clinic_Plumbing'
+    building_type           TEXT NOT NULL,       -- 'SampleHouse', 'Clinic_Plumbing'
     ifc_class               TEXT NOT NULL,       -- 'IfcWall', 'IfcFlowFitting'
     element_count           INTEGER NOT NULL,    -- raw count
     element_ratio           REAL NOT NULL,       -- percentage of total (0.0–100.0)

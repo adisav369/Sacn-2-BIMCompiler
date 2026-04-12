@@ -36,10 +36,10 @@ import static org.junit.jupiter.api.Assertions.*;
 class EdgeVertexTest {
 
     private static String bomDbPath() { return System.getProperty("bom.db"); }
-    private static final String SH_IN    = "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
-    private static final String SH_OUT   = "DAGCompiler/lib/output/ifc4_samplehouse.db";
-    private static final String DX_IN    = "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db";
-    private static final String DX_OUT   = "DAGCompiler/lib/output/ifc2x3_duplex.db";
+    private static final String SH_IN    = "DAGCompiler/lib/input/SampleHouse_extracted.db";
+    private static final String SH_OUT   = "DAGCompiler/lib/output/samplehouse.db";
+    private static final String DX_IN    = "DAGCompiler/lib/input/Duplex_extracted.db";
+    private static final String DX_OUT   = "DAGCompiler/lib/output/duplex.db";
 
     /** Tolerance for dimension match: 20% — catalog entries may differ slightly from Revit. */
     private static final double DIM_TOL = 0.20;
@@ -74,7 +74,7 @@ class EdgeVertexTest {
     void sh_s1_bedContained() throws Exception {
         List<BBox> beds = allByType(SH_OUT, "IfcFurniture", "%BED%");
         assertFalse(beds.isEmpty(), "SH output must have at least one BED");
-        assertAllContained("SH", beds, "Ifc4_SampleHouse");
+        assertAllContained("SH", beds, "SampleHouse");
     }
 
     // =========================================================================
@@ -108,7 +108,7 @@ class EdgeVertexTest {
         // G8 calibration: SH_DINING_SET places dining table at IFC-reference Y=0.441m in a room
         // spanning Y=[-0.281m, 4.409m]. Room-fraction = 0.154 — near south wall (dining zone).
         // Y lower bound relaxed to 0.10 to accommodate calibrated position; X remains [0.2, 0.8].
-        RoomBounds room = roomBounds("Ifc4_SampleHouse", "ROOM_Ground_Floor_1");
+        RoomBounds room = roomBounds("SampleHouse", "ROOM_Ground_Floor_1");
         // Dining table in output — check either SH furniture naming or IfcFurnishingElement names
         BBox out = largestByType(SH_OUT, "IfcFurniture", "%dining_table%");
         if (out == null) out = largestByType(SH_OUT, "IfcFurnishingElement", "%Dining_Table%");
@@ -176,7 +176,7 @@ class EdgeVertexTest {
         // 600mm tolerance covers all known offsets. When ABSOLUTE rows are normalised,
         // tighten to 50mm (CONTAIN_EPS).
         final double DX_ENV_EPS = 0.60;
-        double[] env = buildingEnvelope("Ifc2x3_Duplex");
+        double[] env = buildingEnvelope("Duplex");
         String sql = """
             SELECT element_name, r.minX, r.maxX, r.minY, r.maxY
             FROM elements_meta em JOIN elements_rtree r ON em.id=r.id

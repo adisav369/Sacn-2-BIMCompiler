@@ -76,8 +76,8 @@ public class MEPDevicePlacer {
         double roomDepth  = roomAabb[3] - roomAabb[2];
         double roomAreaM2 = roomWidth * roomDepth;
 
-        BIMLogger.geo("DEVICE_PLACE",
-            "ENTER space={} type={} aabb=({:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}) area={:.1f}m² schedule={} entries orderQty={}",
+        BIMLogger.fine("GENERATIVE",
+            "DEVICE_ENTER {} type={} aabb=[{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}] area={:.1f}m² schedule={} orderQty={}",
             roomBomId, spaceType,
             roomAabb[0], roomAabb[1], roomAabb[2], roomAabb[3], roomAabb[4], roomAabb[5],
             roomAreaM2, schedule.size(), orderQty);

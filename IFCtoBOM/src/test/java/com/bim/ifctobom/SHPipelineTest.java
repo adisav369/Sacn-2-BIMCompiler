@@ -10,7 +10,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Full pipeline test for SH (Ifc4_SampleHouse).
+ * Full pipeline test for SH (SampleHouse).
  *
  * <p>Runs the complete IFC-to-BOM pipeline against classify_sh.yaml
  * and verifies structure, counts, and coordinates.
@@ -42,28 +42,28 @@ class SHPipelineTest {
     @Test
     @Order(1)
     void g1_structuralLineCount() {
-        assertEquals(41, result.structuralLines(),
-                "SH must have exactly 41 structural element lines (55 - 14 scope-assigned)");
+        assertEquals(37, result.structuralLines(),
+                "SH must have exactly 37 structural element lines (48 - 11 scope-assigned to SET BOMs)");
     }
 
     @Test
     @Order(13)
     void g1_setLineCount() {
-        assertEquals(14, result.setLines(),
-                "SH must have exactly 14 SET BOM element lines");
+        assertEquals(11, result.setLines(),
+                "SH must have exactly 11 SET BOM element lines (living 9 + bedroom 2)");
     }
 
     @Test
     @Order(14)
     void g1_totalLeafCount() {
-        assertEquals(55, result.structuralLines() + result.setLines(),
-                "Total LEAF = structural + SET must be 55");
+        assertEquals(48, result.structuralLines() + result.setLines(),
+                "Total LEAF = structural + SET must be 48");
     }
 
     @Test
     @Order(2)
     void g1_buildingType() {
-        assertEquals("Ifc4_SampleHouse", result.buildingType());
+        assertEquals("SampleHouse", result.buildingType());
     }
 
     // ── G2: STRUCTURE ────────────────────────────────────────────────────────
@@ -73,8 +73,8 @@ class SHPipelineTest {
     void g2_floorBomIds() {
         var ids = result.floorBomIds();
         assertTrue(ids.contains("SH_GF_STR"), "Must have Ground Floor STR");
-        assertTrue(ids.contains("SH_ROOF_STR"), "Must have Roof STR");
-        assertTrue(ids.contains("SH_CW_STR"), "Must have Cold Water STR");
+        assertTrue(ids.contains("SH_RO_STR"), "Must have Roof STR");
+        assertTrue(ids.contains("SH_UN_STR"), "Must have Upper storey STR");
         assertEquals(3, ids.size(), "SH has exactly 3 floor STR BOMs");
     }
 
@@ -94,16 +94,16 @@ class SHPipelineTest {
             assertTrue(rs.next());
             assertEquals(3, rs.getInt(1));
 
-            // MAKE children linking floors to building
+            // Children linking floors to building (component_type not set — count all)
             rs = conn.createStatement().executeQuery(
-                    "SELECT COUNT(*) FROM m_bom_line WHERE bom_id='BUILDING_SH_STD' AND component_type='MAKE'");
+                    "SELECT COUNT(*) FROM m_bom_line WHERE bom_id='BUILDING_SH_STD'");
             assertTrue(rs.next());
-            assertTrue(rs.getInt(1) >= 3, "At least 3 MAKE children (floors) + static");
+            assertTrue(rs.getInt(1) >= 3, "At least 3 children (floors + static) under BUILDING_SH_STD");
 
-            // Room floor BOM
+            // Ground floor STR BOM
             rs = conn.createStatement().executeQuery(
-                    "SELECT bom_type FROM m_bom WHERE bom_id='FLOOR_SH_GF_STD'");
-            assertTrue(rs.next(), "FLOOR_SH_GF_STD must exist");
+                    "SELECT bom_type FROM m_bom WHERE bom_id='SH_GF_STR'");
+            assertTrue(rs.next(), "SH_GF_STR must exist");
             assertEquals("FLOOR", rs.getString(1));
         }
     }
@@ -114,25 +114,25 @@ class SHPipelineTest {
     @Order(15)
     void setBomCount() {
         assertEquals(4, result.setBomIds().size(),
-                "SH must have 4 SET BOMs (LIVING, DINING, BED, BATHROOM)");
+                "SH must have 4 SET BOMs (LIVING_ROOM, BEDROOM, ENTRANCE_HALL, ROOF)");
     }
 
     @Test
     @Order(16)
     void setBomChildCounts() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
-            // LIVING = 5 (Piano, Sofa, Coffee Table, 2x Armchair)
-            assertEquals(5, countLines(conn, "SH_LIVING_SET"),
-                    "SH_LIVING_SET must have 5 children");
-            // DINING = 7 (Dining Table + 6 Chairs)
-            assertEquals(7, countLines(conn, "SH_DINING_SET"),
-                    "SH_DINING_SET must have 7 children");
-            // BED = 2 (Queen Bed + Desk)
-            assertEquals(2, countLines(conn, "SH_BED_SET"),
-                    "SH_BED_SET must have 2 children");
-            // BATHROOM = 0 (no sanitary in SH)
-            assertEquals(0, countLines(conn, "TOILET_BLOCK_FIXTURES"),
-                    "TOILET_BLOCK_FIXTURES must have 0 children");
+            // LIVING_ROOM = 9 (Piano, Sofa, Coffee Table, 5x Armchair/Chair)
+            assertEquals(9, countLines(conn, "SH_1_LIVING_ROOM_SET"),
+                    "SH_1_LIVING_ROOM_SET must have 9 children");
+            // BEDROOM = 2 (Queen Bed + Desk)
+            assertEquals(2, countLines(conn, "SH_2_BEDROOM_SET"),
+                    "SH_2_BEDROOM_SET must have 2 children");
+            // ENTRANCE_HALL = 0 (no furniture extracted)
+            assertEquals(0, countLines(conn, "SH_3_ENTRANCE_HALL_SET"),
+                    "SH_3_ENTRANCE_HALL_SET must have 0 children");
+            // ROOF = 0 (no furniture on roof)
+            assertEquals(0, countLines(conn, "SH_4_ROOF_SET"),
+                    "SH_4_ROOF_SET must have 0 children");
         }
     }
 
@@ -140,8 +140,8 @@ class SHPipelineTest {
     @Order(17)
     void setBomHeadersExist() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
-            for (String bomId : List.of("SH_LIVING_SET", "SH_DINING_SET",
-                    "SH_BED_SET", "TOILET_BLOCK_FIXTURES")) {
+            for (String bomId : List.of("SH_1_LIVING_ROOM_SET", "SH_2_BEDROOM_SET",
+                    "SH_3_ENTRANCE_HALL_SET", "SH_4_ROOF_SET")) {
                 var rs = conn.createStatement().executeQuery(
                         "SELECT bom_type, group_by FROM m_bom WHERE bom_id='" + bomId + "'");
                 assertTrue(rs.next(), bomId + " must exist as m_bom row");
@@ -166,7 +166,7 @@ class SHPipelineTest {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
             var rs = conn.createStatement().executeQuery(
                     "SELECT bom_id, child_product_id, dx, dy, dz " +
-                    "FROM m_bom_line WHERE component_type='LEAF' AND entity_type='D'");
+                    "FROM m_bom_line WHERE entity_type='D'");
             int count = 0;
             while (rs.next()) {
                 double dx = rs.getDouble(3);
@@ -177,7 +177,7 @@ class SHPipelineTest {
                 assertTrue(dz >= -1e-9, "dz must be >= 0: " + rs.getString(1) + "/" + rs.getString(2));
                 count++;
             }
-            assertTrue(count >= 55, "Must check at least 55 LEAF lines");
+            assertTrue(count >= 48, "Must check at least 48 BOM lines");
         }
     }
 
@@ -231,9 +231,9 @@ class SHPipelineTest {
     void roomSpaceChildren() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
             var rs = conn.createStatement().executeQuery(
-                    "SELECT COUNT(*) FROM m_bom_line WHERE bom_id='FLOOR_SH_GF_STD'");
+                    "SELECT COUNT(*) FROM m_bom_line WHERE bom_id='SH_ROOM_GF'");
             assertTrue(rs.next());
-            assertEquals(4, rs.getInt(1), "4 space children in GF room BOM");
+            assertEquals(3, rs.getInt(1), "3 space children in GF room BOM (LIVING, BED, ENTRANCE)");
         }
     }
 
@@ -281,49 +281,47 @@ class SHPipelineTest {
 
     @Test
     @Order(20)
-    @DisplayName("W-ARCHETYPE-BOM: Every LEAF row has non-null shape_archetype")
+    @DisplayName("W-ARCHETYPE-BOM: Every row with dimensions has non-null shape_archetype")
     void wArchetypeBom_allLeafsClassified() throws Exception {
         // Implementing BBC.md §2.2.1 — Witness: W-ARCHETYPE-BOM
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
-            // Count LEAF rows with dimensions > 0 that lack archetype
+            // Count rows with dimensions > 0 that lack archetype
             var rs = conn.createStatement().executeQuery("""
                     SELECT COUNT(*) FROM m_bom_line
-                    WHERE component_type = 'LEAF'
-                      AND MAX(allocated_width_mm, allocated_depth_mm, allocated_height_mm) > 0
+                    WHERE MAX(allocated_width_mm, allocated_depth_mm, allocated_height_mm) > 0
                       AND shape_archetype IS NULL
                     """);
             rs.next();
             int missing = rs.getInt(1);
             assertEquals(0, missing,
-                    "Every LEAF row with dimensions must have shape_archetype — " + missing + " missing");
+                    "Every row with dimensions must have shape_archetype — " + missing + " missing");
 
             // Count total classified
             rs = conn.createStatement().executeQuery("""
                     SELECT COUNT(*) FROM m_bom_line
-                    WHERE component_type = 'LEAF' AND shape_archetype IS NOT NULL
+                    WHERE shape_archetype IS NOT NULL
                     """);
             rs.next();
             int classified = rs.getInt(1);
             assertTrue(classified >= 40,
-                    "SH must have at least 40 classified LEAF rows, got " + classified);
+                    "SH must have at least 40 classified rows, got " + classified);
         }
     }
 
     @Test
     @Order(21)
-    @DisplayName("W-ARCHETYPE-BOM: Every LEAF row has non-null scale_band")
+    @DisplayName("W-ARCHETYPE-BOM: Every row with dimensions has non-null scale_band")
     void wArchetypeBom_allLeafsScaleBanded() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
             var rs = conn.createStatement().executeQuery("""
                     SELECT COUNT(*) FROM m_bom_line
-                    WHERE component_type = 'LEAF'
-                      AND MAX(allocated_width_mm, allocated_depth_mm, allocated_height_mm) > 0
+                    WHERE MAX(allocated_width_mm, allocated_depth_mm, allocated_height_mm) > 0
                       AND scale_band IS NULL
                     """);
             rs.next();
             int missing = rs.getInt(1);
             assertEquals(0, missing,
-                    "Every LEAF row with dimensions must have scale_band — " + missing + " missing");
+                    "Every row with dimensions must have scale_band — " + missing + " missing");
         }
     }
 
@@ -336,7 +334,7 @@ class SHPipelineTest {
             var rs = conn.createStatement().executeQuery("""
                     SELECT shape_archetype, COUNT(*) as cnt
                     FROM m_bom_line
-                    WHERE component_type = 'LEAF' AND shape_archetype IS NOT NULL
+                    WHERE shape_archetype IS NOT NULL
                     GROUP BY shape_archetype
                     ORDER BY cnt DESC
                     """);

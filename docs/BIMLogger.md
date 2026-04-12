@@ -96,17 +96,17 @@ Tab-aligned, grep-friendly:
 
 ```
 # BIM Compiler Pipeline Log
-# Run:   Ifc4_SampleHouse_enbloc
+# Run:   SampleHouse_enbloc
 # Start: 2026-03-19 14:32:01.234
 # Level: INFO
 #
 2026-03-19 14:32:01.234 [INFO ] PIPELINE     ======================================================================
-2026-03-19 14:32:01.235 [INFO ] PIPELINE     PIPELINE: Ifc4_SampleHouse [EXTRACTED]
+2026-03-19 14:32:01.235 [INFO ] PIPELINE     PIPELINE: SampleHouse [EXTRACTED]
 2026-03-19 14:32:01.300 [INFO ] PIPELINE     STEP 1: MetadataValidator — starting
 2026-03-19 14:32:01.450 [INFO ] PIPELINE     STEP 5: WriteStage — starting
 2026-03-19 14:32:02.100 [FINE ] PROVER       [PROVEN] P05 — IfcDoor:23 — no duplicate
 2026-03-19 14:32:02.200 [INFO ] GATE         [G1-COUNT ] RE_SH PASS  ref=58 out=58 delta=+0
-2026-03-19 14:32:02.300 [INFO ] PIPELINE     PIPELINE COMPLETE: Ifc4_SampleHouse — 58 elements
+2026-03-19 14:32:02.300 [INFO ] PIPELINE     PIPELINE COMPLETE: SampleHouse — 58 elements
 # End: 2026-03-19 14:32:02.350
 ```
 

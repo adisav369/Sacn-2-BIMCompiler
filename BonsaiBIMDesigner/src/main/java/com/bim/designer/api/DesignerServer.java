@@ -22,7 +22,7 @@ import java.util.logging.Logger;
  *
  * <p>Request format:
  * <pre>
- * {"action":"compile","buildingId":"Ifc4_SampleHouse","bomDbPath":"library/_SH_compile.db"}
+ * {"action":"compile","buildingId":"SampleHouse","bomDbPath":"library/_SH_compile.db"}
  * {"action":"verb","buildingId":"...","verbLine":"CHECK BOM BUILDING_SH"}
  * {"action":"listBuildings"}
  * {"action":"listCategories","docSubType":"SH"}

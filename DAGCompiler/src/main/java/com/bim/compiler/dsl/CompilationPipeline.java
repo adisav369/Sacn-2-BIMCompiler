@@ -513,6 +513,8 @@ public class CompilationPipeline {
                 // Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 — Witness: W-J4-SHIM-MATCH
                 ShimMatcher shimMatcher = new ShimMatcher();
                 shimMatcher.loadShimAttributes(compConn);
+                // §12g GAP-2+3: Load ARC hosts from BOM for ceiling/floor/wall surface snapping
+                shimMatcher.loadArcHostsFromBom(bomConn);
                 visitor.setShimMatcher(shimMatcher);
 
                 // S150/S151: Wire ERP.db for generative MEP device placement.
@@ -552,6 +554,7 @@ public class CompilationPipeline {
 
                 BOMWalker walker = new BOMWalker(bomConn, compConn);
                 walker.walk(root.getValue(), List.of(visitor), ctx.entry().projectName());
+                visitor.emitGenerativeSummary();
 
                 BIMLogger.fine("COMPILE", "{}: root BOM={}, origin=({},{},{})",
                     ctx.entry().name(), root.getValue(),

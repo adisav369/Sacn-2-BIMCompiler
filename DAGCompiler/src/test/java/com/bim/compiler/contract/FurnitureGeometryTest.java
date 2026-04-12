@@ -36,8 +36,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class FurnitureGeometryTest {
 
     private static String bomDbPath() { return System.getProperty("bom.db"); }
-    private static final String SH_DB = "DAGCompiler/lib/output/ifc4_samplehouse.db";
-    private static final String DX_DB = "DAGCompiler/lib/output/ifc2x3_duplex.db";
+    private static final String SH_DB = "DAGCompiler/lib/output/samplehouse.db";
+    private static final String DX_DB = "DAGCompiler/lib/output/duplex.db";
 
     /** DX Level 2 (Upper storey) floor elevation in metres. */
     private static final double DX_UPPER_Z_M = 3.0;
@@ -47,8 +47,8 @@ class FurnitureGeometryTest {
     private static final double MAX_FURN_H_M = 2.5;
 
     /** Reference (extracted) DBs — ground truth from IFC extraction. */
-    private static final String SH_REF = "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
-    private static final String DX_REF = "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db";
+    private static final String SH_REF = "DAGCompiler/lib/input/SampleHouse_extracted.db";
+    private static final String DX_REF = "DAGCompiler/lib/input/Duplex_extracted.db";
 
     // ─────────────────────────────────────────────────────────────────────────
     // F1/F3 — DX Upper storey furniture must be at Level 2 elevation
@@ -117,14 +117,14 @@ class FurnitureGeometryTest {
     @Test
     @DisplayName("F2-SH: Every SH furniture centroid is inside a known room boundary")
     void f2_shFurnitureCentroidsContained() throws SQLException {
-        checkFurnitureCentroids(SH_DB, "Ifc4_SampleHouse");
+        checkFurnitureCentroids(SH_DB, "SampleHouse");
     }
 
     @Test
     @Disabled("TICKET: DX coordinate frame alignment — unit-local positive Y vs IFC global negative Y")
     @DisplayName("F2-DX: Every DX furniture centroid is inside a calibrated room boundary")
     void f2_dxFurnitureCentroids_validBoundRoomsOnly() throws SQLException {
-        checkFurnitureCentroids(DX_DB, "Ifc2x3_Duplex");
+        checkFurnitureCentroids(DX_DB, "Duplex");
     }
 
     // ─────────────────────────────────────────────────────────────────────────

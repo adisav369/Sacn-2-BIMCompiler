@@ -1,4 +1,4 @@
-# SampleHouse Analysis — Ifc4_SampleHouse Guardrails
+# SampleHouse Analysis — SampleHouse Guardrails
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 <div class="bim-banner" markdown>
@@ -14,7 +14,7 @@
 
 | Property | Value |
 |----------|-------|
-| Name | Ifc4_SampleHouse |
+| Name | SampleHouse |
 | IFC version | IFC4 (single file) |
 | Country | N/A (reference building) |
 | Type | Single-storey residential |
@@ -23,7 +23,7 @@
 | M_Product_Category | RE (Residential) |
 | Prefix | SH |
 | C_DocType_ID | RE_SH |
-| Reference DB | `DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db` |
+| Reference DB | `DAGCompiler/lib/input/SampleHouse_extracted.db` |
 | BOM DB | `library/SH_BOM.db` |
 
 ## Discipline Breakdown (verified against component_library.db)

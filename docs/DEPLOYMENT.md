@@ -115,6 +115,28 @@ This deployment handles 3-10 concurrent users on a single server. For larger tea
 The DAO abstraction isolates all database access — swapping SQLite for PostgreSQL
 changes the connection factory, not the business logic.
 
+## ERP.db — From-Scratch Rebuild
+
+`library/ERP.db` is the seed/reference database (like iDempiere's Application Dictionary).
+It holds discipline metadata, product categories, validation rules, and shared recipes.
+**No manual SQL needed** — `scripts/rebuild_erp.sh` creates it from the migration chain:
+
+```bash
+# Fresh build (schema + seeds only — 928KB, 44 tables, 127 categories)
+./scripts/rebuild_erp.sh
+
+# With per-building validation rules (mined from prior output DBs)
+./scripts/rebuild_erp.sh --with-rules
+
+# Full: schema + rules + pipeline run on SH/DX/RM
+./scripts/rebuild_erp.sh --full
+```
+
+After rebuild, process any IFC with `onboard_ifc.sh` or `run_RosettaStones.sh`.
+`ProductRegistrar` auto-creates M_Product rows and assigns M_Product_Category_ID
+from ifc_class. The discipline chain (`M_Product → M_Product_Category → AD_Org_ID`)
+resolves automatically per [DISC_VALIDATION_DB_SRS.md §6.4](DISC_VALIDATION_DB_SRS.md#64-bom-tree-structure).
+
 ## Pipeline Script Architecture
 
 The pipeline has three independent lifecycle phases. Each phase is a separate

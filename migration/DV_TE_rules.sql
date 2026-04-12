@@ -1,6 +1,6 @@
 -- ════════════════════════════════════════════════════════
--- TE: Airport Terminal (SJTII_Terminal)
--- Source: DAGCompiler/lib/output/sjtii_terminal.db
+-- TE: Airport Terminal (Terminal)
+-- Source: DAGCompiler/lib/output/terminal.db
 -- Generated: 2026-04-03 16:26
 -- ════════════════════════════════════════════════════════
 
@@ -277,7 +277,7 @@
 --     description, provenance)
 -- VALUES ('IfcPlate_Roof', 'IfcPlate', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPlate on Roof: 33324 instances, avg W=496.0 D=150.0 H=106.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '496.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -290,7 +290,7 @@
 --     description, provenance)
 -- VALUES ('IfcPipeFitting_Ground_Floor', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPipeFitting on Ground Floor: 968 instances, avg W=56.0 D=56.0 H=53.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '56.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -303,7 +303,7 @@
 --     description, provenance)
 -- VALUES ('IfcPipeSegment_Ground_Floor', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPipeSegment on Ground Floor: 879 instances, avg W=481.0 D=235.0 H=223.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '481.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -316,7 +316,7 @@
 --     description, provenance)
 -- VALUES ('IfcPipeFitting_Roof', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPipeFitting on Roof: 791 instances, avg W=56.0 D=50.0 H=50.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '56.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -329,7 +329,7 @@
 --     description, provenance)
 -- VALUES ('IfcPipeFitting_Level_4', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPipeFitting on Level 4: 747 instances, avg W=72.0 D=66.0 H=69.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '72.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -342,7 +342,7 @@
 --     description, provenance)
 -- VALUES ('IfcPipeSegment_Roof', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPipeSegment on Roof: 677 instances, avg W=799.0 D=249.0 H=254.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '799.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -355,7 +355,7 @@
 --     description, provenance)
 -- VALUES ('IfcPipeFitting_Level_2', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPipeFitting on Level 2: 652 instances, avg W=65.0 D=55.0 H=54.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '65.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -368,7 +368,7 @@
 --     description, provenance)
 -- VALUES ('IfcPipeFitting_Level_1', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPipeFitting on Level 1: 633 instances, avg W=73.0 D=66.0 H=64.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '73.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -381,7 +381,7 @@
 --     description, provenance)
 -- VALUES ('IfcPipeSegment_Level_2', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPipeSegment on Level 2: 599 instances, avg W=865.0 D=146.0 H=260.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '865.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -394,7 +394,7 @@
 --     description, provenance)
 -- VALUES ('IfcPipeSegment_Level_1', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPipeSegment on Level 1: 581 instances, avg W=950.0 D=249.0 H=190.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '950.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -407,7 +407,7 @@
 --     description, provenance)
 -- VALUES ('IfcPipeSegment_Level_4', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPipeSegment on Level 4: 534 instances, avg W=1585.0 D=544.0 H=145.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1585.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -420,7 +420,7 @@
 --     description, provenance)
 -- VALUES ('IfcSlab_Foundation', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcSlab on Foundation: 413 instances, avg W=1910.0 D=1502.0 H=17371.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1910.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -433,7 +433,7 @@
 --     description, provenance)
 -- VALUES ('IfcPipeSegment_Level_3', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPipeSegment on Level 3: 406 instances, avg W=142.0 D=218.0 H=189.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '142.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -446,7 +446,7 @@
 --     description, provenance)
 -- VALUES ('IfcPipeFitting_Level_3', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPipeFitting on Level 3: 348 instances, avg W=53.0 D=60.0 H=45.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '53.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -459,7 +459,7 @@
 --     description, provenance)
 -- VALUES ('IfcBuildingElementProxy_Ground_Floor', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBuildingElementProxy on Ground Floor: 232 instances, avg W=469.0 D=405.0 H=518.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '469.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -472,7 +472,7 @@
 --     description, provenance)
 -- VALUES ('IfcLightFixture_Ground_Floor', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcLightFixture on Ground Floor: 230 instances, avg W=612.0 D=481.0 H=100.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '612.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -485,7 +485,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctFitting_Level_4', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctFitting on Level 4: 225 instances, avg W=307.0 D=292.0 H=219.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '307.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -498,7 +498,7 @@
 --     description, provenance)
 -- VALUES ('IfcFireSuppressionTerminal_Level_3', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFireSuppressionTerminal on Level 3: 215 instances, avg W=38.0 D=28.0 H=68.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '38.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -511,7 +511,7 @@
 --     description, provenance)
 -- VALUES ('IfcFireSuppressionTerminal_Roof', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFireSuppressionTerminal on Roof: 210 instances, avg W=35.0 D=27.0 H=63.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '35.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -524,7 +524,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctFitting_Level_2', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctFitting on Level 2: 200 instances, avg W=324.0 D=304.0 H=236.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '324.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -537,7 +537,7 @@
 --     description, provenance)
 -- VALUES ('IfcMember_Level_4', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcMember on Level 4: 187 instances, avg W=2443.0 D=204.0 H=2191.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2443.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -550,7 +550,7 @@
 --     description, provenance)
 -- VALUES ('IfcFireSuppressionTerminal_Level_2', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFireSuppressionTerminal on Level 2: 176 instances, avg W=39.0 D=29.0 H=70.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '39.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -563,7 +563,7 @@
 --     description, provenance)
 -- VALUES ('IfcFurniture_Ground_Floor', 'IfcFurniture', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFurniture on Ground Floor: 176 instances, avg W=1869.0 D=1343.0 H=754.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1869.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -576,7 +576,7 @@
 --     description, provenance)
 -- VALUES ('IfcFireSuppressionTerminal_Level_1', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFireSuppressionTerminal on Level 1: 172 instances, avg W=32.0 D=27.0 H=58.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '32.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -589,7 +589,7 @@
 --     description, provenance)
 -- VALUES ('IfcLightFixture_Level_2', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcLightFixture on Level 2: 172 instances, avg W=591.0 D=840.0 H=89.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '591.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -602,7 +602,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctSegment_Level_4', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctSegment on Level 4: 170 instances, avg W=890.0 D=1172.0 H=429.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '890.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -615,7 +615,7 @@
 --     description, provenance)
 -- VALUES ('IfcLightFixture_Level_3', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcLightFixture on Level 3: 153 instances, avg W=492.0 D=983.0 H=90.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '492.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -628,7 +628,7 @@
 --     description, provenance)
 -- VALUES ('IfcBeam_Level_4', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBeam on Level 4: 146 instances, avg W=3022.0 D=3307.0 H=746.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3022.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -641,7 +641,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctSegment_Level_2', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctSegment on Level 2: 145 instances, avg W=934.0 D=1349.0 H=608.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '934.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -654,7 +654,7 @@
 --     description, provenance)
 -- VALUES ('IfcPipeSegment_Foundation', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPipeSegment on Foundation: 145 instances, avg W=1482.0 D=2755.0 H=120.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1482.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -667,7 +667,7 @@
 --     description, provenance)
 -- VALUES ('IfcMember_Roof', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcMember on Roof: 141 instances, avg W=3431.0 D=143.0 H=4142.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3431.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -680,7 +680,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowTerminal_Ground_Floor', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowTerminal on Ground Floor: 140 instances, avg W=409.0 D=430.0 H=543.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '409.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -693,7 +693,7 @@
 --     description, provenance)
 -- VALUES ('IfcBeam_Level_3', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBeam on Level 3: 126 instances, avg W=3386.0 D=2602.0 H=690.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3386.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -706,7 +706,7 @@
 --     description, provenance)
 -- VALUES ('IfcFireSuppressionTerminal_Ground_Floor', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFireSuppressionTerminal on Ground Floor: 125 instances, avg W=53.0 D=32.0 H=93.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '53.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -719,7 +719,7 @@
 --     description, provenance)
 -- VALUES ('IfcBeam_Level_1', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBeam on Level 1: 119 instances, avg W=3493.0 D=2626.0 H=674.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3493.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -732,7 +732,7 @@
 --     description, provenance)
 -- VALUES ('IfcWall_Ground_Floor', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWall on Ground Floor: 118 instances, avg W=2525.0 D=2830.0 H=5678.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2525.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -745,7 +745,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctFitting_Level_1', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctFitting on Level 1: 116 instances, avg W=736.0 D=462.0 H=440.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '736.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -758,7 +758,7 @@
 --     description, provenance)
 -- VALUES ('IfcLightFixture_Level_1', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcLightFixture on Level 1: 115 instances, avg W=1019.0 D=518.0 H=93.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1019.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -771,7 +771,7 @@
 --     description, provenance)
 -- VALUES ('IfcBuildingElementProxy_Level_2', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBuildingElementProxy on Level 2: 109 instances, avg W=858.0 D=1798.0 H=778.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '858.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -784,7 +784,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctFitting_Ground_Floor', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctFitting on Ground Floor: 106 instances, avg W=342.0 D=263.0 H=263.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '342.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -797,7 +797,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctSegment_Level_1', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctSegment on Level 1: 104 instances, avg W=1175.0 D=1804.0 H=472.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1175.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -810,7 +810,7 @@
 --     description, provenance)
 -- VALUES ('IfcPipeFitting_Foundation', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcPipeFitting on Foundation: 104 instances, avg W=126.0 D=145.0 H=127.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '126.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -823,7 +823,7 @@
 --     description, provenance)
 -- VALUES ('IfcWall_Level_2', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWall on Level 2: 96 instances, avg W=3747.0 D=2892.0 H=8069.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3747.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -836,7 +836,7 @@
 --     description, provenance)
 -- VALUES ('IfcWindow_Level_2', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWindow on Level 2: 93 instances, avg W=917.0 D=557.0 H=3246.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '917.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -849,7 +849,7 @@
 --     description, provenance)
 -- VALUES ('IfcAirTerminal_Level_2', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAirTerminal on Level 2: 92 instances, avg W=608.0 D=595.0 H=120.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '608.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -862,7 +862,7 @@
 --     description, provenance)
 -- VALUES ('IfcSlab_Level_3', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcSlab on Level 3: 89 instances, avg W=5168.0 D=3761.0 H=156.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '5168.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -875,7 +875,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctSegment_Ground_Floor', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctSegment on Ground Floor: 87 instances, avg W=791.0 D=1239.0 H=535.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '791.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -888,7 +888,7 @@
 --     description, provenance)
 -- VALUES ('IfcColumn_Level_2', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcColumn on Level 2: 82 instances, avg W=675.0 D=649.0 H=11770.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '675.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -901,7 +901,7 @@
 --     description, provenance)
 -- VALUES ('IfcBuildingElementProxy_Level_3', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBuildingElementProxy on Level 3: 81 instances, avg W=138.0 D=154.0 H=161.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '138.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -914,7 +914,7 @@
 --     description, provenance)
 -- VALUES ('IfcLightFixture_Level_4', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcLightFixture on Level 4: 81 instances, avg W=398.0 D=344.0 H=535.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '398.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -927,7 +927,7 @@
 --     description, provenance)
 -- VALUES ('IfcValve_Ground_Floor', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcValve on Ground Floor: 79 instances, avg W=120.0 D=126.0 H=236.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '120.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -940,7 +940,7 @@
 --     description, provenance)
 -- VALUES ('IfcSlab_Level_1', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcSlab on Level 1: 73 instances, avg W=4917.0 D=3088.0 H=190.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '4917.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -953,7 +953,7 @@
 --     description, provenance)
 -- VALUES ('IfcAirTerminal_Level_4', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAirTerminal on Level 4: 72 instances, avg W=600.0 D=600.0 H=102.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '600.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -966,7 +966,7 @@
 --     description, provenance)
 -- VALUES ('IfcWindow_Ground_Floor', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWindow on Ground Floor: 64 instances, avg W=744.0 D=972.0 H=2491.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '744.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -979,7 +979,7 @@
 --     description, provenance)
 -- VALUES ('IfcDoor_Ground_Floor', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDoor on Ground Floor: 63 instances, avg W=628.0 D=749.0 H=2259.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '628.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -992,7 +992,7 @@
 --     description, provenance)
 -- VALUES ('IfcLightFixture_Roof', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcLightFixture on Roof: 63 instances, avg W=675.0 D=611.0 H=117.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '675.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1005,7 +1005,7 @@
 --     description, provenance)
 -- VALUES ('IfcWindow_Level_3', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWindow on Level 3: 58 instances, avg W=637.0 D=856.0 H=2879.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '637.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1018,7 +1018,7 @@
 --     description, provenance)
 -- VALUES ('IfcSlab_Level_4', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcSlab on Level 4: 57 instances, avg W=3640.0 D=3895.0 H=177.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3640.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1031,7 +1031,7 @@
 --     description, provenance)
 -- VALUES ('IfcAirTerminal_Level_1', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAirTerminal on Level 1: 56 instances, avg W=488.0 D=1340.0 H=167.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '488.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1044,7 +1044,7 @@
 --     description, provenance)
 -- VALUES ('IfcWall_Level_3', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWall on Level 3: 56 instances, avg W=2941.0 D=2651.0 H=4392.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2941.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1057,7 +1057,7 @@
 --     description, provenance)
 -- VALUES ('IfcWall_Roof', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWall on Roof: 53 instances, avg W=3035.0 D=2283.0 H=4569.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3035.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1070,7 +1070,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowTerminal_Level_3', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowTerminal on Level 3: 51 instances, avg W=485.0 D=368.0 H=493.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '485.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1083,7 +1083,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowTerminal_Level_2', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowTerminal on Level 2: 44 instances, avg W=396.0 D=362.0 H=438.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '396.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1096,7 +1096,7 @@
 --     description, provenance)
 -- VALUES ('IfcSlab_Ground_Floor', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcSlab on Ground Floor: 43 instances, avg W=6172.0 D=8432.0 H=81.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '6172.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1109,7 +1109,7 @@
 --     description, provenance)
 -- VALUES ('IfcAlarm_Ground_Floor', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAlarm on Ground Floor: 41 instances, avg W=128.0 D=132.0 H=142.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '128.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1122,7 +1122,7 @@
 --     description, provenance)
 -- VALUES ('IfcCovering_Ground_Floor', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcCovering on Ground Floor: 38 instances, avg W=3762.0 D=5041.0 H=16.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3762.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1135,7 +1135,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctFitting_Level_3', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctFitting on Level 3: 38 instances, avg W=507.0 D=426.0 H=353.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '507.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1148,7 +1148,7 @@
 --     description, provenance)
 -- VALUES ('IfcMember_Ground_Floor', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcMember on Ground Floor: 35 instances, avg W=605.0 D=1780.0 H=1279.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '605.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1161,7 +1161,7 @@
 --     description, provenance)
 -- VALUES ('IfcMember_Level_2', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcMember on Level 2: 34 instances, avg W=622.0 D=1832.0 H=1250.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '622.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1174,7 +1174,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctSegment_Roof', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctSegment on Roof: 32 instances, avg W=1053.0 D=900.0 H=380.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1053.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1187,7 +1187,7 @@
 --     description, provenance)
 -- VALUES ('IfcMember_Level_1', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcMember on Level 1: 32 instances, avg W=658.0 D=1927.0 H=1291.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '658.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1200,7 +1200,7 @@
 --     description, provenance)
 -- VALUES ('IfcColumn_Ground_Floor', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcColumn on Ground Floor: 31 instances, avg W=552.0 D=482.0 H=8000.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '552.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1213,7 +1213,7 @@
 --     description, provenance)
 -- VALUES ('IfcAirTerminal_Ground_Floor', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAirTerminal on Ground Floor: 30 instances, avg W=350.0 D=294.0 H=100.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '350.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1226,7 +1226,7 @@
 --     description, provenance)
 -- VALUES ('IfcColumn_Level_3', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcColumn on Level 3: 30 instances, avg W=545.0 D=459.0 H=3875.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '545.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1239,7 +1239,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctSegment_Level_3', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctSegment on Level 3: 30 instances, avg W=1860.0 D=2282.0 H=495.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1860.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1252,7 +1252,7 @@
 --     description, provenance)
 -- VALUES ('IfcDoor_Level_2', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDoor on Level 2: 29 instances, avg W=440.0 D=763.0 H=2142.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '440.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1265,7 +1265,7 @@
 --     description, provenance)
 -- VALUES ('IfcDuctFitting_Roof', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDuctFitting on Roof: 28 instances, avg W=369.0 D=395.0 H=298.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '369.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1278,7 +1278,7 @@
 --     description, provenance)
 -- VALUES ('IfcBuildingElementProxy_Level_4', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBuildingElementProxy on Level 4: 27 instances, avg W=696.0 D=2063.0 H=554.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '696.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1291,7 +1291,7 @@
 --     description, provenance)
 -- VALUES ('IfcDoor_Level_3', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDoor on Level 3: 27 instances, avg W=481.0 D=789.0 H=2134.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '481.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1304,7 +1304,7 @@
 --     description, provenance)
 -- VALUES ('IfcAirTerminal_Level_3', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAirTerminal on Level 3: 26 instances, avg W=477.0 D=452.0 H=117.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '477.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1317,7 +1317,7 @@
 --     description, provenance)
 -- VALUES ('IfcSlab_Level_2', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcSlab on Level 2: 24 instances, avg W=7544.0 D=5567.0 H=288.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '7544.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1330,7 +1330,7 @@
 --     description, provenance)
 -- VALUES ('IfcBeam_Roof', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBeam on Roof: 21 instances, avg W=2757.0 D=2441.0 H=631.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2757.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1343,7 +1343,7 @@
 --     description, provenance)
 -- VALUES ('IfcBeam_Foundation', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBeam on Foundation: 20 instances, avg W=18755.0 D=22471.0 H=750.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '18755.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1356,7 +1356,7 @@
 --     description, provenance)
 -- VALUES ('IfcBuildingElementProxy_Level_1', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBuildingElementProxy on Level 1: 20 instances, avg W=3232.0 D=1910.0 H=1028.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3232.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1369,7 +1369,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowTerminal_Foundation', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowTerminal on Foundation: 18 instances, avg W=608.0 D=725.0 H=723.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '608.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1382,7 +1382,7 @@
 --     description, provenance)
 -- VALUES ('IfcBuildingElementProxy_Roof', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcBuildingElementProxy on Roof: 17 instances, avg W=1011.0 D=722.0 H=734.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1011.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1395,7 +1395,7 @@
 --     description, provenance)
 -- VALUES ('IfcCovering_Level_2', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcCovering on Level 2: 16 instances, avg W=5254.0 D=4466.0 H=16.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '5254.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1408,7 +1408,7 @@
 --     description, provenance)
 -- VALUES ('IfcCovering_Level_3', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcCovering on Level 3: 16 instances, avg W=6182.0 D=6241.0 H=16.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '6182.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1421,7 +1421,7 @@
 --     description, provenance)
 -- VALUES ('IfcAlarm_Level_2', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAlarm on Level 2: 14 instances, avg W=141.0 D=117.0 H=188.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '141.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1434,7 +1434,7 @@
 --     description, provenance)
 -- VALUES ('IfcAirTerminal_Roof', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAirTerminal on Roof: 13 instances, avg W=600.0 D=600.0 H=102.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '600.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1447,7 +1447,7 @@
 --     description, provenance)
 -- VALUES ('IfcMember_Level_3', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcMember on Level 3: 13 instances, avg W=817.0 D=1661.0 H=1217.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '817.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1460,7 +1460,7 @@
 --     description, provenance)
 -- VALUES ('IfcWindow_Level_1', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWindow on Level 1: 12 instances, avg W=1312.0 D=223.0 H=3624.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1312.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1473,7 +1473,7 @@
 --     description, provenance)
 -- VALUES ('IfcFireSuppressionTerminal_Level_4', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFireSuppressionTerminal on Level 4: 11 instances, avg W=93.0 D=43.0 H=158.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '93.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1486,7 +1486,7 @@
 --     description, provenance)
 -- VALUES ('IfcRailing_Level_1', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcRailing on Level 1: 11 instances, avg W=1412.0 D=2518.0 H=3523.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1412.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1499,7 +1499,7 @@
 --     description, provenance)
 -- VALUES ('IfcValve_Level_4', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcValve on Level 4: 11 instances, avg W=288.0 D=198.0 H=295.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '288.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1512,7 +1512,7 @@
 --     description, provenance)
 -- VALUES ('IfcAlarm_Level_3', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAlarm on Level 3: 10 instances, avg W=162.0 D=93.0 H=217.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '162.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1525,7 +1525,7 @@
 --     description, provenance)
 -- VALUES ('IfcRailing_Level_2', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcRailing on Level 2: 10 instances, avg W=2204.0 D=3064.0 H=4167.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2204.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1538,7 +1538,7 @@
 --     description, provenance)
 -- VALUES ('IfcDoor_Level_4', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDoor on Level 4: 9 instances, avg W=446.0 D=917.0 H=2207.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '446.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1551,7 +1551,7 @@
 --     description, provenance)
 -- VALUES ('IfcElectricAppliance_Level_3', 'IfcElectricAppliance', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcElectricAppliance on Level 3: 9 instances, avg W=70.0 D=65.0 H=87.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '70.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1564,7 +1564,7 @@
 --     description, provenance)
 -- VALUES ('IfcWall_Level_4', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWall on Level 4: 9 instances, avg W=4334.0 D=5263.0 H=7696.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '4334.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1577,7 +1577,7 @@
 --     description, provenance)
 -- VALUES ('IfcAlarm_Level_1', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAlarm on Level 1: 8 instances, avg W=170.0 D=170.0 H=75.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '170.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1590,7 +1590,7 @@
 --     description, provenance)
 -- VALUES ('IfcColumn_Roof', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcColumn on Roof: 8 instances, avg W=750.0 D=750.0 H=4714.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '750.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1603,7 +1603,7 @@
 --     description, provenance)
 -- VALUES ('IfcElectricAppliance_Level_2', 'IfcElectricAppliance', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcElectricAppliance on Level 2: 8 instances, avg W=63.0 D=72.0 H=87.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '63.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1616,7 +1616,7 @@
 --     description, provenance)
 -- VALUES ('IfcStairFlight_Ground_Floor', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcStairFlight on Ground Floor: 8 instances, avg W=1424.0 D=3038.0 H=2098.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1424.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1629,7 +1629,7 @@
 --     description, provenance)
 -- VALUES ('IfcStairFlight_Level_1', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcStairFlight on Level 1: 8 instances, avg W=1437.0 D=3038.0 H=1955.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1437.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1642,7 +1642,7 @@
 --     description, provenance)
 -- VALUES ('IfcStairFlight_Level_2', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcStairFlight on Level 2: 8 instances, avg W=1418.0 D=3038.0 H=1975.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1418.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1655,7 +1655,7 @@
 --     description, provenance)
 -- VALUES ('IfcWindow_Roof', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcWindow on Roof: 8 instances, avg W=1847.0 D=675.0 H=2344.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1847.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1668,7 +1668,7 @@
 --     description, provenance)
 -- VALUES ('IfcCovering_Roof', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcCovering on Roof: 7 instances, avg W=6108.0 D=6257.0 H=16.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '6108.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1681,7 +1681,7 @@
 --     description, provenance)
 -- VALUES ('IfcDoor_Roof', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcDoor on Roof: 7 instances, avg W=296.0 D=902.0 H=2138.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '296.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1694,7 +1694,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowController_Ground_Floor', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowController on Ground Floor: 7 instances, avg W=78.0 D=74.0 H=90.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '78.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1707,7 +1707,7 @@
 --     description, provenance)
 -- VALUES ('IfcValve_Level_3', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcValve on Level 3: 7 instances, avg W=59.0 D=79.0 H=73.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '59.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1720,7 +1720,7 @@
 --     description, provenance)
 -- VALUES ('IfcController_Ground_Floor', 'IfcController', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcController on Ground Floor: 6 instances, avg W=169.0 D=426.0 H=695.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '169.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1733,7 +1733,7 @@
 --     description, provenance)
 -- VALUES ('IfcSlab_Roof', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcSlab on Roof: 6 instances, avg W=6483.0 D=4083.0 H=37.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '6483.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1746,7 +1746,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowController_Roof', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowController on Roof: 5 instances, avg W=98.0 D=87.0 H=194.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '98.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1759,7 +1759,7 @@
 --     description, provenance)
 -- VALUES ('IfcRailing_Ground_Floor', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcRailing on Ground Floor: 5 instances, avg W=2223.0 D=3675.0 H=5156.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2223.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1772,7 +1772,7 @@
 --     description, provenance)
 -- VALUES ('IfcValve_Roof', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcValve on Roof: 5 instances, avg W=238.0 D=169.0 H=202.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '238.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1785,7 +1785,7 @@
 --     description, provenance)
 -- VALUES ('IfcAlarm_Roof', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAlarm on Roof: 4 instances, avg W=149.0 D=64.0 H=195.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '149.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1798,7 +1798,7 @@
 --     description, provenance)
 -- VALUES ('IfcColumn_Level_4', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcColumn on Level 4: 4 instances, avg W=750.0 D=750.0 H=10573.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '750.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1811,7 +1811,7 @@
 --     description, provenance)
 -- VALUES ('IfcCovering_Level_4', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcCovering on Level 4: 4 instances, avg W=5072.0 D=3333.0 H=16.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '5072.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1824,7 +1824,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowController_Level_4', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowController on Level 4: 4 instances, avg W=82.0 D=91.0 H=177.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '82.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1837,7 +1837,7 @@
 --     description, provenance)
 -- VALUES ('IfcRailing_Level_3', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcRailing on Level 3: 4 instances, avg W=3470.0 D=4113.0 H=4940.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3470.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1850,7 +1850,7 @@
 --     description, provenance)
 -- VALUES ('IfcRailing_Roof', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcRailing on Roof: 4 instances, avg W=3472.0 D=4088.0 H=4940.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3472.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1863,7 +1863,7 @@
 --     description, provenance)
 -- VALUES ('IfcStairFlight_Level_4', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcStairFlight on Level 4: 4 instances, avg W=2006.0 D=2772.0 H=1975.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2006.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1876,7 +1876,7 @@
 --     description, provenance)
 -- VALUES ('IfcValve_Level_2', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcValve on Level 2: 4 instances, avg W=94.0 D=124.0 H=152.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '94.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1889,7 +1889,7 @@
 --     description, provenance)
 -- VALUES ('IfcAlarm_Level_4', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcAlarm on Level 4: 3 instances, avg W=152.0 D=100.0 H=182.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '152.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1902,7 +1902,7 @@
 --     description, provenance)
 -- VALUES ('IfcColumn_Level_1', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcColumn on Level 1: 3 instances, avg W=750.0 D=750.0 H=12000.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '750.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1915,7 +1915,7 @@
 --     description, provenance)
 -- VALUES ('IfcFlowController_Level_3', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcFlowController on Level 3: 3 instances, avg W=158.0 D=111.0 H=90.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '158.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
@@ -1928,7 +1928,7 @@
 --     description, provenance)
 -- VALUES ('IfcValve_Foundation', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
 --     'IfcValve on Foundation: 3 instances, avg W=159.0 D=114.0 H=206.0mm',
---     'SJTII_Terminal');
+--     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '159.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)

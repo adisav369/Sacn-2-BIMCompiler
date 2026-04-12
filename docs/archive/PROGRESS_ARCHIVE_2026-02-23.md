@@ -15,7 +15,7 @@ Zero DAGCompiler touch. Zero DB changes — report only.
 Deliverables:
 - `X_AdGeometryMap.java` + `M_AdGeometryMap.java` — typed PO for ad_geometry_map (9 cols)
 - `BuildingInspector.dumpPreflight(String)` — 7 checks (A–G) returning warning count
-- CLI: `java -cp ... BuildingInspector library/component_library.db preflight Ifc2x3_Duplex`
+- CLI: `java -cp ... BuildingInspector library/component_library.db preflight Duplex`
 - Tests: S-ORM-7/S-ORM-8/S-ORM-8b/S-ORM-8c — all GREEN
 
 Issues surfaced (no DB touched):
@@ -37,8 +37,8 @@ Root cause: Three untracked migration files partially applied:
 
 Fixes applied to library DB:
 - `UPDATE ad_element_rule SET is_active=1 WHERE id IN (8189, 8190, 8192)`
-- `UPDATE ad_building_registry SET expected_elements=1206 WHERE building_id='Ifc2x3_Duplex'`
-- `UPDATE ad_building_registry SET expected_elements=71 WHERE building_id='Ifc4_SampleHouse'`
+- `UPDATE ad_building_registry SET expected_elements=1206 WHERE building_id='Duplex'`
+- `UPDATE ad_building_registry SET expected_elements=71 WHERE building_id='SampleHouse'`
 - migration_G8_SH_bom_calibration.sql: added Step 6 activation block
 
 BuildingRegistryTest 4/4 GREEN after fixes.

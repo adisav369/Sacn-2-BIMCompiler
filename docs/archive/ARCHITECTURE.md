@@ -663,7 +663,7 @@ X = grid axis (storey mm), Y = room position (room mm), Z = storey elevation (le
 
 Every placed element has a fully qualified SpaceSize address:
 ```
-Location : Ifc4_SampleHouse
+Location : SampleHouse
 Aisle    : Level_1  →  grid_x=0mm, grid_y=0mm, z_offset=0mm   (storey / grid intersection in mm)
 Bin      : LIVING_ROOM  →  min_x=1620mm, max_x=6265mm, min_y=−1246mm, max_y=4558mm
 Lot      : NORTH_WALL   →  zone depth 700mm from wall face

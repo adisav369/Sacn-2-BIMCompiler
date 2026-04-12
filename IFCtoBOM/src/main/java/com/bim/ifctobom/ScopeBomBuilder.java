@@ -126,8 +126,24 @@ public class ScopeBomBuilder {
             double maxX = aabbSource.stream().mapToDouble(ExtractionElement::maxX).max().orElse(0);
             double minY = aabbSource.stream().mapToDouble(ExtractionElement::minY).min().orElse(0);
             double maxY = aabbSource.stream().mapToDouble(ExtractionElement::maxY).max().orElse(0);
-            double minZ = aabbSource.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
             double maxZ = aabbSource.stream().mapToDouble(ExtractionElement::maxZ).max().orElse(0);
+            // For empty rooms the aabbSource is all storey elements, which includes
+            // the structural slab at Z=0. Use slab top (maxZ of IfcSlab) as floor
+            // finish datum — extracted from geometry, not invented.
+            double minZ;
+            if (assigned.isEmpty()) {
+                OptionalDouble slabTop = elems.stream()
+                    .filter(e -> "IfcSlab".equals(e.ifcClass()))
+                    .mapToDouble(ExtractionElement::maxZ)
+                    .max();
+                minZ = slabTop.isPresent() ? slabTop.getAsDouble()
+                    : aabbSource.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
+                BIMLogger.fine("SCOPE", "emptyRoom '{}' floorFinishZ={:.4f}m (slabTop={}) storeyMin={:.4f}m",
+                    space.spaceName(), minZ, slabTop.isPresent(),
+                    aabbSource.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0));
+            } else {
+                minZ = aabbSource.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
+            }
 
             double setAabbW = (maxX - minX) * 1000;
             double setAabbD = (maxY - minY) * 1000;

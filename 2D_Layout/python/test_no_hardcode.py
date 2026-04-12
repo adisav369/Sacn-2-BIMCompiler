@@ -145,6 +145,8 @@ SCAN_FUNCTIONS = [
     'def write_roof_plan_dxf',
     'def _render_proof',
     'def _draw_sheet_layout',
+    'def write_mep_plan_dxf',
+    'def _draw_mep_symbol',
 ]
 
 

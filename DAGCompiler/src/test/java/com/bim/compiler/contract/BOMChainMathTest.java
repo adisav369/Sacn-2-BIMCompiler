@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>No visual inspection. No Blender. Every assertion is a numerical check
  * against extracted building data in {@code ad_room_boundary}.
  *
- * <p>Scope: SH (Ifc4_SampleHouse) and DX (Ifc2x3_Duplex) — the Rosetta Stones.
+ * <p>Scope: SH (SampleHouse) and DX (Duplex) — the Rosetta Stones.
  * These are the examples of the correct process. Once they pass, every new
  * building passes the same maths automatically.
  *
@@ -54,7 +54,7 @@ class BOMChainMathTest {
     // ─────────────────────────────────────────────────────────────────────────
 
     @ParameterizedTest(name = "C1 [{0}] BOM anchors have non-zero spacing facts")
-    @ValueSource(strings = {"Ifc4_SampleHouse", "Ifc2x3_Duplex"})
+    @ValueSource(strings = {"SampleHouse", "Duplex"})
     void c1_spacingFactsPresent(String building) throws SQLException {
         String sql = """
             SELECT element_ref, width_mm, depth_mm, height_extent_mm
@@ -83,7 +83,7 @@ class BOMChainMathTest {
     // ─────────────────────────────────────────────────────────────────────────
 
     @ParameterizedTest(name = "C2 [{0}] Anchor width_mm agrees with room boundary")
-    @ValueSource(strings = {"Ifc4_SampleHouse", "Ifc2x3_Duplex"})
+    @ValueSource(strings = {"SampleHouse", "Duplex"})
     void c2_widthMatchesBoundary(String building) throws SQLException {
         String sql = """
             SELECT er.element_ref,
@@ -119,7 +119,7 @@ class BOMChainMathTest {
     // ─────────────────────────────────────────────────────────────────────────
 
     @ParameterizedTest(name = "C3 [{0}] Anchor depth_mm agrees with room boundary")
-    @ValueSource(strings = {"Ifc4_SampleHouse", "Ifc2x3_Duplex"})
+    @ValueSource(strings = {"SampleHouse", "Duplex"})
     void c3_depthMatchesBoundary(String building) throws SQLException {
         String sql = """
             SELECT er.element_ref,
@@ -155,7 +155,7 @@ class BOMChainMathTest {
     // ─────────────────────────────────────────────────────────────────────────
 
     @ParameterizedTest(name = "C4 [{0}] All anchor host_refs exist in ad_room_boundary")
-    @ValueSource(strings = {"Ifc4_SampleHouse", "Ifc2x3_Duplex"})
+    @ValueSource(strings = {"SampleHouse", "Duplex"})
     void c4_hostRefNotDangling(String building) throws SQLException {
         String sql = """
             SELECT er.element_ref, er.host_ref
@@ -251,7 +251,7 @@ class BOMChainMathTest {
     // ─────────────────────────────────────────────────────────────────────────
 
     @ParameterizedTest(name = "C7 [{0}] UNIT Orderline exists (BOM-2c chain live)")
-    @ValueSource(strings = {"Ifc4_SampleHouse", "Ifc2x3_Duplex"})
+    @ValueSource(strings = {"SampleHouse", "Duplex"})
     void c7_bomAnchorsExist(String building) throws SQLException {
         // Phase BOM-2c: ROOM anchors deactivated; check UNIT Orderlines (host_type='BUILDING') instead
         String sql = """

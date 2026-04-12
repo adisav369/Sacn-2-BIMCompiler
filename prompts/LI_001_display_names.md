@@ -19,7 +19,7 @@ Current naming falls into three tiers of quality:
 |------|---------|---------|--------|
 | **Good** | Human-readable Revit/JKR family name | `"jkrME18_spr_sprinkler head_pendent"`, `"Canteen Table"` | Keep as-is |
 | **Acceptable** | Cleaned IFC class + descriptor | `"Non-Monolithic Run"`, `"Ceiling Mounted Return Air Grille"` | Keep, may trim |
-| **Poor** | Auto-generated hash suffix | `"IfcPlate_Ifc4_SampleHouse_254339e1"`, `"IfcCovering_SJTII_Terminal_b5186629"` | Replace |
+| **Poor** | Auto-generated hash suffix | `"IfcPlate_SampleHouse_254339e1"`, `"IfcCovering_Terminal_b5186629"` | Replace |
 
 The chooser (ProjectOrderBlueprint.md §10.2) needs display names users can scan:
 `"Wall Toilet 450×350×820 (HTM-63)"` not `"IfcBuildingElementProxy_Hospital_a3f7c..."`.
@@ -67,9 +67,9 @@ Per `ProjectOrderBlueprint.md §10.2`, the naming formula is:
 ```
 
 Examples:
-- `IfcPlate_Ifc4_SampleHouse_254339e1` → `Plate 600×600×25mm`
-- `IfcWall_Ifc4_SampleHouse_e03daebb` → `Wall 200mm`
-- `IfcCovering_SJTII_Terminal_b5186629` → `Ceiling Covering 1200×600mm`
+- `IfcPlate_SampleHouse_254339e1` → `Plate 600×600×25mm`
+- `IfcWall_SampleHouse_e03daebb` → `Wall 200mm`
+- `IfcCovering_Terminal_b5186629` → `Ceiling Covering 1200×600mm`
 - `Toilet-Wall-Mounted_:Toilet-Wall-Mounted:454944` → `Wall Toilet 450×350×820mm`
 - `M_Sink - Island - Single:455 mmx455 mm - Public:625957` → `Island Sink 455×455mm (clinical)`
 

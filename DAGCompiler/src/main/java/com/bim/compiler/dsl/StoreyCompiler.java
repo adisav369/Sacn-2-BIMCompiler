@@ -184,7 +184,7 @@ class StoreyCompiler {
 
         boolean hasMetadata = PlacementLoader.getInstance().hasPlacement(building.name());
         if (!hasMetadata) {
-            // Multi-unit: try parent building name (e.g., "Ifc2x3_Duplex_A" → "Ifc2x3_Duplex")
+            // Multi-unit: try parent building name (e.g., "Duplex_A" → "Duplex")
             String name = building.name();
             int lastUnderscore = name.lastIndexOf('_');
             if (lastUnderscore > 0) {

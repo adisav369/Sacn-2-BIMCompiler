@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class CheckPlacementClashTest {
 
     private static final String DUPLEX_EXTRACTED =
-            "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db";
+            "DAGCompiler/lib/input/Duplex_extracted.db";
     private static final String TERMINAL_EXTRACTED =
             "DAGCompiler/lib/input/Terminal_Extracted.db";
 

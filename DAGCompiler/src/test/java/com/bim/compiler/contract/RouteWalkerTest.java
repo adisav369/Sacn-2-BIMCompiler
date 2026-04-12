@@ -21,9 +21,9 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class RouteWalkerTest {
 
-    private static final String COMPILE_DB = "DAGCompiler/lib/output/revit_mep.db";
+    private static final String COMPILE_DB = "DAGCompiler/lib/output/hospitalauckland.db";
     private static final String ERP_DB     = "library/ERP.db";
-    private static final String BUILDING   = "Revit_MEP";
+    private static final String BUILDING   = "HospitalAuckland";
 
     // FIXTURE count from 00q: 11
     private static final int FIXTURE_COUNT = 11;
@@ -40,7 +40,7 @@ class RouteWalkerTest {
             int count = queryInt(conn,
                 "SELECT COUNT(*) FROM c_orderline WHERE Discipline='CW' AND family_ref='MEP_ROUTE'");
             assertTrue(count > 0,
-                "[W-PATTERN-CW] No CW MEP_ROUTE rows in revit_mep.db — RouteWalker did not emit CW lines");
+                "[W-PATTERN-CW] No CW MEP_ROUTE rows in hospitalauckland.db — RouteWalker did not emit CW lines");
         }
     }
 

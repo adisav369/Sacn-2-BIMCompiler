@@ -1782,6 +1782,79 @@ centre (cx, cy, cz). If the element has two spatially distinct ends (length > 3�
 emit two anchors (start and end). Otherwise emit one anchor at centre. Fixture-type elements
 (toilet/sink/drain keywords) are typed as FIXTURE.
 
+#### 1b. Port-Graph Enrichment — Authored Connectivity (Future)
+
+**Principle:** Prefer authored IFC connectivity over spatial inference when available.
+IFC models with proper MEP modeling carry `IfcDistributionPort` entities on each
+fitting/segment, connected via `IfcRelConnectsPorts`. This is a directed graph
+(SOURCE→SINK) with system membership (`IfcSystem`). When present, this is more
+stable than inferring connectivity from spatial proximity.
+
+**Reality check — not all IFC carries ports:**
+
+| LOD / Source | Ports present? | Anchor strategy |
+|-------------|---------------|-----------------|
+| LOD400+ (Revit MEP, OpenPlant) | Yes — full port graph | Use authored connectivity |
+| LOD300 (generic modelers) | Partial — some fittings have ports | Authored where available, infer remainder |
+| LOD200 / IFC2x3 legacy | No — bare geometry only | Spatial inference only (current path) |
+| Generative (RouteWalker output) | N/A — no IFC source | Pattern-based (§6.12.3 §3) |
+
+**Extraction enhancement in IFCtoERP (at extraction time only):**
+```python
+from ifcopenshell.util.system import (
+    get_ports, get_connected_to, get_connected_from,
+    get_element_systems
+)
+
+for element in mep_elements:
+    ports = get_ports(element)
+    if ports:  # authored connectivity exists
+        for port in ports:
+            downstream = get_connected_to(element)
+            upstream   = get_connected_from(element)
+            systems    = get_element_systems(element)
+            # write to mep_connectivity with source='authored'
+    else:
+        # fall back to spatial proximity anchors with source='inferred'
+```
+
+**New table** — `mep_connectivity` in extracted DB (not ERP.db — raw extraction data):
+```sql
+CREATE TABLE mep_connectivity (
+    from_guid       TEXT NOT NULL,
+    to_guid         TEXT NOT NULL,
+    port_type       TEXT,            -- SINK, SOURCE, SOURCEANDSINK
+    flow_direction  TEXT,            -- same as port_type, explicit for clarity
+    system_name     TEXT,            -- IfcSystem.Name (e.g. 'Cold Water', 'Sprinkler')
+    system_type     TEXT,            -- IfcSystem class (IfcDistributionSystem etc.)
+    source          TEXT NOT NULL DEFAULT 'inferred'
+                    CHECK(source IN ('authored','inferred')),
+    PRIMARY KEY (from_guid, to_guid)
+);
+```
+
+**How RouteWalker benefits:**
+- For buildings with authored ports: `mep_connectivity WHERE source='authored'`
+  gives the directed graph directly. Pattern matching validates against it
+  rather than replacing it. Anchors are still extracted but connectivity is
+  pre-resolved — no proximity guessing.
+- For buildings without ports: unchanged. Spatial inference → anchors → pattern
+  application. The `source='inferred'` flag makes the quality level explicit.
+- **Cross-check gate (future):** when both authored and inferred exist, compare
+  them. Divergence flags extraction bugs or broken IFC port modeling.
+
+**Does not change:** §6.12.1 isolation invariant (extraction-time only),
+RouteWalker interface (reads anchors + patterns from ERP.db), compile-time
+contract. IFCtoERP populates `mep_connectivity` during extraction alongside
+anchors. DAGCompiler reads it from ERP.db if present, ignores if absent.
+
+**S173 implementation refs:**
+- Schema: `extractIFCtoDB.py` REFERENCE_SCHEMA — `port_elements`, `port_connections` tables
+- Extraction: TODO — extract from `IfcRelConnectsPorts` + `IfcRelConnectsPortToElement`
+- Load-time rotation proof: `scripts/stress_blender_test.py` §PROOF PORT_CONNECT
+  (reconstruct port world position via `rot @ local_offset + centre`, connected ports must meet)
+- See also: `docs/DISC_VALIDATE_SRS.md` §6.2.1
+
 #### 2. Pattern — Topology Rows in `ad_mep_pattern`
 
 A pattern is a sequence of routing steps mined from a discipline-complete building. Each row is

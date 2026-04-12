@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class PlacementCollectorVisitorTest {
 
     private static final String BOM_DB = "jdbc:sqlite:" + System.getProperty("bom.db");
-    private static final String SH_BT = "Ifc4_SampleHouse";
+    private static final String SH_BT = "SampleHouse";
     private static final String BUILDING_SH = "BUILDING_SH_STD";
     private static final double TOLERANCE = 0.001; // 1mm
 

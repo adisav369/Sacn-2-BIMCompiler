@@ -68,4 +68,26 @@ echo "--- Total ---" >> "$LOG"
 sqlite3 "$DB" "SELECT COUNT(*) FROM elements_meta;" >> "$LOG"
 
 echo "" >> "$LOG"
+echo "--- Camera tracking witness (W-SITE-Z-1) ---" >> "$LOG"
+# Witness: view_center_z must lie within [min_z, max_z] of element_transforms.
+# The camera must track the building regardless of whether site Z was normalised.
+# A camera outside the element Z range means the target was computed from stale data.
+VIEW_Z=$(sqlite3 "$DB" "SELECT CAST(value AS REAL) FROM project_metadata WHERE key='view_center_z';" 2>/dev/null)
+MIN_Z=$(sqlite3 "$DB" "SELECT MIN(center_z) FROM element_transforms;" 2>/dev/null)
+MAX_Z=$(sqlite3 "$DB" "SELECT MAX(center_z) FROM element_transforms;" 2>/dev/null)
+echo "  view_center_z : $VIEW_Z" >> "$LOG"
+echo "  element Z range: $MIN_Z → $MAX_Z" >> "$LOG"
+if [ -n "$VIEW_Z" ]; then
+    RESULT=$(python3 -c "
+vz=$VIEW_Z; mn=$MIN_Z; mx=$MAX_Z
+if not (mn <= vz <= mx):
+    print('FAIL: view_center_z={:.2f}m outside element Z range [{:.2f},{:.2f}]'.format(vz,mn,mx))
+else:
+    print('PASS: view_center_z={:.2f}m within range [{:.2f},{:.2f}]'.format(vz,mn,mx))
+" 2>/dev/null)
+    echo "  W-SITE-Z-1: $RESULT" >> "$LOG"
+    echo "  W-SITE-Z-1: $RESULT"
+fi
+
+echo "" >> "$LOG"
 echo "Verification complete: $LOG"

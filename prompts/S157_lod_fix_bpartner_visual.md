@@ -197,7 +197,7 @@ In BIM Designer, user selects building → sees products from matching BPartner 
 - S24 W-BPARTNER witness added to `docs/TestArchitecture.md` Traceability Matrix
 
 **Next session (S158):**
-1. Fix `IFCtoBOM/src/test/java/com/bim/ifctobom/SHPipelineTest.java` expected counts for 4-room SH
-2. Investigate floating devices (P3b) — run pipeline with FINE logging, grep ARC_MISS
-3. Verify Bonsai display names in actual Bonsai (P2 visual verification)
-4. Consider reducing geometry_fail_threshold for SH/DX (P1 gate)
+1. ~~Fix `IFCtoBOM/src/test/java/com/bim/ifctobom/SHPipelineTest.java` expected counts for 4-room SH~~ **DONE (2026-04-08)** — 21/21 PASS. structuralLines 41→37, setLines 14→11, total 55→48. New SET BOM IDs, removed component_type='LEAF'/'MAKE' filters, floor IDs updated.
+2. ~~Investigate floating devices (P3b)~~ **DONE (2026-04-08)** — Data analysis (elements_rtree): SH devices correctly placed (Pendant/Sprinkler maxZ=2.667m vs ceiling minZ=2.670m, 3mm gap = flush). DX: maxZ=4.147m vs ceiling 4.150m. Wall switches at correct heights. AABB data is correct. LOD_LOD_ fix confirmed: 0 double-prefix hashes in samplehouse.db (SPRINKLER×12, SUPPLY_DIFFUSER×3 all clean). Floating may be visual perception in Bonsai (no ceiling mesh visible in stage1 wireframe) — cannot confirm without running Bonsai. Deferred to visual verification session.
+3. Verify Bonsai display names in actual Bonsai (P2 visual verification) — deferred (needs Bonsai)
+4. ~~Consider reducing geometry_fail_threshold~~ **DEFERRED** — Needs full BuildingRegistryTest run with ERP.db setup (currently fails on missing m_bom table). Current: SH=9, DX=36. LOD_LOD_ confirmed 0 — actual fail count unknown without DAGCompiler pipeline run.

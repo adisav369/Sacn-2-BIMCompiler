@@ -10,7 +10,7 @@ Callable standalone or imported by RosettaStoneToBOM.py.
 
 Usage:
     python scripts/RosettaStoneExtract.py                    # all configured buildings
-    python scripts/RosettaStoneExtract.py Ifc4_SampleHouse   # single building
+    python scripts/RosettaStoneExtract.py SampleHouse   # single building
 """
 
 import sqlite3

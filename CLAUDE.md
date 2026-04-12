@@ -27,6 +27,11 @@ Before ending, update PROGRESS.md with:
 - Update MEMORY.md (witness/verb counts), SCHEMA_QUICKREF.md (row counts). Delete obsolete topic files. Keep MEMORY.md ≤80 lines, CLAUDE.md ≤45 lines. Screenshots: `~/Pictures/Screenshots/`
 - If PROGRESS.md > 80 lines, archive DONE items as single-line pointers to spec docs
 
+## Watchdog Protocol (runs in same session after every coder task)
+- Read the coder's `# DONE` appendix — every claim must have a `§` log line proving it. No log line = not done. Flag it.
+- Read `OPEN_ISSUES.txt` (mirrors §18.1 open issues) — an issue is only removed when a `§` log line in this session proves it fixed. No log line = stays open.
+- If log doesn't cover a claim — coder must add `_log()`, rerun, and produce the evidence before closing.
+
 ## Standing Rules
 - One bounded task per session
 - Witnesses prove; SanityCheck is fallback

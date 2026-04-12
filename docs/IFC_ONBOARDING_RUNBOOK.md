@@ -87,9 +87,9 @@ python3 tools/extract.py --to reference DAGCompiler/lib/input/IFC/source.ifc \
 
 | Proven names | Pattern |
 |-------------|---------|
-| `Ifc4_SampleHouse` | `{Schema}_{Name}` for standard buildings |
-| `Ifc2x3_Duplex` | `{Schema}_{Name}` for IFC2x3 |
-| `SJTII_Terminal` | `{Project}_{Name}` for commercial |
+| `SampleHouse` | `{Schema}_{Name}` for standard buildings |
+| `Duplex` | `{Schema}_{Name}` for IFC2x3 |
+| `Terminal` | `{Project}_{Name}` for commercial |
 | `PCERT_Infra_Bridge_IFC4X3` | `{Source}_{Type}_{Schema}` for infrastructure |
 
 **Output tables** (`{TYPE}_extracted.db`):

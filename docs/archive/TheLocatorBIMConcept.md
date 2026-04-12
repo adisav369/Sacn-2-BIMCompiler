@@ -54,7 +54,7 @@ The structural grid (`ad_building_grid`) is not just a reference overlay.
 **Each grid line IS a zone** — the physical wall face that furniture is placed against.
 
 ```
-ad_building_grid for Ifc4_SampleHouse:
+ad_building_grid for SampleHouse:
   X axis:  A(-7710)  B(-6101)  C(-4468)  D(-2834)  E(1572)  F(1667)  G(6120)  H(6410)
   Y axis:  1(-1391)  2(-1221)  3(-1101)  4(638)    5(851)   6(946)   7(2523)  8(4408)  9(4698)
 ```
@@ -128,7 +128,7 @@ progressively tagged as the DSL compiles.
 
 ```
 wm_empty_storage_line {
-    building_type = 'Ifc4_SampleHouse'
+    building_type = 'SampleHouse'
     locator_ref   = 'BUILDING'
     doc_status    = 'AVAIL'          ← exists, empty, waiting
     capacity_mm   = total extent     ← computed from grid bounds

@@ -33,8 +33,8 @@ class SpatialPlacementVisitorTest {
     }
 
     // building_type keys in c_orderline (IFC-origin names, not c_bpartner codes)
-    private static final String SH_BT = "Ifc4_SampleHouse";
-    private static final String DX_BT = "Ifc2x3_Duplex";
+    private static final String SH_BT = "SampleHouse";
+    private static final String DX_BT = "Duplex";
 
     // ── W-SPV-1: SH placement count parity ───────────────────────────────────
 

@@ -176,7 +176,7 @@ List<M_AdRoomBoundary> rooms =
             "br." + X_C_Order.COLUMNNAME_building_id +
             " = rb." + X_AdRoomBoundary.COLUMNNAME_building_type)
         .where("rb." + X_AdRoomBoundary.COLUMNNAME_building_type + " = ?",
-               "Ifc4_SampleHouse")
+               "SampleHouse")
         .list();
 
 // Existence check
@@ -311,7 +311,7 @@ The G8 bug (SH furniture placed at wrong IFC coordinates) was diagnosed using:
 
 ```bash
 # Step 1: Check what the DB actually has for SH room boundaries
-mvn -pl ORMSandbox exec:java ... -Dexec.args="library/component_library.db rooms Ifc4_SampleHouse"
+mvn -pl ORMSandbox exec:java ... -Dexec.args="library/component_library.db rooms SampleHouse"
 
 # Output showed:
 # [42] ROOM_Ground_Floor_1  type=LIVING  frame=IFC_GLOBAL_MM
@@ -457,7 +457,7 @@ time. The historical column-name bugs (`element_guid`, `width_mm`, `label`,
 
 `BuildingInspector` turns a multi-step investigation into a single command.
 The G8 frame-of-reference bug diagnosis — which previously required multiple
-sessions — was completed in one session using `rooms Ifc4_SampleHouse` and
+sessions — was completed in one session using `rooms SampleHouse` and
 `bom BED_SET_MASTER`. This is the highest-value output of the framework.
 
 ### 8.3 Domain Coherence

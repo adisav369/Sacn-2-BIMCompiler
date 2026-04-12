@@ -269,6 +269,15 @@ public class OrderLineProductCallout {
     // Implementing BBC.md §3.6 — Witness: W-DISC-QTY-1
     public static int expandDisciplineLines(Connection compileDb, Connection erpDb,
                                              String orderId) throws SQLException {
+        // Read C_BPartner_ID from C_Order header (iDempiere: order owns the BPartner)
+        int bpartnerId = 0;
+        try (PreparedStatement bpPs = compileDb.prepareStatement(
+                "SELECT C_BPartner_ID FROM C_Order WHERE Value = ?")) {
+            bpPs.setString(1, orderId);
+            try (ResultSet rs = bpPs.executeQuery()) {
+                if (rs.next()) bpartnerId = rs.getInt(1);
+            }
+        }
         // Find all DISCIPLINE OrderLines for this order
         String selectDisc = "SELECT C_OrderLine_ID, family_ref, AD_Org_ID, Discipline "
                           + "FROM C_OrderLine WHERE C_Order_ID = ? AND host_type = 'DISCIPLINE' "
@@ -297,15 +306,17 @@ public class OrderLineProductCallout {
 
                     // MEP recipe bridge — Witness: W-J1-RECIPE-LINK
                     // Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 recipe consumption
-                    // Read BOM children from ERP.db for this discipline recipe
-                    String selectChildren = "SELECT bl.M_BOM_Line_ID, bl.child_product_id, bl.qty, bl.dz "
-                                          + "FROM M_BOM_Line bl "
-                                          + "JOIN M_BOM b ON bl.M_BOM_ID = b.M_BOM_ID "
-                                          + "WHERE b.Value = ? AND bl.IsActive = 'Y' "
-                                          + "ORDER BY bl.sequence";
+                    // C_BPartner_ID filter: every BOM has a C_BPartner_ID (no NULLs)
+                    String selectChildren =
+                              "SELECT bl.M_BOM_Line_ID, bl.child_product_id, bl.qty, bl.dz "
+                            + "FROM M_BOM_Line bl "
+                            + "JOIN M_BOM b ON bl.M_BOM_ID = b.M_BOM_ID "
+                            + "WHERE b.Value = ? AND b.C_BPartner_ID = ? AND bl.IsActive = 'Y' "
+                            + "ORDER BY bl.sequence";
 
                     try (PreparedStatement childPs = erpDb.prepareStatement(selectChildren)) {
                         childPs.setString(1, bomValue);
+                        childPs.setInt(2, bpartnerId);
                         try (ResultSet childRs = childPs.executeQuery()) {
                             while (childRs.next()) {
                                 int erpBomLineId = childRs.getInt("M_BOM_Line_ID");

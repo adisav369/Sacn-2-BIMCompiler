@@ -100,7 +100,7 @@ echo "" >> $OUT
 echo "=== SECTION 8: LIVE PROOF — Placement data in output.db ===" >> $OUT
 echo "--------------------------------------------------------------------------" >> $OUT
 echo "--- SH output: first 5 elements with world coordinates ---" >> $OUT
-sqlite3 -header DAGCompiler/lib/output/ifc4_samplehouse.db \
+sqlite3 -header DAGCompiler/lib/output/samplehouse.db \
   "SELECT em.guid, em.ifc_class, em.storey, em.material_name,
           rt.minX, rt.maxX, rt.minY, rt.maxY, rt.minZ, rt.maxZ
    FROM elements_meta em
@@ -108,7 +108,7 @@ sqlite3 -header DAGCompiler/lib/output/ifc4_samplehouse.db \
    LIMIT 5;" >> $OUT 2>&1
 echo "" >> $OUT
 echo "--- SH reference: same 5 elements (must match above) ---" >> $OUT
-sqlite3 -header DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+sqlite3 -header DAGCompiler/lib/input/SampleHouse_extracted.db \
   "SELECT em.guid, em.ifc_class, em.storey, em.material_name,
           rt.minX, rt.maxX, rt.minY, rt.maxY, rt.minZ, rt.maxZ
    FROM elements_meta em
@@ -145,15 +145,15 @@ sqlite3 -header library/_SH_compile.db \
    FROM M_Product WHERE product_id='$FIRST_PRODUCT';" >> $OUT 2>&1
 echo "" >> $OUT
 echo "--- Step E: The same element in compiled output.db ---" >> $OUT
-FIRST_GUID=$(sqlite3 DAGCompiler/lib/output/ifc4_samplehouse.db "SELECT guid FROM elements_meta LIMIT 1;")
-sqlite3 -header DAGCompiler/lib/output/ifc4_samplehouse.db \
+FIRST_GUID=$(sqlite3 DAGCompiler/lib/output/samplehouse.db "SELECT guid FROM elements_meta LIMIT 1;")
+sqlite3 -header DAGCompiler/lib/output/samplehouse.db \
   "SELECT em.guid, em.ifc_class, em.storey, em.material_name,
           rt.minX, rt.maxX, rt.minY, rt.maxY, rt.minZ, rt.maxZ
    FROM elements_meta em JOIN elements_rtree rt ON em.id = rt.id
    WHERE em.guid='$FIRST_GUID';" >> $OUT 2>&1
 echo "" >> $OUT
 echo "--- Step F: The same element in reference (IFC extraction oracle) ---" >> $OUT
-sqlite3 -header DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+sqlite3 -header DAGCompiler/lib/input/SampleHouse_extracted.db \
   "SELECT em.guid, em.ifc_class, em.storey, em.material_name,
           rt.minX, rt.maxX, rt.minY, rt.maxY, rt.minZ, rt.maxZ
    FROM elements_meta em JOIN elements_rtree rt ON em.id = rt.id
@@ -166,11 +166,11 @@ echo "" >> $OUT
 # ── SECTION 10: G1-COUNT — Element count verification ────────────────────
 echo "=== SECTION 10: G1-COUNT — Element count match ===" >> $OUT
 echo "--------------------------------------------------------------------------" >> $OUT
-REF_SH=$(sqlite3 DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db "SELECT COUNT(*) FROM elements_meta;")
-OUT_SH=$(sqlite3 DAGCompiler/lib/output/ifc4_samplehouse.db "SELECT COUNT(*) FROM elements_meta;")
+REF_SH=$(sqlite3 DAGCompiler/lib/input/SampleHouse_extracted.db "SELECT COUNT(*) FROM elements_meta;")
+OUT_SH=$(sqlite3 DAGCompiler/lib/output/samplehouse.db "SELECT COUNT(*) FROM elements_meta;")
 echo "SH: reference=$REF_SH  compiled=$OUT_SH  delta=$((OUT_SH - REF_SH))" >> $OUT
-REF_DX=$(sqlite3 DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db "SELECT COUNT(*) FROM elements_meta;")
-OUT_DX=$(sqlite3 DAGCompiler/lib/output/ifc2x3_duplex.db "SELECT COUNT(*) FROM elements_meta;")
+REF_DX=$(sqlite3 DAGCompiler/lib/input/Duplex_extracted.db "SELECT COUNT(*) FROM elements_meta;")
+OUT_DX=$(sqlite3 DAGCompiler/lib/output/duplex.db "SELECT COUNT(*) FROM elements_meta;")
 echo "DX: reference=$REF_DX  compiled=$OUT_DX  delta=$((OUT_DX - REF_DX))" >> $OUT
 echo "" >> $OUT
 

@@ -14,7 +14,7 @@ buildings:
 
   # --- EXTRACTED buildings (IFC reference source) ---
 
-  Ifc4_SampleHouse:
+  SampleHouse:
     prefix: SH
     doc_type_id: RE_SH
     name: Sample House
@@ -24,8 +24,8 @@ buildings:
     provenance: EXTRACTED
     climate: SCAN
     expected_elements: 58       # TODO: derive from extraction (§10.3)
-    output_path: DAGCompiler/lib/output/ifc4_samplehouse.db
-    reference_path: DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
+    output_path: DAGCompiler/lib/output/samplehouse.db
+    reference_path: DAGCompiler/lib/input/SampleHouse_extracted.db
     building_bom_id: BUILDING_SH_STD
     seq_no: 10
     storeys:
@@ -33,7 +33,7 @@ buildings:
       Roof:         { code: ROOF, product_category: RF, role: ROOF,         seq: 1020 }
       Unknown:      { code: CW,   product_category: CW, role: CURTAIN_WALL, seq: 1030 }
 
-  Ifc2x3_Duplex:
+  Duplex:
     prefix: DX
     doc_type_id: RE_DX
     name: Duplex
@@ -44,8 +44,8 @@ buildings:
     climate: SCAN
     expected_elements: 1099     # TODO: derive from extraction (§10.3)
     geometry_fail_threshold: 5
-    output_path: DAGCompiler/lib/output/ifc2x3_duplex.db
-    reference_path: DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db
+    output_path: DAGCompiler/lib/output/duplex.db
+    reference_path: DAGCompiler/lib/input/Duplex_extracted.db
     building_bom_id: BUILDING_DX_STD
     seq_no: 20
     storeys:
@@ -174,7 +174,7 @@ buildings:
 
   # --- COMMERCIAL buildings ---
 
-  SJTII_Terminal:
+  Terminal:
     prefix: TE
     doc_type_id: CO_TE
     name: Airport Terminal
@@ -185,7 +185,7 @@ buildings:
     climate: INST
     expected_elements: 48428    # 51088 - 2660 REBAR (deferred to IfcOpenShell)
     geometry_fail_threshold: 8
-    output_path: DAGCompiler/lib/output/sjtii_terminal.db
+    output_path: DAGCompiler/lib/output/terminal.db
     reference_path: DAGCompiler/lib/input/Terminal_Extracted.db
     building_bom_id: BUILDING_TE_STD
     seq_no: 40

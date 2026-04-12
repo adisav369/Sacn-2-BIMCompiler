@@ -9,7 +9,7 @@ import java.sql.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Full pipeline test for DX (Ifc2x3_Duplex).
+ * Full pipeline test for DX (Duplex).
  *
  * <p>Runs the complete IFC-to-BOM pipeline against classify_dx.yaml
  * and verifies half-unit composition, pair container, rotation,
@@ -45,7 +45,7 @@ class DXPipelineTest {
 
     @Test @Order(1)
     void g1_buildingType() {
-        assertEquals("Ifc2x3_Duplex", result.buildingType());
+        assertEquals("Duplex", result.buildingType());
     }
 
     @Test @Order(2)

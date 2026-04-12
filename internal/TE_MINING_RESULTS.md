@@ -6,7 +6,7 @@
 </div>
 
 **Date:** 2026-03-18 (session 21)
-**Source:** `component_library.db` / `I_Element_Extraction` WHERE building_type='SJTII_Terminal'
+**Source:** `component_library.db` / `I_Element_Extraction` WHERE building_type='Terminal'
 **Element count:** 48,428
 
 ---
@@ -257,4 +257,4 @@ is sidestepped entirely by computing from the semantic data layer.
 
 ---
 
-*Source queries: DocValidate.md §7.4 + extensions. All data from SJTII_Terminal (48,428 elements).*
+*Source queries: DocValidate.md §7.4 + extensions. All data from Terminal (48,428 elements).*

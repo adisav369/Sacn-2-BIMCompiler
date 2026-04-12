@@ -595,7 +595,7 @@ end-to-end and capture the result.
 ### §4.4 Wire Action (optional — for programmatic screenshot)
 
 ```
-→ {"action":"screenshot","buildingId":"Ifc4_SampleHouse","outputPath":"/tmp/sh_3d.png"}
+→ {"action":"screenshot","buildingId":"SampleHouse","outputPath":"/tmp/sh_3d.png"}
 ← {"success":true,"path":"/tmp/sh_3d.png","elementCount":58,"format":"PNG"}
 ```
 

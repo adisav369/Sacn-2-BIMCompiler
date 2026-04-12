@@ -57,7 +57,7 @@ class BomChainIntegrityTest {
 
     // ─────────────────────────────────────────────────────────────────────────
     // R3: Duplex Level 2 storey Z = 3000mm
-    // [EXTRACTED: Ifc2x3_Duplex Rosetta Stone — Level 2 elevation = 3000mm above Level 1]
+    // [EXTRACTED: Duplex Rosetta Stone — Level 2 elevation = 3000mm above Level 1]
     // [EXTRACTED: migration_BOM2c_floor_dz.sql]
     // ─────────────────────────────────────────────────────────────────────────
 

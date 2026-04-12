@@ -42,8 +42,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class ExtractedGeometryTruthTest {
 
     private static final String[][] BUILDINGS = {
-        {"SH", "DAGCompiler/lib/output/ifc4_samplehouse.db",  "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db"},
-        {"DX", "DAGCompiler/lib/output/ifc2x3_duplex.db",      "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db"},
+        {"SH", "DAGCompiler/lib/output/samplehouse.db",  "DAGCompiler/lib/input/SampleHouse_extracted.db"},
+        {"DX", "DAGCompiler/lib/output/duplex.db",      "DAGCompiler/lib/input/Duplex_extracted.db"},
     };
 
     /**

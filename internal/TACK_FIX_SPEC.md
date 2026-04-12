@@ -7,7 +7,7 @@
 
 **Version:** 1.0 (2026-03-18, session 21)
 **Depends on:** [BOMBasedCompilation.md](../docs/BOMBasedCompilation.md) §4, [DATA_MODEL.md](../docs/DATA_MODEL.md) §1.2
-**Status:** IMPLEMENTED — FIX-1 (ScopeBomBuilder LBD offsets) and FIX-3 (VerbDetector minX/minY/minZ) confirmed in code. FIX-2 (FloorRoomBomBuilder zero offsets) partially implemented.
+**Status:** COMPLETE — All 3 FIX methods verified in S142 (2026-04-04). FIX-1: VerbFactorizer uses e.minX()-parentMinX. FIX-2: FloorRoomBomBuilder deleted, replaced by BomHierarchyBuilder (childLbd-storeyLbd). FIX-3: VerbDetector uses ExtractionElement::minX for group origin. See S142 prompt §F1.
 
 > **Problem:** Three code paths compute BOM line dx/dy/dz using centroid-relative
 > offsets instead of LBD-to-LBD (minCorner-to-minCorner) per BBC.md §4.

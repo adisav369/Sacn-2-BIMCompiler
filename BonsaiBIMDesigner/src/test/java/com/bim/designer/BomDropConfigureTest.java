@@ -190,7 +190,7 @@ class BomDropConfigureTest {
 
         // Run 9-stage compilation pipeline on the swapped BOM tree
         CompileRequest request = new CompileRequest(
-                "Ifc4_SampleHouse",
+                "SampleHouse",
                 compileDbPath,
                 COMP_LIB,
                 outputDir + "/"
@@ -349,8 +349,8 @@ class BomDropConfigureTest {
             // Read DSL content and set up C_DocType
             String dslFile = "IFCtoBOM/src/main/resources/dsl_sh.bim";
             String dslContent = Files.readString(Path.of(dslFile));
-            String outputPath = outputDir + "/ifc4_samplehouse.db";
-            String refPath = "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
+            String outputPath = outputDir + "/samplehouse.db";
+            String refPath = "DAGCompiler/lib/input/SampleHouse_extracted.db";
 
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute("""
@@ -377,7 +377,7 @@ class BomDropConfigureTest {
                 ps.setString(1, "RE_SH");
                 ps.setString(2, "Sample House (configured)");
                 ps.setString(3, "SH");
-                ps.setString(4, "Ifc4_SampleHouse");
+                ps.setString(4, "SampleHouse");
                 ps.setString(5, outputPath);
                 ps.setString(6, refPath);
                 ps.setString(7, dslContent);

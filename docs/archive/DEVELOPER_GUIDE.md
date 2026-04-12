@@ -318,7 +318,7 @@ Materials and colours flow from IFC sources through the full compilation pipelin
 ### Data Flow
 
 ```
-IFC source file (e.g., Ifc4_SampleHouse.ifc)
+IFC source file (e.g., SampleHouse.ifc)
   ├── IfcRelAssociatesMaterial → IfcMaterial.Name → material_name
   └── Representation → IfcStyledItem → IfcSurfaceStyleRendering
       → IfcColourRgb (R,G,B) + Transparency → material_rgba
@@ -399,22 +399,22 @@ Key transparent styles in `surface_styles`:
 ```bash
 # Step 1: Enrich reference DB from IFC source
 python3 DAGCompiler/tools/material_extractor.py \
-    --ifc DAGCompiler/lib/input/Ifc4_SampleHouse.ifc \
-    --ref DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
+    --ifc DAGCompiler/lib/input/SampleHouse.ifc \
+    --ref DAGCompiler/lib/input/SampleHouse_extracted.db
 
 # Step 2: Copy materials from reference DB → M_BOM_Line (was: ad_element_placement)
 python3 DAGCompiler/tools/material_extractor.py \
     --populate-placement \
-    --ref DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+    --ref DAGCompiler/lib/input/SampleHouse_extracted.db \
     --library library/component_library.db \
-    --building-type Ifc4_SampleHouse
+    --building-type SampleHouse
 
 # Step 3: Compile — materials flow automatically via PlacementLoader
 mvn exec:java -pl DAGCompiler \
     -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
 
 # Verify in output
-sqlite3 DAGCompiler/lib/output/ifc4_samplehouse.db \
+sqlite3 DAGCompiler/lib/output/samplehouse.db \
     "SELECT material_name, material_rgba FROM elements_meta WHERE material_name IS NOT NULL"
 ```
 
@@ -505,8 +505,8 @@ mvn test -pl BIM_COBOL
 
 ```bash
 python3 tools/spatial_checker.py \
-  DAGCompiler/lib/output/ifc4_samplehouse.db \
-  DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+  DAGCompiler/lib/output/samplehouse.db \
+  DAGCompiler/lib/input/SampleHouse_extracted.db \
   --discipline ARC
 ```
 
@@ -557,7 +557,7 @@ All migrations live in `migration/`. Each is idempotent (safe to re-run). Run fr
 | Script | Phase | Purpose |
 |--------|-------|---------|
 | `migration_lod_to_ad_views.sql` | P0 | Backward-compat views: lod_* → ad_* table renames |
-| `migration_dx_cascade_gap.sql` | P0 | DX cascade gap: insert missing IfcFlowController, rename DUPLEX→Ifc2x3_Duplex |
+| `migration_dx_cascade_gap.sql` | P0 | DX cascade gap: insert missing IfcFlowController, rename DUPLEX→Duplex |
 | `migration_P01_placement_product_link.sql` | P0.1 | Add M_Product_ID to ad_element_placement, backfill 1099 DX rows |
 | `migration_P01_BOM_SH_placement_link.sql` | P0.1 | Backfill M_Product_ID on 55 SH active rows |
 | `migration_LOD_pair.sql` | P0.1 | Create LOD_key + LOD_Object pair (product → geometry → mesh) |
@@ -603,7 +603,7 @@ TopologyMaker (orm-core) ────┼──► {PREFIX}_BOM.db (working)  ◄
                              │   DAGCompiler reads (raw batch SQL — no orm-core dependency)
                              │        │          also reads component_library.db (LOD)
                              │        ▼
-                             │   output DBs (ifc4_samplehouse.db, ifc2x3_duplex.db …)
+                             │   output DBs (samplehouse.db, duplex.db …)
                              │        │
                              └────────┴──► BuildingInspector reads {PREFIX}_BOM.db + component_library.db
 ```
@@ -640,7 +640,7 @@ Can also point at an output DB to inspect compiled results:
 ```bash
 mvn -pl ORMSandbox exec:java \
   -Dexec.mainClass="com.bim.ormsandbox.BuildingInspector" \
-  -Dexec.args="DAGCompiler/lib/output/ifc4_samplehouse.db rooms Ifc4_SampleHouse"
+  -Dexec.args="DAGCompiler/lib/output/samplehouse.db rooms SampleHouse"
 ```
 
 ### Debug Workflow — Real Example (G8 Frame-of-Reference Bug)
@@ -652,10 +652,10 @@ check. Compiled X centroid ≈ +3900mm, reference X centroid ≈ −3000mm. Delt
 
 ```bash
 mvn -pl ORMSandbox exec:java \
-  -Dexec.args="library/{PREFIX}_BOM.db rooms Ifc4_SampleHouse"
+  -Dexec.args="library/{PREFIX}_BOM.db rooms SampleHouse"
 ```
 ```
-=== ROOM BOUNDARIES for 'Ifc4_SampleHouse' (2) ===
+=== ROOM BOUNDARIES for 'SampleHouse' (2) ===
   [42] ROOM_Ground_Floor_1    type=LIVING       frame=IFC_GLOBAL_MM
        X: [-7510, 1359]  centX=-3075
        Y: [-281,  4409]  centY=2064
@@ -920,8 +920,8 @@ Layer 1 (Geometry)                  (unchanged — same meshes, better placement
 
 | Stone | IFC Source | Reference DB | Elements | F1 Score |
 |-------|-----------|-------------|----------|----------|
-| SampleHouse | `Ifc4_SampleHouse.ifc` | `DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db` | 55 | **100%** |
-| Duplex | `Ifc2x3_Duplex_*.ifc` | `DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db` | 1,085 | **100%** |
+| SampleHouse | `SampleHouse.ifc` | `DAGCompiler/lib/input/SampleHouse_extracted.db` | 55 | **100%** |
+| Duplex | `Duplex_*.ifc` | `DAGCompiler/lib/input/Duplex_extracted.db` | 1,085 | **100%** |
 | Terminal | Federation of 7 IFCs | `DAGCompiler/lib/input/Terminal_Extracted.db` | 51,088 | **~100%** |
 | TB-LKTN | *None (generative)* | *None* | 138 | N/A (generative — no reference IFC) |
 
@@ -993,7 +993,7 @@ ORDER BY g.geometry_hash, m.discipline
 mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
 
 # 2. Open Blender with Bonsai addon
-# 3. Federation panel → "Full Load" → select DAGCompiler/lib/output/ifc4_samplehouse.db
+# 3. Federation panel → "Full Load" → select DAGCompiler/lib/output/samplehouse.db
 # 4. Materials, transparency, and geometry load automatically from DB
 ```
 

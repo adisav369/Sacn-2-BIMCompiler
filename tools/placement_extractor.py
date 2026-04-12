@@ -13,16 +13,16 @@ Usage:
 
 Example:
   python3 tools/placement_extractor.py \
-    --reference reference/rosetta/Ifc4_SampleHouse_extracted.db \
-    --building-type Ifc4_SampleHouse
+    --reference reference/rosetta/SampleHouse_extracted.db \
+    --building-type SampleHouse
 
   python3 tools/placement_extractor.py \
-    --reference reference/rosetta/Ifc2x3_Duplex_extracted.db \
-    --building-type Ifc2x3_Duplex
+    --reference reference/rosetta/Duplex_extracted.db \
+    --building-type Duplex
 
   python3 tools/placement_extractor.py \
-    --reference reference/rosetta/SJTII_Terminal_extracted.db \
-    --building-type SJTII_Terminal
+    --reference reference/rosetta/Terminal_extracted.db \
+    --building-type Terminal
 """
 
 import argparse
@@ -141,7 +141,7 @@ def generate_schema_sql():
 -- Each row = one element to emit. The metadata IS the production list.
 CREATE TABLE IF NOT EXISTS I_Element_Extraction (
     placement_id  INTEGER PRIMARY KEY AUTOINCREMENT,
-    building_type TEXT NOT NULL,        -- e.g., 'Ifc4_SampleHouse'
+    building_type TEXT NOT NULL,        -- e.g., 'SampleHouse'
     storey        TEXT NOT NULL,        -- e.g., 'Ground Floor'
     ifc_class     TEXT NOT NULL,        -- e.g., 'IfcWall'
     element_ref   TEXT NOT NULL,        -- descriptive key (type name, no instance ID)

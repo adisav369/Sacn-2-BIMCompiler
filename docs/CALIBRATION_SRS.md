@@ -49,7 +49,7 @@ room layout). But engineering invariants are shape-independent:
 
 ## 2. Terminal Oracle — Observed Metrics
 
-Derived from `SJTII_Terminal_extracted.db` (the reference DB, not TE_BOM.db).
+Derived from `Terminal_extracted.db` (the reference DB, not TE_BOM.db).
 
 ### 2.1 FP (Fire Protection) — 6,863 elements
 

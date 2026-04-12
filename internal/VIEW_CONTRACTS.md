@@ -446,7 +446,7 @@ Phase 1d: fit_priority and min_space_mm added to m_bom_line
           do not exist in m_bom_line.role — those names are in m_bom.bom_id,
           not in m_bom_line.role. Role namespace confirmed as semantic labels.
 Phase 2:  1263 c_orderline rows seeded CO
-          Ifc2x3_Duplex: 1115 | Ifc4_SampleHouse: 62 | TB_LKTN: 86
+          Duplex: 1115 | SampleHouse: 62 | TB_LKTN: 86
 Phases 3a-3f: all six views created in DB ✓
 SpatialDigests throughout: SH=1f325a98, DX=d3c779b9, TB=dd4345f4, Terminal=301b42b1
 mvn test: 119 tests, 2 failures (pre-existing G8 calibration — intentional RED) ✓

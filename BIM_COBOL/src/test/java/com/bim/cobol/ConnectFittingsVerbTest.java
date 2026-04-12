@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ConnectFittingsVerbTest {
 
     private static final String DUPLEX_EXTRACTED =
-            "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db";
+            "DAGCompiler/lib/input/Duplex_extracted.db";
     private static final String MOCKUP_DB =
             "BIM_COBOL/lib/output/mockup.db";
 

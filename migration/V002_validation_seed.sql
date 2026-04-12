@@ -139,7 +139,7 @@ INSERT INTO AD_Val_Rule_Occupancy VALUES (502, 4);
 INSERT INTO AD_Val_Rule_Occupancy VALUES (503, 4);
 
 -- ============================================================
--- SECTION F: MINED rules from SJTII_Terminal (48,428 elements)
+-- SECTION F: MINED rules from Terminal (48,428 elements)
 -- Sprinkler spacing, cross-discipline clearances
 -- Mined 2026-03-18. Coordinates in meters, converted to mm.
 -- ============================================================
@@ -152,7 +152,7 @@ INSERT INTO AD_Val_Rule_Occupancy VALUES (503, 4);
 INSERT INTO AD_Val_Rule VALUES (601, 'MINED_FPR_NN_SPACING',
     'Sprinkler head nearest-neighbor max spacing (mined from TE)',
     'COMPLIANCE', 'FPR', 'NFPA 13 §8.6 (observed)', 'INTL',
-    'MINED:SJTII_Terminal', NULL, NULL, 1);
+    'MINED:Terminal', NULL, NULL, 1);
 
 INSERT INTO AD_Val_Rule_Param VALUES (6011, 601, 'max_nn_spacing_mm', '4600', 'NUM', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (6012, 601, 'ifc_class', 'IfcFireSuppressionTerminal', 'TEXT', NULL);
@@ -160,7 +160,7 @@ INSERT INTO AD_Val_Rule_Param VALUES (6012, 601, 'ifc_class', 'IfcFireSuppressio
 INSERT INTO AD_Val_Rule_Occupancy VALUES (601, 1);  -- Light Hazard
 INSERT INTO AD_Val_Rule_Occupancy VALUES (601, 6);  -- Airport Terminal
 
-INSERT INTO AD_Val_Rule_Mining_Source VALUES (601, 'SJTII_Terminal', 891, 79, 3500, 1899, 3202, 'mm',
+INSERT INTO AD_Val_Rule_Mining_Source VALUES (601, 'Terminal', 891, 79, 3500, 1899, 3202, 'mm',
     'NN centroid distance between IfcFireSuppressionTerminal on same storey, excluding co-located (<10mm)', datetime('now'));
 
 -- F2: NFPA 13 code maximum (for comparison / generative enforcement)
@@ -182,13 +182,13 @@ INSERT INTO AD_Val_Rule_Occupancy VALUES (602, 1);
 INSERT INTO AD_Val_Rule VALUES (603, 'MINED_ELEC_SP_CLEARANCE',
     'Electrical-to-plumbing clearance (mined from TE, code from NEC)',
     'CLEARANCE', NULL, 'NEC 300.4', 'INTL',
-    'MINED:SJTII_Terminal', NULL, NULL, 1);
+    'MINED:Terminal', NULL, NULL, 1);
 
 INSERT INTO AD_Val_Rule_Param VALUES (6031, 603, 'min_clearance_mm', '150', 'NUM', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (6032, 603, 'discipline_a', 'ELEC', 'TEXT', NULL);
 INSERT INTO AD_Val_Rule_Param VALUES (6033, 603, 'discipline_b', 'SP', 'TEXT', NULL);
 
-INSERT INTO AD_Val_Rule_Mining_Source VALUES (603, 'SJTII_Terminal', 571, 0, 2000, 900, 1700, 'mm',
+INSERT INTO AD_Val_Rule_Mining_Source VALUES (603, 'Terminal', 571, 0, 2000, 900, 1700, 'mm',
     'Centroid-to-centroid distance ELEC vs SP on Ground Floor', datetime('now'));
 
 -- ============================================================
@@ -244,10 +244,10 @@ INSERT INTO AD_Clash_Rule VALUES (6, 'FP', 'ACMV',
 -- ============================================================
 -- SECTION H: DX known exceptions (DocValidate §7.3)
 -- ============================================================
-INSERT INTO AD_Val_Rule_Exception VALUES (1, 'Ifc2x3_Duplex', 702, 'P23 MEP corner fittings', 358,
+INSERT INTO AD_Val_Rule_Exception VALUES (1, 'Duplex', 702, 'P23 MEP corner fittings', 358,
     'Original engineer', 'MEP corner clearance violations — fittings placed without connecting pipes', datetime('now'));
 
 -- TE isolated sprinkler heads (NN > NFPA max 4600mm — remote service areas)
-INSERT INTO AD_Val_Rule_Exception VALUES (2, 'SJTII_Terminal', 601,
+INSERT INTO AD_Val_Rule_Exception VALUES (2, 'Terminal', 601,
     'placement_id IN (1042729, 1042761)', 2,
     'Original engineer', 'Isolated sprinkler heads in remote service areas — NN > 4600mm acceptable per local authority', datetime('now'));

@@ -7,11 +7,11 @@ IFC exports from the same Revit project. Both files share the same coordinate
 origin and unit system (feet, converted to SI on load).
 
 Input:
-  - reference/residential/Ifc2x3_Duplex_Architecture.ifc  (ARC discipline)
-  - reference/residential/Ifc2x3_Duplex_MEP.ifc           (MEP discipline)
+  - reference/residential/Duplex_Architecture.ifc  (ARC discipline)
+  - reference/residential/Duplex_MEP.ifc           (MEP discipline)
 
 Output:
-  - reference/residential/Ifc2x3_Duplex_Federated.ifc
+  - reference/residential/Duplex_Federated.ifc
 """
 
 import os
@@ -19,9 +19,9 @@ import sys
 import ifcopenshell
 import ifcopenshell.api
 
-ARCH_PATH = "reference/residential/Ifc2x3_Duplex_Architecture.ifc"
-MEP_PATH = "reference/residential/Ifc2x3_Duplex_MEP.ifc"
-OUT_PATH = "reference/residential/Ifc2x3_Duplex_Federated.ifc"
+ARCH_PATH = "reference/residential/Duplex_Architecture.ifc"
+MEP_PATH = "reference/residential/Duplex_MEP.ifc"
+OUT_PATH = "reference/residential/Duplex_Federated.ifc"
 
 
 def main():

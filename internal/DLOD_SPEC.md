@@ -246,15 +246,57 @@ are LOD-0 (8-vert bbox proxies). The `.blend` is naturally small.
 **Bonsai compatibility:** No disruption. Handlers check for federation collections.
 No federation → no-op. Normal Bonsai save/open untouched.
 
-## 14. Constraints
+## 14. Progressive make_local() — Link Speed + Local Viewport (S175)
+
+When templates are loaded via `link=True` from library.blend, GN Collection Info
+chokes on thousands of linked mesh references (library dereference per frame).
+
+**Solution:** DLOD promotion (LOD-0 → LOD-1) calls `mesh.make_local()` on the
+template mesh. This copies from Blender's shared read-only cache to private memory
+(RAM-to-RAM, fast). GN then gets a direct pointer instead of a library dereference.
+
+```python
+# In _dlod_tick_inner(), when promoting LOD-0 → LOD-1/LOD-2:
+def _promote_template(self, ghash):
+    """make_local() a linked template mesh on LOD promotion."""
+    mesh = bpy.data.meshes.get(ghash)
+    if mesh and mesh.library:  # still linked
+        mesh.make_local()
+        # GN Collection Info now resolves this as a local pointer
+```
+
+**Lifecycle:**
+1. **Load:** `link=True` — all 63K meshes cached as linked refs (2 seconds)
+2. **Init:** bbox proxies created as LOCAL meshes (not linked) — 8 verts each
+3. **GN modifiers DISABLED** — prevents GN from reading linked refs (no freeze)
+4. **First batch:** `make_local()` on templates visible at initial camera position (~200-500 meshes)
+5. **Enable GN modifiers** — GN only sees local pointers from the start, smooth
+6. **LOD-0 → LOD-1:** `make_local()` on promoted templates as camera moves
+7. **LOD-1 → LOD-0:** mesh stays local (no need to re-link). Cheap — already in RAM.
+
+**Critical sequence (via DeepSeek):** GN must NOT evaluate before Step 5.
+If GN starts while templates are still linked, viewport freezes immediately
+(63K library dereferences per frame). The GN modifier is disabled at Step 3
+and only enabled after the initial near batch is made local at Step 5.
+User sees bbox wireframes (R-tree) during Steps 1-4, then GN appears smooth.
+
+**Budget:** `make_local()` on one mesh: ~0.1ms. At 500 swaps/frame with ~50 unique
+templates promoted: 5ms. Within the 10ms frame budget.
+
+**Key insight:** At any camera position, only ~200-500 unique templates are near.
+The other 62,500 are LOD-0 bbox proxies (local 8-vert boxes). GN resolves ~500
+local real meshes + ~62,500 local bbox proxies = smooth.
+
+## 15. Constraints
 
 - **No mesh creation at runtime.** Bbox proxies are pre-built at cache init.
 - **No Blender object creation at runtime.** Only attribute array mutations.
 - **No from_pydata() at runtime.** All geometry pre-exists in templates.
+- **`make_local()` is the only mesh mutation at runtime.** (§14, LOD promotion only)
 - **component_library.db is read-only at runtime.** Only bbox proxy generation reads it (at init, not per-frame).
 - **GN instance swaps are the only LOD mechanism.** (FULL_LOADER2_SRS.md §12)
 
-## 15. Testing
+## 16. Testing
 
 | Test | Type | Proof tag | What it proves |
 |------|------|-----------|----------------|

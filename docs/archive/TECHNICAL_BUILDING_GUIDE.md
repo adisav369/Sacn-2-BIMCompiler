@@ -644,7 +644,7 @@ compiled output and Revit IFC. Distance threshold: 500mm.
 G8-SH: 16/17 FAIL — LIVING room boundary at X(1.62, 6.27) vs reference X(−7.5, −0.01).
         Fix: re-extract SH room boundaries from reference IFC → coordinate_frame='IFC_GLOBAL_MM'
 G8-DX: 139/173 FAIL — DX has 44 artificial grid cells, no relation to actual IfcSpace extents.
-        Fix: extract 11 real IFC rooms from Ifc2x3_Duplex_extracted.db → replace grid cells.
+        Fix: extract 11 real IFC rooms from Duplex_extracted.db → replace grid cells.
 ```
 
 Both RED tests are **intentional calibration debt**. The view layer (`v_verified_room_boundary`)
@@ -710,8 +710,8 @@ M14 test verifies all four tables exist. Reactive wiring (`SpatialRuleValidator`
 
 | Building | ID | Elements | Mode | Digest |
 |---|---|---|---|---|
-| Sample House | `Ifc4_SampleHouse` | 58 | B-semi (calibration target: A) | 1f325a98 |
-| Duplex | `Ifc2x3_Duplex` | 1197 | B-semi (calibration target: A) | d3c779b9 |
+| Sample House | `SampleHouse` | 58 | B-semi (calibration target: A) | 1f325a98 |
+| Duplex | `Duplex` | 1197 | B-semi (calibration target: A) | d3c779b9 |
 | Laketown | `TB_LKTN` | 138 | B-semi (LOCAL_MM) | dd4345f4 |
 | Terminal | (commercial) | ~51,088 | B-semi | 301b42b1 |
 
@@ -800,8 +800,8 @@ UPDATE c_order SET expected_elements = N WHERE building_id = 'MY_HOUSE';
 | `BomTierResolver.java` — ROOM→SET→ITEM cascade state machine | ✗ Phase 4c | VIEW_CONTRACTS.md §6 — caller contract specified |
 | ArchUnit gate — no base table SQL outside ViewAccessLayer | ✗ Phase 4d | Documents debt; does not require migrating all callers |
 | C_Order `.doc_status` — lifecycle DR/IP/CO/VO | ✅ Phase TM-PO (TopologyMaker) | `MOrder.completeIt()/voidIt()` implemented; DAGCompiler wiring = Phase 4e |
-| G8-SH: room boundary calibration (16/17 FAIL) | ✗ Calibration debt | Re-extract from Ifc4_SampleHouse_extracted.db |
-| G8-DX: room boundary calibration (139/173 FAIL) | ✗ Calibration debt | Extract 11 real rooms from Ifc2x3_Duplex_extracted.db |
+| G8-SH: room boundary calibration (16/17 FAIL) | ✗ Calibration debt | Re-extract from SampleHouse_extracted.db |
+| G8-DX: room boundary calibration (139/173 FAIL) | ✗ Calibration debt | Extract 11 real rooms from Duplex_extracted.db |
 | Phase 1e: coordinate_frame CHECK extension (DERIVED_MM, CONSTRAINT_SOLVED) | ✗ Pending | VIEW_CONTRACTS.md §4.6 — table recreation SQL specified |
 | `StandardsResolver.java:245` hardcoded fallback dims | ✗ PRIME RULE violation | Replace with MetadataMissingException |
 | 26 silent exception catches in MEPWriter/BuildingWriter | ✗ Advisory | Add WARN logging to all data-path catches |

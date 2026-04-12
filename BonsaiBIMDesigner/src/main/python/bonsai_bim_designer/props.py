@@ -46,7 +46,7 @@ class BIMDesignerProperties(PropertyGroup):
     # -- Building selection --------------------------------------------------
     building_id: StringProperty(
         name="Building ID",
-        description="Active building identifier (e.g. Ifc4_SampleHouse)",
+        description="Active building identifier (e.g. SampleHouse)",
     )
 
     bom_db_path: StringProperty(

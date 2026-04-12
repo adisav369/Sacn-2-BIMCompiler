@@ -128,10 +128,10 @@ Extract from IFC spatial structure (IfcSpace + bounding geometry) before Phase B
 rooms, so all three SH BOMs could fire in a DX compile.
 
 **Detection path:** Preflight Check H (`BuildingInspector.preflightCheckH()`) — detected
-the first-principles gap live against `Ifc2x3_Duplex`.
+the first-principles gap live against `Duplex`.
 
 **Resolution (commit f1fc203):**
-- `migration_room_slot_building_type.sql`: `ALTER TABLE ad_room_slot ADD COLUMN building_type TEXT DEFAULT NULL`; SH slots tagged `building_type='Ifc4_SampleHouse'`; `NULL` = globally scoped
+- `migration_room_slot_building_type.sql`: `ALTER TABLE ad_room_slot ADD COLUMN building_type TEXT DEFAULT NULL`; SH slots tagged `building_type='SampleHouse'`; `NULL` = globally scoped
 - `SlotRegistry`: 4-arg `getSlotsForType(buildingId)` with building filter; 3-arg delegates (backward compat)
 - `RelationalResolver.loadSlotsByAssembly(conn, buildingType)` (deleted) — `WHERE building_type IS NULL OR building_type = ?`
 - `StoreyCompiler`: passes `ctx.building.name()` as `buildingId`
@@ -156,7 +156,7 @@ discipline) that reference these rooms still compute `(0, 0)` via FRACTION posit
 **Residual risk:** Other ARC/MEP rules in ROOM_Level_* rooms may have the same failure mode
 but were not surfaced this session. Preflight Check B reports all `LOCAL_MM` rooms; Check D
 reports non-FURN elements with no geometry_map. The full fix is G8 calibration: extract
-all 40 rooms from `Ifc2x3_Duplex_extracted.db` and replace NULL bounds with `IFC_GLOBAL_MM`.
+all 40 rooms from `Duplex_extracted.db` and replace NULL bounds with `IFC_GLOBAL_MM`.
 Until then, each `is_active=1` rule in a NULL-bound room is a latent X1/GIC risk.
 
 ### 1.9 `selectWorkWall()` Envelope Sensitivity — LOW-MEDIUM RISK
@@ -316,7 +316,7 @@ Downstream consumers (SlotRegistry, BOMAssemblerAD) get a clean filter dimension
 
 ```
 m_bom tagged:  NULL=27, DX=4, MY=7, SH=5, TB=2 (45 total)
-ad_building:   SH=Ifc4_SampleHouse, DX=Ifc2x3_Duplex, TB=TB_LKTN, Terminal=NULL
+ad_building:   SH=SampleHouse, DX=Duplex, TB=TB_LKTN, Terminal=NULL
 ```
 
 **Global BOMs** (LIVING_SET, DINING_SET, BED_SET_MASTER, KITCHEN_CABINET_SET, wall prefabs) stay
@@ -655,7 +655,7 @@ confirm a building (`doc_status = CO`) if Preflight fails.
 | Phase D Cleanup: table renames + drop | ✅ DONE | — | ad_ref_list, ad_sysconfig, ad_space_type_furniture dropped |
 | Phase BOM-2: family_ref normalisation (261 DX rows) | ⏳ QUEUED | High | Revit strings → ad_product_dim catalog IDs |
 | Phase 4b ViewAccessLayer (UNIT→FLOOR→ROOM cascade) | ⏳ QUEUED | High | Spec in VIEW_CONTRACTS.md §6/§7 |
-| G8 calibration (DX 40 NULL rooms + SH) | ⏳ QUEUED | High | Extract rooms from Ifc2x3_Duplex_extracted.db |
+| G8 calibration (DX 40 NULL rooms + SH) | ⏳ QUEUED | High | Extract rooms from Duplex_extracted.db |
 | AD Events wiring (SpatialRuleValidator, CalloutCascadeValidator) | ⏳ QUEUED | High | AD_Events_Spatial_Rules.docx |
 | Last Mile Step 3: conn_points → fixture orientation | ⏳ OPEN | Medium | ~25 lines in RelationalResolver; no test yet |
 | Last Mile Step 5: block ABSOLUTE for furniture class | ⏳ OPEN | High | ~5 lines in MetadataValidator |

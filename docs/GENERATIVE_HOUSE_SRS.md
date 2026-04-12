@@ -197,7 +197,7 @@ The classification YAML creates the C_Order + C_OrderLine automatically:
 ```yaml
 # classify_sh.yaml — 1 OrderLine, Instant Drop
 building:
-  building_type: Ifc4_SampleHouse
+  building_type: SampleHouse
   prefix: SH
   provenance: EXTRACTED
 ```

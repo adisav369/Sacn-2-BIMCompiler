@@ -1510,6 +1510,13 @@ The main blocker for complex hospital geometry is non-orthogonal grids.
 
 ## 12a. Layout Engine — Elevation Zone Allocation
 
+> **Design Principle:** This is a metadata-driven layout engine. It must scale
+> to any building without custom wiring. Every visual property (colour, weight,
+> zone width, label text, dimension format) comes from `2D.db` tables or
+> `drawing_template.json`. The engine reads these at runtime and produces correct
+> output for any IFC building fed in. A new building must never require a code
+> change — only new DB rows or template values.
+
 > **Purpose:** Define how every elevation sheet allocates its horizontal space
 > and which face carries which annotation. All values come from the template and
 > DB — zero per-view hardcoding permitted.
@@ -1584,21 +1591,21 @@ Widths are declared in the template — never computed per building.
 ```
 level_w    = template["elevation"]["level_zone_width_mm"]      # default 30mm
 height_w   = template["elevation"]["height_zone_width_mm"]     # default 22mm
-tb_w       = template["title_block"]["width_mm"]               # existing key
-margin_l   = template["paper"]["margins"]["left"]
-margin_r   = template["paper"]["margins"]["right"]
+tb_w       = template["paper"]["title_block_width_mm"]         # key: paper.title_block_width_mm
+margin_l   = template["paper"]["margins"]["left"]              # default 25mm (binding edge)
+margin_r   = template["paper"]["margins"]["right"]             # default 10mm
 content_w  = paper_width - margin_l - margin_r - level_w - height_w - tb_w
 ```
 
 **Absolute x-coordinates (model space mm at 1:1 paper):**
 ```
-x_level_left   = margin_l
-x_level_right  = margin_l + level_w           ← level text and ticks terminate here
-x_content_left = x_level_right
-x_content_right= x_level_right + content_w    ← building drawing terminates here
-x_height_left  = x_content_right
-x_height_right = x_content_right + height_w   ← height dims terminate here
-x_tb           = paper_width - margin_r - tb_w
+x_level_left   = margin_l                     # 25mm with default template
+x_level_right  = margin_l + level_w           # 55mm  ← level text and ticks terminate here
+x_content_left = x_level_right                # 55mm
+x_content_right= x_level_right + content_w    # 268mm ← building drawing terminates here
+x_height_left  = x_content_right              # 268mm
+x_height_right = x_content_right + height_w   # 290mm ← height dims terminate here
+x_tb           = paper_width - margin_r - tb_w  # 290mm (= x_height_right with default template)
 ```
 
 **Rule: nothing crosses a zone boundary.**
@@ -1607,17 +1614,52 @@ x_tb           = paper_width - margin_r - tb_w
 - Height dimension lines and text: x ∈ [x_height_left, x_height_right]
 - Grid lines extend ± bubble beyond content zone into dimension space only, never into title block
 
-**Mandatory log per elevation:**
+**Content zone guard (implements I-33 fix):**
+Any building-layer element whose projected horizontal extent lies entirely
+outside `[x_content_left, x_content_right]` is a displaced element (wrong
+world coordinates or slab projection error). The engine must skip it and log:
 ```
-§ZONE_LAYOUT face=front level_w=30mm content_w=215mm height_w=22mm tb_w=120mm
-             x_level=(10,40) x_content=(40,255) x_height=(255,277) x_tb=(290,410)
+§SKIP_OOB face=right elem=IfcSlab guid=3X... h_range=(-11,159)mm zone=(25,290)mm — skipped
+```
+Note: for a form_face the content zone is wider — `x_content=(25,290)` — because level and
+height zones collapse to 0mm. An element is OOB if:
+- `elem_h_max < x_content_left - 5mm` (entirely left of content zone), or
+- `elem_h_min > x_content_right + 5mm` (entirely right of content zone)
+
+The 5mm tolerance absorbs rounding. Zero displaced elements is the passing state.
+If an element is partially OOB (overlaps zone boundary) it is still drawn but clamped to the zone.
+
+**Mandatory log sequence per elevation face — every line required, none optional:**
+
+```
+§ZONE_LAYOUT face=front level_w=30mm content_w=213mm height_w=22mm tb_w=120mm
+             x_level=(25,55) x_content=(55,268) x_height=(268,290) x_tb=(290,410)
+§BLD_RANGE face=front paper_x=(73.8,229.6)mm zone=(55,268)mm fit=IN_ZONE
+§GROUND_LINE face=front x_start=55mm x_end=268mm zone_right=268mm overflow=0mm
 ```
 
-**Tests — `test_zone_layout`:**
-- Every entity on A-ANNO-LEVL layer: x ∈ [x_level_left - 1, x_level_right + 1]
-- Every entity on A-ELEV-WALL / A-DOOR / A-GLAZ / A-ROOF layers: x ∈ [x_content_left - 1, x_content_right + 1]
-- Every entity on A-ANNO-DIMS layer: x ∈ [x_level_left - 1, x_height_right + 1]
-- Zero entities on any non-title-block layer with x > x_tb − 1
+`§BLD_RANGE` is emitted after all building elements are projected — it logs the actual
+min/max paper-space x of the drawn content so a developer reading only the log can
+confirm the building sits inside the zone without opening the DXF or SVG.
+
+`fit=IN_ZONE` when `bld_x_min >= x_content_left - 1` AND `bld_x_max <= x_content_right + 1`.
+`fit=OVERFLOW` otherwise — this is the log evidence for I-32.
+
+`§GROUND_LINE` is emitted when the ground/FFL horizontal line is drawn. `overflow` =
+`max(0, x_end - x_content_right)`. Non-zero overflow is the log evidence for I-32.
+
+`§SKIP_OOB` is emitted for every element skipped by the content zone guard:
+```
+§SKIP_OOB face=right elem=IfcSlab guid=3X... h_range=(-11,159)mm zone=(25,290)mm — skipped
+```
+Zero `§SKIP_OOB` lines and `§BLD_RANGE fit=IN_ZONE` together prove I-33 resolved.
+
+**Tests — `test_zone_layout` (all checked by parsing the diagnostic log):**
+- `§ZONE_LAYOUT` present for every elevation face, includes `x_content=(l,r)` — FAIL if absent
+- `§BLD_RANGE fit=IN_ZONE` for every elevation face — FAIL if `fit=OVERFLOW`
+- `§GROUND_LINE overflow=0mm` for every annotation_face — FAIL if overflow > 0
+- `§SKIP_OOB` present for every displaced element (absence = guard not running)
+- Zero entities on any non-title-block layer with x > x_tb − 1 (DXF entity check)
 
 ---
 
@@ -1632,23 +1674,55 @@ The `annotation_face` (FRONT / REAR) carries the full annotation stack:
   at x_level_right, label at x=(x_level_left + x_level_right)/2
 - Layer: `A-ANNO-LEVL`
 
+Two separate log lines per marker — DB read and draw are distinct events:
+
 ```
-§LEVEL_MARKER code=FFL display_text='GRD. FLOOR LEVEL' z=0.000m
-              y_svg=121.0 x_line=(40,255) tick_at=255 label_at=25
-              src=2d_level_marker (NOT synthesised)
+§LEVEL_MARKER code=FFL display_text='GRD. FLOOR LEVEL' z=0.000m src=2d_level_marker (NOT synthesised)
+§LEVEL_DRAW   code=FFL y=121.0mm x_line=(55,268)mm tick_at=268mm label_at=40mm layer=A-ANNO-LEVL
 ```
+
+`§LEVEL_MARKER` proves the label came from DB, not code.
+`§LEVEL_DRAW` proves the line was drawn at the correct paper-space x-coordinates.
+A developer reading only the log must be able to confirm `x_line` matches `x_content=(55,268)` from `§ZONE_LAYOUT` without opening the DXF.
+
+If `§LEVEL_DRAW` is absent for any marker in `§LEVEL_MARKER`, the marker was not drawn — that is a drawing bug.
+If `x_line` right endpoint differs from `x_content_right`, that is the I-32 overflow bug.
 
 **Height dimension chain (right zone):**
 - Spans between consecutive level markers in DB order
 - Value = (upper_z - lower_z) × 1000 formatted per `2d_dimension_style.unit_suffix`
   (default `mm`) with `2d_dimension_style.thousands_separator` (default none for mm)
-- Dim line: vertical at x_height_left + 2mm, ticks at each level y
-- Text: rotated 90°, centred on span, at x_height_left + height_w/2
+- Dim line: vertical at x_height_left + 2mm = 270mm, ticks at each level y
+- Text: rotated 90°, centred on span, at x_height_left + height_w/2 = 279mm
 
 ```
 §HEIGHT_DIM span=FFL→SILL delta=3200mm fmt='3200' unit=mm
-            x=266 y_top=89 y_bot=121 src=2d_dimension_style
+            x=270 y_top=89 y_bot=121 src=2d_dimension_style
 ```
+
+**Test — `test_height_dim_unit` (implements I-37):**
+- Query `SELECT unit_suffix, thousands_separator FROM 2d_dimension_style LIMIT 1`
+- For every height dim text entity in the DXF: verify the value is `str(int(delta_mm)) + unit_suffix`
+  with `thousands_separator` applied if set (e.g. `unit_suffix=''` → `'3200'`, not `'3200mm'`)
+- `§HEIGHT_DIM ... src=2d_dimension_style` log line must be present for every span
+- FAIL if any height dim text does not match the DB-declared format
+
+**Elevation drawing styles (implements I-35):**
+- Every IFC class drawn in elevation (`IfcWall`, `IfcDoor`, `IfcWindow`, `IfcPlate`, `IfcRoof`, `IfcSlab`) must have
+  a `2d_drawing_style` row with `view_type='ELEVATION'` before the drawing loop runs
+- Stroke colour and stroke width for each class come from `stroke_color` and `stroke_weight` in that row —
+  **never hardcoded hex literals in the drawing code**
+- Log per class, once per elevation face:
+```
+§STYLE ifc=IfcWindow view=ELEVATION stroke=#4488CC lw=0.18 src=2d_drawing_style
+```
+- FAIL if code contains a hex colour literal (`#[0-9A-Fa-f]{6}`) on the elevation drawing path
+  that is not a lookup from `2d_drawing_style` (R5_NO_HARDCODE catches this)
+
+**Test — `test_elevation_styles` (implements I-35):**
+- Every IFC class in the elevation loop has a `§STYLE ifc=<class> view=ELEVATION` log line
+- Zero hardcoded hex literals on the elevation code path (R5_NO_HARDCODE)
+- If a `2d_drawing_style` row is missing for a class → engine logs `§STYLE_MISS ifc=... view=ELEVATION` and uses layer default — never silently skips
 
 ---
 
@@ -1672,13 +1746,14 @@ The content zone width for a form face is the same formula as §12a.2, but `leve
 ```
 
 ```
-§ZONE_LAYOUT face=left level_w=0mm content_w=267mm height_w=0mm tb_w=120mm
+§ZONE_LAYOUT face=left level_w=0mm content_w=265mm height_w=0mm tb_w=120mm
+             x_level=(25,25) x_content=(25,290) x_height=(290,290) x_tb=(290,410)
 ```
 
 **Tests — `test_form_face_clean`:**
 - Zero entities on `A-ANNO-LEVL` layer in LEFT / RIGHT DXF
 - Zero height dim vertical lines outside content zone in LEFT / RIGHT DXF
-- `§ZONE_LAYOUT face=left level_w=0` log line present
+- `§ZONE_LAYOUT face=left level_w=0` log line present with `x_content=(25,290)`
 
 ---
 
@@ -1718,7 +1793,7 @@ the content zone. The engine must auto-scale before rendering.
 required_scale = ceil_to_standard(building_apparent_width_mm / content_w)
 # standard scales: 50, 100, 200, 250, 500
 if required_scale > current_scale:
-    log §AUTO_SCALE face=left bldg=17800mm content=267mm → scale=1:100
+    log §AUTO_SCALE face=left bldg=17800mm content=265mm → scale=1:100
     rerender at required_scale
 ```
 
@@ -1734,11 +1809,44 @@ if required_scale > current_scale:
 |-------|-------------|
 | I-31 Grid bubbles missing at bottom | §12a.5 |
 | I-32 Level lines bleed into title block | §12a.2 zone boundary rule |
-| I-33 Displaced polylines outside building footprint | §12a.2 content zone guard (element outside zone → skip + warn) |
+| I-33 Displaced polylines outside building footprint | §12a.2 content zone guard — `§SKIP_OOB` log + element not drawn |
 | I-34 Level label text synthesised in code | §12a.3 `display_text` from `2d_level_marker` |
 | I-35 Window stroke colour hardcoded | §12a.3 layer `A-GLAZ` style from `2d_drawing_style` |
 | I-36 Wide elevation annotation squeeze | §12a.4 form_face_level/height_zone_width_mm = 0 |
 | I-37 Height dim numbers missing unit suffix | §12a.3 `2d_dimension_style.unit_suffix` |
+
+---
+
+### 12a.8 Test Catalog — §12a Features
+
+All tests run as part of `test_conformity.py` (elevation sheets only) unless noted.
+Every test has a required § log line as primary evidence — if the log line is absent the test FAILS.
+
+**Primary gate: log line presence.** If the § line is absent, the feature is untestable — absence = FAIL regardless of what the DXF/SVG shows.
+
+| Test name | File | Sheet type | Pass criterion | Required § log line (primary gate) |
+|-----------|------|-----------|----------------|-------------------------------------|
+| `ZONE_LAYOUT` | test_conformity.py | elevation | `§ZONE_LAYOUT` with `x_content=(l,r)` present | `§ZONE_LAYOUT face=... x_content=(55,268)` |
+| `BLD_RANGE` | test_conformity.py | elevation | `§BLD_RANGE fit=IN_ZONE` for every face | `§BLD_RANGE face=... paper_x=(min,max)mm zone=(l,r)mm fit=IN_ZONE` |
+| `GROUND_LINE` | test_conformity.py | FRONT/REAR only | `§GROUND_LINE overflow=0mm` | `§GROUND_LINE face=front x_end=268mm overflow=0mm` |
+| `SKIP_OOB` | test_conformity.py | elevation | `§SKIP_OOB` for every displaced element; `§BLD_RANGE fit=IN_ZONE` | `§SKIP_OOB face=... h_range=... zone=...` per skipped elem |
+| `LEVEL_DRAW` | test_conformity.py | FRONT/REAR only | One `§LEVEL_DRAW` per `§LEVEL_MARKER`; x_line right = x_content_right | `§LEVEL_DRAW code=FFL x_line=(55,268)mm tick_at=268mm` |
+| `ELEV_STYLES` | test_conformity.py | elevation | `§STYLE src=2d_drawing_style` for each IFC class | `§STYLE ifc=IfcWindow view=ELEVATION stroke=... src=2d_drawing_style` |
+| `HEIGHT_DIM_UNIT` | test_conformity.py | FRONT/REAR only | `§HEIGHT_DIM src=2d_dimension_style` per span; fmt matches formula | `§HEIGHT_DIM span=FFL→SILL fmt='3200' unit=mm src=2d_dimension_style` |
+| `FORM_FACE_CLEAN` | test_conformity.py | LEFT/RIGHT | Zero A-ANNO-LEVL; `§ZONE_LAYOUT level_w=0` | `§ZONE_LAYOUT face=left level_w=0mm x_content=(25,290)` |
+| `GRID_BUBBLES_BOTH_ENDS` | test_conformity.py | elevation | 2 circles per grid label, one above, one below building | `§GRID_BUBBLE face=... end=top/bot cx=... cy=...` |
+| `CONTENT_FITS_ZONE` | test_conformity.py | elevation | `§BLD_RANGE fit=IN_ZONE`; `§AUTO_SCALE` if scale changed | `§AUTO_SCALE` present iff scale changed |
+| `ELEV_STYLES_NOHARD` | test_no_hardcode.py | n/a | Zero unapproved hex literals in elevation path | n/a (static scan) |
+
+**Implementation note:** `ZONE_LAYOUT` and `SKIP_OOB` are checked by parsing the
+conformity log for the `§` lines — the engine produces the log, the conformity
+check verifies the log content. This separates rendering from testing and keeps
+`test_conformity.py` as the single test runner.
+
+**Scale-independence requirement:** Every test in this table must pass for SH
+(single storey, 8.9m × 17.8m) and DX (two storey, 8.9m × 8.9m) and must not
+hard-reference building dimensions. When a third building is added, these tests
+must pass without modification.
 
 ---
 

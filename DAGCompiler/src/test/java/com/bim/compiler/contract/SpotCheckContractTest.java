@@ -54,9 +54,9 @@ class SpotCheckContractTest {
     private static final double TOLERANCE_M = 0.001;
 
     private static final String OUTPUT_DB =
-        "DAGCompiler/lib/output/ifc4_samplehouse.db";
+        "DAGCompiler/lib/output/samplehouse.db";
     private static final String REFERENCE_DB =
-        "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
+        "DAGCompiler/lib/input/SampleHouse_extracted.db";
 
     private static Connection outConn;
     private static Connection refConn;

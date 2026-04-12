@@ -89,7 +89,7 @@ class WebUISyncTest {
     @DisplayName("W-S57-2: readASI dispatches and returns ASI response")
     void w_s57_2_read_asi() throws Exception {
         // readASI goes through DesignerServer dispatch (not local)
-        String resp = post("{\"action\":\"readASI\",\"buildingId\":\"Ifc4_SampleHouse\",\"orderLineId\":1}");
+        String resp = post("{\"action\":\"readASI\",\"buildingId\":\"SampleHouse\",\"orderLineId\":1}");
         assertNotNull(resp);
         // May return error (no work_output.db) — but must dispatch, not "Unknown action"
         assertFalse(resp.contains("Unknown action"), "readASI must be dispatched");
@@ -99,7 +99,7 @@ class WebUISyncTest {
     @Order(3)
     @DisplayName("W-S57-3: updateASI dispatches and returns response")
     void w_s57_3_update_asi() throws Exception {
-        String resp = post("{\"action\":\"updateASI\",\"buildingId\":\"Ifc4_SampleHouse\"," +
+        String resp = post("{\"action\":\"updateASI\",\"buildingId\":\"SampleHouse\"," +
                 "\"orderLineId\":1,\"attributeName\":\"width_mm\",\"value\":\"1200\"}");
         assertNotNull(resp);
         assertFalse(resp.contains("Unknown action"), "updateASI must be dispatched");
@@ -109,7 +109,7 @@ class WebUISyncTest {
     @Order(4)
     @DisplayName("W-S57-4: prepareIt dispatches (alias for approve)")
     void w_s57_4_prepare_it() throws Exception {
-        String resp = post("{\"action\":\"prepareIt\",\"buildingId\":\"Ifc4_SampleHouse\"}");
+        String resp = post("{\"action\":\"prepareIt\",\"buildingId\":\"SampleHouse\"}");
         assertNotNull(resp);
         assertFalse(resp.contains("Unknown action"), "prepareIt must be dispatched");
     }

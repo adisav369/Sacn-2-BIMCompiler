@@ -86,7 +86,7 @@ class BrowseItemsTest {
     @Order(4)
     @DisplayName("W-BROWSE-4: DAO building_type filter separates SH from TE")
     void w_browse_4_building_filter() throws Exception {
-        var sh = dao.browseProducts(null, null, "Ifc4_SampleHouse", 0, 100);
+        var sh = dao.browseProducts(null, null, "SampleHouse", 0, 100);
         assertEquals(12, sh.size(), "12 active SH products");
 
         var te = dao.browseProducts(null, null, "Terminal_KLIA", 0, 100);
@@ -109,16 +109,16 @@ class BrowseItemsTest {
     @Order(6)
     @DisplayName("W-BROWSE-6: DAO pagination (offset + limit)")
     void w_browse_6_pagination() throws Exception {
-        var page1 = dao.browseProducts(null, null, "Ifc4_SampleHouse", 0, 5);
+        var page1 = dao.browseProducts(null, null, "SampleHouse", 0, 5);
         assertEquals(5, page1.size(), "Page 1: 5 items");
 
-        var page2 = dao.browseProducts(null, null, "Ifc4_SampleHouse", 5, 5);
+        var page2 = dao.browseProducts(null, null, "SampleHouse", 5, 5);
         assertEquals(5, page2.size(), "Page 2: 5 items");
 
-        var page3 = dao.browseProducts(null, null, "Ifc4_SampleHouse", 10, 5);
+        var page3 = dao.browseProducts(null, null, "SampleHouse", 10, 5);
         assertEquals(2, page3.size(), "Page 3: 2 remaining items");
 
-        int total = dao.countProducts(null, null, "Ifc4_SampleHouse");
+        int total = dao.countProducts(null, null, "SampleHouse");
         assertEquals(12, total, "Total count matches");
     }
 
@@ -160,7 +160,7 @@ class BrowseItemsTest {
     @DisplayName("W-BROWSE-8: API browseItems returns items with fit status")
     void w_browse_8_api_browse() {
         var resp = api.browseItems(new BrowseItemsRequest(
-                "BED", null, "Ifc4_SampleHouse",
+                "BED", null, "SampleHouse",
                 CONT_W, CONT_D, CONT_H, 0, 20));
 
         assertTrue(resp.success());
@@ -182,7 +182,7 @@ class BrowseItemsTest {
     @DisplayName("W-BROWSE-9: API browseItems returns category counts with fitsCount")
     void w_browse_9_category_counts() {
         var resp = api.browseItems(new BrowseItemsRequest(
-                null, null, "Ifc4_SampleHouse",
+                null, null, "SampleHouse",
                 CONT_W, CONT_D, CONT_H, 0, 20));
 
         assertTrue(resp.success());
@@ -214,7 +214,7 @@ class BrowseItemsTest {
     @DisplayName("W-BROWSE-11: Empty search returns all products for building")
     void w_browse_11_empty_search() {
         var resp = api.browseItems(new BrowseItemsRequest(
-                null, null, "Ifc4_SampleHouse",
+                null, null, "SampleHouse",
                 0, 0, 0, 0, 20));
 
         assertTrue(resp.success());

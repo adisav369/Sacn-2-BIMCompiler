@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class TrimWallsToRoofVerbTest {
 
     private static final String SH_DB =
-            "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
+            "DAGCompiler/lib/input/SampleHouse_extracted.db";
 
     private final TrimWallsToRoofVerb verb = new TrimWallsToRoofVerb();
 

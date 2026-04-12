@@ -36,8 +36,8 @@ class NonDisturbanceTest {
 
     // R17: Mining queries now read from per-building reference DBs
     static final Path VALIDATION_DB = Path.of("library/validation.db");
-    static final Path TE_REF_DB = Path.of("DAGCompiler/lib/input/SJTII_Terminal_extracted.db");
-    static final Path DX_REF_DB = Path.of("DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db");
+    static final Path TE_REF_DB = Path.of("DAGCompiler/lib/input/Terminal_extracted.db");
+    static final Path DX_REF_DB = Path.of("DAGCompiler/lib/input/Duplex_extracted.db");
 
     static Connection valConn;
     static Connection teConn;
@@ -116,7 +116,7 @@ class NonDisturbanceTest {
         int exceptions;
         try (PreparedStatement ps = valConn.prepareStatement(
                 "SELECT COALESCE(SUM(count), 0) FROM AD_Val_Rule_Exception " +
-                "WHERE ad_val_rule_id = 601 AND building_id = 'SJTII_Terminal'")) {
+                "WHERE ad_val_rule_id = 601 AND building_id = 'Terminal'")) {
             ResultSet rs = ps.executeQuery();
             rs.next();
             exceptions = rs.getInt(1);

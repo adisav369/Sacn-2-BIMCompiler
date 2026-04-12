@@ -432,11 +432,11 @@ tr:hover td { background:rgba(79,195,247,.05); }
 <script>
 // ===== DATA =====
 const buildings = [
-  {id:'RE_SH', prefix:'SH', name:'Sample House', project:'Ifc4_SampleHouse', base:'RE', sub:'SH', elements:55, schema:'IFC4', storeys:['Ground Floor','Roof']},
-  {id:'RE_DX', prefix:'DX', name:'Duplex', project:'Ifc2x3_Duplex', base:'RE', sub:'DX', elements:1099, schema:'IFC2x3', storeys:['Level 1','Level 2','Roof','T/FDN']},
+  {id:'RE_SH', prefix:'SH', name:'Sample House', project:'SampleHouse', base:'RE', sub:'SH', elements:55, schema:'IFC4', storeys:['Ground Floor','Roof']},
+  {id:'RE_DX', prefix:'DX', name:'Duplex', project:'Duplex', base:'RE', sub:'DX', elements:1099, schema:'IFC2x3', storeys:['Level 1','Level 2','Roof','T/FDN']},
   {id:'RE_IN', prefix:'IN', name:'AC11 Institute', project:'Ifc2x3_AC11Institute', base:'RE', sub:'IN', elements:699, schema:'IFC2x3', storeys:['Keller','Erdgeschoss','1. OG','2. OG','Dachgeschoss']},
   {id:'RE_FK', prefix:'FK', name:'FZK-Haus', project:'Ifc4_FZKHaus', base:'RE', sub:'FK', elements:82, schema:'IFC4', storeys:['Ground Floor','Upper Floor']},
-  {id:'CO_TE', prefix:'TE', name:'Airport Terminal', project:'SJTII_Terminal', base:'CO', sub:'TE', elements:48428, schema:'IFC4', storeys:['Foundation','Ground Floor','Level 1-4','Roof']},
+  {id:'CO_TE', prefix:'TE', name:'Airport Terminal', project:'Terminal', base:'CO', sub:'TE', elements:48428, schema:'IFC4', storeys:['Foundation','Ground Floor','Level 1-4','Roof']},
   {id:'IN_BR', prefix:'BR', name:'Bridge', project:'Infra_Bridge', base:'IN', sub:'BR', elements:48, schema:'IFC4X3', storeys:['Superstructure']},
   {id:'IN_RD', prefix:'RD', name:'Road', project:'Infra_Road', base:'IN', sub:'RD', elements:53, schema:'IFC4X3', storeys:['Carriageway']},
   {id:'IN_RL', prefix:'RL', name:'Rail', project:'Infra_Rail', base:'IN', sub:'RL', elements:73, schema:'IFC4X3', storeys:['Track']},
@@ -464,7 +464,7 @@ const buildings = [
   {id:'RE_JE', prefix:'JE', name:'Jesse', project:'Jesse', base:'RE', sub:'JE', elements:626, schema:'IFC2x3', storeys:['Multi-storey']},
   {id:'RE_WI', prefix:'WI', name:'Wilfer', project:'Wilfer', base:'RE', sub:'WI', elements:1, schema:'IFC2x3', storeys:['-']},
   {id:'RE_RA', prefix:'RA', name:'Revit ARC', project:'Revit_ARC', base:'RE', sub:'RA', elements:442, schema:'IFC2x3', storeys:['Level 1-3']},
-  {id:'RE_RM', prefix:'RM', name:'Revit MEP', project:'Revit_MEP', base:'RE', sub:'RM', elements:6787, schema:'IFC2x3', storeys:['Level 1-3','Roof']},
+  {id:'RE_RM', prefix:'RM', name:'Revit MEP', project:'HospitalAuckland', base:'RE', sub:'RM', elements:6787, schema:'IFC2x3', storeys:['Level 1-3','Roof']},
   {id:'RE_RS', prefix:'RS', name:'Revit STR', project:'Revit_STR', base:'RE', sub:'RS', elements:4133, schema:'IFC2x3', storeys:['Level 1-3']},
   {id:'RE_CL', prefix:'CL', name:'SampleCastle', project:'SampleCastle', base:'RE', sub:'CL', elements:3214, schema:'IFC2x3', storeys:['Multi-storey']},
   {id:'RE_HI', prefix:'HI', name:'HITOS', project:'HITOS', base:'RE', sub:'HI', elements:2068, schema:'IFC2x3', storeys:['Multi-storey']},
@@ -535,7 +535,7 @@ const classBreakdowns = {
 };
 
 const productsByType = [['ELEMENT',420],['MEMBER',310],['PROXY',180],['WALL',160],['WINDOW',130],['SLAB',120],['DOOR',110],['STAIR',95],['BEAM',80],['RAILING',60],['COLUMN',50],['PLATE',40],['ROOF',20],['FlowTerminal',150],['FlowFitting',140],['FlowSegment',130],['DuctFitting',90],['DuctSegment',80],['AirTerminal',50],['Other',244]];
-const productsByBuilding = [['SJTII_Terminal',505],['Revit_MEP',166],['Schependomlaan',135],['Clinic_Plumbing',117],['Clinic_Electrical',133],['AC11Institute',87],['FZKHaus',81],['Duplex',78],['Esplanades',51],['Clinic_Architecture',48],['BimWhale_Advanced',189],['SampleCastle',348],['HITOS',447],['SampleHouse',18],['Other (20)',456]];
+const productsByBuilding = [['Terminal',505],['HospitalAuckland',166],['Schependomlaan',135],['Clinic_Plumbing',117],['Clinic_Electrical',133],['AC11Institute',87],['FZKHaus',81],['Duplex',78],['Esplanades',51],['Clinic_Architecture',48],['BimWhale_Advanced',189],['SampleCastle',348],['HITOS',447],['SampleHouse',18],['Other (20)',456]];
 
 const surfaceStyles = [
   {name:'Brick, Common',r:0.667,g:0.392,b:0.412,t:0},

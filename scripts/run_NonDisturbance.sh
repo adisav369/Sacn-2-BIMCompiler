@@ -48,7 +48,7 @@ VIOLATIONS=$(sqlite3 "$LIBRARY_DB" "
       AND a.storey = b.storey
       AND a.ifc_class = b.ifc_class
       AND a.placement_id != b.placement_id
-    WHERE a.building_type = 'SJTII_Terminal'
+    WHERE a.building_type = 'Terminal'
       AND a.ifc_class = 'IfcFireSuppressionTerminal'
     GROUP BY a.placement_id
     HAVING nn_mm > 10  -- exclude co-located
@@ -58,7 +58,7 @@ VIOLATIONS=$(sqlite3 "$LIBRARY_DB" "
 # Check documented exceptions for this rule + building
 EXCEPTIONS=$(sqlite3 "$VALIDATION_DB" "
   SELECT COALESCE(SUM(count), 0) FROM AD_Val_Rule_Exception
-  WHERE ad_val_rule_id = 601 AND building_id = 'SJTII_Terminal'
+  WHERE ad_val_rule_id = 601 AND building_id = 'Terminal'
 ")
 
 if [ "$VIOLATIONS" -eq 0 ]; then
@@ -97,8 +97,8 @@ CLOSE_PAIRS=$(sqlite3 "$LIBRARY_DB" "
         ((a.min_y+a.max_y)/2 - (b.min_y+b.max_y)/2)
       ) * 1000 as dist_mm
     FROM I_Element_Extraction a, I_Element_Extraction b
-    WHERE a.building_type = 'SJTII_Terminal'
-      AND b.building_type = 'SJTII_Terminal'
+    WHERE a.building_type = 'Terminal'
+      AND b.building_type = 'Terminal'
       AND a.discipline = 'ELEC' AND b.discipline = 'SP'
       AND a.storey = b.storey
       AND a.placement_id < b.placement_id
@@ -121,7 +121,7 @@ DOC_COUNT=$(sqlite3 "$VALIDATION_DB" "
 
 DX_MEP=$(sqlite3 "$LIBRARY_DB" "
   SELECT COUNT(*) FROM I_Element_Extraction
-  WHERE building_type = 'Ifc2x3_Duplex' AND discipline = 'MEP'
+  WHERE building_type = 'Duplex' AND discipline = 'MEP'
     AND ifc_class IN ('IfcFlowFitting')")
 
 echo "  Documented P23 exceptions: $DOC_COUNT"

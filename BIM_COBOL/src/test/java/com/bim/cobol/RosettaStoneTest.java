@@ -38,7 +38,7 @@ class RosettaStoneTest {
         terminalConn = DriverManager.getConnection(
                 "jdbc:sqlite:DAGCompiler/lib/input/Terminal_Extracted.db");
         duplexConn = DriverManager.getConnection(
-                "jdbc:sqlite:DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db");
+                "jdbc:sqlite:DAGCompiler/lib/input/Duplex_extracted.db");
         bomConn = DriverManager.getConnection(
                 "jdbc:sqlite:" + System.getProperty("bom.db"));
     }

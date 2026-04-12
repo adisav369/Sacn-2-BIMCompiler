@@ -25,7 +25,7 @@ public class BuildingRegistry {
      */
     public record BuildingEntry(
         String docTypeId,           // C_DocType.Value ('RE_SH', 'RE_DX', 'ST_SH', 'ST_DX')
-        String projectName,         // building instance name ('Ifc4_SampleHouse')
+        String projectName,         // building instance name ('SampleHouse')
         String name,                // human-readable ('Sample House')
         String mProductCategoryId,  // RE, CO, IN, ST — from m_bom.m_product_category_id
         String docSubType,          // SH, DX, TB, TE — from C_DocType.doc_sub_type / m_bom.doc_sub_type

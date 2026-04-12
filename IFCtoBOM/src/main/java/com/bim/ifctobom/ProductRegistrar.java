@@ -7,26 +7,20 @@ import java.sql.*;
 import java.util.*;
 
 /**
- * Manages the M_Product lifecycle across component_library.db and BOM DBs.
+ * Manages the M_Product lifecycle for BOM compilation.
  *
- * <h3>Product Catalog Strategy</h3>
- * <p>component_library.db is the <b>master product catalog</b> and source of
- * truth for product definitions, geometry, and orientation. Products are created
- * there first ({@link #ensureProductCatalog}) so they persist across BOM rebuilds
- * and can be reused across buildings (INSERT OR IGNORE).
+ * <h3>Product Catalog Strategy (S168)</h3>
+ * <p>component_library.db is populated at <b>extraction time</b> by
+ * {@code extractIFCtoDB.py --library}. IFCtoBOM is a <b>read-only consumer</b>
+ * of the library. {@link #ensureProductCatalog} writes M_Product to ERP.db only.
  *
  * <p>The BOM DB ({@code *_BOM.db}) is for <b>spatial arrangement only</b>:
  * m_bom (structure) + m_bom_line (placement with dx/dy/dz). It should reference
  * products by ID, not own product definitions.
  *
- * <p>DEAD CODE: {@link #ensureProducts} still copies M_Product to the BOM DB
- * but BOMWalker was refactored (R7, 2026-03-16) to read from compConn
- * (component_library.db). The BOM DB copy is no longer read by any production
- * code. Pending removal — kept temporarily for backward compatibility of
- * single-arg BOMWalker constructor used by some tests.
- *
- * <p>Flow: I_Element_Extraction → M_Product (component_library.db, master)
- *       → BOMWalker reads via compConn (no BOM DB copy needed)
+ * <p>Flow: extractIFCtoDB.py → M_Product (component_library.db, extraction)
+ *       → ensureProductCatalog → M_Product (ERP.db, runtime catalog)
+ *       → BOMWalker reads via compConn (read-only)
  *
  * <h3>LESSON LEARNED (2026-03-15): The geometry link must be self-creating</h3>
  * <p>M_Product_Image (M_Product_ID → geometry_hash) in component_library.db
@@ -46,13 +40,15 @@ import java.util.*;
 public class ProductRegistrar {
 
     /**
-     * Create M_Product rows in both component_library.db and ERP.db.
-     * Products are created in component_library.db (for M_Product_Image geometry join)
-     * and ERP.db (authoritative master catalog for downstream readers).
+     * Create M_Product rows in ERP.db (master catalog).
+     *
+     * <p>S168: component_library.db is now populated at extraction time by
+     * extractIFCtoDB.py. IFCtoBOM is a read-only consumer of the library.
+     * M_Product writes go ONLY to ERP.db.
      *
      * <p>Idempotent — INSERT OR IGNORE. Only new products are added.
      *
-     * @param compConn     writable connection to component_library.db (geometry join)
+     * @param compConn     read-only connection to component_library.db (kept for signature compat)
      * @param discConn     writable connection to ERP.db (master catalog)
      * @param elements     all extraction elements for the building
      * @param buildingType the building_type string (for logging)
@@ -61,25 +57,6 @@ public class ProductRegistrar {
     public static int ensureProductCatalog(Connection compConn, Connection discConn,
                                            List<ExtractionElement> elements,
                                            String buildingType) throws SQLException {
-        // Create table if not exists (first run)
-        // Implementing BBC.md §14.3 IDV-1 — Witness: W-TIER2-DDL
-        try (Statement stmt = compConn.createStatement()) {
-            stmt.execute("""
-                    CREATE TABLE IF NOT EXISTS M_Product (
-                        M_Product_ID      INTEGER PRIMARY KEY AUTOINCREMENT,
-                        product_id        TEXT NOT NULL UNIQUE,
-                        Value             TEXT,
-                        product_type      TEXT NOT NULL,
-                        width             REAL NOT NULL,
-                        depth             REAL NOT NULL,
-                        height            REAL NOT NULL,
-                        ifc_class         TEXT,
-                        extracted_from    TEXT NOT NULL DEFAULT 'IFC_EXTRACTION',
-                        is_active         INTEGER DEFAULT 1,
-                        building_type     TEXT,
-                        source_element_ref TEXT
-                    )""");
-        }
 
         // Group by M_Product_ID, keeping first occurrence for dimensions
         Map<String, ExtractionElement> distinct = new LinkedHashMap<>();
@@ -89,6 +66,7 @@ public class ProductRegistrar {
             }
         }
 
+        // S168: Write ONLY to ERP.db — component_library.db is populated at extraction
         String sql = """
                 INSERT OR IGNORE INTO M_Product
                 (product_id, Value, product_type, width, depth, height,
@@ -98,9 +76,7 @@ public class ProductRegistrar {
 
         int count = 0;
         int reused = 0;
-        // Dual-write: component_library.db (geometry join) + ERP.db (master catalog)
-        try (PreparedStatement stmt = compConn.prepareStatement(sql);
-             PreparedStatement discStmt = discConn.prepareStatement(sql)) {
+        try (PreparedStatement discStmt = discConn.prepareStatement(sql)) {
             for (Map.Entry<String, ExtractionElement> entry : distinct.entrySet()) {
                 ExtractionElement e = entry.getValue();
                 String productId = entry.getKey();
@@ -109,26 +85,10 @@ public class ProductRegistrar {
                 double d = e.maxY() - e.minY();
                 double h = e.maxZ() - e.minZ();
                 String ifcClass = e.ifcClass();
-                // element_ref = raw IFC name (geometry bridge to I_Geometry_Map)
                 String sourceElementRef = e.elementRef();
 
-                // Write to component_library.db (for ensureProductImages geometry join)
-                stmt.setString(1, productId);
-                stmt.setString(2, productId);  // Value = product_id
-                stmt.setString(3, productType);
-                stmt.setDouble(4, w);
-                stmt.setDouble(5, d);
-                stmt.setDouble(6, h);
-                stmt.setString(7, ifcClass);
-                stmt.setString(8, buildingType);
-                stmt.setString(9, sourceElementRef);
-                int rows = stmt.executeUpdate();
-                if (rows > 0) count++;
-                else reused++;
-
-                // Write to ERP.db (authoritative master catalog)
                 discStmt.setString(1, productId);
-                discStmt.setString(2, productId);  // Value = product_id
+                discStmt.setString(2, productId);
                 discStmt.setString(3, productType);
                 discStmt.setDouble(4, w);
                 discStmt.setDouble(5, d);
@@ -136,7 +96,9 @@ public class ProductRegistrar {
                 discStmt.setString(7, ifcClass);
                 discStmt.setString(8, buildingType);
                 discStmt.setString(9, sourceElementRef);
-                discStmt.executeUpdate();
+                int rows = discStmt.executeUpdate();
+                if (rows > 0) count++;
+                else reused++;
             }
         }
         if (reused > 0) {
@@ -147,8 +109,6 @@ public class ProductRegistrar {
         // Backfill M_Product_Category_ID from ifc_class → M_Product_Category.IFC_Class.
         // Implementing DISC_VALIDATION_DB_SRS.md §6.4 — Witness: W-DISC-CAT
         // Only on ERP.db (discConn) — component_library.db has no category column.
-        // Always run (not gated on count) — ERP.db may receive new products
-        // even when component_library.db already has them (fresh ERP.db rebuild).
         {
             try (Statement stmt = discConn.createStatement()) {
                 stmt.executeUpdate("""

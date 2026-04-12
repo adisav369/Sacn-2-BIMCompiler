@@ -2773,11 +2773,25 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
              f"zone=({_zp(_x_cnt_left_ms):.0f},{_zp(_x_cnt_right_ms):.0f})mm fit={_fit}")
 
     # ── Roof silhouette — §5.2: convex hull of roof projected onto face ──
-    _sil_result = roof_silhouette(db_path, face)
-    hull, slab_thickness_m = (_sil_result if isinstance(_sil_result, tuple)
-                              else (_sil_result, 0.0))
+    # §I-33: pass h_bounds so roof_silhouette() filters displaced mesh vertices
+    # (local-coord slab verts) BEFORE computing the convex hull — post-hull
+    # filtering leaves a degenerate polyline when OOB verts are the hull corners.
+    _h_bounds = (_fe_hmin - 2 * ext, _fe_hmax + 2 * ext)
+    _sil_result = roof_silhouette(db_path, face, h_bounds=_h_bounds)
+    if isinstance(_sil_result, tuple) and len(_sil_result) == 3:
+        hull, slab_thickness_m, _sil_oob = _sil_result
+    elif isinstance(_sil_result, tuple):
+        hull, slab_thickness_m = _sil_result
+        _sil_oob = None
+    else:
+        hull, slab_thickness_m, _sil_oob = _sil_result, 0.0, None
+    # Log §SKIP_OOB if displaced raw vertices were filtered before hull computation
+    if _sil_oob and _sil_oob['n_oob'] > 0:
+        _log(f"§SKIP_OOB face={face} elem=IfcSlab guid={_sil_oob['guid']} "
+             f"h_range=(OOB) zone=({_zp(_x_cnt_left_ms):.0f},{_zp(_x_cnt_right_ms):.0f})mm "
+             f"— {_sil_oob['n_oob']} displaced raw vertices filtered before hull")
     if hull:
-        # §12a.2 / §I-33: OOB guard — entire hull outside zone → skip
+        # §12a.2: entire hull outside zone → skip
         _hull_h_ms = [_mh(h) for h, z in hull]
         _hull_hmin_ms, _hull_hmax_ms = min(_hull_h_ms), max(_hull_h_ms)
         if (_hull_hmax_ms < _x_cnt_left_ms - 5 * scale or
@@ -2786,36 +2800,6 @@ def write_elevation_dxf(db_path: str, face: str, out_dxf: str,
                  f"h_range=({_zp(_hull_hmin_ms):.1f},{_zp(_hull_hmax_ms):.1f})mm "
                  f"zone=({_zp(_x_cnt_left_ms):.0f},{_zp(_x_cnt_right_ms):.0f})mm — skipped")
             hull = []
-        else:
-            # §I-33: per-vertex OOB filter — displaced mesh vertices (local coords,
-            #   not world-space) can extend far outside the building footprint.
-            _h_lo = _x_cnt_left_ms - 5 * scale
-            _h_hi = _x_cnt_right_ms + 5 * scale
-            _oob_verts = [(h, z) for h, z in hull if _mh(h) < _h_lo or _mh(h) > _h_hi]
-            if _oob_verts:
-                _oob_hmin = min(_mh(h) for h, z in _oob_verts)
-                _oob_hmax = max(_mh(h) for h, z in _oob_verts)
-                # Query guid of the slab whose mesh contributes OOB vertices
-                _skip_guid = '?'
-                try:
-                    _sc = sqlite3.connect(db_path)
-                    _sg = _sc.execute("""
-                        SELECT ei.guid FROM elements_meta m
-                        JOIN element_instances ei ON m.guid = ei.guid
-                        WHERE (m.ifc_class = 'IfcRoof'
-                               OR (m.ifc_class = 'IfcSlab'
-                                   AND m.element_name LIKE '%Roof%'))
-                        LIMIT 1""").fetchone()
-                    if _sg:
-                        _skip_guid = _sg[0]
-                    _sc.close()
-                except Exception:
-                    pass
-                _log(f"§SKIP_OOB face={face} elem=IfcSlab guid={_skip_guid} "
-                     f"h_range=({_zp(_oob_hmin):.0f},{_zp(_oob_hmax):.0f})mm "
-                     f"zone=({_zp(_x_cnt_left_ms):.0f},{_zp(_x_cnt_right_ms):.0f})mm "
-                     f"— {len(_oob_verts)} displaced vertices filtered")
-                hull = [(h, z) for h, z in hull if not (_mh(h) < _h_lo or _mh(h) > _h_hi)]
     if hull:
         # §I-26 fix 1: open polyline avoids spurious vertical closing segment
         pts = [(_mh(h), _mh(z)) for h, z in hull]

@@ -240,8 +240,8 @@ If YES → proceed with fraction updates per recommendations above
 
 ## Reference Data Sources
 
-- Reference DB: `/home/red1/bim-compiler/reference/rosetta/Ifc2x3_Duplex_extracted.db`
-- Output DB: `/home/red1/bim-compiler/output/ifc2x3_duplex.db`
+- Reference DB: `/home/red1/bim-compiler/reference/rosetta/Duplex_extracted.db`
+- Output DB: `/home/red1/bim-compiler/output/duplex.db`
 - Library table: `library/component_library.db::ad_unit_type_room`
 - Unit dimensions: unitWidth=7.966m, unitDepth=9.308m (hardcoded in Duplex E2E test)
 

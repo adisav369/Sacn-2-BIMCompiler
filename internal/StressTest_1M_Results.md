@@ -433,3 +433,109 @@ Also added `_get_ram_mb()` helper (RSS via `resource` module) to this file — w
 previously only available in `blend_cache.py`.
 
 👍 Library load path: analysis complete, regression fixed, forensic logging in place. Ready to test.
+
+---
+
+## S176 Blender Test Results — Two Runs
+
+> **Date:** 2026-04-12 14:25 and 14:57
+> **Machine:** i5-13500HX 20T, 30GB RAM, RTX 4060 8GB, NVMe SSD
+> **DB:** sandbox_1M_extracted.db (1,061,736 elements, 108,440 hashes)
+
+### Run 1: CHUNK_SIZE=100
+
+```
+TOTAL: 478.42s
+GN objects: 3,458 (3,458 disc×chunk pairs)
+Chunks: 1,085
+Step 2 (library parse): 365s
+Step 4 (GN build): 87.10s ← bottleneck: 3,458 bpy objects + modifiers
+Step 5 (GN enable): 4.999s
+.blend size: 18MB
+Viewport lag: 10+ seconds per interaction
+Geo hell: NO
+```
+
+### Run 2: CHUNK_SIZE=2000
+
+```
+TOTAL: 392.04s (86s faster)
+GN objects: 258 (258 disc×chunk pairs) — 13x fewer
+Chunks: 55
+Step 2 (library parse): 361s (same)
+Step 4 (GN build): 8.27s ← 10.5x faster
+Step 5 (GN enable): 5.338s
+Viewport lag: ~5 seconds (2x improvement)
+Geo hell: YES — wrong meshes at wrong positions
+Slowdown over time: YES — streamer doesn't pause during orbit
+```
+
+### Saved .blend files (forensic reference)
+- `DAGCompiler/lib/input/1.blend` — 18MB, CHUNK_SIZE=100, 3,458 GN objects, clean (no geo hell)
+- `DAGCompiler/lib/input/Untitled.blend` — 15MB, CHUNK_SIZE=2000, 258 GN objects, HAS geo hell
+
+### Screenshots
+- `~/Pictures/Screenshots/Screenshot from 2026-04-12 15-10-51.png` — geo hell (orange meshes)
+- `~/Pictures/Screenshots/Screenshot from 2026-04-12 15-07-00.png` — normal city view
+
+### Analysis
+
+1. **CHUNK_SIZE=2000 is 13x fewer GN objects** and viewport is 2x faster.
+   But geo hell is back. Likely cause: `Tpl_{hash[:12]}` name collisions at 2000
+   objects per collection. Two hashes sharing the same 12-char prefix get `.001`
+   suffix → alphabetical sort shifts → wrong index.
+
+2. **Streamer doesn't respect halt mode.** It fires every 0.5s regardless of camera
+   state, triggering GN re-evals during orbit. This causes progressive slowdown
+   as real meshes (many verts) replace bbox proxies (8 verts).
+
+3. **.blend size is excellent.** 18MB for 1M elements. Linked meshes = zero mesh data.
+
+### Open items for S178
+- ~~P0: Fix geo hell at CHUNK_SIZE=2000 (name collision → use full hash)~~ DONE
+- ~~P0: Streamer halt mode (pause during orbit)~~ DONE
+- P1: Validate viewport <3s after fixes — **partially done, see Run 3**
+- P2: FPS proof linked meshes without make_local() (S177)
+- P3: Reopen test (linked mesh persistence)
+- Prompt: `prompts/S178_chunk_debug_outliner.md`
+
+### Run 3: CHUNK_SIZE=2000, T_{full_hash} fix + streamer halt (cold run)
+
+```
+TOTAL: 304.15s (174s faster than Run 1)
+GN objects: 258 (258 disc×chunk pairs)
+Chunks: 55
+Step 2 (library parse): 285s (cold run — real improvement over 365s)
+Step 4 (GN build): 5.50s
+Step 5 (GN enable): 3.541s
+.blend: not yet saved
+Viewport lag: slightly better than Run 2 (~5s), streamer halt working
+Geo hell: MOSTLY FIXED — sparse wrong meshes during slow streaming
+Streamer halt: WORKING — §PROOF STREAM_HALT skipped=4 ticks during orbit
+```
+
+Screenshot: `~/Pictures/Screenshots/Screenshot from 2026-04-12 15-50-25.png`
+— proper city layout, boxes where not streamed yet, a few wrong meshes sparse.
+
+**Sparse geo hell analysis:** The `T_{full_hash}` naming fix eliminated the
+bulk geo hell (name collision). The remaining sparse wrong meshes appear during
+slow streaming — likely streamer and DLOD both writing `instance_index` on the
+same mesh concurrently. The streamer sets chunk-local real index while DLOD
+may reset to bbox (0). Race condition between two writers on the same attribute.
+
+**KeyError bug:** `operator.py` line 1858 references `stats['link_time']` but
+`load_library_gn()` returns `cache_time`. Non-fatal (try/except in operator).
+
+### Summary across all 3 runs
+
+| Metric | Run 1 (CS=100) | Run 2 (CS=2000 broken) | Run 3 (CS=2000 fixed) |
+|--------|---------------|----------------------|---------------------|
+| Total | 478s | 392s | **304s** |
+| GN objects | 3,458 | 258 | 258 |
+| GN build | 87s | 8.3s | 5.5s |
+| GN enable | 5.0s | 5.3s | 3.5s |
+| Cache parse | 365s | 361s | 285s |
+| Viewport lag | 10+ sec | ~5 sec | ~5 sec |
+| Geo hell | Clean | Full | Sparse |
+| Streamer halt | No | No | **Yes** |
+| .blend size | 18MB | 15MB | ~15MB est. |

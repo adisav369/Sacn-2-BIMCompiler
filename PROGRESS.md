@@ -26,6 +26,19 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
+**S176 (2026-04-12):** Fast full load + GN streaming fix.
+  - **Full load speedup:** `load_library_linked()` Step 2 changed from `link=False` (append) to `link=True` (cache refs only, NO make_local). Per-element objects resolve linked mesh refs once at obj.data assignment — make_local unnecessary and was a regression (140s hang at 108K hashes). Dead material slot fix removed. Step 5 batch interval: 2K→10K.
+  - **GN chunked sub-collections:** `load_library_gn()` rewritten. Templates split into sub-collections of CHUNK_SIZE=100. Each (discipline, chunk) pair gets its own GN point mesh + modifier. Collection Info walks ≤101 objects per eval (was 7K-23K). Hospital: 231 chunks, Terminal: 72 chunks.
+  - **Chunk-aware streamer:** `_stream_tick()` groups batch by chunk_id, pauses/resumes only affected chunk's GN modifiers. Each re-eval: ~2ms (was 1-2s).
+  - **Halt mode (camera debounce):** `dlod_handler.py` skips LOD swaps during orbit, fires with 4x batch when camera stops for 200ms. Smooth navigation at any scale.
+  - **Proofs:** `test_gn_chunk_proof.py` 18/18 PASS (CHUNK_PARTITION, LOCAL_INDEX_RANGE, CHUNK_BBOX_ZERO, CROSS_CHUNK_ISOLATION, CHUNK_ROUNDTRIP, HALT_SUPPRESS, HALT_FIRE, HALT_IDLE). Original `test_gn_index_proof.py` 15/15 PASS (no regression).
+  - **DLOD self-test:** 3/3 PASS (DIST, BUCKET, BATCH).
+  - **Blender test (sandbox 1M):** 1,061,736 elements loaded in 478s. 18MB .blend (was 329MB). DLOD wired. BUT: 3,458 GN objects at CHUNK_SIZE=100 → 10+ sec viewport lag.
+  - **CHUNK_SIZE bumped to 2000:** sandbox 55 chunks, ~170 GN objects (was 3,458). Hospital: 12 chunks. 15/15 proof PASS. Needs Blender re-test.
+  - **DLOD chunk-aware refactoring:** `dlod_init_chunked()`, `_apply_swaps_chunked()`, `_resolve_disc_meshes()` updated for both flat and chunked modes. 4/4 self-test PASS (incl. DLOD_CHUNK).
+  - **make_local() regression fixed:** removed from `load_library_linked()` per StressTest_1M_Results.md analysis. Dead material slot fix removed.
+  - Next: S178 — validate CHUNK_SIZE=2000 viewport (prompts/S178), S177 — P2 FPS proof linked meshes (prompts/S177).
+
 **S175 SESSION 2 (2026-04-12):** GN streaming — geo hell root cause found and architectured.
   - **Library expanded:** 41K → 120,471 meshes. 25 buildings added (14 BLOB-copy, 11 IFC re-extract). 276MB library.blend.
   - **Sandbox rebuilt:** 1,061,736 elements, 108,440 unique hashes, 100% library coverage (was 58%).

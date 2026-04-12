@@ -3,8 +3,8 @@
 Phase 114: Extract Duplex IFC components into component_library.db.
 
 Sources:
-  - Ifc2x3_Duplex_Architecture.ifc: 61 furniture (beds, sofas, tables, cabinets)
-  - Ifc2x3_Duplex_MEP.ifc: 75 flow terminals (sanitary fixtures, lights, appliances)
+  - Duplex_Architecture.ifc: 61 furniture (beds, sofas, tables, cabinets)
+  - Duplex_MEP.ifc: 75 flow terminals (sanitary fixtures, lights, appliances)
 
 Follows import_ifc_furniture.py pattern:
   - Tessellate via ifcopenshell.geom.create_shape()
@@ -395,8 +395,8 @@ def process_mep(ifc_path, conn, existing_hashes, seen_hashes):
 
 
 def main():
-    arch_path = "archive/IFC_source_files/youshengCode_samples/Ifc2x3_Duplex_Architecture.ifc"
-    mep_path = "archive/IFC_source_files/youshengCode_samples/Ifc2x3_Duplex_MEP.ifc"
+    arch_path = "archive/IFC_source_files/youshengCode_samples/Duplex_Architecture.ifc"
+    mep_path = "archive/IFC_source_files/youshengCode_samples/Duplex_MEP.ifc"
 
     if not os.path.exists(arch_path):
         print(f"ERROR: {arch_path} not found")

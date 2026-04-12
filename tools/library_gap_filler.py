@@ -8,7 +8,7 @@ generates missing INSERT SQL.
 
 Usage:
   python3 tools/library_gap_filler.py \
-    --reference reference/rosetta/SJTII_Terminal_extracted.db \
+    --reference reference/rosetta/Terminal_extracted.db \
     --library library/component_library.db \
     [--output missing_entries.sql] \
     [--audit-only] \

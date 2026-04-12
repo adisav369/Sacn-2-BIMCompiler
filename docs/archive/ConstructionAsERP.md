@@ -179,7 +179,7 @@ C_DocType ({PREFIX}_BOM.db — constant domain config)
 │   AABB           = width/depth/height_mm      ← HOW BIG (reference envelope)
 
 C_Order (output.db — created fresh each compile from C_DocType)
-│   C_Order_ID     = building_id ('Ifc2x3_Duplex')
+│   C_Order_ID     = building_id ('Duplex')
 │   C_DocType_ID   = 'RE_DX'                    ← FK → C_DocType
 │   Site_AABB      = aabb_width/depth/height_mm  ← HOW BIG (construction envelope)
 │   Description    = 'Duplex residential unit'
@@ -1243,7 +1243,7 @@ WHERE es.doc_status = 'CO'
 Query: "Find space for a 300mm-wide lampshade in the Living Room"
 ```sql
 SELECT * FROM v_co_available_space
-WHERE c_order_id = 'Ifc2x3_Duplex'
+WHERE c_order_id = 'Duplex'
   AND room_name = 'Rm_Living_1'
   AND remaining_mm >= 300
 ORDER BY remaining_mm ASC;  -- tightest fit first
@@ -2168,13 +2168,13 @@ element_instances (output DB) — final IFC elements
                                 SH: 56, DX: 1,089
 ```
 
-### A.1 SH — Ifc4_SampleHouse (single-storey, 4 lines)
+### A.1 SH — SampleHouse (single-storey, 4 lines)
 
 **c_order (output.db — created from C_DocType RE_SH):**
 
 | Field | Value |
 |-------|-------|
-| building_id | Ifc4_SampleHouse |
+| building_id | SampleHouse |
 | building_name | IFC4 Sample House |
 | C_DocType_ID | RE_SH |
 | aabb_width_mm | 16867.5 |
@@ -2204,13 +2204,13 @@ element_instances (output DB) — final IFC elements
 The FLOOR_SH_GF_STD line is where the compiler walks into room SETs
 (LI→LIVING_SET, BD→BED_SET, etc.) and writes furniture to c_orderline.
 
-### A.2 DX — Ifc2x3_Duplex (two-storey duplex, 7 lines)
+### A.2 DX — Duplex (two-storey duplex, 7 lines)
 
 **c_order (output.db — created from C_DocType RE_DX):**
 
 | Field | Value |
 |-------|-------|
-| building_id | Ifc2x3_Duplex |
+| building_id | Duplex |
 | building_name | IFC2x3 Duplex |
 | C_DocType_ID | RE_DX |
 | aabb_width_mm | 12372.7 |
@@ -2584,7 +2584,7 @@ DocAction pattern: Draft → Process → Complete).
 
 ### 11.14 Rosetta Stone gap investigation — 67-element decomposition (2026-03-02)
 
-Comparing `ifc4_samplehouse.db` (SH, EXTRACTED, 56 elements) against
+Comparing `samplehouse.db` (SH, EXTRACTED, 56 elements) against
 `st_sh.db` (ST_SH, GENERATIVE, 123 elements). Gap = **67 elements**.
 
 **Full class distribution:**
@@ -2695,8 +2695,8 @@ during compilation since there is no reference to compare against. But the BOM r
 and library must still be deterministic.
 
 **Confirmed:** SH doors exist in component_library with exact BBox dims:
-`IfcDoor_Ifc4_SampleHouse_c5357415` (178×880×2145mm),
-`IfcDoor_Ifc4_SampleHouse_f0181ba2` (1860×199×2110mm). The extraction pipeline
+`IfcDoor_SampleHouse_c5357415` (178×880×2145mm),
+`IfcDoor_SampleHouse_f0181ba2` (1860×199×2110mm). The extraction pipeline
 correctly populated these.
 
 ### 11.17 MEP excluded from Rosetta Stone digest
@@ -3160,7 +3160,7 @@ Total M_Product: 187 rows.
 - `product_id`: `PIPE_COLD_WATER_25MM`, `WALL_EXT_BRICK_BLOCK`, `SMOKE_DETECTOR` (global, no building prefix)
 - `Name`: "Cold Water Pipe 25mm", "Exterior Brick on Block", "Smoke Detector"
 - `Description`: Original Revit family string (e.g., `M_Smoke Detector:Smoke Detector:Smoke Detector`)
-- `extracted_from`: `Ifc2x3_Duplex` for DX-sourced products
+- `extracted_from`: `Duplex` for DX-sourced products
 
 **What this does NOT change (boundaries):**
 - No Java PO changes — `X_MProduct.java` untouched. New columns unused by pipeline until P0.1-BOM.

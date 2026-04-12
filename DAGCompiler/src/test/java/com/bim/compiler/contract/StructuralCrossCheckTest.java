@@ -42,10 +42,10 @@ class StructuralCrossCheckTest {
 
     // Hardcoded paths — not delegated to BuildingRegistry (bypass-proof).
     // Compiled DBs are written by BuildingRegistryTest during the same mvn test run.
-    private static final String COMPILED_SH  = "DAGCompiler/lib/output/ifc4_samplehouse.db";
-    private static final String COMPILED_DX  = "DAGCompiler/lib/output/ifc2x3_duplex.db";
-    private static final String REFERENCE_SH = "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
-    private static final String REFERENCE_DX = "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db";
+    private static final String COMPILED_SH  = "DAGCompiler/lib/output/samplehouse.db";
+    private static final String COMPILED_DX  = "DAGCompiler/lib/output/duplex.db";
+    private static final String REFERENCE_SH = "DAGCompiler/lib/input/SampleHouse_extracted.db";
+    private static final String REFERENCE_DX = "DAGCompiler/lib/input/Duplex_extracted.db";
 
     // -----------------------------------------------------------------------
     // SH — MATCH (structural classes, position + count verified 2026-02-28)
@@ -54,7 +54,7 @@ class StructuralCrossCheckTest {
     /**
      * X1-SH: Five structural classes must reproduce the reference exactly.
      *
-     * <p>Verified against Ifc4_SampleHouse_extracted.db on 2026-02-28:
+     * <p>Verified against SampleHouse_extracted.db on 2026-02-28:
      * IfcWall=5, IfcSlab=2, IfcRoof=1, IfcMember=20, IfcPlate=6.
      * Both element count and bounding-box positions are identical.
      *

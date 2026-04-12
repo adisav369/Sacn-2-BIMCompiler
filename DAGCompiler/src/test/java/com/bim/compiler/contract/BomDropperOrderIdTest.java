@@ -31,7 +31,7 @@ public class BomDropperOrderIdTest {
             BuildingEntry entry = new BuildingEntry(
                 "RE_SH", "TestHouse", "Test House",
                 "RE", "SH",
-                null, null, null,
+                null, null,
                 true, 10, 0,
                 "GENERATIVE", "test", 0,
                 10000, 8000, 6000,

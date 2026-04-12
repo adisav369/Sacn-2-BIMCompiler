@@ -7,7 +7,7 @@ No HTTP framework dependency.
 Usage:
     client = DesignerClient()
     client.connect()
-    result = client.compile("Ifc4_SampleHouse", "library/_SH_compile.db")
+    result = client.compile("SampleHouse", "library/_SH_compile.db")
     client.disconnect()
 
 Async notifications from the server (COMPILE_COMPLETE after auto-recompile)

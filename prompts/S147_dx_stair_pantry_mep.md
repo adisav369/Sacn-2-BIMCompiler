@@ -64,7 +64,7 @@ because they depend on ARC/STR for spatial sense and clearance rules.
 1. `CLAUDE.md` + `PROGRESS.md` §Current State
 2. `docs/DuplexAnalysis.md` §S145 Learning Points (especially §3 warning table)
 3. `CompositionBomBuilder.java` — envelope detection (lines 128-186)
-4. Pipeline log: `grep ENVELOPE logs/pipeline_Ifc2x3_Duplex_ifctobom_*.log`
+4. Pipeline log: `grep ENVELOPE logs/pipeline_Duplex_ifctobom_*.log`
 5. Run `./scripts/run_RosettaStones.sh classify_dx.yaml`
 
 ## Gate

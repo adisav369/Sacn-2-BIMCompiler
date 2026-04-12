@@ -17,7 +17,7 @@ The `ad_element_placement` table holds 68,472 rows of absolute coordinates:
 
 ```sql
 -- Current: hardcoded position (WHERE but not WHY)
-building_type='Ifc4_SampleHouse', storey='Ground Floor', ifc_class='IfcDoor',
+building_type='SampleHouse', storey='Ground Floor', ifc_class='IfcDoor',
 min_x=1510, max_x=2410, min_y=-570, max_y=310, min_z=0, max_z=2150
 ```
 
@@ -96,7 +96,7 @@ Defines the structural grid for each building. Grid lines are the skeleton from 
 ```sql
 CREATE TABLE ad_building_grid (
     id            INTEGER PRIMARY KEY,
-    building_type TEXT NOT NULL,       -- 'Ifc4_SampleHouse', 'TB_LKTN'
+    building_type TEXT NOT NULL,       -- 'SampleHouse', 'TB_LKTN'
     axis          TEXT NOT NULL,       -- 'X' or 'Y'
     grid_label    TEXT NOT NULL,       -- 'A', 'B', '1', '2' etc.
     position_mm   REAL NOT NULL,       -- absolute position in mm
@@ -119,12 +119,12 @@ INSERT INTO ad_building_grid VALUES
 
 -- Example: SampleHouse (extracted from Stone)
 INSERT INTO ad_building_grid VALUES
-    (NULL, 'Ifc4_SampleHouse', 'X', '1', 0),
-    (NULL, 'Ifc4_SampleHouse', 'X', '2', 3000),
-    (NULL, 'Ifc4_SampleHouse', 'X', '3', 6000),
-    (NULL, 'Ifc4_SampleHouse', 'Y', 'A', 0),
-    (NULL, 'Ifc4_SampleHouse', 'Y', 'B', 3100),
-    (NULL, 'Ifc4_SampleHouse', 'Y', 'C', 6100);
+    (NULL, 'SampleHouse', 'X', '1', 0),
+    (NULL, 'SampleHouse', 'X', '2', 3000),
+    (NULL, 'SampleHouse', 'X', '3', 6000),
+    (NULL, 'SampleHouse', 'Y', 'A', 0),
+    (NULL, 'SampleHouse', 'Y', 'B', 3100),
+    (NULL, 'SampleHouse', 'Y', 'C', 6100);
 ```
 
 **Design note:** Grid positions are absolute from building origin (0,0). Multi-unit buildings (Duplex) have per-unit offsets applied by the resolver. Grid labels match the drawing sheet convention.
@@ -240,7 +240,7 @@ CREATE TABLE c_orderline (
 ```sql
 -- SampleHouse: bedroom window (extracted from Stone)
 INSERT INTO c_orderline VALUES (NULL,
-    'Ifc4_SampleHouse', 'Ground Floor', 'WIN_BEDROOM_N',
+    'SampleHouse', 'Ground Floor', 'WIN_BEDROOM_N',
     'IfcWindow', 'ARC',
     'WALL', 'WALL_BEDROOM_NORTH',
     'FRACTION', 0.47,  900,           -- 47% along north wall, 900mm sill

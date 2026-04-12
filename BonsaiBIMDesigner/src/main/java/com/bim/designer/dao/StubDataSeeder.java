@@ -144,9 +144,9 @@ public class StubDataSeeder {
                         DSLContent, OutputDbPath, ReferenceDbPath,
                         IsActive, SeqNo, ExpectedElements, Provenance, Description, GeometryFailThreshold)
                     VALUES
-                    ('RE_SH', 'Ifc4_SampleHouse', 'Sample House', 'SH',
-                     NULL, 'DAGCompiler/lib/output/ifc4_samplehouse.db',
-                     'reference/rosetta/Ifc4_SampleHouse_extracted.db',
+                    ('RE_SH', 'SampleHouse', 'Sample House', 'SH',
+                     NULL, 'DAGCompiler/lib/output/samplehouse.db',
+                     'reference/rosetta/SampleHouse_extracted.db',
                      1, 10, 55, 'EXTRACTED', '2-storey sample house', 0)
                     """);
             s.execute("""
@@ -322,59 +322,59 @@ public class StubDataSeeder {
             // Furniture — various sizes relative to bedroom (3100x3100x3000mm)
             s.execute("""
                     INSERT INTO M_Product (product_id, Value, product_type, width, depth, height, ifc_class, building_type)
-                    VALUES ('BED_QUEEN_1600', 'BED_QUEEN_1600', 'ELEMENT', 1.6, 2.1, 0.5, 'IfcFurnishingElement', 'Ifc4_SampleHouse')
+                    VALUES ('BED_QUEEN_1600', 'BED_QUEEN_1600', 'ELEMENT', 1.6, 2.1, 0.5, 'IfcFurnishingElement', 'SampleHouse')
                     """);
             s.execute("""
                     INSERT INTO M_Product (product_id, Value, product_type, width, depth, height, ifc_class, building_type)
-                    VALUES ('BED_QUEEN_1500', 'BED_QUEEN_1500', 'ELEMENT', 1.5, 2.0, 0.45, 'IfcFurnishingElement', 'Ifc4_SampleHouse')
+                    VALUES ('BED_QUEEN_1500', 'BED_QUEEN_1500', 'ELEMENT', 1.5, 2.0, 0.45, 'IfcFurnishingElement', 'SampleHouse')
                     """);
             s.execute("""
                     INSERT INTO M_Product (product_id, Value, product_type, width, depth, height, ifc_class, building_type)
-                    VALUES ('BED_KING_1800', 'BED_KING_1800', 'ELEMENT', 1.8, 2.1, 0.5, 'IfcFurnishingElement', 'Ifc4_SampleHouse')
+                    VALUES ('BED_KING_1800', 'BED_KING_1800', 'ELEMENT', 1.8, 2.1, 0.5, 'IfcFurnishingElement', 'SampleHouse')
                     """);
             s.execute("""
                     INSERT INTO M_Product (product_id, Value, product_type, width, depth, height, ifc_class, building_type)
-                    VALUES ('WARDROBE_2400', 'WARDROBE_2400', 'ELEMENT', 2.4, 0.6, 2.1, 'IfcFurnishingElement', 'Ifc4_SampleHouse')
+                    VALUES ('WARDROBE_2400', 'WARDROBE_2400', 'ELEMENT', 2.4, 0.6, 2.1, 'IfcFurnishingElement', 'SampleHouse')
                     """);
             s.execute("""
                     INSERT INTO M_Product (product_id, Value, product_type, width, depth, height, ifc_class, building_type)
-                    VALUES ('DESK_1500', 'DESK_1500', 'ELEMENT', 1.5, 0.75, 0.75, 'IfcFurnishingElement', 'Ifc4_SampleHouse')
+                    VALUES ('DESK_1500', 'DESK_1500', 'ELEMENT', 1.5, 0.75, 0.75, 'IfcFurnishingElement', 'SampleHouse')
                     """);
             // Oversized — will be TOO_WIDE for bedroom
             s.execute("""
                     INSERT INTO M_Product (product_id, Value, product_type, width, depth, height, ifc_class, building_type)
-                    VALUES ('SOFA_SECTIONAL_4000', 'SOFA_SECTIONAL_4000', 'ELEMENT', 4.0, 2.5, 0.9, 'IfcFurnishingElement', 'Ifc4_SampleHouse')
+                    VALUES ('SOFA_SECTIONAL_4000', 'SOFA_SECTIONAL_4000', 'ELEMENT', 4.0, 2.5, 0.9, 'IfcFurnishingElement', 'SampleHouse')
                     """);
             // Tight fit — within 100mm clearance
             s.execute("""
                     INSERT INTO M_Product (product_id, Value, product_type, width, depth, height, ifc_class, building_type)
-                    VALUES ('BED_SUPER_KING_3050', 'BED_SUPER_KING_3050', 'ELEMENT', 3.05, 2.1, 0.5, 'IfcFurnishingElement', 'Ifc4_SampleHouse')
+                    VALUES ('BED_SUPER_KING_3050', 'BED_SUPER_KING_3050', 'ELEMENT', 3.05, 2.1, 0.5, 'IfcFurnishingElement', 'SampleHouse')
                     """);
 
             // Doors
             s.execute("""
                     INSERT INTO M_Product (product_id, Value, product_type, width, depth, height, ifc_class, building_type)
-                    VALUES ('DOOR_INT_810', 'DOOR_INT_810', 'DOOR', 0.81, 0.2, 2.1, 'IfcDoor', 'Ifc4_SampleHouse')
+                    VALUES ('DOOR_INT_810', 'DOOR_INT_810', 'DOOR', 0.81, 0.2, 2.1, 'IfcDoor', 'SampleHouse')
                     """);
             s.execute("""
                     INSERT INTO M_Product (product_id, Value, product_type, width, depth, height, ifc_class, building_type)
-                    VALUES ('DOOR_EXT_1810', 'DOOR_EXT_1810', 'DOOR', 1.81, 0.2, 2.1, 'IfcDoor', 'Ifc4_SampleHouse')
+                    VALUES ('DOOR_EXT_1810', 'DOOR_EXT_1810', 'DOOR', 1.81, 0.2, 2.1, 'IfcDoor', 'SampleHouse')
                     """);
 
             // Windows
             s.execute("""
                     INSERT INTO M_Product (product_id, Value, product_type, width, depth, height, ifc_class, building_type)
-                    VALUES ('WINDOW_1810', 'WINDOW_1810', 'WINDOW', 1.81, 0.35, 1.21, 'IfcWindow', 'Ifc4_SampleHouse')
+                    VALUES ('WINDOW_1810', 'WINDOW_1810', 'WINDOW', 1.81, 0.35, 1.21, 'IfcWindow', 'SampleHouse')
                     """);
             s.execute("""
                     INSERT INTO M_Product (product_id, Value, product_type, width, depth, height, ifc_class, building_type)
-                    VALUES ('WINDOW_600', 'WINDOW_600', 'WINDOW', 0.6, 0.35, 0.6, 'IfcWindow', 'Ifc4_SampleHouse')
+                    VALUES ('WINDOW_600', 'WINDOW_600', 'WINDOW', 0.6, 0.35, 0.6, 'IfcWindow', 'SampleHouse')
                     """);
 
             // Walls
             s.execute("""
                     INSERT INTO M_Product (product_id, Value, product_type, width, depth, height, ifc_class, building_type)
-                    VALUES ('WALL_EXT_200', 'WALL_EXT_200', 'WALL', 5.0, 0.2, 3.0, 'IfcWall', 'Ifc4_SampleHouse')
+                    VALUES ('WALL_EXT_200', 'WALL_EXT_200', 'WALL', 5.0, 0.2, 3.0, 'IfcWall', 'SampleHouse')
                     """);
 
             // Terminal-only product (different building_type)
@@ -386,7 +386,7 @@ public class StubDataSeeder {
             // Inactive product (should not appear in browse)
             s.execute("""
                     INSERT INTO M_Product (product_id, Value, product_type, width, depth, height, ifc_class, building_type, is_active)
-                    VALUES ('DELETED_ITEM', 'DELETED_ITEM', 'ELEMENT', 1.0, 1.0, 1.0, 'IfcFurnishingElement', 'Ifc4_SampleHouse', 0)
+                    VALUES ('DELETED_ITEM', 'DELETED_ITEM', 'ELEMENT', 1.0, 1.0, 1.0, 'IfcFurnishingElement', 'SampleHouse', 0)
                     """);
         }
     }

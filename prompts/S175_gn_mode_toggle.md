@@ -1,69 +1,122 @@
-# S175 — GN Mode Toggle: Dual-Path Viewport Architecture
+# S175 — GN + NEAR: 1M Elements in 3 Seconds
 
-## Scope
-Implement GN ON/OFF toggle for the Library linker path, so users can switch between:
-- **GN OFF (default):** per-element objects in Outliner, full colors, selection, element names — daily backoffice work
-- **GN ON:** per-discipline GN point clouds (few Outliner items), DLOD active, smaller .blend saves — scale/presentation mode
+## Summary
 
-## Prerequisites (from S174)
-- `dlod_handler.py` exists and is wired (blend_cache + __init__.py)
-- Library linker uses `link=False` (local meshes, material slots work, `diffuse_color` set)
-- 3 buildings extracted: Clinic (16K), Hospital (64K), Terminal (49K merged)
-- Library: 41,372 meshes in library.blend (118MB)
-- `§PROOF MATERIALS` log shows 3-path breakdown (direct/surface_styles/discipline)
-- Terminal merged IFC at `DAGCompiler/lib/input/IFC/TerminalMerged.ifc`
+Load 1M BIM elements into Blender viewport in ~3 seconds using:
+1. **Cache** (`link=True`) — bulk-load library.blend into shared memory (2s)
+2. **GN** (Instance on Points) — 13 objects instead of 1M
+3. **NEAR** (progressive `make_local()`) — copy only camera-near meshes to .blend memory
+
+Same pattern as game engines: bake offline, cache on load, stream by distance.
+
+## Bake vs Runtime (Gaming Analogy)
+
+| Phase | Gaming | Us |
+|-------|--------|----|
+| Bake (offline, once) | Asset pipeline → .pak | `bake_library_blend.py` → library.blend |
+| Load (runtime, 2s) | Engine loads .pak → GPU cache | `link=True` → shared cache |
+| Stream (runtime, per frame) | LOD by camera distance | NEAR `make_local()` by camera distance |
+
+## The 3-Second Sequence
+
+```
+0.0s  Press Library button
+      ├── link=True: 63K meshes from library.blend → cache (2s)
+      ├── GN point clouds created (13 objects, 1M points)
+      ├── GN modifiers DISABLED (prevents geometry hell)
+      ├── Bbox proxies created as LOCAL meshes (8 verts each)
+      └── User sees nothing yet (or R-tree wireframes if loaded)
+
+2.0s  Cache complete
+      ├── Compute initial camera position
+      ├── NEAR: make_local() on ~200-500 templates near camera
+      └── RAM-to-RAM copy, ~0.1ms per mesh, ~50ms total
+
+2.5s  Enable GN modifiers
+      ├── Near camera: real geometry (local meshes, fast pointers)
+      ├── Far from camera: bbox proxies (local, 8 verts)
+      └── Viewport is smooth from the first frame
+
+3.0s  Interactive
+      ├── Camera moves → NEAR promotes more templates via make_local()
+      ├── First visit to new area: slight lag (~50ms)
+      ├── Revisit same area: instant (already in .blend memory)
+      └── Save .blend: local meshes persist, reopen = instant
+```
+
+## Why "Geometry Hell" Happened (and the Fix)
+
+**Cache** meshes sit behind a library lookup gate. GN asks for mesh #4237,
+Blender checks the library system — slow. 63K lookups × 60fps = frozen.
+
+**make_local()** copies mesh from cache to .blend memory — direct pointer.
+GN asks for mesh #4237, Blender says "here" — instant.
+
+**The fix:** disable GN during cache load, make near meshes local first,
+then enable GN. GN never touches cache addresses. No geometry hell.
+
+## What NEAR Does (formerly DLOD)
+
+Camera-distance handler running every frame:
+
+| Distance | Tier | Geometry | Action on promotion |
+|----------|------|----------|-------------------|
+| >100m | LOD-0 (far) | 8-vert bbox proxy (local) | None — already local |
+| 10-100m | LOD-1 (mid) | Real mesh, discipline color | `make_local()` on template |
+| <10m | LOD-2 (near) | Real mesh, full materials | Same local mesh, material swap |
+
+Transition = swap `instance_index` on GN point. Max 500 swaps per frame.
+`make_local()` only called when a template is promoted for the first time.
+After that, it stays local forever (even across save/reopen).
+
+## Prerequisites
+
+- `library/library.blend` — pre-baked meshes (38,306 meshes, 89.5 MB)
+- `*_extracted.db` — meshless DBs with transforms + R-tree + hash refs
+- `dlod_handler.py` — NEAR handler (written, 3/3 self-test PASS)
+- `stage2_library_linker.py` — GN mode loader (written, needs link=True fix)
 
 ## Tasks
 
-### 1. GN Mode Library Linker
-Refactor `stage2_library_linker.py` to support GN mode:
-- When GN ON: create one GN point cloud per discipline (same as `create_cache_gn_instances` pattern in blend_cache.py)
-  - Each point has: `hash_index` (int), `rotation` (Euler XYZ), `scale` (vec3)
-  - GN node tree: Instance on Points → pick mesh from template collection by hash_index
-  - Templates from library.blend (appended, local)
-  - DLOD handler hooks in automatically
-- When GN OFF: current per-element object path (unchanged)
-- Toggle: collection visibility in Outliner — show Library collections OR GN collection
-- Both can coexist in same scene
+### 1. Fix GN Loader — Cache + Delayed GN Enable
+- Keep `link=True` in `load_library_linked_gn()`
+- Create bbox proxies as LOCAL meshes (not linked)
+- Disable GN modifiers before cache load
+- After cache: compute near templates, `make_local()` on them
+- Enable GN modifiers — viewport smooth from first frame
 
-### 2. Test Reduced .blend Size
-- Load Hospital via GN mode
+### 2. Add make_local() to NEAR Handler
+- In `dlod_handler.py` LOD-0 → LOD-1 promotion:
+  - Check if template mesh is still linked (`mesh.library is not None`)
+  - If linked: `mesh.make_local()` before swapping instance_index
+  - Log: `§FINE NEAR make_local {hash} ({time}ms)`
+
+### 3. Test on Sandbox 1M
+- Load `sandbox_1M.db` (1,065,130 elements) with GN + NEAR
+- Measure: cache time, make_local time, GN enable time, viewport FPS
+- Log: `§PROOF NEAR_LOAD cache={X}s makelocal={Y}s total={Z}s`
 - Save .blend → measure file size
-- Compare with: GN OFF save, old tessellation save
-- Log: `§PROOF BLEND_SIZE gn_on=XMB gn_off=YMB`
+- Reopen → measure load time (should be instant, meshes already local)
 
-### 3. Reopen Auto GN Mode
-- On file open, detect if GN collections exist → auto-activate DLOD handler
-- If GN OFF collections exist → normal open, no DLOD
-- Log: `§FINE open: GN mode detected, DLOD handler activated`
-
-### 4. Toggle Non-GN
-- User can toggle: hide GN collection, show Library collections → per-element mode
-- DLOD handler deactivates when GN collection hidden
-- No data loss — both representations exist, just visibility toggle
-- Log: `§FINE toggle: GN→Library (DLOD off)` / `§FINE toggle: Library→GN (DLOD on)`
+### 4. Test Persistence
+- Load Hospital, navigate around (NEAR promotes ~500 templates)
+- Save .blend
+- Reopen → verify near meshes are still local, viewport smooth immediately
+- Log: `§PROOF NEAR_REOPEN local={N} linked={M} viewport=smooth`
 
 ### 5. Verify Colors
-- GN OFF: `diffuse_color` fix from S174 — verify colors in SOLID mode
-- GN ON: discipline-level colors via GN attribute materials
-- Log: `§PROOF COLOR_VISIBLE` with viewport shading + material samples
-
-### 6. Search in GN Mode
-- Element search queries extracted.db → highlights GN instance points by index
-- Click in viewport → reverse-lookup point index → show element metadata in properties panel
-- Spec only if time permits — this is a stretch goal
+- LOD-1: discipline colors (from template material)
+- LOD-2: full IFC colors (material swap on near elements)
+- Log: `§PROOF COLOR_VISIBLE`
 
 ## Standing Rules
-- FINE logging on every operation — the log speaks, no manual checking
+- FINE logging on every operation
 - `diffuse_color` trap: always set both `mat.diffuse_color` AND `bsdf.inputs["Base Color"]`
-- Backward compatible: Hospital/Clinic/Terminal must work in both modes
-- No disruption to Bonsai core save/open
+- Backward compatible: Hospital/Clinic/Terminal must work
 - Read the log after every run
 
 ## Reference
-- `internal/DLOD_SPEC.md` — DLOD handler design
-- `internal/FULL_LOADER2_SRS.md` §13 — old loader retirement
-- `internal/THIN_SAVE_SPEC.md` §9 — DLOD supersedes thin save
-- `docs/TerminalAnalysis.md` §S174 — alignment fix
-- `blend_cache.py` `create_cache_gn_instances()` — GN instance pattern to follow
-- `dlod_handler.py` — already wired, needs GN point cloud data from Library linker
+- [StressTest_1M](../docs/StressTest_1M.md) — the full 1M story
+- [DLOD Spec §14](../internal/DLOD_SPEC.md) — make_local() lifecycle
+- [GN Link Investigation](../internal/GN_LINK_INVESTIGATION.md) — why link=True + GN froze
+- [Full Loader 2 SRS](../internal/FULL_LOADER2_SRS.md) — master loader spec

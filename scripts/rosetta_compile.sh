@@ -84,6 +84,29 @@ compile_building() {
         echo "  !! NO OUTPUT DB produced"
     fi
 
+    # §12g: Capture GENERATIVE summary + diagnostics from compiler output
+    # Strip timestamps, deduplicate by content (multiple Maven executions produce repeats)
+    local GEN_SUMMARY
+    GEN_SUMMARY=$(echo "$CC_OUTPUT" | grep -E "GENERATIVE.*(SUMMARY|DIAGNOSTIC)" \
+        | sed 's/^.*GENERATIVE //' | sort -u || true)
+    if [ -n "$GEN_SUMMARY" ]; then
+        echo ""
+        echo "  ── GENERATIVE MEP ──"
+        echo "$GEN_SUMMARY" | sed 's/^/    /' | head -10
+    fi
+
+    # Also capture from the latest pipeline log file (has full detail)
+    local PIPELINE_LOG
+    PIPELINE_LOG=$(ls -t logs/pipeline_*_"$(echo "$label" | tr '[:upper:]' '[:lower:]')"*.log 2>/dev/null | head -1)
+    if [ -n "$PIPELINE_LOG" ] && [ -f "$PIPELINE_LOG" ]; then
+        local GEN_DETAIL
+        GEN_DETAIL=$(grep -E "GENERATIVE.*(ROOM_DONE|CEILING_ARC|COLLISION_SHIFT|COLLISION_CONFLICT)" "$PIPELINE_LOG" 2>/dev/null || true)
+        if [ -n "$GEN_DETAIL" ]; then
+            echo "  ── GENERATIVE DETAIL (from $PIPELINE_LOG) ──"
+            echo "$GEN_DETAIL" | sed 's/^.*GENERATIVE /    /' | head -20
+        fi
+    fi
+
     singularity_check "$label" "${base}.db" "$bom_db" "$product_category"
 
     # S74 compat: co_empty_space tables removed from BuildingWriter but G6 still queries them.

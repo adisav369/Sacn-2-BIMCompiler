@@ -17,7 +17,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
   │ C_Order.c_bpartner              │ iDempiere: should be the customer ordering construction.              │
   │                                 │ CURRENT STATE: misused to hold DocSubType values ("SH","DX").         │
   │                                 │ AGREED FUTURE: repurpose for real vendor/customer (M1-M2 note).       │
-  │ C_Order.building_id (PK)        │ "Ifc4_SampleHouse", "Ifc2x3_Duplex", etc.                            │
+  │ C_Order.building_id (PK)        │ "SampleHouse", "Duplex", etc.                            │
   │ C_Order.building_type           │ "RESIDENTIAL", "COMMERCIAL"                                           │
   ├─────────────────────────────────┼─────────────────────────────────────────────────────────────────────────┤
   │ M_BOM.doc_sub_type              │ Building subtype on BOM: "SH", "DX" (renamed from c_bpartner in M1)  │

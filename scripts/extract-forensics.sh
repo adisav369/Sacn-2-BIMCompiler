@@ -13,9 +13,9 @@ echo "" >> $OUTPUT_FILE
 echo "=== SECTION 1: THE SOURCE ORACLE (IfcOpenShell Output) ===" >> $OUTPUT_FILE
 echo "File: scripts/construction_manifest.yaml - Building declarations" >> $OUTPUT_FILE
 echo "----------------------------------------------------------------" >> $OUTPUT_FILE
-grep -A 15 "Ifc4_SampleHouse:" scripts/construction_manifest.yaml | head -20 >> $OUTPUT_FILE
+grep -A 15 "SampleHouse:" scripts/construction_manifest.yaml | head -20 >> $OUTPUT_FILE
 echo "" >> $OUTPUT_FILE
-grep -A 10 "Ifc2x3_Duplex:" scripts/construction_manifest.yaml | head -15 >> $OUTPUT_FILE
+grep -A 10 "Duplex:" scripts/construction_manifest.yaml | head -15 >> $OUTPUT_FILE
 echo "" >> $OUTPUT_FILE
 echo "" >> $OUTPUT_FILE
 
@@ -138,14 +138,14 @@ echo "" >> $OUTPUT_FILE
 # SECTION 15: G1-COUNT Live Verification
 echo "=== SECTION 15: G1-COUNT LIVE VERIFICATION ===" >> $OUTPUT_FILE
 echo "----------------------------------------------------------------" >> $OUTPUT_FILE
-REF_SH=$(sqlite3 DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db "SELECT COUNT(*) FROM elements_meta;" 2>&1)
-OUT_SH=$(sqlite3 DAGCompiler/lib/output/ifc4_samplehouse.db "SELECT COUNT(*) FROM elements_meta;" 2>&1)
+REF_SH=$(sqlite3 DAGCompiler/lib/input/SampleHouse_extracted.db "SELECT COUNT(*) FROM elements_meta;" 2>&1)
+OUT_SH=$(sqlite3 DAGCompiler/lib/output/samplehouse.db "SELECT COUNT(*) FROM elements_meta;" 2>&1)
 echo "SH reference count:  $REF_SH" >> $OUTPUT_FILE
 echo "SH compiled count:   $OUT_SH" >> $OUTPUT_FILE
 echo "SH delta:            $((OUT_SH - REF_SH))" >> $OUTPUT_FILE
 echo "" >> $OUTPUT_FILE
-REF_DX=$(sqlite3 DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db "SELECT COUNT(*) FROM elements_meta;" 2>&1)
-OUT_DX=$(sqlite3 DAGCompiler/lib/output/ifc2x3_duplex.db "SELECT COUNT(*) FROM elements_meta;" 2>&1)
+REF_DX=$(sqlite3 DAGCompiler/lib/input/Duplex_extracted.db "SELECT COUNT(*) FROM elements_meta;" 2>&1)
+OUT_DX=$(sqlite3 DAGCompiler/lib/output/duplex.db "SELECT COUNT(*) FROM elements_meta;" 2>&1)
 echo "DX reference count:  $REF_DX" >> $OUTPUT_FILE
 echo "DX compiled count:   $OUT_DX" >> $OUTPUT_FILE
 echo "DX delta:            $((OUT_DX - REF_DX))" >> $OUTPUT_FILE

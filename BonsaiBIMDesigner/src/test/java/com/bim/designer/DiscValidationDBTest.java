@@ -276,7 +276,7 @@ class DiscValidationDBTest {
     @DisplayName("W-DV-DB-ALIAS: DX IfcFlowTerminal resolves via element_name cascade")
     void dxFlowTerminalResolvesViaAlias() throws Exception {
         // Simulate the cascade: for each DX IfcFlowTerminal, try element_name LIKE matching
-        Path dxDb = Path.of("DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db");
+        Path dxDb = Path.of("DAGCompiler/lib/input/Duplex_extracted.db");
         assumeTrue(Files.exists(dxDb), "DX reference DB must exist");
 
         int resolved = 0, total = 0;

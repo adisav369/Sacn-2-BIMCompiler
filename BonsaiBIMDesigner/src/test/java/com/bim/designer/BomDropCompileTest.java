@@ -113,7 +113,7 @@ class BomDropCompileTest {
         assertNotNull(dropResult, "W-TC1-1 must run first");
 
         CompileRequest request = new CompileRequest(
-                "Ifc4_SampleHouse",
+                "SampleHouse",
                 compileDbPath,
                 COMP_LIB,
                 outputDir + "/"
@@ -189,8 +189,8 @@ class BomDropCompileTest {
 
             // Read DSL content
             String dslContent = Files.readString(Path.of(DSL_FILE));
-            String outputPath = outputDir + "/ifc4_samplehouse.db";
-            String refPath = "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
+            String outputPath = outputDir + "/samplehouse.db";
+            String refPath = "DAGCompiler/lib/input/SampleHouse_extracted.db";
 
             // Ensure C_DocType table + insert row
             try (Statement stmt = conn.createStatement()) {
@@ -219,7 +219,7 @@ class BomDropCompileTest {
                 ps.setString(1, "RE_SH");
                 ps.setString(2, "Sample House");
                 ps.setString(3, "SH");
-                ps.setString(4, "Ifc4_SampleHouse");
+                ps.setString(4, "SampleHouse");
                 ps.setString(5, outputPath);
                 ps.setString(6, refPath);
                 ps.setString(7, dslContent);

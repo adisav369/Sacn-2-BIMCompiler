@@ -4,8 +4,8 @@ TASK: Deep scrutiny of C_Order → compilation logic for SH and DX (both when ru
   PRIME RULE: EXTRACT, DON'T IMAGINE. Query the database. Read the code. Never assume.
 
   CONTEXT:
-  - SH (Ifc4_SampleHouse): 56 elements, RESIDENTIAL, doc_sub_type=SH, C_DocType_ID=RE_SH
-  - DX (Ifc2x3_Duplex): 1099 elements, RESIDENTIAL, doc_sub_type=DX, C_DocType_ID=RE_DX
+  - SH (SampleHouse): 56 elements, RESIDENTIAL, doc_sub_type=SH, C_DocType_ID=RE_SH
+  - DX (Duplex): 1099 elements, RESIDENTIAL, doc_sub_type=DX, C_DocType_ID=RE_DX
   - Both are EXTRACTED (provenance), not GENERATIVE. Their geometry comes from IFC files
     stored in component_library.db, not invented by the compiler.
   - The compilation pipeline is in CompilationPipeline.java (9 stages)
@@ -29,8 +29,8 @@ TASK: Deep scrutiny of C_Order → compilation logic for SH and DX (both when ru
      - Level-0 line: the full building AABB. What BOM ID goes here?
      - Level-1 lines: per-storey decomposition. Where do storey dimensions come from?
      - Does SH get 1 storey line? Does DX get 2 (or more)?
-     - Verify by running: sqlite3 output/Ifc4_SampleHouse.db "SELECT * FROM co_empty_space_line ORDER BY bom_level, bom_line_seq"
-     - Same for: sqlite3 output/Ifc2x3_Duplex.db "SELECT * FROM co_empty_space_line ORDER BY bom_level, bom_line_seq"
+     - Verify by running: sqlite3 output/SampleHouse.db "SELECT * FROM co_empty_space_line ORDER BY bom_level, bom_line_seq"
+     - Same for: sqlite3 output/Duplex.db "SELECT * FROM co_empty_space_line ORDER BY bom_level, bom_line_seq"
 
   4. ELEMENT SOURCING: Where do the 56 SH elements and 1099 DX elements actually come
      from? Trace BuildingWriter.java — the writeElements / writeStorey / writeFurniture
@@ -90,7 +90,7 @@ TASK: Deep scrutiny of C_Order → compilation logic for SH and DX (both when ru
   - DAGCompiler/src/main/java/com/bim/compiler/validation/PlacementProver.java
   - DAGCompiler/src/test/java/com/bim/compiler/contract/BuildingRegistryTest.java
   - library/{PREFIX}_BOM.db (query directly for DX/SH BOM structure)
-  - output/Ifc4_SampleHouse.db and output/Ifc2x3_Duplex.db (query for actual output)
+  - output/SampleHouse.db and output/Duplex.db (query for actual output)
 
   This prompt hits 10 specific code paths where cheating could hide. The critical ones are #4 (element sourcing — do elements come from IFC or invention?), #5 (does DSL create elements
    directly?), and #7 (does DX actually walk the BOM tree or shortcut?). Each demands file:line citations, not hand-waving.

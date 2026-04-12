@@ -1,7 +1,7 @@
 schema_version: 2
 
 building:
-  building_type: SJTII_Terminal              # matches I_Element_Extraction.building_type
+  building_type: Terminal              # matches I_Element_Extraction.building_type
   prefix: TE
   building_bom_id: BUILDING_TE_STD
   doc_sub_type: TE

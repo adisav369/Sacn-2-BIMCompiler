@@ -39,7 +39,7 @@ public class ExtractionPopulator {
      * Deletes existing rows for this building type first (idempotent).
      *
      * @param compConn     writable connection to component_library.db
-     * @param buildingType building type identifier (e.g., "Ifc2x3_Duplex")
+     * @param buildingType building type identifier (e.g., "Duplex")
      * @return number of rows inserted
      */
     /**
@@ -254,7 +254,7 @@ public class ExtractionPopulator {
         for (RawElement e : raw) {
             String storey = e.storey() != null ? e.storey() : "Unknown";
             // TE: federated model has NULL storeys — resolve by Z-centroid band
-            if ("SJTII_Terminal".equals(buildingType) && "Unknown".equals(storey)) {
+            if ("Terminal".equals(buildingType) && "Unknown".equals(storey)) {
                 storey = resolveStoreyByZBand(e);
             }
             String key = e.ifcClass() + "|" + storey;
@@ -450,9 +450,13 @@ public class ExtractionPopulator {
                             selStmt.setString(1, hash);
                             try (ResultSet rs = selStmt.executeQuery()) {
                                 if (rs.next()) {
+                                    byte[] verts = rs.getBytes(2);
+                                    byte[] faces = rs.getBytes(3);
+                                    // S168: NULL BLOBs = hash-only mode, skip import
+                                    if (verts == null || faces == null) continue;
                                     insStmt.setString(1, rs.getString(1));
-                                    insStmt.setBytes(2, rs.getBytes(2));
-                                    insStmt.setBytes(3, rs.getBytes(3));
+                                    insStmt.setBytes(2, verts);
+                                    insStmt.setBytes(3, faces);
                                     insStmt.setInt(4, rs.getInt(4));
                                     insStmt.setInt(5, rs.getInt(5));
                                     insStmt.executeUpdate();
@@ -582,19 +586,23 @@ public class ExtractionPopulator {
     /**
      * Ensure a geometry blob exists in component_geometries. If missing, import
      * from the reference DB's base_geometries table.
+     *
+     * <p>S168: When extraction used --library mode, base_geometries has NULL BLOBs
+     * (hash-only) and the geometry is already in component_library.db. In that case
+     * this method is a no-op.
      */
     private static void ensureGeometryBlob(Connection compConn, Connection refConn,
                                             String geoHash) throws SQLException {
-        // Check if already exists
+        // Check if already exists in library
         try (PreparedStatement check = compConn.prepareStatement(
                 "SELECT 1 FROM component_geometries WHERE geometry_hash = ?")) {
             check.setString(1, geoHash);
             try (ResultSet rs = check.executeQuery()) {
-                if (rs.next()) return; // already exists
+                if (rs.next()) return; // already exists (S168 or prior import)
             }
         }
 
-        // Import from reference DB
+        // Import from reference DB (legacy path — _extracted.db has BLOBs)
         try (PreparedStatement sel = refConn.prepareStatement(
                 "SELECT geometry_hash, vertices, faces, vertex_count, face_count FROM base_geometries WHERE geometry_hash = ?");
              PreparedStatement ins = compConn.prepareStatement(
@@ -602,9 +610,13 @@ public class ExtractionPopulator {
             sel.setString(1, geoHash);
             try (ResultSet rs = sel.executeQuery()) {
                 if (rs.next()) {
+                    byte[] vertices = rs.getBytes(2);
+                    byte[] faces = rs.getBytes(3);
+                    // S168: NULL BLOBs = hash-only mode, geometry already in library
+                    if (vertices == null || faces == null) return;
                     ins.setString(1, rs.getString(1));
-                    ins.setBytes(2, rs.getBytes(2));
-                    ins.setBytes(3, rs.getBytes(3));
+                    ins.setBytes(2, vertices);
+                    ins.setBytes(3, faces);
                     ins.setInt(4, rs.getInt(4));
                     ins.setInt(5, rs.getInt(5));
                     ins.executeUpdate();

@@ -41,7 +41,7 @@ public class SpatialPlacementVisitor implements BOMVisitor {
     /**
      * Compute placements for a building type via PlacementLoader (BOM.db).
      *
-     * @param buildingType building type (e.g. "Ifc4_SampleHouse", "Ifc2x3_Duplex")
+     * @param buildingType building type (e.g. "SampleHouse", "Duplex")
      * @return list of Placement records from m_bom_line
      */
     public List<PlacementLoader.Placement> compute(String buildingType) {

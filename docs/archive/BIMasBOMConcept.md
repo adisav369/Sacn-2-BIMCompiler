@@ -92,8 +92,8 @@ The construction building pattern. Stored on `m_bom.C_BPartner`.
 
 | Code | Meaning |
 |------|---------|
-| `SH` | Ifc4_SampleHouse vendor |
-| `DX` | Ifc2x3_Duplex vendor |
+| `SH` | SampleHouse vendor |
+| `DX` | Duplex vendor |
 | `TB` | TB-LKTN (Citizen Home) vendor |
 | `TE` | Terminal vendor |
 
@@ -319,7 +319,7 @@ BOM IDs follow module-prefix discipline, mapping to iDempiere's layered conventi
 
 | Layer | iDempiere | BIM Table | Example ID |
 |-------|-----------|-----------|------------|
-| Building order | C_Order | **BIM** (Construction Order) | `Ifc4_SampleHouse` |
+| Building order | C_Order | **BIM** (Construction Order) | `SampleHouse` |
 | Order line | C_OrderLine | **BIMLine** (Construction Order Details) | placement instance |
 | Assembly category | M_Product_Category | **M_BomCategory** | `LI`, `BD`, `KT`, `FR`, `ST` |
 | Assembly (product+BOM) | M_Product + M_BOM | **M_BOM** (`m_bom`) | `LIVING_4645x3308` |

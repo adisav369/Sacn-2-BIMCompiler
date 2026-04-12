@@ -5,7 +5,7 @@ Computes element coordinates from relational rules and compares against
 stored I_Element_Extraction (the oracle). Reports match/mismatch stats.
 
 Usage:
-    python3 relational_shadow_validator.py [--building Ifc4_SampleHouse|Ifc2x3_Duplex|all]
+    python3 relational_shadow_validator.py [--building SampleHouse|Duplex|all]
 """
 
 import sqlite3
@@ -346,7 +346,7 @@ def validate_building(conn, building_type):
 def main():
     parser = argparse.ArgumentParser(description="Phase RM-2: Shadow Validator")
     parser.add_argument('--building', default='all',
-                        help='Building: Ifc4_SampleHouse, Ifc2x3_Duplex, or all')
+                        help='Building: SampleHouse, Duplex, or all')
     parser.add_argument('--tolerance', type=float, default=0.01,
                         help='Tolerance in mm (default: 0.01)')
     args = parser.parse_args()
@@ -358,7 +358,7 @@ def main():
 
     buildings = []
     if args.building == 'all':
-        buildings = ['Ifc4_SampleHouse', 'Ifc2x3_Duplex']
+        buildings = ['SampleHouse', 'Duplex']
     else:
         buildings = [args.building]
 

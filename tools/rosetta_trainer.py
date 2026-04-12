@@ -34,20 +34,20 @@ PAIRS = [
     {
         "name": "SampleHouse",
         "tradition": "UK_Residential",
-        "output": "output/ifc4_samplehouse.db",
-        "reference": "reference/rosetta/Ifc4_SampleHouse_extracted.db",
+        "output": "output/samplehouse.db",
+        "reference": "reference/rosetta/SampleHouse_extracted.db",
     },
     {
         "name": "Duplex",
         "tradition": "US_Residential",
-        "output": "output/ifc2x3_duplex.db",
-        "reference": "reference/rosetta/Ifc2x3_Duplex_extracted.db",
+        "output": "output/duplex.db",
+        "reference": "reference/rosetta/Duplex_extracted.db",
     },
     {
         "name": "Terminal",
         "tradition": "Malaysian_Institutional",
-        "output": "output/sjtii_terminal.db",
-        "reference": "reference/rosetta/SJTII_Terminal_extracted.db",
+        "output": "output/terminal.db",
+        "reference": "reference/rosetta/Terminal_extracted.db",
     },
 ]
 

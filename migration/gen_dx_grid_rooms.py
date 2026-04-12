@@ -3,7 +3,7 @@
 Generate SQL migration: migration_G8_DX_restore_grid_rooms.sql
 
 Purpose:
-  - Update ad_room_boundary bounds for all Ifc2x3_Duplex ROOM_Level_* rooms
+  - Update ad_room_boundary bounds for all Duplex ROOM_Level_* rooms
     to IFC-sourced coordinates from elements_rtree.
   - Fix ad_wall_face storey naming: delete stale 'Level 1'/'Level 2' rows,
     insert correct 'Ground'/'Upper' rows.
@@ -14,7 +14,7 @@ Purpose:
 
 Inputs:
   - Library DB    : /home/red1/bim-compiler/library/BOM.db
-  - Extracted DB  : /home/red1/bim-compiler/DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db
+  - Extracted DB  : /home/red1/bim-compiler/DAGCompiler/lib/input/Duplex_extracted.db
 
 Output:
   - /home/red1/bim-compiler/migration/migration_G8_DX_restore_grid_rooms.sql
@@ -24,10 +24,10 @@ import sqlite3
 import re
 
 LIBRARY_DB   = "/home/red1/bim-compiler/library/BOM.db"
-EXTRACTED_DB = "/home/red1/bim-compiler/DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db"
+EXTRACTED_DB = "/home/red1/bim-compiler/DAGCompiler/lib/input/Duplex_extracted.db"
 OUTPUT_SQL   = "/home/red1/bim-compiler/migration/migration_G8_DX_restore_grid_rooms.sql"
 
-BUILDING_TYPE = "Ifc2x3_Duplex"
+BUILDING_TYPE = "Duplex"
 BUILDING_ID   = 2
 
 # Storey name map: host_ref Level prefix → canonical storey name
@@ -234,7 +234,7 @@ def main():
         "-- ============================================================",
         "-- migration_G8_DX_restore_grid_rooms.sql",
         "-- Restore ad_room_boundary bounds + fix ad_wall_face storey names",
-        "-- for Ifc2x3_Duplex ROOM_Level_* grid rooms.",
+        "-- for Duplex ROOM_Level_* grid rooms.",
         "--",
         "-- Bounds sourced from elements_rtree (IFC meters → mm).",
         "-- Generated: 2026-02-23",

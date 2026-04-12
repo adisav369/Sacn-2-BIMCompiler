@@ -1,5 +1,5 @@
 -- TE_001_storey_normalisation.sql
--- Terminal Phase B Step 1: Assign storeys to SJTII_Terminal elements
+-- Terminal Phase B Step 1: Assign storeys to Terminal elements
 -- All 51,088 elements currently have storey='Unknown'.
 -- Uses Z-centroid bands derived from Terminal_Extracted.db storey elevations.
 -- ========================================================================
@@ -23,10 +23,10 @@ UPDATE I_Element_Extraction SET storey = CASE
     WHEN (min_z + max_z) / 2.0 < 18.0  THEN 'Level 4'
     ELSE 'Roof'
 END
-WHERE building_type = 'SJTII_Terminal';
+WHERE building_type = 'Terminal';
 
 -- Step 2: Deactivate REBAR elements (2,660 elements)
 -- REBAR is deferred — IfcOpenShell Python handles rebar generation dynamically.
 UPDATE I_Element_Extraction
 SET is_active = 0
-WHERE building_type = 'SJTII_Terminal' AND discipline = 'REB';
+WHERE building_type = 'Terminal' AND discipline = 'REB';

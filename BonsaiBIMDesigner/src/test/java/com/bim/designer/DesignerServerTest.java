@@ -63,7 +63,7 @@ class DesignerServerTest {
         DesignerDAO dao = new DesignerDAO(conn);
         var types = dao.listBuildingTypes();
         assertEquals(3, types.size(), "Expected SH, DX, TE");
-        assertEquals("Ifc4_SampleHouse", types.get(0).projectName());
+        assertEquals("SampleHouse", types.get(0).projectName());
         assertEquals("Duplex_A_01", types.get(1).projectName());
         assertEquals("Terminal_KLIA", types.get(2).projectName());
     }
@@ -73,7 +73,7 @@ class DesignerServerTest {
     @DisplayName("W-DS-2: DAO retrieves SH AABB dimensions")
     void w_ds_2_dao_sh_aabb() throws Exception {
         DesignerDAO dao = new DesignerDAO(conn);
-        var sh = dao.getBuildingType("Ifc4_SampleHouse");
+        var sh = dao.getBuildingType("SampleHouse");
         assertNotNull(sh);
         assertEquals(10000, sh.aabbWidthMm());
         assertEquals(6000, sh.aabbDepthMm());
@@ -146,7 +146,7 @@ class DesignerServerTest {
     @DisplayName("W-DS-11: API compile returns structured response (stub)")
     void w_ds_11_api_compile() {
         CompileRequest req = new CompileRequest(
-                "Ifc4_SampleHouse",
+                "SampleHouse",
                 "library/_SH_compile.db",
                 null, null);
         CompileResponse resp = api.compile(req);
@@ -174,7 +174,7 @@ class DesignerServerTest {
     @Order(13)
     @DisplayName("W-DS-13: API verb dispatch returns structured response (stub)")
     void w_ds_13_api_verb() {
-        var resp = api.executeVerb("Ifc4_SampleHouse", "CHECK BOM BUILDING_SH");
+        var resp = api.executeVerb("SampleHouse", "CHECK BOM BUILDING_SH");
         assertTrue(resp.success());
         assertEquals("CHECK BOM", resp.verb());
     }
@@ -194,7 +194,7 @@ class DesignerServerTest {
     @DisplayName("W-DS-20: TCP compile request → JSON response")
     void w_ds_20_tcp_compile() throws Exception {
         String response = tcpRequest(
-                "{\"action\":\"compile\",\"buildingId\":\"Ifc4_SampleHouse\","
+                "{\"action\":\"compile\",\"buildingId\":\"SampleHouse\","
                         + "\"bomDbPath\":\"library/_SH_compile.db\"}");
         assertTrue(response.contains("\"success\":true"));
         assertTrue(response.contains("\"elementCount\":55"));
@@ -219,7 +219,7 @@ class DesignerServerTest {
     @DisplayName("W-DS-22: TCP verb dispatch → structured response")
     void w_ds_22_tcp_verb() throws Exception {
         String response = tcpRequest(
-                "{\"action\":\"verb\",\"buildingId\":\"Ifc4_SampleHouse\","
+                "{\"action\":\"verb\",\"buildingId\":\"SampleHouse\","
                         + "\"verbLine\":\"SNAP TO GRID 10000 6000 1000\"}");
         assertTrue(response.contains("\"success\":true"));
         assertTrue(response.contains("SNAP TO GRID"));

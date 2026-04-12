@@ -615,7 +615,7 @@ def _convex_hull_2d(points):
     return lower[:-1] + upper[:-1]
 
 
-def roof_silhouette(db_path, face):
+def roof_silhouette(db_path, face, h_bounds=None):
     """Extract roof profile from mesh vertices via convex hull projection.
 
     Loads the actual triangle mesh from base_geometries, projects all vertices
@@ -626,13 +626,19 @@ def roof_silhouette(db_path, face):
       1. IfcRoof elements — direct match
       2. IfcSlab WHERE element_name LIKE '%Roof%' (flat roof slab)
 
+    h_bounds: optional (h_min_m, h_max_m) — raw vertices outside this range
+      (with 0.5m tolerance) are excluded BEFORE hull computation, preventing
+      displaced mesh vertices (stored in local slab coordinates) from inflating
+      the hull. Returns (hull, thickness_m, {'n_oob': int, 'guid': str}) when
+      h_bounds is given and OOB vertices were found.
+
     Returns list of (h, z) points forming the convex hull outline.
     h = horizontal position in the view, z = vertical (height).
     """
     conn = sqlite3.connect(db_path)
     # §5.3a rule 1: IfcRoof
     rows = conn.execute("""
-        SELECT bg.vertices, bg.vertex_count
+        SELECT bg.vertices, bg.vertex_count, ei.guid
         FROM elements_meta m
         JOIN element_instances ei ON m.guid = ei.guid
         JOIN base_geometries bg ON ei.geometry_hash = bg.geometry_hash
@@ -641,7 +647,7 @@ def roof_silhouette(db_path, face):
     # §5.3a rule 2: IfcSlab with 'Roof' in name (flat roof)
     if not rows:
         rows = conn.execute("""
-            SELECT bg.vertices, bg.vertex_count
+            SELECT bg.vertices, bg.vertex_count, ei.guid
             FROM elements_meta m
             JOIN element_instances ei ON m.guid = ei.guid
             JOIN base_geometries bg ON ei.geometry_hash = bg.geometry_hash
@@ -651,7 +657,11 @@ def roof_silhouette(db_path, face):
     conn.close()
 
     all_pts = []
-    for vert_blob, vertex_count in rows:
+    _n_oob = 0
+    _oob_guid = '?'
+    _h_lo = h_bounds[0] - 0.5 if h_bounds else None
+    _h_hi = h_bounds[1] + 0.5 if h_bounds else None
+    for vert_blob, vertex_count, _row_guid in rows:
         if vert_blob is None:
             continue
         verts = parse_vertices_blob(vert_blob, vertex_count)
@@ -665,10 +675,18 @@ def roof_silhouette(db_path, face):
                 h_vals = -h_vals   # mirror: right viewer sees Y reversed
         z_vals = verts[:, 2]
         for h, z in zip(h_vals, z_vals):
-            all_pts.append((float(h), float(z)))
+            h, z = float(h), float(z)
+            if _h_lo is not None and (h < _h_lo or h > _h_hi):
+                _n_oob += 1
+                _oob_guid = _row_guid   # track which slab contributed OOB vertices
+            else:
+                all_pts.append((h, z))
+
+    _oob_info = {'n_oob': _n_oob, 'guid': _oob_guid} if _n_oob > 0 else None
 
     if len(all_pts) < 3:
-        return []
+        _empty = ([], 0.0, _oob_info) if h_bounds is not None else []
+        return _empty
 
     # §I-26: also return slab thickness (measured at boundary edges)
     # thickness = min Z-span found at any boundary edge of any roof mesh
@@ -698,6 +716,8 @@ def roof_silhouette(db_path, face):
     thickness_m = min(thicknesses) if thicknesses else 0.0
 
     hull = _convex_hull_2d(all_pts)
+    if h_bounds is not None:
+        return hull, thickness_m, _oob_info
     return hull, thickness_m
 
 

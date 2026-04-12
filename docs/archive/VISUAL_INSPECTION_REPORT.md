@@ -9,9 +9,9 @@
 
 | Stone | Reference DB | Output DB (CD-1) | Output DB (DE-1) |
 |-------|-------------|-------------------|-------------------|
-| SampleHouse | `Ifc4_SampleHouse_extracted.db` (552K, 55 elements) | 141 elements (2.6x) | **78 elements (1.42x)** |
-| Duplex | `Ifc2x3_Duplex_extracted.db` (11M, 1,085 elements) | 1,840 elements (1.7x) | **1,093 elements (1.01x)** |
-| Terminal | `SJTII_Terminal_extracted.db` (179M, 14,080/15,104 elements) | 21,401 elements (1.5x) | **16,244 elements (1.08x)** |
+| SampleHouse | `SampleHouse_extracted.db` (552K, 55 elements) | 141 elements (2.6x) | **78 elements (1.42x)** |
+| Duplex | `Duplex_extracted.db` (11M, 1,085 elements) | 1,840 elements (1.7x) | **1,093 elements (1.01x)** |
+| Terminal | `Terminal_extracted.db` (179M, 14,080/15,104 elements) | 21,401 elements (1.5x) | **16,244 elements (1.08x)** |
 
 ---
 

@@ -118,7 +118,7 @@ SECTION 1: DATABASE TABLES (canonical library/component_library.db)
 
 1.6  ad_building.bom_category                 [BUILDING SCOPE TAG]
      Column added: bom_category TEXT DEFAULT NULL
-     Tags: SH=Ifc4_SampleHouse, DX=Ifc2x3_Duplex, TB=TB_LKTN, TL=reserved (NULL)
+     Tags: SH=SampleHouse, DX=Duplex, TB=TB_LKTN, TL=reserved (NULL)
 
 1.7  ad_room_boundary                         [DERIVED ROOM GEOMETRY]
      Populated by TopologyWriter.writeRoomBoundaries()

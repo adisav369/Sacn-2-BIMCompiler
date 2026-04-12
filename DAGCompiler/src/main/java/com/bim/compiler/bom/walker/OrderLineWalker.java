@@ -54,7 +54,7 @@ public class OrderLineWalker {
      *
      * @param orderId      C_Order_ID to walk
      * @param visitors     visitors to fire events on
-     * @param buildingType building type context string (e.g. "Ifc4_SampleHouse")
+     * @param buildingType building type context string (e.g. "SampleHouse")
      */
     public void walkOrder(String orderId, List<BOMVisitor> visitors, String buildingType)
             throws SQLException {

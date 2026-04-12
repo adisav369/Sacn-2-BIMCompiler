@@ -11,7 +11,7 @@ Output: populates ad_building_grid, ad_room_boundary, ad_wall_face,
 Scope: SampleHouse + Duplex only (Terminal deferred).
 
 Usage:
-    python3 relational_extractor.py [--building Ifc4_SampleHouse|Ifc2x3_Duplex|all]
+    python3 relational_extractor.py [--building SampleHouse|Duplex|all]
 """
 
 import sqlite3
@@ -828,14 +828,14 @@ def extract_building(conn, building_type):
 def main():
     parser = argparse.ArgumentParser(description="Phase RM-1: Relational Extractor")
     parser.add_argument('--building', default='all',
-                        help='Building to extract: Ifc4_SampleHouse, Ifc2x3_Duplex, or all')
+                        help='Building to extract: SampleHouse, Duplex, or all')
     args = parser.parse_args()
 
     conn = sqlite3.connect(DB_PATH)
 
     buildings = []
     if args.building == 'all':
-        buildings = ['Ifc4_SampleHouse', 'Ifc2x3_Duplex']
+        buildings = ['SampleHouse', 'Duplex']
     else:
         buildings = [args.building]
 

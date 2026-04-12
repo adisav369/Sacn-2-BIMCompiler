@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>BomTemplateComposer must select a GF-level BOM with owner='SH' for the
  * ST_SH AABB (16867 × 8667 × 3945 mm, num_units=1). This proves the template
  * tree correctly routes single-unit buildings to the SH path.
- * Note: SpatialDigest(ST_SH) != SpatialDigest(Ifc4_SampleHouse) — the EXTRACTED
+ * Note: SpatialDigest(ST_SH) != SpatialDigest(SampleHouse) — the EXTRACTED
  * IFC build and the GENERATIVE DSL build produce different element geometries.
  * The template proof is completeness of selection, not digest equality.
  *

@@ -850,7 +850,7 @@ CREATE TABLE ad_floor_type_rule (
     is_active       INTEGER DEFAULT 1
 );
 CREATE TABLE ad_building_storey (
-    building_type  TEXT NOT NULL,     -- 'Ifc2x3_Duplex', 'Ifc4_SampleHouse', 'SJTII_Terminal'
+    building_type  TEXT NOT NULL,     -- 'Duplex', 'SampleHouse', 'Terminal'
     storey_name    TEXT NOT NULL,
     storey_level   INTEGER NOT NULL,
     height_m       REAL NOT NULL,
@@ -860,7 +860,7 @@ CREATE TABLE ad_building_storey (
     PRIMARY KEY (building_type, storey_name)
 );
 CREATE TABLE ad_slab_spec (
-    building_type  TEXT NOT NULL,       -- 'Ifc4_SampleHouse', 'Ifc2x3_Duplex', etc.
+    building_type  TEXT NOT NULL,       -- 'SampleHouse', 'Duplex', etc.
     slab_role      TEXT NOT NULL,       -- 'FOUNDATION', 'FLOOR', 'CEILING'
     extend_x_m     REAL NOT NULL DEFAULT 0.2,   -- slab extends room_bounds ± this in X per side
     extend_y_m     REAL NOT NULL DEFAULT 0.2,   -- slab extends room_bounds ± this in Y per side
@@ -872,7 +872,7 @@ CREATE TABLE ad_slab_spec (
 );
 CREATE TABLE ad_element_placement (
     placement_id  INTEGER PRIMARY KEY AUTOINCREMENT,
-    building_type TEXT NOT NULL,        -- e.g., 'Ifc4_SampleHouse'
+    building_type TEXT NOT NULL,        -- e.g., 'SampleHouse'
     storey        TEXT NOT NULL,        -- e.g., 'Ground Floor'
     ifc_class     TEXT NOT NULL,        -- e.g., 'IfcWall'
     element_ref   TEXT NOT NULL,        -- descriptive key (type name, no instance ID)
@@ -916,7 +916,7 @@ CREATE TABLE ad_compiler_config (
 );
 CREATE TABLE ad_building_grid (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    building_type TEXT NOT NULL,       -- 'Ifc4_SampleHouse', 'Ifc2x3_Duplex'
+    building_type TEXT NOT NULL,       -- 'SampleHouse', 'Duplex'
     axis          TEXT NOT NULL,       -- 'X' or 'Y'
     grid_label    TEXT NOT NULL,       -- 'A', 'B', '1', '2' etc.
     position_mm   REAL NOT NULL,       -- absolute position in mm from building origin

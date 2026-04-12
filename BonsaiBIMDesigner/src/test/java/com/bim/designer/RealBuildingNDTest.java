@@ -120,9 +120,9 @@ class RealBuildingNDTest {
     // ── W-ND-REAL-4: Output DB has compiled elements ──────────────────
 
     @Test @Order(4)
-    @DisplayName("W-ND-REAL-4: Output DB (ifc4_samplehouse.db) has 58 elements")
+    @DisplayName("W-ND-REAL-4: Output DB (samplehouse.db) has 58 elements")
     void w_nd_real_4_output_db() throws Exception {
-        File outputDb = new File("DAGCompiler/lib/output/ifc4_samplehouse.db");
+        File outputDb = new File("DAGCompiler/lib/output/samplehouse.db");
         if (!outputDb.exists()) {
             System.out.println("  Output DB not found — skipping (run pipeline first)");
             return;

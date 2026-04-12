@@ -23,7 +23,7 @@ import java.sql.Connection;
  *   IsDefault      INTEGER DEFAULT 0
  *   IsActive       INTEGER DEFAULT 1
  *   Description    TEXT
- *   ProjectName    TEXT                   building instance name ('Ifc2x3_Duplex')
+ *   ProjectName    TEXT                   building instance name ('Duplex')
  *   DSLContent     TEXT                   DSL template text
  *   OutputDbPath   TEXT                   output DB path
  *   ReferenceDbPath TEXT                  reference DB for verification

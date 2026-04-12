@@ -3,7 +3,7 @@ package com.bim.designer.api;
 /**
  * Immutable request for a compilation run.
  *
- * @param buildingId   the C_DocType identifier (e.g. "Ifc4_SampleHouse")
+ * @param buildingId   the C_DocType identifier (e.g. "SampleHouse")
  * @param bomDbPath    path to the {PREFIX}_BOM.db file
  * @param libraryPath  path to component_library.db (default: "library/component_library.db")
  * @param outputDir    directory for compiled output.db (default: "DAGCompiler/lib/output/")

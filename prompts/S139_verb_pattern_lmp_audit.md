@@ -49,7 +49,7 @@ BBC §2.2.1:
 
 The current `SH_BOM.db` contains CLUSTER verb_refs with per-instance world
 coordinates (dx, dy, dz, w, d, h) embedded as strings. These coordinates
-originated from `Ifc4_SampleHouse_extracted.db`. The question is: **at what
+originated from `SampleHouse_extracted.db`. The question is: **at what
 point in the pipeline do extraction coordinates enter the BOM, and does that
 constitute a breach of the isolation invariant?**
 

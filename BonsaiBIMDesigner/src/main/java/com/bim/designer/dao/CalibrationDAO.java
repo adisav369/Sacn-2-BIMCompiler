@@ -31,7 +31,7 @@ public class CalibrationDAO {
     /**
      * Count elements per storey from TE reference DB.
      *
-     * @param teConn     connection to SJTII_Terminal_extracted.db
+     * @param teConn     connection to Terminal_extracted.db
      * @param ifcClass   e.g. "IfcFireSuppressionTerminal"
      * @return map of storey → count
      */
@@ -65,7 +65,7 @@ public class CalibrationDAO {
      * (excludes hose reels which are sparse floor-mounted units that inflate NN).
      * // Implementing CALIBRATION_SRS.md §7.3 — Witness: W-CAL-FP-SPACING
      *
-     * @param teConn     connection to SJTII_Terminal_extracted.db
+     * @param teConn     connection to Terminal_extracted.db
      * @param ifcClass   e.g. "IfcFireSuppressionTerminal"
      * @return map of storey → median NN distance in mm
      */

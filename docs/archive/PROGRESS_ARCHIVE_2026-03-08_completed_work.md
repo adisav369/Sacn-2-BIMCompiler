@@ -21,9 +21,9 @@
 
 **Phase 0 SH — EN-BLOC Singularity GREEN (2026-03-05):**
 - **Root cause:** c_order→C_DocType migration changed building identifiers. `lod_element_placement.building_type`
-  used old names (SAMPLE_HOUSE) but `C_DocType.ProjectName` uses new names (Ifc4_SampleHouse).
+  used old names (SAMPLE_HOUSE) but `C_DocType.ProjectName` uses new names (SampleHouse).
   PlacementLoader lookup missed → StoreyCompiler fell to DSL invention → 122 elements instead of 55.
-- **Fix 1:** `lod_element_placement.building_type`: `SAMPLE_HOUSE` → `Ifc4_SampleHouse` in component_library.db
+- **Fix 1:** `lod_element_placement.building_type`: `SAMPLE_HOUSE` → `SampleHouse` in component_library.db
 - **Fix 2:** `lod_element_placement.is_active`: `0` → `1` for all 55 SH entries (was off — only Terminal active in legacy flat path)
 - **Fix 3:** `ComponentLibrary.resolveByFamilyRank()`: disabled then deleted (HW-7, 2026-03-08)
 - **Result:** SH=55 elements. Geometry: 55 OK / 0 FAIL. Proofs: 244 proven, 11 advisory. All critical satisfied.

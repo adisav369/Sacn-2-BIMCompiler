@@ -1,5 +1,23 @@
 # S153 — Generative Device Shim Architecture + END-Join Route
 
+## S153 SESSION RESULT — INCOMPLETE (2026-04-07)
+
+**What was done:** Collision avoidance (§12e), ceiling Z snap (GAP-2), walk reordering (GAP-1/6),
+narrow room detection (GAP-7), Z tolerance (GAP-8), diagnostics logging, DV047 tack point seeding.
+21/21 MepRouteGeometryTest. 18/18 pipeline.
+
+**What was NOT done — the actual deliverables:**
+- §12a.4-6: NO shim entities created. Devices are still bare Placements with no parent shim,
+  no host_ifc_class, no mount type. The "shim architecture" in the title was not implemented.
+- §12a.5b: NO facing direction / rotation on generative devices. They face world-axis.
+- §12c: NO END-join route generation. Tack points are seeded but never read by the walker.
+  No pipe route from infrastructure anchor to fixture. S21 test not written.
+- LOD: Generative devices render as parametric boxes. 5 of 11 products (TOILET, SINK, LIGHT,
+  SPRINKLER, SUPPLY_DIFFUSER) have no geometry_hash in component_library. The source_element_ref
+  bridge (S152) doesn't resolve because M_Product_Image has no entry for these abstract tokens.
+
+**Compliance: 24/42 spec items (57%). See `docs/SpecToCode.md` for line-by-line audit.**
+
 **Prior work:** S152 committed. Generative MEP pipeline works — DX 9/9 (329=215+114), SH 9/9 (82=58+24). LOD geometry bridged for all 11 products. Discipline resolver fixed (SPRINKLER→FP, SUPPLY_DIFFUSER→ACMV). Tack-to points seeded in DV047. Specs written: §6.12.4 §11-§12.
 
 You are a coder for bim-compiler. One bounded task.
@@ -54,6 +72,24 @@ Currently `MEPDevicePlacer.placeDevices()` computes positions directly from room
 6. `DAGCompiler/src/main/java/com/bim/compiler/bom/walker/MEPDevicePlacer.java` (current placer)
 7. `DAGCompiler/src/main/java/com/bim/compiler/bom/walker/SpaceScheduleDAO.java` (schedule + offset queries)
 8. `DAGCompiler/src/main/java/com/bim/compiler/bom/walker/ShimMatcher.java` (existing shim logic for extracted MEP)
+
+## Pre-Flight Gap Analysis (§12g — 6 Gaps Found)
+
+Read `docs/DISC_VALIDATION_DB_SRS.md` §12g before coding. Six spec gaps were
+identified that the coder MUST address:
+
+1. **GAP-1 (Walk Ordering):** Move generative placement from `onSubAssembly` to
+   `onSubAssemblyComplete` — furniture must be walked FIRST for collision check.
+2. **GAP-2 (Ceiling Z):** Query compiled ARC IfcCovering Z, don't trust metadata
+   default (2700mm). DX actual ceiling = 2629mm → 71mm error causes floating.
+3. **GAP-3 (ShimMatcher):** Pass candidate position through `ShimMatcher.matchHost()`
+   to snap to actual ARC surfaces. Currently bypassed for generative devices.
+4. **GAP-4 (Facing Direction):** Compute wall normal from placement_rule — WALL_BACK
+   → (0,-1,0), CEILING → (0,0,-1), etc. Store on shim/DevicePlacement.
+5. **GAP-5 (Anchor Discovery):** Room-scoped → storey-scoped → synthetic fallback
+   chain for finding infrastructure anchors for END-join routing.
+6. **GAP-6 (Context Loss):** Capture room context (anchor, AABB, rotation) BEFORE
+   stack pops in onSubAssemblyComplete. Use field or local capture, not stack peek.
 
 ## What This Session Must Do
 

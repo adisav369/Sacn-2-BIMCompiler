@@ -20,7 +20,7 @@ set -e
 
 if [ $# -lt 2 ]; then
     echo "Usage: $0 <pipeline_log> <output_db> [ref_db]"
-    echo "  e.g. $0 'logs/pipeline_DX Duplex_extracted_20260405_164719.log' DAGCompiler/lib/output/ifc2x3_duplex.db DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db"
+    echo "  e.g. $0 'logs/pipeline_DX Duplex_extracted_20260405_164719.log' DAGCompiler/lib/output/duplex.db DAGCompiler/lib/input/Duplex_extracted.db"
     exit 1
 fi
 

@@ -123,8 +123,8 @@ run_preflight() {
 case "$SUITE" in
     preflight)
         print_header "PREFLIGHT — BuildingInspector (orm-core)"
-        run_preflight "Ifc4_SampleHouse"
-        run_preflight "Ifc2x3_Duplex"
+        run_preflight "SampleHouse"
+        run_preflight "Duplex"
         # run_preflight "TB-LKTN"    # out of scope
         # run_preflight "Terminal"   # out of scope
         echo "  GREEN — preflight done"
@@ -132,8 +132,8 @@ case "$SUITE" in
         ;;
     *)
         print_header "PREFLIGHT — BuildingInspector (orm-core)"
-        run_preflight "Ifc4_SampleHouse"
-        run_preflight "Ifc2x3_Duplex"
+        run_preflight "SampleHouse"
+        run_preflight "Duplex"
         ;;
 esac
 
@@ -186,7 +186,7 @@ fi
 if [ "$UNEXPECTED" -gt 0 ]; then
     echo "  !! BUILD BREAK — $UNEXPECTED unexpected failure(s)"
     echo "  Check SpatialDigests before touching Java:"
-    echo "    sqlite3 DAGCompiler/lib/output/ifc4_samplehouse.db \\"
+    echo "    sqlite3 DAGCompiler/lib/output/samplehouse.db \\"
     echo "      'SELECT * FROM building_summary'"
     finish_log
     exit 1
