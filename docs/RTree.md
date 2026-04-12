@@ -143,6 +143,15 @@ Point at something, click, know what it is.
 
 ---
 
+<figure style="margin: 16px 0; text-align: center;">
+  <img src="assets/images/RTree_City.png" alt="1,061,736 elements as GPU wireframes — full 1.73km × 2.48km city, instant orbit" width="100%">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
+    1,061,736 elements rendered as discipline-coloured GPU wireframes across a 1.73km × 2.48km city.
+    ARC (grey), STR (brown), MEP (cyan), ELEC (yellow), FP (red), ACMV (blue).
+    Orbit is instant. Zero mesh objects. Zero Blender objects. Pure GPU batch lines.
+  </figcaption>
+</figure>
+
 ## Performance (sandbox_1M, 2026-04-12)
 
 | Metric | Result |
