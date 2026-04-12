@@ -119,10 +119,22 @@ After selecting a building (L1) or element (L2):
   - Element selected → that one mesh by geometry_hash from library.blend
   - Creates named collection: `Loaded_T0_Hospital_ARC`
   - RTree wireframes stay on for everything else
-- **SHRED**: removes only what LOAD MESH created, nothing else
+- **SHRED**: two modes
+  - Nothing selected → removes the last loaded batch by label
+  - Objects selected in viewport → removes only those selected meshes (freestyle)
 
 Each Load is independent. Load Hospital ARC, load Clinic MEP, shred Hospital ARC.
+The user can also hand-pick individual mesh objects in the viewport and shred just those —
+building up a precise cross-section by addition and subtraction.
 The RTree is never affected.
+
+**The 20-second workflow:**
+1. Preview → 1M wireframes in 13s
+2. Search → click building → MESH → real geometry in <5s
+3. MESH again → next discipline layer appears
+4. Select unwanted pieces → SHRED → exactly what you want remains
+5. Clear RTree → only your meshes, clean viewport
+Result: a hand-crafted view of a million-element project in under 20 seconds.
 
 ---
 
