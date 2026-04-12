@@ -235,4 +235,14 @@ This is how game engines work at 100M polygons.
 This is how databases work at 1B rows.
 BIM has been doing neither. Until now.
 
+<figure style="margin: 24px 0; text-align: center;">
+  <img src="../assets/images/RtreeSearchLOD.png" alt="RTree search drill — L1 buildings → L2 highlighted elements → LOD mesh fetch, all within 13s" width="100%">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
+    RTree search drill in action — 1,061,736 elements loaded in ~13s.
+    Each query layer narrows the result: L1 buildings highlighted by match count,
+    L2 top elements highlighted white, final LOD mesh fetched on demand from library.blend.
+    Federation BIM Compiler addon to Bonsai. Normal laptop. No stall.
+  </figcaption>
+</figure>
+
 **Compile Once, Query Forever.**
