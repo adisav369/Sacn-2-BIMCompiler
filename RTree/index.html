@@ -2866,10 +2866,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#mode-2-query-drill-down" class="md-nav__link">
+  <a href="#mode-2-federation-cockpit-query-drill-down" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Mode 2 — Query + Drill-Down
+        Mode 2 — Federation Cockpit (Query + Drill-Down)
       
     </span>
   </a>
@@ -3074,39 +3074,57 @@ This system opens in seconds, queries in milliseconds, loads in seconds — only
 <li>Orbit, zoom, pan: instant at any scale</li>
 <li><strong>This never turns off.</strong> It is the permanent spatial context.</li>
 </ul>
-<h3 id="mode-2-query-drill-down">Mode 2 — Query + Drill-Down<a class="headerlink" href="#mode-2-query-drill-down" title="Permanent link">&para;</a></h3>
-<p>Search field in N-panel → BIM tab → RTree Inspector:</p>
-<div class="highlight"><pre><span></span><code>Search: &quot;IfcDoor&quot;
-→ L1: 8 buildings match
-    ▶ T0_LTU_AHouse   (699)   ← click → fly + load L2
-    ▶ T0_Hospital_3   (527)
-    ▶ T0_Clinic       (321)
-    ...
+<h3 id="mode-2-federation-cockpit-query-drill-down">Mode 2 — Federation Cockpit (Query + Drill-Down)<a class="headerlink" href="#mode-2-federation-cockpit-query-drill-down" title="Permanent link">&para;</a></h3>
+<p>Search field in N-panel → BIM tab → RTree Inspector (S183 cockpit layout):</p>
+<div class="highlight"><pre><span></span><code>[ search...  ▶ ]
 
-Click T0_Hospital_3:
-→ L2: top 10 IfcDoor in T0_Hospital_3
-    ▶ HM_Frame_Door ... Level 3   ← click → fly + white highlight
-    ▶ HM_Frame_Door ... Level 2
-    ...
+BUILDINGS — &#39;IfcDoor&#39;
+  ▶ Hospital      ×2   (18,241)   ← click → fly + ghost city
+  ▶ LTU_AHouse   ×18  (  699)    ← ×18 = 18 tiles, flies to nearest
+  ▶ Clinic              (  321)
+
+── on click Hospital ──────────────────
+  Hospital                  Floor [     ]
+  ARC  ████████████░   18,241
+  STR  ███░░░░░░░░░░    3,445
+  MEP  ████████████░   12,876
+  ELEC ████░░░░░░░░░    4,201
+  FP   ██░░░░░░░░░░░    2,109
+  Total  40,872
+
+  ELEMENTS — top 10
+  IfcDoor · Frame Door · Level 3   [→][📋]
+  IfcDoor · Frame Door · Level 2   [→][📋]
+
+  MESH ACTIONS
+  [+ARC][+STR][+MEP][+ELEC][+FP][+NEXT]
+  [ SHRED SELECTED  ✂ ]
+
+LOADED
+  Hospital_ARC_0
+  Hospital_STR_0
 </code></pre></div>
+<p>When a building is drilled into, all city wireframes ghost to α=0.12 — the
+yellow building envelope and white picked element read clearly against a dim city.
+On new search or clear, full colours return.</p>
+<p>Buildings deduplicated by type — <code>T0_LTU_AHouse … T17_LTU_AHouse</code> shows as one
+entry <code>LTU_AHouse ×18</code>. Click flies to the nearest tile to camera.</p>
 <p>Search resolves: element name, IFC class, discipline, GUID, building name.
 One search box. No mode switching.</p>
 <p><strong>Two navigation patterns from one query model:</strong>
-- <em>Know what, find where</em> → type "IfcDoor", find which buildings have doors
-- <em>Know where, find what</em> → click any wireframe box, system identifies it</p>
+- <em>Know what, find where</em> → type "IfcDoor", find which buildings have doors + discipline breakdown
+- <em>Know where, find what</em> → click any wireframe box, system identifies it, GUID to clipboard</p>
 <h3 id="mode-3-stingy-mesh-loader">Mode 3 — Stingy Mesh Loader<a class="headerlink" href="#mode-3-stingy-mesh-loader" title="Permanent link">&para;</a></h3>
-<p>After selecting a building (L1) or element (L2):</p>
-<div class="highlight"><pre><span></span><code>[ LOAD MESH ]  [ SHRED ]
+<div class="highlight"><pre><span></span><code>MESH ACTIONS
+[+ARC][+STR][+MEP][+ELEC][+FP][+NEXT]
 </code></pre></div>
 <ul>
-<li><strong>LOAD MESH</strong>: loads exact IFC geometry for the selection only</li>
-<li>Building selected → ARC elements within building envelope × 1.2, max 500</li>
-<li>Element selected → that one mesh by geometry_hash from library.blend</li>
-<li>Creates named collection: <code>Loaded_T0_Hospital_ARC</code></li>
-<li>RTree wireframes stay on for everything else</li>
-<li><strong>SHRED</strong>: two modes</li>
-<li>Nothing selected → removes the last loaded batch by label</li>
-<li>Objects selected in viewport → removes only those selected meshes (freestyle)</li>
+<li><strong>+DISC buttons</strong>: load that discipline's elements for the active building immediately</li>
+<li><strong>+NEXT</strong>: progressive — each press loads the next 500 (ARC→STR→MEP→ELEC→FP, with offset)</li>
+<li><strong>Storey filter</strong>: set Floor field → MESH loads only that storey. Clear for all floors.</li>
+<li>Each load creates an independent named collection in the Scene Inventory</li>
+<li><strong>SHRED SELECTED</strong>: select any loaded mesh objects in viewport → removed. Freestyle.</li>
+<li>Nothing selected → removes last loaded batch</li>
 </ul>
 <p>Each Load is independent. Load Hospital ARC, load Clinic MEP, shred Hospital ARC.
 The user can also hand-pick individual mesh objects in the viewport and shred just those —

@@ -2946,14 +2946,16 @@
 
 
 <h1 id="stress-test-1m-elements-in-a-single-federated-session">Stress Test — 1M Elements in a Single Federated Session<a class="headerlink" href="#stress-test-1m-elements-in-a-single-federated-session" title="Permanent link">&para;</a></h1>
-<p><strong>Status:</strong> RTree GPU path — DONE S180. GN/DLOD near-camera path — pending S182+.
+<p><strong>Status:</strong> RTree GPU path + Cockpit UI — DONE S183. GN/DLOD near-camera path — pending.
 <strong>Sandbox:</strong> <code>scripts/sandbox_1M.db</code> (1,061,736 elements, 29 real buildings)
 <strong>Builder:</strong> <code>scripts/build_sandbox_1M.py</code>
 <strong>Library:</strong> <code>library/library.blend</code> (120,471 meshes, 276 MB, shared all buildings)</p>
 <blockquote>
-<p><strong>S180 result:</strong> RTree loads 1M elements in ~13s, orbit instant, Stingy Mesh Loader
-(Load/Shred) works — placement dead accurate, geo hash hell closed. Sprinkler dedup
-queued as S181. See <a href="../RTree/"><code>docs/RTree.md</code></a> for the full architecture and proof.</p>
+<p><strong>S180–S183 result:</strong> RTree loads 1M elements in ~13s, orbit instant. Stingy Mesh Loader
+with progressive discipline layers, freestyle shred, per-element GUID copy, storey filter,
+and live discipline bar charts (counts from DB in &lt;50ms). City wireframes ghost to 12% alpha
+when a building is drilled into — active building pops against dim city.
+See <a href="../RTree/"><code>docs/RTree.md</code></a> for full architecture and proof.</p>
 </blockquote>
 <hr />
 <h2 id="goal">Goal<a class="headerlink" href="#goal" title="Permanent link">&para;</a></h2>
