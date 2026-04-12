@@ -175,17 +175,17 @@ The DB is the ceiling, not the viewer.
 
 ---
 
-## Geo Hash Hell — Known Risk
+## Geo Hash Hell — SOLVED (S180)
 
 When loading meshes from library.blend, Blender renames datablocks that
-collide at 63-char name limit. If geometry_hash name is truncated or
+collide at the 63-char name limit. If geometry_hash name is truncated or
 duplicated, the transform lookup fails and elements appear at the origin.
 
-**Prevention:** always use full 40-char geometry_hash as mesh/object name.
-**Detection:** post-load check `mesh.name == expected_hash` for every loaded mesh.
-Log: `§GEO_HASH_HELL` if mismatch detected — treat as blocker, not warning.
-
-Proven fix: S178 commit `0dc3912c` — `T_{full_hash}` naming, 21/21 PASS.
+**S178 fix:** `T_{full_hash}` naming, 21/21 PASS (`0dc3912c`).
+**S180 confirmation:** Shred works. Placement dead accurate across all tested
+elements — sprinklers, doors, windows, structural members. Stale-selection bug
+(`_selected_element` not cleared on new building drill-in) also fixed. No
+further geo hash hell reports. This is considered closed.
 
 ---
 

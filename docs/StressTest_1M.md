@@ -1,9 +1,13 @@
 # Stress Test — 1M Elements in a Single Federated Session
 
-**Status:** Active — S175 in progress
-**Sandbox:** `scripts/sandbox_1M.db` (1,065,130 elements, 583 MB, 29 real buildings)
+**Status:** RTree GPU path — DONE S180. GN/DLOD near-camera path — pending S182+.
+**Sandbox:** `scripts/sandbox_1M.db` (1,061,736 elements, 29 real buildings)
 **Builder:** `scripts/build_sandbox_1M.py`
-**Library:** `library/library.blend` (38,306 meshes, 89.5 MB, shared all buildings)
+**Library:** `library/library.blend` (120,471 meshes, 276 MB, shared all buildings)
+
+> **S180 result:** RTree loads 1M elements in ~13s, orbit instant, Stingy Mesh Loader
+> (Load/Shred) works — placement dead accurate, geo hash hell closed. Sprinkler dedup
+> queued as S181. See [`docs/RTree.md`](RTree.md) for the full architecture and proof.
 
 ---
 
