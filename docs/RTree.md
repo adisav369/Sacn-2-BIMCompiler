@@ -155,12 +155,16 @@ Point at something, click, know what it is.
 
 ## Performance (sandbox_1M, 2026-04-12)
 
+> **A whole city of one million elements, 100 thousand over unique meshes,
+> loaded in a matter of 13 seconds.**
+
 | Metric | Result |
 |--------|--------|
 | DB size | 1,061,736 elements, 6 disciplines |
+| Unique geometry hashes | 108,000+ |
 | City extent | 1.73km × 2.48km × 79m |
-| RTree load time | ~13s |
-| Orbit / pan | Instant (GPU batch, no per-frame eval) |
+| RTree load time | **~13s** |
+| Orbit / pan | **Instant** (GPU batch, no per-frame eval) |
 | Search SQL | <2s (LIKE scan, 1M rows) |
 | Building drill-down | <0.5s |
 | Mesh load (500 elements) | ~5-15s (library.blend append) |
