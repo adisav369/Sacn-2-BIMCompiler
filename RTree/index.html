@@ -13,10 +13,6 @@
       
       
       
-        <link rel="prev" href="../ASSEMBLY_BUILDER_SRS/">
-      
-      
-        <link rel="next" href="../G4_SRS/">
       
       
         
@@ -27,7 +23,7 @@
     
     
       
-        <title>Blender Bridge - BIM Intent Compiler</title>
+        <title>Compile Once, Query Forever - BIM Intent Compiler</title>
       
     
     
@@ -90,7 +86,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#blenderbridge-thin-pipe-between-compiler-and-viewport" class="md-skip">
+        <a href="#compile-once-query-forever" class="md-skip">
           Skip to content
         </a>
       
@@ -124,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Blender Bridge
+              Compile Once, Query Forever
             
           </span>
         </div>
@@ -323,12 +319,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../BIM_Designer_SRS/" class="md-tabs__link">
           
   
@@ -1157,10 +1151,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -1182,22 +1174,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -1215,7 +1204,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1342,37 +1331,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Blender Bridge
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../BlenderBridge/" class="md-nav__link">
         
   
   
@@ -1388,181 +1350,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-what-federation-already-provides" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. What Federation Already Provides
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-the-incremental-update-problem" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. The Incremental Update Problem
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="2. The Incremental Update Problem">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#21-why-full-reload-is-too-slow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2.1 Why Full Reload Is Too Slow
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#22-delta-application-the-thin-pipe" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2.2 Delta Application — The Thin Pipe
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-bim-verb-shortcuts-the-developer-thin-pipe" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. BIM Verb Shortcuts — The Developer Thin Pipe
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. BIM Verb Shortcuts — The Developer Thin Pipe">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#31-the-problem-for-addon-devs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.1 The Problem for Addon Devs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#32-the-thin-pipe-java-smart-python-dumb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.2 The Thin Pipe — Java Smart, Python Dumb
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#33-blenderbridge-api-10-verbs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.3 BlenderBridge API — ~10 Verbs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#34-thread-safety" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.4 Thread Safety
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-material-cache-avoid-redundant-creation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Material Cache — Avoid Redundant Creation
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-mesh-instancing-library-linked-s173" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Mesh Instancing — Library-Linked (S173)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-relationship-to-existing-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Relationship to Existing Modules
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-what-blenderbridge-does-not-do" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. What BlenderBridge Does NOT Do
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3012,10 +2799,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-what-federation-already-provides" class="md-nav__link">
+  <a href="#rtree-gpu-query-engine-bim-federation-at-city-scale" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. What Federation Already Provides
+        RTree GPU Query Engine — BIM Federation at City Scale
       
     </span>
   </a>
@@ -3023,22 +2810,55 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-the-incremental-update-problem" class="md-nav__link">
+  <a href="#what-this-is" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. The Incremental Update Problem
+        What This Is
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="2. The Incremental Update Problem">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complexity-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complexity Class
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-three-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Three Modes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Three Modes">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#21-why-full-reload-is-too-slow" class="md-nav__link">
+  <a href="#mode-1-rtree-gpu-always-on" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.1 Why Full Reload Is Too Slow
+        Mode 1 — RTree GPU (always on)
       
     </span>
   </a>
@@ -3046,10 +2866,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#22-delta-application-the-thin-pipe" class="md-nav__link">
+  <a href="#mode-2-query-drill-down" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.2 Delta Application — The Thin Pipe
+        Mode 2 — Query + Drill-Down
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mode-3-stingy-mesh-loader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mode 3 — Stingy Mesh Loader
       
     </span>
   </a>
@@ -3062,71 +2893,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-bim-verb-shortcuts-the-developer-thin-pipe" class="md-nav__link">
+  <a href="#viewport-click-picker" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. BIM Verb Shortcuts — The Developer Thin Pipe
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. BIM Verb Shortcuts — The Developer Thin Pipe">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#31-the-problem-for-addon-devs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.1 The Problem for Addon Devs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#32-the-thin-pipe-java-smart-python-dumb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.2 The Thin Pipe — Java Smart, Python Dumb
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#33-blenderbridge-api-10-verbs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.3 BlenderBridge API — ~10 Verbs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#34-thread-safety" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.4 Thread Safety
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-material-cache-avoid-redundant-creation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Material Cache — Avoid Redundant Creation
+        Viewport Click-Picker
       
     </span>
   </a>
@@ -3134,10 +2904,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-mesh-instancing-library-linked-s173" class="md-nav__link">
+  <a href="#performance-sandbox_1m-2026-04-12" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Mesh Instancing — Library-Linked (S173)
+        Performance (sandbox_1M, 2026-04-12)
       
     </span>
   </a>
@@ -3145,10 +2915,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-relationship-to-existing-modules" class="md-nav__link">
+  <a href="#geo-hash-hell-known-risk" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Relationship to Existing Modules
+        Geo Hash Hell — Known Risk
       
     </span>
   </a>
@@ -3156,10 +2926,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-what-blenderbridge-does-not-do" class="md-nav__link">
+  <a href="#files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. What BlenderBridge Does NOT Do
+        Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Specs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-paradigm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Paradigm
       
     </span>
   </a>
@@ -3186,391 +2978,279 @@
   
 
 
-<h1 id="blenderbridge-thin-pipe-between-compiler-and-viewport">BlenderBridge — Thin Pipe Between Compiler and Viewport<a class="headerlink" href="#blenderbridge-thin-pipe-between-compiler-and-viewport" title="Permanent link">&para;</a></h1>
+<h1 id="compile-once-query-forever">Compile Once, Query Forever<a class="headerlink" href="#compile-once-query-forever" title="Permanent link">&para;</a></h1>
+<h2 id="rtree-gpu-query-engine-bim-federation-at-city-scale">RTree GPU Query Engine — BIM Federation at City Scale<a class="headerlink" href="#rtree-gpu-query-engine-bim-federation-at-city-scale" title="Permanent link">&para;</a></h2>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>The industry loads the model, then queries it.</strong>
+<strong>We query the index. The model loads only what you ask for.</strong></p>
 </blockquote>
-<div class="bim-banner">
-<p><b>Jakarta Velocity for BIM — simple API over complex bpy internals.</b> Incremental viewport updates without reloading 48,000 elements, via Java/Python TCP bridge.</p>
-</div>
-<p><strong>Version:</strong> 1.0 (2026-03-18)
-<strong>Depends on:</strong> <a href="../BIM_Designer/">BIM_Designer.md</a> §11-§12, IfcOpenShell Federation addon</p>
-<blockquote>
-<p><strong>Design principle:</strong> Jakarta Velocity gave web devs <code>$customer.name</code>
-instead of <code>((HttpServletRequest)request).getSession().getAttribute(...)</code>.
-BlenderBridge gives BIM addon devs <code>bridge.place("wall", 5000, 200, 2800)</code>
-instead of 15 lines of <code>bpy.data.meshes.new()</code> / <code>bmesh</code> / materials.
-The thin pipe. Don't make Claude (or devs) overthink bpy.</p>
-<p><strong>What already exists:</strong> The IfcOpenShell Federation addon provides <strong>Full
-Load</strong> — read entire output.db into Blender viewport. BlenderBridge does
-NOT replace this. It adds the <strong>incremental update</strong> layer on top: when
-the compiler patches 3 elements, the bridge patches 3 objects in the
-viewport without reloading 48,000.</p>
-</blockquote>
+<figure style="float: right; margin: -8px 0 8px 20px; max-width: 520px; text-align: center;">
+  <img src="assets/images/RTree.png" alt="RTree query engine — 1M elements, search 'window', T0_LTU_AHouse highlighted yellow" width="520">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
+    1,061,736 elements across a 1.73km × 2.48km city. Search "window" → 10 buildings listed →
+    T0_LTU_AHouse (699 matches) highlighted yellow. Drill-down panel visible top-right.
+    Orbit is instant. No mesh loaded.
+  </figcaption>
+</figure>
+
 <hr />
-<h2 id="1-what-federation-already-provides">1. What Federation Already Provides<a class="headerlink" href="#1-what-federation-already-provides" title="Permanent link">&para;</a></h2>
-<p>The Federation addon (Item 1: Preview / Full Load) already solves:</p>
+<h2 id="what-this-is">What This Is<a class="headerlink" href="#what-this-is" title="Permanent link">&para;</a></h2>
+<p>The RTree Query Engine is the primary viewport and navigation system for
+federated BIM models at 1M+ elements. It replaces the "open the model"
+paradigm with a database cursor attached to a spatial GPU renderer.</p>
+<p>The model is never fully loaded. It is always live.</p>
+<hr />
+<h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────────────┐
+│  elements_rtree (SQLite R-tree virtual table)           │
+│  elements_meta  (guid, name, discipline, ifc_class,     │
+│                  building, storey)                      │
+│  1M+ rows — compiled once by the IFC extraction pipeline│
+└────────────────────┬────────────────────────────────────┘
+                     │  O(log n) spatial query
+          ┌──────────▼──────────┐
+          │  RTree GPU Path     │  LOD-0 — always on
+          │  GPU line batches   │  1M wireframes
+          │  6 discipline colors│  &lt;13s load, instant orbit
+          │  zero mesh in RAM   │  zero Blender objects
+          └──────────┬──────────┘
+                     │  on query / pick
+          ┌──────────▼──────────┐
+          │  Drill-Down Engine  │  L1 → L2
+          │  L1: buildings      │  click → fly + load L2
+          │  L2: top 10 elements│  click → fly + white highlight
+          └──────────┬──────────┘
+                     │  on LOAD MESH
+          ┌──────────▼──────────┐
+          │  Stingy Mesh Loader │  on-demand only
+          │  ≤500 elements      │  exact IFC geometry
+          │  from library.blend │  one named collection
+          │  LOAD / SHRED       │  non-destructive
+          └─────────────────────┘
+</code></pre></div>
+<hr />
+<h2 id="complexity-class">Complexity Class<a class="headerlink" href="#complexity-class" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Capability</th>
-<th>How</th>
-<th>BlenderBridge touches it?</th>
+<th>Operation</th>
+<th>This system</th>
+<th>Traditional viewer</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>DB → Blender mesh creation</td>
-<td>Reads <code>elements_meta</code> + <code>base_geometries</code> + <code>element_instances</code> → creates Blender objects</td>
-<td><strong>NO</strong> — uses as-is</td>
+<td>Open model</td>
+<td>O(1) — load index only</td>
+<td>O(n) — load all geometry</td>
 </tr>
 <tr>
-<td>Material assignment</td>
-<td>Reads <code>material_name</code> / <code>material_rgba</code> → creates <code>bpy.data.materials</code></td>
-<td><strong>NO</strong> — uses as-is</td>
+<td>Query by type</td>
+<td>O(log n) — R-tree spatial filter</td>
+<td>O(n) — iterate loaded objects</td>
 </tr>
 <tr>
-<td>Spatial indexing</td>
-<td><code>elements_rtree</code> for spatial queries</td>
-<td><strong>NO</strong> — uses as-is</td>
+<td>Navigate to element</td>
+<td>O(log n) — SQL + viewport fly</td>
+<td>Manual — user scrolls/searches</td>
 </tr>
 <tr>
-<td>Collection hierarchy</td>
-<td>Storey → discipline → ifc_class tree</td>
-<td><strong>NO</strong> — uses as-is</td>
-</tr>
-<tr>
-<td>IFC property display</td>
-<td>Click element → properties panel</td>
-<td><strong>NO</strong> — uses as-is</td>
+<td>Load geometry</td>
+<td>O(k) — k = what you asked for</td>
+<td>O(n) — everything or nothing</td>
 </tr>
 </tbody>
 </table>
-<p><strong>BlenderBridge does NOT rewrite any of this.</strong> Federation's full load is the
-foundation. BlenderBridge adds two things on top:</p>
-<ol>
-<li><strong>Incremental viewport update</strong> — patch changed elements without full reload</li>
-<li><strong>BIM verb shortcuts</strong> — thin Python API for addon devs who don't know bpy</li>
-</ol>
+<p>At 1M elements: traditional viewer stalls on open.
+This system opens in seconds, queries in milliseconds, loads in seconds — only what was asked.</p>
 <hr />
-<h2 id="2-the-incremental-update-problem">2. The Incremental Update Problem<a class="headerlink" href="#2-the-incremental-update-problem" title="Permanent link">&para;</a></h2>
-<h3 id="21-why-full-reload-is-too-slow">2.1 Why Full Reload Is Too Slow<a class="headerlink" href="#21-why-full-reload-is-too-slow" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Building</th>
-<th>Elements</th>
-<th>Full Load</th>
-<th>Acceptable for edit cycle?</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>SH</td>
-<td>small</td>
-<td>&lt;1s</td>
-<td>Yes — full reload is fine</td>
-</tr>
-<tr>
-<td>DX</td>
-<td>1,099</td>
-<td>~3s</td>
-<td>Marginal</td>
-</tr>
-<tr>
-<td>TE</td>
-<td>48,428</td>
-<td>~30s</td>
-<td>No — user moved one wall</td>
-</tr>
-</tbody>
-</table>
-<p>At TE scale, the user edits a BOM line (move a wall 500mm), the compiler
-recompiles in ~2s (WriteStage only), but Federation's full reload takes 30s
-to recreate 48K Blender objects. The bottleneck is Blender, not the compiler.</p>
-<h3 id="22-delta-application-the-thin-pipe">2.2 Delta Application — The Thin Pipe<a class="headerlink" href="#22-delta-application-the-thin-pipe" title="Permanent link">&para;</a></h3>
-<p>After incremental compile, the server pushes a <code>COMPILE_COMPLETE</code> message
-with a <strong>change manifest</strong> — which elements changed, which are new, which
-were removed.</p>
-<div class="highlight"><pre><span></span><code>← {&quot;type&quot;:&quot;COMPILE_COMPLETE&quot;,&quot;buildingId&quot;:&quot;Terminal_KLIA&quot;,
-    &quot;outputDbPath&quot;:&quot;...&quot;,&quot;elementCount&quot;:48428,
-    &quot;delta&quot;:{&quot;added&quot;:[],&quot;modified&quot;:[&quot;guid_1234&quot;,&quot;guid_5678&quot;],&quot;removed&quot;:[]}}
-</code></pre></div>
-<p>BlenderBridge applies the delta:</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">apply_delta</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Patch viewport — don&#39;t rebuild everything.&quot;&quot;&quot;</span>
-    <span class="n">conn</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span>
-
-    <span class="c1"># Remove deleted objects</span>
-    <span class="k">for</span> <span class="n">guid</span> <span class="ow">in</span> <span class="n">delta</span><span class="p">[</span><span class="s2">&quot;removed&quot;</span><span class="p">]:</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">guid</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">obj</span><span class="p">:</span>
-            <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">do_unlink</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="c1"># Update modified objects (re-read geometry + position)</span>
-    <span class="k">for</span> <span class="n">guid</span> <span class="ow">in</span> <span class="n">delta</span><span class="p">[</span><span class="s2">&quot;modified&quot;</span><span class="p">]:</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">guid</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">obj</span><span class="p">:</span>
-            <span class="n">row</span> <span class="o">=</span> <span class="n">query_element</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="n">guid</span><span class="p">)</span>
-            <span class="n">update_object</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span>       <span class="c1"># position, scale, material</span>
-
-    <span class="c1"># Add new objects (same path as Federation full load, but one at a time)</span>
-    <span class="k">for</span> <span class="n">guid</span> <span class="ow">in</span> <span class="n">delta</span><span class="p">[</span><span class="s2">&quot;added&quot;</span><span class="p">]:</span>
-        <span class="n">row</span> <span class="o">=</span> <span class="n">query_element</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="n">guid</span><span class="p">)</span>
-        <span class="n">create_object</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>                <span class="c1"># Federation&#39;s mesh creation logic</span>
-
-    <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-</code></pre></div>
-<p><strong>Key:</strong> <code>update_object()</code> is ~5 lines (set location, scale, material).
-<code>create_object()</code> reuses Federation's existing mesh creation code.
-The delta is typically 1-50 elements, not 48K. Viewport update: &lt;0.5s.</p>
-<hr />
-<h2 id="3-bim-verb-shortcuts-the-developer-thin-pipe">3. BIM Verb Shortcuts — The Developer Thin Pipe<a class="headerlink" href="#3-bim-verb-shortcuts-the-developer-thin-pipe" title="Permanent link">&para;</a></h2>
-<h3 id="31-the-problem-for-addon-devs">3.1 The Problem for Addon Devs<a class="headerlink" href="#31-the-problem-for-addon-devs" title="Permanent link">&para;</a></h3>
-<p>Raw bpy for a simple BIM operation:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Place a wall — 15 lines of bpy boilerplate</span>
-<span class="kn">import</span> <span class="nn">bpy</span><span class="o">,</span> <span class="nn">bmesh</span>
-<span class="n">mesh</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">meshes</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s2">&quot;wall_north&quot;</span><span class="p">)</span>
-<span class="n">bm</span> <span class="o">=</span> <span class="n">bmesh</span><span class="o">.</span><span class="n">new</span><span class="p">()</span>
-<span class="n">bmesh</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">create_cube</span><span class="p">(</span><span class="n">bm</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
-<span class="n">bm</span><span class="o">.</span><span class="n">to_mesh</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-<span class="n">bm</span><span class="o">.</span><span class="n">free</span><span class="p">()</span>
-<span class="n">obj</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s2">&quot;wall_north&quot;</span><span class="p">,</span> <span class="n">mesh</span><span class="p">)</span>
-<span class="n">obj</span><span class="o">.</span><span class="n">dimensions</span> <span class="o">=</span> <span class="p">(</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">2.8</span><span class="p">)</span>
-<span class="n">obj</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">)</span>
-<span class="n">mat</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">materials</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s2">&quot;Brick&quot;</span><span class="p">)</span>
-<span class="n">mat</span><span class="o">.</span><span class="n">use_nodes</span> <span class="o">=</span> <span class="kc">True</span>
-<span class="n">mat</span><span class="o">.</span><span class="n">node_tree</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;Principled BSDF&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s2">&quot;Base Color&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">default_value</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-<span class="n">obj</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">materials</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
-<span class="n">bpy</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">scene</span><span class="o">.</span><span class="n">collection</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="32-the-thin-pipe-java-smart-python-dumb">3.2 The Thin Pipe — Java Smart, Python Dumb<a class="headerlink" href="#32-the-thin-pipe-java-smart-python-dumb" title="Permanent link">&para;</a></h3>
-<p><strong>Architecture rule:</strong> The Python layer is a dumb executor. All logic —
-what delta to apply, which elements changed, which materials to use — lives
-in Java (DesignerServer), where it's DAO-queryable, testable in Eclipse, and
-follows the same PO/ModelQuery patterns as the rest of the codebase.</p>
-<div class="highlight"><pre><span></span><code>Java (smart):  DesignerServer computes delta via DAO queries
-               → sends {&quot;update&quot;:&quot;guid_123&quot;,&quot;x&quot;:5000,&quot;material&quot;:&quot;Brick&quot;}
-
-Python (dumb): bridge.update_object(&quot;guid_123&quot;, x=5000, material=&quot;Brick&quot;)
-               → 3 lines of bpy
-</code></pre></div>
-<p>This means:
-- <strong>Eclipse devs</strong> maintain the logic (Java DAO, BIM COBOL verbs, delta computation)
-- <strong>Python devs</strong> maintain the bpy wrappers (~200 lines, each method 3-10 lines)
-- No BIM logic in Python. No bpy in Java. Clean separation.</p>
-<p>The Java server can also expose delta computation as BIM COBOL verbs:</p>
-<div class="highlight"><pre><span></span><code>DIFF OUTPUT &quot;terminal_klia.db&quot; SINCE &quot;2026-03-18T01:00:00&quot;
-  → DiffPayload: {added: [], modified: [&quot;guid_1234&quot;], removed: []}
-</code></pre></div>
-<p>This makes delta computation auditable via W_Verb_Node, same as any
-other verb execution.</p>
-<h3 id="33-blenderbridge-api-10-verbs">3.3 BlenderBridge API — ~10 Verbs<a class="headerlink" href="#33-blenderbridge-api-10-verbs" title="Permanent link">&para;</a></h3>
-<p>Python-side API. Each method is 3-10 lines of bpy. No BIM logic.</p>
-<table>
-<thead>
-<tr>
-<th>Verb</th>
-<th>What it does</th>
-<th>bpy calls it wraps</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>place_box(name, w, d, h, x, y, z, ...)</code></td>
-<td>Create box mesh at position with material</td>
-<td>mesh.new, bmesh, object.new, materials, collection.link</td>
-</tr>
-<tr>
-<td><code>place_from_db(guid, db_path)</code></td>
-<td>Read element from output.db, create object</td>
-<td>Federation's full element creation path</td>
-</tr>
-<tr>
-<td><code>update_position(name, x, y, z)</code></td>
-<td>Move existing object</td>
-<td>obj.location = (...)</td>
-</tr>
-<tr>
-<td><code>update_dimensions(name, w, d, h)</code></td>
-<td>Resize existing object</td>
-<td>obj.dimensions = (...)</td>
-</tr>
-<tr>
-<td><code>set_material(name, material, rgba)</code></td>
-<td>Set or create material on object</td>
-<td>materials.new, nodes, assign</td>
-</tr>
-<tr>
-<td><code>remove(name)</code></td>
-<td>Delete object from scene</td>
-<td>objects.remove, do_unlink</td>
-</tr>
-<tr>
-<td><code>create_collection(name, parent)</code></td>
-<td>Create collection hierarchy</td>
-<td>collection.children.link</td>
-</tr>
-<tr>
-<td><code>select_by_ref(element_ref)</code></td>
-<td>Select object by BOM element_ref</td>
-<td>objects[ref].select_set(True)</td>
-</tr>
-<tr>
-<td><code>add_dimension(obj_a, obj_b)</code></td>
-<td>Add dimension annotation between two objects</td>
-<td>annotations, gpencil</td>
-</tr>
-<tr>
-<td><code>section_cut(plane, axis, offset)</code></td>
-<td>Create section cut at position</td>
-<td>clip_start/end on camera or boolean modifier</td>
-</tr>
-<tr>
-<td><code>reload_from_db(db_path)</code></td>
-<td>Full reload via Federation path</td>
-<td>Federation's existing full load</td>
-</tr>
-<tr>
-<td><code>apply_delta(delta, db_path)</code></td>
-<td>Incremental update (§2.2)</td>
-<td>remove + update + create per delta</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Java-side verbs</strong> (in DesignerServer, exposed via ndjson):</p>
-<table>
-<thead>
-<tr>
-<th>Action</th>
-<th>Java DAO query</th>
-<th>Returns</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>"action":"diff"</code></td>
-<td>Compare output.db timestamps / spatial digest</td>
-<td>Delta manifest (added/modified/removed GUIDs)</td>
-</tr>
-<tr>
-<td><code>"action":"elementDetail"</code></td>
-<td>Query <code>elements_meta</code> + <code>base_geometries</code> by GUID</td>
-<td>Full element data for Python to create/update</td>
-</tr>
-<tr>
-<td><code>"action":"materials"</code></td>
-<td>Query distinct <code>material_name</code> / <code>material_rgba</code></td>
-<td>Material catalog for cache priming</td>
-</tr>
-</tbody>
-</table>
-<h3 id="34-thread-safety">3.4 Thread Safety<a class="headerlink" href="#34-thread-safety" title="Permanent link">&para;</a></h3>
-<p>Blender's Python API is <strong>not thread-safe</strong>. All bpy calls must run on the
-main thread. The DesignerServer pushes compile results on a background
-<code>threading.Thread</code>. BlenderBridge uses <code>bpy.app.timers</code> to schedule viewport
-updates on the main thread:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">bpy</span>
-
-<span class="k">class</span> <span class="nc">BlenderBridge</span><span class="p">:</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_deltas</span> <span class="o">=</span> <span class="p">[]</span>
-
-    <span class="k">def</span> <span class="nf">schedule_delta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Called from background thread. Queues for main thread.&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_deltas</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span><span class="p">))</span>
-        <span class="n">bpy</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">timers</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_process_pending</span><span class="p">,</span> <span class="n">first_interval</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_process_pending</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Runs on Blender main thread via timer.&quot;&quot;&quot;</span>
-        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pending_deltas</span><span class="p">:</span>
-            <span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pending_deltas</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">apply_delta</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span><span class="p">)</span>
-        <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># don&#39;t repeat</span>
-</code></pre></div>
-<p>This is the same pattern used by Bonsai's existing IFC import — background
-parse, main-thread object creation.</p>
-<hr />
-<h2 id="4-material-cache-avoid-redundant-creation">4. Material Cache — Avoid Redundant Creation<a class="headerlink" href="#4-material-cache-avoid-redundant-creation" title="Permanent link">&para;</a></h2>
-<p>Buildings reuse materials heavily (Brick appears on 200 walls, Concrete on
-50 slabs). BlenderBridge caches materials by name:</p>
-<div class="highlight"><pre><span></span><code><span class="n">_material_cache</span> <span class="o">=</span> <span class="p">{}</span>
-
-<span class="k">def</span> <span class="nf">get_or_create_material</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">rgba</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_material_cache</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">_material_cache</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-    <span class="n">mat</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">materials</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-    <span class="n">mat</span><span class="o">.</span><span class="n">use_nodes</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="k">if</span> <span class="n">rgba</span><span class="p">:</span>
-        <span class="n">bsdf</span> <span class="o">=</span> <span class="n">mat</span><span class="o">.</span><span class="n">node_tree</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;Principled BSDF&quot;</span><span class="p">]</span>
-        <span class="n">bsdf</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s2">&quot;Base Color&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">default_value</span> <span class="o">=</span> <span class="n">rgba</span>
-    <span class="n">_material_cache</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">mat</span>
-    <span class="k">return</span> <span class="n">mat</span>
-</code></pre></div>
-<p>On full load: 48K elements but only ~30 unique materials. Cache avoids
-creating 48K material objects.</p>
-<hr />
-<h2 id="5-mesh-instancing-library-linked-s173">5. Mesh Instancing — Library-Linked (S173)<a class="headerlink" href="#5-mesh-instancing-library-linked-s173" title="Permanent link">&para;</a></h2>
-<p>Blender has native mesh instancing: 500 identical chairs share one mesh
-data block. The compiler's <code>component_library.db</code> deduplicates geometry
-by <code>geometry_hash</code>. Since S173, meshes are pre-baked into <code>library/library.blend</code>
-and linked at runtime — no BLOB reads, no <code>from_pydata()</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Pre-bake (offline, once): bake_library_blend.py</span>
-<span class="c1">#   component_library.db → library.blend (one Mesh per geometry_hash)</span>
-
-<span class="c1"># Runtime (instant): stage2_library_linker.py</span>
-<span class="k">with</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">libraries</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">library_blend</span><span class="p">,</span> <span class="n">link</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">):</span>
-    <span class="n">dst</span><span class="o">.</span><span class="n">meshes</span> <span class="o">=</span> <span class="p">[</span><span class="n">h</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">src</span><span class="o">.</span><span class="n">meshes</span> <span class="k">if</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">needed_hashes</span><span class="p">]</span>
-<span class="c1"># GN &quot;Instance on Points&quot; assigns mesh by hash_index per point</span>
-</code></pre></div>
-<p><strong>Impact at TE scale:</strong> 48K elements but ~2,500 unique geometries.
-Library link: &lt;0.1s for all 2,500 meshes (vs 13s with old BLOB unpack).
-GN point cloud: one point per element, mesh assigned by <code>hash_index</code> attribute.
-Scene save: ~116KB (meshless — GN tree + transforms only).</p>
-<p>This is why the compiler's <code>component_library.db</code> + <code>element_instances</code> split
-exists — it maps 1:1 to Blender's library-linked instancing model.</p>
-<hr />
-<h2 id="6-relationship-to-existing-modules">6. Relationship to Existing Modules<a class="headerlink" href="#6-relationship-to-existing-modules" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>DesignerServer (Java, TCP 9876)
-    │
-    ├── compile → CompilationPipeline → output.db
-    │
-    └── push COMPILE_COMPLETE + delta
-            │
-            ▼
-        client.py (Python, background thread)
-            │
-            ├── full load? → Federation addon (existing)
-            │
-            └── incremental? → BlenderBridge.apply_delta()
-                                    │
-                                    ├── remove_object()    ← bpy thin pipe
-                                    ├── update_object()    ← bpy thin pipe
-                                    └── create_object()    ← Federation reuse
-</code></pre></div>
-<p><strong>BlenderBridge is NOT a replacement for Federation.</strong> It is:
-- A delta applicator (incremental updates)
-- A thin API for addon devs (BIM verbs over bpy)
-- A cache manager (materials + meshes)</p>
-<p>Federation handles the heavy lift. BlenderBridge handles the fast path.</p>
-<hr />
-<h2 id="7-what-blenderbridge-does-not-do">7. What BlenderBridge Does NOT Do<a class="headerlink" href="#7-what-blenderbridge-does-not-do" title="Permanent link">&para;</a></h2>
+<h2 id="the-three-modes">The Three Modes<a class="headerlink" href="#the-three-modes" title="Permanent link">&para;</a></h2>
+<h3 id="mode-1-rtree-gpu-always-on">Mode 1 — RTree GPU (always on)<a class="headerlink" href="#mode-1-rtree-gpu-always-on" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Does NOT parse IFC files (Federation does this)</li>
-<li>Does NOT create output.db (compiler does this)</li>
-<li>Does NOT implement chooser panels (BonsaiBIMDesigner addon does this)</li>
-<li>Does NOT run compilation (DesignerServer does this)</li>
-<li>Does NOT validate geometry (DocValidate does this)</li>
-<li>Does NOT manage TCP connection (client.py does this)</li>
+<li>Loads on "Preview" button press</li>
+<li>All 1M elements rendered as colored wireframe bounding boxes</li>
+<li>6 discipline colors (ARC/STR/MEP/ELEC/FP/ACMV)</li>
+<li>Eye icon on <code>● DISC</code> in Outliner → hide/show that discipline's GPU batch</li>
+<li>Orbit, zoom, pan: instant at any scale</li>
+<li><strong>This never turns off.</strong> It is the permanent spatial context.</li>
 </ul>
-<p>It is <strong>only</strong> the bpy thin pipe + delta applicator. ~200 lines of Python.</p>
+<h3 id="mode-2-query-drill-down">Mode 2 — Query + Drill-Down<a class="headerlink" href="#mode-2-query-drill-down" title="Permanent link">&para;</a></h3>
+<p>Search field in N-panel → BIM tab → RTree Inspector:</p>
+<div class="highlight"><pre><span></span><code>Search: &quot;IfcDoor&quot;
+→ L1: 8 buildings match
+    ▶ T0_LTU_AHouse   (699)   ← click → fly + load L2
+    ▶ T0_Hospital_3   (527)
+    ▶ T0_Clinic       (321)
+    ...
+
+Click T0_Hospital_3:
+→ L2: top 10 IfcDoor in T0_Hospital_3
+    ▶ HM_Frame_Door ... Level 3   ← click → fly + white highlight
+    ▶ HM_Frame_Door ... Level 2
+    ...
+</code></pre></div>
+<p>Search resolves: element name, IFC class, discipline, GUID, building name.
+One search box. No mode switching.</p>
+<p><strong>Two navigation patterns from one query model:</strong>
+- <em>Know what, find where</em> → type "IfcDoor", find which buildings have doors
+- <em>Know where, find what</em> → click any wireframe box, system identifies it</p>
+<h3 id="mode-3-stingy-mesh-loader">Mode 3 — Stingy Mesh Loader<a class="headerlink" href="#mode-3-stingy-mesh-loader" title="Permanent link">&para;</a></h3>
+<p>After selecting a building (L1) or element (L2):</p>
+<div class="highlight"><pre><span></span><code>[ LOAD MESH ]  [ SHRED ]
+</code></pre></div>
+<ul>
+<li><strong>LOAD MESH</strong>: loads exact IFC geometry for the selection only</li>
+<li>Building selected → ARC elements within building envelope × 1.2, max 500</li>
+<li>Element selected → that one mesh by geometry_hash from library.blend</li>
+<li>Creates named collection: <code>Loaded_T0_Hospital_ARC</code></li>
+<li>RTree wireframes stay on for everything else</li>
+<li><strong>SHRED</strong>: removes only what LOAD MESH created, nothing else</li>
+</ul>
+<p>Each Load is independent. Load Hospital ARC, load Clinic MEP, shred Hospital ARC.
+The RTree is never affected.</p>
 <hr />
-<p><em>Related docs:
-<a href="../BIM_Designer/">BIM_Designer.md</a> §11 (BonsaiBIMDesigner module), §12 (versatility), §16 (Federation integration) |
-<a href="../DocValidate/">DocValidate.md</a> (validation engine) |
-Federation addon: <code>/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/</code> |
-Federation loader: <code>federation/loader.py</code> (3-stage progressive: wireframe → semantic → detail) |
-Federation viewport ops: <code>bim.load_full_federation_viewport_gi</code> (Full Load from DB)</em></p>
+<h2 id="viewport-click-picker">Viewport Click-Picker<a class="headerlink" href="#viewport-click-picker" title="Permanent link">&para;</a></h2>
+<p>"Click to Identify" button activates a modal LEFT_MOUSE handler.</p>
+<p>Click any wireframe box in the viewport:
+1. Ray cast from camera through click position into IFC coordinate space
+2. Two-pass hit test:
+   - Pass 1: does ray hit a highlighted building envelope? → return that building, trigger L2
+   - Pass 2: does ray hit any individual element bbox? → return that element
+3. Result populates L2 list in N-panel
+4. Picked element highlighted white in GPU overlay</p>
+<p>The click is the fastest path to identification — no typing, no scrolling.
+Point at something, click, know what it is.</p>
+<hr />
+<figure style="margin: 16px 0; text-align: center;">
+  <img src="assets/images/RTree_City.png" alt="1,061,736 elements as GPU wireframes — full 1.73km × 2.48km city, instant orbit" width="100%">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
+    1,061,736 elements rendered as discipline-coloured GPU wireframes across a 1.73km × 2.48km city.
+    ARC (grey), STR (brown), MEP (cyan), ELEC (yellow), FP (red), ACMV (blue).
+    Orbit is instant. Zero mesh objects. Zero Blender objects. Pure GPU batch lines.
+  </figcaption>
+</figure>
+
+<h2 id="performance-sandbox_1m-2026-04-12">Performance (sandbox_1M, 2026-04-12)<a class="headerlink" href="#performance-sandbox_1m-2026-04-12" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DB size</td>
+<td>1,061,736 elements, 6 disciplines</td>
+</tr>
+<tr>
+<td>City extent</td>
+<td>1.73km × 2.48km × 79m</td>
+</tr>
+<tr>
+<td>RTree load time</td>
+<td>~13s</td>
+</tr>
+<tr>
+<td>Orbit / pan</td>
+<td>Instant (GPU batch, no per-frame eval)</td>
+</tr>
+<tr>
+<td>Search SQL</td>
+<td>&lt;2s (LIKE scan, 1M rows)</td>
+</tr>
+<tr>
+<td>Building drill-down</td>
+<td>&lt;0.5s</td>
+</tr>
+<tr>
+<td>Mesh load (500 elements)</td>
+<td>~5-15s (library.blend append)</td>
+</tr>
+</tbody>
+</table>
+<p>Scales to 10M+ elements with no architectural changes.
+The DB is the ceiling, not the viewer.</p>
+<hr />
+<h2 id="geo-hash-hell-known-risk">Geo Hash Hell — Known Risk<a class="headerlink" href="#geo-hash-hell-known-risk" title="Permanent link">&para;</a></h2>
+<p>When loading meshes from library.blend, Blender renames datablocks that
+collide at 63-char name limit. If geometry_hash name is truncated or
+duplicated, the transform lookup fails and elements appear at the origin.</p>
+<p><strong>Prevention:</strong> always use full 40-char geometry_hash as mesh/object name.
+<strong>Detection:</strong> post-load check <code>mesh.name == expected_hash</code> for every loaded mesh.
+Log: <code>§GEO_HASH_HELL</code> if mismatch detected — treat as blocker, not warning.</p>
+<p>Proven fix: S178 commit <code>0dc3912c</code> — <code>T_{full_hash}</code> naming, 21/21 PASS.</p>
+<hr />
+<h2 id="files">Files<a class="headerlink" href="#files" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>federation/bbox_visualization.py</code></td>
+<td>RTree GPU batches, draw handler, search/pick functions</td>
+</tr>
+<tr>
+<td><code>federation/discipline_legend.py</code></td>
+<td>GPU overlay (bottom-right, discipline colors + search hint)</td>
+</tr>
+<tr>
+<td><code>federation/operator.py</code></td>
+<td>FedRTreeSearch, FedRTreeFlyToResult, FedRTreeFlyToElement, FedRTreePick</td>
+</tr>
+<tr>
+<td><code>federation/ui.py</code></td>
+<td>BIM_PT_rtree_inspector (N-panel, bl_order=0)</td>
+</tr>
+<tr>
+<td><code>federation/prop.py</code></td>
+<td>rtree_search, rtree_result_<em>, rtree_picked_</em> properties</td>
+</tr>
+<tr>
+<td><code>federation/__init__.py</code></td>
+<td>operator + panel registration</td>
+</tr>
+<tr>
+<td><code>library/library.blend</code></td>
+<td>mesh source for Stingy Loader (276MB, 120K meshes)</td>
+</tr>
+<tr>
+<td><code>DAGCompiler/lib/input/*_extracted.db</code></td>
+<td>extracted federation DBs (source of truth)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="related-specs">Related Specs<a class="headerlink" href="#related-specs" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>internal/DLOD_SPEC.md</code> — LOD tier system (§S179: LOD-0 = RTree GPU, not bbox mesh)</li>
+<li><code>internal/DLOD_SPEC.md</code> — camera-distance GN streaming (LOD-1/2, experimental)</li>
+<li><code>internal/StressTest_1M_Results.md</code> — full performance history S165→S178</li>
+<li><code>docs/StressTest_1M.md</code> — the 1M element loading challenge and GN architecture</li>
+<li><code>prompts/S179_dlod_rtree_handoff.md</code> — corrected DLOD architecture</li>
+<li><code>prompts/S180_stingy_mesh_loader.md</code> — next session: picker fix + Load/Shred</li>
+</ul>
+<hr />
+<h2 id="the-paradigm">The Paradigm<a class="headerlink" href="#the-paradigm" title="Permanent link">&para;</a></h2>
+<p>Every BIM viewer built before this one assumes the same workflow:
+open the model, wait for it to load, then navigate what's loaded.
+At city scale — 50 buildings, 10M elements, 20 disciplines — that workflow
+breaks. The model is too large to hold in memory. The viewer stalls.</p>
+<p>The alternative is to treat the BIM model as a database, not a file.
+The compiled output of the IFC extraction pipeline — <code>elements_meta</code>,
+<code>elements_rtree</code>, <code>element_transforms</code> — is a queryable index.
+The geometry exists in <code>library.blend</code> as a mesh library.
+Nothing is loaded until asked.</p>
+<p>The user navigates by querying. The geometry appears on demand.
+The city is always visible as wireframes. The detail appears where attention goes.</p>
+<p>This is how game engines work at 100M polygons.
+This is how databases work at 1B rows.
+BIM has been doing neither. Until now.</p>
+<p><strong>Compile Once, Query Forever.</strong></p>
 
 
 

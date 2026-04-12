@@ -1938,6 +1938,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="6.2 Tack I/O for MEP Topology (future)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#621-port-graph-extraction-s173" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2.1 Port-Graph Extraction (S173)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
       </ul>
@@ -3486,6 +3503,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="6.2 Tack I/O for MEP Topology (future)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#621-port-graph-extraction-s173" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2.1 Port-Graph Extraction (S173)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
       </ul>
@@ -4327,6 +4361,20 @@ to know which port of a tee connects to which downstream pipe.</p>
 - <code>connection_type</code> — rigid, flexible, sealed, open</p>
 <p>Not needed for extraction (positions are explicit). Required for generative MEP
 routing where the compiler must chain segments through fittings.</p>
+<h4 id="621-port-graph-extraction-s173">6.2.1 Port-Graph Extraction (S173)<a class="headerlink" href="#621-port-graph-extraction-s173" title="Permanent link">&para;</a></h4>
+<p>IFC authored connectivity is available via <code>IfcDistributionPort</code>, <code>IfcRelConnectsPorts</code>,
+<code>IfcRelConnectsPortToElement</code>. Hospital MECH alone has 39,532 ports, 19,766 connections
+with SOURCE/SINK flow direction and exact world positions (connected ports = 0.0m distance).</p>
+<p><strong>Schema</strong> (in extracted DB): <code>port_elements</code> (port_guid, element_guid, flow_direction,
+local_x/y/z) + <code>port_connections</code> (port_a_guid, port_b_guid). Added to <code>extractIFCtoDB.py</code>
+REFERENCE_SCHEMA. Extraction: TODO.</p>
+<p><strong>Rotation proof</strong> — at load time, for sampled connected port pairs, reconstruct world
+position via <code>rot(elem) @ local_port + centre(elem)</code> for both sides; connected ports must
+meet within 10mm. No IFC needed. See <code>scripts/stress_blender_test.py</code> §PROOF PORT_CONNECT.</p>
+<p><strong>RouteWalker reuse</strong> — same tables feed <code>RouteWalker.java</code> and <code>MepRouteGeometryTest.java</code>
+via DB query. Replaces synthetic <code>ad_mep_anchor</code> with authored IFC connectivity.</p>
+<p><strong>Full spec:</strong> <code>docs/DISC_VALIDATION_DB_SRS.md</code> §1b Port-Graph Enrichment — includes
+<code>mep_connectivity</code> table, LOD matrix, RouteWalker integration, cross-check gate.</p>
 <hr />
 <h2 id="7-implementation-sequence">7. Implementation Sequence<a class="headerlink" href="#7-implementation-sequence" title="Permanent link">&para;</a></h2>
 <h3 id="phase-1-dx-discipline-reclassification">Phase 1: DX Discipline Reclassification<a class="headerlink" href="#phase-1-dx-discipline-reclassification" title="Permanent link">&para;</a></h3>

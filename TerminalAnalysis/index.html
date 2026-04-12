@@ -3472,6 +3472,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#s174-multi-discipline-extraction-geometry-alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S174 Multi-Discipline Extraction — Geometry Alignment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="S174 Multi-Discipline Extraction — Geometry Alignment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#recurring-issue-discipline-origin-hell" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recurring Issue: Discipline Origin Hell
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause-found-s174" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause Found (S174)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#results-after-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results After Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#elec-grid-north-mismatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ELEC Grid North Mismatch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proof-log-tags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proof Log Tags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Command
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4991,6 +5074,89 @@
     <span class="md-ellipsis">
       
         Fix Path — Priority Order (updated S100-p69)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s174-multi-discipline-extraction-geometry-alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S174 Multi-Discipline Extraction — Geometry Alignment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="S174 Multi-Discipline Extraction — Geometry Alignment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#recurring-issue-discipline-origin-hell" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recurring Issue: Discipline Origin Hell
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause-found-s174" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause Found (S174)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#results-after-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results After Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#elec-grid-north-mismatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ELEC Grid North Mismatch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proof-log-tags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proof Log Tags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Command
       
     </span>
   </a>
@@ -8069,6 +8235,139 @@ the FINE log — that's the point.</p>
 <p><strong>After Phase 5:</strong> All tables follow iDempiere convention. <code>_ID</code> is opaque
 INTEGER (never shown to users). <code>Value</code> is the search key. <code>Name</code> is the
 display name. FKs reference <code>_ID</code>. DB integrity enforced at the schema level.</p>
+<hr />
+<h2 id="s174-multi-discipline-extraction-geometry-alignment">S174 Multi-Discipline Extraction — Geometry Alignment<a class="headerlink" href="#s174-multi-discipline-extraction-geometry-alignment" title="Permanent link">&para;</a></h2>
+<p><strong>Date:</strong> 2026-04-11 | <strong>Pipeline:</strong> <code>scripts/pipeline_library.sh Terminal</code></p>
+<h3 id="recurring-issue-discipline-origin-hell">Recurring Issue: Discipline Origin Hell<a class="headerlink" href="#recurring-issue-discipline-origin-hell" title="Permanent link">&para;</a></h3>
+<p>Terminal's 8 discipline IFC files each have their own survey point / project origin.
+When extracted separately and merged, elements scatter across km-scale offsets unless
+corrections are applied.</p>
+<h3 id="root-cause-found-s174">Root Cause Found (S174)<a class="headerlink" href="#root-cause-found-s174" title="Permanent link">&para;</a></h3>
+<p><code>_compute_alignment()</code> in <code>extract_merge_disciplines.py</code> uses IfcOpenShell's
+<code>auto_enh2xyz()</code> to compute XYZ corrections. This function returns values in the
+<strong>IFC file's local unit</strong> (millimetres for Terminal, <code>unit_scale=0.001</code>). But our
+extracted element coordinates are always in <strong>metres</strong> (because <code>geom.iterator()</code>
+returns metres natively since S172).</p>
+<p>The correction was 1000× too large. ARC correction was -244,356m instead of -244.36m.</p>
+<p><strong>Fix:</strong> Multiply <code>auto_enh2xyz</code> output by <code>unit_scale</code> before applying as correction.</p>
+<div class="highlight"><pre><span></span><code>correction_m = correction_raw × unit_scale
+</code></pre></div>
+<p><strong>Why never caught before:</strong> Hospital has <code>enh=(0,0,0)</code> for all disciplines — zero
+corrections, so the missing scale was invisible. Terminal is the first building with
+real geolocation data through this path.</p>
+<h3 id="results-after-fix">Results After Fix<a class="headerlink" href="#results-after-fix" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Discipline</th>
+<th>Elements</th>
+<th>X range (m)</th>
+<th>Y range (m)</th>
+<th>Aligned?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ACMV (ref)</td>
+<td>289</td>
+<td>[346, 401]</td>
+<td>[-220, -180]</td>
+<td>Reference</td>
+</tr>
+<tr>
+<td>FP</td>
+<td>995</td>
+<td>[342, 400]</td>
+<td>[-220, -180]</td>
+<td>YES ✓</td>
+</tr>
+<tr>
+<td>LPG</td>
+<td>209</td>
+<td>similar</td>
+<td>similar</td>
+<td>YES ✓</td>
+</tr>
+<tr>
+<td>SP</td>
+<td>979</td>
+<td>[0, 150]</td>
+<td>[-41, 4]</td>
+<td>YES ✓</td>
+</tr>
+<tr>
+<td>STR</td>
+<td>34,356</td>
+<td>[-238, 344]</td>
+<td>[-219, 86]</td>
+<td>YES ✓</td>
+</tr>
+<tr>
+<td>ARC</td>
+<td>2,853</td>
+<td>[-238, 402]</td>
+<td>[-220, 92]</td>
+<td>YES ✓</td>
+</tr>
+<tr>
+<td>MEP</td>
+<td>9,733</td>
+<td>[239, 401]</td>
+<td>[-231, -176]</td>
+<td>YES ✓</td>
+</tr>
+<tr>
+<td><strong>ELEC</strong></td>
+<td><strong>833</strong></td>
+<td><strong>[135, 175]</strong></td>
+<td><strong>[34, 94]</strong></td>
+<td><strong>NO — grid_north=-38° vs 52°</strong></td>
+</tr>
+</tbody>
+</table>
+<p>49,059 elements total. 48,226 (98.3%) correctly aligned in metre-scale.</p>
+<h3 id="elec-grid-north-mismatch">ELEC Grid North Mismatch<a class="headerlink" href="#elec-grid-north-mismatch" title="Permanent link">&para;</a></h3>
+<p>ELEC has <code>grid_north=-38°</code> while all other disciplines have <code>grid_north=52°</code>.
+A simple XYZ translation cannot fix a 90° rotation difference. The <code>auto_enh2xyz</code>
+correction handles the translation component but the element coordinates in the
+extracted DB are in the IFC local frame — not rotated to match the reference frame.</p>
+<p><strong>Resolution path:</strong> IfcOpenShell's <code>MergeProjects</code> (IfcPatch) handles this correctly.
+The reference implementation is at:</p>
+<div class="highlight"><pre><span></span><code>IfcOpenShell/src/ifcpatch/ifcpatch/recipes/MergeProjects.py (lines 82-122)
+</code></pre></div>
+<p>Key logic (lines 85-89):
+<div class="highlight"><pre><span></span><code><span class="n">model_rotation</span> <span class="o">=</span> <span class="n">existing_angle</span> <span class="o">-</span> <span class="n">other_angle</span>
+<span class="k">if</span> <span class="n">model_rotation</span> <span class="o">&gt;</span> <span class="mi">180</span><span class="p">:</span>
+    <span class="n">model_rotation</span> <span class="o">=</span> <span class="p">(</span><span class="mi">360</span> <span class="o">-</span> <span class="n">model_rotation</span><span class="p">)</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span>
+<span class="k">elif</span> <span class="n">model_rotation</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">180</span><span class="p">:</span>
+    <span class="n">model_rotation</span> <span class="o">=</span> <span class="p">(</span><span class="n">model_rotation</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="mi">360</span>
+</code></pre></div></p>
+<p>It then calls <code>SetFalseOrigin(other, ..., rotate_angle=model_rotation).patch()</code> which
+applies a full rotation+translation transform to all geometry placements <strong>at the IFC
+level</strong> before merging. This is the step our <code>_compute_alignment()</code> is missing — it
+does translation (<code>auto_enh2xyz</code>) but not rotation.</p>
+<p><strong>Options (in order of preference):</strong></p>
+<ol>
+<li><strong>Apply grid_north rotation in <code>merge_db()</code></strong> — compute <code>θ = ref_north - other_north</code>,
+   apply 2D rotation matrix to <code>(center_x, center_y)</code> and adjust <code>rotation_z += θ</code>.
+   Same math as MergeProjects but at the DB level (post-extraction):
+   <div class="highlight"><pre><span></span><code><span class="n">θ</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">ref_north</span> <span class="o">-</span> <span class="n">other_north</span><span class="p">)</span>
+<span class="n">new_x</span> <span class="o">=</span> <span class="n">cx</span> <span class="o">*</span> <span class="n">cos</span><span class="p">(</span><span class="n">θ</span><span class="p">)</span> <span class="o">-</span> <span class="n">cy</span> <span class="o">*</span> <span class="n">sin</span><span class="p">(</span><span class="n">θ</span><span class="p">)</span>
+<span class="n">new_y</span> <span class="o">=</span> <span class="n">cx</span> <span class="o">*</span> <span class="n">sin</span><span class="p">(</span><span class="n">θ</span><span class="p">)</span> <span class="o">+</span> <span class="n">cy</span> <span class="o">*</span> <span class="n">cos</span><span class="p">(</span><span class="n">θ</span><span class="p">)</span>
+<span class="n">new_rz</span> <span class="o">=</span> <span class="n">rz</span> <span class="o">+</span> <span class="n">θ</span>
+</code></pre></div></li>
+<li><strong>Use merged IFC</strong> for Terminal (proven, bypasses alignment entirely)</li>
+<li><strong>Accept ELEC offset</strong> — 833 elements (1.7%), visually separated but data intact</li>
+</ol>
+<h3 id="proof-log-tags">Proof Log Tags<a class="headerlink" href="#proof-log-tags" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>§ALIGN_DETAIL correction_raw=(-244356.2,132191.1,-3114.9) unit_scale=0.001 correction_m=(-244.36,132.19,-3.11)
+§NORMALIZE merged centroid far from origin: (-251.2, 180.1, -44.9)
+§NORMALIZE after: centroid=(-0.0, 0.0, 0.0)
+§PROOF BBOX_RECONSTRUCT PASS  500 ok, 0 fail  worst=0.0001m
+</code></pre></div>
+<h3 id="pipeline-command">Pipeline Command<a class="headerlink" href="#pipeline-command" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>./scripts/pipeline_library.sh<span class="w"> </span>Terminal<span class="w">    </span><span class="c1"># uses SJTII-*-Clean.ifc pattern</span>
+</code></pre></div>
 <hr />
 <p><strong>Cross-references:</strong>
 <a href="../BOMBasedCompilation/"><code>BBC.md</code></a> §1.8 |

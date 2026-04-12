@@ -13,10 +13,6 @@
       
       
       
-        <link rel="prev" href="../ASSEMBLY_BUILDER_SRS/">
-      
-      
-        <link rel="next" href="../G4_SRS/">
       
       
         
@@ -27,7 +23,7 @@
     
     
       
-        <title>Blender Bridge - BIM Intent Compiler</title>
+        <title>Stress Test — 1M Elements in a Single Federated Session - BIM Intent Compiler</title>
       
     
     
@@ -90,7 +86,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#blenderbridge-thin-pipe-between-compiler-and-viewport" class="md-skip">
+        <a href="#stress-test-1m-elements-in-a-single-federated-session" class="md-skip">
           Skip to content
         </a>
       
@@ -124,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Blender Bridge
+              Stress Test — 1M Elements in a Single Federated Session
             
           </span>
         </div>
@@ -323,12 +319,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../BIM_Designer_SRS/" class="md-tabs__link">
           
   
@@ -1157,10 +1151,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -1182,22 +1174,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -1215,7 +1204,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1342,37 +1331,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Blender Bridge
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../BlenderBridge/" class="md-nav__link">
         
   
   
@@ -1388,181 +1350,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-what-federation-already-provides" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. What Federation Already Provides
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-the-incremental-update-problem" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. The Incremental Update Problem
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="2. The Incremental Update Problem">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#21-why-full-reload-is-too-slow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2.1 Why Full Reload Is Too Slow
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#22-delta-application-the-thin-pipe" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2.2 Delta Application — The Thin Pipe
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-bim-verb-shortcuts-the-developer-thin-pipe" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. BIM Verb Shortcuts — The Developer Thin Pipe
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. BIM Verb Shortcuts — The Developer Thin Pipe">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#31-the-problem-for-addon-devs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.1 The Problem for Addon Devs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#32-the-thin-pipe-java-smart-python-dumb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.2 The Thin Pipe — Java Smart, Python Dumb
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#33-blenderbridge-api-10-verbs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.3 BlenderBridge API — ~10 Verbs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#34-thread-safety" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.4 Thread Safety
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-material-cache-avoid-redundant-creation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Material Cache — Avoid Redundant Creation
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-mesh-instancing-library-linked-s173" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Mesh Instancing — Library-Linked (S173)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-relationship-to-existing-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Relationship to Existing Modules
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-what-blenderbridge-does-not-do" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. What BlenderBridge Does NOT Do
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3012,10 +2799,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-what-federation-already-provides" class="md-nav__link">
+  <a href="#goal" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. What Federation Already Provides
+        Goal
       
     </span>
   </a>
@@ -3023,22 +2810,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-the-incremental-update-problem" class="md-nav__link">
+  <a href="#the-loading-problem" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. The Incremental Update Problem
+        The Loading Problem
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="2. The Incremental Update Problem">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-solution-gn-dlod-progressive-make_local" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Solution: GN + DLOD + Progressive make_local()
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Solution: GN + DLOD + Progressive make_local()">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#21-why-full-reload-is-too-slow" class="md-nav__link">
+  <a href="#1-gn-mode-s175" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.1 Why Full Reload Is Too Slow
+        1. GN Mode (S175)
       
     </span>
   </a>
@@ -3046,10 +2844,43 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#22-delta-application-the-thin-pipe" class="md-nav__link">
+  <a href="#2-dlod-distance-level-of-detail-spec" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.2 Delta Application — The Thin Pipe
+        2. DLOD — Distance Level of Detail (spec)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-progressive-make_local-the-linktrue-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Progressive make_local() — The link=True Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#status-whats-implemented-vs-whats-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status: What's Implemented vs What's Next
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
       
     </span>
   </a>
@@ -3062,71 +2893,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-bim-verb-shortcuts-the-developer-thin-pipe" class="md-nav__link">
+  <a href="#city-layout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. BIM Verb Shortcuts — The Developer Thin Pipe
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. BIM Verb Shortcuts — The Developer Thin Pipe">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#31-the-problem-for-addon-devs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.1 The Problem for Addon Devs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#32-the-thin-pipe-java-smart-python-dumb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.2 The Thin Pipe — Java Smart, Python Dumb
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#33-blenderbridge-api-10-verbs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.3 BlenderBridge API — ~10 Verbs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#34-thread-safety" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.4 Thread Safety
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-material-cache-avoid-redundant-creation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Material Cache — Avoid Redundant Creation
+        City Layout
       
     </span>
   </a>
@@ -3134,10 +2904,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-mesh-instancing-library-linked-s173" class="md-nav__link">
+  <a href="#measured-performance-terminal-48k-elements-7k-unique-meshes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Mesh Instancing — Library-Linked (S173)
+        Measured Performance (Terminal, 48K elements, 7K unique meshes)
       
     </span>
   </a>
@@ -3145,21 +2915,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-relationship-to-existing-modules" class="md-nav__link">
+  <a href="#references" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Relationship to Existing Modules
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-what-blenderbridge-does-not-do" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. What BlenderBridge Does NOT Do
+        References
       
     </span>
   </a>
@@ -3186,391 +2945,255 @@
   
 
 
-<h1 id="blenderbridge-thin-pipe-between-compiler-and-viewport">BlenderBridge — Thin Pipe Between Compiler and Viewport<a class="headerlink" href="#blenderbridge-thin-pipe-between-compiler-and-viewport" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
-</blockquote>
-<div class="bim-banner">
-<p><b>Jakarta Velocity for BIM — simple API over complex bpy internals.</b> Incremental viewport updates without reloading 48,000 elements, via Java/Python TCP bridge.</p>
-</div>
-<p><strong>Version:</strong> 1.0 (2026-03-18)
-<strong>Depends on:</strong> <a href="../BIM_Designer/">BIM_Designer.md</a> §11-§12, IfcOpenShell Federation addon</p>
-<blockquote>
-<p><strong>Design principle:</strong> Jakarta Velocity gave web devs <code>$customer.name</code>
-instead of <code>((HttpServletRequest)request).getSession().getAttribute(...)</code>.
-BlenderBridge gives BIM addon devs <code>bridge.place("wall", 5000, 200, 2800)</code>
-instead of 15 lines of <code>bpy.data.meshes.new()</code> / <code>bmesh</code> / materials.
-The thin pipe. Don't make Claude (or devs) overthink bpy.</p>
-<p><strong>What already exists:</strong> The IfcOpenShell Federation addon provides <strong>Full
-Load</strong> — read entire output.db into Blender viewport. BlenderBridge does
-NOT replace this. It adds the <strong>incremental update</strong> layer on top: when
-the compiler patches 3 elements, the bridge patches 3 objects in the
-viewport without reloading 48,000.</p>
-</blockquote>
+<h1 id="stress-test-1m-elements-in-a-single-federated-session">Stress Test — 1M Elements in a Single Federated Session<a class="headerlink" href="#stress-test-1m-elements-in-a-single-federated-session" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Active — S175 in progress
+<strong>Sandbox:</strong> <code>scripts/sandbox_1M.db</code> (1,065,130 elements, 583 MB, 29 real buildings)
+<strong>Builder:</strong> <code>scripts/build_sandbox_1M.py</code>
+<strong>Library:</strong> <code>library/library.blend</code> (38,306 meshes, 89.5 MB, shared all buildings)</p>
 <hr />
-<h2 id="1-what-federation-already-provides">1. What Federation Already Provides<a class="headerlink" href="#1-what-federation-already-provides" title="Permanent link">&para;</a></h2>
-<p>The Federation addon (Item 1: Preview / Full Load) already solves:</p>
+<h2 id="goal">Goal<a class="headerlink" href="#goal" title="Permanent link">&para;</a></h2>
+<p>Load <strong>1,000,000 BIM elements</strong> into Blender with interactive viewport performance.
+All geometry is real — extracted from 29 IFC buildings, tiled into a city layout.</p>
+<hr />
+<h2 id="the-loading-problem">The Loading Problem<a class="headerlink" href="#the-loading-problem" title="Permanent link">&para;</a></h2>
+<p>The Library button (S174) creates one Blender object per element. At 1M elements:
+- 1M objects in Outliner (unusable)
+- .blend save writes 1M objects (huge file, minutes to save)
+- No camera-distance LOD (every element rendered equally)
+- Instance creation: ~800 objects/s → <strong>20+ minutes</strong> to load</p>
+<h2 id="the-solution-gn-dlod-progressive-make_local">The Solution: GN + DLOD + Progressive make_local()<a class="headerlink" href="#the-solution-gn-dlod-progressive-make_local" title="Permanent link">&para;</a></h2>
+<p>Three pieces working together:</p>
+<h3 id="1-gn-mode-s175">1. GN Mode (S175)<a class="headerlink" href="#1-gn-mode-s175" title="Permanent link">&para;</a></h3>
+<p>Instead of 1M individual objects, create <strong>~13 GN objects</strong> (one per discipline).
+Each object is a point cloud — every point = one element. GN "Instance on Points"
+picks the right mesh shape per point via <code>instance_index</code>.</p>
+<ul>
+<li>Outliner: 13 items (not 1M)</li>
+<li>.blend save: 13 objects + templates (small)</li>
+<li>Meshes loaded from <code>library.blend</code> into a hidden <code>_Templates</code> collection</li>
+</ul>
+<h3 id="2-dlod-distance-level-of-detail-spec">2. DLOD — Distance Level of Detail (<a href="../internal/DLOD_SPEC.md">spec</a>)<a class="headerlink" href="#2-dlod-distance-level-of-detail-spec" title="Permanent link">&para;</a></h3>
+<p>A camera handler (depsgraph_update_post) that runs every frame:</p>
 <table>
 <thead>
 <tr>
-<th>Capability</th>
-<th>How</th>
-<th>BlenderBridge touches it?</th>
+<th>Distance</th>
+<th>LOD</th>
+<th>What you see</th>
+<th>Cost</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>DB → Blender mesh creation</td>
-<td>Reads <code>elements_meta</code> + <code>base_geometries</code> + <code>element_instances</code> → creates Blender objects</td>
-<td><strong>NO</strong> — uses as-is</td>
+<td>&gt;100m</td>
+<td>LOD-0</td>
+<td>8-vertex bbox proxy</td>
+<td>~96 bytes GPU</td>
 </tr>
 <tr>
-<td>Material assignment</td>
-<td>Reads <code>material_name</code> / <code>material_rgba</code> → creates <code>bpy.data.materials</code></td>
-<td><strong>NO</strong> — uses as-is</td>
+<td>10-100m</td>
+<td>LOD-1</td>
+<td>Real mesh, discipline color</td>
+<td>Full mesh</td>
 </tr>
 <tr>
-<td>Spatial indexing</td>
-<td><code>elements_rtree</code> for spatial queries</td>
-<td><strong>NO</strong> — uses as-is</td>
-</tr>
-<tr>
-<td>Collection hierarchy</td>
-<td>Storey → discipline → ifc_class tree</td>
-<td><strong>NO</strong> — uses as-is</td>
-</tr>
-<tr>
-<td>IFC property display</td>
-<td>Click element → properties panel</td>
-<td><strong>NO</strong> — uses as-is</td>
+<td>&lt;10m</td>
+<td>LOD-2</td>
+<td>Real mesh, full materials</td>
+<td>Full mesh + material</td>
 </tr>
 </tbody>
 </table>
-<p><strong>BlenderBridge does NOT rewrite any of this.</strong> Federation's full load is the
-foundation. BlenderBridge adds two things on top:</p>
+<p>Transition = swap <code>instance_index</code> on the GN point. No mesh creation or deletion.
+Max 500 swaps per frame to stay under 10ms budget.</p>
+<p><strong>Already implemented:</strong> <code>dlod_handler.py</code> (666 lines, 3/3 self-test PASS).</p>
+<h3 id="3-progressive-make_local-the-linktrue-fix">3. Progressive make_local() — The link=True Fix<a class="headerlink" href="#3-progressive-make_local-the-linktrue-fix" title="Permanent link">&para;</a></h3>
+<p><strong>The problem:</strong> Loading template meshes from library.blend at scale.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Time</th>
+<th>Viewport</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Append (<code>link=False</code>)</td>
+<td>~5-6 min</td>
+<td>Smooth</td>
+<td>Disk → .blend memory (slow disk I/O)</td>
+</tr>
+<tr>
+<td>Cache (<code>link=True</code>)</td>
+<td>scales with N</td>
+<td><strong>Frozen if GN reads cache</strong></td>
+<td>Reads ALL vertex data into library arena</td>
+</tr>
+<tr>
+<td>Cache + make_local()</td>
+<td>link + ~0.1ms/mesh</td>
+<td>Smooth</td>
+<td>Library arena → scene memory (direct pointer)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Measured (S176, 2026-04-12):</strong>
+- Terminal 7K meshes: <code>link=True</code> = <strong>1.74s</strong>, +~160MB RAM
+- Sandbox 108K meshes: <code>link=True</code> = <strong>292s</strong>, +2,494MB RAM
+- Rate: ~371 meshes/s — <strong>link=True reads all vertex data, not just handles</strong>
+- <code>make_local()</code> removed from <code>load_library_linked</code> (Full Load) — per-element objects
+  resolve linked refs once at assignment, not per frame. See <code>StressTest_1M_Results.md §S176</code>.</p>
+<p><strong>How it works:</strong>
+- <strong><code>link=True</code></strong> reads vertex/face data for all requested meshes into Blender's library arena (RAM). Cost scales with mesh count and vertex data size.
+- <strong><code>make_local()</code></strong> copies one mesh from library arena to scene memory. RAM-to-RAM, fast (~0.1ms). Gives GN a direct pointer instead of library handle.
+- <strong>GN geometry hell</strong> was a scale problem: 63K+ objects in one collection × library dereference × 60fps = frozen. <strong>Fixed by S176 chunking (CHUNK_SIZE=100)</strong> — GN now walks ≤101 objects per chunk.
+- <strong>make_local() status:</strong> removed from Full Load path (S176). Still in GN streamer pending P2 FPS proof with linked chunks.</p>
+<p><strong>Progressive make_local() integrated with DLOD:</strong></p>
+<div class="highlight"><pre><span></span><code>LOAD (2 seconds):
+  link=True → 63K meshes cached in read-only memory
+  GN point clouds created (13 objects, 1M points)
+  GN modifiers DISABLED (prevents freeze)
+  All elements start at LOD-0 (bbox proxies — 8 verts, local)
+  → User sees R-tree bbox wireframes immediately
+
+FIRST BATCH (~1 second):
+  Compute initial camera position
+  make_local() on ~200-500 templates near camera (RAM-to-RAM, fast)
+  Enable GN modifiers → viewport appears smooth from the start
+  → User sees real geometry around camera, bboxes everywhere else
+
+RUNTIME (per camera move):
+  DLOD detects near elements crossing LOD-0 → LOD-1 threshold
+  For each promoted template:
+    mesh.make_local()  → RAM-to-RAM copy, fast
+    GN gets direct pointer → smooth viewport
+  Far elements stay as LOD-0 bbox proxies (local, cheap)
+
+RESULT:
+  ~3 seconds from click to interactive viewport
+  Only ~200-500 unique templates near camera are local at any time
+  GN never evaluates linked meshes — only local pointers
+</code></pre></div>
+<p><strong>Critical sequence:</strong> GN modifiers must be disabled until after the first
+<code>make_local()</code> batch completes. If GN evaluates while templates are still linked,
+it does 63K library dereferences per frame = frozen viewport. By disabling GN
+during load and enabling after the first batch, the user never experiences the freeze.</p>
+<h3 id="status-whats-implemented-vs-whats-next">Status: What's Implemented vs What's Next<a class="headerlink" href="#status-whats-implemented-vs-whats-next" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Status</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GN mode library linker</td>
+<td>Written, needs link=True fix</td>
+<td><code>stage2_library_linker.py</code></td>
+</tr>
+<tr>
+<td>GN node tree builder</td>
+<td>Written</td>
+<td><code>stage2_library_linker.py</code></td>
+</tr>
+<tr>
+<td>DLOD handler (distance, buckets, batch swap)</td>
+<td>Written, 3/3 self-test PASS</td>
+<td><code>dlod_handler.py</code></td>
+</tr>
+<tr>
+<td>DLOD bbox proxy generation</td>
+<td>Written</td>
+<td><code>dlod_handler.py</code></td>
+</tr>
+<tr>
+<td><code>make_local()</code> in DLOD promotion</td>
+<td><strong>NOT YET</strong> — next to implement</td>
+<td><code>dlod_handler.py</code></td>
+</tr>
+<tr>
+<td>Sandbox 1M database</td>
+<td>Built (1,065,130 elements)</td>
+<td><code>scripts/sandbox_1M.db</code></td>
+</tr>
+<tr>
+<td>library.blend</td>
+<td>Built (38,306 meshes)</td>
+<td><code>library/library.blend</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>Incremental viewport update</strong> — patch changed elements without full reload</li>
-<li><strong>BIM verb shortcuts</strong> — thin Python API for addon devs who don't know bpy</li>
+<li>Fix GN loader: keep <code>link=True</code>, bbox proxies are local (not linked)</li>
+<li>Add <code>make_local()</code> to DLOD LOD-0→LOD-1 promotion in <code>dlod_handler.py</code></li>
+<li>Test on sandbox_1M.db: load time, viewport FPS, .blend file size</li>
+<li>Log: <code>§PROOF BLEND_SIZE gn_on=XMB</code>, <code>§PROOF DLOD_MAKELOCAL count=N time=Xms</code></li>
 </ol>
 <hr />
-<h2 id="2-the-incremental-update-problem">2. The Incremental Update Problem<a class="headerlink" href="#2-the-incremental-update-problem" title="Permanent link">&para;</a></h2>
-<h3 id="21-why-full-reload-is-too-slow">2.1 Why Full Reload Is Too Slow<a class="headerlink" href="#21-why-full-reload-is-too-slow" title="Permanent link">&para;</a></h3>
+<h2 id="city-layout">City Layout<a class="headerlink" href="#city-layout" title="Permanent link">&para;</a></h2>
+<p>Built by <code>scripts/build_sandbox_1M.py</code> from 29 real extracted buildings:</p>
+<p><strong>CBD strip</strong> (13 buildings):
+- Hospital ×2 (63,917 each), Terminal (48,428), LTU_AHouse (4,785)
+- HospitalGarage ×2, Clinic (16,480), 6 office buildings
+- Total: 221,386 elements</p>
+<p><strong>Suburb rows</strong> (51 rows × 18 house types):
+- Duplex, SampleHouse, BimWhale variants, Schependomlaan, etc.
+- 16,544 elements per row
+- Total: 843,744 elements</p>
+<p><strong>Grand total: 1,065,130 elements</strong></p>
+<hr />
+<h2 id="measured-performance-terminal-48k-elements-7k-unique-meshes">Measured Performance (Terminal, 48K elements, 7K unique meshes)<a class="headerlink" href="#measured-performance-terminal-48k-elements-7k-unique-meshes" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Building</th>
-<th>Elements</th>
-<th>Full Load</th>
-<th>Acceptable for edit cycle?</th>
+<th>Metric</th>
+<th>GN link=True</th>
+<th>Per-element link=False</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>SH</td>
-<td>small</td>
-<td>&lt;1s</td>
-<td>Yes — full reload is fine</td>
+<td>Mesh load</td>
+<td>1.74s</td>
+<td>37.05s</td>
 </tr>
 <tr>
-<td>DX</td>
-<td>1,099</td>
-<td>~3s</td>
-<td>Marginal</td>
+<td>Instance/GN build</td>
+<td>0.05s</td>
+<td>57.47s</td>
 </tr>
 <tr>
-<td>TE</td>
+<td>Total load</td>
+<td>2.19s</td>
+<td>64.08s</td>
+</tr>
+<tr>
+<td>Outliner items</td>
+<td>6</td>
 <td>48,428</td>
-<td>~30s</td>
-<td>No — user moved one wall</td>
+</tr>
+<tr>
+<td>Viewport</td>
+<td>Frozen (link issue)</td>
+<td>60 FPS</td>
 </tr>
 </tbody>
 </table>
-<p>At TE scale, the user edits a BOM line (move a wall 500mm), the compiler
-recompiles in ~2s (WriteStage only), but Federation's full reload takes 30s
-to recreate 48K Blender objects. The bottleneck is Blender, not the compiler.</p>
-<h3 id="22-delta-application-the-thin-pipe">2.2 Delta Application — The Thin Pipe<a class="headerlink" href="#22-delta-application-the-thin-pipe" title="Permanent link">&para;</a></h3>
-<p>After incremental compile, the server pushes a <code>COMPILE_COMPLETE</code> message
-with a <strong>change manifest</strong> — which elements changed, which are new, which
-were removed.</p>
-<div class="highlight"><pre><span></span><code>← {&quot;type&quot;:&quot;COMPILE_COMPLETE&quot;,&quot;buildingId&quot;:&quot;Terminal_KLIA&quot;,
-    &quot;outputDbPath&quot;:&quot;...&quot;,&quot;elementCount&quot;:48428,
-    &quot;delta&quot;:{&quot;added&quot;:[],&quot;modified&quot;:[&quot;guid_1234&quot;,&quot;guid_5678&quot;],&quot;removed&quot;:[]}}
-</code></pre></div>
-<p>BlenderBridge applies the delta:</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">apply_delta</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Patch viewport — don&#39;t rebuild everything.&quot;&quot;&quot;</span>
-    <span class="n">conn</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span>
-
-    <span class="c1"># Remove deleted objects</span>
-    <span class="k">for</span> <span class="n">guid</span> <span class="ow">in</span> <span class="n">delta</span><span class="p">[</span><span class="s2">&quot;removed&quot;</span><span class="p">]:</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">guid</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">obj</span><span class="p">:</span>
-            <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">do_unlink</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="c1"># Update modified objects (re-read geometry + position)</span>
-    <span class="k">for</span> <span class="n">guid</span> <span class="ow">in</span> <span class="n">delta</span><span class="p">[</span><span class="s2">&quot;modified&quot;</span><span class="p">]:</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">guid</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">obj</span><span class="p">:</span>
-            <span class="n">row</span> <span class="o">=</span> <span class="n">query_element</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="n">guid</span><span class="p">)</span>
-            <span class="n">update_object</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span>       <span class="c1"># position, scale, material</span>
-
-    <span class="c1"># Add new objects (same path as Federation full load, but one at a time)</span>
-    <span class="k">for</span> <span class="n">guid</span> <span class="ow">in</span> <span class="n">delta</span><span class="p">[</span><span class="s2">&quot;added&quot;</span><span class="p">]:</span>
-        <span class="n">row</span> <span class="o">=</span> <span class="n">query_element</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="n">guid</span><span class="p">)</span>
-        <span class="n">create_object</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>                <span class="c1"># Federation&#39;s mesh creation logic</span>
-
-    <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-</code></pre></div>
-<p><strong>Key:</strong> <code>update_object()</code> is ~5 lines (set location, scale, material).
-<code>create_object()</code> reuses Federation's existing mesh creation code.
-The delta is typically 1-50 elements, not 48K. Viewport update: &lt;0.5s.</p>
+<p>With <code>make_local()</code> fix: expect link=True load speed + link=False viewport smoothness.</p>
 <hr />
-<h2 id="3-bim-verb-shortcuts-the-developer-thin-pipe">3. BIM Verb Shortcuts — The Developer Thin Pipe<a class="headerlink" href="#3-bim-verb-shortcuts-the-developer-thin-pipe" title="Permanent link">&para;</a></h2>
-<h3 id="31-the-problem-for-addon-devs">3.1 The Problem for Addon Devs<a class="headerlink" href="#31-the-problem-for-addon-devs" title="Permanent link">&para;</a></h3>
-<p>Raw bpy for a simple BIM operation:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Place a wall — 15 lines of bpy boilerplate</span>
-<span class="kn">import</span> <span class="nn">bpy</span><span class="o">,</span> <span class="nn">bmesh</span>
-<span class="n">mesh</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">meshes</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s2">&quot;wall_north&quot;</span><span class="p">)</span>
-<span class="n">bm</span> <span class="o">=</span> <span class="n">bmesh</span><span class="o">.</span><span class="n">new</span><span class="p">()</span>
-<span class="n">bmesh</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">create_cube</span><span class="p">(</span><span class="n">bm</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
-<span class="n">bm</span><span class="o">.</span><span class="n">to_mesh</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-<span class="n">bm</span><span class="o">.</span><span class="n">free</span><span class="p">()</span>
-<span class="n">obj</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s2">&quot;wall_north&quot;</span><span class="p">,</span> <span class="n">mesh</span><span class="p">)</span>
-<span class="n">obj</span><span class="o">.</span><span class="n">dimensions</span> <span class="o">=</span> <span class="p">(</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">2.8</span><span class="p">)</span>
-<span class="n">obj</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">)</span>
-<span class="n">mat</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">materials</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s2">&quot;Brick&quot;</span><span class="p">)</span>
-<span class="n">mat</span><span class="o">.</span><span class="n">use_nodes</span> <span class="o">=</span> <span class="kc">True</span>
-<span class="n">mat</span><span class="o">.</span><span class="n">node_tree</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;Principled BSDF&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s2">&quot;Base Color&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">default_value</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-<span class="n">obj</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">materials</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
-<span class="n">bpy</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">scene</span><span class="o">.</span><span class="n">collection</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="32-the-thin-pipe-java-smart-python-dumb">3.2 The Thin Pipe — Java Smart, Python Dumb<a class="headerlink" href="#32-the-thin-pipe-java-smart-python-dumb" title="Permanent link">&para;</a></h3>
-<p><strong>Architecture rule:</strong> The Python layer is a dumb executor. All logic —
-what delta to apply, which elements changed, which materials to use — lives
-in Java (DesignerServer), where it's DAO-queryable, testable in Eclipse, and
-follows the same PO/ModelQuery patterns as the rest of the codebase.</p>
-<div class="highlight"><pre><span></span><code>Java (smart):  DesignerServer computes delta via DAO queries
-               → sends {&quot;update&quot;:&quot;guid_123&quot;,&quot;x&quot;:5000,&quot;material&quot;:&quot;Brick&quot;}
-
-Python (dumb): bridge.update_object(&quot;guid_123&quot;, x=5000, material=&quot;Brick&quot;)
-               → 3 lines of bpy
-</code></pre></div>
-<p>This means:
-- <strong>Eclipse devs</strong> maintain the logic (Java DAO, BIM COBOL verbs, delta computation)
-- <strong>Python devs</strong> maintain the bpy wrappers (~200 lines, each method 3-10 lines)
-- No BIM logic in Python. No bpy in Java. Clean separation.</p>
-<p>The Java server can also expose delta computation as BIM COBOL verbs:</p>
-<div class="highlight"><pre><span></span><code>DIFF OUTPUT &quot;terminal_klia.db&quot; SINCE &quot;2026-03-18T01:00:00&quot;
-  → DiffPayload: {added: [], modified: [&quot;guid_1234&quot;], removed: []}
-</code></pre></div>
-<p>This makes delta computation auditable via W_Verb_Node, same as any
-other verb execution.</p>
-<h3 id="33-blenderbridge-api-10-verbs">3.3 BlenderBridge API — ~10 Verbs<a class="headerlink" href="#33-blenderbridge-api-10-verbs" title="Permanent link">&para;</a></h3>
-<p>Python-side API. Each method is 3-10 lines of bpy. No BIM logic.</p>
-<table>
-<thead>
-<tr>
-<th>Verb</th>
-<th>What it does</th>
-<th>bpy calls it wraps</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>place_box(name, w, d, h, x, y, z, ...)</code></td>
-<td>Create box mesh at position with material</td>
-<td>mesh.new, bmesh, object.new, materials, collection.link</td>
-</tr>
-<tr>
-<td><code>place_from_db(guid, db_path)</code></td>
-<td>Read element from output.db, create object</td>
-<td>Federation's full element creation path</td>
-</tr>
-<tr>
-<td><code>update_position(name, x, y, z)</code></td>
-<td>Move existing object</td>
-<td>obj.location = (...)</td>
-</tr>
-<tr>
-<td><code>update_dimensions(name, w, d, h)</code></td>
-<td>Resize existing object</td>
-<td>obj.dimensions = (...)</td>
-</tr>
-<tr>
-<td><code>set_material(name, material, rgba)</code></td>
-<td>Set or create material on object</td>
-<td>materials.new, nodes, assign</td>
-</tr>
-<tr>
-<td><code>remove(name)</code></td>
-<td>Delete object from scene</td>
-<td>objects.remove, do_unlink</td>
-</tr>
-<tr>
-<td><code>create_collection(name, parent)</code></td>
-<td>Create collection hierarchy</td>
-<td>collection.children.link</td>
-</tr>
-<tr>
-<td><code>select_by_ref(element_ref)</code></td>
-<td>Select object by BOM element_ref</td>
-<td>objects[ref].select_set(True)</td>
-</tr>
-<tr>
-<td><code>add_dimension(obj_a, obj_b)</code></td>
-<td>Add dimension annotation between two objects</td>
-<td>annotations, gpencil</td>
-</tr>
-<tr>
-<td><code>section_cut(plane, axis, offset)</code></td>
-<td>Create section cut at position</td>
-<td>clip_start/end on camera or boolean modifier</td>
-</tr>
-<tr>
-<td><code>reload_from_db(db_path)</code></td>
-<td>Full reload via Federation path</td>
-<td>Federation's existing full load</td>
-</tr>
-<tr>
-<td><code>apply_delta(delta, db_path)</code></td>
-<td>Incremental update (§2.2)</td>
-<td>remove + update + create per delta</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Java-side verbs</strong> (in DesignerServer, exposed via ndjson):</p>
-<table>
-<thead>
-<tr>
-<th>Action</th>
-<th>Java DAO query</th>
-<th>Returns</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>"action":"diff"</code></td>
-<td>Compare output.db timestamps / spatial digest</td>
-<td>Delta manifest (added/modified/removed GUIDs)</td>
-</tr>
-<tr>
-<td><code>"action":"elementDetail"</code></td>
-<td>Query <code>elements_meta</code> + <code>base_geometries</code> by GUID</td>
-<td>Full element data for Python to create/update</td>
-</tr>
-<tr>
-<td><code>"action":"materials"</code></td>
-<td>Query distinct <code>material_name</code> / <code>material_rgba</code></td>
-<td>Material catalog for cache priming</td>
-</tr>
-</tbody>
-</table>
-<h3 id="34-thread-safety">3.4 Thread Safety<a class="headerlink" href="#34-thread-safety" title="Permanent link">&para;</a></h3>
-<p>Blender's Python API is <strong>not thread-safe</strong>. All bpy calls must run on the
-main thread. The DesignerServer pushes compile results on a background
-<code>threading.Thread</code>. BlenderBridge uses <code>bpy.app.timers</code> to schedule viewport
-updates on the main thread:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">bpy</span>
-
-<span class="k">class</span> <span class="nc">BlenderBridge</span><span class="p">:</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_deltas</span> <span class="o">=</span> <span class="p">[]</span>
-
-    <span class="k">def</span> <span class="nf">schedule_delta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Called from background thread. Queues for main thread.&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_deltas</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span><span class="p">))</span>
-        <span class="n">bpy</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">timers</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_process_pending</span><span class="p">,</span> <span class="n">first_interval</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_process_pending</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Runs on Blender main thread via timer.&quot;&quot;&quot;</span>
-        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pending_deltas</span><span class="p">:</span>
-            <span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pending_deltas</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">apply_delta</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">db_path</span><span class="p">)</span>
-        <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># don&#39;t repeat</span>
-</code></pre></div>
-<p>This is the same pattern used by Bonsai's existing IFC import — background
-parse, main-thread object creation.</p>
-<hr />
-<h2 id="4-material-cache-avoid-redundant-creation">4. Material Cache — Avoid Redundant Creation<a class="headerlink" href="#4-material-cache-avoid-redundant-creation" title="Permanent link">&para;</a></h2>
-<p>Buildings reuse materials heavily (Brick appears on 200 walls, Concrete on
-50 slabs). BlenderBridge caches materials by name:</p>
-<div class="highlight"><pre><span></span><code><span class="n">_material_cache</span> <span class="o">=</span> <span class="p">{}</span>
-
-<span class="k">def</span> <span class="nf">get_or_create_material</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">rgba</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_material_cache</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">_material_cache</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-    <span class="n">mat</span> <span class="o">=</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">materials</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-    <span class="n">mat</span><span class="o">.</span><span class="n">use_nodes</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="k">if</span> <span class="n">rgba</span><span class="p">:</span>
-        <span class="n">bsdf</span> <span class="o">=</span> <span class="n">mat</span><span class="o">.</span><span class="n">node_tree</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;Principled BSDF&quot;</span><span class="p">]</span>
-        <span class="n">bsdf</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s2">&quot;Base Color&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">default_value</span> <span class="o">=</span> <span class="n">rgba</span>
-    <span class="n">_material_cache</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">mat</span>
-    <span class="k">return</span> <span class="n">mat</span>
-</code></pre></div>
-<p>On full load: 48K elements but only ~30 unique materials. Cache avoids
-creating 48K material objects.</p>
-<hr />
-<h2 id="5-mesh-instancing-library-linked-s173">5. Mesh Instancing — Library-Linked (S173)<a class="headerlink" href="#5-mesh-instancing-library-linked-s173" title="Permanent link">&para;</a></h2>
-<p>Blender has native mesh instancing: 500 identical chairs share one mesh
-data block. The compiler's <code>component_library.db</code> deduplicates geometry
-by <code>geometry_hash</code>. Since S173, meshes are pre-baked into <code>library/library.blend</code>
-and linked at runtime — no BLOB reads, no <code>from_pydata()</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Pre-bake (offline, once): bake_library_blend.py</span>
-<span class="c1">#   component_library.db → library.blend (one Mesh per geometry_hash)</span>
-
-<span class="c1"># Runtime (instant): stage2_library_linker.py</span>
-<span class="k">with</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">libraries</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">library_blend</span><span class="p">,</span> <span class="n">link</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">):</span>
-    <span class="n">dst</span><span class="o">.</span><span class="n">meshes</span> <span class="o">=</span> <span class="p">[</span><span class="n">h</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">src</span><span class="o">.</span><span class="n">meshes</span> <span class="k">if</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">needed_hashes</span><span class="p">]</span>
-<span class="c1"># GN &quot;Instance on Points&quot; assigns mesh by hash_index per point</span>
-</code></pre></div>
-<p><strong>Impact at TE scale:</strong> 48K elements but ~2,500 unique geometries.
-Library link: &lt;0.1s for all 2,500 meshes (vs 13s with old BLOB unpack).
-GN point cloud: one point per element, mesh assigned by <code>hash_index</code> attribute.
-Scene save: ~116KB (meshless — GN tree + transforms only).</p>
-<p>This is why the compiler's <code>component_library.db</code> + <code>element_instances</code> split
-exists — it maps 1:1 to Blender's library-linked instancing model.</p>
-<hr />
-<h2 id="6-relationship-to-existing-modules">6. Relationship to Existing Modules<a class="headerlink" href="#6-relationship-to-existing-modules" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>DesignerServer (Java, TCP 9876)
-    │
-    ├── compile → CompilationPipeline → output.db
-    │
-    └── push COMPILE_COMPLETE + delta
-            │
-            ▼
-        client.py (Python, background thread)
-            │
-            ├── full load? → Federation addon (existing)
-            │
-            └── incremental? → BlenderBridge.apply_delta()
-                                    │
-                                    ├── remove_object()    ← bpy thin pipe
-                                    ├── update_object()    ← bpy thin pipe
-                                    └── create_object()    ← Federation reuse
-</code></pre></div>
-<p><strong>BlenderBridge is NOT a replacement for Federation.</strong> It is:
-- A delta applicator (incremental updates)
-- A thin API for addon devs (BIM verbs over bpy)
-- A cache manager (materials + meshes)</p>
-<p>Federation handles the heavy lift. BlenderBridge handles the fast path.</p>
-<hr />
-<h2 id="7-what-blenderbridge-does-not-do">7. What BlenderBridge Does NOT Do<a class="headerlink" href="#7-what-blenderbridge-does-not-do" title="Permanent link">&para;</a></h2>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Does NOT parse IFC files (Federation does this)</li>
-<li>Does NOT create output.db (compiler does this)</li>
-<li>Does NOT implement chooser panels (BonsaiBIMDesigner addon does this)</li>
-<li>Does NOT run compilation (DesignerServer does this)</li>
-<li>Does NOT validate geometry (DocValidate does this)</li>
-<li>Does NOT manage TCP connection (client.py does this)</li>
+<li><a href="../internal/DLOD_SPEC.md">DLOD Spec</a> — distance LOD handler design</li>
+<li><a href="../internal/FULL_LOADER2_SRS.md">Full Loader 2 SRS</a> — master loader spec</li>
+<li><a href="../internal/GN_LINK_INVESTIGATION.md">GN Link Investigation</a> — link=True vs link=False analysis</li>
+<li><code>scripts/build_sandbox_1M.py</code> — city builder</li>
+<li><code>scripts/pipeline_library.sh</code> — extraction pipeline</li>
 </ul>
-<p>It is <strong>only</strong> the bpy thin pipe + delta applicator. ~200 lines of Python.</p>
-<hr />
-<p><em>Related docs:
-<a href="../BIM_Designer/">BIM_Designer.md</a> §11 (BonsaiBIMDesigner module), §12 (versatility), §16 (Federation integration) |
-<a href="../DocValidate/">DocValidate.md</a> (validation engine) |
-Federation addon: <code>/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/</code> |
-Federation loader: <code>federation/loader.py</code> (3-stage progressive: wireframe → semantic → detail) |
-Federation viewport ops: <code>bim.load_full_federation_viewport_gi</code> (Full Load from DB)</em></p>
 
 
 

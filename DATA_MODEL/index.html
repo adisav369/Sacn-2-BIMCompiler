@@ -4482,12 +4482,12 @@ I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrate
 <tr>
 <td>vertices</td>
 <td>BLOB</td>
-<td>Vertex data</td>
+<td>Vertex data (read only by <code>bake_library_blend.py</code>, never at runtime)</td>
 </tr>
 <tr>
 <td>faces</td>
 <td>BLOB</td>
-<td>Face indices</td>
+<td>Face indices (read only by <code>bake_library_blend.py</code>, never at runtime)</td>
 </tr>
 <tr>
 <td>vertex_count, face_count</td>
@@ -4496,6 +4496,12 @@ I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrate
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>S173 note:</strong> BLOBs are consumed once by the bake script to produce
+<code>library/library.blend</code>. At runtime, meshes are linked from library.blend —
+no BLOB reads, no <code>from_pydata()</code>. Extracted DBs are meshless (NULL BLOBs)
+to keep file size small (e.g. Hospital: 8MB vs 232MB with BLOBs).</p>
+</blockquote>
 <hr />
 <h2 id="4-outputdb-transactional-fresh-each-compile">4. output.db — Transactional (Fresh Each Compile)<a class="headerlink" href="#4-outputdb-transactional-fresh-each-compile" title="Permanent link">&para;</a></h2>
 <p>Created by CompilationPipeline. C_Order created from C_DocType at compile time.</p>

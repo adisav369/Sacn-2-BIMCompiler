@@ -2789,6 +2789,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#1b-port-graph-enrichment-authored-connectivity-future" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1b. Port-Graph Enrichment — Authored Connectivity (Future)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#2-pattern-topology-rows-in-ad_mep_pattern" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5248,6 +5259,17 @@
     <span class="md-ellipsis">
       
         1. Anchors — Source and Terminal Points
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1b-port-graph-enrichment-authored-connectivity-future" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1b. Port-Graph Enrichment — Authored Connectivity (Future)
       
     </span>
   </a>
@@ -8532,6 +8554,93 @@ points — without discipline assignment.</p>
 centre (cx, cy, cz). If the element has two spatially distinct ends (length &gt; 3× min AABB dim),
 emit two anchors (start and end). Otherwise emit one anchor at centre. Fixture-type elements
 (toilet/sink/drain keywords) are typed as FIXTURE.</p>
+<h4 id="1b-port-graph-enrichment-authored-connectivity-future">1b. Port-Graph Enrichment — Authored Connectivity (Future)<a class="headerlink" href="#1b-port-graph-enrichment-authored-connectivity-future" title="Permanent link">&para;</a></h4>
+<p><strong>Principle:</strong> Prefer authored IFC connectivity over spatial inference when available.
+IFC models with proper MEP modeling carry <code>IfcDistributionPort</code> entities on each
+fitting/segment, connected via <code>IfcRelConnectsPorts</code>. This is a directed graph
+(SOURCE→SINK) with system membership (<code>IfcSystem</code>). When present, this is more
+stable than inferring connectivity from spatial proximity.</p>
+<p><strong>Reality check — not all IFC carries ports:</strong></p>
+<table>
+<thead>
+<tr>
+<th>LOD / Source</th>
+<th>Ports present?</th>
+<th>Anchor strategy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LOD400+ (Revit MEP, OpenPlant)</td>
+<td>Yes — full port graph</td>
+<td>Use authored connectivity</td>
+</tr>
+<tr>
+<td>LOD300 (generic modelers)</td>
+<td>Partial — some fittings have ports</td>
+<td>Authored where available, infer remainder</td>
+</tr>
+<tr>
+<td>LOD200 / IFC2x3 legacy</td>
+<td>No — bare geometry only</td>
+<td>Spatial inference only (current path)</td>
+</tr>
+<tr>
+<td>Generative (RouteWalker output)</td>
+<td>N/A — no IFC source</td>
+<td>Pattern-based (§6.12.3 §3)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Extraction enhancement in IFCtoERP (at extraction time only):</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">ifcopenshell.util.system</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">get_ports</span><span class="p">,</span> <span class="n">get_connected_to</span><span class="p">,</span> <span class="n">get_connected_from</span><span class="p">,</span>
+    <span class="n">get_element_systems</span>
+<span class="p">)</span>
+
+<span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">mep_elements</span><span class="p">:</span>
+    <span class="n">ports</span> <span class="o">=</span> <span class="n">get_ports</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ports</span><span class="p">:</span>  <span class="c1"># authored connectivity exists</span>
+        <span class="k">for</span> <span class="n">port</span> <span class="ow">in</span> <span class="n">ports</span><span class="p">:</span>
+            <span class="n">downstream</span> <span class="o">=</span> <span class="n">get_connected_to</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
+            <span class="n">upstream</span>   <span class="o">=</span> <span class="n">get_connected_from</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
+            <span class="n">systems</span>    <span class="o">=</span> <span class="n">get_element_systems</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
+            <span class="c1"># write to mep_connectivity with source=&#39;authored&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># fall back to spatial proximity anchors with source=&#39;inferred&#39;</span>
+</code></pre></div></p>
+<p><strong>New table</strong> — <code>mep_connectivity</code> in extracted DB (not ERP.db — raw extraction data):
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">mep_connectivity</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">from_guid</span><span class="w">       </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">to_guid</span><span class="w">         </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">port_type</span><span class="w">       </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">            </span><span class="c1">-- SINK, SOURCE, SOURCEANDSINK</span>
+<span class="w">    </span><span class="n">flow_direction</span><span class="w">  </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">            </span><span class="c1">-- same as port_type, explicit for clarity</span>
+<span class="w">    </span><span class="n">system_name</span><span class="w">     </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">            </span><span class="c1">-- IfcSystem.Name (e.g. &#39;Cold Water&#39;, &#39;Sprinkler&#39;)</span>
+<span class="w">    </span><span class="n">system_type</span><span class="w">     </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">            </span><span class="c1">-- IfcSystem class (IfcDistributionSystem etc.)</span>
+<span class="w">    </span><span class="k">source</span><span class="w">          </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;inferred&#39;</span>
+<span class="w">                    </span><span class="k">CHECK</span><span class="p">(</span><span class="k">source</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;authored&#39;</span><span class="p">,</span><span class="s1">&#39;inferred&#39;</span><span class="p">)),</span>
+<span class="w">    </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">from_guid</span><span class="p">,</span><span class="w"> </span><span class="n">to_guid</span><span class="p">)</span>
+<span class="p">);</span>
+</code></pre></div></p>
+<p><strong>How RouteWalker benefits:</strong>
+- For buildings with authored ports: <code>mep_connectivity WHERE source='authored'</code>
+  gives the directed graph directly. Pattern matching validates against it
+  rather than replacing it. Anchors are still extracted but connectivity is
+  pre-resolved — no proximity guessing.
+- For buildings without ports: unchanged. Spatial inference → anchors → pattern
+  application. The <code>source='inferred'</code> flag makes the quality level explicit.
+- <strong>Cross-check gate (future):</strong> when both authored and inferred exist, compare
+  them. Divergence flags extraction bugs or broken IFC port modeling.</p>
+<p><strong>Does not change:</strong> §6.12.1 isolation invariant (extraction-time only),
+RouteWalker interface (reads anchors + patterns from ERP.db), compile-time
+contract. IFCtoERP populates <code>mep_connectivity</code> during extraction alongside
+anchors. DAGCompiler reads it from ERP.db if present, ignores if absent.</p>
+<p><strong>S173 implementation refs:</strong>
+- Schema: <code>extractIFCtoDB.py</code> REFERENCE_SCHEMA — <code>port_elements</code>, <code>port_connections</code> tables
+- Extraction: TODO — extract from <code>IfcRelConnectsPorts</code> + <code>IfcRelConnectsPortToElement</code>
+- Load-time rotation proof: <code>scripts/stress_blender_test.py</code> §PROOF PORT_CONNECT
+  (reconstruct port world position via <code>rot @ local_offset + centre</code>, connected ports must meet)
+- See also: <code>docs/DISC_VALIDATE_SRS.md</code> §6.2.1</p>
 <h4 id="2-pattern-topology-rows-in-ad_mep_pattern">2. Pattern — Topology Rows in <code>ad_mep_pattern</code><a class="headerlink" href="#2-pattern-topology-rows-in-ad_mep_pattern" title="Permanent link">&para;</a></h4>
 <p>A pattern is a sequence of routing steps mined from a discipline-complete building. Each row is
 one step: a node type transition (from → to), the direction axis, and the offset rule. Steps are
