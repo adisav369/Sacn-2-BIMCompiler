@@ -3104,10 +3104,21 @@ One search box. No mode switching.</p>
 <li>Element selected → that one mesh by geometry_hash from library.blend</li>
 <li>Creates named collection: <code>Loaded_T0_Hospital_ARC</code></li>
 <li>RTree wireframes stay on for everything else</li>
-<li><strong>SHRED</strong>: removes only what LOAD MESH created, nothing else</li>
+<li><strong>SHRED</strong>: two modes</li>
+<li>Nothing selected → removes the last loaded batch by label</li>
+<li>Objects selected in viewport → removes only those selected meshes (freestyle)</li>
 </ul>
 <p>Each Load is independent. Load Hospital ARC, load Clinic MEP, shred Hospital ARC.
+The user can also hand-pick individual mesh objects in the viewport and shred just those —
+building up a precise cross-section by addition and subtraction.
 The RTree is never affected.</p>
+<p><strong>The 20-second workflow:</strong>
+1. Preview → 1M wireframes in 13s
+2. Search → click building → MESH → real geometry in &lt;5s
+3. MESH again → next discipline layer appears
+4. Select unwanted pieces → SHRED → exactly what you want remains
+5. Clear RTree → only your meshes, clean viewport
+Result: a hand-crafted view of a million-element project in under 20 seconds.</p>
 <hr />
 <h2 id="viewport-click-picker">Viewport Click-Picker<a class="headerlink" href="#viewport-click-picker" title="Permanent link">&para;</a></h2>
 <p>"Click to Identify" button activates a modal LEFT_MOUSE handler.</p>
