@@ -1,13 +1,15 @@
 # Stress Test — 1M Elements in a Single Federated Session
 
-**Status:** RTree GPU path — DONE S180. GN/DLOD near-camera path — pending S182+.
+**Status:** RTree GPU path + Cockpit UI — DONE S183. GN/DLOD near-camera path — pending.
 **Sandbox:** `scripts/sandbox_1M.db` (1,061,736 elements, 29 real buildings)
 **Builder:** `scripts/build_sandbox_1M.py`
 **Library:** `library/library.blend` (120,471 meshes, 276 MB, shared all buildings)
 
-> **S180 result:** RTree loads 1M elements in ~13s, orbit instant, Stingy Mesh Loader
-> (Load/Shred) works — placement dead accurate, geo hash hell closed. Sprinkler dedup
-> queued as S181. See [`docs/RTree.md`](RTree.md) for the full architecture and proof.
+> **S180–S183 result:** RTree loads 1M elements in ~13s, orbit instant. Stingy Mesh Loader
+> with progressive discipline layers, freestyle shred, per-element GUID copy, storey filter,
+> and live discipline bar charts (counts from DB in <50ms). City wireframes ghost to 12% alpha
+> when a building is drilled into — active building pops against dim city.
+> See [`docs/RTree.md`](RTree.md) for full architecture and proof.
 
 ---
 

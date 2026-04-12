@@ -82,46 +82,67 @@ This system opens in seconds, queries in milliseconds, loads in seconds — only
 - Orbit, zoom, pan: instant at any scale
 - **This never turns off.** It is the permanent spatial context.
 
-### Mode 2 — Query + Drill-Down
-Search field in N-panel → BIM tab → RTree Inspector:
+### Mode 2 — Federation Cockpit (Query + Drill-Down)
+
+Search field in N-panel → BIM tab → RTree Inspector (S183 cockpit layout):
 
 ```
-Search: "IfcDoor"
-→ L1: 8 buildings match
-    ▶ T0_LTU_AHouse   (699)   ← click → fly + load L2
-    ▶ T0_Hospital_3   (527)
-    ▶ T0_Clinic       (321)
-    ...
+[ search...  ▶ ]
 
-Click T0_Hospital_3:
-→ L2: top 10 IfcDoor in T0_Hospital_3
-    ▶ HM_Frame_Door ... Level 3   ← click → fly + white highlight
-    ▶ HM_Frame_Door ... Level 2
-    ...
+BUILDINGS — 'IfcDoor'
+  ▶ Hospital      ×2   (18,241)   ← click → fly + ghost city
+  ▶ LTU_AHouse   ×18  (  699)    ← ×18 = 18 tiles, flies to nearest
+  ▶ Clinic              (  321)
+
+── on click Hospital ──────────────────
+  Hospital                  Floor [     ]
+  ARC  ████████████░   18,241
+  STR  ███░░░░░░░░░░    3,445
+  MEP  ████████████░   12,876
+  ELEC ████░░░░░░░░░    4,201
+  FP   ██░░░░░░░░░░░    2,109
+  Total  40,872
+
+  ELEMENTS — top 10
+  IfcDoor · Frame Door · Level 3   [→][📋]
+  IfcDoor · Frame Door · Level 2   [→][📋]
+
+  MESH ACTIONS
+  [+ARC][+STR][+MEP][+ELEC][+FP][+NEXT]
+  [ SHRED SELECTED  ✂ ]
+
+LOADED
+  Hospital_ARC_0
+  Hospital_STR_0
 ```
+
+When a building is drilled into, all city wireframes ghost to α=0.12 — the
+yellow building envelope and white picked element read clearly against a dim city.
+On new search or clear, full colours return.
+
+Buildings deduplicated by type — `T0_LTU_AHouse … T17_LTU_AHouse` shows as one
+entry `LTU_AHouse ×18`. Click flies to the nearest tile to camera.
 
 Search resolves: element name, IFC class, discipline, GUID, building name.
 One search box. No mode switching.
 
 **Two navigation patterns from one query model:**
-- *Know what, find where* → type "IfcDoor", find which buildings have doors
-- *Know where, find what* → click any wireframe box, system identifies it
+- *Know what, find where* → type "IfcDoor", find which buildings have doors + discipline breakdown
+- *Know where, find what* → click any wireframe box, system identifies it, GUID to clipboard
 
 ### Mode 3 — Stingy Mesh Loader
-After selecting a building (L1) or element (L2):
 
 ```
-[ LOAD MESH ]  [ SHRED ]
+MESH ACTIONS
+[+ARC][+STR][+MEP][+ELEC][+FP][+NEXT]
 ```
 
-- **LOAD MESH**: loads exact IFC geometry for the selection only
-  - Building selected → ARC elements within building envelope × 1.2, max 500
-  - Element selected → that one mesh by geometry_hash from library.blend
-  - Creates named collection: `Loaded_T0_Hospital_ARC`
-  - RTree wireframes stay on for everything else
-- **SHRED**: two modes
-  - Nothing selected → removes the last loaded batch by label
-  - Objects selected in viewport → removes only those selected meshes (freestyle)
+- **+DISC buttons**: load that discipline's elements for the active building immediately
+- **+NEXT**: progressive — each press loads the next 500 (ARC→STR→MEP→ELEC→FP, with offset)
+- **Storey filter**: set Floor field → MESH loads only that storey. Clear for all floors.
+- Each load creates an independent named collection in the Scene Inventory
+- **SHRED SELECTED**: select any loaded mesh objects in viewport → removed. Freestyle.
+- Nothing selected → removes last loaded batch
 
 Each Load is independent. Load Hospital ARC, load Clinic MEP, shred Hospital ARC.
 The user can also hand-pick individual mesh objects in the viewport and shred just those —
