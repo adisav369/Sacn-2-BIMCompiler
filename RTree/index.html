@@ -2915,10 +2915,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#geo-hash-hell-known-risk" class="md-nav__link">
+  <a href="#geo-hash-hell-solved-s180" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Geo Hash Hell — Known Risk
+        Geo Hash Hell — SOLVED (S180)
       
     </span>
   </a>
@@ -3182,14 +3182,15 @@ giving ultra smooth navigation with no lag on a normal laptop.</strong></p>
 <p>Scales to 10M+ elements with no architectural changes.
 The DB is the ceiling, not the viewer.</p>
 <hr />
-<h2 id="geo-hash-hell-known-risk">Geo Hash Hell — Known Risk<a class="headerlink" href="#geo-hash-hell-known-risk" title="Permanent link">&para;</a></h2>
+<h2 id="geo-hash-hell-solved-s180">Geo Hash Hell — SOLVED (S180)<a class="headerlink" href="#geo-hash-hell-solved-s180" title="Permanent link">&para;</a></h2>
 <p>When loading meshes from library.blend, Blender renames datablocks that
-collide at 63-char name limit. If geometry_hash name is truncated or
+collide at the 63-char name limit. If geometry_hash name is truncated or
 duplicated, the transform lookup fails and elements appear at the origin.</p>
-<p><strong>Prevention:</strong> always use full 40-char geometry_hash as mesh/object name.
-<strong>Detection:</strong> post-load check <code>mesh.name == expected_hash</code> for every loaded mesh.
-Log: <code>§GEO_HASH_HELL</code> if mismatch detected — treat as blocker, not warning.</p>
-<p>Proven fix: S178 commit <code>0dc3912c</code> — <code>T_{full_hash}</code> naming, 21/21 PASS.</p>
+<p><strong>S178 fix:</strong> <code>T_{full_hash}</code> naming, 21/21 PASS (<code>0dc3912c</code>).
+<strong>S180 confirmation:</strong> Shred works. Placement dead accurate across all tested
+elements — sprinklers, doors, windows, structural members. Stale-selection bug
+(<code>_selected_element</code> not cleared on new building drill-in) also fixed. No
+further geo hash hell reports. This is considered closed.</p>
 <hr />
 <h2 id="files">Files<a class="headerlink" href="#files" title="Permanent link">&para;</a></h2>
 <table>
