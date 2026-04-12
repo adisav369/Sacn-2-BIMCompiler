@@ -5,7 +5,7 @@
 > **We query the index. The model loads only what you ask for.**
 
 <figure style="float: right; margin: -8px 0 8px 20px; max-width: 520px; text-align: center;">
-  <img src="assets/images/RTree.png" alt="RTree query engine — 1M elements, search 'window', T0_LTU_AHouse highlighted yellow" width="520">
+  <img src="../assets/images/RTree.png" alt="RTree query engine — 1M elements, search 'window', T0_LTU_AHouse highlighted yellow" width="520">
   <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
     1,061,736 elements across a 1.73km × 2.48km city. Search "window" → 10 buildings listed →
     T0_LTU_AHouse (699 matches) highlighted yellow. Drill-down panel visible top-right.
@@ -144,7 +144,7 @@ Point at something, click, know what it is.
 ---
 
 <figure style="margin: 16px 0; text-align: center;">
-  <img src="assets/images/RTree_City.png" alt="1,061,736 elements as GPU wireframes — full 1.73km × 2.48km city, instant orbit" width="100%">
+  <img src="../assets/images/RTree_City.png" alt="1,061,736 elements as GPU wireframes — full 1.73km × 2.48km city, instant orbit" width="100%">
   <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
     RTree GPU load — 1,061,736 elements, discipline-coloured wireframe bounding boxes.
     Legend (top-right): ACMV, ARC, ELEC, FP, MEP, STR.
