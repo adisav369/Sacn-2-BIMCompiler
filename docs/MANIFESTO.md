@@ -508,6 +508,47 @@ compiler with witness verification at every step.
 
 ---
 
+---
+
+## The Viewer — DB Is the Model
+
+The same philosophy that separates WHAT / HOW / WHERE in the compiler applies
+to the viewer. Blender is not the model. The DB is the model. Blender is the
+current display context — a controlled viewport that loads only what is asked for.
+
+```
+DB (always consistent — extraction, compilation, modelling all write here)
+    ↓  O(log n) spatial query
+RTree GPU       — 1M wireframes, 13s load, instant orbit, zero mesh
+    ↓  drill-down
+Cockpit         — live discipline counts, storey filter, GUID copy (<50ms)
+    ↓  MESH
+Stingy Loader   — exact IFC geometry on demand, <5s, independently shred-able
+    ↓  SHRED
+Clean viewport  — only what the user chose remains
+```
+
+**Every writer uses the same DB:**
+- IFC extraction pipeline → geometry_hash + transforms + metadata
+- BIM Designer compiler → new element placements, BOMs
+- RouteWalker → routing paths as element_transforms
+- Future modeller → new geometry written to library.blend + row to element_instances
+
+**The viewer does not care who wrote the element.** A RouteWalker duct appears
+as MEP discipline. A BIM Designer wall appears as ARC. A modelled element
+appears where placed. The RTree search finds it in the next query.
+
+This is the same "configure-to-order" pattern applied to the viewport:
+load only exceptions (what the user asked for), inherit the rest (wireframes from DB).
+No "sync", no reload, no waiting for things you did not ask for.
+
+**GN Mode** (in progress) extends this: camera-near elements get real mesh instances
+via Geometry Nodes, far elements stay as RTree wireframes. The RTree GPU path
+proved fast enough to be the primary viewer on its own — GN Mode adds the
+close-up LOD layer when needed, but is not required for the DB-driven workflow.
+
+---
+
 ## Reading Order
 
 After this manifesto:

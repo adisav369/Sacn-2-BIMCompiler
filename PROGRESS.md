@@ -39,6 +39,16 @@
   - **make_local() regression fixed:** removed from `load_library_linked()` per StressTest_1M_Results.md analysis. Dead material slot fix removed.
   - Next: S178 — validate CHUNK_SIZE=2000 viewport (prompts/S178), S177 — P2 FPS proof linked meshes (prompts/S177).
 
+**S183 (2026-04-13):** RTree Cockpit UI — DONE.
+  - Discipline bars, storey filter, +DISC paging, GUID copy, scene inventory
+  - Ghost city α=0.12 → α=0.05 on mesh load. Auto Material Preview on MESH.
+  - Distinct buildings: T\d+_ dedup, ×N badge, fly-to-nearest tile.
+  - Log spam cut. "Already linked" silenced. Freestyle shred confirmed.
+  - MANIFESTO.md §"The Viewer — DB Is the Model" added.
+  - **Next session (S184):** GN Mode geo hell — `check-before-make_local` fix.
+    See `prompts/S179_dlod_rtree_handoff.md` §S180 outcome. RTree remains
+    primary pivot — GN adds near-camera LOD layer only.
+
 **S175 SESSION 2 (2026-04-12):** GN streaming — geo hell root cause found and architectured.
   - **Library expanded:** 41K → 120,471 meshes. 25 buildings added (14 BLOB-copy, 11 IFC re-extract). 276MB library.blend.
   - **Sandbox rebuilt:** 1,061,736 elements, 108,440 unique hashes, 100% library coverage (was 58%).
