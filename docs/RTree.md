@@ -156,7 +156,8 @@ Point at something, click, know what it is.
 ## Performance (sandbox_1M, 2026-04-12)
 
 > **A whole city of one million elements, 100 thousand over unique meshes,
-> loaded in a matter of 13 seconds.**
+> loaded in a matter of 13 seconds —
+> giving ultra smooth navigation with no lag on a normal laptop.**
 
 | Metric | Result |
 |--------|--------|
