@@ -699,22 +699,101 @@ W-BPARTNER-SCHEDULE, W-BPARTNER-COMPLETENESS). See [DISC_VALIDATION_DB_SRS.md §
 door and window openings not visible as cutouts. Terminal, Hospital, SampleHouse
 are fine with the same library.blend and Full Load path.
 
-**Assertion:** The IFC source and original extraction are correct. This is NOT
-an IFC quality issue — Duplex was pristine in earlier sessions.
+**Root cause identified (S185):** The Apr 13 11:41 batch re-extracted Duplex and
+all other small buildings using `extractIFCtoDB_open.py` instead of the correct
+extractor. This caused `IfcOpeningElement` records to be written into
+`element_instances` as visible solid geometry — filling the openings they were
+supposed to cut. See §Extractor Choice below.
 
-**Suspected cause:** Something broke during heavy refactoring sessions (S173–S183)
-in the library.blend bake or library fill pipeline. The data path:
-`extracted.db:base_geometries` → `component_library.db:component_geometries` →
-`library.blend` (bake) → Full Load (`link=True`).
+**library.blend is unaffected.** The geometry BLOBs in `component_library.db` are
+correct (wall hashes have proper cutout topology, 24-48 verts with 5 unique Z
+levels). No re-bake needed. Only the extracted DBs need to be regenerated with
+the correct extractor.
 
 **Evidence:**
-- `Duplex_extracted_original.db` backup preserved (648 hashes, 100% coverage in library)
-- BLOB bytes in component_library match expected sizes (verified S184)
-- Wall hashes show 24-48 vertices in DB (proper cutouts, not boxes)
-- Yet viewport renders them as flat boxes
+- `Duplex_extracted.db` contains 50 `IfcOpeningElement` rows in `elements_meta`
+- All 648 geometry hashes present and correct in `component_library.db`
+- Wall BLOBs have 5 unique Z levels — openings are in the mesh geometry
+- `library_link` log: `§PROOF BBOX_RECONSTRUCT PASS` when loaded with correct DB
 
-**Confirmed in sandbox:** Duplex is also blocky in sandbox_1M RTree+MESH path —
-same appearance as Full Load. This rules out Full Load code as the cause.
-The geometry in library.blend itself is degraded for Duplex.
+**Status:** OPEN — library.blend must be re-baked with Duplex hashes. See §S185.
 
-**Status:** OPEN — deferred from S184. See `prompts/S185_duplex_investigation.md`.
+---
+
+## §S185 — Restoration of Original Extraction (2026-04-13)
+
+**The original extraction was pristine and complete.** Before the Apr 13 11:41
+batch, Duplex had 648 geometry hashes, 100% library coverage, correct wall
+cutouts, and proper rotations (576 non-zero). The `library_link` log showed
+`§PROOF BBOX_RECONSTRUCT PASS 50 ok, 0 fail`. This is the state to restore.
+
+**The original extraction path:**
+```bash
+python3 DAGCompiler/python/extractIFCtoDB.py \
+    --ifc DAGCompiler/lib/input/IFC/Ifc2x3_Duplex_Federated.ifc \
+    -o DAGCompiler/lib/input/Duplex_extracted.db \
+    --library library/component_library.db
+```
+This is `bake_all_sandbox.sh` PATH 2 — the correct, committed pipeline.
+
+**Current state after S185 re-extraction:**
+- `Duplex_extracted.db` — re-extracted with `extractIFCtoDB.py`, 650 hashes,
+  0 `IfcOpeningElement`, 577 non-zero rotations, 100% library coverage
+- `library.blend` (277MB) — does NOT contain the 648/650 Duplex mesh
+  datablocks (baked before Duplex was added to library pipeline)
+- `library_s184_test.blend` (281MB) — contains Duplex hashes but breaks
+  sandbox RTree LOD pulling (root cause under investigation)
+
+**Blocker:** library.blend re-bake needed. Cannot proceed until sandbox break
+from 281MB blend is diagnosed and resolved.
+
+**Do not re-extract Terminal, Hospital, Clinic** — their extraction is correct
+and untouched. Only Duplex and the Apr 13 11:41 small-building batch are affected.
+
+---
+
+## §Extractor Choice — `extractIFCtoDB_open.py` vs `extractIFCtoDB.py`
+
+### What `extractIFCtoDB_open.py` is for
+
+Designed for **merged multi-discipline IFC files** — a single `.ifc` that already
+combines ARC + MEP + STR disciplines (e.g. `LTU_AHouse_merged.ifc`). It adds:
+
+- Fine-grained discipline map (`VENT`/`HVAC`/`HEAT`/`PLB`/`SAN` instead of generic `MEP`)
+- Built-in unit-scale fix for IFC2x3 Swedish/German files (mm → m)
+- Minimal blacklist — only 5 truly non-extractable types blocked
+
+**Never modify `extractIFCtoDB.py`.** `_open.py` is a standalone fork for this
+specific file pattern.
+
+### What `extractIFCtoDB_open.py` does NOT handle
+
+It uses `create_shape()` per element, iterating all `IfcProduct` subtypes.
+`IfcOpeningElement` is a subtype of `IfcProduct`. It is not in `SKIP_CLASSES`,
+so `create_shape()` is called on it and a solid box is returned and stored.
+
+### What `IfcOpeningElement` is
+
+In IFC, `IfcOpeningElement` is **not a physical object**. It is the instruction
+"cut a void of this shape here." The void has no material, no surface, no mass.
+It is geometry-as-subtraction: a wall references its openings via
+`IfcRelVoidsElement`, and the resulting wall mesh is the wall-minus-openings.
+
+### How the two extractors differ
+
+| Extractor | Method | `IfcOpeningElement` result |
+|-----------|--------|---------------------------|
+| `extractIFCtoDB.py` | `geom.iterator()` | C++ boolean subtraction — consumed internally, never emitted as an element |
+| `extractIFCtoDB_open.py` | `create_shape()` per element | Extracted as a solid box and inserted into `element_instances` |
+
+### Why Duplex is affected
+
+`Ifc2x3_Duplex_Federated.ifc` is a **federated** file — it contains both ARC
+and MEP disciplines. This makes it superficially similar to the merged
+multi-discipline files `_open.py` was designed for. However, Duplex should still
+be extracted with `extractIFCtoDB.py` (or `bake_all_sandbox.sh` PATH 2) because
+its disciplines are already federated in one file, not merged by our pipeline.
+
+**Rule:** `_open.py` is only for files produced by `extract_merge_disciplines.py`
+— i.e., files with the `_merged.ifc` suffix. All other IFC files use
+`extractIFCtoDB.py`.

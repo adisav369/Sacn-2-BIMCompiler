@@ -3445,3 +3445,83 @@ Counterpart W-BPARTNER-CO: same logic for CO buildings once onboarded.
 **Status (S160 DONE):** DV051 applied. BPartnerCatalogTest 4/4 PASS. SH 9/9, DX 9/9.
 SpaceScheduleDAO BPartner filter: next step when CO buildings (TE/Hospital) are onboarded.
 
+---
+
+## §12 — RTree Viewer Strategy: Impact on DAGCompiler / ERPtoDB Pipeline (S185)
+
+### §12.1 Context
+
+The RTree viewer (see [RTree.md](RTree.md)) replaces the GN-based Blender loader
+as the primary viewer for federation-scale models. It introduces runtime geometry
+resolution patterns that interact with the existing pipeline at two points:
+
+1. **Geometry Hash Redirect** — `component_library.db → geometry_hash_redirect`
+   swaps deprecated mesh hashes for canonical ones at viewer load time, with
+   optional rotation correction.
+2. **Stingy Mesh Loader** — links meshes from `library.blend` on demand, scoped
+   to the active building and viewport, never loading the full model.
+
+### §12.2 What Does NOT Change
+
+| Pipeline stage | Impact |
+|---|---|
+| IFC extraction (`IFCtoBOM`) | None. Extracted DBs are read-only sources of truth. Geometry hashes and rotations are faithful to the source IFC. |
+| DAGCompiler (BOM compilation) | None. DAGCompiler reads `ERP.db` and `component_library.db` for BOM rules. It never reads `elements_rtree` or `geometry_hash_redirect`. The compilation pipeline is geometry-agnostic. |
+| ERPtoDB / WriteStage | None. `output.db` is compiled from BOM data, not from viewer state. The RTree viewer reads output.db — it never writes to it. |
+| `component_library.db` schema | Additive only. `geometry_hash_redirect` table added (3 new columns: `rotation_x/y/z_correction`). Existing tables (`component_geometries`, `surface_styles`) untouched. |
+| `library.blend` | Untouched. The redirect table points to meshes already in library.blend. No re-bake needed for redirect changes. |
+
+### §12.3 What DOES Change — Viewer-Only
+
+| Change | Scope | Description |
+|---|---|---|
+| Hash redirect resolution | Viewer runtime | Stingy loader checks `geometry_hash_redirect` before linking mesh from library.blend. Maps deprecated → canonical hash. |
+| Rotation correction | Viewer runtime | When a mesh was redirected and the source IFC stored a compensating rotation (e.g. Revit sprinklers modeled inverted with `rotation_x = π`), the loader applies a correction from the redirect table. Guard: only applied when the element's stored rotation matches the expected deprecated value (within 0.01 rad). |
+| Outliner organisation | Viewer runtime | Loaded meshes grouped into per-discipline collections (`Loaded_{building}_{DISC}`) instead of per-batch. |
+| Auto clip | Viewer runtime | `clip_end` auto-set proportional to model extent on preview load. |
+
+### §12.4 The Boundary
+
+```
+IFC → extraction → extracted.db → sandbox builder → sandbox.db
+                                                         ↓
+                         component_library.db ──→ RTree viewer (Blender)
+                         (geometry_hash_redirect)        ↑
+                                                    library.blend
+
+DAGCompiler → ERP.db → output.db ─────────────────→ RTree viewer (read-only)
+```
+
+The redirect table lives in `component_library.db` — the same DB that stores
+`component_geometries` (mesh BLOBs) and `surface_styles`. It is a **library
+concern**, not a compilation concern. DAGCompiler never reads it.
+
+The viewer reads from two sources:
+- `*_extracted.db` or `sandbox.db` — elements, transforms, rtree index
+- `component_library.db` — redirect rules, mesh BLOBs (for full load path)
+- `library.blend` — pre-baked meshes (for stingy load path)
+
+No viewer action writes back to any pipeline DB.
+
+### §12.5 Risk Assessment
+
+| Risk | Likelihood | Mitigation |
+|---|---|---|
+| Redirect table has wrong correction values | Low | `geometry_redirect.py` auto-computes corrections by comparing dominant rotations between deprecated and canonical hashes. Dry-run mode shows planned corrections before commit. |
+| Re-extraction overwrites hash in extracted DB | None | Extracted DBs are never modified by the viewer. Re-extraction produces fresh data from source IFC. The redirect table handles discrepancies at runtime. |
+| DAGCompiler reads redirect table | None | DAGCompiler connects to `ERP.db` and `component_library.db` for `component_geometries` only. It does not query `geometry_hash_redirect`. |
+| Rotation correction applied to wrong element | Very low | Guard: correction only fires when `abs(element_rotation - expected_deprecated_rotation) < 0.01 rad`. Elements already at correct orientation pass through untouched. |
+
+### §12.6 Admin Tool
+
+`tools/geometry_redirect.py` — back-office CLI for managing redirects.
+
+- Scans all `*_extracted.db` to discover duplicate hashes per element type
+- Shows vertex count, instance count, dominant rotation per hash
+- Auto-computes rotation correction when canonical and deprecated hashes differ
+- Writes redirect + correction to `component_library.db`
+- Supports `--list`, `--remove`, `--undo` for housekeeping
+- Requires `--confirm` for mutations; default is dry-run
+
+See [DATA_MODEL.md](DATA_MODEL.md) §4 (BlendMeshResolver) for the redirect table schema and diagnostic procedure.
+

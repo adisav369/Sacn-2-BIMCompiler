@@ -1,95 +1,103 @@
 # ⚠ DO NOT REMOVE
-# Scope: S185-DX — Duplex (et al) geometry corruption in library.blend
+# Scope: S185-DX — Duplex geometry in Sandbox1M and library.blend
 # Read the log after every run. No claims without §PROOF log lines.
-# STATUS: INVESTIGATE — dedicated session.
+# STATUS: OPEN — original extraction process must be restored.
 
-## Problem
+## Current Symptom (S185 finding)
 
-Duplex and other small houses (Jasmin suspected) show blocky/flat walls in both
-Full Load AND RTree+MESH. Door and window opening cutouts are not visible.
-Terminal, Hospital, SampleHouse are fine with the same library.blend.
+In Sandbox1M RTree+MESH, Duplex shows **partial opening cutouts but solid boxes
+inside the openings**. The wall mesh geometry IS correct (cutouts exist in the
+mesh). The boxes are **50 `IfcOpeningElement` elements** extracted as visible
+solid ARC geometry — they fill the void that should be open.
 
-**The IFC and extraction are correct.** User confirmed Duplex was pristine in
-earlier sessions. This is a library.blend bake or fill pipeline regression.
+This is a **parametric fallback violation**: a void instruction rendered as
+geometry is not allowed under the no-invent rule. The opening must be empty
+space, not a placed element.
 
-**Reference:** `docs/DuplexAnalysis.md` §S184
+**The geometry BLOBs in `component_library.db` are correct.** Wall hashes have
+5 unique Z levels (bottom / sill / lintel / above-lintel / top), confirming
+proper cutout topology. The problem is in the extracted DB, not the library.
 
-## Evidence (S184)
+## Root Cause (S185 investigation)
 
-- `Duplex_extracted_original.db` — backup of pre-S184 DB (648 hashes)
-- 648/648 hashes found in `component_library.db` — 100% coverage
-- BLOB byte lengths match expected `vertex_count * 3 * 4` — no truncation
-- Wall hashes show 24-48 vertices in DB (proper cutouts, not 8-vertex boxes)
-- Yet library.blend renders them as flat boxes in viewport
-- Same blocky appearance in both Full Load and sandbox RTree+MESH
-- Terminal, Hospital, SampleHouse all render correctly with same library.blend
+The Apr 13 11:41 batch re-extracted Duplex (and all small buildings) using
+`extractIFCtoDB_open.py` instead of `extractIFCtoDB.py`. These two extractors
+differ fundamentally:
 
-## Investigation Plan
+| Extractor | Method | `IfcOpeningElement` |
+|-----------|--------|---------------------|
+| `extractIFCtoDB.py` | `geom.iterator()` | Consumed as boolean cut — never emitted |
+| `extractIFCtoDB_open.py` | `create_shape()` per `IfcProduct` | Emitted as solid box |
 
-### Step 1 — Verify in-scene mesh vs DB mesh
-Load Duplex via Full Load. Select a wall object. In Blender Python console:
-```python
-obj = bpy.context.active_object
-print(f"mesh={obj.data.name} verts={len(obj.data.vertices)} faces={len(obj.data.polygons)}")
-```
-Compare against DB:
-```sql
-SELECT vertex_count, face_count FROM component_geometries
-WHERE geometry_hash = '<obj.data.name>';
-```
-If viewport mesh has fewer vertices → bake or link corrupted the mesh.
-If same count → it's a rendering/normals/material issue.
+`_open.py` is only for `_merged.ifc` files from `extract_merge_disciplines.py`.
+Duplex is a federated IFC — similar shape but wrong tool.
+See `docs/DuplexAnalysis.md` §Extractor Choice for the full rule.
 
-### Step 2 — Direct from_pydata comparison
-Bypass library.blend. Load one Duplex wall directly from base_geometries:
-```python
-import sqlite3, struct, numpy as np
-conn = sqlite3.connect('DAGCompiler/lib/input/Duplex_extracted_original.db')
-row = conn.execute("SELECT vertices, faces FROM base_geometries WHERE geometry_hash='5d99b5f1efe4eefe'").fetchone()
-verts = np.frombuffer(row[0], dtype=np.float32).reshape(-1, 3).tolist()
-faces = np.frombuffer(row[1], dtype=np.int32).reshape(-1, 3).tolist()
-mesh = bpy.data.meshes.new("DX_TEST_WALL")
-mesh.from_pydata(verts, [], faces)
-mesh.update()
-obj = bpy.data.objects.new("DX_TEST_WALL", mesh)
-bpy.context.scene.collection.objects.link(obj)
-```
-If this mesh has proper cutouts → library.blend bake is the problem.
-If this mesh is also blocky → extraction produced blocky geometry.
+## Lessons Learnt — History of the Breakage
 
-### Step 3 — Compare library.blend bake dates
-Check when library.blend was last baked vs when Duplex was last seen pristine.
-Was there a bake between those dates that degraded it?
+1. **S173** — library pipeline introduced. Duplex was pristine (648 hashes,
+   correct geometry, proper wall cutouts). `geom.iterator()` handles boolean
+   subtraction internally — openings never appear as elements.
 
-### Step 4 — Test with standby re-bake
-`library/library_s184_test.blend` may be available (bake started in S184 with
-121,441 meshes including re-extracted Duplex). Swap it in and test:
-```bash
-mv library/library.blend library/library_pre_test.blend
-mv library/library_s184_test.blend library/library.blend
-```
+2. **S175** — `bake_all_sandbox.sh` added. Duplex in PATH 2 (re-extract from
+   IFC via `extractIFCtoDB.py`). Library expanded to 120K meshes. Still correct.
 
-### Step 5 — Check other affected buildings
-Test these individually via Full Load to identify full scope:
-- Jasmin (`AC90_Jasmin_extracted.db`)
-- Niedriha (`AC90_Niedriha_extracted.db`)
-- HausGH (`AC9_HausGH_extracted.db`)
-- BimWhale variants
-- Jesse, Molio, Schependomlaan, SampleCastle
+3. **Apr 13 11:41** — unknown batch re-extracted ALL buildings simultaneously
+   using `extractIFCtoDB_open.py`. This replaced correct extracted DBs with
+   broken ones containing 50 IfcOpeningElement rows each.
+
+4. **S184** — corruption noticed. Mis-diagnosed as library.blend bake issue
+   (the visual symptom looked like geometry corruption). Investigation trails:
+   - library.blend swap (277MB → 281MB) — broke sandbox RTree, reverted
+   - BLOB bytes verified correct — ruled out geometry corruption
+   - Eventually traced to `element_instances` containing opening GUIDs
+
+5. **S185** — `extractIFCtoDB_open.py` identified as the cause. Fix applied
+   (`IfcOpeningElement` added to `SKIP_CLASSES`). But re-extraction with
+   `_open.py` produced 935 hashes not in library (different hash method:
+   `create_shape()` bbox-centred vs `geom.iterator()` transform-matrix).
+   `extractIFCtoDB.py` re-extraction gives correct 648 hashes, 100% library
+   coverage, BBOX PASS — but the current `library.blend` (277MB) was baked
+   before Duplex hashes were populated, so Duplex still shows 0 elements.
+
+## The Actual Blocker
+
+`library.blend` (277MB, baked Apr 12 03:15) does **not** contain the 648 Duplex
+mesh datablocks. The 281MB `library_s184_test.blend` does, but using it breaks
+sandbox RTree LOD pulling (under investigation).
+
+Until `library.blend` is re-baked to include Duplex hashes, or the sandbox
+issue with `library_s184_test.blend` is resolved, Duplex will load 0 elements.
+
+## Required Action
+
+1. **Identify what broke sandbox** with `library_s184_test.blend` (281MB).
+   Hypothesis: sandbox element_instances reference hashes from the `_open.py`
+   batch that are in 281MB but structured differently, causing LOD pull failure.
+
+2. **Restore original extraction** — re-extract Duplex with
+   `extractIFCtoDB.py --library` so its hashes are fresh in
+   `component_library.db`, then re-bake `library.blend` to include them.
+
+3. **Do not use `_open.py` for Duplex** — ever. Rule documented in
+   `docs/DuplexAnalysis.md` §Extractor Choice.
 
 ## What NOT to change
 
-- RTree/stingy loader code — working, proven in S184
-- Terminal, Hospital, SampleHouse DBs — these work fine
-- Sandbox DB — leave as is for demo
+- `extractIFCtoDB.py` — the pristine original, never touch
+- Terminal, Hospital, Clinic extracted DBs — working, do not re-extract
+- `component_library.db` geometry BLOBs — correct, no purge needed
+- Sandbox DB element counts — read-only during this investigation
 
 ## Files
 
 | File | Role |
 |------|------|
-| `docs/DuplexAnalysis.md` §S184 | Problem documentation |
-| `DAGCompiler/lib/input/Duplex_extracted_original.db` | Pre-S184 backup |
-| `library/component_library.db` | Geometry BLOB source for bake |
-| `library/library.blend` | Current bake (Apr 12, 120K meshes) |
-| `library/library_s184_test.blend` | Standby re-bake (if completed) |
-| `scripts/bake_library_blend.py` | Bake script to inspect |
+| `docs/DuplexAnalysis.md` §S184, §S185, §Extractor Choice | Full diagnosis |
+| `DAGCompiler/lib/input/Duplex_extracted_original.db` | Pre-breakage backup (648 hashes) |
+| `DAGCompiler/lib/input/Duplex_extracted.db` | Re-extracted with `extractIFCtoDB.py` — correct hashes, needs library re-bake |
+| `library/component_library.db` | 121,441 hashes — correct BLOBs |
+| `library/library.blend` | 277MB — missing Duplex 648 hashes |
+| `library/library_s184_test.blend` | 281MB — has Duplex, breaks sandbox (under investigation) |
+| `scripts/bake_library_blend.py` | Re-bake tool — unchanged since S173 |
+| `scripts/extractIFCtoDB_open.py` | Fixed: `IfcOpeningElement` now in SKIP_CLASSES |

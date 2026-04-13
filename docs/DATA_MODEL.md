@@ -417,6 +417,82 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 | base_geometries | Geometry meshes (copied from component_library) |
 | element_instances | Element → geometry mapping |
 
+> **Why a Hospital element may reference a Terminal geometry_hash — BlendMeshResolver**
+>
+> `element_instances.geometry_hash` points to the **canonical** mesh for that element type,
+> which may originate from a different building. This is intentional — not a data error.
+>
+> At build time, `scripts/blend_mesh_resolver.py` reads redirect rules from
+> `component_library.db → geometry_hash_redirect` and replaces low-quality deprecated hashes
+> with canonical high-quality hashes (e.g. Terminal JKR sprinkler mesh replaces Revit generic).
+> The building ownership (`elements_meta.building`) is never changed — only the mesh pointer.
+>
+> **Active redirects as of 2026-04-13 (sprinkler family):**
+>
+> | Deprecated hash | Verts | Source building | → Canonical hash | Verts | Sub-type | Reason |
+> |---|---|---|---|---|---|---|
+> | `bae71afd973eed3a` | 72 | Hospital, WBDG | `0d509e532be0f5f2` | 1996 | pendent | Revit generic → JKR Terminal |
+> | `bd5df7dd600f7582` | 72 | Hospital | `0d509e532be0f5f2` | 1996 | pendent | Revit generic → JKR Terminal |
+> | `a11f25b406f779a8` | 72 | HHS_Office_Federated | `0d509e532be0f5f2` | 1996 | pendent | Revit generic → JKR Terminal |
+> | `389dd0da96979230` | 72 | HHS_Office_MEP | `0d509e532be0f5f2` | 1996 | pendent | Revit generic → JKR Terminal |
+> | `5d058cfe6e236b89` | 72 | Ifc4_Revit | `0d509e532be0f5f2` | 1996 | pendent | Revit generic → JKR Terminal |
+> | `92605cd3f82bcf3d` | 72 | WBDG_Office_MEP | `0d509e532be0f5f2` | 1996 | pendent | Revit generic → JKR Terminal |
+> | `f3b8de02e5e03caa` | 1996 | Terminal (duplicate family) | `0d509e532be0f5f2` | 1996 | pendent | Lower-instance Terminal variant → primary |
+> | `49f8fcde5a3bb02e` | 2002 | Terminal (duplicate family) | `795e6eb5665d5b31` | 2002 | upright | Lower-instance Terminal variant → primary |
+>
+> Canonical mesh `0d509e532be0f5f2` = JKR ME18 sprinkler head pendent (Terminal, 565 instances, 1996 verts)
+> Canonical mesh `795e6eb5665d5b31` = JKR ME18 sprinkler head upright (Terminal, 175 instances, 2002 verts)
+>
+> Rule store: `component_library.db → geometry_hash_redirect`
+> Admin tool: `tools/geometry_redirect.py`
+> Spec: `internal/BlendMeshResolver.md`
+>
+> **Rotation Correction — diagnosing and fixing orientation mismatches**
+>
+> When a deprecated mesh is replaced by a canonical mesh, the element's stored
+> `rotation_x/y/z` (in `element_transforms`) may no longer be correct. Different
+> IFC families model the same object with different local-axis conventions — e.g.
+> Revit sprinklers are modeled inverted (Z-down) with `rotation_x = π` to flip
+> them right-side up, while Terminal JKR sprinklers are Z-up with `rotation_x = 0`.
+>
+> **How to diagnose:**
+>
+> 1. Load a building with redirected elements via RTree +MESH
+> 2. If elements appear upside-down or misaligned in their bounding boxes:
+> 3. Query the rotation pattern of affected elements vs the canonical source:
+>    ```sql
+>    -- Affected building (e.g. Hospital):
+>    SELECT round(t.rotation_x,2), round(t.rotation_y,2), round(t.rotation_z,2), COUNT(*)
+>    FROM elements_meta m JOIN element_instances i ON m.guid = i.guid
+>    JOIN element_transforms t ON m.guid = t.guid
+>    WHERE lower(m.element_name) LIKE '%sprinkler%'
+>    GROUP BY round(t.rotation_x,2), round(t.rotation_y,2), round(t.rotation_z,2);
+>
+>    -- Repeat for the canonical source building (e.g. Terminal)
+>    ```
+> 4. The difference in rotation between the two is the correction needed.
+>    Example: Hospital has `rotation_x = π`, Terminal has `rotation_x = 0`.
+>    Correction = `rotation_x_correction = -π` (cancels the π flip).
+>
+> **How to apply:**
+>
+> ```sql
+> -- Add correction columns (one-time, already done):
+> ALTER TABLE geometry_hash_redirect ADD COLUMN rotation_x_correction REAL DEFAULT 0.0;
+> ALTER TABLE geometry_hash_redirect ADD COLUMN rotation_y_correction REAL DEFAULT 0.0;
+> ALTER TABLE geometry_hash_redirect ADD COLUMN rotation_z_correction REAL DEFAULT 0.0;
+>
+> -- Set correction for affected redirects:
+> UPDATE geometry_hash_redirect
+> SET rotation_x_correction = -3.14159265358979
+> WHERE deprecated_hash IN ('bae71afd973eed3a', 'bd5df7dd600f7582', ...);
+> ```
+>
+> The stingy loader (`FedRTreeLoadMesh`) reads the correction at load time and
+> applies it only when the element's stored rotation matches the deprecated
+> pattern (within 0.01 rad). Elements already at correct orientation are untouched.
+> Extracted DBs are never modified — they stay faithful to the source IFC.
+
 ---
 
 ## 5. Cross-DB FK Map
@@ -433,6 +509,27 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 ## 6. AD Data Placement — The 4-DB Architecture
 
 ### 6.1 Current State — Where AD Tables Live
+
+> **Planned evolution — `building` → `AD_Client` (not yet implemented)**
+>
+> The `building` column in `elements_meta` (e.g. `T0_Hospital`, `T0_Terminal`) is the
+> interim owner discriminator for the city-map / RTree viewer. In iDempiere, this maps
+> to `AD_Client` — the top-level owner entity (Hospital Authority, KLIA Authority, etc.).
+>
+> Future: `elements_meta.building TEXT` → `elements_meta.AD_Client_ID INTEGER FK → AD_Client(ID, Value, Name)`
+>
+> `AD_Client` does NOT conflict with `M_Product_Category` (RE/CO/IN/IP):
+> - `AD_Client` = **who owns the project** (Hospital Trust owns the Hospital building)
+> - `M_Product_Category` = **what type of building** (Complex/CO, Residential/RE, Infrastructure/IN)
+> - One client may own projects of different categories (Hospital Trust: Complex + Residential wings)
+>
+> `C_BPartner` becomes the **manufacturer/supplier** (JKR, Victaulic) — not the building owner.
+>
+> The `geometry_hash_redirect` table is unaffected by this migration: mesh shape is a library
+> concern, not a client concern. Redirecting bad Hospital sprinkler hashes to the canonical
+> Terminal JKR mesh does not change `elements_meta.building = 'T0_Hospital'` — ownership is intact.
+>
+> The migration is mechanical: `building` value equals `AD_Client.Value` verbatim. No data transform needed.
 
 | Table | ERP.db | component_library.db | {PREFIX}_BOM.db | Purpose |
 |-------|:--:|:--:|:--:|---------|

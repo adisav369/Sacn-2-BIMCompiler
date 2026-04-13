@@ -1225,6 +1225,12 @@ verified output.
 
 Adding a new building = adding BOM data. The compiler is the constant.
 
+**Viewer strategy:** The RTree viewer loads compiled output on demand without
+modifying any pipeline DB. Geometry hash redirects and rotation corrections are
+a library concern handled at viewer runtime — see
+[DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md) §12 for the full
+impact analysis on the DAGCompiler/ERPtoDB pipeline.
+
 ---
 
 ## 11. Building Registration

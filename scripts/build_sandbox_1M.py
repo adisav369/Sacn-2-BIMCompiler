@@ -382,6 +382,18 @@ def main():
                     current_id = write_tile(out_conn, suburb_placed, tx, ty, tile_label, current_id, logf)
                     tile_idx += 1
 
+        # BlendMeshResolver — safety net after merge (extracted DBs already resolved)
+        # Spec: internal/BlendMeshResolver.md
+        try:
+            import sys as _sys
+            _sys.path.insert(0, str(Path(__file__).parent))
+            from blend_mesh_resolver import apply_mesh_redirects
+            apply_mesh_redirects(out_conn,
+                                 caller="build_sandbox_1M",
+                                 db_name=OUT_DB.name)
+        except Exception as e:
+            log(f"§RESOLVER WARN  resolver failed (non-fatal): {e}", logf)
+
         # Final count
         final = out_conn.execute("SELECT COUNT(*) FROM elements_meta").fetchone()[0]
         db_mb = OUT_DB.stat().st_size / (1024 * 1024)

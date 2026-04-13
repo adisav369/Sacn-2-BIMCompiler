@@ -296,6 +296,16 @@ local real meshes + ~62,500 local bbox proxies = smooth.
 - **component_library.db is read-only at runtime.** Only bbox proxy generation reads it (at init, not per-frame).
 - **GN instance swaps are the only LOD mechanism.** (FULL_LOADER2_SRS.md §12)
 
+> **Known violation — S182 (discovered S183):**
+> `lod_manager.py bake_meshes_into_templates()` still fetches BLOBs from `component_geometries`
+> in `component_library.db` and calls `from_pydata()` at runtime — violating both constraints above.
+> The prebake intent (S173) was to make this unnecessary. S180 `FedRTreeLoadMesh` correctly links
+> from `library.blend` via `link=True`. Fix: replace `fetch_blobs_from_library` in lod_manager with
+> `bpy.data.libraries.load(library.blend, link=True)` keyed by hash name — same as S180.
+> **Consequence for geometry_hash_redirect:** the redirect patch added to `fetch_blobs_from_library`
+> (S183) will become dead code once this fix lands. The redirect must instead be applied before
+> the `library.blend` hash lookup in both lod_manager and S180 operator.
+
 ## 16. Testing
 
 | Test | Type | Proof tag | What it proves |

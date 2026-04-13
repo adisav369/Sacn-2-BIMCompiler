@@ -229,8 +229,34 @@ Point at something, click, know what it is.
 | RTree load time | **~13s** |
 | Orbit / pan | **Instant** (GPU batch, no per-frame eval) |
 | Search SQL | <2s (LIKE scan, 1M rows) |
-| Building drill-down | <0.5s (+ background pre-warm ~2s, invisible) |
-| Mesh load (viewport) | **<1s** (pre-warmed, viewport-centre query, batch transforms) |
+| Building drill-down | <0.5s (+ background pre-warm, invisible) |
+| Mesh load (pre-warmed) | **<1s** (all meshes cached, viewport-centre query, batch transforms) |
+| Mesh load (cold) | ~2.5s (library.blend open overhead per batch) |
+
+### S185 Performance — Multi-Pass Pre-Warm
+
+When a building is selected (L1 drill-in), the pre-warm timer links mesh
+datablocks from `library.blend` in batches of 800 every 0.5s. This runs in
+the background while the user reads the cockpit. For a building with 2,000+
+unique geometry hashes, 3 passes complete in ~7s — all invisible.
+
+By the time the user presses +MESH, all meshes are already in `bpy.data.meshes`.
+The stingy loader skips `libraries.load()` entirely (`link=0ms` in logs),
+reducing per-press time from ~2.5s to **<0.5s** for placement-only work.
+
+| Metric | Before (S184) | After (S185) |
+|--------|---------------|--------------|
+| Pre-warm cap | 800 hashes (one-shot) | Unlimited (multi-pass) |
+| +MESH cold (library.blend open) | ~2.5s per press | ~2.5s first press only |
+| +MESH warmed | <1s | **<0.5s** (link=0ms) |
+| Bottleneck | `libraries.load()` per press | Eliminated by pre-warm |
+
+Other S185 optimisations:
+- `matrix_basis` single write (replaces `location` + `rotation_euler`)
+- Deferred scene link for new collections (avoids O(n²) collection sync)
+- Duplicate mesh skip (already-loaded objects not re-created)
+- Back-to-front depth ordering (farthest from camera loads first)
+- Auto `clip_end` proportional to model extent (no manual View End Clip)
 
 Scales to 10M+ elements with no architectural changes.
 The DB is the ceiling, not the viewer.
@@ -251,16 +277,18 @@ further geo hash hell reports. This is considered closed.
 
 ---
 
-## Files
+## Files — Technical Section
+
+Source root: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`
 
 | File | Role |
 |------|------|
-| `federation/bbox_visualization.py` | RTree GPU batches, draw handler, search/pick functions |
-| `federation/discipline_legend.py` | GPU overlay (bottom-right, discipline colors + search hint) |
-| `federation/operator.py` | FedRTreeSearch, FedRTreeFlyToResult, FedRTreeFlyToElement, FedRTreePick |
-| `federation/ui.py` | BIM_PT_rtree_inspector (N-panel, bl_order=0) |
-| `federation/prop.py` | rtree_search, rtree_result_*, rtree_picked_* properties |
-| `federation/__init__.py` | operator + panel registration |
+| `bbox_visualization.py` | RTree GPU batches, draw handler, search/pick, `_load_progress`, `_loaded_collections` |
+| `discipline_legend.py` | GPU overlay (bottom-right, discipline colors + search hint) |
+| `operator.py` | FedRTreeSearch, FedRTreeFlyToResult, FedRTreeFlyToElement, FedRTreePick, FedRTreeLoadMesh |
+| `ui.py` | BIM_PT_rtree_inspector (N-panel, bl_order=0) — cockpit panel, discipline bars, building list |
+| `prop.py` | rtree_search, rtree_result_*, rtree_picked_*, rtree_bld_* discipline counts |
+| `__init__.py` | operator + panel registration |
 | `library/library.blend` | mesh source for Stingy Loader (276MB, 120K meshes) |
 | `DAGCompiler/lib/input/*_extracted.db` | extracted federation DBs (source of truth) |
 
