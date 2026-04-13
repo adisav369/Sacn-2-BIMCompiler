@@ -4569,6 +4569,108 @@ to keep file size small (e.g. Hospital: 8MB vs 232MB with BLOBs).</p>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Why a Hospital element may reference a Terminal geometry_hash — BlendMeshResolver</strong></p>
+<p><code>element_instances.geometry_hash</code> points to the <strong>canonical</strong> mesh for that element type,
+which may originate from a different building. This is intentional — not a data error.</p>
+<p>At build time, <code>scripts/blend_mesh_resolver.py</code> reads redirect rules from
+<code>component_library.db → geometry_hash_redirect</code> and replaces low-quality deprecated hashes
+with canonical high-quality hashes (e.g. Terminal JKR sprinkler mesh replaces Revit generic).
+The building ownership (<code>elements_meta.building</code>) is never changed — only the mesh pointer.</p>
+<p><strong>Active redirects as of 2026-04-13 (sprinkler family):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Deprecated hash</th>
+<th>Verts</th>
+<th>Source building</th>
+<th>→ Canonical hash</th>
+<th>Verts</th>
+<th>Sub-type</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bae71afd973eed3a</code></td>
+<td>72</td>
+<td>Hospital, WBDG</td>
+<td><code>0d509e532be0f5f2</code></td>
+<td>1996</td>
+<td>pendent</td>
+<td>Revit generic → JKR Terminal</td>
+</tr>
+<tr>
+<td><code>bd5df7dd600f7582</code></td>
+<td>72</td>
+<td>Hospital</td>
+<td><code>0d509e532be0f5f2</code></td>
+<td>1996</td>
+<td>pendent</td>
+<td>Revit generic → JKR Terminal</td>
+</tr>
+<tr>
+<td><code>a11f25b406f779a8</code></td>
+<td>72</td>
+<td>HHS_Office_Federated</td>
+<td><code>0d509e532be0f5f2</code></td>
+<td>1996</td>
+<td>pendent</td>
+<td>Revit generic → JKR Terminal</td>
+</tr>
+<tr>
+<td><code>389dd0da96979230</code></td>
+<td>72</td>
+<td>HHS_Office_MEP</td>
+<td><code>0d509e532be0f5f2</code></td>
+<td>1996</td>
+<td>pendent</td>
+<td>Revit generic → JKR Terminal</td>
+</tr>
+<tr>
+<td><code>5d058cfe6e236b89</code></td>
+<td>72</td>
+<td>Ifc4_Revit</td>
+<td><code>0d509e532be0f5f2</code></td>
+<td>1996</td>
+<td>pendent</td>
+<td>Revit generic → JKR Terminal</td>
+</tr>
+<tr>
+<td><code>92605cd3f82bcf3d</code></td>
+<td>72</td>
+<td>WBDG_Office_MEP</td>
+<td><code>0d509e532be0f5f2</code></td>
+<td>1996</td>
+<td>pendent</td>
+<td>Revit generic → JKR Terminal</td>
+</tr>
+<tr>
+<td><code>f3b8de02e5e03caa</code></td>
+<td>1996</td>
+<td>Terminal (duplicate family)</td>
+<td><code>0d509e532be0f5f2</code></td>
+<td>1996</td>
+<td>pendent</td>
+<td>Lower-instance Terminal variant → primary</td>
+</tr>
+<tr>
+<td><code>49f8fcde5a3bb02e</code></td>
+<td>2002</td>
+<td>Terminal (duplicate family)</td>
+<td><code>795e6eb5665d5b31</code></td>
+<td>2002</td>
+<td>upright</td>
+<td>Lower-instance Terminal variant → primary</td>
+</tr>
+</tbody>
+</table>
+<p>Canonical mesh <code>0d509e532be0f5f2</code> = JKR ME18 sprinkler head pendent (Terminal, 565 instances, 1996 verts)
+Canonical mesh <code>795e6eb5665d5b31</code> = JKR ME18 sprinkler head upright (Terminal, 175 instances, 2002 verts)</p>
+<p>Rule store: <code>component_library.db → geometry_hash_redirect</code>
+Admin tool: <code>tools/geometry_redirect.py</code>
+Spec: <code>internal/BlendMeshResolver.md</code></p>
+</blockquote>
 <hr />
 <h2 id="5-cross-db-fk-map">5. Cross-DB FK Map<a class="headerlink" href="#5-cross-db-fk-map" title="Permanent link">&para;</a></h2>
 <table>
@@ -4605,6 +4707,22 @@ to keep file size small (e.g. Hospital: 8MB vs 232MB with BLOBs).</p>
 <hr />
 <h2 id="6-ad-data-placement-the-4-db-architecture">6. AD Data Placement — The 4-DB Architecture<a class="headerlink" href="#6-ad-data-placement-the-4-db-architecture" title="Permanent link">&para;</a></h2>
 <h3 id="61-current-state-where-ad-tables-live">6.1 Current State — Where AD Tables Live<a class="headerlink" href="#61-current-state-where-ad-tables-live" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><strong>Planned evolution — <code>building</code> → <code>AD_Client</code> (not yet implemented)</strong></p>
+<p>The <code>building</code> column in <code>elements_meta</code> (e.g. <code>T0_Hospital</code>, <code>T0_Terminal</code>) is the
+interim owner discriminator for the city-map / RTree viewer. In iDempiere, this maps
+to <code>AD_Client</code> — the top-level owner entity (Hospital Authority, KLIA Authority, etc.).</p>
+<p>Future: <code>elements_meta.building TEXT</code> → <code>elements_meta.AD_Client_ID INTEGER FK → AD_Client(ID, Value, Name)</code></p>
+<p><code>AD_Client</code> does NOT conflict with <code>M_Product_Category</code> (RE/CO/IN/IP):
+- <code>AD_Client</code> = <strong>who owns the project</strong> (Hospital Trust owns the Hospital building)
+- <code>M_Product_Category</code> = <strong>what type of building</strong> (Complex/CO, Residential/RE, Infrastructure/IN)
+- One client may own projects of different categories (Hospital Trust: Complex + Residential wings)</p>
+<p><code>C_BPartner</code> becomes the <strong>manufacturer/supplier</strong> (JKR, Victaulic) — not the building owner.</p>
+<p>The <code>geometry_hash_redirect</code> table is unaffected by this migration: mesh shape is a library
+concern, not a client concern. Redirecting bad Hospital sprinkler hashes to the canonical
+Terminal JKR mesh does not change <code>elements_meta.building = 'T0_Hospital'</code> — ownership is intact.</p>
+<p>The migration is mechanical: <code>building</code> value equals <code>AD_Client.Value</code> verbatim. No data transform needed.</p>
+</blockquote>
 <table>
 <thead>
 <tr>

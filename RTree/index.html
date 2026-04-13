@@ -3023,7 +3023,8 @@ paradigm with a database cursor attached to a spatial GPU renderer.</p>
                      │  on LOAD MESH
           ┌──────────▼──────────┐
           │  Stingy Mesh Loader │  on-demand only
-          │  ≤500 elements      │  exact IFC geometry
+          │  viewport-centre    │  camera = selector
+          │  pre-warmed meshes  │  &lt;1s per MESH press
           │  from library.blend │  one named collection
           │  LOAD / SHRED       │  non-destructive
           └─────────────────────┘
@@ -3118,8 +3119,11 @@ One search box. No mode switching.</p>
 <div class="highlight"><pre><span></span><code>MESH ACTIONS
 [+ARC][+STR][+MEP][+ELEC][+FP][+NEXT]
 </code></pre></div>
+<p><strong>Camera is the selector.</strong> MESH loads only elements within the viewport centre —
+what you're looking at is what you get. Pan the camera, press MESH again,
+get more geometry there. No learning curve.</p>
 <ul>
-<li><strong>+DISC buttons</strong>: load that discipline's elements for the active building immediately</li>
+<li><strong>+DISC buttons</strong>: load that discipline's elements within viewport centre radius</li>
 <li><strong>+NEXT</strong>: progressive — each press loads the next 500 (ARC→STR→MEP→ELEC→FP, with offset)</li>
 <li><strong>Storey filter</strong>: set Floor field → MESH loads only that storey. Clear for all floors.</li>
 <li>Each load creates an independent named collection in the Scene Inventory</li>
@@ -3130,13 +3134,18 @@ One search box. No mode switching.</p>
 The user can also hand-pick individual mesh objects in the viewport and shred just those —
 building up a precise cross-section by addition and subtraction.
 The RTree is never affected.</p>
-<p><strong>The 20-second workflow:</strong>
+<p><strong>Pre-warm on drill-in (S184):</strong> When the user clicks a building in the cockpit,
+the system counts disciplines (50ms) and displays the cockpit bars.
+While the user reads those bars, a background timer silently links that
+building's geometry hashes from library.blend (~2s, invisible).
+By the time the user presses +MESH, the meshes are already in RAM.</p>
+<p><strong>The 15-second workflow:</strong>
 1. Preview → 1M wireframes in 13s
-2. Search → click building → MESH → real geometry in &lt;5s
-3. MESH again → next discipline layer appears
-4. Select unwanted pieces → SHRED → exactly what you want remains
-5. Clear RTree → only your meshes, clean viewport
-Result: a hand-crafted view of a million-element project in under 20 seconds.</p>
+2. Search → click building → cockpit shows discipline bars (meshes pre-warming in background)
+3. Pan to area of interest → press +ARC → geometry appears in &lt;1s
+4. Pan elsewhere → +ARC again → more geometry where you look
+5. Select unwanted pieces → SHRED → exactly what you want remains
+Result: a hand-crafted view of a million-element project in 15 seconds.</p>
 <hr />
 <h2 id="viewport-click-picker">Viewport Click-Picker<a class="headerlink" href="#viewport-click-picker" title="Permanent link">&para;</a></h2>
 <p>"Click to Identify" button activates a modal LEFT_MOUSE handler.</p>
@@ -3200,11 +3209,11 @@ giving ultra smooth navigation with no lag on a normal laptop.</strong></p>
 </tr>
 <tr>
 <td>Building drill-down</td>
-<td>&lt;0.5s</td>
+<td>&lt;0.5s (+ background pre-warm ~2s, invisible)</td>
 </tr>
 <tr>
-<td>Mesh load (500 elements)</td>
-<td>~5-15s (library.blend append)</td>
+<td>Mesh load (viewport)</td>
+<td><strong>&lt;1s</strong> (pre-warmed, viewport-centre query, batch transforms)</td>
 </tr>
 </tbody>
 </table>
@@ -3267,8 +3276,8 @@ further geo hash hell reports. This is considered closed.</p>
 <hr />
 <h2 id="related-specs">Related Specs<a class="headerlink" href="#related-specs" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>internal/DLOD_SPEC.md</code> — LOD tier system (§S179: LOD-0 = RTree GPU, not bbox mesh)</li>
-<li><code>internal/DLOD_SPEC.md</code> — camera-distance GN streaming (LOD-1/2, experimental)</li>
+<li><code>internal/DLOD_SPEC.md</code> — LOD tier system (§S179: LOD-0 = RTree GPU, not bbox mesh; GN mode halted S184)</li>
+<li><code>prompts/S184_gn_dlod_fix.md</code> — S184 spec: viewport-centre query, batch transforms, pre-warm on drill-in</li>
 <li><code>internal/StressTest_1M_Results.md</code> — full performance history S165→S178</li>
 <li><code>docs/StressTest_1M.md</code> — the 1M element loading challenge and GN architecture</li>
 <li><code>prompts/S179_dlod_rtree_handoff.md</code> — corrected DLOD architecture</li>
