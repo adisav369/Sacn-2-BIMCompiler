@@ -136,6 +136,15 @@ to 10 display entries.
 - GUID copy to clipboard — one click per element
 - Pre-warm on drill-in — building meshes link in background while user reads cockpit
 
+<figure style="margin: 16px 0; text-align: center;">
+  <img src="../assets/images/RTreeCockpit.png" alt="RTree Cockpit — search, drill-down, discipline bars, MESH actions" width="100%">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
+    Federation Cockpit in action — search "door", drill into SampleCastle, discipline bars,
+    element list with fly-to and GUID copy, MESH actions, loaded collections.
+    Viewport-centre meshing: camera is the selector.
+  </figcaption>
+</figure>
+
 **Two navigation patterns from one query model:**
 - *Know what, find where* → type "IfcDoor", find which buildings have doors + discipline breakdown
 - *Know where, find what* → click any wireframe box, system identifies it, GUID to clipboard
