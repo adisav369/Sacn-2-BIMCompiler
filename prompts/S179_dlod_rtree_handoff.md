@@ -2,6 +2,21 @@
 # Scope: S179 — DLOD architecture: RTree=LOD-0, GN=LOD-1/2 near-camera only
 # Read the log after every run. No claims without §PROOF log lines.
 
+## ⚠ Pending fix — lod_manager BLOB path violates prebake contract
+
+`lod_manager.py bake_meshes_into_templates()` fetches BLOBs from `component_library.db`
+and calls `from_pydata()` at runtime. This violates DLOD_SPEC §15 ("No from_pydata() at
+runtime", "component_library.db read-only"). The S173 prebake of `library.blend` was done
+specifically to eliminate this. S180 `FedRTreeLoadMesh` correctly uses `library.blend`
+via `link=True` — lod_manager must do the same.
+
+Fix for the next DLOD session: replace `bake_meshes_into_templates` BLOB fetch with
+`bpy.data.libraries.load(library.blend, link=True)` keyed by geometry_hash name.
+When this lands, also move `geometry_hash_redirect` resolution to before the blend lookup
+(the redirect patch currently in `fetch_blobs_from_library` will become dead code).
+
+---
+
 ## Why the previous S179 (realize-to-mesh) was wrong
 
 "Realize Instances" bakes GN instances into plain mesh. This destroys
