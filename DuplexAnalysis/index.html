@@ -2841,6 +2841,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#s184-full-load-geometry-corruption-2026-04-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S184 — Full Load Geometry Corruption (2026-04-13)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3852,6 +3863,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#s184-full-load-geometry-corruption-2026-04-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S184 — Full Load Geometry Corruption (2026-04-13)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4836,6 +4858,26 @@ SUPPLY_DIFFUSER) resolve via LIKE match to real IFC meshes.</p>
 <p><strong>Migration:</strong> DV051 seeds the RE assignments above. DV038 created the C_BPartner table.</p>
 <p><strong>Test:</strong> <code>BPartnerCatalogTest</code> — 4/4 PASS (W-BPARTNER-RE SH, W-BPARTNER-RE DX,
 W-BPARTNER-SCHEDULE, W-BPARTNER-COMPLETENESS). See <a href="../DISC_VALIDATION_DB_SRS/#12h-c_bpartner-catalog-segregation--re-vs-co">DISC_VALIDATION_DB_SRS.md §12h</a>.</p>
+<hr />
+<h2 id="s184-full-load-geometry-corruption-2026-04-13">§S184 — Full Load Geometry Corruption (2026-04-13)<a class="headerlink" href="#s184-full-load-geometry-corruption-2026-04-13" title="Permanent link">&para;</a></h2>
+<p><strong>Symptom:</strong> Duplex and other small houses (Jasmin, etc.) show blocky/flat walls —
+door and window openings not visible as cutouts. Terminal, Hospital, SampleHouse
+are fine with the same library.blend and Full Load path.</p>
+<p><strong>Assertion:</strong> The IFC source and original extraction are correct. This is NOT
+an IFC quality issue — Duplex was pristine in earlier sessions.</p>
+<p><strong>Suspected cause:</strong> Something broke during heavy refactoring sessions (S173–S183)
+in the library.blend bake or library fill pipeline. The data path:
+<code>extracted.db:base_geometries</code> → <code>component_library.db:component_geometries</code> →
+<code>library.blend</code> (bake) → Full Load (<code>link=True</code>).</p>
+<p><strong>Evidence:</strong>
+- <code>Duplex_extracted_original.db</code> backup preserved (648 hashes, 100% coverage in library)
+- BLOB bytes in component_library match expected sizes (verified S184)
+- Wall hashes show 24-48 vertices in DB (proper cutouts, not boxes)
+- Yet viewport renders them as flat boxes</p>
+<p><strong>Confirmed in sandbox:</strong> Duplex is also blocky in sandbox_1M RTree+MESH path —
+same appearance as Full Load. This rules out Full Load code as the cause.
+The geometry in library.blend itself is degraded for Duplex.</p>
+<p><strong>Status:</strong> OPEN — deferred from S184. See <code>prompts/S185_duplex_investigation.md</code>.</p>
 
 
 

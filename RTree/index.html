@@ -2904,10 +2904,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#performance-sandbox_1m-2026-04-12" class="md-nav__link">
+  <a href="#performance-sandbox_1m-s184-2026-04-13" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Performance (sandbox_1M, 2026-04-12)
+        Performance (sandbox_1M, S184 2026-04-13)
       
     </span>
   </a>
@@ -2952,6 +2952,17 @@
     <span class="md-ellipsis">
       
         The Paradigm
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#video-demo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video Demo
       
     </span>
   </a>
@@ -3105,13 +3116,30 @@ LOADED
   Hospital_ARC_0
   Hospital_STR_0
 </code></pre></div>
-<p>When a building is drilled into, all city wireframes ghost to α=0.12 — the
+<p>When a building is drilled into, all city wireframes ghost — the
 yellow building envelope and white picked element read clearly against a dim city.
+When x-ray is on (Alt-Z), wireframes return to full visibility.
 On new search or clear, full colours return.</p>
 <p>Buildings deduplicated by type — <code>T0_LTU_AHouse … T17_LTU_AHouse</code> shows as one
-entry <code>LTU_AHouse ×18</code>. Click flies to the nearest tile to camera.</p>
+entry <code>LTU_AHouse ×18</code>. Sandbox tile prefixes (<code>S0_0_</code>, <code>T0_</code>) stripped automatically.
+Click flies to the nearest tile to camera.</p>
 <p>Search resolves: element name, IFC class, discipline, GUID, building name.
-One search box. No mode switching.</p>
+One search box. No mode switching. Works across 500+ building rows, deduplicates
+to 10 display entries.</p>
+<p><strong>Cockpit features (S183–S184):</strong>
+- Unicode discipline bars — proportional fill showing ARC/STR/MEP/ELEC/FP counts
+- Storey filter — set floor, MESH loads only that storey
+- GUID copy to clipboard — one click per element
+- Pre-warm on drill-in — building meshes link in background while user reads cockpit</p>
+<figure style="margin: 16px 0; text-align: center;">
+  <img src="../assets/images/RTreeCockpit.png" alt="RTree Cockpit — search, drill-down, discipline bars, MESH actions" width="100%">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
+    Federation Cockpit in action — search "door", drill into SampleCastle, discipline bars,
+    element list with fly-to and GUID copy, MESH actions, loaded collections.
+    Viewport-centre meshing: camera is the selector.
+  </figcaption>
+</figure>
+
 <p><strong>Two navigation patterns from one query model:</strong>
 - <em>Know what, find where</em> → type "IfcDoor", find which buildings have doors + discipline breakdown
 - <em>Know where, find what</em> → click any wireframe box, system identifies it, GUID to clipboard</p>
@@ -3169,11 +3197,11 @@ Point at something, click, know what it is.</p>
   </figcaption>
 </figure>
 
-<h2 id="performance-sandbox_1m-2026-04-12">Performance (sandbox_1M, 2026-04-12)<a class="headerlink" href="#performance-sandbox_1m-2026-04-12" title="Permanent link">&para;</a></h2>
+<h2 id="performance-sandbox_1m-s184-2026-04-13">Performance (sandbox_1M, S184 2026-04-13)<a class="headerlink" href="#performance-sandbox_1m-s184-2026-04-13" title="Permanent link">&para;</a></h2>
 <blockquote>
-<p><strong>A whole city of one million elements, 100 thousand over unique meshes,
-loaded in a matter of 13 seconds —
-giving ultra smooth navigation with no lag on a normal laptop.</strong></p>
+<p><strong>A whole city of one million elements, 100 thousand unique meshes,
+loaded in 13 seconds. Search, drill, mesh — under 1 second.
+Ultra smooth navigation with no lag on a normal laptop.</strong></p>
 </blockquote>
 <table>
 <thead>
@@ -3310,6 +3338,17 @@ BIM has been doing neither. Until now.</p>
 </figure>
 
 <p><strong>Compile Once, Query Forever.</strong></p>
+<hr />
+<h2 id="video-demo">Video Demo<a class="headerlink" href="#video-demo" title="Permanent link">&para;</a></h2>
+<div style="text-align: center; margin: 24px 0;">
+  <a href="https://youtu.be/J2MP_q63BNU">
+    <img src="https://img.youtube.com/vi/J2MP_q63BNU/maxresdefault.jpg" alt="RTree Query Engine Demo — 1M elements, instant mesh" width="100%" style="max-width: 720px;">
+  </a>
+  <p style="font-size: 0.85em; color: #666; margin-top: 8px;">
+    RTree Query Engine in action — 1M+ elements, search, drill-down, instant mesh loading.
+    <br><a href="https://youtu.be/J2MP_q63BNU">Watch on YouTube</a>
+  </p>
+</div>
 
 
 
