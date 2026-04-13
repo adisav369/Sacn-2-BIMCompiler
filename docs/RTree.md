@@ -117,15 +117,24 @@ LOADED
   Hospital_STR_0
 ```
 
-When a building is drilled into, all city wireframes ghost to α=0.12 — the
+When a building is drilled into, all city wireframes ghost — the
 yellow building envelope and white picked element read clearly against a dim city.
+When x-ray is on (Alt-Z), wireframes return to full visibility.
 On new search or clear, full colours return.
 
 Buildings deduplicated by type — `T0_LTU_AHouse … T17_LTU_AHouse` shows as one
-entry `LTU_AHouse ×18`. Click flies to the nearest tile to camera.
+entry `LTU_AHouse ×18`. Sandbox tile prefixes (`S0_0_`, `T0_`) stripped automatically.
+Click flies to the nearest tile to camera.
 
 Search resolves: element name, IFC class, discipline, GUID, building name.
-One search box. No mode switching.
+One search box. No mode switching. Works across 500+ building rows, deduplicates
+to 10 display entries.
+
+**Cockpit features (S183–S184):**
+- Unicode discipline bars — proportional fill showing ARC/STR/MEP/ELEC/FP counts
+- Storey filter — set floor, MESH loads only that storey
+- GUID copy to clipboard — one click per element
+- Pre-warm on drill-in — building meshes link in background while user reads cockpit
 
 **Two navigation patterns from one query model:**
 - *Know what, find where* → type "IfcDoor", find which buildings have doors + discipline breakdown
@@ -197,11 +206,11 @@ Point at something, click, know what it is.
   </figcaption>
 </figure>
 
-## Performance (sandbox_1M, 2026-04-12)
+## Performance (sandbox_1M, S184 2026-04-13)
 
-> **A whole city of one million elements, 100 thousand over unique meshes,
-> loaded in a matter of 13 seconds —
-> giving ultra smooth navigation with no lag on a normal laptop.**
+> **A whole city of one million elements, 100 thousand unique meshes,
+> loaded in 13 seconds. Search, drill, mesh — under 1 second.
+> Ultra smooth navigation with no lag on a normal laptop.**
 
 | Metric | Result |
 |--------|--------|
