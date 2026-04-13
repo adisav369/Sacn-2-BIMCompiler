@@ -290,3 +290,17 @@ BIM has been doing neither. Until now.
 </figure>
 
 **Compile Once, Query Forever.**
+
+---
+
+## Video Demo
+
+<div style="text-align: center; margin: 24px 0;">
+  <a href="https://youtu.be/J2MP_q63BNU">
+    <img src="https://img.youtube.com/vi/J2MP_q63BNU/maxresdefault.jpg" alt="RTree Query Engine Demo — 1M elements, instant mesh" width="100%" style="max-width: 720px;">
+  </a>
+  <p style="font-size: 0.85em; color: #666; margin-top: 8px;">
+    RTree Query Engine in action — 1M+ elements, search, drill-down, instant mesh loading.
+    <br><a href="https://youtu.be/J2MP_q63BNU">Watch on YouTube</a>
+  </p>
+</div>
