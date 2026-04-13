@@ -57,7 +57,9 @@ CREATE TABLE IF NOT EXISTS element_instances (
 );
 CREATE TABLE IF NOT EXISTS element_transforms (
     guid TEXT PRIMARY KEY,
-    center_x REAL, center_y REAL, center_z REAL, transform_source TEXT
+    center_x REAL, center_y REAL, center_z REAL,
+    rotation_x REAL DEFAULT 0, rotation_y REAL DEFAULT 0, rotation_z REAL DEFAULT 0,
+    transform_source TEXT
 );
 CREATE TABLE IF NOT EXISTS rel_contained_in_space (
     element_guid TEXT, space_guid TEXT,
@@ -971,6 +973,17 @@ def extract(ifc_path, output_path, exclude=None):
     conn.execute("INSERT OR REPLACE INTO project_metadata VALUES ('material_layers', ?)", (str(len(layers)),))
     conn.execute("INSERT OR REPLACE INTO project_metadata VALUES ('aggregates', ?)", (str(agg_count),))
     conn.commit()
+
+    # BlendMeshResolver — canonicalise geometry hashes before close
+    # Spec: internal/BlendMeshResolver.md
+    try:
+        from blend_mesh_resolver import apply_mesh_redirects
+        apply_mesh_redirects(conn,
+                             caller="extractIFCtoDB_open",
+                             db_name=os.path.basename(output_path))
+    except Exception as e:
+        print(f"§RESOLVER WARN  resolver failed (non-fatal): {e}")
+
     conn.close()
 
     # Forensic abstract

@@ -690,3 +690,31 @@ DX is the **RE reference catalog** — the authoritative source of residential p
 
 **Test:** `BPartnerCatalogTest` — 4/4 PASS (W-BPARTNER-RE SH, W-BPARTNER-RE DX,
 W-BPARTNER-SCHEDULE, W-BPARTNER-COMPLETENESS). See [DISC_VALIDATION_DB_SRS.md §12h](DISC_VALIDATION_DB_SRS.md#12h-c_bpartner-catalog-segregation--re-vs-co).
+
+---
+
+## §S184 — Full Load Geometry Corruption (2026-04-13)
+
+**Symptom:** Duplex and other small houses (Jasmin, etc.) show blocky/flat walls —
+door and window openings not visible as cutouts. Terminal, Hospital, SampleHouse
+are fine with the same library.blend and Full Load path.
+
+**Assertion:** The IFC source and original extraction are correct. This is NOT
+an IFC quality issue — Duplex was pristine in earlier sessions.
+
+**Suspected cause:** Something broke during heavy refactoring sessions (S173–S183)
+in the library.blend bake or library fill pipeline. The data path:
+`extracted.db:base_geometries` → `component_library.db:component_geometries` →
+`library.blend` (bake) → Full Load (`link=True`).
+
+**Evidence:**
+- `Duplex_extracted_original.db` backup preserved (648 hashes, 100% coverage in library)
+- BLOB bytes in component_library match expected sizes (verified S184)
+- Wall hashes show 24-48 vertices in DB (proper cutouts, not boxes)
+- Yet viewport renders them as flat boxes
+
+**Confirmed in sandbox:** Duplex is also blocky in sandbox_1M RTree+MESH path —
+same appearance as Full Load. This rules out Full Load code as the cause.
+The geometry in library.blend itself is degraded for Duplex.
+
+**Status:** OPEN — deferred from S184. See `prompts/S185_duplex_investigation.md`.

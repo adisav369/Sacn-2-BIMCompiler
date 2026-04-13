@@ -50,7 +50,8 @@ The model is never fully loaded. It is always live.
                      │  on LOAD MESH
           ┌──────────▼──────────┐
           │  Stingy Mesh Loader │  on-demand only
-          │  ≤500 elements      │  exact IFC geometry
+          │  viewport-centre    │  camera = selector
+          │  pre-warmed meshes  │  <1s per MESH press
           │  from library.blend │  one named collection
           │  LOAD / SHRED       │  non-destructive
           └─────────────────────┘
@@ -137,7 +138,11 @@ MESH ACTIONS
 [+ARC][+STR][+MEP][+ELEC][+FP][+NEXT]
 ```
 
-- **+DISC buttons**: load that discipline's elements for the active building immediately
+**Camera is the selector.** MESH loads only elements within the viewport centre —
+what you're looking at is what you get. Pan the camera, press MESH again,
+get more geometry there. No learning curve.
+
+- **+DISC buttons**: load that discipline's elements within viewport centre radius
 - **+NEXT**: progressive — each press loads the next 500 (ARC→STR→MEP→ELEC→FP, with offset)
 - **Storey filter**: set Floor field → MESH loads only that storey. Clear for all floors.
 - Each load creates an independent named collection in the Scene Inventory
@@ -149,13 +154,19 @@ The user can also hand-pick individual mesh objects in the viewport and shred ju
 building up a precise cross-section by addition and subtraction.
 The RTree is never affected.
 
-**The 20-second workflow:**
+**Pre-warm on drill-in (S184):** When the user clicks a building in the cockpit,
+the system counts disciplines (50ms) and displays the cockpit bars.
+While the user reads those bars, a background timer silently links that
+building's geometry hashes from library.blend (~2s, invisible).
+By the time the user presses +MESH, the meshes are already in RAM.
+
+**The 15-second workflow:**
 1. Preview → 1M wireframes in 13s
-2. Search → click building → MESH → real geometry in <5s
-3. MESH again → next discipline layer appears
-4. Select unwanted pieces → SHRED → exactly what you want remains
-5. Clear RTree → only your meshes, clean viewport
-Result: a hand-crafted view of a million-element project in under 20 seconds.
+2. Search → click building → cockpit shows discipline bars (meshes pre-warming in background)
+3. Pan to area of interest → press +ARC → geometry appears in <1s
+4. Pan elsewhere → +ARC again → more geometry where you look
+5. Select unwanted pieces → SHRED → exactly what you want remains
+Result: a hand-crafted view of a million-element project in 15 seconds.
 
 ---
 
@@ -200,8 +211,8 @@ Point at something, click, know what it is.
 | RTree load time | **~13s** |
 | Orbit / pan | **Instant** (GPU batch, no per-frame eval) |
 | Search SQL | <2s (LIKE scan, 1M rows) |
-| Building drill-down | <0.5s |
-| Mesh load (500 elements) | ~5-15s (library.blend append) |
+| Building drill-down | <0.5s (+ background pre-warm ~2s, invisible) |
+| Mesh load (viewport) | **<1s** (pre-warmed, viewport-centre query, batch transforms) |
 
 Scales to 10M+ elements with no architectural changes.
 The DB is the ceiling, not the viewer.
@@ -239,8 +250,8 @@ further geo hash hell reports. This is considered closed.
 
 ## Related Specs
 
-- `internal/DLOD_SPEC.md` — LOD tier system (§S179: LOD-0 = RTree GPU, not bbox mesh)
-- `internal/DLOD_SPEC.md` — camera-distance GN streaming (LOD-1/2, experimental)
+- `internal/DLOD_SPEC.md` — LOD tier system (§S179: LOD-0 = RTree GPU, not bbox mesh; GN mode halted S184)
+- `prompts/S184_gn_dlod_fix.md` — S184 spec: viewport-centre query, batch transforms, pre-warm on drill-in
 - `internal/StressTest_1M_Results.md` — full performance history S165→S178
 - `docs/StressTest_1M.md` — the 1M element loading challenge and GN architecture
 - `prompts/S179_dlod_rtree_handoff.md` — corrected DLOD architecture
