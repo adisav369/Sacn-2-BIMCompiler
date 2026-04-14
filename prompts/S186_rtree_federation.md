@@ -1,7 +1,11 @@
 # ⚠ DO NOT REMOVE
 # Scope: S186 — RTree federated architecture + hierarchical drill-down
 # Read the log after every run. No claims without §PROOF log lines.
-# STATUS: SPEC — start at session open.
+# STATUS: S186 SESSION 1 DONE — Part A + B coded + overnight loader + dynamic discs.
+# RESUME: S186 SESSION 2 — storey-click freeze, bake script test, overnight polish.
+# TOP ISSUE: clicking a storey (FedRTreeFlyToStorey) freezes for many seconds on large buildings.
+#   Root cause: fly_to_storey queries 125K-row DB with rtree join for storey bbox + 10 elements.
+#   Fix candidates: pre-compute storey bboxes at count_building time, cache in _building_storey_bboxes.
 
 ## Context
 
@@ -169,3 +173,32 @@ Already documented in `docs/RTree.md` §S185 Performance.
 ## Source files
 
 See `docs/RTree.md` §Files — Technical Section for full path listing.
+
+## S186 Session 1 — DONE (2026-04-14)
+
+### Implemented
+- Part A: Hierarchical drill-down (L0 city → L1 building/storeys → L2 storey/elements)
+- Part A: Search suggestions ("Try: Wall, Door, ARC, *") + wildcard `*` search
+- Part A: Dynamic disciplines (read from DB, not hardcoded ARC/STR/MEP/ELEC/FP)
+- Part A: Single-building DB support (_has_building_column guard on all queries)
+- Part A: Project name in Outliner (`{project}_RTree` instead of `Federation_RTree`)
+- Part B: `scripts/bake_building_blend.py` + `scripts/assemble_city_blend.py`
+- OVERNIGHT modal loader: Space=pause, ESC=cancel, progress bar, per-batch linking
+- Pre-warm after 20 ticks (smooth start, then warm, then link=0ms forever)
+- Per-batch mesh linking for manual +DISC buttons (no upfront pre-warm)
+
+### Open issues for Session 2
+1. **Storey-click freeze** — `FedRTreeFlyToStorey` on large buildings (LTU 125K) freezes
+   for many seconds. Root cause: `fly_to_storey` queries rtree for storey bbox + 10 elements
+   on 125K rows. Fix: pre-compute storey bboxes + counts at `count_building` time, cache
+   in `_building_storey_bboxes`. Click just reads cache — instant.
+
+2. **ARC "already loaded" bug** — on Duplex, pressing +ARC after MEP+STR reports all 253
+   ARC guids as "already loaded" despite no guid overlap. Diagnostic logging added
+   (§DEDUP lines). Needs investigation with fresh session + log evidence.
+
+3. **Bake scripts untested** — `bake_building_blend.py` and `assemble_city_blend.py` written
+   but not run. Need Blender CLI test with Duplex (small, fast) then Hospital (large).
+
+4. **Overnight 1M sandbox** — overnight pre-warm for 108K hashes across all buildings would
+   be very long. Need per-building warm strategy or skip warm for sandbox.

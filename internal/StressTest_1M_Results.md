@@ -539,3 +539,42 @@ may reset to bbox (0). Race condition between two writers on the same attribute.
 | Geo hell | Clean | Full | Sparse |
 | Streamer halt | No | No | **Yes** |
 | .blend size | 18MB | 15MB | ~15MB est. |
+
+---
+
+## S186 — Overnight Loader & Per-Batch Linking Findings (2026-04-14)
+
+### Per-discipline pre-warm is too expensive
+- `prewarm_discipline('PLB')` on LTU: linked 13,999/13,999 unique hashes in **22,212ms** (22s freeze)
+- `prewarm_discipline('VENT')` on LTU: linked 7,299/7,473 hashes in **16,524ms** (16s freeze)
+- Root cause: single `bpy.data.libraries.load()` call links all hashes — one file open but O(n) mesh linking
+- Per-discipline pre-warm removed from manual +DISC buttons
+
+### Per-batch linking (no pre-warm) — viable for manual buttons
+- Each +DISC press: query 100 elements → ~30 unique hashes → open library.blend → link 30 → ~0.5s
+- Subsequent presses: cache fills, fewer new hashes → ~0.3s, eventually link=0ms
+- No freeze, user stays in control. Trade-off: ~0.5s per press vs 0ms after full warm
+
+### Overnight modal loader — best of both worlds
+- Modal timer: 200 elements per tick, 0.1s interval
+- First 20 ticks (~4K elements): per-batch linking, smooth, ~0.3s per tick
+- Tick 20: full building pre-warm fires (`_prewarm_building_meshes`)
+  - LTU (125K elements, ~20K unique hashes): ~30s warm
+  - After warm: every tick is link=0ms, pure object creation
+- Controls: Space=pause/resume, ESC=cancel, progress bar in N-panel
+- Auto-resumes across sessions (objects persist in .blend, `_loaded_guids` dedup)
+
+### Dynamic disciplines
+- Old code hardcoded 5 disciplines (ARC/STR/MEP/ELEC/FP)
+- LTU has 7: PLB, HEAT, HVAC, VENT, SAN, ARC, STR
+- Bars, buttons, merge regex, count queries all now dynamic from `_building_disc_counts`
+
+### Single-building DB support
+- DBs without `building` column (e.g. `Duplex_extracted.db`) were completely broken
+- All queries now guard with `_has_building_column` flag, detected at load time
+- Synthetic building name derived from DB filename
+
+### Open: storey-click freeze on large buildings
+- `FedRTreeFlyToStorey` on LTU (125K): multi-second freeze
+- Query: rtree join for storey bbox + 10 elements over full table
+- Fix for S186 Session 2: pre-compute storey bboxes at `count_building` time
