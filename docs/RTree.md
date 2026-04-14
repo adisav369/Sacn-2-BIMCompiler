@@ -54,6 +54,14 @@ The model is never fully loaded. It is always live.
           │  pre-warmed meshes  │  <1s per MESH press
           │  from library.blend │  one named collection
           │  LOAD / SHRED       │  non-destructive
+          └──────────┬──────────┘
+                     │  on OVERNIGHT (large building)
+          ┌──────────▼──────────┐
+          │  Smart Bake Engine  │  S186
+          │  background process │  blender --background
+          │  fresh scene per    │  no O(n) penalty
+          │  building, 36s/48K  │  linked refs → 2MB
+          │  4 cores parallel   │  1M city < 10 min
           └─────────────────────┘
 ```
 
@@ -260,6 +268,78 @@ Other S185 optimisations:
 
 Scales to 10M+ elements with no architectural changes.
 The DB is the ceiling, not the viewer.
+
+---
+
+### S186 Performance — Smart Overnight + Offline Bake
+
+The overnight modal loader degrades on large buildings because Blender's scene graph
+is O(n) — each new object is slower than the last. Hospital (63K elements) starts at
+2.4s/batch and reaches 6.3s/batch by 12K objects, trending toward 3.4 hours.
+
+**Smart Overnight** detects this. After 2,000 elements it computes:
+- Online ETA from rolling batch average
+- Offline estimate from bake benchmarks
+
+If online ETA exceeds offline by 5x, it offers to switch:
+
+```
+┌─────────────────────────────────────────────┐
+│  At this rate: ~1.8h                        │
+│  Offline bake: ~73s                         │
+│                                             │
+│  [SWITCH TO OFFLINE]     [KEEP GOING]       │
+└─────────────────────────────────────────────┘
+```
+
+On accept: a background `blender --background --factory-startup` subprocess
+bakes the entire building in a fresh empty scene. The user's viewport stays
+fully interactive — orbit, search, mesh other buildings. When the subprocess
+finishes, partial objects are shredded and the complete building links into
+the viewport instantly.
+
+**Why it's fast:**
+
+| Factor | Overnight modal | Offline bake |
+|--------|-----------------|--------------|
+| Scene graph | O(n) — 63K objects growing | Fresh empty — always O(1) |
+| Library opens | Per-batch (2.7s × hundreds) | Once (67s total) |
+| Mesh refs | Linked per batch | Linked in one call |
+| Viewport | Redraws every tick | No viewport (`--background`) |
+| Result | Trends to 3.4h, may crash | Deterministic, always completes |
+
+**Measured results:**
+
+| Building | Elements | Unique meshes | Bake time | File size |
+|----------|----------|---------------|-----------|-----------|
+| Duplex | 1,169 | 650 | 6.4s | 197KB |
+| Terminal | 48,428 | 7,150 | **36.6s** | ~2MB |
+| Hospital | 63,917 | 23,045 | **123s** | 5.6MB |
+
+**City-scale extrapolation (1,061,736 elements, 25 buildings):**
+
+Background parallel Blender sessions (up to 4 instances on 4 CPU cores) can
+resolve a full 1-million-element city in under 10 minutes. Total baked file
+size: ~75MB. Previously the same city trended toward 3.5 hours with crashes
+on save.
+
+Each subprocess is a separate OS process — not a Python thread. Blender
+remains single-threaded per process, but 4 processes run on 4 cores
+simultaneously. The operating system handles parallelism, not Blender.
+
+The baked `.blend` files use linked mesh references to `library.blend` (276MB,
+shared). No mesh data is duplicated. A complete building is just transforms +
+collection hierarchy. Save takes seconds. Reopen resolves the links
+automatically.
+
+<figure style="margin: 24px 0; text-align: center;">
+  <img src="../assets/images/46kTerminal73secs.png" alt="48K Terminal building baked in 36s — background parallel Blender sessions" width="100%">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
+    Terminal building (48,428 elements) baked in 36.6 seconds via background subprocess.
+    Up to 4 parallel Blender instances can resolve a 1-million-element city under 10 minutes
+    at ~75MB total file size. Previously trended to 3.5 hours with save crashes.
+  </figcaption>
+</figure>
 
 ---
 

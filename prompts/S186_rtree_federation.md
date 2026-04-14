@@ -1,11 +1,10 @@
 # ⚠ DO NOT REMOVE
 # Scope: S186 — RTree federated architecture + hierarchical drill-down
 # Read the log after every run. No claims without §PROOF log lines.
-# STATUS: S186 SESSION 1 DONE — Part A + B coded + overnight loader + dynamic discs.
-# RESUME: S186 SESSION 2 — storey-click freeze, bake script test, overnight polish.
-# TOP ISSUE: clicking a storey (FedRTreeFlyToStorey) freezes for many seconds on large buildings.
-#   Root cause: fly_to_storey queries 125K-row DB with rtree join for storey bbox + 10 elements.
-#   Fix candidates: pre-compute storey bboxes at count_building time, cache in _building_storey_bboxes.
+# STATUS: S186 SESSION 2 DONE — storey freeze fixed, bake scripts validated, dedup diagnostics improved.
+# TOP ISSUE: NONE — storey-click freeze resolved (pre-computed bboxes). Bake scripts proven (Duplex + Hospital + city).
+# REMAINING: ARC dedup bug — improved diagnostics (§DEDUP_SKIP db_disc/query_disc), likely progressive MESH preloading ARC.
+# NEXT: S187 — visual validation of baked .blend in interactive Blender, overnight 1M per-building warm strategy.
 
 ## Context
 
@@ -202,3 +201,123 @@ See `docs/RTree.md` §Files — Technical Section for full path listing.
 
 4. **Overnight 1M sandbox** — overnight pre-warm for 108K hashes across all buildings would
    be very long. Need per-building warm strategy or skip warm for sandbox.
+
+## Part D — Smart Overnight: Auto-Detect + Offline Bake Handoff (S186 Session 2)
+
+### Motivation
+
+Overnight modal loader degrades on large buildings due to Blender's O(n) scene graph:
+- Hospital 63K: starts at 2.4s/batch, reaches 6.3s/batch at 12K, trending to 3.4h
+- Offline `bake_building_blend.py` does the same building in 332s (5.5 min) because
+  it works in a fresh empty scene with one `libraries.load()` call.
+
+### Behaviour
+
+#### Small buildings (< 5K elements)
+No change. Modal overnight completes in seconds. No pop-up, no subprocess.
+
+#### Large buildings (≥ 5K elements)
+1. User clicks OVERNIGHT — modal starts normally (progressive, elements appear live)
+2. After 2,000 elements (~40 ticks at batch=50), enough ETA data exists
+3. Calculate: `online_eta` from rolling batch average, `offline_eta` = total_elements / 10,000 * 60s
+4. If `online_eta > 5 × offline_eta` → show offer in N-panel:
+
+```
+  ┌─────────────────────────────────────────────┐
+  │  ⏱ At this rate: ~1.8h                      │
+  │  ⚡ Offline bake: ~6 min                     │
+  │                                              │
+  │  [SWITCH TO OFFLINE]     [KEEP GOING]        │
+  └─────────────────────────────────────────────┘
+```
+
+5. **KEEP GOING** → modal continues as today, offer dismissed
+6. **SWITCH TO OFFLINE** →
+   a. Modal overnight halts (partial objects stay visible for context)
+   b. Subprocess launches: `nice -n 10 blender --background --python bake_building_blend.py -- --db {db} --library {lib} --building {building}`
+   c. Building greyed in panel: "⏳ Baking... ~6 min"
+   d. Timer polls `subprocess.poll()` every 2s (microseconds, no UI impact)
+   e. When subprocess exits 0:
+      - Shred `Loaded_{building}_*` collections (partial overnight objects)
+      - `bpy.data.libraries.load(baked/{building}_baked.blend, link=True)` → link root collection
+      - Tag redraw, update discipline bars to 100%
+      - Auto-save current .blend
+      - Panel shows "✓ {building} complete — {N} elements ({elapsed})"
+   f. If subprocess exits non-zero → panel shows error, partial objects kept
+
+### Backward compatibility
+
+- Small buildings (< 5K): zero code path change. Modal overnight untouched.
+- User declines offer (KEEP GOING): modal continues as before. Offer not shown again.
+- No offer shown if `bake_building_blend.py` is missing (graceful fallback).
+- No offer shown if `library.blend` path not resolved.
+- Existing `_loaded_guids`, `_loaded_collections`, `_load_progress` cleared on shred.
+- Manual `+DISC` buttons unaffected — they never enter the overnight code path.
+- Other buildings in the session untouched — only the baking building's collections are shredded.
+
+### Panel greying (while subprocess runs)
+
+For the building in `_baking_buildings`:
+- +DISC buttons: disabled (greyed)
+- OVERNIGHT button: replaced by "⏳ Baking... ~X min" + [CANCEL BAKE]
+- Storey drill-down: disabled (building-level view only)
+- Fly-to: **still works** (RTree wireframes, no objects needed)
+- Pick element: **still works** (DB query, no objects needed)
+- Search: **still works**
+
+For all other buildings: fully interactive, no change.
+
+### Bake script changes (linked refs)
+
+`bake_building_blend.py` currently calls `m.make_local()` on every linked mesh.
+Change to keep meshes linked. Result:
+- Baked file: ~2-3MB (transforms + collections only) instead of 43MB
+- Mesh data stays in library.blend (276MB, shared)
+- Chain: session.blend → baked.blend → library.blend
+
+### State variables (bbox_visualization.py)
+
+```python
+_baking_buildings = {}    # building_name → {process, start_time, total, offline_eta, baked_path}
+_bake_offer_shown = set() # buildings that already saw the offer (don't re-show)
+```
+
+### New operators
+
+| Operator | bl_idname | Trigger |
+|---|---|---|
+| FedRTreeSwitchOffline | bim.fed_rtree_switch_offline | User clicks SWITCH TO OFFLINE |
+| FedRTreeCancelBake | bim.fed_rtree_cancel_bake | User clicks CANCEL BAKE |
+| FedRTreeKeepGoing | bim.fed_rtree_keep_going | User clicks KEEP GOING |
+
+### Timer: _poll_bake_subprocess
+
+Registered when subprocess starts. Runs every 2s. Checks:
+1. `process.poll()` — None = still running, 0 = done, other = error
+2. If done: link baked .blend, shred partial, update panel, save .blend
+3. If error: report error, keep partial objects, remove from `_baking_buildings`
+4. Unregisters itself when complete.
+
+### Log lines (§PROOF)
+
+```
+[S186] §BAKE_OFFER bld=T0_Hospital online_eta=6480s offline_eta=384s factor=16.9x
+[S186] §BAKE_SWITCH bld=T0_Hospital partial=2000 cmd='nice -n 10 blender ...'
+[S186] §BAKE_POLL bld=T0_Hospital pid=12345 running elapsed=120s
+[S186] §BAKE_DONE bld=T0_Hospital pid=12345 elapsed=332s baked=baked/T0_Hospital_baked.blend
+[S186] §BAKE_SHRED bld=T0_Hospital collections=3 objects=2000
+[S186] §BAKE_LINK bld=T0_Hospital file=T0_Hospital_baked.blend collections_linked=1
+[S186] §BAKE_SAVED file=sandbox.blend
+[S186] §BAKE_CANCEL bld=T0_Hospital pid=12345 (user cancelled)
+[S186] §BAKE_ERROR bld=T0_Hospital pid=12345 exitcode=1
+```
+
+### What NOT to change
+
+- RTree wireframe drawing — untouched
+- `+DISC` manual load (FedRTreeLoadMesh) — untouched
+- `_query_viewport` camera-scoped query — untouched
+- `bake_all_sandbox.sh` — untouched (CLI tool, not related)
+- `assemble_city_blend.py` — untouched (separate workflow)
+- `library.blend` — read-only, never modified
+- Extracted DBs — read-only, never modified

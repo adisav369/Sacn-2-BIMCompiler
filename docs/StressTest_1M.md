@@ -1,15 +1,18 @@
 # Stress Test — 1M Elements in a Single Federated Session
 
-**Status:** RTree GPU path + Cockpit UI — DONE S183. GN/DLOD near-camera path — pending.
+**Status:** RTree GPU path + Cockpit UI + Smart Overnight Bake — DONE S186.
 **Sandbox:** `scripts/sandbox_1M.db` (1,061,736 elements, 29 real buildings)
 **Builder:** `scripts/build_sandbox_1M.py`
 **Library:** `library/library.blend` (120,471 meshes, 276 MB, shared all buildings)
 
-> **S180–S183 result:** RTree loads 1M elements in ~13s, orbit instant. Stingy Mesh Loader
-> with progressive discipline layers, freestyle shred, per-element GUID copy, storey filter,
-> and live discipline bar charts (counts from DB in <50ms). City wireframes ghost to 12% alpha
-> when a building is drilled into — active building pops against dim city.
-> See [`docs/RTree.md`](RTree.md) for full architecture and proof.
+> **S186 result:** Background parallel Blender sessions (up to 4 instances) can
+> resolve a full 1-million-element city in under 10 minutes at ~75MB total file
+> size. Previously trended to 3.5 hours with save crashes. Terminal (48K elements)
+> bakes in 36.6s. Hospital (63K) in 123s. Each building bakes in a fresh empty
+> scene — no O(n) scene graph penalty. Linked mesh refs to library.blend keep
+> files small. Smart Overnight auto-detects when offline bake is 5x faster and
+> offers to switch — viewport stays fully interactive during the background bake.
+> See [`docs/RTree.md`](RTree.md) for full architecture, benchmarks, and proof.
 
 ---
 

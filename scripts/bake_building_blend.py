@@ -49,8 +49,18 @@ if not lib_path.exists():
 lib_db_path = lib_path.parent / "component_library.db"
 
 
+def has_building_column(db):
+    """Check if elements_meta has a 'building' column."""
+    conn = sqlite3.connect(str(db))
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(elements_meta)").fetchall()]
+    conn.close()
+    return 'building' in cols
+
+
 def get_buildings(db):
-    """List distinct buildings in DB."""
+    """List distinct buildings in DB. Returns [db_stem] for single-building DBs."""
+    if not has_building_column(db):
+        return [db.stem.replace('_extracted', '')]
     conn = sqlite3.connect(str(db))
     rows = conn.execute(
         "SELECT DISTINCT building FROM elements_meta "
@@ -116,15 +126,25 @@ def bake_building(building_name, db, library, offset):
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
     conn = sqlite3.connect(str(db))
+    _has_bld = has_building_column(db)
 
     # Fetch all elements for this building
-    elements = conn.execute("""
-        SELECT m.guid, m.element_name, m.discipline, m.ifc_class, m.storey,
-               m.material_rgba, i.geometry_hash
-        FROM elements_meta m
-        JOIN element_instances i ON m.guid = i.guid
-        WHERE m.building = ? AND i.geometry_hash IS NOT NULL
-    """, (building_name,)).fetchall()
+    if _has_bld:
+        elements = conn.execute("""
+            SELECT m.guid, m.element_name, m.discipline, m.ifc_class, m.storey,
+                   m.material_rgba, i.geometry_hash
+            FROM elements_meta m
+            JOIN element_instances i ON m.guid = i.guid
+            WHERE m.building = ? AND i.geometry_hash IS NOT NULL
+        """, (building_name,)).fetchall()
+    else:
+        elements = conn.execute("""
+            SELECT m.guid, m.element_name, m.discipline, m.ifc_class, m.storey,
+                   m.material_rgba, i.geometry_hash
+            FROM elements_meta m
+            JOIN element_instances i ON m.guid = i.guid
+            WHERE i.geometry_hash IS NOT NULL
+        """).fetchall()
 
     # Fetch transforms
     guids = [e[0] for e in elements]
@@ -146,7 +166,7 @@ def bake_building(building_name, db, library, offset):
     unique_hashes = list({e[6] for e in elements if e[6]})
     print(f"  Unique meshes: {len(unique_hashes)}")
 
-    # Link meshes from library.blend
+    # Link meshes from library.blend (keep linked — small file, chain to library)
     already = {m.name for m in bpy.data.meshes}
     to_link = [h for h in unique_hashes if h not in already]
     if to_link:
@@ -154,11 +174,8 @@ def bake_building(building_name, db, library, offset):
         with bpy.data.libraries.load(str(library), link=True) as (src, dst):
             src_names = set(src.meshes)
             dst.meshes = [h for h in to_link if h in src_names]
-        # Make meshes local so we can save them in the .blend
-        for m in dst.meshes:
-            if m is not None:
-                m.make_local()
-        print(f"  Linked {len(dst.meshes)} meshes in {time.time()-t_link:.1f}s")
+        linked_count = sum(1 for m in dst.meshes if m is not None)
+        print(f"  Linked {linked_count} meshes in {time.time()-t_link:.1f}s (kept linked, no make_local)")
 
     mesh_by_hash = {}
     for h in unique_hashes:

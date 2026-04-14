@@ -63,9 +63,14 @@ for bf in baked_files:
     print(f"  Linking: {building_name} ({bf.name})")
 
     with bpy.data.libraries.load(str(bf), link=True) as (src, dst):
-        # Link all collections from the baked file
-        if src.collections:
-            # Link the root collection (first one = building name)
+        # Link root collection (building name, not discipline sub-collections)
+        disc_suffixes = {'ARC','STR','MEP','ELEC','FP','OTHER',
+                         'PLB','HEAT','HVAC','VENT','SAN','ACMV'}
+        root_cols = [c for c in src.collections
+                     if not any(c.endswith(f'_{d}') for d in disc_suffixes)]
+        if root_cols:
+            dst.collections = [root_cols[0]]
+        elif src.collections:
             dst.collections = [src.collections[0]]
 
     # Create an instance empty for the linked collection

@@ -26,16 +26,13 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
-**S186 (2026-04-14):** RTree hierarchy, overnight loader, dynamic disciplines — Session 1 DONE.
-  - **Hierarchical drill-down:** L0 city (building list, no mesh) → L1 building (storey list, bars, mesh) → L2 storey (scoped elements, breadcrumb back). Wildcard `*` search.
-  - **Dynamic disciplines:** bars + buttons read from DB, not hardcoded 5. LTU 7 discs (PLB/HEAT/HVAC/VENT/SAN/ARC/STR) all work.
-  - **Single-building DB fix:** all queries guard `_has_building_column`. Search/count/mesh/pre-warm all work on DBs without building column.
-  - **Overnight modal loader:** 200 elements/tick, Space=pause/resume, ESC=cancel, progress bar. Pre-warm at tick 20 (smooth start then link=0ms). DONE box with OK dismiss.
-  - **Per-batch mesh linking:** manual +DISC buttons link ~30 hashes per press (~0.5s). No upfront pre-warm freeze. Cache builds naturally.
-  - **Project name in Outliner:** `{project}_RTree` instead of generic `Federation_RTree`.
-  - **Bake scripts:** `bake_building_blend.py` + `assemble_city_blend.py` (untested).
-  - **Open:** storey-click freeze on large buildings (125K). ARC "already loaded" dedup bug. Bake script validation.
-  - **Next:** S186 Session 2 — storey pre-compute, bake test, overnight 1M. See `prompts/S186_rtree_federation.md`.
+**S186 (2026-04-14):** RTree hierarchy, overnight loader, dynamic disciplines, bake scripts — DONE.
+  - **Session 1:** Hierarchical drill-down (L0→L1→L2), dynamic disciplines, single-building DB guard, overnight modal loader, per-batch mesh linking, project name in Outliner. See `prompts/S186_rtree_federation.md`.
+  - **Session 2:** Storey-click freeze fixed (`_building_storey_bboxes` cache → instant fly). UI storey counts. Pre-warm threshold: building-level total, not storey-scoped.
+  - **Overnight loader fixed:** batch 200→50, timer 0.1→0.05s, no bulk pre-warm (meshes linked per-batch), cancel-flag checked after SQL. Responsive cancel + smooth progress bar.
+  - **Bake scripts validated:** Duplex 1,169/6s (197KB linked), Hospital 63,917/332s. City assembly works. Single-building DB support.
+  - **Smart Overnight (Part D):** After 2K elements, if ETA > 5× offline estimate, shows "Finish in ~6 min. Accept?" panel. Subprocess bake (`nice -n 10 blender --background`), link-back, shred partial, auto-save. Panel greys baking building. 3 new operators + poll timer.
+  - **Next:** S187 — Blender interactive test of Smart Overnight handoff flow, visual validation of baked .blend in viewport.
 
 **S176 (2026-04-12):** Fast full load + GN streaming fix.
   - **Full load speedup:** `load_library_linked()` Step 2 changed from `link=False` (append) to `link=True` (cache refs only, NO make_local). Per-element objects resolve linked mesh refs once at obj.data assignment — make_local unnecessary and was a regression (140s hang at 108K hashes). Dead material slot fix removed. Step 5 batch interval: 2K→10K.
