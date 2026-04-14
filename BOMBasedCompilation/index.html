@@ -6463,6 +6463,11 @@ No neural networks. No training. Just SQL aggregation on real data.</p>
 product catalog (ERP.db + component_library.db), it produces a complete,
 verified output.</p>
 <p>Adding a new building = adding BOM data. The compiler is the constant.</p>
+<p><strong>Viewer strategy:</strong> The RTree viewer loads compiled output on demand without
+modifying any pipeline DB. Geometry hash redirects and rotation corrections are
+a library concern handled at viewer runtime — see
+<a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md</a> §12 for the full
+impact analysis on the DAGCompiler/ERPtoDB pipeline.</p>
 <hr />
 <h2 id="11-building-registration">11. Building Registration<a class="headerlink" href="#11-building-registration" title="Permanent link">&para;</a></h2>
 <p>Adding a new building = adding BOM data to the Application Dictionary.

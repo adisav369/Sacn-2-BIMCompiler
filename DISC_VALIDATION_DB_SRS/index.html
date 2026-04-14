@@ -3279,6 +3279,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#12-rtree-viewer-strategy-impact-on-dagcompiler-erptodb-pipeline-s185" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12 — RTree Viewer Strategy: Impact on DAGCompiler / ERPtoDB Pipeline (S185)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§12 — RTree Viewer Strategy: Impact on DAGCompiler / ERPtoDB Pipeline (S185)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#121-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12.1 Context
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#122-what-does-not-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12.2 What Does NOT Change
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#123-what-does-change-viewer-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12.3 What DOES Change — Viewer-Only
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#124-the-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12.4 The Boundary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#125-risk-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12.5 Risk Assessment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#126-admin-tool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12.6 Admin Tool
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5745,6 +5828,89 @@
     <span class="md-ellipsis">
       
         §11.5 — Gaps Blocking 00q–00t
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-rtree-viewer-strategy-impact-on-dagcompiler-erptodb-pipeline-s185" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12 — RTree Viewer Strategy: Impact on DAGCompiler / ERPtoDB Pipeline (S185)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§12 — RTree Viewer Strategy: Impact on DAGCompiler / ERPtoDB Pipeline (S185)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#121-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12.1 Context
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#122-what-does-not-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12.2 What Does NOT Change
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#123-what-does-change-viewer-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12.3 What DOES Change — Viewer-Only
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#124-the-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12.4 The Boundary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#125-risk-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12.5 Risk Assessment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#126-admin-tool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12.6 Admin Tool
       
     </span>
   </a>
@@ -10468,6 +10634,142 @@ Counterpart W-BPARTNER-CO: same logic for CO buildings once onboarded.
 </code></pre></div>
 <p><strong>Status (S160 DONE):</strong> DV051 applied. BPartnerCatalogTest 4/4 PASS. SH 9/9, DX 9/9.
 SpaceScheduleDAO BPartner filter: next step when CO buildings (TE/Hospital) are onboarded.</p>
+<hr />
+<h2 id="12-rtree-viewer-strategy-impact-on-dagcompiler-erptodb-pipeline-s185">§12 — RTree Viewer Strategy: Impact on DAGCompiler / ERPtoDB Pipeline (S185)<a class="headerlink" href="#12-rtree-viewer-strategy-impact-on-dagcompiler-erptodb-pipeline-s185" title="Permanent link">&para;</a></h2>
+<h3 id="121-context">§12.1 Context<a class="headerlink" href="#121-context" title="Permanent link">&para;</a></h3>
+<p>The RTree viewer (see <a href="../RTree/">RTree.md</a>) replaces the GN-based Blender loader
+as the primary viewer for federation-scale models. It introduces runtime geometry
+resolution patterns that interact with the existing pipeline at two points:</p>
+<ol>
+<li><strong>Geometry Hash Redirect</strong> — <code>component_library.db → geometry_hash_redirect</code>
+   swaps deprecated mesh hashes for canonical ones at viewer load time, with
+   optional rotation correction.</li>
+<li><strong>Stingy Mesh Loader</strong> — links meshes from <code>library.blend</code> on demand, scoped
+   to the active building and viewport, never loading the full model.</li>
+</ol>
+<h3 id="122-what-does-not-change">§12.2 What Does NOT Change<a class="headerlink" href="#122-what-does-not-change" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Pipeline stage</th>
+<th>Impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IFC extraction (<code>IFCtoBOM</code>)</td>
+<td>None. Extracted DBs are read-only sources of truth. Geometry hashes and rotations are faithful to the source IFC.</td>
+</tr>
+<tr>
+<td>DAGCompiler (BOM compilation)</td>
+<td>None. DAGCompiler reads <code>ERP.db</code> and <code>component_library.db</code> for BOM rules. It never reads <code>elements_rtree</code> or <code>geometry_hash_redirect</code>. The compilation pipeline is geometry-agnostic.</td>
+</tr>
+<tr>
+<td>ERPtoDB / WriteStage</td>
+<td>None. <code>output.db</code> is compiled from BOM data, not from viewer state. The RTree viewer reads output.db — it never writes to it.</td>
+</tr>
+<tr>
+<td><code>component_library.db</code> schema</td>
+<td>Additive only. <code>geometry_hash_redirect</code> table added (3 new columns: <code>rotation_x/y/z_correction</code>). Existing tables (<code>component_geometries</code>, <code>surface_styles</code>) untouched.</td>
+</tr>
+<tr>
+<td><code>library.blend</code></td>
+<td>Untouched. The redirect table points to meshes already in library.blend. No re-bake needed for redirect changes.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="123-what-does-change-viewer-only">§12.3 What DOES Change — Viewer-Only<a class="headerlink" href="#123-what-does-change-viewer-only" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Change</th>
+<th>Scope</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hash redirect resolution</td>
+<td>Viewer runtime</td>
+<td>Stingy loader checks <code>geometry_hash_redirect</code> before linking mesh from library.blend. Maps deprecated → canonical hash.</td>
+</tr>
+<tr>
+<td>Rotation correction</td>
+<td>Viewer runtime</td>
+<td>When a mesh was redirected and the source IFC stored a compensating rotation (e.g. Revit sprinklers modeled inverted with <code>rotation_x = π</code>), the loader applies a correction from the redirect table. Guard: only applied when the element's stored rotation matches the expected deprecated value (within 0.01 rad).</td>
+</tr>
+<tr>
+<td>Outliner organisation</td>
+<td>Viewer runtime</td>
+<td>Loaded meshes grouped into per-discipline collections (<code>Loaded_{building}_{DISC}</code>) instead of per-batch.</td>
+</tr>
+<tr>
+<td>Auto clip</td>
+<td>Viewer runtime</td>
+<td><code>clip_end</code> auto-set proportional to model extent on preview load.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="124-the-boundary">§12.4 The Boundary<a class="headerlink" href="#124-the-boundary" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>IFC → extraction → extracted.db → sandbox builder → sandbox.db
+                                                         ↓
+                         component_library.db ──→ RTree viewer (Blender)
+                         (geometry_hash_redirect)        ↑
+                                                    library.blend
+
+DAGCompiler → ERP.db → output.db ─────────────────→ RTree viewer (read-only)
+</code></pre></div>
+<p>The redirect table lives in <code>component_library.db</code> — the same DB that stores
+<code>component_geometries</code> (mesh BLOBs) and <code>surface_styles</code>. It is a <strong>library
+concern</strong>, not a compilation concern. DAGCompiler never reads it.</p>
+<p>The viewer reads from two sources:
+- <code>*_extracted.db</code> or <code>sandbox.db</code> — elements, transforms, rtree index
+- <code>component_library.db</code> — redirect rules, mesh BLOBs (for full load path)
+- <code>library.blend</code> — pre-baked meshes (for stingy load path)</p>
+<p>No viewer action writes back to any pipeline DB.</p>
+<h3 id="125-risk-assessment">§12.5 Risk Assessment<a class="headerlink" href="#125-risk-assessment" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Likelihood</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Redirect table has wrong correction values</td>
+<td>Low</td>
+<td><code>geometry_redirect.py</code> auto-computes corrections by comparing dominant rotations between deprecated and canonical hashes. Dry-run mode shows planned corrections before commit.</td>
+</tr>
+<tr>
+<td>Re-extraction overwrites hash in extracted DB</td>
+<td>None</td>
+<td>Extracted DBs are never modified by the viewer. Re-extraction produces fresh data from source IFC. The redirect table handles discrepancies at runtime.</td>
+</tr>
+<tr>
+<td>DAGCompiler reads redirect table</td>
+<td>None</td>
+<td>DAGCompiler connects to <code>ERP.db</code> and <code>component_library.db</code> for <code>component_geometries</code> only. It does not query <code>geometry_hash_redirect</code>.</td>
+</tr>
+<tr>
+<td>Rotation correction applied to wrong element</td>
+<td>Very low</td>
+<td>Guard: correction only fires when <code>abs(element_rotation - expected_deprecated_rotation) &lt; 0.01 rad</code>. Elements already at correct orientation pass through untouched.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="126-admin-tool">§12.6 Admin Tool<a class="headerlink" href="#126-admin-tool" title="Permanent link">&para;</a></h3>
+<p><code>tools/geometry_redirect.py</code> — back-office CLI for managing redirects.</p>
+<ul>
+<li>Scans all <code>*_extracted.db</code> to discover duplicate hashes per element type</li>
+<li>Shows vertex count, instance count, dominant rotation per hash</li>
+<li>Auto-computes rotation correction when canonical and deprecated hashes differ</li>
+<li>Writes redirect + correction to <code>component_library.db</code></li>
+<li>Supports <code>--list</code>, <code>--remove</code>, <code>--undo</code> for housekeeping</li>
+<li>Requires <code>--confirm</code> for mutations; default is dry-run</li>
+</ul>
+<p>See <a href="../DATA_MODEL/">DATA_MODEL.md</a> §4 (BlendMeshResolver) for the redirect table schema and diagnostic procedure.</p>
 
 
 

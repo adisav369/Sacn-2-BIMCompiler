@@ -2912,6 +2912,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Performance (sandbox_1M, S184 2026-04-13)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#s185-performance-multi-pass-pre-warm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S185 Performance — Multi-Pass Pre-Warm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s186-performance-smart-overnight-offline-bake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S186 Performance — Smart Overnight + Offline Bake
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2926,10 +2954,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#files" class="md-nav__link">
+  <a href="#files-technical-section" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Files
+        Files — Technical Section
       
     </span>
   </a>
@@ -3038,6 +3066,14 @@ paradigm with a database cursor attached to a spatial GPU renderer.</p>
           │  pre-warmed meshes  │  &lt;1s per MESH press
           │  from library.blend │  one named collection
           │  LOAD / SHRED       │  non-destructive
+          └──────────┬──────────┘
+                     │  on OVERNIGHT (large building)
+          ┌──────────▼──────────┐
+          │  Smart Bake Engine  │  S186
+          │  background process │  blender --background
+          │  fresh scene per    │  no O(n) penalty
+          │  building, 36s/48K  │  linked refs → 2MB
+          │  4 cores parallel   │  1M city &lt; 10 min
           └─────────────────────┘
 </code></pre></div>
 <hr />
@@ -3237,16 +3273,179 @@ Ultra smooth navigation with no lag on a normal laptop.</strong></p>
 </tr>
 <tr>
 <td>Building drill-down</td>
-<td>&lt;0.5s (+ background pre-warm ~2s, invisible)</td>
+<td>&lt;0.5s (+ background pre-warm, invisible)</td>
 </tr>
 <tr>
-<td>Mesh load (viewport)</td>
-<td><strong>&lt;1s</strong> (pre-warmed, viewport-centre query, batch transforms)</td>
+<td>Mesh load (pre-warmed)</td>
+<td><strong>&lt;1s</strong> (all meshes cached, viewport-centre query, batch transforms)</td>
+</tr>
+<tr>
+<td>Mesh load (cold)</td>
+<td>~2.5s (library.blend open overhead per batch)</td>
 </tr>
 </tbody>
 </table>
+<h3 id="s185-performance-multi-pass-pre-warm">S185 Performance — Multi-Pass Pre-Warm<a class="headerlink" href="#s185-performance-multi-pass-pre-warm" title="Permanent link">&para;</a></h3>
+<p>When a building is selected (L1 drill-in), the pre-warm timer links mesh
+datablocks from <code>library.blend</code> in batches of 800 every 0.5s. This runs in
+the background while the user reads the cockpit. For a building with 2,000+
+unique geometry hashes, 3 passes complete in ~7s — all invisible.</p>
+<p>By the time the user presses +MESH, all meshes are already in <code>bpy.data.meshes</code>.
+The stingy loader skips <code>libraries.load()</code> entirely (<code>link=0ms</code> in logs),
+reducing per-press time from ~2.5s to <strong>&lt;0.5s</strong> for placement-only work.</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Before (S184)</th>
+<th>After (S185)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pre-warm cap</td>
+<td>800 hashes (one-shot)</td>
+<td>Unlimited (multi-pass)</td>
+</tr>
+<tr>
+<td>+MESH cold (library.blend open)</td>
+<td>~2.5s per press</td>
+<td>~2.5s first press only</td>
+</tr>
+<tr>
+<td>+MESH warmed</td>
+<td>&lt;1s</td>
+<td><strong>&lt;0.5s</strong> (link=0ms)</td>
+</tr>
+<tr>
+<td>Bottleneck</td>
+<td><code>libraries.load()</code> per press</td>
+<td>Eliminated by pre-warm</td>
+</tr>
+</tbody>
+</table>
+<p>Other S185 optimisations:
+- <code>matrix_basis</code> single write (replaces <code>location</code> + <code>rotation_euler</code>)
+- Deferred scene link for new collections (avoids O(n²) collection sync)
+- Duplicate mesh skip (already-loaded objects not re-created)
+- Back-to-front depth ordering (farthest from camera loads first)
+- Auto <code>clip_end</code> proportional to model extent (no manual View End Clip)</p>
 <p>Scales to 10M+ elements with no architectural changes.
 The DB is the ceiling, not the viewer.</p>
+<hr />
+<h3 id="s186-performance-smart-overnight-offline-bake">S186 Performance — Smart Overnight + Offline Bake<a class="headerlink" href="#s186-performance-smart-overnight-offline-bake" title="Permanent link">&para;</a></h3>
+<p>The overnight modal loader degrades on large buildings because Blender's scene graph
+is O(n) — each new object is slower than the last. Hospital (63K elements) starts at
+2.4s/batch and reaches 6.3s/batch by 12K objects, trending toward 3.4 hours.</p>
+<p><strong>Smart Overnight</strong> detects this. After 2,000 elements it computes:
+- Online ETA from rolling batch average
+- Offline estimate from bake benchmarks</p>
+<p>If online ETA exceeds offline by 5x, it offers to switch:</p>
+<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────┐
+│  At this rate: ~1.8h                        │
+│  Offline bake: ~73s                         │
+│                                             │
+│  [SWITCH TO OFFLINE]     [KEEP GOING]       │
+└─────────────────────────────────────────────┘
+</code></pre></div>
+<p>On accept: a background <code>blender --background --factory-startup</code> subprocess
+bakes the entire building in a fresh empty scene. The user's viewport stays
+fully interactive — orbit, search, mesh other buildings. When the subprocess
+finishes, partial objects are shredded and the complete building links into
+the viewport instantly.</p>
+<p><strong>Why it's fast:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Factor</th>
+<th>Overnight modal</th>
+<th>Offline bake</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scene graph</td>
+<td>O(n) — 63K objects growing</td>
+<td>Fresh empty — always O(1)</td>
+</tr>
+<tr>
+<td>Library opens</td>
+<td>Per-batch (2.7s × hundreds)</td>
+<td>Once (67s total)</td>
+</tr>
+<tr>
+<td>Mesh refs</td>
+<td>Linked per batch</td>
+<td>Linked in one call</td>
+</tr>
+<tr>
+<td>Viewport</td>
+<td>Redraws every tick</td>
+<td>No viewport (<code>--background</code>)</td>
+</tr>
+<tr>
+<td>Result</td>
+<td>Trends to 3.4h, may crash</td>
+<td>Deterministic, always completes</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Measured results:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Building</th>
+<th>Elements</th>
+<th>Unique meshes</th>
+<th>Bake time</th>
+<th>File size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Duplex</td>
+<td>1,169</td>
+<td>650</td>
+<td>6.4s</td>
+<td>197KB</td>
+</tr>
+<tr>
+<td>Terminal</td>
+<td>48,428</td>
+<td>7,150</td>
+<td><strong>36.6s</strong></td>
+<td>~2MB</td>
+</tr>
+<tr>
+<td>Hospital</td>
+<td>63,917</td>
+<td>23,045</td>
+<td><strong>123s</strong></td>
+<td>5.6MB</td>
+</tr>
+</tbody>
+</table>
+<p><strong>City-scale extrapolation (1,061,736 elements, 25 buildings):</strong></p>
+<p>Background parallel Blender sessions (up to 4 instances on 4 CPU cores) can
+resolve a full 1-million-element city in under 10 minutes. Total baked file
+size: ~75MB. Previously the same city trended toward 3.5 hours with crashes
+on save.</p>
+<p>Each subprocess is a separate OS process — not a Python thread. Blender
+remains single-threaded per process, but 4 processes run on 4 cores
+simultaneously. The operating system handles parallelism, not Blender.</p>
+<p>The baked <code>.blend</code> files use linked mesh references to <code>library.blend</code> (276MB,
+shared). No mesh data is duplicated. A complete building is just transforms +
+collection hierarchy. Save takes seconds. Reopen resolves the links
+automatically.</p>
+<figure style="margin: 24px 0; text-align: center;">
+  <img src="../assets/images/46kTerminal73secs.png" alt="48K Terminal building baked in 36s — background parallel Blender sessions" width="100%">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
+    Terminal building (48,428 elements) baked in 36.6 seconds via background subprocess.
+    Up to 4 parallel Blender instances can resolve a 1-million-element city under 10 minutes
+    at ~75MB total file size. Previously trended to 3.5 hours with save crashes.
+  </figcaption>
+</figure>
+
 <hr />
 <h2 id="geo-hash-hell-solved-s180">Geo Hash Hell — SOLVED (S180)<a class="headerlink" href="#geo-hash-hell-solved-s180" title="Permanent link">&para;</a></h2>
 <p>When loading meshes from library.blend, Blender renames datablocks that
@@ -3258,7 +3457,8 @@ elements — sprinklers, doors, windows, structural members. Stale-selection bug
 (<code>_selected_element</code> not cleared on new building drill-in) also fixed. No
 further geo hash hell reports. This is considered closed.</p>
 <hr />
-<h2 id="files">Files<a class="headerlink" href="#files" title="Permanent link">&para;</a></h2>
+<h2 id="files-technical-section">Files — Technical Section<a class="headerlink" href="#files-technical-section" title="Permanent link">&para;</a></h2>
+<p>Source root: <code>/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/</code></p>
 <table>
 <thead>
 <tr>
@@ -3268,27 +3468,27 @@ further geo hash hell reports. This is considered closed.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>federation/bbox_visualization.py</code></td>
-<td>RTree GPU batches, draw handler, search/pick functions</td>
+<td><code>bbox_visualization.py</code></td>
+<td>RTree GPU batches, draw handler, search/pick, <code>_load_progress</code>, <code>_loaded_collections</code></td>
 </tr>
 <tr>
-<td><code>federation/discipline_legend.py</code></td>
+<td><code>discipline_legend.py</code></td>
 <td>GPU overlay (bottom-right, discipline colors + search hint)</td>
 </tr>
 <tr>
-<td><code>federation/operator.py</code></td>
-<td>FedRTreeSearch, FedRTreeFlyToResult, FedRTreeFlyToElement, FedRTreePick</td>
+<td><code>operator.py</code></td>
+<td>FedRTreeSearch, FedRTreeFlyToResult, FedRTreeFlyToElement, FedRTreePick, FedRTreeLoadMesh</td>
 </tr>
 <tr>
-<td><code>federation/ui.py</code></td>
-<td>BIM_PT_rtree_inspector (N-panel, bl_order=0)</td>
+<td><code>ui.py</code></td>
+<td>BIM_PT_rtree_inspector (N-panel, bl_order=0) — cockpit panel, discipline bars, building list</td>
 </tr>
 <tr>
-<td><code>federation/prop.py</code></td>
-<td>rtree_search, rtree_result_<em>, rtree_picked_</em> properties</td>
+<td><code>prop.py</code></td>
+<td>rtree_search, rtree_result_<em>, rtree_picked_</em>, rtree_bld_* discipline counts</td>
 </tr>
 <tr>
-<td><code>federation/__init__.py</code></td>
+<td><code>__init__.py</code></td>
 <td>operator + panel registration</td>
 </tr>
 <tr>

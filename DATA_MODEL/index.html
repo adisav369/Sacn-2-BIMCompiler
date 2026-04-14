@@ -4670,6 +4670,45 @@ Canonical mesh <code>795e6eb5665d5b31</code> = JKR ME18 sprinkler head upright (
 <p>Rule store: <code>component_library.db → geometry_hash_redirect</code>
 Admin tool: <code>tools/geometry_redirect.py</code>
 Spec: <code>internal/BlendMeshResolver.md</code></p>
+<p><strong>Rotation Correction — diagnosing and fixing orientation mismatches</strong></p>
+<p>When a deprecated mesh is replaced by a canonical mesh, the element's stored
+<code>rotation_x/y/z</code> (in <code>element_transforms</code>) may no longer be correct. Different
+IFC families model the same object with different local-axis conventions — e.g.
+Revit sprinklers are modeled inverted (Z-down) with <code>rotation_x = π</code> to flip
+them right-side up, while Terminal JKR sprinklers are Z-up with <code>rotation_x = 0</code>.</p>
+<p><strong>How to diagnose:</strong></p>
+<ol>
+<li>Load a building with redirected elements via RTree +MESH</li>
+<li>If elements appear upside-down or misaligned in their bounding boxes:</li>
+<li>Query the rotation pattern of affected elements vs the canonical source:
+   <div class="highlight"><pre><span></span><code><span class="c1">-- Affected building (e.g. Hospital):</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">round</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">rotation_x</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="n">round</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">rotation_y</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="n">round</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">rotation_z</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">elements_meta</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="k">JOIN</span><span class="w"> </span><span class="n">element_instances</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">guid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="p">.</span><span class="n">guid</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">element_transforms</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">guid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">guid</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="k">lower</span><span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">element_name</span><span class="p">)</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%sprinkler%&#39;</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">round</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">rotation_x</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="n">round</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">rotation_y</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="n">round</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">rotation_z</span><span class="p">,</span><span class="mi">2</span><span class="p">);</span>
+
+<span class="c1">-- Repeat for the canonical source building (e.g. Terminal)</span>
+</code></pre></div></li>
+<li>The difference in rotation between the two is the correction needed.
+   Example: Hospital has <code>rotation_x = π</code>, Terminal has <code>rotation_x = 0</code>.
+   Correction = <code>rotation_x_correction = -π</code> (cancels the π flip).</li>
+</ol>
+<p><strong>How to apply:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Add correction columns (one-time, already done):</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">geometry_hash_redirect</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">rotation_x_correction</span><span class="w"> </span><span class="nb">REAL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">.</span><span class="mi">0</span><span class="p">;</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">geometry_hash_redirect</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">rotation_y_correction</span><span class="w"> </span><span class="nb">REAL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">.</span><span class="mi">0</span><span class="p">;</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">geometry_hash_redirect</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">rotation_z_correction</span><span class="w"> </span><span class="nb">REAL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">.</span><span class="mi">0</span><span class="p">;</span>
+
+<span class="c1">-- Set correction for affected redirects:</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">geometry_hash_redirect</span>
+<span class="k">SET</span><span class="w"> </span><span class="n">rotation_x_correction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="mi">3</span><span class="p">.</span><span class="mi">14159265358979</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">deprecated_hash</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;bae71afd973eed3a&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;bd5df7dd600f7582&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">...);</span>
+</code></pre></div>
+<p>The stingy loader (<code>FedRTreeLoadMesh</code>) reads the correction at load time and
+applies it only when the element's stored rotation matches the deprecated
+pattern (within 0.01 rad). Elements already at correct orientation are untouched.
+Extracted DBs are never modified — they stay faithful to the source IFC.</p>
 </blockquote>
 <hr />
 <h2 id="5-cross-db-fk-map">5. Cross-DB FK Map<a class="headerlink" href="#5-cross-db-fk-map" title="Permanent link">&para;</a></h2>

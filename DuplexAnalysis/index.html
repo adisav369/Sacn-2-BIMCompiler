@@ -2852,6 +2852,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#s185-void-filter-re-extraction-2026-04-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S185 — Void Filter + Re-extraction (2026-04-14)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extractor-choice-extractifctodb_openpy-vs-extractifctodbpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §Extractor Choice — extractIFCtoDB_open.py vs extractIFCtoDB.py
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§Extractor Choice — extractIFCtoDB_open.py vs extractIFCtoDB.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-extractifctodb_openpy-is-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What extractIFCtoDB_open.py is for
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-extractifctodb_openpy-does-not-handle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What extractIFCtoDB_open.py does NOT handle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-ifcopeningelement-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What IfcOpeningElement is
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-the-two-extractors-differ" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the two extractors differ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-duplex-is-affected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Duplex is affected
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3874,6 +3957,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#s185-void-filter-re-extraction-2026-04-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S185 — Void Filter + Re-extraction (2026-04-14)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extractor-choice-extractifctodb_openpy-vs-extractifctodbpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §Extractor Choice — extractIFCtoDB_open.py vs extractIFCtoDB.py
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§Extractor Choice — extractIFCtoDB_open.py vs extractIFCtoDB.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-extractifctodb_openpy-is-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What extractIFCtoDB_open.py is for
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-extractifctodb_openpy-does-not-handle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What extractIFCtoDB_open.py does NOT handle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-ifcopeningelement-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What IfcOpeningElement is
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-the-two-extractors-differ" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the two extractors differ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-duplex-is-affected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Duplex is affected
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4860,24 +5026,133 @@ SUPPLY_DIFFUSER) resolve via LIKE match to real IFC meshes.</p>
 W-BPARTNER-SCHEDULE, W-BPARTNER-COMPLETENESS). See <a href="../DISC_VALIDATION_DB_SRS/#12h-c_bpartner-catalog-segregation--re-vs-co">DISC_VALIDATION_DB_SRS.md §12h</a>.</p>
 <hr />
 <h2 id="s184-full-load-geometry-corruption-2026-04-13">§S184 — Full Load Geometry Corruption (2026-04-13)<a class="headerlink" href="#s184-full-load-geometry-corruption-2026-04-13" title="Permanent link">&para;</a></h2>
-<p><strong>Symptom:</strong> Duplex and other small houses (Jasmin, etc.) show blocky/flat walls —
-door and window openings not visible as cutouts. Terminal, Hospital, SampleHouse
-are fine with the same library.blend and Full Load path.</p>
-<p><strong>Assertion:</strong> The IFC source and original extraction are correct. This is NOT
-an IFC quality issue — Duplex was pristine in earlier sessions.</p>
-<p><strong>Suspected cause:</strong> Something broke during heavy refactoring sessions (S173–S183)
-in the library.blend bake or library fill pipeline. The data path:
-<code>extracted.db:base_geometries</code> → <code>component_library.db:component_geometries</code> →
-<code>library.blend</code> (bake) → Full Load (<code>link=True</code>).</p>
-<p><strong>Evidence:</strong>
-- <code>Duplex_extracted_original.db</code> backup preserved (648 hashes, 100% coverage in library)
-- BLOB bytes in component_library match expected sizes (verified S184)
-- Wall hashes show 24-48 vertices in DB (proper cutouts, not boxes)
-- Yet viewport renders them as flat boxes</p>
-<p><strong>Confirmed in sandbox:</strong> Duplex is also blocky in sandbox_1M RTree+MESH path —
-same appearance as Full Load. This rules out Full Load code as the cause.
-The geometry in library.blend itself is degraded for Duplex.</p>
-<p><strong>Status:</strong> OPEN — deferred from S184. See <code>prompts/S185_duplex_investigation.md</code>.</p>
+<p><strong>Symptom:</strong> Duplex and other small houses (Jasmin, HausGH, BimWhale_Tall) show
+solid boxes inside door/window openings — the wall mesh has correct cutouts but
+50 <code>IfcOpeningElement</code> records are rendered as solid box geometry filling the voids.</p>
+<p><strong>Root cause (S185):</strong> The library linker (<code>stage2_library_linker.py</code>) loads ALL
+rows from <code>elements_meta</code> with no <code>ifc_class</code> filter. <code>IfcOpeningElement</code> is an
+IFC void instruction (boolean subtraction), not visible geometry. The extractor
+(<code>geom.iterator()</code>) emits it as a separate element with solid box geometry — this
+has always been the case and is correct IFC behaviour. The old tessellation loader
+(pre-S173) joined on <code>element_geometry</code> which didn't exist in meshless DBs, so
+openings were inadvertently excluded. The S173 library pipeline made them visible.</p>
+<p><strong>Fix (S185, 2026-04-14):</strong>
+- <code>stage2_library_linker.py</code>: added <code>WHERE m.ifc_class NOT IN ('IfcOpeningElement')</code>
+  to both query paths (single-building + RTree/GN). Proof line: <code>§VOID_FILTER</code>.
+- Missing LOD meshes now raise <code>§ILLEGAL_MISSING_LOD</code> (hard stop).
+- <code>extractIFCtoDB.py</code>: parametric fallback (<code>bbox_from_placement</code>) raises
+  <code>§ILLEGAL_PARAMETRIC_FALLBACK</code> (hard stop, no synthetic boxes).
+- All 4 affected buildings re-extracted fresh on 2026-04-14 with <code>extractIFCtoDB.py</code>.</p>
+<p><strong>Status:</strong> FIXED — Duplex loads correctly, wall cutouts visible, no solid boxes.</p>
+<hr />
+<h2 id="s185-void-filter-re-extraction-2026-04-14">§S185 — Void Filter + Re-extraction (2026-04-14)<a class="headerlink" href="#s185-void-filter-re-extraction-2026-04-14" title="Permanent link">&para;</a></h2>
+<p><strong>Root cause confirmed:</strong> <code>IfcOpeningElement</code> was always in the extracted DB
+(50 rows in Duplex). Both <code>extractIFCtoDB.py</code> and <code>extractIFCtoDB_open.py</code> emit
+it — the extractor is not at fault. The regression was in the library linker
+loading path introduced in S173.</p>
+<p><strong>Buildings re-extracted (2026-04-14):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Building</th>
+<th>Elements</th>
+<th>Hashes</th>
+<th>IfcOpeningElement</th>
+<th>Extractor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Duplex</td>
+<td>1,169</td>
+<td>650</td>
+<td>50 (filtered)</td>
+<td><code>extractIFCtoDB.py</code> PATH 2</td>
+</tr>
+<tr>
+<td>AC90_Jasmin</td>
+<td>84</td>
+<td>66</td>
+<td>23 (filtered)</td>
+<td><code>extractIFCtoDB.py</code></td>
+</tr>
+<tr>
+<td>AC9_HausGH</td>
+<td>260</td>
+<td>152</td>
+<td>67 (filtered)</td>
+<td><code>extractIFCtoDB.py</code></td>
+</tr>
+<tr>
+<td>BimWhale_Tall</td>
+<td>81</td>
+<td>28</td>
+<td>26 (filtered)</td>
+<td><code>extractIFCtoDB.py</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Not re-extracted:</strong> Terminal, Hospital, Clinic, SampleHouse — correct, untouched.</p>
+<p><strong>Linker proof line (in library_link log):</strong>
+<div class="highlight"><pre><span></span><code>§VOID_FILTER excluded 50 IfcOpeningElement (void instructions, not geometry)
+</code></pre></div></p>
+<p><strong>Safety hardening:</strong>
+- <code>§ILLEGAL_PARAMETRIC_FALLBACK</code> — extractor aborts if tessellation fails
+  (no synthetic 1×1×1 boxes). Add class to <code>NON_GEOMETRIC_CLASSES</code> or fix source.
+- <code>§ILLEGAL_MISSING_LOD</code> — linker aborts if any geometry_hash not found in
+  library.blend. Re-bake library or fix extraction.</p>
+<hr />
+<h2 id="extractor-choice-extractifctodb_openpy-vs-extractifctodbpy">§Extractor Choice — <code>extractIFCtoDB_open.py</code> vs <code>extractIFCtoDB.py</code><a class="headerlink" href="#extractor-choice-extractifctodb_openpy-vs-extractifctodbpy" title="Permanent link">&para;</a></h2>
+<h3 id="what-extractifctodb_openpy-is-for">What <code>extractIFCtoDB_open.py</code> is for<a class="headerlink" href="#what-extractifctodb_openpy-is-for" title="Permanent link">&para;</a></h3>
+<p>Designed for <strong>merged multi-discipline IFC files</strong> — a single <code>.ifc</code> that already
+combines ARC + MEP + STR disciplines (e.g. <code>LTU_AHouse_merged.ifc</code>). It adds:</p>
+<ul>
+<li>Fine-grained discipline map (<code>VENT</code>/<code>HVAC</code>/<code>HEAT</code>/<code>PLB</code>/<code>SAN</code> instead of generic <code>MEP</code>)</li>
+<li>Built-in unit-scale fix for IFC2x3 Swedish/German files (mm → m)</li>
+<li>Minimal blacklist — only 5 truly non-extractable types blocked</li>
+</ul>
+<p><strong>Never modify <code>extractIFCtoDB.py</code>.</strong> <code>_open.py</code> is a standalone fork for this
+specific file pattern.</p>
+<h3 id="what-extractifctodb_openpy-does-not-handle">What <code>extractIFCtoDB_open.py</code> does NOT handle<a class="headerlink" href="#what-extractifctodb_openpy-does-not-handle" title="Permanent link">&para;</a></h3>
+<p>It uses <code>create_shape()</code> per element, iterating all <code>IfcProduct</code> subtypes.
+<code>IfcOpeningElement</code> is a subtype of <code>IfcProduct</code>. It is not in <code>SKIP_CLASSES</code>,
+so <code>create_shape()</code> is called on it and a solid box is returned and stored.</p>
+<h3 id="what-ifcopeningelement-is">What <code>IfcOpeningElement</code> is<a class="headerlink" href="#what-ifcopeningelement-is" title="Permanent link">&para;</a></h3>
+<p>In IFC, <code>IfcOpeningElement</code> is <strong>not a physical object</strong>. It is the instruction
+"cut a void of this shape here." The void has no material, no surface, no mass.
+It is geometry-as-subtraction: a wall references its openings via
+<code>IfcRelVoidsElement</code>, and the resulting wall mesh is the wall-minus-openings.</p>
+<h3 id="how-the-two-extractors-differ">How the two extractors differ<a class="headerlink" href="#how-the-two-extractors-differ" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Extractor</th>
+<th>Method</th>
+<th><code>IfcOpeningElement</code> result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>extractIFCtoDB.py</code></td>
+<td><code>geom.iterator()</code></td>
+<td>C++ boolean subtraction — consumed internally, never emitted as an element</td>
+</tr>
+<tr>
+<td><code>extractIFCtoDB_open.py</code></td>
+<td><code>create_shape()</code> per element</td>
+<td>Extracted as a solid box and inserted into <code>element_instances</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="why-duplex-is-affected">Why Duplex is affected<a class="headerlink" href="#why-duplex-is-affected" title="Permanent link">&para;</a></h3>
+<p><code>Ifc2x3_Duplex_Federated.ifc</code> is a <strong>federated</strong> file — it contains both ARC
+and MEP disciplines. This makes it superficially similar to the merged
+multi-discipline files <code>_open.py</code> was designed for. However, Duplex should still
+be extracted with <code>extractIFCtoDB.py</code> (or <code>bake_all_sandbox.sh</code> PATH 2) because
+its disciplines are already federated in one file, not merged by our pipeline.</p>
+<p><strong>Rule:</strong> <code>_open.py</code> is only for files produced by <code>extract_merge_disciplines.py</code>
+— i.e., files with the <code>_merged.ifc</code> suffix. All other IFC files use
+<code>extractIFCtoDB.py</code>.</p>
 
 
 
