@@ -38,7 +38,7 @@ CBD_BUILDINGS = [
 CLINIC_BUILDINGS = [
     "Clinic_extracted.db",             # 16,480
     "Ifc4_Revit_extracted.db",         # 5,002
-    "WBDG_Office_MEP_extracted.db",    # 5,678
+    "WBDG_Office_extracted.db",        # 7,180
     "HITOS_extracted.db",              # 1,000
     "HHS_Office_MEP_extracted.db",     # 3,964
     "HHS_Office_ARC_extracted.db",     # 2,745

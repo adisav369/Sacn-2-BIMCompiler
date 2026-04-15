@@ -115,7 +115,7 @@ NO_BLOBS_BUILDINGS=(
     "SampleHouse|Ifc4_SampleHouse.ifc|IFC|single"
     "HospitalGarage|HospitalGarage_IFC4.ifc|IFC|single"
     "HITOS|HITOS_070308.ifc|IFC|single"
-    "WBDG_Office_MEP|WBDG_Office_MEP_IFC2x3.ifc|IFC|single"
+    "WBDG_Office|WBDG_Office_*_IFC2x3.ifc|IFC|merge"
     "Ifc4_Revit|Ifc4_Revit_*.ifc|UNMERGED|merge"
     "LTU_AHouse|LTU_AHouse_*.ifc|UNMERGED|merge"
     "HHS_Office_MEP|opensourceBIM_HHS_Office_MEP.ifc|IFC|single"
