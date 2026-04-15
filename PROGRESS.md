@@ -2,6 +2,8 @@
 
 > **⛔ Don't run ANY git command on `library/component_library.db`.** No stash, checkout, restore, reset. S63 lost 2400+ products this way.
 
+> **⛔ Version stamp:** Federation code has `_FED_VERSION` in `operator.py`. Bump it on every code change. Console prints `[S187a]` on Preview — if it doesn't match, Blender is running stale bytecode. Restart Blender. Files are hard-linked (same inode), no copy needed.
+
 > **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and PROGRESS
 > links to them. Keep this file under 80 lines.
 
@@ -25,6 +27,15 @@
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
+
+**S187 (2026-04-15):** Shred baked instances, collapsible panel, version stamp, pre-S185 DB guard — DONE.
+  - Shred handles `Baked_*` instance empties (per-discipline) + `Loaded_*` (existing). Auto-clean empty parents.
+  - Collapsible element list — auto-collapses during overnight/bake, manual triangle toggle.
+  - SHORT-CUT countdown shows `+~25s link` upfront. Wait cursor during blocking link. No two-phase state.
+  - Pre-S185 DB rejection: clean error instead of traceback on old extracted DBs.
+  - `_FED_VERSION` stamp on Preview console (`[S187b]`). Storey fly-to `KeyError: 'bbox'` fixed (rtree JOIN).
+  - Flickering fix: `_baking_buildings` registered before `_overnight_running` cleared.
+  - **Next:** S188 — collapsible discipline bars, overnight for Hospital (63K proof), delta bake.
 
 **S186 (2026-04-14):** RTree hierarchy, overnight loader, dynamic disciplines, bake scripts — DONE.
   - **Session 1:** Hierarchical drill-down (L0→L1→L2), dynamic disciplines, single-building DB guard, overnight modal loader, per-batch mesh linking, project name in Outliner. See `prompts/S186_rtree_federation.md`.

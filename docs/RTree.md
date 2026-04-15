@@ -341,6 +341,55 @@ automatically.
   </figcaption>
 </figure>
 
+### S187 — Shred Baked, Collapsible Panel, Version Stamp
+
+**Shred now handles both load patterns:**
+
+| Pattern | Source | Shred action |
+|---------|--------|-------------|
+| `Loaded_*` collections | Stingy Mesh Loader | Unlink objects, remove collection |
+| `Baked_*` collection instances | Smart Bake Engine | Delete `*_inst` empties per discipline |
+
+Select `T0_Hospital_MEP_inst` → SHRED → only MEP removed, others remain.
+Select nothing → SHRED removes last `Loaded_*` or last `Baked_*` building.
+Empty `Baked_*` parent auto-cleaned.
+
+**Collapsible element list (S187):** The L2 element list collapses to a single
+header row when overnight/bake is active, keeping the SHORT-CUT button visible
+without scrolling. Triangle toggle for manual collapse at any time.
+
+**SHORT-CUT countdown now shows total cost upfront:**
+```
+⚡ SHORT-CUT  ~37s + ~25s link
+```
+The `+25s link` warns that Blender will freeze briefly at the end when linking
+the baked file. Wait cursor shown during link. No two-phase state splitting.
+
+**Pre-S185 DB guard:** LOAD MESH and OVERNIGHT reject extracted DBs that lack
+rotation columns (pre-S185 schema). Clean error in status bar:
+"DB too old — re-extract with current pipeline."
+
+**Version stamp:** `_FED_VERSION` in `operator.py` prints `[S187b]` on Preview.
+Confirms running code matches source after Blender restart.
+
+**Storey element fly-to fix:** Storey-level top-10 query now includes rtree
+JOIN for bounding boxes. Fixes `KeyError: 'bbox'` crash when clicking an
+element after drilling into a storey.
+
+**Log evidence (Terminal 48K, 2026-04-15):**
+```
+[S186] §BAKE_SWITCH bld=Terminal partial=3650
+[S186] §BAKE_POLL bld=Terminal ~23,245/48,428 (48%) 35s elapsed ~37s left
+  [BAKE-SUB] §PROOF BAKE bld=Terminal placed=48428 no_mesh=0 no_xform=0
+             discs=['MEP','ACMV','ARC','STR','ELEC','FP'] 36.4s
+[S186] §BAKE_DONE bld=Terminal elapsed=40s
+[S186] §BAKE_SHRED bld=Terminal collections=2 objects=3767
+[S187] §BAKE_LINK bld=Terminal instances=6 total=48,428 link=24.1s
+```
+Viewport remained fully interactive during the 40s bake — storey drill-down,
+fly-to-element, and re-Preview all worked while the subprocess ran.
+File saved at 125.5KB (linked refs to library.blend, no mesh duplication).
+
 ---
 
 ## Geo Hash Hell — SOLVED (S180)
@@ -365,7 +414,7 @@ Source root: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`
 |------|------|
 | `bbox_visualization.py` | RTree GPU batches, draw handler, search/pick, `_load_progress`, `_loaded_collections` |
 | `discipline_legend.py` | GPU overlay (bottom-right, discipline colors + search hint) |
-| `operator.py` | FedRTreeSearch, FedRTreeFlyToResult, FedRTreeFlyToElement, FedRTreePick, FedRTreeLoadMesh |
+| `operator.py` | FedRTreeSearch, FedRTreeFlyToResult, FedRTreeFlyToElement, FedRTreePick, FedRTreeLoadMesh, FedRTreeShred (Loaded+Baked), FedRTreeOvernight, FedRTreeSwitchOffline, `_FED_VERSION` stamp |
 | `ui.py` | BIM_PT_rtree_inspector (N-panel, bl_order=0) — cockpit panel, discipline bars, building list |
 | `prop.py` | rtree_search, rtree_result_*, rtree_picked_*, rtree_bld_* discipline counts |
 | `__init__.py` | operator + panel registration |
@@ -382,6 +431,7 @@ Source root: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`
 - `docs/StressTest_1M.md` — the 1M element loading challenge and GN architecture
 - `prompts/S179_dlod_rtree_handoff.md` — corrected DLOD architecture
 - `prompts/S180_stingy_mesh_loader.md` — next session: picker fix + Load/Shred
+- `prompts/S187_overnight_panel_review.md` — S187 spec: instance validation, collapsible panels, shred fix
 
 ---
 
