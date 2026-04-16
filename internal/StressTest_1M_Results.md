@@ -578,3 +578,70 @@ may reset to bbox (0). Race condition between two writers on the same attribute.
 - `FedRTreeFlyToStorey` on LTU (125K): multi-second freeze
 - Query: rtree join for storey bbox + 10 elements over full table
 - Fix for S186 Session 2: pre-compute storey bboxes at `count_building` time
+
+---
+
+## S189 — BLOB Tessellation: library.blend Bypass (2026-04-16)
+
+### Architecture change
+
+All live mesh creation (Overnight modal, LOAD MESH click, bake subprocess) now
+reads geometry BLOBs from `component_library.db` via SQLite indexed lookup instead
+of opening `library.blend` (305MB) via `bpy.data.libraries.load()`.
+
+| Data source | Format | Access pattern | Per-batch cost |
+|-------------|--------|----------------|----------------|
+| library.blend (S188) | Blender native | Open 305MB, scan catalog, copy meshes | **1-2s** |
+| component_library.db (S189) | SQLite + binary BLOBs | Indexed lookup by geometry_hash | **<1ms** |
+
+Both contain the same pre-tessellated vertices/faces. The difference is container
+format: monolithic `.blend` file vs indexed database. `from_pydata()` adds ~5ms per
+unique mesh, but this is paid once (mesh cache) and eliminates the 1-2s file-open cost
+per batch.
+
+### What library.blend is still used for
+
+1. **Fat .blend reopen** — baked files contain meshes inline (Blender native format → instant GPU load)
+2. **Lean distribution** — linked meshes reference library.blend (see `docs/PackageDistro.md`)
+3. **Fallback** — if `component_library.db` is missing, code falls back to library.blend automatically
+
+### Chunk-parallel bake (new)
+
+Buildings ≥50K elements are split into up to 4 equal chunks, each baked by a
+separate `blob_tessellate_worker.py` subprocess. Each chunk produces a fat `.blend`.
+No merge-back — user reopens baked file directly ("BACKEND DONE. Don't Save. Reopen.").
+
+| Building | Elements | Chunks | Expected wall time | Before (S188) |
+|----------|----------|--------|--------------------|---------------|
+| Duplex | 1,169 | 1 | ~3s | 6s |
+| Clinic | ~14K | 1 | ~15s | ~30s |
+| Hospital | 63,917 | 4 | ~30-40s | 160s |
+| LTU | 125,698 | 4 | ~60s | ~5min |
+
+### ETA formula change
+
+S188 used library.blend-based estimate: `unique/7 × 0.005 + total × 0.001`.
+S189 BLOB path is faster: `unique/7 × 0.0015 + total × 0.0005`.
+
+### Proof tags (all timestamped HH:MM:SS.mmm)
+
+| Tag | Fires when | Content |
+|-----|-----------|---------|
+| `§CACHE library_db=` | Preview load | component_library.db resolved |
+| `§BLOB_SPAWN` | Worker launched | building, chunk N/M, PID |
+| `§BLOB_COMPLETE` | Worker exit 0 | elapsed, elements, file size |
+| `§BLOB_ALL_DONE` | All chunks done | total time, total elements |
+| `§BLOB_APPEND` | Chunk linked back | merge time, object count |
+| `§BAKE_POLL` | Every 30s | Progress, ETA |
+
+### Test results
+
+> **Populate after running tests — log timestamps are the evidence.**
+
+| Test | Building | Elements | §BLOB_SPAWN | §BLOB_COMPLETE | §BLOB_ALL_DONE | Wall time | Notes |
+|------|----------|----------|-------------|----------------|----------------|-----------|-------|
+| Small bake | | | | | | | |
+| Overnight | | | | | | | |
+| LOAD MESH | | | | | | | |
+| Hospital bake | | | | | | | |
+| 1M sandbox | | | | | | | |

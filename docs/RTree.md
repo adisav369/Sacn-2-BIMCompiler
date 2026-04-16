@@ -418,7 +418,8 @@ Source root: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`
 | `ui.py` | BIM_PT_rtree_inspector (N-panel, bl_order=0) — cockpit panel, discipline bars, building list |
 | `prop.py` | rtree_search, rtree_result_*, rtree_picked_*, rtree_bld_* discipline counts |
 | `__init__.py` | operator + panel registration |
-| `library/library.blend` | mesh source for Stingy Loader (276MB, 120K meshes) |
+| `library/component_library.db` | S189: BLOB mesh source (123K geometry hashes, SQLite indexed) |
+| `scripts/blob_tessellate_worker.py` | S189: per-chunk BLOB bake subprocess |
 | `DAGCompiler/lib/input/*_extracted.db` | extracted federation DBs (source of truth) |
 
 ---
@@ -445,7 +446,7 @@ breaks. The model is too large to hold in memory. The viewer stalls.
 The alternative is to treat the BIM model as a database, not a file.
 The compiled output of the IFC extraction pipeline — `elements_meta`,
 `elements_rtree`, `element_transforms` — is a queryable index.
-The geometry exists in `library.blend` as a mesh library.
+The geometry exists in `component_library.db` as tessellated BLOBs (S189).
 Nothing is loaded until asked.
 
 The user navigates by querying. The geometry appears on demand.

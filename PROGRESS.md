@@ -28,19 +28,23 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
+**S189 (2026-04-16):** BLOB tessellation — library.blend bypass, BACKEND bake+reopen UX. DONE.
+  - **BLOB tessellation:** Overnight, LOAD MESH, and bake subprocess now read geometry BLOBs from `component_library.db` via SQLite indexed lookup. No 305MB library.blend parse. Mesh creation: 3-11ms per batch (was 1-2s).
+  - **library.blend no longer required** for live loading or baking. Resolved independently from component_library.db. Kept only for lean distribution (linked meshes).
+  - **BACKEND button:** always visible alongside OVERNIGHT. User choice: watch meshes appear (OVERNIGHT) or bake in background (BACKEND). No need to start overnight first.
+  - **No merge-back:** baked .blend is self-contained. "BACKEND DONE. Don't Save. Reopen." button opens baked file directly, skips save dialog. Zero freeze.
+  - **Chunk-parallel bake:** buildings ≥50K elements split into up to 4 `blob_tessellate_worker.py` subprocesses. Terminal 48K = single worker, Hospital 64K = 4 chunks.
+  - **Material fix:** `from_pydata` meshes need `mesh.materials.append(None)` for per-object color. Fixed in worker and `_tessellate_from_blobs()`.
+  - **Timestamped logs:** all §PROOF tags print `HH:MM:SS.mmm` for cross-process correlation.
+  - **Cleanup:** removed old .blend/.blend1/IFC/logs from input/output folders (~97MB reclaimed).
+  - Terminal baked: 39MB, fast reopen, full element Outliner. Overnight BLOB batch_avg=3-11ms (mesh source), rising to 1.7s at 8K elements (Blender scene graph overhead, not our code).
+  - **Version:** `_FED_VERSION = "S189a"`
+
 **S188-RTree (2026-04-16):** Void filter, transparency, threshold link-back, parallel bake — DONE.
-  - **Mystery solved:** Full Load filters `IfcOpeningElement` (void instructions), Overnight/MESH didn't. Duplex 50, Clinic 410 solid boxes in openings. Fixed in all query paths.
-  - **Transparency:** Blender 5.0 EEVEE Next needs Principled BSDF + Alpha node (not just `diffuse_color`). Fixed in Overnight, LOAD MESH, bake script. Hospital ss_hits=141 proved.
-  - **Threshold link-back:** files ≥20MB skip merge-back, show "BLENDED — Reopen to view." Hospital 44MB was freezing 17min — now zero freeze.
-  - **Deferred element list:** populate only on IFC type click, not building click. Building envelope bbox cleared on drill-in.
-  - **surface_styles in sandbox:** `build_sandbox_1M.py` carries styles across buildings.
-  - **WBDG 928 BLOBs** copied to component_library.db. HHS_Office re-extracted as federated merge (100% coverage).
-  - **Library:** 123,573 meshes, 305MB library.blend (2 rebakes: +928 WBDG, +2204 HHS).
-  - **Parallel bake:** `FedRTreeBakeAll` operator, up to 4 subprocesses, queue drain. S188c.
-  - **Fat .blend proven:** Clinic 17MB saves fast, reopens <3s. Hospital 44MB self-contained.
-  - **Poll spam fixed:** logs every 30s, "ETA exceeded" once.
-  - **Part F spec:** threshold link-back, RED band UX, parallel spawn. `prompts/S188_rtree_ux_performance.md`
-  - **Next:** Part F — tessellate from DB BLOBs (skip 302MB library.blend read, 125s→10s), timer-based chunked loader (no viewport freeze)
+  - Void filter, transparency (Principled BSDF), deferred element list, surface_styles in sandbox.
+  - WBDG 928 BLOBs, HHS federated merge. Library: 123,573 meshes.
+  - Parallel bake (`FedRTreeBakeAll`), fat .blend proven, poll spam fixed.
+  - Part F spec: `prompts/S188_rtree_ux_performance.md`
 
 **S188-nD (2026-04-15):** Template-driven nD engine — 4D/5D/6D/7D/8D from JSON templates. DONE.
   - 6 JSON templates in `templates/` (phases, rates, carbon, lifecycle, safety, master formulas)
