@@ -113,6 +113,23 @@ Real IFC buildings are decomposed into reference databases. The compiler reads a
 
 ---
 
+## **Compile Once, Query Forever**
+
+<figure style="float: right; margin: -8px 0 8px 20px; max-width: 480px; text-align: center;">
+  <img src="assets/images/RTree.png" alt="RTree Query Engine — 1M elements, city-scale federation" width="480">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">1M+ elements across a city. Search, drill down, load mesh on demand. No model file opened.</figcaption>
+</figure>
+
+The industry loads the model, then queries it. This compiler inverts that too: the [RTree Query Engine](RTree.md) queries the spatial index and loads only what you ask for. One million elements render as GPU wireframes in 13 seconds — zero mesh in RAM, instant orbit. Press MESH and the Stingy Loader delivers exact IFC geometry for the elements around your camera in under one second. Press SHRED to clean up. The model is never fully loaded. It is always live.
+
+An earlier approach used Blender's Geometry Nodes to instance meshes via point clouds (S175–S184). At city scale the GN evaluation overhead made it unviable. The RTree GPU path resolved the speed problem by eliminating mesh loading from the default viewport entirely — wireframes from the database index, mesh on demand.
+
+[:octicons-arrow-right-24: RTree architecture and benchmarks](RTree.md) · [:octicons-arrow-right-24: 1M stress test](StressTest_1M.md)
+
+<div style="clear: right;"></div>
+
+---
+
 ## **We Got Eyes**
 
 The compiler can see. [BIMEyes](EYES_SRS.md) reduces every element's shape to three dimensionless ratios — planarity, elongation, squareness. A wall *must* be planar. A column *must* be elongated. A slab *must* be flat. These are mathematical facts, not heuristics.

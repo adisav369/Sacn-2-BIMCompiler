@@ -457,7 +457,7 @@ All output goes to `DAGCompiler/lib/output/`:
 
 ### Viewing Output
 
-The primary viewer is the **Bonsai Federation addon** in Blender, which reads output SQLite DBs directly — loading geometry, materials, and transparency from the database.
+The primary viewer is the **[RTree Query Engine](RTree.md)** — a spatial GPU renderer that displays 1M+ elements as wireframes from the database index, loading exact IFC mesh geometry on demand via the Stingy Mesh Loader. The **Bonsai Federation addon** provides multi-building federation queries and nD analytics (4D scheduling, 5D costing) from the same SQLite DBs.
 
 ---
 

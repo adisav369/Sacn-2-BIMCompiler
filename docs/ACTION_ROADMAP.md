@@ -6,7 +6,7 @@
 
 ---
 
-## What Exists Today (March 2026)
+## What Exists Today
 
 | Asset | Measure |
 |-------|---------|

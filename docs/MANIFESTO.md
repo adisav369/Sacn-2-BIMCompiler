@@ -542,10 +542,13 @@ This is the same "configure-to-order" pattern applied to the viewport:
 load only exceptions (what the user asked for), inherit the rest (wireframes from DB).
 No "sync", no reload, no waiting for things you did not ask for.
 
-**GN Mode** (in progress) extends this: camera-near elements get real mesh instances
-via Geometry Nodes, far elements stay as RTree wireframes. The RTree GPU path
-proved fast enough to be the primary viewer on its own — GN Mode adds the
-close-up LOD layer when needed, but is not required for the DB-driven workflow.
+An earlier approach explored **Geometry Nodes** (GN) to instance meshes via point
+clouds (S175–S184). At 500+ modifier trees the GN evaluation overhead reached
+8 minutes — unviable at city scale. The RTree GPU path resolved the speed
+problem: wireframes from the spatial index cost zero mesh RAM, and the Stingy
+Mesh Loader delivers exact IFC geometry on demand in under one second. GN
+instancing remains available for small-scale scenes but is not part of the
+production pipeline.
 
 ---
 

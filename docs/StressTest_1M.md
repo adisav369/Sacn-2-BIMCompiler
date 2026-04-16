@@ -31,110 +31,44 @@ The Library button (S174) creates one Blender object per element. At 1M elements
 - No camera-distance LOD (every element rendered equally)
 - Instance creation: ~800 objects/s → **20+ minutes** to load
 
-## The Solution: GN + DLOD + Progressive make_local()
+## The Solution: RTree GPU + Stingy Mesh Loader
 
-Three pieces working together:
+### Earlier Approach — GN Mode (S175–S184, halted)
 
-### 1. GN Mode (S175)
+Geometry Nodes (GN) were explored as the instancing layer: one point cloud per
+discipline, `Instance on Points` picking meshes by `hash_index`. At small scale
+(7K meshes) this loaded in under 2 seconds. At city scale (500+ modifier trees)
+GN evaluation overhead reached **8 minutes** — unviable. DLOD (distance-based
+LOD swaps) and progressive `make_local()` were implemented to mitigate, but the
+root cause — GN re-evaluating the full tree every frame — could not be fixed from
+Python. **GN Mode was halted at S184.**
 
-Instead of 1M individual objects, create **~13 GN objects** (one per discipline).
-Each object is a point cloud — every point = one element. GN "Instance on Points"
-picks the right mesh shape per point via `instance_index`.
+See `internal/GN_LINK_INVESTIGATION.md` and `internal/DLOD_SPEC.md` for the full
+investigation archive.
 
-- Outliner: 13 items (not 1M)
-- .blend save: 13 objects + templates (small)
-- Meshes loaded from `library.blend` into a hidden `_Templates` collection
+### Current Solution — RTree GPU Path (S184+)
 
-### 2. DLOD — Distance Level of Detail ([spec](../internal/DLOD_SPEC.md))
-
-A camera handler (depsgraph_update_post) that runs every frame:
-
-| Distance | LOD | What you see | Cost |
-|----------|-----|-------------|------|
-| >100m | LOD-0 | 8-vertex bbox proxy | ~96 bytes GPU |
-| 10-100m | LOD-1 | Real mesh, discipline color | Full mesh |
-| <10m | LOD-2 | Real mesh, full materials | Full mesh + material |
-
-Transition = swap `instance_index` on the GN point. No mesh creation or deletion.
-Max 500 swaps per frame to stay under 10ms budget.
-
-**Already implemented:** `dlod_handler.py` (666 lines, 3/3 self-test PASS).
-
-### 3. Progressive make_local() — The link=True Fix
-
-**The problem:** Loading template meshes from library.blend at scale.
-
-| Method | Time | Viewport | What it does |
-|--------|------|----------|-------------|
-| Append (`link=False`) | ~5-6 min | Smooth | Disk → .blend memory (slow disk I/O) |
-| Cache (`link=True`) | scales with N | **Frozen if GN reads cache** | Reads ALL vertex data into library arena |
-| Cache + make_local() | link + ~0.1ms/mesh | Smooth | Library arena → scene memory (direct pointer) |
-
-**Measured (S176, 2026-04-12):**
-- Terminal 7K meshes: `link=True` = **1.74s**, +~160MB RAM
-- Sandbox 108K meshes: `link=True` = **292s**, +2,494MB RAM
-- Rate: ~371 meshes/s — **link=True reads all vertex data, not just handles**
-- `make_local()` removed from `load_library_linked` (Full Load) — per-element objects
-  resolve linked refs once at assignment, not per frame. See `StressTest_1M_Results.md §S176`.
-
-**How it works:**
-- **`link=True`** reads vertex/face data for all requested meshes into Blender's library arena (RAM). Cost scales with mesh count and vertex data size.
-- **`make_local()`** copies one mesh from library arena to scene memory. RAM-to-RAM, fast (~0.1ms). Gives GN a direct pointer instead of library handle.
-- **GN geometry hell** was a scale problem: 63K+ objects in one collection × library dereference × 60fps = frozen. **Fixed by S176 chunking (CHUNK_SIZE=100)** — GN now walks ≤101 objects per chunk.
-- **make_local() status:** removed from Full Load path (S176). Still in GN streamer pending P2 FPS proof with linked chunks.
-
-**Progressive make_local() integrated with DLOD:**
+The RTree Query Engine resolved the speed problem by eliminating mesh loading
+entirely from the default viewport:
 
 ```
-LOAD (2 seconds):
-  link=True → 63K meshes cached in read-only memory
-  GN point clouds created (13 objects, 1M points)
-  GN modifiers DISABLED (prevents freeze)
-  All elements start at LOD-0 (bbox proxies — 8 verts, local)
-  → User sees R-tree bbox wireframes immediately
-
-FIRST BATCH (~1 second):
-  Compute initial camera position
-  make_local() on ~200-500 templates near camera (RAM-to-RAM, fast)
-  Enable GN modifiers → viewport appears smooth from the start
-  → User sees real geometry around camera, bboxes everywhere else
-
-RUNTIME (per camera move):
-  DLOD detects near elements crossing LOD-0 → LOD-1 threshold
-  For each promoted template:
-    mesh.make_local()  → RAM-to-RAM copy, fast
-    GN gets direct pointer → smooth viewport
-  Far elements stay as LOD-0 bbox proxies (local, cheap)
-
-RESULT:
-  ~3 seconds from click to interactive viewport
-  Only ~200-500 unique templates near camera are local at any time
-  GN never evaluates linked meshes — only local pointers
+DB (1M elements, SQLite R-tree index)
+    ↓  O(log n) spatial query
+RTree GPU       — 1M wireframes, 13s load, instant orbit, zero mesh in RAM
+    ↓  drill-down (click building → fly)
+Stingy Loader   — exact IFC geometry on demand, <1s per MESH press
+    ↓  SHRED when done
+Smart Bake      — background Blender, 36s/48K, 4-core parallel, 1M city <10 min
 ```
 
-**Critical sequence:** GN modifiers must be disabled until after the first
-`make_local()` batch completes. If GN evaluates while templates are still linked,
-it does 63K library dereferences per frame = frozen viewport. By disabling GN
-during load and enabling after the first batch, the user never experiences the freeze.
+- **Zero Blender objects** in the default view — GPU line batches drawn directly
+- **On-demand mesh** via Stingy Loader: viewport-centre query, pre-warmed library
+  meshes linked from `library.blend`, one named collection per MESH press
+- **LOAD / SHRED** is non-destructive — load geometry to inspect, shred to clean up
+- **Smart Overnight Bake** (S186): background subprocess, fresh scene per building,
+  no O(n) scene-graph penalty. Linked mesh refs keep files at ~2MB per building
 
-### Status: What's Implemented vs What's Next
-
-| Component | Status | File |
-|-----------|--------|------|
-| GN mode library linker | Written, needs link=True fix | `stage2_library_linker.py` |
-| GN node tree builder | Written | `stage2_library_linker.py` |
-| DLOD handler (distance, buckets, batch swap) | Written, 3/3 self-test PASS | `dlod_handler.py` |
-| DLOD bbox proxy generation | Written | `dlod_handler.py` |
-| `make_local()` in DLOD promotion | **NOT YET** — next to implement | `dlod_handler.py` |
-| Sandbox 1M database | Built (1,065,130 elements) | `scripts/sandbox_1M.db` |
-| library.blend | Built (38,306 meshes) | `library/library.blend` |
-
-### Next Steps
-
-1. Fix GN loader: keep `link=True`, bbox proxies are local (not linked)
-2. Add `make_local()` to DLOD LOD-0→LOD-1 promotion in `dlod_handler.py`
-3. Test on sandbox_1M.db: load time, viewport FPS, .blend file size
-4. Log: `§PROOF BLEND_SIZE gn_on=XMB`, `§PROOF DLOD_MAKELOCAL count=N time=Xms`
+See [`docs/RTree.md`](RTree.md) for the full architecture, benchmarks, and proof.
 
 ---
 
@@ -156,7 +90,21 @@ Built by `scripts/build_sandbox_1M.py` from 29 real extracted buildings:
 
 ---
 
-## Measured Performance (Terminal, 48K elements, 7K unique meshes)
+## Measured Performance
+
+### RTree GPU Path (current — S184+)
+
+| Metric | Value |
+|--------|-------|
+| Wireframe load (1M elements) | 13s |
+| Orbit / pan | Instant (60 FPS) |
+| MESH press (viewport-centre) | <1s |
+| Terminal bake (48K elements) | 36s |
+| Hospital bake (63K elements) | 123s |
+| Full city bake (1M, 4 cores) | <10 min |
+| Blender objects in default view | 0 |
+
+### GN Mode (historical — S175–S184, halted)
 
 | Metric | GN link=True | Per-element link=False |
 |--------|-------------|----------------------|
@@ -164,16 +112,18 @@ Built by `scripts/build_sandbox_1M.py` from 29 real extracted buildings:
 | Instance/GN build | 0.05s | 57.47s |
 | Total load | 2.19s | 64.08s |
 | Outliner items | 6 | 48,428 |
-| Viewport | Frozen (link issue) | 60 FPS |
+| Viewport | Frozen (8-min GN eval overhead) | 60 FPS |
 
-With `make_local()` fix: expect link=True load speed + link=False viewport smoothness.
+GN was fast to load but froze on evaluation at scale. RTree eliminated the problem
+by not loading meshes at all — wireframes from the spatial index, mesh on demand.
 
 ---
 
 ## References
 
-- [DLOD Spec](../internal/DLOD_SPEC.md) — distance LOD handler design
+- [RTree.md](RTree.md) — primary viewer architecture, benchmarks, proof
+- [DLOD Spec](../internal/DLOD_SPEC.md) — distance LOD handler design (GN era, archived)
 - [Full Loader 2 SRS](../internal/FULL_LOADER2_SRS.md) — master loader spec
-- [GN Link Investigation](../internal/GN_LINK_INVESTIGATION.md) — link=True vs link=False analysis
+- [GN Link Investigation](../internal/GN_LINK_INVESTIGATION.md) — link=True vs link=False analysis (archived)
 - `scripts/build_sandbox_1M.py` — city builder
 - `scripts/pipeline_library.sh` — extraction pipeline

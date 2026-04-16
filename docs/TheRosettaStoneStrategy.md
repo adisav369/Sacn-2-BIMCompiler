@@ -28,7 +28,7 @@ The reference DB has every answer. Read it. Match it. Not through cheating or co
 |-------|------|-------------|--------|
 | **Sample House (SH)** | UK residential, 1 storey | ARC, STR, CW | ALL GREEN |
 | **FZK Haus (FK)** | European residential | ARC | ALL GREEN |
-| **Duplex (DX)** | US residential, 2 storey | ARC+MEP+STR | REGRESSION — severe coordinate failure (S96) |
+| **Duplex (DX)** | US residential, 2 storey | ARC+MEP+STR | MIRROR verb implemented (P128). Re-extracted 2026-04-14. Gate status: verify with `run_RosettaStones.sh` |
 | **Terminal (TE)** | MY institutional, 4 storey | 8 disciplines | ALL GREEN |
 
 ALL stones must pass. Not 2 of 3. Not "residential only."
