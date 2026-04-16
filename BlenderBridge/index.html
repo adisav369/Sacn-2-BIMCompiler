@@ -1527,10 +1527,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-mesh-instancing-library-linked-s173" class="md-nav__link">
+  <a href="#5-mesh-instancing-library-linked" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Mesh Instancing — Library-Linked (S173)
+        5. Mesh Instancing — Library-Linked
       
     </span>
   </a>
@@ -3134,10 +3134,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-mesh-instancing-library-linked-s173" class="md-nav__link">
+  <a href="#5-mesh-instancing-library-linked" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Mesh Instancing — Library-Linked (S173)
+        5. Mesh Instancing — Library-Linked
       
     </span>
   </a>
@@ -3510,23 +3510,27 @@ parse, main-thread object creation.</p>
 <p>On full load: 48K elements but only ~30 unique materials. Cache avoids
 creating 48K material objects.</p>
 <hr />
-<h2 id="5-mesh-instancing-library-linked-s173">5. Mesh Instancing — Library-Linked (S173)<a class="headerlink" href="#5-mesh-instancing-library-linked-s173" title="Permanent link">&para;</a></h2>
+<h2 id="5-mesh-instancing-library-linked">5. Mesh Instancing — Library-Linked<a class="headerlink" href="#5-mesh-instancing-library-linked" title="Permanent link">&para;</a></h2>
 <p>Blender has native mesh instancing: 500 identical chairs share one mesh
 data block. The compiler's <code>component_library.db</code> deduplicates geometry
-by <code>geometry_hash</code>. Since S173, meshes are pre-baked into <code>library/library.blend</code>
+by <code>geometry_hash</code>. Meshes are pre-baked into <code>library/library.blend</code>
 and linked at runtime — no BLOB reads, no <code>from_pydata()</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Pre-bake (offline, once): bake_library_blend.py</span>
 <span class="c1">#   component_library.db → library.blend (one Mesh per geometry_hash)</span>
 
-<span class="c1"># Runtime (instant): stage2_library_linker.py</span>
+<span class="c1"># Runtime (on demand): Stingy Mesh Loader</span>
 <span class="k">with</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">libraries</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">library_blend</span><span class="p">,</span> <span class="n">link</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">):</span>
     <span class="n">dst</span><span class="o">.</span><span class="n">meshes</span> <span class="o">=</span> <span class="p">[</span><span class="n">h</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">src</span><span class="o">.</span><span class="n">meshes</span> <span class="k">if</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">needed_hashes</span><span class="p">]</span>
-<span class="c1"># GN &quot;Instance on Points&quot; assigns mesh by hash_index per point</span>
+<span class="c1"># Per-element objects created only for viewport-centre elements</span>
 </code></pre></div>
 <p><strong>Impact at TE scale:</strong> 48K elements but ~2,500 unique geometries.
-Library link: &lt;0.1s for all 2,500 meshes (vs 13s with old BLOB unpack).
-GN point cloud: one point per element, mesh assigned by <code>hash_index</code> attribute.
-Scene save: ~116KB (meshless — GN tree + transforms only).</p>
+Library link: &lt;0.1s for all 2,500 meshes (vs 13s with old BLOB unpack).</p>
+<p>The <strong>RTree GPU path</strong> (S184+) is the primary viewer — it renders 1M+
+wireframes from the spatial index with zero mesh in RAM. The Stingy Mesh
+Loader uses the library-linked approach above to deliver exact IFC geometry
+<strong>on demand</strong> when the user presses MESH. An earlier GN-based instancing
+approach (S175–S184) used point clouds with <code>Instance on Points</code>, but was
+halted due to 8-minute evaluation overhead at city scale.</p>
 <p>This is why the compiler's <code>component_library.db</code> + <code>element_instances</code> split
 exists — it maps 1:1 to Blender's library-linked instancing model.</p>
 <hr />

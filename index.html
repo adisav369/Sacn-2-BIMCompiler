@@ -2834,6 +2834,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#compile-once-query-forever" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compile Once, Query Forever
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#we-got-eyes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3015,6 +3026,18 @@ Same compiled output produces <a href="REPORTING_ENGINE_SRS/">BOM schedules, com
 <p>Real IFC buildings are decomposed into reference databases. The compiler reads a BOM describing the same building and produces output. If every compiled element lands at the <strong>same position</strong> as the reference — same coordinates, same dimensions, same 3D space — the BOM grammar is <strong>certified</strong>.</p>
 <p>35 buildings compiled — from a single-storey house to a multi-storey airport terminal. 19 pass all 6 mathematical gates. Once a stone is certified, any new building composed from its proven grammar inherits the proof — no new reference needed.</p>
 <p><a href="TheRosettaStoneStrategy/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Read the full strategy</a></p>
+<div style="clear: right;"></div>
+
+<hr />
+<h2 id="compile-once-query-forever"><strong>Compile Once, Query Forever</strong><a class="headerlink" href="#compile-once-query-forever" title="Permanent link">&para;</a></h2>
+<figure style="float: right; margin: -8px 0 8px 20px; max-width: 480px; text-align: center;">
+  <img src="assets/images/RTree.png" alt="RTree Query Engine — 1M elements, city-scale federation" width="480">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">1M+ elements across a city. Search, drill down, load mesh on demand. No model file opened.</figcaption>
+</figure>
+
+<p>The industry loads the model, then queries it. This compiler inverts that too: the <a href="RTree/">RTree Query Engine</a> queries the spatial index and loads only what you ask for. One million elements render as GPU wireframes in 13 seconds — zero mesh in RAM, instant orbit. Press MESH and the Stingy Loader delivers exact IFC geometry for the elements around your camera in under one second. Press SHRED to clean up. The model is never fully loaded. It is always live.</p>
+<p>An earlier approach used Blender's Geometry Nodes to instance meshes via point clouds (S175–S184). At city scale the GN evaluation overhead made it unviable. The RTree GPU path resolved the speed problem by eliminating mesh loading from the default viewport entirely — wireframes from the database index, mesh on demand.</p>
+<p><a href="RTree/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> RTree architecture and benchmarks</a> · <a href="StressTest_1M/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> 1M stress test</a></p>
 <div style="clear: right;"></div>
 
 <hr />

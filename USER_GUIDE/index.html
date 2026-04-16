@@ -5370,7 +5370,7 @@ WINDOW type:W3 size:600x500 wall:east    // Ventilation window
 </tbody>
 </table>
 <h3 id="viewing-output">Viewing Output<a class="headerlink" href="#viewing-output" title="Permanent link">&para;</a></h3>
-<p>The primary viewer is the <strong>Bonsai Federation addon</strong> in Blender, which reads output SQLite DBs directly — loading geometry, materials, and transparency from the database.</p>
+<p>The primary viewer is the <strong><a href="../RTree/">RTree Query Engine</a></strong> — a spatial GPU renderer that displays 1M+ elements as wireframes from the database index, loading exact IFC mesh geometry on demand via the Stingy Mesh Loader. The <strong>Bonsai Federation addon</strong> provides multi-building federation queries and nD analytics (4D scheduling, 5D costing) from the same SQLite DBs.</p>
 <hr />
 <h2 id="material-and-colour-data">Material and Colour Data<a class="headerlink" href="#material-and-colour-data" title="Permanent link">&para;</a></h2>
 <h3 id="whats-in-the-output">What's in the Output<a class="headerlink" href="#whats-in-the-output" title="Permanent link">&para;</a></h3>
