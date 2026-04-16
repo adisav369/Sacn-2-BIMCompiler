@@ -3,26 +3,45 @@
 ## Principle
 
 The DB is the single source of truth. All `.blend` files are derived views —
-reproducible from the extracted DB + library at any time. Two tiers optimise
-for different consumers:
+reproducible from the extracted DB + component_library.db at any time.
 
-| Tier | Optimised for | Mesh storage | Open time | File size |
-|------|---------------|--------------|-----------|-----------|
-| **Fat .blend** (working) | Author, daily use | Appended (self-contained) | <1s | 20–65 MB |
-| **Lean .blend** (distro) | Recipient, handover | Linked to trimmed library | 25–80s first open | 2–4 MB + library |
+| Tier | Optimised for | Mesh source | File size |
+|------|---------------|-------------|-----------|
+| **Session .blend** (working) | Author, daily use | Linked to `baked/*.blend` | ~1 MB |
+| **Baked .blend** (per-building) | BACKEND output | BLOB-tessellated, inline meshes | 17–74 MB |
+| **Package** (distro) | Recipient, handover | `session.blend` + `component_library.db` | ~1 MB + 200 MB DB |
 
-## Artifact Pipeline
+## Architecture (S189)
 
 ```
-extractIFCtoDB.py          ─→  extracted DB        (source of truth)
+component_library.db       ─→  geometry BLOBs      (123K meshes, SQLite indexed)
                                     │
-bake_building_blend.py     ─→  fat .blend          (link=False, daily work)
+blob_tessellate_worker.py  ─→  baked/*.blend        (per-building, self-contained)
+                                    │  (link=True)
+                              session.blend          (tiny, references baked files)
                                     │
-distro_package.py          ─→  lean .blend          (offline, fire-and-forget)
-                                + trimmed library
-                                + manifest
-                                + signature
+                              Ctrl+S                 (instant save, links persist)
 ```
+
+### Working Session (S189 live-link)
+
+BACKEND bakes buildings in background subprocesses (~25s for 126K elements).
+When each bake finishes, `_live_link_baked()` links the baked file into the
+live session via `libraries.load(link=True)`. Building appears in viewport
+with brief pause (~10s). User saves normally — session file stays ~1MB.
+
+### Distribution Package
+
+Two options for shipping to recipients:
+
+**Option A — DB-based (recommended, future):**
+Ship `session.blend` (~1 MB) + `component_library.db` (~200 MB).
+The DB can be hosted online — recipient's Blender fetches meshes on demand.
+First open tessellates from BLOBs. Save caches meshes locally.
+
+**Option B — Self-contained .blend:**
+Resolve all links into one file (`link=False`). All meshes inline.
+No external dependencies. Larger file (~90 MB for 3 buildings).
 
 ## 1. Fat .blend — Working Session
 
@@ -143,18 +162,17 @@ This means:
 
 ## 5. Design Constraints
 
-- **DB is the model** — .blend files are derived, disposable, reproducible
-- **Bake time is free** — user walks away; front-load work into save
-- **Open time is blocking** — user is waiting; minimise at all costs
-- **Distro is offline** — no user session; can take any time needed
-- **No new dependencies** — uses existing Blender `link=True/False` mechanics
-- **Library.blend untouched** — full 299 MB library remains the extraction
-  output; split/trimmed libraries are derived for distro only
+- **DB is the model** — `.blend` files are derived, disposable, reproducible
+- **Bake time is free** — BACKEND runs in background; user keeps working
+- **Link, don't copy** — session references baked files, never duplicates meshes
+- **Save is instant** — ~1 MB session file with link references
+- **component_library.db is the mesh source** — not library.blend (S189)
+- **Online DB future** — component_library.db can be hosted; `.blend` fetches on demand
 
 ## Source Files
 
-- `scripts/bake_building_blend.py` — fat .blend producer (change `link=True` → `link=False`)
-- `scripts/distro_package.py` — lean .blend producer (to be created)
-- `federation/operator.py` — `_poll_bake_subprocess()` links baked .blend into session
-- `federation/color_palette.py` — Color Studio operators (add DB write path)
-- `federation/bbox_visualization.py` — `session_meshes` restore on Preview
+- `scripts/blob_tessellate_worker.py` — BLOB bake worker (per-chunk subprocess, S189)
+- `scripts/bake_building_blend.py` — legacy fat .blend producer (fallback)
+- `federation/operator.py` — `_live_link_baked()` links baked .blend into live session
+- `federation/bbox_visualization.py` — `_library_db_cache` resolves component_library.db
+- `library/component_library.db` — 123,573 tessellated meshes (geometry_hash indexed)
