@@ -98,92 +98,106 @@ When `_single_building_name` is set (single-building extracted DB), auto-set
 `_active_building` and run `count_building` after Preview. The cockpit shows
 immediately — no search step needed.
 
-## Part F — Parallel Fat Bake + Deferred Save
+## Part F — BLOB Tessellation + Chunk-Parallel Bake
 
-### Current state
+### Problem summary (S188 findings)
 
-`FedRTreeSwitchOffline` (operator.py L2146) spawns one `bake_building_blend.py`
-subprocess via `nice -n 10 blender --background --factory-startup`. The dict
-`bv._baking_buildings` (bbox_visualization.py L88) is keyed by building name and
-already supports multiple entries. `_poll_bake_subprocess()` iterates all entries
-every 5s — so the polling loop is parallel-ready.
+| Bottleneck | Current cost | Root cause |
+|-----------|-------------|------------|
+| Overnight hitches | ~1-2s per batch | Opens 305MB library.blend per batch |
+| SHORT-CUT bake | 125s for Hospital | Appends 22800 meshes from library.blend |
+| Link-back freeze | **17min** Hospital | `libraries.load` 44MB blocking call |
+| Reopen (linked) | 80s | Resolves library chain |
 
-However, spawning is serial: the user must click SHORT-CUT once per building.
-There is no "bake all" trigger that spawns multiple subprocesses at once.
+All caused by **library.blend as mesh source**. Fix: read BLOBs from SQLite.
 
-Link-back (S188): uses `link=False` (fat append). Collections are linked
-directly into a `Baked_{bld}` parent — no library chain resolution. After
-link-back, auto-saves the .blend if it has a filepath.
+### Core change: BLOB tessellation replaces library.blend
 
-### Proposed change: threshold link-back + parallel spawn
+```python
+# CURRENT: open 305MB file, parse Blender format, copy/link mesh
+with bpy.data.libraries.load(lib_path, link=False) as (src, dst):
+    dst.meshes = [h for h in to_link if h in available]
 
-#### Threshold link-back (S188 finding: Hospital 44MB = 5min freeze)
+# PART F: read BLOB from SQLite, create mesh in-place (~5ms per mesh)
+row = lib_db.execute("SELECT vertices, faces FROM component_geometries WHERE geometry_hash=?", (h,))
+mesh = bpy.data.meshes.new(h)
+mesh.from_pydata(unpack_verts(row[0]), [], unpack_faces(row[1]))
+```
 
-The link-back (`libraries.load`) is a single blocking call — no progress, no cancel,
-no viewport updates. Empirical data:
+No file I/O. No 305MB parse. `blend_cache.py` Full Load already does this —
+port the same `unpack_vertices`/`unpack_faces` into a reusable worker script.
 
-| File size | Meshes | Link-back time | Verdict |
-|-----------|--------|---------------|---------|
-| Duplex 1.6MB | 650 | <1s | Link back |
-| Terminal 37MB | 7,150 | ~30s | Borderline |
-| Hospital 44MB | 22,800 | **5min+** | Don't link back |
+### User experience: smooth Overnight
 
-**Rule: `_LINKBACK_THRESHOLD_MB = 20`**
+| Time | LTU 126K | Viewport |
+|------|----------|----------|
+| 0:00 | Click Overnight | Live |
+| 0:01 | 500 elements from SQLite | Smooth, no hitch |
+| 0:30 | 15,000 elements | Smooth, orbiting freely |
+| 2:00 | 60,000 elements | Smooth, half building |
+| 3:30 | 126,000 elements done | Full building, zero freezes |
+| 3:31 | Save | ~5s fat .blend |
+| Reopen | | **<3s** |
 
-When bake completes:
-- **File < 20MB**: link-back as today. Show `"WAIT — {est}s"` before freeze.
-- **File ≥ 20MB**: skip link-back. Show `"✓ BLENDED — {size}MB. Reopen to view."`
-  Fat .blend is saved in `baked/`. User opens it directly — <3s, all meshes, RTree
-  Preview works. No freeze. No merge.
+No hitches because SQLite reads are <1ms vs 1-2s for library.blend I/O.
 
-#### SHORT-CUT button UX
+### Chunk-parallel for large buildings (>50K elements)
 
-Current problem: user clicks SHORT-CUT → buttons disappear → no feedback.
+Single-threaded Overnight: ~3.5min for 126K. With 4 workers: ~1min.
 
-**Fix:**
-1. On SHORT-CUT click, **red band stays visible** as a solid progress bar.
-   Three buttons collapse into one wide status rectangle.
-2. Progress text inside: `"⏳ Baking Hospital... 2m elapsed, ~1m left"`
-3. On completion:
-   - Small file: `"WAIT — 15s"` → link-back → building appears
-   - Large file: `"✓ BLENDED — 44MB. Reopen to view."` → no freeze
-4. Cooling-off: status stays visible for 10s after completion so user reads it.
+**Split by element count, not discipline.** Disciplines are unbalanced
+(MEP=84K, STR=5.5K). Chunks are equal:
 
-#### Parallel spawn (multi-building)
+| Worker | Elements | Time (est) | Fat .blend |
+|--------|----------|-----------|------------|
+| Chunk 1 | 31,500 | ~50s | ~10MB |
+| Chunk 2 | 31,500 | ~50s | ~10MB |
+| Chunk 3 | 31,500 | ~50s | ~10MB |
+| Chunk 4 | 31,500 | ~50s | ~10MB |
 
-1. **BAKE ALL** button spawns up to 4 Blender subprocesses simultaneously,
-   one per building, each running `bake_building_blend.py` with `link=False`.
-2. Queue remaining buildings; sort smallest-first for quick visual feedback.
-3. `_poll_bake_subprocess()` already handles multiple entries. On completion,
-   apply threshold rule per building (small = link back, large = reopen advice).
-4. RTree Preview (GPU bboxes) unaffected during bake — user keeps working.
+Each chunk's .blend is <20MB → link-back <3s each. No threshold skip needed.
+Total: ~50s bake + ~12s link-back = **~1 min for 126K elements.**
+
+Worker script: `scripts/blob_tessellate_worker.py`
+- Args: `--db`, `--library-db`, `--building`, `--offset N`, `--limit N`, `--output`
+- Reads element GUIDs at offset/limit, fetches BLOBs from component_library.db
+- Creates meshes via `from_pydata`, applies materials (surface_styles + BSDF)
+- Saves fat .blend chunk
+
+### Split rules
+
+| Scenario | Split key | Workers |
+|----------|----------|---------|
+| Single building <50K | No split — in-process Overnight | 0 (modal) |
+| Single building ≥50K | Chunk by element count / 4 | Up to 4 |
+| Multi-building sandbox | One per building | Up to 4, queue rest |
+
+SHORT-CUT becomes an alias for chunk-parallel spawn (no separate code path).
+
+### Threshold link-back (retained from S188)
+
+`_LINKBACK_THRESHOLD_MB = 20` — implemented in S188c.
+- Chunk .blends are ~10MB each → always link back (fast)
+- Only whole-building legacy bakes (>20MB) trigger "BLENDED. Reopen."
 
 ### Debug logging
 
 | Tag | Fires when | Content |
 |-----|-----------|---------|
-| `§BAKE_SPAWN` | subprocess launched | building, PID, cmd tail |
-| `§BAKE_PARALLEL` | 2+ builds in `_baking_buildings` | N running |
-| `§BAKE_COMPLETE` | subprocess exit 0 | elapsed, file size, threshold verdict |
-| `§BAKE_APPEND` | link-back done (below threshold) | merge time, object count |
-| `§BAKE_SKIP_LINK` | above threshold | file size, "reopen to view" |
-| `§SAVE_FAT` | `wm.save_mainfile` | save time, file size, mesh count |
-
-### Load balancing
-
-- Max 4 concurrent subprocesses (`nice -n 10`), configurable `_MAX_BAKE_WORKERS`
-- Remaining buildings queued in `_bake_queue` (sorted by element count asc)
-- When a slot frees, pop next from queue and spawn
-- `§BAKE_PARALLEL` log line each time a new subprocess starts while others run
+| `§BLOB_SPAWN` | chunk worker launched | building, chunk N/M, PID |
+| `§BLOB_COMPLETE` | worker exit 0 | elapsed, elements, file size |
+| `§BLOB_APPEND` | chunk linked back | merge time, object count |
+| `§BLOB_ALL_DONE` | all chunks merged | total time, total elements |
 
 ### Files
 
 | File | Change |
 |------|--------|
-| `federation/operator.py` | `_spawn_bake()` helper; `FedRTreeBakeAll`; threshold check in `_poll_bake_subprocess`; `§BAKE_SKIP_LINK` + `§SAVE_FAT` logging |
-| `federation/bbox_visualization.py` | `_bake_queue`, `_MAX_BAKE_WORKERS`, `_LINKBACK_THRESHOLD_MB` globals |
-| `federation/ui.py` | RED band progress bar (collapsed buttons); threshold-aware completion message; BAKE ALL button |
-| `scripts/bake_building_blend.py` | Print file size on completion (already done S188) |
+| `scripts/blob_tessellate_worker.py` | **NEW** — per-chunk BLOB tessellation subprocess |
+| `federation/operator.py` | Overnight: BLOB tessellation in-process (replace `libraries.load`). Chunk-parallel: spawn workers via `_spawn_blob_bake()` |
+| `federation/bbox_visualization.py` | `_MAX_BAKE_WORKERS`, `_CHUNK_THRESHOLD` globals |
+| `federation/ui.py` | Progress bar for chunk workers |
+| `scripts/bake_building_blend.py` | Kept as fallback (library.blend path) |
 
 ## Standing rules
 
