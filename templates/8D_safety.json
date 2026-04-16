@@ -1,0 +1,42 @@
+{
+  "_comment": "8D Safety / Hazard Register — risk matrix, PPE, phase hazards",
+  "_source": "DOSH Malaysia OSHA 1994, CIDB Site Safety Handbook",
+  "version": "1.0",
+
+  "phase_hazards": {
+    "Substructure":   {"risk_level": "HIGH",   "hazards": ["Excavation collapse", "Heavy machinery", "Dewatering"],    "ppe": ["Hard hat", "Safety boots", "Hi-vis vest", "Harness"]},
+    "Superstructure": {"risk_level": "HIGH",   "hazards": ["Working at height", "Steel erection", "Crane operations"], "ppe": ["Hard hat", "Safety boots", "Hi-vis vest", "Harness", "Gloves"]},
+    "MEP Rough-in":   {"risk_level": "MEDIUM", "hazards": ["Working at height", "Hot works", "Confined spaces"],       "ppe": ["Hard hat", "Safety boots", "Hi-vis vest", "Gloves", "Goggles"]},
+    "Architecture":   {"risk_level": "MEDIUM", "hazards": ["Falling objects", "Dust", "Manual handling"],              "ppe": ["Hard hat", "Safety boots", "Dust mask", "Gloves"]},
+    "MEP Final":      {"risk_level": "MEDIUM", "hazards": ["Electrical hazard", "Working at height"],                  "ppe": ["Hard hat", "Safety boots", "Insulated gloves", "Face shield"]},
+    "Finishes":       {"risk_level": "LOW",    "hazards": ["Chemical exposure", "Dust", "Slips"],                      "ppe": ["Safety boots", "Dust mask", "Gloves", "Goggles"]}
+  },
+
+  "ifc_class_hazards": {
+    "IfcFooting":               {"hazard_class": "EXCAVATION",  "additional_ppe": ["Harness"],         "permit_required": true},
+    "IfcPile":                  {"hazard_class": "PILING",      "additional_ppe": ["Ear protection"],  "permit_required": true},
+    "IfcColumn":                {"hazard_class": "STEEL_WORK",  "additional_ppe": ["Harness"],         "permit_required": true},
+    "IfcBeam":                  {"hazard_class": "STEEL_WORK",  "additional_ppe": ["Harness"],         "permit_required": true},
+    "IfcSlab":                  {"hazard_class": "CONCRETE",    "additional_ppe": [],                  "permit_required": false},
+    "IfcRoof":                  {"hazard_class": "HEIGHT_WORK", "additional_ppe": ["Harness", "Lifeline"], "permit_required": true},
+    "IfcDuct":                  {"hazard_class": "MEP_INSTALL", "additional_ppe": [],                  "permit_required": false},
+    "IfcPipe":                  {"hazard_class": "MEP_INSTALL", "additional_ppe": [],                  "permit_required": false},
+    "IfcCableCarrier":          {"hazard_class": "ELECTRICAL",  "additional_ppe": ["Insulated gloves"],"permit_required": true},
+    "IfcLightFixture":          {"hazard_class": "ELECTRICAL",  "additional_ppe": ["Insulated gloves"],"permit_required": true},
+    "IfcEnergyConversionDevice":{"hazard_class": "HOT_WORK",   "additional_ppe": ["Face shield"],     "permit_required": true},
+    "_default":                 {"hazard_class": "GENERAL",     "additional_ppe": [],                  "permit_required": false}
+  },
+
+  "risk_matrix": {
+    "_note": "Likelihood x Severity: L=Low, M=Medium, H=High, VH=Very High",
+    "EXCAVATION":  {"likelihood": "M", "severity": "H",  "risk": "HIGH"},
+    "PILING":      {"likelihood": "L", "severity": "VH", "risk": "HIGH"},
+    "STEEL_WORK":  {"likelihood": "M", "severity": "H",  "risk": "HIGH"},
+    "CONCRETE":    {"likelihood": "M", "severity": "M",  "risk": "MEDIUM"},
+    "HEIGHT_WORK": {"likelihood": "H", "severity": "VH", "risk": "VERY HIGH"},
+    "MEP_INSTALL": {"likelihood": "L", "severity": "M",  "risk": "LOW"},
+    "ELECTRICAL":  {"likelihood": "M", "severity": "H",  "risk": "HIGH"},
+    "HOT_WORK":    {"likelihood": "M", "severity": "H",  "risk": "HIGH"},
+    "GENERAL":     {"likelihood": "L", "severity": "L",  "risk": "LOW"}
+  }
+}

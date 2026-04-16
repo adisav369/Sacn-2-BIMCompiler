@@ -1,0 +1,52 @@
+{
+  "_comment": "7D Facility Management / Asset Lifecycle — warranty, service, replacement",
+  "_source": "RICS Building Maintenance Guide, JKR Malaysia standards, ASHRAE",
+  "version": "1.0",
+
+  "lifespan_rules": {
+    "IfcSlab":                  {"lifespan_years": 60, "warranty_months": 12, "service_interval_months":  0, "note": "RC slab — structural life"},
+    "IfcFooting":               {"lifespan_years": 60, "warranty_months": 12, "service_interval_months":  0, "note": "Foundation — structural life"},
+    "IfcPile":                  {"lifespan_years": 60, "warranty_months": 12, "service_interval_months":  0, "note": "Deep foundation"},
+    "IfcColumn":                {"lifespan_years": 50, "warranty_months": 12, "service_interval_months": 60, "note": "Steel column — coating check 5yr"},
+    "IfcBeam":                  {"lifespan_years": 50, "warranty_months": 12, "service_interval_months": 60, "note": "Steel beam — coating check 5yr"},
+    "IfcMember":                {"lifespan_years": 40, "warranty_months": 12, "service_interval_months": 60, "note": "Structural member"},
+    "IfcWall":                  {"lifespan_years": 50, "warranty_months": 12, "service_interval_months": 24, "note": "Blockwork — repaint 2yr"},
+    "IfcWallStandardCase":      {"lifespan_years": 50, "warranty_months": 12, "service_interval_months": 24, "note": "Blockwork"},
+    "IfcCurtainWall":           {"lifespan_years": 30, "warranty_months": 60, "service_interval_months": 12, "note": "Seal + glass inspection yearly"},
+    "IfcDoor":                  {"lifespan_years": 25, "warranty_months": 12, "service_interval_months":  6, "note": "Hardware + closer service 6mo"},
+    "IfcWindow":                {"lifespan_years": 25, "warranty_months": 24, "service_interval_months": 12, "note": "Seal + mechanism yearly"},
+    "IfcRoof":                  {"lifespan_years": 25, "warranty_months": 24, "service_interval_months": 12, "note": "Leak check + coating yearly"},
+    "IfcCovering":              {"lifespan_years": 15, "warranty_months": 12, "service_interval_months": 12, "note": "Tile / ceiling — inspect yearly"},
+    "IfcStairFlight":           {"lifespan_years": 50, "warranty_months": 12, "service_interval_months": 12, "note": "Nosing + railing check"},
+    "IfcRailing":               {"lifespan_years": 20, "warranty_months": 12, "service_interval_months": 12, "note": "Fixing + coating check"},
+
+    "IfcDuct":                  {"lifespan_years": 25, "warranty_months": 12, "service_interval_months":  6, "note": "Duct cleaning 6mo"},
+    "IfcDuctSegment":           {"lifespan_years": 25, "warranty_months": 12, "service_interval_months":  6, "note": "Duct cleaning 6mo"},
+    "IfcDuctFitting":           {"lifespan_years": 25, "warranty_months": 12, "service_interval_months":  6, "note": "Seal check 6mo"},
+    "IfcPipe":                  {"lifespan_years": 30, "warranty_months": 12, "service_interval_months": 12, "note": "Leak + pressure test yearly"},
+    "IfcPipeSegment":           {"lifespan_years": 30, "warranty_months": 12, "service_interval_months": 12, "note": "Leak + pressure test"},
+    "IfcPipeFitting":           {"lifespan_years": 20, "warranty_months": 12, "service_interval_months": 12, "note": "Joint inspection"},
+    "IfcCableCarrier":          {"lifespan_years": 30, "warranty_months": 12, "service_interval_months": 12, "note": "Corrosion check"},
+    "IfcCableCarrierSegment":   {"lifespan_years": 30, "warranty_months": 12, "service_interval_months": 12, "note": "Corrosion check"},
+    "IfcFlowSegment":           {"lifespan_years": 25, "warranty_months": 12, "service_interval_months":  6, "note": "Generic MEP run"},
+    "IfcFlowFitting":           {"lifespan_years": 20, "warranty_months": 12, "service_interval_months":  6, "note": "Generic MEP fitting"},
+    "IfcFlowTerminal":          {"lifespan_years": 15, "warranty_months": 24, "service_interval_months":  3, "note": "FCU/AHU quarterly service"},
+    "IfcFlowController":        {"lifespan_years": 15, "warranty_months": 12, "service_interval_months":  6, "note": "Valve/damper service"},
+    "IfcEnergyConversionDevice":{"lifespan_years": 20, "warranty_months": 24, "service_interval_months":  3, "note": "Boiler/exchanger quarterly"},
+    "IfcFlowTreatmentDevice":   {"lifespan_years": 10, "warranty_months": 12, "service_interval_months":  3, "note": "Filter replacement quarterly"},
+    "IfcFlowMovingDevice":      {"lifespan_years": 15, "warranty_months": 24, "service_interval_months":  3, "note": "Pump/fan quarterly service"},
+    "IfcFlowStorageDevice":     {"lifespan_years": 25, "warranty_months": 12, "service_interval_months": 12, "note": "Tank inspection yearly"},
+
+    "IfcLightFixture":          {"lifespan_years":  8, "warranty_months": 24, "service_interval_months": 12, "note": "LED driver replacement ~8yr"},
+    "IfcOutlet":                {"lifespan_years": 20, "warranty_months": 12, "service_interval_months": 12, "note": "PAT test yearly"},
+    "IfcElectricAppliance":     {"lifespan_years": 10, "warranty_months": 24, "service_interval_months":  6, "note": "Appliance service 6mo"},
+
+    "IfcFurniture":             {"lifespan_years": 10, "warranty_months": 12, "service_interval_months": 12, "note": "Built-in furniture"},
+    "IfcFurnishingElement":     {"lifespan_years":  7, "warranty_months": 12, "service_interval_months": 12, "note": "Loose furniture"},
+
+    "_default":                 {"lifespan_years": 30, "warranty_months": 12, "service_interval_months":  6, "note": "Unclassified — conservative"}
+  },
+
+  "asset_tag_format": "{discipline}_{storey}_{seq:04d}",
+  "replacement_trigger": "0.8 * lifespan_years"
+}

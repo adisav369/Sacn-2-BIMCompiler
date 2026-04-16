@@ -1,0 +1,48 @@
+{
+  "_comment": "6D Sustainability / Carbon — embodied + operational carbon factors",
+  "_source": "ICE Database v3.0 (University of Bath), Malaysia grid TNB 2024",
+  "version": "1.0",
+  "unit": "kgCO2e",
+
+  "carbon_factors": {
+    "IfcSlab":                  {"factor": 120.0, "per": "M2", "note": "250mm RC slab, Grade 40"},
+    "IfcFooting":               {"factor": 180.0, "per": "M3", "note": "RC footing, Grade 30"},
+    "IfcPile":                  {"factor":  95.0, "per": "M",  "note": "RC spun pile 300mm"},
+    "IfcColumn":                {"factor":  85.0, "per": "M",  "note": "UC 254x254, Grade 50 steel"},
+    "IfcBeam":                  {"factor":  72.0, "per": "M",  "note": "UB 457x191, Grade 50 steel"},
+    "IfcMember":                {"factor":  72.0, "per": "M",  "note": "Structural member, mixed"},
+    "IfcPlate":                 {"factor":  25.0, "per": "M2", "note": "Steel plate 10mm"},
+    "IfcReinforcingBar":        {"factor":   1.4, "per": "M",  "note": "Rebar Y16, 1.58 kg/m"},
+    "IfcWall":                  {"factor":  42.0, "per": "M2", "note": "150mm concrete block"},
+    "IfcWallStandardCase":      {"factor":  42.0, "per": "M2", "note": "150mm concrete block"},
+    "IfcCurtainWall":           {"factor":  85.0, "per": "M2", "note": "Aluminium frame + double glazing"},
+    "IfcDoor":                  {"factor":  65.0, "per": "EA", "note": "Timber frame, single leaf"},
+    "IfcWindow":                {"factor": 110.0, "per": "EA", "note": "Double glazed aluminium"},
+    "IfcRoof":                  {"factor":  38.0, "per": "M2", "note": "Standing seam metal deck"},
+    "IfcCovering":              {"factor":  22.0, "per": "M2", "note": "Granite/ceramic tile"},
+    "IfcStairFlight":           {"factor": 250.0, "per": "EA", "note": "RC stair flight"},
+    "IfcStair":                 {"factor": 500.0, "per": "EA", "note": "Complete RC stair"},
+    "IfcPipe":                  {"factor":  12.5, "per": "M",  "note": "uPVC DN100"},
+    "IfcPipeSegment":           {"factor":  12.5, "per": "M",  "note": "uPVC DN100"},
+    "IfcPipeFitting":           {"factor":   5.0, "per": "EA", "note": "PVC/brass fitting"},
+    "IfcDuct":                  {"factor":  18.0, "per": "M",  "note": "G550 galv steel 400mm"},
+    "IfcDuctSegment":           {"factor":  18.0, "per": "M",  "note": "G550 galv steel"},
+    "IfcDuctFitting":           {"factor":   8.0, "per": "EA", "note": "Galv steel fitting"},
+    "IfcCableCarrier":          {"factor":   6.5, "per": "M",  "note": "Aluminium ladder tray"},
+    "IfcCableCarrierSegment":   {"factor":   6.5, "per": "M",  "note": "Aluminium ladder tray"},
+    "IfcFlowSegment":           {"factor":  15.0, "per": "M",  "note": "Generic MEP run"},
+    "IfcFlowFitting":           {"factor":   6.0, "per": "EA", "note": "Generic MEP fitting"},
+    "IfcFlowTerminal":          {"factor":  85.0, "per": "EA", "note": "FCU/AHU/VAV unit"},
+    "IfcLightFixture":          {"factor":  12.0, "per": "EA", "note": "48W LED panel"},
+    "IfcOutlet":                {"factor":   2.5, "per": "EA", "note": "13A socket outlet"},
+    "IfcFurniture":             {"factor":  45.0, "per": "EA", "note": "Built-in furniture"},
+    "IfcFurnishingElement":     {"factor":  25.0, "per": "EA", "note": "Loose furniture"},
+    "_default":                 {"factor":  50.0, "per": "EA", "note": "Unclassified — conservative"}
+  },
+
+  "operational": {
+    "carbon_per_kwh": 0.585,
+    "source": "Malaysia grid emission factor 2024 (TNB)",
+    "_note": "Multiply by building energy_kwh_per_year * lifespan for total operational carbon"
+  }
+}

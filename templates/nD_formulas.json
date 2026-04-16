@@ -1,0 +1,85 @@
+{
+  "_comment": "nD Master Template — dimensions, measurement rules, formulas",
+  "version": "1.0",
+
+  "dimensions": {
+    "4D": {
+      "name": "Construction Schedule",
+      "template": "4D_phases.json",
+      "requires_tables": ["elements_meta"],
+      "produces_tables": ["construction_schedule"],
+      "enabled": true
+    },
+    "5D": {
+      "name": "Cost Estimation (BOQ)",
+      "template": "5D_rates.json",
+      "requires_tables": ["elements_meta"],
+      "produces_tables": ["simple_qto"],
+      "enabled": true
+    },
+    "6D": {
+      "name": "Sustainability / Carbon",
+      "template": "6D_carbon.json",
+      "requires_tables": ["elements_meta", "simple_qto"],
+      "produces_tables": ["carbon_audit"],
+      "enabled": true
+    },
+    "7D": {
+      "name": "Facility Management / Asset Lifecycle",
+      "template": "7D_lifecycle.json",
+      "requires_tables": ["elements_meta"],
+      "produces_tables": ["asset_register"],
+      "enabled": true
+    },
+    "8D": {
+      "name": "Safety / Hazard Register",
+      "template": "8D_safety.json",
+      "requires_tables": ["elements_meta", "construction_schedule"],
+      "produces_tables": ["hazard_register"],
+      "enabled": true
+    }
+  },
+
+  "measurement_rules": {
+    "_comment": "How to measure each IFC class: linear, area, volume, or count",
+    "linear": [
+      "IfcDuct", "IfcDuctSegment", "IfcPipe", "IfcPipeSegment",
+      "IfcCableCarrier", "IfcCableCarrierSegment",
+      "IfcBeam", "IfcColumn", "IfcMember",
+      "IfcFlowSegment", "IfcReinforcingBar", "IfcPile", "IfcRailing"
+    ],
+    "area": [
+      "IfcSlab", "IfcRoof", "IfcCovering",
+      "IfcWall", "IfcWallStandardCase", "IfcCurtainWall", "IfcPlate"
+    ],
+    "volume": [
+      "IfcSpace", "IfcFooting"
+    ],
+    "_default": "count",
+    "_formulas": {
+      "linear":  "maxZ - minZ",
+      "area":    "(maxX - minX) * (maxY - minY)",
+      "volume":  "(maxX - minX) * (maxY - minY) * (maxZ - minZ)",
+      "count":   "1 per element"
+    }
+  },
+
+  "cost_formulas": {
+    "material_cost":   "quantity * material_rate",
+    "labor_days":      "quantity / productivity",
+    "labor_cost":      "labor_days * crew_size * labor_rate_per_day",
+    "man_days":        "labor_days * crew_size",
+    "equipment_cost":  "labor_days * duration_factor * equipment_rate_per_day",
+    "total_cost":      "material_cost + labor_cost + equipment_cost"
+  },
+
+  "schedule_formulas": {
+    "duration_days":   "max(1.0, quantity / productivity)",
+    "man_days":        "duration_days * crew_size"
+  },
+
+  "carbon_formulas": {
+    "embodied_carbon": "quantity * carbon_factor",
+    "operational_carbon": "energy_kwh_per_year * carbon_per_kwh * lifespan_years"
+  }
+}

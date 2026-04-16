@@ -37,8 +37,9 @@
   - **DB count fix:** BACKEND queries DB for element count when overnight hasn't run.
   - **Subprocess survival:** `start_new_session=True` for merge subprocess to outlive Blender.
   - **Distribution:** session.blend + component_library.db. Online DB future spec'd in PackageDistro.md.
-  - **Version:** `_FED_VERSION = "S189a"`
-  - **Next:** verify Preview link after restart. Potential: lazy link on drill-in instead of Preview.
+  - **Version:** `_FED_VERSION = "S189w"`
+  - **S189w:** baked-link path fix (walk parents, not parent.parent), bpy.path.abspath for `//` paths. Outliner hierarchy — Overnight/LOAD MESH/live-link/Preview all nest disc collections under building parent. Shred cleans empty parents.
+  - **Next:** verify all 3 fixes in Blender (Preview link, Outliner hierarchy, baked hierarchy).
 
 **S188-RTree (2026-04-16):** Void filter, transparency, threshold link-back, parallel bake — DONE.
   - Void filter, transparency (Principled BSDF), deferred element list, surface_styles in sandbox.

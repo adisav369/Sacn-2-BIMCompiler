@@ -1,4 +1,4 @@
-# 4D/5D Analysis — Construction Schedule and Costing from the Federated Model DB
+# nD BIM Analysis — 4D Schedule, 5D Cost, 6D Carbon, 7D FM, 8D Safety
 
 > **Foundation:** [Enterprise](Enterprise.md) · [LTU A-House](LTUAHouseAnalysis.md) · [DATA_MODEL](DATA_MODEL.md)
 
@@ -8,100 +8,321 @@
 
 ## What We Have
 
-The [Federated Model DB](Enterprise.md) (`_extracted.db`) drives both 4D scheduling and 5D costing
-in **2 seconds** from a single SQLite file. All IFC disciplines live in this one DB.
+The [Federated Model DB](Enterprise.md) (`_extracted.db`) drives **all nD analytics**
+from a single SQLite file. All IFC disciplines live in this one DB.
 No IFC file open, no geometry iterator, no RAM spike.
 
-| Dimension | Script | Input | Output |
+**Scale proof:** 1,063,563 elements across 787 buildings — **all 5 dimensions in 8.7 seconds.**
+
+### The nD Engine
+
+A single abstract engine reads **user-editable JSON templates** and applies formulas
+to any IFC class found in the extracted DB. Zero hardcoded IFC classes — all configuration
+lives in `templates/`. Users edit JSON, the engine applies formulas.
+
+```
+python3 scripts/nD_engine.py <database_path> --all
+python3 scripts/nD_engine.py <database_path> --dims 4D,5D
+python3 scripts/nD_engine.py <database_path> --dims 6D    # auto-runs 5D if needed
+```
+
+| Dimension | Template | Input | Output Table |
 |---|---|---|---|
-| 4D Schedule | `scripts/schedule_generator.py` | `elements_meta` + `rel_aggregates` | `construction_schedule` table + Excel |
-| 5D Costing | `scripts/simple_qto_extract.py` | `elements_meta` + `elements_rtree` | `simple_qto` table + Excel |
+| 4D Schedule | `templates/4D_phases.json` | `elements_meta` | `construction_schedule` |
+| 5D Costing | `templates/5D_rates.json` | `elements_meta` + `elements_rtree` | `simple_qto` |
+| 6D Carbon | `templates/6D_carbon.json` | `elements_meta` + `simple_qto` | `carbon_audit` |
+| 7D FM/Lifecycle | `templates/7D_lifecycle.json` | `elements_meta` | `asset_register` |
+| 8D Safety | `templates/8D_safety.json` | `elements_meta` + `construction_schedule` | `hazard_register` |
 
-### Proven Results (LTU A-House — 125,997 elements, 8 disciplines)
+Master formula file: `templates/nD_formulas.json` — measurement rules, cost formulas,
+dimension registry.
 
-**5D Costing** — Executive Summary with Material + Labour + Equipment per discipline.
-Grand Total: RM 67M (CIDB 2024 standard rates). 133 QTO line items. Generated in ~2 seconds.
+### Self-Healing Pipeline
 
-<figure style="margin: 20px 0;">
-<img src="../assets/images/5DCosting.png" alt="5D Costing" style="width:100%; border:1px solid #ccc;"/>
-<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">5D Costing — RM 67M across 8 disciplines. Cost Breakdown pie + Cost Components bar.</figcaption>
-</figure>
+If a dimension needs a prerequisite table that doesn't exist, the engine auto-generates
+it. Request 6D on a fresh DB → engine detects `simple_qto` missing → runs 5D first →
+then 6D. Request 8D → auto-runs 4D for the schedule. No manual ordering needed.
 
-**4D Schedule** — 224 construction tasks, precedence-linked by phase.
-Substructure → Superstructure → MEP Rough-in → Architecture → MEP Final → Finishes.
+### How IFC Data Becomes nD Data
 
-<figure style="margin: 20px 0;">
-<img src="../assets/images/4DSchedule.png" alt="4D Schedule" style="width:100%; border:1px solid #ccc;"/>
-<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">4D Schedule — 224 tasks. Task Distribution by Phase + Task Count by Discipline.</figcaption>
-</figure>
+Every dimension derives from the same `elements_meta` table that `extractIFCtoDB.py`
+creates during IFC extraction. The key column is `ifc_class` — the JSON templates map
+each class to phase/cost/carbon/lifecycle/hazard rules.
 
-**4D Dashboard** — S-Curve, resource workload, milestones — all from one query on the DB.
+```
+IFC file ─→ extractIFCtoDB.py ─→ elements_meta (ifc_class, discipline, storey, ...)
+                                       │
+            ┌──────────┬───────┬───────┼───────┬───────┐
+            │          │       │       │       │       │
+           4D         5D      6D     7D      8D    Viewer
+         phase    cost/qty  carbon  asset  hazard  3D mesh
+         from       from     from    from    from
+       ifc_class  ifc_class ifc_class ifc_class ifc_class
+            │          │       │       │       │
+        templates/ JSON ← user-editable
+```
 
-<figure style="margin: 20px 0;">
-<img src="../assets/images/4DDashBoard.png" alt="4D Dashboard" style="width:100%; border:1px solid #ccc;"/>
-<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">BIM 5D Analytics Dashboard — Phase Duration, Resource Workload, S-Curve, Milestones.</figcaption>
-</figure>
-
-### Current Limitation: Unknown Phase
-
-64% of LTU elements (80,788) are generic IFC2x3 classes (`IfcFlowSegment`, `IfcFlowFitting`,
-`IfcFlowController`, etc.) not mapped in `CONSTRUCTION_SEQUENCE_RULES`. These land as
-"Unknown" phase: 8,703 days / 17,407 man-days — distorting the S-Curve and dashboards.
-Fix: map all IFC classes in `scripts/schedule_generator.py`. See
-`prompts/5D_nD_backend_readiness.md` for the full class list.
+If an extracted DB is empty (0 bytes, no tables), re-run extraction:
+```
+python3 scripts/extractIFCtoDB_open.py path/to/model.ifc path/to/output_extracted.db
+```
 
 ---
 
-## Industry Value — What QS Firms Pay For
+## Fleet Test Results — 37 Buildings + 1M City
 
-No commercial tool produces discipline-level 4D+5D analytics from a Federated Model DB in 2 seconds
-at zero licence cost. Here is what the industry wants and where we stand:
+**37/37 individual buildings PASS. Sandbox city-wide 1M PASS. Zero failures.**
 
-### Tier 1 — We Have It Now
+### How to Run Tests
 
-| Capability | Industry tool | Cost | Our pipeline |
+```bash
+# Unit test — single building (28 witnesses)
+python3 scripts/test_nD_engine.py
+python3 scripts/test_nD_engine.py --db DAGCompiler/lib/input/Hospital_extracted.db
+
+# Fleet test — all 37 buildings
+python3 scripts/test_nD_fleet.py
+
+# Fleet + 1M sandbox city (takes ~14 seconds total)
+python3 scripts/test_nD_fleet.py --include-sandbox
+```
+
+**Output locations:**
+- Tables written into the extracted DB itself (temp copy during tests)
+- Fleet report: `scripts/nD_fleet_report.txt`
+- Debug log: `scripts/nD_engine_log.txt`
+- For production runs, tables are written directly into the target `_extracted.db`
+
+### Test Witnesses
+
+| Witness | What it proves |
+|---------|---------------|
+| W-TEMPLATE | All 6 JSON templates load, all have `_default` fallback |
+| W-5D_COSTED | Every IFC class gets a cost (zero uncosted) |
+| W-4D_NO_UNKNOWN | Zero tasks with phase='Unknown' (was 64% Unknown before) |
+| W-6D_CARBON | Carbon total > 0 and cross-checks with SUM(qty × factor) |
+| W-7D_ASSETS | Asset count == element count (1:1 mapping) |
+| W-8D_SAFETY | Every hazard row has a risk_level |
+| W-AUTO_PREREQ | Requesting 6D auto-generates 5D if missing |
+
+---
+
+## Sandbox City — 1,063,563 Elements, 8.7 Seconds
+
+The sandbox contains 787 buildings (13 CBD archetypes + suburb tile instances)
+across 48 IFC classes and 6 disciplines.
+
+### 5D — City-Wide Cost: RM 1.59 Billion
+
+| Discipline | QTO Lines | Elements | Cost (RM) |
 |---|---|---|---|
-| IFC → priced BOQ | CostX, Cubicost | $10-50K/seat/yr | `simple_qto_extract.py` — 2 sec |
-| Discipline-level costing | Manual in Excel | Weeks of QS time | 8 sub-disciplines auto-tagged |
-| Construction schedule from BIM | Synchro, Navisworks | $5-15K/seat/yr | `schedule_generator.py` — 2 sec |
-| S-Curve generation | Primavera, MS Project | $3-10K/seat/yr | Built into Excel export |
-| Phase precedence | Manual CPM network | Days of planner time | Auto from IFC class rules |
-| Multi-discipline MEP breakdown | Not available | — | VENT/HVAC/HEAT/PLB/SAN via `--disc-map` |
+| ARC | 576 | 686,396 | 1,407,873,431 |
+| MEP | 192 | 243,304 | 98,035,356 |
+| STR | 130 | 123,427 | 76,154,312 |
+| ELEC | 33 | 6,129 | 2,922,681 |
+| FP | 17 | 3,709 | 1,854,500 |
+| ACMV | 9 | 598 | 299,000 |
 
-### Tier 2 — One Query Away
+**Top 10 most expensive IFC classes (city-wide):**
 
-These capabilities need only a JOIN or a new rate table on the existing DB:
-
-| Capability | What it needs | Who pays for it |
+| IFC Class | Elements | Cost (RM) |
 |---|---|---|
-| **Cash flow forecast** | S-curve × monthly cost = spend profile | Banks, project financiers |
-| **Tender comparison** | Same QTO, swap rate table per bidder | Main contractors, QS firms |
-| **Carbon costing (6D)** | `material_name` → embodied carbon factor | ESG compliance, green building certification |
-| **Lifecycle costing** | `ifc_class` + `material_name` → 30-year replacement rates | Asset owners, FM companies |
-| **Change order impact** | Re-run on modified DB, diff vs baseline | Claims consultants, project managers |
+| IfcSlab | 39,392 | 821,441,213 |
+| IfcDoor | 46,064 | 131,282,400 |
+| IfcWallStandardCase | 45,216 | 130,362,836 |
+| IfcWindow | 59,043 | 93,287,940 |
+| IfcFlowTerminal | 20,707 | 72,474,500 |
+| IfcCovering | 131,595 | 48,305,718 |
+| IfcOpeningElement | 78,286 | 39,143,000 |
+| IfcColumn | 7,731 | 37,227,725 |
+| IfcMember | 47,498 | 32,234,992 |
+| IfcBuildingElementProxy | 37,829 | 32,154,650 |
 
-### Tier 3 — Needs Additional Data Input
+### 4D — City-Wide Schedule: 957 Tasks
 
-| Capability | What it needs | Who pays for it |
+| Phase | Tasks | Total Duration (days) |
 |---|---|---|
-| **Earned Value (EVM)** | Actual progress % per element (site photos / IoT / manual) | PMOs, project controls |
-| **Monte Carlo cost risk** | Rate variance distributions per element type | Risk consultants, insurance |
-| **Claim substantiation** | Time-linked cost evidence + GUID traceability | Dispute resolution, arbitration |
-| **Resource levelling** | Crew availability constraints + calendar | Construction planners |
+| Substructure | 15 | 366 |
+| Superstructure | 211 | 16,004 |
+| MEP Rough-in | 142 | 13,203 |
+| Architecture | 447 | 63,308 |
+| MEP Final | 84 | 4,169 |
+| Finishes | 58 | 13,762 |
 
-### The Holy Grail
+**Zero Unknown phase.** Every IFC class mapped via template or `_default` fallback.
 
-**A bankable project finance model generated in 2 seconds from the [Federated Model DB](Enterprise.md).**
+### 6D — City-Wide Carbon: 434,460 tCO2e
 
-Banks release progress payments based on:
-1. What was planned (4D schedule) — we have it
-2. What it should cost (5D BOQ) — we have it
-3. What was actually done (earned value) — needs progress input
-4. Cash flow projection — one JOIN away
+| Discipline | Embodied Carbon (tCO2e) |
+|---|---|
+| ARC | 424,239 |
+| STR | 6,603 |
+| MEP | 3,249 |
+| FP | 185 |
+| ELEC | 154 |
+| ACMV | 30 |
 
-Items 1+2+4 from the extracted DB = 90% of the way to a bankable model.
-Item 3 is the real-world input that no software can auto-generate, but the DB
-has the GUID-level structure to receive it.
+### 7D — City-Wide Asset Register: 1,063,563 Assets
+
+| Discipline | Assets | Avg Lifespan | Service Interval |
+|---|---|---|---|
+| ARC | 686,396 | 29 yr | 12 mo |
+| MEP | 243,304 | 23 yr | 7 mo |
+| STR | 123,427 | 39 yr | 41 mo |
+| ELEC | 6,129 | 15 yr | 10 mo |
+| FP | 3,709 | 30 yr | 6 mo |
+| ACMV | 598 | 30 yr | 6 mo |
+
+### 8D — City-Wide Safety: 957 Hazard Entries
+
+| Risk Level | Entries | Elements |
+|---|---|---|
+| LOW | 713 | 985,450 |
+| MEDIUM | 86 | 39,392 |
+| HIGH | 147 | 38,492 |
+| VERY HIGH | 11 | 229 |
+
+---
+
+## No Other Player Does This
+
+### What the industry charges for nD analytics
+
+| Capability | Industry tool | Cost per seat/yr | Our speed |
+|---|---|---|---|
+| 5D BOQ from BIM | CostX, Cubicost, iTWO | $10-50K | 8.7s for 1M elements |
+| 4D Schedule from BIM | Synchro, Navisworks, Asta | $5-15K | same run |
+| 6D Carbon from BIM | OneClick LCA, Tally | $5-15K | same run |
+| 7D Asset register | Maximo, Archibus, Planon | $20-100K | same run |
+| 8D Safety register | Manual spreadsheets | Weeks of HSE time | same run |
+| **All 5 dimensions combined** | **$60-180K/yr** | **8.7 seconds, free** |
+
+### What makes this different
+
+1. **Speed** — 1M elements, 5 dimensions, 8.7 seconds. Commercial tools take hours
+   per dimension on models this size. Most cannot even load 1M elements.
+
+2. **All dimensions in one pass** — Commercial tools are siloed. 4D is one vendor,
+   5D another, 6D another. Each needs its own model import, its own licence.
+   We run all 5 from the same SQLite file in one command.
+
+3. **User-modifiable templates** — JSON files, not proprietary rate databases locked
+   behind vendor UIs. A QS edits `5D_rates.json` in any text editor. A sustainability
+   consultant edits `6D_carbon.json`. No vendor lock-in, no format conversion.
+
+4. **Self-healing dependencies** — Request 6D, engine auto-generates 5D. Request 8D,
+   engine auto-generates 4D. No manual pipeline orchestration.
+
+5. **Open source** — Zero licence cost. SQLite databases. Python scripts. JSON templates.
+   Everything auditable, everything modifiable.
+
+---
+
+## Template Editing — How to Customize
+
+All rules live in JSON files under `templates/`. Edit with any text editor.
+
+### Editing Templates
+
+The JSON templates are designed to be human-readable. Each entry maps an IFC class
+to its nD properties. The `_default` key catches any unmapped class.
+
+**Direct editing** (any text editor — VS Code, nano, Notepad++):
+```bash
+# Edit material rates
+code templates/5D_rates.json
+
+# Edit carbon factors
+code templates/6D_carbon.json
+```
+
+**Validation** — run the engine after editing to verify:
+```bash
+python3 scripts/nD_engine.py mydb.db --dims 5D
+# Check scripts/nD_engine_log.txt for §5D_RATE lines showing which rates applied
+```
+
+**Country-specific templates** — copy the defaults and swap rates:
+```bash
+cp -r templates/ templates_UK/
+# Edit templates_UK/5D_rates.json — change currency, rates to BCIS/RICS
+# Edit templates_UK/6D_carbon.json — change factors to BREEAM
+python3 scripts/nD_engine.py mydb.db --all --templates templates_UK/
+```
+
+### Adding a New IFC Class
+
+Add one entry per template:
+
+```json
+// 4D_phases.json → ifc_class_rules:
+"IfcNewClass": {"phase": "MEP Rough-in", "sequence": 5, "predecessors": ["IfcSlab"],
+                "resource": "HVAC_TECH", "productivity": 12.0}
+
+// 5D_rates.json → material_rates:
+"IfcNewClass": {"rate": 250.00, "unit": "M", "spec": "Your specification"}
+
+// 6D_carbon.json → carbon_factors:
+"IfcNewClass": {"factor": 15.0, "per": "M", "note": "Source reference"}
+
+// 7D_lifecycle.json → lifespan_rules:
+"IfcNewClass": {"lifespan_years": 20, "warranty_months": 24,
+                "service_interval_months": 6, "note": "Maintenance note"}
+```
+
+### Measurement Rules
+
+In `nD_formulas.json`, IFC classes are grouped by how they're measured:
+- **linear**: height from bounding box (`maxZ - minZ`) → meters
+- **area**: footprint from bounding box (`dX * dY`) → m²
+- **volume**: full bounding box (`dX * dY * dZ`) → m³
+- **count**: element count → EA (default for unmapped classes)
+
+---
+
+## nD Dimensions — What Each Produces
+
+### 4D — Construction Schedule
+Phase mapping + productivity rates → task durations → Gantt-ready data.
+Calendar: Mon-Sat working, Sunday off, 8hr/day (configurable in `4D_phases.json`).
+
+### 5D — Cost Estimation (BOQ)
+Material rates + labor productivity + equipment allocation → total cost per element.
+Currency: MYR (Malaysian Ringgit), CIDB 2024 rates. Swap template for other countries.
+
+### 6D — Sustainability / Carbon Audit
+Embodied carbon factors (ICE Database v3.0) → kgCO2e per element → project total.
+Operational carbon: Malaysia grid factor 0.585 kgCO2/kWh (TNB 2024).
+
+### 7D — Facility Management / Asset Lifecycle
+Per-element asset register: GUID → asset tag, warranty, service interval, replacement year.
+Source: RICS Building Maintenance Guide + JKR Malaysia standards.
+
+### 8D — Safety / Hazard Register
+Phase × IFC class → hazard classification, risk level, PPE requirements, permit flags.
+Source: DOSH Malaysia OSHA 1994, CIDB Site Safety Handbook.
+
+---
+
+## Debug Logging
+
+Every run produces `scripts/nD_engine_log.txt` with `§`-prefixed log lines:
+
+```
+§ENGINE_START, §ENGINE_DB, §ENGINE_DIMS    — session metadata
+§TEMPLATE_LOADED                           — which templates were read
+§5D_IFC_CLASSES, §5D_MEASURE               — per-class measurement type resolution
+§5D_INSERT, §5D_RATE                       — what was inserted and at what rate
+§5D_UNCOSTED                               — IFC classes with no rate (uses _default)
+§4D_DEFAULT                                — classes using _default fallback (was "Unknown")
+§4D_PHASE                                  — task count per phase
+§6D_ROW                                    — per-row carbon calculation
+§7D_ELEMENTS                               — total asset count
+§8D_ROW                                    — per-row hazard classification
+§ENGINE_DONE                               — summary with row counts
+```
+
+Read the log after every run. Exit code alone is not evidence.
 
 ---
 
@@ -110,29 +331,50 @@ has the GUID-level structure to receive it.
 ```
 IFC files ──→ extractIFCtoDB.py ──→ _extracted.db
                                         │
-                    ┌───────────────────┼───────────────────┐
-                    │                   │                   │
-              4D Schedule         5D Costing          Bonsai Viewer
-              (schedule_         (simple_qto_        (bbox preview +
-               generator.py)     extract.py)          full mesh)
-                    │                   │                   │
-              Excel + Gantt      Excel + Charts       3D viewport
-              S-Curve            BOQ + Rates          125K elements
-              Milestones         Discipline cost      smooth nav
+               ┌────────────────────────┼────────────────────────┐
+               │                        │                        │
+         nD Engine                Bonsai Viewer            Java Backend
+    (scripts/nD_engine.py)       (bbox + mesh)          (REST + Excel)
+               │                        │                        │
+    ┌──────────┼──────────┐             │                        │
+    │     │    │    │      │        3D viewport           /api/boq/
+   4D    5D   6D   7D    8D       125K elements          /api/schedule/
+schedule qto carbon asset safety  smooth nav
+               │
+        JSON Templates
+     (templates/*.json)
 ```
-
-The extracted DB is the single source of truth. 4D and 5D are queries on it.
-The viewer renders it. All from the same SQLite file.
 
 ---
 
+## Files
+
+| File | Role |
+|------|------|
+| `scripts/nD_engine.py` | Abstract nD engine — reads templates, queries DB, writes tables |
+| `scripts/test_nD_engine.py` | Unit test — 28 witnesses on single building |
+| `scripts/test_nD_fleet.py` | Fleet test — all buildings + sandbox |
+| `scripts/nD_fleet_report.txt` | Fleet test results (regenerated each run) |
+| `scripts/nD_engine_log.txt` | Debug log (regenerated each run) |
+| `templates/nD_formulas.json` | Master: dimension registry, measurement rules, formulas |
+| `templates/4D_phases.json` | Phase sequence, predecessors, productivity, calendar |
+| `templates/5D_rates.json` | Material, labor, equipment rates (MYR CIDB 2024) |
+| `templates/6D_carbon.json` | Embodied carbon factors (ICE Database v3.0) |
+| `templates/7D_lifecycle.json` | Warranty, service interval, lifespan (RICS/JKR) |
+| `templates/8D_safety.json` | Hazard class, risk matrix, PPE (DOSH/CIDB) |
+| `scripts/schedule_database_schema.py` | Schema for construction_schedule table |
+
+### Legacy (still functional, superseded by nD engine)
+| File | Role |
+|------|------|
+| `scripts/simple_qto_extract.py` | Original 5D — hardcoded rates |
+| `scripts/schedule_generator.py` | Original 4D — hardcoded phase rules |
+
 ## Next Steps
 
-1. **Fix Unknown phase** — map all IFC classes in schedule_generator.py (zero Unknown)
+1. **Excel export** — add openpyxl sheet generation per dimension (Cover + per-discipline BOQ)
 2. **Editable Excel** — Java backend generates .xlsx with formulas (`=qty × unit_rate`)
-   so QS can adjust rates and totals recalculate. Apache POI.
-3. **Cash flow forecast** — JOIN S-curve with monthly cost buckets
+3. **Township mode** — `--township` flag with building deduplication (archetype × instance count)
 4. **REST endpoints** — `/api/boq/{building}/excel`, `/api/schedule/{building}/excel`
-5. **Storey normalisation** — LTU's 19 storey names → unified construction sequence
-
-See `prompts/5D_nD_backend_readiness.md` for the full task spec.
+5. **Community templates** — UK BCIS rates, US RSMeans, BREEAM carbon, LEED scoring
+6. **Web template editor** — HTML form that loads/validates/saves JSON templates

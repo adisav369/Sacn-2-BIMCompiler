@@ -1,0 +1,73 @@
+{
+  "_comment": "4D Construction Phase Template — edit to match your project sequence",
+  "_source": "CIDB Malaysia construction sequence + IFC class mapping",
+  "version": "1.0",
+
+  "calendar": {
+    "working_days": [0, 1, 2, 3, 4, 5],
+    "non_working_days": [6],
+    "hours_per_day": 8,
+    "_note": "Mon=0..Sun=6. Malaysian standard: Mon-Sat, Sunday off"
+  },
+
+  "phases": [
+    {"name": "Substructure",   "sequence": 1},
+    {"name": "Superstructure", "sequence": 2},
+    {"name": "MEP Rough-in",   "sequence": 5},
+    {"name": "Architecture",   "sequence": 6},
+    {"name": "MEP Final",      "sequence": 9},
+    {"name": "Finishes",       "sequence": 10}
+  ],
+
+  "ifc_class_rules": {
+    "IfcFooting":              {"phase": "Substructure",   "sequence": 1,  "predecessors": [],                       "resource": "CONCRETE_GANG",  "productivity": 10.0},
+    "IfcPile":                 {"phase": "Substructure",   "sequence": 1,  "predecessors": [],                       "resource": "CONCRETE_GANG",  "productivity": 4.0},
+    "IfcReinforcingBar":       {"phase": "Substructure",   "sequence": 1,  "predecessors": [],                       "resource": "STEEL_ERECTOR",  "productivity": 20.0},
+
+    "IfcColumn":               {"phase": "Superstructure", "sequence": 2,  "predecessors": ["IfcFooting"],           "resource": "STEEL_ERECTOR",  "productivity": 6.0},
+    "IfcBeam":                 {"phase": "Superstructure", "sequence": 3,  "predecessors": ["IfcColumn"],            "resource": "STEEL_ERECTOR",  "productivity": 8.0},
+    "IfcSlab":                 {"phase": "Superstructure", "sequence": 4,  "predecessors": ["IfcBeam"],              "resource": "CONCRETE_GANG",  "productivity": 35.0},
+    "IfcMember":               {"phase": "Superstructure", "sequence": 3,  "predecessors": ["IfcColumn"],            "resource": "STEEL_ERECTOR",  "productivity": 8.0},
+    "IfcPlate":                {"phase": "Superstructure", "sequence": 3,  "predecessors": ["IfcColumn"],            "resource": "STEEL_ERECTOR",  "productivity": 10.0},
+
+    "IfcDuct":                 {"phase": "MEP Rough-in",   "sequence": 5,  "predecessors": ["IfcSlab"],              "resource": "HVAC_TECH",      "productivity": 18.0},
+    "IfcDuctSegment":          {"phase": "MEP Rough-in",   "sequence": 5,  "predecessors": ["IfcSlab"],              "resource": "HVAC_TECH",      "productivity": 18.0},
+    "IfcDuctFitting":          {"phase": "MEP Rough-in",   "sequence": 5,  "predecessors": ["IfcSlab"],              "resource": "HVAC_TECH",      "productivity": 12.0},
+    "IfcPipe":                 {"phase": "MEP Rough-in",   "sequence": 5,  "predecessors": ["IfcSlab"],              "resource": "PLUMBER",        "productivity": 25.0},
+    "IfcPipeSegment":          {"phase": "MEP Rough-in",   "sequence": 5,  "predecessors": ["IfcSlab"],              "resource": "PLUMBER",        "productivity": 25.0},
+    "IfcPipeFitting":          {"phase": "MEP Rough-in",   "sequence": 5,  "predecessors": ["IfcSlab"],              "resource": "PLUMBER",        "productivity": 15.0},
+    "IfcCableCarrier":         {"phase": "MEP Rough-in",   "sequence": 5,  "predecessors": ["IfcSlab"],              "resource": "ELECTRICIAN",    "productivity": 30.0},
+    "IfcCableCarrierSegment":  {"phase": "MEP Rough-in",   "sequence": 5,  "predecessors": ["IfcSlab"],              "resource": "ELECTRICIAN",    "productivity": 30.0},
+    "IfcFlowSegment":          {"phase": "MEP Rough-in",   "sequence": 5,  "predecessors": ["IfcSlab"],              "resource": "HVAC_TECH",      "productivity": 18.0},
+    "IfcFlowFitting":          {"phase": "MEP Rough-in",   "sequence": 5,  "predecessors": ["IfcSlab"],              "resource": "PLUMBER",        "productivity": 15.0},
+    "IfcFlowController":       {"phase": "MEP Final",      "sequence": 9,  "predecessors": ["IfcWall"],              "resource": "HVAC_TECH",      "productivity": 10.0},
+    "IfcEnergyConversionDevice":{"phase": "MEP Rough-in",  "sequence": 5,  "predecessors": ["IfcSlab"],              "resource": "HVAC_TECH",      "productivity": 2.0},
+    "IfcFlowTreatmentDevice":  {"phase": "MEP Rough-in",   "sequence": 5,  "predecessors": ["IfcSlab"],              "resource": "HVAC_TECH",      "productivity": 8.0},
+    "IfcFlowMovingDevice":     {"phase": "MEP Rough-in",   "sequence": 5,  "predecessors": ["IfcSlab"],              "resource": "HVAC_TECH",      "productivity": 4.0},
+    "IfcFlowStorageDevice":    {"phase": "MEP Rough-in",   "sequence": 5,  "predecessors": ["IfcSlab"],              "resource": "PLUMBER",        "productivity": 2.0},
+
+    "IfcWall":                 {"phase": "Architecture",   "sequence": 6,  "predecessors": ["IfcDuct", "IfcPipe"],   "resource": "MASON",          "productivity": 12.0},
+    "IfcWallStandardCase":     {"phase": "Architecture",   "sequence": 6,  "predecessors": ["IfcDuct", "IfcPipe"],   "resource": "MASON",          "productivity": 12.0},
+    "IfcCurtainWall":          {"phase": "Architecture",   "sequence": 6,  "predecessors": ["IfcSlab"],              "resource": "MASON",          "productivity": 8.0},
+    "IfcDoor":                 {"phase": "Architecture",   "sequence": 7,  "predecessors": ["IfcWall"],              "resource": "CARPENTER",      "productivity": 5.0},
+    "IfcWindow":               {"phase": "Architecture",   "sequence": 7,  "predecessors": ["IfcWall"],              "resource": "CARPENTER",      "productivity": 5.0},
+    "IfcStairFlight":          {"phase": "Architecture",   "sequence": 7,  "predecessors": ["IfcSlab"],              "resource": "CARPENTER",      "productivity": 2.0},
+    "IfcStair":                {"phase": "Architecture",   "sequence": 7,  "predecessors": ["IfcSlab"],              "resource": "CARPENTER",      "productivity": 2.0},
+    "IfcRoof":                 {"phase": "Architecture",   "sequence": 8,  "predecessors": ["IfcWall"],              "resource": "ROOFER",         "productivity": 25.0},
+    "IfcRailing":              {"phase": "Architecture",   "sequence": 8,  "predecessors": ["IfcSlab"],              "resource": "CARPENTER",      "productivity": 6.0},
+    "IfcOpeningElement":       {"phase": "Architecture",   "sequence": 6,  "predecessors": ["IfcWall"],              "resource": "MASON",          "productivity": 10.0},
+    "IfcBuildingElementProxy": {"phase": "Architecture",   "sequence": 6,  "predecessors": [],                       "resource": "LABORER",        "productivity": 10.0},
+    "IfcBuildingElementPart":  {"phase": "Architecture",   "sequence": 6,  "predecessors": [],                       "resource": "LABORER",        "productivity": 10.0},
+
+    "IfcLightFixture":         {"phase": "MEP Final",      "sequence": 9,  "predecessors": ["IfcWall"],              "resource": "ELECTRICIAN",    "productivity": 20.0},
+    "IfcOutlet":               {"phase": "MEP Final",      "sequence": 9,  "predecessors": ["IfcWall"],              "resource": "ELECTRICIAN",    "productivity": 25.0},
+    "IfcElectricAppliance":    {"phase": "MEP Final",      "sequence": 9,  "predecessors": ["IfcWall"],              "resource": "ELECTRICIAN",    "productivity": 8.0},
+    "IfcFlowTerminal":         {"phase": "MEP Final",      "sequence": 9,  "predecessors": ["IfcDuct"],              "resource": "HVAC_TECH",      "productivity": 6.0},
+
+    "IfcCovering":             {"phase": "Finishes",       "sequence": 10, "predecessors": ["IfcLightFixture"],      "resource": "FINISHER",       "productivity": 15.0},
+    "IfcFurniture":            {"phase": "Finishes",       "sequence": 11, "predecessors": ["IfcCovering"],          "resource": "FINISHER",       "productivity": 8.0},
+    "IfcFurnishingElement":    {"phase": "Finishes",       "sequence": 11, "predecessors": ["IfcCovering"],          "resource": "FINISHER",       "productivity": 8.0},
+
+    "_default":                {"phase": "Architecture",   "sequence": 6,  "predecessors": [],                       "resource": "LABORER",        "productivity": 10.0}
+  }
+}
