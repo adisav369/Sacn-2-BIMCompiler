@@ -36,6 +36,7 @@ parser.add_argument("--offset", type=int, default=0, help="Element offset (chunk
 parser.add_argument("--limit", type=int, default=0, help="Element limit (chunk size, 0=all)")
 parser.add_argument("--output", required=True, help="Output .blend path")
 parser.add_argument("--merge", nargs='+', default=[], help="Merge mode: list of chunk .blend files to combine")
+parser.add_argument("--base", default="", help="Base .blend to open before merging (progressive save)")
 args = parser.parse_args(argv)
 
 import bpy
@@ -393,17 +394,41 @@ def bake_chunk(building, db, lib_db, offset_elem, limit_elem, site_offset):
           f"file={out_path.name} size={file_mb:.1f}MB elapsed={elapsed:.1f}s")
 
 
-def merge_chunks(building, db, chunk_files, output):
-    """S189: Merge multiple chunk .blend files into one combined .blend."""
+def merge_chunks(building, db, chunk_files, output, base_blend=""):
+    """S189: Merge chunk .blend files into one combined .blend.
+    If base_blend is given, opens that first (progressive save — keeps old baked buildings)."""
     t0 = time.time()
     print(f"\n{'='*60}")
-    print(f"[S189] {_ts()} §MERGE_START bld={building} chunks={len(chunk_files)} pid={os.getpid()}")
+    print(f"[S189] {_ts()} §MERGE_START bld={building} chunks={len(chunk_files)} "
+          f"base={'YES' if base_blend else 'fresh'} pid={os.getpid()}")
     print(f"{'='*60}")
 
     import bpy
     from pathlib import Path
 
-    bpy.ops.wm.read_factory_settings(use_empty=True)
+    if base_blend and Path(base_blend).exists():
+        # Progressive save — open user's current session, append new building
+        bpy.ops.wm.open_mainfile(filepath=base_blend)
+        print(f"  [S189] {_ts()} opened base: {Path(base_blend).name} "
+              f"({Path(base_blend).stat().st_size / (1024*1024):.1f}MB)")
+        # Shred any partial overnight objects for this building
+        prefix = f"Loaded_{building}_"
+        for col in list(bpy.data.collections):
+            if col.name.startswith(prefix):
+                for obj in list(col.objects):
+                    bpy.data.objects.remove(obj, do_unlink=True)
+                bpy.data.collections.remove(col)
+        # Also remove old Baked_ collection if re-baking
+        old_baked = bpy.data.collections.get(f"Baked_{building}")
+        if old_baked:
+            for child in list(old_baked.children):
+                for obj in list(child.objects):
+                    bpy.data.objects.remove(obj, do_unlink=True)
+                bpy.data.collections.remove(child)
+            bpy.data.collections.remove(old_baked)
+            print(f"  [S189] removed old Baked_{building}")
+    else:
+        bpy.ops.wm.read_factory_settings(use_empty=True)
 
     _disc_suffixes = {'ARC','STR','MEP','ELEC','FP','OTHER',
                       'PLB','HEAT','HVAC','VENT','SAN','ACMV'}
@@ -466,8 +491,9 @@ def merge_chunks(building, db, chunk_files, output):
 # ── Main ──
 
 if args.merge:
-    # Merge mode — combine chunk .blends into one
-    merge_chunks(args.building, Path(args.db).resolve(), args.merge, args.output)
+    # Merge mode — combine chunk .blends into one (with optional base for progressive save)
+    merge_chunks(args.building, Path(args.db).resolve(), args.merge, args.output,
+                 base_blend=args.base)
 else:
     # Bake mode — tessellate from BLOBs
     db_path = Path(args.db).resolve()
