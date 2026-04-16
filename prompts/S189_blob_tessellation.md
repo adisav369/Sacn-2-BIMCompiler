@@ -1,7 +1,7 @@
 # ⚠ DO NOT REMOVE
 # Scope: S189 — BLOB tessellation + chunk-parallel bake + live-link UX
 # Read the log after every run. No claims without §PROOF log lines.
-# STATUS: IN PROGRESS — Preview link tested, needs restart verification
+# STATUS: IN PROGRESS — Preview baked-link not firing + Outliner hierarchy fix
 
 ## Context
 
@@ -85,7 +85,44 @@ appends each chunk .blend on completion (~3s each, no freeze).
 
 - `federation/loading/stage2_tessellation_loader.py` — `unpack_vertices`, `unpack_faces` (port from here)
 - `federation/blend_cache.py` — Full Load BLOB tessellation reference
-- `federation/operator.py` — Overnight modal, LOAD MESH, `_poll_bake_subprocess`
+- `federation/operator.py` — Overnight modal, LOAD MESH, `_poll_bake_subprocess`, `_live_link_baked`
 - `scripts/bake_building_blend.py` — current library.blend bake (fallback)
 - `library/component_library.db` — BLOB source (123,573 meshes)
-- `docs/PackageDistro.md` — fat/lean .blend spec
+- `docs/PackageDistro.md` — live-link architecture spec
+
+## Open issues (S189 session end)
+
+### 1. Preview baked-link not firing
+The linking code in `PreviewFederationViewport.execute()` (line ~3370) scans `baked/`
+dir and links `.blend` files. Logs show NO `§PREVIEW_LINK` entries — the code block
+is not reached or the `_baked_dir` path resolves wrong. Debug:
+- Add `print(f"§DEBUG baked_dir={_baked_dir} exists={_baked_dir.exists()}")` before the if
+- Check `bv._db_path_cache` is set before the link block runs
+- The DB path may be relative (`//...`) — needs `bpy.path.abspath()` + `.resolve()`
+- The `baked/` dir is at project root, not relative to the DB
+
+### 2. Outliner hierarchy — disc collections loose under Scene
+Overnight/LOAD MESH creates `Loaded_{building}_{DISC}` collections directly under
+Scene Collection. They should be grouped:
+```
+Scene Collection
+  └── T0_Hospital          ← parent (missing)
+       ├── T0_Hospital_ARC
+       ├── T0_Hospital_STR
+       └── T0_Hospital_MEP
+```
+Currently:
+```
+Scene Collection
+  ├── T0_Hospital_ARC      ← loose, no parent
+  ├── T0_Hospital_STR
+  └── T0_Hospital_MEP
+```
+Fix: in Overnight and LOAD MESH, create a parent `Loaded_{building}` collection
+if it doesn't exist, and nest disc collections under it. Same as bake script does
+with `root_col = bpy.data.collections.new(building)`.
+
+### 3. Baked files also need building parent in Outliner
+The baked `.blend` files already have `{building}` root collection with disc children.
+When linked into session, the collections should appear nested, not flat. Verify
+`link=True` preserves the hierarchy from the baked file.
