@@ -438,16 +438,17 @@ def merge_chunks(building, db, chunk_files, output, base_blend=""):
     _disc_suffixes = {'ARC','STR','MEP','ELEC','FP','OTHER',
                       'PLB','HEAT','HVAC','VENT','SAN','ACMV'}
 
-    parent_col = bpy.data.collections.new(building)
-    bpy.context.scene.collection.children.link(parent_col)
-
     total_objects = 0
     for cp in chunk_files:
         if not Path(cp).exists():
-            _log(f"  [S189] {_ts()} SKIP missing chunk: {cp}")
+            _log(f"  [S189] {_ts()} SKIP missing: {cp}")
             continue
         t_c = time.time()
-        with bpy.data.libraries.load(cp, link=False) as (src, dst):
+        cp_mb = Path(cp).stat().st_size / (1024*1024)
+        _log(f"  [S189] {_ts()} linking {Path(cp).name} ({cp_mb:.1f}MB)...")
+        # S189j: link=True — reference only, no mesh copy. 10s instead of 5min.
+        # Baked files stay in baked/ as mesh source. Session stays small.
+        with bpy.data.libraries.load(cp, link=True) as (src, dst):
             disc_cols = [c for c in src.collections
                          if any(c.endswith(f'_{d}') for d in _disc_suffixes)]
             if disc_cols:
@@ -456,20 +457,10 @@ def merge_chunks(building, db, chunk_files, output, base_blend=""):
                 dst.collections = [src.collections[0]]
         for col in dst.collections:
             if col is not None:
-                # Avoid duplicate collection names — merge into existing disc collection
-                existing = bpy.data.collections.get(col.name)
-                if existing and existing != col:
-                    # Move objects from duplicate into existing
-                    for obj in list(col.objects):
-                        col.objects.unlink(obj)
-                        existing.objects.link(obj)
-                    total_objects += len(existing.objects)
-                else:
-                    parent_col.children.link(col)
-                    total_objects += len(col.objects)
+                bpy.context.scene.collection.children.link(col)
+                total_objects += len(col.all_objects)
         merge_s = time.time() - t_c
-        cp_mb = Path(cp).stat().st_size / (1024*1024)
-        _log(f"  [S189] {_ts()} §MERGE_APPEND {Path(cp).name} ({cp_mb:.1f}MB) "
+        _log(f"  [S189] {_ts()} §MERGE_LINK {Path(cp).name} "
              f"in {merge_s:.1f}s — {total_objects} objects so far")
 
     # Store DB path for Preview auto-resume
@@ -491,13 +482,8 @@ def merge_chunks(building, db, chunk_files, output, base_blend=""):
     _log(f"  [S189] {_ts()} §MERGE_COMPLETE bld={building} objects={total_objects} "
          f"file={out_path.name} size={file_mb:.1f}MB save={save_s:.1f}s total={elapsed:.1f}s")
 
-    # Clean up chunk files
-    for cp in chunk_files:
-        try:
-            Path(cp).unlink(missing_ok=True)
-        except Exception:
-            pass
-    _log(f"  [S189] {_ts()} cleaned up {len(chunk_files)} chunk files")
+    # S189j: Keep baked files — link=True references need them on disk
+    _log(f"  [S189] {_ts()} baked files retained ({len(chunk_files)} linked)")
 
 
 # ── Main ──
