@@ -394,14 +394,19 @@ def bake_chunk(building, db, lib_db, offset_elem, limit_elem, site_offset):
           f"file={out_path.name} size={file_mb:.1f}MB elapsed={elapsed:.1f}s")
 
 
+def _log(msg):
+    """Print and flush — ensures poll/run can read progress in real time."""
+    print(msg, flush=True)
+
+
 def merge_chunks(building, db, chunk_files, output, base_blend=""):
     """S189: Merge chunk .blend files into one combined .blend.
     If base_blend is given, opens that first (progressive save — keeps old baked buildings)."""
     t0 = time.time()
-    print(f"\n{'='*60}")
-    print(f"[S189] {_ts()} §MERGE_START bld={building} chunks={len(chunk_files)} "
-          f"base={'YES' if base_blend else 'fresh'} pid={os.getpid()}")
-    print(f"{'='*60}")
+    _log(f"\n{'='*60}")
+    _log(f"[S189] {_ts()} §MERGE_START bld={building} chunks={len(chunk_files)} "
+         f"base={'YES' if base_blend else 'fresh'} pid={os.getpid()}")
+    _log(f"{'='*60}")
 
     import bpy
     from pathlib import Path
@@ -409,8 +414,8 @@ def merge_chunks(building, db, chunk_files, output, base_blend=""):
     if base_blend and Path(base_blend).exists():
         # Progressive save — open user's current session, append new building
         bpy.ops.wm.open_mainfile(filepath=base_blend)
-        print(f"  [S189] {_ts()} opened base: {Path(base_blend).name} "
-              f"({Path(base_blend).stat().st_size / (1024*1024):.1f}MB)")
+        _log(f"  [S189] {_ts()} opened base: {Path(base_blend).name} "
+             f"({Path(base_blend).stat().st_size / (1024*1024):.1f}MB)")
         # Shred any partial overnight objects for this building
         prefix = f"Loaded_{building}_"
         for col in list(bpy.data.collections):
@@ -426,7 +431,7 @@ def merge_chunks(building, db, chunk_files, output, base_blend=""):
                     bpy.data.objects.remove(obj, do_unlink=True)
                 bpy.data.collections.remove(child)
             bpy.data.collections.remove(old_baked)
-            print(f"  [S189] removed old Baked_{building}")
+            _log(f"  [S189] {_ts()} removed old Baked_{building}")
     else:
         bpy.ops.wm.read_factory_settings(use_empty=True)
 
@@ -439,7 +444,7 @@ def merge_chunks(building, db, chunk_files, output, base_blend=""):
     total_objects = 0
     for cp in chunk_files:
         if not Path(cp).exists():
-            print(f"  [S189] SKIP missing chunk: {cp}")
+            _log(f"  [S189] {_ts()} SKIP missing chunk: {cp}")
             continue
         t_c = time.time()
         with bpy.data.libraries.load(cp, link=False) as (src, dst):
@@ -464,7 +469,8 @@ def merge_chunks(building, db, chunk_files, output, base_blend=""):
                     total_objects += len(col.objects)
         merge_s = time.time() - t_c
         cp_mb = Path(cp).stat().st_size / (1024*1024)
-        print(f"  [S189] {_ts()} merged {Path(cp).name} ({cp_mb:.1f}MB) in {merge_s:.1f}s")
+        _log(f"  [S189] {_ts()} §MERGE_APPEND {Path(cp).name} ({cp_mb:.1f}MB) "
+             f"in {merge_s:.1f}s — {total_objects} objects so far")
 
     # Store DB path for Preview auto-resume
     bpy.context.scene["fed_db_path"] = str(db)
@@ -473,11 +479,17 @@ def merge_chunks(building, db, chunk_files, output, base_blend=""):
     # Save combined
     out_path = Path(output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    mesh_count = len(bpy.data.meshes)
+    obj_count = len(bpy.data.objects)
+    _log(f"  [S189] {_ts()} §MERGE_SAVING meshes={mesh_count} objects={obj_count} "
+         f"target={out_path.name}...")
+    t_save = time.time()
     bpy.ops.wm.save_as_mainfile(filepath=str(out_path.resolve()))
+    save_s = time.time() - t_save
     elapsed = time.time() - t0
     file_mb = out_path.stat().st_size / (1024*1024) if out_path.exists() else 0
-    print(f"  [S189] {_ts()} §MERGE_COMPLETE bld={building} objects={total_objects} "
-          f"file={out_path.name} size={file_mb:.1f}MB elapsed={elapsed:.1f}s")
+    _log(f"  [S189] {_ts()} §MERGE_COMPLETE bld={building} objects={total_objects} "
+         f"file={out_path.name} size={file_mb:.1f}MB save={save_s:.1f}s total={elapsed:.1f}s")
 
     # Clean up chunk files
     for cp in chunk_files:
@@ -485,7 +497,7 @@ def merge_chunks(building, db, chunk_files, output, base_blend=""):
             Path(cp).unlink(missing_ok=True)
         except Exception:
             pass
-    print(f"  [S189] cleaned up {len(chunk_files)} chunk files")
+    _log(f"  [S189] {_ts()} cleaned up {len(chunk_files)} chunk files")
 
 
 # ── Main ──
