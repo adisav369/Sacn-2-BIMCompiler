@@ -1,7 +1,7 @@
 # ⚠ DO NOT REMOVE
-# Scope: S189 — BLOB tessellation + chunk-parallel bake (Part F implementation)
+# Scope: S189 — BLOB tessellation + chunk-parallel bake + live-link UX
 # Read the log after every run. No claims without §PROOF log lines.
-# STATUS: DONE
+# STATUS: IN PROGRESS — Preview link tested, needs restart verification
 
 ## Context
 

@@ -28,17 +28,17 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
-**S189 (2026-04-16):** BLOB tessellation — library.blend bypass, BACKEND bake+reopen UX. DONE.
-  - **BLOB tessellation:** Overnight, LOAD MESH, and bake subprocess now read geometry BLOBs from `component_library.db` via SQLite indexed lookup. No 305MB library.blend parse. Mesh creation: 3-11ms per batch (was 1-2s).
-  - **library.blend no longer required** for live loading or baking. Resolved independently from component_library.db. Kept only for lean distribution (linked meshes).
-  - **BACKEND button:** always visible alongside OVERNIGHT. User choice: watch meshes appear (OVERNIGHT) or bake in background (BACKEND). No need to start overnight first.
-  - **No merge-back:** baked .blend is self-contained. "BACKEND DONE. Don't Save. Reopen." button opens baked file directly, skips save dialog. Zero freeze.
-  - **Chunk-parallel bake:** buildings ≥50K elements split into up to 4 `blob_tessellate_worker.py` subprocesses. Terminal 48K = single worker, Hospital 64K = 4 chunks.
-  - **Material fix:** `from_pydata` meshes need `mesh.materials.append(None)` for per-object color. Fixed in worker and `_tessellate_from_blobs()`.
-  - **Timestamped logs:** all §PROOF tags print `HH:MM:SS.mmm` for cross-process correlation.
-  - **Cleanup:** removed old .blend/.blend1/IFC/logs from input/output folders (~97MB reclaimed).
-  - Terminal baked: 39MB, fast reopen, full element Outliner. Overnight BLOB batch_avg=3-11ms (mesh source), rising to 1.7s at 8K elements (Blender scene graph overhead, not our code).
+**S189 (2026-04-16):** BLOB tessellation, BACKEND bake, live-link architecture. IN PROGRESS.
+  - **BLOB tessellation:** Overnight/LOAD MESH read BLOBs from `component_library.db` (3-11ms/batch, was 1-2s via library.blend).
+  - **BACKEND button:** bakes building in background subprocess. Chunk-parallel for >100K (LTU 126K = 4 chunks, 25s). Hospital 64K = single worker, 22s.
+  - **Live-link architecture:** session.blend (~1MB) links to baked/*.blend. No merge subprocess. Preview scans baked/ and links on load. Save is instant.
+  - **Material fix:** `from_pydata` meshes need `mesh.materials.append(None)`.
+  - **Chunk threshold:** 100K (was 50K). Below that, single worker is faster (no merge overhead).
+  - **DB count fix:** BACKEND queries DB for element count when overnight hasn't run.
+  - **Subprocess survival:** `start_new_session=True` for merge subprocess to outlive Blender.
+  - **Distribution:** session.blend + component_library.db. Online DB future spec'd in PackageDistro.md.
   - **Version:** `_FED_VERSION = "S189a"`
+  - **Next:** verify Preview link after restart. Potential: lazy link on drill-in instead of Preview.
 
 **S188-RTree (2026-04-16):** Void filter, transparency, threshold link-back, parallel bake — DONE.
   - Void filter, transparency (Principled BSDF), deferred element list, surface_styles in sandbox.
