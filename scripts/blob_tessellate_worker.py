@@ -30,11 +30,12 @@ argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--db", required=True, help="Extracted DB (sandbox or single-building)")
-parser.add_argument("--library-db", required=True, help="Path to component_library.db")
+parser.add_argument("--library-db", default="", help="Path to component_library.db")
 parser.add_argument("--building", required=True, help="Building name to bake")
 parser.add_argument("--offset", type=int, default=0, help="Element offset (chunk start)")
 parser.add_argument("--limit", type=int, default=0, help="Element limit (chunk size, 0=all)")
 parser.add_argument("--output", required=True, help="Output .blend path")
+parser.add_argument("--merge", nargs='+', default=[], help="Merge mode: list of chunk .blend files to combine")
 args = parser.parse_args(argv)
 
 import bpy
@@ -377,6 +378,10 @@ def bake_chunk(building, db, lib_db, offset_elem, limit_elem, site_offset):
         else:
             no_xform += 1
 
+    # S189: Store source DB path as scene property so Preview can resume RTree mode
+    bpy.context.scene["fed_db_path"] = str(db)
+    bpy.context.scene["fed_building"] = building
+
     # Save
     bpy.ops.wm.save_as_mainfile(filepath=str(out_path))
     elapsed = time.time() - t0
@@ -388,8 +393,89 @@ def bake_chunk(building, db, lib_db, offset_elem, limit_elem, site_offset):
           f"file={out_path.name} size={file_mb:.1f}MB elapsed={elapsed:.1f}s")
 
 
+def merge_chunks(building, db, chunk_files, output):
+    """S189: Merge multiple chunk .blend files into one combined .blend."""
+    t0 = time.time()
+    print(f"\n{'='*60}")
+    print(f"[S189] {_ts()} §MERGE_START bld={building} chunks={len(chunk_files)} pid={os.getpid()}")
+    print(f"{'='*60}")
+
+    import bpy
+    from pathlib import Path
+
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+
+    _disc_suffixes = {'ARC','STR','MEP','ELEC','FP','OTHER',
+                      'PLB','HEAT','HVAC','VENT','SAN','ACMV'}
+
+    parent_col = bpy.data.collections.new(building)
+    bpy.context.scene.collection.children.link(parent_col)
+
+    total_objects = 0
+    for cp in chunk_files:
+        if not Path(cp).exists():
+            print(f"  [S189] SKIP missing chunk: {cp}")
+            continue
+        t_c = time.time()
+        with bpy.data.libraries.load(cp, link=False) as (src, dst):
+            disc_cols = [c for c in src.collections
+                         if any(c.endswith(f'_{d}') for d in _disc_suffixes)]
+            if disc_cols:
+                dst.collections = disc_cols
+            elif src.collections:
+                dst.collections = [src.collections[0]]
+        for col in dst.collections:
+            if col is not None:
+                # Avoid duplicate collection names — merge into existing disc collection
+                existing = bpy.data.collections.get(col.name)
+                if existing and existing != col:
+                    # Move objects from duplicate into existing
+                    for obj in list(col.objects):
+                        col.objects.unlink(obj)
+                        existing.objects.link(obj)
+                    total_objects += len(existing.objects)
+                else:
+                    parent_col.children.link(col)
+                    total_objects += len(col.objects)
+        merge_s = time.time() - t_c
+        cp_mb = Path(cp).stat().st_size / (1024*1024)
+        print(f"  [S189] {_ts()} merged {Path(cp).name} ({cp_mb:.1f}MB) in {merge_s:.1f}s")
+
+    # Store DB path for Preview auto-resume
+    bpy.context.scene["fed_db_path"] = str(db)
+    bpy.context.scene["fed_building"] = building
+
+    # Save combined
+    out_path = Path(output)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    bpy.ops.wm.save_as_mainfile(filepath=str(out_path.resolve()))
+    elapsed = time.time() - t0
+    file_mb = out_path.stat().st_size / (1024*1024) if out_path.exists() else 0
+    print(f"  [S189] {_ts()} §MERGE_COMPLETE bld={building} objects={total_objects} "
+          f"file={out_path.name} size={file_mb:.1f}MB elapsed={elapsed:.1f}s")
+
+    # Clean up chunk files
+    for cp in chunk_files:
+        try:
+            Path(cp).unlink(missing_ok=True)
+        except Exception:
+            pass
+    print(f"  [S189] cleaned up {len(chunk_files)} chunk files")
+
+
 # ── Main ──
 
-offset = get_site_offset(db_path)
-print(f"[S189] Site offset: ({offset.x:.2f}, {offset.y:.2f}, {offset.z:.2f})")
-bake_chunk(args.building, db_path, lib_db_path, args.offset, args.limit, offset)
+if args.merge:
+    # Merge mode — combine chunk .blends into one
+    merge_chunks(args.building, Path(args.db).resolve(), args.merge, args.output)
+else:
+    # Bake mode — tessellate from BLOBs
+    db_path = Path(args.db).resolve()
+    lib_db_path = Path(args.library_db).resolve()
+    if not db_path.exists():
+        raise FileNotFoundError(f"DB not found: {db_path}")
+    if not lib_db_path.exists():
+        raise FileNotFoundError(f"Library DB not found: {lib_db_path}")
+    offset = get_site_offset(db_path)
+    print(f"[S189] Site offset: ({offset.x:.2f}, {offset.y:.2f}, {offset.z:.2f})")
+    bake_chunk(args.building, db_path, lib_db_path, args.offset, args.limit, offset)
