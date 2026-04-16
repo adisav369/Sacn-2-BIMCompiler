@@ -25,8 +25,8 @@ Every output element traces to a library input. Nothing is invented. No AI insid
 
 | | |
 |:---|:---|
-| **35 buildings** compiled (48,428 elements largest) | **77 verbs**, 2,475 products |
-| **6 mathematical gates** prove every output | **392 tests**, all GREEN |
+| **35 buildings** compiled (126K elements largest) | **77 verbs**, 2,475 products |
+| **1M elements** loaded in a single federated session | **6 mathematical gates** prove every output |
 | **ERP-native** data model ([iDempiere](https://idempiere.org/)) | **[Blender](https://www.blender.org/)/[Bonsai](https://bonsaibim.org/)** live GUI |
 
 <br clear="right"/>
@@ -58,6 +58,34 @@ See a [walkthrough of how Claude does pair programming with the Creator](https:/
 IFC file → extract → classify.yaml → IFCtoBOM → BOM.db → compile → output.db → gates
            (once)    (human intent)    (once)     (recipe)   (repeat)  (elements)   (proof)
 ```
+
+## City-Scale Viewer (RTree Federation)
+
+The compiled output is a queryable database, not a file to "open."
+The viewer loads 1M elements as GPU wireframe bounding boxes in under 2 seconds.
+Exact geometry appears on demand — where attention goes, meshes load.
+
+**BACKEND bake** sends buildings to background workers. Multiple buildings bake in
+parallel while the user keeps working. Baked buildings merge into a progressive
+session file that accumulates across working days.
+
+| Metric | Proven |
+|:---|:---|
+| Preview (1M bboxes) | **<2s** |
+| BLOB tessellation per batch | **3-11ms** (was 1-2s via library.blend) |
+| LTU 126K bake (4 chunks) | **25s** |
+| Terminal 48K bake | **~40s** |
+| Session merge (link) | **~2.5 min** (background) |
+| Session file size | **~6MB** (linked, not inline) |
+
+See [RTree.md](docs/RTree.md) for architecture and
+[StressTest_1M_Results.md](internal/StressTest_1M_Results.md) for full benchmarks.
+
+### nD Analysis (4D–8D)
+
+Template-driven engine generates schedules (4D), cost estimates (5D), carbon (6D),
+lifecycle (7D), and safety plans (8D) from the same compiled database. 37 buildings +
+1M sandbox costed at MYR 1.59B. See [4D5DAnalysis.md](docs/4D5DAnalysis.md).
 
 ## Project Structure
 
@@ -94,12 +122,14 @@ Led [ADempiere](https://www.adempierebr.com/User:Red1) (2006), paved the way for
 | **Databases** | 55 SQLite DBs (4-DB architecture per building) |
 | **Specifications** | 50 docs, governed by SystemContract.md |
 | **Buildings** | 35 compiled (34 extracted + 1 generative) |
+| **Library** | 123,573 tessellated meshes in component_library.db |
+| **Scale** | 1,063,563 elements federated, 35 buildings, 6 disciplines |
 
 ---
 
 <div align="center">
 
-**Alpha v1.0** — March 2026
+**Alpha v1.0** — April 2026
 
 Code: GPL v2 · Documentation: CC BY-SA 4.0
 
