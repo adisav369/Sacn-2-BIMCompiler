@@ -2935,6 +2935,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#s188-surface-styles-transparency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S188 — Surface Styles &amp; Transparency
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§S188 — Surface Styles &amp; Transparency">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem-1-bake-script-ignored-surface_styles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem 1: Bake script ignored surface_styles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#problem-2-sandbox-missing-surface_styles-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem 2: Sandbox missing surface_styles table
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4029,6 +4068,45 @@
     <span class="md-ellipsis">
       
         Why Duplex is affected
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s188-surface-styles-transparency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S188 — Surface Styles &amp; Transparency
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§S188 — Surface Styles &amp; Transparency">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem-1-bake-script-ignored-surface_styles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem 1: Bake script ignored surface_styles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#problem-2-sandbox-missing-surface_styles-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem 2: Sandbox missing surface_styles table
       
     </span>
   </a>
@@ -5153,6 +5231,23 @@ its disciplines are already federated in one file, not merged by our pipeline.</
 <p><strong>Rule:</strong> <code>_open.py</code> is only for files produced by <code>extract_merge_disciplines.py</code>
 — i.e., files with the <code>_merged.ifc</code> suffix. All other IFC files use
 <code>extractIFCtoDB.py</code>.</p>
+<hr />
+<h2 id="s188-surface-styles-transparency">§S188 — Surface Styles &amp; Transparency<a class="headerlink" href="#s188-surface-styles-transparency" title="Permanent link">&para;</a></h2>
+<h3 id="problem-1-bake-script-ignored-surface_styles">Problem 1: Bake script ignored <code>surface_styles</code><a class="headerlink" href="#problem-1-bake-script-ignored-surface_styles" title="Permanent link">&para;</a></h3>
+<p>The bake script (<code>bake_building_blend.py</code>) only read <code>material_rgba</code> from
+<code>elements_meta</code>. Many Duplex elements have NULL <code>material_rgba</code> but valid
+material names that map to <code>surface_styles</code> entries (with transparency values).
+This caused all glass/transparent elements to render opaque or with default
+discipline colour.</p>
+<p><strong>Fix:</strong> <code>resolve_rgba()</code> mirrors the full-loader fallback chain:
+<code>material_rgba</code> → <code>surface_styles</code> exact match → colon-split match → None.
+Alpha = <code>max(0, 1 - transparency)</code>.</p>
+<h3 id="problem-2-sandbox-missing-surface_styles-table">Problem 2: Sandbox missing <code>surface_styles</code> table<a class="headerlink" href="#problem-2-sandbox-missing-surface_styles-table" title="Permanent link">&para;</a></h3>
+<p>When Duplex was merged into <code>sandbox_1M.db</code>, the <code>surface_styles</code> table was not
+carried over. Even with Problem 1 fixed, sandbox Duplex has no transparency data.</p>
+<p><strong>Fix required:</strong> The sandbox merge script (<code>bake_all_sandbox.sh</code> or equivalent)
+must copy <code>surface_styles</code> rows per building during merge. Until then, bake
+Duplex from its native DB (<code>Duplex_extracted.db</code>) for correct transparency.</p>
 
 
 

@@ -2937,6 +2937,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#s187-shred-baked-collapsible-panel-version-stamp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S187 — Shred Baked, Collapsible Panel, Version Stamp
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3446,6 +3457,60 @@ automatically.</p>
   </figcaption>
 </figure>
 
+<h3 id="s187-shred-baked-collapsible-panel-version-stamp">S187 — Shred Baked, Collapsible Panel, Version Stamp<a class="headerlink" href="#s187-shred-baked-collapsible-panel-version-stamp" title="Permanent link">&para;</a></h3>
+<p><strong>Shred now handles both load patterns:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Source</th>
+<th>Shred action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Loaded_*</code> collections</td>
+<td>Stingy Mesh Loader</td>
+<td>Unlink objects, remove collection</td>
+</tr>
+<tr>
+<td><code>Baked_*</code> collection instances</td>
+<td>Smart Bake Engine</td>
+<td>Delete <code>*_inst</code> empties per discipline</td>
+</tr>
+</tbody>
+</table>
+<p>Select <code>T0_Hospital_MEP_inst</code> → SHRED → only MEP removed, others remain.
+Select nothing → SHRED removes last <code>Loaded_*</code> or last <code>Baked_*</code> building.
+Empty <code>Baked_*</code> parent auto-cleaned.</p>
+<p><strong>Collapsible element list (S187):</strong> The L2 element list collapses to a single
+header row when overnight/bake is active, keeping the SHORT-CUT button visible
+without scrolling. Triangle toggle for manual collapse at any time.</p>
+<p><strong>SHORT-CUT countdown now shows total cost upfront:</strong>
+<div class="highlight"><pre><span></span><code>⚡ SHORT-CUT  ~37s + ~25s link
+</code></pre></div>
+The <code>+25s link</code> warns that Blender will freeze briefly at the end when linking
+the baked file. Wait cursor shown during link. No two-phase state splitting.</p>
+<p><strong>Pre-S185 DB guard:</strong> LOAD MESH and OVERNIGHT reject extracted DBs that lack
+rotation columns (pre-S185 schema). Clean error in status bar:
+"DB too old — re-extract with current pipeline."</p>
+<p><strong>Version stamp:</strong> <code>_FED_VERSION</code> in <code>operator.py</code> prints <code>[S187b]</code> on Preview.
+Confirms running code matches source after Blender restart.</p>
+<p><strong>Storey element fly-to fix:</strong> Storey-level top-10 query now includes rtree
+JOIN for bounding boxes. Fixes <code>KeyError: 'bbox'</code> crash when clicking an
+element after drilling into a storey.</p>
+<p><strong>Log evidence (Terminal 48K, 2026-04-15):</strong>
+<div class="highlight"><pre><span></span><code>[S186] §BAKE_SWITCH bld=Terminal partial=3650
+[S186] §BAKE_POLL bld=Terminal ~23,245/48,428 (48%) 35s elapsed ~37s left
+  [BAKE-SUB] §PROOF BAKE bld=Terminal placed=48428 no_mesh=0 no_xform=0
+             discs=[&#39;MEP&#39;,&#39;ACMV&#39;,&#39;ARC&#39;,&#39;STR&#39;,&#39;ELEC&#39;,&#39;FP&#39;] 36.4s
+[S186] §BAKE_DONE bld=Terminal elapsed=40s
+[S186] §BAKE_SHRED bld=Terminal collections=2 objects=3767
+[S187] §BAKE_LINK bld=Terminal instances=6 total=48,428 link=24.1s
+</code></pre></div>
+Viewport remained fully interactive during the 40s bake — storey drill-down,
+fly-to-element, and re-Preview all worked while the subprocess ran.
+File saved at 125.5KB (linked refs to library.blend, no mesh duplication).</p>
 <hr />
 <h2 id="geo-hash-hell-solved-s180">Geo Hash Hell — SOLVED (S180)<a class="headerlink" href="#geo-hash-hell-solved-s180" title="Permanent link">&para;</a></h2>
 <p>When loading meshes from library.blend, Blender renames datablocks that
@@ -3477,7 +3542,7 @@ further geo hash hell reports. This is considered closed.</p>
 </tr>
 <tr>
 <td><code>operator.py</code></td>
-<td>FedRTreeSearch, FedRTreeFlyToResult, FedRTreeFlyToElement, FedRTreePick, FedRTreeLoadMesh</td>
+<td>FedRTreeSearch, FedRTreeFlyToResult, FedRTreeFlyToElement, FedRTreePick, FedRTreeLoadMesh, FedRTreeShred (Loaded+Baked), FedRTreeOvernight, FedRTreeSwitchOffline, <code>_FED_VERSION</code> stamp</td>
 </tr>
 <tr>
 <td><code>ui.py</code></td>
@@ -3492,8 +3557,12 @@ further geo hash hell reports. This is considered closed.</p>
 <td>operator + panel registration</td>
 </tr>
 <tr>
-<td><code>library/library.blend</code></td>
-<td>mesh source for Stingy Loader (276MB, 120K meshes)</td>
+<td><code>library/component_library.db</code></td>
+<td>S189: BLOB mesh source (123K geometry hashes, SQLite indexed)</td>
+</tr>
+<tr>
+<td><code>scripts/blob_tessellate_worker.py</code></td>
+<td>S189: per-chunk BLOB bake subprocess</td>
 </tr>
 <tr>
 <td><code>DAGCompiler/lib/input/*_extracted.db</code></td>
@@ -3510,6 +3579,7 @@ further geo hash hell reports. This is considered closed.</p>
 <li><code>docs/StressTest_1M.md</code> — the 1M element loading challenge and GN architecture</li>
 <li><code>prompts/S179_dlod_rtree_handoff.md</code> — corrected DLOD architecture</li>
 <li><code>prompts/S180_stingy_mesh_loader.md</code> — next session: picker fix + Load/Shred</li>
+<li><code>prompts/S187_overnight_panel_review.md</code> — S187 spec: instance validation, collapsible panels, shred fix</li>
 </ul>
 <hr />
 <h2 id="the-paradigm">The Paradigm<a class="headerlink" href="#the-paradigm" title="Permanent link">&para;</a></h2>
@@ -3520,7 +3590,7 @@ breaks. The model is too large to hold in memory. The viewer stalls.</p>
 <p>The alternative is to treat the BIM model as a database, not a file.
 The compiled output of the IFC extraction pipeline — <code>elements_meta</code>,
 <code>elements_rtree</code>, <code>element_transforms</code> — is a queryable index.
-The geometry exists in <code>library.blend</code> as a mesh library.
+The geometry exists in <code>component_library.db</code> as tessellated BLOBs (S189).
 Nothing is loaded until asked.</p>
 <p>The user navigates by querying. The geometry appears on demand.
 The city is always visible as wireframes. The detail appears where attention goes.</p>
