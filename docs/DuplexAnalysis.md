@@ -695,60 +695,58 @@ W-BPARTNER-SCHEDULE, W-BPARTNER-COMPLETENESS). See [DISC_VALIDATION_DB_SRS.md §
 
 ## §S184 — Full Load Geometry Corruption (2026-04-13)
 
-**Symptom:** Duplex and other small houses (Jasmin, etc.) show blocky/flat walls —
-door and window openings not visible as cutouts. Terminal, Hospital, SampleHouse
-are fine with the same library.blend and Full Load path.
+**Symptom:** Duplex and other small houses (Jasmin, HausGH, BimWhale_Tall) show
+solid boxes inside door/window openings — the wall mesh has correct cutouts but
+50 `IfcOpeningElement` records are rendered as solid box geometry filling the voids.
 
-**Root cause identified (S185):** The Apr 13 11:41 batch re-extracted Duplex and
-all other small buildings using `extractIFCtoDB_open.py` instead of the correct
-extractor. This caused `IfcOpeningElement` records to be written into
-`element_instances` as visible solid geometry — filling the openings they were
-supposed to cut. See §Extractor Choice below.
+**Root cause (S185):** The library linker (`stage2_library_linker.py`) loads ALL
+rows from `elements_meta` with no `ifc_class` filter. `IfcOpeningElement` is an
+IFC void instruction (boolean subtraction), not visible geometry. The extractor
+(`geom.iterator()`) emits it as a separate element with solid box geometry — this
+has always been the case and is correct IFC behaviour. The old tessellation loader
+(pre-S173) joined on `element_geometry` which didn't exist in meshless DBs, so
+openings were inadvertently excluded. The S173 library pipeline made them visible.
 
-**library.blend is unaffected.** The geometry BLOBs in `component_library.db` are
-correct (wall hashes have proper cutout topology, 24-48 verts with 5 unique Z
-levels). No re-bake needed. Only the extracted DBs need to be regenerated with
-the correct extractor.
+**Fix (S185, 2026-04-14):**
+- `stage2_library_linker.py`: added `WHERE m.ifc_class NOT IN ('IfcOpeningElement')`
+  to both query paths (single-building + RTree/GN). Proof line: `§VOID_FILTER`.
+- Missing LOD meshes now raise `§ILLEGAL_MISSING_LOD` (hard stop).
+- `extractIFCtoDB.py`: parametric fallback (`bbox_from_placement`) raises
+  `§ILLEGAL_PARAMETRIC_FALLBACK` (hard stop, no synthetic boxes).
+- All 4 affected buildings re-extracted fresh on 2026-04-14 with `extractIFCtoDB.py`.
 
-**Evidence:**
-- `Duplex_extracted.db` contains 50 `IfcOpeningElement` rows in `elements_meta`
-- All 648 geometry hashes present and correct in `component_library.db`
-- Wall BLOBs have 5 unique Z levels — openings are in the mesh geometry
-- `library_link` log: `§PROOF BBOX_RECONSTRUCT PASS` when loaded with correct DB
-
-**Status:** OPEN — library.blend must be re-baked with Duplex hashes. See §S185.
+**Status:** FIXED — Duplex loads correctly, wall cutouts visible, no solid boxes.
 
 ---
 
-## §S185 — Restoration of Original Extraction (2026-04-13)
+## §S185 — Void Filter + Re-extraction (2026-04-14)
 
-**The original extraction was pristine and complete.** Before the Apr 13 11:41
-batch, Duplex had 648 geometry hashes, 100% library coverage, correct wall
-cutouts, and proper rotations (576 non-zero). The `library_link` log showed
-`§PROOF BBOX_RECONSTRUCT PASS 50 ok, 0 fail`. This is the state to restore.
+**Root cause confirmed:** `IfcOpeningElement` was always in the extracted DB
+(50 rows in Duplex). Both `extractIFCtoDB.py` and `extractIFCtoDB_open.py` emit
+it — the extractor is not at fault. The regression was in the library linker
+loading path introduced in S173.
 
-**The original extraction path:**
-```bash
-python3 DAGCompiler/python/extractIFCtoDB.py \
-    --ifc DAGCompiler/lib/input/IFC/Ifc2x3_Duplex_Federated.ifc \
-    -o DAGCompiler/lib/input/Duplex_extracted.db \
-    --library library/component_library.db
+**Buildings re-extracted (2026-04-14):**
+
+| Building | Elements | Hashes | IfcOpeningElement | Extractor |
+|----------|----------|--------|-------------------|-----------|
+| Duplex | 1,169 | 650 | 50 (filtered) | `extractIFCtoDB.py` PATH 2 |
+| AC90_Jasmin | 84 | 66 | 23 (filtered) | `extractIFCtoDB.py` |
+| AC9_HausGH | 260 | 152 | 67 (filtered) | `extractIFCtoDB.py` |
+| BimWhale_Tall | 81 | 28 | 26 (filtered) | `extractIFCtoDB.py` |
+
+**Not re-extracted:** Terminal, Hospital, Clinic, SampleHouse — correct, untouched.
+
+**Linker proof line (in library_link log):**
 ```
-This is `bake_all_sandbox.sh` PATH 2 — the correct, committed pipeline.
+§VOID_FILTER excluded 50 IfcOpeningElement (void instructions, not geometry)
+```
 
-**Current state after S185 re-extraction:**
-- `Duplex_extracted.db` — re-extracted with `extractIFCtoDB.py`, 650 hashes,
-  0 `IfcOpeningElement`, 577 non-zero rotations, 100% library coverage
-- `library.blend` (277MB) — does NOT contain the 648/650 Duplex mesh
-  datablocks (baked before Duplex was added to library pipeline)
-- `library_s184_test.blend` (281MB) — contains Duplex hashes but breaks
-  sandbox RTree LOD pulling (root cause under investigation)
-
-**Blocker:** library.blend re-bake needed. Cannot proceed until sandbox break
-from 281MB blend is diagnosed and resolved.
-
-**Do not re-extract Terminal, Hospital, Clinic** — their extraction is correct
-and untouched. Only Duplex and the Apr 13 11:41 small-building batch are affected.
+**Safety hardening:**
+- `§ILLEGAL_PARAMETRIC_FALLBACK` — extractor aborts if tessellation fails
+  (no synthetic 1×1×1 boxes). Add class to `NON_GEOMETRIC_CLASSES` or fix source.
+- `§ILLEGAL_MISSING_LOD` — linker aborts if any geometry_hash not found in
+  library.blend. Re-bake library or fix extraction.
 
 ---
 
@@ -797,3 +795,28 @@ its disciplines are already federated in one file, not merged by our pipeline.
 **Rule:** `_open.py` is only for files produced by `extract_merge_disciplines.py`
 — i.e., files with the `_merged.ifc` suffix. All other IFC files use
 `extractIFCtoDB.py`.
+
+---
+
+## §S188 — Surface Styles & Transparency
+
+### Problem 1: Bake script ignored `surface_styles`
+
+The bake script (`bake_building_blend.py`) only read `material_rgba` from
+`elements_meta`. Many Duplex elements have NULL `material_rgba` but valid
+material names that map to `surface_styles` entries (with transparency values).
+This caused all glass/transparent elements to render opaque or with default
+discipline colour.
+
+**Fix:** `resolve_rgba()` mirrors the full-loader fallback chain:
+`material_rgba` → `surface_styles` exact match → colon-split match → None.
+Alpha = `max(0, 1 - transparency)`.
+
+### Problem 2: Sandbox missing `surface_styles` table
+
+When Duplex was merged into `sandbox_1M.db`, the `surface_styles` table was not
+carried over. Even with Problem 1 fixed, sandbox Duplex has no transparency data.
+
+**Fix required:** The sandbox merge script (`bake_all_sandbox.sh` or equivalent)
+must copy `surface_styles` rows per building during merge. Until then, bake
+Duplex from its native DB (`Duplex_extracted.db`) for correct transparency.

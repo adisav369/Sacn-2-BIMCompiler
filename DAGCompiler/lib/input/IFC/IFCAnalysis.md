@@ -51,6 +51,23 @@ it into the final DB.
 > new loader (library linker, GN cache, etc.). The `diffuse_color` trap is silent —
 > materials appear correctly created in the log but invisible in the viewport.
 
+> **⚠ CRITICAL — IfcOpeningElement Void Filter (S188b):**
+> `IfcOpeningElement` is a void instruction (boolean subtraction), not visible
+> geometry. When extracted via `_open.py` (`create_shape` per element), openings
+> are emitted as solid boxes that fill window/door voids. The wall mesh already
+> has the cutout baked in — the opening box must never be rendered.
+>
+> Full Load (`stage2_library_linker.py`) filters:
+> `WHERE m.ifc_class NOT IN ('IfcOpeningElement')`
+>
+> Overnight, LOAD MESH, and bake script were missing this filter until S188b.
+> Duplex: 50 solid boxes. Clinic: 410. All query paths now exclude them.
+>
+> **⚠ CRITICAL — Transparency in Blender 5.0 EEVEE Next (S188a):**
+> `mat.blend_method = 'BLEND'` alone is insufficient. EEVEE Next requires a
+> Principled BSDF node with `Alpha` input set. Simple `diffuse_color` alpha
+> is ignored. All material paths now create node-based materials when alpha < 0.99.
+
 ```bash
 # Example: Clinic has 5 discipline IFCs in UNMERGED/
 python3 scripts/extract_merge_disciplines.py \

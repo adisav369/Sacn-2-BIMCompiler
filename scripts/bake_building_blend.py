@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
-S186: Bake a single building (or all buildings) from extracted DB → .blend
+S188: Bake a single building (or all buildings) from extracted DB → .blend
 
-Each building gets one .blend with all objects placed, meshes linked from
-library.blend, organised into discipline collections (ARC, STR, MEP, ELEC, FP).
+Each building gets one self-contained .blend (fat format) with all meshes
+appended from library.blend. No external dependencies — opens in <1s.
+
+For distribution (lean format), use distro_package.py to strip meshes
+back to library links.
+
+See docs/PackageDistro.md for the full spec.
 
 Usage:
     blender --background --python scripts/bake_building_blend.py -- \
@@ -16,7 +21,7 @@ Usage:
         --library library/library.blend \
         --all
 
-Output: baked/{building}_baked.blend
+Output: baked/{building}_baked.blend (self-contained, no library chain)
 """
 import sys, os, time
 
@@ -115,35 +120,82 @@ def get_redirect_corrections(hashes):
     return rot_corr, pos_corr
 
 
+def load_surface_styles(db):
+    """Load surface_styles table if it exists. Returns dict: style_name → 'r,g,b,a' string.
+    Alpha = 1.0 - transparency (same logic as stage2_library_linker)."""
+    styles = {}
+    try:
+        conn = sqlite3.connect(str(db))
+        tables = [r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='surface_styles'"
+        ).fetchall()]
+        if 'surface_styles' not in tables:
+            conn.close()
+            return styles
+        for r in conn.execute(
+                "SELECT style_name, surface_r, surface_g, surface_b, "
+                "COALESCE(transparency, 0) FROM surface_styles"):
+            alpha = max(0.0, 1.0 - (r[4] or 0.0))
+            styles[r[0]] = f"{r[1]:.3f},{r[2]:.3f},{r[3]:.3f},{alpha:.3f}"
+        conn.close()
+        print(f"  [S188] surface_styles: {len(styles)} entries loaded")
+    except Exception as e:
+        print(f"  [S188] surface_styles load skipped: {e}")
+    return styles
+
+
+def resolve_rgba(material_name, rgba_str, surface_styles):
+    """Resolve material RGBA: direct material_rgba → surface_styles lookup → None.
+    Mirrors stage2_library_linker._resolve_rgba exactly."""
+    if rgba_str:
+        return rgba_str, 'direct'
+    if not material_name or not surface_styles:
+        return None, 'none'
+    # Exact match
+    if material_name in surface_styles:
+        return surface_styles[material_name], 'surface_styles'
+    # Substring after colon (Revit style: 'Basic Wall:Material Name')
+    for part in material_name.split(':'):
+        part = part.strip()
+        if part in surface_styles:
+            return surface_styles[part], 'surface_styles'
+    return None, 'none'
+
+
 def bake_building(building_name, db, library, offset):
     """Bake one building into a .blend file."""
     t0 = time.time()
     print(f"\n{'='*60}")
-    print(f"[S186] BAKING: {building_name}")
+    print(f"[S188] BAKING: {building_name}")
     print(f"{'='*60}")
 
     # Fresh scene
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
+    # S188: Load surface_styles for proper transparency
+    surface_styles = load_surface_styles(db)
+
     conn = sqlite3.connect(str(db))
     _has_bld = has_building_column(db)
 
-    # Fetch all elements for this building
+    # Fetch all elements for this building (S188: added material_name for surface_styles lookup)
     if _has_bld:
         elements = conn.execute("""
             SELECT m.guid, m.element_name, m.discipline, m.ifc_class, m.storey,
-                   m.material_rgba, i.geometry_hash
+                   m.material_rgba, i.geometry_hash, m.material_name
             FROM elements_meta m
             JOIN element_instances i ON m.guid = i.guid
             WHERE m.building = ? AND i.geometry_hash IS NOT NULL
+              AND m.ifc_class != 'IfcOpeningElement'
         """, (building_name,)).fetchall()
     else:
         elements = conn.execute("""
             SELECT m.guid, m.element_name, m.discipline, m.ifc_class, m.storey,
-                   m.material_rgba, i.geometry_hash
+                   m.material_rgba, i.geometry_hash, m.material_name
             FROM elements_meta m
             JOIN element_instances i ON m.guid = i.guid
             WHERE i.geometry_hash IS NOT NULL
+              AND m.ifc_class != 'IfcOpeningElement'
         """).fetchall()
 
     # Fetch transforms
@@ -166,16 +218,18 @@ def bake_building(building_name, db, library, offset):
     unique_hashes = list({e[6] for e in elements if e[6]})
     print(f"  Unique meshes: {len(unique_hashes)}")
 
-    # Link meshes from library.blend (keep linked — small file, chain to library)
+    # S188: Append meshes from library.blend (link=False → self-contained fat .blend).
+    # No library chain on open — trades disk space for instant open time.
+    # See docs/PackageDistro.md §1.
     already = {m.name for m in bpy.data.meshes}
     to_link = [h for h in unique_hashes if h not in already]
     if to_link:
         t_link = time.time()
-        with bpy.data.libraries.load(str(library), link=True) as (src, dst):
+        with bpy.data.libraries.load(str(library), link=False) as (src, dst):
             src_names = set(src.meshes)
             dst.meshes = [h for h in to_link if h in src_names]
-        linked_count = sum(1 for m in dst.meshes if m is not None)
-        print(f"  Linked {linked_count} meshes in {time.time()-t_link:.1f}s (kept linked, no make_local)")
+        appended_count = sum(1 for m in dst.meshes if m is not None)
+        print(f"  Appended {appended_count} meshes in {time.time()-t_link:.1f}s (self-contained, no library chain)")
 
     mesh_by_hash = {}
     for h in unique_hashes:
@@ -197,7 +251,8 @@ def bake_building(building_name, db, library, offset):
     no_mesh = 0
     no_xform = 0
 
-    for guid, ename, disc, ifc_class, storey, rgba_str, ghash in elements:
+    ss_hits = 0  # count surface_styles resolutions
+    for guid, ename, disc, ifc_class, storey, rgba_str, ghash, mat_name in elements:
         mesh = mesh_by_hash.get(ghash)
         if not mesh:
             no_mesh += 1
@@ -216,17 +271,36 @@ def bake_building(building_name, db, library, offset):
         obj = bpy.data.objects.new(obj_name, mesh)
         col.objects.link(obj)
 
-        # Material color
-        if rgba_str:
+        # Material color — S188: resolve via surface_styles when material_rgba is empty
+        resolved, source = resolve_rgba(mat_name, rgba_str, surface_styles)
+        if source == 'surface_styles':
+            ss_hits += 1
+        if resolved:
             try:
-                r, g, b, a = map(float, rgba_str.split(','))
+                r, g, b, a = map(float, resolved.split(','))
                 obj.color = (r, g, b, a)
                 if len(obj.material_slots) > 0:
-                    mat_key = f"Bake_{rgba_str}"
+                    mat_key = f"Bake_{resolved}"
                     mat = bpy.data.materials.get(mat_key)
                     if mat is None:
                         mat = bpy.data.materials.new(name=mat_key)
                         mat.diffuse_color = (r, g, b, a)
+                        # S188: node-based material for transparency
+                        if a < 0.99:
+                            mat.use_nodes = True
+                            nodes = mat.node_tree.nodes
+                            nodes.clear()
+                            out_n = nodes.new('ShaderNodeOutputMaterial')
+                            bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+                            if 'Base Color' in bsdf.inputs:
+                                bsdf.inputs['Base Color'].default_value = (r, g, b, 1.0)
+                            if 'Alpha' in bsdf.inputs:
+                                bsdf.inputs['Alpha'].default_value = a
+                            mat.node_tree.links.new(bsdf.outputs['BSDF'], out_n.inputs['Surface'])
+                            try:
+                                mat.blend_method = 'BLEND'
+                            except (AttributeError, TypeError):
+                                pass
                     obj.material_slots[0].link = 'OBJECT'
                     obj.material_slots[0].material = mat
             except Exception:
@@ -265,10 +339,11 @@ def bake_building(building_name, db, library, offset):
     out_path = out_dir / f"{building_name}_baked.blend"
     bpy.ops.wm.save_as_mainfile(filepath=str(out_path.resolve()))
     elapsed = time.time() - t0
-    print(f"  [S186] §PROOF BAKE bld={building_name} placed={placed} "
-          f"no_mesh={no_mesh} no_xform={no_xform} "
+    file_mb = out_path.stat().st_size / (1024 * 1024) if out_path.exists() else 0
+    print(f"  [S188] §PROOF BAKE bld={building_name} placed={placed} "
+          f"no_mesh={no_mesh} no_xform={no_xform} ss_hits={ss_hits} "
           f"discs={list(disc_collections.keys())} "
-          f"file={out_path.name} {elapsed:.1f}s")
+          f"file={out_path.name} size={file_mb:.1f}MB {elapsed:.1f}s (fat, self-contained)")
 
 
 # ── Main ──

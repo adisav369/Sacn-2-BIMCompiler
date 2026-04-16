@@ -122,6 +122,17 @@ def create_output(path):
             rotation_y REAL DEFAULT 0,
             rotation_z REAL DEFAULT 0
         );
+        CREATE TABLE IF NOT EXISTS surface_styles (
+            style_name TEXT PRIMARY KEY,
+            surface_r REAL, surface_g REAL, surface_b REAL,
+            transparency REAL DEFAULT 0.0,
+            specular_r REAL, specular_g REAL, specular_b REAL,
+            specular_ratio REAL,
+            specular_exponent REAL,
+            reflectance_method TEXT DEFAULT 'NOTDEFINED',
+            side TEXT DEFAULT 'BOTH',
+            source TEXT
+        );
     """)
     conn.execute("INSERT INTO site_context VALUES (1, 0, 0, 0)")
     conn.commit()
@@ -170,10 +181,26 @@ def load_building(db_path):
     except Exception:
         pass
 
+    # S188: surface_styles for transparency/PBR
+    styles = []
+    try:
+        tables = [r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='surface_styles'"
+        ).fetchall()]
+        if 'surface_styles' in tables:
+            styles = conn.execute(
+                "SELECT style_name, surface_r, surface_g, surface_b, "
+                "COALESCE(transparency, 0), specular_r, specular_g, specular_b, "
+                "specular_ratio, specular_exponent, reflectance_method, side, source "
+                "FROM surface_styles"
+            ).fetchall()
+    except Exception:
+        pass
+
     bbox = conn.execute("SELECT MIN(minX), MAX(maxX), MIN(minY), MAX(maxY), MIN(minZ) FROM elements_rtree").fetchone()
     conn.close()
 
-    return meta, rtree, bbox, instances, geoms, transforms
+    return meta, rtree, bbox, instances, geoms, transforms, styles
 
 
 def place_buildings(logf):
@@ -186,6 +213,7 @@ def place_buildings(logf):
     GAP = 5.0    # 5m alley between buildings — packed tight
 
     all_geoms = {}   # geometry_hash → blob row (deduplicated across all buildings)
+    all_styles = {}  # S188: style_name → row (deduplicated, union across buildings)
 
     for fname in BUILDINGS:
         db_path = INPUT_DIR / fname
@@ -193,7 +221,7 @@ def place_buildings(logf):
             log(f"SKIP {fname} — not found", logf)
             continue
 
-        meta, rtree, bbox, instances, geoms, transforms = load_building(db_path)
+        meta, rtree, bbox, instances, geoms, transforms, styles = load_building(db_path)
         if not meta or not bbox or bbox[0] is None:
             log(f"SKIP {fname} — empty", logf)
             continue
@@ -217,7 +245,12 @@ def place_buildings(logf):
             if g[0] not in all_geoms:
                 all_geoms[g[0]] = g
 
-        log(f"  {label}: {len(meta):>6} elements  {len(geoms):>5} geom blobs  footprint {width:.0f}m wide  at x={cursor_x:.0f}m", logf)
+        # S188: Collect surface_styles (union across all buildings)
+        for s in styles:
+            if s[0] not in all_styles:
+                all_styles[s[0]] = s
+
+        log(f"  {label}: {len(meta):>6} elements  {len(geoms):>5} geom blobs  {len(styles):>3} styles  footprint {width:.0f}m wide  at x={cursor_x:.0f}m", logf)
         cursor_x += width + GAP
 
     return placed, cursor_x, all_geoms
@@ -320,6 +353,16 @@ def main():
         out_conn.execute("COMMIT")
         log(f"Geometry hashes written in {time.perf_counter()-t_geom:.1f}s", logf)
 
+        # S188: Write surface_styles (union of all buildings)
+        if all_styles:
+            out_conn.execute("BEGIN")
+            out_conn.executemany(
+                "INSERT OR IGNORE INTO surface_styles VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                list(all_styles.values())
+            )
+            out_conn.execute("COMMIT")
+            log(f"Surface styles: {len(all_styles)} entries from all buildings", logf)
+
         # Write CBD tiles (main precinct)
         current_id = 1
         tile_idx = 0
@@ -345,7 +388,7 @@ def main():
             db_path = INPUT_DIR / fname
             if not db_path.exists():
                 continue
-            meta, rtree, bbox, instances, geoms, transforms = load_building(db_path)
+            meta, rtree, bbox, instances, geoms, transforms, styles = load_building(db_path)
             if not meta or not bbox or bbox[0] is None:
                 continue
             min_x, max_x, min_y, max_y, min_z = bbox
@@ -357,6 +400,10 @@ def main():
             for g in geoms:
                 if g[0] not in all_geoms:
                     all_geoms[g[0]] = g
+            # S188: collect suburb styles too
+            for s in styles:
+                if s[0] not in all_styles:
+                    all_styles[s[0]] = s
                     out_conn.execute("INSERT OR IGNORE INTO base_geometries VALUES (?)", (g[0],))
             suburb_cursor_x += width + SUBURB_GAP
 
@@ -399,8 +446,15 @@ def main():
         db_mb = OUT_DB.stat().st_size / (1024 * 1024)
         elapsed = time.perf_counter() - t_start
 
+        # S188: write suburb styles collected after CBD styles
+        if all_styles:
+            style_count = out_conn.execute("SELECT COUNT(*) FROM surface_styles").fetchone()[0]
+        else:
+            style_count = 0
+
         log(f"\n=== DONE ===", logf)
         log(f"Total elements : {final:,}", logf)
+        log(f"Surface styles : {style_count}", logf)
         log(f"DB size        : {db_mb:.1f} MB", logf)
         log(f"Build time     : {elapsed:.1f}s", logf)
         log(f"Output         : {OUT_DB}", logf)
