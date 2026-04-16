@@ -115,45 +115,75 @@ Link-back (S188): uses `link=False` (fat append). Collections are linked
 directly into a `Baked_{bld}` parent — no library chain resolution. After
 link-back, auto-saves the .blend if it has a filepath.
 
-### Proposed change: parallel spawn, no immediate merge-back
+### Proposed change: threshold link-back + parallel spawn
 
-1. **BAKE ALL** button (or automatic after Preview of multi-building DB) spawns
-   up to 4 Blender subprocesses simultaneously, one per building, each running
-   `bake_building_blend.py` with `link=False` output (fat .blend).
-2. Queue remaining buildings; sort smallest-first (fewest elements) so the user
-   sees the first completion quickly.
-3. `_poll_bake_subprocess()` already handles multiple entries — no change needed
-   to the polling loop. When a subprocess finishes, append its fat .blend into
-   the live session (current behaviour, ~2-5s per building with `link=False`).
-4. RTree Preview (GPU bboxes) is unaffected during bake — user keeps working.
-5. At save time, all appended meshes persist in the single .blend file.
-6. Reopen: one fat file, <3s (no library chain). See `docs/PackageDistro.md` S1.
+#### Threshold link-back (S188 finding: Hospital 44MB = 5min freeze)
+
+The link-back (`libraries.load`) is a single blocking call — no progress, no cancel,
+no viewport updates. Empirical data:
+
+| File size | Meshes | Link-back time | Verdict |
+|-----------|--------|---------------|---------|
+| Duplex 1.6MB | 650 | <1s | Link back |
+| Terminal 37MB | 7,150 | ~30s | Borderline |
+| Hospital 44MB | 22,800 | **5min+** | Don't link back |
+
+**Rule: `_LINKBACK_THRESHOLD_MB = 20`**
+
+When bake completes:
+- **File < 20MB**: link-back as today. Show `"WAIT — {est}s"` before freeze.
+- **File ≥ 20MB**: skip link-back. Show `"✓ BLENDED — {size}MB. Reopen to view."`
+  Fat .blend is saved in `baked/`. User opens it directly — <3s, all meshes, RTree
+  Preview works. No freeze. No merge.
+
+#### SHORT-CUT button UX
+
+Current problem: user clicks SHORT-CUT → buttons disappear → no feedback.
+
+**Fix:**
+1. On SHORT-CUT click, **red band stays visible** as a solid progress bar.
+   Three buttons collapse into one wide status rectangle.
+2. Progress text inside: `"⏳ Baking Hospital... 2m elapsed, ~1m left"`
+3. On completion:
+   - Small file: `"WAIT — 15s"` → link-back → building appears
+   - Large file: `"✓ BLENDED — 44MB. Reopen to view."` → no freeze
+4. Cooling-off: status stays visible for 10s after completion so user reads it.
+
+#### Parallel spawn (multi-building)
+
+1. **BAKE ALL** button spawns up to 4 Blender subprocesses simultaneously,
+   one per building, each running `bake_building_blend.py` with `link=False`.
+2. Queue remaining buildings; sort smallest-first for quick visual feedback.
+3. `_poll_bake_subprocess()` already handles multiple entries. On completion,
+   apply threshold rule per building (small = link back, large = reopen advice).
+4. RTree Preview (GPU bboxes) unaffected during bake — user keeps working.
 
 ### Debug logging
 
 | Tag | Fires when | Content |
 |-----|-----------|---------|
-| `§BAKE_SPAWN` | subprocess launched | building name, PID, cmd tail |
-| `§BAKE_PARALLEL` | 2+ builds in `_baking_buildings` | N builds running |
-| `§BAKE_COMPLETE` | subprocess exit 0 | elapsed time, file size |
-| `§BAKE_APPEND` | `libraries.load` done | merge-back time, object count |
-| `§SAVE_FAT` | `wm.save_mainfile` | total save time, file size, mesh count |
+| `§BAKE_SPAWN` | subprocess launched | building, PID, cmd tail |
+| `§BAKE_PARALLEL` | 2+ builds in `_baking_buildings` | N running |
+| `§BAKE_COMPLETE` | subprocess exit 0 | elapsed, file size, threshold verdict |
+| `§BAKE_APPEND` | link-back done (below threshold) | merge time, object count |
+| `§BAKE_SKIP_LINK` | above threshold | file size, "reopen to view" |
+| `§SAVE_FAT` | `wm.save_mainfile` | save time, file size, mesh count |
 
 ### Load balancing
 
-- Max 4 concurrent subprocesses (`nice -n 10`), configurable via `_MAX_BAKE_WORKERS`
-- Remaining buildings queued in `_bake_queue` (list, sorted by element count asc)
-- When a slot frees (`_poll_bake_subprocess` detects completion), pop next from queue
-- `§BAKE_PARALLEL` log line printed each time a new subprocess starts while others run
+- Max 4 concurrent subprocesses (`nice -n 10`), configurable `_MAX_BAKE_WORKERS`
+- Remaining buildings queued in `_bake_queue` (sorted by element count asc)
+- When a slot frees, pop next from queue and spawn
+- `§BAKE_PARALLEL` log line each time a new subprocess starts while others run
 
 ### Files
 
 | File | Change |
 |------|--------|
-| `federation/operator.py` | Add `FedRTreeBakeAll` operator; refactor `FedRTreeSwitchOffline.execute` into `_spawn_bake(building)` helper; add `_bake_queue` list; extend `_poll_bake_subprocess` to pop from queue on completion; add `§SAVE_FAT` logging to auto-save path |
-| `federation/bbox_visualization.py` | Add `_bake_queue = []` and `_MAX_BAKE_WORKERS = 4` module globals |
-| `federation/ui.py` | Add BAKE ALL button (visible when >1 building, idle state) |
-| `scripts/bake_building_blend.py` | Ensure `link=False` output (already done S188); print file size on completion for `§BAKE_COMPLETE` |
+| `federation/operator.py` | `_spawn_bake()` helper; `FedRTreeBakeAll`; threshold check in `_poll_bake_subprocess`; `§BAKE_SKIP_LINK` + `§SAVE_FAT` logging |
+| `federation/bbox_visualization.py` | `_bake_queue`, `_MAX_BAKE_WORKERS`, `_LINKBACK_THRESHOLD_MB` globals |
+| `federation/ui.py` | RED band progress bar (collapsed buttons); threshold-aware completion message; BAKE ALL button |
+| `scripts/bake_building_blend.py` | Print file size on completion (already done S188) |
 
 ## Standing rules
 

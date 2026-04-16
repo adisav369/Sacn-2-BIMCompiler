@@ -40,8 +40,7 @@ CLINIC_BUILDINGS = [
     "Ifc4_Revit_extracted.db",         # 5,002
     "WBDG_Office_extracted.db",        # 7,180
     "HITOS_extracted.db",              # 1,000
-    "HHS_Office_MEP_extracted.db",     # 3,964
-    "HHS_Office_ARC_extracted.db",     # 2,745
+    "HHS_Office_Federated_extracted.db",  # 6,709 (merged ARC+MEP)
     "Esplanades_extracted.db",         # 2,544
 ]
 CLINIC_ROWS = 2  # 2 rows of clinics flanking CBD

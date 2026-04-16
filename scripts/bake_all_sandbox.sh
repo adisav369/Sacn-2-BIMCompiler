@@ -118,8 +118,7 @@ NO_BLOBS_BUILDINGS=(
     "WBDG_Office|WBDG_Office_*_IFC2x3.ifc|IFC|merge"
     "Ifc4_Revit|Ifc4_Revit_*.ifc|UNMERGED|merge"
     "LTU_AHouse|LTU_AHouse_*.ifc|UNMERGED|merge"
-    "HHS_Office_MEP|opensourceBIM_HHS_Office_MEP.ifc|IFC|single"
-    "HHS_Office_ARC|opensourceBIM_HHS_Office_architect.ifc|IFC|single"
+    "HHS_Office|opensourceBIM_HHS_Office_*.ifc|IFC|merge"
 )
 
 for entry in "${NO_BLOBS_BUILDINGS[@]}"; do
