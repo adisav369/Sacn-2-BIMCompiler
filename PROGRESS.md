@@ -28,6 +28,33 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
+**S188-RTree (2026-04-16):** Void filter, transparency, threshold link-back, parallel bake — DONE.
+  - **Mystery solved:** Full Load filters `IfcOpeningElement` (void instructions), Overnight/MESH didn't. Duplex 50, Clinic 410 solid boxes in openings. Fixed in all query paths.
+  - **Transparency:** Blender 5.0 EEVEE Next needs Principled BSDF + Alpha node (not just `diffuse_color`). Fixed in Overnight, LOAD MESH, bake script. Hospital ss_hits=141 proved.
+  - **Threshold link-back:** files ≥20MB skip merge-back, show "BLENDED — Reopen to view." Hospital 44MB was freezing 17min — now zero freeze.
+  - **Deferred element list:** populate only on IFC type click, not building click. Building envelope bbox cleared on drill-in.
+  - **surface_styles in sandbox:** `build_sandbox_1M.py` carries styles across buildings.
+  - **WBDG 928 BLOBs** copied to component_library.db. HHS_Office re-extracted as federated merge (100% coverage).
+  - **Library:** 123,573 meshes, 305MB library.blend (2 rebakes: +928 WBDG, +2204 HHS).
+  - **Parallel bake:** `FedRTreeBakeAll` operator, up to 4 subprocesses, queue drain. S188c.
+  - **Fat .blend proven:** Clinic 17MB saves fast, reopens <3s. Hospital 44MB self-contained.
+  - **Poll spam fixed:** logs every 30s, "ETA exceeded" once.
+  - **Part F spec:** threshold link-back, RED band UX, parallel spawn. `prompts/S188_rtree_ux_performance.md`
+  - **Next:** Part F — tessellate from DB BLOBs (skip 302MB library.blend read, 125s→10s), timer-based chunked loader (no viewport freeze)
+
+**S188-nD (2026-04-15):** Template-driven nD engine — 4D/5D/6D/7D/8D from JSON templates. DONE.
+  - 6 JSON templates in `templates/` (phases, rates, carbon, lifecycle, safety, master formulas)
+  - Abstract engine `scripts/nD_engine.py` — zero hardcoded IFC classes, `_default` fallback
+  - **Unknown phase eliminated:** was 64% Unknown (80K elements), now 0 across all buildings
+  - Federation scripts refactored: `simple_qto_extract.py` + `schedule_generator.py` load from templates. Excel exporters unchanged — same UI buttons, same output, template-driven data.
+  - Currency from template (`currency_symbol`, `exchange_multiplier`). No hardcoded RM.
+  - Amount-in-words on Executive Summary Grand Total row (white-on-red).
+  - **Fleet test:** 37/37 buildings PASS + sandbox 1M PASS (1,063,563 el, 8.7s, 48 classes costed)
+  - **Excel output:** `boq_reports/BOQ_sandbox_1M_*.xlsx` (13 sheets), `schedules/sandbox_1M_Schedule_*.xlsx` (3 sheets + dashboard)
+  - Sandbox city: MYR 1.59B costed, 434K tCO2e carbon, 1M assets registered, 957 tasks, 957 hazards
+  - See `docs/4D5DAnalysis.md` for full spec + data tables
+  - **Next:** Excel export for 6D/7D/8D sheets, township deduplication (archetype × N), community templates
+
 **S187 (2026-04-15):** Shred baked instances, collapsible panel, version stamp, pre-S185 DB guard — DONE.
   - Shred handles `Baked_*` instance empties (per-discipline) + `Loaded_*` (existing). Auto-clean empty parents.
   - Collapsible element list — auto-collapses during overnight/bake, manual triangle toggle.
