@@ -37,6 +37,7 @@ parser.add_argument("--limit", type=int, default=0, help="Element limit (chunk s
 parser.add_argument("--output", required=True, help="Output .blend path")
 parser.add_argument("--merge", nargs='+', default=[], help="Merge mode: list of chunk .blend files to combine")
 parser.add_argument("--base", default="", help="Base .blend to open before merging (progressive save)")
+parser.add_argument("--wait", type=int, default=0, help="Wait N seconds before merging (user saves & closes Blender)")
 args = parser.parse_args(argv)
 
 import bpy
@@ -489,6 +490,13 @@ def merge_chunks(building, db, chunk_files, output, base_blend=""):
 # ── Main ──
 
 if args.merge:
+    # S189k: Wait for user to save & close Blender before merging
+    if args.wait > 0:
+        _log(f"[S189] {_ts()} §MERGE_WAIT {args.wait}s — save & close Blender")
+        for _i in range(args.wait, 0, -10):
+            _log(f"[S189] {_ts()} §MERGE_COUNTDOWN {_i}s remaining...")
+            time.sleep(min(10, _i))
+        _log(f"[S189] {_ts()} §MERGE_COUNTDOWN done — finalizing")
     # Merge mode — combine chunk .blends into one (with optional base for progressive save)
     merge_chunks(args.building, Path(args.db).resolve(), args.merge, args.output,
                  base_blend=args.base)
