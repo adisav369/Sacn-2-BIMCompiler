@@ -59,27 +59,28 @@ IFC file → extract → classify.yaml → IFCtoBOM → BOM.db → compile → o
            (once)    (human intent)    (once)     (recipe)   (repeat)  (elements)   (proof)
 ```
 
-## City-Scale Viewer (RTree Federation)
+## Compile Once, Query Forever (RTree Federation)
 
 The compiled output is a queryable database, not a file to "open."
-The viewer loads 1M elements as GPU wireframe bounding boxes in under 2 seconds.
-Exact geometry appears on demand — where attention goes, meshes load.
+The [RTree Query Engine](docs/RTree.md) renders 1M elements as GPU wireframes
+in ~13 seconds — zero mesh in RAM, instant orbit. Press MESH and the Stingy
+Loader delivers exact IFC geometry on demand in under one second. Press SHRED
+to clean up. The model is never fully loaded. It is always live.
 
-**BACKEND bake** sends buildings to background workers. Multiple buildings bake in
-parallel while the user keeps working. Baked buildings merge into a progressive
-session file that accumulates across working days.
+**BACKEND bake** sends buildings to background Blender workers. Multiple buildings
+bake in parallel while the user keeps working. BLOB tessellation reads geometry
+directly from the database — no library.blend required.
 
 | Metric | Proven |
 |:---|:---|
-| Preview (1M bboxes) | **<2s** |
-| BLOB tessellation per batch | **3-11ms** (was 1-2s via library.blend) |
-| LTU 126K bake (4 chunks) | **25s** |
+| RTree wireframe load (1M) | **~13s** |
+| Orbit / pan | **Instant (60 FPS)** |
+| MESH press (on-demand geometry) | **<1s** |
+| BLOB tessellation per batch | **3-11ms** |
 | Terminal 48K bake | **~40s** |
-| Session merge (link) | **~2.5 min** (background) |
 | Session file size | **~6MB** (linked, not inline) |
 
-See [RTree.md](docs/RTree.md) for architecture and
-[StressTest_1M_Results.md](internal/StressTest_1M_Results.md) for full benchmarks.
+See [RTree.md](docs/RTree.md) for architecture and [StressTest_1M.md](docs/StressTest_1M.md) for benchmarks.
 
 ### nD Analysis (4D–8D)
 

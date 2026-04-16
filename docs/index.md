@@ -96,7 +96,7 @@ A product catalog ([M_Product](DATA_MODEL.md)) becomes building elements. A Bill
 
 ## **The Rosetta Stone Strategy**
 
-AI cannot see spatial geometry — been LLM based, it has no native understanding of where a wall ends, how a slab sits, or whether two elements collide. The [Rosetta Stone strategy](TheRosettaStoneStrategy.md) sidesteps AI entirely: real buildings become the ground truth, and every compiled output is verified against that truth with pure arithmetic.
+AI cannot see spatial geometry — being LLM-based, it has no native understanding of where a wall ends, how a slab sits, or whether two elements collide. The [Rosetta Stone strategy](TheRosettaStoneStrategy.md) sidesteps AI entirely: real buildings become the ground truth, and every compiled output is verified against that truth with pure arithmetic.
 
 <figure style="float: right; margin: -8px 0 8px 20px; max-width: 480px; text-align: center;">
   <img src="assets/images/TerminalExternal.jpeg" alt="Terminal complex — 48,428 elements" width="480">
