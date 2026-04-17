@@ -2215,6 +2215,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#case-study-rtree-federation-viewer-s180s189" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Case Study: RTree Federation Viewer (S180–S189)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Case Study: RTree Federation Viewer (S180–S189)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-was-built" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What was built
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proven-at-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proven at scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-it-would-cost-without-ai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it would cost without AI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-the-multiplier-is-so-large" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the multiplier is so large
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#for-the-bonsaiblenderbim-community" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3100,6 +3161,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#case-study-rtree-federation-viewer-s180s189" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Case Study: RTree Federation Viewer (S180–S189)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Case Study: RTree Federation Viewer (S180–S189)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-was-built" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What was built
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proven-at-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proven at scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-it-would-cost-without-ai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it would cost without AI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-the-multiplier-is-so-large" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the multiplier is so large
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#for-the-bonsaiblenderbim-community" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3377,6 +3499,101 @@ Building correct? → next task. Building wrong? → new drift point logged.
 </table>
 <p>The project succeeds not because AI is reliable, but because the verification infrastructure assumes AI is unreliable and proves correctness independently.</p>
 <hr />
+<h2 id="case-study-rtree-federation-viewer-s180s189">Case Study: RTree Federation Viewer (S180–S189)<a class="headerlink" href="#case-study-rtree-federation-viewer-s180s189" title="Permanent link">&para;</a></h2>
+<p>The strongest evidence for vibe programming at scale is the RTree federation viewer — a city-scale BIM viewer built inside Blender's Bonsai addon in ~3 weeks of Claude-assisted sessions.</p>
+<h3 id="what-was-built">What was built<a class="headerlink" href="#what-was-built" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Lines</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>operator.py</code></td>
+<td>~9,200</td>
+<td>Modal loaders, BACKEND bake pipeline, live-link, navigation, shred, distro</td>
+</tr>
+<tr>
+<td><code>bbox_visualization.py</code></td>
+<td>~1,300</td>
+<td>GPU draw handler, RTree spatial queries, search, drill-down (L0→L1→L2)</td>
+</tr>
+<tr>
+<td><code>blend_cache.py</code></td>
+<td>~1,400</td>
+<td>Full load, BLOB tessellation from SQLite, LOD manager</td>
+</tr>
+<tr>
+<td><code>blob_tessellate_worker.py</code></td>
+<td>~420</td>
+<td>Discipline-based chunk baking subprocess</td>
+</tr>
+<tr>
+<td>UI panels, logging, tests</td>
+<td>~800</td>
+<td>N-panel cockpit, discipline bars, storey filter</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>~13,000</strong></td>
+<td><strong>Complete BIM federation viewer</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="proven-at-scale">Proven at scale<a class="headerlink" href="#proven-at-scale" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>1,063,911 elements</strong> in sandbox city (12 disciplines, 35 buildings)</li>
+<li><strong>190,000 meshes</strong> tessellated from SQLite BLOBs in &lt;45s</li>
+<li><strong>Fine-grained Outliner</strong> — VENT/HEAT/PLB/SAN/HVAC/ARC/STR/VOID, not generic MEP</li>
+<li><strong>Session .blend ~1MB</strong> — links to baked chunks, instant save</li>
+<li>Posted to <a href="https://community.osarch.org/">osARCH forum</a> with video proof (April 2026)</li>
+</ul>
+<h3 id="what-it-would-cost-without-ai">What it would cost without AI<a class="headerlink" href="#what-it-would-cost-without-ai" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Team</th>
+<th>Duration</th>
+<th>Cost (USD)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Expert team (3–4 people)</td>
+<td>Blender dev + BIM domain + perf engineer</td>
+<td>6–9 months</td>
+<td>$150–300K</td>
+</tr>
+<tr>
+<td>Single senior generalist</td>
+<td>Blender + IFC + SQLite + GPU (rare unicorn)</td>
+<td>12–18 months</td>
+<td>$120–200K</td>
+</tr>
+<tr>
+<td>Outsource to BIM software firm</td>
+<td>Contract team</td>
+<td>9–12 months</td>
+<td>$200–400K</td>
+</tr>
+<tr>
+<td><strong>Claude-assisted (actual)</strong></td>
+<td><strong>1 domain expert + Claude Code</strong></td>
+<td><strong>~3 weeks</strong></td>
+<td><strong>Subscription</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The skill intersection — <code>bpy.data.libraries.load(link=True)</code> + <code>IfcOpenShell geom.iterator()</code> + SQLite RTree + Blender GPU instancing + BIM domain knowledge — exists in perhaps 50 people worldwide. Hiring even one of them takes months.</p>
+<h3 id="why-the-multiplier-is-so-large">Why the multiplier is so large<a class="headerlink" href="#why-the-multiplier-is-so-large" title="Permanent link">&para;</a></h3>
+<p><strong>Iteration speed.</strong> Each "try → see in Blender → fix" loop (baked-link path, disc suffixes, chunk naming, fly-to distance, Outliner hierarchy) takes 5–10 minutes with Claude. A developer would need a day per loop — reading Blender API docs, testing, debugging. S189 alone had ~30 such loops.</p>
+<p><strong>Dead-end detection.</strong> GN mode (Geometry Nodes instancing) was explored S165–S176 then halted — 8-minute evaluation overhead at 500 modifier trees made it unviable. A hired team would have burned weeks before discovering that. Claude explored it in 3 sessions.</p>
+<p><strong>Domain bridging.</strong> The architect brings "PLB pipes should not inflate the building bbox" and "disciplines must be contiguous per chunk." Claude brings <code>bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)</code> to force status bar updates during blocking loads. Neither alone could have built this.</p>
+<hr />
 <h2 id="for-the-bonsaiblenderbim-community">For the Bonsai/BlenderBIM Community<a class="headerlink" href="#for-the-bonsaiblenderbim-community" title="Permanent link">&para;</a></h2>
 <p>If you're evaluating this project and wondering whether vibe-programmed code can be trusted:</p>
 <ol>
@@ -3387,7 +3604,7 @@ Building correct? → next task. Building wrong? → new drift point logged.
 </ol>
 <p>The code was written by AI. The architecture was not. The proofs are mathematical. The buildings compile deterministically. Judge by the output, not the author.</p>
 <hr />
-<p><em>Built with <a href="https://claude.ai/">Claude Code</a> (Anthropic) in ~100 sessions over 4 months. Kuala Lumpur, 2025.</em></p>
+<p><em>Built with <a href="https://claude.ai/">Claude Code</a> (Anthropic) in ~190 sessions over 5 months. 1M elements compiled, 35 buildings, city-scale federation. Kuala Lumpur, 2025–2026.</em></p>
 
 
 
