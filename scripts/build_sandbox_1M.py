@@ -252,7 +252,7 @@ def place_buildings(logf):
         log(f"  {label}: {len(meta):>6} elements  {len(geoms):>5} geom blobs  {len(styles):>3} styles  footprint {width:.0f}m wide  at x={cursor_x:.0f}m", logf)
         cursor_x += width + GAP
 
-    return placed, cursor_x, all_geoms
+    return placed, cursor_x, all_geoms, all_styles
 
 
 def write_tile(out_conn, placed, tile_x_offset, tile_y_offset, tile_label, start_id, logf):
@@ -333,7 +333,7 @@ def main():
 
         # Load all buildings
         log("Loading buildings...", logf)
-        placed, precinct_width, all_geoms = place_buildings(logf)
+        placed, precinct_width, all_geoms, all_styles = place_buildings(logf)
 
         total_unique = sum(len(p[1]) for p in placed)
         log(f"Precinct: {len(placed)} buildings, {total_unique:,} unique elements, {len(all_geoms):,} unique geom hashes, {precinct_width:.0f}m wide", logf)

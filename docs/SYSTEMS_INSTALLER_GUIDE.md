@@ -23,9 +23,10 @@
 | Blender | 4.0+ | 3D viewport (BIM Designer GUI) | `blender --version` |
 | Git | 2.30+ | Source control, LFS for binary assets | `git --version` |
 | Docker | 24+ | WAN deployment (optional) | `docker --version` |
-| IfcOpenShell | 0.7+ | IFC file parsing and extraction | `python3 -c "import ifcopenshell"` |
+| IfcOpenShell | 0.8+ | IFC file parsing and extraction | `python3 -c "import ifcopenshell"` |
+| Bonsai | 0.8+ | Blender BIM addon (federation viewer) | Bundled with IfcOpenShell |
 
-**Tested on:** Ubuntu 24.04 (Linux 6.17), OpenJDK 17.0.18, Maven 3.8.7, Blender 5.1.0.
+**Tested on:** Ubuntu 24.04 (Linux 6.17), OpenJDK 17.0.18, Maven 3.8.7, Blender 5.0.1, IfcOpenShell 0.8.4, Bonsai 0.8.4-alpha.
 
 ---
 

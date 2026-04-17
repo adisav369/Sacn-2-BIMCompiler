@@ -9,24 +9,41 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — S102 fleet: 212/238 PASS, **19 ALL GREEN** (was ~14). 34 buildings (DM excluded). PATTERN+GEO ON. CE ALL GREEN (was DRIFT=39,900). Infra auto-discover from IFC (no YAML segments). 10 buildings FAIL on critical proofs. CL extraction FAIL. RS 27K (dense steel). All `*_BOM.db` fresh.
+**Gate:** `./scripts/run_RosettaStones.sh` — S190 fleet: 116/157 PASS, **4 ALL GREEN** (BR,MO,RL,WI). 21 buildings (DM excluded, 13 YAMLs retired). 9-gate system (IFCtoBOM+compile+integrity+fidelity). All `*_BOM.db` fresh.
 
-| Gate | SH | FK | IN | DX | TE | DM |
-|------|----|----|----|----|------|------|
-| G1-COUNT | PASS (58+24) | PASS (82) | PASS (699) | PASS (215+114) | PASS (48428) | PASS (60) |
-| G2-VOLUME | PASS | PASS | PASS | PASS | PASS | — |
-| G3-DIGEST | PASS | PASS | PASS | PASS | PASS | — (GENERATIVE) |
-| G4-TAMPER | PASS | PASS | PASS | PASS | PASS | PASS |
-| G5-PROVENANCE | PASS | PASS | PASS | PASS | PASS | PASS |
-| G6-ISOLATION | PASS | PASS | PASS | PASS | PASS | PASS |
-| VerbStage | VO (PLACE BOM) | ? | ? | VO (148 PLACEMENT) | ? | — |
+| PFX | EL | GATES | Notes |
+|-----|----|-------|-------|
+| BR | 33 | 9/9 | ALL GREEN |
+| MO | 2791 | 9/9 | ALL GREEN |
+| RL | 1 | 9/9 | ALL GREEN |
+| WI | 1 | 9/9 | ALL GREEN |
+| DX | 1169 | 8/9 | Compile FAIL: MetadataMissing (IfcOpeningElement) |
+| SH | 65 | 8/9 | Compile FAIL: MetadataMissing (generative MEP) |
+| IP | 25 | 8/9 | Compile FAIL: count mismatch |
+| WL | 174 | 8/9 | C8 fidelity FAIL (IfcDoor mesh diversity) |
+| WT | 81 | 8/9 | C8 fidelity FAIL (IfcDoor mesh diversity) |
+| FK | 81 | 5/8 | Extraction reconciliation -17 |
+| GH | 198 | 5/8 | Extraction reconciliation |
+| IN | 699 | 5/8 | Extraction reconciliation |
+| JS | 62 | 5/8 | Extraction reconciliation |
+| CL | 3214 | 2/8 | Populate FAIL |
+| TE | 33848 | 2/4 | Extraction reconciliation -14580 |
+| RM | 378 | 2/4 | Compile FAIL |
+| CN | ? | 2/4 | IFCtoBOM FAIL |
+| BA,BH,BS,RS | ? | 3/6 | Empty extracted DBs |
 
-> **TE: BOM walk compiler LIVE (S100-p72).** 48,428 elements compiled via BOM walk. 6/7 PASS (C9 FAIL: 60 axis swaps — library mesh orientation, not walk bug). SH 7/7 PASS (zero regression). Script fix: compilation was never running (missing -Dpipeline.tests.skip=false).
+> **S190 findings:** (1) Extraction reconciliation strict — 14,580 TE elements, 17 FK elements not becoming LEAF lines → QA ABORT. (2) Generative MEP devices (sprinkler, light) + IfcOpeningElement lack geometry in component_library → MetadataMissing at compile. (3) C8 IfcDoor mesh diversity loss (WL, WT). (4) `Ifc2x3_Duplex_extracted.db` / `Ifc4_SampleHouse_extracted.db` renamed (not deleted). (5) rebuild_erp.sh fixed: DV037-DV042 + DV049 added, origin_x/y/z on M_BOM. (6) `ComponentLibrary.AttachmentFace.FLOOR` added (6,326 entries).
 
-**Pipeline:** 11 stages (ParseStage removed S140). 77 verbs. 2475 products. 4-DB architecture (validation.db merged into ERP.db). 4D/5D/6D live.
-**Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
+**Pipeline:** 11 stages (ParseStage removed S140). 77 verbs. 7403 products (ERP.db). 4-DB architecture. 4D/5D/6D live.
+**Rosetta Stones:** 22 buildings (21 EXTRACTED + 1 GENERATIVE). 4 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
+
+**S190 (2026-04-17):** BBC Fleet Health-Check — full gate run, DB triage, ERP rebuild fix. DONE.
+  - **Fleet:** 21 buildings, 116/157 PASS, 4 ALL GREEN (BR,MO,RL,WI). Was 34 buildings — 13 YAMLs retired.
+  - **Fixes:** `AttachmentFace.FLOOR` enum (6,326 entries). `rebuild_erp.sh` Phase 8a (DV037-DV042 + DV049). `origin_x/y/z` on M_BOM. ERP.db rebuilds cleanly.
+  - **Open:** (1) Extraction reconciliation blocks FK/GH/IN/JS/TE — QA strict on element delta. (2) Generative MEP + IfcOpeningElement geometry gap blocks SH/DX compile. (3) C8 IfcDoor mesh diversity (WL/WT).
+  - **Next:** Fix extraction reconciliation tolerance or populate missing elements. Add generative MEP geometry to component_library. Re-run fleet.
 
 **S189 (2026-04-16):** BLOB tessellation, BACKEND bake, live-link architecture. IN PROGRESS.
   - **BLOB tessellation:** Overnight/LOAD MESH read BLOBs from `component_library.db` (3-11ms/batch, was 1-2s via library.blend).
@@ -37,9 +54,11 @@
   - **DB count fix:** BACKEND queries DB for element count when overnight hasn't run.
   - **Subprocess survival:** `start_new_session=True` for merge subprocess to outlive Blender.
   - **Distribution:** session.blend + component_library.db. Online DB future spec'd in PackageDistro.md.
-  - **Version:** `_FED_VERSION = "S189w"`
-  - **S189w:** baked-link path fix (walk parents, not parent.parent), bpy.path.abspath for `//` paths. Outliner hierarchy — Overnight/LOAD MESH/live-link/Preview all nest disc collections under building parent. Shred cleans empty parents.
-  - **Next:** verify all 3 fixes in Blender (Preview link, Outliner hierarchy, baked hierarchy).
+  - **Version:** `_FED_VERSION = "S189z"`
+  - **S189w-z:** Baked-link path fix (walk parents). Outliner hierarchy (building → disc children). Orphan re-parent. Status bar + forced redraw before blocking loads. Discipline-based chunking (whole disciplines per chunk, no duplicates). Dynamic disc suffixes from DB. Shred old Overnight meshes on Preview link. Skip already-linked files. Move linked files to `baked/done/`. Building yellow bbox on fly-to. Closer fly-to (element: diag×2, building: diag×0.8). Single-building DB skips bbox. Search result count from `_search_results` not `_highlighted_bboxes`.
+  - **LTU re-extracted:** fine-grained 8 discs (PLB 31K, HEAT 22K, HVAC 21K, VENT 21K, SAN 13K, ARC 10K, STR 7K, VOID 1K). Sandbox rebuilt 1,063,911 el, 12 discs. `build_sandbox_1M.py` fix: `all_styles` return.
+  - **Docs:** `SYSTEMS_INSTALLER_GUIDE.md` + `BIM_Designer_UserGuide.md` → Blender 4.0+/5.0.1, IfcOpenShell 0.8+, Bonsai 0.8.4-alpha.
+  - **Next:** verify baked→done/ move, test all navigation paths.
 
 **S188-RTree (2026-04-16):** Void filter, transparency, threshold link-back, parallel bake — DONE.
   - Void filter, transparency (Principled BSDF), deferred element list, surface_styles in sandbox.

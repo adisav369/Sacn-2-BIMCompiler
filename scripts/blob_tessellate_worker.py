@@ -34,6 +34,7 @@ parser.add_argument("--library-db", default="", help="Path to component_library.
 parser.add_argument("--building", required=True, help="Building name to bake")
 parser.add_argument("--offset", type=int, default=0, help="Element offset (chunk start)")
 parser.add_argument("--limit", type=int, default=0, help="Element limit (chunk size, 0=all)")
+parser.add_argument("--disciplines", default="", help="Comma-separated discipline filter (e.g. ARC,HEAT)")
 parser.add_argument("--output", required=True, help="Output .blend path")
 parser.add_argument("--merge", nargs='+', default=[], help="Merge mode: list of chunk .blend files to combine")
 parser.add_argument("--base", default="", help="Base .blend to open before merging (progressive save)")
@@ -223,9 +224,17 @@ def bake_chunk(building, db, lib_db, offset_elem, limit_elem, site_offset):
     conn = sqlite3.connect(str(db))
     _has_bld = has_building_column(db)
 
-    # Fetch elements for this building (with LIMIT/OFFSET for chunking)
-    limit_clause = f"LIMIT {limit_elem} OFFSET {offset_elem}" if limit_elem else ""
+    # Fetch elements for this building
+    # S189z: discipline-based chunking — --disciplines filter takes priority over offset/limit
+    disc_filter = args.disciplines.split(',') if args.disciplines else []
+    limit_clause = f"LIMIT {limit_elem} OFFSET {offset_elem}" if limit_elem and not disc_filter else ""
+    if disc_filter:
+        _ph = ','.join('?' * len(disc_filter))
+        _disc_where = f"AND m.discipline IN ({_ph})"
+    else:
+        _disc_where = ""
     if _has_bld:
+        _params = [building] + disc_filter
         elements = conn.execute(f"""
             SELECT m.guid, m.element_name, m.discipline, m.ifc_class, m.storey,
                    m.material_rgba, i.geometry_hash, m.material_name
@@ -233,8 +242,10 @@ def bake_chunk(building, db, lib_db, offset_elem, limit_elem, site_offset):
             JOIN element_instances i ON m.guid = i.guid
             WHERE m.building = ? AND i.geometry_hash IS NOT NULL
               AND m.ifc_class != 'IfcOpeningElement'
+              {_disc_where}
+            ORDER BY m.discipline
             {limit_clause}
-        """, (building,)).fetchall()
+        """, _params).fetchall()
     else:
         elements = conn.execute(f"""
             SELECT m.guid, m.element_name, m.discipline, m.ifc_class, m.storey,
@@ -243,8 +254,18 @@ def bake_chunk(building, db, lib_db, offset_elem, limit_elem, site_offset):
             JOIN element_instances i ON m.guid = i.guid
             WHERE i.geometry_hash IS NOT NULL
               AND m.ifc_class != 'IfcOpeningElement'
+              {_disc_where}
+            ORDER BY m.discipline
             {limit_clause}
-        """).fetchall()
+        """, disc_filter).fetchall()
+
+    # S189z: log what this worker is baking
+    _disc_breakdown = {}
+    for e in elements:
+        d = e[2] or 'OTHER'
+        _disc_breakdown[d] = _disc_breakdown.get(d, 0) + 1
+    print(f"  {_ts()} §WORKER elements={len(elements)} "
+          f"discs={_disc_breakdown} filter={disc_filter or 'ALL'}")
 
     # Fetch transforms
     guids = [e[0] for e in elements]
@@ -306,6 +327,8 @@ def bake_chunk(building, db, lib_db, offset_elem, limit_elem, site_offset):
     rot_correction, pos_correction = get_redirect_corrections(lib_db, unique_hashes)
 
     # Create discipline collections
+    # S189z: root collection — must NOT end with a disc suffix (ARC/HEAT/etc)
+    # or the linker's suffix filter will pick it up alongside its children.
     disc_collections = {}
     root_col = bpy.data.collections.new(building)
     bpy.context.scene.collection.children.link(root_col)

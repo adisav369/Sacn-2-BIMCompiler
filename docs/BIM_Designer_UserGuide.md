@@ -124,8 +124,8 @@ User clicks button in Blender
 
 - Java 17+ (for DesignerServer)
 - Maven 3.8+ (for building)
-- Blender 3.6+ with Bonsai addon
-- Python 3.10+ (Blender's bundled Python)
+- Blender 4.0+ with Bonsai addon (tested on 5.0.1)
+- Python 3.11+ (Blender's bundled Python)
 - SQLite 3
 
 ### 3.2 Build the Java Server

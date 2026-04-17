@@ -1,7 +1,7 @@
 # ⚠ DO NOT REMOVE
 # Scope: S189 — BLOB tessellation + chunk-parallel bake + live-link UX
 # Read the log after every run. No claims without §PROOF log lines.
-# STATUS: IN PROGRESS — Preview baked-link not firing + Outliner hierarchy fix
+# STATUS: S189z DONE — discipline chunking, Outliner hierarchy, live-link UX, fly-to fixes
 
 ## Context
 
@@ -90,39 +90,29 @@ appends each chunk .blend on completion (~3s each, no freeze).
 - `library/component_library.db` — BLOB source (123,573 meshes)
 - `docs/PackageDistro.md` — live-link architecture spec
 
-## Open issues (S189 session end)
+## Open issues (S189w fixes deployed — verify in Blender)
 
-### 1. Preview baked-link not firing
-The linking code in `PreviewFederationViewport.execute()` (line ~3370) scans `baked/`
-dir and links `.blend` files. Logs show NO `§PREVIEW_LINK` entries — the code block
-is not reached or the `_baked_dir` path resolves wrong. Debug:
-- Add `print(f"§DEBUG baked_dir={_baked_dir} exists={_baked_dir.exists()}")` before the if
-- Check `bv._db_path_cache` is set before the link block runs
-- The DB path may be relative (`//...`) — needs `bpy.path.abspath()` + `.resolve()`
-- The `baked/` dir is at project root, not relative to the DB
+### 1. Preview baked-link not firing — FIXED S189w
+**Root cause:** `_baked_dir = Path(_db).resolve().parent.parent / "baked"` only goes
+2 levels up, but DB is at `DAGCompiler/lib/input/` (3 levels from project root).
+**Fix:** Walk up `.parents` to find `baked/` dir (same pattern as `_spawn_blob_bake`).
+Also: `bpy.path.abspath(_db)` before resolve to handle Blender `//...` paths.
+**Verify:** restart Blender, Preview → console should show `§PREVIEW_LINK_START`.
 
-### 2. Outliner hierarchy — disc collections loose under Scene
-Overnight/LOAD MESH creates `Loaded_{building}_{DISC}` collections directly under
-Scene Collection. They should be grouped:
+### 2. Outliner hierarchy — FIXED S189w
+**Fix:** Overnight and LOAD MESH now create `Loaded_{building}` parent collection,
+nest disc collections under it. Shred cleans up empty parent.
 ```
 Scene Collection
-  └── T0_Hospital          ← parent (missing)
-       ├── T0_Hospital_ARC
-       ├── T0_Hospital_STR
-       └── T0_Hospital_MEP
+  └── Loaded_Hospital
+       ├── Loaded_Hospital_ARC
+       ├── Loaded_Hospital_STR
+       └── Loaded_Hospital_MEP
 ```
-Currently:
-```
-Scene Collection
-  ├── T0_Hospital_ARC      ← loose, no parent
-  ├── T0_Hospital_STR
-  └── T0_Hospital_MEP
-```
-Fix: in Overnight and LOAD MESH, create a parent `Loaded_{building}` collection
-if it doesn't exist, and nest disc collections under it. Same as bake script does
-with `root_col = bpy.data.collections.new(building)`.
+**Verify:** Overnight or LOAD MESH → check Outliner hierarchy.
 
-### 3. Baked files also need building parent in Outliner
-The baked `.blend` files already have `{building}` root collection with disc children.
-When linked into session, the collections should appear nested, not flat. Verify
-`link=True` preserves the hierarchy from the baked file.
+### 3. Baked files building parent — FIXED S189w
+**Fix:** `_live_link_baked` and Preview link create `{bld}` parent collection, nest
+disc collections under it. Building name extracted from filename via regex
+(`T0_Hospital_baked.blend` → `T0_Hospital`).
+**Verify:** BACKEND bake → live-link → check Outliner hierarchy.
