@@ -160,6 +160,50 @@ The project succeeds not because AI is reliable, but because the verification in
 
 ---
 
+## Case Study: RTree Federation Viewer (S180–S189)
+
+The strongest evidence for vibe programming at scale is the RTree federation viewer — a city-scale BIM viewer built inside Blender's Bonsai addon in ~3 weeks of Claude-assisted sessions.
+
+### What was built
+
+| Component | Lines | What it does |
+|-----------|-------|-------------|
+| `operator.py` | ~9,200 | Modal loaders, BACKEND bake pipeline, live-link, navigation, shred, distro |
+| `bbox_visualization.py` | ~1,300 | GPU draw handler, RTree spatial queries, search, drill-down (L0→L1→L2) |
+| `blend_cache.py` | ~1,400 | Full load, BLOB tessellation from SQLite, LOD manager |
+| `blob_tessellate_worker.py` | ~420 | Discipline-based chunk baking subprocess |
+| UI panels, logging, tests | ~800 | N-panel cockpit, discipline bars, storey filter |
+| **Total** | **~13,000** | **Complete BIM federation viewer** |
+
+### Proven at scale
+
+- **1,063,911 elements** in sandbox city (12 disciplines, 35 buildings)
+- **190,000 meshes** tessellated from SQLite BLOBs in <45s
+- **Fine-grained Outliner** — VENT/HEAT/PLB/SAN/HVAC/ARC/STR/VOID, not generic MEP
+- **Session .blend ~1MB** — links to baked chunks, instant save
+- Posted to [osARCH forum](https://community.osarch.org/) with video proof (April 2026)
+
+### What it would cost without AI
+
+| Approach | Team | Duration | Cost (USD) |
+|----------|------|----------|------------|
+| Expert team (3–4 people) | Blender dev + BIM domain + perf engineer | 6–9 months | $150–300K |
+| Single senior generalist | Blender + IFC + SQLite + GPU (rare unicorn) | 12–18 months | $120–200K |
+| Outsource to BIM software firm | Contract team | 9–12 months | $200–400K |
+| **Claude-assisted (actual)** | **1 domain expert + Claude Code** | **~3 weeks** | **Subscription** |
+
+The skill intersection — `bpy.data.libraries.load(link=True)` + `IfcOpenShell geom.iterator()` + SQLite RTree + Blender GPU instancing + BIM domain knowledge — exists in perhaps 50 people worldwide. Hiring even one of them takes months.
+
+### Why the multiplier is so large
+
+**Iteration speed.** Each "try → see in Blender → fix" loop (baked-link path, disc suffixes, chunk naming, fly-to distance, Outliner hierarchy) takes 5–10 minutes with Claude. A developer would need a day per loop — reading Blender API docs, testing, debugging. S189 alone had ~30 such loops.
+
+**Dead-end detection.** GN mode (Geometry Nodes instancing) was explored S165–S176 then halted — 8-minute evaluation overhead at 500 modifier trees made it unviable. A hired team would have burned weeks before discovering that. Claude explored it in 3 sessions.
+
+**Domain bridging.** The architect brings "PLB pipes should not inflate the building bbox" and "disciplines must be contiguous per chunk." Claude brings `bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)` to force status bar updates during blocking loads. Neither alone could have built this.
+
+---
+
 ## For the Bonsai/BlenderBIM Community
 
 If you're evaluating this project and wondering whether vibe-programmed code can be trusted:
@@ -173,4 +217,4 @@ The code was written by AI. The architecture was not. The proofs are mathematica
 
 ---
 
-*Built with [Claude Code](https://claude.ai/) (Anthropic) in ~100 sessions over 4 months. Kuala Lumpur, 2025.*
+*Built with [Claude Code](https://claude.ai/) (Anthropic) in ~190 sessions over 5 months. 1M elements compiled, 35 buildings, city-scale federation. Kuala Lumpur, 2025–2026.*
