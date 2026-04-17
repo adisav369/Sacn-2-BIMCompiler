@@ -433,6 +433,7 @@ Source root: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`
 - `prompts/S179_dlod_rtree_handoff.md` — corrected DLOD architecture
 - `prompts/S180_stingy_mesh_loader.md` — next session: picker fix + Load/Shred
 - `prompts/S187_overnight_panel_review.md` — S187 spec: instance validation, collapsible panels, shred fix
+- `docs/MANIFESTO.md` §The Backend — Why No Framework — architecture philosophy: OS-level parallelism, no frameworks, compile-once principle
 
 ---
 
@@ -463,6 +464,15 @@ BIM has been doing neither. Until now.
     Each query layer narrows the result: L1 buildings highlighted by match count,
     L2 top elements highlighted white, final LOD mesh fetched on demand from library.blend.
     Federation BIM Compiler addon to Bonsai. Normal laptop. No stall.
+  </figcaption>
+</figure>
+
+<figure style="margin: 24px 0; text-align: center;">
+  <img src="../assets/images/BakedBackend.png" alt="Progress HUD — discipline-colored bars, baked backend overlay on 1M city" width="100%">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
+    Progress HUD (S191) — GPU overlay with discipline-colored progress bars, pulsing status,
+    countdown ETAs, and save-to-link pipeline. Baked backend running on a 1M-element city.
+    Viewport stays fully interactive during bake.
   </figcaption>
 </figure>
 

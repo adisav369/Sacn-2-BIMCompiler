@@ -550,6 +550,76 @@ Mesh Loader delivers exact IFC geometry on demand in under one second. GN
 instancing remains available for small-scale scenes but is not part of the
 production pipeline.
 
+<figure style="margin: 24px 0; text-align: center;">
+  <img src="../assets/images/OneMillionBaking.png" alt="1,061,736 elements — Hospital drilled into, discipline bars, tiled suburb, bake-all in progress" width="100%">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
+    1,061,736 elements across 786 buildings. Hospital (63K) drilled in — cyan MEP wireframes,
+    yellow building envelope, discipline bars in HUD. Tiled suburb stretching 1.73km into background.
+    Bake-all running: 4 parallel subprocesses converting BLOB geometry to linked .blend files.
+    Viewport fully interactive throughout.
+  </figcaption>
+</figure>
+
+### The Backend — Why No Framework
+
+The bake pipeline that converts compiled geometry into viewable `.blend` files
+uses no task framework, no message queue, no thread pool. The entire concurrency
+engine is `subprocess.Popen` + a 5-second timer poll.
+
+**How it works:**
+
+1. Bake-all queries the DB for all buildings, sorts smallest-first
+2. Spawns up to 4 `blender --background` OS processes (one per CPU core)
+3. A Blender timer polls every 5 seconds — if a process finished, pop the next
+   building from the queue and spawn a replacement
+4. Always 4 running until the queue is empty
+
+Each subprocess is a **fully independent OS process** — separate Python interpreter,
+separate Blender scene graph, separate memory space. No shared state. No locks.
+No IPC. The operating system handles scheduling, memory isolation, and CPU
+affinity. One crash cannot affect another.
+
+**Why this beats a framework:**
+
+| Approach | Failure mode | Recovery |
+|----------|-------------|----------|
+| Celery/Redis/RabbitMQ | Broker dies → all jobs lost | Restart broker, replay |
+| ThreadPoolExecutor | GIL contention + shared memory corruption | Restart process |
+| Kubernetes jobs | Cluster config, networking, pod scheduling | DevOps team |
+| **Popen + poll** | One subprocess exits non-zero | Log it, pop next, continue |
+
+The key insight: **the OS is the best job scheduler ever written.** It has been
+solving process isolation, memory management, and CPU scheduling for 50 years.
+Any framework built on top adds complexity without adding capability — at this
+scale, `fork()` is the only primitive needed.
+
+**Performance at city scale (1,061,736 elements, 786 buildings):**
+
+- 4 parallel workers, ~5s per small building, ~35s per large building
+- Full city baked in ~15 minutes, ~1.4GB total
+- RAM self-regulates: OS throttles subprocesses under memory pressure
+- Zero crashes, zero data loss, viewport stays fully interactive throughout
+
+The baked `.blend` files use Blender's native **library linking** — each building
+is a linked reference, not a copy. The session file stays under 5MB while
+managing a million elements. Mesh data lives in the source files; the scene
+holds only transforms and collection pointers. This is the same architecture
+VFX studios use for feature films with hundreds of linked assets.
+
+**The compile-once principle applied end-to-end:**
+
+```
+IFC file (authored once)
+  → extract to SQLite (tessellated once, stored as BLOBs)
+    → bake to .blend (subprocess, reads BLOBs, writes linked file)
+      → link into viewport (zero mesh copy, transform pointers only)
+        → query via R-tree (O(log n), instant)
+```
+
+Every stage is **write-once, read-many.** No re-parsing, no re-tessellation,
+no re-evaluation. The geometry was computed once during extraction. Everything
+downstream is reading receipts.
+
 ---
 
 ## Reading Order
