@@ -189,15 +189,100 @@ IFC files → extractIFCtoDB.py → _extracted.db + component_library.db
                               SQL query → BLOB unpack → from_pydata() → viewport
 ```
 
-See `prompts/S193_dlod_auto_linker.md` for full streaming architecture and
-`prompts/S198_envelope_streaming.md` for the next phase (exterior-only rendering).
+**Envelope-first streaming (S198):**
+
+Buildings render in three phases based on camera position:
+
+| Phase | What renders | Trigger |
+|-------|-------------|---------|
+| **Envelope** | Exterior shell — walls, roof, facade, railings | Within 300m, from orbit |
+| **Shell** | Interior ARC+STR — partitions, stairs, interior columns | Camera enters building |
+| **Detail** | Services — MEP, ELEC, plumbing, HVAC | Camera enters building |
+
+A 5m bbox shell filter ensures only elements near the building boundary
+render from outside. Interior walls behind the facade are invisible from
+orbit and don't waste GPU budget. A 60K-element hospital streams ~850
+exterior elements — the rest appear when you fly inside.
+
+Homogeneous roof elements (IfcPlate, IfcCovering with >20 identical tiles)
+merge into a single combined mesh for efficiency.
+
+**Cinematic autopilot:**
+
+If the camera is idle for 5 seconds, Direct Stream automatically flies to
+the nearest unfinished building with a 15-frame ease-out animation (~450ms).
+It prefers novel building types — a city of 100 Duplex copies and 1 Hospital
+will visit the Hospital first. The camera rotates slightly during approach
+for a cinematic orbit feel.
+
+One-click "Sun" button adds Hosek-Wilkie procedural sky, sun lamp with
+shadows, ground plane, and EEVEE bloom/AO — presentation-ready viewport
+with zero performance cost on EEVEE's real-time renderer.
 
 **The workflow:**
 1. Preview → 1M wireframes in 13s (GPU bboxes, zero mesh)
-2. Direct Stream → buildings appear as solid geometry, nearest first
-3. Camera drives streaming — orbit near a building, it fills in
-4. Orbit away → shred far buildings automatically
-5. Search → click building → fly-to → detail streams all disciplines
+2. Direct Stream → cinematic fly-to nearest building, envelope appears
+3. Camera orbits — exterior shell renders, interior hidden
+4. Fly inside → partitions + services stream automatically
+5. Fly out → idle 5s → autopilot to next building type
+6. Sun button → instant sky, shadows, ground for presentations
+
+### How It Works — The Technology
+
+**The stack is deliberately simple: Python + SQLite + Blender's C API.**
+
+There is no render engine, no game engine, no shader graph, no custom
+GPU code. The viewer is ~1,200 lines of Python that reads a database
+and calls Blender's built-in `from_pydata()` function.
+
+**Step 1 — Extraction (once, offline):**
+```
+IFC file → IfcOpenShell iterator → tessellate each element → store as BLOB
+Result: vertices + faces packed as binary arrays in SQLite
+        + spatial R-tree index (minX/maxX/minY/maxY/minZ/maxZ per element)
+        + material RGBA from IFC surface styles
+```
+
+**Step 2 — Streaming (live, interactive):**
+```
+Camera position → SQL query (R-tree spatial + discipline filter)
+    → fetch geometry BLOBs for unique hashes
+    → struct.unpack() → list of (x,y,z) tuples
+    → bpy.data.meshes.new() + mesh.from_pydata(verts, [], faces)
+    → bpy.data.objects.new(name, mesh) → link to collection
+    → apply material (Principled BSDF from IFC RGBA)
+    → apply transform (Translation + Euler rotation from DB)
+```
+
+**Why it's fast:**
+
+| Layer | Technology | Why fast |
+|-------|-----------|----------|
+| Storage | SQLite WAL mode | OS page cache — second read is memcpy |
+| Geometry | Binary BLOB (struct pack) | No parsing — direct unpack to float arrays |
+| Dedup | Geometry hash | 1M elements → 50K unique meshes. `from_pydata()` runs 50K times, placement runs 1M times (near-zero cost) |
+| Placement | `bpy.data.objects.new()` | Blender C-level append. No modifier, no dependency graph, no re-evaluation |
+| Rendering | EEVEE real-time | GPU rasterization. No raytracing. 200K objects at 60fps |
+| Spatial query | R-tree index | Camera position → nearby elements in O(log n) |
+
+**Why NOT Geometry Nodes:**
+
+Blender's Geometry Nodes (GN) system uses a dependency graph — adding one
+object to a GN-referenced collection triggers re-evaluation of ALL modifier
+trees. At 7,000+ unique meshes this caused multi-second freezes per addition.
+GN is designed for parametric design (few templates, many instances — like
+scattering 5 tree models across a forest). BIM has the opposite profile:
+108,000 unique meshes, each placed 1-10 times. Direct object creation
+bypasses the dependency graph entirely.
+
+**The two files:**
+```
+component_library.db  (~300MB) — geometry BLOBs for all buildings
+sandbox_1M.db         (~800MB) — element metadata, transforms, R-tree, materials
+```
+
+No .blend files. No baking. No server. A laptop with SQLite reads a database
+and streams a city.
 
 ---
 

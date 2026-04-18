@@ -1,7 +1,7 @@
 # ⚠ DO NOT REMOVE
 # Scope: S198 — Envelope-first streaming with small-element merging
 # Read the log after every run. No claims without §PROOF log lines.
-# STATUS: SPEC READY
+# STATUS: IMPLEMENTED
 
 ## Problem
 
@@ -167,9 +167,58 @@ visible as solid buildings, not just wireframe bboxes.
 6. Camera flies out → no new streaming until re-enter
 7. Budget stays well under 200K with envelope-only city view
 
+## Cleanup: rewire legacy loaders to DB path
+
+### LOAD MESH buttons (+ARC, +STR, etc.)
+Currently call `libraries.load(library.blend)` → link mesh datablocks.
+library.blend has been deleted. Rewire to `ensure_meshes(hashes, component_library.db)`
+→ same `from_pydata()` path as Direct Stream. Faster (0.3s vs 2-25s).
+
+**Files:** `operator.py` — `FedRTreeLoadMesh.execute()`, find `libraries.load`
+calls and replace with `ensure_meshes()` + placement loop from mesh_utils.
+
+### BACKEND / bake buttons
+No longer needed. The 4-chunk parallel bake (`blob_tessellate_worker.py`,
+`bake_building_blend.py`, `bake_all_sandbox.sh`) produced .blend files that
+Direct Stream doesn't use. Remove or hide BACKEND/BAKE ALL buttons from UI.
+Repurpose as DROP IFC (S192f) when ready.
+
+### Overnight loader
+Modal loader that placed elements one batch at a time into the live scene.
+Superseded by Direct Stream's timer-based approach. Can be removed from UI.
+Code stays in operator.py for reference.
+
+## Forward: unified streaming for all DB outputs
+
+Direct Stream works on ANY database with these 4 tables:
+- `elements_meta` (guid, discipline, ifc_class, building, ...)
+- `element_instances` (guid → geometry_hash)
+- `element_transforms` (guid → center_x/y/z, rotation_x/y/z)
+- `elements_rtree` (spatial index)
+
+This means the same viewer streams:
+
+```
+_extracted.db    → as-built IFC view (current)
+BOM.db           → BOM-compiled view (IFCtoBOM output)
+output.db        → ERP-compiled view (4D-8D, work orders)
+project.db       → user's design (BIM Designer output)
+```
+
+The compiler writes elements to the DB. Direct Stream reads them.
+No separate viewer, no format conversion, no .blend export.
+The schema IS the API.
+
+**Implication:** when IFCtoBOM or BIM Designer writes a new element
+to output.db with a geometry_hash that exists in component_library.db,
+that element is immediately streamable. No bake step. No re-extraction.
+The library is the shared geometry pool across all compilation stages.
+
 ## Files to modify
 
 - `direct_stream.py` — envelope phase, merge logic, bbox-inside check
 - `bbox_visualization.py` — add `'envelope'` to phase states
 - `progress_hud.py` — ENVELOPE status display
+- `operator.py` — rewire LOAD MESH to ensure_meshes(), hide BACKEND buttons
+- `ui.py` — remove/hide bake buttons, update labels
 - `prompts/S193_dlod_auto_linker.md` — update phase diagram

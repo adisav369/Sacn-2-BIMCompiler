@@ -53,6 +53,18 @@
   - **Open:** (1) Extraction reconciliation blocks FK/GH/IN/JS/TE — QA strict on element delta. (2) Generative MEP + IfcOpeningElement geometry gap blocks SH/DX compile. (3) C8 IfcDoor mesh diversity (WL/WT).
   - **Next:** Fix extraction reconciliation tolerance or populate missing elements. Add generative MEP geometry to component_library. Re-run fleet.
 
+**S198 (2026-04-18):** Envelope-first streaming + legacy cleanup. IMPLEMENTED.
+  - **Three-phase streaming:** ENVELOPE → SHELL → DETAIL. New buildings start at envelope (exterior walls, roof, slab, curtain walls, doors, windows). ~5% of elements, ~90% of visual.
+  - **Envelope query:** `ifc_class IN (IfcWall, IfcRoof, IfcSlab, IfcCurtainWall, IfcPlate, IfcDoor, IfcWindow, IfcCovering)` with ARC+STR discipline filter. All envelope elements streamed in one tick.
+  - **Small-element merge:** Groups of >20 elements with avg bbox vol < 2m³ merge into single combined mesh (world-space verts via `from_pydata`). Targets roof tiles, small plates. Log: §DS_MERGE.
+  - **Camera-inside-bbox check:** `_is_camera_inside_bbox()` — 20m XY margin, +10m Z above roof. Building bbox queried at bootstrap. Triggers envelope_done → shell transition. Log: §DS_ENTER.
+  - **Phase transitions:** envelope_done + camera inside bbox → shell. Within 50m → forced shell → detail. All transitions logged.
+  - **LOAD MESH rewired:** No longer requires library.blend. Uses `component_library.db` via `ensure_meshes()`. Falls back to library.blend if present.
+  - **Legacy cleanup:** BACKEND and BAKE ALL buttons removed from UI. Direct Stream is the primary viewer path.
+  - **HUD:** ENVELOPE status shown distinctly (green). envelope_done treated as "done" for disc bars.
+  - **Files:** `direct_stream.py` (860→1119), `bbox_visualization.py` (+8 state vars), `progress_hud.py` (envelope status), `ui.py` (buttons removed), `operator.py` (LOAD MESH rewired).
+  - **Next:** Blender test on sandbox_1M.db — verify envelope visual, merge count, phase transitions.
+
 **S195 (2026-04-18):** Direct DB Streaming — camera-driven mesh streaming from BLOBs. DONE.
   - **Core:** `FedRTreeDirectStream` operator + `_direct_stream_tick` timer. Tessellates from `component_library.db` BLOBs via `from_pydata()`. No .blend files. Self-bootstraps from DB (no Preview required).
   - **Discipline phasing:** Shell (ARC+STR) locked per building → detail (all discs) unlocked, proximity-driven (<50m).
