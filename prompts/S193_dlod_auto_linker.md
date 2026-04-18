@@ -193,7 +193,12 @@ viewport. Camera-driven: buildings stream in as you orbit near them.
 
 ### S196 — Next
 
-1. **Pick on DirectStream objects** — ray-cast against streamed meshes (not bboxes)
-2. **Inspector building list without Preview** — populate from DB on toggle (partial — search suggestions work, building index needs Preview bboxes)
-3. **Detail phase tuning** — MEP streaming at 50m, test with Hospital full 64K
-4. **Save streamed scene** — option to save current viewport state as .blend
+1. **Refactor operator.py (10K lines)** — extract Direct Stream into `direct_stream.py`:
+   - `_direct_stream_tick()`, `_direct_stream_remove_building()`, pre-tessellation
+   - `FedRTreeDirectStream`, `FedRTreeDirectStreamClear`, `FedRTreeAutoShredToggle`
+   - State variables stay in `bbox_visualization.py` (shared with HUD)
+   - Import in `__init__.py`, register alongside existing operators
+2. **Pick on DirectStream objects** — ray-cast against streamed meshes (not bboxes)
+3. **Inspector building list without Preview** — populate from DB on toggle (partial — search suggestions work, building index needs Preview bboxes)
+4. **Detail phase tuning** — MEP streaming at 50m, test with Hospital full 64K
+5. **Save streamed scene** — option to save current viewport state as .blend
