@@ -39,11 +39,36 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
+**2D_019 (2026-04-17):** Hardening + architecture study + Java Phase 0-1. DONE.
+  - **Issues closed:** I-38 (roof envelope), I-38b (hard-fail DrawingInventionError), I-39 (form_face level markers), I-40 (PLUMBING conformity), I-41 (DXF handle uniqueness), I-42 (text overlap collision avoidance). SH 6/6 PASS (front/rear 92%→100%), DX 7/7 PASS.
+  - **Roof envelope:** `_roof_upper_envelope()` replaces convex hull for meshes >20 verts. SH front 7→24pts.
+  - **Java DxfWriter:** Phase 0 DONE — `DxfWriter.java` (8 entity types, XDATA, R2010 subclass markers). Proof: 15 entities, 0 ezdxf audit errors. Phase 1 DONE — Element, GridLine, DimString, Level, DrawingSheet, DrawingInventionError.
+  - **Research:** DXF round-trip metadata architecture spec'd (3-layer: XDATA + XRecord + element map). Industry finding: no standard for DXF-as-BIM-round-trip exists.
+  - **TB-LKTN gap analysis:** §24 written in spec — 8 sheets, 15 new issues (I-43 to I-57), 4 phases (A-D).
+  - **Next:** `prompts/2D_020_tbkltn_phase_a.md` — Phase A hardening: R5 hardcodes, triangle levels, door swings, section markers, finish codes, roof profile.
+
 **S190 (2026-04-17):** BBC Fleet Health-Check — full gate run, DB triage, ERP rebuild fix. DONE.
   - **Fleet:** 21 buildings, 116/157 PASS, 4 ALL GREEN (BR,MO,RL,WI). Was 34 buildings — 13 YAMLs retired.
   - **Fixes:** `AttachmentFace.FLOOR` enum (6,326 entries). `rebuild_erp.sh` Phase 8a (DV037-DV042 + DV049). `origin_x/y/z` on M_BOM. ERP.db rebuilds cleanly.
   - **Open:** (1) Extraction reconciliation blocks FK/GH/IN/JS/TE — QA strict on element delta. (2) Generative MEP + IfcOpeningElement geometry gap blocks SH/DX compile. (3) C8 IfcDoor mesh diversity (WL/WT).
   - **Next:** Fix extraction reconciliation tolerance or populate missing elements. Add generative MEP geometry to component_library. Re-run fleet.
+
+**S195 (2026-04-18):** Direct DB Streaming — camera-driven mesh streaming from BLOBs. DONE.
+  - **Core:** `FedRTreeDirectStream` operator + `_direct_stream_tick` timer. Tessellates from `component_library.db` BLOBs via `from_pydata()`. No .blend files. Self-bootstraps from DB (no Preview required).
+  - **Discipline phasing:** Shell (ARC+STR) locked per building → detail (all discs) unlocked, proximity-driven (<50m).
+  - **Pre-tessellation:** All unique hashes tessellated upfront on DS_START (3-11s). Subsequent ticks = placement only (~1s/1000 objects).
+  - **Per-batch collections:** `DS_{bld}_{N}` — max 1000 objects per collection. Avoids O(n) Blender reindex.
+  - **Animated fly-to:** 10-frame ease-out cubic (300ms). Only for first/large buildings (>5K).
+  - **Pause/resume:** Active building paused when camera moves out of 100m radius. Offset preserved for return.
+  - **Controls:** Stream/Shred/Auto buttons in N-panel (red when active). Ctrl+Shift+A shortcut.
+  - **HUD:** Building title with total/pct%/✓, disc bars with moving count, STREAMING/LAG/IDLE status.
+  - **Auto-shred:** Removes furthest building when tick_ms > 1.5s. Toggle in N-panel.
+  - **Shred fix:** `orphans_purge` removed (caused hangs). Batch unlink only. Box-select + Shred works.
+  - **Budget:** 200K fixed (dynamic budget removed — caused oscillation). User shreds manually.
+  - **Version:** `_FED_VERSION = "S195"`
+  - **Proved:** Clinic 16K in ~16s, Hospital 64K shell in ~28s, LTU 126K shell in ~24s. Sandbox 1M elements streamed.
+  - **Why this works vs GN:** GN re-evaluates all modifier trees on mutation (O(all trees)). Direct DB creates plain mesh objects — zero ongoing eval cost.
+  - **Next:** `prompts/S193_dlod_auto_linker.md` §S196 — Pick on DS objects, building index without Preview, detail phase tuning, save streamed scene.
 
 **S189 (2026-04-16):** BLOB tessellation, BACKEND bake, live-link architecture. IN PROGRESS.
   - **BLOB tessellation:** Overnight/LOAD MESH read BLOBs from `component_library.db` (3-11ms/batch, was 1-2s via library.blend).

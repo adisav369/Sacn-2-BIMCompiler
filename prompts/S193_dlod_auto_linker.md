@@ -111,7 +111,89 @@ Exit building (>50m):
 
 No button press. Just orbit in → detail fills. Orbit out → detail drops.
 
-**Ultimate path (S195?):** bypass .blend files entirely. Tessellate directly
-from DB BLOBs into the viewport — same as stingy loader but auto-triggered.
-500 elements per tick, viewport-centre query, zero file I/O. The .blend files
-become the offline/share format, not the viewing format.
+### S195 — Direct DB Streaming (DONE)
+
+Bypass .blend files entirely. Tessellate directly from DB BLOBs into the
+viewport. Camera-driven: buildings stream in as you orbit near them.
+
+**Architecture:**
+- `FedRTreeDirectStream` operator — toggle ON/OFF (Ctrl+Shift+A)
+- `_direct_stream_tick` timer — 1s interval, reads `_dlod_eye_pos`
+- SQL queries `elements_meta` + `element_transforms` + `component_geometries`
+- `from_pydata()` + `matrix_basis` — direct into scene, no .blend files
+- Self-bootstraps from DB — no Preview required
+
+**Discipline phasing:**
+- Shell (ARC+STR): locked — finish building before switching. 100m radius.
+- Detail (all discs): unlocked — streams when <50m, pauses when >50m.
+- Buildings marked `shell_done` → `detail` → `done` through lifecycle.
+
+**Pre-tessellation:**
+- On `DS_START`, queries all unique geometry_hashes for the building
+- Tessellates upfront (3-11s for 20K hashes). All subsequent ticks = placement only.
+- Adaptive batch: 1000 when pre-cached (hashes_new=0), 500 when tessellating.
+
+**Per-batch collections:**
+- Each tick creates fresh `DS_{bld}_{N}` collection (max 1000 objects)
+- Avoids O(n) Blender collection reindex on growing collections
+- Objects selectable in viewport for box-select + Shred
+
+**Camera:**
+- Smooth animated fly-to (10 frames, ease-out cubic, 300ms)
+- Only flies for first building or >5K elements
+- Pauses streaming when active building goes out of range
+
+**Controls (N-panel, bottom of RTree Inspector):**
+- Stream / Shred / Auto — three buttons in a box
+- Row turns red when streaming is active
+- Auto-shred: removes furthest building when tick_ms > 1.5s
+- Shred handles DirectStream collections (fallback + selection-based)
+
+**HUD:**
+- Title: `Building (total)` idle → `Building (pct%)` streaming → `Building ✓` done
+- Disc bars: bright disc color fill, moving count at leading edge
+- Status: STREAMING / LAG / BUDGET / IDLE
+- Auto-enables on Direct Stream toggle
+
+**Performance (proved):**
+- Clinic 16K: ~3s pre-tess + ~13s shell = ~16s total
+- Hospital 64K: ~7s pre-tess + ~21s shell = ~28s
+- LTU 126K: ~11s pre-tess + ~13s shell (ARC+STR only) = ~24s shell
+- Budget: 200K fixed. User shreds manually.
+
+**Files modified:**
+- `operator.py`: `_direct_stream_tick`, `_direct_stream_remove_building`, `FedRTreeDirectStream`, `FedRTreeDirectStreamClear`, `FedRTreeAutoShredToggle`, pre-tessellation, fly-to animation, pause/resume, Shred DS support
+- `bbox_visualization.py`: 15 state variables (_direct_stream_*)
+- `ui.py`: Stream/Shred/Auto buttons at bottom of inspector
+- `progress_hud.py`: DS-aware HUD (disc bars, status, title)
+- `__init__.py`: operator registration, Ctrl+Shift+A keymap
+- Version: `_FED_VERSION = "S195"`
+
+### S195 Learning Points (for troubleshooting)
+
+1. **GN vs Direct DB** — GN DLOD failed because Collection Info re-evaluates all modifier trees on any mutation (500 trees × 8ms = 4s/tick). Direct DB uses plain `from_pydata()` objects — zero ongoing eval cost. The hang was GN's architecture, not mesh data.
+
+2. **`orphans_purge()` hangs** — with thousands of datablocks, this call takes 5-10s. REMOVED from all shred paths. Unlinking from collections is sufficient for viewport. Orphans cleaned on file save.
+
+3. **`col.objects.link()` is O(n)** — Blender reindexes the collection on every link. 20K objects in one collection → each link slower. Fix: per-batch collections (max 1000 objects each). Tick time stays constant.
+
+4. **OFFSET pagination across different queries breaks** — shell queries `IN ('ARC','STR')`, detail queries `NOT IN ('ARC','STR')`. Using the same offset counter across both returns wrong rows. Fix: separate offset tracker per building+phase (`_phase_offsets` dict).
+
+5. **Shell-done loop** — after shell exhausts ARC+STR, building was re-picked because `already(3610) < total(16480)`. Phase stayed `'shell'`. Fix: mark `'shell_done'` so shell picker skips it. Similarly `'done'` for detail.
+
+6. **Blender click keymaps break existing operators** — registering `LEFTMOUSE CLICK` or `DOUBLE_CLICK` in 3D View keymap intercepts RTree inspector drill-down. Even `PASS_THROUGH` doesn't reliably pass events. REMOVED all HUD click keymaps. Buttons are in N-panel only.
+
+7. **Dynamic budget oscillation** — auto-shrinking budget based on tick_ms caused oscillation (batch=1000 → 1.5s tick → budget_down → batch=500 → 0.8s → budget_up → repeat). REMOVED dynamic budget. Fixed at 200K. User shreds manually.
+
+8. **Pre-tessellation is key** — `from_pydata()` costs ~0.3ms per mesh. 20K unique hashes = 6s. But it's one-time. After that, placement is just `objects.new(name, cached_mesh)` = negligible. Always pre-tess on DS_START.
+
+9. **Pause on out-of-range** — active building lock persisted even when user flew away. HUD kept showing distant building's bars. Timer kept streaming into viewport lag. Fix: check active building distance each tick, release lock if >radius.
+
+10. **`StructRNA removed` crash** — accessing `target.name` after `bpy.data.collections.remove(target)` (or after `orphans_purge` invalidated it). Fix: save name to variable BEFORE removal.
+
+### S196 — Next
+
+1. **Pick on DirectStream objects** — ray-cast against streamed meshes (not bboxes)
+2. **Inspector building list without Preview** — populate from DB on toggle (partial — search suggestions work, building index needs Preview bboxes)
+3. **Detail phase tuning** — MEP streaming at 50m, test with Hospital full 64K
+4. **Save streamed scene** — option to save current viewport state as .blend
