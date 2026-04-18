@@ -4896,6 +4896,13 @@ compilation (<code>processIt()</code>) — the ERP transaction. See <a href="../
 </tbody>
 </table>
 <p>See <a href="../DISC_VALIDATION_DB_SRS/#613-ifc-driven-extraction"><code>DISC_VALIDATION_DB_SRS.md §6.13</code></a>.</p>
+<p><strong>Per-order values flow through C_Order, not ad_sysconfig.</strong> YAML fields that
+affect compilation (e.g. <code>mep_order_qty</code>) must land on C_Order via BomDropper
+and be read from the compile DB at Stage 2. <code>ad_sysconfig</code> is iDempiere
+system-wide configuration — using it to pass per-building YAML values to
+compilation bypasses the C_Order convention. See
+<a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md §6.12.4</a> for the
+generative MEP schedule architecture (LOD bridge, shim placement, W-LOD-BRIDGE test).</p>
 <p><strong>IFCtoBOM does NOT:</strong></p>
 <ul>
 <li>Create C_Order or C_OrderLine (that is <code>processIt()</code> during compilation)</li>
@@ -4947,6 +4954,14 @@ population, the compiler treats it identically to extracted products.</p>
 <code>attachment_face</code>, <code>up_axis</code>, <code>forward_axis</code>, <code>orientation</code>, <code>default_rotation</code> —
 polarity markers for correct mesh orientation at the tack position.
 See <code>BIM_Designer.md</code> §8.3 (ASI overrides) and <code>DocValidate.md</code> M16/M17.</p>
+<p><strong>Generative MEP LOD bridge:</strong> Products created by the generative MEP schedule
+(TOILET, LIGHT, SPRINKLER, etc.) are <code>extracted_from='SHARED_RECIPE'</code> with
+<code>source_element_ref=NULL</code> at creation. ProductRegistrar must reverse-lookup
+<code>ad_element_mep_alias</code> to resolve the IFC family name, closing the bridge:
+<code>M_Product.source_element_ref → I_Geometry_Map.element_ref → geometry_hash → mesh</code>.
+Without this bridge, BuildingWriter throws MetadataMissingException at compile time.
+See <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md §6.12.4 subsection 11</a>
+for the full LOD bridge spec and W-LOD-BRIDGE test.</p>
 <hr />
 <h2 id="3-compilation">3. Compilation<a class="headerlink" href="#3-compilation" title="Permanent link">&para;</a></h2>
 <h3 id="31-terms">3.1 Terms<a class="headerlink" href="#31-terms" title="Permanent link">&para;</a></h3>
@@ -6211,7 +6226,13 @@ form. The record makes both forms available everywhere by construction.</p>
 </tbody>
 </table>
 <p>Single compilation path: element positions are read from m_bom_line (tack
-offsets per §4) and accumulated through the BOM chain into world coordinates.
+offsets per §4) and accumulated through the BOM chain into world coordinates.</p>
+<p><strong>Stage 2 (Compile) includes generative MEP:</strong> when the walker enters a SET BOM
+with a MEP schedule, <code>MEPDevicePlacer</code> creates device placements inline. These
+follow the same tack accumulation path as extracted elements. <strong>Stage 3 (Write)</strong>
+resolves geometry for ALL placements via <code>source_element_ref</code> → component_library.db.
+See <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md §6.12.4</a> for the
+generative device architecture and LOD bridge.
 C_OrderLine → M_Product → BOM explosion (iDempiere prepareIt pattern).</p>
 <hr />
 <h2 id="6-bim-cobol-verb-driven-bom-mutation">6. BIM COBOL — Verb-Driven BOM Mutation<a class="headerlink" href="#6-bim-cobol-verb-driven-bom-mutation" title="Permanent link">&para;</a></h2>

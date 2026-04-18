@@ -2877,10 +2877,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#mode-3-stingy-mesh-loader" class="md-nav__link">
+  <a href="#mode-3-bim-streaming-ctrlshifta" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Mode 3 — Stingy Mesh Loader
+        Mode 3 — BIM Streaming (Ctrl+Shift+A)
       
     </span>
   </a>
@@ -2916,32 +2916,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#s185-performance-multi-pass-pre-warm" class="md-nav__link">
+  <a href="#direct-stream-performance-s195-s197" class="md-nav__link">
     <span class="md-ellipsis">
       
-        S185 Performance — Multi-Pass Pre-Warm
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#s186-performance-smart-overnight-offline-bake" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        S186 Performance — Smart Overnight + Offline Bake
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#s187-shred-baked-collapsible-panel-version-stamp" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        S187 — Shred Baked, Collapsible Panel, Version Stamp
+        Direct Stream Performance (S195-S197)
       
     </span>
   </a>
@@ -2954,21 +2932,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#geo-hash-hell-solved-s180" class="md-nav__link">
+  <a href="#files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Geo Hash Hell — SOLVED (S180)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#files-technical-section" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Files — Technical Section
+        Files
       
     </span>
   </a>
@@ -2980,6 +2947,17 @@
     <span class="md-ellipsis">
       
         Related Specs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#historical-note" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Historical Note
       
     </span>
   </a>
@@ -3070,21 +3048,14 @@ paradigm with a database cursor attached to a spatial GPU renderer.</p>
           │  L1: buildings      │  click → fly + load L2
           │  L2: top 10 elements│  click → fly + white highlight
           └──────────┬──────────┘
-                     │  on LOAD MESH
+                     │  on Direct Stream (Ctrl+Shift+A)
           ┌──────────▼──────────┐
-          │  Stingy Mesh Loader │  on-demand only
-          │  viewport-centre    │  camera = selector
-          │  pre-warmed meshes  │  &lt;1s per MESH press
-          │  from library.blend │  one named collection
-          │  LOAD / SHRED       │  non-destructive
-          └──────────┬──────────┘
-                     │  on OVERNIGHT (large building)
-          ┌──────────▼──────────┐
-          │  Smart Bake Engine  │  S186
-          │  background process │  blender --background
-          │  fresh scene per    │  no O(n) penalty
-          │  building, 36s/48K  │  linked refs → 2MB
-          │  4 cores parallel   │  1M city &lt; 10 min
+          │  BIM Streaming      │  S195-S197
+          │  from_pydata()      │  tessellate from DB BLOBs
+          │  camera-driven      │  stream near, shred far
+          │  no .blend files    │  two SQLite files only
+          │  largest first      │  shell in 2-3 seconds
+          │  geometry dedup     │  1M elements → 50K meshes
           └─────────────────────┘
 </code></pre></div>
 <hr />
@@ -3190,37 +3161,51 @@ to 10 display entries.</p>
 <p><strong>Two navigation patterns from one query model:</strong>
 - <em>Know what, find where</em> → type "IfcDoor", find which buildings have doors + discipline breakdown
 - <em>Know where, find what</em> → click any wireframe box, system identifies it, GUID to clipboard</p>
-<h3 id="mode-3-stingy-mesh-loader">Mode 3 — Stingy Mesh Loader<a class="headerlink" href="#mode-3-stingy-mesh-loader" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>MESH ACTIONS
-[+ARC][+STR][+MEP][+ELEC][+FP][+NEXT]
-</code></pre></div>
-<p><strong>Camera is the selector.</strong> MESH loads only elements within the viewport centre —
-what you're looking at is what you get. Pan the camera, press MESH again,
-get more geometry there. No learning curve.</p>
-<ul>
-<li><strong>+DISC buttons</strong>: load that discipline's elements within viewport centre radius</li>
-<li><strong>+NEXT</strong>: progressive — each press loads the next 500 (ARC→STR→MEP→ELEC→FP, with offset)</li>
-<li><strong>Storey filter</strong>: set Floor field → MESH loads only that storey. Clear for all floors.</li>
-<li>Each load creates an independent named collection in the Scene Inventory</li>
-<li><strong>SHRED SELECTED</strong>: select any loaded mesh objects in viewport → removed. Freestyle.</li>
-<li>Nothing selected → removes last loaded batch</li>
-</ul>
-<p>Each Load is independent. Load Hospital ARC, load Clinic MEP, shred Hospital ARC.
-The user can also hand-pick individual mesh objects in the viewport and shred just those —
-building up a precise cross-section by addition and subtraction.
-The RTree is never affected.</p>
-<p><strong>Pre-warm on drill-in (S184):</strong> When the user clicks a building in the cockpit,
-the system counts disciplines (50ms) and displays the cockpit bars.
-While the user reads those bars, a background timer silently links that
-building's geometry hashes from library.blend (~2s, invisible).
-By the time the user presses +MESH, the meshes are already in RAM.</p>
-<p><strong>The 15-second workflow:</strong>
-1. Preview → 1M wireframes in 13s
-2. Search → click building → cockpit shows discipline bars (meshes pre-warming in background)
-3. Pan to area of interest → press +ARC → geometry appears in &lt;1s
-4. Pan elsewhere → +ARC again → more geometry where you look
-5. Select unwanted pieces → SHRED → exactly what you want remains
-Result: a hand-crafted view of a million-element project in 15 seconds.</p>
+<h3 id="mode-3-bim-streaming-ctrlshifta">Mode 3 — BIM Streaming (Ctrl+Shift+A)<a class="headerlink" href="#mode-3-bim-streaming-ctrlshifta" title="Permanent link">&para;</a></h3>
+<p>Direct Stream renders BIM models directly from a SQLite database — no
+intermediate files. Each IFC element's geometry is stored as a binary
+hash in the database; identical elements (every door of the same type,
+every standard column) share one hash, so a million-element city
+compresses to ~50,000 unique meshes.</p>
+<p>When the user presses Ctrl+Shift+A, a timer reads elements nearest to
+the camera, unpacks their vertex data from the database, and places
+them into Blender's viewport in real time — largest pieces first so the
+building shell appears within seconds. The camera drives everything:
+stream what's near, discard what's far, pause when the user navigates.</p>
+<p>The entire viewer runs on two SQLite files totalling ~1.1GB, with zero
+.blend files, zero baking, and zero server infrastructure.</p>
+<p><strong>Three speed secrets:</strong></p>
+<ol>
+<li>
+<p><strong>Geometry hashing</strong> — identical elements share one mesh. A hospital has
+   10,000 doors but only 15 unique door shapes. <code>from_pydata()</code> runs 15
+   times, not 10,000. Object placement is near-zero cost.</p>
+</li>
+<li>
+<p><strong>Spatial ordering</strong> — <code>ORDER BY bbox volume DESC</code> means walls and slabs
+   stream first. The building looks "done" after 5% of elements are placed.</p>
+</li>
+<li>
+<p><strong>No format conversion</strong> — IFC→tessellate→BLOB happens once at extraction.
+   After that it's binary unpack → <code>from_pydata()</code>. No parsing, no file I/O.
+   SQLite reads are effectively memcpy from disk cache.</p>
+</li>
+</ol>
+<p><strong>The pipeline:</strong>
+<div class="highlight"><pre><span></span><code>IFC files → extractIFCtoDB.py → _extracted.db + component_library.db
+                                        ↓
+                              Ctrl+Shift+A → Direct Stream
+                                        ↓
+                              SQL query → BLOB unpack → from_pydata() → viewport
+</code></pre></div></p>
+<p>See <code>prompts/S193_dlod_auto_linker.md</code> for full streaming architecture and
+<code>prompts/S198_envelope_streaming.md</code> for the next phase (exterior-only rendering).</p>
+<p><strong>The workflow:</strong>
+1. Preview → 1M wireframes in 13s (GPU bboxes, zero mesh)
+2. Direct Stream → buildings appear as solid geometry, nearest first
+3. Camera drives streaming — orbit near a building, it fills in
+4. Orbit away → shred far buildings automatically
+5. Search → click building → fly-to → detail streams all disciplines</p>
 <hr />
 <h2 id="viewport-click-picker">Viewport Click-Picker<a class="headerlink" href="#viewport-click-picker" title="Permanent link">&para;</a></h2>
 <p>"Click to Identify" button activates a modal LEFT_MOUSE handler.</p>
@@ -3296,233 +3281,56 @@ Ultra smooth navigation with no lag on a normal laptop.</strong></p>
 </tr>
 </tbody>
 </table>
-<h3 id="s185-performance-multi-pass-pre-warm">S185 Performance — Multi-Pass Pre-Warm<a class="headerlink" href="#s185-performance-multi-pass-pre-warm" title="Permanent link">&para;</a></h3>
-<p>When a building is selected (L1 drill-in), the pre-warm timer links mesh
-datablocks from <code>library.blend</code> in batches of 800 every 0.5s. This runs in
-the background while the user reads the cockpit. For a building with 2,000+
-unique geometry hashes, 3 passes complete in ~7s — all invisible.</p>
-<p>By the time the user presses +MESH, all meshes are already in <code>bpy.data.meshes</code>.
-The stingy loader skips <code>libraries.load()</code> entirely (<code>link=0ms</code> in logs),
-reducing per-press time from ~2.5s to <strong>&lt;0.5s</strong> for placement-only work.</p>
+<h3 id="direct-stream-performance-s195-s197">Direct Stream Performance (S195-S197)<a class="headerlink" href="#direct-stream-performance-s195-s197" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
 <th>Metric</th>
-<th>Before (S184)</th>
-<th>After (S185)</th>
+<th>Result</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Pre-warm cap</td>
-<td>800 hashes (one-shot)</td>
-<td>Unlimited (multi-pass)</td>
+<td>Time to first geometry</td>
+<td><strong>2-3s</strong> (largest walls/slabs appear first)</td>
 </tr>
 <tr>
-<td>+MESH cold (library.blend open)</td>
-<td>~2.5s per press</td>
-<td>~2.5s first press only</td>
+<td>Small building (500 elements)</td>
+<td>~0.3s shell complete</td>
 </tr>
 <tr>
-<td>+MESH warmed</td>
-<td>&lt;1s</td>
-<td><strong>&lt;0.5s</strong> (link=0ms)</td>
+<td>Medium building (16K elements)</td>
+<td>~3s shell (ARC+STR)</td>
 </tr>
 <tr>
-<td>Bottleneck</td>
-<td><code>libraries.load()</code> per press</td>
-<td>Eliminated by pre-warm</td>
+<td>Large building (64K elements)</td>
+<td>~8s shell, incremental</td>
+</tr>
+<tr>
+<td>Tessellation cost</td>
+<td>~0.3ms per unique mesh (from_pydata)</td>
+</tr>
+<tr>
+<td>Geometry deduplication</td>
+<td>1M elements → 50K unique meshes (95% reuse)</td>
+</tr>
+<tr>
+<td>Budget</td>
+<td>200K elements in viewport, auto-shred beyond</td>
+</tr>
+<tr>
+<td>Camera settle</td>
+<td>1s pause after user stops navigating</td>
 </tr>
 </tbody>
 </table>
-<p>Other S185 optimisations:
-- <code>matrix_basis</code> single write (replaces <code>location</code> + <code>rotation_euler</code>)
-- Deferred scene link for new collections (avoids O(n²) collection sync)
-- Duplicate mesh skip (already-loaded objects not re-created)
-- Back-to-front depth ordering (farthest from camera loads first)
-- Auto <code>clip_end</code> proportional to model extent (no manual View End Clip)</p>
+<p><strong>Two files, total ~1.1GB:</strong>
+- <code>sandbox_1M.db</code> (835MB) — 1M elements, transforms, R-tree spatial index
+- <code>component_library.db</code> (305MB) — 50K geometry BLOBs (vertices + faces)</p>
 <p>Scales to 10M+ elements with no architectural changes.
 The DB is the ceiling, not the viewer.</p>
 <hr />
-<h3 id="s186-performance-smart-overnight-offline-bake">S186 Performance — Smart Overnight + Offline Bake<a class="headerlink" href="#s186-performance-smart-overnight-offline-bake" title="Permanent link">&para;</a></h3>
-<p>The overnight modal loader degrades on large buildings because Blender's scene graph
-is O(n) — each new object is slower than the last. Hospital (63K elements) starts at
-2.4s/batch and reaches 6.3s/batch by 12K objects, trending toward 3.4 hours.</p>
-<p><strong>Smart Overnight</strong> detects this. After 2,000 elements it computes:
-- Online ETA from rolling batch average
-- Offline estimate from bake benchmarks</p>
-<p>If online ETA exceeds offline by 5x, it offers to switch:</p>
-<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────┐
-│  At this rate: ~1.8h                        │
-│  Offline bake: ~73s                         │
-│                                             │
-│  [SWITCH TO OFFLINE]     [KEEP GOING]       │
-└─────────────────────────────────────────────┘
-</code></pre></div>
-<p>On accept: a background <code>blender --background --factory-startup</code> subprocess
-bakes the entire building in a fresh empty scene. The user's viewport stays
-fully interactive — orbit, search, mesh other buildings. When the subprocess
-finishes, partial objects are shredded and the complete building links into
-the viewport instantly.</p>
-<p><strong>Why it's fast:</strong></p>
-<table>
-<thead>
-<tr>
-<th>Factor</th>
-<th>Overnight modal</th>
-<th>Offline bake</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Scene graph</td>
-<td>O(n) — 63K objects growing</td>
-<td>Fresh empty — always O(1)</td>
-</tr>
-<tr>
-<td>Library opens</td>
-<td>Per-batch (2.7s × hundreds)</td>
-<td>Once (67s total)</td>
-</tr>
-<tr>
-<td>Mesh refs</td>
-<td>Linked per batch</td>
-<td>Linked in one call</td>
-</tr>
-<tr>
-<td>Viewport</td>
-<td>Redraws every tick</td>
-<td>No viewport (<code>--background</code>)</td>
-</tr>
-<tr>
-<td>Result</td>
-<td>Trends to 3.4h, may crash</td>
-<td>Deterministic, always completes</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Measured results:</strong></p>
-<table>
-<thead>
-<tr>
-<th>Building</th>
-<th>Elements</th>
-<th>Unique meshes</th>
-<th>Bake time</th>
-<th>File size</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Duplex</td>
-<td>1,169</td>
-<td>650</td>
-<td>6.4s</td>
-<td>197KB</td>
-</tr>
-<tr>
-<td>Terminal</td>
-<td>48,428</td>
-<td>7,150</td>
-<td><strong>36.6s</strong></td>
-<td>~2MB</td>
-</tr>
-<tr>
-<td>Hospital</td>
-<td>63,917</td>
-<td>23,045</td>
-<td><strong>123s</strong></td>
-<td>5.6MB</td>
-</tr>
-</tbody>
-</table>
-<p><strong>City-scale extrapolation (1,061,736 elements, 25 buildings):</strong></p>
-<p>Background parallel Blender sessions (up to 4 instances on 4 CPU cores) can
-resolve a full 1-million-element city in under 10 minutes. Total baked file
-size: ~75MB. Previously the same city trended toward 3.5 hours with crashes
-on save.</p>
-<p>Each subprocess is a separate OS process — not a Python thread. Blender
-remains single-threaded per process, but 4 processes run on 4 cores
-simultaneously. The operating system handles parallelism, not Blender.</p>
-<p>The baked <code>.blend</code> files use linked mesh references to <code>library.blend</code> (276MB,
-shared). No mesh data is duplicated. A complete building is just transforms +
-collection hierarchy. Save takes seconds. Reopen resolves the links
-automatically.</p>
-<figure style="margin: 24px 0; text-align: center;">
-  <img src="../assets/images/46kTerminal73secs.png" alt="48K Terminal building baked in 36s — background parallel Blender sessions" width="100%">
-  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
-    Terminal building (48,428 elements) baked in 36.6 seconds via background subprocess.
-    Up to 4 parallel Blender instances can resolve a 1-million-element city under 10 minutes
-    at ~75MB total file size. Previously trended to 3.5 hours with save crashes.
-  </figcaption>
-</figure>
-
-<h3 id="s187-shred-baked-collapsible-panel-version-stamp">S187 — Shred Baked, Collapsible Panel, Version Stamp<a class="headerlink" href="#s187-shred-baked-collapsible-panel-version-stamp" title="Permanent link">&para;</a></h3>
-<p><strong>Shred now handles both load patterns:</strong></p>
-<table>
-<thead>
-<tr>
-<th>Pattern</th>
-<th>Source</th>
-<th>Shred action</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>Loaded_*</code> collections</td>
-<td>Stingy Mesh Loader</td>
-<td>Unlink objects, remove collection</td>
-</tr>
-<tr>
-<td><code>Baked_*</code> collection instances</td>
-<td>Smart Bake Engine</td>
-<td>Delete <code>*_inst</code> empties per discipline</td>
-</tr>
-</tbody>
-</table>
-<p>Select <code>T0_Hospital_MEP_inst</code> → SHRED → only MEP removed, others remain.
-Select nothing → SHRED removes last <code>Loaded_*</code> or last <code>Baked_*</code> building.
-Empty <code>Baked_*</code> parent auto-cleaned.</p>
-<p><strong>Collapsible element list (S187):</strong> The L2 element list collapses to a single
-header row when overnight/bake is active, keeping the SHORT-CUT button visible
-without scrolling. Triangle toggle for manual collapse at any time.</p>
-<p><strong>SHORT-CUT countdown now shows total cost upfront:</strong>
-<div class="highlight"><pre><span></span><code>⚡ SHORT-CUT  ~37s + ~25s link
-</code></pre></div>
-The <code>+25s link</code> warns that Blender will freeze briefly at the end when linking
-the baked file. Wait cursor shown during link. No two-phase state splitting.</p>
-<p><strong>Pre-S185 DB guard:</strong> LOAD MESH and OVERNIGHT reject extracted DBs that lack
-rotation columns (pre-S185 schema). Clean error in status bar:
-"DB too old — re-extract with current pipeline."</p>
-<p><strong>Version stamp:</strong> <code>_FED_VERSION</code> in <code>operator.py</code> prints <code>[S187b]</code> on Preview.
-Confirms running code matches source after Blender restart.</p>
-<p><strong>Storey element fly-to fix:</strong> Storey-level top-10 query now includes rtree
-JOIN for bounding boxes. Fixes <code>KeyError: 'bbox'</code> crash when clicking an
-element after drilling into a storey.</p>
-<p><strong>Log evidence (Terminal 48K, 2026-04-15):</strong>
-<div class="highlight"><pre><span></span><code>[S186] §BAKE_SWITCH bld=Terminal partial=3650
-[S186] §BAKE_POLL bld=Terminal ~23,245/48,428 (48%) 35s elapsed ~37s left
-  [BAKE-SUB] §PROOF BAKE bld=Terminal placed=48428 no_mesh=0 no_xform=0
-             discs=[&#39;MEP&#39;,&#39;ACMV&#39;,&#39;ARC&#39;,&#39;STR&#39;,&#39;ELEC&#39;,&#39;FP&#39;] 36.4s
-[S186] §BAKE_DONE bld=Terminal elapsed=40s
-[S186] §BAKE_SHRED bld=Terminal collections=2 objects=3767
-[S187] §BAKE_LINK bld=Terminal instances=6 total=48,428 link=24.1s
-</code></pre></div>
-Viewport remained fully interactive during the 40s bake — storey drill-down,
-fly-to-element, and re-Preview all worked while the subprocess ran.
-File saved at 125.5KB (linked refs to library.blend, no mesh duplication).</p>
-<hr />
-<h2 id="geo-hash-hell-solved-s180">Geo Hash Hell — SOLVED (S180)<a class="headerlink" href="#geo-hash-hell-solved-s180" title="Permanent link">&para;</a></h2>
-<p>When loading meshes from library.blend, Blender renames datablocks that
-collide at the 63-char name limit. If geometry_hash name is truncated or
-duplicated, the transform lookup fails and elements appear at the origin.</p>
-<p><strong>S178 fix:</strong> <code>T_{full_hash}</code> naming, 21/21 PASS (<code>0dc3912c</code>).
-<strong>S180 confirmation:</strong> Shred works. Placement dead accurate across all tested
-elements — sprinklers, doors, windows, structural members. Stale-selection bug
-(<code>_selected_element</code> not cleared on new building drill-in) also fixed. No
-further geo hash hell reports. This is considered closed.</p>
-<hr />
-<h2 id="files-technical-section">Files — Technical Section<a class="headerlink" href="#files-technical-section" title="Permanent link">&para;</a></h2>
+<h2 id="files">Files<a class="headerlink" href="#files" title="Permanent link">&para;</a></h2>
 <p>Source root: <code>/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/</code></p>
 <table>
 <thead>
@@ -3533,54 +3341,79 @@ further geo hash hell reports. This is considered closed.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>bbox_visualization.py</code></td>
-<td>RTree GPU batches, draw handler, search/pick, <code>_load_progress</code>, <code>_loaded_collections</code></td>
+<td><code>direct_stream.py</code></td>
+<td>BIM Streaming engine — tick logic, fly-to, candidate scoring, remove</td>
 </tr>
 <tr>
-<td><code>discipline_legend.py</code></td>
-<td>GPU overlay (bottom-right, discipline colors + search hint)</td>
+<td><code>mesh_utils.py</code></td>
+<td>Shared tessellation — ensure_meshes(), apply_material(), apply_transform()</td>
+</tr>
+<tr>
+<td><code>bbox_visualization.py</code></td>
+<td>RTree GPU batches, draw handler, search/pick, streaming state</td>
 </tr>
 <tr>
 <td><code>operator.py</code></td>
-<td>FedRTreeSearch, FedRTreeFlyToResult, FedRTreeFlyToElement, FedRTreePick, FedRTreeLoadMesh, FedRTreeShred (Loaded+Baked), FedRTreeOvernight, FedRTreeSwitchOffline, <code>_FED_VERSION</code> stamp</td>
+<td>_tessellate_from_blobs(), shred, surface styles, bake (legacy)</td>
+</tr>
+<tr>
+<td><code>progress_hud.py</code></td>
+<td>GPU overlay — discipline bars, streaming status, settle detection</td>
 </tr>
 <tr>
 <td><code>ui.py</code></td>
-<td>BIM_PT_rtree_inspector (N-panel, bl_order=0) — cockpit panel, discipline bars, building list</td>
+<td>N-panel — cockpit, discipline bars, Stream/Shred buttons</td>
 </tr>
 <tr>
 <td><code>prop.py</code></td>
-<td>rtree_search, rtree_result_<em>, rtree_picked_</em>, rtree_bld_* discipline counts</td>
+<td>Scene properties — search, results, discipline counts</td>
 </tr>
 <tr>
 <td><code>__init__.py</code></td>
-<td>operator + panel registration</td>
+<td>Operator + panel registration</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Database</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sandbox_1M.db</code> (835MB)</td>
+<td>1M elements — meta, transforms, rtree, surface_styles</td>
 </tr>
 <tr>
-<td><code>library/component_library.db</code></td>
-<td>S189: BLOB mesh source (123K geometry hashes, SQLite indexed)</td>
+<td><code>component_library.db</code> (305MB)</td>
+<td>50K geometry BLOBs — vertices + faces</td>
 </tr>
 <tr>
-<td><code>scripts/blob_tessellate_worker.py</code></td>
-<td>S189: per-chunk BLOB bake subprocess</td>
-</tr>
-<tr>
-<td><code>DAGCompiler/lib/input/*_extracted.db</code></td>
-<td>extracted federation DBs (source of truth)</td>
+<td><code>{Building}_extracted.db</code></td>
+<td>Per-building source (input to sandbox merge)</td>
 </tr>
 </tbody>
 </table>
 <hr />
 <h2 id="related-specs">Related Specs<a class="headerlink" href="#related-specs" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>internal/DLOD_SPEC.md</code> — LOD tier system (§S179: LOD-0 = RTree GPU, not bbox mesh; GN mode halted S184)</li>
-<li><code>prompts/S184_gn_dlod_fix.md</code> — S184 spec: viewport-centre query, batch transforms, pre-warm on drill-in</li>
-<li><code>internal/StressTest_1M_Results.md</code> — full performance history S165→S178</li>
-<li><code>docs/StressTest_1M.md</code> — the 1M element loading challenge and GN architecture</li>
-<li><code>prompts/S179_dlod_rtree_handoff.md</code> — corrected DLOD architecture</li>
-<li><code>prompts/S180_stingy_mesh_loader.md</code> — next session: picker fix + Load/Shred</li>
-<li><code>prompts/S187_overnight_panel_review.md</code> — S187 spec: instance validation, collapsible panels, shred fix</li>
+<li><code>prompts/S193_dlod_auto_linker.md</code> — Direct Stream architecture, learning points, camera rules</li>
+<li><code>prompts/S198_envelope_streaming.md</code> — Envelope-first rendering (next)</li>
+<li><code>prompts/S192_cloud_deploy_onboard.md</code> — Cloud deployment, three-tier DB resolution</li>
+<li><code>docs/MANIFESTO.md</code> §The Viewer — DB Is the Model</li>
 </ul>
+<hr />
+<h2 id="historical-note">Historical Note<a class="headerlink" href="#historical-note" title="Permanent link">&para;</a></h2>
+<p>S165-S184 explored Geometry Nodes (GN) instancing — halted at S184 due to 8-min
+evaluation overhead at 500 modifier trees. S185-S188 built a Stingy Mesh Loader
+(on-demand from library.blend) and Smart Bake Engine (background subprocess →
+.blend files → link). S189-S193 added BLOB tessellation, overnight bake, DLOD
+auto-linker (.blend link/unlink by camera distance), and save-to-link pipeline.
+All of these were superseded by Direct DB Streaming (S195-S197) which eliminated
+.blend files entirely. The baked/ directory and library.blend have been removed.
+The code remains in operator.py for reference but is not part of the active pipeline.</p>
 <hr />
 <h2 id="the-paradigm">The Paradigm<a class="headerlink" href="#the-paradigm" title="Permanent link">&para;</a></h2>
 <p>Every BIM viewer built before this one assumes the same workflow:
@@ -3602,8 +3435,17 @@ BIM has been doing neither. Until now.</p>
   <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
     RTree search drill in action — 1,061,736 elements loaded in ~13s.
     Each query layer narrows the result: L1 buildings highlighted by match count,
-    L2 top elements highlighted white, final LOD mesh fetched on demand from library.blend.
+    L2 top elements highlighted white, Direct Stream fills geometry on demand.
     Federation BIM Compiler addon to Bonsai. Normal laptop. No stall.
+  </figcaption>
+</figure>
+
+<figure style="margin: 24px 0; text-align: center;">
+  <img src="../assets/images/BakedBackend.png" alt="Progress HUD — discipline-colored bars, baked backend overlay on 1M city" width="100%">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">
+    Progress HUD (S191) — GPU overlay with discipline-colored progress bars, pulsing status,
+    countdown ETAs, and streaming status. Direct Stream running on a 1M-element city.
+    Viewport stays fully interactive during streaming.
   </figcaption>
 </figure>
 
