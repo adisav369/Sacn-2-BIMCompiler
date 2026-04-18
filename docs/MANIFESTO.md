@@ -532,7 +532,7 @@ Clean viewport  — only what the user chose remains
 - IFC extraction pipeline → geometry_hash + transforms + metadata
 - BIM Designer compiler → new element placements, BOMs
 - RouteWalker → routing paths as element_transforms
-- Future modeller → new geometry written to library.blend + row to element_instances
+- Future modeller → new geometry written to component_library.db + row to element_instances
 
 **The viewer does not care who wrote the element.** A RouteWalker duct appears
 as MEP discipline. A BIM Designer wall appears as ARC. A modelled element

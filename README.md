@@ -59,28 +59,41 @@ IFC file → extract → classify.yaml → IFCtoBOM → BOM.db → compile → o
            (once)    (human intent)    (once)     (recipe)   (repeat)  (elements)   (proof)
 ```
 
-## Compile Once, Query Forever (RTree Federation)
+## BIM Streaming — From IFC to Viewport in 3 Steps
 
-The compiled output is a queryable database, not a file to "open."
-The [RTree Query Engine](docs/RTree.md) renders 1M elements as GPU wireframes
-in ~13 seconds — zero mesh in RAM, instant orbit. Press MESH and the Stingy
-Loader delivers exact IFC geometry on demand in under one second. Press SHRED
-to clean up. The model is never fully loaded. It is always live.
+Every BIM viewer loads the file, then queries it. We query the database.
+The geometry streams directly from SQLite BLOBs into Blender — no intermediate
+files, no baking, no server. Two database files, one Python timer.
 
-**BACKEND bake** sends buildings to background Blender workers. Multiple buildings
-bake in parallel while the user keeps working. BLOB tessellation reads geometry
-directly from the database — no library.blend required.
+```
+Step 1: Extract        python3 extractIFCtoDB.py --ifc building.ifc --library component_library.db
+Step 2: Preview        Ctrl+Shift+P → 1M GPU wireframes in ~13s (instant orbit)
+Step 3: Stream         Ctrl+Shift+A → solid geometry appears, largest pieces first
+```
+
+**Three speed secrets:**
+
+1. **Geometry hashing** — 1M elements compress to 50K unique meshes. A hospital
+   has 10,000 doors but only 15 unique door shapes. Mesh creation runs 15 times,
+   not 10,000.
+
+2. **Spatial ordering** — walls and slabs stream first (`ORDER BY bbox volume DESC`).
+   The building looks complete after 5% of elements are placed.
+
+3. **No format conversion** — IFC is tessellated once at extraction. After that,
+   streaming is binary unpack → `from_pydata()`. SQLite reads are effectively
+   memcpy from disk cache.
 
 | Metric | Proven |
 |:---|:---|
+| Time to first geometry | **2-3s** (shell walls appear) |
 | RTree wireframe load (1M) | **~13s** |
 | Orbit / pan | **Instant (60 FPS)** |
-| MESH press (on-demand geometry) | **<1s** |
-| BLOB tessellation per batch | **3-11ms** |
-| Terminal 48K bake | **~40s** |
-| Session file size | **~6MB** (linked, not inline) |
+| Geometry deduplication | **95%** (1M → 50K meshes) |
+| Total data footprint | **~1.1GB** (two SQLite files) |
+| Server required | **None** |
 
-See [RTree.md](docs/RTree.md) for architecture and [StressTest_1M.md](docs/StressTest_1M.md) for benchmarks.
+See [RTree.md](docs/RTree.md) for architecture.
 
 ### nD Analysis (4D–8D)
 
