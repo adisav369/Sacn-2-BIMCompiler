@@ -9,7 +9,7 @@
   h1 { color: #4fc3f7; font-size: 20px; margin-bottom: 4px; }
   h2 { color: #4fc3f7; font-size: 15px; margin: 20px 0 8px; }
   .subtitle { color: #888; font-size: 12px; margin-bottom: 16px; }
-  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1200px; }
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1400px; }
   .chart-box {
     background: rgba(255,255,255,0.05); border-radius: 8px; padding: 16px;
     border: 1px solid rgba(255,255,255,0.08);
@@ -38,7 +38,8 @@
 <h1>BIM OOTB — 4D/5D Analytics</h1>
 <div class="subtitle" id="info">Loading...</div>
 <div class="toolbar">
-  <button onclick="saveExcel()">Save Excel &#128202;</button>
+  <button onclick="save5D()">Save 5D BOQ &#128202;</button>
+  <button onclick="save4D()">Save 4D Schedule &#128197;</button>
   <button onclick="toggleTheme()">&#9788;</button>
 </div>
 <div class="charts" id="charts"></div>
@@ -53,40 +54,231 @@ const params = new URLSearchParams(location.search);
 const DB_URL = params.get('db') || 'sandbox_1M_extracted.db';
 const BLD = params.get('bld') || '';
 
-// CIDB 2024 rates (from Federation comprehensive_boq_export.py)
+// ============================================================================
+// CIDB 2024 MATERIAL RATES (from boq_export.py — exact match)
+// ============================================================================
 const RATES = {
-  IfcDuct:{rate:165,unit:'M',desc:'GI Ductwork 400mm'},IfcDuctSegment:{rate:165,unit:'M',desc:'Duct Segment'},
-  IfcDuctFitting:{rate:380,unit:'EA',desc:'Duct Fittings'},IfcPipe:{rate:48.5,unit:'M',desc:'PVC Pipe 100mm'},
-  IfcPipeSegment:{rate:48.5,unit:'M',desc:'Pipe Segment'},IfcPipeFitting:{rate:95,unit:'EA',desc:'Pipe Fittings'},
-  IfcCableCarrier:{rate:78,unit:'M',desc:'Cable Tray 300mm'},IfcCableCarrierSegment:{rate:78,unit:'M',desc:'Cable Tray'},
-  IfcBeam:{rate:680,unit:'M',desc:'Steel I-Beam'},IfcColumn:{rate:1250,unit:'M',desc:'Steel Column'},
-  IfcSlab:{rate:285,unit:'M2',desc:'RC Slab 250mm'},IfcWall:{rate:145,unit:'M2',desc:'Blockwork Wall 150mm'},
-  IfcWallStandardCase:{rate:145,unit:'M2',desc:'Standard Wall'},IfcCurtainWall:{rate:750,unit:'M2',desc:'Curtain Wall'},
-  IfcCovering:{rate:185,unit:'M2',desc:'Floor/Ceiling Finish'},IfcRoof:{rate:238,unit:'M2',desc:'Metal Roof'},
-  IfcLightFixture:{rate:485,unit:'EA',desc:'LED Light'},IfcOutlet:{rate:125,unit:'EA',desc:'Power Outlet'},
-  IfcDoor:{rate:2850,unit:'EA',desc:'Door Set'},IfcWindow:{rate:1580,unit:'EA',desc:'Window'},
-  IfcBuildingElementProxy:{rate:850,unit:'EA',desc:'Misc Element'},IfcFlowTerminal:{rate:3500,unit:'EA',desc:'HVAC Terminal'},
-  IfcFurnishingElement:{rate:1200,unit:'EA',desc:'Furniture'},IfcPlate:{rate:95,unit:'M2',desc:'Steel Plate'},
-  IfcMember:{rate:320,unit:'M',desc:'Steel Member'},IfcRailing:{rate:280,unit:'M',desc:'Railing'},
-  IfcStair:{rate:4500,unit:'EA',desc:'Staircase'},IfcStairFlight:{rate:2200,unit:'EA',desc:'Stair Flight'},
+  IfcDuct:{rate:165,unit:'M',desc:'Galvanized Steel Ductwork (avg 400mm)'},
+  IfcDuctSegment:{rate:165,unit:'M',desc:'Ductwork Segment'},
+  IfcDuctFitting:{rate:380,unit:'EA',desc:'Duct Fittings (elbows, tees)'},
+  IfcPipe:{rate:48.5,unit:'M',desc:'PVC/HDPE Pipe (avg 100mm)'},
+  IfcPipeSegment:{rate:48.5,unit:'M',desc:'Pipe Segment'},
+  IfcPipeFitting:{rate:95,unit:'EA',desc:'Pipe Fittings'},
+  IfcCableCarrier:{rate:78,unit:'M',desc:'Cable Tray System (300mm)'},
+  IfcCableCarrierSegment:{rate:78,unit:'M',desc:'Cable Tray Segment'},
+  IfcBeam:{rate:680,unit:'M',desc:'Structural Steel I-Beam'},
+  IfcColumn:{rate:1250,unit:'M',desc:'Structural Steel Column'},
+  IfcSlab:{rate:285,unit:'M2',desc:'RC Slab 250mm'},
+  IfcWall:{rate:145,unit:'M2',desc:'Blockwork Wall 150mm'},
+  IfcWallStandardCase:{rate:145,unit:'M2',desc:'Standard Wall'},
+  IfcCurtainWall:{rate:750,unit:'M2',desc:'Curtain Wall'},
+  IfcCovering:{rate:185,unit:'M2',desc:'Floor/Ceiling Finish'},
+  IfcRoof:{rate:238,unit:'M2',desc:'Metal Roof'},
+  IfcLightFixture:{rate:485,unit:'EA',desc:'LED Light Fixture'},
+  IfcOutlet:{rate:125,unit:'EA',desc:'Power Outlet'},
+  IfcDoor:{rate:2850,unit:'EA',desc:'Door Set'},
+  IfcWindow:{rate:1580,unit:'EA',desc:'Window'},
+  IfcBuildingElementProxy:{rate:850,unit:'EA',desc:'Misc Element'},
+  IfcFlowTerminal:{rate:3500,unit:'EA',desc:'HVAC Terminal'},
+  IfcFurnishingElement:{rate:1200,unit:'EA',desc:'Furniture'},
+  IfcPlate:{rate:95,unit:'M2',desc:'Steel Plate'},
+  IfcMember:{rate:320,unit:'M',desc:'Steel Member'},
+  IfcRailing:{rate:280,unit:'M',desc:'Railing'},
+  IfcStair:{rate:4500,unit:'EA',desc:'Staircase'},
+  IfcStairFlight:{rate:2200,unit:'EA',desc:'Stair Flight'},
 };
-const LABOR_PROD = {
-  IfcDuct:18,IfcDuctSegment:18,IfcDuctFitting:12,IfcPipe:25,IfcPipeSegment:25,IfcPipeFitting:15,
-  IfcCableCarrier:30,IfcCableCarrierSegment:30,IfcLightFixture:20,IfcOutlet:25,
-  IfcBeam:8,IfcColumn:6,IfcSlab:35,IfcWall:12,IfcWallStandardCase:12,
-  IfcDoor:4,IfcWindow:5,IfcCurtainWall:8,IfcCovering:40,IfcRoof:25,
+
+// ============================================================================
+// LABOR RATES (from boq_export.py — full trade/crew/rate_per_day)
+// ============================================================================
+const LABOR_RATES = {
+  HVAC_TECH: {
+    rate_per_day: 185, crew_size: 2, trade: 'HVAC Technician (Skilled)',
+    productivity: {IfcDuct:18,IfcDuctSegment:18,IfcDuctFitting:12}
+  },
+  PLUMBER: {
+    rate_per_day: 165, crew_size: 2, trade: 'Pipefitter (Skilled)',
+    productivity: {IfcPipe:25,IfcPipeSegment:25,IfcPipeFitting:15}
+  },
+  ELECTRICIAN: {
+    rate_per_day: 175, crew_size: 2, trade: 'Electrician (Skilled)',
+    productivity: {IfcCableCarrier:30,IfcCableCarrierSegment:30,IfcLightFixture:20,IfcOutlet:25}
+  },
+  STEEL_ERECTOR: {
+    rate_per_day: 195, crew_size: 4, trade: 'Steel Erector (Skilled)',
+    productivity: {IfcBeam:8,IfcColumn:6}
+  },
+  CONCRETE_GANG: {
+    rate_per_day: 145, crew_size: 6, trade: 'Concrete Gang (Mixed)',
+    productivity: {IfcSlab:35}
+  },
+  MASON: {
+    rate_per_day: 155, crew_size: 3, trade: 'Mason (Skilled) + Laborers',
+    productivity: {IfcWall:12,IfcWallStandardCase:12}
+  },
+  LABORER: {
+    rate_per_day: 95, crew_size: 1, trade: 'General Laborer',
+    productivity: {}
+  },
 };
+
+// ============================================================================
+// EQUIPMENT RATES & ALLOCATION (from boq_export.py)
+// ============================================================================
+const EQUIPMENT_RATES = {
+  MOBILE_CRANE_20T: {rate_per_day:1850, desc:'Mobile Crane 20 Tonne'},
+  TOWER_CRANE: {rate_per_day:2200, desc:'Tower Crane'},
+  CONCRETE_PUMP: {rate_per_day:950, desc:'Concrete Pump Truck'},
+  SCISSOR_LIFT_8M: {rate_per_day:285, desc:'Scissor Lift 8m'},
+  WELDING_MACHINE: {rate_per_day:65, desc:'Welding Machine 300A'},
+  GENERATOR_5KVA: {rate_per_day:95, desc:'Generator 5KVA'},
+};
+const EQUIPMENT_ALLOCATION = {
+  IfcBeam: {equipment:'MOBILE_CRANE_20T', duration_factor:0.5},
+  IfcColumn: {equipment:'MOBILE_CRANE_20T', duration_factor:0.5},
+  IfcSlab: {equipment:'CONCRETE_PUMP', duration_factor:0.3},
+  IfcDuct: {equipment:'SCISSOR_LIFT_8M', duration_factor:0.4},
+  IfcCableCarrier: {equipment:'SCISSOR_LIFT_8M', duration_factor:0.3},
+};
+
+// ============================================================================
+// SEQUENCE RULES (from schedule_generator.py — for 4D schedule)
+// ============================================================================
+const SEQUENCE_RULES = {
+  IfcFooting:{phase:'Substructure',sequence:1,resource:'CONCRETE_GANG'},
+  IfcColumn:{phase:'Superstructure',sequence:2,resource:'STEEL_ERECTOR'},
+  IfcBeam:{phase:'Superstructure',sequence:3,resource:'STEEL_ERECTOR'},
+  IfcSlab:{phase:'Superstructure',sequence:4,resource:'CONCRETE_GANG'},
+  IfcDuct:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
+  IfcDuctSegment:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
+  IfcDuctFitting:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
+  IfcPipe:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcPipeSegment:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcPipeFitting:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcCableCarrier:{phase:'MEP Rough-in',sequence:5,resource:'ELECTRICIAN'},
+  IfcCableCarrierSegment:{phase:'MEP Rough-in',sequence:5,resource:'ELECTRICIAN'},
+  IfcWall:{phase:'Architecture',sequence:6,resource:'MASON'},
+  IfcWallStandardCase:{phase:'Architecture',sequence:6,resource:'MASON'},
+  IfcDoor:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
+  IfcWindow:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
+  IfcStairFlight:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
+  IfcRoof:{phase:'Architecture',sequence:8,resource:'ROOFER'},
+  IfcLightFixture:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
+  IfcOutlet:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
+  IfcElectricAppliance:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
+  IfcFlowTerminal:{phase:'MEP Final',sequence:9,resource:'HVAC_TECH'},
+  IfcCovering:{phase:'Finishes',sequence:10,resource:'FINISHER'},
+  IfcFurniture:{phase:'Finishes',sequence:11,resource:'FINISHER'},
+  IfcFurnishingElement:{phase:'Finishes',sequence:11,resource:'FINISHER'},
+};
+const DEFAULT_RULE = {phase:'Architecture',sequence:6,resource:null};
+
 const DISC_COLORS = {
   ARC:'#4488ff',STR:'#44cccc',MEP:'#44cc44',ELEC:'#cccc44',FP:'#cc8844',
   ACMV:'#cc4444',PLB:'#8844cc',HVAC:'#44aacc',SAN:'#aa44aa',VENT:'#88ccaa',
 };
+const PHASE_COLORS = {
+  'Substructure':'#A5A5A5','Superstructure':'#4472C4','MEP Rough-in':'#70AD47',
+  'Architecture':'#ED7D31','MEP Final':'#5B9BD5','Finishes':'#FFC000',
+  'Commissioning':'#C55A11','Unknown':'#888888',
+};
 
-let db = null;
-let qtoData = [];   // [{disc,cls,storey,qty,meshes,matRate,matTotal,laborDays,laborCost}]
-let discSummary = {}; // disc → {qty,matTotal,laborCost}
-let grandMaterial = 0, grandLabor = 0, totalQty = 0;
+// ============================================================================
+// COMPUTED STATE
+// ============================================================================
+let db = null, bldName = '';
+let qtoData = [];        // per storey/disc/class rows
+let discSummary = {};     // disc -> {qty, matTotal, laborCost, equipCost}
+let grandMaterial = 0, grandLabor = 0, grandEquip = 0, totalQty = 0;
+let scheduleData = [];    // generated 4D tasks
 let chartInstances = [];
 
+// ============================================================================
+// LABOR / EQUIPMENT CALCULATION (matches boq_export.py exactly)
+// ============================================================================
+function calcLabor(ifcClass, qty) {
+  for (const [key, lr] of Object.entries(LABOR_RATES)) {
+    if (lr.productivity && lr.productivity[ifcClass] !== undefined) {
+      const prod = lr.productivity[ifcClass];
+      const days = qty / prod;
+      const cost = days * lr.crew_size * lr.rate_per_day;
+      return {cost: Math.round(cost), days, crew: lr.crew_size, trade: lr.trade, tradeKey: key, prod};
+    }
+  }
+  return {cost: 0, days: 0, crew: 0, trade: '', tradeKey: null, prod: 10};
+}
+
+function calcEquipment(ifcClass, laborDays) {
+  const alloc = EQUIPMENT_ALLOCATION[ifcClass];
+  if (!alloc) return {cost: 0, desc: '', days: 0};
+  const er = EQUIPMENT_RATES[alloc.equipment];
+  const days = laborDays * alloc.duration_factor;
+  return {cost: Math.round(days * er.rate_per_day), desc: er.desc, days};
+}
+
+// ============================================================================
+// SCHEDULE GENERATION (matches schedule_generator.py)
+// ============================================================================
+function generateSchedule(activities, startDateStr) {
+  const startDate = new Date(startDateStr || '2025-01-06');
+  const workingDays = new Set([0,1,2,3,4,5]); // Mon-Sat
+  const tasks = [];
+  let taskId = 0;
+
+  // Sort by sequence
+  const sorted = [...activities].sort((a,b) => {
+    const sa = (SEQUENCE_RULES[a.cls] || DEFAULT_RULE).sequence;
+    const sb = (SEQUENCE_RULES[b.cls] || DEFAULT_RULE).sequence;
+    return sa - sb || a.storey.localeCompare(b.storey);
+  });
+
+  for (const act of sorted) {
+    const rules = SEQUENCE_RULES[act.cls] || DEFAULT_RULE;
+    const prod = act.labor.prod || 10;
+    const duration = Math.max(1, act.qty / prod);
+    const crew = act.labor.crew || 2;
+    const resource = act.labor.tradeKey || rules.resource;
+
+    // Calculate start date: project_start + sequence * 5 days
+    const taskStart = new Date(startDate);
+    taskStart.setDate(taskStart.getDate() + rules.sequence * 5);
+
+    // Walk forward counting working days
+    const taskFinish = new Date(taskStart);
+    let remaining = duration;
+    while (remaining > 0) {
+      if (workingDays.has(taskFinish.getDay())) remaining -= 1;
+      if (remaining > 0) taskFinish.setDate(taskFinish.getDate() + 1);
+    }
+
+    const equipAlloc = EQUIPMENT_ALLOCATION[act.cls];
+    taskId++;
+    tasks.push({
+      id: taskId,
+      wbs: `1.${rules.sequence}.${taskId}`,
+      name: `${act.storey} - Install ${act.cls.replace('Ifc','')} (${act.disc})`,
+      phase: rules.phase,
+      discipline: act.disc,
+      storey: act.storey,
+      qty: act.qty,
+      uom: act.unit || 'EA',
+      productivity: prod,
+      duration,
+      startDate: taskStart.toISOString().slice(0,10),
+      finishDate: taskFinish.toISOString().slice(0,10),
+      resource: resource || '',
+      crew,
+      equipment: equipAlloc ? EQUIPMENT_RATES[equipAlloc.equipment].desc : '',
+      startDay: Math.round((taskStart - startDate) / 86400000),
+      finishDay: Math.round((taskFinish - startDate) / 86400000),
+    });
+  }
+  return tasks;
+}
+
+// ============================================================================
+// INIT — load DB, compute everything
+// ============================================================================
 async function init() {
   const SQL = await initSqlJs({
     locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
@@ -96,192 +288,285 @@ async function init() {
   db = new SQL.Database(new Uint8Array(buf));
 
   // Determine building
-  let bld = BLD;
-  if (!bld) {
+  bldName = BLD;
+  if (!bldName) {
     const r = db.exec("SELECT building, COUNT(*) c FROM elements_meta GROUP BY building ORDER BY c DESC LIMIT 1");
-    bld = r.length ? r[0].values[0][0] : 'Unknown';
+    bldName = r.length ? r[0].values[0][0] : 'Unknown';
   }
 
-  // Query QTO
+  // Query QTO grouped by discipline, ifc_class, storey
   const rows = db.exec(`
     SELECT m.discipline, m.ifc_class, m.storey, COUNT(*) as qty,
            COUNT(DISTINCT i.geometry_hash) as meshes
     FROM elements_meta m LEFT JOIN element_instances i ON m.guid = i.guid
-    WHERE m.building = '${bld}'
+    WHERE m.building = '${bldName.replace(/'/g,"''")}'
     GROUP BY m.discipline, m.ifc_class, m.storey
     ORDER BY m.discipline, m.storey, qty DESC
   `);
 
   if (!rows.length) { document.getElementById('info').textContent = 'No data.'; return; }
 
-  // Process data
-  qtoData = [];
-  discSummary = {};
-  grandMaterial = 0; grandLabor = 0; totalQty = 0;
+  // Process data with full M/L/E calculation
+  qtoData = []; discSummary = {};
+  grandMaterial = 0; grandLabor = 0; grandEquip = 0; totalQty = 0;
 
   for (const row of rows[0].values) {
     const [disc, cls, storey, qty, meshes] = row;
     const mc = RATES[cls];
     const matRate = mc ? mc.rate : 0;
     const matTotal = Math.round(matRate * qty);
-    const prod = LABOR_PROD[cls] || 10;
-    const laborDays = Math.max(1, Math.round(qty / prod));
-    const laborCost = Math.round(laborDays * 165);
+    const labor = calcLabor(cls, qty);
+    const equip = calcEquipment(cls, labor.days);
+
     grandMaterial += matTotal;
-    grandLabor += laborCost;
+    grandLabor += labor.cost;
+    grandEquip += equip.cost;
     totalQty += qty;
 
-    qtoData.push({ disc, cls, storey, qty, meshes, matRate, matTotal, laborDays, laborCost,
-                    desc: mc ? mc.desc : cls, unit: mc ? mc.unit : 'EA' });
+    const r = {
+      disc, cls, storey, qty, meshes, matRate, matTotal,
+      laborDays: labor.days, laborCost: labor.cost, laborCrew: labor.crew, laborTrade: labor.trade,
+      equipCost: equip.cost, equipDesc: equip.desc, equipDays: equip.days,
+      desc: mc ? mc.desc : cls, unit: mc ? mc.unit : 'EA',
+      labor, // keep full object for schedule
+    };
+    qtoData.push(r);
 
-    if (!discSummary[disc]) discSummary[disc] = { qty: 0, matTotal: 0, laborCost: 0 };
+    if (!discSummary[disc]) discSummary[disc] = {qty:0, matTotal:0, laborCost:0, equipCost:0};
     discSummary[disc].qty += qty;
     discSummary[disc].matTotal += matTotal;
-    discSummary[disc].laborCost += laborCost;
+    discSummary[disc].laborCost += labor.cost;
+    discSummary[disc].equipCost += equip.cost;
   }
 
-  document.getElementById('info').textContent =
-    `${bld} — ${totalQty.toLocaleString()} elements — RM ${(grandMaterial + grandLabor).toLocaleString()} total`;
+  // Generate 4D schedule
+  scheduleData = generateSchedule(qtoData, '2025-01-06');
 
-  renderCharts(bld);
+  const grandTotal = grandMaterial + grandLabor + grandEquip;
+  document.getElementById('info').textContent =
+    `${bldName} | ${totalQty.toLocaleString()} elements | RM ${grandTotal.toLocaleString()} (Mat ${grandMaterial.toLocaleString()} + Lab ${grandLabor.toLocaleString()} + Equip ${grandEquip.toLocaleString()})`;
+
+  renderCharts();
 }
 
-function renderCharts(bld) {
+// ============================================================================
+// RENDER ALL CHARTS (4 existing enhanced + 5 new from schedule_export.py)
+// ============================================================================
+function renderCharts() {
   const c = document.getElementById('charts');
   c.innerHTML = '';
-
-  // ── 1. Cost Pie by Discipline ──
-  const pieBox = el('div', 'chart-box');
-  pieBox.innerHTML = '<h2>5D — Cost by Discipline (RM)</h2>';
-  const pieCanvas = el('canvas'); pieCanvas.id = 'chart-cost-pie';
-  pieBox.appendChild(pieCanvas);
-  c.appendChild(pieBox);
+  chartInstances.forEach(ci => ci.destroy());
+  chartInstances = [];
 
   const discs = Object.keys(discSummary);
-  const discTotals = discs.map(d => discSummary[d].matTotal + discSummary[d].laborCost);
+
+  // ── 1. Cost Pie by Discipline (M+L+E) ──
+  const pieBox = el('div','chart-box');
+  pieBox.innerHTML = '<h2>5D — Cost by Discipline (RM)</h2>';
+  const pieCanvas = el('canvas');
+  pieBox.appendChild(pieCanvas); c.appendChild(pieBox);
+
+  const discTotals = discs.map(d => discSummary[d].matTotal + discSummary[d].laborCost + discSummary[d].equipCost);
   chartInstances.push(new Chart(pieCanvas, {
-    type: 'pie',
-    data: {
-      labels: discs,
-      datasets: [{ data: discTotals, backgroundColor: discs.map(d => DISC_COLORS[d] || '#888') }]
-    },
-    options: { plugins: { legend: { position: 'right', labels: { color: '#ccc' } } } }
+    type:'pie',
+    data:{labels:discs, datasets:[{data:discTotals, backgroundColor:discs.map(d=>DISC_COLORS[d]||'#888')}]},
+    options:{plugins:{legend:{position:'right',labels:{color:'#ccc'}}}}
   }));
 
-  // ── 2. Element Count Bar by Discipline ──
-  const barBox = el('div', 'chart-box');
+  // ── 2. Element Count Bar ──
+  const barBox = el('div','chart-box');
   barBox.innerHTML = '<h2>Element Count by Discipline</h2>';
-  const barCanvas = el('canvas'); barCanvas.id = 'chart-qty-bar';
-  barBox.appendChild(barCanvas);
-  c.appendChild(barBox);
+  const barCanvas = el('canvas');
+  barBox.appendChild(barCanvas); c.appendChild(barBox);
 
   chartInstances.push(new Chart(barCanvas, {
-    type: 'bar',
-    data: {
-      labels: discs,
-      datasets: [{ label: 'Elements', data: discs.map(d => discSummary[d].qty),
-                    backgroundColor: discs.map(d => DISC_COLORS[d] || '#888') }]
-    },
-    options: { scales: { y: { ticks: { color: '#aaa' } }, x: { ticks: { color: '#aaa' } } },
-               plugins: { legend: { display: false } } }
+    type:'bar',
+    data:{labels:discs, datasets:[{label:'Elements',data:discs.map(d=>discSummary[d].qty),backgroundColor:discs.map(d=>DISC_COLORS[d]||'#888')}]},
+    options:{scales:{y:{ticks:{color:'#aaa'}},x:{ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
   }));
 
-  // ── 3. Material vs Labour Cost Bar ──
-  const mlBox = el('div', 'chart-box');
-  mlBox.innerHTML = '<h2>Material vs Labour Cost (RM)</h2>';
-  const mlCanvas = el('canvas'); mlCanvas.id = 'chart-mat-labor';
-  mlBox.appendChild(mlCanvas);
-  c.appendChild(mlBox);
+  // ── 3. Material vs Labour vs Equipment (stacked bar) ──
+  const mleBox = el('div','chart-box');
+  mleBox.innerHTML = '<h2>Material / Labour / Equipment Cost (RM)</h2>';
+  const mleCanvas = el('canvas');
+  mleBox.appendChild(mleCanvas); c.appendChild(mleBox);
 
-  chartInstances.push(new Chart(mlCanvas, {
-    type: 'bar',
-    data: {
-      labels: discs,
-      datasets: [
-        { label: 'Material', data: discs.map(d => discSummary[d].matTotal), backgroundColor: '#4fc3f7' },
-        { label: 'Labour', data: discs.map(d => discSummary[d].laborCost), backgroundColor: '#ff8844' }
+  chartInstances.push(new Chart(mleCanvas, {
+    type:'bar',
+    data:{
+      labels:discs,
+      datasets:[
+        {label:'Material',data:discs.map(d=>discSummary[d].matTotal),backgroundColor:'#4fc3f7'},
+        {label:'Labour',data:discs.map(d=>discSummary[d].laborCost),backgroundColor:'#ff8844'},
+        {label:'Equipment',data:discs.map(d=>discSummary[d].equipCost),backgroundColor:'#5B9BD5'},
       ]
     },
-    options: { scales: { y: { stacked: true, ticks: { color: '#aaa' } }, x: { stacked: true, ticks: { color: '#aaa' } } },
-               plugins: { legend: { labels: { color: '#ccc' } } } }
+    options:{scales:{y:{stacked:true,ticks:{color:'#aaa'}},x:{stacked:true,ticks:{color:'#aaa'}}},plugins:{legend:{labels:{color:'#ccc'}}}}
   }));
 
-  // ── 4. Gantt — 4D Schedule ──
-  const ganttBox = el('div', 'chart-box');
-  ganttBox.innerHTML = '<h2>4D — Construction Schedule</h2>';
-  const ganttCanvas = el('canvas'); ganttCanvas.id = 'chart-gantt';
-  ganttCanvas.height = 300;
-  ganttBox.appendChild(ganttCanvas);
-  c.appendChild(ganttBox);
+  // ── 4. Phase Duration Analysis (horizontal bar — from schedule_export.py) ──
+  const phaseDur = {};
+  for (const t of scheduleData) phaseDur[t.phase] = (phaseDur[t.phase]||0) + t.duration;
+  const pdPhases = Object.keys(phaseDur).sort((a,b) => phaseDur[b]-phaseDur[a]);
 
-  // Build phase groups
-  const phases = {};
-  for (const r of qtoData) {
-    const phase = r.disc === 'STR' ? '1-Structure' : r.disc === 'ARC' ? '2-Architecture' : '3-MEP/Services';
-    if (!phases[phase]) phases[phase] = { qty: 0, days: 0 };
-    phases[phase].qty += r.qty;
-    phases[phase].days += r.laborDays;
+  const pdBox = el('div','chart-box');
+  pdBox.innerHTML = '<h2>4D — Phase Duration (Total Days)</h2>';
+  const pdCanvas = el('canvas');
+  pdBox.appendChild(pdCanvas); c.appendChild(pdBox);
+
+  chartInstances.push(new Chart(pdCanvas, {
+    type:'bar',
+    data:{labels:pdPhases, datasets:[{label:'Days',data:pdPhases.map(p=>Math.round(phaseDur[p])),backgroundColor:pdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
+    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Days',color:'#aaa'},ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+  }));
+
+  // ── 5. Resource Workload — Man-Days by Phase (column — from schedule_export.py) ──
+  const phaseMandays = {};
+  for (const t of scheduleData) phaseMandays[t.phase] = (phaseMandays[t.phase]||0) + t.duration * t.crew;
+  const mdPhases = Object.keys(phaseMandays).sort((a,b) => phaseMandays[b]-phaseMandays[a]);
+
+  const mdBox = el('div','chart-box');
+  mdBox.innerHTML = '<h2>4D — Resource Workload (Man-Days by Phase)</h2>';
+  const mdCanvas = el('canvas');
+  mdBox.appendChild(mdCanvas); c.appendChild(mdBox);
+
+  chartInstances.push(new Chart(mdCanvas, {
+    type:'bar',
+    data:{labels:mdPhases, datasets:[{label:'Man-Days',data:mdPhases.map(p=>Math.round(phaseMandays[p])),backgroundColor:mdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
+    options:{scales:{y:{title:{display:true,text:'Man-Days',color:'#aaa'},ticks:{color:'#aaa'}},x:{ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+  }));
+
+  // ── 6. S-Curve Progress (line — from schedule_export.py) ──
+  if (scheduleData.length) {
+    const scBox = el('div','chart-box');
+    scBox.innerHTML = '<h2>4D — S-Curve Progress (Cumulative Task Completion)</h2>';
+    const scCanvas = el('canvas');
+    scBox.appendChild(scCanvas); c.appendChild(scBox);
+
+    const allFinish = scheduleData.map(t => t.finishDay);
+    const maxDay = Math.max(...allFinish);
+    const totalTasks = scheduleData.length;
+    const weekLabels = [], weekPcts = [];
+    const totalWeeks = Math.max(1, Math.ceil(maxDay / 7));
+    const sampleInterval = Math.max(1, Math.floor(totalWeeks / 20));
+
+    for (let w = 0; w <= totalWeeks; w += sampleInterval) {
+      const dayEnd = w * 7;
+      const completed = scheduleData.filter(t => t.finishDay <= dayEnd).length;
+      weekLabels.push(`W${w}`);
+      weekPcts.push(Math.round(completed / totalTasks * 1000) / 10);
+    }
+    // Ensure final point
+    if (weekPcts[weekPcts.length-1] < 100) {
+      weekLabels.push(`W${totalWeeks}`);
+      weekPcts.push(100);
+    }
+
+    chartInstances.push(new Chart(scCanvas, {
+      type:'line',
+      data:{labels:weekLabels, datasets:[{label:'% Complete',data:weekPcts,borderColor:'#4fc3f7',backgroundColor:'rgba(79,195,247,0.1)',fill:true,tension:0.3}]},
+      options:{scales:{y:{min:0,max:100,title:{display:true,text:'% Complete',color:'#aaa'},ticks:{color:'#aaa'}},x:{title:{display:true,text:'Project Week',color:'#aaa'},ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+    }));
   }
-  const phaseNames = Object.keys(phases).sort();
-  let dayOffset = 0;
-  const ganttData = phaseNames.map(p => {
-    const start = dayOffset;
-    dayOffset += phases[p].days;
-    return { phase: p, start, end: dayOffset, days: phases[p].days, qty: phases[p].qty };
-  });
+
+  // ── 7. Milestone Timeline (horizontal bar — from schedule_export.py) ──
+  const phaseDates = {};
+  for (const t of scheduleData) {
+    if (!phaseDates[t.phase]) phaseDates[t.phase] = {start:t.startDay, end:t.finishDay};
+    else {
+      phaseDates[t.phase].start = Math.min(phaseDates[t.phase].start, t.startDay);
+      phaseDates[t.phase].end = Math.max(phaseDates[t.phase].end, t.finishDay);
+    }
+  }
+  const milestones = [];
+  milestones.push({name:'Project Start', day:0});
+  for (const phase of Object.keys(phaseDates).sort()) {
+    milestones.push({name:`${phase} Start`, day:phaseDates[phase].start});
+    milestones.push({name:`${phase} End`, day:phaseDates[phase].end});
+  }
+  const maxFinishDay = Math.max(...scheduleData.map(t=>t.finishDay));
+  milestones.push({name:'Project Finish', day:maxFinishDay});
+  milestones.sort((a,b) => a.day - b.day);
+
+  const msBox = el('div','chart-box');
+  msBox.innerHTML = '<h2>4D — Milestone Timeline</h2>';
+  const msCanvas = el('canvas');
+  msCanvas.height = 250;
+  msBox.appendChild(msCanvas); c.appendChild(msBox);
+
+  chartInstances.push(new Chart(msCanvas, {
+    type:'bar',
+    data:{labels:milestones.map(m=>m.name), datasets:[{label:'Day',data:milestones.map(m=>m.day),backgroundColor:milestones.map(m=>m.name.includes('Start')?'#70AD47':m.name.includes('End')?'#ED7D31':'#4fc3f7')}]},
+    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Day from Project Start',color:'#aaa'},ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa',font:{size:10}}}},plugins:{legend:{display:false}}}
+  }));
+
+  // ── 8. Strategic Gantt — Top 15 longest tasks (stacked bar — from schedule_export.py) ──
+  const top15 = [...scheduleData].sort((a,b) => b.duration - a.duration).slice(0,15).sort((a,b) => a.startDay - b.startDay);
+
+  const ganttBox = el('div','chart-box full');
+  ganttBox.innerHTML = '<h2>4D — Gantt Timeline (Strategic Tasks by Phase)</h2>';
+  const ganttCanvas = el('canvas');
+  ganttCanvas.height = 350;
+  ganttBox.appendChild(ganttCanvas); c.appendChild(ganttBox);
 
   chartInstances.push(new Chart(ganttCanvas, {
-    type: 'bar',
-    data: {
-      labels: ganttData.map(g => g.phase),
-      datasets: [{
-        label: 'Duration (days)',
-        data: ganttData.map(g => [g.start, g.end]),
-        backgroundColor: ['#44cccc', '#4488ff', '#44cc44'],
-        borderRadius: 4,
-      }]
+    type:'bar',
+    data:{
+      labels:top15.map(t => t.name.slice(0,40)),
+      datasets:[
+        {label:'Offset',data:top15.map(t=>t.startDay),backgroundColor:'rgba(0,0,0,0)'},
+        {label:'Duration',data:top15.map(t=>Math.round(t.duration)),backgroundColor:top15.map(t=>PHASE_COLORS[t.phase]||'#888')},
+      ]
     },
-    options: {
-      indexAxis: 'y',
-      scales: {
-        x: { title: { display: true, text: 'Project Day', color: '#aaa' }, ticks: { color: '#aaa' } },
-        y: { ticks: { color: '#aaa' } }
+    options:{
+      indexAxis:'y',
+      scales:{
+        x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#aaa'},ticks:{color:'#aaa'}},
+        y:{stacked:true,ticks:{color:'#aaa',font:{size:9}}}
       },
-      plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: ctx => {
-          const g = ganttData[ctx.dataIndex];
-          return `Day ${g.start}–${g.end} (${g.days} days, ${g.qty.toLocaleString()} elements)`;
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>{
+          if (ctx.datasetIndex===0) return null;
+          const t = top15[ctx.dataIndex];
+          return `${t.phase}: Day ${t.startDay}–${t.finishDay} (${Math.round(t.duration)} days, ${t.qty} EA)`;
         }}}
       }
     }
   }));
 
-  // ── 5. BOQ Data Table ──
-  const tableBox = el('div', 'chart-box full');
+  // ── 9. BOQ Data Table (enhanced with Equipment column) ──
+  const tableBox = el('div','chart-box full');
   tableBox.innerHTML = '<h2>5D — Bill of Quantities (CIDB 2024 Rates)</h2>';
   let html = '<table><tr><th>Disc</th><th>IFC Class</th><th>Storey</th><th>Qty</th><th>Unit</th>' +
-    '<th>Description</th><th>Rate (RM)</th><th>Material (RM)</th><th>Labour Days</th><th>Labour (RM)</th></tr>';
+    '<th>Description</th><th>Rate (RM)</th><th>Material (RM)</th><th>Labour Days</th><th>Labour (RM)</th>' +
+    '<th>Equip (RM)</th><th>Total (RM)</th></tr>';
   for (const r of qtoData) {
+    const rowTotal = r.matTotal + r.laborCost + r.equipCost;
     html += `<tr><td>${r.disc}</td><td>${r.cls}</td><td>${r.storey||''}</td><td>${r.qty.toLocaleString()}</td>` +
       `<td>${r.unit}</td><td>${r.desc}</td><td>${r.matRate.toLocaleString()}</td>` +
-      `<td>${r.matTotal.toLocaleString()}</td><td>${r.laborDays}</td><td>${r.laborCost.toLocaleString()}</td></tr>`;
+      `<td>${r.matTotal.toLocaleString()}</td><td>${r.laborDays.toFixed(1)}</td><td>${r.laborCost.toLocaleString()}</td>` +
+      `<td>${r.equipCost.toLocaleString()}</td><td>${rowTotal.toLocaleString()}</td></tr>`;
   }
-  html += `<tr class="total-row"><td colspan="6">GRAND TOTAL</td><td></td>` +
-    `<td>RM ${grandMaterial.toLocaleString()}</td><td></td><td>RM ${grandLabor.toLocaleString()}</td></tr>`;
-  html += `<tr class="total-row"><td colspan="6">COMBINED TOTAL</td><td colspan="4">RM ${(grandMaterial+grandLabor).toLocaleString()}</td></tr>`;
+  const gt = grandMaterial + grandLabor + grandEquip;
+  html += `<tr class="total-row"><td colspan="7">GRAND TOTAL</td>` +
+    `<td>RM ${grandMaterial.toLocaleString()}</td><td></td><td>RM ${grandLabor.toLocaleString()}</td>` +
+    `<td>RM ${grandEquip.toLocaleString()}</td><td>RM ${gt.toLocaleString()}</td></tr>`;
   html += '</table>';
   tableBox.innerHTML += html;
   c.appendChild(tableBox);
 
-  // ── 6. Summary footer ──
-  const footBox = el('div', 'chart-box full');
+  // ── 10. Summary footer ──
+  const projDays = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
+  const footBox = el('div','chart-box full');
   footBox.innerHTML = `<table>
-    <tr><td>Building</td><td><b>${bld}</b></td></tr>
+    <tr><td>Building</td><td><b>${bldName}</b></td></tr>
     <tr><td>Total Elements</td><td><b>${totalQty.toLocaleString()}</b></td></tr>
     <tr><td>Material Cost</td><td><b>RM ${grandMaterial.toLocaleString()}</b></td></tr>
     <tr><td>Labour Cost</td><td><b>RM ${grandLabor.toLocaleString()}</b></td></tr>
-    <tr><td>Grand Total</td><td><b>RM ${(grandMaterial+grandLabor).toLocaleString()}</b></td></tr>
-    <tr><td>Project Duration</td><td><b>${dayOffset} days</b></td></tr>
+    <tr><td>Equipment Cost</td><td><b>RM ${grandEquip.toLocaleString()}</b></td></tr>
+    <tr><td>Grand Total</td><td><b>RM ${gt.toLocaleString()}</b></td></tr>
+    <tr><td>Project Duration</td><td><b>${projDays} days (${scheduleData.length} tasks)</b></td></tr>
     <tr><td>Rates Source</td><td>CIDB Malaysia 2024 / BCISM Cost Book</td></tr>
     <tr><td>Exported</td><td>${new Date().toISOString()}</td></tr>
     <tr><td>Source</td><td>BIM OOTB — Frictionless BIM</td></tr>
@@ -295,67 +580,301 @@ function el(tag, cls) {
   return e;
 }
 
-// ── Save to Excel (data + chart images) ──
-function saveExcel() {
+// ============================================================================
+// SAVE 5D BOQ — 7 sheets (matches boq_export.py)
+// ============================================================================
+function save5D() {
   const wb = XLSX.utils.book_new();
+  const gt = grandMaterial + grandLabor + grandEquip;
+  const discs = Object.keys(discSummary);
 
-  // Sheet 1: 5D BOQ
-  const boqHeader = ['Discipline','IFC Class','Storey','Qty','Unit','Description',
-                     'Rate (RM)','Material (RM)','Labour Days','Labour (RM)'];
-  const boqRows = [boqHeader];
+  // ── Sheet 1: Cover Sheet ──
+  const coverRows = [
+    ['COMPREHENSIVE BILL OF QUANTITIES'],
+    [`Project: ${bldName}`],
+    [],
+    ['COST BREAKDOWN METHODOLOGY'],
+    [],
+    ['1. MATERIAL COSTS'],
+    ['Source:','CIDB National Construction Cost Centre (N3C) 2024'],
+    ['Reference:','BCISM Cost Book 2022-2024 (inflated +3%)'],
+    ['Includes:','Delivery, wastage allowance (5-10% by material type)'],
+    [],
+    ['2. LABOR COSTS'],
+    ['Source:','MBAM-CIDB Labour Wage Survey 2024'],
+    ['Basis:','Basic wage + 30% (EPF 13%, SOCSO 2%, benefits 15%)'],
+    ['Productivity:','CIDB productivity standards by trade'],
+    ['Crew Composition:','Skilled workers + helpers as per trade standards'],
+    [],
+    ['3. EQUIPMENT/PLANT HIRE'],
+    ['Source:','CIDB N3C Machinery Hire Rates 2024'],
+    ['Allocation:','Based on work type and duration requirements'],
+    ['Rates:','Per day (8 hours), operator cost included where stated'],
+    [],
+    ['COST SUMMARY STRUCTURE'],
+    ['Sheet 1:','Cover Sheet (this page)'],
+    ['Sheet 2:','Executive Summary - Total costs'],
+    ['Sheet 3:','Materials Cost Summary','Detailed material breakdown'],
+    ['Sheet 4:','Labor Cost Summary','Crew allocation & man-days'],
+    ['Sheet 5:','Equipment Cost Summary','Plant hire requirements'],
+    ['Sheet 6:','Detailed BOQ','Line-by-line analysis all disciplines'],
+    ['Sheet 7:','Provisional Sums','Finishes & fittings not in BIM'],
+    [],
+    ['PRICING STANDARDS & REFERENCES'],
+    ['BOQ Format:','PWD Form 203A Malaysia'],
+    ['Measurement:','SMM2 (Standard Method of Measurement)'],
+    ['Pricing Date:','Q4 2024'],
+    ['Currency:','Malaysian Ringgit (RM)'],
+    ['Validity:','60 days from date of issue'],
+    [],
+    ['EXCLUSIONS'],
+    ['GST/SST (apply as per prevailing tax law)'],
+    ['Preliminary & General items (add 8-12%)'],
+    ['Profit & attendance (add 10-15%)'],
+    ['Escalation beyond 60 days'],
+    ['Site-specific conditions not shown in drawings'],
+    [],
+    ['Generated:',new Date().toISOString(),'BIM OOTB — Frictionless BIM'],
+  ];
+  const wsCover = XLSX.utils.aoa_to_sheet(coverRows);
+  wsCover['!cols'] = [{wch:22},{wch:50},{wch:35}];
+  XLSX.utils.book_append_sheet(wb, wsCover, 'Cover Sheet');
+
+  // ── Sheet 2: Executive Summary ──
+  const execRows = [
+    ['EXECUTIVE SUMMARY'],
+    [],
+    ['Discipline','Material (RM)','Labor (RM)','Equipment (RM)','TOTAL (RM)'],
+  ];
+  for (const d of discs) {
+    const s = discSummary[d];
+    execRows.push([d, s.matTotal, s.laborCost, s.equipCost, s.matTotal+s.laborCost+s.equipCost]);
+  }
+  execRows.push([]);
+  execRows.push(['GRAND TOTAL', grandMaterial, grandLabor, grandEquip, gt]);
+  const wsExec = XLSX.utils.aoa_to_sheet(execRows);
+  wsExec['!cols'] = [{wch:18},{wch:18},{wch:18},{wch:18},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, wsExec, 'Executive Summary');
+
+  // ── Sheet 3: Material Summary ──
+  const matRows = [
+    ['MATERIAL COST SUMMARY'],
+    [],
+    ['Discipline','IFC Class','Quantity','UOM','Unit Rate (RM)','Total Material (RM)'],
+  ];
   for (const r of qtoData) {
-    boqRows.push([r.disc, r.cls, r.storey, r.qty, r.unit, r.desc, r.matRate, r.matTotal, r.laborDays, r.laborCost]);
+    matRows.push([r.disc, r.cls, r.qty, r.unit, r.matRate, r.matTotal]);
+  }
+  matRows.push([]);
+  matRows.push(['','','','','TOTAL', grandMaterial]);
+  const wsMat = XLSX.utils.aoa_to_sheet(matRows);
+  wsMat['!cols'] = [{wch:15},{wch:28},{wch:12},{wch:8},{wch:16},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, wsMat, 'Material Summary');
+
+  // ── Sheet 4: Labor Summary ──
+  const labRows = [
+    ['LABOR COST & CREW ALLOCATION SUMMARY'],
+    [],
+    ['Discipline','IFC Class','Quantity','UOM','Trade','Crew Size','Man-Days','Labor Cost (RM)'],
+  ];
+  for (const r of qtoData) {
+    if (r.laborCost === 0) continue;
+    const manDays = r.laborDays * r.laborCrew;
+    labRows.push([r.disc, r.cls, r.qty, r.unit, r.laborTrade, r.laborCrew, Math.round(manDays*10)/10, r.laborCost]);
+  }
+  labRows.push([]);
+  labRows.push(['','','','','','','TOTAL', grandLabor]);
+  const wsLab = XLSX.utils.aoa_to_sheet(labRows);
+  wsLab['!cols'] = [{wch:15},{wch:28},{wch:12},{wch:8},{wch:30},{wch:10},{wch:12},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, wsLab, 'Labor Summary');
+
+  // ── Sheet 5: Equipment Summary ──
+  const eqRows = [
+    ['EQUIPMENT / PLANT HIRE SUMMARY'],
+    [],
+    ['Discipline','IFC Class','Equipment','Duration (days)','Rate/Day (RM)','Total (RM)'],
+  ];
+  for (const r of qtoData) {
+    if (r.equipCost === 0) continue;
+    const alloc = EQUIPMENT_ALLOCATION[r.cls];
+    const eqKey = alloc ? alloc.equipment : '';
+    const rateDay = eqKey ? EQUIPMENT_RATES[eqKey].rate_per_day : 0;
+    eqRows.push([r.disc, r.cls, r.equipDesc, Math.round(r.equipDays*10)/10, rateDay, r.equipCost]);
+  }
+  eqRows.push([]);
+  eqRows.push(['','','','','TOTAL', grandEquip]);
+  const wsEq = XLSX.utils.aoa_to_sheet(eqRows);
+  wsEq['!cols'] = [{wch:15},{wch:28},{wch:35},{wch:15},{wch:16},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, wsEq, 'Equipment Summary');
+
+  // ── Sheet 6: Detailed BOQ (all disciplines) ──
+  const boqHeader = ['Discipline','IFC Class','Storey','Qty','UOM','Description',
+                     'Mat Rate (RM)','Material (RM)','Labor Cost (RM)','Equipment Cost (RM)','Total (RM)'];
+  const boqRows = [['DETAILED BOQ — ALL DISCIPLINES'],[],boqHeader];
+  for (const r of qtoData) {
+    boqRows.push([r.disc, r.cls, r.storey, r.qty, r.unit, r.desc, r.matRate, r.matTotal, r.laborCost, r.equipCost, r.matTotal+r.laborCost+r.equipCost]);
   }
   boqRows.push([]);
   boqRows.push(['','','','','','MATERIAL SUBTOTAL','', grandMaterial]);
-  boqRows.push(['','','','','','LABOUR SUBTOTAL','','','', grandLabor]);
-  boqRows.push(['','','','','','GRAND TOTAL','', grandMaterial + grandLabor]);
+  boqRows.push(['','','','','','LABOUR SUBTOTAL','','', grandLabor]);
+  boqRows.push(['','','','','','EQUIPMENT SUBTOTAL','','','', grandEquip]);
+  boqRows.push(['','','','','','GRAND TOTAL','','','','', gt]);
   boqRows.push([]);
   boqRows.push(['Rates: CIDB Malaysia 2024 / BCISM Cost Book']);
   boqRows.push(['BIM OOTB — Frictionless BIM', new Date().toISOString()]);
+  const wsBOQ = XLSX.utils.aoa_to_sheet(boqRows);
+  wsBOQ['!cols'] = [{wch:10},{wch:26},{wch:16},{wch:8},{wch:5},{wch:30},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, wsBOQ, '5D-BOQ');
 
-  const ws1 = XLSX.utils.aoa_to_sheet(boqRows);
-  ws1['!cols'] = [{wch:10},{wch:26},{wch:16},{wch:7},{wch:5},{wch:28},{wch:12},{wch:14},{wch:10},{wch:12}];
-  XLSX.utils.book_append_sheet(wb, ws1, '5D-BOQ');
-
-  // Sheet 2: 4D Schedule
-  const schedRows = [['Phase','Discipline','Qty','Duration (days)','Start Day','End Day']];
-  const phases = {};
+  // ── Sheet 7: Provisional Sums ──
+  let wallArea = 0, floorArea = 0;
   for (const r of qtoData) {
-    const phase = r.disc === 'STR' ? '1-Structure' : r.disc === 'ARC' ? '2-Architecture' : '3-MEP/Services';
-    const key = phase + '-' + r.disc;
-    if (!phases[key]) phases[key] = { phase, disc: r.disc, qty: 0, days: 0 };
-    phases[key].qty += r.qty;
-    phases[key].days += r.laborDays;
+    if (r.cls === 'IfcWall' || r.cls === 'IfcWallStandardCase') wallArea += r.qty;
+    if (r.cls === 'IfcSlab') floorArea += r.qty;
   }
-  let day = 1;
-  for (const p of Object.values(phases).sort((a,b) => a.phase.localeCompare(b.phase))) {
-    schedRows.push([p.phase, p.disc, p.qty, p.days, day, day + p.days - 1]);
-    day += p.days;
+  const provItems = [
+    ['P1','Painting - Walls and Ceilings',Math.round(wallArea*2),'M2',8.5,12,'Dulux/Nippon 2 coats emulsion'],
+    ['P2','Check-in Counters & Service Desks',15,'EA',12500,2500,'Solid surface, modular system'],
+    ['P3','Passenger Seating - Waiting Areas',250,'EA',580,45,'Airport beam seating, steel frame'],
+    ['P4','Wayfinding Signage System',80,'EA',650,120,'Illuminated, bilingual'],
+    ['P5','Flight Information Display (FIDS)',25,'EA',8500,1200,'55" LED, networked'],
+    ['P6','Baggage Trolley Storage Racks',12,'EA',1850,350,'Stainless steel, 30 trolleys'],
+    ['P7','Retail Kiosk Fit-outs (Shell)',8,'EA',22000,5500,'Structural frame, services rough-in'],
+    ['P8','Rubber Safety Flooring',Math.round(floorArea*0.15),'M2',95,28,'Anti-slip, heavy duty'],
+    ['P9','Acoustic Ceiling Panels',Math.round(floorArea*0.20),'M2',135,42,'Class A, fire-rated'],
+    ['P10','Bollards & Barriers - Security',45,'EA',1250,280,'Fixed/removable, crash-rated'],
+  ];
+  const provRows = [
+    ['PROVISIONAL SUMS - FINISHES & FITTINGS'],
+    ['Items not explicitly modeled in BIM - calculated from built-up areas'],
+    [],
+    ['Item','Description','Qty','UOM','Mat Rate (RM)','Lab Rate (RM)','Total (RM)'],
+  ];
+  let provTotal = 0;
+  for (const p of provItems) {
+    const total = p[2] * (p[4] + p[5]);
+    provTotal += total;
+    provRows.push([p[0], p[1], p[2], p[3], p[4], p[5], Math.round(total)]);
   }
-  schedRows.push([]);
-  schedRows.push(['TOTAL','', totalQty, day - 1, 1, day - 1]);
+  provRows.push([]);
+  provRows.push(['','','','','','TOTAL PROVISIONAL SUMS', Math.round(provTotal)]);
+  const wsProv = XLSX.utils.aoa_to_sheet(provRows);
+  wsProv['!cols'] = [{wch:8},{wch:40},{wch:10},{wch:6},{wch:14},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, wsProv, 'Provisional Sums');
 
-  const ws2 = XLSX.utils.aoa_to_sheet(schedRows);
-  ws2['!cols'] = [{wch:18},{wch:10},{wch:8},{wch:14},{wch:10},{wch:10}];
-  XLSX.utils.book_append_sheet(wb, ws2, '4D-Schedule');
-
-  // Sheet 3: Discipline Summary
-  const sumRows = [['Discipline','Elements','Material (RM)','Labour (RM)','Total (RM)']];
-  for (const [d, s] of Object.entries(discSummary)) {
-    sumRows.push([d, s.qty, s.matTotal, s.laborCost, s.matTotal + s.laborCost]);
-  }
-  sumRows.push([]);
-  sumRows.push(['TOTAL', totalQty, grandMaterial, grandLabor, grandMaterial + grandLabor]);
-
-  const ws3 = XLSX.utils.aoa_to_sheet(sumRows);
-  ws3['!cols'] = [{wch:10},{wch:10},{wch:14},{wch:14},{wch:14}];
-  XLSX.utils.book_append_sheet(wb, ws3, 'Summary');
-
-  const bld = BLD || 'Building';
-  const filename = `BIM_OOTB_${bld}_4D5D_${new Date().toISOString().slice(0,10)}.xlsx`;
+  const filename = `BIM_OOTB_${bldName}_5D_BOQ_${new Date().toISOString().slice(0,10)}.xlsx`;
   XLSX.writeFile(wb, filename);
-  document.getElementById('status').textContent = `Saved ${filename}`;
+  document.getElementById('status').textContent = `Saved ${filename} (7 sheets)`;
+}
+
+// ============================================================================
+// SAVE 4D SCHEDULE — 3 sheets (matches schedule_export.py)
+// ============================================================================
+function save4D() {
+  const wb = XLSX.utils.book_new();
+  const projDays = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
+
+  // ── Sheet 1: Construction Schedule ──
+  const schedHeaders = ['WBS','Task Name','Phase','Discipline','Storey','Quantity','UOM',
+    'Productivity','Duration (days)','Start Date','Finish Date','Labor Resource','Crew Size','Equipment','Status','% Complete'];
+  const schedRows = [schedHeaders];
+  for (const t of scheduleData) {
+    schedRows.push([t.wbs,t.name,t.phase,t.discipline,t.storey,t.qty,t.uom,t.productivity,
+      Math.round(t.duration*100)/100, t.startDate, t.finishDate, t.resource, t.crew, t.equipment, 'Not Started', 0]);
+  }
+  const wsSched = XLSX.utils.aoa_to_sheet(schedRows);
+  wsSched['!cols'] = [{wch:12},{wch:40},{wch:16},{wch:10},{wch:10},{wch:8},{wch:6},{wch:10},{wch:12},{wch:12},{wch:12},{wch:16},{wch:8},{wch:22},{wch:12},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, wsSched, 'Construction Schedule');
+
+  // ── Sheet 2: Project Summary ──
+  const phaseCounts = {}, discCounts = {};
+  for (const t of scheduleData) {
+    phaseCounts[t.phase] = (phaseCounts[t.phase]||0) + 1;
+    discCounts[t.discipline] = (discCounts[t.discipline]||0) + 1;
+  }
+  const sumRows = [
+    [bldName + ' Construction'],
+    [],
+    ['Database', DB_URL],
+    ['Total Tasks', scheduleData.length],
+    ['Project Start', scheduleData.length ? scheduleData[0].startDate : 'N/A'],
+    ['Project Finish', scheduleData.length ? scheduleData[scheduleData.length-1].finishDate : 'N/A'],
+    ['Total Duration', `${projDays} days`],
+    ['Generated', new Date().toISOString()],
+    [],
+    ['Phase Summary','Task Count'],
+  ];
+  for (const [p,cnt] of Object.entries(phaseCounts).sort()) sumRows.push([p, cnt]);
+  sumRows.push([]);
+  sumRows.push(['Discipline Summary','Task Count']);
+  for (const [d,cnt] of Object.entries(discCounts).sort()) sumRows.push([d, cnt]);
+  const wsSum = XLSX.utils.aoa_to_sheet(sumRows);
+  wsSum['!cols'] = [{wch:25},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, wsSum, 'Project Summary');
+
+  // ── Sheet 3: BIM 5D Dashboard ──
+  const dashRows = [
+    [`${bldName} - BIM 4D Analytics Dashboard`],
+    [],
+    ['Phase Duration Analysis'],
+    ['Phase','Total Days'],
+  ];
+  const phaseDur2 = {};
+  for (const t of scheduleData) phaseDur2[t.phase] = (phaseDur2[t.phase]||0) + t.duration;
+  for (const [p,d] of Object.entries(phaseDur2).sort((a,b)=>b[1]-a[1])) dashRows.push([p, Math.round(d*100)/100]);
+  dashRows.push([]);
+
+  dashRows.push(['Resource Workload Analysis']);
+  dashRows.push(['Phase','Total Man-Days']);
+  const phaseMD2 = {};
+  for (const t of scheduleData) phaseMD2[t.phase] = (phaseMD2[t.phase]||0) + t.duration * t.crew;
+  for (const [p,md] of Object.entries(phaseMD2).sort((a,b)=>b[1]-a[1])) dashRows.push([p, Math.round(md*10)/10]);
+  dashRows.push([]);
+
+  dashRows.push(['S-Curve Progress']);
+  dashRows.push(['Week','Cumulative %']);
+  if (scheduleData.length) {
+    const maxD = Math.max(...scheduleData.map(t=>t.finishDay));
+    const tw = Math.max(1, Math.ceil(maxD/7));
+    const si = Math.max(1, Math.floor(tw/20));
+    for (let w = 0; w <= tw; w += si) {
+      const completed = scheduleData.filter(t => t.finishDay <= w*7).length;
+      dashRows.push([`W${w}`, Math.round(completed/scheduleData.length*1000)/10]);
+    }
+    if (dashRows[dashRows.length-1][1] < 100) dashRows.push([`W${tw}`, 100]);
+  }
+  dashRows.push([]);
+
+  dashRows.push(['Milestone Timeline']);
+  dashRows.push(['Milestone','Day Offset','Date']);
+  const pd2 = {};
+  for (const t of scheduleData) {
+    if (!pd2[t.phase]) pd2[t.phase] = {s:t.startDate,e:t.finishDate,sd:t.startDay,ed:t.finishDay};
+    else {
+      if (t.startDay < pd2[t.phase].sd) { pd2[t.phase].sd = t.startDay; pd2[t.phase].s = t.startDate; }
+      if (t.finishDay > pd2[t.phase].ed) { pd2[t.phase].ed = t.finishDay; pd2[t.phase].e = t.finishDate; }
+    }
+  }
+  dashRows.push(['Project Start', 0, scheduleData.length ? scheduleData[0].startDate : '']);
+  for (const phase of Object.keys(pd2).sort()) {
+    dashRows.push([`${phase} Start`, pd2[phase].sd, pd2[phase].s]);
+    dashRows.push([`${phase} End`, pd2[phase].ed, pd2[phase].e]);
+  }
+  dashRows.push(['Project Finish', projDays, scheduleData.length ? scheduleData[scheduleData.length-1].finishDate : '']);
+  dashRows.push([]);
+
+  dashRows.push(['Gantt Timeline (Strategic Tasks)']);
+  dashRows.push(['Task','Phase','Start (Day)','Duration (Days)']);
+  const top15x = [...scheduleData].sort((a,b)=>b.duration-a.duration).slice(0,15).sort((a,b)=>a.startDay-b.startDay);
+  for (const t of top15x) dashRows.push([t.name.slice(0,35), t.phase, t.startDay, Math.round(t.duration*10)/10]);
+
+  const wsDash = XLSX.utils.aoa_to_sheet(dashRows);
+  wsDash['!cols'] = [{wch:40},{wch:18},{wch:15},{wch:15}];
+  XLSX.utils.book_append_sheet(wb, wsDash, 'BIM 4D Dashboard');
+
+  const filename = `BIM_OOTB_${bldName}_4D_Schedule_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  document.getElementById('status').textContent = `Saved ${filename} (3 sheets)`;
 }
 
 // ── Theme toggle ──
