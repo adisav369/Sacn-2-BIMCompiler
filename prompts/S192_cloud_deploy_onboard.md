@@ -28,6 +28,10 @@ own IFC. Eventually, they design from scratch via BIM Designer.
 Onboarding ladder:
   1. Install addon                    → 30s
   2. Direct Stream reference gallery  → instant (City/ or OCI fetch)
+     → envelope appears from orbit (exterior shell, ~850 elements)
+     → fly inside → partitions + services stream automatically
+     → 5s idle → autopilot flies to next building type (cinematic)
+     → Sun button → presentation-ready viewport
   3. Explore: search, filter, nD      → learn the tool on real buildings
   4. DROP own IFC → extract → stream  → when ready
   5. BIM Designer → create from zero  → eventual
@@ -94,22 +98,35 @@ Extract → Bake subprocess (10-60s) → .blend file → Save → Link → view.
 User waits for full bake before seeing any geometry. Output is a .blend
 (100-300MB) — heavy to host, heavy to download, heavy to store.
 
-### What Direct Stream is (S195-S197)
+### What Direct Stream is (S195-S198)
 
-Extract → press Ctrl+Shift+A → geometry appears while you watch.
-Largest elements first (ORDER BY bbox volume DESC) — building shell in seconds.
-Camera-aware: streams what's near, shreds what's behind. Budget-capped.
-Cinematic camera auto-pans. In-sight scoring prefers facing direction.
+Press Ctrl+Shift+A → geometry streams while you watch. Three rendering phases
+driven by camera distance (S198 envelope-first):
+
+| Phase | What renders | Trigger |
+|-------|-------------|---------|
+| **Envelope** | Exterior shell — walls, roof, facade, railings | Within 300m, from orbit |
+| **Shell** | Interior ARC+STR — partitions, stairs, columns | Camera enters building |
+| **Detail** | Services — MEP, ELEC, plumbing, HVAC | Camera enters building |
+
+A 5m bbox shell filter ensures only elements near the building boundary
+render from outside — a 60K-element hospital streams ~850 exterior elements
+from orbit; the rest appear when you fly inside.
+
+Cinematic autopilot: 5s idle → auto-fly to nearest unfinished building
+(prefers novel types — 100 Duplex copies + 1 Hospital → visits Hospital first).
+One-click Sun button adds procedural sky + shadows for presentation-ready viewport.
 
 | Aspect | Bake/Link | Direct Stream |
 |--------|-----------|---------------|
-| Time to first pixel | 10-60s (full bake) | 2-3s (shell walls) |
+| Time to first pixel | 10-60s (full bake) | 2-3s (envelope walls) |
 | File format | .blend (100-300MB) | .db (50-200MB) |
 | Cloud hosting | Impractical (huge .blend) | Simple (static .db) |
 | Network dependency | Download full .blend | Fetch .db once, cache |
 | Memory ceiling | Full scene in RAM | Budget-capped, auto-shred |
 | Persistence | Reopen .blend = instant | Re-stream each session |
 | Distro bundle | .blend + library.blend | .db + component_library.db |
+| Bake pipeline | **Superseded** (RTree.md §Historical Note) | Primary path |
 
 ### The consolidation opportunity
 
@@ -436,14 +453,22 @@ work on daily, re-streaming 60K elements every open is friction.
 
 ### Scenario A — Gallery explorer (no saves)
 ```
-Install addon → Direct Stream sandbox.db → Hospital, Terminal appear
-Explore: search, filter discs, nD queries → learn the tool
+Install addon → Direct Stream City/sandbox.db
+  → orbit city: all buildings render exterior envelopes (~850 elements each)
+  → autopilot flies to nearest building type (cinematic pan)
+  → fly inside Hospital: partitions + MEP stream automatically
+  → 5s idle → autopilot flies to next novel type (Terminal)
+  → Sun button → sky + shadows, screenshot-ready
+Search "IfcDoor" → buildings ranked by match count
+Click discipline bar → filter to ARC only
+Explore nD: 4D schedule overlay, 5D cost rollup
 Close Blender → nothing saved. Next session: re-stream (acceptable).
 ```
-No friction. Streaming speed is the only UX metric.
+No friction. Envelope-first + autopilot = the delight moment.
 
 **Debug trail:** `§RESOLVE_LIB tier=city` → `§DS_ON` → `§DS_START` →
-`§DS_SHELL_DONE` → `§DS_DETAIL_DONE`. No `§CACHE_SAVE` (no project/).
+`§DS_ENVELOPE_DONE` → (fly inside) → `§DS_SHELL_DONE` → `§DS_DETAIL_DONE`.
+No `§CACHE_SAVE` (no project/).
 
 ### Scenario B — Architect reviewing own IFC (daily use)
 ```
@@ -508,8 +533,10 @@ Existing S195 lines (`§DS_START`, `§DS_SHELL_DONE`, etc.) remain unchanged.
 [S195] §BOOTSTRAP centres=35 total_elements=1,061,736
 [S195] §DS_ON radius=100m buildings=35
 [S195] §DS_START Hospital elements=49,002
-[S195] §DS_SHELL_DONE Hospital arc_str=31,500
-[S195] §DS_DETAIL_DONE Hospital elements=49,002
+[S198] §DS_ENVELOPE_DONE Hospital exterior=850           ← from orbit
+[S195] §DS_SHELL_DONE Hospital arc_str=31,500            ← fly inside
+[S195] §DS_DETAIL_DONE Hospital elements=49,002          ← services stream
+[S198] §AUTOPILOT fly_to=Terminal dist=245m novel=true   ← 5s idle
 ```
 
 **Own-IFC extraction (happy path):**
@@ -573,8 +600,17 @@ Existing S195 lines (`§DS_START`, `§DS_SHELL_DONE`, etc.) remain unchanged.
 | `scripts/extractIFCtoDB_open.py` | IFC → extracted.db + library BLOBs |
 | `scripts/blob_tessellate_worker.py` | Bake subprocess (optional export path) |
 | `scripts/distro_package.py` | DB-based distro packaging |
-| `docs/RTree.md` | Viewer architecture spec |
+| `docs/RTree.md` | Primary viewer spec — Mode 3 is Direct Stream |
 | `docs/ACTION_ROADMAP.md` | Phase 5-6 targets |
+| `prompts/S198_envelope_streaming.md` | Envelope-first three-phase rendering |
+
+## Deliverables
+
+- `docs/RTreeGuide.md` — User-facing guide: 7 steps to 1M elements (Guide 1 of 4)
+- `deploy/OCI_UPLOAD.md` — OCI bucket setup instructions
+- `deploy/bomtree_manifest.json` — Machine-readable file catalog
+- `scripts/setup_bomtree_demo.sh` — One-command DB download script
+- S192a code changes — baked/ → DAGCompiler/baked/ (done)
 
 ## Standing rules
 

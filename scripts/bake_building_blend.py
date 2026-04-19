@@ -32,7 +32,7 @@ parser.add_argument("--db", required=True, help="Extracted DB (sandbox or single
 parser.add_argument("--library", required=True, help="Path to library.blend")
 parser.add_argument("--building", default=None, help="Building name to bake")
 parser.add_argument("--all", action="store_true", help="Bake all buildings in DB")
-parser.add_argument("--output-dir", default="baked", help="Output directory (default: baked/)")
+parser.add_argument("--output-dir", default="DAGCompiler/baked", help="Output directory (default: DAGCompiler/baked/)")
 args = parser.parse_args(argv)
 
 import bpy

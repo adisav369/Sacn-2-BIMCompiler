@@ -10,7 +10,7 @@ Proves the lean distro cycle:
 
 Usage:
     blender --background --factory-startup --python scripts/distro_roundtrip_test.py -- \
-        --input baked/Hospital_baked.blend \
+        --input DAGCompiler/baked/Hospital_baked.blend \
         --library-db library/component_library.db \
         --output-dir DAGCompiler/lib/input/DISTRO/test
 

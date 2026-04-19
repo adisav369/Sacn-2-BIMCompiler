@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RTree Browser Demo — BIM Federation</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+  #canvas { width: 100vw; height: 100vh; display: block; }
+  #hud {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    background: rgba(0,0,0,0.75); border-radius: 8px; padding: 12px 16px;
+    font-size: 13px; line-height: 1.6; min-width: 260px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  #hud h2 { font-size: 15px; margin-bottom: 6px; color: #4fc3f7; }
+  #hud .stat { color: #aaa; }
+  #hud .stat b { color: #fff; }
+  #search-box {
+    position: fixed; top: 16px; right: 16px; z-index: 10;
+    background: rgba(0,0,0,0.75); border-radius: 8px; padding: 12px 16px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  #search-box input {
+    background: #222; color: #fff; border: 1px solid #555; border-radius: 4px;
+    padding: 6px 10px; font-size: 14px; width: 220px; outline: none;
+  }
+  #search-box input:focus { border-color: #4fc3f7; }
+  #search-results { margin-top: 8px; font-size: 12px; max-height: 300px; overflow-y: auto; }
+  #search-results div { padding: 3px 0; cursor: pointer; }
+  #search-results div:hover { color: #4fc3f7; }
+  #status {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 10;
+    background: rgba(0,0,0,0.8); border-radius: 6px; padding: 8px 20px;
+    font-size: 13px; color: #4fc3f7;
+  }
+  .disc-bar { display: inline-block; height: 10px; border-radius: 2px; margin-right: 1px; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <h2>RTree Browser Demo</h2>
+  <div class="stat">Buildings: <b id="s-buildings">—</b></div>
+  <div class="stat">Elements: <b id="s-elements">—</b></div>
+  <div class="stat">Meshes: <b id="s-meshes">—</b></div>
+  <div class="stat">Streamed: <b id="s-streamed">0</b></div>
+  <div class="stat" style="margin-top:6px">Disciplines:</div>
+  <div id="disc-bars"></div>
+</div>
+<div id="search-box">
+  <input id="search" type="text" placeholder="Search IfcDoor, IfcWall...">
+  <button onclick="clearStreamed()" style="margin-top:6px;padding:4px 10px;background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:12px">Clear Meshes</button>
+  <div id="search-results"></div>
+</div>
+<div id="status">Loading sql.js...</div>
+<canvas id="canvas"></canvas>
+
+<!-- Three.js (r162 CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- OrbitControls -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<!-- sql.js (WebAssembly SQLite) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+
+<script>
+// ── Config ──
+// Serve DBs locally: python3 -m http.server 8080
+// Or change these to OCI URLs
+const DB_URL = 'sandbox_1M_extracted.db';
+const LIB_URL = 'component_library.db';
+
+// ── Discipline colours (same as Blender addon) ──
+const DISC_COLORS = {
+  ARC:  0x4488ff, STR:  0x44cccc, MEP:  0x44cc44,
+  ELEC: 0xcccc44, FP:   0xcc8844, ACMV: 0xcc4444,
+  PLB:  0x8844cc, HEAT: 0xff6644, HVAC: 0x44aacc,
+  SAN:  0xaa44aa, VENT: 0x88ccaa, VOID: 0x666666,
+};
+const DEFAULT_COLOR = 0x888888;
+
+// ── Three.js setup ──
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setClearColor(0x1a1a2e);
+renderer.shadowMap.enabled = true;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x1a1a2e, 500, 3000);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.5, 50000);
+camera.position.set(300, 200, 400);
+
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.1;
+controls.maxDistance = 5000;
+controls.maxPolarAngle = Math.PI * 0.48;  // prevent going below ground
+controls.minPolarAngle = Math.PI * 0.05;  // prevent flipping to top-down
+
+// Lighting
+const ambient = new THREE.AmbientLight(0x606080, 0.6);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0xfff0dd, 1.0);
+sun.position.set(200, 400, 300);
+sun.castShadow = true;
+scene.add(sun);
+const hemi = new THREE.HemisphereLight(0x8888cc, 0x444422, 0.4);
+scene.add(hemi);
+
+// Ground plane
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(10000, 10000),
+  new THREE.MeshLambertMaterial({ color: 0x222233 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ── State ──
+let db = null, libDb = null;
+let buildingCentres = {};  // name → {x,y,z,count}
+let discCounts = {};       // disc → count
+let meshCache = {};        // hash → THREE.BufferGeometry
+let streamedCount = 0;
+let totalElements = 0;
+let modelOffset = { x: 0, y: 0, z: 0 };
+
+const status = document.getElementById('status');
+
+// IFC (X=east, Y=north, Z=up) → Three.js (X=east, Y=up, Z=south)
+function ifc2three(ix, iy, iz) {
+  return { x: ix - modelOffset.x, y: iz - modelOffset.z, z: -(iy - modelOffset.y) };
+}
+
+// ── Load databases ──
+async function init() {
+  status.textContent = 'Loading sql.js WebAssembly...';
+  const SQL = await initSqlJs({
+    locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
+  });
+
+  status.textContent = `Fetching ${DB_URL}...`;
+  const dbBuf = await fetch(DB_URL).then(r => {
+    if (!r.ok) throw new Error(`Failed to fetch ${DB_URL}: ${r.status}`);
+    return r.arrayBuffer();
+  });
+  db = new SQL.Database(new Uint8Array(dbBuf));
+  console.log(`[S192] §DB_LOADED size=${(dbBuf.byteLength/1024/1024).toFixed(0)}MB`);
+  status.textContent = `DB loaded (${(dbBuf.byteLength/1024/1024).toFixed(0)}MB). Querying...`;
+
+  // Get building centres + counts (using element_transforms — no R-tree needed)
+  const rows = db.exec(`
+    SELECT m.building, COUNT(*),
+      AVG(t.center_x), AVG(t.center_y), AVG(t.center_z)
+    FROM elements_meta m
+    JOIN element_transforms t ON t.guid = m.guid
+    WHERE m.discipline IN ('ARC','STR')
+    GROUP BY m.building
+  `);
+  // Store in IFC coords (x=east, y=north, z=up). Convert to Three.js at render time.
+  if (rows.length > 0) {
+    for (const row of rows[0].values) {
+      buildingCentres[row[0]] = { ix: row[2], iy: row[3], iz: row[4], count: row[1] };
+    }
+  }
+  console.log(`[S192] §BOOTSTRAP centres=${Object.keys(buildingCentres).length}`);
+
+  // Model offset in IFC coords (centre of all buildings)
+  const allIX = Object.values(buildingCentres).map(b => b.ix);
+  const allIY = Object.values(buildingCentres).map(b => b.iy);
+  const allIZ = Object.values(buildingCentres).map(b => b.iz);
+  if (allIX.length) {
+    modelOffset.x = (Math.min(...allIX) + Math.max(...allIX)) / 2;
+    modelOffset.y = (Math.min(...allIY) + Math.max(...allIY)) / 2;
+    modelOffset.z = (Math.min(...allIZ) + Math.max(...allIZ)) / 2;
+  }
+  console.log(`[S192] §OFFSET ifc=(${modelOffset.x.toFixed(0)}, ${modelOffset.y.toFixed(0)}, ${modelOffset.z.toFixed(0)})`);
+
+  // Element + discipline counts
+  const elemRows = db.exec(`SELECT COUNT(*) FROM elements_meta`);
+  totalElements = elemRows[0]?.values[0][0] || 0;
+  const discRows = db.exec(`SELECT discipline, COUNT(*) FROM elements_meta GROUP BY discipline ORDER BY COUNT(*) DESC`);
+  if (discRows.length > 0) {
+    for (const r of discRows[0].values) {
+      discCounts[r[0]] = r[1];
+    }
+  }
+
+  updateHUD();
+
+  // Draw building bboxes (like Preview — 1 box per disc per building)
+  drawBuildingBoxes();
+
+  // Try loading library DB
+  status.textContent = `Fetching ${LIB_URL}...`;
+  try {
+    const libBuf = await fetch(LIB_URL).then(r => {
+      if (!r.ok) throw new Error(`${r.status}`);
+      return r.arrayBuffer();
+    });
+    libDb = new SQL.Database(new Uint8Array(libBuf));
+    console.log(`[S192] §LIB_LOADED size=${(libBuf.byteLength/1024/1024).toFixed(0)}MB`);
+    // Check which table has geometry
+    try {
+      const t = libDb.exec("SELECT COUNT(*) FROM component_geometries");
+      console.log(`[S192] §LIB_TABLE component_geometries rows=${t[0].values[0][0]}`);
+    } catch(e2) {
+      console.log(`[S192] §LIB_TABLE component_geometries not found, trying base_geometries`);
+      try {
+        const t2 = libDb.exec("SELECT COUNT(*) FROM base_geometries");
+        console.log(`[S192] §LIB_TABLE base_geometries rows=${t2[0].values[0][0]}`);
+      } catch(e3) {
+        console.log(`[S192] §LIB_ERROR no geometry table found`);
+      }
+    }
+    status.textContent = `Library loaded (${(libBuf.byteLength/1024/1024).toFixed(0)}MB). Streaming nearest building...`;
+  } catch (e) {
+    console.error(`[S192] §LIB_ERROR ${e.message}`);
+    status.textContent = `Library not found — bbox mode only. (${e.message})`;
+  }
+
+  // Position camera — overview of city
+  const extentX = allIX.length ? Math.max(...allIX) - Math.min(...allIX) : 500;
+  const extentY = allIY.length ? Math.max(...allIY) - Math.min(...allIY) : 500;
+  const dist = Math.max(extentX, extentY) * 0.6;
+  // Isometric-ish angle — tilted enough to see rooftops and depth
+  camera.position.set(dist * 0.3, dist * 0.5, dist * 0.4);
+  camera.far = Math.max(10000, dist * 3);
+  camera.updateProjectionMatrix();
+  controls.target.set(0, 10, 0);
+  controls.update();
+  console.log(`[S192] §CAMERA city_extent=${extentX.toFixed(0)}x${extentY.toFixed(0)}m dist=${dist.toFixed(0)}m`);
+
+  // Start streaming if library available
+  if (libDb) {
+    startStreaming();
+  }
+}
+
+// ── Draw building bounding boxes (Preview equivalent) ──
+function drawBuildingBoxes() {
+  // Use element_transforms for bbox (no R-tree virtual table in WASM)
+  const rows = db.exec(`
+    SELECT m.building, m.discipline,
+      MIN(t.center_x) - 5, MIN(t.center_y) - 5, MIN(t.center_z),
+      MAX(t.center_x) + 5, MAX(t.center_y) + 5, MAX(t.center_z) + 3
+    FROM elements_meta m
+    JOIN element_transforms t ON t.guid = m.guid
+    GROUP BY m.building, m.discipline
+  `);
+  if (!rows.length) return;
+
+  for (const row of rows[0].values) {
+    const [bld, disc, minX, minY, minZ, maxX, maxY, maxZ] = row;
+    const color = DISC_COLORS[disc] || DEFAULT_COLOR;
+
+    // IFC centre → Three.js
+    const c = ifc2three((minX+maxX)/2, (minY+maxY)/2, (minZ+maxZ)/2);
+    const sx = maxX - minX;
+    const sy = maxZ - minZ;  // IFC Z extent → Three Y (height)
+    const sz = maxY - minY;  // IFC Y extent → Three Z (depth)
+
+    if (sx < 0.1 || sy < 0.1 || sz < 0.1) continue;
+
+    const geo = new THREE.BoxGeometry(sx, sy, sz);
+    const edges = new THREE.EdgesGeometry(geo);
+    const line = new THREE.LineSegments(edges,
+      new THREE.LineBasicMaterial({ color, opacity: 0.6, transparent: true }));
+    line.position.set(c.x, c.y, c.z);
+    line.userData = { building: bld, discipline: disc };
+    scene.add(line);
+  }
+
+  document.getElementById('s-buildings').textContent =
+    Object.keys(buildingCentres).length.toLocaleString();
+  document.getElementById('s-elements').textContent = totalElements.toLocaleString();
+}
+
+// ── Stream geometry from library DB ──
+let streamQueue = [];
+let streamIdx = 0;
+let streaming = false;
+
+function startStreaming() {
+  // Find nearest building to camera
+  let nearest = null, nearestDist = Infinity;
+  for (const [name, bc] of Object.entries(buildingCentres)) {
+    const t = ifc2three(bc.ix, bc.iy, bc.iz);
+    const dx = t.x - camera.position.x;
+    const dz = t.z - camera.position.z;
+    const d = Math.sqrt(dx*dx + dz*dz);
+    if (d < nearestDist) { nearestDist = d; nearest = name; }
+  }
+  if (!nearest) return;
+  console.log(`[S192] §DS_AUTO_START bld=${nearest} dist=${nearestDist.toFixed(0)}m`);
+  streamBuilding(nearest);
+}
+
+function streamBuilding(nearest) {
+  // Stop any existing stream
+  streaming = false;
+  streamQueue = [];
+  streamIdx = 0;
+
+  // Query elements for nearest building (no R-tree, order by rowid as proxy)
+  const rows = db.exec(`
+    SELECT m.guid, i.geometry_hash, m.material_rgba, m.discipline,
+           t.center_x, t.center_y, t.center_z
+    FROM elements_meta m
+    JOIN element_instances i ON m.guid = i.guid
+    JOIN element_transforms t ON t.guid = m.guid
+    WHERE m.building = '${nearest}'
+      AND i.geometry_hash IS NOT NULL
+      AND m.ifc_class != 'IfcOpeningElement'
+    LIMIT 2000
+  `);
+  if (!rows.length) {
+    console.log(`[S192] §DS_EMPTY bld=${nearest} — no streamable elements`);
+    return;
+  }
+  streamQueue = rows[0].values;
+  streamIdx = 0;
+  streaming = true;
+  console.log(`[S192] §DS_QUEUED bld=${nearest} elements=${streamQueue.length}`);
+  status.textContent = `Streaming ${nearest} (${streamQueue.length} elements)...`;
+}
+
+function streamTick() {
+  if (!streaming || !libDb || streamIdx >= streamQueue.length) {
+    if (streaming && streamIdx >= streamQueue.length) {
+      streaming = false;
+      status.textContent = `Streamed ${streamedCount} elements. Orbit to explore.`;
+    }
+    return;
+  }
+
+  const batch = Math.min(50, streamQueue.length - streamIdx);
+  const hashesNeeded = new Set();
+
+  for (let i = 0; i < batch; i++) {
+    const row = streamQueue[streamIdx + i];
+    const hash = row[1];
+    if (hash && !meshCache[hash]) hashesNeeded.add(hash);
+  }
+
+  // Fetch BLOBs for new hashes
+  if (hashesNeeded.size > 0) {
+    const hashList = [...hashesNeeded];
+    const ph = hashList.map(() => '?').join(',');
+    let fetched = 0;
+    // Try component_geometries first, then base_geometries
+    for (const table of ['component_geometries', 'base_geometries']) {
+      if (fetched > 0) break;
+      try {
+        const stmt = libDb.prepare(
+          `SELECT geometry_hash, vertices, faces FROM ${table} WHERE geometry_hash IN (${ph})`
+        );
+        stmt.bind(hashList);
+        while (stmt.step()) {
+          const [ghash, vBlob, fBlob] = stmt.get();
+          if (vBlob && fBlob) {
+            const geo = blobToGeometry(vBlob, fBlob);
+            if (geo) { meshCache[ghash] = geo; fetched++; }
+          }
+        }
+        stmt.free();
+        if (fetched > 0) {
+          console.log(`[S192] §BLOB_FETCH table=${table} new=${fetched} total_cached=${Object.keys(meshCache).length}`);
+        }
+      } catch (e) {
+        // Table doesn't exist — try next
+      }
+    }
+    if (fetched === 0 && hashesNeeded.size > 0) {
+      console.warn(`[S192] §BLOB_MISS hashes=${hashesNeeded.size} — no geometry found in library`);
+    }
+  }
+
+  // Place objects
+  for (let i = 0; i < batch; i++) {
+    const row = streamQueue[streamIdx + i];
+    const [guid, hash, rgba, disc, cx, cy, cz] = row;
+
+    const geo = meshCache[hash];
+    if (!geo) continue;
+
+    const color = DISC_COLORS[disc] || DEFAULT_COLOR;
+    let r = ((color >> 16) & 0xff) / 255;
+    let g = ((color >> 8) & 0xff) / 255;
+    let b = (color & 0xff) / 255;
+
+    // Parse material_rgba if available
+    if (rgba && typeof rgba === 'string') {
+      const parts = rgba.split(',').map(Number);
+      if (parts.length >= 3) { r = parts[0]; g = parts[1]; b = parts[2]; }
+    }
+
+    const mat = new THREE.MeshLambertMaterial({ color: new THREE.Color(r, g, b) });
+    const mesh = new THREE.Mesh(geo, mat);
+
+    // IFC coords → Three.js
+    const pos = ifc2three(cx, cy, cz);
+    mesh.position.set(pos.x, pos.y, pos.z);
+
+    scene.add(mesh);
+    streamedCount++;
+  }
+
+  streamIdx += batch;
+  document.getElementById('s-streamed').textContent = streamedCount.toLocaleString();
+  document.getElementById('s-meshes').textContent = Object.keys(meshCache).length.toLocaleString();
+}
+
+// ── BLOB → Three.js BufferGeometry ──
+function blobToGeometry(vBlob, fBlob) {
+  try {
+    const vArr = new Float32Array(vBlob.buffer, vBlob.byteOffset, vBlob.byteLength / 4);
+    const fArr = new Uint32Array(fBlob.buffer, fBlob.byteOffset, fBlob.byteLength / 4);
+
+    if (vArr.length < 9 || fArr.length < 3) return null;
+
+    // Vertices are LOCAL to element centre (already recentred during extraction).
+    // Swap IFC (x,y,z) → Three.js (x, z, -y) to match ifc2three() on positions.
+    const positions = new Float32Array(vArr.length);
+    for (let i = 0; i < vArr.length; i += 3) {
+      positions[i]     = vArr[i];       // local X
+      positions[i + 1] = vArr[i + 2];   // local Z → Three Y (height)
+      positions[i + 2] = -vArr[i + 1];  // local Y → Three -Z
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setIndex(new THREE.BufferAttribute(fArr, 1));
+    geo.computeVertexNormals();
+    return geo;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ── Search ──
+const searchInput = document.getElementById('search');
+const searchResults = document.getElementById('search-results');
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim();
+  if (!q || !db) { searchResults.innerHTML = ''; return; }
+
+  const rows = db.exec(`
+    SELECT building, COUNT(*) c FROM elements_meta
+    WHERE ifc_class LIKE '%${q}%' OR element_name LIKE '%${q}%'
+    GROUP BY building ORDER BY c DESC LIMIT 10
+  `);
+  if (!rows.length) { searchResults.innerHTML = '<div style="color:#888">No results</div>'; return; }
+
+  searchResults.innerHTML = rows[0].values.map(([bld, cnt]) =>
+    `<div onclick="flyTo('${bld}')">${bld} (${cnt})</div>`
+  ).join('');
+});
+
+function clearStreamed() {
+  // Remove all mesh objects (keep wireframe boxes)
+  const toRemove = [];
+  scene.traverse(obj => {
+    if (obj.isMesh && obj !== ground) toRemove.push(obj);
+  });
+  toRemove.forEach(obj => {
+    scene.remove(obj);
+    if (obj.geometry) obj.geometry.dispose();
+    if (obj.material) obj.material.dispose();
+  });
+  streamedCount = 0;
+  streaming = false;
+  streamQueue = [];
+  streamIdx = 0;
+  document.getElementById('s-streamed').textContent = '0';
+  console.log(`[S192] §CLEAR removed=${toRemove.length}`);
+  status.textContent = 'Cleared. Search and click a building to stream.';
+}
+
+function flyTo(buildingName) {
+  const bc = buildingCentres[buildingName];
+  if (!bc) return;
+  const t = ifc2three(bc.ix, bc.iy, bc.iz);
+  const dist = Math.max(30, Math.sqrt(bc.count) * 1.5);
+  // Position camera above and to the side — always looking down at the building
+  camera.position.set(t.x + dist * 0.4, t.y + dist * 0.6, t.z + dist * 0.4);
+  controls.target.set(t.x, t.y, t.z);
+  camera.far = Math.max(5000, dist * 10);
+  camera.updateProjectionMatrix();
+  controls.update();
+  console.log(`[S192] §FLY_TO bld=${buildingName} three=(${t.x.toFixed(0)},${t.y.toFixed(0)},${t.z.toFixed(0)}) dist=${dist.toFixed(0)}`);
+  status.textContent = `Flew to ${buildingName} (${bc.count} elements)`;
+
+  // Start streaming this building
+  if (libDb) {
+    streamBuilding(buildingName);
+  }
+}
+
+// ── HUD ──
+function updateHUD() {
+  // Discipline bars
+  const barsEl = document.getElementById('disc-bars');
+  const total = Object.values(discCounts).reduce((a, b) => a + b, 0);
+  barsEl.innerHTML = Object.entries(discCounts).map(([disc, cnt]) => {
+    const pct = (cnt / total * 100).toFixed(1);
+    const color = '#' + (DISC_COLORS[disc] || DEFAULT_COLOR).toString(16).padStart(6, '0');
+    return `<span class="disc-bar" style="background:${color};width:${Math.max(pct*1.5, 3)}px" title="${disc}: ${cnt.toLocaleString()} (${pct}%)"></span>`;
+  }).join('') + '<br><small style="color:#888">' +
+    Object.entries(discCounts).slice(0, 6).map(([d, c]) => `${d}:${c.toLocaleString()}`).join(' ') + '</small>';
+}
+
+// ── Render loop ──
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  streamTick();
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ── Go ──
+animate();
+init().catch(e => {
+  status.textContent = `Error: ${e.message}`;
+  console.error(`[S192] §INIT_ERROR`, e);
+});
+</script>
+</body>
+</html>

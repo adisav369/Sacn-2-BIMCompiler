@@ -16,8 +16,8 @@ import sys, os, time
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("--baked-dir", default="baked", help="Directory with *_baked.blend files")
-parser.add_argument("--output", default="baked/city.blend", help="Output city .blend")
+parser.add_argument("--baked-dir", default="DAGCompiler/baked", help="Directory with *_baked.blend files")
+parser.add_argument("--output", default="DAGCompiler/baked/city.blend", help="Output city .blend")
 parser.add_argument("--db", default=None, help="Sandbox DB for building offsets (optional)")
 args = parser.parse_args(argv)
 

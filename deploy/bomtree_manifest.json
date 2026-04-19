@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "description": "BOMTree reference databases — 1M-element city demo",
+  "files": {
+    "sandbox_1M_extracted.db": {
+      "description": "Federated spatial index — 786 buildings, 1,063,911 elements",
+      "size_bytes": 607125504,
+      "md5": "8645da06a40253e260fc22714f65be12",
+      "elements": 1063911,
+      "buildings": 786,
+      "tables": ["elements_meta", "elements_rtree", "element_instances", "element_transforms", "base_geometries", "surface_styles"]
+    },
+    "component_library.db": {
+      "description": "Geometry BLOBs — 124,591 unique tessellated meshes",
+      "size_bytes": 478150656,
+      "md5": "47e075cb872218c7523a8bd4c8971d16",
+      "meshes": 124591,
+      "tables": ["component_geometries"]
+    }
+  },
+  "total_size_bytes": 1085276160,
+  "prerequisites": {
+    "blender": "4.2+",
+    "bonsai": "latest",
+    "note": "Bonsai addon must be installed and enabled in Blender"
+  },
+  "instructions": {
+    "setup": "chmod +x setup_bomtree_demo.sh && ./setup_bomtree_demo.sh",
+    "usage": "Open Blender → N-panel → BIM tab → set DB path → Ctrl+Shift+A"
+  }
+}

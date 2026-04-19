@@ -123,7 +123,7 @@ DISCIPLINE_MAP = {
     "IfcRailing": "ARC", "IfcCurtainWall": "ARC",
     "IfcCovering": "ARC", "IfcFurnishingElement": "ARC",
     "IfcBuildingElementProxy": "ARC",
-    "IfcOpeningElement": "VOID",
+    "IfcOpeningElement": "ARC",   # void instruction — filtered at load time by linker
 
     # --- Structural ---
     "IfcColumn": "STR", "IfcBeam": "STR", "IfcMember": "STR",
@@ -672,12 +672,18 @@ class ForensicLog:
 # Main extraction
 # ---------------------------------------------------------------------------
 
-def extract(ifc_path, output_path, exclude=None):
+def extract(ifc_path, output_path, exclude=None, library_db=None):
     """Full extraction from merged IFC to reference DB.
 
     Open filter: extracts ALL IfcProduct subclasses with Representation,
     except SKIP_CLASSES.  Fine-grained discipline via DISCIPLINE_MAP +
     element_type/material heuristics.  Built-in unit scale correction.
+
+    S192c: If library_db is set, also writes component_geometries rows to
+    that DB (INSERT OR IGNORE by geometry_hash). This enables Direct Stream
+    to tessellate from the library DB without a separate extraction step.
+    A component_geometries VIEW is also created in the extracted DB as a
+    convenience alias for base_geometries (single-file streaming).
     """
     import ifcopenshell
     import ifcopenshell.geom
@@ -697,11 +703,50 @@ def extract(ifc_path, output_path, exclude=None):
     else:
         print(f"  Unit scale: 1.0 (metres, no conversion needed)")
 
+    # S192c: open library DB for dual-write if specified
+    lib_conn = None
+    lib_existing_hashes = set()
+    if library_db:
+        os.makedirs(os.path.dirname(os.path.abspath(library_db)), exist_ok=True)
+        lib_conn = sqlite3.connect(library_db)
+        lib_conn.execute("""
+            CREATE TABLE IF NOT EXISTS component_geometries (
+                geometry_hash TEXT PRIMARY KEY,
+                vertices BLOB NOT NULL,
+                faces BLOB NOT NULL,
+                normals BLOB,
+                vertex_count INTEGER,
+                face_count INTEGER,
+                instance_count INTEGER DEFAULT 1
+            )""")
+        lib_conn.commit()
+        lib_existing_hashes = {r[0] for r in lib_conn.execute(
+            "SELECT geometry_hash FROM component_geometries").fetchall()}
+        print(f"  Library DB: {library_db} ({len(lib_existing_hashes)} existing hashes)")
+
+    # Derive building name from IFC filename (for single-building DB)
+    building_name = os.path.splitext(os.path.basename(ifc_path))[0]
+    # Strip common suffixes
+    for suffix in ('_merged', '_IFC4', '_IFC2x3', '_extracted'):
+        building_name = building_name.replace(suffix, '')
+
     # Create fresh DB
     if os.path.exists(output_path):
         os.remove(output_path)
     conn = sqlite3.connect(output_path)
     conn.executescript(REFERENCE_SCHEMA)
+    # S192c: add building column to elements_meta if not in schema
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(elements_meta)").fetchall()}
+    if 'building' not in cols:
+        conn.execute("ALTER TABLE elements_meta ADD COLUMN building TEXT")
+    # S192c: create component_geometries as VIEW → base_geometries (single-file streaming)
+    conn.execute("DROP VIEW IF EXISTS component_geometries")
+    conn.execute("""
+        CREATE VIEW component_geometries AS
+        SELECT geometry_hash, vertices, faces, NULL as normals,
+               vertex_count, face_count, 1 as instance_count
+        FROM base_geometries
+    """)
 
     # --- Spatial structure ---
     print("  Extracting spatial structure...")
@@ -867,15 +912,24 @@ def extract(ifc_path, output_path, exclude=None):
                         "VALUES (?,?,?,?,?)",
                         (ghash, vblob, fblob, len(v_centered), len(faces)))
                     existing_hashes.add(ghash)
+                    # S192c: dual-write to library DB
+                    if lib_conn and ghash not in lib_existing_hashes:
+                        lib_conn.execute(
+                            "INSERT OR IGNORE INTO component_geometries "
+                            "(geometry_hash, vertices, faces, vertex_count, face_count) "
+                            "VALUES (?,?,?,?,?)",
+                            (ghash, vblob, fblob, len(v_centered), len(faces)))
+                        lib_existing_hashes.add(ghash)
 
                 eid = next_id
                 next_id += 1
                 conn.execute(
                     "INSERT OR IGNORE INTO elements_meta "
                     "(id, guid, discipline, ifc_class, element_name, element_type, "
-                    "storey, material_name, material_rgba) VALUES (?,?,?,?,?,?,?,?,?)",
+                    "storey, material_name, material_rgba, building) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?)",
                     (eid, guid, discipline, cls, name, elem_type, storey,
-                     material_name, material_rgba))
+                     material_name, material_rgba, building_name))
                 conn.execute(
                     "INSERT OR IGNORE INTO elements_rtree "
                     "(id, minX, maxX, minY, maxY, minZ, maxZ) VALUES (?,?,?,?,?,?,?)",
@@ -986,6 +1040,19 @@ def extract(ifc_path, output_path, exclude=None):
 
     conn.close()
 
+    # S192c: close library DB and log stats
+    if lib_conn:
+        lib_conn.commit()
+        lib_total = lib_conn.execute(
+            "SELECT COUNT(*) FROM component_geometries").fetchone()[0]
+        lib_conn.close()
+        lib_new = len(lib_existing_hashes) - (lib_total - len(existing_hashes))
+        print(f"  [S192] §LIB_WRITE library_db={library_db} "
+              f"hashes_written={len(existing_hashes)} total_in_lib={lib_total}")
+    else:
+        print(f"  [S192] §LIB_SKIP --library-db not set, "
+              f"component_geometries VIEW created in extracted DB")
+
     # Forensic abstract
     if world_min[0] < 1e29:
         log.vertex_range = (world_min, world_max)
@@ -1004,10 +1071,12 @@ def main():
     parser.add_argument("--ifc", required=True, help="IFC source file path")
     parser.add_argument("-o", "--output", required=True, help="Output reference DB path")
     parser.add_argument("--exclude", help="Comma-separated IFC classes to additionally exclude")
+    parser.add_argument("--library-db", help="Also write component_geometries to this library DB "
+                        "(S192c: enables Direct Stream without separate extraction)")
     args = parser.parse_args()
 
     exclude = args.exclude.split(",") if args.exclude else []
-    extract(args.ifc, args.output, exclude=exclude)
+    extract(args.ifc, args.output, exclude=exclude, library_db=args.library_db)
 
 
 if __name__ == "__main__":
