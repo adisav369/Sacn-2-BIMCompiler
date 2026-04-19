@@ -217,61 +217,138 @@ function calcEquipment(ifcClass, laborDays) {
 }
 
 // ============================================================================
-// SCHEDULE GENERATION (matches schedule_generator.py)
+// SCHEDULE GENERATION — realistic storey-by-storey, phase-dependent
 // ============================================================================
+// Model:
+//  - Storeys processed bottom-up within each phase
+//  - Tasks in same phase+storey run concurrently (different trades)
+//  - Next storey starts after previous storey (small overlap lag)
+//  - Next phase on a storey starts after previous phase on THAT storey finishes + lag
+//  - Single-task duration capped at ~20 days; parallel crews added beyond that
+//  - Working days: Mon-Sat (JS getDay: 1-6)
+
 function generateSchedule(activities, startDateStr) {
-  const startDate = new Date(startDateStr || '2025-01-06');
-  const workingDays = new Set([0,1,2,3,4,5]); // Mon-Sat
+  const projectStart = new Date(startDateStr || '2025-01-06');
+
+  // Mon-Sat working (JS getDay: 0=Sun, 1=Mon ... 6=Sat)
+  const isWorkDay = d => { const w = d.getDay(); return w >= 1 && w <= 6; };
+
+  // Advance by N working days from a date
+  function addWorkDays(from, n) {
+    const d = new Date(from);
+    let rem = Math.ceil(n);
+    while (rem > 0) { d.setDate(d.getDate() + 1); if (isWorkDay(d)) rem--; }
+    return d;
+  }
+
+  // Storey sort: basements < ground < levels < roof
+  function storeyRank(s) {
+    if (!s) return 999;
+    const u = s.toUpperCase();
+    if (u.includes('ROOF')) return 900;
+    if (u.includes('BASEMENT') || u.startsWith('B')) return -10 + (parseInt(u.replace(/\D/g,''))||0);
+    if (u === 'GROUND' || u === 'G' || u === 'G0' || u === 'GF') return 0;
+    const n = parseInt(u.replace(/\D/g,''));
+    return isNaN(n) ? 50 : n;
+  }
+
+  const PHASE_ORDER = ['Substructure','Superstructure','MEP Rough-in','Architecture','MEP Final','Finishes'];
+  const INTER_PHASE_LAG = 5;   // working days between phases on same storey
+  const INTER_STOREY_LAG = 2;  // working days between storeys in same phase
+  const MAX_TASK_DAYS = 20;    // cap before adding parallel crews
+
+  // Group activities by phase -> storey
+  const grouped = {};  // phase|||storey -> [act, ...]
+  const phaseSets = {};
+  for (const act of activities) {
+    const rules = SEQUENCE_RULES[act.cls] || DEFAULT_RULE;
+    const phase = rules.phase;
+    const storey = act.storey || 'Unknown';
+    const key = `${phase}|||${storey}`;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push({...act, phase, rules});
+    if (!phaseSets[phase]) phaseSets[phase] = new Set();
+    phaseSets[phase].add(storey);
+  }
+
+  // Sort storeys per phase
+  for (const p of Object.keys(phaseSets)) {
+    phaseSets[p] = [...phaseSets[p]].sort((a,b) => storeyRank(a) - storeyRank(b));
+  }
+
+  // storeyPhaseEnd[storey][phase] = finish date
+  const storeyPhaseEnd = {};
   const tasks = [];
   let taskId = 0;
 
-  // Sort by sequence
-  const sorted = [...activities].sort((a,b) => {
-    const sa = (SEQUENCE_RULES[a.cls] || DEFAULT_RULE).sequence;
-    const sb = (SEQUENCE_RULES[b.cls] || DEFAULT_RULE).sequence;
-    return sa - sb || a.storey.localeCompare(b.storey);
-  });
+  for (const phase of PHASE_ORDER) {
+    if (!phaseSets[phase]) continue;
+    let prevStoreyEnd = null;
 
-  for (const act of sorted) {
-    const rules = SEQUENCE_RULES[act.cls] || DEFAULT_RULE;
-    const prod = act.labor.prod || 10;
-    const duration = Math.max(1, act.qty / prod);
-    const crew = act.labor.crew || 2;
-    const resource = act.labor.tradeKey || rules.resource;
+    for (const storey of phaseSets[phase]) {
+      const key = `${phase}|||${storey}`;
+      const acts = grouped[key];
+      if (!acts) continue;
 
-    // Calculate start date: project_start + sequence * 5 days
-    const taskStart = new Date(startDate);
-    taskStart.setDate(taskStart.getDate() + rules.sequence * 5);
+      // Start date: wait for (a) previous phase on this storey, (b) previous storey in this phase
+      let storeyStart = new Date(projectStart);
 
-    // Walk forward counting working days
-    const taskFinish = new Date(taskStart);
-    let remaining = duration;
-    while (remaining > 0) {
-      if (workingDays.has(taskFinish.getDay())) remaining -= 1;
-      if (remaining > 0) taskFinish.setDate(taskFinish.getDate() + 1);
+      const phaseIdx = PHASE_ORDER.indexOf(phase);
+      if (phaseIdx > 0) {
+        const prevPhase = PHASE_ORDER[phaseIdx - 1];
+        if (storeyPhaseEnd[storey] && storeyPhaseEnd[storey][prevPhase]) {
+          const after = addWorkDays(storeyPhaseEnd[storey][prevPhase], INTER_PHASE_LAG);
+          if (after > storeyStart) storeyStart = after;
+        }
+      }
+      if (prevStoreyEnd) {
+        const after = addWorkDays(prevStoreyEnd, INTER_STOREY_LAG);
+        if (after > storeyStart) storeyStart = after;
+      }
+
+      // Tasks in same phase+storey run concurrently — find longest
+      let maxFinish = storeyStart;
+
+      for (const act of acts) {
+        const prod = act.labor.prod || 10;
+        let duration = Math.max(1, act.qty / prod);
+        let crews = 1;
+        if (duration > MAX_TASK_DAYS) {
+          crews = Math.ceil(duration / MAX_TASK_DAYS);
+          duration = Math.ceil(duration / crews);
+        }
+
+        const taskFinish = addWorkDays(storeyStart, duration);
+        if (taskFinish > maxFinish) maxFinish = taskFinish;
+
+        const equipAlloc = EQUIPMENT_ALLOCATION[act.cls];
+        taskId++;
+        tasks.push({
+          id: taskId,
+          wbs: `1.${act.rules.sequence}.${taskId}`,
+          name: `${storey} - Install ${act.cls.replace('Ifc','')} (${act.disc})`,
+          phase,
+          discipline: act.disc,
+          storey,
+          qty: act.qty,
+          uom: act.unit || 'EA',
+          productivity: prod,
+          duration,
+          crews,
+          startDate: storeyStart.toISOString().slice(0,10),
+          finishDate: taskFinish.toISOString().slice(0,10),
+          resource: act.labor.tradeKey || act.rules.resource || '',
+          crew: (act.labor.crew || 2) * crews,
+          equipment: equipAlloc ? EQUIPMENT_RATES[equipAlloc.equipment].desc : '',
+          startDay: Math.round((storeyStart - projectStart) / 86400000),
+          finishDay: Math.round((taskFinish - projectStart) / 86400000),
+        });
+      }
+
+      if (!storeyPhaseEnd[storey]) storeyPhaseEnd[storey] = {};
+      storeyPhaseEnd[storey][phase] = maxFinish;
+      prevStoreyEnd = maxFinish;
     }
-
-    const equipAlloc = EQUIPMENT_ALLOCATION[act.cls];
-    taskId++;
-    tasks.push({
-      id: taskId,
-      wbs: `1.${rules.sequence}.${taskId}`,
-      name: `${act.storey} - Install ${act.cls.replace('Ifc','')} (${act.disc})`,
-      phase: rules.phase,
-      discipline: act.disc,
-      storey: act.storey,
-      qty: act.qty,
-      uom: act.unit || 'EA',
-      productivity: prod,
-      duration,
-      startDate: taskStart.toISOString().slice(0,10),
-      finishDate: taskFinish.toISOString().slice(0,10),
-      resource: resource || '',
-      crew,
-      equipment: equipAlloc ? EQUIPMENT_RATES[equipAlloc.equipment].desc : '',
-      startDay: Math.round((taskStart - startDate) / 86400000),
-      finishDay: Math.round((taskFinish - startDate) / 86400000),
-    });
   }
   return tasks;
 }
@@ -776,14 +853,14 @@ function save4D() {
 
   // ── Sheet 1: Construction Schedule ──
   const schedHeaders = ['WBS','Task Name','Phase','Discipline','Storey','Quantity','UOM',
-    'Productivity','Duration (days)','Start Date','Finish Date','Labor Resource','Crew Size','Equipment','Status','% Complete'];
+    'Productivity','Duration (days)','Gangs','Start Date','Finish Date','Labor Resource','Crew Size','Equipment','Status','% Complete'];
   const schedRows = [schedHeaders];
   for (const t of scheduleData) {
     schedRows.push([t.wbs,t.name,t.phase,t.discipline,t.storey,t.qty,t.uom,t.productivity,
-      Math.round(t.duration*100)/100, t.startDate, t.finishDate, t.resource, t.crew, t.equipment, 'Not Started', 0]);
+      Math.round(t.duration*100)/100, t.crews||1, t.startDate, t.finishDate, t.resource, t.crew, t.equipment, 'Not Started', 0]);
   }
   const wsSched = XLSX.utils.aoa_to_sheet(schedRows);
-  wsSched['!cols'] = [{wch:12},{wch:40},{wch:16},{wch:10},{wch:10},{wch:8},{wch:6},{wch:10},{wch:12},{wch:12},{wch:12},{wch:16},{wch:8},{wch:22},{wch:12},{wch:10}];
+  wsSched['!cols'] = [{wch:12},{wch:40},{wch:16},{wch:10},{wch:10},{wch:8},{wch:6},{wch:10},{wch:12},{wch:6},{wch:12},{wch:12},{wch:16},{wch:8},{wch:22},{wch:12},{wch:10}];
   XLSX.utils.book_append_sheet(wb, wsSched, 'Construction Schedule');
 
   // ── Sheet 2: Project Summary ──
