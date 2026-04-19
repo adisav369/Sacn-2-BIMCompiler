@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BIM OOTB — 4D/5D Analytics</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; padding: 20px; }
+  h1 { color: #4fc3f7; font-size: 20px; margin-bottom: 4px; }
+  h2 { color: #4fc3f7; font-size: 15px; margin: 20px 0 8px; }
+  .subtitle { color: #888; font-size: 12px; margin-bottom: 16px; }
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1200px; }
+  .chart-box {
+    background: rgba(255,255,255,0.05); border-radius: 8px; padding: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .chart-box.full { grid-column: 1 / -1; }
+  canvas { max-width: 100%; }
+  table { border-collapse: collapse; width: 100%; font-size: 11px; margin-top: 8px; }
+  th { background: rgba(79,195,247,0.15); color: #4fc3f7; text-align: left; padding: 4px 8px; }
+  td { padding: 3px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  tr:hover td { background: rgba(255,255,255,0.05); }
+  .total-row td { font-weight: bold; color: #4fc3f7; border-top: 2px solid #4fc3f7; }
+  .toolbar {
+    position: fixed; top: 16px; right: 16px; z-index: 10;
+    background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 12px;
+    backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08);
+  }
+  .toolbar button {
+    padding: 4px 10px; background: #444; color: #fff; border: 1px solid #666;
+    border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 4px;
+  }
+  .toolbar button:hover { background: #4fc3f7; color: #000; }
+  #status { color: #4fc3f7; font-size: 12px; margin-top: 12px; }
+</style>
+</head>
+<body>
+<h1>BIM OOTB — 4D/5D Analytics</h1>
+<div class="subtitle" id="info">Loading...</div>
+<div class="toolbar">
+  <button onclick="saveExcel()">Save Excel &#128202;</button>
+  <button onclick="toggleTheme()">&#9788;</button>
+</div>
+<div class="charts" id="charts"></div>
+<div id="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+const params = new URLSearchParams(location.search);
+const DB_URL = params.get('db') || 'sandbox_1M_extracted.db';
+const BLD = params.get('bld') || '';
+
+// CIDB 2024 rates (from Federation comprehensive_boq_export.py)
+const RATES = {
+  IfcDuct:{rate:165,unit:'M',desc:'GI Ductwork 400mm'},IfcDuctSegment:{rate:165,unit:'M',desc:'Duct Segment'},
+  IfcDuctFitting:{rate:380,unit:'EA',desc:'Duct Fittings'},IfcPipe:{rate:48.5,unit:'M',desc:'PVC Pipe 100mm'},
+  IfcPipeSegment:{rate:48.5,unit:'M',desc:'Pipe Segment'},IfcPipeFitting:{rate:95,unit:'EA',desc:'Pipe Fittings'},
+  IfcCableCarrier:{rate:78,unit:'M',desc:'Cable Tray 300mm'},IfcCableCarrierSegment:{rate:78,unit:'M',desc:'Cable Tray'},
+  IfcBeam:{rate:680,unit:'M',desc:'Steel I-Beam'},IfcColumn:{rate:1250,unit:'M',desc:'Steel Column'},
+  IfcSlab:{rate:285,unit:'M2',desc:'RC Slab 250mm'},IfcWall:{rate:145,unit:'M2',desc:'Blockwork Wall 150mm'},
+  IfcWallStandardCase:{rate:145,unit:'M2',desc:'Standard Wall'},IfcCurtainWall:{rate:750,unit:'M2',desc:'Curtain Wall'},
+  IfcCovering:{rate:185,unit:'M2',desc:'Floor/Ceiling Finish'},IfcRoof:{rate:238,unit:'M2',desc:'Metal Roof'},
+  IfcLightFixture:{rate:485,unit:'EA',desc:'LED Light'},IfcOutlet:{rate:125,unit:'EA',desc:'Power Outlet'},
+  IfcDoor:{rate:2850,unit:'EA',desc:'Door Set'},IfcWindow:{rate:1580,unit:'EA',desc:'Window'},
+  IfcBuildingElementProxy:{rate:850,unit:'EA',desc:'Misc Element'},IfcFlowTerminal:{rate:3500,unit:'EA',desc:'HVAC Terminal'},
+  IfcFurnishingElement:{rate:1200,unit:'EA',desc:'Furniture'},IfcPlate:{rate:95,unit:'M2',desc:'Steel Plate'},
+  IfcMember:{rate:320,unit:'M',desc:'Steel Member'},IfcRailing:{rate:280,unit:'M',desc:'Railing'},
+  IfcStair:{rate:4500,unit:'EA',desc:'Staircase'},IfcStairFlight:{rate:2200,unit:'EA',desc:'Stair Flight'},
+};
+const LABOR_PROD = {
+  IfcDuct:18,IfcDuctSegment:18,IfcDuctFitting:12,IfcPipe:25,IfcPipeSegment:25,IfcPipeFitting:15,
+  IfcCableCarrier:30,IfcCableCarrierSegment:30,IfcLightFixture:20,IfcOutlet:25,
+  IfcBeam:8,IfcColumn:6,IfcSlab:35,IfcWall:12,IfcWallStandardCase:12,
+  IfcDoor:4,IfcWindow:5,IfcCurtainWall:8,IfcCovering:40,IfcRoof:25,
+};
+const DISC_COLORS = {
+  ARC:'#4488ff',STR:'#44cccc',MEP:'#44cc44',ELEC:'#cccc44',FP:'#cc8844',
+  ACMV:'#cc4444',PLB:'#8844cc',HVAC:'#44aacc',SAN:'#aa44aa',VENT:'#88ccaa',
+};
+
+let db = null;
+let qtoData = [];   // [{disc,cls,storey,qty,meshes,matRate,matTotal,laborDays,laborCost}]
+let discSummary = {}; // disc → {qty,matTotal,laborCost}
+let grandMaterial = 0, grandLabor = 0, totalQty = 0;
+let chartInstances = [];
+
+async function init() {
+  const SQL = await initSqlJs({
+    locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
+  });
+  document.getElementById('info').textContent = `Loading ${DB_URL}...`;
+  const buf = await fetch(DB_URL).then(r => r.arrayBuffer());
+  db = new SQL.Database(new Uint8Array(buf));
+
+  // Determine building
+  let bld = BLD;
+  if (!bld) {
+    const r = db.exec("SELECT building, COUNT(*) c FROM elements_meta GROUP BY building ORDER BY c DESC LIMIT 1");
+    bld = r.length ? r[0].values[0][0] : 'Unknown';
+  }
+
+  // Query QTO
+  const rows = db.exec(`
+    SELECT m.discipline, m.ifc_class, m.storey, COUNT(*) as qty,
+           COUNT(DISTINCT i.geometry_hash) as meshes
+    FROM elements_meta m LEFT JOIN element_instances i ON m.guid = i.guid
+    WHERE m.building = '${bld}'
+    GROUP BY m.discipline, m.ifc_class, m.storey
+    ORDER BY m.discipline, m.storey, qty DESC
+  `);
+
+  if (!rows.length) { document.getElementById('info').textContent = 'No data.'; return; }
+
+  // Process data
+  qtoData = [];
+  discSummary = {};
+  grandMaterial = 0; grandLabor = 0; totalQty = 0;
+
+  for (const row of rows[0].values) {
+    const [disc, cls, storey, qty, meshes] = row;
+    const mc = RATES[cls];
+    const matRate = mc ? mc.rate : 0;
+    const matTotal = Math.round(matRate * qty);
+    const prod = LABOR_PROD[cls] || 10;
+    const laborDays = Math.max(1, Math.round(qty / prod));
+    const laborCost = Math.round(laborDays * 165);
+    grandMaterial += matTotal;
+    grandLabor += laborCost;
+    totalQty += qty;
+
+    qtoData.push({ disc, cls, storey, qty, meshes, matRate, matTotal, laborDays, laborCost,
+                    desc: mc ? mc.desc : cls, unit: mc ? mc.unit : 'EA' });
+
+    if (!discSummary[disc]) discSummary[disc] = { qty: 0, matTotal: 0, laborCost: 0 };
+    discSummary[disc].qty += qty;
+    discSummary[disc].matTotal += matTotal;
+    discSummary[disc].laborCost += laborCost;
+  }
+
+  document.getElementById('info').textContent =
+    `${bld} — ${totalQty.toLocaleString()} elements — RM ${(grandMaterial + grandLabor).toLocaleString()} total`;
+
+  renderCharts(bld);
+}
+
+function renderCharts(bld) {
+  const c = document.getElementById('charts');
+  c.innerHTML = '';
+
+  // ── 1. Cost Pie by Discipline ──
+  const pieBox = el('div', 'chart-box');
+  pieBox.innerHTML = '<h2>5D — Cost by Discipline (RM)</h2>';
+  const pieCanvas = el('canvas'); pieCanvas.id = 'chart-cost-pie';
+  pieBox.appendChild(pieCanvas);
+  c.appendChild(pieBox);
+
+  const discs = Object.keys(discSummary);
+  const discTotals = discs.map(d => discSummary[d].matTotal + discSummary[d].laborCost);
+  chartInstances.push(new Chart(pieCanvas, {
+    type: 'pie',
+    data: {
+      labels: discs,
+      datasets: [{ data: discTotals, backgroundColor: discs.map(d => DISC_COLORS[d] || '#888') }]
+    },
+    options: { plugins: { legend: { position: 'right', labels: { color: '#ccc' } } } }
+  }));
+
+  // ── 2. Element Count Bar by Discipline ──
+  const barBox = el('div', 'chart-box');
+  barBox.innerHTML = '<h2>Element Count by Discipline</h2>';
+  const barCanvas = el('canvas'); barCanvas.id = 'chart-qty-bar';
+  barBox.appendChild(barCanvas);
+  c.appendChild(barBox);
+
+  chartInstances.push(new Chart(barCanvas, {
+    type: 'bar',
+    data: {
+      labels: discs,
+      datasets: [{ label: 'Elements', data: discs.map(d => discSummary[d].qty),
+                    backgroundColor: discs.map(d => DISC_COLORS[d] || '#888') }]
+    },
+    options: { scales: { y: { ticks: { color: '#aaa' } }, x: { ticks: { color: '#aaa' } } },
+               plugins: { legend: { display: false } } }
+  }));
+
+  // ── 3. Material vs Labour Cost Bar ──
+  const mlBox = el('div', 'chart-box');
+  mlBox.innerHTML = '<h2>Material vs Labour Cost (RM)</h2>';
+  const mlCanvas = el('canvas'); mlCanvas.id = 'chart-mat-labor';
+  mlBox.appendChild(mlCanvas);
+  c.appendChild(mlBox);
+
+  chartInstances.push(new Chart(mlCanvas, {
+    type: 'bar',
+    data: {
+      labels: discs,
+      datasets: [
+        { label: 'Material', data: discs.map(d => discSummary[d].matTotal), backgroundColor: '#4fc3f7' },
+        { label: 'Labour', data: discs.map(d => discSummary[d].laborCost), backgroundColor: '#ff8844' }
+      ]
+    },
+    options: { scales: { y: { stacked: true, ticks: { color: '#aaa' } }, x: { stacked: true, ticks: { color: '#aaa' } } },
+               plugins: { legend: { labels: { color: '#ccc' } } } }
+  }));
+
+  // ── 4. Gantt — 4D Schedule ──
+  const ganttBox = el('div', 'chart-box');
+  ganttBox.innerHTML = '<h2>4D — Construction Schedule</h2>';
+  const ganttCanvas = el('canvas'); ganttCanvas.id = 'chart-gantt';
+  ganttCanvas.height = 300;
+  ganttBox.appendChild(ganttCanvas);
+  c.appendChild(ganttBox);
+
+  // Build phase groups
+  const phases = {};
+  for (const r of qtoData) {
+    const phase = r.disc === 'STR' ? '1-Structure' : r.disc === 'ARC' ? '2-Architecture' : '3-MEP/Services';
+    if (!phases[phase]) phases[phase] = { qty: 0, days: 0 };
+    phases[phase].qty += r.qty;
+    phases[phase].days += r.laborDays;
+  }
+  const phaseNames = Object.keys(phases).sort();
+  let dayOffset = 0;
+  const ganttData = phaseNames.map(p => {
+    const start = dayOffset;
+    dayOffset += phases[p].days;
+    return { phase: p, start, end: dayOffset, days: phases[p].days, qty: phases[p].qty };
+  });
+
+  chartInstances.push(new Chart(ganttCanvas, {
+    type: 'bar',
+    data: {
+      labels: ganttData.map(g => g.phase),
+      datasets: [{
+        label: 'Duration (days)',
+        data: ganttData.map(g => [g.start, g.end]),
+        backgroundColor: ['#44cccc', '#4488ff', '#44cc44'],
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      scales: {
+        x: { title: { display: true, text: 'Project Day', color: '#aaa' }, ticks: { color: '#aaa' } },
+        y: { ticks: { color: '#aaa' } }
+      },
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => {
+          const g = ganttData[ctx.dataIndex];
+          return `Day ${g.start}–${g.end} (${g.days} days, ${g.qty.toLocaleString()} elements)`;
+        }}}
+      }
+    }
+  }));
+
+  // ── 5. BOQ Data Table ──
+  const tableBox = el('div', 'chart-box full');
+  tableBox.innerHTML = '<h2>5D — Bill of Quantities (CIDB 2024 Rates)</h2>';
+  let html = '<table><tr><th>Disc</th><th>IFC Class</th><th>Storey</th><th>Qty</th><th>Unit</th>' +
+    '<th>Description</th><th>Rate (RM)</th><th>Material (RM)</th><th>Labour Days</th><th>Labour (RM)</th></tr>';
+  for (const r of qtoData) {
+    html += `<tr><td>${r.disc}</td><td>${r.cls}</td><td>${r.storey||''}</td><td>${r.qty.toLocaleString()}</td>` +
+      `<td>${r.unit}</td><td>${r.desc}</td><td>${r.matRate.toLocaleString()}</td>` +
+      `<td>${r.matTotal.toLocaleString()}</td><td>${r.laborDays}</td><td>${r.laborCost.toLocaleString()}</td></tr>`;
+  }
+  html += `<tr class="total-row"><td colspan="6">GRAND TOTAL</td><td></td>` +
+    `<td>RM ${grandMaterial.toLocaleString()}</td><td></td><td>RM ${grandLabor.toLocaleString()}</td></tr>`;
+  html += `<tr class="total-row"><td colspan="6">COMBINED TOTAL</td><td colspan="4">RM ${(grandMaterial+grandLabor).toLocaleString()}</td></tr>`;
+  html += '</table>';
+  tableBox.innerHTML += html;
+  c.appendChild(tableBox);
+
+  // ── 6. Summary footer ──
+  const footBox = el('div', 'chart-box full');
+  footBox.innerHTML = `<table>
+    <tr><td>Building</td><td><b>${bld}</b></td></tr>
+    <tr><td>Total Elements</td><td><b>${totalQty.toLocaleString()}</b></td></tr>
+    <tr><td>Material Cost</td><td><b>RM ${grandMaterial.toLocaleString()}</b></td></tr>
+    <tr><td>Labour Cost</td><td><b>RM ${grandLabor.toLocaleString()}</b></td></tr>
+    <tr><td>Grand Total</td><td><b>RM ${(grandMaterial+grandLabor).toLocaleString()}</b></td></tr>
+    <tr><td>Project Duration</td><td><b>${dayOffset} days</b></td></tr>
+    <tr><td>Rates Source</td><td>CIDB Malaysia 2024 / BCISM Cost Book</td></tr>
+    <tr><td>Exported</td><td>${new Date().toISOString()}</td></tr>
+    <tr><td>Source</td><td>BIM OOTB — Frictionless BIM</td></tr>
+  </table>`;
+  c.appendChild(footBox);
+}
+
+function el(tag, cls) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  return e;
+}
+
+// ── Save to Excel (data + chart images) ──
+function saveExcel() {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: 5D BOQ
+  const boqHeader = ['Discipline','IFC Class','Storey','Qty','Unit','Description',
+                     'Rate (RM)','Material (RM)','Labour Days','Labour (RM)'];
+  const boqRows = [boqHeader];
+  for (const r of qtoData) {
+    boqRows.push([r.disc, r.cls, r.storey, r.qty, r.unit, r.desc, r.matRate, r.matTotal, r.laborDays, r.laborCost]);
+  }
+  boqRows.push([]);
+  boqRows.push(['','','','','','MATERIAL SUBTOTAL','', grandMaterial]);
+  boqRows.push(['','','','','','LABOUR SUBTOTAL','','','', grandLabor]);
+  boqRows.push(['','','','','','GRAND TOTAL','', grandMaterial + grandLabor]);
+  boqRows.push([]);
+  boqRows.push(['Rates: CIDB Malaysia 2024 / BCISM Cost Book']);
+  boqRows.push(['BIM OOTB — Frictionless BIM', new Date().toISOString()]);
+
+  const ws1 = XLSX.utils.aoa_to_sheet(boqRows);
+  ws1['!cols'] = [{wch:10},{wch:26},{wch:16},{wch:7},{wch:5},{wch:28},{wch:12},{wch:14},{wch:10},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws1, '5D-BOQ');
+
+  // Sheet 2: 4D Schedule
+  const schedRows = [['Phase','Discipline','Qty','Duration (days)','Start Day','End Day']];
+  const phases = {};
+  for (const r of qtoData) {
+    const phase = r.disc === 'STR' ? '1-Structure' : r.disc === 'ARC' ? '2-Architecture' : '3-MEP/Services';
+    const key = phase + '-' + r.disc;
+    if (!phases[key]) phases[key] = { phase, disc: r.disc, qty: 0, days: 0 };
+    phases[key].qty += r.qty;
+    phases[key].days += r.laborDays;
+  }
+  let day = 1;
+  for (const p of Object.values(phases).sort((a,b) => a.phase.localeCompare(b.phase))) {
+    schedRows.push([p.phase, p.disc, p.qty, p.days, day, day + p.days - 1]);
+    day += p.days;
+  }
+  schedRows.push([]);
+  schedRows.push(['TOTAL','', totalQty, day - 1, 1, day - 1]);
+
+  const ws2 = XLSX.utils.aoa_to_sheet(schedRows);
+  ws2['!cols'] = [{wch:18},{wch:10},{wch:8},{wch:14},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws2, '4D-Schedule');
+
+  // Sheet 3: Discipline Summary
+  const sumRows = [['Discipline','Elements','Material (RM)','Labour (RM)','Total (RM)']];
+  for (const [d, s] of Object.entries(discSummary)) {
+    sumRows.push([d, s.qty, s.matTotal, s.laborCost, s.matTotal + s.laborCost]);
+  }
+  sumRows.push([]);
+  sumRows.push(['TOTAL', totalQty, grandMaterial, grandLabor, grandMaterial + grandLabor]);
+
+  const ws3 = XLSX.utils.aoa_to_sheet(sumRows);
+  ws3['!cols'] = [{wch:10},{wch:10},{wch:14},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Summary');
+
+  const bld = BLD || 'Building';
+  const filename = `BIM_OOTB_${bld}_4D5D_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  document.getElementById('status').textContent = `Saved ${filename}`;
+}
+
+// ── Theme toggle ──
+let light = false;
+function toggleTheme() {
+  light = !light;
+  document.body.style.background = light ? '#f0f0f0' : '#1a1a2e';
+  document.body.style.color = light ? '#222' : '#e0e0e0';
+  document.querySelectorAll('h1,h2').forEach(e => e.style.color = light ? '#0077cc' : '#4fc3f7');
+  document.querySelectorAll('th').forEach(e => {
+    e.style.background = light ? 'rgba(0,119,204,0.1)' : 'rgba(79,195,247,0.15)';
+    e.style.color = light ? '#0077cc' : '#4fc3f7';
+  });
+  document.querySelectorAll('.chart-box').forEach(e => {
+    e.style.background = light ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.05)';
+    e.style.borderColor = light ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)';
+  });
+}
+
+init();
+</script>
+</body>
+</html>

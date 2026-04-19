@@ -2,55 +2,133 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>RTree Browser Demo — BIM Federation</title>
+<title>BIM OOTB — Frictionless BIM</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
   #canvas { width: 100vw; height: 100vh; display: block; }
   #hud {
     position: fixed; top: 16px; left: 16px; z-index: 10;
-    background: rgba(0,0,0,0.75); border-radius: 8px; padding: 12px 16px;
-    font-size: 13px; line-height: 1.6; min-width: 260px;
-    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 12px;
+    font-size: 12px; line-height: 1.5;
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(8px);
   }
-  #hud h2 { font-size: 15px; margin-bottom: 6px; color: #4fc3f7; }
-  #hud .stat { color: #aaa; }
+  #hud h2 { font-size: 13px; margin-bottom: 4px; color: #4fc3f7; }
+  #hud .stat { color: #ccc; }
   #hud .stat b { color: #fff; }
   #search-box {
     position: fixed; top: 16px; right: 16px; z-index: 10;
-    background: rgba(0,0,0,0.75); border-radius: 8px; padding: 12px 16px;
-    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(8px);
   }
   #search-box input {
-    background: #222; color: #fff; border: 1px solid #555; border-radius: 4px;
-    padding: 6px 10px; font-size: 14px; width: 220px; outline: none;
+    background: #222; color: #fff; border: 1px solid #555; border-radius: 3px;
+    padding: 4px 8px; font-size: 12px; width: 160px; outline: none;
   }
   #search-box input:focus { border-color: #4fc3f7; }
-  #search-results { margin-top: 8px; font-size: 12px; max-height: 300px; overflow-y: auto; }
-  #search-results div { padding: 3px 0; cursor: pointer; }
-  #search-results div:hover { color: #4fc3f7; }
+  .bld-card {
+    padding: 3px 6px; margin: 2px 0; cursor: pointer; border-radius: 3px;
+    font-size: 11px; color: #ccc; display: flex; justify-content: space-between;
+  }
+  .bld-card:hover { background: rgba(79,195,247,0.15); color: #4fc3f7; }
+  .bld-card .cnt { color: #888; font-size: 10px; }
   #status {
     position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 10;
-    background: rgba(0,0,0,0.8); border-radius: 6px; padding: 8px 20px;
+    background: rgba(0,0,0,0.3); border-radius: 6px; padding: 8px 20px;
+    backdrop-filter: blur(8px);
     font-size: 13px; color: #4fc3f7;
   }
   .disc-bar { display: inline-block; height: 10px; border-radius: 2px; margin-right: 1px; }
+  .panel-toggle {
+    cursor: pointer; color: #888; font-size: 14px; font-weight: bold;
+    user-select: none; float: right;
+  }
+  .panel-toggle:hover { color: #4fc3f7; }
+  .panel-body { transition: max-height 0.2s ease, opacity 0.2s ease; overflow: hidden; }
+  .panel-body.collapsed { max-height: 0 !important; opacity: 0; padding: 0; }
+  #info-panel {
+    position: fixed; bottom: 50px; right: 16px; z-index: 10;
+    background: rgba(0,0,0,0.3); border-radius: 8px; padding: 12px 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(8px);
+    font-size: 12px; line-height: 1.6; min-width: 240px; max-width: 320px;
+    display: none;
+  }
+  #info-panel .label { color: #888; }
+  #info-panel .value { color: #fff; }
+  #storey-panel {
+    position: fixed; bottom: 90px; left: 16px; z-index: 10;
+    background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(8px);
+    font-size: 12px; display: none;
+  }
+  #storey-panel button {
+    display: block; width: 100%; text-align: left;
+    padding: 3px 8px; margin: 2px 0; background: #333; color: #ccc;
+    border: 1px solid #555; border-radius: 3px; cursor: pointer; font-size: 11px;
+  }
+  #storey-panel button:hover { background: #444; color: #4fc3f7; }
+  #storey-panel button.active { background: #4fc3f7; color: #000; border-color: #4fc3f7; }
+  #disc-body button { opacity: 0.3; text-decoration: line-through; }
+  #disc-body button.active { opacity: 1.0; text-decoration: none; }
 </style>
 </head>
 <body>
 <div id="hud">
-  <h2>RTree Browser Demo</h2>
-  <div class="stat">Buildings: <b id="s-buildings">—</b></div>
-  <div class="stat">Elements: <b id="s-elements">—</b></div>
-  <div class="stat">Meshes: <b id="s-meshes">—</b></div>
-  <div class="stat">Streamed: <b id="s-streamed">0</b></div>
-  <div class="stat" style="margin-top:6px">Disciplines:</div>
-  <div id="disc-bars"></div>
+  <h2>BIM OOTB <span class="panel-toggle" onclick="togglePanel('hud-body')">−</span></h2>
+  <div id="hud-body" class="panel-body">
+    <div class="stat">Buildings: <b id="s-buildings">—</b></div>
+    <div class="stat">Elements: <b id="s-elements">—</b></div>
+    <div class="stat">Meshes: <b id="s-meshes">—</b></div>
+    <div class="stat">Streaming: <b id="s-active" style="color:#4fc3f7">—</b></div>
+    <div class="stat">Rendered: <b id="s-streamed">0</b> <b id="s-current-element" style="color:#4fc3f7;font-size:10px"></b>
+      <div style="height:3px;background:#333;border-radius:2px;margin-top:2px"><div id="s-progress" style="height:100%;width:0%;background:#4fc3f7;border-radius:2px;transition:width 0.1s"></div></div>
+    </div>
+    <div class="stat">Done: <b id="s-buildings-done">0</b></div>
+    <div id="disc-bars" style="margin-top:4px"></div>
+  </div>
 </div>
 <div id="search-box">
-  <input id="search" type="text" placeholder="Search IfcDoor, IfcWall...">
-  <button onclick="clearStreamed()" style="margin-top:6px;padding:4px 10px;background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:12px">Clear Meshes</button>
-  <div id="search-results"></div>
+  <input id="search" type="text" placeholder="Filter...">
+  <span class="panel-toggle" onclick="togglePanel('search-body')">−</span>
+  <div id="search-body" class="panel-body">
+    <div style="margin:4px 0">
+      <button onclick="clearStreamed()" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">Clear</button>
+      <button id="xray-btn" onclick="toggleXray()" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">X-Ray</button>
+      <button onclick="screenshot()" title="Screenshot" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128247;</button>
+      <button onclick="toggleFullscreen()" title="Fullscreen" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9974;</button>
+      <button id="theme-btn" onclick="toggleTheme()" title="Light/Dark" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9788;</button>
+      <button id="fly-btn" onclick="toggleFlyAround()" title="Fly Around" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9992;</button>
+      <button onclick="export4D5D()" title="4D/5D Export" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128202;</button>
+    </div>
+    <div id="building-list" style="max-height:400px;overflow-y:auto"></div>
+  </div>
+</div>
+<div id="info-panel">
+  <span class="panel-toggle" onclick="document.getElementById('info-panel').style.display='none'">×</span>
+  <div><span class="label">Class: </span><span class="value" id="info-class">—</span></div>
+  <div><span class="label">Name: </span><span class="value" id="info-name">—</span></div>
+  <div><span class="label">GUID: </span><span class="value" id="info-guid" style="font-size:10px">—</span></div>
+  <div><span class="label">Building: </span><span class="value" id="info-building">—</span></div>
+  <div><span class="label">Storey: </span><span class="value" id="info-storey">—</span></div>
+  <div><span class="label">Discipline: </span><span class="value" id="info-disc">—</span></div>
+  <div><span class="label">Material: </span><span class="value" id="info-material">—</span></div>
+</div>
+<div id="storey-panel">
+  <span class="panel-toggle" onclick="togglePanel('storey-body')">−</span>
+  <b style="color:#4fc3f7;font-size:12px">Storeys</b>
+  <div id="storey-body" class="panel-body"></div>
+</div>
+<div id="disc-panel" style="position:fixed;bottom:50px;left:16px;z-index:10;
+  background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 12px;
+  border:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(8px);
+  font-size:12px;display:none">
+  <span class="panel-toggle" onclick="togglePanel('disc-body')">−</span>
+  <b style="color:#4fc3f7;font-size:12px">Disciplines</b>
+  <div id="disc-body" class="panel-body"></div>
 </div>
 <div id="status">Loading sql.js...</div>
 <canvas id="canvas"></canvas>
@@ -61,13 +139,17 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <!-- sql.js (WebAssembly SQLite) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<!-- SheetJS (XLSX export) -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
 <script>
 // ── Config ──
 // Serve DBs locally: python3 -m http.server 8080
 // Or change these to OCI URLs
-const DB_URL = 'sandbox_1M_extracted.db';
-const LIB_URL = 'component_library.db';
+// Auto-detect DB from URL param: ?db=MyBuilding.db — or default
+const _params = new URLSearchParams(location.search);
+const DB_URL = _params.get('db') || 'yourproject_extracted.db';
+const LIB_URL = _params.get('lib') || 'component_library.db';  // optional — falls back to main DB
 
 // ── Discipline colours (same as Blender addon) ──
 const DISC_COLORS = {
@@ -87,17 +169,46 @@ renderer.setClearColor(0x1a1a2e);
 renderer.shadowMap.enabled = true;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x1a1a2e, 500, 3000);
+// No fog — large buildings (LTU 126K) need full visibility from all angles
+// scene.fog = new THREE.Fog(0x1a1a2e, 2000, 10000);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.5, 50000);
 camera.position.set(300, 200, 400);
 
 const controls = new THREE.OrbitControls(camera, canvas);
 controls.enableDamping = true;
-controls.dampingFactor = 0.1;
-controls.maxDistance = 5000;
-controls.maxPolarAngle = Math.PI * 0.48;  // prevent going below ground
-controls.minPolarAngle = Math.PI * 0.05;  // prevent flipping to top-down
+controls.dampingFactor = 0.08;
+controls.maxDistance = 20000;
+controls.minPolarAngle = 0;               // allow full top-down
+controls.maxPolarAngle = Math.PI;         // allow full bottom-up — unrestricted orbit
+
+// Controls: LMB=orbit, RMB=pan, scroll=zoom
+// Touchpad: two-finger drag=orbit, two-finger pinch=zoom, Shift+drag=pan
+controls.mouseButtons = {
+  LEFT: THREE.MOUSE.ROTATE,
+  MIDDLE: THREE.MOUSE.DOLLY,
+  RIGHT: THREE.MOUSE.PAN
+};
+controls.touches = {
+  ONE: THREE.TOUCH.ROTATE,
+  TWO: THREE.TOUCH.DOLLY_PAN
+};
+controls.enablePan = true;
+controls.panSpeed = 1.5;
+controls.screenSpacePanning = true;
+controls.zoomSpeed = 1.2;
+controls.rotateSpeed = 0.8;
+controls.keyPanSpeed = 20;
+
+// Shift+Left = pan (for trackpad users without middle/right mouse)
+canvas.addEventListener('pointerdown', (e) => {
+  if (e.shiftKey && e.button === 0) {
+    controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+  }
+});
+canvas.addEventListener('pointerup', () => {
+  controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+});
 
 // Lighting
 const ambient = new THREE.AmbientLight(0x606080, 0.6);
@@ -109,13 +220,14 @@ scene.add(sun);
 const hemi = new THREE.HemisphereLight(0x8888cc, 0x444422, 0.4);
 scene.add(hemi);
 
-// Ground plane
+// Ground plane — positioned after DB load to sit below the lowest building
 const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(10000, 10000),
-  new THREE.MeshLambertMaterial({ color: 0x222233 })
+  new THREE.PlaneGeometry(50000, 50000),
+  new THREE.MeshLambertMaterial({ color: 0x222233, side: THREE.DoubleSide })
 );
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
+ground.visible = false;  // shown after DB sets correct Y
 scene.add(ground);
 
 // ── State ──
@@ -126,6 +238,9 @@ let meshCache = {};        // hash → THREE.BufferGeometry
 let streamedCount = 0;
 let totalElements = 0;
 let modelOffset = { x: 0, y: 0, z: 0 };
+let activeBuilding = null;
+let activeBuildingTotal = 0;
+let buildingsRendered = new Set();
 
 const status = document.getElementById('status');
 
@@ -178,6 +293,16 @@ async function init() {
   }
   console.log(`[S192] §OFFSET ifc=(${modelOffset.x.toFixed(0)}, ${modelOffset.y.toFixed(0)}, ${modelOffset.z.toFixed(0)})`);
 
+  // Position ground plane below lowest element (IFC Z → Three.js Y)
+  const zRange = db.exec(`SELECT MIN(center_z), MAX(center_z) FROM element_transforms`);
+  if (zRange.length > 0) {
+    const minZ = zRange[0].values[0][0];
+    const groundY = (minZ - modelOffset.z) - 2;  // 2m below lowest element
+    ground.position.y = groundY;
+    ground.visible = true;
+    console.log(`[S200] §GROUND minZ_ifc=${minZ.toFixed(1)} groundY=${groundY.toFixed(1)}`);
+  }
+
   // Element + discipline counts
   const elemRows = db.exec(`SELECT COUNT(*) FROM elements_meta`);
   totalElements = elemRows[0]?.values[0][0] || 0;
@@ -189,6 +314,7 @@ async function init() {
   }
 
   updateHUD();
+  populateBuildingList();
 
   // Draw building bboxes (like Preview — 1 box per disc per building)
   drawBuildingBoxes();
@@ -217,8 +343,10 @@ async function init() {
     }
     status.textContent = `Library loaded (${(libBuf.byteLength/1024/1024).toFixed(0)}MB). Streaming nearest building...`;
   } catch (e) {
-    console.error(`[S192] §LIB_ERROR ${e.message}`);
-    status.textContent = `Library not found — bbox mode only. (${e.message})`;
+    // No separate library DB — fall back to main DB (base_geometries table)
+    console.log(`[S200] §LIB_FALLBACK using main DB for geometry (${e.message})`);
+    libDb = db;
+    status.textContent = `Using main DB for geometry. Streaming...`;
   }
 
   // Position camera — overview of city
@@ -233,9 +361,20 @@ async function init() {
   controls.update();
   console.log(`[S192] §CAMERA city_extent=${extentX.toFixed(0)}x${extentY.toFixed(0)}m dist=${dist.toFixed(0)}m`);
 
-  // Start streaming if library available
+  // Start streaming — check URL hash for deep-link first
   if (libDb) {
-    startStreaming();
+    const hashParams = loadFromHash();
+    if (hashParams && hashParams.bld && buildingCentres[hashParams.bld]) {
+      // Restore camera from deep-link
+      if (hashParams.cx) {
+        camera.position.set(Number(hashParams.cx), Number(hashParams.cy), Number(hashParams.cz));
+        controls.target.set(Number(hashParams.tx), Number(hashParams.ty), Number(hashParams.tz));
+        controls.update();
+      }
+      streamBuilding(hashParams.bld);
+    } else {
+      startStreaming();
+    }
   }
 }
 
@@ -298,40 +437,75 @@ function startStreaming() {
   streamBuilding(nearest);
 }
 
-function streamBuilding(nearest) {
-  // Stop any existing stream
-  streaming = false;
-  streamQueue = [];
-  streamIdx = 0;
+let savedStreams = {};  // building → {queue, idx}
 
-  // Query elements for nearest building (no R-tree, order by rowid as proxy)
-  const rows = db.exec(`
-    SELECT m.guid, i.geometry_hash, m.material_rgba, m.discipline,
-           t.center_x, t.center_y, t.center_z
-    FROM elements_meta m
-    JOIN element_instances i ON m.guid = i.guid
-    JOIN element_transforms t ON t.guid = m.guid
-    WHERE m.building = '${nearest}'
-      AND i.geometry_hash IS NOT NULL
-      AND m.ifc_class != 'IfcOpeningElement'
-    LIMIT 2000
-  `);
-  if (!rows.length) {
-    console.log(`[S192] §DS_EMPTY bld=${nearest} — no streamable elements`);
-    return;
+function streamBuilding(nearest) {
+  // Save current stream if in progress
+  if (activeBuilding && streaming && streamIdx < streamQueue.length) {
+    savedStreams[activeBuilding] = { queue: streamQueue, idx: streamIdx };
   }
-  streamQueue = rows[0].values;
-  streamIdx = 0;
-  streaming = true;
-  console.log(`[S192] §DS_QUEUED bld=${nearest} elements=${streamQueue.length}`);
-  status.textContent = `Streaming ${nearest} (${streamQueue.length} elements)...`;
+  streaming = false;
+
+  // Resume saved stream or start fresh
+  if (savedStreams[nearest]) {
+    streamQueue = savedStreams[nearest].queue;
+    streamIdx = savedStreams[nearest].idx;
+    delete savedStreams[nearest];
+    streaming = true;
+    activeBuilding = nearest;
+    activeBuildingTotal = streamQueue.length;
+    console.log(`[S192] §DS_RESUME bld=${nearest} at=${streamIdx}/${streamQueue.length}`);
+  } else {
+    // Fresh query
+    streamQueue = [];
+    streamIdx = 0;
+    const rows = db.exec(`
+      SELECT m.guid, i.geometry_hash, m.material_rgba, m.discipline,
+             t.center_x, t.center_y, t.center_z,
+             t.rotation_x, t.rotation_y, t.rotation_z,
+             m.storey, m.ifc_class
+      FROM elements_meta m
+      JOIN element_instances i ON m.guid = i.guid
+      JOIN element_transforms t ON t.guid = m.guid
+      WHERE m.building = '${nearest}'
+        AND i.geometry_hash IS NOT NULL
+        AND m.ifc_class != 'IfcOpeningElement'
+    `);
+    if (!rows.length) {
+      console.log(`[S192] §DS_EMPTY bld=${nearest} — no streamable elements`);
+      return;
+    }
+    streamQueue = rows[0].values;
+    streamIdx = 0;
+    streaming = true;
+    activeBuilding = nearest;
+    activeBuildingTotal = streamQueue.length;
+    console.log(`[S192] §DS_QUEUED bld=${nearest} elements=${streamQueue.length}`);
+  }
+  document.getElementById('s-active').textContent = `${nearest}`;
+  document.getElementById('s-building-total').textContent = activeBuildingTotal.toLocaleString();
+  document.getElementById('s-progress').style.width = (streamIdx / streamQueue.length * 100).toFixed(1) + '%';
+  document.getElementById('s-progress').style.background = '#4fc3f7';
+  status.textContent = `STREAMING ${nearest} — ${streamIdx.toLocaleString()}/${streamQueue.length.toLocaleString()} elements`;
 }
 
 function streamTick() {
   if (!streaming || !libDb || streamIdx >= streamQueue.length) {
     if (streaming && streamIdx >= streamQueue.length) {
       streaming = false;
-      status.textContent = `Streamed ${streamedCount} elements. Orbit to explore.`;
+      if (activeBuilding) {
+        buildingsRendered.add(activeBuilding);
+        populateStoreys(activeBuilding);
+        populateDiscs(activeBuilding);
+      }
+      document.getElementById('s-buildings-done').textContent = buildingsRendered.size;
+      document.getElementById('s-active').textContent = `${activeBuilding} — DONE`;
+      document.getElementById('s-active').style.color = '#44cc44';
+      document.getElementById('s-current-element').textContent = '';
+      document.getElementById('s-progress').style.width = '100%';
+      document.getElementById('s-progress').style.background = '#44cc44';
+      updateHash();
+      status.textContent = `DONE — ${activeBuilding} ${streamedCount.toLocaleString()} elements. ${buildingsRendered.size} building(s) rendered.`;
     }
     return;
   }
@@ -381,36 +555,95 @@ function streamTick() {
   // Place objects
   for (let i = 0; i < batch; i++) {
     const row = streamQueue[streamIdx + i];
-    const [guid, hash, rgba, disc, cx, cy, cz] = row;
+    const [guid, hash, rgba, disc, cx, cy, cz, rotX, rotY, rotZ, storey, ifcClass] = row;
 
     const geo = meshCache[hash];
     if (!geo) continue;
 
-    const color = DISC_COLORS[disc] || DEFAULT_COLOR;
-    let r = ((color >> 16) & 0xff) / 255;
-    let g = ((color >> 8) & 0xff) / 255;
-    let b = (color & 0xff) / 255;
-
-    // Parse material_rgba if available
-    if (rgba && typeof rgba === 'string') {
-      const parts = rgba.split(',').map(Number);
-      if (parts.length >= 3) { r = parts[0]; g = parts[1]; b = parts[2]; }
+    // IFC material color; neutral grey fallback if missing
+    let r, g, b, a = 1.0;
+    const rgbaStr = rgba != null ? String(rgba) : '';
+    if (rgbaStr && rgbaStr.includes(',')) {
+      const parts = rgbaStr.split(',').map(Number);
+      r = parts[0]; g = parts[1]; b = parts[2];
+      if (parts.length >= 4 && parts[3] < 1.0) { a = parts[3]; }
+    } else {
+      r = 0.7; g = 0.7; b = 0.7;
     }
 
-    const mat = new THREE.MeshLambertMaterial({ color: new THREE.Color(r, g, b) });
+    const matOpts = { color: new THREE.Color(r, g, b), flatShading: true };
+    if (a < 1.0) {
+      matOpts.transparent = true;
+      matOpts.opacity = a;
+      matOpts.side = THREE.DoubleSide;
+    }
+    const mat = new THREE.MeshPhongMaterial(matOpts);
+    mat.userData.origOpacity = a;
+    mat.userData.origSide = a < 1.0 ? THREE.DoubleSide : THREE.FrontSide;
+    if (xrayOn) { mat.transparent = true; mat.opacity = 0.15; mat.side = THREE.DoubleSide; }
     const mesh = new THREE.Mesh(geo, mat);
 
     // IFC coords → Three.js
     const pos = ifc2three(cx, cy, cz);
     mesh.position.set(pos.x, pos.y, pos.z);
 
+    // IFC Euler (XYZ, Z-up) → Three.js Euler (XYZ, Y-up)
+    // Same axis swap as position: IFC(x,y,z) → Three(x,z,-y)
+    // Rotation around IFC X-axis → Three X, IFC Y → Three -Z, IFC Z → Three Y
+    const rx = rotX || 0, ry = rotY || 0, rz = rotZ || 0;
+    if (rx || ry || rz) {
+      mesh.rotation.set(rx, rz, -ry);
+    }
+
+    // Store GUID + storey for pick, storey filter, color toggle
+    mesh.userData.storey = storey || '';
+    mesh.userData.disc = disc || '';
+    mesh.userData.guid = guid;
+    guidMap[mesh.id] = guid;
+    if (wireOn) { mat.wireframe = true; }
+    // Apply storey filter if active
+    if (activeStoreyFilter !== null && mesh.userData.storey !== activeStoreyFilter) {
+      mesh.visible = false;
+    }
+    if (hiddenDiscs.size > 0 && hiddenDiscs.has(disc)) {
+      mesh.visible = false;
+    }
+
     scene.add(mesh);
     streamedCount++;
   }
 
+  // Log proof for first batch
+  if (streamIdx === 0) {
+    let rotCount = 0, placedCount = 0, missCount = 0, matCount = 0;
+    for (let i = 0; i < Math.min(batch, 5); i++) {
+      const row = streamQueue[i];
+      console.log(`[S200] §SAMPLE[${i}] rgba="${row[2]}" type=${typeof row[2]} disc=${row[3]}`);
+    }
+    for (let i = 0; i < batch; i++) {
+      const row = streamQueue[i];
+      const rx = row[7] || 0, ry = row[8] || 0, rz = row[9] || 0;
+      if (rx || ry || rz) rotCount++;
+      if (meshCache[row[1]]) placedCount++; else missCount++;
+      const rgbaStr = row[2] != null ? String(row[2]) : '';
+      if (rgbaStr && rgbaStr.includes(',')) matCount++;
+    }
+    console.log(`[S200] §PROOF first_batch=${batch} rotation=${rotCount} placed=${placedCount} miss=${missCount} with_material=${matCount}`);
+  }
+
   streamIdx += batch;
+
   document.getElementById('s-streamed').textContent = streamedCount.toLocaleString();
   document.getElementById('s-meshes').textContent = Object.keys(meshCache).length.toLocaleString();
+  // Progress bar
+  if (activeBuildingTotal > 0) {
+    document.getElementById('s-progress').style.width = Math.min(100, (streamIdx / streamQueue.length) * 100).toFixed(1) + '%';
+  }
+  // Show current element being rendered — the nerdy flicker
+  const lastRow = streamQueue[streamIdx - 1];
+  if (lastRow) {
+    document.getElementById('s-current-element').textContent = lastRow[11] || '';
+  }
 }
 
 // ── BLOB → Three.js BufferGeometry ──
@@ -434,29 +667,488 @@ function blobToGeometry(vBlob, fBlob) {
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setIndex(new THREE.BufferAttribute(fArr, 1));
     geo.computeVertexNormals();
+    geo.computeBoundingSphere();
     return geo;
   } catch (e) {
     return null;
   }
 }
 
-// ── Search ──
-const searchInput = document.getElementById('search');
-const searchResults = document.getElementById('search-results');
-searchInput.addEventListener('input', () => {
-  const q = searchInput.value.trim();
-  if (!q || !db) { searchResults.innerHTML = ''; return; }
+// ── Panel collapse ──
+function togglePanel(id) {
+  const body = document.getElementById(id);
+  const toggle = body.parentElement.querySelector('.panel-toggle');
+  body.classList.toggle('collapsed');
+  toggle.textContent = body.classList.contains('collapsed') ? '+' : '−';
+}
 
+// ── Wireframe mode ──
+let wireOn = false;
+function toggleWireframe() {
+  wireOn = !wireOn;
+  const btn = document.getElementById('wire-btn');
+  btn.style.background = wireOn ? '#4fc3f7' : '#444';
+  btn.style.color = wireOn ? '#000' : '#fff';
+  scene.traverse(obj => {
+    if (obj.isMesh && obj !== ground) {
+      obj.material.wireframe = wireOn;
+      obj.material.needsUpdate = true;
+    }
+  });
+}
+
+// ── Click-to-identify (raycaster) ──
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let guidMap = {};  // mesh.id → guid
+let pointerDownPos = { x: 0, y: 0 };
+
+canvas.addEventListener('pointerdown', (e) => {
+  pointerDownPos.x = e.clientX;
+  pointerDownPos.y = e.clientY;
+  // Stop fly-around on user interaction
+  if (flyActive) {
+    flyActive = false;
+    document.getElementById('fly-btn').style.background = '#444';
+    document.getElementById('fly-btn').style.color = '#fff';
+  }
+});
+
+canvas.addEventListener('pointerup', (e) => {
+  // Only pick if pointer didn't drag (< 5px movement)
+  const dx = e.clientX - pointerDownPos.x;
+  const dy = e.clientY - pointerDownPos.y;
+  if (Math.sqrt(dx*dx + dy*dy) > 5) return;
+  if (e.shiftKey || e.button !== 0) return;  // skip pan/right-click
+  if (!db) return;
+
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  // Collect all meshes (not just direct children)
+  const meshes = [];
+  scene.traverse(obj => { if (obj.isMesh && obj !== ground && obj.visible) meshes.push(obj); });
+  const hits = raycaster.intersectObjects(meshes, false);
+
+  if (!hits.length) {
+    document.getElementById('info-panel').style.display = 'none';
+    return;
+  }
+
+  const hit = hits[0];
+  const guid = guidMap[hit.object.id];
+  if (!guid) {
+    console.log(`§PICK no guid for mesh.id=${hit.object.id}`);
+    return;
+  }
+
+  // Yellow highlight bbox on selected element — parented to mesh for correct transform
+  if (window._pickHighlight) {
+    window._pickHighlight.parent.remove(window._pickHighlight);
+    window._pickHighlight = null;
+  }
+  hit.object.geometry.computeBoundingBox();
+  const bb = hit.object.geometry.boundingBox;
+  const size = new THREE.Vector3();
+  bb.getSize(size);
+  const center = new THREE.Vector3();
+  bb.getCenter(center);
+  const hlGeo = new THREE.BoxGeometry(size.x, size.y, size.z);
+  const hlEdges = new THREE.EdgesGeometry(hlGeo);
+  const hlLine = new THREE.LineSegments(hlEdges,
+    new THREE.LineBasicMaterial({ color: 0xffff00 }));
+  hlLine.position.copy(center);  // local offset within mesh
+  hit.object.add(hlLine);        // child of mesh — inherits position + rotation
+  window._pickHighlight = hlLine;
+
+  try {
+    const rows = db.exec(`
+      SELECT m.ifc_class, m.element_name, m.guid, m.building, m.storey,
+             m.discipline, m.material_rgba
+      FROM elements_meta m WHERE m.guid = '${guid}'
+    `);
+    if (!rows.length || !rows[0].values.length) return;
+    const [cls, name, g, bld, storey, disc, mat] = rows[0].values[0];
+    document.getElementById('info-class').textContent = cls || '—';
+    document.getElementById('info-name').textContent = name || '—';
+    document.getElementById('info-guid').textContent = g || '—';
+    document.getElementById('info-building').textContent = bld || '—';
+    document.getElementById('info-storey').textContent = storey || '—';
+    document.getElementById('info-disc').textContent = disc || '—';
+    document.getElementById('info-material').textContent = mat || '—';
+    document.getElementById('info-panel').style.display = 'block';
+    populateStoreys(bld);
+    populateDiscs(bld);
+    console.log(`§PICK ${cls} "${name}" ${disc} ${storey}`);
+  } catch (err) {
+    console.log(`§PICK_ERR ${err.message}`);
+  }
+});
+
+// ── Storey isolator ──
+let activeStoreyFilter = null;
+let storeyMeshGroups = {};  // storey → [mesh.id, ...]
+
+function populateStoreys(building) {
+  if (!db || !building) return;
   const rows = db.exec(`
-    SELECT building, COUNT(*) c FROM elements_meta
-    WHERE ifc_class LIKE '%${q}%' OR element_name LIKE '%${q}%'
-    GROUP BY building ORDER BY c DESC LIMIT 10
+    SELECT DISTINCT storey FROM elements_meta
+    WHERE building = '${building}' AND storey IS NOT NULL
+    ORDER BY storey
   `);
-  if (!rows.length) { searchResults.innerHTML = '<div style="color:#888">No results</div>'; return; }
+  const panel = document.getElementById('storey-panel');
+  const body = document.getElementById('storey-body');
+  if (!rows.length || !rows[0].values.length) { panel.style.display = 'none'; return; }
 
-  searchResults.innerHTML = rows[0].values.map(([bld, cnt]) =>
-    `<div onclick="flyTo('${bld}')">${bld} (${cnt})</div>`
-  ).join('');
+  const storeys = rows[0].values.map(r => r[0]);
+  body.innerHTML = `<button class="${activeStoreyFilter === null ? 'active' : ''}"
+    onclick="filterStorey(null)" style="margin-top:4px">All Storeys</button>` +
+    storeys.map(s => `<button class="${activeStoreyFilter === s ? 'active' : ''}"
+      onclick="filterStorey('${s}')">${s}</button>`).join('');
+  panel.style.display = 'block';
+}
+
+function filterStorey(storey) {
+  activeStoreyFilter = storey;
+  scene.traverse(obj => {
+    if (obj.isMesh && obj !== ground && obj.userData.storey !== undefined) {
+      obj.visible = storey === null || obj.userData.storey === storey;
+    }
+  });
+  // Update button states
+  document.querySelectorAll('#storey-body button').forEach(btn => {
+    const btnStorey = btn.onclick.toString().match(/filterStorey\('(.+?)'\)/)?.[1] || null;
+    btn.className = (btnStorey === storey || (storey === null && !btn.onclick.toString().includes("'"))) ? 'active' : '';
+  });
+  console.log(`[S200] §STOREY_FILTER ${storey || 'ALL'}`);
+}
+
+// ── Discipline toggle ──
+let hiddenDiscs = new Set();
+
+function populateDiscs(building) {
+  if (!db || !building) return;
+  const rows = db.exec(`
+    SELECT discipline, COUNT(*) FROM elements_meta
+    WHERE building = '${building}' AND discipline IS NOT NULL
+    GROUP BY discipline ORDER BY COUNT(*) DESC
+  `);
+  const panel = document.getElementById('disc-panel');
+  const body = document.getElementById('disc-body');
+  if (!rows.length || !rows[0].values.length) { panel.style.display = 'none'; return; }
+
+  body.innerHTML = rows[0].values.map(([d, cnt]) => {
+    const hex = '#' + (DISC_COLORS[d] || DEFAULT_COLOR).toString(16).padStart(6, '0');
+    const on = !hiddenDiscs.has(d);
+    return `<button class="${on ? 'active' : ''}" onclick="toggleDisc('${d}')" style="margin-top:2px">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${hex};margin-right:4px"></span>
+      ${d} <span style="color:#888;font-size:10px">${cnt.toLocaleString()}</span></button>`;
+  }).join('');
+  panel.style.display = 'block';
+}
+
+function toggleDisc(disc) {
+  if (hiddenDiscs.has(disc)) {
+    hiddenDiscs.delete(disc);
+  } else {
+    hiddenDiscs.add(disc);
+  }
+  scene.traverse(obj => {
+    if (obj.isMesh && obj !== ground && obj.userData.disc) {
+      const discVisible = !hiddenDiscs.has(obj.userData.disc);
+      const storeyVisible = activeStoreyFilter === null || obj.userData.storey === activeStoreyFilter;
+      obj.visible = discVisible && storeyVisible;
+    }
+  });
+  // Update button states
+  document.querySelectorAll('#disc-body button').forEach(btn => {
+    const m = btn.onclick.toString().match(/toggleDisc\('(.+?)'\)/);
+    if (m) btn.className = hiddenDiscs.has(m[1]) ? '' : 'active';
+  });
+}
+
+// ── X-Ray mode ──
+let xrayOn = false;
+function toggleXray() {
+  xrayOn = !xrayOn;
+  const btn = document.getElementById('xray-btn');
+  btn.style.background = xrayOn ? '#4fc3f7' : '#444';
+  btn.style.color = xrayOn ? '#000' : '#fff';
+  scene.traverse(obj => {
+    if (obj.isMesh && obj !== ground) {
+      obj.material.transparent = true;
+      obj.material.opacity = xrayOn ? 0.15 : (obj.material.userData.origOpacity ?? 1.0);
+      obj.material.side = xrayOn ? THREE.DoubleSide : (obj.material.userData.origSide ?? THREE.FrontSide);
+      obj.material.needsUpdate = true;
+    }
+  });
+  console.log(`[S200] §XRAY ${xrayOn ? 'ON' : 'OFF'}`);
+}
+
+// ── 4D/5D Export (Malaysian CIDB rates from Federation BOQ) ──
+const MATERIAL_COSTS = {
+  IfcDuct:{rate:165,unit:'M',desc:'GI Ductwork 400mm'},IfcDuctSegment:{rate:165,unit:'M',desc:'Duct Segment'},
+  IfcDuctFitting:{rate:380,unit:'EA',desc:'Duct Fittings'},IfcPipe:{rate:48.5,unit:'M',desc:'PVC Pipe 100mm'},
+  IfcPipeSegment:{rate:48.5,unit:'M',desc:'Pipe Segment'},IfcPipeFitting:{rate:95,unit:'EA',desc:'Pipe Fittings'},
+  IfcCableCarrier:{rate:78,unit:'M',desc:'Cable Tray 300mm'},IfcCableCarrierSegment:{rate:78,unit:'M',desc:'Cable Tray'},
+  IfcBeam:{rate:680,unit:'M',desc:'Steel I-Beam'},IfcColumn:{rate:1250,unit:'M',desc:'Steel Column'},
+  IfcSlab:{rate:285,unit:'M2',desc:'RC Slab 250mm'},IfcWall:{rate:145,unit:'M2',desc:'Blockwork Wall 150mm'},
+  IfcWallStandardCase:{rate:145,unit:'M2',desc:'Standard Wall'},IfcCurtainWall:{rate:750,unit:'M2',desc:'Curtain Wall'},
+  IfcCovering:{rate:185,unit:'M2',desc:'Floor/Ceiling Finish'},IfcRoof:{rate:238,unit:'M2',desc:'Metal Roof'},
+  IfcLightFixture:{rate:485,unit:'EA',desc:'LED Light'},IfcOutlet:{rate:125,unit:'EA',desc:'Power Outlet'},
+  IfcDoor:{rate:2850,unit:'EA',desc:'Door Set'},IfcWindow:{rate:1580,unit:'EA',desc:'Window'},
+  IfcBuildingElementProxy:{rate:850,unit:'EA',desc:'Misc Element'},IfcFlowTerminal:{rate:3500,unit:'EA',desc:'HVAC Terminal'},
+  IfcFurnishingElement:{rate:1200,unit:'EA',desc:'Furniture'},IfcPlate:{rate:95,unit:'M2',desc:'Steel Plate'},
+  IfcMember:{rate:320,unit:'M',desc:'Steel Member'},IfcRailing:{rate:280,unit:'M',desc:'Railing'},
+  IfcStair:{rate:4500,unit:'EA',desc:'Staircase'},IfcStairFlight:{rate:2200,unit:'EA',desc:'Stair Flight'},
+};
+const LABOR_PROD = {
+  IfcDuct:18,IfcDuctSegment:18,IfcDuctFitting:12,IfcPipe:25,IfcPipeSegment:25,IfcPipeFitting:15,
+  IfcCableCarrier:30,IfcCableCarrierSegment:30,IfcLightFixture:20,IfcOutlet:25,
+  IfcBeam:8,IfcColumn:6,IfcSlab:35,IfcWall:12,IfcWallStandardCase:12,
+  IfcDoor:4,IfcWindow:5,IfcCurtainWall:8,IfcCovering:40,IfcRoof:25,
+};
+const PHASE_MAP = {
+  STR:{phase:'1-Structure',seq:1},ARC:{phase:'2-Architecture',seq:2},
+  MEP:{phase:'3-MEP',seq:3},ELEC:{phase:'3-Electrical',seq:3},PLB:{phase:'3-Plumbing',seq:3},
+  ACMV:{phase:'3-ACMV',seq:3},FP:{phase:'3-Fire Protection',seq:3},HVAC:{phase:'3-HVAC',seq:3},
+};
+
+function export4D5D() {
+  if (!db || !activeBuilding) { status.textContent = 'Select a building first.'; return; }
+  const bld = activeBuilding;
+  // Open interactive charts in new tab
+  const dbParam = new URLSearchParams(location.search).get('db') || 'yourproject_extracted.db';
+  window.open(`boq_charts.html?db=${dbParam}&bld=${bld}`, '_blank');
+  status.textContent = `4D/5D charts opened for ${bld}`;
+}
+
+// ── Screenshot ──
+function screenshot() {
+  renderer.render(scene, camera);
+  const link = document.createElement('a');
+  link.download = `BIM_OOTB_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  // Visual flash feedback
+  const flash = document.createElement('div');
+  flash.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:white;opacity:0.7;z-index:999;pointer-events:none';
+  document.body.appendChild(flash);
+  setTimeout(() => { flash.style.opacity = '0'; flash.style.transition = 'opacity 0.3s'; }, 50);
+  setTimeout(() => document.body.removeChild(flash), 400);
+  status.textContent = 'Screenshot saved to Downloads/';
+}
+
+// ── Fullscreen ──
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+// ── Light/Dark theme ──
+let lightTheme = false;
+function toggleTheme() {
+  lightTheme = !lightTheme;
+  const bg = lightTheme ? 0xf0f0f0 : 0x1a1a2e;
+  const textColor = lightTheme ? '#222' : '#e0e0e0';
+  const panelBg = lightTheme ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.3)';
+  const statColor = lightTheme ? '#555' : '#ccc';
+  const boldColor = lightTheme ? '#000' : '#fff';
+
+  document.body.style.background = '#' + bg.toString(16).padStart(6, '0');
+  document.body.style.color = textColor;
+  renderer.setClearColor(bg);
+  ground.material.color.setHex(lightTheme ? 0xdddddd : 0x222233);
+
+  document.querySelectorAll('#hud,#search-box,#info-panel,#storey-panel,#disc-panel,#status').forEach(el => {
+    el.style.background = panelBg;
+    el.style.borderColor = lightTheme ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.08)';
+  });
+  document.querySelectorAll('.stat').forEach(el => el.style.color = statColor);
+  document.querySelectorAll('.stat b').forEach(el => el.style.color = boldColor);
+  // Info panel labels and values
+  document.querySelectorAll('#info-panel .label').forEach(el => el.style.color = lightTheme ? '#666' : '#888');
+  document.querySelectorAll('#info-panel .value').forEach(el => el.style.color = lightTheme ? '#000' : '#fff');
+  // Status bar
+  document.getElementById('status').style.color = lightTheme ? '#0077cc' : '#4fc3f7';
+  // HUD heading
+  document.querySelector('#hud h2').style.color = lightTheme ? '#0077cc' : '#4fc3f7';
+
+  // Hide bboxes in light mode (clean for print), show in dark
+  scene.traverse(obj => {
+    if (obj.isLineSegments && obj.userData.building) {
+      obj.visible = !lightTheme;
+    }
+  });
+
+  const btn = document.getElementById('theme-btn');
+  btn.textContent = lightTheme ? '\u263E' : '\u2606';
+}
+
+// ── Hover highlight ──
+let hoverHighlight = null;
+const hoverMouse = new THREE.Vector2();
+let lastHoverTime = 0;
+function onMouseMove(e) {
+  // Throttle to every 100ms
+  const now = performance.now();
+  if (now - lastHoverTime < 100) return;
+  lastHoverTime = now;
+
+  hoverMouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  hoverMouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(hoverMouse, camera);
+
+  const meshes = [];
+  scene.traverse(obj => { if (obj.isMesh && obj !== ground && obj.visible) meshes.push(obj); });
+  const hits = raycaster.intersectObjects(meshes, false);
+
+  if (hoverHighlight) {
+    hoverHighlight.material.emissive.setHex(0x000000);
+    hoverHighlight = null;
+  }
+
+  if (hits.length > 0 && guidMap[hits[0].object.id]) {
+    hoverHighlight = hits[0].object;
+    hoverHighlight.material.emissive.setHex(0x222222);
+    canvas.style.cursor = 'pointer';
+  } else {
+    canvas.style.cursor = 'default';
+  }
+}
+canvas.addEventListener('mousemove', onMouseMove);
+
+// ── URL deep-link ──
+function updateHash() {
+  if (!activeBuilding) return;
+  const p = camera.position;
+  const t = controls.target;
+  location.hash = `bld=${activeBuilding}&cx=${p.x.toFixed(0)}&cy=${p.y.toFixed(0)}&cz=${p.z.toFixed(0)}&tx=${t.x.toFixed(0)}&ty=${t.y.toFixed(0)}&tz=${t.z.toFixed(0)}`;
+}
+
+function loadFromHash() {
+  const h = location.hash.slice(1);
+  if (!h) return null;
+  const params = {};
+  h.split('&').forEach(p => { const [k, v] = p.split('='); params[k] = v; });
+  return params;
+}
+
+// ── Fly around rendered buildings ──
+let flyActive = false;
+let flyAngle = 0;
+let flyTargets = [];  // [{x,y,z,radius,name}]
+let flyTargetIdx = 0;
+let flyTransitioning = false;
+let flyTransitionStart = 0;
+let flyFromPos = null;
+let flyFromTarget = null;
+
+function toggleFlyAround() {
+  flyActive = !flyActive;
+  const btn = document.getElementById('fly-btn');
+  btn.style.background = flyActive ? '#4fc3f7' : '#444';
+  btn.style.color = flyActive ? '#000' : '#fff';
+
+  if (flyActive) {
+    // Collect rendered buildings
+    flyTargets = [];
+    for (const name of buildingsRendered) {
+      const bc = buildingCentres[name];
+      if (!bc) continue;
+      const t = ifc2three(bc.ix, bc.iy, bc.iz);
+      const radius = Math.max(30, Math.sqrt(bc.count) * 1.2);
+      flyTargets.push({ x: t.x, y: t.y, z: t.z, radius, name });
+    }
+    if (flyTargets.length === 0) { flyActive = false; btn.style.background = '#444'; btn.style.color = '#fff'; return; }
+    flyTargetIdx = 0;
+    flyAngle = 0;
+    flyTransitioning = false;
+    status.textContent = `Flying around ${flyTargets[0].name}...`;
+  } else {
+    status.textContent = 'Fly stopped.';
+  }
+}
+
+function flyTick() {
+  if (!flyActive || flyTargets.length === 0) return;
+
+  const ft = flyTargets[flyTargetIdx];
+
+  if (flyTransitioning) {
+    // Smooth transition between buildings
+    const elapsed = (performance.now() - flyTransitionStart) / 1500;  // 1.5s transition
+    if (elapsed >= 1.0) {
+      flyTransitioning = false;
+      // Set flyAngle to match where the transition landed so no jump
+      flyAngle = Math.atan2(camera.position.z - ft.z, camera.position.x - ft.x);
+      status.textContent = `Flying around ${ft.name}...`;
+    } else {
+      // Lerp camera and target
+      const t = elapsed * elapsed * (3 - 2 * elapsed);  // smoothstep
+      camera.position.lerpVectors(flyFromPos, new THREE.Vector3(
+        ft.x + ft.radius * 1.2, ft.y + ft.radius * 0.3, ft.z + ft.radius * 1.2
+      ), t);
+      controls.target.lerpVectors(flyFromTarget, new THREE.Vector3(ft.x, ft.y, ft.z), t);
+      controls.update();
+    }
+    return;
+  }
+
+  // Orbit around current building
+  flyAngle += 0.012;  // ~0.7 deg per frame, ~9s per orbit
+  const camX = ft.x + Math.cos(flyAngle) * ft.radius * 1.2;
+  const camZ = ft.z + Math.sin(flyAngle) * ft.radius * 1.2;
+  const camY = ft.y + ft.radius * 0.3;
+  camera.position.set(camX, camY, camZ);
+  controls.target.set(ft.x, ft.y, ft.z);
+  controls.update();
+
+  // After one full orbit, move to next building
+  if (flyAngle >= Math.PI * 2) {
+    flyAngle = 0;
+    if (flyTargets.length > 1) {
+      flyFromPos = camera.position.clone();
+      flyFromTarget = controls.target.clone();
+      flyTargetIdx = (flyTargetIdx + 1) % flyTargets.length;
+      flyTransitioning = true;
+      flyTransitionStart = performance.now();
+      status.textContent = `Flying to ${flyTargets[flyTargetIdx].name}...`;
+    }
+  }
+}
+
+// ── Building list ──
+let allBuildingCards = [];  // [{name, count, el}]
+
+function populateBuildingList() {
+  const list = document.getElementById('building-list');
+  // Sort by element count descending — biggest buildings first
+  const sorted = Object.entries(buildingCentres)
+    .sort((a, b) => b[1].count - a[1].count);
+  allBuildingCards = [];
+  list.innerHTML = '';
+  for (const [name, bc] of sorted) {
+    const card = document.createElement('div');
+    card.className = 'bld-card';
+    card.innerHTML = `<span>${name}</span><span class="cnt">${bc.count.toLocaleString()}</span>`;
+    card.onclick = () => flyTo(name);
+    list.appendChild(card);
+    allBuildingCards.push({ name: name.toLowerCase(), el: card });
+  }
+}
+
+// Filter building list
+const searchInput = document.getElementById('search');
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  for (const card of allBuildingCards) {
+    card.el.style.display = (!q || card.name.includes(q)) ? '' : 'none';
+  }
 });
 
 function clearStreamed() {
@@ -474,7 +1166,14 @@ function clearStreamed() {
   streaming = false;
   streamQueue = [];
   streamIdx = 0;
+  activeBuilding = null;
+  activeBuildingTotal = 0;
+  buildingsRendered.clear();
   document.getElementById('s-streamed').textContent = '0';
+  document.getElementById('s-building-total').textContent = '0';
+  document.getElementById('s-buildings-done').textContent = '0';
+  document.getElementById('s-active').textContent = '—';
+  document.getElementById('s-active').style.color = '#4fc3f7';
   console.log(`[S192] §CLEAR removed=${toRemove.length}`);
   status.textContent = 'Cleared. Search and click a building to stream.';
 }
@@ -491,6 +1190,9 @@ function flyTo(buildingName) {
   camera.updateProjectionMatrix();
   controls.update();
   console.log(`[S192] §FLY_TO bld=${buildingName} three=(${t.x.toFixed(0)},${t.y.toFixed(0)},${t.z.toFixed(0)}) dist=${dist.toFixed(0)}`);
+  document.getElementById('s-active').style.color = '#4fc3f7';
+  document.getElementById('s-progress').style.width = '0%';
+  document.getElementById('s-progress').style.background = '#4fc3f7';
   status.textContent = `Flew to ${buildingName} (${bc.count} elements)`;
 
   // Start streaming this building
@@ -517,8 +1219,15 @@ function animate() {
   requestAnimationFrame(animate);
   controls.update();
   streamTick();
+  flyTick();
   renderer.render(scene, camera);
 }
+
+// Alt+Z = X-Ray toggle (same as Blender)
+window.addEventListener('keydown', (e) => {
+  if (e.altKey && e.key === 'z') { e.preventDefault(); toggleXray(); }
+  if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); }
+});
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;

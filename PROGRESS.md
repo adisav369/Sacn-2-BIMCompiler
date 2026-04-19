@@ -64,13 +64,15 @@
   - **Open:** (1) Extraction reconciliation blocks FK/GH/IN/JS/TE — QA strict on element delta. (2) Generative MEP + IfcOpeningElement geometry gap blocks SH/DX compile. (3) C8 IfcDoor mesh diversity (WL/WT).
   - **Next:** Fix extraction reconciliation tolerance or populate missing elements. Add generative MEP geometry to component_library. Re-run fleet.
 
-**S200 (2026-04-19):** RTree Preview speed — building-level bboxes. IMPLEMENTED.
-  - **Two-level bbox loading:** Multi-building DBs load ONE bbox per building (786 rows for sandbox_1M, not 1M). Single-building DBs unchanged.
-  - **Building-level functions:** `load_building_level_bboxes()` (GROUP BY building query), `expand_building_bboxes(building)` (on-demand element load).
-  - **Auto-expand on drill-in:** `fly_to_result()`, `fetch_building_elements()`, `pick_element_at_ray()` all trigger expand.
-  - **Ray pick Pass 0:** Building-level bbox ray test in `pick_element_at_ray()` — clicking a building box expands it.
-  - **Files:** `bbox_visualization.py` (+3 state vars, +2 functions, 5 integration points).
-  - **Next:** Blender test on sandbox_1M.db — verify <2s Preview, click-to-expand, single-building regression.
+**S200 (2026-04-20):** BIM OOTB — Browser-native BIM viewer. DONE.
+  - **Product name:** BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+  - **Viewer:** `deploy/rtree_browser_demo.html` — single HTML file, Three.js + sql.js (WASM SQLite), no server.
+  - **Fixes:** Per-element rotation (Euler XYZ axis swap), IFC material colours, transparency (alpha), flat shading, ground plane auto-positioning, fog removed, unrestricted orbit.
+  - **Features:** Building list (clickable cards), element picker (click→GUID/class/storey/disc/material), yellow bbox highlight, hover glow, storey filter, discipline toggle, X-Ray (Alt+Z), fly-around rendered buildings, screenshot (PNG), fullscreen (F11), light/dark theme, URL deep-link, stream pause/resume, progress bar with element flicker, collapsible panels.
+  - **Spec:** `docs/BIM_Designer_Browser.md` — Phase 1-4 roadmap, OCI deployment plan, modeller bridge architecture.
+  - **Proven:** Terminal (48K), Hospital (64K), LTU AHouse (126K) all stream to completion.
+  - **Setup:** `cd deploy && python3 -m http.server 8080` → `http://localhost:8080/rtree_browser_demo.html`
+  - **Next:** OCI deployment (static bucket), httpvfs range streaming, per-building DB split.
 
 **S198 (2026-04-18):** Envelope-first streaming + legacy cleanup. IMPLEMENTED.
   - **Three-phase streaming:** ENVELOPE → SHELL → DETAIL. New buildings start at envelope (exterior walls, roof, slab, curtain walls, doors, windows). ~5% of elements, ~90% of visual.
