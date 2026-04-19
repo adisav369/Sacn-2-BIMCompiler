@@ -329,7 +329,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../BIM_Designer_SRS/" class="md-tabs__link">
+        <a href="../BIM_Designer_Browser/" class="md-tabs__link">
           
   
   
@@ -2117,14 +2117,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../BIM_Designer_SRS/" class="md-nav__link">
+      <a href="../BIM_Designer_Browser/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Requirements
+    BIM OOTB (Browser)
   
 
     
@@ -4594,7 +4594,7 @@ Read the <a href="../MANIFESTO/">MANIFESTO</a> first for the ERP world view.</p>
 <td>IFC GUID preservation contract</td>
 </tr>
 <tr>
-<td><a href="#5-the-12-stage-pipeline">§5 Pipeline</a></td>
+<td><a href="#5-the-11-stage-pipeline">§5 Pipeline</a></td>
 <td>11-stage compilation pipeline</td>
 </tr>
 <tr>
@@ -4607,7 +4607,7 @@ Read the <a href="../MANIFESTO/">MANIFESTO</a> first for the ERP world view.</p>
 </tr>
 <tr>
 <td><a href="#9-the-data-flywheel-emergent-intelligence">§9 Data Flywheel</a></td>
-<td>How 35 buildings teach the compiler</td>
+<td>How the building fleet teaches the compiler</td>
 </tr>
 <tr>
 <td><a href="#10-the-compilation-end-state">§10 End State</a></td>
@@ -4707,7 +4707,7 @@ for the full discipline model (DocEvent per Org → ASI → AD_Val_Rule, shared 
 Dictionary</strong> — like iDempiere's AD_Table through AD_Column. They exist. This
 document describes how the compiler <strong>uses</strong> them, not how they were created.
 For BOM creation, see the Rosetta Stone pipeline and building analysis docs.</p>
-<p><strong>Three databases, three concerns:</strong></p>
+<p><strong>Four databases, three concerns</strong> (WHAT / HOW / WHERE — see <a href="../DATA_MODEL/">DATA_MODEL.md §6.3</a>):</p>
 <table>
 <thead>
 <tr>
@@ -4719,18 +4719,23 @@ For BOM creation, see the Rosetta Stone pipeline and building analysis docs.</p>
 <tbody>
 <tr>
 <td><strong>ERP.db</strong></td>
-<td>Product master (M_Product, M_Product_Category, attributes)</td>
+<td>WHAT — Product master (M_Product, M_Product_Category, attributes)</td>
 <td>Product catalog</td>
 </tr>
 <tr>
 <td><strong>component_library.db</strong></td>
-<td>Leaf geometry (LOD meshes, orientation metadata)</td>
+<td>WHAT — Leaf geometry (LOD meshes, orientation metadata)</td>
 <td>M_Product_Image</td>
 </tr>
 <tr>
 <td><strong>*_BOM.db</strong></td>
-<td>Assembly recipes (M_BOM, M_BOM_Line with qty + dx/dy/dz)</td>
+<td>HOW — Assembly recipes (M_BOM, M_BOM_Line with qty + dx/dy/dz)</td>
 <td>Bill of Materials</td>
+</tr>
+<tr>
+<td><strong>output.db</strong></td>
+<td>WHERE — Placed elements at world coordinates (c_orderline, elements_meta)</td>
+<td>Transaction</td>
 </tr>
 </tbody>
 </table>
@@ -5133,7 +5138,7 @@ per instance and carry ASI overrides.</p>
 <p><strong>Generative flow:</strong> User defines room size → cascade finds matching SET → ASI
 overrides stretch walls to new dimensions → compiler resolves <code>effective = ASI ?? catalog</code>.
 Zero new code — just data on the OrderLine.</p>
-<p><em>ASI matrix: BIM_Designer.md §8. Schema: output.db. Generative: GENERATIVE_ROOM_SRS.md §6.</em></p>
+<p><em>ASI matrix: BIM_Designer.md §8. Schema: output.db. Generative: <a href="../GENERATIVE_HOUSE_SRS/">GENERATIVE_HOUSE_SRS.md</a> §6.</em></p>
 <h3 id="352-product-verb-routing-via-asi">3.5.2 Product → Verb Routing via ASI<a class="headerlink" href="#352-product-verb-routing-via-asi" title="Permanent link">&para;</a></h3>
 <p>In iDempiere Manufacturing, each product has a routing (<code>PP_Product_Planning</code> →
 operations → sequences). We removed PP_Order as too heavy (S73). The lighter
@@ -6196,44 +6201,61 @@ form. The record makes both forms available everywhere by construction.</p>
 <tr>
 <td>2</td>
 <td><strong>Compile</strong></td>
-<td>Explodes BOM tree, accumulates tack offsets into world coordinates</td>
+<td>Explodes BOM tree, accumulates tack offsets into world coordinates. Includes generative MEP via <code>MEPDevicePlacer</code> (<a href="../DISC_VALIDATION_DB_SRS/">§6.12.4</a>)</td>
 </tr>
 <tr>
 <td>3</td>
-<td><strong>Write</strong></td>
-<td>Emits SQLite output DB (C_OrderLine + elements_meta)</td>
+<td><strong>Route</strong></td>
+<td>MEP routing: CW/SP recipe expansion, RouteWalker pattern mining</td>
 </tr>
 <tr>
 <td>4</td>
+<td><strong>Template</strong></td>
+<td>Template composition (SKIP for non-template buildings)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Write</strong></td>
+<td>Emits SQLite output DB (C_OrderLine + elements_meta). Resolves geometry via <code>source_element_ref</code> → component_library.db</td>
+</tr>
+<tr>
+<td>6</td>
 <td><strong>Verb</strong></td>
 <td>BIM COBOL post-processing → W_Verb_Node audit trail</td>
 </tr>
 <tr>
-<td>5</td>
+<td>7</td>
+<td><strong>Validation</strong></td>
+<td>Rule-based validation against ERP.db constraints</td>
+</tr>
+<tr>
+<td>8</td>
 <td><strong>Digest</strong></td>
 <td>Per-element SHA256 spatial fingerprint</td>
 </tr>
 <tr>
-<td>6</td>
+<td>9</td>
 <td><strong>Geometry</strong></td>
 <td>Mesh integrity validation</td>
 </tr>
 <tr>
-<td>7</td>
+<td>10</td>
 <td><strong>Prove</strong></td>
 <td>Mathematical placement proofs</td>
+</tr>
+<tr>
+<td>11</td>
+<td><strong>Compliance</strong></td>
+<td>Building code compliance checks (AD_DocEvent_Rule)</td>
 </tr>
 </tbody>
 </table>
 <p>Single compilation path: element positions are read from m_bom_line (tack
-offsets per §4) and accumulated through the BOM chain into world coordinates.</p>
-<p><strong>Stage 2 (Compile) includes generative MEP:</strong> when the walker enters a SET BOM
-with a MEP schedule, <code>MEPDevicePlacer</code> creates device placements inline. These
-follow the same tack accumulation path as extracted elements. <strong>Stage 3 (Write)</strong>
-resolves geometry for ALL placements via <code>source_element_ref</code> → component_library.db.
-See <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md §6.12.4</a> for the
-generative device architecture and LOD bridge.
+offsets per §4) and accumulated through the BOM chain into world coordinates.
 C_OrderLine → M_Product → BOM explosion (iDempiere prepareIt pattern).</p>
+<p><strong>Viewer:</strong> The compiled output.db feeds directly into the RTree Direct Stream
+viewer — camera-driven BLOB tessellation from component_library.db, no
+intermediate .blend files. See <a href="../RTree/">RTree.md</a> §Direct Stream.</p>
 <hr />
 <h2 id="6-bim-cobol-verb-driven-bom-mutation">6. BIM COBOL — Verb-Driven BOM Mutation<a class="headerlink" href="#6-bim-cobol-verb-driven-bom-mutation" title="Permanent link">&para;</a></h2>
 <p>The GUI emits BIM COBOL verbs, never direct SQL. 77 verbs in 5 tiers:</p>
@@ -6387,7 +6409,7 @@ and generates ASI per instance.</p>
 </table>
 <hr />
 <h2 id="9-the-data-flywheel-emergent-intelligence">9. The Data Flywheel — Emergent Intelligence<a class="headerlink" href="#9-the-data-flywheel-emergent-intelligence" title="Permanent link">&para;</a></h2>
-<p>Processing 34 real buildings creates a <strong>data flywheel</strong> — each onboarded IFC
+<p>Processing the building fleet creates a <strong>data flywheel</strong> — each onboarded IFC
 enriches a pool of mined dimensional observations that validates the next one.
 Unlike fixed BIM rules (building codes, clash thresholds), this system validates
 against <strong>empirical evidence from its own corpus.</strong></p>
@@ -6430,7 +6452,7 @@ pipeline compiles BOM → <code>extract_validation_rules.sh</code> mines new pat
 <p>Every building has a signature — the percentage distribution of its IFC classes
 (e.g., residential = ~35% IfcWall, MEP = 90%+ flow elements). <code>BuildingProfileValidator</code>
 compares each new building's profile against archetype profiles mined from the
-34-building corpus. Catches mis-labelled files, wrong discipline tagging, and
+building corpus. Catches mis-labelled files, wrong discipline tagging, and
 anomalous element compositions. Advisory only — never blocks.</p>
 <p><strong>Storage:</strong> <code>ad_building_profile</code> table in ERP.db (one row per building/ifc_class).</p>
 <h3 id="92-flywheel-layers">9.2 Flywheel Layers<a class="headerlink" href="#92-flywheel-layers" title="Permanent link">&para;</a></h3>

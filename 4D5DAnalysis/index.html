@@ -329,7 +329,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../BIM_Designer_SRS/" class="md-tabs__link">
+        <a href="../BIM_Designer_Browser/" class="md-tabs__link">
           
   
   
@@ -1685,14 +1685,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../BIM_Designer_SRS/" class="md-nav__link">
+      <a href="../BIM_Designer_Browser/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Requirements
+    BIM OOTB (Browser)
   
 
     
@@ -4389,11 +4389,17 @@ schedule qto carbon asset safety  smooth nav
 </ol>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ol>
-<li><strong>Editable Excel</strong> — Java backend generates .xlsx with formulas (<code>=qty × unit_rate</code>)</li>
-<li><strong>REST endpoints</strong> — <code>/api/boq/{building}/excel</code>, <code>/api/schedule/{building}/excel</code></li>
+<li><strong>Browser nD engine</strong> — port to JavaScript for <a href="../BIM_Designer_Browser/">BIM OOTB</a> Phase 3.
+   Same JSON templates, same SQL queries, same output tables — runs in browser via sql.js (WASM).
+   User drags custom <code>5D_rates.json</code> → browser re-runs 5D → downloads Excel. Zero server.
+   See <a href="../BIM_Designer_Browser/">BIM_Designer_Browser.md §Phase 3</a> for full feature list.</li>
+<li><strong>Excel export (browser)</strong> — SheetJS generates XLSX client-side from nD output tables.
+   Replaces Java backend Excel generation for review/stakeholder use cases.</li>
 <li><strong>Community templates</strong> — UK BCIS rates, US RSMeans, BREEAM carbon, LEED scoring</li>
 <li><strong>Web template editor</strong> — HTML form that loads/validates/saves JSON templates</li>
 <li><strong>SMM2 work sections</strong> — map IFC classes to CIDB standard work section numbering for client-facing BOQ</li>
+<li><strong>Editable Excel (server)</strong> — Java backend generates .xlsx with formulas (<code>=qty × unit_rate</code>) for advanced users</li>
+<li><strong>REST endpoints</strong> — <code>/api/boq/{building}/excel</code>, <code>/api/schedule/{building}/excel</code> (Phase 4 backend only)</li>
 </ol>
 
 
