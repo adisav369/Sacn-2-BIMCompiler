@@ -19,3 +19,24 @@
 # CLOSED I-35 (2026-04-10): §STYLE ifc=IfcWall/IfcWindow/IfcDoor/IfcRoof/IfcPlate view=ELEVATION src=2d_drawing_style; R5_NO_HARDCODE PASS.
 
 # CLOSED I-37 (2026-04-10): §HEIGHT_DIM span=FFL→SILL delta=3200mm fmt='3200mm' unit=mm src=2d_dimension_style (per span + tier-1 total); query 2d_dimension_style.unit.
+
+# === ISSUES 2026-04-17 ===
+
+# CLOSED I-38 (2026-04-17): §ROOF_ENVELOPE: 24-56 envelope points from 197 vertices (was 4-7 convex hull). Upper envelope replaces convex hull for meshes >20 verts. SH front 7→24pts, left 45→56pts.
+# CLOSED I-38b (2026-04-17): DrawingInventionError exception + hard-fail rule in roof_silhouette(). §HARD_FAIL ROOF_HULL logs when convex hull ≤4 from >20 verts. Envelope used as fallback.
+# CLOSED I-39 (2026-04-17): §LEVEL_DRAW on ALL 4 faces — form_face guard removed. form_face_level_zone_width_mm 0→20. SH front/rear completeness 92%→100%. DX left/right gain 6 level markers each.
+# CLOSED I-40 (2026-04-17): PLUMBING_PLAN added to _SHORT_TO_ID, _SUFFIX_TO_ID, drawing_template.json. Conformity test now recognizes DX_PLUMBING_*.dxf.
+
+# CLOSED I-41 (2026-04-17): ARROWS.create_block(doc.blocks, 'ARCHTICK') before dimstyle. ezdxf audit: 0 errors, 0 fixes. No non-unique handle warnings on readfile.
+# CLOSED I-42 (2026-04-17): §I-42 TEXT_OVERLAP: 12 overlaps resolved by vertical nudge on DX floor plan. Post-placement AABB collision detection + nudge for A-ANNO-TEXT entities.
+
+# === ISSUES 2026-04-19 (Phase A) ===
+
+# CLOSED I-43 (2026-04-19): §VALUE key=annotation_tags.block_stroke_mm value=0.25 src=template; §VALUE key=title_block.section_break_mm value=0.35 src=template; §VALUE key=title_block.outer_frame_mm value=0.50 src=template — 6 R5 hardcodes moved to drawing_template.json. SH 6/6, DX 7/7.
+# CLOSED I-44 (2026-04-19): §LEVEL_SYMBOL code=FFL z=0.000 symbol=triangle_down size=3.0mm src=template; §LEVEL_SYMBOL code=GRD z=-0.150 symbol=triangle_up — ▽/△ triangles on all elevation level markers. 28 symbols across 4 SH faces.
+# CLOSED I-46 (2026-04-19): §SECTION_MARKER id=A-A axis=y pos=1.7m; §SECTION_MARKER id=B-B axis=x pos=-0.7m — section cut lines with circled labels + directional arrows on floor plan. Template-driven from section_markers.sections[].
+# CLOSED I-47 (2026-04-19): §FINISH_CODE room=BEDROOM floor=CT wall=V1 src=2d_finish_type — finish codes below room name on floor plan. 3 rooms (SH), 2 per storey (DX). From 2d_finish_type table.
+# CLOSED I-48 (2026-04-19): §ROOF_PROFILE face=front eave_z=1.741m fascia_extent overhang=700mm — horizontal fascia line at eave Z on all 4 elevation faces. SH barrel vault 1.741m, DX gable -0.228m.
+# CLOSED I-53 partial (2026-04-19): §ELEV_TAG face=front tag=D1 type=door; §ELEV_TAG face=rear tag=W1 type=window — door/window tags on elevations using DOOR_TAG/WINDOW_TAG block inserts. SH 6 tags, DX 40 tags across 4 faces.
+
+# === ALL PHASE A ISSUES RESOLVED ===

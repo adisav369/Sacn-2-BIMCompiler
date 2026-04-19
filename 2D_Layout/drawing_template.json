@@ -38,7 +38,8 @@
     "extension_line": 0.18,
     "grid_line": 0.18,
     "hatch_line": 0.13,
-    "border": 0.7
+    "border": 0.7,
+    "fallback": 0.18
   },
   "line_styles": {
     "_patterns": "Array of [dash, gap] in mm on paper. Empty = solid.",
@@ -126,6 +127,9 @@
     "area_font_height_mm": 2.5,
     "area_format": "{value} m2",
     "area_offset_below_name_mm": 4.0,
+    "show_finish_codes": true,
+    "finish_code_font_height_mm": 2.0,
+    "finish_code_offset_below_name_mm": 3.5,
     "language": "EN",
     "_note": "Room names from 2d_room_label table in 2D.db"
   },
@@ -137,7 +141,8 @@
     "size_mm": 4.0,
     "font_height_mm": 2.0,
     "stroke_mm": 0.18,
-    "_note": "Tags from 2d_annotation_tag table. Shape can be: hexagon, diamond, circle, triangle"
+    "_note": "Tags from 2d_annotation_tag table. Shape can be: hexagon, diamond, circle, triangle",
+    "block_stroke_mm": 0.25
   },
   "north_arrow": {
     "shape": "triangle",
@@ -275,6 +280,9 @@
     "font_height_value_mm": 3.0,
     "font_height_building_type_mm": 5.0,
     "font_height_building_name_mm": 3.0,
+    "section_break_mm": 0.35,
+    "outer_frame_mm": 0.50,
+    "internal_ratio": 0.18,
     "sync_building_type_field": true,
     "logo_file": "jkr.png",
     "logo_width_mm": 15.0,
@@ -332,6 +340,10 @@
   },
   "level_markers": {
     "symbol": "triangle_left",
+    "floor_symbol": "triangle_down",
+    "ground_symbol": "triangle_up",
+    "symbol_size_mm": 3.0,
+    "symbol_line_weight_mm": 0.18,
     "font_height_mm": 2.5,
     "font_weight": "normal",
     "line_weight_mm": 0.18,
@@ -366,6 +378,9 @@
         "elevation_m": 6.0
       }
     ]
+  },
+  "roof": {
+    "eave_overhang_mm": 700
   },
   "hatching": {
     "structural_wall": {
@@ -458,8 +473,24 @@
       "title": "REFLECTED CEILING PLAN",
       "view": "PLAN",
       "cut_height_m": null
+    },
+    {
+      "id": "PLUMBING_PLAN",
+      "sheet_no": "M-01",
+      "title": "PLUMBING PLAN",
+      "view": "PLAN",
+      "cut_height_m": 1.2
     }
   ],
+  "section_markers": {
+    "line_weight_mm": 0.18,
+    "label_size_mm": 3.0,
+    "extend_beyond_m": 1.0,
+    "sections": [
+      {"id": "A", "axis": "y"},
+      {"id": "B", "axis": "x"}
+    ]
+  },
   "finish_codes": {
     "_note": "Material callout tags from 2d_finish_type table",
     "floor": [
@@ -483,9 +514,10 @@
     "_note": "§12a Layout Engine — Elevation Zone Allocation. All widths in mm (paper space). Engine reads these; never hardcode in drawing_writer_dxf.py.",
     "level_zone_width_mm": 30,
     "height_zone_width_mm": 22,
-    "form_face_level_zone_width_mm": 0,
+    "form_face_level_zone_width_mm": 20,
     "form_face_height_zone_width_mm": 0,
-    "_form_face_note": "Form faces (longer apparent_width) carry NO level markers and NO height dim chain. Zones collapse to 0mm.",
+    "ground_threshold_ratio": 0.25,
+    "_form_face_note": "Form faces (longer apparent_width) get narrower level zone (20mm vs 30mm). §I-39 fix: level markers required on ALL elevation faces.",
     "_aspect_ratio_threshold": 1.2,
     "_aspect_ratio_note": "If building_length / building_width < 1.2 (near-square), treat all faces as annotation_face."
   },
