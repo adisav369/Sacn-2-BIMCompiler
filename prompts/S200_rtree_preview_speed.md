@@ -1,7 +1,7 @@
 # ⚠ DO NOT REMOVE
 # Scope: S200 — RTree Preview speed: building-level bboxes for city, element bboxes on drill-in
 # Read the log after every run. No claims without §PROOF log lines.
-# STATUS: TODO
+# STATUS: IMPLEMENTED
 
 ## Problem
 

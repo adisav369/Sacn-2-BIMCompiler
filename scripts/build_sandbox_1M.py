@@ -132,6 +132,14 @@ def create_output(path):
             side TEXT DEFAULT 'BOTH',
             source TEXT
         );
+        CREATE TABLE IF NOT EXISTS building_bbox (
+            building TEXT NOT NULL,
+            discipline TEXT NOT NULL,
+            minX REAL, minY REAL, minZ REAL,
+            maxX REAL, maxY REAL, maxZ REAL,
+            element_count INTEGER,
+            PRIMARY KEY (building, discipline)
+        );
     """)
     conn.execute("INSERT INTO site_context VALUES (1, 0, 0, 0)")
     conn.commit()
@@ -450,6 +458,22 @@ def main():
             style_count = out_conn.execute("SELECT COUNT(*) FROM surface_styles").fetchone()[0]
         else:
             style_count = 0
+
+        # S200: populate building_bbox summary for instant Preview
+        out_conn.execute("""
+            INSERT OR REPLACE INTO building_bbox
+            SELECT m.building, m.discipline,
+                   MIN(r.minX), MIN(r.minY), MIN(r.minZ),
+                   MAX(r.maxX), MAX(r.maxY), MAX(r.maxZ),
+                   COUNT(*)
+            FROM elements_rtree r
+            JOIN elements_meta m ON r.id = m.rowid
+            WHERE m.building IS NOT NULL
+            GROUP BY m.building, m.discipline
+        """)
+        out_conn.commit()
+        bbox_rows = out_conn.execute("SELECT COUNT(*) FROM building_bbox").fetchone()[0]
+        log(f"Building bboxes: {bbox_rows} (S200)", logf)
 
         log(f"\n=== DONE ===", logf)
         log(f"Total elements : {final:,}", logf)

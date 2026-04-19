@@ -411,6 +411,7 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 | c_orderline | Element instances (from BOM explosion) |
 | elements_meta | Element metadata (guid, ifc_class, storey) |
 | elements_rtree | Spatial index (world AABB) |
+| building_bbox | S200: Pre-computed building×discipline bbox summary for instant Preview |
 | ~~co_empty_space~~ | *(removed S74 — W008)* |
 | ~~co_empty_space_line~~ | *(removed S74 — W008)* |
 | W_Verb_Node | Verb execution audit trail |

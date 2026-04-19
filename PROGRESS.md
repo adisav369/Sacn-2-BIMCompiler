@@ -39,6 +39,17 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
+**2D_020 (2026-04-19):** TB-LKTN Phase A — 6 features, 6 issues closed. DONE.
+  - **Issues closed:** I-43 (R5 hardcodes → template), I-44 (triangle level markers), I-46 (section cut markers), I-47 (finish codes), I-48 (roof fascia line), I-53 partial (elevation D/W tags). SH 6/6 PASS, DX 7/7 PASS.
+  - **R5 hardcodes eliminated:** 6 values moved from `drawing_writer_dxf.py` to `drawing_template.json` — block stroke, title block line weights, internal ratio, ground threshold, line weight fallback. §VALUE logs prove template sourcing.
+  - **Triangle level markers:** ▽ (z≥0) / △ (z<0) SOLID triangles at level marker positions. Template keys: floor_symbol, ground_symbol, symbol_size_mm. 28 symbols on SH, ~80 on DX.
+  - **Section cut markers:** A-A (horizontal) and B-B (vertical) at building midpoints. Dashed line + circled labels + SECTION_ARROW block refs. Template-driven from `section_markers.sections[]`.
+  - **Elevation D/W tags:** DOOR_TAG/WINDOW_TAG block refs on elevation views, same numbering as floor plan. SH 6 tags, DX 40 tags across 4 faces.
+  - **Finish codes:** `CT | V1` below room names from `2d_finish_type` table. Template `show_finish_codes: true`.
+  - **Roof fascia:** Horizontal eave line at min roof Z, with template overhang (700mm). SH barrel vault 1.741m, DX gable -0.228m.
+  - **Layers added:** A-ANNO-LEVL, A-ANNO-SECT registered in `_build_layers()`.
+  - **Next:** Phase B — missing pages (section view, opening schedule, electrical, ceiling plan). Or Phase C (stair detail, lintel detail).
+
 **2D_019 (2026-04-17):** Hardening + architecture study + Java Phase 0-1. DONE.
   - **Issues closed:** I-38 (roof envelope), I-38b (hard-fail DrawingInventionError), I-39 (form_face level markers), I-40 (PLUMBING conformity), I-41 (DXF handle uniqueness), I-42 (text overlap collision avoidance). SH 6/6 PASS (front/rear 92%→100%), DX 7/7 PASS.
   - **Roof envelope:** `_roof_upper_envelope()` replaces convex hull for meshes >20 verts. SH front 7→24pts.
@@ -52,6 +63,14 @@
   - **Fixes:** `AttachmentFace.FLOOR` enum (6,326 entries). `rebuild_erp.sh` Phase 8a (DV037-DV042 + DV049). `origin_x/y/z` on M_BOM. ERP.db rebuilds cleanly.
   - **Open:** (1) Extraction reconciliation blocks FK/GH/IN/JS/TE — QA strict on element delta. (2) Generative MEP + IfcOpeningElement geometry gap blocks SH/DX compile. (3) C8 IfcDoor mesh diversity (WL/WT).
   - **Next:** Fix extraction reconciliation tolerance or populate missing elements. Add generative MEP geometry to component_library. Re-run fleet.
+
+**S200 (2026-04-19):** RTree Preview speed — building-level bboxes. IMPLEMENTED.
+  - **Two-level bbox loading:** Multi-building DBs load ONE bbox per building (786 rows for sandbox_1M, not 1M). Single-building DBs unchanged.
+  - **Building-level functions:** `load_building_level_bboxes()` (GROUP BY building query), `expand_building_bboxes(building)` (on-demand element load).
+  - **Auto-expand on drill-in:** `fly_to_result()`, `fetch_building_elements()`, `pick_element_at_ray()` all trigger expand.
+  - **Ray pick Pass 0:** Building-level bbox ray test in `pick_element_at_ray()` — clicking a building box expands it.
+  - **Files:** `bbox_visualization.py` (+3 state vars, +2 functions, 5 integration points).
+  - **Next:** Blender test on sandbox_1M.db — verify <2s Preview, click-to-expand, single-building regression.
 
 **S198 (2026-04-18):** Envelope-first streaming + legacy cleanup. IMPLEMENTED.
   - **Three-phase streaming:** ENVELOPE → SHELL → DETAIL. New buildings start at envelope (exterior walls, roof, slab, curtain walls, doors, windows). ~5% of elements, ~90% of visual.
