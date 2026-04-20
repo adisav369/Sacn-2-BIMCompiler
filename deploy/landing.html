@@ -176,6 +176,14 @@
     <span style="color:#4fc3f7">To start fresh</span> — <a href="#" onclick="clearAllCache(); return false" style="color:#cc4444">Clear all cached data</a> — removes everything, back to zero. Or just clear your browser data for this site.<br><br>
     <span style="color:#888">This is an experimental project. Learn more at <a href="https://red1oon.github.io/BIMCompiler/BIM_Designer_Browser/" target="_blank" style="color:#4fc3f7">BIM Designer Browser</a></span>
   </div>
+  <div style="margin-top:16px;padding:12px 16px;background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.2);border-radius:8px;max-width:600px;margin-left:auto;margin-right:auto;text-align:left;line-height:1.8;font-size:11px">
+    <b style="color:#4fc3f7">Full Database Downloads</b> (~1GB total — all 30 buildings)<br>
+    <a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/sandbox_1M_extracted.db" style="color:#4fc3f7" download>sandbox_1M_extracted.db</a> (579MB) — 1M elements, all buildings in one DB<br>
+    <a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/component_library.db" style="color:#4fc3f7" download>component_library.db</a> (456MB) — all geometry BLOBs<br>
+    <span style="color:#666">~3-5 min on broadband. Download both, put in same folder, then:<br>
+    <code style="color:#4fc3f7">python3 -m http.server 8080</code> → open <code style="color:#ccc">localhost:8080/rtree_browser_demo.html</code><br>
+    <a href="https://red1oon.github.io/BIMCompiler/BIM_Designer_Browser/#61-local-setup-3-steps" target="_blank" style="color:#4fc3f7">Full guide §6.1</a></span>
+  </div>
 </div>
 
 <div class="tabs-panel" id="tabs-panel">

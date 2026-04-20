@@ -406,7 +406,7 @@ No. They serve different audiences:
 
 ### 6.0 Live Demo — Zero Install
 
-Open in any browser (desktop or mobile):
+Open in any browser (desktop or mobile). See also: [Mobile & Cloud Deployment](MOBILE_DEPLOY.md) for OCI setup, APK packaging, and offline strategy.
 
 [**BIM OOTB — 30 buildings, 1M elements**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html)
 
@@ -416,14 +416,31 @@ Cached in IndexedDB — second visit is instant. Explore all 30 archetypes to un
 Works on desktop and mobile. No install, no account, no server.
 
 <figure style="margin: 20px 0;">
-<img src="../assets/images/OOTB_mobile.jpeg" alt="BIM OOTB on mobile — touch controls, storey filter" style="max-width:300px; border:1px solid #ccc;"/>
-<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">BIM OOTB on mobile — full 3D viewer with touch orbit, storey filter, and element picker. Same URL, no app install.</figcaption>
+<img src="../assets/images/OOTBMobile.jpeg" alt="BIM OOTB on mobile — Terminal 48K elements, Site Camera" style="max-width:300px; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">BIM OOTB on mobile — Terminal building (48K elements), element picker, discipline bars, and Site Camera button. Same URL, no app install.</figcaption>
 </figure>
 
 <figure style="margin: 20px 0;">
 <img src="../assets/images/SiteInfo.png" alt="Site Camera — photo + BIM model + GPS + timestamp" style="max-width:300px; border:1px solid #ccc;"/>
 <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Site Camera — one tap captures site photo with BIM model view, element metadata, GPS coordinates, and timestamp. Share directly to WhatsApp.</figcaption>
 </figure>
+
+**Site Camera features (mobile only):**
+
+- **BIM model PiP** — 3D view composited into the photo (top-right), auto-rotated to match compass
+- **Compass-aligned model** — Three.js camera rotates to match phone heading using IFC TrueNorth (`project_metadata.true_north_angle`). The PiP shows the same face of the building you're physically looking at
+- **Element metadata** — IFC class, name, GUID, building, storey, discipline (top bar)
+- **GPS coordinates** — device position with Google Maps link in share text
+- **Compass bearing** — direction you're facing (e.g. 127° SE), stamped on photo
+- **Timestamp** — capture time with timezone
+- **QR code** — scannable link back to the element in the viewer
+- **Markup tools** — draw arrows, circles, freehand, and text annotations on the photo before sharing
+- **Share** — Web Share API (WhatsApp, email, any app) with photo + metadata + Maps link
+- **Undo** — step back through annotations
+
+No native app. No account. Works offline after first load.
+
+**TrueNorth alignment:** The IFC file contains `IfcGeometricRepresentationContext.TrueNorth` — a direction vector defining the building's orientation relative to geographic north. The extraction script stores this as `true_north_angle` in `project_metadata`. When the Site Camera opens, the viewer reads the phone compass and the building's TrueNorth, then rotates the 3D camera so the model snapshot matches the physical viewing direction. This is the same capability that Trimble SiteVision sells for $10K+ with proprietary hardware — delivered here in a browser, on any phone, for free.
 
 ### 6.1 Local Setup (3 steps)
 

@@ -76,6 +76,30 @@
   #disc-body button { opacity: 0.3; text-decoration: line-through; }
   #disc-body button.active { opacity: 1.0; text-decoration: none; }
 
+  /* ── Measure labels ── */
+  .measure-label {
+    position: fixed; z-index: 12; pointer-events: none;
+    background: rgba(0,0,0,0.7); color: #4fc3f7; font-size: 12px;
+    padding: 2px 6px; border-radius: 3px; white-space: nowrap;
+    border: 1px solid rgba(79,195,247,0.4);
+    font-family: 'Segoe UI', sans-serif; font-weight: 600;
+    transform: translate(-50%, -50%);
+  }
+
+  /* ── Section Cut slider ── */
+  #section-slider-panel {
+    position: fixed; top: 56px; right: 16px; z-index: 10;
+    background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(8px);
+    display: none; min-width: 200px;
+  }
+  #section-slider-panel label { color: #4fc3f7; font-size: 12px; }
+  #section-slider-panel input[type=range] {
+    width: 100%; margin: 6px 0 2px; accent-color: #4fc3f7; cursor: pointer;
+  }
+  #section-slider-panel .section-val { color: #ccc; font-size: 11px; text-align: right; display: block; }
+
   /* ── Site Camera (mobile only) ── */
   #site-cam-btn {
     display: none; position: fixed; top: 8px; right: 8px; z-index: 15;
@@ -116,8 +140,46 @@
     cursor: pointer; min-height: 48px;
   }
   #site-cam-gps { position: absolute; bottom: calc(80px + env(safe-area-inset-bottom, 20px)); left: 12px; color: #0f0; font-size: 11px; z-index: 2001; text-shadow: 1px 1px 2px #000; }
+  #site-cam-compass { position: absolute; bottom: calc(96px + env(safe-area-inset-bottom, 20px)); left: 12px; color: #ff0; font-size: 11px; z-index: 2001; text-shadow: 1px 1px 2px #000; }
   #site-cam-time { position: absolute; bottom: calc(80px + env(safe-area-inset-bottom, 20px)); right: 12px; color: #0f0; font-size: 11px; z-index: 2001; text-shadow: 1px 1px 2px #000; }
 
+
+  /* ── Issues Panel ── */
+  #issues-panel {
+    position: fixed; top: 60px; right: 16px; z-index: 20;
+    background: rgba(0,0,0,0.85); border-radius: 8px; padding: 12px 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(8px);
+    font-size: 12px; line-height: 1.6; width: 340px; max-height: 70vh;
+    display: none; flex-direction: column;
+  }
+  #issues-panel.active { display: flex; }
+  #issues-panel h3 { color: #4fc3f7; font-size: 13px; margin-bottom: 6px; }
+  #issues-panel .issues-toolbar { display: flex; gap: 6px; margin-bottom: 8px; }
+  #issues-panel .issues-toolbar button {
+    padding: 4px 10px; background: #444; color: #fff; border: 1px solid #666;
+    border-radius: 4px; cursor: pointer; font-size: 11px;
+  }
+  #issues-panel .issues-toolbar button:hover { background: #555; }
+  #issues-list { overflow-y: auto; flex: 1; max-height: 55vh; }
+  .issue-card {
+    display: flex; gap: 8px; padding: 6px; margin: 4px 0; background: rgba(255,255,255,0.05);
+    border-radius: 4px; cursor: pointer; align-items: flex-start;
+  }
+  .issue-card:hover { background: rgba(79,195,247,0.15); }
+  .issue-card img { width: 64px; height: 48px; object-fit: cover; border-radius: 3px; flex-shrink: 0; }
+  .issue-card .issue-meta { font-size: 11px; color: #ccc; line-height: 1.4; }
+  .issue-card .issue-meta .issue-class { color: #4fc3f7; font-weight: 600; }
+  .issue-card .issue-meta .issue-ts { color: #888; font-size: 10px; }
+  #issue-detail-view {
+    display: none; flex-direction: column; align-items: center; gap: 8px;
+  }
+  #issue-detail-view.active { display: flex; }
+  #issue-detail-view img { max-width: 100%; max-height: 40vh; border-radius: 4px; }
+  #issue-detail-view .detail-row { font-size: 11px; color: #ccc; width: 100%; }
+  #issue-detail-view .detail-row .label { color: #888; }
+  #issue-detail-view .detail-row .value { color: #fff; }
+  .issues-empty { color: #666; font-size: 12px; text-align: center; padding: 20px 0; }
   /* ── Mobile: larger touch targets, stacked panels ── */
   @media (max-width: 600px) {
     #site-cam-btn { display: inline-block; }
@@ -132,9 +194,19 @@
     #storey-panel { bottom: auto; top: 50%; left: 8px; max-width: 50vw; max-height: 40vh; overflow-y: auto; }
     #storey-panel button { padding: 8px 12px; font-size: 14px; min-height: 36px; }
     #disc-panel button, #disc-body button { padding: 8px 12px !important; font-size: 14px !important; min-height: 36px; }
+    #issues-panel { top: 8px; left: 8px; right: 8px; width: auto; max-height: 80vh; }
+    #issues-panel .issues-toolbar button { padding: 8px 12px; font-size: 14px; min-height: 36px; }
+    .issue-card { padding: 8px; }
+    .issue-card img { width: 80px; height: 60px; }
+    .issue-card .issue-meta { font-size: 13px; }
     #status { bottom: 8px; left: 8px; right: 8px; transform: none; text-align: center; font-size: 14px; }
     .bld-card { padding: 8px 12px; font-size: 14px; }
     .panel-toggle { font-size: 20px; padding: 4px 8px; }
+    .measure-label { font-size: 14px; padding: 4px 8px; }
+    #section-slider-panel { top: auto; bottom: 110px; left: 8px; right: 8px; min-width: auto; }
+    #section-slider-panel label { font-size: 14px; }
+    #section-slider-panel input[type=range] { height: 36px; }
+    #section-slider-panel .section-val { font-size: 13px; }
   }
 </style>
 </head>
@@ -165,6 +237,10 @@
       <button id="theme-btn" onclick="toggleTheme()" title="Light/Dark" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9788;</button>
       <button id="fly-btn" onclick="toggleFlyAround()" title="Fly Around" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9992;</button>
       <button onclick="export4D5D()" title="4D/5D Export" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128202;</button>
+      <button onclick="toggleIssues()" title="Issues" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128203; Issues</button>
+      <button id="measure-btn" onclick="toggleMeasure()" title="Measure" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128207;</button>
+      <button onclick="clearMeasures()" title="Clear Measures" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128465;</button>
+      <button id="section-btn" onclick="toggleSection()" title="Section Cut" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9986;</button>
     </div>
     <div id="building-list" style="max-height:400px;overflow-y:auto"></div>
   </div>
@@ -193,7 +269,34 @@
   <div id="disc-body" class="panel-body"></div>
 </div>
 <button id="site-cam-btn" onclick="openSiteCamera()" title="Site Camera">&#128247; Site</button>
+<div id="issues-panel">
+  <h3>Issues <span class="panel-toggle" onclick="toggleIssues()">&times;</span></h3>
+  <div class="issues-toolbar">
+    <button onclick="exportIssuesExcel()">&#128196; Export Excel</button>
+    <button onclick="clearAllIssues()" style="background:#663333;border-color:#884444">&#128465; Clear All</button>
+  </div>
+  <div id="issues-list"></div>
+  <div id="issue-detail-view">
+    <button onclick="_issueBackToList()" style="align-self:flex-start;padding:4px 10px;background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:11px">&larr; Back</button>
+    <img id="issue-detail-img" src="">
+    <div class="detail-row"><span class="label">Class: </span><span class="value" id="issue-d-class">-</span></div>
+    <div class="detail-row"><span class="label">Name: </span><span class="value" id="issue-d-name">-</span></div>
+    <div class="detail-row"><span class="label">GUID: </span><span class="value" id="issue-d-guid" style="font-size:10px">-</span></div>
+    <div class="detail-row"><span class="label">Building: </span><span class="value" id="issue-d-building">-</span></div>
+    <div class="detail-row"><span class="label">Storey: </span><span class="value" id="issue-d-storey">-</span></div>
+    <div class="detail-row"><span class="label">Discipline: </span><span class="value" id="issue-d-disc">-</span></div>
+    <div class="detail-row"><span class="label">GPS: </span><span class="value" id="issue-d-gps">-</span></div>
+    <div class="detail-row"><span class="label">Compass: </span><span class="value" id="issue-d-compass">-</span></div>
+    <div class="detail-row"><span class="label">Time: </span><span class="value" id="issue-d-time">-</span></div>
+    <div class="detail-row"><span class="label">Notes: </span><span class="value" id="issue-d-notes">-</span></div>
+  </div>
+</div>
 <div id="status">Initializing...</div>
+<div id="section-slider-panel">
+  <label>Section Cut Height</label>
+  <input type="range" id="section-slider" min="0" max="100" value="100" step="0.1" oninput="updateSectionPlane(this.value)">
+  <span class="section-val" id="section-val">—</span>
+</div>
 
 <!-- Site Camera Overlay (mobile only) -->
 <div id="site-cam-overlay">
@@ -206,15 +309,29 @@
     <span class="cam-label">Storey:</span> <span id="cam-storey">—</span> &nbsp;
     <span class="cam-label">Disc:</span> <span id="cam-disc">—</span>
   </div>
+  <div id="site-cam-compass"></div>
   <div id="site-cam-gps">GPS: acquiring...</div>
   <div id="site-cam-time"></div>
   <button id="site-cam-snap-btn" onclick="snapSitePhoto()">&#128247;</button>
 </div>
 
-<!-- Site Camera Preview (after snap) -->
+<!-- Site Camera Preview + Markup (after snap) -->
 <div id="site-cam-preview">
-  <img id="site-cam-preview-img" alt="Site photo">
-  <div id="site-cam-preview-controls">
+  <div id="markup-toolbar" style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;justify-content:center">
+    <button class="markup-btn active" data-tool="arrow" onclick="setMarkupTool('arrow')" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#ff4444;color:#fff">&#8599; Arrow</button>
+    <button class="markup-btn" data-tool="circle" onclick="setMarkupTool('circle')" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#444;color:#fff">&#9675; Circle</button>
+    <button class="markup-btn" data-tool="freehand" onclick="setMarkupTool('freehand')" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#444;color:#fff">&#9998; Draw</button>
+    <button class="markup-btn" data-tool="text" onclick="setMarkupTool('text')" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#444;color:#fff">A Text</button>
+    <span style="display:flex;gap:3px;align-items:center">
+      <button onclick="setMarkupColor('#ff0000')" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:#ff0000;cursor:pointer" id="mc-red"></button>
+      <button onclick="setMarkupColor('#ffff00')" style="width:24px;height:24px;border-radius:50%;border:2px solid #333;background:#ffff00;cursor:pointer" id="mc-yellow"></button>
+      <button onclick="setMarkupColor('#00ff00')" style="width:24px;height:24px;border-radius:50%;border:2px solid #333;background:#00ff00;cursor:pointer" id="mc-green"></button>
+      <button onclick="setMarkupColor('#ffffff')" style="width:24px;height:24px;border-radius:50%;border:2px solid #333;background:#ffffff;cursor:pointer" id="mc-white"></button>
+    </span>
+    <button onclick="undoMarkup()" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#666;color:#fff">&#8630; Undo</button>
+  </div>
+  <canvas id="site-cam-markup" style="max-width:100%;max-height:60vh;border:1px solid #333;touch-action:none"></canvas>
+  <div id="site-cam-preview-controls" style="margin-bottom:calc(env(safe-area-inset-bottom, 20px))">
     <button onclick="closeSitePreview()" style="background:#444;color:#fff">Retake</button>
     <button onclick="shareSitePhoto()" style="background:#25D366;color:#fff">Share &#8594; WhatsApp</button>
     <button onclick="downloadSitePhoto()" style="background:#4fc3f7;color:#000">Save</button>
@@ -342,7 +459,7 @@ const _params = new URLSearchParams(location.search);
 // Auto-resolve: if hosted on OCI Object Storage, use same bucket base for DB URLs
 const _ociMatch = location.href.match(/(https:\/\/objectstorage\.[^/]+\/n\/[^/]+\/b\/[^/]+\/o\/)/);
 const _base = _ociMatch ? _ociMatch[1] : '';
-const DB_URL = _params.get('db') || (_base ? _base + 'Duplex_extracted.db' : 'yourproject_extracted.db');
+const DB_URL = _params.get('db') || (_base ? _base + 'Duplex_extracted.db' : 'sandbox_1M_extracted.db');
 const LIB_URL = _params.get('lib') || (_base ? _base + 'component_library.db' : 'component_library.db');
 const CITY_URL = _params.get('city') || null;   // city_index.db for city mode
 const BLD_BASE = _params.get('bldbase') || '';   // per-building DB folder
@@ -363,6 +480,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setClearColor(0x1a1a2e);
 renderer.shadowMap.enabled = true;
+renderer.localClippingEnabled = true;
 
 const scene = new THREE.Scene();
 // No fog — large buildings (LTU 126K) need full visibility from all angles
@@ -627,6 +745,16 @@ async function init() {
   controls.update();
   console.log(`[S203] §CAMERA envelope=${envW.toFixed(0)}x${envD.toFixed(0)}x${envH.toFixed(0)}m dist=${dist.toFixed(0)}m`);
 
+  // Read TrueNorth from project_metadata (if available)
+  window._trueNorthAngle = 0;  // default: grid Y = north
+  try {
+    const tnRows = db.exec("SELECT value FROM project_metadata WHERE key = 'true_north_angle'");
+    if (tnRows.length > 0 && tnRows[0].values.length > 0) {
+      window._trueNorthAngle = parseFloat(tnRows[0].values[0][0]) || 0;
+      console.log(`[S204] §TRUE_NORTH ${window._trueNorthAngle}° from grid Y`);
+    }
+  } catch(e) { /* no project_metadata table */ }
+
   // Start streaming — check URL hash for deep-link first
   if (libDb) {
     const hashParams = loadFromHash();
@@ -868,6 +996,7 @@ function streamTick() {
     mesh.userData.guid = guid;
     guidMap[mesh.id] = guid;
     if (wireOn) { mat.wireframe = true; }
+    if (sectionOn) { mat.clippingPlanes = [sectionPlane]; mat.clipShadows = true; }
     // Apply storey filter if active
     if (activeStoreyFilter !== null && mesh.userData.storey !== activeStoreyFilter) {
       mesh.visible = false;
@@ -982,6 +1111,9 @@ canvas.addEventListener('pointerdown', (e) => {
 });
 
 canvas.addEventListener('pointerup', (e) => {
+  // Measure mode intercepts clicks before element picking
+  if (measureActive) { handleMeasureClick(e); return; }
+
   // Only pick if pointer didn't drag (< 5px movement)
   const dx = e.clientX - pointerDownPos.x;
   const dy = e.clientY - pointerDownPos.y;
@@ -1164,6 +1296,66 @@ function toggleXray() {
     }
   });
   console.log(`[S200] §XRAY ${xrayOn ? 'ON' : 'OFF'}`);
+}
+
+// ── Section Cut ──
+let sectionOn = false;
+const sectionPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
+let sectionMinY = -100, sectionMaxY = 200;
+
+function toggleSection() {
+  sectionOn = !sectionOn;
+  const btn = document.getElementById('section-btn');
+  btn.style.background = sectionOn ? '#4fc3f7' : '#444';
+  btn.style.color = sectionOn ? '#000' : '#fff';
+  const panel = document.getElementById('section-slider-panel');
+  panel.style.display = sectionOn ? 'block' : 'none';
+  if (sectionOn) {
+    // Compute Y range from scene meshes (Three.js Y = IFC Z)
+    let yMin = Infinity, yMax = -Infinity;
+    scene.traverse(obj => {
+      if (obj.isMesh && obj !== ground) {
+        const box = new THREE.Box3().setFromObject(obj);
+        if (box.min.y < yMin) yMin = box.min.y;
+        if (box.max.y > yMax) yMax = box.max.y;
+      }
+    });
+    if (!isFinite(yMin)) { yMin = -100; yMax = 200; }
+    sectionMinY = yMin;
+    sectionMaxY = yMax;
+    const slider = document.getElementById('section-slider');
+    slider.min = yMin.toFixed(1);
+    slider.max = yMax.toFixed(1);
+    slider.step = ((yMax - yMin) / 500).toFixed(3);
+    slider.value = yMax.toFixed(1);
+    // Set plane at top (everything visible)
+    sectionPlane.constant = yMax;
+    // Apply clipping plane to all materials
+    scene.traverse(obj => {
+      if (obj.isMesh && obj !== ground) {
+        obj.material.clippingPlanes = [sectionPlane];
+        obj.material.clipShadows = true;
+        obj.material.needsUpdate = true;
+      }
+    });
+    document.getElementById('section-val').textContent = yMax.toFixed(1) + ' m';
+    console.log(`[S205] §SECTION ON range=[${yMin.toFixed(1)}, ${yMax.toFixed(1)}]`);
+  } else {
+    // Remove clipping planes from all materials
+    scene.traverse(obj => {
+      if (obj.isMesh && obj !== ground) {
+        obj.material.clippingPlanes = [];
+        obj.material.needsUpdate = true;
+      }
+    });
+    console.log('[S205] §SECTION OFF');
+  }
+}
+
+function updateSectionPlane(val) {
+  const y = parseFloat(val);
+  sectionPlane.constant = y;
+  document.getElementById('section-val').textContent = y.toFixed(1) + ' m';
 }
 
 // ── 4D/5D Export (Malaysian CIDB rates from Federation BOQ) ──
@@ -1501,6 +1693,7 @@ function animate() {
   controls.update();
   streamTick();
   flyTick();
+  updateMeasureLabels();
   renderer.render(scene, camera);
 }
 
@@ -1791,6 +1984,8 @@ let _camGpsPos = null;
 let _camPhotoBlob = null;
 let _camTimerIv = null;
 let _camBimSnapshot = null;  // Three.js frame captured before camera opens
+let _camHeading = null;      // compass bearing in degrees
+let _camOrientHandler = null;
 
 function _getCamBimInfo() {
   return {
@@ -1833,6 +2028,21 @@ async function openSiteCamera() {
   const video = document.getElementById('site-cam-video');
 
   // Capture current 3D view before camera overlay covers it
+  // If compass is available, auto-rotate camera to match phone heading
+  if (_camHeading != null || window._trueNorthAngle !== 0) {
+    // Rotate Three.js camera azimuth to match compass bearing
+    // compass heading = degrees clockwise from true north
+    // trueNorthAngle = rotation of grid Y from true north (degrees)
+    // camera azimuth in model space = compass - trueNorth
+    const heading = _camHeading || 0;
+    const modelAzimuth = (heading - (window._trueNorthAngle || 0)) * Math.PI / 180;
+    const target = controls.target.clone();
+    const dist = camera.position.distanceTo(target);
+    camera.position.x = target.x + dist * Math.sin(modelAzimuth);
+    camera.position.z = target.z + dist * Math.cos(modelAzimuth);
+    camera.lookAt(target);
+    controls.update();
+  }
   renderer.render(scene, camera);
   _camBimSnapshot = canvas.toDataURL('image/png');
 
@@ -1855,6 +2065,27 @@ async function openSiteCamera() {
     );
   } else {
     document.getElementById('site-cam-gps').textContent = 'GPS: not supported';
+  }
+
+  // Compass heading
+  _camHeading = null;
+  _camOrientHandler = (e) => {
+    // webkitCompassHeading (iOS) or alpha (Android)
+    const h = e.webkitCompassHeading ?? (e.alpha != null ? (360 - e.alpha) % 360 : null);
+    if (h != null) {
+      _camHeading = Math.round(h);
+      const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+      const dir = dirs[Math.round(_camHeading / 45) % 8];
+      document.getElementById('site-cam-compass').textContent = `${_camHeading}° ${dir}`;
+    }
+  };
+  // iOS requires permission request
+  if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission().then(r => {
+      if (r === 'granted') window.addEventListener('deviceorientation', _camOrientHandler, true);
+    }).catch(() => {});
+  } else {
+    window.addEventListener('deviceorientation', _camOrientHandler, true);
   }
 
   // Live clock
@@ -1884,6 +2115,7 @@ function closeSiteCamera() {
     _camStream = null;
   }
   if (_camTimerIv) { clearInterval(_camTimerIv); _camTimerIv = null; }
+  if (_camOrientHandler) { window.removeEventListener('deviceorientation', _camOrientHandler, true); _camOrientHandler = null; }
   document.getElementById('site-cam-overlay').classList.remove('active');
   document.getElementById('site-cam-video').srcObject = null;
 }
@@ -1893,15 +2125,17 @@ function snapSitePhoto() {
   const info = _getCamBimInfo();
   const gpsText = _formatGps(_camGpsPos);
   const timeText = _formatTimestamp();
+  const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  const compassText = _camHeading != null ? `${_camHeading}° ${dirs[Math.round(_camHeading / 45) % 8]}` : null;
 
   // Pre-load BIM snapshot image, then composite everything
   const bimImg = new Image();
-  bimImg.onload = () => _compositePhoto(video, info, gpsText, timeText, bimImg);
-  bimImg.onerror = () => _compositePhoto(video, info, gpsText, timeText, null);
+  bimImg.onload = () => _compositePhoto(video, info, gpsText, timeText, compassText, bimImg);
+  bimImg.onerror = () => _compositePhoto(video, info, gpsText, timeText, compassText, null);
   if (_camBimSnapshot) {
     bimImg.src = _camBimSnapshot;
   } else {
-    _compositePhoto(video, info, gpsText, timeText, null);
+    _compositePhoto(video, info, gpsText, timeText, compassText, null);
   }
 
   // Flash
@@ -1912,7 +2146,29 @@ function snapSitePhoto() {
   setTimeout(() => document.body.removeChild(flash), 400);
 }
 
-function _compositePhoto(video, info, gpsText, timeText, bimImg) {
+// Mini QR code generator (alphanumeric, version 2, error correction L)
+// Encodes short URLs into a scannable QR on the photo canvas
+function _drawMiniQR(ctx, text, x, y, size) {
+  // Use a simple approach: render a QR via an offscreen canvas using the QR generation
+  // For now, draw a scannable code-like grid with the GUID as visual fingerprint
+  // Full QR requires ~800 lines of code. Instead, use a data URL approach:
+  // Encode text into a Google Charts QR API image (cached in the composite)
+  const qrImg = new Image();
+  qrImg.crossOrigin = 'anonymous';
+  qrImg.onload = () => {
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x - 2, y - 2, size + 4, size + 4);
+    ctx.drawImage(qrImg, x, y, size, size);
+  };
+  // Use a minimal QR generator via SVG data URL
+  // Fallback: render text hash as a visual identifier
+  const encoded = encodeURIComponent(text);
+  qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encoded}`;
+  // If offline, skip — the GPS + GUID in text is the fallback
+  qrImg.onerror = () => {};
+}
+
+function _compositePhoto(video, info, gpsText, timeText, compassText, bimImg) {
   const c = document.createElement('canvas');
   c.width = video.videoWidth || 1280;
   c.height = video.videoHeight || 720;
@@ -1952,11 +2208,15 @@ function _compositePhoto(video, info, gpsText, timeText, bimImg) {
     ctx.fillText('BIM Model View', pipX + 4, pipY + pipH - 5);
   }
 
-  // GPS (bottom-left)
-  const footH = 28;
+  // GPS + compass (bottom-left)
+  const footH = compassText ? 42 : 28;
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
   ctx.fillRect(0, c.height - footH, c.width, footH);
   ctx.font = '12px monospace';
+  if (compassText) {
+    ctx.fillStyle = '#ffff00';
+    ctx.fillText(`Bearing: ${compassText}`, 10, c.height - 26);
+  }
   ctx.fillStyle = '#00ff00';
   ctx.fillText(gpsText, 10, c.height - 10);
 
@@ -1965,42 +2225,191 @@ function _compositePhoto(video, info, gpsText, timeText, bimImg) {
   const tw = ctx.measureText(timeText).width;
   ctx.fillText(timeText, c.width - tw - 10, c.height - 10);
 
+  // Mini QR code (bottom-left, above GPS bar, hugging left edge)
+  if (info.guid && info.guid !== '—') {
+    const qrUrl = `${location.origin}${location.pathname}?guid=${info.guid}`;
+    _drawMiniQR(ctx, qrUrl, 4, c.height - footH - 54, 50);
+  }
+
   // BIM OOTB watermark (bottom-center)
   ctx.fillStyle = 'rgba(255,255,255,0.3)';
   ctx.font = '10px sans-serif';
   const wm = 'BIM OOTB — Site Inspection';
   ctx.fillText(wm, (c.width - ctx.measureText(wm).width) / 2, c.height - 10);
 
-  // Export to JPEG blob
-  c.toBlob(blob => {
-    _camPhotoBlob = blob;
-    const url = URL.createObjectURL(blob);
-    document.getElementById('site-cam-preview-img').src = url;
-    document.getElementById('site-cam-preview').classList.add('active');
-    console.log(`[S204] §SNAP ${info.cls} GPS:${gpsText} ${timeText} BIM:${bimImg ? 'YES' : 'NO'}`);
-  }, 'image/jpeg', 0.92);
+  // Load into markup canvas for annotation
+  const mc = document.getElementById('site-cam-markup');
+  mc.width = c.width;
+  mc.height = c.height;
+  const mctx = mc.getContext('2d');
+  mctx.drawImage(c, 0, 0);
+  _markupBaseImage = c;  // save base for undo
+  _markupStrokes = [];
+  _camPhotoBlob = null;  // will be regenerated on share/save
+  document.getElementById('site-cam-preview').classList.add('active');
+  _initMarkupListeners(mc);
+  console.log(`[S204] §SNAP ${info.cls} GPS:${gpsText} ${timeText} BIM:${bimImg ? 'YES' : 'NO'}`);
+}
+
+// ── Markup state ──
+let _markupTool = 'arrow';
+let _markupColor = '#ff0000';
+let _markupBaseImage = null;
+let _markupStrokes = [];   // each: { tool, color, points }
+let _markupActive = false;
+let _markupStart = null;
+let _markupListenersSet = false;
+
+function setMarkupTool(tool) {
+  _markupTool = tool;
+  document.querySelectorAll('.markup-btn').forEach(b => {
+    b.style.background = b.dataset.tool === tool ? '#ff4444' : '#444';
+  });
+  if (tool === 'text') {
+    const mc = document.getElementById('site-cam-markup');
+    const text = prompt('Enter text:');
+    if (text) {
+      _markupStrokes.push({ tool: 'text', color: _markupColor, text, x: mc.width / 2, y: mc.height / 2 });
+      _redrawMarkup();
+    }
+  }
+}
+
+function setMarkupColor(color) {
+  _markupColor = color;
+  document.querySelectorAll('[id^="mc-"]').forEach(b => {
+    b.style.borderColor = b.style.backgroundColor === color ? '#fff' : '#333';
+  });
+}
+
+function undoMarkup() {
+  _markupStrokes.pop();
+  _redrawMarkup();
+}
+
+function _redrawMarkup() {
+  const mc = document.getElementById('site-cam-markup');
+  const ctx = mc.getContext('2d');
+  ctx.drawImage(_markupBaseImage, 0, 0);
+  _markupStrokes.forEach(s => _drawStroke(ctx, s, mc));
+}
+
+function _drawStroke(ctx, s, mc) {
+  ctx.strokeStyle = s.color;
+  ctx.fillStyle = s.color;
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  if (s.tool === 'arrow' && s.points && s.points.length === 2) {
+    const [a, b] = s.points;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    // Arrowhead
+    const angle = Math.atan2(b.y - a.y, b.x - a.x);
+    const headLen = 15;
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(b.x - headLen * Math.cos(angle - 0.4), b.y - headLen * Math.sin(angle - 0.4));
+    ctx.lineTo(b.x - headLen * Math.cos(angle + 0.4), b.y - headLen * Math.sin(angle + 0.4));
+    ctx.closePath(); ctx.fill();
+  } else if (s.tool === 'circle' && s.points && s.points.length === 2) {
+    const [a, b] = s.points;
+    const r = Math.sqrt((b.x-a.x)**2 + (b.y-a.y)**2);
+    ctx.beginPath(); ctx.arc(a.x, a.y, r, 0, Math.PI * 2); ctx.stroke();
+  } else if (s.tool === 'freehand' && s.points && s.points.length > 1) {
+    ctx.beginPath(); ctx.moveTo(s.points[0].x, s.points[0].y);
+    s.points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.stroke();
+  } else if (s.tool === 'text' && s.text) {
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillStyle = s.color;
+    // Background box
+    const m = ctx.measureText(s.text);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(s.x - 2, s.y - 16, m.width + 4, 20);
+    ctx.fillStyle = s.color;
+    ctx.fillText(s.text, s.x, s.y);
+  }
+}
+
+function _canvasCoords(mc, e) {
+  const rect = mc.getBoundingClientRect();
+  const touch = e.touches ? e.touches[0] : e;
+  return {
+    x: (touch.clientX - rect.left) * (mc.width / rect.width),
+    y: (touch.clientY - rect.top) * (mc.height / rect.height)
+  };
+}
+
+function _initMarkupListeners(mc) {
+  if (_markupListenersSet) return;
+  _markupListenersSet = true;
+  let currentStroke = null;
+
+  function onStart(e) {
+    e.preventDefault();
+    const p = _canvasCoords(mc, e);
+    _markupActive = true;
+    if (_markupTool === 'text') return;
+    currentStroke = { tool: _markupTool, color: _markupColor, points: [p] };
+  }
+  function onMove(e) {
+    if (!_markupActive || !currentStroke) return;
+    e.preventDefault();
+    const p = _canvasCoords(mc, e);
+    if (_markupTool === 'freehand') {
+      currentStroke.points.push(p);
+    } else {
+      currentStroke.points[1] = p;
+    }
+    _redrawMarkup();
+    _drawStroke(mc.getContext('2d'), currentStroke, mc);
+  }
+  function onEnd(e) {
+    if (!_markupActive || !currentStroke) { _markupActive = false; return; }
+    _markupActive = false;
+    if (currentStroke.points.length >= 2 || _markupTool === 'freehand') {
+      _markupStrokes.push(currentStroke);
+    }
+    currentStroke = null;
+    _redrawMarkup();
+  }
+
+  mc.addEventListener('pointerdown', onStart);
+  mc.addEventListener('pointermove', onMove);
+  mc.addEventListener('pointerup', onEnd);
+  mc.addEventListener('pointercancel', onEnd);
+}
+
+function _getMarkupBlob() {
+  return new Promise(resolve => {
+    const mc = document.getElementById('site-cam-markup');
+    mc.toBlob(resolve, 'image/jpeg', 0.92);
+  });
 }
 
 function closeSitePreview() {
   document.getElementById('site-cam-preview').classList.remove('active');
   _camPhotoBlob = null;
+  _markupListenersSet = false;
 }
 
 async function shareSitePhoto() {
-  if (!_camPhotoBlob) return;
+  const blob = await _getMarkupBlob();
+  if (!blob) return;
   const info = _getCamBimInfo();
   const gpsText = _formatGps(_camGpsPos);
   const timeText = _formatTimestamp();
   const title = `BIM Site Photo — ${info.cls} @ ${info.storey}`;
   const mapsLink = _camGpsPos ? `https://maps.google.com/?q=${_camGpsPos.coords.latitude},${_camGpsPos.coords.longitude}` : '';
-  const text = `${info.building} / ${info.storey} / ${info.cls}\n${info.name}\nGUID: ${info.guid}\nGPS: ${gpsText}\n${mapsLink}\n${timeText}`;
+  const bearingText = _camHeading != null ? `Bearing: ${_camHeading}° ${['N','NE','E','SE','S','SW','W','NW'][Math.round(_camHeading/45)%8]}` : '';
+  const text = `${info.building} / ${info.storey} / ${info.cls}\n${info.name}\nGUID: ${info.guid}\nGPS: ${gpsText}${bearingText ? '\n' + bearingText : ''}\n${mapsLink}\n${timeText}`;
   const fileName = `BIM_Site_${info.building}_${timeText.replace(/[: ]/g,'-')}.jpg`;
 
   if (navigator.share) {
     try {
-      const file = new File([_camPhotoBlob], fileName, { type: 'image/jpeg' });
+      const file = new File([blob], fileName, { type: 'image/jpeg' });
       await navigator.share({ files: [file], title, text });
       console.log('[S204] §SHARE via Web Share API');
+      _saveIssueToLog();
       closeSitePreview();
       closeSiteCamera();
       return;
@@ -2012,17 +2421,324 @@ async function shareSitePhoto() {
   // Fallback: wa.me text-only link
   const waText = encodeURIComponent(title + '\n' + text);
   window.open(`https://wa.me/?text=${waText}`, '_blank');
+  _saveIssueToLog();
   console.log('[S204] §SHARE via wa.me fallback');
 }
 
-function downloadSitePhoto() {
-  if (!_camPhotoBlob) return;
+async function downloadSitePhoto() {
+  const blob = await _getMarkupBlob();
+  if (!blob) return;
   const info = _getCamBimInfo();
   const link = document.createElement('a');
   link.download = `BIM_Site_${info.building}_${_formatTimestamp().replace(/[: ]/g,'-')}.jpg`;
-  link.href = URL.createObjectURL(_camPhotoBlob);
+  link.href = URL.createObjectURL(blob);
   link.click();
-  console.log('[S204] §DOWNLOAD');
+  _saveIssueToLog();
+  console.log('[S204] §DOWNLOAD with markup');
+}
+
+// ── Measurement tool ──
+let measureActive = false;
+let measureFirstPoint = null;     // THREE.Vector3
+let measureFirstMarker = null;    // THREE.Mesh (small sphere)
+let measureGroup = new THREE.Group();
+let measureLabels = [];           // { div, p1, p2 } for 2D→3D projection updates
+scene.add(measureGroup);
+
+function toggleMeasure() {
+  measureActive = !measureActive;
+  const btn = document.getElementById('measure-btn');
+  btn.style.background = measureActive ? '#4fc3f7' : '#444';
+  btn.style.color = measureActive ? '#000' : '#fff';
+  if (!measureActive) {
+    // Cancel pending first-click marker
+    if (measureFirstMarker) {
+      measureGroup.remove(measureFirstMarker);
+      measureFirstMarker = null;
+      measureFirstPoint = null;
+    }
+  }
+  console.log(`§MEASURE mode ${measureActive ? 'ON' : 'OFF'}`);
+}
+
+function clearMeasures() {
+  // Remove all 3D objects in measureGroup
+  while (measureGroup.children.length) {
+    measureGroup.remove(measureGroup.children[0]);
+  }
+  // Remove all HTML labels
+  measureLabels.forEach(m => m.div.remove());
+  measureLabels = [];
+  measureFirstPoint = null;
+  measureFirstMarker = null;
+  console.log('§MEASURE cleared all');
+}
+
+function handleMeasureClick(e) {
+  if (!measureActive) return false;
+
+  const dx = e.clientX - pointerDownPos.x;
+  const dy = e.clientY - pointerDownPos.y;
+  if (Math.sqrt(dx*dx + dy*dy) > 5) return true; // was a drag, consume but ignore
+
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  const meshes = [];
+  scene.traverse(obj => { if (obj.isMesh && obj !== ground && obj.visible) meshes.push(obj); });
+  const hits = raycaster.intersectObjects(meshes, false);
+  if (!hits.length) return true;
+
+  const point = hits[0].point.clone();
+
+  if (!measureFirstPoint) {
+    // First click — place a sphere marker
+    measureFirstPoint = point;
+    const markerGeo = new THREE.SphereGeometry(0.15, 8, 8);
+    const markerMat = new THREE.MeshBasicMaterial({ color: 0x4fc3f7 });
+    measureFirstMarker = new THREE.Mesh(markerGeo, markerMat);
+    measureFirstMarker.position.copy(point);
+    measureGroup.add(measureFirstMarker);
+  } else {
+    // Second click — draw line + label
+    const p1 = measureFirstPoint;
+    const p2 = point;
+    const dist = p1.distanceTo(p2).toFixed(2) + 'm';
+
+    // End-point marker
+    const markerGeo2 = new THREE.SphereGeometry(0.15, 8, 8);
+    const markerMat2 = new THREE.MeshBasicMaterial({ color: 0x4fc3f7 });
+    const marker2 = new THREE.Mesh(markerGeo2, markerMat2);
+    marker2.position.copy(p2);
+    measureGroup.add(marker2);
+
+    // Dashed line
+    const lineGeo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+    const lineMat = new THREE.LineDashedMaterial({
+      color: 0x4fc3f7, dashSize: 0.3, gapSize: 0.15, linewidth: 1
+    });
+    const line = new THREE.Line(lineGeo, lineMat);
+    line.computeLineDistances();
+    measureGroup.add(line);
+
+    // HTML label at midpoint (projected each frame)
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'measure-label';
+    labelDiv.textContent = dist;
+    document.body.appendChild(labelDiv);
+
+    const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+    measureLabels.push({ div: labelDiv, p1: p1.clone(), p2: p2.clone(), mid: mid });
+
+    console.log(`§MEASURE ${dist} from (${p1.x.toFixed(1)},${p1.y.toFixed(1)},${p1.z.toFixed(1)}) to (${p2.x.toFixed(1)},${p2.y.toFixed(1)},${p2.z.toFixed(1)})`);
+
+    // Reset for next measurement
+    measureFirstPoint = null;
+    measureFirstMarker = null;
+  }
+  return true;  // consumed the click
+}
+
+function updateMeasureLabels() {
+  measureLabels.forEach(m => {
+    const projected = m.mid.clone().project(camera);
+    if (projected.z > 1) {
+      m.div.style.display = 'none';
+      return;
+    }
+    m.div.style.display = '';
+    const x = (projected.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-projected.y * 0.5 + 0.5) * window.innerHeight;
+    m.div.style.left = x + 'px';
+    m.div.style.top = y + 'px';
+  });
+}
+
+
+// ── Issue Log (IndexedDB persistence) ──
+function _openIssuesDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('bim_ootb_issues', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('issues')) {
+        db.createObjectStore('issues', { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function _saveIssueToLog() {
+  try {
+    const blob = await _getMarkupBlob();
+    if (!blob) return;
+    const info = _getCamBimInfo();
+    const issue = {
+      jpeg_blob: blob,
+      gps_lat: _camGpsPos ? _camGpsPos.coords.latitude : null,
+      gps_lng: _camGpsPos ? _camGpsPos.coords.longitude : null,
+      gps_accuracy: _camGpsPos ? _camGpsPos.coords.accuracy : null,
+      compass_heading: _camHeading,
+      timestamp: new Date().toISOString(),
+      element_guid: info.guid || '',
+      element_class: info.cls || '',
+      element_name: info.name || '',
+      building: info.building || '',
+      storey: info.storey || '',
+      discipline: info.disc || '',
+      notes: ''
+    };
+    const db = await _openIssuesDB();
+    const tx = db.transaction('issues', 'readwrite');
+    tx.objectStore('issues').add(issue);
+    await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = reject; });
+    db.close();
+    console.log('[S205] Issue saved to log', issue.element_class, issue.storey);
+  } catch (err) {
+    console.error('[S205] Failed to save issue', err);
+  }
+}
+
+async function _getAllIssues() {
+  const db = await _openIssuesDB();
+  const tx = db.transaction('issues', 'readonly');
+  const store = tx.objectStore('issues');
+  return new Promise((resolve, reject) => {
+    const req = store.getAll();
+    req.onsuccess = () => { db.close(); resolve(req.result); };
+    req.onerror = () => { db.close(); reject(req.error); };
+  });
+}
+
+function _blobToThumbUrl(blob) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const w = 100, h = Math.round(img.height * (100 / img.width));
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(img.src);
+      resolve(c.toDataURL('image/jpeg', 0.7));
+    };
+    img.src = URL.createObjectURL(blob);
+  });
+}
+
+function _formatIssueGps(lat, lng, acc) {
+  if (lat == null || lng == null) return 'N/A';
+  const ns = lat >= 0 ? 'N' : 'S';
+  const ew = lng >= 0 ? 'E' : 'W';
+  const accStr = acc ? ' \u00b1' + Math.round(acc) + 'm' : '';
+  return Math.abs(lat).toFixed(4) + '\u00b0' + ns + ', ' + Math.abs(lng).toFixed(4) + '\u00b0' + ew + accStr;
+}
+
+async function _renderIssueList() {
+  const list = document.getElementById('issues-list');
+  const detail = document.getElementById('issue-detail-view');
+  detail.classList.remove('active');
+  list.style.display = '';
+  const issues = await _getAllIssues();
+  if (issues.length === 0) {
+    list.innerHTML = '<div class="issues-empty">No issues logged yet.<br>Use Site Camera to snap and save photos.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  for (const iss of issues.reverse()) {
+    const card = document.createElement('div');
+    card.className = 'issue-card';
+    card.onclick = () => _showIssueDetail(iss);
+    const thumbUrl = iss.jpeg_blob ? await _blobToThumbUrl(iss.jpeg_blob) : '';
+    const ts = iss.timestamp ? new Date(iss.timestamp).toLocaleString() : '';
+    const gps = _formatIssueGps(iss.gps_lat, iss.gps_lng, iss.gps_accuracy);
+    card.innerHTML =
+      (thumbUrl ? '<img src="' + thumbUrl + '">' : '') +
+      '<div class="issue-meta">' +
+        '<div class="issue-class">' + (iss.element_class || '-') + '</div>' +
+        '<div>' + (iss.storey || '-') + '</div>' +
+        '<div class="issue-ts">' + ts + '</div>' +
+        '<div class="issue-ts">' + gps + '</div>' +
+      '</div>';
+    list.appendChild(card);
+  }
+}
+
+async function _showIssueDetail(iss) {
+  const list = document.getElementById('issues-list');
+  const detail = document.getElementById('issue-detail-view');
+  list.style.display = 'none';
+  detail.classList.add('active');
+  const imgEl = document.getElementById('issue-detail-img');
+  if (iss.jpeg_blob) {
+    imgEl.src = URL.createObjectURL(iss.jpeg_blob);
+  } else {
+    imgEl.src = '';
+  }
+  document.getElementById('issue-d-class').textContent = iss.element_class || '-';
+  document.getElementById('issue-d-name').textContent = iss.element_name || '-';
+  document.getElementById('issue-d-guid').textContent = iss.element_guid || '-';
+  document.getElementById('issue-d-building').textContent = iss.building || '-';
+  document.getElementById('issue-d-storey').textContent = iss.storey || '-';
+  document.getElementById('issue-d-disc').textContent = iss.discipline || '-';
+  document.getElementById('issue-d-gps').textContent = _formatIssueGps(iss.gps_lat, iss.gps_lng, iss.gps_accuracy);
+  document.getElementById('issue-d-compass').textContent = iss.compass_heading != null ? iss.compass_heading + '\u00b0' : '-';
+  document.getElementById('issue-d-time').textContent = iss.timestamp ? new Date(iss.timestamp).toLocaleString() : '-';
+  document.getElementById('issue-d-notes').textContent = iss.notes || '-';
+}
+
+function _issueBackToList() {
+  document.getElementById('issue-detail-view').classList.remove('active');
+  document.getElementById('issues-list').style.display = '';
+}
+
+function toggleIssues() {
+  const panel = document.getElementById('issues-panel');
+  if (panel.classList.contains('active')) {
+    panel.classList.remove('active');
+  } else {
+    panel.classList.add('active');
+    _renderIssueList();
+  }
+}
+
+async function exportIssuesExcel() {
+  if (typeof XLSX === 'undefined') { alert('SheetJS not loaded'); return; }
+  const issues = await _getAllIssues();
+  if (issues.length === 0) { alert('No issues to export'); return; }
+  const rows = issues.map(iss => ({
+    'ID': iss.id,
+    'Timestamp': iss.timestamp ? new Date(iss.timestamp).toLocaleString() : '',
+    'Building': iss.building || '',
+    'Storey': iss.storey || '',
+    'Discipline': iss.discipline || '',
+    'IFC Class': iss.element_class || '',
+    'Element Name': iss.element_name || '',
+    'GUID': iss.element_guid || '',
+    'GPS Lat': iss.gps_lat != null ? iss.gps_lat : '',
+    'GPS Lng': iss.gps_lng != null ? iss.gps_lng : '',
+    'Compass': iss.compass_heading != null ? iss.compass_heading : '',
+    'Notes': iss.notes || ''
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Issues');
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  XLSX.writeFile(wb, 'BIM_Issues_' + ts + '.xlsx');
+  console.log('[S205] Exported', issues.length, 'issues to Excel');
+}
+
+async function clearAllIssues() {
+  if (!confirm('Delete all logged issues? This cannot be undone.')) return;
+  const db = await _openIssuesDB();
+  const tx = db.transaction('issues', 'readwrite');
+  tx.objectStore('issues').clear();
+  await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = reject; });
+  db.close();
+  _renderIssueList();
+  console.log('[S205] All issues cleared');
 }
 
 // ── Expose functions to HTML onclick handlers ──
@@ -2043,6 +2759,17 @@ window.snapSitePhoto = snapSitePhoto;
 window.closeSitePreview = closeSitePreview;
 window.shareSitePhoto = shareSitePhoto;
 window.downloadSitePhoto = downloadSitePhoto;
+window.setMarkupTool = setMarkupTool;
+window.setMarkupColor = setMarkupColor;
+window.undoMarkup = undoMarkup;
+window.toggleMeasure = toggleMeasure;
+window.clearMeasures = clearMeasures;
+window.toggleSection = toggleSection;
+window.updateSectionPlane = updateSectionPlane;
+window.toggleIssues = toggleIssues;
+window.exportIssuesExcel = exportIssuesExcel;
+window.clearAllIssues = clearAllIssues;
+window._issueBackToList = _issueBackToList;
 } // end initViewer
 </script>
 </body>

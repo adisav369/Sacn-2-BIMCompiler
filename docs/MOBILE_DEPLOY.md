@@ -505,6 +505,177 @@ useful for "which storey am I on?" and "which discipline is behind this wall?"
 
 **Phase A can be done today.** Phase B in a weekend. Phase C is the differentiator.
 
+### Phase F: BIM Walk Mode — Indoor Navigation (Future)
+
+Turn the phone into a **building navigation device**. The supervisor sees a blue dot
+moving through the 3D model as they walk the site — Google Maps for buildings.
+
+#### F.1 The Problem
+
+No indoor navigation exists for construction sites. GPS works outdoors (±3-5m) but
+fails indoors (±10-15m). Commercial solutions (Trimble SiteVision) require $10K+
+proprietary hardware. Nobody offers FOSS BIM navigation.
+
+#### F.2 Sensor Fusion — What the Phone Already Has
+
+| Sensor | Web API | What It Gives | Accuracy |
+|--------|---------|---------------|----------|
+| **GPS** | `navigator.geolocation` | Absolute position (lat/lng) | ±3-5m outdoor, ±10-15m indoor |
+| **Compass** | `DeviceOrientationEvent.alpha` | Heading (degrees from north) | ±5° |
+| **Accelerometer** | `Sensor API: Accelerometer` | Step detection | ~95% step accuracy |
+| **Gyroscope** | `Sensor API: Gyroscope` | Turn detection (rotation rate) | ±2° per turn |
+| **Barometer** | `Sensor API: AbsoluteOrientationSensor` | Altitude changes (floor detection) | ±0.5m (one storey = 3m) |
+| **Step counter** | `Sensor API: StepCounter` | Cumulative steps | Built into Android |
+
+**Smartwatch bonus:** Wrist-mounted accelerometer gives cleaner step data than
+pocket phone. Web Bluetooth API reads watch sensors. Not required — phone-only works.
+
+#### F.3 Pedestrian Dead Reckoning (PDR)
+
+The core algorithm — well-researched in academia, never applied to BIM:
+
+```
+1. ANCHOR: User taps "I'm here" at known location (main entrance)
+   → Maps phone GPS to IFC coordinate
+   → Sets initial position in model
+
+2. STEP DETECT: Accelerometer peak detection
+   → Each step = 0.7m (calibrated to user stride)
+   → Direction = compass heading
+
+3. POSITION UPDATE:
+   new_x = old_x + step_length × sin(heading)
+   new_y = old_y + step_length × cos(heading)
+
+4. FLOOR DETECT: Barometer altitude change
+   → ΔAltitude > 2.5m = storey change
+   → Snap to nearest IfcSlab level
+
+5. SNAP TO SPACE: Constrain to walkable route
+   → Query: nearest IfcSpace to raw position
+   → Snap blue dot to room centroid
+   → Like Google Maps snaps to road
+```
+
+#### F.4 Walkable Route Graph
+
+The IFC spatial structure IS the navigation graph:
+
+```
+IfcSpace (room)  ←→  IfcDoor (connection)  ←→  IfcSpace (adjacent room)
+                                    │
+                              IfcStair (vertical connection)
+                                    │
+                              IfcSpace (room on next storey)
+```
+
+```sql
+-- Build navigation graph from IFC data already in the DB
+-- Rooms = nodes
+SELECT DISTINCT storey, guid, element_name, center_x, center_y, center_z
+FROM elements_meta JOIN element_transforms USING (guid)
+WHERE ifc_class = 'IfcSpace';
+
+-- Doors = edges (connect adjacent rooms)
+SELECT guid, element_name, center_x, center_y, center_z, storey
+FROM elements_meta JOIN element_transforms USING (guid)
+WHERE ifc_class IN ('IfcDoor', 'IfcStair', 'IfcStairFlight');
+```
+
+Route snapping: raw GPS/PDR position → nearest node in graph → blue dot stays on
+walkable path. Drift is corrected every time the user passes through a door
+(choke point = position correction opportunity).
+
+#### F.5 TrueNorth Alignment
+
+Already extracted (S204): `project_metadata.true_north_angle` gives the rotation
+between IFC grid Y and geographic north. This aligns the compass heading with the
+model coordinate system:
+
+```
+model_heading = phone_compass - true_north_angle
+step_dx = step_length × sin(model_heading)
+step_dy = step_length × cos(model_heading)
+```
+
+No manual rotation calibration needed — the IFC tells us.
+
+#### F.6 Walk Mode UX
+
+```
+Supervisor arrives at building entrance
+    │
+    ▼
+Taps "Walk Mode" → blue dot appears at entrance
+    │
+    ├── Walks through building → dot moves in real-time
+    ├── Camera follows dot (first-person or overhead)
+    ├── Current room name shown in HUD
+    ├── Floor auto-detected from barometer
+    │
+    ├── Taps wall → "What's behind this wall?"
+    │   └── MEP elements within 500mm highlighted
+    │
+    ├── Taps "Site" → camera snap with exact model position
+    │   └── Photo tagged with room name, not just GPS
+    │
+    └── Walks past issue location → notification
+        └── "Issue #3 (crack in wall) is 2m to your left"
+```
+
+#### F.7 What's Behind This Wall
+
+Walk Mode enables the killer query. When the supervisor taps a wall:
+
+```sql
+-- Find MEP elements behind/inside the selected wall
+-- wall_x, wall_y, wall_normal from raycaster hit
+SELECT m.guid, m.ifc_class, m.element_name, m.discipline,
+       t.center_x, t.center_y, t.center_z
+FROM elements_meta m
+JOIN element_transforms t ON m.guid = t.guid
+WHERE m.discipline IN ('MEP', 'ELEC', 'PLB', 'ACMV', 'FP', 'HVAC')
+  AND m.storey = '{same_storey}'
+  AND ABS((t.center_x - {wall_x}) * {wall_nx}
+        + (t.center_y - {wall_y}) * {wall_ny}) < 0.5  -- within 500mm of wall plane
+```
+
+Result: pipes, ducts, cables highlighted in the model. The PiP snapshot shows them.
+The supervisor sees what's behind the wall without opening it.
+
+No LiDAR. No AR glasses. Just SQL + raycaster + compass.
+
+#### F.8 Competitive Landscape
+
+| Feature | Trimble SiteVision | Google Indoor Maps | Apple Indoor Maps | **BIM OOTB Walk** |
+|---------|-------------------|-------------------|-------------------|-------------------|
+| Indoor navigation | Yes (RTK GPS) | WiFi fingerprint | BLE beacons | PDR + IFC snap |
+| BIM model overlay | Yes | No | No | **Yes** |
+| Hardware required | $10K+ device | WiFi AP mapping | BLE beacon install | **Phone only** |
+| MEP behind wall | No | No | No | **Yes** |
+| Works on construction site | Yes | No (needs WiFi) | No (needs beacons) | **Yes** |
+| Offline | Yes | No | No | **Yes** |
+| Cost | $10K+ | Free but limited | Free but limited | **Free** |
+| FOSS | No | No | No | **Yes** |
+
+#### F.9 Implementation Steps
+
+| Step | Action | Effort | Depends On |
+|------|--------|--------|------------|
+| 21 | Anchor point UI ("I'm here" at known location) | 2 hours | Phase A |
+| 22 | GPS → IFC coordinate mapping with TrueNorth | 2 hours | Step 21 |
+| 23 | Blue dot in Three.js scene, camera follows | 1 hour | Step 22 |
+| 24 | Step detection from accelerometer | 4 hours | Step 23 |
+| 25 | PDR position update (step + heading) | 2 hours | Step 24 |
+| 26 | Barometer floor detection | 2 hours | Step 25 |
+| 27 | Snap to nearest IfcSpace (walkable route) | 3 hours | Step 25 |
+| 28 | "What's behind this wall" query + highlight | 3 hours | Step 27 |
+| 29 | Smartwatch sensor via Web Bluetooth (optional) | 4 hours | Step 24 |
+| 30 | Drift correction at door choke points | 4 hours | Step 27 |
+
+**Steps 21-23 can be prototyped in a day.** GPS-only blue dot with compass rotation.
+Steps 24-27 add PDR for indoor accuracy. Steps 28-30 are the differentiators.
+
 ---
 
 ## 8. Files

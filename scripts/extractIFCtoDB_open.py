@@ -1019,6 +1019,21 @@ def extract(ifc_path, output_path, exclude=None, library_db=None):
     except Exception:
         pass
 
+    # --- TrueNorth: extract from IfcGeometricRepresentationContext ---
+    try:
+        import math
+        for ctx in ifc_file.by_type('IfcGeometricRepresentationContext'):
+            if hasattr(ctx, 'TrueNorth') and ctx.TrueNorth:
+                d = ctx.TrueNorth.DirectionRatios
+                angle = math.degrees(math.atan2(d[0], d[1]))
+                conn.execute("INSERT OR REPLACE INTO project_metadata VALUES ('true_north_x', ?)", (str(d[0]),))
+                conn.execute("INSERT OR REPLACE INTO project_metadata VALUES ('true_north_y', ?)", (str(d[1]),))
+                conn.execute("INSERT OR REPLACE INTO project_metadata VALUES ('true_north_angle', ?)", (str(round(angle, 2)),))
+                print(f"  TrueNorth: ({d[0]}, {d[1]}) → {angle:.2f}° from grid Y")
+                break
+    except Exception as e:
+        print(f"  TrueNorth: not available ({e})")
+
     conn.execute("INSERT OR REPLACE INTO project_metadata VALUES ('unit_scale', ?)", (str(unit_scale),))
     conn.execute("INSERT OR REPLACE INTO project_metadata VALUES ('extractor', 'extractIFCtoDB_open')")
     conn.execute("INSERT OR REPLACE INTO project_metadata VALUES ('source_file', ?)", (os.path.basename(ifc_path),))

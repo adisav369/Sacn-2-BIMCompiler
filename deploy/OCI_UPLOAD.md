@@ -1,115 +1,74 @@
-# OCI Object Storage — BOMTree Demo Upload
+# OCI Object Storage — BIM OOTB Deployment
 
-## One-time setup
+## Architecture
 
-### 1. Create the bucket
+Per-building DB pairs. Each building is split into `{Name}_extracted.db` + `{Name}_library.db`.
+No single monolithic DB. Landing page (`index.html`) loads `manifest.json`, user clicks a building,
+viewer downloads just that building's two DBs. Cached in IndexedDB — second visit is instant.
 
-```bash
-# Login (browser-based, one-time)
-oci session authenticate --region ap-sydney-1
+## Buckets
 
-# Create bucket (public read, no versioning needed)
-oci os bucket create \
-  --compartment-id $COMPARTMENT_ID \
-  --name bomtree-library \
-  --public-access-type ObjectRead \
-  --storage-tier Standard
+| Bucket | Purpose |
+|--------|---------|
+| `bim-ootb-full` | Landing page + 30 per-building DB pairs + city index |
+| `bim-ootb` | Duplex demo (standalone) |
+| `bim-ootb-duplex` | Duplex backup |
+
+Region: `ap-kulai-2` (Malaysia West 2 Kulai). Always Free tier.
+
+## Live URL
+
+```
+https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html
 ```
 
-### 2. Upload the databases
+## Files in bim-ootb-full
 
-```bash
-# sandbox_1M_extracted.db (~579MB)
-oci os object put \
-  --bucket-name bomtree-library \
-  --file DAGCompiler/lib/input/sandbox_1M_extracted.db \
-  --name sandbox_1M_extracted.db \
-  --content-type application/x-sqlite3
-
-# component_library.db (~456MB)
-oci os object put \
-  --bucket-name bomtree-library \
-  --file library/component_library.db \
-  --name component_library.db \
-  --content-type application/x-sqlite3
-
-# manifest.json
-oci os object put \
-  --bucket-name bomtree-library \
-  --file deploy/bomtree_manifest.json \
-  --name manifest.json \
-  --content-type application/json
+```
+index.html                          ← landing page (manifest-driven, 30 building cards)
+rtree_browser_demo.html             ← 3D viewer (opened per building)
+boq_charts.html                     ← 4D/5D analytics
+manifest.json                       ← 30 archetypes metadata
+buildings/
+  {Name}_extracted.db               ← metadata, transforms, element info (per building)
+  {Name}_library.db                 ← geometry BLOBs, vertices + faces (per building)
+  city_index.db                     ← 786 building bboxes for city mode (324KB)
 ```
 
-### 3. Get the public URLs
+30 per-building pairs (e.g. `SampleHouse_extracted.db` + `SampleHouse_library.db`).
+
+## CLI Commands
 
 ```bash
-# List objects with URLs
-oci os object list --bucket-name bomtree-library --output table
+# Upload landing page
+oci os object put --bucket-name bim-ootb-full \
+  --file deploy/landing.html --name index.html \
+  --content-type text/html --force
 
-# URL format (public read):
-# https://objectstorage.{region}.oraclecloud.com/n/{namespace}/b/bomtree-library/o/{filename}
-```
+# Upload viewer
+oci os object put --bucket-name bim-ootb-full \
+  --file deploy/rtree_browser_demo.html --name rtree_browser_demo.html \
+  --content-type text/html --force
 
-### 4. Update the setup script
+# Upload a per-building DB pair
+oci os object put --bucket-name bim-ootb-full \
+  --file deploy/buildings/Hospital_extracted.db \
+  --name buildings/Hospital_extracted.db --force
 
-Edit `scripts/setup_bomtree_demo.sh` — replace the placeholder URLs:
-```bash
-OCI_BASE="https://objectstorage.ap-sydney-1.oraclecloud.com/n/{YOUR_NAMESPACE}/b/bomtree-library/o"
-```
+oci os object put --bucket-name bim-ootb-full \
+  --file deploy/buildings/Hospital_library.db \
+  --name buildings/Hospital_library.db --force
 
-Get your namespace:
-```bash
-oci os ns get
-```
-
-## Verification
-
-After upload, test the public download:
-```bash
-curl -I "https://objectstorage.ap-sydney-1.oraclecloud.com/n/{NAMESPACE}/b/bomtree-library/o/manifest.json"
-# Should return: HTTP/1.1 200 OK
+# List bucket
+oci os object list --bucket-name bim-ootb-full \
+  --query 'data[*].{name:name}' --output table
 ```
 
 ## Cost
 
-OCI Free Tier includes:
-- 10GB Object Storage (we use ~1GB)
-- 10TB/month outbound data transfer
-- No compute instance needed
+OCI Always Free tier — no charges, no expiry:
+- 20GB Object Storage (we use ~1.5GB)
+- 10TB/month outbound (per-building DBs are 0.1-173MB each)
+- Exceeding limits = throttled, not billed
 
-At ~1GB per download, this supports ~10,000 demo downloads per month for free.
-
-## Updating the databases
-
-When sandbox_1M_extracted.db or component_library.db change:
-
-```bash
-# Re-upload (overwrites)
-oci os object put --bucket-name bomtree-library \
-  --file DAGCompiler/lib/input/sandbox_1M_extracted.db \
-  --name sandbox_1M_extracted.db --force
-
-# Update manifest checksums
-md5sum DAGCompiler/lib/input/sandbox_1M_extracted.db library/component_library.db
-# Edit deploy/bomtree_manifest.json with new md5 + size
-# Re-upload manifest
-oci os object put --bucket-name bomtree-library \
-  --file deploy/bomtree_manifest.json --name manifest.json --force
-
-# Update setup script checksums
-# Edit scripts/setup_bomtree_demo.sh SANDBOX_MD5 and LIBRARY_MD5
-```
-
-## DNS (optional)
-
-To use `bomtree.io` instead of the raw OCI URL:
-
-```bash
-# In OCI DNS Zone Management:
-# bomtree.io CNAME → objectstorage.ap-sydney-1.oraclecloud.com
-
-# Or use a redirect rule in the bucket's pre-authenticated requests
-```
-
-For now, the raw Object Storage URL works fine. DNS is cosmetic.
+Full setup details: `internal/OCI_SETUP.md`
