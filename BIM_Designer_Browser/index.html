@@ -1316,10 +1316,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#11-what-was-not-possible-3-years-ago" class="md-nav__link">
+  <a href="#11-what-changed-honest-assessment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1.1 What Was Not Possible 3 Years Ago
+        1.1 What Changed — Honest Assessment
       
     </span>
   </a>
@@ -3451,10 +3451,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#11-what-was-not-possible-3-years-ago" class="md-nav__link">
+  <a href="#11-what-changed-honest-assessment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1.1 What Was Not Possible 3 Years Ago
+        1.1 What Changed — Honest Assessment
       
     </span>
   </a>
@@ -4075,44 +4075,48 @@ in microseconds. The GPU doesn't care where the data came from.</p>
 </code></pre></div></p>
 <p>No intermediate file format. No glTF. No OBJ. No server-side conversion.
 The BLOB in the DB IS the mesh. The browser IS the renderer.</p>
-<h3 id="11-what-was-not-possible-3-years-ago">1.1 What Was Not Possible 3 Years Ago<a class="headerlink" href="#11-what-was-not-possible-3-years-ago" title="Permanent link">&para;</a></h3>
+<h3 id="11-what-changed-honest-assessment">1.1 What Changed — Honest Assessment<a class="headerlink" href="#11-what-changed-honest-assessment" title="Permanent link">&para;</a></h3>
+<p>Individual components existed before. What's new is the <strong>combination at scale</strong>
+and the elimination of server-side infrastructure.</p>
 <table>
 <thead>
 <tr>
 <th>Component</th>
-<th>2023 State</th>
-<th>2026 State</th>
+<th>Prior Art</th>
+<th>What We Added</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>sql.js WASM</td>
-<td>Existed but slow, 100MB limit practical</td>
-<td>Stable, handles 500MB+ DBs</td>
+<td>Existed since 2016. Could load large DBs if browser had RAM.</td>
+<td>httpvfs range requests (production-ready 2024) eliminate full download — fetch only the SQLite pages needed. This is the enabling breakthrough.</td>
 </tr>
 <tr>
 <td>Three.js BufferGeometry</td>
-<td>Existed</td>
-<td>Same — mature</td>
+<td>Mature since 2015. Every web viewer uses it.</td>
+<td>Nothing — we use it as-is.</td>
 </tr>
 <tr>
-<td>DB-as-model architecture</td>
-<td>Did not exist</td>
-<td>Our innovation — IFC→DB→BLOB→mesh</td>
+<td>DB-as-model</td>
+<td>IFC.js (2020) parses IFC in WASM. Speckle (2019) serves objects via API.</td>
+<td>Different architecture: we store <strong>pre-tessellated BLOBs</strong> in SQLite alongside metadata. No re-parsing, no API server. The browser queries the same DB for both geometry and properties. IFC.js re-parses geometry each time. Speckle requires a server.</td>
 </tr>
 <tr>
 <td>Browser BLOB streaming</td>
-<td>Fetch+parse possible but no one did it from SQLite</td>
-<td>Proven at 126K elements</td>
+<td>glTF/OBJ loading in browsers since 2015. IFC.js streams parsed geometry.</td>
+<td>Streaming from <strong>SQLite BLOBs</strong> (not file formats) means geometry and metadata share one query layer. No export/import step — the BLOB is a column, not a file.</td>
 </tr>
 <tr>
-<td>httpvfs (range requests)</td>
-<td>Experimental</td>
-<td>Production-ready, enables true streaming</td>
+<td>nD analytics (4D-8D)</td>
+<td>SQL queries on element attributes — the operations themselves are standard relational algebra.</td>
+<td>The novelty is the <strong>template-driven engine</strong> + <strong>single-DB pipeline</strong>: 5 dimensions from one <code>_extracted.db</code>, user-editable JSON templates, self-healing dependency chain, 8.7s at 1M elements. Commercial tools charge $60-180K/yr and silo each dimension behind separate vendors.</td>
 </tr>
 </tbody>
 </table>
-<p>The technology was there. The architecture was not.</p>
+<p><strong>What's genuinely new:</strong> the full pipeline — IFC → extracted DB → pre-tessellated BLOBs →
+browser renders geometry AND runs analytics from the same SQL layer, with zero server
+infrastructure. The components existed. The integration at 126K elements with 60fps did not.</p>
 <hr />
 <h2 id="2-deployment-architecture">2. Deployment Architecture<a class="headerlink" href="#2-deployment-architecture" title="Permanent link">&para;</a></h2>
 <h3 id="21-static-file-deployment-oci-any-cdn">2.1 Static File Deployment (OCI / Any CDN)<a class="headerlink" href="#21-static-file-deployment-oci-any-cdn" title="Permanent link">&para;</a></h3>
