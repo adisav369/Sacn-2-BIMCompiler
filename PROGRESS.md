@@ -39,6 +39,17 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
+**S204 (2026-04-20):** Mobile Site Camera + viewer tools. DONE.
+  - **Site Camera:** phone rear camera snap with BIM element metadata, GPS (Google Maps link), compass bearing, timestamp, QR code, BIM model PiP (compass-aligned via TrueNorth)
+  - **Markup tools:** arrow, circle, freehand draw, text annotation on photo before sharing. Undo. 4 colours.
+  - **Measure tool:** tap two points on model, dashed line + distance in metres
+  - **Section cut:** horizontal clipping plane with slider, cuts through building height
+  - **Issue log:** auto-save snaps to IndexedDB, issue list panel, Excel export (SheetJS)
+  - **TrueNorth:** extraction added to `extractIFCtoDB_open.py`, viewer reads `project_metadata.true_north_angle`
+  - **OCI:** event logging enabled on all 3 buckets. Landing page updated with full DB download links.
+  - **Docs:** `BIM_Designer_Browser.md` §6.0 updated, `MOBILE_DEPLOY.md` Phase F (Walk Mode) spec'd
+  - **Next:** S205 — IfcSpace extraction, walk graph, indoor fly-through, GPS blue dot, "what's behind this wall"
+
 **S203 (2026-04-20):** Viewer UX — direct download, IndexedDB cache, city mode. DONE.
   - **httpvfs retired:** Too slow (130ms/page × hundreds of pages = minutes). All 30 archetypes now as per-building DBs, full download via sql.js.
   - **Per-building extraction:** `scripts/extract_per_building.py` — splits sandbox into 30 per-building DB pairs (extracted + library). Uploaded to OCI `bim-ootb-full/buildings/`.
