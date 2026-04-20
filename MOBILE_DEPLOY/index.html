@@ -1323,6 +1323,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#0-live-urls-try-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. Live URLs — Try Now
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#1-architecture-no-native-code" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3258,6 +3269,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#0-live-urls-try-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. Live URLs — Try Now
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#1-architecture-no-native-code" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3656,8 +3678,36 @@
 <p><b>BIM in your pocket.</b> Same HTML viewer, wrapped as an Android app. Per-building DBs from OCI Object Storage. Works offline after first load.</p>
 </div>
 <p><strong>Version:</strong> 0.1 (2026-04-20)
-<strong>Status:</strong> SPEC
+<strong>Status:</strong> SPEC — OCI deployed, live URLs below
 <strong>Depends on:</strong> <code>deploy/rtree_browser_demo.html</code>, OCI Object Storage bucket</p>
+<hr />
+<h2 id="0-live-urls-try-now">0. Live URLs — Try Now<a class="headerlink" href="#0-live-urls-try-now" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Link</th>
+<th>What</th>
+<th>Download</th>
+<th>Mobile?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb/o/index.html"><strong>BIM OOTB Demo</strong></a></td>
+<td>Duplex building — full download, auto fly-around</td>
+<td>~3 MB</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html"><strong>BIM OOTB City</strong></a></td>
+<td>37 buildings, 1M elements — httpvfs streaming</td>
+<td>~5-10 MB/building</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<p><strong>OCI Object Storage</strong> (Malaysia West 2 Kulai). Always Free tier. Bucket: <code>bim-ootb</code> (demo), <code>bim-ootb-full</code> (city).
+CORS enabled. Range headers supported (required for httpvfs).</p>
 <hr />
 <h2 id="1-architecture-no-native-code">1. Architecture — No Native Code<a class="headerlink" href="#1-architecture-no-native-code" title="Permanent link">&para;</a></h2>
 <p>The browser viewer already works on mobile Chrome/Safari. The APK is a thin wrapper.</p>
