@@ -74,7 +74,7 @@ and the elimination of server-side infrastructure.
 
 | Component | Prior Art | What We Added |
 |-----------|-----------|---------------|
-| sql.js WASM | Existed since 2016. Could load large DBs if browser had RAM. | httpvfs range requests (production-ready 2024) eliminate full download — fetch only the SQLite pages needed. This is the enabling breakthrough. |
+| sql.js WASM | Existed since 2016. Could load large DBs if browser had RAM. | Per-building DB split + IndexedDB caching. Each building downloads in 1-2s, cached for instant revisit. No server needed. |
 | Three.js BufferGeometry | Mature since 2015. Every web viewer uses it. | Nothing — we use it as-is. |
 | DB-as-model | IFC.js (2020) parses IFC in WASM. Speckle (2019) serves objects via API. | Different architecture: we store **pre-tessellated BLOBs** in SQLite alongside metadata. No re-parsing, no API server. The browser queries the same DB for both geometry and properties. IFC.js re-parses geometry each time. Speckle requires a server. |
 | Browser BLOB streaming | glTF/OBJ loading in browsers since 2015. IFC.js streams parsed geometry. | Streaming from **SQLite BLOBs** (not file formats) means geometry and metadata share one query layer. No export/import step — the BLOB is a column, not a file. |
@@ -91,50 +91,63 @@ infrastructure. The components existed. The integration at 126K elements with 60
 ### 2.1 Static File Deployment (OCI / Any CDN)
 
 ```
-┌─────────────────────────────────────┐
-│  OCI Object Storage (public bucket) │
-│                                     │
-│  rtree_browser_demo.html  (150KB)   │
-│  sandbox_1M_extracted.db  (579MB)   │
-│  component_library.db     (456MB)   │
-└──────────────┬──────────────────────┘
-               │  HTTP GET (static files)
+┌──────────────────────────────────────────┐
+│  OCI Object Storage (public bucket)      │
+│                                          │
+│  index.html (landing page)               │
+│  rtree_browser_demo.html (viewer)        │
+│  manifest.json (building catalogue)      │
+│  buildings/                              │
+│    city_index.db (324KB — 786 bboxes)    │
+│    SampleHouse_extracted.db (0.1MB)      │
+│    SampleHouse_library.db (0.4MB)        │
+│    Hospital_extracted.db (28MB)          │
+│    Hospital_library.db (59MB)            │
+│    ... 30 archetypes × 2 DBs each       │
+└──────────────┬───────────────────────────┘
+               │  fetch() per building (1-2s)
                ▼
-┌─────────────────────────────────────┐
-│  Browser (any modern browser)       │
-│                                     │
-│  sql.js (WASM) ← CDN               │
-│  Three.js      ← CDN               │
-│  OrbitControls  ← CDN              │
-│                                     │
-│  DB loaded in WASM → SQL queries    │
-│  BLOBs → BufferGeometry → render   │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│  Browser (any modern browser)            │
+│                                          │
+│  sql.js (WASM) ← CDN                    │
+│  Three.js      ← CDN                    │
+│  OrbitControls ← CDN                    │
+│                                          │
+│  IndexedDB cache (bim_ootb_cache)        │
+│    → first visit: download + cache       │
+│    → repeat visit: instant from cache    │
+│                                          │
+│  DB in WASM → SQL queries → BLOBs       │
+│  → BufferGeometry → GPU render           │
+└──────────────────────────────────────────┘
 ```
 
 **No server. No API. No Docker. No backend. Just files.**
 
-### 2.2 Two Loading Modes
+### 2.2 Loading: Per-Building Direct Download + Cache
 
-| Mode | How | Initial Wait | Best For |
-|------|-----|-------------|----------|
-| **Full download** | Browser fetches entire DB | Duplex ~1s, Hospital ~11s, AHouse ~25s (50Mbps) | Repeated use, offline review |
-| **Range streaming** (httpvfs) | Fetch SQLite pages on demand | 1-2s to first bbox, 5-20s to first building geometry | One-time review, large models |
+Each building is a separate DB pair (`{name}_extracted.db` + `{name}_library.db`).
+Browser downloads the pair via `fetch()`, loads into sql.js (in-memory SQLite), renders with Three.js.
+**IndexedDB cache** (`bim_ootb_cache`) stores downloads — second visit is instant (no network).
 
-Both modes use the same HTML file. Toggle via config flag.
+> **httpvfs (HTTP Range requests) was tried and retired.** Each SQLite page fetch = 130ms network
+> round-trip. A single query on a 579MB DB needs 50-100 page fetches = 6-13 seconds of stalling.
+> Direct download of per-building DBs (1-60MB each) completes in 1-2 seconds. See S203 prompt for details.
 
-### 2.3 Per-Building Split (Optional)
+### 2.3 Per-Building DB Sizes
 
-Extract each building to its own DB for faster targeted download:
+| Building | Elements | Unique Meshes | Download (ext+lib) |
+|----------|----------|---------------|-------------------|
+| SampleHouse | 65 | 51 | 0.5 MB |
+| Duplex | 1,169 | 650 | 2.8 MB |
+| HITOS | 2,593 | 1,706 | 5.9 MB |
+| Clinic | 16,480 | 7,654 | 31 MB |
+| Terminal | 48,428 | 7,150 | 59 MB |
+| Hospital | 63,917 | 23,045 | 88 MB |
+| LTU AHouse | 125,698 | 51,392 | 177 MB |
 
-| Building | Elements | Unique Meshes | Est. Size |
-|----------|----------|---------------|-----------|
-| Duplex | 1,169 | 650 | ~2 MB |
-| Jesse | 676 | 335 | ~1 MB |
-| Clinic | 16,480 | 7,654 | ~23 MB |
-| Terminal | 48,428 | 7,150 | ~21 MB |
-| Hospital | 63,917 | 23,045 | ~68 MB |
-| LTU AHouse | 125,698 | 51,392 | ~153 MB |
+All 30 archetypes extracted. Extraction script: `scripts/extract_per_building.py`.
 
 ---
 
@@ -395,16 +408,12 @@ No. They serve different audiences:
 
 Open in any browser (desktop or mobile):
 
-| Link | What | Download |
-|------|------|----------|
-| [**BIM OOTB Demo**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb/o/index.html) | Duplex building — full download, auto fly-around | ~3 MB |
-| [**BIM OOTB City**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html) | 37 buildings, 1M elements — httpvfs range streaming | ~5-10 MB per building |
+[**BIM OOTB — 30 buildings, 1M elements**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html)
 
-**Demo** loads the Duplex (~3MB), works on any phone or desktop.
-**City** uses httpvfs (HTTP Range requests) to stream SQLite pages on demand —
-no 1GB download. Click a building, only its data is fetched.
+Click any building → downloads its DB (1-60MB) → streams geometry in your browser.
+Cached in IndexedDB — second visit is instant. Explore all 30 archetypes to unlock the full city (786 buildings).
 
-Both URLs work on desktop and mobile. Same viewer, same controls.
+Works on desktop and mobile. No install, no account, no server.
 
 ### 6.1 Local Setup (3 steps)
 
@@ -416,14 +425,30 @@ cd deploy
 python3 -m http.server 8080
 
 # 3. Open in browser
-# http://localhost:8080/rtree_browser_demo.html
+# http://localhost:8080/landing.html
 ```
 
-That's it. Two DB files must be in the same `deploy/` folder:
-- `sandbox_1M_extracted.db` (579MB) — building data
-- `component_library.db` (456MB) — geometry BLOBs
+Per-building DBs must be in `deploy/buildings/`:
+- `{Name}_extracted.db` — building metadata + transforms
+- `{Name}_library.db` — geometry BLOBs (vertices + faces)
 
-### 6.2 Controls
+### 6.2 Extract Your Own IFC
+
+To onboard a new IFC file into the viewer:
+
+```bash
+# One-command onboarding
+./scripts/onboard_ifc.sh --prefix XX --type House --name 'My Building' --ifc path/to/model.ifc
+
+# Or step-by-step:
+python3 DAGCompiler/python/extractIFCtoDB.py path/to/model.ifc deploy/buildings/MyBuilding_extracted.db
+# Library geometry is extracted during the DAGCompiler pipeline
+```
+
+Full guide: [IFC Onboarding Runbook](IFC_ONBOARDING_RUNBOOK.md) (8 steps, self-service).
+Platform setup: [Systems Installer Guide](SYSTEMS_INSTALLER_GUIDE.md) §1-2.
+
+### 6.3 Controls
 
 | Input | Action |
 |-------|--------|
@@ -435,7 +460,7 @@ That's it. Two DB files must be in the same `deploy/` folder:
 | **Alt+Z** | X-Ray toggle |
 | **F11** | Fullscreen toggle |
 
-### 6.3 Toolbar Buttons (top-right panel)
+### 6.4 Toolbar Buttons (top-right panel)
 
 | Button | Action |
 |--------|--------|
@@ -446,7 +471,7 @@ That's it. Two DB files must be in the same `deploy/` folder:
 | ☆ / ☾ | Light/dark theme (white bg hides bboxes for print) |
 | ✈ | Fly around rendered buildings |
 
-### 6.4 Panels
+### 6.5 Panels
 
 | Panel | Position | Shows |
 |-------|----------|-------|
@@ -459,7 +484,7 @@ That's it. Two DB files must be in the same `deploy/` folder:
 
 All panels collapse with **−/+**.
 
-### 6.5 Workflow
+### 6.6 Workflow
 
 1. Open the URL → city of bounding boxes appears
 2. Click a building in the list (right panel) → flies to it, streams geometry
@@ -485,9 +510,11 @@ All panels collapse with **−/+**.
 | 3 | Upload per-building DBs (14 archetypes) | **DONE** |
 | 4 | Auto-detect OCI base URL in HTML | **DONE** |
 | 5 | Landing page with manifest (30 archetypes, 11.8KB) | **DONE** |
-| 6 | CORS configuration for Range headers | **DONE** |
-| 7 | httpvfs streaming for large buildings | **WIP** — speed issues on 579MB DB |
-| 8 | Deploy Java compiler container for Phase 4 modeller | Phase 4 |
+| 6 | Per-building split for ALL 30 archetypes (S203) | **DONE** |
+| 7 | IndexedDB cache — download once, instant revisit | **DONE** |
+| 8 | City mode — 786 bboxes from city_index.db (324KB) | **DONE** |
+| 9 | "Complete the City" progress + LAUNCH CITY button | **DONE** |
+| 10 | Deploy Java compiler container for Phase 4 modeller | Phase 4 |
 
 ### 7.2 OCI Resource Plan
 
@@ -520,9 +547,11 @@ scripts/extract_building.sh T0_Hospital > deploy/Hospital_extracted.db
 - [x] Collapsible panels (−/+ toggle)
 - [x] Trackpad + mouse orbit/pan/zoom
 - [x] HUD with building name, streaming progress
-- [ ] httpvfs streaming (no full download)
-- [ ] OCI bucket setup + public URL
-- [ ] Per-building DB extraction script
+- [x] Per-building DB extraction (`scripts/extract_per_building.py`) — all 30 archetypes
+- [x] OCI bucket setup + public URL (ap-kulai-2, bim-ootb-full)
+- [x] IndexedDB cache (download once, instant revisit)
+- [x] City mode (city_index.db, 786 bboxes, click-to-stream)
+- [x] "Complete the City" gamification (progress bar, LAUNCH CITY button)
 - [ ] BIM Designer rename (rtree_browser_demo → bim_designer)
 - [ ] Java compiler container for Phase 4
 
@@ -533,10 +562,19 @@ scripts/extract_building.sh T0_Hospital > deploy/Hospital_extracted.db
 ### 8.1 File Structure
 ```
 deploy/
-  rtree_browser_demo.html   ← current prototype (rename to bim_designer.html)
-  sandbox_1M_extracted.db   ← building data
-  component_library.db      ← geometry BLOBs
-  OCI_UPLOAD.md             ← deployment guide
+  landing.html                ← building catalogue (index.html on OCI)
+  rtree_browser_demo.html     ← viewer (single-building + city mode)
+  manifest.json               ← building metadata for landing page
+  OCI_UPLOAD.md               ← deployment guide
+  buildings/
+    city_index.db             ← 324KB city index (786 bboxes)
+    SampleHouse_extracted.db  ← per-building metadata + transforms
+    SampleHouse_library.db    ← per-building geometry BLOBs
+    Hospital_extracted.db
+    Hospital_library.db
+    ... (30 archetypes × 2 files each)
+scripts/
+  extract_per_building.py     ← splits sandbox into per-building DBs
 ```
 
 ### 8.2 Key Technical Decisions
@@ -545,7 +583,7 @@ deploy/
    Rationale: matches the DB-as-model simplicity. One file = one deployment unit.
 
 2. **sql.js over REST.** The browser IS the database client. No API layer to maintain.
-   Tradeoff: large initial download. Mitigated by httpvfs range requests.
+   Per-building split + IndexedDB cache keeps downloads small (1-60MB each).
 
 3. **Three.js r128 (stable).** Not latest — proven, small, well-documented.
    OrbitControls included. No module bundler needed.
@@ -553,21 +591,28 @@ deploy/
 4. **BufferGeometry from BLOBs.** Same pipeline as Blender's `from_pydata()`.
    Vertex swap: IFC (x,y,z) → Three.js (x,z,-y). Rotation: Euler (rx,rz,-ry).
 
-### 8.3 httpvfs Integration (Phase 2 prerequisite)
+### 8.3 IndexedDB Cache (S203)
 
 ```javascript
-// Replace full-download init with:
-import { createDbWorker } from "sql.js-httpvfs";
-const worker = await createDbWorker(
-  [{ from: "jsonconfig", configUrl: "/db-config.json" }],
-  "/sql.js-httpvfs/sqlite.worker.js",
-  "/sql.js-httpvfs/sql-wasm.wasm"
-);
-// Then use worker.db.exec() same as current db.exec()
+// cachedFetch() — try IndexedDB first, fall back to network, cache result
+const buf = await cachedFetch(url);  // ArrayBuffer
+const db = new SQL.Database(new Uint8Array(buf));
 ```
 
-Pre-build config: `create_lazyfile.sh sandbox_1M_extracted.db > db-config.json`
-Upload config + DB to same OCI bucket. No other changes needed.
+Cache store: `bim_ootb_cache` in IndexedDB. Each URL is a key, ArrayBuffer is the value.
+Clear: F12 → Application → IndexedDB → Delete `bim_ootb_cache`, or click "Clear all cached data" on landing page.
+
+### 8.4 City Mode (S203)
+
+```
+?city=buildings/city_index.db&bldbase=buildings/
+```
+
+`city_index.db` (324KB) contains:
+- `building_summary`: 1,768 rows (786 buildings × disciplines) with pre-computed bboxes
+- `building_archetype`: 786 rows mapping building name → archetype name
+
+Click bbox → `cityLoadBuilding()` → downloads archetype's per-building DBs → applies position offset → streams into shared scene.
 
 ---
 
@@ -586,30 +631,18 @@ toggle shows/hides ARC, STR, MEP. All panels collapsible.
 
 ### 9.2 "What's the workflow for getting new IFC files into this system?"
 
-Self-service pipeline, proven on 12+ buildings:
+See §6.2 (Extract Your Own IFC). One-command onboarding, proven on 12+ buildings.
+Full guide: [IFC Onboarding Runbook](IFC_ONBOARDING_RUNBOOK.md). Platform setup: [Systems Installer Guide](SYSTEMS_INSTALLER_GUIDE.md) §1-2.
 
-```bash
-# One-command onboarding — zero code changes
-./scripts/onboard_ifc.sh --prefix XX --type House --name 'My Building' --ifc path/to/model.ifc
-
-# Or step-by-step:
-python3 scripts/ifc_recon.py path/to/model.ifc           # 1. Recon (30s)
-python3 scripts/extractIFCtoDB_open.py model.ifc out.db   # 2. Extract to DB
-```
-
-Full guide: [IFC Onboarding Runbook](IFC_ONBOARDING_RUNBOOK.md) (8 steps, self-service).
-Platform setup: [Systems Installer Guide](SYSTEMS_INSTALLER_GUIDE.md) §1–2.
+The extraction scripts require Python 3 + IfcOpenShell — works on Linux, Mac, and Windows (WSL or native Python).
 
 ### 9.3 "1.1GB full download is a non-starter for mobile."
 
-True for the full sandbox (37 buildings). Mitigations:
-
-1. **Per-building split** — extract one building to its own DB. Duplex = ~2MB,
-   Clinic = ~23MB, Hospital = ~68MB. See §2.3.
-2. **httpvfs range streaming** — fetch SQLite pages on demand. 1-2s to first bbox.
-   Implementation spec'd in §8.3, production deployment is the next technical milestone.
-3. **Most real-world use is single-building** — a site supervisor reviews one building,
-   not the whole city. Per-building DBs are the default deployment unit.
+Solved (S203). Per-building split means each building downloads independently:
+- SampleHouse = 0.5MB, Duplex = 2.8MB, Clinic = 31MB, Hospital = 88MB
+- IndexedDB cache = download once, instant on revisit
+- Most real-world use is single-building — a site supervisor reviews one building, not the whole city
+- City mode uses 324KB index for bboxes, downloads individual buildings on demand
 
 ### 9.4 "Geometry dedup — wouldn't glTF instancing be more efficient?"
 
