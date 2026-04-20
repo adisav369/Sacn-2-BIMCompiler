@@ -415,6 +415,11 @@ Cached in IndexedDB — second visit is instant. Explore all 30 archetypes to un
 
 Works on desktop and mobile. No install, no account, no server.
 
+<figure style="margin: 20px 0;">
+<img src="../assets/images/OOTB_mobile.jpeg" alt="BIM OOTB on mobile — touch controls, storey filter" style="max-width:300px; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">BIM OOTB on mobile — full 3D viewer with touch orbit, storey filter, and element picker. Same URL, no app install.</figcaption>
+</figure>
+
 ### 6.1 Local Setup (3 steps)
 
 ```bash
