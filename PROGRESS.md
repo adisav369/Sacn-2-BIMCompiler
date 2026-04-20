@@ -39,6 +39,17 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
+**S205 (2026-04-21):** Indoor Walk-Through Engine — action-based tour. DONE (foundation).
+  - **Extraction:** IfcSpace centroid extraction (3-tier: placement → contained elements → storey door avg), `walk_graph` table (bidirectional door-space edges), `rel_contained_in_space`
+  - **Walk engine:** Action-based tour: `moveTo`, `lookAround` (360deg pan), `rise` (stair climb), `pause`. Replaces linear interpolation path.
+  - **buildTour():** Generates tour from DB: entrance → rooms with panning → stairs → upper floors → exit. 28 actions for Duplex.
+  - **Stair climb proven:** xvfb+puppeteer headless test: camY=-0.09 → 3.02 (Level 1 to Level 2)
+  - **Walk Mode GPS:** Mobile-only blue dot, compass-aligned camera follow (Part C)
+  - **Wall X-ray:** Tap wall → MEP highlight (Part D)
+  - **TDZ fixes:** All walk/measure variables hoisted. Auto-fly removed (user clicks to start).
+  - **Pause/resume:** Fly button toggles pause/resume at current action
+  - **Next:** S206 — Cinematic tour (aerial orbit, descent, wall avoidance, bird's eye, city sequencing). Spec: `prompts/S206_cinematic_tour.md`
+
 **S204 (2026-04-20):** Mobile Site Camera + viewer tools. DONE.
   - **Site Camera:** phone rear camera snap with BIM element metadata, GPS (Google Maps link), compass bearing, timestamp, QR code, BIM model PiP (compass-aligned via TrueNorth)
   - **Markup tools:** arrow, circle, freehand draw, text annotation on photo before sharing. Undo. 4 colours.
