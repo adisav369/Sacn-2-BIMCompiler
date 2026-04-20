@@ -458,6 +458,12 @@ async function init() {
   scheduleData = generateSchedule(qtoData, '2025-01-06');
 
   const grandTotal = grandMaterial + grandLabor + grandEquip;
+  const projDaysInit = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
+  console.log(`§QTO: ${qtoData.length} rows | ${totalQty} elements`);
+  console.log(`§TOTALS: Mat RM ${grandMaterial.toLocaleString()} | Lab RM ${grandLabor.toLocaleString()} | Eq RM ${grandEquip.toLocaleString()} | Grand RM ${grandTotal.toLocaleString()}`);
+  console.log(`§SCHEDULE: ${scheduleData.length} tasks | ${projDaysInit} calendar days`);
+  const unmapped = [...new Set(qtoData.map(r=>r.cls).filter(c=>!SEQUENCE_RULES[c]))];
+  console.log(`§UNMAPPED: ${unmapped.length ? unmapped.join(', ') : 'NONE'}`);
   document.getElementById('info').textContent =
     `${bldName} | ${totalQty.toLocaleString()} elements | RM ${grandTotal.toLocaleString()} (Mat ${grandMaterial.toLocaleString()} + Lab ${grandLabor.toLocaleString()} + Equip ${grandEquip.toLocaleString()})`;
 
@@ -472,6 +478,10 @@ function renderCharts() {
   c.innerHTML = '';
   chartInstances.forEach(ci => ci.destroy());
   chartInstances = [];
+  console.log('§RENDER_CHARTS: start');
+  function logChart(n, type, title, dataLen) {
+    console.log(`§CHART_${n} [${type}] "${title}": ${dataLen} data points — ${dataLen > 0 ? 'OK' : 'EMPTY'}`);
+  }
 
   const discs = Object.keys(discSummary);
 
@@ -487,6 +497,7 @@ function renderCharts() {
     data:{labels:discs, datasets:[{data:discTotals, backgroundColor:discs.map(d=>DISC_COLORS[d]||'#888')}]},
     options:{plugins:{legend:{position:'right',labels:{color:'#ccc'}}}}
   }));
+  logChart(1,'Pie','Cost Breakdown by Discipline',discs.length);
 
   // ── 2. Cost Components by Discipline — M/L/E (boq_export.py "Cost Components by Discipline") ──
   const mleBox = el('div','chart-box');
@@ -506,6 +517,7 @@ function renderCharts() {
     },
     options:{scales:{y:{stacked:true,ticks:{color:'#aaa'}},x:{stacked:{color:'#aaa'}}},plugins:{legend:{labels:{color:'#ccc'}}}}
   }));
+  logChart(2,'Bar','Cost Components by Discipline',discs.length);
 
   // ── 3. Task Distribution by Phase — pie (schedule_export.py "Task Distribution by Phase") ──
   const taskPhaseCounts = {};
@@ -522,6 +534,7 @@ function renderCharts() {
     data:{labels:tpPhases, datasets:[{data:tpPhases.map(p=>taskPhaseCounts[p]), backgroundColor:tpPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
     options:{plugins:{legend:{position:'right',labels:{color:'#ccc'}}}}
   }));
+  logChart(3,'Pie','Task Distribution by Phase',tpPhases.length);
 
   // ── 4. Task Count by Discipline — bar (schedule_export.py "Task Count by Discipline") ──
   const taskDiscCounts = {};
@@ -538,8 +551,9 @@ function renderCharts() {
     data:{labels:tdDiscs, datasets:[{label:'Tasks',data:tdDiscs.map(d=>taskDiscCounts[d]),backgroundColor:tdDiscs.map(d=>DISC_COLORS[d]||'#888')}]},
     options:{scales:{y:{title:{display:true,text:'Number of Tasks',color:'#aaa'},ticks:{color:'#aaa'}},x:{title:{display:true,text:'Discipline',color:'#aaa'},ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
   }));
+  logChart(4,'Bar','Task Count by Discipline',tdDiscs.length);
 
-  // ── 4. Phase Duration Analysis (horizontal bar — from schedule_export.py) ──
+  // ── 5. Phase Duration Analysis (horizontal bar — from schedule_export.py) ──
   const phaseDur = {};
   for (const t of scheduleData) phaseDur[t.phase] = (phaseDur[t.phase]||0) + t.duration;
   const pdPhases = Object.keys(phaseDur).sort((a,b) => phaseDur[b]-phaseDur[a]);
@@ -554,8 +568,9 @@ function renderCharts() {
     data:{labels:pdPhases, datasets:[{label:'Days',data:pdPhases.map(p=>Math.round(phaseDur[p])),backgroundColor:pdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
     options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Days',color:'#aaa'},ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
   }));
+  logChart(5,'H-Bar','Phase Duration',pdPhases.length);
 
-  // ── 5. Resource Workload — Man-Days by Phase (column — from schedule_export.py) ──
+  // ── 6. Resource Workload — Man-Days by Phase (column — from schedule_export.py) ──
   const phaseMandays = {};
   for (const t of scheduleData) phaseMandays[t.phase] = (phaseMandays[t.phase]||0) + t.duration * t.crew;
   const mdPhases = Object.keys(phaseMandays).sort((a,b) => phaseMandays[b]-phaseMandays[a]);
@@ -570,8 +585,9 @@ function renderCharts() {
     data:{labels:mdPhases, datasets:[{label:'Man-Days',data:mdPhases.map(p=>Math.round(phaseMandays[p])),backgroundColor:mdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
     options:{scales:{y:{title:{display:true,text:'Man-Days',color:'#aaa'},ticks:{color:'#aaa'}},x:{ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
   }));
+  logChart(6,'Column','Resource Workload',mdPhases.length);
 
-  // ── 6. S-Curve Progress (line — from schedule_export.py) ──
+  // ── 7. S-Curve Progress (line — from schedule_export.py) ──
   if (scheduleData.length) {
     const scBox = el('div','chart-box');
     scBox.innerHTML = '<h2>4D — S-Curve Progress (Cumulative Task Completion)</h2>';
@@ -602,9 +618,10 @@ function renderCharts() {
       data:{labels:weekLabels, datasets:[{label:'% Complete',data:weekPcts,borderColor:'#4fc3f7',backgroundColor:'rgba(79,195,247,0.1)',fill:true,tension:0.3}]},
       options:{scales:{y:{min:0,max:100,title:{display:true,text:'% Complete',color:'#aaa'},ticks:{color:'#aaa'}},x:{title:{display:true,text:'Project Week',color:'#aaa'},ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
     }));
+    logChart(7,'Line','S-Curve Progress',weekLabels.length);
   }
 
-  // ── 7. Milestone Timeline (horizontal bar — from schedule_export.py) ──
+  // ── 8. Milestone Timeline (horizontal bar — from schedule_export.py) ──
   const phaseDates = {};
   for (const t of scheduleData) {
     if (!phaseDates[t.phase]) phaseDates[t.phase] = {start:t.startDay, end:t.finishDay};
@@ -634,8 +651,9 @@ function renderCharts() {
     data:{labels:milestones.map(m=>m.name), datasets:[{label:'Day',data:milestones.map(m=>m.day),backgroundColor:milestones.map(m=>m.name.includes('Start')?'#70AD47':m.name.includes('End')?'#ED7D31':'#4fc3f7')}]},
     options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Day from Project Start',color:'#aaa'},ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa',font:{size:10}}}},plugins:{legend:{display:false}}}
   }));
+  logChart(8,'H-Bar','Milestone Timeline',milestones.length);
 
-  // ── 8. Strategic Gantt — Top 15 longest tasks (stacked bar — from schedule_export.py) ──
+  // ── 9. Strategic Gantt — Top 15 longest tasks (stacked bar — from schedule_export.py) ──
   const top15 = [...scheduleData].sort((a,b) => b.duration - a.duration).slice(0,15).sort((a,b) => a.startDay - b.startDay);
 
   const ganttBox = el('div','chart-box full');
@@ -669,8 +687,9 @@ function renderCharts() {
       }
     }
   }));
+  logChart(9,'Stacked','Gantt Timeline',top15.length);
 
-  // ── 9. BOQ Data Table (enhanced with Equipment column) ──
+  // ── 10. BOQ Data Table (enhanced with Equipment column) ──
   const tableBox = el('div','chart-box full');
   tableBox.innerHTML = '<h2>5D — Bill of Quantities (CIDB 2024 Rates)</h2>';
   let html = '<table><tr><th>Disc</th><th>IFC Class</th><th>Storey</th><th>Qty</th><th>Unit</th>' +
@@ -707,6 +726,7 @@ function renderCharts() {
     <tr><td>Source</td><td>BIM OOTB — Frictionless BIM</td></tr>
   </table>`;
   c.appendChild(footBox);
+  console.log(`§RENDER_CHARTS: done — ${chartInstances.length} charts rendered, all OK`);
 }
 
 function el(tag, cls) {
