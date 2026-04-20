@@ -450,21 +450,9 @@ function renderCharts() {
     options:{plugins:{legend:{position:'right',labels:{color:'#ccc'}}}}
   }));
 
-  // ── 2. Element Count Bar ──
-  const barBox = el('div','chart-box');
-  barBox.innerHTML = '<h2>Element Count by Discipline</h2>';
-  const barCanvas = el('canvas');
-  barBox.appendChild(barCanvas); c.appendChild(barBox);
-
-  chartInstances.push(new Chart(barCanvas, {
-    type:'bar',
-    data:{labels:discs, datasets:[{label:'Elements',data:discs.map(d=>discSummary[d].qty),backgroundColor:discs.map(d=>DISC_COLORS[d]||'#888')}]},
-    options:{scales:{y:{ticks:{color:'#aaa'}},x:{ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
-  }));
-
-  // ── 3. Material vs Labour vs Equipment (stacked bar) ──
+  // ── 2. Cost Components by Discipline — M/L/E (boq_export.py "Cost Components by Discipline") ──
   const mleBox = el('div','chart-box');
-  mleBox.innerHTML = '<h2>Material / Labour / Equipment Cost (RM)</h2>';
+  mleBox.innerHTML = '<h2>Cost Components by Discipline (RM)</h2>';
   const mleCanvas = el('canvas');
   mleBox.appendChild(mleCanvas); c.appendChild(mleBox);
 
@@ -473,12 +461,44 @@ function renderCharts() {
     data:{
       labels:discs,
       datasets:[
-        {label:'Material',data:discs.map(d=>discSummary[d].matTotal),backgroundColor:'#4fc3f7'},
-        {label:'Labour',data:discs.map(d=>discSummary[d].laborCost),backgroundColor:'#ff8844'},
+        {label:'Material',data:discs.map(d=>discSummary[d].matTotal),backgroundColor:'#70AD47'},
+        {label:'Labour',data:discs.map(d=>discSummary[d].laborCost),backgroundColor:'#FFC000'},
         {label:'Equipment',data:discs.map(d=>discSummary[d].equipCost),backgroundColor:'#5B9BD5'},
       ]
     },
-    options:{scales:{y:{stacked:true,ticks:{color:'#aaa'}},x:{stacked:true,ticks:{color:'#aaa'}}},plugins:{legend:{labels:{color:'#ccc'}}}}
+    options:{scales:{y:{stacked:true,ticks:{color:'#aaa'}},x:{stacked:{color:'#aaa'}}},plugins:{legend:{labels:{color:'#ccc'}}}}
+  }));
+
+  // ── 3. Task Distribution by Phase — pie (schedule_export.py "Task Distribution by Phase") ──
+  const taskPhaseCounts = {};
+  for (const t of scheduleData) taskPhaseCounts[t.phase] = (taskPhaseCounts[t.phase]||0) + 1;
+  const tpPhases = Object.keys(taskPhaseCounts);
+
+  const tpBox = el('div','chart-box');
+  tpBox.innerHTML = '<h2>Task Distribution by Phase</h2>';
+  const tpCanvas = el('canvas');
+  tpBox.appendChild(tpCanvas); c.appendChild(tpBox);
+
+  chartInstances.push(new Chart(tpCanvas, {
+    type:'pie',
+    data:{labels:tpPhases, datasets:[{data:tpPhases.map(p=>taskPhaseCounts[p]), backgroundColor:tpPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
+    options:{plugins:{legend:{position:'right',labels:{color:'#ccc'}}}}
+  }));
+
+  // ── 4. Task Count by Discipline — bar (schedule_export.py "Task Count by Discipline") ──
+  const taskDiscCounts = {};
+  for (const t of scheduleData) taskDiscCounts[t.discipline] = (taskDiscCounts[t.discipline]||0) + 1;
+  const tdDiscs = Object.keys(taskDiscCounts);
+
+  const tdBox = el('div','chart-box');
+  tdBox.innerHTML = '<h2>Task Count by Discipline</h2>';
+  const tdCanvas = el('canvas');
+  tdBox.appendChild(tdCanvas); c.appendChild(tdBox);
+
+  chartInstances.push(new Chart(tdCanvas, {
+    type:'bar',
+    data:{labels:tdDiscs, datasets:[{label:'Tasks',data:tdDiscs.map(d=>taskDiscCounts[d]),backgroundColor:tdDiscs.map(d=>DISC_COLORS[d]||'#888')}]},
+    options:{scales:{y:{title:{display:true,text:'Number of Tasks',color:'#aaa'},ticks:{color:'#aaa'}},x:{title:{display:true,text:'Discipline',color:'#aaa'},ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
   }));
 
   // ── 4. Phase Duration Analysis (horizontal bar — from schedule_export.py) ──
