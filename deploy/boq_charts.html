@@ -145,10 +145,16 @@ const EQUIPMENT_ALLOCATION = {
 // SEQUENCE RULES (from schedule_generator.py — for 4D schedule)
 // ============================================================================
 const SEQUENCE_RULES = {
+  // Substructure
   IfcFooting:{phase:'Substructure',sequence:1,resource:'CONCRETE_GANG'},
+  IfcReinforcingBar:{phase:'Substructure',sequence:1,resource:'CONCRETE_GANG'},
+  // Superstructure
   IfcColumn:{phase:'Superstructure',sequence:2,resource:'STEEL_ERECTOR'},
   IfcBeam:{phase:'Superstructure',sequence:3,resource:'STEEL_ERECTOR'},
   IfcSlab:{phase:'Superstructure',sequence:4,resource:'CONCRETE_GANG'},
+  IfcPlate:{phase:'Superstructure',sequence:4,resource:'STEEL_ERECTOR'},
+  IfcMember:{phase:'Superstructure',sequence:3,resource:'STEEL_ERECTOR'},
+  // MEP Rough-in (pipes, ducts, cable trays, flow segments/fittings)
   IfcDuct:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
   IfcDuctSegment:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
   IfcDuctFitting:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
@@ -157,16 +163,32 @@ const SEQUENCE_RULES = {
   IfcPipeFitting:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
   IfcCableCarrier:{phase:'MEP Rough-in',sequence:5,resource:'ELECTRICIAN'},
   IfcCableCarrierSegment:{phase:'MEP Rough-in',sequence:5,resource:'ELECTRICIAN'},
+  IfcFlowSegment:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcFlowFitting:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcFlowController:{phase:'MEP Rough-in',sequence:5,resource:'ELECTRICIAN'},
+  IfcFlowMovingDevice:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
+  IfcFlowStorageDevice:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcFlowTreatmentDevice:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcEnergyConversionDevice:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
+  // Architecture
   IfcWall:{phase:'Architecture',sequence:6,resource:'MASON'},
   IfcWallStandardCase:{phase:'Architecture',sequence:6,resource:'MASON'},
+  IfcOpeningElement:{phase:'Architecture',sequence:6,resource:'MASON'},
+  IfcBuildingElementPart:{phase:'Architecture',sequence:6,resource:'MASON'},
   IfcDoor:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
   IfcWindow:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
+  IfcStair:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
   IfcStairFlight:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
+  IfcRailing:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
   IfcRoof:{phase:'Architecture',sequence:8,resource:'ROOFER'},
+  IfcBuildingElementProxy:{phase:'Architecture',sequence:6,resource:null},
+  IfcCurtainWall:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
+  // MEP Final
   IfcLightFixture:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
   IfcOutlet:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
   IfcElectricAppliance:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
   IfcFlowTerminal:{phase:'MEP Final',sequence:9,resource:'HVAC_TECH'},
+  // Finishes
   IfcCovering:{phase:'Finishes',sequence:10,resource:'FINISHER'},
   IfcFurniture:{phase:'Finishes',sequence:11,resource:'FINISHER'},
   IfcFurnishingElement:{phase:'Finishes',sequence:11,resource:'FINISHER'},
@@ -278,6 +300,7 @@ function generateSchedule(activities, startDateStr) {
 
   // storeyPhaseEnd[storey][phase] = finish date
   const storeyPhaseEnd = {};
+  const phaseFirstStart = {}; // phase -> date when first storey of this phase finishes
   const tasks = [];
   let taskId = 0;
 
@@ -290,15 +313,29 @@ function generateSchedule(activities, startDateStr) {
       const acts = grouped[key];
       if (!acts) continue;
 
-      // Start date: wait for (a) previous phase on this storey, (b) previous storey in this phase
+      // Start date: wait for (a) latest earlier phase on this storey, (b) previous storey in this phase
       let storeyStart = new Date(projectStart);
 
+      // Walk back through ALL earlier phases to find the latest one with data for this storey
       const phaseIdx = PHASE_ORDER.indexOf(phase);
+      if (phaseIdx > 0 && storeyPhaseEnd[storey]) {
+        for (let pi = phaseIdx - 1; pi >= 0; pi--) {
+          const earlierPhase = PHASE_ORDER[pi];
+          if (storeyPhaseEnd[storey][earlierPhase]) {
+            const after = addWorkDays(storeyPhaseEnd[storey][earlierPhase], INTER_PHASE_LAG);
+            if (after > storeyStart) storeyStart = after;
+            break;
+          }
+        }
+      }
+      // Also wait for ANY earlier phase globally (prevents phases from starting before predecessors)
       if (phaseIdx > 0) {
-        const prevPhase = PHASE_ORDER[phaseIdx - 1];
-        if (storeyPhaseEnd[storey] && storeyPhaseEnd[storey][prevPhase]) {
-          const after = addWorkDays(storeyPhaseEnd[storey][prevPhase], INTER_PHASE_LAG);
-          if (after > storeyStart) storeyStart = after;
+        for (let pi = phaseIdx - 1; pi >= 0; pi--) {
+          if (phaseFirstStart[PHASE_ORDER[pi]]) {
+            const after = addWorkDays(phaseFirstStart[PHASE_ORDER[pi]], INTER_PHASE_LAG);
+            if (after > storeyStart) storeyStart = after;
+            break;
+          }
         }
       }
       if (prevStoreyEnd) {
@@ -347,6 +384,7 @@ function generateSchedule(activities, startDateStr) {
 
       if (!storeyPhaseEnd[storey]) storeyPhaseEnd[storey] = {};
       storeyPhaseEnd[storey][phase] = maxFinish;
+      if (!phaseFirstStart[phase]) phaseFirstStart[phase] = maxFinish;
       prevStoreyEnd = maxFinish;
     }
   }
