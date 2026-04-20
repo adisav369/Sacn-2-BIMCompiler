@@ -86,7 +86,8 @@ nav:
 
   # ─── BIM Designer ─────────────────────────────────────
   - Designer:
-      - Requirements: BIM_Designer_SRS.md
+      - BIM OOTB (Browser): BIM_Designer_Browser.md
+      - Mobile & Cloud: MOBILE_DEPLOY.md
       - DocAction Lifecycle: DocAction_SRS.md
       - Validation Rules: DocValidate.md
       - Assembly Builder: ASSEMBLY_BUILDER_SRS.md

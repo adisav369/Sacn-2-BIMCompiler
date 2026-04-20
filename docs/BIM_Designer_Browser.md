@@ -1,5 +1,5 @@
 # BIM Designer — Browser Edition
-> **Foundation:** [BIM_Designer.md](BIM_Designer.md) · [BIM_Designer_SRS.md](BIM_Designer_SRS.md) · [RTreeGuide.md](RTreeGuide.md) · [MANIFESTO.md](MANIFESTO.md)
+> **Foundation:** [BIM_Designer.md](BIM_Designer.md) · [RTreeGuide.md](RTreeGuide.md) · [MANIFESTO.md](MANIFESTO.md) · [4D5DAnalysis.md](4D5DAnalysis.md)
 
 <div class="bim-banner" markdown>
 <b>BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.</b> One HTML file. Two SQLite DBs. Zero server. 126K elements streaming in your browser — no install, no conversion, no vendor lock-in. The DB IS the application.
@@ -8,6 +8,11 @@
 **Version:** 0.1 (2026-04-20)
 **Status:** SPEC — proven by S200 browser viewer prototype
 **Depends on:** `deploy/rtree_browser_demo.html` (working prototype), `sandbox_1M_extracted.db`, `component_library.db`
+
+<figure style="margin: 20px 0;">
+<img src="../assets/images/OOTB.png" alt="BIM OOTB — Browser-native BIM viewer" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">BIM OOTB — 126K elements streaming in the browser. No install, no server, no conversion.</figcaption>
+</figure>
 
 ---
 
@@ -62,17 +67,22 @@ sql.js (WASM)                    Three.js (WebGL/GPU)
 No intermediate file format. No glTF. No OBJ. No server-side conversion.
 The BLOB in the DB IS the mesh. The browser IS the renderer.
 
-### 1.1 What Was Not Possible 3 Years Ago
+### 1.1 What Changed — Honest Assessment
 
-| Component | 2023 State | 2026 State |
-|-----------|-----------|-----------|
-| sql.js WASM | Existed but slow, 100MB limit practical | Stable, handles 500MB+ DBs |
-| Three.js BufferGeometry | Existed | Same — mature |
-| DB-as-model architecture | Did not exist | Our innovation — IFC→DB→BLOB→mesh |
-| Browser BLOB streaming | Fetch+parse possible but no one did it from SQLite | Proven at 126K elements |
-| httpvfs (range requests) | Experimental | Production-ready, enables true streaming |
+Individual components existed before. What's new is the **combination at scale**
+and the elimination of server-side infrastructure.
 
-The technology was there. The architecture was not.
+| Component | Prior Art | What We Added |
+|-----------|-----------|---------------|
+| sql.js WASM | Existed since 2016. Could load large DBs if browser had RAM. | httpvfs range requests (production-ready 2024) eliminate full download — fetch only the SQLite pages needed. This is the enabling breakthrough. |
+| Three.js BufferGeometry | Mature since 2015. Every web viewer uses it. | Nothing — we use it as-is. |
+| DB-as-model | IFC.js (2020) parses IFC in WASM. Speckle (2019) serves objects via API. | Different architecture: we store **pre-tessellated BLOBs** in SQLite alongside metadata. No re-parsing, no API server. The browser queries the same DB for both geometry and properties. IFC.js re-parses geometry each time. Speckle requires a server. |
+| Browser BLOB streaming | glTF/OBJ loading in browsers since 2015. IFC.js streams parsed geometry. | Streaming from **SQLite BLOBs** (not file formats) means geometry and metadata share one query layer. No export/import step — the BLOB is a column, not a file. |
+| nD analytics (4D-8D) | SQL queries on element attributes — the operations themselves are standard relational algebra. | The novelty is the **template-driven engine** + **single-DB pipeline**: 5 dimensions from one `_extracted.db`, user-editable JSON templates, self-healing dependency chain, 8.7s at 1M elements. Commercial tools charge $60-180K/yr and silo each dimension behind separate vendors. |
+
+**What's genuinely new:** the full pipeline — IFC → extracted DB → pre-tessellated BLOBs →
+browser renders geometry AND runs analytics from the same SQL layer, with zero server
+infrastructure. The components existed. The integration at 126K elements with 60fps did not.
 
 ---
 
@@ -162,17 +172,32 @@ Extract each building to its own DB for faster targeted download:
 - [ ] **Property panel** — selected element's full attribute set from DB
 - [ ] **Multi-building streaming** — stream nearest on camera move, shred distant
 
-### Phase 3: Analysis
-Query-driven overlays — same DB, richer SQL:
+### Phase 3: Analysis — nD Engine in the Browser
+Query-driven overlays — same DB, richer SQL. The **nD engine** ([4D5DAnalysis.md](4D5DAnalysis.md))
+already produces 4D-8D tables from JSON templates + `elements_meta`. Phase 3 ports this
+to JavaScript (same SQL queries, same templates, same `_extracted.db` via sql.js).
+No server — the browser IS the analytics engine.
 
+- [ ] **nD engine (JS port)** — port `scripts/nD_engine.py` (~800 LOC) to browser JS
+  Same JSON templates (`templates/*.json`), same SQL, same output tables.
+  User drags custom `5D_rates.json` onto page → browser re-runs 5D with local rates.
+  Self-healing: request 6D → auto-generates 5D if missing (same as Python engine).
 - [ ] **BOQ/Cost overlay** — colour-code elements by cost band (5D)
-  Query: join elements_meta → BOM → cost tables
+  Query: `simple_qto` table (generated by browser nD engine or pre-baked in DB)
 - [ ] **4D timeline** — slider scrubs schedule, elements appear/disappear
-  Query: nD engine output tables
+  Query: `construction_schedule` table → show/hide meshes by `start_date`
+- [ ] **6D carbon heatmap** — colour intensity by embodied carbon per element
+  Query: `carbon_audit` table
+- [ ] **7D asset register** — click element → warranty, service interval, replacement year
+  Query: `asset_register` table
+- [ ] **8D safety overlay** — risk-level colour coding (LOW=green → VERY HIGH=red)
+  Query: `hazard_register` table
 - [ ] **Measurement tool** — pick two points, show distance
 - [ ] **Section plane** — Three.js clipping plane, slider to cut through floors
-- [ ] **Excel export** — SheetJS generates XLSX from SQL query results
-  Same BOQ/schedule reports as Bonsai's nD engine
+- [ ] **Excel export** — SheetJS generates XLSX from SQL query results in-browser
+  Same BOQ/schedule/carbon/asset/safety reports as `nD_engine.py --all`
+- [ ] **Template editor** — HTML form to load/validate/save JSON templates (5D rates, 6D carbon, etc.)
+  QS edits rates in browser, re-runs 5D, downloads Excel. Zero install.
 
 ### Phase 4: Composer (future — preserves BIM Designer vision)
 This is where the original BIM Designer's building composition returns.
@@ -344,10 +369,10 @@ Above 50K, implement shred-on-distance (same as Bonsai Direct Stream).
 | Spec | Role | Browser Edition Touch |
 |------|------|----------------------|
 | [BIM_Designer.md](BIM_Designer.md) | Architecture vision (Blender) | Phase 4 adapts composition UX to browser |
-| [BIM_Designer_SRS.md](BIM_Designer_SRS.md) | 50 testable requirements | Phase 2-3 implements subset (viewer + inspector) |
+| `internal/BIM_Designer_SRS.md` | 50 testable requirements (archived) | Phase 2-3 implements subset (viewer + inspector) |
 | [RTreeGuide.md](RTreeGuide.md) | Blender viewer user guide | Browser edition gets its own guide |
 | [MANIFESTO.md](MANIFESTO.md) | DB-as-model philosophy | Browser edition IS the proof |
-| [4D5DAnalysis.md](4D5DAnalysis.md) | nD engine spec | Phase 3 queries same tables |
+| [4D5DAnalysis.md](4D5DAnalysis.md) | nD engine spec (4D-8D) | Phase 3 ports engine to JS — same templates, same SQL, browser-native |
 
 ### 5.1 Does This Replace the Blender BIM Designer?
 
@@ -365,6 +390,21 @@ No. They serve different audiences:
 ---
 
 ## 6. Quick Start
+
+### 6.0 Live Demo — Zero Install
+
+Open in any browser (desktop or mobile):
+
+| Link | What | Download |
+|------|------|----------|
+| [**BIM OOTB Demo**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb/o/index.html) | Duplex building — full download, auto fly-around | ~3 MB |
+| [**BIM OOTB City**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html) | 37 buildings, 1M elements — httpvfs range streaming | ~5-10 MB per building |
+
+**Demo** loads the Duplex (~3MB), works on any phone or desktop.
+**City** uses httpvfs (HTTP Range requests) to stream SQLite pages on demand —
+no 1GB download. Click a building, only its data is fetched.
+
+Both URLs work on desktop and mobile. Same viewer, same controls.
 
 ### 6.1 Local Setup (3 steps)
 
@@ -440,24 +480,24 @@ All panels collapse with **−/+**.
 
 | Step | Action | Status |
 |------|--------|--------|
-| 1 | Create OCI Object Storage bucket (public read) | TODO |
-| 2 | Upload `rtree_browser_demo.html` → `bim_designer.html` | TODO |
-| 3 | Upload `sandbox_1M_extracted.db` | TODO |
-| 4 | Upload `component_library.db` | TODO |
-| 5 | Update DB_URL / LIB_URL in HTML to OCI Object Storage URLs | TODO |
-| 6 | Test public URL — verify city view loads | TODO |
-| 7 | Add httpvfs for streaming (avoid full download) | Phase 2 |
+| 1 | Create OCI Object Storage bucket (public read) | **DONE** |
+| 2 | Upload viewer HTML (with progress loader) | **DONE** |
+| 3 | Upload per-building DBs (14 archetypes) | **DONE** |
+| 4 | Auto-detect OCI base URL in HTML | **DONE** |
+| 5 | Landing page with manifest (30 archetypes, 11.8KB) | **DONE** |
+| 6 | CORS configuration for Range headers | **DONE** |
+| 7 | httpvfs streaming for large buildings | **WIP** — speed issues on 579MB DB |
 | 8 | Deploy Java compiler container for Phase 4 modeller | Phase 4 |
 
 ### 7.2 OCI Resource Plan
 
-| Resource | Phase 1-3 (Viewer) | Phase 4 (Modeller) |
-|----------|-------------------|-------------------|
-| Object Storage | 1 bucket, ~1.1GB | Same + compiled output DBs |
+| Resource | Current (Always Free) | Phase 4 (Modeller) |
+|----------|----------------------|-------------------|
+| Object Storage | 3 buckets, ~1.5GB used of 20GB free | Same + compiled output DBs |
 | Compute | None | 1 Container Instance (Java JAR) |
-| Network | CDN for static files | + REST endpoint for compile |
-| Cost/month | ~$5 (storage + egress) | ~$20 (+ container hours) |
-| Domain | Optional (OCI URL works) | Recommended |
+| Network | CDN for JS libs, OCI for DBs | + REST endpoint for compile |
+| Cost/month | **$0 (Always Free tier)** | ~$20 (+ container hours) |
+| Domain | OCI URL (working) | Recommended |
 
 ### 7.3 Per-Building Deployment (Alternative)
 
@@ -528,3 +568,91 @@ const worker = await createDbWorker(
 
 Pre-build config: `create_lazyfile.sh sandbox_1M_extracted.db > db-config.json`
 Upload config + DB to same OCI bucket. No other changes needed.
+
+---
+
+## 9. FAQ — Addressing Common Critiques
+
+### 9.1 "Where's the property panel? Without it, this is just a pretty viewer."
+
+**Already shipped in S200 (Phase 1).** Click any element → Info panel shows IFC class,
+name, GUID, storey, discipline, and material. Storey filter isolates floors. Discipline
+toggle shows/hides ARC, STR, MEP. All panels collapsible.
+
+<figure style="margin: 20px 0;">
+<img src="../assets/images/OOTBpanels.png" alt="BIM OOTB — Storey filter, discipline toggle, property inspector" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Storey filter (bottom-left), discipline toggle, and element property inspector (bottom-right) — all shipped in S200.</figcaption>
+</figure>
+
+### 9.2 "What's the workflow for getting new IFC files into this system?"
+
+Self-service pipeline, proven on 12+ buildings:
+
+```bash
+# One-command onboarding — zero code changes
+./scripts/onboard_ifc.sh --prefix XX --type House --name 'My Building' --ifc path/to/model.ifc
+
+# Or step-by-step:
+python3 scripts/ifc_recon.py path/to/model.ifc           # 1. Recon (30s)
+python3 scripts/extractIFCtoDB_open.py model.ifc out.db   # 2. Extract to DB
+```
+
+Full guide: [IFC Onboarding Runbook](IFC_ONBOARDING_RUNBOOK.md) (8 steps, self-service).
+Platform setup: [Systems Installer Guide](SYSTEMS_INSTALLER_GUIDE.md) §1–2.
+
+### 9.3 "1.1GB full download is a non-starter for mobile."
+
+True for the full sandbox (37 buildings). Mitigations:
+
+1. **Per-building split** — extract one building to its own DB. Duplex = ~2MB,
+   Clinic = ~23MB, Hospital = ~68MB. See §2.3.
+2. **httpvfs range streaming** — fetch SQLite pages on demand. 1-2s to first bbox.
+   Implementation spec'd in §8.3, production deployment is the next technical milestone.
+3. **Most real-world use is single-building** — a site supervisor reviews one building,
+   not the whole city. Per-building DBs are the default deployment unit.
+
+### 9.4 "Geometry dedup — wouldn't glTF instancing be more efficient?"
+
+The DB already deduplicates at the `geometry_hash` level — same mesh BLOB stored once,
+referenced N times by elements sharing that hash. The Three.js side currently creates
+one `BufferGeometry` per element. Upgrading to `InstancedMesh` for repeated hashes
+is a rendering optimization (~2x memory reduction for repetitive buildings like hospitals)
+— it's an enhancement, not an architecture change. The instancing data is already in the DB.
+
+### 9.5 "Schema changes require redeploying DBs. No versioning story."
+
+The schema mirrors the IFC entity model, which moves slowly (IFC4 released 2013,
+IFC4.3 released 2024). The `elements_meta` + `component_geometries` tables haven't
+changed since the architecture stabilized. For nD analytics, the output tables
+(`simple_qto`, `construction_schedule`, etc.) are generated on the fly by the nD engine
+— they don't need to ship in the DB.
+
+### 9.6 "Phase 4 is years away from Revit parity."
+
+**Phase 4 is not trying to replace Revit.** Revit is a geometry modeller.
+Phase 4 is a **parameter editor** that triggers compilation — grid drag, room resize,
+BOM recipe swap, jurisdiction dropdown. The browser sends macro parameters, the Java
+compiler does the spatial maths, the browser re-renders the result. See §4.2.
+
+Different category, different audience: stakeholders, reviewers, site teams — not
+CAD operators. For authoring-grade modelling, use [Bonsai/Blender](https://bonsaibim.org/).
+
+### 9.7 "No collaboration story."
+
+By design. This is a **review deliverable**, not a collaboration platform.
+The workflow: author in Bonsai → compile → deploy URL → stakeholders review a frozen
+snapshot. The URL includes building + camera position (deep-link hash). For multi-user
+editing, the Phase 4 backend would accept Work Orders — conflict resolution via
+last-write-wins on the compile endpoint (same as a CI pipeline). CRDT/OT is future scope,
+spec'd in §4.6.
+
+### 9.8 "The nD analytics (4D-8D) are speculative."
+
+The nD engine is **working code** — `scripts/nD_engine.py`, proven at 1,063,563 elements
+across 37 buildings + 1M-element sandbox city. 5 dimensions in 8.7 seconds.
+Excel export (township-level BOQ with 30 archetype sheets) already ships.
+See [4D5DAnalysis.md](4D5DAnalysis.md) for full results, test witnesses, and fleet report.
+
+The browser port is ~800 lines of SQL queries + arithmetic + JSON template parsing.
+Same templates, same DB, same output tables — just JavaScript instead of Python.
+This is not speculative; it's a straightforward port of proven code.

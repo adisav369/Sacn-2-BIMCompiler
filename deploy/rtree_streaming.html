@@ -2,6 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
 <title>BIM OOTB — Frictionless BIM</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -74,6 +79,19 @@
   #storey-panel button.active { background: #4fc3f7; color: #000; border-color: #4fc3f7; }
   #disc-body button { opacity: 0.3; text-decoration: line-through; }
   #disc-body button.active { opacity: 1.0; text-decoration: none; }
+
+  /* ── Mobile: stack panels, larger touch targets ── */
+  @media (max-width: 600px) {
+    #hud { top: 8px; left: 8px; right: 8px; max-width: none; }
+    #search-box { top: auto; bottom: 60px; left: 8px; right: 8px; max-width: none; }
+    #search-box input { width: 100%; }
+    #info-panel { bottom: 60px; left: 8px; right: 8px; max-width: none; min-width: auto; }
+    #storey-panel { bottom: 60px; left: 8px; max-width: 50vw; }
+    #status { bottom: 8px; left: 8px; right: 8px; transform: none; text-align: center; }
+    .bld-card { padding: 6px 10px; font-size: 13px; }
+    #storey-panel button { padding: 6px 10px; font-size: 13px; }
+    .panel-toggle { font-size: 18px; padding: 4px 8px; }
+  }
 </style>
 </head>
 <body>
@@ -130,129 +148,28 @@
   <b style="color:#4fc3f7;font-size:12px">Disciplines</b>
   <div id="disc-body" class="panel-body"></div>
 </div>
-<div id="status">Initializing...</div>
-<canvas id="canvas" style="display:none"></canvas>
+<div id="status">Loading sql.js...</div>
+<canvas id="canvas"></canvas>
 
-<!-- Loading overlay: visible instantly, no scripts needed -->
-<div id="load-overlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;
-  background:#1a1a2e;z-index:1000;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif">
-  <div style="color:#4fc3f7;font-size:24px;font-weight:700;margin-bottom:20px">BIM OOTB</div>
-  <div style="color:#888;font-size:13px;margin-bottom:16px">Frictionless BIM. Two DBs. One browser. Zero install.</div>
-  <div id="load-items" style="width:280px"></div>
-  <div id="load-elapsed" style="color:#555;font-size:12px;margin-top:12px">0:00</div>
-</div>
+<!-- Three.js (r162 CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- OrbitControls -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<!-- sql.js-httpvfs (SQLite via HTTP Range requests — no full download) -->
+<script src="httpvfs.js"></script>
+<!-- SheetJS (XLSX export) -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
 <script>
-// ── Progressive script loader with per-library progress ──
-const _loadStart = performance.now();
-const _elapsedEl = document.getElementById('load-elapsed');
-const _timerIv = setInterval(() => {
-  const s = Math.floor((performance.now() - _loadStart) / 1000);
-  _elapsedEl.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
-}, 1000);
-
-const LIBS = [
-  { name: 'Three.js',       url: 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js' },
-  { name: 'OrbitControls',   url: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js' },
-  { name: 'SQLite (WASM)',   url: 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js' },
-  { name: 'SheetJS (Excel)', url: 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js' },
-];
-
-// Create progress rows
-const loadItems = document.getElementById('load-items');
-LIBS.forEach((lib, i) => {
-  const row = document.createElement('div');
-  row.id = `lib-${i}`;
-  row.style.cssText = 'margin:4px 0;font-size:12px;color:#aaa';
-  row.innerHTML = `
-    <div style="display:flex;justify-content:space-between">
-      <span>${lib.name}</span>
-      <span id="lib-${i}-status" style="color:#666">waiting...</span>
-    </div>
-    <div style="height:3px;background:#333;border-radius:2px;margin-top:2px">
-      <div id="lib-${i}-bar" style="height:100%;width:0%;background:#4fc3f7;border-radius:2px;transition:width 0.05s"></div>
-    </div>
-  `;
-  loadItems.appendChild(row);
-});
-
-async function fetchWithProgress(url, index) {
-  const statusEl = document.getElementById(`lib-${index}-status`);
-  const barEl = document.getElementById(`lib-${index}-bar`);
-  statusEl.textContent = 'connecting...';
-  statusEl.style.color = '#4fc3f7';
-
-  const resp = await fetch(url);
-  const total = +resp.headers.get('Content-Length') || 0;
-  const reader = resp.body.getReader();
-  const chunks = [];
-  let received = 0;
-  const t0 = performance.now();
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    received += value.length;
-    const pct = total > 0 ? (received / total * 100) : 0;
-    const speed = received / ((performance.now() - t0) / 1000);
-    const eta = total > 0 ? Math.ceil((total - received) / speed) : '?';
-    barEl.style.width = (total > 0 ? pct : 50) + '%';
-    statusEl.textContent = total > 0
-      ? `${(received/1024).toFixed(0)}/${(total/1024).toFixed(0)}KB  ${(speed/1024).toFixed(0)}KB/s  ~${eta}s`
-      : `${(received/1024).toFixed(0)}KB`;
-  }
-
-  barEl.style.width = '100%';
-  barEl.style.background = '#44cc44';
-  const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
-  statusEl.textContent = `${(received/1024).toFixed(0)}KB in ${elapsed}s`;
-  statusEl.style.color = '#44cc44';
-
-  // Inject as script
-  const blob = new Blob(chunks, { type: 'application/javascript' });
-  const script = document.createElement('script');
-  script.src = URL.createObjectURL(blob);
-  return new Promise((resolve, reject) => {
-    script.onload = resolve;
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
-
-async function loadAllLibs() {
-  // Three.js must load before OrbitControls (dependency)
-  await fetchWithProgress(LIBS[0].url, 0);  // Three.js
-  await fetchWithProgress(LIBS[1].url, 1);  // OrbitControls (needs THREE global)
-  // sql.js and SheetJS are independent — load in parallel
-  await Promise.all([
-    fetchWithProgress(LIBS[2].url, 2),
-    fetchWithProgress(LIBS[3].url, 3),
-  ]);
-
-  // All loaded — remove overlay, show canvas
-  clearInterval(_timerIv);
-  document.getElementById('load-overlay').style.display = 'none';
-  document.getElementById('canvas').style.display = 'block';
-
-  // Now run the viewer
-  initViewer();
-}
-
-loadAllLibs().catch(e => {
-  document.getElementById('load-items').innerHTML += `
-    <div style="color:#ff6644;margin-top:10px">Failed: ${e.message}</div>
-  `;
-});
-
-function initViewer() {
 // ── Config ──
+// Serve DBs locally: python3 -m http.server 8080
+// Or change these to OCI URLs
+// Auto-detect DB from URL param: ?db=MyBuilding.db — or default
 const _params = new URLSearchParams(location.search);
 // Auto-resolve: if hosted on OCI Object Storage, use same bucket base for DB URLs
 const _ociMatch = location.href.match(/(https:\/\/objectstorage\.[^/]+\/n\/[^/]+\/b\/[^/]+\/o\/)/);
 const _base = _ociMatch ? _ociMatch[1] : '';
-const DB_URL = _params.get('db') || (_base ? _base + 'Duplex_extracted.db' : 'yourproject_extracted.db');
+const DB_URL = _params.get('db') || (_base ? _base + 'sandbox_1M_extracted.db' : 'yourproject_extracted.db');
 const LIB_URL = _params.get('lib') || (_base ? _base + 'component_library.db' : 'component_library.db');
 
 // ── Discipline colours (same as Blender addon) ──
@@ -353,24 +270,27 @@ function ifc2three(ix, iy, iz) {
   return { x: ix - modelOffset.x, y: iz - modelOffset.z, z: -(iy - modelOffset.y) };
 }
 
-// ── Load databases ──
+// ── Load databases via httpvfs (HTTP Range requests — no full download) ──
 async function init() {
-  status.textContent = 'Loading sql.js WebAssembly...';
-  const SQL = await initSqlJs({
-    locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
-  });
+  status.textContent = 'Connecting to database (streaming)...';
 
-  status.textContent = `Fetching ${DB_URL}...`;
-  const dbBuf = await fetch(DB_URL).then(r => {
-    if (!r.ok) throw new Error(`Failed to fetch ${DB_URL}: ${r.status}`);
-    return r.arrayBuffer();
-  });
-  db = new SQL.Database(new Uint8Array(dbBuf));
-  console.log(`[S192] §DB_LOADED size=${(dbBuf.byteLength/1024/1024).toFixed(0)}MB`);
-  status.textContent = `DB loaded (${(dbBuf.byteLength/1024/1024).toFixed(0)}MB). Querying...`;
+  // httpvfs: fetch SQLite pages on demand via HTTP Range requests
+  const workerUrl = _base ? _base + 'sqlite.worker.js' : 'sqlite.worker.js';
+  const wasmUrl = _base ? _base + 'sql-wasm.wasm' : 'sql-wasm.wasm';
+
+  const dbWorker = await createDbWorker(
+    [{ from: "inline", config: { serverMode: "full", requestChunkSize: 4096, url: DB_URL } }],
+    workerUrl, wasmUrl
+  );
+  // Wrap httpvfs async API to match sql.js sync API shape
+  // httpvfs db.exec returns array of {columns, values} — same as sql.js
+  const _rawDb = dbWorker.db;
+  db = { exec: async (sql) => { const r = await _rawDb.exec(sql); return r; } };
+  console.log(`[S200] §HTTPVFS_CONNECTED url=${DB_URL}`);
+  status.textContent = `Connected (streaming). Querying...`;
 
   // Get building centres + counts (using element_transforms — no R-tree needed)
-  const rows = db.exec(`
+  const rows = await db.exec(`
     SELECT m.building, COUNT(*),
       AVG(t.center_x), AVG(t.center_y), AVG(t.center_z)
     FROM elements_meta m
@@ -398,7 +318,7 @@ async function init() {
   console.log(`[S192] §OFFSET ifc=(${modelOffset.x.toFixed(0)}, ${modelOffset.y.toFixed(0)}, ${modelOffset.z.toFixed(0)})`);
 
   // Position ground plane below lowest element (IFC Z → Three.js Y)
-  const zRange = db.exec(`SELECT MIN(center_z), MAX(center_z) FROM element_transforms`);
+  const zRange = await db.exec(`SELECT MIN(center_z), MAX(center_z) FROM element_transforms`);
   if (zRange.length > 0) {
     const minZ = zRange[0].values[0][0];
     const groundY = (minZ - modelOffset.z) - 2;  // 2m below lowest element
@@ -408,9 +328,9 @@ async function init() {
   }
 
   // Element + discipline counts
-  const elemRows = db.exec(`SELECT COUNT(*) FROM elements_meta`);
+  const elemRows = await db.exec(`SELECT COUNT(*) FROM elements_meta`);
   totalElements = elemRows[0]?.values[0][0] || 0;
-  const discRows = db.exec(`SELECT discipline, COUNT(*) FROM elements_meta GROUP BY discipline ORDER BY COUNT(*) DESC`);
+  const discRows = await db.exec(`SELECT discipline, COUNT(*) FROM elements_meta GROUP BY discipline ORDER BY COUNT(*) DESC`);
   if (discRows.length > 0) {
     for (const r of discRows[0].values) {
       discCounts[r[0]] = r[1];
@@ -421,33 +341,27 @@ async function init() {
   populateBuildingList();
 
   // Draw building bboxes (like Preview — 1 box per disc per building)
-  drawBuildingBoxes();
+  await drawBuildingBoxes();
 
-  // Try loading library DB
-  status.textContent = `Fetching ${LIB_URL}...`;
+  // Library DB also via httpvfs (no full download)
+  status.textContent = `Connecting to library (streaming)...`;
   try {
-    const libBuf = await fetch(LIB_URL).then(r => {
-      if (!r.ok) throw new Error(`${r.status}`);
-      return r.arrayBuffer();
-    });
-    libDb = new SQL.Database(new Uint8Array(libBuf));
-    console.log(`[S192] §LIB_LOADED size=${(libBuf.byteLength/1024/1024).toFixed(0)}MB`);
-    // Check which table has geometry
+    const libWorker = await createDbWorker(
+      [{ from: "inline", config: { serverMode: "full", requestChunkSize: 4096, url: LIB_URL } }],
+      workerUrl, wasmUrl
+    );
+    const _rawLibDb = libWorker.db;
+    libDb = { exec: async (sql) => { const r = await _rawLibDb.exec(sql); return r; } };
+    console.log(`[S200] §HTTPVFS_LIB_CONNECTED url=${LIB_URL}`);
+    // Check geometry table
     try {
-      const t = libDb.exec("SELECT COUNT(*) FROM component_geometries");
+      const t = await libDb.exec("SELECT COUNT(*) FROM component_geometries");
       console.log(`[S192] §LIB_TABLE component_geometries rows=${t[0].values[0][0]}`);
     } catch(e2) {
       console.log(`[S192] §LIB_TABLE component_geometries not found, trying base_geometries`);
-      try {
-        const t2 = libDb.exec("SELECT COUNT(*) FROM base_geometries");
-        console.log(`[S192] §LIB_TABLE base_geometries rows=${t2[0].values[0][0]}`);
-      } catch(e3) {
-        console.log(`[S192] §LIB_ERROR no geometry table found`);
-      }
     }
-    status.textContent = `Library loaded (${(libBuf.byteLength/1024/1024).toFixed(0)}MB). Streaming nearest building...`;
+    status.textContent = `Library connected (streaming). Loading nearest building...`;
   } catch (e) {
-    // No separate library DB — fall back to main DB (base_geometries table)
     console.log(`[S200] §LIB_FALLBACK using main DB for geometry (${e.message})`);
     libDb = db;
     status.textContent = `Using main DB for geometry. Streaming...`;
@@ -456,7 +370,7 @@ async function init() {
   // Position camera — overview of city
   const extentX = allIX.length ? Math.max(...allIX) - Math.min(...allIX) : 500;
   const extentY = allIY.length ? Math.max(...allIY) - Math.min(...allIY) : 500;
-  const dist = Math.max(extentX, extentY) * 0.6;
+  const dist = Math.max(extentX, extentY, 30) * 0.6;  // min 30m — prevents close-up on small buildings
   // Isometric-ish angle — tilted enough to see rooftops and depth
   camera.position.set(dist * 0.3, dist * 0.5, dist * 0.4);
   camera.far = Math.max(10000, dist * 3);
@@ -483,9 +397,9 @@ async function init() {
 }
 
 // ── Draw building bounding boxes (Preview equivalent) ──
-function drawBuildingBoxes() {
+async function drawBuildingBoxes() {
   // Use element_transforms for bbox (no R-tree virtual table in WASM)
-  const rows = db.exec(`
+  const rows = await db.exec(`
     SELECT m.building, m.discipline,
       MIN(t.center_x) - 5, MIN(t.center_y) - 5, MIN(t.center_z),
       MAX(t.center_x) + 5, MAX(t.center_y) + 5, MAX(t.center_z) + 3
@@ -543,7 +457,7 @@ function startStreaming() {
 
 let savedStreams = {};  // building → {queue, idx}
 
-function streamBuilding(nearest) {
+async function streamBuilding(nearest) {
   // Save current stream if in progress
   if (activeBuilding && streaming && streamIdx < streamQueue.length) {
     savedStreams[activeBuilding] = { queue: streamQueue, idx: streamIdx };
@@ -563,7 +477,7 @@ function streamBuilding(nearest) {
     // Fresh query
     streamQueue = [];
     streamIdx = 0;
-    const rows = db.exec(`
+    const rows = await db.exec(`
       SELECT m.guid, i.geometry_hash, m.material_rgba, m.discipline,
              t.center_x, t.center_y, t.center_z,
              t.rotation_x, t.rotation_y, t.rotation_z,
@@ -593,7 +507,7 @@ function streamBuilding(nearest) {
   status.textContent = `STREAMING ${nearest} — ${streamIdx.toLocaleString()}/${streamQueue.length.toLocaleString()} elements`;
 }
 
-function streamTick() {
+async function streamTick() {
   if (!streaming || !libDb || streamIdx >= streamQueue.length) {
     if (streaming && streamIdx >= streamQueue.length) {
       streaming = false;
@@ -610,6 +524,10 @@ function streamTick() {
       document.getElementById('s-progress').style.background = '#44cc44';
       updateHash();
       status.textContent = `DONE — ${activeBuilding} ${streamedCount.toLocaleString()} elements. ${buildingsRendered.size} building(s) rendered.`;
+      // Auto-fly on first building complete (single-building DBs)
+      if (buildingsRendered.size === 1 && Object.keys(buildingCentres).length === 1 && !flyActive) {
+        toggleFlyAround();
+      }
     }
     return;
   }
@@ -626,24 +544,24 @@ function streamTick() {
   // Fetch BLOBs for new hashes
   if (hashesNeeded.size > 0) {
     const hashList = [...hashesNeeded];
-    const ph = hashList.map(() => '?').join(',');
+    const quoted = hashList.map(h => `'${h}'`).join(',');
     let fetched = 0;
     // Try component_geometries first, then base_geometries
     for (const table of ['component_geometries', 'base_geometries']) {
       if (fetched > 0) break;
       try {
-        const stmt = libDb.prepare(
-          `SELECT geometry_hash, vertices, faces FROM ${table} WHERE geometry_hash IN (${ph})`
+        const geoRows = await libDb.exec(
+          `SELECT geometry_hash, vertices, faces FROM ${table} WHERE geometry_hash IN (${quoted})`
         );
-        stmt.bind(hashList);
-        while (stmt.step()) {
-          const [ghash, vBlob, fBlob] = stmt.get();
-          if (vBlob && fBlob) {
-            const geo = blobToGeometry(vBlob, fBlob);
-            if (geo) { meshCache[ghash] = geo; fetched++; }
+        if (geoRows.length > 0) {
+          for (const row of geoRows[0].values) {
+            const [ghash, vBlob, fBlob] = row;
+            if (vBlob && fBlob) {
+              const geo = blobToGeometry(vBlob, fBlob);
+              if (geo) { meshCache[ghash] = geo; fetched++; }
+            }
           }
         }
-        stmt.free();
         if (fetched > 0) {
           console.log(`[S192] §BLOB_FETCH table=${table} new=${fetched} total_cached=${Object.keys(meshCache).length}`);
         }
@@ -867,7 +785,7 @@ canvas.addEventListener('pointerup', (e) => {
   window._pickHighlight = hlLine;
 
   try {
-    const rows = db.exec(`
+    const rows = await db.exec(`
       SELECT m.ifc_class, m.element_name, m.guid, m.building, m.storey,
              m.discipline, m.material_rgba
       FROM elements_meta m WHERE m.guid = '${guid}'
@@ -894,9 +812,9 @@ canvas.addEventListener('pointerup', (e) => {
 let activeStoreyFilter = null;
 let storeyMeshGroups = {};  // storey → [mesh.id, ...]
 
-function populateStoreys(building) {
+async function populateStoreys(building) {
   if (!db || !building) return;
-  const rows = db.exec(`
+  const rows = await db.exec(`
     SELECT DISTINCT storey FROM elements_meta
     WHERE building = '${building}' AND storey IS NOT NULL
     ORDER BY storey
@@ -931,9 +849,9 @@ function filterStorey(storey) {
 // ── Discipline toggle ──
 let hiddenDiscs = new Set();
 
-function populateDiscs(building) {
+async function populateDiscs(building) {
   if (!db || !building) return;
-  const rows = db.exec(`
+  const rows = await db.exec(`
     SELECT discipline, COUNT(*) FROM elements_meta
     WHERE building = '${building}' AND discipline IS NOT NULL
     GROUP BY discipline ORDER BY COUNT(*) DESC
@@ -1023,8 +941,9 @@ function export4D5D() {
   if (!db || !activeBuilding) { status.textContent = 'Select a building first.'; return; }
   const bld = activeBuilding;
   // Open interactive charts in new tab
-  const dbParam = new URLSearchParams(location.search).get('db') || 'yourproject_extracted.db';
-  window.open(`boq_charts.html?db=${dbParam}&bld=${bld}`, '_blank');
+  const dbParam = DB_URL;
+  const boqBase = _base ? _base + 'boq_charts.html' : 'boq_charts.html';
+  window.open(`${boqBase}?db=${dbParam}&bld=${bld}`, '_blank');
   status.textContent = `4D/5D analytics opened for ${bld} (Save 5D BOQ / Save 4D Schedule)`;
 }
 
@@ -1125,6 +1044,58 @@ function onMouseMove(e) {
   }
 }
 canvas.addEventListener('mousemove', onMouseMove);
+
+// ── Mobile: long-press = highlight + pick, double-tap = X-Ray toggle ──
+let longPressTimer = null;
+let longPressPos = { x: 0, y: 0 };
+
+canvas.addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1) return;
+  const t = e.touches[0];
+  longPressPos.x = t.clientX;
+  longPressPos.y = t.clientY;
+  longPressTimer = setTimeout(() => {
+    // Long-press: simulate hover highlight at touch point
+    hoverMouse.x = (t.clientX / window.innerWidth) * 2 - 1;
+    hoverMouse.y = -(t.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(hoverMouse, camera);
+    const meshes = [];
+    scene.traverse(obj => { if (obj.isMesh && obj !== ground && obj.visible) meshes.push(obj); });
+    const hits = raycaster.intersectObjects(meshes, false);
+    if (hoverHighlight) { hoverHighlight.material.emissive.setHex(0x000000); hoverHighlight = null; }
+    if (hits.length > 0 && guidMap[hits[0].object.id]) {
+      hoverHighlight = hits[0].object;
+      hoverHighlight.material.emissive.setHex(0x222222);
+      // Vibrate feedback if available
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+    longPressTimer = null;
+  }, 500);  // 500ms = long press
+}, { passive: true });
+
+canvas.addEventListener('touchmove', (e) => {
+  if (!longPressTimer) return;
+  const t = e.touches[0];
+  const dx = t.clientX - longPressPos.x;
+  const dy = t.clientY - longPressPos.y;
+  if (Math.sqrt(dx*dx + dy*dy) > 10) { clearTimeout(longPressTimer); longPressTimer = null; }
+}, { passive: true });
+
+canvas.addEventListener('touchend', () => {
+  if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+}, { passive: true });
+
+// Double-tap = X-Ray toggle
+let lastTapTime = 0;
+canvas.addEventListener('touchend', (e) => {
+  if (e.changedTouches.length !== 1) return;
+  const now = performance.now();
+  if (now - lastTapTime < 300) {
+    toggleXray();  // double-tap = Alt+Z
+    e.preventDefault();
+  }
+  lastTapTime = now;
+});
 
 // ── URL deep-link ──
 function updateHash() {
@@ -1345,7 +1316,6 @@ init().catch(e => {
   status.textContent = `Error: ${e.message}`;
   console.error(`[S192] §INIT_ERROR`, e);
 });
-} // end initViewer
 </script>
 </body>
 </html>

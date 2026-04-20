@@ -41,7 +41,7 @@ Single-page entry point. All active docs by tier.
 
 | Doc | What |
 |-----|------|
-| [BIM_Designer_SRS.md](BIM_Designer_SRS.md) | UX requirements (80 numbered), user journeys, state machine |
+| [BIM_Designer_Browser.md](BIM_Designer_Browser.md) | **BIM OOTB — Browser Edition.** Zero-install viewer + nD analytics. Two DBs, one HTML, no server. Proven at 126K elements (S200) |
 | [G4_SRS.md](G4_SRS.md) | output.db (compile DB), master-detail DocStatus, AP gate |
 | [DocAction_SRS.md](DocAction_SRS.md) | processIt() lifecycle (DR→IP→CO→AP), discipline routing |
 | [DocValidate.md](DocValidate.md) | **Spatial + regulatory rule symbiosis** (§0), AD_Val_Rule, 3-tier validation, jurisdiction packs (9 countries), mining pipeline |
