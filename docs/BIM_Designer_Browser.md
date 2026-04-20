@@ -420,6 +420,11 @@ Works on desktop and mobile. No install, no account, no server.
 <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">BIM OOTB on mobile — full 3D viewer with touch orbit, storey filter, and element picker. Same URL, no app install.</figcaption>
 </figure>
 
+<figure style="margin: 20px 0;">
+<img src="../assets/images/SiteInfo.png" alt="Site Camera — photo + BIM model + GPS + timestamp" style="max-width:300px; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Site Camera — one tap captures site photo with BIM model view, element metadata, GPS coordinates, and timestamp. Share directly to WhatsApp.</figcaption>
+</figure>
+
 ### 6.1 Local Setup (3 steps)
 
 ```bash

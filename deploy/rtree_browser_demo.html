@@ -76,18 +76,61 @@
   #disc-body button { opacity: 0.3; text-decoration: line-through; }
   #disc-body button.active { opacity: 1.0; text-decoration: none; }
 
+  /* ── Site Camera (mobile only) ── */
+  #site-cam-btn {
+    display: none; position: fixed; top: 8px; right: 8px; z-index: 15;
+    padding: 10px 14px; background: #ff4444; color: #fff;
+    border: none; border-radius: 8px; font-size: 16px; font-weight: 700;
+    cursor: pointer; min-height: 44px;
+    box-shadow: 0 2px 8px rgba(255,68,68,0.4);
+  }
+  #site-cam-overlay {
+    display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: 2000; background: #000; flex-direction: column;
+  }
+  #site-cam-overlay.active { display: flex; }
+  #site-cam-video { width: 100%; flex: 1; object-fit: cover; background: #000; }
+  #site-cam-bim-bar {
+    position: absolute; top: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.6); color: #fff; padding: 8px 12px;
+    font-size: 12px; line-height: 1.5; z-index: 2001;
+  }
+  #site-cam-bim-bar .cam-label { color: #4fc3f7; }
+  #site-cam-snap-btn {
+    position: absolute; bottom: 50%; left: 50%; transform: translate(-50%, 50%);
+    background: #ff4444; color: #fff; border-radius: 50%; width: 72px; height: 72px;
+    font-size: 28px; border: 4px solid rgba(255,255,255,0.5); cursor: pointer; z-index: 2001;
+    box-shadow: 0 4px 16px rgba(255,0,0,0.4);
+  }
+  #site-cam-preview {
+    display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: 2100; background: #000; flex-direction: column; align-items: center; justify-content: center;
+  }
+  #site-cam-preview.active { display: flex; }
+  #site-cam-preview img { max-width: 100%; max-height: 70vh; border: 1px solid #333; }
+  #site-cam-preview-controls {
+    margin-top: 12px; margin-bottom: calc(env(safe-area-inset-bottom, 20px)); display: flex; gap: 12px;
+  }
+  #site-cam-preview-controls button {
+    padding: 12px 20px; border-radius: 8px; border: none; font-size: 16px;
+    cursor: pointer; min-height: 48px;
+  }
+  #site-cam-gps { position: absolute; bottom: calc(80px + env(safe-area-inset-bottom, 20px)); left: 12px; color: #0f0; font-size: 11px; z-index: 2001; text-shadow: 1px 1px 2px #000; }
+  #site-cam-time { position: absolute; bottom: calc(80px + env(safe-area-inset-bottom, 20px)); right: 12px; color: #0f0; font-size: 11px; z-index: 2001; text-shadow: 1px 1px 2px #000; }
+
   /* ── Mobile: larger touch targets, stacked panels ── */
   @media (max-width: 600px) {
+    #site-cam-btn { display: inline-block; }
     #hud { top: 8px; left: 8px; right: 8px; max-width: none; font-size: 14px; }
     #hud h2 { font-size: 16px; }
     #hud .stat { font-size: 14px; }
-    #search-box { top: auto; bottom: 60px; left: 8px; right: 8px; max-width: none; }
+    #search-box { top: auto; bottom: 60px; left: 8px; right: 80px; max-width: none; }
     #search-box input { width: 100%; font-size: 16px; padding: 8px 12px; }
     #search-box button { padding: 8px 12px !important; font-size: 14px !important; min-height: 36px; }
     #info-panel { bottom: 60px; left: 8px; right: 8px; max-width: none; min-width: auto; font-size: 14px; }
-    #storey-panel { bottom: 60px; left: 8px; max-width: 50vw; }
+    #disc-panel { bottom: 60px; left: 8px; }
+    #storey-panel { bottom: auto; top: 50%; left: 8px; max-width: 50vw; max-height: 40vh; overflow-y: auto; }
     #storey-panel button { padding: 8px 12px; font-size: 14px; min-height: 36px; }
-    #disc-panel { bottom: 60px; }
     #disc-panel button, #disc-body button { padding: 8px 12px !important; font-size: 14px !important; min-height: 36px; }
     #status { bottom: 8px; left: 8px; right: 8px; transform: none; text-align: center; font-size: 14px; }
     .bld-card { padding: 8px 12px; font-size: 14px; }
@@ -149,7 +192,35 @@
   <b style="color:#4fc3f7;font-size:12px">Disciplines</b>
   <div id="disc-body" class="panel-body"></div>
 </div>
+<button id="site-cam-btn" onclick="openSiteCamera()" title="Site Camera">&#128247; Site</button>
 <div id="status">Initializing...</div>
+
+<!-- Site Camera Overlay (mobile only) -->
+<div id="site-cam-overlay">
+  <video id="site-cam-video" autoplay playsinline></video>
+  <div id="site-cam-bim-bar">
+    <span class="cam-label">Class:</span> <span id="cam-class">—</span> &nbsp;
+    <span class="cam-label">Name:</span> <span id="cam-name">—</span><br>
+    <span class="cam-label">GUID:</span> <span id="cam-guid" style="font-size:10px">—</span><br>
+    <span class="cam-label">Building:</span> <span id="cam-building">—</span> &nbsp;
+    <span class="cam-label">Storey:</span> <span id="cam-storey">—</span> &nbsp;
+    <span class="cam-label">Disc:</span> <span id="cam-disc">—</span>
+  </div>
+  <div id="site-cam-gps">GPS: acquiring...</div>
+  <div id="site-cam-time"></div>
+  <button id="site-cam-snap-btn" onclick="snapSitePhoto()">&#128247;</button>
+</div>
+
+<!-- Site Camera Preview (after snap) -->
+<div id="site-cam-preview">
+  <img id="site-cam-preview-img" alt="Site photo">
+  <div id="site-cam-preview-controls">
+    <button onclick="closeSitePreview()" style="background:#444;color:#fff">Retake</button>
+    <button onclick="shareSitePhoto()" style="background:#25D366;color:#fff">Share &#8594; WhatsApp</button>
+    <button onclick="downloadSitePhoto()" style="background:#4fc3f7;color:#000">Save</button>
+  </div>
+</div>
+
 <canvas id="canvas" style="display:none"></canvas>
 
 <!-- Loading overlay: visible instantly, no scripts needed -->
@@ -1714,6 +1785,245 @@ init().catch(e => {
   status.textContent = `Error: ${e.message}`;
   console.error(`[S192] §INIT_ERROR`, e);
 });
+// ── Site Camera (mobile site inspection) ──
+let _camStream = null;
+let _camGpsPos = null;
+let _camPhotoBlob = null;
+let _camTimerIv = null;
+let _camBimSnapshot = null;  // Three.js frame captured before camera opens
+
+function _getCamBimInfo() {
+  return {
+    cls: document.getElementById('info-class')?.textContent || '—',
+    name: document.getElementById('info-name')?.textContent || '—',
+    guid: document.getElementById('info-guid')?.textContent || '—',
+    building: document.getElementById('info-building')?.textContent || '—',
+    storey: document.getElementById('info-storey')?.textContent || '—',
+    disc: document.getElementById('info-disc')?.textContent || '—',
+  };
+}
+
+function _formatGps(pos) {
+  if (!pos) return 'GPS: unavailable';
+  const lat = pos.coords.latitude;
+  const lng = pos.coords.longitude;
+  const ns = lat >= 0 ? 'N' : 'S';
+  const ew = lng >= 0 ? 'E' : 'W';
+  const acc = pos.coords.accuracy ? ` ±${Math.round(pos.coords.accuracy)}m` : '';
+  return `${Math.abs(lat).toFixed(4)}°${ns}, ${Math.abs(lng).toFixed(4)}°${ew}${acc}`;
+}
+
+function _formatTimestamp() {
+  const d = new Date();
+  const tz = d.getTimezoneOffset();
+  const sign = tz <= 0 ? '+' : '-';
+  const tzH = String(Math.floor(Math.abs(tz)/60)).padStart(2,'0');
+  const tzM = String(Math.abs(tz)%60).padStart(2,'0');
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0') + ' ' +
+    String(d.getHours()).padStart(2,'0') + ':' +
+    String(d.getMinutes()).padStart(2,'0') + ':' +
+    String(d.getSeconds()).padStart(2,'0') + ' ' +
+    sign + tzH + tzM;
+}
+
+async function openSiteCamera() {
+  const overlay = document.getElementById('site-cam-overlay');
+  const video = document.getElementById('site-cam-video');
+
+  // Capture current 3D view before camera overlay covers it
+  renderer.render(scene, camera);
+  _camBimSnapshot = canvas.toDataURL('image/png');
+
+  // Copy current BIM selection into camera overlay
+  const info = _getCamBimInfo();
+  document.getElementById('cam-class').textContent = info.cls;
+  document.getElementById('cam-name').textContent = info.name;
+  document.getElementById('cam-guid').textContent = info.guid;
+  document.getElementById('cam-building').textContent = info.building;
+  document.getElementById('cam-storey').textContent = info.storey;
+  document.getElementById('cam-disc').textContent = info.disc;
+
+  // Start GPS
+  _camGpsPos = null;
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => { _camGpsPos = pos; document.getElementById('site-cam-gps').textContent = _formatGps(pos); },
+      err => { document.getElementById('site-cam-gps').textContent = 'GPS: ' + err.message; },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  } else {
+    document.getElementById('site-cam-gps').textContent = 'GPS: not supported';
+  }
+
+  // Live clock
+  _camTimerIv = setInterval(() => {
+    document.getElementById('site-cam-time').textContent = _formatTimestamp();
+  }, 1000);
+  document.getElementById('site-cam-time').textContent = _formatTimestamp();
+
+  // Start camera
+  try {
+    _camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+    });
+    video.srcObject = _camStream;
+    overlay.classList.add('active');
+    console.log('[S204] §CAMERA opened');
+  } catch (err) {
+    status.textContent = 'Camera: ' + err.message;
+    console.log('[S204] §CAMERA_ERR', err.message);
+    closeSiteCamera();
+  }
+}
+
+function closeSiteCamera() {
+  if (_camStream) {
+    _camStream.getTracks().forEach(t => t.stop());
+    _camStream = null;
+  }
+  if (_camTimerIv) { clearInterval(_camTimerIv); _camTimerIv = null; }
+  document.getElementById('site-cam-overlay').classList.remove('active');
+  document.getElementById('site-cam-video').srcObject = null;
+}
+
+function snapSitePhoto() {
+  const video = document.getElementById('site-cam-video');
+  const info = _getCamBimInfo();
+  const gpsText = _formatGps(_camGpsPos);
+  const timeText = _formatTimestamp();
+
+  // Pre-load BIM snapshot image, then composite everything
+  const bimImg = new Image();
+  bimImg.onload = () => _compositePhoto(video, info, gpsText, timeText, bimImg);
+  bimImg.onerror = () => _compositePhoto(video, info, gpsText, timeText, null);
+  if (_camBimSnapshot) {
+    bimImg.src = _camBimSnapshot;
+  } else {
+    _compositePhoto(video, info, gpsText, timeText, null);
+  }
+
+  // Flash
+  const flash = document.createElement('div');
+  flash.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:white;opacity:0.7;z-index:3000;pointer-events:none';
+  document.body.appendChild(flash);
+  setTimeout(() => { flash.style.opacity = '0'; flash.style.transition = 'opacity 0.3s'; }, 50);
+  setTimeout(() => document.body.removeChild(flash), 400);
+}
+
+function _compositePhoto(video, info, gpsText, timeText, bimImg) {
+  const c = document.createElement('canvas');
+  c.width = video.videoWidth || 1280;
+  c.height = video.videoHeight || 720;
+  const ctx = c.getContext('2d');
+
+  // Draw video frame
+  ctx.drawImage(video, 0, 0, c.width, c.height);
+
+  // BIM info bar (top)
+  const barH = 56;
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(0, 0, c.width, barH);
+  ctx.font = '13px "Segoe UI", sans-serif';
+  ctx.fillStyle = '#4fc3f7';
+  ctx.fillText(`${info.cls}`, 10, 18);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(`${info.name}`, 10 + ctx.measureText(info.cls + '  ').width, 18);
+  ctx.fillStyle = '#888';
+  ctx.font = '11px monospace';
+  ctx.fillText(`GUID: ${info.guid}`, 10, 34);
+  ctx.fillStyle = '#ccc';
+  ctx.fillText(`${info.building} / ${info.storey} / ${info.disc}`, 10, 50);
+
+  // 3D model snapshot (picture-in-picture, top-right)
+  if (bimImg && bimImg.width > 0) {
+    const pipW = Math.round(c.width * 0.35);
+    const pipH = Math.round(pipW * (bimImg.height / bimImg.width));
+    const pipX = c.width - pipW - 8;
+    const pipY = barH + 8;
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(pipX - 3, pipY - 3, pipW + 6, pipH + 6);
+    ctx.drawImage(bimImg, pipX, pipY, pipW, pipH);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(pipX, pipY + pipH - 18, pipW, 18);
+    ctx.fillStyle = '#4fc3f7';
+    ctx.font = '10px sans-serif';
+    ctx.fillText('BIM Model View', pipX + 4, pipY + pipH - 5);
+  }
+
+  // GPS (bottom-left)
+  const footH = 28;
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(0, c.height - footH, c.width, footH);
+  ctx.font = '12px monospace';
+  ctx.fillStyle = '#00ff00';
+  ctx.fillText(gpsText, 10, c.height - 10);
+
+  // Timestamp (bottom-right)
+  ctx.fillStyle = '#00ff00';
+  const tw = ctx.measureText(timeText).width;
+  ctx.fillText(timeText, c.width - tw - 10, c.height - 10);
+
+  // BIM OOTB watermark (bottom-center)
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = '10px sans-serif';
+  const wm = 'BIM OOTB — Site Inspection';
+  ctx.fillText(wm, (c.width - ctx.measureText(wm).width) / 2, c.height - 10);
+
+  // Export to JPEG blob
+  c.toBlob(blob => {
+    _camPhotoBlob = blob;
+    const url = URL.createObjectURL(blob);
+    document.getElementById('site-cam-preview-img').src = url;
+    document.getElementById('site-cam-preview').classList.add('active');
+    console.log(`[S204] §SNAP ${info.cls} GPS:${gpsText} ${timeText} BIM:${bimImg ? 'YES' : 'NO'}`);
+  }, 'image/jpeg', 0.92);
+}
+
+function closeSitePreview() {
+  document.getElementById('site-cam-preview').classList.remove('active');
+  _camPhotoBlob = null;
+}
+
+async function shareSitePhoto() {
+  if (!_camPhotoBlob) return;
+  const info = _getCamBimInfo();
+  const gpsText = _formatGps(_camGpsPos);
+  const timeText = _formatTimestamp();
+  const title = `BIM Site Photo — ${info.cls} @ ${info.storey}`;
+  const text = `${info.building} / ${info.storey} / ${info.cls}\n${info.name}\nGUID: ${info.guid}\nGPS: ${gpsText}\n${timeText}`;
+  const fileName = `BIM_Site_${info.building}_${timeText.replace(/[: ]/g,'-')}.jpg`;
+
+  if (navigator.share) {
+    try {
+      const file = new File([_camPhotoBlob], fileName, { type: 'image/jpeg' });
+      await navigator.share({ files: [file], title, text });
+      console.log('[S204] §SHARE via Web Share API');
+      closeSitePreview();
+      closeSiteCamera();
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return; // user cancelled
+      console.log('[S204] §SHARE_FALLBACK', err.message);
+    }
+  }
+  // Fallback: wa.me text-only link
+  const waText = encodeURIComponent(title + '\n' + text);
+  window.open(`https://wa.me/?text=${waText}`, '_blank');
+  console.log('[S204] §SHARE via wa.me fallback');
+}
+
+function downloadSitePhoto() {
+  if (!_camPhotoBlob) return;
+  const info = _getCamBimInfo();
+  const link = document.createElement('a');
+  link.download = `BIM_Site_${info.building}_${_formatTimestamp().replace(/[: ]/g,'-')}.jpg`;
+  link.href = URL.createObjectURL(_camPhotoBlob);
+  link.click();
+  console.log('[S204] §DOWNLOAD');
+}
+
 // ── Expose functions to HTML onclick handlers ──
 window.togglePanel = togglePanel;
 window.clearStreamed = clearStreamed;
@@ -1726,6 +2036,12 @@ window.filterStorey = filterStorey;
 window.toggleDisc = toggleDisc;
 window.export4D5D = export4D5D;
 window.flyTo = flyTo;
+window.openSiteCamera = openSiteCamera;
+window.closeSiteCamera = closeSiteCamera;
+window.snapSitePhoto = snapSitePhoto;
+window.closeSitePreview = closeSitePreview;
+window.shareSitePhoto = shareSitePhoto;
+window.downloadSitePhoto = downloadSitePhoto;
 } // end initViewer
 </script>
 </body>
