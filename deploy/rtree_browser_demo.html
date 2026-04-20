@@ -180,9 +180,33 @@
   #issue-detail-view .detail-row .label { color: #888; }
   #issue-detail-view .detail-row .value { color: #fff; }
   .issues-empty { color: #666; font-size: 12px; text-align: center; padding: 20px 0; }
+  /* ── Walk Mode (GPS blue dot, mobile only) ── */
+  #walk-mode-btn {
+    display: none; position: fixed; top: 8px; right: 110px; z-index: 15;
+    padding: 10px 14px; background: #2196f3; color: #fff;
+    border: none; border-radius: 8px; font-size: 16px; font-weight: 700;
+    cursor: pointer; min-height: 44px;
+    box-shadow: 0 2px 8px rgba(33,150,243,0.4);
+  }
+  #walk-mode-btn.active { background: #0d47a1; box-shadow: 0 0 16px rgba(33,150,243,0.8); }
+  #walk-anchor-prompt {
+    display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 25; background: rgba(0,0,0,0.85); border-radius: 12px; padding: 24px 32px;
+    border: 1px solid rgba(33,150,243,0.4); backdrop-filter: blur(8px);
+    text-align: center; color: #e0e0e0; font-size: 14px; max-width: 320px;
+  }
+  #walk-anchor-prompt h3 { color: #4fc3f7; margin-bottom: 12px; }
+  #walk-anchor-prompt button {
+    padding: 12px 24px; background: #2196f3; color: #fff; border: none;
+    border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 700;
+    margin: 8px 4px; min-height: 44px;
+  }
+  #walk-anchor-prompt button.cancel { background: #555; }
+
   /* ── Mobile: larger touch targets, stacked panels ── */
   @media (max-width: 600px) {
     #site-cam-btn { display: inline-block; }
+    #walk-mode-btn { display: inline-block; }
     #hud { top: 8px; left: 8px; right: 8px; max-width: none; font-size: 14px; }
     #hud h2 { font-size: 16px; }
     #hud .stat { font-size: 14px; }
@@ -235,7 +259,8 @@
       <button onclick="screenshot()" title="Screenshot" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128247;</button>
       <button onclick="toggleFullscreen()" title="Fullscreen" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9974;</button>
       <button id="theme-btn" onclick="toggleTheme()" title="Light/Dark" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9788;</button>
-      <button id="fly-btn" onclick="toggleFlyAround()" title="Fly Around" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9992;</button>
+      <button id="fly-btn" onclick="toggleFlyAround()" title="Fly Around / Walk-Through" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9992;</button>
+      <button id="walk-speed-btn" onclick="cycleWalkSpeed()" title="Walk Speed" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px;display:none">1x</button>
       <button onclick="export4D5D()" title="4D/5D Export" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128202;</button>
       <button onclick="toggleIssues()" title="Issues" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128203; Issues</button>
       <button id="measure-btn" onclick="toggleMeasure()" title="Measure" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128207;</button>
@@ -269,6 +294,13 @@
   <div id="disc-body" class="panel-body"></div>
 </div>
 <button id="site-cam-btn" onclick="openSiteCamera()" title="Site Camera">&#128247; Site</button>
+<button id="walk-mode-btn" onclick="toggleWalkMode()" title="Walk Mode">&#128694; Walk</button>
+<div id="walk-anchor-prompt">
+  <h3>Walk Mode</h3>
+  <p>Stand at the building entrance and tap SET to anchor your GPS position to the model.</p>
+  <button onclick="setWalkAnchor()">SET</button>
+  <button class="cancel" onclick="cancelWalkAnchor()">Cancel</button>
+</div>
 <div id="issues-panel">
   <h3>Issues <span class="panel-toggle" onclick="toggleIssues()">&times;</span></h3>
   <div class="issues-toolbar">
@@ -292,6 +324,7 @@
   </div>
 </div>
 <div id="status">Initializing...</div>
+<pre id="walk-log" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:200px;overflow:auto;background:#111;color:#0f0;font-size:10px;z-index:99;padding:4px;margin:0"></pre>
 <div id="section-slider-panel">
   <label>Section Cut Height</label>
   <input type="range" id="section-slider" min="0" max="100" value="100" step="0.1" oninput="updateSectionPlane(this.value)">
@@ -444,10 +477,16 @@ async function loadAllLibs() {
   document.getElementById('canvas').style.display = 'block';
 
   // Now run the viewer
-  initViewer();
+  try {
+    initViewer();
+  } catch(e) {
+    document.getElementById('status').textContent = `Init error: ${e.message}`;
+    console.error('[S205] §INIT_VIEWER_ERROR', e);
+  }
 }
 
 loadAllLibs().catch(e => {
+  document.getElementById('status').textContent = `Load error: ${e.message}`;
   document.getElementById('load-items').innerHTML += `
     <div style="color:#ff6644;margin-top:10px">Failed: ${e.message}</div>
   `;
@@ -459,8 +498,8 @@ const _params = new URLSearchParams(location.search);
 // Auto-resolve: if hosted on OCI Object Storage, use same bucket base for DB URLs
 const _ociMatch = location.href.match(/(https:\/\/objectstorage\.[^/]+\/n\/[^/]+\/b\/[^/]+\/o\/)/);
 const _base = _ociMatch ? _ociMatch[1] : '';
-const DB_URL = _params.get('db') || (_base ? _base + 'Duplex_extracted.db' : 'sandbox_1M_extracted.db');
-const LIB_URL = _params.get('lib') || (_base ? _base + 'component_library.db' : 'component_library.db');
+const DB_URL = _params.get('db') || (_base ? _base + 'Duplex_extracted.db' : 'buildings/Duplex_extracted.db');
+const LIB_URL = _params.get('lib') || (_base ? _base + 'Duplex_library.db' : 'buildings/Duplex_library.db');
 const CITY_URL = _params.get('city') || null;   // city_index.db for city mode
 const BLD_BASE = _params.get('bldbase') || '';   // per-building DB folder
 
@@ -769,8 +808,7 @@ async function init() {
     } else {
       startStreaming();
     }
-    // Auto-start fly mode so user sees the building from all angles
-    setTimeout(() => { if (!flyActive) toggleFlyAround(); }, 2000);
+    // No auto-start — user clicks ✈ to begin walk-through
   }
 }
 
@@ -1099,14 +1137,41 @@ const mouse = new THREE.Vector2();
 let guidMap = {};  // mesh.id → guid
 let pointerDownPos = { x: 0, y: 0 };
 
+// ── Walk/Wall state (hoisted before first use in pointerdown/animate) ──
+let walkMode = false;       // true = indoor walk, false = orbit fly
+let walkModeActive = false; // GPS Walk Mode active (Part C)
+let walkAnchorGPS = null;   // {lat, lng} anchor for GPS Walk Mode
+let walkAnchorIFC = null;   // {x, y, z} IFC position of anchor
+let walkBlueDot = null;     // Three.js sphere for GPS blue dot
+let walkGpsWatchId = null;  // watchPosition ID
+let walkStoreyLevels = [];  // [{storey, z}] for floor detection
+let walkGpsFollowCam = false; // camera follows blue dot
+let wallXrayActive = false; // wall x-ray mode active
+let wallXrayOriginals = []; // saved materials for restore
+let walkPath = [];          // [{x,y,z, name}] waypoints in Three.js coords
+let walkT = 0;              // 0..1 progress along total path
+let walkTotalLen = 0;       // total path length in metres
+let walkSpeedMult = 1;      // 1x / 2x / 4x
+let walkCurrentRoom = '';   // name of current room for status bar
+let walkLastTime = 0;       // last frame timestamp
+let wallXrayMepHighlights = []; // highlighted MEP meshes for restore
+let measureActive = false;
+let measureFirstPoint = null;     // THREE.Vector3
+let measureFirstMarker = null;    // THREE.Mesh (small sphere)
+let measureGroup = new THREE.Group();
+let measureLabels = [];           // { div, p1, p2 } for 2D→3D projection updates
+
 canvas.addEventListener('pointerdown', (e) => {
   pointerDownPos.x = e.clientX;
   pointerDownPos.y = e.clientY;
-  // Stop fly-around on user interaction
-  if (flyActive) {
+  // Stop fly-around/walk-through on user interaction
+  if (flyActive || walkMode) {
     flyActive = false;
+    walkMode = false;
+    walkPath = [];
     document.getElementById('fly-btn').style.background = '#444';
     document.getElementById('fly-btn').style.color = '#fff';
+    document.getElementById('walk-speed-btn').style.display = 'none';
   }
 });
 
@@ -1153,6 +1218,14 @@ canvas.addEventListener('pointerup', (e) => {
   if (!guid) {
     console.log(`§PICK no guid for mesh.id=${hit.object.id}`);
     return;
+  }
+
+  // Part D: Wall X-Ray in Walk Mode — tap wall to see MEP behind it
+  if (walkModeActive) {
+    const faceNormal = hit.face ? hit.face.normal.clone() : new THREE.Vector3(1, 0, 0);
+    if (handleWallXray(hit.object, hit.point, faceNormal)) return;
+    // If not a wall, restore any previous x-ray and fall through to normal pick
+    restoreWallXray();
   }
 
   // Yellow highlight bbox on selected element — parented to mesh for correct transform
@@ -1521,13 +1594,65 @@ let flyFromPos = null;
 let flyFromTarget = null;
 
 function toggleFlyAround() {
-  flyActive = !flyActive;
   const btn = document.getElementById('fly-btn');
+
+  // If walk is active — pause
+  if (walkMode) {
+    walkMode = false;
+    walkLastTime = 0;
+    flyActive = false;
+    btn.style.background = '#444';
+    btn.style.color = '#fff';
+    status.textContent = `Walk paused at action ${walkActionIdx}/${walkActions.length} — tap ✈ to resume`;
+    wlog(`PAUSED at action ${walkActionIdx}`);
+    return;
+  }
+
+  // If we have a paused tour — resume
+  if (walkActions && walkActions.length > 0 && walkActionIdx > 0) {
+    walkMode = true;
+    flyActive = true;
+    walkLastTime = 0;
+    btn.style.background = '#4fc3f7';
+    btn.style.color = '#000';
+    document.getElementById('walk-speed-btn').style.display = '';
+    status.textContent = `Walk resumed at action ${walkActionIdx}/${walkActions.length}`;
+    wlog(`RESUMED at action ${walkActionIdx}`);
+    return;
+  }
+
+  flyActive = !flyActive;
   btn.style.background = flyActive ? '#4fc3f7' : '#444';
   btn.style.color = flyActive ? '#000' : '#fff';
 
   if (flyActive) {
-    // Collect rendered buildings — use actual envelope for orbit radius
+    // Try building a tour from DB data (Part B)
+    const tour = buildTour();
+    if (tour && tour.length >= 2) {
+      walkMode = true;
+      walkActions = tour;
+      walkActionIdx = 0;
+      walkActionT = 0;
+      walkPanAngle = 0;
+      walkLastTime = 0;
+      walkSpeedMult = 1;
+      document.getElementById('walk-speed-btn').style.display = '';
+      document.getElementById('walk-speed-btn').textContent = '1x';
+      // Snap camera to first action position
+      const first = tour[0];
+      if (first.type === 'moveTo') {
+        camera.position.set(first.x, first.y + WALK_EYE_HEIGHT + 5, first.z - 5);
+        controls.target.set(first.x, first.y + WALK_EYE_HEIGHT, first.z);
+        controls.update();
+      }
+      wlog(`START tour: ${tour.length} actions`);
+      status.textContent = `Walk tour: ${tour.length} actions`;
+      return;
+    }
+
+    // Fallback: exterior orbit
+    status.textContent = 'No walk data — using orbit fly';
+    walkMode = false;
     flyTargets = [];
     for (const name of buildingsRendered) {
       const bc = buildingCentres[name];
@@ -1544,6 +1669,7 @@ function toggleFlyAround() {
     status.textContent = `Flying around ${flyTargets[0].name}...`;
   } else {
     status.textContent = 'Fly stopped.';
+    document.getElementById('walk-speed-btn').style.display = 'none';
   }
 }
 
@@ -1592,6 +1718,624 @@ function flyTick() {
       flyTransitionStart = performance.now();
       status.textContent = `Flying to ${flyTargets[flyTargetIdx].name}...`;
     }
+  }
+}
+
+// ── Indoor Walk-Through Engine (Part B) ──
+// Modular: buildTour() → sequence of actions → walkTick() executes them
+// (walk/wall state variables hoisted to line ~1141, before pointerdown/animate)
+
+const WALK_EYE_HEIGHT = 1.6;  // metres above slab
+const WALK_SPEED = 1.2;       // metres per second for moveTo actions
+const PAN_SPEED  = 90;        // degrees per second for lookAround
+
+// Walk diagnostic log — writes to hidden #walk-log element
+const _wlog = [];
+function wlog(msg) {
+  _wlog.push(msg);
+  console.log('[WALK] ' + msg);
+  const el = document.getElementById('walk-log');
+  if (el) el.textContent = _wlog.join('\n');
+}
+
+// ── Walk Action Types ──
+// Each action is {type, ...params}. walkTick() processes the current action.
+//   moveTo:      {type:'moveTo', x,y,z, name}          — walk to position at WALK_SPEED
+//   lookAround:  {type:'lookAround', degrees:360}       — pan camera in place
+//   rise:        {type:'rise', targetY, name}            — vertical rise/descend at current XZ
+//   pause:       {type:'pause', seconds}                 — hold position
+
+let walkActions = [];   // queue of actions
+let walkActionIdx = 0;  // current action index
+let walkActionT = 0;    // progress within current action (0..1)
+let walkPanAngle = 0;   // accumulated pan angle for lookAround
+
+// Build a tour from DB data — returns array of actions
+function buildTour() {
+  // Get space names
+  const spaceNames = {};
+  try {
+    const sn = db.exec("SELECT guid, name FROM spatial_structure WHERE type='IfcSpace'");
+    if (sn.length) sn[0].values.forEach(([g,n]) => spaceNames[g] = n);
+  } catch(e) {}
+
+  // Get doors per storey
+  let doorsByStorey = {};
+  try {
+    const dr = db.exec(`
+      SELECT m.guid, t.center_x, t.center_y, t.center_z, m.storey, m.element_name
+      FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid
+      WHERE m.ifc_class IN ('IfcDoor','IfcDoorStandardCase')
+      ORDER BY m.storey, t.center_x
+    `);
+    if (dr.length) for (const [g, cx, cy, cz, st, nm] of dr[0].values) {
+      if (!doorsByStorey[st]) doorsByStorey[st] = [];
+      doorsByStorey[st].push({x: cx, y: cy, z: cz, name: nm, guid: g});
+    }
+  } catch(e) {}
+
+  // Get stairs
+  let stairs = [];
+  try {
+    const st = db.exec(`
+      SELECT t.center_x, t.center_y, t.center_z, m.storey
+      FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid
+      WHERE m.ifc_class IN ('IfcStair','IfcStairFlight')
+      ORDER BY t.center_z
+    `);
+    if (st.length) stairs = st[0].values.map(([x,y,z,s]) => ({x,y,z,storey:s}));
+  } catch(e) {}
+
+  // Get storey Z levels
+  let storeyZ = {};
+  try {
+    const sz = db.exec(`
+      SELECT m.storey, MIN(t.center_z) as floor_z
+      FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid
+      WHERE m.ifc_class IN ('IfcDoor','IfcDoorStandardCase')
+      GROUP BY m.storey ORDER BY floor_z
+    `);
+    if (sz.length) for (const [st, z] of sz[0].values) storeyZ[st] = z;
+  } catch(e) {}
+
+  // Get walk_graph edges for room connectivity
+  let edges = [];
+  try {
+    const wg = db.exec(`SELECT from_space_guid, to_space_guid, via_door_guid,
+      door_x, door_y, door_z, storey FROM walk_graph ORDER BY storey, rowid`);
+    if (wg.length) edges = wg[0].values;
+  } catch(e) {}
+
+  const storeys = Object.keys(doorsByStorey).sort();
+  if (storeys.length === 0) return null;
+
+  const actions = [];
+
+  // Find an entrance door (exterior — use first door on lowest storey)
+  const firstDoor = doorsByStorey[storeys[0]]?.[0];
+  if (!firstDoor) return null;
+
+  // Start: move to entrance
+  const ep = ifc2three(firstDoor.x, firstDoor.y, firstDoor.z);
+  actions.push({type:'moveTo', x:ep.x, y:ep.y, z:ep.z, name:'Entrance'});
+  actions.push({type:'pause', seconds:1});
+
+  // For each storey: visit rooms, look around in each
+  for (let si = 0; si < storeys.length; si++) {
+    const storey = storeys[si];
+    const doors = doorsByStorey[storey] || [];
+
+    // If not first storey, climb stairs
+    if (si > 0 && stairs.length > 0) {
+      const lastAction = actions[actions.length - 1];
+      // Find nearest stair
+      let bestStair = stairs[0];
+      // Walk to stair base (at current storey Z)
+      const prevZ = storeyZ[storeys[si-1]] || storeyZ[storeys[0]] || 0;
+      const nextZ = storeyZ[storey] || prevZ + 3;
+      const stairTP = ifc2three(bestStair.x, bestStair.y, bestStair.z);
+      // Walk to stair at current height
+      actions.push({type:'moveTo', x:stairTP.x, y:ifc2three(0,0,prevZ).y, z:stairTP.z, name:'To stairs'});
+      actions.push({type:'pause', seconds:0.5});
+      // Rise through stair (vertical movement at stair XZ)
+      actions.push({type:'rise', targetY: ifc2three(0,0,nextZ).y, name:'Climbing stairs'});
+      actions.push({type:'pause', seconds:0.5});
+      wlog(`Tour: stair from Z=${prevZ.toFixed(1)} to Z=${nextZ.toFixed(1)}`);
+    }
+
+    // Visit each door on this storey
+    for (let di = 0; di < doors.length; di++) {
+      const door = doors[di];
+      const dp = ifc2three(door.x, door.y, door.z);
+      actions.push({type:'moveTo', x:dp.x, y:dp.y, z:dp.z, name: door.name?.split(':')[0] || storey});
+      // Look around after entering each room
+      if (di % 2 === 0) { // every other room gets a full 360
+        actions.push({type:'lookAround', degrees: 360});
+      }
+    }
+  }
+
+  // Return to entrance
+  actions.push({type:'moveTo', x:ep.x, y:ep.y, z:ep.z, name:'Exit'});
+
+  wlog(`Tour built: ${actions.length} actions, ${storeys.length} storeys`);
+  actions.forEach((a,i) => wlog(`  [${i}] ${a.type} ${a.name||''} ${a.targetY !== undefined ? 'targetY='+a.targetY.toFixed(2) : ''}`));
+  window._walkStrategy = `TOUR(${actions.length}acts,${storeys.length}fl)`;
+  return actions;
+}
+
+// Query DB for indoor walkable data; returns array of waypoints or null
+function queryWalkPath() {
+  if (!db) return null;
+  let waypoints = [];
+
+  // Fetch stair positions for floor transitions
+  let stairs = [];
+  try {
+    const st = db.exec(`
+      SELECT t.center_x, t.center_y, t.center_z, m.storey
+      FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid
+      WHERE m.ifc_class IN ('IfcStair','IfcStairFlight')
+      ORDER BY t.center_z
+    `);
+    if (st.length > 0) stairs = st[0].values;
+  } catch(e) {}
+
+  // Fetch ALL doors. Interior = in walk_graph, exterior = not.
+  // Two-query approach avoids walk_graph dependency in a single query.
+  let allDoors = [];
+  const interiorDoorGuids = new Set();
+  try {
+    const ig = db.exec(`SELECT DISTINCT via_door_guid FROM walk_graph`);
+    if (ig.length) ig[0].values.forEach(([g]) => interiorDoorGuids.add(g));
+  } catch(e) {} // no walk_graph = all doors treated as potential exterior
+  try {
+    const ad = db.exec(`
+      SELECT m.guid, t.center_x, t.center_y, t.center_z, m.storey
+      FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid
+      WHERE m.ifc_class IN ('IfcDoor','IfcDoorStandardCase')
+      ORDER BY m.storey, t.center_z
+    `);
+    if (ad.length > 0) {
+      allDoors = ad[0].values.map(([g, cx, cy, cz, st]) =>
+        [g, cx, cy, cz, st, interiorDoorGuids.has(g) ? 1 : 0]
+      );
+    }
+  } catch(e) {}
+
+  // Strategy 1: walk_graph table (best)
+  try {
+    const wg = db.exec(`
+      SELECT from_space_guid, to_space_guid, via_door_guid,
+             door_x, door_y, door_z, storey
+      FROM walk_graph ORDER BY storey, rowid
+    `);
+    if (wg.length > 0 && wg[0].values.length > 0) {
+      console.log(`[S205] §WALK_GRAPH found ${wg[0].values.length} edges, ${stairs.length} stairs, ${allDoors.length} total doors`);
+      window._walkStrategy = `GRAPH(${wg[0].values.length}edges,${stairs.length}stairs)`;
+      wlog(`Strategy: GRAPH ${wg[0].values.length}edges ${stairs.length}stairs ${allDoors.length}doors`);
+      const gResult = buildWalkGraphPath(wg[0].values, stairs, allDoors);
+      if (gResult) gResult.forEach((w,i) => wlog(`  wp[${i}] ${w.name} y=${w.y.toFixed(2)}`));
+      return gResult;
+    }
+  } catch(e) { console.warn('[S205] walk_graph strategy failed:', e.message); }
+
+  // Strategy 2: IfcSpace centroids from spatial_structure
+  try {
+    const sp = db.exec(`
+      SELECT s.guid, s.name, t.center_x, t.center_y, t.center_z, m.storey
+      FROM spatial_structure s
+      JOIN element_transforms t ON s.guid = t.guid
+      JOIN elements_meta m ON s.guid = m.guid
+      WHERE s.type = 'IfcSpace'
+      ORDER BY m.storey, t.center_x, t.center_y
+    `);
+    if (sp.length > 0 && sp[0].values.length >= 2) {
+      console.log(`[S205] §WALK_SPACES found ${sp[0].values.length} IfcSpaces`);
+      window._walkStrategy = `SPACES(${sp[0].values.length})`;
+      wlog(`Strategy: SPACES ${sp[0].values.length}`);
+      const sResult = buildSpacePath(sp[0].values, stairs, allDoors);
+      if (sResult) sResult.forEach((w,i) => wlog(`  wp[${i}] ${w.name} y=${w.y.toFixed(2)}`));
+      return sResult;
+    }
+  } catch(e) { console.warn('[S205] space strategy failed:', e.message); }
+
+  // Strategy 3: IfcDoor positions (fallback)
+  try {
+    const dr = db.exec(`
+      SELECT m.guid, m.element_name, t.center_x, t.center_y, t.center_z, m.storey
+      FROM elements_meta m
+      JOIN element_transforms t ON m.guid = t.guid
+      WHERE m.ifc_class IN ('IfcDoor', 'IfcDoorStandardCase')
+      ORDER BY m.storey, t.center_x, t.center_y
+    `);
+    if (dr.length > 0 && dr[0].values.length >= 2) {
+      console.log(`[S205] §WALK_DOORS found ${dr[0].values.length} IfcDoors (fallback)`);
+      window._walkStrategy = `DOORS(${dr[0].values.length})`;
+      wlog(`Strategy: DOORS ${dr[0].values.length}`);
+      const dResult = buildDoorPath(dr[0].values, stairs, allDoors);
+      if (dResult) dResult.forEach((w,i) => wlog(`  wp[${i}] ${w.name} y=${w.y.toFixed(2)}`));
+      return dResult;
+    }
+  } catch(e) { console.warn('[S205] door strategy failed:', e.message); }
+
+  return null;
+}
+
+// ── Legacy path builders (kept for fallback, used by buildTour if walk_graph absent) ──
+function buildWalkGraphPath_legacy(edges, stairs, allDoors) {
+  // Resolve space GUIDs → names
+  const spaceNames = {};
+  try {
+    const sn = db.exec("SELECT guid, name FROM spatial_structure WHERE type='IfcSpace'");
+    if (sn.length) sn[0].values.forEach(([g,n]) => spaceNames[g] = n);
+  } catch(e) {}
+
+  // Adjacency
+  const adj = new Map();
+  const spaceSt = new Map(); // guid → storey
+  for (const [fromG, toG, viaG, dx, dy, dz, storey] of edges) {
+    if (!adj.has(fromG)) adj.set(fromG, []);
+    if (!adj.has(toG)) adj.set(toG, []);
+    adj.get(fromG).push({ x: dx, y: dy, z: dz, target: toG });
+    adj.get(toG).push({ x: dx, y: dy, z: dz, target: fromG });
+    spaceSt.set(fromG, storey);
+    spaceSt.set(toG, storey);
+  }
+
+  // Stair positions
+  const stairPts = (stairs || []).map(([sx, sy, sz]) => {
+    const tp = ifc2three(sx, sy, sz);
+    return { x: tp.x, y: tp.y, z: tp.z };
+  });
+
+  // Front door
+  let frontDoorIFC = null;
+  if (allDoors && allDoors.length > 0) {
+    const exterior = allDoors.filter(d => d[5] === 0);
+    if (exterior.length > 0) {
+      exterior.sort((a, b) => (a[4] || '').localeCompare(b[4] || ''));
+      frontDoorIFC = { x: exterior[0][1], y: exterior[0][2], z: exterior[0][3] };
+    }
+  }
+
+  // Group by storey
+  const byStorey = new Map();
+  for (const [guid, st] of spaceSt) {
+    if (!byStorey.has(st)) byStorey.set(st, []);
+    byStorey.get(st).push(guid);
+  }
+  const storeys = [...byStorey.keys()].sort();
+
+  const waypoints = [];
+  const visited = new Set();
+
+  // Start at front door
+  if (frontDoorIFC) {
+    const tp = ifc2three(frontDoorIFC.x, frontDoorIFC.y, frontDoorIFC.z);
+    waypoints.push({ x: tp.x, y: tp.y, z: tp.z, name: 'Entrance' });
+  }
+
+  for (let si = 0; si < storeys.length; si++) {
+    const storey = storeys[si];
+    const storeySpaces = byStorey.get(storey);
+
+    // Stair transition
+    if (si > 0 && stairPts.length > 0 && waypoints.length > 0) {
+      const last = waypoints[waypoints.length - 1];
+      let bestStair = stairPts[0], bestSD = Infinity;
+      for (const s of stairPts) {
+        const d = Math.hypot(s.x - last.x, s.z - last.z);
+        if (d < bestSD) { bestSD = d; bestStair = s; }
+      }
+      waypoints.push({ x: bestStair.x, y: last.y, z: bestStair.z, name: 'Stairs' });
+      waypoints.push({ x: bestStair.x, y: bestStair.y, z: bestStair.z, name: 'Climbing...' });
+      const nd = adj.get(storeySpaces[0])?.[0];
+      if (nd) {
+        const ntp = ifc2three(nd.x, nd.y, nd.z);
+        waypoints.push({ x: bestStair.x, y: ntp.y, z: bestStair.z, name: storey });
+      }
+    }
+
+    // Exhaust ALL spaces on this storey via BFS-like traversal
+    // When a subgraph is exhausted, pick nearest unvisited and go directly
+    // (no "outside" detour — same-storey rooms are close enough)
+    while (true) {
+      // Find an unvisited space to start/continue from
+      let current = null;
+      if (waypoints.length > 0) {
+        const last = waypoints[waypoints.length - 1];
+        let bestD = Infinity;
+        for (const g of storeySpaces) {
+          if (visited.has(g)) continue;
+          for (const d of adj.get(g) || []) {
+            const tp = ifc2three(d.x, d.y, d.z);
+            const dist = Math.hypot(tp.x - last.x, tp.z - last.z);
+            if (dist < bestD) { bestD = dist; current = g; }
+          }
+        }
+      }
+      if (!current) current = storeySpaces.find(g => !visited.has(g));
+      if (!current) break; // all visited on this storey
+      visited.add(current);
+
+      // Add first door of this space as waypoint
+      const firstD = adj.get(current)?.[0];
+      if (firstD) {
+        const tp = ifc2three(firstD.x, firstD.y, firstD.z);
+        waypoints.push({ x: tp.x, y: tp.y, z: tp.z, name: spaceNames[current] || current });
+      }
+
+      // Follow connected chain
+      while (true) {
+        let bestDoor = null, bestDist = Infinity, bestTarget = null;
+        for (const d of adj.get(current) || []) {
+          if (visited.has(d.target)) continue;
+          const tp = ifc2three(d.x, d.y, d.z);
+          const last = waypoints[waypoints.length - 1] || tp;
+          const dist = Math.hypot(tp.x - last.x, tp.z - last.z);
+          if (dist < bestDist) { bestDist = dist; bestDoor = d; bestTarget = d.target; }
+        }
+        if (!bestDoor) break;
+        const tp = ifc2three(bestDoor.x, bestDoor.y, bestDoor.z);
+        waypoints.push({ x: tp.x, y: tp.y, z: tp.z, name: spaceNames[bestTarget] || bestTarget });
+        visited.add(bestTarget);
+        current = bestTarget;
+      }
+    }
+  }
+
+  // Exit
+  if (frontDoorIFC) {
+    const tp = ifc2three(frontDoorIFC.x, frontDoorIFC.y, frontDoorIFC.z);
+    waypoints.push({ x: tp.x, y: tp.y, z: tp.z, name: 'Exit' });
+  }
+
+  console.log(`[S205] §WALK_PATH ${waypoints.length} waypoints (${stairPts.length} stairs, ${storeys.length} storeys: ${storeys.join(',')})`);
+  waypoints.forEach((wp, i) => console.log(`  [${i}] ${wp.name} y=${wp.y.toFixed(2)}`));
+  return waypoints.length >= 2 ? waypoints : null;
+}
+
+// Shared: nearest-neighbour path through points, with entrance/stairs/exit
+function buildPointPath(points, stairs, allDoors) {
+  // points: [{name, x, y, z, storey}] in IFC coords
+  const stairPts = (stairs || []).map(([sx,sy,sz]) => ifc2three(sx,sy,sz));
+
+  // Find front door: exterior (not in walk_graph), lowest storey
+  let frontDoorIFC = null;
+  if (allDoors && allDoors.length > 0) {
+    const exterior = allDoors.filter(d => d[5] === 0);
+    if (exterior.length > 0) {
+      exterior.sort((a,b) => (a[4]||'').localeCompare(b[4]||''));
+      frontDoorIFC = { x: exterior[0][1], y: exterior[0][2], z: exterior[0][3] };
+    }
+  }
+
+  // Group by storey
+  const byStorey = {};
+  for (const p of points) {
+    const st = p.storey || '';
+    if (!byStorey[st]) byStorey[st] = [];
+    byStorey[st].push(p);
+  }
+  const storeyOrder = Object.keys(byStorey).sort();
+
+  const waypoints = [];
+
+  // Start at front door
+  if (frontDoorIFC) {
+    const tp = ifc2three(frontDoorIFC.x, frontDoorIFC.y, frontDoorIFC.z);
+    waypoints.push({ x: tp.x, y: tp.y, z: tp.z, name: 'Entrance' });
+  }
+
+  for (let si = 0; si < storeyOrder.length; si++) {
+    const st = storeyOrder[si];
+    const stPoints = byStorey[st];
+
+    // Stair transition between storeys
+    if (si > 0 && stairPts.length > 0 && waypoints.length > 0) {
+      const last = waypoints[waypoints.length - 1];
+      let bestStair = stairPts[0], bestSD = Infinity;
+      for (const s of stairPts) {
+        const d = Math.hypot(s.x - last.x, s.z - last.z);
+        if (d < bestSD) { bestSD = d; bestStair = s; }
+      }
+      // Approach stair at current height
+      waypoints.push({ x: bestStair.x, y: last.y, z: bestStair.z, name: 'Stairs' });
+      // Climb
+      waypoints.push({ x: bestStair.x, y: bestStair.y, z: bestStair.z, name: 'Climbing...' });
+      // Arrive at next storey height
+      const firstNext = stPoints[0];
+      const ntp = ifc2three(firstNext.x, firstNext.y, firstNext.z);
+      waypoints.push({ x: bestStair.x, y: ntp.y, z: bestStair.z, name: st });
+    }
+
+    // Nearest-neighbour within storey
+    const visited = new Set();
+    // Pick start nearest to last waypoint
+    let startIdx = 0;
+    if (waypoints.length > 0) {
+      const last = waypoints[waypoints.length - 1];
+      let bestD = Infinity;
+      for (let j = 0; j < stPoints.length; j++) {
+        const tp = ifc2three(stPoints[j].x, stPoints[j].y, stPoints[j].z);
+        const d = Math.hypot(tp.x - last.x, tp.z - last.z);
+        if (d < bestD) { bestD = d; startIdx = j; }
+      }
+    }
+    let current = stPoints[startIdx];
+    visited.add(startIdx);
+    const tp0 = ifc2three(current.x, current.y, current.z);
+    waypoints.push({ x: tp0.x, y: tp0.y, z: tp0.z, name: current.name });
+
+    for (let i = 1; i < stPoints.length; i++) {
+      let bestIdx = -1, bestDist = Infinity;
+      for (let j = 0; j < stPoints.length; j++) {
+        if (visited.has(j)) continue;
+        const dx = stPoints[j].x - current.x;
+        const dy = stPoints[j].y - current.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < bestDist) { bestDist = d; bestIdx = j; }
+      }
+      if (bestIdx >= 0) {
+        visited.add(bestIdx);
+        current = stPoints[bestIdx];
+        const tp = ifc2three(current.x, current.y, current.z);
+        waypoints.push({ x: tp.x, y: tp.y, z: tp.z, name: current.name });
+      }
+    }
+  }
+
+  // Exit back to front door
+  if (frontDoorIFC) {
+    const tp = ifc2three(frontDoorIFC.x, frontDoorIFC.y, frontDoorIFC.z);
+    waypoints.push({ x: tp.x, y: tp.y, z: tp.z, name: 'Exit' });
+  }
+
+  return waypoints.length >= 2 ? waypoints : null;
+}
+
+function buildSpacePath(rows, stairs, allDoors) {
+  const points = rows.map(r => ({ name: r[1]||'Space', x: r[2], y: r[3], z: r[4], storey: r[5]||'' }));
+  return buildPointPath(points, stairs, allDoors);
+}
+
+function buildDoorPath(rows, stairs, allDoors) {
+  const points = rows.map(r => ({ name: r[1]||'Door', x: r[2], y: r[3], z: r[4], storey: r[5]||'' }));
+  return buildPointPath(points, stairs, allDoors);
+}
+
+// Compute total path length and segment distances
+function computePathLength(path) {
+  let total = 0;
+  for (let i = 1; i < path.length; i++) {
+    const dx = path[i].x - path[i-1].x;
+    const dy = path[i].y - path[i-1].y;
+    const dz = path[i].z - path[i-1].z;
+    total += Math.sqrt(dx*dx + dy*dy + dz*dz);
+  }
+  return total;
+}
+
+// Interpolate position along walk path at parameter t (0..1)
+function interpolateWalkPath(path, t) {
+  if (path.length < 2) return path[0] || { x: 0, y: 0, z: 0, name: '' };
+  const totalLen = computePathLength(path);
+  let targetDist = t * totalLen;
+  let accum = 0;
+  let segIdx = 0;
+
+  for (let i = 1; i < path.length; i++) {
+    const dx = path[i].x - path[i-1].x;
+    const dy = path[i].y - path[i-1].y;
+    const dz = path[i].z - path[i-1].z;
+    const segLen = Math.sqrt(dx*dx + dy*dy + dz*dz);
+    if (accum + segLen >= targetDist) {
+      const f = segLen > 0.001 ? (targetDist - accum) / segLen : 0;
+      return {
+        x: path[i-1].x + dx * f,
+        y: path[i-1].y + dy * f,
+        z: path[i-1].z + dz * f,
+        name: path[i].name || path[i-1].name || ''
+      };
+    }
+    accum += segLen;
+    segIdx = i;
+  }
+  return path[path.length - 1];
+}
+
+function cycleWalkSpeed() {
+  const speeds = [1, 2, 4];
+  const idx = speeds.indexOf(walkSpeedMult);
+  walkSpeedMult = speeds[(idx + 1) % speeds.length];
+  document.getElementById('walk-speed-btn').textContent = walkSpeedMult + 'x';
+  wlog(`Speed: ${walkSpeedMult}x`);
+}
+
+// ── Action-based walkTick — processes walkActions queue ──
+function walkTick() {
+  if (!walkMode || !walkActions || walkActions.length === 0) return;
+  if (walkActionIdx >= walkActions.length) {
+    walkActionIdx = 0; // loop the tour
+    walkActionT = 0;
+    walkPanAngle = 0;
+    wlog('Tour complete — looping');
+  }
+
+  const now = performance.now();
+  const dt = walkLastTime > 0 ? Math.min((now - walkLastTime) / 1000, 0.1) : 0.016;
+  walkLastTime = now;
+
+  const act = walkActions[walkActionIdx];
+  const spd = walkSpeedMult;
+
+  if (act.type === 'moveTo') {
+    // Move camera from current position toward target
+    const target = new THREE.Vector3(act.x, act.y + WALK_EYE_HEIGHT, act.z);
+    const dist = camera.position.distanceTo(target);
+    if (dist < 0.05) {
+      // Arrived — snap and advance
+      camera.position.copy(target);
+      controls.target.set(act.x, act.y + WALK_EYE_HEIGHT, act.z + 0.1);
+      walkActionIdx++;
+      walkActionT = 0;
+      if (act.name) wlog(`Arrived: ${act.name} camY=${camera.position.y.toFixed(2)}`);
+    } else {
+      const step = Math.min(WALK_SPEED * spd * dt / dist, 1.0);
+      camera.position.lerp(target, step);
+      // Look toward target
+      controls.target.lerp(target, step * 1.5);
+    }
+    controls.update();
+    status.textContent = `${act.name || 'Walking...'} [${spd}x] camY=${camera.position.y.toFixed(1)}`;
+
+  } else if (act.type === 'lookAround') {
+    // Rotate camera in place
+    const degreesPerSec = PAN_SPEED * spd;
+    walkPanAngle += degreesPerSec * dt;
+    const rad = walkPanAngle * Math.PI / 180;
+    const lookDist = 3.0;
+    const cx = camera.position.x;
+    const cz = camera.position.z;
+    controls.target.set(cx + lookDist * Math.sin(rad), camera.position.y, cz + lookDist * Math.cos(rad));
+    controls.update();
+    status.textContent = `Looking around ${(walkPanAngle).toFixed(0)}° [${spd}x]`;
+    if (walkPanAngle >= (act.degrees || 360)) {
+      walkActionIdx++;
+      walkActionT = 0;
+      walkPanAngle = 0;
+    }
+
+  } else if (act.type === 'rise') {
+    // Vertical rise/descend at current XZ
+    const targetY = act.targetY + WALK_EYE_HEIGHT;
+    const dy = targetY - camera.position.y;
+    if (Math.abs(dy) < 0.05) {
+      camera.position.y = targetY;
+      walkActionIdx++;
+      walkActionT = 0;
+      wlog(`Rise done: camY=${camera.position.y.toFixed(2)}`);
+    } else {
+      // Rise at 1.0 m/s (slow stair climb)
+      const step = Math.sign(dy) * Math.min(1.0 * spd * dt, Math.abs(dy));
+      camera.position.y += step;
+      controls.target.y += step;
+    }
+    controls.update();
+    status.textContent = `${act.name || 'Rising...'} camY=${camera.position.y.toFixed(1)} → ${targetY.toFixed(1)}`;
+
+  } else if (act.type === 'pause') {
+    walkActionT += dt;
+    if (walkActionT >= (act.seconds || 1)) {
+      walkActionIdx++;
+      walkActionT = 0;
+    }
+
+  } else {
+    // Unknown action — skip
+    walkActionIdx++;
+    walkActionT = 0;
   }
 }
 
@@ -1692,7 +2436,8 @@ function animate() {
   requestAnimationFrame(animate);
   controls.update();
   streamTick();
-  flyTick();
+  if (walkMode) { walkTick(); } else { flyTick(); }
+  walkModeGpsTick();
   updateMeasureLabels();
   renderer.render(scene, camera);
 }
@@ -2438,11 +3183,7 @@ async function downloadSitePhoto() {
 }
 
 // ── Measurement tool ──
-let measureActive = false;
-let measureFirstPoint = null;     // THREE.Vector3
-let measureFirstMarker = null;    // THREE.Mesh (small sphere)
-let measureGroup = new THREE.Group();
-let measureLabels = [];           // { div, p1, p2 } for 2D→3D projection updates
+// (measure state variables hoisted to line ~1141 block)
 scene.add(measureGroup);
 
 function toggleMeasure() {
@@ -2741,6 +3482,354 @@ async function clearAllIssues() {
   console.log('[S205] All issues cleared');
 }
 
+// ── Walk Mode — GPS Blue Dot (Part C, mobile only) ──
+// (variables declared above animate() to avoid TDZ)
+
+function toggleWalkMode() {
+  if (walkModeActive) {
+    stopWalkMode();
+    return;
+  }
+  // Show anchor prompt
+  document.getElementById('walk-anchor-prompt').style.display = 'block';
+}
+
+function cancelWalkAnchor() {
+  document.getElementById('walk-anchor-prompt').style.display = 'none';
+}
+
+function setWalkAnchor() {
+  document.getElementById('walk-anchor-prompt').style.display = 'none';
+
+  if (!navigator.geolocation) {
+    status.textContent = 'Walk Mode: GPS not available';
+    return;
+  }
+
+  status.textContent = 'Walk Mode: Acquiring GPS...';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      walkAnchorGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+
+      // Find nearest IfcDoor to use as anchor point in model
+      walkAnchorIFC = findNearestDoorPosition();
+      if (!walkAnchorIFC) {
+        // Fallback: use building centre
+        const bld = Object.values(buildingCentres)[0];
+        if (bld) {
+          walkAnchorIFC = { x: bld.ix, y: bld.iy, z: bld.iz };
+        } else {
+          status.textContent = 'Walk Mode: No building data';
+          return;
+        }
+      }
+
+      // Cache storey levels for floor detection
+      cacheStoreyLevels();
+
+      // Create blue dot
+      if (walkBlueDot) { scene.remove(walkBlueDot); }
+      const dotGeo = new THREE.SphereGeometry(0.4, 16, 16);
+      const dotMat = new THREE.MeshBasicMaterial({ color: 0x2196f3 });
+      walkBlueDot = new THREE.Mesh(dotGeo, dotMat);
+      const anchorThree = ifc2three(walkAnchorIFC.x, walkAnchorIFC.y, walkAnchorIFC.z);
+      walkBlueDot.position.set(anchorThree.x, anchorThree.y + WALK_EYE_HEIGHT * 0.3, anchorThree.z);
+      scene.add(walkBlueDot);
+
+      // Start GPS tracking
+      walkModeActive = true;
+      walkGpsFollowCam = true;
+      document.getElementById('walk-mode-btn').classList.add('active');
+      startWalkGpsTracking();
+
+      status.textContent = `Walk Mode: Anchored at ${walkAnchorGPS.lat.toFixed(4)}, ${walkAnchorGPS.lng.toFixed(4)}`;
+      console.log(`[S205] §WALK_MODE anchor GPS=(${walkAnchorGPS.lat.toFixed(6)},${walkAnchorGPS.lng.toFixed(6)}) IFC=(${walkAnchorIFC.x.toFixed(1)},${walkAnchorIFC.y.toFixed(1)},${walkAnchorIFC.z.toFixed(1)})`);
+    },
+    err => {
+      status.textContent = 'Walk Mode: GPS error — ' + err.message;
+    },
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+}
+
+function findNearestDoorPosition() {
+  if (!db) return null;
+  try {
+    // Find doors on ground storey (lowest Z)
+    const rows = db.exec(`
+      SELECT t.center_x, t.center_y, t.center_z
+      FROM elements_meta m
+      JOIN element_transforms t ON m.guid = t.guid
+      WHERE m.ifc_class IN ('IfcDoor', 'IfcDoorStandardCase')
+      ORDER BY t.center_z ASC
+      LIMIT 1
+    `);
+    if (rows.length > 0 && rows[0].values.length > 0) {
+      const [x, y, z] = rows[0].values[0];
+      return { x, y, z };
+    }
+  } catch(e) { /* no doors */ }
+  return null;
+}
+
+function cacheStoreyLevels() {
+  walkStoreyLevels = [];
+  if (!db) return;
+  try {
+    const rows = db.exec(`
+      SELECT DISTINCT storey, MIN(center_z) as floor_z
+      FROM elements_meta JOIN element_transforms USING(guid)
+      WHERE storey IS NOT NULL
+      GROUP BY storey ORDER BY floor_z
+    `);
+    if (rows.length > 0) {
+      walkStoreyLevels = rows[0].values.map(r => ({ storey: r[0], floorZ: r[1] }));
+      console.log(`[S205] §WALK_STOREYS ${walkStoreyLevels.length} levels cached`);
+    }
+  } catch(e) { /* no storey data */ }
+}
+
+function startWalkGpsTracking() {
+  if (walkGpsWatchId !== null) {
+    navigator.geolocation.clearWatch(walkGpsWatchId);
+  }
+  walkGpsWatchId = navigator.geolocation.watchPosition(
+    pos => {
+      if (!walkModeActive || !walkAnchorGPS || !walkAnchorIFC || !walkBlueDot) return;
+
+      const dLat = pos.coords.latitude - walkAnchorGPS.lat;
+      const dLng = pos.coords.longitude - walkAnchorGPS.lng;
+
+      // Convert to metres (1 deg lat ~ 111320m, 1 deg lng ~ 111320m * cos(lat))
+      const cosLat = Math.cos(walkAnchorGPS.lat * Math.PI / 180);
+      const dx = dLng * 111320 * cosLat;
+      const dy = dLat * 111320;
+
+      // Rotate by TrueNorth to align GPS deltas with model axes
+      const angle = (window._trueNorthAngle || 0) * Math.PI / 180;
+      const mx = dx * Math.cos(angle) - dy * Math.sin(angle);
+      const my = dx * Math.sin(angle) + dy * Math.cos(angle);
+
+      // IFC position = anchor + delta, then convert to Three.js
+      const ifcX = walkAnchorIFC.x + mx;
+      const ifcY = walkAnchorIFC.y + my;
+      let ifcZ = walkAnchorIFC.z;
+
+      // Floor detection: snap to nearest storey Z
+      if (walkStoreyLevels.length > 1 && pos.coords.altitude != null) {
+        // Use relative altitude change to determine floor
+        const altDelta = pos.coords.altitude - (walkAnchorGPS.alt || pos.coords.altitude);
+        const targetZ = walkAnchorIFC.z + altDelta;
+        let bestStorey = walkStoreyLevels[0];
+        let bestDist = Math.abs(targetZ - bestStorey.floorZ);
+        for (const sl of walkStoreyLevels) {
+          const d = Math.abs(targetZ - sl.floorZ);
+          if (d < bestDist) { bestDist = d; bestStorey = sl; }
+        }
+        ifcZ = bestStorey.floorZ;
+      }
+
+      const tp = ifc2three(ifcX, ifcY, ifcZ);
+      walkBlueDot.position.set(tp.x, tp.y + WALK_EYE_HEIGHT * 0.3, tp.z);
+
+      // Store GPS anchor altitude on first fix
+      if (!walkAnchorGPS.alt && pos.coords.altitude != null) {
+        walkAnchorGPS.alt = pos.coords.altitude;
+      }
+    },
+    err => {
+      console.warn('[S205] §WALK_GPS_ERR', err.message);
+    },
+    { enableHighAccuracy: true }
+  );
+}
+
+// Camera follow blue dot (called from animate loop)
+function walkModeGpsTick() {
+  if (!walkModeActive || !walkGpsFollowCam || !walkBlueDot) return;
+
+  const heading = _camHeading || 0;
+  const modelAzimuth = (heading - (window._trueNorthAngle || 0)) * Math.PI / 180;
+  const followDist = 5;
+
+  camera.position.x = walkBlueDot.position.x - followDist * Math.sin(modelAzimuth);
+  camera.position.z = walkBlueDot.position.z - followDist * Math.cos(modelAzimuth);
+  camera.position.y = walkBlueDot.position.y + WALK_EYE_HEIGHT;
+  controls.target.set(walkBlueDot.position.x, walkBlueDot.position.y + WALK_EYE_HEIGHT * 0.5, walkBlueDot.position.z);
+  controls.update();
+}
+
+function stopWalkMode() {
+  walkModeActive = false;
+  walkGpsFollowCam = false;
+  if (walkGpsWatchId !== null) {
+    navigator.geolocation.clearWatch(walkGpsWatchId);
+    walkGpsWatchId = null;
+  }
+  if (walkBlueDot) {
+    scene.remove(walkBlueDot);
+    walkBlueDot = null;
+  }
+  document.getElementById('walk-mode-btn').classList.remove('active');
+  status.textContent = 'Walk Mode stopped.';
+  console.log('[S205] §WALK_MODE_STOP');
+}
+
+// ── "What's Behind This Wall" — Wall X-Ray (Part D) ──
+// (variables declared above animate() to avoid TDZ)
+
+function handleWallXray(hitObject, hitPoint, hitFaceNormal) {
+  // Only works in Walk Mode
+  if (!walkModeActive) return false;
+
+  const guid = guidMap[hitObject.id];
+  if (!guid) return false;
+
+  // Check if the hit element is a wall
+  try {
+    const rows = db.exec(`
+      SELECT ifc_class, storey, element_name
+      FROM elements_meta WHERE guid = '${guid}'
+    `);
+    if (!rows.length || !rows[0].values.length) return false;
+    const [ifcClass, storey, elemName] = rows[0].values[0];
+
+    if (!ifcClass || (!ifcClass.includes('Wall') && !ifcClass.includes('wall'))) return false;
+
+    // If already x-raying, restore first
+    restoreWallXray();
+
+    console.log(`[S205] §WALL_XRAY class=${ifcClass} storey=${storey} name=${elemName}`);
+
+    // Get wall position for proximity query
+    const wallRows = db.exec(`
+      SELECT center_x, center_y, center_z
+      FROM element_transforms WHERE guid = '${guid}'
+    `);
+    if (!wallRows.length) return false;
+    const [wallX, wallY, wallZ] = wallRows[0].values[0];
+
+    // X-ray the wall
+    wallXrayActive = true;
+    const mat = hitObject.material;
+    wallXrayOriginals.push({
+      mesh: hitObject,
+      origOpacity: mat.opacity,
+      origTransparent: mat.transparent,
+      origSide: mat.side
+    });
+    mat.transparent = true;
+    mat.opacity = 0.15;
+    mat.side = THREE.DoubleSide;
+    mat.needsUpdate = true;
+
+    // Query MEP elements on same storey near this wall
+    // Use wall face normal for proximity — simplified to radius check
+    const mepRows = db.exec(`
+      SELECT m.guid, m.ifc_class, m.element_name, m.discipline,
+             t.center_x, t.center_y, t.center_z
+      FROM elements_meta m
+      JOIN element_transforms t ON m.guid = t.guid
+      WHERE m.discipline IN ('MEP','ELEC','PLB','ACMV','FP','HVAC','MEC')
+        AND m.storey = '${storey}'
+        AND ABS(t.center_x - ${wallX}) < 2.0
+        AND ABS(t.center_y - ${wallY}) < 2.0
+    `);
+
+    if (mepRows.length > 0 && mepRows[0].values.length > 0) {
+      console.log(`[S205] §WALL_MEP found=${mepRows[0].values.length} near wall`);
+
+      // Highlight MEP elements — find existing meshes by guid or create markers
+      const mepGuids = new Set(mepRows[0].values.map(r => r[0]));
+      let highlighted = 0;
+
+      // Check scene for existing MEP meshes
+      scene.traverse(obj => {
+        if (obj.isMesh && obj.userData.guid && mepGuids.has(obj.userData.guid)) {
+          // Brighten existing mesh
+          wallXrayOriginals.push({
+            mesh: obj,
+            origOpacity: obj.material.opacity,
+            origTransparent: obj.material.transparent,
+            origSide: obj.material.side,
+            origColor: obj.material.color.clone(),
+            origEmissive: obj.material.emissive ? obj.material.emissive.clone() : null
+          });
+          obj.material.emissive = new THREE.Color(0x00ff44);
+          obj.material.emissiveIntensity = 0.6;
+          obj.material.transparent = false;
+          obj.material.opacity = 1.0;
+          obj.material.needsUpdate = true;
+          highlighted++;
+        }
+      });
+
+      // For MEP elements not yet loaded, create marker spheres
+      for (const [mGuid, mClass, mName, mDisc, mCx, mCy, mCz] of mepRows[0].values) {
+        if (!highlighted || !findMeshByGuid(mGuid)) {
+          const tp = ifc2three(mCx, mCy, mCz);
+          const markerGeo = new THREE.SphereGeometry(0.15, 8, 8);
+          const isElec = mDisc === 'ELEC' || mDisc === 'FP';
+          const markerMat = new THREE.MeshBasicMaterial({
+            color: isElec ? 0xff8800 : 0x00ff44
+          });
+          const marker = new THREE.Mesh(markerGeo, markerMat);
+          marker.position.set(tp.x, tp.y, tp.z);
+          marker.userData._wallXrayMarker = true;
+          scene.add(marker);
+          wallXrayMepHighlights.push(marker);
+        }
+      }
+
+      status.textContent = `Wall X-Ray: ${mepRows[0].values.length} MEP elements behind ${elemName || ifcClass}`;
+    } else {
+      status.textContent = `Wall X-Ray: No MEP elements found behind ${elemName || ifcClass}`;
+    }
+
+    return true;
+  } catch(e) {
+    console.warn('[S205] §WALL_XRAY_ERR', e.message);
+    return false;
+  }
+}
+
+function findMeshByGuid(guid) {
+  let found = null;
+  scene.traverse(obj => {
+    if (obj.isMesh && obj.userData.guid === guid) found = obj;
+  });
+  return found;
+}
+
+function restoreWallXray() {
+  if (!wallXrayActive) return;
+
+  // Restore original materials
+  for (const entry of wallXrayOriginals) {
+    const mat = entry.mesh.material;
+    mat.opacity = entry.origOpacity;
+    mat.transparent = entry.origTransparent;
+    mat.side = entry.origSide;
+    if (entry.origColor) mat.color.copy(entry.origColor);
+    if (entry.origEmissive !== undefined) {
+      mat.emissive = entry.origEmissive || new THREE.Color(0, 0, 0);
+      mat.emissiveIntensity = 0;
+    }
+    mat.needsUpdate = true;
+  }
+  wallXrayOriginals = [];
+
+  // Remove MEP marker spheres
+  for (const marker of wallXrayMepHighlights) {
+    scene.remove(marker);
+    marker.geometry.dispose();
+    marker.material.dispose();
+  }
+  wallXrayMepHighlights = [];
+
+  wallXrayActive = false;
+}
+
 // ── Expose functions to HTML onclick handlers ──
 window.togglePanel = togglePanel;
 window.clearStreamed = clearStreamed;
@@ -2770,6 +3859,10 @@ window.toggleIssues = toggleIssues;
 window.exportIssuesExcel = exportIssuesExcel;
 window.clearAllIssues = clearAllIssues;
 window._issueBackToList = _issueBackToList;
+window.toggleWalkMode = toggleWalkMode;
+window.setWalkAnchor = setWalkAnchor;
+window.cancelWalkAnchor = cancelWalkAnchor;
+window.cycleWalkSpeed = cycleWalkSpeed;
 } // end initViewer
 </script>
 </body>

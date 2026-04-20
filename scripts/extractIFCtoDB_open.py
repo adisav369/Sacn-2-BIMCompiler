@@ -65,6 +65,14 @@ CREATE TABLE IF NOT EXISTS rel_contained_in_space (
     element_guid TEXT, space_guid TEXT,
     PRIMARY KEY (element_guid, space_guid)
 );
+CREATE TABLE IF NOT EXISTS walk_graph (
+    from_space_guid TEXT,
+    to_space_guid TEXT,
+    via_door_guid TEXT,
+    door_x REAL, door_y REAL, door_z REAL,
+    storey TEXT,
+    PRIMARY KEY (from_space_guid, to_space_guid)
+);
 CREATE TABLE IF NOT EXISTS rel_aggregates (
     parent_guid TEXT NOT NULL, child_guid TEXT NOT NULL,
     PRIMARY KEY (parent_guid, child_guid)
@@ -760,12 +768,15 @@ def extract(ifc_path, output_path, exclude=None, library_db=None):
         conn.execute(
             "INSERT OR IGNORE INTO spatial_structure (guid, type, name, parent_guid) "
             "VALUES (?, 'IfcBuildingStorey', ?, ?)", (s.GlobalId, s.Name, parent))
+    space_centroids = {}  # guid → (cx, cy, cz, storey_name)
     for sp in ifc_file.by_type("IfcSpace"):
         parent_guid = None
+        storey_name = "Unknown"
         try:
             for rel in sp.Decomposes:
                 if rel.RelatingObject.is_a("IfcBuildingStorey"):
                     parent_guid = rel.RelatingObject.GlobalId
+                    storey_name = rel.RelatingObject.Name or "Unknown"
                     break
         except (AttributeError, TypeError):
             pass
@@ -776,6 +787,40 @@ def extract(ifc_path, output_path, exclude=None, library_db=None):
             "(guid, type, name, parent_guid, object_type, predefined_type) "
             "VALUES (?, 'IfcSpace', ?, ?, ?, ?)",
             (sp.GlobalId, sp.Name or sp.LongName, parent_guid, obj_type, predef))
+
+        # S205: extract IfcSpace centroid from placement for walk_graph
+        try:
+            import ifcopenshell.util.placement as ifcplace
+            m = ifcplace.get_local_placement(sp.ObjectPlacement)
+            cx, cy, cz = float(m[0][3]), float(m[1][3]), float(m[2][3])
+            # Apply unit scale if needed
+            if abs(unit_scale - 1.0) > 1e-9:
+                cx, cy, cz = cx * unit_scale, cy * unit_scale, cz * unit_scale
+            space_centroids[sp.GlobalId] = (cx, cy, cz, storey_name)
+            conn.execute(
+                "INSERT OR IGNORE INTO element_transforms "
+                "(guid, center_x, center_y, center_z, transform_source) "
+                "VALUES (?,?,?,?,'ifc_space_placement')",
+                (sp.GlobalId, cx, cy, cz))
+        except Exception:
+            pass
+
+    # S205: populate rel_contained_in_space from IfcRelContainedInSpatialStructure
+    space_contain_count = 0
+    for rel in ifc_file.by_type("IfcRelContainedInSpatialStructure"):
+        try:
+            container = rel.RelatingStructure
+            if container.is_a("IfcSpace"):
+                for elem in rel.RelatedElements:
+                    conn.execute(
+                        "INSERT OR IGNORE INTO rel_contained_in_space VALUES (?,?)",
+                        (elem.GlobalId, container.GlobalId))
+                    space_contain_count += 1
+        except (AttributeError, TypeError):
+            pass
+    print(f"  IfcSpace: {len(space_centroids)} spaces, "
+          f"{space_contain_count} containment relations")
+
     conn.commit()
 
     # --- Geometry settings ---
@@ -977,6 +1022,138 @@ def extract(ifc_path, output_path, exclude=None, library_db=None):
         conn.commit()
     except RuntimeError:
         pass
+
+    # --- S205: Refine space centroids from contained elements (world coords) ---
+    # Local placement often returns (0,0,0) — use average of contained elements instead
+    if space_centroids:
+        zero_spaces = [sg for sg, (cx, cy, cz, _st) in space_centroids.items()
+                       if abs(cx) < 0.01 and abs(cy) < 0.01]
+        if zero_spaces:
+            refined = 0
+            for sg in zero_spaces:
+                row = conn.execute("""
+                    SELECT AVG(t.center_x), AVG(t.center_y), AVG(t.center_z)
+                    FROM rel_contained_in_space r
+                    JOIN element_transforms t ON r.element_guid = t.guid
+                    WHERE r.space_guid = ?
+                """, (sg,)).fetchone()
+                if row and row[0] is not None:
+                    cx, cy, cz = float(row[0]), float(row[1]), float(row[2])
+                    _st = space_centroids[sg][3]  # keep storey
+                    space_centroids[sg] = (cx, cy, cz, _st)
+                    conn.execute(
+                        "UPDATE element_transforms SET center_x=?, center_y=?, center_z=? "
+                        "WHERE guid=?", (cx, cy, cz, sg))
+                    refined += 1
+            conn.commit()
+            if refined:
+                print(f"  IfcSpace centroid refinement: {refined}/{len(zero_spaces)} "
+                      f"zero-spaces resolved from contained elements")
+
+            # Second pass: remaining zero-XY spaces → use nearest door on same storey
+            still_zero = [sg for sg in zero_spaces
+                          if abs(space_centroids[sg][0]) < 0.01
+                          and abs(space_centroids[sg][1]) < 0.01]
+            if still_zero:
+                # Cache door positions per storey
+                door_pos = conn.execute("""
+                    SELECT m.storey, t.center_x, t.center_y, t.center_z
+                    FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid
+                    WHERE m.ifc_class IN ('IfcDoor','IfcDoorStandardCase')
+                """).fetchall()
+                storey_door_avg = {}
+                for st, dx, dy, dz in door_pos:
+                    storey_door_avg.setdefault(st, []).append((dx, dy, dz))
+                for st in storey_door_avg:
+                    pts = storey_door_avg[st]
+                    storey_door_avg[st] = (
+                        sum(p[0] for p in pts) / len(pts),
+                        sum(p[1] for p in pts) / len(pts),
+                        sum(p[2] for p in pts) / len(pts))
+
+                refined2 = 0
+                for sg in still_zero:
+                    _st = space_centroids[sg][3]
+                    if _st in storey_door_avg:
+                        cx, cy, cz = storey_door_avg[_st]
+                        space_centroids[sg] = (cx, cy, cz, _st)
+                        conn.execute(
+                            "UPDATE element_transforms SET center_x=?, center_y=?, center_z=? "
+                            "WHERE guid=?", (cx, cy, cz, sg))
+                        refined2 += 1
+                conn.commit()
+                if refined2:
+                    print(f"  IfcSpace centroid fallback: {refined2}/{len(still_zero)} "
+                          f"resolved from storey door averages")
+
+    # --- S205: Build walk_graph (door-connects-two-spaces) ---
+    walk_graph_count = 0
+    if space_centroids:
+        import math as _math
+        # Gather door positions from element_transforms
+        door_rows = conn.execute("""
+            SELECT m.guid, t.center_x, t.center_y, t.center_z, m.storey
+            FROM elements_meta m
+            JOIN element_transforms t ON m.guid = t.guid
+            WHERE m.ifc_class IN ('IfcDoor', 'IfcDoorStandardCase')
+        """).fetchall()
+
+        # Pre-build storey → space list for efficient nearest-space lookup
+        storey_spaces = {}  # storey → [(guid, cx, cy, cz)]
+        all_spaces_list = []
+        for sguid, (scx, scy, scz, sst) in space_centroids.items():
+            entry = (sguid, scx, scy, scz)
+            all_spaces_list.append(entry)
+            storey_spaces.setdefault(sst, []).append(entry)
+
+        for door_guid, dx, dy, dz, door_storey in door_rows:
+            # Find nearest spaces — prefer same storey, fall back to all
+            candidates = storey_spaces.get(door_storey, all_spaces_list)
+            if len(candidates) < 2:
+                candidates = all_spaces_list
+            if len(candidates) < 2:
+                continue
+
+            # Sort by distance to door
+            dists = []
+            for sguid, scx, scy, scz in candidates:
+                dist = _math.sqrt((dx - scx)**2 + (dy - scy)**2 + (dz - scz)**2)
+                dists.append((dist, sguid, scx, scy, scz))
+            dists.sort(key=lambda x: x[0])
+
+            # Take two nearest distinct spaces
+            sp1_guid = dists[0][1]
+            sp2_guid = None
+            for i in range(1, len(dists)):
+                if dists[i][1] != sp1_guid:
+                    sp2_guid = dists[i][1]
+                    break
+            if sp2_guid is None:
+                continue
+
+            # Insert bidirectional edges
+            try:
+                conn.execute(
+                    "INSERT OR IGNORE INTO walk_graph VALUES (?,?,?,?,?,?,?)",
+                    (sp1_guid, sp2_guid, door_guid, dx, dy, dz, door_storey))
+                conn.execute(
+                    "INSERT OR IGNORE INTO walk_graph VALUES (?,?,?,?,?,?,?)",
+                    (sp2_guid, sp1_guid, door_guid, dx, dy, dz, door_storey))
+                walk_graph_count += 1
+            except Exception:
+                pass
+
+        conn.commit()
+        print(f"  walk_graph: {walk_graph_count} door connections from {len(door_rows)} doors")
+    else:
+        print(f"  walk_graph: no IfcSpace found, skipping")
+
+    # Store walk_graph stats in project_metadata
+    conn.execute("INSERT OR REPLACE INTO project_metadata VALUES ('space_count', ?)",
+                 (str(len(space_centroids)),))
+    conn.execute("INSERT OR REPLACE INTO project_metadata VALUES ('walk_graph_edges', ?)",
+                 (str(walk_graph_count),))
+    conn.commit()
 
     # --- Surface styles + material layers ---
     source_tag = f"EXTRACTED:{os.path.basename(ifc_path)}"
