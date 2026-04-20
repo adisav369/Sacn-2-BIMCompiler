@@ -4915,8 +4915,13 @@ Upload config + DB to same OCI bucket. No other changes needed.</p>
 <h2 id="9-faq-addressing-common-critiques">9. FAQ — Addressing Common Critiques<a class="headerlink" href="#9-faq-addressing-common-critiques" title="Permanent link">&para;</a></h2>
 <h3 id="91-wheres-the-property-panel-without-it-this-is-just-a-pretty-viewer">9.1 "Where's the property panel? Without it, this is just a pretty viewer."<a class="headerlink" href="#91-wheres-the-property-panel-without-it-this-is-just-a-pretty-viewer" title="Permanent link">&para;</a></h3>
 <p><strong>Already shipped in S200 (Phase 1).</strong> Click any element → Info panel shows IFC class,
-name, GUID, storey, discipline, and material. See §6.4 Panels → Info panel, and
-Phase 1 checklist item: "Element picker (click → class, name, GUID, storey, discipline, material)."</p>
+name, GUID, storey, discipline, and material. Storey filter isolates floors. Discipline
+toggle shows/hides ARC, STR, MEP. All panels collapsible.</p>
+<figure style="margin: 20px 0;">
+<img src="../assets/images/OOTBpanels.png" alt="BIM OOTB — Storey filter, discipline toggle, property inspector" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Storey filter (bottom-left), discipline toggle, and element property inspector (bottom-right) — all shipped in S200.</figcaption>
+</figure>
+
 <h3 id="92-whats-the-workflow-for-getting-new-ifc-files-into-this-system">9.2 "What's the workflow for getting new IFC files into this system?"<a class="headerlink" href="#92-whats-the-workflow-for-getting-new-ifc-files-into-this-system" title="Permanent link">&para;</a></h3>
 <p>Self-service pipeline, proven on 12+ buildings:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># One-command onboarding — zero code changes</span>
