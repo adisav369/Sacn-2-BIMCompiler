@@ -227,7 +227,7 @@
     .bld-card { padding: 8px 12px; font-size: 14px; }
     .panel-toggle { font-size: 20px; padding: 4px 8px; }
     .measure-label { font-size: 14px; padding: 4px 8px; }
-    #section-slider-panel { top: auto; bottom: 110px; left: 8px; right: 8px; min-width: auto; }
+    #section-slider-panel { top: auto; bottom: 160px; left: 8px; right: 8px; min-width: auto; }
     #section-slider-panel label { font-size: 14px; }
     #section-slider-panel input[type=range] { height: 36px; }
     #section-slider-panel .section-val { font-size: 13px; }
@@ -326,7 +326,12 @@
 <div id="status">Initializing...</div>
 <pre id="walk-log" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:200px;overflow:auto;background:#111;color:#0f0;font-size:10px;z-index:99;padding:4px;margin:0"></pre>
 <div id="section-slider-panel">
-  <label>Section Cut Height</label>
+  <label>Section Cut <span class="panel-toggle" onclick="toggleSection()" style="float:right;cursor:pointer">&times;</span></label>
+  <div style="margin:4px 0">
+    <button id="sec-axis-y" onclick="setSectionAxis('Y')" style="padding:2px 8px;background:#4fc3f7;color:#000;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">Y ↕</button>
+    <button id="sec-axis-x" onclick="setSectionAxis('X')" style="padding:2px 8px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">X ↔</button>
+    <button id="sec-axis-z" onclick="setSectionAxis('Z')" style="padding:2px 8px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">Z ↗</button>
+  </div>
   <input type="range" id="section-slider" min="0" max="100" value="100" step="0.1" oninput="updateSectionPlane(this.value)">
   <span class="section-val" id="section-val">—</span>
 </div>
@@ -1373,8 +1378,9 @@ function toggleXray() {
 
 // ── Section Cut ──
 let sectionOn = false;
+let sectionAxis = 'Y';  // 'X', 'Y', or 'Z'
 const sectionPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
-let sectionMinY = -100, sectionMaxY = 200;
+let sectionMin = -100, sectionMax = 200;
 
 function toggleSection() {
   sectionOn = !sectionOn;
@@ -1384,37 +1390,8 @@ function toggleSection() {
   const panel = document.getElementById('section-slider-panel');
   panel.style.display = sectionOn ? 'block' : 'none';
   if (sectionOn) {
-    // Compute Y range from scene meshes (Three.js Y = IFC Z)
-    let yMin = Infinity, yMax = -Infinity;
-    scene.traverse(obj => {
-      if (obj.isMesh && obj !== ground) {
-        const box = new THREE.Box3().setFromObject(obj);
-        if (box.min.y < yMin) yMin = box.min.y;
-        if (box.max.y > yMax) yMax = box.max.y;
-      }
-    });
-    if (!isFinite(yMin)) { yMin = -100; yMax = 200; }
-    sectionMinY = yMin;
-    sectionMaxY = yMax;
-    const slider = document.getElementById('section-slider');
-    slider.min = yMin.toFixed(1);
-    slider.max = yMax.toFixed(1);
-    slider.step = ((yMax - yMin) / 500).toFixed(3);
-    slider.value = yMax.toFixed(1);
-    // Set plane at top (everything visible)
-    sectionPlane.constant = yMax;
-    // Apply clipping plane to all materials
-    scene.traverse(obj => {
-      if (obj.isMesh && obj !== ground) {
-        obj.material.clippingPlanes = [sectionPlane];
-        obj.material.clipShadows = true;
-        obj.material.needsUpdate = true;
-      }
-    });
-    document.getElementById('section-val').textContent = yMax.toFixed(1) + ' m';
-    console.log(`[S205] §SECTION ON range=[${yMin.toFixed(1)}, ${yMax.toFixed(1)}]`);
+    applySectionAxis();
   } else {
-    // Remove clipping planes from all materials
     scene.traverse(obj => {
       if (obj.isMesh && obj !== ground) {
         obj.material.clippingPlanes = [];
@@ -1425,10 +1402,57 @@ function toggleSection() {
   }
 }
 
+function setSectionAxis(axis) {
+  sectionAxis = axis;
+  // Update button highlights
+  ['X', 'Y', 'Z'].forEach(a => {
+    const b = document.getElementById('sec-axis-' + a.toLowerCase());
+    b.style.background = (a === axis) ? '#4fc3f7' : '#444';
+    b.style.color = (a === axis) ? '#000' : '#fff';
+  });
+  // Set plane normal: Y = floor cut, X = left-right, Z = front-back
+  if (axis === 'Y') sectionPlane.normal.set(0, -1, 0);
+  else if (axis === 'X') sectionPlane.normal.set(-1, 0, 0);
+  else sectionPlane.normal.set(0, 0, -1);
+  if (sectionOn) applySectionAxis();
+}
+
+function applySectionAxis() {
+  // Compute range along current axis
+  let axMin = Infinity, axMax = -Infinity;
+  scene.traverse(obj => {
+    if (obj.isMesh && obj !== ground) {
+      const box = new THREE.Box3().setFromObject(obj);
+      if (sectionAxis === 'Y') { axMin = Math.min(axMin, box.min.y); axMax = Math.max(axMax, box.max.y); }
+      else if (sectionAxis === 'X') { axMin = Math.min(axMin, box.min.x); axMax = Math.max(axMax, box.max.x); }
+      else { axMin = Math.min(axMin, box.min.z); axMax = Math.max(axMax, box.max.z); }
+    }
+  });
+  if (!isFinite(axMin)) { axMin = -100; axMax = 200; }
+  sectionMin = axMin;
+  sectionMax = axMax;
+  const slider = document.getElementById('section-slider');
+  slider.min = axMin.toFixed(1);
+  slider.max = axMax.toFixed(1);
+  slider.step = ((axMax - axMin) / 500).toFixed(3);
+  slider.value = axMax.toFixed(1);
+  sectionPlane.constant = axMax;
+  // Apply clipping plane to all materials
+  scene.traverse(obj => {
+    if (obj.isMesh && obj !== ground) {
+      obj.material.clippingPlanes = [sectionPlane];
+      obj.material.clipShadows = true;
+      obj.material.needsUpdate = true;
+    }
+  });
+  document.getElementById('section-val').textContent = axMax.toFixed(1) + ' m';
+  console.log(`[S205] §SECTION ON axis=${sectionAxis} range=[${axMin.toFixed(1)}, ${axMax.toFixed(1)}]`);
+}
+
 function updateSectionPlane(val) {
-  const y = parseFloat(val);
-  sectionPlane.constant = y;
-  document.getElementById('section-val').textContent = y.toFixed(1) + ' m';
+  const v = parseFloat(val);
+  sectionPlane.constant = v;
+  document.getElementById('section-val').textContent = v.toFixed(1) + ' m';
 }
 
 // ── 4D/5D Export (Malaysian CIDB rates from Federation BOQ) ──
@@ -1626,27 +1650,37 @@ function toggleFlyAround() {
   btn.style.color = flyActive ? '#000' : '#fff';
 
   if (flyActive) {
-    // Try building a tour from DB data (Part B)
+    // S206: cinematic tour from DB data
     const tour = buildTour();
     if (tour && tour.length >= 2) {
+      // City mode: append orbit for additional buildings
+      if (buildingsRendered.size > 1) {
+        const primaryName = Object.keys(buildingCentres)[0];
+        for (const name of buildingsRendered) {
+          if (name === primaryName) continue;
+          const bc = buildingCentres[name];
+          if (!bc) continue;
+          const ctr = ifc2three(bc.ix, bc.iy, bc.iz);
+          const orbitR = Math.max(30, (bc.envelope || 80) * 0.75);
+          tour.push({type:'orbit', cx:ctr.x, cy:ctr.y, cz:ctr.z, radius:orbitR, tiltDeg:40, duration:8});
+          tour.push({type:'riseAndTilt', targetY:ctr.y + 20, tiltDeg:80, name:`${name} bird's eye`});
+          tour.push({type:'pause', seconds:3});
+          wlog(`City: added ${name}`);
+        }
+      }
       walkMode = true;
       walkActions = tour;
       walkActionIdx = 0;
       walkActionT = 0;
       walkPanAngle = 0;
+      walkOrbitAngle = 0;
       walkLastTime = 0;
       walkSpeedMult = 1;
       document.getElementById('walk-speed-btn').style.display = '';
       document.getElementById('walk-speed-btn').textContent = '1x';
-      // Snap camera to first action position
-      const first = tour[0];
-      if (first.type === 'moveTo') {
-        camera.position.set(first.x, first.y + WALK_EYE_HEIGHT + 5, first.z - 5);
-        controls.target.set(first.x, first.y + WALK_EYE_HEIGHT, first.z);
-        controls.update();
-      }
-      wlog(`START tour: ${tour.length} actions`);
-      status.textContent = `Walk tour: ${tour.length} actions`;
+      // No snap — orbit starts from current camera position
+      wlog(`START cinematic tour: ${tour.length} actions`);
+      status.textContent = `Cinematic tour: ${tour.length} actions`;
       return;
     }
 
@@ -1744,21 +1778,18 @@ function wlog(msg) {
 //   lookAround:  {type:'lookAround', degrees:360}       — pan camera in place
 //   rise:        {type:'rise', targetY, name}            — vertical rise/descend at current XZ
 //   pause:       {type:'pause', seconds}                 — hold position
+//   orbit:       {type:'orbit', cx,cy,cz, radius, tiltDeg, duration} — aerial orbit
+//   riseAndTilt: {type:'riseAndTilt', targetY, tiltDeg, name} — rise while tilting down
 
 let walkActions = [];   // queue of actions
 let walkActionIdx = 0;  // current action index
 let walkActionT = 0;    // progress within current action (0..1)
 let walkPanAngle = 0;   // accumulated pan angle for lookAround
+let walkOrbitAngle = 0; // current orbit angle
 
-// Build a tour from DB data — returns array of actions
+// S206: Cinematic building tour
+// Half orbit → entrance → 2 biggest rooms per storey → stairs → bird's eye
 function buildTour() {
-  // Get space names
-  const spaceNames = {};
-  try {
-    const sn = db.exec("SELECT guid, name FROM spatial_structure WHERE type='IfcSpace'");
-    if (sn.length) sn[0].values.forEach(([g,n]) => spaceNames[g] = n);
-  } catch(e) {}
-
   // Get doors per storey
   let doorsByStorey = {};
   try {
@@ -1798,12 +1829,22 @@ function buildTour() {
     if (sz.length) for (const [st, z] of sz[0].values) storeyZ[st] = z;
   } catch(e) {}
 
-  // Get walk_graph edges for room connectivity
-  let edges = [];
+  // Get room centroids ranked by element count (biggest = most interesting)
+  let roomsByStorey = {}; // storey ��� [{name, cx, cy, cz}]
   try {
-    const wg = db.exec(`SELECT from_space_guid, to_space_guid, via_door_guid,
-      door_x, door_y, door_z, storey FROM walk_graph ORDER BY storey, rowid`);
-    if (wg.length) edges = wg[0].values;
+    const rq = db.exec(`
+      SELECT s.storey, s.name, AVG(t.center_x) cx, AVG(t.center_y) cy, AVG(t.center_z) cz, COUNT(*) cnt
+      FROM rel_contained_in_space r
+      JOIN spatial_structure s ON r.space_guid = s.guid
+      JOIN element_transforms t ON r.element_guid = t.guid
+      WHERE s.type = 'IfcSpace'
+      GROUP BY r.space_guid
+      ORDER BY cnt DESC
+    `);
+    if (rq.length) for (const [st, nm, cx, cy, cz, cnt] of rq[0].values) {
+      if (!roomsByStorey[st]) roomsByStorey[st] = [];
+      roomsByStorey[st].push({name: nm, cx, cy, cz, count: cnt});
+    }
   } catch(e) {}
 
   const storeys = Object.keys(doorsByStorey).sort();
@@ -1811,56 +1852,73 @@ function buildTour() {
 
   const actions = [];
 
-  // Find an entrance door (exterior — use first door on lowest storey)
-  const firstDoor = doorsByStorey[storeys[0]]?.[0];
-  if (!firstDoor) return null;
+  // ── Phase 1: Half orbit from current camera position ──
+  const bc0 = Object.values(buildingCentres)[0];
+  if (bc0) {
+    const ctr = ifc2three(bc0.ix, bc0.iy, bc0.iz);
+    const orbitR = Math.max(30, (bc0.envelope || 80) * 0.75);
+    actions.push({type:'orbit', cx:ctr.x, cy:ctr.y, cz:ctr.z, radius:orbitR, tiltDeg:40, duration:8});
+  }
 
-  // Start: move to entrance
+  // ── Phase 2: Move to entrance ──
+  const firstDoor = doorsByStorey[storeys[0]]?.[0];
+  if (!firstDoor) return actions.length > 0 ? actions : null;
+
   const ep = ifc2three(firstDoor.x, firstDoor.y, firstDoor.z);
   actions.push({type:'moveTo', x:ep.x, y:ep.y, z:ep.z, name:'Entrance'});
-  actions.push({type:'pause', seconds:1});
+  actions.push({type:'pause', seconds:0.5});
 
-  // For each storey: visit rooms, look around in each
+  // ── Phase 3: Visit 2 biggest rooms per storey, then stairs ──
   for (let si = 0; si < storeys.length; si++) {
     const storey = storeys[si];
-    const doors = doorsByStorey[storey] || [];
 
-    // If not first storey, climb stairs
+    // Climb stairs if not first storey
     if (si > 0 && stairs.length > 0) {
-      const lastAction = actions[actions.length - 1];
-      // Find nearest stair
       let bestStair = stairs[0];
-      // Walk to stair base (at current storey Z)
       const prevZ = storeyZ[storeys[si-1]] || storeyZ[storeys[0]] || 0;
       const nextZ = storeyZ[storey] || prevZ + 3;
       const stairTP = ifc2three(bestStair.x, bestStair.y, bestStair.z);
-      // Walk to stair at current height
       actions.push({type:'moveTo', x:stairTP.x, y:ifc2three(0,0,prevZ).y, z:stairTP.z, name:'To stairs'});
       actions.push({type:'pause', seconds:0.5});
-      // Rise through stair (vertical movement at stair XZ)
       actions.push({type:'rise', targetY: ifc2three(0,0,nextZ).y, name:'Climbing stairs'});
       actions.push({type:'pause', seconds:0.5});
-      wlog(`Tour: stair from Z=${prevZ.toFixed(1)} to Z=${nextZ.toFixed(1)}`);
+      wlog(`Tour: stair Z=${prevZ.toFixed(1)} → ${nextZ.toFixed(1)}`);
     }
 
-    // Visit each door on this storey
-    for (let di = 0; di < doors.length; di++) {
-      const door = doors[di];
-      const dp = ifc2three(door.x, door.y, door.z);
-      actions.push({type:'moveTo', x:dp.x, y:dp.y, z:dp.z, name: door.name?.split(':')[0] || storey});
-      // Look around after entering each room
-      if (di % 2 === 0) { // every other room gets a full 360
+    // Visit top 2 rooms by size (centroids = middle of open area)
+    const rooms = roomsByStorey[storey];
+    if (rooms && rooms.length > 0) {
+      const limit = Math.min(rooms.length, 2);
+      for (let ri = 0; ri < limit; ri++) {
+        const room = rooms[ri];
+        const rp = ifc2three(room.cx, room.cy, room.cz);
+        actions.push({type:'moveTo', x:rp.x, y:rp.y, z:rp.z, name: room.name || `Room ${ri+1}`});
+        actions.push({type:'lookAround', degrees: 360});
+      }
+    } else {
+      // Fallback: first 2 doors
+      const doors = doorsByStorey[storey] || [];
+      const limit = Math.min(doors.length, 2);
+      for (let di = 0; di < limit; di++) {
+        const door = doors[di];
+        const dp = ifc2three(door.x, door.y, door.z);
+        actions.push({type:'moveTo', x:dp.x, y:dp.y, z:dp.z, name: door.name?.split(':')[0] || storey});
         actions.push({type:'lookAround', degrees: 360});
       }
     }
   }
 
-  // Return to entrance
-  actions.push({type:'moveTo', x:ep.x, y:ep.y, z:ep.z, name:'Exit'});
+  // ── Phase 4: Bird's eye finale ──
+  if (bc0) {
+    const topZ = Math.max(...Object.values(storeyZ)) || 0;
+    const topY = ifc2three(0, 0, topZ).y;
+    actions.push({type:'riseAndTilt', targetY: topY + 20, tiltDeg:80, name:"Bird's eye"});
+    actions.push({type:'pause', seconds:3});
+  }
 
   wlog(`Tour built: ${actions.length} actions, ${storeys.length} storeys`);
-  actions.forEach((a,i) => wlog(`  [${i}] ${a.type} ${a.name||''} ${a.targetY !== undefined ? 'targetY='+a.targetY.toFixed(2) : ''}`));
-  window._walkStrategy = `TOUR(${actions.length}acts,${storeys.length}fl)`;
+  actions.forEach((a,i) => wlog(`  [${i}] ${a.type} ${a.name||''}`));
+  window._walkStrategy = `CINE(${actions.length}acts,${storeys.length}fl)`;
   return actions;
 }
 
@@ -2257,10 +2315,16 @@ function cycleWalkSpeed() {
 function walkTick() {
   if (!walkMode || !walkActions || walkActions.length === 0) return;
   if (walkActionIdx >= walkActions.length) {
-    walkActionIdx = 0; // loop the tour
+    walkMode = false;
+    flyActive = false;
+    walkActionIdx = 0;
     walkActionT = 0;
     walkPanAngle = 0;
-    wlog('Tour complete — looping');
+    const btn = document.getElementById('fly-btn');
+    if (btn) { btn.style.background = '#444'; btn.style.color = '#fff'; }
+    status.textContent = 'Tour complete.';
+    wlog('Tour complete');
+    return;
   }
 
   const now = performance.now();
@@ -2271,34 +2335,50 @@ function walkTick() {
   const spd = walkSpeedMult;
 
   if (act.type === 'moveTo') {
-    // Move camera from current position toward target
+    // Time-based smoothstep movement — consistent speed, no jerks
+    if (walkActionT === 0) {
+      act._startPos = camera.position.clone();
+      act._startTarget = controls.target.clone();
+      act._dist = camera.position.distanceTo(new THREE.Vector3(act.x, act.y + WALK_EYE_HEIGHT, act.z));
+      // Long moves (approach/transition >5m): 3 seconds max. Short indoor: WALK_SPEED.
+      const speed = act._dist > 5 ? Math.max(WALK_SPEED, act._dist / 3.0) : WALK_SPEED;
+      act._duration = Math.max(act._dist / (speed * spd), 0.3);
+    }
+    walkActionT += dt;
+    const t = Math.min(walkActionT / act._duration, 1.0);
+    const s = t * t * (3 - 2 * t); // smoothstep — even acceleration/deceleration
     const target = new THREE.Vector3(act.x, act.y + WALK_EYE_HEIGHT, act.z);
-    const dist = camera.position.distanceTo(target);
-    if (dist < 0.05) {
-      // Arrived — snap and advance
-      camera.position.copy(target);
-      controls.target.set(act.x, act.y + WALK_EYE_HEIGHT, act.z + 0.1);
+    camera.position.lerpVectors(act._startPos, target, s);
+    // Look target: blend toward a point slightly ahead of destination
+    const lookAt = target.clone();
+    lookAt.z += 0.1;
+    controls.target.lerpVectors(act._startTarget, lookAt, s);
+    controls.update();
+    status.textContent = `${act.name || 'Walking...'} [${spd}x] camY=${camera.position.y.toFixed(1)}`;
+    if (t >= 1.0) {
       walkActionIdx++;
       walkActionT = 0;
       if (act.name) wlog(`Arrived: ${act.name} camY=${camera.position.y.toFixed(2)}`);
-    } else {
-      const step = Math.min(WALK_SPEED * spd * dt / dist, 1.0);
-      camera.position.lerp(target, step);
-      // Look toward target
-      controls.target.lerp(target, step * 1.5);
     }
-    controls.update();
-    status.textContent = `${act.name || 'Walking...'} [${spd}x] camY=${camera.position.y.toFixed(1)}`;
 
   } else if (act.type === 'lookAround') {
-    // Rotate camera in place
+    // Smooth pan — blend toward computed look target (no hard snap)
     const degreesPerSec = PAN_SPEED * spd;
+    if (walkPanAngle === 0 && walkActionT === 0) {
+      // Capture initial look direction so we start from it
+      const dx = controls.target.x - camera.position.x;
+      const dz = controls.target.z - camera.position.z;
+      act._startRad = Math.atan2(dx, dz);
+    }
     walkPanAngle += degreesPerSec * dt;
-    const rad = walkPanAngle * Math.PI / 180;
+    const rad = (act._startRad || 0) + walkPanAngle * Math.PI / 180;
     const lookDist = 3.0;
-    const cx = camera.position.x;
-    const cz = camera.position.z;
-    controls.target.set(cx + lookDist * Math.sin(rad), camera.position.y, cz + lookDist * Math.cos(rad));
+    const wantX = camera.position.x + lookDist * Math.sin(rad);
+    const wantZ = camera.position.z + lookDist * Math.cos(rad);
+    // Blend toward wanted target — smooth, never hard-set
+    controls.target.x += (wantX - controls.target.x) * 0.15;
+    controls.target.z += (wantZ - controls.target.z) * 0.15;
+    controls.target.y += (camera.position.y - controls.target.y) * 0.15;
     controls.update();
     status.textContent = `Looking around ${(walkPanAngle).toFixed(0)}° [${spd}x]`;
     if (walkPanAngle >= (act.degrees || 360)) {
@@ -2330,6 +2410,85 @@ function walkTick() {
     if (walkActionT >= (act.seconds || 1)) {
       walkActionIdx++;
       walkActionT = 0;
+    }
+
+  } else if (act.type === 'orbit') {
+    // Smooth aerial orbit. Starts from camera's current angle — no snap.
+    // First 20%: rise to orbit height. Middle: orbit. Last 40%: spiral down to ground.
+    const tiltRad = (act.tiltDeg || 40) * Math.PI / 180;
+    const duration = act.duration || 8;
+    const totalRad = Math.PI; // half revolution
+    if (walkActionT === 0) {
+      walkOrbitAngle = Math.atan2(camera.position.z - act.cz, camera.position.x - act.cx);
+      act._startAngle = walkOrbitAngle;
+      act._startY = camera.position.y;
+      act._groundY = act.cy + WALK_EYE_HEIGHT; // land at eye height
+      wlog(`Orbit: r=${act.radius?.toFixed(0)} from ${(walkOrbitAngle*180/Math.PI).toFixed(0)}°`);
+    }
+    walkActionT += dt;
+    const t = Math.min(walkActionT / duration, 1.0);
+    const smooth = t * t * (3 - 2 * t); // smoothstep for angle
+    walkOrbitAngle = act._startAngle + totalRad * smooth;
+    const orbitH = act.cy + act.radius * Math.sin(tiltRad);
+    // Height profile: rise 0→0.2, hold 0.2→0.6, descend 0.6→1.0
+    let camY;
+    if (t < 0.2) {
+      const ht = t / 0.2;
+      const hs = ht * ht * (3 - 2 * ht);
+      camY = act._startY + (orbitH - act._startY) * hs;
+    } else if (t < 0.6) {
+      camY = orbitH;
+    } else {
+      const dt2 = (t - 0.6) / 0.4;
+      const ds = dt2 * dt2 * (3 - 2 * dt2);
+      camY = orbitH + (act._groundY - orbitH) * ds;
+    }
+    // Tilt eases toward horizontal during descent
+    const descentProgress = t > 0.6 ? (t - 0.6) / 0.4 : 0;
+    const effectiveTilt = tiltRad * (1 - descentProgress * descentProgress);
+    const camX = act.cx + Math.cos(walkOrbitAngle) * act.radius * Math.cos(effectiveTilt);
+    const camZ = act.cz + Math.sin(walkOrbitAngle) * act.radius * Math.cos(effectiveTilt);
+    camera.position.set(camX, camY, camZ);
+    // Look target eases from centre to eye-level during descent
+    const lookY = act.cy + (camY - act.cy) * descentProgress;
+    controls.target.set(act.cx, lookY, act.cz);
+    controls.update();
+    status.textContent = `Aerial sweep ${(t * 100).toFixed(0)}% [${spd}x]`;
+    if (t >= 1.0) {
+      walkActionIdx++;
+      walkActionT = 0;
+      wlog('Orbit complete');
+    }
+
+  } else if (act.type === 'riseAndTilt') {
+    // Rise straight up while tilting camera downward
+    const targetY = act.targetY;
+    if (walkActionT === 0) {
+      act._startY = camera.position.y;
+      act._startX = camera.position.x;
+      act._startZ = camera.position.z;
+    }
+    const totalDist = Math.abs(targetY - act._startY);
+    if (totalDist < 0.1) { walkActionIdx++; walkActionT = 0; return; }
+    const duration = 5.0;
+    walkActionT += dt;
+    const t = Math.min(walkActionT / duration, 1.0);
+    const smooth = t * t * (3 - 2 * t);
+    camera.position.y = act._startY + (targetY - act._startY) * smooth;
+    // Tilt look target downward as we rise
+    const tiltRad = (act.tiltDeg || 80) * Math.PI / 180 * smooth;
+    const lookDist = 5.0;
+    controls.target.set(
+      act._startX,
+      camera.position.y - lookDist * Math.sin(tiltRad),
+      act._startZ + lookDist * Math.cos(tiltRad) * 0.1
+    );
+    controls.update();
+    status.textContent = `${act.name || "Bird's eye"} ${(t * 100).toFixed(0)}% [${spd}x]`;
+    if (t >= 1.0) {
+      walkActionIdx++;
+      walkActionT = 0;
+      wlog(`RiseAndTilt done: camY=${camera.position.y.toFixed(2)}`);
     }
 
   } else {
@@ -3854,6 +4013,7 @@ window.undoMarkup = undoMarkup;
 window.toggleMeasure = toggleMeasure;
 window.clearMeasures = clearMeasures;
 window.toggleSection = toggleSection;
+window.setSectionAxis = setSectionAxis;
 window.updateSectionPlane = updateSectionPlane;
 window.toggleIssues = toggleIssues;
 window.exportIssuesExcel = exportIssuesExcel;
