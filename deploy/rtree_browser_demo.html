@@ -1992,7 +1992,8 @@ async function shareSitePhoto() {
   const gpsText = _formatGps(_camGpsPos);
   const timeText = _formatTimestamp();
   const title = `BIM Site Photo — ${info.cls} @ ${info.storey}`;
-  const text = `${info.building} / ${info.storey} / ${info.cls}\n${info.name}\nGUID: ${info.guid}\nGPS: ${gpsText}\n${timeText}`;
+  const mapsLink = _camGpsPos ? `https://maps.google.com/?q=${_camGpsPos.coords.latitude},${_camGpsPos.coords.longitude}` : '';
+  const text = `${info.building} / ${info.storey} / ${info.cls}\n${info.name}\nGUID: ${info.guid}\nGPS: ${gpsText}\n${mapsLink}\n${timeText}`;
   const fileName = `BIM_Site_${info.building}_${timeText.replace(/[: ]/g,'-')}.jpg`;
 
   if (navigator.share) {
