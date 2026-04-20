@@ -434,15 +434,30 @@ Per-building DBs must be in `deploy/buildings/`:
 
 ### 6.2 Extract Your Own IFC
 
-To onboard a new IFC file into the viewer:
+**Prerequisites** (all platforms):
+- Python 3.10+ — `python3 --version`
+- IfcOpenShell — `pip install ifcopenshell`
+- Java 17+ — `java --version` (for DAGCompiler geometry extraction)
+- Maven 3.8+ — `mvn --version` (build only, one-time)
+
+Works on **Linux, Mac, and Windows** (native Python or WSL).
 
 ```bash
-# One-command onboarding
+# One-command onboarding (Linux/Mac)
 ./scripts/onboard_ifc.sh --prefix XX --type House --name 'My Building' --ifc path/to/model.ifc
 
-# Or step-by-step:
+# Or step-by-step (all platforms):
+# 1. Extract metadata + transforms from IFC
 python3 DAGCompiler/python/extractIFCtoDB.py path/to/model.ifc deploy/buildings/MyBuilding_extracted.db
-# Library geometry is extracted during the DAGCompiler pipeline
+
+# 2. Extract geometry BLOBs to library
+mvn -q compile -pl DAGCompiler
+java -cp DAGCompiler/target/classes com.bim.compiler.library.ComponentLibrary \
+  path/to/model.ifc deploy/buildings/MyBuilding_library.db
+
+# 3. Serve locally
+cd deploy && python3 -m http.server 8080
+# Open: http://localhost:8080/rtree_browser_demo.html?db=buildings/MyBuilding_extracted.db&lib=buildings/MyBuilding_library.db
 ```
 
 Full guide: [IFC Onboarding Runbook](IFC_ONBOARDING_RUNBOOK.md) (8 steps, self-service).

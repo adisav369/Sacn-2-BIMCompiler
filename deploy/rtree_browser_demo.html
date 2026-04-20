@@ -74,6 +74,24 @@
   #storey-panel button.active { background: #4fc3f7; color: #000; border-color: #4fc3f7; }
   #disc-body button { opacity: 0.3; text-decoration: line-through; }
   #disc-body button.active { opacity: 1.0; text-decoration: none; }
+
+  /* ── Mobile: larger touch targets, stacked panels ── */
+  @media (max-width: 600px) {
+    #hud { top: 8px; left: 8px; right: 8px; max-width: none; font-size: 14px; }
+    #hud h2 { font-size: 16px; }
+    #hud .stat { font-size: 14px; }
+    #search-box { top: auto; bottom: 60px; left: 8px; right: 8px; max-width: none; }
+    #search-box input { width: 100%; font-size: 16px; padding: 8px 12px; }
+    #search-box button { padding: 8px 12px !important; font-size: 14px !important; min-height: 36px; }
+    #info-panel { bottom: 60px; left: 8px; right: 8px; max-width: none; min-width: auto; font-size: 14px; }
+    #storey-panel { bottom: 60px; left: 8px; max-width: 50vw; }
+    #storey-panel button { padding: 8px 12px; font-size: 14px; min-height: 36px; }
+    #disc-panel { bottom: 60px; }
+    #disc-panel button, #disc-body button { padding: 8px 12px !important; font-size: 14px !important; min-height: 36px; }
+    #status { bottom: 8px; left: 8px; right: 8px; transform: none; text-align: center; font-size: 14px; }
+    .bld-card { padding: 8px 12px; font-size: 14px; }
+    .panel-toggle { font-size: 20px; padding: 4px 8px; }
+  }
 </style>
 </head>
 <body>
