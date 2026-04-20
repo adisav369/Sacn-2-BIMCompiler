@@ -39,6 +39,24 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
+**S203 (2026-04-20):** Viewer UX — direct download, IndexedDB cache, city mode. DONE.
+  - **httpvfs retired:** Too slow (130ms/page × hundreds of pages = minutes). All 30 archetypes now as per-building DBs, full download via sql.js.
+  - **Per-building extraction:** `scripts/extract_per_building.py` — splits sandbox into 30 per-building DB pairs (extracted + library). Uploaded to OCI `bim-ootb-full/buildings/`.
+  - **Button fix:** All functions hoisted to `window.` from `initViewer()` scope. Buttons (Clear, X-Ray, Screenshot, Fly, Theme, etc.) now work.
+  - **Batch=50:** Time-budget approach explored but reverted to simple batch=50 (3ms/frame, smooth 60fps). 8ms budget = ~50 meshes on typical hardware.
+  - **Camera:** Uses actual building envelope from DB (`MIN/MAX center_x/y/z`). Fly orbit at 1.2× envelope, 0.6× height.
+  - **IndexedDB cache:** `bim_ootb_cache` — downloads cached in browser, instant on revisit. No files on disk.
+  - **City mode:** `city_index.db` (324KB) — 786 building bboxes + archetype mapping. Click bbox → download per-building DB on demand (from cache if explored before).
+  - **"Complete the City":** Progress bar (localStorage `bim_ootb_viewed`), 30 archetypes. "LAUNCH CITY 1M" button on completion.
+  - **Auto-fly:** Fly-around starts 2s after building loads.
+  - **Landing page:** All 30 buildings direct-download, viewed cards marked green, clear cache link in footer, experimental project footnote.
+  - **OCI:** ap-kulai-2, Free Tier (10GB storage, 10TB/month outbound). ~1.5GB used.
+
+**S201 (2026-04-20):** Selection bleed fix — box select grabbing far-away buildings. DONE.
+  - **Root cause:** 25% of library meshes (30,962) have non-centered verts from DAGCompiler extraction. IfcSlab meshes up to 157m extent → invisible 157m selection hitbox in Blender.
+  - **Fix:** `ensure_meshes()` re-centers at load time, `apply_transform()` compensates. Selection guard timer auto-scopes to majority building. SHRED scoped to majority building.
+  - **Spec:** `prompts/done/S201_shred_selection_fix.md`. Requires re-stream to activate.
+
 **2D_020 (2026-04-19):** TB-LKTN Phase A — 6 features, 6 issues closed. DONE.
   - **Issues closed:** I-43 (R5 hardcodes → template), I-44 (triangle level markers), I-46 (section cut markers), I-47 (finish codes), I-48 (roof fascia line), I-53 partial (elevation D/W tags). SH 6/6 PASS, DX 7/7 PASS.
   - **R5 hardcodes eliminated:** 6 values moved from `drawing_writer_dxf.py` to `drawing_template.json` — block stroke, title block line weights, internal ratio, ground threshold, line weight fallback. §VALUE logs prove template sourcing.

@@ -84,7 +84,7 @@
     <div class="stat">Elements: <b id="s-elements">—</b></div>
     <div class="stat">Meshes: <b id="s-meshes">—</b></div>
     <div class="stat">Streaming: <b id="s-active" style="color:#4fc3f7">—</b></div>
-    <div class="stat">Rendered: <b id="s-streamed">0</b> <b id="s-current-element" style="color:#4fc3f7;font-size:10px"></b>
+    <div class="stat">Rendered: <b id="s-streamed">0</b>/<b id="s-building-total">0</b> <b id="s-current-element" style="color:#4fc3f7;font-size:10px"></b>
       <div style="height:3px;background:#333;border-radius:2px;margin-top:2px"><div id="s-progress" style="height:100%;width:0%;background:#4fc3f7;border-radius:2px;transition:width 0.1s"></div></div>
     </div>
     <div class="stat">Done: <b id="s-buildings-done">0</b></div>
@@ -254,6 +254,8 @@ const _ociMatch = location.href.match(/(https:\/\/objectstorage\.[^/]+\/n\/[^/]+
 const _base = _ociMatch ? _ociMatch[1] : '';
 const DB_URL = _params.get('db') || (_base ? _base + 'Duplex_extracted.db' : 'yourproject_extracted.db');
 const LIB_URL = _params.get('lib') || (_base ? _base + 'component_library.db' : 'component_library.db');
+const CITY_URL = _params.get('city') || null;   // city_index.db for city mode
+const BLD_BASE = _params.get('bldbase') || '';   // per-building DB folder
 
 // ── Discipline colours (same as Blender addon) ──
 const DISC_COLORS = {
@@ -353,6 +355,55 @@ function ifc2three(ix, iy, iz) {
   return { x: ix - modelOffset.x, y: iz - modelOffset.z, z: -(iy - modelOffset.y) };
 }
 
+// ── IndexedDB cache — download once, reuse forever ──
+const CACHE_DB_NAME = 'bim_ootb_cache';
+const CACHE_STORE = 'dbs';
+
+function openCacheDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(CACHE_DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(CACHE_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);  // cache failure is not fatal
+  });
+}
+
+async function cachedFetch(url) {
+  // Try cache first
+  const cacheDb = await openCacheDB();
+  if (cacheDb) {
+    try {
+      const cached = await new Promise((resolve, reject) => {
+        const tx = cacheDb.transaction(CACHE_STORE, 'readonly');
+        const req = tx.objectStore(CACHE_STORE).get(url);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+      });
+      if (cached) {
+        console.log(`[S203] §CACHE_HIT ${url} size=${(cached.byteLength/1024/1024).toFixed(1)}MB`);
+        return cached;
+      }
+    } catch(e) { /* cache miss */ }
+  }
+
+  // Download from network
+  const buf = await fetch(url).then(r => {
+    if (!r.ok) throw new Error(`Failed to fetch ${url}: ${r.status}`);
+    return r.arrayBuffer();
+  });
+
+  // Store in cache (fire-and-forget)
+  if (cacheDb) {
+    try {
+      const tx = cacheDb.transaction(CACHE_STORE, 'readwrite');
+      tx.objectStore(CACHE_STORE).put(buf, url);
+    } catch(e) { console.log(`[S203] §CACHE_WRITE_ERR ${e.message}`); }
+  }
+
+  console.log(`[S203] §CACHE_MISS ${url} size=${(buf.byteLength/1024/1024).toFixed(1)}MB — cached for next time`);
+  return buf;
+}
+
 // ── Load databases ──
 async function init() {
   status.textContent = 'Loading sql.js WebAssembly...';
@@ -360,11 +411,14 @@ async function init() {
     locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
   });
 
+  // ── City mode: load lightweight index, show bboxes, download buildings on demand ──
+  if (CITY_URL) {
+    await initCity(SQL);
+    return;
+  }
+
   status.textContent = `Fetching ${DB_URL}...`;
-  const dbBuf = await fetch(DB_URL).then(r => {
-    if (!r.ok) throw new Error(`Failed to fetch ${DB_URL}: ${r.status}`);
-    return r.arrayBuffer();
-  });
+  const dbBuf = await cachedFetch(DB_URL);
   db = new SQL.Database(new Uint8Array(dbBuf));
   console.log(`[S192] §DB_LOADED size=${(dbBuf.byteLength/1024/1024).toFixed(0)}MB`);
   status.textContent = `DB loaded (${(dbBuf.byteLength/1024/1024).toFixed(0)}MB). Querying...`;
@@ -426,10 +480,7 @@ async function init() {
   // Try loading library DB
   status.textContent = `Fetching ${LIB_URL}...`;
   try {
-    const libBuf = await fetch(LIB_URL).then(r => {
-      if (!r.ok) throw new Error(`${r.status}`);
-      return r.arrayBuffer();
-    });
+    const libBuf = await cachedFetch(LIB_URL);
     libDb = new SQL.Database(new Uint8Array(libBuf));
     console.log(`[S192] §LIB_LOADED size=${(libBuf.byteLength/1024/1024).toFixed(0)}MB`);
     // Check which table has geometry
@@ -453,17 +504,38 @@ async function init() {
     status.textContent = `Using main DB for geometry. Streaming...`;
   }
 
-  // Position camera — overview of city
-  const extentX = allIX.length ? Math.max(...allIX) - Math.min(...allIX) : 500;
-  const extentY = allIY.length ? Math.max(...allIY) - Math.min(...allIY) : 500;
-  const dist = Math.max(extentX, extentY) * 0.6;
-  // Isometric-ish angle — tilted enough to see rooftops and depth
-  camera.position.set(dist * 0.3, dist * 0.5, dist * 0.4);
-  camera.far = Math.max(10000, dist * 3);
+  // Position camera — measure actual building envelope from DB
+  const bboxQ = db.exec(`
+    SELECT MIN(center_x), MAX(center_x),
+           MIN(center_y), MAX(center_y),
+           MIN(center_z), MAX(center_z)
+    FROM element_transforms
+  `);
+  let envW = 500, envD = 500, envH = 100;
+  if (bboxQ.length > 0) {
+    const [xMin, xMax, yMin, yMax, zMin, zMax] = bboxQ[0].values[0];
+    envW = xMax - xMin;  // IFC X = width (east-west)
+    envD = yMax - yMin;  // IFC Y = depth (north-south)
+    envH = zMax - zMin;  // IFC Z = height (up)
+  }
+  const envelope = Math.max(envW, envD, envH);
+  // Store envelope on all building centres so fly orbit uses it
+  for (const bc of Object.values(buildingCentres)) {
+    bc.envelope = envelope;
+  }
+  const dist = Math.max(80, envelope * 1.5);
+  // High isometric angle — looking down at rooftops
+  const ctr = ifc2three(
+    (bboxQ[0]?.values[0][0] + bboxQ[0]?.values[0][1]) / 2 || 0,
+    (bboxQ[0]?.values[0][2] + bboxQ[0]?.values[0][3]) / 2 || 0,
+    (bboxQ[0]?.values[0][4] + bboxQ[0]?.values[0][5]) / 2 || 0
+  );
+  camera.position.set(ctr.x + dist * 0.6, ctr.y + dist * 0.8, ctr.z + dist * 0.6);
+  camera.far = Math.max(10000, dist * 5);
   camera.updateProjectionMatrix();
-  controls.target.set(0, 10, 0);
+  controls.target.set(ctr.x, ctr.y, ctr.z);
   controls.update();
-  console.log(`[S192] §CAMERA city_extent=${extentX.toFixed(0)}x${extentY.toFixed(0)}m dist=${dist.toFixed(0)}m`);
+  console.log(`[S203] §CAMERA envelope=${envW.toFixed(0)}x${envD.toFixed(0)}x${envH.toFixed(0)}m dist=${dist.toFixed(0)}m`);
 
   // Start streaming — check URL hash for deep-link first
   if (libDb) {
@@ -479,6 +551,8 @@ async function init() {
     } else {
       startStreaming();
     }
+    // Auto-start fly mode so user sees the building from all angles
+    setTimeout(() => { if (!flyActive) toggleFlyAround(); }, 2000);
   }
 }
 
@@ -656,7 +730,6 @@ function streamTick() {
     }
   }
 
-  // Place objects
   for (let i = 0; i < batch; i++) {
     const row = streamQueue[streamIdx + i];
     const [guid, hash, rgba, disc, cx, cy, cz, rotX, rotY, rotZ, storey, ifcClass] = row;
@@ -824,11 +897,24 @@ canvas.addEventListener('pointerup', (e) => {
   const dy = e.clientY - pointerDownPos.y;
   if (Math.sqrt(dx*dx + dy*dy) > 5) return;
   if (e.shiftKey || e.button !== 0) return;  // skip pan/right-click
-  if (!db) return;
 
   mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
+
+  // City mode: check bbox wireframes first
+  if (CITY_URL) {
+    const bboxes = [];
+    scene.traverse(obj => { if (obj.isLineSegments && obj.userData.building) bboxes.push(obj); });
+    const bboxHits = raycaster.intersectObjects(bboxes, false);
+    if (bboxHits.length > 0) {
+      const bldName = bboxHits[0].object.userData.building;
+      flyTo(bldName);
+      return;
+    }
+  }
+
+  if (!db) return;
 
   // Collect all meshes (not just direct children)
   const meshes = [];
@@ -1159,13 +1245,14 @@ function toggleFlyAround() {
   btn.style.color = flyActive ? '#000' : '#fff';
 
   if (flyActive) {
-    // Collect rendered buildings
+    // Collect rendered buildings — use actual envelope for orbit radius
     flyTargets = [];
     for (const name of buildingsRendered) {
       const bc = buildingCentres[name];
       if (!bc) continue;
       const t = ifc2three(bc.ix, bc.iy, bc.iz);
-      const radius = Math.max(30, Math.sqrt(bc.count) * 1.2);
+      // Use envelope if available, otherwise estimate
+      const radius = Math.max(80, (bc.envelope || Math.sqrt(bc.count) * 2) * 1.2);
       flyTargets.push({ x: t.x, y: t.y, z: t.z, radius, name });
     }
     if (flyTargets.length === 0) { flyActive = false; btn.style.background = '#444'; btn.style.color = '#fff'; return; }
@@ -1195,7 +1282,7 @@ function flyTick() {
       // Lerp camera and target
       const t = elapsed * elapsed * (3 - 2 * elapsed);  // smoothstep
       camera.position.lerpVectors(flyFromPos, new THREE.Vector3(
-        ft.x + ft.radius * 1.2, ft.y + ft.radius * 0.3, ft.z + ft.radius * 1.2
+        ft.x + ft.radius, ft.y + ft.radius * 0.6, ft.z + ft.radius
       ), t);
       controls.target.lerpVectors(flyFromTarget, new THREE.Vector3(ft.x, ft.y, ft.z), t);
       controls.update();
@@ -1205,9 +1292,9 @@ function flyTick() {
 
   // Orbit around current building
   flyAngle += 0.012;  // ~0.7 deg per frame, ~9s per orbit
-  const camX = ft.x + Math.cos(flyAngle) * ft.radius * 1.2;
-  const camZ = ft.z + Math.sin(flyAngle) * ft.radius * 1.2;
-  const camY = ft.y + ft.radius * 0.3;
+  const camX = ft.x + Math.cos(flyAngle) * ft.radius;
+  const camZ = ft.z + Math.sin(flyAngle) * ft.radius;
+  const camY = ft.y + ft.radius * 0.6;
   camera.position.set(camX, camY, camZ);
   controls.target.set(ft.x, ft.y, ft.z);
   controls.update();
@@ -1286,9 +1373,9 @@ function flyTo(buildingName) {
   const bc = buildingCentres[buildingName];
   if (!bc) return;
   const t = ifc2three(bc.ix, bc.iy, bc.iz);
-  const dist = Math.max(30, Math.sqrt(bc.count) * 1.5);
-  // Position camera above and to the side — always looking down at the building
-  camera.position.set(t.x + dist * 0.4, t.y + dist * 0.6, t.z + dist * 0.4);
+  const dist = Math.max(50, Math.sqrt(bc.count) * 1.5);
+  // Position camera high and pulled back — isometric-ish, always looking down
+  camera.position.set(t.x + dist * 0.7, t.y + dist * 1.0, t.z + dist * 0.7);
   controls.target.set(t.x, t.y, t.z);
   camera.far = Math.max(5000, dist * 10);
   camera.updateProjectionMatrix();
@@ -1339,12 +1426,287 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// ── City mode: lightweight index → bboxes → on-demand building download ──
+let cityDb = null;
+let citySQL = null;
+let cityArchetypes = {};   // archetype → { db, lib } filenames
+let cityBuildingDbs = {};  // building name → { db, libDb } sql.js instances
+
+async function initCity(SQL) {
+  citySQL = SQL;
+  status.textContent = `Fetching city index (${CITY_URL})...`;
+  const buf = await cachedFetch(CITY_URL);
+  cityDb = new SQL.Database(new Uint8Array(buf));
+  console.log(`[S203] §CITY_INDEX size=${(buf.byteLength/1024).toFixed(0)}KB`);
+
+  // Build archetype → filename mapping
+  const archRows = cityDb.exec(`SELECT DISTINCT archetype FROM building_archetype`);
+  if (archRows.length > 0) {
+    for (const row of archRows[0].values) {
+      const arch = row[0];
+      cityArchetypes[arch] = {
+        db: `${arch}_extracted.db`,
+        lib: `${arch}_library.db`,
+      };
+    }
+  }
+
+  // Build building centres from summary (grouped by building, all disciplines)
+  const rows = cityDb.exec(`
+    SELECT building, SUM(element_count),
+      AVG(center_x), AVG(center_y), AVG(center_z)
+    FROM building_summary
+    WHERE discipline IN ('ARC','STR')
+    GROUP BY building
+  `);
+  if (rows.length > 0) {
+    for (const row of rows[0].values) {
+      buildingCentres[row[0]] = { ix: row[2], iy: row[3], iz: row[4], count: row[1] };
+    }
+  }
+  // Fallback: buildings with no ARC/STR (use all disciplines)
+  const allRows = cityDb.exec(`
+    SELECT building, SUM(element_count),
+      AVG(center_x), AVG(center_y), AVG(center_z)
+    FROM building_summary
+    GROUP BY building
+  `);
+  if (allRows.length > 0) {
+    for (const row of allRows[0].values) {
+      if (!buildingCentres[row[0]]) {
+        buildingCentres[row[0]] = { ix: row[2], iy: row[3], iz: row[4], count: row[1] };
+      }
+    }
+  }
+
+  // Total elements
+  const te = cityDb.exec(`SELECT SUM(total_elements) FROM building_archetype`);
+  totalElements = te[0]?.values[0][0] || 0;
+
+  // Discipline counts
+  const dc = cityDb.exec(`SELECT discipline, SUM(element_count) FROM building_summary GROUP BY discipline ORDER BY SUM(element_count) DESC`);
+  if (dc.length > 0) {
+    for (const r of dc[0].values) { discCounts[r[0]] = r[1]; }
+  }
+
+  // Model offset
+  const allIX = Object.values(buildingCentres).map(b => b.ix);
+  const allIY = Object.values(buildingCentres).map(b => b.iy);
+  const allIZ = Object.values(buildingCentres).map(b => b.iz);
+  if (allIX.length) {
+    modelOffset.x = (Math.min(...allIX) + Math.max(...allIX)) / 2;
+    modelOffset.y = (Math.min(...allIY) + Math.max(...allIY)) / 2;
+    modelOffset.z = (Math.min(...allIZ) + Math.max(...allIZ)) / 2;
+  }
+
+  // Ground plane
+  const zRange = cityDb.exec(`SELECT MIN(min_z), MAX(max_z) FROM building_summary`);
+  if (zRange.length > 0) {
+    const groundY = (zRange[0].values[0][0] - modelOffset.z) - 2;
+    ground.position.y = groundY;
+    ground.visible = true;
+  }
+
+  updateHUD();
+  populateBuildingList();
+
+  // Draw bboxes from index
+  const bboxRows = cityDb.exec(`
+    SELECT building, discipline,
+      min_x, min_y, min_z, max_x, max_y, max_z
+    FROM building_summary
+  `);
+  if (bboxRows.length > 0) {
+    for (const row of bboxRows[0].values) {
+      const [bld, disc, minX, minY, minZ, maxX, maxY, maxZ] = row;
+      const color = DISC_COLORS[disc] || DEFAULT_COLOR;
+      const c = ifc2three((minX+maxX)/2, (minY+maxY)/2, (minZ+maxZ)/2);
+      const sx = maxX - minX;
+      const sy = maxZ - minZ;
+      const sz = maxY - minY;
+      if (sx < 0.1 || sy < 0.1 || sz < 0.1) continue;
+      const geo = new THREE.BoxGeometry(sx, sy, sz);
+      const edges = new THREE.EdgesGeometry(geo);
+      const line = new THREE.LineSegments(edges,
+        new THREE.LineBasicMaterial({ color, opacity: 0.6, transparent: true }));
+      line.position.set(c.x, c.y, c.z);
+      line.userData = { building: bld, discipline: disc };
+      scene.add(line);
+    }
+  }
+
+  document.getElementById('s-buildings').textContent =
+    Object.keys(buildingCentres).length.toLocaleString();
+  document.getElementById('s-elements').textContent = totalElements.toLocaleString();
+
+  // Camera — overview of whole city
+  const extentX = allIX.length ? Math.max(...allIX) - Math.min(...allIX) : 500;
+  const extentY = allIY.length ? Math.max(...allIY) - Math.min(...allIY) : 500;
+  const dist = Math.max(extentX, extentY) * 0.6;
+  camera.position.set(dist * 0.3, dist * 0.5, dist * 0.4);
+  camera.far = Math.max(10000, dist * 3);
+  camera.updateProjectionMatrix();
+  controls.target.set(0, 10, 0);
+  controls.update();
+
+  console.log(`[S203] §CITY_READY buildings=${Object.keys(buildingCentres).length} archetypes=${Object.keys(cityArchetypes).length} elements=${totalElements}`);
+  status.textContent = `CITY MODE — ${Object.keys(buildingCentres).length} buildings, ${totalElements.toLocaleString()} elements. Click a building to load.`;
+}
+
+// Override flyTo for city mode — download per-building DB on demand
+const _origFlyTo = flyTo;
+flyTo = function(buildingName) {
+  // Fly camera to building
+  const bc = buildingCentres[buildingName];
+  if (!bc) return;
+  const t = ifc2three(bc.ix, bc.iy, bc.iz);
+  const dist = Math.max(50, Math.sqrt(bc.count) * 1.5);
+  camera.position.set(t.x + dist * 0.7, t.y + dist * 1.0, t.z + dist * 0.7);
+  controls.target.set(t.x, t.y, t.z);
+  camera.far = Math.max(5000, dist * 10);
+  camera.updateProjectionMatrix();
+  controls.update();
+
+  if (!CITY_URL) {
+    // Normal mode — stream from already-loaded DB
+    document.getElementById('s-active').style.color = '#4fc3f7';
+    document.getElementById('s-progress').style.width = '0%';
+    document.getElementById('s-progress').style.background = '#4fc3f7';
+    status.textContent = `Flew to ${buildingName} (${bc.count} elements)`;
+    if (libDb) streamBuilding(buildingName);
+    return;
+  }
+
+  // City mode — download building's per-building DB on demand
+  if (buildingsRendered.has(buildingName)) {
+    status.textContent = `${buildingName} already loaded (${bc.count} elements)`;
+    return;
+  }
+  cityLoadBuilding(buildingName);
+};
+
+async function cityLoadBuilding(buildingName) {
+  // Find archetype for this building
+  const archRow = cityDb.exec(`SELECT archetype FROM building_archetype WHERE building = '${buildingName}'`);
+  if (!archRow.length) { status.textContent = `Unknown building: ${buildingName}`; return; }
+  const archetype = archRow[0].values[0][0];
+  const files = cityArchetypes[archetype];
+  if (!files) { status.textContent = `No DB for archetype: ${archetype}`; return; }
+
+  // Check if we already downloaded this archetype's DBs
+  if (!cityBuildingDbs[archetype]) {
+    status.textContent = `Downloading ${archetype}...`;
+    const extUrl = BLD_BASE + files.db;
+    const libUrl = BLD_BASE + files.lib;
+
+    const [extBuf, libBuf] = await Promise.all([
+      cachedFetch(extUrl),
+      cachedFetch(libUrl),
+    ]);
+
+    const extDb = new citySQL.Database(new Uint8Array(extBuf));
+    const libDb2 = new citySQL.Database(new Uint8Array(libBuf));
+    cityBuildingDbs[archetype] = { db: extDb, libDb: libDb2 };
+    console.log(`[S203] §CITY_DL archetype=${archetype} ext=${(extBuf.byteLength/1024/1024).toFixed(1)}MB lib=${(libBuf.byteLength/1024/1024).toFixed(1)}MB`);
+    status.textContent = `Downloaded ${archetype}. Streaming ${buildingName}...`;
+  }
+
+  // Swap db/libDb to this archetype's DBs, then stream
+  const saved = { db, libDb };
+  db = cityBuildingDbs[archetype].db;
+  libDb = cityBuildingDbs[archetype].libDb;
+
+  // The per-building DB has the archetype's T0_/S0_ building name,
+  // but we need elements for THIS specific building.
+  // The per-building DB only has one building — remap the query.
+  // Get the building name that's actually in this DB
+  const bldInDb = db.exec(`SELECT DISTINCT building FROM elements_meta`);
+  const dbBldName = bldInDb.length > 0 ? bldInDb[0].values[0][0] : buildingName;
+
+  // Query elements from archetype DB but apply transforms from city index
+  // Actually — the per-building DB has ONE copy (T0_ or S0_).
+  // For city copies at different positions, we need to offset.
+  // Get the centre of the archetype's copy in the DB
+  const arcCentre = db.exec(`SELECT AVG(center_x), AVG(center_y), AVG(center_z) FROM element_transforms`);
+  const arcX = arcCentre[0].values[0][0];
+  const arcY = arcCentre[0].values[0][1];
+  const arcZ = arcCentre[0].values[0][2];
+
+  // Get the centre of the target building from city index
+  const bc = buildingCentres[buildingName];
+  const tgtX = bc.ix, tgtY = bc.iy, tgtZ = bc.iz;
+
+  // Offset = target - archetype
+  const offX = tgtX - arcX;
+  const offY = tgtY - arcY;
+  const offZ = tgtZ - arcZ;
+
+  // Query elements from archetype DB
+  const rows = db.exec(`
+    SELECT m.guid, i.geometry_hash, m.material_rgba, m.discipline,
+           t.center_x, t.center_y, t.center_z,
+           t.rotation_x, t.rotation_y, t.rotation_z,
+           m.storey, m.ifc_class
+    FROM elements_meta m
+    JOIN element_instances i ON m.guid = i.guid
+    JOIN element_transforms t ON t.guid = m.guid
+    WHERE i.geometry_hash IS NOT NULL
+      AND m.ifc_class != 'IfcOpeningElement'
+  `);
+
+  if (!rows.length) {
+    status.textContent = `No streamable elements for ${buildingName}`;
+    db = saved.db; libDb = saved.libDb;
+    return;
+  }
+
+  // Apply position offset to each element
+  const offsetRows = rows[0].values.map(row => {
+    const r = [...row];
+    r[4] += offX;  // center_x
+    r[5] += offY;  // center_y
+    r[6] += offZ;  // center_z
+    return r;
+  });
+
+  // Feed into existing streaming pipeline
+  streamQueue = offsetRows;
+  streamIdx = 0;
+  streaming = true;
+  activeBuilding = buildingName;
+  activeBuildingTotal = streamQueue.length;
+  document.getElementById('s-active').textContent = buildingName;
+  document.getElementById('s-active').style.color = '#4fc3f7';
+  document.getElementById('s-building-total').textContent = activeBuildingTotal.toLocaleString();
+  document.getElementById('s-progress').style.width = '0%';
+  document.getElementById('s-progress').style.background = '#4fc3f7';
+  status.textContent = `STREAMING ${buildingName} — 0/${streamQueue.length.toLocaleString()} elements`;
+
+  // Restore saved db/libDb references (streaming will use meshCache which was populated from archetype libDb)
+  // But we need libDb to stay pointed at archetype's lib for BLOB lookups during streaming
+  db = saved.db;
+  // Keep libDb pointing to archetype's library for this stream
+  libDb = cityBuildingDbs[archetype].libDb;
+}
+
 // ── Go ──
 animate();
 init().catch(e => {
   status.textContent = `Error: ${e.message}`;
   console.error(`[S192] §INIT_ERROR`, e);
 });
+// ── Expose functions to HTML onclick handlers ──
+window.togglePanel = togglePanel;
+window.clearStreamed = clearStreamed;
+window.toggleXray = toggleXray;
+window.screenshot = screenshot;
+window.toggleFullscreen = toggleFullscreen;
+window.toggleTheme = toggleTheme;
+window.toggleFlyAround = toggleFlyAround;
+window.filterStorey = filterStorey;
+window.toggleDisc = toggleDisc;
+window.export4D5D = export4D5D;
+window.flyTo = flyTo;
 } // end initViewer
 </script>
 </body>
