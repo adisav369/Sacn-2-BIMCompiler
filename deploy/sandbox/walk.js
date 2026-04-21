@@ -144,8 +144,9 @@ function setupWalk(A) {
     document.getElementById('walk-mode-btn').classList.add('active');
     A.cacheStoreyLevels();
     A.startStepDetection();
+    A.startDriveThru();
 
-    A.status.textContent = 'Walk Mode: Shake phone to walk forward...';
+    A.status.textContent = 'Drive-Thru: Tap to walk, hold to glide';
     console.log(`[S207] §WALK_MODE_START anchor IFC=(${A.walkAnchorIFC.x.toFixed(1)},${A.walkAnchorIFC.y.toFixed(1)},${A.walkAnchorIFC.z.toFixed(1)})`);
   };
 
@@ -314,6 +315,8 @@ function setupWalk(A) {
       A.walkOrientationHandler = null;
     }
     A.stopStepDetection();
+    A.stopDriveThru();
+    A.controls.enabled = true; // Restore OrbitControls
     A.walkLockedHeading = null;
     A.walkCompassReadings = [];
     document.getElementById('walk-mode-btn').classList.remove('active');
@@ -362,6 +365,70 @@ function setupWalk(A) {
     A.walkStepCount = 0;
   };
 
+  // ── Drive-Thru: tap = 1 step, hold = continuous glide ──
+
+  A.startDriveThru = function() {
+    if (A._driveBtn) return;
+
+    const btn = document.createElement('div');
+    btn.id = 'drive-thru-btn';
+    btn.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:80px;height:80px;border-radius:50%;background:rgba(33,150,243,0.7);border:3px solid #4fc3f7;z-index:9999;display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none;cursor:pointer;';
+    btn.textContent = '▶';
+    document.body.appendChild(btn);
+    A._driveBtn = btn;
+    A._driveHoldInterval = null;
+    A._driveHoldCount = 0;
+
+    // Tap = 1 step. Hold (>300ms) = continuous glide
+    const startDrive = (e) => {
+      e.preventDefault();
+      if (!A.walkModeActive) return;
+      A.walkStepCount++;
+      A.advanceWalkStep();
+      btn.style.background = 'rgba(33,150,243,1.0)';
+      btn.style.transform = 'translateX(-50%) scale(0.9)';
+      A._driveHoldCount = 0;
+      A._driveHoldInterval = setInterval(() => {
+        if (!A.walkModeActive) { stopDrive(); return; }
+        A._driveHoldCount++;
+        A.walkStepCount++;
+        A.advanceWalkStep();
+        // Accelerate: after 5 ticks, double step distance
+        if (A._driveHoldCount > 10) {
+          A.advanceWalkStep(); // extra step = 2x speed
+        }
+      }, 150);
+    };
+
+    const stopDrive = () => {
+      if (A._driveHoldInterval) {
+        clearInterval(A._driveHoldInterval);
+        A._driveHoldInterval = null;
+      }
+      btn.style.background = 'rgba(33,150,243,0.7)';
+      btn.style.transform = 'translateX(-50%) scale(1)';
+    };
+
+    btn.addEventListener('touchstart', startDrive, { passive: false });
+    btn.addEventListener('touchend', stopDrive);
+    btn.addEventListener('touchcancel', stopDrive);
+    // Mouse fallback for desktop testing
+    btn.addEventListener('mousedown', startDrive);
+    btn.addEventListener('mouseup', stopDrive);
+    btn.addEventListener('mouseleave', stopDrive);
+  };
+
+  A.stopDriveThru = function() {
+    if (A._driveHoldInterval) {
+      clearInterval(A._driveHoldInterval);
+      A._driveHoldInterval = null;
+    }
+    if (A._driveBtn) {
+      A._driveBtn.remove();
+      A._driveBtn = null;
+    }
+  };
+
   A.advanceWalkStep = function() {
     const dir = new THREE.Vector3();
     A.camera.getWorldDirection(dir);
@@ -372,7 +439,8 @@ function setupWalk(A) {
     A.camera.position.add(dir);
     // Do NOT call controls.update() — device orientation drives the quaternion
 
-    A.status.textContent = `Walk Mode: ${A.walkStepCount} steps`;
+    const dist = (A.walkStepCount * A.WALK_STEP_DISTANCE).toFixed(1);
+    A.status.textContent = `Drive-Thru: ${A.walkStepCount} steps (${dist}m)`;
   };
 
   // Wall X-Ray

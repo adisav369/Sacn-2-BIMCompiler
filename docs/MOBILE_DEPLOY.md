@@ -658,6 +658,49 @@ The supervisor sees what's behind the wall without opening it.
 
 No LiDAR. No AR glasses. Just SQL + raycaster + compass.
 
+#### F.6c Drive-Thru Mode (S208)
+
+Replaced shake-to-walk with tap-to-drive. Phone orientation steers, screen tap drives.
+
+- **Tap** = one step forward (0.6m in camera look direction)
+- **Hold** = continuous glide, accelerates after 1.5s (2x speed)
+- Blue ▶ button at bottom center, 80px circle
+- Shake-to-walk still works as fallback (accelerometer)
+- Status: "Drive-Thru: 12 steps (7.2m)"
+
+Why: shake detection has false triggers (turning phone, gestures). Tap is deliberate,
+precise, works on any phone. Hold-to-glide gives smooth movement for presentations.
+
+#### F.6d Fly-Thru (planned — same pattern as Drive-Thru)
+
+Now that device orientation + camera is solved (S208), fly-through becomes possible:
+
+**Concept: drone on rails.** Camera auto-advances along a computed path (storey by
+storey, room by room). Phone orientation controls where you LOOK while the path
+controls where you GO. Like a theme park ride through the building.
+
+Path computation from DB:
+```sql
+-- Build fly-through path: entrance → rooms on each storey → up → next storey
+SELECT DISTINCT m.storey, MIN(t.center_z) as floor_z,
+       AVG(t.center_x) as cx, AVG(t.center_y) as cy
+FROM elements_meta m
+JOIN element_transforms t ON m.guid = t.guid
+WHERE m.ifc_class LIKE 'IfcSpace%'
+GROUP BY m.storey ORDER BY floor_z
+```
+
+Implementation:
+1. `walkOrientTick()` drives look direction (already working)
+2. Auto-advance position along waypoints (like `advanceWalkStep` but on a timer)
+3. Speed controlled by hold (Drive-Thru button) or auto (presentation mode)
+4. Storey transitions: smooth camera rise between floors
+5. No `controls.update()` — same S208 pattern
+
+The key insight from S208: **OrbitControls and DeviceOrientation are mutually exclusive.**
+Any fly-through on mobile must NOT call `controls.update()`. Position moves via direct
+`camera.position` manipulation, orientation via `walkOrientTick()` quaternion.
+
 #### F.8 Competitive Landscape
 
 | Feature | Trimble SiteVision | Google Indoor Maps | Apple Indoor Maps | **BIM OOTB Walk** |
@@ -695,7 +738,10 @@ Steps 24-27 add PDR for indoor accuracy. Steps 28-30 are the differentiators.
 
 | File | Role |
 |------|------|
-| `deploy/rtree_browser_demo.html` | Browser viewer (rename to `index.html` for OCI) |
+| `deploy/sandbox/index2.html` | Modular browser viewer (15 files) |
+| `deploy/sandbox/walk.js` | Walk/Drive-Thru mode, device orientation, wall X-ray |
+| `deploy/sandbox/main.js` | Render loop with walkOrientTick |
+| `deploy/sandbox/tour.js` | Fly-around, cinematic tour engine |
 | `deploy/manifest.json` | PWA manifest (to be created) |
 | `deploy/sw.js` | Service worker for offline cache (to be created) |
 | `docs/MOBILE_DEPLOY.md` | This spec |
