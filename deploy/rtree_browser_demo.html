@@ -242,6 +242,9 @@
     /* Collapsed: tight, no blocking */
     .panel-body.collapsed { max-height: 0 !important; padding: 0 !important; margin: 0 !important; pointer-events: none !important; overflow: hidden !important; opacity: 0 !important; }
 
+    /* Swipe-hidden: overrides everything */
+    .swipe-hidden { display: none !important; }
+
     /* Hide building list + search on mobile */
     #building-list { display: none !important; }
   }
@@ -252,7 +255,7 @@
     #site-cam-btn { display: inline-block !important; top: 4px !important; right: 4px !important; padding: 4px 6px !important; font-size: 11px !important; min-height: 28px !important; }
     #walk-mode-btn { display: inline-block !important; top: 4px !important; right: 56px !important; padding: 4px 6px !important; font-size: 11px !important; min-height: 28px !important; }
     /* All panels: tight, small */
-    #storey-panel { display: block !important; top: 4px !important; left: 90px !important; right: auto !important; width: 70px; max-height: 20vh; padding: 2px 4px !important; font-size: 9px !important; }
+    #storey-panel { display: block !important; top: 28px !important; left: 4px !important; right: auto !important; width: 80px; max-height: 20vh; padding: 2px 4px !important; font-size: 9px !important; }
     #storey-panel button { padding: 1px 3px !important; font-size: 9px !important; min-height: 18px !important; }
     #search-box { top: 30px !important; right: 4px !important; left: auto !important; width: 90px; padding: 2px 4px !important; }
     #search-box button { padding: 2px 3px !important; font-size: 9px !important; min-height: 18px !important; }
@@ -266,6 +269,7 @@
     /* Collapsed = truly gone, no blocking */
     .panel-body.collapsed { max-height: 0 !important; padding: 0 !important; margin: 0 !important; opacity: 0 !important; overflow: hidden !important; }
     #storey-panel:has(.panel-body.collapsed), #disc-panel:has(.panel-body.collapsed), #search-box:has(.panel-body.collapsed), #hud:has(.panel-body.collapsed) { padding: 1px 3px !important; min-height: 0 !important; overflow: hidden !important; }
+    .swipe-hidden { display: none !important; }
   }
 </style>
 </head>
@@ -1160,7 +1164,7 @@ function togglePanel(id) {
   function hideAll() {
     panelIds.forEach(pid => {
       const el = document.getElementById(pid);
-      if (el) el.style.display = 'none';
+      if (el) el.classList.add('swipe-hidden');
     });
     panelsHidden = true;
     const s = document.getElementById('status');
@@ -1170,7 +1174,7 @@ function togglePanel(id) {
   function showAll() {
     panelIds.forEach(pid => {
       const el = document.getElementById(pid);
-      if (el) el.style.display = '';
+      if (el) el.classList.remove('swipe-hidden');
     });
     panelsHidden = false;
     const s = document.getElementById('status');
