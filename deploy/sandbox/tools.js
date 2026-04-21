@@ -114,7 +114,9 @@ function setupTools(A) {
     if (!A.db || !A.activeBuilding) { A.status.textContent = 'Select a building first.'; return; }
     const bld = A.activeBuilding;
     const dbParam = new URLSearchParams(location.search).get('db') || 'yourproject_extracted.db';
-    window.open(`boq_charts.html?db=${dbParam}&bld=${bld}`, '_blank');
+    // boq_charts.html is at bucket root, not in sandbox/
+    const base = location.href.match(/(.*\/o\/)/)?.[1] || '../';
+    window.open(`${base}boq_charts.html?db=${dbParam}&bld=${bld}`, '_blank');
     A.status.textContent = `4D/5D analytics opened for ${bld} (Save 5D BOQ / Save 4D Schedule)`;
   };
 
