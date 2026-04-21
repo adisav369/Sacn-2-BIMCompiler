@@ -209,8 +209,8 @@
     #site-cam-btn { display: inline-block !important; position: fixed !important; top: 8px !important; right: 8px !important; z-index: 20 !important; padding: 8px 12px; font-size: 14px; }
     #walk-mode-btn { display: inline-block !important; position: fixed !important; top: 8px !important; right: 80px !important; z-index: 20 !important; padding: 8px 12px; font-size: 14px; }
 
-    /* Storeys: top-right, same line as Walk/Site (left of them) */
-    #storey-panel { display: block !important; position: fixed !important; top: 8px !important; right: 160px !important; left: auto !important; bottom: auto !important; width: auto; max-width: 140px; max-height: 40vh; overflow-y: auto; z-index: 20 !important; padding: 6px 8px; }
+    /* Storeys: top-left, above Disc */
+    #storey-panel { display: block !important; position: fixed !important; top: 8px !important; left: 8px !important; right: auto !important; bottom: auto !important; width: 160px; max-height: 40vh; overflow-y: auto; z-index: 21 !important; padding: 6px 8px; }
     #storey-panel button { padding: 4px 8px; font-size: 12px; min-height: 28px; }
 
     /* Tools (search-box): below Walk/Site, right side, z12 */
@@ -218,8 +218,8 @@
     #search-box input { display: none !important; }
     #search-box button { padding: 6px 8px !important; font-size: 12px !important; min-height: 32px; }
 
-    /* Disc panel: top-left, z21 */
-    #disc-panel { display: block !important; position: fixed !important; top: 8px !important; left: 8px !important; bottom: auto !important; z-index: 21 !important; width: 160px; }
+    /* Disc panel: bottom-left (unchanged from original position) */
+    #disc-panel { display: block !important; bottom: 50px !important; left: 8px !important; top: auto !important; z-index: 10 !important; width: 160px; }
     #disc-panel button, #disc-body button { padding: 4px 8px !important; font-size: 12px !important; min-height: 28px; }
 
     /* HUD: bottom-left, z9 */
@@ -252,7 +252,7 @@
     #walk-mode-btn { top: 4px !important; right: 68px !important; padding: 6px 8px !important; font-size: 12px !important; }
     #storey-panel { top: 4px !important; right: 132px !important; max-height: 30vh; padding: 4px 6px !important; }
     #search-box { top: 36px !important; right: 4px !important; width: 160px; }
-    #disc-panel { top: 4px !important; left: 4px !important; width: 130px; }
+    #disc-panel { bottom: 4px !important; left: 4px !important; top: auto !important; width: 130px; }
     #hud { bottom: 4px; left: 4px; max-width: 35vw; right: auto; font-size: 11px; }
     #hud h2 { font-size: 12px; }
     #status { bottom: 2px; font-size: 10px; }
