@@ -13,6 +13,7 @@ function initViewer() {
   setupMeasure(APP);
   setupSitecam(APP);
   setupIssues(APP);
+  setupExcel(APP);
   setupWalk(APP);
   setupCity(APP);
 
