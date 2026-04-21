@@ -1,7 +1,7 @@
 # ⚠ DO NOT REMOVE
 # Scope: S201 — BOQ Charts Browser Parity with Federation Excel
 # Read the log after every run. No claims without §PROOF log lines.
-# STATUS: TODO
+# STATUS: DONE
 
 ## Goal
 
