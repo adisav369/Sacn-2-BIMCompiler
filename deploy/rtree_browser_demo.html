@@ -257,10 +257,10 @@
     /* Left panels: Disc + Storeys */
     #disc-panel { display: block !important; top: 4px !important; left: 4px !important; bottom: auto !important; width: 35vw; padding: 4px 6px !important; }
     #disc-panel button, #disc-body button { padding: 3px 6px !important; font-size: 11px !important; min-height: 24px !important; }
-    #storey-panel { display: block !important; top: 32px !important; left: 4px !important; right: auto !important; width: 35vw; max-height: 25vh; padding: 4px 6px !important; font-size: 11px !important; }
+    #storey-panel { display: block !important; top: 32px !important; left: 4px !important; right: auto !important; width: 20vw; max-height: 25vh; padding: 4px 6px !important; font-size: 11px !important; }
     #storey-panel button { padding: 3px 6px !important; font-size: 11px !important; min-height: 24px !important; }
-    /* Tools: right side, flush right, wider */
-    #search-box { top: 30px !important; left: 40vw !important; right: 4px !important; width: auto !important; padding: 4px 6px !important; }
+    /* Tools: right side, shorter */
+    #search-box { top: 30px !important; left: auto !important; right: 4px !important; width: 28vw !important; padding: 4px 6px !important; }
     #search-box button { padding: 3px 5px !important; font-size: 10px !important; min-height: 24px !important; }
     #search-box > div { justify-content: flex-end !important; }
     /* HUD: bottom-right */
@@ -3932,7 +3932,7 @@ function walkModeGpsTick() {
   if (_camHeading === null) return; // compass not yet available
 
   const heading = _camHeading;
-  const modelAzimuth = (heading - (window._trueNorthAngle || 0)) * Math.PI / 180;
+  const modelAzimuth = -(heading - (window._trueNorthAngle || 0)) * Math.PI / 180;
   const lookDist = 10;
 
   // Look direction from live compass heading
