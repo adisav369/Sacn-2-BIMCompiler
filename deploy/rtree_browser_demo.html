@@ -224,7 +224,6 @@
 
     /* HUD: bottom-left, z9 */
     #hud { top: auto !important; bottom: 40px; left: 8px; right: 8px; max-width: none; font-size: 12px; z-index: 9 !important; }
-    #hud:has(.panel-body.collapsed) { padding: 2px 6px !important; border: none !important; background: transparent !important; backdrop-filter: none !important; }
     #hud h2 { font-size: 14px; }
     #hud .stat { font-size: 12px; }
 
@@ -258,7 +257,6 @@
     #disc-panel { top: 4px !important; left: 4px !important; bottom: auto !important; width: 80px; padding: 3px 4px !important; }
     #disc-panel button, #disc-body button { padding: 2px 4px !important; font-size: 10px !important; min-height: 20px !important; }
     #hud { bottom: 2px; left: 4px; max-width: 30vw; right: auto; font-size: 10px; padding: 4px 6px !important; }
-    #hud:has(.panel-body.collapsed) { padding: 2px 6px !important; border: none !important; background: transparent !important; backdrop-filter: none !important; }
     #hud h2 { font-size: 11px; }
     #hud .stat { font-size: 10px; }
     #status { bottom: 2px; font-size: 10px; padding: 4px 8px !important; }
@@ -1148,33 +1146,49 @@ function togglePanel(id) {
   body.classList.toggle('collapsed');
 }
 
-// ── Swipe-to-dismiss panels (mobile) ──
+// ── Swipe-to-dismiss ALL panels at once (mobile, except Walk/Site) ──
 (function() {
   if (window.innerWidth > 600) return;
-  let startX = 0, startY = 0;
-  const panels = ['hud','search-box','storey-panel','disc-panel','info-panel'];
-  panels.forEach(pid => {
-    const el = document.getElementById(pid);
-    if (!el) return;
-    el.addEventListener('touchstart', e => {
-      startX = e.touches[0].clientX; startY = e.touches[0].clientY;
-    }, {passive:true});
-    el.addEventListener('touchend', e => {
-      const dx = e.changedTouches[0].clientX - startX;
-      const dy = e.changedTouches[0].clientY - startY;
-      // Swipe horizontal (>50px) = hide panel
-      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
-        el.style.display = 'none';
-        // Restore after 5s tap anywhere
-        const restore = () => { el.style.display = ''; document.removeEventListener('touchstart', restore); };
-        setTimeout(() => document.addEventListener('touchstart', restore, {once:true}), 500);
-      }
-    }, {passive:true});
-  });
+  let startX = 0;
+  const panelIds = ['hud','search-box','storey-panel','disc-panel','info-panel'];
+  let panelsHidden = false;
+
+  function hideAll() {
+    panelIds.forEach(pid => {
+      const el = document.getElementById(pid);
+      if (el) el.style.display = 'none';
+    });
+    panelsHidden = true;
+    const s = document.getElementById('status');
+    if (s) s.textContent = 'Tap to show panels';
+  }
+
+  function showAll() {
+    panelIds.forEach(pid => {
+      const el = document.getElementById(pid);
+      if (el) el.style.display = '';
+    });
+    panelsHidden = false;
+    const s = document.getElementById('status');
+    if (s) s.textContent = '';
+  }
+
+  document.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > 60) {
+      // Swipe = toggle all panels
+      if (panelsHidden) showAll(); else hideAll();
+    } else if (panelsHidden) {
+      // Tap = restore panels
+      showAll();
+    }
+  }, {passive:true});
+
   // Status hint
   setTimeout(() => {
     const s = document.getElementById('status');
-    if (s) s.textContent = '← → Swipe panels to dismiss';
+    if (s) s.textContent = '← → Swipe to hide panels';
     setTimeout(() => { if (s && s.textContent.includes('Swipe')) s.textContent = ''; }, 4000);
   }, 3000);
 })();
