@@ -3775,9 +3775,7 @@ function setWalkAnchor() {
   }
   controls.update();
 
-  // Start orientation tracking (compass + tilt)
-  walkCompassReadings = [];
-  walkLockedHeading = null;
+  // Tilt tracking (compass uses existing _camHeading from Site Camera handler)
   walkLiveTilt = 0;
   startWalkOrientation();
 
@@ -3807,23 +3805,17 @@ function setWalkAnchor() {
 
 function startWalkOrientation() {
   walkOrientationHandler = (e) => {
-    // Compass heading (alpha) — lock after 5 readings
-    if (e.alpha != null && walkLockedHeading === null) {
-      walkCompassReadings.push(e.alpha);
-      if (walkCompassReadings.length >= 5) {
-        // Average last 5 readings
-        const sum = walkCompassReadings.slice(-5).reduce((a,b) => a+b, 0);
-        walkLockedHeading = sum / 5;
-        status.textContent = `Walk Mode: Heading locked ${Math.round(walkLockedHeading)}°`;
-        console.log(`[S207] §WALK_COMPASS locked=${walkLockedHeading.toFixed(1)}°`);
-      }
-    }
-    // Tilt (beta) — stays live forever, smoothed
+    // Tilt (beta) — stays live, smoothed. Compass comes from _camHeading.
     if (e.beta != null) {
-      walkLiveTilt = walkLiveTilt * 0.9 + e.beta * 0.1; // 0.1 smoothing
+      walkLiveTilt = walkLiveTilt * 0.9 + e.beta * 0.1;
     }
   };
   window.addEventListener('deviceorientation', walkOrientationHandler);
+  status.textContent = _camHeading != null ? `Walk Mode: Compass ${_camHeading}°` : 'Walk Mode: Waiting for compass...';
+  // Timeout if no compass
+  setTimeout(() => {
+    if (walkModeActive && _camHeading === null) status.textContent = 'Walk Mode: Compass not available — tilt only';
+  }, 5000);
 }
 
 function findNearestDoorPosition() {
@@ -3918,21 +3910,20 @@ function startWalkGpsTracking() {
   );
 }
 
-// S207: Camera = user. Locked heading rotates view, live tilt pitches.
+// S207: Camera = user. Uses existing _camHeading (from Site Camera handler) + live tilt.
 function walkModeGpsTick() {
   if (!walkModeActive) return;
-  if (walkLockedHeading === null) return; // waiting for compass lock
+  if (_camHeading === null) return; // compass not yet available
 
-  const heading = walkLockedHeading;
+  const heading = _camHeading;
   const modelAzimuth = (heading - (window._trueNorthAngle || 0)) * Math.PI / 180;
   const lookDist = 10;
 
-  // Look direction from locked heading
+  // Look direction from live compass heading
   const lookX = camera.position.x + lookDist * Math.sin(modelAzimuth);
   const lookZ = camera.position.z + lookDist * Math.cos(modelAzimuth);
 
   // Tilt: map device beta (0=flat, 90=upright) to camera pitch
-  // When holding phone ~60-70° (normal use), look level. Tilt down = look down.
   const pitchOffset = (walkLiveTilt - 65) * 0.05; // 65° = level hold
   const lookY = camera.position.y + pitchOffset * lookDist;
 
