@@ -365,6 +365,7 @@
     <div class="detail-row"><span class="label">Compass: </span><span class="value" id="issue-d-compass">-</span></div>
     <div class="detail-row"><span class="label">Time: </span><span class="value" id="issue-d-time">-</span></div>
     <div class="detail-row"><span class="label">Notes: </span><span class="value" id="issue-d-notes">-</span></div>
+    <button id="issue-d-status-btn" style="margin-top:8px;padding:8px 16px;border:none;border-radius:6px;color:#fff;font-size:13px;cursor:pointer;width:100%">🔴 Open</button>
   </div>
 </div>
 <div id="status">v3 — Initializing...</div>
@@ -395,6 +396,7 @@
   <div id="site-cam-gps">GPS: acquiring...</div>
   <div id="site-cam-time"></div>
   <button id="site-cam-snap-btn" onclick="snapSitePhoto()">&#128247;</button>
+  <button onclick="closeSiteCamera()" style="position:absolute;top:12px;left:12px;background:rgba(0,0,0,0.6);color:#fff;border:1px solid #666;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;z-index:2001">✕</button>
 </div>
 
 <!-- Site Camera Preview + Markup (after snap) -->

@@ -115,6 +115,8 @@ function setupSitecam(A) {
       });
       video.srcObject = A._camStream;
       overlay.classList.add('active');
+      // Push history state so phone back button closes camera instead of leaving page
+      history.pushState({ siteCam: true }, '');
       console.log('[S204] §CAMERA opened');
     } catch (err) {
       A.status.textContent = 'Camera: ' + err.message;
@@ -122,6 +124,15 @@ function setupSitecam(A) {
       A.closeSiteCamera();
     }
   };
+
+  // Phone back button closes camera/preview instead of navigating away
+  window.addEventListener('popstate', (e) => {
+    if (document.getElementById('site-cam-preview').classList.contains('active')) {
+      A.closeSitePreview();
+    } else if (document.getElementById('site-cam-overlay').classList.contains('active')) {
+      A.closeSiteCamera();
+    }
+  });
 
   A.closeSiteCamera = function() {
     if (A._camStream) {
@@ -143,9 +154,9 @@ function setupSitecam(A) {
     const compassText = A._camHeading != null ? `${A._camHeading}° ${dirs[Math.round(A._camHeading / 45) % 8]}` : null;
 
     // Auto-save to punch list if element is selected (Snag-to-BIM)
+    // Save metadata now; photo blob added after composite in _compositePhoto
     if (info.guid && info.guid !== '—') {
-      A._saveIssueToLog();
-      A.status.textContent = `📸 Snag saved: ${info.cls} @ ${info.storey}`;
+      A._pendingSnagInfo = info;
     }
 
     const bimImg = new Image();
@@ -248,6 +259,41 @@ function setupSitecam(A) {
     A._markupStrokes = [];
     A._camPhotoBlob = null;
     document.getElementById('site-cam-preview').classList.add('active');
+    history.pushState({ sitePreview: true }, '');
+
+    // Snag-to-BIM: save with photo now that canvas is drawn
+    if (A._pendingSnagInfo) {
+      const snagInfo = A._pendingSnagInfo;
+      A._pendingSnagInfo = null;
+      mc.toBlob(async (blob) => {
+        if (!blob) return;
+        try {
+          const issue = {
+            jpeg_blob: blob,
+            gps_lat: A._camGpsPos ? A._camGpsPos.coords.latitude : null,
+            gps_lng: A._camGpsPos ? A._camGpsPos.coords.longitude : null,
+            gps_accuracy: A._camGpsPos ? A._camGpsPos.coords.accuracy : null,
+            compass_heading: A._camHeading,
+            timestamp: new Date().toISOString(),
+            element_guid: snagInfo.guid || '',
+            element_class: snagInfo.cls || '',
+            element_name: snagInfo.name || '',
+            building: snagInfo.building || '',
+            storey: snagInfo.storey || '',
+            discipline: snagInfo.disc || '',
+            status: 'open',
+            notes: ''
+          };
+          const db = await A._openIssuesDB();
+          const tx = db.transaction('issues', 'readwrite');
+          tx.objectStore('issues').add(issue);
+          await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+          db.close();
+          A.status.textContent = `📸 Snag saved: ${snagInfo.cls} @ ${snagInfo.storey}`;
+          console.log('[S209] §SNAG saved', snagInfo.cls, snagInfo.storey);
+        } catch(err) { console.error('[S209] §SNAG_ERR', err); }
+      }, 'image/jpeg', 0.85);
+    }
     A._initMarkupListeners(mc);
     console.log(`[S204] §SNAP ${info.cls} GPS:${gpsText} ${timeText} BIM:${bimImg ? 'YES' : 'NO'}`);
   };

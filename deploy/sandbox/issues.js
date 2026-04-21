@@ -3,12 +3,13 @@ function setupIssues(A) {
 
   A._openIssuesDB = function() {
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open('bim_ootb_issues', 1);
-      req.onupgradeneeded = () => {
+      const req = indexedDB.open('bim_ootb_issues', 2); // v2: added status field
+      req.onupgradeneeded = (e) => {
         const db = req.result;
         if (!db.objectStoreNames.contains('issues')) {
           db.createObjectStore('issues', { keyPath: 'id', autoIncrement: true });
         }
+        // v1→v2: existing issues get status='open' on read (no migration needed)
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
@@ -92,6 +93,8 @@ function setupIssues(A) {
     }
     list.innerHTML = '';
     for (const iss of issues.reverse()) {
+      const status = iss.status || 'open';
+      const statusIcon = status === 'fixed' ? '✅' : '🔴';
       const card = document.createElement('div');
       card.className = 'issue-card';
       card.onclick = () => A._showIssueDetail(iss);
@@ -101,10 +104,10 @@ function setupIssues(A) {
       card.innerHTML =
         (thumbUrl ? '<img src="' + thumbUrl + '">' : '') +
         '<div class="issue-meta">' +
-          '<div class="issue-class">' + (iss.element_class || '-') + '</div>' +
-          '<div>' + (iss.storey || '-') + '</div>' +
+          '<div class="issue-class">' + statusIcon + ' ' + (iss.element_class || '-') + '</div>' +
+          '<div>' + (iss.element_name || '-') + '</div>' +
+          '<div>' + (iss.storey || '-') + ' / ' + (iss.discipline || '-') + '</div>' +
           '<div class="issue-ts">' + ts + '</div>' +
-          '<div class="issue-ts">' + gps + '</div>' +
         '</div>';
       list.appendChild(card);
     }
@@ -131,6 +134,26 @@ function setupIssues(A) {
     document.getElementById('issue-d-compass').textContent = iss.compass_heading != null ? iss.compass_heading + '\u00b0' : '-';
     document.getElementById('issue-d-time').textContent = iss.timestamp ? new Date(iss.timestamp).toLocaleString() : '-';
     document.getElementById('issue-d-notes').textContent = iss.notes || '-';
+
+    // Status toggle button
+    const statusBtn = document.getElementById('issue-d-status-btn');
+    const status = iss.status || 'open';
+    statusBtn.textContent = status === 'fixed' ? '✅ Fixed — tap to reopen' : '🔴 Open — tap to mark Fixed';
+    statusBtn.style.background = status === 'fixed' ? '#2e7d32' : '#c62828';
+    statusBtn.onclick = async () => {
+      const newStatus = (iss.status || 'open') === 'open' ? 'fixed' : 'open';
+      iss.status = newStatus;
+      try {
+        const db = await A._openIssuesDB();
+        const tx = db.transaction('issues', 'readwrite');
+        tx.objectStore('issues').put(iss);
+        await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+        db.close();
+        statusBtn.textContent = newStatus === 'fixed' ? '✅ Fixed — tap to reopen' : '🔴 Open — tap to mark Fixed';
+        statusBtn.style.background = newStatus === 'fixed' ? '#2e7d32' : '#c62828';
+        console.log('[S209] §STATUS', iss.id, newStatus);
+      } catch(err) { console.error('[S209] §STATUS_ERR', err); }
+    };
   };
 
   A._issueBackToList = function() {
@@ -154,6 +177,7 @@ function setupIssues(A) {
     if (issues.length === 0) { alert('No issues to export'); return; }
     const rows = issues.map(iss => ({
       'ID': iss.id,
+      'Status': (iss.status || 'open').toUpperCase(),
       'Timestamp': iss.timestamp ? new Date(iss.timestamp).toLocaleString() : '',
       'Building': iss.building || '',
       'Storey': iss.storey || '',
