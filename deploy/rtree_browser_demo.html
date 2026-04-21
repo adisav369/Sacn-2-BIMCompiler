@@ -209,8 +209,8 @@
     #site-cam-btn { display: inline-block !important; position: fixed !important; top: 8px !important; right: 8px !important; z-index: 20 !important; padding: 8px 12px; font-size: 14px; }
     #walk-mode-btn { display: inline-block !important; position: fixed !important; top: 8px !important; right: 80px !important; z-index: 20 !important; padding: 8px 12px; font-size: 14px; }
 
-    /* Storeys: left side, below Disc */
-    #storey-panel { display: block !important; position: fixed !important; top: 50% !important; left: 8px !important; right: auto !important; bottom: auto !important; width: 80px; max-height: 30vh; overflow-y: auto; z-index: 19 !important; padding: 4px 6px; }
+    /* Storeys: left side, just below Disc */
+    #storey-panel { display: block !important; position: fixed !important; top: 60px !important; left: 8px !important; right: auto !important; bottom: auto !important; width: 80px; max-height: 30vh; overflow-y: auto; z-index: 19 !important; padding: 4px 6px; }
     #storey-panel button { padding: 3px 5px; font-size: 10px; min-height: 24px; }
 
     /* Tools (search-box): below Storeys, right side */
@@ -1149,24 +1149,24 @@ function togglePanel(id) {
 // ── Swipe-to-dismiss panels (mobile) ──
 (function() {
   if (window.innerWidth > 600) return;
-  let startX = 0, startY = 0, swiping = null;
+  let startX = 0, startY = 0;
   const panels = ['hud','search-box','storey-panel','disc-panel','info-panel'];
   panels.forEach(pid => {
     const el = document.getElementById(pid);
     if (!el) return;
     el.addEventListener('touchstart', e => {
-      startX = e.touches[0].clientX; startY = e.touches[0].clientY; swiping = el;
+      startX = e.touches[0].clientX; startY = e.touches[0].clientY;
     }, {passive:true});
     el.addEventListener('touchend', e => {
-      if (!swiping) return;
       const dx = e.changedTouches[0].clientX - startX;
       const dy = e.changedTouches[0].clientY - startY;
-      // Swipe right (>50px, mostly horizontal) = collapse
+      // Swipe horizontal (>50px) = hide panel
       if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
-        const body = el.querySelector('.panel-body') || el;
-        if (body.classList) body.classList.add('collapsed');
+        el.style.display = 'none';
+        // Restore after 5s tap anywhere
+        const restore = () => { el.style.display = ''; document.removeEventListener('touchstart', restore); };
+        setTimeout(() => document.addEventListener('touchstart', restore, {once:true}), 500);
       }
-      swiping = null;
     }, {passive:true});
   });
   // Status hint
