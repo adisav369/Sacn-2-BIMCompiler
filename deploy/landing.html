@@ -157,10 +157,10 @@
     </div>
   </div>
 
-  <div class="section-header" id="large-header">Landmark Buildings</div>
-  <div class="grid" id="large-grid"></div>
   <div class="section-header" id="instant-header">City Buildings</div>
   <div class="grid" id="instant-grid"></div>
+  <div class="section-header" id="large-header">Landmark Buildings</div>
+  <div class="grid" id="large-grid"></div>
 </div>
 
 <div class="footer">
@@ -169,6 +169,8 @@
   <a href="https://github.com/red1oon/BIMCompiler" target="_blank">GitHub</a>
   &nbsp;&middot;&nbsp;
   BIM OOTB &mdash; FOSS &middot; No account &middot; No vendor lock-in
+  &nbsp;&middot;&nbsp;
+  <a href="https://red1oon.goatcounter.com" target="_blank">📊 Live Stats</a>
   <div style="margin-top:12px;color:#666;font-size:11px;max-width:600px;margin-left:auto;margin-right:auto;text-align:left;line-height:1.8">
     <b style="color:#888">Zero install. Here's what's on your machine:</b><br>
     <span style="color:#4fc3f7">Building data</span> — cached in your browser's internal storage (IndexedDB) so buildings load instantly on repeat visits. Nothing is installed. No files on your desktop or downloads folder.<br>
@@ -314,7 +316,8 @@ function buildCard(arch, container) {
     return `<span class="disc-bar" style="background:${color};width:${Math.max(pct * 1.5, 3)}px" title="${d}: ${c.toLocaleString()}"></span>`;
   }).join('');
 
-  const instancesBadge = arch.instances > 1
+  const instancesBadge = ''  // removed — city instances not useful on landing page
+  const _unused = arch.instances > 1
     ? `<span class="instances">&times;${arch.instances}</span>`
     : '';
 
@@ -389,17 +392,15 @@ async function loadManifest() {
       <span><b>${data.total_elements.toLocaleString()}</b> elements</span>
     `;
 
-    // Split: landmark (>5000 elements) vs city (smaller archetypes)
-    const landmark = data.archetypes.filter(a => a.count >= 5000);
-    const city = data.archetypes.filter(a => a.count < 5000);
+    // Split: landmark (>5000 elements or flagged) vs city
+    const landmark = data.archetypes.filter(a => a.count >= 5000 || a.landmark);
+    const city = data.archetypes.filter(a => a.count < 5000 && !a.landmark);
 
     const largeGrid = document.getElementById('large-grid');
     const instantGrid = document.getElementById('instant-grid');
 
-    landmark.sort((a, b) => b.count - a.count);
+    // Keep manifest order (smallest first, SH+DX at top)
     landmark.forEach(a => buildCard(a, largeGrid));
-
-    city.sort((a, b) => b.count - a.count);
     city.forEach(a => buildCard(a, instantGrid));
 
     if (landmark.length === 0) document.getElementById('large-header').style.display = 'none';
@@ -423,5 +424,7 @@ async function loadManifest() {
 
 loadManifest();
 </script>
+<script data-goatcounter="https://red1oon.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>

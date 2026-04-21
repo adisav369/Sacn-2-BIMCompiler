@@ -203,65 +203,60 @@
   }
   #walk-anchor-prompt button.cancel { background: #555; }
 
-  /* ── Mobile: z-index stack, fixed widths, auto-collapse, tap-to-toggle ── */
+  /* ── Mobile: tight panels, tap-to-toggle ── */
   @media (max-width: 600px) {
-    /* Show mobile-only buttons */
-    #site-cam-btn { display: inline-block !important; z-index: 20; }
-    #walk-mode-btn { display: inline-block !important; z-index: 20; }
+    /* Walk + Site: top-right, tight together, z20 */
+    #site-cam-btn { display: inline-block !important; position: fixed !important; top: 8px !important; right: 8px !important; z-index: 20 !important; padding: 8px 12px; font-size: 14px; }
+    #walk-mode-btn { display: inline-block !important; position: fixed !important; top: 8px !important; right: 80px !important; z-index: 20 !important; padding: 8px 12px; font-size: 14px; }
 
-    /* HUD: bottom-left, full width, always open — z9 */
-    #hud { top: auto !important; bottom: 50px; left: 8px; right: 8px; max-width: none; font-size: 13px; z-index: 9 !important; }
-    #hud h2 { font-size: 15px; }
-    #hud .stat { font-size: 13px; }
+    /* Storeys: top-right, same line as Walk/Site (left of them) */
+    #storey-panel { display: block !important; position: fixed !important; top: 8px !important; right: 160px !important; left: auto !important; bottom: auto !important; width: auto; max-width: 140px; max-height: 40vh; overflow-y: auto; z-index: 20 !important; padding: 6px 8px; }
+    #storey-panel button { padding: 4px 8px; font-size: 12px; min-height: 28px; }
 
-    /* Search/tools: bottom-right — z12 */
-    #search-box { top: auto !important; bottom: 60px; right: 8px; left: auto !important; width: 200px; max-width: none; z-index: 12 !important; }
-    #search-box input { width: 100%; font-size: 14px; padding: 6px 10px; }
-    #search-box button { padding: 6px 10px !important; font-size: 13px !important; min-height: 36px; }
+    /* Tools (search-box): below Walk/Site, right side, z12 */
+    #search-box { position: fixed !important; top: 52px !important; right: 8px !important; left: auto !important; bottom: auto !important; width: 200px; z-index: 12 !important; }
+    #search-box input { display: none !important; }
+    #search-box button { padding: 6px 8px !important; font-size: 12px !important; min-height: 32px; }
 
-    /* Disc panel: top-left — z21 */
-    #disc-panel { display: block !important; bottom: auto !important; top: 60px !important; left: 8px !important; z-index: 21 !important; width: 200px; }
-    #disc-panel button, #disc-body button { padding: 6px 10px !important; font-size: 13px !important; min-height: 32px; }
+    /* Disc panel: top-left, z21 */
+    #disc-panel { display: block !important; position: fixed !important; top: 8px !important; left: 8px !important; bottom: auto !important; z-index: 21 !important; width: 160px; }
+    #disc-panel button, #disc-body button { padding: 4px 8px !important; font-size: 12px !important; min-height: 28px; }
 
-    /* Storey panel: below disc — z21 */
-    #storey-panel { bottom: auto !important; top: 50% !important; left: 8px !important; width: 200px; max-height: 40vh; overflow-y: auto; z-index: 21 !important; }
-    #storey-panel button { padding: 6px 10px; font-size: 13px; min-height: 32px; }
+    /* HUD: bottom-left, z9 */
+    #hud { top: auto !important; bottom: 40px; left: 8px; right: 8px; max-width: none; font-size: 12px; z-index: 9 !important; }
+    #hud h2 { font-size: 14px; }
+    #hud .stat { font-size: 12px; }
 
     /* Info panel: right side — z15 */
-    #info-panel { bottom: 60px !important; left: auto !important; right: 8px !important; max-width: 200px; min-width: auto; font-size: 12px; z-index: 15 !important; }
+    #info-panel { bottom: 50px !important; left: auto !important; right: 8px !important; max-width: 180px; min-width: auto; font-size: 11px; z-index: 15 !important; }
 
-    /* Status bar: bottom centre — z10 */
-    #status { bottom: 8px; left: 8px; right: 8px; transform: none; text-align: center; font-size: 13px; z-index: 10 !important; }
+    /* Status bar: bottom, z10 */
+    #status { bottom: 8px; left: 8px; right: 8px; transform: none; text-align: center; font-size: 12px; z-index: 10 !important; }
 
     /* Issues panel */
     #issues-panel { top: 8px; left: 8px; right: 8px; width: auto; max-height: 80vh; }
-    #issues-panel .issues-toolbar button { padding: 6px 10px; font-size: 13px; min-height: 36px; }
-    .issue-card { padding: 8px; }
-    .issue-card img { width: 80px; height: 60px; }
-    .issue-card .issue-meta { font-size: 12px; }
 
-    /* General mobile */
-    .bld-card { padding: 6px 10px; font-size: 13px; }
-    .panel-toggle { font-size: 18px; padding: 4px 8px; }
-    .measure-label { font-size: 13px; padding: 3px 6px; }
-    #section-slider-panel { top: auto !important; bottom: 120px; left: 8px; right: 8px; min-width: auto; z-index: 12 !important; }
-    #section-slider-panel label { font-size: 13px; }
-    #section-slider-panel input[type=range] { height: 32px; }
+    /* Section slider */
+    #section-slider-panel { top: auto !important; bottom: 80px; left: 8px; right: 8px; min-width: auto; z-index: 12 !important; }
 
-    /* Collapsed panels: no interaction, no overflow */
-    .panel-body.collapsed { pointer-events: none !important; overflow: hidden !important; }
+    /* Collapsed: tight, no blocking */
+    .panel-body.collapsed { max-height: 0 !important; padding: 0 !important; margin: 0 !important; pointer-events: none !important; overflow: hidden !important; opacity: 0 !important; }
 
-    /* Hide building list on mobile — save space */
+    /* Hide building list + search on mobile */
     #building-list { display: none !important; }
   }
 
-  /* ── Landscape (phone rotated) ── */
+  /* ── Landscape: everything tight, persist Walk/Site ── */
   @media (max-height: 500px) and (orientation: landscape) {
-    #hud { bottom: 8px; left: 8px; max-width: 40vw; right: auto; }
-    #search-box { right: 8px; bottom: 8px; width: 180px; }
-    #disc-panel { top: 8px !important; width: 160px; }
-    #storey-panel { top: 8px !important; left: 170px !important; width: 160px; }
-    #status { bottom: 4px; font-size: 11px; }
+    #site-cam-btn { top: 4px !important; right: 4px !important; padding: 6px 8px !important; font-size: 12px !important; }
+    #walk-mode-btn { top: 4px !important; right: 68px !important; padding: 6px 8px !important; font-size: 12px !important; }
+    #storey-panel { top: 4px !important; right: 132px !important; max-height: 30vh; padding: 4px 6px !important; }
+    #search-box { top: 36px !important; right: 4px !important; width: 160px; }
+    #disc-panel { top: 4px !important; left: 4px !important; width: 130px; }
+    #hud { bottom: 4px; left: 4px; max-width: 35vw; right: auto; font-size: 11px; }
+    #hud h2 { font-size: 12px; }
+    #status { bottom: 2px; font-size: 10px; }
+    .panel-body.collapsed { max-height: 0 !important; padding: 0 !important; opacity: 0 !important; }
   }
 </style>
 </head>
@@ -281,21 +276,20 @@
   </div>
 </div>
 <div id="search-box" onclick="togglePanel('search-body')">
-  <input id="search" type="text" placeholder="Filter..." onclick="event.stopPropagation()">
+  <b style="color:#4fc3f7;font-size:12px;cursor:pointer">Tools</b>
+  <input id="search" type="text" placeholder="Filter..." onclick="event.stopPropagation()" style="display:none">
   <div id="search-body" class="panel-body">
     <div style="margin:4px 0">
-      <button onclick="clearStreamed()" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">Clear</button>
-      <button id="xray-btn" onclick="toggleXray()" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">X-Ray</button>
-      <button onclick="screenshot()" title="Screenshot" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128247;</button>
-      <button onclick="toggleFullscreen()" title="Fullscreen" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9974;</button>
-      <button id="theme-btn" onclick="toggleTheme()" title="Light/Dark" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9788;</button>
-      <button id="fly-btn" onclick="toggleFlyAround()" title="Fly Around / Walk-Through" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9992;</button>
-      <button id="walk-speed-btn" onclick="cycleWalkSpeed()" title="Walk Speed" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px;display:none">1x</button>
-      <button onclick="export4D5D()" title="4D/5D Export" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128202;</button>
-      <button onclick="toggleIssues()" title="Issues" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128203; Issues</button>
-      <button id="measure-btn" onclick="toggleMeasure()" title="Measure" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128207;</button>
-      <button onclick="clearMeasures()" title="Clear Measures" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128465;</button>
-      <button id="section-btn" onclick="toggleSection()" title="Section Cut" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9986;</button>
+      <button id="xray-btn" onclick="toggleXray();event.stopPropagation()" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px" title="X-Ray">X-Ray</button>
+      <button onclick="screenshot();event.stopPropagation()" title="Screenshot" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128247;</button>
+      <button onclick="toggleFullscreen();event.stopPropagation()" title="Fullscreen" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9974;</button>
+      <button id="theme-btn" onclick="toggleTheme();event.stopPropagation()" title="Light/Dark" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9788;</button>
+      <button id="fly-btn" onclick="toggleFlyAround();event.stopPropagation()" title="Fly Around / Walk-Through" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9992;</button>
+      <button id="walk-speed-btn" onclick="cycleWalkSpeed();event.stopPropagation()" title="Walk Speed" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px;display:none">1x</button>
+      <button onclick="export4D5D();event.stopPropagation()" title="4D/5D Export" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128202;</button>
+      <button onclick="toggleIssues();event.stopPropagation()" title="Issues" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128203;</button>
+      <button id="measure-btn" onclick="toggleMeasure();event.stopPropagation()" title="Measure — tap two points on building" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128208;</button>
+      <button id="section-btn" onclick="toggleSection();event.stopPropagation()" title="Section Cut" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9986;</button>
     </div>
     <div id="building-list" style="max-height:400px;overflow-y:auto"></div>
   </div>
@@ -3386,8 +3380,8 @@ function toggleMeasure() {
   const btn = document.getElementById('measure-btn');
   btn.style.background = measureActive ? '#4fc3f7' : '#444';
   btn.style.color = measureActive ? '#000' : '#fff';
+  status.textContent = measureActive ? 'Measure — tap two points on building' : '';
   if (!measureActive) {
-    // Cancel pending first-click marker
     if (measureFirstMarker) {
       measureGroup.remove(measureFirstMarker);
       measureFirstMarker = null;
