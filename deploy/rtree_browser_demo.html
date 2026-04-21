@@ -1157,7 +1157,7 @@ function togglePanel(id) {
 
 // ── Swipe-to-dismiss ALL panels at once (mobile, except Walk/Site) ──
 (function() {
-  if (window.innerWidth > 600) return;
+  if (!('ontouchstart' in window)) return; // desktop: no swipe
   let startX = 0;
   const panelIds = ['hud','search-box','storey-panel','disc-panel','info-panel'];
   let panelsHidden = false;
