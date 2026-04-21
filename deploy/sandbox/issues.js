@@ -3,13 +3,14 @@ function setupIssues(A) {
 
   A._openIssuesDB = function() {
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open('bim_ootb_issues', 1);
+      const req = indexedDB.open('bim_ootb_issues', 2);
       req.onupgradeneeded = () => {
         const db = req.result;
         if (!db.objectStoreNames.contains('issues')) {
           db.createObjectStore('issues', { keyPath: 'id', autoIncrement: true });
         }
       };
+      req.onblocked = () => { console.warn('[S209] IDB blocked — close other tabs'); reject(new Error('DB blocked by another tab')); };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
