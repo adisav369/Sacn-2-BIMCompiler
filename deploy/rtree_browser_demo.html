@@ -213,7 +213,7 @@
     #search-box { top: auto; bottom: 60px; left: 8px; right: 80px; max-width: none; }
     #search-box input { width: 100%; font-size: 16px; padding: 8px 12px; }
     #search-box button { padding: 8px 12px !important; font-size: 14px !important; min-height: 36px; }
-    #info-panel { bottom: 60px; left: 8px; right: 8px; max-width: none; min-width: auto; font-size: 14px; }
+    #info-panel { bottom: 60px; left: auto !important; right: 8px !important; max-width: 55vw; min-width: auto; font-size: 13px; z-index: 15 !important; }
     #disc-panel { bottom: 60px; left: 8px; }
     #storey-panel { bottom: auto; top: 50%; left: 8px; max-width: 50vw; max-height: 40vh; overflow-y: auto; }
     #storey-panel button { padding: 8px 12px; font-size: 14px; min-height: 36px; }
@@ -236,7 +236,7 @@
 </head>
 <body>
 <div id="hud">
-  <h2>BIM OOTB <span class="panel-toggle" onclick="togglePanel('hud-body')">−</span></h2>
+  <h2 onclick="togglePanel('hud-body')" style="cursor:pointer">BIM OOTB</h2>
   <div id="hud-body" class="panel-body">
     <div class="stat">Buildings: <b id="s-buildings">—</b></div>
     <div class="stat">Elements: <b id="s-elements">—</b></div>
@@ -249,9 +249,8 @@
     <div id="disc-bars" style="margin-top:4px"></div>
   </div>
 </div>
-<div id="search-box">
-  <input id="search" type="text" placeholder="Filter...">
-  <span class="panel-toggle" onclick="togglePanel('search-body')">−</span>
+<div id="search-box" onclick="togglePanel('search-body')">
+  <input id="search" type="text" placeholder="Filter..." onclick="event.stopPropagation()">
   <div id="search-body" class="panel-body">
     <div style="margin:4px 0">
       <button onclick="clearStreamed()" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">Clear</button>
@@ -280,16 +279,14 @@
   <div><span class="label">Discipline: </span><span class="value" id="info-disc">—</span></div>
   <div><span class="label">Material: </span><span class="value" id="info-material">—</span></div>
 </div>
-<div id="storey-panel">
-  <span class="panel-toggle" onclick="togglePanel('storey-body')">−</span>
+<div id="storey-panel" onclick="togglePanel('storey-body')" style="cursor:pointer">
   <b style="color:#4fc3f7;font-size:12px">Storeys</b>
   <div id="storey-body" class="panel-body"></div>
 </div>
-<div id="disc-panel" style="position:fixed;bottom:50px;left:16px;z-index:10;
+<div id="disc-panel" onclick="togglePanel('disc-body')" style="position:fixed;bottom:50px;left:16px;z-index:10;
   background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 12px;
   border:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(8px);
-  font-size:12px;display:none">
-  <span class="panel-toggle" onclick="togglePanel('disc-body')">−</span>
+  font-size:12px;display:none;cursor:pointer">
   <b style="color:#4fc3f7;font-size:12px">Disciplines</b>
   <div id="disc-body" class="panel-body"></div>
 </div>
@@ -4025,5 +4022,6 @@ window.cancelWalkAnchor = cancelWalkAnchor;
 window.cycleWalkSpeed = cycleWalkSpeed;
 } // end initViewer
 </script>
+<script data-goatcounter="https://red1oon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
