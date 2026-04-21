@@ -7,7 +7,7 @@
 
 **Version:** 0.1 (2026-04-20)
 **Status:** SPEC — proven by S200 browser viewer prototype
-**Depends on:** `deploy/rtree_browser_demo.html` (working prototype), `sandbox_1M_extracted.db`, `component_library.db`
+**Depends on:** `deploy/rtree_browser_demo.html` (working prototype), per-building DBs in `deploy/buildings/` (e.g. `Duplex_extracted.db` + `Duplex_library.db`)
 
 <figure style="margin: 20px 0;">
 <img src="../assets/images/OOTB.png" alt="BIM OOTB — Browser-native BIM viewer" style="width:100%; border:1px solid #ccc;"/>
@@ -408,7 +408,7 @@ No. They serve different audiences:
 
 Open in any browser (desktop or mobile). See also: [Mobile & Cloud Deployment](MOBILE_DEPLOY.md) for OCI setup, APK packaging, and offline strategy.
 
-[**BIM OOTB — 30 buildings, 1M elements**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html)
+[**BIM OOTB — 25 buildings, 1M elements**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html)
 
 Click any building → downloads its DB (1-60MB) → streams geometry in your browser.
 Cached in IndexedDB — second visit is instant. Explore all 30 archetypes to unlock the full city (786 buildings).
@@ -489,6 +489,41 @@ cd deploy && python3 -m http.server 8080
 
 Full guide: [IFC Onboarding Runbook](IFC_ONBOARDING_RUNBOOK.md) (8 steps, self-service).
 Platform setup: [Systems Installer Guide](SYSTEMS_INSTALLER_GUIDE.md) §1-2.
+
+### 6.2b All Features (Browser + Mobile)
+
+**Browser (desktop + mobile):**
+- 3D orbit, pan, zoom (mouse or touch)
+- Click any element → IFC class, GUID, storey, discipline, material
+- Fly-tour — auto-orbits rendered buildings, click to stop
+- Indoor walk-through — follows IfcSpace/door graph through the building
+- Walk speed control (1x / 2x / 4x)
+- X-Ray mode (Alt+Z) — transparent view, see structure through walls
+- Measure tool — tap two points, get distance in metres
+- Section cut — horizontal clip plane, slider to cut through floors
+- Storey filter — isolate a single floor
+- Discipline toggle — show/hide ARC, STR, MEP, ELEC, etc.
+- Screenshot — saves current view as PNG
+- Fullscreen
+- Light/dark theme
+- Deep-link URL — camera + building state encoded in hash, shareable
+- 4D/5D export — element schedule + cost estimate
+- IndexedDB cache — download once, instant on revisit
+- City mode — 786 building bboxes, click to download + stream on demand
+
+**Mobile-only (touch-optimised, larger buttons):**
+- Site Camera — opens phone camera with GPS + compass + timestamp overlay
+- BIM PiP (picture-in-picture) — 3D snapshot in camera corner
+- Markup tools — arrow, circle, freehand draw, text (on captured photo)
+- Colour picker for markup
+- Share → WhatsApp (with BIM context baked into image)
+- Save to gallery
+- GPS Walk Mode — blue dot tracks your position in the model
+- Anchor prompt — set GPS origin at building entrance
+- Compass heading → model azimuth (TrueNorth aligned)
+- Issue log — capture site issues with photo + GPS + classification
+- Export issues to Excel
+- Wall X-Ray — tap a wall in Walk Mode to see MEP behind it
 
 ### 6.3 Controls
 
