@@ -314,11 +314,29 @@ function setupSitecam(A) {
     });
     if (tool === 'text') {
       const mc = document.getElementById('site-cam-markup');
-      const text = prompt('Enter text:');
-      if (text) {
-        A._markupStrokes.push({ tool: 'text', color: A._markupColor, text, x: mc.width / 2, y: mc.height / 2 });
-        A._redrawMarkup();
+      // Inline input instead of prompt() — prompt is unreliable on mobile overlays
+      let inp = document.getElementById('markup-text-input');
+      if (!inp) {
+        inp = document.createElement('input');
+        inp.id = 'markup-text-input';
+        inp.type = 'text';
+        inp.placeholder = 'Type text, then tap canvas';
+        inp.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;padding:8px 12px;font-size:16px;background:#222;color:#fff;border:2px solid #4fc3f7;border-radius:6px;width:70%;text-align:center;';
+        document.body.appendChild(inp);
+        // Tap canvas to place text
+        const placeText = (e) => {
+          const text = inp.value.trim();
+          if (!text) return;
+          const p = A._canvasCoords(mc, e);
+          A._markupStrokes.push({ tool: 'text', color: A._markupColor, text, x: p.x, y: p.y });
+          A._redrawMarkup();
+          inp.value = '';
+          inp.remove();
+          mc.removeEventListener('pointerdown', placeText);
+        };
+        mc.addEventListener('pointerdown', placeText);
       }
+      inp.focus();
     }
   };
 

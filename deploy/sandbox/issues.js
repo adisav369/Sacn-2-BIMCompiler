@@ -3,13 +3,12 @@ function setupIssues(A) {
 
   A._openIssuesDB = function() {
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open('bim_ootb_issues', 2); // v2: added status field
-      req.onupgradeneeded = (e) => {
+      const req = indexedDB.open('bim_ootb_issues', 1);
+      req.onupgradeneeded = () => {
         const db = req.result;
         if (!db.objectStoreNames.contains('issues')) {
           db.createObjectStore('issues', { keyPath: 'id', autoIncrement: true });
         }
-        // v1→v2: existing issues get status='open' on read (no migration needed)
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
