@@ -1,0 +1,431 @@
+<!-- OCI: sandbox landing page — uploads as sandbox/landing2.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1a2e">
+<title>BIM OOTB — Frictionless BIM</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e; color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+  .header {
+    text-align: center; padding: 30px 20px 10px;
+  }
+  .header h1 {
+    font-size: 28px; color: #4fc3f7; margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .header .tagline {
+    font-size: 14px; color: #888; font-style: italic;
+  }
+  .stats-bar {
+    display: flex; justify-content: center; gap: 30px;
+    padding: 12px 20px; font-size: 13px; color: #aaa;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .stats-bar b { color: #4fc3f7; }
+
+  /* Loading overlay */
+  .loading {
+    text-align: center; padding: 60px 20px;
+  }
+  .loading .spinner {
+    display: inline-block; width: 30px; height: 30px;
+    border: 3px solid #333; border-top-color: #4fc3f7;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading .elapsed { color: #666; font-size: 12px; margin-top: 8px; }
+
+  /* Building grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px; padding: 16px 20px;
+    max-width: 1200px; margin: 0 auto;
+  }
+  .card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px; padding: 14px 16px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .card:hover {
+    background: rgba(79,195,247,0.08);
+    border-color: rgba(79,195,247,0.3);
+    transform: translateY(-1px);
+  }
+  .card .name { font-size: 15px; font-weight: 600; color: #e0e0e0; margin-bottom: 6px; }
+  .card .meta { font-size: 12px; color: #888; line-height: 1.6; }
+  .card .meta b { color: #ccc; }
+  .card .instances {
+    display: inline-block; background: #4fc3f7; color: #000;
+    font-size: 11px; font-weight: 700; padding: 1px 6px;
+    border-radius: 3px; margin-left: 6px;
+  }
+  .card .disc-bars { margin-top: 6px; }
+  .card .disc-bar {
+    display: inline-block; height: 6px; border-radius: 2px;
+    margin-right: 1px; min-width: 3px;
+  }
+  .card .open-btn {
+    display: block; width: 100%; margin-top: 10px;
+    padding: 6px; background: rgba(79,195,247,0.15);
+    border: 1px solid rgba(79,195,247,0.3);
+    border-radius: 4px; color: #4fc3f7;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .card .open-btn:hover { background: rgba(79,195,247,0.3); }
+  .card.viewed { border-color: rgba(68,204,68,0.3); }
+  .card.viewed .name { color: #44cc44; }
+
+  /* Open tabs tracker */
+  .tabs-panel {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding: 8px 20px; display: none; z-index: 100;
+  }
+  .tabs-panel .tab-label { font-size: 11px; color: #666; margin-bottom: 4px; }
+  .tabs-panel .tab-list { display: flex; gap: 8px; overflow-x: auto; }
+  .tabs-panel .tab-item {
+    padding: 4px 12px; background: rgba(79,195,247,0.15);
+    border: 1px solid rgba(79,195,247,0.3); border-radius: 4px;
+    color: #4fc3f7; font-size: 12px; cursor: pointer;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .tabs-panel .tab-item:hover { background: rgba(79,195,247,0.3); }
+
+  /* Section headers */
+  .section-header {
+    padding: 16px 20px 4px; max-width: 1200px; margin: 0 auto;
+    font-size: 13px; color: #666; text-transform: uppercase;
+    letter-spacing: 1px; border-top: 1px solid rgba(255,255,255,0.04);
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center; padding: 20px; font-size: 11px; color: #444;
+    padding-bottom: 60px; /* space for tabs panel */
+  }
+  .footer a { color: #4fc3f7; text-decoration: none; }
+
+  @media (max-width: 600px) {
+    .grid { grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
+    .card { padding: 10px 12px; }
+    .card .name { font-size: 13px; }
+    .header h1 { font-size: 22px; }
+    .stats-bar { gap: 15px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>BIM OOTB</h1>
+  <div class="tagline">Frictionless BIM. Two DBs. One browser. Zero install.</div>
+</div>
+
+<div class="stats-bar" id="stats-bar">
+  <span>Loading...</span>
+</div>
+
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div style="margin-top:12px; color:#aaa">Loading building manifest...</div>
+  <div class="elapsed" id="elapsed">0:00</div>
+</div>
+
+<div id="content" style="display:none">
+  <div id="city-progress" style="display:none; padding:12px 20px; max-width:1200px; margin:0 auto">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px">
+      <span style="font-size:14px; font-weight:700; color:#4fc3f7; letter-spacing:1px">COMPLETE THE CITY</span>
+      <span id="city-count" style="font-size:12px; color:#888">0 / 30 buildings explored</span>
+    </div>
+    <div style="height:8px; background:#222; border-radius:4px; overflow:hidden">
+      <div id="city-bar" style="height:100%; width:0%; background:linear-gradient(90deg,#4fc3f7,#44cc44); border-radius:4px; transition:width 0.4s ease"></div>
+    </div>
+    <div id="city-complete" style="display:none; text-align:center; padding:10px; margin-top:8px; background:rgba(68,204,68,0.1); border:1px solid rgba(68,204,68,0.3); border-radius:6px">
+      <span style="color:#44cc44; font-weight:700; font-size:14px; letter-spacing:1px">CITY UNLOCKED</span>
+      <button id="city-launch-btn" onclick="launchCity()" style="margin-left:16px; padding:6px 20px; background:linear-gradient(90deg,#4fc3f7,#44cc44); border:none; border-radius:4px; color:#000; font-weight:700; font-size:13px; cursor:pointer; letter-spacing:1px">LAUNCH CITY 1M</button>
+    </div>
+  </div>
+
+  <div class="section-header" id="instant-header">City Buildings</div>
+  <div class="grid" id="instant-grid"></div>
+  <div class="section-header" id="large-header">Landmark Buildings</div>
+  <div class="grid" id="large-grid"></div>
+</div>
+
+<div class="footer">
+  <a href="https://red1oon.github.io/BIMCompiler/BIM_Designer_Browser/" target="_blank">Documentation</a>
+  &nbsp;&middot;&nbsp;
+  <a href="https://github.com/red1oon/BIMCompiler" target="_blank">GitHub</a>
+  &nbsp;&middot;&nbsp;
+  BIM OOTB &mdash; FOSS &middot; No account &middot; No vendor lock-in
+  &nbsp;&middot;&nbsp;
+  <a href="https://red1oon.goatcounter.com" target="_blank">📊 Live Stats</a>
+  <div style="margin-top:12px;color:#666;font-size:11px;max-width:600px;margin-left:auto;margin-right:auto;text-align:left;line-height:1.8">
+    <b style="color:#888">Zero install. Here's what's on your machine:</b><br>
+    <span style="color:#4fc3f7">Building data</span> — cached in your browser's internal storage (IndexedDB) so buildings load instantly on repeat visits. Nothing is installed. No files on your desktop or downloads folder.<br>
+    <span style="color:#4fc3f7">Progress</span> — which buildings you've explored is saved in your browser (localStorage). Survives tab close.<br>
+    <span style="color:#4fc3f7">To start fresh</span> — <a href="#" onclick="clearAllCache(); return false" style="color:#cc4444">Clear all cached data</a> — removes everything, back to zero. Or just clear your browser data for this site.<br><br>
+    <span style="color:#888">This is an experimental project. Learn more at <a href="https://red1oon.github.io/BIMCompiler/BIM_Designer_Browser/" target="_blank" style="color:#4fc3f7">BIM Designer Browser</a></span>
+  </div>
+  <div style="margin-top:16px;padding:12px 16px;background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.2);border-radius:8px;max-width:600px;margin-left:auto;margin-right:auto;text-align:left;line-height:1.8;font-size:11px">
+    <b style="color:#4fc3f7">Full Database Downloads</b> (~1GB total — all 30 buildings)<br>
+    <a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/sandbox_1M_extracted.db" style="color:#4fc3f7" download>sandbox_1M_extracted.db</a> (579MB) — 1M elements, all buildings in one DB<br>
+    <a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/component_library.db" style="color:#4fc3f7" download>component_library.db</a> (456MB) — all geometry BLOBs<br>
+    <span style="color:#666">~3-5 min on broadband. Download both, put in same folder, then:<br>
+    <code style="color:#4fc3f7">python3 -m http.server 8080</code> → open <code style="color:#ccc">localhost:8080/sandbox/index2.html</code><br>
+    <a href="https://red1oon.github.io/BIMCompiler/BIM_Designer_Browser/#61-local-setup-3-steps" target="_blank" style="color:#4fc3f7">Full guide §6.1</a></span>
+  </div>
+</div>
+
+<div class="tabs-panel" id="tabs-panel">
+  <div class="tab-label">Open Tabs</div>
+  <div class="tab-list" id="tab-list"></div>
+</div>
+
+<script>
+// ── Config ──
+const _ociMatch = location.href.match(/(https:\/\/objectstorage\.[^/]+\/n\/[^/]+\/b\/[^/]+\/o\/)/);
+const _base = _ociMatch ? _ociMatch[1] : '';
+
+// All buildings use full-download viewer (no httpvfs — too slow over network)
+const viewerFile = 'sandbox/index2.html';
+
+const DISC_COLORS = {
+  ARC: '#4488ff', STR: '#44cccc', MEP: '#44cc44',
+  ELEC: '#cccc44', FP: '#cc8844', ACMV: '#cc4444',
+  PLB: '#8844cc', HEAT: '#ff6644', HVAC: '#44aacc',
+};
+
+// ── Timer ──
+const loadStart = performance.now();
+const elapsedEl = document.getElementById('elapsed');
+const timerInterval = setInterval(() => {
+  const s = Math.floor((performance.now() - loadStart) / 1000);
+  elapsedEl.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+}, 1000);
+
+// ── Open tab tracking ──
+const openTabs = {};  // name → window reference
+
+function trackTab(name, type, win) {
+  const key = name + '_' + type;
+  openTabs[key] = { name, type, win };
+  renderTabs();
+}
+
+function renderTabs() {
+  const panel = document.getElementById('tabs-panel');
+  const list = document.getElementById('tab-list');
+  // Clean closed tabs
+  for (const [key, tab] of Object.entries(openTabs)) {
+    if (tab.win && tab.win.closed) delete openTabs[key];
+  }
+  const entries = Object.values(openTabs);
+  if (entries.length === 0) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  list.innerHTML = entries.map(tab => {
+    const label = tab.type === '3D' ? tab.name : `${tab.name} ${tab.type}`;
+    return `<div class="tab-item" onclick="openTabs['${tab.name}_${tab.type}'].win.focus()">${label}</div>`;
+  }).join('');
+}
+// Poll for closed tabs
+setInterval(renderTabs, 3000);
+
+// All per-building DBs — direct download, no httpvfs
+const BUILDINGS = {
+  'SampleHouse': { db: 'SampleHouse_extracted.db', lib: 'SampleHouse_library.db' },
+  'BimWhale_Tall': { db: 'BimWhale_Tall_extracted.db', lib: 'BimWhale_Tall_library.db' },
+  'AC90_Jasmin': { db: 'AC90_Jasmin_extracted.db', lib: 'AC90_Jasmin_library.db' },
+  'FZKHaus': { db: 'FZKHaus_extracted.db', lib: 'FZKHaus_library.db' },
+  'Ifc4_FZKHaus': { db: 'FZKHaus_extracted.db', lib: 'FZKHaus_library.db' },
+  'AC90_Niedriha': { db: 'AC90_Niedriha_extracted.db', lib: 'AC90_Niedriha_library.db' },
+  'BimWhale_Basic': { db: 'BimWhale_Basic_extracted.db', lib: 'BimWhale_Basic_library.db' },
+  'VogelGesamt': { db: 'VogelGesamt_extracted.db', lib: 'VogelGesamt_library.db' },
+  'BimWhale_Large': { db: 'BimWhale_Large_extracted.db', lib: 'BimWhale_Large_library.db' },
+  'AC9_HausGH': { db: 'AC9_HausGH_extracted.db', lib: 'AC9_HausGH_library.db' },
+  'HospitalAuckland': { db: 'HospitalAuckland_extracted.db', lib: 'HospitalAuckland_library.db' },
+  'SmileyWest': { db: 'SmileyWest_extracted.db', lib: 'SmileyWest_library.db' },
+  'Jesse': { db: 'Jesse_extracted.db', lib: 'Jesse_library.db' },
+  'AC11Institute': { db: 'AC11Institute_extracted.db', lib: 'AC11Institute_library.db' },
+  'Ifc2x3_AC11Institute': { db: 'AC11Institute_extracted.db', lib: 'AC11Institute_library.db' },
+  'Duplex': { db: 'Duplex_extracted.db', lib: 'Duplex_library.db' },
+  'LTU_AHouse': { db: 'LTU_AHouse_extracted.db', lib: 'LTU_AHouse_library.db' },
+  'Hospital': { db: 'Hospital_extracted.db', lib: 'Hospital_library.db' },
+  'Hospital_3': { db: 'Hospital_3_extracted.db', lib: 'Hospital_3_library.db' },
+  'Terminal': { db: 'Terminal_extracted.db', lib: 'Terminal_library.db' },
+  'Clinic': { db: 'Clinic_extracted.db', lib: 'Clinic_library.db' },
+  'Ifc4_Revit': { db: 'Ifc4_Revit_extracted.db', lib: 'Ifc4_Revit_library.db' },
+  'WBDG_Office': { db: 'WBDG_Office_extracted.db', lib: 'WBDG_Office_library.db' },
+  'HHS_Office_Federated': { db: 'HHS_Office_Federated_extracted.db', lib: 'HHS_Office_Federated_library.db' },
+  'HITOS': { db: 'HITOS_extracted.db', lib: 'HITOS_library.db' },
+  'Esplanades': { db: 'Esplanades_extracted.db', lib: 'Esplanades_library.db' },
+  'HospitalGarage': { db: 'HospitalGarage_extracted.db', lib: 'HospitalGarage_library.db' },
+  'HospitalGarage_2': { db: 'HospitalGarage_2_extracted.db', lib: 'HospitalGarage_2_library.db' },
+  'Schependomlaan': { db: 'Schependomlaan_extracted.db', lib: 'Schependomlaan_library.db' },
+  'SampleCastle': { db: 'SampleCastle_extracted.db', lib: 'SampleCastle_library.db' },
+  'Molio': { db: 'Molio_extracted.db', lib: 'Molio_library.db' },
+  'BimWhale_Advanced': { db: 'BimWhale_Advanced_extracted.db', lib: 'BimWhale_Advanced_library.db' },
+};
+const SMALL_BUILDINGS = BUILDINGS;  // backward compat
+
+// Track which buildings the user has viewed (persist in localStorage)
+const _stored = localStorage.getItem('bim_ootb_viewed');
+const viewedBuildings = new Set(_stored ? JSON.parse(_stored) : []);
+
+function saveViewed() {
+  localStorage.setItem('bim_ootb_viewed', JSON.stringify([...viewedBuildings]));
+}
+
+function openViewer(archName, repBuilding) {
+  const bld = BUILDINGS[archName];
+  if (!bld) { alert(`No DB for ${archName}`); return; }
+  const bldBase = _base ? _base + 'buildings/' : 'buildings/';
+  const viewerUrl = _base ? _base + 'sandbox/index2.html' : 'sandbox/index2.html';
+  const url = viewerUrl + `?db=${bldBase}${bld.db}&lib=${bldBase}${bld.lib}`;
+  const win = window.open(url, 'bim_' + archName);
+  trackTab(archName, '3D', win);
+  const isNew = !viewedBuildings.has(archName);
+  viewedBuildings.add(archName);
+  saveViewed();
+  updateCityProgress();
+  // Mark card as viewed
+  const cardEl = document.querySelector(`[data-arch="${archName}"]`);
+  if (cardEl) cardEl.classList.add('viewed');
+}
+
+// ── Build cards ──
+function buildCard(arch, container) {
+  const card = document.createElement('div');
+  card.className = 'card' + (viewedBuildings.has(arch.name) ? ' viewed' : '');
+  card.setAttribute('data-arch', arch.name);
+
+  const discBars = Object.entries(arch.disciplines || {}).map(([d, c]) => {
+    const color = DISC_COLORS[d] || '#888';
+    const pct = (c / arch.count) * 100;
+    return `<span class="disc-bar" style="background:${color};width:${Math.max(pct * 1.5, 3)}px" title="${d}: ${c.toLocaleString()}"></span>`;
+  }).join('');
+
+  const instancesBadge = ''  // removed — city instances not useful on landing page
+  const _unused = arch.instances > 1
+    ? `<span class="instances">&times;${arch.instances}</span>`
+    : '';
+
+  const viewedBadge = viewedBuildings.has(arch.name)
+    ? '<span style="color:#44cc44;font-size:11px;margin-left:6px">&#10003;</span>'
+    : '';
+
+  card.innerHTML = `
+    <div class="name">${arch.name}${instancesBadge}${viewedBadge}</div>
+    <div class="meta">
+      <b>${arch.count.toLocaleString()}</b> elements<br>
+      ${Object.keys(arch.disciplines || {}).join(' &middot; ')}
+    </div>
+    <div class="disc-bars">${discBars}</div>
+    <button class="open-btn" onclick="event.stopPropagation(); openViewer('${arch.name}', '${arch.representative}')">Open 3D Viewer &#9889;</button>
+  `;
+  card.addEventListener('click', () => openViewer(arch.name, arch.representative));
+  container.appendChild(card);
+}
+
+// ── City completion progress ──
+let cityUnlocked = false;
+function updateCityProgress() {
+  const total = window._totalArchetypes || Object.keys(BUILDINGS).length;
+  const done = viewedBuildings.size;
+  const pct = Math.round((done / total) * 100);
+  document.getElementById('city-count').textContent = `${done} / ${total} buildings explored`;
+  document.getElementById('city-bar').style.width = pct + '%';
+  if (done >= total && !cityUnlocked) {
+    cityUnlocked = true;
+    document.getElementById('city-complete').style.display = 'block';
+    document.getElementById('city-bar').style.background = 'linear-gradient(90deg,#44cc44,#ffdd44)';
+    // Show launch button — user clicks when ready
+  }
+}
+
+// ── Clear all cached data ──
+function clearAllCache() {
+  indexedDB.deleteDatabase('bim_ootb_cache');
+  localStorage.removeItem('bim_ootb_viewed');
+  viewedBuildings.clear();
+  updateCityProgress();
+  alert('Cache cleared. Page will reload.');
+  location.reload();
+}
+
+// ── Launch city viewer (all 786 buildings from cached DBs) ──
+function launchCity() {
+  const bldBase = _base ? _base + 'buildings/' : 'buildings/';
+  const viewerUrl = _base ? _base + 'sandbox/index2.html' : 'sandbox/index2.html';
+  const url = viewerUrl + `?city=${bldBase}city_index.db&bldbase=${bldBase}`;
+  const win = window.open(url, 'bim_city_1M');
+  trackTab('City 1M', '3D', win);
+}
+
+// ── Load manifest ──
+async function loadManifest() {
+  try {
+    const url = (_base || '') + 'manifest.json';
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`${resp.status}`);
+    const data = await resp.json();
+
+    clearInterval(timerInterval);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+
+    // Stats bar
+    document.getElementById('stats-bar').innerHTML = `
+      <span><b>${data.archetype_count}</b> archetypes</span>
+      <span><b>${data.building_count.toLocaleString()}</b> buildings</span>
+      <span><b>${data.total_elements.toLocaleString()}</b> elements</span>
+    `;
+
+    // Split: landmark (>5000 elements or flagged) vs city
+    const landmark = data.archetypes.filter(a => a.count >= 5000 || a.landmark);
+    const city = data.archetypes.filter(a => a.count < 5000 && !a.landmark);
+
+    const largeGrid = document.getElementById('large-grid');
+    const instantGrid = document.getElementById('instant-grid');
+
+    // Keep manifest order (smallest first, SH+DX at top)
+    landmark.forEach(a => buildCard(a, largeGrid));
+    city.forEach(a => buildCard(a, instantGrid));
+
+    if (landmark.length === 0) document.getElementById('large-header').style.display = 'none';
+    if (city.length === 0) document.getElementById('instant-header').style.display = 'none';
+
+    // Show city progress bar
+    window._totalArchetypes = data.archetypes.length;
+    document.getElementById('city-progress').style.display = 'block';
+    updateCityProgress();
+
+  } catch (e) {
+    clearInterval(timerInterval);
+    document.getElementById('loading').innerHTML = `
+      <div style="color:#ff6644">Failed to load manifest: ${e.message}</div>
+      <div style="margin-top:10px; color:#888; font-size:13px">
+        Make sure <code>manifest.json</code> is in the same folder as this page.
+      </div>
+    `;
+  }
+}
+
+loadManifest();
+</script>
+<script data-goatcounter="https://red1oon.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>
