@@ -35,10 +35,10 @@ export SUPPRESS_LABEL_WARNING=True
 # ── bim-ootb-full (25 buildings) ──
 
 # Landing page — DO NOT overwrite with viewer
-oci os object put --bucket-name bim-ootb-full --file deploy/sandbox/landing2.html --name index.html --content-type text/html --force
+oci os object put --bucket-name bim-ootb-full --file deploy/sandbox/landing.html --name index.html --content-type text/html --force
 
 # Modular viewer (sandbox/)
-oci os object put --bucket-name bim-ootb-full --file deploy/sandbox/index2.html --name sandbox/index2.html --content-type text/html --force
+oci os object put --bucket-name bim-ootb-full --file deploy/sandbox/index.html --name sandbox/index.html --content-type text/html --force
 
 # All JS modules (run from repo root)
 for f in config scene streaming panels tools picking tour measure sitecam issues walk city main loader; do
@@ -48,7 +48,7 @@ done
 # ── bim-ootb (Duplex demo) ──
 
 # Viewer directly as index.html (no landing page)
-oci os object put --bucket-name bim-ootb --file deploy/sandbox/index2.html --name index.html --content-type text/html --force
+oci os object put --bucket-name bim-ootb --file deploy/sandbox/index.html --name index.html --content-type text/html --force
 
 # All JS modules at bucket root (same level as index.html)
 for f in config scene streaming panels tools picking tour measure sitecam issues walk city main loader; do
@@ -65,8 +65,8 @@ oci os bucket update --name bim-ootb --cors-config file:///tmp/cors.json
 ```
 
 ### Deployment rules
-- **NEVER overwrite `index.html` on `bim-ootb-full`** — that's the landing page (`landing2.html`)
-- The viewer is `sandbox/index2.html` — landing page links to it
+- **NEVER overwrite `index.html` on `bim-ootb-full`** — that's the landing page (`landing.html`)
+- The viewer is `sandbox/index.html` — landing page links to it
 - On `bim-ootb`, `index.html` IS the viewer (no landing page)
 - Old monolith `rtree_browser_demo.html` is retired — deleted from OCI (2026-04-21)
 - Always bump version in `<title>` and HUD header before deploying — status bar text gets overwritten
