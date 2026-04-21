@@ -1325,6 +1325,10 @@ function populateStoreys(building) {
     storeys.map(s => `<button class="${activeStoreyFilter === s ? 'active' : ''}"
       onclick="filterStorey('${s}')">${s}</button>`).join('');
   panel.style.display = 'block';
+  // S207: auto-collapse on mobile after 5s
+  if (window.innerWidth <= 600) {
+    setTimeout(() => { const b = document.getElementById('storey-body'); if (b) b.classList.add('collapsed'); }, 5000);
+  }
 }
 
 function filterStorey(storey) {
@@ -1364,6 +1368,10 @@ function populateDiscs(building) {
       ${d} <span style="color:#888;font-size:10px">${cnt.toLocaleString()}</span></button>`;
   }).join('');
   panel.style.display = 'block';
+  // S207: auto-collapse on mobile after 4s
+  if (window.innerWidth <= 600) {
+    setTimeout(() => { const b = document.getElementById('disc-body'); if (b) b.classList.add('collapsed'); }, 4000);
+  }
 }
 
 function toggleDisc(disc) {
@@ -3685,58 +3693,88 @@ function cancelWalkAnchor() {
   document.getElementById('walk-anchor-prompt').style.display = 'none';
 }
 
+// Walk Mode S207: camera=user, compass locks after 5 readings, tilt stays live
+let walkCompassReadings = [];
+let walkLockedHeading = null;
+let walkLiveTilt = 0;
+let walkOrientationHandler = null;
+
 function setWalkAnchor() {
   document.getElementById('walk-anchor-prompt').style.display = 'none';
 
-  if (!navigator.geolocation) {
-    status.textContent = 'Walk Mode: GPS not available';
-    return;
+  // Find nearest door facing building centre — snap camera there
+  walkAnchorIFC = findNearestDoorPosition();
+  if (!walkAnchorIFC) {
+    const bld = Object.values(buildingCentres)[0];
+    if (bld) {
+      walkAnchorIFC = { x: bld.ix, y: bld.iy, z: bld.iz };
+    } else {
+      status.textContent = 'Walk Mode: No building data';
+      return;
+    }
   }
 
-  status.textContent = 'Walk Mode: Acquiring GPS...';
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      walkAnchorGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  // Snap camera to anchor position at eye height
+  const anchorThree = ifc2three(walkAnchorIFC.x, walkAnchorIFC.y, walkAnchorIFC.z);
+  camera.position.set(anchorThree.x, anchorThree.y + WALK_EYE_HEIGHT, anchorThree.z);
 
-      // Find nearest IfcDoor to use as anchor point in model
-      walkAnchorIFC = findNearestDoorPosition();
-      if (!walkAnchorIFC) {
-        // Fallback: use building centre
-        const bld = Object.values(buildingCentres)[0];
-        if (bld) {
-          walkAnchorIFC = { x: bld.ix, y: bld.iy, z: bld.iz };
-        } else {
-          status.textContent = 'Walk Mode: No building data';
-          return;
-        }
+  // Look toward building centre
+  const bldCentre = Object.values(buildingCentres)[0];
+  if (bldCentre) {
+    const bc = ifc2three(bldCentre.ix, bldCentre.iy, bldCentre.iz);
+    controls.target.set(bc.x, anchorThree.y + WALK_EYE_HEIGHT, bc.z);
+  }
+  controls.update();
+
+  // Start orientation tracking (compass + tilt)
+  walkCompassReadings = [];
+  walkLockedHeading = null;
+  walkLiveTilt = 0;
+  startWalkOrientation();
+
+  // Start GPS in background (optional, updates camera position)
+  if (navigator.geolocation) {
+    walkAnchorGPS = null;
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        walkAnchorGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        startWalkGpsTracking();
+        console.log(`[S207] §WALK_GPS anchored (${walkAnchorGPS.lat.toFixed(6)},${walkAnchorGPS.lng.toFixed(6)})`);
+      },
+      () => { status.textContent = 'Walk Mode: No GPS — orientation only'; },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  // Activate
+  walkModeActive = true;
+  walkGpsFollowCam = false; // S207: no blue dot follow, camera=user
+  document.getElementById('walk-mode-btn').classList.add('active');
+  cacheStoreyLevels();
+
+  status.textContent = 'Walk Mode: Face building, compass locking...';
+  console.log(`[S207] §WALK_MODE_START anchor IFC=(${walkAnchorIFC.x.toFixed(1)},${walkAnchorIFC.y.toFixed(1)},${walkAnchorIFC.z.toFixed(1)})`);
+}
+
+function startWalkOrientation() {
+  walkOrientationHandler = (e) => {
+    // Compass heading (alpha) — lock after 5 readings
+    if (e.alpha != null && walkLockedHeading === null) {
+      walkCompassReadings.push(e.alpha);
+      if (walkCompassReadings.length >= 5) {
+        // Average last 5 readings
+        const sum = walkCompassReadings.slice(-5).reduce((a,b) => a+b, 0);
+        walkLockedHeading = sum / 5;
+        status.textContent = `Walk Mode: Heading locked ${Math.round(walkLockedHeading)}°`;
+        console.log(`[S207] §WALK_COMPASS locked=${walkLockedHeading.toFixed(1)}°`);
       }
-
-      // Cache storey levels for floor detection
-      cacheStoreyLevels();
-
-      // Create blue dot
-      if (walkBlueDot) { scene.remove(walkBlueDot); }
-      const dotGeo = new THREE.SphereGeometry(0.4, 16, 16);
-      const dotMat = new THREE.MeshBasicMaterial({ color: 0x2196f3 });
-      walkBlueDot = new THREE.Mesh(dotGeo, dotMat);
-      const anchorThree = ifc2three(walkAnchorIFC.x, walkAnchorIFC.y, walkAnchorIFC.z);
-      walkBlueDot.position.set(anchorThree.x, anchorThree.y + WALK_EYE_HEIGHT * 0.3, anchorThree.z);
-      scene.add(walkBlueDot);
-
-      // Start GPS tracking
-      walkModeActive = true;
-      walkGpsFollowCam = true;
-      document.getElementById('walk-mode-btn').classList.add('active');
-      startWalkGpsTracking();
-
-      status.textContent = `Walk Mode: Anchored at ${walkAnchorGPS.lat.toFixed(4)}, ${walkAnchorGPS.lng.toFixed(4)}`;
-      console.log(`[S205] §WALK_MODE anchor GPS=(${walkAnchorGPS.lat.toFixed(6)},${walkAnchorGPS.lng.toFixed(6)}) IFC=(${walkAnchorIFC.x.toFixed(1)},${walkAnchorIFC.y.toFixed(1)},${walkAnchorIFC.z.toFixed(1)})`);
-    },
-    err => {
-      status.textContent = 'Walk Mode: GPS error — ' + err.message;
-    },
-    { enableHighAccuracy: true, timeout: 15000 }
-  );
+    }
+    // Tilt (beta) — stays live forever, smoothed
+    if (e.beta != null) {
+      walkLiveTilt = walkLiveTilt * 0.9 + e.beta * 0.1; // 0.1 smoothing
+    }
+  };
+  window.addEventListener('deviceorientation', walkOrientationHandler);
 }
 
 function findNearestDoorPosition() {
@@ -3831,18 +3869,25 @@ function startWalkGpsTracking() {
   );
 }
 
-// Camera follow blue dot (called from animate loop)
+// S207: Camera = user. Locked heading rotates view, live tilt pitches.
 function walkModeGpsTick() {
-  if (!walkModeActive || !walkGpsFollowCam || !walkBlueDot) return;
+  if (!walkModeActive) return;
+  if (walkLockedHeading === null) return; // waiting for compass lock
 
-  const heading = _camHeading || 0;
+  const heading = walkLockedHeading;
   const modelAzimuth = (heading - (window._trueNorthAngle || 0)) * Math.PI / 180;
-  const followDist = 5;
+  const lookDist = 10;
 
-  camera.position.x = walkBlueDot.position.x - followDist * Math.sin(modelAzimuth);
-  camera.position.z = walkBlueDot.position.z - followDist * Math.cos(modelAzimuth);
-  camera.position.y = walkBlueDot.position.y + WALK_EYE_HEIGHT;
-  controls.target.set(walkBlueDot.position.x, walkBlueDot.position.y + WALK_EYE_HEIGHT * 0.5, walkBlueDot.position.z);
+  // Look direction from locked heading
+  const lookX = camera.position.x + lookDist * Math.sin(modelAzimuth);
+  const lookZ = camera.position.z + lookDist * Math.cos(modelAzimuth);
+
+  // Tilt: map device beta (0=flat, 90=upright) to camera pitch
+  // When holding phone ~60-70° (normal use), look level. Tilt down = look down.
+  const pitchOffset = (walkLiveTilt - 65) * 0.05; // 65° = level hold
+  const lookY = camera.position.y + pitchOffset * lookDist;
+
+  controls.target.set(lookX, lookY, lookZ);
   controls.update();
 }
 
@@ -3857,9 +3902,15 @@ function stopWalkMode() {
     scene.remove(walkBlueDot);
     walkBlueDot = null;
   }
+  if (walkOrientationHandler) {
+    window.removeEventListener('deviceorientation', walkOrientationHandler);
+    walkOrientationHandler = null;
+  }
+  walkLockedHeading = null;
+  walkCompassReadings = [];
   document.getElementById('walk-mode-btn').classList.remove('active');
   status.textContent = 'Walk Mode stopped.';
-  console.log('[S205] §WALK_MODE_STOP');
+  console.log('[S207] §WALK_MODE_STOP');
 }
 
 // ── "What's Behind This Wall" — Wall X-Ray (Part D) ──
