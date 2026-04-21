@@ -1160,7 +1160,7 @@ function togglePanel(id) {
     });
     panelsHidden = true;
     const s = document.getElementById('status');
-    if (s) s.textContent = 'Tap to show panels';
+    if (s) s.textContent = '← Swipe back to show panels';
   }
 
   function showAll() {
@@ -1176,12 +1176,12 @@ function togglePanel(id) {
   document.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, {passive:true});
   document.addEventListener('touchend', e => {
     const dx = e.changedTouches[0].clientX - startX;
-    if (Math.abs(dx) > 60) {
-      // Swipe = toggle all panels
-      if (panelsHidden) showAll(); else hideAll();
-    } else if (panelsHidden) {
-      // Tap = restore panels
-      showAll();
+    if (dx > 60) {
+      // Swipe right = hide panels
+      if (!panelsHidden) hideAll();
+    } else if (dx < -60) {
+      // Swipe left = show panels
+      if (panelsHidden) showAll();
     }
   }, {passive:true});
 
