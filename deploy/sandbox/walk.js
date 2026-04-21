@@ -87,7 +87,31 @@ function setupWalk(A) {
       if (!e.alpha) return;
 
       const deg2rad = THREE.MathUtils.degToRad;
-      const alpha = deg2rad(e.alpha) + A._walkAlphaOffset;
+      const SENSITIVITY = 1.3; // amplify turn — phone feels sluggish at 1.0
+      const rawAlpha = deg2rad(e.alpha);
+
+      // On first reading, capture baseline and compute door offset
+      if (A._walkFirstUpdate) {
+        A._walkFirstUpdate = false;
+        A._walkAlphaBaseline = rawAlpha;
+        // Compute where device points without amplification
+        const beta0 = e.beta ? deg2rad(e.beta) : 0;
+        const gamma0 = e.gamma ? deg2rad(e.gamma) : 0;
+        const orient0 = A._walkScreenOrientation ? deg2rad(A._walkScreenOrientation) : 0;
+        const euler0 = new THREE.Euler(beta0, rawAlpha, -gamma0, 'YXZ');
+        const q0 = new THREE.Quaternion().setFromEuler(euler0);
+        q0.multiply(_q1.clone());
+        q0.multiply(new THREE.Quaternion().setFromAxisAngle(_zee, -orient0));
+        const devDir = new THREE.Vector3(0, 0, -1).applyQuaternion(q0);
+        const devYaw = Math.atan2(devDir.x, devDir.z);
+        const doorDir = new THREE.Vector3(0, 0, -1).applyQuaternion(A._walkQDoor);
+        const doorYaw = Math.atan2(doorDir.x, doorDir.z);
+        A._walkAlphaOffset = doorYaw - devYaw;
+      }
+
+      // Amplify: delta from baseline × sensitivity + offset
+      const delta = rawAlpha - A._walkAlphaBaseline;
+      const alpha = A._walkAlphaBaseline + delta * SENSITIVITY + A._walkAlphaOffset;
       const beta = e.beta ? deg2rad(e.beta) : 0;
       const gamma = e.gamma ? deg2rad(e.gamma) : 0;
       const orient = A._walkScreenOrientation ? deg2rad(A._walkScreenOrientation) : 0;
@@ -97,22 +121,6 @@ function setupWalk(A) {
       A.camera.quaternion.setFromEuler(euler);
       A.camera.quaternion.multiply(_q1.clone());
       A.camera.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(_zee, -orient));
-
-      // On first reading, compute alphaOffset so camera faces the door
-      if (A._walkFirstUpdate) {
-        A._walkFirstUpdate = false;
-        const devDir = new THREE.Vector3(0, 0, -1).applyQuaternion(A.camera.quaternion);
-        const devYaw = Math.atan2(devDir.x, devDir.z);
-        const doorDir = new THREE.Vector3(0, 0, -1).applyQuaternion(A._walkQDoor);
-        const doorYaw = Math.atan2(doorDir.x, doorDir.z);
-        A._walkAlphaOffset = doorYaw - devYaw;
-        // Re-apply with corrected offset
-        const alpha2 = deg2rad(e.alpha) + A._walkAlphaOffset;
-        const euler2 = new THREE.Euler(beta, alpha2, -gamma, 'YXZ');
-        A.camera.quaternion.setFromEuler(euler2);
-        A.camera.quaternion.multiply(_q1.clone());
-        A.camera.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(_zee, -orient));
-      }
     };
 
     A._walkCleanupScreen = onScreenChange;
@@ -373,7 +381,7 @@ function setupWalk(A) {
     const btn = document.createElement('div');
     btn.id = 'drive-thru-btn';
     btn.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:80px;height:80px;border-radius:50%;background:rgba(33,150,243,0.7);border:3px solid #4fc3f7;z-index:9999;display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none;cursor:pointer;';
-    btn.textContent = '▶';
+    btn.textContent = '⬆';
     document.body.appendChild(btn);
     A._driveBtn = btn;
     A._driveHoldInterval = null;
@@ -437,10 +445,46 @@ function setupWalk(A) {
     dir.multiplyScalar(A.WALK_STEP_DISTANCE);
 
     A.camera.position.add(dir);
-    // Do NOT call controls.update() — device orientation drives the quaternion
+
+    // Floor/stair detection: snap camera Y to nearest walkable surface
+    A.snapToFloor();
 
     const dist = (A.walkStepCount * A.WALK_STEP_DISTANCE).toFixed(1);
     A.status.textContent = `Drive-Thru: ${A.walkStepCount} steps (${dist}m)`;
+  };
+
+  // Query DB for floor height at camera XY position, smoothly adjust camera Y
+  // IFC↔Three.js: threeX = ifcX-offX, threeY = ifcZ-offZ, threeZ = -(ifcY-offY)
+  A.snapToFloor = function() {
+    if (!A.db || !A.modelOffset) return;
+    const ifcX = A.camera.position.x + A.modelOffset.x;
+    const ifcY = -(A.camera.position.z) + A.modelOffset.y;
+    const ifcFootZ = (A.camera.position.y - A.WALK_EYE_HEIGHT) + A.modelOffset.z;
+
+    try {
+      // Only snap to surfaces AT or BELOW foot level (+0.5m tolerance for stairs)
+      // This avoids snapping to ceiling slabs above
+      const rows = A.db.exec(`
+        SELECT t.center_z
+        FROM elements_meta m
+        JOIN element_transforms t ON m.guid = t.guid
+        WHERE m.ifc_class IN ('IfcSlab','IfcStairFlight','IfcRamp')
+          AND ABS(t.center_x - ${ifcX}) < 2.0
+          AND ABS(t.center_y - ${ifcY}) < 2.0
+          AND t.center_z <= ${ifcFootZ + 0.5}
+        ORDER BY t.center_z DESC
+        LIMIT 1
+      `);
+      if (rows.length > 0 && rows[0].values.length > 0) {
+        const floorIfcZ = rows[0].values[0][0];
+        const targetY = (floorIfcZ - A.modelOffset.z) + A.WALK_EYE_HEIGHT;
+        const dy = targetY - A.camera.position.y;
+        // Only adjust if within reasonable range (no teleporting through floors)
+        if (Math.abs(dy) > 0.05 && Math.abs(dy) < 5.0) {
+          A.camera.position.y += dy * 0.3; // smooth lerp per step
+        }
+      }
+    } catch(e) { /* no floor data */ }
   };
 
   // Wall X-Ray

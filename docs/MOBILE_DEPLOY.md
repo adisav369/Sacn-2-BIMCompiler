@@ -701,6 +701,38 @@ The key insight from S208: **OrbitControls and DeviceOrientation are mutually ex
 Any fly-through on mobile must NOT call `controls.update()`. Position moves via direct
 `camera.position` manipulation, orientation via `walkOrientTick()` quaternion.
 
+#### F.10 Roadmap — Killer Features for Architects
+
+All leverage the existing stack: phone sensors + BIM DB in browser + Walk/Site mode.
+
+**1. Snag-to-BIM** — Tap element during walk → phone camera opens → snap defect photo.
+Auto-tags with element GUID, storey, discipline, GPS. Generates punch list with photos
+linked to exact BIM elements. Export to Excel. Contractors get clickable 3D snag locations.
+
+**2. As-Built Overlay (AR)** — Camera feed + BIM model overlay using GPS + compass +
+TrueNorth alignment (already implemented). Architect sees where actual construction
+doesn't match the BIM. Browser-only AR, no app install.
+
+**3. Space Compliance Checker** — Walk into a room, phone auto-detects which IfcSpace
+you're in (GPS + storey + nearest space polygon). Instantly shows: room area vs code
+requirement, door width vs minimum, ceiling height check. Red/green pass/fail.
+
+**4. Sun Study on Site** — Phone knows GPS + date + time. Calculate sun position, show
+shadow casting on BIM in real-time matching the actual sun. "Will this corridor get light
+at 3pm in December?" answered on-site, instantly.
+
+**5. MEP Behind Walls — Live AR** — Extend wall X-ray (already working) with camera feed.
+Hold phone at real wall → camera shows real wall → BIM overlays pipes and ducts behind it.
+Plumber doesn't drill into a cable tray.
+
+**6. Room Handover QR** — Generate QR code per room. Stick on door during construction.
+Anyone scans → viewer opens zoomed to that room with finishes, MEP, dimensions, snag
+history. Facilities management starts day one.
+
+**7. Progress Tracking** — Walk through building, tap elements as "installed" / "not started" /
+"defective". 4D schedule updates live. Site manager does a 10-minute walk → stakeholders
+see progress heatmap by storey.
+
 #### F.8 Competitive Landscape
 
 | Feature | Trimble SiteVision | Google Indoor Maps | Apple Indoor Maps | **BIM OOTB Walk** |
