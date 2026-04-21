@@ -172,7 +172,8 @@ function setupIssues(A) {
   };
 
   A.exportIssuesExcel = async function() {
-    if (typeof XLSX === 'undefined') { alert('SheetJS not loaded'); return; }
+    if (typeof XLSX === 'undefined') { alert('SheetJS not loaded — check network'); return; }
+    try {
     const issues = await A._getAllIssues();
     if (issues.length === 0) { alert('No issues to export'); return; }
     const rows = issues.map(iss => ({
@@ -194,8 +195,17 @@ function setupIssues(A) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Issues');
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    XLSX.writeFile(wb, 'BIM_Issues_' + ts + '.xlsx');
+    const fname = 'BIM_Issues_' + ts + '.xlsx';
+    // Mobile-safe: write to blob then trigger download via link
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fname;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
     console.log('[S205] Exported', issues.length, 'issues to Excel');
+    } catch(err) { alert('Export error: ' + err.message); console.error('[S209] §EXCEL_ERR', err); }
   };
 
   A.clearAllIssues = async function() {
