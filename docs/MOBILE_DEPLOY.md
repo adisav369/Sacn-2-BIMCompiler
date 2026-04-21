@@ -623,6 +623,19 @@ Taps "Walk Mode" → blue dot appears at entrance
         └── "Issue #3 (crack in wall) is 2m to your left"
 ```
 
+#### F.6b Step Detection — Shake to Walk (S207b)
+
+Implemented: `DeviceMotion` accelerometer detects vertical phone bounce
+(walking cadence ~2Hz). Each step advances camera 0.6m forward in look
+direction. Mimics the real-world experience shown in the screenshots above —
+phone in hand, walking through building, model moves with you.
+
+- Threshold: 4.0 m/s² vertical delta triggers a step
+- Cooldown: 300ms between steps (prevents double-counting)
+- Direction: camera's XZ forward vector (stays on same floor level)
+- Status HUD: "Walk Mode: N steps"
+- No GPS required — works indoors, offline, any phone with accelerometer
+
 #### F.7 What's Behind This Wall
 
 Walk Mode enables the killer query. When the supervisor taps a wall:
