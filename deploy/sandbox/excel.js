@@ -33,8 +33,15 @@ function setupExcel(A) {
       XLSX.utils.book_append_sheet(wb, ws, 'Issues');
       const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const fname = 'BIM_Issues_' + ts + '.xlsx';
-      XLSX.writeFile(wb, fname);
-      A.status.textContent = `Exported ${issues.length} issues to ${fname}`;
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const file = new File([wbout], fname, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: fname });
+      } else {
+        // Desktop fallback
+        XLSX.writeFile(wb, fname);
+      }
+      A.status.textContent = `Exported ${issues.length} issues`;
       console.log('[S209] §EXCEL exported', issues.length, 'issues');
     } catch(err) {
       A.status.textContent = 'Export error: ' + err.message;
