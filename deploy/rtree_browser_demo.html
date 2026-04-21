@@ -209,12 +209,12 @@
     #site-cam-btn { display: inline-block !important; position: fixed !important; top: 8px !important; right: 8px !important; z-index: 20 !important; padding: 8px 12px; font-size: 14px; }
     #walk-mode-btn { display: inline-block !important; position: fixed !important; top: 8px !important; right: 80px !important; z-index: 20 !important; padding: 8px 12px; font-size: 14px; }
 
-    /* Storeys: top-right, SAME ROW as Walk/Site (left of Walk) */
-    #storey-panel { display: block !important; position: fixed !important; top: 8px !important; right: 160px !important; left: auto !important; bottom: auto !important; width: auto; max-width: 120px; max-height: 30vh; overflow-y: auto; z-index: 20 !important; padding: 6px 8px; }
-    #storey-panel button { padding: 4px 6px; font-size: 11px; min-height: 26px; }
+    /* Storeys: below Walk/Site, right side, half width */
+    #storey-panel { display: block !important; position: fixed !important; top: 48px !important; right: 8px !important; left: auto !important; bottom: auto !important; width: 80px; max-height: 30vh; overflow-y: auto; z-index: 19 !important; padding: 4px 6px; }
+    #storey-panel button { padding: 3px 5px; font-size: 10px; min-height: 24px; }
 
-    /* Tools (search-box): below Walk/Site/Storeys row, right side */
-    #search-box { position: fixed !important; top: 48px !important; right: 8px !important; left: auto !important; bottom: auto !important; width: 160px; z-index: 12 !important; }
+    /* Tools (search-box): below Storeys, right side */
+    #search-box { position: fixed !important; top: 90px !important; right: 8px !important; left: auto !important; bottom: auto !important; width: 160px; z-index: 12 !important; }
     #search-box input { display: none !important; }
     #search-box button { padding: 6px 8px !important; font-size: 12px !important; min-height: 32px; }
 
@@ -248,15 +248,20 @@
 
   /* ── Landscape: everything tight, persist Walk/Site ── */
   @media (max-height: 500px) and (orientation: landscape) {
-    #site-cam-btn { top: 4px !important; right: 4px !important; padding: 6px 8px !important; font-size: 12px !important; }
-    #walk-mode-btn { top: 4px !important; right: 68px !important; padding: 6px 8px !important; font-size: 12px !important; }
-    #storey-panel { top: 4px !important; right: 132px !important; max-height: 20vh; padding: 4px 6px !important; }
-    #search-box { top: 36px !important; right: 4px !important; width: 160px; }
-    #disc-panel { bottom: 4px !important; left: 4px !important; top: auto !important; width: 130px; }
-    #hud { bottom: 4px; left: 4px; max-width: 35vw; right: auto; font-size: 11px; }
-    #hud h2 { font-size: 12px; }
-    #status { bottom: 2px; font-size: 10px; }
-    .panel-body.collapsed { max-height: 0 !important; padding: 0 !important; opacity: 0 !important; }
+    #site-cam-btn { top: 4px !important; right: 4px !important; padding: 4px 6px !important; font-size: 11px !important; min-height: 32px !important; }
+    #walk-mode-btn { top: 4px !important; right: 60px !important; padding: 4px 6px !important; font-size: 11px !important; min-height: 32px !important; }
+    #storey-panel { top: 32px !important; right: 4px !important; left: auto !important; width: 80px; max-height: 20vh; padding: 3px 4px !important; font-size: 10px !important; }
+    #storey-panel button { padding: 2px 4px !important; font-size: 10px !important; min-height: 20px !important; }
+    #search-box { top: 32px !important; right: 90px !important; width: 100px; padding: 3px 4px !important; }
+    #search-box button { padding: 3px 4px !important; font-size: 10px !important; min-height: 22px !important; }
+    #disc-panel { top: 4px !important; left: 4px !important; bottom: auto !important; width: 80px; padding: 3px 4px !important; }
+    #disc-panel button, #disc-body button { padding: 2px 4px !important; font-size: 10px !important; min-height: 20px !important; }
+    #hud { bottom: 2px; left: 4px; max-width: 30vw; right: auto; font-size: 10px; padding: 4px 6px !important; }
+    #hud h2 { font-size: 11px; }
+    #hud .stat { font-size: 10px; }
+    #status { bottom: 2px; font-size: 10px; padding: 4px 8px !important; }
+    #info-panel { max-width: 140px !important; font-size: 10px !important; padding: 6px 8px !important; }
+    .panel-body.collapsed { max-height: 0 !important; padding: 0 !important; margin: 0 !important; opacity: 0 !important; }
   }
 </style>
 </head>
@@ -1138,10 +1143,39 @@ function blobToGeometry(vBlob, fBlob) {
 // ── Panel collapse ──
 function togglePanel(id) {
   const body = document.getElementById(id);
-  const toggle = body.parentElement.querySelector('.panel-toggle');
   body.classList.toggle('collapsed');
-  toggle.textContent = body.classList.contains('collapsed') ? '+' : '−';
 }
+
+// ── Swipe-to-dismiss panels (mobile) ──
+(function() {
+  if (window.innerWidth > 600) return;
+  let startX = 0, startY = 0, swiping = null;
+  const panels = ['hud','search-box','storey-panel','disc-panel','info-panel'];
+  panels.forEach(pid => {
+    const el = document.getElementById(pid);
+    if (!el) return;
+    el.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX; startY = e.touches[0].clientY; swiping = el;
+    }, {passive:true});
+    el.addEventListener('touchend', e => {
+      if (!swiping) return;
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = e.changedTouches[0].clientY - startY;
+      // Swipe right (>50px, mostly horizontal) = collapse
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+        const body = el.querySelector('.panel-body') || el;
+        if (body.classList) body.classList.add('collapsed');
+      }
+      swiping = null;
+    }, {passive:true});
+  });
+  // Status hint
+  setTimeout(() => {
+    const s = document.getElementById('status');
+    if (s) s.textContent = '← → Swipe panels to dismiss';
+    setTimeout(() => { if (s && s.textContent.includes('Swipe')) s.textContent = ''; }, 4000);
+  }, 3000);
+})();
 
 // ── Wireframe mode ──
 let wireOn = false;
