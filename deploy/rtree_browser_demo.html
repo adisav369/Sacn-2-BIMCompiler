@@ -3806,15 +3806,28 @@ function setWalkAnchor() {
 }
 
 function startWalkOrientation() {
+  // Ensure compass listener is running (normally starts in Site Camera)
+  if (!_camOrientHandler) {
+    _camOrientHandler = (e) => {
+      const h = e.webkitCompassHeading ?? (e.alpha != null ? (360 - e.alpha) % 360 : null);
+      if (h != null) _camHeading = Math.round(h);
+    };
+    if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission().then(r => {
+        if (r === 'granted') window.addEventListener('deviceorientation', _camOrientHandler, true);
+      }).catch(() => {});
+    } else {
+      window.addEventListener('deviceorientation', _camOrientHandler, true);
+    }
+  }
+  // Tilt handler (beta)
   walkOrientationHandler = (e) => {
-    // Tilt (beta) — stays live, smoothed. Compass comes from _camHeading.
     if (e.beta != null) {
       walkLiveTilt = walkLiveTilt * 0.9 + e.beta * 0.1;
     }
   };
   window.addEventListener('deviceorientation', walkOrientationHandler);
   status.textContent = _camHeading != null ? `Walk Mode: Compass ${_camHeading}°` : 'Walk Mode: Waiting for compass...';
-  // Timeout if no compass
   setTimeout(() => {
     if (walkModeActive && _camHeading === null) status.textContent = 'Walk Mode: Compass not available — tilt only';
   }, 5000);
