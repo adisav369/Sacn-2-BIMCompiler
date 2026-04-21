@@ -148,6 +148,9 @@ function setupPicking(A) {
       document.getElementById('info-disc').textContent = disc || '—';
       document.getElementById('info-material').textContent = mat || '—';
       document.getElementById('info-panel').style.display = 'block';
+      // Show Snag button during walk mode
+      const snagRow = document.getElementById('snag-btn-row');
+      if (snagRow) snagRow.style.display = A.walkModeActive ? 'block' : 'none';
       A.populateStoreys(bld);
       A.populateDiscs(bld);
       console.log(`§PICK ${cls} "${name}" ${disc} ${storey}`);

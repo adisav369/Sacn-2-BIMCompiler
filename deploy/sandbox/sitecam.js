@@ -48,15 +48,18 @@ function setupSitecam(A) {
     const overlay = document.getElementById('site-cam-overlay');
     const video = document.getElementById('site-cam-video');
 
-    if (A._camHeading != null || window._trueNorthAngle !== 0) {
-      const heading = A._camHeading || 0;
-      const modelAzimuth = (heading - (window._trueNorthAngle || 0)) * Math.PI / 180;
-      const target = A.controls.target.clone();
-      const dist = A.camera.position.distanceTo(target);
-      A.camera.position.x = target.x + dist * Math.sin(modelAzimuth);
-      A.camera.position.z = target.z + dist * Math.cos(modelAzimuth);
-      A.camera.lookAt(target);
-      A.controls.update();
+    // Snap BIM view for PiP — skip orbit manipulation during walk mode
+    if (!A.walkModeActive) {
+      if (A._camHeading != null || window._trueNorthAngle !== 0) {
+        const heading = A._camHeading || 0;
+        const modelAzimuth = (heading - (window._trueNorthAngle || 0)) * Math.PI / 180;
+        const target = A.controls.target.clone();
+        const dist = A.camera.position.distanceTo(target);
+        A.camera.position.x = target.x + dist * Math.sin(modelAzimuth);
+        A.camera.position.z = target.z + dist * Math.cos(modelAzimuth);
+        A.camera.lookAt(target);
+        A.controls.update();
+      }
     }
     A.renderer.render(A.scene, A.camera);
     A._camBimSnapshot = A.canvas.toDataURL('image/png');
@@ -80,22 +83,25 @@ function setupSitecam(A) {
       document.getElementById('site-cam-gps').textContent = 'GPS: not supported';
     }
 
+    // Only add compass listener if NOT in walk mode (walk mode has its own orientation)
     A._camHeading = null;
-    A._camOrientHandler = (e) => {
-      const h = e.webkitCompassHeading ?? (e.alpha != null ? (360 - e.alpha) % 360 : null);
-      if (h != null) {
-        A._camHeading = Math.round(h);
-        const dirs = ['N','NE','E','SE','S','SW','W','NW'];
-        const dir = dirs[Math.round(A._camHeading / 45) % 8];
-        document.getElementById('site-cam-compass').textContent = `${A._camHeading}° ${dir}`;
+    if (!A.walkModeActive) {
+      A._camOrientHandler = (e) => {
+        const h = e.webkitCompassHeading ?? (e.alpha != null ? (360 - e.alpha) % 360 : null);
+        if (h != null) {
+          A._camHeading = Math.round(h);
+          const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+          const dir = dirs[Math.round(A._camHeading / 45) % 8];
+          document.getElementById('site-cam-compass').textContent = `${A._camHeading}° ${dir}`;
+        }
+      };
+      if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission().then(r => {
+          if (r === 'granted') window.addEventListener('deviceorientation', A._camOrientHandler, true);
+        }).catch(() => {});
+      } else {
+        window.addEventListener('deviceorientation', A._camOrientHandler, true);
       }
-    };
-    if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
-      DeviceOrientationEvent.requestPermission().then(r => {
-        if (r === 'granted') window.addEventListener('deviceorientation', A._camOrientHandler, true);
-      }).catch(() => {});
-    } else {
-      window.addEventListener('deviceorientation', A._camOrientHandler, true);
     }
 
     A._camTimerIv = setInterval(() => {
@@ -135,6 +141,12 @@ function setupSitecam(A) {
     const timeText = A._formatTimestamp();
     const dirs = ['N','NE','E','SE','S','SW','W','NW'];
     const compassText = A._camHeading != null ? `${A._camHeading}° ${dirs[Math.round(A._camHeading / 45) % 8]}` : null;
+
+    // Auto-save to punch list if element is selected (Snag-to-BIM)
+    if (info.guid && info.guid !== '—') {
+      A._saveIssueToLog();
+      A.status.textContent = `📸 Snag saved: ${info.cls} @ ${info.storey}`;
+    }
 
     const bimImg = new Image();
     bimImg.onload = () => A._compositePhoto(video, info, gpsText, timeText, compassText, bimImg);
