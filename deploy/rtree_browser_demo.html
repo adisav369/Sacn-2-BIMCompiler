@@ -292,17 +292,17 @@
   <b style="color:#4fc3f7;font-size:12px;cursor:pointer">Tools</b>
   <input id="search" type="text" placeholder="Filter..." onclick="event.stopPropagation()" style="display:none">
   <div id="search-body" class="panel-body">
-    <div style="margin:4px 0">
-      <button id="xray-btn" onclick="toggleXray();event.stopPropagation()" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px" title="X-Ray">X-Ray</button>
-      <button onclick="screenshot();event.stopPropagation()" title="Screenshot" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128247;</button>
-      <button onclick="toggleFullscreen();event.stopPropagation()" title="Fullscreen" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9974;</button>
-      <button id="theme-btn" onclick="toggleTheme();event.stopPropagation()" title="Light/Dark" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9788;</button>
-      <button id="fly-btn" onclick="toggleFlyAround();event.stopPropagation()" title="Fly Around / Walk-Through" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9992;</button>
-      <button id="walk-speed-btn" onclick="cycleWalkSpeed();event.stopPropagation()" title="Walk Speed" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px;display:none">1x</button>
-      <button onclick="export4D5D();event.stopPropagation()" title="4D/5D Export" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128202;</button>
-      <button onclick="toggleIssues();event.stopPropagation()" title="Issues" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128203;</button>
-      <button id="measure-btn" onclick="toggleMeasure();event.stopPropagation()" title="Measure — tap two points on building" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128208;</button>
-      <button id="section-btn" onclick="toggleSection();event.stopPropagation()" title="Section Cut" style="padding:2px 6px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9986;</button>
+    <div style="margin:2px 0;display:flex;flex-wrap:wrap;gap:2px">
+      <button id="xray-btn" onclick="toggleXray();event.stopPropagation()" style="padding:2px 4px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px" title="X-Ray">X-Ray</button>
+      <button onclick="screenshot();event.stopPropagation()" title="Screenshot" style="padding:2px 4px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128247;</button>
+      <button onclick="toggleFullscreen();event.stopPropagation()" title="Fullscreen" style="padding:2px 4px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9974;</button>
+      <button id="theme-btn" onclick="toggleTheme();event.stopPropagation()" title="Light/Dark" style="padding:2px 4px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9788;</button>
+      <button id="fly-btn" onclick="toggleFlyAround();event.stopPropagation()" title="Fly Around" style="padding:2px 4px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9992;</button>
+      <button id="walk-speed-btn" onclick="cycleWalkSpeed();event.stopPropagation()" title="Walk Speed" style="padding:2px 4px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px;display:none">1x</button>
+      <button onclick="export4D5D();event.stopPropagation()" title="4D/5D" style="padding:2px 4px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128202;</button>
+      <button onclick="toggleIssues();event.stopPropagation()" title="Issues" style="padding:2px 4px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128203;</button>
+      <button id="measure-btn" onclick="toggleMeasure();event.stopPropagation()" title="Measure" style="padding:2px 4px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#128208;</button>
+      <button id="section-btn" onclick="toggleSection();event.stopPropagation()" title="Section Cut" style="padding:2px 4px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">&#9986;</button>
     </div>
     <div id="building-list" style="max-height:400px;overflow-y:auto"></div>
   </div>
