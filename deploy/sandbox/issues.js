@@ -197,24 +197,14 @@ function setupIssues(A) {
     XLSX.utils.book_append_sheet(wb, ws, 'Issues');
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const fname = 'BIM_Issues_' + ts + '.xlsx';
-    // Mobile-safe: share file if available, otherwise blob download
+    // Generate Excel and download without navigating away
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    if (navigator.share) {
-      try {
-        const file = new File([blob], fname, { type: blob.type });
-        await navigator.share({ files: [file], title: 'BIM Issues Export' });
-        A.status.textContent = `Exported ${issues.length} issues`;
-      } catch(e) { if (e.name !== 'AbortError') A.status.textContent = 'Share cancelled'; }
-    } else {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = fname;
-      a.style.display = 'none';
-      document.body.appendChild(a); a.click();
-      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 2000);
-      A.status.textContent = `Exported ${issues.length} issues to ${fname}`;
-    }
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    // Open in new tab — avoids any page navigation on current tab
+    window.open(url, '_blank');
+    A.status.textContent = `Exported ${issues.length} issues — check downloads`;
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
     console.log('[S205] Exported', issues.length, 'issues to Excel');
     } catch(err) { alert('Export error: ' + err.message); console.error('[S209] §EXCEL_ERR', err); }
   };

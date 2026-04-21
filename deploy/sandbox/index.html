@@ -348,8 +348,8 @@
 <div id="issues-panel">
   <h3>Issues <span class="panel-toggle" onclick="toggleIssues()">&times;</span></h3>
   <div class="issues-toolbar">
-    <button onclick="exportIssuesExcel()">&#128196; Export Excel</button>
-    <button onclick="clearAllIssues()" style="background:#663333;border-color:#884444">&#128465; Clear All</button>
+    <button onclick="exportIssuesExcel();event.stopPropagation()">&#128196; Export Excel</button>
+    <button onclick="clearAllIssues();event.stopPropagation()" style="background:#663333;border-color:#884444">&#128465; Clear All</button>
   </div>
   <div id="issues-list"></div>
   <div id="issue-detail-view">
