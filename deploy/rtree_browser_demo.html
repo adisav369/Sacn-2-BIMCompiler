@@ -203,34 +203,65 @@
   }
   #walk-anchor-prompt button.cancel { background: #555; }
 
-  /* ── Mobile: larger touch targets, stacked panels ── */
+  /* ── Mobile: z-index stack, fixed widths, auto-collapse, tap-to-toggle ── */
   @media (max-width: 600px) {
-    #site-cam-btn { display: inline-block; }
-    #walk-mode-btn { display: inline-block; }
-    #hud { top: 8px; left: 8px; right: 8px; max-width: none; font-size: 14px; }
-    #hud h2 { font-size: 16px; }
-    #hud .stat { font-size: 14px; }
-    #search-box { top: auto; bottom: 60px; left: 8px; right: 80px; max-width: none; }
-    #search-box input { width: 100%; font-size: 16px; padding: 8px 12px; }
-    #search-box button { padding: 8px 12px !important; font-size: 14px !important; min-height: 36px; }
-    #info-panel { bottom: 60px; left: auto !important; right: 8px !important; max-width: 55vw; min-width: auto; font-size: 13px; z-index: 15 !important; }
-    #disc-panel { bottom: 60px; left: 8px; }
-    #storey-panel { bottom: auto; top: 50%; left: 8px; max-width: 50vw; max-height: 40vh; overflow-y: auto; }
-    #storey-panel button { padding: 8px 12px; font-size: 14px; min-height: 36px; }
-    #disc-panel button, #disc-body button { padding: 8px 12px !important; font-size: 14px !important; min-height: 36px; }
+    /* Show mobile-only buttons */
+    #site-cam-btn { display: inline-block !important; z-index: 20; }
+    #walk-mode-btn { display: inline-block !important; z-index: 20; }
+
+    /* HUD: bottom-left, full width, always open — z9 */
+    #hud { top: auto !important; bottom: 50px; left: 8px; right: 8px; max-width: none; font-size: 13px; z-index: 9 !important; }
+    #hud h2 { font-size: 15px; }
+    #hud .stat { font-size: 13px; }
+
+    /* Search/tools: bottom-right — z12 */
+    #search-box { top: auto !important; bottom: 60px; right: 8px; left: auto !important; width: 200px; max-width: none; z-index: 12 !important; }
+    #search-box input { width: 100%; font-size: 14px; padding: 6px 10px; }
+    #search-box button { padding: 6px 10px !important; font-size: 13px !important; min-height: 36px; }
+
+    /* Disc panel: top-left — z21 */
+    #disc-panel { display: block !important; bottom: auto !important; top: 60px !important; left: 8px !important; z-index: 21 !important; width: 200px; }
+    #disc-panel button, #disc-body button { padding: 6px 10px !important; font-size: 13px !important; min-height: 32px; }
+
+    /* Storey panel: below disc — z21 */
+    #storey-panel { bottom: auto !important; top: 50% !important; left: 8px !important; width: 200px; max-height: 40vh; overflow-y: auto; z-index: 21 !important; }
+    #storey-panel button { padding: 6px 10px; font-size: 13px; min-height: 32px; }
+
+    /* Info panel: right side — z15 */
+    #info-panel { bottom: 60px !important; left: auto !important; right: 8px !important; max-width: 200px; min-width: auto; font-size: 12px; z-index: 15 !important; }
+
+    /* Status bar: bottom centre — z10 */
+    #status { bottom: 8px; left: 8px; right: 8px; transform: none; text-align: center; font-size: 13px; z-index: 10 !important; }
+
+    /* Issues panel */
     #issues-panel { top: 8px; left: 8px; right: 8px; width: auto; max-height: 80vh; }
-    #issues-panel .issues-toolbar button { padding: 8px 12px; font-size: 14px; min-height: 36px; }
+    #issues-panel .issues-toolbar button { padding: 6px 10px; font-size: 13px; min-height: 36px; }
     .issue-card { padding: 8px; }
     .issue-card img { width: 80px; height: 60px; }
-    .issue-card .issue-meta { font-size: 13px; }
-    #status { bottom: 8px; left: 8px; right: 8px; transform: none; text-align: center; font-size: 14px; }
-    .bld-card { padding: 8px 12px; font-size: 14px; }
-    .panel-toggle { font-size: 20px; padding: 4px 8px; }
-    .measure-label { font-size: 14px; padding: 4px 8px; }
-    #section-slider-panel { top: auto; bottom: 160px; left: 8px; right: 8px; min-width: auto; }
-    #section-slider-panel label { font-size: 14px; }
-    #section-slider-panel input[type=range] { height: 36px; }
-    #section-slider-panel .section-val { font-size: 13px; }
+    .issue-card .issue-meta { font-size: 12px; }
+
+    /* General mobile */
+    .bld-card { padding: 6px 10px; font-size: 13px; }
+    .panel-toggle { font-size: 18px; padding: 4px 8px; }
+    .measure-label { font-size: 13px; padding: 3px 6px; }
+    #section-slider-panel { top: auto !important; bottom: 120px; left: 8px; right: 8px; min-width: auto; z-index: 12 !important; }
+    #section-slider-panel label { font-size: 13px; }
+    #section-slider-panel input[type=range] { height: 32px; }
+
+    /* Collapsed panels: no interaction, no overflow */
+    .panel-body.collapsed { pointer-events: none !important; overflow: hidden !important; }
+
+    /* Hide building list on mobile — save space */
+    #building-list { display: none !important; }
+  }
+
+  /* ── Landscape (phone rotated) ── */
+  @media (max-height: 500px) and (orientation: landscape) {
+    #hud { bottom: 8px; left: 8px; max-width: 40vw; right: auto; }
+    #search-box { right: 8px; bottom: 8px; width: 180px; }
+    #disc-panel { top: 8px !important; width: 160px; }
+    #storey-panel { top: 8px !important; left: 170px !important; width: 160px; }
+    #status { bottom: 4px; font-size: 11px; }
   }
 </style>
 </head>
