@@ -243,7 +243,7 @@
     .panel-body.collapsed { max-height: 0 !important; padding: 0 !important; margin: 0 !important; pointer-events: none !important; overflow: hidden !important; opacity: 0 !important; }
 
     /* Swipe-hidden: overrides everything */
-    .swipe-hidden { display: none !important; }
+    .swipe-hidden, #storey-panel.swipe-hidden, #disc-panel.swipe-hidden, #hud.swipe-hidden, #search-box.swipe-hidden, #info-panel.swipe-hidden { display: none !important; }
 
     /* Hide building list + search on mobile */
     #building-list { display: none !important; }
@@ -270,7 +270,7 @@
     /* Collapsed = truly gone, no blocking */
     .panel-body.collapsed { max-height: 0 !important; padding: 0 !important; margin: 0 !important; opacity: 0 !important; overflow: hidden !important; }
     #storey-panel:has(.panel-body.collapsed), #disc-panel:has(.panel-body.collapsed), #search-box:has(.panel-body.collapsed), #hud:has(.panel-body.collapsed) { padding: 1px 3px !important; min-height: 0 !important; overflow: hidden !important; }
-    .swipe-hidden { display: none !important; }
+    .swipe-hidden, #storey-panel.swipe-hidden, #disc-panel.swipe-hidden, #hud.swipe-hidden, #search-box.swipe-hidden, #info-panel.swipe-hidden { display: none !important; }
   }
 </style>
 </head>
