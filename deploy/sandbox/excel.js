@@ -40,7 +40,11 @@ function setupExcel(A) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Issues');
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    XLSX.writeFile(wb, 'BIM_Issues_' + ts + '.xlsx');
+    const fname = 'BIM_Issues_' + ts + '.xlsx';
+    console.log('[S209] §EXCEL before writeFile, issues=' + issues.length);
+    A.status.textContent = 'Writing ' + fname + '...';
+    XLSX.writeFile(wb, fname);
+    console.log('[S209] §EXCEL after writeFile');
     A.status.textContent = `Exported ${issues.length} issues`;
     console.log('[S209] §EXCEL exported', issues.length, 'issues');
   };
