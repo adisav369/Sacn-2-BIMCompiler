@@ -138,13 +138,40 @@ Everything else is standard (sql.js, Three.js, DOM, XLSX, Chart.js). We expose, 
 - Simple multi-user: download DB → edit → upload. edit_log enables manual merge.
 - Future: row-level conflict resolution, CRDT for real-time (spec only, not built)
 
-### S218 — Access Control + Federated View
-- Role-based: contractor sees only their discipline, owner sees all
-- Implemented via template: template defines visible disciplines/storeys/classes
-- No server-side auth needed — template is the access filter
-- Federated: load multiple extracted DBs (different disciplines) into one viewer
-- Already works partially — city mode loads multiple buildings. Same pattern for disciplines.
-- Merge view: STR engineer's DB + MEP engineer's DB → one coordinated scene
+### S218 — Multi-User + Access Control + Federation
+
+**Three levels (Level 1-2 cover 95% of real teams):**
+
+Level 1 — File-level turns (works with OCI today):
+- `.lock` file in OCI bucket (user + timestamp). Check before download, release on upload.
+- One editor at a time, others view read-only with their own templates.
+- No server — just OCI object put/get.
+
+Level 2 — Change-level merge (S217 edit_log):
+- Multiple users download same version, edit different parts, upload changes.
+- `edit_log` table = changeset. Merge = replay logs in timestamp order.
+- Conflict = same GUID + same field by two users → last-write-wins or manual pick.
+- Same concept as Bentley iTwin changesets, but SQLite files not proprietary server.
+
+Level 3 — Real-time collaboration (future, spec only):
+- Yjs CRDT (30KB CDN) or WebRTC peer-to-peer. Not needed for most teams.
+
+**Access control via templates (no server-side auth):**
+- Template defines: visible disciplines, visible storeys, can_edit, can_export, can_run_rules
+- Different template = different role. Swap template = swap role.
+- No SSO/SAML needed — template IS the access filter.
+
+**ISO 19650 audit compliance:**
+- `edit_log` table satisfies ISO 19650 information management audit trail
+- Every change: who (user), what (guid + field), when (timestamp), before/after (old/new value)
+- Version snapshots prove state at any point in time
+- Auditor queries the log directly with SQL — no proprietary tool needed
+- Export audit trail to Excel for submission
+
+**Federation:**
+- Load multiple extracted DBs (different disciplines) into one viewer
+- Already works — city mode loads multiple buildings. Same pattern for disciplines.
+- STR engineer's DB + MEP engineer's DB → one coordinated scene
 - Clash detection across federated DBs = cross-DB spatial query
 
 ### Starter Plugin Pack (ships with S214)
