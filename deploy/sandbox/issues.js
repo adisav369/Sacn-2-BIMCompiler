@@ -163,10 +163,13 @@ function setupIssues(A) {
 
   A.toggleIssues = function() {
     const panel = document.getElementById('issues-panel');
+    const toolbar = document.getElementById('search-box');
     if (panel.classList.contains('active')) {
       panel.classList.remove('active');
+      if (toolbar) toolbar.style.display = '';
     } else {
       panel.classList.add('active');
+      if (toolbar) toolbar.style.display = 'none';
       A._renderIssueList();
       if (A._cacheIssuesForExport) A._cacheIssuesForExport();
     }

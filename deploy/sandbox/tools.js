@@ -115,8 +115,9 @@ function setupTools(A) {
     const bld = A.activeBuilding;
     const dbParam = new URLSearchParams(location.search).get('db') || 'yourproject_extracted.db';
     // boq_charts.html is at bucket root, not in sandbox/
-    const base = location.href.match(/(.*\/o\/)/)?.[1] || '../';
-    window.open(`${base}boq_charts.html?db=${dbParam}&bld=${bld}`, '_blank');
+    // Strip query string BEFORE matching — ?db= and ?lib= contain /o/ which fools greedy regex
+    const base = location.href.split('?')[0].match(/(.*\/o\/)/)?.[1] || '../';
+    window.open(`${base}boq_charts.html?db=${encodeURIComponent(dbParam)}&bld=${bld}`, '_blank');
     A.status.textContent = `4D/5D analytics opened for ${bld} (Save 5D BOQ / Save 4D Schedule)`;
   };
 
