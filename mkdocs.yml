@@ -87,6 +87,7 @@ nav:
   # ─── BIM Designer ─────────────────────────────────────
   - Designer:
       - BIM OOTB (Browser): BIM_Designer_Browser.md
+      - Plugin SDK: PLUGIN_SDK.md
       - Mobile & Cloud: MOBILE_DEPLOY.md
       - DocAction Lifecycle: DocAction_SRS.md
       - Validation Rules: DocValidate.md
@@ -114,6 +115,7 @@ nav:
 
   # ─── Roadmap & Papers ─────────────────────────────────
   - Roadmap:
+      - BIM OOTB Roadmap: ROADMAP.md
       - Action Roadmap: ACTION_ROADMAP.md
       - Project Blueprint: ProjectOrderBlueprint.md
       - Vibe Programming: VibeProgramming.md

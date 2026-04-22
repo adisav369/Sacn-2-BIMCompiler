@@ -634,102 +634,29 @@ scripts/extract_building.sh T0_Hospital > deploy/Hospital_extracted.db
 
 ---
 
-## 8. Implementation Notes
+## 8. Technical Details
 
-### 8.1 File Structure (S209 Modular Refactor)
+For file structure, call chain, OCI bucket layout, deployment rules, and debug/testing procedures, see:
 
-The monolith (`rtree_browser_demo.html`) was split into 16 modules in S209.
-Archived at `deploy/archive/rtree_browser_demo.html`.
+- **[Plugin SDK](PLUGIN_SDK.md)** — API reference, plugin tutorial, AI-assisted development
+- **[Roadmap](ROADMAP.md)** — S210-S214 sequencing, 10 blue ocean scenarios
 
-```
-deploy/
-  landing.html                ← building catalogue (→ index.html on OCI)
-  boq_charts.html             ← 4D/5D analytics (standalone, CDN-only)
-  manifest.json               ← building metadata for landing page
-  OCI_UPLOAD.md               ← deployment guide
-  sandbox/                    ← *** LIVE VIEWER — source of truth ***
-    index.html                ← viewer shell (CSS + HTML + script tags)
-    loader.js                 ← progressive CDN loader (Three.js, sql.js, SheetJS)
-    config.js                 ← constants, OCI base URL detection
-    scene.js                  ← Three.js scene, camera, ground, IndexedDB cache
-    streaming.js              ← DB streaming engine (BLOB → GPU)
-    panels.js                 ← storey/discipline filter panels
-    tools.js                  ← x-ray, wireframe, section cut, screenshot, 4D/5D
-    picking.js                ← element selection (raycaster → info panel)
-    tour.js                   ← fly-around camera animation
-    measure.js                ← distance measurement tool
-    sitecam.js                ← Site Camera (GPS, compass, markup, QR, share)
-    issues.js                 ← issue log (IndexedDB CRUD, status toggle)
-    excel.js                  ← Excel export (SheetJS, synchronous writeFile)
-    walk.js                   ← walk mode (device orientation, GPS anchor)
-    city.js                   ← city mode (786 bboxes, click-to-stream)
-    main.js                   ← orchestrator (setup modules, render loop, window exports)
-    test_all.js               ← 149 tests (syntax, wiring, z-index, OCI live+content, URL integrity, button audit, DB chart proof)
-  buildings/
-    city_index.db             ← 324KB city index (786 bboxes)
-    {Name}_extracted.db       ← per-building metadata + transforms
-    {Name}_library.db         ← per-building geometry BLOBs
-    ... (30 archetypes × 2 files each)
-  archive/
-    rtree_browser_demo.html   ← retired monolith (kept for reference)
-```
-
-**Call chain:**
-```
-User → landing.html (OCI: index.html)
-  → clicks building card
-  → window.open("sandbox/index.html?db=...&lib=...")
-    → loader.js loads CDN libs (Three.js, sql.js, SheetJS)
-    → main.js calls setup*() for each module
-    → streaming.js opens DBs, streams BLOBs to GPU
-    → tools.js / issues.js / excel.js handle toolbar actions
-```
-
-### 8.1a OCI Bucket Layout
-
-| Bucket | Purpose | Viewer path |
-|--------|---------|-------------|
-| `bim-ootb-full` | Landing + 30 buildings + city | `sandbox/index.html` → `sandbox/*.js` |
-| `bim-ootb` | Duplex standalone demo | `index.html` → root `*.js` |
-
-**⚠ DEPLOYMENT RULE:** All JS edits happen in `deploy/sandbox/`. Run `node deploy/sandbox/test_all.js` before AND after changes. Deploy only after all tests pass. Never overwrite OCI files without logged test output.
-
-### 8.2 Key Technical Decisions
+### 8.1 Key Technical Decisions
 
 1. **No build step.** 16 plain JS modules, CDN dependencies. No npm, no webpack, no React.
-   Rationale: matches the DB-as-model simplicity. Each module = one concern.
-
 2. **sql.js over REST.** The browser IS the database client. No API layer to maintain.
-   Per-building split + IndexedDB cache keeps downloads small (1-60MB each).
-
 3. **Three.js r128 (stable).** Not latest — proven, small, well-documented.
-   OrbitControls included. No module bundler needed.
+4. **BufferGeometry from BLOBs.** Same pipeline as Blender's `from_pydata()`. Vertex swap: IFC (x,y,z) → Three.js (x,z,-y).
+5. **IndexedDB cache.** Per-building DB cached on first visit. Second visit = instant.
+6. **Plugin architecture.** Each module follows `function setup*(APP)` pattern. Same pattern for core and community plugins.
 
-4. **BufferGeometry from BLOBs.** Same pipeline as Blender's `from_pydata()`.
-   Vertex swap: IFC (x,y,z) → Three.js (x,z,-y). Rotation: Euler (rx,rz,-ry).
+### 8.2 Test Suite
 
-### 8.3 IndexedDB Cache (S203)
-
-```javascript
-// cachedFetch() — try IndexedDB first, fall back to network, cache result
-const buf = await cachedFetch(url);  // ArrayBuffer
-const db = new SQL.Database(new Uint8Array(buf));
+```bash
+node deploy/sandbox/test_all.js    # 149 tests, must be 100%
 ```
 
-Cache store: `bim_ootb_cache` in IndexedDB. Each URL is a key, ArrayBuffer is the value.
-Clear: F12 → Application → IndexedDB → Delete `bim_ootb_cache`, or click "Clear all cached data" on landing page.
-
-### 8.4 City Mode (S203)
-
-```
-?city=buildings/city_index.db&bldbase=buildings/
-```
-
-`city_index.db` (324KB) contains:
-- `building_summary`: 1,768 rows (786 buildings × disciplines) with pre-computed bboxes
-- `building_archetype`: 786 rows mapping building name → archetype name
-
-Click bbox → `cityLoadBuilding()` → downloads archetype's per-building DBs → applies position offset → streams into shared scene.
+Covers: JS syntax, module wiring, button→function mapping, z-index hierarchy, OCI live + content match, URL integrity (greedy regex proof), DB chart data verification, button wiring audit. See [§10 full breakdown](PLUGIN_SDK.md#2-plugin-structure) for details.
 
 ---
 
@@ -809,200 +736,30 @@ This is not speculative; it's a straightforward port of proven code.
 
 ---
 
-## 10. Debug & Testing
+## 10. Developer Resources
 
-### 10.0 Functional Flow — How the Viewer Works End-to-End
+Full technical details have moved to dedicated specs:
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  USER opens landing page (OCI: index.html = deploy/landing.html)   │
-│  ⚠ WARNING: Never overwrite index.html on OCI without testing      │
-│    landing page locally first (python3 -m http.server 8080)        │
-└──────────────────────────┬──────────────────────────────────────────┘
-                           │ clicks building card
-                           ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  window.open("sandbox/index.html?db=...&lib=...")                  │
-│  ⚠ WARNING: db= and lib= are full OCI URLs. If you pass them to   │
-│    another page via query string, you MUST encodeURIComponent()    │
-│    or you get recursive URL nesting (see Trap 1 below).            │
-└──────────────────────────┬──────────────────────────────────────────┘
-                           │ new tab opens
-                           ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  loader.js — Downloads CDN libraries with progress bars            │
-│    1. Three.js (r128)         — 3D renderer                       │
-│    2. OrbitControls           — camera orbit/pan (needs Three.js)  │
-│    3. sql.js (WASM)           — SQLite in browser (parallel)       │
-│    4. SheetJS                 — Excel export (parallel)            │
-│  ⚠ WARNING: Three.js must load before OrbitControls (dependency).  │
-│    sql.js and SheetJS load in parallel. Do not reorder.            │
-│  On success → removes load overlay → calls initViewer()            │
-└──────────────────────────┬──────────────────────────────────────────┘
-                           │ all libs loaded
-                           ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  main.js — initViewer() orchestrator                               │
-│    Calls setup*() for each module IN ORDER:                        │
-│      setupConfig → setupScene → setupStreaming → setupPanels →     │
-│      setupTools → setupPicking → setupTour → setupMeasure →        │
-│      setupSitecam → setupIssues → setupExcel → setupWalk →        │
-│      setupCity                                                     │
-│    Then: exposes window.* functions for HTML onclick handlers       │
-│    Then: starts render loop (requestAnimationFrame)                │
-│    Then: APP.init() — fetches DBs, bootstraps scene                │
-│  ⚠ WARNING: Order matters. setupConfig must be first (URLs).       │
-│    setupScene before setupStreaming (needs renderer/camera).        │
-│    setupIssues before setupExcel (excel uses _cacheIssuesForExport)│
-│    Every onclick="fn()" in HTML must have window.fn = APP.fn here. │
-│    Missing export = silent failure on click.                       │
-└──────────────────────────┬──────────────────────────────────────────┘
-                           │ APP.init()
-                           ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  config.js — Reads URL params, sets DB_URL, LIB_URL                │
-│    ?db=  → extracted DB (metadata, transforms, elements)           │
-│    ?lib= → library DB (geometry BLOBs, vertices + faces)           │
-│    ?city= → city index DB (786 building bboxes)                    │
-│  ⚠ WARNING: If ?lib= is missing, config.js falls back to          │
-│    Duplex_library.db at bucket root. This is intentional for the   │
-│    standalone Duplex demo. For multi-building, landing page must    │
-│    pass both ?db= and ?lib= parameters.                            │
-└──────────────────────────┬──────────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  scene.js — cachedFetch(DB_URL) and cachedFetch(LIB_URL)           │
-│    IndexedDB cache: hit = instant, miss = network fetch + cache    │
-│    Console: §CACHE_HIT or §CACHE_MISS with URL and size            │
-│  ⚠ WARNING: Cache keys are full URLs. If URL changes (even query   │
-│    string), it's a cache miss. "Clear all cached data" on landing  │
-│    page deletes the IndexedDB store. Users must do this after DB   │
-│    updates or they see stale data.                                 │
-└──────────────────────────┬──────────────────────────────────────────┘
-                           │ both DBs loaded
-                           ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  streaming.js — §DB_LOADED → §BOOTSTRAP → §OFFSET → §GROUND       │
-│    Opens extracted DB → reads building centres → computes offset    │
-│    Opens library DB → reads component_geometries table             │
-│    Streams BLOBs → Float32Array → BufferGeometry → GPU             │
-│    Console: §BLOB_FETCH (success) or §BLOB_MISS (no geometry)     │
-│  ⚠ WARNING: §BLOB_MISS means library DB has no matching hash.     │
-│    If ALL are misses → wrong library DB or library not extracted.  │
-│    §LIB_ERROR = library DB loaded but has no geometry table at all │
-│    — check the ?lib= URL isn't pointing at an HTML file.           │
-└──────────────────────────┬──────────────────────────────────────────┘
-                           │ model visible
-                           ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  USER INTERACTIONS (toolbar buttons)                               │
-│                                                                    │
-│  ☢ X-Ray      → tools.js    toggleXray()                          │
-│  📷 Screenshot → tools.js    screenshot()                          │
-│  ⛶ Fullscreen → tools.js    toggleFullscreen()                     │
-│  ☼ Theme      → tools.js    toggleTheme()                          │
-│  ✈ Fly Around → tour.js     toggleFlyAround()                     │
-│  📊 4D/5D     → tools.js    export4D5D()                          │
-│     ⚠ Opens boq_charts.html in new tab with ?db= (encoded).       │
-│       boq_charts.html fetches the DB, runs SQL queries, renders    │
-│       9 charts. "Save 5D BOQ" / "Save 4D Schedule" export Excel.  │
-│       If new tab shows empty model → dbParam encoding bug (Trap 1) │
-│  📋 Issues    → issues.js   toggleIssues()                         │
-│     ⚠ Hides toolbar (#search-box) to prevent mobile tap overlap.  │
-│       Inside panel: "Export Excel" → excel.js exportIssuesExcel()  │
-│       Uses SheetJS XLSX.writeFile() — MUST be synchronous.         │
-│       Do NOT make async — browser loses user gesture permission.   │
-│  📐 Measure   → measure.js  toggleMeasure()                       │
-│  ✂ Section    → tools.js    toggleSection()                        │
-│  📸 Site Cam  → sitecam.js  openSiteCamera() (mobile only)        │
-│  🚶 Walk Mode → walk.js     toggleWalkMode() (mobile only)         │
-│                                                                    │
-│  Element pick → picking.js  (raycaster → info panel)               │
-│  Storey filter → panels.js  filterStorey()                         │
-│  Disc toggle  → panels.js   toggleDisc()                           │
-│  City mode    → city.js     (loads multiple buildings)             │
-└─────────────────────────────────────────────────────────────────────┘
-```
+- **[Plugin SDK](PLUGIN_SDK.md)** — API reference (5 block categories, ~30 methods), beginner tutorial, advanced example (progress tracker), AI-assisted plugin development, DB schema reference
+- **[Roadmap](ROADMAP.md)** — S210-S214 sequencing, plugin marketplace, plugin IDE, 10 blue ocean scenarios
+- **[OCI Deployment](../deploy/OCI_UPLOAD.md)** — bucket layout, upload commands, cost
 
-### 10.1 Test Suite
-
-**Script:** [`deploy/sandbox/test_all.js`](../../deploy/sandbox/test_all.js)
+### Quick Reference
 
 ```bash
+# Test (must be 149/149 before deploy)
 node deploy/sandbox/test_all.js
+
+# Local dev server
+cd deploy && python3 -m http.server 8080
+# → http://localhost:8080/landing.html
+
+# Deploy to OCI (both buckets)
+oci os object put --bucket-name bim-ootb-full --file deploy/sandbox/tools.js --name sandbox/tools.js --content-type application/javascript --force
+oci os object put --bucket-name bim-ootb --file deploy/sandbox/tools.js --name tools.js --content-type application/javascript --force
 ```
 
-149 tests across 11 sections:
-
-| # | Section | What it checks |
-|---|---------|---------------|
-| 1 | JS Syntax | `node --check` on all 15 JS files |
-| 2 | Script Tags → Files | Every `<script src="...">` in index.html has a matching file |
-| 3 | Module Wiring | Every `setup*()` call in main.js has a matching function definition |
-| 4 | onclick → window exports | Every `onclick="fn()"` in HTML has a matching `window.fn` in main.js |
-| 5 | Z-Index Overlap Audit | Issues panel z > toolbar z, walk prompt z > toolbar z |
-| 6 | No Stale References | No `index2.html`, `landing2.html`, or monolith references |
-| 7 | Walk Math | 12 orientation/compass calculations |
-| 8 | OCI Live (both buckets) | `curl` every deployed JS file in `bim-ootb-full/sandbox/` AND `bim-ootb/` root, expect HTTP 200 |
-| 9 | S209b Overlap Fix | Toolbar hidden when issues open, encodeURIComponent on dbParam |
-| 9b | OCI Content Match | `curl` critical JS from OCI, byte-compare to local — catches stale deploys |
-| 10 | URL Integrity | Simulates real viewer URL with `?db=&lib=` params, proves greedy regex fix (82 chars not 302), downloads Duplex DB from OCI, opens with sqlite3, verifies tables and data for all 9 charts |
-| 11 | Button Wiring Audit | 📊 calls export4D5D, Export Excel calls exportIssuesExcel, buttons in correct containers, z-index hierarchy (desktop + mobile), excel sync not async |
-
-**Rule:** Run this before AND after any change. All 149 must pass. Save output to a log file. Never deploy at less than 100%.
-
-### 10.2 Deployment Checklist
-
-1. Edit files in `deploy/sandbox/` only
-2. `node deploy/sandbox/test_all.js` → must be 149/149
-3. Bump `?v=N` on changed `<script>` tags in `index.html` (cache bust)
-4. Upload changed files to `bim-ootb-full` bucket (`sandbox/` prefix)
-5. Upload changed files to `bim-ootb` bucket (root, no prefix)
-6. `node deploy/sandbox/test_all.js` again → 9b (content match) must pass
-7. Hard-refresh browser (Ctrl+Shift+R) and verify
-
-### 10.3 Known Traps (S209b Post-Mortem)
-
-**Trap 1 — Greedy regex matches /o/ in query string (THE S209b root cause)**
-`export4D5D()` extracts the OCI bucket root using `location.href.match(/(.*\/o\/)/)`.
-The viewer URL contains `?db=https://.../o/buildings/...&lib=https://.../o/buildings/...`.
-The greedy `.*` matches the LAST `/o/` — which is inside the `?lib=` parameter, not the path.
-Result: `base` = 302 chars (entire URL including query string) instead of 82 chars (bucket root).
-The 📊 button reopens the viewer with corrupted params instead of opening boq_charts.html.
-```
-BROKEN: base = "https://.../o/sandbox/index.html?db=https://.../o/...&lib=https://.../o/"  (302 chars)
-FIXED:  base = "https://.../o/"  (82 chars)
-```
-**Symptom:** New tab opens with empty model. Console shows `§CACHE_MISS .../boq_charts.html?db=...`,
-`§LIB_LOADED size=0MB`, `§LIB_ERROR no geometry table found`, all `§BLOB_MISS`.
-**Fix:** Strip query string before matching: `location.href.split('?')[0].match(/(.*\/o\/)/)`
-Plus `encodeURIComponent(dbParam)` to prevent URL-in-URL nesting.
-**Test:** Section 10 proves FIXED=82 chars vs BROKEN=302 chars with real viewer URL.
-
-**Trap 2 — Mobile tap overlap (z-index not enough)**
-On mobile, `#search-box` (toolbar, z:12) sits below `#issues-panel` (z:50) but NOT behind it.
-The toolbar buttons are visually below the panel, so the user taps where "Export Excel" appears
-but hits 📊 underneath. Higher z-index doesn't help because the elements don't overlap — the
-toolbar is in the gap below the panel.
-**Symptom:** Tapping "Export Excel" opens 4D/5D in new tab. Status bar shows "4D/5D analytics opened".
-**Fix:** `toggleIssues()` in `issues.js` sets `#search-box` to `display:none` when issues panel
-is active. Toolbar reappears when panel closes.
-
-**Trap 3 — Two buckets, opposite structure**
-`bim-ootb-full` serves from `sandbox/*.js`. `bim-ootb` serves from root `*.js`.
-Both load the same code but from different paths. When deploying, upload to BOTH:
-- `bim-ootb-full`: `--name sandbox/{file}.js`
-- `bim-ootb`: `--name {file}.js`
-Forgetting one bucket = one demo site runs stale code.
-
-**Trap 4 — OCI has no versioning**
-`--force` overwrites are irreversible. Always verify the local file is correct (tests pass)
-before uploading. Never batch-delete bucket objects without checking each file is truly orphaned.
-
-### 10.4 Console Log Tags
-
-All viewer logs use bracketed session tags for grep-ability:
+### Console Log Tags
 
 | Tag | Module | Meaning |
 |-----|--------|---------|
@@ -1012,6 +769,4 @@ All viewer logs use bracketed session tags for grep-ability:
 | `[S205]` | issues.js, sitecam.js | Issue save/clear, section, site camera |
 | `[S209]` | excel.js, issues.js | Excel export, issue status toggle |
 
-**To diagnose:** Open F12 → Console → filter by tag (e.g. `[S209]`).
-If clicking "Export Excel" produces `[S209] §EXCEL` lines → export is working.
-If it produces no output but status bar says "4D/5D analytics opened" → overlap bug (Trap 2).
+Filter in F12 Console by tag (e.g. `[S209]`) to diagnose issues.
