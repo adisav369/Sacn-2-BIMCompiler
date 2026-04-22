@@ -168,6 +168,7 @@ function setupIssues(A) {
     } else {
       panel.classList.add('active');
       A._renderIssueList();
+      if (A._cacheIssuesForExport) A._cacheIssuesForExport();
     }
   };
 
