@@ -103,6 +103,42 @@ Everything else is standard (sql.js, Three.js, DOM, XLSX, Chart.js). We expose, 
 - User describes in English, AI writes, IDE verifies, log proves. Standard practice.
 - Full spec: `docs/PLUGIN_SDK.md`
 
+### Starter Plugin Pack (ships with S214)
+Pre-installed plugins that prove the marketplace. All use the plugin API, no core changes.
+
+| Plugin | What | Effort | Replaces |
+|--------|------|:---:|----------|
+| BCF Export | Issue log → BCF XML zip (interop with Revit/Solibri/BIMcollab) | Low | BIMcollab ($) |
+| COBie Export | DB → 6-tab spreadsheet (government handover) | Low | Revit COBie toolkit |
+| Colour by Property | Colour elements by material/discipline/status/custom | Low | Solibri/Navisworks |
+| Door/Window Schedule | Sortable table of types, sizes, fire ratings | Low | Revit schedules |
+| Rule Checker | JSON rule packs (SQL query + pass/fail check) per standard | Medium | Solibri ($15K/yr) |
+| Revision Compare | Load two DBs, show added/removed/changed elements | Medium | Navisworks ($8K/yr) |
+| Selection Sets | Save/recall named GUID groups | Low | All BIM tools |
+| 4D Timeline Slider | Scrub through construction phases, show/hide by date | Medium | Synchro/Navisworks |
+
+**Localization (country config drives everything):**
+- Setup script on first launch: pick country → sets currency, rates, rules, standards, templates
+- Config = one JSON per country (`locales/MY.json`, `locales/GB.json`, `locales/US.json`)
+- Cascades to: forex in 4D/5D, rates in BOQ, rules in checker, labour in schedule
+- Users change defaults anytime in Settings
+- Community contributes country packs (rates + rules + templates) to marketplace
+
+**Background reports (DB processing, no UI needed):**
+- User toggles which reports run: compliance, COBie, carbon, cost variance, schedules, clash
+- Trigger: on-change (DB updated), weekly, monthly, or manual
+- Output: Excel to project reports folder, silent, no popup
+- Reports panel lists generated files for download
+- Viewer is optional — DB processing is the core value
+- User adds more report types from marketplace, unticks what they don't need
+- One shop: headless DB processing + coupled responsive viewer when needed
+
+**Country packs (community-contributed):**
+- Malaysia (UBBL, MS 1184, CIDB 2024 rates, JKR)
+- UK (Building Regs Part B/M/L, NRM rates)
+- US (ADA 2010, CSI MasterFormat, RS Means rates)
+- Fire safety, MEP clearance (cross-country)
+
 ## Scenarios (template + DB + browser, no new systems)
 
 | # | Scenario | What's needed |

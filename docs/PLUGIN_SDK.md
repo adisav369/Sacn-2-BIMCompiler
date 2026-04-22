@@ -9,7 +9,29 @@ The browser IDE lets you write, test, and publish plugins without leaving the br
 **Test harness:** `node plugin_test.js plugins/my_plugin/`
 **Fixture DB:** Duplex (1119 elements, 2.8MB)
 
-## 2. Plugin Structure
+## 2. Install / Remove / Toggle
+
+```
+Install:  drop folder into plugins/ → add line to manifest.json → refresh
+Remove:   delete folder + manifest line → refresh (data auto-wiped)
+Disable:  set "enabled": false in manifest → refresh (folder stays, not loaded)
+```
+
+Plugin settings panel in viewer:
+```
+Plugins                          [+ Install]
+┌────────────────────────────────────────┐
+│ 🌱 Carbon Calculator        [ON ] [×] │
+│ 📊 Progress Tracker         [OFF] [×] │
+│ 💥 Clash Detector            [ON ] [×] │
+└────────────────────────────────────────┘
+```
+
+- Toggle = flip `enabled` in manifest. No code change.
+- Delete = remove manifest entry + folder. Plugin's IndexedDB keys (prefixed `store_{id}_*`) auto-wiped.
+- No residue in core code, DOM, or event listeners. `plugin_loader.js` handles full lifecycle.
+
+## 3. Plugin Structure
 
 ```
 plugins/my_plugin/
