@@ -103,6 +103,50 @@ Everything else is standard (sql.js, Three.js, DOM, XLSX, Chart.js). We expose, 
 - User describes in English, AI writes, IDE verifies, log proves. Standard practice.
 - Full spec: `docs/PLUGIN_SDK.md`
 
+### S215 — Property Editing + Save DB (viewer → tool)
+- `APP.db.exec("UPDATE ...")` on in-memory sql.js DB
+- `A.interact.prompt()` on element pick → edit material, name, status, custom fields
+- Save: download modified DB as file, or push to OCI
+- Changes tracked in `edit_log` table (guid, field, old, new, timestamp, user)
+- No schema change needed — sql.js UPDATE on existing tables
+
+### S216 — IFC Export (tool → interop)
+- DB → IFC4 STEP file, entirely in browser (string concatenation from SQL)
+- Tessellated geometry via IfcTriangulatedFaceSet (vertices/faces BLOBs already stored)
+- Full spatial hierarchy from `spatial_structure` + `rel_aggregates`
+- Element placement from `element_transforms`
+- Materials from `material_layers`, colours from `surface_styles`
+- Containment from `rel_contained_in_space`
+- NOT parametric round-trip — tessellated coordination model (industry standard for federated models)
+- Output: `.ifc` file download. Valid IFC4 readable by Revit, ArchiCAD, Solibri, any IFC viewer.
+- Writer walks tables in order:
+  1. Project + OwnerHistory + Units (project_metadata)
+  2. Site → Building → Storeys → Spaces (spatial_structure)
+  3. Elements with placement (elements_meta + element_transforms)
+  4. Geometry per element (base_geometries BLOBs → IfcTriangulatedFaceSet)
+  5. Materials + surface styles
+  6. Containment relationships
+- Missing from export: property sets (Pset_*), parametric geometry, type definitions, opening links
+- Plugin: `ifc_export/plugin.js` — toolbar button, runs SQL, builds STEP text, downloads file
+
+### S217 — Change Tracking + Version History (interop → team)
+- `edit_log` table tracks every UPDATE (guid, field, old_value, new_value, timestamp, user)
+- Version = DB snapshot saved to IndexedDB with timestamp
+- Diff two versions: SQL EXCEPT between snapshots → added/removed/changed elements
+- Colour diff in viewer: green=added, red=removed, yellow=changed
+- Export diff report to Excel
+- Simple multi-user: download DB → edit → upload. edit_log enables manual merge.
+- Future: row-level conflict resolution, CRDT for real-time (spec only, not built)
+
+### S218 — Access Control + Federated View
+- Role-based: contractor sees only their discipline, owner sees all
+- Implemented via template: template defines visible disciplines/storeys/classes
+- No server-side auth needed — template is the access filter
+- Federated: load multiple extracted DBs (different disciplines) into one viewer
+- Already works partially — city mode loads multiple buildings. Same pattern for disciplines.
+- Merge view: STR engineer's DB + MEP engineer's DB → one coordinated scene
+- Clash detection across federated DBs = cross-DB spatial query
+
 ### Starter Plugin Pack (ships with S214)
 Pre-installed plugins that prove the marketplace. All use the plugin API, no core changes.
 
