@@ -1336,15 +1336,26 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-plugin-structure" class="md-nav__link">
+  <a href="#2-install-remove-toggle" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Plugin Structure
+        2. Install / Remove / Toggle
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="2. Plugin Structure">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-plugin-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Plugin Structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Plugin Structure">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3213,15 +3224,26 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-plugin-structure" class="md-nav__link">
+  <a href="#2-install-remove-toggle" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Plugin Structure
+        2. Install / Remove / Toggle
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="2. Plugin Structure">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-plugin-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Plugin Structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Plugin Structure">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3483,7 +3505,25 @@ The browser IDE lets you write, test, and publish plugins without leaving the br
 <p><strong>IDE:</strong> <code>deploy/sandbox/ide.html</code>
 <strong>Test harness:</strong> <code>node plugin_test.js plugins/my_plugin/</code>
 <strong>Fixture DB:</strong> Duplex (1119 elements, 2.8MB)</p>
-<h2 id="2-plugin-structure">2. Plugin Structure<a class="headerlink" href="#2-plugin-structure" title="Permanent link">&para;</a></h2>
+<h2 id="2-install-remove-toggle">2. Install / Remove / Toggle<a class="headerlink" href="#2-install-remove-toggle" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>Install:  drop folder into plugins/ → add line to manifest.json → refresh
+Remove:   delete folder + manifest line → refresh (data auto-wiped)
+Disable:  set &quot;enabled&quot;: false in manifest → refresh (folder stays, not loaded)
+</code></pre></div>
+<p>Plugin settings panel in viewer:
+<div class="highlight"><pre><span></span><code>Plugins                          [+ Install]
+┌────────────────────────────────────────┐
+│ 🌱 Carbon Calculator        [ON ] [×] │
+│ 📊 Progress Tracker         [OFF] [×] │
+│ 💥 Clash Detector            [ON ] [×] │
+└────────────────────────────────────────┘
+</code></pre></div></p>
+<ul>
+<li>Toggle = flip <code>enabled</code> in manifest. No code change.</li>
+<li>Delete = remove manifest entry + folder. Plugin's IndexedDB keys (prefixed <code>store_{id}_*</code>) auto-wiped.</li>
+<li>No residue in core code, DOM, or event listeners. <code>plugin_loader.js</code> handles full lifecycle.</li>
+</ul>
+<h2 id="3-plugin-structure">3. Plugin Structure<a class="headerlink" href="#3-plugin-structure" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>plugins/my_plugin/
   manifest.json       ← declares name, icon, type, entry point
   plugin.js           ← function setupMyPlugin(A) { ... }
