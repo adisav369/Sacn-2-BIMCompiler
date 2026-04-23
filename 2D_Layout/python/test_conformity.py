@@ -106,6 +106,7 @@ _SUFFIX_TO_ID = {
     'opening_schedule': 'OPENING_SCHED',
     'electrical_plan':  'ELECT_PLAN',
     'reflected_ceiling_plan': 'REFL_CEILING',
+    'plumbing_plan':    'PLUMBING_PLAN',
 }
 
 # §9.6 R2: short filename map
@@ -116,6 +117,7 @@ _SHORT_TO_ID = {
     'REAR':  'REAR_ELEV',
     'LEFT':  'LEFT_ELEV',
     'RIGHT': 'RIGHT_ELEV',
+    'PLUMBING': 'PLUMBING_PLAN',
 }
 
 def _identify_drawing_type(dxf_filename, tpl):
@@ -150,8 +152,13 @@ def _identify_drawing_type(dxf_filename, tpl):
 # ─────────────────────────────────────────────────────────────────
 # SHEET TYPE CLASSIFICATION (§5.0 conditional furniture)
 # ─────────────────────────────────────────────────────────────────
+_MEP_DRAWING_IDS = frozenset({'PLUMBING_PLAN', 'ELECT_PLAN'})
+
 def _sheet_type(dt):
-    """Return 'plan', 'elevation', 'section', or 'schedule'."""
+    """Return 'plan', 'elevation', 'section', 'schedule', or 'mep'."""
+    dt_id = dt.get('id', '')
+    if dt_id in _MEP_DRAWING_IDS:
+        return 'mep'
     view = dt.get('view', '')
     if view in ('PLAN', 'ROOF_PLAN'):
         return 'plan'
@@ -811,7 +818,7 @@ def main():
         ]
 
         # Conditional checks by sheet type (§5.0 conditional table)
-        if stype != 'schedule':
+        if stype not in ('schedule', 'mep'):
             checks.extend([
                 lambda: check_grid_lines(sheet, entities),
                 lambda: check_grid_dashdot(sheet, doc),
@@ -838,7 +845,7 @@ def main():
             lambda: check_proof_exists(sheet, dxf_path),
         ])
 
-        if stype != 'schedule':
+        if stype not in ('schedule', 'mep'):
             checks.extend([
                 lambda: check_proof_white_bg(sheet, dxf_path),
                 lambda: check_proof_dashdot(sheet, dxf_path),

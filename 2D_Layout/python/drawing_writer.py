@@ -26,6 +26,16 @@ from dataclasses import dataclass, field
 from typing import List, Tuple, Optional, Dict
 from section_cut import section_cut as run_section_cut, parse_vertices_blob
 
+
+# ─────────────────────────────────────────────────────────────────
+# HARD-FAIL — §1 R1: drawing engine must NEVER invent geometry
+# ─────────────────────────────────────────────────────────────────
+
+class DrawingInventionError(Exception):
+    """Raised when the engine would invent geometry not in the source data."""
+    pass
+
+
 # ─────────────────────────────────────────────────────────────────
 # FORENSIC LOG  (spec R6)
 # ─────────────────────────────────────────────────────────────────
@@ -587,6 +597,37 @@ def snap_grids(grids: List[GridLine]) -> List[GridLine]:
     return result
 
 
+def _roof_upper_envelope(points, n_bins=60):
+    """Compute upper boundary envelope of projected (h, z) roof vertices.
+
+    Better than convex hull for curved roofs (barrel vaults, domes):
+    convex hull of a barrel vault projects to a 4-point bbox, losing the curve.
+    Upper envelope traces the actual roof profile by binning horizontally
+    and taking max Z per bin.
+
+    Returns list of (h, z_max) points sorted left-to-right — the roof skyline.
+    """
+    if len(points) < 3:
+        return list(points)
+
+    h_vals = [p[0] for p in points]
+    h_min, h_max = min(h_vals), max(h_vals)
+    h_span = h_max - h_min
+    if h_span < 0.001:
+        return list(points)
+
+    bin_width = h_span / n_bins
+    bins = {}  # bin_index -> (h_center, max_z)
+    for h, z in points:
+        bi = min(int((h - h_min) / bin_width), n_bins - 1)
+        h_center = h_min + (bi + 0.5) * bin_width
+        if bi not in bins or z > bins[bi][1]:
+            bins[bi] = (h_center, z)
+
+    envelope = sorted(bins.values(), key=lambda p: p[0])
+    return envelope
+
+
 def _convex_hull_2d(points):
     """Andrew's monotone chain convex hull. Returns CCW-ordered hull points.
 
@@ -715,7 +756,24 @@ def roof_silhouette(db_path, face, h_bounds=None):
                         thicknesses.append(zspan)
     thickness_m = min(thicknesses) if thicknesses else 0.0
 
-    hull = _convex_hull_2d(all_pts)
+    # §I-38: Use upper envelope for detailed meshes (>20 verts),
+    # convex hull for simple roofs (≤20 verts = flat gable/hip)
+    n_verts = len(all_pts)
+    convex_hull = _convex_hull_2d(all_pts)
+
+    if n_verts > 20:
+        # Detailed mesh — envelope traces the actual roof profile (curves, barrel vaults)
+        hull = _roof_upper_envelope(all_pts)
+        _log(f"§ROOF_ENVELOPE: {len(hull)} envelope points from {n_verts} vertices "
+             f"(convex hull was {len(convex_hull)} pts)")
+        # Hard-fail rule 1 (§I-38b): log if convex hull would have been degenerate
+        if len(convex_hull) <= 4:
+            _log(f"§HARD_FAIL ROOF_HULL: {n_verts} vertices would produce "
+                 f"{len(convex_hull)}-point convex hull (bbox). "
+                 f"Envelope used instead — prevented bbox invention.")
+    else:
+        hull = convex_hull
+
     if h_bounds is not None:
         return hull, thickness_m, _oob_info
     return hull, thickness_m

@@ -2397,6 +2397,21 @@ Do not duplicate issues here. Add to that file, not this section.
 | I-20 | Roof surface hatching (tile/slab pattern) | §5.3 extension |
 | I-21 | APRON level marker (4th level between GRD and FFL) | §4.3b |
 | I-23 | Reflected ceiling plan (A-07) | status=GAP |
+| I-43 | R5 hardcoded values: 3 R5-ALLOW line weights + title block proportions | §24.2 |
+| I-44 | Level marker symbol: text-only, should be ▽/△ triangle per TB-LKTN | §24.3 |
+| I-45 | Door swing arcs missing on floor plan | §24.4 |
+| I-46 | Section cut markers (A-A, B-B) missing on floor plan | §24.4 |
+| I-47 | Finish code callouts per room missing | §24.4 |
+| I-48 | Gable/hip roof profile not rendered on elevation (flat-top bbox) | §24.3 |
+| I-49 | Combined elevation sheets: front+rear on one sheet, left+right on one | §24.5 |
+| I-50 | Electrical plan page not implemented | §24.5 |
+| I-51 | Section drawing page not implemented | §24.5 |
+| I-52 | Door/window schedule page not implemented | §24.5 |
+| I-53 | Material callout tags (MR/FG/CP/D/W) on elevations | §24.3 |
+| I-54 | Plumbing fixture symbols on floor plan from IFC mesh | §24.4 |
+| I-55 | Roof plan: eave overhang dims, ridge/hip lines, slope arrows | §24.4 |
+| I-56 | Plumbing diagram pages (cold water + sanitary, NTS) | §24.5 |
+| I-57 | Finish schedule panel on floor plan sheet | §24.4 |
 
 
 ---
@@ -3781,3 +3796,149 @@ Bonsai defines 20 annotation types. Mapping to our §21 `ann_type` column:
 | HIDDEN_LINE | OTHER | Hidden edges |
 | ELEVATION, SECTION | OTHER | Reference markers |
 | MISC, NOTDEFINED | OTHER | Catch-all |
+
+
+## 24. TB-LKTN Parity — Gap Analysis (§24)
+
+Reference: `2D_Layout/input/TBKLTN_House.pdf` (WD-1/01, RUMAH RAKYAT, April 2024).
+This is the JKR Malaysian standard drawing set for a single-storey house: 8 sheets.
+
+### 24.1 Sheet Parity
+
+| # | TB-LKTN Sheet | Status | Gap |
+|---|--------------|--------|-----|
+| 1 | Floor Plan | **PARTIAL** | Missing: finish schedule panel, plumbing fixture symbols, section cut markers, door swing arcs, finish callout notation per room |
+| 2 | Electrical Plan | **STUB** | Background floor plan + MEP overlay needed: light/fan/switch/outlet symbols, wiring circuit lines, symbol legend with QTY |
+| 3 | Roof Plan | **PARTIAL** | Missing: eave overhang dims (700mm), ridge line, hip lines, slope direction hatch arrows |
+| 4 | Front + Rear Elevation | **PARTIAL** | Missing: combined sheet (2 views stacked), gable/hip roof profile, triangle level symbols, material callout tags (MR/FG/CP), D/W tags on elevation |
+| 5 | Left + Right Elevation | **PARTIAL** | Same as #4 |
+| 6 | Section A-A + B-B | **NOT IMPLEMENTED** | Cross-section renderer needed (section_cut.py exists but no DXF page writer) |
+| 7 | Plumbing Diagrams | **NOT IMPLEMENTED** | Schematic cold water + sanitary layout (NTS) |
+| 8 | Door/Window Schedule | **NOT IMPLEMENTED** | Elevation sketch of each type + table (REFERENCES, TYPE, SIZE, LOCATION, UNITS) |
+
+### 24.2 Hardcoded Values (R5 violations)
+
+These values are hardcoded in Python and must move to `drawing_template.json`:
+
+| File | Line | Value | Should be template key |
+|------|------|-------|----------------------|
+| drawing_writer_dxf.py | 405 | `0.25 * 100` (block stroke) | `blocks.stroke_mm` |
+| drawing_writer_dxf.py | 700 | `0.35 * 100` (title block med) | `title_block.section_break_mm` |
+| drawing_writer_dxf.py | 701 | `0.50 * 100` (title block bold) | `title_block.outer_frame_mm` |
+| drawing_writer_dxf.py | 879 | `tb_w * 0.18` (internal proportion) | `title_block.internal_ratio` |
+| drawing_writer_dxf.py | 1240 | `0.25` (ground threshold) | `elevation.ground_threshold_ratio` |
+| drawing_writer_dxf.py | 1718 | `0.18` (fallback line weight) | `line_weights.fallback` |
+
+### 24.3 Elevation Gaps vs TB-LKTN
+
+**Level marker symbol:**
+TB-LKTN uses inverted triangle ▽ for floor levels (GRD. FLOOR LEVEL, BEAM/CEILING
+LEVEL) and upright triangle △ for ground datum (GRD. LEVEL). Our engine draws text
+labels only. Fix: add `level_markers.symbol` to template (`"triangle_down"` /
+`"triangle_up"`), render as SOLID entity or block INSERT.
+
+**Roof profile:**
+TB-LKTN front/rear elevation shows a **peaked gable** with visible ridge cap. Our
+engine draws the convex hull/envelope of roof mesh vertices, which for a gable roof
+gives the correct peak shape (4 pts) BUT doesn't show the ridge cap detail or the
+fascia/gutter line below the eave. The side (left/right) elevation shows **hip lines**
+converging to the ridge — our envelope captures this for SH barrel vault but not for
+gable roofs.
+
+Fix: extract ridge line from roof mesh (highest Z vertices that span the building
+length). Draw fascia line at eave level. The mesh data has this — it's a projection
+issue, not a data issue.
+
+**Material callout tags:**
+TB-LKTN places circled callout tags on elevation: MR (Metal Ridge), FG (Fascia
+Gutter), CP (Casement Panel). These come from `element_name` in elements_meta.
+Wire tag placement at element centroid on elevation, same as D/W tags on floor plan.
+
+**Combined sheets:**
+TB-LKTN puts front+rear on one sheet (stacked vertically with gap) and left+right
+on one sheet. Layout: top drawing first, shared title block, drawing numbers
+"4. FRONT ELEVATION" / "5. REAR ELEVATION" below each. This requires a new
+`write_combined_elevation_dxf()` function.
+
+### 24.4 Floor Plan Gaps vs TB-LKTN
+
+**Door swing arcs:**
+Standard architectural convention: 90° arc from door leaf to fully-open position.
+The arc radius = door width. Direction determined by door hinge side (derivable from
+door position relative to wall ends). Template key: `door.swing_arc_angle` (default 90).
+
+**Section cut markers:**
+Lines on floor plan showing where sections A-A and B-B are taken. Arrow heads at
+each end indicate viewing direction. Uses the `SECTION_ARROW` block already defined
+in our code (line 417) but never placed. Position: user-defined or auto-derived from
+building midlines.
+
+**Finish code notation:**
+Each room has a coded finish indicator below the room label:
+```
+    DAPUR
+  CT | V1
+  --------
+  12.5 m²
+```
+Where CT = ceramic tiles (floor), V1 = wall finish type. Data source: `2d_finish_type`
+table in 2D.db (already exists). Template key: `room_labels.show_finish_codes` (bool).
+
+**Plumbing fixture symbols:**
+TB-LKTN floor plan shows: kitchen sink, basin, WC, shower, floor trap, tap, gully
+trap. Each with a standard symbol and count in the legend. Source: IFC elements with
+class IfcSanitaryTerminal, IfcWasteTerminal, etc. Render: projected XY mesh hull
+via `_mesh_hulls()` (already exists for roof, generalise to MEP).
+
+**Finish schedule panel:**
+TB-LKTN floor plan sheet has a panel (right side, below symbol legend) listing:
+FLOOR FINISHES (types + descriptions), WALL FINISHES, CEILING FINISHES, ROOF
+FINISHES. Data source: `2d_finish_type` table. Render: table in DXF using TEXT
+entities with LINE separators.
+
+**Symbol legend panel:**
+TB-LKTN floor plan has SYMBOLS / DESCRIPTIONS / TYP. UNITS table listing all
+plumbing fixtures. Data source: count of each IfcSanitaryTerminal type from DB.
+
+### 24.5 Missing Pages
+
+**Section drawings (I-51):**
+Cross-section through the building at a specified cut plane. The engine already has
+`section_cut.py` which does the mesh slicing. Missing: a `write_section_dxf()` page
+writer that takes the section cut results and renders them with proper wall fills,
+roof truss profile, floor slab, room labels, and level markers. TB-LKTN shows
+two sections (A-A longitudinal, B-B transverse) on one sheet.
+
+**Door/Window schedule (I-52):**
+For each door/window type: an elevation sketch (front view of the door/window at
+larger scale) plus a table row with REFERENCES, TYPE OF DOOR/WINDOW, SIZE, LOCATION,
+UNITS. Data source: group elements_meta by element_name, extract dimensions from
+bbox, count instances, list room locations. Elevation sketch: project mesh vertices
+onto XZ plane at element position.
+
+**Electrical plan (I-50):**
+Background = floor plan walls (at lighter line weight), overlaid with electrical
+symbols at device positions from IFC. Symbol legend with quantities. Wiring circuit
+lines connecting switches to lights/fans. This extends the existing MEP plan stub.
+
+**Plumbing diagrams (I-56):**
+Schematic (not-to-scale) diagrams showing cold water supply layout and sanitary
+drainage layout. These are riser diagrams, not plan views. More like a flowchart
+than a spatial drawing. Lower priority — TB-LKTN includes them but they're
+specialist services drawings.
+
+### 24.6 Implementation Priority
+
+**Phase A — Fix what we have (hardening):**
+I-43 (R5 hardcodes) → I-44 (triangle levels) → I-45 (door swings) → I-46 (section
+markers) → I-47 (finish codes) → I-48 (roof profile)
+
+**Phase B — Missing pages:**
+I-49 (combined elevations) → I-50 (electrical plan) → I-51 (section drawings) →
+I-52 (door/window schedule)
+
+**Phase C — Polish:**
+I-53 (material tags) → I-54 (fixture symbols) → I-55 (roof plan enhance) →
+I-57 (finish panel) → I-56 (plumbing diagrams)
+
+**Phase D — 3rd building onboarding** after Phases A-C stable on SH+DX.
