@@ -518,7 +518,7 @@ function renderCharts() {
   chartInstances.push(new Chart(pieCanvas, {
     type:'pie',
     data:{labels:discs, datasets:[{data:discTotals, backgroundColor:discs.map(d=>DISC_COLORS[d]||'#888')}]},
-    options:{plugins:{legend:{position:'right',labels:{color:'#ccc'}}}}
+    options:{aspectRatio:1, plugins:{legend:{position:'right',labels:{color:'#ccc',font:{size:13}}}}}
   }));
   logChart(1,'Pie','Cost Breakdown by Discipline',discs.length);
 
@@ -555,7 +555,7 @@ function renderCharts() {
   chartInstances.push(new Chart(tpCanvas, {
     type:'pie',
     data:{labels:tpPhases, datasets:[{data:tpPhases.map(p=>taskPhaseCounts[p]), backgroundColor:tpPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
-    options:{plugins:{legend:{position:'right',labels:{color:'#ccc'}}}}
+    options:{aspectRatio:1, plugins:{legend:{position:'right',labels:{color:'#ccc',font:{size:13}}}}}
   }));
   logChart(3,'Pie','Task Distribution by Phase',tpPhases.length);
 
@@ -900,9 +900,9 @@ async function save5D() {
     if (pie) {
       const d = pie.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
       const id = wb.addImage({ base64: d, extension: 'png' });
-      wsExec.addImage(id, { tl: { col: chartCol, row: 2 }, ext: { width: 550, height: 350 } });
+      wsExec.addImage(id, { tl: { col: chartCol, row: 2 }, ext: { width: 420, height: 420 } });
     }
-    // Chart 1: Bar below pie (row 22)
+    // Chart 1: Bar below pie (row 24 — shifted down for square pie)
     const bar = chartInstances[1] && chartInstances[1].canvas;
     if (bar) {
       const d = bar.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
@@ -1133,13 +1133,16 @@ async function save5D() {
       wsCharts.addRow(['CHART IMAGES']);
       styleTitle(wsCharts, 1, 1);
       let imgRow = 3;
-      for (const canvas of chartCanvases) {
+      for (let ci = 0; ci < chartCanvases.length; ci++) {
+        const canvas = chartCanvases[ci];
         try {
           const dataUrl = canvas.toDataURL('image/png');
           const b64 = dataUrl.replace(/^data:image\/png;base64,/, '');
           const imgId = wb.addImage({ base64: b64, extension: 'png' });
-          wsCharts.addImage(imgId, { tl: { col: 0, row: imgRow }, ext: { width: 550, height: 350 } });
-          imgRow += 22;
+          const isPie = chartInstances[ci] && chartInstances[ci].config.type === 'pie';
+          const imgW = isPie ? 420 : 550, imgH = isPie ? 420 : 350;
+          wsCharts.addImage(imgId, { tl: { col: 0, row: imgRow }, ext: { width: imgW, height: imgH } });
+          imgRow += isPie ? 26 : 22;
         } catch (e) { console.warn('Chart image export error:', e); }
       }
     }

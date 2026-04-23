@@ -3,6 +3,8 @@
 ## PRIME RULE
 **EXTRACT OR COMPILE ONLY.** Query the database. Copy patterns you find. Compute positions via verbs. Never invent.
 
+**NEVER TOUCH PRODUCTION.** `deploy/sandbox/` is LIVE. Do not read it to edit, do not edit it, do not write to it. All dev work goes to `deploy/dev/` ONLY. Promote to sandbox only when the user explicitly says "promote to prod".
+
 ## BOM PRINCIPLE
 A BOM is a recipe: one parent, N children, each with a quantity. Each child can itself be a BOM — building → floor → room → furniture → leaf, recursively. Each level is atomic and self-contained. **Three Concerns never merge:** WHAT (Orders, Categories, Products), HOW (BOMs, AttributeSets, Validation), WHERE (output.db for 4D–8D downstream).
 
@@ -36,7 +38,8 @@ Before ending, update PROGRESS.md with:
 - One bounded task per session
 - Witnesses prove; SanityCheck is fallback
 - All geometry is a maths issue — verify numerically via pipeline logs, not manual DB queries
-- **Log Mandate:** After ANY run, read the output log before conclusions — exit code is not evidence. Improve FINE logging to reveal issues; extract insights from log only, never invent. Every prompt file opens with `# ⚠ DO NOT REMOVE` block stating scope + "read the log." Honour until DONE.
+- **Log Mandate:** After ANY run, save output to a log file, read the log before conclusions — exit code is not evidence. Never rely on inline terminal output. Improve FINE logging to reveal issues; extract insights from log only, never invent. Every prompt file opens with `# ⚠ DO NOT REMOVE` block stating scope + "read the log." Honour until DONE.
+- **Deploy Flow (deploy/dev/ ONLY):** Edit → syntax check → verify all `§` tags exist → save test log → upload to dev bucket → smoke test URLs → fetch back and verify content → confirm file is loaded by viewer. ONE flow, never stop partway or ask user to check.
 - **Spec-First (ALL work):** Spec before code, spec before tests, spec before prompts. No implementation without a written spec section. New features: witness claim first, then implement.
 - **Tests expose issues:** Every test must name the issue it proves or disproves. A test that passes without revealing whether the issue is solved is not a test.
 - **Anti-Drift Policy:** Read `docs/TestArchitecture.md` §Anti-Drift before adding BOMs, products, or geometry paths
@@ -44,6 +47,7 @@ Before ending, update PROGRESS.md with:
 - **Traceability:** Check `TestArchitecture.md` §Traceability Matrix before and after changes
 
 ## Sacred Files (edit with extreme care)
+- `deploy/sandbox/*` — PRODUCTION, never edit (see PRIME RULE)
 - `migration/*.sql` — append only, never modify existing migrations
 - `BuildingCompiler.java` — main orchestrator, many dependencies
 - `RosettaStoneGateTest.java` — defines G1-G6 gates, changes break CI

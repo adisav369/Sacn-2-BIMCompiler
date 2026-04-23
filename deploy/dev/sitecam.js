@@ -1,5 +1,10 @@
-// sitecam.js — Site Camera (mobile site inspection), photo composite, markup
+// sitecam.js — Site Camera (mobile site inspection), photo composite, markup, voice notes
 function setupSitecam(A) {
+  // Swap "A Text" button → "🎤 Voice" at init (button lives in index.html)
+  const textBtn = document.querySelector('.markup-btn[data-tool="text"]');
+  if (textBtn) { textBtn.dataset.tool = 'voice'; textBtn.textContent = '🎤 Voice'; textBtn.setAttribute('onclick', "setMarkupTool('voice')"); }
+  console.log('[S210] §SITECAM_INIT textBtn=' + (textBtn ? 'swapped' : 'missing'));
+
   A._camStream = null;
   A._camGpsPos = null;
   A._camPhotoBlob = null;
@@ -115,11 +120,21 @@ function setupSitecam(A) {
       });
       video.srcObject = A._camStream;
       overlay.classList.add('active');
-      // Hide toolbar elements that bleed through on mobile (use !important to beat CSS media queries)
-      for (const id of ['walk-mode-btn','search-box','disc-panel','storey-panel','info-panel','hud','status']) {
-        const el = document.getElementById(id);
-        if (el) { el.dataset.camHid = el.style.cssText; el.style.setProperty('display', 'none', 'important'); }
+      // Hide toolbar that bleeds through on mobile
+      const _camHideIds = ['walk-mode-btn','search-box','disc-panel','storey-panel','info-panel','hud','status'];
+      for (const hid of _camHideIds) {
+        const hel = document.getElementById(hid);
+        if (hel) { hel.dataset.camHid = hel.style.cssText; hel.style.setProperty('display', 'none', 'important'); }
       }
+      // Walk arrow is dynamic (created by walk.js) — remove it, re-create on close
+      if (A._driveBtn) {
+        A._driveBtn.remove();
+        A._driveBtnWasActive = true;
+        console.log('[S210] §CAM_HIDE driveBtn=REMOVED');
+      } else {
+        A._driveBtnWasActive = false;
+      }
+      console.log('[S210] §CAM_HIDE ids=' + _camHideIds.filter(id => document.getElementById(id)).join(','));
       // Push history state so phone back button closes camera instead of leaving page
       history.pushState({ siteCam: true }, '');
       console.log('[S204] §CAMERA opened');
@@ -148,11 +163,19 @@ function setupSitecam(A) {
     if (A._camOrientHandler) { window.removeEventListener('deviceorientation', A._camOrientHandler, true); A._camOrientHandler = null; }
     document.getElementById('site-cam-overlay').classList.remove('active');
     document.getElementById('site-cam-video').srcObject = null;
-    // Restore hidden toolbar elements
-    for (const id of ['walk-mode-btn','search-box','disc-panel','storey-panel','info-panel','hud','status']) {
-      const el = document.getElementById(id);
-      if (el && el.dataset.camHid !== undefined) { el.style.cssText = el.dataset.camHid; delete el.dataset.camHid; }
+    // Restore hidden toolbar
+    const _camRestoreIds = ['walk-mode-btn','search-box','disc-panel','storey-panel','info-panel','hud','status'];
+    let _restored = 0;
+    for (const rid of _camRestoreIds) {
+      const rel = document.getElementById(rid);
+      if (rel && rel.dataset.camHid !== undefined) { rel.style.cssText = rel.dataset.camHid; delete rel.dataset.camHid; _restored++; }
     }
+    // Re-create walk arrow if it was active before camera
+    if (A._driveBtnWasActive && A.walkModeActive && A.startDriveThru) {
+      A.startDriveThru();
+      console.log('[S210] §CAM_RESTORE driveBtn=RECREATED');
+    }
+    console.log('[S210] §CAM_RESTORE n=' + _restored + ' walk=' + A.walkModeActive);
   };
 
   A.snapSitePhoto = function() {
@@ -271,39 +294,9 @@ function setupSitecam(A) {
     document.getElementById('site-cam-preview').classList.add('active');
     history.pushState({ sitePreview: true }, '');
 
-    // Snag-to-BIM: save with photo now that canvas is drawn
-    if (A._pendingSnagInfo) {
-      const snagInfo = A._pendingSnagInfo;
-      A._pendingSnagInfo = null;
-      mc.toBlob(async (blob) => {
-        if (!blob) return;
-        try {
-          const issue = {
-            jpeg_blob: blob,
-            gps_lat: A._camGpsPos ? A._camGpsPos.coords.latitude : null,
-            gps_lng: A._camGpsPos ? A._camGpsPos.coords.longitude : null,
-            gps_accuracy: A._camGpsPos ? A._camGpsPos.coords.accuracy : null,
-            compass_heading: A._camHeading,
-            timestamp: new Date().toISOString(),
-            element_guid: snagInfo.guid || '',
-            element_class: snagInfo.cls || '',
-            element_name: snagInfo.name || '',
-            building: snagInfo.building || '',
-            storey: snagInfo.storey || '',
-            discipline: snagInfo.disc || '',
-            status: 'open',
-            notes: ''
-          };
-          const db = await A._openIssuesDB();
-          const tx = db.transaction('issues', 'readwrite');
-          tx.objectStore('issues').add(issue);
-          await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
-          db.close();
-          A.status.textContent = `📸 Snag saved: ${snagInfo.cls} @ ${snagInfo.storey}`;
-          console.log('[S209] §SNAG saved', snagInfo.cls, snagInfo.storey);
-        } catch(err) { console.error('[S209] §SNAG_ERR', err); }
-      }, 'image/jpeg', 0.85);
-    }
+    // Snag-to-BIM: DO NOT save here — save once at share/download time via _saveIssueToLog
+    // This prevents double-write (was saving on snap + on share)
+    console.log('[S210] §SNAP_NO_EAGER_SAVE guid=' + (A._pendingSnagInfo ? A._pendingSnagInfo.guid : 'none'));
     A._initMarkupListeners(mc);
     console.log(`[S204] §SNAP ${info.cls} GPS:${gpsText} ${timeText} BIM:${bimImg ? 'YES' : 'NO'}`);
   };
@@ -322,31 +315,8 @@ function setupSitecam(A) {
     document.querySelectorAll('.markup-btn').forEach(b => {
       b.style.background = b.dataset.tool === tool ? '#ff4444' : '#444';
     });
-    if (tool === 'text') {
-      const mc = document.getElementById('site-cam-markup');
-      // Inline input instead of prompt() — prompt is unreliable on mobile overlays
-      let inp = document.getElementById('markup-text-input');
-      if (!inp) {
-        inp = document.createElement('input');
-        inp.id = 'markup-text-input';
-        inp.type = 'text';
-        inp.placeholder = 'Type text, then tap canvas';
-        inp.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;padding:8px 12px;font-size:16px;background:#222;color:#fff;border:2px solid #4fc3f7;border-radius:6px;width:70%;text-align:center;';
-        document.body.appendChild(inp);
-        // Tap canvas to place text
-        const placeText = (e) => {
-          const text = inp.value.trim();
-          if (!text) return;
-          const p = A._canvasCoords(mc, e);
-          A._markupStrokes.push({ tool: 'text', color: A._markupColor, text, x: p.x, y: p.y });
-          A._redrawMarkup();
-          inp.value = '';
-          inp.remove();
-          mc.removeEventListener('pointerdown', placeText);
-        };
-        mc.addEventListener('pointerdown', placeText);
-      }
-      inp.focus();
+    if (tool === 'voice') {
+      A._startVoiceNote();
     }
   };
 
@@ -355,6 +325,52 @@ function setupSitecam(A) {
     document.querySelectorAll('[id^="mc-"]').forEach(b => {
       b.style.borderColor = b.style.backgroundColor === color ? '#fff' : '#333';
     });
+  };
+
+  // ── Voice note recording (replaces text tool) ──
+  A._voiceRecorder = null;
+  A._voiceChunks = [];
+  A._voiceBlobs = []; // attached to snag issue
+
+  A._startVoiceNote = function() {
+    if (A._voiceRecorder && A._voiceRecorder.state === 'recording') {
+      A._voiceRecorder.stop();
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      const rec = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      A._voiceChunks = [];
+      rec.ondataavailable = (e) => { if (e.data.size > 0) A._voiceChunks.push(e.data); };
+      rec.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(A._voiceChunks, { type: 'audio/webm' });
+        A._voiceBlobs.push(blob);
+        // Draw mic badge on markup canvas
+        const mc = document.getElementById('site-cam-markup');
+        const ctx = mc.getContext('2d');
+        const badgeY = 30 + (A._voiceBlobs.length - 1) * 28;
+        A._markupStrokes.push({ tool: 'voice', idx: A._voiceBlobs.length, x: mc.width - 120, y: badgeY });
+        A._redrawMarkup();
+        // Reset button state
+        const vBtn = document.querySelector('.markup-btn[data-tool="voice"]');
+        if (vBtn) { vBtn.style.background = '#444'; vBtn.textContent = '🎤 Voice'; }
+        console.log('[S210] §VOICE_DONE n=' + A._voiceBlobs.length + ' size=' + blob.size);
+      };
+      rec.start();
+      A._voiceRecorder = rec;
+      // Visual feedback — red pulse on button
+      const vBtn = document.querySelector('.markup-btn[data-tool="voice"]');
+      if (vBtn) { vBtn.style.background = '#ff0000'; vBtn.textContent = '⏹ Stop'; }
+      console.log('[S210] §VOICE_START');
+    }).catch(err => {
+      console.log('[S210] §VOICE_ERR ' + err.message);
+    });
+  };
+
+  A._stopVoiceIfActive = function() {
+    if (A._voiceRecorder && A._voiceRecorder.state === 'recording') {
+      A._voiceRecorder.stop();
+    }
   };
 
   A.undoMarkup = function() {
@@ -392,14 +408,12 @@ function setupSitecam(A) {
       ctx.beginPath(); ctx.moveTo(s.points[0].x, s.points[0].y);
       s.points.forEach(p => ctx.lineTo(p.x, p.y));
       ctx.stroke();
-    } else if (s.tool === 'text' && s.text) {
-      ctx.font = 'bold 18px sans-serif';
-      ctx.fillStyle = s.color;
-      const m = ctx.measureText(s.text);
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(s.x - 2, s.y - 16, m.width + 4, 20);
-      ctx.fillStyle = s.color;
-      ctx.fillText(s.text, s.x, s.y);
+    } else if (s.tool === 'voice') {
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(s.x, s.y - 14, 110, 22);
+      ctx.fillStyle = '#ff4444';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('🎤 Voice #' + s.idx, s.x + 4, s.y + 2);
     }
   };
 
@@ -421,7 +435,7 @@ function setupSitecam(A) {
       e.preventDefault();
       const p = A._canvasCoords(mc, e);
       A._markupActive = true;
-      if (A._markupTool === 'text') return;
+      if (A._markupTool === 'voice') return;
       currentStroke = { tool: A._markupTool, color: A._markupColor, points: [p] };
     }
     function onMove(e) {
@@ -460,6 +474,7 @@ function setupSitecam(A) {
   };
 
   A.closeSitePreview = function() {
+    A._stopVoiceIfActive();
     document.getElementById('site-cam-preview').classList.remove('active');
     A._camPhotoBlob = null;
     A._markupListenersSet = false;
@@ -479,22 +494,43 @@ function setupSitecam(A) {
 
     if (navigator.share) {
       try {
-        const file = new File([blob], fileName, { type: 'image/jpeg' });
-        await navigator.share({ files: [file], title, text });
-        console.log('[S204] §SHARE via Web Share API');
-        A._saveIssueToLog();
-        A.closeSitePreview();
-        A.closeSiteCamera();
-        return;
+        const files = [new File([blob], fileName, { type: 'image/jpeg' })];
+        A._voiceBlobs.forEach((vb, i) => {
+          files.push(new File([vb], fileName.replace('.jpg', `_voice${i+1}.webm`), { type: 'audio/webm' }));
+        });
+        const shareData = { files, title, text };
+        // Check if browser supports file sharing (not all do)
+        if (navigator.canShare && navigator.canShare(shareData)) {
+          await navigator.share(shareData);
+          console.log('[S210] §SHARE_FILES n=' + files.length + ' voice=' + A._voiceBlobs.length);
+          A._saveIssueToLog();
+          A.closeSitePreview();
+          A.closeSiteCamera();
+          return;
+        } else {
+          console.log('[S210] §SHARE_NO_FILE_SUPPORT canShare=' + !!navigator.canShare);
+        }
       } catch (err) {
         if (err.name === 'AbortError') return;
-        console.log('[S204] §SHARE_FALLBACK', err.message);
+        console.log('[S210] §SHARE_FILE_ERR ' + err.message);
       }
     }
-    const waText = encodeURIComponent(title + '\n' + text);
-    window.open(`https://wa.me/?text=${waText}`, '_blank');
+    // Fallback: navigator.share without files (text + URL only) — works on all mobile browsers
+    // wa.me URL scheme is text-only, can't attach photos/audio
+    try {
+      const shareData = { title, text };
+      await navigator.share(shareData);
+      console.log('[S210] §SHARE_TEXT via navigator.share (no files)');
+    } catch (e2) {
+      // Last resort: open WhatsApp with text only
+      const waText = encodeURIComponent(title + '\n' + text);
+      window.open(`https://wa.me/?text=${waText}`, '_blank');
+      console.log('[S210] §SHARE_WA text-only');
+    }
     A._saveIssueToLog();
-    console.log('[S204] §SHARE via wa.me fallback');
+    A.closeSitePreview();
+    A.closeSiteCamera();
+    console.log('[S210] §SHARE_CLOSE walk=' + A.walkModeActive);
   };
 
   A.downloadSitePhoto = async function() {

@@ -1,0 +1,32 @@
+§RESOLUTION TEST S210b — 2026-04-23T10:14:56.361Z
+
+── Syntax ──
+  sitecam.js: PASS
+  issues.js: PASS
+
+── BUG 1: Walk arrow removal ──
+  uses A._driveBtn (object ref): PASS
+  does NOT getElementById for arrow in hide: PASS
+  calls .remove() (not display:none): PASS
+  re-creates on close (startDriveThru): PASS
+  startDriveThru has double-create guard: PASS
+
+── BUG 2: Share with files ──
+  checks canShare before file share: PASS
+  three-tier fallback (files → text → wa.me): PASS
+  closeSitePreview calls: 2 PASS
+  §SHARE_FILES tag: PASS
+  §SHARE_NO_FILE_SUPPORT tag: PASS
+  §SHARE_CLOSE tag: PASS
+
+── BUG 3: Single save at share only ──
+  _compositePhoto no DB write: PASS
+  §SNAP_NO_EAGER_SAVE: PASS
+
+── BUG 4: Status toggle re-renders list ──
+  _renderIssueList after toggle: PASS
+
+── Production safety ──
+  sandbox untouched: PASS
+
+── SUMMARY: 17 PASS, 0 FAIL ──
