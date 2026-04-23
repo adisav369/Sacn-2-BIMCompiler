@@ -70,3 +70,43 @@ backup/
 archive/
 site/
 .aider*
+
+# Working databases (root, scripts, IFCtoBOM resources)
+/*.db
+/*.db.bak
+/scripts/*.db
+/scripts/*.blend
+/scripts/*.xlsx
+/scripts/*.json
+/scripts/*.txt
+/IFCtoBOM/src/main/resources/*.db
+
+# Deploy — per-building DB pairs (large binaries, built by pipeline)
+deploy/buildings/
+deploy/component_library*.db
+deploy/sandbox_*.db
+deploy/node_modules/
+deploy/package-lock.json
+deploy/package.json
+
+# Deploy dev — test logs
+deploy/dev/*.log
+deploy/sandbox/voice_test.html
+deploy/sandbox/walk_test*.log
+deploy/test_browser.py
+
+# Node (root)
+/node_modules/
+/package-lock.json
+/package.json
+
+# Reports (generated)
+boq_reports/
+schedules/
+
+# 2D Layout working files
+2D_Layout/input/*.db
+2D_Layout/input/*.png
+2D_Layout/input/*.pdf
+2D_Layout/python/*.db
+2D_Layout/reference_samples/
