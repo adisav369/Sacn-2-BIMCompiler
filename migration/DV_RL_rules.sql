@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- RL: IFC Infra Rail Sample (Infra_Rail)
 -- Source: DAGCompiler/lib/output/infra_rail.db
--- Generated: 2026-03-31 00:27
+-- Generated: 2026-04-17 09:01
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

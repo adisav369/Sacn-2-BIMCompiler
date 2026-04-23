@@ -42,7 +42,10 @@ CREATE TABLE IF NOT EXISTS M_BOM (
     BOMUse                TEXT DEFAULT 'M',
     entity_type           TEXT DEFAULT 'D',
     IsActive              TEXT DEFAULT 'Y',
-    Description           TEXT
+    Description           TEXT,
+    origin_x              REAL DEFAULT 0.0,
+    origin_y              REAL DEFAULT 0.0,
+    origin_z              REAL DEFAULT 0.0
 );
 
 -- ============================================================

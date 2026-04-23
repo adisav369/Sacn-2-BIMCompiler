@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- MO: Molio (Molio)
 -- Source: DAGCompiler/lib/output/molio.db
--- Generated: 2026-03-31 00:21
+-- Generated: 2026-04-17 09:01
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -10,7 +10,7 @@
 -- ifc_class                storey     cnt   avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
 -- -----------------------  ---------  ----  --------  --------  --------  --------  --------
 -- IfcRailing               Unknown    2066  117.0     25.0      1113.0    20.0      5513.0  
--- IfcStair                 Unknown    564   324.0     1440.0    189.0     10.0      6070.0  
+-- IfcOpeningElement        Unknown    245   1208.0    1308.0    2069.0    285.0     5104.0  
 -- IfcWall                  Kælder     27    4191.0    4298.0    3102.0    100.0     27492.0 
 -- IfcWindow                Grundplan  22    1314.0    459.0     3015.0    165.0     3972.0  
 -- IfcWindow                2. Sal     20    1481.0    494.0     1479.0    165.0     1812.0  
@@ -52,7 +52,6 @@
 -- IfcFurnishingElement     5. Sal     5     600.0     760.0     901.0     600.0     600.0   
 -- IfcWall                  6. sal     5     2580.0    2330.0    2475.0    100.0     6136.0  
 -- IfcCovering              6. sal     4     14700.0   10828.0   141.0     645.0     28758.0 
--- IfcFooting               Fundament  4     14187.0   10611.0   900.0     588.0     28080.0 
 -- IfcSlab                  1. Sal     3     2200.0    2067.0    50.0      2200.0    2200.0  
 -- IfcSlab                  Grundplan  3     2200.0    2067.0    50.0      2200.0    2200.0  
 -- IfcSlab                  Kælder     3     2200.0    2067.0    50.0      2200.0    2200.0  
@@ -67,6 +66,19 @@
 
 -- §2: Material distribution
 
+-- ifc_class                material_name                      cnt 
+-- -----------------------  ---------------------------------  ----
+-- IfcRailing               Stål - Bærende                     1959
+-- IfcRailing               Træ - Gulv                         107 
+-- IfcWall                  Beton - Letbeton Bærende           52  
+-- IfcSlab                  GENERISK - STRUKTUREL              37  
+-- IfcWall                  Beton - Armeret Bærende            37  
+-- IfcColumn                GENERISK - STRUKTUREL              14  
+-- IfcBeam                  GENERISK - STRUKTUREL              7   
+-- IfcCovering              Aluminium                          4   
+-- IfcWall                  Beton - Insitu Udfyldning          4   
+-- IfcWall                  Beton - Letbeton Bærende Tagetage  3   
+-- IfcBuildingElementProxy  GENERISK - STRUKTUREL              1   
 
 -- §3: Spacing patterns (adjacent element gaps)
 -- Elements of the same ifc_class on the same storey, sorted by X
@@ -77,7 +89,7 @@
 -- ifc_class                discipline  cnt 
 -- -----------------------  ----------  ----
 -- IfcRailing               ARC         2066
--- IfcStair                 ARC         564 
+-- IfcOpeningElement        ARC         245 
 -- IfcDoor                  ARC         119 
 -- IfcWindow                ARC         119 
 -- IfcWall                  STR         98  
@@ -87,7 +99,6 @@
 -- IfcColumn                STR         14  
 -- IfcBeam                  STR         7   
 -- IfcCovering              ARC         4   
--- IfcFooting               STR         4   
 -- IfcBuildingElementProxy  ARC         2   
 
 -- §5: Candidate validation rules for ERP.db
@@ -106,18 +117,18 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '1113.0');
 
--- Rule: IfcStair_Unknown (564 instances, avg 324.0x1440.0x189.0 mm)
+-- Rule: IfcOpeningElement_Unknown (245 instances, avg 1208.0x1308.0x2069.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcStair_Unknown', 'IfcStair', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcStair on Unknown: 564 instances, avg W=324.0 D=1440.0 H=189.0mm',
+-- VALUES ('IfcOpeningElement_Unknown', 'IfcOpeningElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcOpeningElement on Unknown: 245 instances, avg W=1208.0 D=1308.0 H=2069.0mm',
 --     'Molio');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '324.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1208.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1440.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1308.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '189.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2069.0');
 
 -- Rule: IfcWall_Kælder (27 instances, avg 4191.0x4298.0x3102.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
@@ -651,19 +662,6 @@
 -- VALUES (last_insert_rowid(), 'typical_depth_mm', '10828.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '141.0');
-
--- Rule: IfcFooting_Fundament (4 instances, avg 14187.0x10611.0x900.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcFooting_Fundament', 'IfcFooting', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFooting on Fundament: 4 instances, avg W=14187.0 D=10611.0 H=900.0mm',
---     'Molio');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '14187.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '10611.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '900.0');
 
 -- Rule: IfcSlab_1._Sal (3 instances, avg 2200.0x2067.0x50.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,

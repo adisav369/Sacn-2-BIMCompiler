@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- RS: Revit Structural (Revit_STR)
 -- Source: DAGCompiler/lib/output/revit_str.db
--- Generated: 2026-03-31 00:21
+-- Generated: 2026-04-17 09:01
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
