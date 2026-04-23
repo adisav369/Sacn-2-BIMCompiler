@@ -18,13 +18,265 @@ DB = model. Template = view. Browser = runtime. Three concerns, never merged.
 - Chart images embedded in Excel
 - Template JSON schema: rates, forex, grouping, dimensions, charts
 
-### S211 — JSONFormMaker → BIM Template Compiler
+### S211 — NLP Query DSL (harden + browser port + voice)
+Port the Python NLP DSL (`federation/dataintelligence/nlp/`) to browser JS running against sql.js.
+No LLM, no API — pure keyword intent classification + pattern-matched SQL generation.
+Voice input via Web Speech API (built into Chrome/Safari — no server, no key, no cost).
+
+**What exists (Python, ~1400 lines):**
+- `intent_classifier.py` — 9 intents (COUNT, FIND, TOTAL, LIST, SEARCH, DISCIPLINE, MANUFACTURER, PROPERTY, STOREY), confidence scoring, ambiguity suggestions
+- `query_parser.py` — NL → SQL with IFC synonyms (150+ terms), pluralization, storey normalization (EN/MY/DE/FR)
+- `query_patterns.py` — 40+ patterns across 8 categories (element_count, manufacturer, property, quantity, cost, material, freetext, discipline)
+- `query_executor.py` — execute + format results
+
+**Browser port (`deploy/sandbox/nlp.js`):**
+- Port intent classifier + query patterns to JS (no Python dependency)
+- Wire to existing search input (`#search-box` in index.html, currently hidden)
+- `db.exec(generatedSQL)` against loaded sql.js DB — zero server round-trip
+- Results panel: table below search box, clickable rows highlight elements in 3D
+- Ambiguity feedback: if classifier returns suggestions, show them as clickable chips
+- Query history: last 10 queries in dropdown, stored in `localStorage`
+- Example chip bar: "How many doors?" | "ACMV elements" | "Cost of MEP" (clickable)
+
+**Voice input (`webkitSpeechRecognition` / `SpeechRecognition`):**
+- Mic button (🎤) next to search input — tap to listen, tap again to stop
+- `continuous: false`, `interimResults: true`, `lang: 'en-US'`
+- Interim text shown live in search input (grey italic), final result triggers NLP parse
+- On mobile: mic button is primary input (larger, thumb-reachable); keyboard is secondary
+- Designed for short byte commands, not sentences (see §Voice Script in `MOBILE_DEPLOY.md`)
+- Fallback: if `SpeechRecognition` unavailable, mic button hidden — text input only
+
+**Voice-safe word design:**
+Commands use short, phonetically distinct words that speech engines recognise reliably.
+Avoid: long sentences, ambiguous homophones, technical jargon the engine mishears.
+Pattern: `[SCOPE] [TARGET]` — two to four words max.
+- Scope: "floor one", "level two", "all", "this building"
+- Target: "doors", "beams", "walls", "lights", "cost", "area"
+- Action: "count", "show", "total", "find", "search"
+- Example: "floor one doors" → COUNT doors on level 1
+- Example: "total cost" → total building cost
+- Example: "show ACMV" → list ACMV elements
+
+**Hardening (beyond current Python):**
+- SQL injection guard: parameterized templates only (current Python uses `_sanitize_value` regex)
+- Unknown query fallback: show "Did you mean...?" with closest pattern match
+- Empty result UX: "No {element_type} found. Building has: {available_classes}" from `SELECT DISTINCT ifc_class`
+- Cross-building: if city mode, prepend building filter to all generated SQL
+- FTS5 graceful degradation: if `elements_fts` table missing, fall back to LIKE queries
+- Voice misheard correction: show recognised text + "Not right? [Try again] [Edit]" link
+- Test: port Python `__main__` test queries to `test_all.js` (14 queries, expected intent + SQL shape)
+
+**UI — Progressive, non-cluttering:**
+
+Stage 1 — Dormant: Search icon (🔍) in toolbar. One button. Nothing else visible.
+
+Stage 2 — Search bar: Click 🔍 → slim bar slides in below toolbar (not a panel).
+  Contains: text input + 🎤 mic button + example chips (3 most relevant for current building).
+  Auto-focuses. Press Enter or tap mic. No extra panels, no menus.
+
+Stage 3 — Results toast: Query runs → results appear as a floating toast card (bottom-centre).
+  Shows: summary line ("47 doors on Level 1") + [Show in 3D] button.
+  Auto-dismisses after 8s unless pinned. Tapping [Show in 3D] highlights elements + dismisses.
+
+Stage 4 — Results table (on demand): If user taps the summary line, toast expands to
+  scrollable table (max 6 rows visible, rest scrollable). Click row → fly to element.
+  [Pin] keeps table open. [x] dismisses entirely.
+
+Stage 5 — History: Arrow-down on empty search bar → dropdown of last 5 queries.
+  Each shows query + result count. Click to re-run.
+
+**Dismissed = gone.** No residual panels, no orphaned UI. Each stage cleans up the previous.
+Mobile: toast card is full-width at bottom. Desktop: card is 350px, bottom-right.
+
+### S211a — Clash Detection (template-driven, R-tree bbox)
+Port the Python clash detector (`federation/clash/detector.py`) to browser JS.
+R-tree bbox collision against sql.js — same algorithm, same O(n log n) with spatial prefiltering.
+
+**Clash template (JSON, user-configurable):**
+```json
+{
+  "name": "Default Coordination",
+  "tolerance_mm": 10,
+  "pairs": [
+    { "disc_a": "STR", "disc_b": "ACMV", "tolerance_mm": 25 },
+    { "disc_a": "STR", "disc_b": "ELEC", "tolerance_mm": 15 },
+    { "disc_a": "STR", "disc_b": "PLB",  "tolerance_mm": 20 },
+    { "disc_a": "ARC", "disc_b": "MEP",  "tolerance_mm": 10 }
+  ],
+  "ignore_classes": ["IfcOpeningElement", "IfcSpace"],
+  "ignore_same_storey": false,
+  "severity": {
+    "hard":   { "clearance_mm": 0,   "color": "0xff0000" },
+    "soft":   { "clearance_mm": -50,  "color": "0xff8800" },
+    "near":   { "clearance_mm": -150, "color": "0xffff00" }
+  }
+}
+```
+- Template stored in `localStorage` or loaded from `?clash_tpl=` URL param
+- Settings panel: tolerance slider, discipline pair checkboxes (same layout as Bonsai federation addon)
+- Per-pair tolerance overrides default (STR-ACMV ducts need wider tolerance than STR-ELEC conduit)
+
+**Algorithm (JS port of `detector.py`):**
+- sql.js has no R-tree virtual table → use `elements_rtree` as regular table with bbox range queries
+- For each element in disc_a: `SELECT FROM elements_rtree WHERE minX <= ? AND maxX >= ? ...` filtered to disc_b
+- `check_bbox_clash()` identical to Python: expand by tolerance, check 3-axis overlap, compute clearance
+- Progress: status bar percentage during scan
+
+**Visualization:**
+- Clash pairs coloured by severity (hard=red, soft=orange, near=yellow) — `emissive` on both meshes
+- Clash list panel (scrollable, sortable by clearance/discipline/class)
+- Click clash row → fly-to midpoint of pair, isolate both elements, show info box:
+  ```
+  ┌─ CLASH #47 ─────────────────────┐
+  │ STR IfcBeam ↔ ACMV IfcDuct     │
+  │ Clearance: -12.3 mm (HARD)      │
+  │ Overlap: 0.025 m³               │
+  │ Storey: Level 2                  │
+  │ [Resolve] [Ignore] [Export BCF]  │
+  └──────────────────────────────────┘
+  ```
+- Resolve/Ignore status persisted in `localStorage` (or IndexedDB)
+- Export: clash list → Excel (reuse `excel.js` pattern) or BCF XML
+
+**UI:** Clash icon (⚡) in toolbar. Badge shows count. Same toggle pattern as Issues.
+
+### S211b — Heatmap Costing ($ icon → colour by value)
+Colour elements by any numeric property. Continuous gradient mapped to geometry already in scene.
+
+**UI:** Dollar icon ($) in toolbar → opens heatmap selection panel:
+```
+┌─ Heatmap ──────────────────────────┐
+│ Colour by: [Cost ▾]               │
+│   ○ Cost (RM)    ○ Area (m²)      │
+│   ○ Volume (m³)  ○ Custom field   │
+│                                    │
+│ Gradient: 🟢───🟡───🔴            │
+│ Min: 0    Max: 50,000 (auto)      │
+│ Legend: [Show] [Hide]              │
+│                                    │
+│ [Apply] [Clear]                    │
+└────────────────────────────────────┘
+```
+
+**Data source:**
+- Cost: `simple_qto.total_cost_rm` joined to `elements_meta.guid` via `ifc_class`
+- Area/Volume: `simple_qto.total_quantity` where `measurement_type` = AREA/VOLUME
+- Custom: `element_properties.property_value` (numeric cast) for user-chosen property name
+- If `simple_qto` absent, show "No QTO data — run 4D/5D first" with link to BOQ
+
+**Rendering:**
+- `THREE.Color.lerpColors()` green→yellow→red based on normalized value (0→1)
+- Set `mesh.material.color` per element, preserve original in `userData.origColor`
+- Floating legend overlay (gradient bar with min/max labels, positioned bottom-right)
+- Hover: show element value in tooltip (reuse hover highlight from `tools.js`)
+- Clear: restore `userData.origColor` on all meshes
+
+**Integration with NLP (S211):** Query "cost of ACMV" → auto-applies ACMV heatmap
+
+### S211c — Post-it Notes (3D pinned annotations)
+Pin text notes to 3D world positions. Store in IndexedDB. Export to Excel/BCF.
+
+**UI:** Notes icon (📝) in toolbar → opens Notes panel:
+```
+┌─ Notes ────────────────────────────┐
+│ [+ Post-it] [Export] [Clear All]  │
+│                                    │
+│ 📌 "Check fire seal" — Level 2    │
+│    STR IfcBeam · 2026-04-23       │
+│ 📌 "Wrong material" — Level 1     │
+│    ARC IfcWall · 2026-04-22       │
+│ 📌 "Duct clearance OK" — Level 3  │
+│    ACMV IfcDuct · 2026-04-23      │
+└────────────────────────────────────┘
+```
+
+**Workflow:**
+1. Click "Post-it" button → cursor changes to crosshair
+2. Click element in 3D → raycaster gets hit point + GUID (reuse `picking.js` pattern)
+3. Note input — two modes:
+   - **Type:** textarea popup (desktop default)
+   - **Voice:** hold 🎤 button → `MediaRecorder` captures audio → auto-transcribed via
+     `SpeechRecognition` → text shown for review → [Save] / [Re-record]
+     Audio blob also stored alongside text (playback on click).
+     On mobile, voice is primary — bigger 🎤 button, textarea secondary.
+4. Creates:
+   - Yellow sprite at hit.point (Three.js `Sprite` with `CanvasTexture`, capped at 50 notes visible)
+   - Entry in IndexedDB `notes` store:
+     `{ id, guid, text, audio: Blob|null, point: {x,y,z}, timestamp, building, storey, disc, ifc_class }`
+5. Click existing sprite → show note popup with [Edit] [Delete] [▶ Play] (if audio attached)
+
+**Voice note details:**
+- `MediaRecorder` API (audio/webm) — records actual audio, stored as Blob in IndexedDB
+- `SpeechRecognition` runs in parallel — provides text transcription for search/export
+- Playback: `<audio>` element in note popup, no external player
+- Export includes text transcription (audio stays local — too large for Excel/BCF)
+- Max 30 seconds per note (auto-stops, prevents accidental long recordings)
+- Visual feedback: pulsing red dot on sprite while recording, mic button turns red
+
+**Export:**
+- Excel: same pattern as `excel.js` — columns: ID, Text, GUID, Building, Storey, Discipline, Class, X, Y, Z, Timestamp
+  (text column contains voice transcription if voice note)
+- BCF: each note → BCF Topic with viewpoint (camera position + direction). Interops with Revit/Solibri/BIMcollab.
+- Clear All: confirm dialog → delete all from IndexedDB + remove sprites
+
+**Persistence:** IndexedDB keyed by DB filename. Notes survive page reload. Different buildings = different note sets.
+Audio blobs stored in same IndexedDB (binary, ~50KB per 30s recording). No server upload.
+
+### S211d — Revision Diff (on-demand delta, not dual load)
+Compare two versions of the same building. Loads diff only — not both full models.
+
+**Approach: SQL EXCEPT on metadata, geometry load on demand**
+- User loads current DB normally (already streamed)
+- "Compare" button → file picker for older DB
+- Open older DB as second sql.js instance (`db2`)
+- Diff query (runs instantly, no geometry):
+  ```sql
+  -- Added elements (in new, not in old)
+  SELECT guid FROM elements_meta EXCEPT SELECT guid FROM db2.elements_meta
+  -- Removed elements (in old, not in new)
+  SELECT guid FROM db2.elements_meta EXCEPT SELECT guid FROM elements_meta
+  -- Changed elements (same GUID, different properties)
+  SELECT a.guid FROM elements_meta a JOIN db2.elements_meta b ON a.guid = b.guid
+  WHERE a.element_name != b.element_name OR a.material_name != b.material_name
+        OR a.storey != b.storey OR a.discipline != b.discipline
+  ```
+- sql.js ATTACH not supported → load both DBs, run EXCEPT via JS Set operations on GUID arrays
+
+**Visualization (diff-only geometry loading):**
+- Added (green): load geometry from new DB, colour green. These are new meshes.
+- Removed (red): load geometry from OLD DB (`db2`), colour red with 50% opacity. Ghost overlay.
+- Changed (yellow): already loaded from new DB, just recolour yellow.
+- Unchanged: leave as-is (already streamed from current DB)
+- Only removed elements require additional geometry load — minimal overhead.
+
+**UI:**
+- Compare button (⇔) appears after streaming complete
+- Diff summary panel:
+  ```
+  ┌─ Revision Diff ──────────────────┐
+  │ 🟢 Added:   47 elements          │
+  │ 🔴 Removed: 12 elements          │
+  │ 🟡 Changed: 89 elements          │
+  │ ⚪ Same:    1,021 elements        │
+  │                                   │
+  │ [Show Added] [Show Removed]       │
+  │ [Show Changed] [Show All]         │
+  │ [Export Diff Excel] [Clear]       │
+  └───────────────────────────────────┘
+  ```
+- Click category → isolate those elements (hide others at 0.1 opacity)
+- Click individual row → fly-to element
+- Export: Excel with columns: Status, GUID, Class, Name, Storey, Old Value, New Value
+
+**Prerequisite:** None (does NOT depend on S217 edit_log). Pure SQL set difference on GUIDs.
+
+### S212 — JSONFormMaker → BIM Template Compiler
 - JSONFormMaker ([source](https://github.com/red1oon/JSONFormMaker)) outputs BIM template JSON
 - Compile to binary BLOB → `INSERT INTO templates (name, concern, version, compiled)`
 - boq_charts.html reads template from DB, no separate file
 - Concerns: QS, Factory, Owner, Inspector, Green
 
-### S212 — Prefab Factory
+### S213 — Prefab Factory
 - Pod = BOM. QR per component. Checklist = repurposed issue log.
 - Exploded view (BOM children offset along Z)
 - QR generator per GUID (sticker sheet)
@@ -32,13 +284,13 @@ DB = model. Template = view. Browser = runtime. Three concerns, never merged.
 - Pod progress on landing page
 - Factory template (production rates, pod grouping, step-level 4D)
 
-### S213 — 2D BOM Editor
+### S214 — 2D BOM Editor
 - `editor2d.js` — orthographic view, room placement
 - BOM editor UI — rooms, areas, adjacencies as recipe
 - Live recompile via DAGCompiler rules
 - DXF export via `2D_Layout/python/drawing_writer.py`
 
-### S214 — Plugin Marketplace (ADUI Metadata) — THE MULTIPLIER
+### S215 — Plugin Marketplace (ADUI Metadata) — THE MULTIPLIER
 - Plugin = JSON manifest (ADUI schema from JSONFormMaker) + JS module
 - Manifest declares: name, concern, inputs, outputs, template, icon
 - Plugin registry = SQLite table in a shared `marketplace.db`
@@ -103,14 +355,14 @@ Everything else is standard (sql.js, Three.js, DOM, XLSX, Chart.js). We expose, 
 - User describes in English, AI writes, IDE verifies, log proves. Standard practice.
 - Full spec: `docs/PLUGIN_SDK.md`
 
-### S215 — Property Editing + Save DB (viewer → tool)
+### S216 — Property Editing + Save DB (viewer → tool)
 - `APP.db.exec("UPDATE ...")` on in-memory sql.js DB
 - `A.interact.prompt()` on element pick → edit material, name, status, custom fields
 - Save: download modified DB as file, or push to OCI
 - Changes tracked in `edit_log` table (guid, field, old, new, timestamp, user)
 - No schema change needed — sql.js UPDATE on existing tables
 
-### S216 — IFC Export (tool → interop)
+### S217 — IFC Export (tool → interop)
 - DB → IFC4 STEP file, entirely in browser (string concatenation from SQL)
 - Tessellated geometry via IfcTriangulatedFaceSet (vertices/faces BLOBs already stored)
 - Full spatial hierarchy from `spatial_structure` + `rel_aggregates`
@@ -129,7 +381,7 @@ Everything else is standard (sql.js, Three.js, DOM, XLSX, Chart.js). We expose, 
 - Missing from export: property sets (Pset_*), parametric geometry, type definitions, opening links
 - Plugin: `ifc_export/plugin.js` — toolbar button, runs SQL, builds STEP text, downloads file
 
-### S217 — Change Tracking + Version History (interop → team)
+### S218 — Change Tracking + Version History (interop → team)
 - `edit_log` table tracks every UPDATE (guid, field, old_value, new_value, timestamp, user)
 - Version = DB snapshot saved to IndexedDB with timestamp
 - Diff two versions: SQL EXCEPT between snapshots → added/removed/changed elements
@@ -138,7 +390,7 @@ Everything else is standard (sql.js, Three.js, DOM, XLSX, Chart.js). We expose, 
 - Simple multi-user: download DB → edit → upload. edit_log enables manual merge.
 - Future: row-level conflict resolution, CRDT for real-time (spec only, not built)
 
-### S218 — Multi-User + Access Control + Federation
+### S219 — Multi-User + Access Control + Federation
 
 **Three levels (Level 1-2 cover 95% of real teams):**
 
@@ -147,7 +399,7 @@ Level 1 — File-level turns (works with OCI today):
 - One editor at a time, others view read-only with their own templates.
 - No server — just OCI object put/get.
 
-Level 2 — Change-level merge (S217 edit_log):
+Level 2 — Change-level merge (S218 edit_log):
 - Multiple users download same version, edit different parts, upload changes.
 - `edit_log` table = changeset. Merge = replay logs in timestamp order.
 - Conflict = same GUID + same field by two users → last-write-wins or manual pick.
@@ -174,7 +426,66 @@ Level 3 — Real-time collaboration (future, spec only):
 - STR engineer's DB + MEP engineer's DB → one coordinated scene
 - Clash detection across federated DBs = cross-DB spatial query
 
-### Starter Plugin Pack (ships with S214)
+### S220 — Browser IFC Import (self-service onboarding)
+- Drag-and-drop IFC file onto landing page → extract to DB entirely in browser
+- Uses `web-ifc` (WebAssembly IFC parser, MIT, ~2MB CDN) — no server, no Python
+- Extraction mirrors `extractIFCtoDB_open.py` output schema (same tables, same contract)
+- Pipeline: `File → ArrayBuffer → web-ifc parse → walk spatial tree → populate sql.js DB`
+- Tables populated: `project_metadata`, `spatial_structure`, `elements_meta`, `element_transforms`, `base_geometries` (tessellated BLOBs), `surface_styles`, `material_layers`, `simple_qto`
+- Progress bar per phase: parsing IFC (30%) → extracting elements (50%) → tessellating geometry (20%)
+- Output: download extracted DB file, or stream directly into viewer (no save needed)
+- Large file handling: Web Worker for parsing (no UI freeze), chunked element processing
+- Tested against: IFC2x3 (Revit, ArchiCAD), IFC4 (Bonsai, Tekla), IFC4x3
+- Fallback for unsupported geometry: log skipped elements, show count in summary
+- **Exit criterion:** user drops any valid IFC, gets a viewable DB in <60s for <50MB files
+- Replaces: CLI `onboard_ifc.sh` for simple cases. CLI remains for batch/scripted pipelines.
+
+### S221 — 4D Construction Animation (timeline playback)
+- Auto-play mode on 4D timeline — elements appear as construction date advances
+- Data source: `construction_schedule` table (already populated by `nD_engine.py`)
+- Playback controls: play/pause, speed (1×/2×/5×/10×), scrub slider, date display
+- Element visibility: hidden before start_date, ghost (0.3α) during construction, solid after end_date
+- Phase colouring: each discipline gets its construction colour (matches BOQ charts palette)
+- Camera path: auto-orbit or user-defined waypoints (click to set, drag to reorder)
+- Construction sequence: Substructure → Superstructure → MEP Rough-in → Architecture → MEP Final → Finishes (from `phase` column)
+- Overlay: running cost accumulator (5D) ticking alongside 4D date — shows spend-to-date
+- Export: canvas capture → WebM video download (MediaRecorder API, no server)
+- Shareable: URL with `?t=2026-03-15` deep-links to specific construction date
+- **Exit criterion:** Hospital 224-task schedule plays as smooth animation, exportable as video
+- Replaces: Synchro ($25K/yr), Navisworks TimeLiner ($8K/yr)
+
+### S222 — Incremental Diff Extraction (Bonsai re-export)
+- Re-export IFC from Bonsai → compiler extracts only the delta against previous DB
+- Algorithm: GUID-based set comparison (same as S211d but at extraction time)
+  - New GUIDs → INSERT into extracted DB
+  - Missing GUIDs → mark as `status='REMOVED'` (soft delete, geometry retained for diff view)
+  - Same GUID, different properties/geometry → UPDATE + log old values in `change_log` table
+- `change_log` table: `(guid, field, old_value, new_value, ifc_version, timestamp)`
+- Geometry diff: hash comparison on tessellated BLOBs — only re-tessellate changed elements
+- Browser reflects changes immediately: green/red/yellow overlay (reuses S211d visualization)
+- Workflow: Bonsai edit → IFC export → `extractIFCtoDB_open.py --diff previous.db` → updated DB → browser auto-shows delta
+- Browser-side (S220): if user drops a new IFC and a previous DB exists, auto-diff mode
+- Backward compatible: new DB works standalone without previous version. Diff is additive metadata.
+- **Exit criterion:** modify 5 elements in Bonsai, re-export, see exactly those 5 highlighted in browser
+
+### S223 — Designer Presets (common changes without Bonsai)
+- Preset = named recipe: target selector (SQL WHERE) + action (UPDATE fields or swap product)
+- Built-in preset categories:
+  - **Finishes:** wall paint colour, floor material, ceiling type — dropdown from `surface_styles`
+  - **Doors/Windows:** swap type (single→double, sliding→hinged) — replaces `product_type` + geometry BLOB
+  - **Furniture:** swap product from catalogue (desk→standing desk, chair→armchair) — BOM child replacement
+  - **MEP equipment:** swap unit (AC split→cassette, basin→sensor basin) — product + clearance zone update
+  - **Spatial:** room name, function, department — `elements_meta` UPDATE
+- Preset library: JSON definitions in `presets/` folder, loaded as plugin (S215 compatible)
+- UI: pick element → right-click → "Apply Preset" → category → specific preset → preview → confirm
+- Preview: ghost overlay showing before/after side by side (split opacity)
+- Cascade: preset triggers BOQ recalc (quantity/cost update), schedule impact shown in toast
+- Community presets: users publish preset packs (country-specific finishes, manufacturer catalogues)
+- Geometry presets use pre-tessellated BLOBs from a preset library DB — no modelling engine needed
+- **Exit criterion:** user swaps 3 door types and a floor finish, sees updated BOQ totals, no Bonsai involved
+- Replaces: round-trip to Blender for the 80% of changes that are data, not geometry
+
+### Starter Plugin Pack (ships with S215)
 Pre-installed plugins that prove the marketplace. All use the plugin API, no core changes.
 
 | Plugin | What | Effort | Replaces |
@@ -186,7 +497,7 @@ Pre-installed plugins that prove the marketplace. All use the plugin API, no cor
 | Rule Checker | JSON rule packs (SQL query + pass/fail check) per standard | Medium | Solibri ($15K/yr) |
 | Revision Compare | Load two DBs, show added/removed/changed elements | Medium | Navisworks ($8K/yr) |
 | Selection Sets | Save/recall named GUID groups | Low | All BIM tools |
-| 4D Timeline Slider | Scrub through construction phases, show/hide by date | Medium | Synchro/Navisworks |
+| 4D Timeline Slider | Scrub + animated playback of construction phases (see S221) | Medium | Synchro/Navisworks |
 
 **Localization (country config drives everything):**
 - Setup script on first launch: pick country → sets currency, rates, rules, standards, templates
@@ -217,10 +528,14 @@ Pre-installed plugins that prove the marketplace. All use the plugin API, no cor
 | 1 | Building inspector on phone | Template |
 | 2 | Offline construction site | Already works |
 | 3 | Owner handover (two files) | Template |
-| 4 | Clash detection in SQL | One query |
-| 5 | QR per element | QR generator (S212) |
+| 4 | Clash detection in SQL | S211a |
+| 5 | QR per element | QR generator (S213) |
 | 6 | Fleet dashboard | Already works (city mode) |
 | 7 | Voice to BOM | LLM + BOM API |
-| 8 | Diff two buildings | SQL diff |
-| 9 | Prefab factory floor | S212 |
+| 8 | Diff two buildings | S211d |
+| 9 | Prefab factory floor | S213 |
 | 10 | Insurance claim on-site | Template + site camera |
+| 11 | External user brings own IFC | S220 (browser import) |
+| 12 | Construction progress animation | S221 (4D playback) |
+| 13 | Designer updates without Bonsai | S223 (presets) |
+| 14 | Bonsai re-export shows only changes | S222 (incremental diff) |

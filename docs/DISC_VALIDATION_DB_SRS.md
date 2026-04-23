@@ -10,10 +10,10 @@
 
 ---
 
-## 1. Schema — ERP.db (44 tables)
+## 1. Schema — ERP.db (50 tables)
 
-**Authoritative DDL:** `migration/DV001_ERP_schema.sql`, `migration/DV003_element_mep_alias.sql`
-**From-scratch rebuild:** `scripts/rebuild_erp.sh` (DV001→DV036 + W019, zero manual SQL)
+**Authoritative DDL:** `migration/DV001_disc_validation_schema.sql`, `migration/DV003_element_mep_alias.sql`
+**From-scratch rebuild:** `scripts/rebuild_erp.sh` (DV001→DV049 + W019, zero manual SQL)
 
 | Table | PK | Rows | Purpose |
 |-------|----|------|---------|
@@ -528,7 +528,7 @@ No level labels. No vocabulary. A building, a car, a bridge, a ship —
 same three methods, different products. M_Product_Category groups
 interchangeable products at each level (same shelf = same swap pool).
 
-**VIEW_CONTRACTS.md `v_qualified_bom`** currently uses a legacy `bom_type`
+**`v_qualified_bom` view** currently uses a legacy `bom_type`
 bind parameter. Migration pending to use M_Product_Category instead.
 
 ### 6.6 Shared Discipline Recipes in ERP.db
@@ -2271,21 +2271,27 @@ Room area = 50m² → 0.07 × 50 = 3.5 → round up → 4 sprinklers
 | `qty_max` | Maximum allowed / fill target (order qty=0) | OUTLET in BEDROOM: 4 |
 | `per_area_normal` | Area-proportional (overrides qty when > 0) | SPRINKLER: 0.07/m² |
 
-**Wiring: YAML → ad_sysconfig → Walker (S151)**
+**Wiring: YAML → C_Order → Walker**
 
-The coverage level flows through one key: `MEP_ORDER_QTY` in `ad_sysconfig`.
+> **Convention gap (S190):** The current code routes `mep_order_qty` through
+> `ad_sysconfig` in BOM.db. This bypasses the iDempiere C_Order convention.
+> Per-order values belong on C_Order (set by BomDropper from YAML, read by
+> CompilationPipeline from compile DB). `ad_sysconfig` is system-wide
+> configuration, not per-building order data. See [BBC.md §2.1.8](BOMBasedCompilation.md).
+
+The coverage level should flow through `C_Order` (the YAML is the Order):
 
 ```
 YAML: mep_order_qty: 99           ← user sets coverage level
-  ↓  IFCtoBOMPipeline stage 10c
-ad_sysconfig: MEP_ORDER_QTY=99    ← stored in BOM DB
-  ↓  CompilationPipeline.BomWalkStage
-PlacementCollectorVisitor.setMepOrderQty(99) ← walker reads
+  ↓  BomDropper
+C_Order.mep_order_qty = 99        ← stored on the Order
+  ↓  CompilationPipeline.CompileStage
+PlacementCollectorVisitor.setMepOrderQty(99) ← walker reads from C_Order
   ↓  onSubAssembly (SET BOM)
 SpaceScheduleDAO.resolveQty(99, entry, area) ← per-room resolution
 ```
 
-Default: 99 (standard coverage). Fallback chain: `ad_sysconfig` → `System.getProperty("mep.order.qty")` → 99.
+Default: 99 (standard coverage).
 
 Log channel: `GENERATIVE SUMMARY orderQty=N` traces the value used.
 
@@ -3448,6 +3454,14 @@ SpaceScheduleDAO BPartner filter: next step when CO buildings (TE/Hospital) are 
 ---
 
 ## §12 — RTree Viewer Strategy: Impact on DAGCompiler / ERPtoDB Pipeline (S185)
+
+> **S197 Update:** The viewer has shifted to **Direct DB Streaming** (S195-S197).
+> Baking, library.blend linking, and the Stingy Mesh Loader described below are
+> **superseded**. The geometry_hash_redirect table schema remains valid but its
+> application path (library.blend linking) is replaced by direct BLOB tessellation
+> from component_library.db. See [RTree.md](RTree.md) §Direct Stream.
+> DAGCompiler and ERPtoDB remain unaffected — the compilation pipeline is
+> geometry-agnostic (§6.12.1 Compilation Isolation Invariant).
 
 ### §12.1 Context
 

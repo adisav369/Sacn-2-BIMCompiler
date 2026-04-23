@@ -24,10 +24,10 @@ Read the [MANIFESTO](MANIFESTO.md) first for the ERP world view.
 | [§3 Compilation](#3-compilation) | BOM explosion, placement, selection cascade, ASI |
 | [§4 Tack Convention](#4-tack-convention-the-spatial-handshake) | The dx/dy/dz spatial offset model (LBD) |
 | [§4.3 Element Identity](#43-element-identity-contract-s147) | IFC GUID preservation contract |
-| [§5 Pipeline](#5-the-12-stage-pipeline) | 11-stage compilation pipeline |
+| [§5 Pipeline](#5-the-11-stage-pipeline) | 11-stage compilation pipeline |
 | [§6 Verbs](#6-bim-cobol-verb-driven-bom-mutation) | 77 domain verbs (TILE, ROUTE, FRAME, CLUSTER) |
 | [§7 Verification](#7-verification-the-rosetta-stone-gate) | 6 mathematical gates |
-| [§9 Data Flywheel](#9-the-data-flywheel-emergent-intelligence) | How 35 buildings teach the compiler |
+| [§9 Data Flywheel](#9-the-data-flywheel-emergent-intelligence) | How the building fleet teaches the compiler |
 | [§10 End State](#10-the-compilation-end-state) | What the compiled output looks like |
 
 **Related specs:**
@@ -79,13 +79,14 @@ Dictionary** — like iDempiere's AD_Table through AD_Column. They exist. This
 document describes how the compiler **uses** them, not how they were created.
 For BOM creation, see the Rosetta Stone pipeline and building analysis docs.
 
-**Three databases, three concerns:**
+**Four databases, three concerns** (WHAT / HOW / WHERE — see [DATA_MODEL.md §6.3](DATA_MODEL.md)):
 
 | Database | Concern | iDempiere parallel |
 |----------|---------|-------------------|
-| **ERP.db** | Product master (M_Product, M_Product_Category, attributes) | Product catalog |
-| **component_library.db** | Leaf geometry (LOD meshes, orientation metadata) | M_Product_Image |
-| ***_BOM.db** | Assembly recipes (M_BOM, M_BOM_Line with qty + dx/dy/dz) | Bill of Materials |
+| **ERP.db** | WHAT — Product master (M_Product, M_Product_Category, attributes) | Product catalog |
+| **component_library.db** | WHAT — Leaf geometry (LOD meshes, orientation metadata) | M_Product_Image |
+| ***_BOM.db** | HOW — Assembly recipes (M_BOM, M_BOM_Line with qty + dx/dy/dz) | Bill of Materials |
+| **output.db** | WHERE — Placed elements at world coordinates (c_orderline, elements_meta) | Transaction |
 
 **EntityType enforcement:** Dictionary records (entity_type='D') are read-only at
 the PO layer. Verbs create new records as entity_type='U'. The guard is in code
@@ -179,6 +180,14 @@ compilation (`processIt()`) — the ERP transaction. See [`DocAction_SRS.md`](Do
 
 See [`DISC_VALIDATION_DB_SRS.md §6.13`](DISC_VALIDATION_DB_SRS.md#613-ifc-driven-extraction).
 
+**Per-order values flow through C_Order, not ad_sysconfig.** YAML fields that
+affect compilation (e.g. `mep_order_qty`) must land on C_Order via BomDropper
+and be read from the compile DB at Stage 2. `ad_sysconfig` is iDempiere
+system-wide configuration — using it to pass per-building YAML values to
+compilation bypasses the C_Order convention. See
+[DISC_VALIDATION_DB_SRS.md §6.12.4](DISC_VALIDATION_DB_SRS.md) for the
+generative MEP schedule architecture (LOD bridge, shim placement, W-LOD-BRIDGE test).
+
 **IFCtoBOM does NOT:**
 
 - Create C_Order or C_OrderLine (that is `processIt()` during compilation)
@@ -247,6 +256,15 @@ population, the compiler treats it identically to extracted products.
 `attachment_face`, `up_axis`, `forward_axis`, `orientation`, `default_rotation` —
 polarity markers for correct mesh orientation at the tack position.
 See `BIM_Designer.md` §8.3 (ASI overrides) and `DocValidate.md` M16/M17.
+
+**Generative MEP LOD bridge:** Products created by the generative MEP schedule
+(TOILET, LIGHT, SPRINKLER, etc.) are `extracted_from='SHARED_RECIPE'` with
+`source_element_ref=NULL` at creation. ProductRegistrar must reverse-lookup
+`ad_element_mep_alias` to resolve the IFC family name, closing the bridge:
+`M_Product.source_element_ref → I_Geometry_Map.element_ref → geometry_hash → mesh`.
+Without this bridge, BuildingWriter throws MetadataMissingException at compile time.
+See [DISC_VALIDATION_DB_SRS.md §6.12.4 subsection 11](DISC_VALIDATION_DB_SRS.md)
+for the full LOD bridge spec and W-LOD-BRIDGE test.
 
 ---
 
@@ -359,7 +377,7 @@ per instance and carry ASI overrides.
 overrides stretch walls to new dimensions → compiler resolves `effective = ASI ?? catalog`.
 Zero new code — just data on the OrderLine.
 
-*ASI matrix: BIM_Designer.md §8. Schema: output.db. Generative: GENERATIVE_ROOM_SRS.md §6.*
+*ASI matrix: BIM_Designer.md §8. Schema: output.db. Generative: [GENERATIVE_HOUSE_SRS.md](GENERATIVE_HOUSE_SRS.md) §6.*
 
 ### 3.5.2 Product → Verb Routing via ASI
 
@@ -1063,16 +1081,24 @@ form. The record makes both forms available everywhere by construction.
 | # | Stage | What it does |
 |---|-------|-------------|
 | 1 | **Metadata** | Referential integrity checks against BOM + ERP databases |
-| 2 | **Compile** | Explodes BOM tree, accumulates tack offsets into world coordinates |
-| 3 | **Write** | Emits SQLite output DB (C_OrderLine + elements_meta) |
-| 4 | **Verb** | BIM COBOL post-processing → W_Verb_Node audit trail |
-| 5 | **Digest** | Per-element SHA256 spatial fingerprint |
-| 6 | **Geometry** | Mesh integrity validation |
-| 7 | **Prove** | Mathematical placement proofs |
+| 2 | **Compile** | Explodes BOM tree, accumulates tack offsets into world coordinates. Includes generative MEP via `MEPDevicePlacer` ([§6.12.4](DISC_VALIDATION_DB_SRS.md)) |
+| 3 | **Route** | MEP routing: CW/SP recipe expansion, RouteWalker pattern mining |
+| 4 | **Template** | Template composition (SKIP for non-template buildings) |
+| 5 | **Write** | Emits SQLite output DB (C_OrderLine + elements_meta). Resolves geometry via `source_element_ref` → component_library.db |
+| 6 | **Verb** | BIM COBOL post-processing → W_Verb_Node audit trail |
+| 7 | **Validation** | Rule-based validation against ERP.db constraints |
+| 8 | **Digest** | Per-element SHA256 spatial fingerprint |
+| 9 | **Geometry** | Mesh integrity validation |
+| 10 | **Prove** | Mathematical placement proofs |
+| 11 | **Compliance** | Building code compliance checks (AD_DocEvent_Rule) |
 
 Single compilation path: element positions are read from m_bom_line (tack
 offsets per §4) and accumulated through the BOM chain into world coordinates.
 C_OrderLine → M_Product → BOM explosion (iDempiere prepareIt pattern).
+
+**Viewer:** The compiled output.db feeds directly into the RTree Direct Stream
+viewer — camera-driven BLOB tessellation from component_library.db, no
+intermediate .blend files. See [RTree.md](RTree.md) §Direct Stream.
 
 ---
 
@@ -1173,7 +1199,7 @@ All 6 gates GREEN for SH and DX. Current counts in [PROGRESS.md](https://github.
 
 ## 9. The Data Flywheel — Emergent Intelligence
 
-Processing 34 real buildings creates a **data flywheel** — each onboarded IFC
+Processing the building fleet creates a **data flywheel** — each onboarded IFC
 enriches a pool of mined dimensional observations that validates the next one.
 Unlike fixed BIM rules (building codes, clash thresholds), this system validates
 against **empirical evidence from its own corpus.**
@@ -1197,7 +1223,7 @@ pipeline compiles BOM → `extract_validation_rules.sh` mines new patterns →
 Every building has a signature — the percentage distribution of its IFC classes
 (e.g., residential = ~35% IfcWall, MEP = 90%+ flow elements). `BuildingProfileValidator`
 compares each new building's profile against archetype profiles mined from the
-34-building corpus. Catches mis-labelled files, wrong discipline tagging, and
+building corpus. Catches mis-labelled files, wrong discipline tagging, and
 anomalous element compositions. Advisory only — never blocks.
 
 **Storage:** `ad_building_profile` table in ERP.db (one row per building/ifc_class).

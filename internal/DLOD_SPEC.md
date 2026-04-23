@@ -1,4 +1,8 @@
 # DLOD Spec — Distance LOD via GN Point Cloud
+
+> **Status: SUPERSEDED** by Direct DB Streaming (S195-S197). See [RTree.md](../docs/RTree.md) §Direct Stream.
+> GN-based LOD replaced by camera-driven SQL streaming — no Geometry Nodes, no dependency graph.
+
 > **Foundation:** [FULL_LOADER2_SRS](FULL_LOADER2_SRS.md) §5/§7/§8 · [BBC](BOMBasedCompilation.md)
 
 **Version:** 1.0 | **Date:** 2026-04-11

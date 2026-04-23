@@ -783,11 +783,149 @@ Steps 24-27 add PDR for indoor accuracy. Steps 28-30 are the differentiators.
 
 ---
 
-## 8. Files
+## 8. Voice Query Script — Rehearsal Guide
+
+BIM OOTB supports voice commands via the browser's built-in speech engine (Web Speech API).
+No server, no API key, no cost. Works on Chrome (Android/desktop) and Safari (iOS).
+
+**Design principle:** Short byte commands, not sentences. Two to four words.
+Words chosen for phonetic clarity — no homophones, no jargon the engine confuses.
+
+### 8.1 Valid Voice Commands
+
+Speak any command below. The engine hears the words, the NLP DSL matches the pattern.
+
+#### Counting
+
+| Say this | What it does | Recognised as |
+|----------|-------------|---------------|
+| **count doors** | Count all doors | COUNT IfcDoor |
+| **count beams** | Count all beams | COUNT IfcBeam |
+| **count walls** | Count all walls | COUNT IfcWall |
+| **count lights** | Count all lights | COUNT IfcLightFixture |
+| **count columns** | Count all columns | COUNT IfcColumn |
+| **count windows** | Count all windows | COUNT IfcWindow |
+| **count pipes** | Count all pipes | COUNT IfcPipeSegment |
+| **count ducts** | Count all ducts | COUNT IfcDuctSegment |
+
+#### Counting by Floor
+
+| Say this | What it does |
+|----------|-------------|
+| **floor one doors** | Doors on Level 1 |
+| **floor two beams** | Beams on Level 2 |
+| **floor three walls** | Walls on Level 3 |
+| **ground floor lights** | Lights on ground floor |
+| **roof level pipes** | Pipes on roof level |
+
+> **Tip:** Say "floor" not "level" — speech engines hear "floor" more reliably than "level"
+> (which can be misheard as "label" or "legal").
+
+#### Cost and Quantities
+
+| Say this | What it does |
+|----------|-------------|
+| **total cost** | Total building cost |
+| **cost of beams** | Cost of all beams |
+| **total area** | Total floor area |
+| **total length pipes** | Sum pipe lengths |
+| **floor area** | Slab area total |
+
+#### Disciplines
+
+| Say this | What it does |
+|----------|-------------|
+| **show structure** | List structural elements |
+| **show electrical** | List electrical elements |
+| **show plumbing** | List plumbing elements |
+| **show fire** | List fire protection |
+| **what disciplines** | List all disciplines |
+
+#### Search
+
+| Say this | What it does |
+|----------|-------------|
+| **find fire doors** | Free-text search |
+| **search concrete** | Free-text search |
+
+#### Navigation (viewer actions, not just queries)
+
+| Say this | What it does |
+|----------|-------------|
+| **go to Hospital** | Fly to named building (city mode) |
+| **go to Duplex** | Fly to named building |
+| **floor one only** | Isolate Level 1 (hide others) |
+| **floor two only** | Isolate Level 2 |
+| **all floors** | Show all storeys |
+| **hide structure** | Toggle off STR discipline |
+| **show structure** | Toggle on STR discipline |
+| **hide electrical** | Toggle off ELEC |
+| **x-ray on** | Transparency mode |
+| **x-ray off** | Restore opacity |
+| **wireframe** | Toggle wireframe |
+| **screenshot** | Save screenshot to Downloads |
+| **fly around** | Start orbit animation |
+| **section cut** | Toggle Y-axis section |
+| **clear** | Dismiss search results + highlights |
+
+> **Scope note:** Navigation commands are planned for S211 Phase 2. Query commands
+> (counting, cost, search) work now. Navigation commands will reuse the same mic +
+> NLP bar — no separate UI.
+
+### 8.2 Words to Avoid (misheard by speech engines)
+
+| Avoid | Problem | Say instead |
+|-------|---------|-------------|
+| "level" | Misheard as "label", "legal" | **"floor"** |
+| "storey" | Misheard as "story" (narrative) | **"floor"** |
+| "HVAC" | Acronym — engine spells it out | **"air con"** or **"mechanical"** |
+| "MEP" | Acronym — engine hears "map" | **"mechanical"** or discipline name |
+| "IfcWall" | Technical — engine won't match | **"walls"** (plain English) |
+| "qty" | Abbreviation | **"count"** or **"total"** |
+| Long sentences | Engine loses accuracy after 5 words | **2-4 word bytes** |
+
+### 8.3 How It Works
+
+```
+Phone mic → Web Speech API (browser-native, free)
+         → Recognised text (e.g. "floor one doors")
+         → NLP intent classifier (keyword match, no AI)
+         → SQL template (e.g. SELECT ... WHERE storey LIKE '%1%' AND ifc_class LIKE '%door%')
+         → sql.js executes against loaded DB
+         → Result toast: "12 doors on Level 1" + [Show in 3D]
+```
+
+**Latency:** < 500ms from speech end to result (speech recognition ~1s, SQL ~10ms, render ~50ms).
+
+**Supported browsers:**
+- Chrome 33+ (Android, desktop) — `webkitSpeechRecognition`
+- Safari 14.1+ (iOS, macOS) — `SpeechRecognition`
+- Edge 79+ (desktop) — `SpeechRecognition`
+- Firefox: NOT supported (no Web Speech API). Text input only.
+
+**Offline:** Speech recognition requires internet (audio sent to Google/Apple servers for processing).
+The NLP + SQL execution is fully offline. If speech unavailable, type the same commands.
+
+### 8.4 Rehearsal — Try These First
+
+New users: practise these five commands to build confidence. Each is two words, phonetically clear.
+
+1. **"count doors"** — instant result, proves the system works
+2. **"floor one walls"** — adds floor filter, shows progressive complexity
+3. **"total cost"** — switches to cost intent, different result format
+4. **"show structure"** — discipline filter, highlights in 3D
+5. **"find fire doors"** — free-text search, most flexible
+
+After these five, you can combine any scope + target from the tables above.
+
+---
+
+## 9. Files
 
 | File | Role |
 |------|------|
-| `deploy/sandbox/index2.html` | Modular browser viewer (15 files) |
+| `deploy/sandbox/index.html` | Modular browser viewer (16 modules) |
+| `deploy/sandbox/nlp.js` | NLP query DSL + voice input (S211, to be created) |
 | `deploy/sandbox/walk.js` | Walk/Drive-Thru mode, device orientation, wall X-ray |
 | `deploy/sandbox/main.js` | Render loop with walkOrientTick |
 | `deploy/sandbox/tour.js` | Fly-around, cinematic tour engine |

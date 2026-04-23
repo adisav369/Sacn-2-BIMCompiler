@@ -100,10 +100,65 @@ oci os object put --bucket-name bim-ootb-dev --file deploy/dev/sitecam.js --name
 oci os object put --bucket-name bim-ootb-dev --file deploy/dev/boq_charts.html --name boq_charts.html --content-type text/html --force
 ```
 
-### Promotion Workflow (dev → production)
+### Deploy SOP (dev → production)
 
-Once verified on dev:
-1. Copy dev file to production path: `deploy/dev/sitecam.js` → `deploy/sandbox/sitecam.js`
-2. Upload to `bim-ootb-full` using production commands above
-3. Verify on production URL
-4. Clean dev bucket if no longer needed
+**Pre-condition:** git status is clean. Last commit = known good production state.
+
+```
+Step 1 — TEST        Run ALL tests. Both must pass.
+                       a) node deploy/sandbox/test_all.js   (full suite, 169+ checks)
+                       b) node deploy/dev/s2XX_test.js      (feature-specific tests)
+Step 2 — GIT CHECK   git status clean. User confirms live matches repo.
+Step 3 — COPY        Copy dev deltas to sandbox (production source).
+Step 4 — UPLOAD      Upload changed sandbox files to bim-ootb-full.
+Step 5 — SMOKE       Open production URL on phone + desktop. Verify.
+Step 6 — COMMIT      git add + commit the sandbox changes.
+```
+
+**If broken after Step 5:**
+```
+git restore deploy/sandbox/          # Reset to last commit (known good)
+Re-upload sandbox files to bucket    # Same upload commands as Step 4
+Verify production URL                # Confirm rollback worked
+```
+No new commit needed — git already has the good version. Just re-upload.
+
+**Commands:**
+```bash
+# Step 1: Tests (both must pass — do NOT skip)
+node deploy/sandbox/test_all.js   # full suite (169+ checks)
+node deploy/dev/s211_test.js      # feature tests (adjust per sprint)
+
+# Step 2: Confirm
+git status                     # must be clean
+
+# Step 3: Copy dev → sandbox
+cp deploy/dev/index.html deploy/sandbox/index.html
+cp deploy/dev/main.js deploy/sandbox/main.js
+# ... each changed file
+
+# Step 4: Upload to production
+for f in index.html main.js nlp.js; do
+  oci os object put --bucket-name bim-ootb-full \
+    --file "deploy/sandbox/${f}" --name "sandbox/${f}" \
+    --content-type "$([ ${f##*.} = html ] && echo text/html || echo application/javascript)" \
+    --force
+done
+
+# Step 5: Smoke test
+# Production: https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/sandbox/index.html
+
+# Step 6: Commit
+git add deploy/sandbox/
+git commit -m "[SXXX] Description"
+
+# Rollback (if Step 5 fails):
+git restore deploy/sandbox/
+# Re-run Step 4 upload commands
+```
+
+**Rules:**
+- Git clean before deploy. Always.
+- Deploy what was tested. No cherry-picking.
+- Rollback = git restore + re-upload. No new commit.
+- Sandbox is production source. Dev is staging only.

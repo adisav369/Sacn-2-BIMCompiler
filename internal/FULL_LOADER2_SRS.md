@@ -1,4 +1,8 @@
 # Full Loader 2 SRS — Library-Linked Federation Loading
+
+> **Status: SUPERSEDED** by Direct DB Streaming (S195-S197). See [RTree.md](../docs/RTree.md) §Direct Stream.
+> library.blend linking replaced by direct BLOB tessellation from component_library.db.
+
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md)
 
 **Version:** 1.1 | **Date:** 2026-04-11
