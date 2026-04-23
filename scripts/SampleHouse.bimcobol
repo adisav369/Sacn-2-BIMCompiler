@@ -1,0 +1,9 @@
+-- BIM COBOL Script: SampleHouse (SH)
+-- DocSubType: SH   DocBaseType: RE   Mode: EN-BLOC
+-- Expected elements: 55
+
+-- PLACE BOM: emit all BOM elements to output.db
+PLACE BOM SH
+
+-- POST-COMPILATION: clip walls to roof surface (SH = flat roof, 0 trims expected)
+TRIM WALLS TO ROOF

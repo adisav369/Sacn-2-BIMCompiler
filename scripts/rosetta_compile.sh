@@ -74,6 +74,19 @@ compile_building() {
     if [ "$CC_RC" -ne 0 ]; then
         verdict "COMPILE_${label}" "FAIL" "Maven exited ${CC_RC}"
         echo "$CC_OUTPUT" | grep -E "<<< FAILURE|<<< ERROR|AssertionFailedError" | head -5 | sed 's/^/    /'
+        # §S190: Capture surefire exception detail for MetadataMissing / enum / assertion errors
+        local SUREFIRE="DAGCompiler/target/surefire-reports/com.bim.compiler.contract.BuildingRegistryTest.txt"
+        if [ -f "$SUREFIRE" ]; then
+            local ROOT_CAUSE
+            ROOT_CAUSE=$(grep -E "Exception:|Error:|AssertionFailedError:" "$SUREFIRE" | head -1)
+            if [ -n "$ROOT_CAUSE" ]; then
+                echo "    ROOT CAUSE: ${ROOT_CAUSE}"
+            fi
+            # Show familyRef / element_ref for MetadataMissing
+            grep -o 'element_ref=[^ ]*' "$SUREFIRE" | head -1 | sed 's/^/    /' || true
+            grep -o 'familyRef=[^ ]*' "$SUREFIRE" | head -1 | sed 's/^/    /' || true
+            grep -o 'discipline=[^ ]*' "$SUREFIRE" | head -1 | sed 's/^/    /' || true
+        fi
     else
         verdict "COMPILE_${label}" "PASS" "compiled OK"
     fi

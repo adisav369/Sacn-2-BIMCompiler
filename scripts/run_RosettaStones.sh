@@ -130,6 +130,7 @@ echo ""
 
 # Fleet result collectors (for summary table at end)
 declare -a FLEET_LINES=()
+declare -a FLEET_DIAG=()   # §S190: per-building failure reason for diagnostic report
 FLEET_IDX=0
 
 # Process each building
@@ -226,6 +227,10 @@ for yaml_file in "${YAML_FILES[@]}"; do
             if [ "$IFC_RC" -ne 0 ]; then
                 verdict "IFCTOBOM_${PREFIX}" "FAIL" "IFCtoBOM pipeline failed"
                 echo "$IFC_OUTPUT" | grep -E "ERROR|Exception|FAIL" | head -5 | sed 's/^/    /'
+                # §S190: Show QA reconciliation delta detail
+                RECON_LINE=""
+                RECON_LINE=$(echo "$IFC_OUTPUT" | grep -o 'Extraction reconciliation.*' | head -1)
+                [ -n "$RECON_LINE" ] && echo "    RECON: ${RECON_LINE}"
             else
                 verdict "IFCTOBOM_${PREFIX}" "PASS" "${BOM_DB} produced"
             fi
@@ -272,6 +277,28 @@ for yaml_file in "${YAML_FILES[@]}"; do
         REF_DB="DAGCompiler/lib/input/${BUILDING_TYPE}_extracted.db"
         run_fidelity "$DOC_SUB_TYPE" "${OUTPUT_BASE}.db" "$REF_DB"
 
+        # §S190: GEO white-box verification (all-pairs relative offset proof)
+        GEO_LOG=""
+        GEO_LOG=$(ls -t logs/pipeline_*"${BUILDING_TYPE}"*_extracted_*.log 2>/dev/null \
+                  | head -1)
+        if [ -n "$GEO_LOG" ] && [ -f "${OUTPUT_BASE}.db" ] && [ -f "$REF_DB" ] \
+           && grep -q '\[GEO  \] TACK' "$GEO_LOG" 2>/dev/null; then
+            echo ""
+            print_header "GEO VERIFY ${PREFIX}: white-box offset proof"
+            GEO_OUT=""; GEO_RC=0
+            GEO_OUT=$(python3 scripts/geo_verify.py "$GEO_LOG" "${OUTPUT_BASE}.db" "$REF_DB" 2>&1) \
+                && GEO_RC=0 || GEO_RC=$?
+            # Show verdict line + stats
+            echo "$GEO_OUT" | grep -E 'Elements:|Pairs:|MATCH:|DRIFT:|Worst:|VERDICT:' | sed 's/^/  /'
+            if echo "$GEO_OUT" | grep -q 'ZERO DRIFT'; then
+                verdict "GEO_VERIFY_${PREFIX}" "PASS" "$(echo "$GEO_OUT" | grep 'VERDICT:' | sed 's/VERDICT: //')"
+            elif [ "$GEO_RC" -ne 0 ]; then
+                verdict "GEO_VERIFY_${PREFIX}" "WARN" "geo_verify.py returned ${GEO_RC}"
+            else
+                verdict "GEO_VERIFY_${PREFIX}" "FAIL" "$(echo "$GEO_OUT" | grep 'VERDICT:' | sed 's/VERDICT: //')"
+            fi
+        fi
+
         # S60 #9: Visual diff TSV report (--diff flag)
         if [ "$DIFF_TSV" = "true" ] && [ -f "${OUTPUT_BASE}.db" ] && [ -f "$REF_DB" ]; then
             TSV_FILE="logs/diff_${DOC_SUB_TYPE}.tsv"
@@ -306,9 +333,38 @@ for yaml_file in "${YAML_FILES[@]}"; do
     elif [ "$_BW" -gt 0 ]; then _STATUS="WARN"
     else _STATUS="PASS"; fi
 
+    # §S190: Collect per-building failure reason for diagnostic report
+    _DIAG=""
+    if [ "$_BF" -gt 0 ]; then
+        # Check surefire for root cause
+        _SF="DAGCompiler/target/surefire-reports/com.bim.compiler.contract.BuildingRegistryTest.txt"
+        if [ -f "$_SF" ] && grep -q 'MetadataMissing' "$_SF" 2>/dev/null; then
+            _DIAG="MetadataMissing: $(grep -o 'familyRef=[^ ]*' "$_SF" | head -1)"
+        elif [ -f "$_SF" ] && grep -q 'No enum constant' "$_SF" 2>/dev/null; then
+            _DIAG="Enum: $(grep -o 'No enum constant [^ ]*' "$_SF" | head -1)"
+        elif [ -f "$_SF" ] && grep -q 'count mismatch' "$_SF" 2>/dev/null; then
+            _DIAG="CountMismatch: $(grep -o 'expected:.*but was:.*' "$_SF" | head -1)"
+        fi
+        # Check IFCtoBOM reconciliation (only non-zero delta = real failure)
+        if [ -n "$_PATRN_LOG" ]; then
+            _RECON=""
+            _RECON=$(grep 'Extraction reconciliation.*delta=' "$_PATRN_LOG" 2>/dev/null \
+                     | grep -v 'delta=+0' | grep -o 'delta=[+-]*[0-9]*' | head -1)
+            [ -n "$_RECON" ] && _DIAG="${_DIAG:+${_DIAG}; }RECON: ${_RECON}"
+        fi
+        # Check for C8 fidelity loss (search 20 lines after FIDELITY header)
+        if [ -z "$_DIAG" ] && grep -q "FIDELITY ${PREFIX}:" "$LOG_FILE" 2>/dev/null; then
+            _C8=$(grep -A20 "FIDELITY ${PREFIX}:" "$LOG_FILE" 2>/dev/null \
+                  | grep -o '[0-9]* product type(s) lost' | head -1)
+            [ -n "$_C8" ] && _DIAG="C8: ${_C8}"
+        fi
+        [ -z "$_DIAG" ] && _DIAG="(check log)"
+    fi
+
     # Collect for fleet table
     FLEET_LINES[$FLEET_IDX]=$(printf "%-4s %-24s %5s  %2s/%2s  %s storeys  unk=%s" \
         "$PREFIX" "$BLDG_NAME" "$_TOTAL_EL" "$_BP" "$_BT" "$_STOREYS" "$_UNKNOWN")
+    FLEET_DIAG[$FLEET_IDX]="$_DIAG"
     FLEET_IDX=$((FLEET_IDX + 1))
 
     # Print one-line summary
@@ -341,10 +397,84 @@ printf "  %-4s %-24s %5s  %5s  %7s  %7s\n" "PFX" "BUILDING" "EL" "GATES" "STOREY
 printf "  %-4s %-24s %5s  %5s  %7s  %7s\n" "----" "------------------------" "-----" "-----" "-------" "-------"
 for ((i=0; i<FLEET_IDX; i++)); do
     echo "  ${FLEET_LINES[$i]}"
+    # §S190: Show per-building failure reason inline
+    if [ -n "${FLEET_DIAG[$i]:-}" ]; then
+        echo "         → ${FLEET_DIAG[$i]}"
+    fi
 done
 echo ""
 echo "  Pipeline: IFC → *_BOM.db → DAGCompiler → output.db"
 echo ""
+
+# ── §S190: Black-Box Diagnostic Report ──────────────────────
+# Post-run summary: categorise failures by root cause for triage.
+print_header "DIAGNOSTIC REPORT"
+echo ""
+
+# Scan surefire reports for last-seen errors
+SUREFIRE="DAGCompiler/target/surefire-reports/com.bim.compiler.contract.BuildingRegistryTest.txt"
+if [ -f "$SUREFIRE" ]; then
+    LAST_ERROR=$(grep -E "Exception:|Error:" "$SUREFIRE" | head -1)
+    [ -n "$LAST_ERROR" ] && echo "  Last compile error: ${LAST_ERROR}"
+fi
+
+# Categorise failures from log
+echo ""
+echo "  FAILURE CATEGORIES:"
+
+# 1. Extraction reconciliation (QA ABORT) — only [FAIL] lines
+RECON_FAILS=$(grep '\[FAIL\] Extraction reconciliation' "$LOG_FILE" 2>/dev/null | grep -c 'delta=' || echo 0)
+RECON_FAILS=${RECON_FAILS//[^0-9]/}; RECON_FAILS=${RECON_FAILS:-0}
+if [ "$RECON_FAILS" -gt 0 ]; then
+    echo "    [RECON] ${RECON_FAILS} building(s) — extraction LEAFs vs extracted element count mismatch"
+    grep '\[FAIL\] Extraction reconciliation' "$LOG_FILE" 2>/dev/null \
+        | grep -oP '\d+ extraction LEAFs vs \d+ extracted \(delta=[+-]?\d+\)' \
+        | sort -u | sed 's/^/      /' | head -5
+    echo "      FIX: populate missing element types in IFCtoBOM, or relax QA threshold"
+fi
+
+# 2. MetadataMissingException (compile crash)
+META_FAILS=$(grep -c 'MetadataMissingException' "$LOG_FILE" 2>/dev/null || echo 0)
+META_FAILS=${META_FAILS//[^0-9]/}; META_FAILS=${META_FAILS:-0}
+if [ "$META_FAILS" -gt 0 ]; then
+    echo "    [GEOMETRY-GAP] ${META_FAILS} building(s) — elements without geometry in component_library.db"
+    grep -o 'familyRef=[^ ]*' "$LOG_FILE" 2>/dev/null | sed 's/[;,]*$//' | sort -u | head -5 | sed 's/^/      /'
+    echo "      FIX: add component_definitions + component_geometries for missing familyRefs"
+fi
+
+# 3. Empty extracted DBs (no IFC file)
+EMPTY_DBS=$(grep -c 'Reference DB missing or empty' "$LOG_FILE" 2>/dev/null || echo 0)
+EMPTY_DBS=${EMPTY_DBS//[^0-9]/}; EMPTY_DBS=${EMPTY_DBS:-0}
+if [ "$EMPTY_DBS" -gt 0 ]; then
+    echo "    [NO-IFC] ${EMPTY_DBS} building(s) — extracted DB missing or empty"
+    echo "      FIX: run extraction (python3 tools/extract.py) or remove YAML"
+fi
+
+# 4. C8 fidelity (mesh diversity loss)
+C8_FAILS=$(grep -c 'product type(s) lost mesh diversity' "$LOG_FILE" 2>/dev/null || echo 0)
+C8_FAILS=${C8_FAILS//[^0-9]/}; C8_FAILS=${C8_FAILS:-0}
+if [ "$C8_FAILS" -gt 0 ]; then
+    echo "    [C8-DIVERSITY] ${C8_FAILS} building(s) — mesh diversity lost"
+    grep 'lost mesh diversity' "$LOG_FILE" 2>/dev/null | head -3 | sed 's/^.*FAIL — /      /'
+fi
+
+# 5. Enum / schema errors
+ENUM_FAILS=$(grep -c 'No enum constant' "$LOG_FILE" 2>/dev/null || echo 0)
+ENUM_FAILS=${ENUM_FAILS//[^0-9]/}; ENUM_FAILS=${ENUM_FAILS:-0}
+if [ "$ENUM_FAILS" -gt 0 ]; then
+    echo "    [ENUM] ${ENUM_FAILS} — Java enum does not cover DB value"
+    grep -o 'No enum constant [^ ]*' "$LOG_FILE" 2>/dev/null | sort -u | head -3 | sed 's/^/      /'
+fi
+
+# Summary counts — use FLEET_DIAG to check: empty diag = all green
+ALL_GREEN=0
+for ((i=0; i<FLEET_IDX; i++)); do
+    [ -z "${FLEET_DIAG[$i]:-}" ] && ALL_GREEN=$((ALL_GREEN + 1))
+done
+echo ""
+echo "  TOTALS: ${LOG_PASS} PASS, ${LOG_FAIL} FAIL, ${LOG_WARN} WARN | ${ALL_GREEN} ALL GREEN out of ${FLEET_IDX} buildings"
+echo ""
+
 finish_log
 
 if [ "$LOG_FAIL" -gt 0 ]; then

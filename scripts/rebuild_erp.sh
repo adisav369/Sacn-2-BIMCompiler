@@ -261,11 +261,26 @@ apply "$MIGRATION/DV035_verb_pattern.sql"              "DV035 verb pattern (9 ro
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════
+# Phase 8a: MEP metadata tables (DV037–DV042)
+# These create tables/columns required by Phase 8b generative products.
+# ═══════════════════════════════════════════════════════════════════════
+echo "── Phase 8a: MEP metadata tables ──"
+apply "$MIGRATION/DV037_mep_fixture_route.sql"           "DV037 anchor_end on ad_space_type_mep_bom"
+apply "$MIGRATION/DV038_c_bpartner.sql"                  "DV038 C_BPartner"
+apply "$MIGRATION/DV039_mep_rule_tables.sql"             "DV039 MEP rule tables"
+apply "$MIGRATION/DV040_mep_space_identity.sql"          "DV040 MEP space identity"
+apply "$MIGRATION/DV041_space_capability.sql"            "DV041 space capability"
+apply "$MIGRATION/DV042_placement_offsets.sql"           "DV042 placement offsets"
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════
 # Phase 8b: Generative MEP products + LOD bridge
 # ═══════════════════════════════════════════════════════════════════════
 echo "── Phase 8b: Generative MEP products ──"
-for gf in DV043_generative_mep_products DV044_space_type_ceiling_height DV045_product_dimensions \
-           DV046_generative_product_lod_bridge DV047_fixture_tack_points DV048_unmapped_product_lod; do
+for gf in DV043_generative_mep_products \
+           DV044_space_type_ceiling_height DV045_product_dimensions \
+           DV046_generative_product_lod_bridge DV047_fixture_tack_points DV048_unmapped_product_lod \
+           DV049_fridge_kitchen_schedule; do
     [ -f "$MIGRATION/${gf}.sql" ] && apply "$MIGRATION/${gf}.sql" "$gf"
 done
 echo ""
