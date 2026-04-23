@@ -13,6 +13,7 @@ viewer downloads just that building's two DBs. Cached in IndexedDB — second vi
 | `bim-ootb-full` | Landing page + 30 per-building DB pairs + city index |
 | `bim-ootb` | Duplex demo (standalone) |
 | `bim-ootb-duplex` | Duplex backup |
+| `bim-ootb-dev` | Dev/staging — test before production |
 
 Region: `ap-kulai-2` (Malaysia West 2 Kulai). Always Free tier.
 
@@ -26,7 +27,8 @@ https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/
 
 ```
 index.html                          ← landing page (manifest-driven, 30 building cards)
-rtree_browser_demo.html             ← 3D viewer (opened per building)
+sandbox/index.html                  ← modular viewer (S209)
+sandbox/*.js                        ← 15 JS modules
 boq_charts.html                     ← 4D/5D analytics
 manifest.json                       ← 30 archetypes metadata
 buildings/
@@ -45,10 +47,17 @@ oci os object put --bucket-name bim-ootb-full \
   --file deploy/landing.html --name index.html \
   --content-type text/html --force
 
-# Upload viewer
+# Upload modular viewer (S209)
 oci os object put --bucket-name bim-ootb-full \
-  --file deploy/rtree_browser_demo.html --name rtree_browser_demo.html \
+  --file deploy/sandbox/index.html --name sandbox/index.html \
   --content-type text/html --force
+
+# Upload JS modules
+for f in config scene streaming panels tools picking tour measure sitecam issues walk city main loader; do
+  oci os object put --bucket-name bim-ootb-full \
+    --file "deploy/sandbox/${f}.js" --name "sandbox/${f}.js" \
+    --content-type application/javascript --force
+done
 
 # Upload a per-building DB pair
 oci os object put --bucket-name bim-ootb-full \
@@ -72,3 +81,29 @@ OCI Always Free tier — no charges, no expiry:
 - Exceeding limits = throttled, not billed
 
 Full setup details: `internal/OCI_SETUP.md`
+
+## Dev Environment (`bim-ootb-dev`)
+
+Separate bucket for testing changes before production. Zero blast radius.
+
+**Dev URL:**
+```
+https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/index.html
+```
+
+**Local files:** `deploy/dev/` — only changed files, rest served from production sandbox copies.
+
+```bash
+# Deploy dev landing + changed files
+oci os object put --bucket-name bim-ootb-dev --file deploy/landing2.html --name index.html --content-type text/html --force
+oci os object put --bucket-name bim-ootb-dev --file deploy/dev/sitecam.js --name sandbox/sitecam.js --content-type application/javascript --force
+oci os object put --bucket-name bim-ootb-dev --file deploy/dev/boq_charts.html --name boq_charts.html --content-type text/html --force
+```
+
+### Promotion Workflow (dev → production)
+
+Once verified on dev:
+1. Copy dev file to production path: `deploy/dev/sitecam.js` → `deploy/sandbox/sitecam.js`
+2. Upload to `bim-ootb-full` using production commands above
+3. Verify on production URL
+4. Clean dev bucket if no longer needed

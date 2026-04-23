@@ -19,6 +19,7 @@
 | `bim-ootb` | Duplex demo (mobile-friendly) | `https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb/o/` |
 | `bim-ootb-full` | Landing page + 14 per-building DBs + sandbox | `https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/` |
 | `bim-ootb-duplex` | Duplex-only (backup) | `https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-duplex/o/` |
+| `bim-ootb-dev` | Dev/staging — test changes before production | `https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/` |
 
 ## Live URLs
 
@@ -55,13 +56,43 @@ for f in config scene streaming panels tools picking tour measure sitecam issues
   oci os object put --bucket-name bim-ootb --file "deploy/sandbox/${f}.js" --name "${f}.js" --content-type application/javascript --force
 done
 
+# ── bim-ootb-dev (dev/staging) ──
+
+# Landing (dev)
+oci os object put --bucket-name bim-ootb-dev --file deploy/landing2.html --name index.html --content-type text/html --force
+
+# Viewer + JS modules (copy production sandbox, override dev files)
+oci os object put --bucket-name bim-ootb-dev --file deploy/sandbox/index.html --name sandbox/index.html --content-type text/html --force
+for f in config scene streaming panels tools picking tour measure issues walk city main loader; do
+  oci os object put --bucket-name bim-ootb-dev --file "deploy/sandbox/${f}.js" --name "sandbox/${f}.js" --content-type application/javascript --force
+done
+# Dev overrides (changed files only)
+oci os object put --bucket-name bim-ootb-dev --file deploy/dev/sitecam.js --name sandbox/sitecam.js --content-type application/javascript --force
+oci os object put --bucket-name bim-ootb-dev --file deploy/dev/boq_charts.html --name boq_charts.html --content-type text/html --force
+
 # ── Common ──
 
 # List bucket
 oci os object list --bucket-name bim-ootb-full --query 'data[*].{name:name,size:size}' --output table
 
-# CORS (required for sql.js + httpvfs)
+# Safe delete — checks live HTML files for references before removing
+# Usage: oci_safe_delete <bucket> <object-name>
+oci_safe_delete() {
+  local bucket="$1" file="$2"
+  local base="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/${bucket}/o"
+  for ref in index.html sandbox/index.html boq_charts.html; do
+    if curl -s "${base}/${ref}" 2>/dev/null | grep -q "$file"; then
+      echo "ABORT: $file is referenced in $ref — investigate before deleting"
+      return 1
+    fi
+  done
+  echo "OK: $file not referenced — deleting"
+  oci os object delete --bucket-name "$bucket" --name "$file" --force
+}
+
+# CORS (required for sql.js)
 oci os bucket update --name bim-ootb --cors-config file:///tmp/cors.json
+oci os bucket update --name bim-ootb-dev --cors-config file:///tmp/cors.json
 ```
 
 ### Deployment rules
@@ -75,15 +106,11 @@ oci os bucket update --name bim-ootb --cors-config file:///tmp/cors.json
 
 ```
 index.html                    ← landing page (manifest-driven)
-rtree_browser_demo.html       ← full-download viewer (with progress loader)
-rtree_streaming.html          ← httpvfs streaming viewer
+sandbox/index.html            ← modular viewer (S209)
+sandbox/*.js                  ← 15 JS modules
 boq_charts.html               ← 4D/5D analytics
 manifest.json                 ← 30 archetypes, 11.8KB
-httpvfs.js                    ← sql.js-httpvfs library
-sqlite.worker.js              ← httpvfs web worker
-sql-wasm.wasm                 ← SQLite WASM binary
-sandbox_1M_extracted.db       ← 579MB sandbox (for httpvfs)
-component_library.db          ← 456MB full library (for httpvfs)
+sandbox_1M_extracted.db       ← 579MB sandbox (legacy, httpvfs retired)
 buildings/
   SampleHouse_extracted.db    ← 132KB
   SampleHouse_library.db      ← 356KB

@@ -7,7 +7,7 @@
 
 **Version:** 0.1 (2026-04-20)
 **Status:** SPEC — OCI deployed, live URLs below
-**Depends on:** `deploy/rtree_browser_demo.html`, OCI Object Storage bucket
+**Depends on:** `deploy/sandbox/index.html` + 15 JS modules, OCI Object Storage bucket
 
 ---
 
@@ -23,6 +23,23 @@ CORS enabled. Range headers supported (required for httpvfs).
 
 ---
 
+## 0.1 Dev Environment
+
+**Dev bucket:** `bim-ootb-dev` — separate OCI bucket for testing changes before production.
+
+| Environment | Bucket | Landing | Purpose |
+|-------------|--------|---------|---------|
+| **Production** | `bim-ootb-full` | `landing.html` → `index.html` | Live users |
+| **Dev** | `bim-ootb-dev` | `landing2.html` → `index.html` | Test changes |
+| **Duplex demo** | `bim-ootb` | viewer direct | Standalone demo |
+
+**Dev URL:** `https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/index.html`
+
+**Local dev files:** `deploy/dev/` — only changed files. Unchanged modules copied from `deploy/sandbox/`.
+Deploy commands: see `deploy/OCI_UPLOAD.md` §Dev Environment.
+
+---
+
 ## 1. Architecture — No Native Code
 
 The browser viewer already works on mobile Chrome/Safari. The APK is a thin wrapper.
@@ -34,7 +51,7 @@ The browser viewer already works on mobile Chrome/Safari. The APK is a thin wrap
 │  ┌─────────────────────────────────────────────┐  │
 │  │  WebView                                    │  │
 │  │                                             │  │
-│  │  rtree_browser_demo.html (bundled or OCI)   │  │
+│  │  sandbox/index.html (bundled or OCI)   │  │
 │  │  sql.js WASM ← CDN                         │  │
 │  │  Three.js    ← CDN                         │  │
 │  │                                             │  │

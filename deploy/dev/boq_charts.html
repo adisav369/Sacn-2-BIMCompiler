@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BIM OOTB — 4D/5D Analytics</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; padding: 20px; }
+  h1 { color: #4fc3f7; font-size: 20px; margin-bottom: 4px; }
+  h2 { color: #4fc3f7; font-size: 15px; margin: 20px 0 8px; }
+  .subtitle { color: #888; font-size: 12px; margin-bottom: 16px; }
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1400px; }
+  .chart-box {
+    background: rgba(255,255,255,0.05); border-radius: 8px; padding: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .chart-box.full { grid-column: 1 / -1; }
+  canvas { max-width: 100%; }
+  table { border-collapse: collapse; width: 100%; font-size: 11px; margin-top: 8px; }
+  th { background: rgba(79,195,247,0.15); color: #4fc3f7; text-align: left; padding: 4px 8px; }
+  td { padding: 3px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  tr:hover td { background: rgba(255,255,255,0.05); }
+  .total-row td { font-weight: bold; color: #4fc3f7; border-top: 2px solid #4fc3f7; }
+  .toolbar {
+    position: fixed; top: 16px; right: 16px; z-index: 10;
+    background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 12px;
+    backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08);
+  }
+  .toolbar button {
+    padding: 8px 16px; background: #444; color: #fff; border: 1px solid #666;
+    border-radius: 4px; cursor: pointer; font-size: 22px; margin-left: 4px;
+  }
+  .toolbar button:hover { background: #4fc3f7; color: #000; }
+  #status { color: #4fc3f7; font-size: 12px; margin-top: 12px; }
+</style>
+</head>
+<body>
+<h1>BIM OOTB — 4D/5D Analytics</h1>
+<div class="subtitle" id="info">Loading...</div>
+<div class="toolbar">
+  <button onclick="save5D()">&#128202; 5D</button>
+  <button onclick="save4D()">&#128197; 4D</button>
+  <button onclick="toggleTheme()">&#9788;</button>
+</div>
+<div class="charts" id="charts"></div>
+<div id="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+const params = new URLSearchParams(location.search);
+const DB_URL = params.get('db') || 'sandbox_1M_extracted.db';
+const BLD = params.get('bld') || '';
+
+// ============================================================================
+// CIDB 2024 MATERIAL RATES (from boq_export.py — exact match)
+// ============================================================================
+const RATES = {
+  IfcDuct:{rate:165,unit:'M',desc:'Galvanized Steel Ductwork (avg 400mm)'},
+  IfcDuctSegment:{rate:165,unit:'M',desc:'Ductwork Segment'},
+  IfcDuctFitting:{rate:380,unit:'EA',desc:'Duct Fittings (elbows, tees)'},
+  IfcPipe:{rate:48.5,unit:'M',desc:'PVC/HDPE Pipe (avg 100mm)'},
+  IfcPipeSegment:{rate:48.5,unit:'M',desc:'Pipe Segment'},
+  IfcPipeFitting:{rate:95,unit:'EA',desc:'Pipe Fittings'},
+  IfcCableCarrier:{rate:78,unit:'M',desc:'Cable Tray System (300mm)'},
+  IfcCableCarrierSegment:{rate:78,unit:'M',desc:'Cable Tray Segment'},
+  IfcBeam:{rate:680,unit:'M',desc:'Structural Steel I-Beam'},
+  IfcColumn:{rate:1250,unit:'M',desc:'Structural Steel Column'},
+  IfcSlab:{rate:285,unit:'M2',desc:'RC Slab 250mm'},
+  IfcWall:{rate:145,unit:'M2',desc:'Blockwork Wall 150mm'},
+  IfcWallStandardCase:{rate:145,unit:'M2',desc:'Standard Wall'},
+  IfcCurtainWall:{rate:750,unit:'M2',desc:'Curtain Wall'},
+  IfcCovering:{rate:185,unit:'M2',desc:'Floor/Ceiling Finish'},
+  IfcRoof:{rate:238,unit:'M2',desc:'Metal Roof'},
+  IfcLightFixture:{rate:485,unit:'EA',desc:'LED Light Fixture'},
+  IfcOutlet:{rate:125,unit:'EA',desc:'Power Outlet'},
+  IfcDoor:{rate:2850,unit:'EA',desc:'Door Set'},
+  IfcWindow:{rate:1580,unit:'EA',desc:'Window'},
+  IfcBuildingElementProxy:{rate:850,unit:'EA',desc:'Misc Element'},
+  IfcFlowTerminal:{rate:3500,unit:'EA',desc:'HVAC Terminal'},
+  IfcFurnishingElement:{rate:1200,unit:'EA',desc:'Furniture'},
+  IfcPlate:{rate:95,unit:'M2',desc:'Steel Plate'},
+  IfcMember:{rate:320,unit:'M',desc:'Steel Member'},
+  IfcRailing:{rate:280,unit:'M',desc:'Railing'},
+  IfcStair:{rate:4500,unit:'EA',desc:'Staircase'},
+  IfcStairFlight:{rate:2200,unit:'EA',desc:'Stair Flight'},
+};
+
+// ============================================================================
+// LABOR RATES (from boq_export.py — full trade/crew/rate_per_day)
+// ============================================================================
+const LABOR_RATES = {
+  HVAC_TECH: {
+    rate_per_day: 185, crew_size: 2, trade: 'HVAC Technician (Skilled)',
+    productivity: {IfcDuct:18,IfcDuctSegment:18,IfcDuctFitting:12}
+  },
+  PLUMBER: {
+    rate_per_day: 165, crew_size: 2, trade: 'Pipefitter (Skilled)',
+    productivity: {IfcPipe:25,IfcPipeSegment:25,IfcPipeFitting:15}
+  },
+  ELECTRICIAN: {
+    rate_per_day: 175, crew_size: 2, trade: 'Electrician (Skilled)',
+    productivity: {IfcCableCarrier:30,IfcCableCarrierSegment:30,IfcLightFixture:20,IfcOutlet:25}
+  },
+  STEEL_ERECTOR: {
+    rate_per_day: 195, crew_size: 4, trade: 'Steel Erector (Skilled)',
+    productivity: {IfcBeam:8,IfcColumn:6}
+  },
+  CONCRETE_GANG: {
+    rate_per_day: 145, crew_size: 6, trade: 'Concrete Gang (Mixed)',
+    productivity: {IfcSlab:35}
+  },
+  MASON: {
+    rate_per_day: 155, crew_size: 3, trade: 'Mason (Skilled) + Laborers',
+    productivity: {IfcWall:12,IfcWallStandardCase:12}
+  },
+  LABORER: {
+    rate_per_day: 95, crew_size: 1, trade: 'General Laborer',
+    productivity: {}
+  },
+};
+
+// ============================================================================
+// EQUIPMENT RATES & ALLOCATION (from boq_export.py)
+// ============================================================================
+const EQUIPMENT_RATES = {
+  MOBILE_CRANE_20T: {rate_per_day:1850, desc:'Mobile Crane 20 Tonne'},
+  TOWER_CRANE: {rate_per_day:2200, desc:'Tower Crane'},
+  CONCRETE_PUMP: {rate_per_day:950, desc:'Concrete Pump Truck'},
+  SCISSOR_LIFT_8M: {rate_per_day:285, desc:'Scissor Lift 8m'},
+  WELDING_MACHINE: {rate_per_day:65, desc:'Welding Machine 300A'},
+  GENERATOR_5KVA: {rate_per_day:95, desc:'Generator 5KVA'},
+};
+const EQUIPMENT_ALLOCATION = {
+  IfcBeam: {equipment:'MOBILE_CRANE_20T', duration_factor:0.5},
+  IfcColumn: {equipment:'MOBILE_CRANE_20T', duration_factor:0.5},
+  IfcSlab: {equipment:'CONCRETE_PUMP', duration_factor:0.3},
+  IfcDuct: {equipment:'SCISSOR_LIFT_8M', duration_factor:0.4},
+  IfcCableCarrier: {equipment:'SCISSOR_LIFT_8M', duration_factor:0.3},
+};
+
+// ============================================================================
+// SEQUENCE RULES (from schedule_generator.py — for 4D schedule)
+// ============================================================================
+const SEQUENCE_RULES = {
+  // Substructure
+  IfcFooting:{phase:'Substructure',sequence:1,resource:'CONCRETE_GANG'},
+  IfcReinforcingBar:{phase:'Substructure',sequence:1,resource:'CONCRETE_GANG'},
+  // Superstructure
+  IfcColumn:{phase:'Superstructure',sequence:2,resource:'STEEL_ERECTOR'},
+  IfcBeam:{phase:'Superstructure',sequence:3,resource:'STEEL_ERECTOR'},
+  IfcSlab:{phase:'Superstructure',sequence:4,resource:'CONCRETE_GANG'},
+  IfcPlate:{phase:'Superstructure',sequence:4,resource:'STEEL_ERECTOR'},
+  IfcMember:{phase:'Superstructure',sequence:3,resource:'STEEL_ERECTOR'},
+  // MEP Rough-in (pipes, ducts, cable trays, flow segments/fittings)
+  IfcDuct:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
+  IfcDuctSegment:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
+  IfcDuctFitting:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
+  IfcPipe:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcPipeSegment:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcPipeFitting:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcCableCarrier:{phase:'MEP Rough-in',sequence:5,resource:'ELECTRICIAN'},
+  IfcCableCarrierSegment:{phase:'MEP Rough-in',sequence:5,resource:'ELECTRICIAN'},
+  IfcFlowSegment:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcFlowFitting:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcFlowController:{phase:'MEP Rough-in',sequence:5,resource:'ELECTRICIAN'},
+  IfcFlowMovingDevice:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
+  IfcFlowStorageDevice:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcFlowTreatmentDevice:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcEnergyConversionDevice:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
+  // Architecture
+  IfcWall:{phase:'Architecture',sequence:6,resource:'MASON'},
+  IfcWallStandardCase:{phase:'Architecture',sequence:6,resource:'MASON'},
+  IfcOpeningElement:{phase:'Architecture',sequence:6,resource:'MASON'},
+  IfcBuildingElementPart:{phase:'Architecture',sequence:6,resource:'MASON'},
+  IfcDoor:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
+  IfcWindow:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
+  IfcStair:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
+  IfcStairFlight:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
+  IfcRailing:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
+  IfcRoof:{phase:'Architecture',sequence:8,resource:'ROOFER'},
+  IfcBuildingElementProxy:{phase:'Architecture',sequence:6,resource:null},
+  IfcCurtainWall:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
+  // MEP Final
+  IfcLightFixture:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
+  IfcOutlet:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
+  IfcElectricAppliance:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
+  IfcFlowTerminal:{phase:'MEP Final',sequence:9,resource:'HVAC_TECH'},
+  // Finishes
+  IfcCovering:{phase:'Finishes',sequence:10,resource:'FINISHER'},
+  IfcFurniture:{phase:'Finishes',sequence:11,resource:'FINISHER'},
+  IfcFurnishingElement:{phase:'Finishes',sequence:11,resource:'FINISHER'},
+};
+const DEFAULT_RULE = {phase:'Architecture',sequence:6,resource:null};
+
+const DISC_COLORS = {
+  ARC:'#4488ff',STR:'#44cccc',MEP:'#44cc44',ELEC:'#cccc44',FP:'#cc8844',
+  ACMV:'#cc4444',PLB:'#8844cc',HVAC:'#44aacc',SAN:'#aa44aa',VENT:'#88ccaa',
+};
+const PHASE_COLORS = {
+  'Substructure':'#A5A5A5','Superstructure':'#4472C4','MEP Rough-in':'#70AD47',
+  'Architecture':'#ED7D31','MEP Final':'#5B9BD5','Finishes':'#FFC000',
+  'Commissioning':'#C55A11','Unknown':'#888888',
+};
+
+// ============================================================================
+// USD CONVERSION RATE
+// ============================================================================
+const USD_RATE = 4.45;
+
+// ============================================================================
+// WORK PACKAGES — IFC class → construction phase mapping
+// ============================================================================
+const WORK_PACKAGES = [
+  { id: 'PACKAGE 1', name: 'SUBSTRUCTURE', color: '8E44AD',
+    classes: ['IfcFooting','IfcPile','IfcReinforcingBar'] },
+  { id: 'PACKAGE 2', name: 'SUPERSTRUCTURE', color: '2980B9',
+    classes: ['IfcColumn','IfcBeam','IfcSlab','IfcWall','IfcWallStandardCase','IfcCurtainWall','IfcRoof','IfcPlate','IfcMember'] },
+  { id: 'PACKAGE 3', name: 'MEP ROUGH-IN', color: 'D35400',
+    classes: ['IfcDuct','IfcDuctSegment','IfcDuctFitting','IfcPipe','IfcPipeSegment','IfcPipeFitting','IfcCableCarrier','IfcCableCarrierSegment','IfcFlowSegment','IfcFlowFitting','IfcFlowController','IfcFlowMovingDevice','IfcFlowStorageDevice','IfcFlowTreatmentDevice','IfcEnergyConversionDevice'] },
+  { id: 'PACKAGE 4', name: 'FINISHES', color: '27AE60',
+    classes: ['IfcCovering','IfcDoor','IfcWindow','IfcFurniture','IfcFurnishingElement','IfcStair','IfcStairFlight','IfcRailing'] },
+  { id: 'PACKAGE 5', name: 'MEP FINAL FIX', color: 'C0392B',
+    classes: ['IfcFlowTerminal','IfcLightFixture','IfcOutlet','IfcElectricAppliance'] },
+];
+
+// ============================================================================
+// COMPUTED STATE
+// ============================================================================
+let db = null, bldName = '';
+let qtoData = [];        // per storey/disc/class rows
+let discSummary = {};     // disc -> {qty, matTotal, laborCost, equipCost}
+let grandMaterial = 0, grandLabor = 0, grandEquip = 0, totalQty = 0;
+let scheduleData = [];    // generated 4D tasks
+let chartInstances = [];
+
+// ============================================================================
+// LABOR / EQUIPMENT CALCULATION (matches boq_export.py exactly)
+// ============================================================================
+function calcLabor(ifcClass, qty) {
+  for (const [key, lr] of Object.entries(LABOR_RATES)) {
+    if (lr.productivity && lr.productivity[ifcClass] !== undefined) {
+      const prod = lr.productivity[ifcClass];
+      const days = qty / prod;
+      const cost = days * lr.crew_size * lr.rate_per_day;
+      return {cost: Math.round(cost), days, crew: lr.crew_size, trade: lr.trade, tradeKey: key, prod};
+    }
+  }
+  return {cost: 0, days: 0, crew: 0, trade: '', tradeKey: null, prod: 10};
+}
+
+function calcEquipment(ifcClass, laborDays) {
+  const alloc = EQUIPMENT_ALLOCATION[ifcClass];
+  if (!alloc) return {cost: 0, desc: '', days: 0};
+  const er = EQUIPMENT_RATES[alloc.equipment];
+  const days = laborDays * alloc.duration_factor;
+  return {cost: Math.round(days * er.rate_per_day), desc: er.desc, days};
+}
+
+// ============================================================================
+// SCHEDULE GENERATION — realistic storey-by-storey, phase-dependent
+// ============================================================================
+// Model:
+//  - Storeys processed bottom-up within each phase
+//  - Tasks in same phase+storey run concurrently (different trades)
+//  - Next storey starts after previous storey (small overlap lag)
+//  - Next phase on a storey starts after previous phase on THAT storey finishes + lag
+//  - Single-task duration capped at ~20 days; parallel crews added beyond that
+//  - Working days: Mon-Sat (JS getDay: 1-6)
+
+function generateSchedule(activities, startDateStr) {
+  const projectStart = new Date(startDateStr || '2025-01-06');
+
+  // Mon-Sat working (JS getDay: 0=Sun, 1=Mon ... 6=Sat)
+  const isWorkDay = d => { const w = d.getDay(); return w >= 1 && w <= 6; };
+
+  // Advance by N working days from a date
+  function addWorkDays(from, n) {
+    const d = new Date(from);
+    let rem = Math.ceil(n);
+    while (rem > 0) { d.setDate(d.getDate() + 1); if (isWorkDay(d)) rem--; }
+    return d;
+  }
+
+  // Storey sort: basements < ground < levels < roof
+  function storeyRank(s) {
+    if (!s) return 999;
+    const u = s.toUpperCase();
+    if (u.includes('ROOF')) return 900;
+    if (u.includes('BASEMENT') || u.startsWith('B')) return -10 + (parseInt(u.replace(/\D/g,''))||0);
+    if (u === 'GROUND' || u === 'G' || u === 'G0' || u === 'GF') return 0;
+    const n = parseInt(u.replace(/\D/g,''));
+    return isNaN(n) ? 50 : n;
+  }
+
+  const PHASE_ORDER = ['Substructure','Superstructure','MEP Rough-in','Architecture','MEP Final','Finishes'];
+  const INTER_PHASE_LAG = 5;   // working days between phases on same storey
+  const INTER_STOREY_LAG = 2;  // working days between storeys in same phase
+  const MAX_TASK_DAYS = 20;    // cap before adding parallel crews
+
+  // Group activities by phase -> storey
+  const grouped = {};  // phase|||storey -> [act, ...]
+  const phaseSets = {};
+  for (const act of activities) {
+    const rules = SEQUENCE_RULES[act.cls] || DEFAULT_RULE;
+    const phase = rules.phase;
+    const storey = act.storey || 'Unknown';
+    const key = `${phase}|||${storey}`;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push({...act, phase, rules});
+    if (!phaseSets[phase]) phaseSets[phase] = new Set();
+    phaseSets[phase].add(storey);
+  }
+
+  // Sort storeys per phase
+  for (const p of Object.keys(phaseSets)) {
+    phaseSets[p] = [...phaseSets[p]].sort((a,b) => storeyRank(a) - storeyRank(b));
+  }
+
+  // storeyPhaseEnd[storey][phase] = finish date
+  const storeyPhaseEnd = {};
+  const phaseFirstStart = {}; // phase -> date when first storey of this phase finishes
+  const tasks = [];
+  let taskId = 0;
+
+  for (const phase of PHASE_ORDER) {
+    if (!phaseSets[phase]) continue;
+    let prevStoreyEnd = null;
+
+    for (const storey of phaseSets[phase]) {
+      const key = `${phase}|||${storey}`;
+      const acts = grouped[key];
+      if (!acts) continue;
+
+      // Start date: wait for (a) latest earlier phase on this storey, (b) previous storey in this phase
+      let storeyStart = new Date(projectStart);
+
+      // Walk back through ALL earlier phases to find the latest one with data for this storey
+      const phaseIdx = PHASE_ORDER.indexOf(phase);
+      if (phaseIdx > 0 && storeyPhaseEnd[storey]) {
+        for (let pi = phaseIdx - 1; pi >= 0; pi--) {
+          const earlierPhase = PHASE_ORDER[pi];
+          if (storeyPhaseEnd[storey][earlierPhase]) {
+            const after = addWorkDays(storeyPhaseEnd[storey][earlierPhase], INTER_PHASE_LAG);
+            if (after > storeyStart) storeyStart = after;
+            break;
+          }
+        }
+      }
+      // Also wait for ANY earlier phase globally (prevents phases from starting before predecessors)
+      if (phaseIdx > 0) {
+        for (let pi = phaseIdx - 1; pi >= 0; pi--) {
+          if (phaseFirstStart[PHASE_ORDER[pi]]) {
+            const after = addWorkDays(phaseFirstStart[PHASE_ORDER[pi]], INTER_PHASE_LAG);
+            if (after > storeyStart) storeyStart = after;
+            break;
+          }
+        }
+      }
+      if (prevStoreyEnd) {
+        const after = addWorkDays(prevStoreyEnd, INTER_STOREY_LAG);
+        if (after > storeyStart) storeyStart = after;
+      }
+
+      // Tasks in same phase+storey run concurrently — find longest
+      let maxFinish = storeyStart;
+
+      for (const act of acts) {
+        const prod = act.labor.prod || 10;
+        let duration = Math.max(1, act.qty / prod);
+        let crews = 1;
+        if (duration > MAX_TASK_DAYS) {
+          crews = Math.ceil(duration / MAX_TASK_DAYS);
+          duration = Math.ceil(duration / crews);
+        }
+
+        const taskFinish = addWorkDays(storeyStart, duration);
+        if (taskFinish > maxFinish) maxFinish = taskFinish;
+
+        const equipAlloc = EQUIPMENT_ALLOCATION[act.cls];
+        taskId++;
+        tasks.push({
+          id: taskId,
+          wbs: `1.${act.rules.sequence}.${taskId}`,
+          name: `${storey} - Install ${act.cls.replace('Ifc','')} (${act.disc})`,
+          phase,
+          discipline: act.disc,
+          storey,
+          qty: act.qty,
+          uom: act.unit || 'EA',
+          productivity: prod,
+          duration,
+          crews,
+          startDate: storeyStart.toISOString().slice(0,10),
+          finishDate: taskFinish.toISOString().slice(0,10),
+          resource: act.labor.tradeKey || act.rules.resource || '',
+          crew: (act.labor.crew || 2) * crews,
+          equipment: equipAlloc ? EQUIPMENT_RATES[equipAlloc.equipment].desc : '',
+          startDay: Math.round((storeyStart - projectStart) / 86400000),
+          finishDay: Math.round((taskFinish - projectStart) / 86400000),
+        });
+      }
+
+      if (!storeyPhaseEnd[storey]) storeyPhaseEnd[storey] = {};
+      storeyPhaseEnd[storey][phase] = maxFinish;
+      if (!phaseFirstStart[phase]) phaseFirstStart[phase] = maxFinish;
+      prevStoreyEnd = maxFinish;
+    }
+  }
+  return tasks;
+}
+
+// ============================================================================
+// INIT — load DB, compute everything
+// ============================================================================
+async function init() {
+  const SQL = await initSqlJs({
+    locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
+  });
+  document.getElementById('info').textContent = `Loading ${DB_URL}...`;
+  const buf = await fetch(DB_URL).then(r => r.arrayBuffer());
+  db = new SQL.Database(new Uint8Array(buf));
+
+  // Determine building
+  bldName = BLD;
+  if (!bldName) {
+    const r = db.exec("SELECT building, COUNT(*) c FROM elements_meta GROUP BY building ORDER BY c DESC LIMIT 1");
+    bldName = r.length ? r[0].values[0][0] : 'Unknown';
+  }
+
+  // Query QTO grouped by discipline, ifc_class, storey
+  const rows = db.exec(`
+    SELECT m.discipline, m.ifc_class, m.storey, COUNT(*) as qty,
+           COUNT(DISTINCT i.geometry_hash) as meshes
+    FROM elements_meta m LEFT JOIN element_instances i ON m.guid = i.guid
+    WHERE m.building = '${bldName.replace(/'/g,"''")}'
+    GROUP BY m.discipline, m.ifc_class, m.storey
+    ORDER BY m.discipline, m.storey, qty DESC
+  `);
+
+  if (!rows.length) { document.getElementById('info').textContent = 'No data.'; return; }
+
+  // Process data with full M/L/E calculation
+  qtoData = []; discSummary = {};
+  grandMaterial = 0; grandLabor = 0; grandEquip = 0; totalQty = 0;
+
+  for (const row of rows[0].values) {
+    const [disc, cls, storey, qty, meshes] = row;
+    const mc = RATES[cls];
+    const matRate = mc ? mc.rate : 0;
+    const matTotal = Math.round(matRate * qty);
+    const labor = calcLabor(cls, qty);
+    const equip = calcEquipment(cls, labor.days);
+
+    grandMaterial += matTotal;
+    grandLabor += labor.cost;
+    grandEquip += equip.cost;
+    totalQty += qty;
+
+    const r = {
+      disc, cls, storey, qty, meshes, matRate, matTotal,
+      laborDays: labor.days, laborCost: labor.cost, laborCrew: labor.crew, laborTrade: labor.trade,
+      equipCost: equip.cost, equipDesc: equip.desc, equipDays: equip.days,
+      desc: mc ? mc.desc : cls, unit: mc ? mc.unit : 'EA',
+      labor, // keep full object for schedule
+    };
+    qtoData.push(r);
+
+    if (!discSummary[disc]) discSummary[disc] = {qty:0, matTotal:0, laborCost:0, equipCost:0};
+    discSummary[disc].qty += qty;
+    discSummary[disc].matTotal += matTotal;
+    discSummary[disc].laborCost += labor.cost;
+    discSummary[disc].equipCost += equip.cost;
+  }
+
+  // Generate 4D schedule
+  scheduleData = generateSchedule(qtoData, '2025-01-06');
+
+  const grandTotal = grandMaterial + grandLabor + grandEquip;
+  const projDaysInit = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
+  console.log(`§QTO: ${qtoData.length} rows | ${totalQty} elements`);
+  console.log(`§TOTALS: Mat RM ${grandMaterial.toLocaleString()} | Lab RM ${grandLabor.toLocaleString()} | Eq RM ${grandEquip.toLocaleString()} | Grand RM ${grandTotal.toLocaleString()}`);
+  console.log(`§SCHEDULE: ${scheduleData.length} tasks | ${projDaysInit} calendar days`);
+  const unmapped = [...new Set(qtoData.map(r=>r.cls).filter(c=>!SEQUENCE_RULES[c]))];
+  console.log(`§UNMAPPED: ${unmapped.length ? unmapped.join(', ') : 'NONE'}`);
+  document.getElementById('info').textContent =
+    `${bldName} | ${totalQty.toLocaleString()} elements | RM ${grandTotal.toLocaleString()} (Mat ${grandMaterial.toLocaleString()} + Lab ${grandLabor.toLocaleString()} + Equip ${grandEquip.toLocaleString()})`;
+
+  renderCharts();
+}
+
+// ============================================================================
+// RENDER ALL CHARTS (4 existing enhanced + 5 new from schedule_export.py)
+// ============================================================================
+function renderCharts() {
+  const c = document.getElementById('charts');
+  c.innerHTML = '';
+  chartInstances.forEach(ci => ci.destroy());
+  chartInstances = [];
+  console.log('§RENDER_CHARTS: start');
+  function logChart(n, type, title, dataLen) {
+    console.log(`§CHART_${n} [${type}] "${title}": ${dataLen} data points — ${dataLen > 0 ? 'OK' : 'EMPTY'}`);
+  }
+
+  const discs = Object.keys(discSummary);
+
+  // ── 1. Cost Pie by Discipline (M+L+E) ──
+  const pieBox = el('div','chart-box');
+  pieBox.innerHTML = '<h2>5D — Cost by Discipline (RM)</h2>';
+  const pieCanvas = el('canvas');
+  pieBox.appendChild(pieCanvas); c.appendChild(pieBox);
+
+  const discTotals = discs.map(d => discSummary[d].matTotal + discSummary[d].laborCost + discSummary[d].equipCost);
+  chartInstances.push(new Chart(pieCanvas, {
+    type:'pie',
+    data:{labels:discs, datasets:[{data:discTotals, backgroundColor:discs.map(d=>DISC_COLORS[d]||'#888')}]},
+    options:{plugins:{legend:{position:'right',labels:{color:'#ccc'}}}}
+  }));
+  logChart(1,'Pie','Cost Breakdown by Discipline',discs.length);
+
+  // ── 2. Cost Components by Discipline — M/L/E (boq_export.py "Cost Components by Discipline") ──
+  const mleBox = el('div','chart-box');
+  mleBox.innerHTML = '<h2>Cost Components by Discipline (RM)</h2>';
+  const mleCanvas = el('canvas');
+  mleBox.appendChild(mleCanvas); c.appendChild(mleBox);
+
+  chartInstances.push(new Chart(mleCanvas, {
+    type:'bar',
+    data:{
+      labels:discs,
+      datasets:[
+        {label:'Material',data:discs.map(d=>discSummary[d].matTotal),backgroundColor:'#70AD47'},
+        {label:'Labour',data:discs.map(d=>discSummary[d].laborCost),backgroundColor:'#FFC000'},
+        {label:'Equipment',data:discs.map(d=>discSummary[d].equipCost),backgroundColor:'#5B9BD5'},
+      ]
+    },
+    options:{scales:{y:{stacked:true,ticks:{color:'#aaa'}},x:{stacked:{color:'#aaa'}}},plugins:{legend:{labels:{color:'#ccc'}}}}
+  }));
+  logChart(2,'Bar','Cost Components by Discipline',discs.length);
+
+  // ── 3. Task Distribution by Phase — pie (schedule_export.py "Task Distribution by Phase") ──
+  const taskPhaseCounts = {};
+  for (const t of scheduleData) taskPhaseCounts[t.phase] = (taskPhaseCounts[t.phase]||0) + 1;
+  const tpPhases = Object.keys(taskPhaseCounts);
+
+  const tpBox = el('div','chart-box');
+  tpBox.innerHTML = '<h2>Task Distribution by Phase</h2>';
+  const tpCanvas = el('canvas');
+  tpBox.appendChild(tpCanvas); c.appendChild(tpBox);
+
+  chartInstances.push(new Chart(tpCanvas, {
+    type:'pie',
+    data:{labels:tpPhases, datasets:[{data:tpPhases.map(p=>taskPhaseCounts[p]), backgroundColor:tpPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
+    options:{plugins:{legend:{position:'right',labels:{color:'#ccc'}}}}
+  }));
+  logChart(3,'Pie','Task Distribution by Phase',tpPhases.length);
+
+  // ── 4. Task Count by Discipline — bar (schedule_export.py "Task Count by Discipline") ──
+  const taskDiscCounts = {};
+  for (const t of scheduleData) taskDiscCounts[t.discipline] = (taskDiscCounts[t.discipline]||0) + 1;
+  const tdDiscs = Object.keys(taskDiscCounts);
+
+  const tdBox = el('div','chart-box');
+  tdBox.innerHTML = '<h2>Task Count by Discipline</h2>';
+  const tdCanvas = el('canvas');
+  tdBox.appendChild(tdCanvas); c.appendChild(tdBox);
+
+  chartInstances.push(new Chart(tdCanvas, {
+    type:'bar',
+    data:{labels:tdDiscs, datasets:[{label:'Tasks',data:tdDiscs.map(d=>taskDiscCounts[d]),backgroundColor:tdDiscs.map(d=>DISC_COLORS[d]||'#888')}]},
+    options:{scales:{y:{title:{display:true,text:'Number of Tasks',color:'#aaa'},ticks:{color:'#aaa'}},x:{title:{display:true,text:'Discipline',color:'#aaa'},ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+  }));
+  logChart(4,'Bar','Task Count by Discipline',tdDiscs.length);
+
+  // ── 5. Phase Duration Analysis (horizontal bar — from schedule_export.py) ──
+  const phaseDur = {};
+  for (const t of scheduleData) phaseDur[t.phase] = (phaseDur[t.phase]||0) + t.duration;
+  const pdPhases = Object.keys(phaseDur).sort((a,b) => phaseDur[b]-phaseDur[a]);
+
+  const pdBox = el('div','chart-box');
+  pdBox.innerHTML = '<h2>4D — Phase Duration (Total Days)</h2>';
+  const pdCanvas = el('canvas');
+  pdBox.appendChild(pdCanvas); c.appendChild(pdBox);
+
+  chartInstances.push(new Chart(pdCanvas, {
+    type:'bar',
+    data:{labels:pdPhases, datasets:[{label:'Days',data:pdPhases.map(p=>Math.round(phaseDur[p])),backgroundColor:pdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
+    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Days',color:'#aaa'},ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+  }));
+  logChart(5,'H-Bar','Phase Duration',pdPhases.length);
+
+  // ── 6. Resource Workload — Man-Days by Phase (column — from schedule_export.py) ──
+  const phaseMandays = {};
+  for (const t of scheduleData) phaseMandays[t.phase] = (phaseMandays[t.phase]||0) + t.duration * t.crew;
+  const mdPhases = Object.keys(phaseMandays).sort((a,b) => phaseMandays[b]-phaseMandays[a]);
+
+  const mdBox = el('div','chart-box');
+  mdBox.innerHTML = '<h2>4D — Resource Workload (Man-Days by Phase)</h2>';
+  const mdCanvas = el('canvas');
+  mdBox.appendChild(mdCanvas); c.appendChild(mdBox);
+
+  chartInstances.push(new Chart(mdCanvas, {
+    type:'bar',
+    data:{labels:mdPhases, datasets:[{label:'Man-Days',data:mdPhases.map(p=>Math.round(phaseMandays[p])),backgroundColor:mdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
+    options:{scales:{y:{title:{display:true,text:'Man-Days',color:'#aaa'},ticks:{color:'#aaa'}},x:{ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+  }));
+  logChart(6,'Column','Resource Workload',mdPhases.length);
+
+  // ── 7. S-Curve Progress (line — from schedule_export.py) ──
+  if (scheduleData.length) {
+    const scBox = el('div','chart-box');
+    scBox.innerHTML = '<h2>4D — S-Curve Progress (Cumulative Task Completion)</h2>';
+    const scCanvas = el('canvas');
+    scBox.appendChild(scCanvas); c.appendChild(scBox);
+
+    const allFinish = scheduleData.map(t => t.finishDay);
+    const maxDay = Math.max(...allFinish);
+    const totalTasks = scheduleData.length;
+    const weekLabels = [], weekPcts = [];
+    const totalWeeks = Math.max(1, Math.ceil(maxDay / 7));
+    const sampleInterval = Math.max(1, Math.floor(totalWeeks / 20));
+
+    for (let w = 0; w <= totalWeeks; w += sampleInterval) {
+      const dayEnd = w * 7;
+      const completed = scheduleData.filter(t => t.finishDay <= dayEnd).length;
+      weekLabels.push(`W${w}`);
+      weekPcts.push(Math.round(completed / totalTasks * 1000) / 10);
+    }
+    // Ensure final point
+    if (weekPcts[weekPcts.length-1] < 100) {
+      weekLabels.push(`W${totalWeeks}`);
+      weekPcts.push(100);
+    }
+
+    chartInstances.push(new Chart(scCanvas, {
+      type:'line',
+      data:{labels:weekLabels, datasets:[{label:'% Complete',data:weekPcts,borderColor:'#4fc3f7',backgroundColor:'rgba(79,195,247,0.1)',fill:true,tension:0.3}]},
+      options:{scales:{y:{min:0,max:100,title:{display:true,text:'% Complete',color:'#aaa'},ticks:{color:'#aaa'}},x:{title:{display:true,text:'Project Week',color:'#aaa'},ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+    }));
+    logChart(7,'Line','S-Curve Progress',weekLabels.length);
+  }
+
+  // ── 8. Milestone Timeline (horizontal bar — from schedule_export.py) ──
+  const phaseDates = {};
+  for (const t of scheduleData) {
+    if (!phaseDates[t.phase]) phaseDates[t.phase] = {start:t.startDay, end:t.finishDay};
+    else {
+      phaseDates[t.phase].start = Math.min(phaseDates[t.phase].start, t.startDay);
+      phaseDates[t.phase].end = Math.max(phaseDates[t.phase].end, t.finishDay);
+    }
+  }
+  const milestones = [];
+  milestones.push({name:'Project Start', day:0});
+  for (const phase of Object.keys(phaseDates).sort()) {
+    milestones.push({name:`${phase} Start`, day:phaseDates[phase].start});
+    milestones.push({name:`${phase} End`, day:phaseDates[phase].end});
+  }
+  const maxFinishDay = Math.max(...scheduleData.map(t=>t.finishDay));
+  milestones.push({name:'Project Finish', day:maxFinishDay});
+  milestones.sort((a,b) => a.day - b.day);
+
+  const msBox = el('div','chart-box');
+  msBox.innerHTML = '<h2>4D — Milestone Timeline</h2>';
+  const msCanvas = el('canvas');
+  msCanvas.height = 250;
+  msBox.appendChild(msCanvas); c.appendChild(msBox);
+
+  chartInstances.push(new Chart(msCanvas, {
+    type:'bar',
+    data:{labels:milestones.map(m=>m.name), datasets:[{label:'Day',data:milestones.map(m=>m.day),backgroundColor:milestones.map(m=>m.name.includes('Start')?'#70AD47':m.name.includes('End')?'#ED7D31':'#4fc3f7')}]},
+    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Day from Project Start',color:'#aaa'},ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa',font:{size:10}}}},plugins:{legend:{display:false}}}
+  }));
+  logChart(8,'H-Bar','Milestone Timeline',milestones.length);
+
+  // ── 9. Strategic Gantt — Top 15 longest tasks (stacked bar — from schedule_export.py) ──
+  const top15 = [...scheduleData].sort((a,b) => b.duration - a.duration).slice(0,15).sort((a,b) => a.startDay - b.startDay);
+
+  const ganttBox = el('div','chart-box full');
+  ganttBox.innerHTML = '<h2>4D — Gantt Timeline (Strategic Tasks by Phase)</h2>';
+  const ganttCanvas = el('canvas');
+  ganttCanvas.height = 350;
+  ganttBox.appendChild(ganttCanvas); c.appendChild(ganttBox);
+
+  chartInstances.push(new Chart(ganttCanvas, {
+    type:'bar',
+    data:{
+      labels:top15.map(t => t.name.slice(0,40)),
+      datasets:[
+        {label:'Offset',data:top15.map(t=>t.startDay),backgroundColor:'rgba(0,0,0,0)'},
+        {label:'Duration',data:top15.map(t=>Math.round(t.duration)),backgroundColor:top15.map(t=>PHASE_COLORS[t.phase]||'#888')},
+      ]
+    },
+    options:{
+      indexAxis:'y',
+      scales:{
+        x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#aaa'},ticks:{color:'#aaa'}},
+        y:{stacked:true,ticks:{color:'#aaa',font:{size:9}}}
+      },
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>{
+          if (ctx.datasetIndex===0) return null;
+          const t = top15[ctx.dataIndex];
+          return `${t.phase}: Day ${t.startDay}–${t.finishDay} (${Math.round(t.duration)} days, ${t.qty} EA)`;
+        }}}
+      }
+    }
+  }));
+  logChart(9,'Stacked','Gantt Timeline',top15.length);
+
+  // ── 10. BOQ Data Table (enhanced with Equipment column) ──
+  const tableBox = el('div','chart-box full');
+  tableBox.innerHTML = '<h2>5D — Bill of Quantities (CIDB 2024 Rates)</h2>';
+  let html = '<table><tr><th>Disc</th><th>IFC Class</th><th>Storey</th><th>Qty</th><th>Unit</th>' +
+    '<th>Description</th><th>Rate (RM)</th><th>Material (RM)</th><th>Labour Days</th><th>Labour (RM)</th>' +
+    '<th>Equip (RM)</th><th>Total (RM)</th></tr>';
+  for (const r of qtoData) {
+    const rowTotal = r.matTotal + r.laborCost + r.equipCost;
+    html += `<tr><td>${r.disc}</td><td>${r.cls}</td><td>${r.storey||''}</td><td>${r.qty.toLocaleString()}</td>` +
+      `<td>${r.unit}</td><td>${r.desc}</td><td>${r.matRate.toLocaleString()}</td>` +
+      `<td>${r.matTotal.toLocaleString()}</td><td>${r.laborDays.toFixed(1)}</td><td>${r.laborCost.toLocaleString()}</td>` +
+      `<td>${r.equipCost.toLocaleString()}</td><td>${rowTotal.toLocaleString()}</td></tr>`;
+  }
+  const gt = grandMaterial + grandLabor + grandEquip;
+  html += `<tr class="total-row"><td colspan="7">GRAND TOTAL</td>` +
+    `<td>RM ${grandMaterial.toLocaleString()}</td><td></td><td>RM ${grandLabor.toLocaleString()}</td>` +
+    `<td>RM ${grandEquip.toLocaleString()}</td><td>RM ${gt.toLocaleString()}</td></tr>`;
+  html += '</table>';
+  tableBox.innerHTML += html;
+  c.appendChild(tableBox);
+
+  // ── 10. Summary footer ──
+  const projDays = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
+  const footBox = el('div','chart-box full');
+  footBox.innerHTML = `<table>
+    <tr><td>Building</td><td><b>${bldName}</b></td></tr>
+    <tr><td>Total Elements</td><td><b>${totalQty.toLocaleString()}</b></td></tr>
+    <tr><td>Material Cost</td><td><b>RM ${grandMaterial.toLocaleString()}</b></td></tr>
+    <tr><td>Labour Cost</td><td><b>RM ${grandLabor.toLocaleString()}</b></td></tr>
+    <tr><td>Equipment Cost</td><td><b>RM ${grandEquip.toLocaleString()}</b></td></tr>
+    <tr><td>Grand Total</td><td><b>RM ${gt.toLocaleString()}</b></td></tr>
+    <tr><td>Project Duration</td><td><b>${projDays} days (${scheduleData.length} tasks)</b></td></tr>
+    <tr><td>Rates Source</td><td>CIDB Malaysia 2024 / BCISM Cost Book</td></tr>
+    <tr><td>Exported</td><td>${new Date().toISOString()}</td></tr>
+    <tr><td>Source</td><td>BIM OOTB — Frictionless BIM</td></tr>
+  </table>`;
+  c.appendChild(footBox);
+  console.log(`§RENDER_CHARTS: done — ${chartInstances.length} charts rendered, all OK`);
+}
+
+function el(tag, cls) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  return e;
+}
+
+// ============================================================================
+// SAVE 5D BOQ — ExcelJS: Cover, Exec Summary, Mat/Lab/Equip, BOQ, WPs, Disc, Prov, Charts
+// ============================================================================
+async function save5D() {
+  document.getElementById('status').textContent = 'Generating 5D Excel...';
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'BIM OOTB';
+  const gt = grandMaterial + grandLabor + grandEquip;
+  const discs = Object.keys(discSummary);
+  const NUM_FMT = '#,##0.00';
+  const NUM_FMT_INT = '#,##0';
+
+  // ── Helper: style a header row (fill stops at last data column) ──
+  function styleHeader(ws, rowNum, argb) {
+    const row = ws.getRow(rowNum);
+    const colCount = ws.columns ? ws.columns.length : row.cellCount;
+    for (let c = 1; c <= colCount; c++) {
+      const cell = row.getCell(c);
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb || 'FF4FC3F7' } };
+      cell.alignment = { horizontal: 'center' };
+    }
+    row.commit();
+  }
+
+  // ── Helper: style a title row (merged, large font) ──
+  function styleTitle(ws, rowNum, colSpan) {
+    const row = ws.getRow(rowNum);
+    row.font = { bold: true, size: 14, color: { argb: 'FF1A1A2E' } };
+    if (colSpan > 1) ws.mergeCells(rowNum, 1, rowNum, colSpan);
+    row.commit();
+  }
+
+  // ── Helper: format number cells in a row ──
+  function fmtRow(ws, rowNum, cols, fmt) {
+    for (const c of cols) {
+      const cell = ws.getRow(rowNum).getCell(c);
+      if (typeof cell.value === 'number') cell.numFmt = fmt || NUM_FMT;
+    }
+  }
+
+  // ── Sheet 1: Cover Sheet ──
+  const wsCover = wb.addWorksheet('Cover Sheet');
+  wsCover.columns = [{ width: 22 }, { width: 50 }, { width: 35 }];
+  const coverRows = [
+    ['COMPREHENSIVE BILL OF QUANTITIES'],
+    [`Project: ${bldName}`],
+    [],
+    ['COST BREAKDOWN METHODOLOGY'],
+    [],
+    ['1. MATERIAL COSTS'],
+    ['Source:','CIDB National Construction Cost Centre (N3C) 2024'],
+    ['Reference:','BCISM Cost Book 2022-2024 (inflated +3%)'],
+    ['Includes:','Delivery, wastage allowance (5-10% by material type)'],
+    [],
+    ['2. LABOR COSTS'],
+    ['Source:','MBAM-CIDB Labour Wage Survey 2024'],
+    ['Basis:','Basic wage + 30% (EPF 13%, SOCSO 2%, benefits 15%)'],
+    ['Productivity:','CIDB productivity standards by trade'],
+    ['Crew Composition:','Skilled workers + helpers as per trade standards'],
+    [],
+    ['3. EQUIPMENT/PLANT HIRE'],
+    ['Source:','CIDB N3C Machinery Hire Rates 2024'],
+    ['Allocation:','Based on work type and duration requirements'],
+    ['Rates:','Per day (8 hours), operator cost included where stated'],
+    [],
+    ['COST SUMMARY STRUCTURE'],
+    ['Sheet 1:','Cover Sheet (this page)'],
+    ['Sheet 2:','Executive Summary - Total costs'],
+    ['Sheet 3:','Materials Cost Summary','Detailed material breakdown'],
+    ['Sheet 4:','Labor Cost Summary','Crew allocation & man-days'],
+    ['Sheet 5:','Equipment Cost Summary','Plant hire requirements'],
+    ['Sheet 6:','Detailed BOQ','Line-by-line analysis all disciplines'],
+    ['Sheets 7-11:','Work Package Sheets','Construction phase breakdown'],
+    ['Sheets 12+:','Per-Discipline BOQ','Discipline-level breakdown'],
+    ['Provisional Sums:','Finishes & fittings not in BIM'],
+    ['Charts:','Embedded chart images'],
+    [],
+    ['PRICING STANDARDS & REFERENCES'],
+    ['BOQ Format:','PWD Form 203A Malaysia'],
+    ['Measurement:','SMM2 (Standard Method of Measurement)'],
+    ['Pricing Date:','Q4 2024'],
+    ['Currency:','Malaysian Ringgit (RM) + USD conversion'],
+    ['USD Rate:',`1 USD = ${USD_RATE} RM`],
+    ['Validity:','60 days from date of issue'],
+    [],
+    ['EXCLUSIONS'],
+    ['GST/SST (apply as per prevailing tax law)'],
+    ['Preliminary & General items (add 8-12%)'],
+    ['Profit & attendance (add 10-15%)'],
+    ['Escalation beyond 60 days'],
+    ['Site-specific conditions not shown in drawings'],
+    [],
+    ['Generated:',new Date().toISOString(),'BIM OOTB — Frictionless BIM'],
+  ];
+  for (const row of coverRows) wsCover.addRow(row);
+  styleTitle(wsCover, 1, 3);
+  wsCover.getRow(4).font = { bold: true, size: 12 };
+
+  // ── Sheet 2: Executive Summary (with USD columns + pie chart image) ──
+  const wsExec = wb.addWorksheet('Executive Summary');
+  wsExec.columns = [
+    { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 20 },
+    { width: 18 }, { width: 18 }, { width: 18 }, { width: 20 },
+  ];
+  wsExec.addRow(['EXECUTIVE SUMMARY']);
+  styleTitle(wsExec, 1, 9);
+  wsExec.addRow([]);
+  wsExec.addRow(['Discipline','Material (RM)','Labor (RM)','Equipment (RM)','TOTAL (RM)',
+                 'Material (USD)','Labor (USD)','Equipment (USD)','TOTAL (USD)']);
+  styleHeader(wsExec, 3, 'FF2C3E50');
+  let execDataStart = 4;
+  for (const d of discs) {
+    const s = discSummary[d];
+    const totalRM = s.matTotal + s.laborCost + s.equipCost;
+    wsExec.addRow([d, s.matTotal, s.laborCost, s.equipCost, totalRM,
+                   Math.round(s.matTotal / USD_RATE * 100) / 100,
+                   Math.round(s.laborCost / USD_RATE * 100) / 100,
+                   Math.round(s.equipCost / USD_RATE * 100) / 100,
+                   Math.round(totalRM / USD_RATE * 100) / 100]);
+    const rn = wsExec.rowCount;
+    fmtRow(wsExec, rn, [2,3,4,5,6,7,8,9], NUM_FMT);
+  }
+  wsExec.addRow([]);
+  wsExec.addRow(['GRAND TOTAL', grandMaterial, grandLabor, grandEquip, gt,
+                 Math.round(grandMaterial / USD_RATE * 100) / 100,
+                 Math.round(grandLabor / USD_RATE * 100) / 100,
+                 Math.round(grandEquip / USD_RATE * 100) / 100,
+                 Math.round(gt / USD_RATE * 100) / 100]);
+  const gtRow = wsExec.rowCount;
+  wsExec.getRow(gtRow).font = { bold: true };
+  fmtRow(wsExec, gtRow, [2,3,4,5,6,7,8,9], NUM_FMT);
+
+  // Embed pie + bar chart on the RIGHT side (col F = col 5), matching Federation layout
+  // Original: pie at H3 (16×10), bar at H23 (16×10) — right of data, stacked vertically
+  try {
+    const chartCol = 5; // Column F (0-indexed) — right of TOTAL (RM) column
+    // Chart 0: Pie at row 2 (next to header)
+    const pie = chartInstances[0] && chartInstances[0].canvas;
+    if (pie) {
+      const d = pie.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
+      const id = wb.addImage({ base64: d, extension: 'png' });
+      wsExec.addImage(id, { tl: { col: chartCol, row: 2 }, ext: { width: 550, height: 350 } });
+    }
+    // Chart 1: Bar below pie (row 22)
+    const bar = chartInstances[1] && chartInstances[1].canvas;
+    if (bar) {
+      const d = bar.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
+      const id = wb.addImage({ base64: d, extension: 'png' });
+      wsExec.addImage(id, { tl: { col: chartCol, row: 22 }, ext: { width: 550, height: 350 } });
+    }
+  } catch (e) { console.warn('Could not embed exec charts:', e); }
+
+  // ── Sheet 3: Material Summary (+ USD total) ──
+  const wsMat = wb.addWorksheet('Material Summary');
+  wsMat.columns = [{ width: 15 },{ width: 28 },{ width: 12 },{ width: 8 },{ width: 16 },{ width: 20 },{ width: 18 }];
+  wsMat.addRow(['MATERIAL COST SUMMARY']);
+  styleTitle(wsMat, 1, 7);
+  wsMat.addRow([]);
+  wsMat.addRow(['Discipline','IFC Class','Quantity','UOM','Unit Rate (RM)','Total Material (RM)','Total (USD)']);
+  styleHeader(wsMat, 3, 'FF27AE60');
+  for (const r of qtoData) {
+    wsMat.addRow([r.disc, r.cls, r.qty, r.unit, r.matRate, r.matTotal, Math.round(r.matTotal / USD_RATE * 100) / 100]);
+    fmtRow(wsMat, wsMat.rowCount, [5,6,7], NUM_FMT);
+  }
+  wsMat.addRow([]);
+  wsMat.addRow(['','','','','TOTAL', grandMaterial, Math.round(grandMaterial / USD_RATE * 100) / 100]);
+  const matTotRow = wsMat.rowCount;
+  wsMat.getRow(matTotRow).font = { bold: true };
+  fmtRow(wsMat, matTotRow, [6,7], NUM_FMT);
+
+  // ── Sheet 4: Labor Summary (+ USD total) ──
+  const wsLab = wb.addWorksheet('Labor Summary');
+  wsLab.columns = [{ width: 15 },{ width: 28 },{ width: 12 },{ width: 8 },{ width: 30 },{ width: 10 },{ width: 12 },{ width: 18 },{ width: 16 }];
+  wsLab.addRow(['LABOR COST & CREW ALLOCATION SUMMARY']);
+  styleTitle(wsLab, 1, 9);
+  wsLab.addRow([]);
+  wsLab.addRow(['Discipline','IFC Class','Quantity','UOM','Trade','Crew Size','Man-Days','Labor Cost (RM)','Labor (USD)']);
+  styleHeader(wsLab, 3, 'FFFFC000');
+  for (const r of qtoData) {
+    if (r.laborCost === 0) continue;
+    const manDays = r.laborDays * r.laborCrew;
+    wsLab.addRow([r.disc, r.cls, r.qty, r.unit, r.laborTrade, r.laborCrew, Math.round(manDays*10)/10, r.laborCost, Math.round(r.laborCost / USD_RATE * 100) / 100]);
+    fmtRow(wsLab, wsLab.rowCount, [7,8,9], NUM_FMT);
+  }
+  wsLab.addRow([]);
+  wsLab.addRow(['','','','','','','TOTAL', grandLabor, Math.round(grandLabor / USD_RATE * 100) / 100]);
+  const labTotRow = wsLab.rowCount;
+  wsLab.getRow(labTotRow).font = { bold: true };
+  fmtRow(wsLab, labTotRow, [8,9], NUM_FMT);
+
+  // ── Sheet 5: Equipment Summary (+ USD total) ──
+  const wsEq = wb.addWorksheet('Equipment Summary');
+  wsEq.columns = [{ width: 15 },{ width: 28 },{ width: 35 },{ width: 15 },{ width: 16 },{ width: 18 },{ width: 16 }];
+  wsEq.addRow(['EQUIPMENT / PLANT HIRE SUMMARY']);
+  styleTitle(wsEq, 1, 7);
+  wsEq.addRow([]);
+  wsEq.addRow(['Discipline','IFC Class','Equipment','Duration (days)','Rate/Day (RM)','Total (RM)','Total (USD)']);
+  styleHeader(wsEq, 3, 'FF5B9BD5');
+  for (const r of qtoData) {
+    if (r.equipCost === 0) continue;
+    const alloc = EQUIPMENT_ALLOCATION[r.cls];
+    const eqKey = alloc ? alloc.equipment : '';
+    const rateDay = eqKey ? EQUIPMENT_RATES[eqKey].rate_per_day : 0;
+    wsEq.addRow([r.disc, r.cls, r.equipDesc, Math.round(r.equipDays*10)/10, rateDay, r.equipCost, Math.round(r.equipCost / USD_RATE * 100) / 100]);
+    fmtRow(wsEq, wsEq.rowCount, [5,6,7], NUM_FMT);
+  }
+  wsEq.addRow([]);
+  wsEq.addRow(['','','','','TOTAL', grandEquip, Math.round(grandEquip / USD_RATE * 100) / 100]);
+  const eqTotRow = wsEq.rowCount;
+  wsEq.getRow(eqTotRow).font = { bold: true };
+  fmtRow(wsEq, eqTotRow, [6,7], NUM_FMT);
+
+  // ── Sheet 6: Detailed BOQ (+ USD total) ──
+  const wsBOQ = wb.addWorksheet('5D-BOQ');
+  wsBOQ.columns = [{ width: 10 },{ width: 26 },{ width: 16 },{ width: 8 },{ width: 5 },{ width: 30 },{ width: 12 },{ width: 14 },{ width: 14 },{ width: 14 },{ width: 14 },{ width: 14 }];
+  wsBOQ.addRow(['DETAILED BOQ — ALL DISCIPLINES']);
+  styleTitle(wsBOQ, 1, 12);
+  wsBOQ.addRow([]);
+  wsBOQ.addRow(['Discipline','IFC Class','Storey','Qty','UOM','Description',
+                'Mat Rate (RM)','Material (RM)','Labor Cost (RM)','Equipment Cost (RM)','Total (RM)','Total (USD)']);
+  styleHeader(wsBOQ, 3, 'FF2C3E50');
+  for (const r of qtoData) {
+    const rowTotal = r.matTotal + r.laborCost + r.equipCost;
+    wsBOQ.addRow([r.disc, r.cls, r.storey, r.qty, r.unit, r.desc, r.matRate, r.matTotal, r.laborCost, r.equipCost, rowTotal, Math.round(rowTotal / USD_RATE * 100) / 100]);
+    fmtRow(wsBOQ, wsBOQ.rowCount, [7,8,9,10,11,12], NUM_FMT);
+  }
+  wsBOQ.addRow([]);
+  wsBOQ.addRow(['','','','','','MATERIAL SUBTOTAL','', grandMaterial,'','','', Math.round(grandMaterial / USD_RATE * 100) / 100]);
+  fmtRow(wsBOQ, wsBOQ.rowCount, [8,12], NUM_FMT);
+  wsBOQ.addRow(['','','','','','LABOUR SUBTOTAL','','', grandLabor,'','', Math.round(grandLabor / USD_RATE * 100) / 100]);
+  fmtRow(wsBOQ, wsBOQ.rowCount, [9,12], NUM_FMT);
+  wsBOQ.addRow(['','','','','','EQUIPMENT SUBTOTAL','','','', grandEquip,'', Math.round(grandEquip / USD_RATE * 100) / 100]);
+  fmtRow(wsBOQ, wsBOQ.rowCount, [10,12], NUM_FMT);
+  wsBOQ.addRow(['','','','','','GRAND TOTAL','','','','', gt, Math.round(gt / USD_RATE * 100) / 100]);
+  const boqGtRow = wsBOQ.rowCount;
+  wsBOQ.getRow(boqGtRow).font = { bold: true };
+  fmtRow(wsBOQ, boqGtRow, [11,12], NUM_FMT);
+  wsBOQ.addRow([]);
+  wsBOQ.addRow(['Rates: CIDB Malaysia 2024 / BCISM Cost Book']);
+  wsBOQ.addRow(['BIM OOTB — Frictionless BIM', new Date().toISOString()]);
+
+  // ── Sheets 7-11+: Work Package Sheets ──
+  const wpHeaders = ['Item','Description','Qty','UOM','Material Rate (RM)','Material (RM)','Labor (RM)','Equipment (RM)','Total (RM)','Total (USD)'];
+  const wpColWidths = [{ width: 8 },{ width: 35 },{ width: 10 },{ width: 6 },{ width: 18 },{ width: 16 },{ width: 14 },{ width: 14 },{ width: 16 },{ width: 14 }];
+
+  // Build set of all matched classes to find "OTHER"
+  const matchedClasses = new Set();
+  for (const wp of WORK_PACKAGES) wp.classes.forEach(c => matchedClasses.add(c));
+
+  // Check if we need a PACKAGE 6: OTHER
+  const otherRows = qtoData.filter(r => !matchedClasses.has(r.cls));
+  const allWPs = [...WORK_PACKAGES];
+  if (otherRows.length > 0) {
+    allWPs.push({ id: 'PACKAGE 6', name: 'OTHER', color: '7F8C8D', classes: null });
+  }
+
+  for (const wp of allWPs) {
+    const wpData = wp.classes
+      ? qtoData.filter(r => wp.classes.includes(r.cls))
+      : otherRows;
+    if (wpData.length === 0) continue;
+
+    const wsWP = wb.addWorksheet(wp.id);
+    wsWP.columns = wpColWidths;
+    wsWP.addRow([`${wp.id}: ${wp.name}`]);
+    styleTitle(wsWP, 1, 10);
+    wsWP.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + wp.color } };
+    wsWP.getRow(1).font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+    wsWP.addRow([]);
+    wsWP.addRow(wpHeaders);
+    styleHeader(wsWP, 3, 'FF' + wp.color);
+
+    let wpMatTotal = 0, wpLabTotal = 0, wpEqTotal = 0;
+    let itemNum = 0;
+    for (const r of wpData) {
+      itemNum++;
+      const rowTotal = r.matTotal + r.laborCost + r.equipCost;
+      wpMatTotal += r.matTotal;
+      wpLabTotal += r.laborCost;
+      wpEqTotal += r.equipCost;
+      wsWP.addRow([String(itemNum).padStart(3, '0'), r.desc || r.cls, r.qty, r.unit, r.matRate, r.matTotal, r.laborCost, r.equipCost, rowTotal, Math.round(rowTotal / USD_RATE * 100) / 100]);
+      fmtRow(wsWP, wsWP.rowCount, [5,6,7,8,9,10], NUM_FMT);
+    }
+    wsWP.addRow([]);
+    const wpGrandRM = wpMatTotal + wpLabTotal + wpEqTotal;
+    wsWP.addRow(['','SUBTOTAL','','','', wpMatTotal, wpLabTotal, wpEqTotal, wpGrandRM, Math.round(wpGrandRM / USD_RATE * 100) / 100]);
+    const stRow = wsWP.rowCount;
+    wsWP.getRow(stRow).font = { bold: true };
+    fmtRow(wsWP, stRow, [6,7,8,9,10], NUM_FMT);
+  }
+
+  // ── Per-Discipline BOQ Sheets ──
+  const discHeaders = ['Item','Description','Qty','UOM','Material Rate (RM)','Material (RM)','Labor (RM)','Equipment (RM)','Total (RM)','Total (USD)'];
+  for (const disc of discs) {
+    const discRows = qtoData.filter(r => r.disc === disc);
+    if (discRows.length === 0) continue;
+
+    const wsDisc = wb.addWorksheet(`BOQ-${disc}`);
+    wsDisc.columns = wpColWidths;
+    wsDisc.addRow([`DISCIPLINE: ${disc}`]);
+    styleTitle(wsDisc, 1, 10);
+    wsDisc.addRow([]);
+    wsDisc.addRow(discHeaders);
+    const discColor = DISC_COLORS[disc] ? DISC_COLORS[disc].replace('#','') : '888888';
+    styleHeader(wsDisc, 3, 'FF' + discColor);
+
+    let dMatT = 0, dLabT = 0, dEqT = 0;
+    let dItemNum = 0;
+    for (const r of discRows) {
+      dItemNum++;
+      const rowTotal = r.matTotal + r.laborCost + r.equipCost;
+      dMatT += r.matTotal;
+      dLabT += r.laborCost;
+      dEqT += r.equipCost;
+      wsDisc.addRow([String(dItemNum).padStart(3, '0'), r.desc || r.cls, r.qty, r.unit, r.matRate, r.matTotal, r.laborCost, r.equipCost, rowTotal, Math.round(rowTotal / USD_RATE * 100) / 100]);
+      fmtRow(wsDisc, wsDisc.rowCount, [5,6,7,8,9,10], NUM_FMT);
+    }
+    wsDisc.addRow([]);
+    const dGrandRM = dMatT + dLabT + dEqT;
+    wsDisc.addRow(['','SUBTOTAL','','','', dMatT, dLabT, dEqT, dGrandRM, Math.round(dGrandRM / USD_RATE * 100) / 100]);
+    const dStRow = wsDisc.rowCount;
+    wsDisc.getRow(dStRow).font = { bold: true };
+    fmtRow(wsDisc, dStRow, [6,7,8,9,10], NUM_FMT);
+  }
+
+  // ── Provisional Sums (+ USD column) ──
+  const wsProv = wb.addWorksheet('Provisional Sums');
+  wsProv.columns = [{ width: 8 },{ width: 40 },{ width: 10 },{ width: 6 },{ width: 14 },{ width: 14 },{ width: 16 },{ width: 14 }];
+  wsProv.addRow(['PROVISIONAL SUMS - FINISHES & FITTINGS']);
+  styleTitle(wsProv, 1, 8);
+  wsProv.addRow(['Items not explicitly modeled in BIM - calculated from built-up areas']);
+  wsProv.addRow([]);
+  wsProv.addRow(['Item','Description','Qty','UOM','Mat Rate (RM)','Lab Rate (RM)','Total (RM)','Total (USD)']);
+  styleHeader(wsProv, 4, 'FFC0392B');
+
+  let wallArea = 0, floorArea = 0;
+  for (const r of qtoData) {
+    if (r.cls === 'IfcWall' || r.cls === 'IfcWallStandardCase') wallArea += r.qty;
+    if (r.cls === 'IfcSlab') floorArea += r.qty;
+  }
+  const provItems = [
+    ['P1','Painting - Walls and Ceilings',Math.round(wallArea*2),'M2',8.5,12,'Dulux/Nippon 2 coats emulsion'],
+    ['P2','Check-in Counters & Service Desks',15,'EA',12500,2500,'Solid surface, modular system'],
+    ['P3','Passenger Seating - Waiting Areas',250,'EA',580,45,'Airport beam seating, steel frame'],
+    ['P4','Wayfinding Signage System',80,'EA',650,120,'Illuminated, bilingual'],
+    ['P5','Flight Information Display (FIDS)',25,'EA',8500,1200,'55" LED, networked'],
+    ['P6','Baggage Trolley Storage Racks',12,'EA',1850,350,'Stainless steel, 30 trolleys'],
+    ['P7','Retail Kiosk Fit-outs (Shell)',8,'EA',22000,5500,'Structural frame, services rough-in'],
+    ['P8','Rubber Safety Flooring',Math.round(floorArea*0.15),'M2',95,28,'Anti-slip, heavy duty'],
+    ['P9','Acoustic Ceiling Panels',Math.round(floorArea*0.20),'M2',135,42,'Class A, fire-rated'],
+    ['P10','Bollards & Barriers - Security',45,'EA',1250,280,'Fixed/removable, crash-rated'],
+  ];
+  let provTotal = 0;
+  for (const p of provItems) {
+    const total = p[2] * (p[4] + p[5]);
+    provTotal += total;
+    wsProv.addRow([p[0], p[1], p[2], p[3], p[4], p[5], Math.round(total), Math.round(total / USD_RATE * 100) / 100]);
+    fmtRow(wsProv, wsProv.rowCount, [5,6,7,8], NUM_FMT);
+  }
+  wsProv.addRow([]);
+  wsProv.addRow(['','','','','','TOTAL PROVISIONAL SUMS', Math.round(provTotal), Math.round(provTotal / USD_RATE * 100) / 100]);
+  const provTotRow = wsProv.rowCount;
+  wsProv.getRow(provTotRow).font = { bold: true };
+  fmtRow(wsProv, provTotRow, [7,8], NUM_FMT);
+
+  // ── Charts Sheet (embedded chart images) ──
+  try {
+    const chartCanvases = document.querySelectorAll('.chart-box canvas');
+    if (chartCanvases.length > 0) {
+      const wsCharts = wb.addWorksheet('Charts');
+      wsCharts.columns = [{ width: 80 }];
+      wsCharts.addRow(['CHART IMAGES']);
+      styleTitle(wsCharts, 1, 1);
+      let imgRow = 3;
+      for (const canvas of chartCanvases) {
+        try {
+          const dataUrl = canvas.toDataURL('image/png');
+          const b64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+          const imgId = wb.addImage({ base64: b64, extension: 'png' });
+          wsCharts.addImage(imgId, { tl: { col: 0, row: imgRow }, ext: { width: 550, height: 350 } });
+          imgRow += 22;
+        } catch (e) { console.warn('Chart image export error:', e); }
+      }
+    }
+  } catch (e) { console.warn('Charts sheet error:', e); }
+
+  // ── Save ──
+  const sheetCount = wb.worksheets.length;
+  const filename = `BIM_OOTB_${bldName}_5D_BOQ_${new Date().toISOString().slice(0,10)}.xlsx`;
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  document.getElementById('status').textContent = `Saved ${filename} (${sheetCount} sheets)`;
+}
+
+// ============================================================================
+// SAVE 4D SCHEDULE — ExcelJS: 3 sheets (matches schedule_export.py)
+// ============================================================================
+async function save4D() {
+  document.getElementById('status').textContent = 'Generating 4D Excel...';
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'BIM OOTB';
+  const projDays = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
+
+  // ── Helper: style a header row (fill stops at last data column) ──
+  function styleHeader(ws, rowNum, argb) {
+    const row = ws.getRow(rowNum);
+    const colCount = ws.columns ? ws.columns.length : row.cellCount;
+    for (let c = 1; c <= colCount; c++) {
+      const cell = row.getCell(c);
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb || 'FF4FC3F7' } };
+      cell.alignment = { horizontal: 'center' };
+    }
+    row.commit();
+  }
+
+  // ── Sheet 1: Construction Schedule ──
+  const wsSched = wb.addWorksheet('Construction Schedule');
+  wsSched.columns = [
+    { width: 12 },{ width: 40 },{ width: 16 },{ width: 10 },{ width: 10 },{ width: 8 },{ width: 6 },
+    { width: 10 },{ width: 12 },{ width: 6 },{ width: 12 },{ width: 12 },{ width: 16 },{ width: 8 },
+    { width: 22 },{ width: 12 },{ width: 10 },
+  ];
+  const schedHeaders = ['WBS','Task Name','Phase','Discipline','Storey','Quantity','UOM',
+    'Productivity','Duration (days)','Gangs','Start Date','Finish Date','Labor Resource','Crew Size','Equipment','Status','% Complete'];
+  wsSched.addRow(schedHeaders);
+  styleHeader(wsSched, 1, 'FF2C3E50');
+  for (const t of scheduleData) {
+    wsSched.addRow([t.wbs,t.name,t.phase,t.discipline,t.storey,t.qty,t.uom,t.productivity,
+      Math.round(t.duration*100)/100, t.crews||1, t.startDate, t.finishDate, t.resource, t.crew, t.equipment, 'Not Started', 0]);
+  }
+
+  // ── Sheet 2: Project Summary ──
+  const wsSum = wb.addWorksheet('Project Summary');
+  wsSum.columns = [{ width: 25 }, { width: 20 }];
+  const phaseCounts = {}, discCounts = {};
+  for (const t of scheduleData) {
+    phaseCounts[t.phase] = (phaseCounts[t.phase]||0) + 1;
+    discCounts[t.discipline] = (discCounts[t.discipline]||0) + 1;
+  }
+  wsSum.addRow([bldName + ' Construction']);
+  wsSum.getRow(1).font = { bold: true, size: 14 };
+  wsSum.addRow([]);
+  wsSum.addRow(['Database', DB_URL]);
+  wsSum.addRow(['Total Tasks', scheduleData.length]);
+  wsSum.addRow(['Project Start', scheduleData.length ? scheduleData[0].startDate : 'N/A']);
+  wsSum.addRow(['Project Finish', scheduleData.length ? scheduleData[scheduleData.length-1].finishDate : 'N/A']);
+  wsSum.addRow(['Total Duration', `${projDays} days`]);
+  wsSum.addRow(['Generated', new Date().toISOString()]);
+  wsSum.addRow([]);
+  wsSum.addRow(['Phase Summary','Task Count']);
+  styleHeader(wsSum, wsSum.rowCount, 'FF4472C4');
+  for (const [p,cnt] of Object.entries(phaseCounts).sort()) wsSum.addRow([p, cnt]);
+  wsSum.addRow([]);
+  wsSum.addRow(['Discipline Summary','Task Count']);
+  styleHeader(wsSum, wsSum.rowCount, 'FF70AD47');
+  for (const [d,cnt] of Object.entries(discCounts).sort()) wsSum.addRow([d, cnt]);
+
+  // ── Sheet 3: BIM 4D Dashboard ──
+  const wsDash = wb.addWorksheet('BIM 4D Dashboard');
+  wsDash.columns = [{ width: 35 },{ width: 14 },{ width: 12 },{ width: 12 }];
+
+  wsDash.addRow([`${bldName} - BIM 4D Analytics Dashboard`]);
+  wsDash.getRow(1).font = { bold: true, size: 14 };
+  wsDash.addRow([]);
+
+  wsDash.addRow(['Phase Duration Analysis']);
+  wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
+  wsDash.addRow(['Phase','Total Days']);
+  styleHeader(wsDash, wsDash.rowCount, 'FF4472C4');
+  const phaseDur2 = {};
+  for (const t of scheduleData) phaseDur2[t.phase] = (phaseDur2[t.phase]||0) + t.duration;
+  for (const [p,d] of Object.entries(phaseDur2).sort((a,b)=>b[1]-a[1])) wsDash.addRow([p, Math.round(d*100)/100]);
+  wsDash.addRow([]);
+
+  wsDash.addRow(['Resource Workload Analysis']);
+  wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
+  wsDash.addRow(['Phase','Total Man-Days']);
+  styleHeader(wsDash, wsDash.rowCount, 'FF70AD47');
+  const phaseMD2 = {};
+  for (const t of scheduleData) phaseMD2[t.phase] = (phaseMD2[t.phase]||0) + t.duration * t.crew;
+  for (const [p,md] of Object.entries(phaseMD2).sort((a,b)=>b[1]-a[1])) wsDash.addRow([p, Math.round(md*10)/10]);
+  wsDash.addRow([]);
+
+  wsDash.addRow(['S-Curve Progress']);
+  wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
+  wsDash.addRow(['Week','Cumulative %']);
+  styleHeader(wsDash, wsDash.rowCount, 'FFFFC000');
+  if (scheduleData.length) {
+    const maxD = Math.max(...scheduleData.map(t=>t.finishDay));
+    const tw = Math.max(1, Math.ceil(maxD/7));
+    const si = Math.max(1, Math.floor(tw/20));
+    for (let w = 0; w <= tw; w += si) {
+      const completed = scheduleData.filter(t => t.finishDay <= w*7).length;
+      wsDash.addRow([`W${w}`, Math.round(completed/scheduleData.length*1000)/10]);
+    }
+    const lastRow = wsDash.getRow(wsDash.rowCount);
+    if (lastRow.getCell(2).value < 100) wsDash.addRow([`W${tw}`, 100]);
+  }
+  wsDash.addRow([]);
+
+  wsDash.addRow(['Milestone Timeline']);
+  wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
+  wsDash.addRow(['Milestone','Day Offset','Date']);
+  styleHeader(wsDash, wsDash.rowCount, 'FFED7D31');
+  const pd2 = {};
+  for (const t of scheduleData) {
+    if (!pd2[t.phase]) pd2[t.phase] = {s:t.startDate,e:t.finishDate,sd:t.startDay,ed:t.finishDay};
+    else {
+      if (t.startDay < pd2[t.phase].sd) { pd2[t.phase].sd = t.startDay; pd2[t.phase].s = t.startDate; }
+      if (t.finishDay > pd2[t.phase].ed) { pd2[t.phase].ed = t.finishDay; pd2[t.phase].e = t.finishDate; }
+    }
+  }
+  wsDash.addRow(['Project Start', 0, scheduleData.length ? scheduleData[0].startDate : '']);
+  for (const phase of Object.keys(pd2).sort()) {
+    wsDash.addRow([`${phase} Start`, pd2[phase].sd, pd2[phase].s]);
+    wsDash.addRow([`${phase} End`, pd2[phase].ed, pd2[phase].e]);
+  }
+  wsDash.addRow(['Project Finish', projDays, scheduleData.length ? scheduleData[scheduleData.length-1].finishDate : '']);
+  wsDash.addRow([]);
+
+  wsDash.addRow(['Gantt Timeline (Strategic Tasks)']);
+  wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
+  wsDash.addRow(['Task','Phase','Start (Day)','Duration (Days)']);
+  styleHeader(wsDash, wsDash.rowCount, 'FF5B9BD5');
+  const top15x = [...scheduleData].sort((a,b)=>b.duration-a.duration).slice(0,15).sort((a,b)=>a.startDay-b.startDay);
+  for (const t of top15x) wsDash.addRow([t.name.slice(0,35), t.phase, t.startDay, Math.round(t.duration*10)/10]);
+
+  // ── Embed 4D chart images on the RIGHT side (col E = col 4), stacked vertically ──
+  try {
+    // 4D-relevant charts: index 3=Phase Totals, 4=Phase Duration, 5=Resource Workload, 6=S-Curve, 8=Gantt
+    const chartCanvases = document.querySelectorAll('.chart-box canvas');
+    const chartCol = 4; // Column E — right of data columns
+    let imgRow = 2;
+    for (const canvas of chartCanvases) {
+      try {
+        const dataUrl = canvas.toDataURL('image/png');
+        const b64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+        const imgId = wb.addImage({ base64: b64, extension: 'png' });
+        wsDash.addImage(imgId, { tl: { col: chartCol, row: imgRow }, ext: { width: 500, height: 300 } });
+        imgRow += 20;
+      } catch (e) { console.warn('4D chart image error:', e); }
+    }
+  } catch (e) { console.warn('4D chart images error:', e); }
+
+  // ── Save ──
+  const filename = `BIM_OOTB_${bldName}_4D_Schedule_${new Date().toISOString().slice(0,10)}.xlsx`;
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  document.getElementById('status').textContent = `Saved ${filename} (3 sheets)`;
+}
+
+// ── Theme toggle ──
+let light = false;
+function toggleTheme() {
+  light = !light;
+  document.body.style.background = light ? '#f0f0f0' : '#1a1a2e';
+  document.body.style.color = light ? '#222' : '#e0e0e0';
+  document.querySelectorAll('h1,h2').forEach(e => e.style.color = light ? '#0077cc' : '#4fc3f7');
+  document.querySelectorAll('th').forEach(e => {
+    e.style.background = light ? 'rgba(0,119,204,0.1)' : 'rgba(79,195,247,0.15)';
+    e.style.color = light ? '#0077cc' : '#4fc3f7';
+  });
+  document.querySelectorAll('.chart-box').forEach(e => {
+    e.style.background = light ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.05)';
+    e.style.borderColor = light ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)';
+  });
+}
+
+init();
+</script>
+</body>
+</html>

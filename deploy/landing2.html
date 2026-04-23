@@ -1,4 +1,4 @@
-<!-- OCI: uploads as index.html to bim-ootb-full bucket (landing page) -->
+<!-- OCI: uploads as index.html to bim-ootb-dev bucket (DEV landing page) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1a1a2e">
-<title>BIM OOTB — Frictionless BIM</title>
+<title>BIM OOTB — DEV</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -128,8 +128,9 @@
 </head>
 <body>
 
+<div style="background:#cc6600;color:#fff;text-align:center;padding:6px;font-size:13px;font-weight:700;letter-spacing:2px">DEV ENVIRONMENT — changes tested here before production</div>
 <div class="header">
-  <h1>BIM OOTB</h1>
+  <h1 style="color:#cc6600">BIM OOTB — DEV</h1>
   <div class="tagline">Frictionless BIM. Two DBs. One browser. Zero install.</div>
   <a href="https://youtu.be/bSyuLQ_c4rw" target="_blank" style="display:inline-block;margin-top:8px;color:#4fc3f7;font-size:13px;text-decoration:none;border:1px solid #4fc3f7;border-radius:4px;padding:4px 12px">&#9654; Watch Demo</a>
 </div>
@@ -289,10 +290,13 @@ function saveViewed() {
   localStorage.setItem('bim_ootb_viewed', JSON.stringify([...viewedBuildings]));
 }
 
+// DB files served from production bucket — dev only overrides viewer/JS
+const _prodBase = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/';
+
 function openViewer(archName, repBuilding) {
   const bld = BUILDINGS[archName];
   if (!bld) { alert(`No DB for ${archName}`); return; }
-  const bldBase = _base ? _base + 'buildings/' : 'buildings/';
+  const bldBase = _prodBase + 'buildings/';
   const viewerUrl = _base ? _base + 'sandbox/index.html' : 'sandbox/index.html';
   const url = viewerUrl + `?db=${bldBase}${bld.db}&lib=${bldBase}${bld.lib}`;
   const win = window.open(url, 'bim_' + archName);
@@ -368,7 +372,7 @@ function clearAllCache() {
 
 // ── Launch city viewer (all 786 buildings from cached DBs) ──
 function launchCity() {
-  const bldBase = _base ? _base + 'buildings/' : 'buildings/';
+  const bldBase = _prodBase + 'buildings/';
   const viewerUrl = _base ? _base + 'sandbox/index.html' : 'sandbox/index.html';
   const url = viewerUrl + `?city=${bldBase}city_index.db&bldbase=${bldBase}`;
   const win = window.open(url, 'bim_city_1M');

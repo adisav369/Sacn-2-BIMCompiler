@@ -285,6 +285,52 @@ const excelJs = fs.readFileSync(path.join(DIR, 'excel.js'), 'utf8');
 ok('excel uses XLSX.writeFile (sync)', excelJs.includes('XLSX.writeFile('), 'missing XLSX.writeFile — export will fail');
 ok('excel is NOT async', !excelJs.match(/async\s+.*exportIssuesExcel/), 'exportIssuesExcel is async — browser will lose user gesture');
 
+// ═══ 12. S210 — Deployment Safety & Dev Environment ═══
+console.log('\n═══ 12. S210 Deployment Safety ═══');
+const devDir = path.join(DIR, '..', 'dev');
+
+// 12a: Landing page must point to sandbox/index.html (not retired monolith)
+const landingHtml = fs.readFileSync(path.join(DIR, '..', 'landing.html'), 'utf8');
+ok('landing: viewerFile = sandbox/index.html', landingHtml.includes("const viewerFile = 'sandbox/index.html'"), 'landing still points to retired rtree_browser_demo.html — will 404');
+ok('landing: no rtree_browser_demo.html in viewerUrl', !landingHtml.includes("_base + 'rtree_browser_demo"), 'viewerUrl still references deleted monolith');
+ok('landing: has health check (ntfy)', landingHtml.includes('ntfy.sh/bim-ootb-alert'), 'landing missing health check — broken viewer won\'t alert');
+ok('landing: has Watch Demo link', landingHtml.includes('youtu.be'), 'landing missing Watch Demo YouTube link');
+
+// 12b: Local landing must match what would be deployed (no live curl — avoid accidents)
+// The local file IS the source of truth. OCI deploy tests are in section 8.
+
+// 12c: Sitecam — toolbar hidden during camera (walk arrow must not bleed through)
+// Check dev sitecam if it exists (fix lives in dev/), fall back to production
+const devSitecamPath = path.join(devDir, 'sitecam.js');
+const sitecamJs = fs.existsSync(devSitecamPath) ? fs.readFileSync(devSitecamPath, 'utf8') : fs.readFileSync(path.join(DIR, 'sitecam.js'), 'utf8');
+ok('sitecam: hides walk-mode-btn during camera', sitecamJs.includes("'walk-mode-btn'") && sitecamJs.includes("'none'"), 'walk button not hidden — bleeds through camera overlay');
+ok('sitecam: restores toolbar on camera close', sitecamJs.includes('camHid') || sitecamJs.includes('prevDisplay'), 'toolbar elements not restored after camera close');
+
+// 12d: Dev landing must have Watch Demo (same as production)
+const landing2Path = path.join(DIR, '..', 'landing2.html');
+if (fs.existsSync(landing2Path)) {
+  const landing2Html = fs.readFileSync(landing2Path, 'utf8');
+  ok('landing2: has Watch Demo link', landing2Html.includes('youtu.be'), 'dev landing missing Watch Demo — out of sync with production');
+  ok('landing2: has DEV banner', landing2Html.includes('DEV ENVIRONMENT'), 'dev landing missing DEV banner');
+  ok('landing2: DBs from prod bucket', landing2Html.includes('bim-ootb-full'), 'dev landing not serving DBs from production bucket');
+  ok('landing2: has health check (ntfy)', landing2Html.includes('ntfy.sh/bim-ootb-alert'), 'dev landing missing health check');
+  ok('landing2: viewer = sandbox/index.html', landing2Html.includes("sandbox/index.html"), 'dev landing viewer path wrong');
+}
+
+// 12f: Dev boq_charts.html — ExcelJS, WP sheets, USD
+if (fs.existsSync(path.join(devDir, 'boq_charts.html'))) {
+  const devBoq = fs.readFileSync(path.join(devDir, 'boq_charts.html'), 'utf8');
+  ok('dev boq: has ExcelJS CDN', devBoq.includes('exceljs'), 'dev boq_charts missing ExcelJS');
+  ok('dev boq: has USD_RATE', devBoq.includes('USD_RATE'), 'dev boq_charts missing USD conversion');
+  ok('dev boq: has WORK_PACKAGES', devBoq.includes('WORK_PACKAGES'), 'dev boq_charts missing Work Package definitions');
+  ok('dev boq: has PACKAGE 1 SUBSTRUCTURE', devBoq.includes('SUBSTRUCTURE'), 'dev boq_charts missing PACKAGE 1');
+  ok('dev boq: has per-discipline BOQ sheets', devBoq.includes('BOQ-'), 'dev boq_charts missing per-discipline sheets');
+  ok('dev boq: has chart image embedding', devBoq.includes('toDataURL') && devBoq.includes('addImage'), 'dev boq_charts missing chart image embedding');
+  ok('dev boq: save5D is async', devBoq.includes('async function save5D'), 'save5D not async — ExcelJS writeBuffer needs await');
+  ok('dev boq: save4D is async', devBoq.includes('async function save4D'), 'save4D not async — ExcelJS writeBuffer needs await');
+  ok('dev boq: header fill per-cell (not full row)', devBoq.includes('getCell(c)') && devBoq.includes('cell.fill'), 'header fill applies to entire row — blue bars extend past data');
+}
+
 // ═══ SUMMARY ═══
 console.log(`\n═══ SUMMARY: ${pass}/${pass + fail} passed, ${fail} failed ═══\n`);
 process.exit(fail > 0 ? 1 : 0);
