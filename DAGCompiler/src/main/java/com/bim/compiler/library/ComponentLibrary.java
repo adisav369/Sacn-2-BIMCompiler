@@ -674,7 +674,7 @@ public class ComponentLibrary implements AutoCloseable {
     // Inner classes for library data structures
     // =========================================================================
 
-    public enum AttachmentFace { TOP, BOTTOM, SIDE, CENTER, ENDS }
+    public enum AttachmentFace { TOP, BOTTOM, SIDE, CENTER, ENDS, FLOOR }
     public enum Orientation { PENDANT, UPRIGHT, WALL_MOUNT, VERTICAL, HORIZONTAL, MIXED, UNKNOWN }
 
     public record ComponentDefinition(

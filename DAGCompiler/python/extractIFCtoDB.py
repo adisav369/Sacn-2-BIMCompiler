@@ -315,30 +315,21 @@ def element_boolean_depth(elem):
 
 
 def bbox_from_placement(elem):
-    """Fallback: derive a minimal 1×1×1 box from the element's placement origin."""
-    import ifcopenshell.util.placement as ifcplace
-    try:
-        m = ifcplace.get_local_placement(elem.ObjectPlacement)
-        cx, cy, cz = float(m[0][3]), float(m[1][3]), float(m[2][3])
-    except Exception:
-        cx = cy = cz = 0.0
-    # Unit box centred on placement origin
-    half = 0.5
-    verts = np.array([
-        [-half, -half, -half], [half, -half, -half],
-        [half,  half, -half], [-half,  half, -half],
-        [-half, -half,  half], [half, -half,  half],
-        [half,  half,  half], [-half,  half,  half],
-    ], dtype=np.float32)
-    faces = np.array([
-        [0,1,2],[0,2,3],[4,5,6],[4,6,7],
-        [0,1,5],[0,5,4],[2,3,7],[2,7,6],
-        [1,2,6],[1,6,5],[0,3,7],[0,7,4],
-    ], dtype=np.int32)
-    center = np.array([cx, cy, cz], dtype=np.float64)
-    return verts.tobytes(), faces.tobytes(), center, \
-           np.array([cx-half, cy-half, cz-half]), \
-           np.array([cx+half, cy+half, cz+half])
+    """ILLEGAL FALLBACK — parametric box generation is a no-invent violation.
+
+    If the tessellation engine cannot produce geometry for an element, that
+    element must be SKIPPED, not replaced with a synthetic 1×1×1 box.
+    A fake box in the library corrupts downstream consumers (viewer, BOM,
+    spatial queries) and violates the EXTRACT-OR-COMPILE-ONLY prime rule.
+    """
+    guid = getattr(elem, 'GlobalId', '?')
+    cls = elem.is_a() if hasattr(elem, 'is_a') else type(elem).__name__
+    raise RuntimeError(
+        f"§ILLEGAL_PARAMETRIC_FALLBACK: {cls} guid={guid} — "
+        f"tessellation failed and bbox_from_placement is banned. "
+        f"Add to NON_GEOMETRIC_CLASSES if this type has no mesh, "
+        f"or fix the IFC source."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -855,8 +846,12 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 rot_x = rot_y = rot_z = 0.0
 
                 if len(verts) < 3 or len(faces) < 1:
-                    vblob, fblob, center, minXYZ, maxXYZ = bbox_from_placement(elem)
-                    bbox_fallback += 1
+                    # S185: parametric fallback is illegal — abort extraction
+                    raise RuntimeError(
+                        f"§ILLEGAL_PARAMETRIC_FALLBACK {cls} guid={shape.guid} — "
+                        f"verts={len(verts)} faces={len(faces)}. "
+                        f"Tessellation produced no geometry. "
+                        f"Add to NON_GEOMETRIC_CLASSES or fix IFC source.")
                 else:
                     # S173: iterator returns metres natively — no scaling
                     vblob = verts.astype(np.float32).tobytes()
