@@ -1,4 +1,4 @@
-§RESOLUTION TEST S210b — 2026-04-23T10:14:56.361Z
+§RESOLUTION TEST S210b — 2026-04-23T13:15:27.194Z
 
 ── Syntax ──
   sitecam.js: PASS
@@ -12,12 +12,14 @@
   startDriveThru has double-create guard: PASS
 
 ── BUG 2: Share with files ──
-  checks canShare before file share: PASS
-  three-tier fallback (files → text → wa.me): PASS
+  checks canShare before file share: FAIL — blind share may throw
+  three-tier fallback (files → text → wa.me): FAIL
   closeSitePreview calls: 2 PASS
-  §SHARE_FILES tag: PASS
-  §SHARE_NO_FILE_SUPPORT tag: PASS
+  §SHARE_FILES tag: FAIL
+  §SHARE_NO_FILE_SUPPORT tag: FAIL
   §SHARE_CLOSE tag: PASS
+  status shows result to user: FAIL — result only in console
+  §SHARE_NO_API fallback: FAIL
 
 ── BUG 3: Single save at share only ──
   _compositePhoto no DB write: PASS
@@ -26,7 +28,51 @@
 ── BUG 4: Status toggle re-renders list ──
   _renderIssueList after toggle: PASS
 
+
+── BUG 5: Walk init faces door, freezes until user moves ──
+  walk.js syntax: PASS
+  early lock before orient setup: PASS — pos 2176 < 4071
+  walkModeActive=true set exactly once: PASS
+  _walkBaselineAlpha captured: PASS
+  UNLOCK_THRESHOLD_DEG defined: PASS
+  returns early when below threshold: PASS
+  alphaOffset at baseline (not first tick): PASS
+  §WALK_BASELINE: PASS
+  §WALK_UNLOCK: PASS
+  §WALK_LOCK: PASS
+
+── BUG 6: Share abort restores walk arrow ──
+  abort calls closeSitePreview: PASS
+  abort calls closeSiteCamera: PASS
+  §SHARE_ABORT log tag: PASS
+  _driveBtn = null after remove(): PASS
+  §CAM_RESTORE_CHECK diagnostic: PASS
+
+── BUG 7: Snag button position ──
+  snag button moved to body: PASS
+  snag position fixed right: PASS
+  snag hidden on init: PASS
+  snag synced via MutationObserver: PASS
+
+── BUG 8: Ground auto-hide for bottom view ──
+  main.js ground visibility check: PASS
+  ground material.visible toggled: PASS
+
+── BUG 9: City clear button ──
+  cityClear function exists: PASS
+  clear button injected: PASS
+  clears buildingsRendered: PASS
+  disposes geometry+material: PASS
+  §CITY_CLEAR log tag: PASS
+
 ── Production safety ──
   sandbox untouched: PASS
 
-── SUMMARY: 17 PASS, 0 FAIL ──
+── SUMMARY: 39 PASS, 6 FAIL ──
+  checks canShare before file share: FAIL — blind share may throw
+  three-tier fallback (files → text → wa.me): FAIL
+  §SHARE_FILES tag: FAIL
+  §SHARE_NO_FILE_SUPPORT tag: FAIL
+  status shows result to user: FAIL — result only in console
+  §SHARE_NO_API fallback: FAIL
+

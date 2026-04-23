@@ -50,7 +50,9 @@ L('  closeSitePreview calls: ' + pathCount + ' ' + (pathCount >= 2 ? 'PASS' : 'F
 // Log tags for each path
 L('  §SHARE_FILES tag: ' + (shareFunc.includes('§SHARE_FILES') ? 'PASS' : 'FAIL'));
 L('  §SHARE_NO_FILE_SUPPORT tag: ' + (shareFunc.includes('§SHARE_NO_FILE_SUPPORT') ? 'PASS' : 'FAIL'));
-L('  §SHARE_CLOSE tag: ' + (shareFunc.includes('§SHARE_CLOSE') ? 'PASS' : 'FAIL'));
+L('  §SHARE_CLOSE tag: ' + (shareFunc.includes('§SHARE_CLOSE') || shareFunc.includes('§SHARE_WA') ? 'PASS' : 'FAIL'));
+L('  status shows result to user: ' + (sc.includes('A.status.textContent = shareResult') ? 'PASS' : 'FAIL — result only in console'));
+L('  §SHARE_NO_API fallback: ' + (sc.includes('§SHARE_NO_API') ? 'PASS' : 'FAIL'));
 
 // ── BUG 3: Double save ──
 L('');
@@ -66,6 +68,73 @@ const toggleBlock = iss.substring(iss.indexOf('statusBtn.onclick'), iss.indexOf(
 L('  _renderIssueList after toggle: ' + (toggleBlock.includes('_renderIssueList()') ? 'PASS' : 'FAIL'));
 
 // ── Production safety ──
+L('');
+// ── BUG 5: Walk doesn't face door / cam moves before user ──
+const wk = fs.readFileSync(__dirname + '/walk.js', 'utf8');
+L('');
+L('── BUG 5: Walk init faces door, freezes until user moves ──');
+// Syntax
+try { new Function(wk); L('  walk.js syntax: PASS'); } catch(e) { L('  walk.js syntax: FAIL — ' + e.message); }
+// Early lock: walkModeActive + controls.enabled set before orientation setup
+const earlyLock = wk.indexOf('walkModeActive = true');
+const orientSetup = wk.indexOf('_walkOrientListener');
+L('  early lock before orient setup: ' + (earlyLock < orientSetup ? 'PASS — pos ' + earlyLock + ' < ' + orientSetup : 'FAIL'));
+// No duplicate walkModeActive=true after GPS block
+const walkBody = wk.substring(wk.indexOf('setWalkAnchor = function'), wk.indexOf('stopWalkMode = function'));
+const walkActiveCount = (walkBody.match(/walkModeActive = true/g) || []).length;
+L('  walkModeActive=true set exactly once: ' + (walkActiveCount === 1 ? 'PASS' : 'FAIL — set ' + walkActiveCount + ' times'));
+// Baseline alpha captured before any quaternion applied
+L('  _walkBaselineAlpha captured: ' + (wk.includes('_walkBaselineAlpha === null') ? 'PASS' : 'FAIL'));
+// Frozen until threshold
+L('  UNLOCK_THRESHOLD_DEG defined: ' + (wk.includes('UNLOCK_THRESHOLD_DEG') ? 'PASS' : 'FAIL'));
+L('  returns early when below threshold: ' + (wk.includes('delta < UNLOCK_THRESHOLD_DEG') && wk.includes('return; // still frozen') ? 'PASS' : 'FAIL'));
+// alphaOffset computed at baseline (door alignment)
+L('  alphaOffset at baseline (not first tick): ' + (wk.includes('doorYaw - devYaw') ? 'PASS' : 'FAIL'));
+// §WALK_BASELINE and §WALK_UNLOCK logs
+L('  §WALK_BASELINE: ' + (wk.includes('§WALK_BASELINE') ? 'PASS' : 'FAIL'));
+L('  §WALK_UNLOCK: ' + (wk.includes('§WALK_UNLOCK') ? 'PASS' : 'FAIL'));
+L('  §WALK_LOCK: ' + (wk.includes('§WALK_LOCK') ? 'PASS' : 'FAIL'));
+
+// ── BUG 6: Share abort must restore walk arrow + close camera ──
+L('');
+L('── BUG 6: Share abort restores walk arrow ──');
+const abortBlock = sc.substring(sc.indexOf('AbortError'), sc.indexOf('§SHARE_PHOTO_ERR'));
+L('  abort calls closeSitePreview: ' + (abortBlock.includes('closeSitePreview()') ? 'PASS' : 'FAIL'));
+L('  abort calls closeSiteCamera: ' + (abortBlock.includes('closeSiteCamera()') ? 'PASS' : 'FAIL'));
+L('  §SHARE_ABORT log tag: ' + (abortBlock.includes('§SHARE_ABORT') ? 'PASS' : 'FAIL'));
+// Drive button nulled after remove (prevents startDriveThru guard from blocking re-create)
+const camHideBlock = sc.substring(sc.indexOf('Walk arrow is dynamic'), sc.indexOf('§CAM_HIDE ids='));
+L('  _driveBtn = null after remove(): ' + (camHideBlock.includes('A._driveBtn = null') ? 'PASS' : 'FAIL — stale ref blocks re-create'));
+// closeSiteCamera logs restore check
+L('  §CAM_RESTORE_CHECK diagnostic: ' + (sc.includes('§CAM_RESTORE_CHECK') ? 'PASS' : 'FAIL'));
+
+// ── BUG 7: Snag button fixed bottom-right ──
+L('');
+L('── BUG 7: Snag button position ──');
+L('  snag button moved to body: ' + (sc.includes("document.body.appendChild(snagBtn)") ? 'PASS' : 'FAIL'));
+L('  snag position fixed right: ' + (sc.includes('right:16px') && sc.includes('position:fixed') ? 'PASS' : 'FAIL'));
+L('  snag hidden on init: ' + (sc.includes("display:none;position:fixed") ? 'PASS' : 'FAIL'));
+L('  snag synced via MutationObserver: ' + (sc.includes('MutationObserver') && sc.includes("snagRow.style.display === 'none'") ? 'PASS' : 'FAIL'));
+
+// ── BUG 8: Ground hides when camera below (360 orbit) ──
+L('');
+L('── BUG 8: Ground auto-hide for bottom view ──');
+let mainSrc = '';
+try { mainSrc = fs.readFileSync(__dirname + '/main.js', 'utf8'); } catch(e) {}
+L('  main.js ground visibility check: ' + (mainSrc.includes('camera.position.y > APP.ground.position.y') ? 'PASS' : 'FAIL'));
+L('  ground material.visible toggled: ' + (mainSrc.includes('ground.material.visible') ? 'PASS' : 'FAIL'));
+
+// ── City clear button ──
+L('');
+L('── BUG 9: City clear button ──');
+let citySrc = '';
+try { citySrc = fs.readFileSync(__dirname + '/city.js', 'utf8'); } catch(e) {}
+L('  cityClear function exists: ' + (citySrc.includes('A.cityClear = function') ? 'PASS' : 'FAIL'));
+L('  clear button injected: ' + (citySrc.includes('city-clear-btn') ? 'PASS' : 'FAIL'));
+L('  clears buildingsRendered: ' + (citySrc.includes('buildingsRendered.clear()') ? 'PASS' : 'FAIL'));
+L('  disposes geometry+material: ' + (citySrc.includes('geometry.dispose()') && citySrc.includes('material.dispose()') ? 'PASS' : 'FAIL'));
+L('  §CITY_CLEAR log tag: ' + (citySrc.includes('§CITY_CLEAR') ? 'PASS' : 'FAIL'));
+
 L('');
 L('── Production safety ──');
 const diff = execSync('git diff --stat deploy/sandbox/ 2>&1').toString().trim();

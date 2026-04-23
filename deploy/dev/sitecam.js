@@ -1,9 +1,24 @@
 // sitecam.js — Site Camera (mobile site inspection), photo composite, markup, voice notes
 function setupSitecam(A) {
-  // Swap "A Text" button → "🎤 Voice" at init (button lives in index.html)
+  // Remove text/voice button from toolbar (user types in WhatsApp after sharing)
   const textBtn = document.querySelector('.markup-btn[data-tool="text"]');
-  if (textBtn) { textBtn.dataset.tool = 'voice'; textBtn.textContent = '🎤 Voice'; textBtn.setAttribute('onclick', "setMarkupTool('voice')"); }
-  console.log('[S210] §SITECAM_INIT textBtn=' + (textBtn ? 'swapped' : 'missing'));
+  if (textBtn) textBtn.remove();
+  console.log('[S210] §SITECAM_INIT textBtn=' + (textBtn ? 'removed' : 'absent'));
+
+  // Move snag button to fixed bottom-right, away from walk arrow
+  const snagRow = document.getElementById('snag-btn-row');
+  if (snagRow) {
+    const snagBtn = snagRow.querySelector('button');
+    if (snagBtn) {
+      snagBtn.id = 'snag-btn-fixed';
+      snagBtn.style.cssText = 'display:none;position:fixed;bottom:20px;right:16px;z-index:14;background:#f44336;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(244,67,54,0.4)';
+      document.body.appendChild(snagBtn);
+      // Sync visibility: picking.js toggles snag-btn-row, mirror to our fixed button
+      new MutationObserver(() => {
+        snagBtn.style.display = snagRow.style.display === 'none' ? 'none' : 'block';
+      }).observe(snagRow, { attributes: true, attributeFilter: ['style'] });
+    }
+  }
 
   A._camStream = null;
   A._camGpsPos = null;
@@ -129,6 +144,7 @@ function setupSitecam(A) {
       // Walk arrow is dynamic (created by walk.js) — remove it, re-create on close
       if (A._driveBtn) {
         A._driveBtn.remove();
+        A._driveBtn = null;
         A._driveBtnWasActive = true;
         console.log('[S210] §CAM_HIDE driveBtn=REMOVED');
       } else {
@@ -171,9 +187,10 @@ function setupSitecam(A) {
       if (rel && rel.dataset.camHid !== undefined) { rel.style.cssText = rel.dataset.camHid; delete rel.dataset.camHid; _restored++; }
     }
     // Re-create walk arrow if it was active before camera
+    console.log('[S210] §CAM_RESTORE_CHECK driveWas=' + A._driveBtnWasActive + ' walk=' + A.walkModeActive + ' hasFn=' + !!A.startDriveThru + ' curBtn=' + !!A._driveBtn);
     if (A._driveBtnWasActive && A.walkModeActive && A.startDriveThru) {
       A.startDriveThru();
-      console.log('[S210] §CAM_RESTORE driveBtn=RECREATED');
+      console.log('[S210] §CAM_RESTORE driveBtn=RECREATED exists=' + !!A._driveBtn);
     }
     console.log('[S210] §CAM_RESTORE n=' + _restored + ' walk=' + A.walkModeActive);
   };
@@ -315,9 +332,7 @@ function setupSitecam(A) {
     document.querySelectorAll('.markup-btn').forEach(b => {
       b.style.background = b.dataset.tool === tool ? '#ff4444' : '#444';
     });
-    if (tool === 'voice') {
-      A._startVoiceNote();
-    }
+    // text/voice tools removed — markup is arrow/circle/freehand only
   };
 
   A.setMarkupColor = function(color) {
@@ -327,51 +342,7 @@ function setupSitecam(A) {
     });
   };
 
-  // ── Voice note recording (replaces text tool) ──
-  A._voiceRecorder = null;
-  A._voiceChunks = [];
-  A._voiceBlobs = []; // attached to snag issue
-
-  A._startVoiceNote = function() {
-    if (A._voiceRecorder && A._voiceRecorder.state === 'recording') {
-      A._voiceRecorder.stop();
-      return;
-    }
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      const rec = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-      A._voiceChunks = [];
-      rec.ondataavailable = (e) => { if (e.data.size > 0) A._voiceChunks.push(e.data); };
-      rec.onstop = () => {
-        stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(A._voiceChunks, { type: 'audio/webm' });
-        A._voiceBlobs.push(blob);
-        // Draw mic badge on markup canvas
-        const mc = document.getElementById('site-cam-markup');
-        const ctx = mc.getContext('2d');
-        const badgeY = 30 + (A._voiceBlobs.length - 1) * 28;
-        A._markupStrokes.push({ tool: 'voice', idx: A._voiceBlobs.length, x: mc.width - 120, y: badgeY });
-        A._redrawMarkup();
-        // Reset button state
-        const vBtn = document.querySelector('.markup-btn[data-tool="voice"]');
-        if (vBtn) { vBtn.style.background = '#444'; vBtn.textContent = '🎤 Voice'; }
-        console.log('[S210] §VOICE_DONE n=' + A._voiceBlobs.length + ' size=' + blob.size);
-      };
-      rec.start();
-      A._voiceRecorder = rec;
-      // Visual feedback — red pulse on button
-      const vBtn = document.querySelector('.markup-btn[data-tool="voice"]');
-      if (vBtn) { vBtn.style.background = '#ff0000'; vBtn.textContent = '⏹ Stop'; }
-      console.log('[S210] §VOICE_START');
-    }).catch(err => {
-      console.log('[S210] §VOICE_ERR ' + err.message);
-    });
-  };
-
-  A._stopVoiceIfActive = function() {
-    if (A._voiceRecorder && A._voiceRecorder.state === 'recording') {
-      A._voiceRecorder.stop();
-    }
-  };
+  // Voice/text tools removed — user adds text in WhatsApp after sharing photo + map
 
   A.undoMarkup = function() {
     A._markupStrokes.pop();
@@ -408,12 +379,6 @@ function setupSitecam(A) {
       ctx.beginPath(); ctx.moveTo(s.points[0].x, s.points[0].y);
       s.points.forEach(p => ctx.lineTo(p.x, p.y));
       ctx.stroke();
-    } else if (s.tool === 'voice') {
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(s.x, s.y - 14, 110, 22);
-      ctx.fillStyle = '#ff4444';
-      ctx.font = 'bold 13px sans-serif';
-      ctx.fillText('🎤 Voice #' + s.idx, s.x + 4, s.y + 2);
     }
   };
 
@@ -435,7 +400,7 @@ function setupSitecam(A) {
       e.preventDefault();
       const p = A._canvasCoords(mc, e);
       A._markupActive = true;
-      if (A._markupTool === 'voice') return;
+      if (A._markupTool !== 'arrow' && A._markupTool !== 'circle' && A._markupTool !== 'freehand') return;
       currentStroke = { tool: A._markupTool, color: A._markupColor, points: [p] };
     }
     function onMove(e) {
@@ -474,7 +439,6 @@ function setupSitecam(A) {
   };
 
   A.closeSitePreview = function() {
-    A._stopVoiceIfActive();
     document.getElementById('site-cam-preview').classList.remove('active');
     A._camPhotoBlob = null;
     A._markupListenersSet = false;
@@ -492,45 +456,48 @@ function setupSitecam(A) {
     const text = `${info.building} / ${info.storey} / ${info.cls}\n${info.name}\nGUID: ${info.guid}\nGPS: ${gpsText}${bearingText ? '\n' + bearingText : ''}\n${mapsLink}\n${timeText}`;
     const fileName = `BIM_Site_${info.building}_${timeText.replace(/[: ]/g,'-')}.jpg`;
 
-    if (navigator.share) {
-      try {
-        const files = [new File([blob], fileName, { type: 'image/jpeg' })];
-        A._voiceBlobs.forEach((vb, i) => {
-          files.push(new File([vb], fileName.replace('.jpg', `_voice${i+1}.webm`), { type: 'audio/webm' }));
-        });
-        const shareData = { files, title, text };
-        // Check if browser supports file sharing (not all do)
-        if (navigator.canShare && navigator.canShare(shareData)) {
-          await navigator.share(shareData);
-          console.log('[S210] §SHARE_FILES n=' + files.length + ' voice=' + A._voiceBlobs.length);
-          A._saveIssueToLog();
-          A.closeSitePreview();
-          A.closeSiteCamera();
-          return;
-        } else {
-          console.log('[S210] §SHARE_NO_FILE_SUPPORT canShare=' + !!navigator.canShare);
+    // Share: photo as SINGLE file (WhatsApp drops mixed file types silently)
+    // Voice → saved to downloads. Map → in text body.
+    const photoFile = new File([blob], fileName, { type: 'image/jpeg' });
+    const mapTag = A._camGpsPos ? ' + 📍 map' : '';
+
+    // Share 1: photo + text (with map link)
+    let photoShared = false;
+    if (navigator.share && navigator.canShare) {
+      const data = { files: [photoFile], title, text };
+      if (navigator.canShare(data)) {
+        try {
+          await navigator.share(data);
+          photoShared = true;
+          console.log('[S210] §SHARE_PHOTO OK');
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            // User cancelled share — return to building screen, not stuck in camera
+            console.log('[S210] §SHARE_ABORT driveWas=' + A._driveBtnWasActive + ' walk=' + A.walkModeActive + ' driveBtn=' + !!A._driveBtn);
+            A.closeSitePreview();
+            A.closeSiteCamera();
+            console.log('[S210] §SHARE_ABORT_DONE driveBtn=' + !!A._driveBtn);
+            return;
+          }
+          console.log('[S210] §SHARE_PHOTO_ERR ' + err.message);
         }
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-        console.log('[S210] §SHARE_FILE_ERR ' + err.message);
       }
     }
-    // Fallback: navigator.share without files (text + URL only) — works on all mobile browsers
-    // wa.me URL scheme is text-only, can't attach photos/audio
-    try {
-      const shareData = { title, text };
-      await navigator.share(shareData);
-      console.log('[S210] §SHARE_TEXT via navigator.share (no files)');
-    } catch (e2) {
-      // Last resort: open WhatsApp with text only
+    if (!photoShared) {
       const waText = encodeURIComponent(title + '\n' + text);
       window.open(`https://wa.me/?text=${waText}`, '_blank');
       console.log('[S210] §SHARE_WA text-only');
     }
+
+    // Status: tell user what was sent
+    A.status.textContent = photoShared
+      ? '📸 Shared: photo' + (A._camGpsPos ? ' + 📍 map' : '')
+      : '📍 Text + map sent';
+    console.log('[S210] §SHARE_DONE photo=' + photoShared + ' gps=' + !!A._camGpsPos);
+
     A._saveIssueToLog();
     A.closeSitePreview();
     A.closeSiteCamera();
-    console.log('[S210] §SHARE_CLOSE walk=' + A.walkModeActive);
   };
 
   A.downloadSitePhoto = async function() {

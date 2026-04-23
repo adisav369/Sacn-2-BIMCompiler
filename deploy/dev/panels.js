@@ -1,0 +1,1 @@
+../sandbox/panels.js
