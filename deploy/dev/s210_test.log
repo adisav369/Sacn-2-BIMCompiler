@@ -1,4 +1,4 @@
-§RESOLUTION TEST S210b — 2026-04-23T13:15:27.194Z
+§RESOLUTION TEST S210b — 2026-04-23T14:57:31.173Z
 
 ── Syntax ──
   sitecam.js: PASS
@@ -12,14 +12,14 @@
   startDriveThru has double-create guard: PASS
 
 ── BUG 2: Share with files ──
-  checks canShare before file share: FAIL — blind share may throw
-  three-tier fallback (files → text → wa.me): FAIL
+  checks canShare before file share: PASS
+  share fallback (files → wa.me): PASS
   closeSitePreview calls: 2 PASS
-  §SHARE_FILES tag: FAIL
-  §SHARE_NO_FILE_SUPPORT tag: FAIL
-  §SHARE_CLOSE tag: PASS
-  status shows result to user: FAIL — result only in console
-  §SHARE_NO_API fallback: FAIL
+  §SHARE_PHOTO tag: PASS
+  §SHARE_WA tag: PASS
+  §SHARE_DONE tag: PASS
+  status shows result to user: PASS
+  §SHARE_ABORT handling: PASS
 
 ── BUG 3: Single save at share only ──
   _compositePhoto no DB write: PASS
@@ -66,13 +66,10 @@
   §CITY_CLEAR log tag: PASS
 
 ── Production safety ──
-  sandbox untouched: PASS
+  sandbox untouched: FAIL — deploy/sandbox/test_all.js | 92 +++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 82 insertions(+), 10 deletions(-)
 
-── SUMMARY: 39 PASS, 6 FAIL ──
-  checks canShare before file share: FAIL — blind share may throw
-  three-tier fallback (files → text → wa.me): FAIL
-  §SHARE_FILES tag: FAIL
-  §SHARE_NO_FILE_SUPPORT tag: FAIL
-  status shows result to user: FAIL — result only in console
-  §SHARE_NO_API fallback: FAIL
+── SUMMARY: 44 PASS, 1 FAIL ──
+  sandbox untouched: FAIL — deploy/sandbox/test_all.js | 92 +++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 82 insertions(+), 10 deletions(-)
 

@@ -597,18 +597,46 @@ async function renderImportCards() {
       const color = DISC_COLORS[d] || '#888';
       return '<span class="disc-bar" style="width:' + pct + '%;background:' + color + '"></span>';
     }).join('');
+    var displayName = (item.meta.filename || item.meta.name || '').replace(/\.ifc$/i, '');
     card.innerHTML =
-      '<div class="name">' + item.meta.name + '</div>' +
+      '<div class="name">' + displayName + '</div>' +
       '<div class="meta"><b>' + total.toLocaleString() + '</b> elements · ' + Object.keys(discs).join(', ') + '</div>' +
       '<div class="disc-bars">' + discBars + '</div>' +
       '<div style="display:flex;gap:6px;margin-top:10px">' +
         '<button class="open-btn" style="flex:1" data-key="' + item.key + '">Open</button>' +
+        '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(68,136,204,0.15);border-color:rgba(68,136,204,0.3);color:#4488cc" data-save="' + item.key + '">Save</button>' +
         '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + item.key + '">x</button>' +
       '</div>';
     card.querySelector('[data-key]').onclick = function() { openImported(this.dataset.key); };
+    card.querySelector('[data-save]').onclick = async function(e) {
+      e.stopPropagation();
+      var key = this.dataset.save;
+      var db = await openImportDB();
+      if (!db) { alert('DB not available'); return; }
+      var record = await new Promise(function(resolve) {
+        var tx = db.transaction(IMPORT_STORE, 'readonly');
+        var req = tx.objectStore(IMPORT_STORE).get(key);
+        req.onsuccess = function() { resolve(req.result); };
+        req.onerror = function() { resolve(null); };
+      });
+      if (!record) { alert('Not found'); return; }
+      var base = key.replace(/\.ifc$/i, '');
+      function dl(buf, name) {
+        var blob = new Blob([buf], { type: 'application/octet-stream' });
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = name; a.click(); URL.revokeObjectURL(a.href);
+      }
+      var btn = this;
+      dl(record.extractedDb, base + '_extracted.db');
+      setTimeout(function() { dl(record.libraryDb, base + '_library.db'); }, 500);
+      btn.textContent = 'SAVED';
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'default';
+    };
     card.querySelector('[data-del]').onclick = function(e) {
       e.stopPropagation();
-      if (confirm('Delete ' + item.meta.name + '?')) deleteImported(this.dataset.del);
+      if (confirm('Delete ' + displayName + '?')) deleteImported(this.dataset.del);
     };
     container.appendChild(card);
   }
@@ -631,7 +659,7 @@ async function handleImportFile(file) {
   if (file.size > 200 * 1024 * 1024) status.textContent = 'Very large (' + sizeMB + 'MB) — may take a few minutes';
 
   const arrayBuffer = await file.arrayBuffer();
-  const worker = new Worker('sandbox/import_worker.js');
+  const worker = new Worker('sandbox/import_worker.js?v=7');
 
   worker.onmessage = async function(e) {
     const msg = e.data;
@@ -675,7 +703,7 @@ async function handleImportFile(file) {
         extDb.run('CREATE TABLE IF NOT EXISTS element_instances (guid TEXT PRIMARY KEY, geometry_hash TEXT)');
 
         const stmtEl = extDb.prepare('INSERT OR IGNORE INTO elements_meta VALUES (?,?,?,?,?,?,?,?)');
-        for (const el of msg.elements) stmtEl.run([el.guid, el.ifcClass, el.name, el.storey, el.discipline, el.material, null, msg.meta.name]);
+        for (const el of msg.elements) stmtEl.run([el.guid, el.ifcClass, el.name, el.storey, el.discipline, null, el.material, msg.meta.name]);
         stmtEl.free();
 
         const stmtTr = extDb.prepare('INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?,?,?)');

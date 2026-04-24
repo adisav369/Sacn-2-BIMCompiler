@@ -215,20 +215,36 @@ function setupStreaming(A) {
     }
 
     if (A.streamIdx === 0) {
-      let rotCount = 0, placedCount = 0, missCount = 0, matCount = 0;
-      for (let i = 0; i < Math.min(batch, 5); i++) {
-        const row = A.streamQueue[i];
-        console.log(`[S200] §SAMPLE[${i}] rgba="${row[2]}" type=${typeof row[2]} disc=${row[3]}`);
-      }
+      let rotCount = 0, placedCount = 0, missCount = 0, matCount = 0, transCount = 0;
+      const classCounts = {}, discCounts = {};
       for (let i = 0; i < batch; i++) {
         const row = A.streamQueue[i];
         const rx = row[7] || 0, ry = row[8] || 0, rz = row[9] || 0;
         if (rx || ry || rz) rotCount++;
-        if (A.meshCache[row[1]]) placedCount++; else missCount++;
+        const geo = A.meshCache[row[1]];
+        if (geo) {
+          placedCount++;
+          const vc = geo.attributes && geo.attributes.position ? geo.attributes.position.count : 0;
+          // Log first 5 with full detail
+          if (i < 5) {
+            console.log(`[S220] §SAMPLE[${i}] class=${row[11]} rgba="${row[2]}" disc=${row[3]} verts=${vc} pos=(${Number(row[4]).toFixed(1)},${Number(row[5]).toFixed(1)},${Number(row[6]).toFixed(1)})`);
+          }
+        } else { missCount++; }
         const rgbaStr = row[2] != null ? String(row[2]) : '';
-        if (rgbaStr && rgbaStr.includes(',')) matCount++;
+        if (rgbaStr && rgbaStr.includes(',')) {
+          matCount++;
+          const parts = rgbaStr.split(',').map(Number);
+          if (parts.length >= 4 && parts[3] < 1.0) {
+            transCount++;
+            console.log(`[S220] §GLASS class=${row[11]} alpha=${parts[3]} rgba="${rgbaStr}" guid=${row[0].substring(0,12)}`);
+          }
+        }
+        classCounts[row[11]] = (classCounts[row[11]] || 0) + 1;
+        discCounts[row[3]] = (discCounts[row[3]] || 0) + 1;
       }
-      console.log(`[S200] §PROOF first_batch=${batch} rotation=${rotCount} placed=${placedCount} miss=${missCount} with_material=${matCount}`);
+      console.log(`[S220] §PROOF first_batch=${batch} placed=${placedCount} miss=${missCount} with_material=${matCount} transparent=${transCount} rotation=${rotCount}`);
+      console.log(`[S220] §PROOF_CLASSES ${Object.entries(classCounts).map(([c,n])=>c+':'+n).join(' ')}`);
+      console.log(`[S220] §PROOF_DISCS ${Object.entries(discCounts).map(([d,n])=>d+':'+n).join(' ')}`);
     }
 
     A.streamIdx += batch;
@@ -290,10 +306,14 @@ function setupStreaming(A) {
     const zRange = A.db.exec(`SELECT MIN(center_z), MAX(center_z) FROM element_transforms`);
     if (zRange.length > 0) {
       const minZ = zRange[0].values[0][0];
-      const groundY = (minZ - A.modelOffset.z) - 2;
-      A.ground.position.y = groundY;
-      A.ground.visible = true;
-      console.log(`[S200] §GROUND minZ_ifc=${minZ.toFixed(1)} groundY=${groundY.toFixed(1)}`);
+      if (minZ == null) {
+        console.log('[S220] §GROUND_SKIP element_transforms has no rows — no viewable geometry');
+      } else {
+        const groundY = (minZ - A.modelOffset.z) - 2;
+        A.ground.position.y = groundY;
+        A.ground.visible = true;
+        console.log(`[S200] §GROUND minZ_ifc=${minZ.toFixed(1)} groundY=${groundY.toFixed(1)}`);
+      }
     }
 
     const elemRows = A.db.exec(`SELECT COUNT(*) FROM elements_meta`);
@@ -340,7 +360,7 @@ function setupStreaming(A) {
       FROM element_transforms
     `);
     let envW = 500, envD = 500, envH = 100;
-    if (bboxQ.length > 0) {
+    if (bboxQ.length > 0 && bboxQ[0].values[0][0] != null) {
       const [xMin, xMax, yMin, yMax, zMin, zMax] = bboxQ[0].values[0];
       envW = xMax - xMin;
       envD = yMax - yMin;

@@ -77,61 +77,48 @@ function setupImport(A) {
   }
 
   // ── Build sql.js DBs from extracted data ──
+  // Schema must match viewer's streaming.js expectations
   function buildDatabases(SQL, data) {
-    // Extracted DB — metadata, transforms, spatial structure
     const extDb = new SQL.Database();
-    extDb.run(`CREATE TABLE IF NOT EXISTS project_metadata (key TEXT PRIMARY KEY, value TEXT)`);
-    extDb.run(`INSERT INTO project_metadata VALUES ('project_name', ?), ('schema_version', 'IFC_IMPORT'), ('import_date', ?)`,
-      [data.meta.name, new Date().toISOString()]);
+    extDb.run('CREATE TABLE IF NOT EXISTS project_metadata (key TEXT PRIMARY KEY, value TEXT)');
+    extDb.run('INSERT INTO project_metadata VALUES (?,?),(?,?)',
+      ['project_name', data.meta.name, 'import_date', new Date().toISOString()]);
 
-    extDb.run(`CREATE TABLE IF NOT EXISTS elements_meta (
-      guid TEXT PRIMARY KEY, ifc_class TEXT, element_name TEXT,
-      storey TEXT, discipline TEXT, material_name TEXT, building TEXT
-    )`);
+    extDb.run('CREATE TABLE IF NOT EXISTS elements_meta (guid TEXT PRIMARY KEY, ifc_class TEXT, element_name TEXT, storey TEXT, discipline TEXT, material_name TEXT, material_rgba TEXT, building TEXT)');
+    extDb.run('CREATE TABLE IF NOT EXISTS element_transforms (guid TEXT PRIMARY KEY, center_x REAL, center_y REAL, center_z REAL, rotation_x REAL, rotation_y REAL, rotation_z REAL)');
+    extDb.run('CREATE TABLE IF NOT EXISTS element_instances (guid TEXT PRIMARY KEY, geometry_hash TEXT)');
 
-    extDb.run(`CREATE TABLE IF NOT EXISTS element_transforms (
-      guid TEXT PRIMARY KEY, m00 REAL, m01 REAL, m02 REAL, m03 REAL,
-      m10 REAL, m11 REAL, m12 REAL, m13 REAL,
-      m20 REAL, m21 REAL, m22 REAL, m23 REAL,
-      m30 REAL, m31 REAL, m32 REAL, m33 REAL
-    )`);
-
-    extDb.run(`CREATE TABLE IF NOT EXISTS simple_qto (
-      guid TEXT, measurement_type TEXT, total_quantity REAL, unit TEXT,
-      total_cost_rm REAL, ifc_class TEXT
-    )`);
-
-    // Batch insert elements
-    const stmtEl = extDb.prepare(`INSERT OR IGNORE INTO elements_meta VALUES (?,?,?,?,?,?,?)`);
+    const stmtEl = extDb.prepare('INSERT OR IGNORE INTO elements_meta VALUES (?,?,?,?,?,?,?,?)');
     for (const el of data.elements) {
-      stmtEl.run([el.guid, el.ifcClass, el.name, el.storey, el.discipline, el.material, data.meta.name]);
+      stmtEl.run([el.guid, el.ifcClass, el.name, el.storey, el.discipline, null, el.material, data.meta.name]);
     }
     stmtEl.free();
 
-    // Batch insert transforms
-    const transformMap = {};
-    for (const t of data.transforms) transformMap[t.guid] = t.matrix;
-
-    const stmtTr = extDb.prepare(`INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+    const stmtTr = extDb.prepare('INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?,?,?)');
     for (const t of data.transforms) {
-      const m = t.matrix;
-      stmtTr.run([t.guid, m[0],m[1],m[2],m[3], m[4],m[5],m[6],m[7], m[8],m[9],m[10],m[11], m[12],m[13],m[14],m[15]]);
+      stmtTr.run([t.guid, t.cx, t.cy, t.cz, t.rx, t.ry, t.rz]);
     }
     stmtTr.free();
 
-    // Library DB — geometry BLOBs
-    const libDb = new SQL.Database();
-    libDb.run(`CREATE TABLE IF NOT EXISTS component_geometries (
-      guid TEXT PRIMARY KEY, vertices BLOB, faces BLOB, building TEXT
-    )`);
-
-    const stmtGeo = libDb.prepare(`INSERT OR IGNORE INTO component_geometries VALUES (?,?,?,?)`);
+    const stmtInst = extDb.prepare('INSERT OR IGNORE INTO element_instances VALUES (?,?)');
     for (const g of data.geometries) {
-      stmtGeo.run([g.guid, new Uint8Array(g.vertices), new Uint8Array(g.indices), data.meta.name]);
+      stmtInst.run([g.guid, g.geomHash]);
+    }
+    stmtInst.free();
+
+    console.log('[S220] §DB_BUILD extracted: elements=' + data.elements.length + ' transforms=' + data.transforms.length + ' instances=' + data.geometries.length);
+
+    // Library DB — geometry BLOBs (keyed by geometry_hash, not guid)
+    const libDb = new SQL.Database();
+    libDb.run('CREATE TABLE IF NOT EXISTS component_geometries (geometry_hash TEXT PRIMARY KEY, vertices BLOB, faces BLOB, building TEXT)');
+    const stmtGeo = libDb.prepare('INSERT OR IGNORE INTO component_geometries VALUES (?,?,?,?)');
+    for (const g of data.geometries) {
+      stmtGeo.run([g.geomHash, new Uint8Array(g.vertices), new Uint8Array(g.indices), data.meta.name]);
     }
     stmtGeo.free();
 
-    // Export as ArrayBuffers
+    console.log('[S220] §DB_BUILD library: geometries=' + data.geometries.length);
+
     const extBuf = extDb.export().buffer;
     const libBuf = libDb.export().buffer;
     extDb.close();
@@ -159,7 +146,7 @@ function setupImport(A) {
     console.log('[S220] §IMPORT_START file=' + file.name + ' size=' + sizeMB + 'MB');
 
     return new Promise((resolve, reject) => {
-      const workerUrl = new URL('import_worker.js', location.href).href;
+      const workerUrl = new URL('import_worker.js?v=4', location.href).href;
       const worker = new Worker(workerUrl);
 
       worker.onmessage = async function(e) {
@@ -290,8 +277,9 @@ function setupImport(A) {
         return '<span class="disc-bar" style="width:' + pct + '%;background:' + color + '" title="' + d + ': ' + c + '"></span>';
       }).join('');
 
+      var displayName = (item.meta.filename || item.meta.name || '').replace(/\.ifc$/i, '');
       card.innerHTML =
-        '<div class="name">' + item.meta.name + '</div>' +
+        '<div class="name">' + displayName + '</div>' +
         '<div class="meta">' +
           '<b>' + total.toLocaleString() + '</b> elements' +
           ' · ' + Object.keys(discs).join(', ') +
@@ -299,10 +287,28 @@ function setupImport(A) {
         '<div class="disc-bars">' + discBars + '</div>' +
         '<div style="display:flex;gap:6px;margin-top:10px">' +
           '<button class="open-btn" style="flex:1" data-key="' + item.key + '">Open</button>' +
+          '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(68,136,204,0.15);border-color:rgba(68,136,204,0.3);color:#4488cc" data-save="' + item.key + '">Save</button>' +
           '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + item.key + '">x</button>' +
         '</div>';
 
       card.querySelector('[data-key]').onclick = function() { A.openImported(this.dataset.key); };
+      card.querySelector('[data-save]').onclick = async function(e) {
+        e.stopPropagation();
+        var key = this.dataset.save;
+        var record = await getImport(key);
+        if (!record) { alert('Not found'); return; }
+        var base = key.replace(/\.ifc$/i, '');
+        function dl(buf, name) {
+          var blob = new Blob([buf], { type: 'application/octet-stream' });
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = name;
+          a.click();
+          URL.revokeObjectURL(a.href);
+        }
+        dl(record.extractedDb, base + '_extracted.db');
+        setTimeout(function() { dl(record.libraryDb, base + '_library.db'); }, 500);
+      };
       card.querySelector('[data-del]').onclick = function(e) {
         e.stopPropagation();
         if (confirm('Delete ' + item.meta.name + '?')) A.deleteImported(this.dataset.del);

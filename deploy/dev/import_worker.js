@@ -14,6 +14,8 @@ const DISC_MAP = {
   IfcWindow: 'ARC', IfcRoof: 'ARC', IfcStair: 'ARC', IfcStairFlight: 'ARC',
   IfcRailing: 'ARC', IfcCovering: 'ARC', IfcCurtainWall: 'ARC', IfcPlate: 'ARC',
   IfcFurnishingElement: 'ARC', IfcBuildingElementProxy: 'ARC', IfcSpace: 'ARC',
+  IfcFurniture: 'ARC', IfcSystemFurnitureElement: 'ARC', IfcBuildingElementPart: 'ARC',
+  IfcRamp: 'ARC', IfcRampFlight: 'ARC', IfcTransportElement: 'ARC',
   // STR
   IfcBeam: 'STR', IfcColumn: 'STR', IfcFooting: 'STR', IfcPile: 'STR',
   IfcMember: 'STR', IfcReinforcingBar: 'STR', IfcReinforcingMesh: 'STR',
@@ -39,6 +41,19 @@ const DISC_MAP = {
   IfcDistributionControlElement: 'MEP',
 };
 
+// Reverse lookup: IFCWALLSTANDARDCASE → IfcWallStandardCase (from DISC_MAP keys)
+const CLASS_NAME_MAP = {};
+for (var k in DISC_MAP) { CLASS_NAME_MAP[k.toUpperCase()] = k; }
+// Add extras not in DISC_MAP
+CLASS_NAME_MAP['IFCOPENINGELEMENT'] = 'IfcOpeningElement';
+CLASS_NAME_MAP['IFCSITE'] = 'IfcSite';
+CLASS_NAME_MAP['IFCGEOGRAPHICELEMENT'] = 'IfcGeographicElement';
+
+function properClassName(typeCode) {
+  var upper = typeCode.toUpperCase();
+  return CLASS_NAME_MAP[upper] || ('Ifc' + typeCode.substring(3).charAt(0).toUpperCase() + typeCode.substring(4).toLowerCase());
+}
+
 function classifyDisc(ifcClass) {
   return DISC_MAP[ifcClass] || 'ARC';
 }
@@ -63,7 +78,11 @@ self.onmessage = async function(e) {
     console.log('[S220] §PARSE_START size=' + (data.byteLength / 1024 / 1024).toFixed(1) + 'MB');
     var modelID;
     try {
-      modelID = ifcApi.OpenModel(data);
+      modelID = ifcApi.OpenModel(data, {
+        COORDINATE_TO_ORIGIN: false,
+        USE_FAST_BOOLS: true,       // subtract IfcOpeningElement from walls
+        OPTIMIZE_PROFILES: true,
+      });
     } catch(parseErr) {
       var msg = String(parseErr.message || parseErr);
       console.log('[S220] §PARSE_FAIL ' + msg);
@@ -76,6 +95,12 @@ self.onmessage = async function(e) {
       return;
     }
     console.log('[S220] §PARSE_OK modelID=' + modelID);
+    if (modelID < 0) {
+      console.log('[S220] §PARSE_FAIL modelID=' + modelID + ' (unsupported schema?)');
+      self.postMessage({ type: 'error', message: 'Failed to parse IFC. Check schema version — supported: IFC2x3, IFC4, IFC4x3.' });
+      return;
+    }
+    // Unit scaling applied AFTER tessellation via heuristic (web-ifc is inconsistent)
     post('progress', 30, 'Extracting elements...');
 
     // Phase 3: Extract spatial structure + elements (30-70%)
@@ -122,19 +147,38 @@ self.onmessage = async function(e) {
 
     // Collect product types to extract
     const PRODUCT_TYPES = [
+      // ARC
       WebIFC.IFCWALL, WebIFC.IFCWALLSTANDARDCASE, WebIFC.IFCSLAB, WebIFC.IFCDOOR,
       WebIFC.IFCWINDOW, WebIFC.IFCROOF, WebIFC.IFCSTAIR, WebIFC.IFCSTAIRFLIGHT,
       WebIFC.IFCRAILING, WebIFC.IFCCOVERING, WebIFC.IFCCURTAINWALL, WebIFC.IFCPLATE,
       WebIFC.IFCFURNISHINGELEMENT, WebIFC.IFCBUILDINGELEMENTPROXY,
+      WebIFC.IFCFURNITURE, WebIFC.IFCSYSTEMFURNITUREELEMENT,
+      WebIFC.IFCBUILDINGELEMENTPART, WebIFC.IFCRAMP, WebIFC.IFCRAMPFLIGHT,
+      WebIFC.IFCTRANSPORTELEMENT,
+      // STR
       WebIFC.IFCBEAM, WebIFC.IFCCOLUMN, WebIFC.IFCFOOTING, WebIFC.IFCMEMBER,
+      WebIFC.IFCPILE, WebIFC.IFCREINFORCINGBAR, WebIFC.IFCREINFORCINGMESH,
+      WebIFC.IFCTENDON, WebIFC.IFCTENDONANCHOR,
+      // MEP
       WebIFC.IFCFLOWSEGMENT, WebIFC.IFCFLOWTERMINAL, WebIFC.IFCFLOWFITTING,
-      WebIFC.IFCFLOWCONTROLLER, WebIFC.IFCFLOWMOVINGDEVICE,
+      WebIFC.IFCFLOWCONTROLLER, WebIFC.IFCFLOWMOVINGDEVICE, WebIFC.IFCFLOWSTORAGEDEVICE,
+      WebIFC.IFCFLOWTREATMENTDEVICE, WebIFC.IFCENERGYCONVERSIONDEVICE,
       WebIFC.IFCPIPESEGMENT, WebIFC.IFCPIPEFITTING,
       WebIFC.IFCDUCTSEGMENT, WebIFC.IFCDUCTFITTING,
-      WebIFC.IFCCABLESEGMENT, WebIFC.IFCCABLECARRIERSEGMENT,
-      WebIFC.IFCLIGHTFIXTURE, WebIFC.IFCOUTLET,
+      WebIFC.IFCCABLESEGMENT, WebIFC.IFCCABLECARRIERSEGMENT, WebIFC.IFCCABLECARRIERFITTING,
+      WebIFC.IFCLIGHTFIXTURE, WebIFC.IFCOUTLET, WebIFC.IFCJUNCTIONBOX,
+      WebIFC.IFCSWITCHINGDEVICE, WebIFC.IFCELECTRICDISTRIBUTIONBOARD,
+      WebIFC.IFCELECTRICAPPLIANCE, WebIFC.IFCCONTROLLER,
       WebIFC.IFCSANITARYTERMINAL, WebIFC.IFCUNITARYEQUIPMENT,
+      WebIFC.IFCVALVE, WebIFC.IFCWASTETERMINAL, WebIFC.IFCSTACKTERMINAL,
+      WebIFC.IFCAIRTERMINAL, WebIFC.IFCAIRTERMINALBOX,
+      WebIFC.IFCCOIL, WebIFC.IFCFAN, WebIFC.IFCCOMPRESSOR, WebIFC.IFCCHILLER,
+      WebIFC.IFCFIRESUPPRESSIONTERMINAL, WebIFC.IFCALARM,
       WebIFC.IFCDISTRIBUTIONFLOWELEMENT, WebIFC.IFCDISTRIBUTIONCONTROLELEMENT,
+      WebIFC.IFCDISTRIBUTIONELEMENT,
+      // INFRA (IFC4x3)
+      WebIFC.IFCGEOGRAPHICELEMENT,
+      // Note: IfcSpace + IfcSite excluded — render as solid boxes/terrain, obscure model
     ];
 
     // Filter out undefined types (some IFC versions don't have all)
@@ -151,8 +195,8 @@ self.onmessage = async function(e) {
         elementIds.add(id);
         try {
           const el = ifcApi.GetLine(modelID, id);
-          const typeName = ifcApi.GetNameFromTypeCode(typeId) || 'IfcBuildingElement';
-          const ifcClass = typeName.replace('IFC', 'Ifc');
+          const typeName = ifcApi.GetNameFromTypeCode(typeId) || 'IFCBUILDINGELEMENT';
+          const ifcClass = properClassName(typeName);
           elements.push({
             expressID: id,
             guid: el.GlobalId ? el.GlobalId.value : 'GUID_' + id,
@@ -170,49 +214,73 @@ self.onmessage = async function(e) {
     post('progress', 50, 'Tessellating ' + elements.length + ' elements...');
 
     // Phase 4: Tessellate geometry (50-90%)
-    const geometries = []; // { guid, vertices: Float32Array, indices: Int32Array }
-    const transforms = []; // { guid, matrix: Float64Array(16) }
+    // Same pipeline as Java: apply 4x4 transform → compute centroid → re-center at origin
+    // Viewer expects: library vertices centered at origin, center_x/y/z = world position
+    const geometries = []; // { guid, geomHash, vertices: ArrayBuffer, indices: ArrayBuffer }
+    const transforms = []; // { guid, cx, cy, cz, rx, ry, rz }
     let geomDone = 0;
     const geomTotal = elements.length;
+    let matCount = 0;
 
     for (const el of elements) {
       try {
         const flatMesh = ifcApi.GetFlatMesh(modelID, el.expressID);
-        if (flatMesh.geometries.size() > 0) {
-          // Take first geometry
-          const geo = flatMesh.geometries.get(0);
-          const meshData = ifcApi.GetGeometry(modelID, geo.geometryExpressID);
-          const verts = ifcApi.GetVertexArray(meshData.GetVertexData(), meshData.GetVertexDataSize());
-          const idx = ifcApi.GetIndexArray(meshData.GetIndexData(), meshData.GetIndexDataSize());
-
-          // verts is interleaved: x,y,z,nx,ny,nz per vertex (6 floats each)
-          // Extract only positions
-          const vertCount = verts.length / 6;
-          const positions = new Float32Array(vertCount * 3);
-          for (let i = 0; i < vertCount; i++) {
-            positions[i * 3] = verts[i * 6];
-            positions[i * 3 + 1] = verts[i * 6 + 1];
-            positions[i * 3 + 2] = verts[i * 6 + 2];
+        // Try all geometries in flatMesh, merge vertices
+        var allVerts = [], allIdx = [], vertOffset = 0;
+        var bestColor = null;
+        for (let gi = 0; gi < flatMesh.geometries.size(); gi++) {
+          var geo = flatMesh.geometries.get(gi);
+          var meshData = ifcApi.GetGeometry(modelID, geo.geometryExpressID);
+          var vSize = meshData.GetVertexDataSize();
+          var iSize = meshData.GetIndexDataSize();
+          if (vSize === 0 || iSize === 0) continue;
+          var verts = ifcApi.GetVertexArray(meshData.GetVertexData(), vSize);
+          var idx = ifcApi.GetIndexArray(meshData.GetIndexData(), iSize);
+          var m = geo.flatTransformation;
+          var vc = verts.length / 6;
+          // Transform vertices: web-ifc Y-up → IFC Z-up
+          for (var vi = 0; vi < vc; vi++) {
+            var lx = verts[vi * 6], ly = verts[vi * 6 + 1], lz = verts[vi * 6 + 2];
+            var wx = m[0]*lx + m[4]*ly + m[8]*lz  + m[12];
+            var wy = m[1]*lx + m[5]*ly + m[9]*lz  + m[13];
+            var wz = m[2]*lx + m[6]*ly + m[10]*lz + m[14];
+            allVerts.push(wx, -wz, wy);
           }
-
-          // Geometry hash = guid (each element has unique geometry in import)
-          var geomHash = el.guid;
-
+          // Offset indices for merged geometry
+          for (var ii = 0; ii < idx.length; ii++) {
+            allIdx.push(idx[ii] + vertOffset);
+          }
+          vertOffset += vc;
+          if (!bestColor && geo.color && geo.color.x !== undefined) bestColor = geo.color;
+        }
+        if (allVerts.length >= 9) {  // at least 3 vertices (1 triangle)
+          var vertCount = allVerts.length / 3;
+          // Compute centroid
+          var sumX = 0, sumY = 0, sumZ = 0;
+          for (var vi = 0; vi < vertCount; vi++) {
+            sumX += allVerts[vi * 3];
+            sumY += allVerts[vi * 3 + 1];
+            sumZ += allVerts[vi * 3 + 2];
+          }
+          var cx = sumX / vertCount, cy = sumY / vertCount, cz = sumZ / vertCount;
+          // Re-center at origin
+          var positions = new Float32Array(allVerts.length);
+          for (var vi = 0; vi < vertCount; vi++) {
+            positions[vi * 3]     = allVerts[vi * 3]     - cx;
+            positions[vi * 3 + 1] = allVerts[vi * 3 + 1] - cy;
+            positions[vi * 3 + 2] = allVerts[vi * 3 + 2] - cz;
+          }
           geometries.push({
             guid: el.guid,
-            geomHash: geomHash,
+            geomHash: el.guid,
             vertices: positions.buffer,
-            indices: new Int32Array(idx).buffer,
+            indices: new Int32Array(allIdx).buffer,
           });
-
-          // Extract center + rotation from 4x4 matrix
-          // Translation = columns 12,13,14 (row-major) or last column
-          var m = geo.flatTransformation;
-          transforms.push({
-            guid: el.guid,
-            cx: m[12], cy: m[13], cz: m[14],
-            rx: 0, ry: 0, rz: 0,  // rotation extracted as euler would need decomposition — zero for now
-          });
+          transforms.push({ guid: el.guid, cx: cx, cy: cy, cz: cz, rx: 0, ry: 0, rz: 0 });
+          if (bestColor) {
+            el.material = bestColor.x.toFixed(3) + ',' + bestColor.y.toFixed(3) + ',' + bestColor.z.toFixed(3) + ',' + bestColor.w.toFixed(3);
+            matCount++;
+          }
         }
       } catch(e) { /* skip elements without geometry */ }
 
@@ -235,7 +303,30 @@ self.onmessage = async function(e) {
 
     const storeys = [...new Set(elements.map(e => e.storey))].sort();
 
-    console.log('[S220] §GEOM_DONE elements=' + elements.length + ' withGeometry=' + geometries.length + ' skipped=' + (elements.length - geometries.length));
+    // Post-hoc unit heuristic: if bounding box > 500m in any axis, assume mm → divide by 1000
+    var autoScale = 1.0;
+    if (transforms.length > 0) {
+      var maxCoord = 0;
+      for (var ti = 0; ti < transforms.length; ti++) {
+        maxCoord = Math.max(maxCoord, Math.abs(transforms[ti].cx), Math.abs(transforms[ti].cy), Math.abs(transforms[ti].cz));
+      }
+      if (maxCoord > 500) {
+        autoScale = 0.001;
+        for (var ti = 0; ti < transforms.length; ti++) {
+          transforms[ti].cx *= 0.001;
+          transforms[ti].cy *= 0.001;
+          transforms[ti].cz *= 0.001;
+        }
+        // Also scale library vertices
+        for (var gi = 0; gi < geometries.length; gi++) {
+          var vBuf = new Float32Array(geometries[gi].vertices);
+          for (var vi = 0; vi < vBuf.length; vi++) vBuf[vi] *= 0.001;
+          geometries[gi].vertices = vBuf.buffer;
+        }
+      }
+    }
+    console.log('[S220] §UNITS autoScale=' + autoScale + (autoScale !== 1.0 ? ' (mm→m heuristic)' : ' (already metres)'));
+    console.log('[S220] §GEOM_DONE elements=' + elements.length + ' withGeometry=' + geometries.length + ' skipped=' + (elements.length - geometries.length) + ' withMaterial=' + matCount);
     post('progress', 95, 'Packaging...');
 
     const result = {
