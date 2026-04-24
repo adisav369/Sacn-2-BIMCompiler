@@ -485,6 +485,82 @@ Level 3 — Real-time collaboration (future, spec only):
 - **Exit criterion:** user swaps 3 door types and a floor finish, sees updated BOQ totals, no Bonsai involved
 - Replaces: round-trip to Blender for the 80% of changes that are data, not geometry
 
+### S224 — Clash Detection on Diff (auto-clash on variation import)
+- When S222 diff detects added/changed elements, auto-run S211a clash detection on the delta
+- Only check new/changed elements against existing elements — not full O(n²) rescan
+- Clash report embedded in Variation Order Excel (separate sheet: "Clashes")
+- Viewer: clash pairs highlighted alongside diff colours (red emissive on both clashing elements)
+- Clash count shown in diff summary panel: `⚡ 3 clashes detected`
+- Click clash → fly-to, show both elements, clearance value, discipline pair
+- No manual trigger — clash runs automatically whenever a variation is imported
+- Uses same clash template from S211a (`tolerance`, `pairs`, `severity`)
+- **Why this matters:** The variation didn't just change cost — it introduced conflicts. The QS and coordinator see both in one report.
+- **Exit criterion:** Import MEP_v2 with a duct that passes through a wall → clash auto-detected, shown in viewer + Excel
+- Replaces: Solibri ($15K/yr), Navisworks Clash Detective ($8K/yr)
+
+### S225 — QR Code per Element → Scan → Full History
+- Generate QR sticker sheet from viewer: select elements → "Print QR" → PDF with one QR per GUID
+- QR URL: `{viewer_url}?guid={GUID}` — opens viewer, flies to that element
+- Element history panel (on scan): which variation introduced it, cost, phase, approval status, site cam photos
+- History assembled from: `change_log` table (S222), issues log (S210), site cam photos (S204)
+- Print formats: A4 sheet (20 QRs), label printer (single), sticker roll
+- Site workflow: print QR sheet → stick on physical elements during construction → scan to inspect/report
+- **Why this matters:** Bridges digital twin to physical site. No other browser tool does this.
+- **Exit criterion:** Print QR for 5 elements, scan on phone, see full history for each
+- Replaces: BIM Track ($), manual tagging systems
+
+### S226 — Regulatory Auto-Check on Import (rule checker at extraction)
+- After S220 import extracts IFC to DB, auto-run rule checker before card appears
+- Rules from country pack JSON (`locales/MY.json` → UBBL, `locales/GB.json` → Building Regs)
+- Each rule = SQL query + pass/fail condition (same pattern as S211a Rule Checker plugin)
+- Card shows compliance badge: `✅ 247 PASS · ⚠ 3 WARN · ❌ 1 FAIL`
+- Click badge → compliance panel with rule-by-rule results
+- Click any fail → fly-to element, show rule text + what's wrong
+- Rules cover: fire escape distance, corridor width, accessibility, MEP clearance, structural spans
+- **No separate tool.** Compliance is part of the import pipeline.
+- Export: compliance report Excel (rule, status, element GUID, storey, value, required value)
+- **Why this matters:** Compliance checking today = Solibri license + manual config. Here it's automatic on drop.
+- **Exit criterion:** Import a building with a corridor below minimum width → ❌ FAIL badge, fly-to the corridor
+- Replaces: Solibri Rule Checker ($15K/yr), manual code review
+
+### S227 — Live Cost Dashboard per Project
+- Landing page shows running cost total per project group: `Hospital — RM 67M · 3 variations · +RM 39,700`
+- Cost computed from: merged DB element counts × `5D_rates.json` rates
+- Variation impact: sum of all Variation Order net impacts (S222)
+- Click → full BOQ breakdown (opens `boq_charts.html` with that project's DB)
+- Dashboard updates live as parts are imported/merged/varied
+- Multi-project view: all projects on landing page, each with cost summary
+- Trend sparkline: cost over time (from variation history in IndexedDB)
+- **Why this matters:** Project manager's dashboard. Not a viewer — a control room. One page, all projects, all costs.
+- **Exit criterion:** Import 3 projects, each with 2 variations → landing shows all 3 with cost totals and net change
+- Replaces: Custom Excel dashboards, Procore cost module ($)
+
+### S228 — COBie / IFC Export from Merged DB
+- After merge (S222), export merged DB as:
+  - **COBie:** 6-tab Excel spreadsheet (Facility, Floor, Space, Type, Component, System) — government handover
+  - **IFC4:** STEP file from S217 — tessellated coordination model
+- Export buttons on merged card: `⬇ COBie` · `⬇ IFC` · `⬇ .db`
+- COBie mapping: `elements_meta` → Component, `spatial_structure` → Floor/Space, `product_types` → Type
+- Handover package = one click: COBie + IFC + .db in a ZIP
+- **Why this matters:** Government projects require COBie. Nobody does it from a browser. Close the loop.
+- **Exit criterion:** Merge 3 parts, download COBie Excel, validate with COBie QC tool
+- Replaces: Revit COBie toolkit, manual spreadsheet compilation
+
+### S229 — AI Query on Diff (NLP → change_log)
+- Extend S211 NLP DSL to query `change_log` table (S222)
+- Natural language: "What changed in MEP on Level 3?" → SQL on change_log → results + fly-to
+- Voice command (S211 voice): same queries via microphone
+- Queries supported:
+  - "What was added?" → added GUIDs list
+  - "What was removed from Level 2?" → filtered removed list
+  - "How much did variation MEP_v2 cost?" → net impact from VO
+  - "Show me clashes in STR" → clash results for that discipline
+  - "Compare v1 and v3" → diff between any two versions
+- Results panel: table + fly-to buttons + export
+- **Why this matters:** PM asks question, gets answer instantly. No training, no query builder.
+- **Exit criterion:** Voice "what changed on Level 3" → correct results, fly-to first element
+- Replaces: Manual report digging, Navisworks search, Solibri filters
+
 ### Starter Plugin Pack (ships with S215)
 Pre-installed plugins that prove the marketplace. All use the plugin API, no core changes.
 
@@ -539,3 +615,9 @@ Pre-installed plugins that prove the marketplace. All use the plugin API, no cor
 | 12 | Construction progress animation | S221 (4D playback) |
 | 13 | Designer updates without Bonsai | S223 (presets) |
 | 14 | Bonsai re-export shows only changes | S222 (incremental diff) |
+| 15 | Variation introduces clash | S224 (auto-clash on diff) |
+| 16 | QR on physical element → scan → history | S225 (QR per element) |
+| 17 | Drop IFC, get compliance report | S226 (auto-check on import) |
+| 18 | PM sees all project costs on one page | S227 (live cost dashboard) |
+| 19 | Government handover from browser | S228 (COBie/IFC export) |
+| 20 | "What changed on Level 3?" | S229 (AI query on diff) |
