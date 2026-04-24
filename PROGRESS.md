@@ -39,6 +39,17 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
+**S222 (2026-04-24):** DB Refactor + Incremental Diff + VO Cost Engine. DONE (dev).
+  - **DB builder refactor:** `import_db_builder.js` — shared `buildImportDBs()`, auto-save, Save button removed
+  - **Diff engine:** `diff.js` — GUID set diff, green/red/yellow overlay, cost preview in viewer panel
+  - **VO Excel:** `variation_order.js` — 3-sheet Excel: Configuration, Detail (per-element costed), Executive Summary
+  - **Cost model:** FIDIC Clause 12 + AACE: ADD=1.0×, REMOVE=0.3×, CHANGE=1.3×, +10%OH +15%Markup +5%Disruption
+  - **Rates:** CIDB 2024 (`templates/5D_rates.json`), 4D phases (`templates/4D_phases.json`), USD conversion
+  - **Variation detection:** same building re-import → version badge (v2, v3), `§VARIATION_DETECTED` log
+  - **Test:** `s220_test.js` — 58 PASS / 0 FAIL (SampleHouse + FZKHaus). S211 tests: 58 PASS / 0 FAIL.
+  - **Deployed to DEV only** (bim-ootb-dev). Spec: `prompts/S220_import_tshoot.md` §S222
+  - **Next:** browser smoke test with UNMERGED IFCs, then promote to prod
+
 **S206 (2026-04-21):** Cinematic Building Tour. DONE.
   - **4 new action types:** `orbit` (aerial sweep at tiltDeg), `descend` (smooth descent + tilt transition), `riseAndTilt` (bird's eye finale), `flyTo` (city mode transition)
   - **7-phase sequence:** aerial orbit 40° → descend to ground → find best entrance (exterior door near largest space) → room tour (ranked by element count) → stairs → bird's eye (20m + 80° tilt) → next building

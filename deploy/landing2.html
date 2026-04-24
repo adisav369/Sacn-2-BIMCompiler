@@ -146,17 +146,44 @@
 </div>
 
 <div id="content" style="display:none">
-  <!-- S220: IFC Import Zone -->
-  <div style="max-width:1200px;margin:0 auto;padding:16px 20px">
-    <div id="import-zone" style="border:2px dashed rgba(79,195,247,0.3);border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:all 0.15s;background:rgba(79,195,247,0.04)">
-      <div style="font-size:28px;margin-bottom:8px">📂</div>
-      <div style="color:#4fc3f7;font-size:15px;font-weight:600">Import IFC</div>
-      <div style="color:#666;font-size:12px;margin-top:4px">Drop file here or tap to browse. Any IFC. &lt;50MB instant.</div>
-      <div id="import-status" style="color:#aaa;font-size:12px;margin-top:8px"></div>
-      <div style="display:none;margin-top:8px;height:6px;background:#222;border-radius:3px;overflow:hidden">
-        <div id="import-progress-bar" style="height:100%;width:0%;background:#4fc3f7;border-radius:3px;transition:width 0.3s"></div>
+  <!-- S222: Hero Import Panel -->
+  <div style="max-width:720px;margin:0 auto;padding:24px 20px 8px">
+    <div id="import-zone" style="border:1px solid rgba(79,195,247,0.12);border-radius:16px;padding:40px 32px 28px;text-align:center;cursor:pointer;transition:all 0.15s;background:linear-gradient(180deg,rgba(79,195,247,0.04) 0%,rgba(0,0,0,0) 100%)">
+
+      <!-- Headline — Leo Burnett big -->
+      <div onclick="event.stopPropagation()" style="pointer-events:auto;cursor:default">
+        <div style="font-size:20px;font-weight:300;color:#e0e0e0;letter-spacing:0.2px;line-height:1.1;margin-bottom:0"><span style="font-size:24px;font-weight:400">In</span> <span style="font-size:44px;font-weight:700;margin:0 2px">60</span> seconds, the way you <span style="font-size:44px;font-weight:700;margin:0 2px">BIM</span><br><span style="font-weight:700;color:#ff9800">will never be the same.</span></div>
+
+        <!-- Steps — pure visual, no interaction -->
+        <div style="display:flex;justify-content:center;align-items:center;gap:12px;margin:32px 0 28px;flex-wrap:wrap;opacity:0.7">
+          <span style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Import</span>
+          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">View</span>
+          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Compare</span>
+          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Costed</span>
+          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#44cc44;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Done</span>
+        </div>
+      </div>
+
+      <!-- Drop target — this is the only clickable part -->
+      <div style="border:2px dashed rgba(79,195,247,0.2);border-radius:10px;padding:20px;margin:0 auto;max-width:380px;transition:border-color 0.15s">
+        <div style="color:#4fc3f7;font-size:14px;font-weight:600;letter-spacing:0.3px">Drop IFC here</div>
+        <div style="color:#444;font-size:11px;margin-top:4px">or tap to browse</div>
+      </div>
+      <div id="import-status" style="color:#aaa;font-size:12px;margin-top:10px"></div>
+      <div style="display:none;margin-top:8px;height:4px;background:#222;border-radius:2px;overflow:hidden;max-width:400px;margin-left:auto;margin-right:auto">
+        <div id="import-progress-bar" style="height:100%;width:0%;background:#4fc3f7;border-radius:2px;transition:width 0.3s"></div>
       </div>
       <input type="file" id="import-file-input" accept=".ifc" style="display:none">
+
+      <!-- Footer — quiet -->
+      <div style="margin-top:16px;color:#444;font-size:10px;letter-spacing:0.3px">
+        FIDIC Clause 12 &middot; AACE Change Order &middot; CIDB 2024 Rates &middot;
+        <a href="https://red1oon.github.io/BIMCompiler/BIM_Designer_Browser/" target="_blank" onclick="event.stopPropagation()" style="color:#4fc3f7;text-decoration:none">full docs &rarr;</a>
+      </div>
     </div>
   </div>
 
@@ -219,6 +246,7 @@
   <div class="tab-list" id="tab-list"></div>
 </div>
 
+<script src="sandbox/import_db_builder.js"></script>
 <script>
 // ── Config ──
 const _ociMatch = location.href.match(/(https:\/\/objectstorage\.[^/]+\/n\/[^/]+\/b\/[^/]+\/o\/)/);
@@ -598,42 +626,19 @@ async function renderImportCards() {
       return '<span class="disc-bar" style="width:' + pct + '%;background:' + color + '"></span>';
     }).join('');
     var displayName = (item.meta.filename || item.meta.name || '').replace(/\.ifc$/i, '');
+    // S222: Count versions for this building
+    var buildingName = item.meta.name || '';
+    var versionCount = imports.filter(function(imp) { return imp.meta && imp.meta.name === buildingName; }).length;
+    var vBadge = versionCount > 1 ? '<span style="color:#cccc44;font-size:10px;margin-left:4px">v' + versionCount + '</span>' : '';
     card.innerHTML =
-      '<div class="name">' + displayName + '</div>' +
+      '<div class="name">' + displayName + vBadge + '</div>' +
       '<div class="meta"><b>' + total.toLocaleString() + '</b> elements · ' + Object.keys(discs).join(', ') + '</div>' +
       '<div class="disc-bars">' + discBars + '</div>' +
       '<div style="display:flex;gap:6px;margin-top:10px">' +
         '<button class="open-btn" style="flex:1" data-key="' + item.key + '">Open</button>' +
-        '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(68,136,204,0.15);border-color:rgba(68,136,204,0.3);color:#4488cc" data-save="' + item.key + '">Save</button>' +
         '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + item.key + '">x</button>' +
       '</div>';
     card.querySelector('[data-key]').onclick = function() { openImported(this.dataset.key); };
-    card.querySelector('[data-save]').onclick = async function(e) {
-      e.stopPropagation();
-      var key = this.dataset.save;
-      var db = await openImportDB();
-      if (!db) { alert('DB not available'); return; }
-      var record = await new Promise(function(resolve) {
-        var tx = db.transaction(IMPORT_STORE, 'readonly');
-        var req = tx.objectStore(IMPORT_STORE).get(key);
-        req.onsuccess = function() { resolve(req.result); };
-        req.onerror = function() { resolve(null); };
-      });
-      if (!record) { alert('Not found'); return; }
-      var base = key.replace(/\.ifc$/i, '');
-      function dl(buf, name) {
-        var blob = new Blob([buf], { type: 'application/octet-stream' });
-        var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = name; a.click(); URL.revokeObjectURL(a.href);
-      }
-      var btn = this;
-      dl(record.extractedDb, base + '_extracted.db');
-      setTimeout(function() { dl(record.libraryDb, base + '_library.db'); }, 500);
-      btn.textContent = 'SAVED';
-      btn.disabled = true;
-      btn.style.opacity = '0.5';
-      btn.style.cursor = 'default';
-    };
     card.querySelector('[data-del]').onclick = function(e) {
       e.stopPropagation();
       if (confirm('Delete ' + displayName + '?')) deleteImported(this.dataset.del);
@@ -688,54 +693,15 @@ async function handleImportFile(file) {
         }
         const SQL = await initSqlJs({ locateFile: f => 'https://sql.js.org/dist/' + f });
 
-        // Build extracted DB — schema must match viewer's streaming.js expectations
-        const extDb = new SQL.Database();
-        extDb.run('CREATE TABLE IF NOT EXISTS project_metadata (key TEXT PRIMARY KEY, value TEXT)');
-        extDb.run('INSERT INTO project_metadata VALUES (?,?),(?,?)', ['project_name', msg.meta.name, 'import_date', new Date().toISOString()]);
-
-        // elements_meta: viewer reads guid, ifc_class, element_name, storey, discipline, material_rgba, building
-        extDb.run('CREATE TABLE IF NOT EXISTS elements_meta (guid TEXT PRIMARY KEY, ifc_class TEXT, element_name TEXT, storey TEXT, discipline TEXT, material_name TEXT, material_rgba TEXT, building TEXT)');
-
-        // element_transforms: viewer reads center_x, center_y, center_z, rotation_x, rotation_y, rotation_z
-        extDb.run('CREATE TABLE IF NOT EXISTS element_transforms (guid TEXT PRIMARY KEY, center_x REAL, center_y REAL, center_z REAL, rotation_x REAL, rotation_y REAL, rotation_z REAL)');
-
-        // element_instances: viewer joins on guid → geometry_hash
-        extDb.run('CREATE TABLE IF NOT EXISTS element_instances (guid TEXT PRIMARY KEY, geometry_hash TEXT)');
-
-        const stmtEl = extDb.prepare('INSERT OR IGNORE INTO elements_meta VALUES (?,?,?,?,?,?,?,?)');
-        for (const el of msg.elements) stmtEl.run([el.guid, el.ifcClass, el.name, el.storey, el.discipline, null, el.material, msg.meta.name]);
-        stmtEl.free();
-
-        const stmtTr = extDb.prepare('INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?,?,?)');
-        for (const t of msg.transforms) stmtTr.run([t.guid, t.cx, t.cy, t.cz, t.rx, t.ry, t.rz]);
-        stmtTr.free();
-
-        const stmtInst = extDb.prepare('INSERT OR IGNORE INTO element_instances VALUES (?,?)');
-        for (const g of msg.geometries) stmtInst.run([g.guid, g.geomHash]);
-        stmtInst.free();
-
-        console.log('[S220] §DB_BUILD extracted: elements=' + msg.elements.length + ' transforms=' + msg.transforms.length + ' instances=' + msg.geometries.length);
-
-        // Build library DB — viewer reads geometry_hash, vertices, faces
-        const libDb = new SQL.Database();
-        libDb.run('CREATE TABLE IF NOT EXISTS component_geometries (geometry_hash TEXT PRIMARY KEY, vertices BLOB, faces BLOB, building TEXT)');
-        const stmtGeo = libDb.prepare('INSERT OR IGNORE INTO component_geometries VALUES (?,?,?,?)');
-        for (const g of msg.geometries) stmtGeo.run([g.geomHash, new Uint8Array(g.vertices), new Uint8Array(g.indices), msg.meta.name]);
-        stmtGeo.free();
-
-        console.log('[S220] §DB_BUILD library: geometries=' + msg.geometries.length);
-
-        const extBuf = extDb.export().buffer;
-        const libBuf = libDb.export().buffer;
-        extDb.close();
-        libDb.close();
+        const dbs = buildImportDBs(SQL, msg);
+        const dbBuf = dbs.extractedDb;  // single DB — geometry + metadata in one
 
         // Save to IndexedDB
         const importDb = await openImportDB();
         if (importDb) {
           await new Promise(resolve => {
             const tx = importDb.transaction(IMPORT_STORE, 'readwrite');
-            tx.objectStore(IMPORT_STORE).put({ meta: msg.meta, extractedDb: extBuf, libraryDb: libBuf }, file.name);
+            tx.objectStore(IMPORT_STORE).put({ meta: msg.meta, extractedDb: dbBuf, libraryDb: dbBuf }, file.name);
             tx.oncomplete = resolve;
           });
         }
@@ -743,6 +709,19 @@ async function handleImportFile(file) {
         status.textContent = 'Imported ' + msg.meta.elementCount + ' elements';
         progressBar.style.width = '100%';
         progressBar.style.background = '#44cc44';
+
+        // S222: Variation detection — check if building already imported
+        const existingImports = await listImports();
+        const buildingName = msg.meta.name;
+        const existingVersions = existingImports.filter(function(imp) {
+          return imp.meta && imp.meta.name === buildingName && imp.key !== file.name;
+        });
+        if (existingVersions.length > 0) {
+          const vNum = existingVersions.length + 1;
+          console.log('[S222] §VARIATION_DETECTED building=' + buildingName + ' version=v' + vNum + ' base=' + existingVersions[0].key);
+          status.textContent = 'Variation v' + vNum + ' detected for ' + buildingName + '!';
+        }
+
         renderImportCards();
       } catch(dbErr) {
         status.textContent = 'DB error: ' + dbErr.message;

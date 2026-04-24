@@ -185,6 +185,54 @@ All 30 archetypes extracted. Extraction script: `scripts/extract_per_building.py
 - [ ] **Property panel** — selected element's full attribute set from DB
 - [ ] **Multi-building streaming** — stream nearest on camera move, shred distant
 
+### Phase 2b: IFC Import + Variation Order (S220/S222 — DONE)
+
+Drop an IFC file. Get a costed Variation Order Excel. Zero install.
+
+- [x] **IFC import** — drag-drop IFC2x3/IFC4/IFC4x3 → web-ifc WASM parse → sql.js DBs → IndexedDB
+- [x] **Shared DB builder** — `import_db_builder.js`, single source of truth for import schema
+- [x] **Auto-save** — DBs auto-download after import (no Save button click)
+- [x] **Variation detection** — re-import same building → auto-detect version (v2, v3 badge on card)
+- [x] **GUID-based diff** — compare two imports: ADDED (green), REMOVED (red ghost), CHANGED (yellow)
+- [x] **Diff overlay** — colour-coded elements in 3D viewer with live cost preview panel
+- [x] **Variation Order Excel** — 3-sheet export:
+  - **Configuration** — editable cost factors, set once per project
+  - **Detail** — every affected element: IFC class, unit rate, cost factor, direct cost, total impact (with O&P), schedule days, 4D phase
+  - **Executive Summary** — scope count, 5D cost breakdown (add/remove/change), 4D schedule impact per phase, EVM formula reference
+- [x] **Cost model** — industry-standard formulas:
+  - FIDIC Clause 12 valuation: Direct Cost + Overhead + Profit
+  - AACE change order costing: ADD=1.0×, REMOVE=0.3× (demo+disposal), CHANGE=1.3× (remove+reinstall+disruption)
+  - PMI Earned Value: CV, SV, CPI, SPI reference formulas
+  - Total Impact = Direct × (1 + 10% Overhead + 15% Markup) × (1 + 5% Disruption)
+- [x] **Rates** — CIDB Malaysia 2024 (material, labour, equipment), USD conversion, configurable per project
+- [x] **4D schedule impact** — elements/day productivity from `templates/4D_phases.json`, phase grouping
+- [x] **Test harness** — `s220_test.js`: 58 PASS / 0 FAIL (schema, transforms, BLOBs, envelope, integrity)
+
+**Templates (editable — set once per project):**
+
+| Template | File | What to Edit |
+|----------|------|--------------|
+| 5D Material Rates | `templates/5D_rates.json` | Unit rates per IFC class, labour rates, equipment |
+| 4D Construction Phases | `templates/4D_phases.json` | Phase sequence, productivity, predecessors |
+| VO Cost Factors | `variation_order.js` §VO_CONFIG | Add/remove/change multipliers, overhead%, markup% |
+| nD Master Formulas | `templates/nD_formulas.json` | Measurement rules, cost/schedule/carbon formulas |
+
+**How it works:**
+1. Drop IFC file on landing page → auto-parsed, auto-saved
+2. Drop a second IFC for the same project → variation detected (v2)
+3. Open in viewer → diff overlay shows what changed
+4. Click "Export VO Excel" → costed spreadsheet downloads instantly
+5. PM forwards Excel to accounting. Done.
+
+**What Primavera P6 charges $5K/seat for, we do from a browser for zero.**
+
+> **Enterprise setup:** The browser import creates a single self-contained DB per building
+> (metadata + geometry, instanced and deduped). For organisations needing a **centralised
+> component library** shared across projects — where one curated `library.db` serves multiple
+> buildings with consistent geometry and materials — contact the creator at
+> [red1org@gmail.com](mailto:red1org@gmail.com) for consultation on shared library architecture
+> and deployment.
+
 ### Phase 3: Analysis — nD Engine in the Browser
 Query-driven overlays — same DB, richer SQL. The **nD engine** ([4D5DAnalysis.md](4D5DAnalysis.md))
 already produces 4D-8D tables from JSON templates + `elements_meta`. Phase 3 ports this

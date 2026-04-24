@@ -1,4 +1,5 @@
 // main.js — initViewer() orchestrator: creates APP, calls each module's setup, starts render loop
+// DEV version — adds setupNlp (S211 voice command / NLP query)
 function initViewer() {
   const APP = window.APP = {};
 
@@ -16,6 +17,9 @@ function initViewer() {
   setupExcel(APP);
   setupWalk(APP);
   setupCity(APP);
+  if (typeof setupNlp === 'function') setupNlp(APP);
+  if (typeof setupImport === 'function') setupImport(APP);
+  if (typeof setupDiff === 'function') setupDiff(APP);
 
   // Expose functions to HTML onclick handlers
   window.togglePanel = APP.togglePanel;
@@ -51,6 +55,7 @@ function initViewer() {
   window.setWalkAnchor = APP.setWalkAnchor;
   window.cancelWalkAnchor = APP.cancelWalkAnchor;
   window.cycleWalkSpeed = APP.cycleWalkSpeed;
+  if (APP.toggleNlp) window.toggleNlp = APP.toggleNlp;
 
   // Render loop
   function animate() {
@@ -62,6 +67,10 @@ function initViewer() {
     APP.streamTick();
     APP.walkModeGpsTick();
     APP.updateMeasureLabels();
+    // Hide ground when camera goes below it (allows viewing building from underneath)
+    if (APP.ground && APP.ground.visible) {
+      APP.ground.material.visible = APP.camera.position.y > APP.ground.position.y;
+    }
     // Device orientation LAST — nothing may overwrite the quaternion after this
     if (APP.walkModeActive) APP.walkOrientTick();
     APP.renderer.render(APP.scene, APP.camera);
