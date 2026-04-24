@@ -217,12 +217,44 @@ Drop an IFC file. Get a costed Variation Order Excel. Zero install.
 | VO Cost Factors | `variation_order.js` §VO_CONFIG | Add/remove/change multipliers, overhead%, markup% |
 | nD Master Formulas | `templates/nD_formulas.json` | Measurement rules, cost/schedule/carbon formulas |
 
-**How it works:**
-1. Drop IFC file on landing page → auto-parsed, auto-saved
-2. Drop a second IFC for the same project → variation detected (v2)
-3. Open in viewer → diff overlay shows what changed
-4. Click "Export VO Excel" → costed spreadsheet downloads instantly
-5. PM forwards Excel to accounting. Done.
+**How it works — the change management cycle:**
+
+1. Drop IFC file on landing page → auto-parsed, auto-saved as v0 (baseline)
+2. Architect issues a revised IFC → drop it, select "Merge" → stored as v1
+3. Open → viewer loads v0 (baseline), computes GUID-based diff against v1:
+   - **ADDED** (green) — new GUIDs in v1, streamed from v1's geometry
+   - **REMOVED** (red ghost, 50% opacity) — GUIDs in v0 absent from v1
+   - **CHANGED** (yellow) — same GUID, different properties (name, material, storey)
+   - Diff panel shows count + 5D cost preview (live in viewer)
+4. Click 4D/5D → variance chart (element count + cost impact) + text summary
+5. **Save 5D** = acceptance — Excel includes VO Detail + VO Summary sheets
+6. Next revision → import v2, diff against v1. Repeat.
+
+**Diff detection — merge vs revision:**
+- **Revision** (GUID overlap >= 10%): same building, modified. Full diff: added/removed/changed.
+- **Merge** (overlap < 10%): distinct buildings combined. Added elements shown, base untouched — no false "removed" flags.
+
+**Diff chain (internal):**
+```
+landing openProject()  → caches v0 as ?db=, v1 as ?diffdb=
+  → §OPEN_DIFF
+viewer main.js         → loads diffDb from ?diffdb= param
+  → §DIFF_DB_LOADED → diff.js computeDiff() → §DIFF
+  → applyDiffOverlay() colours base meshes + streams added from diffDb
+  → §DIFF_OVERLAY → showDiffSummary() → §DIFF_SUMMARY
+4D/5D boq_charts.html  → loads both DBs, computes same GUID diff
+  → §BOQ_DIFF → variance chart rendered
+  → Save 5D: VO Detail + VO Summary sheets appended → §VO_IN_5D
+```
+
+**Rate templates (editable — set once per project):**
+
+| Template | Path | What to Edit |
+|----------|------|--------------|
+| 5D Material Rates | `deploy/dev/boq_charts.html` §RATES | Unit rate per IFC class (RM), unit, description |
+| 4D Construction Phases | `deploy/dev/boq_charts.html` §PHASES | Phase name, productivity (elements/day), crew size |
+| VO Cost Factors | `deploy/dev/variation_order.js` §VO_CONFIG | Add=1.0×, Remove=0.3×, Change=1.3×, overhead 10%, markup 15%, disruption 5% |
+| Discipline Colours | `deploy/dev/boq_charts.html` §DISC_COLORS | Chart colour per discipline (ARC, STR, MEP, etc.) |
 
 **What Primavera P6 charges $5K/seat for, we do from a browser for zero.**
 

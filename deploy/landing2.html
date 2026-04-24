@@ -672,33 +672,33 @@ async function openProject(key, btnEl) {
     if (btnEl) { btnEl.textContent = 'Open'; btnEl.disabled = false; }
     return;
   }
-  const latest = record.versions[record.latestVersion];
+  // S225: Open always shows base building (v0). If multi-version, diff against latest.
+  const baseIdx = 0;
+  const base = record.versions[baseIdx];
   const cacheDb = await openCacheDB();
   if (!cacheDb) { if (btnEl) { btnEl.textContent = 'Open'; btnEl.disabled = false; } return; }
 
-  const dbUrl = 'import://' + key + '/v' + record.latestVersion;
+  const dbUrl = 'import://' + key + '/v' + baseIdx;
   const libUrl = dbUrl;  // single DB — geometry + metadata in one
   await new Promise(resolve => {
     const tx = cacheDb.transaction(CACHE_STORE, 'readwrite');
-    tx.objectStore(CACHE_STORE).put(latest.db, dbUrl);
-    tx.objectStore(CACHE_STORE).put(latest.db, libUrl);
+    tx.objectStore(CACHE_STORE).put(base.db, dbUrl);
+    tx.objectStore(CACHE_STORE).put(base.db, libUrl);
     tx.oncomplete = resolve;
   });
 
-  // S224: Auto-diff — if multi-version, pass previous version as diffdb
+  // S225: Auto-diff — if multi-version, pass latest version as diffdb
+  // Direction: base=v0 (original), diffdb=v_latest (revision) → added = new elements
   var diffParam = '';
-  if (record.versions.length > 1) {
-    var prevIdx = record.latestVersion > 0 ? record.latestVersion - 1 : 0;
-    if (prevIdx !== record.latestVersion) {
-      var prevUrl = 'import://' + key + '/v' + prevIdx;
-      await new Promise(resolve => {
-        const tx2 = cacheDb.transaction(CACHE_STORE, 'readwrite');
-        tx2.objectStore(CACHE_STORE).put(record.versions[prevIdx].db, prevUrl);
-        tx2.oncomplete = resolve;
-      });
-      diffParam = '&diffdb=' + encodeURIComponent(prevUrl);
-      console.log('[S224] §OPEN_DIFF key=' + key + ' base=v' + prevIdx + ' latest=v' + record.latestVersion);
-    }
+  if (record.versions.length > 1 && record.latestVersion > 0) {
+    var latestUrl = 'import://' + key + '/v' + record.latestVersion;
+    await new Promise(resolve => {
+      const tx2 = cacheDb.transaction(CACHE_STORE, 'readwrite');
+      tx2.objectStore(CACHE_STORE).put(record.versions[record.latestVersion].db, latestUrl);
+      tx2.oncomplete = resolve;
+    });
+    diffParam = '&diffdb=' + encodeURIComponent(latestUrl);
+    console.log('[S225] §OPEN_DIFF key=' + key + ' base=v0 diff=v' + record.latestVersion);
   }
 
   const viewerUrl = (_base || '') + 'sandbox/index.html?db=' +
@@ -708,7 +708,7 @@ async function openProject(key, btnEl) {
   if (btnEl) { btnEl.textContent = 'Open'; btnEl.disabled = false; }
 }
 
-// Export latest version DB as file download
+// Export latest version DB as file download — Save = Accept (collapse versions)
 async function exportProjectDb(key) {
   const record = await getProject(key);
   if (!record || !record.versions.length) return;
@@ -719,7 +719,16 @@ async function exportProjectDb(key) {
   a.download = key.replace(/\.ifc$/i, '') + '.db';
   a.click();
   URL.revokeObjectURL(a.href);
-  console.log('[S224] §EXPORT_DB key=' + key + ' size=' + (latest.db.byteLength / 1024).toFixed(0) + 'KB');
+  console.log('[S225] §EXPORT_DB key=' + key + ' size=' + (latest.db.byteLength / 1024).toFixed(0) + 'KB');
+  // S225: Collapse versions — Save = Accept. Latest becomes new v0, variance cleared.
+  if (record.versions.length > 1) {
+    record.versions = [{ key: key, importDate: new Date().toISOString(), db: latest.db, note: 'Accepted' }];
+    record.latestVersion = 0;
+    record.meta.elements = null;  // will refresh on next render
+    await saveProject(key, record);
+    renderImportCards();
+    console.log('[S225] §ACCEPT key=' + key + ' — versions collapsed to v0');
+  }
 }
 
 // Compare two versions — opens viewer with base + diff
@@ -850,11 +859,8 @@ async function renderImportCards() {
     var vCount = proj.versions.length;
     var vBadge = vCount > 1 ? '<span style="color:#cccc44;font-size:10px;margin-left:4px">v' + vCount + '</span>' : '';
 
-    // Build button row
+    // Build button row — Open shows diff automatically if multi-version
     var buttons = '<button class="open-btn" style="flex:1" data-open="' + proj.key + '">Open</button>';
-    if (vCount > 1) {
-      buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(79,195,247,0.15);border-color:rgba(79,195,247,0.3);color:#4fc3f7" data-compare="' + proj.key + '">Compare</button>';
-    }
     buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(68,204,68,0.1);border-color:rgba(68,204,68,0.2);color:#44cc44;font-size:10px" data-export="' + proj.key + '">Save</button>';
     buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + proj.key + '">x</button>';
 
@@ -865,13 +871,6 @@ async function renderImportCards() {
       '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">' + buttons + '</div>';
 
     card.querySelector('[data-open]').onclick = function() { openProject(this.dataset.open, this); };
-    if (card.querySelector('[data-compare]')) {
-      card.querySelector('[data-compare]').onclick = function() {
-        var k = this.dataset.compare;
-        var p = projects.find(function(x) { return x.key === k; });
-        if (p) showComparePicker(k, p.versions);
-      };
-    }
     card.querySelector('[data-export]').onclick = function(e) { e.stopPropagation(); exportProjectDb(this.dataset.export); };
     card.querySelector('[data-del]').onclick = function(e) {
       e.stopPropagation();

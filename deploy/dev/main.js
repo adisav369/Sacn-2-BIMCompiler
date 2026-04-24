@@ -56,6 +56,7 @@ function initViewer() {
   window.cancelWalkAnchor = APP.cancelWalkAnchor;
   window.cycleWalkSpeed = APP.cycleWalkSpeed;
   if (APP.toggleNlp) window.toggleNlp = APP.toggleNlp;
+  window.toggleVariance = function() { if (APP.toggleVariance) APP.toggleVariance(); };
 
   // Render loop
   function animate() {
@@ -97,8 +98,10 @@ function initViewer() {
           if (meshCount > 10 || checks > 15) {
             clearInterval(diffTimer);
             APP.applyDiffOverlay();
-            APP.showDiffSummary();
-            console.log('[S223] §DIFF_OVERLAY_READY meshes=' + meshCount);
+            // S225: Don't auto-popup — show Variance button in HUD, user clicks to see list
+            var vBtn = document.getElementById('variance-btn');
+            if (vBtn) { vBtn.style.display = 'block'; vBtn.textContent = '\u0394 Variance (' + (APP.diffResult.added.length + APP.diffResult.removed.length + APP.diffResult.changed.length) + ')'; }
+            console.log('[S225] §DIFF_OVERLAY_READY meshes=' + meshCount);
           }
         }, 2000);
       } catch(e) {

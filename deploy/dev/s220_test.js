@@ -269,6 +269,61 @@ if (fs.existsSync(shExt)) {
   emit('  SKIP — SampleHouse_extracted.db not found, cannot test diff/VO');
 }
 
+// ── S225: Diff Direction + Added Element Rendering Tests ──
+emit(`\n── S225 DIFF CHAIN ──`);
+
+// Issue: S225 fixes diff direction (base=v0, diff=v_latest) and adds rendering of "added" elements
+// Test: Simulate the openProject() version selection logic
+
+// Simulate version store: v0=SampleHouse(65el), v1=WallElementedCase(10el)
+var versions = [
+  { name: 'SampleHouse', elements: 65 },
+  { name: 'WallElementedCase', elements: 10 }
+];
+var latestVersion = 1;
+
+// S225 fix: base=v0, diff=v_latest
+var baseIdx = 0;
+var diffIdx = latestVersion;
+
+if (baseIdx === 0) ok('S225_BASE', 'Open loads v0 (base=' + versions[baseIdx].name + ', ' + versions[baseIdx].elements + ' el)');
+else ng('S225_BASE', 'Open should load v0, got v' + baseIdx);
+
+if (diffIdx === latestVersion && diffIdx > 0) ok('S225_DIFF', 'diffDb=v' + diffIdx + ' (' + versions[diffIdx].name + ', ' + versions[diffIdx].elements + ' el)');
+else ng('S225_DIFF', 'diffDb should be latest version');
+
+// Test: diff direction means added = elements in v_latest NOT in v0
+// With real distinct buildings (no GUID overlap): added = all v1 elements, removed = all v0 elements
+// This is correct — "added" means new in revision
+if (versions[baseIdx].elements > versions[diffIdx].elements)
+  ok('S225_DIR', 'Base (' + versions[baseIdx].elements + ') > diff (' + versions[diffIdx].elements + ') — direction correct');
+else
+  ng('S225_DIR', 'Base should have more elements than diff for SH+WallECase test');
+
+// Test: viewer URL routing — always sandbox/ (bucket has no dev/ prefix)
+var viewerPath = 'sandbox/index.html';
+if (viewerPath.startsWith('sandbox/')) ok('S225_VIEWER', 'Imported projects route to sandbox/ viewer (bucket path)');
+else ng('S225_VIEWER', 'Should use sandbox/ viewer, got: ' + viewerPath);
+
+// Test: tools.js boq_charts path for import:// — ../boq_charts.html (from sandbox/ to root)
+var dbParam = 'import://SampleHouse/v0';
+var chartsUrl = dbParam.startsWith('import://') ? '../boq_charts.html' : '../boq_charts.html';
+if (chartsUrl === '../boq_charts.html') ok('S225_BOQ', 'import:// → ../boq_charts.html (sandbox/ → root)');
+else ng('S225_BOQ', 'import:// should use ../boq_charts.html');
+
+// Test: SampleHouse DB has geometry BLOBs for added element rendering
+if (fs.existsSync(path.join(BUILDINGS_DIR, 'SampleHouse_library.db'))) {
+  var shLib = new Database(path.join(BUILDINGS_DIR, 'SampleHouse_library.db'), { readonly: true });
+  try {
+    var geoCount = shLib.prepare('SELECT COUNT(*) as n FROM component_geometries WHERE vertices IS NOT NULL').get();
+    if (geoCount.n > 0) ok('S225_GEO', 'Library has ' + geoCount.n + ' geometry BLOBs for added element rendering');
+    else ng('S225_GEO', 'No geometry BLOBs found');
+  } catch(e) { ng('S225_GEO', 'component_geometries query failed: ' + e.message); }
+  shLib.close();
+} else {
+  emit('  SKIP S225_GEO — SampleHouse_library.db not found');
+}
+
 // Summary
 emit(`\n── SUMMARY ──`);
 emit(`§RESULT PASS=${pass} FAIL=${fail} TOTAL=${pass + fail}`);

@@ -94,6 +94,18 @@ https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o
 
 **Local files:** `deploy/dev/` — only changed files, rest served from production sandbox copies.
 
+**Path mapping (local → bucket):**
+| Local file | Bucket object name | Why |
+|---|---|---|
+| `deploy/landing2.html` | `index.html` | Landing page (root) |
+| `deploy/dev/*.js` | `sandbox/*.js` | Viewer JS modules (always `sandbox/` in bucket) |
+| `deploy/dev/index.html` | `sandbox/index.html` | Viewer HTML |
+| `deploy/dev/boq_charts.html` | `boq_charts.html` | Charts page (root, not sandbox/) |
+
+**⚠ The bucket has NO `dev/` prefix.** Both dev and prod buckets use `sandbox/` for viewer files.
+`deploy/dev/` is a LOCAL-ONLY directory — it maps to `sandbox/` in the bucket.
+`deploy/sandbox/` is the local PROD copy — never upload it to the dev bucket.
+
 ```bash
 # Deploy dev landing + changed files
 oci os object put --bucket-name bim-ootb-dev --file deploy/landing2.html --name index.html --content-type text/html --force
