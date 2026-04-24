@@ -5,6 +5,17 @@ function setupCity(A) {
   A.cityArchetypes = {};
   A.cityBuildingDbs = {};
 
+  // ── Clear button (free RAM) — city mode only ──
+  if (A.CITY_URL) {
+  const clearBtn = document.createElement('button');
+  clearBtn.id = 'city-clear-btn';
+  clearBtn.title = 'Clear loaded meshes (free RAM)';
+  clearBtn.textContent = '🗑 Clear';
+  clearBtn.style.cssText = 'position:fixed;bottom:40px;right:16px;z-index:15;padding:8px 16px;background:#cc4444;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px;box-shadow:0 2px 8px rgba(204,68,68,0.4)';
+  clearBtn.onclick = function() { A.cityClear(); };
+  document.body.appendChild(clearBtn);
+  }
+
   A.initCity = async function(SQL) {
     A.citySQL = SQL;
     A.status.textContent = `Fetching city index (${A.CITY_URL})...`;
@@ -229,5 +240,31 @@ function setupCity(A) {
 
     A.db = saved.db;
     A.libDb = A.cityBuildingDbs[archetype].libDb;
+  };
+
+  // ── Clear all streamed meshes, free RAM, keep bboxes + cached DBs ──
+  A.cityClear = function() {
+    A.streaming = false;
+    A.streamQueue = [];
+    A.streamIdx = 0;
+    const toRemove = [];
+    A.scene.traverse(obj => {
+      if (obj.isMesh && obj !== A.ground) toRemove.push(obj);
+    });
+    toRemove.forEach(obj => {
+      A.scene.remove(obj);
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
+    });
+    A.streamedCount = 0;
+    if (A.buildingsRendered) A.buildingsRendered.clear();
+    A.guidMap = {};
+    var el;
+    if ((el = document.getElementById('s-streamed'))) el.textContent = '0';
+    if ((el = document.getElementById('s-buildings-done'))) el.textContent = '0';
+    if ((el = document.getElementById('s-active'))) el.textContent = '—';
+    if ((el = document.getElementById('s-progress'))) el.style.width = '0%';
+    console.log(`[S210] §CITY_CLEAR removed=${toRemove.length} meshes freed`);
+    A.status.textContent = `CLEARED — ${toRemove.length} meshes removed.`;
   };
 }

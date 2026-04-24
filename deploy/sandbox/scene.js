@@ -23,7 +23,7 @@ function setupScene(A) {
   controls.dampingFactor = 0.08;
   controls.maxDistance = 20000;
   controls.minPolarAngle = 0;
-  controls.maxPolarAngle = Math.PI;
+  controls.maxPolarAngle = Math.PI;  // Full vertical range (0=top, π=bottom)
   controls.mouseButtons = {
     LEFT: THREE.MOUSE.ROTATE,
     MIDDLE: THREE.MOUSE.DOLLY,

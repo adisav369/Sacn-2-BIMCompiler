@@ -4,12 +4,18 @@
 function setupImport(A) {
   const IMPORT_DB_NAME = 'bim_ootb_imports';
   const IMPORT_STORE = 'buildings';
+  const IMPORT_DB_VERSION = 2;  // S224: versioned storage model
 
-  // ── IndexedDB for imported buildings ──
+  // ── IndexedDB for imported buildings (v2: versioned) ──
   function openImportDB() {
     return new Promise((resolve) => {
-      const req = indexedDB.open(IMPORT_DB_NAME, 1);
-      req.onupgradeneeded = () => req.result.createObjectStore(IMPORT_STORE);
+      const req = indexedDB.open(IMPORT_DB_NAME, IMPORT_DB_VERSION);
+      req.onupgradeneeded = function(e) {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(IMPORT_STORE)) {
+          db.createObjectStore(IMPORT_STORE);
+        }
+      };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => resolve(null);
     });
@@ -161,24 +167,31 @@ function setupImport(A) {
     });
   };
 
-  // ── Open imported building in viewer ──
+  // ── Open imported building in viewer (S224: versioned) ──
   A.openImported = async function(key) {
     const record = await getImport(key);
     if (!record) { alert('Building not found in storage'); return; }
 
-    // Store DBs in session cache so viewer can load them
+    // S224: handle versioned format
+    var dbBuf;
+    if (record.versions && record.versions.length > 0) {
+      dbBuf = record.versions[record.latestVersion || 0].db;
+    } else {
+      dbBuf = record.extractedDb;  // legacy v1 format
+    }
+    if (!dbBuf) { alert('No DB data in storage'); return; }
+
     const cacheDb = await A.openCacheDB();
     if (cacheDb) {
       const importDbUrl = 'import://' + key + '/extracted';
       const importLibUrl = 'import://' + key + '/library';
       await new Promise(resolve => {
         const tx = cacheDb.transaction(A.CACHE_STORE, 'readwrite');
-        tx.objectStore(A.CACHE_STORE).put(record.extractedDb, importDbUrl);
-        tx.objectStore(A.CACHE_STORE).put(record.libraryDb, importLibUrl);
+        tx.objectStore(A.CACHE_STORE).put(dbBuf, importDbUrl);
+        tx.objectStore(A.CACHE_STORE).put(dbBuf, importLibUrl);
         tx.oncomplete = resolve;
       });
 
-      // Open viewer with import:// URLs — cachedFetch will find them in IndexedDB
       const viewerBase = location.href.replace(/[^/]*$/, '');
       const viewerUrl = viewerBase + 'sandbox/index.html?db=' +
         encodeURIComponent(importDbUrl) + '&lib=' + encodeURIComponent(importLibUrl);
@@ -214,11 +227,13 @@ function setupImport(A) {
     };
 
     for (const item of imports) {
-      if (!item.meta) continue;
+      // S224: handle versioned format — item.meta may be from versioned record
+      var meta = item.meta;
+      if (!meta) continue;
       const card = document.createElement('div');
       card.className = 'card';
-      const discs = item.meta.disciplines || {};
-      const total = item.meta.elementCount || 0;
+      const discs = meta.disciplines || {};
+      const total = meta.elementCount || 0;
       const discBars = Object.entries(discs).map(([d, c]) => {
         const pct = Math.max(3, (c / total) * 100);
         const color = DISC_COLORS[d] || '#888';

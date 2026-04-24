@@ -97,17 +97,25 @@ function setupPanels(A) {
 
   A.populateBuildingList = function() {
     const list = document.getElementById('building-list');
-    const sorted = Object.entries(A.buildingCentres)
+    // Dedupe: strip grid prefix (S0_0_, T0_, etc.) → group by archetype, keep first instance
+    const seen = {};
+    for (const [name, bc] of Object.entries(A.buildingCentres)) {
+      const arch = name.replace(/^[ST]\d+_\d*_?/, '');
+      if (!seen[arch] || bc.count > seen[arch].count) {
+        seen[arch] = { name, count: bc.count };
+      }
+    }
+    const sorted = Object.entries(seen)
       .sort((a, b) => b[1].count - a[1].count);
     A.allBuildingCards = [];
     list.innerHTML = '';
-    for (const [name, bc] of sorted) {
+    for (const [arch, info] of sorted) {
       const card = document.createElement('div');
       card.className = 'bld-card';
-      card.innerHTML = `<span>${name}</span><span class="cnt">${bc.count.toLocaleString()}</span>`;
-      card.onclick = () => A.flyTo(name);
+      card.innerHTML = `<span>${arch}</span><span class="cnt">${info.count.toLocaleString()}</span>`;
+      card.onclick = () => A.flyTo(info.name);
       list.appendChild(card);
-      A.allBuildingCards.push({ name: name.toLowerCase(), el: card });
+      A.allBuildingCards.push({ name: arch.toLowerCase(), el: card });
     }
   };
 

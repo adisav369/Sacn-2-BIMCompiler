@@ -151,7 +151,9 @@ function setupIssues(A) {
         db.close();
         statusBtn.textContent = newStatus === 'fixed' ? '✅ Fixed — tap to reopen' : '🔴 Open — tap to mark Fixed';
         statusBtn.style.background = newStatus === 'fixed' ? '#2e7d32' : '#c62828';
-        console.log('[S209] §STATUS', iss.id, newStatus);
+        // Re-render list behind detail so card icon updates immediately
+        A._renderIssueList();
+        console.log('[S210] §STATUS_TOGGLE id=' + iss.id + ' to=' + newStatus);
       } catch(err) { console.error('[S209] §STATUS_ERR', err); }
     };
   };
@@ -159,6 +161,7 @@ function setupIssues(A) {
   A._issueBackToList = function() {
     document.getElementById('issue-detail-view').classList.remove('active');
     document.getElementById('issues-list').style.display = '';
+    console.log('[S210] §ISSUE_BACK list refreshed');
   };
 
   A.toggleIssues = function() {

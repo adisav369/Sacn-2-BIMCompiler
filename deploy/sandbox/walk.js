@@ -55,6 +55,12 @@ function setupWalk(A) {
     }
     A.controls.update();
 
+    // Lock walk mode IMMEDIATELY — prevents render loop controls.update() from
+    // overwriting the door-facing camera quaternion before device orientation kicks in
+    A.walkModeActive = true;
+    A.controls.enabled = false;
+    console.log('[S210] §WALK_LOCK controls.enabled=false before orientation setup');
+
     // Clean up any lingering orientation listeners from sitecam or legacy walk
     if (A._camOrientHandler) {
       window.removeEventListener('deviceorientation', A._camOrientHandler, true);
@@ -92,12 +98,47 @@ function setupWalk(A) {
     };
 
     // Called from render loop (main.js animate) — this is where quaternion is set
+    A._walkBaselineAlpha = null; // first alpha reading — used to detect deliberate movement
+    A._walkUnlocked = false;    // true once user moves phone >5° from initial position
+    const UNLOCK_THRESHOLD_DEG = 5; // degrees of movement before camera follows device
+
     A.walkOrientTick = function() {
       if (!A.walkModeActive || !A._walkDeviceEvent) return;
       const e = A._walkDeviceEvent;
       if (!e.alpha) return;
 
       const deg2rad = THREE.MathUtils.degToRad;
+
+      // Capture baseline alpha on first event (phone's resting orientation)
+      if (A._walkBaselineAlpha === null) {
+        A._walkBaselineAlpha = e.alpha;
+        // Compute alphaOffset so that when unlocked, camera aligns to door
+        const tempAlpha = deg2rad(e.alpha);
+        const tempBeta = e.beta ? deg2rad(e.beta) : 0;
+        const tempGamma = e.gamma ? deg2rad(e.gamma) : 0;
+        const tempOrient = A._walkScreenOrientation ? deg2rad(A._walkScreenOrientation) : 0;
+        const tempEuler = new THREE.Euler(tempBeta, tempAlpha, -tempGamma, 'YXZ');
+        const tempQ = new THREE.Quaternion().setFromEuler(tempEuler);
+        tempQ.multiply(_q1.clone());
+        tempQ.multiply(new THREE.Quaternion().setFromAxisAngle(_zee, -tempOrient));
+        const devDir = new THREE.Vector3(0, 0, -1).applyQuaternion(tempQ);
+        const devYaw = Math.atan2(devDir.x, devDir.z);
+        const doorDir = new THREE.Vector3(0, 0, -1).applyQuaternion(A._walkQDoor);
+        const doorYaw = Math.atan2(doorDir.x, doorDir.z);
+        A._walkAlphaOffset = doorYaw - devYaw;
+        console.log('[S210] §WALK_BASELINE alpha=' + e.alpha.toFixed(1) + ' offset=' + THREE.MathUtils.radToDeg(A._walkAlphaOffset).toFixed(1) + '° — camera frozen at door');
+        return; // Stay frozen on door view
+      }
+
+      // Stay frozen until user moves phone beyond threshold
+      if (!A._walkUnlocked) {
+        let delta = Math.abs(e.alpha - A._walkBaselineAlpha);
+        if (delta > 180) delta = 360 - delta; // wrap-around
+        if (delta < UNLOCK_THRESHOLD_DEG) return; // still frozen
+        A._walkUnlocked = true;
+        console.log('[S210] §WALK_UNLOCK delta=' + delta.toFixed(1) + '° — camera now follows device');
+      }
+
       const alpha = deg2rad(e.alpha) + A._walkAlphaOffset;
       const beta = e.beta ? deg2rad(e.beta) : 0;
       const gamma = e.gamma ? deg2rad(e.gamma) : 0;
@@ -108,22 +149,6 @@ function setupWalk(A) {
       A.camera.quaternion.setFromEuler(euler);
       A.camera.quaternion.multiply(_q1.clone());
       A.camera.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(_zee, -orient));
-
-      // On first reading, compute alphaOffset so camera faces the door
-      if (A._walkFirstUpdate) {
-        A._walkFirstUpdate = false;
-        const devDir = new THREE.Vector3(0, 0, -1).applyQuaternion(A.camera.quaternion);
-        const devYaw = Math.atan2(devDir.x, devDir.z);
-        const doorDir = new THREE.Vector3(0, 0, -1).applyQuaternion(A._walkQDoor);
-        const doorYaw = Math.atan2(doorDir.x, doorDir.z);
-        A._walkAlphaOffset = doorYaw - devYaw;
-        // Re-apply with corrected offset
-        const alpha2 = deg2rad(e.alpha) + A._walkAlphaOffset;
-        const euler2 = new THREE.Euler(beta, alpha2, -gamma, 'YXZ');
-        A.camera.quaternion.setFromEuler(euler2);
-        A.camera.quaternion.multiply(_q1.clone());
-        A.camera.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(_zee, -orient));
-      }
     };
 
     A._walkCleanupScreen = onScreenChange;
@@ -149,9 +174,8 @@ function setupWalk(A) {
       );
     }
 
-    A.walkModeActive = true;
+    // walkModeActive + controls.enabled already set at line 59-60 (early lock)
     A.walkGpsFollowCam = false;
-    A.controls.enabled = false; // Disable OrbitControls — device orientation drives camera
     document.getElementById('walk-mode-btn').classList.add('active');
     A.cacheStoreyLevels();
     // Drive-Thru replaces shake-to-walk — no startStepDetection()

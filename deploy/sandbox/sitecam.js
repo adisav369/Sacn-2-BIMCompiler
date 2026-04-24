@@ -1,5 +1,25 @@
-// sitecam.js — Site Camera (mobile site inspection), photo composite, markup
+// sitecam.js — Site Camera (mobile site inspection), photo composite, markup, voice notes
 function setupSitecam(A) {
+  // Remove text/voice button from toolbar (user types in WhatsApp after sharing)
+  const textBtn = document.querySelector('.markup-btn[data-tool="text"]');
+  if (textBtn) textBtn.remove();
+  console.log('[S210] §SITECAM_INIT textBtn=' + (textBtn ? 'removed' : 'absent'));
+
+  // Move snag button to fixed bottom-right, away from walk arrow
+  const snagRow = document.getElementById('snag-btn-row');
+  if (snagRow) {
+    const snagBtn = snagRow.querySelector('button');
+    if (snagBtn) {
+      snagBtn.id = 'snag-btn-fixed';
+      snagBtn.style.cssText = 'display:none;position:fixed;bottom:20px;right:16px;z-index:14;background:#f44336;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(244,67,54,0.4)';
+      document.body.appendChild(snagBtn);
+      // Sync visibility: picking.js toggles snag-btn-row, mirror to our fixed button
+      new MutationObserver(() => {
+        snagBtn.style.display = snagRow.style.display === 'none' ? 'none' : 'block';
+      }).observe(snagRow, { attributes: true, attributeFilter: ['style'] });
+    }
+  }
+
   A._camStream = null;
   A._camGpsPos = null;
   A._camPhotoBlob = null;
@@ -115,6 +135,22 @@ function setupSitecam(A) {
       });
       video.srcObject = A._camStream;
       overlay.classList.add('active');
+      // Hide toolbar that bleeds through on mobile
+      const _camHideIds = ['walk-mode-btn','search-box','disc-panel','storey-panel','info-panel','hud','status'];
+      for (const hid of _camHideIds) {
+        const hel = document.getElementById(hid);
+        if (hel) { hel.dataset.camHid = hel.style.cssText; hel.style.setProperty('display', 'none', 'important'); }
+      }
+      // Walk arrow is dynamic (created by walk.js) — remove it, re-create on close
+      if (A._driveBtn) {
+        A._driveBtn.remove();
+        A._driveBtn = null;
+        A._driveBtnWasActive = true;
+        console.log('[S210] §CAM_HIDE driveBtn=REMOVED');
+      } else {
+        A._driveBtnWasActive = false;
+      }
+      console.log('[S210] §CAM_HIDE ids=' + _camHideIds.filter(id => document.getElementById(id)).join(','));
       // Push history state so phone back button closes camera instead of leaving page
       history.pushState({ siteCam: true }, '');
       console.log('[S204] §CAMERA opened');
@@ -143,6 +179,20 @@ function setupSitecam(A) {
     if (A._camOrientHandler) { window.removeEventListener('deviceorientation', A._camOrientHandler, true); A._camOrientHandler = null; }
     document.getElementById('site-cam-overlay').classList.remove('active');
     document.getElementById('site-cam-video').srcObject = null;
+    // Restore hidden toolbar
+    const _camRestoreIds = ['walk-mode-btn','search-box','disc-panel','storey-panel','info-panel','hud','status'];
+    let _restored = 0;
+    for (const rid of _camRestoreIds) {
+      const rel = document.getElementById(rid);
+      if (rel && rel.dataset.camHid !== undefined) { rel.style.cssText = rel.dataset.camHid; delete rel.dataset.camHid; _restored++; }
+    }
+    // Re-create walk arrow if it was active before camera
+    console.log('[S210] §CAM_RESTORE_CHECK driveWas=' + A._driveBtnWasActive + ' walk=' + A.walkModeActive + ' hasFn=' + !!A.startDriveThru + ' curBtn=' + !!A._driveBtn);
+    if (A._driveBtnWasActive && A.walkModeActive && A.startDriveThru) {
+      A.startDriveThru();
+      console.log('[S210] §CAM_RESTORE driveBtn=RECREATED exists=' + !!A._driveBtn);
+    }
+    console.log('[S210] §CAM_RESTORE n=' + _restored + ' walk=' + A.walkModeActive);
   };
 
   A.snapSitePhoto = function() {
@@ -261,39 +311,9 @@ function setupSitecam(A) {
     document.getElementById('site-cam-preview').classList.add('active');
     history.pushState({ sitePreview: true }, '');
 
-    // Snag-to-BIM: save with photo now that canvas is drawn
-    if (A._pendingSnagInfo) {
-      const snagInfo = A._pendingSnagInfo;
-      A._pendingSnagInfo = null;
-      mc.toBlob(async (blob) => {
-        if (!blob) return;
-        try {
-          const issue = {
-            jpeg_blob: blob,
-            gps_lat: A._camGpsPos ? A._camGpsPos.coords.latitude : null,
-            gps_lng: A._camGpsPos ? A._camGpsPos.coords.longitude : null,
-            gps_accuracy: A._camGpsPos ? A._camGpsPos.coords.accuracy : null,
-            compass_heading: A._camHeading,
-            timestamp: new Date().toISOString(),
-            element_guid: snagInfo.guid || '',
-            element_class: snagInfo.cls || '',
-            element_name: snagInfo.name || '',
-            building: snagInfo.building || '',
-            storey: snagInfo.storey || '',
-            discipline: snagInfo.disc || '',
-            status: 'open',
-            notes: ''
-          };
-          const db = await A._openIssuesDB();
-          const tx = db.transaction('issues', 'readwrite');
-          tx.objectStore('issues').add(issue);
-          await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
-          db.close();
-          A.status.textContent = `📸 Snag saved: ${snagInfo.cls} @ ${snagInfo.storey}`;
-          console.log('[S209] §SNAG saved', snagInfo.cls, snagInfo.storey);
-        } catch(err) { console.error('[S209] §SNAG_ERR', err); }
-      }, 'image/jpeg', 0.85);
-    }
+    // Snag-to-BIM: DO NOT save here — save once at share/download time via _saveIssueToLog
+    // This prevents double-write (was saving on snap + on share)
+    console.log('[S210] §SNAP_NO_EAGER_SAVE guid=' + (A._pendingSnagInfo ? A._pendingSnagInfo.guid : 'none'));
     A._initMarkupListeners(mc);
     console.log(`[S204] §SNAP ${info.cls} GPS:${gpsText} ${timeText} BIM:${bimImg ? 'YES' : 'NO'}`);
   };
@@ -312,32 +332,7 @@ function setupSitecam(A) {
     document.querySelectorAll('.markup-btn').forEach(b => {
       b.style.background = b.dataset.tool === tool ? '#ff4444' : '#444';
     });
-    if (tool === 'text') {
-      const mc = document.getElementById('site-cam-markup');
-      // Inline input instead of prompt() — prompt is unreliable on mobile overlays
-      let inp = document.getElementById('markup-text-input');
-      if (!inp) {
-        inp = document.createElement('input');
-        inp.id = 'markup-text-input';
-        inp.type = 'text';
-        inp.placeholder = 'Type text, then tap canvas';
-        inp.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;padding:8px 12px;font-size:16px;background:#222;color:#fff;border:2px solid #4fc3f7;border-radius:6px;width:70%;text-align:center;';
-        document.body.appendChild(inp);
-        // Tap canvas to place text
-        const placeText = (e) => {
-          const text = inp.value.trim();
-          if (!text) return;
-          const p = A._canvasCoords(mc, e);
-          A._markupStrokes.push({ tool: 'text', color: A._markupColor, text, x: p.x, y: p.y });
-          A._redrawMarkup();
-          inp.value = '';
-          inp.remove();
-          mc.removeEventListener('pointerdown', placeText);
-        };
-        mc.addEventListener('pointerdown', placeText);
-      }
-      inp.focus();
-    }
+    // text/voice tools removed — markup is arrow/circle/freehand only
   };
 
   A.setMarkupColor = function(color) {
@@ -346,6 +341,8 @@ function setupSitecam(A) {
       b.style.borderColor = b.style.backgroundColor === color ? '#fff' : '#333';
     });
   };
+
+  // Voice/text tools removed — user adds text in WhatsApp after sharing photo + map
 
   A.undoMarkup = function() {
     A._markupStrokes.pop();
@@ -382,14 +379,6 @@ function setupSitecam(A) {
       ctx.beginPath(); ctx.moveTo(s.points[0].x, s.points[0].y);
       s.points.forEach(p => ctx.lineTo(p.x, p.y));
       ctx.stroke();
-    } else if (s.tool === 'text' && s.text) {
-      ctx.font = 'bold 18px sans-serif';
-      ctx.fillStyle = s.color;
-      const m = ctx.measureText(s.text);
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(s.x - 2, s.y - 16, m.width + 4, 20);
-      ctx.fillStyle = s.color;
-      ctx.fillText(s.text, s.x, s.y);
     }
   };
 
@@ -411,7 +400,7 @@ function setupSitecam(A) {
       e.preventDefault();
       const p = A._canvasCoords(mc, e);
       A._markupActive = true;
-      if (A._markupTool === 'text') return;
+      if (A._markupTool !== 'arrow' && A._markupTool !== 'circle' && A._markupTool !== 'freehand') return;
       currentStroke = { tool: A._markupTool, color: A._markupColor, points: [p] };
     }
     function onMove(e) {
@@ -467,24 +456,48 @@ function setupSitecam(A) {
     const text = `${info.building} / ${info.storey} / ${info.cls}\n${info.name}\nGUID: ${info.guid}\nGPS: ${gpsText}${bearingText ? '\n' + bearingText : ''}\n${mapsLink}\n${timeText}`;
     const fileName = `BIM_Site_${info.building}_${timeText.replace(/[: ]/g,'-')}.jpg`;
 
-    if (navigator.share) {
-      try {
-        const file = new File([blob], fileName, { type: 'image/jpeg' });
-        await navigator.share({ files: [file], title, text });
-        console.log('[S204] §SHARE via Web Share API');
-        A._saveIssueToLog();
-        A.closeSitePreview();
-        A.closeSiteCamera();
-        return;
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-        console.log('[S204] §SHARE_FALLBACK', err.message);
+    // Share: photo as SINGLE file (WhatsApp drops mixed file types silently)
+    // Voice → saved to downloads. Map → in text body.
+    const photoFile = new File([blob], fileName, { type: 'image/jpeg' });
+    const mapTag = A._camGpsPos ? ' + 📍 map' : '';
+
+    // Share 1: photo + text (with map link)
+    let photoShared = false;
+    if (navigator.share && navigator.canShare) {
+      const data = { files: [photoFile], title, text };
+      if (navigator.canShare(data)) {
+        try {
+          await navigator.share(data);
+          photoShared = true;
+          console.log('[S210] §SHARE_PHOTO OK');
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            // User cancelled share — return to building screen, not stuck in camera
+            console.log('[S210] §SHARE_ABORT driveWas=' + A._driveBtnWasActive + ' walk=' + A.walkModeActive + ' driveBtn=' + !!A._driveBtn);
+            A.closeSitePreview();
+            A.closeSiteCamera();
+            console.log('[S210] §SHARE_ABORT_DONE driveBtn=' + !!A._driveBtn);
+            return;
+          }
+          console.log('[S210] §SHARE_PHOTO_ERR ' + err.message);
+        }
       }
     }
-    const waText = encodeURIComponent(title + '\n' + text);
-    window.open(`https://wa.me/?text=${waText}`, '_blank');
+    if (!photoShared) {
+      const waText = encodeURIComponent(title + '\n' + text);
+      window.open(`https://wa.me/?text=${waText}`, '_blank');
+      console.log('[S210] §SHARE_WA text-only');
+    }
+
+    // Status: tell user what was sent
+    A.status.textContent = photoShared
+      ? '📸 Shared: photo' + (A._camGpsPos ? ' + 📍 map' : '')
+      : '📍 Text + map sent';
+    console.log('[S210] §SHARE_DONE photo=' + photoShared + ' gps=' + !!A._camGpsPos);
+
     A._saveIssueToLog();
-    console.log('[S204] §SHARE via wa.me fallback');
+    A.closeSitePreview();
+    A.closeSiteCamera();
   };
 
   A.downloadSitePhoto = async function() {
