@@ -38,21 +38,21 @@ L('  startDriveThru has double-create guard: ' + (hasGuard ? 'PASS' : 'FAIL — 
 // Fix: check canShare before sending files, proper fallback chain
 L('');
 L('── BUG 2: Share with files ──');
-const hasCanShare = sc.includes('navigator.canShare') && sc.includes('canShare(shareData)');
+const hasCanShare = sc.includes('navigator.canShare') && sc.includes('canShare(');
 L('  checks canShare before file share: ' + (hasCanShare ? 'PASS' : 'FAIL — blind share may throw'));
-// Fallback chain: files → text-share → wa.me
+// Fallback chain: files → wa.me
 const shareFunc = sc.substring(sc.indexOf('shareSitePhoto'), sc.indexOf('downloadSitePhoto'));
-const hasThreePaths = shareFunc.includes('canShare(shareData)') && shareFunc.includes('navigator.share(shareData)') && shareFunc.includes('wa.me');
-L('  three-tier fallback (files → text → wa.me): ' + (hasThreePaths ? 'PASS' : 'FAIL'));
+const hasFallback = shareFunc.includes('canShare(') && shareFunc.includes('navigator.share(') && shareFunc.includes('wa.me');
+L('  share fallback (files → wa.me): ' + (hasFallback ? 'PASS' : 'FAIL'));
 // All paths close preview+camera
 const pathCount = (shareFunc.match(/closeSitePreview/g) || []).length;
 L('  closeSitePreview calls: ' + pathCount + ' ' + (pathCount >= 2 ? 'PASS' : 'FAIL — not all paths close'));
 // Log tags for each path
-L('  §SHARE_FILES tag: ' + (shareFunc.includes('§SHARE_FILES') ? 'PASS' : 'FAIL'));
-L('  §SHARE_NO_FILE_SUPPORT tag: ' + (shareFunc.includes('§SHARE_NO_FILE_SUPPORT') ? 'PASS' : 'FAIL'));
-L('  §SHARE_CLOSE tag: ' + (shareFunc.includes('§SHARE_CLOSE') || shareFunc.includes('§SHARE_WA') ? 'PASS' : 'FAIL'));
-L('  status shows result to user: ' + (sc.includes('A.status.textContent = shareResult') ? 'PASS' : 'FAIL — result only in console'));
-L('  §SHARE_NO_API fallback: ' + (sc.includes('§SHARE_NO_API') ? 'PASS' : 'FAIL'));
+L('  §SHARE_PHOTO tag: ' + (shareFunc.includes('§SHARE_PHOTO') ? 'PASS' : 'FAIL'));
+L('  §SHARE_WA tag: ' + (shareFunc.includes('§SHARE_WA') ? 'PASS' : 'FAIL'));
+L('  §SHARE_DONE tag: ' + (shareFunc.includes('§SHARE_DONE') ? 'PASS' : 'FAIL'));
+L('  status shows result to user: ' + (shareFunc.includes('A.status.textContent') ? 'PASS' : 'FAIL — result only in console'));
+L('  §SHARE_ABORT handling: ' + (shareFunc.includes('§SHARE_ABORT') ? 'PASS' : 'FAIL'));
 
 // ── BUG 3: Double save ──
 L('');

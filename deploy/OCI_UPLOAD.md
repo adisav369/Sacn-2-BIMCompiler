@@ -10,10 +10,11 @@ viewer downloads just that building's two DBs. Cached in IndexedDB — second vi
 
 | Bucket | Purpose |
 |--------|---------|
-| `bim-ootb-full` | Landing page + 30 per-building DB pairs + city index |
+| `bim-ootb-full` | **PRODUCTION** — landing + 30 per-building DB pairs + city index |
+| `bim-ootb-backup` | **SNAPSHOT** — copy of prod taken before each deploy |
+| `bim-ootb-dev` | **STAGING** — test before production |
 | `bim-ootb` | Duplex demo (standalone) |
 | `bim-ootb-duplex` | Duplex backup |
-| `bim-ootb-dev` | Dev/staging — test before production |
 
 Region: `ap-kulai-2` (Malaysia West 2 Kulai). Always Free tier.
 
@@ -102,63 +103,90 @@ oci os object put --bucket-name bim-ootb-dev --file deploy/dev/boq_charts.html -
 
 ### Deploy SOP (dev → production)
 
-**Pre-condition:** git status is clean. Last commit = known good production state.
+All operations happen at OCI level. No local file copying.
 
 ```
 Step 1 — TEST        Run ALL tests. Both must pass.
-                       a) node deploy/sandbox/test_all.js   (full suite, 169+ checks)
-                       b) node deploy/dev/s2XX_test.js      (feature-specific tests)
-Step 2 — GIT CHECK   git status clean. User confirms live matches repo.
-Step 3 — COPY        Copy dev deltas to sandbox (production source).
-Step 4 — UPLOAD      Upload changed sandbox files to bim-ootb-full.
-Step 5 — SMOKE       Open production URL on phone + desktop. Verify.
-Step 6 — COMMIT      git add + commit the sandbox changes.
+                       a) node deploy/sandbox/test_all.js   (full suite)
+                       b) node deploy/dev/s2XX_test.js      (feature-specific)
+Step 2 — SNAPSHOT    OCI copy: prod → backup  (save current live state)
+Step 3 — DEPLOY      OCI copy: dev → prod     (push tested code live)
+Step 4 — SMOKE       Open production URL on phone + desktop. Verify.
+Step 5 — COMMIT      Copy dev → sandbox locally, git add + commit.
 ```
 
-**If broken after Step 5:**
+**If broken after Step 4 — ROLLBACK (one command):**
+```bash
+# Copy backup → prod (restore pre-deploy state)
+bash scripts/oci_bucket_copy.sh bim-ootb-backup bim-ootb-full sandbox/
+
+# Verify
+curl -s -o /dev/null -w "%{http_code}" https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/sandbox/index.html
+# Must return 200
 ```
-git restore deploy/sandbox/          # Reset to last commit (known good)
-Re-upload sandbox files to bucket    # Same upload commands as Step 4
-Verify production URL                # Confirm rollback worked
-```
-No new commit needed — git already has the good version. Just re-upload.
+No git involved. Backup bucket IS the known-good version.
 
 **Commands:**
 ```bash
-# Step 1: Tests (both must pass — do NOT skip)
-node deploy/sandbox/test_all.js   # full suite (169+ checks)
-node deploy/dev/s211_test.js      # feature tests (adjust per sprint)
+# Step 1: Tests
+node deploy/sandbox/test_all.js
+node deploy/dev/s211_test.js      # adjust per sprint
 
-# Step 2: Confirm
-git status                     # must be clean
+# Step 2: Snapshot prod → backup
+bash scripts/oci_bucket_copy.sh bim-ootb-full bim-ootb-backup sandbox/
 
-# Step 3: Copy dev → sandbox
-cp deploy/dev/index.html deploy/sandbox/index.html
-cp deploy/dev/main.js deploy/sandbox/main.js
-# ... each changed file
+# Step 3: Deploy dev → prod
+bash scripts/oci_bucket_copy.sh bim-ootb-dev bim-ootb-full sandbox/
+# Root-level files (if changed):
+# oci os object copy --bucket-name bim-ootb-dev --source-object-name boq_charts.html \
+#   --destination-bucket bim-ootb-full --destination-object-name boq_charts.html
 
-# Step 4: Upload to production
-for f in index.html main.js nlp.js; do
-  oci os object put --bucket-name bim-ootb-full \
-    --file "deploy/sandbox/${f}" --name "sandbox/${f}" \
-    --content-type "$([ ${f##*.} = html ] && echo text/html || echo application/javascript)" \
-    --force
+# Step 4: Smoke test — verify BOTH endpoints + cache bust
+# Landing:  https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html
+# Viewer:   https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/sandbox/index.html
+# Hard refresh (Ctrl+Shift+R) to bypass browser cache.
+# Check on phone too — mobile Safari caches aggressively.
+
+# Step 5: Sync local + commit
+for f in deploy/dev/*.js deploy/dev/*.html; do
+  [ -L "$f" ] && continue   # skip symlinks
+  cp "$f" "deploy/sandbox/$(basename $f)"
 done
-
-# Step 5: Smoke test
-# Production: https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/sandbox/index.html
-
-# Step 6: Commit
 git add deploy/sandbox/
 git commit -m "[SXXX] Description"
 
-# Rollback (if Step 5 fails):
-git restore deploy/sandbox/
-# Re-run Step 4 upload commands
+# Rollback (if Step 4 fails):
+bash scripts/oci_bucket_copy.sh bim-ootb-backup bim-ootb-full sandbox/
 ```
 
+**Knowing which version is live:**
+
+The test suite (§13) computes a fingerprint of all sandbox files and compares local vs live.
+```
+LOCAL  1279e2cd2d5b  ← git: 85f01c6a [S210]
+LIVE   6f85aad280c5  ← bim-ootb-full/sandbox/
+```
+Mismatch = drift. §9b lists exactly which files differ.
+
+**Three buckets = three snapshots:**
+- `bim-ootb-dev` = staging (tested, ready to go live)
+- `bim-ootb-full` = production (what users see)
+- `bim-ootb-backup` = last known-good production (taken before each deploy)
+
+**Disaster scenarios:**
+| Scenario | Recovery |
+|----------|----------|
+| Broken after deploy | `bash scripts/oci_bucket_copy.sh bim-ootb-backup bim-ootb-full sandbox/` |
+| Partial copy (network cut) | Re-run the same copy command — idempotent, overwrites all |
+| Browser serves stale version | Hard refresh (Ctrl+Shift+R), bump `?v=` query strings |
+| Prod bucket lost | Copy from backup: `bash scripts/oci_bucket_copy.sh bim-ootb-backup bim-ootb-full` |
+| Both prod + backup lost | All files in git (`deploy/sandbox/`). Re-create bucket, upload from local |
+
+No git restore needed for rollback. Git is the archive, OCI is the deployment layer.
+
 **Rules:**
-- Git clean before deploy. Always.
+- ALWAYS snapshot before deploy. No exceptions.
 - Deploy what was tested. No cherry-picking.
-- Rollback = git restore + re-upload. No new commit.
-- Sandbox is production source. Dev is staging only.
+- Rollback = one script: backup → prod. No git, no local files.
+- Git commit (Step 5) is for the record, not for recovery.
+- Smoke test = landing + viewer + phone. All three.

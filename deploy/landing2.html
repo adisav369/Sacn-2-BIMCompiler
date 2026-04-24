@@ -146,6 +146,26 @@
 </div>
 
 <div id="content" style="display:none">
+  <!-- S220: IFC Import Zone -->
+  <div style="max-width:1200px;margin:0 auto;padding:16px 20px">
+    <div id="import-zone" style="border:2px dashed rgba(79,195,247,0.3);border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:all 0.15s;background:rgba(79,195,247,0.04)">
+      <div style="font-size:28px;margin-bottom:8px">📂</div>
+      <div style="color:#4fc3f7;font-size:15px;font-weight:600">Import IFC</div>
+      <div style="color:#666;font-size:12px;margin-top:4px">Drop file here or tap to browse. Any IFC. &lt;50MB instant.</div>
+      <div id="import-status" style="color:#aaa;font-size:12px;margin-top:8px"></div>
+      <div style="display:none;margin-top:8px;height:6px;background:#222;border-radius:3px;overflow:hidden">
+        <div id="import-progress-bar" style="height:100%;width:0%;background:#4fc3f7;border-radius:3px;transition:width 0.3s"></div>
+      </div>
+      <input type="file" id="import-file-input" accept=".ifc" style="display:none">
+    </div>
+  </div>
+
+  <!-- S220: My Buildings (imported) -->
+  <div id="my-buildings-section" style="display:none">
+    <div class="section-header">My Buildings</div>
+    <div class="grid" id="my-buildings-grid"></div>
+  </div>
+
   <div id="city-progress" style="display:none; padding:12px 20px; max-width:1200px; margin:0 auto">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px">
       <span style="font-size:14px; font-weight:700; color:#4fc3f7; letter-spacing:1px">COMPLETE THE CITY</span>
@@ -442,6 +462,287 @@ async function loadManifest() {
 }
 
 loadManifest();
+
+// ── S220: IFC Import ──
+const IMPORT_DB_NAME = 'bim_ootb_imports';
+const IMPORT_STORE = 'buildings';
+
+function openImportDB() {
+  return new Promise(resolve => {
+    const req = indexedDB.open(IMPORT_DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(IMPORT_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+}
+
+// Cache DB helper (same as viewer scene.js)
+const CACHE_DB_NAME = 'bim_ootb_cache';
+const CACHE_STORE = 'dbs';
+function openCacheDB() {
+  return new Promise(resolve => {
+    const req = indexedDB.open(CACHE_DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(CACHE_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+}
+
+async function listImports() {
+  const db = await openImportDB();
+  if (!db) return [];
+  return new Promise(resolve => {
+    const tx = db.transaction(IMPORT_STORE, 'readonly');
+    const store = tx.objectStore(IMPORT_STORE);
+    const req = store.getAllKeys();
+    req.onsuccess = () => {
+      const keys = req.result;
+      if (keys.length === 0) { resolve([]); return; }
+      const items = [];
+      let done = 0;
+      for (const key of keys) {
+        const r2 = store.get(key);
+        r2.onsuccess = () => {
+          items.push({ key, meta: r2.result ? r2.result.meta : null });
+          done++;
+          if (done === keys.length) resolve(items);
+        };
+        r2.onerror = () => { done++; if (done === keys.length) resolve(items); };
+      }
+    };
+    req.onerror = () => resolve([]);
+  });
+}
+
+async function deleteImported(key) {
+  // Delete from import store
+  const db = await openImportDB();
+  if (db) {
+    await new Promise(resolve => {
+      const tx = db.transaction(IMPORT_STORE, 'readwrite');
+      tx.objectStore(IMPORT_STORE).delete(key);
+      tx.oncomplete = resolve;
+    });
+  }
+  // Also clear viewer cache (import:// URLs)
+  const cacheDb = await openCacheDB();
+  if (cacheDb) {
+    try {
+      await new Promise(resolve => {
+        const tx = cacheDb.transaction(CACHE_STORE, 'readwrite');
+        const store = tx.objectStore(CACHE_STORE);
+        store.delete('import://' + key + '/extracted');
+        store.delete('import://' + key + '/library');
+        tx.oncomplete = resolve;
+      });
+    } catch(e) { /* cache may not have these keys */ }
+  }
+  // Reset progress bar
+  var bar = document.getElementById('import-progress-bar');
+  if (bar) { bar.style.width = '0%'; bar.style.background = '#4fc3f7'; bar.parentElement.style.display = 'none'; }
+  var status = document.getElementById('import-status');
+  if (status) status.textContent = '';
+  console.log('[S220] §IMPORT_DELETE key=' + key);
+  renderImportCards();
+}
+
+async function openImported(key) {
+  const db = await openImportDB();
+  if (!db) return;
+  const record = await new Promise(resolve => {
+    const tx = db.transaction(IMPORT_STORE, 'readonly');
+    const req = tx.objectStore(IMPORT_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+  if (!record) { alert('Building not found'); return; }
+
+  // Put DBs into viewer cache with import:// URLs
+  const cacheDb = await openCacheDB();
+  if (cacheDb) {
+    const importDbUrl = 'import://' + key + '/extracted';
+    const importLibUrl = 'import://' + key + '/library';
+    await new Promise(resolve => {
+      const tx = cacheDb.transaction(CACHE_STORE, 'readwrite');
+      tx.objectStore(CACHE_STORE).put(record.extractedDb, importDbUrl);
+      tx.objectStore(CACHE_STORE).put(record.libraryDb, importLibUrl);
+      tx.oncomplete = resolve;
+    });
+    const viewerUrl = (_base || '') + 'sandbox/index.html?db=' +
+      encodeURIComponent(importDbUrl) + '&lib=' + encodeURIComponent(importLibUrl);
+    const win = window.open(viewerUrl, '_blank');
+    trackTab(record.meta.name, '3D', win);
+  }
+}
+
+async function renderImportCards() {
+  const container = document.getElementById('my-buildings-grid');
+  const section = document.getElementById('my-buildings-section');
+  if (!container || !section) return;
+  const imports = await listImports();
+  if (imports.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  container.innerHTML = '';
+  for (const item of imports) {
+    if (!item.meta) continue;
+    const card = document.createElement('div');
+    card.className = 'card';
+    const discs = item.meta.disciplines || {};
+    const total = item.meta.elementCount || 0;
+    const discBars = Object.entries(discs).map(([d, c]) => {
+      const pct = Math.max(3, (c / total) * 100);
+      const color = DISC_COLORS[d] || '#888';
+      return '<span class="disc-bar" style="width:' + pct + '%;background:' + color + '"></span>';
+    }).join('');
+    card.innerHTML =
+      '<div class="name">' + item.meta.name + '</div>' +
+      '<div class="meta"><b>' + total.toLocaleString() + '</b> elements · ' + Object.keys(discs).join(', ') + '</div>' +
+      '<div class="disc-bars">' + discBars + '</div>' +
+      '<div style="display:flex;gap:6px;margin-top:10px">' +
+        '<button class="open-btn" style="flex:1" data-key="' + item.key + '">Open</button>' +
+        '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + item.key + '">x</button>' +
+      '</div>';
+    card.querySelector('[data-key]').onclick = function() { openImported(this.dataset.key); };
+    card.querySelector('[data-del]').onclick = function(e) {
+      e.stopPropagation();
+      if (confirm('Delete ' + item.meta.name + '?')) deleteImported(this.dataset.del);
+    };
+    container.appendChild(card);
+  }
+}
+
+// Import handler
+async function handleImportFile(file) {
+  if (!file || !/\.ifc$/i.test(file.name)) {
+    document.getElementById('import-status').textContent = 'Please select an .ifc file';
+    return;
+  }
+  const status = document.getElementById('import-status');
+  const progressBar = document.getElementById('import-progress-bar');
+  const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+  status.textContent = 'Reading ' + file.name + ' (' + sizeMB + 'MB)...';
+  progressBar.parentElement.style.display = 'block';
+  progressBar.style.width = '0%';
+  progressBar.style.background = '#4fc3f7';
+
+  if (file.size > 200 * 1024 * 1024) status.textContent = 'Very large (' + sizeMB + 'MB) — may take a few minutes';
+
+  const arrayBuffer = await file.arrayBuffer();
+  const worker = new Worker('sandbox/import_worker.js');
+
+  worker.onmessage = async function(e) {
+    const msg = e.data;
+    if (msg.type === 'progress') {
+      status.textContent = msg.phase;
+      progressBar.style.width = msg.pct + '%';
+      return;
+    }
+    if (msg.type === 'error') {
+      status.textContent = 'Failed: ' + msg.message;
+      progressBar.style.background = '#cc4444';
+      worker.terminate();
+      return;
+    }
+    if (msg.type === 'done') {
+      status.textContent = 'Building databases...';
+      try {
+        // Load sql.js to build DBs
+        if (typeof initSqlJs === 'undefined') {
+          await new Promise(resolve => {
+            const s = document.createElement('script');
+            s.src = 'https://sql.js.org/dist/sql-wasm.js';
+            s.onload = resolve;
+            document.head.appendChild(s);
+          });
+        }
+        const SQL = await initSqlJs({ locateFile: f => 'https://sql.js.org/dist/' + f });
+
+        // Build extracted DB — schema must match viewer's streaming.js expectations
+        const extDb = new SQL.Database();
+        extDb.run('CREATE TABLE IF NOT EXISTS project_metadata (key TEXT PRIMARY KEY, value TEXT)');
+        extDb.run('INSERT INTO project_metadata VALUES (?,?),(?,?)', ['project_name', msg.meta.name, 'import_date', new Date().toISOString()]);
+
+        // elements_meta: viewer reads guid, ifc_class, element_name, storey, discipline, material_rgba, building
+        extDb.run('CREATE TABLE IF NOT EXISTS elements_meta (guid TEXT PRIMARY KEY, ifc_class TEXT, element_name TEXT, storey TEXT, discipline TEXT, material_name TEXT, material_rgba TEXT, building TEXT)');
+
+        // element_transforms: viewer reads center_x, center_y, center_z, rotation_x, rotation_y, rotation_z
+        extDb.run('CREATE TABLE IF NOT EXISTS element_transforms (guid TEXT PRIMARY KEY, center_x REAL, center_y REAL, center_z REAL, rotation_x REAL, rotation_y REAL, rotation_z REAL)');
+
+        // element_instances: viewer joins on guid → geometry_hash
+        extDb.run('CREATE TABLE IF NOT EXISTS element_instances (guid TEXT PRIMARY KEY, geometry_hash TEXT)');
+
+        const stmtEl = extDb.prepare('INSERT OR IGNORE INTO elements_meta VALUES (?,?,?,?,?,?,?,?)');
+        for (const el of msg.elements) stmtEl.run([el.guid, el.ifcClass, el.name, el.storey, el.discipline, el.material, null, msg.meta.name]);
+        stmtEl.free();
+
+        const stmtTr = extDb.prepare('INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?,?,?)');
+        for (const t of msg.transforms) stmtTr.run([t.guid, t.cx, t.cy, t.cz, t.rx, t.ry, t.rz]);
+        stmtTr.free();
+
+        const stmtInst = extDb.prepare('INSERT OR IGNORE INTO element_instances VALUES (?,?)');
+        for (const g of msg.geometries) stmtInst.run([g.guid, g.geomHash]);
+        stmtInst.free();
+
+        console.log('[S220] §DB_BUILD extracted: elements=' + msg.elements.length + ' transforms=' + msg.transforms.length + ' instances=' + msg.geometries.length);
+
+        // Build library DB — viewer reads geometry_hash, vertices, faces
+        const libDb = new SQL.Database();
+        libDb.run('CREATE TABLE IF NOT EXISTS component_geometries (geometry_hash TEXT PRIMARY KEY, vertices BLOB, faces BLOB, building TEXT)');
+        const stmtGeo = libDb.prepare('INSERT OR IGNORE INTO component_geometries VALUES (?,?,?,?)');
+        for (const g of msg.geometries) stmtGeo.run([g.geomHash, new Uint8Array(g.vertices), new Uint8Array(g.indices), msg.meta.name]);
+        stmtGeo.free();
+
+        console.log('[S220] §DB_BUILD library: geometries=' + msg.geometries.length);
+
+        const extBuf = extDb.export().buffer;
+        const libBuf = libDb.export().buffer;
+        extDb.close();
+        libDb.close();
+
+        // Save to IndexedDB
+        const importDb = await openImportDB();
+        if (importDb) {
+          await new Promise(resolve => {
+            const tx = importDb.transaction(IMPORT_STORE, 'readwrite');
+            tx.objectStore(IMPORT_STORE).put({ meta: msg.meta, extractedDb: extBuf, libraryDb: libBuf }, file.name);
+            tx.oncomplete = resolve;
+          });
+        }
+
+        status.textContent = 'Imported ' + msg.meta.elementCount + ' elements';
+        progressBar.style.width = '100%';
+        progressBar.style.background = '#44cc44';
+        renderImportCards();
+      } catch(dbErr) {
+        status.textContent = 'DB error: ' + dbErr.message;
+        progressBar.style.background = '#cc4444';
+      }
+      worker.terminate();
+    }
+  };
+
+  worker.onerror = function(err) {
+    status.textContent = 'Worker error: ' + err.message;
+    progressBar.style.background = '#cc4444';
+    worker.terminate();
+  };
+
+  worker.postMessage({ arrayBuffer, filename: file.name }, [arrayBuffer]);
+}
+
+// Wire drop zone
+const dropZone = document.getElementById('import-zone');
+const fileInput = document.getElementById('import-file-input');
+if (dropZone) {
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#4fc3f7'; });
+  dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'rgba(79,195,247,0.3)'; });
+  dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = 'rgba(79,195,247,0.3)'; handleImportFile(e.dataTransfer.files[0]); });
+  dropZone.addEventListener('click', () => { if (fileInput) fileInput.click(); });
+}
+if (fileInput) fileInput.addEventListener('change', () => { handleImportFile(fileInput.files[0]); fileInput.value = ''; });
+
+// Render existing imports
+renderImportCards();
 </script>
 <script data-goatcounter="https://red1oon.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>

@@ -5,6 +5,17 @@ function setupCity(A) {
   A.cityArchetypes = {};
   A.cityBuildingDbs = {};
 
+  // ── Clear button (free RAM) — city mode only ──
+  if (A.CITY_URL) {
+  const clearBtn = document.createElement('button');
+  clearBtn.id = 'city-clear-btn';
+  clearBtn.title = 'Clear loaded meshes (free RAM)';
+  clearBtn.textContent = '🗑 Clear';
+  clearBtn.style.cssText = 'position:fixed;bottom:40px;right:16px;z-index:15;padding:8px 16px;background:#cc4444;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px;box-shadow:0 2px 8px rgba(204,68,68,0.4)';
+  clearBtn.onclick = function() { A.cityClear(); };
+  document.body.appendChild(clearBtn);
+  }
+
   A.initCity = async function(SQL) {
     A.citySQL = SQL;
     A.status.textContent = `Fetching city index (${A.CITY_URL})...`;
@@ -112,15 +123,6 @@ function setupCity(A) {
     A.camera.updateProjectionMatrix();
     A.controls.target.set(0, 10, 0);
     A.controls.update();
-
-    // ── City Clear button (free RAM, keep bboxes + cached DBs) ──
-    const clearBtn = document.createElement('button');
-    clearBtn.id = 'city-clear-btn';
-    clearBtn.title = 'Clear loaded meshes (free RAM)';
-    clearBtn.textContent = '🗑 Clear';
-    clearBtn.style.cssText = 'position:fixed;bottom:40px;right:16px;z-index:15;padding:8px 16px;background:#cc4444;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px;box-shadow:0 2px 8px rgba(204,68,68,0.4)';
-    clearBtn.onclick = function() { A.cityClear(); };
-    document.body.appendChild(clearBtn);
 
     console.log(`[S203] §CITY_READY buildings=${Object.keys(A.buildingCentres).length} archetypes=${Object.keys(A.cityArchetypes).length} elements=${A.totalElements}`);
     A.status.textContent = `CITY MODE — ${Object.keys(A.buildingCentres).length} buildings, ${A.totalElements.toLocaleString()} elements. Click a building to load.`;
@@ -255,13 +257,14 @@ function setupCity(A) {
       if (obj.material) obj.material.dispose();
     });
     A.streamedCount = 0;
-    A.buildingsRendered.clear();
+    if (A.buildingsRendered) A.buildingsRendered.clear();
     A.guidMap = {};
-    document.getElementById('s-streamed').textContent = '0';
-    document.getElementById('s-buildings-done').textContent = '0';
-    document.getElementById('s-active').textContent = '—';
-    document.getElementById('s-progress').style.width = '0%';
+    var el;
+    if ((el = document.getElementById('s-streamed'))) el.textContent = '0';
+    if ((el = document.getElementById('s-buildings-done'))) el.textContent = '0';
+    if ((el = document.getElementById('s-active'))) el.textContent = '—';
+    if ((el = document.getElementById('s-progress'))) el.style.width = '0%';
     console.log(`[S210] §CITY_CLEAR removed=${toRemove.length} meshes freed`);
-    A.status.textContent = `CITY CLEARED — ${toRemove.length} meshes removed. Click a building to reload.`;
+    A.status.textContent = `CLEARED — ${toRemove.length} meshes removed.`;
   };
 }

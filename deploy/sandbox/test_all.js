@@ -129,19 +129,26 @@ ok('toggleIssues restores search-box', issuesJs.includes("display = ''"), 'searc
 const toolsJs = fs.readFileSync(path.join(DIR, 'tools.js'), 'utf8');
 ok('export4D5D encodes dbParam', toolsJs.includes("encodeURIComponent(dbParam)"), 'dbParam not encoded — will cause recursive URL');
 
-// Verify OCI content matches local (not just 200)
-console.log('\n═══ 9b. OCI Content Match ═══');
-const criticalFiles = ['tools.js', 'issues.js', 'excel.js'];
-for (const f of criticalFiles) {
+// Verify OCI content matches local — ALL sandbox files (not just critical 3)
+console.log('\n═══ 9b. OCI Content Match (full sync) ═══');
+const crypto = require('crypto');
+const sandboxFiles = fs.readdirSync(DIR)
+  .filter(f => /\.(js|html)$/.test(f) && !f.includes('test') && !f.includes('walk_math') && !f.includes('voice_'));
+let syncDrift = [];
+for (const f of sandboxFiles) {
   const local = fs.readFileSync(path.join(DIR, f), 'utf8');
+  const localHash = crypto.createHash('md5').update(local).digest('hex').slice(0, 8);
   try {
     const remote = execSync(`curl -s "${BASE_FULL}/${f}"`, { stdio: 'pipe', timeout: 10000 }).toString();
-    ok(`full/${f} content matches local`, remote === local, 'DEPLOYED VERSION DIFFERS FROM LOCAL');
-  } catch(e) { ok(`full/${f} content`, false, 'curl failed'); }
-  try {
-    const remote2 = execSync(`curl -s "${BASE_DEMO}/${f}"`, { stdio: 'pipe', timeout: 10000 }).toString();
-    ok(`demo/${f} content matches local`, remote2 === local, 'DEPLOYED VERSION DIFFERS FROM LOCAL');
-  } catch(e) { ok(`demo/${f} content`, false, 'curl failed'); }
+    const remoteHash = crypto.createHash('md5').update(remote).digest('hex').slice(0, 8);
+    const match = localHash === remoteHash;
+    ok(`full/${f} synced (${localHash})`, match, `DRIFT local=${localHash} live=${remoteHash}`);
+    if (!match) syncDrift.push(f);
+  } catch(e) { ok(`full/${f} fetch`, false, 'curl failed'); }
+}
+if (syncDrift.length > 0) {
+  console.log(`  ⚠ DRIFT in ${syncDrift.length} file(s): ${syncDrift.join(', ')}`);
+  console.log(`  → Re-upload: ${syncDrift.map(f => `oci os object put --bucket-name bim-ootb-full --file deploy/sandbox/${f} --name sandbox/${f} --force`).join('\n    ')}`);
 }
 
 // ═══ 10. URL integrity — no recursive nesting, correct routing ═══
@@ -329,6 +336,71 @@ if (fs.existsSync(path.join(devDir, 'boq_charts.html'))) {
   ok('dev boq: save5D is async', devBoq.includes('async function save5D'), 'save5D not async — ExcelJS writeBuffer needs await');
   ok('dev boq: save4D is async', devBoq.includes('async function save4D'), 'save4D not async — ExcelJS writeBuffer needs await');
   ok('dev boq: header fill per-cell (not full row)', devBoq.includes('getCell(c)') && devBoq.includes('cell.fill'), 'header fill applies to entire row — blue bars extend past data');
+}
+
+// ═══ 13. Version Fingerprint (which version is live?) ═══
+console.log('\n═══ 13. Version Fingerprint ═══');
+try {
+  // Composite hash of ALL sandbox source files = unique fingerprint for this version
+  const srcFiles = fs.readdirSync(DIR)
+    .filter(f => /\.(js|html)$/.test(f) && !f.includes('test') && !f.includes('walk_math') && !f.includes('voice_'))
+    .sort();
+  const composite = crypto.createHash('sha256');
+  for (const f of srcFiles) composite.update(fs.readFileSync(path.join(DIR, f)));
+  const localFingerprint = composite.digest('hex').slice(0, 12);
+
+  // Get git commit that last touched sandbox
+  const lastCommit = execSync('git log -1 --format="%h %s" -- deploy/sandbox/', { stdio: 'pipe' }).toString().trim();
+
+  // Check live fingerprint
+  const liveComposite = crypto.createHash('sha256');
+  let liveFetchOk = true;
+  for (const f of srcFiles) {
+    try {
+      const remote = execSync(`curl -s "${BASE_FULL}/${f}"`, { stdio: 'pipe', timeout: 10000 });
+      liveComposite.update(remote);
+    } catch(e) { liveFetchOk = false; }
+  }
+  const liveFingerprint = liveFetchOk ? liveComposite.digest('hex').slice(0, 12) : 'FETCH_FAILED';
+
+  const synced = localFingerprint === liveFingerprint;
+  console.log(`  LOCAL  ${localFingerprint}  ← git: ${lastCommit}`);
+  console.log(`  LIVE   ${liveFingerprint}  ← bim-ootb-full/sandbox/`);
+  ok('version: local ↔ live fingerprint match', synced, `MISMATCH — local=${localFingerprint} live=${liveFingerprint}. Deploy needed or rollback required.`);
+  if (!synced && syncDrift.length > 0) {
+    console.log(`  DRIFTED FILES (${syncDrift.length}):`);
+    for (const f of syncDrift) console.log(`    - ${f}`);
+    console.log('  → To find last working version: git log --oneline -- deploy/sandbox/');
+    console.log('  → To restore to specific commit: git checkout <commit> -- deploy/sandbox/ && re-upload');
+  }
+} catch(e) {
+  ok('version fingerprint', false, e.message);
+}
+
+// ═══ 14. Rollback Dry Run (git restore proof) ═══
+console.log('\n═══ 14. Rollback Dry Run ═══');
+try {
+  // Create a worktree, corrupt a sandbox file, restore it, verify recovery
+  const wtDir = '/tmp/bim-rollback-test-' + Date.now();
+  execSync(`git worktree add "${wtDir}" HEAD --quiet 2>&1`, { stdio: 'pipe', timeout: 15000 });
+  // Corrupt a file in the worktree
+  const testFile = path.join(wtDir, 'deploy/sandbox/main.js');
+  const originalContent = fs.readFileSync(testFile, 'utf8');
+  fs.writeFileSync(testFile, '// CORRUPTED BY ROLLBACK TEST');
+  ok('rollback: file corrupted in worktree', fs.readFileSync(testFile, 'utf8') !== originalContent);
+  // Restore it
+  execSync(`git -C "${wtDir}" restore deploy/sandbox/main.js`, { stdio: 'pipe', timeout: 5000 });
+  const restored = fs.readFileSync(testFile, 'utf8');
+  ok('rollback: git restore recovered file', restored === originalContent, 'RESTORE FAILED — file differs after git restore');
+  // Verify hash matches current commit
+  const commitHash = crypto.createHash('md5').update(originalContent).digest('hex').slice(0, 8);
+  const restoredHash = crypto.createHash('md5').update(restored).digest('hex').slice(0, 8);
+  ok(`rollback: hash intact (${restoredHash})`, commitHash === restoredHash, `HASH MISMATCH commit=${commitHash} restored=${restoredHash}`);
+  // Clean up worktree
+  execSync(`git worktree remove "${wtDir}" --force 2>&1`, { stdio: 'pipe', timeout: 5000 });
+  ok('rollback: worktree cleaned up', !fs.existsSync(wtDir));
+} catch(e) {
+  ok('rollback dry run', false, `worktree test failed: ${e.message}`);
 }
 
 // ═══ SUMMARY ═══

@@ -18,6 +18,7 @@ function initViewer() {
   setupWalk(APP);
   setupCity(APP);
   if (typeof setupNlp === 'function') setupNlp(APP);
+  if (typeof setupImport === 'function') setupImport(APP);
 
   // Expose functions to HTML onclick handlers
   window.togglePanel = APP.togglePanel;
