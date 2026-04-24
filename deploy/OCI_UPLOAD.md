@@ -110,19 +110,39 @@ Step 1 — TEST        Run ALL tests. Both must pass.
                        a) node deploy/sandbox/test_all.js   (full suite)
                        b) node deploy/dev/s2XX_test.js      (feature-specific)
 Step 2 — SNAPSHOT    OCI copy: prod → backup  (save current live state)
+                       a) sandbox/ prefix: bash scripts/oci_bucket_copy.sh bim-ootb-full bim-ootb-backup sandbox/
+                       b) root index.html:  download from prod, upload to backup
 Step 3 — DEPLOY      OCI copy: dev → prod     (push tested code live)
+                       a) sandbox/ prefix: bash scripts/oci_bucket_copy.sh bim-ootb-dev bim-ootb-full sandbox/
+                       b) root index.html:  sed-strip DEV markers from landing2.html, upload to prod
+                          - landing2.html has DEV banner + DEV title — NEVER upload as-is to prod
+                          - Strip: title "DEV", orange DEV banner, h1 "DEV"
+                          - Command: sed -e 's/BIM OOTB — DEV/BIM OOTB/' \
+                              -e 's|<div style="background:#cc6600.*DEV ENVIRONMENT.*</div>||' \
+                              -e 's|<h1 style="color:#cc6600">BIM OOTB — DEV</h1>|<h1>BIM OOTB</h1>|' \
+                              deploy/landing2.html > /tmp/landing_prod.html
+                          - Verify: grep -c "DEV ENVIRONMENT" /tmp/landing_prod.html  # must be 0
+                          - Upload: oci os object put --bucket-name bim-ootb-full --file /tmp/landing_prod.html \
+                              --name index.html --content-type text/html --force
 Step 4 — SMOKE       Open production URL on phone + desktop. Verify.
+                       - NO "DEV ENVIRONMENT" banner visible
+                       - Title bar shows "BIM OOTB" not "BIM OOTB — DEV"
 Step 5 — COMMIT      Copy dev → sandbox locally, git add + commit.
 ```
 
-**If broken after Step 4 — ROLLBACK (one command):**
+**If broken after Step 4 — ROLLBACK (two commands):**
 ```bash
 # Copy backup → prod (restore pre-deploy state)
 bash scripts/oci_bucket_copy.sh bim-ootb-backup bim-ootb-full sandbox/
 
+# Also restore root index.html from backup
+TMPDIR=$(mktemp -d) && oci os object get --bucket-name bim-ootb-backup --name index.html --file "$TMPDIR/index.html" && \
+  oci os object put --bucket-name bim-ootb-full --name index.html --file "$TMPDIR/index.html" --content-type text/html --force && rm -rf "$TMPDIR"
+
 # Verify
 curl -s -o /dev/null -w "%{http_code}" https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/sandbox/index.html
-# Must return 200
+curl -s -o /dev/null -w "%{http_code}" https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html
+# Both must return 200
 ```
 No git involved. Backup bucket IS the known-good version.
 
