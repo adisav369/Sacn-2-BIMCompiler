@@ -5359,7 +5359,7 @@ They solve design. This solves construction.</p>
 </blockquote>
 <p><strong>This is not enough.</strong> You need:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Not just export—bidirectional sync</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">sync_roundtrip</span><span class="p">(</span><span class="n">original_ifc_path</span><span class="p">,</span> <span class="n">compiled_db</span><span class="p">,</span> <span class="n">output_ifc_path</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">sync_roundtrip</span><span class="p">(</span><span class="n">original_ifc_path</span><span class="p">,</span> <span class="n">compiled_db</span><span class="p">,</span> <span class="n">output_ifc_path</span><span class="p">):</span>
     <span class="c1"># 1. Parse original IFC with IfcOpenShell</span>
     <span class="n">original_model</span> <span class="o">=</span> <span class="n">ifcopenshell</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">original_ifc_path</span><span class="p">)</span>
 
