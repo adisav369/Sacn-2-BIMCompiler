@@ -527,15 +527,20 @@ async function init() {
       const guids1 = new Set(db.exec("SELECT guid FROM elements_meta")[0].values.map(r => r[0]));
       const guids2 = new Set(diffDb.exec("SELECT guid FROM elements_meta")[0].values.map(r => r[0]));
       const added = [...guids2].filter(g => !guids1.has(g));
-      const removed = [...guids1].filter(g => !guids2.has(g));
-      const changed = [...guids2].filter(g => guids1.has(g)).filter(g => {
+      const common = [...guids2].filter(g => guids1.has(g));
+      const changed = common.filter(g => {
         const r1 = db.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid='" + g.replace(/'/g, "''") + "'");
         const r2 = diffDb.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid='" + g.replace(/'/g, "''") + "'");
         return JSON.stringify(r1[0]?.values[0]) !== JSON.stringify(r2[0]?.values[0]);
       });
-      diffResult = { added, removed, changed };
-      console.log('[S224] §BOQ_DIFF added=' + added.length + ' removed=' + removed.length + ' changed=' + changed.length);
-      document.getElementById('info').textContent += ' | VARIANCE: +' + added.length + ' −' + removed.length + ' ~' + changed.length;
+      // S225: merge vs revision — <10% overlap = merge (don't flag base as removed)
+      const overlap = common.length / Math.max(guids1.size, guids2.size);
+      const isMerge = overlap < 0.1;
+      const removed = isMerge ? [] : [...guids1].filter(g => !guids2.has(g));
+      diffResult = { added, removed, changed, isMerge };
+      console.log('[S225] §BOQ_DIFF added=' + added.length + ' removed=' + removed.length + ' changed=' + changed.length + ' mode=' + (isMerge ? 'MERGE' : 'REVISION'));
+      var modeTag = isMerge ? ' | MERGE: +' + added.length + ' new elements' : ' | VARIANCE: +' + added.length + ' −' + removed.length + ' ~' + changed.length;
+      document.getElementById('info').textContent += modeTag;
     } catch(e) {
       console.log('[S224] §BOQ_DIFF_ERROR ' + e.message);
     }
@@ -569,7 +574,7 @@ function renderCharts() {
   chartInstances.push(new Chart(pieCanvas, {
     type:'pie',
     data:{labels:discs, datasets:[{data:discTotals, backgroundColor:discs.map(d=>DISC_COLORS[d]||'#888')}]},
-    options:{aspectRatio:1, maintainAspectRatio:true, plugins:{legend:{position:'right',labels:{color:'#ccc',font:{size:13}}}}}
+    options:{aspectRatio:1, maintainAspectRatio:true, plugins:{legend:{position:'right',labels:{color:'#ddd',font:{size:14}}}}}
   }));
   logChart(1,'Pie','Cost Breakdown by Discipline',discs.length);
 
@@ -589,7 +594,7 @@ function renderCharts() {
         {label:'Equipment',data:discs.map(d=>discSummary[d].equipCost),backgroundColor:'#5B9BD5'},
       ]
     },
-    options:{scales:{y:{stacked:true,ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}},x:{stacked:true,ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{labels:{color:'#ccc'}}}}
+    options:{scales:{y:{stacked:true,ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{stacked:true,ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{labels:{color:'#ddd',font:{size:13}}}}}
   }));
   logChart(2,'Bar','Cost Components by Discipline',discs.length);
 
@@ -606,7 +611,7 @@ function renderCharts() {
   chartInstances.push(new Chart(tpCanvas, {
     type:'pie',
     data:{labels:tpPhases, datasets:[{data:tpPhases.map(p=>taskPhaseCounts[p]), backgroundColor:tpPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
-    options:{aspectRatio:1, maintainAspectRatio:true, plugins:{legend:{position:'right',labels:{color:'#ccc',font:{size:13}}}}}
+    options:{aspectRatio:1, maintainAspectRatio:true, plugins:{legend:{position:'right',labels:{color:'#ddd',font:{size:14}}}}}
   }));
   logChart(3,'Pie','Task Distribution by Phase',tpPhases.length);
 
@@ -623,7 +628,7 @@ function renderCharts() {
   chartInstances.push(new Chart(tdCanvas, {
     type:'bar',
     data:{labels:tdDiscs, datasets:[{label:'Tasks',data:tdDiscs.map(d=>taskDiscCounts[d]),backgroundColor:tdDiscs.map(d=>DISC_COLORS[d]||'#888')}]},
-    options:{scales:{y:{title:{display:true,text:'Number of Tasks',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}},x:{title:{display:true,text:'Discipline',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
+    options:{scales:{y:{title:{display:true,text:'Number of Tasks',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{title:{display:true,text:'Discipline',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(4,'Bar','Task Count by Discipline',tdDiscs.length);
 
@@ -640,7 +645,7 @@ function renderCharts() {
   chartInstances.push(new Chart(pdCanvas, {
     type:'bar',
     data:{labels:pdPhases, datasets:[{label:'Days',data:pdPhases.map(p=>Math.round(phaseDur[p])),backgroundColor:pdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
-    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Days',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}},y:{ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
+    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Days',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},y:{ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(5,'H-Bar','Phase Duration',pdPhases.length);
 
@@ -657,7 +662,7 @@ function renderCharts() {
   chartInstances.push(new Chart(mdCanvas, {
     type:'bar',
     data:{labels:mdPhases, datasets:[{label:'Man-Days',data:mdPhases.map(p=>Math.round(phaseMandays[p])),backgroundColor:mdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
-    options:{scales:{y:{title:{display:true,text:'Man-Days',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}},x:{ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
+    options:{scales:{y:{title:{display:true,text:'Man-Days',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(6,'Column','Resource Workload',mdPhases.length);
 
@@ -690,7 +695,7 @@ function renderCharts() {
     chartInstances.push(new Chart(scCanvas, {
       type:'line',
       data:{labels:weekLabels, datasets:[{label:'% Complete',data:weekPcts,borderColor:'#4fc3f7',backgroundColor:'rgba(79,195,247,0.1)',fill:true,tension:0.3}]},
-      options:{scales:{y:{min:0,max:100,title:{display:true,text:'% Complete',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}},x:{title:{display:true,text:'Project Week',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
+      options:{scales:{y:{min:0,max:100,title:{display:true,text:'% Complete',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{title:{display:true,text:'Project Week',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
     }));
     logChart(7,'Line','S-Curve Progress',weekLabels.length);
   }
@@ -723,7 +728,7 @@ function renderCharts() {
   chartInstances.push(new Chart(msCanvas, {
     type:'bar',
     data:{labels:milestones.map(m=>m.name), datasets:[{label:'Day',data:milestones.map(m=>m.day),backgroundColor:milestones.map(m=>m.name.includes('Start')?'#70AD47':m.name.includes('End')?'#ED7D31':'#4fc3f7')}]},
-    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Day from Project Start',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}},y:{ticks:{color:'#ccc',font:{size:10}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
+    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Day from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},y:{ticks:{color:'#ccc',font:{size:10}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(8,'H-Bar','Milestone Timeline',milestones.length);
 
@@ -748,7 +753,7 @@ function renderCharts() {
     options:{
       indexAxis:'y',
       scales:{
-        x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}},
+        x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},
         y:{stacked:true,ticks:{color:'#ccc',font:{size:9}},grid:{color:'rgba(255,255,255,0.1)'}}
       },
       plugins:{
@@ -762,6 +767,52 @@ function renderCharts() {
     }
   }));
   logChart(9,'Stacked','Gantt Timeline',top15.length);
+
+  // ── S225: Variance Chart (when diff data present) ──
+  if (diffResult) {
+    const varBox = el('div','chart-box');
+    varBox.innerHTML = '<h2>5D — Variation Order Impact</h2>';
+    const varCanvas = el('canvas');
+    varBox.appendChild(varCanvas); c.appendChild(varBox);
+
+    // Cost impact per category (using VO_CFG rates if available)
+    var addCost = 0, remCost = 0, chgCost = 0;
+    var OH = 0.10, MK = 0.05;
+    function _vRate(vdb, guid) {
+      try {
+        var r = vdb.exec("SELECT ifc_class FROM elements_meta WHERE guid='" + guid.replace(/'/g, "''") + "'");
+        var cls = r[0]?.values[0]?.[0] || '';
+        var entry = RATES[cls];
+        return (entry && entry.rate) ? entry.rate : 500;
+      } catch(e) { return 500; }
+    }
+    diffResult.added.forEach(function(g)   { addCost += _vRate(diffDb, g); });
+    diffResult.removed.forEach(function(g) { remCost += _vRate(db, g); });
+    diffResult.changed.forEach(function(g) { chgCost += _vRate(diffDb, g) * 0.3; });
+
+    chartInstances.push(new Chart(varCanvas, {
+      type: 'bar',
+      data: {
+        labels: ['Added', 'Removed', 'Changed'],
+        datasets: [
+          { label: 'Elements', data: [diffResult.added.length, diffResult.removed.length, diffResult.changed.length],
+            backgroundColor: ['#44cc44', '#cc4444', '#cccc44'], yAxisID: 'y' },
+          { label: 'Cost Impact (RM)', data: [Math.round(addCost), Math.round(remCost), Math.round(chgCost)],
+            backgroundColor: ['rgba(68,204,68,0.3)', 'rgba(204,68,68,0.3)', 'rgba(204,204,68,0.3)'],
+            borderColor: ['#44cc44', '#cc4444', '#cccc44'], borderWidth: 2, yAxisID: 'y1' }
+        ]
+      },
+      options: {
+        scales: {
+          y:  { position: 'left', title: { display: true, text: 'Element Count', color: '#fff', font:{size:15} }, ticks: { color: '#ddd', font:{size:13} }, grid: { color: 'rgba(255,255,255,0.1)' } },
+          y1: { position: 'right', title: { display: true, text: 'Cost (RM)', color: '#fff', font:{size:15} }, ticks: { color: '#ddd', font:{size:13} }, grid: { drawOnChartArea: false } },
+          x:  { ticks: { color: '#ddd', font:{size:13} }, grid: { color: 'rgba(255,255,255,0.1)' } }
+        },
+        plugins: { legend: { labels: { color: '#ddd', font:{size:13} } } }
+      }
+    }));
+    logChart(10,'Bar','Variation Order Impact',3);
+  }
 
   // ── 10. BOQ Data Table (enhanced with Equipment column) ──
   const tableBox = el('div','chart-box full');
@@ -1222,7 +1273,7 @@ async function save5D() {
   // ── S224: Variance Order sheets (when diff data exists) ──
   if (diffResult && diffDb) {
     const VO_CFG = { addFactor: 1.0, removeFactor: 0.3, changeFactor: 1.3, overheadPct: 0.10, markupPct: 0.15, disruptionPct: 0.05 };
-    function voRate(cls) { return RATES[cls] || RATES._default || 500; }
+    function voRate(cls) { var r = RATES[cls]; return (r && r.rate) ? r.rate : 500; }
     function voPhase(cls) {
       const P = { IfcFooting:'Substructure', IfcPile:'Substructure', IfcColumn:'Superstructure', IfcBeam:'Superstructure', IfcSlab:'Superstructure',
         IfcWall:'Architecture', IfcWallStandardCase:'Architecture', IfcDoor:'Architecture', IfcWindow:'Architecture', IfcRoof:'Architecture',
