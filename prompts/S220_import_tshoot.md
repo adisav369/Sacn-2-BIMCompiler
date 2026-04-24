@@ -388,12 +388,9 @@ Added S223 diff + VO cost engine tests:
 | `deploy/dev/main.js` | Diff DB loading, overlay timing |
 | `deploy/dev/s220_test.js` | S223 diff + VO tests (7 new) |
 
-### What's Next (S224)
-1. Implement Merge/New UX (see Feature Review below)
-2. Browser smoke test with UNMERGED IFCs
-3. Test VO Excel download from diff summary panel
-4. Restore Export DB button on card (single file)
-5. Promote to prod when browser-proven
+### S223-S224 Implementation Done (2026-04-24)
+All items below implemented and deployed to OCI DEV. Committed as `fe1b0029`.
+See §S224 Feature Review for full spec. See §S225 for next session.
 
 ---
 
@@ -532,3 +529,79 @@ bim_ootb_imports (object store: 'buildings')
 | `§COMPARE_OPEN` | landing2.html | Which two versions selected |
 | `§VERSION_DELETE` | landing2.html | All versions deleted for project |
 | `§EXPORT_DB` | landing2.html | Single DB exported, size |
+| `§OPEN_DIFF` | landing2.html | Open auto-includes diff for multi-version |
+| `§BOQ_DIFF` | boq_charts.html | Variance detected, counts logged |
+| `§VO_IN_5D` | boq_charts.html | VO sheets added to 5D Excel |
+
+---
+
+## S225 — Next Session
+
+### ⚠ DO NOT REMOVE
+Scope: Fix variance detection end-to-end, test with real diff data.
+Read the log after every run.
+
+### Context
+S222-S224 built the full import→merge→compare→4D/5D pipeline. Deployed to DEV.
+Charts are fixed (perfect circles, visible axes). Merge/New modal works. Cards versioned.
+But **variance is not flowing end-to-end** — the 5D Excel does not include VO sheets.
+
+### Architecture (read this first)
+- **Single DB per import** — no separate library.db. Each IFC import produces ONE `.db` with metadata + geometry. `library.db` is enterprise-only (server-side component library) — does NOT exist in browser DIY flow.
+- **Versioned IndexedDB** — `bim_ootb_imports` v2. Each project key stores `{meta, versions[], latestVersion}`. Each version is a self-contained single DB (ArrayBuffer).
+- **Merge = version append, NOT data merge** — merging adds a new version entry. The two DBs stay separate. This is correct for variance detection (need two distinct DBs to diff).
+- **Diff chain**: landing `openProject()` → caches latest + previous version in `bim_ootb_cache` → viewer opens with `?db=...&diffdb=...` → `main.js` loads diffDb → `computeDiff()` → `applyDiffOverlay()` → user clicks 📊 → `tools.js` passes `?diffdb=` to `boq_charts.html` → boq_charts loads both DBs → adds VO sheets to 5D Excel.
+- **Viewer integrity** — without `?diffdb=`, viewer is 100% unchanged. With it, overlay + summary appear. No new buttons, no new panels.
+
+### Open Issue: Variance Not Reaching 5D Excel
+The F12 log from user's test shows `§BOQ_IMPORT_DB` but NO `§BOQ_DIFF` — meaning boq_charts opened without `?diffdb=` in the URL. Trace the full chain:
+
+1. **Does `openProject()` set `diffParam`?** Check that multi-version detection works — `record.versions.length > 1` and `prevIdx !== record.latestVersion`. Add `console.log` if missing.
+2. **Does the viewer URL contain `?diffdb=`?** Check browser address bar after Open on a v2 card. If missing, `openProject()` isn't passing it.
+3. **Does `tools.js export4D5D()` forward `?diffdb=`?** Check `new URLSearchParams(location.search).get('diffdb')` — if viewer URL doesn't have it, this returns null.
+4. **Does boq_charts receive `?diffdb=`?** Check its URL in browser tab. If missing, chain broke upstream.
+
+### Open Issue: "Open" Shows Only Latest Version
+Current behavior: Open on a merged card loads `versions[latestVersion]` only. If user merged WallElementedCase (10 el) into SampleHouse (65 el), Open shows just the wall — because latestVersion points to WallElementedCase.
+
+This may be correct (Open = view latest revision) or confusing (user expects combined building). Clarify with user before changing.
+
+### Open Issue: No library.db in DIY Flow
+The `import_db_builder.js` comment says "Enterprise setup: For centralised library...". The browser import ALWAYS produces a single DB. The viewer's `A.libDb = A.db` fallback handles this. BUT:
+- `openProject()` sets `libUrl = dbUrl` (correct — same single DB)
+- `openImported()` in `import.js` still writes separate `import://key/extracted` and `import://key/library` cache keys — both point to the same buffer, but the naming is legacy. Not a bug, just confusing.
+- **Rule**: Never reference `library.db` as a separate file in the DIY/browser flow. It does not exist. Single DB only.
+
+### DO
+- Read F12 console logs — every `§` tag tells you where the chain is
+- Test with SampleHouse (65 el, IFC4, proven) — `reference/residential/Ifc4_SampleHouse.ifc`
+- Trace the full `?diffdb=` chain from landing → viewer → boq_charts before changing code
+- Check `boq_charts.html` URL bar — if `diffdb` param is missing, fix upstream
+
+### DON'T
+- Don't invent test IFCs or fabricate data — use real files from `reference/`
+- Don't add a separate VO export button — variance goes through 4D/5D only
+- Don't create library.db in the browser flow — single DB only
+- Don't change viewer behavior for non-diff cases — viewer integrity is sacred
+- Don't touch deploy/sandbox/ (production) — all work in deploy/dev/ only
+
+### Files
+| File | What |
+|------|------|
+| `deploy/landing2.html` | Merge/New modal, versioned cards, openProject(), Compare |
+| `deploy/dev/import_db_builder.js` | Single DB builder (no library.db), building name from filename |
+| `deploy/dev/import.js` | Viewer-side import (IDB v2, versioned openImported) |
+| `deploy/dev/main.js` | Diff DB loading from ?diffdb= param, overlay timing |
+| `deploy/dev/diff.js` | computeDiff(), applyDiffOverlay(), showDiffSummary() |
+| `deploy/dev/tools.js` | export4D5D() forwards ?diffdb= to boq_charts |
+| `deploy/dev/boq_charts.html` | fetchDbBuffer for import://, diff loading, VO sheets in save5D |
+| `deploy/dev/variation_order.js` | Cost engine (still loaded but VO button removed from diff panel) |
+| `deploy/dev/s220_test.js` | 65 tests (schema + diff + VO cost math) |
+
+### Log Tag Trace (expected full chain)
+```
+Landing:  §IMPORT_SAVED → §MERGE_PROMPT → §MERGE_ACCEPT → §OPEN_DIFF
+Viewer:   §DIFF_DB_LOADED → §DIFF → §DIFF_OVERLAY_READY → §DIFF_SUMMARY
+4D/5D:    §BOQ_IMPORT_DB → §BOQ_DIFF → §VO_IN_5D (on Save 5D click)
+```
+If any tag is missing, the chain broke at that point. Fix there.
