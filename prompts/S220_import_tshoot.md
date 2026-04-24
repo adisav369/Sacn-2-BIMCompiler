@@ -324,3 +324,199 @@ File: `deploy/dev/import.js` openImported() or `deploy/landing2.html` openImport
 3. Test VO Excel export with real diff data (ARC vs MEP)
 4. Variation detection by filename prefix (not IFC project name)
 5. Promote viewer changes to prod when diff + VO proven
+
+## S223 Session (2026-04-24) — Fix 5 Issues + Wire Diff Viewer + VO Test
+
+### Fixes DONE (all in DEV)
+
+**I-S222-1: Progress bar auto-clear** — `landing2.html`
+Status text updated to "Imported N elements — see your building below ↓", then auto-clears after 3s (status text, progress bar width, bar hidden).
+
+**I-S222-2: Variation detection by filename prefix** — `landing2.html`
+Was matching on `meta.name` (IFC project name in header). Now strips `_ARC`, `_MEP`, `_STR`, `_ELEC`, `_FP`, `_ACMV`, `_PLB` suffixes from filename to get project prefix. Both variation detection and version badge use the same prefix logic. Log tag: `§VARIATION_DETECTED prefix=...`.
+
+**I-S222-3: 4D/5D boq_charts for imported buildings** — `tools.js` + `boq_charts.html`
+- `tools.js`: Detects `import://` URL → uses `../boq_charts.html` relative path (not OCI `/o/` regex)
+- `boq_charts.html`: Added `fetchDbBuffer()` — for `import://` URLs, reads from `bim_ootb_cache` IndexedDB (same cache the viewer uses). Log tag: `§BOQ_IMPORT_DB`.
+
+**I-S222-4: Hospital geometry anomaly** — SPEC ONLY
+Known web-ifc 0.0.77 limitation with `USE_FAST_BOOLS`. No code fix possible — wait for web-ifc update.
+
+**I-S222-5: Open button spinner feedback** — `landing2.html`
+`openImported(key, btnEl)` now receives button element. Sets "Opening..." + disabled immediately, restores after viewer tab opens. Handles error paths too.
+
+### Diff Viewer WIRED
+
+**Landing page** (`landing2.html`):
+- `openImported()` now detects variations by filename prefix
+- If base version exists, caches base DB into `bim_ootb_cache` IndexedDB
+- Passes `?diffdb=import://base/extracted` URL param to viewer
+
+**Viewer** (`main.js`):
+- After `APP.init()`, checks for `?diffdb=` URL param
+- Loads diff DB via `cachedFetch` (handles `import://` via IndexedDB)
+- Creates `APP.diffDb` sql.js instance
+- Calls `computeDiff()` immediately
+- Polls every 2s for ≥10 meshes (up to 30s), then applies overlay + summary panel
+- Log tags: `§DIFF_DB_LOADED`, `§DIFF_OVERLAY_READY`
+
+### Test Harness Extended (s220_test.js)
+
+Added S223 diff + VO cost engine tests:
+- Creates in-memory variation of SampleHouse: 3 CHANGED (name modified), 2 REMOVED, 1 ADDED (fake IfcBeam)
+- Validates diff detection: added=1, removed=2, changed=3
+- Validates VO cost engine: addCost=680 (IfcBeam×1.0), remCost=300, chgCost=1950
+- Validates O&P: totalImpact=3846 > totalDirect=2930
+- Validates USD conversion: $808
+
+**Result:** 65 PASS / 0 FAIL (58 S220 + 7 S223)
+
+### Debug Log Tags Added
+| Tag | File | What |
+|-----|------|------|
+| `§BOQ_IMPORT_DB` | boq_charts.html | DB loaded from IndexedDB for import:// URL |
+| `§DIFF_WIRED` | landing2.html | Base version detected, diffdb param set |
+| `§DIFF_DB_LOADED` | main.js | Diff DB loaded in viewer |
+| `§DIFF_OVERLAY_READY` | main.js | Overlay applied after mesh streaming |
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `deploy/landing2.html` | I-S222-1 auto-clear, I-S222-2 prefix match, I-S222-5 spinner, diff wiring |
+| `deploy/dev/tools.js` | I-S222-3 import:// URL handling |
+| `deploy/dev/boq_charts.html` | I-S222-3 fetchDbBuffer() IndexedDB lookup |
+| `deploy/dev/main.js` | Diff DB loading, overlay timing |
+| `deploy/dev/s220_test.js` | S223 diff + VO tests (7 new) |
+
+### What's Next (S224)
+1. Implement Merge/New UX (see Feature Review below)
+2. Browser smoke test with UNMERGED IFCs
+3. Test VO Excel download from diff summary panel
+4. Restore Export DB button on card (single file)
+5. Promote to prod when browser-proven
+
+---
+
+## S224 Feature Review — Merge/New UX + Version Cards
+
+### Design Principle
+IndexedDB IS the project. The card IS the history. No files on disk unless user explicitly exports.
+
+### Import Flow (second import onward)
+
+```
+User drops IFC
+  └─ Any cards already exist?
+     ├─ NO  → save to IndexedDB → new card appears. Done.
+     └─ YES → prompt:
+              ┌─────────────────────────────────────────┐
+              │  Merge with [Card Name] or New building? │
+              │                                          │
+              │     [ Merge ]        [ New ]             │
+              └─────────────────────────────────────────┘
+              (If multiple cards: dropdown to pick which one)
+
+        Merge → stored as version (v2, v3...) under same card
+        New   → separate card, separate building
+```
+
+### Card States
+
+**Single version (first import):**
+```
+┌──────────────────────────┐
+│ ProjectName              │
+│ 1,234 elements · ARC     │
+│ ▓▓▓▓▓░░ discipline bars  │
+│ [ Open ] [ Export DB ] [x]│
+└──────────────────────────┘
+```
+
+**Multiple versions (after merge):**
+```
+┌──────────────────────────┐
+│ ProjectName          v3  │
+│ 6,814 elements · ARC MEP │
+│ ▓▓▓▓▓▓▓▓ discipline bars │
+│ [ Open ] [ Compare ]     │
+│ [ Export DB ]        [x] │
+└──────────────────────────┘
+```
+
+- **Open** → opens latest version in viewer
+- **Compare** → picker: "Compare v1 vs v2" / "v1 vs v3" / "v2 vs v3"
+  → opens viewer with both DBs loaded → diff overlay + cost preview
+  → "Export VO Excel" button in diff summary panel
+- **Export DB** → downloads latest version as single `.db` file
+- **x** → "Delete all N versions?" confirm → removes everything for this project
+- **v3 badge** → shows version count, not clickable (history is implicit)
+
+### IndexedDB Storage Model
+
+```
+bim_ootb_imports (object store: 'buildings')
+  key: "ProjectName"
+  value: {
+    meta: { name, elementCount, disciplines, ... },
+    versions: [
+      { key: "Project_ARC.ifc",  importDate: "2026-04-24T...", db: ArrayBuffer },
+      { key: "Project_MEP.ifc",  importDate: "2026-04-24T...", db: ArrayBuffer },
+      { key: "Project_STR.ifc",  importDate: "2026-04-24T...", db: ArrayBuffer },
+    ],
+    latestVersion: 2  // index into versions[]
+  }
+```
+
+- Each version is a self-contained single DB (metadata + geometry)
+- `meta` reflects the latest import (element count, disciplines aggregated)
+- Viewer loads `versions[latestVersion].db` for Open
+- Compare loads any two `versions[].db` as `A.db` and `A.diffDb`
+
+### Compare Flow (in viewer)
+
+1. User clicks Compare on card → picks two versions (e.g. v1 vs v3)
+2. Viewer opens with `?db=import://Project/v0&diffdb=import://Project/v2`
+3. `streaming.js` loads v1 (base), streams normally
+4. `main.js` loads v3 as `A.diffDb`, calls `computeDiff()`
+5. After streaming completes → `applyDiffOverlay()`:
+   - Green (added): elements in v3 not in v1
+   - Red ghost (removed): elements in v1 not in v3
+   - Yellow (changed): same GUID, different properties
+6. Diff summary panel shows: counts + cost preview (from `variation_order.js`)
+7. "Export VO Excel" button → 3-sheet spreadsheet downloads
+
+### Merge Prompt — Implementation Notes
+
+- Prompt appears as a modal overlay (not `window.confirm` — too ugly)
+- Dark theme, matches landing page aesthetic
+- If only one existing card → shows its name directly
+- If multiple cards → dropdown: "Merge with: [▼ ProjectA | ProjectB | ProjectC]"
+- Keyboard: Enter = Merge, Escape = New
+- Mobile: full-width buttons, touch-friendly
+
+### What This Replaces
+- Old: variation detection by `meta.name` matching (I-S222-2) — unreliable
+- Old: filename prefix stripping (`_ARC`, `_MEP`) — fragile
+- New: user decides. No guessing. No naming convention.
+
+### Test Plan
+1. Import `Ifc4_Revit_ARC.ifc` → card "Ifc4_Revit_ARC" appears
+2. Import `Ifc4_Revit_MEP.ifc` → prompt "Merge with Ifc4_Revit_ARC or New?"
+3. Click Merge → card shows v2, discipline bars update (ARC + MEP)
+4. Import `Ifc4_Revit_STR.ifc` → prompt → Merge → card shows v3
+5. Click Compare → pick v1 vs v2 → viewer: green MEP elements (all added)
+6. Click Compare → pick v1 vs v3 → viewer: green STR elements (all added)
+7. Export VO Excel → 3 sheets, correct counts and costs
+8. Click New instead → separate card, no merge
+9. Delete card → confirm → all versions gone
+10. Export DB → one `.db` file downloads (latest version)
+
+### Debug Log Tags (planned)
+| Tag | Where | What |
+|-----|-------|------|
+| `§MERGE_PROMPT` | landing2.html | Prompt shown, existing card name |
+| `§MERGE_ACCEPT` | landing2.html | User chose Merge, version number |
+| `§MERGE_REJECT` | landing2.html | User chose New |
+| `§COMPARE_OPEN` | landing2.html | Which two versions selected |
+| `§VERSION_DELETE` | landing2.html | All versions deleted for project |
+| `§EXPORT_DB` | landing2.html | Single DB exported, size |
