@@ -2337,6 +2337,72 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#s224-clash-detection-on-diff-auto-clash-on-variation-import" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S224 — Clash Detection on Diff (auto-clash on variation import)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s225-qr-code-per-element-scan-full-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S225 — QR Code per Element → Scan → Full History
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s226-regulatory-auto-check-on-import-rule-checker-at-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S226 — Regulatory Auto-Check on Import (rule checker at extraction)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s227-live-cost-dashboard-per-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S227 — Live Cost Dashboard per Project
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s228-cobie-ifc-export-from-merged-db" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S228 — COBie / IFC Export from Merged DB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s229-ai-query-on-diff-nlp-change_log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S229 — AI Query on Diff (NLP → change_log)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#starter-plugin-pack-ships-with-s215" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3438,6 +3504,72 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#s224-clash-detection-on-diff-auto-clash-on-variation-import" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S224 — Clash Detection on Diff (auto-clash on variation import)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s225-qr-code-per-element-scan-full-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S225 — QR Code per Element → Scan → Full History
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s226-regulatory-auto-check-on-import-rule-checker-at-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S226 — Regulatory Auto-Check on Import (rule checker at extraction)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s227-live-cost-dashboard-per-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S227 — Live Cost Dashboard per Project
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s228-cobie-ifc-export-from-merged-db" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S228 — COBie / IFC Export from Merged DB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s229-ai-query-on-diff-nlp-change_log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S229 — AI Query on Diff (NLP → change_log)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#starter-plugin-pack-ships-with-s215" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3975,6 +4107,88 @@ Audio blobs stored in same IndexedDB (binary, ~50KB per 30s recording). No serve
 <li><strong>Exit criterion:</strong> user swaps 3 door types and a floor finish, sees updated BOQ totals, no Bonsai involved</li>
 <li>Replaces: round-trip to Blender for the 80% of changes that are data, not geometry</li>
 </ul>
+<h3 id="s224-clash-detection-on-diff-auto-clash-on-variation-import">S224 — Clash Detection on Diff (auto-clash on variation import)<a class="headerlink" href="#s224-clash-detection-on-diff-auto-clash-on-variation-import" title="Permanent link">&para;</a></h3>
+<ul>
+<li>When S222 diff detects added/changed elements, auto-run S211a clash detection on the delta</li>
+<li>Only check new/changed elements against existing elements — not full O(n²) rescan</li>
+<li>Clash report embedded in Variation Order Excel (separate sheet: "Clashes")</li>
+<li>Viewer: clash pairs highlighted alongside diff colours (red emissive on both clashing elements)</li>
+<li>Clash count shown in diff summary panel: <code>⚡ 3 clashes detected</code></li>
+<li>Click clash → fly-to, show both elements, clearance value, discipline pair</li>
+<li>No manual trigger — clash runs automatically whenever a variation is imported</li>
+<li>Uses same clash template from S211a (<code>tolerance</code>, <code>pairs</code>, <code>severity</code>)</li>
+<li><strong>Why this matters:</strong> The variation didn't just change cost — it introduced conflicts. The QS and coordinator see both in one report.</li>
+<li><strong>Exit criterion:</strong> Import MEP_v2 with a duct that passes through a wall → clash auto-detected, shown in viewer + Excel</li>
+<li>Replaces: Solibri ($15K/yr), Navisworks Clash Detective ($8K/yr)</li>
+</ul>
+<h3 id="s225-qr-code-per-element-scan-full-history">S225 — QR Code per Element → Scan → Full History<a class="headerlink" href="#s225-qr-code-per-element-scan-full-history" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Generate QR sticker sheet from viewer: select elements → "Print QR" → PDF with one QR per GUID</li>
+<li>QR URL: <code>{viewer_url}?guid={GUID}</code> — opens viewer, flies to that element</li>
+<li>Element history panel (on scan): which variation introduced it, cost, phase, approval status, site cam photos</li>
+<li>History assembled from: <code>change_log</code> table (S222), issues log (S210), site cam photos (S204)</li>
+<li>Print formats: A4 sheet (20 QRs), label printer (single), sticker roll</li>
+<li>Site workflow: print QR sheet → stick on physical elements during construction → scan to inspect/report</li>
+<li><strong>Why this matters:</strong> Bridges digital twin to physical site. No other browser tool does this.</li>
+<li><strong>Exit criterion:</strong> Print QR for 5 elements, scan on phone, see full history for each</li>
+<li>Replaces: BIM Track ($), manual tagging systems</li>
+</ul>
+<h3 id="s226-regulatory-auto-check-on-import-rule-checker-at-extraction">S226 — Regulatory Auto-Check on Import (rule checker at extraction)<a class="headerlink" href="#s226-regulatory-auto-check-on-import-rule-checker-at-extraction" title="Permanent link">&para;</a></h3>
+<ul>
+<li>After S220 import extracts IFC to DB, auto-run rule checker before card appears</li>
+<li>Rules from country pack JSON (<code>locales/MY.json</code> → UBBL, <code>locales/GB.json</code> → Building Regs)</li>
+<li>Each rule = SQL query + pass/fail condition (same pattern as S211a Rule Checker plugin)</li>
+<li>Card shows compliance badge: <code>✅ 247 PASS · ⚠ 3 WARN · ❌ 1 FAIL</code></li>
+<li>Click badge → compliance panel with rule-by-rule results</li>
+<li>Click any fail → fly-to element, show rule text + what's wrong</li>
+<li>Rules cover: fire escape distance, corridor width, accessibility, MEP clearance, structural spans</li>
+<li><strong>No separate tool.</strong> Compliance is part of the import pipeline.</li>
+<li>Export: compliance report Excel (rule, status, element GUID, storey, value, required value)</li>
+<li><strong>Why this matters:</strong> Compliance checking today = Solibri license + manual config. Here it's automatic on drop.</li>
+<li><strong>Exit criterion:</strong> Import a building with a corridor below minimum width → ❌ FAIL badge, fly-to the corridor</li>
+<li>Replaces: Solibri Rule Checker ($15K/yr), manual code review</li>
+</ul>
+<h3 id="s227-live-cost-dashboard-per-project">S227 — Live Cost Dashboard per Project<a class="headerlink" href="#s227-live-cost-dashboard-per-project" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Landing page shows running cost total per project group: <code>Hospital — RM 67M · 3 variations · +RM 39,700</code></li>
+<li>Cost computed from: merged DB element counts × <code>5D_rates.json</code> rates</li>
+<li>Variation impact: sum of all Variation Order net impacts (S222)</li>
+<li>Click → full BOQ breakdown (opens <code>boq_charts.html</code> with that project's DB)</li>
+<li>Dashboard updates live as parts are imported/merged/varied</li>
+<li>Multi-project view: all projects on landing page, each with cost summary</li>
+<li>Trend sparkline: cost over time (from variation history in IndexedDB)</li>
+<li><strong>Why this matters:</strong> Project manager's dashboard. Not a viewer — a control room. One page, all projects, all costs.</li>
+<li><strong>Exit criterion:</strong> Import 3 projects, each with 2 variations → landing shows all 3 with cost totals and net change</li>
+<li>Replaces: Custom Excel dashboards, Procore cost module ($)</li>
+</ul>
+<h3 id="s228-cobie-ifc-export-from-merged-db">S228 — COBie / IFC Export from Merged DB<a class="headerlink" href="#s228-cobie-ifc-export-from-merged-db" title="Permanent link">&para;</a></h3>
+<ul>
+<li>After merge (S222), export merged DB as:</li>
+<li><strong>COBie:</strong> 6-tab Excel spreadsheet (Facility, Floor, Space, Type, Component, System) — government handover</li>
+<li><strong>IFC4:</strong> STEP file from S217 — tessellated coordination model</li>
+<li>Export buttons on merged card: <code>⬇ COBie</code> · <code>⬇ IFC</code> · <code>⬇ .db</code></li>
+<li>COBie mapping: <code>elements_meta</code> → Component, <code>spatial_structure</code> → Floor/Space, <code>product_types</code> → Type</li>
+<li>Handover package = one click: COBie + IFC + .db in a ZIP</li>
+<li><strong>Why this matters:</strong> Government projects require COBie. Nobody does it from a browser. Close the loop.</li>
+<li><strong>Exit criterion:</strong> Merge 3 parts, download COBie Excel, validate with COBie QC tool</li>
+<li>Replaces: Revit COBie toolkit, manual spreadsheet compilation</li>
+</ul>
+<h3 id="s229-ai-query-on-diff-nlp-change_log">S229 — AI Query on Diff (NLP → change_log)<a class="headerlink" href="#s229-ai-query-on-diff-nlp-change_log" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Extend S211 NLP DSL to query <code>change_log</code> table (S222)</li>
+<li>Natural language: "What changed in MEP on Level 3?" → SQL on change_log → results + fly-to</li>
+<li>Voice command (S211 voice): same queries via microphone</li>
+<li>Queries supported:</li>
+<li>"What was added?" → added GUIDs list</li>
+<li>"What was removed from Level 2?" → filtered removed list</li>
+<li>"How much did variation MEP_v2 cost?" → net impact from VO</li>
+<li>"Show me clashes in STR" → clash results for that discipline</li>
+<li>"Compare v1 and v3" → diff between any two versions</li>
+<li>Results panel: table + fly-to buttons + export</li>
+<li><strong>Why this matters:</strong> PM asks question, gets answer instantly. No training, no query builder.</li>
+<li><strong>Exit criterion:</strong> Voice "what changed on Level 3" → correct results, fly-to first element</li>
+<li>Replaces: Manual report digging, Navisworks search, Solibri filters</li>
+</ul>
 <h3 id="starter-plugin-pack-ships-with-s215">Starter Plugin Pack (ships with S215)<a class="headerlink" href="#starter-plugin-pack-ships-with-s215" title="Permanent link">&para;</a></h3>
 <p>Pre-installed plugins that prove the marketplace. All use the plugin API, no core changes.</p>
 <table>
@@ -4135,6 +4349,36 @@ Audio blobs stored in same IndexedDB (binary, ~50KB per 30s recording). No serve
 <td>14</td>
 <td>Bonsai re-export shows only changes</td>
 <td>S222 (incremental diff)</td>
+</tr>
+<tr>
+<td>15</td>
+<td>Variation introduces clash</td>
+<td>S224 (auto-clash on diff)</td>
+</tr>
+<tr>
+<td>16</td>
+<td>QR on physical element → scan → history</td>
+<td>S225 (QR per element)</td>
+</tr>
+<tr>
+<td>17</td>
+<td>Drop IFC, get compliance report</td>
+<td>S226 (auto-check on import)</td>
+</tr>
+<tr>
+<td>18</td>
+<td>PM sees all project costs on one page</td>
+<td>S227 (live cost dashboard)</td>
+</tr>
+<tr>
+<td>19</td>
+<td>Government handover from browser</td>
+<td>S228 (COBie/IFC export)</td>
+</tr>
+<tr>
+<td>20</td>
+<td>"What changed on Level 3?"</td>
+<td>S229 (AI query on diff)</td>
 </tr>
 </tbody>
 </table>
