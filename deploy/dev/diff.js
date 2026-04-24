@@ -127,9 +127,8 @@ function setupDiff(A) {
       '<div style="color:#cccc44">~ Changed: ' + d.changed.length + '</div>' +
       '<div style="margin-top:4px;color:#888">Total: ' + (d.added.length + d.removed.length + d.changed.length) + ' affected</div>' +
       costHtml +
-      (typeof exportVariationOrder === 'function' ?
-        '<button onclick="exportVariationOrder()" style="margin-top:8px;padding:6px 14px;background:#4fc3f7;color:#000;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:bold">Export VO Excel</button>' : '') +
-      '<button onclick="this.parentElement.remove()" style="margin-top:8px;margin-left:6px;padding:6px 14px;background:#444;color:#ccc;border:none;border-radius:4px;cursor:pointer;font-size:11px">Close</button>';
+      '<div style="margin-top:8px;color:#666;font-size:10px">Use 📊 4D/5D to export with variance sheets</div>' +
+      '<button onclick="this.parentElement.remove()" style="margin-top:8px;padding:6px 14px;background:#444;color:#ccc;border:none;border-radius:4px;cursor:pointer;font-size:11px">Close</button>';
     panel.style.display = 'block';
     console.log('[S222] §DIFF_SUMMARY added=' + d.added.length + ' removed=' + d.removed.length + ' changed=' + d.changed.length + (costHtml ? ' cost_preview=yes' : ' cost_preview=no'));
   };

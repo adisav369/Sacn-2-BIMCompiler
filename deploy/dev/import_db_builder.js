@@ -10,10 +10,13 @@
 function buildImportDBs(SQL, data) {
   var db = new SQL.Database();
 
+  // S224: Use filename (without .ifc) as building name — IFC project name is often generic ("Project")
+  var buildingName = (data.meta.filename || data.meta.name || 'Import').replace(/\.ifc$/i, '');
+
   // Project metadata
   db.run('CREATE TABLE IF NOT EXISTS project_metadata (key TEXT PRIMARY KEY, value TEXT)');
-  db.run('INSERT INTO project_metadata VALUES (?,?),(?,?)',
-    ['project_name', data.meta.name, 'import_date', new Date().toISOString()]);
+  db.run('INSERT INTO project_metadata VALUES (?,?),(?,?),(?,?)',
+    ['project_name', data.meta.name, 'import_date', new Date().toISOString(), 'building_name', buildingName]);
 
   // Elements
   db.run('CREATE TABLE IF NOT EXISTS elements_meta (guid TEXT PRIMARY KEY, ifc_class TEXT, element_name TEXT, storey TEXT, discipline TEXT, material_name TEXT, material_rgba TEXT, building TEXT)');
@@ -23,7 +26,7 @@ function buildImportDBs(SQL, data) {
   var stmtEl = db.prepare('INSERT OR IGNORE INTO elements_meta VALUES (?,?,?,?,?,?,?,?)');
   for (var i = 0; i < data.elements.length; i++) {
     var el = data.elements[i];
-    stmtEl.run([el.guid, el.ifcClass, el.name, el.storey, el.discipline, null, el.material, data.meta.name]);
+    stmtEl.run([el.guid, el.ifcClass, el.name, el.storey, el.discipline, null, el.material, buildingName]);
   }
   stmtEl.free();
 
@@ -45,7 +48,7 @@ function buildImportDBs(SQL, data) {
   var stmtGeo = db.prepare('INSERT OR IGNORE INTO component_geometries VALUES (?,?,?,?)');
   for (var i = 0; i < data.geometries.length; i++) {
     var g = data.geometries[i];
-    stmtGeo.run([g.geomHash, new Uint8Array(g.vertices), new Uint8Array(g.indices), data.meta.name]);
+    stmtGeo.run([g.geomHash, new Uint8Array(g.vertices), new Uint8Array(g.indices), buildingName]);
   }
   stmtGeo.free();
 

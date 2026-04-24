@@ -45,10 +45,26 @@
   - **VO Excel:** `variation_order.js` — 3-sheet Excel: Configuration, Detail (per-element costed), Executive Summary
   - **Cost model:** FIDIC Clause 12 + AACE: ADD=1.0×, REMOVE=0.3×, CHANGE=1.3×, +10%OH +15%Markup +5%Disruption
   - **Rates:** CIDB 2024 (`templates/5D_rates.json`), 4D phases (`templates/4D_phases.json`), USD conversion
-  - **Variation detection:** same building re-import → version badge (v2, v3), `§VARIATION_DETECTED` log
-  - **Test:** `s220_test.js` — 58 PASS / 0 FAIL (SampleHouse + FZKHaus). S211 tests: 58 PASS / 0 FAIL.
-  - **Deployed to DEV only** (bim-ootb-dev). Spec: `prompts/S220_import_tshoot.md` §S222
-  - **Next:** browser smoke test with UNMERGED IFCs, then promote to prod
+
+**S223 (2026-04-24):** Fix 5 Issues + Wire Diff Viewer + VO Test. DONE (dev).
+  - **I-S222-1:** Progress bar auto-clears after 3s
+  - **I-S222-2:** Variation detection by filename prefix (strips `_ARC`, `_MEP`, etc.), not IFC project name
+  - **I-S222-3:** boq_charts handles `import://` via IndexedDB cache lookup; tools.js URL fixed
+  - **I-S222-4:** Hospital geometry — web-ifc 0.0.77 known limit, spec only
+  - **I-S222-5:** Open button shows "Opening..." spinner immediately
+  - **Diff viewer wired:** landing→viewer passes `?diffdb=` param, viewer loads base DB, computes diff, applies overlay after streaming, shows cost summary panel with VO Excel export button
+  - **Test:** `s220_test.js` — 65 PASS / 0 FAIL (58 S220 + 7 S223 diff/VO)
+  - Spec: `prompts/S220_import_tshoot.md` §S223
+
+**S224 (2026-04-24):** Merge/New UX + Versioned Cards + Compare. DONE (dev).
+  - **IndexedDB v2:** versioned storage `{meta, versions[], latestVersion}`, v1→v2 auto-migration
+  - **Merge/New modal:** dark-themed overlay on second+ import; dropdown if multiple projects; Enter=Merge, Esc=New
+  - **Versioned cards:** Open (latest), Compare (auto for 2, picker for 3+), Export DB, delete all versions
+  - **Compare flow:** picker → caches both versions → viewer `?db=v0&diffdb=v1` → diff overlay + cost summary
+  - **Export DB:** downloads latest version as single `.db` file
+  - **viewer import.js:** bumped to IDB v2, handles versioned records in `openImported`
+  - **Test:** 65 PASS / 0 FAIL (no regressions). JS syntax check PASS.
+  - **Next:** browser smoke test with real IFCs (import, merge, compare, export)
 
 **S206 (2026-04-21):** Cinematic Building Tour. DONE.
   - **4 new action types:** `orbit` (aerial sweep at tiltDeg), `descend` (smooth descent + tilt transition), `riseAndTilt` (bird's eye finale), `flyTo` (city mode transition)

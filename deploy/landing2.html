@@ -193,6 +193,36 @@
     <div class="grid" id="my-buildings-grid"></div>
   </div>
 
+  <!-- S224: Merge/New modal -->
+  <div id="merge-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9000;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+    <div style="background:#1a1a2e;border:1px solid rgba(79,195,247,0.2);border-radius:12px;padding:28px 32px;max-width:400px;width:90%;text-align:center">
+      <div style="color:#4fc3f7;font-size:15px;font-weight:600;margin-bottom:12px">Add to existing project?</div>
+      <div id="merge-target" style="color:#ccc;font-size:13px;margin-bottom:16px"></div>
+      <select id="merge-select" style="display:none;width:100%;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;margin-bottom:16px"></select>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button id="merge-btn" style="flex:1;padding:12px 20px;background:#4fc3f7;color:#000;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;min-height:44px">Merge</button>
+        <button id="merge-new-btn" style="flex:1;padding:12px 20px;background:#333;color:#ccc;border:1px solid #555;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;min-height:44px">New</button>
+      </div>
+      <div style="color:#555;font-size:10px;margin-top:10px">Enter = Merge · Escape = New</div>
+    </div>
+  </div>
+
+  <!-- S224: Compare version picker modal -->
+  <div id="compare-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9000;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+    <div style="background:#1a1a2e;border:1px solid rgba(79,195,247,0.2);border-radius:12px;padding:28px 32px;max-width:400px;width:90%;text-align:center">
+      <div style="color:#4fc3f7;font-size:15px;font-weight:600;margin-bottom:12px">Compare Versions</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;justify-content:center;align-items:center">
+        <select id="compare-a" style="flex:1;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px"></select>
+        <span style="color:#4fc3f7;font-weight:700">vs</span>
+        <select id="compare-b" style="flex:1;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px"></select>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button id="compare-go-btn" style="flex:1;padding:12px 20px;background:#4fc3f7;color:#000;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;min-height:44px">Compare</button>
+        <button id="compare-cancel-btn" style="flex:0;padding:12px 20px;background:#333;color:#ccc;border:1px solid #555;border-radius:8px;font-size:14px;cursor:pointer;min-height:44px">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <div id="city-progress" style="display:none; padding:12px 20px; max-width:1200px; margin:0 auto">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px">
       <span style="font-size:14px; font-weight:700; color:#4fc3f7; letter-spacing:1px">COMPLETE THE CITY</span>
@@ -494,14 +524,45 @@ async function loadManifest() {
 
 loadManifest();
 
-// ── S220: IFC Import ──
+// ── S224: IFC Import — Versioned IndexedDB, Merge/New, Compare ──
 const IMPORT_DB_NAME = 'bim_ootb_imports';
 const IMPORT_STORE = 'buildings';
+const IMPORT_DB_VERSION = 2;  // v2: versioned storage model
 
 function openImportDB() {
   return new Promise(resolve => {
-    const req = indexedDB.open(IMPORT_DB_NAME, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(IMPORT_STORE);
+    const req = indexedDB.open(IMPORT_DB_NAME, IMPORT_DB_VERSION);
+    req.onupgradeneeded = function(e) {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IMPORT_STORE)) {
+        db.createObjectStore(IMPORT_STORE);
+      }
+      // Migrate v1 → v2: wrap old per-file records into versioned format
+      if (e.oldVersion < 2) {
+        const tx = req.transaction;
+        const store = tx.objectStore(IMPORT_STORE);
+        const getAll = store.getAllKeys();
+        getAll.onsuccess = function() {
+          const keys = getAll.result;
+          for (const key of keys) {
+            const gr = store.get(key);
+            gr.onsuccess = function() {
+              const old = gr.result;
+              if (old && !old.versions) {
+                // Old format: { meta, extractedDb, libraryDb } → new: { meta, versions[], latestVersion }
+                const migrated = {
+                  meta: old.meta,
+                  versions: [{ key: key, importDate: new Date().toISOString(), db: old.extractedDb }],
+                  latestVersion: 0
+                };
+                store.put(migrated, key);
+                console.log('[S224] §MIGRATE_V1 key=' + key);
+              }
+            };
+          }
+        };
+      }
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => resolve(null);
   });
@@ -519,7 +580,8 @@ function openCacheDB() {
   });
 }
 
-async function listImports() {
+// List all projects (versioned records)
+async function listProjects() {
   const db = await openImportDB();
   if (!db) return [];
   return new Promise(resolve => {
@@ -534,7 +596,8 @@ async function listImports() {
       for (const key of keys) {
         const r2 = store.get(key);
         r2.onsuccess = () => {
-          items.push({ key, meta: r2.result ? r2.result.meta : null });
+          const val = r2.result;
+          if (val) items.push({ key, meta: val.meta, versions: val.versions || [], latestVersion: val.latestVersion || 0 });
           done++;
           if (done === keys.length) resolve(items);
         };
@@ -545,109 +608,283 @@ async function listImports() {
   });
 }
 
-async function deleteImported(key) {
-  // Delete from import store
+// Get a single project record
+async function getProject(key) {
   const db = await openImportDB();
-  if (db) {
-    await new Promise(resolve => {
-      const tx = db.transaction(IMPORT_STORE, 'readwrite');
-      tx.objectStore(IMPORT_STORE).delete(key);
-      tx.oncomplete = resolve;
-    });
-  }
-  // Also clear viewer cache (import:// URLs)
-  const cacheDb = await openCacheDB();
-  if (cacheDb) {
-    try {
-      await new Promise(resolve => {
-        const tx = cacheDb.transaction(CACHE_STORE, 'readwrite');
-        const store = tx.objectStore(CACHE_STORE);
-        store.delete('import://' + key + '/extracted');
-        store.delete('import://' + key + '/library');
-        tx.oncomplete = resolve;
-      });
-    } catch(e) { /* cache may not have these keys */ }
-  }
-  // Reset progress bar
-  var bar = document.getElementById('import-progress-bar');
-  if (bar) { bar.style.width = '0%'; bar.style.background = '#4fc3f7'; bar.parentElement.style.display = 'none'; }
-  var status = document.getElementById('import-status');
-  if (status) status.textContent = '';
-  console.log('[S220] §IMPORT_DELETE key=' + key);
-  renderImportCards();
-}
-
-async function openImported(key) {
-  const db = await openImportDB();
-  if (!db) return;
-  const record = await new Promise(resolve => {
+  if (!db) return null;
+  return new Promise(resolve => {
     const tx = db.transaction(IMPORT_STORE, 'readonly');
     const req = tx.objectStore(IMPORT_STORE).get(key);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => resolve(null);
   });
-  if (!record) { alert('Building not found'); return; }
-
-  // Put DBs into viewer cache with import:// URLs
-  const cacheDb = await openCacheDB();
-  if (cacheDb) {
-    const importDbUrl = 'import://' + key + '/extracted';
-    const importLibUrl = 'import://' + key + '/library';
-    await new Promise(resolve => {
-      const tx = cacheDb.transaction(CACHE_STORE, 'readwrite');
-      tx.objectStore(CACHE_STORE).put(record.extractedDb, importDbUrl);
-      tx.objectStore(CACHE_STORE).put(record.libraryDb, importLibUrl);
-      tx.oncomplete = resolve;
-    });
-    const viewerUrl = (_base || '') + 'sandbox/index.html?db=' +
-      encodeURIComponent(importDbUrl) + '&lib=' + encodeURIComponent(importLibUrl);
-    const win = window.open(viewerUrl, '_blank');
-    trackTab(record.meta.name, '3D', win);
-  }
 }
 
+// Save a project record
+async function saveProject(key, record) {
+  const db = await openImportDB();
+  if (!db) return;
+  return new Promise(resolve => {
+    const tx = db.transaction(IMPORT_STORE, 'readwrite');
+    tx.objectStore(IMPORT_STORE).put(record, key);
+    tx.oncomplete = resolve;
+  });
+}
+
+// Delete a project and its cache entries
+async function deleteProject(key) {
+  const db = await openImportDB();
+  if (!db) return;
+  const record = await getProject(key);
+  await new Promise(resolve => {
+    const tx = db.transaction(IMPORT_STORE, 'readwrite');
+    tx.objectStore(IMPORT_STORE).delete(key);
+    tx.oncomplete = resolve;
+  });
+  // Clear viewer cache for all versions
+  const cacheDb = await openCacheDB();
+  if (cacheDb && record && record.versions) {
+    try {
+      const tx = cacheDb.transaction(CACHE_STORE, 'readwrite');
+      const store = tx.objectStore(CACHE_STORE);
+      for (var i = 0; i < record.versions.length; i++) {
+        store.delete('import://' + key + '/v' + i);
+      }
+      // Legacy keys
+      store.delete('import://' + key + '/extracted');
+      store.delete('import://' + key + '/library');
+    } catch(e) {}
+  }
+  var bar = document.getElementById('import-progress-bar');
+  if (bar) { bar.style.width = '0%'; bar.style.background = '#4fc3f7'; bar.parentElement.style.display = 'none'; }
+  var st = document.getElementById('import-status');
+  if (st) st.textContent = '';
+  console.log('[S224] §VERSION_DELETE key=' + key + ' versions=' + (record ? record.versions.length : 0));
+  renderImportCards();
+}
+
+// Open latest version of a project in viewer
+async function openProject(key, btnEl) {
+  if (btnEl) { btnEl.textContent = 'Opening...'; btnEl.disabled = true; }
+  const record = await getProject(key);
+  if (!record || !record.versions.length) {
+    alert('Building not found');
+    if (btnEl) { btnEl.textContent = 'Open'; btnEl.disabled = false; }
+    return;
+  }
+  const latest = record.versions[record.latestVersion];
+  const cacheDb = await openCacheDB();
+  if (!cacheDb) { if (btnEl) { btnEl.textContent = 'Open'; btnEl.disabled = false; } return; }
+
+  const dbUrl = 'import://' + key + '/v' + record.latestVersion;
+  const libUrl = dbUrl;  // single DB — geometry + metadata in one
+  await new Promise(resolve => {
+    const tx = cacheDb.transaction(CACHE_STORE, 'readwrite');
+    tx.objectStore(CACHE_STORE).put(latest.db, dbUrl);
+    tx.objectStore(CACHE_STORE).put(latest.db, libUrl);
+    tx.oncomplete = resolve;
+  });
+
+  // S224: Auto-diff — if multi-version, pass previous version as diffdb
+  var diffParam = '';
+  if (record.versions.length > 1) {
+    var prevIdx = record.latestVersion > 0 ? record.latestVersion - 1 : 0;
+    if (prevIdx !== record.latestVersion) {
+      var prevUrl = 'import://' + key + '/v' + prevIdx;
+      await new Promise(resolve => {
+        const tx2 = cacheDb.transaction(CACHE_STORE, 'readwrite');
+        tx2.objectStore(CACHE_STORE).put(record.versions[prevIdx].db, prevUrl);
+        tx2.oncomplete = resolve;
+      });
+      diffParam = '&diffdb=' + encodeURIComponent(prevUrl);
+      console.log('[S224] §OPEN_DIFF key=' + key + ' base=v' + prevIdx + ' latest=v' + record.latestVersion);
+    }
+  }
+
+  const viewerUrl = (_base || '') + 'sandbox/index.html?db=' +
+    encodeURIComponent(dbUrl) + '&lib=' + encodeURIComponent(libUrl) + diffParam;
+  const win = window.open(viewerUrl, '_blank');
+  trackTab(record.meta.name || key, '3D', win);
+  if (btnEl) { btnEl.textContent = 'Open'; btnEl.disabled = false; }
+}
+
+// Export latest version DB as file download
+async function exportProjectDb(key) {
+  const record = await getProject(key);
+  if (!record || !record.versions.length) return;
+  const latest = record.versions[record.latestVersion];
+  const blob = new Blob([latest.db], { type: 'application/x-sqlite3' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = key.replace(/\.ifc$/i, '') + '.db';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  console.log('[S224] §EXPORT_DB key=' + key + ' size=' + (latest.db.byteLength / 1024).toFixed(0) + 'KB');
+}
+
+// Compare two versions — opens viewer with base + diff
+async function openCompare(key, idxA, idxB) {
+  const record = await getProject(key);
+  if (!record || !record.versions[idxA] || !record.versions[idxB]) return;
+  const cacheDb = await openCacheDB();
+  if (!cacheDb) return;
+
+  const urlA = 'import://' + key + '/v' + idxA;
+  const urlB = 'import://' + key + '/v' + idxB;
+  await new Promise(resolve => {
+    const tx = cacheDb.transaction(CACHE_STORE, 'readwrite');
+    const store = tx.objectStore(CACHE_STORE);
+    store.put(record.versions[idxA].db, urlA);
+    store.put(record.versions[idxA].db, urlA);  // lib = same as db
+    store.put(record.versions[idxB].db, urlB);
+    tx.oncomplete = resolve;
+  });
+
+  const viewerUrl = (_base || '') + 'sandbox/index.html?db=' +
+    encodeURIComponent(urlA) + '&lib=' + encodeURIComponent(urlA) +
+    '&diffdb=' + encodeURIComponent(urlB);
+  window.open(viewerUrl, '_blank');
+  console.log('[S224] §COMPARE_OPEN key=' + key + ' v' + idxA + ' vs v' + idxB);
+}
+
+// Show compare picker modal (for 3+ versions) or auto-compare (for 2)
+function showComparePicker(key, versions) {
+  if (versions.length === 2) {
+    openCompare(key, 0, 1);
+    return;
+  }
+  const modal = document.getElementById('compare-modal');
+  const selA = document.getElementById('compare-a');
+  const selB = document.getElementById('compare-b');
+  selA.innerHTML = '';
+  selB.innerHTML = '';
+  for (var i = 0; i < versions.length; i++) {
+    var label = 'v' + (i + 1) + ' — ' + (versions[i].key || '').replace(/\.ifc$/i, '');
+    selA.innerHTML += '<option value="' + i + '">' + label + '</option>';
+    selB.innerHTML += '<option value="' + i + '">' + label + '</option>';
+  }
+  selA.value = '0';
+  selB.value = String(versions.length - 1);
+  modal.style.display = 'flex';
+  modal._projectKey = key;
+}
+
+document.getElementById('compare-go-btn').onclick = function() {
+  var modal = document.getElementById('compare-modal');
+  var a = parseInt(document.getElementById('compare-a').value);
+  var b = parseInt(document.getElementById('compare-b').value);
+  if (a === b) { alert('Pick two different versions'); return; }
+  modal.style.display = 'none';
+  openCompare(modal._projectKey, a, b);
+};
+document.getElementById('compare-cancel-btn').onclick = function() {
+  document.getElementById('compare-modal').style.display = 'none';
+};
+
+// ── Merge/New modal logic ──
+var _pendingMerge = null;  // { dbBuf, meta, filename, resolve }
+
+function showMergeModal(projects, filename) {
+  return new Promise(function(resolve) {
+    const modal = document.getElementById('merge-modal');
+    const target = document.getElementById('merge-target');
+    const sel = document.getElementById('merge-select');
+
+    if (projects.length === 1) {
+      target.textContent = 'Merge "' + filename + '" into "' + projects[0].key + '"?';
+      sel.style.display = 'none';
+    } else {
+      target.textContent = 'Merge "' + filename + '" into:';
+      sel.style.display = 'block';
+      sel.innerHTML = '';
+      for (var i = 0; i < projects.length; i++) {
+        sel.innerHTML += '<option value="' + projects[i].key + '">' + projects[i].key +
+          ' (v' + projects[i].versions.length + ', ' +
+          (projects[i].meta.elementCount || 0).toLocaleString() + ' el)</option>';
+      }
+    }
+    modal.style.display = 'flex';
+
+    function cleanup() {
+      modal.style.display = 'none';
+      document.removeEventListener('keydown', onKey);
+    }
+    function onKey(e) {
+      if (e.key === 'Enter') { cleanup(); resolve({ action: 'merge', target: projects.length === 1 ? projects[0].key : sel.value }); }
+      if (e.key === 'Escape') { cleanup(); resolve({ action: 'new' }); }
+    }
+    document.addEventListener('keydown', onKey);
+    document.getElementById('merge-btn').onclick = function() {
+      cleanup();
+      resolve({ action: 'merge', target: projects.length === 1 ? projects[0].key : sel.value });
+    };
+    document.getElementById('merge-new-btn').onclick = function() {
+      cleanup();
+      resolve({ action: 'new' });
+    };
+  });
+}
+
+// ── Render import cards (versioned) ──
 async function renderImportCards() {
   const container = document.getElementById('my-buildings-grid');
   const section = document.getElementById('my-buildings-section');
   if (!container || !section) return;
-  const imports = await listImports();
-  if (imports.length === 0) { section.style.display = 'none'; return; }
+  const projects = await listProjects();
+  if (projects.length === 0) { section.style.display = 'none'; return; }
   section.style.display = 'block';
   container.innerHTML = '';
-  for (const item of imports) {
-    if (!item.meta) continue;
+
+  for (const proj of projects) {
+    if (!proj.meta) continue;
     const card = document.createElement('div');
     card.className = 'card';
-    const discs = item.meta.disciplines || {};
-    const total = item.meta.elementCount || 0;
+    const discs = proj.meta.disciplines || {};
+    const total = proj.meta.elementCount || 0;
     const discBars = Object.entries(discs).map(([d, c]) => {
       const pct = Math.max(3, (c / total) * 100);
       const color = DISC_COLORS[d] || '#888';
       return '<span class="disc-bar" style="width:' + pct + '%;background:' + color + '"></span>';
     }).join('');
-    var displayName = (item.meta.filename || item.meta.name || '').replace(/\.ifc$/i, '');
-    // S222: Count versions for this building
-    var buildingName = item.meta.name || '';
-    var versionCount = imports.filter(function(imp) { return imp.meta && imp.meta.name === buildingName; }).length;
-    var vBadge = versionCount > 1 ? '<span style="color:#cccc44;font-size:10px;margin-left:4px">v' + versionCount + '</span>' : '';
+    var displayName = proj.key.replace(/\.ifc$/i, '');
+    var vCount = proj.versions.length;
+    var vBadge = vCount > 1 ? '<span style="color:#cccc44;font-size:10px;margin-left:4px">v' + vCount + '</span>' : '';
+
+    // Build button row
+    var buttons = '<button class="open-btn" style="flex:1" data-open="' + proj.key + '">Open</button>';
+    if (vCount > 1) {
+      buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(79,195,247,0.15);border-color:rgba(79,195,247,0.3);color:#4fc3f7" data-compare="' + proj.key + '">Compare</button>';
+    }
+    buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(68,204,68,0.1);border-color:rgba(68,204,68,0.2);color:#44cc44;font-size:10px" data-export="' + proj.key + '">Save</button>';
+    buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + proj.key + '">x</button>';
+
     card.innerHTML =
       '<div class="name">' + displayName + vBadge + '</div>' +
       '<div class="meta"><b>' + total.toLocaleString() + '</b> elements · ' + Object.keys(discs).join(', ') + '</div>' +
       '<div class="disc-bars">' + discBars + '</div>' +
-      '<div style="display:flex;gap:6px;margin-top:10px">' +
-        '<button class="open-btn" style="flex:1" data-key="' + item.key + '">Open</button>' +
-        '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + item.key + '">x</button>' +
-      '</div>';
-    card.querySelector('[data-key]').onclick = function() { openImported(this.dataset.key); };
+      '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">' + buttons + '</div>';
+
+    card.querySelector('[data-open]').onclick = function() { openProject(this.dataset.open, this); };
+    if (card.querySelector('[data-compare]')) {
+      card.querySelector('[data-compare]').onclick = function() {
+        var k = this.dataset.compare;
+        var p = projects.find(function(x) { return x.key === k; });
+        if (p) showComparePicker(k, p.versions);
+      };
+    }
+    card.querySelector('[data-export]').onclick = function(e) { e.stopPropagation(); exportProjectDb(this.dataset.export); };
     card.querySelector('[data-del]').onclick = function(e) {
       e.stopPropagation();
-      if (confirm('Delete ' + displayName + '?')) deleteImported(this.dataset.del);
+      var k = this.dataset.del;
+      var p = projects.find(function(x) { return x.key === k; });
+      var n = p ? p.versions.length : 1;
+      if (confirm('Delete ' + displayName + (n > 1 ? ' (all ' + n + ' versions)?' : '?'))) deleteProject(k);
     };
     container.appendChild(card);
   }
 }
 
-// Import handler
+// ── Import handler (with Merge/New prompt) ──
 async function handleImportFile(file) {
   if (!file || !/\.ifc$/i.test(file.name)) {
     document.getElementById('import-status').textContent = 'Please select an .ifc file';
@@ -682,7 +919,6 @@ async function handleImportFile(file) {
     if (msg.type === 'done') {
       status.textContent = 'Building databases...';
       try {
-        // Load sql.js to build DBs
         if (typeof initSqlJs === 'undefined') {
           await new Promise(resolve => {
             const s = document.createElement('script');
@@ -692,40 +928,65 @@ async function handleImportFile(file) {
           });
         }
         const SQL = await initSqlJs({ locateFile: f => 'https://sql.js.org/dist/' + f });
-
         const dbs = buildImportDBs(SQL, msg);
-        const dbBuf = dbs.extractedDb;  // single DB — geometry + metadata in one
+        const dbBuf = dbs.extractedDb;
 
-        // Save to IndexedDB
-        const importDb = await openImportDB();
-        if (importDb) {
-          await new Promise(resolve => {
-            const tx = importDb.transaction(IMPORT_STORE, 'readwrite');
-            tx.objectStore(IMPORT_STORE).put({ meta: msg.meta, extractedDb: dbBuf, libraryDb: dbBuf }, file.name);
-            tx.oncomplete = resolve;
-          });
+        // S224: Check existing projects — prompt Merge/New if any exist
+        const existingProjects = await listProjects();
+        var projectKey = file.name;  // default: new project keyed by filename
+
+        if (existingProjects.length > 0) {
+          console.log('[S224] §MERGE_PROMPT existing=' + existingProjects.length + ' file=' + file.name);
+          const choice = await showMergeModal(existingProjects, file.name);
+
+          if (choice.action === 'merge') {
+            // Merge: append version to existing project
+            var targetKey = choice.target;
+            var existing = await getProject(targetKey);
+            if (existing) {
+              existing.versions.push({ key: file.name, importDate: new Date().toISOString(), db: dbBuf });
+              existing.latestVersion = existing.versions.length - 1;
+              // Aggregate meta: merge disciplines, update element count
+              var newDiscs = msg.meta.disciplines || {};
+              var oldDiscs = existing.meta.disciplines || {};
+              for (var d in newDiscs) { oldDiscs[d] = (oldDiscs[d] || 0) + newDiscs[d]; }
+              existing.meta.disciplines = oldDiscs;
+              existing.meta.elementCount = (existing.meta.elementCount || 0) + (msg.meta.elementCount || 0);
+              await saveProject(targetKey, existing);
+              var vNum = existing.versions.length;
+              console.log('[S224] §MERGE_ACCEPT target=' + targetKey + ' version=v' + vNum + ' elements=' + msg.meta.elementCount);
+              status.textContent = 'Merged as v' + vNum + ' into ' + targetKey;
+              progressBar.style.width = '100%';
+              progressBar.style.background = '#44cc44';
+              setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#4fc3f7'; progressBar.parentElement.style.display = 'none'; }, 3000);
+              renderImportCards();
+              worker.terminate();
+              return;
+            }
+          }
+          // action === 'new' → fall through to create new project
+          console.log('[S224] §MERGE_REJECT file=' + file.name);
         }
 
-        status.textContent = 'Imported ' + msg.meta.elementCount + ' elements';
+        // New project: single version
+        var newRecord = {
+          meta: msg.meta,
+          versions: [{ key: file.name, importDate: new Date().toISOString(), db: dbBuf }],
+          latestVersion: 0
+        };
+        await saveProject(projectKey, newRecord);
+        console.log('[S224] §IMPORT_SAVED key=' + projectKey + ' elements=' + msg.meta.elementCount);
+
+        status.textContent = 'Imported ' + msg.meta.elementCount + ' elements — see your building below ↓';
         progressBar.style.width = '100%';
         progressBar.style.background = '#44cc44';
-
-        // S222: Variation detection — check if building already imported
-        const existingImports = await listImports();
-        const buildingName = msg.meta.name;
-        const existingVersions = existingImports.filter(function(imp) {
-          return imp.meta && imp.meta.name === buildingName && imp.key !== file.name;
-        });
-        if (existingVersions.length > 0) {
-          const vNum = existingVersions.length + 1;
-          console.log('[S222] §VARIATION_DETECTED building=' + buildingName + ' version=v' + vNum + ' base=' + existingVersions[0].key);
-          status.textContent = 'Variation v' + vNum + ' detected for ' + buildingName + '!';
-        }
+        setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#4fc3f7'; progressBar.parentElement.style.display = 'none'; }, 3000);
 
         renderImportCards();
       } catch(dbErr) {
         status.textContent = 'DB error: ' + dbErr.message;
         progressBar.style.background = '#cc4444';
+        console.log('[S224] §IMPORT_DB_ERROR ' + dbErr.message);
       }
       worker.terminate();
     }

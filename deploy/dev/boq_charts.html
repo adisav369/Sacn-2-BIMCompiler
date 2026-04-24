@@ -16,6 +16,7 @@
   }
   .chart-box.full { grid-column: 1 / -1; }
   canvas { max-width: 100%; }
+  .chart-box.pie-chart canvas { aspect-ratio: 1; max-height: 400px; margin: 0 auto; display: block; }
   table { border-collapse: collapse; width: 100%; font-size: 11px; margin-top: 8px; }
   th { background: rgba(79,195,247,0.15); color: #4fc3f7; text-align: left; padding: 4px 8px; }
   td { padding: 3px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
@@ -54,7 +55,12 @@
 <script>
 const params = new URLSearchParams(location.search);
 const DB_URL = params.get('db') || 'sandbox_1M_extracted.db';
+const DIFF_DB_URL = params.get('diffdb') || '';
 const BLD = params.get('bld') || '';
+
+// S224: Variance data (populated in init if diffdb present)
+var diffResult = null;
+var diffDb = null;
 
 // ============================================================================
 // CIDB 2024 MATERIAL RATES (from boq_export.py — exact match)
@@ -417,12 +423,35 @@ function generateSchedule(activities, startDateStr) {
 // ============================================================================
 // INIT — load DB, compute everything
 // ============================================================================
+// S223: Fetch DB buffer — handles import:// URLs via IndexedDB cache, or regular fetch
+async function fetchDbBuffer(url) {
+  if (url.startsWith('import://')) {
+    // Look up in bim_ootb_cache IndexedDB (same store viewer uses)
+    const cacheDb = await new Promise(resolve => {
+      const req = indexedDB.open('bim_ootb_cache', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('dbs');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    });
+    if (!cacheDb) throw new Error('Cannot open IndexedDB cache for import:// URL');
+    const buf = await new Promise((resolve, reject) => {
+      const tx = cacheDb.transaction('dbs', 'readonly');
+      const req = tx.objectStore('dbs').get(url);
+      req.onsuccess = () => req.result ? resolve(req.result) : reject(new Error('DB not found in cache: ' + url));
+      req.onerror = () => reject(new Error('IndexedDB read failed'));
+    });
+    console.log('[S223] §BOQ_IMPORT_DB loaded from IndexedDB cache, size=' + (buf.byteLength / 1024).toFixed(0) + 'KB');
+    return buf;
+  }
+  return fetch(url).then(r => r.arrayBuffer());
+}
+
 async function init() {
   const SQL = await initSqlJs({
     locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
   });
   document.getElementById('info').textContent = `Loading ${DB_URL}...`;
-  const buf = await fetch(DB_URL).then(r => r.arrayBuffer());
+  const buf = await fetchDbBuffer(DB_URL);
   db = new SQL.Database(new Uint8Array(buf));
 
   // Determine building
@@ -490,6 +519,28 @@ async function init() {
   document.getElementById('info').textContent =
     `${bldName} | ${totalQty.toLocaleString()} elements | RM ${grandTotal.toLocaleString()} (Mat ${grandMaterial.toLocaleString()} + Lab ${grandLabor.toLocaleString()} + Equip ${grandEquip.toLocaleString()})`;
 
+  // S224: Load diff DB if present — compute variance for VO sheets in Excel
+  if (DIFF_DB_URL) {
+    try {
+      const diffBuf = await fetchDbBuffer(DIFF_DB_URL);
+      diffDb = new SQL.Database(new Uint8Array(diffBuf));
+      const guids1 = new Set(db.exec("SELECT guid FROM elements_meta")[0].values.map(r => r[0]));
+      const guids2 = new Set(diffDb.exec("SELECT guid FROM elements_meta")[0].values.map(r => r[0]));
+      const added = [...guids2].filter(g => !guids1.has(g));
+      const removed = [...guids1].filter(g => !guids2.has(g));
+      const changed = [...guids2].filter(g => guids1.has(g)).filter(g => {
+        const r1 = db.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid='" + g.replace(/'/g, "''") + "'");
+        const r2 = diffDb.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid='" + g.replace(/'/g, "''") + "'");
+        return JSON.stringify(r1[0]?.values[0]) !== JSON.stringify(r2[0]?.values[0]);
+      });
+      diffResult = { added, removed, changed };
+      console.log('[S224] §BOQ_DIFF added=' + added.length + ' removed=' + removed.length + ' changed=' + changed.length);
+      document.getElementById('info').textContent += ' | VARIANCE: +' + added.length + ' −' + removed.length + ' ~' + changed.length;
+    } catch(e) {
+      console.log('[S224] §BOQ_DIFF_ERROR ' + e.message);
+    }
+  }
+
   renderCharts();
 }
 
@@ -509,7 +560,7 @@ function renderCharts() {
   const discs = Object.keys(discSummary);
 
   // ── 1. Cost Pie by Discipline (M+L+E) ──
-  const pieBox = el('div','chart-box');
+  const pieBox = el('div','chart-box pie-chart');
   pieBox.innerHTML = '<h2>5D — Cost by Discipline (RM)</h2>';
   const pieCanvas = el('canvas');
   pieBox.appendChild(pieCanvas); c.appendChild(pieBox);
@@ -518,7 +569,7 @@ function renderCharts() {
   chartInstances.push(new Chart(pieCanvas, {
     type:'pie',
     data:{labels:discs, datasets:[{data:discTotals, backgroundColor:discs.map(d=>DISC_COLORS[d]||'#888')}]},
-    options:{aspectRatio:1, plugins:{legend:{position:'right',labels:{color:'#ccc',font:{size:13}}}}}
+    options:{aspectRatio:1, maintainAspectRatio:true, plugins:{legend:{position:'right',labels:{color:'#ccc',font:{size:13}}}}}
   }));
   logChart(1,'Pie','Cost Breakdown by Discipline',discs.length);
 
@@ -538,7 +589,7 @@ function renderCharts() {
         {label:'Equipment',data:discs.map(d=>discSummary[d].equipCost),backgroundColor:'#5B9BD5'},
       ]
     },
-    options:{scales:{y:{stacked:true,ticks:{color:'#aaa'}},x:{stacked:{color:'#aaa'}}},plugins:{legend:{labels:{color:'#ccc'}}}}
+    options:{scales:{y:{stacked:true,ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}},x:{stacked:true,ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{labels:{color:'#ccc'}}}}
   }));
   logChart(2,'Bar','Cost Components by Discipline',discs.length);
 
@@ -547,7 +598,7 @@ function renderCharts() {
   for (const t of scheduleData) taskPhaseCounts[t.phase] = (taskPhaseCounts[t.phase]||0) + 1;
   const tpPhases = Object.keys(taskPhaseCounts);
 
-  const tpBox = el('div','chart-box');
+  const tpBox = el('div','chart-box pie-chart');
   tpBox.innerHTML = '<h2>Task Distribution by Phase</h2>';
   const tpCanvas = el('canvas');
   tpBox.appendChild(tpCanvas); c.appendChild(tpBox);
@@ -555,7 +606,7 @@ function renderCharts() {
   chartInstances.push(new Chart(tpCanvas, {
     type:'pie',
     data:{labels:tpPhases, datasets:[{data:tpPhases.map(p=>taskPhaseCounts[p]), backgroundColor:tpPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
-    options:{aspectRatio:1, plugins:{legend:{position:'right',labels:{color:'#ccc',font:{size:13}}}}}
+    options:{aspectRatio:1, maintainAspectRatio:true, plugins:{legend:{position:'right',labels:{color:'#ccc',font:{size:13}}}}}
   }));
   logChart(3,'Pie','Task Distribution by Phase',tpPhases.length);
 
@@ -572,7 +623,7 @@ function renderCharts() {
   chartInstances.push(new Chart(tdCanvas, {
     type:'bar',
     data:{labels:tdDiscs, datasets:[{label:'Tasks',data:tdDiscs.map(d=>taskDiscCounts[d]),backgroundColor:tdDiscs.map(d=>DISC_COLORS[d]||'#888')}]},
-    options:{scales:{y:{title:{display:true,text:'Number of Tasks',color:'#aaa'},ticks:{color:'#aaa'}},x:{title:{display:true,text:'Discipline',color:'#aaa'},ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+    options:{scales:{y:{title:{display:true,text:'Number of Tasks',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}},x:{title:{display:true,text:'Discipline',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(4,'Bar','Task Count by Discipline',tdDiscs.length);
 
@@ -589,7 +640,7 @@ function renderCharts() {
   chartInstances.push(new Chart(pdCanvas, {
     type:'bar',
     data:{labels:pdPhases, datasets:[{label:'Days',data:pdPhases.map(p=>Math.round(phaseDur[p])),backgroundColor:pdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
-    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Days',color:'#aaa'},ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Days',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}},y:{ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(5,'H-Bar','Phase Duration',pdPhases.length);
 
@@ -606,7 +657,7 @@ function renderCharts() {
   chartInstances.push(new Chart(mdCanvas, {
     type:'bar',
     data:{labels:mdPhases, datasets:[{label:'Man-Days',data:mdPhases.map(p=>Math.round(phaseMandays[p])),backgroundColor:mdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
-    options:{scales:{y:{title:{display:true,text:'Man-Days',color:'#aaa'},ticks:{color:'#aaa'}},x:{ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+    options:{scales:{y:{title:{display:true,text:'Man-Days',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}},x:{ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(6,'Column','Resource Workload',mdPhases.length);
 
@@ -639,7 +690,7 @@ function renderCharts() {
     chartInstances.push(new Chart(scCanvas, {
       type:'line',
       data:{labels:weekLabels, datasets:[{label:'% Complete',data:weekPcts,borderColor:'#4fc3f7',backgroundColor:'rgba(79,195,247,0.1)',fill:true,tension:0.3}]},
-      options:{scales:{y:{min:0,max:100,title:{display:true,text:'% Complete',color:'#aaa'},ticks:{color:'#aaa'}},x:{title:{display:true,text:'Project Week',color:'#aaa'},ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+      options:{scales:{y:{min:0,max:100,title:{display:true,text:'% Complete',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}},x:{title:{display:true,text:'Project Week',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
     }));
     logChart(7,'Line','S-Curve Progress',weekLabels.length);
   }
@@ -672,7 +723,7 @@ function renderCharts() {
   chartInstances.push(new Chart(msCanvas, {
     type:'bar',
     data:{labels:milestones.map(m=>m.name), datasets:[{label:'Day',data:milestones.map(m=>m.day),backgroundColor:milestones.map(m=>m.name.includes('Start')?'#70AD47':m.name.includes('End')?'#ED7D31':'#4fc3f7')}]},
-    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Day from Project Start',color:'#aaa'},ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa',font:{size:10}}}},plugins:{legend:{display:false}}}
+    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Day from Project Start',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}},y:{ticks:{color:'#ccc',font:{size:10}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(8,'H-Bar','Milestone Timeline',milestones.length);
 
@@ -697,8 +748,8 @@ function renderCharts() {
     options:{
       indexAxis:'y',
       scales:{
-        x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#aaa'},ticks:{color:'#aaa'}},
-        y:{stacked:true,ticks:{color:'#aaa',font:{size:9}}}
+        x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#4fc3f7'},ticks:{color:'#ccc'},grid:{color:'rgba(255,255,255,0.1)'}},
+        y:{stacked:true,ticks:{color:'#ccc',font:{size:9}},grid:{color:'rgba(255,255,255,0.1)'}}
       },
       plugins:{
         legend:{display:false},
@@ -762,6 +813,26 @@ function el(tag, cls) {
 // SAVE 5D BOQ — ExcelJS: Cover, Exec Summary, Mat/Lab/Equip, BOQ, WPs, Disc, Prov, Charts
 // ============================================================================
 async function save5D() {
+  document.getElementById('status').textContent = 'Generating 5D Excel — preparing charts...';
+
+  // S224: Force all charts to high-res before any image capture
+  var savedStyles = [];
+  for (var ci = 0; ci < chartInstances.length; ci++) {
+    var ch = chartInstances[ci];
+    var isPie = ch.config.type === 'pie';
+    var w = isPie ? 800 : 1100, h = isPie ? 800 : 700;
+    savedStyles.push({
+      pw: ch.canvas.parentElement.style.width, ph: ch.canvas.parentElement.style.height,
+      cw: ch.canvas.style.width, ch_: ch.canvas.style.height
+    });
+    ch.canvas.parentElement.style.width = w + 'px';
+    ch.canvas.parentElement.style.height = h + 'px';
+    ch.canvas.style.width = w + 'px';
+    ch.canvas.style.height = h + 'px';
+    ch.resize(w, h);
+  }
+  await new Promise(r => setTimeout(r, 500));  // let Chart.js re-render
+
   document.getElementById('status').textContent = 'Generating 5D Excel...';
   const wb = new ExcelJS.Workbook();
   wb.creator = 'BIM OOTB';
@@ -1124,7 +1195,7 @@ async function save5D() {
   wsProv.getRow(provTotRow).font = { bold: true };
   fmtRow(wsProv, provTotRow, [7,8], NUM_FMT);
 
-  // ── Charts Sheet (embedded chart images) ──
+  // ── Charts Sheet (embedded chart images — already at high-res from pre-export resize) ──
   try {
     const chartCanvases = document.querySelectorAll('.chart-box canvas');
     if (chartCanvases.length > 0) {
@@ -1148,6 +1219,88 @@ async function save5D() {
     }
   } catch (e) { console.warn('Charts sheet error:', e); }
 
+  // ── S224: Variance Order sheets (when diff data exists) ──
+  if (diffResult && diffDb) {
+    const VO_CFG = { addFactor: 1.0, removeFactor: 0.3, changeFactor: 1.3, overheadPct: 0.10, markupPct: 0.15, disruptionPct: 0.05 };
+    function voRate(cls) { return RATES[cls] || RATES._default || 500; }
+    function voPhase(cls) {
+      const P = { IfcFooting:'Substructure', IfcPile:'Substructure', IfcColumn:'Superstructure', IfcBeam:'Superstructure', IfcSlab:'Superstructure',
+        IfcWall:'Architecture', IfcWallStandardCase:'Architecture', IfcDoor:'Architecture', IfcWindow:'Architecture', IfcRoof:'Architecture',
+        IfcDuct:'MEP Rough-in', IfcPipe:'MEP Rough-in', IfcCableCarrier:'MEP Rough-in', IfcLightFixture:'MEP Final', IfcOutlet:'MEP Final',
+        IfcCovering:'Finishes', IfcFurniture:'Finishes' };
+      return P[cls] || 'Architecture';
+    }
+    function voProd(cls) {
+      const P = { IfcColumn:6, IfcBeam:8, IfcSlab:35, IfcWall:12, IfcDoor:5, IfcWindow:5, IfcDuct:18, IfcPipe:25, IfcLightFixture:20 };
+      return P[cls] || 10;
+    }
+    function voInfo(dbRef, guid) {
+      try { var r = dbRef.exec("SELECT ifc_class, element_name, storey, discipline, material_rgba FROM elements_meta WHERE guid='" + guid.replace(/'/g,"''") + "'"); return r.length ? r[0].values[0] : [null,null,null,null,null]; } catch(e) { return [null,null,null,null,null]; }
+    }
+
+    // VO Detail sheet
+    const wsVO = wb.addWorksheet('Variation Order');
+    wsVO.columns = [
+      { header: 'Status', key: 's', width: 10 }, { header: 'GUID', key: 'g', width: 36 },
+      { header: 'IFC Class', key: 'c', width: 20 }, { header: 'Name', key: 'n', width: 24 },
+      { header: 'Storey', key: 'st', width: 16 }, { header: 'Discipline', key: 'd', width: 10 },
+      { header: 'Phase (4D)', key: 'p', width: 14 }, { header: 'Unit Rate (RM)', key: 'r', width: 12 },
+      { header: 'Factor', key: 'f', width: 8 }, { header: 'Direct Cost', key: 'dc', width: 12 },
+      { header: 'Total Impact', key: 'ti', width: 12 }, { header: 'Days', key: 'dy', width: 8 }
+    ];
+    styleHeader(wsVO, 1, 'FF4FC3F7');
+
+    var voTotalDirect = 0, voTotalImpact = 0, voTotalDays = 0;
+    var voAddCost = 0, voRemCost = 0, voChgCost = 0;
+    function voRow(status, dbRef, guid, factor) {
+      var info = voInfo(dbRef, guid);
+      var cls = info[0] || 'Unknown';
+      var rate = voRate(cls), direct = rate * factor;
+      var total = direct * (1 + VO_CFG.overheadPct + VO_CFG.markupPct) * (1 + VO_CFG.disruptionPct);
+      var days = 1 / voProd(cls);
+      voTotalDirect += direct; voTotalImpact += total; voTotalDays += days;
+      if (status === 'ADDED') voAddCost += total;
+      else if (status === 'REMOVED') voRemCost += total;
+      else voChgCost += total;
+      wsVO.addRow({ s: status, g: guid, c: cls, n: info[1], st: info[2], d: info[3], p: voPhase(cls), r: rate, f: factor, dc: Math.round(direct), ti: Math.round(total), dy: +days.toFixed(2) });
+    }
+    diffResult.added.forEach(g => voRow('ADDED', diffDb, g, VO_CFG.addFactor));
+    diffResult.removed.forEach(g => voRow('REMOVED', db, g, VO_CFG.removeFactor));
+    diffResult.changed.forEach(g => voRow('CHANGED', diffDb, g, VO_CFG.changeFactor));
+    // Color-code
+    wsVO.eachRow((row, idx) => {
+      if (idx === 1) return;
+      var s = row.getCell(1).value;
+      if (s === 'ADDED') row.getCell(1).font = { color: { argb: 'FF44CC44' }, bold: true };
+      else if (s === 'REMOVED') row.getCell(1).font = { color: { argb: 'FFCC4444' }, bold: true };
+      else if (s === 'CHANGED') row.getCell(1).font = { color: { argb: 'FFCCCC44' }, bold: true };
+    });
+
+    // VO Summary sheet
+    const wsVOS = wb.addWorksheet('Variance Summary');
+    wsVOS.columns = [{ header: 'Metric', key: 'm', width: 32 }, { header: 'Value', key: 'v', width: 22 }, { header: 'Notes', key: 'n', width: 48 }];
+    styleHeader(wsVOS, 1, 'FF4FC3F7');
+    wsVOS.addRow({ m: 'Variation Order', v: bldName, n: 'Auto-generated — ' + new Date().toISOString().split('T')[0] });
+    wsVOS.addRow({});
+    wsVOS.addRow({ m: '── SCOPE ──' }); wsVOS.lastRow.font = { bold: true, color: { argb: 'FF4FC3F7' } };
+    wsVOS.addRow({ m: 'Elements Added', v: diffResult.added.length, n: 'New in variation (green)' });
+    wsVOS.addRow({ m: 'Elements Removed', v: diffResult.removed.length, n: 'Demolished (red)' });
+    wsVOS.addRow({ m: 'Elements Changed', v: diffResult.changed.length, n: 'Modified properties (yellow)' });
+    wsVOS.addRow({ m: 'Total Affected', v: diffResult.added.length + diffResult.removed.length + diffResult.changed.length });
+    wsVOS.addRow({});
+    wsVOS.addRow({ m: '── COST IMPACT (5D) ──', n: 'FIDIC Clause 12 + AACE' }); wsVOS.lastRow.font = { bold: true, color: { argb: 'FF4FC3F7' } };
+    wsVOS.addRow({ m: 'Addition Cost', v: 'RM ' + Math.round(voAddCost).toLocaleString() });
+    wsVOS.addRow({ m: 'Removal Cost', v: 'RM ' + Math.round(voRemCost).toLocaleString() });
+    wsVOS.addRow({ m: 'Change Cost', v: 'RM ' + Math.round(voChgCost).toLocaleString() });
+    wsVOS.addRow({ m: 'Net Direct', v: 'RM ' + Math.round(voTotalDirect).toLocaleString() });
+    wsVOS.addRow({ m: 'Total Impact (O&P)', v: 'RM ' + Math.round(voTotalImpact).toLocaleString(), n: 'Direct × (1+10%OH+15%Markup) × (1+5%Disruption)' });
+    wsVOS.addRow({});
+    wsVOS.addRow({ m: '── SCHEDULE IMPACT (4D) ──' }); wsVOS.lastRow.font = { bold: true, color: { argb: 'FF4FC3F7' } };
+    wsVOS.addRow({ m: 'Total Additional Days', v: voTotalDays.toFixed(1) + ' days' });
+
+    console.log('[S224] §VO_IN_5D added=' + diffResult.added.length + ' removed=' + diffResult.removed.length + ' changed=' + diffResult.changed.length + ' impact=RM' + Math.round(voTotalImpact));
+  }
+
   // ── Save ──
   const sheetCount = wb.worksheets.length;
   const filename = `BIM_OOTB_${bldName}_5D_BOQ_${new Date().toISOString().slice(0,10)}.xlsx`;
@@ -1158,13 +1311,42 @@ async function save5D() {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
-  document.getElementById('status').textContent = `Saved ${filename} (${sheetCount} sheets)`;
+  document.getElementById('status').textContent = `Saved ${filename} (${sheetCount} sheets)` + (diffResult ? ' — includes Variance Order' : '');
+
+  // Restore charts to responsive sizing
+  for (var ri = 0; ri < chartInstances.length; ri++) {
+    var s = savedStyles[ri];
+    if (!s) continue;
+    chartInstances[ri].canvas.parentElement.style.width = s.pw;
+    chartInstances[ri].canvas.parentElement.style.height = s.ph;
+    chartInstances[ri].canvas.style.width = s.cw;
+    chartInstances[ri].canvas.style.height = s.ch_;
+    chartInstances[ri].resize();
+  }
 }
 
 // ============================================================================
 // SAVE 4D SCHEDULE — ExcelJS: 3 sheets (matches schedule_export.py)
 // ============================================================================
 async function save4D() {
+  document.getElementById('status').textContent = 'Generating 4D Excel — preparing charts...';
+  // S224: Force charts to high-res for image capture (same as save5D)
+  var saved4DStyles = [];
+  for (var ci = 0; ci < chartInstances.length; ci++) {
+    var ch = chartInstances[ci];
+    var isPie = ch.config.type === 'pie';
+    var w = isPie ? 800 : 1100, h = isPie ? 800 : 700;
+    saved4DStyles.push({
+      pw: ch.canvas.parentElement.style.width, ph: ch.canvas.parentElement.style.height,
+      cw: ch.canvas.style.width, ch_: ch.canvas.style.height
+    });
+    ch.canvas.parentElement.style.width = w + 'px';
+    ch.canvas.parentElement.style.height = h + 'px';
+    ch.canvas.style.width = w + 'px';
+    ch.canvas.style.height = h + 'px';
+    ch.resize(w, h);
+  }
+  await new Promise(r => setTimeout(r, 500));
   document.getElementById('status').textContent = 'Generating 4D Excel...';
   const wb = new ExcelJS.Workbook();
   wb.creator = 'BIM OOTB';
@@ -1322,6 +1504,16 @@ async function save4D() {
   a.click();
   URL.revokeObjectURL(a.href);
   document.getElementById('status').textContent = `Saved ${filename} (3 sheets)`;
+  // Restore charts to responsive sizing
+  for (var ri = 0; ri < chartInstances.length; ri++) {
+    var s = saved4DStyles[ri];
+    if (!s) continue;
+    chartInstances[ri].canvas.parentElement.style.width = s.pw;
+    chartInstances[ri].canvas.parentElement.style.height = s.ph;
+    chartInstances[ri].canvas.style.width = s.cw;
+    chartInstances[ri].canvas.style.height = s.ch_;
+    chartInstances[ri].resize();
+  }
 }
 
 // ── Theme toggle ──

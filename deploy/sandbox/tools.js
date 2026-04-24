@@ -114,10 +114,21 @@ function setupTools(A) {
     if (!A.db || !A.activeBuilding) { A.status.textContent = 'Select a building first.'; return; }
     const bld = A.activeBuilding;
     const dbParam = new URLSearchParams(location.search).get('db') || 'yourproject_extracted.db';
-    // boq_charts.html is at bucket root, not in sandbox/
-    // Strip query string BEFORE matching — ?db= and ?lib= contain /o/ which fools greedy regex
-    const base = location.href.split('?')[0].match(/(.*\/o\/)/)?.[1] || '../';
-    window.open(`${base}boq_charts.html?db=${encodeURIComponent(dbParam)}&bld=${bld}`, '_blank');
+    // S223: import:// URLs → boq_charts co-located (../boq_charts.html from sandbox/)
+    // OCI URLs → strip to /o/ base
+    // S224: pass diffdb to boq_charts when viewer has diff data
+    var diffParam = '';
+    var diffDbUrl = new URLSearchParams(location.search).get('diffdb');
+    if (diffDbUrl) diffParam = '&diffdb=' + encodeURIComponent(diffDbUrl);
+
+    var chartsUrl;
+    if (dbParam.startsWith('import://')) {
+      chartsUrl = '../boq_charts.html?db=' + encodeURIComponent(dbParam) + '&bld=' + bld + diffParam;
+    } else {
+      const base = location.href.split('?')[0].match(/(.*\/o\/)/)?.[1] || '../';
+      chartsUrl = base + 'boq_charts.html?db=' + encodeURIComponent(dbParam) + '&bld=' + bld + diffParam;
+    }
+    window.open(chartsUrl, '_blank');
     A.status.textContent = `4D/5D analytics opened for ${bld} (Save 5D BOQ / Save 4D Schedule)`;
   };
 

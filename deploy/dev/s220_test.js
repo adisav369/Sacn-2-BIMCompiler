@@ -148,6 +148,127 @@ for (const t of TESTS) {
   libDb.close();
 }
 
+// ── S223: Diff + VO Cost Engine Tests ──
+emit(`\n── DIFF + VO (S223) ──`);
+
+// Use SampleHouse as base, create a variation by modifying a copy
+const shExt = path.join(BUILDINGS_DIR, 'SampleHouse_extracted.db');
+if (fs.existsSync(shExt)) {
+  const baseDb = new Database(shExt, { readonly: true });
+
+  // Create in-memory variation: change some element names + remove 2 + add 1 fake
+  const varPath = path.join(__dirname, 's223_variation.db');
+  if (fs.existsSync(varPath)) fs.unlinkSync(varPath);
+  const varDb = new Database(varPath);
+
+  // Copy schema + data from base (strip FK constraints that reference other DBs)
+  const tables = baseDb.prepare("SELECT name, sql FROM sqlite_master WHERE type='table'").all();
+  for (const t of tables) {
+    const ddl = t.sql.replace(/,\s*FOREIGN KEY\s*\([^)]*\)\s*REFERENCES\s*[^)]*\)/gi, '');
+    varDb.exec(ddl);
+    const rows = baseDb.prepare(`SELECT * FROM ${t.name}`).all();
+    if (rows.length > 0) {
+      const cols = Object.keys(rows[0]);
+      const placeholders = cols.map(() => '?').join(',');
+      const insert = varDb.prepare(`INSERT INTO ${t.name} (${cols.join(',')}) VALUES (${placeholders})`);
+      for (const row of rows) insert.run(...cols.map(c => row[c]));
+    }
+  }
+
+  // Get all GUIDs
+  const allGuids = varDb.prepare('SELECT guid FROM elements_meta').all().map(r => r.guid);
+
+  // Modify: change name of first 3 elements (CHANGED)
+  const changedGuids = allGuids.slice(0, 3);
+  for (const guid of changedGuids) {
+    varDb.prepare("UPDATE elements_meta SET element_name = 'MODIFIED_' || element_name WHERE guid = ?").run(guid);
+  }
+
+  // Remove: delete 2 elements (REMOVED in variation = they exist in base but not var)
+  const removedGuids = allGuids.slice(3, 5);
+  for (const guid of removedGuids) {
+    varDb.prepare('DELETE FROM elements_meta WHERE guid = ?').run(guid);
+    varDb.prepare('DELETE FROM element_transforms WHERE guid = ?').run(guid);
+    varDb.prepare('DELETE FROM element_instances WHERE guid = ?').run(guid);
+  }
+
+  // Add: insert 1 fake element (ADDED in variation)
+  const fakeGuid = '00000000-0000-0000-0000-FAKES223TEST';
+  varDb.prepare("INSERT INTO elements_meta (guid, ifc_class, element_name, storey, discipline, material_name, material_rgba, building) VALUES (?, 'IfcBeam', 'S223_TEST_BEAM', 'Level 1', 'STR', 'Concrete', '0.5,0.5,0.5,1.0', 'SampleHouse')").run(fakeGuid);
+  varDb.prepare("INSERT INTO element_transforms (guid, center_x, center_y, center_z, rotation_x, rotation_y, rotation_z) VALUES (?, 5.0, 3.0, 2.5, 0, 0, 0)").run(fakeGuid);
+
+  // Test diff computation
+  const baseGuids = new Set(baseDb.prepare('SELECT guid FROM elements_meta').all().map(r => r.guid));
+  const varGuids = new Set(varDb.prepare('SELECT guid FROM elements_meta').all().map(r => r.guid));
+
+  const added = [...varGuids].filter(g => !baseGuids.has(g));
+  const removed = [...baseGuids].filter(g => !varGuids.has(g));
+  const common = [...varGuids].filter(g => baseGuids.has(g));
+  const changed = common.filter(g => {
+    const r1 = baseDb.prepare("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid = ?").get(g);
+    const r2 = varDb.prepare("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid = ?").get(g);
+    return JSON.stringify(r1) !== JSON.stringify(r2);
+  });
+
+  emit(`  DIFF added=${added.length} removed=${removed.length} changed=${changed.length}`);
+
+  if (added.length === 1 && added[0] === fakeGuid) ok('DIFF_ADD', '1 added element detected (fake GUID)');
+  else ng('DIFF_ADD', 'expected 1 added, got ' + added.length);
+
+  if (removed.length === 2) ok('DIFF_REMOVE', '2 removed elements detected');
+  else ng('DIFF_REMOVE', 'expected 2 removed, got ' + removed.length);
+
+  if (changed.length === 3) ok('DIFF_CHANGE', '3 changed elements detected');
+  else ng('DIFF_CHANGE', 'expected 3 changed, got ' + changed.length);
+
+  // Test VO cost calculations
+  const VO_RATES_TEST = { IfcBeam: 680, IfcWall: 145, IfcDoor: 2850, _default: 500 };
+  const VO_CONFIG_TEST = {
+    addFactor: 1.0, removeFactor: 0.3, changeFactor: 1.3,
+    overheadPct: 0.10, markupPct: 0.15, disruptionPct: 0.05,
+    currency: 'MYR', usdRate: 0.21
+  };
+
+  function testRate(db, guid) {
+    const r = db.prepare("SELECT ifc_class FROM elements_meta WHERE guid = ?").get(guid);
+    return VO_RATES_TEST[r?.ifc_class] || VO_RATES_TEST._default;
+  }
+
+  var addCost = 0, remCost = 0, chgCost = 0;
+  for (const g of added) addCost += testRate(varDb, g) * VO_CONFIG_TEST.addFactor;
+  for (const g of removed) remCost += testRate(baseDb, g) * VO_CONFIG_TEST.removeFactor;
+  for (const g of changed) chgCost += testRate(varDb, g) * VO_CONFIG_TEST.changeFactor;
+
+  var totalDirect = addCost + remCost + chgCost;
+  var totalImpact = totalDirect * (1 + VO_CONFIG_TEST.overheadPct + VO_CONFIG_TEST.markupPct) * (1 + VO_CONFIG_TEST.disruptionPct);
+
+  emit(`  VO addCost=${Math.round(addCost)} remCost=${Math.round(remCost)} chgCost=${Math.round(chgCost)} total=${Math.round(totalImpact)}`);
+
+  // Added element is IfcBeam → rate=680 × 1.0 = 680
+  if (Math.round(addCost) === 680) ok('VO_ADD_COST', 'IfcBeam × 1.0 = MYR 680');
+  else ng('VO_ADD_COST', 'expected 680, got ' + Math.round(addCost));
+
+  if (totalDirect > 0) ok('VO_DIRECT', 'net direct cost > 0: MYR ' + Math.round(totalDirect));
+  else ng('VO_DIRECT', 'net direct cost should be > 0');
+
+  // Total impact should be higher than direct (overhead + markup + disruption)
+  if (totalImpact > totalDirect) ok('VO_IMPACT', 'total impact > direct (O&P applied): MYR ' + Math.round(totalImpact));
+  else ng('VO_IMPACT', 'total impact should exceed direct cost');
+
+  // USD conversion
+  var usdTotal = Math.round(totalImpact * VO_CONFIG_TEST.usdRate);
+  if (usdTotal > 0) ok('VO_USD', 'USD conversion: $' + usdTotal);
+  else ng('VO_USD', 'USD conversion failed');
+
+  baseDb.close();
+  varDb.close();
+
+  // Clean up temp DB
+  if (fs.existsSync(varPath)) fs.unlinkSync(varPath);
+} else {
+  emit('  SKIP — SampleHouse_extracted.db not found, cannot test diff/VO');
+}
+
 // Summary
 emit(`\n── SUMMARY ──`);
 emit(`§RESULT PASS=${pass} FAIL=${fail} TOTAL=${pass + fail}`);

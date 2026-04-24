@@ -475,15 +475,26 @@ bim_ootb_imports (object store: 'buildings')
 ### Compare Flow (in viewer)
 
 1. User clicks Compare on card → picks two versions (e.g. v1 vs v3)
+   - 2 versions: auto-compares (no picker needed)
+   - 3+ versions: picker modal with dropdowns
 2. Viewer opens with `?db=import://Project/v0&diffdb=import://Project/v2`
-3. `streaming.js` loads v1 (base), streams normally
+3. `streaming.js` loads v1 (base), streams normally — **viewer is unchanged**
 4. `main.js` loads v3 as `A.diffDb`, calls `computeDiff()`
 5. After streaming completes → `applyDiffOverlay()`:
    - Green (added): elements in v3 not in v1
    - Red ghost (removed): elements in v1 not in v3
    - Yellow (changed): same GUID, different properties
-6. Diff summary panel shows: counts + cost preview (from `variation_order.js`)
-7. "Export VO Excel" button → 3-sheet spreadsheet downloads
+6. Diff summary panel shows: counts + cost preview. No separate VO export button.
+7. **Variance Order in 4D/5D** — the existing 📊 button passes `&diffdb=` to `boq_charts.html`.
+   boq_charts detects variance, adds two sheets to the 5D Excel:
+   - **Variation Order** — per-element: status, GUID, class, rate, factor, direct cost, total impact, days
+   - **Variance Summary** — scope counts, FIDIC cost breakdown, schedule impact
+   No separate VO export path. One button, one Excel, all sheets.
+
+### Design Principle: Viewer Integrity
+- **No diff, no change** — without `?diffdb=`, viewer behaves exactly as before
+- **With diff** — overlay + summary appear, 4D/5D includes variance sheets
+- No new buttons, no new panels, no new flows — existing UX absorbs the variance
 
 ### Merge Prompt — Implementation Notes
 
@@ -500,16 +511,17 @@ bim_ootb_imports (object store: 'buildings')
 - New: user decides. No guessing. No naming convention.
 
 ### Test Plan
-1. Import `Ifc4_Revit_ARC.ifc` → card "Ifc4_Revit_ARC" appears
+1. Import `Ifc4_Revit_ARC.ifc` → card "Ifc4_Revit_ARC" appears (not "Project")
 2. Import `Ifc4_Revit_MEP.ifc` → prompt "Merge with Ifc4_Revit_ARC or New?"
 3. Click Merge → card shows v2, discipline bars update (ARC + MEP)
 4. Import `Ifc4_Revit_STR.ifc` → prompt → Merge → card shows v3
-5. Click Compare → pick v1 vs v2 → viewer: green MEP elements (all added)
-6. Click Compare → pick v1 vs v3 → viewer: green STR elements (all added)
-7. Export VO Excel → 3 sheets, correct counts and costs
-8. Click New instead → separate card, no merge
-9. Delete card → confirm → all versions gone
-10. Export DB → one `.db` file downloads (latest version)
+5. Click Compare → auto-compare v1 vs v2 → viewer: green MEP elements (all added), HUD shows diff
+6. Click Compare on v3 card → picker → viewer: diff overlay + summary panel
+7. In diff viewer → click 📊 4D/5D → boq_charts opens → info bar shows VARIANCE counts
+8. In boq_charts → Save 5D → Excel has extra sheets: "Variation Order" + "Variance Summary"
+9. Click New instead → separate card, no merge
+10. Delete card → confirm → all versions gone
+11. Save button → downloads latest version as `.db` file
 
 ### Debug Log Tags (planned)
 | Tag | Where | What |

@@ -78,7 +78,34 @@ function initViewer() {
 
   // Go
   animate();
-  APP.init().catch(e => {
+  APP.init().then(async function() {
+    // S223: Load diff DB if ?diffdb= param present (variation comparison)
+    const diffDbUrl = new URLSearchParams(location.search).get('diffdb');
+    if (diffDbUrl && APP.db && typeof APP.computeDiff === 'function') {
+      try {
+        const buf = await APP.cachedFetch(diffDbUrl);
+        const SQL = await initSqlJs({ locateFile: f => 'https://sql.js.org/dist/' + f });
+        APP.diffDb = new SQL.Database(new Uint8Array(buf));
+        console.log('[S223] §DIFF_DB_LOADED url=' + diffDbUrl);
+        APP.computeDiff();
+        // Delay overlay until meshes are streamed (check every 2s, up to 30s)
+        var checks = 0;
+        var diffTimer = setInterval(function() {
+          checks++;
+          var meshCount = 0;
+          APP.scene.traverse(function(o) { if (o.isMesh && o.userData.guid) meshCount++; });
+          if (meshCount > 10 || checks > 15) {
+            clearInterval(diffTimer);
+            APP.applyDiffOverlay();
+            APP.showDiffSummary();
+            console.log('[S223] §DIFF_OVERLAY_READY meshes=' + meshCount);
+          }
+        }, 2000);
+      } catch(e) {
+        console.log('[S223] §DIFF_DB_ERROR ' + e.message);
+      }
+    }
+  }).catch(e => {
     APP.status.textContent = `Error: ${e.message}`;
     console.error(`[S192] §INIT_ERROR`, e);
   });
