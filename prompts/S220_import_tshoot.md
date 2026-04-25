@@ -239,30 +239,25 @@ Need to upload import_worker.js to dev bucket: `oci os object put --bucket-name 
 ### Rate Templates (editable — set once per project)
 | Template | Path | Used By | What to Edit |
 |----------|------|---------|--------------|
-| 5D Rates | `templates/5D_rates.json` | nD engine + VO Excel | Material rates per IFC class, labour, equipment |
-| 4D Phases | `templates/4D_phases.json` | nD engine + VO Excel | Phase sequence, productivity (elements/day), predecessors |
+| 5D Rates | `templates/5D_rates.json` | nD engine | Material rates per IFC class, labour, equipment |
+| 4D Phases | `templates/4D_phases.json` | nD engine | Phase sequence, productivity (elements/day), predecessors |
 | nD Formulas | `templates/nD_formulas.json` | nD engine | Measurement rules, cost/schedule/carbon formulas |
+| **Shared Rates** | `deploy/dev/rates.js` | boq_charts, VO, NLP | **Single source** for all browser-side rates, labor, equipment, sequences |
 | VO Config | `variation_order.js` §VO_CONFIG | VO Excel | Addition/removal/change factors, overhead%, markup%, disruption% |
-| Inline Rates | `variation_order.js` §VO_RATES | VO Excel (browser) | Mirrors 5D_rates.json for browser use (no server) |
-| NLP Rates | `nlp.js` §COST_RATES | Voice/text cost queries | Same rates, used by "total cost" / "cost of beams" voice commands |
-| **_TRL Locale** | `boq_charts.html` §_TRL_DEFAULTS | 4D/5D charts + Excel | **All** labels, currency, column headers, chart titles, sheet names |
+| **_TRL Locale** | `deploy/dev/locales/{code}.js` | All browser pages | **Full package:** labels + currency + rates + labor + equipment per country |
 
-**Localization via _TRL (iDempiere-style):**
-`boq_charts.html` contains a `_TRL_DEFAULTS` object that defines every user-visible string:
-- **Currency:** `cur` (primary, default 'RM'), `cur2` (secondary, default 'USD'), `cur_rate` (conversion, default 4.45), `cur_name`, `cur2_name`
-- **Rate attribution:** `rate_source` (default 'CIDB Malaysia 2024 / BCISM Cost Book'), `rate_year`
-- **Column headers:** `h_material`, `h_labour`, `h_equipment`, `h_discipline`, `h_storey`, `h_uom`, etc.
-- **Chart titles:** `t_cost_by_disc`, `t_gantt`, `t_milestone`, `t_s_curve`, `t_vo_impact`, etc.
-- **Excel sheet names:** `s_cover`, `s_exec_summary`, `s_material`, `s_labour`, `s_schedule`, etc.
-- **Misc:** `not_started`, `source_app`
+**Localization via _TRL (iDempiere AD_Window_Trl pattern):**
+Each locale file is a full package — not just translated labels but also country-specific rates.
+15 locales shipped: en_MY (base), en_US, en_GB, en_AU, ms_MY, de_DE, fr_FR, es_ES, zh_CN, th_TH, ja_JP, ko_KR, ar_SA, pt_BR, id_ID.
+User copies any locale → `MyProject_TRL.js` → edits what differs. ISO country code (`iso` field) drives flag emoji.
 
-**Override via URL params:** Any `_TRL` key can be set as a URL param:
-- `?cur=USD&rate=4.45` → USD as primary currency, RM conversion at 4.45
-- `?cur=EUR&rate=5.10` → EUR primary
-- `?h_material=Materials&h_labour=Labor` → US English spelling
-- `?rate_source=RS+Means+2024` → different rate book attribution
+**Override priority (highest wins):**
+1. URL params — `?cur=USD&rate=4.45&h_labour=Labor`
+2. Project locale — `MyProject_TRL.js`
+3. Country locale — `locales/{code}.js`
+4. `_TRL_DEFAULTS` (en_MY base in `rates.js`)
 
-Rates (RATES, LABOR_RATES, EQUIPMENT_RATES) stay as raw numbers in base currency. `_TRL` handles display only — currency symbols, labels, attribution. No rate values in `_TRL`.
+**S225 refactor:** Rates extracted from 3 files into single `rates.js`. No more VO_RATES/COST_RATES duplication.
 
 ### Deployed to OCI Dev (bim-ootb-dev)
 All 8 files uploaded, HTTP 200 verified:
@@ -666,4 +661,29 @@ Full iDempiere-style `_TRL` locale system in `boq_charts.html`. Zero hardcoded s
 - `§MATHS_VERIFY` — MATHS_MAT_SUM, MATHS_LAB_SUM, MATHS_EQ_SUM, MATHS_GRAND, MATHS_CUR_CONV, MATHS_QTY_SUM, MATHS_RATE_CHECK, MATHS_PIE_SUM
 
 **Full spec:** `prompts/S226_localisation.md`
-**Next:** Flag selector on landing page, locale .js files, shared `_trl_base.js`
+
+### S226 Phase 0 DONE: Rate extraction + 10 locale files
+**Completed by follow-up session:**
+- `deploy/dev/rates.js` — single source of truth for RATES, LABOR_RATES, EQUIPMENT_RATES, EQUIPMENT_ALLOCATION, SEQUENCE_RULES, DISC_COLORS, PHASE_COLORS, WORK_PACKAGES, calcLabor(), calcEquipment(), getRate(), getPhase(), getProductivity()
+- `boq_charts.html` — removed ~150 lines of duplicated constants, loads `rates.js`
+- `variation_order.js` — removed VO_RATES/VO_PHASES/VO_PRODUCTIVITY (65 lines), uses shared rates.js
+- `nlp.js` — removed COST_RATES, uses shared getRate()
+- `index.html` — loads `rates.js` before nlp.js/diff.js/variation_order.js
+- 10 locale files in `deploy/dev/locales/`: en_MY (base), en_US, en_GB, en_AU, ms_MY, de_DE, fr_FR, es_ES, zh_CN, th_TH
+- Each locale = FULL package: labels + currency + rates + labor + equipment (iDempiere AD_Window_Trl pattern)
+- en_US has RS Means USD rates (not just label swap — different cost book entirely)
+
+**Backward compatibility review needed:**
+- VO Impact chart (boq_charts.html lines 725-768) uses RATES from rates.js — verified intact
+- variation_order.js now shares rates.js instead of its own VO_RATES — must verify Excel VO output unchanged
+- nlp.js uses getRate() from rates.js instead of COST_RATES — must verify voice cost queries work
+- **Review session:** Load `?diffdb=` with two DBs, click 5D, verify VO chart + VO Excel sheet + cost values match prior output
+- Full review spec: `prompts/S226_localisation.md` §Phase 0
+
+**Still open (chart quality):**
+- PIE_ROUND: canvas 1022×533 not resizing to 800×800 — `ch.resize()` alone doesn't work when responsive
+- LABELS_DARK: 0.5% threshold too tight — bar[1] borderline FAIL
+- RATIO_MATCH: follows from PIE_ROUND fix
+- See `prompts/S226_localisation.md` §Prior Session Issues
+
+**Next:** locale_loader.js, flag selector on landing page, Phase 2-5 per S226 spec
