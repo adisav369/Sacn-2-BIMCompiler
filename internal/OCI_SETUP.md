@@ -73,6 +73,10 @@ for f in config scene streaming panels tools picking tour measure sitecam issues
 done
 # Dev overrides (changed files only — add new dev-only files here)
 oci os object put --bucket-name bim-ootb-dev --file deploy/dev/boq_charts.html --name boq_charts.html --content-type text/html --force
+# S228/S229: Mesh import pipeline + wizard (dev/ path — loaded by landing2.html and mesh worker)
+for f in mesh_import_worker semantic_enrichment scene_to_db wizard ifc_export_worker import import_db_builder; do
+  oci os object put --bucket-name bim-ootb-dev --file "deploy/dev/${f}.js" --name "dev/${f}.js" --content-type application/javascript --force
+done
 
 # ── Common ──
 
