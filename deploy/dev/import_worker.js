@@ -282,7 +282,9 @@ self.onmessage = async function(e) {
             matCount++;
           }
         }
-      } catch(e) { /* skip elements without geometry */ }
+      } catch(e) {
+        console.log('[S220] §GEOM_SKIP guid=' + el.guid + ' class=' + el.ifcClass + ' err=' + (e.message || e));
+      }
 
       geomDone++;
       if (geomDone % 50 === 0 || geomDone === geomTotal) {
@@ -290,6 +292,9 @@ self.onmessage = async function(e) {
         post('progress', pct, 'Tessellating ' + geomDone + '/' + geomTotal + '...');
       }
     }
+
+    const skipped = elements.length - geometries.length;
+    console.log('[S220] §GEOM_SUMMARY elements=' + elements.length + ' geometries=' + geometries.length + ' skipped=' + skipped + ' materials=' + matCount);
 
     post('progress', 92, 'Building databases...');
 

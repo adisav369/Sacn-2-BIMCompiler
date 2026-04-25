@@ -283,7 +283,6 @@ function setupStreaming(A) {
         AVG(t.center_x), AVG(t.center_y), AVG(t.center_z)
       FROM elements_meta m
       JOIN element_transforms t ON t.guid = m.guid
-      WHERE m.discipline IN ('ARC','STR')
       GROUP BY m.building
     `);
     if (rows.length > 0) {

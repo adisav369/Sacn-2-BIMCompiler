@@ -687,3 +687,19 @@ Full iDempiere-style `_TRL` locale system in `boq_charts.html`. Zero hardcoded s
 - See `prompts/S226_localisation.md` §Prior Session Issues
 
 **Next:** locale_loader.js, flag selector on landing page, Phase 2-5 per S226 spec
+
+## Bug 3: Duplex_MEP (IFC2x3) — elements found but viewer empty
+
+**Tested:** 2026-04-25. Drop `Ifc2x3_Duplex_MEP.ifc` → import completes, card appears, but viewer shows empty scene.
+
+**File analysis:** 427 IfcFlowSegment, 358 IfcFlowFitting, 492 IfcFaceBasedSurfaceModel, 942 IfcMappedItem.
+PRODUCT_TYPES list covers these types — elements should be found. Likely cause: web-ifc `GetFlatMesh()` throws or returns empty geometry for IFC2x3 MEP representations (IfcFaceBasedSurfaceModel, IfcMappedItem). The catch at tessellation (line ~285) silently skips, resulting in 0 geometries.
+
+**Diagnosis needed:**
+- Add `§GEOM_SKIP` log inside the catch to count how many elements fail tessellation
+- Add `§GEOM_SUMMARY` after tessellation loop: `elements=${elements.length} geometries=${geometries.length} skipped=${skipped}`
+- If all elements skip: web-ifc 0.0.77 limitation with IFC2x3 IfcFaceBasedSurfaceModel
+
+**Test case:** `reference/residential/Ifc2x3_Duplex_MEP.ifc`
+- Expected: ≥100 elements with geometry (pipes, fittings, terminals)
+- Current: elements found, 0 geometries rendered
