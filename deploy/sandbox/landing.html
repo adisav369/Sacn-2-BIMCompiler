@@ -1,4 +1,4 @@
-<!-- BIM OOTB landing page v4 -->
+<!-- OCI: uploads as index.html to bim-ootb-dev bucket (DEV landing page) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1a1a2e">
-<title>BIM OOTB — Frictionless BIM</title>
+<title>BIM OOTB</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -128,9 +128,11 @@
 </head>
 <body>
 
+
 <div class="header">
-  <h1>BIM OOTB</h1>
+  <h1 style="color:#cc6600">BIM OOTB</h1>
   <div class="tagline">Frictionless BIM. Two DBs. One browser. Zero install.</div>
+  <a href="https://youtu.be/bSyuLQ_c4rw" target="_blank" style="display:inline-block;margin-top:8px;color:#4fc3f7;font-size:13px;text-decoration:none;border:1px solid #4fc3f7;border-radius:4px;padding:4px 12px">&#9654; Watch Demo</a>
 </div>
 
 <div class="stats-bar" id="stats-bar">
@@ -144,6 +146,83 @@
 </div>
 
 <div id="content" style="display:none">
+  <!-- S222: Hero Import Panel -->
+  <div style="max-width:720px;margin:0 auto;padding:24px 20px 8px">
+    <div id="import-zone" style="border:1px solid rgba(79,195,247,0.12);border-radius:16px;padding:40px 32px 28px;text-align:center;cursor:pointer;transition:all 0.15s;background:linear-gradient(180deg,rgba(79,195,247,0.04) 0%,rgba(0,0,0,0) 100%)">
+
+      <!-- Headline — Leo Burnett big -->
+      <div onclick="event.stopPropagation()" style="pointer-events:auto;cursor:default">
+        <div style="font-size:20px;font-weight:300;color:#e0e0e0;letter-spacing:0.2px;line-height:1.1;margin-bottom:0"><span style="font-size:24px;font-weight:400">In</span> <span style="font-size:44px;font-weight:700;margin:0 2px">60</span> seconds, the way you <span style="font-size:44px;font-weight:700;margin:0 2px">BIM</span><br><span style="font-weight:700;color:#ff9800">will never be the same.</span></div>
+
+        <!-- Steps — pure visual, no interaction -->
+        <div style="display:flex;justify-content:center;align-items:center;gap:12px;margin:32px 0 28px;flex-wrap:wrap;opacity:0.7">
+          <span style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Import</span>
+          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">View</span>
+          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Compare</span>
+          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Costed</span>
+          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#44cc44;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Done</span>
+        </div>
+      </div>
+
+      <!-- Drop target — this is the only clickable part -->
+      <div style="border:2px dashed rgba(79,195,247,0.2);border-radius:10px;padding:20px;margin:0 auto;max-width:380px;transition:border-color 0.15s">
+        <div style="color:#4fc3f7;font-size:14px;font-weight:600;letter-spacing:0.3px">Drop IFC here</div>
+        <div style="color:#444;font-size:11px;margin-top:4px">or tap to browse</div>
+      </div>
+      <div id="import-status" style="color:#aaa;font-size:12px;margin-top:10px"></div>
+      <div style="display:none;margin-top:8px;height:4px;background:#222;border-radius:2px;overflow:hidden;max-width:400px;margin-left:auto;margin-right:auto">
+        <div id="import-progress-bar" style="height:100%;width:0%;background:#4fc3f7;border-radius:2px;transition:width 0.3s"></div>
+      </div>
+      <input type="file" id="import-file-input" accept=".ifc" style="display:none">
+
+      <!-- Footer — quiet -->
+      <div style="margin-top:16px;color:#444;font-size:10px;letter-spacing:0.3px">
+        <a href="https://red1oon.github.io/BIMCompiler/BIM_Designer_Browser/" target="_blank" onclick="event.stopPropagation()" style="color:#4fc3f7;text-decoration:none">Theory 👁️</a>
+        &middot; <a href="https://youtu.be/hv0kcc_TKvY" target="_blank" onclick="event.stopPropagation()" style="color:#4fc3f7;text-decoration:none">Practical 👌</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- S220: My Buildings (imported) -->
+  <div id="my-buildings-section" style="display:none">
+    <div class="section-header">My Buildings</div>
+    <div class="grid" id="my-buildings-grid"></div>
+  </div>
+
+  <!-- S224: Merge/New modal -->
+  <div id="merge-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9000;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+    <div style="background:#1a1a2e;border:1px solid rgba(79,195,247,0.2);border-radius:12px;padding:28px 32px;max-width:400px;width:90%;text-align:center">
+      <div style="color:#4fc3f7;font-size:15px;font-weight:600;margin-bottom:12px">Add to existing project?</div>
+      <div id="merge-target" style="color:#ccc;font-size:13px;margin-bottom:16px"></div>
+      <select id="merge-select" style="display:none;width:100%;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;margin-bottom:16px"></select>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button id="merge-btn" style="flex:1;padding:12px 20px;background:#4fc3f7;color:#000;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;min-height:44px">Merge</button>
+        <button id="merge-new-btn" style="flex:1;padding:12px 20px;background:#333;color:#ccc;border:1px solid #555;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;min-height:44px">New</button>
+      </div>
+      <div style="color:#555;font-size:10px;margin-top:10px">Enter = Merge · Escape = New</div>
+    </div>
+  </div>
+
+  <!-- S224: Compare version picker modal -->
+  <div id="compare-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9000;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+    <div style="background:#1a1a2e;border:1px solid rgba(79,195,247,0.2);border-radius:12px;padding:28px 32px;max-width:400px;width:90%;text-align:center">
+      <div style="color:#4fc3f7;font-size:15px;font-weight:600;margin-bottom:12px">Compare Versions</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;justify-content:center;align-items:center">
+        <select id="compare-a" style="flex:1;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px"></select>
+        <span style="color:#4fc3f7;font-weight:700">vs</span>
+        <select id="compare-b" style="flex:1;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px"></select>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button id="compare-go-btn" style="flex:1;padding:12px 20px;background:#4fc3f7;color:#000;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;min-height:44px">Compare</button>
+        <button id="compare-cancel-btn" style="flex:0;padding:12px 20px;background:#333;color:#ccc;border:1px solid #555;border-radius:8px;font-size:14px;cursor:pointer;min-height:44px">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <div id="city-progress" style="display:none; padding:12px 20px; max-width:1200px; margin:0 auto">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px">
       <span style="font-size:14px; font-weight:700; color:#4fc3f7; letter-spacing:1px">COMPLETE THE CITY</span>
@@ -184,7 +263,7 @@
     <a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/sandbox_1M_extracted.db" style="color:#4fc3f7" download>sandbox_1M_extracted.db</a> (579MB) — 1M elements, all buildings in one DB<br>
     <a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/component_library.db" style="color:#4fc3f7" download>component_library.db</a> (456MB) — all geometry BLOBs<br>
     <span style="color:#666">~3-5 min on broadband. Download both, put in same folder, then:<br>
-    <code style="color:#4fc3f7">python3 -m http.server 8080</code> → open <code style="color:#ccc">localhost:8080/sandbox/index.html</code><br>
+    <code style="color:#4fc3f7">python3 -m http.server 8080</code> → open <code style="color:#ccc">localhost:8080/rtree_browser_demo.html</code><br>
     <a href="https://red1oon.github.io/BIMCompiler/BIM_Designer_Browser/#61-local-setup-3-steps" target="_blank" style="color:#4fc3f7">Full guide §6.1</a></span>
   </div>
   <div style="margin-top:20px;color:#555;font-size:11px">
@@ -197,6 +276,7 @@
   <div class="tab-list" id="tab-list"></div>
 </div>
 
+<script src="sandbox/import_db_builder.js"></script>
 <script>
 // ── Config ──
 const _ociMatch = location.href.match(/(https:\/\/objectstorage\.[^/]+\/n\/[^/]+\/b\/[^/]+\/o\/)/);
@@ -291,10 +371,13 @@ function saveViewed() {
   localStorage.setItem('bim_ootb_viewed', JSON.stringify([...viewedBuildings]));
 }
 
+// DB files served from production bucket — dev only overrides viewer/JS
+const _prodBase = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/';
+
 function openViewer(archName, repBuilding) {
   const bld = BUILDINGS[archName];
   if (!bld) { alert(`No DB for ${archName}`); return; }
-  const bldBase = _base ? _base + 'buildings/' : 'buildings/';
+  const bldBase = _prodBase + 'buildings/';
   const viewerUrl = _base ? _base + 'sandbox/index.html' : 'sandbox/index.html';
   const url = viewerUrl + `?db=${bldBase}${bld.db}&lib=${bldBase}${bld.lib}`;
   const win = window.open(url, 'bim_' + archName);
@@ -370,7 +453,7 @@ function clearAllCache() {
 
 // ── Launch city viewer (all 786 buildings from cached DBs) ──
 function launchCity() {
-  const bldBase = _base ? _base + 'buildings/' : 'buildings/';
+  const bldBase = _prodBase + 'buildings/';
   const viewerUrl = _base ? _base + 'sandbox/index.html' : 'sandbox/index.html';
   const url = viewerUrl + `?city=${bldBase}city_index.db&bldbase=${bldBase}`;
   const win = window.open(url, 'bim_city_1M');
@@ -415,6 +498,19 @@ async function loadManifest() {
     document.getElementById('city-progress').style.display = 'block';
     updateCityProgress();
 
+    // ── Health check: verify viewer is reachable ──
+    const _viewerCheck = (_base || '') + 'sandbox/index.html';
+    fetch(_viewerCheck, { method: 'HEAD' }).then(r => {
+      if (!r.ok) {
+        document.body.insertAdjacentHTML('afterbegin',
+          '<div style="background:#cc0000;color:#fff;text-align:center;padding:10px;font-weight:bold">' +
+          '⚠ Viewer unavailable (HTTP ' + r.status + ') — buildings may not load. Admin notified.</div>');
+        fetch('https://ntfy.sh/bim-ootb-alert', { method: 'POST',
+          body: 'BIM OOTB BROKEN: Viewer returned HTTP ' + r.status + ' at ' + new Date().toISOString()
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+
   } catch (e) {
     clearInterval(timerInterval);
     document.getElementById('loading').innerHTML = `
@@ -427,7 +523,498 @@ async function loadManifest() {
 }
 
 loadManifest();
+
+// ── S224: IFC Import — Versioned IndexedDB, Merge/New, Compare ──
+const IMPORT_DB_NAME = 'bim_ootb_imports';
+const IMPORT_STORE = 'buildings';
+const IMPORT_DB_VERSION = 2;  // v2: versioned storage model
+
+function openImportDB() {
+  return new Promise(resolve => {
+    const req = indexedDB.open(IMPORT_DB_NAME, IMPORT_DB_VERSION);
+    req.onupgradeneeded = function(e) {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IMPORT_STORE)) {
+        db.createObjectStore(IMPORT_STORE);
+      }
+      // Migrate v1 → v2: wrap old per-file records into versioned format
+      if (e.oldVersion < 2) {
+        const tx = req.transaction;
+        const store = tx.objectStore(IMPORT_STORE);
+        const getAll = store.getAllKeys();
+        getAll.onsuccess = function() {
+          const keys = getAll.result;
+          for (const key of keys) {
+            const gr = store.get(key);
+            gr.onsuccess = function() {
+              const old = gr.result;
+              if (old && !old.versions) {
+                // Old format: { meta, extractedDb, libraryDb } → new: { meta, versions[], latestVersion }
+                const migrated = {
+                  meta: old.meta,
+                  versions: [{ key: key, importDate: new Date().toISOString(), db: old.extractedDb }],
+                  latestVersion: 0
+                };
+                store.put(migrated, key);
+                console.log('[S224] §MIGRATE_V1 key=' + key);
+              }
+            };
+          }
+        };
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+}
+
+// Cache DB helper (same as viewer scene.js)
+const CACHE_DB_NAME = 'bim_ootb_cache';
+const CACHE_STORE = 'dbs';
+function openCacheDB() {
+  return new Promise(resolve => {
+    const req = indexedDB.open(CACHE_DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(CACHE_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+}
+
+// List all projects (versioned records)
+async function listProjects() {
+  const db = await openImportDB();
+  if (!db) return [];
+  return new Promise(resolve => {
+    const tx = db.transaction(IMPORT_STORE, 'readonly');
+    const store = tx.objectStore(IMPORT_STORE);
+    const req = store.getAllKeys();
+    req.onsuccess = () => {
+      const keys = req.result;
+      if (keys.length === 0) { resolve([]); return; }
+      const items = [];
+      let done = 0;
+      for (const key of keys) {
+        const r2 = store.get(key);
+        r2.onsuccess = () => {
+          const val = r2.result;
+          if (val) items.push({ key, meta: val.meta, versions: val.versions || [], latestVersion: val.latestVersion || 0 });
+          done++;
+          if (done === keys.length) resolve(items);
+        };
+        r2.onerror = () => { done++; if (done === keys.length) resolve(items); };
+      }
+    };
+    req.onerror = () => resolve([]);
+  });
+}
+
+// Get a single project record
+async function getProject(key) {
+  const db = await openImportDB();
+  if (!db) return null;
+  return new Promise(resolve => {
+    const tx = db.transaction(IMPORT_STORE, 'readonly');
+    const req = tx.objectStore(IMPORT_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+}
+
+// Save a project record
+async function saveProject(key, record) {
+  const db = await openImportDB();
+  if (!db) return;
+  return new Promise(resolve => {
+    const tx = db.transaction(IMPORT_STORE, 'readwrite');
+    tx.objectStore(IMPORT_STORE).put(record, key);
+    tx.oncomplete = resolve;
+  });
+}
+
+// Delete a project and its cache entries
+async function deleteProject(key) {
+  const db = await openImportDB();
+  if (!db) return;
+  const record = await getProject(key);
+  await new Promise(resolve => {
+    const tx = db.transaction(IMPORT_STORE, 'readwrite');
+    tx.objectStore(IMPORT_STORE).delete(key);
+    tx.oncomplete = resolve;
+  });
+  // Clear viewer cache for all versions
+  const cacheDb = await openCacheDB();
+  if (cacheDb && record && record.versions) {
+    try {
+      const tx = cacheDb.transaction(CACHE_STORE, 'readwrite');
+      const store = tx.objectStore(CACHE_STORE);
+      for (var i = 0; i < record.versions.length; i++) {
+        store.delete('import://' + key + '/v' + i);
+      }
+      // Legacy keys
+      store.delete('import://' + key + '/extracted');
+      store.delete('import://' + key + '/library');
+    } catch(e) {}
+  }
+  var bar = document.getElementById('import-progress-bar');
+  if (bar) { bar.style.width = '0%'; bar.style.background = '#4fc3f7'; bar.parentElement.style.display = 'none'; }
+  var st = document.getElementById('import-status');
+  if (st) st.textContent = '';
+  console.log('[S224] §VERSION_DELETE key=' + key + ' versions=' + (record ? record.versions.length : 0));
+  renderImportCards();
+}
+
+// Open latest version of a project in viewer
+async function openProject(key, btnEl) {
+  if (btnEl) { btnEl.textContent = 'Opening...'; btnEl.disabled = true; }
+  const record = await getProject(key);
+  if (!record || !record.versions.length) {
+    alert('Building not found');
+    if (btnEl) { btnEl.textContent = 'Open'; btnEl.disabled = false; }
+    return;
+  }
+  // S225: Open always shows base building (v0). If multi-version, diff against latest.
+  const baseIdx = 0;
+  const base = record.versions[baseIdx];
+  const cacheDb = await openCacheDB();
+  if (!cacheDb) { if (btnEl) { btnEl.textContent = 'Open'; btnEl.disabled = false; } return; }
+
+  const dbUrl = 'import://' + key + '/v' + baseIdx;
+  const libUrl = dbUrl;  // single DB — geometry + metadata in one
+  await new Promise(resolve => {
+    const tx = cacheDb.transaction(CACHE_STORE, 'readwrite');
+    tx.objectStore(CACHE_STORE).put(base.db, dbUrl);
+    tx.objectStore(CACHE_STORE).put(base.db, libUrl);
+    tx.oncomplete = resolve;
+  });
+
+  // S225: Auto-diff — if multi-version, pass latest version as diffdb
+  // Direction: base=v0 (original), diffdb=v_latest (revision) → added = new elements
+  var diffParam = '';
+  if (record.versions.length > 1 && record.latestVersion > 0) {
+    var latestUrl = 'import://' + key + '/v' + record.latestVersion;
+    await new Promise(resolve => {
+      const tx2 = cacheDb.transaction(CACHE_STORE, 'readwrite');
+      tx2.objectStore(CACHE_STORE).put(record.versions[record.latestVersion].db, latestUrl);
+      tx2.oncomplete = resolve;
+    });
+    diffParam = '&diffdb=' + encodeURIComponent(latestUrl);
+    console.log('[S225] §OPEN_DIFF key=' + key + ' base=v0 diff=v' + record.latestVersion);
+  }
+
+  const viewerUrl = (_base || '') + 'sandbox/index.html?db=' +
+    encodeURIComponent(dbUrl) + '&lib=' + encodeURIComponent(libUrl) + diffParam;
+  const win = window.open(viewerUrl, '_blank');
+  trackTab(record.meta.name || key, '3D', win);
+  if (btnEl) { btnEl.textContent = 'Open'; btnEl.disabled = false; }
+}
+
+// Export latest version DB as file download — Save = Accept (collapse versions)
+async function exportProjectDb(key) {
+  const record = await getProject(key);
+  if (!record || !record.versions.length) return;
+  const latest = record.versions[record.latestVersion];
+  const blob = new Blob([latest.db], { type: 'application/x-sqlite3' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = key.replace(/\.ifc$/i, '') + '.db';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  console.log('[S225] §EXPORT_DB key=' + key + ' size=' + (latest.db.byteLength / 1024).toFixed(0) + 'KB');
+  // S225: Collapse versions — Save = Accept. Latest becomes new v0, variance cleared.
+  if (record.versions.length > 1) {
+    record.versions = [{ key: key, importDate: new Date().toISOString(), db: latest.db, note: 'Accepted' }];
+    record.latestVersion = 0;
+    record.meta.elements = null;  // will refresh on next render
+    await saveProject(key, record);
+    renderImportCards();
+    console.log('[S225] §ACCEPT key=' + key + ' — versions collapsed to v0');
+  }
+}
+
+// Compare two versions — opens viewer with base + diff
+async function openCompare(key, idxA, idxB) {
+  const record = await getProject(key);
+  if (!record || !record.versions[idxA] || !record.versions[idxB]) return;
+  const cacheDb = await openCacheDB();
+  if (!cacheDb) return;
+
+  const urlA = 'import://' + key + '/v' + idxA;
+  const urlB = 'import://' + key + '/v' + idxB;
+  await new Promise(resolve => {
+    const tx = cacheDb.transaction(CACHE_STORE, 'readwrite');
+    const store = tx.objectStore(CACHE_STORE);
+    store.put(record.versions[idxA].db, urlA);
+    store.put(record.versions[idxA].db, urlA);  // lib = same as db
+    store.put(record.versions[idxB].db, urlB);
+    tx.oncomplete = resolve;
+  });
+
+  const viewerUrl = (_base || '') + 'sandbox/index.html?db=' +
+    encodeURIComponent(urlA) + '&lib=' + encodeURIComponent(urlA) +
+    '&diffdb=' + encodeURIComponent(urlB);
+  window.open(viewerUrl, '_blank');
+  console.log('[S224] §COMPARE_OPEN key=' + key + ' v' + idxA + ' vs v' + idxB);
+}
+
+// Show compare picker modal (for 3+ versions) or auto-compare (for 2)
+function showComparePicker(key, versions) {
+  if (versions.length === 2) {
+    openCompare(key, 0, 1);
+    return;
+  }
+  const modal = document.getElementById('compare-modal');
+  const selA = document.getElementById('compare-a');
+  const selB = document.getElementById('compare-b');
+  selA.innerHTML = '';
+  selB.innerHTML = '';
+  for (var i = 0; i < versions.length; i++) {
+    var label = 'v' + (i + 1) + ' — ' + (versions[i].key || '').replace(/\.ifc$/i, '');
+    selA.innerHTML += '<option value="' + i + '">' + label + '</option>';
+    selB.innerHTML += '<option value="' + i + '">' + label + '</option>';
+  }
+  selA.value = '0';
+  selB.value = String(versions.length - 1);
+  modal.style.display = 'flex';
+  modal._projectKey = key;
+}
+
+document.getElementById('compare-go-btn').onclick = function() {
+  var modal = document.getElementById('compare-modal');
+  var a = parseInt(document.getElementById('compare-a').value);
+  var b = parseInt(document.getElementById('compare-b').value);
+  if (a === b) { alert('Pick two different versions'); return; }
+  modal.style.display = 'none';
+  openCompare(modal._projectKey, a, b);
+};
+document.getElementById('compare-cancel-btn').onclick = function() {
+  document.getElementById('compare-modal').style.display = 'none';
+};
+
+// ── Merge/New modal logic ──
+var _pendingMerge = null;  // { dbBuf, meta, filename, resolve }
+
+function showMergeModal(projects, filename) {
+  return new Promise(function(resolve) {
+    const modal = document.getElementById('merge-modal');
+    const target = document.getElementById('merge-target');
+    const sel = document.getElementById('merge-select');
+
+    if (projects.length === 1) {
+      target.textContent = 'Merge "' + filename + '" into "' + projects[0].key + '"?';
+      sel.style.display = 'none';
+    } else {
+      target.textContent = 'Merge "' + filename + '" into:';
+      sel.style.display = 'block';
+      sel.innerHTML = '';
+      for (var i = 0; i < projects.length; i++) {
+        sel.innerHTML += '<option value="' + projects[i].key + '">' + projects[i].key +
+          ' (v' + projects[i].versions.length + ', ' +
+          (projects[i].meta.elementCount || 0).toLocaleString() + ' el)</option>';
+      }
+    }
+    modal.style.display = 'flex';
+
+    function cleanup() {
+      modal.style.display = 'none';
+      document.removeEventListener('keydown', onKey);
+    }
+    function onKey(e) {
+      if (e.key === 'Enter') { cleanup(); resolve({ action: 'merge', target: projects.length === 1 ? projects[0].key : sel.value }); }
+      if (e.key === 'Escape') { cleanup(); resolve({ action: 'new' }); }
+    }
+    document.addEventListener('keydown', onKey);
+    document.getElementById('merge-btn').onclick = function() {
+      cleanup();
+      resolve({ action: 'merge', target: projects.length === 1 ? projects[0].key : sel.value });
+    };
+    document.getElementById('merge-new-btn').onclick = function() {
+      cleanup();
+      resolve({ action: 'new' });
+    };
+  });
+}
+
+// ── Render import cards (versioned) ──
+async function renderImportCards() {
+  const container = document.getElementById('my-buildings-grid');
+  const section = document.getElementById('my-buildings-section');
+  if (!container || !section) return;
+  const projects = await listProjects();
+  if (projects.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  container.innerHTML = '';
+
+  for (const proj of projects) {
+    if (!proj.meta) continue;
+    const card = document.createElement('div');
+    card.className = 'card';
+    const discs = proj.meta.disciplines || {};
+    const total = proj.meta.elementCount || 0;
+    const discBars = Object.entries(discs).map(([d, c]) => {
+      const pct = Math.max(3, (c / total) * 100);
+      const color = DISC_COLORS[d] || '#888';
+      return '<span class="disc-bar" style="width:' + pct + '%;background:' + color + '"></span>';
+    }).join('');
+    var displayName = proj.key.replace(/\.ifc$/i, '');
+    var vCount = proj.versions.length;
+    var vBadge = vCount > 1 ? '<span style="color:#cccc44;font-size:10px;margin-left:4px">v' + vCount + '</span>' : '';
+
+    // Build button row — Open shows diff automatically if multi-version
+    var buttons = '<button class="open-btn" style="flex:1" data-open="' + proj.key + '">Open</button>';
+    buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(68,204,68,0.1);border-color:rgba(68,204,68,0.2);color:#44cc44;font-size:10px" data-export="' + proj.key + '">Save</button>';
+    buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + proj.key + '">x</button>';
+
+    card.innerHTML =
+      '<div class="name">' + displayName + vBadge + '</div>' +
+      '<div class="meta"><b>' + total.toLocaleString() + '</b> elements · ' + Object.keys(discs).join(', ') + '</div>' +
+      '<div class="disc-bars">' + discBars + '</div>' +
+      '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">' + buttons + '</div>';
+
+    card.querySelector('[data-open]').onclick = function() { openProject(this.dataset.open, this); };
+    card.querySelector('[data-export]').onclick = function(e) { e.stopPropagation(); exportProjectDb(this.dataset.export); };
+    card.querySelector('[data-del]').onclick = function(e) {
+      e.stopPropagation();
+      var k = this.dataset.del;
+      var p = projects.find(function(x) { return x.key === k; });
+      var n = p ? p.versions.length : 1;
+      if (confirm('Delete ' + displayName + (n > 1 ? ' (all ' + n + ' versions)?' : '?'))) deleteProject(k);
+    };
+    container.appendChild(card);
+  }
+}
+
+// ── Import handler (with Merge/New prompt) ──
+async function handleImportFile(file) {
+  if (!file || !/\.ifc$/i.test(file.name)) {
+    document.getElementById('import-status').textContent = 'Please select an .ifc file';
+    return;
+  }
+  const status = document.getElementById('import-status');
+  const progressBar = document.getElementById('import-progress-bar');
+  const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+  status.textContent = 'Reading ' + file.name + ' (' + sizeMB + 'MB)...';
+  progressBar.parentElement.style.display = 'block';
+  progressBar.style.width = '0%';
+  progressBar.style.background = '#4fc3f7';
+
+  if (file.size > 200 * 1024 * 1024) status.textContent = 'Very large (' + sizeMB + 'MB) — may take a few minutes';
+
+  const arrayBuffer = await file.arrayBuffer();
+  const worker = new Worker('sandbox/import_worker.js?v=7');
+
+  worker.onmessage = async function(e) {
+    const msg = e.data;
+    if (msg.type === 'progress') {
+      status.textContent = msg.phase;
+      progressBar.style.width = msg.pct + '%';
+      return;
+    }
+    if (msg.type === 'error') {
+      status.textContent = 'Failed: ' + msg.message;
+      progressBar.style.background = '#cc4444';
+      worker.terminate();
+      return;
+    }
+    if (msg.type === 'done') {
+      status.textContent = 'Building databases...';
+      try {
+        if (typeof initSqlJs === 'undefined') {
+          await new Promise(resolve => {
+            const s = document.createElement('script');
+            s.src = 'https://sql.js.org/dist/sql-wasm.js';
+            s.onload = resolve;
+            document.head.appendChild(s);
+          });
+        }
+        const SQL = await initSqlJs({ locateFile: f => 'https://sql.js.org/dist/' + f });
+        const dbs = buildImportDBs(SQL, msg);
+        const dbBuf = dbs.extractedDb;
+
+        // S224: Check existing projects — prompt Merge/New if any exist
+        const existingProjects = await listProjects();
+        var projectKey = file.name;  // default: new project keyed by filename
+
+        if (existingProjects.length > 0) {
+          console.log('[S224] §MERGE_PROMPT existing=' + existingProjects.length + ' file=' + file.name);
+          const choice = await showMergeModal(existingProjects, file.name);
+
+          if (choice.action === 'merge') {
+            // Merge: append version to existing project
+            var targetKey = choice.target;
+            var existing = await getProject(targetKey);
+            if (existing) {
+              existing.versions.push({ key: file.name, importDate: new Date().toISOString(), db: dbBuf });
+              existing.latestVersion = existing.versions.length - 1;
+              // Aggregate meta: merge disciplines, update element count
+              var newDiscs = msg.meta.disciplines || {};
+              var oldDiscs = existing.meta.disciplines || {};
+              for (var d in newDiscs) { oldDiscs[d] = (oldDiscs[d] || 0) + newDiscs[d]; }
+              existing.meta.disciplines = oldDiscs;
+              existing.meta.elementCount = (existing.meta.elementCount || 0) + (msg.meta.elementCount || 0);
+              await saveProject(targetKey, existing);
+              var vNum = existing.versions.length;
+              console.log('[S224] §MERGE_ACCEPT target=' + targetKey + ' version=v' + vNum + ' elements=' + msg.meta.elementCount);
+              status.textContent = 'Merged as v' + vNum + ' into ' + targetKey;
+              progressBar.style.width = '100%';
+              progressBar.style.background = '#44cc44';
+              setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#4fc3f7'; progressBar.parentElement.style.display = 'none'; }, 3000);
+              renderImportCards();
+              worker.terminate();
+              return;
+            }
+          }
+          // action === 'new' → fall through to create new project
+          console.log('[S224] §MERGE_REJECT file=' + file.name);
+        }
+
+        // New project: single version
+        var newRecord = {
+          meta: msg.meta,
+          versions: [{ key: file.name, importDate: new Date().toISOString(), db: dbBuf }],
+          latestVersion: 0
+        };
+        await saveProject(projectKey, newRecord);
+        console.log('[S224] §IMPORT_SAVED key=' + projectKey + ' elements=' + msg.meta.elementCount);
+
+        status.textContent = 'Imported ' + msg.meta.elementCount + ' elements — see your building below ↓';
+        progressBar.style.width = '100%';
+        progressBar.style.background = '#44cc44';
+        setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#4fc3f7'; progressBar.parentElement.style.display = 'none'; }, 3000);
+
+        renderImportCards();
+      } catch(dbErr) {
+        status.textContent = 'DB error: ' + dbErr.message;
+        progressBar.style.background = '#cc4444';
+        console.log('[S224] §IMPORT_DB_ERROR ' + dbErr.message);
+      }
+      worker.terminate();
+    }
+  };
+
+  worker.onerror = function(err) {
+    status.textContent = 'Worker error: ' + err.message;
+    progressBar.style.background = '#cc4444';
+    worker.terminate();
+  };
+
+  worker.postMessage({ arrayBuffer, filename: file.name }, [arrayBuffer]);
+}
+
+// Wire drop zone
+const dropZone = document.getElementById('import-zone');
+const fileInput = document.getElementById('import-file-input');
+if (dropZone) {
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#4fc3f7'; });
+  dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'rgba(79,195,247,0.3)'; });
+  dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = 'rgba(79,195,247,0.3)'; handleImportFile(e.dataTransfer.files[0]); });
+  dropZone.addEventListener('click', () => { if (fileInput) fileInput.click(); });
+}
+if (fileInput) fileInput.addEventListener('change', () => { handleImportFile(fileInput.files[0]); fileInput.value = ''; });
+
+// Render existing imports
+renderImportCards();
 </script>
+<script>if(new URLSearchParams(location.search).has('ignore-me'))localStorage.setItem('goatcounter-ignore','t')</script>
 <script data-goatcounter="https://red1oon.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>

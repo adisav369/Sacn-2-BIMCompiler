@@ -35,7 +35,12 @@ export SUPPRESS_LABEL_WARNING=True
 
 # ── bim-ootb-full (25 buildings) ──
 
-# Landing page — DO NOT overwrite with viewer
+# Landing page — sed-strip from landing2.html, NEVER upload landing2.html as-is (has DEV markers)
+# See deploy/OCI_UPLOAD.md Step 3 for the full sed-strip flow
+sed -e 's/BIM OOTB — DEV/BIM OOTB/' \
+    -e 's|<div style="background:#cc6600.*DEV ENVIRONMENT.*</div>||' \
+    -e 's|<h1 style="color:#cc6600">BIM OOTB — DEV</h1>|<h1>BIM OOTB</h1>|' \
+    deploy/landing2.html > deploy/sandbox/landing.html
 oci os object put --bucket-name bim-ootb-full --file deploy/sandbox/landing.html --name index.html --content-type text/html --force
 
 # Modular viewer (sandbox/)
@@ -96,11 +101,12 @@ oci os bucket update --name bim-ootb-dev --cors-config file:///tmp/cors.json
 ```
 
 ### Deployment rules
-- **NEVER overwrite `index.html` on `bim-ootb-full`** — that's the landing page (`landing.html`)
-- The viewer is `sandbox/index.html` — landing page links to it
-- On `bim-ootb`, `index.html` IS the viewer (no landing page)
+- **Bucket layout: `index.html` at root = landing page, `sandbox/index.html` = viewer.** This applies to both `bim-ootb-full` and `bim-ootb-dev`. NEVER upload the viewer as root `index.html` on these buckets — it will overwrite the landing page and the viewer's JS files (in `sandbox/`) won't resolve.
+- On `bim-ootb`, `index.html` IS the viewer (no landing page) — JS files are at root alongside it.
 - Old monolith `rtree_browser_demo.html` is retired — deleted from OCI (2026-04-21)
 - Always bump version in `<title>` and HUD header before deploying — status bar text gets overwritten
+- **Landing page source is `deploy/landing2.html`.** Always sed-strip DEV markers → `deploy/sandbox/landing.html` → upload. Never edit `deploy/sandbox/landing.html` directly — it is an output, not a source. Never upload `landing2.html` as-is to prod (has DEV markers).
+- **`?ignore-me` (team use only):** Landing pages (`landing.html`, `landing2.html`) include a script that sets `localStorage('goatcounter-ignore','t')` when visited with `?ignore-me`. Team members visit the landing URL once with `?ignore-me` appended to exclude themselves from GoatCounter analytics. Same-origin localStorage means setting it on any bucket covers all buckets on that host.
 
 ## Files in bim-ootb-full
 

@@ -43,9 +43,13 @@ buildings/
 ## CLI Commands
 
 ```bash
-# Upload landing page
+# Upload landing page (sed-strip DEV markers from landing2.html — see Step 3)
+sed -e 's/BIM OOTB — DEV/BIM OOTB/' \
+    -e 's|<div style="background:#cc6600.*DEV ENVIRONMENT.*</div>||' \
+    -e 's|<h1 style="color:#cc6600">BIM OOTB — DEV</h1>|<h1>BIM OOTB</h1>|' \
+    deploy/landing2.html > deploy/sandbox/landing.html
 oci os object put --bucket-name bim-ootb-full \
-  --file deploy/landing.html --name index.html \
+  --file deploy/sandbox/landing.html --name index.html \
   --content-type text/html --force
 
 # Upload modular viewer (S209)
@@ -115,7 +119,7 @@ oci os object put --bucket-name bim-ootb-dev --file deploy/dev/boq_charts.html -
 
 ### Deploy SOP (dev → production)
 
-All operations happen at OCI level. No local file copying.
+Steps 1–4 operate at OCI level. Step 5 syncs back locally so `deploy/sandbox/` stays current.
 
 ```
 Step 1 — TEST        Run ALL tests. Both must pass.
@@ -126,20 +130,32 @@ Step 2 — SNAPSHOT    OCI copy: prod → backup  (save current live state)
                        b) root index.html:  download from prod, upload to backup
 Step 3 — DEPLOY      OCI copy: dev → prod     (push tested code live)
                        a) sandbox/ prefix: bash scripts/oci_bucket_copy.sh bim-ootb-dev bim-ootb-full sandbox/
-                       b) root index.html:  sed-strip DEV markers from landing2.html, upload to prod
+                       b) root index.html:  sed-strip DEV markers from landing2.html → deploy/sandbox/landing.html
                           - landing2.html has DEV banner + DEV title — NEVER upload as-is to prod
                           - Strip: title "DEV", orange DEV banner, h1 "DEV"
                           - Command: sed -e 's/BIM OOTB — DEV/BIM OOTB/' \
                               -e 's|<div style="background:#cc6600.*DEV ENVIRONMENT.*</div>||' \
                               -e 's|<h1 style="color:#cc6600">BIM OOTB — DEV</h1>|<h1>BIM OOTB</h1>|' \
-                              deploy/landing2.html > /tmp/landing_prod.html
-                          - Verify: grep -c "DEV ENVIRONMENT" /tmp/landing_prod.html  # must be 0
-                          - Upload: oci os object put --bucket-name bim-ootb-full --file /tmp/landing_prod.html \
+                              deploy/landing2.html > deploy/sandbox/landing.html
+                          - Verify: grep -c "DEV ENVIRONMENT" deploy/sandbox/landing.html  # must be 0
+                          - Upload: oci os object put --bucket-name bim-ootb-full --file deploy/sandbox/landing.html \
                               --name index.html --content-type text/html --force
-Step 4 — SMOKE       Open production URL on phone + desktop. Verify.
-                       - NO "DEV ENVIRONMENT" banner visible
-                       - Title bar shows "BIM OOTB" not "BIM OOTB — DEV"
-Step 5 — COMMIT      Copy dev → sandbox locally, git add + commit.
+                          One artifact, one location. Durable, git-tracked, survives reboots.
+Step 4 — SMOKE       Verify deploy before visual check.
+                       a) curl checks (all must pass):
+                          curl -s -o /dev/null -w "%{http_code}" .../index.html   # must be 200
+                          curl -s .../index.html | grep -c "DEV ENVIRONMENT"      # must be 0
+                          curl -s .../index.html | grep -c "Drop IFC"             # must be ≥1
+                          curl -s .../index.html | grep -c "loadManifest"         # must be ≥1
+                       b) Open production URL on phone + desktop. Verify:
+                          - NO "DEV ENVIRONMENT" banner visible
+                          - Title bar shows "BIM OOTB" not "BIM OOTB — DEV"
+                          - Building cards load from manifest
+                          - Drop IFC zone visible
+Step 5 — COMMIT      git add + commit.
+                       - deploy/sandbox/landing.html was already written in Step 3
+                       - JS modules: copy changed files from deploy/dev/ → deploy/sandbox/
+                       - git add deploy/sandbox/ && git commit
 ```
 
 **If broken after Step 4 — ROLLBACK (two commands):**
@@ -180,6 +196,8 @@ bash scripts/oci_bucket_copy.sh bim-ootb-dev bim-ootb-full sandbox/
 # Check on phone too — mobile Safari caches aggressively.
 
 # Step 5: Sync local + commit
+# Landing page already written to deploy/sandbox/landing.html in Step 3
+# JS modules: copy changed dev files to sandbox
 for f in deploy/dev/*.js deploy/dev/*.html; do
   [ -L "$f" ] && continue   # skip symlinks
   cp "$f" "deploy/sandbox/$(basename $f)"
