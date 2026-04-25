@@ -245,8 +245,24 @@ Need to upload import_worker.js to dev bucket: `oci os object put --bucket-name 
 | VO Config | `variation_order.js` §VO_CONFIG | VO Excel | Addition/removal/change factors, overhead%, markup%, disruption% |
 | Inline Rates | `variation_order.js` §VO_RATES | VO Excel (browser) | Mirrors 5D_rates.json for browser use (no server) |
 | NLP Rates | `nlp.js` §COST_RATES | Voice/text cost queries | Same rates, used by "total cost" / "cost of beams" voice commands |
+| **_TRL Locale** | `boq_charts.html` §_TRL_DEFAULTS | 4D/5D charts + Excel | **All** labels, currency, column headers, chart titles, sheet names |
 
-**For localization:** Edit `5D_rates.json` currency/exchange_multiplier. VO_CONFIG.currency and usdRate in `variation_order.js`. Rates stay in base currency, output multiplied.
+**Localization via _TRL (iDempiere-style):**
+`boq_charts.html` contains a `_TRL_DEFAULTS` object that defines every user-visible string:
+- **Currency:** `cur` (primary, default 'RM'), `cur2` (secondary, default 'USD'), `cur_rate` (conversion, default 4.45), `cur_name`, `cur2_name`
+- **Rate attribution:** `rate_source` (default 'CIDB Malaysia 2024 / BCISM Cost Book'), `rate_year`
+- **Column headers:** `h_material`, `h_labour`, `h_equipment`, `h_discipline`, `h_storey`, `h_uom`, etc.
+- **Chart titles:** `t_cost_by_disc`, `t_gantt`, `t_milestone`, `t_s_curve`, `t_vo_impact`, etc.
+- **Excel sheet names:** `s_cover`, `s_exec_summary`, `s_material`, `s_labour`, `s_schedule`, etc.
+- **Misc:** `not_started`, `source_app`
+
+**Override via URL params:** Any `_TRL` key can be set as a URL param:
+- `?cur=USD&rate=4.45` → USD as primary currency, RM conversion at 4.45
+- `?cur=EUR&rate=5.10` → EUR primary
+- `?h_material=Materials&h_labour=Labor` → US English spelling
+- `?rate_source=RS+Means+2024` → different rate book attribution
+
+Rates (RATES, LABOR_RATES, EQUIPMENT_RATES) stay as raw numbers in base currency. `_TRL` handles display only — currency symbols, labels, attribution. No rate values in `_TRL`.
 
 ### Deployed to OCI Dev (bim-ootb-dev)
 All 8 files uploaded, HTTP 200 verified:
@@ -605,3 +621,49 @@ Viewer:   §DIFF_DB_LOADED → §DIFF → §DIFF_OVERLAY_READY → §DIFF_SUMMAR
 4D/5D:    §BOQ_IMPORT_DB → §BOQ_DIFF → §VO_IN_5D (on Save 5D click)
 ```
 If any tag is missing, the chain broke at that point. Fix there.
+
+## S226 — Next Session
+
+### ⚠ DO NOT REMOVE
+Scope: Refactor Excel chart capture in boq_charts.html. Excel output only — DO NOT TOUCH HTML page rendering.
+Read the log after every run.
+
+### What's done (S225)
+- Variance detection end-to-end working (diff direction, added element rendering, clickable variance panel)
+- 5D Excel: Charts sheet removed, charts in Executive Summary only
+- `captureChartImage()` composites onto white background (offscreen canvas) — pie=400×400, bar=500×318
+- `prepareChartsForExcel()` / `restoreChartsAfterExcel()` — shared prepare/restore, replaces duplicated code in save5D/save4D
+- Pre-capture: black labels (#000) on bar/line axes ONLY (`!isPie` guard), restore after save
+- Fixed: save4D was applying legend font to pie charts (missing `!isPie` guard) — caused squished pie
+- `§CHART_CAPTURE` log line with type, canvas size, image size for each captured chart
+- Deployed to dev OCI bucket 2026-04-24
+
+### S226: Localisation (_TRL)
+Full iDempiere-style `_TRL` locale system in `boq_charts.html`. Zero hardcoded strings.
+
+**What _TRL controls:**
+- Currency: `cur`, `cur2`, `cur_rate`, `cur_name`, `cur2_name`
+- Rate attribution: `rate_source`, `rate_mat_source`, `rate_lab_source`, `rate_eq_source` (+ ref, basis, etc.)
+- Column headers: `h_material`, `h_labour`, `h_equipment`, `h_discipline`, `h_storey`, etc. (22 keys)
+- 4D labels: `h_wbs`, `h_task_name`, `h_start_date`, etc. (14 keys)
+- Chart titles: `t_cost_by_disc`, `t_gantt`, `t_milestone`, etc. (10 keys)
+- Excel sheet names: `s_cover`, `s_exec_summary`, `s_material`, etc. (10 keys)
+- Section titles: `t_comp_boq`, `t_mat_summary`, etc. (11 keys)
+- Misc: `not_started`, `source_app`
+
+**Override mechanisms (in priority order):**
+1. URL params: `?cur=USD&rate=4.45&h_labour=Labor` (any _TRL key)
+2. Locale file: `locales/{lang}.js` (partial override object)
+3. `_TRL_DEFAULTS` (en_GB base, always present)
+
+**_TRL is a project locale** — not just language. Same language, different rate books:
+- `en_MY` = English + CIDB rates + RM
+- `en_AU` = English + Rawlinsons + AUD
+- `en_US` = English + RS Means + USD
+
+**Self-verifying (auto-downloaded .log):**
+- `§TRL_VERIFY` — TRL_COMPLETE, TRL_CUR_MATCH, TRL_SHEET_NAMES, TRL_CHART_TITLES, TRL_HTML_CUR, TRL_RATE_SOURCE, TRL_NO_HARDCODE
+- `§MATHS_VERIFY` — MATHS_MAT_SUM, MATHS_LAB_SUM, MATHS_EQ_SUM, MATHS_GRAND, MATHS_CUR_CONV, MATHS_QTY_SUM, MATHS_RATE_CHECK, MATHS_PIE_SUM
+
+**Full spec:** `prompts/S226_localisation.md`
+**Next:** Flag selector on landing page, locale .js files, shared `_trl_base.js`
