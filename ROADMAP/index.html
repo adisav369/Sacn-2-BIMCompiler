@@ -4252,10 +4252,12 @@ Audio blobs stored in same IndexedDB (binary, ~50KB per 30s recording). No serve
 </tbody>
 </table>
 <p><strong>Localization (country config drives everything):</strong>
-- Setup script on first launch: pick country → sets currency, rates, rules, standards, templates
-- Config = one JSON per country (<code>locales/MY.json</code>, <code>locales/GB.json</code>, <code>locales/US.json</code>)
+- <strong>15 locale files shipped</strong> (<code>deploy/dev/locales/{code}.js</code>): en_MY, en_US, en_GB, en_AU, ms_MY, de_DE, fr_FR, es_ES, zh_CN, th_TH, ja_JP, ko_KR, ar_SA, pt_BR, id_ID
+- Each locale = full _TRL package: labels + currency + rates + labor + equipment + sequences (iDempiere AD_Window_Trl pattern)
+- ISO 3166-1 <code>iso</code> field → flag emoji. User copies locale → <code>MyProject_TRL.js</code> → edits what differs
+- <code>rates.js</code> = shared rate constants loaded by all pages; locale overrides rates at runtime
 - Cascades to: forex in 4D/5D, rates in BOQ, rules in checker, labour in schedule
-- Users change defaults anytime in Settings
+- Users change locale anytime via flag selector (TODO: locale_loader.js)
 - Community contributes country packs (rates + rules + templates) to marketplace</p>
 <p><strong>Background reports (DB processing, no UI needed):</strong>
 - User toggles which reports run: compliance, COBie, carbon, cost variance, schedules, clash
