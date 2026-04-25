@@ -614,24 +614,26 @@ This is the viewer-only path. The full BIM path (DAE → extract → YAML → BO
 
 ## §11 Implementation Phases
 
-### Phase 1 — DAE PoC (S227)
-- Format router in landing2.html
-- `mesh_import_worker.js` with ColladaLoader only
-- `semantic_enrichment.js` with NAME_TO_IFC + fixed storey bands
-- Test with hand-crafted `test_house.dae`
-- Verify all 10 §9.2 witnesses
+### Phase 1 — OBJ+STL PoC (S228a+S228b) ✓ DONE
+- `semantic_enrichment.js` — classification engine (pure functions, zero deps)
+- `scene_to_db.js` — geometry extraction + per-vertex Y-up→Z-up swap (S228c)
+- `mesh_import_worker.js` — OBJ+STL via Three.js r128
+- Format router in `import.js` + `landing2.html`
+- 28/28 tests PASS (Engel House 1,254 elements, Seaside Villa 35 elements)
+- Deployed to OCI dev bucket. Proven live.
 
-### Phase 2 — Multi-Format + Gerard's HDP (S228)
-- Add OBJ, GLB, 3DS loaders to mesh worker
-- Test with Gerard's actual HDP export
-- Tune NAME_TO_IFC patterns for HDP naming conventions
+### Phase 2 — DAE + Gerard's HDP (S228d, next)
+- Add ColladaLoader to mesh worker (~10 lines)
+- Test with SketchUp DAE + Gerard's actual HDP export (awaiting his reply)
+- Tune NAME_TO_IFC patterns for HDP naming conventions (`geo_54`?)
 - Materials List CSV sidecar (if Gerard provides)
-- Adaptive storey detection (§5.5)
 
-### Phase 3 — Production Hardening (S229)
+### Phase 3 — GLB/FBX + Production Hardening (S229)
+- Add GLTFLoader (GLB), FBXLoader
 - Error handling for corrupt/empty files
 - Large file streaming (>100MB models)
 - FBX custom property mining
+- Adaptive storey detection (§5.5)
 - Promote to sandbox
 
 ---

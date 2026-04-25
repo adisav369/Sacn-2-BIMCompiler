@@ -4,6 +4,48 @@
 Scope: _TRL locale system across ALL viewer files + language selector + chart Excel quality.
 Read the log after every run.
 
+## Session Startup — Do This First
+
+### 1. Verify rates.js refactor didn't break anything
+The prior session (S225b) extracted shared rates from 3 files into `rates.js`.
+Before writing new code, verify backward compatibility:
+```bash
+# Syntax check all refactored files
+cd deploy/dev
+node -e "var fs=require('fs'); ['rates.js','variation_order.js','nlp.js','boq_charts.html'].forEach(function(f){ try{ if(f.endsWith('.html')){var s=fs.readFileSync(f,'utf8'); var m=s.match(/<script>([\s\S]*?)<\/script>/); if(m) new Function(m[1]);} else new Function(fs.readFileSync(f,'utf8')); console.log('PASS '+f);} catch(e){ console.log('FAIL '+f+': '+e.message);} });"
+
+# Run test harness — must be 65+ PASS, 0 FAIL
+node test_all.js 2>&1 | tee /tmp/s226_startup.log
+tail -1 /tmp/s226_startup.log  # expect: "XX PASS / 0 FAIL"
+```
+If any FAIL → fix before proceeding. Do not start locale work on a broken base.
+
+### 2. Verify locale files load
+```bash
+node -e "var fs=require('fs'); fs.readdirSync('locales').filter(f=>f.endsWith('.js')).forEach(function(f){ try{ new Function(fs.readFileSync('locales/'+f,'utf8')); console.log('PASS '+f); } catch(e){ console.log('FAIL '+f); } });"
+# Expect: 15/15 PASS
+```
+
+### 3. Read the architecture
+- `rates.js` = global RATES/LABOR_RATES/etc. (loaded by all pages)
+- `locales/{code}.js` = `_TRL_LOCALE` object (full override: labels + rates + currency)
+- `locale_loader.js` = TODO (this session writes it) — merges locale over defaults at runtime
+- `boq_charts.html` still has `_TRL_DEFAULTS` inline (Phase 4 extracts it)
+- 15 locales: en_MY, en_US, en_GB, en_AU, ms_MY, de_DE, fr_FR, es_ES, zh_CN, th_TH, ja_JP, ko_KR, ar_SA, pt_BR, id_ID
+
+### 4. Testing contract
+Every change emits `§`-tagged log lines. The user should NEVER need to open F12 console
+or test manually. Your code proves itself. See §DO — Testing & Logging at the bottom.
+
+After EVERY code change:
+1. Syntax check changed files
+2. Run `node test_all.js` — no regressions
+3. Read the log — exit code is not evidence
+4. Deploy to OCI dev (one flow, never stop partway)
+5. Smoke test via `curl` — verify `§` tags in response, not visual inspection
+
+---
+
 ## Prior Session Issues (must fix first)
 
 ### Chart Excel quality — log evidence from last test
@@ -515,10 +557,191 @@ var _TRL_LOCALE = {
 - Compass directions (N, S, E, W) stay — universal
 - Axis labels (X, Y, Z) stay — universal
 
+## DO — Testing & Logging
+
+All test output goes to `deploy/dev/tests/log/` with timestamped filenames.
+```bash
+mkdir -p deploy/dev/tests/log
+npx playwright test --reporter=line 2>&1 | tee deploy/dev/tests/log/pw_$(date +%Y%m%d_%H%M%S).log
+node deploy/dev/test_all.js 2>&1 | tee deploy/dev/tests/log/test_all_$(date +%Y%m%d_%H%M%S).log
+```
+
+### Layer 1: Static hardcode scan (test_all.js §16 — no browser)
+
+Grep source files for known English strings that must be `_TRL.*` keys.
+Runs at commit time, instant, zero false positives.
+
+Add to `deploy/dev/test_all.js` as §16:
+```javascript
+// ═══ 16. Localisation — Hardcoded String Scan ═══
+// Issue: every user-visible string must use _TRL.*, not hardcoded English
+console.log('\n═══ 16. Localisation — Hardcoded String Scan ═══');
+
+// Strings that MUST be _TRL keys (from S226 audit).
+// Each entry: [regex, files to scan, _TRL key it should use]
+const HARDCODED = [
+  // Panel titles (index.html)
+  [/>Tools</, ['index.html'], 'ui_tools'],
+  [/>Storeys</, ['index.html'], 'ui_storeys'],
+  [/>Disciplines</, ['index.html'], 'ui_disciplines'],
+  [/placeholder="Filter/, ['index.html'], 'ui_filter'],
+  [/>All Storeys</, ['panels.js'], 'ui_all_storeys'],
+  // Buttons
+  [/>Export Excel</, ['index.html'], 'ui_export_excel'],
+  [/>Clear All</, ['index.html'], 'ui_clear_all'],
+  [/>Back</, ['index.html'], 'ui_back'],
+  [/>Save</, ['index.html'], 'ui_save'],
+  [/>Undo</, ['index.html'], 'ui_undo'],
+  // Walk mode
+  [/'Walk Mode: No building data'/, ['walk.js'], 'ui_walk_no_data'],
+  [/'Walk Mode stopped/, ['walk.js'], 'ui_walk_stopped'],
+  // Site camera
+  [/'GPS: acquiring/, ['index.html','sitecam.js'], 'ui_gps_acquiring'],
+  [/'GPS: unavailable/, ['sitecam.js'], 'ui_gps_unavailable'],
+  // NLP
+  [/'RM '/, ['nlp.js'], 'use fmtCur()'],
+  // Import
+  [/'Reading file/, ['import.js'], 'ui_reading_file'],
+  [/'Building databases/, ['import.js'], 'ui_building_dbs'],
+  // City
+  [/'CITY MODE/, ['city.js'], 'ui_city_mode'],
+  [/'CLEARED/, ['city.js'], 'ui_cleared'],
+];
+
+let trlPass = 0, trlFail = 0;
+for (const [regex, files, key] of HARDCODED) {
+  for (const f of files) {
+    const fp = path.join(DIR, f);
+    if (!fs.existsSync(fp)) continue;
+    const src = fs.readFileSync(fp, 'utf8');
+    const found = regex.test(src);
+    if (found) {
+      trlFail++;
+      console.log(`  ✗ ${f}: hardcoded ${regex} — should be _TRL.${key}`);
+    } else {
+      trlPass++;
+    }
+  }
+}
+ok(`hardcode scan: ${trlPass} clean`, trlFail === 0,
+   `${trlFail} hardcoded strings remain (see above)`);
+
+// Verify all locale files parse
+const localeDir = path.join(DIR, 'locales');
+if (fs.existsSync(localeDir)) {
+  const locales = fs.readdirSync(localeDir).filter(f => f.endsWith('.js'));
+  for (const lf of locales) {
+    try {
+      new Function(fs.readFileSync(path.join(localeDir, lf), 'utf8'));
+      ok(`locale ${lf} syntax`, true);
+    } catch(e) {
+      ok(`locale ${lf} syntax`, false, e.message);
+    }
+  }
+  ok(`locale file count (${locales.length})`, locales.length >= 15,
+     `expected 15+, got ${locales.length}`);
+} else {
+  ok('locales/ directory', false, 'not found');
+}
+
+// Verify _TRL key coverage: locale files should define all ui_* keys
+// that _TRL_DEFAULTS defines
+if (fs.existsSync(path.join(DIR, 'rates.js'))) {
+  const ratesSrc = fs.readFileSync(path.join(DIR, 'rates.js'), 'utf8');
+  const defaultKeys = (ratesSrc.match(/\b(ui_\w+|h_\w+|t_\w+|s_\w+)\s*:/g) || [])
+    .map(k => k.replace(/\s*:/, ''));
+  if (defaultKeys.length > 0) {
+    console.log(`  _TRL_DEFAULTS defines ${defaultKeys.length} translatable keys`);
+    // Spot-check one non-English locale for coverage
+    const msPath = path.join(localeDir, 'ms_MY.js');
+    if (fs.existsSync(msPath)) {
+      const msSrc = fs.readFileSync(msPath, 'utf8');
+      const msKeys = (msSrc.match(/\b(ui_\w+|h_\w+|t_\w+|s_\w+)\s*:/g) || [])
+        .map(k => k.replace(/\s*:/, ''));
+      const missing = defaultKeys.filter(k => !msKeys.includes(k));
+      ok(`ms_MY covers ${msKeys.length}/${defaultKeys.length} keys`,
+         missing.length === 0,
+         `missing: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? '...' : ''}`);
+    }
+  }
+}
+```
+
+This section is the **gate**: until hardcoded strings are replaced with `_TRL.*`,
+§16 FAIL count shows exactly how many remain. As each file is localised, the
+count drops. Zero = done.
+
+### Layer 2: Runtime locale swap (Playwright `11-localisation.spec.js`)
+
+Requires `locale_loader.js` to exist (Phase 1). Tests:
+
+| Test | What | §-tag |
+|------|------|-------|
+| 11.1 Locale loader exists | `locale_loader.js` loaded by viewer | `§PW_TRL_LOADER` |
+| 11.2 Default locale (en) renders | Load viewer, verify English labels present | `§PW_TRL_DEFAULT` |
+| 11.3 Malay locale swap | `?lang=ms_MY` → panel titles in Malay, no "Tools"/"Storeys" | `§PW_TRL_MS_MY` |
+| 11.4 Currency follows locale | `?lang=en_US` → boq_charts shows `$` not `RM` | `§PW_TRL_CUR` |
+| 11.5 No English leak in non-English locale | `?lang=de_DE` → scan visible text for leaked English panel/button labels | `§PW_TRL_NO_LEAK` |
+| 11.6 _TRL key coverage | Count `_TRL.*` accesses in JS vs keys in locale file | `§PW_TRL_COVERAGE` |
+| 11.7 URL param override | `?lang=ms_MY&cur=USD` → currency overrides locale | `§PW_TRL_OVERRIDE` |
+| 11.8 localStorage persistence | Set lang, reload, verify same locale loads | `§PW_TRL_PERSIST` |
+| 11.9 Flag selector visible | Toolbar shows flag emoji selector | `§PW_TRL_FLAGS` |
+
+**Leak detection (11.5)** — the money test:
+```javascript
+// Known English strings that MUST NOT appear when locale != en_*
+const ENGLISH_LEAKS = [
+  'Tools', 'Storeys', 'Disciplines', 'Filter...', 'All Storeys',
+  'Export Excel', 'Clear All', 'Walk Mode', 'Site Camera',
+  'Voice Search', 'Screenshot', 'Fullscreen', 'Light/Dark',
+  'Fly Around', 'Section Cut', 'Issues', 'Measure',
+  'GPS: acquiring', 'Reading file', 'Building databases',
+];
+// Scan all visible text nodes
+const leaked = await page.evaluate((leaks) => {
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const found = [];
+  while (walker.nextNode()) {
+    const t = walker.currentNode.textContent.trim();
+    const p = walker.currentNode.parentElement;
+    if (!p || getComputedStyle(p).display === 'none') continue;
+    for (const leak of leaks) {
+      if (t.includes(leak)) found.push({ text: t.substring(0,40), leak });
+    }
+  }
+  return found;
+}, ENGLISH_LEAKS);
+```
+
+### Relationship between layers
+
+| | Static (§16) | Runtime (Playwright §11) |
+|---|---|---|
+| **When** | Every commit, no browser | After locale_loader exists |
+| **Catches** | Hardcoded strings in source | Dynamically built text, innerHTML |
+| **Speed** | <1s | ~30s per locale |
+| **Gate** | Blocks localisation "done" claim | Blocks deploy of locale feature |
+
+Static scan runs first. When §16 shows 0 hardcoded strings, runtime tests
+verify the replacement actually works at render time.
+
+### `§` tags for this section
+- **`§TRL_VERIFY`** — after locale load: TRL_COMPLETE (all keys present), TRL_CUR_MATCH (currency matches locale), TRL_RATE_SOURCE (attribution matches), TRL_NO_HARDCODE (no RM/USD leaks)
+- **`§MATHS_VERIFY`** — after Excel save: MATHS_MAT_SUM, MATHS_GRAND, MATHS_CUR_CONV (currency conversion correct)
+- **`§TRL_LOADED`** — when locale_loader merges a locale file (code, key count)
+- **`§TRL_STATIC_SCAN`** — test_all.js §16 result: `clean=N fail=M`
+- **Run `node -e "new Function(fs.readFileSync(f,'utf8'))"` syntax check** on every changed .js file
+- **Run existing test harness** (`node test_all.js`) — 65 PASS minimum, no regressions
+- **White-box results go in `deploy/dev/tests/log/`**, not in the user's browser console. If a `§` tag is missing for a claim, add the tag first, rerun, then claim.
+- **Deploy flow is ONE flow**: edit → syntax check → verify `§` tags → save log → upload to dev → smoke test → confirm. Never stop partway or ask user to check.
+
 ## DO NOT
 - Do not translate IFC class names (IfcWall, IfcBeam) — ISO 16739
 - Do not change rate VALUES — rates are engineering data, not translation
-- Do not change RATES, LABOR_RATES, EQUIPMENT_RATES objects
+- Do not change RATES, LABOR_RATES, EQUIPMENT_RATES objects in rates.js directly — locale overrides at runtime
 - Do not create one huge file — one small .js per locale, override only what differs
 - Do not touch `_TRL_DEFAULTS` when adding languages — it is the base
 - Do not hardcode any user-visible string directly in HTML or JS — always `_TRL.*`
+- Do not ask the user to test manually — your code must emit `§`-tagged proof
+- Do not claim something works without a log line proving it
+- Do not write test output to `/tmp/` — use `deploy/dev/tests/log/` with timestamps

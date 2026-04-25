@@ -198,20 +198,35 @@ assert(result.meta.disciplines.ARC >= 3, 'meta disciplines ARC >= 3');
 // TEST 2b: Auto-scale (mm → m)
 // Issue: verify mm-scale models get auto-scaled
 // ═══════════════════════════════════════════════
-heading('Test 2b: Auto-scale mm → m');
+heading('Test 2b: Auto-scale height-based');
 
+// mm model: height > 5000 → ÷1000. Y-up box: wide Z (footprint), narrow Y (height=9000mm)
 var mmScene = new THREE.Group();
-var mmBox = new THREE.BoxGeometry(5000, 3000, 200);  // mm dimensions
+var mmBox = new THREE.BoxGeometry(20000, 9000, 20000);  // 20m×9m×20m in mm
 var mmMesh = new THREE.Mesh(mmBox);
 mmMesh.name = 'Wall_mm';
-mmMesh.position.set(0, 1500, 0);
+mmMesh.position.set(0, 4500, 0);  // Y=4500mm centroid
 mmScene.add(mmMesh);
 
-var mmResult = STD.sceneToDb(mmScene, 'mm_model.obj', 'obj', { yUpToZUp: false });
+var mmResult = STD.sceneToDb(mmScene, 'mm_model.obj', 'obj', { yUpToZUp: true });
 var mmTransform = mmResult.transforms[0];
 
-// After auto-scale: 1500mm → 1.5m centroid
-assert(Math.abs(mmTransform.cy - 1.5) < 0.01, 'mm auto-scaled centroid Y ~1.5m (got ' + mmTransform.cy.toFixed(3) + ')');
+// Height range Y=9000 → mm → scale=0.001. After Y-up swap, cz = original Y * 0.001 = 4.5m
+assert(Math.abs(mmTransform.cz - 4.5) < 0.1, 'mm auto-scaled cz ~4.5m (got ' + mmTransform.cz.toFixed(3) + ')');
+
+// cm model: height 500-5000 → ÷100. Y-up: narrow Y (height=800cm), wide Z
+var cmScene = new THREE.Group();
+var cmBox = new THREE.BoxGeometry(5000, 800, 5000);  // 50m×8m×50m in cm
+var cmMesh = new THREE.Mesh(cmBox);
+cmMesh.name = 'Wall_cm';
+cmMesh.position.set(0, 400, 0);  // Y=400cm centroid
+cmScene.add(cmMesh);
+
+var cmResult = STD.sceneToDb(cmScene, 'cm_model.obj', 'obj', { yUpToZUp: true });
+var cmTransform = cmResult.transforms[0];
+
+// Height range Y=800 → cm → scale=0.01. After swap, cz = 400 * 0.01 = 4.0m
+assert(Math.abs(cmTransform.cz - 4.0) < 0.1, 'cm auto-scaled cz ~4.0m (got ' + cmTransform.cz.toFixed(3) + ')');
 
 // ═══════════════════════════════════════════════
 // TEST 2c: Y-up → Z-up rotation

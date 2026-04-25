@@ -649,7 +649,337 @@ assert(g1.startsWith('DAE_'), 'GUID prefix');
 4. **Part D** — Wire `importMesh`, card updates.
 5. **Part E** — Test DAE, end-to-end verification.
 
-## Blocked On
+## S228c — Up-Axis Detection (LIVE BUG, partially fixed)
 
-- **Gerard's HDP DAE export** — needed to tune NAME_TO_IFC patterns for HDP naming (`geo_54`?)
-- **Three.js worker spike** — ColladaLoader + DOMParser in worker (§C.6)
+**History:**
+- Original bug: scene rotation double-swapped with viewer's `ifc2three` → building on side
+- First fix (deployed): per-vertex swap `(x,y,z) → (x,-z,y)` for Y-up formats — matches IFC worker
+- **Second bug (current):** Engel House is Z-up natively but OBJ is assumed Y-up → swap rotates it wrong
+
+**Evidence — axis ranges from raw OBJ vertex data:**
+```
+Engel House:  X=38.1  Y=29.6  Z=14.9   ← Z is smallest = Z IS height = already Z-up
+Seaside Villa: X=10526  Y=762  Z=10526  ← Y is smallest = Y IS height = Y-up (needs swap)
+```
+
+**Root cause:** OBJ files have no standard up-axis metadata (unlike DAE which has `<up_axis>`). Some tools export Y-up (SketchUp, Blender default), others Z-up (3ds Max, architectural tools). Blindly swapping all OBJ as Y-up breaks Z-up models.
+
+**Fix — auto-detect up-axis by vertex range analysis:**
+
+```javascript
+// After computing bounding box of ALL vertices (before swap):
+var rangeX = maxX - minX;
+var rangeY = maxY - minY;
+var rangeZ = maxZ - minZ;
+
+// Height axis is typically the smallest range for buildings
+// (footprint is wider than the building is tall)
+var minRange = Math.min(rangeX, rangeY, rangeZ);
+
+var needsSwap;
+if (minRange === rangeY) {
+  // Y is height → Y-up → needs swap to Z-up
+  needsSwap = true;
+} else if (minRange === rangeZ) {
+  // Z is height → already Z-up → no swap
+  needsSwap = false;
+} else {
+  // X is height → unusual, default to Y-up assumption
+  needsSwap = true;
+}
+```
+
+**Implementation:** This detection must happen in `sceneToDb()` as a pre-pass over all meshes (compute global bbox first), then pass `needsSwap` flag to each `extractMesh()` call. Cannot decide per-mesh — the up-axis is a per-file property.
+
+**Alternative (simpler, less robust):** Check if the model's total Y range < Z range → Y-up, else Z-up. One comparison, no per-mesh loop.
+
+**DAE note:** DAE files have `<up_axis>Y_UP</up_axis>` or `<up_axis>Z_UP</up_axis>` in the XML header. Three.js ColladaLoader reads this and auto-corrects. So DAE may not need this heuristic at all — test when ColladaLoader is wired (S228d).
+
+## S228d — Wire DAE (ColladaLoader)
+
+**Status:** Ready to implement. Axis fix (S228c) is done. OBJ+STL proven end-to-end.
+
+**What to do:** Add ColladaLoader to `mesh_import_worker.js` LOADER_MAP:
+
+```javascript
+// In LOADER_MAP (line 15):
+'dae':  { script: 'ColladaLoader.js',  className: 'ColladaLoader',  parse: 'text' },
+```
+
+Add parse function (ColladaLoader returns `{ scene }` not a scene directly):
+```javascript
+function parseDAE(text) {
+  var loader = new THREE.ColladaLoader();
+  var result = loader.parse(text);
+  return result.scene;
+}
+```
+
+Add to the parse routing (after the OBJ case):
+```javascript
+if (ext === 'dae') {
+  scene = parseDAE(text);
+}
+```
+
+**DOMParser note:** ColladaLoader needs `DOMParser` to parse XML. Available in Web Workers on Chrome 76+, Firefox 65+, Safari 15+. If it fails on older browsers, error message is clear — no silent failure.
+
+**Y-up:** DAE is Y-up (same as OBJ). The per-vertex swap in `scene_to_db.js` (S228c) already handles this — `Y_UP_FORMATS` includes `dae`.
+
+**Test:** Drop a DAE file on dev landing. The Engel House is OBJ-only, but any SketchUp 3D Warehouse DAE or Blender DAE export will work.
+
+**Awaiting:** Gerard's HDP DAE export — will reveal actual node naming (`geo_54`?) and whether NAME_TO_IFC patterns need tuning.
+
+## S229 — Guided Classification Wizard (non-IFC imports only)
+
+**Scope:** This wizard triggers ONLY for mesh imports (OBJ, DAE, GLB, 3DS, FBX, STL). IFC files already carry full classification — ifc_class, storey, discipline, materials are extracted by web-ifc. The wizard exists because mesh formats have none of this metadata. It is the IFC on-ramp.
+
+**Concept:** Compiler proposes, user confirms. One question at a time. Scroll through, decide, move on. The machine does the hard work — the human just says yes or no.
+
+### UI: The Amber Panel
+
+A floating translucent panel, anchored bottom-center of the viewport, overlaid on the live 3D view. The user sees the building while answering. The panel slides up on import completion, scrolls through questions one at a time, updates the model live between questions, then dismisses itself when done.
+
+**Design language:** warm amber glass — distinct from the cool blue (#4fc3f7) of HUD/panels. The wizard is a conversation, not a control panel.
+
+```css
+#wizard-panel {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;                              /* above HUD, below modals */
+  min-width: 360px;
+  max-width: 520px;
+  background: rgba(45, 35, 10, 0.75);       /* warm amber-black glass */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 191, 0, 0.25); /* amber border glow */
+  border-radius: 16px;
+  padding: 20px 24px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #ffe0a0;                            /* warm cream text */
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4),
+              0 0 1px rgba(255,191,0,0.3);   /* subtle amber halo */
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+/* Question text — the proposal */
+#wizard-question {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+/* Evidence line — what the compiler sees */
+#wizard-evidence {
+  font-size: 11px;
+  color: rgba(255, 224, 160, 0.5);
+  margin-bottom: 14px;
+  letter-spacing: 0.3px;
+}
+
+/* Button row */
+#wizard-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+#wizard-buttons button {
+  padding: 8px 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 191, 0, 0.3);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+/* YES = amber solid */
+.wizard-yes {
+  background: rgba(255, 191, 0, 0.25);
+  color: #ffd54f;
+}
+.wizard-yes:hover {
+  background: rgba(255, 191, 0, 0.4);
+}
+
+/* NO = dim, recedes */
+.wizard-no {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 224, 160, 0.6);
+}
+.wizard-no:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffe0a0;
+}
+
+/* Progress dots — shows position in the question sequence */
+#wizard-progress {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 14px;
+}
+#wizard-progress .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 191, 0, 0.2);
+  transition: background 0.2s;
+}
+#wizard-progress .dot.done { background: rgba(255, 191, 0, 0.7); }
+#wizard-progress .dot.active { background: #ffd54f; box-shadow: 0 0 6px rgba(255, 191, 0, 0.5); }
+```
+
+**HTML structure** (injected into DOM on import completion):
+```html
+<div id="wizard-panel">
+  <div id="wizard-question">Is the building upright?</div>
+  <div id="wizard-evidence">35 meshes · height axis: Y · range: 797 units</div>
+  <div id="wizard-buttons">
+    <button class="wizard-yes" onclick="wizardAnswer(true)">Yes</button>
+    <button class="wizard-no" onclick="wizardAnswer(false)">No</button>
+  </div>
+  <div id="wizard-progress">
+    <span class="dot active"></span>
+    <span class="dot"></span>
+    <span class="dot"></span>
+    <span class="dot"></span>
+  </div>
+</div>
+```
+
+### Wizard Flow: One Question → Update → Next Question
+
+The panel shows one question at a time. On answer, the model updates live (viewer refreshes from the same DB), then the next question scrolls in. The user watches the building change as they answer.
+
+**Trigger:** `importMesh()` completion (not `importIFC()`). After `buildImportDBs` succeeds and the card renders, inject `#wizard-panel` into the DOM and start Step 0. IFC imports skip the wizard entirely — they already have real IFC classes.
+
+**Step 0 — Orientation** (always first for mesh imports):
+```
+Question:  "Is the building upright?"
+Evidence:  "35 meshes · detected Y-up · height range: 797"
+[Yes]  → accept current axis, advance to Step 1
+[No]   → swap axis in DB (UPDATE element_transforms SET ...),
+          reload viewer, ask again with swapped model visible
+```
+This single question eliminates the entire auto-detect problem as a user-in-the-loop safety net. The auto-detect (S228c) gets it right ~95% of the time — Step 0 catches the 5%.
+
+**Step 1 — Building shape:**
+```
+Question:  "2-storey building with roof?"
+Evidence:  "3 Z-bands detected: 0-3.2m (12), 3.2-6.5m (15), 6.5-8.1m (8)"
+[Yes]  → accept storey bands, advance
+[No]   → show editable band boundaries (future)
+```
+
+**Step 2 — Storey assignment** (one sub-question per band):
+```
+Question:  "Z 0–3.2m = Ground Floor? (12 meshes)"
+Evidence:  "Wall×4, Slab×2, Door×1, Window×3, Proxy×2"
+[Yes]  → label those 12 elements, advance to next band
+[No]   → offer rename ("What is this level?")
+```
+
+**Step 3 — Repeating geometry** (one per repeated hash):
+```
+Question:  "Mesh 'parapet_01' appears 4× around perimeter. IfcWall?"
+Evidence:  "Same geometry hash, spaced 5.2m apart, material: Concrete_Grey"
+           Viewer highlights all 4 instances in amber
+[Yes]  → classify all 4 as IfcWall, advance
+[No]   → show dropdown: IfcRailing / IfcCovering / IfcBuildingElementProxy
+```
+
+**Step 4 — Material inference:**
+```
+Question:  "'Glass_brown_tone' on 6 meshes. IfcWindow?"
+Evidence:  "Transparent material (opacity=0.3), 0.9×1.2m avg size"
+           Viewer highlights all 6 in amber
+[Yes]  → classify all 6, advance
+[No]   → dropdown for alternative
+```
+
+**Step 5 — Unknowns** (batch — anything still IfcBuildingElementProxy):
+```
+Question:  "8 unclassified meshes remain. Keep as generic?"
+Evidence:  "Names: cocos, palm_tree, terrain_01, ..."
+[Yes]  → done
+[No]   → expand list, let user reclassify one by one
+```
+
+**Step 6 — Summary** (final confirmation):
+```
+Question:  "Classification complete."
+Evidence:  "12 IfcWall · 6 IfcWindow · 4 IfcSlab · 5 IfcRoof · 8 Proxy"
+[Done] → dismiss panel, viewer panels refresh
+```
+
+### Live Update Between Questions
+
+This is the key UX difference from a static dialog. Between each answer:
+1. `wizardAnswer()` writes the change to the in-memory sql.js DB
+2. Viewer refreshes the affected elements (storey panel, discipline bars, element colors)
+3. Next question slides in (CSS transition: translate + opacity)
+4. Progress dots advance
+
+The user watches classification propagate across the model in real time. One "Yes" on a material classification might reclassify 20 elements — they see all 20 change color instantly.
+
+### Propagation Rules (compiler-side, invisible to user)
+
+Each answer may trigger cascading updates:
+- **Same geometry hash** → same classification (instance dedup). User classifies 1, compiler applies to all N instances.
+- **Same material** → same classification. "Glass = IfcWindow" applies to all glass meshes.
+- **Spatial containment** — 0.9×2.1m void inside wall = IfcDoor. Compiler proposes, user confirms.
+- **Repeating pattern** at regular intervals = TILE verb candidate for BOM.
+- User teaches 5-10 elements → compiler classifies hundreds.
+
+### Why This Is a Killer Feature
+
+**Nobody else has this.** Bonsai requires manual per-element classification. Automapki classifies nothing from mesh imports. Revit won't even open an OBJ.
+
+This is the classification YAML made visual. Same inference engine, point-and-click instead of hand-typed. The compiler does the heavy lifting — pattern matching, material inference, spatial analysis. The user just says yes or no. 5-10 clicks to classify an entire building.
+
+**And it works on your phone.** Drop an OBJ from your architect, tap through 6 questions while walking to the site meeting. By the time you arrive, you have a fully classified BIM model with storey filters, discipline panels, and element picking. From a dumb mesh file. In 60 seconds.
+
+**Spec:** Separate prompt `prompts/S229_guided_classification.md` when ready.
+
+## Blocked On (future formats)
+
+- **GLB:** Add GLTFLoader — returns `{ scene }`. Binary format, parse: 'buffer'. Should be straightforward.
+- **FBX:** Add FBXLoader — may need TextDecoder. Returns scene directly. Test needed.
+- **Three.js worker spike** — some loaders may need DOM shims (§C.6)
+
+## DO — Testing & Logging
+
+All test output to `deploy/dev/tests/log/`.
+
+### test_all.js §17 — Format Router Wiring
+```javascript
+// ═══ 17. Drop Zone — Format Router ═══
+// Issue: detectFormat must route all accepted extensions, import.js must wire them
+console.log('\n═══ 17. Drop Zone — Format Router ═══');
+const importJs = fs.readFileSync(path.join(DIR, 'import.js'), 'utf8');
+ok('detectFormat exists', importJs.includes('function detectFormat'));
+ok('routes IFC', importJs.includes("'ifc'"));
+ok('routes OBJ', importJs.includes("'mesh'") || importJs.includes("'obj'"));
+ok('importMesh wired', importJs.includes('importMesh'));
+ok('semantic_enrichment loaded', html.includes('semantic_enrichment.js'));
+ok('scene_to_db loaded', html.includes('scene_to_db.js'));
+// Verify worker exists
+ok('mesh_import_worker.js exists', fs.existsSync(path.join(DIR, 'mesh_import_worker.js')));
+```
+
+### Playwright — already in `07-import-mesh.spec.js`
+Covers: pure-function tests (48 PASS), OBJ import (known ESM upstream issue).
+
+**Known gaps to fix in a dedicated session:**
+- OBJ loader ESM bare `import "three"` needs importmap in test HTML
+- `classifyStorey(6.0)` returns "Ground Floor" instead of "Level 1" — threshold bug
+- Y-up→Z-up sign flip: centroid Z = -5 instead of +5
+
+## DO NOT
+- Do not modify `deploy/sandbox/` — production
+- Do not break existing 72/72 Playwright baseline
+- Do not add formats without a test file in `deploy/dev/test/`

@@ -384,3 +384,5 @@ bcd2af85  rosetta_fidelity.sh
 > are real BOM compilations. See `logs/pipeline_Terminal_ifctobom_*.log`.
 
 **Remaining debt:** G5 GEO_ (RA/JE/ES), C9 axis swaps (JE/HI/SC) — position-based matching implemented for RM (W-RM-C9); JE/HI/SC still WARN (different root cause). TE BOM compilation (IFCtoBOM tack fix).
+
+*See [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) — the G1-G6 gates are a key differentiator in the competitive scorecard.*

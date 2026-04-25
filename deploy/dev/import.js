@@ -347,16 +347,109 @@ function setupImport(A) {
         '<div class="disc-bars">' + discBars + '</div>' +
         '<div style="display:flex;gap:6px;margin-top:10px">' +
           '<button class="open-btn" style="flex:1" data-key="' + item.key + '">Open</button>' +
+          '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(79,195,247,0.1);border-color:rgba(79,195,247,0.2);color:#4fc3f7;font-size:10px" data-ifc="' + item.key + '">IFC</button>' +
           '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + item.key + '">x</button>' +
         '</div>';
 
       card.querySelector('[data-key]').onclick = function() { A.openImported(this.dataset.key); };
+      card.querySelector('[data-ifc]').onclick = function(e) { e.stopPropagation(); A.exportIFC(this.dataset.ifc); };
       card.querySelector('[data-del]').onclick = function(e) {
         e.stopPropagation();
         if (confirm('Delete ' + item.meta.name + '?')) A.deleteImported(this.dataset.del);
       };
       container.appendChild(card);
     }
+  };
+
+  // ── S229: Export IFC from IndexedDB ──
+  A.exportIFC = async function(key) {
+    var record = await getImport(key);
+    if (!record) { alert('Building not found'); return; }
+
+    var dbBuf = record.extractedDb;
+    if (!dbBuf) { alert('No DB data'); return; }
+
+    // Load sql.js if needed
+    var SQL = await initSqlJs({ locateFile: function(f) { return 'https://sql.js.org/dist/' + f; } });
+    var db = new SQL.Database(new Uint8Array(dbBuf));
+
+    var elements = [], transforms = [], geometries = [];
+    var meta = { buildingName: key.replace(/\.(ifc|obj|stl|dae|glb|gltf|3ds|fbx)$/i, '') };
+
+    try {
+      var pmRows = db.exec("SELECT key, value FROM project_metadata");
+      if (pmRows.length > 0) {
+        for (var r = 0; r < pmRows[0].values.length; r++) {
+          if (pmRows[0].values[r][0] === 'building_name') meta.buildingName = pmRows[0].values[r][1];
+          if (pmRows[0].values[r][0] === 'project_name') meta.projectName = pmRows[0].values[r][1];
+        }
+      }
+    } catch(e) {}
+
+    try {
+      var elRows = db.exec("SELECT guid, ifc_class, element_name, storey, discipline, material_rgba FROM elements_meta");
+      if (elRows.length > 0) {
+        for (var r = 0; r < elRows[0].values.length; r++) {
+          var row = elRows[0].values[r];
+          elements.push({ guid: row[0], ifcClass: row[1], name: row[2], storey: row[3], discipline: row[4], material: row[5] });
+        }
+      }
+    } catch(e) { alert('Error reading elements: ' + e.message); return; }
+
+    try {
+      var txRows = db.exec("SELECT guid, center_x, center_y, center_z FROM element_transforms");
+      if (txRows.length > 0) {
+        for (var r = 0; r < txRows[0].values.length; r++) {
+          var row = txRows[0].values[r];
+          transforms.push({ guid: row[0], cx: row[1], cy: row[2], cz: row[3] });
+        }
+      }
+    } catch(e) {}
+
+    try {
+      var geoRows = db.exec("SELECT ei.guid, cg.vertices, cg.faces FROM element_instances ei JOIN component_geometries cg ON ei.geometry_hash = cg.geometry_hash");
+      if (geoRows.length > 0) {
+        for (var r = 0; r < geoRows[0].values.length; r++) {
+          var row = geoRows[0].values[r];
+          geometries.push({ guid: row[0], vertices: row[1], faces: row[2] });
+        }
+      }
+    } catch(e) {}
+
+    db.close();
+
+    var status = document.getElementById('import-status');
+    if (status) status.textContent = 'Exporting IFC (' + elements.length + ' elements)...';
+
+    var worker = new Worker(new URL('ifc_export_worker.js?v=1', location.href).href);
+    worker.onmessage = function(e) {
+      var msg = e.data;
+      if (msg.type === 'progress') {
+        if (status) status.textContent = msg.phase;
+        return;
+      }
+      if (msg.type === 'error') {
+        if (status) status.textContent = 'Export failed: ' + msg.message;
+        worker.terminate();
+        return;
+      }
+      if (msg.type === 'done') {
+        var blob = new Blob([msg.ifcData], { type: 'application/octet-stream' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = meta.buildingName + '.ifc';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        if (status) status.textContent = 'Downloaded ' + meta.buildingName + '.ifc (' + (msg.ifcData.byteLength / 1024).toFixed(0) + ' KB)';
+        console.log('[S229] §EXPORT_IFC key=' + key + ' size=' + (msg.ifcData.byteLength / 1024).toFixed(0) + 'KB');
+        worker.terminate();
+      }
+    };
+    worker.onerror = function(err) {
+      if (status) status.textContent = 'Export error: ' + err.message;
+      worker.terminate();
+    };
+    worker.postMessage({ elements: elements, transforms: transforms, geometries: geometries, meta: meta });
   };
 
   // ── Wire up drop zone + file picker ──

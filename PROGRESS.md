@@ -2,14 +2,11 @@
 
 > **⛔ Don't run ANY git command on `library/component_library.db`.** No stash, checkout, restore, reset. S63 lost 2400+ products this way.
 
-> **⛔ Version stamp:** Federation code has `_FED_VERSION` in `operator.py`. Bump it on every code change. Console prints `[S187a]` on Preview — if it doesn't match, Blender is running stale bytecode. Restart Blender. Files are hard-linked (same inode), no copy needed.
-
-> **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and PROGRESS
-> links to them. Keep this file under 80 lines.
+> **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and `prompts/`. Keep this file under 80 lines.
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — S190 fleet: 116/157 PASS, **4 ALL GREEN** (BR,MO,RL,WI). 21 buildings (DM excluded, 13 YAMLs retired). 9-gate system (IFCtoBOM+compile+integrity+fidelity). All `*_BOM.db` fresh.
+**Gate:** `./scripts/run_RosettaStones.sh` — S190 fleet: 116/157 PASS, 4 ALL GREEN (BR,MO,RL,WI). 21 buildings. 9-gate system.
 
 | PFX | EL | GATES | Notes |
 |-----|----|-------|-------|
@@ -17,580 +14,71 @@
 | MO | 2791 | 9/9 | ALL GREEN |
 | RL | 1 | 9/9 | ALL GREEN |
 | WI | 1 | 9/9 | ALL GREEN |
-| DX | 1169 | 8/9 | Compile FAIL: MetadataMissing (IfcOpeningElement) |
-| SH | 65 | 8/9 | Compile FAIL: MetadataMissing (generative MEP) |
-| IP | 25 | 8/9 | Compile FAIL: count mismatch |
-| WL | 174 | 8/9 | C8 fidelity FAIL (IfcDoor mesh diversity) |
-| WT | 81 | 8/9 | C8 fidelity FAIL (IfcDoor mesh diversity) |
-| FK | 81 | 5/8 | Extraction reconciliation -17 |
-| GH | 198 | 5/8 | Extraction reconciliation |
-| IN | 699 | 5/8 | Extraction reconciliation |
-| JS | 62 | 5/8 | Extraction reconciliation |
-| CL | 3214 | 2/8 | Populate FAIL |
-| TE | 33848 | 2/4 | Extraction reconciliation -14580 |
-| RM | 378 | 2/4 | Compile FAIL |
-| CN | ? | 2/4 | IFCtoBOM FAIL |
-| BA,BH,BS,RS | ? | 3/6 | Empty extracted DBs |
+| DX | 1169 | 8/9 | MetadataMissing (IfcOpeningElement) |
+| SH | 65 | 8/9 | MetadataMissing (generative MEP) |
+| TE | 33848 | 2/4 | Extraction reconciliation |
 
-> **S190 findings:** (1) Extraction reconciliation strict — 14,580 TE elements, 17 FK elements not becoming LEAF lines → QA ABORT. (2) Generative MEP devices (sprinkler, light) + IfcOpeningElement lack geometry in component_library → MetadataMissing at compile. (3) C8 IfcDoor mesh diversity loss (WL, WT). (4) `Ifc2x3_Duplex_extracted.db` / `Ifc4_SampleHouse_extracted.db` renamed (not deleted). (5) rebuild_erp.sh fixed: DV037-DV042 + DV049 added, origin_x/y/z on M_BOM. (6) `ComponentLibrary.AttachmentFace.FLOOR` added (6,326 entries).
+**Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
+**Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414. BIMEyes 28 proof classes.
 
-**Pipeline:** 11 stages (ParseStage removed S140). 77 verbs. 7403 products (ERP.db). 4-DB architecture. 4D/5D/6D live.
-**Rosetta Stones:** 22 buildings (21 EXTRACTED + 1 GENERATIVE). 4 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
-**Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
-**BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
+## Active Work — Browser BIM OOTB
 
-**S225b (2026-04-25):** Rate extraction + _TRL locale system. DONE (dev).
-  - **rates.js:** Single source of truth — RATES, LABOR_RATES, EQUIPMENT_RATES, SEQUENCE_RULES, DISC_COLORS, PHASE_COLORS, WORK_PACKAGES, calcLabor(), calcEquipment(), getRate(), getPhase(), getProductivity()
-  - **Deduplication:** boq_charts.html (-150 lines), variation_order.js (-65 lines VO_RATES/VO_PHASES/VO_PRODUCTIVITY), nlp.js (-15 lines COST_RATES). All use shared rates.js
-  - **15 locale files** in `deploy/dev/locales/`: en_MY (base), en_US, en_GB, en_AU, ms_MY, de_DE, fr_FR, es_ES, zh_CN, th_TH, ja_JP, ko_KR, ar_SA, pt_BR, id_ID
-  - Each locale = FULL package: labels + currency + rates + labor + equipment + sequences (iDempiere AD_Window_Trl pattern). User copies one → `MyProject_TRL.js` → edits what differs. ISO `iso` field → flag emoji.
-  - **Landing:** YouTube video guide link + "Theory / Practical" footer in Drop IFC panel
-  - **Prompts:** S226 updated (Phase 0 done), S227 refactor triage written (4 sessions spec'd), S220 rate templates section updated
-  - **Next:** locale_loader.js (Session A), schedule.js extraction (Session B), string sweep (Session C)
+**S228 (2026-04-26): Drop Zone Multi-Format Import.** ALL FORMATS WIRED.
+  - SRS: `internal/DROP_ZONE_MULTI_FORMAT_SRS.md`
+  - S228a DONE: `semantic_enrichment.js` + `scene_to_db.js` (pure layer)
+  - S228b DONE: Format router + mesh worker + plumbing
+  - S228c DONE: Auto-detect up-axis (Y-up vs Z-up) + auto-scale
+  - S228d DONE: DAE (ColladaLoader), GLB/GLTF (GLTFLoader), FBX (FBXLoader+fflate), 3DS (TDSLoader)
+  - S229a DONE: Guided Classification Wizard — amber panel, 6-step flow. `deploy/dev/wizard.js`
+  - S229b DONE: Browser IFC Export — DB → .ifc download. Pure STEP text builder (no web-ifc dependency). Export triangle on import cards, flyout chooser (IFC/SQLite). Round-trip test: 30 PASS.
+    - `deploy/dev/ifc_export_worker.js` (new), `deploy/dev/import.js` (IFC button), `deploy/landing2.html` (export triangle + flyout)
+    - Test: `deploy/dev/test/test_ifc_export.html`
+  - Playwright: 72/72 PASS (desktop), 53/55 pure-function (2 known pre-existing)
+  - Test fixtures: `deploy/dev/test/seaside-villa.obj`, `engel-house.obj`
 
-**S222 (2026-04-24):** DB Refactor + Incremental Diff + VO Cost Engine. DONE (dev).
-  - **DB builder refactor:** `import_db_builder.js` — shared `buildImportDBs()`, auto-save, Save button removed
-  - **Diff engine:** `diff.js` — GUID set diff, green/red/yellow overlay, cost preview in viewer panel
-  - **VO Excel:** `variation_order.js` — 3-sheet Excel: Configuration, Detail (per-element costed), Executive Summary
-  - **Cost model:** FIDIC Clause 12 + AACE: ADD=1.0×, REMOVE=0.3×, CHANGE=1.3×, +10%OH +15%Markup +5%Disruption
-  - **Rates:** CIDB 2024 (`templates/5D_rates.json`), 4D phases (`templates/4D_phases.json`), USD conversion
+**S225b (2026-04-25): Rates + Locale.** DONE (dev).
+  - `rates.js` single source of truth. 15 locale files (iDempiere _TRL pattern). Prompt: `prompts/S226_localisation.md`
 
-**S223 (2026-04-24):** Fix 5 Issues + Wire Diff Viewer + VO Test. DONE (dev).
-  - **I-S222-1:** Progress bar auto-clears after 3s
-  - **I-S222-2:** Variation detection by filename prefix (strips `_ARC`, `_MEP`, etc.), not IFC project name
-  - **I-S222-3:** boq_charts handles `import://` via IndexedDB cache lookup; tools.js URL fixed
-  - **I-S222-4:** Hospital geometry — web-ifc 0.0.77 known limit, spec only
-  - **I-S222-5:** Open button shows "Opening..." spinner immediately
-  - **Diff viewer wired:** landing→viewer passes `?diffdb=` param, viewer loads base DB, computes diff, applies overlay after streaming, shows cost summary panel with VO Excel export button
-  - **Test:** `s220_test.js` — 65 PASS / 0 FAIL (58 S220 + 7 S223 diff/VO)
-  - Spec: `prompts/S220_import_tshoot.md` §S223
+**S222-S224 (2026-04-24): DB Refactor + Diff + VO + Versioned Cards.** DONE (dev).
+  - Diff engine, VO Excel (FIDIC Clause 12), versioned IndexedDB v2. Prompt: `prompts/S220_import_tshoot.md` §S222-S224
+  - Tests: `s220_test.js` 65 PASS, `s211_test.js` 58 PASS
 
-**S224 (2026-04-24):** Merge/New UX + Versioned Cards + Compare. DONE (dev).
-  - **IndexedDB v2:** versioned storage `{meta, versions[], latestVersion}`, v1→v2 auto-migration
-  - **Merge/New modal:** dark-themed overlay on second+ import; dropdown if multiple projects; Enter=Merge, Esc=New
-  - **Versioned cards:** Open (latest), Compare (auto for 2, picker for 3+), Export DB, delete all versions
-  - **Compare flow:** picker → caches both versions → viewer `?db=v0&diffdb=v1` → diff overlay + cost summary
-  - **Export DB:** downloads latest version as single `.db` file
-  - **viewer import.js:** bumped to IDB v2, handles versioned records in `openImported`
-  - **Test:** 65 PASS / 0 FAIL (no regressions). JS syntax check PASS.
-  - **Next:** browser smoke test with real IFCs (import, merge, compare, export)
+**S220 (2026-04-24): IFC Browser Import.** DONE (dev).
+  - web-ifc WASM, IFC2x3+IFC4 proven at 122K elements. Prompt: `prompts/S220_import_tshoot.md`
 
-**S206 (2026-04-21):** Cinematic Building Tour. DONE.
-  - **4 new action types:** `orbit` (aerial sweep at tiltDeg), `descend` (smooth descent + tilt transition), `riseAndTilt` (bird's eye finale), `flyTo` (city mode transition)
-  - **7-phase sequence:** aerial orbit 40° → descend to ground → find best entrance (exterior door near largest space) → room tour (ranked by element count) → stairs → bird's eye (20m + 80° tilt) → next building
-  - **Wall avoidance:** `wallOffset()` pushes waypoints 0.5m from nearest wall centre-line
-  - **Room ranking:** `getRankedRooms()` visits rooms by element count DESC, uses space centroids (not door positions)
-  - **City mode:** Multi-building sequencing — primary building gets full cinematic tour, additional buildings get flyTo + orbit + bird's eye
-  - **Pause/resume preserved:** Fly button toggles at current action index
-  - Spec: `prompts/S206_cinematic_tour.md`
+## Recent DONE — Viewer & Blender Federation
 
-**S205 (2026-04-21):** Indoor Walk-Through Engine — action-based tour. DONE (foundation for S206).
-  - **Extraction:** IfcSpace centroid extraction (3-tier: placement → contained elements → storey door avg), `walk_graph` table (bidirectional door-space edges), `rel_contained_in_space`
-  - **Walk engine:** Action-based tour: `moveTo`, `lookAround` (360deg pan), `rise` (stair climb), `pause`. Replaces linear interpolation path.
-  - **buildTour():** Generates tour from DB: entrance → rooms with panning → stairs → upper floors → exit. 28 actions for Duplex.
-  - **Stair climb proven:** xvfb+puppeteer headless test: camY=-0.09 → 3.02 (Level 1 to Level 2)
-  - **Walk Mode GPS:** Mobile-only blue dot, compass-aligned camera follow (Part C)
-  - **Wall X-ray:** Tap wall → MEP highlight (Part D)
-  - **TDZ fixes:** All walk/measure variables hoisted. Auto-fly removed (user clicks to start).
+- **S206:** Cinematic tour (7-phase, wall avoidance). Prompt: `prompts/S206_cinematic_tour.md`
+- **S205:** Walk-through engine (action-based tour, stair climb). Prompt: `prompts/S205_walk_through_fly.md`
+- **S204:** Mobile site camera (GPS, compass, markup, QR). Spec: `docs/MOBILE_DEPLOY.md`
+- **S203:** IndexedDB cache, city mode, per-building DBs. Prompt: `prompts/S203_viewer_ux_fixes.md`
+- **S200:** BIM OOTB browser viewer. Spec: `docs/BIM_Designer_Browser.md`
+- **S198:** Envelope-first streaming (3-phase). In `direct_stream.py`.
+- **S195:** Direct DB streaming (no .blend). Prompt: `prompts/S193_dlod_auto_linker.md` §S195
+- **S188-nD:** Template-driven nD engine (4D-8D). Spec: `docs/4D5DAnalysis.md`
+- **S188-RTree:** Void filter, transparency, parallel bake. Library: 123,573 meshes.
 
-**S204 (2026-04-20):** Mobile Site Camera + viewer tools. DONE.
-  - **Site Camera:** phone rear camera snap with BIM element metadata, GPS (Google Maps link), compass bearing, timestamp, QR code, BIM model PiP (compass-aligned via TrueNorth)
-  - **Markup tools:** arrow, circle, freehand draw, text annotation on photo before sharing. Undo. 4 colours.
-  - **Measure tool:** tap two points on model, dashed line + distance in metres
-  - **Section cut:** horizontal clipping plane with slider, cuts through building height
-  - **Issue log:** auto-save snaps to IndexedDB, issue list panel, Excel export (SheetJS)
-  - **TrueNorth:** extraction added to `extractIFCtoDB_open.py`, viewer reads `project_metadata.true_north_angle`
-  - **OCI:** event logging enabled on all 3 buckets. Landing page updated with full DB download links.
-  - **Docs:** `BIM_Designer_Browser.md` §6.0 updated, `MOBILE_DEPLOY.md` Phase F (Walk Mode) spec'd
-  - **Next:** S205 — IfcSpace extraction, walk graph, indoor fly-through, GPS blue dot, "what's behind this wall"
+## Recent DONE — 2D Layout
 
-**S203 (2026-04-20):** Viewer UX — direct download, IndexedDB cache, city mode. DONE.
-  - **httpvfs retired:** Too slow (130ms/page × hundreds of pages = minutes). All 30 archetypes now as per-building DBs, full download via sql.js.
-  - **Per-building extraction:** `scripts/extract_per_building.py` — splits sandbox into 30 per-building DB pairs (extracted + library). Uploaded to OCI `bim-ootb-full/buildings/`.
-  - **Button fix:** All functions hoisted to `window.` from `initViewer()` scope. Buttons (Clear, X-Ray, Screenshot, Fly, Theme, etc.) now work.
-  - **Batch=50:** Time-budget approach explored but reverted to simple batch=50 (3ms/frame, smooth 60fps). 8ms budget = ~50 meshes on typical hardware.
-  - **Camera:** Uses actual building envelope from DB (`MIN/MAX center_x/y/z`). Fly orbit at 1.2× envelope, 0.6× height.
-  - **IndexedDB cache:** `bim_ootb_cache` — downloads cached in browser, instant on revisit. No files on disk.
-  - **City mode:** `city_index.db` (324KB) — 786 building bboxes + archetype mapping. Click bbox → download per-building DB on demand (from cache if explored before).
-  - **"Complete the City":** Progress bar (localStorage `bim_ootb_viewed`), 30 archetypes. "LAUNCH CITY 1M" button on completion.
-  - **Auto-fly:** Fly-around starts 2s after building loads.
-  - **Landing page:** All 30 buildings direct-download, viewed cards marked green, clear cache link in footer, experimental project footnote.
-  - **OCI:** ap-kulai-2, Free Tier (10GB storage, 10TB/month outbound). ~1.5GB used.
+- **2D_020:** TB-LKTN Phase A — 6 features, 6 issues. Prompt: `prompts/2D_020_tbkltn_phase_a.md`
+- **2D_019:** Hardening + Java DxfWriter. Architecture study.
+- **2D_018:** Grid bubbles, template-driven layout. Spec: `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md`
 
-**S201 (2026-04-20):** Selection bleed fix — box select grabbing far-away buildings. DONE.
-  - **Root cause:** 25% of library meshes (30,962) have non-centered verts from DAGCompiler extraction. IfcSlab meshes up to 157m extent → invisible 157m selection hitbox in Blender.
-  - **Fix:** `ensure_meshes()` re-centers at load time, `apply_transform()` compensates. Selection guard timer auto-scopes to majority building. SHRED scoped to majority building.
-  - **Spec:** `prompts/done/S201_shred_selection_fix.md`. Requires re-stream to activate.
+## Recent DONE — DAGCompiler & Pipeline
 
-**2D_020 (2026-04-19):** TB-LKTN Phase A — 6 features, 6 issues closed. DONE.
-  - **Issues closed:** I-43 (R5 hardcodes → template), I-44 (triangle level markers), I-46 (section cut markers), I-47 (finish codes), I-48 (roof fascia line), I-53 partial (elevation D/W tags). SH 6/6 PASS, DX 7/7 PASS.
-  - **R5 hardcodes eliminated:** 6 values moved from `drawing_writer_dxf.py` to `drawing_template.json` — block stroke, title block line weights, internal ratio, ground threshold, line weight fallback. §VALUE logs prove template sourcing.
-  - **Triangle level markers:** ▽ (z≥0) / △ (z<0) SOLID triangles at level marker positions. Template keys: floor_symbol, ground_symbol, symbol_size_mm. 28 symbols on SH, ~80 on DX.
-  - **Section cut markers:** A-A (horizontal) and B-B (vertical) at building midpoints. Dashed line + circled labels + SECTION_ARROW block refs. Template-driven from `section_markers.sections[]`.
-  - **Elevation D/W tags:** DOOR_TAG/WINDOW_TAG block refs on elevation views, same numbering as floor plan. SH 6 tags, DX 40 tags across 4 faces.
-  - **Finish codes:** `CT | V1` below room names from `2d_finish_type` table. Template `show_finish_codes: true`.
-  - **Roof fascia:** Horizontal eave line at min roof Z, with template overhang (700mm). SH barrel vault 1.741m, DX gable -0.228m.
-  - **Layers added:** A-ANNO-LEVL, A-ANNO-SECT registered in `_build_layers()`.
-  - **Next:** Phase B — missing pages (section view, opening schedule, electrical, ceiling plan). Or Phase C (stair detail, lintel detail).
-
-**2D_019 (2026-04-17):** Hardening + architecture study + Java Phase 0-1. DONE.
-  - **Issues closed:** I-38 (roof envelope), I-38b (hard-fail DrawingInventionError), I-39 (form_face level markers), I-40 (PLUMBING conformity), I-41 (DXF handle uniqueness), I-42 (text overlap collision avoidance). SH 6/6 PASS (front/rear 92%→100%), DX 7/7 PASS.
-  - **Roof envelope:** `_roof_upper_envelope()` replaces convex hull for meshes >20 verts. SH front 7→24pts.
-  - **Java DxfWriter:** Phase 0 DONE — `DxfWriter.java` (8 entity types, XDATA, R2010 subclass markers). Proof: 15 entities, 0 ezdxf audit errors. Phase 1 DONE — Element, GridLine, DimString, Level, DrawingSheet, DrawingInventionError.
-  - **Research:** DXF round-trip metadata architecture spec'd (3-layer: XDATA + XRecord + element map). Industry finding: no standard for DXF-as-BIM-round-trip exists.
-  - **TB-LKTN gap analysis:** §24 written in spec — 8 sheets, 15 new issues (I-43 to I-57), 4 phases (A-D).
-  - **Next:** `prompts/2D_020_tbkltn_phase_a.md` — Phase A hardening: R5 hardcodes, triangle levels, door swings, section markers, finish codes, roof profile.
-
-**S190 (2026-04-17):** BBC Fleet Health-Check — full gate run, DB triage, ERP rebuild fix. DONE.
-  - **Fleet:** 21 buildings, 116/157 PASS, 4 ALL GREEN (BR,MO,RL,WI). Was 34 buildings — 13 YAMLs retired.
-  - **Fixes:** `AttachmentFace.FLOOR` enum (6,326 entries). `rebuild_erp.sh` Phase 8a (DV037-DV042 + DV049). `origin_x/y/z` on M_BOM. ERP.db rebuilds cleanly.
-  - **Open:** (1) Extraction reconciliation blocks FK/GH/IN/JS/TE — QA strict on element delta. (2) Generative MEP + IfcOpeningElement geometry gap blocks SH/DX compile. (3) C8 IfcDoor mesh diversity (WL/WT).
-  - **Next:** Fix extraction reconciliation tolerance or populate missing elements. Add generative MEP geometry to component_library. Re-run fleet.
-
-**S200 (2026-04-20):** BIM OOTB — Browser-native BIM viewer. DONE.
-  - **Product name:** BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
-  - **Viewer:** `deploy/rtree_browser_demo.html` — single HTML file, Three.js + sql.js (WASM SQLite), no server.
-  - **Fixes:** Per-element rotation (Euler XYZ axis swap), IFC material colours, transparency (alpha), flat shading, ground plane auto-positioning, fog removed, unrestricted orbit.
-  - **Features:** Building list (clickable cards), element picker (click→GUID/class/storey/disc/material), yellow bbox highlight, hover glow, storey filter, discipline toggle, X-Ray (Alt+Z), fly-around rendered buildings, screenshot (PNG), fullscreen (F11), light/dark theme, URL deep-link, stream pause/resume, progress bar with element flicker, collapsible panels.
-  - **Spec:** `docs/BIM_Designer_Browser.md` — Phase 1-4 roadmap, OCI deployment plan, modeller bridge architecture.
-  - **Proven:** Terminal (48K), Hospital (64K), LTU AHouse (126K) all stream to completion.
-  - **Setup:** `cd deploy && python3 -m http.server 8080` → `http://localhost:8080/rtree_browser_demo.html`
-  - **Next:** OCI deployment (static bucket), httpvfs range streaming, per-building DB split.
-
-**S198 (2026-04-18):** Envelope-first streaming + legacy cleanup. IMPLEMENTED.
-  - **Three-phase streaming:** ENVELOPE → SHELL → DETAIL. New buildings start at envelope (exterior walls, roof, slab, curtain walls, doors, windows). ~5% of elements, ~90% of visual.
-  - **Envelope query:** `ifc_class IN (IfcWall, IfcRoof, IfcSlab, IfcCurtainWall, IfcPlate, IfcDoor, IfcWindow, IfcCovering)` with ARC+STR discipline filter. All envelope elements streamed in one tick.
-  - **Small-element merge:** Groups of >20 elements with avg bbox vol < 2m³ merge into single combined mesh (world-space verts via `from_pydata`). Targets roof tiles, small plates. Log: §DS_MERGE.
-  - **Camera-inside-bbox check:** `_is_camera_inside_bbox()` — 20m XY margin, +10m Z above roof. Building bbox queried at bootstrap. Triggers envelope_done → shell transition. Log: §DS_ENTER.
-  - **Phase transitions:** envelope_done + camera inside bbox → shell. Within 50m → forced shell → detail. All transitions logged.
-  - **LOAD MESH rewired:** No longer requires library.blend. Uses `component_library.db` via `ensure_meshes()`. Falls back to library.blend if present.
-  - **Legacy cleanup:** BACKEND and BAKE ALL buttons removed from UI. Direct Stream is the primary viewer path.
-  - **HUD:** ENVELOPE status shown distinctly (green). envelope_done treated as "done" for disc bars.
-  - **Files:** `direct_stream.py` (860→1119), `bbox_visualization.py` (+8 state vars), `progress_hud.py` (envelope status), `ui.py` (buttons removed), `operator.py` (LOAD MESH rewired).
-  - **Next:** Blender test on sandbox_1M.db — verify envelope visual, merge count, phase transitions.
-
-**S195 (2026-04-18):** Direct DB Streaming — camera-driven mesh streaming from BLOBs. DONE.
-  - **Core:** `FedRTreeDirectStream` operator + `_direct_stream_tick` timer. Tessellates from `component_library.db` BLOBs via `from_pydata()`. No .blend files. Self-bootstraps from DB (no Preview required).
-  - **Discipline phasing:** Shell (ARC+STR) locked per building → detail (all discs) unlocked, proximity-driven (<50m).
-  - **Pre-tessellation:** All unique hashes tessellated upfront on DS_START (3-11s). Subsequent ticks = placement only (~1s/1000 objects).
-  - **Per-batch collections:** `DS_{bld}_{N}` — max 1000 objects per collection. Avoids O(n) Blender reindex.
-  - **Animated fly-to:** 10-frame ease-out cubic (300ms). Only for first/large buildings (>5K).
-  - **Pause/resume:** Active building paused when camera moves out of 100m radius. Offset preserved for return.
-  - **Controls:** Stream/Shred/Auto buttons in N-panel (red when active). Ctrl+Shift+A shortcut.
-  - **HUD:** Building title with total/pct%/✓, disc bars with moving count, STREAMING/LAG/IDLE status.
-  - **Auto-shred:** Removes furthest building when tick_ms > 1.5s. Toggle in N-panel.
-  - **Shred fix:** `orphans_purge` removed (caused hangs). Batch unlink only. Box-select + Shred works.
-  - **Budget:** 200K fixed (dynamic budget removed — caused oscillation). User shreds manually.
-  - **Version:** `_FED_VERSION = "S195"`
-  - **Proved:** Clinic 16K in ~16s, Hospital 64K shell in ~28s, LTU 126K shell in ~24s. Sandbox 1M elements streamed.
-  - **Why this works vs GN:** GN re-evaluates all modifier trees on mutation (O(all trees)). Direct DB creates plain mesh objects — zero ongoing eval cost.
-  - **Next:** `prompts/S193_dlod_auto_linker.md` §S196 — Pick on DS objects, building index without Preview, detail phase tuning, save streamed scene.
-
-**S189 (2026-04-16):** BLOB tessellation, BACKEND bake, live-link architecture. IN PROGRESS.
-  - **BLOB tessellation:** Overnight/LOAD MESH read BLOBs from `component_library.db` (3-11ms/batch, was 1-2s via library.blend).
-  - **BACKEND button:** bakes building in background subprocess. Chunk-parallel for >100K (LTU 126K = 4 chunks, 25s). Hospital 64K = single worker, 22s.
-  - **Live-link architecture:** session.blend (~1MB) links to baked/*.blend. No merge subprocess. Preview scans baked/ and links on load. Save is instant.
-  - **Material fix:** `from_pydata` meshes need `mesh.materials.append(None)`.
-  - **Chunk threshold:** 100K (was 50K). Below that, single worker is faster (no merge overhead).
-  - **DB count fix:** BACKEND queries DB for element count when overnight hasn't run.
-  - **Subprocess survival:** `start_new_session=True` for merge subprocess to outlive Blender.
-  - **Distribution:** session.blend + component_library.db. Online DB future spec'd in PackageDistro.md.
-  - **Version:** `_FED_VERSION = "S189z"`
-  - **S189w-z:** Baked-link path fix (walk parents). Outliner hierarchy (building → disc children). Orphan re-parent. Status bar + forced redraw before blocking loads. Discipline-based chunking (whole disciplines per chunk, no duplicates). Dynamic disc suffixes from DB. Shred old Overnight meshes on Preview link. Skip already-linked files. Move linked files to `baked/done/`. Building yellow bbox on fly-to. Closer fly-to (element: diag×2, building: diag×0.8). Single-building DB skips bbox. Search result count from `_search_results` not `_highlighted_bboxes`.
-  - **LTU re-extracted:** fine-grained 8 discs (PLB 31K, HEAT 22K, HVAC 21K, VENT 21K, SAN 13K, ARC 10K, STR 7K, VOID 1K). Sandbox rebuilt 1,063,911 el, 12 discs. `build_sandbox_1M.py` fix: `all_styles` return.
-  - **Docs:** `SYSTEMS_INSTALLER_GUIDE.md` + `BIM_Designer_UserGuide.md` → Blender 4.0+/5.0.1, IfcOpenShell 0.8+, Bonsai 0.8.4-alpha.
-  - **Next:** verify baked→done/ move, test all navigation paths.
-
-**S188-RTree (2026-04-16):** Void filter, transparency, threshold link-back, parallel bake — DONE.
-  - Void filter, transparency (Principled BSDF), deferred element list, surface_styles in sandbox.
-  - WBDG 928 BLOBs, HHS federated merge. Library: 123,573 meshes.
-  - Parallel bake (`FedRTreeBakeAll`), fat .blend proven, poll spam fixed.
-  - Part F spec: `prompts/S188_rtree_ux_performance.md`
-
-**S188-nD (2026-04-15):** Template-driven nD engine — 4D/5D/6D/7D/8D from JSON templates. DONE.
-  - 6 JSON templates in `templates/` (phases, rates, carbon, lifecycle, safety, master formulas)
-  - Abstract engine `scripts/nD_engine.py` — zero hardcoded IFC classes, `_default` fallback
-  - **Unknown phase eliminated:** was 64% Unknown (80K elements), now 0 across all buildings
-  - Federation scripts refactored: `simple_qto_extract.py` + `schedule_generator.py` load from templates. Excel exporters unchanged — same UI buttons, same output, template-driven data.
-  - Currency from template (`currency_symbol`, `exchange_multiplier`). No hardcoded RM.
-  - Amount-in-words on Executive Summary Grand Total row (white-on-red).
-  - **Fleet test:** 37/37 buildings PASS + sandbox 1M PASS (1,063,563 el, 8.7s, 48 classes costed)
-  - **Excel output:** `boq_reports/BOQ_sandbox_1M_*.xlsx` (13 sheets), `schedules/sandbox_1M_Schedule_*.xlsx` (3 sheets + dashboard)
-  - Sandbox city: MYR 1.59B costed, 434K tCO2e carbon, 1M assets registered, 957 tasks, 957 hazards
-  - See `docs/4D5DAnalysis.md` for full spec + data tables
-  - **Next:** Excel export for 6D/7D/8D sheets, township deduplication (archetype × N), community templates
-
-**S187 (2026-04-15):** Shred baked instances, collapsible panel, version stamp, pre-S185 DB guard — DONE.
-  - Shred handles `Baked_*` instance empties (per-discipline) + `Loaded_*` (existing). Auto-clean empty parents.
-  - Collapsible element list — auto-collapses during overnight/bake, manual triangle toggle.
-  - SHORT-CUT countdown shows `+~25s link` upfront. Wait cursor during blocking link. No two-phase state.
-  - Pre-S185 DB rejection: clean error instead of traceback on old extracted DBs.
-  - `_FED_VERSION` stamp on Preview console (`[S187b]`). Storey fly-to `KeyError: 'bbox'` fixed (rtree JOIN).
-  - Flickering fix: `_baking_buildings` registered before `_overnight_running` cleared.
-  - **Next:** S188 — collapsible discipline bars, overnight for Hospital (63K proof), delta bake.
-
-**S186 (2026-04-14):** RTree hierarchy, overnight loader, dynamic disciplines, bake scripts — DONE.
-  - **Session 1:** Hierarchical drill-down (L0→L1→L2), dynamic disciplines, single-building DB guard, overnight modal loader, per-batch mesh linking, project name in Outliner. See `prompts/S186_rtree_federation.md`.
-  - **Session 2:** Storey-click freeze fixed (`_building_storey_bboxes` cache → instant fly). UI storey counts. Pre-warm threshold: building-level total, not storey-scoped.
-  - **Overnight loader fixed:** batch 200→50, timer 0.1→0.05s, no bulk pre-warm (meshes linked per-batch), cancel-flag checked after SQL. Responsive cancel + smooth progress bar.
-  - **Bake scripts validated:** Duplex 1,169/6s (197KB linked), Hospital 63,917/332s. City assembly works. Single-building DB support.
-  - **Smart Overnight (Part D):** After 2K elements, if ETA > 5× offline estimate, shows "Finish in ~6 min. Accept?" panel. Subprocess bake (`nice -n 10 blender --background`), link-back, shred partial, auto-save. Panel greys baking building. 3 new operators + poll timer.
-  - **Next:** S187 — Blender interactive test of Smart Overnight handoff flow, visual validation of baked .blend in viewport.
-
-**S176 (2026-04-12):** Fast full load + GN streaming fix.
-  - **Full load speedup:** `load_library_linked()` Step 2 changed from `link=False` (append) to `link=True` (cache refs only, NO make_local). Per-element objects resolve linked mesh refs once at obj.data assignment — make_local unnecessary and was a regression (140s hang at 108K hashes). Dead material slot fix removed. Step 5 batch interval: 2K→10K.
-  - **GN chunked sub-collections:** `load_library_gn()` rewritten. Templates split into sub-collections of CHUNK_SIZE=100. Each (discipline, chunk) pair gets its own GN point mesh + modifier. Collection Info walks ≤101 objects per eval (was 7K-23K). Hospital: 231 chunks, Terminal: 72 chunks.
-  - **Chunk-aware streamer:** `_stream_tick()` groups batch by chunk_id, pauses/resumes only affected chunk's GN modifiers. Each re-eval: ~2ms (was 1-2s).
-  - **Halt mode (camera debounce):** `dlod_handler.py` skips LOD swaps during orbit, fires with 4x batch when camera stops for 200ms. Smooth navigation at any scale.
-  - **Proofs:** `test_gn_chunk_proof.py` 18/18 PASS (CHUNK_PARTITION, LOCAL_INDEX_RANGE, CHUNK_BBOX_ZERO, CROSS_CHUNK_ISOLATION, CHUNK_ROUNDTRIP, HALT_SUPPRESS, HALT_FIRE, HALT_IDLE). Original `test_gn_index_proof.py` 15/15 PASS (no regression).
-  - **DLOD self-test:** 3/3 PASS (DIST, BUCKET, BATCH).
-  - **Blender test (sandbox 1M):** 1,061,736 elements loaded in 478s. 18MB .blend (was 329MB). DLOD wired. BUT: 3,458 GN objects at CHUNK_SIZE=100 → 10+ sec viewport lag.
-  - **CHUNK_SIZE bumped to 2000:** sandbox 55 chunks, ~170 GN objects (was 3,458). Hospital: 12 chunks. 15/15 proof PASS. Needs Blender re-test.
-  - **DLOD chunk-aware refactoring:** `dlod_init_chunked()`, `_apply_swaps_chunked()`, `_resolve_disc_meshes()` updated for both flat and chunked modes. 4/4 self-test PASS (incl. DLOD_CHUNK).
-  - **make_local() regression fixed:** removed from `load_library_linked()` per StressTest_1M_Results.md analysis. Dead material slot fix removed.
-  - Next: S178 — validate CHUNK_SIZE=2000 viewport (prompts/S178), S177 — P2 FPS proof linked meshes (prompts/S177).
-
-**S183 (2026-04-13):** RTree Cockpit UI — DONE.
-  - Discipline bars, storey filter, +DISC paging, GUID copy, scene inventory
-  - Ghost city α=0.12 → α=0.05 on mesh load. Auto Material Preview on MESH.
-  - Distinct buildings: T\d+_ dedup, ×N badge, fly-to-nearest tile.
-  - Log spam cut. "Already linked" silenced. Freestyle shred confirmed.
-  - MANIFESTO.md §"The Viewer — DB Is the Model" added.
-  - **Next session (S184):** GN Mode geo hell — `check-before-make_local` fix.
-    See `prompts/S179_dlod_rtree_handoff.md` §S180 outcome. RTree remains
-    primary pivot — GN adds near-camera LOD layer only.
-
-**S175 SESSION 2 (2026-04-12):** GN streaming — geo hell root cause found and architectured.
-  - **Library expanded:** 41K → 120,471 meshes. 25 buildings added (14 BLOB-copy, 11 IFC re-extract). 276MB library.blend.
-  - **Sandbox rebuilt:** 1,061,736 elements, 108,440 unique hashes, 100% library coverage (was 58%).
-  - **HITOS origin fixed:** 3 outlier elements at 254km removed, building recentred to 298m×98m box.
-  - **Geo hell root causes found (3 layers):**
-    1. `bbox_index = len(mesh_by_hash)` → modular wrapping (23000 % 101 = random mesh)
-    2. Collection mutations while GN live → index shift → stale instance_index
-    3. GN Collection Info sorts ALPHABETICALLY, not insertion order → `_bbox_proxy` at end not slot 0
-  - **Pre-populate architecture implemented:** All template objects created at load (bbox mesh), FINAL instance_index set once. Streamer only swaps `obj.data`. Collection never mutates. 15/15 proof tests pass.
-  - **GN pause/resume pattern:** Disable GN → batch 200 mesh swaps → re-enable → ONE re-eval per batch (was 1000/sec).
-  - **BLOCKER: GN Collection Info at scale.** 7K+ objects in collection hangs viewport on re-eval. GeoScatter works at <100 assets. Our 7K-23K templates exceed Collection Info's design limit.
-  - **Non-GN loader stable:** 60K elements, fast save, production-ready. R-tree: 1M elements, 13s.
-  - Scripts: `bake_all_sandbox.sh`, `test_gn_index_proof.py`, `build_sandbox_1M.py` (Terminal_Extracted typo fixed)
-  - Next: GN topology redesign (chunked sub-collections, Realize Instances, or Bake Node) — dedicated session
-  - Ref: DeepSeek game engine analysis (Unreal World Partition, Unity DOTS, GeoScatter patterns)
-
-**S174 DONE (2026-04-11):** Library pipeline for all buildings. DLOD handler. Old loader retirement spec. Terminal alignment fix.
-  - Clinic 16,480 elements PIPELINE PASS (8.3MB meshless DB, 132s)
-  - Hospital 63,917 elements PIPELINE PASS (30MB meshless DB, 214s, surface_styles fresh)
-  - Terminal 49,059 elements PIPELINE PASS (27MB, bbox 0.0001m). 4 proof FAIL: SCALE_ARC/STR (airport 639m span — threshold issue), ALIGN_ELEC (grid_north -38° vs 52° — rotation fix spec'd in TerminalAnalysis.md)
-  - Library: 38,306 meshes, 89.5MB library.blend (shared across all buildings)
-  - `_compute_alignment` unit_scale fix: corrections now in metres (was 1000× too large for mm-unit IFCs)
-  - `pipeline_library.sh`: added Clinic + Terminal|SJTII cases
-  - `dlod_handler.py` 666 lines, 3/3 self-test PASS (DLOD_DIST, DLOD_BUCKET, DLOD_BATCH). Not yet wired.
-  - `stage2_library_linker.py`: 3-path material logging (direct/surface_styles/discipline), element_name in Outliner
-  - `blend_cache.py`: thin-save strip/restore for _Templates (library-linked path). FINE logging.
-  - DLOD supersedes thin-save checkbox: LOD-0 bbox proxies make .blend naturally small
-  - Old loader retirement plan: §13 in FULL_LOADER2_SRS.md (5 files to change, 7 to retire)
-  - Live docs updated: DATA_MODEL, USER_GUIDE, Enterprise, BlenderBridge — all reflect meshless/library-linked architecture
-  - Specs moved to internal/: FULL_LOADER2_SRS.md, DLOD_SPEC.md, THIN_SAVE_SPEC.md
-  - Next: wire DLOD into blend_cache.py + __init__.py, Terminal grid_north rotation (option 1 in TerminalAnalysis.md), verify material colors in Blender
-
-**2D_018 session (2026-04-09):** I-29 FIXED (grid bubbles inside dim tiers). Bubble now at building+tier_1+grid_ext+bubble_r (42mm plan, 78mm elev). Extracted `_draw_grid_bubble()` helper. Template `tier_1_offset_mm=18 / tier_2_offset_mm=10` aligned with DIM_OFFSET_1/2. Added §GRID_BUBBLE_Y proof log. SH 6/6, DX 7/7. Log-first + log self-sufficiency rules added to prompt + spec. Open: I-30 (DB migration) → I-21 (MEP footprints) → I-27 (storey titles) → I-28 (MEP drawing title). Next session: start with I-30 (add 2d_drawing_style rows to 2D.db).
-
-**S164/2D_011 DONE (2026-04-09):** Semantic DXF §20 P1 — BIMSRC xdata on all floor plan entities. `Element.guid` added to dataclass + SQL. `GridLine.source_guids` tracks wall/column GUIDs through `derive_grids` merge+prune pipeline. `DimString.from_label/to_label` for dim provenance. `_set_bimsrc(**kwargs)` helper with type-aware group codes. Wired onto 4 entity types: 81 walls, 5 grids, 5 dims, 3 rooms (SH). `test_2d_bim_roundtrip.py` W-2D-BIM-1/2 PASS (W-2D-BIM-3/4 stubs). Conformity SEMANTIC_DXF + GRID_SOURCES soft checks. Layout audit SEM01. §21 IFC Annotation Extraction spec written (HITOS: 2,920 IfcAnnotation rows — only building with annotation data). Remaining P2-P5: grid triage, English labels, per-view logs, MEP segments. SpecToCode: 142/150 (95%).
-
-**S163 DONE (2026-04-09):** §F3 schedule/field-row overlap fixed (row_h now subtracts sch_total_h). §G MEP: DX_2D.json M-01 GAP→STUB, dispatch includes STUB, MEP legend rows converted to dicts. §H dim terminator: elevation bay dims now use manual 45° ticks + extension lines (removed try/except add_linear_dim). Bay dim text placed at `dim_y - dim_txt_h * 2.5` to stay inside border. All current DXF: **0 FAIL, 0 WARN** except DX_FLOOR 13 WARN (F1/F2 inherent duplex geometry). Conformity 8/8 PASS. Remaining: §E (DX upper floor), §F1 (window tags by storey), §F2 (dedup room labels). See [prompts/S159](prompts/S159_dx_panel_legend_mep_spec.md).
-
-**S162 DONE (2026-04-08):** Layout audit script (`layout_audit.py`) + 6 template-driven fixes. Before: 12 FAIL on DX. After: **0 FAIL all 18 DXF files**. Fixes: F1 `derive_grids` exterior-walls-only + `prune_small_bays` (DX 15→2 grids, template key `grid.min_structural_bay_m`). F2 elevation right-side height-dim clamped to title block boundary (`dimensions.panel_clearance_mm`). F3 level marker labels abbreviated + offset from template (`level_markers.label_abbreviations`, `text_right_offset_m`). W1 scale bar scale factor bug fixed (was 100× too small). W2 BUILDING TYPE field syncs from identity block (`title_block.sync_building_type_field`). W3 elevations now show identity block. W5 IFC building name underscore stripped. Conformity 8/8 PASS.
-
-**S161 DONE (2026-04-08):** 2D panel §A building identity block (DUPLEX RESIDENTIAL / Ifc4 Duplex below JKR header, template keys font_height_building_type/name_mm). §C grid reference legend (GRID REFERENCE section at bottom of panel, X/Y bay rows + TOTAL). `_infer_building_identity` helper + `_draw_grid_legend_panel` helper. DX+SH: all 6 views PASS, 8/8 conformity PASS.
-
-**S157 LOD Fix + Display Names + Entrance Hall + DX Fridge DONE:** LOD_LOD_ double-prefix fixed (CL_002, MeshBinder strips LOD_ prefix). IFC display names in Bonsai (stage1_wireframes.py uses element_name). SH entrance hall SET BOM (ScopeBomBuilder LEFT JOIN, 0-element rooms discovered). DX FRIDGE added to KITCHEN schedule (DV049). §12h C_BPartner spec written. SH/DX 9/9. Next: S158 — SHPipelineTest count fixes, floating devices investigation.
-
-**S159 DONE (2026-04-08):** Floating switch fix (ScopeBomBuilder: empty-room minZ now uses IfcSlab top, not slab bottom — entrance hall anchor Z 0→0.47m, switches at 1.67m correct). DX fridge/sink confirmed present (IFC-extracted, CW discipline). §12h C_BPartner spec rewritten: RE/CO category-level segregation (RE→Duplex, CO→Hospital when TE/Hospital onboarded). BPartnerCatalogTest written: 3 PASS, 1 FAIL (wBPartnerCompleteness catches FRIDGE/OUTLET_*/SPRINKLER missing Duplex assignment). Next: S160 — fridge placement fix (2 bugs: Z buried + wrong Y wall) + DV051 BPartner + DuplexAnalysis C_BPartner doc. See [prompts/S160](prompts/S160_fridge_placement_fix.md).
-
-**S160 DONE (2026-04-08):** Fridge Z buried fix (PlacementCollectorVisitor: FLOOR host → pos[2] += hh, W-FRIDGE-Z). WALL_FLOOR yRef CENTER→MAX (DV052, W-FRIDGE-Y). DV051 BPartner: 12 RE fixtures → Duplex (C_BPartner_ID=1), BPartnerCatalogTest 4/4 PASS. DuplexAnalysis §C_BPartner added (RE/CO tier table). DISC_VALIDATION_DB_SRS §12h updated (DV051 DONE, link to DuplexAnalysis). SH 9/9, DX 9/9.
-
-**S158 DONE (2026-04-08):** SHPipelineTest 21/21 PASS (structuralLines 41→37, setLines 14→11, total 55→48, SET BOM IDs updated, component_type filters removed). P3b floating: data analysis shows correct Z (device maxZ≈ceiling minZ−3mm), no ARC misses visible, LOD_LOD_ confirmed 0 in SH+DX output. Geometry_fail_threshold reduction deferred (BuildingRegistryTest needs ERP.db setup). Remaining: Bonsai visual verification (P2/P3b), geometry_fail_threshold count after full DAGCompiler run.
-
-**S155+S156 Device Spacing + Naming + END-Join Route DONE:** S155: Descriptive element names (GAP-9, source_element_ref→familyRef for all 15 generative products), code-rule-based ceiling device spacing (GAP-10, ad_code_requirement.max_spacing_m), P05 proximity deconfliction (100mm nudge loop), geometry_fail_threshold for SH(9)/DX(36). S156: END-join route generation (§12c complete, 366 DX segments), tack-point walker read (§12b.5, local→world transform), anchor discovery (GAP-5, room→storey→synthetic fallback), S21 test (122 VARIABLE terminals, convergence OK). DV048 migration + CL_001 update for FLOOR_TRAP/OUTLET_20A/OUTLET_GFCI. 3 broken test filters fixed (GENERATIVE→SHIM). SH 9/9, DX 9/9. §12 compliance: 50/52 (96%). MepRouteGeometryTest 22/22. [prompts/S155](prompts/S155_device_spacing_naming.md).
-
-**S154 Shim Entities + LOD + Facing DONE:** Shim architecture implemented: IfcVirtualElement phantom shim on wall/ceiling/floor surface + child device with standoff offset (5mm wall, 50mm ceiling). Facing direction from placement_rule (§12g GAP-4). Host IFC class in shim familyRef (IfcWallStandardCase/IfcCovering/IfcSlab). LOD geometry bridge: CL_001 migration seeds M_Product_Image for 12 generative products. S20 test: 114 shims, surface snap, offset, facing assertions. SH 9/9. Gaps found: GAP-9 descriptive names (element_name="TOILET" not IFC family), GAP-10 ceiling device stacking (3 devices at CEILING_CENTER). Next: S155 spacing + naming. [prompts/S155](prompts/S155_device_spacing_naming.md).
-
-**S152 Generative MEP Pipeline Integration DONE:** G1-COUNT + GenerativeCount on c_order. LOD bridge: all 11 products have source_element_ref (DV046). Discipline resolver: connects_to from ad_assembly_connector (SPRINKLER→FP, SUPPLY_DIFFUSER→ACMV). Fixture tack-to points seeded (DV047, 13 connectors). Spec §6.12.4 §11-§12: LOD bridge, shim architecture, END-join with halt-and-recalculate, furniture collision, tack points. Next: S153 shim refactor + END-join route. [prompts/S153](prompts/S153_generative_shim_architecture.md).
-
-**S144 GEO White-Box Logging DONE:** GeoProofRecord + GeoProofFormatter — structured Input→Process→Output proof chain per element. 58 SH / 215 DX proof records. LMP with inverse rotation (0 FAIL). Envelope UNKNOWN (parent dims not on M_Product stubs). DX B-side rot=π negation confirmed. §6.12.1 isolation maintained. Existing TACK logs preserved.
-
-**S145 DX Mirror→Rotation Fix DONE:** MIRROR:X was wrong — duplex is rot=π (negate both X+Y). Three fixes: (1) walker negates both axes + flips both half-extents, (2) UNIT_B anchor Y reflected about building center (4.38→22.18), (3) ProximityMirrorPairer eliminates mis-pairing (was 6m drift on 8 walls, now zero). New: MirrorPairer interface, LastInchCorrector interface + OpeningContainmentCorrector, always-on SpatialDiff in pipeline, improved TACK LEAF logging with transform state/AABB. DX 8/8, SH 8/8, 55/55 pairs zero symmetry drift. Remaining: 3 exterior envelope walls at 208mm (half-thickness) — should be BUILDING BOM not half-unit. [DuplexAnalysis.md §S145 Learning Points](docs/DuplexAnalysis.md).
-
-**S149c LTU A-House Onboarding DONE — Largest reference building (125,997 elements, 8 disciplines):**
-  LTU_AHouse_extracted.db: 232.7MB, 9 IFC files, ~20 min extraction via Approach A.
-  Bonsai/Blender: 13.6GB RAM, smooth 3D nav, 3s select, no crash/fan.
-  New code: `fix_mm_outliers()` in extract_merge_disciplines.py (299 STR bbox_fallback elements).
-  New code: `extractIFCtoDB_open.py` (open-filter extractor, fine-grained discipline, Pset_BIMSource).
-  New code: `merge_ifc_tagged.py` (IFC merger with Pset stamping — OOMs on 125K+, viable for small).
-  New code: `ExtractionPostProcessor.java` (unit scale fix, discipline refinement, forensic logging).
-  Clinic_extracted.db also extracted: 16,481 elements, 5 disciplines, all coherent.
-  Proved: `USE_WORLD_COORDS=True` returns metres — previous ×0.001 SQL was CAUSING geometry hell.
-  Proved: IFC-level merge OOMs at 125K+ elements — DB-level merge is the only viable path.
-  Details: [`docs/LTUAHouseAnalysis.md`](docs/LTUAHouseAnalysis.md), [`scripts/README_extraction.md`](scripts/README_extraction.md).
-
-**S148 IFC Extraction Cleanup DONE (`79a23376`, `92c16a1b`, `7557db84`):**
-  Hospital_PerDisc_extracted.db: 41K→54K elements, 6 disciplines (MEP/STR/ARC/MECH/FP/ELEC).
-  Fixed: MECH proxies retagged, FP added (SPR topup), ELEC→FP for FIRE.ifc DCE elements.
-  Fixed: survey elevation Z offset (165.8m) subtracted — building now at 0–38m.
-  Fixed: bbox_from_placement mm→m unit bug in 30 IfcStair elements.
-  project_metadata: view_center (38.94, 76.24, 16.55)m + view_distance=148.7m stored.
-  New scripts: extract_merge_disciplines.py + topup_extracted_db.py — coord normalisation.
-  Next: wire fast_bbox_loader to read project_metadata.view_center for auto-camera.
-
-**S149b MEP Route Geometry Fixes + Space Identity DONE:**
-  4 GEO findings from MepRouteGeometryTest, all fixed/verified:
-  F1: c_uom_id=MM qty guard — qty=1 when VARIABLE (was 2345 instances). PlacementCollectorVisitor:468.
-  F2: LMP MEP exemption — MEP pieces exempt from LMP containment. Negative offsets valid.
-  F3: DX cumulative offsets — verified in ERP.db (162 MEP runs, S149 fix confirmed).
-  F4: Black-box proof — D_CW_U_RUN_7, 5 pieces, delta=0.000mm on all axes.
-  §6.12.4 Space Identity + Fixture Gap Analysis: abstract capabilities (PLUMBABLE, ELECTRIFIED, etc.) bridge MEP→rooms. DV040-DV042 (capability flags, discipline mapping, placement offsets as metadata). 3D convergence proof: 55 CONVERGED, 43 NEAR, 30 XY_ONLY (need vertical drop), 34 FAR. 22/44 fixtures SATISFIED, 22 gaps with INSERT scripts. S9: generative abstract proof — SPACE→CAPABILITY→SCHEDULE→OFFSET→POSITION chain proven from metadata only, no IFC. All placement offsets from `ad_placement_offset`. Next: S150 wires this into walker proper (DAO + PLACE_DEVICE verb + GEO white-box). [DISC_VALIDATION_DB_SRS.md §6.12.4](docs/DISC_VALIDATION_DB_SRS.md). [prompts/S150_generative_mep_walker.md](prompts/S150_generative_mep_walker.md).
-  Gate: MepRouteGeometryTest 8/8. DX 8/9. SH 8/9. Zero regression.
-
-**S150 Generative MEP Walker DONE:** [prompts/S150_generative_mep_walker.md](prompts/S150_generative_mep_walker.md).
-
-**S151 Generative Furniture + MEP Demo DONE:**
-  Bug 1: Z-axis breach fixed — DV044 `default_ceiling_height_mm` on `ad_space_type`. 13→0 breaches.
-  Bug 2: LOD AABB fixed — M_Product dims drive Placement AABB (was ±0.05m cube). DV045 fills 9 products.
-  MEP order qty wired: YAML `mep_order_qty` → `ad_sysconfig MEP_ORDER_QTY` → walker fallback chain.
-  DV043 products applied: SPRINKLER, OUTLET_GFCI, FRIDGE + 4 others. S14: 0 gaps across 27 types.
-  S16 DX demo: 329 placements (215 extracted + 114 generative), 11 rooms, 0 breaches, 0 FALLBACKs.
-  PHANTOM gap awareness: deferred — no BUFFER children in DX SET BOMs (Filler not run yet).
-  Forensic logs: CEILING_OVERRIDE, AABB, ROOM, PLACE, BREACH, SUMMARY on GENERATIVE channel.
-  Gate: MepRouteGeometryTest 16/16. DX 8/9 (no regression). [DuplexAnalysis.md §S150/S151](docs/DuplexAnalysis.md).
-  Next: wire `mep_order_qty` into more YAML files (SH, TE). Run Filler on DX rooms to enable PHANTOM gaps.
-  PlacementCollectorVisitor: erpConn/mepOrderQty setters. PLACE_DEVICE: prefix in expandVerb(). Generative MEP expansion in onSubAssembly() for SET BOMs with space type.
-  S10: 8/8 BATHROOM devices match metadata exactly (0.005mm tolerance). S9 bug fixed (FLOOR_LOW was at center, now Z=0).
-  S11: resolveQty coverage levels (99→normal, 0→max, N→cap with code minimum).
-  S12: gap analysis — 6/8 SATISFIED, 2 GAPS (OUTLET_GFCI, SPRINKLER — no M_Product yet).
-  Gate: MepRouteGeometryTest 12/12. DX 8/9. SH 8/9. Zero regression.
-  Next: S151 — generative furniture (fridge) + discipline automation demo (sprinkler/outlet placed from order). [prompts/S151_generative_furniture_and_mep_demo.md](prompts/S151_generative_furniture_and_mep_demo.md).
-
-**S151 Discipline Automation Demo DONE:**
-  DV043 migration: 7 new M_Product (SPRINKLER, OUTLET_GFCI, FRIDGE, OUTLET_20A, AIRCON_POINT, DATA_POINT, EMERGENCY_LIGHT). FRIDGE in KITCHEN/WET_KITCHEN schedule. WALL_HIGH offset.
-  CompilationPipeline: `setErpConn(compConn)` + `setMepOrderQty()` wired. Default qty=99 (standard), override via `-Dmep.order.qty=N`.
-  S13 demo: 3 rooms (KITCHEN+BATHROOM+BEDROOM), 33 devices, 4 sprinklers, FRIDGE in kitchen, GFCI in bathroom. All generated from rules, none from IFC.
-  S14 master gap: 27 space types, 142 scheduled devices, **0 gaps** — every scheduled device now has an M_Product.
-  ScopeBomBuilder: `inferRoleFromContent()` — classifies rooms from furniture names when space name is a number (DX A102→LIVING, A103→KITCHEN, A104→BATHROOM, etc.). Vanity beats cabinet (bathroom priority).
-  CompilationPipeline: `setErpConn(compConn)` + `setMepOrderQty()` wired. Generative count in walk log.
-  DV043 migration: 7 products + FRIDGE schedule + WALL_FLOOR/WALL_HIGH offsets.
-  PHANTOM gap awareness: deferred — extracted buildings have no fillers. Only relevant for generative template path.
-  ScopeBomBuilder NULL orientation guard in ComponentLibrary.getByName(). Schema snapshot: C_BPartner_ID on C_Order.
-  Geometry stubs: 10 box stubs in component_library.db for generative-only products (SWITCH, OUTLET, FRIDGE, etc.).
-  DX full pipeline: 329 elements written (215 ARC/STR + 114 generative MEP). Rtree positions correct XY.
-  Known findings (for next session): (1) 13/114 Z-breach — bomAABB height=furniture extent not room height. (2) LOD ±0.05m hardcoded AABB squashes geometry. [DuplexAnalysis.md §S150/S151](docs/DuplexAnalysis.md).
-  Gate: MepRouteGeometryTest 14/14. DX 8/9. SH 8/9. Zero regression.
+- **S190:** Fleet health-check (21 buildings, 4 ALL GREEN).
+- **S104:** IFCtoERP complete — TE 8/8, 48428 elements, 0 critical violations.
+- **S100-S152:** Generative MEP, RouteWalker, discipline separation, material extraction. [Git history.]
 
 ## What's Next
 
-**Blueprint Sessions (§14.3):** [ProjectOrderBlueprint.md](docs/ProjectOrderBlueprint.md)
-  Session 0 DONE — R-PROJ-3 fix (GAP-SC-8 CLOSED). [AUDIT Appendix K](docs/AUDIT_S51_FOCUSED.md).
-  Session A DONE — addDiscipline() + OrderMutationService. [AUDIT Appendix I](docs/AUDIT_S51_FOCUSED.md).
-  Session B DONE — OrderLineMutation interface + 3 suggestions. [AUDIT Appendix L](docs/AUDIT_S51_FOCUSED.md).
-  Session C DONE — Rule pack framing (pack_id on 4 AD tables). [AUDIT Appendix M](docs/AUDIT_S51_FOCUSED.md).
-  Session D DONE — Remove + Compress mutations. W005 migration. RemoveCompressTest 5/5. [AUDIT Appendix Q](docs/AUDIT_S51_FOCUSED.md).
-  Session E DONE — Order inheritance. W006 migration (Ref_Order_ID). InheritanceResolver + dropWithInheritance. OrderInheritanceTest 6/6. GAP-SC-5 CLOSED.
-  Session F DONE — DiffVerb + Callout (§9). W007 migration (AD_Rule). DiffVerbService + CalloutEngine. DiffVerbTest 5/5. [AUDIT Appendix T](docs/AUDIT_S51_FOCUSED.md).
+1. **Gerard's HDP DAE** — tune classification for real HDP node names
+2. **S229 wizard live test** — drop OBJ on dev landing, walk through wizard flow
+3. **S227 refactor triage** — `prompts/S227_refactor_triage.md` (4 sessions spec'd)
+4. **2D Layout Phase B** — missing pages (section, schedule, electrical, ceiling)
 
-**AD Dictionary (S62→S65):** Steps 0–5 DONE. Step 5-6 bulk migration DONE (S79). Step 6 partial: doc_base_type DROPPED (S84, W012). doc_sub_type stays (STRUCTURAL). [DISC_VALIDATION_DB_SRS.md §11](docs/DISC_VALIDATION_DB_SRS.md#1165-migration-sequence-6-steps-each-independently-committable).
+## Reference
 
-**Docs site:** https://red1oon.github.io/BIMCompiler/ — 56 specs, mkdocs-material.
-
-**Academic paper:** [SPATIAL_COMPILATION_PAPER.md](docs/SPATIAL_COMPILATION_PAPER.md) — Deterministic Spatial Compilation. 58 elements, 1,653 pairs, 0.002mm worst, zero drift. Cross-domain analysis: protein science (PDB/AlphaFold) + robotics (FK/URDF). GEO proof evidence archived. Target journals: Automation in Construction, Journal of Building Engineering, IEEE RA-L.
-
-**S102 Fleet Findings (212/238 PASS, 34 buildings):**
-  19 ALL GREEN: BA,BH,BR,BS,CE,CH,CP,FK,GH,IN,IP,JS,MO,RD,RL,SH,WI,WL,WT
-  CE: was DRIFT=39,900 → ALL GREEN. RD/RL: infra auto-discover, 7/7 PASS.
-  10 Maven FAIL (critical proofs): CA(26),CS(4),ES(60),HI(3),JE(6),RM(3),RS(27473),SC(3),TE(71),WA(110)
-  CL: extraction FAIL. PATTERN forensics: MO 84%, JE 65%, RA 45% Unknown.
-
-**S103 Discipline Separation DONE (`abc1a233`):**
-  Task A: DisciplineBomBuilder — MEP excluded from BOM, counts to ad_sysconfig + YAML discipline_counts.
-  Task B: OrderLineProductCallout — Callout updates DISC OrderLine Qty from MEP counts.
-  TE: 538 BOM lines → 36,160 ARC+STR instances (was 48,428). QA delta=+0. 5/7 PASS (baseline).
-  Spec: §6.12.1 Compilation Isolation Invariant, §6.12.2 Joint Piece Architecture (IFCtoERP).
-
-**S104 IFCtoERP (`365fc163`, `abdcd045`):**
-  00c DONE: 785 joint piece + 11 shim M_Products in ERP.db (TE 618, RM 167 new).
-  00d PARTIAL: MEP in BOM (shim root, tack columns, ShimMatcher). §6.12.2 rewrite.
-  00f DONE: InterimWorkshop + c_uom_id UOM model. SH 8/8 PASS. TE 48428 el, 6/8 PASS.
-  C_DocType removed as registry source → m_bom (J4_003). BuildingRegistry/MetadataValidator/PlacementLoader/BuildingWriter updated.
-  00g DONE (`088a84e7`): J1 tack offsets — 147 MEP runs, 3703 lines in ERP.db (RM). W-J1-TACK. SH 8/8, RM 6/8 (no regression).
-  00h DONE (`eecd2a64`): Z-axis FP + direction-change split — 780 runs, 3136 lines. W-J1-CHAIN-FIX. SH 9/9, RM 7/9.
-  00i DONE (`c2725748`): Chain geometry correctness — penetration gaps, collinearity, rotation, coverage topology. W-J1-GEO.
-    RM: 783 runs, 3157 lines, 2 collinearity discards, 128 non-zero rotation_rule, 0 penetration merges.
-    TE: COVERAGE TOPOLOGY triggered (100% null storey), 838 archetypes, ceiling_Z=26.334m.
-    Gate: RM 6/8, TE 6/8, SH 8/8 — pre-existing Maven critical proof violations (P05/P06) in RM/TE models.
-  00jk DONE (`470c2875`): CE+CH+CP 27/27 PASS. RM 6/8, TE 6/8, SH 8/8 — no regression.
-    CE: 434 runs, CH: 588 runs (1 discard), CP: 1005 runs (6 discards). All routing topology.
-    W-J1-RECIPE-LINK: expandDisciplineLines now sets M_BOM_Line_ID+dz from ERP.db BOM line.
-    TE DISC LEAF linked: 959→965 (FP parasitic rows now point to ERP.db IDs 1/2/3).
-    Finding: bulk of TE DISC LEAF M_BOM_Line_IDs reference TE_BOM.db (local), not ERP.db MEP_RECIPE.
-    RM DISC LEAF: 0 rows — ELEC_SYSTEM/SP_SYSTEM have no BOM children; ACMV/CW/FP MEP_RECIPE runs not consumed.
-  00l DONE (`93b62e6b`): RE_DEFAULT expanded {ELEC,SP}→{FP,ELEC,ACMV,CW,SP}. W-J1-RECIPE-FULL. RM now has 5 DISCIPLINE rows (Qty=0). SH 8/8, RM 6/8 — no regression.
-  00m DONE (`8185d9df`): MEP DV rule audit — §6.3.1 gap written. Stage 1: 1 FP DocEvent rule only. Stage 3: 415 DIMENSION_RANGE, no MEP code checks. ad_code_requirement: 23 rows, not wired in.
-  00n DONE (`b76218bc`): P05 sameDims guard + extraction dedup. W-RM-DEDUP. RM 7/8 (C9 rank-match artifact remains). SH 8/8.
-  00o DONE (`d9823a70`): C9 position-based spatial match (50mm centroid window + nearest-neighbour guard). W-RM-C9. RM 8/8, SH 8/8. Fleet 16/16 PASS.
-  00p DONE (`f52c937c`): DISC BOM audit — piece-type→discipline map, CW/SP rule. G1/G2/G3 documented. §11 written. TE resolved via elements_meta.discipline. RM G2 (IFC2x3, no sub-discipline).
-  §6.12.3 DONE (`0fb61c62`): Hybrid pattern architecture spec — ad_mep_anchor + ad_mep_pattern (explicit rows), RouteWalker, W-PATTERN-CW/W-PATTERN-SP witness claims. old 00q_disc_bom_sql.txt superseded.
-  00q DONE (`354c5edd`…`20cc127c`): Tasks A–D complete. RM 8/8, SH 8/8.
-    A: DDL migration — _import_joint_piece_types.discipline (G1), ad_mep_anchor, ad_mep_pattern.
-    B: CW_TERMINAL_01 (4 steps) + SP_TERMINAL_01 (5 steps) mined from TE. SP gradient TENTATIVE (0.005–0.023 < MS 1228 min 0.025).
-    C: extractAnchors() — RM: 154 METER, 11 FIXTURE, 1482 GENERIC (no VALVE in RM). seedMepPatterns() in Java for persistence.
-    D: discFromClass(3-arg) G3 fix. readMepElementsWithPositions reads discipline. light/lamp/luminaire → null (ELEC skip).
-    Fix: DV_RM_rules.sql regenerated by pipeline — pattern seed moved to Java seedMepPatterns() via INSERT OR IGNORE.
-  00r DONE (`66264669`): RouteWalker.java — pattern select, anchor match, ARC clash check, c_orderline emit. Wired into CompilationPipeline after expandDisciplineLines. RM: CW=394, SP=134 lines. RM 8/8, SH 8/8.
-  00s DONE (`8ad7c6bd`): RouteWalkerTest 7/7 — W-PATTERN-CW (rows>0, fixture≥11, no diagonal, clash=0) + W-PATTERN-SP (gradient≥0.024, STACK/storey, 80% connectivity).
-  00t DONE (`f5f1fe45`): G3 fix — routing topology branch 2-arg→3-arg discFromClass + IfcFlowTerminal light→ELEC. W-TE-DISC: Terminal CW=109, SP=167, FP=64, LPG=25. RM 8/8, SH 8/8. TE 7/8 (pre-existing 71 critical proof violations).
-  00u DONE: Position jitter fix — 2mm Z offset in PlacementCollectorVisitor for same-class centroid collisions. W-TE-PROOF: TE 8/8 PASS, 48428 elements, 0 critical violations (71→0). SH 8/8, RM 8/8 (no regression).
-  Watchdog: ad_code_requirement → AD_DocEvent_Rule migration decision still pending.
-  **S104 CLOSED** — TE 8/8, 0 critical violations.
-
-**Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–U](docs/AUDIT_S51_FOCUSED.md).
-**MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
-
-## Session Log (recent first)
-
-**S149** (uncommitted) — C_BPartner Model + buildingType Rename + MEP Route Geometry Sandbox.
-  C_BPartner Values: Duplex, HospitalAuckland, Terminal, SampleHouse (4 rows).
-  Fleet rename: Ifc2x3_Duplex→Duplex, Ifc4_SampleHouse→SampleHouse, Revit_MEP→HospitalAuckland, SJTII_Terminal→Terminal.
-  Extracted DB files renamed. Bulk replace across codebase (upper+lower case).
-  C_Order.C_BPartner_ID: BomDropper sets at order creation, expandDisciplineLines reads from header.
-  MEP_RECIPE filter: `WHERE b.Value = ? AND b.C_BPartner_ID = ?` — clean, no NULLs, no fallbacks.
-  System BOMs: C_BPartner_ID=1 (Duplex) — per-building rows (S149 Task 1 populates children).
-  DV038 migration: seed INSERTs with correct Values + SampleHouse.
-  IFCtoERP.resolveBPartnerId: direct `SELECT FROM C_BPartner WHERE Value = ?`.
-  Gate: DX 7/9, SH 7/9 — no regression (2 FAILs = pre-existing BuildingEntry record mismatch, now fixed).
-  Task 1: System BOM children populated (CW 3, SP 3, ELEC 4, ACMV 4, LPG 1).
-  Task 2: DV039 rule tables (ad_mep_laying_rule 4, ad_mep_fitting_rule 4, ad_mep_riser_rule 4).
-  §8d triage written: route direction → piece orientation (3 gaps: RouteWalker rotation_rule, walk direction as data, forward_axis alignment).
-  MepRouteGeometryTest sandbox: 5 scenarios, S1 uses real D_CW_U_RUN_2 mini BOM.
-  GEO forensic findings:
-    1. Sibling offsets are parent-relative (by design §3.2) — extraction FIXED to write cumulative from shim.
-    2. rotation_rule only applies in sub-assemblies, not flat siblings — §8b tee branching is the mechanism.
-    3. c_uom_id=MM not intercepted — qty=2345 expanded as 2345 instances (InterimWorkshop wired but qty not guarded).
-    4. LMP check fails for negative-direction pipes (expected for MEP — LMP is ARC convention).
-  BuildingEntry test fix: 4 broken tests had extra null in constructor (19 args → 18).
-  Next: fix c_uom_id=MM qty guard, LMP MEP exemption, re-extract DX recipes with cumulative offsets, black-box test against IFC reference positions.
-
-**S148** (uncommitted) — DX MEP Begin: Space Inference + Fixture Route Schema.
-  Task 1 (kitchen outliers): marked DONE — fixed in S147.
-  Task 2: MEP-SPACE logging — `emitMepSpaceLog()` in IFCtoERP.java.
-    Infers room function from furniture containment + MEP fixture presence.
-    11 rooms classified: 2 KITCHEN, 2 BATHROOM (L1), 2 BATHROOM (L2), 4 HABITABLE, 10 EMPTY.
-    63/119 fixtures mapped (53%), 360/785 pipes mapped (46%). Perfect A/B mirror symmetry.
-    Grep `[IFCtoERP][MEP-SPACE]` in pipeline output.
-  DV037: `ad_mep_fixture_route` — two-anchor concept (FIXTURE→RISER/STACK/PANEL) with pipe system.
-    28 rows: BATHROOM, KITCHEN, TOILET, BEDROOM, LIVING. Shim products on each route.
-    Abstract and building-agnostic. In component_library.db.
-  Fixture BOM seeding: `seedFixtureRecipes()` in IFCtoERP.java reads ad_mep_fixture_route,
-    creates 9 FIXTURE_* M_Products + 28 M_BOM_Lines under CW/SP/ELEC_SYSTEM in ERP.db.
-    Idempotent (check-before-insert). Same recipes for any RE building.
-  BomDropper activation confirmed: DX output now has CW=853 (+16), SP=734 (+14), ELEC=27 (+26).
-    ELEC went from empty (qty=0) to 26 fixture elements. Same OrderLine→BOM chain as BIM Designer.
-  Existing infrastructure found: SpaceTypeRegistry, SpaceTypeAD, MEPBomAD (186 rows in ad_space_type_mep_bom).
-  Stale DX_extracted.db copies removed (IFCtoBOM/src/main/resources/, target/classes/).
-  DV038: C_BPartner in ERP.db — manufacturer identity. 3 rows (AUTODESK_REVIT, UNIV_AUCKLAND, SJTII_KLIA).
-    C_BPartner_ID on M_Product (3096/3096 linked) and M_BOM (172 linked). BBC.md §1 updated.
-  Library README rewritten: DB boundary table, MEP tables state, compilation flow.
-  Cleanup: removed premature ad_mep_fixture_route + seedFixtureRecipes() + FIXTURE_* stubs.
-  Gate: DX 8/8, SH 8/8 — zero regression.
-  Next: S149 — populate empty system BOMs (START/END), create 3 rule tables, verify Walker consumes DX recipes.
-
-**S147** (uncommitted) — DX Stair+Pantry Mirror Investigation + Logging Hardening.
-  Task 1: Stair+pantry visual discrepancy — 3-layer root cause, all fixed:
-  (1) SpatialDiff black box: 46/55 outliers were measurement artifacts (position-based pairing).
-      Fix: ElementIdentity (BBC.md §4.3) — base IFC GUID in element_ref, threshold on smaller set.
-  (2) LINE/LINE_MULTI verbs missing from expandVerb() — kitchen cabinets stacked at same position.
-      Fix: expandLine() + expandLineMulti() in PlacementCollectorVisitor.
-  (3) B-side LOD meshes not rotated — MIRROR:X returned 0.0 for rotationStack.
-      Fix: Placement carries rotationZ (π for mirrored), MeshBinder rotates around mesh center.
-      51 B-side elements now get rot=π. LOD-ROTATE log confirms each one.
-  Remaining: 15 kitchen cabinet GUID-to-position order mismatch (visual correct, identity swapped).
-  Fridge: IfcFlowTerminal (105 total), correctly DISC_EXCLUDED — Task 2 MEP.
-  New: SPATIAL-REPORT (modal shift, outlier diagnosis, missing by discipline).
-  New: BOM-SUMMARY (IFCtoBOM tree, children/instances per BOM).
-  New: rosetta_trace.sh (post-hoc cross-box correlation).
-  New: ElementIdentity.java (BBC.md §4.3, W-GUID-1/2/3 PENDING).
-  Stale: removed empty sample_house.db from output.
-  Gate: DX 8/8, SH 8/8 — zero regression.
-  Next: S148 — (a) DX MEP begin (DISC path, fridge), (b) furniture GUID order (low priority).
-
-**S142** (`a14e5f6f` + uncommitted) — DX + SH Output Quality + ERP.db From-Scratch Chain.
-  Part 1 (committed): LINE verb, MEP exclusion, CLUSTER→0, product naming, DV035 ad_verb_pattern.
-  Part 2 (this session): DV036 — AD_Org_ID on M_Product_Category (discipline chain §6.4).
-  Forensic: Parent_Category_ID was intentionally dropped (DV020), not accidentally lost (DV027).
-  AD_Org_ID was specified in §6.4 but never implemented — DV036 completes the spec.
-  ProductRegistrar: auto-backfill M_Product_Category_ID from ifc_class (always runs, not gated on compConn count).
-  `scripts/rebuild_erp.sh`: from-scratch ERP.db builder (44 tables, 127 categories, 49 with AD_Org_ID).
-  W019 added to rebuild chain (ad_mep_anchor, ad_mep_pattern — DAGCompiler needs them).
-  From-scratch proof: SH 8/8, DX 8/8 on fresh 1.5MB ERP.db (no legacy data).
-  Remaining: 5 migration ordering WARNs (S62/S67 TE products, DV015 schema mismatch — cosmetic).
-  Next: S143 — RM third stone on fresh ERP.db + fix rebuild_erp.sh warnings.
-
-**S141** — Abstract Product Catalog Mapping (GAP-A from IFCtoBOM_S140_Gap_Analysis.txt).
-
-**S140** (`ae8e7d72`) — DSL/YAML unification + spec fix + LEAF→MAKE + IFC aggregate findings.
-  T0: IFC Aggregate Verb Gap findings → BBC.md §Verb Gap. rel_aggregates populated but not consumed by VerbDetector. ExtractionElement lacks aggregateParentRef. Phase 0 IFC_AGGREGATE conceptualized.
-  T1: BBC §2.2.1 clarified: CHECK BOM may inspect component_type (validation exception).
-  T2: BomHierarchyBuilder:100 LEAF→MAKE (W-DX-LEAF-FIX). DX CHECK BOM errors resolved.
-  T3: 34 dsl_*.bim deleted. ParseStage removed (ctx.definition() never consumed). dslContent removed from BuildingEntry, BuildingRegistry, BuildingWriter, IFCtoBOMPipeline, ClassificationYaml, run.sh, run_RosettaStones.sh. W020 migration. -1181 lines.
-  T4: Generative audit: 3 lib/input/dsl/*.bim orphaned (safe to delete S141). 20 examples/*.bim live (4 tests use BuildingParser).
-  T5: VerbStage column added to gate table. SH: VO (PLACE BOM ProjectName column error, pre-existing). DX: VO (148 PLACEMENT violations, pre-existing).
-  Fleet: SH 8/8, DX 8/8 PASS (no regression). TE skipped.
-  component_type deprecated: column kept as DEFAULT NULL, write path removed, PHANTOM branch removed.
-  IFCtoBOM gap analysis written: internal/IFCtoBOM_S140_Gap_Analysis.txt — 5 gaps (A-E), 5 candidate sessions.
-  Next: S141 — review gap analysis, decide session plan for abstract product catalog mapping (#A first).
-
-**S141** — Abstract Product Catalog Mapping (GAP-A from IFCtoBOM_S140_Gap_Analysis.txt).
-  child_product_id now abstract: `DOOR_INT_810x2110` instead of `Doors_IntSgl:810x2110mm`.
-  ProductResolver.java: alias cascade (ad_element_product_alias 73 rows) → type+qualifier+dims fallback.
-  DV033: M_Product.source_element_ref bridges abstract product_id → I_Geometry_Map.element_ref.
-  DV034: ad_element_product_alias table (ifc_class priority 1 + element_name LIKE priority 2).
-  PlacementCollectorVisitor: familyRef = element_ref (raw IFC name) for C8/C9 fidelity.
-  Fleet: SH 8/8, DX 8/8, RM 8/8 — zero regression.
-  Next: GAP-B (abstract MEP recipe patterns) or GAP-C/D (RM assemblies / discipline tagging).
-
-**S139-followup** (no commit) — DSL/YAML investigation + S140 prompt.
-  dsl_*.bim (IFCtoBOM/src/main/resources/) confirmed vestigial in extracted path:
-  ParseStage parses dsl_content but ctx.definition() never consumed by any subsequent stage.
-  run.sh:94 reads DSL to tmp file, immediately deletes it — dead code.
-  WitnessGenerator.setInputHash(dslContent) signature exists but generateWitness() not called from pipeline.
-  IFC aggregate gap: VerbDetector geometry-only; extractIFCtoDB.py already captures IfcRelAggregates but
-  ExtractionElement carries no aggregateParentRef — curtain wall → mullion grouping invisible to verb detection.
-  S140 prompt written: prompts/S140_dsl_unify_yaml.md
-  Next: S140 — IFC aggregate findings + spec fix + LEAF→MAKE + DSL removal (delete-first strategy).
-
-**S139** (`c5ae1689`) — Verb pattern + LMP boundary audit + DX VerbStage failure diagnosis.
-  5 gate answers (BBC.md §S139). Finding 4 corrected: room/shell split is BY DESIGN.
-  New: DX VerbStage FAIL (2 CHECK BOM errors + 148 CHECK PLACEMENT violated).
-  Root cause: BomHierarchyBuilder:100 writes `.componentType("LEAF")` for DX_ROOM_L1/L2;
-  CheckBomVerb only handles BUY/MAKE/PHANTOM. Bug baked in since DISC-3 + S100-p116.
-  Fix: one-liner in BomHierarchyBuilder — LEAF → MAKE. Prompts/S139 has full DONE section.
-  Next: S140 — fix BomHierarchyBuilder LEAF bug + investigate 148 placement violations.
-
-**S138** (`e40e705a`) — Material extraction + RD cleanup.
-  extract.py: add get_material_rgba/get_material_name; handle IfcPresentationStyleAssignment (IFC4) + IfcMappedItem (doors/windows). INSERT now 9-col. SH 58/58 rgba (was 54/65), DX 164/1119 rgba, windows transparent (0.000,0.502,0.753,0.100). SH 8/8, DX 9/9 PASS.
-  classify_rd.yaml + dsl_rd.bim deleted (Road Infra not a pipeline target).
-  Audit findings — **first-principle violations identified (do NOT fix yet, see S139 prompt):**
-  - CLUSTER used offensively: SH curtain wall + chairs, DX furniture — all CLUSTER despite potential TILE/ROUTE/FRAME. BBC §2.1.7: CLUSTER is last resort. TE: 47,607 of 47,715 verb instances are CLUSTER.
-  - DX MIRRORED_PAIR cascade gap: B-side room BOMs (DX_B102_SET etc.) are under DX_L1_STR (structural floor), NOT under DUPLEX_SINGLE_UNIT_STD → π rotation from UNIT_B never reaches them. GEO log confirms: no ROT entry on room ENTER.
-  - Possible LMP breach: CLUSTER verb_ref in BOM carries per-instance world coordinates extracted from input DB. Whether DAGCompiler itself opens extraction DB is unconfirmed — Task 1 of S139.
-  - SH DSL says ROOF pitch:0deg but IFC roof is curved (Z=1.74→3.475m, ~70 unique Z levels). DSL inaccuracy.
-  Next: **prompts/S139_verb_pattern_lmp_audit.md** — systematic dissection.
-
-**S104-pipeline-housekeeping** — IFC/extraction pipeline audit + fleet cleanup.
-  S137 (`35cfd241`): Black-box discipline split (T3-ARC/T3-DISC-COUNT) + emitGeoSummary removal. TE 8/8, SH 8/8.
-  Material bug found: SH/DX extracted DBs were stale blobs (S100-p126 re-extract stripped materials). Re-extracted from source IFCs — SH 54/65 rgba, DX 143/1162 rgba (federated). TE was only DB with materials (re-extracted in S60).
-  Fleet cleaned: 23 active YAMLs (ALL GREEN + TE/DX/RM/RS/CN/DM). Deactivated: ES,HI,JE,SC,WA,RA,WB,NI,CA,CE,CH,CP,CS.
-  Clinic federated: CN=Clinic_Federated (5 IFC → 1), 2989 elements. classify_cn.yaml added.
-  Smiley_West + Vogel_Gesamt: IFC2X_FINAL header-patched → IFC2X3, extracted (SW=521, VG=157 elements).
-  W019_mep_anchor_tables.sql: formalises 00q-A DDL (ad_mep_anchor + ad_mep_pattern).
-  §28.11 Complete/Change Walls spec added to BIM_Designer_SRS.md.
-  Revit federation (RA+RM+RS → Revit_Federated): deferred — RM RouteWalker patterns tagged building_type=HospitalAuckland.
-  ALL GREEN 16 stale extracted DBs re-extracted with materials. RD/RL/WI: 1 element each (expected minimal IFC).
-*S100–S138 — MEP discipline separation, IFCtoERP joint piece, RouteWalker, fleet cleanup, TE 8/8, material extraction fix. [Full log in git history.]*
-*S39–S99 — AD Dictionary, ERP alignment, PK, BOM walk compiler, forge, BIMEyes, 6D/7D, BOM Drop. [Full log in git history.]*
+- Docs site: https://red1oon.github.io/BIMCompiler/
+- Academic paper: `docs/SPATIAL_COMPILATION_PAPER.md`
+- OCI setup: `internal/OCI_SETUP.md`

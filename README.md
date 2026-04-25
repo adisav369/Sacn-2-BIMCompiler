@@ -11,7 +11,7 @@
 [![Docs](https://img.shields.io/badge/Docs-50_specs-8CA1AF.svg)](https://red1oon.github.io/BIMCompiler/)
 [![Alpha v1.0](https://img.shields.io/badge/Release-Alpha_v1.0-blueviolet.svg)](#project-stats)
 
-### [Try It Live Now — 25 IFC buildings in your browser, zero install](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html)
+### [Try It Live — drop IFC or OBJ in your browser, zero install](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html)
 
 </div>
 
@@ -19,17 +19,18 @@
 
 <img align="right" src="docs/assets/images/GeneralTall.png" alt="Multi-storey building compiled from BOM — 6 disciplines colour-coded in Blender/Bonsai viewport" width="260">
 
-A metadata-driven, deterministic compiler that reads BOM data and produces verified 3D building coordinates — the same way an ERP system explodes a manufacturing BOM into work orders.
+A deterministic BIM compiler that reads IFC or any 3D format and produces verified building data — the same way an ERP system explodes a manufacturing BOM into work orders. Plus a browser-native viewer that needs no install.
 
-Every output element traces to a library input. Nothing is invented. No AI inside. Pure arithmetic.
-
-&nbsp;
+**Two things, one ecosystem:**
+1. **BIM OOTB** — Drop any 3D file (IFC, OBJ, DAE, GLB, FBX, STL) into a browser. Get storey filtering, discipline toggles, element picking, 5D costing. Zero install.
+2. **BIM Intent Compiler** — Deterministic spatial compilation. 48K elements → 700 BOM lines. 6 mathematical gates prove every output. ERP-native.
 
 | | |
 |:---|:---|
-| **35 buildings** compiled (126K elements largest) | **77 verbs**, 2,475 products |
-| **1M elements** loaded in a single federated session | **6 mathematical gates** prove every output |
-| **ERP-native** data model ([iDempiere](https://idempiere.org/)) | **[Blender](https://www.blender.org/)/[Bonsai](https://bonsaibim.org/)** live GUI |
+| **35 buildings** compiled (126K elements largest) | **77 verbs**, 7,403 products |
+| **1M elements** federated in browser | **6 mathematical gates** prove every output |
+| **Multi-format import** — IFC, OBJ, DAE, GLB, FBX, STL | **Auto-classifies** mesh names → IFC schema |
+| **ERP-native** data model ([iDempiere](https://idempiere.org/)) | **[Blender](https://www.blender.org/)/[Bonsai](https://bonsaibim.org/)** + browser viewer |
 
 <br clear="right"/>
 
@@ -56,6 +57,12 @@ See a [walkthrough of how Claude does pair programming with the Creator](https:/
 
 ## How It Works
 
+**Browser path (BIM OOTB):**
+```
+Drop file (IFC/OBJ/DAE/GLB) → auto-classify → viewer panels light up → export .ifc
+```
+
+**Compiler path (DAGCompiler):**
 ```
 IFC file → extract → classify.yaml → IFCtoBOM → BOM.db → compile → output.db → gates
            (once)    (human intent)    (once)     (recipe)   (repeat)  (elements)   (proof)

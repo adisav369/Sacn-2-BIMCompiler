@@ -44,24 +44,45 @@ test.describe('Viewer Load & Streaming', () => {
   test('1.4 Info panel populates on click', async ({ page }) => {
     await openViewer(page);
 
-    // Click on the canvas center (should hit a mesh)
-    const canvas = page.locator('#canvas');
-    await canvas.click({ position: { x: 400, y: 300 } });
+    // Find a mesh in the scene, project to screen coords, click there
+    const clickPos = await page.evaluate(() => {
+      const A = window.APP;
+      if (!A || !A.scene || !A.camera) return null;
+      // Find first visible mesh with geometry
+      let target = null;
+      A.scene.traverse(child => {
+        if (!target && child.isMesh && child.visible && child.geometry) {
+          target = child;
+        }
+      });
+      if (!target) return null;
+      // Get world position and project to screen
+      const pos = new THREE.Vector3();
+      target.getWorldPosition(pos);
+      pos.project(A.camera);
+      const canvas = A.renderer.domElement;
+      return {
+        x: Math.round((pos.x + 1) / 2 * canvas.clientWidth),
+        y: Math.round((-pos.y + 1) / 2 * canvas.clientHeight),
+      };
+    });
 
-    // Wait a moment for raycaster to process
-    await page.waitForTimeout(500);
+    if (clickPos && clickPos.x > 0 && clickPos.y > 0) {
+      await page.click('#canvas', { position: clickPos });
+      await page.waitForTimeout(500);
 
-    // Check if info panel appeared with any content
-    const infoVisible = await visible(page, '#info-panel');
-    const infoClass = await text(page, '#info-class');
+      const infoVisible = await visible(page, '#info-panel');
+      const infoClass = await text(page, '#info-class');
 
-    // May or may not hit a mesh depending on camera position
-    // If visible, must have content
-    if (infoVisible && infoClass) {
-      expect(infoClass.length).toBeGreaterThan(0);
-      console.log(`§PW_INFO_PANEL class="${infoClass}" — panel populated on click`);
+      if (infoVisible && infoClass) {
+        expect(infoClass.length).toBeGreaterThan(0);
+        console.log(`§PW_INFO_PANEL class="${infoClass}" — panel populated on click`);
+      } else {
+        // Raycaster may still miss if mesh is behind camera or occluded
+        console.log(`§PW_INFO_PANEL WARN — projected click at (${clickPos.x},${clickPos.y}) did not select`);
+      }
     } else {
-      console.log('§PW_INFO_PANEL SKIP — click did not hit a mesh (camera-dependent)');
+      console.log('§PW_INFO_PANEL SKIP — no mesh found in scene');
     }
   });
 

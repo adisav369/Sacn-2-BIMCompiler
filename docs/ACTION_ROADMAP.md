@@ -263,3 +263,4 @@ See: [MANIFESTO.md](MANIFESTO.md) | [RTree.md](RTree.md) | [SPATIAL_COMPILATION_
 | **Data model** | [DATA_MODEL.md](DATA_MODEL.md) |
 | **RTree viewer** | [RTree.md](RTree.md) — technology, architecture, streaming design |
 | **Academic paper** | [SPATIAL_COMPILATION_PAPER.md](SPATIAL_COMPILATION_PAPER.md) |
+| **Strategic positioning** | [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) |

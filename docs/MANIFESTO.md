@@ -642,3 +642,5 @@ After this manifesto:
 5. **[SourceCodeGuide.md](SourceCodeGuide.md)** — where the code is
 
 For the full academic treatment: **[BIMERPPaper.md](BIMERPPaper.md)**
+
+For market positioning and competitive landscape: **[StrategicIndustryPositioning.md](StrategicIndustryPositioning.md)**

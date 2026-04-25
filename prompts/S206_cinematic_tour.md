@@ -123,3 +123,31 @@ Visit rooms in descending size order within each storey.
 - [ ] Bird's eye finale: rise + downward tilt
 - [ ] City mode: sequences through multiple buildings
 - [ ] Pause/resume preserved (✈ toggle)
+
+## DO — Testing & Logging
+
+All test output to `deploy/dev/tests/log/`.
+
+### Existing coverage
+- **Playwright 01-viewer `1.9 Fly-around toggle`**: toggles fly, verifies camera moves. PASS.
+- But this only tests `toggleFlyAround` — not cinematic tour, orbit, or room walk.
+
+### Gaps to fill in a dedicated session
+
+| Test | Where | What | §-tag |
+|------|-------|------|-------|
+| Tour builds from DB | NEW or extend 01 | `buildTour()` returns non-empty action array | `§PW_TOUR_BUILD` |
+| Orbit action moves camera | NEW | Start tour, wait 3s, verify camera position changed | `§PW_TOUR_ORBIT` |
+| Pause/resume | 01-viewer extend | Toggle fly during tour, verify camera stops/resumes | `§PW_TOUR_PAUSE` |
+
+### test_all.js
+```javascript
+// Tour wiring
+const tourSrc = fs.readFileSync(path.join(DIR, 'tour.js'), 'utf8');
+ok('tour.js has setupTour', tourSrc.includes('function setupTour'));
+ok('tour.js loaded by viewer', html.includes('tour.js'));
+ok('tour has orbit action', tourSrc.includes('orbit'));
+```
+
+## DO NOT
+- Do not modify `deploy/sandbox/` — production

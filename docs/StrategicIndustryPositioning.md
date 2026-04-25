@@ -1,11 +1,9 @@
-# Strategic Industry Positioning — BIM Intent Compiler
+# What Exists Today, What's Missing, and Where We Sit
 
-<div class="bim-banner" markdown>
-<b>The gap between visual editors and Spatial MRP is an opportunity.</b> Competitive landscape, scorecard, and market positioning against Revit, Tekla, and Trimble.
+<div style="max-width: 620px; margin: 32px auto; padding: 24px 40px; background: #263238; border-left: 4px solid #ff9800; text-align: center; border-radius: 4px;">
+<span style="font-size: 1.3em; line-height: 1.7; color: #eceff1; letter-spacing: 0.3px;">We BIM living the <b style="color: #ff9800;">GAP</b> between<br><b style="color: #ff9800;">DESIGN</b> and our <b style="color: #ff9800;">SPREADSHEET</b></span>
+<br><span style="font-size: 0.75em; letter-spacing: 1.5px; text-transform: uppercase; color: #78909c; margin-top: 12px; display: inline-block;">The industry designs buildings. Nobody compiles them.</span>
 </div>
-
-*Why the gap between visual design editors and a Spatial MRP compiler is an
-opportunity, not a deficit.*
 
 ---
 
@@ -106,14 +104,13 @@ Tier 1 (Revit)     [████████████]             [         
 Tier 2 (Snaptrude) [████████]                 [                ]
 Tier 3 (Bonsai)    [██████████]               [                ]
 
-BIM Compiler       [██*]                       [████████████████]
+BIM Compiler       [████]                      [████████████████]
                     ↑                          ↑
-                    *GUI = LHF (Phase G)        Spatial MRP output
+                    Browser + Blender GUI       Spatial MRP output
 ```
 
 This is the same relationship as CAD vs. CAM in manufacturing: SolidWorks
-designs the part, the G-code compiler produces machine instructions. Nobody
-expects SolidWorks to run the CNC machine.
+designs the part, the G-code compiler produces machine instructions.
 
 ### Spatial MRP — A Differentiated Approach
 
@@ -135,22 +132,7 @@ contractors *build* them.
 
 ## IFC/BIM Compliance Scorecard
 
-IFC compliance is the prerequisite for serious construction deployment. Each BIM
-dimension compounds difficulty for tools not built on structured data.
-
-**Important context:** We already built and shipped the **IfcOpenShell Federation
-addon** for Bonsai — a plugin that extracts multi-discipline IFC models into a
-FederateModel spatial database (SQLite + R-tree spatial index), achieving 93%
-memory reduction on a 93K-element terminal project. On top of that database, we
-delivered working PoCs for 4D (construction schedule + Blender animation), 5D
-(automated BOQ with Excel export and CIDB pricing), 7D (digital twin asset
-management with maintenance scheduling and IoT sensors), rebar generation, NLP
-query against building data, and discipline color schema — each built in a
-single Claude Code session. These are hardcoded Python scripts: they prove the
-*capabilities* work. What the BIM Intent Compiler adds is the **production
-foundation** — a typed verb compiler, mathematical proof gate, BOM
-factorisation, and ERP-native tables — that makes these capabilities structural,
-repeatable, and scalable to any building type.
+Each BIM dimension compounds difficulty for tools not built on structured data.
 
 | Capability | Revit | ArchiCAD | Snaptrude | TestFit | Arkio | Bonsai | FreeCAD | **BIM Compiler** |
 |-----------|-------|----------|-----------|---------|-------|--------|---------|-----------------|
@@ -197,7 +179,7 @@ See `TIER1_SRS.md` for full spec. 14 witnesses, 231 tests GREEN.
 
 ---
 
-## Three Moats
+## Five Moats
 
 **1. IFC compliance is hard to add retroactively.**
 The visual newcomers started with geometry, not IFC. Adding real IFC compliance
@@ -205,122 +187,65 @@ The visual newcomers started with geometry, not IFC. Adding real IFC compliance
 core. [Most tools treat IFC as a file format](https://bimcorner.com/the-ifc-confusion-why-so-many-still-dont-get-openbim-and-how-to-fix-it/),
 not a data model. We treat it as structured input to a database pipeline.
 
-**5. Domain-agnostic compilation — one pipeline for any facility type.**
-The same 12-stage pipeline that compiles a single-storey house also compiles a
-multi-storey airport terminal, a bridge, a road, and a
-73-element railway. No code changes per domain — only a ~30-line YAML mapping
-segments and disciplines. VerbDetector, BOMWalker, tack convention, delta tests,
-and G1-G6 gates are all domain-agnostic. No competitor validates infrastructure
-IFC4X3 with the same toolchain that validates buildings. Proven 2026-03-20:
-BR 10/10, RD 4/4, RL 4/4 Rosetta Stone gates PASS — CLUSTER verb detection
-active, rail achieves 93% BOM compression (75 lines → 5).
-
-**5b. Terrain-following placement — a winding road on real terrain.**
-The Designer's `PlacementContext` abstraction makes rooms and terrain the same
-concept. `AlignmentContext.fromContour()` auto-generates a curved alignment that
-follows terrain contours — proven on 689 real survey points (river valley, 20m
-elevation range). Elements snap ON/ABOVE/BELOW terrain; drag updates Z in real-time.
-Contour-following minimises earthworks by riding the topography instead of cutting
-through it. Measured: 2.9km winding road with R=17m–1037m curves, heading sweep
-63°→-158°→-23°. No commercial BIM tool does contour-following infrastructure design
-with validation against IFC4X3 rules.
-See [`INFRA_DESIGNER_SRS.md`](INFRA_DESIGNER_SRS.md) §1 + §5 for full spec.
-
-**1b. Geometry Forge — formula-driven construction pieces.**
-Domain-specific tools (MiTek for timber, Tekla for steel, NAPA for hulls) have
-computed geometry from parameters for decades — but each is locked to one material
-system. The [Geometry Forge](GEOMETRY_FORGE_SRS.md) generalises this: same
-ForgeEngine interface, any piece type, full BOM traceability, same EYES
-verification. See GEOMETRY_FORGE_SRS.md §9 for industry precedent matrix.
-
-**2. DB/ERP integration is a bigger moat than GUI.**
+**2. DB/ERP integration is harder to build than a GUI.**
 Converting IFC to a relational database with ERP semantics (M_Product, M_BOM,
-C_Order) requires deep manufacturing domain knowledge. A startup can hire UI
-designers to build a drag-and-drop editor in months. Building a Spatial MRP
+C_Order) requires deep manufacturing domain knowledge. Building a Spatial MRP
 engine that maps to iDempiere's manufacturing model requires understanding both
 BIM and ERP — a rare combination. The Java DAO layer, BIM COBOL verb grammar,
 BOM dimension model, and RosettaStone proof strategy represent years of domain
-convergence that cannot be replicated by visual-first tools.
+convergence.
 
-**3. LLM-assisted development favours our architecture.**
-LLMs excel at SQL, Python, and structured data — the core of our DB-first
-approach. GPU-based 3D rendering (the visual tools' core) is harder for LLMs to
-generate. We have concrete proof: our IfcOpenShell Federation addon shipped a
-FederateModel spatial DB (93% memory reduction on 93K elements), then 4D
-scheduling, 5D BOQ, 7D asset management, rebar generation, NLP query, and
-color schema — each built in a single Claude Code session. The entire
-Federation addon, with all its features, was developed with LLM assistance at a
-pace that would take a conventional team months. This same velocity now applies
-to the ERP compiler framework, where each new verb, witness, or BOM dimension
-is a bounded task that Claude Code completes in one session (see
-`CONCEPTUAL BLUEPRINT` for layer architecture,
-`BeyondVerbs` for the roadmap beyond the current verb set).
+**3. Domain-agnostic compilation — one pipeline for any facility type.**
+The same 12-stage pipeline that compiles a single-storey house also compiles a
+multi-storey airport terminal, a bridge, a road, and a railway. No code changes
+per domain — only a ~30-line YAML mapping segments and disciplines. Gate results:
+BR 10/10, RD 4/4, RL 4/4, rail achieves 93% BOM compression (75→5 lines).
+Terrain-following placement and formula-driven geometry (Geometry Forge) extend
+the same pipeline to infrastructure. See [`INFRA_DESIGNER_SRS.md`](INFRA_DESIGNER_SRS.md)
+and [`GEOMETRY_FORGE_SRS.md`](GEOMETRY_FORGE_SRS.md).
 
-**4. Symbolic inference over relational data is unique.**
-The Inference Engine (BIM_Designer_SRS §14) evaluates validation rules in
-dependency order using Kahn's topological sort, produces proof trees with
-AD_Val_Rule citations, and SKIPs downstream rules when upstream premises fail.
-This is Datalog-style deduction over the 4-database schema — not AI, not
-heuristics, but deterministic symbolic reasoning. No visual BIM tool has a
-formal proof chain from design decision to regulation citation. The Approve
-gate requires all-rules-pass before Promote — a governance pattern borrowed
-from ERP document workflows (iDempiere DocAction) that visual tools cannot
-replicate without rebuilding their validation from scratch.
+**4. Symbolic inference over relational data.**
+The Inference Engine evaluates validation rules in dependency order using Kahn's
+topological sort, produces proof trees with AD_Val_Rule citations, and skips
+downstream rules when upstream premises fail. This is Datalog-style deduction
+over the 4-database schema — deterministic symbolic reasoning, not heuristics.
+The Approve gate requires all-rules-pass before Promote, a governance pattern
+borrowed from ERP document workflows (iDempiere DocAction).
 
-**The asymmetry:** adding a GUI to our DB/ERP foundation takes weeks. Adding
-DB/ERP depth to their GPU-first foundation takes years. Adding *proven
-capabilities* (4D-7D) from our PoC addons to a typed ERP framework takes days.
+**5. Browser-native BIM with zero install.**
+BIM OOTB runs entirely in the browser — sql.js WASM + Three.js, no server, no
+plugins, no install. Two SQLite databases, one HTML file. Proven at 126K elements.
+Competing browser viewers require server infrastructure or proprietary plugins.
+This is a distribution moat: any stakeholder with a URL can view, query, and
+interact with a full BIM model.
+
+**The asymmetry:** adding a GUI to a DB/ERP foundation takes weeks. Adding
+DB/ERP depth to a GPU-first foundation takes years.
 
 ---
 
-## GUI: Low-Hanging Fruit, Off Critical Path
+## Two GUIs, One Foundation
 
-The PoC must prove the hard parts: BOM factorisation (73x), Spatial MRP, G1-G6
-mathematical proof, formula compression (TILE/ROUTE/FRAME). A GUI proves none
-of these.
+The compiler's hard parts — BOM factorisation (73x), Spatial MRP, G1-G6
+mathematical proof, formula compression — are all backend. The GUI is a
+presentation layer on top of the 4-database schema.
 
-When we need a GUI, the ERP BOM framework is itself a **generic construction
-designer for any building type.** A GUI on this foundation is a tree editor +
-form editor + Bonsai 3D viewport — standard UI work that LLMs generate easily.
+Two GUIs currently serve different audiences:
 
-```
-Phase B (done):  BIM COBOL DSL → classify_te.yaml → compiler → C_Order
-Phase G (now):   GUI Editor → BOM Chooser → snap → save → compile → C_Order
-                  ↑
-                  20 wire protocol actions, 87/87 tests GREEN
-                  Works for ANY building type (RE, CO, IN) — generic
-```
+**Browser (BIM OOTB)** — sql.js WASM + Three.js, zero install. IFC/OBJ/STL/DAE/
+GLB/FBX/3DS import, guided classification wizard, IFC export, BOQ charts,
+cinematic tours, mobile site camera. Proven at 126K elements. This is the
+distribution path: share a URL, open in any browser.
 
-### The Designer Architecture (Phase G)
+**Blender (Federation addon)** — Direct DB streaming from SQLite BLOBs, R-tree
+spatial queries, discipline phasing, 1M-element city-scale viewing. This is the
+power-user path: full 3D editing, walk-through, section cuts.
 
-The GUI design is fully specified in [`BIM_Designer.md`](BIM_Designer.md). Three
-mechanisms make the Bonsai addon a **parametric construction editor**, not just
-a viewer:
+Both read from the same database schema. The compiler does not care which GUI
+triggers it — the BOM, the proof gate, and the ERP output are identical.
 
-**1. AttributeSetInstance overrides (§8)** — When a user stretches a wall or
-resizes a room in Bonsai, the change is captured as an `M_AttributeSetInstance`
-on the `C_OrderLine`. The catalog product stays generic; the ASI captures the
-user's specific dimensions. The compiler blends catalog geometry with ASI
-overrides into output.db. This is the iDempiere product-variant pattern applied
-to spatial parameters.
-
-**2. Container constraint rules (§9)** — `AD_Val_Rule`-pattern validation
-ensures a child never exceeds its parent container. Stretch a room beyond the
-floor → the compiler blocks it or offers to extend the floor. The constraint
-cascades down the BOM tree: building → floor → room → furniture. Same rule at
-every level — data-driven, no code change per building type.
-
-**3. Pattern multiplication (§10)** — The user declares "a window every 2.5m"
-or "a beam every 4m" and the compiler generates the instances. This works across
-domains: windows along walls (building), piers along deck (bridge), sleepers
-along track (rail), lights along kerb (road). The spacing rule is metadata in
-`ad_pattern_rule`; the compiler multiplies at compile time. Resize the parent →
-pattern recalculates automatically.
-
-**The compound interaction:** ASI resize (§8) → container validate (§9) →
-pattern regenerate (§10) → one recompile → correct output. Three rules, zero
-manual adjustment. This is what no visual editor offers: **the model re-proves
-itself after every edit.**
+The Designer architecture (ASI overrides, container constraints, pattern
+multiplication) is fully specified in [`BIM_Designer.md`](BIM_Designer.md).
 
 ---
 
@@ -331,44 +256,40 @@ itself after every edit.**
 │              CONSTRUCTION TECHNOLOGY STACK               │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
-│  DESIGN EXPLORATION (upstream)                          │
-│  ┌─────────────┐ ┌──────────┐ ┌───────┐ ┌──────────┐  │
-│  │  Snaptrude  │ │  TestFit │ │ Arkio │ │  Hypar   │  │
-│  │  (sketch→3D)│ │ (AI site)│ │ (VR)  │ │ (gen.des)│  │
-│  └─────────────┘ └──────────┘ └───────┘ └──────────┘  │
-│                                                         │
-│  BIM AUTHORING (midstream)                              │
+│  DESIGN TOOLS (upstream)                                │
 │  ┌─────────────┐ ┌──────────┐ ┌───────────┐           │
 │  │    Revit    │ │ ArchiCAD │ │  Bonsai   │           │
 │  │ (parametric)│ │ (arch.)  │ │ (IFC-nat.)│           │
 │  └──────┬──────┘ └────┬─────┘ └─────┬─────┘           │
 │         └─────────────┴─────────────┘                   │
 │                       │                                 │
-│                    IFC FILE                              │
+│              IFC / OBJ / STL / DAE / GLB                │
 │                       │                                 │
 │  ┌────────────────────▼──────────────────────────────┐  │
-│  │         BIM INTENT COMPILER (downstream)          │  │
-│  │                                                    │  │
-│  │  IFC → Extract → Classify → BOM → Compile → Prove │  │
-│  │  48,428 elements → 700 BOM lines → C_Order        │  │
-│  │  77 verbs · 202 witnesses · G1-G6 proven           │  │
+│  │            BIM OOTB (browser viewer)               │  │
+│  │  Import → Classify → Enrich → View → Export IFC   │  │
+│  │  sql.js WASM + Three.js · zero install             │  │
 │  └────────────────────┬──────────────────────────────┘  │
 │                       │                                 │
-│                   ERP / PROCUREMENT                     │
+│  ┌────────────────────▼──────────────────────────────┐  │
+│  │       BIM INTENT COMPILER (DAGCompiler)           │  │
+│  │  Extract → Classify → BOM → Compile → Prove       │  │
+│  │  77 verbs · 4-DB schema · G1-G6 gates             │  │
+│  └────────────────────┬──────────────────────────────┘  │
+│                       │                                 │
 │  ┌────────────────────▼──────────────────────────────┐  │
 │  │              iDempiere ERP                        │  │
 │  │  C_Order → C_OrderLine → Purchase Orders          │  │
 │  │  M_Product → M_AttributeSetInstance               │  │
-│  │  W_Verb_Node → Manufacturing Instructions       │  │
 │  └───────────────────────────────────────────────────┘  │
 │                                                         │
 └─────────────────────────────────────────────────────────┘
 ```
 
-The BIM Intent Compiler occupies a position no other tool — commercial or open
-source — currently fills. It bridges the design world (IFC models) and the
-construction world (ERP procurement). The visual editors make buildings easy to
-*imagine*. This compiler makes them possible to *verify, procure, and build*.
+The compiler bridges the design world (IFC models, mesh formats) and the
+construction world (ERP procurement). The visual editors help architects
+*imagine* buildings. The compiler helps contractors *verify, procure, and build*
+them.
 
 ---
 
@@ -544,81 +465,51 @@ No existing BIM tool or standard combines all seven.
 
 ---
 
-## Current Progress (2026-03-20)
+## Current Progress (2026-04-26)
 
-| Milestone | Status |
-|-----------|--------|
-| **7 Rosetta Stones (4 building + 3 infra)** | SH, FK, DX, TE, BR, RD, RL (counts in PROGRESS.md) |
-| SH 9/10, FK 9/10, BR 10/10, RD 4/4, RL 4/4 | DX 7/10, TE 8/10 (pre-existing) |
-| **Domain-agnostic pipeline proven** | Same code compiles houses, terminals, bridges, roads, railways |
-| ERP architecture designed | Discipline hierarchy, verb→AttributeSet, Val_Rule |
-| Formula compression | TILE, ROUTE, FRAME, CLUSTER — 93% compression on rail |
-| 77 BIM COBOL verbs, 166+ witnesses | Pipeline: 12 stages, seal v20 (74 files INTACT) |
-| **BIM Designer Phase G (G-1..G-7 DONE)** | Design Mode, BBox renderer, Save/Recall, BOM Chooser, Assembly Builder |
-| **Infrastructure UI filtering** | FacilityType enum, snap() with facility type, 30 infra rules |
-| **Terrain-following placement (PoC)** | PlacementContext, AlignmentContext, TerrainSnap, contour-follow on 689-point survey |
-| **204 witnesses GREEN** | 22 infra filter + 16 terrain context + 7 vocabulary + 3 contour |
-| **Infrastructure UI filtering** | FacilityType enum, snap() with facility type, 30 infra rules |
-| **PlacementValidator + Inference Engine** | 63 rules (33 building + 30 infra), dependency DAG + proof tree |
-| **ReportDAO interface** | 8 report types (4D-7D), 8 record types, thin bridge pattern |
-| **33 infra products in component_library.db** | Bridge piers/decks, road courses, rail sleepers — registered by ExtractionPopulator |
-| Semantic Source of Truth paradigm | YAML + Order + ASI = 10 KB building definition |
-| **216/216 Designer tests GREEN** | 26 test classes |
-| **WF-BB §26 Wireframe-First** | 25 reqs, 8 CODE DONE, 4 STUB, 13 SPEC ONLY. Per-object BOUNDS, peek popup, orientation markers. |
-| **4 new backend verbs** | getElementMetadata, getChain, costOfChange, moveChain — all compile clean |
-| **Scorecard: 31/36** | +4 from Tier 1: 6D=2 (carbon DAO), 7D=2 (FM DAO), CR/Audit=2 (changelog), 3D=3 (Blender native). Nearest competitor: 9/36. |
+| Area | Status |
+|------|--------|
+| **Compilation pipeline** | 12 stages, 77 verbs, 7,403 products in ERP.db |
+| **Rosetta Stone fleet** | 21 buildings, 116/157 gates PASS, 4 ALL GREEN (BR, MO, RL, WI) |
+| **Browser viewer (BIM OOTB)** | IFC + 6 mesh formats import, guided wizard, IFC export, BOQ charts, mobile site camera |
+| **Multi-format import (S228)** | OBJ, STL, DAE, GLB/GLTF, FBX, 3DS — auto-detect up-axis + scale |
+| **IFC export (S229)** | DB → .ifc download, pure STEP text builder, 30-test round-trip suite |
+| **Blender federation** | Direct DB streaming, R-tree spatial, 1M elements, city-scale |
+| **4D–8D outputs** | Template-driven nD engine, 37 buildings + 1M sandbox PASS |
+| **Scorecard** | 31/36 vs nearest competitor 9/36 |
+| **Tests** | 72/72 Playwright (browser), 408/414 Bonsai, 20 BackOffice |
+| **Localisation** | 15 locales, iDempiere _TRL pattern, rates.js single source |
+
+### Addressable Market
+
+| Segment | Size | Entry point |
+|---------|------|-------------|
+| BIM software | $15.4B by 2030 (CAGR 11.3%) | Browser viewer — zero-install IFC access |
+| Digital twin | $384.8B by 2034 (CAGR 35.4%) | 4D–8D from same DB schema |
+| Construction ERP | Fragmented, manual | Spatial MRP → C_Order bridge |
+
+### Competitor Comparison
+
+| Tool | Approach | What it lacks |
+|------|----------|---------------|
+| Revit / ArchiCAD | Proprietary desktop BIM authoring | No BOM factorisation, no ERP output |
+| Snaptrude / Arkio | Browser/VR sketch-to-3D | No IFC data model, no compilation |
+| Bonsai / FreeCAD | FOSS IFC authoring | No compiler, no BOM decomposition |
+| IFC.js / xBIM | IFC parsing libraries | Viewer/toolkit only, no construction output |
 
 ---
 
-## What's Easy to Nail Next (effort vs scorecard impact)
+## What's Next
 
-Ordered by **lowest effort → highest impact**. Each item is a bounded task.
+| Item | Status | What it unlocks |
+|------|--------|-----------------|
+| **IFC round-trip** | Export done (S229), import done (S220) | Bidirectional editing — the adoption trigger |
+| **Guided wizard** | Done (S229a) | Non-IFC users classify meshes into BIM categories |
+| **DAE/mesh tuning** | S228 formats wired | Furniture/fixture libraries from SketchUp, Blender |
+| **2D Layout** | Java pipeline started | Auto-generated architectural drawings from DB |
+| **Beta on Oracle Cloud** | Dev bucket live | Public URL, no install, OCI static hosting |
 
-### Tier 1 — DONE (2026-03-20) ✓
-
-| Item | Before | After | What was done |
-|------|--------|-------|---------------|
-| **6D Sustainability** | 1\* | **2** | `SustainabilityDAO` + V010/V010b migration. BOM rollup via `carbon_kg_per_unit` on M_Product. 5 witnesses GREEN. |
-| **7D Facility Mgmt** | 1\* | **2** | `FacilityMgmtDAO` — maintenance schedule, lifecycle cost, asset register. 5 witnesses GREEN. |
-| **CR/Audit** | 1\* | **2** | `ChangelogDAO` + V011 migration + interceptor on `save()`. MOVE/RESIZE/PLACE/DELETE diff + undo. 6 witnesses GREEN. |
-| **3D score** | 2 | **3** | Native via Blender viewport (Federation addon + WF-BB). |
-
-**Tier 1 total: +4 points (27→31/36). 14 new witnesses, 231 total Designer tests GREEN.**
-
-### Tier 2 — Two Sessions Each (existing stubs → wired)
-
-| Item | Current | Target | Effort | What to do |
-|------|---------|--------|--------|-----------|
-| **Cost engine (5D live)** | 3 (offline) | 3 (live) | 4 hrs | Wire `costOfChange` stub to `M_Product_PO.PriceStd`. BOM diff = old positions → new positions → delta lines → sum unit costs. Data already in component_library.db. |
-| **Chain highlight** | Stub | Working | 3 hrs | Wire `getChain` to `elements_meta.system_id`. GPU batch per chain in chain colour palette. Federation DB already has system_id from IFC extraction. |
-| **Ghost drag** | Spec | Working | 6 hrs | Modal operator: intercept grab, freeze originals as WIRE, track bbox proxy, commit/cancel. The hardest UX piece — but bounded: one modal operator + the existing bbox GPU code. |
-
-### Tier 3 — Multi-Session (new infrastructure)
-
-| Item | Current | Target | Effort | What to do |
-|------|---------|--------|--------|-----------|
-| **R_Request flow** | Spec | Working | 8 hrs | `R_Request` table DDL. `moveChain` detects cross-discipline impact. Creates CR with attachments. DocAction lifecycle for approve/reject/void. Notification to Blender. |
-| **Multi-user sessions** | Spec | Working | 10 hrs | `AD_User` + `AD_Session` tables. Login flow in connect operator. Sync timer polls for other users' changelog entries. Conflict detection on concurrent edits. |
-
-### The Compound Effect
-
-After Tier 1 (DONE) + Tier 2 (cost engine only):
-
-```
-Score: 31/36 (Tier 1 DONE) → 31/36 with live cost — nearest competitor: Revit at 9/36
-Unique capabilities nobody else has:
-  - Live cost-of-change during drag
-  - BOM factorisation (73x compression)
-  - Spatial proof (G1-G6 Rosetta Stone gate)
-  - Wireframe-first interaction (bbox=working mode)
-  - ERP-native output (C_Order → procurement)
-  - Symbolic inference (dependency DAG + proof tree)
-  - Domain-agnostic (houses + terminals + bridges + roads + railways)
-  - Audit trail (who changed what, when, undo-able)
-```
-
-The gap between this project and any competitor is not 10% — it is categorical.
-They solve design. This solves construction.
+See [`ACTION_ROADMAP.md`](ACTION_ROADMAP.md) for the full roadmap.
 
 ---
 

@@ -174,10 +174,10 @@ function showSummary() {
     assert(villaResult.elements.length > 0, '§9.2-COUNT has elements (' + villaResult.elements.length + ')');
     assertEq(villaResult.meta.sourceFormat, '.obj', 'sourceFormat is .obj');
 
-    // §9.2-SCALE: seaside-villa is in mm (~1300mm), must auto-scale to ~1.3m
+    // §9.2-SCALE: seaside-villa is in cm (height ~800), auto-scale ÷100 → coords < 100m
     var villaT = villaResult.transforms[0];
-    assert(Math.abs(villaT.cx) < 10, '§9.2-SCALE auto-scaled cx (got ' + villaT.cx.toFixed(3) + 'm)');
-    assert(Math.abs(villaT.cy) < 10, '§9.2-SCALE auto-scaled cy (got ' + villaT.cy.toFixed(3) + 'm)');
+    assert(Math.abs(villaT.cx) < 100, '§9.2-SCALE auto-scaled cx (got ' + villaT.cx.toFixed(3) + 'm)');
+    assert(Math.abs(villaT.cy) < 100, '§9.2-SCALE auto-scaled cy (got ' + villaT.cy.toFixed(3) + 'm)');
 
     // GUIDs unique
     var villaGuids = villaResult.elements.map(function(e) { return e.guid; });

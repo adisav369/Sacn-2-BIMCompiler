@@ -851,3 +851,5 @@ oci os object put --bucket-name bim-ootb --file deploy/sandbox/tools.js --name t
 | `[S209]` | excel.js, issues.js | Excel export, issue status toggle |
 
 Filter in F12 Console by tag (e.g. `[S209]`) to diagnose issues.
+
+*See [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) for competitive landscape and market positioning.*

@@ -2,7 +2,7 @@
 // Depends: SemanticEnrichment (from semantic_enrichment.js)
 // Implementing S228_import_format_to_db.md §File 2 — Witness: W-SCENEDB
 
-function extractMesh(mesh, prefix, index, yUpSwap) {
+function extractMesh(mesh, prefix, index, yUpSwap, scaleFactor) {
   var geom = mesh.geometry;
   var pos = geom.attributes.position;
   var vCount = pos.count;
@@ -30,6 +30,8 @@ function extractMesh(mesh, prefix, index, yUpSwap) {
       wy = -wz;
       wz = tmp;
     }
+    // Apply global scale (computed from height axis range)
+    wx *= scaleFactor; wy *= scaleFactor; wz *= scaleFactor;
     worldVerts[i*3] = wx; worldVerts[i*3+1] = wy; worldVerts[i*3+2] = wz;
     sumX += wx; sumY += wy; sumZ += wz;
     if (wx < minX) minX = wx; if (wx > maxX) maxX = wx;
@@ -39,16 +41,6 @@ function extractMesh(mesh, prefix, index, yUpSwap) {
 
   // Centroid
   var cx = sumX / vCount, cy = sumY / vCount, cz = sumZ / vCount;
-
-  // Auto-scale (mm → m)
-  var maxCoord = Math.max(Math.abs(maxX), Math.abs(maxY), Math.abs(maxZ));
-  if (maxCoord > 500) {
-    var s = 0.001;
-    cx *= s; cy *= s; cz *= s;
-    for (var j = 0; j < worldVerts.length; j++) worldVerts[j] *= s;
-    minX *= s; minY *= s; minZ *= s;
-    maxX *= s; maxY *= s; maxZ *= s;
-  }
 
   // Re-center at origin
   var centered = new Float32Array(vCount * 3);
@@ -86,10 +78,9 @@ function extractMesh(mesh, prefix, index, yUpSwap) {
   };
 }
 
-// S228c: auto-detect up-axis by scanning scene bounding box
-// Buildings: height axis is typically the smallest-range axis starting near 0.
-// Y-up: Y has height range, Z has footprint range. Z-up: Z has height, Y has footprint.
-function detectUpAxis(scene) {
+// S228c: scan scene bounding box to detect up-axis and compute scale factor
+// Returns { upAxis: 'y-up'|'z-up', heightRange: number, scaleFactor: number }
+function analyseScene(scene) {
   var minY = Infinity, maxY = -Infinity;
   var minZ = Infinity, maxZ = -Infinity;
   scene.traverse(function(child) {
@@ -97,11 +88,9 @@ function detectUpAxis(scene) {
     child.updateWorldMatrix(true, false);
     var pos = child.geometry.attributes.position;
     var m = child.matrixWorld.elements;
-    // Sample first/last/middle vertices for speed
-    var samples = [0, Math.floor(pos.count / 2), pos.count - 1];
-    for (var s = 0; s < samples.length; s++) {
-      var i = samples[s];
-      if (i >= pos.count) continue;
+    // Sample every 100th vertex (fast, covers full range)
+    var step = Math.max(1, Math.floor(pos.count / 100));
+    for (var i = 0; i < pos.count; i += step) {
       var lx = pos.getX(i), ly = pos.getY(i), lz = pos.getZ(i);
       var wy = m[1]*lx + m[5]*ly + m[9]*lz  + m[13];
       var wz = m[2]*lx + m[6]*ly + m[10]*lz + m[14];
@@ -111,15 +100,40 @@ function detectUpAxis(scene) {
   });
   var rangeY = maxY - minY;
   var rangeZ = maxZ - minZ;
-  // If Z range is much smaller than Y range, data is already Z-up (height in Z)
-  // Heuristic: if Z range < Y range * 0.5, it's Z-up
-  if (rangeZ > 0 && rangeY > 0 && rangeZ < rangeY * 0.5) return 'z-up';
-  // If Y range is smaller (height in Y), it's Y-up
-  if (rangeY > 0 && rangeZ > 0 && rangeY < rangeZ * 0.5) return 'y-up';
-  // If both are close, check which starts nearer to 0 (height starts at ground)
-  if (minY >= -1 && minZ < -1) return 'y-up';  // Y starts at ground
-  if (minZ >= -1 && minY < -1) return 'z-up';  // Z starts at ground
-  return 'y-up';  // default for OBJ/DAE/GLB
+
+  // Detect up-axis: height axis has smaller range for buildings
+  var upAxis;
+  if (rangeZ > 0 && rangeY > 0 && rangeZ < rangeY * 0.5) {
+    upAxis = 'z-up';
+  } else if (rangeY > 0 && rangeZ > 0 && rangeY < rangeZ * 0.5) {
+    upAxis = 'y-up';
+  } else if (minY >= -1 && minZ < -1) {
+    upAxis = 'y-up';
+  } else if (minZ >= -1 && minY < -1) {
+    upAxis = 'z-up';
+  } else {
+    upAxis = 'y-up';  // OBJ/DAE/GLB default
+  }
+
+  // Height range in the detected up-axis
+  var heightRange = (upAxis === 'y-up') ? rangeY : rangeZ;
+
+  // Auto-scale based on height range (buildings are 3-100m tall)
+  // height < 50       → metres, no scale
+  // height 50-500     → could be feet or decimetres, scale ÷ 0.3048 is fragile, use ÷10
+  // height 500-5000   → centimetres, ÷100
+  // height > 5000     → millimetres, ÷1000
+  var scaleFactor = 1.0;
+  if (heightRange > 5000) {
+    scaleFactor = 0.001;  // mm → m
+  } else if (heightRange > 500) {
+    scaleFactor = 0.01;   // cm → m
+  } else if (heightRange > 50) {
+    scaleFactor = 0.1;    // dm or mixed → m
+  }
+  // else: already metres
+
+  return { upAxis: upAxis, heightRange: heightRange, scaleFactor: scaleFactor };
 }
 
 function sceneToDb(scene, filename, ext, options) {
@@ -127,15 +141,18 @@ function sceneToDb(scene, filename, ext, options) {
   var yUpToZUp = (opts.yUpToZUp !== false);  // default true
   var prefix = ext.toUpperCase();
 
-  // S228c: per-vertex Y-up → IFC Z-up swap (NOT scene rotation — that double-swaps with viewer's ifc2three)
-  // Auto-detect: some exporters (Rhino) write Z-up OBJ despite the standard
+  // S228c: analyse scene for up-axis and scale
   var Y_UP_FORMATS = { dae:1, obj:1, glb:1, gltf:1 };
+  var analysis = analyseScene(scene);
   var yUpSwap = false;
   if (yUpToZUp && Y_UP_FORMATS[ext]) {
-    var detected = detectUpAxis(scene);
-    yUpSwap = (detected === 'y-up');
-    console.log('[S228c] §AXIS_DETECT ext=' + ext + ' detected=' + detected + ' yUpSwap=' + yUpSwap);
+    yUpSwap = (analysis.upAxis === 'y-up');
   }
+  var scaleFactor = analysis.scaleFactor;
+  console.log('[S228c] §SCENE_ANALYSE ext=' + ext +
+    ' upAxis=' + analysis.upAxis + ' yUpSwap=' + yUpSwap +
+    ' heightRange=' + analysis.heightRange.toFixed(1) +
+    ' scaleFactor=' + scaleFactor);
 
   var elements = [], geometries = [], transforms = [];
   var discCounts = {};
@@ -147,7 +164,7 @@ function sceneToDb(scene, filename, ext, options) {
     var geom = child.geometry;
     if (!geom || !geom.attributes || !geom.attributes.position) return;
 
-    var result = extractMesh(child, prefix, meshIndex, yUpSwap);
+    var result = extractMesh(child, prefix, meshIndex, yUpSwap, scaleFactor);
     if (!result) return;
 
     elements.push(result.element);

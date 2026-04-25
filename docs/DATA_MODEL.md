@@ -644,4 +644,5 @@ AD_Org unifies discipline identifiers from TEXT strings to integer FK. See [DISC
 
 *Authoritative reference. See `BOMBasedCompilation.md` for tack convention and pipeline stages,
 `MANIFESTO.md` for the three-concern model (WHAT/HOW/WHERE),
-`TheRosettaStoneStrategy.md` for verification strategy.*
+`TheRosettaStoneStrategy.md` for verification strategy,
+`StrategicIndustryPositioning.md` for competitive landscape and scorecard.*

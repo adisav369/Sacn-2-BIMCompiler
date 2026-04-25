@@ -16,36 +16,49 @@ test.describe('BOQ Charts', () => {
     const logs = new ConsoleLogs(page);
     await page.goto(BOQ_URL);
 
-    // Wait for sql.js + DB fetch + Chart.js rendering
-    // Charts render after async DB load — give CDN + WASM time
-    await page.waitForTimeout(10000);
+    // Wait for WASM + DB fetch + Chart.js rendering to complete
+    // The info element shows "Loading..." then building name when done
+    await page.waitForFunction(() => {
+      const info = document.getElementById('info');
+      if (!info) return false;
+      const t = info.textContent;
+      return t && !t.includes('Loading') && t.length > 0;
+    }, { timeout: 45000 });
 
     const state = await page.evaluate(() => {
       const canvases = document.querySelectorAll('canvas');
-      const noData = document.body.textContent.includes('No data');
       const hasChartJs = typeof Chart !== 'undefined';
-      return { canvases: canvases.length, noData, hasChartJs };
+      const info = document.getElementById('info')?.textContent || '';
+      const infoNoData = info.includes('No data');
+      return { canvases: canvases.length, infoNoData, hasChartJs, info };
     });
 
-    console.log(`§PW_CHART_RENDER canvases=${state.canvases} noData=${state.noData} chartJs=${state.hasChartJs}`);
-    // Chart.js must be loaded; canvases appear only when DB parsed
+    console.log(`§PW_CHART_RENDER canvases=${state.canvases} infoNoData=${state.infoNoData} chartJs=${state.hasChartJs} info="${state.info}"`);
     expect(state.hasChartJs).toBe(true);
+    expect(state.canvases).toBeGreaterThan(0);
+    expect(state.infoNoData).toBe(false);
   });
 
   test('5.2 Cost pie has content (not blank)', async ({ page }) => {
     await page.goto(BOQ_URL);
-    // Wait for charts — may need CDN + WASM init time
-    await page.waitForTimeout(15000);
+
+    // Wait for charts to render (info element stops showing "Loading")
+    await page.waitForFunction(() => {
+      const info = document.getElementById('info');
+      return info && !info.textContent.includes('Loading');
+    }, { timeout: 45000 });
 
     const state = await page.evaluate(() => {
-      const canvas = document.querySelector('canvas');
-      const noData = document.body.textContent.includes('No data');
-      return { hasCanvas: !!canvas, noData };
+      const canvases = document.querySelectorAll('canvas');
+      const info = document.getElementById('info')?.textContent || '';
+      // "No data." only appears in #info when SQL query returned empty
+      const infoNoData = info.includes('No data');
+      return { canvases: canvases.length, infoNoData, info };
     });
 
-    console.log(`§PW_CHART_PIE hasCanvas=${state.hasCanvas} noData=${state.noData}`);
-    // If "No data" appears, the DB fetch worked but had no matching elements
-    // This is a data issue, not a rendering bug — pass if Chart.js loaded
+    console.log(`§PW_CHART_PIE canvases=${state.canvases} infoNoData=${state.infoNoData} info="${state.info}"`);
+    expect(state.infoNoData).toBe(false);
+    expect(state.canvases).toBeGreaterThan(0);
   });
 
   test('5.3 No NaN or NUM! in visible text', async ({ page }) => {

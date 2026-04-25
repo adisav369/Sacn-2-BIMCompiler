@@ -54,11 +54,29 @@ Each chart → `canvas.toDataURL('image/png')` → SheetJS image insert.
 - Deploy to BOTH buckets after changes
 - The test suite verifies boq_charts.html exists and has Chart.js — do not break that
 
-## Test
-- `node deploy/sandbox/test_all.js` — 169/169 must pass (§12 covers S210)
-- Open 📊 from viewer, verify 9 charts render, click Save 5D BOQ
-- Excel must have WP sheets with embedded chart images
-- USD column must show next to RM in Overview
+## DO — Testing & Logging
+
+All test output to `deploy/dev/tests/log/`.
+
+### Existing coverage
+- **test_all.js §10h**: Downloads Duplex DB, verifies `elements_meta` has data for all 9 charts
+- **test_all.js §12**: S210 deployment safety (landing, dev env, boq_charts)
+- **Playwright 05-charts**: 6 tests — page load, canvases=9, no NaN/NUM!, WP listed, currency, no errors
+- **Playwright 06-excel**: 4D/5D Excel download, chart button URL, z-index
+
+### Gaps to fill in a dedicated session
+
+| Test | Where | What | §-tag |
+|------|-------|------|-------|
+| Chart data renders (not "No data") | 05-charts | Wait for WASM, assert `#info` shows element count | `§PW_CHART_RENDER` — DONE (S227b) |
+| WP structure in Excel | NEW test | Download 5D Excel, verify sheet names contain "PACKAGE" | `§PW_CHART_WP_SHEETS` |
+| USD column present | 05-charts extend | After load, check visible text has "USD" or "$" | `§PW_CHART_USD` |
+| Chart image in Excel | NEW test | Download 5D, verify file size > 50KB (images embedded) | `§PW_CHART_IMAGES` |
+| 4D Excel download | 06-excel | Already tested but SKIP on headless — investigate | `§PW_EXCEL_5D` |
+
+### test_all.js §12 (existing) — verify dev boq_charts
+Already checks: ExcelJS CDN, USD_RATE, WORK_PACKAGES, PACKAGE 1, per-discipline sheets,
+chart image embedding, save5D/save4D async, header fill per-cell. All PASS.
 
 ## DONE (this session)
 - [x] bim-ootb-dev bucket created, CORS configured

@@ -101,7 +101,7 @@ test.describe('Mobile UX', () => {
     console.log(`§PW_MOBILE_SITECAM camBtn=${camVisible}`);
   });
 
-  test('9.8 Viewport meta check (WCAG user-scalable)', async ({ page }) => {
+  test('9.8 Viewport allows user zoom (WCAG 1.4.4)', async ({ page }) => {
     await page.goto('/dev/index.html');
 
     const meta = await page.evaluate(() => {
@@ -110,11 +110,11 @@ test.describe('Mobile UX', () => {
     });
 
     const hasNoScale = meta ? meta.includes('user-scalable=no') : false;
-    console.log(`§PW_MOBILE_ZOOM content="${meta}" user-scalable=no=${hasNoScale}`);
-    // WCAG 1.4.4 requires zoom — flag but don't fail (known issue, tracked in S227 P2 §11)
-    if (hasNoScale) {
-      console.log('  WARN: user-scalable=no violates WCAG 1.4.4 — tracked in BROWSER_TEST_SRS §3.9');
-    }
+    const hasMaxScale = meta ? meta.includes('maximum-scale=1') : false;
+    console.log(`§PW_MOBILE_ZOOM content="${meta}" user-scalable=no=${hasNoScale} maximum-scale=1=${hasMaxScale}`);
+    // WCAG 1.4.4: users must be able to zoom
+    expect(hasNoScale).toBe(false);
+    expect(hasMaxScale).toBe(false);
   });
 
 });
