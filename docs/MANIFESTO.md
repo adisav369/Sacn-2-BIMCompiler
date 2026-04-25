@@ -382,6 +382,15 @@ disciplines partition the BOM validation space. Each discipline is an
 organisational concern with its own rules, its own AD_Val_Rule set, its
 own validation pass — but sharing the same product catalog.
 
+**AD_Window_Trl — Locale-driven cost localisation.**
+In iDempiere, `AD_Window_Trl` provides per-language translations for every
+window. Here, `_TRL` locale files (`locales/{code}.js`) provide per-country
+translations + per-country rate books: labels, currency, material rates, labour
+rates, equipment rates, rate source attribution — all in one file per locale.
+15 countries shipped. Same pattern: one master record (en_MY base), N locale
+overrides, deep-merged at runtime. Project-level override supported (copy locale
+file, edit rates for your contract). See → [Localization.md](Localization.md)
+
 The Terminal building (TE, 48,428 elements) exercises all active disciplines
 and proves the partitioning scales to commercial-institutional complexity:
 

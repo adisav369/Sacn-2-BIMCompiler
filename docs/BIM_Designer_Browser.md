@@ -251,10 +251,11 @@ viewer main.js         → loads diffDb from ?diffdb= param
 
 | Template | Path | What to Edit |
 |----------|------|--------------|
-| 5D Material Rates | `deploy/dev/boq_charts.html` §RATES | Unit rate per IFC class (RM), unit, description |
-| 4D Construction Phases | `deploy/dev/boq_charts.html` §PHASES | Phase name, productivity (elements/day), crew size |
+| All Rates + Labels | `deploy/dev/rates.js` | Single source: material rates, labour, equipment, sequences, colours |
+| **Locale / Rate Book** | `deploy/dev/locales/{code}.js` | **Full locale: currency + rates + labels + attribution.** 15 countries shipped. See [Localization Guide](Localization.md) |
 | VO Cost Factors | `deploy/dev/variation_order.js` §VO_CONFIG | Add=1.0×, Remove=0.3×, Change=1.3×, overhead 10%, markup 15%, disruption 5% |
-| Discipline Colours | `deploy/dev/boq_charts.html` §DISC_COLORS | Chart colour per discipline (ARC, STR, MEP, etc.) |
+
+**Localization (S226):** iDempiere-style `_TRL` locale system. Every label, currency symbol, rate source, column header, chart title, and Excel sheet name is locale-driven. 15 country locales shipped — each with local rate books (CIDB, RS Means, DIN 276, Spon's, etc.). Project-level override: copy a locale file, edit rates for your contract. `?lang=ms_MY` in the URL switches the entire 4D/5D output to Bahasa Melayu with CIDB RM rates. See **[Localization.md](Localization.md)** for the full developer guide.
 
 **What Primavera P6 charges $5K/seat for, we do from a browser for zero.**
 

@@ -80,6 +80,7 @@ Single-page entry point. All active docs by tier.
 | [BackOfficeUserGuide.md](BackOfficeUserGuide.md) | BackOffice user guide |
 | [USER_GUIDE.md](USER_GUIDE.md) | General user guide |
 | [SYSTEMS_INSTALLER_GUIDE.md](SYSTEMS_INSTALLER_GUIDE.md) | Full platform setup for sysadmins and developers |
+| [Localization.md](Localization.md) | **Localization:** iDempiere-style `_TRL` locale system — 15 country locales, project-level rate book override, developer guide for new locales |
 
 ## Standalone — Market / Academic
 
