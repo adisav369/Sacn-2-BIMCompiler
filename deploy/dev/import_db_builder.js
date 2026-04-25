@@ -11,7 +11,7 @@ function buildImportDBs(SQL, data) {
   var db = new SQL.Database();
 
   // S224: Use filename (without .ifc) as building name — IFC project name is often generic ("Project")
-  var buildingName = (data.meta.filename || data.meta.name || 'Import').replace(/\.ifc$/i, '');
+  var buildingName = (data.meta.filename || data.meta.name || 'Import').replace(/\.(ifc|dae|obj|glb|gltf|3ds|fbx|stl)$/i, '');
 
   // Project metadata
   db.run('CREATE TABLE IF NOT EXISTS project_metadata (key TEXT PRIMARY KEY, value TEXT)');

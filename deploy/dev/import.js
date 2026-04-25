@@ -1,5 +1,22 @@
-// import.js — IFC Import: file picker → web-ifc worker → sql.js DBs → IndexedDB → viewer
-// S220: "IFC to 5D in 60 seconds. On your phone. Zero install."
+// import.js — Multi-Format Import: IFC + DAE/OBJ/GLB/3DS/FBX/STL
+// S220: IFC import. S228: mesh format support via semantic enrichment.
+
+// S228: Multi-format detection
+var FORMAT_ROUTES = {
+  'ifc':  'ifc',
+  'dae':  'mesh',
+  'obj':  'mesh',
+  'glb':  'mesh',
+  'gltf': 'mesh',
+  '3ds':  'mesh',
+  'fbx':  'mesh',
+  'stl':  'mesh',
+};
+
+function detectFormat(filename) {
+  var ext = filename.split('.').pop().toLowerCase();
+  return { ext: ext, route: FORMAT_ROUTES[ext] || null };
+}
 
 function setupImport(A) {
   const IMPORT_DB_NAME = 'bim_ootb_imports';
@@ -167,6 +184,82 @@ function setupImport(A) {
     });
   };
 
+  // ── Process mesh file (DAE/OBJ/GLB/3DS/FBX/STL) — S228 ──
+  A.importMesh = async function(file, ext) {
+    var status = document.getElementById('import-status');
+    var progressBar = document.getElementById('import-progress-bar');
+    if (status) status.textContent = 'Reading ' + ext.toUpperCase() + ' file...';
+    if (progressBar) { progressBar.style.width = '0%'; progressBar.parentElement.style.display = 'block'; }
+
+    var sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    console.log('[S228] §MESH_IMPORT_START file=' + file.name + ' ext=' + ext + ' size=' + sizeMB + 'MB');
+
+    var arrayBuffer = await file.arrayBuffer();
+
+    return new Promise(function(resolve, reject) {
+      var workerUrl = new URL('mesh_import_worker.js?v=1', location.href).href;
+      var worker = new Worker(workerUrl);
+
+      worker.onmessage = async function(e) {
+        var msg = e.data;
+        if (msg.type === 'progress') {
+          if (status) status.textContent = msg.phase;
+          if (progressBar) progressBar.style.width = msg.pct + '%';
+          return;
+        }
+        if (msg.type === 'error') {
+          console.log('[S228] §MESH_IMPORT_ERROR ' + msg.message);
+          if (status) status.textContent = 'Import failed: ' + msg.message;
+          if (progressBar) progressBar.style.background = '#cc4444';
+          worker.terminate();
+          reject(new Error(msg.message));
+          return;
+        }
+        if (msg.type === 'done') {
+          if (status) status.textContent = 'Building database...';
+          console.log('[S228] §MESH_PARSED elements=' + msg.meta.elementCount +
+            ' geom=' + msg.meta.geomCount + ' format=' + msg.meta.sourceFormat);
+
+          try {
+            var SQL = await initSqlJs({ locateFile: function(f) { return 'https://sql.js.org/dist/' + f; } });
+            var dbs = buildImportDBs(SQL, msg);
+
+            var record = {
+              meta: msg.meta,
+              extractedDb: dbs.extractedDb,
+              libraryDb: dbs.extractedDb,
+            };
+            await saveImport(file.name, record);
+
+            console.log('[S228] §MESH_SAVED key=' + file.name +
+              ' db=' + (dbs.extractedDb.byteLength / 1024).toFixed(0) + 'KB');
+
+            if (status) status.textContent = 'Imported ' + msg.meta.elementCount + ' elements from ' + ext.toUpperCase();
+            if (progressBar) { progressBar.style.width = '100%'; progressBar.style.background = '#44cc44'; }
+            if (A.renderImportCards) A.renderImportCards();
+
+            worker.terminate();
+            resolve(record);
+          } catch(dbErr) {
+            console.log('[S228] §MESH_DB_ERROR ' + dbErr.message);
+            if (status) status.textContent = 'DB build failed: ' + dbErr.message;
+            worker.terminate();
+            reject(dbErr);
+          }
+        }
+      };
+
+      worker.onerror = function(err) {
+        console.log('[S228] §MESH_WORKER_ERROR ' + err.message);
+        if (status) status.textContent = 'Worker error: ' + err.message;
+        worker.terminate();
+        reject(err);
+      };
+
+      worker.postMessage({ arrayBuffer: arrayBuffer, filename: file.name, ext: ext }, [arrayBuffer]);
+    });
+  };
+
   // ── Open imported building in viewer (S224: versioned) ──
   A.openImported = async function(key) {
     const record = await getImport(key);
@@ -240,9 +333,13 @@ function setupImport(A) {
         return '<span class="disc-bar" style="width:' + pct + '%;background:' + color + '" title="' + d + ': ' + c + '"></span>';
       }).join('');
 
-      var displayName = (item.meta.filename || item.meta.name || '').replace(/\.ifc$/i, '');
+      var displayName = (item.meta.filename || item.meta.name || '').replace(/\.(ifc|dae|obj|glb|gltf|3ds|fbx|stl)$/i, '');
+      var formatBadge = (meta.sourceFormat && meta.sourceFormat !== '.ifc')
+        ? ' <span style="background:rgba(79,195,247,0.15);padding:2px 6px;border-radius:4px;font-size:11px">'
+          + meta.sourceFormat.toUpperCase().replace('.','') + '</span>'
+        : '';
       card.innerHTML =
-        '<div class="name">' + displayName + '</div>' +
+        '<div class="name">' + displayName + formatBadge + '</div>' +
         '<div class="meta">' +
           '<b>' + total.toLocaleString() + '</b> elements' +
           ' · ' + Object.keys(discs).join(', ') +
@@ -281,11 +378,16 @@ function setupImport(A) {
       e.preventDefault();
       dropZone.style.borderColor = 'rgba(79,195,247,0.3)';
       dropZone.style.background = 'rgba(79,195,247,0.04)';
-      const file = e.dataTransfer.files[0];
-      if (file && /\.ifc$/i.test(file.name)) {
+      var file = e.dataTransfer.files[0];
+      if (!file) return;
+      var fmt = detectFormat(file.name);
+      if (fmt.route === 'ifc') {
         A.importIFC(file);
+      } else if (fmt.route === 'mesh') {
+        A.importMesh(file, fmt.ext);
       } else {
-        document.getElementById('import-status').textContent = 'Please drop an .ifc file';
+        document.getElementById('import-status').textContent =
+          'Unsupported: .' + fmt.ext + ' — Accepted: IFC, DAE, OBJ, GLB, 3DS, FBX, STL';
       }
     });
 
@@ -296,12 +398,19 @@ function setupImport(A) {
   }
 
   if (fileInput) {
+    // S228: accept multi-format
+    fileInput.accept = '.ifc,.dae,.obj,.glb,.gltf,.3ds,.fbx,.stl';
     fileInput.addEventListener('change', function() {
-      const file = fileInput.files[0];
-      if (file && /\.ifc$/i.test(file.name)) {
-        A.importIFC(file);
+      var file = fileInput.files[0];
+      if (file) {
+        var fmt = detectFormat(file.name);
+        if (fmt.route === 'ifc') {
+          A.importIFC(file);
+        } else if (fmt.route === 'mesh') {
+          A.importMesh(file, fmt.ext);
+        }
       }
-      fileInput.value = ''; // reset for re-import of same file
+      fileInput.value = '';
     });
   }
 
