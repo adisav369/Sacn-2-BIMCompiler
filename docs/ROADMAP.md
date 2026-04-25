@@ -576,10 +576,12 @@ Pre-installed plugins that prove the marketplace. All use the plugin API, no cor
 | 4D Timeline Slider | Scrub + animated playback of construction phases (see S221) | Medium | Synchro/Navisworks |
 
 **Localization (country config drives everything):**
-- Setup script on first launch: pick country → sets currency, rates, rules, standards, templates
-- Config = one JSON per country (`locales/MY.json`, `locales/GB.json`, `locales/US.json`)
+- **15 locale files shipped** (`deploy/dev/locales/{code}.js`): en_MY, en_US, en_GB, en_AU, ms_MY, de_DE, fr_FR, es_ES, zh_CN, th_TH, ja_JP, ko_KR, ar_SA, pt_BR, id_ID
+- Each locale = full _TRL package: labels + currency + rates + labor + equipment + sequences (iDempiere AD_Window_Trl pattern)
+- ISO 3166-1 `iso` field → flag emoji. User copies locale → `MyProject_TRL.js` → edits what differs
+- `rates.js` = shared rate constants loaded by all pages; locale overrides rates at runtime
 - Cascades to: forex in 4D/5D, rates in BOQ, rules in checker, labour in schedule
-- Users change defaults anytime in Settings
+- Users change locale anytime via flag selector (TODO: locale_loader.js)
 - Community contributes country packs (rates + rules + templates) to marketplace
 
 **Background reports (DB processing, no UI needed):**

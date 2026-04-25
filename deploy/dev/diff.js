@@ -247,7 +247,7 @@ function setupDiff(A) {
     html += '</div>';
 
     // Footer
-    html += '<div style="margin-top:8px;font-size:10px;color:#666">📊 4D/5D for costed Excel &middot; <a href="https://red1oon.github.io/BIMCompiler/BIM_Designer_Browser/#phase-2b-ifc-import--variation-order-s220s222--done" target="_blank" style="color:#4fc3f7;text-decoration:none">See rates &amp; templates</a></div>';
+    html += '<div style="margin-top:8px;font-size:10px;color:#666">📊 4D/5D for costed Excel &middot; <a href="https://red1oon.github.io/BIMCompiler/BIM_Designer_Browser/#phase-2b-ifc-import-variation-order-s220s222-done" target="_blank" style="color:#4fc3f7;text-decoration:none">See rates &amp; templates</a></div>';
     html += '<button onclick="this.parentElement.style.display=\'none\'" style="margin-top:6px;padding:5px 12px;background:#444;color:#ccc;border:none;border-radius:4px;cursor:pointer;font-size:11px;width:100%">Close</button>';
 
     panel.innerHTML = html;

@@ -67,20 +67,8 @@ function setupNlp(A) {
     heating:'HEAT', heat:'HEAT',
   };
 
-  // ── CIDB 2024 Material Rates (same as boq_charts.html) ──
-  const COST_RATES = {
-    IfcDuct:165, IfcDuctSegment:165, IfcDuctFitting:380,
-    IfcPipe:48.5, IfcPipeSegment:48.5, IfcPipeFitting:95,
-    IfcCableCarrier:78, IfcCableCarrierSegment:78,
-    IfcBeam:680, IfcColumn:1250, IfcSlab:285,
-    IfcWall:145, IfcWallStandardCase:145, IfcCurtainWall:750,
-    IfcCovering:185, IfcRoof:238, IfcLightFixture:485, IfcOutlet:125,
-    IfcDoor:2850, IfcWindow:1580, IfcBuildingElementProxy:850,
-    IfcFlowTerminal:3500, IfcFurnishingElement:1200,
-    IfcPlate:95, IfcMember:320, IfcRailing:280,
-    IfcStair:4500, IfcStairFlight:2200,
-  };
-  function calcCost(ifc_class, qty) { return (COST_RATES[ifc_class] || 0) * qty; }
+  // CIDB 2024 Material Rates — from rates.js (shared RATES object)
+  function calcCost(ifc_class, qty) { return getRate(ifc_class) * qty; }
 
   function discCode(word) {
     return DISC_MAP[word.toLowerCase()] || word.toUpperCase();

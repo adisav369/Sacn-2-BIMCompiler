@@ -11,62 +11,7 @@
 //
 // Schedule Impact = element count / productivity (elements/day from 4D template)
 
-// ── CIDB 2024 Material Rates (same as nlp.js, boq_charts.html, 5D_rates.json) ──
-var VO_RATES = {
-  IfcDuct:165, IfcDuctSegment:165, IfcDuctFitting:380,
-  IfcPipe:48.5, IfcPipeSegment:48.5, IfcPipeFitting:95,
-  IfcCableCarrier:78, IfcCableCarrierSegment:78,
-  IfcBeam:680, IfcColumn:1250, IfcSlab:285,
-  IfcWall:145, IfcWallStandardCase:145, IfcCurtainWall:750,
-  IfcCovering:185, IfcRoof:238, IfcLightFixture:485, IfcOutlet:125,
-  IfcDoor:2850, IfcWindow:1580, IfcBuildingElementProxy:850,
-  IfcFlowTerminal:3500, IfcFurnishingElement:1200, IfcFurniture:1500,
-  IfcPlate:350, IfcMember:680, IfcRailing:180,
-  IfcStair:5000, IfcStairFlight:2500,
-  IfcColumn:1250, IfcFooting:320, IfcPile:850,
-  IfcReinforcingBar:45, IfcFlowSegment:120, IfcFlowFitting:200,
-  IfcFlowController:450, IfcEnergyConversionDevice:8500,
-  IfcFlowTreatmentDevice:1200, IfcFlowMovingDevice:3500,
-  IfcFlowStorageDevice:5000, IfcElectricAppliance:485,
-  _default: 500
-};
-
-// ── 4D Phase + Productivity (from 4D_phases.json) ──
-var VO_PHASES = {
-  IfcFooting:'Substructure', IfcPile:'Substructure', IfcReinforcingBar:'Substructure',
-  IfcColumn:'Superstructure', IfcBeam:'Superstructure', IfcSlab:'Superstructure',
-  IfcMember:'Superstructure', IfcPlate:'Superstructure',
-  IfcDuct:'MEP Rough-in', IfcDuctSegment:'MEP Rough-in', IfcDuctFitting:'MEP Rough-in',
-  IfcPipe:'MEP Rough-in', IfcPipeSegment:'MEP Rough-in', IfcPipeFitting:'MEP Rough-in',
-  IfcCableCarrier:'MEP Rough-in', IfcCableCarrierSegment:'MEP Rough-in',
-  IfcFlowSegment:'MEP Rough-in', IfcFlowFitting:'MEP Rough-in',
-  IfcWall:'Architecture', IfcWallStandardCase:'Architecture', IfcCurtainWall:'Architecture',
-  IfcDoor:'Architecture', IfcWindow:'Architecture', IfcRoof:'Architecture',
-  IfcRailing:'Architecture', IfcStair:'Architecture', IfcStairFlight:'Architecture',
-  IfcLightFixture:'MEP Final', IfcOutlet:'MEP Final', IfcFlowTerminal:'MEP Final',
-  IfcFlowController:'MEP Final',
-  IfcCovering:'Finishes', IfcFurniture:'Finishes', IfcFurnishingElement:'Finishes',
-  _default:'Architecture'
-};
-
-// Productivity: elements/day (from 4D_phases.json)
-var VO_PRODUCTIVITY = {
-  IfcFooting:10, IfcPile:4, IfcReinforcingBar:20,
-  IfcColumn:6, IfcBeam:8, IfcSlab:35, IfcMember:8, IfcPlate:10,
-  IfcDuct:18, IfcDuctSegment:18, IfcDuctFitting:12,
-  IfcPipe:25, IfcPipeSegment:25, IfcPipeFitting:15,
-  IfcCableCarrier:30, IfcCableCarrierSegment:30,
-  IfcFlowSegment:18, IfcFlowFitting:15, IfcFlowController:10,
-  IfcEnergyConversionDevice:2, IfcFlowTreatmentDevice:8,
-  IfcFlowMovingDevice:4, IfcFlowStorageDevice:2,
-  IfcWall:12, IfcWallStandardCase:12, IfcCurtainWall:8,
-  IfcDoor:5, IfcWindow:5, IfcRoof:25, IfcRailing:6,
-  IfcStair:2, IfcStairFlight:2,
-  IfcLightFixture:20, IfcOutlet:25, IfcFlowTerminal:6,
-  IfcCovering:15, IfcFurniture:8, IfcFurnishingElement:8,
-  IfcBuildingElementProxy:10,
-  _default:10
-};
+// RATES, SEQUENCE_RULES, getRate(), getPhase(), getProductivity() — from rates.js
 
 // ── Change Order Cost Multipliers (FIDIC/AACE standard, configurable) ──
 var VO_CONFIG = {
@@ -82,16 +27,6 @@ var VO_CONFIG = {
   currency: 'MYR',
   usdRate: 0.21,        // MYR→USD conversion
 };
-
-function getRate(ifcClass) {
-  return VO_RATES[ifcClass] || VO_RATES._default;
-}
-function getPhase(ifcClass) {
-  return VO_PHASES[ifcClass] || VO_PHASES._default;
-}
-function getProductivity(ifcClass) {
-  return VO_PRODUCTIVITY[ifcClass] || VO_PRODUCTIVITY._default;
-}
 
 function exportVariationOrder() {
   var A = window.APP;

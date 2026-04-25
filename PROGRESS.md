@@ -39,6 +39,15 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
+**S225b (2026-04-25):** Rate extraction + _TRL locale system. DONE (dev).
+  - **rates.js:** Single source of truth — RATES, LABOR_RATES, EQUIPMENT_RATES, SEQUENCE_RULES, DISC_COLORS, PHASE_COLORS, WORK_PACKAGES, calcLabor(), calcEquipment(), getRate(), getPhase(), getProductivity()
+  - **Deduplication:** boq_charts.html (-150 lines), variation_order.js (-65 lines VO_RATES/VO_PHASES/VO_PRODUCTIVITY), nlp.js (-15 lines COST_RATES). All use shared rates.js
+  - **15 locale files** in `deploy/dev/locales/`: en_MY (base), en_US, en_GB, en_AU, ms_MY, de_DE, fr_FR, es_ES, zh_CN, th_TH, ja_JP, ko_KR, ar_SA, pt_BR, id_ID
+  - Each locale = FULL package: labels + currency + rates + labor + equipment + sequences (iDempiere AD_Window_Trl pattern). User copies one → `MyProject_TRL.js` → edits what differs. ISO `iso` field → flag emoji.
+  - **Landing:** YouTube video guide link + "Theory / Practical" footer in Drop IFC panel
+  - **Prompts:** S226 updated (Phase 0 done), S227 refactor triage written (4 sessions spec'd), S220 rate templates section updated
+  - **Next:** locale_loader.js (Session A), schedule.js extraction (Session B), string sweep (Session C)
+
 **S222 (2026-04-24):** DB Refactor + Incremental Diff + VO Cost Engine. DONE (dev).
   - **DB builder refactor:** `import_db_builder.js` — shared `buildImportDBs()`, auto-save, Save button removed
   - **Diff engine:** `diff.js` — GUID set diff, green/red/yellow overlay, cost preview in viewer panel

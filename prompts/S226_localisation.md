@@ -333,17 +333,48 @@ ui_vo_demolished:  '— (demolished)',
 
 ## Implementation Plan
 
-### Phase 1: Shared infrastructure
-1. Extract `_TRL_DEFAULTS` from `boq_charts.html` into `deploy/dev/locales/_trl_base.js`
-2. Add the ~50 new `ui_*` keys above
-3. All pages load `<script src="locales/_trl_base.js">` + locale loader
-4. Create `locales/en_GB.js` (empty), `locales/en_US.js`, `locales/ms_MY.js`
+### Phase 0: DONE (S225 session) — Rate extraction + locale files
+**Completed:**
+- `deploy/dev/rates.js` — single source of truth for RATES, LABOR_RATES, EQUIPMENT_RATES,
+  EQUIPMENT_ALLOCATION, SEQUENCE_RULES, DISC_COLORS, PHASE_COLORS, WORK_PACKAGES,
+  calcLabor(), calcEquipment(), getRate(), getPhase(), getProductivity()
+- `boq_charts.html` — removed ~150 lines of duplicated constants, loads `rates.js`
+- `variation_order.js` — removed VO_RATES/VO_PHASES/VO_PRODUCTIVITY (65 lines), uses shared
+- `nlp.js` — removed COST_RATES, uses shared getRate()
+- `index.html` — loads `rates.js` before nlp.js/diff.js/variation_order.js
+- 15 full locale files in `deploy/dev/locales/`:
+  `en_MY` (base), `en_US`, `en_GB`, `en_AU`, `ms_MY`, `de_DE`, `fr_FR`, `es_ES`,
+  `zh_CN`, `th_TH`, `ja_JP`, `ko_KR`, `ar_SA`, `pt_BR`, `id_ID`
+- Each locale = FULL package: labels + currency + rates + labor + equipment + sequences
+  (iDempiere AD_Window_Trl pattern — user copies one file, edits what differs)
+- ISO 3166-1 `iso` field drives flag emoji at runtime
+- Project-level override: copy locale → `MyProject_TRL.js` → edit rates for project
+
+**Architecture:**
+```
+rates.js              = _RATES_DEFAULTS (runtime globals, loaded by all pages)
+locales/{code}.js     = _TRL_LOCALE (full override: labels + rates + currency)
+                        loaded by locale_loader, deep-merged over defaults
+```
+
+**Override priority (highest wins):**
+1. URL params — `?cur=USD&rate=4.45&h_labour=Labor`
+2. Project locale — `MyProject_TRL.js`
+3. Country locale — `locales/{code}.js`
+4. `_TRL_DEFAULTS` (en_MY base in `rates.js`)
+
+### Phase 1: Locale loader + flag selector
+1. Write `deploy/dev/locale_loader.js` — reads `localStorage bim_ootb_lang` or `?lang=`,
+   loads `locales/{code}.js`, deep-merges `_TRL_LOCALE` over `_TRL_DEFAULTS`,
+   applies `_TRL_LOCALE.rates` → overwrites global RATES/LABOR_RATES/etc.
+2. Flag selector in toolbar (ISO code → flag emoji via `String.fromCodePoint`)
+3. `localStorage` persistence, `&lang=xx` propagation to boq_charts
+4. All pages load: `rates.js` → `locale_loader.js` → page-specific JS
 
 ### Phase 2: Viewer page (`index.html`)
-1. Load `_trl_base.js`
-2. Replace all hardcoded strings (see File 1 audit above)
-3. Add flag selector to toolbar
-4. `localStorage` persistence, `&lang=xx` propagation to boq_charts
+1. Replace all hardcoded strings (see File 1 audit above)
+2. Add flag selector to toolbar
+3. Wire `_TRL.*` for all panel titles, tooltips, buttons, status messages
 
 ### Phase 3: JS modules
 Apply `_TRL.*` to each file in order:
@@ -361,20 +392,15 @@ Each JS file accesses `_TRL` as a global (loaded by index.html before modules).
 ### Phase 4: boq_charts.html remaining
 1. Title and h1 → `_TRL.source_app`
 2. Status messages → `_TRL.ui_*`
-3. Move `_TRL_DEFAULTS` to shared `_trl_base.js`
+3. Move `_TRL_DEFAULTS` to shared locale loader (rates.js already extracted)
 
-### Phase 5: Locale files
-Write complete translations for Phase 1 languages:
-- `ms_MY.js` — Bahasa Melayu (full sample in this doc)
-- `en_US.js` — US English (Labor, USD, RS Means)
-- `zh_CN.js`, `th_TH.js`, `de_DE.js`, `fr_FR.js`, `es_ES.js`
-
-### Phase 6: Verify
+### Phase 5: Verify
 - Load each locale via `?lang=xx`
 - `§TRL_VERIFY` log: all PASS
 - `§MATHS_VERIFY` log: all PASS
 - `§TRL_NO_HARDCODE`: no RM/USD leaks when locale is non-default
 - Visual: charts readable, pie round, labels in target language
+- Rate override: `?lang=en_US` → USD rates in Excel, $ in charts
 
 ---
 
