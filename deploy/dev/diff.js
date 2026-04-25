@@ -19,8 +19,8 @@ function setupDiff(A) {
     const added = [...guids2].filter(g => !guids1.has(g));
     const common = [...guids2].filter(g => guids1.has(g));
     const changed = common.filter(g => {
-      const r1 = A.db.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid='" + g.replace(/'/g, "''") + "'");
-      const r2 = A.diffDb.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid='" + g.replace(/'/g, "''") + "'");
+      const r1 = A.db.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid=?", [g]);
+      const r2 = A.diffDb.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid=?", [g]);
       return JSON.stringify(r1[0]?.values[0]) !== JSON.stringify(r2[0]?.values[0]);
     });
 
@@ -124,6 +124,7 @@ function setupDiff(A) {
             A.scene.add(mesh);
             addedRendered++;
           });
+          addedMat.dispose(); // template material no longer needed
         }
       } catch(e) {
         console.log('[S225] §DIFF_ADDED_ERROR ' + e.message);

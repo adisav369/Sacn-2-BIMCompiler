@@ -47,7 +47,7 @@ oci os object put --bucket-name bim-ootb-full --file deploy/sandbox/landing.html
 oci os object put --bucket-name bim-ootb-full --file deploy/sandbox/index.html --name sandbox/index.html --content-type text/html --force
 
 # All JS modules (run from repo root)
-for f in config scene streaming panels tools picking tour measure sitecam issues walk city main loader; do
+for f in config scene streaming panels tools picking tour measure sitecam issues walk city main loader diff nlp variation_order import import_db_builder import_worker rates excel; do
   oci os object put --bucket-name bim-ootb-full --file "deploy/sandbox/${f}.js" --name "sandbox/${f}.js" --content-type application/javascript --force
 done
 
@@ -57,7 +57,7 @@ done
 oci os object put --bucket-name bim-ootb --file deploy/sandbox/index.html --name index.html --content-type text/html --force
 
 # All JS modules at bucket root (same level as index.html)
-for f in config scene streaming panels tools picking tour measure sitecam issues walk city main loader; do
+for f in config scene streaming panels tools picking tour measure sitecam issues walk city main loader diff nlp variation_order import import_db_builder import_worker rates excel; do
   oci os object put --bucket-name bim-ootb --file "deploy/sandbox/${f}.js" --name "${f}.js" --content-type application/javascript --force
 done
 
@@ -68,11 +68,10 @@ oci os object put --bucket-name bim-ootb-dev --file deploy/landing2.html --name 
 
 # Viewer + JS modules (copy production sandbox, override dev files)
 oci os object put --bucket-name bim-ootb-dev --file deploy/sandbox/index.html --name sandbox/index.html --content-type text/html --force
-for f in config scene streaming panels tools picking tour measure issues walk city main loader; do
+for f in config scene streaming panels tools picking tour measure sitecam issues walk city main loader diff nlp variation_order import import_db_builder import_worker rates excel; do
   oci os object put --bucket-name bim-ootb-dev --file "deploy/sandbox/${f}.js" --name "sandbox/${f}.js" --content-type application/javascript --force
 done
-# Dev overrides (changed files only)
-oci os object put --bucket-name bim-ootb-dev --file deploy/dev/sitecam.js --name sandbox/sitecam.js --content-type application/javascript --force
+# Dev overrides (changed files only — add new dev-only files here)
 oci os object put --bucket-name bim-ootb-dev --file deploy/dev/boq_charts.html --name boq_charts.html --content-type text/html --force
 
 # ── Common ──

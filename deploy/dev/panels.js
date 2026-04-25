@@ -14,9 +14,9 @@ function setupPanels(A) {
     if (!A.db || !building) return;
     const rows = A.db.exec(`
       SELECT DISTINCT storey FROM elements_meta
-      WHERE building = '${building}' AND storey IS NOT NULL
+      WHERE building = ? AND storey IS NOT NULL
       ORDER BY storey
-    `);
+    `, [building]);
     const panel = document.getElementById('storey-panel');
     const body = document.getElementById('storey-body');
     if (!rows.length || !rows[0].values.length) { panel.style.display = 'none'; return; }
@@ -53,9 +53,9 @@ function setupPanels(A) {
     if (!A.db || !building) return;
     const rows = A.db.exec(`
       SELECT discipline, COUNT(*) FROM elements_meta
-      WHERE building = '${building}' AND discipline IS NOT NULL
+      WHERE building = ? AND discipline IS NOT NULL
       GROUP BY discipline ORDER BY COUNT(*) DESC
-    `);
+    `, [building]);
     const panel = document.getElementById('disc-panel');
     const body = document.getElementById('disc-body');
     if (!rows.length || !rows[0].values.length) { panel.style.display = 'none'; return; }

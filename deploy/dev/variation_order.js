@@ -75,7 +75,7 @@ function exportVariationOrder() {
       lag = lagDays + ' days';
       wsConfig.addRow({ param: 'BIM Delivery Lag', val: lag, desc: 'Time between base and variation import — cost of waiting for updated model' });
     }
-  } catch(e) {}
+  } catch(e) { console.warn('[S227] §VO_LAG_ERR ' + e.message); }
 
   // ── Sheet 2: Variation Order Detail ──
   var ws = wb.addWorksheet('Variation Order');
@@ -100,9 +100,9 @@ function exportVariationOrder() {
 
   function getElementInfo(db, guid) {
     try {
-      var r = db.exec("SELECT ifc_class, element_name, storey, discipline, material_rgba FROM elements_meta WHERE guid='" + guid.replace(/'/g, "''") + "'");
+      var r = db.exec("SELECT ifc_class, element_name, storey, discipline, material_rgba FROM elements_meta WHERE guid=?", [guid]);
       if (r.length > 0 && r[0].values.length > 0) return r[0].values[0];
-    } catch(e) {}
+    } catch(e) { console.warn('[S227] §VO_ELEM_ERR guid=' + guid + ' ' + e.message); }
     return [null, null, null, null, null];
   }
 

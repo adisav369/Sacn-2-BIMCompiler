@@ -185,10 +185,6 @@ function setupWalk(A) {
     console.log(`[S207] §WALK_MODE_START anchor IFC=(${A.walkAnchorIFC.x.toFixed(1)},${A.walkAnchorIFC.y.toFixed(1)},${A.walkAnchorIFC.z.toFixed(1)})`);
   };
 
-  // startWalkOrientation RETIRED — was adding 2 extra deviceorientation listeners
-  // that caused jitter. All orientation handled by _walkOrientListener + walkOrientTick.
-  A.startWalkOrientation = function() {};
-
   A.findNearestDoorPosition = function() {
     if (!A.db) return null;
     const bld = Object.values(A.buildingCentres)[0];
@@ -213,9 +209,10 @@ function setupWalk(A) {
         JOIN element_transforms t ON m.guid = t.guid
         WHERE m.ifc_class IN ('IfcDoor', 'IfcDoorStandardCase')
       `;
-      if (lowestStorey) query += ` AND m.storey = '${lowestStorey.replace(/'/g, "''")}'`;
+      var stParams = [];
+      if (lowestStorey) { query += ` AND m.storey = ?`; stParams.push(lowestStorey); }
 
-      const rows = A.db.exec(query);
+      const rows = A.db.exec(query, stParams);
       if (rows.length === 0 || rows[0].values.length === 0) return null;
 
       // Pick ground-floor door nearest to current camera position
@@ -467,8 +464,8 @@ function setupWalk(A) {
     try {
       const rows = A.db.exec(`
         SELECT ifc_class, storey, element_name
-        FROM elements_meta WHERE guid = '${guid}'
-      `);
+        FROM elements_meta WHERE guid = ?
+      `, [guid]);
       if (!rows.length || !rows[0].values.length) return false;
       const [ifcClass, storey, elemName] = rows[0].values[0];
 
@@ -480,8 +477,8 @@ function setupWalk(A) {
 
       const wallRows = A.db.exec(`
         SELECT center_x, center_y, center_z
-        FROM element_transforms WHERE guid = '${guid}'
-      `);
+        FROM element_transforms WHERE guid = ?
+      `, [guid]);
       if (!wallRows.length) return false;
       const [wallX, wallY, wallZ] = wallRows[0].values[0];
 
@@ -504,10 +501,10 @@ function setupWalk(A) {
         FROM elements_meta m
         JOIN element_transforms t ON m.guid = t.guid
         WHERE m.discipline IN ('MEP','ELEC','PLB','ACMV','FP','HVAC','MEC')
-          AND m.storey = '${storey}'
-          AND ABS(t.center_x - ${wallX}) < 2.0
-          AND ABS(t.center_y - ${wallY}) < 2.0
-      `);
+          AND m.storey = ?
+          AND ABS(t.center_x - ?) < 2.0
+          AND ABS(t.center_y - ?) < 2.0
+      `, [storey, wallX, wallY]);
 
       if (mepRows.length > 0 && mepRows[0].values.length > 0) {
         console.log(`[S205] §WALL_MEP found=${mepRows[0].values.length} near wall`);

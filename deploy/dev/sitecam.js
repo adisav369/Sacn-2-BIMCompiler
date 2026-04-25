@@ -14,9 +14,10 @@ function setupSitecam(A) {
       snagBtn.style.cssText = 'display:none;position:fixed;bottom:20px;right:16px;z-index:14;background:#f44336;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(244,67,54,0.4)';
       document.body.appendChild(snagBtn);
       // Sync visibility: picking.js toggles snag-btn-row, mirror to our fixed button
-      new MutationObserver(() => {
+      A._snagObserver = new MutationObserver(() => {
         snagBtn.style.display = snagRow.style.display === 'none' ? 'none' : 'block';
-      }).observe(snagRow, { attributes: true, attributeFilter: ['style'] });
+      });
+      A._snagObserver.observe(snagRow, { attributes: true, attributeFilter: ['style'] });
     }
   }
 

@@ -175,11 +175,12 @@ function setupScene(A) {
   };
 
   // Resize handler
-  window.addEventListener('resize', () => {
+  A._onResize = () => {
     A.camera.aspect = window.innerWidth / window.innerHeight;
     A.camera.updateProjectionMatrix();
     A.renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+  };
+  window.addEventListener('resize', A._onResize);
 
   // Keyboard shortcuts
   window.addEventListener('keydown', (e) => {

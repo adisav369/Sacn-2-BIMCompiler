@@ -61,15 +61,20 @@ function setupIssues(A) {
   A._blobToThumbUrl = function(blob) {
     return new Promise(resolve => {
       const img = new Image();
+      const blobUrl = URL.createObjectURL(blob);
       img.onload = () => {
         const w = 100, h = Math.round(img.height * (100 / img.width));
         const c = document.createElement('canvas');
         c.width = w; c.height = h;
         c.getContext('2d').drawImage(img, 0, 0, w, h);
-        URL.revokeObjectURL(img.src);
+        URL.revokeObjectURL(blobUrl);
         resolve(c.toDataURL('image/jpeg', 0.7));
       };
-      img.src = URL.createObjectURL(blob);
+      img.onerror = () => {
+        URL.revokeObjectURL(blobUrl);
+        resolve(null);
+      };
+      img.src = blobUrl;
     });
   };
 
@@ -154,7 +159,12 @@ function setupIssues(A) {
         // Re-render list behind detail so card icon updates immediately
         A._renderIssueList();
         console.log('[S210] §STATUS_TOGGLE id=' + iss.id + ' to=' + newStatus);
-      } catch(err) { console.error('[S209] §STATUS_ERR', err); }
+      } catch(err) {
+        iss.status = (newStatus === 'fixed') ? 'open' : 'fixed'; // revert on failure
+        statusBtn.textContent = iss.status === 'fixed' ? '✅ Fixed — tap to reopen' : '🔴 Open — tap to mark Fixed';
+        statusBtn.style.background = iss.status === 'fixed' ? '#2e7d32' : '#c62828';
+        console.error('[S227] §STATUS_ERR id=' + iss.id + ' ' + err.message);
+      }
     };
   };
 

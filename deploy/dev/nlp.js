@@ -51,8 +51,8 @@ function setupNlp(A) {
   function ifcLike(elementType) {
     const s = singularize(elementType);
     const syns = SYNONYMS[s];
-    if (syns) return syns.map(t => `LOWER(ifc_class) LIKE LOWER('%${t}%')`).join(' OR ');
-    return `LOWER(ifc_class) LIKE LOWER('%${s}%')`;
+    if (syns) return { sql: syns.map(() => `LOWER(ifc_class) LIKE LOWER(?)`).join(' OR '), params: syns.map(t => `%${t}%`) };
+    return { sql: `LOWER(ifc_class) LIKE LOWER(?)`, params: [`%${s}%`] };
   }
 
   // ── Discipline synonyms ──
@@ -86,7 +86,7 @@ function setupNlp(A) {
       'first':'1', 'second':'2', 'third':'3', 'fourth':'4', 'fifth':'5',
     };
     if (n === 'roof') return '%roof%';
-    if (n === 'basement') return '%asement%';
+    if (n === 'basement') return '%basement%';
     const num = WORD_TO_NUM[n] || n;
     // "Level 1" but not "Level 10" — match digit at end of string or before space
     // SQLite LIKE doesn't have word boundaries, so use exact pattern:
@@ -99,45 +99,67 @@ function setupNlp(A) {
   const PATTERNS = [
     // Floor-scoped count: "floor one doors", "floor 2 beams", "ground floor walls"
     { re: /^(?:floor|level)\s+(\S+)\s+(\w+)$/i,
-      fn: m => ({
-        sql: `SELECT ifc_class, COUNT(*) as count, storey FROM elements_meta
-              WHERE (${ifcLike(m[2])}) AND LOWER(storey) LIKE LOWER('${floorPattern(m[1])}')
-              ${bldFilter()} GROUP BY ifc_class, storey`,
-        desc: `${singularize(m[2])} on floor ${m[1]}`
-      })},
+      fn: m => {
+        const ifc = ifcLike(m[2]); const bld = bldFilter();
+        return {
+          sql: `SELECT ifc_class, COUNT(*) as count, storey FROM elements_meta
+                WHERE (${ifc.sql}) AND LOWER(storey) LIKE LOWER(?)
+                ${bld.sql} GROUP BY ifc_class, storey`,
+          params: [...ifc.params, floorPattern(m[1]), ...bld.params],
+          desc: `${singularize(m[2])} on floor ${m[1]}`
+        };
+      }},
     { re: /^ground\s+floor\s+(\w+)$/i,
-      fn: m => ({
-        sql: `SELECT ifc_class, COUNT(*) as count, storey FROM elements_meta
-              WHERE (${ifcLike(m[1])}) AND LOWER(storey) LIKE LOWER('%0%')
-              ${bldFilter()} GROUP BY ifc_class, storey`,
-        desc: `${singularize(m[1])} on ground floor`
-      })},
+      fn: m => {
+        const ifc = ifcLike(m[1]); const bld = bldFilter();
+        return {
+          sql: `SELECT ifc_class, COUNT(*) as count, storey FROM elements_meta
+                WHERE (${ifc.sql}) AND LOWER(storey) LIKE LOWER(?)
+                ${bld.sql} GROUP BY ifc_class, storey`,
+          params: [...ifc.params, '%0%', ...bld.params],
+          desc: `${singularize(m[1])} on ground floor`
+        };
+      }},
     // Count: "count doors", "how many beams"
     { re: /^(?:count|how many|number of)\s+(\w+)$/i,
-      fn: m => ({
-        sql: `SELECT ifc_class, COUNT(*) as count FROM elements_meta
-              WHERE (${ifcLike(m[1])}) ${bldFilter()} GROUP BY ifc_class`,
-        desc: `count ${singularize(m[1])}`
-      })},
+      fn: m => {
+        const ifc = ifcLike(m[1]); const bld = bldFilter();
+        return {
+          sql: `SELECT ifc_class, COUNT(*) as count FROM elements_meta
+                WHERE (${ifc.sql}) ${bld.sql} GROUP BY ifc_class`,
+          params: [...ifc.params, ...bld.params],
+          desc: `count ${singularize(m[1])}`
+        };
+      }},
     // Cost: "total cost", "cost of beams" — computed from RATES × element count (same as 4D/5D)
     { re: /^total\s+cost$/i,
-      fn: () => ({
-        sql: `SELECT ifc_class, COUNT(*) as qty FROM elements_meta ${bldFilter('WHERE')} GROUP BY ifc_class ORDER BY qty DESC`,
-        desc: 'total building cost',
-        costMode: 'total'
-      })},
+      fn: () => {
+        const bld = bldFilter('WHERE');
+        return {
+          sql: `SELECT ifc_class, COUNT(*) as qty FROM elements_meta ${bld.sql} GROUP BY ifc_class ORDER BY qty DESC`,
+          params: [...bld.params],
+          desc: 'total building cost',
+          costMode: 'total'
+        };
+      }},
     { re: /^cost\s+(?:of\s+)?(\w+)$/i,
       fn: m => {
         const d = DISC_MAP[m[1].toLowerCase()];
-        if (d) return {
-          sql: `SELECT ifc_class, COUNT(*) as qty FROM elements_meta
-                WHERE discipline = '${d}' ${bldFilter(true)} GROUP BY ifc_class ORDER BY qty DESC`,
-          desc: `cost of ${m[1]}`,
-          costMode: 'disc'
-        };
+        if (d) {
+          const bld = bldFilter(true);
+          return {
+            sql: `SELECT ifc_class, COUNT(*) as qty FROM elements_meta
+                  WHERE discipline = ? ${bld.sql} GROUP BY ifc_class ORDER BY qty DESC`,
+            params: [d, ...bld.params],
+            desc: `cost of ${m[1]}`,
+            costMode: 'disc'
+          };
+        }
+        const ifc = ifcLike(m[1]); const bld = bldFilter();
         return {
           sql: `SELECT ifc_class, COUNT(*) as qty FROM elements_meta
-                WHERE (${ifcLike(m[1])}) ${bldFilter()} GROUP BY ifc_class ORDER BY qty DESC`,
+                WHERE (${ifc.sql}) ${bld.sql} GROUP BY ifc_class ORDER BY qty DESC`,
+          params: [...ifc.params, ...bld.params],
           desc: `cost of ${singularize(m[1])}`,
           costMode: 'element'
         };
@@ -145,60 +167,83 @@ function setupNlp(A) {
     // Quantity: "total area", "total length pipes" — element count (no QTO table needed)
     { re: /^total\s+(area|length|volume)(?:\s+(?:of\s+)?(\w+))?$/i,
       fn: m => {
-        const elem = m[2] ? `WHERE (${ifcLike(m[2])}) ${bldFilter()}` : bldFilter('WHERE');
+        if (m[2]) {
+          const ifc = ifcLike(m[2]); const bld = bldFilter();
+          return {
+            sql: `SELECT ifc_class, COUNT(*) as qty FROM elements_meta WHERE (${ifc.sql}) ${bld.sql} GROUP BY ifc_class ORDER BY qty DESC`,
+            params: [...ifc.params, ...bld.params],
+            desc: `total ${m[1]} of ${singularize(m[2])} (element count — no QTO dimensions in DB)`
+          };
+        }
+        const bld = bldFilter('WHERE');
         return {
-          sql: `SELECT ifc_class, COUNT(*) as qty FROM elements_meta ${elem} GROUP BY ifc_class ORDER BY qty DESC`,
-          desc: `total ${m[1]}${m[2] ? ' of ' + singularize(m[2]) : ''} (element count — no QTO dimensions in DB)`
+          sql: `SELECT ifc_class, COUNT(*) as qty FROM elements_meta ${bld.sql} GROUP BY ifc_class ORDER BY qty DESC`,
+          params: [...bld.params],
+          desc: `total ${m[1]} (element count — no QTO dimensions in DB)`
         };
       }},
     { re: /^floor\s+area$/i,
-      fn: () => ({
-        sql: `SELECT ifc_class, COUNT(*) as qty FROM elements_meta
-              WHERE LOWER(ifc_class) LIKE '%slab%' ${bldFilter()} GROUP BY ifc_class`,
-        desc: 'slab count (floor area dimensions not in DB)'
-      })},
+      fn: () => {
+        const bld = bldFilter();
+        return {
+          sql: `SELECT ifc_class, COUNT(*) as qty FROM elements_meta
+                WHERE LOWER(ifc_class) LIKE '%slab%' ${bld.sql} GROUP BY ifc_class`,
+          params: [...bld.params],
+          desc: 'slab count (floor area dimensions not in DB)'
+        };
+      }},
     // Discipline: "show structure", "show electrical", "what disciplines"
     { re: /^(?:show|list)\s+(\w+)(?:\s+elements)?$/i,
       fn: m => {
         const d = DISC_MAP[m[1].toLowerCase()];
-        if (d) return {
-          sql: `SELECT ifc_class, COUNT(*) as count FROM elements_meta
-                WHERE discipline = '${d}' ${bldFilter()} GROUP BY ifc_class ORDER BY count DESC`,
-          desc: `${m[1]} elements`
-        };
+        if (d) {
+          const bld = bldFilter();
+          return {
+            sql: `SELECT ifc_class, COUNT(*) as count FROM elements_meta
+                  WHERE discipline = ? ${bld.sql} GROUP BY ifc_class ORDER BY count DESC`,
+            params: [d, ...bld.params],
+            desc: `${m[1]} elements`
+          };
+        }
         // Fall through to search
         return null;
       }},
     { re: /^what\s+disciplines/i,
-      fn: () => ({
-        sql: `SELECT discipline, COUNT(*) as count FROM elements_meta
-              ${bldFilter('WHERE')} GROUP BY discipline ORDER BY discipline`,
-        desc: 'all disciplines'
-      })},
+      fn: () => {
+        const bld = bldFilter('WHERE');
+        return {
+          sql: `SELECT discipline, COUNT(*) as count FROM elements_meta
+                ${bld.sql} GROUP BY discipline ORDER BY discipline`,
+          params: [...bld.params],
+          desc: 'all disciplines'
+        };
+      }},
     // Search: "find fire doors", "search concrete"
     { re: /^(?:find|search|search for)\s+(.+)$/i,
       fn: m => {
         const term = m[1].replace(/[^\w\s]/g, '').trim();
+        const bld = bldFilter(true);
         return {
           sql: `SELECT guid, ifc_class, element_name, storey FROM elements_meta
-                WHERE (LOWER(element_name) LIKE LOWER('%${term}%')
-                   OR LOWER(ifc_class) LIKE LOWER('%${term}%'))
-                ${bldFilter(true)} LIMIT 50`,
+                WHERE (LOWER(element_name) LIKE LOWER(?)
+                   OR LOWER(ifc_class) LIKE LOWER(?))
+                ${bld.sql} LIMIT 50`,
+          params: [`%${term}%`, `%${term}%`, ...bld.params],
           desc: `search "${term}"`
         };
       }},
   ];
 
-  // ── Building filter helpers ──
+  // ── Building filter helpers (parameterized) ──
   function bldFilter(mode) {
-    if (!A.activeBuilding) return '';
-    if (mode === 'WHERE') return `WHERE building = '${A.activeBuilding}'`;
-    if (mode === true) return `AND building = '${A.activeBuilding}'`;
-    return `AND building = '${A.activeBuilding}'`;
+    if (!A.activeBuilding) return { sql: '', params: [] };
+    if (mode === 'WHERE') return { sql: `WHERE building = ?`, params: [A.activeBuilding] };
+    if (mode === true) return { sql: `AND building = ?`, params: [A.activeBuilding] };
+    return { sql: `AND building = ?`, params: [A.activeBuilding] };
   }
   function bldFilterQto(hasWhere) {
-    if (!A.activeBuilding) return '';
-    return (hasWhere ? 'AND' : 'WHERE') + ` building = '${A.activeBuilding}'`;
+    if (!A.activeBuilding) return { sql: '', params: [] };
+    return { sql: (hasWhere ? 'AND' : 'WHERE') + ` building = ?`, params: [A.activeBuilding] };
   }
 
   // ── Parse + execute ──
@@ -225,14 +270,15 @@ function setupNlp(A) {
     }
     console.log('[S211] §NLP_SQL ' + parsed.sql.replace(/\s+/g, ' ').substring(0, 120));
     try {
-      const rows = A.db.exec(parsed.sql);
+      const rows = A.db.exec(parsed.sql, parsed.params || []);
       if (!rows.length || !rows[0].values.length) {
         // Empty result — show what's available
         let avail = '';
         try {
-          const cls = A.db.exec('SELECT DISTINCT ifc_class FROM elements_meta ' + bldFilter('WHERE') + ' ORDER BY ifc_class LIMIT 10');
+          const bldAvail = bldFilter('WHERE');
+          const cls = A.db.exec('SELECT DISTINCT ifc_class FROM elements_meta ' + bldAvail.sql + ' ORDER BY ifc_class LIMIT 10', bldAvail.params);
           if (cls.length) avail = '\nAvailable: ' + cls[0].values.map(r => r[0]).join(', ');
-        } catch(_) {}
+        } catch(e) { console.warn('[S227] §NLP_AVAIL_ERR ' + e.message); }
         showToast('No results for "' + parsed.desc + '"' + avail, null, 'info');
         console.log('[S211] §NLP_EMPTY desc="' + parsed.desc + '"');
         return;

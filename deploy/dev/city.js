@@ -103,6 +103,7 @@ function setupCity(A) {
         if (sx < 0.1 || sy < 0.1 || sz < 0.1) continue;
         const geo = new THREE.BoxGeometry(sx, sy, sz);
         const edges = new THREE.EdgesGeometry(geo);
+        geo.dispose(); // intermediate geometry no longer needed
         const line = new THREE.LineSegments(edges,
           new THREE.LineBasicMaterial({ color, opacity: 0.6, transparent: true }));
         line.position.set(c.x, c.y, c.z);
@@ -129,7 +130,6 @@ function setupCity(A) {
   };
 
   // Override flyTo for city mode
-  const _origFlyTo = A.flyTo;
   A.flyTo = function(buildingName) {
     const bc = A.buildingCentres[buildingName];
     if (!bc) return;
@@ -158,7 +158,7 @@ function setupCity(A) {
   };
 
   A.cityLoadBuilding = async function(buildingName) {
-    const archRow = A.cityDb.exec(`SELECT archetype FROM building_archetype WHERE building = '${buildingName}'`);
+    const archRow = A.cityDb.exec(`SELECT archetype FROM building_archetype WHERE building = ?`, [buildingName]);
     if (!archRow.length) { A.status.textContent = `Unknown building: ${buildingName}`; return; }
     const archetype = archRow[0].values[0][0];
     const files = A.cityArchetypes[archetype];
