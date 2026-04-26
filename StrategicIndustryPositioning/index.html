@@ -3488,6 +3488,14 @@ in a shared component library (LOD meshes keyed by hash). The recipe says:
 spacing." The geometry is not stored — it is referenced.</p>
 <p><strong>This is the intent.</strong> Not "here are 12 wall meshes at these coordinates" but
 "12 instances of product W-EXT-200, tiled at 2.5m along the north facade."</p>
+<p>These verbs are only possible because products are reusable library artifacts,
+not per-building geometry. A ROUTE verb says "place PIPE-CU-15 along this path
+at 600mm spacing with elbows at bends" — an instruction that requires a shared
+product library to draw from. Closed-source BIM databases store geometry
+per-building; they cannot express BOM-level operations like TILE, ROUTE, or
+CLUSTER because there is no shared catalog of reusable artifacts to operate on.
+The same pattern extends to 2D — grid-line-resolved geometry spaces generate
+architectural drawings from the same BOM structure.</p>
 <h3 id="step-3-output-db-compile-from-intent">Step 3 — Output DB: Compile from Intent<a class="headerlink" href="#step-3-output-db-compile-from-intent" title="Permanent link">&para;</a></h3>
 <p>The compiler takes the BOM recipe + shared component library and recompiles
 into a new database of spatially placed 3D geometry. This is the <strong>output DB</strong>
