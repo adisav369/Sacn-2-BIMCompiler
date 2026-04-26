@@ -3394,16 +3394,16 @@ from the output.</p>
 <h3 id="why-nobody-has-solved-this">Why Nobody Has Solved This<a class="headerlink" href="#why-nobody-has-solved-this" title="Permanent link">&para;</a></h3>
 <p><strong>Autodesk solved it — inside a proprietary wall.</strong> Revit's native .rvt format
 maintains full spatial fidelity internally. But .rvt is editable only in Revit,
-with a shelf-life tied to Autodesk's support cycle [6]. When geometry leaves
+with a shelf-life tied to Autodesk's support cycle <a href="#ref6">[6]</a>. When geometry leaves
 Revit as IFC, "there's always loss of data... all constraints are lost and
-component parametrics are gone" [7]. The spatial compilation that works inside
+component parametrics are gone" <a href="#ref7">[7]</a>. The spatial compilation that works inside
 .rvt is not available to anyone outside it.</p>
 <p><strong>The openBIM world has no equivalent.</strong> Bonsai/BlenderBIM is IFC-native — you
-model directly in IFC, not in a proprietary format that exports to IFC [8]. But
+model directly in IFC, not in a proprietary format that exports to IFC <a href="#ref8">[8]</a>. But
 IFC is an exchange format, not a compilation target. Bonsai can author and
 display IFC geometry, but it does not decompose a building into a reusable BOM
 recipe, compile from that recipe, or verify the round-trip. Coordinate handling
-with large georeferenced files remains an active area of development [9].</p>
+with large georeferenced files remains an active area of development <a href="#ref9">[9]</a>.</p>
 <p><strong>The compilation challenge:</strong> can you extract a building's intent from its
 geometry, express that intent as a reusable recipe (BOM), and then recompile
 the recipe back into spatially correct 3D geometry — proving the recipe is
@@ -3414,18 +3414,18 @@ faithful to the original?</p>
 <h3 id="step-1-input-db-extract-the-building">Step 1 — Input DB: Extract the Building<a class="headerlink" href="#step-1-input-db-extract-the-building" title="Permanent link">&para;</a></h3>
 <p>An IFC file (or OBJ, STL, DAE, GLB from the Drop Zone) is extracted into a
 normalised SQLite database. Geometry hell is handled here — these are not
-theoretical concerns but documented industry problems [1][2][3]:</p>
+theoretical concerns but documented industry problems <a href="#ref1">[1]</a><a href="#ref2">[2]</a><a href="#ref3">[3]</a>:</p>
 <ul>
 <li><strong>Origin divergence</strong> — Tool A at (0,0,0), Tool B at GPS (317000, 175000).
   Models from different disciplines scatter across kilometres when merged.
-  Even minor coordinate mismatches cause incorrect clash detections [4].
+  Even minor coordinate mismatches cause incorrect clash detections <a href="#ref4">[4]</a>.
   Normalised to a common origin.</li>
 <li><strong>Unit mismatch</strong> — millimetres, metres, inches silently mixed across files.
   A wall at <code>x=4500</code> could be 4.5 metres or 4.5 millimetres (1000× error).
   Detected and corrected.</li>
 <li><strong>Axis ambiguity</strong> — Z-up vs Y-up, rotation chains 6 levels deep, baked
   transforms. Geometric degradation of exports into CSG or faceted polyhedra
-  remains widespread [5]. Resolved to a consistent coordinate system.</li>
+  remains widespread <a href="#ref5">[5]</a>. Resolved to a consistent coordinate system.</li>
 </ul>
 <p>After extraction, every element is a row. Every spatial relationship is a
 foreign key. The building is SQL-queryable:</p>
@@ -3778,15 +3778,15 @@ product catalogs, jurisdiction rules, format importers, and test buildings.</p>
 <em><a href="../ACTION_ROADMAP/"><code>ACTION_ROADMAP.md</code></a> — project roadmap</em></p>
 <hr />
 <h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
-<p>[1] Muller, M.F. <em>et al.</em> "On BIM Interoperability via the IFC Standard: An Assessment from the Structural Engineering and Design Viewpoint." <em>Applied Sciences</em> 11(23), 2021. — Documents geometry loss and property loss across IFC exchanges between Revit, ArchiCAD, Tekla, and others. <a href="https://www.mdpi.com/2076-3417/11/23/11430">doi:10.3390/app112311430</a></p>
-<p>[2] Pazlar, T. &amp; Turk, Z. "Interoperability in practice: Geometric data exchange using the IFC standard." <em>ITcon</em> 13, 2008. — Early benchmark showing "distortion or loss of information related to the geometry of the elements" and "incorrect connection between elements" across five IFC-certified tools. <a href="https://www.researchgate.net/publication/281596020_Interoperability_in_practice_Geometric_data_exchange_using_the_IFC_standard">ResearchGate</a></p>
-<p>[3] Diakite, A. &amp; Zlatanova, S. "About the Geo-referencing of BIM models." TU Delft, 2018. — Analysis of coordinate system divergence in IFC georeferencing, origin offset problems, and IfcMapConversion limitations. <a href="https://3d.bk.tudelft.nl/pdfs/18_georeferencing.pdf">PDF</a></p>
-<p>[4] BIMcollab. "Coordinating IFC Models with World Coordinate System information." — Documents how models without IfcMapConversion "will be shown somewhere far away from the already loaded model." <a href="https://helpcenter.bimcollab.com/en/articles/326917-coordinating-ifc-models-with-world-coordinate-system-information">BIMcollab Help</a></p>
-<p>[5] Autodesk. "Revit 2024: Enhancements to IFC Geometric Fidelity." 2023. — Autodesk's own acknowledgement that IFC geometric fidelity required improvement, with fixes for "complex families (parametric railings, helical stairs) which may generate fragmented geometries." <a href="https://www.autodesk.com/blogs/aec/2023/07/24/revit-2024-enhancements-to-ifc-geometric-fidelity/">Autodesk Blog</a></p>
-<p>[6] CAD Interop. "Revit File Formats: BIM Interoperability, IFC Conversion." — Notes that .rvt files are "editable only in Revit" with "a shelf-life of 3 years (the lifespan of Autodesk support)." <a href="https://www.cadinterop.com/en/formats/cad-systems/revit.html">CAD Interop</a></p>
-<p>[7] Moult, D. "How to create better IFC files with Revit." thinkmoult.com. — Documents that "even when you manage to export your geometry through IFC, there's always loss of data" and "importing that into Revit makes it utterly useless." <a href="https://thinkmoult.com/how-to-create-better-ifc-files-with-revit.html">thinkmoult</a></p>
-<p>[8] Bonsai BIM. "Beautiful, detailed, and data-rich OpenBIM." — Bonsai is IFC-native: "you're not creating geometry that gets converted to IFC later. You're working directly in IFC." <a href="https://bonsaibim.org/">bonsaibim.org</a></p>
-<p>[9] OSArch Community. "How to import IFC with large coordinates?" — Documents floating-point precision limits with georeferenced files requiring local origin offsets, and that "horizontal construction where distances frequently exceed 1km presents challenges." <a href="https://community.osarch.org/discussion/1099/blenderbim-how-to-import-ifc-with-large-coordinates">OSArch</a></p>
+<p><span id="ref1">[1]</span> Muller, M.F. <em>et al.</em> "On BIM Interoperability via the IFC Standard: An Assessment from the Structural Engineering and Design Viewpoint." <em>Applied Sciences</em> 11(23), 2021. — Documents geometry loss and property loss across IFC exchanges between Revit, ArchiCAD, Tekla, and others. <a href="https://www.mdpi.com/2076-3417/11/23/11430">doi:10.3390/app112311430</a></p>
+<p><span id="ref2">[2]</span> Pazlar, T. &amp; Turk, Z. "Interoperability in practice: Geometric data exchange using the IFC standard." <em>ITcon</em> 13, 2008. — Early benchmark showing "distortion or loss of information related to the geometry of the elements" and "incorrect connection between elements" across five IFC-certified tools. <a href="https://www.researchgate.net/publication/281596020_Interoperability_in_practice_Geometric_data_exchange_using_the_IFC_standard">ResearchGate</a></p>
+<p><span id="ref3">[3]</span> Diakite, A. &amp; Zlatanova, S. "About the Geo-referencing of BIM models." TU Delft, 2018. — Analysis of coordinate system divergence in IFC georeferencing, origin offset problems, and IfcMapConversion limitations. <a href="https://3d.bk.tudelft.nl/pdfs/18_georeferencing.pdf">PDF</a></p>
+<p><span id="ref4">[4]</span> BIMcollab. "Coordinating IFC Models with World Coordinate System information." — Documents how models without IfcMapConversion "will be shown somewhere far away from the already loaded model." <a href="https://helpcenter.bimcollab.com/en/articles/326917-coordinating-ifc-models-with-world-coordinate-system-information">BIMcollab Help</a></p>
+<p><span id="ref5">[5]</span> Autodesk. "Revit 2024: Enhancements to IFC Geometric Fidelity." 2023. — Autodesk's own acknowledgement that IFC geometric fidelity required improvement, with fixes for "complex families (parametric railings, helical stairs) which may generate fragmented geometries." <a href="https://www.autodesk.com/blogs/aec/2023/07/24/revit-2024-enhancements-to-ifc-geometric-fidelity/">Autodesk Blog</a></p>
+<p><span id="ref6">[6]</span> CAD Interop. "Revit File Formats: BIM Interoperability, IFC Conversion." — Notes that .rvt files are "editable only in Revit" with "a shelf-life of 3 years (the lifespan of Autodesk support)." <a href="https://www.cadinterop.com/en/formats/cad-systems/revit.html">CAD Interop</a></p>
+<p><span id="ref7">[7]</span> Moult, D. "How to create better IFC files with Revit." thinkmoult.com. — Documents that "even when you manage to export your geometry through IFC, there's always loss of data" and "importing that into Revit makes it utterly useless." <a href="https://thinkmoult.com/how-to-create-better-ifc-files-with-revit.html">thinkmoult</a></p>
+<p><span id="ref8">[8]</span> Bonsai BIM. "Beautiful, detailed, and data-rich OpenBIM." — Bonsai is IFC-native: "you're not creating geometry that gets converted to IFC later. You're working directly in IFC." <a href="https://bonsaibim.org/">bonsaibim.org</a></p>
+<p><span id="ref9">[9]</span> OSArch Community. "How to import IFC with large coordinates?" — Documents floating-point precision limits with georeferenced files requiring local origin offsets, and that "horizontal construction where distances frequently exceed 1km presents challenges." <a href="https://community.osarch.org/discussion/1099/blenderbim-how-to-import-ifc-with-large-coordinates">OSArch</a></p>
 
 
 
