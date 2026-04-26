@@ -324,12 +324,38 @@
       ' type=' + step.type + ' answer=' + answer);
 
     if (step.type === 'orientation' && answer === false) {
-      // Flip: swap Y↔Z in transforms, re-analyse
+      // Flip: swap Y↔Z in transforms DB
       db.run("UPDATE element_transforms SET center_y = -center_z, center_z = center_y");
       console.log('[S229] §WIZARD_FLIP swapped Y↔Z in element_transforms');
+
+      // S230: Also rotate the live 3D scene so user sees the flip
+      if (typeof APP !== 'undefined' && APP.scene) {
+        APP.scene.traverse(function(obj) {
+          if (obj.isMesh) {
+            var p = obj.position;
+            var tmpY = p.y;
+            p.y = -p.z;
+            p.z = tmpY;
+          }
+        });
+        // Reframe camera to new orientation
+        if (APP.controls && APP.controls.target) {
+          var t = APP.controls.target;
+          var tmpT = t.y;
+          t.y = -t.z;
+          t.z = tmpT;
+        }
+        if (APP.camera) {
+          var c = APP.camera.position;
+          var tmpC = c.y;
+          c.y = -c.z;
+          c.z = tmpC;
+        }
+        console.log('[S230] §WIZARD_FLIP_3D scene rotated');
+      }
+
       // Re-analyse and rebuild steps from current position
       wizState.analysis = analyseDb(db);
-      // Re-render same step with updated evidence
       wizState.steps[wizState.stepIdx].evidence =
         wizState.analysis.totalElements + ' meshes \u00b7 height range: ' +
         wizState.analysis.rangeZ.toFixed(1) + 'm \u00b7 footprint: ' +
