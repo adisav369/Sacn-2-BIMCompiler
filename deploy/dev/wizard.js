@@ -158,85 +158,44 @@
   }
 
   // ── Build step list from analysis ──
+  // Simple 3-step flow: orientation → storeys → done.
+  // Detailed classification is the compiler's job, not the user's.
   function buildSteps(analysis) {
     var steps = [];
 
-    // Step 0: Orientation — always first for mesh imports
-    var heightAxis = 'Z';
-    if (analysis.rangeZ > 0) {
-      heightAxis = (analysis.rangeZ < analysis.rangeX * 0.5 && analysis.rangeZ < analysis.rangeY * 0.5) ? 'Z' : 'Z';
-    }
+    // Step 0: Orientation
     steps.push({
       type: 'orientation',
       question: 'Is the building upright?',
-      evidence: analysis.totalElements + ' meshes \u00b7 height range: ' +
+      evidence: analysis.totalElements + ' meshes \u00b7 height: ' +
         analysis.rangeZ.toFixed(1) + 'm \u00b7 footprint: ' +
         analysis.rangeX.toFixed(1) + ' \u00d7 ' + analysis.rangeY.toFixed(1) + 'm',
     });
 
-    // Step 1: Storey assignment overview
+    // Step 1: Storeys overview
     if (analysis.storeys.length > 0) {
       var bandList = analysis.storeys.map(function(s) {
         return s + ' (' + (analysis.storeyCounts[s] || 0) + ')';
       }).join(', ');
       steps.push({
         type: 'storeys',
-        question: analysis.storeys.length + '-level building?',
-        evidence: 'Detected storeys: ' + bandList,
+        question: analysis.storeys.length + ' storeys detected. Correct?',
+        evidence: bandList,
       });
     }
 
-    // Step 2: Per-storey confirmation (only if > 1 storey)
-    if (analysis.storeys.length > 1) {
-      for (var i = 0; i < analysis.storeys.length; i++) {
-        var sName = analysis.storeys[i];
-        var sCount = analysis.storeyCounts[sName] || 0;
-        // Get class breakdown for this storey
-        steps.push({
-          type: 'storey-confirm',
-          storey: sName,
-          count: sCount,
-          question: '"' + sName + '" \u2014 ' + sCount + ' elements?',
-          evidence: 'Accept this storey label, or rename it',
-        });
-      }
-    }
-
-    // Step 3: Repeating geometry (instance dedup)
-    for (var i = 0; i < analysis.repeats.length; i++) {
-      var rep = analysis.repeats[i];
-      steps.push({
-        type: 'repeat',
-        hash: rep.hash,
-        count: rep.count,
-        name: rep.name,
-        ifcClass: rep.ifcClass,
-        question: '"' + rep.name + '" appears ' + rep.count + '\u00d7. ' + rep.ifcClass + '?',
-        evidence: 'Same geometry hash, material: ' + (rep.material || 'default'),
-      });
-    }
-
-    // Step 4: Unknowns batch
-    if (analysis.proxyCount > 0) {
-      var nameList = analysis.proxyNames.slice(0, 8).map(function(p) {
-        return p.name + (p.count > 1 ? ' \u00d7' + p.count : '');
-      }).join(', ');
-      steps.push({
-        type: 'unknowns',
-        count: analysis.proxyCount,
-        question: analysis.proxyCount + ' unclassified element' + (analysis.proxyCount > 1 ? 's' : '') + '. Keep as generic?',
-        evidence: nameList,
-      });
-    }
-
-    // Step 5: Summary — always last
-    var classSummary = Object.entries(analysis.ifcClasses).map(function(e) {
-      return e[1] + ' ' + e[0];
+    // Step 2: Summary — classification stats
+    var classEntries = Object.entries(analysis.ifcClasses);
+    var classSummary = classEntries.map(function(e) {
+      return e[1] + ' ' + e[0].replace('Ifc', '');
     }).join(' \u00b7 ');
+    var proxyNote = analysis.proxyCount > 0
+      ? '\n' + analysis.proxyCount + ' unclassified \u2014 kept as generic'
+      : '';
     steps.push({
       type: 'summary',
       question: 'Classification complete.',
-      evidence: classSummary,
+      evidence: classSummary + proxyNote,
     });
 
     return steps;
@@ -279,32 +238,9 @@
     } else if (step.type === 'orientation') {
       buttons = '<button class="wizard-yes" onclick="window._wizardAnswer(true)">Yes</button>' +
                 '<button class="wizard-no" onclick="window._wizardAnswer(false)">Flip</button>';
-    } else if (step.type === 'storey-confirm') {
-      buttons = '<button class="wizard-yes" onclick="window._wizardAnswer(true)">Yes</button>' +
-                '<button class="wizard-alt" onclick="window._wizardAnswer(\'rename\')">Rename</button>' +
-                '<button class="wizard-no" onclick="window._wizardAnswer(\'skip\')">Skip</button>';
-    } else if (step.type === 'repeat') {
-      // Show Yes (accept proposed class) or dropdown for alternative
-      var IFC_OPTIONS = [
-        'IfcWall', 'IfcDoor', 'IfcWindow', 'IfcSlab', 'IfcRoof', 'IfcColumn',
-        'IfcBeam', 'IfcRailing', 'IfcCovering', 'IfcStairFlight', 'IfcCurtainWall',
-        'IfcFurnishingElement', 'IfcPipeSegment', 'IfcDuctSegment', 'IfcBuildingElementProxy',
-      ];
-      selectHtml = '<select id="wizard-select">';
-      for (var j = 0; j < IFC_OPTIONS.length; j++) {
-        var sel = (IFC_OPTIONS[j] === step.ifcClass) ? ' selected' : '';
-        selectHtml += '<option value="' + IFC_OPTIONS[j] + '"' + sel + '>' + IFC_OPTIONS[j] + '</option>';
-      }
-      selectHtml += '</select>';
-      buttons = '<button class="wizard-yes" onclick="window._wizardAnswer(true)">Accept</button>' +
-                '<button class="wizard-alt" onclick="window._wizardAnswer(\'reclass\')">Reclassify</button>' +
-                '<button class="wizard-no" onclick="window._wizardAnswer(\'skip\')">Skip</button>';
-    } else if (step.type === 'unknowns') {
-      buttons = '<button class="wizard-yes" onclick="window._wizardAnswer(true)">Keep Generic</button>' +
-                '<button class="wizard-no" onclick="window._wizardAnswer(false)">Skip</button>';
     } else {
       buttons = '<button class="wizard-yes" onclick="window._wizardAnswer(true)">Yes</button>' +
-                '<button class="wizard-no" onclick="window._wizardAnswer(false)">No</button>';
+                '<button class="wizard-no" onclick="window._wizardAnswer(\'done\')">Done</button>';
     }
 
     panel.innerHTML =
@@ -358,30 +294,6 @@
       return;
     }
 
-    if (step.type === 'storey-confirm' && answer === 'rename') {
-      var newName = prompt('Rename storey "' + step.storey + '" to:', step.storey);
-      if (newName && newName !== step.storey) {
-        db.run("UPDATE elements_meta SET storey = ? WHERE storey = ?", [newName, step.storey]);
-        console.log('[S229] §WIZARD_RENAME_STOREY from="' + step.storey + '" to="' + newName + '"');
-      }
-      advanceStep();
-      return;
-    }
-
-    if (step.type === 'repeat' && answer === 'reclass') {
-      var sel = document.getElementById('wizard-select');
-      var newClass = sel ? sel.value : step.ifcClass;
-      if (newClass !== step.ifcClass) {
-        // Update all elements with this geometry hash
-        db.run("UPDATE elements_meta SET ifc_class = ? WHERE guid IN (SELECT guid FROM element_instances WHERE geometry_hash = ?)",
-          [newClass, step.hash]);
-        console.log('[S229] §WIZARD_RECLASS hash=' + step.hash +
-          ' from=' + step.ifcClass + ' to=' + newClass + ' count=' + step.count);
-      }
-      advanceStep();
-      return;
-    }
-
     if (step.type === 'summary' || answer === 'done') {
       finishWizard();
       return;
@@ -413,85 +325,87 @@
   }
 
   function finishWizard() {
-    // Save modified DB back to IndexedDB
+    // Export DB and analyse BEFORE any async saves
     var dbData = wizState.db.export();
     var dbBuf = dbData.buffer;
+    var finalAnalysis = analyseDb(wizState.db);
+    var projectKey = wizState.projectKey;
 
     console.log('[S229] §WIZARD_COMPLETE steps=' + wizState.steps.length +
-      ' project=' + wizState.projectKey);
+      ' project=' + projectKey);
 
-    // Update the project record in IndexedDB (landing context)
-    if (wizState.projectKey && typeof getProject === 'function') {
-      getProject(wizState.projectKey).then(function(record) {
-        if (record && record.versions) {
-          record.versions[record.latestVersion].db = dbBuf;
-          var finalAnalysis = analyseDb(wizState.db);
-          record.meta.disciplines = finalAnalysis.disciplines;
-          record.meta.storeys = finalAnalysis.storeys;
-          saveProject(wizState.projectKey, record).then(function() {
-            console.log('[S229] §WIZARD_SAVED key=' + wizState.projectKey);
-            if (typeof renderImportCards === 'function') renderImportCards();
-          });
-        }
-      });
+    // Close DB now — we have the buffer and analysis
+    if (wizState.db) { wizState.db.close(); wizState.db = null; }
+
+    // Count pending saves to know when all are done
+    var savesPending = 0;
+    var savesComplete = 0;
+    function onSaveDone(label) {
+      savesComplete++;
+      console.log('[S230] §WIZARD_SAVE ' + label + ' (' + savesComplete + '/' + savesPending + ')');
+      if (savesComplete >= savesPending && wizState.onComplete) wizState.onComplete();
     }
 
-    // S230: Update viewer cache DB (viewer context — no getProject available)
-    if (wizState.projectKey && typeof getProject !== 'function') {
-      try {
-        var cacheReq = indexedDB.open('bim_ootb_cache', 1);
-        cacheReq.onsuccess = function() {
-          var cacheDb = cacheReq.result;
-          var tx = cacheDb.transaction('dbs', 'readwrite');
-          // Update both db and lib cache keys (same buffer for imports)
-          var dbKey = 'import://' + wizState.projectKey + '/v0';
-          tx.objectStore('dbs').put(dbBuf, dbKey);
-          tx.oncomplete = function() {
-            console.log('[S230] §WIZARD_CACHE_SAVED key=' + dbKey + ' size=' + (dbBuf.byteLength/1024).toFixed(0) + 'KB');
-          };
-        };
-        cacheReq.onerror = function() {
-          console.log('[S230] §WIZARD_CACHE_ERROR could not open bim_ootb_cache');
-        };
-      } catch(e) {
-        console.log('[S230] §WIZARD_CACHE_ERROR ' + e.message);
-      }
-
-      // Also update the import DB (bim_ootb_imports) if accessible
+    // Save 1: Update import project record (both landing and viewer context)
+    if (projectKey) {
+      savesPending++;
       try {
         var importReq = indexedDB.open('bim_ootb_imports', 2);
         importReq.onsuccess = function() {
           var importDb = importReq.result;
-          if (!importDb.objectStoreNames.contains('buildings')) return;
-          var tx2 = importDb.transaction('buildings', 'readwrite');
-          var store = tx2.objectStore('buildings');
-          var getReq = store.get(wizState.projectKey);
+          if (!importDb.objectStoreNames.contains('buildings')) { onSaveDone('import-skip'); return; }
+          var tx = importDb.transaction('buildings', 'readwrite');
+          var store = tx.objectStore('buildings');
+          var getReq = store.get(projectKey);
           getReq.onsuccess = function() {
             var record = getReq.result;
             if (record && record.versions) {
               record.versions[record.latestVersion || 0].db = dbBuf;
-              var finalAnalysis = analyseDb(wizState.db);
               record.meta.disciplines = finalAnalysis.disciplines;
               record.meta.storeys = finalAnalysis.storeys;
-              store.put(record, wizState.projectKey);
-              console.log('[S230] §WIZARD_IMPORT_SAVED key=' + wizState.projectKey);
+              store.put(record, projectKey);
+              console.log('[S230] §WIZARD_IMPORT_SAVED key=' + projectKey + ' size=' + (dbBuf.byteLength/1024).toFixed(0) + 'KB');
             }
           };
+          tx.oncomplete = function() { onSaveDone('import'); };
+          tx.onerror = function() { onSaveDone('import-err'); };
         };
-      } catch(e) {}
+        importReq.onerror = function() { onSaveDone('import-open-err'); };
+      } catch(e) { onSaveDone('import-catch'); }
     }
+
+    // Save 2: Update viewer cache (so next Open loads modified DB)
+    if (projectKey) {
+      savesPending++;
+      try {
+        var cacheReq = indexedDB.open('bim_ootb_cache', 1);
+        cacheReq.onsuccess = function() {
+          var cacheDb = cacheReq.result;
+          if (!cacheDb.objectStoreNames.contains('dbs')) { onSaveDone('cache-skip'); return; }
+          var tx = cacheDb.transaction('dbs', 'readwrite');
+          var dbKey = 'import://' + projectKey + '/v0';
+          tx.objectStore('dbs').put(dbBuf, dbKey);
+          tx.objectStore('dbs').put(dbBuf, dbKey);  // lib = same
+          tx.oncomplete = function() {
+            console.log('[S230] §WIZARD_CACHE_SAVED key=' + dbKey);
+            onSaveDone('cache');
+          };
+          tx.onerror = function() { onSaveDone('cache-err'); };
+        };
+        cacheReq.onerror = function() { onSaveDone('cache-open-err'); };
+      } catch(e) { onSaveDone('cache-catch'); }
+    }
+
+    // If no saves pending, fire callback immediately
+    if (savesPending === 0 && wizState.onComplete) wizState.onComplete();
 
     // Dismiss panel
     var panel = document.getElementById('wizard-panel');
     if (panel) {
       panel.style.opacity = '0';
-      panel.style.transform = 'translateX(-50%) translateY(20px)';
+      panel.style.transform = 'translateY(-50%) translateX(20px)';
       setTimeout(function() { panel.remove(); }, 300);
     }
-
-    // Cleanup
-    if (wizState.db) { wizState.db.close(); wizState.db = null; }
-    if (wizState.onComplete) wizState.onComplete();
   }
 
   // ── Public API ──

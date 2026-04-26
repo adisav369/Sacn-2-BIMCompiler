@@ -71,9 +71,8 @@ test.describe('S229 Classification Wizard', () => {
     // Verify step sequence: orientation → storeys → storey-confirm(s) → repeats → unknowns → summary
     const stepTexts = stepInfo.join(' | ');
     expect(stepTexts).toContain('upright');           // Step 0: orientation
-    expect(stepTexts).toContain('level');             // Step 1: storeys
+    expect(stepTexts).toContain('storey');            // Step 1: storeys
     expect(stepTexts).toContain('complete');          // Final: summary
-    expect(stepTexts).toContain('Storey');            // Per-storey confirmations happened
   });
 
   test('11.3 Wizard CSS is injected', async ({ page }) => {

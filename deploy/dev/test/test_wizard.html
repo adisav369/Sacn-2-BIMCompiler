@@ -144,66 +144,31 @@ async function runTests() {
   log('Step 0 question: ' + question, 'info');
   log('Step 0 evidence: ' + evidence, 'info');
 
-  // Count progress dots
+  // Count progress dots — simplified: 3 steps (orient + storeys + summary)
   var dots = panel.querySelectorAll('#wizard-progress .dot');
-  assert(dots.length >= 4, 'At least 4 progress dots (orient + storeys + unknowns + summary)');
+  assert(dots.length === 3, 'Exactly 3 progress dots. Got: ' + dots.length);
   log('Total steps: ' + dots.length, 'info');
 
   // Answer Yes to orientation
   window._wizardAnswer(true);
-  await new Promise(function(r) { setTimeout(r, 200); });  // wait for slide animation
+  await new Promise(function(r) { setTimeout(r, 200); });
 
   heading('Test 5: Step 1 — Storeys');
   question = panel.querySelector('#wizard-question').textContent;
-  assert(question.includes('level') || question.includes('storey') || question.includes('-level'), 'Step 1 asks about storeys. Got: ' + question);
+  assert(question.includes('storey'), 'Step 1 asks about storeys. Got: ' + question);
   log('Step 1 question: ' + question, 'info');
 
-  // Accept storeys
+  // Accept storeys → goes to summary
   window._wizardAnswer(true);
   await new Promise(function(r) { setTimeout(r, 200); });
 
-  heading('Test 6: Per-storey confirmation steps');
-  // Should be on first storey confirmation now
-  question = panel.querySelector('#wizard-question').textContent;
-  log('Storey step question: ' + question, 'info');
-  // Accept all storey steps
-  var storeySteps = 0;
-  while (panel && panel.querySelector('#wizard-question') &&
-         panel.querySelector('#wizard-question').textContent.includes('elements')) {
-    window._wizardAnswer(true);
-    storeySteps++;
-    await new Promise(function(r) { setTimeout(r, 200); });
-    if (storeySteps > 10) break;  // safety
-  }
-  log('Storey confirmation steps: ' + storeySteps, 'info');
-
-  heading('Test 7: Repeating geometry steps');
-  question = panel.querySelector('#wizard-question') ? panel.querySelector('#wizard-question').textContent : '';
-  log('After storeys, question: ' + question, 'info');
-  // Walk through repeat steps
-  var repeatSteps = 0;
-  while (panel && panel.querySelector('#wizard-question') &&
-         panel.querySelector('#wizard-question').textContent.includes('\u00d7')) {
-    window._wizardAnswer(true);
-    repeatSteps++;
-    await new Promise(function(r) { setTimeout(r, 200); });
-    if (repeatSteps > 20) break;
-  }
-  log('Repeat steps: ' + repeatSteps, 'info');
-
-  heading('Test 8: Unknowns step');
-  question = panel.querySelector('#wizard-question') ? panel.querySelector('#wizard-question').textContent : '';
-  log('Unknowns/final question: ' + question, 'info');
-  if (question.includes('unclassified')) {
-    assert(question.includes('3'), 'Unknowns step shows 3 proxies');
-    window._wizardAnswer(true);  // Keep as generic
-    await new Promise(function(r) { setTimeout(r, 200); });
-  }
-
-  heading('Test 9: Summary step');
+  heading('Test 6: Step 2 — Summary');
   question = panel.querySelector('#wizard-question') ? panel.querySelector('#wizard-question').textContent : '';
   log('Summary question: ' + question, 'info');
   assert(question.includes('complete') || question.includes('Complete'), 'Summary step says complete. Got: ' + question);
+  var evidence = panel.querySelector('#wizard-evidence') ? panel.querySelector('#wizard-evidence').textContent : '';
+  assert(evidence.includes('Wall') || evidence.includes('Proxy'), 'Summary shows classification stats');
+  log('Summary evidence: ' + evidence, 'info');
 
   // Click Done
   window._wizardAnswer('done');
