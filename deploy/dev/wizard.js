@@ -10,17 +10,17 @@
   var style = document.createElement('style');
   style.textContent = [
     '#wizard-panel {',
-    '  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);',
-    '  z-index: 50; min-width: 360px; max-width: 520px;',
-    '  background: rgba(45, 35, 10, 0.85); backdrop-filter: blur(12px);',
+    '  position: fixed; top: 50%; right: 24px; transform: translateY(-50%);',
+    '  z-index: 50; min-width: 320px; max-width: 420px;',
+    '  background: rgba(45, 35, 10, 0.55); backdrop-filter: blur(12px);',
     '  -webkit-backdrop-filter: blur(12px);',
     '  border: 1px solid rgba(255, 191, 0, 0.25); border-radius: 16px;',
     '  padding: 20px 24px; font-family: "Segoe UI", system-ui, sans-serif;',
     '  color: #ffe0a0; box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 1px rgba(255,191,0,0.3);',
     '  transition: opacity 0.3s, transform 0.3s;',
     '}',
-    '#wizard-panel.wizard-enter { opacity: 0; transform: translateX(-50%) translateY(20px); }',
-    '#wizard-panel.wizard-visible { opacity: 1; transform: translateX(-50%) translateY(0); }',
+    '#wizard-panel.wizard-enter { opacity: 0; transform: translateY(-50%) translateX(20px); }',
+    '#wizard-panel.wizard-visible { opacity: 1; transform: translateY(-50%) translateX(0); }',
     '#wizard-question { font-size: 15px; font-weight: 500; line-height: 1.5; margin-bottom: 12px; }',
     '#wizard-evidence { font-size: 11px; color: rgba(255, 224, 160, 0.5); margin-bottom: 14px; letter-spacing: 0.3px; line-height: 1.5; }',
     '#wizard-buttons { display: flex; gap: 10px; justify-content: center; }',
@@ -328,30 +328,11 @@
       db.run("UPDATE element_transforms SET center_y = -center_z, center_z = center_y");
       console.log('[S229] §WIZARD_FLIP swapped Y↔Z in element_transforms');
 
-      // S230: Also rotate the live 3D scene so user sees the flip
+      // S230: Rotate the live 3D scene -90° around X axis (Y-up ↔ Z-up)
       if (typeof APP !== 'undefined' && APP.scene) {
-        APP.scene.traverse(function(obj) {
-          if (obj.isMesh) {
-            var p = obj.position;
-            var tmpY = p.y;
-            p.y = -p.z;
-            p.z = tmpY;
-          }
-        });
-        // Reframe camera to new orientation
-        if (APP.controls && APP.controls.target) {
-          var t = APP.controls.target;
-          var tmpT = t.y;
-          t.y = -t.z;
-          t.z = tmpT;
-        }
-        if (APP.camera) {
-          var c = APP.camera.position;
-          var tmpC = c.y;
-          c.y = -c.z;
-          c.z = tmpC;
-        }
-        console.log('[S230] §WIZARD_FLIP_3D scene rotated');
+        APP.scene.rotation.x += -Math.PI / 2;
+        APP.scene.updateMatrixWorld(true);
+        console.log('[S230] §WIZARD_FLIP_3D scene.rotation.x=' + APP.scene.rotation.x.toFixed(3));
       }
 
       // Re-analyse and rebuild steps from current position

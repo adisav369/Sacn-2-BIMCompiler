@@ -1012,10 +1012,6 @@ async function handleImportFile(file) {
               progressBar.style.background = '#44cc44';
               setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#4fc3f7'; progressBar.parentElement.style.display = 'none'; }, 3000);
               renderImportCards();
-              // S230: Auto-open viewer with wizard for merged mesh imports
-              if (fmt.route === 'mesh') {
-                openProject(targetKey);
-              }
               worker.terminate();
               return;
             }
@@ -1039,11 +1035,6 @@ async function handleImportFile(file) {
         setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#4fc3f7'; progressBar.parentElement.style.display = 'none'; }, 3000);
 
         renderImportCards();
-
-        // S230: Auto-open viewer with wizard for mesh imports
-        if (fmt.route === 'mesh') {
-          openProject(projectKey);
-        }
       } catch(dbErr) {
         status.textContent = 'DB error: ' + dbErr.message;
         progressBar.style.background = '#cc4444';
