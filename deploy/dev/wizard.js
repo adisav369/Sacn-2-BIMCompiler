@@ -332,7 +332,16 @@
       if (typeof APP !== 'undefined' && APP.scene) {
         APP.scene.rotation.x += -Math.PI / 2;
         APP.scene.updateMatrixWorld(true);
-        console.log('[S230] §WIZARD_FLIP_3D scene.rotation.x=' + APP.scene.rotation.x.toFixed(3));
+        // Reframe camera to fit the rotated model
+        var box = new THREE.Box3().setFromObject(APP.scene);
+        var center = box.getCenter(new THREE.Vector3());
+        var size = box.getSize(new THREE.Vector3());
+        var maxDim = Math.max(size.x, size.y, size.z);
+        var dist = maxDim * 1.5;
+        APP.camera.position.set(center.x + dist * 0.5, center.y + dist * 0.5, center.z + dist * 0.5);
+        APP.controls.target.copy(center);
+        APP.controls.update();
+        console.log('[S230] §WIZARD_FLIP_3D scene.rotation.x=' + APP.scene.rotation.x.toFixed(3) + ' dist=' + dist.toFixed(1));
       }
 
       // Re-analyse and rebuild steps from current position
