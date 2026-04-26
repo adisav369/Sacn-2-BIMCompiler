@@ -3426,6 +3426,13 @@ theoretical concerns but documented industry problems <a href="#ref1">[1]</a><a 
 <li><strong>Axis ambiguity</strong> — Z-up vs Y-up, rotation chains 6 levels deep, baked
   transforms. Geometric degradation of exports into CSG or faceted polyhedra
   remains widespread <a href="#ref5">[5]</a>. Resolved to a consistent coordinate system.</li>
+<li><strong>GUID identity</strong> — IFC elements carry GloballyUniqueId, but non-IFC formats
+  (OBJ, STL, DAE, GLB) have no element identity at all. The extraction pipeline
+  preserves IFC GUIDs through the entire compilation chain and generates
+  deterministic GUIDs for non-IFC objects, so every element — regardless of
+  source format — has a stable, traceable identity in the database. Without
+  this, diffing two versions, tracking changes, and round-tripping back to IFC
+  would be impossible.</li>
 </ul>
 <p>After extraction, every element is a row. Every spatial relationship is a
 foreign key. The building is SQL-queryable:</p>
@@ -3484,6 +3491,10 @@ into a new database of spatially placed 3D geometry. This is the <strong>output 
 BOM (abstracted)         →  what the architect MEANT
 OUTPUT DB (compiled)     →  the building, reproduced from intent
 </code></pre></div>
+<p>Every element in the Output DB carries its original GUID — whether that GUID
+came from an IFC file or was generated for a non-IFC import. This is what
+makes the round-trip work: the Output DB can export back to IFC with the
+same element identities the architect started with.</p>
 <p>The output DB is disposable. Delete it and recompile from the BOM + library.
 The same geometry reproduces exactly. A 200 MB IFC file becomes a 10 KB
 semantic definition that references a shared library.</p>
@@ -3537,14 +3548,24 @@ every downstream operation becomes a query on the same database:</p>
 </tr>
 </tbody>
 </table>
-<p><strong>4D/5D becomes tractable once the geometry is correct.</strong> IFC declares fields
-for quantities, costs, and schedules — though in practice authoring tools
-populate these inconsistently. The extraction pipeline normalises what is
-present and infers what is missing from the BOM structure. Once the geometry
-is spatially correct and the BOM is proven, scheduling is a topological sort,
-costing is a rollup, carbon is a sum. Not trivial — but reducible to SQL
-queries on a verified database, rather than separate systems with separate
-data <a href="#ref10">[10]</a>.</p>
+<p><strong>4D/5D becomes tractable once the geometry is correct — but GIGO applies.</strong>
+IFC declares fields for quantities, costs, and schedules — though in practice
+authoring tools populate these inconsistently. Worse: is an "IfcBeam" in one
+building the same product as an "IfcBeam" in another? IFC class names are
+categories, not products. A steel I-beam and a timber glulam beam are both
+IfcBeam. Without product classification, costing is garbage-in-garbage-out —
+you cannot price "beam," only "UB 254×146×31 Grade S355."</p>
+<p>This is an ERP problem, not a geometry problem. The compiler addresses it
+at two levels: <strong>M_Product_Category</strong> (iDempiere's hierarchical classification)
+maps IFC classes to swap pools of actual products with units of measure and
+prices. <strong>Rates templates</strong> (editable JSON, one per jurisdiction) let the QS
+override unit rates, labour costs, and equipment rates per project — because
+CIDB Malaysia rates are not RS Means US rates. The template is the user's
+domain knowledge; the compiler applies it consistently across the BOM.</p>
+<p>Once the geometry is spatially correct, the BOM is classified, and the rates
+are set, scheduling is a topological sort, costing is a rollup, carbon is a
+sum. Not trivial — but reducible to SQL queries on a verified database,
+rather than separate systems with separate data <a href="#ref10">[10]</a>.</p>
 <p><strong>The hard problem was always the spatial compilation</strong> — proving that a
 recipe can reproduce a real building's geometry. Everything downstream is
 a projection of the same verified BOM.</p>
