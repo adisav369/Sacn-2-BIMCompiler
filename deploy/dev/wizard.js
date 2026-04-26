@@ -328,20 +328,24 @@
       db.run("UPDATE element_transforms SET center_y = -center_z, center_z = center_y");
       console.log('[S229] §WIZARD_FLIP swapped Y↔Z in element_transforms');
 
-      // S230: Rotate the live 3D scene -90° around X axis (Y-up ↔ Z-up)
+      // S230: Toggle scene between 0 and -90° around X (Y-up ↔ Z-up)
       if (typeof APP !== 'undefined' && APP.scene) {
-        APP.scene.rotation.x += -Math.PI / 2;
+        // Save initial camera on first flip
+        if (!wizState._savedCam) {
+          wizState._savedCam = {
+            pos: APP.camera.position.clone(),
+            target: APP.controls.target.clone(),
+          };
+        }
+        // Toggle — not accumulate
+        var flipped = Math.abs(APP.scene.rotation.x + Math.PI / 2) < 0.01;
+        APP.scene.rotation.x = flipped ? 0 : -Math.PI / 2;
         APP.scene.updateMatrixWorld(true);
-        // Reframe camera to fit the rotated model
-        var box = new THREE.Box3().setFromObject(APP.scene);
-        var center = box.getCenter(new THREE.Vector3());
-        var size = box.getSize(new THREE.Vector3());
-        var maxDim = Math.max(size.x, size.y, size.z);
-        var dist = maxDim * 1.5;
-        APP.camera.position.set(center.x + dist * 0.5, center.y + dist * 0.5, center.z + dist * 0.5);
-        APP.controls.target.copy(center);
+        // Restore camera to pre-flip position
+        APP.camera.position.copy(wizState._savedCam.pos);
+        APP.controls.target.copy(wizState._savedCam.target);
         APP.controls.update();
-        console.log('[S230] §WIZARD_FLIP_3D scene.rotation.x=' + APP.scene.rotation.x.toFixed(3) + ' dist=' + dist.toFixed(1));
+        console.log('[S230] §WIZARD_FLIP_3D rotation.x=' + APP.scene.rotation.x.toFixed(3) + ' flipped=' + !flipped);
       }
 
       // Re-analyse and rebuild steps from current position
