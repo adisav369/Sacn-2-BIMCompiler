@@ -3384,13 +3384,13 @@
 
 <hr />
 <h2 id="the-core-problem-from-geometry-to-intent-and-back">The Core Problem: From Geometry to Intent and Back<a class="headerlink" href="#the-core-problem-from-geometry-to-intent-and-back" title="Permanent link">&para;</a></h2>
-<p>Every BIM tool stores <strong>geometry as the source of truth</strong>. An IFC file IS
-the building — 51,000+ elements of geometry, relationships, properties, all
-in one monolithic file. Lose the IFC, lose the building.</p>
-<p>But geometry is not intent. A 200 MB IFC file says <em>what was drawn</em>. It does
-not say <em>what was meant</em>. You cannot ask it "give me a building like this one
-but with 4m ceilings" because the intent — the recipe — was never separated
-from the output.</p>
+<p>As far as I can tell, most BIM tools store <strong>geometry as the source of truth</strong>.
+An IFC file carries the building — 51,000+ elements of geometry, relationships,
+properties, all in one monolithic file. Lose the IFC, lose the building.</p>
+<p>But geometry — at least in the files I've worked with — is not intent. A
+200 MB IFC file captures <em>what was drawn</em>. What was meant — the recipe — stays
+in the architect's head. You cannot ask it "give me a building like this one
+but with 4m ceilings" because the intent was never separated from the output.</p>
 <h3 id="why-nobody-has-solved-this">Why Nobody Has Solved This<a class="headerlink" href="#why-nobody-has-solved-this" title="Permanent link">&para;</a></h3>
 <p><strong>Autodesk solved it — inside a proprietary wall.</strong> Revit's native .rvt format
 maintains full spatial fidelity internally. But .rvt is editable only in Revit,
