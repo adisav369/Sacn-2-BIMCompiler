@@ -2389,10 +2389,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#scorecard" class="md-nav__link">
+  <a href="#who-uses-this" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Scorecard
+        Who Uses This
       
     </span>
   </a>
@@ -3324,10 +3324,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#scorecard" class="md-nav__link">
+  <a href="#who-uses-this" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Scorecard
+        Who Uses This
       
     </span>
   </a>
@@ -3537,10 +3537,14 @@ every downstream operation becomes a query on the same database:</p>
 </tr>
 </tbody>
 </table>
-<p><strong>4D/5D is not the hard problem.</strong> IFC already carries material properties,
-quantities, and cost values. Once the geometry is spatially correct and the
-BOM is proven, scheduling is a sort, costing is a rollup, carbon is a sum.
-These are SQL queries, not separate systems.</p>
+<p><strong>4D/5D becomes tractable once the geometry is correct.</strong> IFC declares fields
+for quantities, costs, and schedules — though in practice authoring tools
+populate these inconsistently. The extraction pipeline normalises what is
+present and infers what is missing from the BOM structure. Once the geometry
+is spatially correct and the BOM is proven, scheduling is a topological sort,
+costing is a rollup, carbon is a sum. Not trivial — but reducible to SQL
+queries on a verified database, rather than separate systems with separate
+data <a href="#ref10">[10]</a>.</p>
 <p><strong>The hard problem was always the spatial compilation</strong> — proving that a
 recipe can reproduce a real building's geometry. Everything downstream is
 a projection of the same verified BOM.</p>
@@ -3669,97 +3673,48 @@ Adding spatial compilation to a GUI-first tool takes years.</p>
 └─────────────────────────────────────────────────────────┘
 </code></pre></div>
 <hr />
-<h2 id="scorecard">Scorecard<a class="headerlink" href="#scorecard" title="Permanent link">&para;</a></h2>
-<p><strong>Numeric scoring (0-3): 0=absent, 1=partial/plugin, 2=built-in, 3=native/core</strong></p>
+<h2 id="who-uses-this">Who Uses This<a class="headerlink" href="#who-uses-this" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Tool</th>
-<th>IFC</th>
-<th>3D</th>
-<th>4D</th>
-<th>5D</th>
-<th>6D</th>
-<th>7D</th>
-<th>BOM</th>
-<th>ERP</th>
-<th>Proof</th>
-<th>Inference</th>
-<th>WF-UX</th>
-<th>CR/Audit</th>
-<th><strong>Total /36</strong></th>
+<th>Role</th>
+<th>Workflow</th>
+<th>What they get</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Revit</td>
-<td>2</td>
-<td>3</td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td><strong>9</strong></td>
+<td><strong>Quantity Surveyor</strong></td>
+<td>Drop IFC on browser → BOQ charts + Variation Order Excel</td>
+<td>Automated takeoff with FIDIC Clause 12 costing, no Navisworks</td>
 </tr>
 <tr>
-<td>ArchiCAD</td>
-<td>2</td>
-<td>3</td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td><strong>9</strong></td>
+<td><strong>Contractor (tender)</strong></td>
+<td>Import architect's IFC → view + classify + export costed BOM</td>
+<td>Material quantities tied to verified geometry, not manual counts</td>
 </tr>
 <tr>
-<td>Bonsai</td>
-<td>3</td>
-<td>3</td>
-<td>0</td>
-<td>1</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td><strong>7</strong></td>
+<td><strong>Project Manager</strong></td>
+<td>Import two IFC revisions → diff overlay + cost impact</td>
+<td>Change detection with 4D/5D variance in one click</td>
 </tr>
 <tr>
-<td><strong>BIM Compiler</strong></td>
-<td><strong>3</strong></td>
-<td><strong>3</strong></td>
-<td><strong>2</strong></td>
-<td><strong>3</strong></td>
-<td><strong>2</strong></td>
-<td><strong>2</strong></td>
-<td><strong>3</strong></td>
-<td><strong>3</strong></td>
-<td><strong>3</strong></td>
-<td><strong>3</strong></td>
-<td><strong>2</strong></td>
-<td><strong>2</strong></td>
-<td><strong>31</strong></td>
+<td><strong>BIM Coordinator</strong></td>
+<td>Merge multi-discipline models → check spatial consistency</td>
+<td>Geometry hell resolved at import, not discovered at coordination</td>
+</tr>
+<tr>
+<td><strong>Facility Manager</strong></td>
+<td>Query the compiled DB for asset register</td>
+<td>Every element traceable by GUID, storey, discipline, material</td>
+</tr>
+<tr>
+<td><strong>Developer / Investor</strong></td>
+<td>Browse a building in browser, no software install</td>
+<td>Share a URL — stakeholder sees the model immediately</td>
 </tr>
 </tbody>
 </table>
-<p>The gap is categorical. Incumbents score 9/36 because they solve design.
-The compiler scores 31/36 because spatial compilation makes 4D–7D a
-projection of the same verified database.</p>
 <hr />
 <h2 id="get-involved">Get Involved<a class="headerlink" href="#get-involved" title="Permanent link">&para;</a></h2>
 <p>The project is open source (GPLv3) and actively developed. Roadmap and
@@ -3787,6 +3742,7 @@ product catalogs, jurisdiction rules, format importers, and test buildings.</p>
 <p><span id="ref7">[7]</span> Moult, D. "How to create better IFC files with Revit." thinkmoult.com. — Documents that "even when you manage to export your geometry through IFC, there's always loss of data" and "importing that into Revit makes it utterly useless." <a href="https://thinkmoult.com/how-to-create-better-ifc-files-with-revit.html">thinkmoult</a></p>
 <p><span id="ref8">[8]</span> Bonsai BIM. "Beautiful, detailed, and data-rich OpenBIM." — Bonsai is IFC-native: "you're not creating geometry that gets converted to IFC later. You're working directly in IFC." <a href="https://bonsaibim.org/">bonsaibim.org</a></p>
 <p><span id="ref9">[9]</span> OSArch Community. "How to import IFC with large coordinates?" — Documents floating-point precision limits with georeferenced files requiring local origin offsets, and that "horizontal construction where distances frequently exceed 1km presents challenges." <a href="https://community.osarch.org/discussion/1099/blenderbim-how-to-import-ifc-with-large-coordinates">OSArch</a></p>
+<p><span id="ref10">[10]</span> Oon, R.D. "BIM OOTB — Browser Variation Order from IFC Import." 2026. — Demonstrates the browser-based workflow: IFC import, revision diff, 4D/5D variance detection, and costed Variation Order Excel export — entirely in the browser with zero install. <a href="https://youtu.be/hv0kcc_TKvY">YouTube</a></p>
 
 
 
