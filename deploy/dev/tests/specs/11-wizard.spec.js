@@ -94,4 +94,64 @@ test.describe('S229 Classification Wizard', () => {
     console.log('§PW_WIZARD_CSS injected=true');
   });
 
+  test('11.4 Wizard panel appears in viewer with ?wizard=1', async ({ page }) => {
+    const logs = new ConsoleLogs(page);
+
+    // Load viewer with wizard param and a real DB
+    const dbPath = '/buildings/Duplex_extracted.db';
+    const viewerUrl = `/sandbox/index.html?db=${dbPath}&lib=${dbPath}&wizard=1&wizardKey=test_duplex`;
+
+    // Track console for wizard lifecycle logs
+    const wizardLogs = [];
+    page.on('console', msg => {
+      const text = msg.text();
+      if (text.includes('WIZARD') || text.includes('wizard')) {
+        wizardLogs.push(text);
+      }
+    });
+
+    await page.goto(viewerUrl);
+
+    // Wait for wizard panel to appear (wizard loads after APP.init resolves)
+    try {
+      await page.waitForSelector('#wizard-panel', { timeout: 30000 });
+    } catch(e) {
+      console.log('§PW_WIZARD_VIEWER wizard_logs:', wizardLogs.join(' | '));
+      throw e;
+    }
+
+    // Verify panel is visible and has content
+    const panelInfo = await page.evaluate(() => {
+      const panel = document.getElementById('wizard-panel');
+      if (!panel) return { exists: false };
+      return {
+        exists: true,
+        question: panel.querySelector('#wizard-question')?.textContent || '',
+        evidence: panel.querySelector('#wizard-evidence')?.textContent || '',
+        hasDots: panel.querySelectorAll('#wizard-progress .dot').length,
+        hasButtons: panel.querySelectorAll('#wizard-buttons button').length,
+      };
+    });
+
+    console.log(`§PW_WIZARD_VIEWER exists=${panelInfo.exists} question="${panelInfo.question}" dots=${panelInfo.hasDots} buttons=${panelInfo.hasButtons}`);
+    console.log(`  wizard_logs: ${wizardLogs.join(' | ')}`);
+
+    expect(panelInfo.exists).toBe(true);
+    expect(panelInfo.question).toContain('upright');  // Step 0: orientation
+    expect(panelInfo.hasDots).toBeGreaterThanOrEqual(2);
+    expect(panelInfo.hasButtons).toBeGreaterThanOrEqual(2);
+
+    // Click "Yes" on orientation and verify step advances
+    await page.click('.wizard-yes');
+    await page.waitForTimeout(300);
+
+    const step1 = await page.evaluate(() => {
+      const q = document.getElementById('wizard-question');
+      return q ? q.textContent : '';
+    });
+
+    console.log(`§PW_WIZARD_VIEWER_STEP1 question="${step1}"`);
+    expect(step1).not.toContain('upright');
+  });
+
 });

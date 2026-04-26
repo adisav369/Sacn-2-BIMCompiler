@@ -52,7 +52,7 @@ async function buildTestDb() {
   var SQL = await initSqlJs({ locateFile: function(f) { return 'https://sql.js.org/dist/' + f; } });
   var db = new SQL.Database();
 
-  db.run("CREATE TABLE elements_meta (guid TEXT PRIMARY KEY, ifc_class TEXT, name TEXT, storey TEXT, discipline TEXT, material TEXT)");
+  db.run("CREATE TABLE elements_meta (guid TEXT PRIMARY KEY, ifc_class TEXT, element_name TEXT, storey TEXT, discipline TEXT, material_name TEXT, material_rgba TEXT, building TEXT)");
   db.run("CREATE TABLE element_transforms (guid TEXT PRIMARY KEY, center_x REAL, center_y REAL, center_z REAL, rot_x REAL, rot_y REAL, rot_z REAL)");
   db.run("CREATE TABLE element_instances (guid TEXT, geometry_hash TEXT)");
   db.run("CREATE TABLE component_geometries (geometry_hash TEXT PRIMARY KEY, vertices BLOB, indices BLOB)");
@@ -81,8 +81,8 @@ async function buildTestDb() {
 
   for (var i = 0; i < elements.length; i++) {
     var el = elements[i];
-    db.run("INSERT INTO elements_meta VALUES (?,?,?,?,?,?)",
-      [el.guid, el.cls, el.name, el.storey, el.disc, '0.7,0.7,0.7,1.0']);
+    db.run("INSERT INTO elements_meta VALUES (?,?,?,?,?,?,?,?)",
+      [el.guid, el.cls, el.name, el.storey, el.disc, null, '0.7,0.7,0.7,1.0', 'TestBuilding']);
     db.run("INSERT INTO element_transforms VALUES (?,?,?,?,?,?,?)",
       [el.guid, 5.0, 10.0, el.z, 0, 0, 0]);
     db.run("INSERT INTO element_instances VALUES (?,?)", [el.guid, el.hash]);

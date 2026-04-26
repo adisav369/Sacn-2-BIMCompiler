@@ -115,7 +115,7 @@
         var hash = r[0].values[i][0];
         var cnt = r[0].values[i][1];
         // Get representative element name and class
-        var r2 = db.exec("SELECT em.name, em.ifc_class, em.material FROM elements_meta em JOIN element_instances ei ON em.guid = ei.guid WHERE ei.geometry_hash = '" + hash + "' LIMIT 1");
+        var r2 = db.exec("SELECT em.element_name, em.ifc_class, em.material_rgba FROM elements_meta em JOIN element_instances ei ON em.guid = ei.guid WHERE ei.geometry_hash = '" + hash + "' LIMIT 1");
         if (r2.length && r2[0].values.length) {
           analysis.repeats.push({
             hash: hash,
@@ -130,7 +130,7 @@
 
     // Material groups (for material inference)
     analysis.materialGroups = [];
-    r = db.exec("SELECT material, ifc_class, COUNT(*) as cnt FROM elements_meta WHERE material IS NOT NULL AND material != '' GROUP BY material ORDER BY cnt DESC LIMIT 10");
+    r = db.exec("SELECT material_rgba, ifc_class, COUNT(*) as cnt FROM elements_meta WHERE material_rgba IS NOT NULL AND material_rgba != '' GROUP BY material_rgba ORDER BY cnt DESC LIMIT 10");
     if (r.length) {
       for (var i = 0; i < r[0].values.length; i++) {
         analysis.materialGroups.push({
@@ -143,7 +143,7 @@
 
     // Unclassified element names
     analysis.proxyNames = [];
-    r = db.exec("SELECT name, COUNT(*) as cnt FROM elements_meta WHERE ifc_class = 'IfcBuildingElementProxy' GROUP BY name ORDER BY cnt DESC LIMIT 20");
+    r = db.exec("SELECT element_name, COUNT(*) as cnt FROM elements_meta WHERE ifc_class = 'IfcBuildingElementProxy' GROUP BY element_name ORDER BY cnt DESC LIMIT 20");
     if (r.length) {
       analysis.proxyNames = r[0].values.map(function(v) { return { name: v[0], count: v[1] }; });
     }
@@ -400,12 +400,11 @@
     console.log('[S229] §WIZARD_COMPLETE steps=' + wizState.steps.length +
       ' project=' + wizState.projectKey);
 
-    // Update the project record in IndexedDB
+    // Update the project record in IndexedDB (landing context)
     if (wizState.projectKey && typeof getProject === 'function') {
       getProject(wizState.projectKey).then(function(record) {
         if (record && record.versions) {
           record.versions[record.latestVersion].db = dbBuf;
-          // Update meta with potentially modified analysis
           var finalAnalysis = analyseDb(wizState.db);
           record.meta.disciplines = finalAnalysis.disciplines;
           record.meta.storeys = finalAnalysis.storeys;
@@ -415,6 +414,51 @@
           });
         }
       });
+    }
+
+    // S230: Update viewer cache DB (viewer context — no getProject available)
+    if (wizState.projectKey && typeof getProject !== 'function') {
+      try {
+        var cacheReq = indexedDB.open('bim_ootb_cache', 1);
+        cacheReq.onsuccess = function() {
+          var cacheDb = cacheReq.result;
+          var tx = cacheDb.transaction('dbs', 'readwrite');
+          // Update both db and lib cache keys (same buffer for imports)
+          var dbKey = 'import://' + wizState.projectKey + '/v0';
+          tx.objectStore('dbs').put(dbBuf, dbKey);
+          tx.oncomplete = function() {
+            console.log('[S230] §WIZARD_CACHE_SAVED key=' + dbKey + ' size=' + (dbBuf.byteLength/1024).toFixed(0) + 'KB');
+          };
+        };
+        cacheReq.onerror = function() {
+          console.log('[S230] §WIZARD_CACHE_ERROR could not open bim_ootb_cache');
+        };
+      } catch(e) {
+        console.log('[S230] §WIZARD_CACHE_ERROR ' + e.message);
+      }
+
+      // Also update the import DB (bim_ootb_imports) if accessible
+      try {
+        var importReq = indexedDB.open('bim_ootb_imports', 2);
+        importReq.onsuccess = function() {
+          var importDb = importReq.result;
+          if (!importDb.objectStoreNames.contains('buildings')) return;
+          var tx2 = importDb.transaction('buildings', 'readwrite');
+          var store = tx2.objectStore('buildings');
+          var getReq = store.get(wizState.projectKey);
+          getReq.onsuccess = function() {
+            var record = getReq.result;
+            if (record && record.versions) {
+              record.versions[record.latestVersion || 0].db = dbBuf;
+              var finalAnalysis = analyseDb(wizState.db);
+              record.meta.disciplines = finalAnalysis.disciplines;
+              record.meta.storeys = finalAnalysis.storeys;
+              store.put(record, wizState.projectKey);
+              console.log('[S230] §WIZARD_IMPORT_SAVED key=' + wizState.projectKey);
+            }
+          };
+        };
+      } catch(e) {}
     }
 
     // Dismiss panel

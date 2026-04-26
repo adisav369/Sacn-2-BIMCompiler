@@ -308,7 +308,7 @@
 </div>
 
 <script src="sandbox/import_db_builder.js"></script>
-<script src="dev/wizard.js"></script>
+<!-- wizard.js now loads in viewer via ?wizard=1 param (S230) -->
 <script>
 // ── Config ──
 const _ociMatch = location.href.match(/(https:\/\/objectstorage\.[^/]+\/n\/[^/]+\/b\/[^/]+\/o\/)/);
@@ -696,7 +696,8 @@ async function deleteProject(key) {
 }
 
 // Open latest version of a project in viewer
-async function openProject(key, btnEl) {
+// opts: { wizard: true } to launch classification wizard in viewer
+async function openProject(key, btnEl, opts) {
   if (btnEl) { btnEl.textContent = 'Opening...'; btnEl.disabled = true; }
   const record = await getProject(key);
   if (!record || !record.versions.length) {
@@ -733,8 +734,14 @@ async function openProject(key, btnEl) {
     console.log('[S225] §OPEN_DIFF key=' + key + ' base=v0 diff=v' + record.latestVersion);
   }
 
+  // S230: Add wizard param for mesh imports
+  var wizardParam = '';
+  var isMesh = record.meta && record.meta.sourceFormat && record.meta.sourceFormat !== '.ifc';
+  if ((opts && opts.wizard) || isMesh) {
+    wizardParam = '&wizard=1&wizardKey=' + encodeURIComponent(key);
+  }
   const viewerUrl = (_base || '') + 'sandbox/index.html?db=' +
-    encodeURIComponent(dbUrl) + '&lib=' + encodeURIComponent(libUrl) + diffParam;
+    encodeURIComponent(dbUrl) + '&lib=' + encodeURIComponent(libUrl) + diffParam + wizardParam;
   const win = window.open(viewerUrl, '_blank');
   trackTab(record.meta.name || key, '3D', win);
   if (btnEl) { btnEl.textContent = 'Open'; btnEl.disabled = false; }
@@ -1005,9 +1012,9 @@ async function handleImportFile(file) {
               progressBar.style.background = '#44cc44';
               setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#4fc3f7'; progressBar.parentElement.style.display = 'none'; }, 3000);
               renderImportCards();
-              // S229: Wizard for merged mesh imports
-              if (fmt.route === 'mesh' && typeof startWizard === 'function') {
-                startWizard(targetKey, dbBuf, msg.meta, function() { renderImportCards(); });
+              // S230: Auto-open viewer with wizard for merged mesh imports
+              if (fmt.route === 'mesh') {
+                openProject(targetKey);
               }
               worker.terminate();
               return;
@@ -1033,11 +1040,9 @@ async function handleImportFile(file) {
 
         renderImportCards();
 
-        // S229: Launch wizard for mesh imports (not IFC — IFC already has real classes)
-        if (fmt.route === 'mesh' && typeof startWizard === 'function') {
-          startWizard(projectKey, dbBuf, msg.meta, function() {
-            renderImportCards();  // refresh cards after wizard modifies DB
-          });
+        // S230: Auto-open viewer with wizard for mesh imports
+        if (fmt.route === 'mesh') {
+          openProject(projectKey);
         }
       } catch(dbErr) {
         status.textContent = 'DB error: ' + dbErr.message;
