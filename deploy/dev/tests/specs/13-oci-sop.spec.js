@@ -167,9 +167,89 @@ test.describe('OCI Deploy SOP', () => {
 
     console.log(`§PW_OCI_WORKER_DEPS missing=${missing.length}`);
     if (missing.length > 0) {
+
       console.log(`  MISSING: ${missing.join(', ')}`);
     }
     expect(missing).toEqual([]);
+  });
+
+  // ── Live OCI smoke tests ──
+  // Run with: TARGET=oci npx playwright test specs/13-oci-sop.spec.js --project=desktop
+  // Skip with: npx playwright test (default — TARGET not set → skips OCI tests)
+  const OCI_BASE = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/';
+  const TARGET = process.env.TARGET || 'local';
+  const ociTest = TARGET === 'oci' ? test : test.skip;
+
+  ociTest('13.5 OCI DEV landing loads without script 404s', async ({ page }) => {
+    const failed = [];
+    page.on('response', response => {
+      const url = response.url();
+      if (url.includes('bim-ootb-dev') && response.status() >= 400) {
+        failed.push({ file: url.split('/o/').pop(), status: response.status() });
+      }
+    });
+
+    await page.goto(OCI_BASE + 'index.html', { timeout: 30000 });
+    // Wait for scripts to load
+    await page.waitForTimeout(3000);
+
+    console.log(`§PW_OCI_LIVE_LANDING failedOci=${failed.length}`);
+    if (failed.length > 0) {
+      for (const f of failed) console.log(`  404: ${f.file} (${f.status})`);
+    }
+    expect(failed.length).toBe(0);
+  });
+
+  ociTest('13.6 OCI DEV viewer loads with wizard param', async ({ page }) => {
+    const failed = [];
+    const consoleLogs = [];
+    page.on('response', response => {
+      const url = response.url();
+      if (url.includes('bim-ootb-dev') && response.status() >= 400 && !url.includes('manifest')) {
+        failed.push({ file: url.split('/o/').pop(), status: response.status() });
+      }
+    });
+    page.on('console', msg => {
+      const text = msg.text();
+      if (text.includes('WIZARD') || text.includes('§')) consoleLogs.push(text);
+    });
+
+    // Use Duplex DB from the full bucket (always available)
+    const fullBase = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/buildings/';
+    const db = fullBase + 'Duplex_extracted.db';
+    const lib = fullBase + 'Duplex_library.db';
+    const viewerUrl = OCI_BASE + 'sandbox/index.html?db=' + encodeURIComponent(db) +
+      '&lib=' + encodeURIComponent(lib) + '&wizard=1&wizardKey=oci_test';
+
+    await page.goto(viewerUrl, { timeout: 60000 });
+
+    // Wait for wizard panel (DB must load first, then wizard.js, then analyse)
+    try {
+      await page.waitForSelector('#wizard-panel', { timeout: 60000 });
+    } catch(e) {
+      console.log(`§PW_OCI_LIVE_WIZARD TIMEOUT — panel not found`);
+      console.log(`  404s: ${failed.map(f => f.file).join(', ') || 'none'}`);
+      console.log(`  logs: ${consoleLogs.slice(-10).join(' | ')}`);
+      throw e;
+    }
+
+    const panelInfo = await page.evaluate(() => {
+      const panel = document.getElementById('wizard-panel');
+      if (!panel) return { exists: false };
+      return {
+        exists: true,
+        question: panel.querySelector('#wizard-question')?.textContent || '',
+        dots: panel.querySelectorAll('#wizard-progress .dot').length,
+      };
+    });
+
+    console.log(`§PW_OCI_LIVE_WIZARD exists=${panelInfo.exists} question="${panelInfo.question}" dots=${panelInfo.dots}`);
+    console.log(`  404s: ${failed.map(f => f.file).join(', ') || 'none'}`);
+    console.log(`  logs: ${consoleLogs.filter(l => l.includes('WIZARD')).join(' | ')}`);
+
+    expect(panelInfo.exists).toBe(true);
+    expect(panelInfo.question).toContain('upright');
+    expect(panelInfo.dots).toBeGreaterThanOrEqual(2);
   });
 
 });
