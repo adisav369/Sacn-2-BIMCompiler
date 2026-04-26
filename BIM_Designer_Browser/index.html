@@ -1431,6 +1431,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#phase-2c-drop-zone-multi-format-wizard-ifc-export-s228s229-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2c: Drop Zone Multi-Format + Wizard + IFC Export (S228/S229 — DONE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#phase-3-analysis-nd-engine-in-the-browser" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3724,6 +3735,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#phase-2c-drop-zone-multi-format-wizard-ifc-export-s228s229-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2c: Drop Zone Multi-Format + Wizard + IFC Export (S228/S229 — DONE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#phase-3-analysis-nd-engine-in-the-browser" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4259,9 +4281,9 @@
 <div class="bim-banner">
 <p><b>BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.</b> One HTML file. Two SQLite DBs. Zero server. 126K elements streaming in your browser — no install, no conversion, no vendor lock-in. The DB IS the application.</p>
 </div>
-<p><strong>Version:</strong> 0.2 (2026-04-22)
-<strong>Status:</strong> LIVE — modular sandbox viewer (S209 refactor)
-<strong>Depends on:</strong> <code>deploy/sandbox/index.html</code> + 15 JS modules, per-building DBs in <code>deploy/buildings/</code></p>
+<p><strong>Version:</strong> 0.3 (2026-04-26)
+<strong>Status:</strong> LIVE — browser BIM Designer with multi-format import, IFC export, guided wizard
+<strong>Depends on:</strong> <code>deploy/sandbox/index.html</code> + JS modules, per-building DBs in <code>deploy/buildings/</code></p>
 <figure style="margin: 20px 0;">
 <img src="../assets/images/OOTB.png" alt="BIM OOTB — Browser-native BIM viewer" style="width:100%; border:1px solid #ccc;"/>
 <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">BIM OOTB — 126K elements streaming in the browser. No install, no server, no conversion.</figcaption>
@@ -4603,6 +4625,18 @@ buildings with consistent geometry and materials — contact the creator at
 <a href="mailto:red1org@gmail.com">red1org@gmail.com</a> for consultation on shared library architecture
 and deployment.</p>
 </blockquote>
+<h3 id="phase-2c-drop-zone-multi-format-wizard-ifc-export-s228s229-done">Phase 2c: Drop Zone Multi-Format + Wizard + IFC Export (S228/S229 — DONE)<a class="headerlink" href="#phase-2c-drop-zone-multi-format-wizard-ifc-export-s228s229-done" title="Permanent link">&para;</a></h3>
+<p>Any 3D file becomes a BIM model. Zero IFC knowledge required.</p>
+<ul>
+<li>[x] <strong>Drop Zone multi-format</strong> — OBJ, STL, DAE (ColladaLoader), GLB/GLTF (GLTFLoader), FBX (FBXLoader+fflate), 3DS (TDSLoader). Auto-detect up-axis (Y-up vs Z-up) + auto-scale (mm→m)</li>
+<li>[x] <strong>Mesh import worker</strong> — <code>mesh_import_worker.js</code>: format router, scene graph traversal, material extraction, triangle mesh → BLOB pipeline</li>
+<li>[x] <strong>Semantic enrichment</strong> — <code>semantic_enrichment.js</code> + <code>scene_to_db.js</code>: classify meshes into IFC types, assign storeys, disciplines, materials</li>
+<li>[x] <strong>Guided classification wizard</strong> — <code>wizard.js</code>: 6-step amber panel flow. Non-IFC users classify imported meshes into BIM categories (IfcWall, IfcDoor, etc.)</li>
+<li>[x] <strong>IFC export</strong> — <code>ifc_export_worker.js</code>: DB → .ifc download. Pure STEP text builder (no web-ifc dependency). Export triangle on import cards, flyout chooser (IFC/SQLite). Round-trip: import OBJ → classify → export IFC</li>
+<li>[x] <strong>IFC export test</strong> — <code>test/test_ifc_export.html</code>: 30 PASS</li>
+<li>[x] <strong>Playwright E2E</strong> — 72/72 desktop, 10 spec files covering all features</li>
+</ul>
+<p>SRS: <a href="../internal/DROP_ZONE_MULTI_FORMAT_SRS.md"><code>internal/DROP_ZONE_MULTI_FORMAT_SRS.md</code></a></p>
 <h3 id="phase-3-analysis-nd-engine-in-the-browser">Phase 3: Analysis — nD Engine in the Browser<a class="headerlink" href="#phase-3-analysis-nd-engine-in-the-browser" title="Permanent link">&para;</a></h3>
 <p>Query-driven overlays — same DB, richer SQL. The <strong>nD engine</strong> (<a href="../4D5DAnalysis/">4D5DAnalysis.md</a>)
 already produces 4D-8D tables from JSON templates + <code>elements_meta</code>. Phase 3 ports this

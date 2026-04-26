@@ -1221,6 +1221,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#browser-e2e-tests-playwright" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Browser E2E Tests (Playwright)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Summary
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3549,6 +3571,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#browser-e2e-tests-playwright" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Browser E2E Tests (Playwright)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Summary
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4476,85 +4520,98 @@ bcd2af85  rosetta_fidelity.sh
 39839729  pre-commit
 </code></pre></div>
 <h3 id="rosetta-stone-coverage">Rosetta Stone Coverage<a class="headerlink" href="#rosetta-stone-coverage" title="Permanent link">&para;</a></h3>
-<p><strong>Gate:</strong> <code>./scripts/run_RosettaStones.sh</code> — 19/34 ALL GREEN.</p>
+<p><strong>Gate:</strong> <code>./scripts/run_RosettaStones.sh</code> — S190 fleet: 21 buildings, 116/157 PASS, 4 ALL GREEN (BR, MO, RL, WI). 9-gate system.</p>
 <table>
 <thead>
 <tr>
-<th>Gate</th>
-<th>SH</th>
-<th>FK</th>
-<th>IN</th>
-<th>DX</th>
-<th>TE †</th>
-<th>DM</th>
+<th>PFX</th>
+<th>EL</th>
+<th>GATES</th>
+<th>Notes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>G1-COUNT</td>
-<td>PASS (58+24)</td>
-<td>PASS (82)</td>
-<td>PASS (699)</td>
-<td>PASS (215+114)</td>
-<td>PASS† (48428)</td>
-<td>PASS (60)</td>
+<td>BR</td>
+<td>33</td>
+<td>9/9</td>
+<td>ALL GREEN</td>
 </tr>
 <tr>
-<td>G2-VOLUME</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS†</td>
-<td>—</td>
+<td>MO</td>
+<td>2791</td>
+<td>9/9</td>
+<td>ALL GREEN</td>
 </tr>
 <tr>
-<td>G3-DIGEST</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS†</td>
-<td>— (GENERATIVE)</td>
+<td>RL</td>
+<td>1</td>
+<td>9/9</td>
+<td>ALL GREEN</td>
 </tr>
 <tr>
-<td>G4-TAMPER</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS</td>
+<td>WI</td>
+<td>1</td>
+<td>9/9</td>
+<td>ALL GREEN</td>
 </tr>
 <tr>
-<td>G5-PROVENANCE</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS†</td>
-<td>PASS</td>
+<td>DX</td>
+<td>1169</td>
+<td>8/9</td>
+<td>MetadataMissing (IfcOpeningElement)</td>
 </tr>
 <tr>
-<td>G6-ISOLATION</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS</td>
-<td>PASS†</td>
-<td>PASS</td>
+<td>SH</td>
+<td>65</td>
+<td>8/9</td>
+<td>MetadataMissing (generative MEP)</td>
+</tr>
+<tr>
+<td>TE</td>
+<td>33848</td>
+<td>2/4</td>
+<td>Extraction reconciliation</td>
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p><strong>†TE: extraction-only, not BOM-compiled.</strong> IFCtoBOM QA blocked: 471/1515
-tack overflows (W-TACK-1), 14/50 SET BOMs unbalanced (W-BUFFER-1). TE_BOM.db
-empty → BomDrop never runs → c_order=0, c_orderline=0 in output. Gates pass
-because output DB IS the federation extraction (same as reference). SH/FK/DM
-are real BOM compilations. See <code>logs/pipeline_Terminal_ifctobom_*.log</code>.</p>
-</blockquote>
-<p><strong>Remaining debt:</strong> G5 GEO_ (RA/JE/ES), C9 axis swaps (JE/HI/SC) — position-based matching implemented for RM (W-RM-C9); JE/HI/SC still WARN (different root cause). TE BOM compilation (IFCtoBOM tack fix).</p>
-<p><em>See <a href="../StrategicIndustryPositioning/">StrategicIndustryPositioning.md</a> — the G1-G6 gates are a key differentiator in the competitive scorecard.</em></p>
+<h3 id="browser-e2e-tests-playwright">Browser E2E Tests (Playwright)<a class="headerlink" href="#browser-e2e-tests-playwright" title="Permanent link">&para;</a></h3>
+<p>72/72 desktop specs, 10 spec files. Tests the BIM OOTB browser viewer:
+import, viewer load, walk/sitecam, cinematic tour, BOQ charts, mobile UX,
+mesh import, IFC export, wizard. Suite in <code>deploy/dev/tests/</code>.</p>
+<h3 id="test-summary">Test Summary<a class="headerlink" href="#test-summary" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Suite</th>
+<th>Count</th>
+<th>Runner</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Playwright (browser E2E)</td>
+<td>72/72</td>
+<td><code>npx playwright test</code></td>
+</tr>
+<tr>
+<td>BonsaiBIMDesigner (Java)</td>
+<td>408/414</td>
+<td><code>mvn test</code> (needs component_library.db)</td>
+</tr>
+<tr>
+<td>BIMBackOffice (Java)</td>
+<td>20/20</td>
+<td><code>mvn test</code></td>
+</tr>
+<tr>
+<td>Rosetta Stone fleet</td>
+<td>116/157 gates PASS</td>
+<td><code>./scripts/run_RosettaStones.sh</code></td>
+</tr>
+</tbody>
+</table>
+<p><em>See <a href="../StrategicIndustryPositioning/">StrategicIndustryPositioning.md</a> — the gates are a key differentiator in the competitive scorecard.</em></p>
 
 
 

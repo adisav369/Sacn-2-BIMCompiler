@@ -2139,17 +2139,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#s210-template-forex-quick-win" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        S210 — Template + Forex (quick win)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#s211-nlp-query-dsl-harden-browser-port-voice" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2293,10 +2282,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#s220-browser-ifc-import-self-service-onboarding" class="md-nav__link">
+  <a href="#s220-browser-ifc-import-self-service-onboarding-shipped" class="md-nav__link">
     <span class="md-ellipsis">
       
-        S220 — Browser IFC Import (self-service onboarding)
+        S220 — Browser IFC Import (self-service onboarding) ✓ SHIPPED
       
     </span>
   </a>
@@ -2381,10 +2370,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#s228-cobie-ifc-export-from-merged-db" class="md-nav__link">
+  <a href="#s228-drop-zone-multi-format-import-shipped" class="md-nav__link">
     <span class="md-ellipsis">
       
-        S228 — COBie / IFC Export from Merged DB
+        S228 — Drop Zone Multi-Format Import ✓ SHIPPED
       
     </span>
   </a>
@@ -2392,10 +2381,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#s229-ai-query-on-diff-nlp-change_log" class="md-nav__link">
+  <a href="#s230-cobie-export-from-merged-db" class="md-nav__link">
     <span class="md-ellipsis">
       
-        S229 — AI Query on Diff (NLP → change_log)
+        S230 — COBie Export from Merged DB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s231-ai-query-on-diff-nlp-change_log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S231 — AI Query on Diff (NLP → change_log)
       
     </span>
   </a>
@@ -3306,17 +3306,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#s210-template-forex-quick-win" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        S210 — Template + Forex (quick win)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#s211-nlp-query-dsl-harden-browser-port-voice" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3460,10 +3449,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#s220-browser-ifc-import-self-service-onboarding" class="md-nav__link">
+  <a href="#s220-browser-ifc-import-self-service-onboarding-shipped" class="md-nav__link">
     <span class="md-ellipsis">
       
-        S220 — Browser IFC Import (self-service onboarding)
+        S220 — Browser IFC Import (self-service onboarding) ✓ SHIPPED
       
     </span>
   </a>
@@ -3548,10 +3537,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#s228-cobie-ifc-export-from-merged-db" class="md-nav__link">
+  <a href="#s228-drop-zone-multi-format-import-shipped" class="md-nav__link">
     <span class="md-ellipsis">
       
-        S228 — COBie / IFC Export from Merged DB
+        S228 — Drop Zone Multi-Format Import ✓ SHIPPED
       
     </span>
   </a>
@@ -3559,10 +3548,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#s229-ai-query-on-diff-nlp-change_log" class="md-nav__link">
+  <a href="#s230-cobie-export-from-merged-db" class="md-nav__link">
     <span class="md-ellipsis">
       
-        S229 — AI Query on Diff (NLP → change_log)
+        S230 — COBie Export from Merged DB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s231-ai-query-on-diff-nlp-change_log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S231 — AI Query on Diff (NLP → change_log)
       
     </span>
   </a>
@@ -3625,26 +3625,54 @@
 <tr>
 <th>#</th>
 <th>What</th>
-<th>Files</th>
+<th>Key files</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>S200-S209b</td>
-<td>Browser viewer, site camera, walk mode, mobile UX, modular refactor, 149 tests</td>
+<td>S200–S209b</td>
+<td>Browser viewer, site camera, walk mode, mobile UX, cinematic tour, modular refactor</td>
 <td><code>deploy/sandbox/</code> (16 modules)</td>
+</tr>
+<tr>
+<td>S210</td>
+<td>BOQ charts, template + forex, work packages, chart images in Excel</td>
+<td><code>deploy/dev/boq_charts.html</code></td>
+</tr>
+<tr>
+<td>S220</td>
+<td>Browser IFC import (web-ifc WASM, IFC2x3+IFC4, 122K elements proven)</td>
+<td><code>deploy/dev/import.js</code></td>
+</tr>
+<tr>
+<td>S222–S224</td>
+<td>DB refactor, diff engine, Variation Order Excel (FIDIC Clause 12), versioned IndexedDB v2</td>
+<td><code>deploy/dev/</code></td>
+</tr>
+<tr>
+<td>S225b</td>
+<td>Localisation — 15 locales, iDempiere _TRL pattern, rates.js single source</td>
+<td><code>deploy/dev/rates.js</code>, <code>deploy/dev/locales/</code></td>
+</tr>
+<tr>
+<td>S228</td>
+<td>Drop Zone multi-format: OBJ, STL, DAE, GLB/GLTF, FBX, 3DS. Auto up-axis + scale</td>
+<td><code>deploy/dev/mesh_import_worker.js</code></td>
+</tr>
+<tr>
+<td>S229a</td>
+<td>Guided classification wizard — 6-step flow for non-IFC meshes</td>
+<td><code>deploy/dev/wizard.js</code></td>
+</tr>
+<tr>
+<td>S229b</td>
+<td>IFC export — DB → .ifc download. Pure STEP text builder, 30-test round-trip</td>
+<td><code>deploy/dev/ifc_export_worker.js</code></td>
 </tr>
 </tbody>
 </table>
+<p><strong>Tests:</strong> 72/72 Playwright E2E (desktop), 53/55 pure-function. Suite: <code>deploy/dev/tests/</code>.</p>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
-<h3 id="s210-template-forex-quick-win">S210 — Template + Forex (quick win)<a class="headerlink" href="#s210-template-forex-quick-win" title="Permanent link">&para;</a></h3>
-<ul>
-<li><code>boq_charts.html</code> reads <code>?tpl=</code> (JSON template override)</li>
-<li>Forex: USD/EUR column next to RM, configurable rate</li>
-<li>Work Package grouping in Excel export</li>
-<li>Chart images embedded in Excel</li>
-<li>Template JSON schema: rates, forex, grouping, dimensions, charts</li>
-</ul>
 <h3 id="s211-nlp-query-dsl-harden-browser-port-voice">S211 — NLP Query DSL (harden + browser port + voice)<a class="headerlink" href="#s211-nlp-query-dsl-harden-browser-port-voice" title="Permanent link">&para;</a></h3>
 <p>Port the Python NLP DSL (<code>federation/dataintelligence/nlp/</code>) to browser JS running against sql.js.
 No LLM, no API — pure keyword intent classification + pattern-matched SQL generation.
@@ -4044,7 +4072,7 @@ Audio blobs stored in same IndexedDB (binary, ~50KB per 30s recording). No serve
 - Already works — city mode loads multiple buildings. Same pattern for disciplines.
 - STR engineer's DB + MEP engineer's DB → one coordinated scene
 - Clash detection across federated DBs = cross-DB spatial query</p>
-<h3 id="s220-browser-ifc-import-self-service-onboarding">S220 — Browser IFC Import (self-service onboarding)<a class="headerlink" href="#s220-browser-ifc-import-self-service-onboarding" title="Permanent link">&para;</a></h3>
+<h3 id="s220-browser-ifc-import-self-service-onboarding-shipped">S220 — Browser IFC Import (self-service onboarding) ✓ SHIPPED<a class="headerlink" href="#s220-browser-ifc-import-self-service-onboarding-shipped" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Drag-and-drop IFC file onto landing page → extract to DB entirely in browser</li>
 <li>Uses <code>web-ifc</code> (WebAssembly IFC parser, MIT, ~2MB CDN) — no server, no Python</li>
@@ -4161,33 +4189,22 @@ Audio blobs stored in same IndexedDB (binary, ~50KB per 30s recording). No serve
 <li><strong>Exit criterion:</strong> Import 3 projects, each with 2 variations → landing shows all 3 with cost totals and net change</li>
 <li>Replaces: Custom Excel dashboards, Procore cost module ($)</li>
 </ul>
-<h3 id="s228-cobie-ifc-export-from-merged-db">S228 — COBie / IFC Export from Merged DB<a class="headerlink" href="#s228-cobie-ifc-export-from-merged-db" title="Permanent link">&para;</a></h3>
+<h3 id="s228-drop-zone-multi-format-import-shipped">S228 — Drop Zone Multi-Format Import ✓ SHIPPED<a class="headerlink" href="#s228-drop-zone-multi-format-import-shipped" title="Permanent link">&para;</a></h3>
+<p>OBJ, STL, DAE, GLB/GLTF, FBX, 3DS import via Drop Zone. Auto up-axis + scale.
+Guided classification wizard (S229a). IFC export (S229b). See Shipped table above.</p>
+<h3 id="s230-cobie-export-from-merged-db">S230 — COBie Export from Merged DB<a class="headerlink" href="#s230-cobie-export-from-merged-db" title="Permanent link">&para;</a></h3>
 <ul>
-<li>After merge (S222), export merged DB as:</li>
-<li><strong>COBie:</strong> 6-tab Excel spreadsheet (Facility, Floor, Space, Type, Component, System) — government handover</li>
-<li><strong>IFC4:</strong> STEP file from S217 — tessellated coordination model</li>
-<li>Export buttons on merged card: <code>⬇ COBie</code> · <code>⬇ IFC</code> · <code>⬇ .db</code></li>
+<li>After merge (S222), export merged DB as COBie 6-tab Excel (Facility, Floor, Space, Type, Component, System)</li>
 <li>COBie mapping: <code>elements_meta</code> → Component, <code>spatial_structure</code> → Floor/Space, <code>product_types</code> → Type</li>
 <li>Handover package = one click: COBie + IFC + .db in a ZIP</li>
-<li><strong>Why this matters:</strong> Government projects require COBie. Nobody does it from a browser. Close the loop.</li>
 <li><strong>Exit criterion:</strong> Merge 3 parts, download COBie Excel, validate with COBie QC tool</li>
-<li>Replaces: Revit COBie toolkit, manual spreadsheet compilation</li>
 </ul>
-<h3 id="s229-ai-query-on-diff-nlp-change_log">S229 — AI Query on Diff (NLP → change_log)<a class="headerlink" href="#s229-ai-query-on-diff-nlp-change_log" title="Permanent link">&para;</a></h3>
+<h3 id="s231-ai-query-on-diff-nlp-change_log">S231 — AI Query on Diff (NLP → change_log)<a class="headerlink" href="#s231-ai-query-on-diff-nlp-change_log" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Extend S211 NLP DSL to query <code>change_log</code> table (S222)</li>
 <li>Natural language: "What changed in MEP on Level 3?" → SQL on change_log → results + fly-to</li>
 <li>Voice command (S211 voice): same queries via microphone</li>
-<li>Queries supported:</li>
-<li>"What was added?" → added GUIDs list</li>
-<li>"What was removed from Level 2?" → filtered removed list</li>
-<li>"How much did variation MEP_v2 cost?" → net impact from VO</li>
-<li>"Show me clashes in STR" → clash results for that discipline</li>
-<li>"Compare v1 and v3" → diff between any two versions</li>
-<li>Results panel: table + fly-to buttons + export</li>
-<li><strong>Why this matters:</strong> PM asks question, gets answer instantly. No training, no query builder.</li>
 <li><strong>Exit criterion:</strong> Voice "what changed on Level 3" → correct results, fly-to first element</li>
-<li>Replaces: Manual report digging, Navisworks search, Solibri filters</li>
 </ul>
 <h3 id="starter-plugin-pack-ships-with-s215">Starter Plugin Pack (ships with S215)<a class="headerlink" href="#starter-plugin-pack-ships-with-s215" title="Permanent link">&para;</a></h3>
 <p>Pre-installed plugins that prove the marketplace. All use the plugin API, no core changes.</p>
@@ -4257,7 +4274,7 @@ Audio blobs stored in same IndexedDB (binary, ~50KB per 30s recording). No serve
 - ISO 3166-1 <code>iso</code> field → flag emoji. User copies locale → <code>MyProject_TRL.js</code> → edits what differs
 - <code>rates.js</code> = shared rate constants loaded by all pages; locale overrides rates at runtime
 - Cascades to: forex in 4D/5D, rates in BOQ, rules in checker, labour in schedule
-- Users change locale anytime via flag selector (TODO: locale_loader.js)
+- Users change locale anytime via <code>?lang=</code> URL parameter or flag selector
 - Community contributes country packs (rates + rules + templates) to marketplace</p>
 <p><strong>Background reports (DB processing, no UI needed):</strong>
 - User toggles which reports run: compliance, COBie, carbon, cost variance, schedules, clash

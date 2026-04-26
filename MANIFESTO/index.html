@@ -4104,33 +4104,33 @@ The answer is almost always directly applicable:</p>
 <li><strong><a href="../ProjectOrderBlueprint/#1-exception-based-ordering-configure-to-order-for-buildings">Design themes</a></strong> are C_Campaign — Bali, Scandinavian, Industrial. Marketing drives variant selection, orthogonal to product category and discipline.</li>
 <li><strong><a href="../ProjectOrderBlueprint/#2-c_project-site-as-bom">Site developments</a></strong> are C_Project. 200 houses under one project, each a C_Order on a plot. The same entity that manages a manufacturing program manages a construction site.</li>
 </ul>
-<p><strong>The test:</strong> 35 real buildings compiled. 48,428 elements in the largest.
-6 verification gates. 19 buildings ALL GREEN. Not a prototype — a working
+<p><strong>The test:</strong> 21 real buildings compiled. 48,428 elements in the largest.
+9 verification gates. 116/157 PASS, 4 ALL GREEN. Not a prototype — a working
 compiler with witness verification at every step.</p>
 <hr />
 <hr />
 <h2 id="the-viewer-db-is-the-model">The Viewer — DB Is the Model<a class="headerlink" href="#the-viewer-db-is-the-model" title="Permanent link">&para;</a></h2>
 <p>The same philosophy that separates WHAT / HOW / WHERE in the compiler applies
-to the viewer. Blender is not the model. The DB is the model. Blender is the
-current display context — a controlled viewport that loads only what is asked for.</p>
+to the viewer. The DB is the model. The viewer — whether browser or Blender —
+is a display context that loads only what is asked for.</p>
+<p><strong>Browser (BIM OOTB)</strong> is the primary viewer and designer. sql.js WASM +
+Three.js, zero install. Imports IFC and 6 mesh formats (OBJ, STL, DAE, GLB,
+FBX, 3DS) via Drop Zone, classifies with a guided wizard, exports back to IFC.</p>
+<p><strong>Blender (Federation addon)</strong> is the city-scale path. R-tree spatial queries,
+direct DB streaming from SQLite BLOBs, 1M elements.</p>
+<p>Both read the same SQLite schema:</p>
 <div class="highlight"><pre><span></span><code>DB (always consistent — extraction, compilation, modelling all write here)
     ↓  O(log n) spatial query
-RTree GPU       — 1M wireframes, 13s load, instant orbit, zero mesh
-    ↓  drill-down
-Cockpit         — live discipline counts, storey filter, GUID copy (&lt;50ms)
-    ↓  MESH
-Stingy Loader   — exact IFC geometry on demand, &lt;5s, independently shred-able
-    ↓  SHRED
-Clean viewport  — only what the user chose remains
+Browser (Three.js)  — zero install, 126K elements, IFC round-trip
+Blender (R-tree)    — city scale, 1M elements, discipline phasing
 </code></pre></div>
 <p><strong>Every writer uses the same DB:</strong>
-- IFC extraction pipeline → geometry_hash + transforms + metadata
+- IFC / mesh import → geometry_hash + transforms + metadata
 - BIM Designer compiler → new element placements, BOMs
-- RouteWalker → routing paths as element_transforms
-- Future modeller → new geometry written to component_library.db + row to element_instances</p>
+- RouteWalker → routing paths as element_transforms</p>
 <p><strong>The viewer does not care who wrote the element.</strong> A RouteWalker duct appears
-as MEP discipline. A BIM Designer wall appears as ARC. A modelled element
-appears where placed. The RTree search finds it in the next query.</p>
+as MEP discipline. A BIM Designer wall appears as ARC. The spatial index finds
+it in the next query.</p>
 <p>This is the same "configure-to-order" pattern applied to the viewport:
 load only exceptions (what the user asked for), inherit the rest (wireframes from DB).
 No "sync", no reload, no waiting for things you did not ask for.</p>
