@@ -7020,7 +7020,7 @@ Drag width to 4.0m → addon emits: RESIZE ROOM SY_BD TO 4000 3000 2800
 Select replacement → AABB fit check → recompile → viewport updates
 </code></pre></div>
 <h3 id="54-compiler-invocation">5.4 Compiler Invocation<a class="headerlink" href="#54-compiler-invocation" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="o">,</span><span class="w"> </span><span class="nn">json</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">subprocess</span><span class="o">,</span> <span class="nn">json</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
     <span class="p">[</span><span class="s1">&#39;java&#39;</span><span class="p">,</span> <span class="s1">&#39;-jar&#39;</span><span class="p">,</span> <span class="s1">&#39;bim-compiler.jar&#39;</span><span class="p">,</span> <span class="n">dsl_path</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">],</span>
     <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span>
@@ -8403,7 +8403,7 @@ same <code>BIM_PT_tabs</code> parent. Proposed slot: between #2 and #3.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># In bonsai_bim_designer/panel.py (this repo)</span>
 <span class="c1"># Registers as child of BIM_PT_tabs — same parent as Federation panels</span>
 
-<span class="k">class</span><span class="w"> </span><span class="nc">BIM_PT_bim_designer</span><span class="p">(</span><span class="n">Panel</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">BIM_PT_bim_designer</span><span class="p">(</span><span class="n">Panel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Item A: BIM Designer — Compiler-Driven Design&quot;&quot;&quot;</span>
     <span class="n">bl_label</span> <span class="o">=</span> <span class="s2">&quot;A. BIM Designer&quot;</span>
     <span class="n">bl_idname</span> <span class="o">=</span> <span class="s2">&quot;BIM_PT_bim_designer&quot;</span>
@@ -8464,11 +8464,11 @@ same <code>BIM_PT_tabs</code> parent. Proposed slot: between #2 and #3.</p>
 <p>Each operator maps 1:1 to a Java server action via <code>client.py</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># operator.py — thin operators, no BIM logic</span>
 
-<span class="k">class</span><span class="w"> </span><span class="nc">BIM_OT_designer_compile</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">BIM_OT_designer_compile</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Compile the active building via Java server&quot;&quot;&quot;</span>
     <span class="n">bl_idname</span> <span class="o">=</span> <span class="s2">&quot;bim.designer_compile&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
         <span class="n">props</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">scene</span><span class="o">.</span><span class="n">BIMDesignerProperties</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">props</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
             <span class="n">props</span><span class="o">.</span><span class="n">building_id</span><span class="p">,</span> <span class="n">props</span><span class="o">.</span><span class="n">bom_db_path</span><span class="p">)</span>
@@ -8478,11 +8478,11 @@ same <code>BIM_PT_tabs</code> parent. Proposed slot: between #2 and #3.</p>
                 <span class="n">db_path</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;outputDbPath&quot;</span><span class="p">])</span>
         <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;FINISHED&#39;</span><span class="p">}</span>
 
-<span class="k">class</span><span class="w"> </span><span class="nc">BIM_OT_designer_create_new</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">BIM_OT_designer_create_new</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a new generative building&quot;&quot;&quot;</span>
     <span class="n">bl_idname</span> <span class="o">=</span> <span class="s2">&quot;bim.designer_create_new&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
         <span class="n">props</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">scene</span><span class="o">.</span><span class="n">BIMDesignerProperties</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">props</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">create_new</span><span class="p">(</span>
             <span class="n">building_name</span><span class="o">=</span><span class="n">props</span><span class="o">.</span><span class="n">building_name</span><span class="p">,</span>
@@ -8705,14 +8705,14 @@ by overriding the color uniform on Federation's GPU batches — <strong>no Blend
 object manipulation needed</strong>.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># design_bbox.py hooks into Federation&#39;s bbox_visualization module</span>
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_grey_out_federation</span><span class="p">():</span>
+<span class="k">def</span> <span class="nf">_grey_out_federation</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Override all discipline batch colors to muted grey.&quot;&quot;&quot;</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">federation</span><span class="w"> </span><span class="kn">import</span> <span class="n">bbox_visualization</span>
+    <span class="kn">from</span> <span class="nn">federation</span> <span class="kn">import</span> <span class="n">bbox_visualization</span>
     <span class="n">bbox_visualization</span><span class="o">.</span><span class="n">set_color_override</span><span class="p">((</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">))</span>
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_restore_federation</span><span class="p">():</span>
+<span class="k">def</span> <span class="nf">_restore_federation</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove override, restore original discipline colors.&quot;&quot;&quot;</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">federation</span><span class="w"> </span><span class="kn">import</span> <span class="n">bbox_visualization</span>
+    <span class="kn">from</span> <span class="nn">federation</span> <span class="kn">import</span> <span class="n">bbox_visualization</span>
     <span class="n">bbox_visualization</span><span class="o">.</span><span class="n">clear_color_override</span><span class="p">()</span>
 </code></pre></div>
 <p>Federation's <code>bbox_visualization.py</code> needs a small hook: <code>set_color_override()</code>
@@ -8933,10 +8933,10 @@ snapshots state before execution.</p>
 </tbody>
 </table>
 <p><strong>Implementation pattern:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BIM_OT_designer_create_new</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">BIM_OT_designer_create_new</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
     <span class="n">bl_options</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;REGISTER&#39;</span><span class="p">,</span> <span class="s1">&#39;UNDO&#39;</span><span class="p">}</span>   <span class="c1"># ← Blender snapshots before execute</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
         <span class="c1"># ... call server, receive bboxes ...</span>
         <span class="c1"># Store bbox data in scene custom properties (undo-tracked)</span>
         <span class="n">context</span><span class="o">.</span><span class="n">scene</span><span class="p">[</span><span class="s2">&quot;_design_bboxes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">bbox_json</span>
@@ -9184,17 +9184,17 @@ Same principle as the anti-drift guards: <strong>never pass NULL forward silentl
 <span class="p">)</span><span class="w"> </span><span class="p">{}</span>
 </code></pre></div>
 <p><strong>Python side:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BIM_OT_designer_save</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">BIM_OT_designer_save</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Save current design to .blend file (OrderLine + ASI compiled to output.db).&quot;&quot;&quot;</span>
     <span class="n">bl_idname</span> <span class="o">=</span> <span class="s2">&quot;bim.designer_save&quot;</span>
     <span class="n">bl_options</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;REGISTER&#39;</span><span class="p">,</span> <span class="s1">&#39;UNDO&#39;</span><span class="p">}</span>
 
-<span class="k">class</span><span class="w"> </span><span class="nc">BIM_OT_designer_recall</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">BIM_OT_designer_recall</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Recall a previous design variant.&quot;&quot;&quot;</span>
     <span class="n">bl_idname</span> <span class="o">=</span> <span class="s2">&quot;bim.designer_recall&quot;</span>
     <span class="n">bl_options</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;REGISTER&#39;</span><span class="p">,</span> <span class="s1">&#39;UNDO&#39;</span><span class="p">}</span>
 
-<span class="k">class</span><span class="w"> </span><span class="nc">BIM_OT_designer_promote</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">BIM_OT_designer_promote</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Promote current design to BOM — governance gate.&quot;&quot;&quot;</span>
     <span class="n">bl_idname</span> <span class="o">=</span> <span class="s2">&quot;bim.designer_promote&quot;</span>
     <span class="n">bl_options</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;REGISTER&#39;</span><span class="p">,</span> <span class="s1">&#39;UNDO&#39;</span><span class="p">}</span>
