@@ -1,6 +1,23 @@
 # S231 — Terminal BOM Storey Fix + InstancedMesh Performance
 # ⚠ DO NOT REMOVE — Scope: session handoff. Read the log after every run.
 
+## Read First (next session)
+
+1. This file — §What's Next for priorities
+2. `PROGRESS.md` §Current State — gate table (TE now 8/10)
+3. `docs/BIM_Designer_Browser.md` §9.4 — instancing status
+4. `deploy/sandbox/streaming.js` — the ACTUAL file (dev/streaming.js is a SYMLINK)
+5. `deploy/dev/tests/specs/16-instanced-perf.spec.js` — perf benchmark (3/3 PASS)
+6. Memory: `feedback_browser_instancing.md` — lessons learnt (sql.js limits, symlink, mobile budget)
+7. `docs/TerminalAnalysis.md` §BOM Factorization — now IMPLEMENTED
+8. `IFCtoBOM/src/main/resources/classify_te.yaml` — 29 storey keys
+
+**Do NOT:**
+- Edit `deploy/dev/streaming.js` directly — it's a symlink to `deploy/sandbox/streaming.js`
+- Upload to `bim-ootb-full` (production) — dev only until pick/filter verified
+- Use `parseInt()` on DOM text with commas — always `.replace(/,/g, '')` first
+- Use sql.js `prepare().bind()` with >200 placeholders — chunk it
+
 ## What Was Done (2026-04-27)
 
 ### Part A: Terminal BOM Storey Fix (YAML-only, no code changes)
