@@ -2,7 +2,7 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 <div class="bim-banner" markdown>
-<b>48,428 elements across 8 disciplines — compiled and gate-proven (S104).</b> IFCtoBOM pipeline complete: flat BOM (8 BOMs, 1,522 lines, 48,428 instances, 95.9× factorization). Rosetta Stone 7/8 PASS (1 pre-existing critical proof violation, not a compilation blocker). G3 discipline fix (00t) — IFCtoERP routes CW/SP/FP/LPG from elements_meta correctly.
+<b>48,428 elements across 8 disciplines — extracted to DB (S104).</b> IFCtoBOM pipeline BLOCKED: storey name mismatch (YAML maps 7 English names, extraction has 23 mixed Malay/English names — "Aras Tanah", "GROUND FLOOR LEVEL", etc.). 33,848 of 48,428 elements have storey="Unknown". QA reconciliation FAIL: 33,848 BOM LEAFs vs 48,428 extracted (delta=−14,580). TE_BOM.db is EMPTY — no m_bom or m_bom_line tables. G3 discipline fix (00t) — IFCtoERP routes CW/SP/FP/LPG from elements_meta correctly.
 </div>
 
 ## CTFL Review Status (session 31-34, 2026-03-19)
@@ -10,7 +10,7 @@
 **Last reviewed:** 2026-03-19 session 34 — CTFL static review + SRS gap analysis.
 Session 31: 10 defects found and fixed (D1-D10).
 Session 34: F1-F4 quick wins resolved, 4 SRS docs updated (12 new spec sections).
-**Action:** All numbers canonical. Two line counts: **1,522** flat extraction lines (IFCtoBOM output), **1,131** factored recipe lines (post-CLUSTER verb optimization). Banner reports extraction; §BOM Catalog reports factored.
+**S231 fix (2026-04-27):** TE_BOM.db POPULATED — 50 BOMs, 5,568 lines, 48,428 elements (delta=+0). YAML updated to 29 storey keys matching all extraction containers. See §BOM Factorization.
 
 **Resolved issues (session 34):**
 
@@ -211,16 +211,41 @@ hierarchy collapsed to 3 effective levels. This is correct for extraction
 mode will need the assembly sub-groupings. See BBC.md §2.1.1 for the
 decomposition layers that would add Level 3.
 
-## BOM Factorization — DONE (37:1 Compression)
+## BOM Factorization — IMPLEMENTED (S231, 2026-04-27)
 
-> **Status: FACTORED.** 48,485 instances → 1,131 recipe lines (sessions 8-11, CLUSTER optimisation).
-> 4 verbs: TILE/ROUTE/FRAME/CLUSTER. 97.6% of BOM encoded by 361 verb formulas + 770 flat lines.
-> See `BIM_COBOL.md` §19 for detection algorithms.
-> *(History: 1,442 lines pre-CLUSTER → 1,297 post-SPRAY → 1,131 post-CLUSTER rename.)*
+> **Status: DONE.** TE_BOM.db populated. IFCtoBOM QA reconciliation PASS (delta=+0).
+>
+> **Root cause (S230b):** YAML mapped 7 English storey names; extraction had 23 mixed
+> Malay/English containers from SJTII per-discipline IFC files. Only Level 4 (50 el)
+> and Roof (33,798 el) matched — 14,580 elements in 22 containers dropped.
+>
+> **Fix (S231):** classify_te.yaml updated to 29 storey keys — one per extraction
+> container (22 IFC + 7 Z-band). Each gets a unique code/role/seq to avoid BOM ID
+> collision. Product_category shared for canonical floor grouping (FN/GF/L1-L4/RF).
+> Z-band resolver maps 33,848 Unknown elements to Level 4 (50) + Roof (33,798).
+>
+> **Pipeline evidence:** `logs/pipeline_Terminal_ifctobom_20260427_024940.log`
+> ```
+> [PASS] Extraction reconciliation — 48428 extraction LEAFs vs 48428 extracted (delta=+0)
+> [PASS] BOM count — 50 (BUILDING=1, FLOOR=24, MEP=25)
+> [PASS] BOM lines — 5568 lines (48477 instances)
+> ```
 
-### Current Sizings (measured 2026-03-18)
+### Actual Measured (S231, from TE_BOM.db)
 
-#### BOM Catalog (`TE_BOM.db`) — 58 BOMs, 1,131 lines (factored via CLUSTER)
+| Table | Count | Notes |
+|-------|-------|-------|
+| m_bom | 50 | 1 BUILDING + 24 FLOOR + 25 MEP |
+| m_bom_line | 5,568 | 5,519 LEAF + 49 MAKE |
+| M_Product | 3,661 | 3,611 catalog + 50 assembly stubs |
+| instances | 48,428 | full extraction count |
+
+**Compilation:** 48,428 elements, 8/10 gates. C8 FAIL (16 product types missing meshes — Aras Kedai/Jalan
+sub-level products). GEO VERIFY FAIL (no GUID pairs — federated model limitation).
+
+### Designed Sizings (sessions 8-11, historical reference)
+
+#### BOM Catalog (designed) — 58 BOMs, 1,131 lines (factored via CLUSTER)
 
 | Table | Before factorization | After factorization | Notes |
 |-------|---------------------|---------------------|-------|
@@ -1674,11 +1699,11 @@ under 500 per floor even at 48K total instances.
 
 | Asset | Status |
 |-------|--------|
-| TE_BOM.db | **Populated** — 8 BOMs, 1,522 lines, committed |
-| _TE_compile.db | **Prepared** from TE_BOM.db |
-| Compile | PASS — DAGCompiler runs (but output = passthrough) |
-| G1-G6 gates | All PASS (still extraction-vs-extraction) |
-| G0-COMPILED | WARN — c_order=0 (extraction-only, expected) |
+| TE_BOM.db | **POPULATED** (S231) — 50 BOMs, 5,568 lines, 3,661 products. 8MB |
+| _TE_compile.db | **Generated** (S231) — compiled from TE_BOM.db |
+| Compile | **8/10 gates** — 48,428 elements. C8 FAIL (16 mesh types), GEO no pairs (federated) |
+| G1-G6 gates | **Not reached** — extraction-only path runs (2/4 gates), BOM path blocked |
+| G0-COMPILED | **Not reached** |
 
 ### What Doesn't Work (compile-path gaps)
 
@@ -1778,16 +1803,15 @@ STEP 5b: BOM DROP (Java — NEVER REACHED for TE)
   TE:     ❌ NEVER RUNS — no compile DB → no test invocation
           c_order = 0, c_orderline = 0
 
-STEP 6: COMPILE (Java DAGCompiler — 12-stage pipeline)
+STEP 6: COMPILE (Java DAGCompiler — 11-stage pipeline)
 ────────────────────────────────────────────────────
   Shell:  run_RosettaStones.sh:210 compile_building()
           → mvn test -Dtest="BuildingRegistryTest" -Dbom.db="${compile_db}"
   Entry:  BuildingRegistryTest → CompilationPipeline.run(entry)
 
-  The 12 stages (CompilationPipeline.java:56-66):
+  The 11 stages (CompilationPipeline.java:72-84):
     Stage 1: MetadataValidator    — referential integrity
-    Stage 2: ParseStage           — DSL → BuildingDefinition
-    Stage 3: CompileStage         — compile → BuildingSpec
+    Stage 2: CompileStage         — compile → BuildingSpec (ParseStage removed)
     ┌─────────────────────────────────────────────────────────────┐
     │ ❌ ILLICIT CODE — CompilationPipeline.java:352-354          │
     │                                                             │

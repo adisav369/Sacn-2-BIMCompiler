@@ -61,15 +61,18 @@ async function waitForStream(page, timeout = 45000) {
  * Get streaming stats from DOM.
  */
 async function getStreamStats(page) {
-  return page.evaluate(() => ({
-    streamed: parseInt(document.getElementById('s-streamed')?.textContent || '0'),
-    total: parseInt(document.getElementById('s-building-total')?.textContent || '0'),
-    meshes: parseInt(document.getElementById('s-meshes')?.textContent?.replace(/,/g, '') || '0'),
-    active: document.getElementById('s-active')?.textContent || '',
-    status: document.getElementById('status')?.textContent || '',
-    buildings: parseInt(document.getElementById('s-buildings')?.textContent || '0'),
-    buildingsDone: parseInt(document.getElementById('s-buildings-done')?.textContent || '0'),
-  }));
+  return page.evaluate(() => {
+    const pInt = (id) => parseInt((document.getElementById(id)?.textContent || '0').replace(/,/g, ''));
+    return {
+      streamed: pInt('s-streamed'),
+      total: pInt('s-building-total'),
+      meshes: pInt('s-meshes'),
+      active: document.getElementById('s-active')?.textContent || '',
+      status: document.getElementById('status')?.textContent || '',
+      buildings: pInt('s-buildings'),
+      buildingsDone: pInt('s-buildings-done'),
+    };
+  });
 }
 
 module.exports = { openViewer, waitForStream, getStreamStats, DEFAULTS };

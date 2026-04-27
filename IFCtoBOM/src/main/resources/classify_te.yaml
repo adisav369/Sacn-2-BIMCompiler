@@ -10,13 +10,48 @@ building:
   geometry_fail_threshold: 2                 # 2 extracted meshes slightly exceed AABB
 
   storeys:
-    Foundation:   { code: FDN, product_category: FN, role: FOUNDATION,   seq: 1000 }
-    Ground Floor: { code: GF,  product_category: GF, role: GROUND_FLOOR, seq: 1010 }
-    Level 1:      { code: L01, product_category: L1, role: LEVEL_1,      seq: 1020 }
-    Level 2:      { code: L02, product_category: L2, role: LEVEL_2,      seq: 1030 }
-    Level 3:      { code: L03, product_category: L3, role: LEVEL_3,      seq: 1040 }
-    Level 4:      { code: L04, product_category: L4, role: LEVEL_4,      seq: 1050 }
-    Roof:         { code: RF,  product_category: RF, role: ROOF,         seq: 2000 }
+    # ── Foundation (FN) ───────────────────────────────────────
+    Foundation:       { code: FDN,  product_category: FN, role: FOUNDATION,          seq: 1000 }
+    00 Aras Asas:     { code: AA,   product_category: FN, role: ARAS_ASAS,           seq: 1001 }
+
+    # ── Ground Floor (GF) ────────────────────────────────────
+    Ground Floor:     { code: GF,   product_category: GF, role: GROUND_FLOOR,        seq: 1010 }
+    Aras Tanah:       { code: AT,   product_category: GF, role: ARAS_TANAH,          seq: 1011 }
+    GROUND FLOOR LEVEL: { code: GFL, product_category: GF, role: GROUND_FLOOR_LEVEL, seq: 1012 }
+    Ground Lev:       { code: GL,   product_category: GF, role: GROUND_LEV,          seq: 1013 }
+    Aras Jalan:       { code: AJ,   product_category: GF, role: ARAS_JALAN,          seq: 1014 }
+    Aras Kedai:       { code: AK,   product_category: GF, role: ARAS_KEDAI,          seq: 1015 }
+
+    # ── Level 1 (L1) ─────────────────────────────────────────
+    Level 1:          { code: L01,  product_category: L1, role: LEVEL_1,             seq: 1020 }
+    Aras 01:          { code: A01,  product_category: L1, role: ARAS_01,             seq: 1021 }
+    02 FIRST FLOOR LEVEL: { code: FFL, product_category: L1, role: FIRST_FLOOR_LEVEL, seq: 1022 }
+    Ceiling Level Kedai: { code: CLK, product_category: L1, role: CEILING_LEVEL_KEDAI, seq: 1023 }
+    Ceiling Level 01: { code: CL01, product_category: L1, role: CEILING_LEVEL_01,    seq: 1024 }
+
+    # ── Level 2 (L2) ────────────────���────────────────────────
+    Level 2:          { code: L02,  product_category: L2, role: LEVEL_2,             seq: 1030 }
+    Aras 02:          { code: A02,  product_category: L2, role: ARAS_02,             seq: 1031 }
+    03 SECOND FLOOR LEVEL: { code: SFL, product_category: L2, role: SECOND_FLOOR_LEVEL, seq: 1032 }
+    Ceiling Level 02: { code: CL02, product_category: L2, role: CEILING_LEVEL_02,    seq: 1033 }
+
+    # ── Level 3 (L3) ─────────────────────────────────────────
+    Level 3:          { code: L03,  product_category: L3, role: LEVEL_3,             seq: 1040 }
+    Aras 03:          { code: A03,  product_category: L3, role: ARAS_03,             seq: 1041 }
+    04 THIRD FLOOR LEVEL: { code: TFL, product_category: L3, role: THIRD_FLOOR_LEVEL, seq: 1042 }
+    Ceiling Level 03: { code: CL03, product_category: L3, role: CEILING_LEVEL_03,    seq: 1043 }
+
+    # ── Level 4 (L4) ──────────────────────��──────────────────
+    Level 4:          { code: L04,  product_category: L4, role: LEVEL_4,             seq: 1050 }
+    Aras 04:          { code: A04,  product_category: L4, role: ARAS_04,             seq: 1051 }
+    "05 FOURTH FLOOR LEVEL (OBSERVATORY DECK)": { code: FOD, product_category: L4, role: FOURTH_FLOOR_OBSERVATORY, seq: 1052 }
+    Ceiling Level 04: { code: CL04, product_category: L4, role: CEILING_LEVEL_04,    seq: 1053 }
+
+    # ─�� Roof (RF) ─────────────────────────────────────────────
+    Roof:             { code: RF,   product_category: RF, role: ROOF,                seq: 2000 }
+    Aras Bumbung:     { code: AB,   product_category: RF, role: ARAS_BUMBUNG,        seq: 2001 }
+    06 ROOF LEVEL:    { code: RL06, product_category: RF, role: ROOF_LEVEL,          seq: 2002 }
+    "07 BEAM LEVEL (OBSERVATORY)": { code: BL07, product_category: RF, role: BEAM_LEVEL_OBSERVATORY, seq: 2003 }
 
   # No floor_rooms — institutional building, not residential units
   # No composition — single building, not paired

@@ -16,7 +16,7 @@
 | WI | 1 | 9/9 | ALL GREEN |
 | DX | 1169 | 8/9 | MetadataMissing (IfcOpeningElement) |
 | SH | 65 | 8/9 | MetadataMissing (generative MEP) |
-| TE | 33848 | 2/4 | Extraction reconciliation |
+| TE | 48428 | 8/10 | C8 mesh diversity (16 types), GEO no pairs (federated). 24 storeys, 50 BOMs, 5568 lines |
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414. BIMEyes 28 proof classes.
@@ -29,11 +29,12 @@
   - S228b DONE: Format router + mesh worker + plumbing
   - S228c DONE: Auto-detect up-axis (Y-up vs Z-up) + auto-scale
   - S228d DONE: DAE (ColladaLoader), GLB/GLTF (GLTFLoader), FBX (FBXLoader+fflate), 3DS (TDSLoader)
-  - S229a DONE: Guided Classification Wizard — amber panel, 6-step flow. `deploy/dev/wizard.js`
-  - S229b DONE: Browser IFC Export — DB → .ifc download. Pure STEP text builder (no web-ifc dependency). Export triangle on import cards, flyout chooser (IFC/SQLite). Round-trip test: 30 PASS.
-    - `deploy/dev/ifc_export_worker.js` (new), `deploy/dev/import.js` (IFC button), `deploy/landing2.html` (export triangle + flyout)
-    - Test: `deploy/dev/test/test_ifc_export.html`
-  - Playwright: 72/72 PASS (desktop), 53/55 pure-function (2 known pre-existing)
+  - S229a DONE: Guided Classification Wizard — amber panel, 4-step flow. `deploy/dev/wizard.js`
+  - S229b DONE: Browser IFC Export — DB → .ifc download. Pure STEP text builder (no web-ifc dependency).
+  - S230b DONE: Wizard UX — 0-based storey elevations, raycaster visibility check, storey walkthrough (Walk button isolates floors). 97/97 PASS.
+    - Analysis: `reference/residential/EngelHouseAnalysis.md`, `reference/residential/PlaywrightAnalysis.md`
+  - S231 DONE: TE BOM storey fix (YAML 7→29 keys, 48428 el, 8/10 gates) + InstancedMesh perf (85% fewer draw calls). Prompt: `prompts/S231_session_done.md`
+  - Playwright: 100/100 PASS (desktop), 16 specs (added perf bench).
   - Test fixtures: `deploy/dev/test/seaside-villa.obj`, `engel-house.obj`
 
 **S225b (2026-04-25): Rates + Locale.** DONE (dev).

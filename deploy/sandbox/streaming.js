@@ -77,10 +77,10 @@ function setupStreaming(A) {
         FROM elements_meta m
         JOIN element_instances i ON m.guid = i.guid
         JOIN element_transforms t ON t.guid = m.guid
-        WHERE m.building = '${nearest}'
+        WHERE m.building = ?
           AND i.geometry_hash IS NOT NULL
           AND m.ifc_class != 'IfcOpeningElement'
-      `);
+      `, [nearest]);
       if (!rows.length) {
         console.log(`[S192] §DS_EMPTY bld=${nearest} — no streamable elements`);
         return;
@@ -99,9 +99,40 @@ function setupStreaming(A) {
     A.status.textContent = `STREAMING ${nearest} — ${A.streamIdx.toLocaleString()}/${A.streamQueue.length.toLocaleString()} elements`;
   };
 
+  // ── S231: InstancedMesh batching ────────��────────────────────────────
+  // Hashes with 2+ instances get ONE InstancedMesh (1 draw call).
+  // Hashes with 1 instance stay as individual Mesh (pick/filter compatible).
+  // Material dedup: one MeshPhongMaterial per unique RGBA string.
+  A._matCache = {};
+  A._instanceMeta = {};  // instancedMesh.id → [{guid,storey,disc,instanceIndex}, ...]
+  A._instanceGuids = {}; // guid → {meshId, instanceIndex} for reverse lookup
+
+  A._getMaterial = function(rgbaStr) {
+    const key = rgbaStr || '_default';
+    if (A._matCache[key]) return A._matCache[key];
+    let r = 0.7, g = 0.7, b = 0.7, a = 1.0;
+    if (rgbaStr && rgbaStr.includes(',')) {
+      const parts = rgbaStr.split(',').map(Number);
+      r = parts[0]; g = parts[1]; b = parts[2];
+      if (parts.length >= 4 && parts[3] < 1.0) a = parts[3];
+    }
+    const opts = { color: new THREE.Color(r, g, b), flatShading: true };
+    if (a < 1.0) { opts.transparent = true; opts.opacity = a; opts.side = THREE.DoubleSide; }
+    const mat = new THREE.MeshPhongMaterial(opts);
+    mat.userData.origOpacity = a;
+    mat.userData.origSide = a < 1.0 ? THREE.DoubleSide : THREE.FrontSide;
+    if (A.xrayOn) { mat.transparent = true; mat.opacity = 0.15; mat.side = THREE.DoubleSide; }
+    if (A.wireOn) { mat.wireframe = true; }
+    if (A.sectionOn) { mat.clippingPlanes = [A.sectionPlane]; mat.clipShadows = true; }
+    A._matCache[key] = mat;
+    return mat;
+  };
+
   A.streamTick = function() {
     if (!A.streaming || !A.libDb || A.streamIdx >= A.streamQueue.length) {
       if (A.streaming && A.streamIdx >= A.streamQueue.length) {
+        // ── Flush: build InstancedMesh for hashes with 2+ elements ──
+        A._flushInstanced();
         A.streaming = false;
         if (A.activeBuilding) {
           A.buildingsRendered.add(A.activeBuilding);
@@ -115,12 +146,15 @@ function setupStreaming(A) {
         document.getElementById('s-progress').style.width = '100%';
         document.getElementById('s-progress').style.background = '#44cc44';
         A.updateHash();
-        A.status.textContent = `DONE — ${A.activeBuilding} ${A.streamedCount.toLocaleString()} elements. ${A.buildingsRendered.size} building(s) rendered.`;
+        const iCount = Object.keys(A._instanceMeta).length;
+        A.status.textContent = `DONE — ${A.activeBuilding} ${A.streamedCount.toLocaleString()} elements (${iCount} instanced groups). ${A.buildingsRendered.size} building(s) rendered.`;
       }
       return;
     }
 
-    const batch = Math.min(50, A.streamQueue.length - A.streamIdx);
+    // ── Phase 1: collect ALL elements, fetch ALL geometry (no scene.add yet) ──
+    // Process large batches since we're not creating Three.js objects yet
+    const batch = Math.min(2000, A.streamQueue.length - A.streamIdx);
     const hashesNeeded = new Set();
 
     for (let i = 0; i < batch; i++) {
@@ -131,120 +165,55 @@ function setupStreaming(A) {
 
     if (hashesNeeded.size > 0) {
       const hashList = [...hashesNeeded];
-      const ph = hashList.map(() => '?').join(',');
       let fetched = 0;
-      for (const table of ['component_geometries', 'base_geometries']) {
-        if (fetched > 0) break;
-        try {
-          const stmt = A.libDb.prepare(
-            `SELECT geometry_hash, vertices, faces FROM ${table} WHERE geometry_hash IN (${ph})`
-          );
-          stmt.bind(hashList);
-          while (stmt.step()) {
-            const [ghash, vBlob, fBlob] = stmt.get();
-            if (vBlob && fBlob) {
-              const geo = A.blobToGeometry(vBlob, fBlob);
-              if (geo) { A.meshCache[ghash] = geo; fetched++; }
+      // Fetch in chunks of 200 to avoid sql.js bind limit
+      for (let ci = 0; ci < hashList.length; ci += 200) {
+        const chunk = hashList.slice(ci, ci + 200);
+        const ph = chunk.map(() => '?').join(',');
+        for (const table of ['component_geometries', 'base_geometries']) {
+          try {
+            const stmt = A.libDb.prepare(
+              `SELECT geometry_hash, vertices, faces FROM ${table} WHERE geometry_hash IN (${ph})`
+            );
+            stmt.bind(chunk);
+            while (stmt.step()) {
+              const [ghash, vBlob, fBlob] = stmt.get();
+              if (vBlob && fBlob) {
+                const geo = A.blobToGeometry(vBlob, fBlob);
+                if (geo) { A.meshCache[ghash] = geo; fetched++; }
+              }
             }
+            stmt.free();
+          } catch (e) {
+            // Table doesn't exist — try next
           }
-          stmt.free();
-          if (fetched > 0) {
-            console.log(`[S192] §BLOB_FETCH table=${table} new=${fetched} total_cached=${Object.keys(A.meshCache).length}`);
-          }
-        } catch (e) {
-          // Table doesn't exist — try next
         }
       }
+      if (fetched > 0) {
+        console.log(`[S231] §BLOB_FETCH new=${fetched} total_cached=${Object.keys(A.meshCache).length}`);
+      }
       if (fetched === 0 && hashesNeeded.size > 0) {
-        console.warn(`[S192] §BLOB_MISS hashes=${hashesNeeded.size} — no geometry found in library`);
+        console.warn(`[S231] §BLOB_MISS hashes=${hashesNeeded.size} — no geometry found in library`);
       }
     }
+
+    // ── Phase 2: bucket elements by geometry_hash ──
+    // (accumulate into A._pendingInstances for flush at end)
+    if (!A._pendingInstances) A._pendingInstances = {};
 
     for (let i = 0; i < batch; i++) {
       const row = A.streamQueue[A.streamIdx + i];
       const [guid, hash, rgba, disc, cx, cy, cz, rotX, rotY, rotZ, storey, ifcClass] = row;
-
-      const geo = A.meshCache[hash];
-      if (!geo) continue;
-
-      let r, g, b, a = 1.0;
-      const rgbaStr = rgba != null ? String(rgba) : '';
-      if (rgbaStr && rgbaStr.includes(',')) {
-        const parts = rgbaStr.split(',').map(Number);
-        r = parts[0]; g = parts[1]; b = parts[2];
-        if (parts.length >= 4 && parts[3] < 1.0) { a = parts[3]; }
-      } else {
-        r = 0.7; g = 0.7; b = 0.7;
-      }
-
-      const matOpts = { color: new THREE.Color(r, g, b), flatShading: true };
-      if (a < 1.0) {
-        matOpts.transparent = true;
-        matOpts.opacity = a;
-        matOpts.side = THREE.DoubleSide;
-      }
-      const mat = new THREE.MeshPhongMaterial(matOpts);
-      mat.userData.origOpacity = a;
-      mat.userData.origSide = a < 1.0 ? THREE.DoubleSide : THREE.FrontSide;
-      if (A.xrayOn) { mat.transparent = true; mat.opacity = 0.15; mat.side = THREE.DoubleSide; }
-      const mesh = new THREE.Mesh(geo, mat);
-
-      const pos = A.ifc2three(cx, cy, cz);
-      mesh.position.set(pos.x, pos.y, pos.z);
-
-      const rx = rotX || 0, ry = rotY || 0, rz = rotZ || 0;
-      if (rx || ry || rz) {
-        mesh.rotation.set(rx, rz, -ry);
-      }
-
-      mesh.userData.storey = storey || '';
-      mesh.userData.disc = disc || '';
-      mesh.userData.guid = guid;
-      A.guidMap[mesh.id] = guid;
-      if (A.wireOn) { mat.wireframe = true; }
-      if (A.sectionOn) { mat.clippingPlanes = [A.sectionPlane]; mat.clipShadows = true; }
-      if (A.activeStoreyFilter !== null && mesh.userData.storey !== A.activeStoreyFilter) {
-        mesh.visible = false;
-      }
-      if (A.hiddenDiscs.size > 0 && A.hiddenDiscs.has(disc)) {
-        mesh.visible = false;
-      }
-
-      A.scene.add(mesh);
+      if (!hash || !A.meshCache[hash]) continue;
+      if (!A._pendingInstances[hash]) A._pendingInstances[hash] = [];
+      A._pendingInstances[hash].push({ guid, rgba, disc, cx, cy, cz,
+        rotX: rotX || 0, rotY: rotY || 0, rotZ: rotZ || 0,
+        storey: storey || '', ifcClass });
       A.streamedCount++;
     }
 
     if (A.streamIdx === 0) {
-      let rotCount = 0, placedCount = 0, missCount = 0, matCount = 0, transCount = 0;
-      const classCounts = {}, discCounts = {};
-      for (let i = 0; i < batch; i++) {
-        const row = A.streamQueue[i];
-        const rx = row[7] || 0, ry = row[8] || 0, rz = row[9] || 0;
-        if (rx || ry || rz) rotCount++;
-        const geo = A.meshCache[row[1]];
-        if (geo) {
-          placedCount++;
-          const vc = geo.attributes && geo.attributes.position ? geo.attributes.position.count : 0;
-          // Log first 5 with full detail
-          if (i < 5) {
-            console.log(`[S220] §SAMPLE[${i}] class=${row[11]} rgba="${row[2]}" disc=${row[3]} verts=${vc} pos=(${Number(row[4]).toFixed(1)},${Number(row[5]).toFixed(1)},${Number(row[6]).toFixed(1)})`);
-          }
-        } else { missCount++; }
-        const rgbaStr = row[2] != null ? String(row[2]) : '';
-        if (rgbaStr && rgbaStr.includes(',')) {
-          matCount++;
-          const parts = rgbaStr.split(',').map(Number);
-          if (parts.length >= 4 && parts[3] < 1.0) {
-            transCount++;
-            console.log(`[S220] §GLASS class=${row[11]} alpha=${parts[3]} rgba="${rgbaStr}" guid=${row[0].substring(0,12)}`);
-          }
-        }
-        classCounts[row[11]] = (classCounts[row[11]] || 0) + 1;
-        discCounts[row[3]] = (discCounts[row[3]] || 0) + 1;
-      }
-      console.log(`[S220] §PROOF first_batch=${batch} placed=${placedCount} miss=${missCount} with_material=${matCount} transparent=${transCount} rotation=${rotCount}`);
-      console.log(`[S220] §PROOF_CLASSES ${Object.entries(classCounts).map(([c,n])=>c+':'+n).join(' ')}`);
-      console.log(`[S220] §PROOF_DISCS ${Object.entries(discCounts).map(([d,n])=>d+':'+n).join(' ')}`);
+      console.log(`[S231] §INSTANCED_STREAM batch=${batch} pending_hashes=${Object.keys(A._pendingInstances).length}`);
     }
 
     A.streamIdx += batch;
@@ -258,6 +227,76 @@ function setupStreaming(A) {
     if (lastRow) {
       document.getElementById('s-current-element').textContent = lastRow[11] || '';
     }
+  };
+
+  // ── S231: Flush pending instances → InstancedMesh (2+ instances) or Mesh (1 instance) ──
+  A._flushInstanced = function() {
+    if (!A._pendingInstances) return;
+    const _m4 = new THREE.Matrix4();
+    const _euler = new THREE.Euler();
+    const _quat = new THREE.Quaternion();
+    const _pos = new THREE.Vector3();
+    const _scale = new THREE.Vector3(1, 1, 1);
+    let instancedCount = 0, singleCount = 0, drawCalls = 0;
+
+    for (const [hash, elements] of Object.entries(A._pendingInstances)) {
+      const geo = A.meshCache[hash];
+      if (!geo) continue;
+
+      if (elements.length === 1) {
+        // Single instance — keep as individual Mesh for full pick/filter compat
+        const el = elements[0];
+        const mat = A._getMaterial(el.rgba);
+        const mesh = new THREE.Mesh(geo, mat);
+        const pos = A.ifc2three(el.cx, el.cy, el.cz);
+        mesh.position.set(pos.x, pos.y, pos.z);
+        if (el.rotX || el.rotY || el.rotZ) {
+          mesh.rotation.set(el.rotX, el.rotZ, -el.rotY);
+        }
+        mesh.userData.storey = el.storey;
+        mesh.userData.disc = el.disc;
+        mesh.userData.guid = el.guid;
+        A.guidMap[mesh.id] = el.guid;
+        if (A.activeStoreyFilter !== null && el.storey !== A.activeStoreyFilter) mesh.visible = false;
+        if (A.hiddenDiscs.size > 0 && A.hiddenDiscs.has(el.disc)) mesh.visible = false;
+        A.scene.add(mesh);
+        singleCount++;
+        drawCalls++;
+      } else {
+        // Multiple instances — use InstancedMesh (1 draw call for all)
+        // Use material from first element (most common RGBA for this hash)
+        const mat = A._getMaterial(elements[0].rgba);
+        const iMesh = new THREE.InstancedMesh(geo, mat, elements.length);
+        iMesh.frustumCulled = false;  // instances span large area, don't cull the group
+        const meta = [];
+
+        for (let i = 0; i < elements.length; i++) {
+          const el = elements[i];
+          const pos = A.ifc2three(el.cx, el.cy, el.cz);
+          _pos.set(pos.x, pos.y, pos.z);
+          // IFC rotation → Three.js: (rotX, rotZ, -rotY)
+          _euler.set(el.rotX, el.rotZ, -el.rotY);
+          _quat.setFromEuler(_euler);
+          _m4.compose(_pos, _quat, _scale);
+          iMesh.setMatrixAt(i, _m4);
+
+          meta.push({ guid: el.guid, storey: el.storey, disc: el.disc, instanceIndex: i });
+          A._instanceGuids[el.guid] = { meshId: iMesh.id, instanceIndex: i };
+          A.guidMap[iMesh.id + '_' + i] = el.guid;
+        }
+        iMesh.instanceMatrix.needsUpdate = true;
+        iMesh.userData.isInstanced = true;
+        iMesh.userData.hash = hash;
+        A._instanceMeta[iMesh.id] = meta;
+        A.scene.add(iMesh);
+        instancedCount += elements.length;
+        drawCalls++;
+      }
+    }
+
+    A._pendingInstances = {};
+    console.log(`[S231] §FLUSH instanced=${instancedCount} single=${singleCount} drawCalls=${drawCalls} (was ${instancedCount + singleCount})`);
+    document.getElementById('s-meshes').textContent = drawCalls.toLocaleString() + ' draw calls';
   };
 
   // DB init
@@ -422,16 +461,16 @@ function setupStreaming(A) {
     return params;
   };
 
-  // Clear
+  // Clear — handles both Mesh and InstancedMesh
   A.clearStreamed = function() {
     const toRemove = [];
     A.scene.traverse(obj => {
-      if (obj.isMesh && obj !== A.ground) toRemove.push(obj);
+      if ((obj.isMesh || obj.isInstancedMesh) && obj !== A.ground) toRemove.push(obj);
     });
     toRemove.forEach(obj => {
       A.scene.remove(obj);
-      if (obj.geometry) obj.geometry.dispose();
-      if (obj.material) obj.material.dispose();
+      if (obj.geometry && !obj.userData.isInstanced) obj.geometry.dispose();
+      if (obj.material && !obj.material._shared) obj.material.dispose();
     });
     A.streamedCount = 0;
     A.streaming = false;
@@ -440,12 +479,16 @@ function setupStreaming(A) {
     A.activeBuilding = null;
     A.activeBuildingTotal = 0;
     A.buildingsRendered.clear();
+    A._pendingInstances = {};
+    A._instanceMeta = {};
+    A._instanceGuids = {};
+    A._matCache = {};
     document.getElementById('s-streamed').textContent = '0';
     document.getElementById('s-building-total').textContent = '0';
     document.getElementById('s-buildings-done').textContent = '0';
     document.getElementById('s-active').textContent = '—';
     document.getElementById('s-active').style.color = '#4fc3f7';
-    console.log(`[S192] §CLEAR removed=${toRemove.length}`);
+    console.log(`[S231] §CLEAR removed=${toRemove.length}`);
     A.status.textContent = 'Cleared. Search and click a building to stream.';
   };
 

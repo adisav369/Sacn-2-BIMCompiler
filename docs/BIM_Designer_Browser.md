@@ -5,9 +5,9 @@
 <b>BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.</b> One HTML file. Two SQLite DBs. Zero server. 126K elements streaming in your browser — no install, no conversion, no vendor lock-in. The DB IS the application.
 </div>
 
-**Version:** 0.2 (2026-04-22)
-**Status:** LIVE — modular sandbox viewer (S209 refactor)
-**Depends on:** `deploy/sandbox/index.html` + 15 JS modules, per-building DBs in `deploy/buildings/`
+**Version:** 0.3 (2026-04-26)
+**Status:** LIVE — browser BIM Designer with multi-format import, IFC export, guided wizard
+**Depends on:** `deploy/sandbox/index.html` + JS modules, per-building DBs in `deploy/buildings/`
 
 <figure style="margin: 20px 0;">
 <img src="../assets/images/OOTB.png" alt="BIM OOTB — Browser-native BIM viewer" style="width:100%; border:1px solid #ccc;"/>
@@ -257,7 +257,7 @@ viewer main.js         → loads diffDb from ?diffdb= param
 
 **Localization (S226):** iDempiere-style `_TRL` locale system. Every label, currency symbol, rate source, column header, chart title, and Excel sheet name is locale-driven. 15 country locales shipped — each with local rate books (CIDB, RS Means, DIN 276, Spon's, etc.). Project-level override: copy a locale file, edit rates for your contract. `?lang=ms_MY` in the URL switches the entire 4D/5D output to Bahasa Melayu with CIDB RM rates. See **[Localization.md](Localization.md)** for the full developer guide.
 
-**What Primavera P6 charges $5K/seat for, we do from a browser for zero.**
+Basic 4D/5D scheduling and costing runs in the browser with zero licensing cost — how far this takes you compared to dedicated tools like Primavera P6 depends on your project needs.
 
 > **Enterprise setup:** The browser import creates a single self-contained DB per building
 > (metadata + geometry, instanced and deduped). For organisations needing a **centralised
@@ -265,6 +265,20 @@ viewer main.js         → loads diffDb from ?diffdb= param
 > buildings with consistent geometry and materials — contact the creator at
 > [red1org@gmail.com](mailto:red1org@gmail.com) for consultation on shared library architecture
 > and deployment.
+
+### Phase 2c: Drop Zone Multi-Format + Wizard + IFC Export (S228/S229 — DONE)
+
+Any 3D file becomes a BIM model. Zero IFC knowledge required.
+
+- [x] **Drop Zone multi-format** — OBJ, STL, DAE (ColladaLoader), GLB/GLTF (GLTFLoader), FBX (FBXLoader+fflate), 3DS (TDSLoader). Auto-detect up-axis (Y-up vs Z-up) + auto-scale (mm→m)
+- [x] **Mesh import worker** — `mesh_import_worker.js`: format router, scene graph traversal, material extraction, triangle mesh → BLOB pipeline
+- [x] **Semantic enrichment** — `semantic_enrichment.js` + `scene_to_db.js`: classify meshes into IFC types, assign storeys, disciplines, materials
+- [x] **Guided classification wizard** — `wizard.js`: 6-step amber panel flow. Non-IFC users classify imported meshes into BIM categories (IfcWall, IfcDoor, etc.)
+- [x] **IFC export** — `ifc_export_worker.js`: DB → .ifc download. Pure STEP text builder (no web-ifc dependency). Export triangle on import cards, flyout chooser (IFC/SQLite). Round-trip: import OBJ → classify → export IFC
+- [x] **IFC export test** — `test/test_ifc_export.html`: 30 PASS
+- [x] **Playwright E2E** — 72/72 desktop, 10 spec files covering all features
+
+SRS: [`internal/DROP_ZONE_MULTI_FORMAT_SRS.md`](../internal/DROP_ZONE_MULTI_FORMAT_SRS.md)
 
 ### Phase 3: Analysis — nD Engine in the Browser
 Query-driven overlays — same DB, richer SQL. The **nD engine** ([4D5DAnalysis.md](4D5DAnalysis.md))
@@ -772,10 +786,11 @@ Solved (S203). Per-building split means each building downloads independently:
 ### 9.4 "Geometry dedup — wouldn't glTF instancing be more efficient?"
 
 The DB already deduplicates at the `geometry_hash` level — same mesh BLOB stored once,
-referenced N times by elements sharing that hash. The Three.js side currently creates
-one `BufferGeometry` per element. Upgrading to `InstancedMesh` for repeated hashes
-is a rendering optimization (~2x memory reduction for repetitive buildings like hospitals)
-— it's an enhancement, not an architecture change. The instancing data is already in the DB.
+referenced N times by elements sharing that hash. **S231 (2026-04-27) implemented
+`THREE.InstancedMesh`** for hashes with 2+ instances. Results on Terminal (48K elements):
+7,150 draw calls (was 48,428) = **85% reduction**. Hashes with 1 instance stay as individual
+`Mesh` for full pick/filter compatibility. Material dedup (~100 materials vs 48K).
+Proven at 126K elements (LTU AHouse: 59% reduction, 7.8s stream). `deploy/dev/streaming.js`.
 
 ### 9.5 "Schema changes require redeploying DBs. No versioning story."
 
