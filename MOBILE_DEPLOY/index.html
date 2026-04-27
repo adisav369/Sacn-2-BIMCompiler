@@ -1364,10 +1364,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#01-dev-environment" class="md-nav__link">
+  <a href="#01-environments" class="md-nav__link">
     <span class="md-ellipsis">
       
-        0.1 Dev Environment
+        0.1 Environments
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#02-mobile-performance-s232-2026-04-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.2 Mobile Performance — S232 (2026-04-27)
       
     </span>
   </a>
@@ -3644,10 +3655,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#01-dev-environment" class="md-nav__link">
+  <a href="#01-environments" class="md-nav__link">
     <span class="md-ellipsis">
       
-        0.1 Dev Environment
+        0.1 Environments
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#02-mobile-performance-s232-2026-04-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.2 Mobile Performance — S232 (2026-04-27)
       
     </span>
   </a>
@@ -4361,30 +4383,35 @@
 </thead>
 <tbody>
 <tr>
-<td><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb/o/index.html"><strong>BIM OOTB Demo</strong></a></td>
-<td>Duplex building — full download, auto fly-around</td>
-<td>~3 MB</td>
+<td><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html"><strong>LIVE — Landing</strong></a></td>
+<td>37 buildings, 1M elements — pick a building to stream</td>
+<td>~5-10 MB/building</td>
 <td>Yes</td>
 </tr>
 <tr>
-<td><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html"><strong>BIM OOTB City</strong></a></td>
-<td>37 buildings, 1M elements — httpvfs streaming</td>
-<td>~5-10 MB/building</td>
+<td><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/index.html"><strong>DEV — Landing</strong></a></td>
+<td>Dev/staging — test changes before production</td>
+<td>same</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb/o/index.html"><strong>Duplex Demo</strong></a></td>
+<td>Single building — full download, auto fly-around</td>
+<td>~3 MB</td>
 <td>Yes</td>
 </tr>
 </tbody>
 </table>
-<p><strong>OCI Object Storage</strong> (Malaysia West 2 Kulai). Always Free tier. Bucket: <code>bim-ootb</code> (demo), <code>bim-ootb-full</code> (city).
-CORS enabled. Range headers supported (required for httpvfs).</p>
+<p><strong>OCI Object Storage</strong> (Malaysia West 2 Kulai). Always Free tier. CORS enabled. Range headers supported (required for httpvfs).</p>
 <hr />
-<h2 id="01-dev-environment">0.1 Dev Environment<a class="headerlink" href="#01-dev-environment" title="Permanent link">&para;</a></h2>
-<p><strong>Dev bucket:</strong> <code>bim-ootb-dev</code> — separate OCI bucket for testing changes before production.</p>
+<h2 id="01-environments">0.1 Environments<a class="headerlink" href="#01-environments" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th>Environment</th>
 <th>Bucket</th>
-<th>Landing</th>
+<th>Root (<code>index.html</code>)</th>
+<th>Viewer</th>
 <th>Purpose</th>
 </tr>
 </thead>
@@ -4392,26 +4419,91 @@ CORS enabled. Range headers supported (required for httpvfs).</p>
 <tr>
 <td><strong>Production</strong></td>
 <td><code>bim-ootb-full</code></td>
-<td><code>landing.html</code> → <code>index.html</code></td>
+<td>Landing page (building cards)</td>
+<td><code>sandbox/index.html</code></td>
 <td>Live users</td>
 </tr>
 <tr>
 <td><strong>Dev</strong></td>
 <td><code>bim-ootb-dev</code></td>
-<td><code>landing2.html</code> → <code>index.html</code></td>
-<td>Test changes</td>
+<td>Landing page (building cards)</td>
+<td><code>sandbox/index.html</code></td>
+<td>Test changes before promoting</td>
 </tr>
 <tr>
 <td><strong>Duplex demo</strong></td>
 <td><code>bim-ootb</code></td>
-<td>viewer direct</td>
+<td>Viewer direct (no landing)</td>
+<td><code>index.html</code></td>
 <td>Standalone demo</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Dev URL:</strong> <code>https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/index.html</code></p>
-<p><strong>Local dev files:</strong> <code>deploy/dev/</code> — only changed files. Unchanged modules copied from <code>deploy/sandbox/</code>.
-Deploy commands: see <code>deploy/OCI_UPLOAD.md</code> §Dev Environment.</p>
+<p><strong>Local dev:</strong> <code>deploy/dev/</code> — independent copies of changed files. Symlinks to <code>deploy/sandbox/</code> for unchanged modules. Deploy commands: <code>internal/OCI_SETUP.md</code> §bim-ootb-dev.</p>
+<p><strong>Cache busting:</strong> After uploading changed JS to OCI, users must hard-refresh (Ctrl+Shift+R). The <code>?v=N</code> query strings in <code>index.html</code> control browser caching — bump when deploying.</p>
+<hr />
+<h2 id="02-mobile-performance-s232-2026-04-27">0.2 Mobile Performance — S232 (2026-04-27)<a class="headerlink" href="#02-mobile-performance-s232-2026-04-27" title="Permanent link">&para;</a></h2>
+<p>Mobile GPU budget is ~10K draw calls for 60fps. The viewer uses two layers of optimization:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Technique</th>
+<th>Desktop</th>
+<th>Mobile</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>S231 InstancedMesh</strong></td>
+<td>Shared geometry hashes → 1 draw call per hash</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><strong>S232 Mobile merge</strong></td>
+<td>Single-instance meshes grouped by storey×disc×rgba into merged BufferGeometry</td>
+<td>No (keeps individual pick)</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Building</th>
+<th>Elements</th>
+<th>Desktop draws</th>
+<th>Mobile draws</th>
+<th>Mobile reduction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Terminal</td>
+<td>48,428</td>
+<td>7,150</td>
+<td>~500 est.</td>
+<td><strong>99%</strong></td>
+</tr>
+<tr>
+<td>Hospital</td>
+<td>63,182</td>
+<td>22,800</td>
+<td>~600 est.</td>
+<td><strong>99%</strong></td>
+</tr>
+<tr>
+<td>Clinic</td>
+<td>16,070</td>
+<td>7,528</td>
+<td>729</td>
+<td><strong>95%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Mobile detection: <code>navigator.maxTouchPoints &gt; 0 &amp;&amp; screen.width &lt; 1024</code>.</p>
+<p><strong>Filter/pick on mobile:</strong> Storey and discipline filters work on both InstancedMesh (per-instance zero-scale matrix) and merged groups (per-group visibility). Element pick returns guid for instanced elements, group info (storey, discipline, count) for merged.</p>
 <hr />
 <h2 id="1-architecture-no-native-code">1. Architecture — No Native Code<a class="headerlink" href="#1-architecture-no-native-code" title="Permanent link">&para;</a></h2>
 <p>The browser viewer already works on mobile Chrome/Safari. The APK is a thin wrapper.</p>
