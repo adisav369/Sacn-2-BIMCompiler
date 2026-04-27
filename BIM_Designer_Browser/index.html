@@ -865,7 +865,7 @@
   <span class="md-ellipsis">
     
   
-    6 Gates
+    9 Gates
   
 
     
@@ -4373,6 +4373,8 @@ and the elimination of server-side infrastructure.</p>
 <p><strong>What's genuinely new:</strong> the full pipeline — IFC → extracted DB → pre-tessellated BLOBs →
 browser renders geometry AND runs analytics from the same SQL layer, with zero server
 infrastructure. The components existed. The integration at 126K elements with 60fps did not.</p>
+<p>| GPU instancing (S231) | <code>THREE.InstancedMesh</code> since r125 (2022). Standard pattern. | Grouped by <code>geometry_hash</code> — 85% draw call reduction on Terminal (48K el). Material dedup to ~100 shared instances. |
+| Mobile merge (S232) | <code>BufferGeometry</code> merge is textbook Three.js optimization. | Storey×disc×rgba grouping, transform baked into vertices — 95% reduction on mobile (Clinic 16K → 729 draws). InstancedMesh filter via zero-scale matrix. Per-instance pick via <code>hit.instanceId</code>. |</p>
 <hr />
 <h2 id="2-deployment-architecture">2. Deployment Architecture<a class="headerlink" href="#2-deployment-architecture" title="Permanent link">&para;</a></h2>
 <h3 id="21-static-file-deployment-oci-any-cdn">2.1 Static File Deployment (OCI / Any CDN)<a class="headerlink" href="#21-static-file-deployment-oci-any-cdn" title="Permanent link">&para;</a></h3>
@@ -4616,7 +4618,7 @@ viewer main.js         → loads diffDb from ?diffdb= param
 </tbody>
 </table>
 <p><strong>Localization (S226):</strong> iDempiere-style <code>_TRL</code> locale system. Every label, currency symbol, rate source, column header, chart title, and Excel sheet name is locale-driven. 15 country locales shipped — each with local rate books (CIDB, RS Means, DIN 276, Spon's, etc.). Project-level override: copy a locale file, edit rates for your contract. <code>?lang=ms_MY</code> in the URL switches the entire 4D/5D output to Bahasa Melayu with CIDB RM rates. See <strong><a href="../Localization/">Localization.md</a></strong> for the full developer guide.</p>
-<p><strong>What Primavera P6 charges $5K/seat for, we do from a browser for zero.</strong></p>
+<p>Basic 4D/5D scheduling and costing runs in the browser with zero licensing cost — how far this takes you compared to dedicated tools like Primavera P6 depends on your project needs.</p>
 <blockquote>
 <p><strong>Enterprise setup:</strong> The browser import creates a single self-contained DB per building
 (metadata + geometry, instanced and deduped). For organisations needing a <strong>centralised
@@ -5404,10 +5406,15 @@ Full guide: <a href="../IFC_ONBOARDING_RUNBOOK/">IFC Onboarding Runbook</a>. Pla
 - City mode uses 324KB index for bboxes, downloads individual buildings on demand</p>
 <h3 id="94-geometry-dedup-wouldnt-gltf-instancing-be-more-efficient">9.4 "Geometry dedup — wouldn't glTF instancing be more efficient?"<a class="headerlink" href="#94-geometry-dedup-wouldnt-gltf-instancing-be-more-efficient" title="Permanent link">&para;</a></h3>
 <p>The DB already deduplicates at the <code>geometry_hash</code> level — same mesh BLOB stored once,
-referenced N times by elements sharing that hash. The Three.js side currently creates
-one <code>BufferGeometry</code> per element. Upgrading to <code>InstancedMesh</code> for repeated hashes
-is a rendering optimization (~2x memory reduction for repetitive buildings like hospitals)
-— it's an enhancement, not an architecture change. The instancing data is already in the DB.</p>
+referenced N times by elements sharing that hash. <strong>S231 (2026-04-27) implemented
+<code>THREE.InstancedMesh</code></strong> for hashes with 2+ instances. Results on Terminal (48K elements):
+7,150 draw calls (was 48,428) = <strong>85% reduction</strong>. Material dedup (~100 materials vs 48K).</p>
+<p><strong>S232 (2026-04-27) added mobile merge.</strong> Single-instance meshes (unique pipes/ducts that
+can't be instanced) are grouped by storey|disc|rgba into merged <code>BufferGeometry</code>. Transform
+baked into vertices. Clinic results: 16,070 → <strong>729 draw calls (95.5% reduction)</strong>. Mobile
+detection: <code>maxTouchPoints &gt; 0 &amp;&amp; screen.width &lt; 1024</code>. Desktop keeps individual meshes for
+full pick. InstancedMesh storey/disc filter via zero-scale matrix. InstancedMesh pick via
+<code>hit.instanceId</code> → <code>_instanceMeta</code> guid lookup. <code>deploy/dev/streaming.js</code>, <code>panels.js</code>, <code>picking.js</code>.</p>
 <h3 id="95-schema-changes-require-redeploying-dbs-no-versioning-story">9.5 "Schema changes require redeploying DBs. No versioning story."<a class="headerlink" href="#95-schema-changes-require-redeploying-dbs-no-versioning-story" title="Permanent link">&para;</a></h3>
 <p>The schema mirrors the IFC entity model, which moves slowly (IFC4 released 2013,
 IFC4.3 released 2024). The <code>elements_meta</code> + <code>component_geometries</code> tables haven't

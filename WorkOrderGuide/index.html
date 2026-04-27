@@ -865,7 +865,7 @@
   <span class="md-ellipsis">
     
   
-    6 Gates
+    9 Gates
   
 
     
@@ -4865,7 +4865,7 @@ ERP context (C_Order, BOM decisions): <a href="../BOMBasedCompilation/"><code>BB
 Schema reference: <a href="../DATA_MODEL/"><code>DATA_MODEL.md</code></a>.</p>
 <h3 id="step-6-compilation-and-delta-verification">Step 6 — Compilation and delta verification<a class="headerlink" href="#step-6-compilation-and-delta-verification" title="Permanent link">&para;</a></h3>
 <p>The same <code>run_RosettaStones.sh</code> invocation continues after BOM creation.
-Compilation runs the <strong>12-stage pipeline</strong> (<a href="../BOMBasedCompilation/"><code>BOMBasedCompilation.md</code> §5</a>):</p>
+Compilation runs the <strong>11-stage pipeline</strong> (<a href="../BOMBasedCompilation/"><code>BOMBasedCompilation.md</code> §5</a>):</p>
 <table>
 <thead>
 <tr>
@@ -4881,7 +4881,7 @@ Compilation runs the <strong>12-stage pipeline</strong> (<a href="../BOMBasedCom
 <td>Copies <code>*_BOM.db</code> → temp <code>_XX_compile.db</code></td>
 </tr>
 <tr>
-<td>Compile (12 stages)</td>
+<td>Compile (11 stages)</td>
 <td><a href="https://github.com/red1oon/BIMCompiler/blob/master/DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java"><code>CompilationPipeline.java</code></a></td>
 <td>Metadata → Compile → Write → Route → Verb → Digest → Geometry → Prove (+ 4 internal stages)</td>
 </tr>

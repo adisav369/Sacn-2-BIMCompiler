@@ -865,7 +865,7 @@
   <span class="md-ellipsis">
     
   
-    6 Gates
+    9 Gates
   
 
     
@@ -7472,9 +7472,9 @@ MEP (CURRENT — IMPLICIT)
                     ▼  BIM COBOL Compiler
 LEVEL 1: BUILDING SPECIFICATION (current DSL)
          &quot;BUILDING ... STOREY ... ROOM ... WINDOW ...&quot;
-         Structured declarations that the 12-stage pipeline processes.
+         Structured declarations that the 11-stage pipeline processes.
                     │
-                    ▼  12-Stage Pipeline
+                    ▼  11-Stage Pipeline
 LEVEL 0: IFC ASSEMBLER (output.db / Blender)
          IfcPipeSegment(guid, start, end, radius)
          IfcPipeFitting(guid, type, position)
@@ -7492,7 +7492,7 @@ L1 output (generated, not hand-written):
   m_bom_line:             (FP_TE_L01, SPRINKLER_HEAD_K80, BUY, qty=N)
 </code></pre></div>
 <h3 id="32-level-1-level-0-compilation">3.2 Level 1 → Level 0 Compilation<a class="headerlink" href="#32-level-1-level-0-compilation" title="Permanent link">&para;</a></h3>
-<p>Level 1 compiles via the existing 12-stage pipeline into output.db:</p>
+<p>Level 1 compiles via the existing 11-stage pipeline into output.db:</p>
 <div class="highlight"><pre><span></span><code>L1 metadata rows  →  CompileStage resolves positions
                   →  MEPBOMResolver calculates quantities
                   →  WriteStage emits IfcFireSuppressionTerminal elements
@@ -9527,7 +9527,7 @@ The §18.11 verb chaining pipeline and Phase F5 ("script-driven compilation — 
 </tr>
 </tbody>
 </table>
-<p>The COBOL/Java analogy holds in the <em>domain language</em> sense (construction intent compiles to assembler-level IFC), but the implementation does not need a traditional compiler architecture yet. The 12-stage DAGCompiler pipeline already IS the "compiler" — BIM COBOL verbs are a higher-level way to feed it.</p>
+<p>The COBOL/Java analogy holds in the <em>domain language</em> sense (construction intent compiles to assembler-level IFC), but the implementation does not need a traditional compiler architecture yet. The 11-stage DAGCompiler pipeline already IS the "compiler" — BIM COBOL verbs are a higher-level way to feed it.</p>
 <hr />
 <h2 id="19-verb-pattern-detection-bom-recipe-factorization-factorize-v1">19. Verb Pattern Detection — BOM Recipe Factorization (FACTORIZE-v1)<a class="headerlink" href="#19-verb-pattern-detection-bom-recipe-factorization-factorize-v1" title="Permanent link">&para;</a></h2>
 <p><strong>Status:</strong> LIVE (2026-03-17, CLUSTER optimised 2026-03-18). 48,485 → 1,131 lines (42.8:1 compression).</p>

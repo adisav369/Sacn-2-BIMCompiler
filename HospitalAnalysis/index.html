@@ -859,7 +859,7 @@
   <span class="md-ellipsis">
     
   
-    6 Gates
+    9 Gates
   
 
     
@@ -3614,8 +3614,12 @@ loads each of the 62K elements as a full mesh object into Blender's scene graph 
 pressure rises linearly with element count, performance degrades. Our approach stores one
 geometry blob per <code>geometry_hash</code> in <code>base_geometries</code> and renders by transform reference.
 Even at 2.9× reuse, 62K elements render from 21K unique meshes. At higher reuse (TE roof),
-the ratio is extreme. The Hospital is the model that proves this matters even for low-reuse
-buildings — it moves smoothly in our DB, but would tax any scene-graph-based viewer.</p>
+the ratio is extreme. <strong>S231 browser instancing:</strong> <code>InstancedMesh</code> reduced Hospital draw calls
+from 63,182 to 22,800 (64% reduction, 5.5s stream). The Hospital proves instancing matters
+even for low-reuse buildings — 17,870 single meshes + 4,930 instanced groups.
+<strong>S232 mobile merge (2026-04-27):</strong> those 17,870 single meshes further merged by
+storey|disc|rgba on mobile — estimated ~600 draw calls. Storey/disc filter via zero-scale
+matrix on InstancedMesh instances. Pick returns guid for instanced, group info for merged.</p>
 <h3 id="ho_-vs-te_-mep-different-vocabulary-not-classic">HO_ vs TE_ MEP — Different Vocabulary, Not Classic<a class="headerlink" href="#ho_-vs-te_-mep-different-vocabulary-not-classic" title="Permanent link">&para;</a></h3>
 <p>Hospital MEP is structurally different from Terminal MEP — different hazard classes,
 different product specs, different regulatory frameworks:</p>

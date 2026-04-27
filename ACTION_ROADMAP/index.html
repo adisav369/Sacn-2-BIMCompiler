@@ -865,7 +865,7 @@
   <span class="md-ellipsis">
     
   
-    6 Gates
+    9 Gates
   
 
     
@@ -3240,7 +3240,7 @@
 </tr>
 <tr>
 <td><strong>Compilation pipeline</strong></td>
-<td>12 stages, 77 verbs, 7,403 products in ERP.db</td>
+<td>11 stages, 77 verbs, 7,403 products in ERP.db</td>
 </tr>
 <tr>
 <td><strong>Rosetta Stone fleet</strong></td>
@@ -3570,18 +3570,8 @@ engine, and the designer share one source of truth.</p>
 </table>
 <hr />
 <h2 id="the-paradigm">The Paradigm<a class="headerlink" href="#the-paradigm" title="Permanent link">&para;</a></h2>
-<p>Direct Stream proves that a <strong>compiled database</strong> is a better viewer than a <strong>modelled file</strong>.
-The geometry, the semantics, the cost, and the schedule are the same data structure.
-The viewer doesn't interpret the data — it streams it.</p>
-<p>This started from a simple observation in <a href="../RTree/">RTree.md</a>:</p>
-<blockquote>
-<p><em>The industry loads the model, then queries it. We query the index. The model loads only what you ask for.</em></p>
-</blockquote>
-<p>From that, everything follows: envelope-first streaming, camera-driven phases,
-compilation-to-viewport feedback, the death of the export step.</p>
 <p>The database is the model. The viewer reads SQL. The compiler writes SQL.
-The whole suite shares one truth.</p>
-<p>See: <a href="../MANIFESTO/">MANIFESTO.md</a> | <a href="../RTree/">RTree.md</a> | <a href="../SPATIAL_COMPILATION_PAPER/">SPATIAL_COMPILATION_PAPER.md</a></p>
+See <a href="../MANIFESTO/">MANIFESTO.md</a> for the full architecture rationale, <a href="../RTree/">RTree.md</a> for streaming design, and <a href="../SPATIAL_COMPILATION_PAPER/">SPATIAL_COMPILATION_PAPER.md</a> for the academic treatment.</p>
 <hr />
 <h2 id="quick-links">Quick Links<a class="headerlink" href="#quick-links" title="Permanent link">&para;</a></h2>
 <table>

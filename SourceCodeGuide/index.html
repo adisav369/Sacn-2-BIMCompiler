@@ -865,7 +865,7 @@
   <span class="md-ellipsis">
     
   
-    6 Gates
+    9 Gates
   
 
     
@@ -1424,10 +1424,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-the-12-stage-pipeline" class="md-nav__link">
+  <a href="#6-the-11-stage-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        §6 — The 12-Stage Pipeline
+        §6 — The 11-Stage Pipeline
       
     </span>
   </a>
@@ -3847,10 +3847,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-the-12-stage-pipeline" class="md-nav__link">
+  <a href="#6-the-11-stage-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        §6 — The 12-Stage Pipeline
+        §6 — The 11-Stage Pipeline
       
     </span>
   </a>
@@ -4303,7 +4303,7 @@
 <p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a> · <a href="../ACTION_ROADMAP/">ACTION_ROADMAP</a></p>
 </blockquote>
 <div class="bim-banner">
-<p><b>Where to start reading.</b> Entry points, DAO patterns, the 12-stage pipeline — from a 30-line YAML to verified 3D output. If you're new to the codebase, start here.</p>
+<p><b>Where to start reading.</b> Entry points, DAO patterns, the 11-stage pipeline — from a 30-line YAML to verified 3D output. If you're new to the codebase, start here.</p>
 </div>
 <p><strong>Version 3.0</strong></p>
 <p><strong>Creator:</strong> Redhuan D. Oon <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a>
@@ -4708,7 +4708,7 @@ BonsaiBIMDesigner (Blender addon bridge + GUI)
 <p><strong>Full spec:</strong> <a href="../BOMBasedCompilation/"><code>BOMBasedCompilation.md</code></a> §4 — tack convention, BOMChild record, 3-table authority rule, cascade placement.</p>
 </blockquote>
 <hr />
-<h2 id="6-the-12-stage-pipeline">§6 — The 12-Stage Pipeline<a class="headerlink" href="#6-the-12-stage-pipeline" title="Permanent link">&para;</a></h2>
+<h2 id="6-the-11-stage-pipeline">§6 — The 11-Stage Pipeline<a class="headerlink" href="#6-the-11-stage-pipeline" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="n">List</span><span class="o">&lt;</span><span class="n">CompilerStage</span><span class="o">&gt;</span><span class="w"> </span><span class="n">STAGES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span>
 <span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">MetadataValidator</span><span class="p">(),</span><span class="w">  </span><span class="c1">// 1 — validate before use</span>
 <span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">ParseStage</span><span class="p">(),</span><span class="w">         </span><span class="c1">// 2 — read DSL (null DSL = BOM walk path)</span>
@@ -5248,7 +5248,7 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 <tbody>
 <tr>
 <td><code>CompilationPipeline</code></td>
-<td>12-stage orchestrator</td>
+<td>11-stage orchestrator</td>
 </tr>
 <tr>
 <td><code>BuildingCompiler</code></td>
@@ -5376,7 +5376,7 @@ component_library.db                    ERP.db
   ├─ m_bom (BUILDING → FLOOR → SET)
   ├─ m_bom_line (child placements: dx/dy/dz)
   └─ C_DocType (building identity)
-    │ DAGCompiler (12-stage pipeline)
+    │ DAGCompiler (11-stage pipeline)
     ▼
 output.db
   ├─ elements_meta (ifc_class, storey, material)

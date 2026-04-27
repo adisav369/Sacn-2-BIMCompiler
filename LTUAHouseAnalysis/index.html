@@ -850,6 +850,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Bonsai/Blender Performance (125,997 elements)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#browser-performance-s231-instancedmesh-2026-04-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Browser Performance — S231 InstancedMesh (2026-04-27)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1094,7 +1111,7 @@
   <span class="md-ellipsis">
     
   
-    6 Gates
+    9 Gates
   
 
     
@@ -2888,6 +2905,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Bonsai/Blender Performance (125,997 elements)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#browser-performance-s231-instancedmesh-2026-04-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Browser Performance — S231 InstancedMesh (2026-04-27)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3443,6 +3477,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Bonsai/Blender Performance (125,997 elements)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#browser-performance-s231-instancedmesh-2026-04-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Browser Performance — S231 InstancedMesh (2026-04-27)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3924,6 +3975,70 @@ beyond the architectural envelope.</p>
 <p>All 8 disciplines loaded simultaneously with full tessellated mesh. No LOD,
 no spatial culling — raw scene graph. Competitive with commercial BIM viewers
 (Navisworks, Solibri) at this element count, at zero licence cost.</p>
+<h3 id="browser-performance-s231-instancedmesh-2026-04-27">Browser Performance — S231 InstancedMesh (2026-04-27)<a class="headerlink" href="#browser-performance-s231-instancedmesh-2026-04-27" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Before S231</th>
+<th>After S231</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Draw calls</td>
+<td>122,330</td>
+<td>50,081 (<strong>59% reduction</strong>)</td>
+</tr>
+<tr>
+<td>Stream time (headless)</td>
+<td>n/a</td>
+<td>7.8s</td>
+</tr>
+<tr>
+<td>Instanced groups</td>
+<td>0</td>
+<td>10,835 (83,084 elements batched)</td>
+</tr>
+<tr>
+<td>Single meshes</td>
+<td>122,330</td>
+<td>39,246 (unique shapes)</td>
+</tr>
+</tbody>
+</table>
+<p>Desktop: near instant at 50K draw calls.</p>
+<p><strong>S232 mobile merge (2026-04-27):</strong> Single-instance meshes grouped by storey|disc|rgba
+into merged <code>BufferGeometry</code> (transform baked into vertices). Mobile detection:
+<code>maxTouchPoints &gt; 0 &amp;&amp; screen.width &lt; 1024</code>. Desktop unchanged.</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Desktop (S231)</th>
+<th>Mobile (S232)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Draw calls</td>
+<td>50,081</td>
+<td>~2,000 est. (95%+ reduction)</td>
+</tr>
+<tr>
+<td>Pick</td>
+<td>Per-element guid</td>
+<td>InstancedMesh → guid, merged → group info</td>
+</tr>
+<tr>
+<td>Storey/disc filter</td>
+<td>Individual mesh visibility</td>
+<td>Zero-scale matrix per instance + merged group visibility</td>
+</tr>
+</tbody>
+</table>
+<p>LTU remains the stress test — 39K unique shapes merged into ~200 groups on mobile.
+Proven on Clinic (16,070 → 729 draw calls). Storey/disc filter and pick all functional.</p>
 <blockquote>
 <p><strong>Note:</strong> MEP disciplines (PLB, HVAC, SAN, VENT) have elements extending beyond
 the ARC envelope — these are genuine external service runs (roof drains, underground
