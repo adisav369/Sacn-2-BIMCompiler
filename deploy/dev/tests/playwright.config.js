@@ -7,9 +7,12 @@ const DEPLOY_ROOT = path.resolve(__dirname, '..', '..');
 
 module.exports = defineConfig({
   testDir: './specs',
-  fullyParallel: false,         // sequential — tests share viewer state
+  fullyParallel: false,         // sequential within each spec (shared beforeEach)
   retries: 0,                   // no retries — a fail is a fail
-  workers: 1,                   // single worker — one browser
+  workers: 3,                   // S229: was 1 — specs are independent (each calls openViewer)
+  // Speed: npx playwright test --grep @fast    → <60s structural tests
+  //        npx playwright test                 → full suite (~5min, nightly)
+  // See PlaywrightAnalysis.md §Anti-Drift Rules + §Suite Speed
   timeout: 60000,               // 60s per test (streaming can be slow)
   expect: { timeout: 15000 },   // 15s for assertions (wait for stream)
 

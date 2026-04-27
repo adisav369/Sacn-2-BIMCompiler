@@ -26,12 +26,11 @@ Before ending, update PROGRESS.md with:
 - Run space contract check — if `space_contract` FAIL, fix before committing
 
 ### Housekeeping (every session end)
-- Update MEMORY.md (witness/verb counts), SCHEMA_QUICKREF.md (row counts). Delete obsolete topic files. Keep MEMORY.md ≤80 lines, CLAUDE.md ≤45 lines. Screenshots: `~/Pictures/Screenshots/`
+- Update MEMORY.md. Delete obsolete topic files. Keep MEMORY.md ≤80 lines. Screenshots: `~/Pictures/Screenshots/`
 - If PROGRESS.md > 80 lines, archive DONE items as single-line pointers to spec docs
 
 ## Watchdog Protocol (runs in same session after every coder task)
 - Read the coder's `# DONE` appendix — every claim must have a `§` log line proving it. No log line = not done. Flag it.
-- Read `OPEN_ISSUES.txt` (mirrors §18.1 open issues) — an issue is only removed when a `§` log line in this session proves it fixed. No log line = stays open.
 - If log doesn't cover a claim — coder must add `_log()`, rerun, and produce the evidence before closing.
 
 ## Standing Rules
@@ -42,6 +41,7 @@ Before ending, update PROGRESS.md with:
 - **Deploy Flow (deploy/dev/ ONLY):** Edit → syntax check → verify all `§` tags exist → save test log → upload to dev bucket → smoke test URLs → fetch back and verify content → confirm file is loaded by viewer. ONE flow, never stop partway or ask user to check.
 - **Spec-First (ALL work):** Spec before code, spec before tests, spec before prompts. No implementation without a written spec section. New features: witness claim first, then implement.
 - **Tests expose issues:** Every test must name the issue it proves or disproves. A test that passes without revealing whether the issue is solved is not a test.
+- **Browser tests — know the boundary:** Playwright tests wiring, data flow, and E2E flows (wizard, import). It CANNOT test visual rendering, camera, mobile UX, or round-trip state (SwiftShader = black pixels). Do NOT add Playwright tests for things it can't verify — use DB-level Node.js tests or document as manual checks. Run `node deploy/dev/tests/audit_specs.js` after any test changes — must exit 0. See `reference/residential/PlaywrightAnalysis.md` §Playwright Scope.
 - **Anti-Drift Policy:** Read `docs/TestArchitecture.md` §Anti-Drift before adding BOMs, products, or geometry paths
 - **Pre-Flight Citation:** Before code changes, cite the spec: `// Implementing BBC.md §X.Y — Witness: W-NAME`
 - **Traceability:** Check `TestArchitecture.md` §Traceability Matrix before and after changes
