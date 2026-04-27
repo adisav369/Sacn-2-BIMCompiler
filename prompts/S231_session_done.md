@@ -101,17 +101,26 @@ classify_te.yaml (29 keys)     → DisciplineBomBuilder → TE_BOM.db
   scaled mesh per instance. For browser viewing, `extracted.db` (27MB) + `library.db` (37MB)
   is the correct path. But should the compiler output also use shared hashes?
 
-### 2. InstancedMesh — promote to production
+### 2. InstancedMesh — mobile still slow, promote after fix
 
-The dev streaming.js is proven (3/3 Playwright PASS, user-confirmed "everything faster").
-Next: promote to `bim-ootb-full` (production) bucket.
+**Desktop:** near instant for all buildings. Fly-around smooth.
+**Mobile:** streaming faster than before, but orbit/fly still slow — especially LTU (126K).
+The 85% draw call reduction helps but mobile GPU still chokes on 50K draw calls (LTU).
 
-**Before promoting, verify:**
+**Root cause hypothesis:** Even with InstancedMesh, LTU has 39,246 single-instance meshes
+(unique pipe/duct shapes) = 39K draw calls that can't be instanced. Mobile GPU limit is
+~10K draw calls for 60fps. Options:
+- LOD: simplify distant single-instance meshes to boxes (< 50 verts = keep, > 50 = substitute)
+- Merge: group single-instance meshes by discipline+storey into merged BufferGeometry
+- Shred: hide elements beyond camera distance (S195 pattern adapted for browser)
+
+**Before promoting to prod, verify:**
 - [ ] Pick/selection works on instanced objects (click → info panel shows guid)
 - [ ] Storey filter works (instanced objects hidden/shown correctly)
 - [ ] Discipline filter works
 - [ ] X-ray toggle works
 - [ ] Clear + re-stream works
+- [ ] Mobile orbit FPS acceptable for Terminal (48K)
 - [ ] Diff mode works (if used with instanced buildings)
 
 **Known limitation:** InstancedMesh doesn't support per-instance `userData`. Picking an
