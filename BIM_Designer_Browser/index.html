@@ -5008,7 +5008,7 @@ Above 50K, implement shred-on-distance (same as Bonsai Direct Stream).</p>
 <h2 id="6-quick-start">6. Quick Start<a class="headerlink" href="#6-quick-start" title="Permanent link">&para;</a></h2>
 <h3 id="60-live-demo-zero-install">6.0 Live Demo — Zero Install<a class="headerlink" href="#60-live-demo-zero-install" title="Permanent link">&para;</a></h3>
 <p>Open in any browser (desktop or mobile). See also: <a href="../MOBILE_DEPLOY/">Mobile &amp; Cloud Deployment</a> for OCI setup, APK packaging, and offline strategy.</p>
-<p><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html"><strong>BIM OOTB — 25 buildings, 1M elements</strong></a></p>
+<p><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html"><strong>BIM OOTB — 37 buildings, 1M elements</strong></a></p>
 <p>Click any building → downloads its DB (1-60MB) → streams geometry in your browser.
 Cached in IndexedDB — second visit is instant. Explore all 30 archetypes to unlock the full city (786 buildings).</p>
 <p>Works on desktop and mobile. No install, no account, no server.</p>
@@ -5356,7 +5356,7 @@ scripts/extract_building.sh<span class="w"> </span>T0_Hospital<span class="w"> <
 <li>[x] Trackpad + mouse orbit/pan/zoom</li>
 <li>[x] HUD with building name, streaming progress</li>
 <li>[x] Per-building DB extraction (<code>scripts/extract_per_building.py</code>) — all 30 archetypes</li>
-<li>[x] OCI bucket setup + public URL (ap-kulai-2, bim-ootb-full)</li>
+<li>[x] OCI bucket setup + public URL (ap-kulai-2, bim-ootb-live)</li>
 <li>[x] IndexedDB cache (download once, instant revisit)</li>
 <li>[x] City mode (city_index.db, 786 bboxes, click-to-stream)</li>
 <li>[x] "Complete the City" gamification (progress bar, LAUNCH CITY button)</li>
@@ -5460,7 +5460,7 @@ node<span class="w"> </span>deploy/sandbox/test_all.js
 <span class="c1"># → http://localhost:8080/landing.html</span>
 
 <span class="c1"># Deploy to OCI (both buckets)</span>
-oci<span class="w"> </span>os<span class="w"> </span>object<span class="w"> </span>put<span class="w"> </span>--bucket-name<span class="w"> </span>bim-ootb-full<span class="w"> </span>--file<span class="w"> </span>deploy/sandbox/tools.js<span class="w"> </span>--name<span class="w"> </span>sandbox/tools.js<span class="w"> </span>--content-type<span class="w"> </span>application/javascript<span class="w"> </span>--force
+oci<span class="w"> </span>os<span class="w"> </span>object<span class="w"> </span>put<span class="w"> </span>--bucket-name<span class="w"> </span>bim-ootb-live<span class="w"> </span>--file<span class="w"> </span>deploy/sandbox/tools.js<span class="w"> </span>--name<span class="w"> </span>sandbox/tools.js<span class="w"> </span>--content-type<span class="w"> </span>application/javascript<span class="w"> </span>--force
 oci<span class="w"> </span>os<span class="w"> </span>object<span class="w"> </span>put<span class="w"> </span>--bucket-name<span class="w"> </span>bim-ootb<span class="w"> </span>--file<span class="w"> </span>deploy/sandbox/tools.js<span class="w"> </span>--name<span class="w"> </span>tools.js<span class="w"> </span>--content-type<span class="w"> </span>application/javascript<span class="w"> </span>--force
 </code></pre></div>
 <h3 id="console-log-tags">Console Log Tags<a class="headerlink" href="#console-log-tags" title="Permanent link">&para;</a></h3>
