@@ -151,6 +151,19 @@ All 8 disciplines loaded simultaneously with full tessellated mesh. No LOD,
 no spatial culling — raw scene graph. Competitive with commercial BIM viewers
 (Navisworks, Solibri) at this element count, at zero licence cost.
 
+### Browser Performance — S231 InstancedMesh (2026-04-27)
+
+| Metric | Before S231 | After S231 |
+|--------|-------------|------------|
+| Draw calls | 122,330 | 50,081 (**59% reduction**) |
+| Stream time (headless) | n/a | 7.8s |
+| Instanced groups | 0 | 10,835 (83,084 elements batched) |
+| Single meshes | 122,330 | 39,246 (unique shapes) |
+
+Desktop: near instant. Mobile: still heavy on fly-around — 39K single-instance draw calls
+(unique pipe/duct shapes) exceed mobile GPU budget (~10K for 60fps). LTU is the stress
+test that proves instancing alone isn't enough for mobile — needs LOD or shred-on-distance.
+
 > **Note:** MEP disciplines (PLB, HVAC, SAN, VENT) have elements extending beyond
 > the ARC envelope — these are genuine external service runs (roof drains, underground
 > drainage, cooling plant connections), not extraction errors. The Java post-processor

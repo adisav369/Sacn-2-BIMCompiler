@@ -292,8 +292,9 @@ loads each of the 62K elements as a full mesh object into Blender's scene graph 
 pressure rises linearly with element count, performance degrades. Our approach stores one
 geometry blob per `geometry_hash` in `base_geometries` and renders by transform reference.
 Even at 2.9× reuse, 62K elements render from 21K unique meshes. At higher reuse (TE roof),
-the ratio is extreme. The Hospital is the model that proves this matters even for low-reuse
-buildings — it moves smoothly in our DB, but would tax any scene-graph-based viewer.
+the ratio is extreme. **S231 browser instancing:** `InstancedMesh` reduced Hospital draw calls
+from 63,182 to 22,800 (64% reduction, 5.5s stream). The Hospital proves instancing matters
+even for low-reuse buildings — 17,870 single meshes + 4,930 instanced groups.
 
 ### HO_ vs TE_ MEP — Different Vocabulary, Not Classic
 
