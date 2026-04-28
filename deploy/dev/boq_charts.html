@@ -841,58 +841,8 @@ function _downloadLog(label) {
   }, 1500);
 }
 
-// Prepare all charts for Excel capture: high-res sizing + black labels (bar/line ONLY)
-// Returns { savedStyles, savedOpts } for restoreChartsAfterExcel()
-function prepareChartsForExcel() {
-  var savedStyles = [], savedOpts = [];
-  for (var ci = 0; ci < chartInstances.length; ci++) {
-    var ch = chartInstances[ci];
-    var isPie = ch.config.type === 'pie';
-    savedStyles.push({
-      pw: ch.canvas.parentElement.style.width, ph: ch.canvas.parentElement.style.height,
-      cw: ch.canvas.style.width, ch_: ch.canvas.style.height,
-      aw: ch.canvas.width, ah: ch.canvas.height,
-      poh: ch.canvas.parentElement.offsetHeight
-    });
-    savedOpts.push(JSON.parse(JSON.stringify(ch.options)));
-    // PIE: don't resize — HTML aspectRatio:1 keeps it round. Just capture as-is.
-    if (isPie) continue;
-    var w = 1100, h = 700;
-    ch.options.responsive = false;
-    if (ch.options.scales) {
-      for (var axis in ch.options.scales) {
-        var sc = ch.options.scales[axis];
-        if (sc.ticks) { sc.ticks.color = '#000'; sc.ticks.font = { size: 14 }; }
-        if (sc.title) { sc.title.color = '#000'; sc.title.font = { size: 16, weight: 'bold' }; }
-      }
-    }
-    if (ch.options.plugins && ch.options.plugins.legend && ch.options.plugins.legend.labels) {
-      ch.options.plugins.legend.labels.color = '#000';
-      ch.options.plugins.legend.labels.font = { size: 14 };
-    }
-    ch.update('none');
-    ch.canvas.parentElement.style.width = w + 'px';
-    ch.canvas.parentElement.style.height = h + 'px';
-    ch.canvas.style.width = w + 'px';
-    ch.canvas.style.height = h + 'px';
-    ch.canvas.width = w;
-    ch.canvas.height = h;
-    ch.resize(w, h);
-  }
-  _log('[S235] §CHART_VERSION v5 — pie:no-resize, bar:black-labels, restore:re-render');
-  _log('[S226] §CHART_PREPARE count=' + chartInstances.length +
-    ' sizes=' + chartInstances.map(function(c) { return c.canvas.width + 'x' + c.canvas.height; }).join(','));
-  return { savedStyles: savedStyles, savedOpts: savedOpts };
-}
-
-// Restore all charts by re-rendering from scratch
-function restoreChartsAfterExcel(saved) {
-  renderCharts();
-  _log('[S226] §CHART_RESTORE re-rendered ' + chartInstances.length + ' charts');
-}
-
-// Capture one chart as a white-background PNG for Excel embedding
-// Self-verifying: logs PASS/FAIL for every quality dimension
+// S235: Chart images removed from Excel — HTML charts are sufficient.
+// prepare/restore/capture functions retired. Only verify + log remain.
 var _chartTestPass = 0, _chartTestFail = 0;
 function _ct(pass, ci, name, test, detail) {
   var tag = pass ? 'PASS' : 'FAIL';
@@ -1054,133 +1004,12 @@ function _verifyMaths(wb, label) {
   _log('[S226] §MATHS_VERIFY done — ' + label);
 }
 
-function captureChartImage(ci, wb) {
-  var ch = chartInstances[ci];
-  if (!ch) return null;
-  var isPie = ch.config.type === 'pie';
-  var src = ch.canvas;
-  // Chart title for log readability
-  var name = (ch.options.plugins && ch.options.plugins.title && ch.options.plugins.title.text) || ch.config.type + '[' + ci + ']';
-
-  // Composite onto white background — chart canvas is transparent, Excel is white
-  var off = document.createElement('canvas');
-  if (isPie) {
-    // Legend to right, widen canvas so pie area is square
-    ch.options.plugins.legend.position = 'right';
-    ch.options.responsive = false;
-    ch.update('none');
-    var legW = ch.legend ? ch.legend.width : 0;
-    var pH = src.height;
-    var pW = pH + legW;  // pie area = pH × pH (square), legend fills the rest
-    src.width = pW; src.height = pH;
-    ch.resize(pW, pH);
-    ch.update('none');
-    off.width = pW; off.height = pH;
-    var ctx = off.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, pW, pH);
-    ctx.drawImage(src, 0, 0);
-  } else {
-    // Black labels for white Excel background — apply, redraw, capture
-    if (ch.options.scales) {
-      for (var axis in ch.options.scales) {
-        var sc = ch.options.scales[axis];
-        if (sc.ticks) sc.ticks.color = '#000';
-        if (sc.title) sc.title.color = '#000';
-      }
-    }
-    if (ch.options.plugins && ch.options.plugins.legend && ch.options.plugins.legend.labels) ch.options.plugins.legend.labels.color = '#000';
-    ch.update('none');
-    off.width = src.width; off.height = src.height;
-    var ctx = off.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, off.width, off.height);
-    ctx.drawImage(src, 0, 0);
-  }
-
-  // ── TEST 1: Pie chart area is square (circle is round), image includes legend ──
-  if (isPie) {
-    var aW = ch.chartArea.right - ch.chartArea.left, aH = ch.chartArea.bottom - ch.chartArea.top;
-    var aRatio = aW > 0 && aH > 0 ? aW / aH : 0;
-    _ct(aRatio > 0.85 && aRatio < 1.15, ci, name, 'PIE_ROUND',
-      'chartArea=' + aW + 'x' + aH + ' ratio=' + aRatio.toFixed(3) + ' image=' + off.width + 'x' + off.height);
-  }
-
-  // ── TEST 2: Pie slice colour variety — at least 3 distinct hues in the pie area ──
-  if (isPie) {
-    var cx = Math.floor(off.width / 2), cy = Math.floor(off.height / 2);
-    var r = Math.floor(Math.min(cx, cy) * 0.6);  // sample inside the pie disc
-    var hues = {};
-    for (var angle = 0; angle < 360; angle += 10) {
-      var sx = cx + Math.floor(r * Math.cos(angle * Math.PI / 180));
-      var sy = cy + Math.floor(r * Math.sin(angle * Math.PI / 180));
-      var px = ctx.getImageData(sx, sy, 1, 1).data;
-      if (px[0] > 240 && px[1] > 240 && px[2] > 240) continue;  // skip white
-      // bucket by dominant channel
-      var bucket = px[0] > px[1] && px[0] > px[2] ? 'R' : px[1] > px[2] ? 'G' : 'B';
-      var key = bucket + Math.floor(px[0]/64) + Math.floor(px[1]/64) + Math.floor(px[2]/64);
-      hues[key] = 1;
-    }
-    var nHues = Object.keys(hues).length;
-    _ct(nHues >= 3, ci, name, 'PIE_COLOURS',
-      nHues + ' distinct hues found' + (nHues < 3 ? ' — slices washed out or invisible' : ''));
-  }
-
-  // ── TEST 3: Label readability — scan bottom 10% band for dark pixels ──
-  if (!isPie) {
-    var bandTop = Math.floor(off.height * 0.90);
-    var bandH = off.height - bandTop;
-    var strip = ctx.getImageData(0, bandTop, off.width, bandH).data;
-    var darkPixels = 0, totalSampled = strip.length / 4;
-    for (var px = 0; px < strip.length; px += 4) {
-      var brightness = (strip[px] + strip[px + 1] + strip[px + 2]) / 3;
-      if (brightness < 80) darkPixels++;
-    }
-    var darkPct = (darkPixels / totalSampled * 100).toFixed(1);
-    _ct(darkPct > 0.1, ci, name, 'LABELS_DARK',
-      darkPixels + '/' + totalSampled + ' dark px in bottom 10% (' + darkPct + '%)' +
-      (isHeadless ? ' — headless skip' : darkPct <= 0.5 ? ' — axis labels invisible on white' : ''));
-  }
-
-  // ── TEST 4: Not blank — chart must have non-white content across full area ──
-  var fullData = ctx.getImageData(0, 0, off.width, off.height).data;
-  var nonWhite = 0;
-  for (var px = 0; px < fullData.length; px += 16) {  // sample every 4th pixel for speed
-    if (fullData[px] < 245 || fullData[px+1] < 245 || fullData[px+2] < 245) nonWhite++;
-  }
-  var totalFull = fullData.length / 16;
-  var contentPct = (nonWhite / totalFull * 100).toFixed(1);
-  _ct(contentPct > 5, ci, name, 'HAS_CONTENT',
-    nonWhite + '/' + totalFull + ' non-white (' + contentPct + '%)' +
-    (contentPct <= 5 ? ' — chart mostly blank' : ''));
-
-  // Image dimensions derived from ACTUAL exported canvas ratio
-  var imgW = isPie ? 400 : 500;
-  var imgH = Math.round(imgW * off.height / off.width);
-  if (isPie) imgH = imgW;  // force square for pie
-
-  // ── TEST 5: Image dimensions match exported canvas aspect ratio ──
-  var expRatio = off.width / off.height;
-  var imgRatio = imgW / imgH;
-  var ratioDrift = Math.abs(expRatio - imgRatio);
-  _ct(ratioDrift < 0.05, ci, name, 'RATIO_MATCH',
-    'exported=' + expRatio.toFixed(3) + ' img=' + imgRatio.toFixed(3) + ' drift=' + ratioDrift.toFixed(3) +
-    (ratioDrift >= 0.05 ? ' — image will be distorted' : ''));
-
-  var b64 = off.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
-  var imgId = wb.addImage({ base64: b64, extension: 'png' });
-  return { id: imgId, width: imgW, height: imgH };
-}
+// S235: captureChartImage removed — charts shown in HTML, not embedded in Excel
 
 // ============================================================================
 // SAVE 5D BOQ — ExcelJS: Cover, Exec Summary, Mat/Lab/Equip, BOQ, WPs, Disc, Prov
 // ============================================================================
 async function save5D() {
-  document.getElementById('status').textContent = 'Generating 5D Excel — preparing charts...';
-  var saved5D = prepareChartsForExcel();
-  await new Promise(r => setTimeout(r, 500));  // let Chart.js re-render
-  try {
-
   document.getElementById('status').textContent = 'Generating 5D Excel...';
   const wb = new ExcelJS.Workbook();
   wb.creator = _TRL.source_app;
@@ -1310,14 +1139,7 @@ async function save5D() {
   wsExec.getRow(gtRow).font = { bold: true };
   fmtRow(wsExec, gtRow, [2,3,4,5,6,7,8,9], NUM_FMT);
 
-  // Embed pie + bar below data, side by side
-  try {
-    var chartRow = gtRow + 3;
-    var pieImg = captureChartImage(0, wb);
-    if (pieImg) wsExec.addImage(pieImg.id, { tl: { col: 0, row: chartRow }, ext: { width: pieImg.width, height: pieImg.height } });
-    var barImg = captureChartImage(1, wb);
-    if (barImg) wsExec.addImage(barImg.id, { tl: { col: 5, row: chartRow }, ext: { width: barImg.width, height: barImg.height } });
-  } catch (e) { console.warn('Could not embed exec charts:', e); }
+  // Charts are in the HTML page — no need to embed in Excel
 
   // ── Sheet 3: Material Summary (+ USD total) ──
   const wsMat = wb.addWorksheet(_TRL.s_material);
@@ -1633,19 +1455,12 @@ async function save5D() {
   _log('[S226] §CHART_SUMMARY 5D: ' + _chartTestPass + ' PASS, ' + _chartTestFail + ' FAIL');
   _downloadLog('5D');
   _chartTestPass = 0; _chartTestFail = 0;
-  } finally {
-  restoreChartsAfterExcel(saved5D);
-  }
 }
 
 // ============================================================================
 // SAVE 4D SCHEDULE — ExcelJS: 3 sheets (matches schedule_export.py)
 // ============================================================================
 async function save4D() {
-  document.getElementById('status').textContent = 'Generating 4D Excel — preparing charts...';
-  var saved4D = prepareChartsForExcel();
-  await new Promise(r => setTimeout(r, 500));
-  try {
   document.getElementById('status').textContent = 'Generating 4D Excel...';
   const wb = new ExcelJS.Workbook();
   wb.creator = _TRL.source_app;
@@ -1777,19 +1592,7 @@ async function save4D() {
   for (const t of top15x) wsDash.addRow([t.name.slice(0,35), t.phase, t.startDay, Math.round(t.duration*10)/10]);
 
   // ── Embed 4D chart images on the RIGHT side (col E = col 4), stacked vertically ──
-  try {
-    // 4D-relevant charts: index 3=Phase Totals, 4=Phase Duration, 5=Resource Workload, 6=S-Curve, 8=Gantt
-    const chartCanvases = document.querySelectorAll('.chart-box canvas');
-    const chartCol = 4; // Column E — right of data columns
-    let imgRow = 2;
-    for (var ci = 0; ci < chartCanvases.length; ci++) {
-      try {
-        var img = captureChartImage(ci, wb);
-        if (img) wsDash.addImage(img.id, { tl: { col: chartCol, row: imgRow }, ext: { width: img.width, height: img.height } });
-        imgRow += 20;
-      } catch (e) { console.warn('4D chart image error:', e); }
-    }
-  } catch (e) { console.warn('4D chart images error:', e); }
+  // Charts are in the HTML page — no need to embed in Excel
 
   // ── Save ──
   const filename = `BIM_OOTB_${bldName}_4D_Schedule_${new Date().toISOString().slice(0,10)}.xlsx`;
@@ -1806,9 +1609,6 @@ async function save4D() {
   _log('[S226] §CHART_SUMMARY 4D: ' + _chartTestPass + ' PASS, ' + _chartTestFail + ' FAIL');
   _downloadLog('4D');
   _chartTestPass = 0; _chartTestFail = 0;
-  } finally {
-  restoreChartsAfterExcel(saved4D);
-  }
 }
 
 // ── Theme toggle ──

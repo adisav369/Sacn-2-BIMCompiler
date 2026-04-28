@@ -289,19 +289,25 @@ equivalent is to set Chart.js options to maximum simplicity:
 - Font sizes: 16+ bold for titles, 14 for labels
 - No animation on export (`animation: false` during capture)
 
-### 5D/4D button enlarges page (no restore on error)
-`prepareChartsForExcel()` resizes all canvases to 800-1100px for image capture.
-`restoreChartsAfterExcel()` shrinks them back. But there is no `try/finally` —
-if anything throws between prepare and restore (450 lines of Excel generation),
-the page stays permanently enlarged.
+### S235 DONE — Clean Separation: Charts in HTML, Data in Excel
 
-**Fix:** Wrap the body of `save5D()` and `save4D()` in `try { ... } finally { restoreChartsAfterExcel(saved); }`.
+**Decision:** Chart images removed from Excel export. HTML page shows all 9 charts
+interactively — embedding static PNGs in Excel added complexity (prepare/resize/capture/restore)
+with no value over the live HTML. Excel now contains only data sheets.
 
-### S235 Fixes Applied (chart 8, 9, pie)
-- Chart 8: restored to individual milestone bars (Start/End per phase) from sandbox.
-  `msCanvas.height = 250`. S226 _TRL refactor had replaced with phase-span Gantt duplicate.
-- Chart 9: `ganttCanvas.height = 350` restored. S226 dropped it.
-- Pie 1 & 3: `position:'bottom'`, `layout:{padding:0}`, `borderWidth:1`.
-  `position:'right'` was stealing 40% canvas width — pie was a small circle in a big square.
-- Source: `deploy/sandbox/boq_charts.html` lines 703-742 (S225 promote-to-prod baseline).
-- OCI dev bucket cache may delay visibility — use `?v=` cache buster to verify.
+**Retired code:** `prepareChartsForExcel()`, `restoreChartsAfterExcel()`, `captureChartImage()` —
+all deleted. No more canvas resize, no try/finally, no 500ms wait, no chart restore bugs.
+
+**Fixes applied:**
+- Chart 8: phase-span Gantt (stacked offset+duration, `barThickness:12`) — was working in 348ecf56
+- Chart 9: `aspectRatio:2.5` to prevent thick rows (Chart.js ignores `canvas.height` with responsive)
+- Pie 1 & 3: `position:'bottom'`, `layout:{padding:0}`, `borderWidth:1` — pie fills canvas width
+- `CUR_SEC_RATE` → `CUR_RATE` typo fix (5D export was crashing)
+- TRL_RATE_SOURCE: querySelector fixed (was hitting Gantt table, not BOQ table)
+- MATHS_SHEET_COUNT / TRL_SHEET_NAMES: now 4D-aware (different thresholds)
+- Cache bust chain: landing→viewer `?_v=Date.now()`, tools.js→charts `?v=Date.now()`
+- OCI deploy rule: bump `?v=N` in `index.html` for every changed JS module
+
+**Playwright-verified:** 5D 20/20 PASS, 4D 20/20 PASS. Charts untouched by export.
+
+**Next session:** `_TRL` localisation to cover panel text (storey/disc labels, info panel).
