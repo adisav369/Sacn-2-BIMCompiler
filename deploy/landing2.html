@@ -315,7 +315,7 @@ const _ociMatch = location.href.match(/(https:\/\/objectstorage\.[^/]+\/n\/[^/]+
 const _base = _ociMatch ? _ociMatch[1] : '';
 
 // All buildings use full-download viewer (no httpvfs — too slow over network)
-const viewerFile = 'sandbox/index.html';
+const viewerFile = 'sandbox/index.html?_v=' + Date.now();
 
 const DISC_COLORS = {
   ARC: '#4488ff', STR: '#44cccc', MEP: '#44cc44',
@@ -734,10 +734,11 @@ async function openProject(key, btnEl, opts) {
     console.log('[S225] §OPEN_DIFF key=' + key + ' base=v0 diff=v' + record.latestVersion);
   }
 
-  // S230: Add wizard param for mesh imports
+  // S230: Add wizard param for mesh imports (S230b: skip if already completed)
   var wizardParam = '';
   var isMesh = record.meta && record.meta.sourceFormat && record.meta.sourceFormat !== '.ifc';
-  if ((opts && opts.wizard) || isMesh) {
+  var wizardDone = record.meta && record.meta.wizard_complete;
+  if (((opts && opts.wizard) || isMesh) && !wizardDone) {
     wizardParam = '&wizard=1&wizardKey=' + encodeURIComponent(key);
   }
   const viewerUrl = (_base || '') + 'sandbox/index.html?db=' +
@@ -898,21 +899,19 @@ async function renderImportCards() {
     var vCount = proj.versions.length;
     var vBadge = vCount > 1 ? '<span style="color:#cccc44;font-size:10px;margin-left:4px">v' + vCount + '</span>' : '';
 
-    // Build button row — Open shows diff automatically if multi-version
+    // Build button row — S230b: Save opens export flyout (IFC or DB), triangle removed
     var buttons = '<button class="open-btn" style="flex:1" data-open="' + proj.key + '">Open</button>';
-    buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(68,204,68,0.1);border-color:rgba(68,204,68,0.2);color:#44cc44;font-size:10px" data-export="' + proj.key + '">Save</button>';
+    buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(68,204,68,0.1);border-color:rgba(68,204,68,0.2);color:#44cc44;font-size:10px" data-save="' + proj.key + '">Save</button>';
     buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + proj.key + '">x</button>';
 
     card.innerHTML =
-      '<div class="export-triangle" data-exportifc="' + proj.key + '"><span class="arrow">&#8599;</span></div>' +
       '<div class="name">' + displayName + vBadge + '</div>' +
       '<div class="meta"><b>' + total.toLocaleString() + '</b> elements · ' + Object.keys(discs).join(', ') + '</div>' +
       '<div class="disc-bars">' + discBars + '</div>' +
       '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">' + buttons + '</div>';
 
-    card.querySelector('[data-exportifc]').onclick = function(e) { e.stopPropagation(); showExportFlyout(this, this.dataset.exportifc); };
     card.querySelector('[data-open]').onclick = function() { openProject(this.dataset.open, this); };
-    card.querySelector('[data-export]').onclick = function(e) { e.stopPropagation(); exportProjectDb(this.dataset.export); };
+    card.querySelector('[data-save]').onclick = function(e) { e.stopPropagation(); showExportFlyout(this, this.dataset.save); };
     card.querySelector('[data-del]').onclick = function(e) {
       e.stopPropagation();
       var k = this.dataset.del;
