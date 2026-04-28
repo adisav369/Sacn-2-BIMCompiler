@@ -268,7 +268,7 @@ The pattern: one master record contains every field. Translation records overrid
 |------|---------|
 | `deploy/dev/rates.js` | Default rates + helper functions (calcLabor, calcEquipment, getRate) |
 | `deploy/dev/locales/en_MY.js` | Base locale — English (Malaysia), CIDB 2024 |
-| `deploy/dev/locales/{code}.js` | Country locale — 15 locales shipped |
+| `deploy/dev/locales/{code}.js` | Country locale — 18 locales shipped |
 | `deploy/dev/boq_charts.html` | 4D/5D analytics — uses `_TRL.*` for all labels |
 | `deploy/dev/variation_order.js` | VO Excel — uses shared `rates.js` |
 | `deploy/dev/nlp.js` | Voice/text queries — uses `getRate()` from `rates.js` |
@@ -279,7 +279,7 @@ The pattern: one master record contains every field. Translation records overrid
 
 ## Flag Picker (User-Facing)
 
-Users switch locale via a **flag button** in the header bar (landing page and viewer). Clicking it opens a popup grid of 15 country flags. Selecting a flag:
+Users switch locale via a **flag button** in the header bar (landing page and viewer). Clicking it opens a popup grid of 18 country flags. Selecting a flag:
 
 1. Saves choice to `localStorage` (`bim_ootb_config`)
 2. Reloads the page
@@ -328,4 +328,4 @@ The landing page loads `locale_loader.js` at the bottom. All translatable text u
 - Language and currency/rates are **bundled per flag** — selecting Japanese gives you Japanese UI + JPY currency + Japanese rate sources
 - A future version will separate language preference from currency/rate selection (e.g. English UI with Malaysian Ringgit rates)
 - Rate data is illustrative — not authoritative for production cost estimation
-- 15 locales ship with ~300 keys each (UI + BOQ + 4D/5D + landing)
+- 18 locales ship with ~300 keys each (UI + BOQ + 4D/5D + landing)
