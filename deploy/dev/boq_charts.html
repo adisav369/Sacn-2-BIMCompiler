@@ -658,28 +658,34 @@ function renderCharts() {
       phaseDates[t.phase].end = Math.max(phaseDates[t.phase].end, t.finishDay);
     }
   }
-  const milestones = [];
-  milestones.push({name:'Project Start', day:0});
-  for (const phase of Object.keys(phaseDates).sort()) {
-    milestones.push({name:`${phase} Start`, day:phaseDates[phase].start});
-    milestones.push({name:`${phase} End`, day:phaseDates[phase].end});
-  }
   const maxFinishDay = Math.max(...scheduleData.map(t=>t.finishDay));
-  milestones.push({name:'Project Finish', day:maxFinishDay});
-  milestones.sort((a,b) => a.day - b.day);
+  const phaseList = Object.keys(phaseDates).sort((a,b) => phaseDates[a].start - phaseDates[b].start);
 
   const msBox = el('div','chart-box');
   msBox.innerHTML = '<h2>' + _TRL.t_milestone + '</h2>';
   const msCanvas = el('canvas');
-  msCanvas.height = 250;
   msBox.appendChild(msCanvas); c.appendChild(msBox);
 
   chartInstances.push(new Chart(msCanvas, {
     type:'bar',
-    data:{labels:milestones.map(m=>m.name), datasets:[{label:'Day',data:milestones.map(m=>m.day),backgroundColor:milestones.map(m=>m.name.includes('Start')?'#70AD47':m.name.includes('End')?'#ED7D31':'#4fc3f7')}]},
-    options:{indexAxis:'y',barThickness:14,scales:{x:{title:{display:true,text:'Day from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},y:{ticks:{color:'#ccc',font:{size:10}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
+    data:{
+      labels:phaseList,
+      datasets:[
+        {label:'Offset',data:phaseList.map(p=>phaseDates[p].start),backgroundColor:'rgba(0,0,0,0)'},
+        {label:'Duration',data:phaseList.map(p=>phaseDates[p].end - phaseDates[p].start),backgroundColor:phaseList.map(p=>PHASE_COLORS[p]||'#4fc3f7')},
+      ]
+    },
+    options:{indexAxis:'y',scales:{
+      x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},
+      y:{stacked:true,ticks:{color:'#ccc',font:{size:11}},grid:{color:'rgba(255,255,255,0.1)'}}
+    },plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
+      if (ctx.datasetIndex===0) return null;
+      const p = phaseList[ctx.dataIndex];
+      return `${p}: Day ${phaseDates[p].start}–${phaseDates[p].end} (${phaseDates[p].end - phaseDates[p].start} days)`;
+    }}},
+    barThickness:12}}
   }));
-  logChart(8,'H-Bar','Milestone Timeline',milestones.length);
+  logChart(8,'Gantt','Milestone Timeline',phaseList.length);
 
   // ── 9. Strategic Gantt — Top 15 longest tasks (stacked bar — from schedule_export.py) ──
   const top15 = [...scheduleData].sort((a,b) => b.duration - a.duration).slice(0,15).sort((a,b) => a.startDay - b.startDay);
