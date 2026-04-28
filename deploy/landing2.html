@@ -469,32 +469,27 @@ function launchCity() {
   trackTab('City 1M', '3D', win);
 }
 
-// ── Load manifest (with retry + backoff) ──
-async function fetchWithTimeout(url, ms) {
-  const ctrl = new AbortController();
-  const id = setTimeout(() => ctrl.abort(), ms);
-  try {
-    const r = await fetch(url, { signal: ctrl.signal });
-    clearTimeout(id);
-    return r;
-  } catch(e) { clearTimeout(id); throw e; }
-}
+// ── Ensure _TRL is always defined (locale_loader.js may not have run yet) ──
+window._TRL = window._TRL || {};
 
-async function loadManifest(attempt) {
-  attempt = attempt || 1;
-  const MAX = 4;
+// ── Load manifest ──
+async function loadManifest() {
   const loadingEl = document.getElementById('loading');
   try {
-    const url = (_base || '') + 'manifest.json?_r=' + attempt;
-    if (attempt > 1) {
-      loadingEl.innerHTML = `
-        <div class="spinner"></div>
-        <div style="margin-top:12px;color:#aaa">Loading manifest… attempt ${attempt}/${MAX}</div>
-        <div class="elapsed" id="elapsed">0:00</div>`;
+    const url = (_base || '') + 'manifest.json';
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 10000);
+    let resp;
+    try {
+      resp = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(tid);
+    } catch(e) {
+      clearTimeout(tid);
+      throw new Error(e.name === 'AbortError' ? 'Timed out — check connection' : e.message);
     }
-    const resp = await fetchWithTimeout(url, 8000);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
+    if (!data || !Array.isArray(data.archetypes)) throw new Error('Manifest missing archetypes');
 
     clearInterval(timerInterval);
     document.getElementById('loading').style.display = 'none';
@@ -534,24 +529,18 @@ async function loadManifest(attempt) {
     }).catch(() => {});
 
   } catch (e) {
-    if (attempt < MAX) {
-      const delay = attempt * 1500; // 1.5s, 3s, 4.5s
-      loadingEl.innerHTML = `
-        <div class="spinner"></div>
-        <div style="margin-top:12px;color:#aaa">Retrying in ${delay/1000}s… (${e.message})</div>
-        <div class="elapsed" id="elapsed">0:00</div>`;
-      setTimeout(() => loadManifest(attempt + 1), delay);
-    } else {
-      clearInterval(timerInterval);
-      loadingEl.innerHTML = `
-        <div style="color:#ff6644;font-size:14px">&#9888; Could not load building list</div>
-        <div style="margin-top:8px;color:#888;font-size:12px">${e.message}</div>
-        <button onclick="document.getElementById('loading').innerHTML='<div class=spinner></div>';loadManifest(1)"
-          style="margin-top:16px;padding:10px 24px;background:#4fc3f7;color:#000;border:none;
-          border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:1px">
-          &#8635; Retry
-        </button>`;
-    }
+    clearInterval(timerInterval);
+    // Show error inside #content so it's visible even if #loading was already hidden
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    ['instant-grid','large-grid'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.children.length === 0) {
+        el.innerHTML = '<div style="padding:20px;color:#ff8844;font-size:13px">&#9888; ' +
+          e.message + ' &nbsp;<a href="javascript:location.reload()" ' +
+          'style="color:#4fc3f7">Reload</a></div>';
+      }
+    });
   }
 }
 
