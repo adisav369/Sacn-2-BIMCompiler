@@ -117,3 +117,186 @@ chart image embedding, save5D/save4D async, header fill per-cell. All PASS.
 - [ ] 4D Dashboard: charts placed right side, sizing needs verification
 - [ ] Walk mode: view auto-rotates away from front door (device orientation — separate scope)
 - [ ] Promote dev files to production after all verified
+
+## S235 — Chart Visual Parity with Federation (boq_export.py)
+
+### Problem
+The browser pie charts (Chart.js) don't match the Federation original (openpyxl PieChart).
+Three issues:
+
+1. **Pie is not a full circle** — the pie sits inside a separate smaller circle within the
+   chart canvas, leaving dead space. Chart.js defaults to padding around the pie.
+2. **Labels too small and not black** — Federation uses `Font(size=16, bold=True)` for titles
+   and `Font(size=14)` for data. Browser uses `#ddd` at 13-14px.
+3. **White background on Excel export** — `prepareChartsForExcel()` adds white background
+   styling that the Federation original never needed because openpyxl charts are native Excel
+   objects with no background.
+
+### OCI Live Bucket Cache Mystery (S235 investigation — unresolved)
+
+**Problem:** `bim-ootb-live` does not serve updated files to the browser after upload,
+even though `curl` confirms the new content and MD5 matches. `bim-ootb-dev` updates
+instantly. Same region, same account, same bucket config (verified via `oci os bucket get`).
+The old `bim-ootb-full` bucket had the same slowness (which is why it was abandoned).
+
+**What was tried (all failed to make the browser see the new file):**
+1. Hard refresh (Ctrl+Shift+R) — no effect
+2. Delete object + re-upload — no effect
+3. `--cache-control "no-cache, no-store, must-revalidate"` on upload — header appears in
+   `curl -I` response but browser still shows old content
+4. Uploading to both root `boq_charts.html` AND `sandbox/boq_charts.html` — both confirmed
+   correct via curl, browser still shows old
+5. Incognito window — not tested (user declined further debugging)
+
+**What was confirmed:**
+- `curl` and `diff` prove the server has the correct file at both paths
+- Bucket configs are identical (versioning disabled, Standard tier, same compartment)
+- No CDN, no `x-cache` header — both buckets show `x-api-id: native`
+- Only difference: live created Apr 27, dev created Apr 22
+- OCI docs say `Cache-Control` header "has no effect on Object Storage behavior" — it only
+  passes through to the client. OCI doesn't cache internally based on it.
+
+**Root cause hypothesis:** Browser-level heuristic caching. Without `Cache-Control`,
+browsers cache based on `Last-Modified` using the formula `(now - last-modified) × 10%`.
+If the original file was uploaded hours ago, the browser may cache it for hours.
+But this doesn't explain why dev works — unless the user's browser has different history
+for dev vs live URLs.
+
+**Workaround:** Test chart changes on dev bucket, which updates instantly. Only promote
+to live when ready, and expect delays. Consider adding `?v=N` cache buster to the
+`tools.js` URL that opens `boq_charts.html`.
+
+**Action for next session:** Add `?v=${Date.now()}` to the chartsUrl in `tools.js`
+line 126/129 so boq_charts always loads fresh. This is the same pattern `index.html`
+uses for JS modules (`?v=N`). Also add `--cache-control "no-cache"` to ALL upload
+commands in `internal/OCI_SETUP.md`.
+
+### S226 _TRL Refactor Damage — FIXED (S235)
+The S226 localisation refactor replaced hardcoded chart titles with `_TRL.*` variables.
+During that string substitution, it accidentally:
+1. **Dropped `msCanvas.height = 250`** (chart 8) and **`ganttCanvas.height = 350`** (chart 9)
+2. **Redesigned chart 8** from individual milestone bars (Start/End per phase) to a
+   phase-span stacked Gantt — which duplicated chart 9's pattern and was never requested
+
+Both heights and the original milestone design were restored from `deploy/sandbox/boq_charts.html`
+(commit `84acafdb`, S225 promote-to-prod — the last known-good version).
+
+**Lesson for future _TRL/refactor work:** When replacing hardcoded strings with variables,
+do a line-by-line diff BEFORE and AFTER. Only string values should change — any structural
+change (removed lines, redesigned data, changed chart type) is accidental and must be reverted.
+The sandbox version is the regression baseline.
+
+### Cache Warning for Pie Fix
+The pie chart fix (legend position, padding, font sizes) will hit the same OCI live
+cache problem. **Test on dev bucket only.** Do not waste time debugging live cache.
+When the pie fix is verified on dev, promote and add `?v=${Date.now()}` to the URL
+(see §OCI Live Bucket Cache Mystery above).
+
+### Why S210b Failed
+S210b claimed "Pie charts perfect circles — aspectRatio:1, legend font:13px" and marked it DONE.
+This was wrong. `aspectRatio:1` makes the **canvas** square, but the **pie circle inside**
+is still shrunk because `legend:{position:'right'}` steals ~40% of the canvas width.
+The pie looked like a small circle floating in a big square. Do NOT repeat this approach.
+
+### Root Cause (maths)
+Chart.js `type:'pie'` has a default `layout.padding` and the legend takes space from the canvas.
+The pie radius is computed as: `min(canvas.width, canvas.height) / 2 - padding - legend`.
+With `legend:{position:'right'}`, the pie gets ~60% of the canvas width.
+
+### Fix — Match Federation Exactly
+
+**1. Pie fills the canvas** — remove padding, use `radius:'100%'` (or close to it):
+```javascript
+options: {
+  aspectRatio: 1,
+  layout: { padding: 0 },
+  plugins: {
+    legend: {
+      position: 'bottom',        // not 'right' — stops legend stealing width
+      labels: { color: '#000', font: { size: 14, weight: 'bold' } }
+    }
+  }
+}
+```
+The Federation pie is `width=16, height=10` — landscape rectangle with legend below.
+Chart.js with `position:'bottom'` gives the same layout: full-width circle above, legend below.
+
+**2. Labels large and black** — match Federation `Font(size=16, bold=True)`:
+```javascript
+// Title
+plugins: { title: { display: true, text: 'Cost Breakdown by Discipline',
+                     color: '#000', font: { size: 18, weight: 'bold' } } }
+// Data labels (use chartjs-plugin-datalabels or built-in tooltip)
+```
+
+**3. No white background** — the on-screen dark theme is fine. For Excel export,
+Chart.js `canvas.toDataURL()` captures whatever background the canvas has.
+Use `Chart.js plugin beforeDraw` to fill white ONLY during Excel capture:
+```javascript
+// In prepareChartsForExcel() — set a temporary plugin
+ch.options.plugins.customCanvasBackgroundColor = { color: '#fff' };
+// Plugin (register once):
+Chart.register({
+  id: 'customCanvasBackgroundColor',
+  beforeDraw: (chart) => {
+    const bg = chart.config.options.plugins.customCanvasBackgroundColor;
+    if (bg && bg.color) {
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.fillStyle = bg.color;
+      ctx.fillRect(0, 0, chart.width, chart.height);
+      ctx.restore();
+    }
+  }
+});
+```
+This way: dark theme on screen, white background only in the exported PNG.
+
+### Why Milestone + Gantt rows are too tall
+S226 (_TRL localisation) accidentally dropped fixed canvas heights that S210 had:
+```
+// S210 original (compact):
+msCanvas.height = 250;      // chart 8 — Milestone Timeline
+ganttCanvas.height = 350;   // chart 9 — Strategic Gantt
+```
+S226 replaced hardcoded titles with `_TRL.t_gantt` etc. and the `height` lines were
+lost as collateral. Without them, Chart.js auto-sizes and the bars accumulate downward,
+making both charts far too tall.
+
+**Fix:** Restore both `canvas.height` lines. They were proven in S210 original.
+The S210 Milestone chart also used individual milestone bars (Start/End per phase),
+not phase-span Gantt. The current phase-span redesign may be fine but the missing
+`height=250` is why it's too tall.
+
+**4. Use the log file to verify.** Every Excel export auto-downloads a `.log` file
+(`_downloadLog('5D')` / `_downloadLog('4D')`). The log contains `§CHART_PREPARE`,
+`§CHART_TEST`, `§TRL_VERIFY`, `§MATHS_VERIFY` lines with canvas sizes, data counts,
+and pass/fail per chart. After any pie fix, export Excel and READ THE LOG — it will
+show the actual canvas dimensions. If the pie is still small, the log will show
+`chart=0 ... WxH` proving the canvas is wrong. No guessing — log is evidence.
+
+**5. Just copy what works** — the Federation `boq_export.py` line 568-578 produces
+a perfect chart because openpyxl delegates to Excel's native renderer. The browser
+equivalent is to set Chart.js options to maximum simplicity:
+- `layout.padding: 0`
+- `plugins.legend.position: 'bottom'`
+- `datasets[0].borderWidth: 1` (thin segment borders like Excel)
+- Font sizes: 16+ bold for titles, 14 for labels
+- No animation on export (`animation: false` during capture)
+
+### 5D/4D button enlarges page (no restore on error)
+`prepareChartsForExcel()` resizes all canvases to 800-1100px for image capture.
+`restoreChartsAfterExcel()` shrinks them back. But there is no `try/finally` —
+if anything throws between prepare and restore (450 lines of Excel generation),
+the page stays permanently enlarged.
+
+**Fix:** Wrap the body of `save5D()` and `save4D()` in `try { ... } finally { restoreChartsAfterExcel(saved); }`.
+
+### S235 Fixes Applied (chart 8, 9, pie)
+- Chart 8: restored to individual milestone bars (Start/End per phase) from sandbox.
+  `msCanvas.height = 250`. S226 _TRL refactor had replaced with phase-span Gantt duplicate.
+- Chart 9: `ganttCanvas.height = 350` restored. S226 dropped it.
+- Pie 1 & 3: `position:'bottom'`, `layout:{padding:0}`, `borderWidth:1`.
+  `position:'right'` was stealing 40% canvas width — pie was a small circle in a big square.
+- Source: `deploy/sandbox/boq_charts.html` lines 703-742 (S225 promote-to-prod baseline).
+- OCI dev bucket cache may delay visibility — use `?v=` cache buster to verify.

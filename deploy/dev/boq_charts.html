@@ -520,8 +520,8 @@ function renderCharts() {
   const discTotals = discs.map(d => discSummary[d].matTotal + discSummary[d].laborCost + discSummary[d].equipCost);
   chartInstances.push(new Chart(pieCanvas, {
     type:'pie',
-    data:{labels:discs, datasets:[{data:discTotals, backgroundColor:discs.map(d=>DISC_COLORS[d]||'#888')}]},
-    options:{aspectRatio:1, maintainAspectRatio:true, plugins:{legend:{position:'right',labels:{color:'#ddd',font:{size:14}}}}}
+    data:{labels:discs, datasets:[{data:discTotals, backgroundColor:discs.map(d=>DISC_COLORS[d]||'#888'), borderWidth:1}]},
+    options:{aspectRatio:1, layout:{padding:0}, plugins:{legend:{position:'bottom',labels:{color:'#ddd',font:{size:14,weight:'bold'}}}}}
   }));
   logChart(1,'Pie','Cost Breakdown by Discipline',discs.length);
 
@@ -557,8 +557,8 @@ function renderCharts() {
 
   chartInstances.push(new Chart(tpCanvas, {
     type:'pie',
-    data:{labels:tpPhases, datasets:[{data:tpPhases.map(p=>taskPhaseCounts[p]), backgroundColor:tpPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
-    options:{aspectRatio:1, maintainAspectRatio:true, plugins:{legend:{position:'right',labels:{color:'#ddd',font:{size:14}}}}}
+    data:{labels:tpPhases, datasets:[{data:tpPhases.map(p=>taskPhaseCounts[p]), backgroundColor:tpPhases.map(p=>PHASE_COLORS[p]||'#888'), borderWidth:1}]},
+    options:{aspectRatio:1, layout:{padding:0}, plugins:{legend:{position:'bottom',labels:{color:'#ddd',font:{size:14,weight:'bold'}}}}}
   }));
   logChart(3,'Pie','Task Distribution by Phase',tpPhases.length);
 
@@ -647,7 +647,9 @@ function renderCharts() {
     logChart(7,'Line','S-Curve Progress',weekLabels.length);
   }
 
-  // ── 8. Milestone Timeline (Gantt-style: phase spans, not absolute day bars) ──
+  // ── 8. Milestone Timeline (horizontal bar — from schedule_export.py) ──
+  // S235: Restored from S225 sandbox original. S226 _TRL refactor broke this by
+  // redesigning to phase-span Gantt (duplicated chart 9) and dropping canvas.height.
   const phaseDates = {};
   for (const t of scheduleData) {
     if (!phaseDates[t.phase]) phaseDates[t.phase] = {start:t.startDay, end:t.finishDay};
@@ -656,34 +658,28 @@ function renderCharts() {
       phaseDates[t.phase].end = Math.max(phaseDates[t.phase].end, t.finishDay);
     }
   }
+  const milestones = [];
+  milestones.push({name:'Project Start', day:0});
+  for (const phase of Object.keys(phaseDates).sort()) {
+    milestones.push({name:`${phase} Start`, day:phaseDates[phase].start});
+    milestones.push({name:`${phase} End`, day:phaseDates[phase].end});
+  }
   const maxFinishDay = Math.max(...scheduleData.map(t=>t.finishDay));
-  const phaseList = Object.keys(phaseDates).sort((a,b) => phaseDates[a].start - phaseDates[b].start);
+  milestones.push({name:'Project Finish', day:maxFinishDay});
+  milestones.sort((a,b) => a.day - b.day);
 
   const msBox = el('div','chart-box');
   msBox.innerHTML = '<h2>' + _TRL.t_milestone + '</h2>';
   const msCanvas = el('canvas');
+  msCanvas.height = 250;
   msBox.appendChild(msCanvas); c.appendChild(msBox);
 
   chartInstances.push(new Chart(msCanvas, {
     type:'bar',
-    data:{
-      labels:phaseList,
-      datasets:[
-        {label:'Offset',data:phaseList.map(p=>phaseDates[p].start),backgroundColor:'rgba(0,0,0,0)'},
-        {label:'Duration',data:phaseList.map(p=>phaseDates[p].end - phaseDates[p].start),backgroundColor:phaseList.map(p=>PHASE_COLORS[p]||'#4fc3f7')},
-      ]
-    },
-    options:{indexAxis:'y',scales:{
-      x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},
-      y:{stacked:true,ticks:{color:'#ccc',font:{size:11}},grid:{color:'rgba(255,255,255,0.1)'}}
-    },plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
-      if (ctx.datasetIndex===0) return null;
-      const p = phaseList[ctx.dataIndex];
-      return `${p}: Day ${phaseDates[p].start}–${phaseDates[p].end} (${phaseDates[p].end - phaseDates[p].start} days)`;
-    }}},
-    barThickness:12}}
+    data:{labels:milestones.map(m=>m.name), datasets:[{label:'Day',data:milestones.map(m=>m.day),backgroundColor:milestones.map(m=>m.name.includes('Start')?'#70AD47':m.name.includes('End')?'#ED7D31':'#4fc3f7')}]},
+    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Day from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},y:{ticks:{color:'#ccc',font:{size:10}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
-  logChart(8,'Gantt','Milestone Timeline',phaseList.length);
+  logChart(8,'H-Bar','Milestone Timeline',milestones.length);
 
   // ── 9. Strategic Gantt — Top 15 longest tasks (stacked bar — from schedule_export.py) ──
   const top15 = [...scheduleData].sort((a,b) => b.duration - a.duration).slice(0,15).sort((a,b) => a.startDay - b.startDay);
@@ -691,6 +687,7 @@ function renderCharts() {
   const ganttBox = el('div','chart-box full');
   ganttBox.innerHTML = '<h2>' + _TRL.t_gantt + '</h2>';
   const ganttCanvas = el('canvas');
+  ganttCanvas.height = 350;
   ganttBox.appendChild(ganttCanvas); c.appendChild(ganttBox);
 
   chartInstances.push(new Chart(ganttCanvas, {
