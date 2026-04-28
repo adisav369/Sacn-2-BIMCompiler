@@ -671,6 +671,7 @@ function renderCharts() {
   const msBox = el('div','chart-box');
   msBox.innerHTML = '<h2>' + _TRL.t_milestone + '</h2>';
   const msCanvas = el('canvas');
+  msCanvas.height = 250;
   msBox.appendChild(msCanvas); c.appendChild(msBox);
 
   chartInstances.push(new Chart(msCanvas, {
@@ -686,6 +687,7 @@ function renderCharts() {
   const ganttBox = el('div','chart-box full');
   ganttBox.innerHTML = '<h2>' + _TRL.t_gantt + '</h2>';
   const ganttCanvas = el('canvas');
+  ganttCanvas.height = 350;
   ganttBox.appendChild(ganttCanvas); c.appendChild(ganttBox);
 
   chartInstances.push(new Chart(ganttCanvas, {
