@@ -671,13 +671,12 @@ function renderCharts() {
   const msBox = el('div','chart-box');
   msBox.innerHTML = '<h2>' + _TRL.t_milestone + '</h2>';
   const msCanvas = el('canvas');
-  msCanvas.height = 250;
   msBox.appendChild(msCanvas); c.appendChild(msBox);
 
   chartInstances.push(new Chart(msCanvas, {
     type:'bar',
     data:{labels:milestones.map(m=>m.name), datasets:[{label:'Day',data:milestones.map(m=>m.day),backgroundColor:milestones.map(m=>m.name.includes('Start')?'#70AD47':m.name.includes('End')?'#ED7D31':'#4fc3f7')}]},
-    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Day from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},y:{ticks:{color:'#ccc',font:{size:10}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
+    options:{indexAxis:'y',barThickness:14,scales:{x:{title:{display:true,text:'Day from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},y:{ticks:{color:'#ccc',font:{size:10}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(8,'H-Bar','Milestone Timeline',milestones.length);
 
@@ -687,7 +686,6 @@ function renderCharts() {
   const ganttBox = el('div','chart-box full');
   ganttBox.innerHTML = '<h2>' + _TRL.t_gantt + '</h2>';
   const ganttCanvas = el('canvas');
-  ganttCanvas.height = 350;
   ganttBox.appendChild(ganttCanvas); c.appendChild(ganttBox);
 
   chartInstances.push(new Chart(ganttCanvas, {
@@ -849,7 +847,8 @@ function prepareChartsForExcel() {
     savedOpts.push(JSON.parse(JSON.stringify(ch.options)));
     // Disable responsive so ch.resize() actually takes effect
     ch.options.responsive = false;
-    ch.options.maintainAspectRatio = false;
+    ch.options.maintainAspectRatio = isPie;  // pie must stay square
+    if (isPie) ch.options.aspectRatio = 1;
     // Black labels on bar/line axes ONLY — PIE RULE: never touch pie options
     if (!isPie && ch.options.scales) {
       for (var axis in ch.options.scales) {
@@ -1147,6 +1146,7 @@ async function save5D() {
   document.getElementById('status').textContent = 'Generating 5D Excel — preparing charts...';
   var saved5D = prepareChartsForExcel();
   await new Promise(r => setTimeout(r, 500));  // let Chart.js re-render
+  try {
 
   document.getElementById('status').textContent = 'Generating 5D Excel...';
   const wb = new ExcelJS.Workbook();
@@ -1595,7 +1595,9 @@ async function save5D() {
   URL.revokeObjectURL(a.href);
   document.getElementById('status').textContent = `Saved ${filename} (${sheetCount} sheets)` + (diffResult ? ' — includes Variance Order' : '');
 
+  } finally {
   restoreChartsAfterExcel(saved5D);
+  }
   _verifyMaths(wb, '5D');
   _verifyTRL(wb, '5D');
   _log('[S226] §CHART_SUMMARY 5D: ' + _chartTestPass + ' PASS, ' + _chartTestFail + ' FAIL');
@@ -1610,6 +1612,7 @@ async function save4D() {
   document.getElementById('status').textContent = 'Generating 4D Excel — preparing charts...';
   var saved4D = prepareChartsForExcel();
   await new Promise(r => setTimeout(r, 500));
+  try {
   document.getElementById('status').textContent = 'Generating 4D Excel...';
   const wb = new ExcelJS.Workbook();
   wb.creator = _TRL.source_app;
@@ -1765,7 +1768,9 @@ async function save4D() {
   a.click();
   URL.revokeObjectURL(a.href);
   document.getElementById('status').textContent = `Saved ${filename} (3 sheets)`;
+  } finally {
   restoreChartsAfterExcel(saved4D);
+  }
   _verifyMaths(wb, '4D');
   _verifyTRL(wb, '4D');
   _log('[S226] §CHART_SUMMARY 4D: ' + _chartTestPass + ' PASS, ' + _chartTestFail + ' FAIL');

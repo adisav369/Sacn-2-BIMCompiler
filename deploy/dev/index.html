@@ -314,6 +314,7 @@
       <button onclick="toggleIssues();event.stopPropagation()" title="Issues" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📋</button>
       <button id="measure-btn" onclick="toggleMeasure();event.stopPropagation()" title="Measure" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📐</button>
       <button id="section-btn" onclick="toggleSection();event.stopPropagation()" title="Section Cut" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">✂</button>
+      <button onclick="open2DPlans();event.stopPropagation()" title="2D Plans" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;padding:2px;line-height:1"><img src="2D.png" alt="2D" style="width:22px;height:22px;filter:invert(1);vertical-align:middle"></button>
     </div>
     <div id="building-list" style="max-height:400px;overflow-y:auto"></div>
   </div>
@@ -443,7 +444,7 @@
 <script src="scene.js?v=4"></script>
 <script src="streaming.js?v=6"></script>
 <script src="panels.js?v=4"></script>
-<script src="tools.js?v=4"></script>
+<script src="tools.js?v=5"></script>
 <script src="picking.js?v=3"></script>
 <script src="tour.js?v=3"></script>
 <script src="measure.js?v=3"></script>
@@ -451,16 +452,17 @@
 <script src="issues.js?v=4"></script>
 <script src="excel.js?v=4"></script>
 <script src="walk.js?v=4"></script>
+<script defer src="navigate.js?v=5"></script>
 <script src="city.js?v=4"></script>
 <script src="rates.js?v=1"></script>
-<script src="nlp.js?v=1"></script>
+<script src="nlp.js?v=2"></script>
 <script src="semantic_enrichment.js?v=1"></script>
 <script src="scene_to_db.js?v=1"></script>
 <script src="import_db_builder.js?v=1"></script>
 <script src="diff.js?v=1"></script>
 <script src="variation_order.js?v=1"></script>
 <script src="import.js?v=1"></script>
-<script src="main.js?v=4"></script>
+<script src="main.js?v=5"></script>
 <script>if(new URLSearchParams(location.search).has('ignore-me'))localStorage.setItem('goatcounter-ignore','t')</script>
 <script data-goatcounter="https://red1oon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body>
