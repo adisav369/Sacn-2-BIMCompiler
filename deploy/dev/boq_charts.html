@@ -851,7 +851,9 @@ function prepareChartsForExcel() {
     var w = isPie ? 800 : 1100, h = isPie ? 800 : 700;
     savedStyles.push({
       pw: ch.canvas.parentElement.style.width, ph: ch.canvas.parentElement.style.height,
-      cw: ch.canvas.style.width, ch_: ch.canvas.style.height
+      cw: ch.canvas.style.width, ch_: ch.canvas.style.height,
+      aw: ch.canvas.width, ah: ch.canvas.height,
+      poh: ch.canvas.parentElement.offsetHeight
     });
     savedOpts.push(JSON.parse(JSON.stringify(ch.options)));
     // Disable responsive so ch.resize() actually takes effect
@@ -871,32 +873,24 @@ function prepareChartsForExcel() {
       ch.options.plugins.legend.labels.color = '#000';
       ch.options.plugins.legend.labels.font = { size: 14 };
     }
+    ch.update('none');
     ch.canvas.parentElement.style.width = w + 'px';
     ch.canvas.parentElement.style.height = h + 'px';
     ch.canvas.style.width = w + 'px';
     ch.canvas.style.height = h + 'px';
+    ch.canvas.width = w;
+    ch.canvas.height = h;
     ch.resize(w, h);
-    ch.update('none');
   }
   _log('[S226] §CHART_PREPARE count=' + chartInstances.length +
     ' sizes=' + chartInstances.map(function(c) { return c.canvas.width + 'x' + c.canvas.height; }).join(','));
   return { savedStyles: savedStyles, savedOpts: savedOpts };
 }
 
-// Restore all charts to responsive page styling after Excel capture
+// Restore all charts by re-rendering from scratch
 function restoreChartsAfterExcel(saved) {
-  for (var ri = 0; ri < chartInstances.length; ri++) {
-    var s = saved.savedStyles[ri];
-    if (!s) continue;
-    chartInstances[ri].canvas.parentElement.style.removeProperty('width');
-    chartInstances[ri].canvas.parentElement.style.removeProperty('height');
-    chartInstances[ri].canvas.style.removeProperty('width');
-    chartInstances[ri].canvas.style.removeProperty('height');
-    if (saved.savedOpts[ri]) chartInstances[ri].options = saved.savedOpts[ri];
-    chartInstances[ri].resize();
-    chartInstances[ri].update('none');
-  }
-  _log('[S226] §CHART_RESTORE count=' + chartInstances.length + ' — back to page styling');
+  renderCharts();
+  _log('[S226] §CHART_RESTORE re-rendered ' + chartInstances.length + ' charts');
 }
 
 // Capture one chart as a white-background PNG for Excel embedding
@@ -1236,7 +1230,7 @@ async function save5D() {
     ['Measurement:','SMM2 (Standard Method of Measurement)'],
     ['Pricing Date:','Q4 2024'],
     ['Currency:', CUR + (CUR2 !== CUR ? ' + ' + CUR2 + ' conversion' : '')],
-    ['Conversion Rate:', `1 ${CUR2} = ${CUR_SEC_RATE} ${CUR}`],
+    ['Conversion Rate:', `1 ${CUR2} = ${CUR_RATE} ${CUR}`],
     ['Validity:','60 days from date of issue'],
     [],
     ['EXCLUSIONS'],
@@ -1604,14 +1598,14 @@ async function save5D() {
   URL.revokeObjectURL(a.href);
   document.getElementById('status').textContent = `Saved ${filename} (${sheetCount} sheets)` + (diffResult ? ' — includes Variance Order' : '');
 
-  } finally {
-  restoreChartsAfterExcel(saved5D);
-  }
   _verifyMaths(wb, '5D');
   _verifyTRL(wb, '5D');
   _log('[S226] §CHART_SUMMARY 5D: ' + _chartTestPass + ' PASS, ' + _chartTestFail + ' FAIL');
   _downloadLog('5D');
   _chartTestPass = 0; _chartTestFail = 0;
+  } finally {
+  restoreChartsAfterExcel(saved5D);
+  }
 }
 
 // ============================================================================
@@ -1777,14 +1771,14 @@ async function save4D() {
   a.click();
   URL.revokeObjectURL(a.href);
   document.getElementById('status').textContent = `Saved ${filename} (3 sheets)`;
-  } finally {
-  restoreChartsAfterExcel(saved4D);
-  }
   _verifyMaths(wb, '4D');
   _verifyTRL(wb, '4D');
   _log('[S226] §CHART_SUMMARY 4D: ' + _chartTestPass + ' PASS, ' + _chartTestFail + ' FAIL');
   _downloadLog('4D');
   _chartTestPass = 0; _chartTestFail = 0;
+  } finally {
+  restoreChartsAfterExcel(saved4D);
+  }
 }
 
 // ── Theme toggle ──
