@@ -39,9 +39,9 @@
 <h1>BIM OOTB — 4D/5D Analytics</h1>
 <div class="subtitle" id="info">Loading...</div>
 <div class="toolbar">
-  <button onclick="save5D()">&#128202; 5D</button>
-  <button onclick="save4D()">&#128197; 4D</button>
-  <button onclick="toggleTheme()">&#9788;</button>
+  <button onclick="save5D()" data-trl-title="ui_tt_export_5d" title="5D — Cost Excel">&#128202; 5D</button>
+  <button onclick="save4D()" data-trl-title="ui_tt_export_4d" title="4D — Schedule Excel">&#128197; 4D</button>
+  <button onclick="toggleTheme()" data-trl-title="ui_tt_theme" title="Light/Dark">&#9788;</button>
 </div>
 <div class="charts" id="charts"></div>
 <div id="status"></div>
@@ -181,6 +181,156 @@ const _TRL_DEFAULTS = {
   // Misc
   not_started:  'Not Started',
   source_app:   'BIM OOTB — Frictionless BIM',
+
+  // ── UI — viewer chrome ──
+  tagline:           'Frictionless BIM. Two DBs. One browser. Zero install.',
+  ui_tools:          'Tools',
+  ui_storeys:        'Storeys',
+  ui_disciplines:    'Disciplines',
+  ui_filter:         'Filter...',
+  ui_all_storeys:    'All Storeys',
+
+  // ── UI — tooltips ──
+  ui_tt_xray:        'X-Ray',
+  ui_tt_screenshot:  'Screenshot',
+  ui_tt_fullscreen:  'Fullscreen',
+  ui_tt_theme:       'Light/Dark',
+  ui_tt_fly:         'Fly Around',
+  ui_tt_walk_speed:  'Walk Speed',
+  ui_tt_export:      '4D/5D Export',
+  ui_tt_export_5d:   '5D \u2014 Cost Excel',
+  ui_tt_export_4d:   '4D \u2014 Schedule Excel',
+  ui_tt_issues:      'Issues',
+  ui_tt_measure:     'Measure',
+  ui_tt_section:     'Section Cut',
+  ui_tt_2d:          '2D Plans',
+  ui_tt_sitecam:     'Site Camera',
+  ui_tt_walk:        'Walk Mode',
+  ui_tt_voice:       'Voice Search',
+
+  // ── UI — buttons ──
+  ui_cancel:         'Cancel',
+  ui_back:           'Back',
+  ui_save:           'Save',
+  ui_undo:           'Undo',
+  ui_retake:         'Retake',
+  ui_go:             'Go',
+  ui_clear:          'Clear',
+  ui_clear_all:      'Clear All',
+  ui_export_excel:   'Export Excel',
+  ui_share_whatsapp: 'Share \u2192 WhatsApp',
+  ui_show_3d:        'Show in 3D',
+  ui_snag:           'Snag',
+
+  // ── UI — info panel labels ──
+  ui_class:          'Class',
+  ui_name:           'Name',
+  ui_guid:           'GUID',
+  ui_building:       'Building',
+  ui_gps:            'GPS',
+  ui_compass:        'Compass',
+  ui_time:           'Time',
+  ui_notes:          'Notes',
+  ui_open:           'Open',
+
+  // ── UI — HUD stats ──
+  ui_buildings:      'Buildings',
+  ui_elements:       'Elements',
+  ui_meshes:         'Meshes',
+  ui_streaming:      'Streaming',
+  ui_rendered:       'Rendered',
+  ui_done:           'Done',
+  ui_variance:       'Variance',
+  ui_initializing:   'Initializing...',
+
+  // ── UI — walk mode ──
+  ui_walk_title:     'Walk Mode',
+  ui_walk_instructions: 'Stand at the building entrance and tap SET to anchor your GPS position to the model.',
+  ui_walk_set:       'SET',
+  ui_walk_no_data:   'Walk Mode: No building data',
+  ui_walk_no_gps:    'Walk Mode: No GPS \u2014 orientation only',
+  ui_walk_stopped:   'Walk Mode stopped.',
+  ui_drivethru_hint: 'Drive-Thru: Tap to walk, hold to glide',
+  ui_drivethru_status:'Drive-Thru: {n} steps ({d}m)',
+  ui_xray_found:     'Wall X-Ray: {n} MEP elements behind {name}',
+  ui_xray_none:      'Wall X-Ray: No MEP elements found behind {name}',
+
+  // ── UI — site camera ──
+  ui_sitecam_watermark: 'BIM OOTB \u2014 Site Inspection',
+  ui_gps_acquiring:  'GPS: acquiring...',
+  ui_gps_unavailable:'GPS: unavailable',
+  ui_gps_unsupported:'GPS: not supported',
+  ui_model_view:     'BIM Model View',
+  ui_bearing:        'Bearing',
+  ui_markup_arrow:   'Arrow',
+  ui_markup_circle:  'Circle',
+  ui_markup_draw:    'Draw',
+  ui_markup_text:    'Text',
+
+  // ── UI — import ──
+  ui_reading_file:   'Reading file...',
+  ui_reading_fmt:    'Reading {fmt} file...',
+  ui_large_file:     'Very large file ({n}MB) \u2014 may take a few minutes',
+  ui_med_file:       'Large file ({n}MB) \u2014 please wait...',
+  ui_building_dbs:   'Building databases...',
+  ui_imported:       'Imported {n} elements',
+  ui_imported_fmt:   'Imported {n} elements from {fmt}',
+  ui_drop_ifc:       'Please drop an .ifc file',
+  ui_unsupported:    'Unsupported: .{ext} \u2014 Accepted: IFC, DAE, OBJ, GLB, 3DS, FBX, STL',
+  ui_exporting_ifc:  'Exporting IFC ({n} elements)...',
+  ui_downloaded_ifc: 'Downloaded {name}.ifc ({size} KB)',
+
+  // ── UI — city ──
+  ui_city_mode:      'CITY MODE \u2014 {n} buildings, {m} elements. Click a building to load.',
+  ui_flew_to:        'Flew to {name} ({n} elements)',
+  ui_downloading:    'Downloading {name}...',
+  ui_cleared:        'CLEARED \u2014 {n} meshes removed.',
+  ui_streaming_bld:  'STREAMING {name} \u2014 0/{n} elements',
+  ui_downloaded_bld: 'Downloaded {name}. Streaming {bld}...',
+
+  // ── UI — NLP ──
+  ui_nlp_placeholder:'count doors, floor 1 walls, total cost, Find fire pump...',
+  ui_no_speech:      'No speech detected \u2014 tap mic again',
+  ui_no_match:       'No match. Try: "count doors" or "floor 1 walls"',
+  ui_no_results:     'No results for "{q}"',
+  ui_details:        'Details ({n})',
+
+  // ── UI — status ──
+  ui_loading:        'Loading',
+  ui_no_data:        'No data.',
+  ui_gen_5d:         'Generating 5D Excel...',
+  ui_gen_5d_prep:    'Generating 5D Excel \u2014 preparing charts...',
+  ui_gen_4d:         'Generating 4D Excel...',
+  ui_gen_4d_prep:    'Generating 4D Excel \u2014 preparing charts...',
+  ui_saved_excel:    'Saved {f} ({n} sheets)',
+  ui_vo_label:       'includes Variance Order',
+
+  // ── UI — issues ──
+  ui_issues_title:   'Issues',
+
+  // ── UI — panels ──
+  ui_swipe_show:     'Swipe to show panels',
+  ui_swipe_hide:     'Swipe to hide panels',
+
+  // ── UI — section cut ──
+  ui_section_cut:    'Section Cut',
+
+  // ── UI — VO labels ──
+  ui_vo_new:         'New element',
+  ui_vo_existed:     'Existed',
+  ui_vo_demolished:  '\u2014 (demolished)',
+  ui_vo_parameter:   'Parameter',
+  ui_vo_value:       'Value',
+  ui_vo_description: 'Description',
+
+  // ── UI — settings ──
+  ui_settings:       'Settings',
+  ui_language:       'Language',
+  ui_currency:       'Currency',
+  ui_rate_source_lbl:'Rate Source',
+  ui_check_updates:  'Check for Updates',
+  ui_reset_defaults: 'Reset to Defaults',
+  ui_apply:          'Apply',
 };
 
 // Merge URL overrides: ?cur=USD&rate=4.45 or any _TRL key: ?h_material=Materials
@@ -1010,7 +1160,7 @@ function _verifyMaths(wb, label) {
 // SAVE 5D BOQ — ExcelJS: Cover, Exec Summary, Mat/Lab/Equip, BOQ, WPs, Disc, Prov
 // ============================================================================
 async function save5D() {
-  document.getElementById('status').textContent = 'Generating 5D Excel...';
+  document.getElementById('status').textContent = _TRL.ui_gen_5d || 'Generating 5D Excel...';
   const wb = new ExcelJS.Workbook();
   wb.creator = _TRL.source_app;
   const gt = grandMaterial + grandLabor + grandEquip;
@@ -1460,7 +1610,7 @@ async function save5D() {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
-  document.getElementById('status').textContent = `Saved ${filename} (${sheetCount} sheets)` + (diffResult ? ' — includes Variance Order' : '');
+  document.getElementById('status').textContent = (_TRL.ui_saved_excel || 'Saved {f} ({n} sheets)').replace('{f}', filename).replace('{n}', sheetCount) + (diffResult ? ' \u2014 ' + (_TRL.ui_vo_label || 'includes Variance Order') : '');
 
   _verifyMaths(wb, '5D');
   _verifyTRL(wb, '5D');
@@ -1473,7 +1623,7 @@ async function save5D() {
 // SAVE 4D SCHEDULE — ExcelJS: 3 sheets (matches schedule_export.py)
 // ============================================================================
 async function save4D() {
-  document.getElementById('status').textContent = 'Generating 4D Excel...';
+  document.getElementById('status').textContent = _TRL.ui_gen_4d || 'Generating 4D Excel...';
   const wb = new ExcelJS.Workbook();
   wb.creator = _TRL.source_app;
   const projDays = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
@@ -1615,7 +1765,7 @@ async function save4D() {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
-  document.getElementById('status').textContent = `Saved ${filename} (3 sheets)`;
+  document.getElementById('status').textContent = (_TRL.ui_saved_excel || 'Saved {f} ({n} sheets)').replace('{f}', filename).replace('{n}', 3);
   _verifyMaths(wb, '4D');
   _verifyTRL(wb, '4D');
   _log('[S226] §CHART_SUMMARY 4D: ' + _chartTestPass + ' PASS, ' + _chartTestFail + ' FAIL');
@@ -1642,5 +1792,8 @@ function toggleTheme() {
 
 init();
 </script>
+<!-- Locale: deep-merges user's selected language into _TRL for dynamic labels (currency, headers).
+     Consts (CUR, CUR2, CUR_RATE) are set at load time so currency stays default; labels translate. -->
+<script src="locale_loader.js?v=4"></script>
 </body>
 </html>

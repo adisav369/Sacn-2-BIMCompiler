@@ -212,7 +212,7 @@
     /* Ask + Walk: top-right, icons only, z20. Site hidden (enter via Walk). */
     #site-cam-btn { display: none !important; }
     #walk-mode-btn { display: inline-block !important; position: fixed !important; top: 8px !important; right: 8px !important; z-index: 20 !important; padding: 8px 12px; font-size: 18px; }
-    #nlp-btn { display: inline-block !important; position: fixed !important; top: 8px !important; right: 60px !important; z-index: 20 !important; padding: 8px 12px; font-size: 18px; }
+    #nlp-btn { display: inline-block !important; position: fixed !important; top: 8px !important; right: 60px !important; z-index: 20 !important; padding: 6px 10px !important; font-size: 14px !important; min-height: 32px !important; min-width: 32px !important; }
 
     /* Storeys: left side, just below Disc */
     #storey-panel { display: block !important; position: fixed !important; top: 60px !important; left: 8px !important; right: auto !important; bottom: auto !important; width: 45vw; max-height: 30vh; overflow-y: auto; z-index: 19 !important; padding: 6px 8px; }
@@ -285,98 +285,98 @@
 </head>
 <body>
 <div id="hud">
-  <h2 onclick="togglePanel('hud-body')" style="cursor:pointer">BIM OOTB v3</h2>
+  <h2 onclick="togglePanel('hud-body')" style="cursor:pointer" data-trl="source_app">BIM OOTB v3</h2>
   <div id="hud-body" class="panel-body">
-    <div class="stat">Buildings: <b id="s-buildings">—</b></div>
-    <div class="stat">Elements: <b id="s-elements">—</b></div>
-    <div class="stat">Meshes: <b id="s-meshes">—</b></div>
-    <div class="stat">Streaming: <b id="s-active" style="color:#4fc3f7">—</b></div>
-    <div class="stat">Rendered: <b id="s-streamed">0</b>/<b id="s-building-total">0</b> <b id="s-current-element" style="color:#4fc3f7;font-size:10px"></b>
+    <div class="stat"><span data-trl="ui_buildings">Buildings</span>: <b id="s-buildings">—</b></div>
+    <div class="stat"><span data-trl="ui_elements">Elements</span>: <b id="s-elements">—</b></div>
+    <div class="stat"><span data-trl="ui_meshes">Meshes</span>: <b id="s-meshes">—</b></div>
+    <div class="stat"><span data-trl="ui_streaming">Streaming</span>: <b id="s-active" style="color:#4fc3f7">—</b></div>
+    <div class="stat"><span data-trl="ui_rendered">Rendered</span>: <b id="s-streamed">0</b>/<b id="s-building-total">0</b> <b id="s-current-element" style="color:#4fc3f7;font-size:10px"></b>
       <div style="height:3px;background:#333;border-radius:2px;margin-top:2px"><div id="s-progress" style="height:100%;width:0%;background:#4fc3f7;border-radius:2px;transition:width 0.1s"></div></div>
     </div>
-    <div class="stat">Done: <b id="s-buildings-done">0</b></div>
+    <div class="stat"><span data-trl="ui_done">Done</span>: <b id="s-buildings-done">0</b></div>
     <div id="disc-bars" style="margin-top:4px"></div>
-    <button id="variance-btn" onclick="toggleVariance();event.stopPropagation()" style="display:none;margin-top:6px;width:100%;padding:6px;background:rgba(204,204,68,0.15);color:#cccc44;border:1px solid rgba(204,204,68,0.4);border-radius:4px;cursor:pointer;font-size:12px;font-weight:600">&#916; Variance</button>
+    <button id="variance-btn" onclick="toggleVariance();event.stopPropagation()" style="display:none;margin-top:6px;width:100%;padding:6px;background:rgba(204,204,68,0.15);color:#cccc44;border:1px solid rgba(204,204,68,0.4);border-radius:4px;cursor:pointer;font-size:12px;font-weight:600">&#916; <span data-trl="ui_variance">Variance</span></button>
   </div>
 </div>
 <div id="search-box">
-  <b style="display:block;width:100%;padding:8px 12px;color:#4fc3f7;font-size:12px;cursor:pointer" onclick="togglePanel('search-body')">Tools</b>
-  <input id="search" type="text" placeholder="Filter..." onclick="event.stopPropagation()" style="display:none">
+  <b style="display:block;width:100%;padding:8px 12px;color:#4fc3f7;font-size:12px;cursor:pointer" onclick="togglePanel('search-body')" data-trl="ui_tools">Tools</b>
+  <input id="search" type="text" data-trl-placeholder="ui_filter" placeholder="Filter..." onclick="event.stopPropagation()" style="display:none">
   <div id="search-body" class="panel-body">
     <div style="margin:4px 0;display:flex;flex-wrap:wrap;gap:3px">
-      <button id="xray-btn" onclick="toggleXray();event.stopPropagation()" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1" title="X-Ray">☢</button>
-      <button onclick="screenshot();event.stopPropagation()" title="Screenshot" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📷</button>
-      <button onclick="toggleFullscreen();event.stopPropagation()" title="Fullscreen" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">⛶</button>
-      <button id="theme-btn" onclick="toggleTheme();event.stopPropagation()" title="Light/Dark" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">☼</button>
-      <button id="fly-btn" onclick="toggleFlyAround();event.stopPropagation()" title="Fly Around" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">✈</button>
-      <button id="walk-speed-btn" onclick="cycleWalkSpeed();event.stopPropagation()" title="Walk Speed" style="width:40px;height:40px;background:#444;color:#fff;border:1px solid #666;border-radius:5px;cursor:pointer;font-size:14px;display:none;align-items:center;justify-content:center">1x</button>
-      <button onclick="export4D5D();event.stopPropagation()" title="4D/5D Export" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📊</button>
-      <button onclick="toggleIssues();event.stopPropagation()" title="Issues" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📋</button>
-      <button id="measure-btn" onclick="toggleMeasure();event.stopPropagation()" title="Measure" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📐</button>
-      <button id="section-btn" onclick="toggleSection();event.stopPropagation()" title="Section Cut" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">✂</button>
-      <button onclick="open2DPlans();event.stopPropagation()" title="2D Plans" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;padding:2px;line-height:1"><img src="2D.png" alt="2D" style="width:18px;height:18px;vertical-align:middle"></button>
+      <button id="xray-btn" onclick="toggleXray();event.stopPropagation()" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1" data-trl-title="ui_tt_xray" title="X-Ray">☢</button>
+      <button onclick="screenshot();event.stopPropagation()" data-trl-title="ui_tt_screenshot" title="Screenshot" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📷</button>
+      <button onclick="toggleFullscreen();event.stopPropagation()" data-trl-title="ui_tt_fullscreen" title="Fullscreen" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">⛶</button>
+      <button id="theme-btn" onclick="toggleTheme();event.stopPropagation()" data-trl-title="ui_tt_theme" title="Light/Dark" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">☼</button>
+      <button id="fly-btn" onclick="toggleFlyAround();event.stopPropagation()" data-trl-title="ui_tt_fly" title="Fly Around" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">✈</button>
+      <button id="walk-speed-btn" onclick="cycleWalkSpeed();event.stopPropagation()" data-trl-title="ui_tt_walk_speed" title="Walk Speed" style="width:40px;height:40px;background:#444;color:#fff;border:1px solid #666;border-radius:5px;cursor:pointer;font-size:14px;display:none;align-items:center;justify-content:center">1x</button>
+      <button onclick="export4D5D();event.stopPropagation()" data-trl-title="ui_tt_export" title="4D/5D Export" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📊</button>
+      <button onclick="toggleIssues();event.stopPropagation()" data-trl-title="ui_tt_issues" title="Issues" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📋</button>
+      <button id="measure-btn" onclick="toggleMeasure();event.stopPropagation()" data-trl-title="ui_tt_measure" title="Measure" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📐</button>
+      <button id="section-btn" onclick="toggleSection();event.stopPropagation()" data-trl-title="ui_tt_section" title="Section Cut" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">✂</button>
+      <button onclick="open2DPlans();event.stopPropagation()" data-trl-title="ui_tt_2d" title="2D Plans" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;padding:2px;line-height:1"><img src="2D.png" alt="2D" style="width:18px;height:18px;vertical-align:middle"></button>
     </div>
     <div id="building-list" style="max-height:400px;overflow-y:auto"></div>
   </div>
 </div>
 <div id="info-panel">
   <span class="panel-toggle" onclick="document.getElementById('info-panel').style.display='none'">×</span>
-  <div><span class="label">Class: </span><span class="value" id="info-class">—</span></div>
-  <div><span class="label">Name: </span><span class="value" id="info-name">—</span></div>
-  <div><span class="label">GUID: </span><span class="value" id="info-guid" style="font-size:10px">—</span></div>
-  <div><span class="label">Building: </span><span class="value" id="info-building">—</span></div>
-  <div><span class="label">Storey: </span><span class="value" id="info-storey">—</span></div>
-  <div><span class="label">Discipline: </span><span class="value" id="info-disc">—</span></div>
-  <div><span class="label">Material: </span><span class="value" id="info-material">—</span></div>
-  <div id="snag-btn-row" style="margin-top:6px;display:none"><button onclick="openSiteCamera()" style="background:#f44336;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">📸 Snag</button></div>
+  <div><span class="label" data-trl="ui_class">Class</span>: <span class="value" id="info-class">—</span></div>
+  <div><span class="label" data-trl="ui_name">Name</span>: <span class="value" id="info-name">—</span></div>
+  <div><span class="label" data-trl="ui_guid">GUID</span>: <span class="value" id="info-guid" style="font-size:10px">—</span></div>
+  <div><span class="label" data-trl="ui_building">Building</span>: <span class="value" id="info-building">—</span></div>
+  <div><span class="label" data-trl="h_storey">Storey</span>: <span class="value" id="info-storey">—</span></div>
+  <div><span class="label" data-trl="h_discipline">Discipline</span>: <span class="value" id="info-disc">—</span></div>
+  <div><span class="label" data-trl="h_material">Material</span>: <span class="value" id="info-material">—</span></div>
+  <div id="snag-btn-row" style="margin-top:6px;display:none"><button onclick="openSiteCamera()" style="background:#f44336;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">📸 <span data-trl="ui_snag">Snag</span></button></div>
 </div>
 <div id="storey-panel" style="cursor:default">
-  <b style="display:block;width:100%;padding:8px 12px;color:#4fc3f7;font-size:12px;cursor:pointer" onclick="togglePanel('storey-body')">Storeys</b>
+  <b style="display:block;width:100%;padding:8px 12px;color:#4fc3f7;font-size:12px;cursor:pointer" onclick="togglePanel('storey-body')" data-trl="ui_storeys">Storeys</b>
   <div id="storey-body" class="panel-body"></div>
 </div>
 <div id="disc-panel" style="position:fixed;bottom:50px;left:16px;z-index:10;
   background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 12px;
   border:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(8px);
   font-size:12px;display:none;cursor:default">
-  <b style="display:block;width:100%;padding:8px 12px;color:#4fc3f7;font-size:12px;cursor:pointer" onclick="togglePanel('disc-body')">Disciplines</b>
+  <b style="display:block;width:100%;padding:8px 12px;color:#4fc3f7;font-size:12px;cursor:pointer" onclick="togglePanel('disc-body')" data-trl="ui_disciplines">Disciplines</b>
   <div id="disc-body" class="panel-body"></div>
 </div>
-<button id="site-cam-btn" onclick="openSiteCamera()" title="Site Camera" style="display:none">&#128247;</button>
-<button id="walk-mode-btn" onclick="toggleWalkMode()" title="Walk Mode">&#128694;</button>
-<button id="nlp-btn" onclick="toggleNlp()" title="Voice Search" style="display:inline-block;position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:15;padding:10px 14px;background:#9c27b0;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;min-height:44px;box-shadow:0 2px 8px rgba(156,39,176,0.4)">&#127908;</button>
+<button id="site-cam-btn" onclick="openSiteCamera()" data-trl-title="ui_tt_sitecam" title="Site Camera" style="display:none">&#128247;</button>
+<button id="walk-mode-btn" onclick="toggleWalkMode()" data-trl-title="ui_tt_walk" title="Walk Mode">&#128694;</button>
+<button id="nlp-btn" onclick="toggleNlp()" data-trl-title="ui_tt_voice" title="Voice Search" style="display:inline-block;position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:15;padding:6px 10px;background:#9c27b0;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;min-height:0;box-shadow:0 2px 8px rgba(156,39,176,0.4)">&#127908;</button>
 <div id="walk-anchor-prompt">
-  <h3>Walk Mode</h3>
-  <p>Stand at the building entrance and tap SET to anchor your GPS position to the model.</p>
-  <button onclick="setWalkAnchor()">SET</button>
-  <button class="cancel" onclick="cancelWalkAnchor()">Cancel</button>
+  <h3 data-trl="ui_walk_title">Walk Mode</h3>
+  <p data-trl="ui_walk_instructions">Stand at the building entrance and tap SET to anchor your GPS position to the model.</p>
+  <button onclick="setWalkAnchor()" data-trl="ui_walk_set">SET</button>
+  <button class="cancel" onclick="cancelWalkAnchor()" data-trl="ui_cancel">Cancel</button>
 </div>
 <div id="issues-panel">
-  <h3>Issues <span class="panel-toggle" onclick="toggleIssues()">&times;</span></h3>
+  <h3><span data-trl="ui_issues_title">Issues</span> <span class="panel-toggle" onclick="toggleIssues()">&times;</span></h3>
   <div class="issues-toolbar">
-    <button onclick="exportIssuesExcel();event.stopPropagation()">&#128196; Export Excel</button>
-    <button onclick="clearAllIssues();event.stopPropagation()" style="background:#663333;border-color:#884444">&#128465; Clear All</button>
+    <button onclick="exportIssuesExcel();event.stopPropagation()">&#128196; <span data-trl="ui_export_excel">Export Excel</span></button>
+    <button onclick="clearAllIssues();event.stopPropagation()" style="background:#663333;border-color:#884444">&#128465; <span data-trl="ui_clear_all">Clear All</span></button>
   </div>
   <div id="issues-list"></div>
   <div id="issue-detail-view">
-    <button onclick="_issueBackToList()" style="align-self:flex-start;padding:4px 10px;background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:11px">&larr; Back</button>
+    <button onclick="_issueBackToList()" style="align-self:flex-start;padding:4px 10px;background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:11px">&larr; <span data-trl="ui_back">Back</span></button>
     <img id="issue-detail-img" src="">
-    <div class="detail-row"><span class="label">Class: </span><span class="value" id="issue-d-class">-</span></div>
-    <div class="detail-row"><span class="label">Name: </span><span class="value" id="issue-d-name">-</span></div>
-    <div class="detail-row"><span class="label">GUID: </span><span class="value" id="issue-d-guid" style="font-size:10px">-</span></div>
-    <div class="detail-row"><span class="label">Building: </span><span class="value" id="issue-d-building">-</span></div>
-    <div class="detail-row"><span class="label">Storey: </span><span class="value" id="issue-d-storey">-</span></div>
-    <div class="detail-row"><span class="label">Discipline: </span><span class="value" id="issue-d-disc">-</span></div>
-    <div class="detail-row"><span class="label">GPS: </span><span class="value" id="issue-d-gps">-</span></div>
-    <div class="detail-row"><span class="label">Compass: </span><span class="value" id="issue-d-compass">-</span></div>
-    <div class="detail-row"><span class="label">Time: </span><span class="value" id="issue-d-time">-</span></div>
-    <div class="detail-row"><span class="label">Notes: </span><span class="value" id="issue-d-notes">-</span></div>
-    <button id="issue-d-status-btn" style="margin-top:8px;padding:8px 16px;border:none;border-radius:6px;color:#fff;font-size:13px;cursor:pointer;width:100%">🔴 Open</button>
+    <div class="detail-row"><span class="label" data-trl="ui_class">Class</span>: <span class="value" id="issue-d-class">-</span></div>
+    <div class="detail-row"><span class="label" data-trl="ui_name">Name</span>: <span class="value" id="issue-d-name">-</span></div>
+    <div class="detail-row"><span class="label" data-trl="ui_guid">GUID</span>: <span class="value" id="issue-d-guid" style="font-size:10px">-</span></div>
+    <div class="detail-row"><span class="label" data-trl="ui_building">Building</span>: <span class="value" id="issue-d-building">-</span></div>
+    <div class="detail-row"><span class="label" data-trl="h_storey">Storey</span>: <span class="value" id="issue-d-storey">-</span></div>
+    <div class="detail-row"><span class="label" data-trl="h_discipline">Discipline</span>: <span class="value" id="issue-d-disc">-</span></div>
+    <div class="detail-row"><span class="label" data-trl="ui_gps">GPS</span>: <span class="value" id="issue-d-gps">-</span></div>
+    <div class="detail-row"><span class="label" data-trl="ui_compass">Compass</span>: <span class="value" id="issue-d-compass">-</span></div>
+    <div class="detail-row"><span class="label" data-trl="ui_time">Time</span>: <span class="value" id="issue-d-time">-</span></div>
+    <div class="detail-row"><span class="label" data-trl="ui_notes">Notes</span>: <span class="value" id="issue-d-notes">-</span></div>
+    <button id="issue-d-status-btn" style="margin-top:8px;padding:8px 16px;border:none;border-radius:6px;color:#fff;font-size:13px;cursor:pointer;width:100%">🔴 <span data-trl="ui_open">Open</span></button>
   </div>
 </div>
-<div id="status">v3 — Initializing...</div>
+<div id="status">v3 — <span data-trl="ui_initializing">Initializing...</span></div>
 <pre id="walk-log" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:200px;overflow:auto;background:#111;color:#0f0;font-size:10px;z-index:99;padding:4px;margin:0"></pre>
 <div id="section-slider-panel">
-  <label>Section Cut <span class="panel-toggle" onclick="toggleSection()" style="float:right;cursor:pointer">&times;</span></label>
+  <label><span data-trl="ui_section_cut">Section Cut</span> <span class="panel-toggle" onclick="toggleSection()" style="float:right;cursor:pointer">&times;</span></label>
   <div style="margin:4px 0">
     <button id="sec-axis-y" onclick="setSectionAxis('Y')" style="padding:2px 8px;background:#4fc3f7;color:#000;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">Y ↕</button>
     <button id="sec-axis-x" onclick="setSectionAxis('X')" style="padding:2px 8px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">X ↔</button>
@@ -390,15 +390,15 @@
 <div id="site-cam-overlay">
   <video id="site-cam-video" autoplay playsinline></video>
   <div id="site-cam-bim-bar">
-    <span class="cam-label">Class:</span> <span id="cam-class">—</span> &nbsp;
-    <span class="cam-label">Name:</span> <span id="cam-name">—</span><br>
-    <span class="cam-label">GUID:</span> <span id="cam-guid" style="font-size:10px">—</span><br>
-    <span class="cam-label">Building:</span> <span id="cam-building">—</span> &nbsp;
-    <span class="cam-label">Storey:</span> <span id="cam-storey">—</span> &nbsp;
-    <span class="cam-label">Disc:</span> <span id="cam-disc">—</span>
+    <span class="cam-label" data-trl="ui_class">Class</span>: <span id="cam-class">—</span> &nbsp;
+    <span class="cam-label" data-trl="ui_name">Name</span>: <span id="cam-name">—</span><br>
+    <span class="cam-label" data-trl="ui_guid">GUID</span>: <span id="cam-guid" style="font-size:10px">—</span><br>
+    <span class="cam-label" data-trl="ui_building">Building</span>: <span id="cam-building">—</span> &nbsp;
+    <span class="cam-label" data-trl="h_storey">Storey</span>: <span id="cam-storey">—</span> &nbsp;
+    <span class="cam-label" data-trl="h_discipline">Discipline</span>: <span id="cam-disc">—</span>
   </div>
   <div id="site-cam-compass"></div>
-  <div id="site-cam-gps">GPS: acquiring...</div>
+  <div id="site-cam-gps" data-trl="ui_gps_acquiring">GPS: acquiring...</div>
   <div id="site-cam-time"></div>
   <button id="site-cam-snap-btn" onclick="snapSitePhoto()">&#128247;</button>
   <button onclick="closeSiteCamera()" style="position:absolute;top:12px;left:12px;background:rgba(0,0,0,0.6);color:#fff;border:1px solid #666;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;z-index:2001">✕</button>
@@ -407,23 +407,23 @@
 <!-- Site Camera Preview + Markup (after snap) -->
 <div id="site-cam-preview">
   <div id="markup-toolbar" style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;justify-content:center">
-    <button class="markup-btn active" data-tool="arrow" onclick="setMarkupTool('arrow')" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#ff4444;color:#fff">&#8599; Arrow</button>
-    <button class="markup-btn" data-tool="circle" onclick="setMarkupTool('circle')" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#444;color:#fff">&#9675; Circle</button>
-    <button class="markup-btn" data-tool="freehand" onclick="setMarkupTool('freehand')" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#444;color:#fff">&#9998; Draw</button>
-    <button class="markup-btn" data-tool="text" onclick="setMarkupTool('text')" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#444;color:#fff">A Text</button>
+    <button class="markup-btn active" data-tool="arrow" onclick="setMarkupTool('arrow')" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#ff4444;color:#fff">&#8599; <span data-trl="ui_markup_arrow">Arrow</span></button>
+    <button class="markup-btn" data-tool="circle" onclick="setMarkupTool('circle')" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#444;color:#fff">&#9675; <span data-trl="ui_markup_circle">Circle</span></button>
+    <button class="markup-btn" data-tool="freehand" onclick="setMarkupTool('freehand')" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#444;color:#fff">&#9998; <span data-trl="ui_markup_draw">Draw</span></button>
+    <button class="markup-btn" data-tool="text" onclick="setMarkupTool('text')" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#444;color:#fff">A <span data-trl="ui_markup_text">Text</span></button>
     <span style="display:flex;gap:3px;align-items:center">
       <button onclick="setMarkupColor('#ff0000')" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:#ff0000;cursor:pointer" id="mc-red"></button>
       <button onclick="setMarkupColor('#ffff00')" style="width:24px;height:24px;border-radius:50%;border:2px solid #333;background:#ffff00;cursor:pointer" id="mc-yellow"></button>
       <button onclick="setMarkupColor('#00ff00')" style="width:24px;height:24px;border-radius:50%;border:2px solid #333;background:#00ff00;cursor:pointer" id="mc-green"></button>
       <button onclick="setMarkupColor('#ffffff')" style="width:24px;height:24px;border-radius:50%;border:2px solid #333;background:#ffffff;cursor:pointer" id="mc-white"></button>
     </span>
-    <button onclick="undoMarkup()" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#666;color:#fff">&#8630; Undo</button>
+    <button onclick="undoMarkup()" style="padding:6px 10px;border-radius:6px;border:none;font-size:14px;cursor:pointer;background:#666;color:#fff">&#8630; <span data-trl="ui_undo">Undo</span></button>
   </div>
   <canvas id="site-cam-markup" style="max-width:100%;max-height:60vh;border:1px solid #333;touch-action:none"></canvas>
   <div id="site-cam-preview-controls" style="margin-bottom:calc(env(safe-area-inset-bottom, 20px))">
-    <button onclick="closeSitePreview()" style="background:#444;color:#fff">Retake</button>
-    <button onclick="shareSitePhoto()" style="background:#25D366;color:#fff">Share &#8594; WhatsApp</button>
-    <button onclick="downloadSitePhoto()" style="background:#4fc3f7;color:#000">Save</button>
+    <button onclick="closeSitePreview()" style="background:#444;color:#fff" data-trl="ui_retake">Retake</button>
+    <button onclick="shareSitePhoto()" style="background:#25D366;color:#fff" data-trl="ui_share_whatsapp">Share &#8594; WhatsApp</button>
+    <button onclick="downloadSitePhoto()" style="background:#4fc3f7;color:#000" data-trl="ui_save">Save</button>
   </div>
 </div>
 
@@ -433,8 +433,8 @@
 <div id="load-overlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;
   background:#1a1a2e;z-index:1000;display:flex;flex-direction:column;
   align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif">
-  <div style="color:#4fc3f7;font-size:24px;font-weight:700;margin-bottom:20px">BIM OOTB</div>
-  <div style="color:#888;font-size:13px;margin-bottom:16px">Frictionless BIM. Two DBs. One browser. Zero install.</div>
+  <div style="color:#4fc3f7;font-size:24px;font-weight:700;margin-bottom:20px" data-trl="source_app">BIM OOTB</div>
+  <div style="color:#888;font-size:13px;margin-bottom:16px" data-trl="tagline">Frictionless BIM. Two DBs. One browser. Zero install.</div>
   <div id="load-items" style="width:280px"></div>
   <div id="load-elapsed" style="color:#555;font-size:12px;margin-top:12px">0:00</div>
 </div>
@@ -443,26 +443,57 @@
 <script src="config.js?v=3"></script>
 <script src="scene.js?v=4"></script>
 <script src="streaming.js?v=6"></script>
-<script src="panels.js?v=4"></script>
+<script src="panels.js?v=5"></script>
 <script src="tools.js?v=5"></script>
 <script src="picking.js?v=3"></script>
 <script src="tour.js?v=3"></script>
 <script src="measure.js?v=3"></script>
-<script src="sitecam.js?v=4"></script>
+<script src="sitecam.js?v=5"></script>
 <script src="issues.js?v=4"></script>
 <script src="excel.js?v=4"></script>
-<script src="walk.js?v=4"></script>
-<script src="navigate.js?v=5"></script>
-<script src="city.js?v=4"></script>
+<script src="walk.js?v=5"></script>
+<script src="navigate.js?v=7"></script>
+<script src="city.js?v=5"></script>
 <script src="rates.js?v=1"></script>
-<script src="nlp.js?v=2"></script>
+<script src="locale_loader.js?v=4"></script>
+<script src="nlp.js?v=4"></script>
 <script src="semantic_enrichment.js?v=1"></script>
 <script src="scene_to_db.js?v=1"></script>
 <script src="import_db_builder.js?v=1"></script>
 <script src="diff.js?v=1"></script>
-<script src="variation_order.js?v=1"></script>
-<script src="import.js?v=1"></script>
-<script src="main.js?v=5"></script>
+<script src="variation_order.js?v=2"></script>
+<script src="import.js?v=2"></script>
+<script src="main.js?v=6"></script>
+<!-- Styled tooltip bubbles for [data-trl-title] buttons — appended to body, not clipped by overflow:hidden -->
+<style>#ootb-tip{display:none;position:fixed;z-index:9990;background:rgba(10,10,30,0.92);color:#4fc3f7;font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid rgba(79,195,247,0.35);pointer-events:none;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.4)}</style>
+<script>
+(function(){
+  var tip=document.createElement('div');tip.id='ootb-tip';document.body.appendChild(tip);
+  function show(btn){
+    var key=btn.getAttribute('data-trl-title');
+    var text=(typeof _TRL!=='undefined'&&_TRL[key])||btn.title||'';
+    if(!text)return;
+    tip.textContent=text;tip.style.display='block';
+    var r=btn.getBoundingClientRect();
+    var tx=r.left+r.width/2;
+    var ty=r.top-8;
+    tip.style.left=tx+'px';tip.style.top=ty+'px';
+    tip.style.transform='translate(-50%,-100%)';
+  }
+  document.addEventListener('mouseover',function(e){
+    var b=e.target.closest('[data-trl-title]');b?show(b):(tip.style.display='none');
+  });
+  document.addEventListener('mouseout',function(e){
+    if(e.target.closest('[data-trl-title]'))tip.style.display='none';
+  });
+  // Touch: briefly show on tap
+  document.addEventListener('touchstart',function(e){
+    var b=e.target.closest('[data-trl-title]');
+    if(!b)return;
+    show(b);setTimeout(function(){tip.style.display='none';},1800);
+  },{passive:true});
+})();
+</script>
 <script>if(new URLSearchParams(location.search).has('ignore-me'))localStorage.setItem('goatcounter-ignore','t')</script>
 <script data-goatcounter="https://red1oon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body>
