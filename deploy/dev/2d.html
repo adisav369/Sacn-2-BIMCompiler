@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIM OOTB — 2D Plans</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; color: #ccc; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+#toolbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+  background: rgba(20,20,40,0.95); border-bottom: 1px solid #333;
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px; flex-wrap: wrap;
+}
+#toolbar h1 { font-size: 14px; color: #4fc3f7; margin-right: 12px; white-space: nowrap; }
+#toolbar select, #toolbar button {
+  background: #333; color: #ccc; border: 1px solid #555; border-radius: 4px;
+  padding: 4px 10px; font-size: 12px; cursor: pointer;
+}
+#toolbar select:hover, #toolbar button:hover { background: #444; color: #fff; }
+#toolbar button.active { background: #4fc3f7; color: #000; border-color: #4fc3f7; }
+#layer-panel {
+  position: fixed; top: 44px; right: 8px; z-index: 10;
+  background: rgba(20,20,40,0.92); border: 1px solid #333; border-radius: 6px;
+  padding: 8px; max-height: 60vh; overflow-y: auto; min-width: 160px; display: none;
+}
+#layer-panel h3 { font-size: 12px; color: #4fc3f7; margin-bottom: 6px; }
+#layer-panel label { display: block; font-size: 11px; padding: 2px 0; cursor: pointer; }
+#layer-panel label:hover { color: #fff; }
+#info-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+  background: rgba(20,20,40,0.95); border-top: 1px solid #333;
+  padding: 4px 12px; font-size: 11px; display: flex; gap: 16px;
+}
+#info-bar .label { color: #888; }
+#info-bar .value { color: #4fc3f7; }
+canvas { display: block; }
+#drop-zone {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 100; background: rgba(0,0,0,0.7);
+  justify-content: center; align-items: center; font-size: 24px; color: #4fc3f7;
+}
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <h1>2D Plans</h1>
+  <select id="sheet-select"><option value="">— select sheet —</option></select>
+  <button id="layers-btn" onclick="toggleLayers()">Layers</button>
+  <button id="fit-btn" onclick="fitView()">Fit</button>
+  <button id="bimsrc-btn" onclick="toggleBimsrc()" title="Toggle BIMSRC highlight">BIMSRC</button>
+  <span style="flex:1"></span>
+  <span id="status-text" style="font-size:11px;color:#888"></span>
+</div>
+
+<div id="layer-panel"><h3>Layers</h3><div id="layer-list"></div></div>
+
+<canvas id="canvas"></canvas>
+
+<div id="info-bar">
+  <span><span class="label">Entities: </span><span class="value" id="ent-count">0</span></span>
+  <span><span class="label">Layers: </span><span class="value" id="layer-count">0</span></span>
+  <span id="bimsrc-info" style="display:none">
+    <span class="label">Class: </span><span class="value" id="bi-class">—</span>
+    <span class="label" style="margin-left:8px">Name: </span><span class="value" id="bi-name">—</span>
+    <span class="label" style="margin-left:8px">Storey: </span><span class="value" id="bi-storey">—</span>
+  </span>
+</div>
+
+<div id="drop-zone">Drop DXF file here</div>
+
+<script src="dxf-parser.js"></script>
+<script>
+// ─── State ───
+let dxf = null;           // parsed DXF object
+let entities = [];         // dxf.entities
+let layerVisibility = {};  // layer name → boolean
+let showBimsrc = false;
+
+// View transform
+let viewX = 0, viewY = 0, viewScale = 1;
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// ─── Sheet manifest ───
+// Available pre-generated DXF sheets (SH and DX only)
+const SHEETS = {
+  'SH Floor Plan':   'dxf/SH_FLOOR.dxf',
+  'SH Front Elev':   'dxf/SH_FRONT.dxf',
+  'SH Roof Plan':    'dxf/SH_ROOF.dxf',
+  'DX Floor (GF)':   'dxf/DX_FLOOR_GF.dxf',
+  'DX Front Elev':   'dxf/DX_FRONT.dxf',
+};
+
+// Populate sheet selector
+const sel = document.getElementById('sheet-select');
+for (const [name, url] of Object.entries(SHEETS)) {
+  const opt = document.createElement('option');
+  opt.value = url; opt.textContent = name;
+  sel.appendChild(opt);
+}
+sel.addEventListener('change', () => { if (sel.value) loadDxfUrl(sel.value); });
+
+// ─── DXF Loading ───
+async function loadDxfUrl(url) {
+  setStatus('Loading ' + url + '...');
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(resp.status + ' ' + resp.statusText);
+    const text = await resp.text();
+    parseDxf(text);
+  } catch (e) {
+    setStatus('Error: ' + e.message);
+  }
+}
+
+function parseDxf(text) {
+  const parser = new DxfParser();
+  try {
+    dxf = parser.parseSync(text);
+  } catch (e) {
+    setStatus('Parse error: ' + e.message);
+    return;
+  }
+  window.dxf = dxf;
+  entities = dxf.entities || [];
+  // Build layer list
+  layerVisibility = {};
+  const layers = new Set();
+  entities.forEach(e => { if (e.layer) layers.add(e.layer); });
+  layers.forEach(l => { layerVisibility[l] = true; });
+  buildLayerPanel();
+  document.getElementById('ent-count').textContent = entities.length;
+  document.getElementById('layer-count').textContent = layers.size;
+  setStatus('Loaded: ' + entities.length + ' entities, ' + layers.size + ' layers');
+  fitView();
+}
+
+// ─── Layer Panel ───
+function buildLayerPanel() {
+  const list = document.getElementById('layer-list');
+  list.innerHTML = '';
+  const sorted = Object.keys(layerVisibility).sort();
+  sorted.forEach(name => {
+    const label = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = true;
+    cb.addEventListener('change', () => { layerVisibility[name] = cb.checked; draw(); });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(' ' + name));
+    list.appendChild(label);
+  });
+}
+
+function toggleLayers() {
+  const p = document.getElementById('layer-panel');
+  const vis = getComputedStyle(p).display;
+  p.style.display = vis === 'none' ? 'block' : 'none';
+}
+
+// ─── View Transform ───
+// DXF coords → screen coords
+function toScreen(x, y) {
+  return [
+    (x - viewX) * viewScale + canvas.width / 2,
+    canvas.height / 2 - (y - viewY) * viewScale   // Y-flip: DXF Y-up → screen Y-down
+  ];
+}
+
+function fitView() {
+  if (!entities.length) return;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  entities.forEach(e => {
+    const pts = getEntityPoints(e);
+    pts.forEach(p => {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    });
+  });
+  if (!isFinite(minX)) return;
+  const dxfW = maxX - minX || 1;
+  const dxfH = maxY - minY || 1;
+  const margin = 40;
+  viewScale = Math.min((canvas.width - margin * 2) / dxfW, (canvas.height - margin * 2) / dxfH);
+  viewX = (minX + maxX) / 2;
+  viewY = (minY + maxY) / 2;
+  window.viewScale = viewScale;
+  draw();
+}
+
+// Get bounding points from an entity (for fit-view)
+function getEntityPoints(e) {
+  const pts = [];
+  if (e.vertices) e.vertices.forEach(v => pts.push(v));
+  if (e.center) pts.push(e.center);
+  if (e.startPoint) pts.push(e.startPoint);
+  if (e.endPoint) pts.push(e.endPoint);
+  if (e.position) pts.push(e.position);
+  if (e.points) e.points.forEach(p => pts.push(p));
+  if (e.controlPoints) e.controlPoints.forEach(p => pts.push(p));
+  return pts;
+}
+
+// ─── Layer Colors ───
+const LAYER_COLORS = {
+  'A-WALL-FULL': '#ffffff',
+  'A-WALL-PRTN': '#cccccc',
+  'A-GLAZ':      '#4488CC',
+  'A-DOOR':      '#88aacc',
+  'A-ROOF':      '#ffffff',
+  'A-GRID':      '#888888',
+  'A-ANNO-DIMS': '#999999',
+  'A-ANNO-TEXT': '#aaaaaa',
+  'A-FURN':      '#666666',
+  'A-ELEV-WALL': '#ffffff',
+  'A-ELEV-LEVL': '#999999',
+};
+
+function layerColor(layer) {
+  return LAYER_COLORS[layer] || '#888888';
+}
+
+const LAYER_WEIGHTS = {
+  'A-WALL-FULL': 2.5, 'A-WALL-PRTN': 1.8, 'A-GLAZ': 1.2, 'A-DOOR': 1.2,
+  'A-ROOF': 2.5, 'A-GRID': 0.8, 'A-ANNO-DIMS': 0.8, 'A-ANNO-TEXT': 0.8,
+  'A-FURN': 0.6, 'A-ELEV-WALL': 2.5, 'A-ELEV-LEVL': 0.8,
+};
+
+function layerWeight(layer) {
+  return LAYER_WEIGHTS[layer] || 1.0;
+}
+
+// ─── Drawing ───
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (!entities.length) return;
+
+  // Draw entities by layer order (background layers first)
+  const layerOrder = ['A-FURN', 'A-GRID', 'A-ANNO-DIMS', 'A-ANNO-TEXT', 'A-ELEV-LEVL',
+                      'A-GLAZ', 'A-DOOR', 'A-WALL-PRTN', 'A-WALL-FULL', 'A-ROOF', 'A-ELEV-WALL'];
+  // Group entities by layer
+  const byLayer = {};
+  entities.forEach(e => {
+    const l = e.layer || '0';
+    if (!byLayer[l]) byLayer[l] = [];
+    byLayer[l].push(e);
+  });
+
+  // Draw known layers in order, then any remaining
+  const drawn = new Set();
+  layerOrder.forEach(l => {
+    if (byLayer[l] && layerVisibility[l] !== false) {
+      byLayer[l].forEach(e => drawEntity(e));
+      drawn.add(l);
+    }
+  });
+  Object.keys(byLayer).forEach(l => {
+    if (!drawn.has(l) && layerVisibility[l] !== false) {
+      byLayer[l].forEach(e => drawEntity(e));
+    }
+  });
+}
+
+function drawEntity(e) {
+  const color = layerColor(e.layer);
+  const weight = layerWeight(e.layer);
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = Math.max(0.5, weight * Math.min(viewScale / 5, 1.5));
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // BIMSRC highlight
+  if (showBimsrc && hasBimsrc(e)) {
+    ctx.strokeStyle = '#44cc44';
+    ctx.lineWidth = Math.max(1.5, weight * 2);
+  }
+
+  switch (e.type) {
+    case 'LINE': drawLine(e); break;
+    case 'LWPOLYLINE': case 'POLYLINE': drawPolyline(e); break;
+    case 'CIRCLE': drawCircle(e); break;
+    case 'ARC': drawArc(e); break;
+    case 'TEXT': case 'MTEXT': drawText(e); break;
+    case 'POINT': drawPoint(e); break;
+    case 'SOLID': case '3DFACE': drawSolid(e); break;
+    case 'INSERT': drawInsert(e); break;
+    case 'ELLIPSE': drawEllipse(e); break;
+    case 'SPLINE': drawSpline(e); break;
+    case 'DIMENSION': drawDimension(e); break;
+  }
+}
+
+function drawLine(e) {
+  if (!e.vertices || e.vertices.length < 2) return;
+  const [x1, y1] = toScreen(e.vertices[0].x, e.vertices[0].y);
+  const [x2, y2] = toScreen(e.vertices[1].x, e.vertices[1].y);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+}
+
+function drawPolyline(e) {
+  if (!e.vertices || e.vertices.length < 2) return;
+  ctx.beginPath();
+  const [x0, y0] = toScreen(e.vertices[0].x, e.vertices[0].y);
+  ctx.moveTo(x0, y0);
+  for (let i = 1; i < e.vertices.length; i++) {
+    const v = e.vertices[i];
+    if (e.vertices[i - 1].bulge) {
+      drawBulgeSegment(e.vertices[i - 1], v, e.vertices[i - 1].bulge);
+    } else {
+      const [x, y] = toScreen(v.x, v.y);
+      ctx.lineTo(x, y);
+    }
+  }
+  if (e.shape) {
+    const last = e.vertices[e.vertices.length - 1];
+    if (last.bulge) {
+      drawBulgeSegment(last, e.vertices[0], last.bulge);
+    } else {
+      ctx.closePath();
+    }
+  }
+  ctx.stroke();
+}
+
+function drawBulgeSegment(v1, v2, bulge) {
+  // Bulge = tan(angle/4). Convert to arc.
+  const dx = v2.x - v1.x, dy = v2.y - v1.y;
+  const chord = Math.sqrt(dx * dx + dy * dy);
+  if (chord < 1e-10) return;
+  const s = bulge * chord / 2;
+  const r = (chord * chord / 4 + s * s) / (2 * Math.abs(s));
+  const angle = 4 * Math.atan(Math.abs(bulge));
+  const midX = (v1.x + v2.x) / 2, midY = (v1.y + v2.y) / 2;
+  const d = Math.sqrt(r * r - chord * chord / 4);
+  const sign = bulge > 0 ? 1 : -1;
+  const cx = midX - sign * d * dy / chord;
+  const cy = midY + sign * d * dx / chord;
+  const startAngle = Math.atan2(v1.y - cy, v1.x - cx);
+  const endAngle = Math.atan2(v2.y - cy, v2.x - cx);
+  const [sx, sy] = toScreen(cx, cy);
+  const sr = r * viewScale;
+  ctx.arc(sx, sy, sr, -startAngle, -endAngle, bulge > 0);
+}
+
+function drawCircle(e) {
+  if (!e.center) return;
+  const [cx, cy] = toScreen(e.center.x, e.center.y);
+  const r = e.radius * viewScale;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+}
+
+function drawArc(e) {
+  if (!e.center) return;
+  const [cx, cy] = toScreen(e.center.x, e.center.y);
+  const r = e.radius * viewScale;
+  // DXF angles are CCW from +X; canvas Y is flipped so negate angles
+  ctx.beginPath(); ctx.arc(cx, cy, r, -e.startAngle, -e.endAngle, true); ctx.stroke();
+}
+
+function drawEllipse(e) {
+  if (!e.center || !e.majorAxisEndPoint) return;
+  const [cx, cy] = toScreen(e.center.x, e.center.y);
+  const mx = e.majorAxisEndPoint.x, my = e.majorAxisEndPoint.y;
+  const majorR = Math.sqrt(mx * mx + my * my) * viewScale;
+  const minorR = majorR * (e.axisRatio || 1);
+  const rot = -Math.atan2(my, mx);
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, majorR, minorR, rot, -(e.startAngle || 0), -(e.endAngle || Math.PI * 2), true);
+  ctx.stroke();
+}
+
+function drawText(e) {
+  const pos = e.startPoint || e.position || e.endPoint;
+  if (!pos) return;
+  const [x, y] = toScreen(pos.x, pos.y);
+  const h = (e.textHeight || e.height || 2.5) * viewScale;
+  if (h < 3) return; // too small to read
+  const text = e.text || '';
+  // Strip MTEXT formatting codes
+  const clean = text.replace(/\\[A-Za-z][^;]*;/g, '').replace(/\{|\}/g, '').replace(/\\P/g, '\n');
+  ctx.font = Math.max(6, Math.min(h, 40)) + 'px monospace';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(clean, x, y);
+}
+
+function drawPoint(e) {
+  if (!e.position) return;
+  const [x, y] = toScreen(e.position.x, e.position.y);
+  ctx.fillRect(x - 1, y - 1, 3, 3);
+}
+
+function drawSolid(e) {
+  if (!e.points || e.points.length < 3) return;
+  ctx.beginPath();
+  const [x0, y0] = toScreen(e.points[0].x, e.points[0].y);
+  ctx.moveTo(x0, y0);
+  for (let i = 1; i < e.points.length; i++) {
+    const [x, y] = toScreen(e.points[i].x, e.points[i].y);
+    ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.globalAlpha = 0.4; ctx.fill(); ctx.globalAlpha = 1.0; ctx.stroke();
+}
+
+function drawInsert(e) {
+  // Block inserts — draw as marker if block not resolved
+  if (!e.position) return;
+  const [x, y] = toScreen(e.position.x, e.position.y);
+  ctx.strokeStyle = '#cccc44';
+  ctx.strokeRect(x - 3, y - 3, 6, 6);
+}
+
+function drawSpline(e) {
+  const pts = e.controlPoints || e.fitPoints;
+  if (!pts || pts.length < 2) return;
+  ctx.beginPath();
+  const [x0, y0] = toScreen(pts[0].x, pts[0].y);
+  ctx.moveTo(x0, y0);
+  for (let i = 1; i < pts.length; i++) {
+    const [x, y] = toScreen(pts[i].x, pts[i].y);
+    ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+}
+
+function drawDimension(e) {
+  // Draw dimension text at midpoint if available
+  if (e.middleOfText) {
+    const [x, y] = toScreen(e.middleOfText.x, e.middleOfText.y);
+    const txt = e.text || (e.actualMeasurement ? e.actualMeasurement.toFixed(0) : '');
+    if (txt) {
+      ctx.font = Math.max(6, 10) + 'px monospace';
+      ctx.fillText(txt, x, y);
+    }
+  }
+}
+
+// ─── BIMSRC ───
+function hasBimsrc(e) {
+  const xd = e.extendedData || e.xdata || e.xData;
+  if (!xd) return false;
+  return xd.applicationName === 'BIMSRC' || (xd.BIMSRC != null);
+}
+
+function getBimsrc(e) {
+  const xd = e.extendedData || e.xdata || e.xData;
+  if (!xd || !xd.customStrings) return null;
+  const result = {};
+  xd.customStrings.forEach(s => {
+    const idx = s.indexOf(':');
+    if (idx > 0) result[s.slice(0, idx)] = s.slice(idx + 1);
+  });
+  return result;
+}
+
+function toggleBimsrc() {
+  showBimsrc = !showBimsrc;
+  document.getElementById('bimsrc-btn').classList.toggle('active', showBimsrc);
+  document.getElementById('bimsrc-info').style.display = showBimsrc ? 'inline' : 'none';
+  draw();
+}
+
+// ─── Click → BIMSRC info ───
+canvas.addEventListener('click', e => {
+  if (!showBimsrc || !entities.length) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  let closest = null, closestDist = 20; // 20px threshold
+  entities.forEach(ent => {
+    if (!hasBimsrc(ent)) return;
+    if (ent.layer && layerVisibility[ent.layer] === false) return;
+    const pts = getEntityPoints(ent);
+    pts.forEach(p => {
+      const [sx, sy] = toScreen(p.x, p.y);
+      const d = Math.sqrt((sx - mx) ** 2 + (sy - my) ** 2);
+      if (d < closestDist) { closestDist = d; closest = ent; }
+    });
+  });
+  if (closest) {
+    const info = getBimsrc(closest);
+    if (info) {
+      document.getElementById('bi-class').textContent = info.ifc_class || '—';
+      document.getElementById('bi-name').textContent = info.element_name || '—';
+      document.getElementById('bi-storey').textContent = info.storey || '—';
+    }
+  }
+});
+
+// ─── Pan & Zoom ───
+let isDragging = false, dragStartX = 0, dragStartY = 0, dragViewX = 0, dragViewY = 0;
+
+canvas.addEventListener('mousedown', e => {
+  isDragging = true;
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  dragViewX = viewX; dragViewY = viewY;
+  canvas.style.cursor = 'grabbing';
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const dx = e.clientX - dragStartX, dy = e.clientY - dragStartY;
+  viewX = dragViewX - dx / viewScale;
+  viewY = dragViewY + dy / viewScale;  // Y-flip
+  draw();
+});
+
+canvas.addEventListener('mouseup', () => { isDragging = false; canvas.style.cursor = 'crosshair'; });
+canvas.addEventListener('mouseleave', () => { isDragging = false; canvas.style.cursor = 'crosshair'; });
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY > 0 ? 0.9 : 1.1;
+  // Zoom towards mouse position
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const wx = viewX + (mx - canvas.width / 2) / viewScale;
+  const wy = viewY - (my - canvas.height / 2) / viewScale;
+  viewScale *= factor;
+  viewX = wx - (mx - canvas.width / 2) / viewScale;
+  viewY = wy + (my - canvas.height / 2) / viewScale;
+  draw();
+}, { passive: false });
+
+// ─── Drag & Drop DXF files ───
+document.addEventListener('dragover', e => {
+  e.preventDefault();
+  document.getElementById('drop-zone').style.display = 'flex';
+});
+document.addEventListener('dragleave', e => {
+  if (e.target === document.getElementById('drop-zone'))
+    document.getElementById('drop-zone').style.display = 'none';
+});
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  document.getElementById('drop-zone').style.display = 'none';
+  const file = e.dataTransfer.files[0];
+  if (!file || !file.name.toLowerCase().endsWith('.dxf')) {
+    setStatus('Drop a .dxf file'); return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => parseDxf(reader.result);
+  reader.readAsText(file);
+});
+
+// ─── Resize ───
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  draw();
+}
+window.addEventListener('resize', resize);
+
+// ─── Helpers ───
+function setStatus(msg) { document.getElementById('status-text').textContent = msg; }
+
+// ─── Init ───
+canvas.style.cursor = 'crosshair';
+resize();
+
+// Auto-load from URL params
+const params = new URLSearchParams(location.search);
+const dbParam = params.get('db') || '';
+// If db param hints at SH or DX, auto-load floor plan
+if (dbParam.toLowerCase().includes('sample') || dbParam.toLowerCase().includes('_sh')) {
+  sel.value = 'dxf/SH_FLOOR.dxf'; loadDxfUrl('dxf/SH_FLOOR.dxf');
+} else if (dbParam.toLowerCase().includes('duplex') || dbParam.toLowerCase().includes('_dx')) {
+  sel.value = 'dxf/DX_FLOOR_GF.dxf'; loadDxfUrl('dxf/DX_FLOOR_GF.dxf');
+}
+</script>
+</body>
+</html>

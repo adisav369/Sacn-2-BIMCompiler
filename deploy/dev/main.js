@@ -18,6 +18,7 @@ function initViewer() {
   setupWalk(APP);
   setupCity(APP);
   if (typeof setupNlp === 'function') setupNlp(APP);
+  if (typeof setupNavigate === 'function') setupNavigate(APP);
   if (typeof setupImport === 'function') setupImport(APP);
   if (typeof setupDiff === 'function') setupDiff(APP);
 
@@ -57,6 +58,11 @@ function initViewer() {
   window.cycleWalkSpeed = APP.cycleWalkSpeed;
   if (APP.toggleNlp) window.toggleNlp = APP.toggleNlp;
   window.toggleVariance = function() { if (APP.toggleVariance) APP.toggleVariance(); };
+  window.open2DPlans = function() {
+    const dbParam = new URLSearchParams(location.search).get('db') || '';
+    const url = '2d.html?db=' + encodeURIComponent(dbParam);
+    window.open(url, '_blank');
+  };
 
   // Render loop
   function animate() {
