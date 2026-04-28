@@ -310,4 +310,20 @@ all deleted. No more canvas resize, no try/finally, no 500ms wait, no chart rest
 
 **Playwright-verified:** 5D 20/20 PASS, 4D 20/20 PASS. Charts untouched by export.
 
-**Next session:** `_TRL` localisation to cover panel text (storey/disc labels, info panel).
+### Next Session — S236: Excel Sheet Consolidation + _TRL Panel Text
+
+**1. Combine PACKAGE sheets into one.** Currently PACKAGE 1–6 are separate worksheets
+(line 1254: `wb.addWorksheet(wp.id)` in a loop). Merge into a single "Work Packages" sheet
+with WP headers as section dividers + subtotals per WP + grand total at bottom.
+
+**2. Check all sheets for missing sub-totals / grand totals.** Current sheets to audit:
+- `5D-BOQ` (line 1205) — has grand total?
+- `Material Summary` (line 1145) — subtotals per discipline?
+- `Labour Summary` (line 1163) — subtotals?
+- `Equipment Summary` (line 1183) — subtotals?
+- `BOQ-{disc}` per-discipline sheets (line 1289) — subtotals per disc?
+- `Provisional Sums` (line 1318) — total?
+- 4D: `Construction Schedule` (line 1483), `Project Summary` (line 1499) — totals?
+
+**3. `_TRL` to cover viewer panel text** — storey/disc filter labels, info panel headers,
+status messages. Currently hardcoded English in `panels.js`, `main.js`, `index.html`.

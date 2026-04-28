@@ -1245,21 +1245,25 @@ async function save5D() {
     allWPs.push({ id: 'PACKAGE 6', name: 'OTHER', color: '7F8C8D', classes: null });
   }
 
+  const wsWP = wb.addWorksheet('Work Packages');
+  wsWP.columns = wpColWidths;
+  wsWP.addRow(['WORK PACKAGES — COST BREAKDOWN']);
+  styleTitle(wsWP, 1, 10);
+  let wpGrandMat = 0, wpGrandLab = 0, wpGrandEq = 0;
+
   for (const wp of allWPs) {
     const wpData = wp.classes
       ? qtoData.filter(r => wp.classes.includes(r.cls))
       : otherRows;
     if (wpData.length === 0) continue;
 
-    const wsWP = wb.addWorksheet(wp.id);
-    wsWP.columns = wpColWidths;
-    wsWP.addRow([`${wp.id}: ${wp.name}`]);
-    styleTitle(wsWP, 1, 10);
-    wsWP.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + wp.color } };
-    wsWP.getRow(1).font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
     wsWP.addRow([]);
+    const hdrRow = wsWP.rowCount + 1;
+    wsWP.addRow([`${wp.id}: ${wp.name}`]);
+    wsWP.getRow(hdrRow).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + wp.color } };
+    wsWP.getRow(hdrRow).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
     wsWP.addRow(wpHeaders);
-    styleHeader(wsWP, 3, 'FF' + wp.color);
+    styleHeader(wsWP, wsWP.rowCount, 'FF' + wp.color);
 
     let wpMatTotal = 0, wpLabTotal = 0, wpEqTotal = 0;
     let itemNum = 0;
@@ -1272,13 +1276,21 @@ async function save5D() {
       wsWP.addRow([String(itemNum).padStart(3, '0'), r.desc || r.cls, r.qty, r.unit, r.matRate, r.matTotal, r.laborCost, r.equipCost, rowTotal, Math.round(rowTotal / USD_RATE * 100) / 100]);
       fmtRow(wsWP, wsWP.rowCount, [5,6,7,8,9,10], NUM_FMT);
     }
-    wsWP.addRow([]);
     const wpGrandRM = wpMatTotal + wpLabTotal + wpEqTotal;
-    wsWP.addRow(['',_TRL.h_subtotal,'','','', wpMatTotal, wpLabTotal, wpEqTotal, wpGrandRM, fmtCur2(wpGrandRM)]);
-    const stRow = wsWP.rowCount;
-    wsWP.getRow(stRow).font = { bold: true };
-    fmtRow(wsWP, stRow, [6,7,8,9,10], NUM_FMT);
+    wsWP.addRow(['',_TRL.h_subtotal + ' — ' + wp.name,'','','', wpMatTotal, wpLabTotal, wpEqTotal, wpGrandRM, fmtCur2(wpGrandRM)]);
+    wsWP.getRow(wsWP.rowCount).font = { bold: true };
+    fmtRow(wsWP, wsWP.rowCount, [6,7,8,9,10], NUM_FMT);
+    wpGrandMat += wpMatTotal; wpGrandLab += wpLabTotal; wpGrandEq += wpEqTotal;
   }
+  // Grand total across all WPs
+  wsWP.addRow([]);
+  const wpAllRM = wpGrandMat + wpGrandLab + wpGrandEq;
+  wsWP.addRow(['',_TRL.h_grand_total,'','','', wpGrandMat, wpGrandLab, wpGrandEq, wpAllRM, fmtCur2(wpAllRM)]);
+  const wpGtRow = wsWP.rowCount;
+  wsWP.getRow(wpGtRow).font = { bold: true, size: 12 };
+  wsWP.getRow(wpGtRow).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2C3E50' } };
+  wsWP.getRow(wpGtRow).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+  fmtRow(wsWP, wpGtRow, [6,7,8,9,10], NUM_FMT);
 
   // ── Per-Discipline BOQ Sheets ──
   const discHeaders = [_TRL.h_item, _TRL.h_description, _TRL.h_quantity, _TRL.h_uom, _TRL.h_mat_rate+' ('+CUR+')', _TRL.h_material+' ('+CUR+')', _TRL.h_labour+' ('+CUR+')', _TRL.h_equipment+' ('+CUR+')', _TRL.h_total+' ('+CUR+')', _TRL.h_total+' ('+CUR2+')'];
