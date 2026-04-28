@@ -67,6 +67,9 @@ locales/{code}.js     → _TRL_LOCALE (full override: labels + rates + currency)
 | `ar_SA` | العربية | 🇸🇦 | ﷼ / USD | Saudi Aramco Rates |
 | `pt_BR` | Português | 🇧🇷 | R$ / USD | SINAPI/TCPO 2024 |
 | `id_ID` | Bahasa Indonesia | 🇮🇩 | Rp / USD | SNI BOQ Standard |
+| `bn_BD` | বাংলা (Bengali) | 🇧🇩 `BN` | ৳ / USD | PWD Bangladesh 2024 |
+| `bl_BD` | Banglish (Romanized) | 🇧🇩 `BL` | ৳ / USD | PWD Bangladesh 2024 |
+| `af_ZA` | Afrikaans | 🇿🇦 | R / USD | ASAQS / RICS Southern Africa 2024 |
 
 ---
 
@@ -270,3 +273,59 @@ The pattern: one master record contains every field. Translation records overrid
 | `deploy/dev/variation_order.js` | VO Excel — uses shared `rates.js` |
 | `deploy/dev/nlp.js` | Voice/text queries — uses `getRate()` from `rates.js` |
 | `prompts/S226_localisation.md` | Implementation spec — per-file audit, UI keys, phases |
+| `deploy/dev/locale_loader.js` | Runtime: detect locale, fetch, cache, apply to DOM |
+
+---
+
+## Flag Picker (User-Facing)
+
+Users switch locale via a **flag button** in the header bar (landing page and viewer). Clicking it opens a popup grid of 15 country flags. Selecting a flag:
+
+1. Saves choice to `localStorage` (`bim_ootb_config`)
+2. Reloads the page
+3. All text, currency, and rates switch instantly
+
+The current locale's flag is highlighted with a blue border. Dual-country locales (e.g. two Malaysian flags for `en_MY` and `ms_MY`) show small badges (`EN` / `BM`) to distinguish them.
+
+No settings dialog, no gear icon — just click the flag.
+
+---
+
+## How locale_loader.js Works (Developer Reference)
+
+### Detection order
+1. URL param `?lang=xx_YY`
+2. `localStorage` key `bim_ootb_config` → `{ locale: 'xx_YY' }`
+3. `navigator.language` mapped to closest available locale
+4. Fallback: `en_US`
+
+### Fetch + cache
+```
+locale_loader.js
+  ├── Check localStorage cache: key = 'bim_ootb_locale_{code}'
+  │   └── Valid if: exists && version matches LOCALE_VERSION && age < 7 days
+  ├── If cache miss → fetch from OCI: sandbox/locales/{code}.js
+  │   └── Fallback: relative path locales/{code}.js (local dev)
+  ├── Parse: new Function(text + '; return _TRL_LOCALE;')
+  ├── Deep-merge over window._TRL (from _TRL_DEFAULTS if present)
+  ├── Apply URL param overrides (?cur=USD, ?h_labour=Labor, etc.)
+  └── applyTrlToDOM()
+        ├── [data-trl="key"]       → el.textContent = _TRL[key]
+        ├── [data-trl-title="key"] → el.title = _TRL[key]
+        └── [data-trl-placeholder="key"] → el.placeholder = _TRL[key]
+```
+
+### Cache invalidation
+`LOCALE_VERSION` constant in `locale_loader.js`. Bump it when locale files change — any cached entry with a different version is re-fetched.
+
+### Landing page integration
+The landing page loads `locale_loader.js` at the bottom. All translatable text uses `data-trl` attributes. JS-generated text (card buttons, progress bar) uses `_TRL.key || 'fallback'` pattern.
+
+---
+
+## Current Status (POC)
+
+- Language and currency/rates are **bundled per flag** — selecting Japanese gives you Japanese UI + JPY currency + Japanese rate sources
+- A future version will separate language preference from currency/rate selection (e.g. English UI with Malaysian Ringgit rates)
+- Rate data is illustrative — not authoritative for production cost estimation
+- 15 locales ship with ~300 keys each (UI + BOQ + 4D/5D + landing)

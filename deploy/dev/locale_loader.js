@@ -25,7 +25,9 @@
     'ko': 'ko_KR', 'ko-KR': 'ko_KR', 'ko-kr': 'ko_KR',
     'ar': 'ar_SA', 'ar-SA': 'ar_SA', 'ar-sa': 'ar_SA',
     'pt': 'pt_BR', 'pt-BR': 'pt_BR', 'pt-br': 'pt_BR',
-    'id': 'id_ID', 'id-ID': 'id_ID', 'id-id': 'id_ID'
+    'id': 'id_ID', 'id-ID': 'id_ID', 'id-id': 'id_ID',
+    'bn': 'bn_BD', 'bn-BD': 'bn_BD', 'bn-bd': 'bn_BD',
+    'af': 'af_ZA', 'af-ZA': 'af_ZA', 'af-za': 'af_ZA'
   };
 
   // ── Flag emoji from ISO 3166-1 alpha-2 ──
@@ -38,11 +40,11 @@
 
   // ── Available locales (for settings dialog) ──
   var AVAILABLE_LOCALES = [
-    { code: 'en_MY', iso: 'MY', name: 'English (Malaysia)' },
+    { code: 'en_MY', iso: 'MY', name: 'English (Malaysia)', label: 'EN' },
     { code: 'en_US', iso: 'US', name: 'English (US)' },
     { code: 'en_GB', iso: 'GB', name: 'English (UK)' },
     { code: 'en_AU', iso: 'AU', name: 'English (Australia)' },
-    { code: 'ms_MY', iso: 'MY', name: 'Bahasa Melayu' },
+    { code: 'ms_MY', iso: 'MY', name: 'Bahasa Melayu', label: 'BM' },
     { code: 'de_DE', iso: 'DE', name: 'Deutsch' },
     { code: 'fr_FR', iso: 'FR', name: 'Fran\u00e7ais' },
     { code: 'es_ES', iso: 'ES', name: 'Espa\u00f1ol' },
@@ -52,7 +54,10 @@
     { code: 'ko_KR', iso: 'KR', name: '\ud55c\uad6d\uc5b4' },
     { code: 'ar_SA', iso: 'SA', name: '\u0627\u0644\u0639\u0631\u0628\u064a\u0629' },
     { code: 'pt_BR', iso: 'BR', name: 'Portugu\u00eas' },
-    { code: 'id_ID', iso: 'ID', name: 'Bahasa Indonesia' }
+    { code: 'id_ID', iso: 'ID', name: 'Bahasa Indonesia' },
+    { code: 'bn_BD', iso: 'BD', name: '\u09ac\u09be\u0982\u09b2\u09be', label: 'BN' },
+    { code: 'bl_BD', iso: 'BD', name: 'Banglish', label: 'BL' },
+    { code: 'af_ZA', iso: 'ZA', name: 'Afrikaans' }
   ];
 
   // ── Detect locale: URL param > localStorage > navigator.language > fallback ──
@@ -95,13 +100,14 @@
   // ── Fetch locale from OCI or localStorage cache ──
   function fetchLocale(code, callback) {
     // Check localStorage cache first
+    var LOCALE_VERSION = 5; // bump to invalidate cached locales
     var cacheKey = 'bim_ootb_locale_' + code;
     try {
       var cached = localStorage.getItem(cacheKey);
       if (cached) {
         var parsed = JSON.parse(cached);
-        if (parsed && parsed.data && parsed.ts) {
-          // Cache valid for 7 days
+        if (parsed && parsed.data && parsed.ts && parsed.v === LOCALE_VERSION) {
+          // Cache valid for 7 days and same version
           if (Date.now() - parsed.ts < 7 * 24 * 60 * 60 * 1000) {
             console.log('\u00a7TRL_LOADED cached locale=' + code + ' keys=' + Object.keys(parsed.data).length);
             callback(null, parsed.data);
@@ -112,7 +118,7 @@
     } catch(e) { /* cache miss */ }
 
     // Fetch from OCI
-    var url = OCI_BASE + 'locales/' + code + '.js';
+    var url = OCI_BASE + 'sandbox/locales/' + code + '.js';
     fetch(url).then(function(resp) {
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       return resp.text();
@@ -122,7 +128,7 @@
       var data = fn();
       // Cache in localStorage
       try {
-        localStorage.setItem(cacheKey, JSON.stringify({ data: data, ts: Date.now() }));
+        localStorage.setItem(cacheKey, JSON.stringify({ data: data, ts: Date.now(), v: LOCALE_VERSION }));
       } catch(e) { /* storage full — continue without cache */ }
       console.log('\u00a7TRL_LOADED fetched locale=' + code + ' keys=' + Object.keys(data).length);
       callback(null, data);
@@ -212,10 +218,18 @@
     var popup = document.getElementById('ootb-flag-popup');
     if (popup) { popup.classList.toggle('active'); return; }
 
+    // Position next to the header flag button
+    var anchor = document.getElementById('header-flag-btn');
+    var posStyle = 'position:fixed;top:60px;right:16px;z-index:9998;';
+    if (anchor) {
+      var r = anchor.getBoundingClientRect();
+      posStyle = 'position:fixed;top:' + (r.bottom + 6) + 'px;left:' + r.left + 'px;z-index:9998;';
+    }
+
     popup = document.createElement('div');
     popup.id = 'ootb-flag-popup';
     popup.className = 'active';
-    popup.style.cssText = 'position:fixed;bottom:48px;left:16px;z-index:9998;' +
+    popup.style.cssText = posStyle +
       'background:rgba(10,10,30,0.95);border-radius:12px;padding:12px 14px;' +
       'border:1px solid rgba(79,195,247,0.3);backdrop-filter:blur(12px);' +
       'display:none;grid-template-columns:repeat(5,1fr);gap:4px';
@@ -225,9 +239,16 @@
       var btn = document.createElement('button');
       btn.style.cssText = 'padding:6px;border-radius:6px;border:2px solid transparent;' +
         'background:rgba(255,255,255,0.08);cursor:pointer;font-size:18px;text-align:center;' +
-        'transition:border-color 0.2s';
+        'transition:border-color 0.2s;position:relative';
       btn.title = loc.name + ' (' + loc.code + ')';
-      btn.textContent = isoToFlag(loc.iso);
+      if (loc.label) {
+        btn.innerHTML = isoToFlag(loc.iso) +
+          '<span style="position:absolute;bottom:0;right:0;font-size:7px;color:#4fc3f7;' +
+          'background:rgba(0,0,0,0.7);border-radius:2px;padding:0 2px;line-height:1.2">' +
+          loc.label + '</span>';
+      } else {
+        btn.textContent = isoToFlag(loc.iso);
+      }
       if (loc.code === currentLocale) {
         btn.style.borderColor = '#4fc3f7';
         btn.style.background = 'rgba(79,195,247,0.15)';
@@ -249,33 +270,22 @@
 
     // Close on outside click
     document.addEventListener('click', function(e) {
-      if (!popup.contains(e.target) && e.target.id !== 'ootb-flag-btn') {
+      if (!popup.contains(e.target) && e.target.id !== 'header-flag-btn') {
         popup.classList.remove('active');
       }
     });
   }
 
-  // ── Flag button (bottom-left, replaces gear) ──
-  function createFlagButton() {
-    if (document.getElementById('ootb-flag-btn')) return;
-    var btn = document.createElement('button');
-    btn.id = 'ootb-flag-btn';
-    btn.style.cssText = 'position:fixed;bottom:16px;left:16px;z-index:9997;' +
-      'width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);' +
-      'background:rgba(0,0,0,0.4);font-size:20px;cursor:pointer;' +
-      'backdrop-filter:blur(8px);transition:border-color 0.2s;' +
-      'display:flex;align-items:center;justify-content:center';
+  // ── Update any element with id="header-flag-btn" to show current flag ──
+  function updateHeaderFlag() {
+    var btn = document.getElementById('header-flag-btn');
+    if (!btn) return;
     var currentIso = 'US';
     var currentLocale = detectLocale();
     AVAILABLE_LOCALES.forEach(function(loc) {
       if (loc.code === currentLocale) currentIso = loc.iso;
     });
     btn.textContent = isoToFlag(currentIso);
-    btn.title = _TRL.ui_language || 'Language';
-    btn.onmouseenter = function() { btn.style.borderColor = 'rgba(79,195,247,0.4)'; };
-    btn.onmouseleave = function() { btn.style.borderColor = 'rgba(255,255,255,0.15)'; };
-    btn.onclick = function(e) { e.stopPropagation(); toggleFlagPicker(); };
-    document.body.appendChild(btn);
   }
 
   // ── Apply _TRL to DOM elements with data-trl attributes ──
@@ -319,12 +329,12 @@
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function() {
         applyTrlToDOM();
-        createFlagButton();
+        updateHeaderFlag();
         showLocaleToast(localeCode);
       });
     } else {
       applyTrlToDOM();
-      createFlagButton();
+      updateHeaderFlag();
       // Only toast on first load (no saved config)
       try {
         if (!localStorage.getItem('bim_ootb_config')) showLocaleToast(localeCode);
