@@ -1,4 +1,37 @@
 // picking.js — Click-to-identify (raycaster), walk/wall state, pointer handlers
+
+// S233: Polyfill InstancedMesh.raycast for Three.js r128 (native in r132+)
+// Without this, raycaster silently skips all InstancedMesh objects — no pick on shared geometry.
+// Cost: zero per frame. Only runs on click — loops instances, tests ray against each.
+(function() {
+  if (typeof THREE === 'undefined' || !THREE.InstancedMesh) return;
+  var proto = THREE.InstancedMesh.prototype;
+  if (proto._hasRaycastPoly) return;
+
+  var _m = new THREE.Mesh();
+  var _im = new THREE.Matrix4();
+
+  proto.raycast = function(raycaster, intersects) {
+    _m.geometry = this.geometry;
+    _m.material = this.material;
+    var before = intersects.length;
+
+    for (var i = 0; i < this.count; i++) {
+      this.getMatrixAt(i, _im);
+      _m.matrixWorld.multiplyMatrices(this.matrixWorld, _im);
+      _m.raycast(raycaster, intersects);
+
+      // Tag new hits with instanceId and correct object ref
+      for (var j = intersects.length - 1; j >= before; j--) {
+        intersects[j].instanceId = i;
+        intersects[j].object = this;
+      }
+      before = intersects.length;
+    }
+  };
+  proto._hasRaycastPoly = true;
+})();
+
 function setupPicking(A) {
   // Walk/Wall state (hoisted before first use in pointerdown/animate)
   A.walkMode = false;
@@ -91,7 +124,7 @@ function setupPicking(A) {
     if (!A.db) return;
 
     const meshes = [];
-    A.scene.traverse(obj => { if (obj.isMesh && obj !== A.ground && obj.visible) meshes.push(obj); });
+    A.scene.traverse(obj => { if ((obj.isMesh || obj.isInstancedMesh) && obj !== A.ground && obj.visible) meshes.push(obj); });
     const hits = A.raycaster.intersectObjects(meshes, false);
 
     if (!hits.length) {
@@ -150,13 +183,15 @@ function setupPicking(A) {
       new THREE.LineBasicMaterial({ color: 0xffff00 }));
 
     if (hit.object.isInstancedMesh && hit.instanceId !== undefined) {
-      // S233: InstancedMesh — position highlight at this instance's world transform
+      // S233: InstancedMesh — transform geometry bbox by this instance's matrix
       const _im = new THREE.Matrix4();
       hit.object.getMatrixAt(hit.instanceId, _im);
+      // Transform bbox center into world space via instance matrix
+      const worldCenter = center.clone().applyMatrix4(_im);
+      hlLine.position.copy(worldCenter);
+      // Extract rotation from instance matrix
       const _ip = new THREE.Vector3(), _iq = new THREE.Quaternion(), _is = new THREE.Vector3();
       _im.decompose(_ip, _iq, _is);
-      const offset = center.clone().applyQuaternion(_iq);
-      hlLine.position.copy(_ip).add(offset);
       hlLine.quaternion.copy(_iq);
       A.scene.add(hlLine);
     } else {

@@ -50,6 +50,17 @@ canvas { display: block; }
   <button id="layers-btn" onclick="toggleLayers()">Layers</button>
   <button id="fit-btn" onclick="fitView()">Fit</button>
   <button id="bimsrc-btn" onclick="toggleBimsrc()" title="Toggle BIMSRC highlight">BIMSRC</button>
+  <span style="border-left:1px solid #555;height:20px;margin:0 4px"></span>
+  <select id="view-mode" title="View mode">
+    <option value="plan">Floor Plan</option>
+    <option value="front">Front Elev</option>
+    <option value="rear">Rear Elev</option>
+    <option value="left">Left Elev</option>
+    <option value="right">Right Elev</option>
+  </select>
+  <select id="storey-select" title="Storey"><option value="">— storey —</option></select>
+  <button id="gen-btn" onclick="generateFromDb()">Generate</button>
+  <button id="export-btn" onclick="exportDxf()" title="Download as DXF">Export DXF</button>
   <span style="flex:1"></span>
   <span id="status-text" style="font-size:11px;color:#888"></span>
 </div>
@@ -70,6 +81,10 @@ canvas { display: block; }
 
 <div id="drop-zone">Drop DXF file here</div>
 
+<script src="section_cut.js"></script>
+<script src="grid_dims.js"></script>
+<script src="elevation.js"></script>
+<script src="dxf_export.js"></script>
 <script src="dxf-parser.js"></script>
 <script>
 // ─── State ───
@@ -103,29 +118,44 @@ const ALL_SHEETS = [
   ['DX', 'Plumbing',      'dxf/DX_PLUMBING.dxf'],
 ];
 
-// Resolve building prefix from ?bld= param
+// Resolve params
 const params = new URLSearchParams(location.search);
 const bldParam = (params.get('bld') || '').toLowerCase();
+const hasDbParam = !!params.get('db');
+console.log('§2D_INIT url=' + location.href);
+console.log('§2D_INIT params: db=' + (params.get('db')||'(none)') +
+            ' lib=' + (params.get('lib')||'(none)') +
+            ' bld=' + (params.get('bld')||'(none)') +
+            ' hasDbParam=' + hasDbParam);
+
+// Building prefix only matters for legacy DXF file lookup
 let prefix = '';
-if (bldParam.includes('sample') || bldParam.includes('sh_') || bldParam === 'sh') prefix = 'SH';
-else if (bldParam.includes('duplex') || bldParam.includes('dx_') || bldParam === 'dx') prefix = 'DX';
-// Fallback: try db param
-if (!prefix) {
-  const dbParam = (params.get('db') || '').toLowerCase();
-  if (dbParam.includes('sample') || dbParam.includes('_sh')) prefix = 'SH';
-  else if (dbParam.includes('duplex') || dbParam.includes('_dx')) prefix = 'DX';
+if (!hasDbParam) {
+  if (bldParam.includes('sample') || bldParam.includes('sh_') || bldParam === 'sh') prefix = 'SH';
+  else if (bldParam.includes('duplex') || bldParam.includes('dx_') || bldParam === 'dx') prefix = 'DX';
+  if (!prefix) {
+    const dbLower = (params.get('db') || '').toLowerCase();
+    if (dbLower.includes('sample') || dbLower.includes('_sh')) prefix = 'SH';
+    else if (dbLower.includes('duplex') || dbLower.includes('_dx')) prefix = 'DX';
+  }
 }
+console.log('§2D_INIT mode=' + (hasDbParam ? 'DYNAMIC (from DB)' : 'DXF_FILES') +
+            ' prefix=' + (prefix || '(none)'));
 
 // Filter sheets to active building (or show all if no match)
 const sheets = prefix ? ALL_SHEETS.filter(s => s[0] === prefix) : ALL_SHEETS;
 
-// Populate sheet selector
+// Populate sheet selector (only in DXF-file mode)
 const sel = document.getElementById('sheet-select');
-sheets.forEach(([pfx, name, url]) => {
-  const opt = document.createElement('option');
-  opt.value = url; opt.textContent = (prefix ? '' : pfx + ' ') + name;
-  sel.appendChild(opt);
-});
+if (hasDbParam) {
+  sel.style.display = 'none';  // hide DXF dropdown when DB is loaded
+} else {
+  sheets.forEach(([pfx, name, url]) => {
+    const opt = document.createElement('option');
+    opt.value = url; opt.textContent = (prefix ? '' : pfx + ' ') + name;
+    sel.appendChild(opt);
+  });
+}
 sel.addEventListener('change', () => { if (sel.value) loadDxfUrl(sel.value); });
 
 // ─── DXF Loading ───
@@ -589,11 +619,300 @@ function setStatus(msg) { document.getElementById('status-text').textContent = m
 canvas.style.cursor = 'crosshair';
 resize();
 
-// Auto-load first sheet for the resolved building
-if (sheets.length > 0) {
+// Auto-load first DXF sheet only in file mode (no ?db= param)
+if (!hasDbParam && sheets.length > 0) {
   sel.value = sheets[0][2];
   loadDxfUrl(sheets[0][2]);
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// Dynamic 2D generation from DB — coexists with DXF file path above
+// ═══════════════════════════════════════════════════════════════════
+
+let dbMain = null;    // sql.js Database (extracted)
+let dbLib  = null;    // sql.js Database (library)
+let dbReady = false;
+let generatedEntities = [];  // last generated entities (for DXF export)
+
+// ─── IFC class → layer mapping for generated entities ───
+const IFC_LAYER = {
+  'IfcWall': 'A-WALL-FULL', 'IfcWallStandardCase': 'A-WALL-FULL',
+  'IfcDoor': 'A-DOOR', 'IfcWindow': 'A-GLAZ', 'IfcPlate': 'A-GLAZ',
+  'IfcColumn': 'A-WALL-FULL', 'IfcSlab': 'A-WALL-PRTN',
+  'IfcBeam': 'A-WALL-PRTN', 'IfcMember': 'A-WALL-PRTN',
+  'IfcCurtainWall': 'A-GLAZ', 'IfcStair': 'A-FURN',
+  'IfcRailing': 'A-FURN', 'IfcRoof': 'A-ROOF',
+};
+
+// ─── Load DBs from URL params ───
+async function loadDatabases() {
+  const dbParam = params.get('db');
+  if (!dbParam) {
+    console.log('§2D_DB no db= param, dynamic generation disabled');
+    return;
+  }
+  setStatus('Loading sql.js + databases...');
+  try {
+    // Load sql-wasm.js dynamically (only when DB params present — avoids blocking page load)
+    if (typeof initSqlJs === 'undefined') {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://sql.js.org/dist/sql-wasm.js';
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('Failed to load sql-wasm.js'));
+        document.head.appendChild(s);
+      });
+      console.log('§2D_DB sql-wasm.js loaded dynamically');
+    }
+    const SQL = await initSqlJs({ locateFile: f => 'https://sql.js.org/dist/' + f });
+
+    const dbBuf = await fetch(dbParam).then(r => {
+      if (!r.ok) throw new Error('DB fetch ' + r.status);
+      return r.arrayBuffer();
+    });
+    dbMain = new SQL.Database(new Uint8Array(dbBuf));
+    console.log('§2D_DB main loaded from ' + dbParam);
+
+    const libParam = params.get('lib');
+    if (libParam) {
+      const libBuf = await fetch(libParam).then(r => {
+        if (!r.ok) throw new Error('LibDB fetch ' + r.status);
+        return r.arrayBuffer();
+      });
+      dbLib = new SQL.Database(new Uint8Array(libBuf));
+      console.log('§2D_DB lib loaded from ' + libParam);
+    } else {
+      dbLib = dbMain;
+      console.log('§2D_DB lib=main (no lib= param)');
+    }
+
+    dbReady = true;
+    // Expose for white-box Playwright testing
+    window._2d_dbMain = dbMain;
+    window._2d_dbLib = dbLib;
+
+    // Populate storey selector
+    if (window.SectionCut) {
+      const storeys = SectionCut.detectStoreys(dbMain);
+      const stSel = document.getElementById('storey-select');
+      storeys.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.name;
+        opt.textContent = s.name + ' (z=' + s.floorZ.toFixed(1) + ')';
+        stSel.appendChild(opt);
+      });
+      if (storeys.length > 0) stSel.value = storeys[0].name;
+      console.log('§2D_STOREYS count=' + storeys.length);
+    }
+
+    setStatus('DBs loaded — generating floor plan...');
+    // Auto-generate on load
+    setTimeout(() => generateFromDb(), 100);
+  } catch (e) {
+    console.error('§2D_DB_ERROR', e);
+    setStatus('DB load error: ' + e.message);
+  }
+}
+
+// ─── Convert section cut results → DXF-like entities for the existing renderer ───
+function sectionToEntities(elements) {
+  const out = [];
+  for (const el of elements) {
+    if (el.category !== 'CUT' || !el.contours || el.contours.length === 0) continue;
+    const layer = IFC_LAYER[el.ifcClass] || 'A-WALL-PRTN';
+    for (const contour of el.contours) {
+      if (contour.points.length < 3) continue;
+      const verts = contour.points.map(p => ({ x: p[0], y: p[1] }));
+      out.push({
+        type: 'LWPOLYLINE',
+        vertices: verts,
+        shape: true,  // closed
+        layer: layer,
+        // BIMSRC xdata for click-to-info
+        extendedData: {
+          applicationName: 'BIMSRC',
+          customStrings: [
+            'guid:' + el.guid,
+            'ifc_class:' + el.ifcClass,
+            'element_name:' + (el.elementName || ''),
+            'storey:' + (el.storey || ''),
+          ]
+        }
+      });
+    }
+  }
+  console.log('§2D_GEN sectionToEntities=' + out.length);
+  return out;
+}
+
+// ─── Convert elevation results → DXF-like entities ───
+function elevationToEntities(elements) {
+  const out = [];
+  if (!window.Elevation) return out;
+  const cmds = Elevation.renderElevationEntities(elements);
+  for (const cmd of cmds) {
+    if (cmd.type === 'line') {
+      out.push({
+        type: 'LINE',
+        vertices: [{ x: cmd.x0, y: cmd.y0 }, { x: cmd.x1, y: cmd.y1 }],
+        layer: cmd.layer || 'A-ELEV-WALL',
+        extendedData: cmd.guid ? {
+          applicationName: 'BIMSRC',
+          customStrings: [
+            'guid:' + cmd.guid,
+            'ifc_class:' + (cmd.ifcClass || ''),
+          ]
+        } : undefined
+      });
+    }
+  }
+  console.log('§2D_GEN elevationToEntities=' + out.length);
+  return out;
+}
+
+// ─── Convert grid/dim results → DXF-like entities ───
+function gridToEntities(gridResult, dims, bbox) {
+  const out = [];
+  if (!window.GridDims) return out;
+  const cmds = GridDims.renderGridEntities(gridResult, dims, bbox);
+  for (const cmd of cmds) {
+    if (cmd.type === 'line') {
+      out.push({
+        type: 'LINE',
+        vertices: [{ x: cmd.x0, y: cmd.y0 }, { x: cmd.x1, y: cmd.y1 }],
+        layer: cmd.layer || 'A-GRID',
+      });
+    } else if (cmd.type === 'text') {
+      out.push({
+        type: 'TEXT',
+        startPoint: { x: cmd.x, y: cmd.y },
+        text: cmd.text,
+        textHeight: cmd.height || 0.3,
+        layer: cmd.layer || 'A-ANNO-TEXT',
+      });
+    } else if (cmd.type === 'circle') {
+      out.push({
+        type: 'CIRCLE',
+        center: { x: cmd.cx, y: cmd.cy },
+        radius: cmd.r,
+        layer: cmd.layer || 'A-GRID',
+      });
+    }
+  }
+  console.log('§2D_GEN gridToEntities=' + out.length);
+  return out;
+}
+
+// ─── Main generate function ───
+async function generateFromDb() {
+  if (!dbReady) {
+    setStatus('No DB loaded — add ?db=...&lib=... to URL');
+    return;
+  }
+  const mode = document.getElementById('view-mode').value;
+  const storeyName = document.getElementById('storey-select').value;
+  const t0 = performance.now();
+  setStatus('Generating ' + mode + '...');
+  console.log('§2D_GENERATE mode=' + mode + ' storey=' + storeyName);
+
+  try {
+    let newEntities = [];
+
+    if (mode === 'plan') {
+      // Floor plan: section cut + grids + dims
+      const elements = SectionCut.sectionCut(dbMain, dbLib, null, storeyName || null);
+      newEntities = sectionToEntities(elements);
+
+      // Add grids + dimensions
+      if (window.GridDims) {
+        const gridResult = GridDims.detectGrids(dbMain);
+        if (gridResult.xLines.length > 0 || gridResult.yLines.length > 0) {
+          const dims = GridDims.generateDimensions(gridResult);
+          // Compute bbox from section entities
+          let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+          for (const el of elements) {
+            if (el.bbox2d) {
+              if (el.bbox2d[0] < bx0) bx0 = el.bbox2d[0];
+              if (el.bbox2d[1] < by0) by0 = el.bbox2d[1];
+              if (el.bbox2d[2] > bx1) bx1 = el.bbox2d[2];
+              if (el.bbox2d[3] > by1) by1 = el.bbox2d[3];
+            }
+          }
+          const bbox = { minX: bx0, minY: by0, maxX: bx1, maxY: by1 };
+          newEntities = newEntities.concat(gridToEntities(gridResult, dims, bbox));
+        }
+      }
+    } else {
+      // Elevation: front/rear/left/right
+      const elements = Elevation.generateElevation(dbMain, dbLib, mode);
+      newEntities = elevationToEntities(elements);
+    }
+
+    const dt = performance.now() - t0;
+    generatedEntities = newEntities;
+
+    // Feed into existing renderer (same path as parseDxf)
+    entities = newEntities;
+    window.dxf = { entities: newEntities };
+    layerVisibility = {};
+    const layers = new Set();
+    entities.forEach(e => { if (e.layer) layers.add(e.layer); });
+    layers.forEach(l => { layerVisibility[l] = true; });
+    buildLayerPanel();
+    document.getElementById('ent-count').textContent = entities.length;
+    document.getElementById('layer-count').textContent = layers.size;
+    setStatus('Generated: ' + entities.length + ' entities, ' + layers.size + ' layers (' + dt.toFixed(0) + 'ms)');
+    console.log('§2D_DONE entities=' + entities.length + ' layers=' + layers.size + ' time=' + dt.toFixed(0) + 'ms');
+    fitView();
+  } catch (e) {
+    console.error('§2D_GEN_ERROR', e);
+    setStatus('Generate error: ' + e.message);
+  }
+}
+
+// ─── DXF Export ───
+function exportDxf() {
+  const ents = generatedEntities.length > 0 ? generatedEntities : entities;
+  if (!ents.length) { setStatus('Nothing to export'); return; }
+  if (!window.DxfExport) { setStatus('DXF export module not loaded'); return; }
+
+  // Convert renderer entities to DxfExport format
+  const exportEnts = [];
+  for (const e of ents) {
+    if (e.type === 'LINE' && e.vertices && e.vertices.length >= 2) {
+      const exp = { type: 'line', x0: e.vertices[0].x, y0: e.vertices[0].y,
+                    x1: e.vertices[1].x, y1: e.vertices[1].y, layer: e.layer };
+      if (e.extendedData && e.extendedData.customStrings) {
+        const kv = {};
+        e.extendedData.customStrings.forEach(s => { const i = s.indexOf(':'); if (i > 0) kv[s.slice(0,i)] = s.slice(i+1); });
+        if (kv.guid) { exp.guid = kv.guid; exp.ifcClass = kv.ifc_class; }
+      }
+      exportEnts.push(exp);
+    } else if ((e.type === 'LWPOLYLINE' || e.type === 'POLYLINE') && e.vertices) {
+      const exp = { type: 'polyline', points: e.vertices.map(v => [v.x, v.y]),
+                    closed: !!e.shape, layer: e.layer };
+      if (e.extendedData && e.extendedData.customStrings) {
+        const kv = {};
+        e.extendedData.customStrings.forEach(s => { const i = s.indexOf(':'); if (i > 0) kv[s.slice(0,i)] = s.slice(i+1); });
+        if (kv.guid) { exp.guid = kv.guid; exp.ifcClass = kv.ifc_class; }
+      }
+      exportEnts.push(exp);
+    } else if (e.type === 'CIRCLE' && e.center) {
+      exportEnts.push({ type: 'circle', cx: e.center.x, cy: e.center.y, r: e.radius, layer: e.layer });
+    } else if (e.type === 'TEXT' || e.type === 'MTEXT') {
+      const pos = e.startPoint || e.position;
+      if (pos) exportEnts.push({ type: 'text', x: pos.x, y: pos.y, text: e.text || '', height: e.textHeight || 2.5, layer: e.layer });
+    }
+  }
+
+  const mode = document.getElementById('view-mode').value;
+  const filename = (prefix || 'BIM') + '_' + mode.toUpperCase() + '.dxf';
+  DxfExport.downloadDxf(exportEnts, { title: mode + ' view' }, filename);
+  console.log('§2D_EXPORT file=' + filename + ' entities=' + exportEnts.length);
+}
+
+// ─── Init DB loading (non-blocking, alongside DXF path) ───
+loadDatabases();
 </script>
 </body>
 </html>

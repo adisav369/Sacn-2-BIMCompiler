@@ -41,7 +41,7 @@ function setupSitecam(A) {
   };
 
   A._formatGps = function(pos) {
-    if (!pos) return 'GPS: unavailable';
+    if (!pos) return typeof _TRL!=='undefined'&&_TRL.ui_gps_unavailable||'GPS: unavailable';
     const lat = pos.coords.latitude;
     const lng = pos.coords.longitude;
     const ns = lat >= 0 ? 'N' : 'S';
@@ -101,7 +101,7 @@ function setupSitecam(A) {
         { enableHighAccuracy: true, timeout: 10000 }
       );
     } else {
-      document.getElementById('site-cam-gps').textContent = 'GPS: not supported';
+      document.getElementById('site-cam-gps').textContent = typeof _TRL!=='undefined'&&_TRL.ui_gps_unsupported||'GPS: not supported';
     }
 
     // Only add compass listener if NOT in walk mode (walk mode has its own orientation)
@@ -273,7 +273,7 @@ function setupSitecam(A) {
       ctx.fillRect(pipX, pipY + pipH - 18, pipW, 18);
       ctx.fillStyle = '#4fc3f7';
       ctx.font = '10px sans-serif';
-      ctx.fillText('BIM Model View', pipX + 4, pipY + pipH - 5);
+      ctx.fillText(typeof _TRL!=='undefined'&&_TRL.ui_model_view||'BIM Model View', pipX + 4, pipY + pipH - 5);
     }
 
     const footH = compassText ? 42 : 28;
@@ -282,7 +282,7 @@ function setupSitecam(A) {
     ctx.font = '12px monospace';
     if (compassText) {
       ctx.fillStyle = '#ffff00';
-      ctx.fillText(`Bearing: ${compassText}`, 10, c.height - 26);
+      ctx.fillText((typeof _TRL!=='undefined'&&_TRL.ui_bearing||'Bearing') + ': ' + compassText, 10, c.height - 26);
     }
     ctx.fillStyle = '#00ff00';
     ctx.fillText(gpsText, 10, c.height - 10);
@@ -298,7 +298,7 @@ function setupSitecam(A) {
 
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
     ctx.font = '10px sans-serif';
-    const wm = 'BIM OOTB — Site Inspection';
+    const wm = typeof _TRL!=='undefined'&&_TRL.ui_sitecam_watermark||'BIM OOTB \u2014 Site Inspection';
     ctx.fillText(wm, (c.width - ctx.measureText(wm).width) / 2, c.height - 10);
 
     const mc = document.getElementById('site-cam-markup');

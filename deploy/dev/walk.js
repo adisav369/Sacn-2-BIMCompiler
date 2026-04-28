@@ -33,7 +33,7 @@ function setupWalk(A) {
       if (bld) {
         A.walkAnchorIFC = { x: bld.ix, y: bld.iy, z: bld.iz };
       } else {
-        A.status.textContent = 'Walk Mode: No building data';
+        A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_walk_no_data||'Walk Mode: No building data';
         return;
       }
     }
@@ -169,7 +169,7 @@ function setupWalk(A) {
           A.startWalkGpsTracking();
           console.log(`[S207] §WALK_GPS anchored (${A.walkAnchorGPS.lat.toFixed(6)},${A.walkAnchorGPS.lng.toFixed(6)})`);
         },
-        () => { A.status.textContent = 'Walk Mode: No GPS — orientation only'; },
+        () => { A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_walk_no_gps||'Walk Mode: No GPS \u2014 orientation only'; },
         { enableHighAccuracy: true, timeout: 10000 }
       );
     }
@@ -181,7 +181,7 @@ function setupWalk(A) {
     // Drive-Thru replaces shake-to-walk — no startStepDetection()
     A.startDriveThru();
 
-    A.status.textContent = 'Drive-Thru: Tap to walk, hold to glide';
+    A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_drivethru_hint||'Drive-Thru: Tap to walk, hold to glide';
     console.log(`[S207] §WALK_MODE_START anchor IFC=(${A.walkAnchorIFC.x.toFixed(1)},${A.walkAnchorIFC.y.toFixed(1)},${A.walkAnchorIFC.z.toFixed(1)})`);
   };
 
@@ -330,7 +330,7 @@ function setupWalk(A) {
     A.walkLockedHeading = null;
     A.walkCompassReadings = [];
     document.getElementById('walk-mode-btn').classList.remove('active');
-    A.status.textContent = 'Walk Mode stopped.';
+    A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_walk_stopped||'Walk Mode stopped.';
     console.log('[S207] §WALK_MODE_STOP');
   };
 
@@ -448,7 +448,7 @@ function setupWalk(A) {
     A.camera.position.add(dir);
 
     const dist = (A.walkStepCount * A.WALK_STEP_DISTANCE).toFixed(1);
-    A.status.textContent = `Drive-Thru: ${A.walkStepCount} steps (${dist}m)`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_drivethru_status||'Drive-Thru: {n} steps ({d}m)').replace('{n}', A.walkStepCount).replace('{d}', dist);
   };
 
   // No floor/stair snap — camera moves in the direction you point the phone.
@@ -547,9 +547,9 @@ function setupWalk(A) {
           }
         }
 
-        A.status.textContent = `Wall X-Ray: ${mepRows[0].values.length} MEP elements behind ${elemName || ifcClass}`;
+        A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_xray_found||'Wall X-Ray: {n} MEP elements behind {name}').replace('{n}', mepRows[0].values.length).replace('{name}', elemName || ifcClass);
       } else {
-        A.status.textContent = `Wall X-Ray: No MEP elements found behind ${elemName || ifcClass}`;
+        A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_xray_none||'Wall X-Ray: No MEP elements found behind {name}').replace('{name}', elemName || ifcClass);
       }
 
       return true;

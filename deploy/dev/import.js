@@ -104,14 +104,14 @@ function setupImport(A) {
     const status = document.getElementById('import-status');
     const progressBar = document.getElementById('import-progress-bar');
     const importZone = document.getElementById('import-zone');
-    if (status) status.textContent = 'Reading file...';
+    if (status) status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_reading_file||'Reading file...';
     if (progressBar) { progressBar.style.width = '0%'; progressBar.parentElement.style.display = 'block'; }
 
     const sizeMB = (file.size / 1024 / 1024).toFixed(1);
     if (file.size > 200 * 1024 * 1024) {
-      if (status) status.textContent = 'Very large file (' + sizeMB + 'MB) — may take a few minutes';
+      if (status) status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_large_file||'Very large file ({n}MB) \u2014 may take a few minutes').replace('{n}', sizeMB);
     } else if (file.size > 50 * 1024 * 1024) {
-      if (status) status.textContent = 'Large file (' + sizeMB + 'MB) — please wait...';
+      if (status) status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_med_file||'Large file ({n}MB) \u2014 please wait...').replace('{n}', sizeMB);
     }
 
     const arrayBuffer = await file.arrayBuffer();
@@ -137,7 +137,7 @@ function setupImport(A) {
           return;
         }
         if (msg.type === 'done') {
-          if (status) status.textContent = 'Building databases...';
+          if (status) status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_building_dbs||'Building databases...';
           console.log('[S220] §IMPORT_PARSED elements=' + msg.meta.elementCount + ' geom=' + msg.meta.geomCount);
 
           // Build sql.js DBs on main thread (sql.js already loaded)
@@ -156,7 +156,7 @@ function setupImport(A) {
             console.log('[S220] §IMPORT_SAVED key=' + file.name +
               ' db=' + (dbs.extractedDb.byteLength / 1024).toFixed(0) + 'KB');
 
-            if (status) status.textContent = 'Imported ' + msg.meta.elementCount + ' elements';
+            if (status) status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_imported||'Imported {n} elements').replace('{n}', msg.meta.elementCount);
             if (progressBar) { progressBar.style.width = '100%'; progressBar.style.background = '#44cc44'; }
 
             // Refresh card list
@@ -188,7 +188,7 @@ function setupImport(A) {
   A.importMesh = async function(file, ext) {
     var status = document.getElementById('import-status');
     var progressBar = document.getElementById('import-progress-bar');
-    if (status) status.textContent = 'Reading ' + ext.toUpperCase() + ' file...';
+    if (status) status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_reading_fmt||'Reading {fmt} file...').replace('{fmt}', ext.toUpperCase());
     if (progressBar) { progressBar.style.width = '0%'; progressBar.parentElement.style.display = 'block'; }
 
     var sizeMB = (file.size / 1024 / 1024).toFixed(1);
@@ -216,7 +216,7 @@ function setupImport(A) {
           return;
         }
         if (msg.type === 'done') {
-          if (status) status.textContent = 'Building database...';
+          if (status) status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_building_dbs||'Building databases...';
           console.log('[S228] §MESH_PARSED elements=' + msg.meta.elementCount +
             ' geom=' + msg.meta.geomCount + ' format=' + msg.meta.sourceFormat);
 
@@ -234,7 +234,7 @@ function setupImport(A) {
             console.log('[S228] §MESH_SAVED key=' + file.name +
               ' db=' + (dbs.extractedDb.byteLength / 1024).toFixed(0) + 'KB');
 
-            if (status) status.textContent = 'Imported ' + msg.meta.elementCount + ' elements from ' + ext.toUpperCase();
+            if (status) status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_imported_fmt||'Imported {n} elements from {fmt}').replace('{n}', msg.meta.elementCount).replace('{fmt}', ext.toUpperCase());
             if (progressBar) { progressBar.style.width = '100%'; progressBar.style.background = '#44cc44'; }
             if (A.renderImportCards) A.renderImportCards();
 
@@ -366,7 +366,13 @@ function setupImport(A) {
     var record = await getImport(key);
     if (!record) { alert('Building not found'); return; }
 
-    var dbBuf = record.extractedDb;
+    // S233: Read versioned DB (wizard-modified), not legacy v1
+    var dbBuf;
+    if (record.versions && record.versions.length > 0) {
+      dbBuf = record.versions[record.latestVersion || 0].db;
+    } else {
+      dbBuf = record.extractedDb;
+    }
     if (!dbBuf) { alert('No DB data'); return; }
 
     // Load sql.js if needed

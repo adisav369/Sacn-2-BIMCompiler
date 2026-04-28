@@ -23,7 +23,7 @@ function setupPanels(A) {
 
     const storeys = rows[0].values.map(r => r[0]);
     body.innerHTML = `<button class="${A.activeStoreyFilter === null ? 'active' : ''}"
-      onclick="filterStorey(null)" style="margin-top:4px">All Storeys</button>` +
+      onclick="filterStorey(null)" style="margin-top:4px">${typeof _TRL!=='undefined'&&_TRL.ui_all_storeys||'All Storeys'}</button>` +
       storeys.map(s => `<button class="${A.activeStoreyFilter === s ? 'active' : ''}"
         onclick="filterStorey('${s}')">${s}</button>`).join('');
     panel.style.display = 'block';
@@ -37,6 +37,28 @@ function setupPanels(A) {
     A.scene.traverse(obj => {
       if (obj.isMesh && obj !== A.ground && obj.userData.storey !== undefined) {
         obj.visible = storey === null || obj.userData.storey === storey;
+      }
+      // S232: InstancedMesh — per-instance storey filter via zero-scale matrix
+      if (obj.isInstancedMesh && A._instanceMeta[obj.id]) {
+        const meta = A._instanceMeta[obj.id];
+        const _m4 = new THREE.Matrix4();
+        const _zero = new THREE.Matrix4().makeScale(0, 0, 0);
+        let anyVisible = false;
+        for (let i = 0; i < meta.length; i++) {
+          if (storey === null || meta[i].storey === storey) {
+            if (meta[i]._origMatrix) { obj.setMatrixAt(i, meta[i]._origMatrix); }
+            anyVisible = true;
+          } else {
+            // Save original matrix on first hide
+            if (!meta[i]._origMatrix) {
+              meta[i]._origMatrix = new THREE.Matrix4();
+              obj.getMatrixAt(i, meta[i]._origMatrix);
+            }
+            obj.setMatrixAt(i, _zero);
+          }
+        }
+        obj.instanceMatrix.needsUpdate = true;
+        obj.visible = anyVisible;
       }
     });
     document.querySelectorAll('#storey-body button').forEach(btn => {
@@ -84,6 +106,28 @@ function setupPanels(A) {
         const discVisible = !A.hiddenDiscs.has(obj.userData.disc);
         const storeyVisible = A.activeStoreyFilter === null || obj.userData.storey === A.activeStoreyFilter;
         obj.visible = discVisible && storeyVisible;
+      }
+      // S232: InstancedMesh — per-instance disc+storey filter via zero-scale matrix
+      if (obj.isInstancedMesh && A._instanceMeta[obj.id]) {
+        const meta = A._instanceMeta[obj.id];
+        const _zero = new THREE.Matrix4().makeScale(0, 0, 0);
+        let anyVisible = false;
+        for (let i = 0; i < meta.length; i++) {
+          const dv = !A.hiddenDiscs.has(meta[i].disc);
+          const sv = A.activeStoreyFilter === null || meta[i].storey === A.activeStoreyFilter;
+          if (dv && sv) {
+            if (meta[i]._origMatrix) { obj.setMatrixAt(i, meta[i]._origMatrix); }
+            anyVisible = true;
+          } else {
+            if (!meta[i]._origMatrix) {
+              meta[i]._origMatrix = new THREE.Matrix4();
+              obj.getMatrixAt(i, meta[i]._origMatrix);
+            }
+            obj.setMatrixAt(i, _zero);
+          }
+        }
+        obj.instanceMatrix.needsUpdate = true;
+        obj.visible = anyVisible;
       }
     });
     document.querySelectorAll('#disc-body button').forEach(btn => {
@@ -154,7 +198,7 @@ function setupPanels(A) {
       });
       panelsHidden = true;
       const s = document.getElementById('status');
-      if (s) s.textContent = '<> Swipe to show panels';
+      if (s) s.textContent = '<> ' + (typeof _TRL!=='undefined'&&_TRL.ui_swipe_show||'Swipe to show panels');
     }
 
     function showAll() {
@@ -177,7 +221,7 @@ function setupPanels(A) {
 
     setTimeout(() => {
       const s = document.getElementById('status');
-      if (s) s.textContent = '<> Swipe to hide panels';
+      if (s) s.textContent = '<> ' + (typeof _TRL!=='undefined'&&_TRL.ui_swipe_hide||'Swipe to hide panels');
       setTimeout(() => { if (s && s.textContent.includes('Swipe')) s.textContent = ''; }, 4000);
     }, 3000);
   })();

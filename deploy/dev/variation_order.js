@@ -61,7 +61,7 @@ function exportVariationOrder() {
   wsConfig.addRow({ param: 'Disruption %', val: (C.disruptionPct * 100) + '%', desc: 'Productivity loss per change (AACE standard)' });
   wsConfig.addRow({ param: 'Currency', val: C.currency, desc: 'Base currency for all rates' });
   wsConfig.addRow({ param: 'USD Rate', val: C.usdRate, desc: C.currency + ' to USD conversion' });
-  wsConfig.addRow({ param: 'Rate Source', val: 'CIDB 2024', desc: 'Malaysian CIDB N3C / BCISM Cost Book 2022-2024' });
+  wsConfig.addRow({ param: 'Rate Source', val: typeof _TRL!=='undefined'&&_TRL.rate_source||'CIDB 2024', desc: typeof _TRL!=='undefined'&&_TRL.rate_mat_source||'Malaysian CIDB N3C / BCISM Cost Book 2022-2024' });
 
   // Get delivery lag
   var lag = '—';
@@ -79,18 +79,19 @@ function exportVariationOrder() {
 
   // ── Sheet 2: Variation Order Detail ──
   var ws = wb.addWorksheet('Variation Order');
+  var _t = typeof _TRL!=='undefined' ? _TRL : {};
   ws.columns = [
-    { header: 'Status', key: 'status', width: 12 },
+    { header: _t.h_status||'Status', key: 'status', width: 12 },
     { header: 'GUID', key: 'guid', width: 38 },
-    { header: 'IFC Class', key: 'ifcClass', width: 22 },
-    { header: 'Name', key: 'name', width: 28 },
-    { header: 'Storey', key: 'storey', width: 18 },
-    { header: 'Discipline', key: 'disc', width: 10 },
-    { header: 'Phase (4D)', key: 'phase', width: 16 },
-    { header: 'Unit Rate (' + C.currency + ')', key: 'rate', width: 14 },
+    { header: _t.h_ifc_class||'IFC Class', key: 'ifcClass', width: 22 },
+    { header: _t.ui_name||'Name', key: 'name', width: 28 },
+    { header: _t.h_storey||'Storey', key: 'storey', width: 18 },
+    { header: _t.h_discipline||'Discipline', key: 'disc', width: 10 },
+    { header: (_t.h_phase||'Phase') + ' (4D)', key: 'phase', width: 16 },
+    { header: (_t.h_unit_rate||'Unit Rate') + ' (' + C.currency + ')', key: 'rate', width: 14 },
     { header: 'Cost Factor', key: 'factor', width: 12 },
     { header: 'Direct Cost', key: 'direct', width: 14 },
-    { header: 'Total Impact', key: 'total', width: 14 },
+    { header: (_t.h_total||'Total') + ' Impact', key: 'total', width: 14 },
     { header: 'Schedule (days)', key: 'days', width: 14 },
     { header: 'Old Value', key: 'oldVal', width: 26 },
     { header: 'New Value', key: 'newVal', width: 26 },
@@ -135,7 +136,7 @@ function exportVariationOrder() {
       phase: phase, rate: impact.rate, factor: C.addFactor,
       direct: Math.round(impact.direct), total: Math.round(impact.total),
       days: +impact.days.toFixed(2),
-      oldVal: '\u2014', newVal: 'New element'
+      oldVal: '\u2014', newVal: _t.ui_vo_new||'New element'
     });
   }
 
@@ -156,7 +157,7 @@ function exportVariationOrder() {
       phase: phase, rate: impact.rate, factor: '-' + C.removeFactor,
       direct: -Math.round(impact.direct), total: -Math.round(impact.total),
       days: +impact.days.toFixed(2),
-      oldVal: 'Existed', newVal: '\u2014 (demolished)'
+      oldVal: _t.ui_vo_existed||'Existed', newVal: _t.ui_vo_demolished||'\u2014 (demolished)'
     });
   }
 

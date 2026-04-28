@@ -10,7 +10,7 @@ function setupCity(A) {
   const clearBtn = document.createElement('button');
   clearBtn.id = 'city-clear-btn';
   clearBtn.title = 'Clear loaded meshes (free RAM)';
-  clearBtn.textContent = '🗑 Clear';
+  clearBtn.textContent = '\uD83D\uDDD1 ' + (typeof _TRL!=='undefined'&&_TRL.ui_clear||'Clear');
   clearBtn.style.cssText = 'position:fixed;bottom:40px;right:16px;z-index:15;padding:8px 16px;background:#cc4444;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px;box-shadow:0 2px 8px rgba(204,68,68,0.4)';
   clearBtn.onclick = function() { A.cityClear(); };
   document.body.appendChild(clearBtn);
@@ -126,7 +126,7 @@ function setupCity(A) {
     A.controls.update();
 
     console.log(`[S203] §CITY_READY buildings=${Object.keys(A.buildingCentres).length} archetypes=${Object.keys(A.cityArchetypes).length} elements=${A.totalElements}`);
-    A.status.textContent = `CITY MODE — ${Object.keys(A.buildingCentres).length} buildings, ${A.totalElements.toLocaleString()} elements. Click a building to load.`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_city_mode||'CITY MODE \u2014 {n} buildings, {m} elements. Click a building to load.').replace('{n}', Object.keys(A.buildingCentres).length).replace('{m}', A.totalElements.toLocaleString());
   };
 
   // Override flyTo for city mode
@@ -145,7 +145,7 @@ function setupCity(A) {
       document.getElementById('s-active').style.color = '#4fc3f7';
       document.getElementById('s-progress').style.width = '0%';
       document.getElementById('s-progress').style.background = '#4fc3f7';
-      A.status.textContent = `Flew to ${buildingName} (${bc.count} elements)`;
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_flew_to||'Flew to {name} ({n} elements)').replace('{name}', buildingName).replace('{n}', bc.count);
       if (A.libDb) A.streamBuilding(buildingName);
       return;
     }
@@ -165,7 +165,7 @@ function setupCity(A) {
     if (!files) { A.status.textContent = `No DB for archetype: ${archetype}`; return; }
 
     if (!A.cityBuildingDbs[archetype]) {
-      A.status.textContent = `Downloading ${archetype}...`;
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_downloading||'Downloading {name}...').replace('{name}', archetype);
       const extUrl = A.BLD_BASE + files.db;
       const libUrl = A.BLD_BASE + files.lib;
 
@@ -178,7 +178,7 @@ function setupCity(A) {
       const libDb2 = new A.citySQL.Database(new Uint8Array(libBuf));
       A.cityBuildingDbs[archetype] = { db: extDb, libDb: libDb2 };
       console.log(`[S203] §CITY_DL archetype=${archetype} ext=${(extBuf.byteLength/1024/1024).toFixed(1)}MB lib=${(libBuf.byteLength/1024/1024).toFixed(1)}MB`);
-      A.status.textContent = `Downloaded ${archetype}. Streaming ${buildingName}...`;
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_downloaded_bld||'Downloaded {name}. Streaming {bld}...').replace('{name}', archetype).replace('{bld}', buildingName);
     }
 
     const saved = { db: A.db, libDb: A.libDb };
@@ -236,7 +236,7 @@ function setupCity(A) {
     document.getElementById('s-building-total').textContent = A.activeBuildingTotal.toLocaleString();
     document.getElementById('s-progress').style.width = '0%';
     document.getElementById('s-progress').style.background = '#4fc3f7';
-    A.status.textContent = `STREAMING ${buildingName} — 0/${A.streamQueue.length.toLocaleString()} elements`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_streaming_bld||'STREAMING {name} \u2014 0/{n} elements').replace('{name}', buildingName).replace('{n}', A.streamQueue.length.toLocaleString());
 
     A.db = saved.db;
     A.libDb = A.cityBuildingDbs[archetype].libDb;
@@ -265,6 +265,6 @@ function setupCity(A) {
     if ((el = document.getElementById('s-active'))) el.textContent = '—';
     if ((el = document.getElementById('s-progress'))) el.style.width = '0%';
     console.log(`[S210] §CITY_CLEAR removed=${toRemove.length} meshes freed`);
-    A.status.textContent = `CLEARED — ${toRemove.length} meshes removed.`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_cleared||'CLEARED \u2014 {n} meshes removed.').replace('{n}', toRemove.length);
   };
 }

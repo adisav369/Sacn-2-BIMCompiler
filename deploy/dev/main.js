@@ -59,9 +59,14 @@ function initViewer() {
   if (APP.toggleNlp) window.toggleNlp = APP.toggleNlp;
   window.toggleVariance = function() { if (APP.toggleVariance) APP.toggleVariance(); };
   window.open2DPlans = function() {
-    const dbParam = new URLSearchParams(location.search).get('db') || '';
+    const p = new URLSearchParams(location.search);
+    const db = p.get('db') || '';
+    const lib = p.get('lib') || '';
     const bld = APP.activeBuilding || '';
-    const url = '2d.html?db=' + encodeURIComponent(dbParam) + '&bld=' + encodeURIComponent(bld);
+    const url = '2d.html?db=' + encodeURIComponent(db) +
+                '&lib=' + encodeURIComponent(lib) +
+                '&bld=' + encodeURIComponent(bld);
+    console.log('§2D_OPEN db=' + db + ' lib=' + lib + ' bld=' + bld + ' url=' + url);
     window.open(url, '_blank');
   };
 
@@ -107,7 +112,7 @@ function initViewer() {
             APP.applyDiffOverlay();
             // S225: Don't auto-popup — show Variance button in HUD, user clicks to see list
             var vBtn = document.getElementById('variance-btn');
-            if (vBtn) { vBtn.style.display = 'block'; vBtn.textContent = '\u0394 Variance (' + (APP.diffResult.added.length + APP.diffResult.removed.length + APP.diffResult.changed.length) + ')'; }
+            if (vBtn) { vBtn.style.display = 'block'; vBtn.textContent = '\u0394 ' + (typeof _TRL!=='undefined'&&_TRL.ui_variance||'Variance') + ' (' + (APP.diffResult.added.length + APP.diffResult.removed.length + APP.diffResult.changed.length) + ')'; }
             console.log('[S225] §DIFF_OVERLAY_READY meshes=' + meshCount);
           }
         }, 2000);
