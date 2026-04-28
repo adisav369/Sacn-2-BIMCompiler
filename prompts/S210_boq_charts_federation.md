@@ -4,6 +4,11 @@
 Scope: Enhance `deploy/boq_charts.html` with Work Package structure and USD conversion.
 Read the log after every run. Do NOT modify the HTML page structure — it is proven and stable.
 
+**⚠ ATOMIC CHANGES ONLY.** Before editing, diff the working state against the last committed version.
+Change ONLY what you intend to fix. Do NOT touch charts/code that already work. Verify your diff
+before commit — if anything moved that you didn't intend, revert that part with Edit, not git checkout.
+S235 session broke chart 8 three times by carelessly editing adjacent lines.
+
 ## Status: IN PROGRESS — dev deployed, production landing fixed
 
 ## Context
