@@ -13,6 +13,10 @@
       
       
       
+        <link rel="prev" href="../DEPLOYMENT/">
+      
+      
+        <link rel="next" href="../BIMLogger/">
       
       
         
@@ -23,7 +27,7 @@
     
     
       
-        <title>BIM OOTB — Localization Guide - BIM Intent Compiler</title>
+        <title>Localization - BIM Intent Compiler</title>
       
     
     
@@ -120,7 +124,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              BIM OOTB — Localization Guide
+              Localization
             
           </span>
         </div>
@@ -407,10 +411,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../WorkOrderGuide/" class="md-tabs__link">
           
   
@@ -2565,8 +2571,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -2588,23 +2596,28 @@
       
         
       
+        
+      
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
             
   
   
@@ -2622,7 +2635,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2824,6 +2837,524 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Localization
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Localization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-matters-in-bim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Matters in BIM
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why This Matters in BIM">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-makes-this-different" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What makes this different
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#override-priority-highest-wins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Override priority (highest wins)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#load-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Load order
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#available-locales" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Locales
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#for-developers-creating-a-new-locale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For Developers: Creating a New Locale
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="For Developers: Creating a New Locale">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-copy-the-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Copy the base
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-edit-identity-and-currency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Edit identity and currency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-set-rate-source-attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Set rate source attribution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-translate-labels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Translate labels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-set-your-countrys-rates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Set your country's rates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6: Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#translation-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Translation Rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Translation Rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#do-translate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DO translate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#do-not-translate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DO NOT translate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#do-not-change-in-locale-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DO NOT change in locale files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#project-level-override" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project-Level Override
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_trl-key-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        _TRL Key Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="_TRL Key Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#currency-5-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Currency (5 keys)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rate-attribution-12-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rate Attribution (12 keys)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#column-headers-22-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Column Headers (22 keys)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4d-labels-14-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4D Labels (14 keys)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chart-titles-10-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chart Titles (10 keys)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#excel-sheet-names-10-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Excel Sheet Names (10 keys)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-titles-11-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section Titles (11 keys)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rate-data-in-locale-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rate Data (in locale files)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#misc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Misc
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#idempiere-pattern-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        iDempiere Pattern Mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#flag-picker-user-facing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flag Picker (User-Facing)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-locale_loaderjs-works-developer-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How locale_loader.js Works (Developer Reference)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How locale_loader.js Works (Developer Reference)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#detection-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detection order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fetch-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fetch + cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache-invalidation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache invalidation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#landing-page-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Landing page integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#current-status-poc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current Status (POC)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -3278,6 +3809,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#flag-picker-user-facing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flag Picker (User-Facing)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-locale_loaderjs-works-developer-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How locale_loader.js Works (Developer Reference)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How locale_loader.js Works (Developer Reference)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#detection-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detection order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fetch-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fetch + cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache-invalidation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache invalidation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#landing-page-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Landing page integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#current-status-poc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current Status (POC)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3714,8 +4328,57 @@ locales/{code}.js     → _TRL_LOCALE (full override: labels + rates + currency)
 <td><code>prompts/S226_localisation.md</code></td>
 <td>Implementation spec — per-file audit, UI keys, phases</td>
 </tr>
+<tr>
+<td><code>deploy/dev/locale_loader.js</code></td>
+<td>Runtime: detect locale, fetch, cache, apply to DOM</td>
+</tr>
 </tbody>
 </table>
+<hr />
+<h2 id="flag-picker-user-facing">Flag Picker (User-Facing)<a class="headerlink" href="#flag-picker-user-facing" title="Permanent link">&para;</a></h2>
+<p>Users switch locale via a <strong>flag button</strong> in the header bar (landing page and viewer). Clicking it opens a popup grid of 15 country flags. Selecting a flag:</p>
+<ol>
+<li>Saves choice to <code>localStorage</code> (<code>bim_ootb_config</code>)</li>
+<li>Reloads the page</li>
+<li>All text, currency, and rates switch instantly</li>
+</ol>
+<p>The current locale's flag is highlighted with a blue border. Dual-country locales (e.g. two Malaysian flags for <code>en_MY</code> and <code>ms_MY</code>) show small badges (<code>EN</code> / <code>BM</code>) to distinguish them.</p>
+<p>No settings dialog, no gear icon — just click the flag.</p>
+<hr />
+<h2 id="how-locale_loaderjs-works-developer-reference">How locale_loader.js Works (Developer Reference)<a class="headerlink" href="#how-locale_loaderjs-works-developer-reference" title="Permanent link">&para;</a></h2>
+<h3 id="detection-order">Detection order<a class="headerlink" href="#detection-order" title="Permanent link">&para;</a></h3>
+<ol>
+<li>URL param <code>?lang=xx_YY</code></li>
+<li><code>localStorage</code> key <code>bim_ootb_config</code> → <code>{ locale: 'xx_YY' }</code></li>
+<li><code>navigator.language</code> mapped to closest available locale</li>
+<li>Fallback: <code>en_US</code></li>
+</ol>
+<h3 id="fetch-cache">Fetch + cache<a class="headerlink" href="#fetch-cache" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>locale_loader.js
+  ├── Check localStorage cache: key = &#39;bim_ootb_locale_{code}&#39;
+  │   └── Valid if: exists &amp;&amp; version matches LOCALE_VERSION &amp;&amp; age &lt; 7 days
+  ├── If cache miss → fetch from OCI: sandbox/locales/{code}.js
+  │   └── Fallback: relative path locales/{code}.js (local dev)
+  ├── Parse: new Function(text + &#39;; return _TRL_LOCALE;&#39;)
+  ├── Deep-merge over window._TRL (from _TRL_DEFAULTS if present)
+  ├── Apply URL param overrides (?cur=USD, ?h_labour=Labor, etc.)
+  └── applyTrlToDOM()
+        ├── [data-trl=&quot;key&quot;]       → el.textContent = _TRL[key]
+        ├── [data-trl-title=&quot;key&quot;] → el.title = _TRL[key]
+        └── [data-trl-placeholder=&quot;key&quot;] → el.placeholder = _TRL[key]
+</code></pre></div>
+<h3 id="cache-invalidation">Cache invalidation<a class="headerlink" href="#cache-invalidation" title="Permanent link">&para;</a></h3>
+<p><code>LOCALE_VERSION</code> constant in <code>locale_loader.js</code>. Bump it when locale files change — any cached entry with a different version is re-fetched.</p>
+<h3 id="landing-page-integration">Landing page integration<a class="headerlink" href="#landing-page-integration" title="Permanent link">&para;</a></h3>
+<p>The landing page loads <code>locale_loader.js</code> at the bottom. All translatable text uses <code>data-trl</code> attributes. JS-generated text (card buttons, progress bar) uses <code>_TRL.key || 'fallback'</code> pattern.</p>
+<hr />
+<h2 id="current-status-poc">Current Status (POC)<a class="headerlink" href="#current-status-poc" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Language and currency/rates are <strong>bundled per flag</strong> — selecting Japanese gives you Japanese UI + JPY currency + Japanese rate sources</li>
+<li>A future version will separate language preference from currency/rate selection (e.g. English UI with Malaysian Ringgit rates)</li>
+<li>Rate data is illustrative — not authoritative for production cost estimation</li>
+<li>15 locales ship with ~300 keys each (UI + BOQ + 4D/5D + landing)</li>
+</ul>
 
 
 
