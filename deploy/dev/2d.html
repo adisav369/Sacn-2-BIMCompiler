@@ -85,21 +85,47 @@ const ctx = canvas.getContext('2d');
 
 // ─── Sheet manifest ───
 // Available pre-generated DXF sheets (SH and DX only)
-const SHEETS = {
-  'SH Floor Plan':   'dxf/SH_FLOOR.dxf',
-  'SH Front Elev':   'dxf/SH_FRONT.dxf',
-  'SH Roof Plan':    'dxf/SH_ROOF.dxf',
-  'DX Floor (GF)':   'dxf/DX_FLOOR_GF.dxf',
-  'DX Front Elev':   'dxf/DX_FRONT.dxf',
-};
+// Each entry: [prefix, display name, dxf path]
+const ALL_SHEETS = [
+  ['SH', 'Floor Plan',    'dxf/SH_FLOOR.dxf'],
+  ['SH', 'Front Elev',    'dxf/SH_FRONT.dxf'],
+  ['SH', 'Rear Elev',     'dxf/SH_REAR.dxf'],
+  ['SH', 'Left Elev',     'dxf/SH_LEFT.dxf'],
+  ['SH', 'Right Elev',    'dxf/SH_RIGHT.dxf'],
+  ['SH', 'Roof Plan',     'dxf/SH_ROOF.dxf'],
+  ['DX', 'Floor (GF)',    'dxf/DX_FLOOR_GF.dxf'],
+  ['DX', 'Floor (FF)',    'dxf/DX_FLOOR_FF.dxf'],
+  ['DX', 'Front Elev',    'dxf/DX_FRONT.dxf'],
+  ['DX', 'Rear Elev',     'dxf/DX_REAR.dxf'],
+  ['DX', 'Left Elev',     'dxf/DX_LEFT.dxf'],
+  ['DX', 'Right Elev',    'dxf/DX_RIGHT.dxf'],
+  ['DX', 'Roof Plan',     'dxf/DX_ROOF.dxf'],
+  ['DX', 'Plumbing',      'dxf/DX_PLUMBING.dxf'],
+];
+
+// Resolve building prefix from ?bld= param
+const params = new URLSearchParams(location.search);
+const bldParam = (params.get('bld') || '').toLowerCase();
+let prefix = '';
+if (bldParam.includes('sample') || bldParam.includes('sh_') || bldParam === 'sh') prefix = 'SH';
+else if (bldParam.includes('duplex') || bldParam.includes('dx_') || bldParam === 'dx') prefix = 'DX';
+// Fallback: try db param
+if (!prefix) {
+  const dbParam = (params.get('db') || '').toLowerCase();
+  if (dbParam.includes('sample') || dbParam.includes('_sh')) prefix = 'SH';
+  else if (dbParam.includes('duplex') || dbParam.includes('_dx')) prefix = 'DX';
+}
+
+// Filter sheets to active building (or show all if no match)
+const sheets = prefix ? ALL_SHEETS.filter(s => s[0] === prefix) : ALL_SHEETS;
 
 // Populate sheet selector
 const sel = document.getElementById('sheet-select');
-for (const [name, url] of Object.entries(SHEETS)) {
+sheets.forEach(([pfx, name, url]) => {
   const opt = document.createElement('option');
-  opt.value = url; opt.textContent = name;
+  opt.value = url; opt.textContent = (prefix ? '' : pfx + ' ') + name;
   sel.appendChild(opt);
-}
+});
 sel.addEventListener('change', () => { if (sel.value) loadDxfUrl(sel.value); });
 
 // ─── DXF Loading ───
@@ -563,14 +589,10 @@ function setStatus(msg) { document.getElementById('status-text').textContent = m
 canvas.style.cursor = 'crosshair';
 resize();
 
-// Auto-load from URL params
-const params = new URLSearchParams(location.search);
-const dbParam = params.get('db') || '';
-// If db param hints at SH or DX, auto-load floor plan
-if (dbParam.toLowerCase().includes('sample') || dbParam.toLowerCase().includes('_sh')) {
-  sel.value = 'dxf/SH_FLOOR.dxf'; loadDxfUrl('dxf/SH_FLOOR.dxf');
-} else if (dbParam.toLowerCase().includes('duplex') || dbParam.toLowerCase().includes('_dx')) {
-  sel.value = 'dxf/DX_FLOOR_GF.dxf'; loadDxfUrl('dxf/DX_FLOOR_GF.dxf');
+// Auto-load first sheet for the resolved building
+if (sheets.length > 0) {
+  sel.value = sheets[0][2];
+  loadDxfUrl(sheets[0][2]);
 }
 </script>
 </body>

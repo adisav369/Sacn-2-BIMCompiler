@@ -60,7 +60,8 @@ function initViewer() {
   window.toggleVariance = function() { if (APP.toggleVariance) APP.toggleVariance(); };
   window.open2DPlans = function() {
     const dbParam = new URLSearchParams(location.search).get('db') || '';
-    const url = '2d.html?db=' + encodeURIComponent(dbParam);
+    const bld = APP.activeBuilding || '';
+    const url = '2d.html?db=' + encodeURIComponent(dbParam) + '&bld=' + encodeURIComponent(bld);
     window.open(url, '_blank');
   };
 
