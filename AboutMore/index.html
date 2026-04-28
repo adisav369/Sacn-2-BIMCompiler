@@ -644,6 +644,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#language-and-currency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Language and Currency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#browser-compatibility" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3127,6 +3138,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#language-and-currency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Language and Currency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#browser-compatibility" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3307,6 +3329,22 @@ Compare typical web BIM viewers at 50K–200K+ lines with Node backends and heav
 </tr>
 </tbody>
 </table>
+<h3 id="language-and-currency">Language and Currency<a class="headerlink" href="#language-and-currency" title="Permanent link">&para;</a></h3>
+<p>15 languages with local currency and exchange rates. Click the flag to switch.</p>
+<p><strong>Locale files:</strong> <code>deploy/dev/locales/*.js</code> — one file per country.
+Each file contains all UI translations and currency settings (<code>cur</code>, <code>cur2</code>, <code>cur_rate</code>).</p>
+<p>To customise your own:</p>
+<ol>
+<li>Copy <code>locales/en_US.js</code> → <code>locales/my_project.js</code></li>
+<li>Edit the translations, currency symbol, and exchange rate</li>
+<li>Add your locale to the <code>AVAILABLE_LOCALES</code> array in <code>locale_loader.js</code></li>
+</ol>
+<p>Source: <a href="https://github.com/red1oon/BIMCompiler/tree/master/deploy/dev/locales">deploy/dev/locales/</a></p>
+<blockquote>
+<p><strong>Note:</strong> Language and currency/rates are currently bundled per country flag (POC).
+A future version will separate language preference from currency/rate selection —
+e.g. English UI with Malaysian Ringgit rates.</p>
+</blockquote>
 <h3 id="browser-compatibility">Browser Compatibility<a class="headerlink" href="#browser-compatibility" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Chrome 90+, Firefox 90+, Safari 15+, Edge 90+</li>
