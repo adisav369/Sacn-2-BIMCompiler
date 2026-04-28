@@ -888,10 +888,10 @@ function restoreChartsAfterExcel(saved) {
   for (var ri = 0; ri < chartInstances.length; ri++) {
     var s = saved.savedStyles[ri];
     if (!s) continue;
-    chartInstances[ri].canvas.parentElement.style.width = s.pw;
-    chartInstances[ri].canvas.parentElement.style.height = s.ph;
-    chartInstances[ri].canvas.style.width = s.cw;
-    chartInstances[ri].canvas.style.height = s.ch_;
+    chartInstances[ri].canvas.parentElement.style.removeProperty('width');
+    chartInstances[ri].canvas.parentElement.style.removeProperty('height');
+    chartInstances[ri].canvas.style.removeProperty('width');
+    chartInstances[ri].canvas.style.removeProperty('height');
     if (saved.savedOpts[ri]) chartInstances[ri].options = saved.savedOpts[ri];
     chartInstances[ri].resize();
     chartInstances[ri].update('none');
