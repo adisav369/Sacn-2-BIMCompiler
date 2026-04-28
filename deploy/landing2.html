@@ -24,13 +24,6 @@
   .header .tagline {
     font-size: 14px; color: #888; font-style: italic;
   }
-  .stats-bar {
-    display: flex; justify-content: center; gap: 30px;
-    padding: 12px 20px; font-size: 13px; color: #aaa;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-  }
-  .stats-bar b { color: #4fc3f7; }
-
   /* Loading overlay */
   .loading {
     text-align: center; padding: 60px 20px;
@@ -153,7 +146,6 @@
     .card { padding: 10px 12px; }
     .card .name { font-size: 13px; }
     .header h1 { font-size: 22px; }
-    .stats-bar { gap: 15px; font-size: 12px; }
   }
 </style>
 </head>
@@ -161,18 +153,18 @@
 
 <div style="background:#cc6600;color:#fff;text-align:center;padding:6px;font-size:13px;font-weight:700;letter-spacing:2px">DEV ENVIRONMENT — changes tested here before production</div>
 <div class="header">
-  <h1 style="color:#cc6600">BIM OOTB — DEV</h1>
-  <div class="tagline">Frictionless BIM. Two DBs. One browser. Zero install.</div>
-  <a href="https://youtu.be/bSyuLQ_c4rw" target="_blank" style="display:inline-block;margin-top:8px;color:#4fc3f7;font-size:13px;text-decoration:none;border:1px solid #4fc3f7;border-radius:4px;padding:4px 12px">&#9654; Watch Demo</a>
+  <h1 style="color:#cc6600;margin-bottom:0"><span style="font-size:64px;letter-spacing:42px;margin-left:42px;display:block;margin-bottom:-8px;line-height:0.8;font-family:'Arial Black',Impact,sans-serif;letter-spacing:16px;margin-left:16px">BIM</span><span style="font-size:16px;font-weight:400;font-family:'Arial Black',Impact,sans-serif;letter-spacing:6px;margin-left:6px;color:#cc6600cc;text-transform:lowercase">outofthebox</span></h1>
+  <div style="display:flex;justify-content:center;align-items:center;gap:14px;margin-top:10px">
+    <a href="https://youtu.be/bSyuLQ_c4rw" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:#4fc3f7;font-size:13px;text-decoration:none;padding:4px 8px"><img src="sandbox/YT.png" alt="YouTube" style="height:20px;vertical-align:middle"> <span data-trl="landing_watch_demo">Watch Demo</span></a>
+    <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.toggle('active')" style="display:inline-flex;align-items:center;gap:5px;color:#ccc;font-size:13px;text-decoration:none;padding:4px 8px">&#10067; <span data-trl="landing_about">About</span></a>
+    <a href="javascript:void(0)" id="header-flag-btn" onclick="if(window._TRL_LOADER)_TRL_LOADER.openFlagPicker()" style="display:inline-flex;align-items:center;gap:4px;color:#ccc;font-size:16px;text-decoration:none;padding:4px 8px;cursor:pointer" title="Language">&#127760;</a>
+  </div>
 </div>
 
-<div class="stats-bar" id="stats-bar">
-  <span>Loading...</span>
-</div>
 
 <div class="loading" id="loading">
   <div class="spinner"></div>
-  <div style="margin-top:12px; color:#aaa">Loading building manifest...</div>
+  <div style="margin-top:12px; color:#aaa"><span data-trl="landing_loading">Loading building manifest...</span></div>
   <div class="elapsed" id="elapsed">0:00</div>
 </div>
 
@@ -201,7 +193,7 @@
 
       <!-- Drop target — this is the only clickable part -->
       <div style="border:2px dashed rgba(79,195,247,0.2);border-radius:10px;padding:20px;margin:0 auto;max-width:380px;transition:border-color 0.15s">
-        <div style="color:#4fc3f7;font-size:14px;font-weight:600;letter-spacing:0.3px">Drop IFC or 3D file here</div>
+        <div style="color:#4fc3f7;font-size:14px;font-weight:600;letter-spacing:0.3px"><span data-trl="landing_drop_ifc">Drop IFC or 3D file here</span></div>
         <div style="color:#444;font-size:11px;margin-top:4px">or tap to browse</div>
       </div>
       <div id="import-status" style="color:#aaa;font-size:12px;margin-top:10px"></div>
@@ -220,7 +212,7 @@
 
   <!-- S220: My Buildings (imported) -->
   <div id="my-buildings-section" style="display:none">
-    <div class="section-header">My Buildings</div>
+    <div class="section-header" data-trl="landing_my_buildings">My Buildings</div>
     <div class="grid" id="my-buildings-grid"></div>
   </div>
 
@@ -268,9 +260,9 @@
     </div>
   </div>
 
-  <div class="section-header" id="instant-header">City Buildings</div>
+  <div class="section-header" id="instant-header" data-trl="landing_city">City Buildings</div>
   <div class="grid" id="instant-grid"></div>
-  <div class="section-header" id="large-header">Landmark Buildings</div>
+  <div class="section-header" id="large-header" data-trl="landing_landmark">Landmark Buildings</div>
   <div class="grid" id="large-grid"></div>
 </div>
 
@@ -281,24 +273,9 @@
   &nbsp;&middot;&nbsp;
   BIM OOTB &mdash; FOSS &middot; No account &middot; No vendor lock-in
   &nbsp;&middot;&nbsp;
-  <a href="https://red1oon.goatcounter.com" target="_blank">📊 Live Stats</a>
-  <div style="margin-top:12px;color:#666;font-size:11px;max-width:600px;margin-left:auto;margin-right:auto;text-align:left;line-height:1.8">
-    <b style="color:#888">Zero install. Here's what's on your machine:</b><br>
-    <span style="color:#4fc3f7">Building data</span> — cached in your browser's internal storage (IndexedDB) so buildings load instantly on repeat visits. Nothing is installed. No files on your desktop or downloads folder.<br>
-    <span style="color:#4fc3f7">Progress</span> — which buildings you've explored is saved in your browser (localStorage). Survives tab close.<br>
-    <span style="color:#4fc3f7">To start fresh</span> — <a href="#" onclick="clearAllCache(); return false" style="color:#cc4444">Clear all cached data</a> — removes everything, back to zero. Or just clear your browser data for this site.<br><br>
-    <span style="color:#888">This is an experimental project. Learn more at <a href="https://red1oon.github.io/BIMCompiler/StrategicIndustryPositioning/" target="_blank" style="color:#4fc3f7">BIM Designer Browser</a></span>
-  </div>
-  <div style="margin-top:16px;padding:12px 16px;background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.2);border-radius:8px;max-width:600px;margin-left:auto;margin-right:auto;text-align:left;line-height:1.8;font-size:11px">
-    <b style="color:#4fc3f7">Full Database Downloads</b> (~1GB total — all 30 buildings)<br>
-    <a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/sandbox_1M_extracted.db" style="color:#4fc3f7" download>sandbox_1M_extracted.db</a> (579MB) — 1M elements, all buildings in one DB<br>
-    <a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/component_library.db" style="color:#4fc3f7" download>component_library.db</a> (456MB) — all geometry BLOBs<br>
-    <span style="color:#666">~3-5 min on broadband. Download both, put in same folder, then:<br>
-    <code style="color:#4fc3f7">python3 -m http.server 8080</code> → open <code style="color:#ccc">localhost:8080/rtree_browser_demo.html</code><br>
-    <a href="https://red1oon.github.io/BIMCompiler/StrategicIndustryPositioning/#61-local-setup-3-steps" target="_blank" style="color:#4fc3f7">Full guide §6.1</a></span>
-  </div>
+  <a href="https://red1oon.goatcounter.com" target="_blank">📊 <span data-trl="landing_live_stats">Live Stats</span></a>
   <div style="margin-top:20px;color:#555;font-size:11px">
-    Created by <a href="mailto:red1org@gmail.com" style="color:#4fc3f7;text-decoration:none">Redhuan D. OON</a> (red1) — October 2025
+    <span data-trl="landing_created_by">Created by</span> <a href="mailto:red1org@gmail.com" style="color:#4fc3f7;text-decoration:none">Redhuan D. OON</a> (red1) — October 2025
   </div>
 </div>
 
@@ -504,12 +481,6 @@ async function loadManifest() {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
 
-    // Stats bar
-    document.getElementById('stats-bar').innerHTML = `
-      <span><b>${data.archetype_count}</b> archetypes</span>
-      <span><b>${data.building_count.toLocaleString()}</b> buildings</span>
-      <span><b>${data.total_elements.toLocaleString()}</b> elements</span>
-    `;
 
     // Split: landmark (>5000 elements or flagged) vs city
     const landmark = data.archetypes.filter(a => a.count >= 5000 || a.landmark);
@@ -1235,5 +1206,65 @@ async function exportProjectIFC(projectKey, flyout) {
 <script>if(new URLSearchParams(location.search).has('ignore-me'))localStorage.setItem('goatcounter-ignore','t')</script>
 <script data-goatcounter="https://red1oon.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
+<!-- About dialog -->
+<div id="about-dialog" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);justify-content:center;align-items:center" onclick="if(event.target===this)this.classList.remove('active')">
+  <div style="background:rgba(10,10,30,0.97);border-radius:14px;padding:24px 28px;border:1px solid rgba(79,195,247,0.3);font-family:'Segoe UI',sans-serif;color:#e0e0e0;max-width:380px;width:90%;max-height:85vh;overflow-y:auto;text-align:center">
+    <div style="font-size:36px;margin-bottom:4px">&#127963;&#65039;</div>
+    <div style="font-size:20px;font-weight:700;color:#e0e0e0">BIM</div>
+    <div style="font-size:12px;letter-spacing:3px;color:#888;margin-bottom:6px">Out Of The Box</div>
+    <div style="color:#888;font-size:11px;margin-bottom:8px">Version 0.6 alpha (October 2025 &#8211; April 2026)</div>
+    <div style="color:#aaa;font-size:11px;font-style:italic;margin-bottom:4px">Frictionless BIM. Two DBs. One browser. Zero install.</div>
+    <div style="color:#e8a735;font-size:10px;font-style:italic;margin-bottom:12px">Probably the lightest BIM app ever made.</div>
+
+    <table style="margin:0 auto 12px;font-size:10px;color:#999;border-collapse:collapse;text-align:left">
+      <tr><td style="padding:2px 8px 2px 0;color:#666">Three.js</td><td>r128</td></tr>
+      <tr><td style="padding:2px 8px 2px 0;color:#666">SQLite</td><td>3.44.2 (sql.js 1.10.3 WASM)</td></tr>
+      <tr><td style="padding:2px 8px 2px 0;color:#666">web-ifc</td><td>0.0.77 (IFC2x3 + IFC4)</td></tr>
+      <tr><td style="padding:2px 8px 2px 0;color:#666">SheetJS</td><td>0.20.3</td></tr>
+    </table>
+
+    <div style="margin-bottom:10px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:4px">
+      <div style="color:#666;font-size:9px;text-transform:uppercase;margin-bottom:3px">Browser Compatibility</div>
+      <div style="color:#999;font-size:10px;line-height:1.5">Chrome 90+ &#8226; Firefox 90+ &#8226; Safari 15+ &#8226; Edge 90+<br>Mobile: iOS Safari 15+ &#8226; Chrome Android<br>Requires: WebAssembly, WebGL 2, Web Workers</div>
+    </div>
+
+    <div style="margin-bottom:10px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:4px">
+      <div style="color:#666;font-size:9px;text-transform:uppercase;margin-bottom:3px">Stage 1 &#8212; Pure Browser (current)</div>
+      <div style="color:#999;font-size:10px;line-height:1.5">17K lines vanilla JS. No server, no APIs.<br>IFC parsed client-side. SQLite DBs ARE the app.</div>
+    </div>
+
+    <div style="margin-bottom:10px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:4px">
+      <div style="color:#666;font-size:9px;text-transform:uppercase;margin-bottom:3px">Stage 2 &#8212; DAGCompiler Backend (planned)</div>
+      <div style="color:#999;font-size:10px;line-height:1.5">Java BOM engine: 2.1M lines &#8226; Python: 2.7M lines<br>SQL rules: 644K lines. Same two-DB output format.</div>
+    </div>
+
+    <div style="color:#666;font-size:10px;margin-bottom:8px">&#169; 2025 Redhuan D. Oon. GPL-3.0 / MIT.</div>
+    <div style="display:flex;justify-content:center;gap:12px;font-size:11px;margin-bottom:8px">
+      <a href="mailto:red1org@gmail.com" style="color:#4fc3f7;text-decoration:none">&#9993; Email</a>
+      <a href="https://github.com/red1oon/BIMCompiler" target="_blank" style="color:#4fc3f7;text-decoration:none">&#11088; GitHub</a>
+      <a href="https://github.com/red1oon/BIMCompiler/issues" target="_blank" style="color:#4fc3f7;text-decoration:none">&#128221; Issues</a>
+    </div>
+    <a href="https://red1oon.github.io/BIMCompiler/AboutMore/" target="_blank" style="color:#4fc3f7;font-size:11px;text-decoration:none">&#128214; READ MORE &#8212; Technical Overview</a><br>
+    <a href="https://red1oon.github.io/BIMCompiler/MOBILE_DEPLOY/" target="_blank" style="color:#4fc3f7;font-size:11px;text-decoration:none">&#128736; DIY Self-Host Guide</a>
+
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1)">
+      <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.remove('active');if(window._TRL_LOADER)_TRL_LOADER.openFlagPicker()" style="display:inline-flex;align-items:center;gap:5px;color:#4fc3f7;font-size:12px;text-decoration:none;cursor:pointer">&#127760; Change Language</a>
+    </div>
+  </div>
+</div>
+<style>#about-dialog.active{display:flex!important}</style>
+<script src="sandbox/locale_loader.js?v=3"></script>
+<script>
+window.addEventListener('trl-ready', function() {
+  var btn = document.getElementById('header-flag-btn');
+  if (btn && window._TRL_LOADER) {
+    var code = _TRL_LOADER.detectLocale();
+    _TRL_LOADER.AVAILABLE_LOCALES.forEach(function(loc) {
+      if (loc.code === code) btn.textContent = _TRL_LOADER.isoToFlag(loc.iso);
+    });
+  }
+});
+</script>
+
 </body>
 </html>

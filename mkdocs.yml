@@ -60,6 +60,7 @@ nav:
   # ─── "I just found this project" ────────────────────────
   - Start Here:
       - Home: index.md
+      - About BIM OOTB: AboutMore.md
       - The ERP World View: MANIFESTO.md
       - Beyond Buildings: ShipYard.md
 
@@ -72,7 +73,7 @@ nav:
   # ─── The nerdy pull ───────────────────────────────────
   - Last Mile:
       - The Drift: LAST_MILE_PROBLEM.md
-      - 6 Gates: TestArchitecture.md
+      - 9 Gates: TestArchitecture.md
       - BIMEyes: EYES_SRS.md
       - Calibration: CALIBRATION_SRS.md
 

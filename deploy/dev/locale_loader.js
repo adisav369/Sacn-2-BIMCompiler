@@ -207,111 +207,19 @@
     return s;
   };
 
-  // ── Settings dialog ──
-  function createSettingsDialog() {
-    var dialog = document.getElementById('ootb-settings-dialog');
-    if (dialog) { dialog.classList.toggle('active'); return; }
+  // ── Flag picker popup ──
+  function toggleFlagPicker() {
+    var popup = document.getElementById('ootb-flag-popup');
+    if (popup) { popup.classList.toggle('active'); return; }
 
-    dialog = document.createElement('div');
-    dialog.id = 'ootb-settings-dialog';
-    dialog.className = 'active';
-    dialog.style.cssText = 'position:fixed;bottom:48px;left:16px;z-index:9998;' +
-      'background:rgba(10,10,30,0.95);border-radius:12px;padding:16px 20px;' +
+    popup = document.createElement('div');
+    popup.id = 'ootb-flag-popup';
+    popup.className = 'active';
+    popup.style.cssText = 'position:fixed;bottom:48px;left:16px;z-index:9998;' +
+      'background:rgba(10,10,30,0.95);border-radius:12px;padding:12px 14px;' +
       'border:1px solid rgba(79,195,247,0.3);backdrop-filter:blur(12px);' +
-      'font-family:Segoe UI,sans-serif;font-size:13px;color:#e0e0e0;' +
-      'min-width:260px;max-height:80vh;overflow-y:auto;display:none';
-    dialog.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
-        '<b style="color:#4fc3f7;font-size:14px">\u2699 ' + (_TRL.ui_settings || 'Settings') + '</b>' +
-        '<span style="cursor:pointer;color:#888;font-size:18px" onclick="document.getElementById(\'ootb-settings-dialog\').classList.remove(\'active\')">\u00d7</span>' +
-      '</div>' +
-      '<div style="margin-bottom:12px">' +
-        '<div style="color:#888;font-size:11px;margin-bottom:6px">' + (_TRL.ui_language || 'Language') + '</div>' +
-        '<div id="ootb-locale-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px"></div>' +
-      '</div>' +
-      '<div style="margin-bottom:12px;padding:8px;background:rgba(255,255,255,0.05);border-radius:6px">' +
-        '<div style="font-size:11px;color:#888">' + (_TRL.ui_currency || 'Currency') + '</div>' +
-        '<div id="ootb-settings-cur" style="color:#fff;font-size:14px;font-weight:600">—</div>' +
-        '<div style="font-size:11px;color:#888;margin-top:4px">' + (_TRL.ui_rate_source_lbl || 'Rate Source') + '</div>' +
-        '<div id="ootb-settings-rate" style="color:#ccc;font-size:11px">—</div>' +
-      '</div>' +
-      '<button id="ootb-settings-reset" style="width:100%;padding:8px;background:#333;color:#ccc;border:1px solid #555;border-radius:6px;cursor:pointer;font-size:12px">' +
-        (_TRL.ui_reset_defaults || 'Reset to Defaults') +
-      '</button>' +
-      '<div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);text-align:center">' +
-        '<div style="font-size:28px;margin-bottom:4px">\ud83c\udfdb\ufe0f</div>' +
-        '<div style="color:#e0e0e0;font-size:15px;font-weight:700">BIM OOTB</div>' +
-        '<div style="color:#888;font-size:11px;margin-bottom:8px">Version 0.6 alpha (October 2025 \u2013 April 2026)</div>' +
-        '<div style="color:#aaa;font-size:11px;font-style:italic;margin-bottom:4px">' +
-          'Frictionless BIM. Two DBs. One browser. Zero install.' +
-        '</div>' +
-        '<div style="color:#e8a735;font-size:10px;font-style:italic;margin-bottom:10px">' +
-          'Probably the lightest BIM app ever made.' +
-        '</div>' +
+      'display:none;grid-template-columns:repeat(5,1fr);gap:4px';
 
-        // Version table
-        '<table style="margin:0 auto 10px;font-size:10px;color:#999;border-collapse:collapse;text-align:left">' +
-          '<tr><td style="padding:2px 8px 2px 0;color:#666">Three.js</td><td>r128</td></tr>' +
-          '<tr><td style="padding:2px 8px 2px 0;color:#666">SQLite</td><td>3.44.2 (sql.js 1.10.3 WASM)</td></tr>' +
-          '<tr><td style="padding:2px 8px 2px 0;color:#666">web-ifc</td><td>0.0.77 (IFC2x3 + IFC4)</td></tr>' +
-          '<tr><td style="padding:2px 8px 2px 0;color:#666">SheetJS</td><td>0.20.3</td></tr>' +
-        '</table>' +
-
-        // Browser compatibility
-        '<div style="margin-bottom:8px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:4px">' +
-          '<div style="color:#666;font-size:9px;text-transform:uppercase;margin-bottom:3px">Browser Compatibility</div>' +
-          '<div style="color:#999;font-size:10px;line-height:1.5">' +
-            'Chrome 90+ \u2022 Firefox 90+ \u2022 Safari 15+ \u2022 Edge 90+<br>' +
-            'Mobile: iOS Safari 15+ \u2022 Chrome Android<br>' +
-            'Requires: WebAssembly, WebGL 2, Web Workers' +
-          '</div>' +
-        '</div>' +
-
-        // Stages
-        '<div style="margin-bottom:8px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:4px">' +
-          '<div style="color:#666;font-size:9px;text-transform:uppercase;margin-bottom:3px">Stage 1 \u2014 Pure Browser (current)</div>' +
-          '<div style="color:#999;font-size:10px;line-height:1.5">' +
-            '17K lines vanilla JS. No server, no APIs.<br>' +
-            'IFC parsed client-side. SQLite DBs ARE the app.' +
-          '</div>' +
-        '</div>' +
-        '<div style="margin-bottom:8px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:4px">' +
-          '<div style="color:#666;font-size:9px;text-transform:uppercase;margin-bottom:3px">Stage 2 \u2014 DAGCompiler Backend (planned)</div>' +
-          '<div style="color:#999;font-size:10px;line-height:1.5">' +
-            'Java BOM engine: 2.1M lines \u2022 Python: 2.7M lines<br>' +
-            'SQL rules: 644K lines. Same two-DB output format.' +
-          '</div>' +
-        '</div>' +
-
-        // Hosting requirements
-        '<div style="margin-bottom:10px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:4px">' +
-          '<div style="color:#666;font-size:9px;text-transform:uppercase;margin-bottom:3px">Hosting Requirements</div>' +
-          '<div style="color:#999;font-size:10px;line-height:1.5">' +
-            'Static file server only \u2014 no CPU/RAM server needed<br>' +
-            'All computation runs in the browser (client-side)<br>' +
-            'OCI Always Free: 10GB storage, 10TB/mo egress<br>' +
-            'Client: 2GB+ RAM, any modern CPU with WebGL 2' +
-          '</div>' +
-        '</div>' +
-
-        // Copyright + links
-        '<div style="color:#666;font-size:10px;margin-bottom:8px">' +
-          '\u00a9 2025 Redhuan D. Oon. GPL-3.0 / MIT.' +
-        '</div>' +
-        '<div style="display:flex;justify-content:center;gap:12px;font-size:11px;margin-bottom:8px">' +
-          '<a href="mailto:red1org@gmail.com" style="color:#4fc3f7;text-decoration:none">\u2709 Email</a>' +
-          '<a href="https://github.com/red1oon/BIMCompiler" target="_blank" style="color:#4fc3f7;text-decoration:none">\u2b50 GitHub</a>' +
-          '<a href="https://github.com/red1oon/BIMCompiler/issues" target="_blank" style="color:#4fc3f7;text-decoration:none">\ud83d\udcdd Issues</a>' +
-        '</div>' +
-        '<a href="https://github.com/red1oon/BIMCompiler/blob/master/deploy/dev/project_technical.md" target="_blank" ' +
-          'style="color:#4fc3f7;font-size:11px;text-decoration:none;display:block;text-align:center">' +
-          '\ud83d\udcd6 READ MORE — Technical Overview</a>' +
-      '</div>';
-
-    document.body.appendChild(dialog);
-
-    // Populate flag grid
-    var grid = document.getElementById('ootb-locale-grid');
     var currentLocale = detectLocale();
     AVAILABLE_LOCALES.forEach(function(loc) {
       var btn = document.createElement('button');
@@ -325,57 +233,49 @@
         btn.style.background = 'rgba(79,195,247,0.15)';
       }
       btn.onclick = function() {
-        // Save config
         try {
           localStorage.setItem('bim_ootb_config', JSON.stringify({ locale: loc.code }));
-          // Clear old locale cache to force re-merge
           localStorage.removeItem('bim_ootb_locale_' + currentLocale);
         } catch(e) { /* ignore */ }
         location.reload();
       };
-      grid.appendChild(btn);
+      popup.appendChild(btn);
     });
 
-    // Show current currency + rate source
-    if (typeof _TRL !== 'undefined') {
-      document.getElementById('ootb-settings-cur').textContent =
-        _TRL.cur + ' / ' + _TRL.cur2 + ' (1 ' + _TRL.cur2 + ' = ' + _TRL.cur_rate + ' ' + _TRL.cur + ')';
-      document.getElementById('ootb-settings-rate').textContent = _TRL.rate_source || '—';
-    }
-
-    // Reset button
-    document.getElementById('ootb-settings-reset').onclick = function() {
-      try {
-        localStorage.removeItem('bim_ootb_config');
-        AVAILABLE_LOCALES.forEach(function(l) {
-          localStorage.removeItem('bim_ootb_locale_' + l.code);
-        });
-      } catch(e) { /* ignore */ }
-      location.reload();
-    };
-
-    // Style for active toggle
+    document.body.appendChild(popup);
     var style = document.createElement('style');
-    style.textContent = '#ootb-settings-dialog.active{display:block!important}';
+    style.textContent = '#ootb-flag-popup.active{display:grid!important}';
     document.head.appendChild(style);
+
+    // Close on outside click
+    document.addEventListener('click', function(e) {
+      if (!popup.contains(e.target) && e.target.id !== 'ootb-flag-btn') {
+        popup.classList.remove('active');
+      }
+    });
   }
 
-  // ── Settings gear icon (bottom-left, always visible) ──
-  function createSettingsGear() {
-    if (document.getElementById('ootb-settings-gear')) return;
-    var gear = document.createElement('button');
-    gear.id = 'ootb-settings-gear';
-    gear.style.cssText = 'position:fixed;bottom:16px;left:16px;z-index:9997;' +
+  // ── Flag button (bottom-left, replaces gear) ──
+  function createFlagButton() {
+    if (document.getElementById('ootb-flag-btn')) return;
+    var btn = document.createElement('button');
+    btn.id = 'ootb-flag-btn';
+    btn.style.cssText = 'position:fixed;bottom:16px;left:16px;z-index:9997;' +
       'width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);' +
-      'background:rgba(0,0,0,0.4);color:#888;font-size:18px;cursor:pointer;' +
-      'backdrop-filter:blur(8px);transition:color 0.2s,border-color 0.2s;' +
+      'background:rgba(0,0,0,0.4);font-size:20px;cursor:pointer;' +
+      'backdrop-filter:blur(8px);transition:border-color 0.2s;' +
       'display:flex;align-items:center;justify-content:center';
-    gear.textContent = '\u2699';
-    gear.title = _TRL.ui_settings || 'Settings';
-    gear.onmouseenter = function() { gear.style.color = '#4fc3f7'; gear.style.borderColor = 'rgba(79,195,247,0.4)'; };
-    gear.onmouseleave = function() { gear.style.color = '#888'; gear.style.borderColor = 'rgba(255,255,255,0.15)'; };
-    gear.onclick = function(e) { e.stopPropagation(); createSettingsDialog(); };
-    document.body.appendChild(gear);
+    var currentIso = 'US';
+    var currentLocale = detectLocale();
+    AVAILABLE_LOCALES.forEach(function(loc) {
+      if (loc.code === currentLocale) currentIso = loc.iso;
+    });
+    btn.textContent = isoToFlag(currentIso);
+    btn.title = _TRL.ui_language || 'Language';
+    btn.onmouseenter = function() { btn.style.borderColor = 'rgba(79,195,247,0.4)'; };
+    btn.onmouseleave = function() { btn.style.borderColor = 'rgba(255,255,255,0.15)'; };
+    btn.onclick = function(e) { e.stopPropagation(); toggleFlagPicker(); };
+    document.body.appendChild(btn);
   }
 
   // ── Apply _TRL to DOM elements with data-trl attributes ──
@@ -419,12 +319,12 @@
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function() {
         applyTrlToDOM();
-        createSettingsGear();
+        createFlagButton();
         showLocaleToast(localeCode);
       });
     } else {
       applyTrlToDOM();
-      createSettingsGear();
+      createFlagButton();
       // Only toast on first load (no saved config)
       try {
         if (!localStorage.getItem('bim_ootb_config')) showLocaleToast(localeCode);
@@ -440,7 +340,7 @@
     detectLocale: detectLocale,
     isoToFlag: isoToFlag,
     AVAILABLE_LOCALES: AVAILABLE_LOCALES,
-    openSettings: createSettingsDialog
+    openFlagPicker: toggleFlagPicker
   };
 
 })();
