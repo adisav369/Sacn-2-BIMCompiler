@@ -271,6 +271,8 @@ The BOM model is designed once. Extraction populates positions. Generative mode
 
 ### 6.1 Generative Pattern Grammars (future reference)
 
+The three-layer decomposition used here — space types (Semantic), adjacency/connectivity (Topological), component positions (Geometric) — is formally defined in Lin's STG Pattern [Lin 2017, *Computer-Aided Design and Applications* 14(3), DOI: 10.1080/16864360.2016.1240452]. The pattern hierarchy is grounded in Alexander's *A Pattern Language* [Alexander et al. 1977], where 253 patterns compose hierarchically in the same way that BOM lines recurse from building to leaf component. Empirical evidence that topological analysis can recover building typologies from real BIM models is provided by Bielski et al. [eCAADe 2020, DOI: 10.52842/CONF.ECAADE.2020.2.279]. See `SPATIAL_COMPILATION_PAPER.md` §2.5 for the full academic treatment.
+
 Three discipline families produce three fundamentally different placement patterns:
 
 **ARC = Containment (nested boxes)**
