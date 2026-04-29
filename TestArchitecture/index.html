@@ -1252,10 +1252,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#browser-e2e-tests-playwright" class="md-nav__link">
+  <a href="#browser-testing-whitebox-debug-logging-primary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Browser E2E Tests (Playwright)
+        Browser Testing — Whitebox Debug Logging (Primary)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#playwright-e2e-tests-secondary-wiring-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Playwright E2E Tests (Secondary — Wiring Only)
       
     </span>
   </a>
@@ -1588,6 +1599,8 @@
       
         
       
+        
+      
     
     
     
@@ -1648,6 +1661,34 @@
     
   
     BIM OOTB (Browser)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SQLite3D_Schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SQLite3D Schema
   
 
     
@@ -3632,10 +3673,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#browser-e2e-tests-playwright" class="md-nav__link">
+  <a href="#browser-testing-whitebox-debug-logging-primary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Browser E2E Tests (Playwright)
+        Browser Testing — Whitebox Debug Logging (Primary)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#playwright-e2e-tests-secondary-wiring-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Playwright E2E Tests (Secondary — Wiring Only)
       
     </span>
   </a>
@@ -4635,10 +4687,140 @@ bcd2af85  rosetta_fidelity.sh
 </tr>
 </tbody>
 </table>
-<h3 id="browser-e2e-tests-playwright">Browser E2E Tests (Playwright)<a class="headerlink" href="#browser-e2e-tests-playwright" title="Permanent link">&para;</a></h3>
-<p>72/72 desktop specs, 10 spec files. Tests the BIM OOTB browser viewer:
-import, viewer load, walk/sitecam, cinematic tour, BOQ charts, mobile UX,
-mesh import, IFC export, wizard. Suite in <code>deploy/dev/tests/</code>.</p>
+<h3 id="browser-testing-whitebox-debug-logging-primary">Browser Testing — Whitebox Debug Logging (Primary)<a class="headerlink" href="#browser-testing-whitebox-debug-logging-primary" title="Permanent link">&para;</a></h3>
+<p><strong>§-tagged console output is the primary browser verification method.</strong> The coder
+reads the log to confirm values are correct — not Playwright assertions.</p>
+<p>Every module emits <code>§</code>-prefixed log lines with structured key=value data.
+After any code change, the coder opens browser console (or captures via
+<code>page.evaluate</code> in a test harness) and reads the <code>§</code> lines to verify:</p>
+<table>
+<thead>
+<tr>
+<th>Log tag</th>
+<th>Module</th>
+<th>What coder checks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>§HELPERS_READY</code></td>
+<td>helpers.js</td>
+<td>All 4 shared functions wired</td>
+</tr>
+<tr>
+<td><code>§DB_LOADED size=NMB</code></td>
+<td>streaming.js</td>
+<td>DB fetched, size reasonable</td>
+</tr>
+<tr>
+<td><code>§BOOTSTRAP centres=N</code></td>
+<td>streaming.js</td>
+<td>Building count matches DB</td>
+</tr>
+<tr>
+<td><code>§DS_QUEUED bld=X elements=N</code></td>
+<td>streaming.js</td>
+<td>Correct building selected, element count</td>
+</tr>
+<tr>
+<td><code>§GROUND minZ_ifc=X</code></td>
+<td>streaming.js</td>
+<td>Ground plane positioned at correct Z</td>
+</tr>
+<tr>
+<td><code>§STOREY_FILTER X</code></td>
+<td>panels.js</td>
+<td>Storey isolation applied</td>
+</tr>
+<tr>
+<td><code>§PICK class "name" disc storey</code></td>
+<td>picking.js</td>
+<td>Correct element identified on click</td>
+</tr>
+<tr>
+<td><code>§XRAY ON/OFF</code></td>
+<td>tools.js</td>
+<td>X-ray state toggled</td>
+</tr>
+<tr>
+<td><code>§SECTION ON axis=X range=[a,b]</code></td>
+<td>tools.js</td>
+<td>Section cut bounds computed from mesh bbox</td>
+</tr>
+<tr>
+<td><code>§WALK_DOOR picked (x,y,z) dist=Nm</code></td>
+<td>walk.js</td>
+<td>Nearest door found, distance plausible</td>
+</tr>
+<tr>
+<td><code>§WALK_STOREYS N levels cached</code></td>
+<td>walk.js</td>
+<td>All storeys detected with floor elevations</td>
+</tr>
+<tr>
+<td><code>§WALL_XRAY class=X storey=Y</code></td>
+<td>walk.js</td>
+<td>Wall identified, storey correct</td>
+</tr>
+<tr>
+<td><code>§WALL_MEP found=N near wall</code></td>
+<td>walk.js</td>
+<td>MEP behind wall detected, count reasonable</td>
+</tr>
+<tr>
+<td><code>§NLP_HIGHLIGHT n=N/M</code></td>
+<td>nlp.js</td>
+<td>Correct GUIDs highlighted (N found of M requested)</td>
+</tr>
+<tr>
+<td><code>§DIFF added=N removed=N changed=N</code></td>
+<td>diff.js</td>
+<td>Variance counts match expectations</td>
+</tr>
+<tr>
+<td><code>§CAMERA envelope=WxDxHm dist=Nm</code></td>
+<td>streaming.js</td>
+<td>Camera positioned at correct distance</td>
+</tr>
+<tr>
+<td><code>§TRUE_NORTH X°</code></td>
+<td>streaming.js</td>
+<td>Grid rotation angle extracted from DB</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Verification protocol:</strong>
+1. Change code → open browser → open console (F12)
+2. Read <code>§</code> lines — are values correct? Do counts match the DB?
+3. If a value is wrong, the <code>§</code> line pinpoints which function, which query
+4. Fix → re-check → commit only when <code>§</code> lines prove correctness</p>
+<p><strong>When to add a new <code>§</code> line:</strong> When a function computes a value that
+could be silently wrong. The log line IS the test. Example:
+<div class="highlight"><pre><span></span><code><span class="c1">// In walk.js — after computing nearest door</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`§WALK_DOOR picked (</span><span class="si">${</span><span class="nx">x</span><span class="si">}</span><span class="sb">,</span><span class="si">${</span><span class="nx">y</span><span class="si">}</span><span class="sb">,</span><span class="si">${</span><span class="nx">z</span><span class="si">}</span><span class="sb">) dist=</span><span class="si">${</span><span class="nx">d</span><span class="si">}</span><span class="sb">m from </span><span class="si">${</span><span class="nx">n</span><span class="si">}</span><span class="sb"> doors`</span><span class="p">);</span>
+<span class="c1">// Coder reads this: is the position inside the building? Is dist reasonable?</span>
+</code></pre></div></p>
+<p><strong>Advantages over Playwright:</strong>
+- Instant (no 20s browser launch, no 2min suite run)
+- Shows actual values (not just pass/fail)
+- Works for visual state Playwright can't see (camera position, material opacity)
+- Coder learns the system by reading the log — builds mental model
+- Catches wrong-but-plausible values (e.g. door at wrong storey — Playwright wouldn't know)</p>
+<h3 id="playwright-e2e-tests-secondary-wiring-only">Playwright E2E Tests (Secondary — Wiring Only)<a class="headerlink" href="#playwright-e2e-tests-secondary-wiring-only" title="Permanent link">&para;</a></h3>
+<p>~75 desktop specs, 19 spec files. Suite in <code>deploy/dev/tests/</code>.</p>
+<p><strong>Playwright is kept for wiring and deploy integrity only:</strong>
+- Script tags load without errors
+- Buttons exist and are clickable
+- DB queries return non-empty results
+- Import/export workers fire
+- Wizard multi-step flow completes</p>
+<p><strong>Playwright is NOT used for:</strong>
+- Visual correctness (SwiftShader = black pixels)
+- Value verification (§ logs are sharper — they show the actual number)
+- Camera position checks (headless timing differs from real browser)
+- Mobile UX (simulated viewport ≠ real device)
+- Round-trip state (needs IndexedDB + visual — use DB-level Node.js tests)</p>
+<p>See <code>reference/residential/PlaywrightAnalysis.md</code> §Playwright Scope for full boundary.</p>
 <h3 id="test-summary">Test Summary<a class="headerlink" href="#test-summary" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -4646,28 +4828,39 @@ mesh import, IFC export, wizard. Suite in <code>deploy/dev/tests/</code>.</p>
 <th>Suite</th>
 <th>Count</th>
 <th>Runner</th>
+<th>Role</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td>§-tagged console logs</td>
+<td>~30 tags across 10 modules</td>
+<td>Browser console / F12</td>
+<td><strong>Primary</strong> — value verification</td>
+</tr>
+<tr>
 <td>Playwright (browser E2E)</td>
-<td>72/72</td>
+<td>~75 specs</td>
 <td><code>npx playwright test</code></td>
+<td>Secondary — wiring/deploy checks</td>
 </tr>
 <tr>
 <td>BonsaiBIMDesigner (Java)</td>
 <td>408/414</td>
 <td><code>mvn test</code> (needs component_library.db)</td>
+<td>Backend gates</td>
 </tr>
 <tr>
 <td>BIMBackOffice (Java)</td>
 <td>20/20</td>
 <td><code>mvn test</code></td>
+<td>Backend gates</td>
 </tr>
 <tr>
 <td>Rosetta Stone fleet</td>
 <td>116/157 gates PASS</td>
 <td><code>./scripts/run_RosettaStones.sh</code></td>
+<td>Pipeline proof</td>
 </tr>
 </tbody>
 </table>

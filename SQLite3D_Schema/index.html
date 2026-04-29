@@ -1,0 +1,4397 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+        <link rel="prev" href="../BIM_Designer_Browser/">
+      
+      
+        <link rel="next" href="../PLUGIN_SDK/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>SQLite3D Schema - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  
+  
+
+<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-XXXXXXXXXX"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-XXXXXXXXXX",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#sqlite3d-schema-a-standard-for-db-native-3d-viewers" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              SQLite3D Schema
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/BIMCompiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../4D5DAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  BIM5D
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../LAST_MILE_PROBLEM/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Last Mile
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BOMBasedCompilation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Specs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../BIM_Designer_Browser/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Enterprise/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/BIMCompiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../AboutMore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About BIM OOTB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ShipYard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beyond Buildings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM5D
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    BIM5D
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4D5DAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4D/5D Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LTUAHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LTU A-House (125K)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Enterprise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Last Mile
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Drift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9 Gates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIMEyes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TheRosettaStoneStrategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (77 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_Browser/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM OOTB (Browser)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SQLite3D Schema
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SQLite3D Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Exists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-two-db-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Two-DB Split
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extracted-db-schema-_extracteddb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extracted DB Schema (_extracted.db)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extracted DB Schema (_extracted.db)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#project_metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        project_metadata
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spatial_structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        spatial_structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#elements_meta" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        elements_meta
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#elements_rtree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        elements_rtree
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#base_geometries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        base_geometries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#element_instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        element_instances
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#element_transforms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        element_transforms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rel_contained_in_space-and-rel_aggregates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rel_contained_in_space and rel_aggregates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#surface_styles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        surface_styles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#material_layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        material_layers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#library-db-schema-_librarydb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Library DB Schema (_library.db)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Library DB Schema (_library.db)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#component_geometries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        component_geometries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#surface_styles_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        surface_styles
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#city-index-db-schema-city_indexdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        City Index DB Schema (city_index.db)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#blob-encoding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BLOB Encoding
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="BLOB Encoding">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vertex-blob" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vertex BLOB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#face-blob" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Face BLOB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#javascript-deserialisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JavaScript deserialisation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-instancing-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Instancing Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coordinate-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coordinate Systems
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#indexeddb-caching-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IndexedDB Caching Layer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-makes-this-novel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Makes This Novel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#minimum-viable-viewer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimum Viable Viewer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-naming-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File Naming Convention
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versioning
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PLUGIN_SDK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MOBILE_DEPLOY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mobile & Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation Rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output DB (G4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Enterprise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6D/7D/Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../STANDARDS_COMPLIANCE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Standards Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../REPORTING_ENGINE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporting Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PDF_TERRAIN/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PDF Terrain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2D_LAYOUT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Layout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Database
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GEOMETRY_FORGE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry Forge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FORGE_SUITE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forge Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM OOTB Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VibeProgramming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vibe Programming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LTUAHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LTU A-House (125K)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Localization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Localization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Exists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-two-db-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Two-DB Split
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extracted-db-schema-_extracteddb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extracted DB Schema (_extracted.db)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extracted DB Schema (_extracted.db)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#project_metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        project_metadata
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spatial_structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        spatial_structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#elements_meta" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        elements_meta
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#elements_rtree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        elements_rtree
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#base_geometries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        base_geometries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#element_instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        element_instances
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#element_transforms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        element_transforms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rel_contained_in_space-and-rel_aggregates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rel_contained_in_space and rel_aggregates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#surface_styles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        surface_styles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#material_layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        material_layers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#library-db-schema-_librarydb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Library DB Schema (_library.db)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Library DB Schema (_library.db)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#component_geometries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        component_geometries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#surface_styles_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        surface_styles
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#city-index-db-schema-city_indexdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        City Index DB Schema (city_index.db)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#blob-encoding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BLOB Encoding
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="BLOB Encoding">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vertex-blob" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vertex BLOB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#face-blob" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Face BLOB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#javascript-deserialisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JavaScript deserialisation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-instancing-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Instancing Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coordinate-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coordinate Systems
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#indexeddb-caching-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IndexedDB Caching Layer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-makes-this-novel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Makes This Novel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#minimum-viable-viewer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimum Viable Viewer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-naming-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File Naming Convention
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versioning
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="sqlite3d-schema-a-standard-for-db-native-3d-viewers">SQLite3D Schema — A Standard for DB-Native 3D Viewers<a class="headerlink" href="#sqlite3d-schema-a-standard-for-db-native-3d-viewers" title="Permanent link">&para;</a></h1>
+<p><strong>Version 1.0 — BIM OOTB Reference Implementation</strong></p>
+<hr />
+<h2 id="why-this-exists">Why This Exists<a class="headerlink" href="#why-this-exists" title="Permanent link">&para;</a></h2>
+<p>Every mainstream 3D viewer pipeline looks like this:</p>
+<div class="highlight"><pre><span></span><code>source file → parse → in-memory scene graph → GPU
+</code></pre></div>
+<p>The scene graph is a runtime construct. It exists only while the app is running. To filter by floor, you re-traverse the graph. To check what a GUID belongs to, you search a parallel data structure. To stream a large model, you build a custom chunking layer on top.</p>
+<p>This document specifies a different approach: <strong>the database is the scene graph</strong>. There is no separate in-memory representation. The renderer queries SQL and sends bytes directly to the GPU. Filtering, spatial queries, and metadata lookups are SQL queries — not custom traversal code.</p>
+<p>This architecture was proven in production at 126K elements on mobile with no native app, no server, and no conversion pipeline beyond the initial IFC extraction.</p>
+<p>The schema is open. If you build a compatible viewer, it will load any DB produced by this extractor without modification.</p>
+<hr />
+<h2 id="the-two-db-split">The Two-DB Split<a class="headerlink" href="#the-two-db-split" title="Permanent link">&para;</a></h2>
+<p>Every building is two files:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+<th>Cache policy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{Building}_extracted.db</code></td>
+<td>Semantic index: GUIDs, storeys, disciplines, placement, spatial structure</td>
+<td>Invalidate on model update</td>
+</tr>
+<tr>
+<td><code>{Building}_library.db</code></td>
+<td>Geometry pool: pre-tessellated mesh BLOBs, keyed by hash</td>
+<td>Immutable — content-addressed</td>
+</tr>
+</tbody>
+</table>
+<p>The split is not cosmetic. It encodes a physical fact: <strong>geometry changes rarely; metadata changes often</strong>. A site inspector updating a status field should not re-download 40MB of mesh data. A geometry correction should not invalidate annotation data.</p>
+<p>The library DB can be shared across buildings. If two buildings contain the same door family, they share one row in the library. The extracted DB holds only the hash — never the bytes.</p>
+<hr />
+<h2 id="extracted-db-schema-_extracteddb">Extracted DB Schema (<code>_extracted.db</code>)<a class="headerlink" href="#extracted-db-schema-_extracteddb" title="Permanent link">&para;</a></h2>
+<h3 id="project_metadata"><code>project_metadata</code><a class="headerlink" href="#project_metadata" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">project_metadata</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="k">key</span><span class="w">   </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">value</span><span class="w"> </span><span class="nb">TEXT</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>Key-value store for file-level provenance. Expected keys:</p>
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>example value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>source_file</code></td>
+<td><code>LTU_AHouse.ifc</code></td>
+</tr>
+<tr>
+<td><code>ifc_schema</code></td>
+<td><code>IFC2X3</code></td>
+</tr>
+<tr>
+<td><code>extractor_version</code></td>
+<td><code>S231</code></td>
+</tr>
+<tr>
+<td><code>extracted_at</code></td>
+<td><code>2026-04-29T14:32:00</code></td>
+</tr>
+<tr>
+<td><code>unit_scale</code></td>
+<td><code>1.0</code> (metres; extractor normalises all inputs to metres)</td>
+</tr>
+<tr>
+<td><code>coord_system</code></td>
+<td><code>IFC</code> (X=east, Y=north, Z=up)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="spatial_structure"><code>spatial_structure</code><a class="headerlink" href="#spatial_structure" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">spatial_structure</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">guid</span><span class="w">          </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="k">type</span><span class="w">          </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">   </span><span class="c1">-- IfcSite, IfcBuilding, IfcBuildingStorey, IfcSpace</span>
+<span class="w">    </span><span class="n">name</span><span class="w">          </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">parent_guid</span><span class="w">   </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">            </span><span class="c1">-- NULL for root (IfcSite)</span>
+<span class="w">    </span><span class="n">object_type</span><span class="w">   </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">predefined_type</span><span class="w"> </span><span class="nb">TEXT</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>Direct representation of the IFC spatial containment tree. Root node has <code>parent_guid = NULL</code>.</p>
+<p>Query: walk storey hierarchy
+<div class="highlight"><pre><span></span><code><span class="c1">-- All storeys in the building</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">guid</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">spatial_structure</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="k">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;IfcBuildingStorey&#39;</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">name</span><span class="p">;</span>
+</code></pre></div></p>
+<hr />
+<h3 id="elements_meta"><code>elements_meta</code><a class="headerlink" href="#elements_meta" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">elements_meta</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w">           </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">guid</span><span class="w">         </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">UNIQUE</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">discipline</span><span class="w">   </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">   </span><span class="c1">-- ARC, STR, MEP, ELE, PLB, ...</span>
+<span class="w">    </span><span class="n">ifc_class</span><span class="w">    </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">   </span><span class="c1">-- IfcWall, IfcBeam, IfcDuctSegment, ...</span>
+<span class="w">    </span><span class="n">element_name</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">element_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">storey</span><span class="w">       </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">material_name</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">material_rgba</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">           </span><span class="c1">-- &quot;r,g,b&quot; or &quot;r,g,b,a&quot; in 0–1 range</span>
+<span class="w">    </span><span class="n">building</span><span class="w">     </span><span class="nb">TEXT</span><span class="w">             </span><span class="c1">-- building name for federated (multi-building) DBs</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>The semantic spine. Every renderable element has one row here.</p>
+<p><code>discipline</code> is derived from <code>ifc_class</code> at extraction time via a deterministic mapping table — not from IFC discipline annotations, which are unreliable. The mapping is:</p>
+<table>
+<thead>
+<tr>
+<th>IFC class prefix</th>
+<th>discipline</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IfcWall, IfcSlab, IfcRoof, IfcStair, IfcWindow, IfcDoor, IfcColumn</td>
+<td>ARC</td>
+</tr>
+<tr>
+<td>IfcBeam, IfcMember, IfcFooting, IfcPile</td>
+<td>STR</td>
+</tr>
+<tr>
+<td>IfcDuct*, IfcAirTerminal, IfcFan</td>
+<td>MEP</td>
+</tr>
+<tr>
+<td>IfcCableCarrierSegment, IfcElectricDistribution*</td>
+<td>ELE</td>
+</tr>
+<tr>
+<td>IfcPipeFitting, IfcPipeSegment, IfcValve</td>
+<td>PLB</td>
+</tr>
+</tbody>
+</table>
+<p>Query: filter by discipline and storey
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">guid</span><span class="p">,</span><span class="w"> </span><span class="n">ifc_class</span><span class="p">,</span><span class="w"> </span><span class="n">element_name</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">elements_meta</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">discipline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;STR&#39;</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">storey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;Level 2&#39;</span><span class="p">;</span>
+</code></pre></div></p>
+<hr />
+<h3 id="elements_rtree"><code>elements_rtree</code><a class="headerlink" href="#elements_rtree" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="n">VIRTUAL</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">elements_rtree</span>
+<span class="w">    </span><span class="k">USING</span><span class="w"> </span><span class="n">rtree</span><span class="p">(</span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">minX</span><span class="p">,</span><span class="w"> </span><span class="n">maxX</span><span class="p">,</span><span class="w"> </span><span class="n">minY</span><span class="p">,</span><span class="w"> </span><span class="n">maxY</span><span class="p">,</span><span class="w"> </span><span class="n">minZ</span><span class="p">,</span><span class="w"> </span><span class="n">maxZ</span><span class="p">);</span>
+</code></pre></div>
+<p><code>id</code> is a foreign key to <code>elements_meta.id</code>. Coordinates are world-space, in metres, IFC coordinate system (X=east, Y=north, Z=up).</p>
+<p>This is the spatial index. It makes viewport culling, section cuts, storey detection, and elevation profiling into O(log n) SQL queries.</p>
+<p>Query: elements within an axis-aligned bounding box
+<div class="highlight"><pre><span></span><code><span class="c1">-- section_cut.js §SC_QUERY</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">guid</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">discipline</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">storey</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">elements_meta</span><span class="w"> </span><span class="n">m</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">elements_rtree</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">minX</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="o">-</span><span class="mi">10</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">maxX</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">50</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">minY</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="o">-</span><span class="mi">10</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">maxY</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">50</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">minZ</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">0</span><span class="w">   </span><span class="k">AND</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">maxZ</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">4</span><span class="p">.</span><span class="mi">5</span><span class="p">;</span>
+</code></pre></div></p>
+<p>Query: storey floor levels (used by section_cut.js and elevation.js)
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">storey</span><span class="p">,</span><span class="w"> </span><span class="k">MIN</span><span class="p">(</span><span class="n">r</span><span class="p">.</span><span class="n">minZ</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">floor_z</span><span class="p">,</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">n</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">elements_meta</span><span class="w"> </span><span class="n">m</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">elements_rtree</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">storey</span><span class="w"> </span><span class="k">IS</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">storey</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">floor_z</span><span class="p">;</span>
+</code></pre></div></p>
+<blockquote>
+<p><strong>Note on sql.js:</strong> The WASM build of sql.js may not include R-tree support depending on compile flags. Production code falls back to <code>element_transforms</code> centre-point queries when <code>elements_rtree</code> is absent or the query throws. Always <code>try/catch</code> R-tree queries in the browser.</p>
+</blockquote>
+<hr />
+<h3 id="base_geometries"><code>base_geometries</code><a class="headerlink" href="#base_geometries" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">base_geometries</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">geometry_hash</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">vertices</span><span class="w">      </span><span class="nb">BLOB</span><span class="p">,</span><span class="w">           </span><span class="c1">-- Float32, little-endian, XYZ triples, local coords, metres</span>
+<span class="w">    </span><span class="n">faces</span><span class="w">         </span><span class="nb">BLOB</span><span class="p">,</span><span class="w">           </span><span class="c1">-- Int32, little-endian, triangle index triples</span>
+<span class="w">    </span><span class="n">vertex_count</span><span class="w">  </span><span class="nb">INTEGER</span><span class="p">,</span>
+<span class="w">    </span><span class="n">face_count</span><span class="w">    </span><span class="nb">INTEGER</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>See §BLOB Encoding below for the byte-level format.</p>
+<p>In single-building deployments, geometry BLOBs live here. In the two-DB deployment, this table contains only hash entries (BLOBs are NULL) — the actual bytes are in the library DB. The viewer tries both.</p>
+<hr />
+<h3 id="element_instances"><code>element_instances</code><a class="headerlink" href="#element_instances" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">element_instances</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">guid</span><span class="w">          </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">geometry_hash</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="k">FOREIGN</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">geometry_hash</span><span class="p">)</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">base_geometries</span><span class="p">(</span><span class="n">geometry_hash</span><span class="p">)</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>The instancing join. Multiple GUIDs can share one <code>geometry_hash</code>. This is how a building with 800 identical doors becomes 800 rows in <code>element_instances</code> but one row in <code>base_geometries</code> / <code>component_geometries</code>.</p>
+<p>Query: find all elements sharing a geometry
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">guid</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">storey</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">element_name</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">element_instances</span><span class="w"> </span><span class="n">i</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">elements_meta</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">guid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="p">.</span><span class="n">guid</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">i</span><span class="p">.</span><span class="n">geometry_hash</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;a3f7c91b2d4e8f01&#39;</span><span class="p">;</span>
+</code></pre></div></p>
+<hr />
+<h3 id="element_transforms"><code>element_transforms</code><a class="headerlink" href="#element_transforms" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">element_transforms</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">guid</span><span class="w">         </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">center_x</span><span class="w">     </span><span class="nb">REAL</span><span class="p">,</span><span class="w">           </span><span class="c1">-- World-space placement, metres, IFC coords</span>
+<span class="w">    </span><span class="n">center_y</span><span class="w">     </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">center_z</span><span class="w">     </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">transform_source</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;iterator_matrix&#39; | &#39;placement_fallback&#39;</span>
+<span class="w">    </span><span class="n">rotation_x</span><span class="w">   </span><span class="nb">REAL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="c1">-- Euler angles in radians (ZYX decomposition)</span>
+<span class="w">    </span><span class="n">rotation_y</span><span class="w">   </span><span class="nb">REAL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rotation_z</span><span class="w">   </span><span class="nb">REAL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>World-space placement for each element. The rotation is decomposed from the IFC placement matrix via ZYX Euler:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># extractIFCtoDB.py §EULER_DECOMPOSE</span>
+<span class="n">sy</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">rot3</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">rot3</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">sy</span> <span class="o">&gt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+    <span class="n">rot_x</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">atan2</span><span class="p">(</span><span class="n">rot3</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">rot3</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">rot_y</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">atan2</span><span class="p">(</span><span class="o">-</span><span class="n">rot3</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">sy</span><span class="p">)</span>
+    <span class="n">rot_z</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">atan2</span><span class="p">(</span><span class="n">rot3</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">rot3</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span>
+</code></pre></div>
+<p>The geometry BLOB is in local coordinates relative to the element's tack point (the IFC local placement origin). The viewer applies <code>center + rotation</code> to position the mesh in world space. There is no scale — all geometry is already in metres.</p>
+<hr />
+<h3 id="rel_contained_in_space-and-rel_aggregates"><code>rel_contained_in_space</code> and <code>rel_aggregates</code><a class="headerlink" href="#rel_contained_in_space-and-rel_aggregates" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">rel_contained_in_space</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">element_guid</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">space_guid</span><span class="w">   </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">element_guid</span><span class="p">,</span><span class="w"> </span><span class="n">space_guid</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">rel_aggregates</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">parent_guid</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">child_guid</span><span class="w">  </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">parent_guid</span><span class="p">,</span><span class="w"> </span><span class="n">child_guid</span><span class="p">)</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>Direct serialisation of <code>IfcRelContainedInSpatialStructure</code> and <code>IfcRelAggregates</code>. Used for room-level queries and BOM aggregation.</p>
+<hr />
+<h3 id="surface_styles"><code>surface_styles</code><a class="headerlink" href="#surface_styles" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">surface_styles</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">style_name</span><span class="w">         </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">surface_r</span><span class="w">          </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">surface_g</span><span class="w">          </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">surface_b</span><span class="w">          </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">transparency</span><span class="w">       </span><span class="nb">REAL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">.</span><span class="mi">0</span><span class="p">,</span><span class="w">   </span><span class="c1">-- 0=opaque, 1=fully transparent</span>
+<span class="w">    </span><span class="n">specular_r</span><span class="w">         </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">specular_g</span><span class="w">         </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">specular_b</span><span class="w">         </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">specular_ratio</span><span class="w">     </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">specular_exponent</span><span class="w">  </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">reflectance_method</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;NOTDEFINED&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">side</span><span class="w">               </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;BOTH&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">source</span><span class="w">             </span><span class="nb">TEXT</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>IFC surface style data. The viewer reads <code>surface_r/g/b</code> and <code>transparency</code> to build <code>THREE.MeshPhongMaterial</code>. The specular fields are available for PBR-capable renderers.</p>
+<hr />
+<h3 id="material_layers"><code>material_layers</code><a class="headerlink" href="#material_layers" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">material_layers</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">layer_set_name</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">sequence</span><span class="w">       </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">material_name</span><span class="w">  </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">thickness_m</span><span class="w">    </span><span class="nb">REAL</span><span class="p">,</span><span class="w">           </span><span class="c1">-- metres</span>
+<span class="w">    </span><span class="n">is_ventilated</span><span class="w">  </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">layer_set_name</span><span class="p">,</span><span class="w"> </span><span class="n">sequence</span><span class="p">)</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>Wall and slab layer stacks from <code>IfcMaterialLayerSet</code>. Used by quantity takeoff — total material volume is <code>SUM(thickness_m * element_area)</code> per layer.</p>
+<hr />
+<h2 id="library-db-schema-_librarydb">Library DB Schema (<code>_library.db</code>)<a class="headerlink" href="#library-db-schema-_librarydb" title="Permanent link">&para;</a></h2>
+<p>The library is the geometry pool. It has two tables.</p>
+<h3 id="component_geometries"><code>component_geometries</code><a class="headerlink" href="#component_geometries" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">component_geometries</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">geometry_hash</span><span class="w">  </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">vertices</span><span class="w">       </span><span class="nb">BLOB</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">   </span><span class="c1">-- Float32, little-endian, XYZ triples, local coords, metres</span>
+<span class="w">    </span><span class="n">faces</span><span class="w">          </span><span class="nb">BLOB</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">   </span><span class="c1">-- Int32, little-endian, triangle index triples</span>
+<span class="w">    </span><span class="n">normals</span><span class="w">        </span><span class="nb">BLOB</span><span class="p">,</span><span class="w">            </span><span class="c1">-- Float32, per-vertex normals (optional; viewer recomputes if NULL)</span>
+<span class="w">    </span><span class="n">vertex_count</span><span class="w">   </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">face_count</span><span class="w">     </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>Same hash scheme as <code>base_geometries</code>. The hash is the identity. If two buildings produce the same hash, they share one row. The hash function:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># extractIFCtoDB.py §GEOMETRY_HASH</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">geometry_hash</span><span class="p">(</span><span class="n">vertices_blob</span><span class="p">,</span> <span class="n">faces_blob</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;SHA256-based 16-char hash of centered geometry.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">vertices_blob</span> <span class="o">+</span> <span class="n">faces_blob</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">16</span><span class="p">]</span>
+</code></pre></div>
+<h3 id="surface_styles_1"><code>surface_styles</code><a class="headerlink" href="#surface_styles_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">surface_styles</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">style_name</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">red</span><span class="w">   </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">green</span><span class="w"> </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">blue</span><span class="w">  </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">alpha</span><span class="w"> </span><span class="nb">REAL</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>Simplified style table in the library — RGB + alpha only. The full specular data lives in the extracted DB's <code>surface_styles</code>.</p>
+<hr />
+<h2 id="city-index-db-schema-city_indexdb">City Index DB Schema (<code>city_index.db</code>)<a class="headerlink" href="#city-index-db-schema-city_indexdb" title="Permanent link">&para;</a></h2>
+<p>For multi-building deployments, a lightweight index coordinates on-demand loading.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">building_summary</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">building</span><span class="w">      </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">discipline</span><span class="w">    </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">element_count</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">center_x</span><span class="w">      </span><span class="nb">REAL</span><span class="p">,</span><span class="w"> </span><span class="n">center_y</span><span class="w"> </span><span class="nb">REAL</span><span class="p">,</span><span class="w"> </span><span class="n">center_z</span><span class="w"> </span><span class="nb">REAL</span><span class="p">,</span><span class="w">    </span><span class="c1">-- IFC coords, metres</span>
+<span class="w">    </span><span class="n">min_x</span><span class="w"> </span><span class="nb">REAL</span><span class="p">,</span><span class="w"> </span><span class="n">min_y</span><span class="w"> </span><span class="nb">REAL</span><span class="p">,</span><span class="w"> </span><span class="n">min_z</span><span class="w"> </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">max_x</span><span class="w"> </span><span class="nb">REAL</span><span class="p">,</span><span class="w"> </span><span class="n">max_y</span><span class="w"> </span><span class="nb">REAL</span><span class="p">,</span><span class="w"> </span><span class="n">max_z</span><span class="w"> </span><span class="nb">REAL</span><span class="p">,</span>
+<span class="w">    </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">building</span><span class="p">,</span><span class="w"> </span><span class="n">discipline</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">building_archetype</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">building</span><span class="w">       </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">archetype</span><span class="w">      </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">   </span><span class="c1">-- maps to {archetype}_extracted.db + {archetype}_library.db</span>
+<span class="w">    </span><span class="n">total_elements</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>The viewer fetches only this file on startup (~5KB). Individual building DBs are fetched on demand as the camera approaches. The city index never contains geometry.</p>
+<p>Query used by city.js on initialisation:
+<div class="highlight"><pre><span></span><code><span class="c1">-- Discipline summary for ARC+STR (envelope only) — for building centroid pins</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">building</span><span class="p">,</span><span class="w"> </span><span class="k">SUM</span><span class="p">(</span><span class="n">element_count</span><span class="p">),</span>
+<span class="w">       </span><span class="k">AVG</span><span class="p">(</span><span class="n">center_x</span><span class="p">),</span><span class="w"> </span><span class="k">AVG</span><span class="p">(</span><span class="n">center_y</span><span class="p">),</span><span class="w"> </span><span class="k">AVG</span><span class="p">(</span><span class="n">center_z</span><span class="p">)</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">building_summary</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">discipline</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;ARC&#39;</span><span class="p">,</span><span class="s1">&#39;STR&#39;</span><span class="p">)</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">building</span><span class="p">;</span>
+</code></pre></div></p>
+<hr />
+<h2 id="blob-encoding">BLOB Encoding<a class="headerlink" href="#blob-encoding" title="Permanent link">&para;</a></h2>
+<p>This is the machine-level contract between the extractor (Python) and the renderer (JavaScript).</p>
+<h3 id="vertex-blob">Vertex BLOB<a class="headerlink" href="#vertex-blob" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Format: <strong>IEEE 754 single-precision float (float32), little-endian</strong></li>
+<li>Layout: <code>[x0, y0, z0, x1, y1, z1, ...]</code></li>
+<li>Stride: 12 bytes per vertex (3 × 4 bytes)</li>
+<li>Coordinate system: <strong>IFC local</strong> — X=element-local east, Y=element-local north, Z=up</li>
+<li>Units: <strong>metres</strong> (the IfcOpenShell iterator returns metres natively; no scaling is applied)</li>
+<li>Origin: the IFC local placement origin of the element (tack point), <strong>not</strong> recentred to geometry centroid</li>
+</ul>
+<p>Python serialisation:
+<div class="highlight"><pre><span></span><code><span class="c1"># extractIFCtoDB.py §BLOB_WRITE</span>
+<span class="n">verts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">geo</span><span class="o">.</span><span class="n">verts</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">vblob</span> <span class="o">=</span> <span class="n">verts</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">tobytes</span><span class="p">()</span>   <span class="c1"># float64 → float32, native endian (always LE on x86)</span>
+</code></pre></div></p>
+<p>Byte count check: <code>vertex_count = len(vblob) // 12</code></p>
+<h3 id="face-blob">Face BLOB<a class="headerlink" href="#face-blob" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Format: <strong>signed 32-bit integer (int32), little-endian</strong></li>
+<li>Layout: <code>[i0, i1, i2, i3, i4, i5, ...]</code> — triangle list, 3 indices per triangle</li>
+<li>Stride: 12 bytes per triangle (3 × 4 bytes)</li>
+<li>Winding order: inherited from IfcOpenShell tessellator output — counter-clockwise (standard OpenGL/WebGL convention)</li>
+</ul>
+<p>Python serialisation:
+<div class="highlight"><pre><span></span><code><span class="c1"># extractIFCtoDB.py §BLOB_WRITE</span>
+<span class="n">faces</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">geo</span><span class="o">.</span><span class="n">faces</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">fblob</span> <span class="o">=</span> <span class="n">faces</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span><span class="o">.</span><span class="n">tobytes</span><span class="p">()</span>
+</code></pre></div></p>
+<p>Byte count check: <code>face_count = len(fblob) // 12</code></p>
+<h3 id="javascript-deserialisation">JavaScript deserialisation<a class="headerlink" href="#javascript-deserialisation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// scene.js §BLOB_TO_GEOMETRY</span>
+<span class="nx">A</span><span class="p">.</span><span class="nx">blobToGeometry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kd">function</span><span class="p">(</span><span class="nx">vBlob</span><span class="p">,</span><span class="w"> </span><span class="nx">fBlob</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">vArr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Float32Array</span><span class="p">(</span><span class="nx">vBlob</span><span class="p">.</span><span class="nx">buffer</span><span class="p">,</span><span class="w"> </span><span class="nx">vBlob</span><span class="p">.</span><span class="nx">byteOffset</span><span class="p">,</span><span class="w"> </span><span class="nx">vBlob</span><span class="p">.</span><span class="nx">byteLength</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">4</span><span class="p">);</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">fArr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Uint32Array</span><span class="p">(</span><span class="nx">fBlob</span><span class="p">.</span><span class="nx">buffer</span><span class="p">,</span><span class="w"> </span><span class="nx">fBlob</span><span class="p">.</span><span class="nx">byteOffset</span><span class="p">,</span><span class="w"> </span><span class="nx">fBlob</span><span class="p">.</span><span class="nx">byteLength</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">4</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">vArr</span><span class="p">.</span><span class="nx">length</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mf">9</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">fArr</span><span class="p">.</span><span class="nx">length</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mf">3</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">// Coordinate transform: IFC (X east, Y north, Z up) → Three.js (X east, Y up, Z south)</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">positions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Float32Array</span><span class="p">(</span><span class="nx">vArr</span><span class="p">.</span><span class="nx">length</span><span class="p">);</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">let</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nx">vArr</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mf">3</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">positions</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="nx">vArr</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span><span class="w">      </span><span class="c1">// X → X  (east, unchanged)</span>
+<span class="w">        </span><span class="nx">positions</span><span class="p">[</span><span class="nx">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mf">1</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">vArr</span><span class="p">[</span><span class="nx">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mf">2</span><span class="p">];</span><span class="w">  </span><span class="c1">// Z → Y  (up becomes Three.js Y)</span>
+<span class="w">        </span><span class="nx">positions</span><span class="p">[</span><span class="nx">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mf">2</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="nx">vArr</span><span class="p">[</span><span class="nx">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mf">1</span><span class="p">];</span><span class="w"> </span><span class="c1">// -Y → Z (north negated to south)</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">geo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">THREE</span><span class="p">.</span><span class="nx">BufferGeometry</span><span class="p">();</span>
+<span class="w">    </span><span class="nx">geo</span><span class="p">.</span><span class="nx">setAttribute</span><span class="p">(</span><span class="s1">&#39;position&#39;</span><span class="p">,</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">THREE</span><span class="p">.</span><span class="nx">BufferAttribute</span><span class="p">(</span><span class="nx">positions</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">));</span>
+<span class="w">    </span><span class="nx">geo</span><span class="p">.</span><span class="nx">setIndex</span><span class="p">(</span><span class="ow">new</span><span class="w"> </span><span class="nx">THREE</span><span class="p">.</span><span class="nx">BufferAttribute</span><span class="p">(</span><span class="nx">fArr</span><span class="p">,</span><span class="w"> </span><span class="mf">1</span><span class="p">));</span>
+<span class="w">    </span><span class="nx">geo</span><span class="p">.</span><span class="nx">computeVertexNormals</span><span class="p">();</span><span class="w">          </span><span class="c1">// normals computed from faces; per-vertex normals in DB are not used</span>
+<span class="w">    </span><span class="nx">geo</span><span class="p">.</span><span class="nx">computeBoundingSphere</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">geo</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div>
+<p>The coordinate transform is the only mutation applied to the BLOB data. The positions array is a new allocation — the original BLOB bytes are not modified.</p>
+<p>Note: <code>fArr</code> uses <code>Uint32Array</code> in JavaScript even though the DB stores <code>int32</code>. Face indices are never negative, so the reinterpretation is safe.</p>
+<hr />
+<h2 id="the-instancing-pipeline">The Instancing Pipeline<a class="headerlink" href="#the-instancing-pipeline" title="Permanent link">&para;</a></h2>
+<p>The viewer's draw-call budget is managed by grouping elements that share a <code>geometry_hash</code>.</p>
+<p><strong>Phase 1 — collect all elements for the building:</strong>
+<div class="highlight"><pre><span></span><code><span class="c1">// streaming.js §DS_QUEUED</span>
+<span class="nx">SELECT</span><span class="w"> </span><span class="nx">m</span><span class="p">.</span><span class="nx">guid</span><span class="p">,</span><span class="w"> </span><span class="nx">i</span><span class="p">.</span><span class="nx">geometry_hash</span><span class="p">,</span><span class="w"> </span><span class="nx">m</span><span class="p">.</span><span class="nx">material_rgba</span><span class="p">,</span><span class="w"> </span><span class="nx">m</span><span class="p">.</span><span class="nx">discipline</span><span class="p">,</span>
+<span class="w">       </span><span class="nx">t</span><span class="p">.</span><span class="nx">center_x</span><span class="p">,</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">center_y</span><span class="p">,</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">center_z</span><span class="p">,</span>
+<span class="w">       </span><span class="nx">t</span><span class="p">.</span><span class="nx">rotation_x</span><span class="p">,</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">rotation_y</span><span class="p">,</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">rotation_z</span><span class="p">,</span>
+<span class="w">       </span><span class="nx">m</span><span class="p">.</span><span class="nx">storey</span><span class="p">,</span><span class="w"> </span><span class="nx">m</span><span class="p">.</span><span class="nx">ifc_class</span>
+<span class="nx">FROM</span><span class="w"> </span><span class="nx">elements_meta</span><span class="w"> </span><span class="nx">m</span>
+<span class="nx">JOIN</span><span class="w"> </span><span class="nx">element_instances</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="nx">ON</span><span class="w"> </span><span class="nx">m</span><span class="p">.</span><span class="nx">guid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">i</span><span class="p">.</span><span class="nx">guid</span>
+<span class="nx">JOIN</span><span class="w"> </span><span class="nx">element_transforms</span><span class="w"> </span><span class="nx">t</span><span class="w"> </span><span class="nx">ON</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">guid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">m</span><span class="p">.</span><span class="nx">guid</span>
+<span class="nx">WHERE</span><span class="w"> </span><span class="nx">m</span><span class="p">.</span><span class="nx">building</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">?</span>
+<span class="w">  </span><span class="nx">AND</span><span class="w"> </span><span class="nx">i</span><span class="p">.</span><span class="nx">geometry_hash</span><span class="w"> </span><span class="nx">IS</span><span class="w"> </span><span class="nx">NOT</span><span class="w"> </span><span class="nx">NULL</span>
+<span class="w">  </span><span class="nx">AND</span><span class="w"> </span><span class="nx">m</span><span class="p">.</span><span class="nx">ifc_class</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s1">&#39;IfcOpeningElement&#39;</span>
+</code></pre></div></p>
+<p><strong>Phase 2 — fetch BLOBs for all unique hashes (batch of 200):</strong>
+<div class="highlight"><pre><span></span><code><span class="c1">// streaming.js §BLOB_FETCH</span>
+<span class="nx">SELECT</span><span class="w"> </span><span class="nx">geometry_hash</span><span class="p">,</span><span class="w"> </span><span class="nx">vertices</span><span class="p">,</span><span class="w"> </span><span class="nx">faces</span>
+<span class="nx">FROM</span><span class="w"> </span><span class="nx">component_geometries</span><span class="w">          </span><span class="o">--</span><span class="w"> </span><span class="nx">library</span><span class="w"> </span><span class="nx">DB</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="nx">name</span>
+<span class="nx">WHERE</span><span class="w"> </span><span class="nx">geometry_hash</span><span class="w"> </span><span class="nx">IN</span><span class="w"> </span><span class="p">(</span><span class="o">?</span><span class="p">,</span><span class="o">?</span><span class="p">,</span><span class="o">?</span><span class="p">,...)</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="nx">up</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="mf">200</span><span class="w"> </span><span class="nx">placeholders</span>
+</code></pre></div></p>
+<p>The viewer tries <code>component_geometries</code> first, then <code>base_geometries</code>, in both the library DB and the extracted DB.</p>
+<p><strong>Phase 3 — flush: one draw call per unique hash</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">// streaming.js §FLUSH_INSTANCED  (simplified)</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">hash</span><span class="p">,</span><span class="w"> </span><span class="nx">elements</span><span class="p">]</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="nb">Object</span><span class="p">.</span><span class="nx">entries</span><span class="p">(</span><span class="nx">pendingInstances</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">elements</span><span class="p">.</span><span class="nx">length</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mf">2</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// ONE draw call for N identical geometries — THREE.InstancedMesh</span>
+<span class="w">        </span><span class="kd">const</span><span class="w"> </span><span class="nx">iMesh</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">THREE</span><span class="p">.</span><span class="nx">InstancedMesh</span><span class="p">(</span><span class="nx">geo</span><span class="p">,</span><span class="w"> </span><span class="nx">mat</span><span class="p">,</span><span class="w"> </span><span class="nx">elements</span><span class="p">.</span><span class="nx">length</span><span class="p">);</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">let</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nx">elements</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="kd">const</span><span class="w"> </span><span class="nx">pos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">ifc2three</span><span class="p">(</span><span class="nx">el</span><span class="p">.</span><span class="nx">cx</span><span class="p">,</span><span class="w"> </span><span class="nx">el</span><span class="p">.</span><span class="nx">cy</span><span class="p">,</span><span class="w"> </span><span class="nx">el</span><span class="p">.</span><span class="nx">cz</span><span class="p">);</span>
+<span class="w">            </span><span class="nx">_m4</span><span class="p">.</span><span class="nx">compose</span><span class="p">(</span><span class="nx">pos</span><span class="p">,</span><span class="w"> </span><span class="nx">quaternionFromEuler</span><span class="p">(</span><span class="nx">el</span><span class="p">.</span><span class="nx">rotX</span><span class="p">,</span><span class="w"> </span><span class="nx">el</span><span class="p">.</span><span class="nx">rotZ</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="nx">el</span><span class="p">.</span><span class="nx">rotY</span><span class="p">),</span><span class="w"> </span><span class="nx">unitScale</span><span class="p">);</span>
+<span class="w">            </span><span class="nx">iMesh</span><span class="p">.</span><span class="nx">setMatrixAt</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span><span class="w"> </span><span class="nx">_m4</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Single occurrence — individual THREE.Mesh</span>
+<span class="w">        </span><span class="kd">const</span><span class="w"> </span><span class="nx">mesh</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">THREE</span><span class="p">.</span><span class="nx">Mesh</span><span class="p">(</span><span class="nx">geo</span><span class="p">,</span><span class="w"> </span><span class="nx">mat</span><span class="p">);</span>
+<span class="w">        </span><span class="nx">mesh</span><span class="p">.</span><span class="nx">position</span><span class="p">.</span><span class="nx">set</span><span class="p">(...</span><span class="nx">ifc2three</span><span class="p">(</span><span class="nx">el</span><span class="p">.</span><span class="nx">cx</span><span class="p">,</span><span class="w"> </span><span class="nx">el</span><span class="p">.</span><span class="nx">cy</span><span class="p">,</span><span class="w"> </span><span class="nx">el</span><span class="p">.</span><span class="nx">cz</span><span class="p">));</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Mobile path (S232): single-instance elements are additionally merged by <code>storey|discipline|material</code> into one <code>THREE.Mesh</code> per bucket, baking the world transform into vertex positions. This trades per-element pick capability for ~200 total draw calls on complex models.</p>
+<hr />
+<h2 id="coordinate-systems">Coordinate Systems<a class="headerlink" href="#coordinate-systems" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>X</th>
+<th>Y</th>
+<th>Z</th>
+<th>Used in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IFC</td>
+<td>East</td>
+<td>North</td>
+<td>Up</td>
+<td>DB storage (all tables)</td>
+</tr>
+<tr>
+<td>Three.js</td>
+<td>East</td>
+<td>Up</td>
+<td>South</td>
+<td>Renderer, camera, raycaster</td>
+</tr>
+<tr>
+<td>Blender</td>
+<td>East</td>
+<td>South</td>
+<td>Up</td>
+<td>Python extraction pipeline</td>
+</tr>
+</tbody>
+</table>
+<p>The only transform that matters for a viewer is IFC → Three.js:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// scene.js §IFC2THREE</span>
+<span class="nx">A</span><span class="p">.</span><span class="nx">ifc2three</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kd">function</span><span class="p">(</span><span class="nx">ix</span><span class="p">,</span><span class="w"> </span><span class="nx">iy</span><span class="p">,</span><span class="w"> </span><span class="nx">iz</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">x</span><span class="o">:</span><span class="w">  </span><span class="nx">ix</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">A</span><span class="p">.</span><span class="nx">modelOffset</span><span class="p">.</span><span class="nx">x</span><span class="p">,</span><span class="w">   </span><span class="c1">// east, offset to model centre</span>
+<span class="w">        </span><span class="nx">y</span><span class="o">:</span><span class="w">  </span><span class="nx">iz</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">A</span><span class="p">.</span><span class="nx">modelOffset</span><span class="p">.</span><span class="nx">z</span><span class="p">,</span><span class="w">   </span><span class="c1">// IFC Z (up) → Three.js Y (up)</span>
+<span class="w">        </span><span class="nx">z</span><span class="o">:</span><span class="w"> </span><span class="o">-</span><span class="p">(</span><span class="nx">iy</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">A</span><span class="p">.</span><span class="nx">modelOffset</span><span class="p">.</span><span class="nx">y</span><span class="p">)</span><span class="w">  </span><span class="c1">// IFC Y (north) → Three.js -Z (south)</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="p">};</span>
+</code></pre></div>
+<p><code>modelOffset</code> is computed once at load time as the centroid of all element transforms. This keeps floating-point precision high for large site coordinates (IFC world origin may be tens of thousands of metres from the building).</p>
+<p>Euler rotation in the transform: the IFC placement matrix is decomposed to ZYX Euler angles and stored as <code>rotation_x/y/z</code>. The viewer applies them as <code>mesh.rotation.set(rotX, rotZ, -rotY)</code> — mapping IFC ZYX to Three.js XYZ with the Y/Z swap.</p>
+<hr />
+<h2 id="indexeddb-caching-layer">IndexedDB Caching Layer<a class="headerlink" href="#indexeddb-caching-layer" title="Permanent link">&para;</a></h2>
+<p>The browser maintains a persistent cache in IndexedDB so DB files are not re-fetched on subsequent visits.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// scene.js §CACHED_FETCH</span>
+<span class="nx">A</span><span class="p">.</span><span class="nx">CACHE_DB_NAME</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;bim_ootb_cache&#39;</span><span class="p">;</span>
+<span class="nx">A</span><span class="p">.</span><span class="nx">CACHE_STORE</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;dbs&#39;</span><span class="p">;</span>
+
+<span class="nx">A</span><span class="p">.</span><span class="nx">cachedFetch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="kd">function</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">cacheDb</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">A</span><span class="p">.</span><span class="nx">openCacheDB</span><span class="p">();</span>
+<span class="w">    </span><span class="c1">// Try IndexedDB first</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">cached</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">idbGet</span><span class="p">(</span><span class="nx">cacheDb</span><span class="p">,</span><span class="w"> </span><span class="nx">url</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">cached</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">cached</span><span class="p">;</span><span class="w">          </span><span class="c1">// §CACHE_HIT — no network request</span>
+<span class="w">    </span><span class="c1">// Fetch, store, return</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">buf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="nx">url</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span><span class="nx">r</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">arrayBuffer</span><span class="p">());</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nx">idbPut</span><span class="p">(</span><span class="nx">cacheDb</span><span class="p">,</span><span class="w"> </span><span class="nx">url</span><span class="p">,</span><span class="w"> </span><span class="nx">buf</span><span class="p">);</span><span class="w">    </span><span class="c1">// §CACHE_MISS — stored for next time</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">buf</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div>
+<p>The key is the URL. The value is the raw <code>ArrayBuffer</code> of the SQLite file. On cache hit, the DB is opened directly from memory: <code>new SQL.Database(new Uint8Array(buf))</code>.</p>
+<p>This means geometry (the library DB, rarely changing) and metadata (the extracted DB, updated with the model) have identical cache mechanics. A future improvement is to serve the library DB with <code>Cache-Control: immutable</code> and the extracted DB with an ETag, letting the browser manage invalidation at the HTTP layer rather than the application layer.</p>
+<hr />
+<h2 id="what-makes-this-novel">What Makes This Novel<a class="headerlink" href="#what-makes-this-novel" title="Permanent link">&para;</a></h2>
+<p>Most 3D pipeline architectures have these layers as separate systems:</p>
+<div class="highlight"><pre><span></span><code>Parser → Scene graph (in-memory) → Spatial index → Renderer
+</code></pre></div>
+<p>This schema collapses all four into one SQLite file:</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Traditional</th>
+<th>This schema</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Geometry storage</td>
+<td>glTF / OBJ / binary blob files</td>
+<td><code>component_geometries.vertices</code> BLOB — same file as metadata</td>
+</tr>
+<tr>
+<td>Instancing</td>
+<td>glTF mesh reuse, manual dedup</td>
+<td>Hash-addressed: identical geometry is physically one row</td>
+</tr>
+<tr>
+<td>Spatial index</td>
+<td>Separate BVH built at runtime</td>
+<td><code>elements_rtree</code> — SQLite virtual table, persisted, no build step</td>
+</tr>
+<tr>
+<td>Filtering</td>
+<td>Traverse and test every node</td>
+<td><code>WHERE discipline = 'STR' AND storey = 'L2'</code> — SQL</td>
+</tr>
+<tr>
+<td>Metadata</td>
+<td>glTF extras / separate JSON</td>
+<td><code>elements_meta</code> joined to transforms and geometry in one query</td>
+</tr>
+<tr>
+<td>Multi-model federation</td>
+<td>Separate file per building, manual merge</td>
+<td>City index DB — one SQL query returns all building centroids</td>
+</tr>
+</tbody>
+</table>
+<p>The geometry hash is the key innovation. It means:
+1. <strong>Deduplication is free</strong> — <code>INSERT OR IGNORE</code> at extraction time; duplicates never enter the library
+2. <strong>Instancing requires no viewer logic</strong> — group by hash, count &gt; 1 means <code>InstancedMesh</code>
+3. <strong>Cross-building sharing is automatic</strong> — two buildings with the same door share one library row
+4. <strong>Cache invalidation is content-addressed</strong> — if the hash is the same, the geometry is the same</p>
+<hr />
+<h2 id="minimum-viable-viewer">Minimum Viable Viewer<a class="headerlink" href="#minimum-viable-viewer" title="Permanent link">&para;</a></h2>
+<p>A conformant viewer must:</p>
+<ol>
+<li>Open <code>_extracted.db</code> and <code>_library.db</code> with sql.js (or equivalent SQLite WASM)</li>
+<li>Query <code>elements_meta + element_instances + element_transforms</code> for elements</li>
+<li>For each unique <code>geometry_hash</code>, query <code>component_geometries</code> or <code>base_geometries</code> for the BLOBs</li>
+<li>Deserialise BLOBs as <code>Float32Array</code> (vertices) and <code>Uint32Array</code> (faces) per the BLOB encoding spec</li>
+<li>Apply the IFC → renderer coordinate transform to vertex positions</li>
+<li>Apply <code>center + rotation</code> from <code>element_transforms</code> to place each mesh</li>
+<li>Read <code>material_rgba</code> from <code>elements_meta</code> for per-element colour</li>
+</ol>
+<p>Everything else (R-tree culling, instancing, storey filter, section cuts) is a performance or UX optimisation on top of this core loop.</p>
+<hr />
+<h2 id="file-naming-convention">File Naming Convention<a class="headerlink" href="#file-naming-convention" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Contains</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{Building}_extracted.db</code></td>
+<td>Semantic index — elements, transforms, spatial structure</td>
+</tr>
+<tr>
+<td><code>{Building}_library.db</code></td>
+<td>Geometry pool — BLOBs only</td>
+</tr>
+<tr>
+<td><code>city_index.db</code></td>
+<td>Multi-building index — centroids, bboxes, archetypes</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>archetype</code> column in <code>building_archetype</code> maps a building name to its DB file pair. Buildings with identical floor plans share one archetype (and therefore one library DB).</p>
+<hr />
+<h2 id="versioning">Versioning<a class="headerlink" href="#versioning" title="Permanent link">&para;</a></h2>
+<p>The schema version is stored in <code>project_metadata</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">project_metadata</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;schema_version&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;1.0&#39;</span><span class="p">);</span>
+</code></pre></div>
+<p>Breaking changes increment the major version. Additive changes (new tables, new nullable columns) increment the minor version. A viewer must reject DBs with a higher major version than it understands.</p>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/red1oon/BIMCompiler" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/red1oon/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
