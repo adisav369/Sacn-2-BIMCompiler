@@ -25,6 +25,8 @@
 var TOLERANCE = 0.005;        // 5 mm endpoint matching
 var EPSILON   = 1e-7;         // floating-point zero guard
 var DEFAULT_CUT_OFFSET = 1.0; // meters above floor level
+var MAX_ELEMENTS_POC = 500;   // auto-clip threshold: buildings with more transforms get clipped
+var CLIP_MARGIN = 15.0;       // half-side of clip window in metres (30m × 30m total)
 
 // IFC classes eligible for slicing (performance filter)
 var SLICE_CLASSES = {
@@ -348,11 +350,35 @@ function lookupGeometry(db, libDb, geometryHash) {
 }
 
 // -------------------------------------------------------------------------
+// Building stats — element count + world bbox from element_transforms
+// -------------------------------------------------------------------------
+
+function getBuildingStats(db) {
+    var res = db.exec(
+        "SELECT COUNT(*), MIN(center_x), MAX(center_x), MIN(center_y), MAX(center_y) " +
+        "FROM element_transforms"
+    );
+    if (!res.length || !res[0].values.length) return null;
+    var row = res[0].values[0];
+    var minX = Number(row[1]), maxX = Number(row[2]);
+    var minY = Number(row[3]), maxY = Number(row[4]);
+    return {
+        elementCount: Number(row[0]),
+        minX: minX, maxX: maxX,
+        minY: minY, maxY: maxY,
+        centerX: (minX + maxX) / 2,
+        centerY: (minY + maxY) / 2
+    };
+}
+
+// -------------------------------------------------------------------------
 // Section cut — main orchestration
 // -------------------------------------------------------------------------
 
-function sectionCut(db, libDb, cutZ, storeyName) {
+function sectionCut(db, libDb, cutZ, storeyName, options) {
     var t0 = Date.now();
+    var opts = options || {};
+    var clipBox = opts.clipBox || null;   // {minX, minY, maxX, maxY}
 
     // --- Determine cut height ---
     if (cutZ == null) {
@@ -416,6 +442,23 @@ function sectionCut(db, libDb, cutZ, storeyName) {
 
     var allRows = (allRes && allRes.length > 0) ? allRes[0].values : [];
     console.log('§SC_QUERY_ALL rows=' + allRows.length + ' useRtree=' + useRtree);
+
+    // Apply spatial clip (POC limit for large buildings)
+    if (clipBox) {
+        var beforeClip = allRows.length;
+        var clipped = [];
+        for (var fi = 0; fi < allRows.length; fi++) {
+            var fcx = Number(allRows[fi][11]), fcy = Number(allRows[fi][12]);
+            if (fcx >= clipBox.minX && fcx <= clipBox.maxX &&
+                fcy >= clipBox.minY && fcy <= clipBox.maxY) {
+                clipped.push(allRows[fi]);
+            }
+        }
+        allRows = clipped;
+        console.log('§SC_CLIP rows ' + beforeClip + ' → ' + allRows.length +
+                    ' box=[' + clipBox.minX.toFixed(0) + ',' + clipBox.minY.toFixed(0) +
+                    ' to ' + clipBox.maxX.toFixed(0) + ',' + clipBox.maxY.toFixed(0) + ']');
+    }
 
     var cutCount = 0, belowCount = 0, aboveCount = 0, totalContours = 0;
     var sliceCount = 0;
@@ -580,10 +623,13 @@ var api = {
     sectionCut: sectionCut,
     sliceMesh: sliceMesh,
     chainSegments: chainSegments,
+    getBuildingStats: getBuildingStats,
     // Expose constants for testing
     TOLERANCE: TOLERANCE,
     EPSILON: EPSILON,
-    DEFAULT_CUT_OFFSET: DEFAULT_CUT_OFFSET
+    DEFAULT_CUT_OFFSET: DEFAULT_CUT_OFFSET,
+    MAX_ELEMENTS_POC: MAX_ELEMENTS_POC,
+    CLIP_MARGIN: CLIP_MARGIN
 };
 
 if (typeof window !== 'undefined') {

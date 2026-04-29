@@ -793,6 +793,152 @@ test.describe('2D Dynamic Generation', () => {
     expect(status).toContain('Generated');
   });
 
+  // ── SH dynamic vs DXF baseline ──
+  // Issue prevented: dynamic generation producing geometry from a different building
+  // or coordinate system than the Python-generated pristine DXF.
+
+  test('14.32 SH dynamic floor plan is structurally similar to pristine DXF baseline @db @whitebox', async ({ page }) => {
+    // NOTE: DXF uses local mm coordinates; DB uses world metres. Absolute bbox
+    // comparison is not possible. Proof = same IFC classes, comparable entity
+    // counts, and dynamic bbox is in the expected world coordinate range.
+
+    // Step 1 — parse pristine SH_FLOOR.dxf, record IFC classes + polyline count
+    await page.goto('/dev/2d.html', { waitUntil: 'domcontentloaded' });
+    await page.selectOption('#sheet-select', 'dxf/SH_FLOOR.dxf');
+    await page.waitForFunction(() => parseInt(document.getElementById('ent-count')?.textContent) > 0, { timeout: 15000 });
+
+    const dxfData = await page.evaluate(() => {
+      const ents = window.dxf ? window.dxf.entities : [];
+      const classes = new Set();
+      for (const e of ents) {
+        const xd = e.extendedData || e.xdata || e.xData;
+        if (!xd || xd.applicationName !== 'BIMSRC') continue;
+        (xd.customStrings || []).forEach(s => { if (s.startsWith('ifc_class:')) classes.add(s.slice(10)); });
+      }
+      return {
+        polylines: ents.filter(e => e.type === 'LWPOLYLINE').length,
+        bimsrc: ents.filter(e => { const xd = e.extendedData || e.xdata || e.xData; return xd && xd.applicationName === 'BIMSRC'; }).length,
+        classes: [...classes].sort()
+      };
+    });
+    console.log(`§PW_2D_DXF_DATA polylines=${dxfData.polylines} bimsrc=${dxfData.bimsrc} classes=${dxfData.classes.join(',')}`);
+
+    // Step 2 — generate dynamic floor plan from the same DB
+    await page.goto(`/dev/2d.html?db=${SH_DB}&lib=${SH_LIB}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => {
+      const s = document.getElementById('status-text');
+      return s && (s.textContent.includes('Generated') || s.textContent.includes('error'));
+    }, { timeout: 45000 });
+
+    const dynData = await page.evaluate(() => {
+      const ents = window.dxf ? window.dxf.entities : [];
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      const classes = new Set();
+      let bimsrc = 0;
+      for (const e of ents) {
+        if (e.vertices) for (const v of e.vertices) {
+          if (v.x < minX) minX = v.x; if (v.x > maxX) maxX = v.x;
+          if (v.y < minY) minY = v.y; if (v.y > maxY) maxY = v.y;
+        }
+        const xd = e.extendedData;
+        if (xd && xd.applicationName === 'BIMSRC') {
+          bimsrc++;
+          (xd.customStrings || []).forEach(s => { if (s.startsWith('ifc_class:')) classes.add(s.slice(10)); });
+        }
+      }
+      return {
+        polylines: ents.filter(e => e.type === 'LWPOLYLINE').length,
+        bimsrc,
+        classes: [...classes].sort(),
+        bboxWidth:  isFinite(maxX) ? maxX - minX : 0,
+        bboxHeight: isFinite(maxY) ? maxY - minY : 0
+      };
+    });
+    console.log(`§PW_2D_DYN_DATA polylines=${dynData.polylines} bimsrc=${dynData.bimsrc} classes=${dynData.classes.join(',')}`);
+    console.log(`§PW_2D_DYN_DIM width=${dynData.bboxWidth.toFixed(2)}m height=${dynData.bboxHeight.toFixed(2)}m`);
+
+    // Ratio of dynamic/DXF polyline counts — expect within 5x (same building, different pipelines)
+    const ratio = dxfData.polylines > 0 ? dynData.polylines / dxfData.polylines : 0;
+    console.log(`§PW_2D_SIMILARITY ratio=${ratio.toFixed(2)} dxfClasses=${dxfData.classes.join(',')} dynClasses=${dynData.classes.join(',')}`);
+
+    // Same IFC classes must appear in both outputs (same building's elements sliced)
+    const commonClasses = dxfData.classes.filter(c => dynData.classes.includes(c));
+    console.log(`§PW_2D_CLASS_OVERLAP common=${commonClasses.join(',')} of dxf=${dxfData.classes.length} dyn=${dynData.classes.length}`);
+
+    expect(dynData.polylines).toBeGreaterThan(10);              // dynamic has wall contours
+    expect(dynData.bimsrc).toBeGreaterThan(5);                  // dynamic has BIMSRC tags
+    expect(ratio).toBeGreaterThan(0.2);                         // dynamic ≥20% of DXF polylines
+    expect(ratio).toBeLessThan(5.0);                            // dynamic ≤5× DXF polylines
+    expect(dynData.classes).toEqual(expect.arrayContaining(['IfcWall']));  // IfcWall in both
+    expect(commonClasses.length).toBeGreaterThanOrEqual(2);     // ≥2 classes shared
+    // Dynamic bbox is a house-scale building (5–100m each axis)
+    expect(dynData.bboxWidth).toBeGreaterThan(5);
+    expect(dynData.bboxWidth).toBeLessThan(100);
+    expect(dynData.bboxHeight).toBeGreaterThan(3);
+    expect(dynData.bboxHeight).toBeLessThan(100);
+  });
+
+  // ── Large building auto-clip ──
+  // Issue prevented: Hospital/Terminal (48K+ elements) hanging the browser or
+  // timing out instead of clipping to a demonstrable partial section.
+
+  test('14.33 Large building auto-clips and produces valid floor plan @db @whitebox', async ({ page }) => {
+    const HOSPITAL_DB = '/buildings/Hospital_extracted.db';
+    const HOSPITAL_LIB = '/buildings/Hospital_library.db';
+
+    const logs = [];
+    page.on('console', msg => logs.push(msg.text()));
+
+    await page.goto(`/dev/2d.html?db=${HOSPITAL_DB}&lib=${HOSPITAL_LIB}`, { waitUntil: 'domcontentloaded' });
+
+    const t0 = Date.now();
+    await page.waitForFunction(() => {
+      const s = document.getElementById('status-text');
+      return s && (s.textContent.includes('Generated') || s.textContent.includes('error'));
+    }, { timeout: 60000 });
+    const elapsed = Date.now() - t0;
+
+    const status = await page.$eval('#status-text', el => el.textContent);
+    const entCount = await page.$eval('#ent-count', el => parseInt(el.textContent));
+
+    // Clip log must appear — proves auto-clip fired for large building
+    const clipLog = logs.find(l => l.includes('§2D_LARGE_BUILDING') || l.includes('§SC_CLIP'));
+
+    console.log(`§PW_2D_HOSPITAL elapsed=${elapsed}ms status="${status}" entities=${entCount}`);
+    console.log(`§PW_2D_HOSPITAL_CLIP clipLog="${clipLog || 'none'}"`);
+
+    expect(status).toContain('Generated');
+    expect(entCount).toBeGreaterThan(0);         // proved capability: section cut works
+    expect(elapsed).toBeLessThan(15000);         // under 15s with clip
+    expect(clipLog).toBeTruthy();                // auto-clip fired
+  });
+
+  test('14.34 getBuildingStats returns sane values for SH and Hospital @db @whitebox', async ({ page }) => {
+    // SH — small building, no clip needed
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    const shStats = await page.evaluate(() => {
+      if (!window.SectionCut || !window._2d_dbMain) return null;
+      return SectionCut.getBuildingStats(window._2d_dbMain);
+    });
+    console.log(`§PW_2D_STATS_SH elementCount=${shStats?.elementCount} centerX=${shStats?.centerX?.toFixed(1)} centerY=${shStats?.centerY?.toFixed(1)}`);
+
+    expect(shStats).not.toBeNull();
+    expect(shStats.elementCount).toBeGreaterThan(0);
+    expect(isFinite(shStats.centerX)).toBe(true);
+    expect(isFinite(shStats.centerY)).toBe(true);
+    // SH: 65 elements — well under MAX_ELEMENTS_POC (500), no clip should fire
+    expect(shStats.elementCount).toBeLessThan(500);
+
+    // Verify MAX_ELEMENTS_POC and CLIP_MARGIN are exported
+    const consts = await page.evaluate(() => ({
+      MAX_ELEMENTS_POC: window.SectionCut ? SectionCut.MAX_ELEMENTS_POC : null,
+      CLIP_MARGIN:      window.SectionCut ? SectionCut.CLIP_MARGIN      : null,
+    }));
+    console.log(`§PW_2D_CONSTS MAX_ELEMENTS_POC=${consts.MAX_ELEMENTS_POC} CLIP_MARGIN=${consts.CLIP_MARGIN}`);
+    expect(consts.MAX_ELEMENTS_POC).toBe(500);
+    expect(consts.CLIP_MARGIN).toBe(15.0);
+  });
+
   test('14.31 2d.html without ?db= shows DXF dropdown, no Generate @fast @whitebox', async ({ page }) => {
     await page.goto('/dev/2d.html', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => parseInt(document.getElementById('ent-count')?.textContent) > 0, { timeout: 15000 });

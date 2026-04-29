@@ -820,7 +820,27 @@ async function generateFromDb() {
 
     if (mode === 'plan') {
       // Floor plan: section cut + grids + dims
-      const elements = SectionCut.sectionCut(dbMain, dbLib, null, storeyName || null);
+      // For large buildings: auto-clip to centre 30m×30m window (POC limit)
+      let sectionOpts = null;
+      if (window.SectionCut && SectionCut.getBuildingStats) {
+        const stats = SectionCut.getBuildingStats(dbMain);
+        if (stats && stats.elementCount > SectionCut.MAX_ELEMENTS_POC) {
+          const half = SectionCut.CLIP_MARGIN;
+          sectionOpts = {
+            clipBox: {
+              minX: stats.centerX - half, minY: stats.centerY - half,
+              maxX: stats.centerX + half, maxY: stats.centerY + half
+            }
+          };
+          console.log('§2D_LARGE_BUILDING elements=' + stats.elementCount +
+                      ' clip=[' + sectionOpts.clipBox.minX.toFixed(0) + ',' +
+                      sectionOpts.clipBox.minY.toFixed(0) + ' to ' +
+                      sectionOpts.clipBox.maxX.toFixed(0) + ',' +
+                      sectionOpts.clipBox.maxY.toFixed(0) + ']');
+          setStatus('Large building — clipping to centre 30m window…');
+        }
+      }
+      const elements = SectionCut.sectionCut(dbMain, dbLib, null, storeyName || null, sectionOpts);
       newEntities = sectionToEntities(elements);
 
       // Add grids + dimensions
