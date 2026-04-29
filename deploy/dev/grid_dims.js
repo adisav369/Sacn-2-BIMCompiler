@@ -19,7 +19,8 @@
   var SNAP_MODULE = 300; // mm — snap bay widths to nearest 300mm if within 150mm
   var DEFAULT_TOLERANCE = 0.3; // meters — columns within 30cm are same grid line
   var GRID_EXTEND = 1.0; // meters — how far grid lines extend beyond plan bbox
-  var LABEL_RADIUS = 6; // px — circle radius for grid labels (abstract, renderer scales)
+  var LABEL_RADIUS = 10; // screen px — circle radius for grid bubbles (renderer must NOT multiply by viewScale)
+  var LABEL_TEXT_H = 10; // screen px — bubble label font size (renderer must NOT multiply by viewScale)
 
   // ── Helpers ──────────────────────────────────────────────────────
 
@@ -270,48 +271,14 @@
       var xPos = xLines[xi].position;
 
       // Dashed vertical line
-      cmds.push({
-        type: 'line',
-        x1: xPos, y1: bMinY,
-        x2: xPos, y2: bMaxY,
-        dash: [0.3, 0.15],
-        color: '#888888',
-        lineWidth: 0.5
-      });
+      cmds.push({ type: 'line', x1: xPos, y1: bMinY, x2: xPos, y2: bMaxY, dash: [0.3, 0.15], color: '#666677', lineWidth: 0.5 });
 
-      // Label circle + text at bottom
-      cmds.push({
-        type: 'circle',
-        cx: xPos, cy: bMinY - 0.5,
-        r: LABEL_RADIUS,
-        color: '#888888',
-        fill: false
-      });
-      cmds.push({
-        type: 'text',
-        x: xPos, y: bMinY - 0.5,
-        text: xLines[xi].label,
-        color: '#888888',
-        fontSize: 10,
-        align: 'center'
-      });
-
+      // Label circle + text at bottom — screenR/screenH: renderer uses fixed px, no viewScale multiply
+      cmds.push({ type: 'circle', cx: xPos, cy: bMinY - 0.5, r: LABEL_RADIUS, screenR: true, color: '#aaaaaa', fill: false });
+      cmds.push({ type: 'text', x: xPos, y: bMinY - 0.5, text: xLines[xi].label, color: '#aaaaaa', fontSize: LABEL_TEXT_H, screenH: true, align: 'center' });
       // Label circle + text at top
-      cmds.push({
-        type: 'circle',
-        cx: xPos, cy: bMaxY + 0.5,
-        r: LABEL_RADIUS,
-        color: '#888888',
-        fill: false
-      });
-      cmds.push({
-        type: 'text',
-        x: xPos, y: bMaxY + 0.5,
-        text: xLines[xi].label,
-        color: '#888888',
-        fontSize: 10,
-        align: 'center'
-      });
+      cmds.push({ type: 'circle', cx: xPos, cy: bMaxY + 0.5, r: LABEL_RADIUS, screenR: true, color: '#aaaaaa', fill: false });
+      cmds.push({ type: 'text', x: xPos, y: bMaxY + 0.5, text: xLines[xi].label, color: '#aaaaaa', fontSize: LABEL_TEXT_H, screenH: true, align: 'center' });
     }
 
     // ── Y-axis grid lines (horizontal lines at each Y position) ──
@@ -319,144 +286,35 @@
       var yPos = yLines[yi].position;
 
       // Dashed horizontal line
-      cmds.push({
-        type: 'line',
-        x1: bMinX, y1: yPos,
-        x2: bMaxX, y2: yPos,
-        dash: [0.3, 0.15],
-        color: '#888888',
-        lineWidth: 0.5
-      });
+      cmds.push({ type: 'line', x1: bMinX, y1: yPos, x2: bMaxX, y2: yPos, dash: [0.3, 0.15], color: '#666677', lineWidth: 0.5 });
 
       // Label circle + text at left
-      cmds.push({
-        type: 'circle',
-        cx: bMinX - 0.5, cy: yPos,
-        r: LABEL_RADIUS,
-        color: '#888888',
-        fill: false
-      });
-      cmds.push({
-        type: 'text',
-        x: bMinX - 0.5, y: yPos,
-        text: yLines[yi].label,
-        color: '#888888',
-        fontSize: 10,
-        align: 'center'
-      });
-
+      cmds.push({ type: 'circle', cx: bMinX - 0.5, cy: yPos, r: LABEL_RADIUS, screenR: true, color: '#aaaaaa', fill: false });
+      cmds.push({ type: 'text', x: bMinX - 0.5, y: yPos, text: yLines[yi].label, color: '#aaaaaa', fontSize: LABEL_TEXT_H, screenH: true, align: 'center' });
       // Label circle + text at right
-      cmds.push({
-        type: 'circle',
-        cx: bMaxX + 0.5, cy: yPos,
-        r: LABEL_RADIUS,
-        color: '#888888',
-        fill: false
-      });
-      cmds.push({
-        type: 'text',
-        x: bMaxX + 0.5, y: yPos,
-        text: yLines[yi].label,
-        color: '#888888',
-        fontSize: 10,
-        align: 'center'
-      });
+      cmds.push({ type: 'circle', cx: bMaxX + 0.5, cy: yPos, r: LABEL_RADIUS, screenR: true, color: '#aaaaaa', fill: false });
+      cmds.push({ type: 'text', x: bMaxX + 0.5, y: yPos, text: yLines[yi].label, color: '#aaaaaa', fontSize: LABEL_TEXT_H, screenH: true, align: 'center' });
     }
 
     // ── Dimension annotations ─────────────────────────────────────
+    var DIM_COLOR = '#99aacc';  // visible on dark bg
+    var DIM_TEXT_H = 9;         // screen px
     for (var di = 0; di < dims.length; di++) {
       var d = dims[di];
       var offset = d.tier === 2 ? DIM_OFFSET_2 : DIM_OFFSET_1;
 
       if (d.axis === 'x') {
-        // Horizontal dimension above plan
         var dimY = bMaxY + offset;
-
-        // Dimension line
-        cmds.push({
-          type: 'line',
-          x1: d.startPos, y1: dimY,
-          x2: d.endPos, y2: dimY,
-          dash: null,
-          color: '#333333',
-          lineWidth: 0.3
-        });
-
-        // Start tick
-        cmds.push({
-          type: 'line',
-          x1: d.startPos, y1: dimY - 0.2,
-          x2: d.startPos, y2: dimY + 0.2,
-          dash: null,
-          color: '#333333',
-          lineWidth: 0.3
-        });
-
-        // End tick
-        cmds.push({
-          type: 'line',
-          x1: d.endPos, y1: dimY - 0.2,
-          x2: d.endPos, y2: dimY + 0.2,
-          dash: null,
-          color: '#333333',
-          lineWidth: 0.3
-        });
-
-        // Distance text centered
-        cmds.push({
-          type: 'text',
-          x: (d.startPos + d.endPos) / 2,
-          y: dimY - 0.35,
-          text: d.label,
-          color: '#333333',
-          fontSize: 8,
-          align: 'center'
-        });
-
+        cmds.push({ type: 'line', x1: d.startPos, y1: dimY, x2: d.endPos, y2: dimY, dash: null, color: DIM_COLOR, lineWidth: 0.3 });
+        cmds.push({ type: 'line', x1: d.startPos, y1: dimY - 0.15, x2: d.startPos, y2: dimY + 0.15, dash: null, color: DIM_COLOR, lineWidth: 0.3 });
+        cmds.push({ type: 'line', x1: d.endPos, y1: dimY - 0.15, x2: d.endPos, y2: dimY + 0.15, dash: null, color: DIM_COLOR, lineWidth: 0.3 });
+        cmds.push({ type: 'text', x: (d.startPos + d.endPos) / 2, y: dimY + 0.3, text: d.label, color: DIM_COLOR, fontSize: DIM_TEXT_H, screenH: true, align: 'center' });
       } else {
-        // Vertical dimension left of plan
         var dimX = bMinX - offset;
-
-        // Dimension line
-        cmds.push({
-          type: 'line',
-          x1: dimX, y1: d.startPos,
-          x2: dimX, y2: d.endPos,
-          dash: null,
-          color: '#333333',
-          lineWidth: 0.3
-        });
-
-        // Start tick
-        cmds.push({
-          type: 'line',
-          x1: dimX - 0.2, y1: d.startPos,
-          x2: dimX + 0.2, y2: d.startPos,
-          dash: null,
-          color: '#333333',
-          lineWidth: 0.3
-        });
-
-        // End tick
-        cmds.push({
-          type: 'line',
-          x1: dimX - 0.2, y1: d.endPos,
-          x2: dimX + 0.2, y2: d.endPos,
-          dash: null,
-          color: '#333333',
-          lineWidth: 0.3
-        });
-
-        // Distance text centered
-        cmds.push({
-          type: 'text',
-          x: dimX - 0.35,
-          y: (d.startPos + d.endPos) / 2,
-          text: d.label,
-          color: '#333333',
-          fontSize: 8,
-          align: 'center'
-        });
+        cmds.push({ type: 'line', x1: dimX, y1: d.startPos, x2: dimX, y2: d.endPos, dash: null, color: DIM_COLOR, lineWidth: 0.3 });
+        cmds.push({ type: 'line', x1: dimX - 0.15, y1: d.startPos, x2: dimX + 0.15, y2: d.startPos, dash: null, color: DIM_COLOR, lineWidth: 0.3 });
+        cmds.push({ type: 'line', x1: dimX - 0.15, y1: d.endPos, x2: dimX + 0.15, y2: d.endPos, dash: null, color: DIM_COLOR, lineWidth: 0.3 });
+        cmds.push({ type: 'text', x: dimX - 0.3, y: (d.startPos + d.endPos) / 2, text: d.label, color: DIM_COLOR, fontSize: DIM_TEXT_H, screenH: true, align: 'center' });
       }
     }
 

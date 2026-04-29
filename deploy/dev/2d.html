@@ -47302,29 +47302,37 @@ function getEntityPoints(e) {
   return pts;
 }
 
-// ─── Layer Colors ───
+// ─── Layer Colors — dark-bg palette ───
+// Walls: bright white/grey hierarchy. Grid: muted blue-grey. Dims: blue tint. Doors/glaz: cyan tint.
 const LAYER_COLORS = {
-  'A-WALL-FULL': '#ffffff',
-  'A-WALL-PRTN': '#cccccc',
-  'A-GLAZ':      '#4488CC',
-  'A-DOOR':      '#88aacc',
-  'A-ROOF':      '#ffffff',
-  'A-GRID':      '#888888',
-  'A-ANNO-DIMS': '#999999',
-  'A-ANNO-TEXT': '#aaaaaa',
-  'A-FURN':      '#666666',
+  'A-WALL-FULL': '#ffffff',   // structural walls — white, prominent
+  'A-WALL-PRTN': '#cccccc',   // partitions — lighter grey
+  'A-WALL-CORE': '#dddddd',   // core/shear walls
+  'A-GLAZ':      '#66aadd',   // glazing/curtain wall — blue
+  'A-DOOR':      '#88ccdd',   // doors — cyan tint
+  'A-COLM':      '#eeeeee',   // columns — near-white
+  'A-STAIR':     '#aabbcc',   // stairs
+  'A-RAIL':      '#889999',   // railings
+  'A-SLAB':      '#888888',   // slabs/floors (cut cross-section)
+  'A-ROOF':      '#bbbbbb',   // roof
+  'A-FURN':      '#556677',   // furniture — dark blue-grey, recede
+  'A-GRID':      '#556688',   // grid lines — muted blue-grey
+  'A-ANNO-DIMS': '#99aacc',   // dimension lines — blue-grey
+  'A-ANNO-TEXT': '#aabbcc',   // annotation text
   'A-ELEV-WALL': '#ffffff',
-  'A-ELEV-LEVL': '#999999',
+  'A-ELEV-LEVL': '#99aacc',
 };
 
 function layerColor(layer) {
-  return LAYER_COLORS[layer] || '#888888';
+  return LAYER_COLORS[layer] || '#888899';
 }
 
 const LAYER_WEIGHTS = {
-  'A-WALL-FULL': 2.5, 'A-WALL-PRTN': 1.8, 'A-GLAZ': 1.2, 'A-DOOR': 1.2,
-  'A-ROOF': 2.5, 'A-GRID': 0.8, 'A-ANNO-DIMS': 0.8, 'A-ANNO-TEXT': 0.8,
-  'A-FURN': 0.6, 'A-ELEV-WALL': 2.5, 'A-ELEV-LEVL': 0.8,
+  'A-WALL-FULL': 2.5, 'A-WALL-PRTN': 1.5, 'A-WALL-CORE': 2.0,
+  'A-GLAZ': 1.0, 'A-DOOR': 1.0, 'A-COLM': 2.5, 'A-STAIR': 1.2, 'A-RAIL': 0.8,
+  'A-SLAB': 1.5, 'A-ROOF': 2.0, 'A-FURN': 0.6,
+  'A-GRID': 0.6, 'A-ANNO-DIMS': 0.6, 'A-ANNO-TEXT': 0.6,
+  'A-ELEV-WALL': 2.5, 'A-ELEV-LEVL': 0.8,
 };
 
 function layerWeight(layer) {
@@ -47449,7 +47457,9 @@ function drawBulgeSegment(v1, v2, bulge) {
 function drawCircle(e) {
   if (!e.center) return;
   const [cx, cy] = toScreen(e.center.x, e.center.y);
-  const r = e.radius * viewScale;
+  // screenR flag: bubble radius is in screen px — do NOT multiply by viewScale
+  const r = e.screenR ? e.radius : e.radius * viewScale;
+  if (r < 1) return;
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
 }
 
@@ -47477,14 +47487,16 @@ function drawText(e) {
   const pos = e.startPoint || e.position || e.endPoint;
   if (!pos) return;
   const [x, y] = toScreen(pos.x, pos.y);
-  const h = (e.textHeight || e.height || 2.5) * viewScale;
-  if (h < 3) return; // too small to read
+  // screenH flag: font size is in screen px — do NOT multiply by viewScale
+  const h = e.screenH ? (e.textHeight || e.height || 10) : (e.textHeight || e.height || 2.5) * viewScale;
+  if (h < 4) return; // too small to read
   const text = e.text || '';
-  // Strip MTEXT formatting codes
   const clean = text.replace(/\\[A-Za-z][^;]*;/g, '').replace(/\{|\}/g, '').replace(/\\P/g, '\n');
   ctx.font = Math.max(6, Math.min(h, 40)) + 'px monospace';
   ctx.textBaseline = 'middle';
+  ctx.textAlign = e.align === 'center' ? 'center' : 'left';
   ctx.fillText(clean, x, y);
+  ctx.textAlign = 'left'; // reset
 }
 
 function drawPoint(e) {
@@ -47675,14 +47687,21 @@ let dbLib  = null;    // sql.js Database (library)
 let dbReady = false;
 let generatedEntities = [];  // last generated entities (for DXF export)
 
-// ─── IFC class → layer mapping for generated entities ───
+// ─── IFC class → layer mapping — extracted from class, not invented ───
 const IFC_LAYER = {
-  'IfcWall': 'A-WALL-FULL', 'IfcWallStandardCase': 'A-WALL-FULL',
-  'IfcDoor': 'A-DOOR', 'IfcWindow': 'A-GLAZ', 'IfcPlate': 'A-GLAZ',
-  'IfcColumn': 'A-WALL-FULL', 'IfcSlab': 'A-WALL-PRTN',
-  'IfcBeam': 'A-WALL-PRTN', 'IfcMember': 'A-WALL-PRTN',
-  'IfcCurtainWall': 'A-GLAZ', 'IfcStair': 'A-FURN',
-  'IfcRailing': 'A-FURN', 'IfcRoof': 'A-ROOF',
+  'IfcWall':             'A-WALL-FULL',
+  'IfcWallStandardCase': 'A-WALL-FULL',
+  'IfcColumn':           'A-COLM',
+  'IfcDoor':             'A-DOOR',
+  'IfcWindow':           'A-GLAZ',
+  'IfcPlate':            'A-GLAZ',
+  'IfcCurtainWall':      'A-GLAZ',
+  'IfcSlab':             'A-SLAB',
+  'IfcBeam':             'A-WALL-PRTN',
+  'IfcMember':           'A-WALL-PRTN',
+  'IfcStair':            'A-STAIR',
+  'IfcRailing':          'A-RAIL',
+  'IfcRoof':             'A-ROOF',
 };
 
 // ─── Load DBs from URL params ───
@@ -47838,7 +47857,9 @@ function gridToEntities(gridResult, dims, bbox) {
         type: 'TEXT',
         startPoint: { x: cmd.x, y: cmd.y },
         text: cmd.text,
-        textHeight: cmd.height || 0.3,
+        textHeight: cmd.fontSize || cmd.height || 10,
+        screenH: !!cmd.screenH,
+        align: cmd.align || 'left',
         layer: cmd.layer || 'A-ANNO-TEXT',
       });
     } else if (cmd.type === 'circle') {
@@ -47846,6 +47867,7 @@ function gridToEntities(gridResult, dims, bbox) {
         type: 'CIRCLE',
         center: { x: cmd.cx, y: cmd.cy },
         radius: cmd.r,
+        screenR: !!cmd.screenR,
         layer: cmd.layer || 'A-GRID',
       });
     }
