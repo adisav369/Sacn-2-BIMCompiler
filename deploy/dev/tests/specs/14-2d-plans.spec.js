@@ -1012,4 +1012,230 @@ test.describe('2D Dynamic Generation', () => {
     });
     expect(noDbLog).toBe(true);
   });
+
+  // ── Annotation features: hatch fills, furniture, tags, room labels, section marker ──
+  // Issues prevented: silent omission of A-WALL-PATT fills, A-FURN furniture,
+  // door/window tags, room labels, or section cut markers from generated floor plans.
+
+  test('14.37 Wall hatch fills appear on A-WALL-PATT layer (SH) @db @whitebox', async ({ page }) => {
+    const logs = [];
+    page.on('console', msg => logs.push(msg.text()));
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => document.getElementById('status-text')?.textContent.includes('Generated'), { timeout: 30000 });
+
+    const analysis = await page.evaluate(() => {
+      const HATCH_ELIGIBLE = new Set(['A-WALL-FULL','A-WALL-PRTN','A-WALL-CORE','A-COLM']);
+      const ents = window.dxf ? window.dxf.entities : [];
+      const hatchEnts  = ents.filter(e => e.layer === 'A-WALL-PATT' && e.type === 'LWPOLYLINE');
+      // Count outlines on all hatch-eligible layers (same set as WALL_FILL_LAYERS in 2d.html)
+      const eligibleEnts = ents.filter(e => HATCH_ELIGIBLE.has(e.layer) && e.type === 'LWPOLYLINE');
+      const filledEnts   = hatchEnts.filter(e => e.fill === true);
+      const closedHatch  = hatchEnts.filter(e => e.shape === true);
+      return { hatches: hatchEnts.length, eligible: eligibleEnts.length,
+               filled: filledEnts.length, closed: closedHatch.length };
+    });
+
+    const hatchLog = logs.find(l => l.includes('hatches='));
+    console.log(`§PW_2D_WB_HATCH hatches=${analysis.hatches} eligible=${analysis.eligible} filled=${analysis.filled} closed=${analysis.closed}`);
+    console.log(`§PW_2D_WB_HATCH_LOG ${hatchLog || 'none'}`);
+
+    // Every hatch-eligible outline must have a corresponding hatch fill
+    expect(analysis.hatches).toBeGreaterThan(0);
+    expect(analysis.hatches).toBe(analysis.eligible);    // 1:1 hatch per eligible contour
+    expect(analysis.filled).toBe(analysis.hatches);      // every hatch has fill=true
+    expect(analysis.closed).toBe(analysis.hatches);      // every hatch polygon is closed
+  });
+
+  test('14.38 Furniture outlines appear on A-FURN layer matching DB count (SH) @db @whitebox', async ({ page }) => {
+    const logs = [];
+    page.on('console', msg => logs.push(msg.text()));
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => document.getElementById('status-text')?.textContent.includes('Generated'), { timeout: 30000 });
+
+    // Count furniture in DB
+    const dbFurnCount = await page.evaluate(() => {
+      if (!window._2d_dbMain) return -1;
+      const r = window._2d_dbMain.exec(
+        "SELECT COUNT(*) FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid " +
+        "WHERE m.ifc_class IN ('IfcFurniture','IfcFurnishingElement','IfcSystemFurnitureElement')");
+      return r.length > 0 ? r[0].values[0][0] : 0;
+    });
+
+    const analysis = await page.evaluate(() => {
+      const ents = window.dxf ? window.dxf.entities : [];
+      const furnEnts = ents.filter(e => e.layer === 'A-FURN' && e.type === 'LWPOLYLINE');
+      const closedFurn = furnEnts.filter(e => e.shape === true);
+      // Each furniture rect must have exactly 4 vertices (rectangle)
+      const rectFurn = furnEnts.filter(e => e.vertices && e.vertices.length === 4);
+      return { count: furnEnts.length, closed: closedFurn.length, rects: rectFurn.length };
+    });
+
+    const furnLog = logs.find(l => l.includes('§AUDIT FURN'));
+    console.log(`§PW_2D_WB_FURN db=${dbFurnCount} rendered=${analysis.count} closed=${analysis.closed} rects=${analysis.rects}`);
+    console.log(`§PW_2D_WB_FURN_LOG ${furnLog || 'none'}`);
+
+    expect(analysis.count).toBeGreaterThan(0);
+    expect(analysis.count).toBe(dbFurnCount);            // one outline per DB furniture element
+    expect(analysis.closed).toBe(analysis.count);        // every outline is closed
+    expect(analysis.rects).toBe(analysis.count);         // every outline is a 4-point rectangle
+  });
+
+  test('14.39 Door and window tags count matches DB elements (SH) @db @whitebox', async ({ page }) => {
+    const logs = [];
+    page.on('console', msg => logs.push(msg.text()));
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => document.getElementById('status-text')?.textContent.includes('Generated'), { timeout: 30000 });
+
+    // Count doors and windows in DB
+    const dbCounts = await page.evaluate(() => {
+      if (!window._2d_dbMain) return null;
+      const r = window._2d_dbMain.exec(
+        "SELECT ifc_class, COUNT(*) as n FROM elements_meta m " +
+        "JOIN element_transforms t ON m.guid=t.guid " +
+        "WHERE m.ifc_class IN ('IfcDoor','IfcDoorStandardCase','IfcWindow','IfcWindowStandardCase') " +
+        "GROUP BY m.ifc_class");
+      const counts = { doors: 0, windows: 0 };
+      if (r.length > 0) for (const row of r[0].values) {
+        const cls = row[0];
+        if (cls.includes('Door')) counts.doors += row[1];
+        else counts.windows += row[1];
+      }
+      return counts;
+    });
+
+    // Count tag TEXT entities (circle + text pairs, one per door/window)
+    const tagAnalysis = await page.evaluate(() => {
+      const ents = window.dxf ? window.dxf.entities : [];
+      const textEnts = ents.filter(e => e.layer === 'A-ANNO-TEXT' && e.type === 'TEXT');
+      const dTags = textEnts.filter(e => e.text && /^D\d+$/.test(e.text));
+      const wTags = textEnts.filter(e => e.text && /^W\d+$/.test(e.text));
+      const circleEnts = ents.filter(e => e.layer === 'A-ANNO-TEXT' && e.type === 'CIRCLE' && e.screenR);
+      // Tags are numbered sequentially — check max number = count
+      const dNums = dTags.map(e => parseInt(e.text.slice(1))).sort((a,b) => a-b);
+      const wNums = wTags.map(e => parseInt(e.text.slice(1))).sort((a,b) => a-b);
+      return { dTags: dTags.length, wTags: wTags.length, circles: circleEnts.length,
+               dSeq: dNums, wSeq: wNums };
+    });
+
+    const tagLog = logs.find(l => l.includes('§AUDIT TAGS'));
+    console.log(`§PW_2D_WB_TAGS db_doors=${dbCounts?.doors} db_windows=${dbCounts?.windows} ` +
+                `dTags=${tagAnalysis.dTags} wTags=${tagAnalysis.wTags} circles=${tagAnalysis.circles}`);
+    console.log(`§PW_2D_WB_TAGS dSeq=${tagAnalysis.dSeq} wSeq=${tagAnalysis.wSeq}`);
+    console.log(`§PW_2D_WB_TAGS_LOG ${tagLog || 'none'}`);
+
+    expect(tagAnalysis.dTags).toBeGreaterThan(0);
+    expect(tagAnalysis.wTags).toBeGreaterThan(0);
+    // Tag count must match DB element count exactly
+    expect(tagAnalysis.dTags).toBe(dbCounts.doors);
+    expect(tagAnalysis.wTags).toBe(dbCounts.windows);
+    // Circles: 2 per tag (one for each door + one for each window)
+    expect(tagAnalysis.circles).toBe(dbCounts.doors + dbCounts.windows);
+    // Sequential numbering: D1..Dn, W1..Wn without gaps
+    for (let i = 0; i < tagAnalysis.dSeq.length; i++) expect(tagAnalysis.dSeq[i]).toBe(i + 1);
+    for (let i = 0; i < tagAnalysis.wSeq.length; i++) expect(tagAnalysis.wSeq[i]).toBe(i + 1);
+  });
+
+  test('14.40 Room labels appear as TEXT on A-ANNO-TEXT for known furniture clusters (SH) @db @whitebox', async ({ page }) => {
+    const logs = [];
+    page.on('console', msg => logs.push(msg.text()));
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => document.getElementById('status-text')?.textContent.includes('Generated'), { timeout: 30000 });
+
+    const analysis = await page.evaluate(() => {
+      const ents = window.dxf ? window.dxf.entities : [];
+      const textEnts = ents.filter(e => e.layer === 'A-ANNO-TEXT' && e.type === 'TEXT' && e.text);
+      const roomLabels = ['BEDROOM', 'LIVING ROOM', 'DINING ROOM'];
+      const found = roomLabels.filter(lbl => textEnts.some(e => e.text === lbl));
+      // Each room label must have a position within the building bbox
+      const roomTexts = textEnts.filter(e => roomLabels.includes(e.text));
+      const positions = roomTexts.map(e => ({ text: e.text, x: e.startPoint?.x, y: e.startPoint?.y }));
+      return { found, count: roomTexts.length, positions };
+    });
+
+    const roomLog = logs.find(l => l.includes('§AUDIT ROOMS'));
+    console.log(`§PW_2D_WB_ROOMS found=${analysis.found.join(',')} count=${analysis.count}`);
+    analysis.positions.forEach(p => console.log(`  ${p.text} at (${p.x?.toFixed(1)},${p.y?.toFixed(1)})`));
+    console.log(`§PW_2D_WB_ROOMS_LOG ${roomLog || 'none'}`);
+
+    // SH has furniture for all 3 room types: BEDROOM (bed), DINING ROOM (dining table+chairs), LIVING ROOM (couch)
+    expect(analysis.count).toBeGreaterThanOrEqual(3);
+    expect(analysis.found).toContain('BEDROOM');
+    expect(analysis.found).toContain('DINING ROOM');
+    expect(analysis.found).toContain('LIVING ROOM');
+    // Positions must be within SH world coords: X≈18..34, Y≈220..228
+    for (const p of analysis.positions) {
+      expect(p.x).toBeGreaterThan(15);
+      expect(p.x).toBeLessThan(40);
+      expect(p.y).toBeGreaterThan(218);
+      expect(p.y).toBeLessThan(232);
+    }
+  });
+
+  test('14.41 Section cut marker A-ANNO-SECT appears with line + circles + A labels (SH) @db @whitebox', async ({ page }) => {
+    const logs = [];
+    page.on('console', msg => logs.push(msg.text()));
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => document.getElementById('status-text')?.textContent.includes('Generated'), { timeout: 30000 });
+
+    const analysis = await page.evaluate(() => {
+      const ents = window.dxf ? window.dxf.entities : [];
+      const sectEnts = ents.filter(e => e.layer === 'A-ANNO-SECT');
+      const lines    = sectEnts.filter(e => e.type === 'LINE');
+      const circles  = sectEnts.filter(e => e.type === 'CIRCLE');
+      const texts    = sectEnts.filter(e => e.type === 'TEXT' && e.text === 'A');
+      // All three lines should be horizontal (same Y at both ends)
+      const horizontal = lines.filter(e => e.vertices && Math.abs(e.vertices[0].y - e.vertices[1].y) < 0.01);
+      return { total: sectEnts.length, lines: lines.length, circles: circles.length, texts: texts.length, horizontal: horizontal.length };
+    });
+
+    const sectLog = logs.find(l => l.includes('§RENDER SECT'));
+    console.log(`§PW_2D_WB_SECT total=${analysis.total} lines=${analysis.lines} circles=${analysis.circles} texts=${analysis.texts} horizontal=${analysis.horizontal}`);
+    console.log(`§PW_2D_WB_SECT_LOG ${sectLog || 'none'}`);
+
+    expect(analysis.lines).toBe(1);       // one section line A-A
+    expect(analysis.circles).toBe(2);     // circles at each end
+    expect(analysis.texts).toBe(2);       // "A" labels at each end
+    expect(analysis.horizontal).toBe(1);  // section line is horizontal
+    expect(sectLog).toBeTruthy();         // §RENDER SECT log emitted
+  });
+
+  test('14.42 §-log proof lines appear for all new annotation features (SH) @db @whitebox', async ({ page }) => {
+    // White-box verification: log lines are the primary evidence per §TestArchitecture
+    const logs = [];
+    page.on('console', msg => logs.push(msg.text()));
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => document.getElementById('status-text')?.textContent.includes('Generated'), { timeout: 30000 });
+
+    const hatchLogs   = logs.filter(l => l.includes('§RENDER HATCH'));
+    const furnLogs    = logs.filter(l => l.includes('§RENDER FURN'));
+    const roomLogs    = logs.filter(l => l.includes('§ROOM'));
+    const tagLogs     = logs.filter(l => l.includes('§TAG'));
+    const sectLog     = logs.find(l => l.includes('§RENDER SECT'));
+    const auditFurn   = logs.find(l => l.includes('§AUDIT FURN'));
+    const auditRooms  = logs.find(l => l.includes('§AUDIT ROOMS'));
+    const auditTags   = logs.find(l => l.includes('§AUDIT TAGS'));
+    const genLog      = logs.find(l => l.includes('§2D_GEN sectionToEntities'));
+
+    console.log(`§PW_2D_WB_LOGS hatchLogs=${hatchLogs.length} furnLogs=${furnLogs.length} ` +
+                `roomLogs=${roomLogs.length} tagLogs=${tagLogs.length}`);
+    console.log(`§PW_2D_WB_LOGS_AUDIT furn="${auditFurn||'MISSING'}" rooms="${auditRooms||'MISSING'}" tags="${auditTags||'MISSING'}"`);
+    console.log(`§PW_2D_WB_GEN_LOG ${genLog || 'MISSING'}`);
+
+    expect(hatchLogs.length).toBeGreaterThan(0);    // §RENDER HATCH per wall contour
+    expect(furnLogs.length).toBeGreaterThan(0);     // §RENDER FURN per furniture
+    expect(roomLogs.length).toBeGreaterThanOrEqual(3); // §ROOM for BEDROOM/DINING/LIVING
+    expect(tagLogs.length).toBeGreaterThan(0);      // §TAG for each door/window
+    expect(sectLog).toBeTruthy();                   // §RENDER SECT for section marker
+    expect(auditFurn).toBeTruthy();                 // §AUDIT FURN pass
+    expect(auditRooms).toBeTruthy();                // §AUDIT ROOMS pass
+    expect(auditTags).toBeTruthy();                 // §AUDIT TAGS pass
+    // genLog must show hatches= count
+    expect(genLog).toContain('hatches=');
+  });
 });

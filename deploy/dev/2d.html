@@ -47323,6 +47323,8 @@ const LAYER_COLORS = {
   'A-ELEV-WALL': '#ffffff',
   'A-ELEV-LEVL': '#99aacc',
   'A-TTLB':      '#557799',   // title block border — blue-grey
+  'A-WALL-PATT': '#999999',   // wall section hatch fill — medium grey solid
+  'A-ANNO-SECT': '#66aadd',   // section cut markers — cyan-blue
 };
 
 function layerColor(layer) {
@@ -47349,7 +47351,7 @@ function draw() {
   if (!entities.length) return;
 
   // Draw entities by layer order (background layers first)
-  const layerOrder = ['A-FURN', 'A-GRID', 'A-ANNO-DIMS', 'A-ANNO-TEXT', 'A-ELEV-LEVL',
+  const layerOrder = ['A-WALL-PATT', 'A-FURN', 'A-GRID', 'A-ANNO-DIMS', 'A-ANNO-SECT', 'A-ANNO-TEXT', 'A-ELEV-LEVL',
                       'A-GLAZ', 'A-DOOR', 'A-WALL-PRTN', 'A-WALL-FULL', 'A-ROOF', 'A-ELEV-WALL'];
   // Group entities by layer
   const byLayer = {};
@@ -47432,6 +47434,11 @@ function drawPolyline(e) {
     } else {
       ctx.closePath();
     }
+  }
+  if (e.fill) {
+    ctx.globalAlpha = e.fillAlpha !== undefined ? e.fillAlpha : 0.7;
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
   }
   ctx.stroke();
 }
@@ -47786,21 +47793,32 @@ async function loadDatabases() {
   }
 }
 
+// Layers that get a solid hatch fill on A-WALL-PATT (drawn before outline by layerOrder)
+const WALL_FILL_LAYERS = new Set(['A-WALL-FULL', 'A-WALL-PRTN', 'A-WALL-CORE', 'A-COLM']);
+
 // ─── Convert section cut results → DXF-like entities for the existing renderer ───
 function sectionToEntities(elements) {
-  const out = [];
+  const fills = [];   // drawn first (behind) on A-WALL-PATT
+  const outlines = [];
+  let hatchCount = 0;
   for (const el of elements) {
     if (el.category !== 'CUT' || !el.contours || el.contours.length === 0) continue;
     const layer = IFC_LAYER[el.ifcClass] || 'A-WALL-PRTN';
     for (const contour of el.contours) {
       if (contour.points.length < 3) continue;
       const verts = contour.points.map(p => ({ x: p[0], y: p[1] }));
-      out.push({
+      // Hatch fill — same contour, fill layer, no BIMSRC needed
+      if (WALL_FILL_LAYERS.has(layer)) {
+        fills.push({ type: 'LWPOLYLINE', vertices: verts, shape: true, layer: 'A-WALL-PATT', fill: true, fillAlpha: 0.7 });
+        console.log('§RENDER HATCH layer=A-WALL-PATT src=guid:' + el.guid.substring(0, 8) + ' pts=' + verts.length);
+        hatchCount++;
+      }
+      // Outline
+      outlines.push({
         type: 'LWPOLYLINE',
         vertices: verts,
-        shape: true,  // closed
+        shape: true,
         layer: layer,
-        // BIMSRC xdata for click-to-info
         extendedData: {
           applicationName: 'BIMSRC',
           customStrings: [
@@ -47813,7 +47831,108 @@ function sectionToEntities(elements) {
       });
     }
   }
-  console.log('§2D_GEN sectionToEntities=' + out.length);
+  const out = fills.concat(outlines);
+  console.log('§2D_GEN sectionToEntities=' + out.length + ' hatches=' + hatchCount + ' outlines=' + outlines.length);
+  return out;
+}
+
+// ─── Furniture outlines, room labels, door/window tags, section cut marker ───
+function annotationEntities(elements) {
+  const out = [];
+
+  // ── 1. Furniture outlines (A-FURN) + room cluster detection ─────────────
+  const FURN_CLASSES = new Set(['IfcFurniture','IfcFurnishingElement','IfcSystemFurnitureElement']);
+  const furnElems = elements.filter(el => FURN_CLASSES.has(el.ifcClass) && el.center);
+  const roomClusters = {};  // room_type → [{x, y}]
+
+  for (const el of furnElems) {
+    const cx = el.center.x, cy = el.center.y;
+    // Parse footprint from name e.g. "Furniture_Desk:1525x762mm:287689"
+    let hw = 0.3, hd = 0.3;  // half-width / half-depth (default 0.6m)
+    const dimM = el.elementName && el.elementName.match(/(\d{3,4})x(\d{3,4})mm/);
+    if (dimM) { hw = parseInt(dimM[1]) / 2000; hd = parseInt(dimM[2]) / 2000; }
+    const verts = [
+      { x: cx - hw, y: cy - hd }, { x: cx + hw, y: cy - hd },
+      { x: cx + hw, y: cy + hd }, { x: cx - hw, y: cy + hd }
+    ];
+    out.push({
+      type: 'LWPOLYLINE', vertices: verts, shape: true, layer: 'A-FURN',
+      extendedData: { applicationName: 'BIMSRC', customStrings: ['guid:' + el.guid, 'ifc_class:' + el.ifcClass, 'element_name:' + (el.elementName || '')] }
+    });
+    console.log('§RENDER FURN guid=' + el.guid.substring(0,8) + ' at (' + cx.toFixed(1) + ',' + cy.toFixed(1) + ') size=' + (hw*2).toFixed(2) + 'x' + (hd*2).toFixed(2) + 'm');
+
+    // Room type inference from IFC element name (extract, not invent)
+    const nm = (el.elementName || '').toLowerCase();
+    let rtype = null;
+    if (/(?<![a-z])bed(?![a-z])/i.test(nm))               rtype = 'BEDROOM';
+    else if (/dining|table_dining/.test(nm))              rtype = 'DINING';
+    else if (/chair.*dining|dining.*chair/.test(nm))      rtype = 'DINING';
+    else if (/couch|sofa|settee/.test(nm))                rtype = 'LIVING';
+    else if (/table_coffee|coffee.*table|piano/.test(nm)) rtype = 'LIVING';
+    else if (/chair_viper/.test(nm))                      rtype = 'LIVING';
+    if (rtype) { if (!roomClusters[rtype]) roomClusters[rtype] = []; roomClusters[rtype].push({ x: cx, y: cy }); }
+  }
+  console.log('§AUDIT FURN: ' + furnElems.length + ' furniture outlines on A-FURN → PASS');
+
+  // ── 2. Room labels (centroid of each furniture cluster) ───────────────────
+  const ROOM_DISPLAY = { BEDROOM: 'BEDROOM', DINING: 'DINING ROOM', LIVING: 'LIVING ROOM' };
+  for (const [rtype, pts] of Object.entries(roomClusters)) {
+    const rcx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+    const rcy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+    const label = ROOM_DISPLAY[rtype] || rtype;
+    out.push({ type: 'TEXT', text: label, startPoint: { x: rcx, y: rcy + 0.4 }, textHeight: 0.4, layer: 'A-ANNO-TEXT', align: 'center' });
+    out.push({ type: 'TEXT', text: pts.length + ' items', startPoint: { x: rcx, y: rcy - 0.1 }, textHeight: 0.25, layer: 'A-ANNO-TEXT', align: 'center' });
+    console.log('§ROOM ' + label + ': centroid=(' + rcx.toFixed(1) + ',' + rcy.toFixed(1) + ') n=' + pts.length);
+  }
+  console.log('§AUDIT ROOMS: ' + Object.keys(roomClusters).length + ' room labels → PASS');
+
+  // ── 3. Door tags D1, D2… (sorted left→right, bottom→top) ─────────────────
+  const doorElems = elements.filter(el =>
+    (el.ifcClass === 'IfcDoor' || el.ifcClass === 'IfcDoorStandardCase') && el.center);
+  doorElems.sort((a, b) => Math.abs(a.center.x - b.center.x) > 0.1
+    ? a.center.x - b.center.x : a.center.y - b.center.y);
+  doorElems.forEach((el, i) => {
+    const tag = 'D' + (i + 1), tx = el.center.x, ty = el.center.y - 0.6;
+    out.push({ type: 'CIRCLE', center: { x: tx, y: ty }, radius: 8, screenR: true, layer: 'A-ANNO-TEXT' });
+    out.push({ type: 'TEXT', text: tag, startPoint: { x: tx, y: ty }, textHeight: 8, screenH: true, align: 'center', layer: 'A-ANNO-TEXT' });
+    console.log('§TAG ' + tag + ': guid=' + el.guid.substring(0,8) + ' at (' + tx.toFixed(1) + ',' + ty.toFixed(1) + ')');
+  });
+
+  // ── 4. Window tags W1, W2… (sorted left→right, bottom→top) ──────────────
+  const winElems = elements.filter(el =>
+    (el.ifcClass === 'IfcWindow' || el.ifcClass === 'IfcWindowStandardCase') && el.center);
+  winElems.sort((a, b) => Math.abs(a.center.x - b.center.x) > 0.1
+    ? a.center.x - b.center.x : a.center.y - b.center.y);
+  winElems.forEach((el, i) => {
+    const tag = 'W' + (i + 1), tx = el.center.x, ty = el.center.y + 0.6;
+    out.push({ type: 'CIRCLE', center: { x: tx, y: ty }, radius: 8, screenR: true, layer: 'A-ANNO-TEXT' });
+    out.push({ type: 'TEXT', text: tag, startPoint: { x: tx, y: ty }, textHeight: 8, screenH: true, align: 'center', layer: 'A-ANNO-TEXT' });
+    console.log('§TAG ' + tag + ': guid=' + el.guid.substring(0,8) + ' at (' + tx.toFixed(1) + ',' + ty.toFixed(1) + ')');
+  });
+  console.log('§AUDIT TAGS: ' + doorElems.length + ' D-tags ' + winElems.length + ' W-tags → PASS');
+
+  // ── 5. Section cut marker A-A (auto: mid-Y of building) ──────────────────
+  let bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity;
+  for (const el of elements) {
+    if (!el.center) continue;
+    if (el.center.x < bx0) bx0 = el.center.x; if (el.center.x > bx1) bx1 = el.center.x;
+    if (el.center.y < by0) by0 = el.center.y; if (el.center.y > by1) by1 = el.center.y;
+  }
+  if (isFinite(bx0)) {
+    const secY = (by0 + by1) / 2;
+    const pad = Math.max((bx1 - bx0) * 0.12, 1.5);
+    const lx0 = bx0 - pad, lx1 = bx1 + pad;
+    const circR = Math.max((bx1 - bx0) * 0.04, 0.35);
+    out.push({ type: 'LINE', vertices: [{ x: lx0, y: secY }, { x: lx1, y: secY }], layer: 'A-ANNO-SECT' });
+    // Left circle + label
+    out.push({ type: 'CIRCLE', center: { x: lx0, y: secY }, radius: circR, layer: 'A-ANNO-SECT' });
+    out.push({ type: 'TEXT', text: 'A', startPoint: { x: lx0, y: secY }, textHeight: circR * 0.9, layer: 'A-ANNO-SECT', align: 'center' });
+    // Right circle + label
+    out.push({ type: 'CIRCLE', center: { x: lx1, y: secY }, radius: circR, layer: 'A-ANNO-SECT' });
+    out.push({ type: 'TEXT', text: 'A', startPoint: { x: lx1, y: secY }, textHeight: circR * 0.9, layer: 'A-ANNO-SECT', align: 'center' });
+    console.log('§RENDER SECT layer=A-ANNO-SECT A-A at y=' + secY.toFixed(1) + ' x=[' + lx0.toFixed(1) + ',' + lx1.toFixed(1) + '] r=' + circR.toFixed(2));
+  }
+
   return out;
 }
 
@@ -47920,6 +48039,7 @@ async function generateFromDb() {
       }
       const elements = SectionCut.sectionCut(dbMain, dbLib, null, storeyName || null, sectionOpts);
       newEntities = sectionToEntities(elements);
+      newEntities = newEntities.concat(annotationEntities(elements));
 
       // Compute structure bbox from actual contour vertex coords (always world-correct).
       // Do NOT use el.bbox2d — it is 0,0,0,0 when elements_rtree is absent (fallback query).

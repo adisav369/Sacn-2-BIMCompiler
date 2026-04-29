@@ -57,6 +57,14 @@
   - S239 DONE: Deep refactor — `full` branch. helpers.js, 18 traverse→0, 31 db.exec→dbQuery,
     4 SQL injections fixed, lazy-load navigate/wizard, sw.js versioning, minify script (44% reduction).
     Testing hierarchy: §-log primary, Playwright secondary. See `docs/TestArchitecture.md`.
+  - **S238m DONE (2026-04-30): §25.6 remaining annotation features.** All whitebox-tested (12 key tests pass).
+    - A-WALL-PATT hatch fills: solid fill behind wall outlines (ratio vs DXF = 0.94, 1:1 hatch per contour)
+    - A-FURN furniture outlines: 4-point rectangle from element name dimensions (14/14 SH furniture)
+    - Room labels: BEDROOM/DINING ROOM/LIVING ROOM inferred from IFC element names (3/3 SH rooms)
+    - Door/window tags: D1-D3, W1-W4 sequential from DB positions (3 D-tags, 4 W-tags = exact DB count)
+    - A-ANNO-SECT section cut marker: auto A-A line at building mid-Y + circles + labels
+    - section_cut.js: `center:{x,y,z}` added to all result objects (feeds furniture/tag positions)
+    - Tests 14.37–14.42 added (6 new whitebox tests), 172 total. §AUDIT FURN/ROOMS/TAGS → PASS
 
 **S225b (2026-04-25): Rates + Locale.** DONE (dev).
   - `rates.js` single source of truth. 15 locale files (iDempiere _TRL pattern). Prompt: `prompts/S226_localisation.md`

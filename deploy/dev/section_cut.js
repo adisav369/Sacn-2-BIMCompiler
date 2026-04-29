@@ -534,7 +534,8 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
             results.push({
                 guid: guid, ifcClass: ifcClass, elementName: elemName,
                 storey: storey, category: category, contours: [],
-                bbox2d: [minX, minY, maxX, maxY]
+                bbox2d: [minX, minY, maxX, maxY],
+                center: { x: cx, y: cy, z: cz }
             });
             if (category === 'BELOW') belowCount++;
             else aboveCount++;
@@ -548,7 +549,8 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
             results.push({
                 guid: guid, ifcClass: ifcClass, elementName: elemName,
                 storey: storey, category: 'CUT', contours: [],
-                bbox2d: [minX, minY, maxX, maxY]
+                bbox2d: [minX, minY, maxX, maxY],
+                center: { x: cx, y: cy, z: cz }
             });
             continue;
         }
@@ -559,7 +561,8 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
             results.push({
                 guid: guid, ifcClass: ifcClass, elementName: elemName,
                 storey: storey, category: 'CUT', contours: [],
-                bbox2d: [minX, minY, maxX, maxY]
+                bbox2d: [minX, minY, maxX, maxY],
+                center: { x: cx, y: cy, z: cz }
             });
             continue;
         }
@@ -617,7 +620,8 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
         results.push({
             guid: guid, ifcClass: ifcClass, elementName: elemName,
             storey: storey, category: 'CUT', contours: contours,
-            bbox2d: [minX, minY, maxX, maxY]
+            bbox2d: [minX, minY, maxX, maxY],
+            center: { x: cx, y: cy, z: cz }
         });
     }
 
