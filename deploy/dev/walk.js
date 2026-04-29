@@ -6,6 +6,9 @@ function setupWalk(A) {
   A.walkLiveTilt = 0;
   A.walkOrientationHandler = null;
 
+  // No-op until setWalkAnchor initializes the real one (navigate.js may set walkModeActive before anchor)
+  A.walkOrientTick = A.walkOrientTick || function() {};
+
   // Step detection state
   A.walkStepHandler = null;
   A.walkLastAccelZ = 0;

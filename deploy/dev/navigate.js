@@ -615,9 +615,15 @@ function setupNavigate(A) {
         var dist = dx * dx + dy * dy;
         if (dist > bestDist) { bestDist = dist; best = { x: rows[0].values[i][0], y: rows[0].values[i][1], z: rows[0].values[i][2] }; }
       }
-      console.log('[S233] §NAV_ENTRANCE dist=' + Math.sqrt(bestDist).toFixed(1) + 'm from centre, ' + rows[0].values.length + ' ground floor doors');
+      console.log('[S233] §NAV_ENTRANCE door=(' + best.x.toFixed(1) + ',' + best.y.toFixed(1) + ',' + best.z.toFixed(1) +
+        ') dist=' + Math.sqrt(bestDist).toFixed(1) + 'm from centre' +
+        ' bldCentre=(' + (bldCentre?bldCentre.ix.toFixed(1):'?') + ',' + (bldCentre?bldCentre.iy.toFixed(1):'?') + ')' +
+        ' storey="' + (lowestStorey||'?') + '" doors=' + rows[0].values.length);
       return best;
-    } catch(e) { return null; }
+    } catch(e) {
+      console.warn('[S233] §NAV_ENTRANCE_ERR', e.message);
+      return null;
+    }
   }
 
   // ── Filter change listeners — all filters cross-update dropdowns + results ──
@@ -713,10 +719,14 @@ function setupNavigate(A) {
       }
     } catch(e) { /* no doors */ }
 
+    var occupied = 0;
+    for (var gi = 0; gi < grid.length; gi++) { if (grid[gi] === 1) occupied++; }
     var result = { grid: grid, cols: cols, rows: rows, minX: minX, minY: minY, doorCells: doorCells };
     nav.gridCache[storey] = result;
-    console.log('[S233] §GRID_BUILD storey="' + storey + '" ' + cols + 'x' + rows + ' cells, ' +
-      Object.keys(doorCells).length + ' door cells');
+    console.log('[S233] §GRID_BUILD storey="' + storey + '" ' + cols + 'x' + rows + '=' + (cols*rows) +
+      ' cells occupied=' + occupied + ' walkable=' + (cols*rows - occupied) +
+      ' doors=' + Object.keys(doorCells).length +
+      ' bbox=(' + minX.toFixed(1) + ',' + minY.toFixed(1) + ')→(' + maxX.toFixed(1) + ',' + maxY.toFixed(1) + ')');
     return result;
   }
 
@@ -1205,8 +1215,28 @@ function setupNavigate(A) {
     }
     var levels = A.walkStoreyLevels || [];
 
-    // Find start storey (lowest storey with doors = ground floor)
-    var startStorey = levels.length > 0 ? levels[0].storey : targetStorey;
+    // Find start storey — the ground floor where the entrance door is.
+    // Use entrance door's storey (from findMainEntrance query) rather than levels[0]
+    // which may be foundation/underground.
+    var startStorey = targetStorey; // fallback
+    if (A.db) {
+      try {
+        var entrRows = A.db.exec(
+          "SELECT m.storey, MIN(t.center_z) as min_z FROM elements_meta m" +
+          " JOIN element_transforms t ON m.guid = t.guid" +
+          " WHERE m.ifc_class IN ('IfcDoor','IfcDoorStandardCase')" +
+          " GROUP BY m.storey HAVING min_z >= -0.5 ORDER BY min_z ASC LIMIT 1");
+        if (entrRows.length > 0 && entrRows[0].values.length > 0) {
+          startStorey = entrRows[0].values[0][0];
+        }
+      } catch(e) { /* fallback to targetStorey */ }
+    }
+    if (!startStorey && levels.length > 0) startStorey = levels[0].storey;
+    console.log('[S233] §BUILD_PATH start=(' + startIfc.x.toFixed(1) + ',' + startIfc.y.toFixed(1) + ')' +
+      ' target=(' + targetIfc.x.toFixed(1) + ',' + targetIfc.y.toFixed(1) + ')' +
+      ' startStorey="' + startStorey + '" targetStorey="' + targetStorey + '"' +
+      ' levels=' + levels.length + ' sameStorey=' + (startStorey === targetStorey));
+
     // If start is on same storey as target, single-storey path
     if (startStorey === targetStorey || levels.length < 2) {
       return buildSingleStoreyPath(startIfc, targetIfc, targetStorey);
@@ -1316,6 +1346,10 @@ function setupNavigate(A) {
 
     var sc = toCell(g, startIfc.x, startIfc.y);
     var ec = toCell(g, endIfc.x, endIfc.y);
+    console.log('[S233] §PATH_GRID_ASTAR storey="' + storey + '"' +
+      ' start_cell=(' + sc.c + ',' + sc.r + ') end_cell=(' + ec.c + ',' + ec.r + ')' +
+      ' start_walkable=' + (g.grid[sc.r * g.cols + sc.c] === 0) +
+      ' end_walkable=' + (g.grid[ec.r * g.cols + ec.c] === 0));
     var cellPath = astar(g, sc.c, sc.r, ec.c, ec.r);
 
     if (!cellPath) {
@@ -1374,11 +1408,17 @@ function setupNavigate(A) {
   };
 
   function startNavigation(target) {
-    // Smart start: if already in walk mode, start from current position.
-    // Otherwise start from main door (user just loaded the building).
+    // ── §NAV_DIAG: comprehensive pre-flight diagnostic ──
+    console.log('[S233] §NAV_DIAG target="' + (target.element_name||'?') + '" class=' + target.ifc_class +
+      ' storey="' + target.storey + '" pos=(' + target.cx.toFixed(1) + ',' + target.cy.toFixed(1) + ',' + target.cz.toFixed(1) + ')' +
+      ' walkActive=' + !!A.walkModeActive + ' db=' + !!A.db +
+      ' modelOffset=' + (A.modelOffset ? '(' + A.modelOffset.x.toFixed(1) + ',' + A.modelOffset.y.toFixed(1) + ',' + A.modelOffset.z.toFixed(1) + ')' : 'null') +
+      ' camera=' + (A.camera ? '(' + A.camera.position.x.toFixed(1) + ',' + A.camera.position.y.toFixed(1) + ',' + A.camera.position.z.toFixed(1) + ')' : 'null') +
+      ' bldCentres=' + Object.keys(A.buildingCentres || {}).length +
+      ' storeyLevels=' + (A.walkStoreyLevels ? A.walkStoreyLevels.length : 0));
+
     // Smart start: if already walking → start from current position.
-    // Otherwise → find the main entrance (furthest exterior door on ground floor,
-    // NOT nearest to camera — camera was already zoomed to target by selectResult).
+    // Otherwise → find the main entrance (furthest exterior door on ground floor).
     var startPos;
     var startLabel;
     if (A.walkModeActive && A.camera) {
@@ -1393,9 +1433,13 @@ function setupNavigate(A) {
     }
     if (!startPos) {
       A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_find_no_start||'No start position \u2014 cannot navigate';
-      console.log('[S233] §NAV_NO_START');
+      console.log('[S233] §NAV_NO_START db=' + !!A.db + ' bldCentres=' + JSON.stringify(Object.keys(A.buildingCentres || {})));
       return;
     }
+    console.log('[S233] §NAV_START_POS from="' + startLabel + '" ifc=(' + startPos.x.toFixed(1) + ',' + startPos.y.toFixed(1) + ',' + (startPos.z||0).toFixed(1) + ')');
+
+    // Cache storey levels BEFORE building path (buildPath needs them for startStorey)
+    if (typeof A.cacheStoreyLevels === 'function') A.cacheStoreyLevels();
 
     // Build path
     var wp = buildPath(startPos, { x: target.cx, y: target.cy }, target.storey);
@@ -1444,6 +1488,10 @@ function setupNavigate(A) {
 
     // Snap camera to main entrance (waypoint 0) — the definitive starting point
     moveCameraToWaypoint(0, true);
+
+    // Log all waypoints for debugging
+    console.log('[S233] §NAV_WAYPOINTS_DUMP count=' + wp.length + ' [' +
+      wp.map(function(w, i) { return i + ':(' + w.x.toFixed(0) + ',' + w.y.toFixed(0) + (w.label ? ',"' + w.label + '"' : '') + ')'; }).join(' → ') + ']');
 
     // Show HUD
     navHud.style.display = 'block';
@@ -1506,14 +1554,21 @@ function setupNavigate(A) {
   // ── Move camera to waypoint ──
   function moveCameraToWaypoint(idx, instant) {
     var wp = nav.waypoints[idx];
-    if (!wp) return;
+    if (!wp) { console.warn('[S233] §NAV_WP_MISSING idx=' + idx); return; }
 
     var floorZ = wp.z || 0;
     var pos = A.ifc2three(wp.x, wp.y, floorZ + EYE_HEIGHT);
     var targetPos = new THREE.Vector3(pos.x, pos.y, pos.z);
 
+    console.log('[S233] §NAV_MOVE_CAM wp=' + idx + '/' + nav.waypoints.length +
+      ' ifc=(' + wp.x.toFixed(1) + ',' + wp.y.toFixed(1) + ',z=' + floorZ.toFixed(1) + ')' +
+      ' three=(' + targetPos.x.toFixed(1) + ',' + targetPos.y.toFixed(1) + ',' + targetPos.z.toFixed(1) + ')' +
+      ' instant=' + !!instant + (wp.label ? ' label="' + wp.label + '"' : '') +
+      ' before_cam=(' + A.camera.position.x.toFixed(1) + ',' + A.camera.position.y.toFixed(1) + ',' + A.camera.position.z.toFixed(1) + ')');
+
     if (instant) {
       A.camera.position.copy(targetPos);
+      console.log('[S233] §NAV_CAM_SNAPPED to=(' + A.camera.position.x.toFixed(1) + ',' + A.camera.position.y.toFixed(1) + ',' + A.camera.position.z.toFixed(1) + ')');
     } else {
       // Smooth lerp over 0.5s
       lerpCamera(targetPos, 500);
@@ -1572,11 +1627,15 @@ function setupNavigate(A) {
     }
 
     if (nav.stepIdx >= nav.waypoints.length - 1) {
+      console.log('[S233] §NAV_STEP_ARRIVE final step=' + nav.stepIdx);
       onArrival();
       return;
     }
     nav.stepIdx++;
     A.navCurrentStep = nav.stepIdx;
+    console.log('[S233] §NAV_STEP_ADV step=' + nav.stepIdx + '/' + nav.waypoints.length +
+      ' wp=(' + nav.waypoints[nav.stepIdx].x.toFixed(1) + ',' + nav.waypoints[nav.stepIdx].y.toFixed(1) + ')' +
+      (nav.waypoints[nav.stepIdx].label ? ' label="' + nav.waypoints[nav.stepIdx].label + '"' : ''));
     moveCameraToWaypoint(nav.stepIdx, false);
     updateNavHud();
     showDirectionCue();
@@ -1843,6 +1902,51 @@ function setupNavigate(A) {
       closeFindPanel();
     }
   });
+
+  // ── Pre-process route templates on streaming complete ──
+  // Builds occupancy grids + route templates for all storeys as soon as DB is ready.
+  // Navigation will be instant — no cold-start grid build on first Navigate click.
+  A.preProcessRouteTemplates = function() {
+    if (!A.db) { console.log('[S233] §NAV_PREPROCESS no db'); return; }
+    var bld = A.activeBuilding || '';
+    try {
+      var sql = 'SELECT DISTINCT storey FROM elements_meta WHERE storey IS NOT NULL';
+      var params = [];
+      if (bld) { sql += ' AND building = ?'; params.push(bld); }
+      var rows = A.db.exec(sql, params);
+      if (!rows.length || !rows[0].values.length) { console.log('[S233] §NAV_PREPROCESS no storeys'); return; }
+      var storeys = rows[0].values.map(function(r) { return r[0]; });
+      var totalNodes = 0, totalEdges = 0;
+      for (var i = 0; i < storeys.length; i++) {
+        var tmpl = buildRouteTemplate(storeys[i]);
+        if (tmpl) { totalNodes += tmpl.nodes.length; totalEdges += tmpl.edges.length; }
+      }
+      console.log('[S233] §NAV_PREPROCESS storeys=' + storeys.length + ' totalNodes=' + totalNodes +
+        ' totalEdges=' + totalEdges + ' storeyList=[' + storeys.join(', ') + ']');
+    } catch(e) { console.warn('[S233] §NAV_PREPROCESS_ERR', e.message); }
+  };
+
+  // Auto-preprocess when streaming completes — observe s-active turning green
+  var _ppObserver = new MutationObserver(function(mutations) {
+    for (var i = 0; i < mutations.length; i++) {
+      var el = mutations[i].target;
+      if (el && el.textContent && el.textContent.indexOf('DONE') >= 0) {
+        _ppObserver.disconnect();
+        // Small delay to let populateStoreys/Discs finish first
+        setTimeout(function() { A.preProcessRouteTemplates(); }, 500);
+        return;
+      }
+    }
+  });
+  var _sActive = document.getElementById('s-active');
+  if (_sActive) {
+    // If already done (e.g. navigate.js loaded after streaming finished)
+    if (_sActive.textContent.indexOf('DONE') >= 0) {
+      setTimeout(function() { A.preProcessRouteTemplates(); }, 500);
+    } else {
+      _ppObserver.observe(_sActive, { childList: true, characterData: true, subtree: true });
+    }
+  }
 
   console.log('[S233] §NAV_MODULE_LOADED');
 }
