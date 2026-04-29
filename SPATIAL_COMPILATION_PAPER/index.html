@@ -2428,10 +2428,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#25-design-pattern-languages-and-spatial-typology" class="md-nav__link">
+  <a href="#25-design-pattern-languages-and-spatial-typology-where-the-rosetta-stone-strategy-converges" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.5 Design Pattern Languages and Spatial Typology
+        2.5 Design Pattern Languages and Spatial Typology — Where the Rosetta Stone Strategy Converges
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-remaining-gaps-against-the-academic-literature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 Remaining Gaps Against the Academic Literature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#27-where-this-approach-is-superior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.7 Where This Approach Is Superior
       
     </span>
   </a>
@@ -3682,10 +3704,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#25-design-pattern-languages-and-spatial-typology" class="md-nav__link">
+  <a href="#25-design-pattern-languages-and-spatial-typology-where-the-rosetta-stone-strategy-converges" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.5 Design Pattern Languages and Spatial Typology
+        2.5 Design Pattern Languages and Spatial Typology — Where the Rosetta Stone Strategy Converges
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-remaining-gaps-against-the-academic-literature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 Remaining Gaps Against the Academic Literature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#27-where-this-approach-is-superior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.7 Where This Approach Is Superior
       
     </span>
   </a>
@@ -4207,12 +4251,27 @@
 <h3 id="24-manufacturing-bom">2.4 Manufacturing BOM<a class="headerlink" href="#24-manufacturing-bom" title="Permanent link">&para;</a></h3>
 <p>Enterprise Resource Planning (ERP) systems (SAP, iDempiere [14]) represent manufactured products as Bills of Materials — hierarchical parent-child trees with quantities. The iDempiere M_BOM / M_BOM_Line model is the basis for our spatial BOM, extended with dx/dy/dz tack offsets per line.</p>
 <p>Manufacturing BOMs are <strong>quantitative</strong> (how many of each part) but not <strong>spatial</strong> (where each part goes). Our contribution is adding spatial tack offsets to the BOM convention, making the BOM a complete recipe for both what to build and where to place it.</p>
-<h3 id="25-design-pattern-languages-and-spatial-typology">2.5 Design Pattern Languages and Spatial Typology<a class="headerlink" href="#25-design-pattern-languages-and-spatial-typology" title="Permanent link">&para;</a></h3>
+<h3 id="25-design-pattern-languages-and-spatial-typology-where-the-rosetta-stone-strategy-converges">2.5 Design Pattern Languages and Spatial Typology — Where the Rosetta Stone Strategy Converges<a class="headerlink" href="#25-design-pattern-languages-and-spatial-typology-where-the-rosetta-stone-strategy-converges" title="Permanent link">&para;</a></h3>
 <p>The theoretical foundation for using templates as compilation targets traces to Christopher Alexander's <em>A Pattern Language</em> [19], which defines 253 building patterns arranged in a strict hierarchy from urban scale down to interior detail. Alexander's key insight — "each pattern describes a problem which occurs over and over again in our environment, and then describes the core of the solution to that problem, in such a way that you can use this solution a million times over, without ever doing it the same way twice" — is the conceptual basis for the BOM recipe model: reusable spatial templates that never produce identical output because the driving parameters (site, client, programme) differ each time. The BOM hierarchy (building → floor → room → component) directly mirrors Alexander's pattern hierarchy, and the BOM recursion algorithm (<code>getParentBOM()</code> returning null at root, <code>getChildren()</code> recursing) implements the directed network Alexander described.</p>
-<p>Lin's STG (Semantic-Topological-Geometric) pattern [20] provides a formal computational articulation of the same layered structure. Lin defines three transformation stages: (i) <em>Semantic</em> — the typological intentions of a design (space types, product categories, programme requirements); (ii) <em>Topological</em> — the relational structure among elements (adjacency, connectivity, containment); (iii) <em>Geometric</em> — the concrete positions and dimensions of components. The paper states: "the STG pattern can help architects to convert semantic information concerning the conditions and requirements of a project into design criteria, which are usually composed of topological relations among design elements, in order to explore the geometric properties of spaces and building components by means of generated 3D models" [20]. The BIM Intent Compiler implements all three STG layers in its ERP schema: <code>ad_space_type</code> / <code>M_Product_Category</code> (Semantic), <code>ad_space_adjacency</code> / <code>system_edges</code> (Topological), and <code>component_geometries</code> / <code>element_transforms</code> (Geometric).</p>
-<p>Empirical validation that topological analysis can recover building typologies from real BIM models is provided by Bielski et al. [21], who analysed school buildings for adjacency, accessibility, depth, and flow — finding "a relevant correlation between spatial proportion and room types." This confirms that the dimension tables in <code>ad_val_rule</code> (min/max area and dimension per space type) encode patterns discoverable from existing building stock rather than invented constraints.</p>
-<p>For MEP routing specifically — the most computationally intensive phase of the BIM compiler pipeline — the FIM (Field Information Modeling) framework of Maalek and Maalek [22] demonstrates that modularising existing structural designs into repeating patterns enables "generative decision-support" for future construction projects. Their three-algorithm framework (expand FIM to generative decision-support; generate as-built BIM; modularise into repeating patterns for optimal production) parallels the compiler's RouteWalker pipeline: discipline classification, BOM-tree route generation, and LOD-resolved component placement.</p>
+<p>Lin's STG (Semantic-Topological-Geometric) pattern [20] provides a formal computational articulation of the same layered structure. Lin defines three transformation stages: (i) <em>Semantic</em> — space types, product categories, programme requirements; (ii) <em>Topological</em> — adjacency, connectivity, containment; (iii) <em>Geometric</em> — concrete positions and dimensions. The compiler implements all three layers in its ERP schema: <code>ad_space_type</code> / <code>M_Product_Category</code> (Semantic), <code>rel_contained_in_space</code> / <code>system_edges</code> (Topological), and <code>component_geometries</code> / <code>element_transforms</code> (Geometric).</p>
+<p>The critical distinction from the academic literature, however, lies in <em>how</em> the Topological layer is populated. Lin, Bielski et al. [21], and Maalek and Maalek [22] all approach topology as a problem to be <em>analytically derived</em> — mining adjacency patterns from datasets, computing depth and flow graphs, running probabilistic clustering. The Rosetta Stone strategy resolves this differently: <strong>each proven stone IS the empirical topology</strong>. When a Rosetta Stone (Sample House, Duplex, Terminal) passes all six mathematical gates, the BOM that produced it encodes every spatial relationship — containment, adjacency, orientation — as a proven arithmetic fact. Nothing is inferred statistically; everything is verified deterministically.</p>
+<p>This means the academic gap that Bielski's work implies — cross-validating prescriptive adjacency rules against observed building topology — is addressed not by mining a dataset but by the round-trip proof itself. The three Rosetta Stones covering residential (SH), multi-storey residential (DX), and large institutional (TE) building types provide the ground-truth spatial vocabulary for those typologies. All subsequent buildings of matching type infer their BOM structure from these stones via <code>M_Product_Category</code> matching. The "relevant correlation between spatial proportion and room types" that Bielski found empirically is, in this compiler, <em>enforced</em> by the stone: if a compiled element does not match the room-type proportions of the source stone, the GEO gate fails.</p>
+<p>The same applies to Maalek's FIM framework. Where FIM modularises existing structural designs through Bayesian clustering to produce reusable patterns, the compiler's <code>ad_building_template</code> and <code>ad_bom</code> tables serve the same role — but populated by proven compilation results rather than stochastic analysis. The BOM recipe is the modularised pattern; compile-once-copy-many is the reuse mechanism; the six gates are the proof that reuse did not corrupt the original.</p>
+<p>For MEP routing specifically, the Topological layer plays a different role than for ARC/STR. ARC and STR disciplines establish the <em>confining spatial envelope</em> — the proven wall, slab, and column positions that bound every other discipline. RouteWalker does not need to derive topology independently for MEP elements; it operates within the ARC/STR envelope already proven by the stones, using the compiled bounding boxes as spatial constraints. The AABB of each compiled floor and room provides the routing space within which pipe runs, duct segments, and electrical conduits are placed. This is a deliberate architectural decision: topology proof is concentrated in the two structural disciplines (ARC/STR), and all downstream disciplines inherit spatial truth from that proven envelope.</p>
 <p>Recent work by Postle and Salingaros [23] connects Alexander's pattern language to large language models, demonstrating that LLMs can synthesise context-specific subsets of the 253-pattern corpus in real time. The <code>nlp.js</code> module in BIM OOTB (Web Speech API + IFC synonym vocabulary) represents an early implementation of this direction: natural language resolves to SQL queries over the compiled spatial index, bridging the Semantic layer directly to the Geometric layer without intermediate re-parsing.</p>
+<h3 id="26-remaining-gaps-against-the-academic-literature">2.6 Remaining Gaps Against the Academic Literature<a class="headerlink" href="#26-remaining-gaps-against-the-academic-literature" title="Permanent link">&para;</a></h3>
+<p>The convergence is not total. Three genuine gaps remain relative to the academic approaches described above.</p>
+<p><strong>Gap 1: AABB adjustment for generative mode (pending implementation).</strong> The one-schema two-mode architecture (<code>DISC_VALIDATE_SRS.md §6</code>) defines how the same BOM columns serve both extracted buildings (positions copied from IFC) and generative buildings (positions computed from rules + AABB). The rules-side of that table — <code>m_bom_line.layout_strategy</code>, <code>z_rule</code>, <code>anchor_face</code>, <code>m_attribute</code> regulation params — is currently NULL for all stones. They are specified but not yet executing. This is the exact gap Lin's STG addresses: the Topological layer must <em>drive</em> geometry computation, not merely describe it after the fact. Until AABB adjustment is implemented for the generative path, the compiler remains extraction-only for new building types not covered by an existing stone.</p>
+<p><strong>Gap 2: ProductCategory matching across building typologies (partial).</strong> The Rosetta Stone vocabulary is proven for three typologies. Bielski's finding — that spatial proportions correlate with room types — holds across building classes, not just within them. A clinic has different corridor proportions than a school. The <code>M_Product_Category</code> matching that infers BOM structure for a new building currently resolves within typology (a new residential building matches the SH/DX stone). Cross-typology matching — inferring a clinic layout from hospital stone data — is not yet specified. This is the domain where Maalek's clustering approach would add value: identifying which existing stone is the closest analogical match for a novel building type.</p>
+<p><strong>Gap 3: RouteWalker completion for the full MEP discipline suite.</strong> RouteWalker currently handles CW (curtain wall) and SP (sprinkler) disciplines as pattern-appliers operating within the ARC/STR envelope. The full MEP suite — MECH (HVAC ducts), PLB (plumbing pipes), ELC (electrical conduit), SAN (drainage) — requires the same pattern-application logic extended to each discipline's placement rules (<code>ad_mep_profile</code>, <code>ad_element_mep</code>). The architecture is proven; the discipline coverage is incomplete. This is an execution gap rather than an architectural one — the schema is correct, the remaining work is seeding discipline-specific rules and extending RouteWalker's pattern steps to each discipline family.</p>
+<h3 id="27-where-this-approach-is-superior">2.7 Where This Approach Is Superior<a class="headerlink" href="#27-where-this-approach-is-superior" title="Permanent link">&para;</a></h3>
+<p>The three gaps above are execution gaps — schedule, not architecture. The architectural position vis-à-vis the academic literature is stronger in three dimensions that the academic approaches have not achieved.</p>
+<p><strong>1. Proof replaces probability.</strong> Every academic method described in §2.5 is probabilistic: Bielski finds correlations, Maalek uses Bayesian clustering, Yoo and Kim use generative AI. None of them can tell you <em>with arithmetic certainty</em> that a compiled element is in the correct position. The six-gate Rosetta Stone verification — specifically the GEO gate with per-element GUID-traced millimetre-delta comparison — produces a machine-checkable proof chain that no academic tool in this space currently offers. Probabilistic approaches are necessary when ground truth is unavailable. This compiler generates its own ground truth by extraction, then compiles back to it.</p>
+<p><strong>2. The pattern library is self-certifying.</strong> Alexander's patterns are peer-reviewed by architects but not computationally verified. Bielski's mined patterns are statistically significant but not proven for any individual building. In this compiler, every entry in the BOM dictionary that came from a Rosetta Stone is <em>proven</em> — it produced the correct building under the six gates. The library grows only through verified compilation. A pattern that cannot survive the round-trip proof does not enter the dictionary. This is a fundamentally different quality assurance model than anything in the academic literature.</p>
+<p><strong>3. Patterns are granular sets that reassemble, not monolithic templates.</strong></p>
+<p>The academic approaches treat patterns as whole-building or whole-room templates — you select a school typology, you get a school layout. This does not scale to variation: no two hospitals have the same sprinkler grid, even if both are NFPA 13 compliant.</p>
+<p>The compiler decomposes patterns to the smallest reusable grain: <code>SPRINKLER_PENDANT_ASSEMBLY</code> (head + T-connector), <code>DOOR_ASSEMBLY</code> (door + frame + hardware), <code>WORKSTATION_SET</code> (desk + chair + monitor). Each <code>ad_bom</code> set carries only the composition rule — what children it contains and their relative offsets — not the placement. Placement comes from the Rosetta Stone. These sets compose arbitrarily: a <code>child_bom_id</code> reference nests one set inside another, so a <code>FP_PIPE_ASSEMBLY</code> can contain multiple <code>T_CONNECTOR_ASSEMBLY</code> sets, each of which contains its own <code>SPRINKLER_PENDANT_ASSEMBLY</code>. A new building that does not match any existing stone exactly can still be compiled by selecting and combining proven sets at the appropriate grain — <code>M_Product_Category</code> matching resolves which set covers each element class. The library does not need to be exhaustive for every building type. It needs to be exhaustive for the element <em>classes</em> that appear in buildings, which is a much smaller and more tractable problem. This is the mechanism that allows the three Rosetta Stones (SH, DX, TE) to cover buildings they were never extracted from.</p>
+<p><strong>4. ERP integration is native, not bolted on.</strong> Lin's STG, Bielski's topological analysis, and Maalek's FIM framework all operate on geometry and produce geometry. None of them produce a procurement order, a cost schedule, or a compliance record as a natural output of the compilation. The BIM compiler's BOM is simultaneously the 3D recipe and the ERP input — <code>C_Order</code>, <code>M_Product</code>, <code>M_BOM_Line</code> — because the schema was built on 30 years of iDempiere manufacturing MRP. The 4D (schedule), 5D (cost), 6D (carbon), 7D (FM), and 8D (compliance) dimensions are not separate analyses layered on top; they are projections of the same BOM data that produced the geometry. No academic paper reviewed here achieves this. It is the reason the system is called an <em>Intent Compiler</em> rather than a geometry generator.</p>
 <hr />
 <h2 id="3-method">3. Method<a class="headerlink" href="#3-method" title="Permanent link">&para;</a></h2>
 <h3 id="31-tack-convention">3.1 Tack Convention<a class="headerlink" href="#31-tack-convention" title="Permanent link">&para;</a></h3>
