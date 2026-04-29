@@ -6,6 +6,7 @@ function initViewer() {
   // Initialize modules in order
   setupConfig(APP);
   setupScene(APP);
+  setupHelpers(APP);
   setupStreaming(APP);
   setupPanels(APP);
   setupTools(APP);

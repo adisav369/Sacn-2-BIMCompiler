@@ -940,7 +940,7 @@ async function handleImportFile(file) {
 
   const arrayBuffer = await file.arrayBuffer();
   // S228: Route to IFC or mesh worker based on format
-  var workerFile = (fmt.route === 'ifc') ? 'sandbox/import_worker.js?v=7' : 'dev/mesh_import_worker.js?v=2';
+  var workerFile = (fmt.route === 'ifc') ? 'sandbox/import_worker.js?v=7' : 'sandbox/mesh_import_worker.js?v=2';
   var workerMsg = (fmt.route === 'ifc') ? { arrayBuffer, filename: file.name } : { arrayBuffer, filename: file.name, ext: fmt.ext };
   const worker = new Worker(workerFile);
 
@@ -1186,7 +1186,7 @@ async function exportProjectIFC(projectKey, flyout) {
   statusEl.textContent = 'Building IFC (' + elements.length + ' elements)...';
 
   // Send to export worker
-  var worker = new Worker('dev/ifc_export_worker.js?v=1');
+  var worker = new Worker('sandbox/ifc_export_worker.js?v=1');
   worker.onmessage = function(e) {
     var msg = e.data;
     if (msg.type === 'progress') {
@@ -1272,7 +1272,7 @@ async function exportProjectIFC(projectKey, flyout) {
   </div>
 </div>
 <style>#about-dialog.active{display:flex!important}</style>
-<script src="sandbox/locale_loader.js?v=3"></script>
+<script src="sandbox/locale_loader.js?v=7"></script>
 <script>
 window.addEventListener('trl-ready', function() {
   var btn = document.getElementById('header-flag-btn');
