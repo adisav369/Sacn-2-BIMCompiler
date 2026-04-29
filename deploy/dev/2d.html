@@ -47155,6 +47155,7 @@ function loadBuilding(bld) {
   sel.value = url;
   // Use inline DXF if available (renders without fetch — survives missing OCI files)
   if (typeof DXF_INLINE !== 'undefined' && DXF_INLINE[bld]) {
+    window._structBbox = null;  // DXF coords are mm, not world metres — use entity bbox
     console.log('§2D_INLINE using embedded DXF for ' + bld);
     parseDxf(DXF_INLINE[bld]);
   } else {
@@ -47228,24 +47229,55 @@ function toScreen(x, y) {
   ];
 }
 
+// Layers that should NOT drive the zoom — they extend outside the building
+const NON_STRUCT_LAYERS = new Set(['A-GRID','A-ANNO-DIMS','A-ANNO-TEXT','A-ELEV-LEVL']);
+
 function fitView() {
   if (!entities.length) return;
+
+  // Use stored structure bbox if available (DB-generated plans).
+  // This keeps grid/dims/bubbles in frame with a generous margin, building centred.
+  if (window._structBbox && isFinite(window._structBbox.minX)) {
+    const s = window._structBbox;
+    const w = s.maxX - s.minX || 1, h = s.maxY - s.minY || 1;
+    // Add 20% padding each side to show grid bubbles + dim lines outside building
+    const padX = Math.max(w * 0.20, 3), padY = Math.max(h * 0.20, 3);
+    const fw = w + padX * 2, fh = h + padY * 2;
+    viewScale = Math.min((canvas.width - 40) / fw, (canvas.height - 40) / fh);
+    viewX = (s.minX + s.maxX) / 2;
+    viewY = (s.minY + s.maxY) / 2;
+    window.viewScale = viewScale;
+    console.log('§2D_FITVIEW struct=[' + s.minX.toFixed(2) + ',' + s.minY.toFixed(2) +
+                ' to ' + s.maxX.toFixed(2) + ',' + s.maxY.toFixed(2) +
+                '] pad=' + padX.toFixed(2) + ' scale=' + viewScale.toFixed(4));
+    draw();
+    return;
+  }
+
+  // Fallback: bbox from structural entity vertices only (skip grid/anno)
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   entities.forEach(e => {
+    if (NON_STRUCT_LAYERS.has(e.layer)) return;
     const pts = getEntityPoints(e);
     pts.forEach(p => {
-      if (p.x < minX) minX = p.x;
-      if (p.y < minY) minY = p.y;
-      if (p.x > maxX) maxX = p.x;
-      if (p.y > maxY) maxY = p.y;
+      if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y;
     });
   });
+  // If nothing structural, fall back to all entities
+  if (!isFinite(minX)) {
+    entities.forEach(e => {
+      getEntityPoints(e).forEach(p => {
+        if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y;
+      });
+    });
+  }
   if (!isFinite(minX)) {
     console.warn('§2D_FITVIEW no finite points — entities=' + entities.length);
     return;
   }
-  const dxfW = maxX - minX || 1;
-  const dxfH = maxY - minY || 1;
+  const dxfW = maxX - minX || 1, dxfH = maxY - minY || 1;
   const margin = 40;
   viewScale = Math.min((canvas.width - margin * 2) / dxfW, (canvas.height - margin * 2) / dxfH);
   viewX = (minX + maxX) / 2;
@@ -47865,25 +47897,34 @@ async function generateFromDb() {
       const elements = SectionCut.sectionCut(dbMain, dbLib, null, storeyName || null, sectionOpts);
       newEntities = sectionToEntities(elements);
 
-      // Add grids + dimensions
+      // Compute structure bbox from actual contour vertex coords (always world-correct).
+      // Do NOT use el.bbox2d — it is 0,0,0,0 when elements_rtree is absent (fallback query).
+      let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+      for (const ent of newEntities) {
+        if (ent.vertices) ent.vertices.forEach(v => {
+          if (v.x < bx0) bx0 = v.x; if (v.y < by0) by0 = v.y;
+          if (v.x > bx1) bx1 = v.x; if (v.y > by1) by1 = v.y;
+        });
+      }
+      // Fall back to getBuildingStats if section cut returned no contours
+      if (!isFinite(bx0) && SectionCut.getBuildingStats) {
+        const stats = SectionCut.getBuildingStats(dbMain);
+        if (stats) { bx0 = stats.minX; by0 = stats.minY; bx1 = stats.maxX; by1 = stats.maxY; }
+      }
+      const structBbox = { minX: bx0, minY: by0, maxX: bx1, maxY: by1 };
+      console.log('§2D_STRUCT_BBOX x=[' + bx0.toFixed(2) + ',' + bx1.toFixed(2) +
+                  '] y=[' + by0.toFixed(2) + ',' + by1.toFixed(2) + ']');
+
+      // Add grids + dimensions — pass structBbox so grid/dims align with building
       if (window.GridDims) {
         const gridResult = GridDims.detectGrids(dbMain);
         if (gridResult.xLines.length > 0 || gridResult.yLines.length > 0) {
           const dims = GridDims.generateDimensions(gridResult);
-          // Compute bbox from section entities
-          let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
-          for (const el of elements) {
-            if (el.bbox2d) {
-              if (el.bbox2d[0] < bx0) bx0 = el.bbox2d[0];
-              if (el.bbox2d[1] < by0) by0 = el.bbox2d[1];
-              if (el.bbox2d[2] > bx1) bx1 = el.bbox2d[2];
-              if (el.bbox2d[3] > by1) by1 = el.bbox2d[3];
-            }
-          }
-          const bbox = { minX: bx0, minY: by0, maxX: bx1, maxY: by1 };
-          newEntities = newEntities.concat(gridToEntities(gridResult, dims, bbox));
+          newEntities = newEntities.concat(gridToEntities(gridResult, dims, structBbox));
         }
       }
+      // Store for fitView to zoom to structure only
+      window._structBbox = isFinite(bx0) ? structBbox : null;
     } else {
       // Elevation: front/rear/left/right
       const elements = Elevation.generateElevation(dbMain, dbLib, mode);
