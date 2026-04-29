@@ -3341,6 +3341,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#open-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Open Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tooltip-architecture-note" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tooltip architecture note
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#current-status-poc" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3882,6 +3910,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#open-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Open Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tooltip-architecture-note" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tooltip architecture note
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#current-status-poc" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4106,6 +4162,27 @@ locales/{code}.js     → _TRL_LOCALE (full override: labels + rates + currency)
 <td>Rp / USD</td>
 <td>SNI BOQ Standard</td>
 </tr>
+<tr>
+<td><code>bn_BD</code></td>
+<td>বাংলা (Bengali)</td>
+<td>🇧🇩 <code>BN</code></td>
+<td>৳ / USD</td>
+<td>PWD Bangladesh 2024</td>
+</tr>
+<tr>
+<td><code>bl_BD</code></td>
+<td>Banglish (Romanized)</td>
+<td>🇧🇩 <code>BL</code></td>
+<td>৳ / USD</td>
+<td>PWD Bangladesh 2024</td>
+</tr>
+<tr>
+<td><code>af_ZA</code></td>
+<td>Afrikaans</td>
+<td>🇿🇦</td>
+<td>R / USD</td>
+<td>ASAQS / RICS Southern Africa 2024</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -4310,7 +4387,7 @@ locales/{code}.js     → _TRL_LOCALE (full override: labels + rates + currency)
 </tr>
 <tr>
 <td><code>deploy/dev/locales/{code}.js</code></td>
-<td>Country locale — 15 locales shipped</td>
+<td>Country locale — 18 locales shipped</td>
 </tr>
 <tr>
 <td><code>deploy/dev/boq_charts.html</code></td>
@@ -4336,7 +4413,7 @@ locales/{code}.js     → _TRL_LOCALE (full override: labels + rates + currency)
 </table>
 <hr />
 <h2 id="flag-picker-user-facing">Flag Picker (User-Facing)<a class="headerlink" href="#flag-picker-user-facing" title="Permanent link">&para;</a></h2>
-<p>Users switch locale via a <strong>flag button</strong> in the header bar (landing page and viewer). Clicking it opens a popup grid of 15 country flags. Selecting a flag:</p>
+<p>Users switch locale via a <strong>flag button</strong> in the header bar (landing page and viewer). Clicking it opens a popup grid of 18 country flags. Selecting a flag:</p>
 <ol>
 <li>Saves choice to <code>localStorage</code> (<code>bim_ootb_config</code>)</li>
 <li>Reloads the page</li>
@@ -4372,12 +4449,49 @@ locales/{code}.js     → _TRL_LOCALE (full override: labels + rates + currency)
 <h3 id="landing-page-integration">Landing page integration<a class="headerlink" href="#landing-page-integration" title="Permanent link">&para;</a></h3>
 <p>The landing page loads <code>locale_loader.js</code> at the bottom. All translatable text uses <code>data-trl</code> attributes. JS-generated text (card buttons, progress bar) uses <code>_TRL.key || 'fallback'</code> pattern.</p>
 <hr />
+<h2 id="open-issues">Open Issues<a class="headerlink" href="#open-issues" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>File</th>
+<th>Issue</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>I-1</td>
+<td><code>deploy/dev/index.html</code></td>
+<td>Tooltip visibility confirmed working for locales that have <code>ui_tt_*</code> keys. Deploy all updated locale files to OCI bucket to activate.</td>
+<td>Deploy needed</td>
+</tr>
+<tr>
+<td>I-5</td>
+<td><code>deploy/dev/navigate.js</code></td>
+<td><code>_TRL</code> applied to panel strings at build time. If locale loads AFTER panel builds, re-open panel to see translated text. To fix fully: listen to <code>trl-ready</code> event and rebuild panel.</td>
+<td>Low priority</td>
+</tr>
+</tbody>
+</table>
+<p><strong>CLOSED:</strong>
+- I-2: boq_charts.html locale_loader confirmed working
+- I-3: All 6 incomplete locales now have 14 <code>ui_tt_*</code> keys (af_ZA, ar_SA, bl_BD, bn_BD, id_ID, pt_BR, th_TH)
+- I-4: <code>ui_saved_excel</code> + <code>ui_vo_label</code> added to all 18 locale files</p>
+<h3 id="tooltip-architecture-note">Tooltip architecture note<a class="headerlink" href="#tooltip-architecture-note" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Native <code>title</code> attribute: works desktop hover only, not mobile</li>
+<li><code>#ootb-tip</code> JS bubbles: appended to <code>&lt;body&gt;</code> (bypasses <code>overflow:hidden</code> on <code>.panel-body</code>), shows on <code>mouseover</code> + <code>touchstart</code> (1.8s)</li>
+<li>boq_charts.html toolbar: buttons now have <code>title</code> + <code>data-trl-title</code> — locale_loader.js applies translations via <code>applyTrlToDOM()</code></li>
+<li>If still not showing: check browser console for <code>§TRL_LOADED</code> log line; if absent, locale_loader.js fetch failed</li>
+</ul>
+<hr />
 <h2 id="current-status-poc">Current Status (POC)<a class="headerlink" href="#current-status-poc" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Language and currency/rates are <strong>bundled per flag</strong> — selecting Japanese gives you Japanese UI + JPY currency + Japanese rate sources</li>
 <li>A future version will separate language preference from currency/rate selection (e.g. English UI with Malaysian Ringgit rates)</li>
 <li>Rate data is illustrative — not authoritative for production cost estimation</li>
-<li>15 locales ship with ~300 keys each (UI + BOQ + 4D/5D + landing)</li>
+<li>18 locales ship with ~300 keys each (UI + BOQ + 4D/5D + landing)</li>
 </ul>
 
 
