@@ -204,7 +204,7 @@ The skill intersection — `bpy.data.libraries.load(link=True)` + `IfcOpenShell 
 
 ---
 
-## Case Study: The Browser Pivot — How Bonsai Became Optional (S165–S231)
+## Case Study: The Browser Pivot (S165–S231)
 
 The second case study is more instructive than the first, because it documents a **complete architectural reversal** — built collaboratively across ~60 sessions with Claude Code, where each session's constraints forced the next decision.
 
@@ -214,18 +214,18 @@ From S165 onward, the viewer was Blender + Bonsai. The BIM compiler produced SQL
 
 ### S165–S174: Building the world's most sophisticated Blender BIM viewer
 
-The first attempt at scale used **Geometry Nodes (GN)** — Blender's node-based instancing system — to render 1M elements as GPU instances. By S175, `geom.iterator()` replaced the slower `create_shape()` per-element tessellator, and BLOBs started flowing from SQLite into Blender via `from_pydata()`.
+The first attempt at scale used **Geometry Nodes (GN)** — Blender's node-based instancing system — to render 1M elements as GPU instances. By S172, [`geom.iterator()` replaced the slower `create_shape()`](https://github.com/red1oon/BIMCompiler/commit/f3d2902b2b7fb578b8916565d9db7f1ee76f69bf) per-element tessellator, and BLOBs started flowing from SQLite into Blender via `from_pydata()`.
 
 The architecture at S174 was impressive:
 
 - 3-building pipeline (Clinic / Hospital / Terminal), parallel discipline merge
 - 123,573 unique meshes in a 305MB `library.blend`
 - Hash-addressed geometry deduplication: identical components share one mesh
-- `element_instances.geometry_hash` → `component_geometries.vertices BLOB` — the two-DB split was born here, not in the browser
+- `element_instances.geometry_hash` → `component_geometries.vertices BLOB` — [the two-DB split was born here](https://github.com/red1oon/BIMCompiler/commit/f116fdde35eeccbc1d69dc533a89df17bf38a687), not in the browser
 
 ### S175: The wall that stopped GN
 
-**One number killed Geometry Nodes:** at 500 modifier trees (each GN instance is a modifier), Blender's evaluation overhead hit **8 minutes per viewport interaction**. The user could not orbit the model. No GN optimisation — chunking, lazy eval, batch size tuning — changed this. S175 session 2 confirmed it: `Collection Info` node with >7K objects causes viewport hang. GN was halted at S176.
+**One number killed Geometry Nodes:** at 500 modifier trees (each GN instance is a modifier), Blender's evaluation overhead hit **8 minutes per viewport interaction**. The user could not orbit the model. No GN optimisation — chunking, lazy eval, batch size tuning — changed this. [S175 session 2 confirmed it](https://github.com/red1oon/BIMCompiler/commit/2bb9335ed64d6fa8b352cc438872f6a6d4d5e70a): `Collection Info` node with >7K objects causes viewport hang. GN was [halted at S176](https://github.com/red1oon/BIMCompiler/commit/9d1fc6d810993677a4bccab6bc6fa60a7988d5c4).
 
 This was the first crack: the assumed viewer technology had a hard ceiling we hit at real building scale.
 
@@ -243,7 +243,7 @@ S192 bridged the BLOB gap to the browser — the first time geometry from `compo
 
 ### S195: "No .blend files."
 
-The S195 commit message is the pivot:
+The [S195 commit](https://github.com/red1oon/BIMCompiler/commit/66fc9413a9ed8c3ac0b9d900634c57ba2a7e9e65) is the pivot:
 
 ```
 [S195] Direct DB Streaming — camera-driven mesh from BLOBs, no .blend files
@@ -259,6 +259,7 @@ Both Blender's Python and the browser's JavaScript were doing the same thing: de
 [S200] BIM OOTB — single HTML + Two DBs + sql.js WASM + Three.js. No server.
 Proven at 126K elements (LTU AHouse).
 ```
+([commit 7a19d6e](https://github.com/red1oon/BIMCompiler/commit/7a19d6e2543aeae89d93d80042bb8704793da193))
 
 No Bonsai. No Blender. No server. The same two DBs — `_extracted.db` (semantic index) and `_library.db` (BLOB geometry pool) — that the Blender viewer had been reading since S168 were now loaded into a browser tab via `fetch()` and opened with `new SQL.Database(new Uint8Array(buf))`.
 
@@ -269,6 +270,7 @@ The coordinate transform (`IFC X,Y,Z → Three.js X,Z,-Y`) was the only thing th
 ```
 [S220] IFC import: coord fix, unit scaling, material extraction, boolean openings
 ```
+([commit 788eb47](https://github.com/red1oon/BIMCompiler/commit/788eb47cc302b680025af07d7f55cc20de0ae742))
 
 With web-ifc WASM parsing IFC directly in the browser, the full round-trip closed: IFC → browser → same `_extracted.db` + `_library.db` schema → viewer. Bonsai was no longer needed to create the DBs either.
 
@@ -279,6 +281,7 @@ The Bonsai addon — the assumed viewer from S165 — became one of several *opt
 ```
 [S231] TE BOM storey fix + InstancedMesh 85% draw call reduction
 ```
+([commit 9cca45a](https://github.com/red1oon/BIMCompiler/commit/9cca45a365d6dfaa650995288f62f1e08fec8926))
 
 Because geometry is hash-addressed from the beginning — not as a performance optimisation but as a consequence of how the extractor works — instancing in the browser required no schema change. Elements with the same `geometry_hash` were grouped in one SQL query result. `THREE.InstancedMesh` consumed them directly. 85% draw call reduction on a 48K-element Terminal building, with no change to the DB.
 
