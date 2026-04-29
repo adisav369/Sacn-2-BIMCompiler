@@ -1,7 +1,7 @@
 # ⚠ DO NOT REMOVE — MANDATORY PREAMBLE
 # Scope: Browser 2D Plans — dynamic generation from DB, scaling to any building
 # After every run: read the log before any conclusion. Exit code is not evidence.
-# STATUS: ACTIVE — POC renderer DONE, dynamic generation is NEXT
+# STATUS: ACTIVE — Dynamic generation DONE for SH+DX. Pending: visual QA, Hospital scale, elevation HLR
 
 # 2D_021 — Browser 2D Plans
 
@@ -29,6 +29,24 @@
 - BIMSRC xdata survives JS parse → GUID correlation works
 - Layer toggle, pan/zoom, click-to-info all functional
 - The renderer is ready — it's the **input** that needs to change (DB → Canvas, not file → Canvas)
+
+## ⚠ SACRED BASELINES — SH Floor + Roof DXFs are pristine regression anchors
+
+These two DXF files and their parsed entity counts are **locked**. Any code change
+that alters the DXF-based rendering path MUST preserve these exact numbers. Playwright
+test 14.9 + 14.10 enforce this — do NOT weaken or skip them.
+
+| File | Entities | Layers | BIMSRC tags |
+|------|----------|--------|-------------|
+| `dxf/SH_FLOOR.dxf` | **292** | **12** | **93** |
+| `dxf/SH_ROOF.dxf` | **122** | **6** | **0** |
+
+**Rules:**
+- `dxf/SH_FLOOR.dxf` and `dxf/SH_ROOF.dxf` are READ-ONLY — never regenerate, overwrite, or modify
+- The DXF-file rendering path (`parseDxf()` → Canvas2D) must remain intact even after
+  dynamic-from-DB generation is added — both paths coexist
+- New dynamic generation code MUST NOT break the existing DXF dropdown/load/render flow
+- If a refactor touches the Canvas2D renderer, run `14-2d-plans.spec.js` — all must PASS
 
 ## ⚠ CRITICAL DIRECTION: Dynamic generation from DB
 
@@ -144,6 +162,64 @@ DXF is the **export/interchange** format. Download DXF from browser → edit in 
 - `2D_Layout/drawing_template.json` — shared template (line weights, colors, grid styles)
 - `deploy/dev/diff.js` — existing diff pipeline
 - `deploy/dev/boq_charts.html` — existing 5D charts
+
+## S237 Session Done (2026-04-28/29)
+
+### What was delivered (dynamic 2D from DB)
+- `section_cut.js` (593 lines) — mesh-plane intersection, rtree+transforms dual fallback
+- `grid_dims.js` (477 lines) — column clustering, grid lines, dimensions, snap to 300mm
+- `elevation.js` (355 lines) — orthographic projection, depth-sorted edges, dedup to 1mm
+- `dxf_export.js` (303 lines) — AC1015 DXF serializer with BIMSRC xdata, browser download
+- `2d.html` updated — dynamic mode (`?db=`+`?lib=`) hides DXF dropdown, auto-generates
+- `main.js` — 2D button passes `?db=`, `?lib=`, `?bld=` to 2d.html
+- 31 Playwright tests (14.1–14.31), 149 total suite, audit ratio 2.34
+- Sacred baselines: SH_FLOOR=292/12/93, SH_ROOF=122/6 — tests 14.9/14.10 enforce exact match
+
+### Lessons learned
+1. **sql.js has NO R-tree support** — `elements_rtree` table exists in DBs but queries throw.
+   All code must try rtree, catch, fall back to `element_transforms`. See `hasTable()` + try/catch pattern.
+2. **Deployed DBs have different schema** — SH: no rtree, no `base_geometries`, geometry in
+   `component_geometries` (library DB). DX: has rtree + `base_geometries` but sql.js can't use rtree.
+   Code tries `base_geometries` then `component_geometries` in both db and libDb.
+3. **OCI bucket path mismatch** — `2d.html` served from `sandbox/` but scripts uploaded to `dev/`.
+   Relative `src="section_cut.js"` resolves to `sandbox/section_cut.js`. Must upload to BOTH paths.
+4. **Uint8Array alignment** — sql.js BLOB returns may not be 4-byte aligned for Float32Array.
+   Must copy to fresh ArrayBuffer before creating typed array views.
+5. **Playwright multi-worker race** — This spec needs `--workers=1` or Playwright 1.59 throws
+   `test.describe() not expected` on large spec files with multiple describe blocks.
+6. **Pristine DXF baselines work because Playwright runs locally** — on OCI the JS modules
+   failed to load (MIME mismatch), so only the DXF file path was testable. Playwright tests
+   pass against localhost where all files serve correctly. The sacred baselines reference the
+   original Python-generated DXFs (`dxf/SH_FLOOR.dxf`, `dxf/SH_ROOF.dxf`) which are static files.
+
+### Pending issues
+1. **Visual QA needed** — Playwright confirms data correctness (closed contours, valid GUIDs,
+   sane coordinates) but cannot verify visual rendering. Manual check: open 2d.html with
+   `?db=...SampleHouse_extracted.db&lib=...SampleHouse_library.db` and compare floor plan
+   against the pristine `dxf/SH_FLOOR.dxf` reference.
+2. **Elevation hidden-line removal** — Current approach is depth-sorted edge overdraw.
+   Works for simple buildings. Complex buildings will show wireframe mess. Defer true HLR.
+3. **Hospital/Terminal scale** — Untested. SH=19ms, DX=~40ms. 48K elements may exceed 2s target.
+   Web Worker not yet wired — add if >2s measured.
+4. **Grid detection** — Only works with IfcColumn. SH has none → empty grids (correct).
+   Need wall-boundary fallback for buildings without columns.
+5. **DXF dropdown still shows for buildings without `?db=`** — Opening `2d.html` directly
+   (no params) shows all 14 SH+DX sheets. This is the legacy DXF file mode — correct behavior.
+
+### Key files (updated)
+- `deploy/dev/2d.html` — dual-mode renderer (DXF files OR dynamic from DB)
+- `deploy/dev/section_cut.js` — mesh-plane intersection engine
+- `deploy/dev/grid_dims.js` — column→grid→dimension pipeline
+- `deploy/dev/elevation.js` — orthographic projection with depth sort
+- `deploy/dev/dxf_export.js` — DXF serializer with BIMSRC xdata
+- `deploy/dev/main.js` — viewer integration (open2DPlans passes db+lib+bld)
+- `deploy/dev/tests/specs/14-2d-plans.spec.js` — 31 tests (10 white-box)
+
+### Pre-flight for next session
+1. Manual visual QA: compare dynamic floor plan vs pristine DXF for SH
+2. Test Hospital DB if available — measure generation time
+3. Read `deploy/dev/section_cut.js` lines 280-330 (storey detection + rtree fallback)
+4. Read `deploy/dev/elevation.js` lines 125-170 (bounds + rtree fallback)
 
 ## Spec references
 - `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §20 (BIMSRC xdata), §22 (browser editor)

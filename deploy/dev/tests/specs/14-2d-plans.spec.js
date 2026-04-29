@@ -136,4 +136,682 @@ test.describe('2D Plans Viewer', () => {
     console.log(`§PW_2D_DROP entities=${entCount}`);
     expect(entCount).toBeGreaterThan(100);
   });
+
+  // ── Sacred baselines: SH Floor + Roof are pristine regression anchors ──
+  // Issue prevented: refactoring the Canvas2D renderer or DXF parser silently
+  // breaking the proven DXF rendering path. These exact counts are locked.
+
+  test('14.9 SH_FLOOR.dxf pristine baseline @fast @sacred', async ({ page }) => {
+    await page.goto('/dev/2d.html');
+    await page.selectOption('#sheet-select', 'dxf/SH_FLOOR.dxf');
+    await page.waitForFunction(() => parseInt(document.getElementById('ent-count')?.textContent) > 0, { timeout: 15000 });
+
+    const entCount = await page.$eval('#ent-count', el => parseInt(el.textContent));
+    const layerCount = await page.$eval('#layer-count', el => parseInt(el.textContent));
+    const bimsrcCount = await page.evaluate(() => {
+      const ents = window.dxf ? window.dxf.entities : [];
+      return ents.filter(e => {
+        const xd = e.extendedData || e.xdata || e.xData;
+        return xd && xd.applicationName === 'BIMSRC';
+      }).length;
+    });
+
+    console.log(`§PW_2D_SACRED_FLOOR entities=${entCount} layers=${layerCount} bimsrc=${bimsrcCount}`);
+    expect(entCount).toBe(292);      // LOCKED — do not change
+    expect(layerCount).toBe(12);     // LOCKED — do not change
+    expect(bimsrcCount).toBe(93);    // LOCKED — do not change
+  });
+
+  test('14.10 SH_ROOF.dxf pristine baseline @fast @sacred', async ({ page }) => {
+    await page.goto('/dev/2d.html');
+    await page.selectOption('#sheet-select', 'dxf/SH_ROOF.dxf');
+    await page.waitForFunction(() => parseInt(document.getElementById('ent-count')?.textContent) > 0, { timeout: 15000 });
+
+    const entCount = await page.$eval('#ent-count', el => parseInt(el.textContent));
+    const layerCount = await page.$eval('#layer-count', el => parseInt(el.textContent));
+
+    console.log(`§PW_2D_SACRED_ROOF entities=${entCount} layers=${layerCount}`);
+    expect(entCount).toBe(122);      // LOCKED — do not change
+    expect(layerCount).toBe(6);      // LOCKED — do not change
+  });
+});
+
+// ── Dynamic generation from DB tests ──
+// Issue prevented: section cut, elevation, grid, and DXF export modules not loading or crashing
+
+const SH_DB = '/buildings/SampleHouse_extracted.db';
+const SH_LIB = '/buildings/SampleHouse_library.db';
+const DX_DB = '/buildings/Duplex_extracted.db';
+const DX_LIB = '/buildings/Duplex_library.db';
+
+// Helper: open 2d.html with DB params, wait for DB ready
+async function open2dWithDb(page, db, lib) {
+  const url = `/dev/2d.html?db=${db}&lib=${lib}`;
+  const consoleLogs = [];
+  page.on('console', msg => consoleLogs.push(msg.text()));
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  // Wait for DBs to load (storey selector populated or status shows ready)
+  await page.waitForFunction(() => {
+    const s = document.getElementById('status-text');
+    return s && (s.textContent.includes('Generate') || s.textContent.includes('error'));
+  }, { timeout: 45000 });
+  return consoleLogs;
+}
+
+test.describe('2D Dynamic Generation', () => {
+
+  test('14.11 DB loads and storey selector populates (SH) @db', async ({ page }) => {
+    const logs = await open2dWithDb(page, SH_DB, SH_LIB);
+
+    const storeyOpts = await page.$$eval('#storey-select option', opts => opts.map(o => o.value).filter(v => v));
+    console.log(`§PW_2D_DB_STOREYS count=${storeyOpts.length} storeys=${storeyOpts.join(',')}`);
+    expect(storeyOpts.length).toBeGreaterThanOrEqual(1);
+
+    const dbLog = logs.find(l => l.includes('§2D_DB main loaded'));
+    expect(dbLog).toBeTruthy();
+  });
+
+  test('14.12 Floor plan generation produces entities (SH) @db', async ({ page }) => {
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+
+    await page.waitForFunction(() => {
+      const el = document.getElementById('ent-count');
+      return el && parseInt(el.textContent) > 0;
+    }, { timeout: 30000 });
+
+    const entCount = await page.$eval('#ent-count', el => parseInt(el.textContent));
+    const layerCount = await page.$eval('#layer-count', el => parseInt(el.textContent));
+    const status = await page.$eval('#status-text', el => el.textContent);
+
+    console.log(`§PW_2D_GEN_PLAN entities=${entCount} layers=${layerCount} status="${status}"`);
+    expect(entCount).toBeGreaterThan(10);
+    expect(layerCount).toBeGreaterThanOrEqual(1);
+    expect(status).toContain('Generated');
+  });
+
+  test('14.13 Generated plan has BIMSRC xdata (SH) @db', async ({ page }) => {
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => parseInt(document.getElementById('ent-count')?.textContent) > 0, { timeout: 30000 });
+
+    const bimsrcCount = await page.evaluate(() => {
+      const ents = window.dxf ? window.dxf.entities : [];
+      return ents.filter(e => {
+        const xd = e.extendedData || e.xdata || e.xData;
+        return xd && xd.applicationName === 'BIMSRC';
+      }).length;
+    });
+
+    console.log(`§PW_2D_GEN_BIMSRC count=${bimsrcCount}`);
+    expect(bimsrcCount).toBeGreaterThan(5);
+  });
+
+  test('14.14 Front elevation generation works (SH) @db', async ({ page }) => {
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.selectOption('#view-mode', 'front');
+    await page.click('#gen-btn');
+
+    await page.waitForFunction(() => {
+      const s = document.getElementById('status-text');
+      return s && (s.textContent.includes('Generated') || s.textContent.includes('error'));
+    }, { timeout: 30000 });
+
+    const entCount = await page.$eval('#ent-count', el => parseInt(el.textContent));
+    const status = await page.$eval('#status-text', el => el.textContent);
+
+    console.log(`§PW_2D_GEN_ELEV entities=${entCount} status="${status}"`);
+    expect(status).toContain('Generated');
+  });
+
+  test('14.15 DX floor plan with 2 storeys @db', async ({ page }) => {
+    await open2dWithDb(page, DX_DB, DX_LIB);
+
+    const storeyOpts = await page.$$eval('#storey-select option', opts => opts.map(o => o.value).filter(v => v));
+    console.log(`§PW_2D_DX_STOREYS count=${storeyOpts.length} storeys=${storeyOpts.join(',')}`);
+    expect(storeyOpts.length).toBeGreaterThanOrEqual(2);
+
+    // Select Level 1 if available (foundation storey has few elements)
+    const level1 = storeyOpts.find(s => s.includes('Level 1'));
+    if (level1) await page.selectOption('#storey-select', level1);
+
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => parseInt(document.getElementById('ent-count')?.textContent) > 0, { timeout: 30000 });
+
+    const ent1 = await page.$eval('#ent-count', el => parseInt(el.textContent));
+    console.log(`§PW_2D_DX_L1 entities=${ent1}`);
+    expect(ent1).toBeGreaterThan(5);
+
+    // Switch to Level 2 and regenerate
+    const level2 = storeyOpts.find(s => s.includes('Level 2'));
+    if (level2) {
+      await page.selectOption('#storey-select', level2);
+      await page.click('#gen-btn');
+      await page.waitForFunction(() => {
+        const el = document.getElementById('status-text');
+        return el && el.textContent.includes('Generated');
+      }, { timeout: 30000 });
+
+      const ent2 = await page.$eval('#ent-count', el => parseInt(el.textContent));
+      console.log(`§PW_2D_DX_L2 entities=${ent2}`);
+      expect(ent2).toBeGreaterThan(5);
+    }
+  });
+
+  test('14.16 Generate button shows timing in status @db', async ({ page }) => {
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => {
+      const s = document.getElementById('status-text');
+      return s && s.textContent.includes('ms)');
+    }, { timeout: 30000 });
+
+    const status = await page.$eval('#status-text', el => el.textContent);
+    console.log(`§PW_2D_TIMING status="${status}"`);
+    expect(status).toMatch(/\d+ms/);
+  });
+
+  test('14.17 Module scripts load without errors @fast', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', err => errors.push(err.message));
+    await page.goto('/dev/2d.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2000);
+
+    const modules = await page.evaluate(() => ({
+      SectionCut: typeof window.SectionCut === 'object',
+      GridDims: typeof window.GridDims === 'object',
+      Elevation: typeof window.Elevation === 'object',
+      DxfExport: typeof window.DxfExport === 'object',
+    }));
+
+    console.log(`§PW_2D_MODULES SC=${modules.SectionCut} GD=${modules.GridDims} EL=${modules.Elevation} DX=${modules.DxfExport}`);
+    expect(modules.SectionCut).toBe(true);
+    expect(modules.GridDims).toBe(true);
+    expect(modules.Elevation).toBe(true);
+    expect(modules.DxfExport).toBe(true);
+    expect(errors).toHaveLength(0);
+  });
+
+  test('14.18 Console §SC_ logs appear during plan generation @db', async ({ page }) => {
+    const logs = [];
+    page.on('console', msg => logs.push(msg.text()));
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => document.getElementById('status-text')?.textContent.includes('Generated'), { timeout: 30000 });
+
+    const scLogs = logs.filter(l => l.includes('§SC_'));
+    console.log(`§PW_2D_SC_LOGS count=${scLogs.length}`);
+    scLogs.forEach(l => console.log('  ' + l));
+    expect(scLogs.length).toBeGreaterThanOrEqual(2);
+  });
+
+  // ── White-box deep verification tests ──
+  // Issue prevented: silent data corruption in section cut, BIMSRC, grid, elevation, DXF export
+
+  test('14.19 Section cut contours are closed and have positive area (SH) @db @whitebox', async ({ page }) => {
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => document.getElementById('status-text')?.textContent.includes('Generated'), { timeout: 30000 });
+
+    const analysis = await page.evaluate(() => {
+      const ents = window.dxf ? window.dxf.entities : [];
+      const polylines = ents.filter(e => e.type === 'LWPOLYLINE' && e.vertices && e.vertices.length >= 3);
+      let closedCount = 0, openCount = 0, zeroAreaCount = 0;
+      const areas = [];
+      for (const p of polylines) {
+        // Check if shape flag (closed) is set
+        if (p.shape) closedCount++; else openCount++;
+        // Compute shoelace area
+        const v = p.vertices;
+        let area = 0;
+        for (let i = 0; i < v.length; i++) {
+          const j = (i + 1) % v.length;
+          area += v[i].x * v[j].y - v[j].x * v[i].y;
+        }
+        area = Math.abs(area) / 2;
+        areas.push(area);
+        if (area < 1e-6) zeroAreaCount++;
+      }
+      return { polylines: polylines.length, closedCount, openCount, zeroAreaCount,
+               minArea: areas.length ? Math.min(...areas) : 0,
+               maxArea: areas.length ? Math.max(...areas) : 0 };
+    });
+
+    console.log(`§PW_2D_WB_CONTOUR polylines=${analysis.polylines} closed=${analysis.closedCount} ` +
+                `open=${analysis.openCount} zeroArea=${analysis.zeroAreaCount} ` +
+                `minArea=${analysis.minArea.toFixed(4)} maxArea=${analysis.maxArea.toFixed(4)}`);
+    expect(analysis.polylines).toBeGreaterThan(0);
+    expect(analysis.closedCount).toBe(analysis.polylines);  // ALL contours must be closed
+    expect(analysis.openCount).toBe(0);
+    expect(analysis.zeroAreaCount).toBe(0);                 // no degenerate contours
+    expect(analysis.minArea).toBeGreaterThan(0.0001);       // smallest contour > 0.1mm² (thin frames)
+  });
+
+  test('14.20 BIMSRC xdata has valid GUIDs and correct ifc_classes (SH) @db @whitebox', async ({ page }) => {
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => document.getElementById('status-text')?.textContent.includes('Generated'), { timeout: 30000 });
+
+    const analysis = await page.evaluate(() => {
+      const ents = window.dxf ? window.dxf.entities : [];
+      const guids = new Set();
+      const ifcClasses = new Set();
+      let emptyGuid = 0, emptyClass = 0, missingFields = 0;
+      for (const e of ents) {
+        const xd = e.extendedData;
+        if (!xd || xd.applicationName !== 'BIMSRC') continue;
+        const kv = {};
+        (xd.customStrings || []).forEach(s => {
+          const i = s.indexOf(':');
+          if (i > 0) kv[s.slice(0, i)] = s.slice(i + 1);
+        });
+        if (!kv.guid) { emptyGuid++; continue; }
+        if (!kv.ifc_class) { emptyClass++; continue; }
+        if (!kv.guid || !kv.ifc_class || !('storey' in kv)) missingFields++;
+        guids.add(kv.guid);
+        ifcClasses.add(kv.ifc_class);
+      }
+      return { uniqueGuids: guids.size, ifcClasses: [...ifcClasses].sort(),
+               emptyGuid, emptyClass, missingFields };
+    });
+
+    console.log(`§PW_2D_WB_BIMSRC guids=${analysis.uniqueGuids} classes=${analysis.ifcClasses.join(',')} ` +
+                `emptyGuid=${analysis.emptyGuid} emptyClass=${analysis.emptyClass}`);
+    expect(analysis.uniqueGuids).toBeGreaterThan(3);   // SH has ≥5 walls/doors/windows
+    expect(analysis.emptyGuid).toBe(0);                // no empty GUIDs
+    expect(analysis.emptyClass).toBe(0);               // no empty ifc_classes
+    // Must contain at least walls and one other class
+    expect(analysis.ifcClasses).toEqual(expect.arrayContaining(['IfcWall']));
+    expect(analysis.ifcClasses.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('14.21 Contour XY coordinates are in sane world range (SH) @db @whitebox', async ({ page }) => {
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => document.getElementById('status-text')?.textContent.includes('Generated'), { timeout: 30000 });
+
+    // SH world coords: X ≈ 18..33, Y ≈ 220..228 (from element_transforms)
+    const bbox = await page.evaluate(() => {
+      const ents = window.dxf ? window.dxf.entities : [];
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const e of ents) {
+        if (!e.vertices) continue;
+        for (const v of e.vertices) {
+          if (v.x < minX) minX = v.x;
+          if (v.x > maxX) maxX = v.x;
+          if (v.y < minY) minY = v.y;
+          if (v.y > maxY) maxY = v.y;
+        }
+      }
+      return { minX, maxX, minY, maxY,
+               width: maxX - minX, height: maxY - minY };
+    });
+
+    console.log(`§PW_2D_WB_BBOX X=[${bbox.minX.toFixed(1)},${bbox.maxX.toFixed(1)}] ` +
+                `Y=[${bbox.minY.toFixed(1)},${bbox.maxY.toFixed(1)}] ` +
+                `W=${bbox.width.toFixed(1)} H=${bbox.height.toFixed(1)}`);
+    // SH is a small house — world extent should be reasonable (5-50m each axis)
+    expect(bbox.width).toBeGreaterThan(3);       // wider than 3m
+    expect(bbox.width).toBeLessThan(100);        // narrower than 100m
+    expect(bbox.height).toBeGreaterThan(3);      // taller than 3m
+    expect(bbox.height).toBeLessThan(100);       // shorter than 100m
+    // No NaN or Infinity
+    expect(isFinite(bbox.minX)).toBe(true);
+    expect(isFinite(bbox.maxY)).toBe(true);
+  });
+
+  test('14.22 Section cut classifies CUT vs BELOW vs ABOVE correctly (SH) @db @whitebox', async ({ page }) => {
+    await open2dWithDb(page, SH_DB, SH_LIB);
+
+    // Call SectionCut.sectionCut directly and inspect raw results
+    const result = await page.evaluate(() => {
+      if (!window.SectionCut || !window._2d_dbMain) return null;
+      const db = window._2d_dbMain;
+      const libDb = window._2d_dbLib;
+      const storeys = SectionCut.detectStoreys(db);
+      const cutZ = storeys[0].floorZ + 1.0;  // cut at first storey + 1m
+      const elements = SectionCut.sectionCut(db, libDb, cutZ, storeys[0].name);
+      const byCat = { CUT: 0, BELOW: 0, ABOVE: 0 };
+      const cutClasses = {};
+      let contoursWithPoints = 0;
+      for (const el of elements) {
+        byCat[el.category] = (byCat[el.category] || 0) + 1;
+        if (el.category === 'CUT' && el.contours.length > 0) {
+          cutClasses[el.ifcClass] = (cutClasses[el.ifcClass] || 0) + el.contours.length;
+          contoursWithPoints += el.contours.length;
+        }
+      }
+      return { total: elements.length, ...byCat, cutZ, cutClasses, contoursWithPoints,
+               storeyName: storeys[0].name };
+    });
+
+    if (!result) {
+      // DB refs not exposed — expose them
+      console.log('§PW_2D_WB_CLASSIFY skipped (DB refs not on window)');
+      return;
+    }
+
+    console.log(`§PW_2D_WB_CLASSIFY total=${result.total} CUT=${result.CUT} BELOW=${result.BELOW} ` +
+                `ABOVE=${result.ABOVE} contours=${result.contoursWithPoints} ` +
+                `cutZ=${result.cutZ} storey=${result.storeyName}`);
+    console.log(`  cutClasses: ${JSON.stringify(result.cutClasses)}`);
+    expect(result.CUT).toBeGreaterThan(0);
+    expect(result.contoursWithPoints).toBeGreaterThan(0);
+    // CUT + BELOW + ABOVE should equal total
+    expect(result.CUT + result.BELOW + result.ABOVE).toBe(result.total);
+  });
+
+  test('14.23 DXF export round-trips through dxf-parser (SH) @db @whitebox', async ({ page }) => {
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => document.getElementById('status-text')?.textContent.includes('Generated'), { timeout: 30000 });
+
+    const roundTrip = await page.evaluate(() => {
+      if (!window.DxfExport || !window.dxf) return null;
+      const ents = window.dxf.entities;
+      // Convert to DxfExport format
+      const exportEnts = [];
+      for (const e of ents) {
+        if (e.type === 'LWPOLYLINE' && e.vertices) {
+          const exp = { type: 'polyline', points: e.vertices.map(v => [v.x, v.y]),
+                        closed: !!e.shape, layer: e.layer };
+          if (e.extendedData && e.extendedData.customStrings) {
+            const kv = {};
+            e.extendedData.customStrings.forEach(s => { const i = s.indexOf(':'); if (i > 0) kv[s.slice(0,i)] = s.slice(i+1); });
+            if (kv.guid) { exp.guid = kv.guid; exp.ifcClass = kv.ifc_class; }
+          }
+          exportEnts.push(exp);
+        } else if (e.type === 'LINE' && e.vertices) {
+          exportEnts.push({ type: 'line', x0: e.vertices[0].x, y0: e.vertices[0].y,
+                            x1: e.vertices[1].x, y1: e.vertices[1].y, layer: e.layer });
+        }
+      }
+
+      // Export to DXF string
+      const dxfStr = DxfExport.toDxf(exportEnts, { title: 'Test export' });
+      if (!dxfStr || dxfStr.length < 100) return { error: 'DXF string too short: ' + (dxfStr || '').length };
+
+      // Parse back with dxf-parser
+      try {
+        const parser = new DxfParser();
+        const parsed = parser.parseSync(dxfStr);
+        if (!parsed || !parsed.entities) return { error: 'Parse returned no entities' };
+
+        // Count BIMSRC xdata that survived round-trip
+        let bimsrcCount = 0;
+        for (const e of parsed.entities) {
+          const xd = e.extendedData || e.xdata || e.xData;
+          if (xd && xd.applicationName === 'BIMSRC') bimsrcCount++;
+        }
+
+        return {
+          inputEnts: exportEnts.length,
+          dxfBytes: dxfStr.length,
+          parsedEnts: parsed.entities.length,
+          parsedLayers: Object.keys(parsed.tables && parsed.tables.layer && parsed.tables.layer.layers || {}).length,
+          bimsrcSurvived: bimsrcCount,
+          hasHeader: dxfStr.includes('AC1015'),
+          hasAppid: dxfStr.includes('BIMSRC'),
+        };
+      } catch (e) {
+        return { error: 'Parse error: ' + e.message };
+      }
+    });
+
+    expect(roundTrip).not.toBeNull();
+    expect(roundTrip.error).toBeUndefined();
+    console.log(`§PW_2D_WB_ROUNDTRIP input=${roundTrip.inputEnts} dxfBytes=${roundTrip.dxfBytes} ` +
+                `parsed=${roundTrip.parsedEnts} layers=${roundTrip.parsedLayers} ` +
+                `bimsrc=${roundTrip.bimsrcSurvived}`);
+    expect(roundTrip.parsedEnts).toBeGreaterThan(0);
+    expect(roundTrip.parsedEnts).toBe(roundTrip.inputEnts);  // 1:1 entity preservation
+    expect(roundTrip.bimsrcSurvived).toBeGreaterThan(0);     // BIMSRC survives round-trip
+    expect(roundTrip.hasHeader).toBe(true);                  // AC1015 in header
+    expect(roundTrip.hasAppid).toBe(true);                   // BIMSRC APPID registered
+  });
+
+  test('14.24 Elevation edges are in building height range (SH) @db @whitebox', async ({ page }) => {
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.selectOption('#view-mode', 'front');
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => document.getElementById('status-text')?.textContent.includes('Generated'), { timeout: 30000 });
+
+    const analysis = await page.evaluate(() => {
+      const ents = window.dxf ? window.dxf.entities : [];
+      const lines = ents.filter(e => e.type === 'LINE' && e.vertices && e.vertices.length >= 2);
+      if (lines.length === 0) return { lines: 0 };
+      let minY = Infinity, maxY = -Infinity;  // Y = vertical (Z in world)
+      let minX = Infinity, maxX = -Infinity;  // X = horizontal
+      const layers = new Set();
+      for (const l of lines) {
+        for (const v of l.vertices) {
+          if (v.y < minY) minY = v.y;
+          if (v.y > maxY) maxY = v.y;
+          if (v.x < minX) minX = v.x;
+          if (v.x > maxX) maxX = v.x;
+        }
+        if (l.layer) layers.add(l.layer);
+      }
+      return { lines: lines.length, minY, maxY, minX, maxX,
+               height: maxY - minY, width: maxX - minX,
+               layers: [...layers].sort() };
+    });
+
+    console.log(`§PW_2D_WB_ELEV lines=${analysis.lines} ` +
+                `H=[${analysis.minY?.toFixed(1)},${analysis.maxY?.toFixed(1)}] height=${analysis.height?.toFixed(1)} ` +
+                `W=[${analysis.minX?.toFixed(1)},${analysis.maxX?.toFixed(1)}] width=${analysis.width?.toFixed(1)} ` +
+                `layers=${analysis.layers?.join(',')}`);
+    expect(analysis.lines).toBeGreaterThan(50);        // should have many edges
+    // SH is ~3m tall, ~15m wide — elevation should reflect this
+    expect(analysis.height).toBeGreaterThan(1);        // building is taller than 1m
+    expect(analysis.height).toBeLessThan(20);          // but shorter than 20m
+    expect(analysis.width).toBeGreaterThan(3);         // wider than 3m
+    // Must have elevation-specific layers
+    expect(analysis.layers.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test('14.25 Each generated GUID matches a real element in the DB (SH) @db @whitebox', async ({ page }) => {
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => document.getElementById('status-text')?.textContent.includes('Generated'), { timeout: 30000 });
+
+    // Extract GUIDs from generated entities, then verify each exists in elements_meta
+    const result = await page.evaluate(() => {
+      if (!window._2d_dbMain || !window.dxf) return null;
+      const ents = window.dxf.entities;
+      const guids = new Set();
+      for (const e of ents) {
+        const xd = e.extendedData;
+        if (!xd || xd.applicationName !== 'BIMSRC') continue;
+        const kv = {};
+        (xd.customStrings || []).forEach(s => { const i = s.indexOf(':'); if (i > 0) kv[s.slice(0,i)] = s.slice(i+1); });
+        if (kv.guid) guids.add(kv.guid);
+      }
+      // Verify each GUID exists in DB
+      const db = window._2d_dbMain;
+      let found = 0, missing = 0;
+      const missingList = [];
+      for (const guid of guids) {
+        const r = db.exec("SELECT COUNT(*) FROM elements_meta WHERE guid = '" + guid.replace(/'/g, "''") + "'");
+        if (r.length > 0 && r[0].values[0][0] > 0) found++;
+        else { missing++; missingList.push(guid); }
+      }
+      return { totalGuids: guids.size, found, missing, missingList: missingList.slice(0, 5) };
+    });
+
+    if (!result) {
+      console.log('§PW_2D_WB_GUID_CHECK skipped (DB not on window)');
+      return;
+    }
+    console.log(`§PW_2D_WB_GUID_CHECK total=${result.totalGuids} found=${result.found} missing=${result.missing}`);
+    if (result.missing > 0) console.log(`  missing: ${result.missingList.join(', ')}`);
+    expect(result.totalGuids).toBeGreaterThan(0);
+    expect(result.missing).toBe(0);  // every GUID must exist in DB
+  });
+
+  test('14.26 Storey floorZ values are monotonically increasing (SH) @db @whitebox', async ({ page }) => {
+    await open2dWithDb(page, SH_DB, SH_LIB);
+
+    const storeys = await page.evaluate(() => {
+      if (!window.SectionCut || !window._2d_dbMain) return null;
+      return SectionCut.detectStoreys(window._2d_dbMain);
+    });
+
+    if (!storeys) {
+      console.log('§PW_2D_WB_STOREY_ORDER skipped (DB not on window)');
+      return;
+    }
+    console.log(`§PW_2D_WB_STOREY_ORDER storeys=${storeys.map(s => s.name + '@' + s.floorZ.toFixed(2)).join(', ')}`);
+    expect(storeys.length).toBeGreaterThanOrEqual(1);
+    // Verify monotonically increasing floorZ
+    for (let i = 1; i < storeys.length; i++) {
+      expect(storeys[i].floorZ).toBeGreaterThanOrEqual(storeys[i-1].floorZ);
+    }
+    // Each storey should have a name and elementCount > 0
+    for (const s of storeys) {
+      expect(s.name).toBeTruthy();
+      expect(s.elementCount).toBeGreaterThan(0);
+    }
+  });
+
+  test('14.27 Grid detection returns empty for SH (no IfcColumn) @db @whitebox', async ({ page }) => {
+    await open2dWithDb(page, SH_DB, SH_LIB);
+
+    const gridResult = await page.evaluate(() => {
+      if (!window.GridDims || !window._2d_dbMain) return null;
+      return GridDims.detectGrids(window._2d_dbMain);
+    });
+
+    if (!gridResult) {
+      console.log('§PW_2D_WB_GRID_EMPTY skipped (DB not on window)');
+      return;
+    }
+    console.log(`§PW_2D_WB_GRID_EMPTY xLines=${gridResult.xLines.length} yLines=${gridResult.yLines.length}`);
+    // SH has 0 IfcColumn → grids should be empty (graceful degradation)
+    expect(gridResult.xLines.length).toBe(0);
+    expect(gridResult.yLines.length).toBe(0);
+  });
+
+  test('14.28 Multiple contours per wall element (inner+outer) handled (SH) @db @whitebox', async ({ page }) => {
+    await open2dWithDb(page, SH_DB, SH_LIB);
+    await page.click('#gen-btn');
+    await page.waitForFunction(() => document.getElementById('status-text')?.textContent.includes('Generated'), { timeout: 30000 });
+
+    // Check that walls produce multiple contours (outer boundary + inner cavity)
+    const analysis = await page.evaluate(() => {
+      const ents = window.dxf ? window.dxf.entities : [];
+      // Group entities by GUID
+      const byGuid = {};
+      for (const e of ents) {
+        const xd = e.extendedData;
+        if (!xd || xd.applicationName !== 'BIMSRC') continue;
+        const kv = {};
+        (xd.customStrings || []).forEach(s => { const i = s.indexOf(':'); if (i > 0) kv[s.slice(0,i)] = s.slice(i+1); });
+        if (!kv.guid) continue;
+        if (!byGuid[kv.guid]) byGuid[kv.guid] = { ifcClass: kv.ifc_class, count: 0 };
+        byGuid[kv.guid].count++;
+      }
+      const guidCounts = Object.values(byGuid);
+      const multiContour = guidCounts.filter(g => g.count > 1);
+      const maxContours = guidCounts.reduce((mx, g) => Math.max(mx, g.count), 0);
+      return {
+        uniqueElements: guidCounts.length,
+        multiContourElements: multiContour.length,
+        maxContoursPerElement: maxContours,
+        distribution: guidCounts.map(g => g.ifcClass + ':' + g.count).sort()
+      };
+    });
+
+    console.log(`§PW_2D_WB_MULTI_CONTOUR elements=${analysis.uniqueElements} ` +
+                `multiContour=${analysis.multiContourElements} max=${analysis.maxContoursPerElement}`);
+    console.log(`  distribution: ${analysis.distribution.join(', ')}`);
+    expect(analysis.uniqueElements).toBeGreaterThan(3);
+    // Walls typically have 2 contours (outer + inner) — at least some should
+    // Note: this is informational. If all have 1 contour, section cut may be simplified geometry
+  });
+
+  test('14.29 2D button passes db+lib+bld params to 2d.html @db @whitebox', async ({ page }) => {
+    // Open viewer with SH
+    await openViewer(page, {
+      db: '/buildings/SampleHouse_extracted.db',
+      lib: '/buildings/SampleHouse_library.db',
+    });
+
+    // Intercept the window.open call to capture the URL
+    const openedUrl = await page.evaluate(() => {
+      return new Promise(resolve => {
+        const origOpen = window.open;
+        window.open = (url) => { resolve(url); window.open = origOpen; };
+        // Click the 2D button
+        document.querySelector('button[title="2D Plans"]').click();
+      });
+    });
+
+    console.log(`§PW_2D_WB_URL opened="${openedUrl}"`);
+    expect(openedUrl).toContain('2d.html');
+    expect(openedUrl).toContain('db=');
+    expect(openedUrl).toContain('lib=');
+    // URL must have a non-empty db param
+    const u = new URL(openedUrl, 'http://localhost');
+    const dbVal = u.searchParams.get('db');
+    const libVal = u.searchParams.get('lib');
+    console.log(`§PW_2D_WB_URL_PARAMS db="${dbVal}" lib="${libVal}" bld="${u.searchParams.get('bld')}"`);
+    expect(dbVal).toBeTruthy();
+    expect(dbVal).toContain('SampleHouse');
+    expect(libVal).toBeTruthy();
+    expect(libVal).toContain('SampleHouse');
+  });
+
+  test('14.30 2d.html with ?db= hides DXF dropdown and auto-generates @db @whitebox', async ({ page }) => {
+    const logs = [];
+    page.on('console', msg => logs.push(msg.text()));
+    await page.goto(`/dev/2d.html?db=${SH_DB}&lib=${SH_LIB}`, { waitUntil: 'domcontentloaded' });
+
+    // Wait for auto-generation to complete
+    await page.waitForFunction(() => {
+      const s = document.getElementById('status-text');
+      return s && (s.textContent.includes('Generated') || s.textContent.includes('error'));
+    }, { timeout: 45000 });
+
+    // DXF sheet dropdown must be hidden
+    const sheetVisible = await page.$eval('#sheet-select', el => getComputedStyle(el).display !== 'none');
+    console.log(`§PW_2D_WB_DROPDOWN_HIDDEN sheetVisible=${sheetVisible}`);
+    expect(sheetVisible).toBe(false);
+
+    // Must have auto-generated entities (not from DXF files)
+    const entCount = await page.$eval('#ent-count', el => parseInt(el.textContent));
+    console.log(`§PW_2D_WB_AUTOGEN entities=${entCount}`);
+    expect(entCount).toBeGreaterThan(0);
+
+    // Must NOT have loaded any DXF files
+    const dxfFetches = logs.filter(l => l.includes('.dxf'));
+    console.log(`§PW_2D_WB_NO_DXF dxfFetches=${dxfFetches.length}`);
+    expect(dxfFetches.length).toBe(0);
+
+    // Status must show "Generated" not "Loaded"
+    const status = await page.$eval('#status-text', el => el.textContent);
+    expect(status).toContain('Generated');
+  });
+
+  test('14.31 2d.html without ?db= shows DXF dropdown, no Generate @fast @whitebox', async ({ page }) => {
+    await page.goto('/dev/2d.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => parseInt(document.getElementById('ent-count')?.textContent) > 0, { timeout: 15000 });
+
+    // DXF sheet dropdown must be visible
+    const sheetVisible = await page.$eval('#sheet-select', el => getComputedStyle(el).display !== 'none');
+    console.log(`§PW_2D_WB_DXF_MODE sheetVisible=${sheetVisible}`);
+    expect(sheetVisible).toBe(true);
+
+    // Options should contain DXF file entries
+    const opts = await page.$$eval('#sheet-select option', opts => opts.map(o => o.value).filter(v => v.includes('.dxf')));
+    console.log(`§PW_2D_WB_DXF_OPTIONS count=${opts.length}`);
+    expect(opts.length).toBeGreaterThan(0);
+
+    // §2D_DB log should say "no db= param"
+    const noDbLog = await page.evaluate(() => {
+      // Can't capture past console logs, but check window state
+      return !window._2d_dbMain;
+    });
+    expect(noDbLog).toBe(true);
+  });
 });

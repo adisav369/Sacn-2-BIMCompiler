@@ -1,0 +1,593 @@
+/**
+ * section_cut.js — Browser port of Python mesh section cut engine.
+ * Slices triangle meshes at a horizontal cut plane Z=cutZ, producing 2D contours.
+ *
+ * Source: 2D_Layout/python/section_cut.py (faithful port, no numpy)
+ *
+ * API (window.SectionCut):
+ *   detectStoreys(db)                          → [{name, floorZ, elementCount}]
+ *   sectionCut(db, libDb, cutZ, storeyName)    → [{guid, ifcClass, elementName, storey, category, contours, bbox2d}]
+ *   sliceMesh(vertices_f32, faces_i32, cutZ)   → [[x0,y0],[x1,y1]] segments
+ *   chainSegments(segments, tolerance)          → [[[x,y],...]] contours
+ *
+ * Debug log tags (§ traceability):
+ *   §SC_STOREYS   §SC_CUT_PLANE   §SC_QUERY   §SC_SLICE   §SC_CHAIN   §SC_DONE
+ *
+ * No DOM access — Web Worker compatible. Attach to window at bottom only.
+ */
+
+(function () {
+'use strict';
+
+// -------------------------------------------------------------------------
+// Constants
+// -------------------------------------------------------------------------
+var TOLERANCE = 0.005;        // 5 mm endpoint matching
+var EPSILON   = 1e-7;         // floating-point zero guard
+var DEFAULT_CUT_OFFSET = 1.0; // meters above floor level
+
+// IFC classes eligible for slicing (performance filter)
+var SLICE_CLASSES = {
+    'IfcWall': 1, 'IfcWallStandardCase': 1, 'IfcColumn': 1,
+    'IfcDoor': 1, 'IfcWindow': 1, 'IfcSlab': 1, 'IfcPlate': 1,
+    'IfcMember': 1, 'IfcBeam': 1, 'IfcCurtainWall': 1,
+    'IfcStair': 1, 'IfcRailing': 1
+};
+
+// -------------------------------------------------------------------------
+// BLOB parsers
+// -------------------------------------------------------------------------
+
+function parseVerticesBlob(blob, vertexCount) {
+    // blob is a Uint8Array from sql.js
+    var expected = vertexCount * 3 * 4;
+    if (blob.byteLength === expected) {
+        // Ensure aligned buffer for Float32Array
+        var buf = new ArrayBuffer(expected);
+        new Uint8Array(buf).set(blob instanceof Uint8Array ? blob : new Uint8Array(blob));
+        return new Float32Array(buf);
+    }
+    // Fallback: float64
+    var expectedD = vertexCount * 3 * 8;
+    if (blob.byteLength === expectedD) {
+        var buf64 = new ArrayBuffer(expectedD);
+        new Uint8Array(buf64).set(blob instanceof Uint8Array ? blob : new Uint8Array(blob));
+        var f64 = new Float64Array(buf64);
+        var f32 = new Float32Array(f64.length);
+        for (var i = 0; i < f64.length; i++) f32[i] = f64[i];
+        return f32;
+    }
+    // Last resort: infer from size
+    var n = Math.floor(blob.byteLength / 12);
+    if (n > 0) {
+        var bufN = new ArrayBuffer(n * 12);
+        new Uint8Array(bufN).set(new Uint8Array(blob.buffer || blob, blob.byteOffset || 0, n * 12));
+        return new Float32Array(bufN);
+    }
+    return new Float32Array(0);
+}
+
+function parseFacesBlob(blob, faceCount) {
+    var expected = faceCount * 3 * 4;
+    if (blob.byteLength === expected) {
+        var buf = new ArrayBuffer(expected);
+        new Uint8Array(buf).set(blob instanceof Uint8Array ? blob : new Uint8Array(blob));
+        return new Int32Array(buf);
+    }
+    var n = Math.floor(blob.byteLength / 12);
+    if (n > 0) {
+        var bufN = new ArrayBuffer(n * 12);
+        new Uint8Array(bufN).set(new Uint8Array(blob.buffer || blob, blob.byteOffset || 0, n * 12));
+        return new Int32Array(bufN);
+    }
+    return new Int32Array(0);
+}
+
+// -------------------------------------------------------------------------
+// Mesh slicing — tight loops, no per-triangle function calls
+// -------------------------------------------------------------------------
+
+/**
+ * Slice a triangle mesh at Z=cutZ.
+ * @param {Float32Array} verts  - flat xyz (vertexCount*3 floats)
+ * @param {Int32Array}   faces  - flat triangle indices (faceCount*3 ints)
+ * @param {number}       cutZ
+ * @returns {Array} array of [[x0,y0],[x1,y1]] segments
+ */
+function sliceMesh(verts, faces, cutZ) {
+    var numTri = (faces.length / 3) | 0;
+    var numVert = (verts.length / 3) | 0;
+    if (numTri === 0 || numVert === 0) return [];
+
+    var segments = [];
+
+    for (var t = 0; t < numTri; t++) {
+        var i0 = faces[t * 3]     * 3;
+        var i1 = faces[t * 3 + 1] * 3;
+        var i2 = faces[t * 3 + 2] * 3;
+
+        // Vertex Z coords
+        var z0 = verts[i0 + 2];
+        var z1 = verts[i1 + 2];
+        var z2 = verts[i2 + 2];
+
+        // Signed distances
+        var d0 = z0 - cutZ;
+        var d1 = z1 - cutZ;
+        var d2 = z2 - cutZ;
+
+        // All above or all below — skip
+        if (d0 > EPSILON && d1 > EPSILON && d2 > EPSILON) continue;
+        if (d0 < -EPSILON && d1 < -EPSILON && d2 < -EPSILON) continue;
+
+        // All on plane — skip degenerate
+        var abs0 = d0 < 0 ? -d0 : d0;
+        var abs1 = d1 < 0 ? -d1 : d1;
+        var abs2 = d2 < 0 ? -d2 : d2;
+        if (abs0 <= EPSILON && abs1 <= EPSILON && abs2 <= EPSILON) continue;
+
+        // Sign (+1 / -1), treat on-plane as +1
+        var s0 = d0 >= 0 ? 1 : -1;
+        var s1 = d1 >= 0 ? 1 : -1;
+        var s2 = d2 >= 0 ? 1 : -1;
+
+        // Identify isolated vertex (the one on its own side)
+        // Case A: v0 isolated, Case B: v1 isolated, Case C: v2 isolated
+        var ax0, ay0, az0, ax1, ay1, az1, ax2, ay2, az2;
+        var da, db, dc;
+
+        if (s0 !== s1 && s0 !== s2) {
+            // v0 is isolated — edges v0-v1 and v0-v2
+            ax0 = verts[i0]; ay0 = verts[i0+1];
+            ax1 = verts[i1]; ay1 = verts[i1+1];
+            ax2 = verts[i2]; ay2 = verts[i2+1];
+            da = d0; db = d1; dc = d2;
+        } else if (s1 !== s0 && s1 !== s2) {
+            // v1 is isolated — edges v1-v0 and v1-v2
+            ax0 = verts[i1]; ay0 = verts[i1+1];
+            ax1 = verts[i0]; ay1 = verts[i0+1];
+            ax2 = verts[i2]; ay2 = verts[i2+1];
+            da = d1; db = d0; dc = d2;
+        } else {
+            // v2 is isolated — edges v2-v0 and v2-v1
+            ax0 = verts[i2]; ay0 = verts[i2+1];
+            ax1 = verts[i0]; ay1 = verts[i0+1];
+            ax2 = verts[i1]; ay2 = verts[i1+1];
+            da = d2; db = d0; dc = d1;
+        }
+
+        // Interpolate edge isolated→B
+        var denom1 = da - db;
+        var t1 = (denom1 < -EPSILON || denom1 > EPSILON) ? da / denom1 : 0.5;
+        var px0 = ax0 + t1 * (ax1 - ax0);
+        var py0 = ay0 + t1 * (ay1 - ay0);
+
+        // Interpolate edge isolated→C
+        var denom2 = da - dc;
+        var t2 = (denom2 < -EPSILON || denom2 > EPSILON) ? da / denom2 : 0.5;
+        var px1 = ax0 + t2 * (ax2 - ax0);
+        var py1 = ay0 + t2 * (ay2 - ay0);
+
+        segments.push([[px0, py0], [px1, py1]]);
+    }
+
+    return segments;
+}
+
+// -------------------------------------------------------------------------
+// Segment chaining — build closed polylines from unordered segments
+// -------------------------------------------------------------------------
+
+/**
+ * Chain segments into closed contours.
+ * @param {Array} segments  - array of [[x0,y0],[x1,y1]]
+ * @param {number} tolerance
+ * @returns {Array} array of [[x,y],...] contours (each a closed polyline)
+ */
+function chainSegments(segments, tolerance) {
+    if (tolerance === undefined) tolerance = TOLERANCE;
+    if (segments.length === 0) return [];
+
+    // Build index array of remaining segment indices
+    var remaining = [];
+    for (var i = 0; i < segments.length; i++) remaining.push(i);
+
+    var chains = [];
+
+    while (remaining.length > 0) {
+        var seedIdx = remaining.shift();
+        var seg = segments[seedIdx];
+        var chain = [[seg[0][0], seg[0][1]], [seg[1][0], seg[1][1]]];
+
+        var changed = true;
+        while (changed) {
+            changed = false;
+            var tail = chain[chain.length - 1];
+            var head = chain[0];
+
+            // Check closure
+            if (chain.length > 2) {
+                var dx = tail[0] - head[0];
+                var dy = tail[1] - head[1];
+                if (Math.sqrt(dx * dx + dy * dy) < tolerance) break;
+            }
+
+            var bestIdx = -1;
+            var bestDist = tolerance;
+            var bestEnd = 0;   // 0=match seg start, 1=match seg end
+            var bestWhich = 0; // 0=append to tail, 1=prepend to head
+
+            for (var ri = 0; ri < remaining.length; ri++) {
+                var si = remaining[ri];
+                var ss = segments[si][0];
+                var se = segments[si][1];
+
+                // Segment start → chain tail
+                var d = Math.sqrt((ss[0] - tail[0]) * (ss[0] - tail[0]) + (ss[1] - tail[1]) * (ss[1] - tail[1]));
+                if (d < bestDist) { bestDist = d; bestIdx = ri; bestEnd = 0; bestWhich = 0; }
+
+                // Segment end → chain tail
+                d = Math.sqrt((se[0] - tail[0]) * (se[0] - tail[0]) + (se[1] - tail[1]) * (se[1] - tail[1]));
+                if (d < bestDist) { bestDist = d; bestIdx = ri; bestEnd = 1; bestWhich = 0; }
+
+                // Segment end → chain head
+                d = Math.sqrt((se[0] - head[0]) * (se[0] - head[0]) + (se[1] - head[1]) * (se[1] - head[1]));
+                if (d < bestDist) { bestDist = d; bestIdx = ri; bestEnd = 1; bestWhich = 1; }
+
+                // Segment start → chain head
+                d = Math.sqrt((ss[0] - head[0]) * (ss[0] - head[0]) + (ss[1] - head[1]) * (ss[1] - head[1]));
+                if (d < bestDist) { bestDist = d; bestIdx = ri; bestEnd = 0; bestWhich = 1; }
+            }
+
+            if (bestIdx >= 0) {
+                var matchedSi = remaining[bestIdx];
+                remaining.splice(bestIdx, 1);
+                var mss = segments[matchedSi][0];
+                var mse = segments[matchedSi][1];
+
+                if (bestWhich === 0) { // append to tail
+                    chain.push(bestEnd === 0 ? [mse[0], mse[1]] : [mss[0], mss[1]]);
+                } else { // prepend to head
+                    chain.unshift(bestEnd === 1 ? [mss[0], mss[1]] : [mse[0], mse[1]]);
+                }
+                changed = true;
+            }
+        }
+
+        if (chain.length >= 3) {
+            chains.push(chain);
+        }
+    }
+
+    return chains;
+}
+
+// -------------------------------------------------------------------------
+// Contour classification — shoelace signed area
+// -------------------------------------------------------------------------
+
+function signedArea(points) {
+    var area = 0;
+    var n = points.length;
+    for (var i = 0; i < n; i++) {
+        var j = (i + 1) % n;
+        area += points[i][0] * points[j][1] - points[j][0] * points[i][1];
+    }
+    return area * 0.5;
+}
+
+// -------------------------------------------------------------------------
+// Storey detection
+// -------------------------------------------------------------------------
+
+function hasTable(db, name) {
+    var r = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='" + name + "'");
+    return r.length > 0 && r[0].values.length > 0;
+}
+
+function detectStoreys(db) {
+    // Try elements_rtree first (full DB), fall back to element_transforms (deployed DB)
+    // sql.js may not have R-tree support even if table exists, so try/catch
+    var result = null;
+    if (hasTable(db, 'elements_rtree')) {
+        try {
+            result = db.exec(
+                "SELECT m.storey, MIN(r.minZ) as floor_z, COUNT(*) as n " +
+                "FROM elements_meta m JOIN elements_rtree r ON m.id = r.id " +
+                "WHERE m.storey IS NOT NULL GROUP BY m.storey ORDER BY floor_z"
+            );
+        } catch (e) {
+            console.log('§SC_STOREYS rtree query failed, falling back to transforms: ' + e.message);
+            result = null;
+        }
+    }
+    if (!result || result.length === 0) {
+        result = db.exec(
+            "SELECT m.storey, MIN(et.center_z) as floor_z, COUNT(*) as n " +
+            "FROM elements_meta m JOIN element_transforms et ON m.guid = et.guid " +
+            "WHERE m.storey IS NOT NULL GROUP BY m.storey ORDER BY floor_z"
+        );
+    }
+    var storeys = [];
+    if (result.length > 0) {
+        var rows = result[0].values;
+        for (var i = 0; i < rows.length; i++) {
+            storeys.push({
+                name: rows[i][0],
+                floorZ: Number(rows[i][1]),
+                elementCount: Number(rows[i][2])
+            });
+        }
+    }
+    console.log('§SC_STOREYS count=' + storeys.length);
+    return storeys;
+}
+
+// -------------------------------------------------------------------------
+// Geometry lookup — try db first, then libDb
+// -------------------------------------------------------------------------
+
+function lookupGeometry(db, libDb, geometryHash) {
+    var escaped = geometryHash.replace(/'/g, "''");
+    // Try both table names in both DBs (deployed DBs use component_geometries)
+    var tables = ['base_geometries', 'component_geometries'];
+    var dbs = [db];
+    if (libDb && libDb !== db) dbs.push(libDb);
+    for (var di = 0; di < dbs.length; di++) {
+        for (var ti = 0; ti < tables.length; ti++) {
+            if (!hasTable(dbs[di], tables[ti])) continue;
+            var sql = "SELECT vertices, faces, vertex_count, face_count FROM " +
+                      tables[ti] + " WHERE geometry_hash = '" + escaped + "' LIMIT 1";
+            try {
+                var res = dbs[di].exec(sql);
+                if (res.length > 0 && res[0].values.length > 0) return res[0].values[0];
+            } catch (e) { /* table might not exist */ }
+        }
+    }
+    return null;
+}
+
+// -------------------------------------------------------------------------
+// Section cut — main orchestration
+// -------------------------------------------------------------------------
+
+function sectionCut(db, libDb, cutZ, storeyName) {
+    var t0 = Date.now();
+
+    // --- Determine cut height ---
+    if (cutZ == null) {
+        var storeys = detectStoreys(db);
+        if (storeys.length === 0) {
+            console.warn('§SC_CUT_PLANE no storeys found');
+            return [];
+        }
+        var target = null;
+        if (storeyName) {
+            for (var si = 0; si < storeys.length; si++) {
+                if (storeys[si].name === storeyName) { target = storeys[si]; break; }
+            }
+            if (!target) {
+                console.warn('§SC_CUT_PLANE storey not found: ' + storeyName);
+                target = storeys[0];
+            }
+        } else {
+            target = storeys[0];
+        }
+        cutZ = target.floorZ + DEFAULT_CUT_OFFSET;
+        console.log('§SC_CUT_PLANE z=' + cutZ.toFixed(3) + ' storey=' + target.name);
+    } else {
+        console.log('§SC_CUT_PLANE z=' + cutZ.toFixed(3) + ' storey=' + (storeyName || 'explicit'));
+    }
+
+    var results = [];
+
+    // --- Fetch ALL elements with geometry + transforms ---
+    // Try rtree path first, fall back to transforms-only if sql.js lacks R-tree
+    var useRtree = false;
+    var allRes = null;
+    if (hasTable(db, 'elements_rtree')) {
+        try {
+            allRes = db.exec(
+                "SELECT m.guid, m.ifc_class, m.element_name, m.storey, " +
+                "  ei.geometry_hash, " +
+                "  r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ, " +
+                "  COALESCE(et.center_x, 0.0), COALESCE(et.center_y, 0.0), COALESCE(et.center_z, 0.0) " +
+                "FROM elements_meta m " +
+                "JOIN element_instances ei ON m.guid = ei.guid " +
+                "JOIN elements_rtree r ON m.id = r.id " +
+                "LEFT JOIN element_transforms et ON m.guid = et.guid"
+            );
+            useRtree = true;
+        } catch (e) {
+            console.log('§SC_QUERY rtree query failed, using transforms: ' + e.message);
+        }
+    }
+    if (!allRes || allRes.length === 0) {
+        allRes = db.exec(
+            "SELECT m.guid, m.ifc_class, m.element_name, m.storey, " +
+            "  ei.geometry_hash, " +
+            "  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, " +
+            "  COALESCE(et.center_x, 0.0), COALESCE(et.center_y, 0.0), COALESCE(et.center_z, 0.0) " +
+            "FROM elements_meta m " +
+            "JOIN element_instances ei ON m.guid = ei.guid " +
+            "LEFT JOIN element_transforms et ON m.guid = et.guid"
+        );
+    }
+
+    var allRows = (allRes && allRes.length > 0) ? allRes[0].values : [];
+    console.log('§SC_QUERY_ALL rows=' + allRows.length + ' useRtree=' + useRtree);
+
+    var cutCount = 0, belowCount = 0, aboveCount = 0, totalContours = 0;
+    var sliceCount = 0;
+
+    for (var ci = 0; ci < allRows.length; ci++) {
+        var row = allRows[ci];
+        var guid       = row[0];
+        var ifcClass   = row[1] || '';
+        var elemName   = row[2] || '';
+        var storey     = row[3] || '';
+        var geoHash    = row[4];
+        var minX = Number(row[5]), maxX = Number(row[6]);
+        var minY = Number(row[7]), maxY = Number(row[8]);
+        var rMinZ = Number(row[9]), rMaxZ = Number(row[10]);
+        var cx = Number(row[11]), cy = Number(row[12]), cz = Number(row[13]);
+
+        // Without rtree, we need geometry to determine Z-range
+        // Load geometry for all sliceable classes, classify others by center_z
+        var geo = null;
+        var verts = null, faces = null;
+
+        if (SLICE_CLASSES[ifcClass] && geoHash) {
+            geo = lookupGeometry(db, libDb, geoHash);
+        }
+
+        // Determine element Z-range
+        var elemMinZ, elemMaxZ;
+        if (useRtree) {
+            elemMinZ = rMinZ;
+            elemMaxZ = rMaxZ;
+        } else if (geo && geo[0] && geo[1]) {
+            // Compute Z-range from mesh vertices + element center
+            var vertBlob = geo[0];
+            var vertCount = Number(geo[2]);
+            verts = parseVerticesBlob(vertBlob, vertCount);
+            var localMinZ = Infinity, localMaxZ = -Infinity;
+            for (var vi = 0; vi < verts.length; vi += 3) {
+                var z = verts[vi + 2];
+                if (z < localMinZ) localMinZ = z;
+                if (z > localMaxZ) localMaxZ = z;
+            }
+            elemMinZ = localMinZ + cz;
+            elemMaxZ = localMaxZ + cz;
+            // Also compute XY bbox from vertices
+            var localMinX = Infinity, localMaxX = -Infinity;
+            var localMinY = Infinity, localMaxY = -Infinity;
+            for (var vj = 0; vj < verts.length; vj += 3) {
+                var vx = verts[vj], vy = verts[vj + 1];
+                if (vx < localMinX) localMinX = vx;
+                if (vx > localMaxX) localMaxX = vx;
+                if (vy < localMinY) localMinY = vy;
+                if (vy > localMaxY) localMaxY = vy;
+            }
+            minX = localMinX + cx; maxX = localMaxX + cx;
+            minY = localMinY + cy; maxY = localMaxY + cy;
+        } else {
+            // No geometry and no rtree — use center_z with a ±1.5m guess
+            elemMinZ = cz - 1.5;
+            elemMaxZ = cz + 1.5;
+        }
+
+        // Classify: CUT / BELOW / ABOVE
+        var category;
+        if (elemMinZ < cutZ && elemMaxZ > cutZ) {
+            category = 'CUT';
+        } else if (elemMaxZ <= cutZ) {
+            category = 'BELOW';
+        } else {
+            category = 'ABOVE';
+        }
+
+        if (category !== 'CUT') {
+            results.push({
+                guid: guid, ifcClass: ifcClass, elementName: elemName,
+                storey: storey, category: category, contours: [],
+                bbox2d: [minX, minY, maxX, maxY]
+            });
+            if (category === 'BELOW') belowCount++;
+            else aboveCount++;
+            continue;
+        }
+
+        cutCount++;
+
+        // Not a sliceable class — record as CUT but no contours
+        if (!SLICE_CLASSES[ifcClass] || !geo || !geo[0] || !geo[1]) {
+            results.push({
+                guid: guid, ifcClass: ifcClass, elementName: elemName,
+                storey: storey, category: 'CUT', contours: [],
+                bbox2d: [minX, minY, maxX, maxY]
+            });
+            continue;
+        }
+
+        // Parse geometry (verts may already be parsed above for Z-range)
+        if (!verts) {
+            verts = parseVerticesBlob(geo[0], Number(geo[2]));
+        }
+        faces = parseFacesBlob(geo[1], Number(geo[3]));
+
+        // Convert world cutZ to local cutZ for this element
+        var localCutZ = cutZ - cz;
+        var segs = sliceMesh(verts, faces, localCutZ);
+
+        var contours = [];
+        if (segs.length > 0) {
+            var numTri = (faces.length / 3) | 0;
+            console.log('§SC_SLICE guid=' + guid.substring(0, 8) +
+                        ' triangles=' + numTri + ' segments=' + segs.length);
+            sliceCount++;
+
+            var chains = chainSegments(segs, TOLERANCE);
+            for (var ch = 0; ch < chains.length; ch++) {
+                var pts = chains[ch];
+                if (pts.length < 4) continue;
+                var area = signedArea(pts);
+                if (Math.abs(area) < 1e-6) continue;
+
+                // Translate local XY → world XY
+                var worldPts = [];
+                for (var pi = 0; pi < pts.length; pi++) {
+                    worldPts.push([pts[pi][0] + cx, pts[pi][1] + cy]);
+                }
+                contours.push({
+                    points: worldPts,
+                    isOuter: area > 0
+                });
+            }
+
+            if (contours.length > 0) {
+                var totalPts = 0;
+                for (var cp = 0; cp < contours.length; cp++) totalPts += contours[cp].points.length;
+                console.log('§SC_CHAIN guid=' + guid.substring(0, 8) +
+                            ' contours=' + contours.length + ' points=' + totalPts);
+            }
+        }
+
+        totalContours += contours.length;
+        results.push({
+            guid: guid, ifcClass: ifcClass, elementName: elemName,
+            storey: storey, category: 'CUT', contours: contours,
+            bbox2d: [minX, minY, maxX, maxY]
+        });
+    }
+
+    console.log('§SC_QUERY cutElements=' + cutCount + ' belowElements=' + belowCount + ' aboveElements=' + aboveCount);
+
+    var elapsed = Date.now() - t0;
+    console.log('§SC_DONE total=' + results.length +
+                ' cut=' + cutCount + ' below=' + belowCount + ' above=' + aboveCount +
+                ' contours=' + totalContours + ' time=' + elapsed + 'ms');
+
+    return results;
+}
+
+// -------------------------------------------------------------------------
+// Export — attach to window if available (Web Worker compatible)
+// -------------------------------------------------------------------------
+
+var api = {
+    detectStoreys: detectStoreys,
+    sectionCut: sectionCut,
+    sliceMesh: sliceMesh,
+    chainSegments: chainSegments,
+    // Expose constants for testing
+    TOLERANCE: TOLERANCE,
+    EPSILON: EPSILON,
+    DEFAULT_CUT_OFFSET: DEFAULT_CUT_OFFSET
+};
+
+if (typeof window !== 'undefined') {
+    window.SectionCut = api;
+}
+
+})();
