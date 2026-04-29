@@ -88,6 +88,16 @@ done
 for f in mesh_import_worker semantic_enrichment scene_to_db wizard ifc_export_worker import import_db_builder; do
   oci os object put --bucket-name bim-ootb-dev --file "deploy/dev/${f}.js" --name "dev/${f}.js" --content-type application/javascript --force
 done
+# S236-S238: 2D Plans viewer — 2d.html served from sandbox/, scripts must be at sandbox/ too
+oci os object put --bucket-name bim-ootb-dev --file deploy/dev/2d.html --name sandbox/2d.html --content-type text/html --force
+for f in section_cut grid_dims elevation dxf_export dxf-parser; do
+  oci os object put --bucket-name bim-ootb-dev --file "deploy/dev/${f}.js" --name "sandbox/${f}.js" --content-type application/javascript --force
+done
+# DXF pre-baked files (sacred baselines — READ-ONLY, never regenerate SH_FLOOR/SH_ROOF)
+for f in deploy/dev/dxf/*.dxf; do
+  name=$(basename "$f")
+  oci os object put --bucket-name bim-ootb-dev --file "$f" --name "sandbox/dxf/${name}" --content-type application/octet-stream --force
+done
 
 # ── Common ──
 
