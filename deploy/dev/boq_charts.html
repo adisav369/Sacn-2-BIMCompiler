@@ -1790,10 +1790,16 @@ function toggleTheme() {
   });
 }
 
-init();
 </script>
-<!-- Locale: deep-merges user's selected language into _TRL for dynamic labels (currency, headers).
-     Consts (CUR, CUR2, CUR_RATE) are set at load time so currency stays default; labels translate. -->
-<script src="locale_loader.js?v=5"></script>
+<!-- Locale: loads before init() so all _TRL keys are resolved when charts render -->
+<script src="locale_loader.js?v=6"></script>
+<script>
+(function(){
+  var done=false;
+  function go(){if(!done){done=true;init();}}
+  window.addEventListener('trl-ready',go,{once:true});
+  setTimeout(go,3000); // fallback: init anyway if locale fetch fails
+})();
+</script>
 </body>
 </html>

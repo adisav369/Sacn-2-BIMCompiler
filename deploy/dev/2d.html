@@ -45,41 +45,41 @@ canvas { display: block; }
 <body>
 
 <div id="toolbar">
-  <h1>2D Plans</h1>
-  <select id="sheet-select"><option value="">— select sheet —</option></select>
-  <button id="layers-btn" onclick="toggleLayers()">Layers</button>
-  <button id="fit-btn" onclick="fitView()">Fit</button>
+  <h1 data-trl="ui_2d_title">2D Plans</h1>
+  <select id="sheet-select"><option value="" data-trl="ui_2d_select">— select sheet —</option></select>
+  <button id="layers-btn" onclick="toggleLayers()" data-trl="ui_2d_layers">Layers</button>
+  <button id="fit-btn" onclick="fitView()" data-trl="ui_2d_fit">Fit</button>
   <button id="bimsrc-btn" onclick="toggleBimsrc()" title="Toggle BIMSRC highlight">BIMSRC</button>
   <span style="border-left:1px solid #555;height:20px;margin:0 4px"></span>
   <select id="view-mode" title="View mode">
-    <option value="plan">Floor Plan</option>
-    <option value="front">Front Elev</option>
-    <option value="rear">Rear Elev</option>
-    <option value="left">Left Elev</option>
-    <option value="right">Right Elev</option>
+    <option value="plan" data-trl="ui_2d_floor_plan">Floor Plan</option>
+    <option value="front" data-trl="ui_2d_front_elev">Front Elev</option>
+    <option value="rear" data-trl="ui_2d_rear_elev">Rear Elev</option>
+    <option value="left" data-trl="ui_2d_left_elev">Left Elev</option>
+    <option value="right" data-trl="ui_2d_right_elev">Right Elev</option>
   </select>
-  <select id="storey-select" title="Storey"><option value="">— storey —</option></select>
-  <button id="gen-btn" onclick="generateFromDb()">Generate</button>
-  <button id="export-btn" onclick="exportDxf()" title="Download as DXF">Export DXF</button>
+  <select id="storey-select" title="Storey"><option value="" data-trl="ui_2d_storey_opt">— storey —</option></select>
+  <button id="gen-btn" onclick="generateFromDb()" data-trl="ui_2d_generate">Generate</button>
+  <button id="export-btn" onclick="exportDxf()" data-trl-title="ui_tt_export" data-trl="ui_2d_export_dxf" title="Export DXF">Export DXF</button>
   <span style="flex:1"></span>
   <span id="status-text" style="font-size:11px;color:#888"></span>
 </div>
 
-<div id="layer-panel"><h3>Layers</h3><div id="layer-list"></div></div>
+<div id="layer-panel"><h3 data-trl="ui_2d_layers">Layers</h3><div id="layer-list"></div></div>
 
 <canvas id="canvas"></canvas>
 
 <div id="info-bar">
-  <span><span class="label">Entities: </span><span class="value" id="ent-count">0</span></span>
-  <span><span class="label">Layers: </span><span class="value" id="layer-count">0</span></span>
+  <span><span class="label" data-trl="ui_2d_entities_lbl">Entities: </span><span class="value" id="ent-count">0</span></span>
+  <span><span class="label" data-trl="ui_2d_layers_lbl">Layers: </span><span class="value" id="layer-count">0</span></span>
   <span id="bimsrc-info" style="display:none">
-    <span class="label">Class: </span><span class="value" id="bi-class">—</span>
-    <span class="label" style="margin-left:8px">Name: </span><span class="value" id="bi-name">—</span>
-    <span class="label" style="margin-left:8px">Storey: </span><span class="value" id="bi-storey">—</span>
+    <span class="label" data-trl="ui_2d_class_lbl">Class: </span><span class="value" id="bi-class">—</span>
+    <span class="label" style="margin-left:8px" data-trl="ui_2d_name_lbl">Name: </span><span class="value" id="bi-name">—</span>
+    <span class="label" style="margin-left:8px" data-trl="ui_2d_storey_lbl">Storey: </span><span class="value" id="bi-storey">—</span>
   </span>
 </div>
 
-<div id="drop-zone">Drop DXF file here</div>
+<div id="drop-zone" data-trl="ui_2d_drop">Drop DXF file here</div>
 
 <script src="section_cut.js"></script>
 <script src="grid_dims.js"></script>
@@ -160,7 +160,7 @@ sel.addEventListener('change', () => { if (sel.value) loadDxfUrl(sel.value); });
 
 // ─── DXF Loading ───
 async function loadDxfUrl(url) {
-  setStatus('Loading ' + url + '...');
+  setStatus((typeof _TRL!=='undefined'&&_TRL.ui_2d_loading||'Loading {url}...').replace('{url}',url));
   try {
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(resp.status + ' ' + resp.statusText);
@@ -189,7 +189,7 @@ function parseDxf(text) {
   buildLayerPanel();
   document.getElementById('ent-count').textContent = entities.length;
   document.getElementById('layer-count').textContent = layers.size;
-  setStatus('Loaded: ' + entities.length + ' entities, ' + layers.size + ' layers');
+  setStatus((typeof _TRL!=='undefined'&&_TRL.ui_2d_loaded||'Loaded: {n} entities, {l} layers').replace('{n}',entities.length).replace('{l}',layers.size));
   fitView();
 }
 
@@ -597,7 +597,7 @@ document.addEventListener('drop', e => {
   document.getElementById('drop-zone').style.display = 'none';
   const file = e.dataTransfer.files[0];
   if (!file || !file.name.toLowerCase().endsWith('.dxf')) {
-    setStatus('Drop a .dxf file'); return;
+    setStatus(typeof _TRL!=='undefined'&&_TRL.ui_2d_drop_file||'Drop a .dxf file'); return;
   }
   const reader = new FileReader();
   reader.onload = () => parseDxf(reader.result);
@@ -651,7 +651,7 @@ async function loadDatabases() {
     console.log('§2D_DB no db= param, dynamic generation disabled');
     return;
   }
-  setStatus('Loading sql.js + databases...');
+  setStatus(typeof _TRL!=='undefined'&&_TRL.ui_2d_load_dbs||'Loading databases...');
   try {
     // Load sql-wasm.js dynamically (only when DB params present — avoids blocking page load)
     if (typeof initSqlJs === 'undefined') {
@@ -705,7 +705,7 @@ async function loadDatabases() {
       console.log('§2D_STOREYS count=' + storeys.length);
     }
 
-    setStatus('DBs loaded — generating floor plan...');
+    setStatus(typeof _TRL!=='undefined'&&_TRL.ui_2d_dbs_ready||'DBs loaded — generating...');
     // Auto-generate on load
     setTimeout(() => generateFromDb(), 100);
   } catch (e) {
@@ -806,13 +806,13 @@ function gridToEntities(gridResult, dims, bbox) {
 // ─── Main generate function ───
 async function generateFromDb() {
   if (!dbReady) {
-    setStatus('No DB loaded — add ?db=...&lib=... to URL');
+    setStatus(typeof _TRL!=='undefined'&&_TRL.ui_2d_no_db||'No DB loaded — add ?db= to URL');
     return;
   }
   const mode = document.getElementById('view-mode').value;
   const storeyName = document.getElementById('storey-select').value;
   const t0 = performance.now();
-  setStatus('Generating ' + mode + '...');
+  setStatus((typeof _TRL!=='undefined'&&_TRL.ui_2d_generating||'Generating {mode}...').replace('{mode}',mode));
   console.log('§2D_GENERATE mode=' + mode + ' storey=' + storeyName);
 
   try {
@@ -861,7 +861,7 @@ async function generateFromDb() {
     buildLayerPanel();
     document.getElementById('ent-count').textContent = entities.length;
     document.getElementById('layer-count').textContent = layers.size;
-    setStatus('Generated: ' + entities.length + ' entities, ' + layers.size + ' layers (' + dt.toFixed(0) + 'ms)');
+    setStatus((typeof _TRL!=='undefined'&&_TRL.ui_2d_generated||'Generated: {n} entities, {l} layers ({ms}ms)').replace('{n}',entities.length).replace('{l}',layers.size).replace('{ms}',dt.toFixed(0)));
     console.log('§2D_DONE entities=' + entities.length + ' layers=' + layers.size + ' time=' + dt.toFixed(0) + 'ms');
     fitView();
   } catch (e) {
@@ -873,7 +873,7 @@ async function generateFromDb() {
 // ─── DXF Export ───
 function exportDxf() {
   const ents = generatedEntities.length > 0 ? generatedEntities : entities;
-  if (!ents.length) { setStatus('Nothing to export'); return; }
+  if (!ents.length) { setStatus(typeof _TRL!=='undefined'&&_TRL.ui_2d_nothing_export||'Nothing to export'); return; }
   if (!window.DxfExport) { setStatus('DXF export module not loaded'); return; }
 
   // Convert renderer entities to DxfExport format
@@ -914,5 +914,6 @@ function exportDxf() {
 // ─── Init DB loading (non-blocking, alongside DXF path) ───
 loadDatabases();
 </script>
+<script src="locale_loader.js?v=6"></script>
 </body>
 </html>
