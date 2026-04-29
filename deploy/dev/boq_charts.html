@@ -520,26 +520,33 @@ function generateSchedule(activities, startDateStr) {
 // ============================================================================
 // INIT — load DB, compute everything
 // ============================================================================
-// S223: Fetch DB buffer — handles import:// URLs via IndexedDB cache, or regular fetch
+// S238: Fetch DB buffer — checks bim_ootb_cache IDB first (same cache as scene.js), falls back to fetch
+// import:// URLs: IDB only (no network). OCI URLs: IDB first (scene.js wrote it), then network.
 async function fetchDbBuffer(url) {
-  if (url.startsWith('import://')) {
-    // Look up in bim_ootb_cache IndexedDB (same store viewer uses)
-    const cacheDb = await new Promise(resolve => {
-      const req = indexedDB.open('bim_ootb_cache', 1);
-      req.onupgradeneeded = () => req.result.createObjectStore('dbs');
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => resolve(null);
-    });
-    if (!cacheDb) throw new Error('Cannot open IndexedDB cache for import:// URL');
-    const buf = await new Promise((resolve, reject) => {
+  const cacheDb = await new Promise(resolve => {
+    const req = indexedDB.open('bim_ootb_cache', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('dbs');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+
+  if (cacheDb) {
+    const cached = await new Promise(resolve => {
       const tx = cacheDb.transaction('dbs', 'readonly');
       const req = tx.objectStore('dbs').get(url);
-      req.onsuccess = () => req.result ? resolve(req.result) : reject(new Error('DB not found in cache: ' + url));
-      req.onerror = () => reject(new Error('IndexedDB read failed'));
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
     });
-    console.log('[S223] §BOQ_IMPORT_DB loaded from IndexedDB cache, size=' + (buf.byteLength / 1024).toFixed(0) + 'KB');
-    return buf;
+    if (cached) {
+      const src = url.startsWith('import://') ? 'import' : 'idb';
+      console.log('§CHARTS_DB_SOURCE source=' + src + ' url=' + url.split('/').pop() + ' size=' + (cached.byteLength / 1024).toFixed(0) + 'KB');
+      return cached;
+    }
   }
+
+  if (url.startsWith('import://')) throw new Error('DB not found in cache: ' + url);
+
+  console.log('§CHARTS_DB_SOURCE source=oci url=' + url.split('/').pop());
   return fetch(url).then(r => r.arrayBuffer());
 }
 
