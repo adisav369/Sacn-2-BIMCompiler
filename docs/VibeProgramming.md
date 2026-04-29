@@ -218,7 +218,7 @@ The second case study is more instructive than the first, because it documents a
 | [2026-04-11](https://github.com/red1oon/BIMCompiler/commit/f116fdde35eeccbc1d69dc533a89df17bf38a687) | S173 — library-linked geometry pipeline | **Two-DB split born:** BLOBs in `library.db`, hashes in `extracted.db` |
 | [2026-04-11](https://github.com/red1oon/BIMCompiler/commit/f3d2902b2b7fb578b8916565d9db7f1ee76f69bf) | S172 — `geom.iterator()` replaces `create_shape()` | Hash-addressed geometry dedup; 123K unique meshes serve 1M elements |
 | [2026-04-12](https://github.com/red1oon/BIMCompiler/commit/2bb9335ed64d6fa8b352cc438872f6a6d4d5e70a) | S175 — GN 500-tree overhead confirmed | **GN halted.** Blender's own instancer had a hard ceiling at building scale |
-| [2026-04-18](https://github.com/red1oon/BIMCompiler/commit/66fc9413a9ed8c3ac0b9d900634c57ba2a7e9e65) | S195 — "Direct DB Streaming — no .blend files" | **The pivot.** Float32 BLOBs work in Python *and* JavaScript — Blender is no longer required |
+| [2026-04-18](https://github.com/red1oon/BIMCompiler/commit/66fc9413a9ed8c3ac0b9d900634c57ba2a7e9e65) | S195 — "Direct DB Streaming — no .blend files" | **Bonsai out. Browser in.** Float32 BLOBs work in Python *and* JavaScript — the schema was always the portable part |
 | [2026-04-20](https://github.com/red1oon/BIMCompiler/commit/7a19d6e2543aeae89d93d80042bb8704793da193) | S200 — BIM OOTB: single HTML + two DBs + sql.js WASM | **Bonsai becomes optional.** 126K elements in a browser tab, zero install |
 | [2026-04-24](https://github.com/red1oon/BIMCompiler/commit/788eb47cc302b680025af07d7f55cc20de0ae742) | S220 — IFC import direct in browser via web-ifc WASM | Full round-trip closes: IFC → browser → same schema → viewer |
 | [2026-04-27](https://github.com/red1oon/BIMCompiler/commit/9cca45a365d6dfaa650995288f62f1e08fec8926) | S231 — InstancedMesh, 85% draw call reduction | Hash-addressed schema pays dividends: instancing needed no schema change |
@@ -257,17 +257,19 @@ The second crack: Blender was the bottleneck, not the data.
 
 S192 bridged the BLOB gap to the browser — the first time geometry from `component_geometries` was served to a client other than Blender. S193 implemented DLOD auto-linker: `.blend` link/unlink by camera position. These were still Blender sessions. The pivot hadn't happened yet.
 
-### S195: "No .blend files."
+### S195: Bonsai out. Browser in.
 
-The [S195 commit](https://github.com/red1oon/BIMCompiler/commit/66fc9413a9ed8c3ac0b9d900634c57ba2a7e9e65) is the pivot:
+The [S195 commit](https://github.com/red1oon/BIMCompiler/commit/66fc9413a9ed8c3ac0b9d900634c57ba2a7e9e65) is where everything flips:
 
 ```
 [S195] Direct DB Streaming — camera-driven mesh from BLOBs, no .blend files
 ```
 
-The insight, arrived at through constraint: if `from_pydata()` in Python could reconstruct a mesh from a BLOB, so could `new Float32Array(blob)` in JavaScript. The BLOB format didn't care what consumed it — Python or a browser. The SQLite file didn't care what opened it — Blender or sql.js WASM.
+Five months of Blender sessions. 500 modifier trees. 45-minute bake cycles. A 300MB session `.blend`. All of it dissolved by a single realisation: **the data format was the viewer interface, not the Blender addon API.**
 
-Both Blender's Python and the browser's JavaScript were doing the same thing: deserialising `float32` bytes into vertex positions and sending them to a renderer. The **data format was the viewer interface** — not the Blender addon API.
+If `from_pydata()` in Python could reconstruct a mesh from a BLOB, so could `new Float32Array(blob)` in JavaScript. The BLOB didn't care what consumed it. The SQLite file didn't care what opened it — Blender or a browser tab. Both were doing the same thing: deserialising `float32` bytes and handing them to a renderer.
+
+Bonsai had been the assumed destination since October 2025. S195 made it optional in one session. The schema — built under Blender's constraints — turned out to be the portable part. Everything else was just a renderer.
 
 ### S200: BIM OOTB — Two DBs. One browser. Zero install.
 
