@@ -45,7 +45,7 @@ can verify in minutes, not months.
 
 ## §1 Where This Sits in the Pipeline
 
-The pipeline in `CompilationPipeline.java` runs 12 stages via a static
+The pipeline in `CompilationPipeline.java` runs 11 stages via a static
 `List<CompilerStage>`. ValidationStage (Step 8) runs AD_DocEvent_Rule
 blanket checks including government standards. ComplianceStage is
 **Stage 12** — it assembles the proof chain and certificate from

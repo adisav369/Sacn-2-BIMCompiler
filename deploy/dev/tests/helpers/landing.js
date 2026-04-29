@@ -12,7 +12,7 @@ async function openLanding(page) {
   const logs = new ConsoleLogs(page);
   await page.goto('/landing2.html');
   // Wait for drop zone to be interactive
-  await page.waitForSelector('.drop-zone, #drop-zone, [ondrop]', { timeout: 10000 });
+  await page.waitForSelector('#import-zone', { timeout: 10000 });
   return { page, logs };
 }
 
@@ -34,8 +34,8 @@ async function dropFile(page, filePath) {
     const file = new File([buf], name, { type: 'application/octet-stream' });
     const dt = new DataTransfer();
     dt.items.add(file);
-    const dropZone = document.querySelector('.drop-zone, #drop-zone, [ondrop]');
-    if (!dropZone) throw new Error('Drop zone not found');
+    const dropZone = document.getElementById('import-zone');
+    if (!dropZone) throw new Error('Drop zone #import-zone not found');
     dropZone.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true }));
   }, { name: fileName, data: buffer.toString('base64') });
 }

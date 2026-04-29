@@ -11,7 +11,7 @@ const { visible, rect, css } = require('../helpers/dom');
 
 test.describe('Mobile UX', () => {
 
-  test('9.1 Viewport meta tag present', async ({ page }) => {
+  test('9.1 Viewport meta tag present @slow', async ({ page }) => {
     await page.goto('/dev/index.html?db=/buildings/Duplex_extracted.db&lib=/buildings/Duplex_library.db');
 
     const viewport = await page.evaluate(() => {
@@ -24,7 +24,7 @@ test.describe('Mobile UX', () => {
     expect(viewport).toContain('width=device-width');
   });
 
-  test('9.2 No horizontal scroll on mobile', async ({ page }) => {
+  test('9.2 No horizontal scroll on mobile @slow', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await openViewer(page);
 
@@ -36,7 +36,7 @@ test.describe('Mobile UX', () => {
     expect(overflow).toBe(false);
   });
 
-  test('9.3 Landscape layout no overflow', async ({ page }) => {
+  test('9.3 Landscape layout no overflow @slow', async ({ page }) => {
     await page.setViewportSize({ width: 812, height: 375 });
     await openViewer(page);
 
@@ -48,7 +48,7 @@ test.describe('Mobile UX', () => {
     expect(overflow).toBe(false);
   });
 
-  test('9.4 Touch targets >= 44px', async ({ page }) => {
+  test('9.4 Touch targets >= 44px @slow', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await openViewer(page);
 
@@ -69,11 +69,13 @@ test.describe('Mobile UX', () => {
 
     console.log(`§PW_MOBILE_TOUCH smallButtons=${smallBtns.length}`);
     if (smallBtns.length > 0) {
-      console.log('  WARN: small touch targets:', smallBtns.map(b => `${b.id}(${b.w.toFixed(0)}x${b.h.toFixed(0)})`).join(', '));
+      console.log('  Small targets:', smallBtns.map(b => `${b.id}(${b.w.toFixed(0)}x${b.h.toFixed(0)})`).join(', '));
     }
+    // Ratchet: track small touch targets, ceiling should decrease over time
+    expect(smallBtns.length).toBeLessThan(20);
   });
 
-  test('9.5 Toolbar buttons visible on mobile', async ({ page }) => {
+  test('9.5 Toolbar buttons visible on mobile @slow', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await openViewer(page);
 
@@ -85,23 +87,25 @@ test.describe('Mobile UX', () => {
     expect(hudVisible).toBe(true);
   });
 
-  test('9.6 Walk button visible on mobile', async ({ page }) => {
+  test('9.6 Walk button visible on mobile @slow', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await openViewer(page);
 
     const walkVisible = await visible(page, '#walk-mode-btn');
     console.log(`§PW_MOBILE_WALK walkBtn=${walkVisible}`);
+    expect(walkVisible).toBe(true);
   });
 
-  test('9.7 Site camera button visible on mobile', async ({ page }) => {
+  test.fixme('9.7 Site camera button visible on mobile @slow — needs GPS/getUserMedia', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await openViewer(page);
 
     const camVisible = await visible(page, '#site-cam-btn');
     console.log(`§PW_MOBILE_SITECAM camBtn=${camVisible}`);
+    expect(camVisible).toBe(true);
   });
 
-  test('9.8 Viewport allows user zoom (WCAG 1.4.4)', async ({ page }) => {
+  test('9.8 Viewport allows user zoom (WCAG 1.4.4) @slow', async ({ page }) => {
     await page.goto('/dev/index.html');
 
     const meta = await page.evaluate(() => {

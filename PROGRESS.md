@@ -34,8 +34,28 @@
   - S230b DONE: Wizard UX — 0-based storey elevations, raycaster visibility check, storey walkthrough (Walk button isolates floors). 97/97 PASS.
     - Analysis: `reference/residential/EngelHouseAnalysis.md`, `reference/residential/PlaywrightAnalysis.md`
   - S231 DONE: TE BOM storey fix (YAML 7→29 keys, 48428 el, 8/10 gates) + InstancedMesh perf (85% fewer draw calls). Prompt: `prompts/S231_session_done.md`
-  - Playwright: 100/100 PASS (desktop), 16 specs (added perf bench).
+  - S232 DONE: Mobile merge (95% draw call reduction), InstancedMesh filter/pick, 5D Excel fix. Deployed to OCI dev.
+    - streaming.js: mobile merge by storey|disc|rgba (Clinic 16K→729 draws). Desktop unchanged.
+    - panels.js: storey/disc filter on InstancedMesh via zero-scale matrix.
+    - picking.js: InstancedMesh pick (instanceId→guid), merged pick (group info).
+    - boq_charts.html: `CUR_SEC_RATE` typo→`CUR_RATE`, try/catch + saveAs for reliable download.
+    - Symlinks broken: streaming.js, picking.js now independent dev copies.
+  - S236 DONE: 2D Plans browser DXF viewer — toolbar icon, `2d.html`, Canvas2D renderer, BIMSRC xdata (93/94 survive), layer toggle, pan/zoom, click-to-info, drag-drop. Deployed to OCI dev.
+    - Prompt: `prompts/2D_021_browser_dxf_viewer.md`. SH+DX only. Variant DB→diff pipeline spec'd.
+  - Playwright: 108/108 PASS (desktop), 18 specs. 5D Excel test (6.4) no longer skipped.
   - Test fixtures: `deploy/dev/test/seaside-villa.obj`, `engel-house.obj`
+  - S233a DONE: Playwright hardening — @fast/@slow/@bench tags, waitForTimeout purge, 4 bugs fixed (flip camera, IFC stale DB, double-flip, storey rename UI). Audit: 106 tests, 236 expects, ratio 2.23. @fast=79s, full=3.2min, 0 pre-existing failures.
+  - S233b IN PROGRESS: Find & Navigate — indoor wayfinding. Spec: `prompts/S233_find_and_navigate.md`
+    - All 6 mobile issues FIXED. Desktop voice search + navigate confirmed working.
+    - Playwright 17-find-navigate.spec.js: 14/14 PASS (desktop). Audit: 112 tests, 246 expects.
+    - `index.html` needs 3 lines re-added (navigate.js tag + nlp/main version bumps).
+    - **Remaining:** re-add to index.html, deploy to dev, mobile field test.
+  - S237b FIX: 4D5D locale_loader.js missing from OCI dev bucket → translation broken. Uploaded to root. Added to OCI_SETUP.md. Root cause: locale_loader.js never added to dev upload SOP.
+    - **Next session:** boq_charts.html DB fetch → use IndexedDB cache (if variance IFC, data already local)
+  - S234 KIV: Wizard Toggle UX — code written, not field-proven. Spec: `prompts/S234_wizard_toggle_ux.md`
+    - Z-gap clustering replaces fixed 3m bands. Draining-pool classifier replaces picker.
+    - Playwright: 106/106 PASS. But Bug 6b/6c stubbornly recur — flip sign propagation is entangled.
+    - **Needs:** OCI deploy + field test before calling done. Navigation feature takes priority.
 
 **S225b (2026-04-25): Rates + Locale.** DONE (dev).
   - `rates.js` single source of truth. 15 locale files (iDempiere _TRL pattern). Prompt: `prompts/S226_localisation.md`
@@ -73,13 +93,14 @@
 
 ## What's Next
 
-1. **Gerard's HDP DAE** — tune classification for real HDP node names
-2. **S229 wizard live test** — drop OBJ on dev landing, walk through wizard flow
-3. **S227 refactor triage** — `prompts/S227_refactor_triage.md` (4 sessions spec'd)
-4. **2D Layout Phase B** — missing pages (section, schedule, electrical, ceiling)
+1. **S233b wrap-up** — re-add navigate.js to index.html, deploy to dev, mobile field test
+2. **S234 field test** — deploy wizard changes to OCI DEV, test flip+storey+classify on engel-house
+3. **Gerard's HDP DAE** — tune classification for real HDP node names
+4. **S227 refactor triage** — `prompts/S227_refactor_triage.md` (4 sessions spec'd)
 
 ## Reference
 
 - Docs site: https://red1oon.github.io/BIMCompiler/
+- OCI Live: `bim-ootb-live` | OCI Dev: `bim-ootb-dev` | DBs: `bim-ootb-full` | Test: `bim-ootb-live2`
 - Academic paper: `docs/SPATIAL_COMPILATION_PAPER.md`
 - OCI setup: `internal/OCI_SETUP.md`

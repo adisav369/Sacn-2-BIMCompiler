@@ -428,9 +428,9 @@ LEVEL 2: CONSTRUCTION INTENT (BIM COBOL — the new language)
                     ▼  BIM COBOL Compiler
 LEVEL 1: BUILDING SPECIFICATION (current DSL)
          "BUILDING ... STOREY ... ROOM ... WINDOW ..."
-         Structured declarations that the 12-stage pipeline processes.
+         Structured declarations that the 11-stage pipeline processes.
                     │
-                    ▼  12-Stage Pipeline
+                    ▼  11-Stage Pipeline
 LEVEL 0: IFC ASSEMBLER (output.db / Blender)
          IfcPipeSegment(guid, start, end, radius)
          IfcPipeFitting(guid, type, position)
@@ -454,7 +454,7 @@ L1 output (generated, not hand-written):
 
 ### 3.2 Level 1 → Level 0 Compilation
 
-Level 1 compiles via the existing 12-stage pipeline into output.db:
+Level 1 compiles via the existing 11-stage pipeline into output.db:
 
 ```
 L1 metadata rows  →  CompileStage resolves positions
@@ -2155,7 +2155,7 @@ The key win: **validate all references before writing anything to {PREFIX}_BOM.d
 | Script runner | Phase F5 | Thin parse→validate→execute pipeline. Read all lines, validate references, execute in a single transaction. Not a full compiler — just a validated batch runner. |
 | Full compiler | If needed | AST + optimization passes. Only if script complexity demands it. |
 
-The COBOL/Java analogy holds in the *domain language* sense (construction intent compiles to assembler-level IFC), but the implementation does not need a traditional compiler architecture yet. The 12-stage DAGCompiler pipeline already IS the "compiler" — BIM COBOL verbs are a higher-level way to feed it.
+The COBOL/Java analogy holds in the *domain language* sense (construction intent compiles to assembler-level IFC), but the implementation does not need a traditional compiler architecture yet. The 11-stage DAGCompiler pipeline already IS the "compiler" — BIM COBOL verbs are a higher-level way to feed it.
 
 ---
 

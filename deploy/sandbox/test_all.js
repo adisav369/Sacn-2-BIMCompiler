@@ -403,6 +403,98 @@ try {
   ok('rollback dry run', false, `worktree test failed: ${e.message}`);
 }
 
+// ═══ 15b. Module wiring — built features without dedicated tests ═══
+console.log('\n═══ 15b. Module Wiring — Built Feature Coverage ═══');
+
+// S228: Drop Zone format router
+if (fs.existsSync(path.join(DIR, 'import.js'))) {
+  const importSrc = fs.readFileSync(path.join(DIR, 'import.js'), 'utf8');
+  ok('import.js: detectFormat exists', importSrc.includes('function detectFormat') || importSrc.includes('detectFormat'));
+  ok('import.js: routes IFC', importSrc.includes("'ifc'"));
+  ok('import.js: routes mesh (OBJ/DAE/STL)', importSrc.includes("'mesh'") || importSrc.includes('importMesh'));
+  ok('import.js: importMesh wired', importSrc.includes('importMesh'));
+  ok('semantic_enrichment.js loaded', html.includes('semantic_enrichment.js'));
+  ok('scene_to_db.js loaded', html.includes('scene_to_db.js'));
+  ok('mesh_import_worker.js exists', fs.existsSync(path.join(DIR, 'mesh_import_worker.js')));
+}
+
+// S222: Diff + Variation Order
+if (fs.existsSync(path.join(DIR, 'diff.js'))) {
+  const diffSrc = fs.readFileSync(path.join(DIR, 'diff.js'), 'utf8');
+  ok('diff.js loaded by viewer', html.includes('diff.js'));
+  ok('diff.js has GUID diff logic', diffSrc.includes('guid') || diffSrc.includes('GUID'));
+}
+if (fs.existsSync(path.join(DIR, 'variation_order.js'))) {
+  const voSrc = fs.readFileSync(path.join(DIR, 'variation_order.js'), 'utf8');
+  ok('variation_order.js loaded by viewer', html.includes('variation_order.js'));
+  ok('variation_order.js has exportVariationOrder', voSrc.includes('exportVariationOrder'));
+}
+
+// S210: City mode
+if (fs.existsSync(path.join(DIR, 'city.js'))) {
+  const citySrc = fs.readFileSync(path.join(DIR, 'city.js'), 'utf8');
+  ok('city.js loaded by viewer', html.includes('city.js'));
+  ok('city.js has setupCity', citySrc.includes('function setupCity') || citySrc.includes('setupCity'));
+  ok('city.js has clear logic', citySrc.includes('Clear') || citySrc.includes('clear') || citySrc.includes('CLEAR'));
+}
+
+// S206: Tour
+if (fs.existsSync(path.join(DIR, 'tour.js'))) {
+  const tourSrc = fs.readFileSync(path.join(DIR, 'tour.js'), 'utf8');
+  ok('tour.js loaded by viewer', html.includes('tour.js'));
+  ok('tour.js has setupTour', tourSrc.includes('function setupTour'));
+}
+
+// S226: Localisation readiness
+const localeDir = path.join(DIR, 'locales');
+if (fs.existsSync(localeDir)) {
+  const locales = fs.readdirSync(localeDir).filter(f => f.endsWith('.js'));
+  ok(`locale files present (${locales.length})`, locales.length >= 15, `expected 15+, got ${locales.length}`);
+  let localeParse = 0;
+  for (const lf of locales) {
+    try { new Function(fs.readFileSync(path.join(localeDir, lf), 'utf8')); localeParse++; }
+    catch(e) { ok(`locale ${lf} syntax`, false, e.message); }
+  }
+  ok(`all ${localeParse} locale files parse`, localeParse === locales.length);
+} else {
+  console.log('  ⚠ locales/ not found — S226 not started');
+}
+
+// S204: Sitecam
+if (fs.existsSync(path.join(DIR, 'sitecam.js'))) {
+  const sitecamSrc = fs.readFileSync(path.join(DIR, 'sitecam.js'), 'utf8');
+  ok('sitecam.js loaded by viewer', html.includes('sitecam.js'));
+  ok('sitecam: hides walk-mode-btn', sitecamSrc.includes("'walk-mode-btn'"));
+  ok('sitecam: GPS status update', sitecamSrc.includes('GPS'));
+}
+
+// ═══ 15. Browser E2E (Playwright) ═══
+console.log('\n═══ 15. Browser E2E (Playwright) ═══');
+try {
+  const pwOut = execSync('npx playwright test --project=desktop --reporter=line 2>&1', {
+    cwd: path.join(DIR, 'tests'),
+    timeout: 600000,
+  }).toString();
+  const pwPassMatch = pwOut.match(/(\d+) passed/);
+  const pwFailMatch = pwOut.match(/(\d+) failed/);
+  if (pwFailMatch) {
+    fail += parseInt(pwFailMatch[1]);
+    ok('browser E2E', false, pwFailMatch[1] + ' failed');
+  } else {
+    const pwPassCount = pwPassMatch ? parseInt(pwPassMatch[1]) : 0;
+    pass += pwPassCount;
+    ok('browser E2E ' + pwPassCount + ' passed', true);
+  }
+} catch(e) {
+  const pwOut = (e.stdout?.toString() || '') + (e.stderr?.toString() || '');
+  const pwPassMatch = pwOut.match(/(\d+) passed/);
+  const pwFailMatch = pwOut.match(/(\d+) failed/);
+  if (pwPassMatch) pass += parseInt(pwPassMatch[1]);
+  if (pwFailMatch) fail += parseInt(pwFailMatch[1]);
+  const failLines = pwOut.split('\n').filter(l => l.includes('✗') || l.includes('failed'));
+  ok('browser E2E', false, failLines.slice(0, 3).join('; '));
+}
+
 // ═══ SUMMARY ═══
 console.log(`\n═══ SUMMARY: ${pass}/${pass + fail} passed, ${fail} failed ═══\n`);
 process.exit(fail > 0 ? 1 : 0);

@@ -323,6 +323,26 @@ The landing page loads `locale_loader.js` at the bottom. All translatable text u
 
 ---
 
+## Open Issues
+
+| # | File | Issue | Status |
+|---|------|-------|--------|
+| I-1 | `deploy/dev/index.html` | Tooltip visibility confirmed working for locales that have `ui_tt_*` keys. Deploy all updated locale files to OCI bucket to activate. | Deploy needed |
+| I-5 | `deploy/dev/navigate.js` | `_TRL` applied to panel strings at build time. If locale loads AFTER panel builds, re-open panel to see translated text. To fix fully: listen to `trl-ready` event and rebuild panel. | Low priority |
+
+**CLOSED:**
+- I-2: boq_charts.html locale_loader confirmed working
+- I-3: All 6 incomplete locales now have 14 `ui_tt_*` keys (af_ZA, ar_SA, bl_BD, bn_BD, id_ID, pt_BR, th_TH)
+- I-4: `ui_saved_excel` + `ui_vo_label` added to all 18 locale files
+
+### Tooltip architecture note
+- Native `title` attribute: works desktop hover only, not mobile
+- `#ootb-tip` JS bubbles: appended to `<body>` (bypasses `overflow:hidden` on `.panel-body`), shows on `mouseover` + `touchstart` (1.8s)
+- boq_charts.html toolbar: buttons now have `title` + `data-trl-title` — locale_loader.js applies translations via `applyTrlToDOM()`
+- If still not showing: check browser console for `§TRL_LOADED` log line; if absent, locale_loader.js fetch failed
+
+---
+
 ## Current Status (POC)
 
 - Language and currency/rates are **bundled per flag** — selecting Japanese gives you Japanese UI + JPY currency + Japanese rate sources

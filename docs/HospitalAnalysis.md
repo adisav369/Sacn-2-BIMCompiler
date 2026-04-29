@@ -295,6 +295,9 @@ Even at 2.9× reuse, 62K elements render from 21K unique meshes. At higher reuse
 the ratio is extreme. **S231 browser instancing:** `InstancedMesh` reduced Hospital draw calls
 from 63,182 to 22,800 (64% reduction, 5.5s stream). The Hospital proves instancing matters
 even for low-reuse buildings — 17,870 single meshes + 4,930 instanced groups.
+**S232 mobile merge (2026-04-27):** those 17,870 single meshes further merged by
+storey|disc|rgba on mobile — estimated ~600 draw calls. Storey/disc filter via zero-scale
+matrix on InstancedMesh instances. Pick returns guid for instanced, group info for merged.
 
 ### HO_ vs TE_ MEP — Different Vocabulary, Not Classic
 

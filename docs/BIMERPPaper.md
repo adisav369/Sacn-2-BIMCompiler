@@ -188,7 +188,7 @@ Claude Code (Anthropic's AI coding assistant) served as pair-programming partner
 
 | Component | LOC | Tests | Status |
 |-----------|-----|-------|--------|
-| DAGCompiler (12-stage pipeline) | ~5,000 | 58 tests (G1-G6 gates) | Production-grade for tested buildings |
+| DAGCompiler (11-stage pipeline) | ~5,000 | 58 tests (G1-G6 gates) | Production-grade for tested buildings |
 | BIM COBOL (verb engine) | ~3,000 | 27 tests | 77 verbs, 202 witnesses |
 | IFCtoBOM (extraction pipeline) | ~3,000 | 10 tests | SH, DX migrated; TE transitioning |
 | BonsaiBIMDesigner (GUI server) | ~8,500 | 408 tests (42 classes) | Design mode functional |

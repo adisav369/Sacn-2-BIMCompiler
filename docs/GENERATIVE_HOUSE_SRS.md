@@ -157,7 +157,7 @@ BOM cascade is the primary mechanism.
 
 ## 4. Compilation — Homogeneous with Rosetta Stones
 
-After promotion, DM compiles through the same 12-stage pipeline as SH/DX/TE:
+After promotion, DM compiles through the same 11-stage pipeline as SH/DX/TE:
 
 | Stage | What | Same for DM? |
 |-------|------|-------------|

@@ -17,7 +17,7 @@
 | Bucket | Purpose | Public URL Base |
 |--------|---------|----------------|
 | `bim-ootb` | Duplex demo (mobile-friendly) | `https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb/o/` |
-| `bim-ootb-full` | Landing page + 14 per-building DBs + sandbox | `https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/` |
+| `bim-ootb-live` | Landing page + 14 per-building DBs + sandbox | `https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/` |
 | `bim-ootb-duplex` | Duplex-only (backup) | `https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-duplex/o/` |
 | `bim-ootb-dev` | Dev/staging — test changes before production | `https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/` |
 
@@ -26,14 +26,14 @@
 | URL | Content |
 |-----|---------|
 | `.../b/bim-ootb/o/index.html` | Duplex viewer (3MB, auto-fly) |
-| `.../b/bim-ootb-full/o/index.html` | Landing page — 14 instant buildings + larger (httpvfs) |
+| `.../b/bim-ootb-live/o/index.html` | Landing page — 14 instant buildings + larger (httpvfs) |
 
 ## CLI Commands
 
 ```bash
 export SUPPRESS_LABEL_WARNING=True
 
-# ── bim-ootb-full (25 buildings) ──
+# ── bim-ootb-live (25 buildings) ──
 
 # Landing page — sed-strip from landing2.html, NEVER upload landing2.html as-is (has DEV markers)
 # See deploy/OCI_UPLOAD.md Step 3 for the full sed-strip flow
@@ -41,14 +41,17 @@ sed -e 's/BIM OOTB — DEV/BIM OOTB/' \
     -e 's|<div style="background:#cc6600.*DEV ENVIRONMENT.*</div>||' \
     -e 's|<h1 style="color:#cc6600">BIM OOTB — DEV</h1>|<h1>BIM OOTB</h1>|' \
     deploy/landing2.html > deploy/sandbox/landing.html
-oci os object put --bucket-name bim-ootb-full --file deploy/sandbox/landing.html --name index.html --content-type text/html --force
+oci os object put --bucket-name bim-ootb-live --file deploy/sandbox/landing.html --name index.html --content-type text/html --force
 
 # Modular viewer (sandbox/)
-oci os object put --bucket-name bim-ootb-full --file deploy/sandbox/index.html --name sandbox/index.html --content-type text/html --force
+oci os object put --bucket-name bim-ootb-live --file deploy/sandbox/index.html --name sandbox/index.html --content-type text/html --force
+
+# BOQ charts (must be at bucket root — viewer opens ../boq_charts.html from sandbox/)
+oci os object put --bucket-name bim-ootb-live --file deploy/sandbox/boq_charts.html --name boq_charts.html --content-type text/html --force
 
 # All JS modules (run from repo root)
 for f in config scene streaming panels tools picking tour measure sitecam issues walk city main loader diff nlp variation_order import import_db_builder import_worker rates excel; do
-  oci os object put --bucket-name bim-ootb-full --file "deploy/sandbox/${f}.js" --name "sandbox/${f}.js" --content-type application/javascript --force
+  oci os object put --bucket-name bim-ootb-live --file "deploy/sandbox/${f}.js" --name "sandbox/${f}.js" --content-type application/javascript --force
 done
 
 # ── bim-ootb (Duplex demo) ──
@@ -73,6 +76,14 @@ for f in config scene streaming panels tools picking tour measure sitecam issues
 done
 # Dev overrides (changed files only — add new dev-only files here)
 oci os object put --bucket-name bim-ootb-dev --file deploy/dev/boq_charts.html --name boq_charts.html --content-type text/html --force
+# locale_loader.js at bucket root (boq_charts.html uses relative src="locale_loader.js")
+oci os object put --bucket-name bim-ootb-dev --file deploy/dev/locale_loader.js --name locale_loader.js --content-type application/javascript --force
+# Viewer HTML (dev index.html → sandbox/index.html in bucket)
+oci os object put --bucket-name bim-ootb-dev --file deploy/dev/index.html --name sandbox/index.html --content-type text/html --force
+# Viewer JS overrides (dev/*.js → sandbox/*.js — same prefix the viewer loads from)
+for f in main nlp navigate streaming picking panels; do
+  oci os object put --bucket-name bim-ootb-dev --file "deploy/dev/${f}.js" --name "sandbox/${f}.js" --content-type application/javascript --force
+done
 # S228/S229: Mesh import pipeline + wizard (dev/ path — loaded by landing2.html and mesh worker)
 for f in mesh_import_worker semantic_enrichment scene_to_db wizard ifc_export_worker import import_db_builder; do
   oci os object put --bucket-name bim-ootb-dev --file "deploy/dev/${f}.js" --name "dev/${f}.js" --content-type application/javascript --force
@@ -81,7 +92,7 @@ done
 # ── Common ──
 
 # List bucket
-oci os object list --bucket-name bim-ootb-full --query 'data[*].{name:name,size:size}' --output table
+oci os object list --bucket-name bim-ootb-live --query 'data[*].{name:name,size:size}' --output table
 
 # Safe delete — checks live HTML files for references before removing
 # Usage: oci_safe_delete <bucket> <object-name>
@@ -104,14 +115,14 @@ oci os bucket update --name bim-ootb-dev --cors-config file:///tmp/cors.json
 ```
 
 ### Deployment rules
-- **Bucket layout: `index.html` at root = landing page, `sandbox/index.html` = viewer.** This applies to both `bim-ootb-full` and `bim-ootb-dev`. NEVER upload the viewer as root `index.html` on these buckets — it will overwrite the landing page and the viewer's JS files (in `sandbox/`) won't resolve.
+- **Bucket layout: `index.html` at root = landing page, `sandbox/index.html` = viewer.** This applies to both `bim-ootb-live` and `bim-ootb-dev`. NEVER upload the viewer as root `index.html` on these buckets — it will overwrite the landing page and the viewer's JS files (in `sandbox/`) won't resolve.
 - On `bim-ootb`, `index.html` IS the viewer (no landing page) — JS files are at root alongside it.
 - Old monolith `rtree_browser_demo.html` is retired — deleted from OCI (2026-04-21)
 - Always bump version in `<title>` and HUD header before deploying — status bar text gets overwritten
 - **Landing page source is `deploy/landing2.html`.** Always sed-strip DEV markers → `deploy/sandbox/landing.html` → upload. Never edit `deploy/sandbox/landing.html` directly — it is an output, not a source. Never upload `landing2.html` as-is to prod (has DEV markers).
 - **`?ignore-me` (team use only):** Landing pages (`landing.html`, `landing2.html`) include a script that sets `localStorage('goatcounter-ignore','t')` when visited with `?ignore-me`. Team members visit the landing URL once with `?ignore-me` appended to exclude themselves from GoatCounter analytics. Same-origin localStorage means setting it on any bucket covers all buckets on that host.
 
-## Files in bim-ootb-full
+## Files in bim-ootb-live
 
 ```
 index.html                    ← landing page (manifest-driven)

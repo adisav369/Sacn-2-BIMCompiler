@@ -122,11 +122,12 @@ function setupTools(A) {
     if (diffDbUrl) diffParam = '&diffdb=' + encodeURIComponent(diffDbUrl);
 
     var chartsUrl;
+    var cacheBust = '&v=' + Date.now();
     if (dbParam.startsWith('import://')) {
-      chartsUrl = '../boq_charts.html?db=' + encodeURIComponent(dbParam) + '&bld=' + bld + diffParam;
+      chartsUrl = '../boq_charts.html?db=' + encodeURIComponent(dbParam) + '&bld=' + bld + diffParam + cacheBust;
     } else {
       const base = location.href.split('?')[0].match(/(.*\/o\/)/)?.[1] || '../';
-      chartsUrl = base + 'boq_charts.html?db=' + encodeURIComponent(dbParam) + '&bld=' + bld + diffParam;
+      chartsUrl = base + 'boq_charts.html?db=' + encodeURIComponent(dbParam) + '&bld=' + bld + diffParam + cacheBust;
     }
     window.open(chartsUrl, '_blank');
     A.status.textContent = `4D/5D analytics opened for ${bld} (Save 5D BOQ / Save 4D Schedule)`;

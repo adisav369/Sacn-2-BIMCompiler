@@ -9,7 +9,7 @@ module.exports = defineConfig({
   testDir: './specs',
   fullyParallel: false,         // sequential within each spec (shared beforeEach)
   retries: 0,                   // no retries — a fail is a fail
-  workers: 3,                   // S229: was 1 — specs are independent (each calls openViewer)
+  workers: 3,                   // S233: 3 workers, more causes server contention
   // Speed: npx playwright test --grep @fast    → <60s structural tests
   //        npx playwright test                 → full suite (~5min, nightly)
   // See PlaywrightAnalysis.md §Anti-Drift Rules + §Suite Speed

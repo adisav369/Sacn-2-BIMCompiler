@@ -10,7 +10,7 @@ const { ConsoleLogs } = require('../helpers/console-capture');
 
 test.describe('Deploy Integrity', () => {
 
-  test('10.1 Viewer loads without 404s', async ({ page }) => {
+  test('10.1 Viewer loads without 404s @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
     const failed = [];
 
@@ -29,7 +29,7 @@ test.describe('Deploy Integrity', () => {
     expect(failed.length).toBe(0);
   });
 
-  test('10.2 Chart URL uses correct base (not greedy regex)', async ({ page }) => {
+  test('10.2 Chart URL uses correct base (not greedy regex) @fast', async ({ page }) => {
     await openViewer(page);
 
     // Simulate export4D5D URL building logic
@@ -44,7 +44,7 @@ test.describe('Deploy Integrity', () => {
     expect(urlInfo.baseLen).toBeLessThan(150);
   });
 
-  test('10.3 boq_charts.html exists and is chart page', async ({ page }) => {
+  test('10.3 boq_charts.html exists and is chart page @fast', async ({ page }) => {
     const response = await page.goto('/dev/boq_charts.html');
     const status = response.status();
     const body = await page.content();
@@ -58,7 +58,7 @@ test.describe('Deploy Integrity', () => {
     expect(isViewer).toBe(false);
   });
 
-  test('10.4 No stale monolith references', async ({ page }) => {
+  test('10.4 No stale monolith references @fast', async ({ page }) => {
     await page.goto('/dev/index.html');
     const body = await page.content();
 
@@ -67,7 +67,7 @@ test.describe('Deploy Integrity', () => {
     expect(hasMonolith).toBe(false);
   });
 
-  test('10.5 DB params round-trip', async ({ page }) => {
+  test('10.5 DB params round-trip @fast', async ({ page }) => {
     const DB_PATH = '/buildings/Duplex_extracted.db';
     const LIB_PATH = '/buildings/Duplex_library.db';
 
@@ -83,7 +83,7 @@ test.describe('Deploy Integrity', () => {
     expect(params.lib).toContain('Duplex_library');
   });
 
-  test('10.6 All script tags resolve', async ({ page }) => {
+  test('10.6 All script tags resolve @fast', async ({ page }) => {
     const failed = [];
     page.on('response', response => {
       if (response.url().endsWith('.js') && response.status() >= 400) {
@@ -92,7 +92,7 @@ test.describe('Deploy Integrity', () => {
     });
 
     await page.goto('/dev/index.html?db=/buildings/Duplex_extracted.db&lib=/buildings/Duplex_library.db');
-    await page.waitForTimeout(5000);
+    await page.waitForFunction(() => window.APP, { timeout: 10000 });
 
     console.log(`§PW_DEPLOY_SCRIPTS failedJs=${failed.length} ${failed.join(',')}`);
     expect(failed.length).toBe(0);

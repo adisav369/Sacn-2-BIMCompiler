@@ -3,7 +3,7 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md)
 
 <div class="bim-banner" markdown>
-<b>Where to start reading.</b> Entry points, DAO patterns, the 12-stage pipeline — from a 30-line YAML to verified 3D output. If you're new to the codebase, start here.
+<b>Where to start reading.</b> Entry points, DAO patterns, the 11-stage pipeline — from a 30-line YAML to verified 3D output. If you're new to the codebase, start here.
 </div>
 
 **Version 3.0**
@@ -269,7 +269,7 @@ Every element has a **tack point** — Left-Back-Down (LBD) corner = (0,0,0) in 
 
 ---
 
-## §6 — The 12-Stage Pipeline
+## §6 — The 11-Stage Pipeline
 
 ```java
 List<CompilerStage> STAGES = List.of(
@@ -521,7 +521,7 @@ Proven on 34 buildings. Step 7 now includes DV010 dimension validation — every
 
 | Class | Role |
 |-------|------|
-| `CompilationPipeline` | 12-stage orchestrator |
+| `CompilationPipeline` | 11-stage orchestrator |
 | `BuildingCompiler` | Stage 3 — BOM tree walk + geometry resolution |
 | `BuildingRegistry` | C_DocType → building identity |
 | `BOMWalker` | Tree traversal engine (3-way dispatch) |
@@ -574,7 +574,7 @@ component_library.db                    ERP.db
   ├─ m_bom (BUILDING → FLOOR → SET)
   ├─ m_bom_line (child placements: dx/dy/dz)
   └─ C_DocType (building identity)
-    │ DAGCompiler (12-stage pipeline)
+    │ DAGCompiler (11-stage pipeline)
     ▼
 output.db
   ├─ elements_meta (ifc_class, storey, material)

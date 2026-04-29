@@ -47,6 +47,7 @@ To customise your own:
 3. Add your locale to the `AVAILABLE_LOCALES` array in `locale_loader.js`
 
 Source: [deploy/dev/locales/](https://github.com/red1oon/BIMCompiler/tree/master/deploy/dev/locales)
+Full guide: [Localization Guide](https://red1oon.github.io/BIMCompiler/Localization/)
 
 > **Note:** Language and currency/rates are currently bundled per country flag (POC).
 > A future version will separate language preference from currency/rate selection —

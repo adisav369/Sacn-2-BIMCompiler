@@ -13,7 +13,7 @@ const TEST_URL = '/dev/test/test_ifc_export.html';
 
 test.describe('S229b IFC Export', () => {
 
-  test('12.1 IFC export pure-function tests all PASS', async ({ page }) => {
+  test('12.1 IFC export pure-function tests all PASS @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
     await page.goto(TEST_URL);
 
@@ -48,7 +48,7 @@ test.describe('S229b IFC Export', () => {
     expect(stats.fail).toBe(0);
   });
 
-  test('12.2 STEP structure and spatial hierarchy correct', async ({ page }) => {
+  test('12.2 STEP structure and spatial hierarchy correct @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
     await page.goto(TEST_URL);
 
@@ -85,7 +85,7 @@ test.describe('S229b IFC Export', () => {
     expect(details.hasNoDupes).toBe(true);
   });
 
-  test('12.3 Round-trip DB → export preserves all elements', async ({ page }) => {
+  test('12.3 Round-trip DB → export preserves all elements @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
     await page.goto(TEST_URL);
 

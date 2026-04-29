@@ -14,9 +14,9 @@ function setupPanels(A) {
     if (!A.db || !building) return;
     const rows = A.db.exec(`
       SELECT DISTINCT storey FROM elements_meta
-      WHERE building = '${building}' AND storey IS NOT NULL
+      WHERE building = ? AND storey IS NOT NULL
       ORDER BY storey
-    `);
+    `, [building]);
     const panel = document.getElementById('storey-panel');
     const body = document.getElementById('storey-body');
     if (!rows.length || !rows[0].values.length) { panel.style.display = 'none'; return; }
@@ -38,6 +38,28 @@ function setupPanels(A) {
       if (obj.isMesh && obj !== A.ground && obj.userData.storey !== undefined) {
         obj.visible = storey === null || obj.userData.storey === storey;
       }
+      // S232: InstancedMesh — per-instance storey filter via zero-scale matrix
+      if (obj.isInstancedMesh && A._instanceMeta[obj.id]) {
+        const meta = A._instanceMeta[obj.id];
+        const _m4 = new THREE.Matrix4();
+        const _zero = new THREE.Matrix4().makeScale(0, 0, 0);
+        let anyVisible = false;
+        for (let i = 0; i < meta.length; i++) {
+          if (storey === null || meta[i].storey === storey) {
+            if (meta[i]._origMatrix) { obj.setMatrixAt(i, meta[i]._origMatrix); }
+            anyVisible = true;
+          } else {
+            // Save original matrix on first hide
+            if (!meta[i]._origMatrix) {
+              meta[i]._origMatrix = new THREE.Matrix4();
+              obj.getMatrixAt(i, meta[i]._origMatrix);
+            }
+            obj.setMatrixAt(i, _zero);
+          }
+        }
+        obj.instanceMatrix.needsUpdate = true;
+        obj.visible = anyVisible;
+      }
     });
     document.querySelectorAll('#storey-body button').forEach(btn => {
       const btnStorey = btn.onclick.toString().match(/filterStorey\('(.+?)'\)/)?.[1] || null;
@@ -53,9 +75,9 @@ function setupPanels(A) {
     if (!A.db || !building) return;
     const rows = A.db.exec(`
       SELECT discipline, COUNT(*) FROM elements_meta
-      WHERE building = '${building}' AND discipline IS NOT NULL
+      WHERE building = ? AND discipline IS NOT NULL
       GROUP BY discipline ORDER BY COUNT(*) DESC
-    `);
+    `, [building]);
     const panel = document.getElementById('disc-panel');
     const body = document.getElementById('disc-body');
     if (!rows.length || !rows[0].values.length) { panel.style.display = 'none'; return; }
@@ -84,6 +106,28 @@ function setupPanels(A) {
         const discVisible = !A.hiddenDiscs.has(obj.userData.disc);
         const storeyVisible = A.activeStoreyFilter === null || obj.userData.storey === A.activeStoreyFilter;
         obj.visible = discVisible && storeyVisible;
+      }
+      // S232: InstancedMesh — per-instance disc+storey filter via zero-scale matrix
+      if (obj.isInstancedMesh && A._instanceMeta[obj.id]) {
+        const meta = A._instanceMeta[obj.id];
+        const _zero = new THREE.Matrix4().makeScale(0, 0, 0);
+        let anyVisible = false;
+        for (let i = 0; i < meta.length; i++) {
+          const dv = !A.hiddenDiscs.has(meta[i].disc);
+          const sv = A.activeStoreyFilter === null || meta[i].storey === A.activeStoreyFilter;
+          if (dv && sv) {
+            if (meta[i]._origMatrix) { obj.setMatrixAt(i, meta[i]._origMatrix); }
+            anyVisible = true;
+          } else {
+            if (!meta[i]._origMatrix) {
+              meta[i]._origMatrix = new THREE.Matrix4();
+              obj.getMatrixAt(i, meta[i]._origMatrix);
+            }
+            obj.setMatrixAt(i, _zero);
+          }
+        }
+        obj.instanceMatrix.needsUpdate = true;
+        obj.visible = anyVisible;
       }
     });
     document.querySelectorAll('#disc-body button').forEach(btn => {

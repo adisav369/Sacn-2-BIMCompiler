@@ -16,7 +16,7 @@ No hand-editing. No patching. Code produces data.
 - `BOMBasedCompilation.md` §4 Rule 8 (Cheating Maxim): dx/dy/dz MUST be parent-relative, NEVER world-space centroids
 - `BOMBasedCompilation.md` §4: Tack convention — dx/dy/dz = where child's LBD sits in parent (the geometric foundation)
 
-**Updated:** 2026-03-26
+**Updated:** 2026-04-26
 **Principle:** 4-DB split (validation.db merged into ERP.db).
 - `component_library.db` = product LOD catalog (M_Product, geometry, orientation)
 - `ERP.db` = discipline metadata + compliance rules (schedules, types, placement rules, AD_Val_Rule, AD_Clash_Rule, AD_Occupancy_Class) — see [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md)

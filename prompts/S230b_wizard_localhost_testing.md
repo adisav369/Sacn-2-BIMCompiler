@@ -4,80 +4,93 @@
 ## Resume Point
 
 Branch: `dev/s229-playwright-oci-sop`
-Last commit: S230 simplify wizard to 3 steps + fix save persistence
-Playwright: 83/83 PASS (localhost), 2 OCI tests skipped by default
+Playwright: 96/96 PASS (localhost), 2 OCI tests skipped by default. 15 specs, 98 tests total.
 
-## What's Done
+## What's Done (this session)
 
-- **S228d**: All 7 format loaders wired (OBJ, STL, DAE, GLB, GLTF, FBX, 3DS)
-- **S229**: Guided Classification Wizard — amber panel, 3-step flow
-- **S230**: Wizard moved from landing to viewer (`?wizard=1` param in viewer URL)
-- **S230**: Flip toggles scene -90° X, saves/restores camera
-- **S230**: Save persistence fixed (export DB before async writes, save to both `bim_ootb_imports` + `bim_ootb_cache`)
-- **S230**: OCI deploy verified (`TARGET=oci` Playwright tests)
-- **S230**: OCI SOP guard (test 13.3 cross-refs landing scripts against OCI_SETUP.md)
-- **Playwright specs**: 11-wizard (4 tests), 12-ifc-export (3 tests), 13-oci-sop (6 tests, 2 OCI-only)
+### Fixes
+- **Save persistence**: `wizard_complete` flag in DB + `record.meta`, prevents re-entry. Panel waits for IndexedDB saves before dismissing. 5s timeout fallback.
+- **Camera clipping**: `near/far` proportional to building scale (was default 0.5/50000). DB-based reframe uses `controls.target` + analysis dimensions.
+- **Camera reframe after flip**: uses orbit controls target as center, analysis dimensions for scale. `dist*0.7` X/Z + `dist*0.5` Y for isometric view.
+- **Storey reclassification**: Dynamic bands based on actual Z range (`totalHeight/3m` per floor). Detects Y-up vs Z-up axis automatically. Runs on wizard start AND after flip.
+- **Discipline-based coloring**: Applied on wizard start so building isn't all-white. Polls for meshes (500ms × 30). Persists after wizard finishes.
+- **"Done" button flow**: On non-summary steps, "Done" now advances to next step (not finish). Only summary "Done" finishes wizard.
+- **Guide link**: Small "Guide" link in viewer HUD → `BIM_Designer_Browser` on GitHub Pages.
+- **Save button**: Consolidated — Save button opens export flyout (IFC or DB), corner triangle removed.
+- **Theory link**: Confirmed pointing to Strategic Industry Positioning paper (correct).
+
+### New wizard features
+- **4-step flow**: orientation → storeys → picker → summary (was 3 steps)
+- **Storey highlighting**: Color-coded 3D elements + colored legend dots with elevation ranges
+- **Storey Edit button**: User can override storey count → dynamic re-banding
+- **Assignment picker**: Click mesh → disc/class dropdowns → Apply updates DB, recolors mesh
+- **Smart storey labels**: `Ground Floor [-16.2–-13.3m] (48 el)` with elevation ranges
+
+### Playwright coverage (98 tests, 15 specs)
+- **11-wizard.spec.js** (11 tests): pure-function, steps, CSS, viewer, persistence, storey legend, flip+reframe, clipping, picker enter/exit, picker apply, storey edit
+- **15-drop-zone-wizard-e2e.spec.js** (7 tests): OBJ drop → import → viewer → wizard → flip + bbox diagnostic → storey edit → persistence → IFC export
 
 ## What Needs Work
 
-### P0 — User-reported bugs from live testing
+### P0 — Building visibility after reframe — RESOLVED
 
-1. **Save not persisting on reopen.** User completed wizard, closed viewer, reopened — wizard changes gone. The `finishWizard` saves to IndexedDB but `openProject()` in landing reads from `record.versions[baseIdx].db` (v0). Verify the save path writes to the correct key. Check browser console for `§WIZARD_IMPORT_SAVED` and `§WIZARD_CACHE_SAVED` log lines.
+1. **Headless screenshot = SwiftShader limitation.** Building IS visible on localhost. Added raycaster visibility assertion: casts ray from camera→target, expects mesh hit. `§PW_DIAG_RAYCAST hit=true meshes=1255 hits=3 firstDist=39.7`
 
-2. **Storey detection unclear.** Wizard says "3 storeys detected. Correct?" with evidence line listing bands. But user doesn't know which physical floors map to which labels. **Idea from user:** highlight each storey in a different color in the 3D view so user can *see* the assignment. After flip, re-detect and re-highlight.
+2. **Scene box 50km** — unchanged (raw IFC vertex coords in geometry). `reframeCameraToBbox` works around it using `controls.target` + analysis dimensions.
 
-3. **Flip camera still imperfect.** Toggle works (0 ↔ -90°), camera restores to saved position. But saved camera was framed for the original orientation — after flip the building shape changes and the camera angle may not be ideal. Consider reframing to bbox after flip instead of restoring saved position.
+### P1 — Storey accuracy — RESOLVED
 
-### P1 — Playwright coverage gaps
+3. **Height axis** — working. `reclassifyStoreys()` uses correct axis after flip. `analyseDb()` reads Z (correct post-flip).
 
-4. **Test wizard save persistence (end-to-end).** Drop OBJ → import → wizard opens → accept all → done → close viewer → reopen same building → verify wizard changes persisted in DB. This requires:
-   - Simulating file drop on landing (use `dropFile` helper or `page.evaluate` with DataTransfer)
-   - Waiting for import to complete and card to render
-   - Clicking Open → waiting for viewer + wizard
-   - Walking through wizard steps
-   - Closing viewer, reopening, querying DB
+4. **Negative storey elevations — FIXED.** `analyseDb()` now subtracts `globalMinZ` from all labels. Shows `0.0m–18.0m` instead of `-16.2m–1.8m`. Storey edit also normalized.
 
-5. **Test wizard in viewer with imported mesh DB** (not Duplex). Current test 11.4 uses the pre-existing Duplex DB. Need a test that drops an OBJ, lets import create the DB, opens viewer with wizard, and verifies the wizard analyses the imported mesh correctly.
+### P2 — UX polish
 
-6. **Test flip visual effect.** After flip, verify `APP.scene.rotation.x` changed. Verify camera position is reasonable (not at infinity).
+5. **Multi-select in single building mode.** `picking.js:73` blocks Shift+click. Separate from wizard scope.
 
-### P2 — UX improvements (ideas from user)
-
-7. **Storey highlighting.** On step 2 (storeys), color-code elements by storey in the 3D view. Each storey band gets a distinct color. User sees the building with floors painted differently.
-
-8. **Smart storey labels.** Instead of generic "Ground Floor / Level 1 / Level 2", detect the Z-band boundaries and show them: "0–3.2m (12 elements), 3.2–6.5m (15 elements), 6.5–8.1m (8 elements)". Let the compiler propose names based on elevation.
-
-9. **Wizard re-entry.** If user opens a building that was already classified by the wizard, don't show the wizard again. Check for a `wizard_complete` flag in project_metadata.
+6. **Storey walkthrough.** User suggested: wizard shows lowest floor first, user confirms Y/N per floor. Could be a sub-flow within the storey Edit.
 
 ## Key Files
 
 | File | Role |
 |------|------|
-| `deploy/dev/wizard.js` | Wizard module — CSS, steps, panel, save |
+| `deploy/dev/wizard.js` | Wizard module — CSS, steps, panel, picker, storey edit, save |
 | `deploy/sandbox/main.js` | Wizard hook in viewer (`?wizard=1` → load wizard.js) |
 | `deploy/landing2.html` | Import flow, `openProject()` adds `&wizard=1` for mesh |
-| `deploy/dev/test/test_wizard.html` | Pure-function tests (21 assertions) |
-| `deploy/dev/tests/specs/11-wizard.spec.js` | Playwright bridge (4 tests) |
-| `deploy/dev/tests/specs/13-oci-sop.spec.js` | OCI deploy SOP + live smoke tests |
-| `internal/OCI_SETUP.md` | OCI upload commands (dev/ loop added) |
+| `deploy/dev/index.html` | Viewer HTML — Guide link in HUD |
+| `deploy/dev/test/test_wizard.html` | Pure-function tests (26 assertions) |
+| `deploy/dev/tests/specs/11-wizard.spec.js` | Wizard Playwright tests (11 tests) |
+| `deploy/dev/tests/specs/15-drop-zone-wizard-e2e.spec.js` | E2E OBJ→wizard flow (7 tests) |
+| `reference/residential/EngelHouseAnalysis.md` | Engel House validation + known issues |
 
 ## How to Run
 
 ```bash
-# Full localhost suite (83 tests)
+# Full localhost suite (98 tests)
 cd deploy/dev/tests && npx playwright test --project=desktop
 
-# Wizard tests only
+# Wizard tests only (11 tests)
 npx playwright test specs/11-wizard.spec.js --project=desktop
+
+# E2E drop zone → wizard (7 tests, uses engel-house.obj)
+npx playwright test specs/15-drop-zone-wizard-e2e.spec.js --project=desktop
 
 # OCI live smoke tests (after deploy)
 TARGET=oci npx playwright test specs/13-oci-sop.spec.js --project=desktop
+
+# Localhost manual test
+cd deploy && python3 -m http.server 8080
+# → http://localhost:8080/landing2.html → drop engel-house.obj
 ```
 
-## Execution Order (next session)
+## Execution Order — DONE (this session)
 
-1. Reproduce the save-not-persisting bug — add `console.log` breadcrumbs, check IndexedDB state
-2. Fix save path if broken
-3. Add Playwright test for wizard save persistence (end-to-end)
-4. Add storey highlighting (color-code 3D elements per storey during wizard step 2)
-5. Upload to OCI DEV, verify with `TARGET=oci`
+1. ✓ **Raycaster visibility check** — `§PW_DIAG_RAYCAST hit=true`. Headless-only issue confirmed.
+2. ✓ **Normalize storey elevations** — 0-based labels (subtract globalMinZ). 0.0–18.0m.
+3. ✓ **Storey walkthrough** — Walk button isolates floors (Prev/Next/Done).
+4. **Playwright assertion poverty** — see `reference/residential/PlaywrightAnalysis.md` §Priority 1. REMAINING.
+5. Upload to OCI DEV, verify with `TARGET=oci`. REMAINING.
+
+## Read Before Starting
+- `reference/residential/PlaywrightAnalysis.md` — Watchdog audit, priorities, scoreboard
+- `reference/residential/EngelHouseAnalysis.md` — coord system, storey findings, known issues

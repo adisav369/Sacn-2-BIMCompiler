@@ -160,9 +160,20 @@ no spatial culling — raw scene graph. Competitive with commercial BIM viewers
 | Instanced groups | 0 | 10,835 (83,084 elements batched) |
 | Single meshes | 122,330 | 39,246 (unique shapes) |
 
-Desktop: near instant. Mobile: still heavy on fly-around — 39K single-instance draw calls
-(unique pipe/duct shapes) exceed mobile GPU budget (~10K for 60fps). LTU is the stress
-test that proves instancing alone isn't enough for mobile — needs LOD or shred-on-distance.
+Desktop: near instant at 50K draw calls.
+
+**S232 mobile merge (2026-04-27):** Single-instance meshes grouped by storey|disc|rgba
+into merged `BufferGeometry` (transform baked into vertices). Mobile detection:
+`maxTouchPoints > 0 && screen.width < 1024`. Desktop unchanged.
+
+| Metric | Desktop (S231) | Mobile (S232) |
+|--------|---------------|---------------|
+| Draw calls | 50,081 | ~2,000 est. (95%+ reduction) |
+| Pick | Per-element guid | InstancedMesh → guid, merged → group info |
+| Storey/disc filter | Individual mesh visibility | Zero-scale matrix per instance + merged group visibility |
+
+LTU remains the stress test — 39K unique shapes merged into ~200 groups on mobile.
+Proven on Clinic (16,070 → 729 draw calls). Storey/disc filter and pick all functional.
 
 > **Note:** MEP disciplines (PLB, HVAC, SAN, VENT) have elements extending beyond
 > the ARC envelope — these are genuine external service runs (roof drains, underground

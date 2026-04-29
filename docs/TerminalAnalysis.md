@@ -326,6 +326,21 @@ TACK lines as dx/dy/dz. BUILDING origin holds the world LBD anchor.
 
 **Product catalog:** 505 unique products → 48,428 placed instances (95.9× reuse).
 
+### Browser Performance — S231/S232 (2026-04-27)
+
+Terminal gets the best instancing benefit due to 32,165 Metal Deck plates sharing 1 hash.
+
+| Metric | S200 baseline | S231 InstancedMesh | S232 Mobile Merge |
+|--------|---------------|-------------------|-------------------|
+| Draw calls | 48,428 | 7,150 (**85%**) | ~500 est. (**99%**) |
+| Stream time | n/a | 3.5s | 3.5s (same data phase) |
+| Pick | Per-element | Per-element (single) + no pick (instanced) | InstancedMesh → guid, merged → group info |
+| Storey/disc filter | Per-mesh visibility | Per-mesh only | Zero-scale matrix (instanced) + group visibility (merged) |
+
+Desktop retains 7,150 draw calls with full per-element pick on single-instance meshes.
+Mobile merges 6,568 single-instance meshes by storey|disc|rgba into ~80 groups.
+Deployed to OCI dev (`bim-ootb-dev`).
+
 ## Implementation Phases — All DONE
 
 | Phase | What | Status |

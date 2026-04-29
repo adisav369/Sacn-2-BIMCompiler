@@ -11,7 +11,7 @@ const { visible, text, count } = require('../helpers/dom');
 
 test.describe('Viewer Load & Streaming', () => {
 
-  test('1.1 Load viewer with Duplex DB', async ({ page }) => {
+  test('1.1 Load viewer with Duplex DB @fast', async ({ page }) => {
     const { logs } = await openViewer(page);
     console.log('§PW_VIEWER_LOAD PASS — viewer loaded with Duplex DB');
 
@@ -21,7 +21,7 @@ test.describe('Viewer Load & Streaming', () => {
     expect(status).not.toContain('Error');
   });
 
-  test('1.2 Elements stream into scene', async ({ page }) => {
+  test('1.2 Elements stream into scene @fast', async ({ page }) => {
     await openViewer(page);
     const stats = await getStreamStats(page);
     console.log(`§PW_STREAM_COUNT streamed=${stats.streamed} total=${stats.total} meshes=${stats.meshes} active="${stats.active}"`);
@@ -32,7 +32,7 @@ test.describe('Viewer Load & Streaming', () => {
     expect(stats.active).toContain('DONE');
   });
 
-  test('1.3 Building name shown in HUD', async ({ page }) => {
+  test('1.3 Building name shown in HUD @fast', async ({ page }) => {
     await openViewer(page);
     const stats = await getStreamStats(page);
     console.log(`§PW_BUILDING_NAME active="${stats.active}"`);
@@ -41,7 +41,7 @@ test.describe('Viewer Load & Streaming', () => {
     expect(stats.active).toContain('DONE');
   });
 
-  test('1.4 Info panel populates on click', async ({ page }) => {
+  test('1.4 Info panel populates on click @fast', async ({ page }) => {
     await openViewer(page);
 
     // Find a mesh in the scene, project to screen coords, click there
@@ -79,14 +79,14 @@ test.describe('Viewer Load & Streaming', () => {
         console.log(`§PW_INFO_PANEL class="${infoClass}" — panel populated on click`);
       } else {
         // Raycaster may still miss if mesh is behind camera or occluded
-        console.log(`§PW_INFO_PANEL WARN — projected click at (${clickPos.x},${clickPos.y}) did not select`);
+        console.log(`§PW_INFO_PANEL MISS — projected click at (${clickPos.x},${clickPos.y}) did not select`);
       }
     } else {
-      console.log('§PW_INFO_PANEL SKIP — no mesh found in scene');
+      console.log('§PW_INFO_PANEL NO_MESH — no mesh found in scene');
     }
   });
 
-  test('1.5 MEP-only DB loads (not empty viewer)', async ({ page }) => {
+  test('1.5 MEP-only DB loads (not empty viewer) @fast', async ({ page }) => {
     // Use Duplex which has MEP elements — the key test is that streaming
     // doesn't filter out MEP disciplines (the bug from 49730abb)
     const logs = new ConsoleLogs(page);
@@ -99,7 +99,7 @@ test.describe('Viewer Load & Streaming', () => {
     expect(stats.active).toContain('DONE');
   });
 
-  test('1.6 X-ray toggle', async ({ page }) => {
+  test('1.6 X-ray toggle @fast', async ({ page }) => {
     await openViewer(page);
 
     // Toggle x-ray via keyboard shortcut
@@ -117,7 +117,7 @@ test.describe('Viewer Load & Streaming', () => {
     expect(xrayOff).toBe(false);
   });
 
-  test('1.7 Theme toggle', async ({ page }) => {
+  test('1.7 Theme toggle @fast', async ({ page }) => {
     await openViewer(page);
 
     // Get initial background
@@ -149,7 +149,7 @@ test.describe('Viewer Load & Streaming', () => {
     }
   });
 
-  test('1.8 Screenshot button triggers download', async ({ page }) => {
+  test('1.8 Screenshot button triggers download @fast', async ({ page }) => {
     await openViewer(page);
 
     // Screenshot creates a blob URL and triggers download via link click
@@ -162,11 +162,11 @@ test.describe('Viewer Load & Streaming', () => {
       expect(download.suggestedFilename()).toContain('.png');
     } else {
       // Some headless environments may not fire download — check blob was created
-      console.log('§PW_SCREENSHOT SKIP — download event not fired in headless');
+      console.log('§PW_SCREENSHOT HEADLESS — download event not fired in headless');
     }
   });
 
-  test('1.9 Fly-around toggle', async ({ page }) => {
+  test('1.9 Fly-around toggle @fast', async ({ page }) => {
     await openViewer(page);
 
     // Get initial camera position

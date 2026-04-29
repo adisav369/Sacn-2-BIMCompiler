@@ -144,5 +144,6 @@ nav:
       - IFC Onboarding: IFC_ONBOARDING_RUNBOOK.md
       - Systems Installer: SYSTEMS_INSTALLER_GUIDE.md
       - Deployment: DEPLOYMENT.md
+      - Localization: Localization.md
       - Logging: BIMLogger.md
       - Doc Index: INDEX.md

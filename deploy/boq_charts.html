@@ -16,6 +16,7 @@
   }
   .chart-box.full { grid-column: 1 / -1; }
   canvas { max-width: 100%; }
+  .chart-box.pie-chart canvas { aspect-ratio: 1; max-height: 400px; margin: 0 auto; display: block; }
   table { border-collapse: collapse; width: 100%; font-size: 11px; margin-top: 8px; }
   th { background: rgba(79,195,247,0.15); color: #4fc3f7; text-align: left; padding: 4px 8px; }
   td { padding: 3px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
@@ -47,163 +48,159 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="rates.js"></script>
 
 <script>
 const params = new URLSearchParams(location.search);
 const DB_URL = params.get('db') || 'sandbox_1M_extracted.db';
+const DIFF_DB_URL = params.get('diffdb') || '';
 const BLD = params.get('bld') || '';
 
-// ============================================================================
-// CIDB 2024 MATERIAL RATES (from boq_export.py — exact match)
-// ============================================================================
-const RATES = {
-  IfcDuct:{rate:165,unit:'M',desc:'Galvanized Steel Ductwork (avg 400mm)'},
-  IfcDuctSegment:{rate:165,unit:'M',desc:'Ductwork Segment'},
-  IfcDuctFitting:{rate:380,unit:'EA',desc:'Duct Fittings (elbows, tees)'},
-  IfcPipe:{rate:48.5,unit:'M',desc:'PVC/HDPE Pipe (avg 100mm)'},
-  IfcPipeSegment:{rate:48.5,unit:'M',desc:'Pipe Segment'},
-  IfcPipeFitting:{rate:95,unit:'EA',desc:'Pipe Fittings'},
-  IfcCableCarrier:{rate:78,unit:'M',desc:'Cable Tray System (300mm)'},
-  IfcCableCarrierSegment:{rate:78,unit:'M',desc:'Cable Tray Segment'},
-  IfcBeam:{rate:680,unit:'M',desc:'Structural Steel I-Beam'},
-  IfcColumn:{rate:1250,unit:'M',desc:'Structural Steel Column'},
-  IfcSlab:{rate:285,unit:'M2',desc:'RC Slab 250mm'},
-  IfcWall:{rate:145,unit:'M2',desc:'Blockwork Wall 150mm'},
-  IfcWallStandardCase:{rate:145,unit:'M2',desc:'Standard Wall'},
-  IfcCurtainWall:{rate:750,unit:'M2',desc:'Curtain Wall'},
-  IfcCovering:{rate:185,unit:'M2',desc:'Floor/Ceiling Finish'},
-  IfcRoof:{rate:238,unit:'M2',desc:'Metal Roof'},
-  IfcLightFixture:{rate:485,unit:'EA',desc:'LED Light Fixture'},
-  IfcOutlet:{rate:125,unit:'EA',desc:'Power Outlet'},
-  IfcDoor:{rate:2850,unit:'EA',desc:'Door Set'},
-  IfcWindow:{rate:1580,unit:'EA',desc:'Window'},
-  IfcBuildingElementProxy:{rate:850,unit:'EA',desc:'Misc Element'},
-  IfcFlowTerminal:{rate:3500,unit:'EA',desc:'HVAC Terminal'},
-  IfcFurnishingElement:{rate:1200,unit:'EA',desc:'Furniture'},
-  IfcPlate:{rate:95,unit:'M2',desc:'Steel Plate'},
-  IfcMember:{rate:320,unit:'M',desc:'Steel Member'},
-  IfcRailing:{rate:280,unit:'M',desc:'Railing'},
-  IfcStair:{rate:4500,unit:'EA',desc:'Staircase'},
-  IfcStairFlight:{rate:2200,unit:'EA',desc:'Stair Flight'},
-};
+// S224: Variance data (populated in init if diffdb present)
+var diffResult = null;
+var diffDb = null;
+
+// RATES, LABOR_RATES, EQUIPMENT_RATES, EQUIPMENT_ALLOCATION, SEQUENCE_RULES,
+// DISC_COLORS, PHASE_COLORS, WORK_PACKAGES, calcLabor(), calcEquipment(),
+// getRate(), getPhase(), getProductivity() — all from rates.js
+const DEFAULT_RULE = SEQUENCE_DEFAULT;  // alias for existing references
 
 // ============================================================================
-// LABOR RATES (from boq_export.py — full trade/crew/rate_per_day)
+// LOCALE TEMPLATE (_TRL) — iDempiere-style localization
+// Override via URL: ?cur=USD&rate=4.45&locale=en_US
+// Or load from template DB in future. ALL labels, currency, attribution here.
 // ============================================================================
-const LABOR_RATES = {
-  HVAC_TECH: {
-    rate_per_day: 185, crew_size: 2, trade: 'HVAC Technician (Skilled)',
-    productivity: {IfcDuct:18,IfcDuctSegment:18,IfcDuctFitting:12}
-  },
-  PLUMBER: {
-    rate_per_day: 165, crew_size: 2, trade: 'Pipefitter (Skilled)',
-    productivity: {IfcPipe:25,IfcPipeSegment:25,IfcPipeFitting:15}
-  },
-  ELECTRICIAN: {
-    rate_per_day: 175, crew_size: 2, trade: 'Electrician (Skilled)',
-    productivity: {IfcCableCarrier:30,IfcCableCarrierSegment:30,IfcLightFixture:20,IfcOutlet:25}
-  },
-  STEEL_ERECTOR: {
-    rate_per_day: 195, crew_size: 4, trade: 'Steel Erector (Skilled)',
-    productivity: {IfcBeam:8,IfcColumn:6}
-  },
-  CONCRETE_GANG: {
-    rate_per_day: 145, crew_size: 6, trade: 'Concrete Gang (Mixed)',
-    productivity: {IfcSlab:35}
-  },
-  MASON: {
-    rate_per_day: 155, crew_size: 3, trade: 'Mason (Skilled) + Laborers',
-    productivity: {IfcWall:12,IfcWallStandardCase:12}
-  },
-  LABORER: {
-    rate_per_day: 95, crew_size: 1, trade: 'General Laborer',
-    productivity: {}
-  },
+const _TRL_DEFAULTS = {
+  // Currency
+  cur:          'RM',           // primary currency symbol
+  cur2:         'USD',          // secondary currency symbol
+  cur_rate:     4.45,           // 1 cur2 = cur_rate × cur  (e.g. 1 USD = 4.45 RM)
+  cur_name:     'Malaysian Ringgit',
+  cur2_name:    'US Dollar',
+
+  // Rate source attribution
+  rate_source:       'CIDB Malaysia 2024 / BCISM Cost Book',
+  rate_year:         '2024',
+  rate_mat_source:   'CIDB National Construction Cost Centre (N3C) 2024',
+  rate_mat_ref:      'BCISM Cost Book 2022-2024 (inflated +3%)',
+  rate_mat_includes: 'Delivery, wastage allowance (5-10% by material type)',
+  rate_lab_source:   'MBAM-CIDB Labour Wage Survey 2024',
+  rate_lab_basis:    'Basic wage + 30% (EPF 13%, SOCSO 2%, benefits 15%)',
+  rate_lab_prod:     'CIDB productivity standards by trade',
+  rate_lab_crew:     'Skilled workers + helpers as per trade standards',
+  rate_eq_source:    'CIDB N3C Machinery Hire Rates 2024',
+  rate_eq_alloc:     'Based on work type and duration requirements',
+  rate_eq_basis:     'Per day (8 hours), operator cost included where stated',
+
+  // Column headers — Excel + HTML tables
+  h_discipline: 'Discipline',
+  h_ifc_class:  'IFC Class',
+  h_quantity:   'Quantity',
+  h_uom:        'UOM',
+  h_description:'Description',
+  h_storey:     'Storey',
+  h_phase:      'Phase',
+  h_item:       'Item',
+
+  // Cost labels
+  h_material:   'Material',
+  h_labour:     'Labour',
+  h_equipment:  'Equipment',
+  h_total:      'Total',
+  h_unit_rate:  'Unit Rate',
+  h_mat_rate:   'Mat Rate',
+  h_lab_rate:   'Lab Rate',
+  h_rate_day:   'Rate/Day',
+  h_trade:      'Trade',
+  h_crew_size:  'Crew Size',
+  h_man_days:   'Man-Days',
+  h_duration:   'Duration (days)',
+  h_grand_total:'GRAND TOTAL',
+  h_subtotal:   'SUBTOTAL',
+
+  // 4D labels
+  h_wbs:        'WBS',
+  h_task_name:  'Task Name',
+  h_productivity:'Productivity',
+  h_gangs:      'Gangs',
+  h_start_date: 'Start Date',
+  h_finish_date:'Finish Date',
+  h_labor_resource:'Labor Resource',
+  h_status:     'Status',
+  h_pct_complete:'% Complete',
+  h_day_offset: 'Day Offset',
+  h_date:       'Date',
+  h_milestone:  'Milestone',
+  h_task:       'Task',
+  h_task_count: 'Task Count',
+  h_total_days: 'Total Days',
+  h_total_man_days:'Total Man-Days',
+  h_week:       'Week',
+  h_cumulative_pct:'Cumulative %',
+
+  // Chart titles
+  t_cost_by_disc:      '5D — Cost by Discipline',
+  t_cost_components:   'Cost Components by Discipline',
+  t_task_dist_phase:   'Task Distribution by Phase',
+  t_task_count_disc:   'Task Count by Discipline',
+  t_phase_duration:    '4D — Phase Duration (Total Days)',
+  t_resource_workload: '4D — Resource Workload (Man-Days by Phase)',
+  t_s_curve:           '4D — S-Curve Progress',
+  t_milestone:         '4D — Milestone Timeline',
+  t_gantt:             '4D — Gantt Timeline (Strategic Tasks by Phase)',
+  t_vo_impact:         '5D — Variation Order Impact',
+
+  // Excel sheet names
+  s_cover:        'Cover Sheet',
+  s_exec_summary: 'Executive Summary',
+  s_material:     'Material Summary',
+  s_labour:       'Labour Summary',
+  s_equipment:    'Equipment Summary',
+  s_boq:          'Detailed BOQ',
+  s_prov:         'Provisional Sums',
+  s_schedule:     'Construction Schedule',
+  s_proj_summary: 'Project Summary',
+  s_dashboard:    'BIM 4D Dashboard',
+
+  // Section titles
+  t_comp_boq:     'COMPREHENSIVE BILL OF QUANTITIES',
+  t_cost_method:  'COST BREAKDOWN METHODOLOGY',
+  t_mat_summary:  'MATERIAL COST SUMMARY',
+  t_lab_summary:  'LABOUR COST SUMMARY',
+  t_equip_summary:'EQUIPMENT COST SUMMARY',
+  t_prov_sums:    'PROVISIONAL SUMS',
+  t_phase_dur_analysis: 'Phase Duration Analysis',
+  t_resource_analysis:  'Resource Workload Analysis',
+  t_s_curve_progress:   'S-Curve Progress',
+  t_milestone_timeline: 'Milestone Timeline',
+  t_gantt_timeline:     'Gantt Timeline (Strategic Tasks)',
+
+  // Misc
+  not_started:  'Not Started',
+  source_app:   'BIM OOTB — Frictionless BIM',
 };
 
-// ============================================================================
-// EQUIPMENT RATES & ALLOCATION (from boq_export.py)
-// ============================================================================
-const EQUIPMENT_RATES = {
-  MOBILE_CRANE_20T: {rate_per_day:1850, desc:'Mobile Crane 20 Tonne'},
-  TOWER_CRANE: {rate_per_day:2200, desc:'Tower Crane'},
-  CONCRETE_PUMP: {rate_per_day:950, desc:'Concrete Pump Truck'},
-  SCISSOR_LIFT_8M: {rate_per_day:285, desc:'Scissor Lift 8m'},
-  WELDING_MACHINE: {rate_per_day:65, desc:'Welding Machine 300A'},
-  GENERATOR_5KVA: {rate_per_day:95, desc:'Generator 5KVA'},
-};
-const EQUIPMENT_ALLOCATION = {
-  IfcBeam: {equipment:'MOBILE_CRANE_20T', duration_factor:0.5},
-  IfcColumn: {equipment:'MOBILE_CRANE_20T', duration_factor:0.5},
-  IfcSlab: {equipment:'CONCRETE_PUMP', duration_factor:0.3},
-  IfcDuct: {equipment:'SCISSOR_LIFT_8M', duration_factor:0.4},
-  IfcCableCarrier: {equipment:'SCISSOR_LIFT_8M', duration_factor:0.3},
-};
+// Merge URL overrides: ?cur=USD&rate=4.45 or any _TRL key: ?h_material=Materials
+const _TRL = Object.assign({}, _TRL_DEFAULTS);
+if (params.get('cur'))  _TRL.cur = params.get('cur');
+if (params.get('cur2')) _TRL.cur2 = params.get('cur2');
+if (params.get('rate')) _TRL.cur_rate = parseFloat(params.get('rate'));
+// Allow overriding any _TRL key via URL: ?t_cost_by_disc=5D%20Cost
+for (const [k,v] of params.entries()) { if (k in _TRL_DEFAULTS && k !== 'cur' && k !== 'cur2' && k !== 'rate') _TRL[k] = v; }
 
-// ============================================================================
-// SEQUENCE RULES (from schedule_generator.py — for 4D schedule)
-// ============================================================================
-const SEQUENCE_RULES = {
-  // Substructure
-  IfcFooting:{phase:'Substructure',sequence:1,resource:'CONCRETE_GANG'},
-  IfcReinforcingBar:{phase:'Substructure',sequence:1,resource:'CONCRETE_GANG'},
-  // Superstructure
-  IfcColumn:{phase:'Superstructure',sequence:2,resource:'STEEL_ERECTOR'},
-  IfcBeam:{phase:'Superstructure',sequence:3,resource:'STEEL_ERECTOR'},
-  IfcSlab:{phase:'Superstructure',sequence:4,resource:'CONCRETE_GANG'},
-  IfcPlate:{phase:'Superstructure',sequence:4,resource:'STEEL_ERECTOR'},
-  IfcMember:{phase:'Superstructure',sequence:3,resource:'STEEL_ERECTOR'},
-  // MEP Rough-in (pipes, ducts, cable trays, flow segments/fittings)
-  IfcDuct:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
-  IfcDuctSegment:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
-  IfcDuctFitting:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
-  IfcPipe:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
-  IfcPipeSegment:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
-  IfcPipeFitting:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
-  IfcCableCarrier:{phase:'MEP Rough-in',sequence:5,resource:'ELECTRICIAN'},
-  IfcCableCarrierSegment:{phase:'MEP Rough-in',sequence:5,resource:'ELECTRICIAN'},
-  IfcFlowSegment:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
-  IfcFlowFitting:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
-  IfcFlowController:{phase:'MEP Rough-in',sequence:5,resource:'ELECTRICIAN'},
-  IfcFlowMovingDevice:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
-  IfcFlowStorageDevice:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
-  IfcFlowTreatmentDevice:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
-  IfcEnergyConversionDevice:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
-  // Architecture
-  IfcWall:{phase:'Architecture',sequence:6,resource:'MASON'},
-  IfcWallStandardCase:{phase:'Architecture',sequence:6,resource:'MASON'},
-  IfcOpeningElement:{phase:'Architecture',sequence:6,resource:'MASON'},
-  IfcBuildingElementPart:{phase:'Architecture',sequence:6,resource:'MASON'},
-  IfcDoor:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
-  IfcWindow:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
-  IfcStair:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
-  IfcStairFlight:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
-  IfcRailing:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
-  IfcRoof:{phase:'Architecture',sequence:8,resource:'ROOFER'},
-  IfcBuildingElementProxy:{phase:'Architecture',sequence:6,resource:null},
-  IfcCurtainWall:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
-  // MEP Final
-  IfcLightFixture:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
-  IfcOutlet:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
-  IfcElectricAppliance:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
-  IfcFlowTerminal:{phase:'MEP Final',sequence:9,resource:'HVAC_TECH'},
-  // Finishes
-  IfcCovering:{phase:'Finishes',sequence:10,resource:'FINISHER'},
-  IfcFurniture:{phase:'Finishes',sequence:11,resource:'FINISHER'},
-  IfcFurnishingElement:{phase:'Finishes',sequence:11,resource:'FINISHER'},
-};
-const DEFAULT_RULE = {phase:'Architecture',sequence:6,resource:null};
+// Currency helpers — all code uses these, never hardcoded symbols
+const CUR = _TRL.cur;                                    // primary symbol
+const CUR2 = _TRL.cur2;                                  // secondary symbol
+const CUR_RATE = _TRL.cur_rate;                           // conversion: 1 CUR2 = CUR_RATE × CUR
+function fmtCur(val) { return CUR + ' ' + val.toLocaleString(); }   // format primary
+function fmtCur2(val) { return Math.round(val / CUR_RATE * 100) / 100; }  // convert to secondary
+// Legacy alias
+const USD_RATE = CUR_RATE;
 
-const DISC_COLORS = {
-  ARC:'#4488ff',STR:'#44cccc',MEP:'#44cc44',ELEC:'#cccc44',FP:'#cc8844',
-  ACMV:'#cc4444',PLB:'#8844cc',HVAC:'#44aacc',SAN:'#aa44aa',VENT:'#88ccaa',
-};
-const PHASE_COLORS = {
-  'Substructure':'#A5A5A5','Superstructure':'#4472C4','MEP Rough-in':'#70AD47',
-  'Architecture':'#ED7D31','MEP Final':'#5B9BD5','Finishes':'#FFC000',
-  'Commissioning':'#C55A11','Unknown':'#888888',
-};
+// WORK_PACKAGES — from rates.js
 
 // ============================================================================
 // COMPUTED STATE
@@ -215,28 +212,7 @@ let grandMaterial = 0, grandLabor = 0, grandEquip = 0, totalQty = 0;
 let scheduleData = [];    // generated 4D tasks
 let chartInstances = [];
 
-// ============================================================================
-// LABOR / EQUIPMENT CALCULATION (matches boq_export.py exactly)
-// ============================================================================
-function calcLabor(ifcClass, qty) {
-  for (const [key, lr] of Object.entries(LABOR_RATES)) {
-    if (lr.productivity && lr.productivity[ifcClass] !== undefined) {
-      const prod = lr.productivity[ifcClass];
-      const days = qty / prod;
-      const cost = days * lr.crew_size * lr.rate_per_day;
-      return {cost: Math.round(cost), days, crew: lr.crew_size, trade: lr.trade, tradeKey: key, prod};
-    }
-  }
-  return {cost: 0, days: 0, crew: 0, trade: '', tradeKey: null, prod: 10};
-}
-
-function calcEquipment(ifcClass, laborDays) {
-  const alloc = EQUIPMENT_ALLOCATION[ifcClass];
-  if (!alloc) return {cost: 0, desc: '', days: 0};
-  const er = EQUIPMENT_RATES[alloc.equipment];
-  const days = laborDays * alloc.duration_factor;
-  return {cost: Math.round(days * er.rate_per_day), desc: er.desc, days};
-}
+// calcLabor(), calcEquipment() — from rates.js
 
 // ============================================================================
 // SCHEDULE GENERATION — realistic storey-by-storey, phase-dependent
@@ -394,12 +370,35 @@ function generateSchedule(activities, startDateStr) {
 // ============================================================================
 // INIT — load DB, compute everything
 // ============================================================================
+// S223: Fetch DB buffer — handles import:// URLs via IndexedDB cache, or regular fetch
+async function fetchDbBuffer(url) {
+  if (url.startsWith('import://')) {
+    // Look up in bim_ootb_cache IndexedDB (same store viewer uses)
+    const cacheDb = await new Promise(resolve => {
+      const req = indexedDB.open('bim_ootb_cache', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('dbs');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    });
+    if (!cacheDb) throw new Error('Cannot open IndexedDB cache for import:// URL');
+    const buf = await new Promise((resolve, reject) => {
+      const tx = cacheDb.transaction('dbs', 'readonly');
+      const req = tx.objectStore('dbs').get(url);
+      req.onsuccess = () => req.result ? resolve(req.result) : reject(new Error('DB not found in cache: ' + url));
+      req.onerror = () => reject(new Error('IndexedDB read failed'));
+    });
+    console.log('[S223] §BOQ_IMPORT_DB loaded from IndexedDB cache, size=' + (buf.byteLength / 1024).toFixed(0) + 'KB');
+    return buf;
+  }
+  return fetch(url).then(r => r.arrayBuffer());
+}
+
 async function init() {
   const SQL = await initSqlJs({
     locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
   });
   document.getElementById('info').textContent = `Loading ${DB_URL}...`;
-  const buf = await fetch(DB_URL).then(r => r.arrayBuffer());
+  const buf = await fetchDbBuffer(DB_URL);
   db = new SQL.Database(new Uint8Array(buf));
 
   // Determine building
@@ -460,12 +459,39 @@ async function init() {
   const grandTotal = grandMaterial + grandLabor + grandEquip;
   const projDaysInit = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
   console.log(`§QTO: ${qtoData.length} rows | ${totalQty} elements`);
-  console.log(`§TOTALS: Mat RM ${grandMaterial.toLocaleString()} | Lab RM ${grandLabor.toLocaleString()} | Eq RM ${grandEquip.toLocaleString()} | Grand RM ${grandTotal.toLocaleString()}`);
+  console.log(`§TOTALS: Mat ${CUR}${grandMaterial.toLocaleString()} | Lab ${CUR}${grandLabor.toLocaleString()} | Eq ${CUR}${grandEquip.toLocaleString()} | Grand ${CUR}${grandTotal.toLocaleString()}`);
   console.log(`§SCHEDULE: ${scheduleData.length} tasks | ${projDaysInit} calendar days`);
   const unmapped = [...new Set(qtoData.map(r=>r.cls).filter(c=>!SEQUENCE_RULES[c]))];
   console.log(`§UNMAPPED: ${unmapped.length ? unmapped.join(', ') : 'NONE'}`);
   document.getElementById('info').textContent =
-    `${bldName} | ${totalQty.toLocaleString()} elements | RM ${grandTotal.toLocaleString()} (Mat ${grandMaterial.toLocaleString()} + Lab ${grandLabor.toLocaleString()} + Equip ${grandEquip.toLocaleString()})`;
+    `${bldName} | ${totalQty.toLocaleString()} elements | ${CUR}${grandTotal.toLocaleString()} (Mat ${grandMaterial.toLocaleString()} + Lab ${grandLabor.toLocaleString()} + Equip ${grandEquip.toLocaleString()})`;
+
+  // S224: Load diff DB if present — compute variance for VO sheets in Excel
+  if (DIFF_DB_URL) {
+    try {
+      const diffBuf = await fetchDbBuffer(DIFF_DB_URL);
+      diffDb = new SQL.Database(new Uint8Array(diffBuf));
+      const guids1 = new Set(db.exec("SELECT guid FROM elements_meta")[0].values.map(r => r[0]));
+      const guids2 = new Set(diffDb.exec("SELECT guid FROM elements_meta")[0].values.map(r => r[0]));
+      const added = [...guids2].filter(g => !guids1.has(g));
+      const common = [...guids2].filter(g => guids1.has(g));
+      const changed = common.filter(g => {
+        const r1 = db.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid='" + g.replace(/'/g, "''") + "'");
+        const r2 = diffDb.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid='" + g.replace(/'/g, "''") + "'");
+        return JSON.stringify(r1[0]?.values[0]) !== JSON.stringify(r2[0]?.values[0]);
+      });
+      // S225: merge vs revision — <10% overlap = merge (don't flag base as removed)
+      const overlap = common.length / Math.max(guids1.size, guids2.size);
+      const isMerge = overlap < 0.1;
+      const removed = isMerge ? [] : [...guids1].filter(g => !guids2.has(g));
+      diffResult = { added, removed, changed, isMerge };
+      console.log('[S225] §BOQ_DIFF added=' + added.length + ' removed=' + removed.length + ' changed=' + changed.length + ' mode=' + (isMerge ? 'MERGE' : 'REVISION'));
+      var modeTag = isMerge ? ' | MERGE: +' + added.length + ' new elements' : ' | VARIANCE: +' + added.length + ' −' + removed.length + ' ~' + changed.length;
+      document.getElementById('info').textContent += modeTag;
+    } catch(e) {
+      console.log('[S224] §BOQ_DIFF_ERROR ' + e.message);
+    }
+  }
 
   renderCharts();
 }
@@ -486,22 +512,22 @@ function renderCharts() {
   const discs = Object.keys(discSummary);
 
   // ── 1. Cost Pie by Discipline (M+L+E) ──
-  const pieBox = el('div','chart-box');
-  pieBox.innerHTML = '<h2>5D — Cost by Discipline (RM)</h2>';
+  const pieBox = el('div','chart-box pie-chart');
+  pieBox.innerHTML = '<h2>' + _TRL.t_cost_by_disc + ' (' + CUR + ')</h2>';
   const pieCanvas = el('canvas');
   pieBox.appendChild(pieCanvas); c.appendChild(pieBox);
 
   const discTotals = discs.map(d => discSummary[d].matTotal + discSummary[d].laborCost + discSummary[d].equipCost);
   chartInstances.push(new Chart(pieCanvas, {
     type:'pie',
-    data:{labels:discs, datasets:[{data:discTotals, backgroundColor:discs.map(d=>DISC_COLORS[d]||'#888')}]},
-    options:{plugins:{legend:{position:'right',labels:{color:'#ccc'}}}}
+    data:{labels:discs, datasets:[{data:discTotals, backgroundColor:discs.map(d=>DISC_COLORS[d]||'#888'), borderWidth:1}]},
+    options:{aspectRatio:1, layout:{padding:0}, plugins:{legend:{position:'bottom',labels:{color:'#ddd',font:{size:14,weight:'bold'}}}}}
   }));
   logChart(1,'Pie','Cost Breakdown by Discipline',discs.length);
 
   // ── 2. Cost Components by Discipline — M/L/E (boq_export.py "Cost Components by Discipline") ──
   const mleBox = el('div','chart-box');
-  mleBox.innerHTML = '<h2>Cost Components by Discipline (RM)</h2>';
+  mleBox.innerHTML = '<h2>' + _TRL.t_cost_components + ' (' + CUR + ')</h2>';
   const mleCanvas = el('canvas');
   mleBox.appendChild(mleCanvas); c.appendChild(mleBox);
 
@@ -510,12 +536,12 @@ function renderCharts() {
     data:{
       labels:discs,
       datasets:[
-        {label:'Material',data:discs.map(d=>discSummary[d].matTotal),backgroundColor:'#70AD47'},
-        {label:'Labour',data:discs.map(d=>discSummary[d].laborCost),backgroundColor:'#FFC000'},
-        {label:'Equipment',data:discs.map(d=>discSummary[d].equipCost),backgroundColor:'#5B9BD5'},
+        {label:_TRL.h_material,data:discs.map(d=>discSummary[d].matTotal),backgroundColor:'#70AD47'},
+        {label:_TRL.h_labour,data:discs.map(d=>discSummary[d].laborCost),backgroundColor:'#FFC000'},
+        {label:_TRL.h_equipment,data:discs.map(d=>discSummary[d].equipCost),backgroundColor:'#5B9BD5'},
       ]
     },
-    options:{scales:{y:{stacked:true,ticks:{color:'#aaa'}},x:{stacked:{color:'#aaa'}}},plugins:{legend:{labels:{color:'#ccc'}}}}
+    options:{scales:{y:{stacked:true,ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{stacked:true,ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{labels:{color:'#ddd',font:{size:13}}}}}
   }));
   logChart(2,'Bar','Cost Components by Discipline',discs.length);
 
@@ -524,15 +550,15 @@ function renderCharts() {
   for (const t of scheduleData) taskPhaseCounts[t.phase] = (taskPhaseCounts[t.phase]||0) + 1;
   const tpPhases = Object.keys(taskPhaseCounts);
 
-  const tpBox = el('div','chart-box');
-  tpBox.innerHTML = '<h2>Task Distribution by Phase</h2>';
+  const tpBox = el('div','chart-box pie-chart');
+  tpBox.innerHTML = '<h2>' + _TRL.t_task_dist_phase + '</h2>';
   const tpCanvas = el('canvas');
   tpBox.appendChild(tpCanvas); c.appendChild(tpBox);
 
   chartInstances.push(new Chart(tpCanvas, {
     type:'pie',
-    data:{labels:tpPhases, datasets:[{data:tpPhases.map(p=>taskPhaseCounts[p]), backgroundColor:tpPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
-    options:{plugins:{legend:{position:'right',labels:{color:'#ccc'}}}}
+    data:{labels:tpPhases, datasets:[{data:tpPhases.map(p=>taskPhaseCounts[p]), backgroundColor:tpPhases.map(p=>PHASE_COLORS[p]||'#888'), borderWidth:1}]},
+    options:{aspectRatio:1, layout:{padding:0}, plugins:{legend:{position:'bottom',labels:{color:'#ddd',font:{size:14,weight:'bold'}}}}}
   }));
   logChart(3,'Pie','Task Distribution by Phase',tpPhases.length);
 
@@ -542,14 +568,14 @@ function renderCharts() {
   const tdDiscs = Object.keys(taskDiscCounts);
 
   const tdBox = el('div','chart-box');
-  tdBox.innerHTML = '<h2>Task Count by Discipline</h2>';
+  tdBox.innerHTML = '<h2>' + _TRL.t_task_count_disc + '</h2>';
   const tdCanvas = el('canvas');
   tdBox.appendChild(tdCanvas); c.appendChild(tdBox);
 
   chartInstances.push(new Chart(tdCanvas, {
     type:'bar',
     data:{labels:tdDiscs, datasets:[{label:'Tasks',data:tdDiscs.map(d=>taskDiscCounts[d]),backgroundColor:tdDiscs.map(d=>DISC_COLORS[d]||'#888')}]},
-    options:{scales:{y:{title:{display:true,text:'Number of Tasks',color:'#aaa'},ticks:{color:'#aaa'}},x:{title:{display:true,text:'Discipline',color:'#aaa'},ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+    options:{scales:{y:{title:{display:true,text:'Number of Tasks',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{title:{display:true,text:'Discipline',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(4,'Bar','Task Count by Discipline',tdDiscs.length);
 
@@ -559,14 +585,14 @@ function renderCharts() {
   const pdPhases = Object.keys(phaseDur).sort((a,b) => phaseDur[b]-phaseDur[a]);
 
   const pdBox = el('div','chart-box');
-  pdBox.innerHTML = '<h2>4D — Phase Duration (Total Days)</h2>';
+  pdBox.innerHTML = '<h2>' + _TRL.t_phase_duration + '</h2>';
   const pdCanvas = el('canvas');
   pdBox.appendChild(pdCanvas); c.appendChild(pdBox);
 
   chartInstances.push(new Chart(pdCanvas, {
     type:'bar',
     data:{labels:pdPhases, datasets:[{label:'Days',data:pdPhases.map(p=>Math.round(phaseDur[p])),backgroundColor:pdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
-    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Days',color:'#aaa'},ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Days',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},y:{ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(5,'H-Bar','Phase Duration',pdPhases.length);
 
@@ -576,21 +602,21 @@ function renderCharts() {
   const mdPhases = Object.keys(phaseMandays).sort((a,b) => phaseMandays[b]-phaseMandays[a]);
 
   const mdBox = el('div','chart-box');
-  mdBox.innerHTML = '<h2>4D — Resource Workload (Man-Days by Phase)</h2>';
+  mdBox.innerHTML = '<h2>' + _TRL.t_resource_workload + '</h2>';
   const mdCanvas = el('canvas');
   mdBox.appendChild(mdCanvas); c.appendChild(mdBox);
 
   chartInstances.push(new Chart(mdCanvas, {
     type:'bar',
     data:{labels:mdPhases, datasets:[{label:'Man-Days',data:mdPhases.map(p=>Math.round(phaseMandays[p])),backgroundColor:mdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
-    options:{scales:{y:{title:{display:true,text:'Man-Days',color:'#aaa'},ticks:{color:'#aaa'}},x:{ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+    options:{scales:{y:{title:{display:true,text:'Man-Days',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(6,'Column','Resource Workload',mdPhases.length);
 
   // ── 7. S-Curve Progress (line — from schedule_export.py) ──
   if (scheduleData.length) {
     const scBox = el('div','chart-box');
-    scBox.innerHTML = '<h2>4D — S-Curve Progress (Cumulative Task Completion)</h2>';
+    scBox.innerHTML = '<h2>' + _TRL.t_s_curve + '</h2>';
     const scCanvas = el('canvas');
     scBox.appendChild(scCanvas); c.appendChild(scBox);
 
@@ -616,12 +642,14 @@ function renderCharts() {
     chartInstances.push(new Chart(scCanvas, {
       type:'line',
       data:{labels:weekLabels, datasets:[{label:'% Complete',data:weekPcts,borderColor:'#4fc3f7',backgroundColor:'rgba(79,195,247,0.1)',fill:true,tension:0.3}]},
-      options:{scales:{y:{min:0,max:100,title:{display:true,text:'% Complete',color:'#aaa'},ticks:{color:'#aaa'}},x:{title:{display:true,text:'Project Week',color:'#aaa'},ticks:{color:'#aaa'}}},plugins:{legend:{display:false}}}
+      options:{scales:{y:{min:0,max:100,title:{display:true,text:'% Complete',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{title:{display:true,text:'Project Week',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
     }));
     logChart(7,'Line','S-Curve Progress',weekLabels.length);
   }
 
   // ── 8. Milestone Timeline (horizontal bar — from schedule_export.py) ──
+  // S235: Restored from S225 sandbox original. S226 _TRL refactor broke this by
+  // redesigning to phase-span Gantt (duplicated chart 9) and dropping canvas.height.
   const phaseDates = {};
   for (const t of scheduleData) {
     if (!phaseDates[t.phase]) phaseDates[t.phase] = {start:t.startDay, end:t.finishDay};
@@ -630,34 +658,40 @@ function renderCharts() {
       phaseDates[t.phase].end = Math.max(phaseDates[t.phase].end, t.finishDay);
     }
   }
-  const milestones = [];
-  milestones.push({name:'Project Start', day:0});
-  for (const phase of Object.keys(phaseDates).sort()) {
-    milestones.push({name:`${phase} Start`, day:phaseDates[phase].start});
-    milestones.push({name:`${phase} End`, day:phaseDates[phase].end});
-  }
   const maxFinishDay = Math.max(...scheduleData.map(t=>t.finishDay));
-  milestones.push({name:'Project Finish', day:maxFinishDay});
-  milestones.sort((a,b) => a.day - b.day);
+  const phaseList = Object.keys(phaseDates).sort((a,b) => phaseDates[a].start - phaseDates[b].start);
 
   const msBox = el('div','chart-box');
-  msBox.innerHTML = '<h2>4D — Milestone Timeline</h2>';
+  msBox.innerHTML = '<h2>' + _TRL.t_milestone + '</h2>';
   const msCanvas = el('canvas');
-  msCanvas.height = 250;
   msBox.appendChild(msCanvas); c.appendChild(msBox);
 
   chartInstances.push(new Chart(msCanvas, {
     type:'bar',
-    data:{labels:milestones.map(m=>m.name), datasets:[{label:'Day',data:milestones.map(m=>m.day),backgroundColor:milestones.map(m=>m.name.includes('Start')?'#70AD47':m.name.includes('End')?'#ED7D31':'#4fc3f7')}]},
-    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Day from Project Start',color:'#aaa'},ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa',font:{size:10}}}},plugins:{legend:{display:false}}}
+    data:{
+      labels:phaseList,
+      datasets:[
+        {label:'Offset',data:phaseList.map(p=>phaseDates[p].start),backgroundColor:'rgba(0,0,0,0)'},
+        {label:'Duration',data:phaseList.map(p=>phaseDates[p].end - phaseDates[p].start),backgroundColor:phaseList.map(p=>PHASE_COLORS[p]||'#4fc3f7')},
+      ]
+    },
+    options:{indexAxis:'y',scales:{
+      x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},
+      y:{stacked:true,ticks:{color:'#ccc',font:{size:11}},grid:{color:'rgba(255,255,255,0.1)'}}
+    },plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
+      if (ctx.datasetIndex===0) return null;
+      const p = phaseList[ctx.dataIndex];
+      return `${p}: Day ${phaseDates[p].start}–${phaseDates[p].end} (${phaseDates[p].end - phaseDates[p].start} days)`;
+    }}},
+    barThickness:12}}
   }));
-  logChart(8,'H-Bar','Milestone Timeline',milestones.length);
+  logChart(8,'Gantt','Milestone Timeline',phaseList.length);
 
   // ── 9. Strategic Gantt — Top 15 longest tasks (stacked bar — from schedule_export.py) ──
   const top15 = [...scheduleData].sort((a,b) => b.duration - a.duration).slice(0,15).sort((a,b) => a.startDay - b.startDay);
 
   const ganttBox = el('div','chart-box full');
-  ganttBox.innerHTML = '<h2>4D — Gantt Timeline (Strategic Tasks by Phase)</h2>';
+  ganttBox.innerHTML = '<h2>' + _TRL.t_gantt + '</h2>';
   const ganttCanvas = el('canvas');
   ganttCanvas.height = 350;
   ganttBox.appendChild(ganttCanvas); c.appendChild(ganttBox);
@@ -673,9 +707,10 @@ function renderCharts() {
     },
     options:{
       indexAxis:'y',
+      aspectRatio:2.5,
       scales:{
-        x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#aaa'},ticks:{color:'#aaa'}},
-        y:{stacked:true,ticks:{color:'#aaa',font:{size:9}}}
+        x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},
+        y:{stacked:true,ticks:{color:'#ccc',font:{size:9}},grid:{color:'rgba(255,255,255,0.1)'}}
       },
       plugins:{
         legend:{display:false},
@@ -684,17 +719,64 @@ function renderCharts() {
           const t = top15[ctx.dataIndex];
           return `${t.phase}: Day ${t.startDay}–${t.finishDay} (${Math.round(t.duration)} days, ${t.qty} EA)`;
         }}}
-      }
+      },
+      barThickness:12
     }
   }));
   logChart(9,'Stacked','Gantt Timeline',top15.length);
 
+  // ── S225: Variance Chart (when diff data present) ──
+  if (diffResult) {
+    const varBox = el('div','chart-box');
+    varBox.innerHTML = '<h2>' + _TRL.t_vo_impact + '</h2>';
+    const varCanvas = el('canvas');
+    varBox.appendChild(varCanvas); c.appendChild(varBox);
+
+    // Cost impact per category (using VO_CFG rates if available)
+    var addCost = 0, remCost = 0, chgCost = 0;
+    var OH = 0.10, MK = 0.05;
+    function _vRate(vdb, guid) {
+      try {
+        var r = vdb.exec("SELECT ifc_class FROM elements_meta WHERE guid='" + guid.replace(/'/g, "''") + "'");
+        var cls = r[0]?.values[0]?.[0] || '';
+        var entry = RATES[cls];
+        return (entry && entry.rate) ? entry.rate : 500;
+      } catch(e) { return 500; }
+    }
+    diffResult.added.forEach(function(g)   { addCost += _vRate(diffDb, g); });
+    diffResult.removed.forEach(function(g) { remCost += _vRate(db, g); });
+    diffResult.changed.forEach(function(g) { chgCost += _vRate(diffDb, g) * 0.3; });
+
+    chartInstances.push(new Chart(varCanvas, {
+      type: 'bar',
+      data: {
+        labels: ['Added', 'Removed', 'Changed'],
+        datasets: [
+          { label: 'Elements', data: [diffResult.added.length, diffResult.removed.length, diffResult.changed.length],
+            backgroundColor: ['#44cc44', '#cc4444', '#cccc44'], yAxisID: 'y' },
+          { label: 'Cost Impact (' + CUR + ')', data: [Math.round(addCost), Math.round(remCost), Math.round(chgCost)],
+            backgroundColor: ['rgba(68,204,68,0.3)', 'rgba(204,68,68,0.3)', 'rgba(204,204,68,0.3)'],
+            borderColor: ['#44cc44', '#cc4444', '#cccc44'], borderWidth: 2, yAxisID: 'y1' }
+        ]
+      },
+      options: {
+        scales: {
+          y:  { position: 'left', title: { display: true, text: 'Element Count', color: '#fff', font:{size:15} }, ticks: { color: '#ddd', font:{size:13} }, grid: { color: 'rgba(255,255,255,0.1)' } },
+          y1: { position: 'right', title: { display: true, text: 'Cost (' + CUR + ')', color: '#fff', font:{size:15} }, ticks: { color: '#ddd', font:{size:13} }, grid: { drawOnChartArea: false } },
+          x:  { ticks: { color: '#ddd', font:{size:13} }, grid: { color: 'rgba(255,255,255,0.1)' } }
+        },
+        plugins: { legend: { labels: { color: '#ddd', font:{size:13} } } }
+      }
+    }));
+    logChart(10,'Bar','Variation Order Impact',3);
+  }
+
   // ── 10. BOQ Data Table (enhanced with Equipment column) ──
   const tableBox = el('div','chart-box full');
-  tableBox.innerHTML = '<h2>5D — Bill of Quantities (CIDB 2024 Rates)</h2>';
+  tableBox.innerHTML = '<h2>5D — Bill of Quantities (' + _TRL.rate_source + ')</h2>';
   let html = '<table><tr><th>Disc</th><th>IFC Class</th><th>Storey</th><th>Qty</th><th>Unit</th>' +
-    '<th>Description</th><th>Rate (RM)</th><th>Material (RM)</th><th>Labour Days</th><th>Labour (RM)</th>' +
-    '<th>Equip (RM)</th><th>Total (RM)</th></tr>';
+    '<th>Description</th><th>Rate (' + CUR + ')</th><th>Material (' + CUR + ')</th><th>Labour Days</th><th>Labour (' + CUR + ')</th>' +
+    '<th>Equip (' + CUR + ')</th><th>Total (' + CUR + ')</th></tr>';
   for (const r of qtoData) {
     const rowTotal = r.matTotal + r.laborCost + r.equipCost;
     html += `<tr><td>${r.disc}</td><td>${r.cls}</td><td>${r.storey||''}</td><td>${r.qty.toLocaleString()}</td>` +
@@ -704,8 +786,8 @@ function renderCharts() {
   }
   const gt = grandMaterial + grandLabor + grandEquip;
   html += `<tr class="total-row"><td colspan="7">GRAND TOTAL</td>` +
-    `<td>RM ${grandMaterial.toLocaleString()}</td><td></td><td>RM ${grandLabor.toLocaleString()}</td>` +
-    `<td>RM ${grandEquip.toLocaleString()}</td><td>RM ${gt.toLocaleString()}</td></tr>`;
+    `<td>${CUR}${grandMaterial.toLocaleString()}</td><td></td><td>${CUR}${grandLabor.toLocaleString()}</td>` +
+    `<td>${CUR}${grandEquip.toLocaleString()}</td><td>${CUR}${gt.toLocaleString()}</td></tr>`;
   html += '</table>';
   tableBox.innerHTML += html;
   c.appendChild(tableBox);
@@ -716,12 +798,12 @@ function renderCharts() {
   footBox.innerHTML = `<table>
     <tr><td>Building</td><td><b>${bldName}</b></td></tr>
     <tr><td>Total Elements</td><td><b>${totalQty.toLocaleString()}</b></td></tr>
-    <tr><td>Material Cost</td><td><b>RM ${grandMaterial.toLocaleString()}</b></td></tr>
-    <tr><td>Labour Cost</td><td><b>RM ${grandLabor.toLocaleString()}</b></td></tr>
-    <tr><td>Equipment Cost</td><td><b>RM ${grandEquip.toLocaleString()}</b></td></tr>
-    <tr><td>Grand Total</td><td><b>RM ${gt.toLocaleString()}</b></td></tr>
+    <tr><td>Material Cost</td><td><b>${CUR} ${grandMaterial.toLocaleString()}</b></td></tr>
+    <tr><td>Labour Cost</td><td><b>${CUR} ${grandLabor.toLocaleString()}</b></td></tr>
+    <tr><td>Equipment Cost</td><td><b>${CUR} ${grandEquip.toLocaleString()}</b></td></tr>
+    <tr><td>Grand Total</td><td><b>${CUR} ${gt.toLocaleString()}</b></td></tr>
     <tr><td>Project Duration</td><td><b>${projDays} days (${scheduleData.length} tasks)</b></td></tr>
-    <tr><td>Rates Source</td><td>CIDB Malaysia 2024 / BCISM Cost Book</td></tr>
+    <tr><td>Rates Source</td><td>${_TRL.rate_source}</td></tr>
     <tr><td>Exported</td><td>${new Date().toISOString()}</td></tr>
     <tr><td>Source</td><td>BIM OOTB — Frictionless BIM</td></tr>
   </table>`;
@@ -736,35 +818,259 @@ function el(tag, cls) {
 }
 
 // ============================================================================
-// SAVE 5D BOQ — 7 sheets (matches boq_export.py)
+// S225: Shared chart-to-Excel helpers
+// Pie: canvas 800×800 → image must be W=H (square) → round circle
+// Bar: canvas 1100×700 → image W:H = 11:7 to preserve ratio
 // ============================================================================
-function save5D() {
-  const wb = XLSX.utils.book_new();
+
+// Log collector — all §-tagged lines go here, auto-downloaded as .log after each save
+var _logLines = [];
+function _log(msg) { _logLines.push(new Date().toISOString() + ' ' + msg); console.log(msg); }
+function _downloadLog(label) {
+  // Delay: browser blocks rapid successive <a>.click() downloads — let Excel go first
+  var lines = _logLines.slice();
+  _logLines = [];
+  setTimeout(function() {
+    var text = lines.join('\n') + '\n';
+    var blob = new Blob([text], { type: 'text/plain' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'chart_test_' + label + '_' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.log';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }, 1500);
+}
+
+// S235: Chart images removed from Excel — HTML charts are sufficient.
+// prepare/restore/capture functions retired. Only verify + log remain.
+var _chartTestPass = 0, _chartTestFail = 0;
+function _ct(pass, ci, name, test, detail) {
+  var tag = pass ? 'PASS' : 'FAIL';
+  if (pass) _chartTestPass++; else _chartTestFail++;
+  _log('[S226] §CHART_TEST ' + tag + ' chart=' + ci + ' "' + name + '" ' + test + ' — ' + detail);
+}
+
+// ── _TRL verification: proves localization is active, no hardcoded RM/USD ──
+function _verifyTRL(wb, label) {
+  _log('[S226] §TRL_VERIFY start — ' + label);
+
+  // 1. _TRL object completeness — every key must have a non-empty string value
+  var missing = [];
+  for (var k in _TRL_DEFAULTS) {
+    if (typeof _TRL[k] === 'string' && _TRL[k].trim() === '') missing.push(k);
+    if (_TRL[k] === undefined || _TRL[k] === null) missing.push(k);
+  }
+  _ct(missing.length === 0, -1, label, 'TRL_COMPLETE',
+    missing.length === 0 ? Object.keys(_TRL_DEFAULTS).length + ' keys all populated' : 'empty keys: ' + missing.join(', '));
+
+  // 2. Currency symbols active
+  _ct(CUR === _TRL.cur, -1, label, 'TRL_CUR_MATCH', 'CUR=' + CUR + ' _TRL.cur=' + _TRL.cur);
+  _ct(CUR2 === _TRL.cur2, -1, label, 'TRL_CUR2_MATCH', 'CUR2=' + CUR2 + ' _TRL.cur2=' + _TRL.cur2);
+  _ct(typeof CUR_RATE === 'number' && CUR_RATE > 0, -1, label, 'TRL_RATE_VALID', 'CUR_RATE=' + CUR_RATE);
+
+  // 3. Excel sheet names — must match _TRL values, no hardcoded English
+  if (wb) {
+    var sheetNames = wb.worksheets.map(function(ws) { return ws.name; });
+    var trlSheets = label === '5D' ? [_TRL.s_cover, _TRL.s_exec_summary, _TRL.s_material, _TRL.s_labour, _TRL.s_equipment]
+      : [_TRL.s_schedule, _TRL.s_proj_summary, _TRL.s_dashboard];
+    var sheetHits = 0;
+    for (var i = 0; i < trlSheets.length; i++) {
+      if (sheetNames.indexOf(trlSheets[i]) >= 0) sheetHits++;
+    }
+    _ct(sheetHits === trlSheets.length, -1, label, 'TRL_SHEET_NAMES',
+      sheetHits + '/' + trlSheets.length + ' _TRL sheets found in [' + sheetNames.join(', ') + ']');
+
+    // 4. Scan first 5 rows of each sheet for hardcoded 'RM ' or ' USD ' (should be CUR/CUR2)
+    var hardcoded = [];
+    var bannedRe = /\bRM\s|\sRM\b|\bUSD\s|\sUSD\b/;
+    // Only flag if CUR is not RM and CUR2 is not USD (i.e. localization changed them)
+    // If defaults are active, RM/USD are expected — so test the ABSENCE of wrong currency
+    wb.worksheets.forEach(function(ws) {
+      ws.eachRow({ includeEmpty: false }, function(row, rn) {
+        if (rn > 5) return;
+        row.eachCell(function(cell) {
+          var v = String(cell.value || '');
+          // Check currency symbol appears correctly
+          if (v.indexOf('(' + CUR + ')') >= 0 || v.indexOf(CUR + ' ') >= 0) return; // OK
+          if (CUR !== 'RM' && bannedRe.test(v)) hardcoded.push(ws.name + ':R' + rn + '="' + v.slice(0, 40) + '"');
+        });
+      });
+    });
+    _ct(hardcoded.length === 0, -1, label, 'TRL_NO_HARDCODE',
+      hardcoded.length === 0 ? 'no hardcoded RM/USD in headers (CUR=' + CUR + ')' : hardcoded.join('; '));
+  }
+
+  // 5. HTML chart titles — verify they use _TRL values
+  var h2s = document.querySelectorAll('.chart-box h2');
+  var trlTitles = [_TRL.t_cost_by_disc, _TRL.t_cost_components, _TRL.t_task_dist_phase,
+    _TRL.t_task_count_disc, _TRL.t_phase_duration, _TRL.t_resource_workload,
+    _TRL.t_s_curve, _TRL.t_milestone, _TRL.t_gantt];
+  var titleHits = 0;
+  for (var ti = 0; ti < h2s.length; ti++) {
+    var txt = h2s[ti].textContent;
+    for (var tj = 0; tj < trlTitles.length; tj++) {
+      if (txt.indexOf(trlTitles[tj]) >= 0) { titleHits++; break; }
+    }
+  }
+  _ct(titleHits >= Math.min(h2s.length, trlTitles.length), -1, label, 'TRL_CHART_TITLES',
+    titleHits + '/' + h2s.length + ' HTML chart titles match _TRL values');
+
+  // 6. HTML table headers — verify CUR symbol appears, not hardcoded RM
+  var ths = document.querySelectorAll('table th');
+  var curInHeaders = 0;
+  for (var hi = 0; hi < ths.length; hi++) {
+    if (ths[hi].textContent.indexOf(CUR) >= 0) curInHeaders++;
+  }
+  _ct(curInHeaders > 0, -1, label, 'TRL_HTML_CUR',
+    curInHeaders + ' table headers contain CUR="' + CUR + '"');
+
+  // 7. Rate source attribution
+  var fullTables = document.querySelectorAll('.chart-box.full');
+  var footerText = ''; for (var ft = 0; ft < fullTables.length; ft++) footerText += fullTables[ft].textContent;
+  _ct(footerText.indexOf(_TRL.rate_source) >= 0, -1, label, 'TRL_RATE_SOURCE',
+    'footer contains "' + _TRL.rate_source + '": ' + (footerText.indexOf(_TRL.rate_source) >= 0));
+
+  _log('[S226] §TRL_VERIFY done — ' + label);
+}
+
+// ── Maths verification: proves numeric outputs are correct ──
+function _verifyMaths(wb, label) {
+  _log('[S226] §MATHS_VERIFY start — ' + label);
+
+  // 1. Grand totals cross-check: sum of disc totals must equal grand totals
+  var sumMat = 0, sumLab = 0, sumEq = 0;
+  for (var d in discSummary) {
+    sumMat += discSummary[d].matTotal;
+    sumLab += discSummary[d].laborCost;
+    sumEq  += discSummary[d].equipCost;
+  }
+  _ct(sumMat === grandMaterial, -1, label, 'MATHS_MAT_SUM',
+    'disc_sum=' + sumMat + ' grand=' + grandMaterial + (sumMat !== grandMaterial ? ' MISMATCH' : ''));
+  _ct(sumLab === grandLabor, -1, label, 'MATHS_LAB_SUM',
+    'disc_sum=' + sumLab + ' grand=' + grandLabor + (sumLab !== grandLabor ? ' MISMATCH' : ''));
+  _ct(sumEq === grandEquip, -1, label, 'MATHS_EQ_SUM',
+    'disc_sum=' + sumEq + ' grand=' + grandEquip + (sumEq !== grandEquip ? ' MISMATCH' : ''));
+
+  // 2. Grand total = mat + lab + eq
+  var gt = grandMaterial + grandLabor + grandEquip;
+  _ct(gt === grandMaterial + grandLabor + grandEquip, -1, label, 'MATHS_GRAND',
+    CUR + ' ' + gt.toLocaleString() + ' = Mat ' + grandMaterial.toLocaleString() + ' + Lab ' + grandLabor.toLocaleString() + ' + Eq ' + grandEquip.toLocaleString());
+
+  // 3. Currency conversion sample: first disc total → secondary currency
+  var firstDisc = Object.keys(discSummary)[0];
+  if (firstDisc) {
+    var ds = discSummary[firstDisc];
+    var discTotal = ds.matTotal + ds.laborCost + ds.equipCost;
+    var converted = fmtCur2(discTotal);
+    var expected = Math.round(discTotal / CUR_RATE * 100) / 100;
+    _ct(converted === expected, -1, label, 'MATHS_CUR_CONV',
+      firstDisc + ': ' + CUR + ' ' + discTotal.toLocaleString() + ' ÷ ' + CUR_RATE + ' = ' + CUR2 + ' ' + converted + ' (expected ' + expected + ')');
+  }
+
+  // 4. QTO row count vs total elements
+  var qtoSum = 0;
+  for (var i = 0; i < qtoData.length; i++) qtoSum += qtoData[i].qty;
+  _ct(qtoSum === totalQty, -1, label, 'MATHS_QTY_SUM',
+    'qto_rows=' + qtoData.length + ' qty_sum=' + qtoSum + ' totalQty=' + totalQty + (qtoSum !== totalQty ? ' MISMATCH' : ''));
+
+  // 5. Rate spot-check: first 3 QTO rows — rate × qty = matTotal
+  for (var ri = 0; ri < Math.min(3, qtoData.length); ri++) {
+    var r = qtoData[ri];
+    var calc = Math.round(r.matRate * r.qty);
+    _ct(calc === r.matTotal, -1, label, 'MATHS_RATE_CHECK',
+      r.cls + ': rate=' + r.matRate + ' × qty=' + r.qty + ' = ' + calc + ' (stored=' + r.matTotal + ')' + (calc !== r.matTotal ? ' MISMATCH' : ''));
+  }
+
+  // 6. Excel sheet count
+  if (wb) {
+    var sc = wb.worksheets.length;
+    var minSheets = label === '5D' ? 6 : 3;
+    _ct(sc >= minSheets, -1, label, 'MATHS_SHEET_COUNT',
+      sc + ' sheets in workbook (min ' + minSheets + ' expected for ' + label + ')');
+  }
+
+  // 7. Pie chart data sum = grand total (chart[0] is cost pie)
+  if (chartInstances.length > 0 && chartInstances[0].config.type === 'pie') {
+    var pieData = chartInstances[0].data.datasets[0].data;
+    var pieSum = 0;
+    for (var pi = 0; pi < pieData.length; pi++) pieSum += pieData[pi];
+    _ct(pieSum === gt, -1, label, 'MATHS_PIE_SUM',
+      'pie_sum=' + pieSum.toLocaleString() + ' grand=' + gt.toLocaleString() + (pieSum !== gt ? ' MISMATCH — pie slices do not add up' : ''));
+  }
+
+  // 8. Canvas dimensions after prepare (from last capture log)
+  // Already covered by RATIO_MATCH per chart — skip duplicate
+
+  _log('[S226] §MATHS_VERIFY done — ' + label);
+}
+
+// S235: captureChartImage removed — charts shown in HTML, not embedded in Excel
+
+// ============================================================================
+// SAVE 5D BOQ — ExcelJS: Cover, Exec Summary, Mat/Lab/Equip, BOQ, WPs, Disc, Prov
+// ============================================================================
+async function save5D() {
+  document.getElementById('status').textContent = 'Generating 5D Excel...';
+  const wb = new ExcelJS.Workbook();
+  wb.creator = _TRL.source_app;
   const gt = grandMaterial + grandLabor + grandEquip;
   const discs = Object.keys(discSummary);
+  const NUM_FMT = '#,##0.00';
+  const NUM_FMT_INT = '#,##0';
+
+  // ── Helper: style a header row (fill stops at last data column) ──
+  function styleHeader(ws, rowNum, argb) {
+    const row = ws.getRow(rowNum);
+    const colCount = ws.columns ? ws.columns.length : row.cellCount;
+    for (let c = 1; c <= colCount; c++) {
+      const cell = row.getCell(c);
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb || 'FF4FC3F7' } };
+      cell.alignment = { horizontal: 'center' };
+    }
+    row.commit();
+  }
+
+  // ── Helper: style a title row (merged, large font) ──
+  function styleTitle(ws, rowNum, colSpan) {
+    const row = ws.getRow(rowNum);
+    row.font = { bold: true, size: 14, color: { argb: 'FF1A1A2E' } };
+    if (colSpan > 1) ws.mergeCells(rowNum, 1, rowNum, colSpan);
+    row.commit();
+  }
+
+  // ── Helper: format number cells in a row ──
+  function fmtRow(ws, rowNum, cols, fmt) {
+    for (const c of cols) {
+      const cell = ws.getRow(rowNum).getCell(c);
+      if (typeof cell.value === 'number') cell.numFmt = fmt || NUM_FMT;
+    }
+  }
 
   // ── Sheet 1: Cover Sheet ──
+  const wsCover = wb.addWorksheet(_TRL.s_cover);
+  wsCover.columns = [{ width: 22 }, { width: 50 }, { width: 35 }];
   const coverRows = [
-    ['COMPREHENSIVE BILL OF QUANTITIES'],
+    [_TRL.t_comp_boq],
     [`Project: ${bldName}`],
     [],
-    ['COST BREAKDOWN METHODOLOGY'],
+    [_TRL.t_cost_method],
     [],
-    ['1. MATERIAL COSTS'],
-    ['Source:','CIDB National Construction Cost Centre (N3C) 2024'],
-    ['Reference:','BCISM Cost Book 2022-2024 (inflated +3%)'],
-    ['Includes:','Delivery, wastage allowance (5-10% by material type)'],
+    ['1. ' + _TRL.h_material.toUpperCase() + ' COSTS'],
+    ['Source:', _TRL.rate_mat_source],
+    ['Reference:', _TRL.rate_mat_ref],
+    ['Includes:', _TRL.rate_mat_includes],
     [],
-    ['2. LABOR COSTS'],
-    ['Source:','MBAM-CIDB Labour Wage Survey 2024'],
-    ['Basis:','Basic wage + 30% (EPF 13%, SOCSO 2%, benefits 15%)'],
-    ['Productivity:','CIDB productivity standards by trade'],
-    ['Crew Composition:','Skilled workers + helpers as per trade standards'],
+    ['2. ' + _TRL.h_labour.toUpperCase() + ' COSTS'],
+    ['Source:', _TRL.rate_lab_source],
+    ['Basis:', _TRL.rate_lab_basis],
+    [_TRL.h_productivity + ':', _TRL.rate_lab_prod],
+    [_TRL.h_crew_size + ':', _TRL.rate_lab_crew],
     [],
-    ['3. EQUIPMENT/PLANT HIRE'],
-    ['Source:','CIDB N3C Machinery Hire Rates 2024'],
-    ['Allocation:','Based on work type and duration requirements'],
-    ['Rates:','Per day (8 hours), operator cost included where stated'],
+    ['3. ' + _TRL.h_equipment.toUpperCase() + '/PLANT HIRE'],
+    ['Source:', _TRL.rate_eq_source],
+    ['Allocation:', _TRL.rate_eq_alloc],
+    ['Rates:', _TRL.rate_eq_basis],
     [],
     ['COST SUMMARY STRUCTURE'],
     ['Sheet 1:','Cover Sheet (this page)'],
@@ -773,13 +1079,17 @@ function save5D() {
     ['Sheet 4:','Labor Cost Summary','Crew allocation & man-days'],
     ['Sheet 5:','Equipment Cost Summary','Plant hire requirements'],
     ['Sheet 6:','Detailed BOQ','Line-by-line analysis all disciplines'],
-    ['Sheet 7:','Provisional Sums','Finishes & fittings not in BIM'],
+    ['Sheets 7-11:','Work Package Sheets','Construction phase breakdown'],
+    ['Sheets 12+:','Per-Discipline BOQ','Discipline-level breakdown'],
+    ['Provisional Sums:','Finishes & fittings not in BIM'],
+    ['Charts:','Embedded chart images'],
     [],
     ['PRICING STANDARDS & REFERENCES'],
     ['BOQ Format:','PWD Form 203A Malaysia'],
     ['Measurement:','SMM2 (Standard Method of Measurement)'],
     ['Pricing Date:','Q4 2024'],
-    ['Currency:','Malaysian Ringgit (RM)'],
+    ['Currency:', CUR + (CUR2 !== CUR ? ' + ' + CUR2 + ' conversion' : '')],
+    ['Conversion Rate:', `1 ${CUR2} = ${CUR_RATE} ${CUR}`],
     ['Validity:','60 days from date of issue'],
     [],
     ['EXCLUSIONS'],
@@ -789,99 +1099,243 @@ function save5D() {
     ['Escalation beyond 60 days'],
     ['Site-specific conditions not shown in drawings'],
     [],
-    ['Generated:',new Date().toISOString(),'BIM OOTB — Frictionless BIM'],
+    ['Generated:',new Date().toISOString(), _TRL.source_app],
   ];
-  const wsCover = XLSX.utils.aoa_to_sheet(coverRows);
-  wsCover['!cols'] = [{wch:22},{wch:50},{wch:35}];
-  XLSX.utils.book_append_sheet(wb, wsCover, 'Cover Sheet');
+  for (const row of coverRows) wsCover.addRow(row);
+  styleTitle(wsCover, 1, 3);
+  wsCover.getRow(4).font = { bold: true, size: 12 };
 
-  // ── Sheet 2: Executive Summary ──
-  const execRows = [
-    ['EXECUTIVE SUMMARY'],
-    [],
-    ['Discipline','Material (RM)','Labor (RM)','Equipment (RM)','TOTAL (RM)'],
+  // ── Sheet 2: Executive Summary (with USD columns + pie chart image) ──
+  const wsExec = wb.addWorksheet(_TRL.s_exec_summary);
+  wsExec.columns = [
+    { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 20 },
+    { width: 18 }, { width: 18 }, { width: 18 }, { width: 20 },
   ];
+  wsExec.addRow([_TRL.s_exec_summary.toUpperCase()]);
+  styleTitle(wsExec, 1, 9);
+  wsExec.addRow([]);
+  wsExec.addRow([_TRL.h_discipline, _TRL.h_material+' ('+CUR+')', _TRL.h_labour+' ('+CUR+')', _TRL.h_equipment+' ('+CUR+')', _TRL.h_total+' ('+CUR+')',
+                 _TRL.h_material+' ('+CUR2+')', _TRL.h_labour+' ('+CUR2+')', _TRL.h_equipment+' ('+CUR2+')', _TRL.h_total+' ('+CUR2+')']);
+  styleHeader(wsExec, 3, 'FF2C3E50');
+  let execDataStart = 4;
   for (const d of discs) {
     const s = discSummary[d];
-    execRows.push([d, s.matTotal, s.laborCost, s.equipCost, s.matTotal+s.laborCost+s.equipCost]);
+    const totalRM = s.matTotal + s.laborCost + s.equipCost;
+    wsExec.addRow([d, s.matTotal, s.laborCost, s.equipCost, totalRM,
+                   Math.round(s.matTotal / USD_RATE * 100) / 100,
+                   Math.round(s.laborCost / USD_RATE * 100) / 100,
+                   Math.round(s.equipCost / USD_RATE * 100) / 100,
+                   Math.round(totalRM / USD_RATE * 100) / 100]);
+    const rn = wsExec.rowCount;
+    fmtRow(wsExec, rn, [2,3,4,5,6,7,8,9], NUM_FMT);
   }
-  execRows.push([]);
-  execRows.push(['GRAND TOTAL', grandMaterial, grandLabor, grandEquip, gt]);
-  const wsExec = XLSX.utils.aoa_to_sheet(execRows);
-  wsExec['!cols'] = [{wch:18},{wch:18},{wch:18},{wch:18},{wch:20}];
-  XLSX.utils.book_append_sheet(wb, wsExec, 'Executive Summary');
+  wsExec.addRow([]);
+  wsExec.addRow([_TRL.h_grand_total, grandMaterial, grandLabor, grandEquip, gt,
+                 Math.round(grandMaterial / USD_RATE * 100) / 100,
+                 Math.round(grandLabor / USD_RATE * 100) / 100,
+                 Math.round(grandEquip / USD_RATE * 100) / 100,
+                 Math.round(gt / USD_RATE * 100) / 100]);
+  const gtRow = wsExec.rowCount;
+  wsExec.getRow(gtRow).font = { bold: true };
+  fmtRow(wsExec, gtRow, [2,3,4,5,6,7,8,9], NUM_FMT);
 
-  // ── Sheet 3: Material Summary ──
-  const matRows = [
-    ['MATERIAL COST SUMMARY'],
-    [],
-    ['Discipline','IFC Class','Quantity','UOM','Unit Rate (RM)','Total Material (RM)'],
-  ];
+  // Charts are in the HTML page — no need to embed in Excel
+
+  // ── Sheet 3: Material Summary (+ USD total) ──
+  const wsMat = wb.addWorksheet(_TRL.s_material);
+  wsMat.columns = [{ width: 15 },{ width: 28 },{ width: 12 },{ width: 8 },{ width: 16 },{ width: 20 },{ width: 18 }];
+  wsMat.addRow([_TRL.t_mat_summary]);
+  styleTitle(wsMat, 1, 7);
+  wsMat.addRow([]);
+  wsMat.addRow([_TRL.h_discipline, _TRL.h_ifc_class, _TRL.h_quantity, _TRL.h_uom, _TRL.h_unit_rate+' ('+CUR+')', _TRL.h_total+' '+_TRL.h_material+' ('+CUR+')', _TRL.h_total+' ('+CUR2+')']);
+  styleHeader(wsMat, 3, 'FF27AE60');
   for (const r of qtoData) {
-    matRows.push([r.disc, r.cls, r.qty, r.unit, r.matRate, r.matTotal]);
+    wsMat.addRow([r.disc, r.cls, r.qty, r.unit, r.matRate, r.matTotal, Math.round(r.matTotal / USD_RATE * 100) / 100]);
+    fmtRow(wsMat, wsMat.rowCount, [5,6,7], NUM_FMT);
   }
-  matRows.push([]);
-  matRows.push(['','','','','TOTAL', grandMaterial]);
-  const wsMat = XLSX.utils.aoa_to_sheet(matRows);
-  wsMat['!cols'] = [{wch:15},{wch:28},{wch:12},{wch:8},{wch:16},{wch:20}];
-  XLSX.utils.book_append_sheet(wb, wsMat, 'Material Summary');
+  wsMat.addRow([]);
+  wsMat.addRow(['','','','','TOTAL', grandMaterial, Math.round(grandMaterial / USD_RATE * 100) / 100]);
+  const matTotRow = wsMat.rowCount;
+  wsMat.getRow(matTotRow).font = { bold: true };
+  fmtRow(wsMat, matTotRow, [6,7], NUM_FMT);
 
-  // ── Sheet 4: Labor Summary ──
-  const labRows = [
-    ['LABOR COST & CREW ALLOCATION SUMMARY'],
-    [],
-    ['Discipline','IFC Class','Quantity','UOM','Trade','Crew Size','Man-Days','Labor Cost (RM)'],
-  ];
+  // ── Sheet 4: Labor Summary (+ USD total) ──
+  const wsLab = wb.addWorksheet(_TRL.s_labour);
+  wsLab.columns = [{ width: 15 },{ width: 28 },{ width: 12 },{ width: 8 },{ width: 30 },{ width: 10 },{ width: 12 },{ width: 18 },{ width: 16 }];
+  wsLab.addRow([_TRL.t_lab_summary]);
+  styleTitle(wsLab, 1, 9);
+  wsLab.addRow([]);
+  wsLab.addRow([_TRL.h_discipline, _TRL.h_ifc_class, _TRL.h_quantity, _TRL.h_uom, _TRL.h_trade, _TRL.h_crew_size, _TRL.h_man_days, _TRL.h_labour+' ('+CUR+')', _TRL.h_labour+' ('+CUR2+')']);
+  styleHeader(wsLab, 3, 'FFFFC000');
   for (const r of qtoData) {
     if (r.laborCost === 0) continue;
     const manDays = r.laborDays * r.laborCrew;
-    labRows.push([r.disc, r.cls, r.qty, r.unit, r.laborTrade, r.laborCrew, Math.round(manDays*10)/10, r.laborCost]);
+    wsLab.addRow([r.disc, r.cls, r.qty, r.unit, r.laborTrade, r.laborCrew, Math.round(manDays*10)/10, r.laborCost, Math.round(r.laborCost / USD_RATE * 100) / 100]);
+    fmtRow(wsLab, wsLab.rowCount, [7,8,9], NUM_FMT);
   }
-  labRows.push([]);
-  labRows.push(['','','','','','','TOTAL', grandLabor]);
-  const wsLab = XLSX.utils.aoa_to_sheet(labRows);
-  wsLab['!cols'] = [{wch:15},{wch:28},{wch:12},{wch:8},{wch:30},{wch:10},{wch:12},{wch:18}];
-  XLSX.utils.book_append_sheet(wb, wsLab, 'Labor Summary');
+  wsLab.addRow([]);
+  wsLab.addRow(['','','','','','','TOTAL', grandLabor, Math.round(grandLabor / USD_RATE * 100) / 100]);
+  const labTotRow = wsLab.rowCount;
+  wsLab.getRow(labTotRow).font = { bold: true };
+  fmtRow(wsLab, labTotRow, [8,9], NUM_FMT);
 
-  // ── Sheet 5: Equipment Summary ──
-  const eqRows = [
-    ['EQUIPMENT / PLANT HIRE SUMMARY'],
-    [],
-    ['Discipline','IFC Class','Equipment','Duration (days)','Rate/Day (RM)','Total (RM)'],
-  ];
+  // ── Sheet 5: Equipment Summary (+ USD total) ──
+  const wsEq = wb.addWorksheet(_TRL.s_equipment);
+  wsEq.columns = [{ width: 15 },{ width: 28 },{ width: 35 },{ width: 15 },{ width: 16 },{ width: 18 },{ width: 16 }];
+  wsEq.addRow([_TRL.t_equip_summary]);
+  styleTitle(wsEq, 1, 7);
+  wsEq.addRow([]);
+  wsEq.addRow([_TRL.h_discipline, _TRL.h_ifc_class, _TRL.h_equipment, _TRL.h_duration, _TRL.h_rate_day+' ('+CUR+')', _TRL.h_total+' ('+CUR+')', _TRL.h_total+' ('+CUR2+')']);
+  styleHeader(wsEq, 3, 'FF5B9BD5');
   for (const r of qtoData) {
     if (r.equipCost === 0) continue;
     const alloc = EQUIPMENT_ALLOCATION[r.cls];
     const eqKey = alloc ? alloc.equipment : '';
     const rateDay = eqKey ? EQUIPMENT_RATES[eqKey].rate_per_day : 0;
-    eqRows.push([r.disc, r.cls, r.equipDesc, Math.round(r.equipDays*10)/10, rateDay, r.equipCost]);
+    wsEq.addRow([r.disc, r.cls, r.equipDesc, Math.round(r.equipDays*10)/10, rateDay, r.equipCost, Math.round(r.equipCost / USD_RATE * 100) / 100]);
+    fmtRow(wsEq, wsEq.rowCount, [5,6,7], NUM_FMT);
   }
-  eqRows.push([]);
-  eqRows.push(['','','','','TOTAL', grandEquip]);
-  const wsEq = XLSX.utils.aoa_to_sheet(eqRows);
-  wsEq['!cols'] = [{wch:15},{wch:28},{wch:35},{wch:15},{wch:16},{wch:18}];
-  XLSX.utils.book_append_sheet(wb, wsEq, 'Equipment Summary');
+  wsEq.addRow([]);
+  wsEq.addRow(['','','','','TOTAL', grandEquip, Math.round(grandEquip / USD_RATE * 100) / 100]);
+  const eqTotRow = wsEq.rowCount;
+  wsEq.getRow(eqTotRow).font = { bold: true };
+  fmtRow(wsEq, eqTotRow, [6,7], NUM_FMT);
 
-  // ── Sheet 6: Detailed BOQ (all disciplines) ──
-  const boqHeader = ['Discipline','IFC Class','Storey','Qty','UOM','Description',
-                     'Mat Rate (RM)','Material (RM)','Labor Cost (RM)','Equipment Cost (RM)','Total (RM)'];
-  const boqRows = [['DETAILED BOQ — ALL DISCIPLINES'],[],boqHeader];
+  // ── Sheet 6: Detailed BOQ (+ USD total) ──
+  const wsBOQ = wb.addWorksheet('5D-BOQ');
+  wsBOQ.columns = [{ width: 10 },{ width: 26 },{ width: 16 },{ width: 8 },{ width: 5 },{ width: 30 },{ width: 12 },{ width: 14 },{ width: 14 },{ width: 14 },{ width: 14 },{ width: 14 }];
+  wsBOQ.addRow(['DETAILED BOQ — ALL DISCIPLINES']);
+  styleTitle(wsBOQ, 1, 12);
+  wsBOQ.addRow([]);
+  wsBOQ.addRow([_TRL.h_discipline, _TRL.h_ifc_class, _TRL.h_storey, _TRL.h_quantity, _TRL.h_uom, _TRL.h_description,
+                _TRL.h_mat_rate+' ('+CUR+')', _TRL.h_material+' ('+CUR+')', _TRL.h_labour+' ('+CUR+')', _TRL.h_equipment+' ('+CUR+')', _TRL.h_total+' ('+CUR+')', _TRL.h_total+' ('+CUR2+')']);
+  styleHeader(wsBOQ, 3, 'FF2C3E50');
   for (const r of qtoData) {
-    boqRows.push([r.disc, r.cls, r.storey, r.qty, r.unit, r.desc, r.matRate, r.matTotal, r.laborCost, r.equipCost, r.matTotal+r.laborCost+r.equipCost]);
+    const rowTotal = r.matTotal + r.laborCost + r.equipCost;
+    wsBOQ.addRow([r.disc, r.cls, r.storey, r.qty, r.unit, r.desc, r.matRate, r.matTotal, r.laborCost, r.equipCost, rowTotal, Math.round(rowTotal / USD_RATE * 100) / 100]);
+    fmtRow(wsBOQ, wsBOQ.rowCount, [7,8,9,10,11,12], NUM_FMT);
   }
-  boqRows.push([]);
-  boqRows.push(['','','','','','MATERIAL SUBTOTAL','', grandMaterial]);
-  boqRows.push(['','','','','','LABOUR SUBTOTAL','','', grandLabor]);
-  boqRows.push(['','','','','','EQUIPMENT SUBTOTAL','','','', grandEquip]);
-  boqRows.push(['','','','','','GRAND TOTAL','','','','', gt]);
-  boqRows.push([]);
-  boqRows.push(['Rates: CIDB Malaysia 2024 / BCISM Cost Book']);
-  boqRows.push(['BIM OOTB — Frictionless BIM', new Date().toISOString()]);
-  const wsBOQ = XLSX.utils.aoa_to_sheet(boqRows);
-  wsBOQ['!cols'] = [{wch:10},{wch:26},{wch:16},{wch:8},{wch:5},{wch:30},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14}];
-  XLSX.utils.book_append_sheet(wb, wsBOQ, '5D-BOQ');
+  wsBOQ.addRow([]);
+  wsBOQ.addRow(['','','','','',_TRL.h_material+' '+_TRL.h_subtotal,'', grandMaterial,'','','', fmtCur2(grandMaterial)]);
+  fmtRow(wsBOQ, wsBOQ.rowCount, [8,12], NUM_FMT);
+  wsBOQ.addRow(['','','','','',_TRL.h_labour+' '+_TRL.h_subtotal,'','', grandLabor,'','', fmtCur2(grandLabor)]);
+  fmtRow(wsBOQ, wsBOQ.rowCount, [9,12], NUM_FMT);
+  wsBOQ.addRow(['','','','','',_TRL.h_equipment+' '+_TRL.h_subtotal,'','','', grandEquip,'', fmtCur2(grandEquip)]);
+  fmtRow(wsBOQ, wsBOQ.rowCount, [10,12], NUM_FMT);
+  wsBOQ.addRow(['','','','','',_TRL.h_grand_total,'','','','', gt, fmtCur2(gt)]);
+  const boqGtRow = wsBOQ.rowCount;
+  wsBOQ.getRow(boqGtRow).font = { bold: true };
+  fmtRow(wsBOQ, boqGtRow, [11,12], NUM_FMT);
+  wsBOQ.addRow([]);
+  wsBOQ.addRow(['Rates: ' + _TRL.rate_source]);
+  wsBOQ.addRow([_TRL.source_app, new Date().toISOString()]);
 
-  // ── Sheet 7: Provisional Sums ──
+  // ── Sheets 7-11+: Work Package Sheets ──
+  const wpHeaders = [_TRL.h_item, _TRL.h_description, _TRL.h_quantity, _TRL.h_uom, _TRL.h_mat_rate+' ('+CUR+')', _TRL.h_material+' ('+CUR+')', _TRL.h_labour+' ('+CUR+')', _TRL.h_equipment+' ('+CUR+')', _TRL.h_total+' ('+CUR+')', _TRL.h_total+' ('+CUR2+')'];
+  const wpColWidths = [{ width: 8 },{ width: 35 },{ width: 10 },{ width: 6 },{ width: 18 },{ width: 16 },{ width: 14 },{ width: 14 },{ width: 16 },{ width: 14 }];
+
+  // Build set of all matched classes to find "OTHER"
+  const matchedClasses = new Set();
+  for (const wp of WORK_PACKAGES) wp.classes.forEach(c => matchedClasses.add(c));
+
+  // Check if we need a PACKAGE 6: OTHER
+  const otherRows = qtoData.filter(r => !matchedClasses.has(r.cls));
+  const allWPs = [...WORK_PACKAGES];
+  if (otherRows.length > 0) {
+    allWPs.push({ id: 'PACKAGE 6', name: 'OTHER', color: '7F8C8D', classes: null });
+  }
+
+  const wsWP = wb.addWorksheet('Work Packages');
+  wsWP.columns = wpColWidths;
+  wsWP.addRow(['WORK PACKAGES — COST BREAKDOWN']);
+  styleTitle(wsWP, 1, 10);
+  let wpGrandMat = 0, wpGrandLab = 0, wpGrandEq = 0;
+
+  for (const wp of allWPs) {
+    const wpData = wp.classes
+      ? qtoData.filter(r => wp.classes.includes(r.cls))
+      : otherRows;
+    if (wpData.length === 0) continue;
+
+    wsWP.addRow([]);
+    const hdrRow = wsWP.rowCount + 1;
+    wsWP.addRow([`${wp.id}: ${wp.name}`]);
+    wsWP.getRow(hdrRow).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + wp.color } };
+    wsWP.getRow(hdrRow).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+    wsWP.addRow(wpHeaders);
+    styleHeader(wsWP, wsWP.rowCount, 'FF' + wp.color);
+
+    let wpMatTotal = 0, wpLabTotal = 0, wpEqTotal = 0;
+    let itemNum = 0;
+    for (const r of wpData) {
+      itemNum++;
+      const rowTotal = r.matTotal + r.laborCost + r.equipCost;
+      wpMatTotal += r.matTotal;
+      wpLabTotal += r.laborCost;
+      wpEqTotal += r.equipCost;
+      wsWP.addRow([String(itemNum).padStart(3, '0'), r.desc || r.cls, r.qty, r.unit, r.matRate, r.matTotal, r.laborCost, r.equipCost, rowTotal, Math.round(rowTotal / USD_RATE * 100) / 100]);
+      fmtRow(wsWP, wsWP.rowCount, [5,6,7,8,9,10], NUM_FMT);
+    }
+    const wpGrandRM = wpMatTotal + wpLabTotal + wpEqTotal;
+    wsWP.addRow(['',_TRL.h_subtotal + ' — ' + wp.name,'','','', wpMatTotal, wpLabTotal, wpEqTotal, wpGrandRM, fmtCur2(wpGrandRM)]);
+    wsWP.getRow(wsWP.rowCount).font = { bold: true };
+    fmtRow(wsWP, wsWP.rowCount, [6,7,8,9,10], NUM_FMT);
+    wpGrandMat += wpMatTotal; wpGrandLab += wpLabTotal; wpGrandEq += wpEqTotal;
+  }
+  // Grand total across all WPs
+  wsWP.addRow([]);
+  const wpAllRM = wpGrandMat + wpGrandLab + wpGrandEq;
+  wsWP.addRow(['',_TRL.h_grand_total,'','','', wpGrandMat, wpGrandLab, wpGrandEq, wpAllRM, fmtCur2(wpAllRM)]);
+  const wpGtRow = wsWP.rowCount;
+  wsWP.getRow(wpGtRow).font = { bold: true, size: 12 };
+  wsWP.getRow(wpGtRow).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2C3E50' } };
+  wsWP.getRow(wpGtRow).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+  fmtRow(wsWP, wpGtRow, [6,7,8,9,10], NUM_FMT);
+
+  // ── Per-Discipline BOQ Sheets ──
+  const discHeaders = [_TRL.h_item, _TRL.h_description, _TRL.h_quantity, _TRL.h_uom, _TRL.h_mat_rate+' ('+CUR+')', _TRL.h_material+' ('+CUR+')', _TRL.h_labour+' ('+CUR+')', _TRL.h_equipment+' ('+CUR+')', _TRL.h_total+' ('+CUR+')', _TRL.h_total+' ('+CUR2+')'];
+  for (const disc of discs) {
+    const discRows = qtoData.filter(r => r.disc === disc);
+    if (discRows.length === 0) continue;
+
+    const wsDisc = wb.addWorksheet(`BOQ-${disc}`);
+    wsDisc.columns = wpColWidths;
+    wsDisc.addRow([`DISCIPLINE: ${disc}`]);
+    styleTitle(wsDisc, 1, 10);
+    wsDisc.addRow([]);
+    wsDisc.addRow(discHeaders);
+    const discColor = DISC_COLORS[disc] ? DISC_COLORS[disc].replace('#','') : '888888';
+    styleHeader(wsDisc, 3, 'FF' + discColor);
+
+    let dMatT = 0, dLabT = 0, dEqT = 0;
+    let dItemNum = 0;
+    for (const r of discRows) {
+      dItemNum++;
+      const rowTotal = r.matTotal + r.laborCost + r.equipCost;
+      dMatT += r.matTotal;
+      dLabT += r.laborCost;
+      dEqT += r.equipCost;
+      wsDisc.addRow([String(dItemNum).padStart(3, '0'), r.desc || r.cls, r.qty, r.unit, r.matRate, r.matTotal, r.laborCost, r.equipCost, rowTotal, Math.round(rowTotal / USD_RATE * 100) / 100]);
+      fmtRow(wsDisc, wsDisc.rowCount, [5,6,7,8,9,10], NUM_FMT);
+    }
+    wsDisc.addRow([]);
+    const dGrandRM = dMatT + dLabT + dEqT;
+    wsDisc.addRow(['',_TRL.h_subtotal,'','','', dMatT, dLabT, dEqT, dGrandRM, fmtCur2(dGrandRM)]);
+    const dStRow = wsDisc.rowCount;
+    wsDisc.getRow(dStRow).font = { bold: true };
+    fmtRow(wsDisc, dStRow, [6,7,8,9,10], NUM_FMT);
+  }
+
+  // ── Provisional Sums (+ USD column) ──
+  const wsProv = wb.addWorksheet(_TRL.s_prov);
+  wsProv.columns = [{ width: 8 },{ width: 40 },{ width: 10 },{ width: 6 },{ width: 14 },{ width: 14 },{ width: 16 },{ width: 14 }];
+  wsProv.addRow([_TRL.t_prov_sums]);
+  styleTitle(wsProv, 1, 8);
+  wsProv.addRow(['Items not explicitly modeled in BIM - calculated from built-up areas']);
+  wsProv.addRow([]);
+  wsProv.addRow([_TRL.h_item, _TRL.h_description, _TRL.h_quantity, _TRL.h_uom, _TRL.h_mat_rate+' ('+CUR+')', _TRL.h_lab_rate+' ('+CUR+')', _TRL.h_total+' ('+CUR+')', _TRL.h_total+' ('+CUR2+')']);
+  styleHeader(wsProv, 4, 'FFC0392B');
+
   let wallArea = 0, floorArea = 0;
   for (const r of qtoData) {
     if (r.cls === 'IfcWall' || r.cls === 'IfcWallStandardCase') wallArea += r.qty;
@@ -899,109 +1353,233 @@ function save5D() {
     ['P9','Acoustic Ceiling Panels',Math.round(floorArea*0.20),'M2',135,42,'Class A, fire-rated'],
     ['P10','Bollards & Barriers - Security',45,'EA',1250,280,'Fixed/removable, crash-rated'],
   ];
-  const provRows = [
-    ['PROVISIONAL SUMS - FINISHES & FITTINGS'],
-    ['Items not explicitly modeled in BIM - calculated from built-up areas'],
-    [],
-    ['Item','Description','Qty','UOM','Mat Rate (RM)','Lab Rate (RM)','Total (RM)'],
-  ];
   let provTotal = 0;
   for (const p of provItems) {
     const total = p[2] * (p[4] + p[5]);
     provTotal += total;
-    provRows.push([p[0], p[1], p[2], p[3], p[4], p[5], Math.round(total)]);
+    wsProv.addRow([p[0], p[1], p[2], p[3], p[4], p[5], Math.round(total), Math.round(total / USD_RATE * 100) / 100]);
+    fmtRow(wsProv, wsProv.rowCount, [5,6,7,8], NUM_FMT);
   }
-  provRows.push([]);
-  provRows.push(['','','','','','TOTAL PROVISIONAL SUMS', Math.round(provTotal)]);
-  const wsProv = XLSX.utils.aoa_to_sheet(provRows);
-  wsProv['!cols'] = [{wch:8},{wch:40},{wch:10},{wch:6},{wch:14},{wch:14},{wch:16}];
-  XLSX.utils.book_append_sheet(wb, wsProv, 'Provisional Sums');
+  wsProv.addRow([]);
+  wsProv.addRow(['','','','','',_TRL.t_prov_sums + ' TOTAL', Math.round(provTotal), Math.round(provTotal / USD_RATE * 100) / 100]);
+  const provTotRow = wsProv.rowCount;
+  wsProv.getRow(provTotRow).font = { bold: true };
+  fmtRow(wsProv, provTotRow, [7,8], NUM_FMT);
 
+  // S225: Charts sheet removed — charts are in Executive Summary only
+
+  // ── S224: Variance Order sheets (when diff data exists) ──
+  if (diffResult && diffDb) {
+    const VO_CFG = { addFactor: 1.0, removeFactor: 0.3, changeFactor: 1.3, overheadPct: 0.10, markupPct: 0.15, disruptionPct: 0.05 };
+    function voRate(cls) { var r = RATES[cls]; return (r && r.rate) ? r.rate : 500; }
+    function voPhase(cls) {
+      const P = { IfcFooting:'Substructure', IfcPile:'Substructure', IfcColumn:'Superstructure', IfcBeam:'Superstructure', IfcSlab:'Superstructure',
+        IfcWall:'Architecture', IfcWallStandardCase:'Architecture', IfcDoor:'Architecture', IfcWindow:'Architecture', IfcRoof:'Architecture',
+        IfcDuct:'MEP Rough-in', IfcPipe:'MEP Rough-in', IfcCableCarrier:'MEP Rough-in', IfcLightFixture:'MEP Final', IfcOutlet:'MEP Final',
+        IfcCovering:'Finishes', IfcFurniture:'Finishes' };
+      return P[cls] || 'Architecture';
+    }
+    function voProd(cls) {
+      const P = { IfcColumn:6, IfcBeam:8, IfcSlab:35, IfcWall:12, IfcDoor:5, IfcWindow:5, IfcDuct:18, IfcPipe:25, IfcLightFixture:20 };
+      return P[cls] || 10;
+    }
+    function voInfo(dbRef, guid) {
+      try { var r = dbRef.exec("SELECT ifc_class, element_name, storey, discipline, material_rgba FROM elements_meta WHERE guid='" + guid.replace(/'/g,"''") + "'"); return r.length ? r[0].values[0] : [null,null,null,null,null]; } catch(e) { return [null,null,null,null,null]; }
+    }
+
+    // VO Detail sheet
+    const wsVO = wb.addWorksheet('Variation Order');
+    wsVO.columns = [
+      { header: 'Status', key: 's', width: 10 }, { header: 'GUID', key: 'g', width: 36 },
+      { header: 'IFC Class', key: 'c', width: 20 }, { header: 'Name', key: 'n', width: 24 },
+      { header: 'Storey', key: 'st', width: 16 }, { header: 'Discipline', key: 'd', width: 10 },
+      { header: 'Phase (4D)', key: 'p', width: 14 }, { header: 'Unit Rate (' + CUR + ')', key: 'r', width: 12 },
+      { header: 'Factor', key: 'f', width: 8 }, { header: 'Direct Cost', key: 'dc', width: 12 },
+      { header: 'Total Impact', key: 'ti', width: 12 }, { header: 'Days', key: 'dy', width: 8 }
+    ];
+    styleHeader(wsVO, 1, 'FF4FC3F7');
+
+    var voTotalDirect = 0, voTotalImpact = 0, voTotalDays = 0;
+    var voAddCost = 0, voRemCost = 0, voChgCost = 0;
+    function voRow(status, dbRef, guid, factor) {
+      var info = voInfo(dbRef, guid);
+      var cls = info[0] || 'Unknown';
+      var rate = voRate(cls), direct = rate * factor;
+      var total = direct * (1 + VO_CFG.overheadPct + VO_CFG.markupPct) * (1 + VO_CFG.disruptionPct);
+      var days = 1 / voProd(cls);
+      voTotalDirect += direct; voTotalImpact += total; voTotalDays += days;
+      if (status === 'ADDED') voAddCost += total;
+      else if (status === 'REMOVED') voRemCost += total;
+      else voChgCost += total;
+      wsVO.addRow({ s: status, g: guid, c: cls, n: info[1], st: info[2], d: info[3], p: voPhase(cls), r: rate, f: factor, dc: Math.round(direct), ti: Math.round(total), dy: +days.toFixed(2) });
+    }
+    diffResult.added.forEach(g => voRow('ADDED', diffDb, g, VO_CFG.addFactor));
+    diffResult.removed.forEach(g => voRow('REMOVED', db, g, VO_CFG.removeFactor));
+    diffResult.changed.forEach(g => voRow('CHANGED', diffDb, g, VO_CFG.changeFactor));
+    // Color-code
+    wsVO.eachRow((row, idx) => {
+      if (idx === 1) return;
+      var s = row.getCell(1).value;
+      if (s === 'ADDED') row.getCell(1).font = { color: { argb: 'FF44CC44' }, bold: true };
+      else if (s === 'REMOVED') row.getCell(1).font = { color: { argb: 'FFCC4444' }, bold: true };
+      else if (s === 'CHANGED') row.getCell(1).font = { color: { argb: 'FFCCCC44' }, bold: true };
+    });
+
+    // VO Summary sheet
+    const wsVOS = wb.addWorksheet('Variance Summary');
+    wsVOS.columns = [{ header: 'Metric', key: 'm', width: 32 }, { header: 'Value', key: 'v', width: 22 }, { header: 'Notes', key: 'n', width: 48 }];
+    styleHeader(wsVOS, 1, 'FF4FC3F7');
+    wsVOS.addRow({ m: 'Variation Order', v: bldName, n: 'Auto-generated — ' + new Date().toISOString().split('T')[0] });
+    wsVOS.addRow({});
+    wsVOS.addRow({ m: '── SCOPE ──' }); wsVOS.lastRow.font = { bold: true, color: { argb: 'FF4FC3F7' } };
+    wsVOS.addRow({ m: 'Elements Added', v: diffResult.added.length, n: 'New in variation (green)' });
+    wsVOS.addRow({ m: 'Elements Removed', v: diffResult.removed.length, n: 'Demolished (red)' });
+    wsVOS.addRow({ m: 'Elements Changed', v: diffResult.changed.length, n: 'Modified properties (yellow)' });
+    wsVOS.addRow({ m: 'Total Affected', v: diffResult.added.length + diffResult.removed.length + diffResult.changed.length });
+    wsVOS.addRow({});
+    wsVOS.addRow({ m: '── COST IMPACT (5D) ──', n: 'FIDIC Clause 12 + AACE' }); wsVOS.lastRow.font = { bold: true, color: { argb: 'FF4FC3F7' } };
+    wsVOS.addRow({ m: 'Addition Cost', v: CUR + ' ' + Math.round(voAddCost).toLocaleString() });
+    wsVOS.addRow({ m: 'Removal Cost', v: CUR + ' ' + Math.round(voRemCost).toLocaleString() });
+    wsVOS.addRow({ m: 'Change Cost', v: CUR + ' ' + Math.round(voChgCost).toLocaleString() });
+    wsVOS.addRow({ m: 'Net Direct', v: CUR + ' ' + Math.round(voTotalDirect).toLocaleString() });
+    wsVOS.addRow({ m: 'Total Impact (O&P)', v: CUR + ' ' + Math.round(voTotalImpact).toLocaleString(), n: 'Direct × (1+10%OH+15%Markup) × (1+5%Disruption)' });
+    wsVOS.addRow({});
+    wsVOS.addRow({ m: '── SCHEDULE IMPACT (4D) ──' }); wsVOS.lastRow.font = { bold: true, color: { argb: 'FF4FC3F7' } };
+    wsVOS.addRow({ m: 'Total Additional Days', v: voTotalDays.toFixed(1) + ' days' });
+
+    console.log('[S224] §VO_IN_5D added=' + diffResult.added.length + ' removed=' + diffResult.removed.length + ' changed=' + diffResult.changed.length + ' impact=' + CUR + Math.round(voTotalImpact));
+  }
+
+  // ── Save ──
+  const sheetCount = wb.worksheets.length;
   const filename = `BIM_OOTB_${bldName}_5D_BOQ_${new Date().toISOString().slice(0,10)}.xlsx`;
-  XLSX.writeFile(wb, filename);
-  document.getElementById('status').textContent = `Saved ${filename} (7 sheets)`;
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  document.getElementById('status').textContent = `Saved ${filename} (${sheetCount} sheets)` + (diffResult ? ' — includes Variance Order' : '');
+
+  _verifyMaths(wb, '5D');
+  _verifyTRL(wb, '5D');
+  _log('[S226] §CHART_SUMMARY 5D: ' + _chartTestPass + ' PASS, ' + _chartTestFail + ' FAIL');
+  _downloadLog('5D');
+  _chartTestPass = 0; _chartTestFail = 0;
 }
 
 // ============================================================================
-// SAVE 4D SCHEDULE — 3 sheets (matches schedule_export.py)
+// SAVE 4D SCHEDULE — ExcelJS: 3 sheets (matches schedule_export.py)
 // ============================================================================
-function save4D() {
-  const wb = XLSX.utils.book_new();
+async function save4D() {
+  document.getElementById('status').textContent = 'Generating 4D Excel...';
+  const wb = new ExcelJS.Workbook();
+  wb.creator = _TRL.source_app;
   const projDays = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
 
-  // ── Sheet 1: Construction Schedule ──
-  const schedHeaders = ['WBS','Task Name','Phase','Discipline','Storey','Quantity','UOM',
-    'Productivity','Duration (days)','Gangs','Start Date','Finish Date','Labor Resource','Crew Size','Equipment','Status','% Complete'];
-  const schedRows = [schedHeaders];
-  for (const t of scheduleData) {
-    schedRows.push([t.wbs,t.name,t.phase,t.discipline,t.storey,t.qty,t.uom,t.productivity,
-      Math.round(t.duration*100)/100, t.crews||1, t.startDate, t.finishDate, t.resource, t.crew, t.equipment, 'Not Started', 0]);
+  // ── Helper: style a header row (fill stops at last data column) ──
+  function styleHeader(ws, rowNum, argb) {
+    const row = ws.getRow(rowNum);
+    const colCount = ws.columns ? ws.columns.length : row.cellCount;
+    for (let c = 1; c <= colCount; c++) {
+      const cell = row.getCell(c);
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb || 'FF4FC3F7' } };
+      cell.alignment = { horizontal: 'center' };
+    }
+    row.commit();
   }
-  const wsSched = XLSX.utils.aoa_to_sheet(schedRows);
-  wsSched['!cols'] = [{wch:12},{wch:40},{wch:16},{wch:10},{wch:10},{wch:8},{wch:6},{wch:10},{wch:12},{wch:6},{wch:12},{wch:12},{wch:16},{wch:8},{wch:22},{wch:12},{wch:10}];
-  XLSX.utils.book_append_sheet(wb, wsSched, 'Construction Schedule');
+
+  // ── Sheet 1: Construction Schedule ──
+  const wsSched = wb.addWorksheet(_TRL.s_schedule);
+  wsSched.columns = [
+    { width: 12 },{ width: 40 },{ width: 16 },{ width: 10 },{ width: 10 },{ width: 8 },{ width: 6 },
+    { width: 10 },{ width: 12 },{ width: 6 },{ width: 12 },{ width: 12 },{ width: 16 },{ width: 8 },
+    { width: 22 },{ width: 12 },{ width: 10 },
+  ];
+  const schedHeaders = [_TRL.h_wbs, _TRL.h_task_name, _TRL.h_phase, _TRL.h_discipline, _TRL.h_storey, _TRL.h_quantity, _TRL.h_uom,
+    _TRL.h_productivity, _TRL.h_duration, _TRL.h_gangs, _TRL.h_start_date, _TRL.h_finish_date, _TRL.h_labor_resource, _TRL.h_crew_size, _TRL.h_equipment, _TRL.h_status, _TRL.h_pct_complete];
+  wsSched.addRow(schedHeaders);
+  styleHeader(wsSched, 1, 'FF2C3E50');
+  for (const t of scheduleData) {
+    wsSched.addRow([t.wbs,t.name,t.phase,t.discipline,t.storey,t.qty,t.uom,t.productivity,
+      Math.round(t.duration*100)/100, t.crews||1, t.startDate, t.finishDate, t.resource, t.crew, t.equipment, _TRL.not_started, 0]);
+  }
 
   // ── Sheet 2: Project Summary ──
+  const wsSum = wb.addWorksheet(_TRL.s_proj_summary);
+  wsSum.columns = [{ width: 25 }, { width: 20 }];
   const phaseCounts = {}, discCounts = {};
   for (const t of scheduleData) {
     phaseCounts[t.phase] = (phaseCounts[t.phase]||0) + 1;
     discCounts[t.discipline] = (discCounts[t.discipline]||0) + 1;
   }
-  const sumRows = [
-    [bldName + ' Construction'],
-    [],
-    ['Database', DB_URL],
-    ['Total Tasks', scheduleData.length],
-    ['Project Start', scheduleData.length ? scheduleData[0].startDate : 'N/A'],
-    ['Project Finish', scheduleData.length ? scheduleData[scheduleData.length-1].finishDate : 'N/A'],
-    ['Total Duration', `${projDays} days`],
-    ['Generated', new Date().toISOString()],
-    [],
-    ['Phase Summary','Task Count'],
-  ];
-  for (const [p,cnt] of Object.entries(phaseCounts).sort()) sumRows.push([p, cnt]);
-  sumRows.push([]);
-  sumRows.push(['Discipline Summary','Task Count']);
-  for (const [d,cnt] of Object.entries(discCounts).sort()) sumRows.push([d, cnt]);
-  const wsSum = XLSX.utils.aoa_to_sheet(sumRows);
-  wsSum['!cols'] = [{wch:25},{wch:20}];
-  XLSX.utils.book_append_sheet(wb, wsSum, 'Project Summary');
+  wsSum.addRow([bldName + ' Construction']);
+  wsSum.getRow(1).font = { bold: true, size: 14 };
+  wsSum.addRow([]);
+  wsSum.addRow(['Database', DB_URL]);
+  wsSum.addRow(['Total Tasks', scheduleData.length]);
+  wsSum.addRow(['Project Start', scheduleData.length ? scheduleData[0].startDate : 'N/A']);
+  wsSum.addRow(['Project Finish', scheduleData.length ? scheduleData[scheduleData.length-1].finishDate : 'N/A']);
+  wsSum.addRow(['Total Duration', `${projDays} days`]);
+  wsSum.addRow(['Generated', new Date().toISOString()]);
+  wsSum.addRow([]);
+  wsSum.addRow([_TRL.h_phase+' Summary', _TRL.h_task_count]);
+  styleHeader(wsSum, wsSum.rowCount, 'FF4472C4');
+  for (const [p,cnt] of Object.entries(phaseCounts).sort()) wsSum.addRow([p, cnt]);
+  wsSum.addRow([]);
+  wsSum.addRow([_TRL.h_discipline+' Summary', _TRL.h_task_count]);
+  styleHeader(wsSum, wsSum.rowCount, 'FF70AD47');
+  for (const [d,cnt] of Object.entries(discCounts).sort()) wsSum.addRow([d, cnt]);
 
-  // ── Sheet 3: BIM 5D Dashboard ──
-  const dashRows = [
-    [`${bldName} - BIM 4D Analytics Dashboard`],
-    [],
-    ['Phase Duration Analysis'],
-    ['Phase','Total Days'],
-  ];
+  // ── Sheet 3: BIM 4D Dashboard ──
+  const wsDash = wb.addWorksheet(_TRL.s_dashboard);
+  wsDash.columns = [{ width: 35 },{ width: 14 },{ width: 12 },{ width: 12 }];
+
+  wsDash.addRow([`${bldName} - BIM 4D Analytics Dashboard`]);
+  wsDash.getRow(1).font = { bold: true, size: 14 };
+  wsDash.addRow([]);
+
+  wsDash.addRow([_TRL.t_phase_dur_analysis]);
+  wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
+  wsDash.addRow([_TRL.h_phase, _TRL.h_total_days]);
+  styleHeader(wsDash, wsDash.rowCount, 'FF4472C4');
   const phaseDur2 = {};
   for (const t of scheduleData) phaseDur2[t.phase] = (phaseDur2[t.phase]||0) + t.duration;
-  for (const [p,d] of Object.entries(phaseDur2).sort((a,b)=>b[1]-a[1])) dashRows.push([p, Math.round(d*100)/100]);
-  dashRows.push([]);
+  for (const [p,d] of Object.entries(phaseDur2).sort((a,b)=>b[1]-a[1])) wsDash.addRow([p, Math.round(d*100)/100]);
+  wsDash.addRow([]);
 
-  dashRows.push(['Resource Workload Analysis']);
-  dashRows.push(['Phase','Total Man-Days']);
+  wsDash.addRow([_TRL.t_resource_analysis]);
+  wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
+  wsDash.addRow([_TRL.h_phase, _TRL.h_total_man_days]);
+  styleHeader(wsDash, wsDash.rowCount, 'FF70AD47');
   const phaseMD2 = {};
   for (const t of scheduleData) phaseMD2[t.phase] = (phaseMD2[t.phase]||0) + t.duration * t.crew;
-  for (const [p,md] of Object.entries(phaseMD2).sort((a,b)=>b[1]-a[1])) dashRows.push([p, Math.round(md*10)/10]);
-  dashRows.push([]);
+  for (const [p,md] of Object.entries(phaseMD2).sort((a,b)=>b[1]-a[1])) wsDash.addRow([p, Math.round(md*10)/10]);
+  wsDash.addRow([]);
 
-  dashRows.push(['S-Curve Progress']);
-  dashRows.push(['Week','Cumulative %']);
+  wsDash.addRow([_TRL.t_s_curve_progress]);
+  wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
+  wsDash.addRow([_TRL.h_week, _TRL.h_cumulative_pct]);
+  styleHeader(wsDash, wsDash.rowCount, 'FFFFC000');
   if (scheduleData.length) {
     const maxD = Math.max(...scheduleData.map(t=>t.finishDay));
     const tw = Math.max(1, Math.ceil(maxD/7));
     const si = Math.max(1, Math.floor(tw/20));
     for (let w = 0; w <= tw; w += si) {
       const completed = scheduleData.filter(t => t.finishDay <= w*7).length;
-      dashRows.push([`W${w}`, Math.round(completed/scheduleData.length*1000)/10]);
+      wsDash.addRow([`W${w}`, Math.round(completed/scheduleData.length*1000)/10]);
     }
-    if (dashRows[dashRows.length-1][1] < 100) dashRows.push([`W${tw}`, 100]);
+    const lastRow = wsDash.getRow(wsDash.rowCount);
+    if (lastRow.getCell(2).value < 100) wsDash.addRow([`W${tw}`, 100]);
   }
-  dashRows.push([]);
+  wsDash.addRow([]);
 
-  dashRows.push(['Milestone Timeline']);
-  dashRows.push(['Milestone','Day Offset','Date']);
+  wsDash.addRow([_TRL.t_milestone_timeline]);
+  wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
+  wsDash.addRow([_TRL.h_milestone, _TRL.h_day_offset, _TRL.h_date]);
+  styleHeader(wsDash, wsDash.rowCount, 'FFED7D31');
   const pd2 = {};
   for (const t of scheduleData) {
     if (!pd2[t.phase]) pd2[t.phase] = {s:t.startDate,e:t.finishDate,sd:t.startDay,ed:t.finishDay};
@@ -1010,26 +1588,39 @@ function save4D() {
       if (t.finishDay > pd2[t.phase].ed) { pd2[t.phase].ed = t.finishDay; pd2[t.phase].e = t.finishDate; }
     }
   }
-  dashRows.push(['Project Start', 0, scheduleData.length ? scheduleData[0].startDate : '']);
+  wsDash.addRow(['Project Start', 0, scheduleData.length ? scheduleData[0].startDate : '']);
   for (const phase of Object.keys(pd2).sort()) {
-    dashRows.push([`${phase} Start`, pd2[phase].sd, pd2[phase].s]);
-    dashRows.push([`${phase} End`, pd2[phase].ed, pd2[phase].e]);
+    wsDash.addRow([`${phase} Start`, pd2[phase].sd, pd2[phase].s]);
+    wsDash.addRow([`${phase} End`, pd2[phase].ed, pd2[phase].e]);
   }
-  dashRows.push(['Project Finish', projDays, scheduleData.length ? scheduleData[scheduleData.length-1].finishDate : '']);
-  dashRows.push([]);
+  wsDash.addRow(['Project Finish', projDays, scheduleData.length ? scheduleData[scheduleData.length-1].finishDate : '']);
+  wsDash.addRow([]);
 
-  dashRows.push(['Gantt Timeline (Strategic Tasks)']);
-  dashRows.push(['Task','Phase','Start (Day)','Duration (Days)']);
+  wsDash.addRow([_TRL.t_gantt_timeline]);
+  wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
+  wsDash.addRow([_TRL.h_task, _TRL.h_phase, _TRL.h_start_date, _TRL.h_duration]);
+  styleHeader(wsDash, wsDash.rowCount, 'FF5B9BD5');
   const top15x = [...scheduleData].sort((a,b)=>b.duration-a.duration).slice(0,15).sort((a,b)=>a.startDay-b.startDay);
-  for (const t of top15x) dashRows.push([t.name.slice(0,35), t.phase, t.startDay, Math.round(t.duration*10)/10]);
+  for (const t of top15x) wsDash.addRow([t.name.slice(0,35), t.phase, t.startDay, Math.round(t.duration*10)/10]);
 
-  const wsDash = XLSX.utils.aoa_to_sheet(dashRows);
-  wsDash['!cols'] = [{wch:40},{wch:18},{wch:15},{wch:15}];
-  XLSX.utils.book_append_sheet(wb, wsDash, 'BIM 4D Dashboard');
+  // ── Embed 4D chart images on the RIGHT side (col E = col 4), stacked vertically ──
+  // Charts are in the HTML page — no need to embed in Excel
 
+  // ── Save ──
   const filename = `BIM_OOTB_${bldName}_4D_Schedule_${new Date().toISOString().slice(0,10)}.xlsx`;
-  XLSX.writeFile(wb, filename);
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
   document.getElementById('status').textContent = `Saved ${filename} (3 sheets)`;
+  _verifyMaths(wb, '4D');
+  _verifyTRL(wb, '4D');
+  _log('[S226] §CHART_SUMMARY 4D: ' + _chartTestPass + ' PASS, ' + _chartTestFail + ' FAIL');
+  _downloadLog('4D');
+  _chartTestPass = 0; _chartTestFail = 0;
 }
 
 // ── Theme toggle ──

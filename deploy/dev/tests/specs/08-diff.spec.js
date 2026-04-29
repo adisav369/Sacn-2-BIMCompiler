@@ -9,7 +9,7 @@ const { ConsoleLogs } = require('../helpers/console-capture');
 
 test.describe('Diff / Variance Overlay', () => {
 
-  test('8.1 Load viewer with diffDb param', async ({ page }) => {
+  test('8.1 Load viewer with diffDb param @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
 
     // Load with both base and diff DBs (use SampleHouse as diff against Duplex for test)
@@ -19,11 +19,13 @@ test.describe('Diff / Variance Overlay', () => {
       diffdb: '/buildings/SampleHouse_extracted.db', // same DB = no diff, but tests loading
     });
 
-    const hasDiffDb = await page.evaluate(() => !!window.APP.diffDb);
-    console.log(`§PW_DIFF_LOAD diffDbLoaded=${hasDiffDb}`);
+    // diffDb loads async after stream — poll for it
+    await page.waitForFunction(() => !!window.APP.diffDb, { timeout: 15000 });
+    console.log('§PW_DIFF_LOAD diffDbLoaded=true');
+    expect(true).toBe(true);
   });
 
-  test('8.2 Variance button appears when diff loaded', async ({ page }) => {
+  test('8.2 Variance button appears when diff loaded @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
 
     await openViewer(page, {
@@ -33,7 +35,7 @@ test.describe('Diff / Variance Overlay', () => {
     });
 
     // Wait for diff computation
-    await page.waitForTimeout(5000);
+    await page.waitForFunction(() => !!window.APP.diffResult, { timeout: 15000 });
 
     const varianceBtnExists = await page.evaluate(() => {
       const btn = document.getElementById('variance-btn');
@@ -41,9 +43,10 @@ test.describe('Diff / Variance Overlay', () => {
     });
 
     console.log(`§PW_DIFF_BUTTON exists=${varianceBtnExists}`);
+    expect(varianceBtnExists).toBe(true);
   });
 
-  test('8.3 Diff computation does not throw', async ({ page }) => {
+  test('8.3 Diff computation does not throw @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
 
     await openViewer(page, {
@@ -52,7 +55,7 @@ test.describe('Diff / Variance Overlay', () => {
       diffdb: '/buildings/SampleHouse_extracted.db',
     });
 
-    await page.waitForTimeout(5000);
+    await page.waitForFunction(() => !!window.APP.diffResult, { timeout: 15000 });
 
     // Check no errors related to diff
     const diffErrors = logs.errors.filter(e =>
@@ -63,35 +66,30 @@ test.describe('Diff / Variance Overlay', () => {
     expect(diffErrors.length).toBe(0);
   });
 
-  test('8.4 Diff result structure valid', async ({ page }) => {
+  test('8.4 Diff result structure valid @fast', async ({ page }) => {
     await openViewer(page, {
       db: '/buildings/SampleHouse_extracted.db',
       lib: '/buildings/SampleHouse_library.db',
       diffdb: '/buildings/SampleHouse_extracted.db',
     });
 
-    await page.waitForTimeout(5000);
+    // Wait for diff to compute (poll instead of fixed timeout)
+    await page.waitForFunction(() => !!window.APP.diffResult, { timeout: 15000 });
 
-    const result = await page.evaluate(() => {
-      if (!window.APP.diffResult) return null;
-      return {
-        added: window.APP.diffResult.added?.length || 0,
-        removed: window.APP.diffResult.removed?.length || 0,
-        changed: window.APP.diffResult.changed?.length || 0,
-      };
-    });
+    const result = await page.evaluate(() => ({
+      added: window.APP.diffResult.added?.length || 0,
+      removed: window.APP.diffResult.removed?.length || 0,
+      changed: window.APP.diffResult.changed?.length || 0,
+    }));
 
-    if (result) {
-      console.log(`§PW_DIFF_RESULT added=${result.added} removed=${result.removed} changed=${result.changed}`);
-      // Same DB = should have 0 changes
-      expect(result.added).toBe(0);
-      expect(result.removed).toBe(0);
-    } else {
-      console.log('§PW_DIFF_RESULT SKIP — diffResult not computed yet');
-    }
+    console.log(`§PW_DIFF_RESULT added=${result.added} removed=${result.removed} changed=${result.changed}`);
+    // Same DB diffed against itself = should have 0 changes
+    expect(result.added).toBe(0);
+    expect(result.removed).toBe(0);
+    expect(result.changed).toBe(0);
   });
 
-  test('8.5 Diff overlay does not crash', async ({ page }) => {
+  test('8.5 Diff overlay does not crash @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
 
     await openViewer(page, {
@@ -100,17 +98,23 @@ test.describe('Diff / Variance Overlay', () => {
       diffdb: '/buildings/SampleHouse_extracted.db',
     });
 
-    await page.waitForTimeout(5000);
+    await page.waitForFunction(() => !!window.APP.diffResult, { timeout: 15000 });
 
     // Try applying overlay if function exists
-    await page.evaluate(() => {
+    const applied = await page.evaluate(() => {
       if (typeof window.APP.applyDiffOverlay === 'function') {
-        try { window.APP.applyDiffOverlay(); } catch(e) {}
+        window.APP.applyDiffOverlay();
+        return true;
       }
+      return false;
     });
 
-    logs.assertNoErrors();
-    console.log(`§PW_DIFF_OVERLAY applied without crash`);
+    const diffErrors = logs.errors.filter(e =>
+      e.includes('diff') || e.includes('Diff') || e.includes('variance') || e.includes('overlay')
+    );
+    console.log(`§PW_DIFF_OVERLAY applied=${applied} errors=${diffErrors.length}`);
+    expect(diffErrors.length).toBe(0);
+    expect(applied).toBe(true);
   });
 
 });

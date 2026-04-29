@@ -13,10 +13,10 @@ const path = require('path');
 
 test.describe('IFC Import', () => {
 
-  test('7.1 Landing page has drop zone', async ({ page }) => {
+  test('7.1 Landing page has drop zone @slow', async ({ page }) => {
     const logs = new ConsoleLogs(page);
     await page.goto('/landing2.html');
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('#import-zone', { timeout: 5000 });
 
     // Check for drop zone element (id="import-zone" in landing2.html)
     const hasDropZone = await page.evaluate(() => {
@@ -29,9 +29,9 @@ test.describe('IFC Import', () => {
     expect(hasDropZone).toBe(true);
   });
 
-  test('7.2 File input accepts IFC', async ({ page }) => {
+  test('7.2 File input accepts IFC @slow', async ({ page }) => {
     await page.goto('/landing2.html');
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('#import-zone', { timeout: 5000 });
 
     // Check file input exists and accepts .ifc
     const accepts = await page.evaluate(() => {
@@ -44,36 +44,36 @@ test.describe('IFC Import', () => {
     });
 
     console.log(`§PW_IMPORT_ACCEPT ifc=${accepts}`);
+    expect(accepts).toBe(true);
   });
 
-  test('7.5 No console errors on landing', async ({ page }) => {
+  test('7.5 No console errors on landing @slow', async ({ page }) => {
     const logs = new ConsoleLogs(page);
     await page.goto('/landing2.html');
-    await page.waitForTimeout(3000);
+    await page.waitForSelector('#import-zone', { timeout: 5000 });
 
-    logs.assertNoErrors();
-    console.log(`§PW_IMPORT_CLEAN errors=0`);
+    const errorCount = logs.errors.length;
+    console.log(`§PW_IMPORT_CLEAN errors=${errorCount}`);
+    expect(errorCount).toBe(0);
   });
 
-  test('7.6 Unsupported format shows message', async ({ page }) => {
+  test('7.6 Unsupported format shows message @slow', async ({ page }) => {
     await page.goto('/landing2.html');
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('#import-zone', { timeout: 5000 });
 
     // Try to trigger the format check with a bad extension
-    const message = await page.evaluate(() => {
-      // Check if handleImportFile or similar exists
+    const result = await page.evaluate(() => {
       if (typeof window.handleImportFile === 'function') {
         const fakeFile = new File(['test'], 'test.xyz', { type: 'application/octet-stream' });
-        try {
-          window.handleImportFile(fakeFile);
-        } catch(e) {}
+        try { window.handleImportFile(fakeFile); } catch(e) {}
       }
-      // Check for any visible error/status text
       const status = document.querySelector('#import-status, .status, #status');
-      return status ? status.textContent : '';
+      return { message: status ? status.textContent : '', hasHandler: typeof window.handleImportFile === 'function' };
     });
 
-    console.log(`§PW_IMPORT_REJECT message="${message.substring(0, 80)}"`);
+    console.log(`§PW_IMPORT_REJECT handler=${result.hasHandler} message="${result.message.substring(0, 80)}"`);
+    // Landing page must have the import handler wired
+    expect(result.hasHandler).toBe(true);
   });
 
 });

@@ -3,7 +3,7 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
 <div class="bim-banner" markdown>
-<b>6 mathematical gates. Not sampled — proven.</b> If a building compiles, every element is accounted for: count, position, volume, digest, and parent-child integrity. The proof is arithmetic, not assertion. No AI in the gates.
+<b>9 verification gates. Not sampled — proven.</b> 6 mathematical proofs (G1-G6: count, volume, digest, tamper, provenance, isolation) plus 3 pipeline gates (seed, extraction, geometry verify). If a building compiles, every element is accounted for. The proof is arithmetic, not assertion. No AI in the gates.
 </div>
 
 ## Anti-Drift Policy (read first)
@@ -366,23 +366,31 @@ bcd2af85  rosetta_fidelity.sh
 
 ### Rosetta Stone Coverage
 
-**Gate:** `./scripts/run_RosettaStones.sh` — 19/34 ALL GREEN.
+**Gate:** `./scripts/run_RosettaStones.sh` — S190 fleet: 21 buildings, 116/157 PASS, 4 ALL GREEN (BR, MO, RL, WI). 9-gate system.
 
-| Gate | SH | FK | IN | DX | TE † | DM |
-|------|----|----|----|----|-------|------|
-| G1-COUNT | PASS (58+24) | PASS (82) | PASS (699) | PASS (215+114) | PASS† (48428) | PASS (60) |
-| G2-VOLUME | PASS | PASS | PASS | PASS | PASS† | — |
-| G3-DIGEST | PASS | PASS | PASS | PASS | PASS† | — (GENERATIVE) |
-| G4-TAMPER | PASS | PASS | PASS | PASS | PASS | PASS |
-| G5-PROVENANCE | PASS | PASS | PASS | PASS | PASS† | PASS |
-| G6-ISOLATION | PASS | PASS | PASS | PASS | PASS† | PASS |
+| PFX | EL | GATES | Notes |
+|-----|----|-------|-------|
+| BR | 33 | 9/9 | ALL GREEN |
+| MO | 2791 | 9/9 | ALL GREEN |
+| RL | 1 | 9/9 | ALL GREEN |
+| WI | 1 | 9/9 | ALL GREEN |
+| DX | 1169 | 8/9 | MetadataMissing (IfcOpeningElement) |
+| SH | 65 | 8/9 | MetadataMissing (generative MEP) |
+| TE | 33848 | 2/4 | Extraction reconciliation |
 
-> **†TE: extraction-only, not BOM-compiled.** IFCtoBOM QA blocked: 471/1515
-> tack overflows (W-TACK-1), 14/50 SET BOMs unbalanced (W-BUFFER-1). TE_BOM.db
-> empty → BomDrop never runs → c_order=0, c_orderline=0 in output. Gates pass
-> because output DB IS the federation extraction (same as reference). SH/FK/DM
-> are real BOM compilations. See `logs/pipeline_Terminal_ifctobom_*.log`.
+### Browser E2E Tests (Playwright)
 
-**Remaining debt:** G5 GEO_ (RA/JE/ES), C9 axis swaps (JE/HI/SC) — position-based matching implemented for RM (W-RM-C9); JE/HI/SC still WARN (different root cause). TE BOM compilation (IFCtoBOM tack fix).
+72/72 desktop specs, 10 spec files. Tests the BIM OOTB browser viewer:
+import, viewer load, walk/sitecam, cinematic tour, BOQ charts, mobile UX,
+mesh import, IFC export, wizard. Suite in `deploy/dev/tests/`.
 
-*See [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) — the G1-G6 gates are a key differentiator in the competitive scorecard.*
+### Test Summary
+
+| Suite | Count | Runner |
+|-------|-------|--------|
+| Playwright (browser E2E) | 72/72 | `npx playwright test` |
+| BonsaiBIMDesigner (Java) | 408/414 | `mvn test` (needs component_library.db) |
+| BIMBackOffice (Java) | 20/20 | `mvn test` |
+| Rosetta Stone fleet | 116/157 gates PASS | `./scripts/run_RosettaStones.sh` |
+
+*See [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) — the gates are a key differentiator in the competitive scorecard.*

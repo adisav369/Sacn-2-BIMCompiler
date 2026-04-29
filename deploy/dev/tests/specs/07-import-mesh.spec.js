@@ -11,7 +11,7 @@ const TEST_URL = '/dev/test/test_import_format_to_db.html';
 
 test.describe('Import Mesh — Pure Function Tests', () => {
 
-  test('7b.1 Semantic enrichment pure-function tests all PASS', async ({ page }) => {
+  test('7b.1 Semantic enrichment pure-function tests all PASS @slow', async ({ page }) => {
     const logs = new ConsoleLogs(page);
     await page.goto(TEST_URL);
 
@@ -54,7 +54,7 @@ test.describe('Import Mesh — Pure Function Tests', () => {
     expect(realFails.length).toBe(0);
   });
 
-  test('7b.2 OBJ import produces classified elements', async ({ page }) => {
+  test('7b.2 OBJ import produces classified elements @slow', async ({ page }) => {
     const logs = new ConsoleLogs(page);
     await page.goto(TEST_URL);
 
@@ -90,16 +90,9 @@ test.describe('Import Mesh — Pure Function Tests', () => {
       console.log(`  FAIL details: ${objResult.failTexts.join(' | ')}`);
     }
     // OBJ loader ESM import may fail in non-module context (bare "import 'three'")
-    // This is a known upstream issue — track but don't fail the suite
-    if (objResult.fail > 0) {
-      const moduleErr = objResult.failTexts.some(t => t.includes('module specifier'));
-      if (moduleErr) {
-        console.log('§PW_IMPORT_OBJ WARN — OBJ loader ESM import failed (needs importmap)');
-      } else {
-        // Real failures
-        expect(objResult.fail).toBe(0);
-      }
-    }
+    // Known upstream issue — real failures (non-module) must be zero
+    const realFails = objResult.failTexts.filter(t => !t.includes('module specifier'));
+    expect(realFails.length).toBe(0);
   });
 
 });

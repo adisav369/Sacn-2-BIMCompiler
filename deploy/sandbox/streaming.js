@@ -99,13 +99,16 @@ function setupStreaming(A) {
     A.status.textContent = `STREAMING ${nearest} — ${A.streamIdx.toLocaleString()}/${A.streamQueue.length.toLocaleString()} elements`;
   };
 
-  // ── S231: InstancedMesh batching ────────��────────────────────────────
+  // ── S231: InstancedMesh batching ─────────────────────────────────────
   // Hashes with 2+ instances get ONE InstancedMesh (1 draw call).
   // Hashes with 1 instance stay as individual Mesh (pick/filter compatible).
   // Material dedup: one MeshPhongMaterial per unique RGBA string.
+  // ── S232: Mobile merge — single-instance meshes grouped by storey|disc|rgba ──
+  // Bakes transform into vertices, concatenates buffers → ~200 draw calls on mobile.
   A._matCache = {};
   A._instanceMeta = {};  // instancedMesh.id → [{guid,storey,disc,instanceIndex}, ...]
   A._instanceGuids = {}; // guid → {meshId, instanceIndex} for reverse lookup
+  A._isMobile = (navigator.maxTouchPoints > 0 && window.screen.width < 1024);
 
   A._getMaterial = function(rgbaStr) {
     const key = rgbaStr || '_default';
@@ -229,7 +232,7 @@ function setupStreaming(A) {
     }
   };
 
-  // ── S231: Flush pending instances → InstancedMesh (2+ instances) or Mesh (1 instance) ──
+  // ── S231+S232: Flush pending → InstancedMesh (2+) or Mesh (1) or MergedMesh (mobile) ──
   A._flushInstanced = function() {
     if (!A._pendingInstances) return;
     const _m4 = new THREE.Matrix4();
@@ -237,14 +240,23 @@ function setupStreaming(A) {
     const _quat = new THREE.Quaternion();
     const _pos = new THREE.Vector3();
     const _scale = new THREE.Vector3(1, 1, 1);
-    let instancedCount = 0, singleCount = 0, drawCalls = 0;
+    let instancedCount = 0, singleCount = 0, mergedCount = 0, drawCalls = 0;
+
+    // ── S232: On mobile, bucket single-instance elements for merge ──
+    const mergeBuckets = {};  // key: "storey|disc|rgba" → [{el, geo}, ...]
 
     for (const [hash, elements] of Object.entries(A._pendingInstances)) {
       const geo = A.meshCache[hash];
       if (!geo) continue;
 
-      if (elements.length === 1) {
-        // Single instance — keep as individual Mesh for full pick/filter compat
+      if (elements.length === 1 && A._isMobile) {
+        // Mobile: bucket for merge instead of individual Mesh
+        const el = elements[0];
+        const key = (el.storey || '_') + '|' + (el.disc || '_') + '|' + (el.rgba || '_default');
+        if (!mergeBuckets[key]) mergeBuckets[key] = [];
+        mergeBuckets[key].push({ el, geo });
+      } else if (elements.length === 1) {
+        // Desktop: individual Mesh for full pick/filter compat
         const el = elements[0];
         const mat = A._getMaterial(el.rgba);
         const mesh = new THREE.Mesh(geo, mat);
@@ -263,18 +275,16 @@ function setupStreaming(A) {
         singleCount++;
         drawCalls++;
       } else {
-        // Multiple instances — use InstancedMesh (1 draw call for all)
-        // Use material from first element (most common RGBA for this hash)
+        // 2+ instances — InstancedMesh (both desktop and mobile)
         const mat = A._getMaterial(elements[0].rgba);
         const iMesh = new THREE.InstancedMesh(geo, mat, elements.length);
-        iMesh.frustumCulled = false;  // instances span large area, don't cull the group
+        iMesh.frustumCulled = false;
         const meta = [];
 
         for (let i = 0; i < elements.length; i++) {
           const el = elements[i];
           const pos = A.ifc2three(el.cx, el.cy, el.cz);
           _pos.set(pos.x, pos.y, pos.z);
-          // IFC rotation → Three.js: (rotX, rotZ, -rotY)
           _euler.set(el.rotX, el.rotZ, -el.rotY);
           _quat.setFromEuler(_euler);
           _m4.compose(_pos, _quat, _scale);
@@ -294,8 +304,105 @@ function setupStreaming(A) {
       }
     }
 
+    // ── S232: Merge single-instance buckets on mobile ──
+    if (A._isMobile) {
+      for (const [key, items] of Object.entries(mergeBuckets)) {
+        if (items.length === 0) continue;
+        const [storey, disc, rgba] = key.split('|');
+
+        // Bake transform into vertices and concatenate all geometries in this bucket
+        let totalVerts = 0, totalIdx = 0;
+        for (const item of items) {
+          const srcPos = item.geo.attributes.position;
+          totalVerts += srcPos.count;
+          totalIdx += item.geo.index ? item.geo.index.count : srcPos.count;
+        }
+
+        const mergedPos = new Float32Array(totalVerts * 3);
+        const mergedNorm = items[0].geo.attributes.normal ? new Float32Array(totalVerts * 3) : null;
+        const mergedIdx = new Uint32Array(totalIdx);
+        let vOff = 0, iOff = 0, vBase = 0;
+        const _v = new THREE.Vector3();
+        const _n = new THREE.Vector3();
+
+        for (const item of items) {
+          const el = item.el;
+          const srcGeo = item.geo;
+          const srcPos = srcGeo.attributes.position;
+          const srcNorm = srcGeo.attributes.normal;
+          const count = srcPos.count;
+
+          // Build transform matrix for this element
+          const pos = A.ifc2three(el.cx, el.cy, el.cz);
+          _pos.set(pos.x, pos.y, pos.z);
+          _euler.set(el.rotX, el.rotZ, -el.rotY);
+          _quat.setFromEuler(_euler);
+          _m4.compose(_pos, _quat, _scale);
+
+          // Normal matrix (inverse transpose of upper 3x3)
+          const _nm = new THREE.Matrix3().getNormalMatrix(_m4);
+
+          // Bake positions
+          for (let v = 0; v < count; v++) {
+            _v.set(srcPos.getX(v), srcPos.getY(v), srcPos.getZ(v));
+            _v.applyMatrix4(_m4);
+            mergedPos[(vOff + v) * 3] = _v.x;
+            mergedPos[(vOff + v) * 3 + 1] = _v.y;
+            mergedPos[(vOff + v) * 3 + 2] = _v.z;
+          }
+
+          // Bake normals
+          if (mergedNorm && srcNorm) {
+            for (let v = 0; v < count; v++) {
+              _n.set(srcNorm.getX(v), srcNorm.getY(v), srcNorm.getZ(v));
+              _n.applyMatrix3(_nm).normalize();
+              mergedNorm[(vOff + v) * 3] = _n.x;
+              mergedNorm[(vOff + v) * 3 + 1] = _n.y;
+              mergedNorm[(vOff + v) * 3 + 2] = _n.z;
+            }
+          }
+
+          // Rebase indices
+          if (srcGeo.index) {
+            const srcIdx = srcGeo.index;
+            for (let j = 0; j < srcIdx.count; j++) {
+              mergedIdx[iOff + j] = srcIdx.getX(j) + vBase;
+            }
+            iOff += srcIdx.count;
+          } else {
+            for (let j = 0; j < count; j++) {
+              mergedIdx[iOff + j] = vBase + j;
+            }
+            iOff += count;
+          }
+          vOff += count;
+          vBase += count;
+        }
+
+        const mergedGeo = new THREE.BufferGeometry();
+        mergedGeo.setAttribute('position', new THREE.BufferAttribute(mergedPos, 3));
+        if (mergedNorm) mergedGeo.setAttribute('normal', new THREE.BufferAttribute(mergedNorm, 3));
+        mergedGeo.setIndex(new THREE.BufferAttribute(mergedIdx, 1));
+
+        const mat = A._getMaterial(rgba === '_default' ? null : rgba);
+        const mesh = new THREE.Mesh(mergedGeo, mat);
+        mesh.userData.storey = storey === '_' ? '' : storey;
+        mesh.userData.disc = disc === '_' ? '' : disc;
+        mesh.userData.isMerged = true;
+        mesh.userData.mergedCount = items.length;
+        if (A.activeStoreyFilter !== null && mesh.userData.storey !== A.activeStoreyFilter) mesh.visible = false;
+        if (A.hiddenDiscs.size > 0 && A.hiddenDiscs.has(mesh.userData.disc)) mesh.visible = false;
+        A.scene.add(mesh);
+        mergedCount += items.length;
+        drawCalls++;
+      }
+    }
+
     A._pendingInstances = {};
-    console.log(`[S231] §FLUSH instanced=${instancedCount} single=${singleCount} drawCalls=${drawCalls} (was ${instancedCount + singleCount})`);
+    const label = A._isMobile
+      ? `[S232] §FLUSH instanced=${instancedCount} merged=${mergedCount} drawCalls=${drawCalls} (was ${instancedCount + mergedCount})`
+      : `[S231] §FLUSH instanced=${instancedCount} single=${singleCount} drawCalls=${drawCalls} (was ${instancedCount + singleCount})`;
+    console.log(label);
     document.getElementById('s-meshes').textContent = drawCalls.toLocaleString() + ' draw calls';
   };
 

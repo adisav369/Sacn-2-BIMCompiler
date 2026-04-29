@@ -5,18 +5,20 @@ DB = model. Template = view. Browser = runtime. Three concerns, never merged.
 
 ## Shipped
 
-| # | What | Files |
-|---|------|-------|
-| S200-S209b | Browser viewer, site camera, walk mode, mobile UX, modular refactor, 149 tests | `deploy/sandbox/` (16 modules) |
+| # | What | Key files |
+|---|------|-----------|
+| S200–S209b | Browser viewer, site camera, walk mode, mobile UX, cinematic tour, modular refactor | `deploy/sandbox/` (16 modules) |
+| S210 | BOQ charts, template + forex, work packages, chart images in Excel | `deploy/dev/boq_charts.html` |
+| S220 | Browser IFC import (web-ifc WASM, IFC2x3+IFC4, 122K elements proven) | `deploy/dev/import.js` |
+| S222–S224 | DB refactor, diff engine, Variation Order Excel (FIDIC Clause 12), versioned IndexedDB v2 | `deploy/dev/` |
+| S225b | Localisation — 15 locales, iDempiere _TRL pattern, rates.js single source | `deploy/dev/rates.js`, `deploy/dev/locales/` |
+| S228 | Drop Zone multi-format: OBJ, STL, DAE, GLB/GLTF, FBX, 3DS. Auto up-axis + scale | `deploy/dev/mesh_import_worker.js` |
+| S229a | Guided classification wizard — 6-step flow for non-IFC meshes | `deploy/dev/wizard.js` |
+| S229b | IFC export — DB → .ifc download. Pure STEP text builder, 30-test round-trip | `deploy/dev/ifc_export_worker.js` |
+
+**Tests:** 72/72 Playwright E2E (desktop), 53/55 pure-function. Suite: `deploy/dev/tests/`.
 
 ## Next
-
-### S210 — Template + Forex (quick win)
-- `boq_charts.html` reads `?tpl=` (JSON template override)
-- Forex: USD/EUR column next to RM, configurable rate
-- Work Package grouping in Excel export
-- Chart images embedded in Excel
-- Template JSON schema: rates, forex, grouping, dimensions, charts
 
 ### S211 — NLP Query DSL (harden + browser port + voice)
 Port the Python NLP DSL (`federation/dataintelligence/nlp/`) to browser JS running against sql.js.
@@ -426,7 +428,7 @@ Level 3 — Real-time collaboration (future, spec only):
 - STR engineer's DB + MEP engineer's DB → one coordinated scene
 - Clash detection across federated DBs = cross-DB spatial query
 
-### S220 — Browser IFC Import (self-service onboarding)
+### S220 — Browser IFC Import (self-service onboarding) ✓ SHIPPED
 - Drag-and-drop IFC file onto landing page → extract to DB entirely in browser
 - Uses `web-ifc` (WebAssembly IFC parser, MIT, ~2MB CDN) — no server, no Python
 - Extraction mirrors `extractIFCtoDB_open.py` output schema (same tables, same contract)
@@ -535,31 +537,21 @@ Level 3 — Real-time collaboration (future, spec only):
 - **Exit criterion:** Import 3 projects, each with 2 variations → landing shows all 3 with cost totals and net change
 - Replaces: Custom Excel dashboards, Procore cost module ($)
 
-### S228 — COBie / IFC Export from Merged DB
-- After merge (S222), export merged DB as:
-  - **COBie:** 6-tab Excel spreadsheet (Facility, Floor, Space, Type, Component, System) — government handover
-  - **IFC4:** STEP file from S217 — tessellated coordination model
-- Export buttons on merged card: `⬇ COBie` · `⬇ IFC` · `⬇ .db`
+### S228 — Drop Zone Multi-Format Import ✓ SHIPPED
+OBJ, STL, DAE, GLB/GLTF, FBX, 3DS import via Drop Zone. Auto up-axis + scale.
+Guided classification wizard (S229a). IFC export (S229b). See Shipped table above.
+
+### S230 — COBie Export from Merged DB
+- After merge (S222), export merged DB as COBie 6-tab Excel (Facility, Floor, Space, Type, Component, System)
 - COBie mapping: `elements_meta` → Component, `spatial_structure` → Floor/Space, `product_types` → Type
 - Handover package = one click: COBie + IFC + .db in a ZIP
-- **Why this matters:** Government projects require COBie. Nobody does it from a browser. Close the loop.
 - **Exit criterion:** Merge 3 parts, download COBie Excel, validate with COBie QC tool
-- Replaces: Revit COBie toolkit, manual spreadsheet compilation
 
-### S229 — AI Query on Diff (NLP → change_log)
+### S231 — AI Query on Diff (NLP → change_log)
 - Extend S211 NLP DSL to query `change_log` table (S222)
 - Natural language: "What changed in MEP on Level 3?" → SQL on change_log → results + fly-to
 - Voice command (S211 voice): same queries via microphone
-- Queries supported:
-  - "What was added?" → added GUIDs list
-  - "What was removed from Level 2?" → filtered removed list
-  - "How much did variation MEP_v2 cost?" → net impact from VO
-  - "Show me clashes in STR" → clash results for that discipline
-  - "Compare v1 and v3" → diff between any two versions
-- Results panel: table + fly-to buttons + export
-- **Why this matters:** PM asks question, gets answer instantly. No training, no query builder.
 - **Exit criterion:** Voice "what changed on Level 3" → correct results, fly-to first element
-- Replaces: Manual report digging, Navisworks search, Solibri filters
 
 ### Starter Plugin Pack (ships with S215)
 Pre-installed plugins that prove the marketplace. All use the plugin API, no core changes.
@@ -581,7 +573,7 @@ Pre-installed plugins that prove the marketplace. All use the plugin API, no cor
 - ISO 3166-1 `iso` field → flag emoji. User copies locale → `MyProject_TRL.js` → edits what differs
 - `rates.js` = shared rate constants loaded by all pages; locale overrides rates at runtime
 - Cascades to: forex in 4D/5D, rates in BOQ, rules in checker, labour in schedule
-- Users change locale anytime via flag selector (TODO: locale_loader.js)
+- Users change locale anytime via `?lang=` URL parameter or flag selector
 - Community contributes country packs (rates + rules + templates) to marketplace
 
 **Background reports (DB processing, no UI needed):**

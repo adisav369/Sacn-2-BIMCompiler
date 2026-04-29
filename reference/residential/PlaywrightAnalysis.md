@@ -983,3 +983,236 @@ if (hit.object.isInstancedMesh && hit.instanceId !== undefined) {
 **Key difference:** For InstancedMesh, add the highlight to `A.scene` (not `hit.object`), positioned at the instance's world-space location. For individual meshes, keep the existing code (add as child of mesh).
 
 **No Playwright test possible** — this is a visual/raycasting bug. SwiftShader can't verify highlight position. Document as manual-check item per §Playwright Scope.
+
+#### Bug 5b: IfcWindow not pickable (InstancedMesh raycaster miss)
+
+**Symptom:** Clicking on IfcWindow elements does nothing — no info panel, no highlight. Other instanced elements work. Cursor sometimes shows hand (hover) but click produces no selection.
+
+**Investigation (S229 watchdog):**
+- Raycaster traverse now includes `obj.isInstancedMesh` (Bug 5 fix) — confirmed in deployed code
+- `blobToGeometry()` calls `computeBoundingSphere()` (scene.js:170) — raycaster prerequisite met
+- `_instanceMeta` is populated during flush (streaming.js:293-295) — guid lookup path exists
+- GUIDs contain `$` (e.g., `T0_Hospital_2N7_f_m01BrOTH1kzE8$uF`) — valid in SQL string literals
+- Hospital IfcWindows: 5+ share hash `368123be8c7a77a4` → 1 InstancedMesh with 5 instances
+
+**Possible causes (investigate with console):**
+1. **Thin geometry / backface pass-through:** Window geometry may be a thin plane. Raycaster hits the wall behind it. Fix: check if `hits[0]` is the window or the wall — may need to iterate `hits` looking for the nearest InstancedMesh hit.
+2. **GUID factoring:** If the building prefix (`T0_Hospital_`) or special chars (`$`) cause a mismatch in the SQL lookup, the guid is found in `_instanceMeta` but the DB query returns empty.
+3. **Three.js InstancedMesh raycast limitation:** Some Three.js versions don't support InstancedMesh raycasting out of the box. Check version. If missing, need custom raycast override.
+
+**ROOT CAUSE CONFIRMED: Three.js r128 does not support InstancedMesh raycasting.**
+
+`InstancedMesh.raycast()` was added in **r132**. The viewer loads r128 (`loader.js:10`). On r128, the raycaster never tests individual instances — it only checks the base geometry bounding sphere. This means:
+- Individual `THREE.Mesh` objects (unique geometry, 1 instance) → **pickable** (works)
+- `THREE.InstancedMesh` objects (shared geometry, 2+ instances) → **not pickable** (silent miss)
+
+IfcWindow, IfcDoor, solar panels, any repeated element → InstancedMesh → invisible to raycaster.
+
+**Fix options (pick one):**
+
+**Option A — Upgrade Three.js** (cleanest but riskiest):
+```javascript
+// loader.js line 10-11:
+{ name: 'Three.js', url: 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r162/three.min.js' },
+{ name: 'OrbitControls', url: 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/js/controls/OrbitControls.js' },
+```
+Risk: OrbitControls API may have changed. Test camera controls after upgrade.
+
+**Option B — Polyfill InstancedMesh raycast** (safe, no version change):
+Add to `picking.js` or `scene.js` after Three.js loads:
+```javascript
+// Polyfill InstancedMesh.raycast for Three.js r128 (native in r132+)
+if (THREE.InstancedMesh && !THREE.InstancedMesh.prototype._hasRaycastPoly) {
+  const _mesh = new THREE.Mesh();
+  const _instanceMatrix = new THREE.Matrix4();
+  const _invMatrix = new THREE.Matrix4();
+
+  THREE.InstancedMesh.prototype.raycast = function(raycaster, intersects) {
+    const matrixWorld = this.matrixWorld;
+    _mesh.geometry = this.geometry;
+    _mesh.material = this.material;
+
+    for (let i = 0; i < this.count; i++) {
+      this.getMatrixAt(i, _instanceMatrix);
+      _mesh.matrixWorld.multiplyMatrices(matrixWorld, _instanceMatrix);
+      _mesh.raycast(raycaster, intersects);
+
+      // Tag each hit with instanceId
+      for (let j = intersects.length - 1; j >= 0; j--) {
+        if (intersects[j].instanceId === undefined) {
+          intersects[j].instanceId = i;
+          intersects[j].object = this;
+        } else break;
+      }
+    }
+  };
+  THREE.InstancedMesh.prototype._hasRaycastPoly = true;
+}
+```
+
+Option B is safer — no Three.js version change, no risk to OrbitControls or other dependencies. The polyfill does exactly what r132+ does natively: transforms the ray into each instance's local space and tests geometry.
+
+---
+
+### Bug 6: Wizard storey detection — three sub-issues (OCI DEV, 2026-04-27)
+
+Screenshot: `~/Pictures/Screenshots/Screenshot from 2026-04-27 15-17-51.png`
+Building: engel-house (OBJ import, non-IFC). 1,254 elements, 4 storeys detected.
+
+#### 6a. Camera still clips after flip (Bug 1 not fully fixed)
+
+`reframeCameraToBbox()` was fixed in S233 to use local-space bbox, but the camera still frames the building from an angle where elements overlap. The screenshot shows the building viewed from the side — walls and floors stack visually. After flip the camera should be positioned **above-front** (higher Y, moderate Z) so floors are visually separated.
+
+**File:** `deploy/dev/wizard.js` — `reframeCameraToBbox()`
+**Fix:** After flip, bias camera more toward overhead view:
+```javascript
+// Current: dist*0.7 X, dist*0.5 Y, dist*0.7 Z (diagonal)
+// Better:  dist*0.3 X, dist*0.9 Y, dist*0.5 Z (above-front, floors visible)
+APP.camera.position.set(
+  worldCenter.x + dist * 0.3,
+  worldCenter.y + dist * 0.9,
+  worldCenter.z + dist * 0.5
+);
+```
+
+#### 6b. Storey order inverted after flip
+
+After Y↔Z flip, the wizard re-classifies storeys by Z value. But the naming goes bottom-up: band 0 = "Ground Floor", band 1 = "Level 1", etc. If the flip inverts the Z axis, the highest elements get "Ground Floor" and the actual ground floor gets "Level N".
+
+**File:** `deploy/dev/wizard.js` — `reclassifyStoreys()` (line 97-134)
+**Root cause:** After `UPDATE element_transforms SET center_y = -center_z, center_z = center_y`, the old Z values become Y and old Y (which was height in Y-up OBJ) becomes Z. But the sign flip (`-center_z`) inverts the ordering. Elements that were at high Y (upper floors) now have negative Z.
+
+**Fix:** After reclassification, sort storeys by their actual min elevation, not by band index:
+```javascript
+// After reclassifying, verify ground floor has the LOWEST elevation
+var storeySorted = db.exec(
+  "SELECT storey, MIN(center_z) as minZ FROM elements_meta m " +
+  "JOIN element_transforms t ON t.guid = m.guid GROUP BY storey ORDER BY minZ"
+);
+// If "Ground Floor" is NOT the lowest → labels are inverted, need to flip naming
+```
+
+Or simpler: always assign from sorted Z ascending — lowest Z = "Ground Floor", next band up = "Level 1", etc. regardless of how the flip changed the sign.
+
+#### 6c. Storey grouping uses fixed bands — should use Z clustering
+
+**Current logic (`reclassifyStoreys`, line 111-127):**
+```javascript
+var nStoreys = Math.max(1, Math.round(totalHeight / 3));  // fixed 3m assumption
+var bandHeight = totalHeight / nStoreys;
+var band = Math.floor((z - minZ) / bandHeight);
+```
+
+This divides the building into N equal slices. But real buildings have:
+- Thin floor slabs (0.3m) with many elements
+- Tall void spaces (6m) with few elements
+- Mezzanines at irregular heights
+
+**Better approach — Z-gap clustering:**
+1. Get all distinct Z values (rounded to 0.1m)
+2. Sort ascending
+3. Find gaps > 1.5m between consecutive Z clusters → those are floor boundaries
+4. Elements between two gaps = one storey
+5. Name bottom-up: Ground Floor, Level 1, Level 2...
+
+```javascript
+function clusterStoreys(db) {
+  var r = db.exec("SELECT guid, center_z FROM element_transforms ORDER BY center_z");
+  if (!r.length) return;
+  var rows = r[0].values;
+
+  // Round to 0.1m, find gaps
+  var zValues = rows.map(function(v) { return Math.round(v[1] * 10) / 10; });
+  zValues.sort(function(a, b) { return a - b; });
+
+  // Find gap threshold — median gap * 3 or 1.5m, whichever is larger
+  var gaps = [];
+  for (var i = 1; i < zValues.length; i++) gaps.push(zValues[i] - zValues[i-1]);
+  gaps.sort(function(a, b) { return a - b; });
+  var medianGap = gaps[Math.floor(gaps.length / 2)] || 0.1;
+  var threshold = Math.max(1.5, medianGap * 5);
+
+  // Split into floors at gaps > threshold
+  var floors = [{ minZ: zValues[0], maxZ: zValues[0] }];
+  for (var i = 1; i < zValues.length; i++) {
+    if (zValues[i] - zValues[i-1] > threshold) {
+      floors.push({ minZ: zValues[i], maxZ: zValues[i] });
+    } else {
+      floors[floors.length - 1].maxZ = zValues[i];
+    }
+  }
+
+  // Assign names bottom-up
+  var stmt = db.prepare("UPDATE elements_meta SET storey = ? WHERE guid = ?");
+  for (var i = 0; i < rows.length; i++) {
+    var z = rows[i][1];
+    for (var f = 0; f < floors.length; f++) {
+      if (z >= floors[f].minZ - 0.05 && z <= floors[f].maxZ + 0.05) {
+        var name = f === 0 ? 'Ground Floor' : 'Level ' + f;
+        stmt.run([name, rows[i][0]]);
+        break;
+      }
+    }
+  }
+  stmt.free();
+}
+```
+
+This is a code fix, not a Playwright fix. The wizard storey Walk mode would then show correct floors that match architectural intent. The user's Edit button (storey count override) remains as fallback for edge cases.
+
+#### 6d. Building goes all white after wizard finishes
+
+**Symptom:** After wizard Done, all discipline colors disappear. Building is white/default material.
+
+**Root cause:** `applyDisciplineColors()` and `applyStoreyHighlight()` both traverse with `obj.isMesh` (wizard.js:162, 215). InstancedMesh has `isInstancedMesh`, not `isMesh`. On desktop with S231 instancing, most elements (windows, doors, panels — shared geometry hashes with 2+ instances) are InstancedMesh. The wizard only colors the few unique/single meshes. The InstancedMesh majority stays white.
+
+**Fix:** Add `|| obj.isInstancedMesh` to traverse filters. But InstancedMesh material applies to ALL instances — can't do per-instance discipline colors via `.material`. For per-instance coloring, need `instanceColor` attribute:
+```javascript
+// For InstancedMesh: set per-instance color via instanceColor buffer
+if (obj.isInstancedMesh && A._instanceMeta[obj.id]) {
+  obj.instanceColor = new THREE.InstancedBufferAttribute(
+    new Float32Array(obj.count * 3), 3
+  );
+  var meta = A._instanceMeta[obj.id];
+  for (var i = 0; i < meta.length; i++) {
+    var disc = guidDisc[meta[i].guid];
+    var color = new THREE.Color(disc ? (DISC_COLORS[disc] || DEFAULT_DISC_COLOR) : DEFAULT_DISC_COLOR);
+    obj.instanceColor.setXYZ(i, color.r, color.g, color.b);
+  }
+  obj.instanceColor.needsUpdate = true;
+}
+```
+
+#### 6e. Storey panel shows 3 after wizard set 4
+
+**Symptom:** User enters 4 in wizard Edit, wizard shows 4 storeys, but viewer storey panel on left stays at 3.
+
+**Root cause:** Viewer's `populateStoreys()` (panels.js:13) reads from `APP.db`. The wizard uses its own `wizState.db` and saves the modified buffer to IndexedDB. But `APP.db` is a separate sql.js instance — never updated with the wizard's changes. The viewer panel still sees the original 3 storeys.
+
+**Fix:** In `finishWizard()`, after export but before closing `wizState.db`, sync the storey data back to `APP.db`:
+```javascript
+// Before wizState.db.close():
+if (typeof APP !== 'undefined' && APP.db) {
+  // Copy storey assignments to viewer's live DB
+  var storeyData = wizState.db.exec("SELECT guid, storey FROM elements_meta WHERE storey IS NOT NULL");
+  if (storeyData.length) {
+    var stmt = APP.db.prepare("UPDATE elements_meta SET storey = ? WHERE guid = ?");
+    for (var i = 0; i < storeyData[0].values.length; i++) {
+      stmt.run([storeyData[0].values[i][1], storeyData[0].values[i][0]]);
+    }
+    stmt.free();
+  }
+  // Refresh panel
+  APP.populateStoreys(APP.activeBuilding);
+}
+```
+
+Or simpler: reload `APP.db` entirely from the exported buffer:
+```javascript
+if (typeof APP !== 'undefined' && typeof initSqlJs !== 'undefined') {
+  var SQL = await initSqlJs({ locateFile: f => 'https://sql.js.org/dist/' + f });
+  APP.db = new SQL.Database(new Uint8Array(dbBuf));
+  APP.populateStoreys(APP.activeBuilding);
+  APP.populateDiscs(APP.activeBuilding);
+}
+```

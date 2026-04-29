@@ -85,6 +85,37 @@
   .card .open-btn:hover { background: rgba(79,195,247,0.3); }
   .card.viewed { border-color: rgba(68,204,68,0.3); }
   .card.viewed .name { color: #44cc44; }
+  /* S229: Export triangle */
+  .card { position: relative; }
+  .export-triangle {
+    position: absolute; top: 0; right: 0;
+    width: 0; height: 0;
+    border-top: 36px solid #4fc3f7;
+    border-left: 36px solid transparent;
+    cursor: pointer; opacity: 0.7;
+    transition: opacity 0.15s;
+    border-radius: 0 8px 0 0;
+  }
+  .export-triangle:hover { opacity: 1; }
+  .export-triangle .arrow {
+    position: absolute; top: -32px; right: 2px;
+    color: #1a1a2e; font-size: 14px;
+    pointer-events: none;
+  }
+  .export-flyout {
+    position: absolute; top: 40px; right: 4px; z-index: 50;
+    background: #1a1a2e; border: 1px solid rgba(79,195,247,0.3);
+    border-radius: 8px; padding: 12px 16px; min-width: 200px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  }
+  .export-flyout label { display: block; color: #ccc; font-size: 12px; cursor: pointer; padding: 4px 0; }
+  .export-flyout label:hover { color: #4fc3f7; }
+  .export-flyout input[type=radio] { margin-right: 6px; }
+  .export-flyout .ef-row { display: flex; gap: 6px; margin-top: 10px; }
+  .export-flyout .ef-btn {
+    flex: 1; padding: 6px 12px; border-radius: 4px; cursor: pointer;
+    font-size: 12px; font-weight: 600; border: 1px solid;
+  }
 
   /* Open tabs tracker */
   .tabs-panel {
@@ -170,18 +201,18 @@
 
       <!-- Drop target — this is the only clickable part -->
       <div style="border:2px dashed rgba(79,195,247,0.2);border-radius:10px;padding:20px;margin:0 auto;max-width:380px;transition:border-color 0.15s">
-        <div style="color:#4fc3f7;font-size:14px;font-weight:600;letter-spacing:0.3px">Drop IFC here</div>
+        <div style="color:#4fc3f7;font-size:14px;font-weight:600;letter-spacing:0.3px">Drop IFC or 3D file here</div>
         <div style="color:#444;font-size:11px;margin-top:4px">or tap to browse</div>
       </div>
       <div id="import-status" style="color:#aaa;font-size:12px;margin-top:10px"></div>
       <div style="display:none;margin-top:8px;height:4px;background:#222;border-radius:2px;overflow:hidden;max-width:400px;margin-left:auto;margin-right:auto">
         <div id="import-progress-bar" style="height:100%;width:0%;background:#4fc3f7;border-radius:2px;transition:width 0.3s"></div>
       </div>
-      <input type="file" id="import-file-input" accept=".ifc" style="display:none">
+      <input type="file" id="import-file-input" accept=".ifc,.dae,.obj,.glb,.gltf,.3ds,.fbx,.stl" style="display:none">
 
       <!-- Footer — quiet -->
       <div style="margin-top:16px;color:#444;font-size:10px;letter-spacing:0.3px">
-        <a href="https://red1oon.github.io/BIMCompiler/BIM_Designer_Browser/" target="_blank" onclick="event.stopPropagation()" style="color:#4fc3f7;text-decoration:none">Theory 👁️</a>
+        <a href="https://red1oon.github.io/BIMCompiler/StrategicIndustryPositioning/" target="_blank" onclick="event.stopPropagation()" style="color:#4fc3f7;text-decoration:none">Theory 👁️</a>
         &middot; <a href="https://youtu.be/hv0kcc_TKvY" target="_blank" onclick="event.stopPropagation()" style="color:#4fc3f7;text-decoration:none">Practical 👌</a>
       </div>
     </div>
@@ -244,7 +275,7 @@
 </div>
 
 <div class="footer">
-  <a href="https://red1oon.github.io/BIMCompiler/BIM_Designer_Browser/" target="_blank">Documentation</a>
+  <a href="https://red1oon.github.io/BIMCompiler/StrategicIndustryPositioning/" target="_blank">Documentation</a>
   &nbsp;&middot;&nbsp;
   <a href="https://github.com/red1oon/BIMCompiler" target="_blank">GitHub</a>
   &nbsp;&middot;&nbsp;
@@ -256,7 +287,7 @@
     <span style="color:#4fc3f7">Building data</span> — cached in your browser's internal storage (IndexedDB) so buildings load instantly on repeat visits. Nothing is installed. No files on your desktop or downloads folder.<br>
     <span style="color:#4fc3f7">Progress</span> — which buildings you've explored is saved in your browser (localStorage). Survives tab close.<br>
     <span style="color:#4fc3f7">To start fresh</span> — <a href="#" onclick="clearAllCache(); return false" style="color:#cc4444">Clear all cached data</a> — removes everything, back to zero. Or just clear your browser data for this site.<br><br>
-    <span style="color:#888">This is an experimental project. Learn more at <a href="https://red1oon.github.io/BIMCompiler/BIM_Designer_Browser/" target="_blank" style="color:#4fc3f7">BIM Designer Browser</a></span>
+    <span style="color:#888">This is an experimental project. Learn more at <a href="https://red1oon.github.io/BIMCompiler/StrategicIndustryPositioning/" target="_blank" style="color:#4fc3f7">BIM Designer Browser</a></span>
   </div>
   <div style="margin-top:16px;padding:12px 16px;background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.2);border-radius:8px;max-width:600px;margin-left:auto;margin-right:auto;text-align:left;line-height:1.8;font-size:11px">
     <b style="color:#4fc3f7">Full Database Downloads</b> (~1GB total — all 30 buildings)<br>
@@ -264,7 +295,7 @@
     <a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/component_library.db" style="color:#4fc3f7" download>component_library.db</a> (456MB) — all geometry BLOBs<br>
     <span style="color:#666">~3-5 min on broadband. Download both, put in same folder, then:<br>
     <code style="color:#4fc3f7">python3 -m http.server 8080</code> → open <code style="color:#ccc">localhost:8080/rtree_browser_demo.html</code><br>
-    <a href="https://red1oon.github.io/BIMCompiler/BIM_Designer_Browser/#61-local-setup-3-steps" target="_blank" style="color:#4fc3f7">Full guide §6.1</a></span>
+    <a href="https://red1oon.github.io/BIMCompiler/StrategicIndustryPositioning/#61-local-setup-3-steps" target="_blank" style="color:#4fc3f7">Full guide §6.1</a></span>
   </div>
   <div style="margin-top:20px;color:#555;font-size:11px">
     Created by <a href="mailto:red1org@gmail.com" style="color:#4fc3f7;text-decoration:none">Redhuan D. OON</a> (red1) — October 2025
@@ -277,6 +308,7 @@
 </div>
 
 <script src="sandbox/import_db_builder.js"></script>
+<!-- wizard.js now loads in viewer via ?wizard=1 param (S230) -->
 <script>
 // ── Config ──
 const _ociMatch = location.href.match(/(https:\/\/objectstorage\.[^/]+\/n\/[^/]+\/b\/[^/]+\/o\/)/);
@@ -664,7 +696,8 @@ async function deleteProject(key) {
 }
 
 // Open latest version of a project in viewer
-async function openProject(key, btnEl) {
+// opts: { wizard: true } to launch classification wizard in viewer
+async function openProject(key, btnEl, opts) {
   if (btnEl) { btnEl.textContent = 'Opening...'; btnEl.disabled = true; }
   const record = await getProject(key);
   if (!record || !record.versions.length) {
@@ -701,8 +734,15 @@ async function openProject(key, btnEl) {
     console.log('[S225] §OPEN_DIFF key=' + key + ' base=v0 diff=v' + record.latestVersion);
   }
 
+  // S230: Add wizard param for mesh imports (S230b: skip if already completed)
+  var wizardParam = '';
+  var isMesh = record.meta && record.meta.sourceFormat && record.meta.sourceFormat !== '.ifc';
+  var wizardDone = record.meta && record.meta.wizard_complete;
+  if (((opts && opts.wizard) || isMesh) && !wizardDone) {
+    wizardParam = '&wizard=1&wizardKey=' + encodeURIComponent(key);
+  }
   const viewerUrl = (_base || '') + 'sandbox/index.html?db=' +
-    encodeURIComponent(dbUrl) + '&lib=' + encodeURIComponent(libUrl) + diffParam;
+    encodeURIComponent(dbUrl) + '&lib=' + encodeURIComponent(libUrl) + diffParam + wizardParam;
   const win = window.open(viewerUrl, '_blank');
   trackTab(record.meta.name || key, '3D', win);
   if (btnEl) { btnEl.textContent = 'Open'; btnEl.disabled = false; }
@@ -859,9 +899,9 @@ async function renderImportCards() {
     var vCount = proj.versions.length;
     var vBadge = vCount > 1 ? '<span style="color:#cccc44;font-size:10px;margin-left:4px">v' + vCount + '</span>' : '';
 
-    // Build button row — Open shows diff automatically if multi-version
+    // Build button row — S230b: Save opens export flyout (IFC or DB), triangle removed
     var buttons = '<button class="open-btn" style="flex:1" data-open="' + proj.key + '">Open</button>';
-    buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(68,204,68,0.1);border-color:rgba(68,204,68,0.2);color:#44cc44;font-size:10px" data-export="' + proj.key + '">Save</button>';
+    buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(68,204,68,0.1);border-color:rgba(68,204,68,0.2);color:#44cc44;font-size:10px" data-save="' + proj.key + '">Save</button>';
     buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + proj.key + '">x</button>';
 
     card.innerHTML =
@@ -871,7 +911,7 @@ async function renderImportCards() {
       '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">' + buttons + '</div>';
 
     card.querySelector('[data-open]').onclick = function() { openProject(this.dataset.open, this); };
-    card.querySelector('[data-export]').onclick = function(e) { e.stopPropagation(); exportProjectDb(this.dataset.export); };
+    card.querySelector('[data-save]').onclick = function(e) { e.stopPropagation(); showExportFlyout(this, this.dataset.save); };
     card.querySelector('[data-del]').onclick = function(e) {
       e.stopPropagation();
       var k = this.dataset.del;
@@ -883,10 +923,19 @@ async function renderImportCards() {
   }
 }
 
+// S228: Format detection for multi-format drop zone
+var LANDING_FORMAT_ROUTES = { ifc:'ifc', dae:'mesh', obj:'mesh', glb:'mesh', gltf:'mesh', '3ds':'mesh', fbx:'mesh', stl:'mesh' };
+function detectLandingFormat(filename) {
+  var ext = filename.split('.').pop().toLowerCase();
+  return { ext: ext, route: LANDING_FORMAT_ROUTES[ext] || null };
+}
+
 // ── Import handler (with Merge/New prompt) ──
 async function handleImportFile(file) {
-  if (!file || !/\.ifc$/i.test(file.name)) {
-    document.getElementById('import-status').textContent = 'Please select an .ifc file';
+  if (!file) return;
+  var fmt = detectLandingFormat(file.name);
+  if (!fmt.route) {
+    document.getElementById('import-status').textContent = 'Unsupported: .' + fmt.ext + ' — Accepted: IFC, OBJ, DAE, GLB, STL, FBX, 3DS';
     return;
   }
   const status = document.getElementById('import-status');
@@ -900,7 +949,10 @@ async function handleImportFile(file) {
   if (file.size > 200 * 1024 * 1024) status.textContent = 'Very large (' + sizeMB + 'MB) — may take a few minutes';
 
   const arrayBuffer = await file.arrayBuffer();
-  const worker = new Worker('sandbox/import_worker.js?v=7');
+  // S228: Route to IFC or mesh worker based on format
+  var workerFile = (fmt.route === 'ifc') ? 'sandbox/import_worker.js?v=7' : 'dev/mesh_import_worker.js?v=2';
+  var workerMsg = (fmt.route === 'ifc') ? { arrayBuffer, filename: file.name } : { arrayBuffer, filename: file.name, ext: fmt.ext };
+  const worker = new Worker(workerFile);
 
   worker.onmessage = async function(e) {
     const msg = e.data;
@@ -976,7 +1028,7 @@ async function handleImportFile(file) {
         await saveProject(projectKey, newRecord);
         console.log('[S224] §IMPORT_SAVED key=' + projectKey + ' elements=' + msg.meta.elementCount);
 
-        status.textContent = 'Imported ' + msg.meta.elementCount + ' elements — see your building below ↓';
+        status.textContent = 'Imported ' + msg.meta.elementCount + ' elements — see your building below \u2193';
         progressBar.style.width = '100%';
         progressBar.style.background = '#44cc44';
         setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#4fc3f7'; progressBar.parentElement.style.display = 'none'; }, 3000);
@@ -997,7 +1049,7 @@ async function handleImportFile(file) {
     worker.terminate();
   };
 
-  worker.postMessage({ arrayBuffer, filename: file.name }, [arrayBuffer]);
+  worker.postMessage(workerMsg, [arrayBuffer]);
 }
 
 // Wire drop zone
@@ -1013,6 +1065,172 @@ if (fileInput) fileInput.addEventListener('change', () => { handleImportFile(fil
 
 // Render existing imports
 renderImportCards();
+
+// ── S229: IFC Export — DB → .ifc download ──
+function showExportFlyout(triggerEl, projectKey) {
+  // Close any existing flyout
+  var old = document.querySelector('.export-flyout');
+  if (old) { old.remove(); return; }
+
+  var card = triggerEl.closest('.card');
+  var flyout = document.createElement('div');
+  flyout.className = 'export-flyout';
+  flyout.innerHTML =
+    '<div style="color:#4fc3f7;font-size:11px;font-weight:600;margin-bottom:8px">Export as:</div>' +
+    '<label><input type="radio" name="ef" value="ifc" checked> IFC (.ifc)</label>' +
+    '<label><input type="radio" name="ef" value="db"> SQLite (.db)</label>' +
+    '<div class="ef-row">' +
+      '<button class="ef-btn" style="background:rgba(79,195,247,0.15);border-color:rgba(79,195,247,0.3);color:#4fc3f7" data-go>Download</button>' +
+      '<button class="ef-btn" style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);color:#888" data-cancel>Cancel</button>' +
+    '</div>' +
+    '<div class="ef-status" style="color:#aaa;font-size:10px;margin-top:6px"></div>';
+
+  card.appendChild(flyout);
+
+  flyout.querySelector('[data-cancel]').onclick = function(e) { e.stopPropagation(); flyout.remove(); };
+  flyout.querySelector('[data-go]').onclick = function(e) {
+    e.stopPropagation();
+    var format = flyout.querySelector('input[name=ef]:checked').value;
+    if (format === 'db') {
+      flyout.remove();
+      exportProjectDb(projectKey);
+    } else {
+      exportProjectIFC(projectKey, flyout);
+    }
+  };
+  flyout.onclick = function(e) { e.stopPropagation(); };
+
+  // Close on outside click
+  setTimeout(function() {
+    document.addEventListener('click', function closer() {
+      flyout.remove();
+      document.removeEventListener('click', closer);
+    }, { once: true });
+  }, 0);
+}
+
+async function exportProjectIFC(projectKey, flyout) {
+  var statusEl = flyout.querySelector('.ef-status');
+  var goBtn = flyout.querySelector('[data-go]');
+  goBtn.disabled = true;
+  goBtn.textContent = 'Exporting...';
+  statusEl.textContent = 'Reading database...';
+
+  var record = await getProject(projectKey);
+  if (!record || !record.versions.length) {
+    statusEl.textContent = 'No data found';
+    goBtn.disabled = false; goBtn.textContent = 'Download';
+    return;
+  }
+
+  // Load sql.js if needed
+  if (typeof initSqlJs === 'undefined') {
+    await new Promise(function(resolve) {
+      var s = document.createElement('script');
+      s.src = 'https://sql.js.org/dist/sql-wasm.js';
+      s.onload = resolve;
+      document.head.appendChild(s);
+    });
+  }
+  var SQL = await initSqlJs({ locateFile: function(f) { return 'https://sql.js.org/dist/' + f; } });
+
+  // Read latest version DB
+  var latest = record.versions[record.latestVersion || 0];
+  var db = new SQL.Database(new Uint8Array(latest.db));
+
+  // Extract all data from DB
+  statusEl.textContent = 'Extracting elements...';
+  var elements = [], transforms = [], geometries = [];
+  var meta = {
+    buildingName: projectKey.replace(/\.(ifc|obj|stl|dae|glb|gltf|3ds|fbx)$/i, ''),
+    projectName: projectKey.replace(/\.(ifc|obj|stl|dae|glb|gltf|3ds|fbx)$/i, ''),
+    elementCount: record.meta.elementCount || 0
+  };
+
+  // Read project_metadata
+  try {
+    var pmRows = db.exec("SELECT key, value FROM project_metadata");
+    if (pmRows.length > 0) {
+      for (var r = 0; r < pmRows[0].values.length; r++) {
+        if (pmRows[0].values[r][0] === 'building_name') meta.buildingName = pmRows[0].values[r][1];
+        if (pmRows[0].values[r][0] === 'project_name') meta.projectName = pmRows[0].values[r][1];
+      }
+    }
+  } catch(e) {}
+
+  // Read elements
+  try {
+    var elRows = db.exec("SELECT guid, ifc_class, element_name, storey, discipline, material_rgba FROM elements_meta");
+    if (elRows.length > 0) {
+      for (var r = 0; r < elRows[0].values.length; r++) {
+        var row = elRows[0].values[r];
+        elements.push({ guid: row[0], ifcClass: row[1], name: row[2], storey: row[3], discipline: row[4], material: row[5] });
+      }
+    }
+  } catch(e) { statusEl.textContent = 'Error reading elements: ' + e.message; return; }
+
+  // Read transforms
+  try {
+    var txRows = db.exec("SELECT guid, center_x, center_y, center_z FROM element_transforms");
+    if (txRows.length > 0) {
+      for (var r = 0; r < txRows[0].values.length; r++) {
+        var row = txRows[0].values[r];
+        transforms.push({ guid: row[0], cx: row[1], cy: row[2], cz: row[3] });
+      }
+    }
+  } catch(e) {}
+
+  // Read geometries (join instances → geometries)
+  try {
+    var geoRows = db.exec("SELECT ei.guid, cg.vertices, cg.faces FROM element_instances ei JOIN component_geometries cg ON ei.geometry_hash = cg.geometry_hash");
+    if (geoRows.length > 0) {
+      for (var r = 0; r < geoRows[0].values.length; r++) {
+        var row = geoRows[0].values[r];
+        geometries.push({ guid: row[0], vertices: row[1], faces: row[2] });
+      }
+    }
+  } catch(e) {}
+
+  db.close();
+
+  statusEl.textContent = 'Building IFC (' + elements.length + ' elements)...';
+
+  // Send to export worker
+  var worker = new Worker('dev/ifc_export_worker.js?v=1');
+  worker.onmessage = function(e) {
+    var msg = e.data;
+    if (msg.type === 'progress') {
+      statusEl.textContent = msg.phase;
+      return;
+    }
+    if (msg.type === 'error') {
+      statusEl.textContent = 'Export failed: ' + msg.message;
+      goBtn.disabled = false; goBtn.textContent = 'Download';
+      worker.terminate();
+      return;
+    }
+    if (msg.type === 'done') {
+      var blob = new Blob([msg.ifcData], { type: 'application/octet-stream' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = meta.buildingName + '.ifc';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      statusEl.textContent = 'Downloaded ' + meta.buildingName + '.ifc (' + (msg.ifcData.byteLength / 1024).toFixed(0) + ' KB)';
+      goBtn.textContent = 'Done';
+      console.log('[S229] §EXPORT_IFC key=' + projectKey + ' size=' + (msg.ifcData.byteLength / 1024).toFixed(0) + 'KB elements=' + elements.length);
+      worker.terminate();
+      setTimeout(function() { flyout.remove(); }, 2000);
+    }
+  };
+  worker.onerror = function(err) {
+    statusEl.textContent = 'Worker error: ' + err.message;
+    goBtn.disabled = false; goBtn.textContent = 'Download';
+    worker.terminate();
+  };
+
+  worker.postMessage({ elements: elements, transforms: transforms, geometries: geometries, meta: meta });
+}
 </script>
 <script>if(new URLSearchParams(location.search).has('ignore-me'))localStorage.setItem('goatcounter-ignore','t')</script>
 <script data-goatcounter="https://red1oon.goatcounter.com/count"

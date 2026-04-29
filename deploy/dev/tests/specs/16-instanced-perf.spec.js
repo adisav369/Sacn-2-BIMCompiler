@@ -63,8 +63,9 @@ async function benchBuilding(page, bld) {
 }
 
 test.describe('S231 InstancedMesh Performance', () => {
+  test.setTimeout(180000);  // 3min per perf test — large DB streaming
 
-  test('16.1 Hospital — baseline (23K elements)', async ({ page }) => {
+  test('16.1 Hospital — baseline (23K elements) @bench', async ({ page }) => {
     const r = await benchBuilding(page, {
       name: 'Hospital', db: '/buildings/Hospital_extracted.db',
       lib: '/buildings/Hospital_library.db', minEl: 20000,
@@ -72,7 +73,7 @@ test.describe('S231 InstancedMesh Performance', () => {
     expect(r.tStream).toBeLessThan(60000);
   });
 
-  test('16.2 Terminal — 48K elements (instancing target)', async ({ page }) => {
+  test('16.2 Terminal — 48K elements (instancing target) @bench', async ({ page }) => {
     const r = await benchBuilding(page, {
       name: 'Terminal', db: '/buildings/Terminal_extracted.db',
       lib: '/buildings/Terminal_library.db', minEl: 40000,
@@ -84,7 +85,7 @@ test.describe('S231 InstancedMesh Performance', () => {
     }
   });
 
-  test('16.3 LTU AHouse — 126K elements (scale test)', async ({ page }) => {
+  test('16.3 LTU AHouse — 126K elements (scale test) @bench', async ({ page }) => {
     const r = await benchBuilding(page, {
       name: 'LTU_AHouse', db: '/buildings/LTU_AHouse_extracted.db',
       lib: '/buildings/LTU_AHouse_library.db', minEl: 100000,

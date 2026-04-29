@@ -492,12 +492,12 @@ Schema reference: [`DATA_MODEL.md`](DATA_MODEL.md).
 ### Step 6 — Compilation and delta verification
 
 The same `run_RosettaStones.sh` invocation continues after BOM creation.
-Compilation runs the **12-stage pipeline** ([`BOMBasedCompilation.md` §5](BOMBasedCompilation.md)):
+Compilation runs the **11-stage pipeline** ([`BOMBasedCompilation.md` §5](BOMBasedCompilation.md)):
 
 | Step | Code | What it does |
 |------|------|--------------|
 | Prepare compile DB | [`run_RosettaStones.sh`](https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh) | Copies `*_BOM.db` → temp `_XX_compile.db` |
-| Compile (12 stages) | [`CompilationPipeline.java`](https://github.com/red1oon/BIMCompiler/blob/master/DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java) | Metadata → Compile → Write → Route → Verb → Digest → Geometry → Prove (+ 4 internal stages) |
+| Compile (11 stages) | [`CompilationPipeline.java`](https://github.com/red1oon/BIMCompiler/blob/master/DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java) | Metadata → Compile → Write → Route → Verb → Digest → Geometry → Prove (+ 4 internal stages) |
 | Contracts | [`RosettaStoneGateTest.java`](https://github.com/red1oon/BIMCompiler/blob/master/DAGCompiler/src/test/java/com/bim/compiler/contract/RosettaStoneGateTest.java) | G1-G6 gate tests |
 | Rule 8 | [`run_RosettaStones.sh`](https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh) | All `M_BOM_Line` offsets within parent AABB envelope |
 | Clash check | [`run_RosettaStones.sh`](https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh) | 0 furniture AABB overlaps |

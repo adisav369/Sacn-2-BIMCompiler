@@ -1,209 +1,275 @@
 -- ════════════════════════════════════════════════════════
 -- TE: Airport Terminal (Terminal)
 -- Source: DAGCompiler/lib/output/terminal.db
--- Generated: 2026-04-03 16:26
+-- Generated: 2026-04-27 03:17
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
 -- Use: identify typical element sizes for validation rules
 
--- ifc_class                   storey        cnt    avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
--- --------------------------  ------------  -----  --------  --------  --------  --------  --------
--- IfcPlate                    Roof          33324  496.0     150.0     106.0     193.0     500.0   
--- IfcPipeFitting              Ground Floor  968    56.0      56.0      53.0      6.0       223.0   
--- IfcPipeSegment              Ground Floor  879    481.0     235.0     223.0     3.0       14869.0 
--- IfcPipeFitting              Roof          791    56.0      50.0      50.0      7.0       222.0   
--- IfcPipeFitting              Level 4       747    72.0      66.0      69.0      7.0       291.0   
--- IfcPipeSegment              Roof          677    799.0     249.0     254.0     7.0       6782.0  
--- IfcPipeFitting              Level 2       652    65.0      55.0      54.0      6.0       292.0   
--- IfcPipeFitting              Level 1       633    73.0      66.0      64.0      7.0       271.0   
--- IfcPipeSegment              Level 2       599    865.0     146.0     260.0     4.0       11858.0 
--- IfcPipeSegment              Level 1       581    950.0     249.0     190.0     21.0      15561.0 
--- IfcPipeSegment              Level 4       534    1585.0    544.0     145.0     16.0      55618.0 
--- IfcSlab                     Foundation    413    1910.0    1502.0    17371.0   300.0     9000.0  
--- IfcPipeSegment              Level 3       406    142.0     218.0     189.0     19.0      19686.0 
--- IfcPipeFitting              Level 3       348    53.0      60.0      45.0      6.0       242.0   
--- IfcBuildingElementProxy     Ground Floor  232    469.0     405.0     518.0     8.0       6508.0  
--- IfcLightFixture             Ground Floor  230    612.0     481.0     100.0     54.0      1244.0  
--- IfcDuctFitting              Level 4       225    307.0     292.0     219.0     50.0      1600.0  
--- IfcFireSuppressionTerminal  Level 3       215    38.0      28.0      68.0      32.0      700.0   
--- IfcFireSuppressionTerminal  Roof          210    35.0      27.0      63.0      32.0      700.0   
--- IfcDuctFitting              Level 2       200    324.0     304.0     236.0     50.0      1800.0  
--- IfcMember                   Level 4       187    2443.0    204.0     2191.0    50.0      27450.0 
--- IfcFireSuppressionTerminal  Level 2       176    39.0      29.0      70.0      32.0      700.0   
--- IfcFurniture                Ground Floor  176    1869.0    1343.0    754.0     598.0     2957.0  
--- IfcFireSuppressionTerminal  Level 1       172    32.0      27.0      58.0      32.0      32.0    
--- IfcLightFixture             Level 2       172    591.0     840.0     89.0      54.0      1244.0  
--- IfcDuctSegment              Level 4       170    890.0     1172.0    429.0     95.0      4090.0  
--- IfcLightFixture             Level 3       153    492.0     983.0     90.0      54.0      1220.0  
--- IfcBeam                     Level 4       146    3022.0    3307.0    746.0     38.0      11750.0 
--- IfcDuctSegment              Level 2       145    934.0     1349.0    608.0     133.0     4022.0  
--- IfcPipeSegment              Foundation    145    1482.0    2755.0    120.0     33.0      24467.0 
--- IfcMember                   Roof          141    3431.0    143.0     4142.0    50.0      31888.0 
--- IfcFlowTerminal             Ground Floor  140    409.0     430.0     543.0     25.0      3504.0  
--- IfcBeam                     Level 3       126    3386.0    2602.0    690.0     300.0     11450.0 
--- IfcFireSuppressionTerminal  Ground Floor  125    53.0      32.0      93.0      32.0      700.0   
--- IfcBeam                     Level 1       119    3493.0    2626.0    674.0     300.0     11450.0 
--- IfcWall                     Ground Floor  118    2525.0    2830.0    5678.0    150.0     35650.0 
--- IfcDuctFitting              Level 1       116    736.0     462.0     440.0     60.0      2250.0  
--- IfcLightFixture             Level 1       115    1019.0    518.0     93.0      419.0     1244.0  
--- IfcBuildingElementProxy     Level 2       109    858.0     1798.0    778.0     46.0      13800.0 
--- IfcDuctFitting              Ground Floor  106    342.0     263.0     263.0     60.0      1188.0  
--- IfcDuctSegment              Level 1       104    1175.0    1804.0    472.0     200.0     6658.0  
--- IfcPipeFitting              Foundation    104    126.0     145.0     127.0     13.0      234.0   
--- IfcWall                     Level 2       96     3747.0    2892.0    8069.0    150.0     59925.0 
--- IfcWindow                   Level 2       93     917.0     557.0     3246.0    150.0     1390.0  
--- IfcAirTerminal              Level 2       92     608.0     595.0     120.0     25.0      1276.0  
--- IfcSlab                     Level 3       89     5168.0    3761.0    156.0     859.0     28933.0 
--- IfcDuctSegment              Ground Floor  87     791.0     1239.0    535.0     150.0     7775.0  
--- IfcColumn                   Level 2       82     675.0     649.0     11770.0   450.0     750.0   
--- IfcBuildingElementProxy     Level 3       81     138.0     154.0     161.0     46.0      2197.0  
--- IfcLightFixture             Level 4       81     398.0     344.0     535.0     54.0      1260.0  
--- IfcValve                    Ground Floor  79     120.0     126.0     236.0     50.0      403.0   
--- IfcSlab                     Level 1       73     4917.0    3088.0    190.0     1410.0    8420.0  
--- IfcAirTerminal              Level 4       72     600.0     600.0     102.0     600.0     600.0   
--- IfcWindow                   Ground Floor  64     744.0     972.0     2491.0    135.0     2500.0  
--- IfcDoor                     Ground Floor  63     628.0     749.0     2259.0    147.0     1850.0  
--- IfcLightFixture             Roof          63     675.0     611.0     117.0     54.0      1260.0  
--- IfcWindow                   Level 3       58     637.0     856.0     2879.0    150.0     1312.0  
--- IfcSlab                     Level 4       57     3640.0    3895.0    177.0     1410.0    24198.0 
--- IfcAirTerminal              Level 1       56     488.0     1340.0    167.0     145.0     1840.0  
--- IfcWall                     Level 3       56     2941.0    2651.0    4392.0    150.0     20990.0 
--- IfcWall                     Roof          53     3035.0    2283.0    4569.0    150.0     19775.0 
--- IfcFlowTerminal             Level 3       51     485.0     368.0     493.0     25.0      2723.0  
--- IfcFlowTerminal             Level 2       44     396.0     362.0     438.0     50.0      2747.0  
--- IfcSlab                     Ground Floor  43     6172.0    8432.0    81.0      1860.0    31355.0 
--- IfcAlarm                    Ground Floor  41     128.0     132.0     142.0     28.0      300.0   
--- IfcCovering                 Ground Floor  38     3762.0    5041.0    16.0      628.0     10400.0 
--- IfcDuctFitting              Level 3       38     507.0     426.0     353.0     88.0      1800.0  
--- IfcMember                   Ground Floor  35     605.0     1780.0    1279.0    50.0      4030.0  
--- IfcMember                   Level 2       34     622.0     1832.0    1250.0    50.0      4005.0  
--- IfcDuctSegment              Roof          32     1053.0    900.0     380.0     200.0     8320.0  
--- IfcMember                   Level 1       32     658.0     1927.0    1291.0    50.0      4005.0  
--- IfcColumn                   Ground Floor  31     552.0     482.0     8000.0    450.0     750.0   
--- IfcAirTerminal              Ground Floor  30     350.0     294.0     100.0     190.0     650.0   
--- IfcColumn                   Level 3       30     545.0     459.0     3875.0    450.0     600.0   
--- IfcDuctSegment              Level 3       30     1860.0    2282.0    495.0     250.0     5918.0  
--- IfcDoor                     Level 2       29     440.0     763.0     2142.0    147.0     1050.0  
--- IfcDuctFitting              Roof          28     369.0     395.0     298.0     108.0     975.0   
--- IfcBuildingElementProxy     Level 4       27     696.0     2063.0    554.0     50.0      5276.0  
--- IfcDoor                     Level 3       27     481.0     789.0     2134.0    147.0     1780.0  
--- IfcAirTerminal              Level 3       26     477.0     452.0     117.0     300.0     690.0   
--- IfcSlab                     Level 2       24     7544.0    5567.0    288.0     859.0     31360.0 
--- IfcBeam                     Roof          21     2757.0    2441.0    631.0     300.0     5675.0  
--- IfcBeam                     Foundation    20     18755.0   22471.0   750.0     800.0     60000.0 
--- IfcBuildingElementProxy     Level 1       20     3232.0    1910.0    1028.0    300.0     5681.0  
--- IfcFlowTerminal             Foundation    18     608.0     725.0     723.0     380.0     993.0   
--- IfcBuildingElementProxy     Roof          17     1011.0    722.0     734.0     46.0      7692.0  
--- IfcCovering                 Level 2       16     5254.0    4466.0    16.0      849.0     31350.0 
--- IfcCovering                 Level 3       16     6182.0    6241.0    16.0      839.0     28928.0 
--- IfcAlarm                    Level 2       14     141.0     117.0     188.0     28.0      200.0   
--- IfcAirTerminal              Roof          13     600.0     600.0     102.0     600.0     600.0   
--- IfcMember                   Level 3       13     817.0     1661.0    1217.0    50.0      4030.0  
--- IfcWindow                   Level 1       12     1312.0    223.0     3624.0    1312.0    1312.0  
--- IfcFireSuppressionTerminal  Level 4       11     93.0      43.0      158.0     32.0      700.0   
--- IfcRailing                  Level 1       11     1412.0    2518.0    3523.0    50.0      3894.0  
--- IfcValve                    Level 4       11     288.0     198.0     295.0     210.0     380.0   
--- IfcAlarm                    Level 3       10     162.0     93.0      217.0     86.0      200.0   
--- IfcRailing                  Level 2       10     2204.0    3064.0    4167.0    1025.0    3904.0  
--- IfcDoor                     Level 4       9      446.0     917.0     2207.0    147.0     1750.0  
--- IfcElectricAppliance        Level 3       9      70.0      65.0      87.0      48.0      87.0    
--- IfcWall                     Level 4       9      4334.0    5263.0    7696.0    150.0     10698.0 
--- IfcAlarm                    Level 1       8      170.0     170.0     75.0      170.0     170.0   
--- IfcColumn                   Roof          8      750.0     750.0     4714.0    750.0     750.0   
--- IfcElectricAppliance        Level 2       8      63.0      72.0      87.0      48.0      87.0    
--- IfcStairFlight              Ground Floor  8      1424.0    3038.0    2098.0    1402.0    1502.0  
--- IfcStairFlight              Level 1       8      1437.0    3038.0    1955.0    1402.0    1502.0  
--- IfcStairFlight              Level 2       8      1418.0    3038.0    1975.0    1352.0    1502.0  
--- IfcWindow                   Roof          8      1847.0    675.0     2344.0    200.0     7075.0  
--- IfcCovering                 Roof          7      6108.0    6257.0    16.0      3296.0    8850.0  
--- IfcDoor                     Roof          7      296.0     902.0     2138.0    147.0     900.0   
--- IfcFlowController           Ground Floor  7      78.0      74.0      90.0      50.0      118.0   
--- IfcValve                    Level 3       7      59.0      79.0      73.0      51.0      98.0    
--- IfcController               Ground Floor  6      169.0     426.0     695.0     169.0     169.0   
--- IfcSlab                     Roof          6      6483.0    4083.0    37.0      1450.0    15555.0 
--- IfcFlowController           Roof          5      98.0      87.0      194.0     98.0      98.0    
--- IfcRailing                  Ground Floor  5      2223.0    3675.0    5156.0    1101.0    3929.0  
--- IfcValve                    Roof          5      238.0     169.0     202.0     110.0     380.0   
--- IfcAlarm                    Roof          4      149.0     64.0      195.0     86.0      200.0   
--- IfcColumn                   Level 4       4      750.0     750.0     10573.0   750.0     750.0   
--- IfcCovering                 Level 4       4      5072.0    3333.0    16.0      3296.0    5975.0  
--- IfcFlowController           Level 4       4      82.0      91.0      177.0     75.0      87.0    
--- IfcRailing                  Level 3       4      3470.0    4113.0    4940.0    1051.0    5100.0  
--- IfcRailing                  Roof          4      3472.0    4088.0    4940.0    1101.0    5050.0  
--- IfcStairFlight              Level 4       4      2006.0    2772.0    1975.0    1363.0    3613.0  
--- IfcValve                    Level 2       4      94.0      124.0     152.0     55.0      210.0   
--- IfcAlarm                    Level 4       3      152.0     100.0     182.0     86.0      200.0   
--- IfcColumn                   Level 1       3      750.0     750.0     12000.0   750.0     750.0   
--- IfcFlowController           Level 3       3      158.0     111.0     90.0      84.0      194.0   
--- IfcValve                    Foundation    3      159.0     114.0     206.0     51.0      216.0   
--- IfcElectricAppliance        Ground Floor  2      87.0      48.0      87.0      87.0      87.0    
--- IfcFlowTerminal             Roof          2      208.0     145.0     605.0     150.0     267.0   
--- IfcRoof                     Level 1       2      5714.0    16000.0   828.0     5684.0    5744.0  
--- IfcStairFlight              Level 3       2      1414.0    3325.0    1950.0    1350.0    1479.0  
--- IfcStairFlight              Roof          2      2531.0    2219.0    2000.0    1450.0    3613.0  
--- IfcValve                    Level 1       2      145.0     175.0     298.0     80.0      210.0   
+-- ifc_class                   storey                                    cnt    avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
+-- --------------------------  ----------------------------------------  -----  --------  --------  --------  --------  --------
+-- IfcPlate                    Roof                                      33324  496.0     150.0     106.0     193.0     500.0   
+-- IfcPipeFitting              Aras Tanah                                1265   64.0      62.0      58.0      6.0       354.0   
+-- IfcPipeSegment              Aras Tanah                                1168   873.0     510.0     237.0     3.0       24467.0 
+-- IfcPipeFitting              Aras 02                                   875    67.0      61.0      60.0      7.0       292.0   
+-- IfcPipeSegment              Aras 02                                   759    1014.0    320.0     125.0     4.0       55618.0 
+-- IfcPipeFitting              Aras 03                                   684    57.0      50.0      51.0      7.0       222.0   
+-- IfcPipeFitting              Aras 01                                   673    71.0      65.0      61.0      7.0       271.0   
+-- IfcPipeSegment              Aras 01                                   600    853.0     232.0     138.0     21.0      19686.0 
+-- IfcPipeSegment              Aras 03                                   587    904.0     262.0     241.0     16.0      26630.0 
+-- IfcSlab                     GROUND FLOOR LEVEL                        420    1956.0    1562.0    17087.0   300.0     9000.0  
+-- IfcMember                   Roof                                      408    2474.0    507.0     2710.0    50.0      31888.0 
+-- IfcPipeFitting              GROUND FLOOR LEVEL                        348    59.0      59.0      57.0      6.0       223.0   
+-- IfcPipeSegment              GROUND FLOOR LEVEL                        338    336.0     330.0     326.0     10.0      14869.0 
+-- IfcFireSuppressionTerminal  Aras Tanah                                297    41.0      29.0      73.0      32.0      700.0   
+-- IfcDuctFitting              Aras 02                                   267    336.0     312.0     239.0     50.0      1800.0  
+-- IfcFireSuppressionTerminal  Aras 02                                   225    38.0      28.0      68.0      32.0      700.0   
+-- IfcDuctFitting              Aras Tanah                                219    548.0     367.0     358.0     60.0      2250.0  
+-- IfcDuctSegment              Aras 02                                   203    1031.0    1329.0    436.0     95.0      5918.0  
+-- IfcDuctFitting              Aras 01                                   200    324.0     304.0     236.0     50.0      1800.0  
+-- IfcLightFixture             Ceiling Level Kedai                       193    690.0     492.0     85.0      54.0      1244.0  
+-- IfcDuctSegment              Aras Tanah                                191    996.0     1543.0    686.0     150.0     7775.0  
+-- IfcLightFixture             Ceiling Level 02                          178    573.0     832.0     89.0      54.0      1244.0  
+-- IfcFireSuppressionTerminal  Aras 01                                   176    39.0      29.0      70.0      32.0      700.0   
+-- IfcFurniture                Aras Tanah                                176    1869.0    1343.0    754.0     598.0     2957.0  
+-- IfcBuildingElementProxy     Aras Tanah                                161    947.0     834.0     650.0     46.0      13800.0 
+-- IfcLightFixture             Ceiling Level 03                          152    518.0     979.0     91.0      54.0      1244.0  
+-- IfcBeam                     04 THIRD FLOOR LEVEL                      146    3022.0    3307.0    746.0     38.0      11750.0 
+-- IfcWall                     Aras Tanah                                143    2537.0    2759.0    7718.0    150.0     35650.0 
+-- IfcDuctSegment              Aras 01                                   142    948.0     1371.0    357.0     133.0     4021.0  
+-- IfcBeam                     03 SECOND FLOOR LEVEL                     126    3386.0    2602.0    690.0     300.0     11450.0 
+-- IfcFireSuppressionTerminal  Aras 03                                   124    37.0      28.0      67.0      32.0      700.0   
+-- IfcPipeFitting              03 SECOND FLOOR LEVEL                     123    67.0      68.0      62.0      6.0       291.0   
+-- IfcPipeSegment              03 SECOND FLOOR LEVEL                     122    502.0     538.0     258.0     19.0      8992.0  
+-- IfcBeam                     02 FIRST FLOOR LEVEL                      119    3493.0    2626.0    674.0     300.0     11450.0 
+-- IfcLightFixture             Ceiling Level 01                          115    1019.0    518.0     93.0      419.0     1244.0  
+-- IfcWindow                   Aras 01                                   110    899.0     584.0     3347.0    150.0     1390.0  
+-- IfcBuildingElementProxy     Aras 02                                   107    170.0     519.0     174.0     46.0      4130.0  
+-- IfcPipeFitting              Aras 04                                   102    55.0      53.0      57.0      7.0       180.0   
+-- IfcAirTerminal              Aras 02                                   96     567.0     560.0     106.0     300.0     690.0   
+-- IfcAirTerminal              Aras 01                                   93     608.0     595.0     120.0     25.0      1276.0  
+-- IfcFlowTerminal             Aras Tanah                                89     435.0     443.0     554.0     114.0     3504.0  
+-- IfcPipeFitting              04 THIRD FLOOR LEVEL                      86     111.0     111.0     109.0     14.0      223.0   
+-- IfcAirTerminal              Aras Tanah                                85     423.0     986.0     138.0     145.0     1690.0  
+-- IfcPipeSegment              Aras 04                                   83     689.0     227.0     266.0     7.0       4731.0  
+-- IfcPipeSegment              02 FIRST FLOOR LEVEL                      82     616.0     368.0     295.0     17.0      8761.0  
+-- IfcPipeFitting              02 FIRST FLOOR LEVEL                      81     56.0      53.0      49.0      6.0       130.0   
+-- IfcBuildingElementProxy     Aras 01                                   80     366.0     1939.0    959.0     46.0      7124.0  
+-- IfcWindow                   Aras Tanah                                80     844.0     836.0     2739.0    135.0     2500.0  
+-- IfcPipeSegment              04 THIRD FLOOR LEVEL                      77     487.0     361.0     287.0     9.0       9401.0  
+-- IfcSlab                     03 SECOND FLOOR LEVEL                     74     4708.0    3108.0    179.0     1410.0    9000.0  
+-- IfcFireSuppressionTerminal  Aras 04                                   73     41.0      29.0      73.0      32.0      700.0   
+-- IfcLightFixture             Aras 03                                   72     341.0     338.0     586.0     108.0     1260.0  
+-- IfcWall                     Aras 01                                   71     4221.0    3128.0    4597.0    150.0     59925.0 
+-- IfcSlab                     02 FIRST FLOOR LEVEL                      67     5032.0    3227.0    203.0     1410.0    8420.0  
+-- IfcFlowTerminal             GROUND FLOOR LEVEL                        66     418.0     464.0     574.0     25.0      3499.0  
+-- IfcDoor                     Aras Tanah                                63     628.0     749.0     2259.0    147.0     1850.0  
+-- IfcWall                     Aras 02                                   62     3068.0    3151.0    4529.0    150.0     20990.0 
+-- IfcColumn                   GROUND FLOOR LEVEL                        56     750.0     750.0     15878.0   750.0     750.0   
+-- IfcSlab                     04 THIRD FLOOR LEVEL                      53     2994.0    3631.0    188.0     1410.0    6200.0  
+-- IfcAlarm                    Aras Tanah                                49     135.0     138.0     131.0     28.0      300.0   
+-- IfcValve                    Aras Tanah                                47     163.0     159.0     339.0     50.0      403.0   
+-- IfcBuildingElementProxy     Aras Kedai                                45     64.0      71.0      91.0      8.0       92.0    
+-- IfcCovering                 Aras Tanah                                39     4469.0    5930.0    16.0      628.0     31350.0 
+-- IfcWindow                   Aras 02                                   37     519.0     950.0     2279.0    150.0     1250.0  
+-- IfcValve                    GROUND FLOOR LEVEL                        35     74.0      87.0      102.0     51.0      211.0   
+-- IfcMember                   Level 4                                   34     621.0     1742.0    1241.0    50.0      4030.0  
+-- IfcFlowTerminal             Aras 01                                   33     461.0     382.0     395.0     150.0     2747.0  
+-- IfcBuildingElementProxy     Aras Jalan                                32     1635.0    368.0     747.0     171.0     4677.0  
+-- IfcSlab                     Aras Tanah                                32     6787.0    10025.0   38.0      1860.0    31355.0 
+-- IfcColumn                   Aras 01                                   30     545.0     474.0     4000.0    450.0     600.0   
+-- IfcColumn                   Aras 02                                   30     545.0     459.0     3875.0    450.0     600.0   
+-- IfcColumn                   Aras Tanah                                30     545.0     474.0     8000.0    450.0     600.0   
+-- IfcLightFixture             Aras 04                                   30     618.0     505.0     146.0     54.0      1260.0  
+-- IfcDoor                     Aras 01                                   29     440.0     763.0     2142.0    147.0     1050.0  
+-- IfcWall                     Aras 03                                   29     3062.0    2031.0    4001.0    150.0     19775.0 
+-- IfcDoor                     Aras 02                                   27     481.0     789.0     2134.0    147.0     1780.0  
+-- IfcFlowTerminal             Aras 02                                   26     503.0     362.0     456.0     150.0     2723.0  
+-- IfcStairFlight              Roof                                      25     1606.0    2953.0    1979.0    1350.0    3613.0  
+-- IfcLightFixture             Aras Kedai                                24     282.0     327.0     177.0     63.0      600.0   
+-- IfcRailing                  Roof                                      23     2658.0    3822.0    4927.0    1051.0    5100.0  
+-- IfcDuctSegment              Aras 04                                   22     524.0     975.0     439.0     250.0     1257.0  
+-- IfcBuildingElementProxy     Aras 03                                   21     324.0     236.0     370.0     50.0      4034.0  
+-- IfcWall                     Aras 04                                   21     2897.0    2319.0    5848.0    150.0     9585.0  
+-- IfcBeam                     GROUND FLOOR LEVEL                        20     18755.0   22471.0   750.0     800.0     60000.0 
+-- IfcBuildingElementProxy     Aras 04                                   19     255.0     182.0     280.0     46.0      2197.0  
+-- IfcDuctFitting              Aras 04                                   19     411.0     421.0     313.0     108.0     975.0   
+-- IfcLightFixture             Ceiling Level 04                          19     750.0     658.0     90.0      419.0     1244.0  
+-- IfcCovering                 Aras 01                                   18     5193.0    4614.0    16.0      849.0     31350.0 
+-- IfcCovering                 Aras 02                                   18     6099.0    5645.0    16.0      839.0     28928.0 
+-- IfcFlowTerminal             03 SECOND FLOOR LEVEL                     18     438.0     388.0     631.0     50.0      2723.0  
+-- IfcFlowTerminal             02 FIRST FLOOR LEVEL                      17     328.0     323.0     461.0     25.0      2271.0  
+-- IfcSlab                     Aras 01                                   17     6343.0    5319.0    58.0      859.0     31360.0 
+-- IfcSlab                     Roof                                      17     6229.0    3434.0    377.0     1450.0    13950.0 
+-- IfcBuildingElementProxy     Ceiling Level Kedai                       16     1506.0    1228.0    686.0     1506.0    1507.0  
+-- IfcAlarm                    Aras 01                                   15     143.0     121.0     181.0     28.0      200.0   
+-- IfcLightFixture             Aras Bumbung                              15     729.0     725.0     91.0      419.0     1244.0  
+-- IfcFireSuppressionTerminal  Aras Bumbung                              14     32.0      27.0      58.0      32.0      32.0    
+-- IfcLightFixture             Aras Tanah                                13     63.0      600.0     182.0     63.0      63.0    
+-- IfcSlab                     Aras 02                                   13     8162.0    7828.0    39.0      859.0     28933.0 
+-- IfcValve                    04 THIRD FLOOR LEVEL                      12     282.0     199.0     302.0     210.0     380.0   
+-- IfcBeam                     05 FOURTH FLOOR LEVEL (OBSERVATORY DECK)  11     2889.0    2600.0    614.0     300.0     5675.0  
+-- IfcAirTerminal              Aras 03                                   10     600.0     600.0     102.0     600.0     600.0   
+-- IfcAlarm                    Aras 02                                   10     162.0     93.0      217.0     86.0      200.0   
+-- IfcDoor                     Aras 03                                   9      446.0     917.0     2207.0    147.0     1750.0  
+-- IfcElectricAppliance        Aras 02                                   9      70.0      65.0      87.0      48.0      87.0    
+-- IfcElectricAppliance        Aras 01                                   8      63.0      72.0      87.0      48.0      87.0    
+-- IfcWindow                   Aras 04                                   8      1847.0    675.0     2344.0    200.0     7075.0  
+-- IfcDoor                     Aras 04                                   7      296.0     902.0     2138.0    147.0     900.0   
+-- IfcFlowController           Aras Tanah                                7      77.0      71.0      86.0      50.0      118.0   
+-- IfcStairFlight              Level 4                                   7      1427.0    3038.0    2079.0    1402.0    1502.0  
+-- IfcValve                    03 SECOND FLOOR LEVEL                     7      59.0      79.0      73.0      51.0      98.0    
+-- IfcBeam                     06 ROOF LEVEL                             6      2617.0    2650.0    750.0     350.0     5250.0  
+-- IfcController               Aras Tanah                                6      169.0     426.0     695.0     169.0     169.0   
+-- IfcDuctSegment              Aras 03                                   6      1947.0    747.0     225.0     200.0     4443.0  
+-- IfcFlowController           Aras 03                                   5      99.0      87.0      195.0     99.0      99.0    
+-- IfcRailing                  Level 4                                   5      2223.0    3675.0    5156.0    1101.0    3929.0  
+-- IfcAirTerminal              Aras 04                                   4      600.0     600.0     102.0     600.0     600.0   
+-- IfcBeam                     07 BEAM LEVEL (OBSERVATORY)               4      2605.0    1691.0    500.0     2020.0    3204.0  
+-- IfcColumn                   03 SECOND FLOOR LEVEL                     4      750.0     750.0     10573.0   750.0     750.0   
+-- IfcColumn                   05 FOURTH FLOOR LEVEL (OBSERVATORY DECK)  4      750.0     750.0     6000.0    750.0     750.0   
+-- IfcColumn                   06 ROOF LEVEL                             4      750.0     750.0     3427.0    750.0     750.0   
+-- IfcCovering                 Aras 04                                   4      6024.0    5970.0    16.0      3305.0    8850.0  
+-- IfcDuctFitting              Aras 03                                   4      195.0     240.0     225.0     108.0     300.0   
+-- IfcFlowController           04 THIRD FLOOR LEVEL                      4      82.0      92.0      177.0     75.0      87.0    
+-- IfcFlowTerminal             00 Aras Asas                              4      558.0     825.0     541.0     402.0     610.0   
+-- IfcPipeFitting              Ground Lev                                4      93.0      61.0      58.0      51.0      133.0   
+-- IfcPipeSegment              Ground Lev                                4      60.0      60.0      67.0      60.0      60.0    
+-- IfcRailing                  Aras Tanah                                4      538.0     780.0     1100.0    50.0      1025.0  
+-- IfcSlab                     Aras 03                                   4      12199.0   7397.0    30.0      3450.0    24198.0 
+-- IfcSlab                     Level 4                                   4      3876.0    1472.0    50.0      3834.0    3930.0  
+-- IfcValve                    Ground Lev                                4      65.0      84.0      144.0     50.0      80.0    
+-- IfcWall                     Aras Bumbung                              4      3925.0    3385.0    1277.0    150.0     7702.0  
+-- IfcAlarm                    Aras 03                                   3      147.0     64.0      208.0     86.0      200.0   
+-- IfcAlarm                    Aras 04                                   3      147.0     64.0      208.0     86.0      200.0   
+-- IfcBuildingElementProxy     04 THIRD FLOOR LEVEL                      3      3770.0    3954.0    2555.0    1777.0    5276.0  
+-- IfcCovering                 Aras 03                                   3      6220.0    6640.0    16.0      3296.0    8850.0  
+-- IfcDuctFitting              Aras Jalan                                3      517.0     357.0     187.0     300.0     950.0   
+-- IfcDuctSegment              Aras Jalan                                3      504.0     552.0     629.0     300.0     900.0   
+-- IfcLightFixture             Aras Jalan                                3      876.0     492.0     210.0     108.0     1260.0  
+-- IfcSlab                     Aras 04                                   3      8200.0    4591.0    30.0      3450.0    15555.0 
+-- IfcValve                    02 FIRST FLOOR LEVEL                      3      55.0      96.0      75.0      55.0      55.0    
+-- IfcWall                     GROUND FLOOR LEVEL                        3      1443.0    2007.0    16000.0   250.0     3830.0  
+-- IfcElectricAppliance        Aras Tanah                                2      87.0      48.0      87.0      87.0      87.0    
+-- IfcFlowController           Aras 01                                   2      195.0     87.0      99.0      195.0     195.0   
+-- IfcPipeFitting              Aras Jalan                                2      150.0     190.0     168.0     142.0     159.0   
+-- IfcRailing                  Aras 01                                   2      1025.0    50.0      1100.0    1025.0    1025.0  
+-- IfcRoof                     Aras Bumbung                              2      5714.0    16000.0   828.0     5684.0    5744.0  
 
 -- §2: Material distribution
 
--- ifc_class                material_name                                                        cnt  
--- -----------------------  -------------------------------------------------------------------  -----
--- IfcPlate                 Metal Deck                                                           33324
--- IfcPipeFitting           <Unnamed>                                                            4243 
--- IfcDuctFitting           <Unnamed>                                                            713  
--- IfcLightFixture          <Unnamed>                                                            420  
--- IfcBeam                  jkrSTm_Concrete - Cast In Place Concrete - C35                       411  
--- IfcSlab                  Concrete - Cast-in-Place Concrete - 45 MPa                           322  
--- IfcMember                Metal - Steel 50-355                                                 312  
--- IfcAirTerminal           <Unnamed>                                                            284  
--- IfcBuildingElementProxy  Default White                                                        165  
--- IfcMember                <Unnamed>                                                            130  
--- IfcFlowTerminal          <Unnamed>                                                            93   
--- IfcColumn                Concrete - Cast-in-Place Concrete                                    68   
--- IfcFurniture             <Unnamed>                                                            62   
--- IfcColumn                jkrAR_wll-f_(ca40)-3 Cat Acrylic Matt Finish                         47   
--- IfcValve                 <Unnamed>                                                            45   
--- IfcLightFixture          White                                                                38   
--- IfcColumn                <Unnamed>                                                            36   
--- IfcSlab                  jkrAR_flr-f_(ls21)-3 Lepaan Simen 20mm tebal                         35   
--- IfcCovering              jkrAR_clg-f_(pv60)-3 600mm x 600mm PVC Laminated Gypsum Board        34   
--- IfcRailing               <Unnamed>                                                            34   
--- IfcBuildingElementProxy  <Unnamed>                                                            32   
--- IfcBuildingElementProxy  Default Panel                                                        32   
--- IfcStairFlight           <Unnamed>                                                            32   
--- IfcFlowTerminal          jkrAR_mt_(cr01) Chrome                                               28   
--- IfcAlarm                 <Unnamed>                                                            23   
--- IfcCovering              jkrAR_clg-f_(cf60)-3 1220 x 1220 x 4.5mm Papan simen gentian         22   
--- IfcSlab                  jkrAR_flr-f_(jhn21)-3 300 x 300 x 8 mm Jubin Homogeneous "non slip"  22   
--- IfcBeam                  Concrete, Cast-in-Place gray                                         20   
--- IfcFlowTerminal          Metal - Steel, Polished                                              18   
--- IfcSlab                  <Unnamed>                                                            16   
--- IfcCovering              jkrAR_clg-f_(pv60)-3 600mm x 1200mm PVC Laminated Gypsum Board(1)    15   
--- IfcCovering              jkrAR_clg-f_(sk)-2 Skim Coat Plastering                              11   
--- IfcSlab                  jkrAR_flr-f_(jsg20)-3 300 x 300 x 6mm tbl Jubin Seramic Gilap        11   
--- IfcValve                 Fiberglass-Watts-ABS                                                 7    
--- IfcWall                  jkrAR_wll-b_(bb40)-3 Dinding Batu bata (AHU)                         6    
--- IfcSlab                  Glass                                                                5    
--- IfcBuildingElementProxy  Default                                                              4    
--- IfcBuildingElementProxy  Galvanized Steel                                                     4    
--- IfcBuildingElementProxy  Stal nierdzewna                                                      4    
--- IfcFlowTerminal          JohnsonSuisse - Fermo-N - Chrome                                     4    
--- IfcFlowTerminal          Metal - Chrome Polished                                              4    
--- IfcFlowTerminal          White                                                                4    
--- IfcWall                  Concrete - Cast-in-Place Concrete - 45 MPa                           3    
--- IfcColumn                jkrAR_flr-f_(jsg20)-3 300 x 300 x 6mm tbl Jubin Seramic Gilap        2    
--- IfcColumn                jkrAR_wll-b_(bb40)-3 Dinding Batu bata (AHU)                         2    
--- IfcColumn                jkrAR_wll-f_(jsg40)-3 300 x 300 x 6mm tbl Jubin Seramic Gilap        2    
--- IfcDoor                  Aluminum                                                             2    
--- IfcFlowTerminal          Metal - Chrome                                                       2    
--- IfcFurniture             Metal Panel                                                          2    
--- IfcRoof                  Glass                                                                2    
--- IfcBeam                  Metal - Steel 50-355                                                 1    
--- IfcBuildingElementProxy  Concrete, Cast In Situ                                               1    
--- IfcFlowTerminal          Steel - Zurn Industries - Stainless - Type 304                       1    
--- IfcRampFlight            <Unnamed>                                                            1    
--- IfcSlab                  Default Floor                                                        1    
--- IfcSlab                  jkrAR_flr-f_(vy20)-3 Vinyl (Anti static Finishing)                   1    
+-- ifc_class                   material_name                                                        cnt  
+-- --------------------------  -------------------------------------------------------------------  -----
+-- IfcPlate                    Metal Deck                                                           33324
+-- IfcPipeFitting              <Unnamed>                                                            4243 
+-- IfcFireSuppressionTerminal  Silver                                                               899  
+-- IfcDuctFitting              <Unnamed>                                                            713  
+-- IfcLightFixture             <Unnamed>                                                            440  
+-- IfcBeam                     jkrSTm_Concrete - Cast In Place Concrete - C35                       411  
+-- IfcSlab                     Concrete - Cast-in-Place Concrete - 45 MPa                           322  
+-- IfcMember                   Metal - Steel 50-355                                                 312  
+-- IfcAirTerminal              <Unnamed>                                                            286  
+-- IfcWall                     Basic Wall:A_Wall_Ext_150mm_BrickPlaster_V1                          261  
+-- IfcWindow                   Aluminum                                                             228  
+-- IfcBuildingElementProxy     <Unnamed>                                                            191  
+-- IfcLightFixture             Linergy - Plastic - Polycarbonate Grey 7035                          179  
+-- IfcBuildingElementProxy     Default White                                                        170  
+-- IfcLightFixture             Steel, Paint Finish, Ivory, Glossy                                   135  
+-- IfcMember                   <Unnamed>                                                            130  
+-- IfcFlowTerminal             <Unnamed>                                                            112  
+-- IfcDoor                     Door Handle                                                          110  
+-- IfcFurniture                Seat Base                                                            108  
+-- IfcColumn                   Concrete - Cast-in-Place Concrete                                    68   
+-- IfcFurniture                <Unnamed>                                                            62   
+-- IfcValve                    <Unnamed>                                                            62   
+-- IfcFlowTerminal             Porcelain - Linen                                                    52   
+-- IfcColumn                   jkrAR_wll-f_(ca40)-3 Cat Acrylic Matt Finish                         47   
+-- IfcValve                    Rastelli Rubinetterie - Metal - Brass - Bronze                       41   
+-- IfcAlarm                    <Unnamed>                                                            40   
+-- IfcLightFixture             White                                                                38   
+-- IfcColumn                   <Unnamed>                                                            36   
+-- IfcSlab                     jkrAR_flr-f_(ls21)-3 Lepaan Simen 20mm tebal                         35   
+-- IfcCovering                 jkrAR_clg-f_(pv60)-3 600mm x 600mm PVC Laminated Gypsum Board        34   
+-- IfcRailing                  <Unnamed>                                                            34   
+-- IfcBuildingElementProxy     Default Panel                                                        32   
+-- IfcStairFlight              <Unnamed>                                                            32   
+-- IfcFlowTerminal             jkrAR_mt_(cr01) Chrome                                               28   
+-- IfcWall                     Basic Wall:A_Wall_Ext_150mm_CeramicPaint_V1                          28   
+-- IfcFlowTerminal             Metal - Steel, Polished                                              24   
+-- IfcCovering                 jkrAR_clg-f_(cf60)-3 1220 x 1220 x 4.5mm Papan simen gentian         22   
+-- IfcFlowTerminal             Fixtures - Porcelain - Ivory                                         22   
+-- IfcSlab                     jkrAR_flr-f_(jhn21)-3 300 x 300 x 8 mm Jubin Homogeneous "non slip"  22   
+-- IfcFlowController           <Unnamed>                                                            21   
+-- IfcBeam                     Concrete, Cast-in-Place gray                                         20   
+-- IfcElectricAppliance        Face Plate (White)                                                   19   
+-- IfcAlarm                    Default                                                              17   
+-- IfcSlab                     <Unnamed>                                                            16   
+-- IfcBuildingElementProxy     Copper                                                               15   
+-- IfcCovering                 jkrAR_clg-f_(pv60)-3 600mm x 1200mm PVC Laminated Gypsum Board(1)    15   
+-- IfcAlarm                    Red                                                                  14   
+-- IfcLightFixture             Fin                                                                  14   
+-- IfcWall                     Basic Wall:A_Wall_Ext_150mm_Ceramic_V1                               14   
+-- IfcWall                     Basic Wall:A_Wall_Ext_250mm_BrickPlaster_V1                          13   
+-- IfcBuildingElementProxy     Red                                                                  12   
+-- IfcBuildingElementProxy     Steel - Overhead Door - White                                        11   
+-- IfcCovering                 jkrAR_clg-f_(sk)-2 Skim Coat Plastering                              11   
+-- IfcSlab                     jkrAR_flr-f_(jsg20)-3 300 x 300 x 6mm tbl Jubin Seramic Gilap        11   
+-- IfcFireSuppressionTerminal  AB_RAL9010_White                                                     10   
+-- IfcAlarm                    Steel, Mild                                                          9    
+-- IfcDoor                     Aluminum                                                             9    
+-- IfcDoor                     Door Handle - Aluminium                                              9    
+-- IfcBuildingElementProxy     Finish.Cream                                                         8    
+-- IfcBuildingElementProxy     Plastic                                                              8    
+-- IfcLightFixture             Default White                                                        8    
+-- IfcWindow                   Glass                                                                8    
+-- IfcBuildingElementProxy     Galvanized Steel                                                     7    
+-- IfcValve                    Fiberglass-Watts-ABS                                                 7    
+-- IfcController               NBS_Concept                                                          6    
+-- IfcWall                     jkrAR_wll-b_(bb40)-3 Dinding Batu bata (AHU)                         6    
+-- IfcDoor                     Chrome Plating                                                       5    
+-- IfcSlab                     Glass                                                                5    
+-- IfcBuildingElementProxy     Default                                                              4    
+-- IfcBuildingElementProxy     Grigio                                                               4    
+-- IfcBuildingElementProxy     Metal - Generic - Black Finish                                       4    
+-- IfcBuildingElementProxy     Stal nierdzewna                                                      4    
+-- IfcFlowTerminal             JohnsonSuisse - Fermo-N - Chrome                                     4    
+-- IfcFlowTerminal             Metal - Chrome Polished                                              4    
+-- IfcFlowTerminal             White                                                                4    
+-- IfcFurniture                Plastic - Black                                                      4    
+-- IfcAirTerminal              Aluminum                                                             3    
+-- IfcBuildingElementProxy     Rubber, Black                                                        3    
+-- IfcBuildingElementProxy     Solid white                                                          3    
+-- IfcColumn                   jkrAR_wll-f_(jsg40)-3 300 x 300 x 6mm tbl Jubin Seramic Gilap        3    
+-- IfcWall                     Basic Wall:A_Wall_Ext_150mm_Coping_V1                                3    
+-- IfcWall                     Concrete - Cast-in-Place Concrete - 45 MPa                           3    
+-- IfcBuildingElementProxy     White                                                                2    
+-- IfcBuildingElementProxy     fiberglass-reinforced polyester                                      2    
+-- IfcColumn                   jkrAR_flr-f_(jsg20)-3 300 x 300 x 6mm tbl Jubin Seramic Gilap        2    
+-- IfcColumn                   jkrAR_wll-b_(bb40)-3 Dinding Batu bata (AHU)                         2    
+-- IfcFlowTerminal             High Density Polyethylene, HDPE                                      2    
+-- IfcFlowTerminal             Metal - Chrome                                                       2    
+-- IfcFurniture                Metal Panel                                                          2    
+-- IfcRoof                     Glass                                                                2    
+-- IfcWall                     Basic Wall:A_Wall_Ext_250mm_BrickPlasterCeramic_V1                   2    
+-- IfcBeam                     Metal - Steel 50-355                                                 1    
+-- IfcBuildingElementProxy     Concrete, C12/15                                                     1    
+-- IfcBuildingElementProxy     Concrete, Cast In Situ                                               1    
+-- IfcBuildingElementProxy     Metal - IEC - Steel                                                  1    
+-- IfcBuildingElementProxy     Paint(1)                                                             1    
+-- IfcBuildingElementProxy     Telescope wood                                                       1    
+-- IfcBuildingElementProxy     Yellow                                                               1    
+-- IfcDoor                     <Unnamed>                                                            1    
+-- IfcDoor                     Glass                                                                1    
+-- IfcFlowTerminal             ConnectorInletMediumMaterial                                         1    
+-- IfcFlowTerminal             Steel - Zurn Industries - Stainless - Type 304                       1    
+-- IfcRampFlight               <Unnamed>                                                            1    
+-- IfcSlab                     Default Floor                                                        1    
+-- IfcSlab                     jkrAR_flr-f_(vy20)-3 Vinyl (Anti static Finishing)                   1    
+-- IfcValve                    Metal-WATTS-ASTM A-536 Ductile Iron-Blue                             1    
+-- IfcWall                     Basic Wall:A_Wall_Ext_150mm_CeramicPaint_V2                          1    
+-- IfcWall                     Basic Wall:A_Wall_Ext_150mm_HT 300x300_Paint_V1                      1    
+-- IfcWall                     Basic Wall:A_Wall_Ext_150mm_HT 300x300_V1                            1    
 
 -- §3: Spacing patterns (adjacent element gaps)
 -- Elements of the same ifc_class on the same storey, sorted by X
@@ -213,61 +279,39 @@
 
 -- ifc_class                   discipline  cnt  
 -- --------------------------  ----------  -----
--- IfcPlate                    FP          33324
--- IfcPipeFitting              FP          3146 
--- IfcPipeSegment              FP          2672 
+-- IfcPlate                    STR         33324
+-- IfcPipeFitting              MEP         4241 
+-- IfcPipeSegment              ARC         2321 
+-- IfcPipeSegment              MEP         1500 
 -- IfcFireSuppressionTerminal  FP          909  
 -- IfcLightFixture             ELEC        814  
--- IfcDuctFitting              ACMV        713  
--- IfcPipeFitting              CW          638  
--- IfcPipeSegment              CW          619  
--- IfcDuctSegment              ACMV        568  
--- IfcPipeSegment              SP          455  
--- IfcBeam                     FP          412  
--- IfcSlab                     STR         409  
--- IfcMember                   FP          394  
--- IfcPipeFitting              SP          372  
--- IfcBuildingElementProxy     ELEC        356  
+-- IfcSlab                     STR         705  
+-- IfcDuctFitting              MEP         691  
+-- IfcBuildingElementProxy     ARC         486  
+-- IfcMember                   STR         442  
+-- IfcBeam                     STR         432  
+-- IfcDuctSegment              MEP         371  
+-- IfcWall                     STR         333  
 -- IfcAirTerminal              ACMV        289  
--- IfcSlab                     FP          238  
--- IfcWall                     ELEC        177  
--- IfcFurniture                ELEC        176  
--- IfcWall                     FP          156  
--- IfcFlowTerminal             SP          150  
--- IfcWindow                   ELEC        122  
--- IfcWindow                   FP          114  
--- IfcColumn                   ELEC        112  
--- IfcFlowTerminal             CW          106  
--- IfcDoor                     ELEC        90   
--- IfcPipeFitting              LPG         87   
+-- IfcFlowTerminal             MEP         244  
+-- IfcWindow                   ARC         236  
+-- IfcDuctSegment              ARC         197  
+-- IfcFurniture                ARC         176  
+-- IfcColumn                   STR         158  
+-- IfcDoor                     ARC         135  
+-- IfcValve                    MEP         111  
+-- IfcCovering                 ARC         82   
 -- IfcAlarm                    FP          80   
--- IfcBuildingElementProxy     FP          75   
--- IfcPipeSegment              LPG         75   
--- IfcValve                    CW          57   
--- IfcCovering                 ELEC        54   
--- IfcBuildingElementProxy     ACMV        51   
--- IfcMember                   ELEC        48   
--- IfcSlab                     ELEC        47   
--- IfcValve                    LPG         47   
--- IfcColumn                   FP          45   
--- IfcDoor                     FP          45   
--- IfcCovering                 FP          28   
--- IfcRailing                  FP          25   
--- IfcStairFlight              FP          22   
--- IfcBeam                     STR         20   
+-- IfcRailing                  ARC         34   
+-- IfcStairFlight              ARC         32   
+-- IfcDuctFitting              ARC         22   
+-- IfcFlowController           MEP         21   
 -- IfcElectricAppliance        ELEC        19   
--- IfcFlowController           FP          14   
--- IfcSlab                     CW          11   
--- IfcStairFlight              ELEC        10   
--- IfcRailing                  ELEC        9    
--- IfcFlowController           CW          7    
+-- IfcFlowTerminal             ARC         12   
 -- IfcController               FP          6    
--- IfcValve                    FP          5    
--- IfcBuildingElementProxy     CW          4    
--- IfcRoof                     FP          2    
--- IfcValve                    SP          2    
--- IfcColumn                   CW          1    
--- IfcRampFlight               FP          1    
+-- IfcPipeFitting              ARC         2    
+-- IfcRoof                     ARC         2    
+-- IfcRampFlight               ARC         1    
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
@@ -285,219 +329,193 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '106.0');
 
--- Rule: IfcPipeFitting_Ground_Floor (968 instances, avg 56.0x56.0x53.0 mm)
+-- Rule: IfcPipeFitting_Aras_Tanah (1265 instances, avg 64.0x62.0x58.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcPipeFitting_Ground_Floor', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcPipeFitting on Ground Floor: 968 instances, avg W=56.0 D=56.0 H=53.0mm',
+-- VALUES ('IfcPipeFitting_Aras_Tanah', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on Aras Tanah: 1265 instances, avg W=64.0 D=62.0 H=58.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '56.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '64.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '56.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '62.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '53.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '58.0');
 
--- Rule: IfcPipeSegment_Ground_Floor (879 instances, avg 481.0x235.0x223.0 mm)
+-- Rule: IfcPipeSegment_Aras_Tanah (1168 instances, avg 873.0x510.0x237.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcPipeSegment_Ground_Floor', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcPipeSegment on Ground Floor: 879 instances, avg W=481.0 D=235.0 H=223.0mm',
+-- VALUES ('IfcPipeSegment_Aras_Tanah', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on Aras Tanah: 1168 instances, avg W=873.0 D=510.0 H=237.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '481.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '873.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '235.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '510.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '223.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '237.0');
 
--- Rule: IfcPipeFitting_Roof (791 instances, avg 56.0x50.0x50.0 mm)
+-- Rule: IfcPipeFitting_Aras_02 (875 instances, avg 67.0x61.0x60.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcPipeFitting_Roof', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcPipeFitting on Roof: 791 instances, avg W=56.0 D=50.0 H=50.0mm',
+-- VALUES ('IfcPipeFitting_Aras_02', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on Aras 02: 875 instances, avg W=67.0 D=61.0 H=60.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '56.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '67.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '61.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '60.0');
+
+-- Rule: IfcPipeSegment_Aras_02 (759 instances, avg 1014.0x320.0x125.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeSegment_Aras_02', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on Aras 02: 759 instances, avg W=1014.0 D=320.0 H=125.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1014.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '320.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '125.0');
+
+-- Rule: IfcPipeFitting_Aras_03 (684 instances, avg 57.0x50.0x51.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeFitting_Aras_03', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on Aras 03: 684 instances, avg W=57.0 D=50.0 H=51.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '57.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_depth_mm', '50.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '50.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '51.0');
 
--- Rule: IfcPipeFitting_Level_4 (747 instances, avg 72.0x66.0x69.0 mm)
+-- Rule: IfcPipeFitting_Aras_01 (673 instances, avg 71.0x65.0x61.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcPipeFitting_Level_4', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcPipeFitting on Level 4: 747 instances, avg W=72.0 D=66.0 H=69.0mm',
+-- VALUES ('IfcPipeFitting_Aras_01', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on Aras 01: 673 instances, avg W=71.0 D=65.0 H=61.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '72.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '71.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '66.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '65.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '69.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '61.0');
 
--- Rule: IfcPipeSegment_Roof (677 instances, avg 799.0x249.0x254.0 mm)
+-- Rule: IfcPipeSegment_Aras_01 (600 instances, avg 853.0x232.0x138.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcPipeSegment_Roof', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcPipeSegment on Roof: 677 instances, avg W=799.0 D=249.0 H=254.0mm',
+-- VALUES ('IfcPipeSegment_Aras_01', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on Aras 01: 600 instances, avg W=853.0 D=232.0 H=138.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '799.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '853.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '249.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '232.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '254.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '138.0');
 
--- Rule: IfcPipeFitting_Level_2 (652 instances, avg 65.0x55.0x54.0 mm)
+-- Rule: IfcPipeSegment_Aras_03 (587 instances, avg 904.0x262.0x241.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcPipeFitting_Level_2', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcPipeFitting on Level 2: 652 instances, avg W=65.0 D=55.0 H=54.0mm',
+-- VALUES ('IfcPipeSegment_Aras_03', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on Aras 03: 587 instances, avg W=904.0 D=262.0 H=241.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '65.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '904.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '55.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '262.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '54.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '241.0');
 
--- Rule: IfcPipeFitting_Level_1 (633 instances, avg 73.0x66.0x64.0 mm)
+-- Rule: IfcSlab_GROUND_FLOOR_LEVEL (420 instances, avg 1956.0x1562.0x17087.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcPipeFitting_Level_1', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcPipeFitting on Level 1: 633 instances, avg W=73.0 D=66.0 H=64.0mm',
+-- VALUES ('IfcSlab_GROUND_FLOOR_LEVEL', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on GROUND FLOOR LEVEL: 420 instances, avg W=1956.0 D=1562.0 H=17087.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '73.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1956.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '66.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1562.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '64.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '17087.0');
 
--- Rule: IfcPipeSegment_Level_2 (599 instances, avg 865.0x146.0x260.0 mm)
+-- Rule: IfcMember_Roof (408 instances, avg 2474.0x507.0x2710.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcPipeSegment_Level_2', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcPipeSegment on Level 2: 599 instances, avg W=865.0 D=146.0 H=260.0mm',
+-- VALUES ('IfcMember_Roof', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcMember on Roof: 408 instances, avg W=2474.0 D=507.0 H=2710.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '865.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2474.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '146.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '507.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '260.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2710.0');
 
--- Rule: IfcPipeSegment_Level_1 (581 instances, avg 950.0x249.0x190.0 mm)
+-- Rule: IfcPipeFitting_GROUND_FLOOR_LEVEL (348 instances, avg 59.0x59.0x57.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcPipeSegment_Level_1', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcPipeSegment on Level 1: 581 instances, avg W=950.0 D=249.0 H=190.0mm',
+-- VALUES ('IfcPipeFitting_GROUND_FLOOR_LEVEL', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on GROUND FLOOR LEVEL: 348 instances, avg W=59.0 D=59.0 H=57.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '950.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '59.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '249.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '59.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '190.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '57.0');
 
--- Rule: IfcPipeSegment_Level_4 (534 instances, avg 1585.0x544.0x145.0 mm)
+-- Rule: IfcPipeSegment_GROUND_FLOOR_LEVEL (338 instances, avg 336.0x330.0x326.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcPipeSegment_Level_4', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcPipeSegment on Level 4: 534 instances, avg W=1585.0 D=544.0 H=145.0mm',
+-- VALUES ('IfcPipeSegment_GROUND_FLOOR_LEVEL', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on GROUND FLOOR LEVEL: 338 instances, avg W=336.0 D=330.0 H=326.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '1585.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '336.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '544.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '330.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '145.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '326.0');
 
--- Rule: IfcSlab_Foundation (413 instances, avg 1910.0x1502.0x17371.0 mm)
+-- Rule: IfcFireSuppressionTerminal_Aras_Tanah (297 instances, avg 41.0x29.0x73.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcSlab_Foundation', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcSlab on Foundation: 413 instances, avg W=1910.0 D=1502.0 H=17371.0mm',
+-- VALUES ('IfcFireSuppressionTerminal_Aras_Tanah', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFireSuppressionTerminal on Aras Tanah: 297 instances, avg W=41.0 D=29.0 H=73.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '1910.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '41.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1502.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '29.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '17371.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '73.0');
 
--- Rule: IfcPipeSegment_Level_3 (406 instances, avg 142.0x218.0x189.0 mm)
+-- Rule: IfcDuctFitting_Aras_02 (267 instances, avg 336.0x312.0x239.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcPipeSegment_Level_3', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcPipeSegment on Level 3: 406 instances, avg W=142.0 D=218.0 H=189.0mm',
+-- VALUES ('IfcDuctFitting_Aras_02', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctFitting on Aras 02: 267 instances, avg W=336.0 D=312.0 H=239.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '142.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '336.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '218.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '312.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '189.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '239.0');
 
--- Rule: IfcPipeFitting_Level_3 (348 instances, avg 53.0x60.0x45.0 mm)
+-- Rule: IfcFireSuppressionTerminal_Aras_02 (225 instances, avg 38.0x28.0x68.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcPipeFitting_Level_3', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcPipeFitting on Level 3: 348 instances, avg W=53.0 D=60.0 H=45.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '53.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '60.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '45.0');
-
--- Rule: IfcBuildingElementProxy_Ground_Floor (232 instances, avg 469.0x405.0x518.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcBuildingElementProxy_Ground_Floor', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcBuildingElementProxy on Ground Floor: 232 instances, avg W=469.0 D=405.0 H=518.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '469.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '405.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '518.0');
-
--- Rule: IfcLightFixture_Ground_Floor (230 instances, avg 612.0x481.0x100.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcLightFixture_Ground_Floor', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcLightFixture on Ground Floor: 230 instances, avg W=612.0 D=481.0 H=100.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '612.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '481.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '100.0');
-
--- Rule: IfcDuctFitting_Level_4 (225 instances, avg 307.0x292.0x219.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcDuctFitting_Level_4', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDuctFitting on Level 4: 225 instances, avg W=307.0 D=292.0 H=219.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '307.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '292.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '219.0');
-
--- Rule: IfcFireSuppressionTerminal_Level_3 (215 instances, avg 38.0x28.0x68.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcFireSuppressionTerminal_Level_3', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFireSuppressionTerminal on Level 3: 215 instances, avg W=38.0 D=28.0 H=68.0mm',
+-- VALUES ('IfcFireSuppressionTerminal_Aras_02', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFireSuppressionTerminal on Aras 02: 225 instances, avg W=38.0 D=28.0 H=68.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '38.0');
@@ -506,24 +524,37 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '68.0');
 
--- Rule: IfcFireSuppressionTerminal_Roof (210 instances, avg 35.0x27.0x63.0 mm)
+-- Rule: IfcDuctFitting_Aras_Tanah (219 instances, avg 548.0x367.0x358.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcFireSuppressionTerminal_Roof', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFireSuppressionTerminal on Roof: 210 instances, avg W=35.0 D=27.0 H=63.0mm',
+-- VALUES ('IfcDuctFitting_Aras_Tanah', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctFitting on Aras Tanah: 219 instances, avg W=548.0 D=367.0 H=358.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '35.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '548.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '27.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '367.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '63.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '358.0');
 
--- Rule: IfcDuctFitting_Level_2 (200 instances, avg 324.0x304.0x236.0 mm)
+-- Rule: IfcDuctSegment_Aras_02 (203 instances, avg 1031.0x1329.0x436.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcDuctFitting_Level_2', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDuctFitting on Level 2: 200 instances, avg W=324.0 D=304.0 H=236.0mm',
+-- VALUES ('IfcDuctSegment_Aras_02', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctSegment on Aras 02: 203 instances, avg W=1031.0 D=1329.0 H=436.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1031.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1329.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '436.0');
+
+-- Rule: IfcDuctFitting_Aras_01 (200 instances, avg 324.0x304.0x236.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctFitting_Aras_01', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctFitting on Aras 01: 200 instances, avg W=324.0 D=304.0 H=236.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '324.0');
@@ -532,24 +563,50 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '236.0');
 
--- Rule: IfcMember_Level_4 (187 instances, avg 2443.0x204.0x2191.0 mm)
+-- Rule: IfcLightFixture_Ceiling_Level_Kedai (193 instances, avg 690.0x492.0x85.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcMember_Level_4', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcMember on Level 4: 187 instances, avg W=2443.0 D=204.0 H=2191.0mm',
+-- VALUES ('IfcLightFixture_Ceiling_Level_Kedai', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Ceiling Level Kedai: 193 instances, avg W=690.0 D=492.0 H=85.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '2443.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '690.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '204.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '492.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '2191.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '85.0');
 
--- Rule: IfcFireSuppressionTerminal_Level_2 (176 instances, avg 39.0x29.0x70.0 mm)
+-- Rule: IfcDuctSegment_Aras_Tanah (191 instances, avg 996.0x1543.0x686.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcFireSuppressionTerminal_Level_2', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFireSuppressionTerminal on Level 2: 176 instances, avg W=39.0 D=29.0 H=70.0mm',
+-- VALUES ('IfcDuctSegment_Aras_Tanah', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctSegment on Aras Tanah: 191 instances, avg W=996.0 D=1543.0 H=686.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '996.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1543.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '686.0');
+
+-- Rule: IfcLightFixture_Ceiling_Level_02 (178 instances, avg 573.0x832.0x89.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcLightFixture_Ceiling_Level_02', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Ceiling Level 02: 178 instances, avg W=573.0 D=832.0 H=89.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '573.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '832.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '89.0');
+
+-- Rule: IfcFireSuppressionTerminal_Aras_01 (176 instances, avg 39.0x29.0x70.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFireSuppressionTerminal_Aras_01', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFireSuppressionTerminal on Aras 01: 176 instances, avg W=39.0 D=29.0 H=70.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '39.0');
@@ -558,11 +615,11 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '70.0');
 
--- Rule: IfcFurniture_Ground_Floor (176 instances, avg 1869.0x1343.0x754.0 mm)
+-- Rule: IfcFurniture_Aras_Tanah (176 instances, avg 1869.0x1343.0x754.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcFurniture_Ground_Floor', 'IfcFurniture', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFurniture on Ground Floor: 176 instances, avg W=1869.0 D=1343.0 H=754.0mm',
+-- VALUES ('IfcFurniture_Aras_Tanah', 'IfcFurniture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurniture on Aras Tanah: 176 instances, avg W=1869.0 D=1343.0 H=754.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1869.0');
@@ -571,63 +628,37 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '754.0');
 
--- Rule: IfcFireSuppressionTerminal_Level_1 (172 instances, avg 32.0x27.0x58.0 mm)
+-- Rule: IfcBuildingElementProxy_Aras_Tanah (161 instances, avg 947.0x834.0x650.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcFireSuppressionTerminal_Level_1', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFireSuppressionTerminal on Level 1: 172 instances, avg W=32.0 D=27.0 H=58.0mm',
+-- VALUES ('IfcBuildingElementProxy_Aras_Tanah', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Aras Tanah: 161 instances, avg W=947.0 D=834.0 H=650.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '32.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '947.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '27.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '834.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '58.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '650.0');
 
--- Rule: IfcLightFixture_Level_2 (172 instances, avg 591.0x840.0x89.0 mm)
+-- Rule: IfcLightFixture_Ceiling_Level_03 (152 instances, avg 518.0x979.0x91.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcLightFixture_Level_2', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcLightFixture on Level 2: 172 instances, avg W=591.0 D=840.0 H=89.0mm',
+-- VALUES ('IfcLightFixture_Ceiling_Level_03', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Ceiling Level 03: 152 instances, avg W=518.0 D=979.0 H=91.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '591.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '518.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '840.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '979.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '89.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '91.0');
 
--- Rule: IfcDuctSegment_Level_4 (170 instances, avg 890.0x1172.0x429.0 mm)
+-- Rule: IfcBeam_04_THIRD_FLOOR_LEVEL (146 instances, avg 3022.0x3307.0x746.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcDuctSegment_Level_4', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDuctSegment on Level 4: 170 instances, avg W=890.0 D=1172.0 H=429.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '890.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1172.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '429.0');
-
--- Rule: IfcLightFixture_Level_3 (153 instances, avg 492.0x983.0x90.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcLightFixture_Level_3', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcLightFixture on Level 3: 153 instances, avg W=492.0 D=983.0 H=90.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '492.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '983.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '90.0');
-
--- Rule: IfcBeam_Level_4 (146 instances, avg 3022.0x3307.0x746.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcBeam_Level_4', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcBeam on Level 4: 146 instances, avg W=3022.0 D=3307.0 H=746.0mm',
+-- VALUES ('IfcBeam_04_THIRD_FLOOR_LEVEL', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on 04 THIRD FLOOR LEVEL: 146 instances, avg W=3022.0 D=3307.0 H=746.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3022.0');
@@ -636,63 +667,37 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '746.0');
 
--- Rule: IfcDuctSegment_Level_2 (145 instances, avg 934.0x1349.0x608.0 mm)
+-- Rule: IfcWall_Aras_Tanah (143 instances, avg 2537.0x2759.0x7718.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcDuctSegment_Level_2', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDuctSegment on Level 2: 145 instances, avg W=934.0 D=1349.0 H=608.0mm',
+-- VALUES ('IfcWall_Aras_Tanah', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Aras Tanah: 143 instances, avg W=2537.0 D=2759.0 H=7718.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '934.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2537.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1349.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2759.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '608.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '7718.0');
 
--- Rule: IfcPipeSegment_Foundation (145 instances, avg 1482.0x2755.0x120.0 mm)
+-- Rule: IfcDuctSegment_Aras_01 (142 instances, avg 948.0x1371.0x357.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcPipeSegment_Foundation', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcPipeSegment on Foundation: 145 instances, avg W=1482.0 D=2755.0 H=120.0mm',
+-- VALUES ('IfcDuctSegment_Aras_01', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctSegment on Aras 01: 142 instances, avg W=948.0 D=1371.0 H=357.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '1482.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '948.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '2755.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1371.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '120.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '357.0');
 
--- Rule: IfcMember_Roof (141 instances, avg 3431.0x143.0x4142.0 mm)
+-- Rule: IfcBeam_03_SECOND_FLOOR_LEVEL (126 instances, avg 3386.0x2602.0x690.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcMember_Roof', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcMember on Roof: 141 instances, avg W=3431.0 D=143.0 H=4142.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '3431.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '143.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '4142.0');
-
--- Rule: IfcFlowTerminal_Ground_Floor (140 instances, avg 409.0x430.0x543.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcFlowTerminal_Ground_Floor', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFlowTerminal on Ground Floor: 140 instances, avg W=409.0 D=430.0 H=543.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '409.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '430.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '543.0');
-
--- Rule: IfcBeam_Level_3 (126 instances, avg 3386.0x2602.0x690.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcBeam_Level_3', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcBeam on Level 3: 126 instances, avg W=3386.0 D=2602.0 H=690.0mm',
+-- VALUES ('IfcBeam_03_SECOND_FLOOR_LEVEL', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on 03 SECOND FLOOR LEVEL: 126 instances, avg W=3386.0 D=2602.0 H=690.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3386.0');
@@ -701,24 +706,50 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '690.0');
 
--- Rule: IfcFireSuppressionTerminal_Ground_Floor (125 instances, avg 53.0x32.0x93.0 mm)
+-- Rule: IfcFireSuppressionTerminal_Aras_03 (124 instances, avg 37.0x28.0x67.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcFireSuppressionTerminal_Ground_Floor', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFireSuppressionTerminal on Ground Floor: 125 instances, avg W=53.0 D=32.0 H=93.0mm',
+-- VALUES ('IfcFireSuppressionTerminal_Aras_03', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFireSuppressionTerminal on Aras 03: 124 instances, avg W=37.0 D=28.0 H=67.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '53.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '37.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '32.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '28.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '93.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '67.0');
 
--- Rule: IfcBeam_Level_1 (119 instances, avg 3493.0x2626.0x674.0 mm)
+-- Rule: IfcPipeFitting_03_SECOND_FLOOR_LEVEL (123 instances, avg 67.0x68.0x62.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcBeam_Level_1', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcBeam on Level 1: 119 instances, avg W=3493.0 D=2626.0 H=674.0mm',
+-- VALUES ('IfcPipeFitting_03_SECOND_FLOOR_LEVEL', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on 03 SECOND FLOOR LEVEL: 123 instances, avg W=67.0 D=68.0 H=62.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '67.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '68.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '62.0');
+
+-- Rule: IfcPipeSegment_03_SECOND_FLOOR_LEVEL (122 instances, avg 502.0x538.0x258.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeSegment_03_SECOND_FLOOR_LEVEL', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on 03 SECOND FLOOR LEVEL: 122 instances, avg W=502.0 D=538.0 H=258.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '502.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '538.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '258.0');
+
+-- Rule: IfcBeam_02_FIRST_FLOOR_LEVEL (119 instances, avg 3493.0x2626.0x674.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_02_FIRST_FLOOR_LEVEL', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on 02 FIRST FLOOR LEVEL: 119 instances, avg W=3493.0 D=2626.0 H=674.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '3493.0');
@@ -727,37 +758,11 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '674.0');
 
--- Rule: IfcWall_Ground_Floor (118 instances, avg 2525.0x2830.0x5678.0 mm)
+-- Rule: IfcLightFixture_Ceiling_Level_01 (115 instances, avg 1019.0x518.0x93.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcWall_Ground_Floor', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWall on Ground Floor: 118 instances, avg W=2525.0 D=2830.0 H=5678.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '2525.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '2830.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '5678.0');
-
--- Rule: IfcDuctFitting_Level_1 (116 instances, avg 736.0x462.0x440.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcDuctFitting_Level_1', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDuctFitting on Level 1: 116 instances, avg W=736.0 D=462.0 H=440.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '736.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '462.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '440.0');
-
--- Rule: IfcLightFixture_Level_1 (115 instances, avg 1019.0x518.0x93.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcLightFixture_Level_1', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcLightFixture on Level 1: 115 instances, avg W=1019.0 D=518.0 H=93.0mm',
+-- VALUES ('IfcLightFixture_Ceiling_Level_01', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Ceiling Level 01: 115 instances, avg W=1019.0 D=518.0 H=93.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1019.0');
@@ -766,89 +771,63 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '93.0');
 
--- Rule: IfcBuildingElementProxy_Level_2 (109 instances, avg 858.0x1798.0x778.0 mm)
+-- Rule: IfcWindow_Aras_01 (110 instances, avg 899.0x584.0x3347.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcBuildingElementProxy_Level_2', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcBuildingElementProxy on Level 2: 109 instances, avg W=858.0 D=1798.0 H=778.0mm',
+-- VALUES ('IfcWindow_Aras_01', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on Aras 01: 110 instances, avg W=899.0 D=584.0 H=3347.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '858.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '899.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1798.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '584.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '778.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3347.0');
 
--- Rule: IfcDuctFitting_Ground_Floor (106 instances, avg 342.0x263.0x263.0 mm)
+-- Rule: IfcBuildingElementProxy_Aras_02 (107 instances, avg 170.0x519.0x174.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcDuctFitting_Ground_Floor', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDuctFitting on Ground Floor: 106 instances, avg W=342.0 D=263.0 H=263.0mm',
+-- VALUES ('IfcBuildingElementProxy_Aras_02', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Aras 02: 107 instances, avg W=170.0 D=519.0 H=174.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '342.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '170.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '263.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '519.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '263.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '174.0');
 
--- Rule: IfcDuctSegment_Level_1 (104 instances, avg 1175.0x1804.0x472.0 mm)
+-- Rule: IfcPipeFitting_Aras_04 (102 instances, avg 55.0x53.0x57.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcDuctSegment_Level_1', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDuctSegment on Level 1: 104 instances, avg W=1175.0 D=1804.0 H=472.0mm',
+-- VALUES ('IfcPipeFitting_Aras_04', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on Aras 04: 102 instances, avg W=55.0 D=53.0 H=57.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '1175.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '55.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1804.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '53.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '472.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '57.0');
 
--- Rule: IfcPipeFitting_Foundation (104 instances, avg 126.0x145.0x127.0 mm)
+-- Rule: IfcAirTerminal_Aras_02 (96 instances, avg 567.0x560.0x106.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcPipeFitting_Foundation', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcPipeFitting on Foundation: 104 instances, avg W=126.0 D=145.0 H=127.0mm',
+-- VALUES ('IfcAirTerminal_Aras_02', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAirTerminal on Aras 02: 96 instances, avg W=567.0 D=560.0 H=106.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '126.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '567.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '145.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '560.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '127.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '106.0');
 
--- Rule: IfcWall_Level_2 (96 instances, avg 3747.0x2892.0x8069.0 mm)
+-- Rule: IfcAirTerminal_Aras_01 (93 instances, avg 608.0x595.0x120.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcWall_Level_2', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWall on Level 2: 96 instances, avg W=3747.0 D=2892.0 H=8069.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '3747.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '2892.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '8069.0');
-
--- Rule: IfcWindow_Level_2 (93 instances, avg 917.0x557.0x3246.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcWindow_Level_2', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWindow on Level 2: 93 instances, avg W=917.0 D=557.0 H=3246.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '917.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '557.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '3246.0');
-
--- Rule: IfcAirTerminal_Level_2 (92 instances, avg 608.0x595.0x120.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcAirTerminal_Level_2', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcAirTerminal on Level 2: 92 instances, avg W=608.0 D=595.0 H=120.0mm',
+-- VALUES ('IfcAirTerminal_Aras_01', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAirTerminal on Aras 01: 93 instances, avg W=608.0 D=595.0 H=120.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '608.0');
@@ -857,128 +836,206 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '120.0');
 
--- Rule: IfcSlab_Level_3 (89 instances, avg 5168.0x3761.0x156.0 mm)
+-- Rule: IfcFlowTerminal_Aras_Tanah (89 instances, avg 435.0x443.0x554.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcSlab_Level_3', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcSlab on Level 3: 89 instances, avg W=5168.0 D=3761.0 H=156.0mm',
+-- VALUES ('IfcFlowTerminal_Aras_Tanah', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on Aras Tanah: 89 instances, avg W=435.0 D=443.0 H=554.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '5168.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '435.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '3761.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '443.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '156.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '554.0');
 
--- Rule: IfcDuctSegment_Ground_Floor (87 instances, avg 791.0x1239.0x535.0 mm)
+-- Rule: IfcPipeFitting_04_THIRD_FLOOR_LEVEL (86 instances, avg 111.0x111.0x109.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcDuctSegment_Ground_Floor', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDuctSegment on Ground Floor: 87 instances, avg W=791.0 D=1239.0 H=535.0mm',
+-- VALUES ('IfcPipeFitting_04_THIRD_FLOOR_LEVEL', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on 04 THIRD FLOOR LEVEL: 86 instances, avg W=111.0 D=111.0 H=109.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '791.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '111.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1239.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '111.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '535.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '109.0');
 
--- Rule: IfcColumn_Level_2 (82 instances, avg 675.0x649.0x11770.0 mm)
+-- Rule: IfcAirTerminal_Aras_Tanah (85 instances, avg 423.0x986.0x138.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcColumn_Level_2', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcColumn on Level 2: 82 instances, avg W=675.0 D=649.0 H=11770.0mm',
+-- VALUES ('IfcAirTerminal_Aras_Tanah', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAirTerminal on Aras Tanah: 85 instances, avg W=423.0 D=986.0 H=138.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '675.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '423.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '649.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '986.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '11770.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '138.0');
 
--- Rule: IfcBuildingElementProxy_Level_3 (81 instances, avg 138.0x154.0x161.0 mm)
+-- Rule: IfcPipeSegment_Aras_04 (83 instances, avg 689.0x227.0x266.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcBuildingElementProxy_Level_3', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcBuildingElementProxy on Level 3: 81 instances, avg W=138.0 D=154.0 H=161.0mm',
+-- VALUES ('IfcPipeSegment_Aras_04', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on Aras 04: 83 instances, avg W=689.0 D=227.0 H=266.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '138.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '689.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '154.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '227.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '161.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '266.0');
 
--- Rule: IfcLightFixture_Level_4 (81 instances, avg 398.0x344.0x535.0 mm)
+-- Rule: IfcPipeSegment_02_FIRST_FLOOR_LEVEL (82 instances, avg 616.0x368.0x295.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcLightFixture_Level_4', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcLightFixture on Level 4: 81 instances, avg W=398.0 D=344.0 H=535.0mm',
+-- VALUES ('IfcPipeSegment_02_FIRST_FLOOR_LEVEL', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on 02 FIRST FLOOR LEVEL: 82 instances, avg W=616.0 D=368.0 H=295.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '398.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '616.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '344.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '368.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '535.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '295.0');
 
--- Rule: IfcValve_Ground_Floor (79 instances, avg 120.0x126.0x236.0 mm)
+-- Rule: IfcPipeFitting_02_FIRST_FLOOR_LEVEL (81 instances, avg 56.0x53.0x49.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcValve_Ground_Floor', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcValve on Ground Floor: 79 instances, avg W=120.0 D=126.0 H=236.0mm',
+-- VALUES ('IfcPipeFitting_02_FIRST_FLOOR_LEVEL', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on 02 FIRST FLOOR LEVEL: 81 instances, avg W=56.0 D=53.0 H=49.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '120.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '56.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '126.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '53.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '236.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '49.0');
 
--- Rule: IfcSlab_Level_1 (73 instances, avg 4917.0x3088.0x190.0 mm)
+-- Rule: IfcBuildingElementProxy_Aras_01 (80 instances, avg 366.0x1939.0x959.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcSlab_Level_1', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcSlab on Level 1: 73 instances, avg W=4917.0 D=3088.0 H=190.0mm',
+-- VALUES ('IfcBuildingElementProxy_Aras_01', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Aras 01: 80 instances, avg W=366.0 D=1939.0 H=959.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '4917.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '366.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '3088.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1939.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '190.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '959.0');
 
--- Rule: IfcAirTerminal_Level_4 (72 instances, avg 600.0x600.0x102.0 mm)
+-- Rule: IfcWindow_Aras_Tanah (80 instances, avg 844.0x836.0x2739.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcAirTerminal_Level_4', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcAirTerminal on Level 4: 72 instances, avg W=600.0 D=600.0 H=102.0mm',
+-- VALUES ('IfcWindow_Aras_Tanah', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on Aras Tanah: 80 instances, avg W=844.0 D=836.0 H=2739.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '600.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '844.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '600.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '836.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '102.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2739.0');
 
--- Rule: IfcWindow_Ground_Floor (64 instances, avg 744.0x972.0x2491.0 mm)
+-- Rule: IfcPipeSegment_04_THIRD_FLOOR_LEVEL (77 instances, avg 487.0x361.0x287.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcWindow_Ground_Floor', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWindow on Ground Floor: 64 instances, avg W=744.0 D=972.0 H=2491.0mm',
+-- VALUES ('IfcPipeSegment_04_THIRD_FLOOR_LEVEL', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on 04 THIRD FLOOR LEVEL: 77 instances, avg W=487.0 D=361.0 H=287.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '744.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '487.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '972.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '361.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '2491.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '287.0');
 
--- Rule: IfcDoor_Ground_Floor (63 instances, avg 628.0x749.0x2259.0 mm)
+-- Rule: IfcSlab_03_SECOND_FLOOR_LEVEL (74 instances, avg 4708.0x3108.0x179.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcDoor_Ground_Floor', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDoor on Ground Floor: 63 instances, avg W=628.0 D=749.0 H=2259.0mm',
+-- VALUES ('IfcSlab_03_SECOND_FLOOR_LEVEL', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 03 SECOND FLOOR LEVEL: 74 instances, avg W=4708.0 D=3108.0 H=179.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '4708.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3108.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '179.0');
+
+-- Rule: IfcFireSuppressionTerminal_Aras_04 (73 instances, avg 41.0x29.0x73.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFireSuppressionTerminal_Aras_04', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFireSuppressionTerminal on Aras 04: 73 instances, avg W=41.0 D=29.0 H=73.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '41.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '29.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '73.0');
+
+-- Rule: IfcLightFixture_Aras_03 (72 instances, avg 341.0x338.0x586.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcLightFixture_Aras_03', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Aras 03: 72 instances, avg W=341.0 D=338.0 H=586.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '341.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '338.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '586.0');
+
+-- Rule: IfcWall_Aras_01 (71 instances, avg 4221.0x3128.0x4597.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Aras_01', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Aras 01: 71 instances, avg W=4221.0 D=3128.0 H=4597.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '4221.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3128.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '4597.0');
+
+-- Rule: IfcSlab_02_FIRST_FLOOR_LEVEL (67 instances, avg 5032.0x3227.0x203.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_02_FIRST_FLOOR_LEVEL', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 02 FIRST FLOOR LEVEL: 67 instances, avg W=5032.0 D=3227.0 H=203.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '5032.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3227.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '203.0');
+
+-- Rule: IfcFlowTerminal_GROUND_FLOOR_LEVEL (66 instances, avg 418.0x464.0x574.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_GROUND_FLOOR_LEVEL', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on GROUND FLOOR LEVEL: 66 instances, avg W=418.0 D=464.0 H=574.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '418.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '464.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '574.0');
+
+-- Rule: IfcDoor_Aras_Tanah (63 instances, avg 628.0x749.0x2259.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Aras_Tanah', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Aras Tanah: 63 instances, avg W=628.0 D=749.0 H=2259.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '628.0');
@@ -987,245 +1044,193 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '2259.0');
 
--- Rule: IfcLightFixture_Roof (63 instances, avg 675.0x611.0x117.0 mm)
+-- Rule: IfcWall_Aras_02 (62 instances, avg 3068.0x3151.0x4529.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcLightFixture_Roof', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcLightFixture on Roof: 63 instances, avg W=675.0 D=611.0 H=117.0mm',
+-- VALUES ('IfcWall_Aras_02', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Aras 02: 62 instances, avg W=3068.0 D=3151.0 H=4529.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '675.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3068.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '611.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3151.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '117.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '4529.0');
 
--- Rule: IfcWindow_Level_3 (58 instances, avg 637.0x856.0x2879.0 mm)
+-- Rule: IfcColumn_GROUND_FLOOR_LEVEL (56 instances, avg 750.0x750.0x15878.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcWindow_Level_3', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWindow on Level 3: 58 instances, avg W=637.0 D=856.0 H=2879.0mm',
+-- VALUES ('IfcColumn_GROUND_FLOOR_LEVEL', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on GROUND FLOOR LEVEL: 56 instances, avg W=750.0 D=750.0 H=15878.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '637.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '750.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '856.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '750.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '2879.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '15878.0');
 
--- Rule: IfcSlab_Level_4 (57 instances, avg 3640.0x3895.0x177.0 mm)
+-- Rule: IfcSlab_04_THIRD_FLOOR_LEVEL (53 instances, avg 2994.0x3631.0x188.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcSlab_Level_4', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcSlab on Level 4: 57 instances, avg W=3640.0 D=3895.0 H=177.0mm',
+-- VALUES ('IfcSlab_04_THIRD_FLOOR_LEVEL', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 04 THIRD FLOOR LEVEL: 53 instances, avg W=2994.0 D=3631.0 H=188.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '3640.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2994.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '3895.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3631.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '177.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '188.0');
 
--- Rule: IfcAirTerminal_Level_1 (56 instances, avg 488.0x1340.0x167.0 mm)
+-- Rule: IfcAlarm_Aras_Tanah (49 instances, avg 135.0x138.0x131.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcAirTerminal_Level_1', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcAirTerminal on Level 1: 56 instances, avg W=488.0 D=1340.0 H=167.0mm',
+-- VALUES ('IfcAlarm_Aras_Tanah', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAlarm on Aras Tanah: 49 instances, avg W=135.0 D=138.0 H=131.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '488.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '135.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1340.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '138.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '167.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '131.0');
 
--- Rule: IfcWall_Level_3 (56 instances, avg 2941.0x2651.0x4392.0 mm)
+-- Rule: IfcValve_Aras_Tanah (47 instances, avg 163.0x159.0x339.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcWall_Level_3', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWall on Level 3: 56 instances, avg W=2941.0 D=2651.0 H=4392.0mm',
+-- VALUES ('IfcValve_Aras_Tanah', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcValve on Aras Tanah: 47 instances, avg W=163.0 D=159.0 H=339.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '2941.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '163.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '2651.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '159.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '4392.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '339.0');
 
--- Rule: IfcWall_Roof (53 instances, avg 3035.0x2283.0x4569.0 mm)
+-- Rule: IfcBuildingElementProxy_Aras_Kedai (45 instances, avg 64.0x71.0x91.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcWall_Roof', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWall on Roof: 53 instances, avg W=3035.0 D=2283.0 H=4569.0mm',
+-- VALUES ('IfcBuildingElementProxy_Aras_Kedai', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Aras Kedai: 45 instances, avg W=64.0 D=71.0 H=91.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '3035.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '64.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '2283.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '71.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '4569.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '91.0');
 
--- Rule: IfcFlowTerminal_Level_3 (51 instances, avg 485.0x368.0x493.0 mm)
+-- Rule: IfcCovering_Aras_Tanah (39 instances, avg 4469.0x5930.0x16.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcFlowTerminal_Level_3', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFlowTerminal on Level 3: 51 instances, avg W=485.0 D=368.0 H=493.0mm',
+-- VALUES ('IfcCovering_Aras_Tanah', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on Aras Tanah: 39 instances, avg W=4469.0 D=5930.0 H=16.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '485.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '4469.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '368.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '493.0');
-
--- Rule: IfcFlowTerminal_Level_2 (44 instances, avg 396.0x362.0x438.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcFlowTerminal_Level_2', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFlowTerminal on Level 2: 44 instances, avg W=396.0 D=362.0 H=438.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '396.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '362.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '438.0');
-
--- Rule: IfcSlab_Ground_Floor (43 instances, avg 6172.0x8432.0x81.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcSlab_Ground_Floor', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcSlab on Ground Floor: 43 instances, avg W=6172.0 D=8432.0 H=81.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '6172.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '8432.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '81.0');
-
--- Rule: IfcAlarm_Ground_Floor (41 instances, avg 128.0x132.0x142.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcAlarm_Ground_Floor', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcAlarm on Ground Floor: 41 instances, avg W=128.0 D=132.0 H=142.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '128.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '132.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '142.0');
-
--- Rule: IfcCovering_Ground_Floor (38 instances, avg 3762.0x5041.0x16.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcCovering_Ground_Floor', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcCovering on Ground Floor: 38 instances, avg W=3762.0 D=5041.0 H=16.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '3762.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '5041.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '5930.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '16.0');
 
--- Rule: IfcDuctFitting_Level_3 (38 instances, avg 507.0x426.0x353.0 mm)
+-- Rule: IfcWindow_Aras_02 (37 instances, avg 519.0x950.0x2279.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcDuctFitting_Level_3', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDuctFitting on Level 3: 38 instances, avg W=507.0 D=426.0 H=353.0mm',
+-- VALUES ('IfcWindow_Aras_02', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on Aras 02: 37 instances, avg W=519.0 D=950.0 H=2279.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '507.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '519.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '426.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '950.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '353.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2279.0');
 
--- Rule: IfcMember_Ground_Floor (35 instances, avg 605.0x1780.0x1279.0 mm)
+-- Rule: IfcValve_GROUND_FLOOR_LEVEL (35 instances, avg 74.0x87.0x102.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcMember_Ground_Floor', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcMember on Ground Floor: 35 instances, avg W=605.0 D=1780.0 H=1279.0mm',
+-- VALUES ('IfcValve_GROUND_FLOOR_LEVEL', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcValve on GROUND FLOOR LEVEL: 35 instances, avg W=74.0 D=87.0 H=102.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '605.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '74.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1780.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '87.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '1279.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '102.0');
 
--- Rule: IfcMember_Level_2 (34 instances, avg 622.0x1832.0x1250.0 mm)
+-- Rule: IfcMember_Level_4 (34 instances, avg 621.0x1742.0x1241.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcMember_Level_2', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcMember on Level 2: 34 instances, avg W=622.0 D=1832.0 H=1250.0mm',
+-- VALUES ('IfcMember_Level_4', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcMember on Level 4: 34 instances, avg W=621.0 D=1742.0 H=1241.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '622.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '621.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1832.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1742.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '1250.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1241.0');
 
--- Rule: IfcDuctSegment_Roof (32 instances, avg 1053.0x900.0x380.0 mm)
+-- Rule: IfcFlowTerminal_Aras_01 (33 instances, avg 461.0x382.0x395.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcDuctSegment_Roof', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDuctSegment on Roof: 32 instances, avg W=1053.0 D=900.0 H=380.0mm',
+-- VALUES ('IfcFlowTerminal_Aras_01', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on Aras 01: 33 instances, avg W=461.0 D=382.0 H=395.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '1053.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '461.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '900.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '382.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '380.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '395.0');
 
--- Rule: IfcMember_Level_1 (32 instances, avg 658.0x1927.0x1291.0 mm)
+-- Rule: IfcBuildingElementProxy_Aras_Jalan (32 instances, avg 1635.0x368.0x747.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcMember_Level_1', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcMember on Level 1: 32 instances, avg W=658.0 D=1927.0 H=1291.0mm',
+-- VALUES ('IfcBuildingElementProxy_Aras_Jalan', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Aras Jalan: 32 instances, avg W=1635.0 D=368.0 H=747.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '658.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1635.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1927.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '368.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '1291.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '747.0');
 
--- Rule: IfcColumn_Ground_Floor (31 instances, avg 552.0x482.0x8000.0 mm)
+-- Rule: IfcSlab_Aras_Tanah (32 instances, avg 6787.0x10025.0x38.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcColumn_Ground_Floor', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcColumn on Ground Floor: 31 instances, avg W=552.0 D=482.0 H=8000.0mm',
+-- VALUES ('IfcSlab_Aras_Tanah', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Aras Tanah: 32 instances, avg W=6787.0 D=10025.0 H=38.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '552.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6787.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '482.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '10025.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '8000.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '38.0');
 
--- Rule: IfcAirTerminal_Ground_Floor (30 instances, avg 350.0x294.0x100.0 mm)
+-- Rule: IfcColumn_Aras_01 (30 instances, avg 545.0x474.0x4000.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcAirTerminal_Ground_Floor', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcAirTerminal on Ground Floor: 30 instances, avg W=350.0 D=294.0 H=100.0mm',
+-- VALUES ('IfcColumn_Aras_01', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on Aras 01: 30 instances, avg W=545.0 D=474.0 H=4000.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '350.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '545.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '294.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '474.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '100.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '4000.0');
 
--- Rule: IfcColumn_Level_3 (30 instances, avg 545.0x459.0x3875.0 mm)
+-- Rule: IfcColumn_Aras_02 (30 instances, avg 545.0x459.0x3875.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcColumn_Level_3', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcColumn on Level 3: 30 instances, avg W=545.0 D=459.0 H=3875.0mm',
+-- VALUES ('IfcColumn_Aras_02', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on Aras 02: 30 instances, avg W=545.0 D=459.0 H=3875.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '545.0');
@@ -1234,24 +1239,37 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '3875.0');
 
--- Rule: IfcDuctSegment_Level_3 (30 instances, avg 1860.0x2282.0x495.0 mm)
+-- Rule: IfcColumn_Aras_Tanah (30 instances, avg 545.0x474.0x8000.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcDuctSegment_Level_3', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDuctSegment on Level 3: 30 instances, avg W=1860.0 D=2282.0 H=495.0mm',
+-- VALUES ('IfcColumn_Aras_Tanah', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on Aras Tanah: 30 instances, avg W=545.0 D=474.0 H=8000.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '1860.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '545.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '2282.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '474.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '495.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '8000.0');
 
--- Rule: IfcDoor_Level_2 (29 instances, avg 440.0x763.0x2142.0 mm)
+-- Rule: IfcLightFixture_Aras_04 (30 instances, avg 618.0x505.0x146.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcDoor_Level_2', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDoor on Level 2: 29 instances, avg W=440.0 D=763.0 H=2142.0mm',
+-- VALUES ('IfcLightFixture_Aras_04', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Aras 04: 30 instances, avg W=618.0 D=505.0 H=146.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '618.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '505.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '146.0');
+
+-- Rule: IfcDoor_Aras_01 (29 instances, avg 440.0x763.0x2142.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Aras_01', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Aras 01: 29 instances, avg W=440.0 D=763.0 H=2142.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '440.0');
@@ -1260,37 +1278,24 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '2142.0');
 
--- Rule: IfcDuctFitting_Roof (28 instances, avg 369.0x395.0x298.0 mm)
+-- Rule: IfcWall_Aras_03 (29 instances, avg 3062.0x2031.0x4001.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcDuctFitting_Roof', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDuctFitting on Roof: 28 instances, avg W=369.0 D=395.0 H=298.0mm',
+-- VALUES ('IfcWall_Aras_03', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Aras 03: 29 instances, avg W=3062.0 D=2031.0 H=4001.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '369.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3062.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '395.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2031.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '298.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '4001.0');
 
--- Rule: IfcBuildingElementProxy_Level_4 (27 instances, avg 696.0x2063.0x554.0 mm)
+-- Rule: IfcDoor_Aras_02 (27 instances, avg 481.0x789.0x2134.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcBuildingElementProxy_Level_4', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcBuildingElementProxy on Level 4: 27 instances, avg W=696.0 D=2063.0 H=554.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '696.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '2063.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '554.0');
-
--- Rule: IfcDoor_Level_3 (27 instances, avg 481.0x789.0x2134.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcDoor_Level_3', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDoor on Level 3: 27 instances, avg W=481.0 D=789.0 H=2134.0mm',
+-- VALUES ('IfcDoor_Aras_02', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Aras 02: 27 instances, avg W=481.0 D=789.0 H=2134.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '481.0');
@@ -1299,50 +1304,102 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '2134.0');
 
--- Rule: IfcAirTerminal_Level_3 (26 instances, avg 477.0x452.0x117.0 mm)
+-- Rule: IfcFlowTerminal_Aras_02 (26 instances, avg 503.0x362.0x456.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcAirTerminal_Level_3', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcAirTerminal on Level 3: 26 instances, avg W=477.0 D=452.0 H=117.0mm',
+-- VALUES ('IfcFlowTerminal_Aras_02', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on Aras 02: 26 instances, avg W=503.0 D=362.0 H=456.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '477.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '503.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '452.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '362.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '117.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '456.0');
 
--- Rule: IfcSlab_Level_2 (24 instances, avg 7544.0x5567.0x288.0 mm)
+-- Rule: IfcStairFlight_Roof (25 instances, avg 1606.0x2953.0x1979.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcSlab_Level_2', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcSlab on Level 2: 24 instances, avg W=7544.0 D=5567.0 H=288.0mm',
+-- VALUES ('IfcStairFlight_Roof', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStairFlight on Roof: 25 instances, avg W=1606.0 D=2953.0 H=1979.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '7544.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1606.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '5567.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2953.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '288.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1979.0');
 
--- Rule: IfcBeam_Roof (21 instances, avg 2757.0x2441.0x631.0 mm)
+-- Rule: IfcLightFixture_Aras_Kedai (24 instances, avg 282.0x327.0x177.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcBeam_Roof', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcBeam on Roof: 21 instances, avg W=2757.0 D=2441.0 H=631.0mm',
+-- VALUES ('IfcLightFixture_Aras_Kedai', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Aras Kedai: 24 instances, avg W=282.0 D=327.0 H=177.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '2757.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '282.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '2441.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '327.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '631.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '177.0');
 
--- Rule: IfcBeam_Foundation (20 instances, avg 18755.0x22471.0x750.0 mm)
+-- Rule: IfcRailing_Roof (23 instances, avg 2658.0x3822.0x4927.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcBeam_Foundation', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcBeam on Foundation: 20 instances, avg W=18755.0 D=22471.0 H=750.0mm',
+-- VALUES ('IfcRailing_Roof', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on Roof: 23 instances, avg W=2658.0 D=3822.0 H=4927.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2658.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3822.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '4927.0');
+
+-- Rule: IfcDuctSegment_Aras_04 (22 instances, avg 524.0x975.0x439.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctSegment_Aras_04', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctSegment on Aras 04: 22 instances, avg W=524.0 D=975.0 H=439.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '524.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '975.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '439.0');
+
+-- Rule: IfcBuildingElementProxy_Aras_03 (21 instances, avg 324.0x236.0x370.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_Aras_03', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Aras 03: 21 instances, avg W=324.0 D=236.0 H=370.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '324.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '236.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '370.0');
+
+-- Rule: IfcWall_Aras_04 (21 instances, avg 2897.0x2319.0x5848.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Aras_04', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Aras 04: 21 instances, avg W=2897.0 D=2319.0 H=5848.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2897.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2319.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '5848.0');
+
+-- Rule: IfcBeam_GROUND_FLOOR_LEVEL (20 instances, avg 18755.0x22471.0x750.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_GROUND_FLOOR_LEVEL', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on GROUND FLOOR LEVEL: 20 instances, avg W=18755.0 D=22471.0 H=750.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '18755.0');
@@ -1351,89 +1408,232 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '750.0');
 
--- Rule: IfcBuildingElementProxy_Level_1 (20 instances, avg 3232.0x1910.0x1028.0 mm)
+-- Rule: IfcBuildingElementProxy_Aras_04 (19 instances, avg 255.0x182.0x280.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcBuildingElementProxy_Level_1', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcBuildingElementProxy on Level 1: 20 instances, avg W=3232.0 D=1910.0 H=1028.0mm',
+-- VALUES ('IfcBuildingElementProxy_Aras_04', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Aras 04: 19 instances, avg W=255.0 D=182.0 H=280.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '3232.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '255.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1910.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '182.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '1028.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '280.0');
 
--- Rule: IfcFlowTerminal_Foundation (18 instances, avg 608.0x725.0x723.0 mm)
+-- Rule: IfcDuctFitting_Aras_04 (19 instances, avg 411.0x421.0x313.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcFlowTerminal_Foundation', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFlowTerminal on Foundation: 18 instances, avg W=608.0 D=725.0 H=723.0mm',
+-- VALUES ('IfcDuctFitting_Aras_04', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctFitting on Aras 04: 19 instances, avg W=411.0 D=421.0 H=313.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '608.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '411.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '421.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '313.0');
+
+-- Rule: IfcLightFixture_Ceiling_Level_04 (19 instances, avg 750.0x658.0x90.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcLightFixture_Ceiling_Level_04', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Ceiling Level 04: 19 instances, avg W=750.0 D=658.0 H=90.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '750.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '658.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '90.0');
+
+-- Rule: IfcCovering_Aras_01 (18 instances, avg 5193.0x4614.0x16.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_Aras_01', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on Aras 01: 18 instances, avg W=5193.0 D=4614.0 H=16.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '5193.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4614.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '16.0');
+
+-- Rule: IfcCovering_Aras_02 (18 instances, avg 6099.0x5645.0x16.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_Aras_02', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on Aras 02: 18 instances, avg W=6099.0 D=5645.0 H=16.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6099.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '5645.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '16.0');
+
+-- Rule: IfcFlowTerminal_03_SECOND_FLOOR_LEVEL (18 instances, avg 438.0x388.0x631.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_03_SECOND_FLOOR_LEVEL', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on 03 SECOND FLOOR LEVEL: 18 instances, avg W=438.0 D=388.0 H=631.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '438.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '388.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '631.0');
+
+-- Rule: IfcFlowTerminal_02_FIRST_FLOOR_LEVEL (17 instances, avg 328.0x323.0x461.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_02_FIRST_FLOOR_LEVEL', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on 02 FIRST FLOOR LEVEL: 17 instances, avg W=328.0 D=323.0 H=461.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '328.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '323.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '461.0');
+
+-- Rule: IfcSlab_Aras_01 (17 instances, avg 6343.0x5319.0x58.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Aras_01', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Aras 01: 17 instances, avg W=6343.0 D=5319.0 H=58.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6343.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '5319.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '58.0');
+
+-- Rule: IfcSlab_Roof (17 instances, avg 6229.0x3434.0x377.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Roof', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Roof: 17 instances, avg W=6229.0 D=3434.0 H=377.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6229.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3434.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '377.0');
+
+-- Rule: IfcBuildingElementProxy_Ceiling_Level_Kedai (16 instances, avg 1506.0x1228.0x686.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_Ceiling_Level_Kedai', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Ceiling Level Kedai: 16 instances, avg W=1506.0 D=1228.0 H=686.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1506.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1228.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '686.0');
+
+-- Rule: IfcAlarm_Aras_01 (15 instances, avg 143.0x121.0x181.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAlarm_Aras_01', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAlarm on Aras 01: 15 instances, avg W=143.0 D=121.0 H=181.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '143.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '121.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '181.0');
+
+-- Rule: IfcLightFixture_Aras_Bumbung (15 instances, avg 729.0x725.0x91.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcLightFixture_Aras_Bumbung', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Aras Bumbung: 15 instances, avg W=729.0 D=725.0 H=91.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '729.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_depth_mm', '725.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '723.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '91.0');
 
--- Rule: IfcBuildingElementProxy_Roof (17 instances, avg 1011.0x722.0x734.0 mm)
+-- Rule: IfcFireSuppressionTerminal_Aras_Bumbung (14 instances, avg 32.0x27.0x58.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcBuildingElementProxy_Roof', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcBuildingElementProxy on Roof: 17 instances, avg W=1011.0 D=722.0 H=734.0mm',
+-- VALUES ('IfcFireSuppressionTerminal_Aras_Bumbung', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFireSuppressionTerminal on Aras Bumbung: 14 instances, avg W=32.0 D=27.0 H=58.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '1011.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '32.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '722.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '27.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '734.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '58.0');
 
--- Rule: IfcCovering_Level_2 (16 instances, avg 5254.0x4466.0x16.0 mm)
+-- Rule: IfcLightFixture_Aras_Tanah (13 instances, avg 63.0x600.0x182.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcCovering_Level_2', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcCovering on Level 2: 16 instances, avg W=5254.0 D=4466.0 H=16.0mm',
+-- VALUES ('IfcLightFixture_Aras_Tanah', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Aras Tanah: 13 instances, avg W=63.0 D=600.0 H=182.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '5254.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '63.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '4466.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '600.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '16.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '182.0');
 
--- Rule: IfcCovering_Level_3 (16 instances, avg 6182.0x6241.0x16.0 mm)
+-- Rule: IfcSlab_Aras_02 (13 instances, avg 8162.0x7828.0x39.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcCovering_Level_3', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcCovering on Level 3: 16 instances, avg W=6182.0 D=6241.0 H=16.0mm',
+-- VALUES ('IfcSlab_Aras_02', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Aras 02: 13 instances, avg W=8162.0 D=7828.0 H=39.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '6182.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '8162.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '6241.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '7828.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '16.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '39.0');
 
--- Rule: IfcAlarm_Level_2 (14 instances, avg 141.0x117.0x188.0 mm)
+-- Rule: IfcValve_04_THIRD_FLOOR_LEVEL (12 instances, avg 282.0x199.0x302.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcAlarm_Level_2', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcAlarm on Level 2: 14 instances, avg W=141.0 D=117.0 H=188.0mm',
+-- VALUES ('IfcValve_04_THIRD_FLOOR_LEVEL', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcValve on 04 THIRD FLOOR LEVEL: 12 instances, avg W=282.0 D=199.0 H=302.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '141.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '282.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '117.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '199.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '188.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '302.0');
 
--- Rule: IfcAirTerminal_Roof (13 instances, avg 600.0x600.0x102.0 mm)
+-- Rule: IfcBeam_05_FOURTH_FLOOR_LEVEL_(OBSERVATORY_DECK) (11 instances, avg 2889.0x2600.0x614.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcAirTerminal_Roof', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcAirTerminal on Roof: 13 instances, avg W=600.0 D=600.0 H=102.0mm',
+-- VALUES ('IfcBeam_05_FOURTH_FLOOR_LEVEL_(OBSERVATORY_DECK)', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on 05 FOURTH FLOOR LEVEL (OBSERVATORY DECK): 11 instances, avg W=2889.0 D=2600.0 H=614.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2889.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2600.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '614.0');
+
+-- Rule: IfcAirTerminal_Aras_03 (10 instances, avg 600.0x600.0x102.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAirTerminal_Aras_03', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAirTerminal on Aras 03: 10 instances, avg W=600.0 D=600.0 H=102.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '600.0');
@@ -1442,76 +1642,11 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '102.0');
 
--- Rule: IfcMember_Level_3 (13 instances, avg 817.0x1661.0x1217.0 mm)
+-- Rule: IfcAlarm_Aras_02 (10 instances, avg 162.0x93.0x217.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcMember_Level_3', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcMember on Level 3: 13 instances, avg W=817.0 D=1661.0 H=1217.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '817.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '1661.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '1217.0');
-
--- Rule: IfcWindow_Level_1 (12 instances, avg 1312.0x223.0x3624.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcWindow_Level_1', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWindow on Level 1: 12 instances, avg W=1312.0 D=223.0 H=3624.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '1312.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '223.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '3624.0');
-
--- Rule: IfcFireSuppressionTerminal_Level_4 (11 instances, avg 93.0x43.0x158.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcFireSuppressionTerminal_Level_4', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFireSuppressionTerminal on Level 4: 11 instances, avg W=93.0 D=43.0 H=158.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '93.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '43.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '158.0');
-
--- Rule: IfcRailing_Level_1 (11 instances, avg 1412.0x2518.0x3523.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcRailing_Level_1', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcRailing on Level 1: 11 instances, avg W=1412.0 D=2518.0 H=3523.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '1412.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '2518.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '3523.0');
-
--- Rule: IfcValve_Level_4 (11 instances, avg 288.0x198.0x295.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcValve_Level_4', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcValve on Level 4: 11 instances, avg W=288.0 D=198.0 H=295.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '288.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '198.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '295.0');
-
--- Rule: IfcAlarm_Level_3 (10 instances, avg 162.0x93.0x217.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcAlarm_Level_3', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcAlarm on Level 3: 10 instances, avg W=162.0 D=93.0 H=217.0mm',
+-- VALUES ('IfcAlarm_Aras_02', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAlarm on Aras 02: 10 instances, avg W=162.0 D=93.0 H=217.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '162.0');
@@ -1520,24 +1655,11 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '217.0');
 
--- Rule: IfcRailing_Level_2 (10 instances, avg 2204.0x3064.0x4167.0 mm)
+-- Rule: IfcDoor_Aras_03 (9 instances, avg 446.0x917.0x2207.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcRailing_Level_2', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcRailing on Level 2: 10 instances, avg W=2204.0 D=3064.0 H=4167.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '2204.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '3064.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '4167.0');
-
--- Rule: IfcDoor_Level_4 (9 instances, avg 446.0x917.0x2207.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcDoor_Level_4', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDoor on Level 4: 9 instances, avg W=446.0 D=917.0 H=2207.0mm',
+-- VALUES ('IfcDoor_Aras_03', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Aras 03: 9 instances, avg W=446.0 D=917.0 H=2207.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '446.0');
@@ -1546,11 +1668,11 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '2207.0');
 
--- Rule: IfcElectricAppliance_Level_3 (9 instances, avg 70.0x65.0x87.0 mm)
+-- Rule: IfcElectricAppliance_Aras_02 (9 instances, avg 70.0x65.0x87.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcElectricAppliance_Level_3', 'IfcElectricAppliance', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcElectricAppliance on Level 3: 9 instances, avg W=70.0 D=65.0 H=87.0mm',
+-- VALUES ('IfcElectricAppliance_Aras_02', 'IfcElectricAppliance', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcElectricAppliance on Aras 02: 9 instances, avg W=70.0 D=65.0 H=87.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '70.0');
@@ -1559,50 +1681,11 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '87.0');
 
--- Rule: IfcWall_Level_4 (9 instances, avg 4334.0x5263.0x7696.0 mm)
+-- Rule: IfcElectricAppliance_Aras_01 (8 instances, avg 63.0x72.0x87.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcWall_Level_4', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWall on Level 4: 9 instances, avg W=4334.0 D=5263.0 H=7696.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '4334.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '5263.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '7696.0');
-
--- Rule: IfcAlarm_Level_1 (8 instances, avg 170.0x170.0x75.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcAlarm_Level_1', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcAlarm on Level 1: 8 instances, avg W=170.0 D=170.0 H=75.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '170.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '170.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '75.0');
-
--- Rule: IfcColumn_Roof (8 instances, avg 750.0x750.0x4714.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcColumn_Roof', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcColumn on Roof: 8 instances, avg W=750.0 D=750.0 H=4714.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '750.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '750.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '4714.0');
-
--- Rule: IfcElectricAppliance_Level_2 (8 instances, avg 63.0x72.0x87.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcElectricAppliance_Level_2', 'IfcElectricAppliance', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcElectricAppliance on Level 2: 8 instances, avg W=63.0 D=72.0 H=87.0mm',
+-- VALUES ('IfcElectricAppliance_Aras_01', 'IfcElectricAppliance', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcElectricAppliance on Aras 01: 8 instances, avg W=63.0 D=72.0 H=87.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '63.0');
@@ -1611,50 +1694,11 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '87.0');
 
--- Rule: IfcStairFlight_Ground_Floor (8 instances, avg 1424.0x3038.0x2098.0 mm)
+-- Rule: IfcWindow_Aras_04 (8 instances, avg 1847.0x675.0x2344.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcStairFlight_Ground_Floor', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcStairFlight on Ground Floor: 8 instances, avg W=1424.0 D=3038.0 H=2098.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '1424.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '3038.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '2098.0');
-
--- Rule: IfcStairFlight_Level_1 (8 instances, avg 1437.0x3038.0x1955.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcStairFlight_Level_1', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcStairFlight on Level 1: 8 instances, avg W=1437.0 D=3038.0 H=1955.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '1437.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '3038.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '1955.0');
-
--- Rule: IfcStairFlight_Level_2 (8 instances, avg 1418.0x3038.0x1975.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcStairFlight_Level_2', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcStairFlight on Level 2: 8 instances, avg W=1418.0 D=3038.0 H=1975.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '1418.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '3038.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '1975.0');
-
--- Rule: IfcWindow_Roof (8 instances, avg 1847.0x675.0x2344.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcWindow_Roof', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcWindow on Roof: 8 instances, avg W=1847.0 D=675.0 H=2344.0mm',
+-- VALUES ('IfcWindow_Aras_04', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on Aras 04: 8 instances, avg W=1847.0 D=675.0 H=2344.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1847.0');
@@ -1663,24 +1707,11 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '2344.0');
 
--- Rule: IfcCovering_Roof (7 instances, avg 6108.0x6257.0x16.0 mm)
+-- Rule: IfcDoor_Aras_04 (7 instances, avg 296.0x902.0x2138.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcCovering_Roof', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcCovering on Roof: 7 instances, avg W=6108.0 D=6257.0 H=16.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '6108.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '6257.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '16.0');
-
--- Rule: IfcDoor_Roof (7 instances, avg 296.0x902.0x2138.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcDoor_Roof', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDoor on Roof: 7 instances, avg W=296.0 D=902.0 H=2138.0mm',
+-- VALUES ('IfcDoor_Aras_04', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Aras 04: 7 instances, avg W=296.0 D=902.0 H=2138.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '296.0');
@@ -1689,24 +1720,37 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '2138.0');
 
--- Rule: IfcFlowController_Ground_Floor (7 instances, avg 78.0x74.0x90.0 mm)
+-- Rule: IfcFlowController_Aras_Tanah (7 instances, avg 77.0x71.0x86.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcFlowController_Ground_Floor', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFlowController on Ground Floor: 7 instances, avg W=78.0 D=74.0 H=90.0mm',
+-- VALUES ('IfcFlowController_Aras_Tanah', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowController on Aras Tanah: 7 instances, avg W=77.0 D=71.0 H=86.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '78.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '77.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '74.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '71.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '90.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '86.0');
 
--- Rule: IfcValve_Level_3 (7 instances, avg 59.0x79.0x73.0 mm)
+-- Rule: IfcStairFlight_Level_4 (7 instances, avg 1427.0x3038.0x2079.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcValve_Level_3', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcValve on Level 3: 7 instances, avg W=59.0 D=79.0 H=73.0mm',
+-- VALUES ('IfcStairFlight_Level_4', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStairFlight on Level 4: 7 instances, avg W=1427.0 D=3038.0 H=2079.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1427.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3038.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2079.0');
+
+-- Rule: IfcValve_03_SECOND_FLOOR_LEVEL (7 instances, avg 59.0x79.0x73.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcValve_03_SECOND_FLOOR_LEVEL', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcValve on 03 SECOND FLOOR LEVEL: 7 instances, avg W=59.0 D=79.0 H=73.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '59.0');
@@ -1715,11 +1759,24 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '73.0');
 
--- Rule: IfcController_Ground_Floor (6 instances, avg 169.0x426.0x695.0 mm)
+-- Rule: IfcBeam_06_ROOF_LEVEL (6 instances, avg 2617.0x2650.0x750.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcController_Ground_Floor', 'IfcController', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcController on Ground Floor: 6 instances, avg W=169.0 D=426.0 H=695.0mm',
+-- VALUES ('IfcBeam_06_ROOF_LEVEL', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on 06 ROOF LEVEL: 6 instances, avg W=2617.0 D=2650.0 H=750.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2617.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2650.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '750.0');
+
+-- Rule: IfcController_Aras_Tanah (6 instances, avg 169.0x426.0x695.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcController_Aras_Tanah', 'IfcController', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcController on Aras Tanah: 6 instances, avg W=169.0 D=426.0 H=695.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '169.0');
@@ -1728,37 +1785,37 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '695.0');
 
--- Rule: IfcSlab_Roof (6 instances, avg 6483.0x4083.0x37.0 mm)
+-- Rule: IfcDuctSegment_Aras_03 (6 instances, avg 1947.0x747.0x225.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcSlab_Roof', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcSlab on Roof: 6 instances, avg W=6483.0 D=4083.0 H=37.0mm',
+-- VALUES ('IfcDuctSegment_Aras_03', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctSegment on Aras 03: 6 instances, avg W=1947.0 D=747.0 H=225.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '6483.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1947.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '4083.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '747.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '37.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '225.0');
 
--- Rule: IfcFlowController_Roof (5 instances, avg 98.0x87.0x194.0 mm)
+-- Rule: IfcFlowController_Aras_03 (5 instances, avg 99.0x87.0x195.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcFlowController_Roof', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFlowController on Roof: 5 instances, avg W=98.0 D=87.0 H=194.0mm',
+-- VALUES ('IfcFlowController_Aras_03', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowController on Aras 03: 5 instances, avg W=99.0 D=87.0 H=195.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '98.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '99.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_depth_mm', '87.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '194.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '195.0');
 
--- Rule: IfcRailing_Ground_Floor (5 instances, avg 2223.0x3675.0x5156.0 mm)
+-- Rule: IfcRailing_Level_4 (5 instances, avg 2223.0x3675.0x5156.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcRailing_Ground_Floor', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcRailing on Ground Floor: 5 instances, avg W=2223.0 D=3675.0 H=5156.0mm',
+-- VALUES ('IfcRailing_Level_4', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on Level 4: 5 instances, avg W=2223.0 D=3675.0 H=5156.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '2223.0');
@@ -1767,37 +1824,37 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '5156.0');
 
--- Rule: IfcValve_Roof (5 instances, avg 238.0x169.0x202.0 mm)
+-- Rule: IfcAirTerminal_Aras_04 (4 instances, avg 600.0x600.0x102.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcValve_Roof', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcValve on Roof: 5 instances, avg W=238.0 D=169.0 H=202.0mm',
+-- VALUES ('IfcAirTerminal_Aras_04', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAirTerminal on Aras 04: 4 instances, avg W=600.0 D=600.0 H=102.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '238.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '600.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '169.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '600.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '202.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '102.0');
 
--- Rule: IfcAlarm_Roof (4 instances, avg 149.0x64.0x195.0 mm)
+-- Rule: IfcBeam_07_BEAM_LEVEL_(OBSERVATORY) (4 instances, avg 2605.0x1691.0x500.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcAlarm_Roof', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcAlarm on Roof: 4 instances, avg W=149.0 D=64.0 H=195.0mm',
+-- VALUES ('IfcBeam_07_BEAM_LEVEL_(OBSERVATORY)', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on 07 BEAM LEVEL (OBSERVATORY): 4 instances, avg W=2605.0 D=1691.0 H=500.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '149.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2605.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '64.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1691.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '195.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '500.0');
 
--- Rule: IfcColumn_Level_4 (4 instances, avg 750.0x750.0x10573.0 mm)
+-- Rule: IfcColumn_03_SECOND_FLOOR_LEVEL (4 instances, avg 750.0x750.0x10573.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcColumn_Level_4', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcColumn on Level 4: 4 instances, avg W=750.0 D=750.0 H=10573.0mm',
+-- VALUES ('IfcColumn_03_SECOND_FLOOR_LEVEL', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on 03 SECOND FLOOR LEVEL: 4 instances, avg W=750.0 D=750.0 H=10573.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '750.0');
@@ -1806,134 +1863,303 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '10573.0');
 
--- Rule: IfcCovering_Level_4 (4 instances, avg 5072.0x3333.0x16.0 mm)
+-- Rule: IfcColumn_05_FOURTH_FLOOR_LEVEL_(OBSERVATORY_DECK) (4 instances, avg 750.0x750.0x6000.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcCovering_Level_4', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcCovering on Level 4: 4 instances, avg W=5072.0 D=3333.0 H=16.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '5072.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '3333.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '16.0');
-
--- Rule: IfcFlowController_Level_4 (4 instances, avg 82.0x91.0x177.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcFlowController_Level_4', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFlowController on Level 4: 4 instances, avg W=82.0 D=91.0 H=177.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '82.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '91.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '177.0');
-
--- Rule: IfcRailing_Level_3 (4 instances, avg 3470.0x4113.0x4940.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcRailing_Level_3', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcRailing on Level 3: 4 instances, avg W=3470.0 D=4113.0 H=4940.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '3470.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '4113.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '4940.0');
-
--- Rule: IfcRailing_Roof (4 instances, avg 3472.0x4088.0x4940.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcRailing_Roof', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcRailing on Roof: 4 instances, avg W=3472.0 D=4088.0 H=4940.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '3472.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '4088.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '4940.0');
-
--- Rule: IfcStairFlight_Level_4 (4 instances, avg 2006.0x2772.0x1975.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcStairFlight_Level_4', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcStairFlight on Level 4: 4 instances, avg W=2006.0 D=2772.0 H=1975.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '2006.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '2772.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '1975.0');
-
--- Rule: IfcValve_Level_2 (4 instances, avg 94.0x124.0x152.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcValve_Level_2', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcValve on Level 2: 4 instances, avg W=94.0 D=124.0 H=152.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '94.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '124.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '152.0');
-
--- Rule: IfcAlarm_Level_4 (3 instances, avg 152.0x100.0x182.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcAlarm_Level_4', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcAlarm on Level 4: 3 instances, avg W=152.0 D=100.0 H=182.0mm',
---     'Terminal');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '152.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '100.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '182.0');
-
--- Rule: IfcColumn_Level_1 (3 instances, avg 750.0x750.0x12000.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcColumn_Level_1', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcColumn on Level 1: 3 instances, avg W=750.0 D=750.0 H=12000.0mm',
+-- VALUES ('IfcColumn_05_FOURTH_FLOOR_LEVEL_(OBSERVATORY_DECK)', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on 05 FOURTH FLOOR LEVEL (OBSERVATORY DECK): 4 instances, avg W=750.0 D=750.0 H=6000.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '750.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_depth_mm', '750.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '12000.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '6000.0');
 
--- Rule: IfcFlowController_Level_3 (3 instances, avg 158.0x111.0x90.0 mm)
+-- Rule: IfcColumn_06_ROOF_LEVEL (4 instances, avg 750.0x750.0x3427.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcFlowController_Level_3', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcFlowController on Level 3: 3 instances, avg W=158.0 D=111.0 H=90.0mm',
+-- VALUES ('IfcColumn_06_ROOF_LEVEL', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on 06 ROOF LEVEL: 4 instances, avg W=750.0 D=750.0 H=3427.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '158.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '750.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '111.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '750.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '90.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3427.0');
 
--- Rule: IfcValve_Foundation (3 instances, avg 159.0x114.0x206.0 mm)
+-- Rule: IfcCovering_Aras_04 (4 instances, avg 6024.0x5970.0x16.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
--- VALUES ('IfcValve_Foundation', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcValve on Foundation: 3 instances, avg W=159.0 D=114.0 H=206.0mm',
+-- VALUES ('IfcCovering_Aras_04', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on Aras 04: 4 instances, avg W=6024.0 D=5970.0 H=16.0mm',
 --     'Terminal');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '159.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6024.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '114.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '5970.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '206.0');
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '16.0');
+
+-- Rule: IfcDuctFitting_Aras_03 (4 instances, avg 195.0x240.0x225.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctFitting_Aras_03', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctFitting on Aras 03: 4 instances, avg W=195.0 D=240.0 H=225.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '195.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '240.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '225.0');
+
+-- Rule: IfcFlowController_04_THIRD_FLOOR_LEVEL (4 instances, avg 82.0x92.0x177.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowController_04_THIRD_FLOOR_LEVEL', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowController on 04 THIRD FLOOR LEVEL: 4 instances, avg W=82.0 D=92.0 H=177.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '82.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '92.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '177.0');
+
+-- Rule: IfcFlowTerminal_00_Aras_Asas (4 instances, avg 558.0x825.0x541.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_00_Aras_Asas', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on 00 Aras Asas: 4 instances, avg W=558.0 D=825.0 H=541.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '558.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '825.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '541.0');
+
+-- Rule: IfcPipeFitting_Ground_Lev (4 instances, avg 93.0x61.0x58.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeFitting_Ground_Lev', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on Ground Lev: 4 instances, avg W=93.0 D=61.0 H=58.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '93.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '61.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '58.0');
+
+-- Rule: IfcPipeSegment_Ground_Lev (4 instances, avg 60.0x60.0x67.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeSegment_Ground_Lev', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on Ground Lev: 4 instances, avg W=60.0 D=60.0 H=67.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '60.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '60.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '67.0');
+
+-- Rule: IfcRailing_Aras_Tanah (4 instances, avg 538.0x780.0x1100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_Aras_Tanah', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on Aras Tanah: 4 instances, avg W=538.0 D=780.0 H=1100.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '538.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '780.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1100.0');
+
+-- Rule: IfcSlab_Aras_03 (4 instances, avg 12199.0x7397.0x30.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Aras_03', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Aras 03: 4 instances, avg W=12199.0 D=7397.0 H=30.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '12199.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '7397.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '30.0');
+
+-- Rule: IfcSlab_Level_4 (4 instances, avg 3876.0x1472.0x50.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Level_4', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Level 4: 4 instances, avg W=3876.0 D=1472.0 H=50.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3876.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1472.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '50.0');
+
+-- Rule: IfcValve_Ground_Lev (4 instances, avg 65.0x84.0x144.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcValve_Ground_Lev', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcValve on Ground Lev: 4 instances, avg W=65.0 D=84.0 H=144.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '65.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '84.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '144.0');
+
+-- Rule: IfcWall_Aras_Bumbung (4 instances, avg 3925.0x3385.0x1277.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Aras_Bumbung', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Aras Bumbung: 4 instances, avg W=3925.0 D=3385.0 H=1277.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3925.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3385.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1277.0');
+
+-- Rule: IfcAlarm_Aras_03 (3 instances, avg 147.0x64.0x208.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAlarm_Aras_03', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAlarm on Aras 03: 3 instances, avg W=147.0 D=64.0 H=208.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '147.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '64.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '208.0');
+
+-- Rule: IfcAlarm_Aras_04 (3 instances, avg 147.0x64.0x208.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAlarm_Aras_04', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAlarm on Aras 04: 3 instances, avg W=147.0 D=64.0 H=208.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '147.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '64.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '208.0');
+
+-- Rule: IfcBuildingElementProxy_04_THIRD_FLOOR_LEVEL (3 instances, avg 3770.0x3954.0x2555.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_04_THIRD_FLOOR_LEVEL', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on 04 THIRD FLOOR LEVEL: 3 instances, avg W=3770.0 D=3954.0 H=2555.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3770.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3954.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2555.0');
+
+-- Rule: IfcCovering_Aras_03 (3 instances, avg 6220.0x6640.0x16.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_Aras_03', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on Aras 03: 3 instances, avg W=6220.0 D=6640.0 H=16.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6220.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '6640.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '16.0');
+
+-- Rule: IfcDuctFitting_Aras_Jalan (3 instances, avg 517.0x357.0x187.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctFitting_Aras_Jalan', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctFitting on Aras Jalan: 3 instances, avg W=517.0 D=357.0 H=187.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '517.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '357.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '187.0');
+
+-- Rule: IfcDuctSegment_Aras_Jalan (3 instances, avg 504.0x552.0x629.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctSegment_Aras_Jalan', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctSegment on Aras Jalan: 3 instances, avg W=504.0 D=552.0 H=629.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '504.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '552.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '629.0');
+
+-- Rule: IfcLightFixture_Aras_Jalan (3 instances, avg 876.0x492.0x210.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcLightFixture_Aras_Jalan', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Aras Jalan: 3 instances, avg W=876.0 D=492.0 H=210.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '876.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '492.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '210.0');
+
+-- Rule: IfcSlab_Aras_04 (3 instances, avg 8200.0x4591.0x30.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Aras_04', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Aras 04: 3 instances, avg W=8200.0 D=4591.0 H=30.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '8200.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4591.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '30.0');
+
+-- Rule: IfcValve_02_FIRST_FLOOR_LEVEL (3 instances, avg 55.0x96.0x75.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcValve_02_FIRST_FLOOR_LEVEL', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcValve on 02 FIRST FLOOR LEVEL: 3 instances, avg W=55.0 D=96.0 H=75.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '55.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '96.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '75.0');
+
+-- Rule: IfcWall_GROUND_FLOOR_LEVEL (3 instances, avg 1443.0x2007.0x16000.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_GROUND_FLOOR_LEVEL', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on GROUND FLOOR LEVEL: 3 instances, avg W=1443.0 D=2007.0 H=16000.0mm',
+--     'Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1443.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2007.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '16000.0');
 
 

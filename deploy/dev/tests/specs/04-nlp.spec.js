@@ -22,61 +22,73 @@ test.describe('NLP Query', () => {
       }
       return 'not-available';
     }, query);
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
     return result;
   }
 
-  test('4.1 count doors', async ({ page }) => {
+  test('4.1 count doors @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
-    await runNlpQuery(page, 'count doors');
+    const status = await runNlpQuery(page, 'count doors');
 
     const nlpLogs = logs.tagged('§NLP_SQL');
     const hasResult = nlpLogs.length > 0 || logs.tagged('§NLP_EMPTY').length > 0 || logs.tagged('§NLP_NO_MATCH').length > 0;
-    console.log(`§PW_NLP_COUNT hasResponse=${hasResult} logs=${nlpLogs.length}`);
-    // NLP should process the query (even if result is empty for this DB)
+    console.log(`§PW_NLP_COUNT hasResponse=${hasResult} logs=${nlpLogs.length} status=${status}`);
+    // NLP must be available and produce a response (SQL, EMPTY, or NO_MATCH)
+    expect(status).toBe('executed');
+    expect(hasResult).toBe(true);
   });
 
-  test('4.2 floor 1 walls', async ({ page }) => {
+  test('4.2 floor 1 walls @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
-    await runNlpQuery(page, 'floor 1 walls');
+    const status = await runNlpQuery(page, 'floor 1 walls');
 
-    const sqlLogs = logs.tagged('§NLP_SQL');
-    console.log(`§PW_NLP_FLOOR sqlLogs=${sqlLogs.length}`);
+    const hasResponse = logs.tagged('§NLP_SQL').length > 0 || logs.tagged('§NLP_NO_MATCH').length > 0;
+    console.log(`§PW_NLP_FLOOR status=${status} responded=${hasResponse}`);
+    expect(status).toBe('executed');
+    expect(hasResponse).toBe(true);
   });
 
-  test('4.3 total cost', async ({ page }) => {
+  test('4.3 total cost @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
-    await runNlpQuery(page, 'total cost');
+    const status = await runNlpQuery(page, 'total cost');
 
-    const sqlLogs = logs.tagged('§NLP_SQL');
-    console.log(`§PW_NLP_COST sqlLogs=${sqlLogs.length}`);
+    const hasResponse = logs.tagged('§NLP_SQL').length > 0 || logs.tagged('§NLP_NO_MATCH').length > 0;
+    console.log(`§PW_NLP_COST status=${status} responded=${hasResponse}`);
+    expect(status).toBe('executed');
+    expect(hasResponse).toBe(true);
   });
 
-  test('4.4 show structure', async ({ page }) => {
+  test('4.4 show structure @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
-    await runNlpQuery(page, 'show structure');
+    const status = await runNlpQuery(page, 'show structure');
 
-    const response = logs.tagged('§NLP_SQL').length > 0 || logs.tagged('§NLP_NO_MATCH').length > 0;
-    console.log(`§PW_NLP_DISC responded=${response}`);
+    const hasResponse = logs.tagged('§NLP_SQL').length > 0 || logs.tagged('§NLP_NO_MATCH').length > 0;
+    console.log(`§PW_NLP_DISC status=${status} responded=${hasResponse}`);
+    expect(status).toBe('executed');
+    expect(hasResponse).toBe(true);
   });
 
-  test('4.5 find fire', async ({ page }) => {
+  test('4.5 search fire rating @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
-    await runNlpQuery(page, 'find fire');
+    const status = await runNlpQuery(page, 'fire rating');
 
-    const response = logs.tagged('§NLP_SQL').length > 0 || logs.tagged('§NLP_NO_MATCH').length > 0;
-    console.log(`§PW_NLP_SEARCH responded=${response}`);
+    const hasResponse = logs.tagged('§NLP_SQL').length > 0 || logs.tagged('§NLP_NO_MATCH').length > 0;
+    console.log(`§PW_NLP_SEARCH status=${status} responded=${hasResponse}`);
+    expect(status).toBe('executed');
+    expect(hasResponse).toBe(true);
   });
 
-  test('4.6 what disciplines', async ({ page }) => {
+  test('4.6 what disciplines @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
-    await runNlpQuery(page, 'what disciplines');
+    const status = await runNlpQuery(page, 'what disciplines');
 
-    const sqlLogs = logs.tagged('§NLP_SQL');
-    console.log(`§PW_NLP_WHAT sqlLogs=${sqlLogs.length}`);
+    const hasResponse = logs.tagged('§NLP_SQL').length > 0 || logs.tagged('§NLP_NO_MATCH').length > 0;
+    console.log(`§PW_NLP_WHAT status=${status} responded=${hasResponse}`);
+    expect(status).toBe('executed');
+    expect(hasResponse).toBe(true);
   });
 
-  test('4.7 Unknown query shows suggestion', async ({ page }) => {
+  test('4.7 Unknown query shows suggestion @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
     await runNlpQuery(page, 'xyzzy nonsense');
 
@@ -85,7 +97,7 @@ test.describe('NLP Query', () => {
     expect(noMatch.length).toBeGreaterThan(0);
   });
 
-  test('4.8 Parameterized SQL no errors', async ({ page }) => {
+  test('4.8 Parameterized SQL no errors @fast', async ({ page }) => {
     const logs = new ConsoleLogs(page);
 
     // Run several queries that exercise parameterized SQL

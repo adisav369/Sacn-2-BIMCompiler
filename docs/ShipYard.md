@@ -73,7 +73,7 @@ component libraries, YAML mappings — never in the engine code.
 
 **The 35-building proof is not the point.** The point is that 35 buildings, 3
 infrastructure types (bridge, road, rail), and 1 generative house all compile
-through the same 12-stage pipeline, the same 77 verbs, the same 6 gates — and
+through the same 11-stage pipeline, the same 77 verbs, the same 9 gates — and
 the engine never asks what domain it's operating in.
 
 This section demonstrates the claim with four domains: marine (§1-§8), tunnel (§9),
@@ -676,7 +676,7 @@ but is structurally domain-independent:
 | CutFillCalculator | INFRA_DESIGNER §5 | **PROVEN** | Any site has earthworks |
 | BOM Mining (Approve) | POB §4 | **SPEC** | Any domain accumulates reusable patterns |
 | Site-as-warehouse | POB §2.2 | **SPEC** | Any multi-unit project has plot allocation |
-| Domain-agnostic pipeline | BBC §5 (12 stages) | **PROVEN** (RE/CO/IN/IP) | Stages operate on abstract BOM nodes |
+| Domain-agnostic pipeline | BBC §5 (11 stages) | **PROVEN** (RE/CO/IN/IP) | Stages operate on abstract BOM nodes |
 
 **The framework is not aspirational — it is substantially built.** Of 18 capabilities
 listed, 14 are PROVEN or IMPLEMENTED, 4 are SPEC (design complete, code pending).

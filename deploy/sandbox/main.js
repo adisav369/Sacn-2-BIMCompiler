@@ -18,6 +18,7 @@ function initViewer() {
   setupWalk(APP);
   setupCity(APP);
   if (typeof setupNlp === 'function') setupNlp(APP);
+  if (typeof setupNavigate === 'function') setupNavigate(APP);
   if (typeof setupImport === 'function') setupImport(APP);
   if (typeof setupDiff === 'function') setupDiff(APP);
 
@@ -80,35 +81,6 @@ function initViewer() {
   // Go
   animate();
   APP.init().then(async function() {
-    // S230: Load wizard if ?wizard=1 param present (mesh classification)
-    var _wizParams = new URLSearchParams(location.search);
-    if (_wizParams.has('wizard') && APP.db) {
-      try {
-        // Resolve wizard.js relative to viewer — ../dev/wizard.js on local, dev/wizard.js on OCI
-        var wizUrl = location.href.replace(/sandbox\/[^?]*/, 'dev/wizard.js');
-        var s = document.createElement('script');
-        s.src = wizUrl;
-        s.onload = function() {
-          if (typeof startWizard !== 'function') return;
-          var wizardKey = _wizParams.get('wizardKey') || 'unknown';
-          // Export DB to buffer for wizard analysis
-          var dbData = APP.db.export();
-          var dbBuf = dbData.buffer;
-          console.log('[S230] §WIZARD_VIEWER_START key=' + wizardKey + ' dbSize=' + (dbBuf.byteLength/1024).toFixed(0) + 'KB');
-          startWizard(wizardKey, dbBuf, { elementCount: 0, sourceFormat: '.mesh' }, function() {
-            // Wizard done — refresh panels with updated data
-            console.log('[S230] §WIZARD_VIEWER_DONE refreshing panels');
-            if (APP.refreshPanels) APP.refreshPanels();
-            if (APP.populateBuildingList) APP.populateBuildingList();
-          });
-        };
-        s.onerror = function() { console.log('[S230] §WIZARD_LOAD_ERROR url=' + wizUrl); };
-        document.head.appendChild(s);
-      } catch(e) {
-        console.log('[S230] §WIZARD_ERROR ' + e.message);
-      }
-    }
-
     // S223: Load diff DB if ?diffdb= param present (variation comparison)
     const diffDbUrl = new URLSearchParams(location.search).get('diffdb');
     if (diffDbUrl && APP.db && typeof APP.computeDiff === 'function') {

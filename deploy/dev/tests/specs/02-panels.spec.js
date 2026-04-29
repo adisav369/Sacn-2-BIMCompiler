@@ -15,20 +15,19 @@ test.describe('Panels — Storey & Discipline', () => {
     await openViewer(page);
   });
 
-  test('2.1 Storey panel populated', async ({ page }) => {
+  test('2.1 Storey panel populated @fast', async ({ page }) => {
     const btnCount = await count(page, '#storey-body button');
     console.log(`§PW_STOREY_PANEL buttons=${btnCount}`);
     // Duplex has at least 2 storeys
     expect(btnCount).toBeGreaterThan(0);
   });
 
-  test('2.2 Storey filter works', async ({ page }) => {
+  test('2.2 Storey filter works @fast', async ({ page }) => {
+    // Wait for storey buttons to render (race condition fix)
+    await page.waitForSelector('#storey-body button:nth-child(2)', { timeout: 10000 });
     const btns = page.locator('#storey-body button');
     const btnCount = await btns.count();
-    if (btnCount < 2) {
-      console.log('§PW_STOREY_FILTER SKIP — not enough storeys');
-      return;
-    }
+    expect(btnCount).toBeGreaterThanOrEqual(2);
 
     // Click second button (first specific storey, skip "All Storeys")
     await btns.nth(1).click();
@@ -40,13 +39,9 @@ test.describe('Panels — Storey & Discipline', () => {
     expect(isActive).toBe(true);
   });
 
-  test('2.3 All Storeys resets filter', async ({ page }) => {
+  test('2.3 All Storeys resets filter @fast', async ({ page }) => {
+    await page.waitForSelector('#storey-body button:nth-child(2)', { timeout: 10000 });
     const btns = page.locator('#storey-body button');
-    const btnCount = await btns.count();
-    if (btnCount < 2) {
-      console.log('§PW_STOREY_RESET SKIP — not enough storeys');
-      return;
-    }
 
     // Filter to one storey, then reset
     await btns.nth(1).click();
@@ -59,19 +54,17 @@ test.describe('Panels — Storey & Discipline', () => {
     expect(allActive).toBe(true);
   });
 
-  test('2.4 Discipline panel populated', async ({ page }) => {
+  test('2.4 Discipline panel populated @fast', async ({ page }) => {
     const btnCount = await count(page, '#disc-body button');
     console.log(`§PW_DISC_PANEL buttons=${btnCount}`);
     expect(btnCount).toBeGreaterThan(0);
   });
 
-  test('2.5 Discipline toggle changes visibility', async ({ page }) => {
+  test('2.5 Discipline toggle changes visibility @fast', async ({ page }) => {
+    await page.waitForSelector('#disc-body button', { timeout: 10000 });
     const btns = page.locator('#disc-body button');
     const btnCount = await btns.count();
-    if (btnCount === 0) {
-      console.log('§PW_DISC_TOGGLE SKIP — no disciplines');
-      return;
-    }
+    expect(btnCount).toBeGreaterThan(0);
 
     // Click first discipline to toggle it off
     await btns.nth(0).click();
@@ -86,29 +79,22 @@ test.describe('Panels — Storey & Discipline', () => {
     await btns.nth(0).click();
   });
 
-  test('2.6 Panel collapse', async ({ page }) => {
-    // Click panel header to collapse
-    const header = page.locator('#storey-panel .panel-header, #storey-panel h3, #storey-panel > :first-child');
-    const headerExists = await header.count();
+  test('2.6 Panel collapse @fast', async ({ page }) => {
+    // Call togglePanel directly — no need to find header
+    await page.evaluate(() => window.togglePanel('storey-body'));
+    await page.waitForTimeout(200);
 
-    if (headerExists > 0) {
-      await page.evaluate(() => window.togglePanel('storey-body'));
-      await page.waitForTimeout(200);
+    const isCollapsed = await page.evaluate(() =>
+      document.getElementById('storey-body')?.classList.contains('collapsed')
+    );
+    console.log(`§PW_PANEL_COLLAPSE collapsed=${isCollapsed}`);
+    expect(isCollapsed).toBe(true);
 
-      const isCollapsed = await page.evaluate(() =>
-        document.getElementById('storey-body')?.classList.contains('collapsed')
-      );
-      console.log(`§PW_PANEL_COLLAPSE collapsed=${isCollapsed}`);
-      expect(isCollapsed).toBe(true);
-
-      // Uncollapse
-      await page.evaluate(() => window.togglePanel('storey-body'));
-    } else {
-      console.log('§PW_PANEL_COLLAPSE SKIP — no header found');
-    }
+    // Uncollapse
+    await page.evaluate(() => window.togglePanel('storey-body'));
   });
 
-  test('2.7 HUD panel positions correct', async ({ page }) => {
+  test('2.7 HUD panel positions correct @fast', async ({ page }) => {
     // Disc panel should be visible
     const discVisible = await visible(page, '#disc-panel');
     const storeyVisible = await visible(page, '#storey-panel');

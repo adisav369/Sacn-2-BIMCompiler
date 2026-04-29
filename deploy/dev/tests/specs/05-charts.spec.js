@@ -12,7 +12,7 @@ const BOQ_URL = '/dev/boq_charts.html?db=/buildings/Duplex_extracted.db&lib=/bui
 
 test.describe('BOQ Charts', () => {
 
-  test('5.1 Charts page loads and renders', async ({ page }) => {
+  test('5.1 Charts page loads and renders @slow', async ({ page }) => {
     const logs = new ConsoleLogs(page);
     await page.goto(BOQ_URL);
 
@@ -39,7 +39,7 @@ test.describe('BOQ Charts', () => {
     expect(state.infoNoData).toBe(false);
   });
 
-  test('5.2 Cost pie has content (not blank)', async ({ page }) => {
+  test('5.2 Cost pie has content (not blank) @slow', async ({ page }) => {
     await page.goto(BOQ_URL);
 
     // Wait for charts to render (info element stops showing "Loading")
@@ -61,9 +61,12 @@ test.describe('BOQ Charts', () => {
     expect(state.canvases).toBeGreaterThan(0);
   });
 
-  test('5.3 No NaN or NUM! in visible text', async ({ page }) => {
+  test('5.3 No NaN or NUM! in visible text @slow', async ({ page }) => {
     await page.goto(BOQ_URL);
-    await page.waitForTimeout(15000); // let CDN + WASM + charts finish
+    await page.waitForFunction(() => {
+      const info = document.getElementById('info');
+      return info && !info.textContent.includes('Loading');
+    }, { timeout: 45000 });
 
     // Check visible text only (exclude hidden elements, canvas internals)
     const result = await page.evaluate(() => {
@@ -83,21 +86,29 @@ test.describe('BOQ Charts', () => {
     console.log(`§PW_CHART_NANUM visibleNaN=${result.nanCount} NUM!=${result.numCount}`);
     if (result.nanCount > 0) console.log('  NaN locations:', result.nanLocations.join(' | '));
     expect(result.numCount).toBe(0);
-    // NaN in hidden tooltip internals is acceptable; in visible text is not
+    // NaN in visible text is a bug (hidden tooltip internals excluded by display:none check above)
+    expect(result.nanCount).toBe(0);
   });
 
-  test('5.4 Work packages listed', async ({ page }) => {
+  test('5.4 Work packages listed @slow', async ({ page }) => {
     await page.goto(BOQ_URL);
-    await page.waitForTimeout(3000);
+    await page.waitForFunction(() => {
+      const info = document.getElementById('info');
+      return info && !info.textContent.includes('Loading');
+    }, { timeout: 45000 });
 
     const pageText = await page.evaluate(() => document.body.textContent);
     const hasWP = pageText.includes('PACKAGE') || pageText.includes('Package') || pageText.includes('WP');
     console.log(`§PW_CHART_PACKAGES hasWorkPackages=${hasWP}`);
+    expect(hasWP).toBe(true);
   });
 
-  test('5.5 Currency symbol displayed', async ({ page }) => {
+  test('5.5 Currency symbol displayed @slow', async ({ page }) => {
     await page.goto(BOQ_URL);
-    await page.waitForTimeout(3000);
+    await page.waitForFunction(() => {
+      const info = document.getElementById('info');
+      return info && !info.textContent.includes('Loading');
+    }, { timeout: 45000 });
 
     const pageText = await page.evaluate(() => document.body.textContent);
     const hasCurrency = pageText.includes('$') || pageText.includes('RM') || pageText.includes('USD');
@@ -105,13 +116,17 @@ test.describe('BOQ Charts', () => {
     expect(hasCurrency).toBe(true);
   });
 
-  test('5.6 Page has no console errors', async ({ page }) => {
+  test('5.6 Page has no console errors @slow', async ({ page }) => {
     const logs = new ConsoleLogs(page);
     await page.goto(BOQ_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForFunction(() => {
+      const info = document.getElementById('info');
+      return info && !info.textContent.includes('Loading');
+    }, { timeout: 45000 });
 
-    logs.assertNoErrors();
-    console.log(`§PW_CHART_CLEAN errors=0 logs=${logs.entries.length}`);
+    const errorCount = logs.errors.length;
+    console.log(`§PW_CHART_CLEAN errors=${errorCount} logs=${logs.entries.length}`);
+    expect(errorCount).toBe(0);
   });
 
 });

@@ -84,6 +84,10 @@ and the elimination of server-side infrastructure.
 browser renders geometry AND runs analytics from the same SQL layer, with zero server
 infrastructure. The components existed. The integration at 126K elements with 60fps did not.
 
+| GPU instancing (S231) | `THREE.InstancedMesh` since r125 (2022). Standard pattern. | Grouped by `geometry_hash` — 85% draw call reduction on Terminal (48K el). Material dedup to ~100 shared instances. |
+| Mobile merge (S232) | `BufferGeometry` merge is textbook Three.js optimization. | Storey×disc×rgba grouping, transform baked into vertices — 95% reduction on mobile (Clinic 16K → 729 draws). InstancedMesh filter via zero-scale matrix. Per-instance pick via `hit.instanceId`. |
+
+
 ---
 
 ## 2. Deployment Architecture
@@ -503,7 +507,7 @@ No. They serve different audiences:
 
 Open in any browser (desktop or mobile). See also: [Mobile & Cloud Deployment](MOBILE_DEPLOY.md) for OCI setup, APK packaging, and offline strategy.
 
-[**BIM OOTB — 25 buildings, 1M elements**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html)
+[**BIM OOTB — 37 buildings, 1M elements**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html)
 
 Click any building → downloads its DB (1-60MB) → streams geometry in your browser.
 Cached in IndexedDB — second visit is instant. Explore all 30 archetypes to unlock the full city (786 buildings).
@@ -720,7 +724,7 @@ scripts/extract_building.sh T0_Hospital > deploy/Hospital_extracted.db
 - [x] Trackpad + mouse orbit/pan/zoom
 - [x] HUD with building name, streaming progress
 - [x] Per-building DB extraction (`scripts/extract_per_building.py`) — all 30 archetypes
-- [x] OCI bucket setup + public URL (ap-kulai-2, bim-ootb-full)
+- [x] OCI bucket setup + public URL (ap-kulai-2, bim-ootb-live)
 - [x] IndexedDB cache (download once, instant revisit)
 - [x] City mode (city_index.db, 786 bboxes, click-to-stream)
 - [x] "Complete the City" gamification (progress bar, LAUNCH CITY button)
@@ -788,9 +792,14 @@ Solved (S203). Per-building split means each building downloads independently:
 The DB already deduplicates at the `geometry_hash` level — same mesh BLOB stored once,
 referenced N times by elements sharing that hash. **S231 (2026-04-27) implemented
 `THREE.InstancedMesh`** for hashes with 2+ instances. Results on Terminal (48K elements):
-7,150 draw calls (was 48,428) = **85% reduction**. Hashes with 1 instance stay as individual
-`Mesh` for full pick/filter compatibility. Material dedup (~100 materials vs 48K).
-Proven at 126K elements (LTU AHouse: 59% reduction, 7.8s stream). `deploy/dev/streaming.js`.
+7,150 draw calls (was 48,428) = **85% reduction**. Material dedup (~100 materials vs 48K).
+
+**S232 (2026-04-27) added mobile merge.** Single-instance meshes (unique pipes/ducts that
+can't be instanced) are grouped by storey|disc|rgba into merged `BufferGeometry`. Transform
+baked into vertices. Clinic results: 16,070 → **729 draw calls (95.5% reduction)**. Mobile
+detection: `maxTouchPoints > 0 && screen.width < 1024`. Desktop keeps individual meshes for
+full pick. InstancedMesh storey/disc filter via zero-scale matrix. InstancedMesh pick via
+`hit.instanceId` → `_instanceMeta` guid lookup. `deploy/dev/streaming.js`, `panels.js`, `picking.js`.
 
 ### 9.5 "Schema changes require redeploying DBs. No versioning story."
 
@@ -851,7 +860,7 @@ cd deploy && python3 -m http.server 8080
 # → http://localhost:8080/landing.html
 
 # Deploy to OCI (both buckets)
-oci os object put --bucket-name bim-ootb-full --file deploy/sandbox/tools.js --name sandbox/tools.js --content-type application/javascript --force
+oci os object put --bucket-name bim-ootb-live --file deploy/sandbox/tools.js --name sandbox/tools.js --content-type application/javascript --force
 oci os object put --bucket-name bim-ootb --file deploy/sandbox/tools.js --name tools.js --content-type application/javascript --force
 ```
 

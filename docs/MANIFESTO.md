@@ -63,7 +63,7 @@ applied to spatial BOMs.
 data by business unit. Here, 16 engineering disciplines partition the BOM
 validation space — from architecture to rail infrastructure. Each has its
 own rules, its own AD_Val_Rule set, its own validation pass — but sharing
-the same product catalog. See the [full AD_Org table](#ad_org--discipline-as-organisational-unit) below for all 16
+the same product catalog. See the [full AD_Org table](#the-application-dictionary-heritage) below for all 16
 disciplines with IFC class mappings and Terminal element counts.
 
 **The distinction matters.** Disciplines cut ACROSS the category tree — they
@@ -491,8 +491,8 @@ applied to buildings. 200 houses, 6 lines of exceptions each.
 ## Why This Matters
 
 **For construction:** The industry reportedly loses billions annually to the gap between
-design tools (geometry) and ERP tools (data). This compiler bridges that gap
-deterministically. Given a building design, it answers: what do I need to buy,
+design tools (geometry) and ERP tools (data). This compiler addresses one vector of that
+gap: given a building design, it answers deterministically — what do I need to buy,
 where does each piece go, and can I prove it?
 
 **For iDempiere:** The manufacturing module, proven over two decades on discrete
@@ -502,18 +502,21 @@ of the original design that its scope never anticipated.
 
 **For the project:** Every decision traces to an iDempiere pattern. When we face
 a design question, we ask: *how does iDempiere handle this for manufacturing?*
-The answer is almost always directly applicable:
+In our experience, these patterns often fit spatial problems directly:
 
 - **[Exception-based ordering](ProjectOrderBlueprint.md#1-exception-based-ordering-configure-to-order-for-buildings)** is iDempiere's Configure-to-Order. 200 houses, 6 lines of exceptions each — not 200 × 1099 elements. The BOM template is the product; the order is just the delta.
 - **[Two kinds of rules](DocValidate.md)** work in symbiosis: *spatial rules* mined from 35 real buildings tell the compiler where things go; *regulatory rules* (UBBL, NFPA 13, IBC) tell it what the law requires. Spatial proposes, regulatory validates — the Three Concerns in action.
-- **[4D scheduling](ProjectOrderBlueprint.md#51-4d-schedule-topological-sort-of-bom-tree)** is a topological sort of the BOM tree. No Primavera needed. Material logistics follow via M_InOut — iDempiere's goods receipt applied to construction deliveries.
+- **[4D scheduling](ProjectOrderBlueprint.md#51-4d-schedule-topological-sort-of-bom-tree)** is a topological sort of the BOM tree. Basic phase logic comes free from the BOM structure. Material logistics follow via M_InOut — iDempiere's goods receipt applied to construction deliveries.
 - **[5D cost](ProjectOrderBlueprint.md#52-5d-cost-inherent-in-the-data-model)** is inherent in the data model. Every M_Product has a price. The cost of a building is `SUM(price × qty)` — a query, not a feature.
 - **[Design themes](ProjectOrderBlueprint.md#1-exception-based-ordering-configure-to-order-for-buildings)** are C_Campaign — Bali, Scandinavian, Industrial. Marketing drives variant selection, orthogonal to product category and discipline.
 - **[Site developments](ProjectOrderBlueprint.md#2-c_project-site-as-bom)** are C_Project. 200 houses under one project, each a C_Order on a plot. The same entity that manages a manufacturing program manages a construction site.
 
-**The test:** 35 real buildings compiled. 48,428 elements in the largest.
-6 verification gates. 19 buildings ALL GREEN. Not a prototype — a working
-compiler with witness verification at every step.
+**The test:** 21 real buildings compiled. 48,428 elements in the largest.
+9 verification gates. 116/157 PASS, 4 ALL GREEN. Browser viewer streams
+126K elements with 729 draw calls on mobile (95% reduction via geometry
+merge). A working R&D compiler with witness verification at every step —
+functionally complete for the tested scope, not yet production-hardened
+across all building types.
 
 ---
 
@@ -522,30 +525,38 @@ compiler with witness verification at every step.
 ## The Viewer — DB Is the Model
 
 The same philosophy that separates WHAT / HOW / WHERE in the compiler applies
-to the viewer. Blender is not the model. The DB is the model. Blender is the
-current display context — a controlled viewport that loads only what is asked for.
+to the viewer. The DB is the model. The viewer — whether browser or Blender —
+is a display context that loads only what is asked for.
+
+**Browser (BIM OOTB)** is the primary viewer and designer. sql.js WASM +
+Three.js, zero install. Imports IFC and 6 mesh formats (OBJ, STL, DAE, GLB,
+FBX, 3DS) via Drop Zone, classifies with a guided wizard, exports back to IFC.
+DB BLOBs stream directly to GPU — no glTF, no server, no conversion pipeline.
+GPU instancing (InstancedMesh) and mobile geometry merge deliver 126K elements
+at 60fps on desktop and usable frame rates on phone hardware, from two static
+SQLite files. Commercial BIM viewers (APS, iTwin, Trimble Connect) require
+server-side tiling infrastructure to achieve comparable scale.
+
+**Blender (Federation addon)** is the city-scale path. R-tree spatial queries,
+direct DB streaming from SQLite BLOBs, 1M elements.
+
+Both read the same SQLite schema:
 
 ```
 DB (always consistent — extraction, compilation, modelling all write here)
     ↓  O(log n) spatial query
-RTree GPU       — 1M wireframes, 13s load, instant orbit, zero mesh
-    ↓  drill-down
-Cockpit         — live discipline counts, storey filter, GUID copy (<50ms)
-    ↓  MESH
-Stingy Loader   — exact IFC geometry on demand, <5s, independently shred-able
-    ↓  SHRED
-Clean viewport  — only what the user chose remains
+Browser (Three.js)  — zero install, 126K elements, IFC round-trip
+Blender (R-tree)    — city scale, 1M elements, discipline phasing
 ```
 
 **Every writer uses the same DB:**
-- IFC extraction pipeline → geometry_hash + transforms + metadata
+- IFC / mesh import → geometry_hash + transforms + metadata
 - BIM Designer compiler → new element placements, BOMs
 - RouteWalker → routing paths as element_transforms
-- Future modeller → new geometry written to component_library.db + row to element_instances
 
 **The viewer does not care who wrote the element.** A RouteWalker duct appears
-as MEP discipline. A BIM Designer wall appears as ARC. A modelled element
-appears where placed. The RTree search finds it in the next query.
+as MEP discipline. A BIM Designer wall appears as ARC. The spatial index finds
+it in the next query.
 
 This is the same "configure-to-order" pattern applied to the viewport:
 load only exceptions (what the user asked for), inherit the rest (wireframes from DB).

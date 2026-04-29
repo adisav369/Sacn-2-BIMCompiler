@@ -15,7 +15,7 @@ const OCI_SETUP_PATH = path.join(DEPLOY_ROOT, '..', 'internal', 'OCI_SETUP.md');
 
 test.describe('OCI Deploy SOP', () => {
 
-  test('13.1 Landing page scripts all resolve locally', async ({ page }) => {
+  test('13.1 Landing page scripts all resolve locally @fast', async ({ page }) => {
     const failed = [];
     page.on('response', response => {
       const url = response.url();
@@ -40,7 +40,7 @@ test.describe('OCI Deploy SOP', () => {
     expect(failed.length).toBe(0);
   });
 
-  test('13.2 All landing <script src> files exist on disk', async () => {
+  test('13.2 All landing <script src> files exist on disk @fast', async () => {
     const landing = fs.readFileSync(LANDING_PATH, 'utf-8');
 
     // Extract all <script src="..."> paths (exclude CDN/external)
@@ -69,7 +69,7 @@ test.describe('OCI Deploy SOP', () => {
     expect(missing).toEqual([]);
   });
 
-  test('13.3 All landing script refs are in OCI_SETUP upload commands', async () => {
+  test('13.3 All landing script refs are in OCI_SETUP upload commands @fast', async () => {
     const landing = fs.readFileSync(LANDING_PATH, 'utf-8');
     const ociSetup = fs.readFileSync(OCI_SETUP_PATH, 'utf-8');
 
@@ -144,10 +144,10 @@ test.describe('OCI Deploy SOP', () => {
     expect(notInSOP).toEqual([]);
   });
 
-  test('13.4 Worker importScripts files exist on disk', async () => {
+  test('13.4 Worker importScripts files exist on disk @fast', async () => {
     const workerPath = path.join(DEPLOY_ROOT, 'dev', 'mesh_import_worker.js');
     if (!fs.existsSync(workerPath)) {
-      console.log('§PW_OCI_WORKER_DEPS SKIP — mesh_import_worker.js not found');
+      console.log('§PW_OCI_WORKER_DEPS ABSENT — mesh_import_worker.js not found');
       return;
     }
 
@@ -180,7 +180,7 @@ test.describe('OCI Deploy SOP', () => {
   const TARGET = process.env.TARGET || 'local';
   const ociTest = TARGET === 'oci' ? test : test.skip;
 
-  ociTest('13.5 OCI DEV landing loads without script 404s', async ({ page }) => {
+  ociTest('13.5 OCI DEV landing loads without script 404s @fast', async ({ page }) => {
     const failed = [];
     page.on('response', response => {
       const url = response.url();
@@ -200,7 +200,7 @@ test.describe('OCI Deploy SOP', () => {
     expect(failed.length).toBe(0);
   });
 
-  ociTest('13.6 OCI DEV viewer loads with wizard param', async ({ page }) => {
+  ociTest('13.6 OCI DEV viewer loads with wizard param @fast', async ({ page }) => {
     const failed = [];
     const consoleLogs = [];
     page.on('response', response => {
@@ -215,7 +215,7 @@ test.describe('OCI Deploy SOP', () => {
     });
 
     // Use Duplex DB from the full bucket (always available)
-    const fullBase = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/buildings/';
+    const fullBase = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/buildings/';
     const db = fullBase + 'Duplex_extracted.db';
     const lib = fullBase + 'Duplex_library.db';
     const viewerUrl = OCI_BASE + 'sandbox/index.html?db=' + encodeURIComponent(db) +

@@ -11,13 +11,14 @@ const { zIndex } = require('../helpers/dom');
 
 test.describe('Excel Export & Chart Button', () => {
 
-  test('6.1 Chart button opens boq_charts', async ({ page }) => {
+  test('6.1 Chart button opens boq_charts @slow', async ({ page }) => {
     await openViewer(page);
 
     // Listen for popup (new tab) when clicking 📊
-    const popupPromise = page.waitForEvent('popup', { timeout: 5000 }).catch(() => null);
-    await page.evaluate(() => window.export4D5D());
-    const popup = await popupPromise;
+    const [popup] = await Promise.all([
+      page.waitForEvent('popup', { timeout: 5000 }).catch(() => null),
+      page.evaluate(() => window.export4D5D()),
+    ]);
 
     if (popup) {
       await popup.waitForLoadState('domcontentloaded');
@@ -26,12 +27,14 @@ test.describe('Excel Export & Chart Button', () => {
       expect(url).toContain('boq_charts');
       await popup.close();
     } else {
-      // May redirect in same page in some configs
-      console.log('§PW_CHART_BTN SKIP — no popup detected');
+      // Same-tab navigation — check URL changed
+      const url = page.url();
+      console.log(`§PW_CHART_BTN same_tab url="${url.substring(0, 80)}"`);
+      expect(url).toContain('boq_charts');
     }
   });
 
-  test('6.2 Issues panel z-index above search-box', async ({ page }) => {
+  test('6.2 Issues panel z-index above search-box @slow', async ({ page }) => {
     await openViewer(page);
 
     const issuesZ = await zIndex(page, '#issues-panel');
@@ -43,56 +46,62 @@ test.describe('Excel Export & Chart Button', () => {
     }
   });
 
-  test('6.3 4D Excel download from boq_charts', async ({ page }) => {
+  test('6.3 4D Excel download from boq_charts @slow', async ({ page }) => {
     const BOQ_URL = '/dev/boq_charts.html?db=/buildings/Duplex_extracted.db&lib=/buildings/Duplex_library.db&bld=Ifc2x3_Duplex_Architecture';
     await page.goto(BOQ_URL);
-    await page.waitForTimeout(5000); // let charts render
+    await page.waitForFunction(() => {
+      const info = document.getElementById('info');
+      return info && !info.textContent.includes('Loading');
+    }, { timeout: 45000 });
 
-    // Look for save4D button
     const saveBtn = page.locator('button:has-text("4D"), button:has-text("Save 4D"), [onclick*="save4D"]');
     const exists = await saveBtn.count();
+    expect(exists).toBeGreaterThan(0);
 
-    if (exists > 0) {
-      const downloadPromise = page.waitForEvent('download', { timeout: 15000 }).catch(() => null);
-      await saveBtn.first().click();
-      const download = await downloadPromise;
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 15000 }).catch(() => null),
+      saveBtn.first().click(),
+    ]);
 
-      if (download) {
-        console.log(`§PW_EXCEL_4D file="${download.suggestedFilename()}" — downloaded`);
-        expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
-      } else {
-        console.log('§PW_EXCEL_4D SKIP — download not captured in headless');
-      }
+    if (download) {
+      console.log(`§PW_EXCEL_4D file="${download.suggestedFilename()}"`);
+      expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
     } else {
-      console.log('§PW_EXCEL_4D SKIP — save4D button not found');
+      test.fixme('4D download not captured in headless Chromium');
     }
   });
 
-  test('6.4 5D Excel download from boq_charts', async ({ page }) => {
+  test('6.4 5D Excel download from boq_charts @slow', async ({ page }) => {
     const BOQ_URL = '/dev/boq_charts.html?db=/buildings/Duplex_extracted.db&lib=/buildings/Duplex_library.db&bld=Ifc2x3_Duplex_Architecture';
     await page.goto(BOQ_URL);
-    await page.waitForTimeout(5000);
+    await page.waitForFunction(() => {
+      const info = document.getElementById('info');
+      return info && !info.textContent.includes('Loading');
+    }, { timeout: 45000 });
 
     const saveBtn = page.locator('button:has-text("5D"), button:has-text("Save 5D"), [onclick*="save5D"]');
     const exists = await saveBtn.count();
+    expect(exists).toBeGreaterThan(0);
 
-    if (exists > 0) {
-      const downloadPromise = page.waitForEvent('download', { timeout: 15000 }).catch(() => null);
-      await saveBtn.first().click();
-      const download = await downloadPromise;
+    // S232: saveAs (FileSaver.js) triggers download reliably after async chain
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 30000 }).catch(() => null),
+      saveBtn.first().click(),
+    ]);
 
-      if (download) {
-        console.log(`§PW_EXCEL_5D file="${download.suggestedFilename()}" — downloaded`);
-        expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
-      } else {
-        console.log('§PW_EXCEL_5D SKIP — download not captured in headless');
-      }
+    if (download) {
+      console.log(`§PW_EXCEL_5D file="${download.suggestedFilename()}"`);
+      expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
     } else {
-      console.log('§PW_EXCEL_5D SKIP — save5D button not found');
+      // Check status for error — if export ran but download not captured, that's OK
+      const status = await page.textContent('#status');
+      console.log(`§PW_EXCEL_5D_STATUS "${status}"`);
+      expect(status).not.toContain('ERROR');
+      expect(status).toContain('Saved');
     }
   });
 
-  test('6.5 Export does not navigate away', async ({ page }) => {
+  test('6.5 Export does not navigate away @slow', async ({ page }) => {
     await openViewer(page);
     const urlBefore = page.url();
 
@@ -107,7 +116,7 @@ test.describe('Excel Export & Chart Button', () => {
     expect(urlAfter).toBe(urlBefore);
   });
 
-  test('6.6 Issues Excel export button exists and is wired', async ({ page }) => {
+  test('6.6 Issues Excel export button exists and is wired @slow', async ({ page }) => {
     await openViewer(page);
 
     // Open issues panel
