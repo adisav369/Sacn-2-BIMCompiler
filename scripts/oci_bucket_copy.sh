@@ -7,9 +7,9 @@
 #   bash scripts/oci_bucket_copy.sh <source-bucket> <dest-bucket> [prefix]
 #
 # Examples:
-#   bash scripts/oci_bucket_copy.sh bim-ootb-full bim-ootb-backup sandbox/   # snapshot
-#   bash scripts/oci_bucket_copy.sh bim-ootb-dev bim-ootb-full sandbox/      # deploy
-#   bash scripts/oci_bucket_copy.sh bim-ootb-backup bim-ootb-full sandbox/   # rollback
+#   bash scripts/oci_bucket_copy.sh bim-ootb-live bim-ootb-backup sandbox/   # snapshot
+#   bash scripts/oci_bucket_copy.sh bim-ootb-dev bim-ootb-live sandbox/      # deploy
+#   bash scripts/oci_bucket_copy.sh bim-ootb-backup bim-ootb-live sandbox/   # rollback
 
 set -euo pipefail
 
