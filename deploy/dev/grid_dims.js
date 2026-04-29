@@ -18,9 +18,10 @@
 
   var SNAP_MODULE = 300; // mm — snap bay widths to nearest 300mm if within 150mm
   var DEFAULT_TOLERANCE = 0.3; // meters — columns within 30cm are same grid line
-  var GRID_EXTEND = 1.0; // meters — how far grid lines extend beyond plan bbox
-  var LABEL_RADIUS = 10; // screen px — circle radius for grid bubbles (renderer must NOT multiply by viewScale)
-  var LABEL_TEXT_H = 10; // screen px — bubble label font size (renderer must NOT multiply by viewScale)
+  var GRID_EXTEND = 1.0;    // meters — how far grid lines extend beyond plan bbox
+  var LABEL_RADIUS = 10;   // screen px — circle radius for grid bubbles (renderer must NOT multiply by viewScale)
+  var LABEL_TEXT_H = 10;   // screen px — bubble label font size
+  var MIN_BAY_DISPLAY = 1.0; // meters — drop grid lines closer than this to any neighbour (sub-metre column pairs)
 
   // ── Helpers ──────────────────────────────────────────────────────
 
@@ -155,6 +156,39 @@
     // Snap to nearest SNAP_MODULE
     xLines = snapGrids(xLines);
     yLines = snapGrids(yLines);
+
+    // Drop sub-structural lines: keep first/last, drop any interior line where
+    // both adjacent bays are < MIN_BAY_DISPLAY (close column pairs, not structural bays)
+    // Keep a line only if BOTH adjacent bays are structural (≥ MIN_BAY_DISPLAY).
+    // Repeat until stable — handles cascades where removing one line merges two small bays.
+    function filterStructural(lines) {
+      var result = lines.slice();
+      var changed = true;
+      while (changed && result.length > 2) {
+        changed = false;
+        var next = [result[0]];
+        for (var i = 1; i < result.length - 1; i++) {
+          var prev = result[i].position - result[i - 1].position;
+          var nxt  = result[i + 1].position - result[i].position;
+          if (prev >= MIN_BAY_DISPLAY && nxt >= MIN_BAY_DISPLAY) {
+            next.push(result[i]);
+          } else {
+            changed = true;
+          }
+        }
+        next.push(result[result.length - 1]);
+        result = next;
+      }
+      return result;
+    }
+    var xFiltered = filterStructural(xLines);
+    var yFiltered = filterStructural(yLines);
+    if (xFiltered.length !== xLines.length || yFiltered.length !== yLines.length) {
+      log('§GD_FILTER x:' + xLines.length + '→' + xFiltered.length +
+          ' y:' + yLines.length + '→' + yFiltered.length + ' (MIN_BAY=' + MIN_BAY_DISPLAY + 'm)');
+    }
+    xLines = xFiltered;
+    yLines = yFiltered;
 
     log('§GD_GRIDS xLines=' + xLines.length + ' yLines=' + yLines.length);
 

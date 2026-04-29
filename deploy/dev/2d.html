@@ -47060,6 +47060,7 @@ EOF
 </script>
 <script src="section_cut.js?v=4"></script>
 <script src="grid_dims.js?v=4"></script>
+<script src="title_block.js?v=1"></script>
 <script src="elevation.js?v=4"></script>
 <script src="dxf_export.js?v=4"></script>
 <script src="dxf-parser.js?v=4"></script>
@@ -47321,6 +47322,7 @@ const LAYER_COLORS = {
   'A-ANNO-TEXT': '#aabbcc',   // annotation text
   'A-ELEV-WALL': '#ffffff',
   'A-ELEV-LEVL': '#99aacc',
+  'A-TTLB':      '#557799',   // title block border — blue-grey
 };
 
 function layerColor(layer) {
@@ -47947,6 +47949,24 @@ async function generateFromDb() {
       }
       // Store for fitView to zoom to structure only
       window._structBbox = isFinite(bx0) ? structBbox : null;
+
+      // Title block + scale bar + north arrow
+      if (window.TitleBlock && isFinite(bx0)) {
+        const bldName = (params.get('bld') || 'Building').replace(/^S\d+_\d+_/, '');
+        // Compute viewScale from structBbox (same formula as fitView) — inline scale is wrong at this point
+        const _bw = bx1 - bx0 || 1, _bh = by1 - by0 || 1;
+        const _pad = Math.max(_bw * 0.20, 3);
+        const _computedScale = Math.min((canvas.width - 40) / (_bw + _pad * 2),
+                                        (canvas.height - 40) / (_bh + _pad * 2));
+        const tbEnts = TitleBlock.render({
+          buildingName: bldName,
+          storeyName: storeyName || document.getElementById('storey-select').value || '',
+          viewScale: _computedScale,
+          structBbox: structBbox,
+          date: new Date().toISOString().slice(0, 10),
+        });
+        newEntities = newEntities.concat(tbEnts);
+      }
     } else {
       // Elevation: front/rear/left/right
       const elements = Elevation.generateElevation(dbMain, dbLib, mode);
