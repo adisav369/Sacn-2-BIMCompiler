@@ -45,17 +45,18 @@
   - Playwright: 108/108 PASS (desktop), 18 specs. 5D Excel test (6.4) no longer skipped.
   - Test fixtures: `deploy/dev/test/seaside-villa.obj`, `engel-house.obj`
   - S233a DONE: Playwright hardening — @fast/@slow/@bench tags, waitForTimeout purge, 4 bugs fixed (flip camera, IFC stale DB, double-flip, storey rename UI). Audit: 106 tests, 236 expects, ratio 2.23. @fast=79s, full=3.2min, 0 pre-existing failures.
-  - S233b IN PROGRESS: Find & Navigate — indoor wayfinding. Spec: `prompts/S233_find_and_navigate.md`
-    - All 6 mobile issues FIXED. Desktop voice search + navigate confirmed working.
-    - Playwright 17-find-navigate.spec.js: 14/14 PASS (desktop). Audit: 112 tests, 246 expects.
-    - `index.html` needs 3 lines re-added (navigate.js tag + nlp/main version bumps).
-    - **Remaining:** re-add to index.html, deploy to dev, mobile field test.
-  - S237b FIX: 4D5D locale_loader.js missing from OCI dev bucket → translation broken. Uploaded to root. Added to OCI_SETUP.md. Root cause: locale_loader.js never added to dev upload SOP.
-    - **Next session:** boq_charts.html DB fetch → use IndexedDB cache (if variance IFC, data already local)
+  - S233b DEPLOYED: Find & Navigate — indoor wayfinding. Spec: `prompts/S233_find_and_navigate.md`
+    - 26/26 Playwright PASS (desktop). navigate.js lazy-loaded on demand (saves 78KB on mobile).
+    - **S239 fix:** sw.js CACHE_VERSION='v239' — network-first for JS/HTML. Stale cache issue resolved.
+    - **Remaining:** mobile field test (touch, mic, deviceOrientation). Occupancy grid not yet populated.
+  - S237b FIX: 4D5D locale_loader.js + locales/ uploaded to all 3 buckets (dev/live/full).
   - S234 KIV: Wizard Toggle UX — code written, not field-proven. Spec: `prompts/S234_wizard_toggle_ux.md`
-    - Z-gap clustering replaces fixed 3m bands. Draining-pool classifier replaces picker.
-    - Playwright: 106/106 PASS. But Bug 6b/6c stubbornly recur — flip sign propagation is entangled.
-    - **Needs:** OCI deploy + field test before calling done. Navigation feature takes priority.
+    - Bug 6b (storey order inverted after flip) + Bug 6c (fixed 3m bands) — OPEN.
+    - Z-gap clustering spec'd but not implemented. flip sign propagation is entangled.
+    - **Needs:** §WIZARD_STOREY_SORT log line + field test.
+  - S239 DONE: Deep refactor — `full` branch. helpers.js, 18 traverse→0, 31 db.exec→dbQuery,
+    4 SQL injections fixed, lazy-load navigate/wizard, sw.js versioning, minify script (44% reduction).
+    Testing hierarchy: §-log primary, Playwright secondary. See `docs/TestArchitecture.md`.
 
 **S225b (2026-04-25): Rates + Locale.** DONE (dev).
   - `rates.js` single source of truth. 15 locale files (iDempiere _TRL pattern). Prompt: `prompts/S226_localisation.md`
