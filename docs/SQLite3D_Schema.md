@@ -1,6 +1,9 @@
 # SQLite3D Schema — A Standard for DB-Native 3D Viewers
 
 **Version 1.0 — BIM OOTB Reference Implementation**
+**Creator:** [Redhuan D. Oon](mailto:red1org@gmail.com) · First published 2026-04-29
+
+> **Origin story:** This schema was not designed top-down. It emerged across ~60 collaborative sessions between a BIM domain expert and Claude Code, through a series of constraints that progressively eliminated Blender, .blend files, bake pipelines, and finally Bonsai itself — leaving only two SQLite files and a browser. The full account is in [VibeProgramming.md — The Browser Pivot](VibeProgramming.md#case-study-the-browser-pivot--how-bonsai-became-optional-s165s231).
 
 ---
 

@@ -204,6 +204,102 @@ The skill intersection — `bpy.data.libraries.load(link=True)` + `IfcOpenShell 
 
 ---
 
+## Case Study: The Browser Pivot — How Bonsai Became Optional (S165–S231)
+
+The second case study is more instructive than the first, because it documents a **complete architectural reversal** — built collaboratively across ~60 sessions with Claude Code, where each session's constraints forced the next decision.
+
+### The assumption we started with
+
+From S165 onward, the viewer was Blender + Bonsai. The BIM compiler produced SQLite databases; Bonsai loaded them. This was the right assumption at the time: Bonsai had GPU rendering, IFC awareness, and a Python plugin API. The goal was city-scale BIM federation inside Blender.
+
+### S165–S174: Building the world's most sophisticated Blender BIM viewer
+
+The first attempt at scale used **Geometry Nodes (GN)** — Blender's node-based instancing system — to render 1M elements as GPU instances. By S175, `geom.iterator()` replaced the slower `create_shape()` per-element tessellator, and BLOBs started flowing from SQLite into Blender via `from_pydata()`.
+
+The architecture at S174 was impressive:
+
+- 3-building pipeline (Clinic / Hospital / Terminal), parallel discipline merge
+- 123,573 unique meshes in a 305MB `library.blend`
+- Hash-addressed geometry deduplication: identical components share one mesh
+- `element_instances.geometry_hash` → `component_geometries.vertices BLOB` — the two-DB split was born here, not in the browser
+
+### S175: The wall that stopped GN
+
+**One number killed Geometry Nodes:** at 500 modifier trees (each GN instance is a modifier), Blender's evaluation overhead hit **8 minutes per viewport interaction**. The user could not orbit the model. No GN optimisation — chunking, lazy eval, batch size tuning — changed this. S175 session 2 confirmed it: `Collection Info` node with >7K objects causes viewport hang. GN was halted at S176.
+
+This was the first crack: the assumed viewer technology had a hard ceiling we hit at real building scale.
+
+### S180–S189: RTree rescues Blender
+
+With GN abandoned, S180 introduced the **RTree Stingy Loader** — load geometry only for elements near the camera, shred everything else, query the SQLite R-tree for the next batch. This worked: `<1s` to first mesh in the viewport at S184. S189 added BLOB tessellation via `from_pydata()` — no `library.blend` file, geometry reconstructed directly from SQLite bytes in Python.
+
+But Blender's save pipeline had its own ceiling. A session `.blend` linking 190K meshes to a baked library file was 300MB+. Every code change required baking. The bake took 45 minutes for a full city. Users needed Blender installed. They needed the Python addon configured. They needed the DB file paths set in the N-panel.
+
+The second crack: Blender was the bottleneck, not the data.
+
+### S192–S193: The last Blender steps
+
+S192 bridged the BLOB gap to the browser — the first time geometry from `component_geometries` was served to a client other than Blender. S193 implemented DLOD auto-linker: `.blend` link/unlink by camera position. These were still Blender sessions. The pivot hadn't happened yet.
+
+### S195: "No .blend files."
+
+The S195 commit message is the pivot:
+
+```
+[S195] Direct DB Streaming — camera-driven mesh from BLOBs, no .blend files
+```
+
+The insight, arrived at through constraint: if `from_pydata()` in Python could reconstruct a mesh from a BLOB, so could `new Float32Array(blob)` in JavaScript. The BLOB format didn't care what consumed it — Python or a browser. The SQLite file didn't care what opened it — Blender or sql.js WASM.
+
+Both Blender's Python and the browser's JavaScript were doing the same thing: deserialising `float32` bytes into vertex positions and sending them to a renderer. The **data format was the viewer interface** — not the Blender addon API.
+
+### S200: BIM OOTB — Two DBs. One browser. Zero install.
+
+```
+[S200] BIM OOTB — single HTML + Two DBs + sql.js WASM + Three.js. No server.
+Proven at 126K elements (LTU AHouse).
+```
+
+No Bonsai. No Blender. No server. The same two DBs — `_extracted.db` (semantic index) and `_library.db` (BLOB geometry pool) — that the Blender viewer had been reading since S168 were now loaded into a browser tab via `fetch()` and opened with `new SQL.Database(new Uint8Array(buf))`.
+
+The coordinate transform (`IFC X,Y,Z → Three.js X,Z,-Y`) was the only thing that changed. The schema was identical. The BLOBs were identical. The hash-addressed deduplication was identical.
+
+### S220: IFC import in the browser
+
+```
+[S220] IFC import: coord fix, unit scaling, material extraction, boolean openings
+```
+
+With web-ifc WASM parsing IFC directly in the browser, the full round-trip closed: IFC → browser → same `_extracted.db` + `_library.db` schema → viewer. Bonsai was no longer needed to create the DBs either.
+
+The Bonsai addon — the assumed viewer from S165 — became one of several *optional* consumers of a schema that now ran everywhere.
+
+### S231: InstancedMesh — the schema pays dividends
+
+```
+[S231] TE BOM storey fix + InstancedMesh 85% draw call reduction
+```
+
+Because geometry is hash-addressed from the beginning — not as a performance optimisation but as a consequence of how the extractor works — instancing in the browser required no schema change. Elements with the same `geometry_hash` were grouped in one SQL query result. `THREE.InstancedMesh` consumed them directly. 85% draw call reduction on a 48K-element Terminal building, with no change to the DB.
+
+### What vibe programming produced
+
+The schema in [SQLite3D_Schema.md](SQLite3D_Schema.md) was not designed top-down. It emerged from 60+ sessions of constraint-driven iteration:
+
+| Session | Constraint | Schema consequence |
+|---------|-----------|-------------------|
+| S168 | Blender session save was too large with BLOBs inlined | Two-DB split: BLOBs in `library.db`, hashes in `extracted.db` |
+| S172 | `create_shape()` per element was O(n) and slow | `geom.iterator()` + SHA256 hash-addressed `component_geometries` |
+| S173 | 30 buildings needed the same door mesh without copying it | Hash dedup: 123K unique meshes serve 1M elements |
+| S175 | GN 500-tree overhead — Blender viewer had a hard ceiling | R-tree virtual table for spatial queries without in-memory BVH |
+| S195 | Blender save pipeline was the bottleneck, not the data | Float32 BLOB format works in any language — Python or JS |
+| S200 | Zero-install requirement for site use | sql.js WASM opens the same SQLite file in the browser |
+| S231 | Mobile draw call budget | `geometry_hash` grouping → `THREE.InstancedMesh` with no schema change |
+
+Each constraint was discovered in practice, not anticipated. Claude Code explored the solution space; the domain expert evaluated whether each result was correct. The schema that emerged is now published as a candidate open standard — not because it was designed to be one, but because 60 sessions of real-world pressure produced something that actually works.
+
+---
+
 ## For the Bonsai/BlenderBIM Community
 
 If you're evaluating this project and wondering whether vibe-programmed code can be trusted:
