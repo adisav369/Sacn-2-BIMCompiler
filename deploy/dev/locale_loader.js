@@ -100,7 +100,7 @@
   // ── Fetch locale from OCI or localStorage cache ──
   function fetchLocale(code, callback) {
     // Check localStorage cache first
-    var LOCALE_VERSION = 5; // bump to invalidate cached locales
+    var LOCALE_VERSION = 6; // bump to invalidate cached locales
     var cacheKey = 'bim_ootb_locale_' + code;
     try {
       var cached = localStorage.getItem(cacheKey);
