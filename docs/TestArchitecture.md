@@ -378,19 +378,84 @@ bcd2af85  rosetta_fidelity.sh
 | SH | 65 | 8/9 | MetadataMissing (generative MEP) |
 | TE | 33848 | 2/4 | Extraction reconciliation |
 
-### Browser E2E Tests (Playwright)
+### Browser Testing — Whitebox Debug Logging (Primary)
 
-72/72 desktop specs, 10 spec files. Tests the BIM OOTB browser viewer:
-import, viewer load, walk/sitecam, cinematic tour, BOQ charts, mobile UX,
-mesh import, IFC export, wizard. Suite in `deploy/dev/tests/`.
+**§-tagged console output is the primary browser verification method.** The coder
+reads the log to confirm values are correct — not Playwright assertions.
+
+Every module emits `§`-prefixed log lines with structured key=value data.
+After any code change, the coder opens browser console (or captures via
+`page.evaluate` in a test harness) and reads the `§` lines to verify:
+
+| Log tag | Module | What coder checks |
+|---------|--------|-------------------|
+| `§HELPERS_READY` | helpers.js | All 4 shared functions wired |
+| `§DB_LOADED size=NMB` | streaming.js | DB fetched, size reasonable |
+| `§BOOTSTRAP centres=N` | streaming.js | Building count matches DB |
+| `§DS_QUEUED bld=X elements=N` | streaming.js | Correct building selected, element count |
+| `§GROUND minZ_ifc=X` | streaming.js | Ground plane positioned at correct Z |
+| `§STOREY_FILTER X` | panels.js | Storey isolation applied |
+| `§PICK class "name" disc storey` | picking.js | Correct element identified on click |
+| `§XRAY ON/OFF` | tools.js | X-ray state toggled |
+| `§SECTION ON axis=X range=[a,b]` | tools.js | Section cut bounds computed from mesh bbox |
+| `§WALK_DOOR picked (x,y,z) dist=Nm` | walk.js | Nearest door found, distance plausible |
+| `§WALK_STOREYS N levels cached` | walk.js | All storeys detected with floor elevations |
+| `§WALL_XRAY class=X storey=Y` | walk.js | Wall identified, storey correct |
+| `§WALL_MEP found=N near wall` | walk.js | MEP behind wall detected, count reasonable |
+| `§NLP_HIGHLIGHT n=N/M` | nlp.js | Correct GUIDs highlighted (N found of M requested) |
+| `§DIFF added=N removed=N changed=N` | diff.js | Variance counts match expectations |
+| `§CAMERA envelope=WxDxHm dist=Nm` | streaming.js | Camera positioned at correct distance |
+| `§TRUE_NORTH X°` | streaming.js | Grid rotation angle extracted from DB |
+
+**Verification protocol:**
+1. Change code → open browser → open console (F12)
+2. Read `§` lines — are values correct? Do counts match the DB?
+3. If a value is wrong, the `§` line pinpoints which function, which query
+4. Fix → re-check → commit only when `§` lines prove correctness
+
+**When to add a new `§` line:** When a function computes a value that
+could be silently wrong. The log line IS the test. Example:
+```javascript
+// In walk.js — after computing nearest door
+console.log(`§WALK_DOOR picked (${x},${y},${z}) dist=${d}m from ${n} doors`);
+// Coder reads this: is the position inside the building? Is dist reasonable?
+```
+
+**Advantages over Playwright:**
+- Instant (no 20s browser launch, no 2min suite run)
+- Shows actual values (not just pass/fail)
+- Works for visual state Playwright can't see (camera position, material opacity)
+- Coder learns the system by reading the log — builds mental model
+- Catches wrong-but-plausible values (e.g. door at wrong storey — Playwright wouldn't know)
+
+### Playwright E2E Tests (Secondary — Wiring Only)
+
+~75 desktop specs, 19 spec files. Suite in `deploy/dev/tests/`.
+
+**Playwright is kept for wiring and deploy integrity only:**
+- Script tags load without errors
+- Buttons exist and are clickable
+- DB queries return non-empty results
+- Import/export workers fire
+- Wizard multi-step flow completes
+
+**Playwright is NOT used for:**
+- Visual correctness (SwiftShader = black pixels)
+- Value verification (§ logs are sharper — they show the actual number)
+- Camera position checks (headless timing differs from real browser)
+- Mobile UX (simulated viewport ≠ real device)
+- Round-trip state (needs IndexedDB + visual — use DB-level Node.js tests)
+
+See `reference/residential/PlaywrightAnalysis.md` §Playwright Scope for full boundary.
 
 ### Test Summary
 
-| Suite | Count | Runner |
-|-------|-------|--------|
-| Playwright (browser E2E) | 72/72 | `npx playwright test` |
-| BonsaiBIMDesigner (Java) | 408/414 | `mvn test` (needs component_library.db) |
-| BIMBackOffice (Java) | 20/20 | `mvn test` |
-| Rosetta Stone fleet | 116/157 gates PASS | `./scripts/run_RosettaStones.sh` |
+| Suite | Count | Runner | Role |
+|-------|-------|--------|------|
+| §-tagged console logs | ~30 tags across 10 modules | Browser console / F12 | **Primary** — value verification |
+| Playwright (browser E2E) | ~75 specs | `npx playwright test` | Secondary — wiring/deploy checks |
+| BonsaiBIMDesigner (Java) | 408/414 | `mvn test` (needs component_library.db) | Backend gates |
+| BIMBackOffice (Java) | 20/20 | `mvn test` | Backend gates |
+| Rosetta Stone fleet | 116/157 gates PASS | `./scripts/run_RosettaStones.sh` | Pipeline proof |
 
 *See [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) — the gates are a key differentiator in the competitive scorecard.*

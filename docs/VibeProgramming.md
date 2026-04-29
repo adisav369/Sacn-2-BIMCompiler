@@ -204,6 +204,123 @@ The skill intersection — `bpy.data.libraries.load(link=True)` + `IfcOpenShell 
 
 ---
 
+## Case Study: The Browser Pivot (S165–S231)
+
+The second case study is more instructive than the first, because it documents a **complete architectural reversal** — built collaboratively across 190+ sessions with Claude Code (1,400+ commits to date), where each session's constraints forced the next decision.
+
+### Key turning points at a glance
+
+| Date | Event | Significance |
+|------|-------|-------------|
+| [2025-10-30](https://github.com/red1oon/IfcOpenShell/commit/f410e32a13297355d8d5aed444ed176dd18e70a0) | "Full IFC4 database extraction and loading — MILESTONE" in the IfcOpenShell federation branch | **True origin.** First proof that IFC could become a queryable SQLite DB inside Bonsai/Blender. |
+| [2025-12-18](https://github.com/red1oon/IfcOpenShell/commit/bc76b7123ef8ebc73155fc20a4714f42eaec1029) | PDF Terrain + federation GI database | DB-as-scene-data extended beyond pure IFC geometry |
+| [2026-01-25](https://github.com/red1oon/BIMCompiler/commit/1702488d9c974310179d4d111e99e40cfaf1f113) | BIM Compiler repo created; Phase 3+4 Wall/Pipe builders | Work moved into standalone compiler repo; 190+ sessions begin |
+| [2026-04-11](https://github.com/red1oon/BIMCompiler/commit/f116fdde35eeccbc1d69dc533a89df17bf38a687) | S173 — library-linked geometry pipeline | **Two-DB split born:** BLOBs in `library.db`, hashes in `extracted.db` |
+| [2026-04-11](https://github.com/red1oon/BIMCompiler/commit/f3d2902b2b7fb578b8916565d9db7f1ee76f69bf) | S172 — `geom.iterator()` replaces `create_shape()` | Hash-addressed geometry dedup; 123K unique meshes serve 1M elements |
+| [2026-04-12](https://github.com/red1oon/BIMCompiler/commit/2bb9335ed64d6fa8b352cc438872f6a6d4d5e70a) | S175 — GN 500-tree overhead confirmed | **GN halted.** Blender's own instancer had a hard ceiling at building scale |
+| [2026-04-18](https://github.com/red1oon/BIMCompiler/commit/66fc9413a9ed8c3ac0b9d900634c57ba2a7e9e65) | S195 — "Direct DB Streaming — no .blend files" | **Bonsai out. Browser in.** Float32 BLOBs work in Python *and* JavaScript — the schema was always the portable part |
+| [2026-04-20](https://github.com/red1oon/BIMCompiler/commit/7a19d6e2543aeae89d93d80042bb8704793da193) | S200 — BIM OOTB: single HTML + two DBs + sql.js WASM | **Bonsai becomes optional.** 126K elements in a browser tab, zero install |
+| [2026-04-24](https://github.com/red1oon/BIMCompiler/commit/788eb47cc302b680025af07d7f55cc20de0ae742) | S220 — IFC import direct in browser via web-ifc WASM | Full round-trip closes: IFC → browser → same schema → viewer |
+| [2026-04-27](https://github.com/red1oon/BIMCompiler/commit/9cca45a365d6dfaa650995288f62f1e08fec8926) | S231 — InstancedMesh, 85% draw call reduction | Hash-addressed schema pays dividends: instancing needed no schema change |
+| 2026-04-29 | `docs/SQLite3D_Schema.md` published | Schema formalised as a candidate open standard |
+
+### The assumption we started with
+
+From S165 onward, the viewer was Blender + Bonsai. The BIM compiler produced SQLite databases; Bonsai loaded them. This was the right assumption at the time: Bonsai had GPU rendering, IFC awareness, and a Python plugin API. The goal was city-scale BIM federation inside Blender — a direct extension of the work that began in the [IfcOpenShell federation branch in October 2025](https://github.com/red1oon/IfcOpenShell/commit/f410e32a13297355d8d5aed444ed176dd18e70a0).
+
+### S165–S174: Building the world's most sophisticated Blender BIM viewer
+
+The first attempt at scale used **Geometry Nodes (GN)** — Blender's node-based instancing system — to render 1M elements as GPU instances. By S172, [`geom.iterator()` replaced the slower `create_shape()`](https://github.com/red1oon/BIMCompiler/commit/f3d2902b2b7fb578b8916565d9db7f1ee76f69bf) per-element tessellator, and BLOBs started flowing from SQLite into Blender via `from_pydata()`.
+
+The architecture at S174 was impressive:
+
+- 3-building pipeline (Clinic / Hospital / Terminal), parallel discipline merge
+- 123,573 unique meshes in a 305MB `library.blend`
+- Hash-addressed geometry deduplication: identical components share one mesh
+- `element_instances.geometry_hash` → `component_geometries.vertices BLOB` — [the two-DB split was born here](https://github.com/red1oon/BIMCompiler/commit/f116fdde35eeccbc1d69dc533a89df17bf38a687), not in the browser
+
+### S175: The wall that stopped GN
+
+**One number killed Geometry Nodes:** at 500 modifier trees (each GN instance is a modifier), Blender's evaluation overhead hit **8 minutes per viewport interaction**. The user could not orbit the model. No GN optimisation — chunking, lazy eval, batch size tuning — changed this. [S175 session 2 confirmed it](https://github.com/red1oon/BIMCompiler/commit/2bb9335ed64d6fa8b352cc438872f6a6d4d5e70a): `Collection Info` node with >7K objects causes viewport hang. GN was [halted at S176](https://github.com/red1oon/BIMCompiler/commit/9d1fc6d810993677a4bccab6bc6fa60a7988d5c4).
+
+This was the first crack: the assumed viewer technology had a hard ceiling we hit at real building scale.
+
+### S180–S189: RTree rescues Blender
+
+With GN abandoned, S180 introduced the **RTree Stingy Loader** — load geometry only for elements near the camera, shred everything else, query the SQLite R-tree for the next batch. This worked: `<1s` to first mesh in the viewport at S184. S189 added BLOB tessellation via `from_pydata()` — no `library.blend` file, geometry reconstructed directly from SQLite bytes in Python.
+
+But Blender's save pipeline had its own ceiling. A session `.blend` linking 190K meshes to a baked library file was 300MB+. Every code change required baking. The bake took 45 minutes for a full city. Users needed Blender installed. They needed the Python addon configured. They needed the DB file paths set in the N-panel.
+
+The second crack: Blender was the bottleneck, not the data.
+
+### S192–S193: The last Blender steps
+
+S192 bridged the BLOB gap to the browser — the first time geometry from `component_geometries` was served to a client other than Blender. S193 implemented DLOD auto-linker: `.blend` link/unlink by camera position. These were still Blender sessions. The pivot hadn't happened yet.
+
+### S195: Bonsai out. Browser in.
+
+The [S195 commit](https://github.com/red1oon/BIMCompiler/commit/66fc9413a9ed8c3ac0b9d900634c57ba2a7e9e65) is where everything flips:
+
+```
+[S195] Direct DB Streaming — camera-driven mesh from BLOBs, no .blend files
+```
+
+Five months of Blender sessions. 500 modifier trees. 45-minute bake cycles. A 300MB session `.blend`. All of it dissolved by a single realisation: **the data format was the viewer interface, not the Blender addon API.**
+
+If `from_pydata()` in Python could reconstruct a mesh from a BLOB, so could `new Float32Array(blob)` in JavaScript. The BLOB didn't care what consumed it. The SQLite file didn't care what opened it — Blender or a browser tab. Both were doing the same thing: deserialising `float32` bytes and handing them to a renderer.
+
+Bonsai had been the assumed destination since October 2025. S195 made it optional in one session. The schema — built under Blender's constraints — turned out to be the portable part. Everything else was just a renderer.
+
+### S200: BIM OOTB — Two DBs. One browser. Zero install.
+
+```
+[S200] BIM OOTB — single HTML + Two DBs + sql.js WASM + Three.js. No server.
+Proven at 126K elements (LTU AHouse).
+```
+([commit 7a19d6e](https://github.com/red1oon/BIMCompiler/commit/7a19d6e2543aeae89d93d80042bb8704793da193))
+
+No Bonsai. No Blender. No server. The same two DBs — `_extracted.db` (semantic index) and `_library.db` (BLOB geometry pool) — that the Blender viewer had been reading since S168 were now loaded into a browser tab via `fetch()` and opened with `new SQL.Database(new Uint8Array(buf))`.
+
+The coordinate transform (`IFC X,Y,Z → Three.js X,Z,-Y`) was the only thing that changed. The schema was identical. The BLOBs were identical. The hash-addressed deduplication was identical.
+
+### S220: IFC import in the browser
+
+```
+[S220] IFC import: coord fix, unit scaling, material extraction, boolean openings
+```
+([commit 788eb47](https://github.com/red1oon/BIMCompiler/commit/788eb47cc302b680025af07d7f55cc20de0ae742))
+
+With web-ifc WASM parsing IFC directly in the browser, the full round-trip closed: IFC → browser → same `_extracted.db` + `_library.db` schema → viewer. Bonsai was no longer needed to create the DBs either.
+
+The Bonsai addon — the assumed viewer from S165 — became one of several *optional* consumers of a schema that now ran everywhere.
+
+### S231: InstancedMesh — the schema pays dividends
+
+```
+[S231] TE BOM storey fix + InstancedMesh 85% draw call reduction
+```
+([commit 9cca45a](https://github.com/red1oon/BIMCompiler/commit/9cca45a365d6dfaa650995288f62f1e08fec8926))
+
+Because geometry is hash-addressed from the beginning — not as a performance optimisation but as a consequence of how the extractor works — instancing in the browser required no schema change. Elements with the same `geometry_hash` were grouped in one SQL query result. `THREE.InstancedMesh` consumed them directly. 85% draw call reduction on a 48K-element Terminal building, with no change to the DB.
+
+### What vibe programming produced
+
+The schema in [SQLite3D_Schema.md](SQLite3D_Schema.md) was not designed top-down. It emerged from 60+ sessions of constraint-driven iteration:
+
+| Session | Constraint | Schema consequence |
+|---------|-----------|-------------------|
+| S168 | Blender session save was too large with BLOBs inlined | Two-DB split: BLOBs in `library.db`, hashes in `extracted.db` |
+| S172 | `create_shape()` per element was O(n) and slow | `geom.iterator()` + SHA256 hash-addressed `component_geometries` |
+| S173 | 30 buildings needed the same door mesh without copying it | Hash dedup: 123K unique meshes serve 1M elements |
+| S175 | GN 500-tree overhead — Blender viewer had a hard ceiling | R-tree virtual table for spatial queries without in-memory BVH |
+| S195 | Blender save pipeline was the bottleneck, not the data | Float32 BLOB format works in any language — Python or JS |
+| S200 | Zero-install requirement for site use | sql.js WASM opens the same SQLite file in the browser |
+| S231 | Mobile draw call budget | `geometry_hash` grouping → `THREE.InstancedMesh` with no schema change |
+
+Each constraint was discovered in practice, not anticipated. Claude Code explored the solution space; the domain expert evaluated whether each result was correct. The schema that emerged is now published as a candidate open standard — not because it was designed to be one, but because 60 sessions of real-world pressure produced something that actually works.
+
+---
+
 ## For the Bonsai/BlenderBIM Community
 
 If you're evaluating this project and wondering whether vibe-programmed code can be trusted:

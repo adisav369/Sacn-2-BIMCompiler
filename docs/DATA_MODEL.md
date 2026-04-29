@@ -415,7 +415,7 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 | ~~co_empty_space~~ | *(removed S74 — W008)* |
 | ~~co_empty_space_line~~ | *(removed S74 — W008)* |
 | W_Verb_Node | Verb execution audit trail |
-| base_geometries | Geometry meshes (copied from component_library) |
+| base_geometries | Geometry meshes (copied from component_library) — see [SQLite3D_Schema.md](SQLite3D_Schema.md) §BLOB Encoding |
 | element_instances | Element → geometry mapping |
 
 > **Why a Hospital element may reference a Terminal geometry_hash — BlendMeshResolver**

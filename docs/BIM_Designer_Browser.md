@@ -27,7 +27,7 @@ renders IFC buildings in the browser with:
 - No server, no API, no backend
 
 This breaks the client bottleneck. Every Bonsai feature that reads from the DB
-(not Blender-specific) can be replicated in the browser. The DB schema IS the API.
+(not Blender-specific) can be replicated in the browser. The DB schema IS the API. See **[SQLite3D_Schema.md](SQLite3D_Schema.md)** for the full specification.
 
 ### 1.0 The Technology Stack — WebAssembly (WASM)
 

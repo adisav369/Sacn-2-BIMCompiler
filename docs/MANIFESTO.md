@@ -532,6 +532,7 @@ is a display context that loads only what is asked for.
 Three.js, zero install. Imports IFC and 6 mesh formats (OBJ, STL, DAE, GLB,
 FBX, 3DS) via Drop Zone, classifies with a guided wizard, exports back to IFC.
 DB BLOBs stream directly to GPU — no glTF, no server, no conversion pipeline.
+See **[SQLite3D_Schema.md](SQLite3D_Schema.md)** for the full byte-level schema spec.
 GPU instancing (InstancedMesh) and mobile geometry merge deliver 126K elements
 at 60fps on desktop and usable frame rates on phone hardware, from two static
 SQLite files. Commercial BIM viewers (APS, iTwin, Trimble Connect) require
@@ -648,6 +649,7 @@ After this manifesto:
 
 1. **[BBC.md](BOMBasedCompilation.md) §1** — the entity mapping table and technical detail
 2. **[DATA_MODEL.md](DATA_MODEL.md)** — schema, 4-DB architecture
+2a. **[SQLite3D_Schema.md](SQLite3D_Schema.md)** — browser viewer schema, BLOB encoding, instancing pipeline
 3. **[TestArchitecture.md](TestArchitecture.md)** — verification gates, tamper seal
 4. **[ProjectOrderBlueprint.md](ProjectOrderBlueprint.md)** — what's next (exception ordering, inheritance, C_Project)
 5. **[SourceCodeGuide.md](SourceCodeGuide.md)** — where the code is
