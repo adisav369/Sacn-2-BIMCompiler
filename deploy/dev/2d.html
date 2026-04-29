@@ -81,11 +81,11 @@ canvas { display: block; }
 
 <div id="drop-zone" data-trl="ui_2d_drop">Drop DXF file here</div>
 
-<script src="section_cut.js?v=3"></script>
-<script src="grid_dims.js?v=3"></script>
-<script src="elevation.js?v=3"></script>
-<script src="dxf_export.js?v=3"></script>
-<script src="dxf-parser.js?v=3"></script>
+<script src="section_cut.js?v=4"></script>
+<script src="grid_dims.js?v=4"></script>
+<script src="elevation.js?v=4"></script>
+<script src="dxf_export.js?v=4"></script>
+<script src="dxf-parser.js?v=4"></script>
 <script>
 // ─── State ───
 let dxf = null;           // parsed DXF object
@@ -820,7 +820,10 @@ async function generateFromDb() {
   const storeyName = document.getElementById('storey-select').value;
   const t0 = performance.now();
   setStatus((typeof _TRL!=='undefined'&&_TRL.ui_2d_generating||'Generating {mode}...').replace('{mode}',mode));
-  console.log('§2D_GENERATE mode=' + mode + ' storey=' + storeyName);
+  const selectedStoreyEl = document.getElementById('storey-select');
+  const resolvedStorey = storeyName || selectedStoreyEl?.value || '(none)';
+  console.log('§2D_GENERATE mode=' + mode + ' storey=' + resolvedStorey +
+              ' dbReady=' + dbReady);
 
   try {
     let newEntities = [];

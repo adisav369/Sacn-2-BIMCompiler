@@ -93,13 +93,18 @@ test.describe('helpers.js — shared utilities', () => {
       return { isArray, rowCount: rows.length, countVal };
     });
 
-    console.log(`§PW_DBQUERY isArray=${result.isArray} rowCount=${result.rowCount} countVal=${result.countVal}`);
-    if (result.skipped) { console.log('§PW_DBQUERY SKIPPED — db not ready'); return; }
+    console.log(`§PW_DBQUERY isArray=${result.isArray} rowCount=${result.rowCount} countVal=${result.countVal} skipped=${!!result.skipped}`);
     expect(result.error).toBeUndefined();
-    expect(result.isArray).toBe(true);
-    expect(result.rowCount).toBeGreaterThan(0);
-    expect(typeof result.countVal).toBe('number');
-    expect(result.countVal).toBeGreaterThan(0);
+    if (result.skipped) {
+      // DB not yet loaded — method must still exist (checked in 19.1)
+      console.log('§PW_DBQUERY db not ready — method existence proven in 19.1');
+      expect(result.skipped).toBe(true);
+    } else {
+      expect(result.isArray).toBe(true);
+      expect(result.rowCount).toBeGreaterThan(0);
+      expect(typeof result.countVal).toBe('number');
+      expect(result.countVal).toBeGreaterThan(0);
+    }
   });
 
   test('19.5 A.dbQuery returns [] safely when db not ready @fast', async ({ page }) => {

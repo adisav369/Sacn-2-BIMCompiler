@@ -544,7 +544,18 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
         cutCount++;
 
         // Not a sliceable class — record as CUT but no contours
-        if (!SLICE_CLASSES[ifcClass] || !geo || !geo[0] || !geo[1]) {
+        if (!SLICE_CLASSES[ifcClass]) {
+            results.push({
+                guid: guid, ifcClass: ifcClass, elementName: elemName,
+                storey: storey, category: 'CUT', contours: [],
+                bbox2d: [minX, minY, maxX, maxY]
+            });
+            continue;
+        }
+        if (!geo || !geo[0] || !geo[1]) {
+            console.log('§SC_NOGEOM guid=' + guid.substring(0, 8) +
+                        ' class=' + ifcClass + ' hash=' + (geoHash ? geoHash.substring(0, 8) : 'NULL') +
+                        ' cz=' + cz.toFixed(2) + ' cutZ=' + cutZ.toFixed(2));
             results.push({
                 guid: guid, ifcClass: ifcClass, elementName: elemName,
                 storey: storey, category: 'CUT', contours: [],
@@ -564,6 +575,12 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
         var segs = sliceMesh(verts, faces, localCutZ);
 
         var contours = [];
+        if (segs.length === 0) {
+            var numTri0 = (faces.length / 3) | 0;
+            console.log('§SC_NOSLICE guid=' + guid.substring(0, 8) +
+                        ' class=' + ifcClass + ' tri=' + numTri0 +
+                        ' localCutZ=' + localCutZ.toFixed(3) + ' cz=' + cz.toFixed(2));
+        }
         if (segs.length > 0) {
             var numTri = (faces.length / 3) | 0;
             console.log('§SC_SLICE guid=' + guid.substring(0, 8) +
@@ -606,10 +623,41 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
 
     console.log('§SC_QUERY cutElements=' + cutCount + ' belowElements=' + belowCount + ' aboveElements=' + aboveCount);
 
+    // IFC class breakdown of CUT elements: contour-producing vs empty
+    var classCounts = {}, classNoGeom = {}, classNonSliceable = {}, classNoContour = {};
+    for (var ri = 0; ri < results.length; ri++) {
+        var r = results[ri];
+        if (r.category !== 'CUT') continue;
+        var cl = r.ifcClass || 'UNKNOWN';
+        if (!SLICE_CLASSES[cl]) {
+            classNonSliceable[cl] = (classNonSliceable[cl] || 0) + 1;
+        } else if (r.contours.length > 0) {
+            classCounts[cl] = (classCounts[cl] || 0) + 1;
+        } else {
+            classNoContour[cl] = (classNoContour[cl] || 0) + 1;
+        }
+    }
+    var classStr = Object.keys(classCounts).map(function(k){ return k + ':' + classCounts[k]; }).join(',');
+    var noContStr = Object.keys(classNoContour).map(function(k){ return k + ':' + classNoContour[k]; }).join(',');
+    var nonSlStr = Object.keys(classNonSliceable).map(function(k){ return k + ':' + classNonSliceable[k]; }).join(',');
+    console.log('§SC_CLASSES withContour=[' + classStr + '] noContour=[' + noContStr + '] nonSliceable=[' + nonSlStr + ']');
+
+    // Sample first contour coordinates for coordinate-range sanity check
+    for (var si = 0; si < results.length; si++) {
+        if (results[si].contours && results[si].contours.length > 0 && results[si].contours[0].points.length > 0) {
+            var sp = results[si].contours[0].points[0];
+            console.log('§SC_SAMPLE firstContour class=' + results[si].ifcClass +
+                        ' guid=' + results[si].guid.substring(0, 8) +
+                        ' pt0=[' + sp[0].toFixed(3) + ',' + sp[1].toFixed(3) + ']' +
+                        ' cutZ=' + cutZ.toFixed(3));
+            break;
+        }
+    }
+
     var elapsed = Date.now() - t0;
     console.log('§SC_DONE total=' + results.length +
                 ' cut=' + cutCount + ' below=' + belowCount + ' above=' + aboveCount +
-                ' contours=' + totalContours + ' time=' + elapsed + 'ms');
+                ' sliced=' + sliceCount + ' contours=' + totalContours + ' time=' + elapsed + 'ms');
 
     return results;
 }
