@@ -926,8 +926,8 @@ test.describe('2D Dynamic Generation', () => {
     expect(shStats.elementCount).toBeGreaterThan(0);
     expect(isFinite(shStats.centerX)).toBe(true);
     expect(isFinite(shStats.centerY)).toBe(true);
-    // SH: 65 elements — well under MAX_ELEMENTS_POC (500), no clip should fire
-    expect(shStats.elementCount).toBeLessThan(500);
+    // SH: 65 elements — well under MAX_ELEMENTS_POC (5000), no clip should fire
+    expect(shStats.elementCount).toBeLessThan(5000);
 
     // Verify MAX_ELEMENTS_POC and CLIP_MARGIN are exported
     const consts = await page.evaluate(() => ({
@@ -935,8 +935,60 @@ test.describe('2D Dynamic Generation', () => {
       CLIP_MARGIN:      window.SectionCut ? SectionCut.CLIP_MARGIN      : null,
     }));
     console.log(`§PW_2D_CONSTS MAX_ELEMENTS_POC=${consts.MAX_ELEMENTS_POC} CLIP_MARGIN=${consts.CLIP_MARGIN}`);
-    expect(consts.MAX_ELEMENTS_POC).toBe(500);
+    expect(consts.MAX_ELEMENTS_POC).toBe(5000);
     expect(consts.CLIP_MARGIN).toBe(15.0);
+  });
+
+  // ── DX storey auto-select ──
+  // Issue prevented: auto-generate picking T/FDN (foundation) as default storey → only
+  // 7 contours from slabs instead of walls. Must skip FDN/ROOF/SITE and pick Level 1.
+
+  test('14.35 DX auto-selects Level 1 not T/FDN on load @db @whitebox', async ({ page }) => {
+    const logs = [];
+    page.on('console', msg => logs.push(msg.text()));
+    await page.goto(`/dev/2d.html?db=${DX_DB}&lib=${DX_LIB}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => {
+      const s = document.getElementById('status-text');
+      return s && (s.textContent.includes('Generated') || s.textContent.includes('error'));
+    }, { timeout: 45000 });
+
+    const selectedStorey = await page.$eval('#storey-select', el => el.value);
+    const entCount = await page.$eval('#ent-count', el => parseInt(el.textContent));
+    const status = await page.$eval('#status-text', el => el.textContent);
+    const storeyLog = logs.find(l => l.includes('§2D_STOREYS'));
+
+    console.log(`§PW_2D_DX_AUTOSEL storey="${selectedStorey}" entities=${entCount} status="${status}"`);
+    console.log(`§PW_2D_DX_STOREYLOG ${storeyLog || 'none'}`);
+
+    // Must NOT auto-select T/FDN — should pick Level 1 (or other real floor)
+    expect(selectedStorey).not.toBe('T/FDN');
+    expect(selectedStorey).not.toMatch(/FDN|FOUND|BSMT|BASEMENT/i);
+    // Must have substantially more entities than the 7 from T/FDN cut
+    expect(entCount).toBeGreaterThan(50);
+    expect(status).toContain('Generated');
+    // §2D_STOREYS log must show skipped=T/FDN
+    expect(storeyLog).toBeTruthy();
+    expect(storeyLog).toContain('skipped=');
+    expect(storeyLog).toContain('T/FDN');
+  });
+
+  test('14.36 DX does not trigger auto-clip (1169 elements < 5000 threshold) @db @whitebox', async ({ page }) => {
+    const logs = [];
+    page.on('console', msg => logs.push(msg.text()));
+    await page.goto(`/dev/2d.html?db=${DX_DB}&lib=${DX_LIB}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => {
+      const s = document.getElementById('status-text');
+      return s && (s.textContent.includes('Generated') || s.textContent.includes('error'));
+    }, { timeout: 45000 });
+
+    const clipLog = logs.find(l => l.includes('§2D_LARGE_BUILDING'));
+    const entCount = await page.$eval('#ent-count', el => parseInt(el.textContent));
+
+    console.log(`§PW_2D_DX_CLIP clipLog="${clipLog || 'none'}" entities=${entCount}`);
+    // DX has 1169 elements — under threshold, clip must NOT fire
+    expect(clipLog).toBeUndefined();
+    // But must still produce a good floor plan
+    expect(entCount).toBeGreaterThan(50);
   });
 
   test('14.31 2d.html without ?db= shows DXF dropdown, no Generate @fast @whitebox', async ({ page }) => {

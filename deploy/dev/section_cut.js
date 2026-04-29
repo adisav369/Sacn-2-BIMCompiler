@@ -25,7 +25,7 @@
 var TOLERANCE = 0.005;        // 5 mm endpoint matching
 var EPSILON   = 1e-7;         // floating-point zero guard
 var DEFAULT_CUT_OFFSET = 1.0; // meters above floor level
-var MAX_ELEMENTS_POC = 500;   // auto-clip threshold: buildings with more transforms get clipped
+var MAX_ELEMENTS_POC = 5000;  // auto-clip threshold: buildings with more transforms get clipped
 var CLIP_MARGIN = 15.0;       // half-side of clip window in metres (30m × 30m total)
 
 // IFC classes eligible for slicing (performance filter)
