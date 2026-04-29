@@ -354,4 +354,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          'খোলা ট্যাব',
   landing_theory:             'তত্ত্ব',
   landing_practical:          'বাস্তব',
+
+  // streaming status
+  ui_status_wasm:  'ওয়েবঅ্যাসেম্বলি লোড হচ্ছে...',
+  ui_status_fetching:  '{url} আনা হচ্ছে...',
+  ui_status_db_loaded:  'DB লোড ({size}MB). কোয়েরি হচ্ছে...',
+  ui_status_lib_loaded:  'লাইব্রেরি লোড ({size}MB). নিকটতম ভবন স্ট্রিম...',
+  ui_status_geom:  'জ্যামিতির জন্য মূল DB. স্ট্রিমিং...',
+  ui_status_streaming:  'স্ট্রিমিং {name} — {i}/{n} উপাদান',
+  ui_status_done:  'সম্পন্ন — {name} {n} উপাদান ({g} গ্রুপ). {b} ভবন রেন্ডার হয়েছে.',
+  ui_active_done:  '{name} — সম্পন্ন',
+  ui_status_search:  'মুছে ফেলা. ভবন অনুসন্ধান করে ক্লিক করুন.',
 };

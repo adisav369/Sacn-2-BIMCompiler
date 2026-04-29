@@ -353,4 +353,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          '\uc5f4\ub9b0 \ud0ed',
   landing_theory:             '\uc774\ub860',
   landing_practical:          '\uc2e4\uc2b5',
+
+  // streaming status
+  ui_status_wasm:  'WebAssembly 로딩 중...',
+  ui_status_fetching:  '{url} 가져오는 중...',
+  ui_status_db_loaded:  'DB 로드됨 ({size}MB). 쿼리 중...',
+  ui_status_lib_loaded:  '라이브러리 로드됨 ({size}MB). 가장 가까운 건물 스트리밍...',
+  ui_status_geom:  '지오메트리에 메인 DB 사용. 스트리밍...',
+  ui_status_streaming:  '스트리밍 {name} — {i}/{n} 요소',
+  ui_status_done:  '완료 — {name} {n} 요소 ({g} 인스턴스 그룹). {b}개 건물 렌더링됨.',
+  ui_active_done:  '{name} — 완료',
+  ui_status_search:  '지워졌습니다. 건물 검색 후 클릭하여 스트리밍.',
 };

@@ -356,4 +356,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          'Khola Tab',
   landing_theory:             'Totwo',
   landing_practical:          'Bastob',
+
+  // streaming status
+  ui_status_wasm:  'WebAssembly load hocche...',
+  ui_status_fetching:  '{url} fetch hocche...',
+  ui_status_db_loaded:  'DB load ({size}MB). Query hocche...',
+  ui_status_lib_loaded:  'Library load ({size}MB). Nearest building stream hocche...',
+  ui_status_geom:  'Main DB theke geometry. Stream hocche...',
+  ui_status_streaming:  'STREAMING {name} — {i}/{n} element',
+  ui_status_done:  'DONE — {name} {n} element ({g} instanced group). {b} building render hoyeche.',
+  ui_active_done:  '{name} — DONE',
+  ui_status_search:  'Clear. Search kore building-e click koro.',
 };

@@ -354,4 +354,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          'Tab Terbuka',
   landing_theory:             'Teori',
   landing_practical:          'Praktik',
+
+  // streaming status
+  ui_status_wasm:  'Memuat WebAssembly...',
+  ui_status_fetching:  'Mengambil {url}...',
+  ui_status_db_loaded:  'DB dimuat ({size}MB). Mengquery...',
+  ui_status_lib_loaded:  'Perpustakaan dimuat ({size}MB). Streaming gedung terdekat...',
+  ui_status_geom:  'Menggunakan DB utama untuk geometri. Streaming...',
+  ui_status_streaming:  'STREAMING {name} — {i}/{n} elemen',
+  ui_status_done:  'SELESAI — {name} {n} elemen ({g} grup instansi). {b} gedung dirender.',
+  ui_active_done:  '{name} — SELESAI',
+  ui_status_search:  'Dihapus. Cari dan klik gedung untuk streaming.',
 };

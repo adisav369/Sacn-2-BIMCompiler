@@ -354,4 +354,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          'Onglets Ouverts',
   landing_theory:             'Th\u00e9orie',
   landing_practical:          'Pratique',
+
+  // streaming status
+  ui_status_wasm:  'Chargement WebAssembly...',
+  ui_status_fetching:  'Téléchargement {url}...',
+  ui_status_db_loaded:  'BD chargée ({size}Mo). Interrogation...',
+  ui_status_lib_loaded:  'Bibliothèque chargée ({size}Mo). Diffusion du bâtiment le plus proche...',
+  ui_status_geom:  'Utilisation de la BD principale pour la géométrie. Diffusion...',
+  ui_status_streaming:  'DIFFUSION {name} — {i}/{n} éléments',
+  ui_status_done:  'TERMINÉ — {name} {n} éléments ({g} groupes instanciés). {b} bâtiment(s) rendu(s).',
+  ui_active_done:  '{name} — TERMINÉ',
+  ui_status_search:  'Effacé. Recherchez et cliquez sur un bâtiment pour diffuser.',
 };

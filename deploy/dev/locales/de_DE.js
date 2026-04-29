@@ -353,4 +353,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          'Offene Tabs',
   landing_theory:             'Theorie',
   landing_practical:          'Praxis',
+
+  // streaming status
+  ui_status_wasm:  'WebAssembly wird geladen...',
+  ui_status_fetching:  '{url} wird abgerufen...',
+  ui_status_db_loaded:  'DB geladen ({size}MB). Abfrage läuft...',
+  ui_status_lib_loaded:  'Bibliothek geladen ({size}MB). Nächstes Gebäude wird gestreamt...',
+  ui_status_geom:  'Hauptdatenbank für Geometrie. Streamen...',
+  ui_status_streaming:  'STREAMING {name} — {i}/{n} Elemente',
+  ui_status_done:  'FERTIG — {name} {n} Elemente ({g} instanzierte Gruppen). {b} Gebäude gerendert.',
+  ui_active_done:  '{name} — FERTIG',
+  ui_status_search:  'Gelöscht. Gebäude suchen und anklicken.',
 };

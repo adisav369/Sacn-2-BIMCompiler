@@ -354,4 +354,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          'Oop Oortjies',
   landing_theory:             'Teorie',
   landing_practical:          'Prakties',
+
+  // streaming status
+  ui_status_wasm:  'Laai WebAssembly tegnologie...',
+  ui_status_fetching:  'Haal {url}...',
+  ui_status_db_loaded:  'DB gelaai ({size}MB). Besig om te kry...',
+  ui_status_lib_loaded:  'Library gelaai ({size}MB). Stroom naaste gebou...',
+  ui_status_geom:  'Gebruik hoof-DB vir meetkunde. Stroom...',
+  ui_status_streaming:  'STROOM {name} — {i}/{n} elemente',
+  ui_status_done:  'KLAAR — {name} {n} elemente ({g} geïnstansieerde groepe). {b} gebou(e) vertoon.',
+  ui_active_done:  '{name} — KLAAR',
+  ui_status_search:  'Gewis. Soek en klik \'n gebou om te stroom.',
 };

@@ -96,7 +96,7 @@ function setupStreaming(A) {
     document.getElementById('s-building-total').textContent = A.activeBuildingTotal.toLocaleString();
     document.getElementById('s-progress').style.width = (A.streamIdx / A.streamQueue.length * 100).toFixed(1) + '%';
     document.getElementById('s-progress').style.background = '#4fc3f7';
-    A.status.textContent = `STREAMING ${nearest} — ${A.streamIdx.toLocaleString()}/${A.streamQueue.length.toLocaleString()} elements`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_streaming||'STREAMING {name} — {i}/{n} elements').replace('{name}',nearest).replace('{i}',A.streamIdx.toLocaleString()).replace('{n}',A.streamQueue.length.toLocaleString());
   };
 
   // ── S231: InstancedMesh batching ─────────────────────────────────────
@@ -143,14 +143,14 @@ function setupStreaming(A) {
           A.populateDiscs(A.activeBuilding);
         }
         document.getElementById('s-buildings-done').textContent = A.buildingsRendered.size;
-        document.getElementById('s-active').textContent = `${A.activeBuilding} — DONE`;
+        document.getElementById('s-active').textContent = (typeof _TRL!=='undefined'&&_TRL.ui_active_done||'{name} — DONE').replace('{name}',A.activeBuilding);
         document.getElementById('s-active').style.color = '#44cc44';
         document.getElementById('s-current-element').textContent = '';
         document.getElementById('s-progress').style.width = '100%';
         document.getElementById('s-progress').style.background = '#44cc44';
         A.updateHash();
         const iCount = Object.keys(A._instanceMeta).length;
-        A.status.textContent = `DONE — ${A.activeBuilding} ${A.streamedCount.toLocaleString()} elements (${iCount} instanced groups). ${A.buildingsRendered.size} building(s) rendered.`;
+        A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_done||'DONE — {name} {n} elements ({g} instanced groups). {b} building(s) rendered.').replace('{name}',A.activeBuilding).replace('{n}',A.streamedCount.toLocaleString()).replace('{g}',iCount).replace('{b}',A.buildingsRendered.size);
       }
       return;
     }
@@ -408,7 +408,7 @@ function setupStreaming(A) {
 
   // DB init
   A.init = async function() {
-    A.status.textContent = 'Loading sql.js WebAssembly...';
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_wasm||'Loading WebAssembly...');
     const SQL = await initSqlJs({
       locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
     });
@@ -418,11 +418,11 @@ function setupStreaming(A) {
       return;
     }
 
-    A.status.textContent = `Fetching ${A.DB_URL}...`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_fetching||'Fetching {url}...').replace('{url}',A.DB_URL);
     const dbBuf = await A.cachedFetch(A.DB_URL);
     A.db = new SQL.Database(new Uint8Array(dbBuf));
     console.log(`[S192] §DB_LOADED size=${(dbBuf.byteLength/1024/1024).toFixed(0)}MB`);
-    A.status.textContent = `DB loaded (${(dbBuf.byteLength/1024/1024).toFixed(0)}MB). Querying...`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_db_loaded||'DB loaded ({size}MB). Querying...').replace('{size}',(dbBuf.byteLength/1024/1024).toFixed(0));
 
     const rows = A.db.exec(`
       SELECT m.building, COUNT(*),
@@ -474,7 +474,7 @@ function setupStreaming(A) {
     A.populateBuildingList();
     A.drawBuildingBoxes();
 
-    A.status.textContent = `Fetching ${A.LIB_URL}...`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_fetching||'Fetching {url}...').replace('{url}',A.LIB_URL);
     try {
       const libBuf = await A.cachedFetch(A.LIB_URL);
       A.libDb = new SQL.Database(new Uint8Array(libBuf));
@@ -491,11 +491,11 @@ function setupStreaming(A) {
           console.log(`[S192] §LIB_ERROR no geometry table found`);
         }
       }
-      A.status.textContent = `Library loaded (${(libBuf.byteLength/1024/1024).toFixed(0)}MB). Streaming nearest building...`;
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_lib_loaded||'Library loaded ({size}MB). Streaming nearest building...').replace('{size}',(libBuf.byteLength/1024/1024).toFixed(0));
     } catch (e) {
       console.log(`[S200] §LIB_FALLBACK using main DB for geometry (${e.message})`);
       A.libDb = A.db;
-      A.status.textContent = `Using main DB for geometry. Streaming...`;
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_geom||'Using main DB for geometry. Streaming...');
     }
 
     const bboxQ = A.db.exec(`
@@ -596,7 +596,7 @@ function setupStreaming(A) {
     document.getElementById('s-active').textContent = '—';
     document.getElementById('s-active').style.color = '#4fc3f7';
     console.log(`[S231] §CLEAR removed=${toRemove.length}`);
-    A.status.textContent = 'Cleared. Search and click a building to stream.';
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_search||'Cleared. Search and click a building to stream.');
   };
 
   // Fly to building
@@ -614,7 +614,7 @@ function setupStreaming(A) {
     document.getElementById('s-active').style.color = '#4fc3f7';
     document.getElementById('s-progress').style.width = '0%';
     document.getElementById('s-progress').style.background = '#4fc3f7';
-    A.status.textContent = `Flew to ${buildingName} (${bc.count} elements)`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_flew_to||'Flew to {name} ({n} elements)').replace('{name}',buildingName).replace('{n}',bc.count);
 
     if (A.libDb) {
       A.streamBuilding(buildingName);

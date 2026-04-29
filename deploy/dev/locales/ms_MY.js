@@ -353,4 +353,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          'Tab Terbuka',
   landing_theory:             'Teori',
   landing_practical:          'Praktikal',
+
+  // streaming status
+  ui_status_wasm:  'Memuatkan WebAssembly...',
+  ui_status_fetching:  'Mengambil {url}...',
+  ui_status_db_loaded:  'DB dimuatkan ({size}MB). Membuat pertanyaan...',
+  ui_status_lib_loaded:  'Perpustakaan dimuatkan ({size}MB). Penstriman bangunan terdekat...',
+  ui_status_geom:  'Menggunakan DB utama untuk geometri. Penstriman...',
+  ui_status_streaming:  'PENSTRIMAN {name} — {i}/{n} elemen',
+  ui_status_done:  'SELESAI — {name} {n} elemen ({g} kumpulan). {b} bangunan dipaparkan.',
+  ui_active_done:  '{name} — SELESAI',
+  ui_status_search:  'Dipadam. Cari dan klik bangunan untuk distrim.',
 };

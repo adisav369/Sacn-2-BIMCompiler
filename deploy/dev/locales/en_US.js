@@ -353,4 +353,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          'Open Tabs',
   landing_theory:             'Theory',
   landing_practical:          'Practical',
+
+  // streaming status
+  ui_status_wasm:  'Loading WebAssembly...',
+  ui_status_fetching:  'Fetching {url}...',
+  ui_status_db_loaded:  'DB loaded ({size}MB). Querying...',
+  ui_status_lib_loaded:  'Library loaded ({size}MB). Streaming nearest building...',
+  ui_status_geom:  'Using main DB for geometry. Streaming...',
+  ui_status_streaming:  'STREAMING {name} — {i}/{n} elements',
+  ui_status_done:  'DONE — {name} {n} elements ({g} instanced groups). {b} building(s) rendered.',
+  ui_active_done:  '{name} — DONE',
+  ui_status_search:  'Cleared. Search and click a building to stream.',
 };

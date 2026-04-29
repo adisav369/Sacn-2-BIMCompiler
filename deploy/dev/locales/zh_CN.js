@@ -353,4 +353,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          '\u6253\u5f00\u7684\u6807\u7b7e\u9875',
   landing_theory:             '\u7406\u8bba',
   landing_practical:          '\u5b9e\u8df5',
+
+  // streaming status
+  ui_status_wasm:  '正在加载 WebAssembly...',
+  ui_status_fetching:  '正在获取 {url}...',
+  ui_status_db_loaded:  '数据库已加载 ({size}MB)。正在查询...',
+  ui_status_lib_loaded:  '库已加载 ({size}MB)。传输最近的建筑...',
+  ui_status_geom:  '使用主数据库获取几何体。传输中...',
+  ui_status_streaming:  '传输 {name} — {i}/{n} 个构件',
+  ui_status_done:  '完成 — {name} {n} 个构件 ({g} 个实例组)。已渲染 {b} 栓建筑。',
+  ui_active_done:  '{name} — 完成',
+  ui_status_search:  '已清除。搜索并点击建筑以传输。',
 };

@@ -353,4 +353,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          'Pesta\u00f1as Abiertas',
   landing_theory:             'Teor\u00eda',
   landing_practical:          'Pr\u00e1ctica',
+
+  // streaming status
+  ui_status_wasm:  'Cargando WebAssembly...',
+  ui_status_fetching:  'Descargando {url}...',
+  ui_status_db_loaded:  'BD cargada ({size}MB). Consultando...',
+  ui_status_lib_loaded:  'Biblioteca cargada ({size}MB). Transmitiendo edificio más cercano...',
+  ui_status_geom:  'Usando BD principal para geometría. Transmitiendo...',
+  ui_status_streaming:  'TRANSMITIENDO {name} — {i}/{n} elementos',
+  ui_status_done:  'LISTO — {name} {n} elementos ({g} grupos instanciados). {b} edificio(s) renderizados.',
+  ui_active_done:  '{name} — LISTO',
+  ui_status_search:  'Limpiado. Busca y haz clic en un edificio para transmitir.',
 };

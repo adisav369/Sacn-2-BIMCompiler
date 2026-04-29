@@ -354,4 +354,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          '\u0639\u0644\u0627\u0645\u0627\u062a \u0645\u0641\u062a\u0648\u062d\u0629',
   landing_theory:             '\u0646\u0638\u0631\u064a',
   landing_practical:          '\u0639\u0645\u0644\u064a',
+
+  // streaming status
+  ui_status_wasm:  'تحميل WebAssembly...',
+  ui_status_fetching:  'جلب {url}...',
+  ui_status_db_loaded:  'تم تحميل DB ({size}MB). جاري الاستعلام...',
+  ui_status_lib_loaded:  'تم تحميل المكتبة ({size}MB). بث أقرب مبنى...',
+  ui_status_geom:  'استخدام DB الرئيسية للهندسة. بث...',
+  ui_status_streaming:  'بث {name} — {i}/{n} عنصر',
+  ui_status_done:  'مكتمل — {name} {n} عنصر ({g} مجموعات). عرض {b} مبنى.',
+  ui_active_done:  '{name} — مكتمل',
+  ui_status_search:  'تم المسح. ابحث وانقر على مبنى للبث.',
 };

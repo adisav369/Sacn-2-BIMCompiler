@@ -354,4 +354,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          '\u0e41\u0e17\u0e47\u0e1a\u0e17\u0e35\u0e48\u0e40\u0e1b\u0e34\u0e14',
   landing_theory:             '\u0e17\u0e24\u0e29\u0e0e\u0e35',
   landing_practical:          '\u0e1b\u0e0f\u0e34\u0e1a\u0e31\u0e15\u0e34',
+
+  // streaming status
+  ui_status_wasm:  'กำลังโหลด WebAssembly...',
+  ui_status_fetching:  'กำลังดึงข้อมูล {url}...',
+  ui_status_db_loaded:  'โหลด DB แล้ว ({size}MB). กำลังสอบถาม...',
+  ui_status_lib_loaded:  'โหลดไลบรารีแล้ว ({size}MB). สตรีมอาคารที่ใกล้ที่สุด...',
+  ui_status_geom:  'ใช้ DB หลักสำหรับเรขาคณิต. สตรีม...',
+  ui_status_streaming:  'สตรีม {name} — {i}/{n} ชิ้นส่วน',
+  ui_status_done:  'เสร็จสิ้น — {name} {n} ชิ้นส่วน ({g} กลุ่ม). แสดง {b} อาคาร.',
+  ui_active_done:  '{name} — เสร็จสิ้น',
+  ui_status_search:  'ล้างแล้ว. ค้นหาและคลิกอาคารเพื่อสตรีม.',
 };

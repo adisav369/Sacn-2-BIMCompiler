@@ -353,4 +353,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          '\u958b\u3044\u3066\u3044\u308b\u30bf\u30d6',
   landing_theory:             '\u7406\u8ad6',
   landing_practical:          '\u5b9f\u8df5',
+
+  // streaming status
+  ui_status_wasm:  'WebAssembly を読み込み中...',
+  ui_status_fetching:  '{url} を取得中...',
+  ui_status_db_loaded:  'DB 読み込み完了 ({size}MB)。クエリ実行中...',
+  ui_status_lib_loaded:  'ライブラリ読み込み完了 ({size}MB)。最近の建物をストリーミング...',
+  ui_status_geom:  'ジオメトリにメインDBを使用。ストリーミング...',
+  ui_status_streaming:  'ストリーミング {name} — {i}/{n} 要素',
+  ui_status_done:  '完了 — {name} {n} 要素 ({g} インスタンスグループ)。{b} 棟レンダリング済み。',
+  ui_active_done:  '{name} — 完了',
+  ui_status_search:  'クリア済み。建物を検索しクリック。',
 };

@@ -354,4 +354,15 @@ var _TRL_LOCALE = {
   landing_open_tabs:          'Abas Abertas',
   landing_theory:             'Teoria',
   landing_practical:          'Pr\u00e1tica',
+
+  // streaming status
+  ui_status_wasm:  'Carregando WebAssembly...',
+  ui_status_fetching:  'Buscando {url}...',
+  ui_status_db_loaded:  'BD carregado ({size}MB). Consultando...',
+  ui_status_lib_loaded:  'Biblioteca carregada ({size}MB). Transmitindo edifício mais próximo...',
+  ui_status_geom:  'Usando BD principal para geometria. Transmitindo...',
+  ui_status_streaming:  'TRANSMITINDO {name} — {i}/{n} elementos',
+  ui_status_done:  'CONCLUÍDO — {name} {n} elementos ({g} grupos instanciados). {b} edifício(s) renderizado(s).',
+  ui_active_done:  '{name} — CONCLUÍDO',
+  ui_status_search:  'Limpo. Pesquise e clique em um edifício para transmitir.',
 };
