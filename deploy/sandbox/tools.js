@@ -7,11 +7,9 @@ function setupTools(A) {
     const btn = document.getElementById('wire-btn');
     btn.style.background = A.wireOn ? '#4fc3f7' : '#444';
     btn.style.color = A.wireOn ? '#000' : '#fff';
-    A.scene.traverse(obj => {
-      if (obj.isMesh && obj !== A.ground) {
-        obj.material.wireframe = A.wireOn;
-        obj.material.needsUpdate = true;
-      }
+    A.collectMeshes(o => o.isMesh).forEach(obj => {
+      obj.material.wireframe = A.wireOn;
+      obj.material.needsUpdate = true;
     });
   };
 
@@ -22,13 +20,11 @@ function setupTools(A) {
     const btn = document.getElementById('xray-btn');
     btn.style.background = A.xrayOn ? '#4fc3f7' : '#444';
     btn.style.color = A.xrayOn ? '#000' : '#fff';
-    A.scene.traverse(obj => {
-      if (obj.isMesh && obj !== A.ground) {
-        obj.material.transparent = true;
-        obj.material.opacity = A.xrayOn ? 0.15 : (obj.material.userData.origOpacity ?? 1.0);
-        obj.material.side = A.xrayOn ? THREE.DoubleSide : (obj.material.userData.origSide ?? THREE.FrontSide);
-        obj.material.needsUpdate = true;
-      }
+    A.collectMeshes(o => o.isMesh).forEach(obj => {
+      obj.material.transparent = true;
+      obj.material.opacity = A.xrayOn ? 0.15 : (obj.material.userData.origOpacity ?? 1.0);
+      obj.material.side = A.xrayOn ? THREE.DoubleSide : (obj.material.userData.origSide ?? THREE.FrontSide);
+      obj.material.needsUpdate = true;
     });
     console.log(`[S200] §XRAY ${A.xrayOn ? 'ON' : 'OFF'}`);
   };
@@ -50,11 +46,9 @@ function setupTools(A) {
     if (A.sectionOn) {
       A.applySectionAxis();
     } else {
-      A.scene.traverse(obj => {
-        if (obj.isMesh && obj !== A.ground) {
-          obj.material.clippingPlanes = [];
-          obj.material.needsUpdate = true;
-        }
+      A.collectMeshes(o => o.isMesh).forEach(obj => {
+        obj.material.clippingPlanes = [];
+        obj.material.needsUpdate = true;
       });
       console.log('[S205] §SECTION OFF');
     }
@@ -75,13 +69,11 @@ function setupTools(A) {
 
   A.applySectionAxis = function() {
     let axMin = Infinity, axMax = -Infinity;
-    A.scene.traverse(obj => {
-      if (obj.isMesh && obj !== A.ground) {
-        const box = new THREE.Box3().setFromObject(obj);
-        if (A.sectionAxis === 'Y') { axMin = Math.min(axMin, box.min.y); axMax = Math.max(axMax, box.max.y); }
-        else if (A.sectionAxis === 'X') { axMin = Math.min(axMin, box.min.x); axMax = Math.max(axMax, box.max.x); }
-        else { axMin = Math.min(axMin, box.min.z); axMax = Math.max(axMax, box.max.z); }
-      }
+    A.collectMeshes(o => o.isMesh).forEach(obj => {
+      const box = new THREE.Box3().setFromObject(obj);
+      if (A.sectionAxis === 'Y') { axMin = Math.min(axMin, box.min.y); axMax = Math.max(axMax, box.max.y); }
+      else if (A.sectionAxis === 'X') { axMin = Math.min(axMin, box.min.x); axMax = Math.max(axMax, box.max.x); }
+      else { axMin = Math.min(axMin, box.min.z); axMax = Math.max(axMax, box.max.z); }
     });
     if (!isFinite(axMin)) { axMin = -100; axMax = 200; }
     A.sectionMin = axMin;
@@ -92,12 +84,10 @@ function setupTools(A) {
     slider.step = ((axMax - axMin) / 500).toFixed(3);
     slider.value = axMax.toFixed(1);
     A.sectionPlane.constant = axMax;
-    A.scene.traverse(obj => {
-      if (obj.isMesh && obj !== A.ground) {
-        obj.material.clippingPlanes = [A.sectionPlane];
-        obj.material.clipShadows = true;
-        obj.material.needsUpdate = true;
-      }
+    A.collectMeshes(o => o.isMesh).forEach(obj => {
+      obj.material.clippingPlanes = [A.sectionPlane];
+      obj.material.clipShadows = true;
+      obj.material.needsUpdate = true;
     });
     document.getElementById('section-val').textContent = axMax.toFixed(1) + ' m';
     console.log(`[S205] §SECTION ON axis=${A.sectionAxis} range=[${axMin.toFixed(1)}, ${axMax.toFixed(1)}]`);
@@ -183,10 +173,8 @@ function setupTools(A) {
     document.getElementById('status').style.color = A.lightTheme ? '#0077cc' : '#4fc3f7';
     document.querySelector('#hud h2').style.color = A.lightTheme ? '#0077cc' : '#4fc3f7';
 
-    A.scene.traverse(obj => {
-      if (obj.isLineSegments && obj.userData.building) {
-        obj.visible = !A.lightTheme;
-      }
+    A.collectMeshes(o => o.isLineSegments && o.userData.building).forEach(obj => {
+      obj.visible = !A.lightTheme;
     });
 
     const btn = document.getElementById('theme-btn');
@@ -206,8 +194,7 @@ function setupTools(A) {
     hoverMouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     A.raycaster.setFromCamera(hoverMouse, A.camera);
 
-    const meshes = [];
-    A.scene.traverse(obj => { if (obj.isMesh && obj !== A.ground && obj.visible) meshes.push(obj); });
+    const meshes = A.collectMeshes(o => o.isMesh && o.visible);
     const hits = A.raycaster.intersectObjects(meshes, false);
 
     if (A.hoverHighlight) {
