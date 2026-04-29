@@ -209,6 +209,42 @@ across 48 IFC classes and 6 disciplines.
 
 ---
 
+## Browser 4D/5D HTML — Zero-Install Analytics
+
+The nD engine outputs feed a fully browser-native HTML analytics page (`boq_charts.html`).
+No server. No install. Open the link — charts render, Excel exports.
+
+### Performance
+
+| Step | Mechanism | Speed |
+|------|-----------|-------|
+| DB load (first visit) | Fetch from OCI → written to IndexedDB | Network-bound |
+| DB load (return visit) | Read from IndexedDB (`bim_ootb_cache`) | ~0ms — local |
+| DB load (after IFC import) | IndexedDB `import://` key — no OCI needed | ~0ms — local |
+| 9 charts rendered | sql.js WASM queries + Chart.js | < 1 second |
+| 5D Excel export | ExcelJS in-browser, no server | 2–3 seconds |
+| 4D Excel export | ExcelJS in-browser, no server | 1–2 seconds |
+
+After the first load, the DB is cached in IndexedDB. Subsequent visits and every Excel export
+read locally — zero network round-trip. `§CHARTS_DB_SOURCE source=idb|import|oci` is logged
+to the console and embedded in the downloaded export log for auditability.
+
+### Localisation — 18 Languages
+
+Every label, currency symbol, sheet name, and chart title is driven by a locale file.
+The page auto-detects browser language, fetches the matching locale from OCI, and caches
+it in `localStorage` for 7 days. All 18 locales ship with the viewer.
+
+<figure style="margin: 20px 0;">
+<img src="../assets/images/4D5DHTML.png" alt="4D5D HTML page translated in any exotic language" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">4D5D HTML page translated in any exotic language — 18 locales, auto-detected from browser.</figcaption>
+</figure>
+
+Locale coverage: `en_MY` `en_US` `en_GB` `en_AU` `ms_MY` `de_DE` `fr_FR` `es_ES` `zh_CN`
+`th_TH` `ja_JP` `ko_KR` `ar_SA` `pt_BR` `id_ID` `bn_BD` `bl_BD` `af_ZA`
+
+---
+
 ## No Other Player Does This
 
 ### What the industry charges for nD analytics
