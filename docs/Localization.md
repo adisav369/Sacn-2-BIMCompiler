@@ -289,6 +289,11 @@ The current locale's flag is highlighted with a blue border. Dual-country locale
 
 No settings dialog, no gear icon — just click the flag.
 
+<figure style="margin: 20px 0;">
+<img src="../assets/images/Localization.png" alt="Country picker" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Country picker to apply rates — later will separate language from region, even industry rates.</figcaption>
+</figure>
+
 ---
 
 ## How locale_loader.js Works (Developer Reference)
