@@ -19,7 +19,61 @@ function initViewer() {
   setupWalk(APP);
   setupCity(APP);
   if (typeof setupNlp === 'function') setupNlp(APP);
-  if (typeof setupNavigate === 'function') setupNavigate(APP);
+  // navigate.js lazy-loaded on demand (78KB saved on first paint)
+  APP._navigateLoaded = false;
+  APP.loadNavigate = function() {
+    if (APP._navigatePromise) return APP._navigatePromise;
+    APP._navigatePromise = new Promise(function(resolve, reject) {
+      if (typeof setupNavigate === 'function') {
+        setupNavigate(APP);
+        APP._navigateLoaded = true;
+        resolve();
+        return;
+      }
+      var s = document.createElement('script');
+      s.src = 'navigate.js?v=8';
+      s.onload = function() {
+        if (typeof setupNavigate === 'function') setupNavigate(APP);
+        APP._navigateLoaded = true;
+        console.log('[S239] §NAVIGATE_LAZY_LOADED');
+        resolve();
+      };
+      s.onerror = function() { reject(new Error('Failed to load navigate.js')); };
+      document.head.appendChild(s);
+    });
+    return APP._navigatePromise;
+  };
+  // Proxy so nlp.js "typeof A.openFindPanel === 'function'" finds it immediately.
+  // setupNavigate() overwrites APP.openFindPanel with the real implementation.
+  var _navProxy = function(searchTerm) {
+    APP.loadNavigate().then(function() {
+      // After load, APP.openFindPanel is the real function (set by setupNavigate)
+      if (APP.openFindPanel !== _navProxy) APP.openFindPanel(searchTerm);
+    });
+  };
+  APP.openFindPanel = _navProxy;
+  // wizard.js lazy-loaded on demand (70KB saved on first paint)
+  APP._wizardLoaded = false;
+  APP.loadWizard = function() {
+    if (APP._wizardPromise) return APP._wizardPromise;
+    APP._wizardPromise = new Promise(function(resolve, reject) {
+      if (typeof startWizard === 'function') {
+        APP._wizardLoaded = true;
+        resolve();
+        return;
+      }
+      var s = document.createElement('script');
+      s.src = 'wizard.js?v=2';
+      s.onload = function() {
+        APP._wizardLoaded = true;
+        console.log('[S239] §WIZARD_LAZY_LOADED');
+        resolve();
+      };
+      s.onerror = function() { reject(new Error('Failed to load wizard.js')); };
+      document.head.appendChild(s);
+    });
+    return APP._wizardPromise;
+  };
   if (typeof setupImport === 'function') setupImport(APP);
   if (typeof setupDiff === 'function') setupDiff(APP);
 

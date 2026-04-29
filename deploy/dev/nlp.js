@@ -343,13 +343,11 @@ function setupNlp(A) {
   function highlightGuids(guids) {
     clearHighlights();
     const guidSet = new Set(guids);
-    A.scene.traverse(obj => {
-      if (obj.isMesh && obj !== A.ground) {
-        const g = A.guidMap[obj.id];
-        if (g && guidSet.has(g)) {
-          obj.material.emissive.setHex(0x224422);
-          _nlpHighlights.push(obj);
-        }
+    A.collectMeshes(o => o.isMesh).forEach(obj => {
+      const g = A.guidMap[obj.id];
+      if (g && guidSet.has(g)) {
+        obj.material.emissive.setHex(0x224422);
+        _nlpHighlights.push(obj);
       }
     });
     console.log('[S211] §NLP_HIGHLIGHT n=' + _nlpHighlights.length + '/' + guids.length);

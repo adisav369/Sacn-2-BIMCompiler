@@ -13,15 +13,17 @@ function setupDiff(A) {
   A.computeDiff = function() {
     if (!A.db || !A.diffDb) return null;
 
-    const guids1 = new Set(A.db.exec("SELECT guid FROM elements_meta")[0].values.map(r => r[0]));
-    const guids2 = new Set(A.diffDb.exec("SELECT guid FROM elements_meta")[0].values.map(r => r[0]));
+    const guids1 = new Set(A.dbQuery("SELECT guid FROM elements_meta").map(r => r[0]));
+    const g2raw = A.diffDb.exec("SELECT guid FROM elements_meta");
+    const guids2 = new Set(g2raw.length ? g2raw[0].values.map(r => r[0]) : []);
 
     const added = [...guids2].filter(g => !guids1.has(g));
     const common = [...guids2].filter(g => guids1.has(g));
     const changed = common.filter(g => {
-      const r1 = A.db.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid=?", [g]);
-      const r2 = A.diffDb.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid=?", [g]);
-      return JSON.stringify(r1[0]?.values[0]) !== JSON.stringify(r2[0]?.values[0]);
+      const r1 = A.dbQueryFirst("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid=?", [g]);
+      const r2raw = A.diffDb.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid=?", [g]);
+      const r2 = r2raw.length ? r2raw[0].values[0] : null;
+      return JSON.stringify(r1) !== JSON.stringify(r2);
     });
 
     // S225: Detect merge vs revision — if <10% GUID overlap, this is a merge
@@ -42,11 +44,9 @@ function setupDiff(A) {
     const removedSet = new Set(A.diffResult.removed);
     const changedSet = new Set(A.diffResult.changed);
 
-    // Colour existing meshes (removed = red ghost, changed = yellow)
-    A.scene.traverse(function(obj) {
-      if (!obj.isMesh || !obj.userData.guid) return;
+    // S239: Colour existing meshes (removed = red ghost, changed = yellow)
+    A.collectMeshes(o => o.isMesh && o.userData.guid).forEach(function(obj) {
       const guid = obj.userData.guid;
-
       if (removedSet.has(guid)) {
         obj.material = new THREE.MeshPhongMaterial({
           color: DIFF_COLORS.removed.color,
@@ -141,12 +141,13 @@ function setupDiff(A) {
     if (A.diffResult.removed.includes(guid)) { console.log('[S222] §DIFF_DETAIL guid=' + guid.substring(0,12) + ' status=REMOVED'); return { status: 'REMOVED', color: '#cc4444' }; }
     if (A.diffResult.changed.includes(guid)) {
       // Show what changed
-      const r1 = A.db.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid='" + guid.replace(/'/g, "''") + "'");
-      const r2 = A.diffDb.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid='" + guid.replace(/'/g, "''") + "'");
+      // S239: parameterized queries (was manual escaping — SQL injection risk)
+      const r1 = A.dbQueryFirst("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid=?", [guid]);
+      const r2raw = A.diffDb.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid=?", [guid]);
       return {
         status: 'CHANGED', color: '#cccc44',
-        old: r1[0]?.values[0],
-        new: r2[0]?.values[0],
+        old: r1,
+        new: r2raw.length ? r2raw[0].values[0] : null,
       };
     }
     return null;
@@ -154,10 +155,7 @@ function setupDiff(A) {
 
   // S225: Zoom camera to a mesh by GUID + yellow bbox highlight
   A.zoomToGuid = function(guid) {
-    var target = null;
-    A.scene.traverse(function(obj) {
-      if (obj.isMesh && obj.userData.guid === guid) target = obj;
-    });
+    var target = A.collectMeshes(o => o.isMesh && o.userData.guid === guid)[0] || null;
     if (!target) { console.log('[S225] §ZOOM_MISS guid=' + guid.substring(0, 12)); return; }
 
     // Yellow bbox highlight (same as picking.js)
@@ -203,7 +201,8 @@ function setupDiff(A) {
     for (var i = 0; i < dbs.length; i++) {
       if (!dbs[i]) continue;
       try {
-        var r = dbs[i].exec("SELECT ifc_class, element_name, storey FROM elements_meta WHERE guid='" + guid.replace(/'/g, "''") + "'");
+        // S239: parameterized query (was manual escaping)
+        var r = dbs[i].exec("SELECT ifc_class, element_name, storey FROM elements_meta WHERE guid=?", [guid]);
         if (r.length && r[0].values.length) return r[0].values[0];
       } catch(e) {}
     }

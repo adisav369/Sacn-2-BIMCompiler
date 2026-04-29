@@ -69,6 +69,18 @@ Enterprise Resource Planning (ERP) systems (SAP, iDempiere [14]) represent manuf
 
 Manufacturing BOMs are **quantitative** (how many of each part) but not **spatial** (where each part goes). Our contribution is adding spatial tack offsets to the BOM convention, making the BOM a complete recipe for both what to build and where to place it.
 
+### 2.5 Design Pattern Languages and Spatial Typology
+
+The theoretical foundation for using templates as compilation targets traces to Christopher Alexander's *A Pattern Language* [19], which defines 253 building patterns arranged in a strict hierarchy from urban scale down to interior detail. Alexander's key insight — "each pattern describes a problem which occurs over and over again in our environment, and then describes the core of the solution to that problem, in such a way that you can use this solution a million times over, without ever doing it the same way twice" — is the conceptual basis for the BOM recipe model: reusable spatial templates that never produce identical output because the driving parameters (site, client, programme) differ each time. The BOM hierarchy (building → floor → room → component) directly mirrors Alexander's pattern hierarchy, and the BOM recursion algorithm (`getParentBOM()` returning null at root, `getChildren()` recursing) implements the directed network Alexander described.
+
+Lin's STG (Semantic-Topological-Geometric) pattern [20] provides a formal computational articulation of the same layered structure. Lin defines three transformation stages: (i) *Semantic* — the typological intentions of a design (space types, product categories, programme requirements); (ii) *Topological* — the relational structure among elements (adjacency, connectivity, containment); (iii) *Geometric* — the concrete positions and dimensions of components. The paper states: "the STG pattern can help architects to convert semantic information concerning the conditions and requirements of a project into design criteria, which are usually composed of topological relations among design elements, in order to explore the geometric properties of spaces and building components by means of generated 3D models" [20]. The BIM Intent Compiler implements all three STG layers in its ERP schema: `ad_space_type` / `M_Product_Category` (Semantic), `ad_space_adjacency` / `system_edges` (Topological), and `component_geometries` / `element_transforms` (Geometric).
+
+Empirical validation that topological analysis can recover building typologies from real BIM models is provided by Bielski et al. [21], who analysed school buildings for adjacency, accessibility, depth, and flow — finding "a relevant correlation between spatial proportion and room types." This confirms that the dimension tables in `ad_val_rule` (min/max area and dimension per space type) encode patterns discoverable from existing building stock rather than invented constraints.
+
+For MEP routing specifically — the most computationally intensive phase of the BIM compiler pipeline — the FIM (Field Information Modeling) framework of Maalek and Maalek [22] demonstrates that modularising existing structural designs into repeating patterns enables "generative decision-support" for future construction projects. Their three-algorithm framework (expand FIM to generative decision-support; generate as-built BIM; modularise into repeating patterns for optimal production) parallels the compiler's RouteWalker pipeline: discipline classification, BOM-tree route generation, and LOD-resolved component placement.
+
+Recent work by Postle and Salingaros [23] connects Alexander's pattern language to large language models, demonstrating that LLMs can synthesise context-specific subsets of the 253-pattern corpus in real time. The `nlp.js` module in BIM OOTB (Web Speech API + IFC synonym vocabulary) represents an early implementation of this direction: natural language resolves to SQL queries over the compiled spatial index, bridging the Semantic layer directly to the Geometric layer without intermediate re-parsing.
+
 ---
 
 ## 3. Method
@@ -623,6 +635,16 @@ The pattern — extract spatial motifs from solved structures, compile new struc
 [17] Oon, R.D., "ShipYard — A Deterministic Engine for Any Manufactured Assembly," https://red1oon.github.io/BIMCompiler/ShipYard/, 2026.
 
 [18] Kalinichuk, S., "BIM Dimensions — 3D, 4D, 5D, 6D, 7D, 8D BIM Explained," *United BIM*, 2023. https://www.united-bim.com/bim-dimensions-3d-4d-5d-6d-7d-8d-bim-explained/
+
+[19] Alexander, C., Ishikawa, S., Silverstein, M., Jacobson, M., Fiksdahl-King, I., and Angel, S., *A Pattern Language: Towns, Buildings, Construction*, Oxford University Press, New York, 1977. ISBN 978-0-19-501919-3.
+
+[20] Lin, C.-J., "The STG Pattern — Application of a 'Semantic-Topological-Geometric' Information Conversion Pattern to Knowledge-based Modeling in Architectural Conceptual Design," *Computer-Aided Design and Applications*, vol. 14, no. 3, pp. 313–323, 2017. DOI: 10.1080/16864360.2016.1240452. (Conference version: *Proceedings of CAD'16*, Vancouver, pp. 65–69, 2016. DOI: 10.14733/cadconfP.2016.65-69.)
+
+[21] Bielski, J., Langenhan, C., Weyand, B., Neuber, M., Eisenstadt, V., and Althoff, K.-D., "Topological Queries and Analysis of School Buildings Based on Building Information Modeling (BIM) Using Parametric Design Tools and Visual Programming to Develop New Building Typologies," *Proceedings of the 38th eCAADe Conference*, vol. 2, pp. 279–288, 2020. DOI: 10.52842/CONF.ECAADE.2020.2.279.
+
+[22] Maalek, R. and Maalek, S., "Repurposing existing skeletal spatial structure (SkS) system designs using the Field Information Modeling (FIM) framework for generative decision-support in future construction projects," *Scientific Reports*, vol. 13, Article 19591, 2023. DOI: 10.1038/s41598-023-46523-z.
+
+[23] Postle, B. and Salingaros, N.A., "LLM and Pattern Language Synthesis: A Hybrid Tool for Human-Centered Architectural Design," *Buildings*, vol. 15, no. 14, p. 2400, 2025. DOI: 10.3390/buildings15142400.
 
 ---
 

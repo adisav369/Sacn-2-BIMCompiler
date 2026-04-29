@@ -185,13 +185,13 @@ function setupCity(A) {
     A.db = A.cityBuildingDbs[archetype].db;
     A.libDb = A.cityBuildingDbs[archetype].libDb;
 
-    const bldInDb = A.db.exec(`SELECT DISTINCT building FROM elements_meta`);
-    const dbBldName = bldInDb.length > 0 ? bldInDb[0].values[0][0] : buildingName;
+    const bldInDb = A.dbQuery(`SELECT DISTINCT building FROM elements_meta`);
+    const dbBldName = bldInDb.length > 0 ? bldInDb[0][0] : buildingName;
 
-    const arcCentre = A.db.exec(`SELECT AVG(center_x), AVG(center_y), AVG(center_z) FROM element_transforms`);
-    const arcX = arcCentre[0].values[0][0];
-    const arcY = arcCentre[0].values[0][1];
-    const arcZ = arcCentre[0].values[0][2];
+    const arcCentre = A.dbQuery(`SELECT AVG(center_x), AVG(center_y), AVG(center_z) FROM element_transforms`);
+    const arcX = arcCentre[0][0];
+    const arcY = arcCentre[0][1];
+    const arcZ = arcCentre[0][2];
 
     const bc = A.buildingCentres[buildingName];
     const tgtX = bc.ix, tgtY = bc.iy, tgtZ = bc.iz;
@@ -200,7 +200,7 @@ function setupCity(A) {
     const offY = tgtY - arcY;
     const offZ = tgtZ - arcZ;
 
-    const rows = A.db.exec(`
+    const rows = A.dbQuery(`
       SELECT m.guid, i.geometry_hash, m.material_rgba, m.discipline,
              t.center_x, t.center_y, t.center_z,
              t.rotation_x, t.rotation_y, t.rotation_z,
@@ -218,7 +218,7 @@ function setupCity(A) {
       return;
     }
 
-    const offsetRows = rows[0].values.map(row => {
+    const offsetRows = rows.map(row => {
       const r = [...row];
       r[4] += offX;
       r[5] += offY;
@@ -247,10 +247,7 @@ function setupCity(A) {
     A.streaming = false;
     A.streamQueue = [];
     A.streamIdx = 0;
-    const toRemove = [];
-    A.scene.traverse(obj => {
-      if (obj.isMesh && obj !== A.ground) toRemove.push(obj);
-    });
+    const toRemove = A.collectMeshes(o => o.isMesh);
     toRemove.forEach(obj => {
       A.scene.remove(obj);
       if (obj.geometry) obj.geometry.dispose();

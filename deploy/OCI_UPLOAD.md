@@ -58,7 +58,7 @@ oci os object put --bucket-name bim-ootb-live \
   --content-type text/html --force
 
 # Upload JS modules
-for f in config scene streaming panels tools picking tour measure sitecam issues walk city main loader diff nlp variation_order import import_db_builder import_worker rates excel; do
+for f in config scene helpers streaming panels tools picking tour measure sitecam issues walk city main loader diff nlp variation_order import import_db_builder import_worker rates excel; do
   oci os object put --bucket-name bim-ootb-live \
     --file "deploy/sandbox/${f}.js" --name "sandbox/${f}.js" \
     --content-type application/javascript --force
