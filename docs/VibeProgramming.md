@@ -206,11 +206,27 @@ The skill intersection — `bpy.data.libraries.load(link=True)` + `IfcOpenShell 
 
 ## Case Study: The Browser Pivot (S165–S231)
 
-The second case study is more instructive than the first, because it documents a **complete architectural reversal** — built collaboratively across 190+ sessions with Claude Code ([first recorded commit 2026-01-25](https://github.com/red1oon/BIMCompiler/commit/1702488d9c974310179d4d111e99e40cfaf1f113), 1,400+ commits to date — preceded by pre-repo sessions from late 2025), where each session's constraints forced the next decision.
+The second case study is more instructive than the first, because it documents a **complete architectural reversal** — built collaboratively across 190+ sessions with Claude Code (1,400+ commits to date), where each session's constraints forced the next decision.
+
+### Key turning points at a glance
+
+| Date | Event | Significance |
+|------|-------|-------------|
+| [2025-10-30](https://github.com/red1oon/IfcOpenShell/commit/f410e32a13297355d8d5aed444ed176dd18e70a0) | "Full IFC4 database extraction and loading — MILESTONE" in the IfcOpenShell federation branch | **True origin.** First proof that IFC could become a queryable SQLite DB inside Bonsai/Blender. |
+| [2025-12-18](https://github.com/red1oon/IfcOpenShell/commit/bc76b7123ef8ebc73155fc20a4714f42eaec1029) | PDF Terrain + federation GI database | DB-as-scene-data extended beyond pure IFC geometry |
+| [2026-01-25](https://github.com/red1oon/BIMCompiler/commit/1702488d9c974310179d4d111e99e40cfaf1f113) | BIM Compiler repo created; Phase 3+4 Wall/Pipe builders | Work moved into standalone compiler repo; 190+ sessions begin |
+| [2026-04-11](https://github.com/red1oon/BIMCompiler/commit/f116fdde35eeccbc1d69dc533a89df17bf38a687) | S173 — library-linked geometry pipeline | **Two-DB split born:** BLOBs in `library.db`, hashes in `extracted.db` |
+| [2026-04-11](https://github.com/red1oon/BIMCompiler/commit/f3d2902b2b7fb578b8916565d9db7f1ee76f69bf) | S172 — `geom.iterator()` replaces `create_shape()` | Hash-addressed geometry dedup; 123K unique meshes serve 1M elements |
+| [2026-04-12](https://github.com/red1oon/BIMCompiler/commit/2bb9335ed64d6fa8b352cc438872f6a6d4d5e70a) | S175 — GN 500-tree overhead confirmed | **GN halted.** Blender's own instancer had a hard ceiling at building scale |
+| [2026-04-18](https://github.com/red1oon/BIMCompiler/commit/66fc9413a9ed8c3ac0b9d900634c57ba2a7e9e65) | S195 — "Direct DB Streaming — no .blend files" | **The pivot.** Float32 BLOBs work in Python *and* JavaScript — Blender is no longer required |
+| [2026-04-20](https://github.com/red1oon/BIMCompiler/commit/7a19d6e2543aeae89d93d80042bb8704793da193) | S200 — BIM OOTB: single HTML + two DBs + sql.js WASM | **Bonsai becomes optional.** 126K elements in a browser tab, zero install |
+| [2026-04-24](https://github.com/red1oon/BIMCompiler/commit/788eb47cc302b680025af07d7f55cc20de0ae742) | S220 — IFC import direct in browser via web-ifc WASM | Full round-trip closes: IFC → browser → same schema → viewer |
+| [2026-04-27](https://github.com/red1oon/BIMCompiler/commit/9cca45a365d6dfaa650995288f62f1e08fec8926) | S231 — InstancedMesh, 85% draw call reduction | Hash-addressed schema pays dividends: instancing needed no schema change |
+| 2026-04-29 | `docs/SQLite3D_Schema.md` published | Schema formalised as a candidate open standard |
 
 ### The assumption we started with
 
-From S165 onward, the viewer was Blender + Bonsai. The BIM compiler produced SQLite databases; Bonsai loaded them. This was the right assumption at the time: Bonsai had GPU rendering, IFC awareness, and a Python plugin API. The goal was city-scale BIM federation inside Blender.
+From S165 onward, the viewer was Blender + Bonsai. The BIM compiler produced SQLite databases; Bonsai loaded them. This was the right assumption at the time: Bonsai had GPU rendering, IFC awareness, and a Python plugin API. The goal was city-scale BIM federation inside Blender — a direct extension of the work that began in the [IfcOpenShell federation branch in October 2025](https://github.com/red1oon/IfcOpenShell/commit/f410e32a13297355d8d5aed444ed176dd18e70a0).
 
 ### S165–S174: Building the world's most sophisticated Blender BIM viewer
 
