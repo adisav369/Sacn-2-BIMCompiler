@@ -356,6 +356,7 @@ const USD_RATE = CUR_RATE;
 // COMPUTED STATE
 // ============================================================================
 let db = null, bldName = '';
+let _dbSourceLine = '';   // S238: captured at load, re-emitted on each export
 let qtoData = [];        // per storey/disc/class rows
 let discSummary = {};     // disc -> {qty, matTotal, laborCost, equipCost}
 let grandMaterial = 0, grandLabor = 0, grandEquip = 0, totalQty = 0;
@@ -539,14 +540,16 @@ async function fetchDbBuffer(url) {
     });
     if (cached) {
       const src = url.startsWith('import://') ? 'import' : 'idb';
-      console.log('§CHARTS_DB_SOURCE source=' + src + ' url=' + url.split('/').pop() + ' size=' + (cached.byteLength / 1024).toFixed(0) + 'KB');
+      _dbSourceLine = '§CHARTS_DB_SOURCE source=' + src + ' url=' + url.split('/').pop() + ' size=' + (cached.byteLength / 1024).toFixed(0) + 'KB';
+      _log(_dbSourceLine);
       return cached;
     }
   }
 
   if (url.startsWith('import://')) throw new Error('DB not found in cache: ' + url);
 
-  console.log('§CHARTS_DB_SOURCE source=oci url=' + url.split('/').pop());
+  _dbSourceLine = '§CHARTS_DB_SOURCE source=oci url=' + url.split('/').pop();
+  _log(_dbSourceLine);
   return fetch(url).then(r => r.arrayBuffer());
 }
 
@@ -1167,6 +1170,7 @@ function _verifyMaths(wb, label) {
 // SAVE 5D BOQ — ExcelJS: Cover, Exec Summary, Mat/Lab/Equip, BOQ, WPs, Disc, Prov
 // ============================================================================
 async function save5D() {
+  if (_dbSourceLine) _log(_dbSourceLine);  // S238: re-emit DB source so it appears in every log
   document.getElementById('status').textContent = _TRL.ui_gen_5d || 'Generating 5D Excel...';
   const wb = new ExcelJS.Workbook();
   wb.creator = _TRL.source_app;
@@ -1630,6 +1634,7 @@ async function save5D() {
 // SAVE 4D SCHEDULE — ExcelJS: 3 sheets (matches schedule_export.py)
 // ============================================================================
 async function save4D() {
+  if (_dbSourceLine) _log(_dbSourceLine);  // S238: re-emit DB source so it appears in every log
   document.getElementById('status').textContent = _TRL.ui_gen_4d || 'Generating 4D Excel...';
   const wb = new ExcelJS.Workbook();
   wb.creator = _TRL.source_app;
