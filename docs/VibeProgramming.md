@@ -206,7 +206,7 @@ The skill intersection — `bpy.data.libraries.load(link=True)` + `IfcOpenShell 
 
 ## Case Study: The Browser Pivot (S165–S231)
 
-The second case study is more instructive than the first, because it documents a **complete architectural reversal** — built collaboratively across [~60 sessions](https://github.com/red1oon/BIMCompiler/commit/1702488d9c974310179d4d111e99e40cfaf1f113) with Claude Code (first commit 2026-01-25, 1,400+ commits to date), where each session's constraints forced the next decision.
+The second case study is more instructive than the first, because it documents a **complete architectural reversal** — built collaboratively across 190+ sessions with Claude Code ([first recorded commit 2026-01-25](https://github.com/red1oon/BIMCompiler/commit/1702488d9c974310179d4d111e99e40cfaf1f113), 1,400+ commits to date — preceded by pre-repo sessions from late 2025), where each session's constraints forced the next decision.
 
 ### The assumption we started with
 
