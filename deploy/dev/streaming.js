@@ -6,7 +6,7 @@ function setupStreaming(A) {
   A.savedStreams = {};
 
   A.drawBuildingBoxes = function() {
-    const rows = A.db.exec(`
+    const rows = A.dbQuery(`
       SELECT m.building, m.discipline,
         MIN(t.center_x) - 5, MIN(t.center_y) - 5, MIN(t.center_z),
         MAX(t.center_x) + 5, MAX(t.center_y) + 5, MAX(t.center_z) + 3
@@ -16,7 +16,7 @@ function setupStreaming(A) {
     `);
     if (!rows.length) return;
 
-    for (const row of rows[0].values) {
+    for (const row of rows) {
       const [bld, disc, minX, minY, minZ, maxX, maxY, maxZ] = row;
       const color = A.DISC_COLORS[disc] || A.DEFAULT_COLOR;
       const c = A.ifc2three((minX+maxX)/2, (minY+maxY)/2, (minZ+maxZ)/2);
@@ -69,7 +69,7 @@ function setupStreaming(A) {
     } else {
       A.streamQueue = [];
       A.streamIdx = 0;
-      const rows = A.db.exec(`
+      const rows = A.dbQuery(`
         SELECT m.guid, i.geometry_hash, m.material_rgba, m.discipline,
                t.center_x, t.center_y, t.center_z,
                t.rotation_x, t.rotation_y, t.rotation_z,
@@ -85,7 +85,7 @@ function setupStreaming(A) {
         console.log(`[S192] §DS_EMPTY bld=${nearest} — no streamable elements`);
         return;
       }
-      A.streamQueue = rows[0].values;
+      A.streamQueue = rows;
       A.streamIdx = 0;
       A.streaming = true;
       A.activeBuilding = nearest;
@@ -424,17 +424,15 @@ function setupStreaming(A) {
     console.log(`[S192] §DB_LOADED size=${(dbBuf.byteLength/1024/1024).toFixed(0)}MB`);
     A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_db_loaded||'DB loaded ({size}MB). Querying...').replace('{size}',(dbBuf.byteLength/1024/1024).toFixed(0));
 
-    const rows = A.db.exec(`
+    const rows = A.dbQuery(`
       SELECT m.building, COUNT(*),
         AVG(t.center_x), AVG(t.center_y), AVG(t.center_z)
       FROM elements_meta m
       JOIN element_transforms t ON t.guid = m.guid
       GROUP BY m.building
     `);
-    if (rows.length > 0) {
-      for (const row of rows[0].values) {
-        A.buildingCentres[row[0]] = { ix: row[2], iy: row[3], iz: row[4], count: row[1] };
-      }
+    for (const row of rows) {
+      A.buildingCentres[row[0]] = { ix: row[2], iy: row[3], iz: row[4], count: row[1] };
     }
     console.log(`[S192] §BOOTSTRAP centres=${Object.keys(A.buildingCentres).length}`);
 
@@ -448,9 +446,9 @@ function setupStreaming(A) {
     }
     console.log(`[S192] §OFFSET ifc=(${A.modelOffset.x.toFixed(0)}, ${A.modelOffset.y.toFixed(0)}, ${A.modelOffset.z.toFixed(0)})`);
 
-    const zRange = A.db.exec(`SELECT MIN(center_z), MAX(center_z) FROM element_transforms`);
+    const zRange = A.dbQuery(`SELECT MIN(center_z), MAX(center_z) FROM element_transforms`);
     if (zRange.length > 0) {
-      const minZ = zRange[0].values[0][0];
+      const minZ = zRange[0][0];
       if (minZ == null) {
         console.log('[S220] §GROUND_SKIP element_transforms has no rows — no viewable geometry');
       } else {
@@ -461,11 +459,11 @@ function setupStreaming(A) {
       }
     }
 
-    const elemRows = A.db.exec(`SELECT COUNT(*) FROM elements_meta`);
-    A.totalElements = elemRows[0]?.values[0][0] || 0;
-    const discRows = A.db.exec(`SELECT discipline, COUNT(*) FROM elements_meta GROUP BY discipline ORDER BY COUNT(*) DESC`);
+    const elemRows = A.dbQuery(`SELECT COUNT(*) FROM elements_meta`);
+    A.totalElements = elemRows.length ? elemRows[0][0] : 0;
+    const discRows = A.dbQuery(`SELECT discipline, COUNT(*) FROM elements_meta GROUP BY discipline ORDER BY COUNT(*) DESC`);
     if (discRows.length > 0) {
-      for (const r of discRows[0].values) {
+      for (const r of discRows) {
         A.discCounts[r[0]] = r[1];
       }
     }
@@ -498,15 +496,15 @@ function setupStreaming(A) {
       A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_geom||'Using main DB for geometry. Streaming...');
     }
 
-    const bboxQ = A.db.exec(`
+    const bboxQ = A.dbQuery(`
       SELECT MIN(center_x), MAX(center_x),
              MIN(center_y), MAX(center_y),
              MIN(center_z), MAX(center_z)
       FROM element_transforms
     `);
     let envW = 500, envD = 500, envH = 100;
-    if (bboxQ.length > 0 && bboxQ[0].values[0][0] != null) {
-      const [xMin, xMax, yMin, yMax, zMin, zMax] = bboxQ[0].values[0];
+    if (bboxQ.length > 0 && bboxQ[0][0] != null) {
+      const [xMin, xMax, yMin, yMax, zMin, zMax] = bboxQ[0];
       envW = xMax - xMin;
       envD = yMax - yMin;
       envH = zMax - zMin;
@@ -517,9 +515,9 @@ function setupStreaming(A) {
     }
     const dist = Math.max(80, envelope * 1.5);
     const ctr = A.ifc2three(
-      (bboxQ[0]?.values[0][0] + bboxQ[0]?.values[0][1]) / 2 || 0,
-      (bboxQ[0]?.values[0][2] + bboxQ[0]?.values[0][3]) / 2 || 0,
-      (bboxQ[0]?.values[0][4] + bboxQ[0]?.values[0][5]) / 2 || 0
+      (bboxQ[0]?.[0] + bboxQ[0]?.[1]) / 2 || 0,
+      (bboxQ[0]?.[2] + bboxQ[0]?.[3]) / 2 || 0,
+      (bboxQ[0]?.[4] + bboxQ[0]?.[5]) / 2 || 0
     );
     A.camera.position.set(ctr.x + dist * 0.6, ctr.y + dist * 0.8, ctr.z + dist * 0.6);
     A.camera.far = Math.max(10000, dist * 5);
@@ -530,9 +528,9 @@ function setupStreaming(A) {
 
     window._trueNorthAngle = 0;
     try {
-      const tnRows = A.db.exec("SELECT value FROM project_metadata WHERE key = 'true_north_angle'");
-      if (tnRows.length > 0 && tnRows[0].values.length > 0) {
-        window._trueNorthAngle = parseFloat(tnRows[0].values[0][0]) || 0;
+      const tnRows = A.dbQuery("SELECT value FROM project_metadata WHERE key = 'true_north_angle'");
+      if (tnRows.length > 0) {
+        window._trueNorthAngle = parseFloat(tnRows[0][0]) || 0;
         console.log(`[S204] §TRUE_NORTH ${window._trueNorthAngle}° from grid Y`);
       }
     } catch(e) { /* no project_metadata table */ }
@@ -570,10 +568,7 @@ function setupStreaming(A) {
 
   // Clear — handles both Mesh and InstancedMesh
   A.clearStreamed = function() {
-    const toRemove = [];
-    A.scene.traverse(obj => {
-      if ((obj.isMesh || obj.isInstancedMesh) && obj !== A.ground) toRemove.push(obj);
-    });
+    const toRemove = A.collectMeshes(o => o.isMesh || o.isInstancedMesh);
     toRemove.forEach(obj => {
       A.scene.remove(obj);
       if (obj.geometry && !obj.userData.isInstanced) obj.geometry.dispose();

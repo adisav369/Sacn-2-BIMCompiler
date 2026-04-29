@@ -12,16 +12,16 @@ function setupPanels(A) {
 
   A.populateStoreys = function(building) {
     if (!A.db || !building) return;
-    const rows = A.db.exec(`
+    const rows = A.dbQuery(`
       SELECT DISTINCT storey FROM elements_meta
       WHERE building = ? AND storey IS NOT NULL
       ORDER BY storey
     `, [building]);
     const panel = document.getElementById('storey-panel');
     const body = document.getElementById('storey-body');
-    if (!rows.length || !rows[0].values.length) { panel.style.display = 'none'; return; }
+    if (!rows.length) { panel.style.display = 'none'; return; }
 
-    const storeys = rows[0].values.map(r => r[0]);
+    const storeys = rows.map(r => r[0]);
     body.innerHTML = `<button class="${A.activeStoreyFilter === null ? 'active' : ''}"
       onclick="filterStorey(null)" style="margin-top:4px">${typeof _TRL!=='undefined'&&_TRL.ui_all_storeys||'All Storeys'}</button>` +
       storeys.map(s => `<button class="${A.activeStoreyFilter === s ? 'active' : ''}"
@@ -34,32 +34,13 @@ function setupPanels(A) {
 
   A.filterStorey = function(storey) {
     A.activeStoreyFilter = storey;
-    A.scene.traverse(obj => {
-      if (obj.isMesh && obj !== A.ground && obj.userData.storey !== undefined) {
-        obj.visible = storey === null || obj.userData.storey === storey;
-      }
-      // S232: InstancedMesh — per-instance storey filter via zero-scale matrix
-      if (obj.isInstancedMesh && A._instanceMeta[obj.id]) {
-        const meta = A._instanceMeta[obj.id];
-        const _m4 = new THREE.Matrix4();
-        const _zero = new THREE.Matrix4().makeScale(0, 0, 0);
-        let anyVisible = false;
-        for (let i = 0; i < meta.length; i++) {
-          if (storey === null || meta[i].storey === storey) {
-            if (meta[i]._origMatrix) { obj.setMatrixAt(i, meta[i]._origMatrix); }
-            anyVisible = true;
-          } else {
-            // Save original matrix on first hide
-            if (!meta[i]._origMatrix) {
-              meta[i]._origMatrix = new THREE.Matrix4();
-              obj.getMatrixAt(i, meta[i]._origMatrix);
-            }
-            obj.setMatrixAt(i, _zero);
-          }
-        }
-        obj.instanceMatrix.needsUpdate = true;
-        obj.visible = anyVisible;
-      }
+    // S239: Regular meshes — show/hide by storey
+    A.collectMeshes(o => o.isMesh && o.userData.storey !== undefined).forEach(obj => {
+      obj.visible = storey === null || obj.userData.storey === storey;
+    });
+    // S232/S239: InstancedMesh — per-instance storey filter via zero-scale matrix
+    A.collectMeshes(o => o.isInstancedMesh).forEach(mesh => {
+      A.filterInstancedMesh(mesh, meta => storey === null || meta.storey === storey);
     });
     document.querySelectorAll('#storey-body button').forEach(btn => {
       const btnStorey = btn.onclick.toString().match(/filterStorey\('(.+?)'\)/)?.[1] || null;
@@ -73,16 +54,16 @@ function setupPanels(A) {
 
   A.populateDiscs = function(building) {
     if (!A.db || !building) return;
-    const rows = A.db.exec(`
+    const rows = A.dbQuery(`
       SELECT discipline, COUNT(*) FROM elements_meta
       WHERE building = ? AND discipline IS NOT NULL
       GROUP BY discipline ORDER BY COUNT(*) DESC
     `, [building]);
     const panel = document.getElementById('disc-panel');
     const body = document.getElementById('disc-body');
-    if (!rows.length || !rows[0].values.length) { panel.style.display = 'none'; return; }
+    if (!rows.length) { panel.style.display = 'none'; return; }
 
-    body.innerHTML = rows[0].values.map(([d, cnt]) => {
+    body.innerHTML = rows.map(([d, cnt]) => {
       const hex = '#' + (A.DISC_COLORS[d] || A.DEFAULT_COLOR).toString(16).padStart(6, '0');
       const on = !A.hiddenDiscs.has(d);
       return `<button class="${on ? 'active' : ''}" onclick="toggleDisc('${d}')" style="margin-top:2px">
@@ -101,34 +82,18 @@ function setupPanels(A) {
     } else {
       A.hiddenDiscs.add(disc);
     }
-    A.scene.traverse(obj => {
-      if (obj.isMesh && obj !== A.ground && obj.userData.disc) {
-        const discVisible = !A.hiddenDiscs.has(obj.userData.disc);
-        const storeyVisible = A.activeStoreyFilter === null || obj.userData.storey === A.activeStoreyFilter;
-        obj.visible = discVisible && storeyVisible;
-      }
-      // S232: InstancedMesh — per-instance disc+storey filter via zero-scale matrix
-      if (obj.isInstancedMesh && A._instanceMeta[obj.id]) {
-        const meta = A._instanceMeta[obj.id];
-        const _zero = new THREE.Matrix4().makeScale(0, 0, 0);
-        let anyVisible = false;
-        for (let i = 0; i < meta.length; i++) {
-          const dv = !A.hiddenDiscs.has(meta[i].disc);
-          const sv = A.activeStoreyFilter === null || meta[i].storey === A.activeStoreyFilter;
-          if (dv && sv) {
-            if (meta[i]._origMatrix) { obj.setMatrixAt(i, meta[i]._origMatrix); }
-            anyVisible = true;
-          } else {
-            if (!meta[i]._origMatrix) {
-              meta[i]._origMatrix = new THREE.Matrix4();
-              obj.getMatrixAt(i, meta[i]._origMatrix);
-            }
-            obj.setMatrixAt(i, _zero);
-          }
-        }
-        obj.instanceMatrix.needsUpdate = true;
-        obj.visible = anyVisible;
-      }
+    // S239: Regular meshes — show/hide by disc + storey
+    A.collectMeshes(o => o.isMesh && o.userData.disc).forEach(obj => {
+      const discVisible = !A.hiddenDiscs.has(obj.userData.disc);
+      const storeyVisible = A.activeStoreyFilter === null || obj.userData.storey === A.activeStoreyFilter;
+      obj.visible = discVisible && storeyVisible;
+    });
+    // S232/S239: InstancedMesh — per-instance disc+storey filter
+    A.collectMeshes(o => o.isInstancedMesh).forEach(mesh => {
+      A.filterInstancedMesh(mesh, meta => {
+        return !A.hiddenDiscs.has(meta.disc) &&
+          (A.activeStoreyFilter === null || meta.storey === A.activeStoreyFilter);
+      });
     });
     document.querySelectorAll('#disc-body button').forEach(btn => {
       const m = btn.onclick.toString().match(/toggleDisc\('(.+?)'\)/);

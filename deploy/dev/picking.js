@@ -111,8 +111,7 @@ function setupPicking(A) {
 
     // City mode: check bbox wireframes first
     if (A.CITY_URL) {
-      const bboxes = [];
-      A.scene.traverse(obj => { if (obj.isLineSegments && obj.userData.building) bboxes.push(obj); });
+      const bboxes = A.collectMeshes(o => o.isLineSegments && o.userData.building);
       const bboxHits = A.raycaster.intersectObjects(bboxes, false);
       if (bboxHits.length > 0) {
         const bldName = bboxHits[0].object.userData.building;
@@ -123,8 +122,7 @@ function setupPicking(A) {
 
     if (!A.db) return;
 
-    const meshes = [];
-    A.scene.traverse(obj => { if ((obj.isMesh || obj.isInstancedMesh) && obj !== A.ground && obj.visible) meshes.push(obj); });
+    const meshes = A.collectMeshes(o => (o.isMesh || o.isInstancedMesh) && o.visible);
     const hits = A.raycaster.intersectObjects(meshes, false);
 
     if (!hits.length) {
@@ -201,13 +199,14 @@ function setupPicking(A) {
     window._pickHighlight = hlLine;
 
     try {
-      const rows = A.db.exec(`
+      // S239: parameterized query (was string interpolation — SQL injection risk)
+      const rows = A.dbQuery(`
         SELECT m.ifc_class, m.element_name, m.guid, m.building, m.storey,
                m.discipline, m.material_rgba
-        FROM elements_meta m WHERE m.guid = '${guid}'
-      `);
-      if (!rows.length || !rows[0].values.length) return;
-      const [cls, name, g, bld, storey, disc, mat] = rows[0].values[0];
+        FROM elements_meta m WHERE m.guid = ?
+      `, [guid]);
+      if (!rows.length) return;
+      const [cls, name, g, bld, storey, disc, mat] = rows[0];
       document.getElementById('info-class').textContent = cls || '—';
       document.getElementById('info-name').textContent = name || '—';
       document.getElementById('info-guid').textContent = g || '—';
