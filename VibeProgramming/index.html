@@ -2504,10 +2504,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#s195-no-blend-files" class="md-nav__link">
+  <a href="#s195-bonsai-out-browser-in" class="md-nav__link">
     <span class="md-ellipsis">
       
-        S195: "No .blend files."
+        S195: Bonsai out. Browser in.
       
     </span>
   </a>
@@ -3618,10 +3618,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#s195-no-blend-files" class="md-nav__link">
+  <a href="#s195-bonsai-out-browser-in" class="md-nav__link">
     <span class="md-ellipsis">
       
-        S195: "No .blend files."
+        S195: Bonsai out. Browser in.
       
     </span>
   </a>
@@ -4095,7 +4095,7 @@ Building correct? → next task. Building wrong? → new drift point logged.
 <tr>
 <td><a href="https://github.com/red1oon/BIMCompiler/commit/66fc9413a9ed8c3ac0b9d900634c57ba2a7e9e65">2026-04-18</a></td>
 <td>S195 — "Direct DB Streaming — no .blend files"</td>
-<td><strong>The pivot.</strong> Float32 BLOBs work in Python <em>and</em> JavaScript — Blender is no longer required</td>
+<td><strong>Bonsai out. Browser in.</strong> Float32 BLOBs work in Python <em>and</em> JavaScript — the schema was always the portable part</td>
 </tr>
 <tr>
 <td><a href="https://github.com/red1oon/BIMCompiler/commit/7a19d6e2543aeae89d93d80042bb8704793da193">2026-04-20</a></td>
@@ -4139,12 +4139,13 @@ Building correct? → next task. Building wrong? → new drift point logged.
 <p>The second crack: Blender was the bottleneck, not the data.</p>
 <h3 id="s192s193-the-last-blender-steps">S192–S193: The last Blender steps<a class="headerlink" href="#s192s193-the-last-blender-steps" title="Permanent link">&para;</a></h3>
 <p>S192 bridged the BLOB gap to the browser — the first time geometry from <code>component_geometries</code> was served to a client other than Blender. S193 implemented DLOD auto-linker: <code>.blend</code> link/unlink by camera position. These were still Blender sessions. The pivot hadn't happened yet.</p>
-<h3 id="s195-no-blend-files">S195: "No .blend files."<a class="headerlink" href="#s195-no-blend-files" title="Permanent link">&para;</a></h3>
-<p>The <a href="https://github.com/red1oon/BIMCompiler/commit/66fc9413a9ed8c3ac0b9d900634c57ba2a7e9e65">S195 commit</a> is the pivot:</p>
+<h3 id="s195-bonsai-out-browser-in">S195: Bonsai out. Browser in.<a class="headerlink" href="#s195-bonsai-out-browser-in" title="Permanent link">&para;</a></h3>
+<p>The <a href="https://github.com/red1oon/BIMCompiler/commit/66fc9413a9ed8c3ac0b9d900634c57ba2a7e9e65">S195 commit</a> is where everything flips:</p>
 <div class="highlight"><pre><span></span><code>[S195] Direct DB Streaming — camera-driven mesh from BLOBs, no .blend files
 </code></pre></div>
-<p>The insight, arrived at through constraint: if <code>from_pydata()</code> in Python could reconstruct a mesh from a BLOB, so could <code>new Float32Array(blob)</code> in JavaScript. The BLOB format didn't care what consumed it — Python or a browser. The SQLite file didn't care what opened it — Blender or sql.js WASM.</p>
-<p>Both Blender's Python and the browser's JavaScript were doing the same thing: deserialising <code>float32</code> bytes into vertex positions and sending them to a renderer. The <strong>data format was the viewer interface</strong> — not the Blender addon API.</p>
+<p>Five months of Blender sessions. 500 modifier trees. 45-minute bake cycles. A 300MB session <code>.blend</code>. All of it dissolved by a single realisation: <strong>the data format was the viewer interface, not the Blender addon API.</strong></p>
+<p>If <code>from_pydata()</code> in Python could reconstruct a mesh from a BLOB, so could <code>new Float32Array(blob)</code> in JavaScript. The BLOB didn't care what consumed it. The SQLite file didn't care what opened it — Blender or a browser tab. Both were doing the same thing: deserialising <code>float32</code> bytes and handing them to a renderer.</p>
+<p>Bonsai had been the assumed destination since October 2025. S195 made it optional in one session. The schema — built under Blender's constraints — turned out to be the portable part. Everything else was just a renderer.</p>
 <h3 id="s200-bim-ootb-two-dbs-one-browser-zero-install">S200: BIM OOTB — Two DBs. One browser. Zero install.<a class="headerlink" href="#s200-bim-ootb-two-dbs-one-browser-zero-install" title="Permanent link">&para;</a></h3>
 <p><div class="highlight"><pre><span></span><code>[S200] BIM OOTB — single HTML + Two DBs + sql.js WASM + Three.js. No server.
 Proven at 126K elements (LTU AHouse).
