@@ -569,9 +569,19 @@ done
 
 ### Resume Checklist (next session)
 
-1. Read this §Open Issues section — OCI dev not reflecting changes
-2. Run debugging steps above to identify cache/overwrite issue
-3. Fix OCI caching (sw.js, Cache-Control headers, or URL-based cache bust)
-4. Verify on phone: Find → select → Navigate → walk → pinch → close bar quits
-5. Test on larger building (Clinic: 254 doors) — route template should produce rich graph
-6. Deploy to OCI live (`bim-ootb-live`) when confirmed working
+**⚠ BRANCH: `full` only. Do NOT touch `dev` branch or `bim-ootb-dev` OCI bucket.**
+**Deploy target: `bim-ootb-full` OCI bucket only.**
+**Git: `git checkout full` before any work.**
+
+**Resolved (S239):**
+- ~~OCI cache stale~~ → sw.js `CACHE_VERSION='v239'`, network-first for JS/HTML
+- ~~navigate.js 78KB on every page~~ → lazy-loaded on demand via `A.loadNavigate()`
+- ~~SQL injection in picking/diff~~ → parameterized queries via `A.dbQuery()`
+- ~~18× scene.traverse duplication~~ → `A.collectMeshes()` across 8 modules
+
+**Open — what to do:**
+1. **Occupancy grid** — `nav.grid` stays null (navigate.js:~700). Implement `buildOccupancyGrid(storey)` from wall/column geometry. Add `§NAV_GRID cells=N occupied=N storey=X` log line.
+2. **Mobile field test** — phone: Find → select → Navigate → walk → pinch → close bar quits. Check `§FIND_OPEN` + `§NAV_START` in remote debug console.
+3. **Test on larger building** (Clinic: 254 doors) — route template should produce rich graph.
+4. **Verify on `bim-ootb-full`:** `https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html`
+5. **Testing: §-log primary, Playwright secondary.** Read `§` lines to verify values. See `docs/TestArchitecture.md` §Browser Testing.
