@@ -47125,8 +47125,8 @@ const sheets = prefix ? ALL_SHEETS.filter(s => s[0] === prefix) : ALL_SHEETS;
 // Populate sheet selector (only in DXF-file mode)
 const sel = document.getElementById('sheet-select');
 if (hasDbParam) {
-  sel.style.display = 'none';  // hide DXF dropdown when DB is loaded
-  document.getElementById('bld-btns').style.display = 'none';  // hide building toggle in DB mode
+  sel.style.display = 'none';  // hide DXF sheet dropdown in DB mode
+  // bld-btns remain visible — user can switch inline baseline while DB loads
 } else {
   // Default: SH sheets (will be replaced by loadBuilding)
   const initSheets = prefix ? ALL_SHEETS.filter(s => s[0] === prefix) : ALL_SHEETS.filter(s => s[0] === 'SH');
@@ -47623,12 +47623,10 @@ function setStatus(msg) { document.getElementById('status-text').textContent = m
 canvas.style.cursor = 'crosshair';
 resize();
 
-// Auto-load SH floor plan in file mode (no ?db= param)
-// If ?bld=DX in URL, load DX instead
-if (!hasDbParam) {
-  const initBld = (prefix === 'DX') ? 'DX' : 'SH';
-  loadBuilding(initBld);
-}
+// Always load inline DXF default first — DB generation will replace it when ready
+// If ?bld=DX in URL, load DX; otherwise SH
+const initBld = (prefix === 'DX') ? 'DX' : 'SH';
+loadBuilding(initBld);
 
 // ═══════════════════════════════════════════════════════════════════
 // Dynamic 2D generation from DB — coexists with DXF file path above
