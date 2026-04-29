@@ -323,7 +323,7 @@ IFC files (source)
   │    surface_styles            (IFC material colours)
   │
   └─ component_library.db      ← tessellated geometry BLOBs
-       component_geometries      (hash → vertices BLOB + faces BLOB)
+       component_geometries      (hash → vertices BLOB + faces BLOB — see [SQLite3D_Schema.md](SQLite3D_Schema.md))
        124,591 unique meshes     (shared across 1M elements)
 
 Blender (live, interactive)
