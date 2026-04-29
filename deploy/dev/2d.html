@@ -47240,7 +47240,10 @@ function fitView() {
       if (p.y > maxY) maxY = p.y;
     });
   });
-  if (!isFinite(minX)) return;
+  if (!isFinite(minX)) {
+    console.warn('§2D_FITVIEW no finite points — entities=' + entities.length);
+    return;
+  }
   const dxfW = maxX - minX || 1;
   const dxfH = maxY - minY || 1;
   const margin = 40;
@@ -47248,6 +47251,9 @@ function fitView() {
   viewX = (minX + maxX) / 2;
   viewY = (minY + maxY) / 2;
   window.viewScale = viewScale;
+  console.log('§2D_FITVIEW bbox=[' + minX.toFixed(2) + ',' + minY.toFixed(2) + ' to ' +
+              maxX.toFixed(2) + ',' + maxY.toFixed(2) + '] scale=' + viewScale.toFixed(4) +
+              ' canvas=' + canvas.width + 'x' + canvas.height);
   draw();
 }
 
@@ -47705,14 +47711,17 @@ async function loadDatabases() {
         stSel.appendChild(opt);
       });
       // Auto-select: skip foundation/roof/site — pick first real floor storey
-      // Pattern: T/FDN, FOUNDATION, BASEMENT, BSMT, ROOF, SITE, PARKING
-      const SKIP_PAT = /\bFDN\b|FOUND|BSMT|BASEMENT|ROOF|SITE|PARK/i;
+      // Covers English (FDN, FOUNDATION, BASEMENT, ROOF, SITE) + Dutch (fundering, dak)
+      const SKIP_PAT = /\bFDN\b|FOUND|FUNDER|BSMT|BASEMENT|ROOF|\bDAK\b|SITE|PARK|\bUNKNOWN\b/i;
       const floorStorey = storeys.find(s => !SKIP_PAT.test(s.name));
       const defaultStorey = floorStorey || storeys[0];
       if (defaultStorey) stSel.value = defaultStorey.name;
+      const skipped = storeys.filter(s => SKIP_PAT.test(s.name)).map(s => s.name);
+      const allNames = storeys.map(s => s.name + '(z=' + s.floorZ.toFixed(2) + ')').join(', ');
       console.log('§2D_STOREYS count=' + storeys.length +
                   ' default=' + (defaultStorey ? defaultStorey.name : 'none') +
-                  ' skipped=' + storeys.filter(s => SKIP_PAT.test(s.name)).map(s => s.name).join(','));
+                  ' skipped=' + skipped.join(','));
+      console.log('§2D_STOREYS_ALL ' + allNames);
     }
 
     setStatus(typeof _TRL!=='undefined'&&_TRL.ui_2d_dbs_ready||'DBs loaded — generating...');
@@ -47896,6 +47905,12 @@ async function generateFromDb() {
     document.getElementById('layer-count').textContent = layers.size;
     setStatus((typeof _TRL!=='undefined'&&_TRL.ui_2d_generated||'Generated: {n} entities, {l} layers ({ms}ms)').replace('{n}',entities.length).replace('{l}',layers.size).replace('{ms}',dt.toFixed(0)));
     console.log('§2D_DONE entities=' + entities.length + ' layers=' + layers.size + ' time=' + dt.toFixed(0) + 'ms');
+    // Guard: only fitView/replace if we got something — keep inline default if generation fails
+    if (entities.length === 0) {
+      console.warn('§2D_EMPTY generation returned 0 entities — keeping previous view');
+      setStatus('No entities generated for this storey/mode');
+      return;
+    }
     fitView();
   } catch (e) {
     console.error('§2D_GEN_ERROR', e);

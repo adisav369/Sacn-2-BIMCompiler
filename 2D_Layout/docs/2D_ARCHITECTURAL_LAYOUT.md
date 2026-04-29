@@ -3942,3 +3942,144 @@ I-53 (material tags) → I-54 (fixture symbols) → I-55 (roof plan enhance) →
 I-57 (finish panel) → I-56 (plumbing diagrams)
 
 **Phase D — 3rd building onboarding** after Phases A-C stable on SH+DX.
+
+## 25. Browser 2D Pipeline — Code Flow (§25)
+
+> Status: ACTIVE — `deploy/dev/2d.html` + `section_cut.js` + `grid_dims.js`
+> Proven: SH (68 entities), DX (working), SampleCastle (254 entities incl. 153 grid)
+
+### 25.1 Entry Points
+
+Two modes coexist in the same page:
+
+| Mode | Trigger | Data source |
+|------|---------|-------------|
+| **DXF-file** | No `?db=` param, or SH/DX button click | Inline embedded DXF (SH_FLOOR / DX_FLOOR_GF) |
+| **Dynamic** | `?db=...&lib=...` URL params | extracted.db + library.db via sql.js WASM |
+
+Inline DXF always loads first as default. Dynamic generation replaces it on success.
+If generation returns 0 entities, inline is preserved (`§2D_EMPTY` warning fires).
+
+### 25.2 Startup Sequence (Dynamic mode)
+
+```
+page load
+  │
+  ├─ loadBuilding('SH')          §2D_INLINE — inline DXF parsed, canvas shows SH floor plan
+  │
+  └─ loadDatabases()             async, non-blocking
+       │
+       ├─ fetch sql-wasm.js      §2D_DB sql-wasm.js loaded dynamically
+       ├─ fetch extracted.db     §2D_DB main loaded from ...
+       ├─ fetch library.db       §2D_DB lib loaded from ...
+       │
+       ├─ SectionCut.detectStoreys(dbMain)
+       │    └─ SQL: MIN(center_z) GROUP BY storey   §SC_STOREYS count=N
+       │
+       ├─ populate storey-select dropdown
+       ├─ SKIP_PAT filter (FDN/FOUND/BSMT/ROOF/SITE)
+       ├─ auto-select first non-skipped storey
+       │    §2D_STOREYS count=N default=X skipped=Y,Z
+       │    §2D_STOREYS_ALL name(z=Z), name(z=Z), ...
+       │
+       └─ setTimeout(generateFromDb, 100ms)
+```
+
+### 25.3 generateFromDb() — Floor Plan Path
+
+```
+generateFromDb()
+  │  §2D_GENERATE mode=plan storey=X dbReady=true
+  │
+  ├─ SectionCut.getBuildingStats(dbMain)
+  │    if elementCount > MAX_ELEMENTS_POC (500):
+  │      clipBox = centre 30m×30m window   §2D_LARGE_BUILDING
+  │
+  ├─ SectionCut.sectionCut(dbMain, dbLib, null, storeyName, opts)
+  │    │  §SC_CUT_PLANE z=1.000 storey=Ground Floor
+  │    │  §SC_QUERY cutElements=N belowElements=N aboveElements=N
+  │    │  §SC_SLICE / §SC_CHAIN per element
+  │    │  §SC_CLASSES withContour=[...] noContour=[] nonSliceable=[...]
+  │    │  §SC_SAMPLE firstContour class=X pt0=[x,y]
+  │    └─ §SC_DONE total=N cut=N sliced=N contours=N time=Nms
+  │
+  ├─ sectionToEntities(elements)     §2D_GEN sectionToEntities=N
+  │    LWPOLYLINE per contour, layer from IFC_LAYER map, BIMSRC xdata
+  │
+  ├─ GridDims.detectGrids(dbMain)
+  │    if columns found:
+  │      §GD_COLUMNS found=N
+  │      §GD_CLUSTER axis=X clusters=N / axis=Y clusters=N
+  │      §GD_GRIDS xLines=N yLines=N
+  │      §GD_DIMS count=N
+  │      §GD_RENDER entities=N
+  │    if no columns: §GD_COLUMNS found=0 (grid silently skipped)
+  │
+  ├─ gridToEntities(gridResult, dims, bbox)   §2D_GEN gridToEntities=N
+  │
+  ├─ entities.length === 0 → §2D_EMPTY, keep inline, return
+  │
+  ├─ feed entities into renderer (same as parseDxf path)
+  │
+  ├─ fitView()
+  │    §2D_FITVIEW bbox=[minX,minY to maxX,maxY] scale=N canvas=WxH
+  │
+  └─ §2D_DONE entities=N layers=N time=Nms
+```
+
+### 25.4 sectionCut() — Cut Plane Logic
+
+```
+cutZ = target.floorZ + DEFAULT_CUT_OFFSET (1.0m)
+```
+
+`floorZ` = `MIN(center_z)` of all elements in that storey.
+For a castle: `-1 fundering` at z=-1.55, `00 begane grond` at z=-0.27 → cutZ=-0.27+1.0=0.73m.
+For SH: `Ground Floor` at z=0.0 → cutZ=1.0m (standard).
+
+**SKIP_PAT** (2d.html storey auto-select, not in section_cut.js):
+```
+/\bFDN\b|FOUND|BSMT|BASEMENT|ROOF|SITE|PARK/i
+```
+Filters storey dropdown default. Applies to Dutch names too: `fundering` contains `FUND` → skipped. `dak` (Dutch for roof) is NOT caught — add `\bDAK\b` if needed.
+
+### 25.5 Grid Detection — Why Some Buildings Have No Grid
+
+`grid_dims.js` detects grids from IfcColumn positions. If a building has no columns:
+- `§GD_COLUMNS found=0` — grid silently skipped
+- SampleHouse: timber frame, no columns → 0 grid entities
+- SampleCastle: 23 columns → 153 grid entities
+- Hospital/large buildings: columns detected, grid fires
+
+**Rule:** Grid lines come from column centroids only. No columns = no grid = normal.
+Future: detect grid from wall intersection points (§4.4 of this doc).
+
+### 25.6 Template Completeness Per Building
+
+What the middle layer (section_cut + grid_dims) currently produces vs. full template:
+
+| Component | Status | Source |
+|-----------|--------|--------|
+| Wall/column/door/window contours | ✓ | section_cut.js sectionToEntities |
+| Grid lines + bubbles | ✓ (if columns exist) | grid_dims.js |
+| Grid dimensions (bay widths) | ✓ | grid_dims.js |
+| Storey selector (all floors) | ✓ | detectStoreys → dropdown |
+| Title block | ✗ | spec in §7.2, not yet in browser |
+| North arrow | ✗ | spec in §19.10 |
+| Scale bar | ✗ | spec in §19.11 |
+| Room labels | ✗ | spec in §19.12 |
+| Door/window tags | ✗ | spec in §19.13 |
+| Hatch patterns | ✗ | spec in §23.2 |
+
+Next extension point: add `TitleBlock.render(entities, buildingName, storeyName, scale)` as a separate JS module, same pattern as `GridDims`.
+
+### 25.7 Known Storey Edge Cases
+
+| Building | Issue | Root cause |
+|----------|-------|-----------|
+| SampleCastle | `fundering` shown in dropdown | SKIP_PAT catches `FOUND` not `funder` — Dutch word |
+| SampleCastle | `dak` shown in dropdown | SKIP_PAT has no Dutch roof word |
+| Buildings with `Unknown` storey | shown in dropdown | elements with no storey assignment grouped as `Unknown` |
+
+Fix: extend SKIP_PAT: `/\bFDN\b|FOUND|FUNDER|BSMT|BASEMENT|ROOF|\bDAK\b|SITE|PARK|UNKNOWN/i`
+
