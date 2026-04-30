@@ -13,6 +13,10 @@
       
       
       
+        <link rel="prev" href="../LTUAHouseAnalysis/">
+      
+      
+        <link rel="next" href="../WorkOrderGuide/">
       
       
         
@@ -23,7 +27,7 @@
     
     
       
-        <title>Stress Test — 1M Elements in a Single Federated Session - BIM Intent Compiler</title>
+        <title>1M Stress Test - BIM Intent Compiler</title>
       
     
     
@@ -120,7 +124,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Stress Test — 1M Elements in a Single Federated Session
+              1M Stress Test
             
           </span>
         </div>
@@ -385,10 +389,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../SampleHouseAnalysis/" class="md-tabs__link">
           
   
@@ -2294,8 +2300,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -2315,23 +2323,32 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
             
   
   
@@ -2349,7 +2366,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2507,6 +2524,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../HospitalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hospital (HA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RevitAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Revit MEP (RM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../InfrastructureAnalysis/" class="md-nav__link">
         
   
@@ -2584,6 +2657,203 @@
 
               
             
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1M Stress Test
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1M Stress Test
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#goal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Goal
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-loading-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Loading Problem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-solution-rtree-gpu-stingy-mesh-loader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Solution: RTree GPU + Stingy Mesh Loader
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Solution: RTree GPU + Stingy Mesh Loader">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#earlier-approach-gn-mode-s175s184-halted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Earlier Approach — GN Mode (S175–S184, halted)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#current-solution-rtree-gpu-path-s184" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current Solution — RTree GPU Path (S184+)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#city-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        City Layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#measured-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measured Performance
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Measured Performance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rtree-gpu-path-current-s184" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RTree GPU Path (current — S184+)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gn-mode-historical-s175s184-halted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GN Mode (historical — S175–S184, halted)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2599,6 +2869,10 @@
   
     
     
+      
+        
+      
+        
       
         
       
@@ -2766,6 +3040,62 @@
     
   
     2D Plans Viewer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RouteTemplate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Find and Navigate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RTreeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    City-Scale RTree
   
 
     
