@@ -132,9 +132,12 @@ nav:
       - Duplex (DX): DuplexAnalysis.md
       - AC Institute (IN): ACInstituteAnalysis.md
       - Terminal (TE): TerminalAnalysis.md
+      - Hospital (HA): HospitalAnalysis.md
+      - Revit MEP (RM): RevitAnalysis.md
       - Infrastructure: InfrastructureAnalysis.md
       - DemoHouse (DM): DemoHouseAnalysis.md
       - LTU A-House: LTUAHouseAnalysis.md
+      - 1M Stress Test: StressTest_1M.md
 
   # ─── Guides ───────────────────────────────────────────
   - Guides:
@@ -142,6 +145,8 @@ nav:
       - User Guide: USER_GUIDE.md
       - BIM Designer Guide: BIM_Designer_UserGuide.md
       - 2D Plans Viewer: 2D_HTML_GUIDE.md
+      - Find and Navigate: RouteTemplate.md
+      - City-Scale RTree: RTreeGuide.md
       - Back Office Guide: BackOfficeUserGuide.md
       - IFC Onboarding: IFC_ONBOARDING_RUNBOOK.md
       - Systems Installer: SYSTEMS_INSTALLER_GUIDE.md
