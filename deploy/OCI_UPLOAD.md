@@ -127,11 +127,16 @@ Steps 1–4 operate at OCI level. Step 5 syncs back locally so `deploy/sandbox/`
 Step 1 — TEST        Run ALL tests. Both must pass.
                        a) node deploy/sandbox/test_all.js   (full suite)
                        b) node deploy/dev/s2XX_test.js      (feature-specific)
-Step 2 — SNAPSHOT    OCI copy: prod → backup  (save current live state)
+Step 2 — MINIFY      Build deploy/min/ from deploy/dev/ (never edit min/ directly)
+                       bash scripts/minify_viewer.sh
+                       - Output: deploy/min/*.js  (45% smaller, what goes to OCI)
+                       - Source: deploy/dev/*.js  (readable, always edit here)
+Step 3 — SNAPSHOT    OCI copy: prod → backup  (save current live state)
                        a) sandbox/ prefix: bash scripts/oci_bucket_copy.sh bim-ootb-live bim-ootb-backup sandbox/
                        b) root index.html:  download from prod, upload to backup
-Step 3 — DEPLOY      OCI copy: dev → prod     (push tested code live)
-                       a) sandbox/ prefix: bash scripts/oci_bucket_copy.sh bim-ootb-dev bim-ootb-live sandbox/
+Step 4 — DEPLOY      minify_viewer.sh --upload full  OR manual OCI upload from deploy/min/
+                       a) sandbox/ JS: bash scripts/minify_viewer.sh --upload full
+                          (combines Step 2+4 in one command)
                        b) root index.html:  sed-strip DEV markers from landing2.html → deploy/sandbox/landing.html
                           - landing2.html has DEV banner + DEV title — NEVER upload as-is to prod
                           - Strip: title "DEV", orange DEV banner, h1 "DEV"
@@ -143,7 +148,7 @@ Step 3 — DEPLOY      OCI copy: dev → prod     (push tested code live)
                           - Upload: oci os object put --bucket-name bim-ootb-live --file deploy/sandbox/landing.html \
                               --name index.html --content-type text/html --force
                           One artifact, one location. Durable, git-tracked, survives reboots.
-Step 4 — SMOKE       Verify deploy before visual check.
+Step 5 — SMOKE       Verify deploy before visual check.
                        a) curl checks (all must pass):
                           curl -s -o /dev/null -w "%{http_code}" .../index.html   # must be 200
                           curl -s .../index.html | grep -c "DEV ENVIRONMENT"      # must be 0
@@ -154,10 +159,10 @@ Step 4 — SMOKE       Verify deploy before visual check.
                           - Title bar shows "BIM OOTB" not "BIM OOTB — DEV"
                           - Building cards load from manifest
                           - Drop IFC zone visible
-Step 5 — COMMIT      git add + commit.
-                       - deploy/sandbox/landing.html was already written in Step 3
-                       - JS modules: copy changed files from deploy/dev/ → deploy/sandbox/
-                       - git add deploy/sandbox/ && git commit
+Step 6 — COMMIT      git add + commit.
+                       - deploy/sandbox/landing.html was already written in Step 4
+                       - deploy/min/ is regenerated — no need to commit (gitignored or rebuilt on demand)
+                       - git add deploy/dev/ deploy/landing2.html && git commit
 ```
 
 **If broken after Step 4 — ROLLBACK (two commands):**
@@ -182,32 +187,29 @@ No git involved. Backup bucket IS the known-good version.
 node deploy/sandbox/test_all.js
 node deploy/dev/s211_test.js      # adjust per sprint
 
-# Step 2: Snapshot prod → backup
+# Step 2: Minify dev → min
+bash scripts/minify_viewer.sh
+
+# Step 3: Snapshot prod → backup
 bash scripts/oci_bucket_copy.sh bim-ootb-live bim-ootb-backup sandbox/
 
-# Step 3: Deploy dev → prod
-bash scripts/oci_bucket_copy.sh bim-ootb-dev bim-ootb-live sandbox/
+# Step 4: Deploy min → prod  (combines minify+upload in one command)
+bash scripts/minify_viewer.sh --upload full
 # Root-level files (if changed):
 # oci os object copy --bucket-name bim-ootb-dev --source-object-name boq_charts.html \
 #   --destination-bucket bim-ootb-live --destination-object-name boq_charts.html
 
-# Step 4: Smoke test — verify BOTH endpoints + cache bust
+# Step 5: Smoke test — verify BOTH endpoints + cache bust
 # Landing:  https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html
 # Viewer:   https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/sandbox/index.html
 # Hard refresh (Ctrl+Shift+R) to bypass browser cache.
 # Check on phone too — mobile Safari caches aggressively.
 
-# Step 5: Sync local + commit
-# Landing page already written to deploy/sandbox/landing.html in Step 3
-# JS modules: copy changed dev files to sandbox
-for f in deploy/dev/*.js deploy/dev/*.html; do
-  [ -L "$f" ] && continue   # skip symlinks
-  cp "$f" "deploy/sandbox/$(basename $f)"
-done
-git add deploy/sandbox/
+# Step 6: Commit
+git add deploy/dev/ deploy/landing2.html
 git commit -m "[SXXX] Description"
 
-# Rollback (if Step 4 fails):
+# Rollback (if Step 5 fails):
 bash scripts/oci_bucket_copy.sh bim-ootb-backup bim-ootb-live sandbox/
 ```
 
