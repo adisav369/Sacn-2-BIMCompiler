@@ -23,6 +23,14 @@
   var LABEL_TEXT_H = 10;   // screen px — bubble label font size
   var MIN_BAY_DISPLAY = 1.0; // meters — drop grid lines closer than this to any neighbour (sub-metre column pairs)
 
+  // Crowding thresholds — kick in for large buildings (Terminal, Hospital, etc.)
+  // MAX_GRID_LINES: if either axis has more than this many lines after filterStructural,
+  //   stride-thin the interior ones so only ~MAX_GRID_LINES labels remain (first + last always kept).
+  // MIN_DIM_SCREEN_PX: minimum screen-space gap between dim lines before dim text is suppressed
+  //   and the bay is listed in a panel instead of inline.  Evaluated at render time via viewScale.
+  var MAX_GRID_LINES = 12;    // per axis — beyond this, thin interior grids
+  var MIN_DIM_SCREEN_PX = 28; // px — minimum gap for inline dim text (≈ 2 char widths × 14px)
+
   // ── Helpers ──────────────────────────────────────────────────────
 
   function log(msg) {
@@ -190,6 +198,29 @@
     xLines = xFiltered;
     yLines = yFiltered;
 
+    // Stride-thinning for crowded grids: keep first + last + every Nth interior line
+    // so the total never exceeds MAX_GRID_LINES. Suppressed lines are noted in §GD_THIN.
+    function thinGrids(lines) {
+      if (lines.length <= MAX_GRID_LINES) return lines;
+      var interior = lines.slice(1, lines.length - 1);
+      // Choose stride so that ceil(interior.length / stride) ≤ MAX_GRID_LINES - 2
+      var stride = Math.ceil(interior.length / (MAX_GRID_LINES - 2));
+      var kept = [lines[0]];
+      for (var ti = 0; ti < interior.length; ti++) {
+        if (ti % stride === 0) kept.push(interior[ti]);
+      }
+      kept.push(lines[lines.length - 1]);
+      return kept;
+    }
+    var xThin = thinGrids(xLines);
+    var yThin = thinGrids(yLines);
+    if (xThin.length !== xLines.length || yThin.length !== yLines.length) {
+      log('§GD_THIN x:' + xLines.length + '→' + xThin.length +
+          ' y:' + yLines.length + '→' + yThin.length + ' (MAX_GRID_LINES=' + MAX_GRID_LINES + ')');
+    }
+    xLines = xThin;
+    yLines = yThin;
+
     log('§GD_GRIDS xLines=' + xLines.length + ' yLines=' + yLines.length);
 
     return { xLines: xLines, yLines: yLines };
@@ -283,9 +314,11 @@
    * @param {{xLines: Array, yLines: Array}} gridResult
    * @param {Array} dims - from generateDimensions()
    * @param {{minX: number, minY: number, maxX: number, maxY: number}} bbox - plan extents
+   * @param {{viewScale: number}} [opts] - optional rendering options
    * @returns {Array} draw commands
    */
-  function renderGridEntities(gridResult, dims, bbox) {
+  function renderGridEntities(gridResult, dims, bbox, opts) {
+    var viewScale = (opts && opts.viewScale) || 50; // px/m fallback — conservative
     var cmds = [];
     var xLines = gridResult.xLines || [];
     var yLines = gridResult.yLines || [];
@@ -333,23 +366,54 @@
     // ── Dimension annotations ─────────────────────────────────────
     var DIM_COLOR = '#99aacc';  // visible on dark bg
     var DIM_TEXT_H = 9;         // screen px
+
+    // Crowding detection: if a tier-1 bay is narrower than MIN_DIM_SCREEN_PX on screen,
+    // its inline label is suppressed (tick marks kept) and the bay is collected for a panel.
+    var suppressedX = [], suppressedY = [];
+
     for (var di = 0; di < dims.length; di++) {
       var d = dims[di];
       var offset = d.tier === 2 ? DIM_OFFSET_2 : DIM_OFFSET_1;
+      var bayScreenPx = d.distance * viewScale;
+      var crowded = d.tier === 1 && bayScreenPx < MIN_DIM_SCREEN_PX;
 
       if (d.axis === 'x') {
         var dimY = bMaxY + offset;
         cmds.push({ type: 'line', x1: d.startPos, y1: dimY, x2: d.endPos, y2: dimY, dash: null, color: DIM_COLOR, lineWidth: 0.3 });
         cmds.push({ type: 'line', x1: d.startPos, y1: dimY - 0.15, x2: d.startPos, y2: dimY + 0.15, dash: null, color: DIM_COLOR, lineWidth: 0.3 });
         cmds.push({ type: 'line', x1: d.endPos, y1: dimY - 0.15, x2: d.endPos, y2: dimY + 0.15, dash: null, color: DIM_COLOR, lineWidth: 0.3 });
-        cmds.push({ type: 'text', x: (d.startPos + d.endPos) / 2, y: dimY + 0.3, text: d.label, color: DIM_COLOR, fontSize: DIM_TEXT_H, screenH: true, align: 'center' });
+        if (!crowded) {
+          cmds.push({ type: 'text', x: (d.startPos + d.endPos) / 2, y: dimY + 0.3, text: d.label, color: DIM_COLOR, fontSize: DIM_TEXT_H, screenH: true, align: 'center' });
+        } else {
+          suppressedX.push(d.fromLabel + '–' + d.toLabel + ':' + d.label);
+        }
       } else {
         var dimX = bMinX - offset;
         cmds.push({ type: 'line', x1: dimX, y1: d.startPos, x2: dimX, y2: d.endPos, dash: null, color: DIM_COLOR, lineWidth: 0.3 });
         cmds.push({ type: 'line', x1: dimX - 0.15, y1: d.startPos, x2: dimX + 0.15, y2: d.startPos, dash: null, color: DIM_COLOR, lineWidth: 0.3 });
         cmds.push({ type: 'line', x1: dimX - 0.15, y1: d.endPos, x2: dimX + 0.15, y2: d.endPos, dash: null, color: DIM_COLOR, lineWidth: 0.3 });
-        cmds.push({ type: 'text', x: dimX - 0.3, y: (d.startPos + d.endPos) / 2, text: d.label, color: DIM_COLOR, fontSize: DIM_TEXT_H, screenH: true, align: 'center' });
+        if (!crowded) {
+          cmds.push({ type: 'text', x: dimX - 0.3, y: (d.startPos + d.endPos) / 2, text: d.label, color: DIM_COLOR, fontSize: DIM_TEXT_H, screenH: true, align: 'center' });
+        } else {
+          suppressedY.push(d.fromLabel + '–' + d.toLabel + ':' + d.label);
+        }
       }
+    }
+
+    // If dims were suppressed, emit a compact panel text below the X overall dim
+    // (no crowded text on canvas — summary in one place only)
+    if (suppressedX.length > 0 || suppressedY.length > 0) {
+      var panelX = (bbox.minX + bbox.maxX) / 2;
+      var panelY = bMaxY + DIM_OFFSET_2 + 0.8;
+      var panelLines = [];
+      if (suppressedX.length) panelLines.push('X: ' + suppressedX.join('  '));
+      if (suppressedY.length) panelLines.push('Y: ' + suppressedY.join('  '));
+      for (var pi = 0; pi < panelLines.length; pi++) {
+        cmds.push({ type: 'text', x: panelX, y: panelY + pi * 0.6, text: panelLines[pi],
+                    color: '#778899', fontSize: 8, screenH: true, align: 'center' });
+      }
+      log('§GD_CROWD suppressedX=' + suppressedX.length + ' suppressedY=' + suppressedY.length +
+          ' viewScale=' + viewScale.toFixed(1) + ' minPx=' + MIN_DIM_SCREEN_PX);
     }
 
     log('§GD_RENDER entities=' + cmds.length);

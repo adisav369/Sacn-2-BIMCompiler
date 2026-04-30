@@ -193,5 +193,6 @@ mvn compile -q                              # Compile all modules
 | Understand how it was built | [Vibe Programming — AI + Domain Expertise](VibeProgramming.md) |
 | Explore the enterprise platform | [**FederatedModel — 4D through 8D**](Enterprise.md) |
 | Navigate 1M+ elements in real time | [**RTree Query Engine — Compile Once, Query Forever**](RTree.md) |
+| Walk to any element indoors | [Find & Navigate — Indoor Wayfinding](RouteTemplate.md) |
 
 <div style="clear: right;"></div>

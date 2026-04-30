@@ -48156,12 +48156,19 @@ async function generateFromDb() {
       console.log('§2D_STRUCT_BBOX x=[' + bx0.toFixed(2) + ',' + bx1.toFixed(2) +
                   '] y=[' + by0.toFixed(2) + ',' + by1.toFixed(2) + ']');
 
+      // Compute viewScale once — used by both GridDims (crowding) and TitleBlock (scale bar)
+      const _bw = bx1 - bx0 || 1, _bh = by1 - by0 || 1;
+      const _pad = Math.max(_bw * 0.20, 3);
+      const _computedScale = isFinite(bx0)
+        ? Math.min((canvas.width - 40) / (_bw + _pad * 2), (canvas.height - 40) / (_bh + _pad * 2))
+        : 50;  // safe fallback px/m
+
       // Add grids + dimensions — pass structBbox so grid/dims align with building
       if (window.GridDims) {
         const gridResult = GridDims.detectGrids(dbMain);
         if (gridResult.xLines.length > 0 || gridResult.yLines.length > 0) {
           const dims = GridDims.generateDimensions(gridResult);
-          newEntities = newEntities.concat(gridToEntities(gridResult, dims, structBbox));
+          newEntities = newEntities.concat(gridToEntities(gridResult, dims, structBbox, { viewScale: _computedScale }));
         }
       }
       // Store for fitView to zoom to structure only
@@ -48170,11 +48177,6 @@ async function generateFromDb() {
       // Title block + scale bar + north arrow
       if (window.TitleBlock && isFinite(bx0)) {
         const bldName = (params.get('bld') || 'Building').replace(/^S\d+_\d+_/, '');
-        // Compute viewScale from structBbox (same formula as fitView) — inline scale is wrong at this point
-        const _bw = bx1 - bx0 || 1, _bh = by1 - by0 || 1;
-        const _pad = Math.max(_bw * 0.20, 3);
-        const _computedScale = Math.min((canvas.width - 40) / (_bw + _pad * 2),
-                                        (canvas.height - 40) / (_bh + _pad * 2));
         const tbEnts = TitleBlock.render({
           buildingName: bldName,
           storeyName: storeyName || document.getElementById('storey-select').value || '',

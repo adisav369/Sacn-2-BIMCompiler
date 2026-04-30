@@ -79,29 +79,35 @@ async function loadAllLibs() {
   // Three.js must load before OrbitControls (dependency)
   await fetchWithProgress(LIBS[0].url, 0);  // Three.js
   await fetchWithProgress(LIBS[1].url, 1);  // OrbitControls (needs THREE global)
-  // sql.js and SheetJS are independent — load in parallel
-  await Promise.all([
-    fetchWithProgress(LIBS[2].url, 2),
-    fetchWithProgress(LIBS[3].url, 3),
-  ]);
+  // sql.js is needed for DB; load it before starting viewer
+  await fetchWithProgress(LIBS[2].url, 2);
 
-  // All loaded — remove overlay, show canvas
+  // Critical path done — start viewer now, don't wait for SheetJS (4MB, non-critical)
   clearInterval(_timerIv);
   document.getElementById('load-overlay').style.display = 'none';
   document.getElementById('canvas').style.display = 'block';
 
-  // Now run the viewer
   try {
     initViewer();
   } catch(e) {
     document.getElementById('status').textContent = `Init error: ${e.message}`;
     console.error('[S205] §INIT_VIEWER_ERROR', e);
   }
+
+  // SheetJS loads in background — excel.js handles typeof XLSX === 'undefined' gracefully
+  fetchWithProgress(LIBS[3].url, 3).catch(e => {
+    console.warn('[loader] §SHEETJS_LOAD_FAIL (Excel export unavailable):', e.message);
+  });
+}
+
+function retryLoad() {
+  location.reload();
 }
 
 loadAllLibs().catch(e => {
   document.getElementById('status').textContent = `Load error: ${e.message}`;
   document.getElementById('load-items').innerHTML += `
     <div style="color:#ff6644;margin-top:10px">Failed: ${e.message}</div>
+    <button onclick="retryLoad()" style="margin-top:10px;padding:8px 20px;background:#4fc3f7;color:#000;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;width:100%">Tap to Retry</button>
   `;
 });

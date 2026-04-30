@@ -488,6 +488,8 @@ Deployed to OCI dev (`bim-ootb-dev`). **User reports: still not working on OCI d
 
 #### Route Template — Implemented
 
+**User guide:** [`docs/RouteTemplate.md`](../docs/RouteTemplate.md) — how to use, inspect, and customise the walking path template.
+
 Auto-generates corridor graph from occupancy grid:
 - **Nodes**: doors (from grid door cells) + junctions (≥3 walkable neighbours) + endpoints
 - **Edges**: BFS from each node, bidirectional, MAX_BFS=80 cells

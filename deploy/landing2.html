@@ -329,7 +329,8 @@ function renderTabs() {
   panel.style.display = 'block';
   list.innerHTML = entries.map(tab => {
     const label = tab.type === '3D' ? tab.name : `${tab.name} ${tab.type}`;
-    return `<div class="tab-item" onclick="openTabs['${tab.name}_${tab.type}'].win.focus()">${label}</div>`;
+    const focusCall = tab.win ? `openTabs['${tab.name}_${tab.type}'].win.focus()` : '';
+    return `<div class="tab-item" onclick="${focusCall}">${label}</div>`;
   }).join('');
 }
 // Poll for closed tabs
@@ -390,6 +391,8 @@ function openViewer(archName, repBuilding) {
   const viewerUrl = _base ? _base + 'sandbox/index.html' : 'sandbox/index.html';
   const url = viewerUrl + `?db=${bldBase}${bld.db}&lib=${bldBase}${bld.lib}`;
   const win = window.open(url, 'bim_' + archName);
+  // window.open returns null if popup is blocked (some mobile browsers)
+  if (!win) { location.href = url; return; }
   trackTab(archName, '3D', win);
   const isNew = !viewedBuildings.has(archName);
   viewedBuildings.add(archName);
