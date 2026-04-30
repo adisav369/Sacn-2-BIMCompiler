@@ -3765,6 +3765,8 @@
       
         
       
+        
+      
     
     
     
@@ -3881,6 +3883,34 @@
     
   
     BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2D_HTML_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Plans Viewer
   
 
     
@@ -5176,7 +5206,7 @@ hits as input and re-queries <code>base_geometries</code> by <code>geometry_hash
 <p><strong>2. No IfcPropertySet extraction — pipe diameter, pressure, flow rate absent</strong>
 <em>Impact:</em> Can't verify 50mm clearance; 6D energy and 7D FM incomplete.</p>
 <p><em>How to close:</em> Use <code>ifcopenshell.util.element</code> API at extraction time:
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">ifcopenshell.util.element</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_psets</span><span class="p">,</span> <span class="n">get_type</span><span class="p">,</span> <span class="n">get_materials</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">ifcopenshell.util.element</span> <span class="kn">import</span> <span class="n">get_psets</span><span class="p">,</span> <span class="n">get_type</span><span class="p">,</span> <span class="n">get_materials</span>
 
 <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">all_elements</span><span class="p">:</span>
     <span class="n">psets</span> <span class="o">=</span> <span class="n">get_psets</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>                              <span class="c1"># all property sets as dicts</span>
@@ -5197,7 +5227,7 @@ Authored port graphs in IFC are a more stable reference when present.</p>
 flow_direction, system_name</code>).
 Use <code>ifcopenshell.util.system</code> API at extraction time — prefer authored
 connectivity over spatial inference:
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">ifcopenshell.util.system</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_ports</span><span class="p">,</span> <span class="n">get_connected_to</span><span class="p">,</span> <span class="n">get_connected_from</span><span class="p">,</span> <span class="n">get_element_systems</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">ifcopenshell.util.system</span> <span class="kn">import</span> <span class="n">get_ports</span><span class="p">,</span> <span class="n">get_connected_to</span><span class="p">,</span> <span class="n">get_connected_from</span><span class="p">,</span> <span class="n">get_element_systems</span>
 
 <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">mep_elements</span><span class="p">:</span>
     <span class="n">ports</span> <span class="o">=</span> <span class="n">get_ports</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>                    <span class="c1"># IfcDistributionPort list</span>
@@ -5275,12 +5305,12 @@ extracted.db   =  transforms only   (centre, rotation, guid→hash — meshless)
 <p>Two Blender persistent handlers — registered in <code>federation/__init__.py</code> —
 keep saves thin:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@persistent</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">save_pre</span><span class="p">(</span><span class="n">dummy</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">save_pre</span><span class="p">(</span><span class="n">dummy</span><span class="p">):</span>
     <span class="c1"># Before saving: strip GN template meshes (they&#39;re linked from library.blend)</span>
     <span class="n">strip_template_meshes</span><span class="p">()</span>   <span class="c1"># scene .blend drops to ~116KB</span>
 
 <span class="nd">@persistent</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">load_post</span><span class="p">(</span><span class="n">dummy</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">load_post</span><span class="p">(</span><span class="n">dummy</span><span class="p">):</span>
     <span class="c1"># After opening: re-link meshes from library.blend</span>
     <span class="n">restore_template_meshes</span><span class="p">()</span> <span class="c1"># instant — bpy.data.libraries.load(link=True)</span>
 </code></pre></div>
@@ -5499,7 +5529,7 @@ IS the mode flag — no version field needed.</p>
 <p><strong>Size-based auto-switch</strong> — streaming activates automatically above a threshold:</p>
 <div class="highlight"><pre><span></span><code><span class="n">STREAMING_THRESHOLD</span> <span class="o">=</span> <span class="mi">50_000</span>  <span class="c1"># elements — configurable</span>
 
-<span class="k">def</span><span class="w"> </span><span class="nf">should_stream</span><span class="p">(</span><span class="n">db_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="k">def</span> <span class="nf">should_stream</span><span class="p">(</span><span class="n">db_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
     <span class="n">count</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
         <span class="s2">&quot;SELECT COUNT(*) FROM elements_meta&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
     <span class="k">return</span> <span class="n">count</span> <span class="o">&gt;=</span> <span class="n">STREAMING_THRESHOLD</span>
@@ -5562,7 +5592,7 @@ in memory with every entity linked via <code>ifc_definition_id</code>. Federatio
 have no <code>ifc_definition_id</code> — they are plain Blender objects. The native
 exporter does not see them as IFC entities. IFC export is <strong>not automatic</strong>.</p>
 <p>It is achievable via a custom exporter — all ingredients present:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">ifcopenshell</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">ifcopenshell</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">ifcopenshell</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="n">schema</span><span class="o">=</span><span class="s2">&quot;IFC2X3&quot;</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">bpy</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;guid&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ifc_class&#39;</span><span class="p">):</span>

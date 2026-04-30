@@ -13,10 +13,10 @@
       
       
       
-        <link rel="prev" href="../DEPLOYMENT/">
+        <link rel="prev" href="../BIM_Designer_UserGuide/">
       
       
-        <link rel="next" href="../BIMLogger/">
+        <link rel="next" href="../BackOfficeUserGuide/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Localization - BIM Intent Compiler</title>
+        <title>2D Plans Viewer - BIM Intent Compiler</title>
       
     
     
@@ -90,7 +90,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#bim-ootb-localization-guide" class="md-skip">
+        <a href="#2d-plans-viewer-user-guide" class="md-skip">
           Skip to content
         </a>
       
@@ -124,7 +124,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Localization
+              2D Plans Viewer
             
           </span>
         </div>
@@ -2766,10 +2766,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../2D_HTML_GUIDE/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Plans Viewer
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -2785,6 +2812,192 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-two-ways-to-open" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Two Ways to Open
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Two Ways to Open">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2a-from-the-bim-ootb-viewer-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2a. From the BIM OOTB Viewer (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2b-direct-url" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2b. Direct URL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-toolbar-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Toolbar Controls
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-layer-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Layer Panel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-click-to-info-bimsrc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Click-to-Info (BIMSRC)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-annotation-config-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Annotation Config Template
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Annotation Config Template">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#editing-the-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Editing the config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#default-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#field-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-what-is-generated-vs-what-comes-from-dxf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. What Is Generated vs What Comes from DXF
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-known-limitations-poc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Known Limitations (POC)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-code-structure-for-developers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Code Structure — For Developers
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2906,37 +3119,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Localization
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../Localization/" class="md-nav__link">
         
   
   
@@ -2952,497 +3138,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#why-this-matters-in-bim" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why This Matters in BIM
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Why This Matters in BIM">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#what-makes-this-different" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What makes this different
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#architecture" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Architecture
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Architecture">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#override-priority-highest-wins" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Override priority (highest wins)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#load-order" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Load order
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#available-locales" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Available Locales
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#for-developers-creating-a-new-locale" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        For Developers: Creating a New Locale
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="For Developers: Creating a New Locale">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#step-1-copy-the-base" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 1: Copy the base
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-2-edit-identity-and-currency" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 2: Edit identity and currency
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-3-set-rate-source-attribution" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 3: Set rate source attribution
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-translate-labels" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 4: Translate labels
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-5-set-your-countrys-rates" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 5: Set your country's rates
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-6-test" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 6: Test
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#translation-rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Translation Rules
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Translation Rules">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#do-translate" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DO translate
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#do-not-translate" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DO NOT translate
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#do-not-change-in-locale-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DO NOT change in locale files
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#project-level-override" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Project-Level Override
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_trl-key-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        _TRL Key Reference
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="_TRL Key Reference">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#currency-5-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Currency (5 keys)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rate-attribution-12-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rate Attribution (12 keys)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#column-headers-22-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Column Headers (22 keys)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4d-labels-14-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4D Labels (14 keys)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#chart-titles-10-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Chart Titles (10 keys)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#excel-sheet-names-10-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Excel Sheet Names (10 keys)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#section-titles-11-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Section Titles (11 keys)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rate-data-in-locale-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rate Data (in locale files)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#misc" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Misc
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#idempiere-pattern-mapping" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        iDempiere Pattern Mapping
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Files
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#flag-picker-user-facing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Flag Picker (User-Facing)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-locale_loaderjs-works-developer-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How locale_loader.js Works (Developer Reference)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How locale_loader.js Works (Developer Reference)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#detection-order" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Detection order
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fetch-cache" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fetch + cache
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#cache-invalidation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cache invalidation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#landing-page-integration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Landing page integration
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#open-issues" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Open Issues
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Open Issues">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#tooltip-architecture-note" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tooltip architecture note
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#current-status-poc" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Current Status (POC)
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3538,22 +3233,44 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#why-this-matters-in-bim" class="md-nav__link">
+  <a href="#1-overview" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why This Matters in BIM
+        1. Overview
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Why This Matters in BIM">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-two-ways-to-open" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Two Ways to Open
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Two Ways to Open">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#what-makes-this-different" class="md-nav__link">
+  <a href="#2a-from-the-bim-ootb-viewer-recommended" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What makes this different
+        2a. From the BIM OOTB Viewer (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2b-direct-url" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2b. Direct URL
       
     </span>
   </a>
@@ -3566,22 +3283,55 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#architecture" class="md-nav__link">
+  <a href="#3-toolbar-controls" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Architecture
+        3. Toolbar Controls
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Architecture">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-layer-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Layer Panel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-click-to-info-bimsrc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Click-to-Info (BIMSRC)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-annotation-config-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Annotation Config Template
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Annotation Config Template">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#override-priority-highest-wins" class="md-nav__link">
+  <a href="#editing-the-config" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Override priority (highest wins)
+        Editing the config
       
     </span>
   </a>
@@ -3589,10 +3339,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#load-order" class="md-nav__link">
+  <a href="#default-config" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Load order
+        Default config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#field-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field reference
       
     </span>
   </a>
@@ -3605,10 +3366,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#available-locales" class="md-nav__link">
+  <a href="#7-what-is-generated-vs-what-comes-from-dxf" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Available Locales
+        7. What Is Generated vs What Comes from DXF
       
     </span>
   </a>
@@ -3616,143 +3377,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#for-developers-creating-a-new-locale" class="md-nav__link">
+  <a href="#8-known-limitations-poc" class="md-nav__link">
     <span class="md-ellipsis">
       
-        For Developers: Creating a New Locale
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="For Developers: Creating a New Locale">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#step-1-copy-the-base" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 1: Copy the base
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-2-edit-identity-and-currency" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 2: Edit identity and currency
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-3-set-rate-source-attribution" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 3: Set rate source attribution
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-translate-labels" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 4: Translate labels
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-5-set-your-countrys-rates" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 5: Set your country's rates
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-6-test" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 6: Test
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#translation-rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Translation Rules
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Translation Rules">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#do-translate" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DO translate
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#do-not-translate" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DO NOT translate
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#do-not-change-in-locale-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DO NOT change in locale files
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#project-level-override" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Project-Level Override
+        8. Known Limitations (POC)
       
     </span>
   </a>
@@ -3760,248 +3388,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_trl-key-reference" class="md-nav__link">
+  <a href="#9-code-structure-for-developers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        _TRL Key Reference
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="_TRL Key Reference">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#currency-5-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Currency (5 keys)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rate-attribution-12-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rate Attribution (12 keys)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#column-headers-22-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Column Headers (22 keys)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4d-labels-14-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4D Labels (14 keys)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#chart-titles-10-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Chart Titles (10 keys)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#excel-sheet-names-10-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Excel Sheet Names (10 keys)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#section-titles-11-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Section Titles (11 keys)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rate-data-in-locale-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rate Data (in locale files)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#misc" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Misc
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#idempiere-pattern-mapping" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        iDempiere Pattern Mapping
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Files
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#flag-picker-user-facing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Flag Picker (User-Facing)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-locale_loaderjs-works-developer-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How locale_loader.js Works (Developer Reference)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How locale_loader.js Works (Developer Reference)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#detection-order" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Detection order
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fetch-cache" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fetch + cache
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#cache-invalidation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cache invalidation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#landing-page-integration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Landing page integration
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#open-issues" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Open Issues
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Open Issues">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#tooltip-architecture-note" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tooltip architecture note
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#current-status-poc" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Current Status (POC)
+        9. Code Structure — For Developers
       
     </span>
   </a>
@@ -4028,536 +3418,479 @@
   
 
 
-<h1 id="bim-ootb-localization-guide">BIM OOTB — Localization Guide<a class="headerlink" href="#bim-ootb-localization-guide" title="Permanent link">&para;</a></h1>
-<h2 id="why-this-matters-in-bim">Why This Matters in BIM<a class="headerlink" href="#why-this-matters-in-bim" title="Permanent link">&para;</a></h2>
-<p>The BIM industry has standardized geometry (IFC/ISO 16739) but <strong>not costing</strong>. Every country has its own cost book, its own labour rates, its own currency, its own professional terminology. Today's BIM tools translate their UI but leave the cost data US/UK-centric — a Malaysian QS using Revit still manually applies CIDB rates. The tool speaks Malay but the BOQ speaks American.</p>
-<p>BIM OOTB solves this with <strong>project-level locales</strong> — inspired by <a href="https://www.idempiere.org/">iDempiere</a>'s <code>AD_Window_Trl</code> pattern, proven at enterprise scale across 50+ countries for 20+ years.</p>
-<h3 id="what-makes-this-different">What makes this different<a class="headerlink" href="#what-makes-this-different" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Approach</th>
-<th>BIM OOTB</th>
-<th>Autodesk/Trimble</th>
-<th>Procore/PlanGrid</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>UI labels</td>
-<td>Localized via <code>_TRL</code></td>
-<td>Localized</td>
-<td>Localized</td>
-</tr>
-<tr>
-<td>Cost rates</td>
-<td><strong>Per-locale rate books</strong></td>
-<td>US/UK only</td>
-<td>No BOQ</td>
-</tr>
-<tr>
-<td>Currency</td>
-<td><strong>Locale-driven</strong></td>
-<td>Manual config</td>
-<td>USD only</td>
-</tr>
-<tr>
-<td>Rate attribution</td>
-<td><strong>CIDB / RS Means / DIN 276 / Spon's per locale</strong></td>
-<td>None</td>
-<td>None</td>
-</tr>
-<tr>
-<td>Deployment</td>
-<td><code>?lang=ms_MY</code> in URL</td>
-<td>Server config</td>
-<td>Enterprise license</td>
-</tr>
-<tr>
-<td>Project override</td>
-<td>Copy locale file, edit rates</td>
-<td>Not possible</td>
-<td>Not possible</td>
-</tr>
-</tbody>
-</table>
-<p>The key insight: <strong>a locale is not just a language — it's a complete cost context.</strong> Same language, different rate books:
-- <code>en_MY</code> — English + CIDB Malaysia rates + RM
-- <code>en_US</code> — English + RS Means rates + USD
-- <code>en_AU</code> — English + Rawlinsons rates + AUD
-- <code>en_MY_JKR</code> — English + JKR Schedule of Rates + RM (government projects)</p>
+<h1 id="2d-plans-viewer-user-guide">2D Plans Viewer — User Guide<a class="headerlink" href="#2d-plans-viewer-user-guide" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Related:</strong> <a href="../BIM_Designer_UserGuide/">BIM Designer Guide</a> · <a href="../BIM_Designer_Browser/">BIM Designer Browser</a> · <a href="../2D_LAYOUT/">2D Layout Spec</a> · <a href="../SQLite3D_Schema/">SQLite3D Schema</a></p>
+</blockquote>
+<p><strong>Version:</strong> 0.1 (2026-04-30)
+<strong>Status:</strong> POC — Sample House and Duplex fully proven; large buildings auto-clipped
+<strong>File:</strong> <code>deploy/dev/2d.html</code></p>
 <hr />
-<h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>rates.js              → _RATES_DEFAULTS (runtime globals, loaded by all pages)
-locales/{code}.js     → _TRL_LOCALE (full override: labels + rates + currency)
-                         loaded by locale_loader, deep-merged over defaults
-</code></pre></div>
-<h3 id="override-priority-highest-wins">Override priority (highest wins)<a class="headerlink" href="#override-priority-highest-wins" title="Permanent link">&para;</a></h3>
+<h2 id="1-overview">1. Overview<a class="headerlink" href="#1-overview" title="Permanent link">&para;</a></h2>
+<p>The 2D Plans viewer (<code>2d.html</code>) is a browser-native floor plan and elevation viewer that requires no installation, no server, and no conversion step. It reads directly from the same pair of SQLite databases that power the BIM OOTB 3D viewer, generates drawing entities on-the-fly using Canvas2D, and renders them in your browser tab. The underlying technology is <strong>sql.js</strong> (SQLite compiled to WebAssembly) for database queries and the HTML5 <strong>Canvas2D API</strong> for 2D rendering — the same architecture as the 3D viewer, without the GPU. Drag-and-drop of external <code>.dxf</code> files is also supported for teams working with existing CAD deliverables.</p>
+<hr />
+<h2 id="2-two-ways-to-open">2. Two Ways to Open<a class="headerlink" href="#2-two-ways-to-open" title="Permanent link">&para;</a></h2>
+<h3 id="2a-from-the-bim-ootb-viewer-recommended">2a. From the BIM OOTB Viewer (recommended)<a class="headerlink" href="#2a-from-the-bim-ootb-viewer-recommended" title="Permanent link">&para;</a></h3>
+<p>This is the zero-configuration path. The 3D viewer passes the correct database paths automatically.</p>
 <ol>
-<li><strong>URL params</strong> — <code>?cur=USD&amp;rate=4.45&amp;h_labour=Labor</code> (any <code>_TRL</code> key)</li>
-<li><strong>Project locale</strong> — <code>MyProject_TRL.js</code> (custom file, any name)</li>
-<li><strong>Country locale</strong> — <code>locales/{code}.js</code></li>
-<li><strong>Base defaults</strong> — <code>_TRL_DEFAULTS</code> in <code>rates.js</code> (en_MY)</li>
+<li>Open the BIM OOTB 3D viewer and load a building.</li>
+<li>Click the <strong>2D Plans</strong> button in the viewer toolbar.</li>
+<li><code>2d.html</code> opens in a new browser tab with <code>?db=</code>, <code>?lib=</code>, and <code>?bld=</code> parameters wired from the active building — no manual URL editing required.</li>
 </ol>
-<h3 id="load-order">Load order<a class="headerlink" href="#load-order" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>&lt;script src=&quot;rates.js&quot;&gt;          ← defaults + helper functions
-&lt;script src=&quot;locale_loader.js&quot;&gt;  ← reads ?lang= or localStorage, loads locale file
-&lt;script src=&quot;boq_charts.html&quot;&gt;   ← uses _TRL.* for every label, CUR for currency
-</code></pre></div>
-<hr />
-<h2 id="available-locales">Available Locales<a class="headerlink" href="#available-locales" title="Permanent link">&para;</a></h2>
+<h3 id="2b-direct-url">2b. Direct URL<a class="headerlink" href="#2b-direct-url" title="Permanent link">&para;</a></h3>
+<p>Append URL parameters to the <code>2d.html</code> address to load a specific building directly.</p>
 <table>
 <thead>
 <tr>
-<th>Code</th>
-<th>Language</th>
-<th>Flag</th>
-<th>Currency</th>
-<th>Rate Source</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>en_MY</code></td>
-<td>English (Malaysia)</td>
-<td>🇲🇾</td>
-<td>RM / USD</td>
-<td>CIDB Malaysia 2024 / BCISM</td>
-</tr>
-<tr>
-<td><code>en_US</code></td>
-<td>English (US)</td>
-<td>🇺🇸</td>
-<td>$ / RM</td>
-<td>RS Means 2024</td>
-</tr>
-<tr>
-<td><code>en_GB</code></td>
-<td>English (UK)</td>
-<td>🇬🇧</td>
-<td>£ / USD</td>
-<td>Spon's 2024</td>
-</tr>
-<tr>
-<td><code>en_AU</code></td>
-<td>English (Australia)</td>
-<td>🇦🇺</td>
-<td>A$ / USD</td>
-<td>Rawlinsons 2024</td>
-</tr>
-<tr>
-<td><code>ms_MY</code></td>
-<td>Bahasa Melayu</td>
-<td>🇲🇾</td>
-<td>RM / USD</td>
-<td>CIDB Malaysia 2024</td>
-</tr>
-<tr>
-<td><code>de_DE</code></td>
-<td>Deutsch</td>
-<td>🇩🇪</td>
-<td>EUR / USD</td>
-<td>DIN 276 / BKI 2024</td>
-</tr>
-<tr>
-<td><code>fr_FR</code></td>
-<td>Français</td>
-<td>🇫🇷</td>
-<td>EUR / USD</td>
-<td>Bordereau UNTEC 2024</td>
-</tr>
-<tr>
-<td><code>es_ES</code></td>
-<td>Español</td>
-<td>🇪🇸</td>
-<td>EUR / USD</td>
-<td>CYPE Base de Precios 2024</td>
-</tr>
-<tr>
-<td><code>zh_CN</code></td>
-<td>简体中文</td>
-<td>🇨🇳</td>
-<td>¥ / USD</td>
-<td>GB/T 50500-2013</td>
-</tr>
-<tr>
-<td><code>th_TH</code></td>
-<td>ภาษาไทย</td>
-<td>🇹🇭</td>
-<td>฿ / USD</td>
-<td>BOQ Thailand Standard</td>
-</tr>
-<tr>
-<td><code>ja_JP</code></td>
-<td>日本語</td>
-<td>🇯🇵</td>
-<td>¥ / USD</td>
-<td>JBCI Cost Index 2024</td>
-</tr>
-<tr>
-<td><code>ko_KR</code></td>
-<td>한국어</td>
-<td>🇰🇷</td>
-<td>₩ / USD</td>
-<td>KICT Standard 2024</td>
-</tr>
-<tr>
-<td><code>ar_SA</code></td>
-<td>العربية</td>
-<td>🇸🇦</td>
-<td>﷼ / USD</td>
-<td>Saudi Aramco Rates</td>
-</tr>
-<tr>
-<td><code>pt_BR</code></td>
-<td>Português</td>
-<td>🇧🇷</td>
-<td>R$ / USD</td>
-<td>SINAPI/TCPO 2024</td>
-</tr>
-<tr>
-<td><code>id_ID</code></td>
-<td>Bahasa Indonesia</td>
-<td>🇮🇩</td>
-<td>Rp / USD</td>
-<td>SNI BOQ Standard</td>
-</tr>
-<tr>
-<td><code>bn_BD</code></td>
-<td>বাংলা (Bengali)</td>
-<td>🇧🇩 <code>BN</code></td>
-<td>৳ / USD</td>
-<td>PWD Bangladesh 2024</td>
-</tr>
-<tr>
-<td><code>bl_BD</code></td>
-<td>Banglish (Romanized)</td>
-<td>🇧🇩 <code>BL</code></td>
-<td>৳ / USD</td>
-<td>PWD Bangladesh 2024</td>
-</tr>
-<tr>
-<td><code>af_ZA</code></td>
-<td>Afrikaans</td>
-<td>🇿🇦</td>
-<td>R / USD</td>
-<td>ASAQS / RICS Southern Africa 2024</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="for-developers-creating-a-new-locale">For Developers: Creating a New Locale<a class="headerlink" href="#for-developers-creating-a-new-locale" title="Permanent link">&para;</a></h2>
-<h3 id="step-1-copy-the-base">Step 1: Copy the base<a class="headerlink" href="#step-1-copy-the-base" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>deploy/dev/locales/en_MY.js<span class="w"> </span>deploy/dev/locales/xx_YY.js
-</code></pre></div>
-<p><code>en_MY.js</code> is the base — it contains <strong>every key</strong> so you can see the full set.</p>
-<h3 id="step-2-edit-identity-and-currency">Step 2: Edit identity and currency<a class="headerlink" href="#step-2-edit-identity-and-currency" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kd">var</span><span class="w"> </span><span class="nx">_TRL_LOCALE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nx">iso</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;YY&#39;</span><span class="p">,</span><span class="w">              </span><span class="c1">// ISO 3166-1 alpha-2 (drives flag emoji)</span>
-<span class="w">  </span><span class="nx">lang</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;xx&#39;</span><span class="p">,</span><span class="w">             </span><span class="c1">// ISO 639-1 language code</span>
-<span class="w">  </span><span class="nx">locale</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;xx_YY&#39;</span><span class="p">,</span>
-
-<span class="w">  </span><span class="nx">cur</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;CUR&#39;</span><span class="p">,</span><span class="w">             </span><span class="c1">// primary currency symbol</span>
-<span class="w">  </span><span class="nx">cur2</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;USD&#39;</span><span class="p">,</span><span class="w">            </span><span class="c1">// secondary currency symbol</span>
-<span class="w">  </span><span class="nx">cur_rate</span><span class="o">:</span><span class="w"> </span><span class="mf">1.00</span><span class="p">,</span><span class="w">         </span><span class="c1">// 1 cur2 = cur_rate × cur</span>
-<span class="w">  </span><span class="nx">cur_name</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Your Currency&#39;</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">cur2_name</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;US Dollar&#39;</span><span class="p">,</span>
-</code></pre></div>
-<h3 id="step-3-set-rate-source-attribution">Step 3: Set rate source attribution<a class="headerlink" href="#step-3-set-rate-source-attribution" title="Permanent link">&para;</a></h3>
-<p>Every country has its own cost book. This is the <strong>single most important</strong> part — it's what appears on the cover sheet of every Excel BOQ export.</p>
-<div class="highlight"><pre><span></span><code><span class="w">  </span><span class="nx">rate_source</span><span class="o">:</span><span class="w">       </span><span class="s1">&#39;Your Country Rate Book 2024&#39;</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">rate_mat_source</span><span class="o">:</span><span class="w">   </span><span class="s1">&#39;National Construction Cost Centre 2024&#39;</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">rate_lab_source</span><span class="o">:</span><span class="w">   </span><span class="s1">&#39;Labour Wage Survey 2024&#39;</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">rate_eq_source</span><span class="o">:</span><span class="w">    </span><span class="s1">&#39;Equipment Hire Rates 2024&#39;</span><span class="p">,</span>
-</code></pre></div>
-<h3 id="step-4-translate-labels">Step 4: Translate labels<a class="headerlink" href="#step-4-translate-labels" title="Permanent link">&para;</a></h3>
-<p>Only override what differs from the base. Construction terms that are ISO standards stay in English.</p>
-<div class="highlight"><pre><span></span><code><span class="w">  </span><span class="c1">// Column headers</span>
-<span class="w">  </span><span class="nx">h_material</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Material&#39;</span><span class="p">,</span><span class="w">      </span><span class="c1">// translate this</span>
-<span class="w">  </span><span class="nx">h_labour</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Labour&#39;</span><span class="p">,</span><span class="w">          </span><span class="c1">// en_US: &#39;Labor&#39;</span>
-<span class="w">  </span><span class="nx">h_equipment</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Equipment&#39;</span><span class="p">,</span><span class="w">    </span><span class="c1">// translate this</span>
-<span class="w">  </span><span class="nx">h_storey</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Storey&#39;</span><span class="p">,</span><span class="w">          </span><span class="c1">// en_US: &#39;Story&#39;</span>
-
-<span class="w">  </span><span class="c1">// Chart titles</span>
-<span class="w">  </span><span class="nx">t_cost_by_disc</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;5D — Cost by Discipline&#39;</span><span class="p">,</span><span class="w">  </span><span class="c1">// translate after the dash</span>
-<span class="w">  </span><span class="nx">t_gantt</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;4D — Gantt Timeline (Strategic Tasks by Phase)&#39;</span><span class="p">,</span>
-</code></pre></div>
-<h3 id="step-5-set-your-countrys-rates">Step 5: Set your country's rates<a class="headerlink" href="#step-5-set-your-countrys-rates" title="Permanent link">&para;</a></h3>
-<p>This is what makes <code>_TRL</code> a <strong>project locale</strong>, not just a language pack. The rates are engineering data from your country's cost book.</p>
-<div class="highlight"><pre><span></span><code><span class="w">  </span><span class="nx">rates</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nx">IfcWall</span><span class="o">:</span><span class="w">  </span><span class="p">{</span><span class="nx">rate</span><span class="o">:</span><span class="w"> </span><span class="mf">145</span><span class="p">,</span><span class="w"> </span><span class="nx">unit</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;M2&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">desc</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Blockwork Wall 150mm&#39;</span><span class="p">},</span>
-<span class="w">    </span><span class="nx">IfcBeam</span><span class="o">:</span><span class="w">  </span><span class="p">{</span><span class="nx">rate</span><span class="o">:</span><span class="w"> </span><span class="mf">680</span><span class="p">,</span><span class="w"> </span><span class="nx">unit</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;M&#39;</span><span class="p">,</span><span class="w">  </span><span class="nx">desc</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Structural Steel I-Beam&#39;</span><span class="p">},</span>
-<span class="w">    </span><span class="nx">IfcSlab</span><span class="o">:</span><span class="w">  </span><span class="p">{</span><span class="nx">rate</span><span class="o">:</span><span class="w"> </span><span class="mf">285</span><span class="p">,</span><span class="w"> </span><span class="nx">unit</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;M2&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">desc</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;RC Slab 250mm&#39;</span><span class="p">},</span>
-<span class="w">    </span><span class="c1">// ... all IFC classes your cost book covers</span>
-<span class="w">  </span><span class="p">},</span>
-
-<span class="w">  </span><span class="nx">labor_rates</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nx">MASON</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="nx">rate_per_day</span><span class="o">:</span><span class="w"> </span><span class="mf">155</span><span class="p">,</span><span class="w"> </span><span class="nx">crew_size</span><span class="o">:</span><span class="w"> </span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="nx">trade</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Mason (Skilled)&#39;</span><span class="p">,</span>
-<span class="w">            </span><span class="nx">productivity</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="nx">IfcWall</span><span class="o">:</span><span class="w"> </span><span class="mf">12</span><span class="p">,</span><span class="w"> </span><span class="nx">IfcWallStandardCase</span><span class="o">:</span><span class="w"> </span><span class="mf">12</span><span class="p">}},</span>
-<span class="w">    </span><span class="c1">// ... your labour trades</span>
-<span class="w">  </span><span class="p">},</span>
-
-<span class="w">  </span><span class="nx">equipment_rates</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nx">MOBILE_CRANE_20T</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="nx">rate_per_day</span><span class="o">:</span><span class="w"> </span><span class="mf">1850</span><span class="p">,</span><span class="w"> </span><span class="nx">desc</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;Mobile Crane 20 Tonne&#39;</span><span class="p">},</span>
-<span class="w">    </span><span class="c1">// ... your equipment hire rates</span>
-<span class="w">  </span><span class="p">},</span>
-</code></pre></div>
-<h3 id="step-6-test">Step 6: Test<a class="headerlink" href="#step-6-test" title="Permanent link">&para;</a></h3>
-<p>Load with <code>?lang=xx_YY</code> and check the auto-downloaded <code>.log</code> file:</p>
-<div class="highlight"><pre><span></span><code>§TRL_VERIFY  — TRL_COMPLETE: all keys populated
-§TRL_VERIFY  — TRL_CUR_MATCH: CUR=CUR _TRL.cur=CUR
-§TRL_VERIFY  — TRL_SHEET_NAMES: 5/5 sheets match
-§TRL_VERIFY  — TRL_CHART_TITLES: 9/9 charts match
-§TRL_VERIFY  — TRL_NO_HARDCODE: no RM/USD leaks
-§MATHS_VERIFY — MATHS_CUR_CONV: conversion correct
-</code></pre></div>
-<p>All tests auto-run on every Excel save (5D or 4D button). No manual verification needed.</p>
-<hr />
-<h2 id="translation-rules">Translation Rules<a class="headerlink" href="#translation-rules" title="Permanent link">&para;</a></h2>
-<h3 id="do-translate">DO translate<a class="headerlink" href="#do-translate" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Column headers (<code>Material</code>, <code>Labour</code>, <code>Equipment</code>, <code>Storey</code>, etc.)</li>
-<li>Chart titles (the part after <code>5D —</code> or <code>4D —</code>)</li>
-<li>Excel sheet names (<code>Cover Sheet</code>, <code>Executive Summary</code>, etc.)</li>
-<li>Section titles (<code>COMPREHENSIVE BILL OF QUANTITIES</code>, etc.)</li>
-<li>Status messages and UI labels</li>
-<li>Rate source attribution (use your country's actual cost book name)</li>
-<li>Trade names (<code>Mason</code>, <code>Electrician</code>, <code>Plumber</code> → your language)</li>
-<li>Equipment descriptions (<code>Mobile Crane 20 Tonne</code> → your language)</li>
-</ul>
-<h3 id="do-not-translate">DO NOT translate<a class="headerlink" href="#do-not-translate" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>IFC class names</strong> — <code>IfcWall</code>, <code>IfcBeam</code>, <code>IfcSlab</code> are ISO 16739 identifiers</li>
-<li><strong>nD dimension codes</strong> — <code>5D —</code>, <code>4D —</code> are universal industry prefixes</li>
-<li><strong>Technical acronyms</strong> — BIM, BOQ, WBS, MEP, HVAC, GPS, IFC</li>
-<li><strong>Units</strong> — M, M2, EA, KG (ISO standard)</li>
-<li><strong>Brand name</strong> — <code>BIM OOTB — Frictionless BIM</code> (stays in <code>source_app</code>)</li>
-<li><strong>Compass directions</strong> — N, S, E, W (universal)</li>
-<li><strong>Axis labels</strong> — X, Y, Z (universal)</li>
-</ul>
-<h3 id="do-not-change-in-locale-files">DO NOT change in locale files<a class="headerlink" href="#do-not-change-in-locale-files" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Rate <strong>values</strong> for IFC classes you don't have local data for — keep the base value</li>
-<li>Productivity numbers unless you have local trade data</li>
-<li>Equipment allocation factors unless your construction practice differs</li>
-<li><code>RATES</code>, <code>LABOR_RATES</code>, <code>EQUIPMENT_RATES</code> in <code>rates.js</code> — those are the defaults</li>
-</ul>
-<hr />
-<h2 id="project-level-override">Project-Level Override<a class="headerlink" href="#project-level-override" title="Permanent link">&para;</a></h2>
-<p>For a specific project (e.g., a JKR government contract in Malaysia):</p>
-<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>deploy/dev/locales/en_MY.js<span class="w"> </span>deploy/dev/locales/MyProject_TRL.js
-</code></pre></div>
-<p>Edit <code>MyProject_TRL.js</code>:
-- Swap CIDB rates for JKR Schedule of Rates
-- Adjust productivity for your project's constraints
-- Set <code>rate_source</code> to <code>'JKR Schedule of Rates 2024'</code></p>
-<p>Load with <code>?lang=MyProject_TRL</code> — your entire 4D/5D output uses project-specific rates.</p>
-<hr />
-<h2 id="_trl-key-reference">_TRL Key Reference<a class="headerlink" href="#_trl-key-reference" title="Permanent link">&para;</a></h2>
-<h3 id="currency-5-keys">Currency (5 keys)<a class="headerlink" href="#currency-5-keys" title="Permanent link">&para;</a></h3>
-<p><code>cur</code>, <code>cur2</code>, <code>cur_rate</code>, <code>cur_name</code>, <code>cur2_name</code></p>
-<h3 id="rate-attribution-12-keys">Rate Attribution (12 keys)<a class="headerlink" href="#rate-attribution-12-keys" title="Permanent link">&para;</a></h3>
-<p><code>rate_source</code>, <code>rate_year</code>, <code>rate_mat_source</code>, <code>rate_mat_ref</code>, <code>rate_mat_includes</code>, <code>rate_lab_source</code>, <code>rate_lab_basis</code>, <code>rate_lab_prod</code>, <code>rate_lab_crew</code>, <code>rate_eq_source</code>, <code>rate_eq_alloc</code>, <code>rate_eq_basis</code></p>
-<h3 id="column-headers-22-keys">Column Headers (22 keys)<a class="headerlink" href="#column-headers-22-keys" title="Permanent link">&para;</a></h3>
-<p><code>h_discipline</code>, <code>h_ifc_class</code>, <code>h_quantity</code>, <code>h_uom</code>, <code>h_description</code>, <code>h_storey</code>, <code>h_phase</code>, <code>h_item</code>, <code>h_material</code>, <code>h_labour</code>, <code>h_equipment</code>, <code>h_total</code>, <code>h_unit_rate</code>, <code>h_mat_rate</code>, <code>h_lab_rate</code>, <code>h_rate_day</code>, <code>h_trade</code>, <code>h_crew_size</code>, <code>h_man_days</code>, <code>h_duration</code>, <code>h_grand_total</code>, <code>h_subtotal</code></p>
-<h3 id="4d-labels-14-keys">4D Labels (14 keys)<a class="headerlink" href="#4d-labels-14-keys" title="Permanent link">&para;</a></h3>
-<p><code>h_wbs</code>, <code>h_task_name</code>, <code>h_productivity</code>, <code>h_gangs</code>, <code>h_start_date</code>, <code>h_finish_date</code>, <code>h_labor_resource</code>, <code>h_status</code>, <code>h_pct_complete</code>, <code>h_day_offset</code>, <code>h_date</code>, <code>h_milestone</code>, <code>h_task</code>, <code>h_task_count</code>, <code>h_total_days</code>, <code>h_total_man_days</code>, <code>h_week</code>, <code>h_cumulative_pct</code></p>
-<h3 id="chart-titles-10-keys">Chart Titles (10 keys)<a class="headerlink" href="#chart-titles-10-keys" title="Permanent link">&para;</a></h3>
-<p><code>t_cost_by_disc</code>, <code>t_cost_components</code>, <code>t_task_dist_phase</code>, <code>t_task_count_disc</code>, <code>t_phase_duration</code>, <code>t_resource_workload</code>, <code>t_s_curve</code>, <code>t_milestone</code>, <code>t_gantt</code>, <code>t_vo_impact</code></p>
-<h3 id="excel-sheet-names-10-keys">Excel Sheet Names (10 keys)<a class="headerlink" href="#excel-sheet-names-10-keys" title="Permanent link">&para;</a></h3>
-<p><code>s_cover</code>, <code>s_exec_summary</code>, <code>s_material</code>, <code>s_labour</code>, <code>s_equipment</code>, <code>s_boq</code>, <code>s_prov</code>, <code>s_schedule</code>, <code>s_proj_summary</code>, <code>s_dashboard</code></p>
-<h3 id="section-titles-11-keys">Section Titles (11 keys)<a class="headerlink" href="#section-titles-11-keys" title="Permanent link">&para;</a></h3>
-<p><code>t_comp_boq</code>, <code>t_cost_method</code>, <code>t_mat_summary</code>, <code>t_lab_summary</code>, <code>t_equip_summary</code>, <code>t_prov_sums</code>, <code>t_phase_dur_analysis</code>, <code>t_resource_analysis</code>, <code>t_s_curve_progress</code>, <code>t_milestone_timeline</code>, <code>t_gantt_timeline</code></p>
-<h3 id="rate-data-in-locale-files">Rate Data (in locale files)<a class="headerlink" href="#rate-data-in-locale-files" title="Permanent link">&para;</a></h3>
-<p><code>rates</code> (object), <code>rates_default</code>, <code>labor_rates</code> (object), <code>equipment_rates</code> (object), <code>equipment_allocation</code> (object)</p>
-<h3 id="misc">Misc<a class="headerlink" href="#misc" title="Permanent link">&para;</a></h3>
-<p><code>not_started</code>, <code>source_app</code>, <code>iso</code>, <code>lang</code>, <code>locale</code></p>
-<hr />
-<h2 id="idempiere-pattern-mapping">iDempiere Pattern Mapping<a class="headerlink" href="#idempiere-pattern-mapping" title="Permanent link">&para;</a></h2>
-<p>For developers familiar with iDempiere ERP:</p>
-<table>
-<thead>
-<tr>
-<th>iDempiere</th>
-<th>BIM OOTB</th>
-<th>What</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>AD_Window</code></td>
-<td><code>_TRL_DEFAULTS</code> in <code>rates.js</code></td>
-<td>Base entity (en_MY)</td>
-</tr>
-<tr>
-<td><code>AD_Window_Trl</code></td>
-<td><code>locales/{code}.js</code></td>
-<td>Per-language override</td>
-</tr>
-<tr>
-<td><code>AD_Client</code> / <code>AD_Org</code></td>
-<td>Project locale file</td>
-<td>Per-tenant/org override</td>
-</tr>
-<tr>
-<td><code>AD_Language</code></td>
-<td><code>iso</code> + <code>lang</code> fields</td>
-<td>Language identity</td>
-</tr>
-<tr>
-<td><code>AD_Element</code></td>
-<td><code>h_*</code> keys</td>
-<td>Shared column names</td>
-</tr>
-<tr>
-<td><code>AD_Message</code></td>
-<td><code>ui_*</code> keys</td>
-<td>UI messages</td>
-</tr>
-<tr>
-<td><code>C_Currency</code></td>
-<td><code>cur</code>, <code>cur_rate</code></td>
-<td>Currency conversion</td>
-</tr>
-<tr>
-<td><code>M_Product_PO</code></td>
-<td><code>rates</code> object</td>
-<td>Per-vendor (per-country) pricing</td>
-</tr>
-</tbody>
-</table>
-<p>The pattern: one master record contains every field. Translation records override what differs. Deep merge at runtime. URL params override everything (like iDempiere's <code>#AD_Language</code> context variable).</p>
-<hr />
-<h2 id="files">Files<a class="headerlink" href="#files" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>File</th>
+<th>Param</th>
+<th>Required</th>
+<th>Example</th>
 <th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>deploy/dev/rates.js</code></td>
-<td>Default rates + helper functions (calcLabor, calcEquipment, getRate)</td>
+<td><code>db</code></td>
+<td>Yes</td>
+<td><code>?db=/buildings/SampleHouse_extracted.db</code></td>
+<td>Main element database (geometry + IFC data)</td>
 </tr>
 <tr>
-<td><code>deploy/dev/locales/en_MY.js</code></td>
-<td>Base locale — English (Malaysia), CIDB 2024</td>
+<td><code>lib</code></td>
+<td>No</td>
+<td><code>&amp;lib=/buildings/SampleHouse_library.db</code></td>
+<td>Geometry mesh database</td>
 </tr>
 <tr>
-<td><code>deploy/dev/locales/{code}.js</code></td>
-<td>Country locale — 18 locales shipped</td>
-</tr>
-<tr>
-<td><code>deploy/dev/boq_charts.html</code></td>
-<td>4D/5D analytics — uses <code>_TRL.*</code> for all labels</td>
-</tr>
-<tr>
-<td><code>deploy/dev/variation_order.js</code></td>
-<td>VO Excel — uses shared <code>rates.js</code></td>
-</tr>
-<tr>
-<td><code>deploy/dev/nlp.js</code></td>
-<td>Voice/text queries — uses <code>getRate()</code> from <code>rates.js</code></td>
-</tr>
-<tr>
-<td><code>prompts/S226_localisation.md</code></td>
-<td>Implementation spec — per-file audit, UI keys, phases</td>
-</tr>
-<tr>
-<td><code>deploy/dev/locale_loader.js</code></td>
-<td>Runtime: detect locale, fetch, cache, apply to DOM</td>
+<td><code>bld</code></td>
+<td>No</td>
+<td><code>&amp;bld=SH</code></td>
+<td>Building prefix used for title block label</td>
 </tr>
 </tbody>
 </table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Without <code>?db=</code>, the viewer starts in <strong>DXF file mode</strong> and renders the built-in Sample House (SH) baseline. The SH and DX baselines are embedded inline in the HTML — they render without any network fetch.</p>
+</div>
 <hr />
-<h2 id="flag-picker-user-facing">Flag Picker (User-Facing)<a class="headerlink" href="#flag-picker-user-facing" title="Permanent link">&para;</a></h2>
-<p>Users switch locale via a <strong>flag button</strong> in the header bar (landing page and viewer). Clicking it opens a popup grid of 18 country flags. Selecting a flag:</p>
-<ol>
-<li>Saves choice to <code>localStorage</code> (<code>bim_ootb_config</code>)</li>
-<li>Reloads the page</li>
-<li>All text, currency, and rates switch instantly</li>
-</ol>
-<p>The current locale's flag is highlighted with a blue border. Dual-country locales (e.g. two Malaysian flags for <code>en_MY</code> and <code>ms_MY</code>) show small badges (<code>EN</code> / <code>BM</code>) to distinguish them.</p>
-<p>No settings dialog, no gear icon — just click the flag.</p>
-<figure style="margin: 20px 0;">
-<img src="../assets/images/Localization.png" alt="Country picker" style="width:100%; border:1px solid #ccc;"/>
-<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Country picker to apply rates — later will separate language from region, even industry rates.</figcaption>
-</figure>
-
-<hr />
-<h2 id="how-locale_loaderjs-works-developer-reference">How locale_loader.js Works (Developer Reference)<a class="headerlink" href="#how-locale_loaderjs-works-developer-reference" title="Permanent link">&para;</a></h2>
-<h3 id="detection-order">Detection order<a class="headerlink" href="#detection-order" title="Permanent link">&para;</a></h3>
-<ol>
-<li>URL param <code>?lang=xx_YY</code></li>
-<li><code>localStorage</code> key <code>bim_ootb_config</code> → <code>{ locale: 'xx_YY' }</code></li>
-<li><code>navigator.language</code> mapped to closest available locale</li>
-<li>Fallback: <code>en_US</code></li>
-</ol>
-<h3 id="fetch-cache">Fetch + cache<a class="headerlink" href="#fetch-cache" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>locale_loader.js
-  ├── Check localStorage cache: key = &#39;bim_ootb_locale_{code}&#39;
-  │   └── Valid if: exists &amp;&amp; version matches LOCALE_VERSION &amp;&amp; age &lt; 7 days
-  ├── If cache miss → fetch from OCI: sandbox/locales/{code}.js
-  │   └── Fallback: relative path locales/{code}.js (local dev)
-  ├── Parse: new Function(text + &#39;; return _TRL_LOCALE;&#39;)
-  ├── Deep-merge over window._TRL (from _TRL_DEFAULTS if present)
-  ├── Apply URL param overrides (?cur=USD, ?h_labour=Labor, etc.)
-  └── applyTrlToDOM()
-        ├── [data-trl=&quot;key&quot;]       → el.textContent = _TRL[key]
-        ├── [data-trl-title=&quot;key&quot;] → el.title = _TRL[key]
-        └── [data-trl-placeholder=&quot;key&quot;] → el.placeholder = _TRL[key]
-</code></pre></div>
-<h3 id="cache-invalidation">Cache invalidation<a class="headerlink" href="#cache-invalidation" title="Permanent link">&para;</a></h3>
-<p><code>LOCALE_VERSION</code> constant in <code>locale_loader.js</code>. Bump it when locale files change — any cached entry with a different version is re-fetched.</p>
-<h3 id="landing-page-integration">Landing page integration<a class="headerlink" href="#landing-page-integration" title="Permanent link">&para;</a></h3>
-<p>The landing page loads <code>locale_loader.js</code> at the bottom. All translatable text uses <code>data-trl</code> attributes. JS-generated text (card buttons, progress bar) uses <code>_TRL.key || 'fallback'</code> pattern.</p>
-<hr />
-<h2 id="open-issues">Open Issues<a class="headerlink" href="#open-issues" title="Permanent link">&para;</a></h2>
+<h2 id="3-toolbar-controls">3. Toolbar Controls<a class="headerlink" href="#3-toolbar-controls" title="Permanent link">&para;</a></h2>
+<p>The toolbar runs across the top of the window. Controls that are irrelevant to the current mode are hidden automatically (for example, the Sheet dropdown is hidden in DB mode; the SH/DX building buttons are hidden once a <code>?db=</code> param is present).</p>
 <table>
 <thead>
 <tr>
-<th>#</th>
-<th>File</th>
-<th>Issue</th>
-<th>Status</th>
+<th>Control</th>
+<th>What it does</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>I-1</td>
-<td><code>deploy/dev/index.html</code></td>
-<td>Tooltip visibility confirmed working for locales that have <code>ui_tt_*</code> keys. Deploy all updated locale files to OCI bucket to activate.</td>
-<td>Deploy needed</td>
+<td><strong>SH / DX buttons</strong></td>
+<td>Switch between Sample House and Duplex in DXF file mode. Inactive in DB mode.</td>
 </tr>
 <tr>
-<td>I-5</td>
-<td><code>deploy/dev/navigate.js</code></td>
-<td><code>_TRL</code> applied to panel strings at build time. If locale loads AFTER panel builds, re-open panel to see translated text. To fix fully: listen to <code>trl-ready</code> event and rebuild panel.</td>
-<td>Low priority</td>
+<td><strong>Sheet dropdown</strong></td>
+<td>Select a DXF sheet file (Floor Plan, Front Elev, Roof Plan, etc.). Visible in DXF file mode only.</td>
+</tr>
+<tr>
+<td><strong>Storey dropdown</strong></td>
+<td>Select a floor level (Ground Floor, Level 1, Level 2, …). Populated from the database in DB mode.</td>
+</tr>
+<tr>
+<td><strong>Mode dropdown</strong></td>
+<td>Switch view type: Floor Plan, Front Elev, Rear Elev, Left Elev, Right Elev.</td>
+</tr>
+<tr>
+<td><strong>Generate</strong></td>
+<td>Re-render the drawing with the current storey and mode selection.</td>
+</tr>
+<tr>
+<td><strong>Fit</strong></td>
+<td>Zoom to fit the entire drawing within the canvas.</td>
+</tr>
+<tr>
+<td><strong>Layers</strong></td>
+<td>Open or close the layer toggle panel.</td>
+</tr>
+<tr>
+<td><strong>BIMSRC</strong></td>
+<td>Activate element origin highlighting. Click any drawn element to see its IFC data in the info bar.</td>
+</tr>
+<tr>
+<td><strong>Export DXF</strong></td>
+<td>Download the current view as a <code>.dxf</code> file compatible with AutoCAD and other CAD tools.</td>
+</tr>
+<tr>
+<td><strong>Drag and drop</strong></td>
+<td>Drop a <code>.dxf</code> file onto the canvas from your file manager to load it directly.</td>
 </tr>
 </tbody>
 </table>
-<p><strong>CLOSED:</strong>
-- I-2: boq_charts.html locale_loader confirmed working
-- I-3: All 6 incomplete locales now have 14 <code>ui_tt_*</code> keys (af_ZA, ar_SA, bl_BD, bn_BD, id_ID, pt_BR, th_TH)
-- I-4: <code>ui_saved_excel</code> + <code>ui_vo_label</code> added to all 18 locale files</p>
-<h3 id="tooltip-architecture-note">Tooltip architecture note<a class="headerlink" href="#tooltip-architecture-note" title="Permanent link">&para;</a></h3>
+<p>The status bar at the bottom shows the entity count, active layer count, and — when BIMSRC is on — the IFC class, element name, and storey of the last clicked element.</p>
+<hr />
+<h2 id="4-layer-panel">4. Layer Panel<a class="headerlink" href="#4-layer-panel" title="Permanent link">&para;</a></h2>
+<p>Click <strong>Layers</strong> to open the layer panel. Each layer can be shown or hidden individually by toggling its checkbox. The drawing re-renders immediately.</p>
+<p>The viewer uses the 12-layer AIA subset standard for architectural drawings, plus annotation, title block, and section layers:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Colour</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>A-WALL-FULL</code></td>
+<td>White</td>
+<td>Structural walls — the primary building outline</td>
+</tr>
+<tr>
+<td><code>A-WALL-PRTN</code></td>
+<td>Light grey</td>
+<td>Partition (non-structural) walls</td>
+</tr>
+<tr>
+<td><code>A-WALL-CORE</code></td>
+<td>Mid grey</td>
+<td>Core and shear walls</td>
+</tr>
+<tr>
+<td><code>A-WALL-PATT</code></td>
+<td>Medium grey</td>
+<td>Solid hatch fill behind wall cross-sections</td>
+</tr>
+<tr>
+<td><code>A-GLAZ</code></td>
+<td>Blue</td>
+<td>Glazing and curtain wall</td>
+</tr>
+<tr>
+<td><code>A-DOOR</code></td>
+<td>Cyan tint</td>
+<td>Door swings and frames</td>
+</tr>
+<tr>
+<td><code>A-COLM</code></td>
+<td>Near-white</td>
+<td>Columns</td>
+</tr>
+<tr>
+<td><code>A-STAIR</code></td>
+<td>Blue-grey</td>
+<td>Stair runs and risers</td>
+</tr>
+<tr>
+<td><code>A-RAIL</code></td>
+<td>Muted grey-green</td>
+<td>Railings and balustrades</td>
+</tr>
+<tr>
+<td><code>A-SLAB</code></td>
+<td>Grey</td>
+<td>Slabs and floors (shown in section)</td>
+</tr>
+<tr>
+<td><code>A-ROOF</code></td>
+<td>Light grey</td>
+<td>Roof outline</td>
+</tr>
+<tr>
+<td><code>A-FURN</code></td>
+<td>Dark blue-grey</td>
+<td>Furniture (recedes visually)</td>
+</tr>
+<tr>
+<td><code>A-GRID</code></td>
+<td>Muted blue-grey</td>
+<td>Grid lines</td>
+</tr>
+<tr>
+<td><code>A-ANNO-DIMS</code></td>
+<td>Blue-grey</td>
+<td>Dimension lines and bay widths</td>
+</tr>
+<tr>
+<td><code>A-ANNO-TEXT</code></td>
+<td>Blue-grey</td>
+<td>Annotation and room labels</td>
+</tr>
+<tr>
+<td><code>A-ANNO-SECT</code></td>
+<td>Cyan-blue</td>
+<td>Section cut markers</td>
+</tr>
+<tr>
+<td><code>A-TTLB</code></td>
+<td>Steel blue</td>
+<td>Title block border</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p><code>A-WALL-PATT</code> is the solid hatch fill drawn behind wall outlines. Hiding it gives a clean line-only view; showing it makes the wall thickness immediately legible.</p>
+</div>
+<hr />
+<h2 id="5-click-to-info-bimsrc">5. Click-to-Info (BIMSRC)<a class="headerlink" href="#5-click-to-info-bimsrc" title="Permanent link">&para;</a></h2>
+<p>When <strong>BIMSRC</strong> is active (button highlighted), the cursor identifies drawn elements by their source IFC data.</p>
 <ul>
-<li>Native <code>title</code> attribute: works desktop hover only, not mobile</li>
-<li><code>#ootb-tip</code> JS bubbles: appended to <code>&lt;body&gt;</code> (bypasses <code>overflow:hidden</code> on <code>.panel-body</code>), shows on <code>mouseover</code> + <code>touchstart</code> (1.8s)</li>
-<li>boq_charts.html toolbar: buttons now have <code>title</code> + <code>data-trl-title</code> — locale_loader.js applies translations via <code>applyTrlToDOM()</code></li>
-<li>If still not showing: check browser console for <code>§TRL_LOADED</code> log line; if absent, locale_loader.js fetch failed</li>
+<li>Click any wall, door, column, or window on the canvas.</li>
+<li>The info bar at the bottom shows: <strong>IFC class</strong>, <strong>element name</strong>, and <strong>storey</strong>.</li>
+<li>The clicked element is highlighted in a contrasting colour.</li>
+</ul>
+<p>This traces every drawn entity back to the source IFC file — useful for cross-checking drawing content against the BIM model during design review or QA.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>BIMSRC is only meaningful in <strong>DB mode</strong> (<code>?db=</code> param present). In DXF file mode, the entities come from pre-rendered CAD geometry rather than the live database, so IFC attribution is not available.</p>
+</div>
+<hr />
+<h2 id="6-annotation-config-template">6. Annotation Config Template<a class="headerlink" href="#6-annotation-config-template" title="Permanent link">&para;</a></h2>
+<p>For large buildings (Hospital, Terminal), the viewer automatically suppresses furniture detail beyond the first few room clusters to prevent clutter. This density is controlled by a JSON config stored in your browser's <code>localStorage</code>.</p>
+<p><strong>Key:</strong> <code>bim2d_anno_config</code></p>
+<p><strong>Loading order:</strong> <code>localStorage</code> (your edits) → remote OCI config (team defaults) → built-in defaults. No installation is needed — the defaults work out of the box.</p>
+<h3 id="editing-the-config">Editing the config<a class="headerlink" href="#editing-the-config" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Open browser DevTools (<code>F12</code>).</li>
+<li>Go to <strong>Application</strong> (Chrome) or <strong>Storage</strong> (Firefox).</li>
+<li>Select <strong>Local Storage</strong> → the page origin.</li>
+<li>Find or create the key <code>bim2d_anno_config</code>.</li>
+<li>Paste your edited JSON as the value.</li>
+<li>Reload the page — the new config takes effect immediately.</li>
+</ol>
+<h3 id="default-config">Default config<a class="headerlink" href="#default-config" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;_comment&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;BIM OOTB 2D annotation density config. Edit in DevTools &gt; Application &gt; Local Storage &gt; bim2d_anno_config&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;furnDetailRooms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;maxFurnPerRoom&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;seatingThreshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;seatingPattern&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;chair|seat|bench|stall|auditorium|theatre|stadium&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;hallAreaThresholdM2&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;maxDoorTags&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;maxWindowTags&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="field-reference">Field reference<a class="headerlink" href="#field-reference" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>furnDetailRooms</code></td>
+<td><code>1</code></td>
+<td>How many room clusters show individual furniture outlines. Rooms beyond this threshold get a label only — no furniture geometry.</td>
+</tr>
+<tr>
+<td><code>maxFurnPerRoom</code></td>
+<td><code>12</code></td>
+<td>Maximum furniture items drawn per detailed room. Excess items are suppressed.</td>
+</tr>
+<tr>
+<td><code>seatingThreshold</code></td>
+<td><code>8</code></td>
+<td>If a cluster contains this many seating elements or more, it is treated as an assembly hall rather than a regular room.</td>
+</tr>
+<tr>
+<td><code>seatingPattern</code></td>
+<td>(regex)</td>
+<td>IFC element name patterns that count as seating. Uses a pipe-separated regular expression.</td>
+</tr>
+<tr>
+<td><code>hallAreaThresholdM2</code></td>
+<td><code>50</code></td>
+<td>Clusters larger than this area (m²) that also meet the seating threshold are drawn as a single aggregate bounding box.</td>
+</tr>
+<tr>
+<td><code>maxDoorTags</code></td>
+<td><code>20</code></td>
+<td>Cap on D-tag door annotations. POC limit for large buildings.</td>
+</tr>
+<tr>
+<td><code>maxWindowTags</code></td>
+<td><code>20</code></td>
+<td>Cap on W-tag window annotations. POC limit for large buildings.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>To reset to built-in defaults, delete the <code>bim2d_anno_config</code> key in DevTools and reload the page.</p>
+</div>
+<hr />
+<h2 id="7-what-is-generated-vs-what-comes-from-dxf">7. What Is Generated vs What Comes from DXF<a class="headerlink" href="#7-what-is-generated-vs-what-comes-from-dxf" title="Permanent link">&para;</a></h2>
+<p>The viewer operates in two distinct modes. Understanding which mode is active explains what you are looking at and what accuracy to expect.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Static DXF</th>
+<th>Dynamic (from DB)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Source</strong></td>
+<td>Pre-generated <code>.dxf</code> files in <code>dxf/</code> folder</td>
+<td><code>extracted.db</code> + <code>library.db</code> queried live</td>
+</tr>
+<tr>
+<td><strong>Layers</strong></td>
+<td>12 AIA layers</td>
+<td>Same 12 AIA layers</td>
+</tr>
+<tr>
+<td><strong>Accuracy</strong></td>
+<td>Pixel-perfect production output from the Java pipeline</td>
+<td>POC — large buildings auto-clipped to a 30 m centred window</td>
+</tr>
+<tr>
+<td><strong>Annotation</strong></td>
+<td>Full spec (all annotation layers)</td>
+<td>BIMSRC-tagged walls, doors, windows + furniture + room labels</td>
+</tr>
+<tr>
+<td><strong>DXF export</strong></td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<p>Static DXF files are produced by the Java <code>DAGCompiler</code> pipeline, which runs all geometry processing server-side and writes fully-annotated DXF sheets. Dynamic generation happens in the browser from raw BLOBs and is suitable for interactive review and cross-checking against the live model.</p>
+<hr />
+<h2 id="8-known-limitations-poc">8. Known Limitations (POC)<a class="headerlink" href="#8-known-limitations-poc" title="Permanent link">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">POC Scope</p>
+<p>All generated features listed in §25.6 of the <a href="../2D_LAYOUT/">2D Layout Spec</a> are implemented. Features marked ✗ in that table are deferred to a later sprint.</p>
+</div>
+<ul>
+<li><strong>Large building clipping:</strong> Floors larger than approximately 30 m × 30 m are clipped to the building centre. Controlled by <code>SectionCut.CLIP_MARGIN = 15 m</code>.</li>
+<li><strong>Hatch patterns:</strong> Solid fill only (<code>A-WALL-PATT</code>). ANSI hatch patterns (brick, concrete, insulation) are deferred to §23.2.</li>
+<li><strong>Section line:</strong> One auto-generated A-A section line is placed by the pipeline. User-positioned section cuts are deferred.</li>
+<li><strong>Elevation views:</strong> Structural edges only. Material callouts and finish annotations are deferred.</li>
+<li><strong>Title block, north arrow, scale bar:</strong> Implemented in the Java pipeline DXF output. Dynamic DB-mode generation is deferred.</li>
 </ul>
 <hr />
-<h2 id="current-status-poc">Current Status (POC)<a class="headerlink" href="#current-status-poc" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Language and currency/rates are <strong>bundled per flag</strong> — selecting Japanese gives you Japanese UI + JPY currency + Japanese rate sources</li>
-<li>A future version will separate language preference from currency/rate selection (e.g. English UI with Malaysian Ringgit rates)</li>
-<li>Rate data is illustrative — not authoritative for production cost estimation</li>
-<li>18 locales ship with ~300 keys each (UI + BOQ + 4D/5D + landing)</li>
-</ul>
+<h2 id="9-code-structure-for-developers">9. Code Structure — For Developers<a class="headerlink" href="#9-code-structure-for-developers" title="Permanent link">&para;</a></h2>
+<p><code>deploy/dev/2d.html</code> is self-contained (~48 000 lines). The rendering pipeline inside it follows a strict layered architecture:</p>
+<div class="highlight"><pre><span></span><code>URL params / drag-drop
+        ↓
+  parseDxf()          ← DXF file mode (static baselines)
+        OR
+  generateFromDb()    ← DB mode (live section cut)
+        ↓
+  sectionToEntities() + annotationEntities()   ← entity builders
+        ↓
+  entities[]          ← shared in-memory array
+        ↓
+  draw() → drawEntity() → drawLine/drawPolyline/drawCircle/drawText/…
+</code></pre></div>
+<p>Key functions and where to find them (by section comment in the source):</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Purpose</th>
+<th>Modify to…</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>getAnnoConfig()</code></td>
+<td>Loads density config from localStorage → OCI → defaults</td>
+<td>Add new config fields</td>
+</tr>
+<tr>
+<td><code>annotationEntities(elements, cfg)</code></td>
+<td>Furniture outlines, room labels, D/W tags, section marker</td>
+<td>Add new annotation types</td>
+</tr>
+<tr>
+<td><code>sectionToEntities(elements)</code></td>
+<td>Wall/door/window section cut contours + hatch fills</td>
+<td>Change how CUT elements are styled</td>
+</tr>
+<tr>
+<td><code>generateFromDb()</code></td>
+<td>Orchestrates DB load → section cut → grid → title block → annotations</td>
+<td>Add new generation stages</td>
+</tr>
+<tr>
+<td><code>drawEntity(e)</code></td>
+<td>Routes each entity to its draw function by <code>e.type</code></td>
+<td>Support new entity types</td>
+</tr>
+<tr>
+<td><code>drawPolyline(e)</code></td>
+<td>Renders LWPOLYLINE; respects <code>e.fill</code> and <code>e.fillAlpha</code></td>
+<td>Adjust fill rendering</td>
+</tr>
+<tr>
+<td><code>layerColor(layer)</code></td>
+<td>Returns hex colour per AIA layer</td>
+<td>Change layer colours</td>
+</tr>
+<tr>
+<td><code>fitView()</code></td>
+<td>Auto-zooms canvas to <code>window._structBbox</code></td>
+<td>Adjust zoom margins</td>
+</tr>
+</tbody>
+</table>
+<p><strong>External JS modules</strong> (loaded as <code>&lt;script src="…"&gt;</code> before the inline scripts):</p>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SectionCut</code></td>
+<td><code>section_cut.js</code></td>
+<td>Mesh slicer — produces <code>{guid, category, contours, center}</code> per element</td>
+</tr>
+<tr>
+<td><code>GridDims</code></td>
+<td><code>grid_dims.js</code></td>
+<td>Column grid detection and bay dimension rendering</td>
+</tr>
+<tr>
+<td><code>TitleBlock</code></td>
+<td><code>title_block.js</code></td>
+<td>Title block, scale bar, north arrow</td>
+</tr>
+<tr>
+<td><code>Elevation</code></td>
+<td><code>elevation.js</code></td>
+<td>Front/rear/left/right elevation edge extraction</td>
+</tr>
+<tr>
+<td><code>DxfExport</code></td>
+<td><code>dxf_export.js</code></td>
+<td>Serialises <code>entities[]</code> to DXF text for download</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Adding a new annotation type:</strong></p>
+<ol>
+<li>Implement in <code>annotationEntities()</code> — push entities to <code>out[]</code> with the correct <code>layer</code> and <code>type</code>.</li>
+<li>Add a <code>§RENDER …</code> or <code>§AUDIT …</code> <code>console.log</code> for whitebox verification.</li>
+<li>Add a <code>LAYER_COLORS</code> entry if introducing a new layer.</li>
+<li>Add a Playwright whitebox test in <code>14-2d-plans.spec.js</code> that reads <code>§</code>-tagged console logs.</li>
+<li>Run <code>node deploy/dev/tests/audit_specs.js</code> — must exit 0.</li>
+</ol>
+<p><strong>Testing hierarchy</strong> (from <code>docs/TestArchitecture.md</code>):
+- Primary: <code>§</code>-tagged <code>console.log</code> lines — the coder reads these to confirm counts and values.
+- Secondary: Playwright — for wiring, deploy, and regression checks only.</p>
+<hr />
+<p><em>See also: <a href="../2D_LAYOUT/">2D Layout Specification</a> · <a href="../BIM_Designer_Browser/">BIM Designer Browser Guide</a> · <a href="../SQLite3D_Schema/">SQLite3D Schema</a></em></p>
 
 
 
