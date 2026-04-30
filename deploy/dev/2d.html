@@ -47836,80 +47836,178 @@ function sectionToEntities(elements) {
   return out;
 }
 
+// ─── Annotation density config: localStorage → OCI remote → built-in defaults ───
+// Key: 'bim2d_anno_config'. No install needed — just browse and it works.
+// See docs/2D_HTML_GUIDE.md §6 for field descriptions.
+const ANNO_CONFIG_DEFAULTS = {
+  furnDetailRooms:    1,    // rooms with individual furniture outlines (largest first)
+  maxFurnPerRoom:     12,   // cap per detailed room
+  seatingThreshold:   8,    // cluster items >= this → assembly hall treatment
+  seatingPattern:     'chair|seat|bench|stall|auditorium|theatre|stadium',
+  hallAreaThresholdM2: 50,  // cluster bbox area >= this + seating → hall
+  maxDoorTags:        20,   // D-tag cap (POC limit for large buildings)
+  maxWindowTags:      20,   // W-tag cap
+};
+// OCI remote config — fetched once per session and cached in memory.
+// If OCI is unreachable, falls through to built-in defaults (graceful).
+const ANNO_CONFIG_OCI_URL = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/config%2F2d_anno_config.json';
+let _annoConfigCache = null;
+
+async function getAnnoConfig() {
+  if (_annoConfigCache) return _annoConfigCache;
+  // 1. localStorage
+  try {
+    const stored = localStorage.getItem('bim2d_anno_config');
+    if (stored) {
+      const cfg = JSON.parse(stored);
+      _annoConfigCache = Object.assign({}, ANNO_CONFIG_DEFAULTS, cfg);
+      console.log('§ANNO_CFG source=localStorage furnDetailRooms=' + _annoConfigCache.furnDetailRooms +
+                  ' maxDoorTags=' + _annoConfigCache.maxDoorTags);
+      return _annoConfigCache;
+    }
+  } catch(e) { /* malformed JSON — fall through */ }
+  // 2. OCI remote (non-blocking, 3s timeout)
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 3000);
+    const r = await fetch(ANNO_CONFIG_OCI_URL, { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (r.ok) {
+      const cfg = await r.json();
+      _annoConfigCache = Object.assign({}, ANNO_CONFIG_DEFAULTS, cfg);
+      console.log('§ANNO_CFG source=OCI furnDetailRooms=' + _annoConfigCache.furnDetailRooms);
+      return _annoConfigCache;
+    }
+  } catch(e) { /* OCI unreachable — use defaults */ }
+  // 3. Built-in defaults
+  _annoConfigCache = Object.assign({}, ANNO_CONFIG_DEFAULTS);
+  console.log('§ANNO_CFG source=defaults furnDetailRooms=' + _annoConfigCache.furnDetailRooms);
+  return _annoConfigCache;
+}
+
 // ─── Furniture outlines, room labels, door/window tags, section cut marker ───
-function annotationEntities(elements) {
+// Density-controlled by annotation config (see getAnnoConfig / ANNO_CONFIG_DEFAULTS).
+function annotationEntities(elements, cfg) {
+  cfg = cfg || ANNO_CONFIG_DEFAULTS;
   const out = [];
+  const seatRe = new RegExp(cfg.seatingPattern || 'chair|seat|bench', 'i');
 
   // ── 1. Furniture outlines (A-FURN) + room cluster detection ─────────────
   const FURN_CLASSES = new Set(['IfcFurniture','IfcFurnishingElement','IfcSystemFurnitureElement']);
   const furnElems = elements.filter(el => FURN_CLASSES.has(el.ifcClass) && el.center);
-  const roomClusters = {};  // room_type → [{x, y}]
 
+  // Group by room type → cluster
+  const roomClusters = {};  // room_type → {items:[{el,cx,cy}], seating:0}
   for (const el of furnElems) {
-    const cx = el.center.x, cy = el.center.y;
-    // Parse footprint from name e.g. "Furniture_Desk:1525x762mm:287689"
-    let hw = 0.3, hd = 0.3;  // half-width / half-depth (default 0.6m)
-    const dimM = el.elementName && el.elementName.match(/(\d{3,4})x(\d{3,4})mm/);
-    if (dimM) { hw = parseInt(dimM[1]) / 2000; hd = parseInt(dimM[2]) / 2000; }
-    const verts = [
-      { x: cx - hw, y: cy - hd }, { x: cx + hw, y: cy - hd },
-      { x: cx + hw, y: cy + hd }, { x: cx - hw, y: cy + hd }
-    ];
-    out.push({
-      type: 'LWPOLYLINE', vertices: verts, shape: true, layer: 'A-FURN',
-      extendedData: { applicationName: 'BIMSRC', customStrings: ['guid:' + el.guid, 'ifc_class:' + el.ifcClass, 'element_name:' + (el.elementName || '')] }
-    });
-    console.log('§RENDER FURN guid=' + el.guid.substring(0,8) + ' at (' + cx.toFixed(1) + ',' + cy.toFixed(1) + ') size=' + (hw*2).toFixed(2) + 'x' + (hd*2).toFixed(2) + 'm');
-
-    // Room type inference from IFC element name (extract, not invent)
     const nm = (el.elementName || '').toLowerCase();
-    let rtype = null;
+    let rtype = 'MISC';
     if (/(?<![a-z])bed(?![a-z])/i.test(nm))               rtype = 'BEDROOM';
-    else if (/dining|table_dining/.test(nm))              rtype = 'DINING';
-    else if (/chair.*dining|dining.*chair/.test(nm))      rtype = 'DINING';
-    else if (/couch|sofa|settee/.test(nm))                rtype = 'LIVING';
-    else if (/table_coffee|coffee.*table|piano/.test(nm)) rtype = 'LIVING';
-    else if (/chair_viper/.test(nm))                      rtype = 'LIVING';
-    if (rtype) { if (!roomClusters[rtype]) roomClusters[rtype] = []; roomClusters[rtype].push({ x: cx, y: cy }); }
+    else if (/dining|table_dining/.test(nm))               rtype = 'DINING';
+    else if (/chair.*dining|dining.*chair/.test(nm))        rtype = 'DINING';
+    else if (/couch|sofa|settee/.test(nm))                  rtype = 'LIVING';
+    else if (/table_coffee|coffee.*table|piano/.test(nm))   rtype = 'LIVING';
+    else if (/chair_viper/.test(nm))                        rtype = 'LIVING';
+    if (!roomClusters[rtype]) roomClusters[rtype] = { items: [], seating: 0 };
+    roomClusters[rtype].items.push({ el, cx: el.center.x, cy: el.center.y });
+    if (seatRe.test(nm)) roomClusters[rtype].seating++;
   }
-  console.log('§AUDIT FURN: ' + furnElems.length + ' furniture outlines on A-FURN → PASS');
 
-  // ── 2. Room labels (centroid of each furniture cluster) ───────────────────
-  const ROOM_DISPLAY = { BEDROOM: 'BEDROOM', DINING: 'DINING ROOM', LIVING: 'LIVING ROOM' };
-  for (const [rtype, pts] of Object.entries(roomClusters)) {
-    const rcx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
-    const rcy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+  // Sort clusters by item count descending — largest = most detailed
+  const sortedRtypes = Object.keys(roomClusters)
+    .filter(r => r !== 'MISC')
+    .sort((a, b) => roomClusters[b].items.length - roomClusters[a].items.length);
+
+  let furnRendered = 0;
+  sortedRtypes.forEach((rtype, ri) => {
+    const cluster = roomClusters[rtype];
+    const pts = cluster.items;
+    const rcx = pts.reduce((s, p) => s + p.cx, 0) / pts.length;
+    const rcy = pts.reduce((s, p) => s + p.cy, 0) / pts.length;
+
+    // Assembly hall detection: large seating cluster → single aggregate bbox, no items
+    let isHall = false;
+    if (cluster.seating >= cfg.seatingThreshold) {
+      // Compute cluster bounding bbox area
+      let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+      pts.forEach(p => { mnx = Math.min(mnx, p.cx); mxx = Math.max(mxx, p.cx); mny = Math.min(mny, p.cy); mxy = Math.max(mxy, p.cy); });
+      const area = (mxx - mnx) * (mxy - mny);
+      if (area >= cfg.hallAreaThresholdM2) isHall = true;
+    }
+
+    if (isHall) {
+      // Assembly hall: render one dashed bbox outline + label (no individual items)
+      let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+      pts.forEach(p => { mnx = Math.min(mnx, p.cx) - 0.5; mxx = Math.max(mxx, p.cx) + 0.5;
+                         mny = Math.min(mny, p.cy) - 0.5; mxy = Math.max(mxy, p.cy) + 0.5; });
+      const hverts = [{ x: mnx, y: mny }, { x: mxx, y: mny }, { x: mxx, y: mxy }, { x: mnx, y: mxy }];
+      out.push({ type: 'LWPOLYLINE', vertices: hverts, shape: true, layer: 'A-FURN' });
+      out.push({ type: 'TEXT', text: 'ASSEMBLY / HALL', startPoint: { x: rcx, y: rcy + 0.4 }, textHeight: 0.4, layer: 'A-ANNO-TEXT', align: 'center' });
+      out.push({ type: 'TEXT', text: pts.length + ' seats', startPoint: { x: rcx, y: rcy - 0.1 }, textHeight: 0.25, layer: 'A-ANNO-TEXT', align: 'center' });
+      console.log('§ROOM HALL rtype=' + rtype + ' seats=' + cluster.seating + '/' + pts.length + ' bbox=' + (mxx-mnx).toFixed(1) + 'x' + (mxy-mny).toFixed(1) + 'm');
+      furnRendered++;
+      return;
+    }
+
+    // Detailed room (up to furnDetailRooms): render individual furniture items
+    if (ri < cfg.furnDetailRooms) {
+      const cap = Math.min(pts.length, cfg.maxFurnPerRoom);
+      for (let fi = 0; fi < cap; fi++) {
+        const { el, cx, cy } = pts[fi];
+        let hw = 0.3, hd = 0.3;
+        const dimM = el.elementName && el.elementName.match(/(\d{3,4})x(\d{3,4})mm/);
+        if (dimM) { hw = parseInt(dimM[1]) / 2000; hd = parseInt(dimM[2]) / 2000; }
+        const verts = [{ x: cx-hw, y: cy-hd }, { x: cx+hw, y: cy-hd }, { x: cx+hw, y: cy+hd }, { x: cx-hw, y: cy+hd }];
+        out.push({ type: 'LWPOLYLINE', vertices: verts, shape: true, layer: 'A-FURN',
+                   extendedData: { applicationName: 'BIMSRC', customStrings: ['guid:' + el.guid, 'ifc_class:' + el.ifcClass, 'element_name:' + (el.elementName || '')] } });
+        console.log('§RENDER FURN guid=' + el.guid.substring(0,8) + ' at (' + cx.toFixed(1) + ',' + cy.toFixed(1) + ') size=' + (hw*2).toFixed(2) + 'x' + (hd*2).toFixed(2) + 'm');
+        furnRendered++;
+      }
+      if (pts.length > cap) console.log('§ANNO_FURN_CAP rtype=' + rtype + ' shown=' + cap + '/' + pts.length + ' (maxFurnPerRoom=' + cfg.maxFurnPerRoom + ')');
+    }
+
+    // Room label (all rooms, detailed or suppressed)
+    const ROOM_DISPLAY = { BEDROOM: 'BEDROOM', DINING: 'DINING ROOM', LIVING: 'LIVING ROOM', MISC: 'ROOM' };
     const label = ROOM_DISPLAY[rtype] || rtype;
     out.push({ type: 'TEXT', text: label, startPoint: { x: rcx, y: rcy + 0.4 }, textHeight: 0.4, layer: 'A-ANNO-TEXT', align: 'center' });
     out.push({ type: 'TEXT', text: pts.length + ' items', startPoint: { x: rcx, y: rcy - 0.1 }, textHeight: 0.25, layer: 'A-ANNO-TEXT', align: 'center' });
-    console.log('§ROOM ' + label + ': centroid=(' + rcx.toFixed(1) + ',' + rcy.toFixed(1) + ') n=' + pts.length);
-  }
-  console.log('§AUDIT ROOMS: ' + Object.keys(roomClusters).length + ' room labels → PASS');
+    if (ri >= cfg.furnDetailRooms) console.log('§ANNO_ROOM_SUPPRESS rtype=' + rtype + ' items=' + pts.length + ' (furnDetailRooms=' + cfg.furnDetailRooms + ')');
+    console.log('§ROOM ' + label + ': centroid=(' + rcx.toFixed(1) + ',' + rcy.toFixed(1) + ') n=' + pts.length + ' detailed=' + (ri < cfg.furnDetailRooms));
+  });
+  console.log('§AUDIT FURN: ' + furnRendered + ' furniture outlines on A-FURN → PASS');
+  console.log('§AUDIT ROOMS: ' + sortedRtypes.length + ' room labels → PASS');
 
-  // ── 3. Door tags D1, D2… (sorted left→right, bottom→top) ─────────────────
+  // ── 3. Door tags D1, D2… capped by maxDoorTags ────────────────────────────
   const doorElems = elements.filter(el =>
     (el.ifcClass === 'IfcDoor' || el.ifcClass === 'IfcDoorStandardCase') && el.center);
   doorElems.sort((a, b) => Math.abs(a.center.x - b.center.x) > 0.1
     ? a.center.x - b.center.x : a.center.y - b.center.y);
-  doorElems.forEach((el, i) => {
+  const doorCap = Math.min(doorElems.length, cfg.maxDoorTags);
+  if (doorElems.length > doorCap)
+    console.log('§ANNO_TAG_CAP doors capped=' + doorCap + '/' + doorElems.length + ' (maxDoorTags=' + cfg.maxDoorTags + ')');
+  for (let i = 0; i < doorCap; i++) {
+    const el = doorElems[i];
     const tag = 'D' + (i + 1), tx = el.center.x, ty = el.center.y - 0.6;
     out.push({ type: 'CIRCLE', center: { x: tx, y: ty }, radius: 8, screenR: true, layer: 'A-ANNO-TEXT' });
     out.push({ type: 'TEXT', text: tag, startPoint: { x: tx, y: ty }, textHeight: 8, screenH: true, align: 'center', layer: 'A-ANNO-TEXT' });
     console.log('§TAG ' + tag + ': guid=' + el.guid.substring(0,8) + ' at (' + tx.toFixed(1) + ',' + ty.toFixed(1) + ')');
-  });
+  }
 
-  // ── 4. Window tags W1, W2… (sorted left→right, bottom→top) ──────────────
+  // ── 4. Window tags W1, W2… capped by maxWindowTags ────────────────────────
   const winElems = elements.filter(el =>
     (el.ifcClass === 'IfcWindow' || el.ifcClass === 'IfcWindowStandardCase') && el.center);
   winElems.sort((a, b) => Math.abs(a.center.x - b.center.x) > 0.1
     ? a.center.x - b.center.x : a.center.y - b.center.y);
-  winElems.forEach((el, i) => {
+  const winCap = Math.min(winElems.length, cfg.maxWindowTags);
+  if (winElems.length > winCap)
+    console.log('§ANNO_TAG_CAP windows capped=' + winCap + '/' + winElems.length + ' (maxWindowTags=' + cfg.maxWindowTags + ')');
+  for (let i = 0; i < winCap; i++) {
+    const el = winElems[i];
     const tag = 'W' + (i + 1), tx = el.center.x, ty = el.center.y + 0.6;
     out.push({ type: 'CIRCLE', center: { x: tx, y: ty }, radius: 8, screenR: true, layer: 'A-ANNO-TEXT' });
     out.push({ type: 'TEXT', text: tag, startPoint: { x: tx, y: ty }, textHeight: 8, screenH: true, align: 'center', layer: 'A-ANNO-TEXT' });
     console.log('§TAG ' + tag + ': guid=' + el.guid.substring(0,8) + ' at (' + tx.toFixed(1) + ',' + ty.toFixed(1) + ')');
-  });
-  console.log('§AUDIT TAGS: ' + doorElems.length + ' D-tags ' + winElems.length + ' W-tags → PASS');
+  }
+  console.log('§AUDIT TAGS: ' + doorCap + ' D-tags ' + winCap + ' W-tags → PASS');
 
   // ── 5. Section cut marker A-A (auto: mid-Y of building) ──────────────────
   let bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity;
@@ -47924,10 +48022,8 @@ function annotationEntities(elements) {
     const lx0 = bx0 - pad, lx1 = bx1 + pad;
     const circR = Math.max((bx1 - bx0) * 0.04, 0.35);
     out.push({ type: 'LINE', vertices: [{ x: lx0, y: secY }, { x: lx1, y: secY }], layer: 'A-ANNO-SECT' });
-    // Left circle + label
     out.push({ type: 'CIRCLE', center: { x: lx0, y: secY }, radius: circR, layer: 'A-ANNO-SECT' });
     out.push({ type: 'TEXT', text: 'A', startPoint: { x: lx0, y: secY }, textHeight: circR * 0.9, layer: 'A-ANNO-SECT', align: 'center' });
-    // Right circle + label
     out.push({ type: 'CIRCLE', center: { x: lx1, y: secY }, radius: circR, layer: 'A-ANNO-SECT' });
     out.push({ type: 'TEXT', text: 'A', startPoint: { x: lx1, y: secY }, textHeight: circR * 0.9, layer: 'A-ANNO-SECT', align: 'center' });
     console.log('§RENDER SECT layer=A-ANNO-SECT A-A at y=' + secY.toFixed(1) + ' x=[' + lx0.toFixed(1) + ',' + lx1.toFixed(1) + '] r=' + circR.toFixed(2));
@@ -48039,7 +48135,8 @@ async function generateFromDb() {
       }
       const elements = SectionCut.sectionCut(dbMain, dbLib, null, storeyName || null, sectionOpts);
       newEntities = sectionToEntities(elements);
-      newEntities = newEntities.concat(annotationEntities(elements));
+      const annoCfg = await getAnnoConfig();
+      newEntities = newEntities.concat(annotationEntities(elements, annoCfg));
 
       // Compute structure bbox from actual contour vertex coords (always world-correct).
       // Do NOT use el.bbox2d — it is 0,0,0,0 when elements_rtree is absent (fallback query).

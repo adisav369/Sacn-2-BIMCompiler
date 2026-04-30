@@ -1076,10 +1076,12 @@ test.describe('2D Dynamic Generation', () => {
     console.log(`§PW_2D_WB_FURN db=${dbFurnCount} rendered=${analysis.count} closed=${analysis.closed} rects=${analysis.rects}`);
     console.log(`§PW_2D_WB_FURN_LOG ${furnLog || 'none'}`);
 
+    // furnDetailRooms=1 (default) → only the largest room cluster is fully detailed.
+    // Rendered count ≤ dbFurnCount; every rendered item is a closed 4-pt rectangle.
     expect(analysis.count).toBeGreaterThan(0);
-    expect(analysis.count).toBe(dbFurnCount);            // one outline per DB furniture element
-    expect(analysis.closed).toBe(analysis.count);        // every outline is closed
-    expect(analysis.rects).toBe(analysis.count);         // every outline is a 4-point rectangle
+    expect(analysis.count).toBeLessThanOrEqual(dbFurnCount);
+    expect(analysis.closed).toBe(analysis.count);        // every rendered outline is closed
+    expect(analysis.rects).toBe(analysis.count);         // every rendered outline is a 4-pt rectangle
   });
 
   test('14.39 Door and window tags count matches DB elements (SH) @db @whitebox', async ({ page }) => {

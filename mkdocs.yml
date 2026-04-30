@@ -141,6 +141,7 @@ nav:
       - Getting Started: WorkOrderGuide.md
       - User Guide: USER_GUIDE.md
       - BIM Designer Guide: BIM_Designer_UserGuide.md
+      - 2D Plans Viewer: 2D_HTML_GUIDE.md
       - Back Office Guide: BackOfficeUserGuide.md
       - IFC Onboarding: IFC_ONBOARDING_RUNBOOK.md
       - Systems Installer: SYSTEMS_INSTALLER_GUIDE.md

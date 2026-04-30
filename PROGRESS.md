@@ -57,6 +57,11 @@
   - S239 DONE: Deep refactor — `full` branch. helpers.js, 18 traverse→0, 31 db.exec→dbQuery,
     4 SQL injections fixed, lazy-load navigate/wizard, sw.js versioning, minify script (44% reduction).
     Testing hierarchy: §-log primary, Playwright secondary. See `docs/TestArchitecture.md`.
+  - **S238n DONE (2026-04-30): Annotation density config + guide + docs deploy.** 6 tests PASS.
+    - `getAnnoConfig()`: localStorage → OCI remote → built-in defaults, no install needed
+    - Density control: `furnDetailRooms`, `maxFurnPerRoom`, `seatingThreshold`, hall aggregate bbox, tag caps
+    - `docs/2D_HTML_GUIDE.md`: user guide + §9 developer code structure section
+    - mkdocs.yml: 2D Plans Viewer added to Guides nav
   - **S238m DONE (2026-04-30): §25.6 remaining annotation features.** All whitebox-tested (12 key tests pass).
     - A-WALL-PATT hatch fills: solid fill behind wall outlines (ratio vs DXF = 0.94, 1:1 hatch per contour)
     - A-FURN furniture outlines: 4-point rectangle from element name dimensions (14/14 SH furniture)
