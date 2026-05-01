@@ -215,3 +215,5 @@ See `deploy/OCI_UPLOAD.md` for full procedure.
 - **web-ifc** — IFC parsing in Web Worker
 - **dxf-parser** — DXF file parsing for 2D plans
 - **GoatCounter** — privacy-friendly analytics (no cookies)
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

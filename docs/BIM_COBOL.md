@@ -2439,3 +2439,5 @@ DocValidate §15.6 — the predicate encapsulates the fallback-to-FK transition.
 *48,485 → 1,131 lines (42.8:1). Mathematical basis: CLT (Theorem 1) + Information Theory (Theorem 5).*
 *The Construction Programming Language*
 *March 2026*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

@@ -326,3 +326,5 @@ chain verifies it with millimetre precision.
 > score history, benchmark baselines, known gaps (resolved), testing code
 > description, and synthetic Rosetta Stone details are preserved in
 > [archive/TheRosettaStoneStrategy_full.md](archive/TheRosettaStoneStrategy_full.md).
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

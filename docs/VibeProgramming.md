@@ -335,3 +335,5 @@ The code was written by AI. The architecture was not. The proofs are mathematica
 ---
 
 *Built with [Claude Code](https://claude.ai/) (Anthropic) in ~190 sessions over 5 months. 1M elements compiled, 35 buildings, city-scale federation. Kuala Lumpur, 2025–2026.*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

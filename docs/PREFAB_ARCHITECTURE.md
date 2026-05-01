@@ -1547,3 +1547,5 @@ The cascade initially operates over the lower tree levels (room → set → leaf
 | material_ref | ⏳ Pending | Add material_ref to ad_product_dim + seed + compiler reads it | BOM furniture gets color |
 | G8-DX | ⏳ Deferred | Replace 40 NULL-bound LOCAL_MM rooms with IFC_GLOBAL_MM | G8-DX calibration |
 | AD Events | ⏳ Queued | SpatialRuleValidator, CalloutCascadeValidator | L5 compliance layer |
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

@@ -858,3 +858,5 @@ The _BOM.db is created later via Approve DocAction, not by the test.
 | W-FP-5 | No GEO_ fallback elements (G5 provenance) | SPEC |
 | W-FP-6 | TRIM: CW panels bounded by roof surface (P27 proof) | SPEC |
 | W-FP-7 | Compiled envelope within BOM envelope + 1m tolerance | SPEC |
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

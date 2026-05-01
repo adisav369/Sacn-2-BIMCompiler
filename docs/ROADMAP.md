@@ -615,3 +615,5 @@ Pre-installed plugins that prove the marketplace. All use the plugin API, no cor
 | 18 | PM sees all project costs on one page | S227 (live cost dashboard) |
 | 19 | Government handover from browser | S228 (COBie/IFC export) |
 | 20 | "What changed on Level 3?" | S229 (AI query on diff) |
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

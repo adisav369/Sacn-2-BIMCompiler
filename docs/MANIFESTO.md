@@ -657,3 +657,5 @@ After this manifesto:
 For the full academic treatment: **[BIMERPPaper.md](BIMERPPaper.md)**
 
 For market positioning and competitive landscape: **[StrategicIndustryPositioning.md](StrategicIndustryPositioning.md)**
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

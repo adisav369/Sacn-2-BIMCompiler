@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // semantic_enrichment.js — S228: Classify geometry into IFC semantics
 // PURE FUNCTIONS. No dependencies. Testable anywhere.
 // Implementing S228_import_format_to_db.md §File 1 — Witness: W-CLASSIFY

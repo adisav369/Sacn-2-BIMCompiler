@@ -244,3 +244,5 @@ seeds M_Product from the swap scenario) but not via the standard Rosetta Stone p
 
 **Fix needed:** Either (a) seed M_Product in the DM compile DB preparation step,
 or (b) make MetadataValidator skip M_Product checks for GENERATIVE entries.
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

@@ -455,3 +455,5 @@ schedule qto carbon asset safety  smooth nav
 5. **SMM2 work sections** — map IFC classes to CIDB standard work section numbering for client-facing BOQ
 6. **Editable Excel (server)** — Java backend generates .xlsx with formulas (`=qty × unit_rate`) for advanced users
 7. **REST endpoints** — `/api/boq/{building}/excel`, `/api/schedule/{building}/excel` (Phase 4 backend only)
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

@@ -129,3 +129,5 @@ Superseded docs live in `docs/archive/`. Key archived docs:
 | `BIMasBOMConcept.md` | [BBC.md](BOMBasedCompilation.md) §1 (dimension model merged) |
 | `ConstructionAsERP.md` | Content distributed: [MANIFESTO.md](MANIFESTO.md) §2 (entity registry) + [BBC.md](BOMBasedCompilation.md) §1 (iDempiere mapping) + [DATA_MODEL.md](DATA_MODEL.md) §1 (4-DB) + [ACTION_ROADMAP.md](ACTION_ROADMAP.md) (gaps) |
 | `VerbPatternArchitecture.md` | [BIM_COBOL.md](BIM_COBOL.md) §19 (verb detection, formats, results merged) |
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

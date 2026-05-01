@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // picking.js — Click-to-identify (raycaster), walk/wall state, pointer handlers
 
 // S233: Polyfill InstancedMesh.raycast for Three.js r128 (native in r132+)

@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // ifc_export_worker.js — S229: Browser IFC Export (STEP text builder)
 // Pure STEP/ISO-10303-21 text generation. No web-ifc dependency.
 // Input:  { elements[], transforms[], geometries[], meta{} }

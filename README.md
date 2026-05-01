@@ -4,7 +4,7 @@
 
 **[Construction is manufacturing. A building IS its Bill of Materials.](https://red1oon.github.io/BIMCompiler/)**
 
-[![License: GPL v2](https://img.shields.io/badge/License-GPL_v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Java 17+](https://img.shields.io/badge/Java-17+-orange.svg)](https://openjdk.org/)
 [![SQLite](https://img.shields.io/badge/Database-SQLite-003B57.svg)](https://www.sqlite.org/)
 [![Tests](https://img.shields.io/badge/Tests-392_GREEN-brightgreen.svg)](#project-stats)
@@ -154,7 +154,7 @@ Led [ADempiere](https://www.adempierebr.com/User:Red1) (2006), paved the way for
 
 **Alpha v1.0** — April 2026
 
-Code: GPL v2 · Documentation: CC BY-SA 4.0
+Code: MIT · Documentation: CC BY-SA 4.0
 
 Copyright (c) 2026 Redhuan D. Oon. All rights reserved.
 

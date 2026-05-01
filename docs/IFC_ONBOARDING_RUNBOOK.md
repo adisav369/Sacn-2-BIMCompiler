@@ -462,3 +462,5 @@ Review and adjust rule IDs before applying. See [WorkOrderGuide.md](WorkOrderGui
 > [BIM_COBOL.md](BIM_COBOL.md) — verb catalog (77 verbs) |
 > [TestArchitecture.md](TestArchitecture.md) — G1-G6 gate definitions |
 > [ACInstituteAnalysis.md](ACInstituteAnalysis.md) — worked example (699 elements, 5 storeys)
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

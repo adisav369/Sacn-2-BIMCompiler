@@ -449,3 +449,5 @@ GROUP BY discipline;
 -- Floor area (if IfcSpace present)
 SELECT name, storey, area FROM elements_meta WHERE ifc_class='IfcSpace';
 ```
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

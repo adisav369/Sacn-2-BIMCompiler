@@ -526,3 +526,5 @@ earliest end-to-end proof of the full pipeline.
 [2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §12–§13](2D_LAYOUT.md) (Math foundation, 2D23D) |
 [ProjectOrderBlueprint.md §1](ProjectOrderBlueprint.md) (Exception-based ordering) |
 [TestArchitecture.md](TestArchitecture.md) (G1-G6 gates, Rosetta Stone coverage)*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

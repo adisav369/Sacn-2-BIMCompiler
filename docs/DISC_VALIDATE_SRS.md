@@ -955,3 +955,5 @@ in one session once Hospital HO_001–HO_002 are complete and the pattern is pro
 TheRosettaStoneStrategy.md (discipline vocabulary), CONCEPTUAL BLUEPRINT.txt (MEP AttributeSet taxonomy),
 DocAction_SRS.md §1 (processIt lifecycle), DocValidate.md §13 (three-tier cascade),
 BIM_COBOL.md §4.6 (joining verbs)*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

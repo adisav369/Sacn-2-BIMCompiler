@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // walk.js — Walk Mode (GPS blue dot, step detection, wall X-ray)
 function setupWalk(A) {
   // Walk Mode compass/tilt state

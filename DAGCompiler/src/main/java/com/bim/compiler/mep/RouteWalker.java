@@ -1,3 +1,8 @@
+/*
+ * BIM Intent Compiler — DAGCompiler Pipeline
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 package com.bim.compiler.mep;
 
 // Implementing DISC_VALIDATION_DB_SRS.md §6.12.3 §3 — Witness: W-PATTERN-CW, W-PATTERN-SP

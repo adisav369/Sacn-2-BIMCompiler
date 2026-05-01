@@ -261,3 +261,5 @@ Claude Code (Anthropic's AI coding assistant) served as pair-programming partner
 ---
 
 Copyright 2025-2026 Redhuan D. Oon. All rights reserved. This paper may be freely distributed for academic, research, and conference purposes with attribution. The software described herein is open source under GPL v2.
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // s211_test.js — NLP voice command behavioral tests
 // Tests nlp.js code BEHAVIOR: pattern matching, SQL generation, voice feature detection
 // Run: node deploy/dev/s211_test.js

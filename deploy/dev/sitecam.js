@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // sitecam.js — Site Camera (mobile site inspection), photo composite, markup, voice notes
 function setupSitecam(A) {
   // Remove text/voice button from toolbar (user types in WhatsApp after sharing)

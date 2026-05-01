@@ -137,3 +137,5 @@ this tree. `grep SPATIAL-REPORT logs/pipeline_SH*.log` for spatial accuracy.
 
 *SH is the hello-world proof. If SH breaks, nothing else can be trusted.
 See `BOMBasedCompilation.md` §3.3 (EN-BLOC = HelloWorld).*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

@@ -794,3 +794,5 @@ See [TheRosettaStoneStrategy.md §Cross-Domain](TheRosettaStoneStrategy.md#cross
 - `prompts/40_strategic_review.md` — Strategic review (Appendices A-C, local only)
 - [bSI-InfraRoom/IFC-Tunnel-Deployment](https://github.com/bSI-InfraRoom/IFC-Tunnel-Deployment) — 60+ tunnel IFC files
 - [bSI-InfraRoom/IFC-infra-unit-test](https://github.com/bSI-InfraRoom/IFC-infra-unit-test) — Earthworks, marine, drainage IFC4X3
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

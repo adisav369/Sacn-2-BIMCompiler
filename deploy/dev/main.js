@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // main.js — initViewer() orchestrator: creates APP, calls each module's setup, starts render loop
 // DEV version — adds setupNlp (S211 voice command / NLP query)
 function initViewer() {
@@ -125,7 +130,11 @@ function initViewer() {
     window.open(url, '_blank');
   };
 
-  // Render loop
+  // Render loop — on-demand: only render when camera moves or streaming is active
+  let _needsRender = true;
+  APP.controls.addEventListener('change', () => { _needsRender = true; });
+  APP.markDirty = () => { _needsRender = true; };
+
   function animate() {
     requestAnimationFrame(animate);
     if (!APP.walkModeActive) {
@@ -134,14 +143,17 @@ function initViewer() {
     }
     APP.streamTick();
     APP.walkModeGpsTick();
-    APP.updateMeasureLabels();
-    // Hide ground when camera goes below it (allows viewing building from underneath)
-    if (APP.ground && APP.ground.visible) {
-      APP.ground.material.visible = APP.camera.position.y > APP.ground.position.y;
-    }
     // Device orientation LAST — nothing may overwrite the quaternion after this
     if (APP.walkModeActive) APP.walkOrientTick();
-    APP.renderer.render(APP.scene, APP.camera);
+    const streaming = APP.streamedCount < APP.totalElements && APP.totalElements > 0;
+    if (_needsRender || streaming || APP.walkModeActive || APP.walkMode) {
+      APP.updateMeasureLabels();
+      if (APP.ground && APP.ground.visible) {
+        APP.ground.material.visible = APP.camera.position.y > APP.ground.position.y;
+      }
+      APP.renderer.render(APP.scene, APP.camera);
+      _needsRender = false;
+    }
   }
 
   // Go

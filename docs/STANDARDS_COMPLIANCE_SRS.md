@@ -623,3 +623,5 @@ Audited by Claude against current `master`. Each claim rated:
 class names, method signatures, and record types from the current codebase.
 Implementation requires: 1 new stage class, 1 new record, 2 fields added to
 existing classes, 1 migration file, and seed data rows.
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

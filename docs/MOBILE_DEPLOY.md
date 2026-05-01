@@ -508,3 +508,5 @@ All leverage the existing stack: phone sensors + BIM DB + Walk/Site mode.
 |------|----------|
 | `deploy/buildings/*.db` | 31 buildings × 2 DBs (extracted + library) |
 | `docs/MOBILE_DEPLOY.md` | This spec |
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

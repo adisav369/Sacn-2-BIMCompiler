@@ -260,3 +260,5 @@ BonsaiBIMDesigner
   ├── sqlite-jdbc
   └── gson
 ```
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

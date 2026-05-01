@@ -682,3 +682,5 @@ BOMWalker's assumption that LEAF nodes under FLOOR BOMs produce placements. Infr
 roads/rails have elements at different hierarchy levels.
 
 **No hardcoded RE/CO/IN assumptions found in the pipeline** — the issue is structural, not conditional.
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

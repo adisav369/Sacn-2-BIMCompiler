@@ -459,3 +459,5 @@ See `reference/residential/PlaywrightAnalysis.md` §Playwright Scope for full bo
 | Rosetta Stone fleet | 116/157 gates PASS | `./scripts/run_RosettaStones.sh` | Pipeline proof |
 
 *See [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) — the gates are a key differentiator in the competitive scorecard.*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

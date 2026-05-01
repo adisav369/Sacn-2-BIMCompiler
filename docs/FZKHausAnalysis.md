@@ -730,3 +730,5 @@ Spec: `docs/SourceCodeGuide.md` §Ch4.Step5, `docs/WorkOrderGuide.md` §Step 7
 
 *FK is the thermal proof-of-concept. If FK compiles with U-values flowing end-to-end,
 it unlocks the Assembly Builder's energy compliance path for all future models.*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

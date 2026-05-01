@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // scene.js — Three.js scene, camera, controls, lighting, ground
 function setupScene(A) {
   const canvas = document.getElementById('canvas');
@@ -40,6 +45,10 @@ function setupScene(A) {
   controls.rotateSpeed = 0.8;
   controls.keyPanSpeed = 20;
   A.controls = controls;
+
+  // Drop to 1x pixel ratio during pan for fill-rate relief, restore on stop
+  controls.addEventListener('start', () => renderer.setPixelRatio(1.0));
+  controls.addEventListener('end',   () => renderer.setPixelRatio(window.devicePixelRatio));
 
   // Shift+Left = pan (for trackpad users without middle/right mouse)
   canvas.addEventListener('pointerdown', (e) => {

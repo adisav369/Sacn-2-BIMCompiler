@@ -554,3 +554,5 @@ Audited by Claude against current `master`.
 **Data layer complete. Rendering layer needs building. iDempiere integration deferred.**
 Spec now uses exact DAO record types and method signatures from the codebase.
 Phase A templates can be coded directly from §4 without further research.
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

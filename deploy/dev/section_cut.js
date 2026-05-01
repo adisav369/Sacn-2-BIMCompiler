@@ -1,4 +1,9 @@
 /**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
+/**
  * section_cut.js — Browser port of Python mesh section cut engine.
  * Slices triangle meshes at a horizontal cut plane Z=cutZ, producing 2D contours.
  *

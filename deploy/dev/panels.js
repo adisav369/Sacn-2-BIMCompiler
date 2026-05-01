@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // panels.js — Panel collapse, storey/disc filters, building list, HUD, swipe
 function setupPanels(A) {
   // Panel collapse
@@ -27,9 +32,9 @@ function setupPanels(A) {
       storeys.map(s => `<button class="${A.activeStoreyFilter === s ? 'active' : ''}"
         onclick="filterStorey('${s}')">${s}</button>`).join('');
     panel.style.display = 'block';
-    if (window.innerWidth <= 600) {
-      setTimeout(() => { const b = document.getElementById('storey-body'); if (b) b.classList.add('collapsed'); }, 5000);
-    }
+
+    setTimeout(() => { const b = document.getElementById('storey-body'); if (b) b.classList.add('collapsed'); }, 5000);
+
   };
 
   A.filterStorey = function(storey) {
@@ -71,9 +76,9 @@ function setupPanels(A) {
         ${d} <span style="color:#888;font-size:10px">${cnt.toLocaleString()}</span></button>`;
     }).join('');
     panel.style.display = 'block';
-    if (window.innerWidth <= 600) {
-      setTimeout(() => { const b = document.getElementById('disc-body'); if (b) b.classList.add('collapsed'); }, 4000);
-    }
+
+    setTimeout(() => { const b = document.getElementById('disc-body'); if (b) b.classList.add('collapsed'); }, 4000);
+
   };
 
   A.toggleDisc = function(disc) {

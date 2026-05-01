@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // variation_order.js — S222 Variation Order Excel with full cost engine
 // Uses ExcelJS (already loaded by excel.js in viewer)
 // Formulas: FIDIC Clause 12 valuation + AACE change order costing + EVM variance

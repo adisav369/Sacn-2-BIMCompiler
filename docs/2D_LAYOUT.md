@@ -156,3 +156,5 @@ Full technical spec: `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` (§12a Layout E
 mesh section cut algorithm, JKR/ISO conventions).
 
 **DXF/SVG output:** `2D_Layout/output/` — floor plan, roof plan, 4 elevation DXFs + SVG proofs.
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

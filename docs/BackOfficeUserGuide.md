@@ -459,3 +459,5 @@ Run: `mvn test -pl BIMBackOffice`
 [INSTALLER_SPEC.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/INSTALLER_SPEC.md) (installer packaging) |
 [ACTION_ROADMAP.md](ACTION_ROADMAP.md) (report engine roadmap) |
 [MANIFESTO.md](MANIFESTO.md) (iDempiere mapping)*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

@@ -1,4 +1,9 @@
 /**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
+/**
  * grid_dims.js — Grid Detection and Dimension Generation from BIM Database
  *
  * API: window.GridDims = { detectGrids, generateDimensions, renderGridEntities }

@@ -511,3 +511,5 @@ No new compliance infrastructure needed.
 ---
 
 *Status: Phase 1 DONE (S99-forge). ForgeEngine + 5 starter pieces + ForgeVerb + W-FORGE-1..8. RebarCageForge added (0a43a674): MS 1347:2020, BS 8110, EC2 standards; Java enums ConcreteGrade, ExposureClass, BarDiameter, CoverRequirements; W-FORGE-9..11. Phases 2-5 pending.*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

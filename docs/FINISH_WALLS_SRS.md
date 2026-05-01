@@ -416,3 +416,5 @@ Declare first, prove counts, then a separate session for wall placement.
 [2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §12](2D_LAYOUT.md) (floor plan projection) |
 [DISC_VALIDATION_DB_SRS.md §6.12.3](DISC_VALIDATION_DB_SRS.md) (discipline isolation) |
 [TestArchitecture.md](TestArchitecture.md) (G1-G6 gates)*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

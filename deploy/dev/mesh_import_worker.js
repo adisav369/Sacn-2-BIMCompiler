@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // mesh_import_worker.js — S228: Parse non-IFC 3D files via Three.js loaders
 // Input:  postMessage({ arrayBuffer, filename, ext })
 // Output: same contract as import_worker.js (IFC worker)

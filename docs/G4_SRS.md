@@ -870,3 +870,5 @@ grid pitch formula) — both addressable as data changes, no schema changes need
 [MANIFESTO.md](MANIFESTO.md) §2 (C_Order model) |
 [TACK_FIX_SPEC.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/TACK_FIX_SPEC.md) (pre-requisite fix) |
 [ACTION_ROADMAP.md](ACTION_ROADMAP.md) Phase G (task list)*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

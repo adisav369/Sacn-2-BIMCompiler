@@ -643,3 +643,5 @@ if piece type count stays small. [GEOMETRY_FORGE_SRS.md](GEOMETRY_FORGE_SRS.md) 
 ---
 
 *Status: Phases 1, 2, 7 DONE (ForgeEngine, ForgeFabrication, RebarCageForge). Phases 3–6, 8 SPEC ONLY.*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

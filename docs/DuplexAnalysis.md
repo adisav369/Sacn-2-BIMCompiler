@@ -820,3 +820,5 @@ carried over. Even with Problem 1 fixed, sandbox Duplex has no transparency data
 **Fix required:** The sandbox merge script (`bake_all_sandbox.sh` or equivalent)
 must copy `surface_styles` rows per building during merge. Until then, bake
 Duplex from its native DB (`Duplex_extracted.db`) for correct transparency.
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

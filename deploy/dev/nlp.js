@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // nlp.js — Voice command + NLP query DSL (S211)
 // Standalone module. No dependencies on walk.js, sitecam.js, or any other module.
 // Uses Web Speech API (browser-native, no server, no cost) + keyword intent matching.

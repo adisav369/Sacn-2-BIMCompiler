@@ -30,3 +30,5 @@ See commit `7c9be97a` — `extract.py --guid-prefix DISC --append`.
 1. Run extraction on `Ifc4_Revit_Federated.ifc` with GUID prefixing
 2. Verify storey mapping in YAML matches IFC storeys
 3. Run full pipeline to get GEO proof output
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

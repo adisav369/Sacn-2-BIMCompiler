@@ -1069,3 +1069,5 @@ Standard gate tests (G1-G6, C8/C9) remain the production verification layer.
 ---
 
 *End of EYES_SRS.md*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

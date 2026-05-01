@@ -413,3 +413,5 @@ real furniture, real spaces, and massive window repetition.**
 
 *IN is the verb compression proof-of-concept. If 196 windows + 55 chairs + 52 desks
 compress to ~10 TILE patterns, the BOM factorization ratio will be the highest yet.*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

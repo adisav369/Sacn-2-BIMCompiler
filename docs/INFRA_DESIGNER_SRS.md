@@ -732,3 +732,5 @@ VerbDetector cascade for all infrastructure.
 *Phases I-1 + I-2 + I-3 DONE. 38 witnesses GREEN on 689-point survey terrain.*
 *Contour-following: 2.9km winding road, R=17m–1037m curves, heading 221° sweep.*
 *204/204 tests GREEN. Rosetta Stones BR 10/10, RD 4/4, RL 4/4 undisturbed.*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // helpers.js — Shared scene + DB utilities (S239)
 // Prevents: 29x scene.traverse duplication, raw db.exec without null-guard,
 //           repeated InstancedMesh filter boilerplate across panels/picking/walk/nlp

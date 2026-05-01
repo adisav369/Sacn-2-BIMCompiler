@@ -422,3 +422,5 @@ grep LOD-ROTATE logs/pipeline_*.log  # B-side mesh rotation proof
 grep "Stage.*completed" logs/pipeline_*.log  # Stage timings
 ./scripts/rosetta_trace.sh <log> <output.db> [ref.db]  # Cross-box correlation
 ```
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

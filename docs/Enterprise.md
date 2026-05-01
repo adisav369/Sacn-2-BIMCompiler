@@ -869,3 +869,5 @@ on demand from the BIM Compiler.
 - Blender 4.0+ required (GPU instancing API)
 
 **→ Implementation prompt:** to be written as a new S1xx after S162 is live.
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

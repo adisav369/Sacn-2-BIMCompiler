@@ -666,3 +666,5 @@ migration/
 
 *Spec citation: BIM_Designer.md §18.2 Principle 4 + §18.5 MAKE path.
 Traceability: TestArchitecture.md §Traceability Matrix — G-7 row to be added after implementation.*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

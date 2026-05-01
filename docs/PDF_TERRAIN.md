@@ -81,3 +81,5 @@ real-world site engineering:
 
 See [INFRA_DESIGNER_SRS.md](INFRA_DESIGNER_SRS.md) for the infrastructure
 designer that consumes terrain data (4 snap modes: ON_SURFACE, ABOVE, BELOW, PIER).
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

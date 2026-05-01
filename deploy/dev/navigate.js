@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // navigate.js — S233: Find & Navigate — indoor wayfinding
 // Implementing S233_find_and_navigate.md — Witness: W-NAV
 // Dependencies: walk.js (findNearestDoorPosition, walkStoreyLevels, advanceWalkStep),

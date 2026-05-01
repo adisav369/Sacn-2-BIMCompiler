@@ -3539,3 +3539,5 @@ No viewer action writes back to any pipeline DB.
 
 See [DATA_MODEL.md](DATA_MODEL.md) §4 (BlendMeshResolver) for the redirect table schema and diagnostic procedure.
 
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

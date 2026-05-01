@@ -713,3 +713,5 @@ VERIFIED ✓ (or drift detected ✗)
 ### IFC Type
 - Walls stored as `IfcPlate` (not IfcWall) — SQL must include IfcPlate
 - Duplex party walls ARE `IfcWall` (not IfcPlate) — assertion uses `IfcWall:Party`
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

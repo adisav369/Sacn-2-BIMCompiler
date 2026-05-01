@@ -427,3 +427,5 @@ result flips to UNCALIBRATED.
 [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9 (LOD resolution chain) |
 [TE_MINING_RESULTS.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/TE_MINING_RESULTS.md) (M1 FP spacing, M4 ELEC spacing) |
 [NonDisturbanceTest.java](https://github.com/red1oon/BIMCompiler/blob/master/BonsaiBIMDesigner/src/test/java/com/bim/designer/NonDisturbanceTest.java) (complementary gate)*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

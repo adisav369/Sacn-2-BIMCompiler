@@ -284,3 +284,5 @@ sqlite3 DAGCompiler/lib/input/LTU_AHouse_extracted.db \
 | `DAGCompiler/python/extractIFCtoDB.py` | Pristine extractor — single IFC → DB | **NEVER** |
 | `scripts/extract_merge_disciplines.py` | Per-discipline wrapper with `--disc-map` | Yes — safe to extend |
 | `scripts/fix_proxy_discipline.py` | Post-hoc discipline retag by filename | Yes |
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

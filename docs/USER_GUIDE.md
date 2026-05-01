@@ -718,3 +718,5 @@ sqlite3 DAGCompiler/lib/output/samplehouse.db \
 
 *User Guide v1.0.0 — February 2026*
 *4 buildings: SampleHouse 100%, Duplex 100%, Terminal ~100%, TB-LKTN 58 generative*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

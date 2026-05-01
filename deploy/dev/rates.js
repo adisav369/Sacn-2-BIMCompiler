@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // rates.js — Single source of truth for CIDB 2024 cost data
 // Used by: boq_charts.html, variation_order.js, nlp.js
 // Do NOT duplicate these constants — import this file instead.

@@ -1437,3 +1437,5 @@ Currently no verb encoding for IFC-native array repetition — these also fall t
 3. Should IfcMappedItem become a distinct verb (INSTANCE) or fold into AGGREGATE?
 
 *See [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) for how BOM compilation positions this project in the industry.*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

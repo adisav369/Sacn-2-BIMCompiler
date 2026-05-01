@@ -198,3 +198,5 @@ edit_changelog       →  patch .blend             →  overlay instance
 
 The DB is always right. The .blend is always regenerable.
 The viewer is always fast.
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

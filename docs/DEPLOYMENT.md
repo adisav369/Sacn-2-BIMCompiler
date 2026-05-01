@@ -220,3 +220,5 @@ run_RosettaStones.sh [classify_XX.yaml]
 
 ### Incident Log
 - **S60-S2:** `backup/` (1.5GB) accidentally committed → `git filter-repo --invert-paths --path backup/` to strip from history. Added to `.gitignore`.
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

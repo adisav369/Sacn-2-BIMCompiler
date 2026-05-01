@@ -1,3 +1,6 @@
+# BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+# Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+# SPDX-License-Identifier: MIT
 #!/usr/bin/env python3
 """
 nD Excel Output Test — runs Federation pipeline on any DB, saves Excel to output folders.

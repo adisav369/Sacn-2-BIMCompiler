@@ -240,3 +240,5 @@ Key functions and where to find them (by section comment in the source):
 ---
 
 *See also: [2D Layout Specification](2D_LAYOUT.md) · [BIM Designer Browser Guide](BIM_Designer_Browser.md) · [SQLite3D Schema](SQLite3D_Schema.md)*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

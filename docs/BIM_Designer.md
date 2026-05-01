@@ -3169,3 +3169,5 @@ iDempiere instance for procurement, invoicing, and project accounting.
 [BIM Trends 2026](https://www.united-bim.com/5-innovative-trends-shaping-the-future-of-bim-technology/) |
 [Parametric BIM Libraries](https://www.sciencedirect.com/science/article/pii/S0926580524006332)*
 
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

@@ -66,3 +66,5 @@ baked .blend files (1.8GB total), save-post handlers, and DLOD auto-linker.
 S195-S197 replaced it entirely with Direct DB Streaming. The baked/ directory
 and library.blend have been deleted. See `prompts/S193_dlod_auto_linker.md`
 §Historical Note for details.
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

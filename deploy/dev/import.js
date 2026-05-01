@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // import.js — Multi-Format Import: IFC + DAE/OBJ/GLB/3DS/FBX/STL
 // S220: IFC import. S228: mesh format support via semantic enrichment.
 

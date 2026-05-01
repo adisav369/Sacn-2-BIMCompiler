@@ -2094,3 +2094,5 @@ does translation (`auto_enh2xyz`) but not rotation.
 [`bim_architecture_viz.html`](https://github.com/red1oon/BIMCompiler/blob/master/database/bim_architecture_viz.html) (4-DB architecture) |
 [`LAST_MILE_PROBLEM.md`](LAST_MILE_PROBLEM.md) (Gap 6: verb step-uniformity) |
 [`BIM_COBOL.md`](BIM_COBOL.md) (verb taxonomy + data flow)
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

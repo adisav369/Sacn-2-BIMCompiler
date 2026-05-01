@@ -1,3 +1,8 @@
+/*
+ * BIM Intent Compiler — DAGCompiler Pipeline
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 package com.bim.compiler.contract;
 
 import com.bim.compiler.dsl.BuildingRegistry;

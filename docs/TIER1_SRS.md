@@ -764,3 +764,5 @@ The same DAO serves both UI and back-office:
 *Architecture: Java DAO (solid) + thin bridge (ndjson) + light panel (Python)*
 *Cross-references: StrategicIndustryPositioning.md, BlenderBridge.md*
 *CIDB rates: Federation addon boq/comprehensive_boq_export.py → M_Product columns*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

@@ -1989,3 +1989,5 @@ Sources:
 - [Australia Common House Room Sizes](https://www.thirdistudio.com.au/What_Are_Common_House_Room_Sizes.html)
 - [Singapore BCA Codes](https://www1.bca.gov.sg/about-us/news-and-publications/publications-reports/codes-acts-and-regulations)
 - [European Housing Spaces Comparison (MDPI)](https://www.mdpi.com/1660-4601/18/8/4278)
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

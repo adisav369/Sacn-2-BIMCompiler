@@ -693,3 +693,5 @@ The pattern — extract spatial motifs from solved structures, compile new struc
 *Correspondence: red1org@gmail.com*
 *Code and evidence: https://github.com/red1oon/BIMCompiler*
 *Documentation: https://red1oon.github.io/BIMCompiler/*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

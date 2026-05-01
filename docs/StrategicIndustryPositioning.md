@@ -349,3 +349,5 @@ product catalogs, jurisdiction rules, format importers, and test buildings.
 <span id="ref11">[11]</span> Autodesk. "Industrialized Construction." — "Applies the discipline and systematized fabrication process of manufacturing to the design and build process... as consistent and replicable as widgets rolling off a factory assembly line." [Autodesk Emerging Tech](https://www.autodesk.com/design-make/emerging-tech/industrialized-construction)
 
 <span id="ref12">[12]</span> Olanrewaju, O.I. *et al.* "Quantifying the influence of BIM adoption." *Automation in Construction* 161, 2024. — Notes "a significant gap between research and industry practice" and that the industry "still lacks its own quantification methodology for BIM benefits." [ScienceDirect](https://www.sciencedirect.com/science/article/pii/S2590123024008107)
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

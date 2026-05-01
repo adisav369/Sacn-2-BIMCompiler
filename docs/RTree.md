@@ -451,3 +451,5 @@ BIM has been doing neither. Until now.
     <br><a href="https://youtu.be/J2MP_q63BNU">Watch on YouTube</a>
   </p>
 </div>
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

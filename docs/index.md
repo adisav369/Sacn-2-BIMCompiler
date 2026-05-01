@@ -196,3 +196,5 @@ mvn compile -q                              # Compile all modules
 | Walk to any element indoors | [Find & Navigate — Indoor Wayfinding](RouteTemplate.md) |
 
 <div style="clear: right;"></div>
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

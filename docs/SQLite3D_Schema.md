@@ -616,3 +616,5 @@ INSERT INTO project_metadata VALUES ('schema_version', '1.0');
 ```
 
 Breaking changes increment the major version. Additive changes (new tables, new nullable columns) increment the minor version. A viewer must reject DBs with a higher major version than it understands.
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

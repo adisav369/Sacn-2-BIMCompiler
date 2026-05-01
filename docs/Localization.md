@@ -354,3 +354,5 @@ The landing page loads `locale_loader.js` at the bottom. All translatable text u
 - A future version will separate language preference from currency/rate selection (e.g. English UI with Malaysian Ringgit rates)
 - Rate data is illustrative — not authoritative for production cost estimation
 - 18 locales ship with ~300 keys each (UI + BOQ + 4D/5D + landing)
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

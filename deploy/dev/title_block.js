@@ -1,4 +1,9 @@
 /**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
+/**
  * title_block.js — Title Block, Scale Bar, North Arrow for Browser 2D Plans
  *
  * Extracts: building name from URL param / DB, storey name from storey selector.

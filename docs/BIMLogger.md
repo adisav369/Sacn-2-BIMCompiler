@@ -162,3 +162,5 @@ diff <(grep '\[GATE\]' logs/pipeline_SH_20260319_*.log) \
 | BonsaiBIMDesigner | DesignerServer | TODO | Wire for Design Mode session logging |
 
 Remaining: DesignerServer (BonsaiBIMDesigner) — wire for Design Mode session logging.
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

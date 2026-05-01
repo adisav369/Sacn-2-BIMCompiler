@@ -341,3 +341,5 @@ demonstrable edge over any generic quantity surveyor tool.
 Hospital is the fleet's first large-scale healthcare model and the first with a dedicated
 sprinkler network of this scale (13,490 SPR elements vs TE's 979 SP elements).
 It will become the primary FP/MEP test model once onboarded.
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

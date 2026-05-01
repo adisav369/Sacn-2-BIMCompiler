@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // scene_to_db.js — S228: Convert parsed 3D scene → DB contract
 // Depends: SemanticEnrichment (from semantic_enrichment.js)
 // Implementing S228_import_format_to_db.md §File 2 — Witness: W-SCENEDB

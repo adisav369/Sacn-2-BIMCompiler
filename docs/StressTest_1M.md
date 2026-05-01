@@ -128,3 +128,5 @@ by not loading meshes at all — wireframes from the spatial index, mesh on dema
 - `scripts/build_sandbox_1M.py` — city builder
 - `scripts/pipeline_library.sh` — extraction pipeline
 - [MANIFESTO.md §The Backend](MANIFESTO.md#the-backend--why-no-framework) — architecture philosophy: OS-level parallelism, compile-once, linked .blend
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

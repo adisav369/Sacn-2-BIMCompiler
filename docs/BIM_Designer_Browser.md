@@ -877,3 +877,5 @@ oci os object put --bucket-name bim-ootb --file deploy/sandbox/tools.js --name t
 Filter in F12 Console by tag (e.g. `[S209]`) to diagnose issues.
 
 *See [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) for competitive landscape and market positioning.*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

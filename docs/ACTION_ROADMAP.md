@@ -166,3 +166,5 @@ See [MANIFESTO.md](MANIFESTO.md) for the full architecture rationale, [RTree.md]
 | **RTree viewer** | [RTree.md](RTree.md) — technology, architecture, streaming design |
 | **Academic paper** | [SPATIAL_COMPILATION_PAPER.md](SPATIAL_COMPILATION_PAPER.md) |
 | **Strategic positioning** | [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) |
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

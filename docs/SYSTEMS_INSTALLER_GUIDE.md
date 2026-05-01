@@ -675,3 +675,5 @@ sqlite3 ./library/ERP.db < migration/DV008_infra_rail_rules.sql
 *For the project overview paper, see [BIMERPPaper.md](BIMERPPaper.md).*
 *For the end-user installer specification, see [INSTALLER_SPEC.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/INSTALLER_SPEC.md).*
 *For the WAN/Docker deployment guide, see [DEPLOYMENT.md](DEPLOYMENT.md).*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

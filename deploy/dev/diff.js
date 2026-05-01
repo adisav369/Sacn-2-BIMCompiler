@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // diff.js — S222 Incremental Diff: GUID set diff, change_log, colour overlay
 // Loaded by viewer index.html after streaming.js
 

@@ -611,3 +611,5 @@ residential orders reuse fully proven code (SH/DX already gate at 8/8 PASS).
 ---
 
 *Implementation history (Sessions 0-F, all DONE) archived in git history.*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

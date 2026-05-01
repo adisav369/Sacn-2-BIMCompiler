@@ -375,3 +375,5 @@ When you can comfortably navigate, search, and stream IFC models:
 
 *Built on Blender, Bonsai, IfcOpenShell, and SQLite.
 All open source. All free. Compile once, query forever.*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

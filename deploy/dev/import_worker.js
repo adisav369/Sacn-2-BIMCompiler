@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // import_worker.js — Web Worker: parse IFC via web-ifc, extract to sql.js DBs
 // Runs off main thread to avoid UI freeze.
 // Input:  postMessage({ arrayBuffer, filename })

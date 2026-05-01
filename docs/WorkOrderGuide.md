@@ -913,3 +913,5 @@ After onboarding, `run_RosettaStones.sh` includes the new building automatically
 Review the generated `classify_XX.yaml` and commit.
 
 Full guide: [`IFC_ONBOARDING_RUNBOOK.md`](IFC_ONBOARDING_RUNBOOK.md).
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

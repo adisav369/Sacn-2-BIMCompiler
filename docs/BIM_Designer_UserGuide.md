@@ -979,3 +979,5 @@ Federation addon: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federati
 
 ---
 *v1.0 — 2026-03-23, session 60. Tabs aligned to §30.3, BOM tree fixed, Bonsai 10-item flow verified, federation gap analysis completed.*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

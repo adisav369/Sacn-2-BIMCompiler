@@ -915,3 +915,5 @@ Already tracked as untracked file: `migration/V005_add_depends_on.sql`.
 [BOMBasedCompilation.md](BOMBasedCompilation.md) §3-4 (tack, BUFFER) |
 [TestArchitecture.md](TestArchitecture.md) (G1-G6 gates, traceability) |
 [V004_mined_rules.sql](https://github.com/red1oon/BIMCompiler/blob/master/migration/V004_mined_rules.sql) (seeded rules)*
+
+*Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*
