@@ -33,6 +33,8 @@
 - **Mobile GPS site camera** — compass, QR, BIM PiP, TrueNorth alignment, measure, section cut, issue log.
 - **BOQ / 5D Cost** — ExcelJS, FIDIC Clause 12, locale support, 15 locale files.
 - **InstancedMesh performance** — 85-95% draw call reduction. Clinic: 16K → 729 draws.
+- **IFC round-trip** — browser IFC export (S229): DB → ifc_export_worker.js → .ifc STEP download. IndexedDB is master record; IFC is exchange format. Versioned DB (wizard modifications) preserved through export.
+- **Building cards** — per-import cards with Open / IFC / Delete buttons. Each card shows element count, discipline bars, format badge. Versioned DB survives wizard edits.
 - **4D scheduling** — concept proven, linked to project task dates.
 - **iDempiere ERP integration** — concept proven, REST layer identified.
 - **Java pipeline gates** — 9-gate RosettaStone system, 21 buildings, 116/157 PASS.
