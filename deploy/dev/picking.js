@@ -142,19 +142,45 @@ function setupPicking(A) {
       const meta = A._instanceMeta[hit.object.id][hit.instanceId];
       if (meta) guid = meta.guid;
     }
-    // S232: Merged mesh — no individual guid, show group info
+    // S232: Merged mesh — resolve nearest element by hit-point distance in DB
     if (!guid && hit.object.userData.isMerged) {
+      // Convert Three.js hit point back to IFC coordinates
+      const hp = hit.point;
+      const ix = hp.x + A.modelOffset.x;
+      const iy = -hp.z + A.modelOffset.y;
+      const iz = hp.y + A.modelOffset.z;
       const ud = hit.object.userData;
-      document.getElementById('info-class').textContent = `Merged group (${ud.mergedCount} elements)`;
-      document.getElementById('info-name').textContent = '—';
-      document.getElementById('info-guid').textContent = '—';
-      document.getElementById('info-building').textContent = A.activeBuilding || '—';
-      document.getElementById('info-storey').textContent = ud.storey || '—';
-      document.getElementById('info-disc').textContent = ud.disc || '—';
-      document.getElementById('info-material').textContent = '—';
-      document.getElementById('info-panel').style.display = 'block';
-      console.log(`§PICK merged group storey=${ud.storey} disc=${ud.disc} count=${ud.mergedCount}`);
-      return;
+      try {
+        const near = A.dbQuery(`
+          SELECT m.guid,
+            (t.center_x - ?) * (t.center_x - ?) +
+            (t.center_y - ?) * (t.center_y - ?) +
+            (t.center_z - ?) * (t.center_z - ?) AS dist2
+          FROM elements_meta m
+          JOIN element_transforms t ON t.guid = m.guid
+          WHERE m.storey = ? AND m.discipline = ?
+          ORDER BY dist2 ASC LIMIT 1
+        `, [ix, ix, iy, iy, iz, iz, ud.storey || '', ud.disc || '']);
+        if (near.length) { guid = near[0][0]; hit._mergedResolved = true; }
+      } catch(e) {
+        console.log(`§PICK_MERGE_ERR ${e.message}`);
+      }
+      if (!guid) {
+        // Fallback: show group-level info only
+        document.getElementById('info-class').textContent = `Merged group (${ud.mergedCount} elements)`;
+        document.getElementById('info-name').textContent = '—';
+        document.getElementById('info-guid').textContent = '—';
+        document.getElementById('info-building').textContent = A.activeBuilding || '—';
+        document.getElementById('info-storey').textContent = ud.storey || '—';
+        document.getElementById('info-disc').textContent = ud.disc || '—';
+        document.getElementById('info-material').textContent = '—';
+        document.getElementById('info-panel').style.display = 'block';
+        const snagRow = document.getElementById('snag-btn-row');
+        if (snagRow) snagRow.style.display = A.walkModeActive ? 'block' : 'none';
+        console.log(`§PICK merged fallback storey=${ud.storey} disc=${ud.disc}`);
+        return;
+      }
+      console.log(`§PICK merged→resolved guid=${guid}`);
     }
     if (!guid) guid = A.guidMap[hit.object.id];
     if (!guid) {
@@ -169,39 +195,53 @@ function setupPicking(A) {
       A.restoreWallXray();
     }
 
-    // Yellow highlight bbox
+    // Yellow highlight bbox — dispose previous to prevent GPU geometry/material leak
     if (window._pickHighlight) {
-      window._pickHighlight.parent.remove(window._pickHighlight);
+      const prev = window._pickHighlight;
+      if (prev.parent) prev.parent.remove(prev);
+      prev.geometry.dispose();
+      prev.material.dispose();
       window._pickHighlight = null;
     }
-    hit.object.geometry.computeBoundingBox();
-    const bb = hit.object.geometry.boundingBox;
-    const size = new THREE.Vector3();
-    bb.getSize(size);
-    const center = new THREE.Vector3();
-    bb.getCenter(center);
-    const hlGeo = new THREE.BoxGeometry(size.x, size.y, size.z);
-    const hlEdges = new THREE.EdgesGeometry(hlGeo);
-    const hlLine = new THREE.LineSegments(hlEdges,
-      new THREE.LineBasicMaterial({ color: 0xffff00 }));
 
-    if (hit.object.isInstancedMesh && hit.instanceId !== undefined) {
-      // S233: InstancedMesh — transform geometry bbox by this instance's matrix
-      const _im = new THREE.Matrix4();
-      hit.object.getMatrixAt(hit.instanceId, _im);
-      // Transform bbox center into world space via instance matrix
-      const worldCenter = center.clone().applyMatrix4(_im);
-      hlLine.position.copy(worldCenter);
-      // Extract rotation from instance matrix
-      const _ip = new THREE.Vector3(), _iq = new THREE.Quaternion(), _is = new THREE.Vector3();
-      _im.decompose(_ip, _iq, _is);
-      hlLine.quaternion.copy(_iq);
+    if (hit._mergedResolved) {
+      // Merged mesh resolved to individual element — mark at tap point, not DB centre
+      const hlGeo = new THREE.BoxGeometry(1, 1, 1);
+      const hlEdges = new THREE.EdgesGeometry(hlGeo);
+      const hlLine = new THREE.LineSegments(hlEdges,
+        new THREE.LineBasicMaterial({ color: 0xffff00 }));
+      hlLine.position.copy(hit.point);
       A.scene.add(hlLine);
+      window._pickHighlight = hlLine;
+      hlGeo.dispose();
     } else {
-      hlLine.position.copy(center);
-      hit.object.add(hlLine);
+      hit.object.geometry.computeBoundingBox();
+      const bb = hit.object.geometry.boundingBox;
+      const size = new THREE.Vector3();
+      bb.getSize(size);
+      const center = new THREE.Vector3();
+      bb.getCenter(center);
+      const hlGeo = new THREE.BoxGeometry(size.x, size.y, size.z);
+      const hlEdges = new THREE.EdgesGeometry(hlGeo);
+      const hlLine = new THREE.LineSegments(hlEdges,
+        new THREE.LineBasicMaterial({ color: 0xffff00 }));
+
+      if (hit.object.isInstancedMesh && hit.instanceId !== undefined) {
+        // S233: InstancedMesh — transform geometry bbox by this instance's matrix
+        const _im = new THREE.Matrix4();
+        hit.object.getMatrixAt(hit.instanceId, _im);
+        const worldCenter = center.clone().applyMatrix4(_im);
+        hlLine.position.copy(worldCenter);
+        const _ip = new THREE.Vector3(), _iq = new THREE.Quaternion(), _is = new THREE.Vector3();
+        _im.decompose(_ip, _iq, _is);
+        hlLine.quaternion.copy(_iq);
+        A.scene.add(hlLine);
+      } else {
+        hlLine.position.copy(center);
+        hit.object.add(hlLine);
+      }
+      window._pickHighlight = hlLine;
     }
-    window._pickHighlight = hlLine;
 
     try {
       // S239: parameterized query (was string interpolation — SQL injection risk)
@@ -210,7 +250,10 @@ function setupPicking(A) {
                m.discipline, m.material_rgba
         FROM elements_meta m WHERE m.guid = ?
       `, [guid]);
-      if (!rows.length) return;
+      if (!rows.length) {
+        document.getElementById('info-panel').style.display = 'none';
+        return;
+      }
       const [cls, name, g, bld, storey, disc, mat] = rows[0];
       document.getElementById('info-class').textContent = cls || '—';
       document.getElementById('info-name').textContent = name || '—';

@@ -36,7 +36,7 @@ function initViewer() {
         return;
       }
       var s = document.createElement('script');
-      s.src = 'navigate.js?v=8';
+      s.src = 'navigate.js?v=9';
       s.onload = function() {
         if (typeof setupNavigate === 'function') setupNavigate(APP);
         APP._navigateLoaded = true;

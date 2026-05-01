@@ -10,38 +10,8 @@ function setupStreaming(A) {
   A.streaming = false;
   A.savedStreams = {};
 
-  A.drawBuildingBoxes = function() {
-    const rows = A.dbQuery(`
-      SELECT m.building, m.discipline,
-        MIN(t.center_x) - 5, MIN(t.center_y) - 5, MIN(t.center_z),
-        MAX(t.center_x) + 5, MAX(t.center_y) + 5, MAX(t.center_z) + 3
-      FROM elements_meta m
-      JOIN element_transforms t ON t.guid = m.guid
-      GROUP BY m.building, m.discipline
-    `);
-    if (!rows.length) return;
-
-    for (const row of rows) {
-      const [bld, disc, minX, minY, minZ, maxX, maxY, maxZ] = row;
-      const color = A.DISC_COLORS[disc] || A.DEFAULT_COLOR;
-      const c = A.ifc2three((minX+maxX)/2, (minY+maxY)/2, (minZ+maxZ)/2);
-      const sx = maxX - minX;
-      const sy = maxZ - minZ;
-      const sz = maxY - minY;
-      if (sx < 0.1 || sy < 0.1 || sz < 0.1) continue;
-      const geo = new THREE.BoxGeometry(sx, sy, sz);
-      const edges = new THREE.EdgesGeometry(geo);
-      const line = new THREE.LineSegments(edges,
-        new THREE.LineBasicMaterial({ color, opacity: 0.6, transparent: true }));
-      line.position.set(c.x, c.y, c.z);
-      line.userData = { building: bld, discipline: disc };
-      A.scene.add(line);
-    }
-
-    document.getElementById('s-buildings').textContent =
-      Object.keys(A.buildingCentres).length.toLocaleString();
-    document.getElementById('s-elements').textContent = A.totalElements.toLocaleString();
-  };
+  // drawBuildingBoxes() retired — replaced by per-element _drawBboxPlaceholders()
+  A.drawBuildingBoxes = function() {};
 
   A.startStreaming = function() {
     let nearest = null, nearestDist = Infinity;
@@ -92,9 +62,11 @@ function setupStreaming(A) {
       }
       A.streamQueue = rows;
       A.streamIdx = 0;
-      A.streaming = true;
       A.activeBuilding = nearest;
       A.activeBuildingTotal = A.streamQueue.length;
+      // Draw one wireframe cube per element instantly — disappear when real meshes arrive
+      A._drawBboxPlaceholders(rows);
+      A.streaming = true;
       console.log(`[S192] §DS_QUEUED bld=${nearest} elements=${A.streamQueue.length}`);
     }
     document.getElementById('s-active').textContent = `${nearest}`;
@@ -114,6 +86,59 @@ function setupStreaming(A) {
   A._instanceMeta = {};  // instancedMesh.id → [{guid,storey,disc,instanceIndex}, ...]
   A._instanceGuids = {}; // guid → {meshId, instanceIndex} for reverse lookup
   A._isMobile = (navigator.maxTouchPoints > 0 && window.screen.width < 1024);
+  A._bboxPlaceholder = null;
+
+  // Per-element wireframe cubes, one InstancedMesh per discipline for disc-based coloring
+  // Capped at MAX_PLACEHOLDERS by sampling — prevents mobile JS block on large buildings
+  A._bboxPlaceholders = [];
+  A._drawBboxPlaceholders = function(rows) {
+    A._clearBboxPlaceholders();
+    if (!rows.length) return;
+    const MAX_PLACEHOLDERS = 5000;
+    // Sample evenly if building has more elements than cap
+    const step = rows.length > MAX_PLACEHOLDERS ? Math.ceil(rows.length / MAX_PLACEHOLDERS) : 1;
+    // row: [guid, hash, rgba, disc, cx, cy, cz, rotX, rotY, rotZ, storey, ifc_class]
+    const byDisc = {};
+    for (let i = 0; i < rows.length; i += step) {
+      const disc = rows[i][3] || '_';
+      if (!byDisc[disc]) byDisc[disc] = [];
+      byDisc[disc].push(rows[i]);
+    }
+    const geo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+    const _m4 = new THREE.Matrix4();
+    for (const [disc, drows] of Object.entries(byDisc)) {
+      const color = A.DISC_COLORS[disc] || A.DEFAULT_COLOR;
+      const mat = new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.4 });
+      const iMesh = new THREE.InstancedMesh(geo, mat, drows.length);
+      iMesh.frustumCulled = false;
+      iMesh.userData.isBboxPlaceholder = true;
+      for (let i = 0; i < drows.length; i++) {
+        const p = A.ifc2three(drows[i][4], drows[i][5], drows[i][6]);
+        _m4.makeTranslation(p.x, p.y, p.z);
+        iMesh.setMatrixAt(i, _m4);
+      }
+      iMesh.instanceMatrix.needsUpdate = true;
+      A.scene.add(iMesh);
+      A._bboxPlaceholders.push(iMesh);
+    }
+    // geo is shared across all InstancedMeshes — do NOT dispose here, dispose in _clearBboxPlaceholders
+    const shown = Object.values(byDisc).reduce((s, a) => s + a.length, 0);
+    console.log(`[BBOX] §BBOX_PLACEHOLDERS total=${rows.length} shown=${shown} step=${step} discs=${Object.keys(byDisc).length}`);
+  };
+
+  A._clearBboxPlaceholders = function() {
+    // All InstancedMeshes share one BoxGeometry — dispose it once from the first mesh only
+    if (A._bboxPlaceholders.length) {
+      A._bboxPlaceholders[0].geometry.dispose();
+    }
+    for (const iMesh of A._bboxPlaceholders) {
+      A.scene.remove(iMesh);
+      iMesh.material.dispose();
+    }
+    if (A._bboxPlaceholders.length) console.log('[BBOX] §BBOX_CLEARED');
+    A._bboxPlaceholders = [];
+  };
+
 
   A._getMaterial = function(rgbaStr) {
     const key = rgbaStr || '_default';
@@ -141,6 +166,7 @@ function setupStreaming(A) {
       if (A.streaming && A.streamIdx >= A.streamQueue.length) {
         // ── Flush: build InstancedMesh for hashes with 2+ elements ──
         A._flushInstanced();
+        A._clearBboxPlaceholders();
         A.streaming = false;
         if (A.activeBuilding) {
           A.buildingsRendered.add(A.activeBuilding);
@@ -573,12 +599,26 @@ function setupStreaming(A) {
 
   // Clear — handles both Mesh and InstancedMesh
   A.clearStreamed = function() {
+    // Dispose active pick highlight
+    if (window._pickHighlight) {
+      const prev = window._pickHighlight;
+      if (prev.parent) prev.parent.remove(prev);
+      if (prev.geometry) prev.geometry.dispose();
+      if (prev.material) prev.material.dispose();
+      window._pickHighlight = null;
+    }
     const toRemove = A.collectMeshes(o => o.isMesh || o.isInstancedMesh);
     toRemove.forEach(obj => {
       A.scene.remove(obj);
-      if (obj.geometry && !obj.userData.isInstanced) obj.geometry.dispose();
-      if (obj.material && !obj.material._shared) obj.material.dispose();
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
     });
+    // Dispose cached geometry BLOBs — these are the raw BufferGeometry objects
+    // that back all scene meshes. Safe to dispose now that meshes are removed.
+    for (const geo of Object.values(A.meshCache)) {
+      if (geo && geo.dispose) geo.dispose();
+    }
+    A.meshCache = {};
     A.streamedCount = 0;
     A.streaming = false;
     A.streamQueue = [];
@@ -603,6 +643,17 @@ function setupStreaming(A) {
   A.flyTo = function(buildingName) {
     const bc = A.buildingCentres[buildingName];
     if (!bc) return;
+    if (!A.libDb) {
+      // Library DB still loading — reposition camera but don't stream yet
+      A.status.textContent = `Loading library… click ${buildingName} again in a moment.`;
+      console.log(`[S192] §FLY_TO_EARLY bld=${buildingName} libDb not ready yet`);
+      const t = A.ifc2three(bc.ix, bc.iy, bc.iz);
+      const dist = Math.max(50, Math.sqrt(bc.count) * 1.5);
+      A.camera.position.set(t.x + dist * 0.7, t.y + dist * 1.0, t.z + dist * 0.7);
+      A.controls.target.set(t.x, t.y, t.z);
+      A.controls.update();
+      return;
+    }
     const t = A.ifc2three(bc.ix, bc.iy, bc.iz);
     const dist = Math.max(50, Math.sqrt(bc.count) * 1.5);
     A.camera.position.set(t.x + dist * 0.7, t.y + dist * 1.0, t.z + dist * 0.7);
@@ -616,7 +667,7 @@ function setupStreaming(A) {
     document.getElementById('s-progress').style.background = '#4fc3f7';
     A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_flew_to||'Flew to {name} ({n} elements)').replace('{name}',buildingName).replace('{n}',bc.count);
 
-    if (A.libDb) {
+    if (A.libDb && !A.buildingsRendered.has(buildingName)) {
       A.streamBuilding(buildingName);
     }
   };

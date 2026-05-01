@@ -337,7 +337,11 @@ function setupWalk(A) {
     A.controls.enabled = true; // Restore OrbitControls
     A.walkLockedHeading = null;
     A.walkCompassReadings = [];
+    const snagRow = document.getElementById('snag-btn-row');
+    if (snagRow) snagRow.style.display = 'none';
     document.getElementById('walk-mode-btn').classList.remove('active');
+    // Fly back to building overview so OrbitControls has a sensible target
+    if (A.activeBuilding && A.flyTo) A.flyTo(A.activeBuilding);
     A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_walk_stopped||'Walk Mode stopped.';
     console.log('[S207] §WALK_MODE_STOP');
   };

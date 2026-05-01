@@ -582,8 +582,12 @@ function setupNavigate(A) {
   }
   function clearHighlight() {
     clearInterval(_highlightPulse);
-    if (_highlight && _highlight.parent) _highlight.parent.remove(_highlight);
-    _highlight = null;
+    if (_highlight) {
+      if (_highlight.parent) _highlight.parent.remove(_highlight);
+      if (_highlight.geometry) _highlight.geometry.dispose();
+      if (_highlight.material) _highlight.material.dispose();
+      _highlight = null;
+    }
   }
 
   // ── Find main entrance — furthest exterior door on ground floor from building centre ──

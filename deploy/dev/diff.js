@@ -165,7 +165,10 @@ function setupDiff(A) {
 
     // Yellow bbox highlight (same as picking.js)
     if (window._pickHighlight) {
-      window._pickHighlight.parent.remove(window._pickHighlight);
+      const prev = window._pickHighlight;
+      if (prev.parent) prev.parent.remove(prev);
+      prev.geometry.dispose();
+      prev.material.dispose();
       window._pickHighlight = null;
     }
     target.geometry.computeBoundingBox();
