@@ -569,11 +569,54 @@ for f in index.html navigate.js nlp.js main.js; do
 done
 ```
 
+### S233 Session 4 (2026-04-29) — §-Debug Logging + Pre-Process + Bug Fixes
+
+**Status:** Whitebox §-log test PASS on localhost (Duplex). Audit: 166 tests, 426 expects, ratio 2.57.
+Files: `navigate.js` (v8), `walk.js` (v2). Doc: `docs/RouteTemplate.md`.
+
+#### Bugs FIXED:
+
+1. **`startStorey="T/FDN"` instead of `"Level 1"`** — `buildPath()` used `levels[0]` (foundation)
+   as start storey. Fix: query lowest storey with IfcDoor (z ≥ -0.5m). Also moved
+   `cacheStoreyLevels()` to run BEFORE `buildPath()` in `startNavigation()`.
+
+2. **`APP.walkOrientTick is not a function`** — navigate.js sets `walkModeActive=true` without
+   `setWalkAnchor()`, but `walkOrientTick` is defined inside `setWalkAnchor`. Fix: no-op stub
+   in `setupWalk()` that gets overwritten when anchor is set.
+
+#### Added:
+
+- **12 §-debug log points** — full trace of entrance selection, path building, camera movement,
+  waypoint advancement. Filter console by `§NAV` or `§GRID` or `§ROUTE`.
+- **Pre-process route templates on streaming complete** — MutationObserver on `#s-active`,
+  builds grid + template for ALL storeys. Navigate click is instant (no cold start).
+  Duplex: 5 storeys, 81 nodes, 241 edges pre-built.
+- **`docs/RouteTemplate.md`** — user guide: how to use, template structure, where to find/edit
+  locally, code structure for developers, tuning parameters, §-log reference.
+
+#### Whitebox test evidence (Duplex):
+
+```
+§NAV_ENTRANCE door=(3.0,-0.2,1.2) storey="Level 1" doors=6
+§BUILD_PATH startStorey="Level 1" targetStorey="Level 1" sameStorey=true
+§PATH_ROUTE_TEMPLATE graph_nodes=3 waypoints=6 labels=[Door, Door, Door]
+§NAV_CAM_SNAPPED to=(-1.4,-1.2,-8.7)     ← camera at entrance
+§NAV_WAYPOINTS_DUMP [Start → Door → → Door → Door → Destination]
+§NAV_STEP_ADV step=1→2→3                  ← advancing correctly
+walkOrientTick error: GONE (0 PAGE_ERROR)
+```
+
 ### Resume Checklist (next session)
 
-1. Read this §Open Issues section — OCI dev not reflecting changes
-2. Run debugging steps above to identify cache/overwrite issue
-3. Fix OCI caching (sw.js, Cache-Control headers, or URL-based cache bust)
-4. Verify on phone: Find → select → Navigate → walk → pinch → close bar quits
-5. Test on larger building (Clinic: 254 doors) — route template should produce rich graph
-6. Deploy to OCI live (`bim-ootb-live`) when confirmed working
+**⚠ BRANCH: `full` only. Deploy target: `bim-ootb-full` OCI bucket.**
+
+**Resolved (S233 Session 4):**
+- ~~startStorey picks foundation~~ → queries lowest storey with doors
+- ~~walkOrientTick crash~~ → no-op stub in setupWalk
+- ~~No debug visibility~~ → 12 §-log points + pre-process hook
+
+**Open — what to do:**
+1. **Mobile field test** — phone: Find → select → Navigate → walk → pinch → close bar quits. Check `§NAV_DIAG` + `§NAV_START` + `§NAV_MOVE_CAM` in remote debug console.
+2. **Test on larger building** (Clinic: 254 doors) — route template should produce rich graph. Check `§NAV_PREPROCESS` node/edge counts.
+3. **Verify on `bim-ootb-full`:** deploy navigate.js v8 + walk.js v2, bump version in index.html.
+4. **Testing: §-log primary, Playwright secondary.** Read `§` lines to verify values. See `docs/TestArchitecture.md` §Browser Testing.

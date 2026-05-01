@@ -62,6 +62,7 @@
     - Density control: `furnDetailRooms`, `maxFurnPerRoom`, `seatingThreshold`, hall aggregate bbox, tag caps
     - `docs/2D_HTML_GUIDE.md`: user guide + §9 developer code structure section
     - mkdocs.yml: 2D Plans Viewer added to Guides nav
+    - **Fix (2026-04-30):** `_computedScale` hoisted before GridDims block — was computed only inside TitleBlock, so grid crowding filter received stale `undefined`. Now single computation with `isFinite(bx0)` guard + `50` px/m fallback. Docs deployed to gh-pages.
   - **S238m DONE (2026-04-30): §25.6 remaining annotation features.** All whitebox-tested (12 key tests pass).
     - A-WALL-PATT hatch fills: solid fill behind wall outlines (ratio vs DXF = 0.94, 1:1 hatch per contour)
     - A-FURN furniture outlines: 4-point rectangle from element name dimensions (14/14 SH furniture)
