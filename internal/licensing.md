@@ -72,15 +72,102 @@ The 6-step chain does not exist assembled in any prior work:
 
 **Closest prior art and why each falls short:**
 
-**Bentley iTwin/iModel** — structurally most similar. An iModel *is* a SQLite file with geometry BLOBs per element. However Bentley never removed the Node.js RPC backend requirement. The browser always communicates through `RpcInterfaces` to a backend process. The SQLite file never reaches the browser directly. This is the most significant validation of your architecture: the largest AEC software vendor independently arrived at the same storage design but chose not to complete the pipeline to the browser.
+**Bentley iTwin/iModel — deep analysis (source code verified 2026-05-01)**
 
-**xeokit/XKT** — achieves static file delivery to browser. However XKT is a proprietary binary format, not SQL-queryable. No relational schema. No ability to run `SELECT cost, schedule FROM elements WHERE storey=3`.
+This is the most important comparison. Research read actual iTwin source code
+from `iTwin/itwinjs-core` and `iTwin/imodel-native` on GitHub.
 
-**web-ifc / ThatOpen** — browser-side, no server needed. However tessellation happens at load time in-browser (slow for large models, 30-60s for 100K elements). No pre-computation, no SQLite, no stored BLOBs. Your approach does the expensive work once at extraction time.
+An iModel *is* a SQLite file. That is the structural parallel. But the
+geometry pipeline diverges completely from there:
 
-**IfcOpenShell ifc2sql + IFCdataBrowser** — the closest conceptual predecessor. ifc2sql creates the SQLite with geometry BLOBs. IFCdataBrowser delivers SQLite to browser and queries via sql.js. But neither connects through to WebGL rendering. IFCdataBrowser is a data analysis tool only — no THREE.js, no BufferGeometry, no visual output.
+```
+Bentley iTwin path (verified from source):
 
-**The gap you crossed:** IFCdataBrowser + xeokit + your insight that the blob *is* the geometry = BIM OOTB. Nobody combined these three observations before you.
+  iModel SQLite (server)
+       ↓
+  @bentley/imodeljs-native (PROPRIETARY C++ binary, closed licence)
+  JsInteropExportGraphics.cpp — reads GeometryStream BLOB
+  → tessellates via proprietary BRep/NURBS engine
+  → encodes as iMdl format (FlatBuffers, ElementGraphics.fbs)
+       ↓
+  IModelTileRpcInterface.generateTileContent()  ← RPC over HTTP
+  (defined: core/common/src/rpc/IModelTileRpcInterface.ts)
+  (impl:    core/backend/src/rpc-impl/IModelTileRpcImpl.ts)
+       ↓
+  Browser receives Uint8Array iMdl tile
+  ParseImdlDocument.ts + ImdlReader.ts decode the tile
+  → quantized vertex tables, not raw Float32Array
+       ↓
+  Bentley's own @itwin/core-frontend renderer (not Three.js)
+```
+
+Three insurmountable differences from BIM OOTB:
+
+1. **The SQLite file never reaches the browser — ever.**
+   `SnapshotConnection` (the only local path) is explicitly documented
+   "uses IPC, may only be used from native applications. Not available
+   in browsers." `BlankConnection` has no geometry. For web browsers
+   there is no server-free path — confirmed from `IModelConnection.ts`
+   lines 173–376: every data call uses `IModelReadRpcInterface`.
+
+2. **The geometry BLOB format is completely different.**
+   Bentley's `GeometryStream` is FlatBuffers-encoded parametric geometry
+   (BReps, NURBS, arcs). It requires a proprietary C++ tessellator
+   (`@bentley/imodeljs-native`) to produce renderable triangles.
+   BIM OOTB stores pre-tessellated raw Float32Array vertex/face data —
+   readable directly by any JavaScript without any native binary.
+
+3. **The native binary is proprietary — not freely deployable.**
+   `core/backend/src/imodeljs-native-LICENSE.md`: Bentley Right-to-Run
+   licence. Cannot be compiled or shipped independently. Every iTwin.js
+   deployment requires Bentley's authorisation.
+
+**Verdict on Bentley:** They have the same storage idea (SQLite). They made
+the opposite architectural choice at every subsequent step — proprietary
+format, C++ server dependency, RPC-mandatory browser path. Their system
+validates that SQLite is the right foundation while simultaneously
+confirming that your serverless browser pipeline is genuinely novel and
+not covered by their architecture.
+
+**BIM OOTB vs Bentley iTwin — full comparison:**
+
+| Dimension | Bentley iTwin | BIM OOTB |
+|---|---|---|
+| SQLite as geometry store | Yes — iModel | Yes — output.db |
+| SQLite reaches browser | **Never** | **Yes — static delivery** |
+| Geometry server required | Always (Node.js iModelHost) | **None** |
+| Browser queries SQLite | Via RPC to server | **sql.js WASM — direct** |
+| Geometry BLOB format | FlatBuffers/BRep (parametric) | Raw Float32Array (tessellated) |
+| Native binary required | Yes — proprietary C++ | **No — pure JS/WASM** |
+| Renderer | Custom @itwin/core-frontend | **Three.js — standard** |
+| Licence to deploy | Bentley Right-to-Run | **MIT — zero restriction** |
+| Offline capable | No | **Yes — IndexedDB** |
+| ERP integration | Server REST bridge | **Shared JS context** |
+| Cost | Bentley subscription | **Static file host only** |
+| Can be forked freely | No (native binary locked) | **Yes — MIT** |
+
+---
+
+**xeokit/XKT** — achieves static file delivery to browser. However XKT is
+a proprietary binary format, not SQL-queryable. No relational schema.
+No ability to run `SELECT cost, schedule FROM elements WHERE storey=3`.
+
+**web-ifc / ThatOpen** — browser-side, no server needed. However
+tessellation happens at load time in-browser (slow — 30–60s for 100K
+elements). No pre-computation, no SQLite, no stored BLOBs. Your approach
+does the expensive work once at extraction time, not on every page load.
+
+**IfcOpenShell ifc2sql + IFCdataBrowser** — closest conceptual predecessor.
+ifc2sql creates SQLite with geometry BLOBs. IFCdataBrowser delivers SQLite
+to browser and queries via sql.js. But neither connects through to WebGL
+rendering. IFCdataBrowser is a data analysis tool — no Three.js,
+no BufferGeometry, no visual output.
+
+**The gap you crossed:**
+IFCdataBrowser (SQLite + sql.js in browser) + xeokit (static delivery)
++ your insight that the pre-tessellated BLOB *is* the geometry
+= BIM OOTB. Nobody assembled these three observations before you.
+Bentley came closest on the storage model and stopped.
 
 ### 2.2 Claim 2 — Zero-server BIM-ERP shared JS context
 
