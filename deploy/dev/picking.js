@@ -204,44 +204,16 @@ function setupPicking(A) {
       window._pickHighlight = null;
     }
 
-    if (hit._mergedResolved) {
-      // Merged mesh resolved to individual element — mark at tap point, not DB centre
-      const hlGeo = new THREE.BoxGeometry(1, 1, 1);
-      const hlEdges = new THREE.EdgesGeometry(hlGeo);
-      const hlLine = new THREE.LineSegments(hlEdges,
-        new THREE.LineBasicMaterial({ color: 0xffff00 }));
-      hlLine.position.copy(hit.point);
-      A.scene.add(hlLine);
-      window._pickHighlight = hlLine;
-      hlGeo.dispose();
-    } else {
-      hit.object.geometry.computeBoundingBox();
-      const bb = hit.object.geometry.boundingBox;
-      const size = new THREE.Vector3();
-      bb.getSize(size);
-      const center = new THREE.Vector3();
-      bb.getCenter(center);
-      const hlGeo = new THREE.BoxGeometry(size.x, size.y, size.z);
-      const hlEdges = new THREE.EdgesGeometry(hlGeo);
-      const hlLine = new THREE.LineSegments(hlEdges,
-        new THREE.LineBasicMaterial({ color: 0xffff00 }));
-
-      if (hit.object.isInstancedMesh && hit.instanceId !== undefined) {
-        // S233: InstancedMesh — transform geometry bbox by this instance's matrix
-        const _im = new THREE.Matrix4();
-        hit.object.getMatrixAt(hit.instanceId, _im);
-        const worldCenter = center.clone().applyMatrix4(_im);
-        hlLine.position.copy(worldCenter);
-        const _ip = new THREE.Vector3(), _iq = new THREE.Quaternion(), _is = new THREE.Vector3();
-        _im.decompose(_ip, _iq, _is);
-        hlLine.quaternion.copy(_iq);
-        A.scene.add(hlLine);
-      } else {
-        hlLine.position.copy(center);
-        hit.object.add(hlLine);
-      }
-      window._pickHighlight = hlLine;
-    }
+    // Always mark at the exact tap point — geometry offsets and instance transforms
+    // make bbox-centre approaches unreliable. hit.point is always correct world space.
+    const hlGeo = new THREE.BoxGeometry(1, 1, 1);
+    const hlEdges = new THREE.EdgesGeometry(hlGeo);
+    hlGeo.dispose();
+    const hlLine = new THREE.LineSegments(hlEdges,
+      new THREE.LineBasicMaterial({ color: 0xffff00 }));
+    hlLine.position.copy(hit.point);
+    A.scene.add(hlLine);
+    window._pickHighlight = hlLine;
 
     try {
       // S239: parameterized query (was string interpolation — SQL injection risk)

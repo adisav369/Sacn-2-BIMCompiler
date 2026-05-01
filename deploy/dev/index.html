@@ -447,7 +447,7 @@
 <script src="streaming.js?v=14"></script>
 <script src="panels.js?v=5"></script>
 <script src="tools.js?v=5"></script>
-<script src="picking.js?v=7"></script>
+<script src="picking.js?v=8"></script>
 <script src="tour.js?v=3"></script>
 <script src="measure.js?v=3"></script>
 <script src="sitecam.js?v=5"></script>
@@ -496,7 +496,12 @@
   },{passive:true});
 })();
 </script>
-<script>if(new URLSearchParams(location.search).has('ignore-me'))localStorage.setItem('goatcounter-ignore','t')</script>
-<script data-goatcounter="https://red1oon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<script>
+if(new URLSearchParams(location.search).has('ignore-me'))localStorage.setItem('goatcounter-ignore','t');
+if(new URLSearchParams(location.search).get('embedded')!=='true'){
+  var gc=document.createElement('script');gc.dataset.goatcounter='https://red1oon.goatcounter.com/count';
+  gc.async=true;gc.src='//gc.zgo.at/count.js';document.body.appendChild(gc);
+}
+</script>
 </body>
 </html>
