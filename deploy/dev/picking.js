@@ -204,14 +204,31 @@ function setupPicking(A) {
       window._pickHighlight = null;
     }
 
-    // Always mark at the exact tap point — geometry offsets and instance transforms
-    // make bbox-centre approaches unreliable. hit.point is always correct world space.
-    const hlGeo = new THREE.BoxGeometry(1, 1, 1);
+    // Highlight: size from geometry bbox, position in world space.
+    // Never add as child of hit.object — localToWorld ensures correct placement
+    // regardless of whether geometry is centered at origin.
+    hit.object.geometry.computeBoundingBox();
+    const bb = hit.object.geometry.boundingBox;
+    const size = new THREE.Vector3(); bb.getSize(size);
+    const localCenter = new THREE.Vector3(); bb.getCenter(localCenter);
+    const hlGeo = new THREE.BoxGeometry(
+      Math.max(size.x, 0.2), Math.max(size.y, 0.2), Math.max(size.z, 0.2));
     const hlEdges = new THREE.EdgesGeometry(hlGeo);
     hlGeo.dispose();
     const hlLine = new THREE.LineSegments(hlEdges,
       new THREE.LineBasicMaterial({ color: 0xffff00 }));
-    hlLine.position.copy(hit.point);
+    if (hit.object.isInstancedMesh && hit.instanceId !== undefined) {
+      const _im = new THREE.Matrix4();
+      hit.object.getMatrixAt(hit.instanceId, _im);
+      const worldCenter = localCenter.clone().applyMatrix4(_im);
+      const _ip = new THREE.Vector3(), _iq = new THREE.Quaternion(), _is = new THREE.Vector3();
+      _im.decompose(_ip, _iq, _is);
+      hlLine.position.copy(worldCenter);
+      hlLine.quaternion.copy(_iq);
+    } else {
+      // Individual Mesh or merged-resolved: convert local bbox centre to world space
+      hlLine.position.copy(hit.object.localToWorld(localCenter));
+    }
     A.scene.add(hlLine);
     window._pickHighlight = hlLine;
 
