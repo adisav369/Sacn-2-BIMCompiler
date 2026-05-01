@@ -302,4 +302,265 @@ They chose to keep the Blender dependency. Your architecture
 removes it entirely. That is not a fork of their work — it is a
 different answer to the same question.
 
+---
+
+## 8. One-Stop BIM Suite — Gap Phases and Achievability
+
+### 8.1 Why the gaps are easier than they appear
+
+Every gap below reuses code and infrastructure already proven.
+The pattern is consistent throughout:
+
+```
+New capability = existing DB query + existing viewer event + new UI panel
+```
+
+No new architecture. No new server. No new data model in most cases.
+The DB IS the application — adding a feature means adding a table,
+a query, and a panel. The hard part (the pipeline, the renderer,
+the IFC round-trip) is already done.
+
+---
+
+### Phase 1 — Complete Tier 3 Management (now → 6 months)
+
+**Goal:** Make BIM OOTB the definitive construction management tool.
+Own everything that happens after the architect hands over the IFC.
+
+#### P1-A: Property + 4D/5D extraction (S240 — weeks)
+
+Already specced in `prompts/S240_property_extraction.md`.
+
+**Why easy:** `GetLineIDsWithType()` + `GetLine()` pattern already proven
+for storeys and spatial containment in `import_worker.js`. Same loop,
+different type constants. All constants confirmed present in web-ifc.
+
+```
+Reuse:    import_worker.js pattern (100% identical structure)
+New code: ~150 lines extraction + ~60 lines DB schema
+Zero:     no new architecture, no new dependencies
+Cost:     zero for IFCs without this data (empty list = skip)
+```
+
+#### P1-B: Fast Rules Script (weeks)
+
+A rule interpreter that runs SQL transforms against `element_properties`.
+
+**Why easy:** The DB already has `element_properties` table after S240.
+A rule is just a parameterised SQL UPDATE. The interpreter is a
+~100-line parser mapping rule syntax to SQL.
+
+```sql
+-- Each rule compiles to:
+UPDATE element_properties
+SET prop_value = '60'
+WHERE guid IN (
+  SELECT guid FROM elements_meta
+  WHERE ifc_class = 'IfcWall' AND storey = 'Level 1'
+)
+AND prop_name = 'FireRating'
+```
+
+```
+Reuse:    sql.js already running, elements_meta already queryable
+New code: ~100 lines rule parser + simple UI text area
+Zero:     no geometry computation, no worker, no server
+```
+
+#### P1-C: Professional 2D output (S238 ongoing)
+
+Already in progress. Title block, dimension lines, annotation density
+config all proven. Gap to close: section views, elevation views.
+
+**Why easy:** The 2D pipeline reads from the same DB. Section view =
+filter elements by X-plane intersection — a bounding-box query already
+possible with current schema.
+
+#### P1-D: iDempiere ZK plugin (iDempiereOOTB prompt written)
+
+Embed the viewer as a ZK Iframe tab. C_OOTB table links IFC drop to
+C_BPartner and M_Product records.
+
+**Why easy:** ZK iframe support confirmed from source (`TabbedDesktop.java`).
+REST endpoints already exist in iDempiere (`model_adservice`).
+The viewer does not change — only the URL parameters change.
+
+```
+Reuse:    existing viewer 100% unchanged
+New code: ~300 lines Java (OSGi bundle + ZK Form)
+          ~100 lines migration SQL (C_OOTB table + AD_Window)
+          ~50 lines JS (URL param handling + postMessage)
+Zero:     no new viewer features needed for P1
+```
+
+---
+
+### Phase 2 — Complete Tier 2 Coordination (6 → 18 months)
+
+**Goal:** Make BIM OOTB the definitive coordination platform,
+replacing Navisworks for clash detection and BCF issue tracking.
+
+#### P2-A: Clash Detection (1-2 months)
+
+**Why easy:** RTree spatial index already proven at 1M elements (S184).
+Bounding-box clash is a pure SQL query — no geometry computation:
+
+```sql
+-- Clash candidates (bounding box overlap, different disciplines)
+SELECT a.guid, b.guid, a.discipline, b.discipline
+FROM element_transforms a JOIN element_transforms b
+ON  a.discipline != b.discipline
+AND a.guid < b.guid  -- avoid duplicates
+AND ABS(a.center_x - b.center_x) < (a.bbox_x/2 + b.bbox_x/2)
+AND ABS(a.center_y - b.center_y) < (a.bbox_y/2 + b.bbox_y/2)
+AND ABS(a.center_z - b.center_z) < (a.bbox_z/2 + b.bbox_z/2)
+```
+
+Result: a list of GUID pairs. The viewer highlights both elements
+and adds a clash marker — reusing the existing element highlight
+code from the filter/picker panel.
+
+```
+Reuse:    element_transforms table (already populated)
+          element highlight (already in scene.js/panels.js)
+New code: ~30 lines SQL + ~50 lines UI (clash list panel)
+Zero:     no geometry computation for bbox clash
+          (exact mesh intersection = optional Phase 3 upgrade)
+```
+
+#### P2-B: BCF Export (2-3 weeks)
+
+BCF (BIM Collaboration Format) is an XML zip file containing:
+- viewpoint (camera position + visible elements)
+- screenshot
+- issue title/description/status
+- GUID of affected element
+
+**Why easy:** Your mobile issue log (S204) already captures all of
+this data. BCF is just a formatting task — XML generation from
+the existing issues table.
+
+```
+Reuse:    issues table (S204), camera state (scene.js),
+          screenshot (existing button)
+New code: ~80 lines XML builder + zip (JSZip already available)
+Zero:     no new data model needed
+```
+
+#### P2-C: Section Planes (2-3 weeks)
+
+Three.js `ClippingPlane` is a native API — one line to add a clipping
+plane to the renderer, one slider to control it.
+
+```javascript
+renderer.clippingPlanes = [
+    new THREE.Plane(new THREE.Vector3(0, -1, 0), sliderValue)
+];
+```
+
+```
+Reuse:    scene.js renderer (add 3 lines)
+New code: ~30 lines UI (slider + plane normal selector)
+Zero:     no DB changes, no worker changes
+```
+
+#### P2-D: BOM Recomposition — Designer (3-6 months)
+
+User edits a BOM line in the browser → compiler reruns for that
+element → viewer updates in place.
+
+**Why tractable (not easy, but bounded):**
+- The compiler (DAGCompiler Java) already exists and is proven
+- The DB schema is fixed — output is always `element_transforms` + `component_geometries`
+- Browser sends a BOM edit → REST call to Java compiler endpoint → returns updated element rows → viewer patches those GUIDs only
+
+The key insight: **incremental recompile**, not full recompile.
+One BOM line change affects at most a handful of elements. The
+compiler runs for those elements only — sub-second for any
+realistic edit.
+
+```
+Reuse:    DAGCompiler (all 302 Java files unchanged)
+          viewer patch by GUID (scene.js already supports this)
+New code: ~200 lines REST endpoint (Java) + ~100 lines BOM editor UI
+New arch: incremental recompile trigger (bounded scope)
+```
+
+---
+
+### Phase 3 — Complete Tier 1 Authoring (18 → 36 months)
+
+**Goal:** Create new buildings in the browser from scratch.
+This closes the last gap vs Bonsai and Revit.
+
+#### P3-A: Primitive Placement via BOM Insert (6-9 months)
+
+User clicks "Add Wall" → inserts a BOM line → incremental recompile
+places the wall at default position → user drags to position →
+BOM line updated with new coordinates → recompile confirms placement.
+
+**Why tractable:** The BOM already drives geometry. Adding a new
+BOM line is equivalent to adding a row to `M_BOM_Line`. The compiler
+already knows how to place a wall from a BOM line. The new work is:
+- A drag-to-position UI in Three.js (raycaster + drag events)
+- A BOM line insert REST call
+- An incremental recompile trigger
+
+No new geometry engine. No parametric families. The compiler
+handles all geometry.
+
+#### P3-B: Structural Export (2-3 months)
+
+IFC Structural Analysis model export from the DB. Reads
+`element_transforms` (geometry) + `element_properties` (material,
+section properties) → writes `IfcStructuralAnalysisModel` STEP entities.
+
+**Why tractable:** The IFC export worker already writes STEP text.
+Structural entities follow the same pattern. Input data is already
+in the DB after S240.
+
+#### P3-C: Multi-user sync via iDempiere (already designed)
+
+When the iDempiere plugin is active, the DB moves from IndexedDB
+to PostgreSQL. Multi-user is then iDempiere's standard role/access
+model — already battle-tested across 15+ years of community use.
+
+```
+Reuse:    iDempiere AD_User, AD_Role, C_OOTB table
+          existing viewer (points to REST endpoint instead of IndexedDB)
+New code: ~100 lines viewer DB source switch (IndexedDB vs REST)
+Zero:     no new sync protocol — iDempiere handles it
+```
+
+---
+
+### 8.2 Effort summary
+
+| Gap | Phase | Key reuse | New code estimate | Difficulty |
+|---|---|---|---|---|
+| Psets + 4D/5D extraction | P1-A | import_worker.js pattern | ~210 lines | Easy |
+| Fast rules script | P1-B | sql.js + elements_meta | ~100 lines | Easy |
+| Professional 2D | P1-C | existing 2D pipeline | incremental | Easy |
+| iDempiere ZK plugin | P1-D | existing viewer + REST | ~450 lines | Easy |
+| Clash detection | P2-A | element_transforms SQL | ~80 lines | Easy |
+| BCF export | P2-B | issues table + camera | ~80 lines | Easy |
+| Section planes | P2-C | Three.js ClippingPlane | ~30 lines | Trivial |
+| BOM recomposition | P2-D | DAGCompiler unchanged | ~300 lines + REST | Medium |
+| Primitive placement | P3-A | BOM + recompile | drag UI + REST | Hard |
+| Structural export | P3-B | IFC export worker | ~200 lines | Medium |
+| Multi-user sync | P3-C | iDempiere + C_OOTB | ~100 lines switch | Medium |
+
+**The pattern across all gaps:** the hard work is done. What remains
+is wiring proven components together with thin layers of new code.
+The largest single item (BOM recomposition, P2-D) reuses 100% of
+the existing Java compiler — only a REST trigger and incremental
+patch logic are new.
+
+---
+
+### 8.3 The one-sentence architectural advantage
+
+> Every gap closes by querying the DB differently or rendering the
+> result differently — the pipeline that fills the DB is already proven.
+
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*
