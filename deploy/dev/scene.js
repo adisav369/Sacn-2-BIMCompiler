@@ -46,10 +46,6 @@ function setupScene(A) {
   controls.keyPanSpeed = 20;
   A.controls = controls;
 
-  // Drop to 1x pixel ratio during pan for fill-rate relief, restore on stop
-  controls.addEventListener('start', () => renderer.setPixelRatio(1.0));
-  controls.addEventListener('end',   () => renderer.setPixelRatio(window.devicePixelRatio));
-
   // Shift+Left = pan (for trackpad users without middle/right mouse)
   canvas.addEventListener('pointerdown', (e) => {
     if (e.shiftKey && e.button === 0) {

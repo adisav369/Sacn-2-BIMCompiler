@@ -52,6 +52,7 @@ function setupPanels(A) {
       btn.className = (btnStorey === storey || (storey === null && !btn.onclick.toString().includes("'"))) ? 'active' : '';
     });
     console.log(`[S200] §STOREY_FILTER ${storey || 'ALL'}`);
+    if (A.markDirty) A.markDirty();
   };
 
   // Discipline toggle
@@ -104,6 +105,7 @@ function setupPanels(A) {
       const m = btn.onclick.toString().match(/toggleDisc\('(.+?)'\)/);
       if (m) btn.className = A.hiddenDiscs.has(m[1]) ? '' : 'active';
     });
+    if (A.markDirty) A.markDirty();
   };
 
   // Building list
