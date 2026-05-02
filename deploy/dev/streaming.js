@@ -561,7 +561,8 @@ function setupStreaming(A) {
     console.log(`[S241] §BBOX_EARLY placeholders drawn before library fetch`);
 
     // Now fetch library DB (geometry BLOBs) — streamTick will auto-start meshes
-    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_fetching||'Fetching {url}...').replace('{url}',A.LIB_URL);
+    const libName = A.LIB_URL.split('/').pop();
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_fetching||'Fetching {url}...').replace('{url}', libName);
     try {
       const libBuf = await A.cachedFetch(A.LIB_URL);
       A.libDb = new SQL.Database(new Uint8Array(libBuf));
@@ -672,7 +673,7 @@ function setupStreaming(A) {
     document.getElementById('s-progress').style.background = '#4fc3f7';
     A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_flew_to||'Flew to {name} ({n} elements)').replace('{name}',buildingName).replace('{n}',bc.count);
 
-    if (A.libDb && !A.buildingsRendered.has(buildingName)) {
+    if (A.libDb && !A.buildingsRendered.has(buildingName) && A.activeBuilding !== buildingName) {
       A.streamBuilding(buildingName);
     }
   };

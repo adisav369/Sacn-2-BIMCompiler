@@ -137,10 +137,28 @@ function setupScene(A) {
       } catch(e) { /* cache miss */ }
     }
 
-    const buf = await fetch(url).then(r => {
-      if (!r.ok) throw new Error(`Failed to fetch ${url}: ${r.status}`);
-      return r.arrayBuffer();
-    });
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`Failed to fetch ${url}: ${resp.status}`);
+    const contentLength = parseInt(resp.headers.get('Content-Length') || '0', 10);
+    let buf;
+    if (contentLength > 0 && resp.body) {
+      const reader = resp.body.getReader();
+      const chunks = []; let received = 0;
+      const fileName = url.split('/').pop();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value); received += value.length;
+        const pct = Math.round((received / contentLength) * 100);
+        if (A.status) A.status.textContent = `Downloading ${fileName}... ${pct}% (${(received/1024/1024).toFixed(0)}/${(contentLength/1024/1024).toFixed(0)}MB)`;
+      }
+      const full = new Uint8Array(received);
+      let offset = 0;
+      for (const chunk of chunks) { full.set(chunk, offset); offset += chunk.length; }
+      buf = full.buffer;
+    } else {
+      buf = await resp.arrayBuffer();
+    }
 
     if (cacheDb) {
       try {
