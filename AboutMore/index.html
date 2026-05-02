@@ -723,6 +723,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="DIY Self-Host">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-installed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets installed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3479,6 +3496,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="DIY Self-Host">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-installed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets installed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3764,13 +3798,30 @@ browser already consumes. Stage 2 adds server-side compilation, not a new viewer
 </ul>
 <hr />
 <h2 id="diy-self-host">DIY Self-Host<a class="headerlink" href="#diy-self-host" title="Permanent link">&para;</a></h2>
-<p>Run BIM OOTB on your own machine. ~4MB download, libraries loaded from CDN.</p>
+<p>Run BIM OOTB on your own machine. ~49MB download (full repo), ~4MB viewer.
+Libraries loaded from CDN on first use, then cached offline by the Service Worker.</p>
 <ol>
 <li>Download <code>deploy/dev/</code> from <a href="https://github.com/red1oon/BIMCompiler">GitHub</a></li>
 <li>Run <code>python3 -m http.server 8080</code> in the folder</li>
 <li>Open <code>http://localhost:8080</code> — drop any IFC file</li>
 </ol>
 <p>Or use the <strong>DIY Downloader</strong> in the About box of the <a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html">live viewer</a> — it generates an install script for your platform (Windows/Mac/Linux) that handles prerequisites automatically.</p>
+<h3 id="what-gets-installed">What gets installed<a class="headerlink" href="#what-gets-installed" title="Permanent link">&para;</a></h3>
+<p>The script installs to:</p>
+<ul>
+<li><strong>Windows:</strong> <code>C:\Users\{you}\bim-ootb\</code></li>
+<li><strong>Mac/Linux:</strong> <code>~/bim-ootb/</code></li>
+</ul>
+<p>Includes everything needed to run:</p>
+<ul>
+<li>All viewer JS modules (~30 files)</li>
+<li>14 DXF templates (floor plans, elevations, roof)</li>
+<li>Cost rates and exchange rate data (<code>rates.js</code>)</li>
+<li>15 language packs with local currency (<code>locales/</code>)</li>
+<li>Service worker for offline caching (<code>sw.js</code>)</li>
+</ul>
+<p>No databases are bundled — buildings load from OCI cloud via the manifest,
+and Drop IFC builds your own databases locally in the browser.</p>
 <hr />
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>Browser
