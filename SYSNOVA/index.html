@@ -158,6 +158,7 @@
     <a href="https://youtu.be/bSyuLQ_c4rw" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:#0277bd;font-size:13px;text-decoration:none;padding:4px 8px"><img src="sandbox/YT.png" alt="YouTube" style="height:20px;vertical-align:middle"> <span data-trl="landing_watch_demo">Watch Demo</span></a>
     <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.toggle('active')" style="display:inline-flex;align-items:center;gap:5px;color:#444;font-size:13px;text-decoration:none;padding:4px 8px">&#10067; <span data-trl="landing_about">About</span></a>
     <a href="javascript:void(0)" id="header-flag-btn" onclick="if(window._TRL_LOADER)_TRL_LOADER.openFlagPicker()" style="display:inline-flex;align-items:center;gap:4px;color:#444;font-size:16px;text-decoration:none;padding:4px 8px;cursor:pointer" title="Language">&#127760;</a>
+    <a href="javascript:void(0)" onclick="if(window.APP&&APP.reportBug)APP.reportBug();else window.open('https://github.com/red1oon/BIMCompiler/issues/new?labels=bug','_blank')" style="display:inline-flex;align-items:center;gap:4px;color:#444;font-size:13px;text-decoration:none;padding:4px 8px;cursor:pointer" title="Send to GitHub Issues Tracker"><img src="submit.png" alt="Submit" style="height:18px;vertical-align:middle"> <span style="font-size:10px">Send to GitHub Issues Tracker</span></a>
   </div>
 </div>
 
@@ -557,11 +558,20 @@ loadManifest();
 
 // ── Discipline from filename (landing-side override for prod worker) ──
 var _VALID_DISCS = ['ARC','STR','MEP','PLB','ACMV','ELEC','FP','VENT','HEAT','SAN','COOL','VOID'];
+var _DISC_ALIAS = {
+  // Short forms from real-world IFC filenames
+  ELE:'ELEC', ELECTRICAL:'ELEC',
+  FIRE:'FP', SPR:'FP', SPRINKLER:'FP',
+  AIR:'ACMV', DUCT:'ACMV', HVAC:'ACMV', MECH:'ACMV', MECHANICAL:'ACMV',
+  ARCHITECTURAL:'ARC', STRUCTURAL:'STR', PLUMBING:'PLB',
+};
 function _discFromFilename(fname) {
   var stem = fname.replace(/\.(ifc|obj|stl|dae|glb|gltf|3ds|fbx)$/i, '');
   var parts = stem.split(/[_\-]/);
   for (var i = parts.length - 1; i >= 0; i--) {
-    if (_VALID_DISCS.indexOf(parts[i].toUpperCase()) >= 0) return parts[i].toUpperCase();
+    var p = parts[i].toUpperCase();
+    if (_VALID_DISCS.indexOf(p) >= 0) return p;
+    if (_DISC_ALIAS[p]) return _DISC_ALIAS[p];
   }
   return null;
 }
@@ -1025,9 +1035,18 @@ async function handleImportFile(file) {
               var existBuf = existing.versions[baseIdx].db;
               var existDb = new SQL.Database(new Uint8Array(existBuf));
               var newDb = new SQL.Database(new Uint8Array(dbBuf));
+
+              // Normalize building name: new file must match existing project's building
+              // Without this, viewer's WHERE building=? never finds merged elements
+              var existBldRows = existDb.exec("SELECT DISTINCT building FROM elements_meta LIMIT 1");
+              var existBldName = (existBldRows.length && existBldRows[0].values.length) ? existBldRows[0].values[0][0] : targetKey.replace(/\.ifc$/i,'');
+              newDb.run("UPDATE elements_meta SET building = ?", [existBldName]);
+              newDb.run("UPDATE component_geometries SET building = ?", [existBldName]);
+              console.log('[S224] §MERGE_NORMALIZE building=' + existBldName + ' file=' + file.name);
+
               var _mergeTables = [
                 { name: 'elements_meta', cols: 'guid, ifc_class, element_name, storey, discipline, material_name, material_rgba, building' },
-                { name: 'element_transforms', cols: 'guid, center_x, center_y, center_z, rotation_x, rotation_y, rotation_z' },
+                { name: 'element_transforms', cols: 'guid, center_x, center_y, center_z, rotation_x, rotation_y, rotation_z, bbox_x, bbox_y, bbox_z' },
                 { name: 'element_instances', cols: 'guid, geometry_hash' },
                 { name: 'component_geometries', cols: 'geometry_hash, vertices, faces, building' },
               ];
@@ -1329,6 +1348,7 @@ async function exportProjectIFC(projectKey, flyout) {
       <a href="mailto:red1org@gmail.com" style="color:#0277bd;text-decoration:none">&#9993; Email</a>
       <a href="https://github.com/red1oon/BIMCompiler" target="_blank" style="color:#0277bd;text-decoration:none">&#11088; GitHub</a>
       <a href="https://github.com/red1oon/BIMCompiler/issues" target="_blank" style="color:#0277bd;text-decoration:none">&#128221; Issues</a>
+      <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.remove('active');if(window.APP&&APP.reportBug)APP.reportBug();else window.open('https://github.com/red1oon/BIMCompiler/issues/new?labels=bug','_blank')" style="color:#ff8a65;text-decoration:none">&#128027; Report Bug</a>
     </div>
     <a href="https://red1oon.github.io/BIMCompiler/AboutMore/" target="_blank" style="color:#0277bd;font-size:11px;text-decoration:none">&#128214; READ MORE &#8212; Technical Overview</a><br>
     <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.remove('active');document.getElementById('diy-dialog').classList.add('active')" style="color:#e8a735;font-size:11px;text-decoration:none;cursor:pointer">&#128736; DIY Downloader</a>
