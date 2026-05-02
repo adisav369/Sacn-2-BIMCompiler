@@ -503,30 +503,7 @@ function setupStreaming(A) {
     A.populateBuildingList();
     A.drawBuildingBoxes();
 
-    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_fetching||'Fetching {url}...').replace('{url}',A.LIB_URL);
-    try {
-      const libBuf = await A.cachedFetch(A.LIB_URL);
-      A.libDb = new SQL.Database(new Uint8Array(libBuf));
-      console.log(`[S192] §LIB_LOADED size=${(libBuf.byteLength/1024/1024).toFixed(0)}MB`);
-      try {
-        const t = A.libDb.exec("SELECT COUNT(*) FROM component_geometries");
-        console.log(`[S192] §LIB_TABLE component_geometries rows=${t[0].values[0][0]}`);
-      } catch(e2) {
-        console.log(`[S192] §LIB_TABLE component_geometries not found, trying base_geometries`);
-        try {
-          const t2 = A.libDb.exec("SELECT COUNT(*) FROM base_geometries");
-          console.log(`[S192] §LIB_TABLE base_geometries rows=${t2[0].values[0][0]}`);
-        } catch(e3) {
-          console.log(`[S192] §LIB_ERROR no geometry table found`);
-        }
-      }
-      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_lib_loaded||'Library loaded ({size}MB). Streaming nearest building...').replace('{size}',(libBuf.byteLength/1024/1024).toFixed(0));
-    } catch (e) {
-      console.log(`[S200] §LIB_FALLBACK using main DB for geometry (${e.message})`);
-      A.libDb = A.db;
-      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_geom||'Using main DB for geometry. Streaming...');
-    }
-
+    // Camera setup from extDb (available immediately)
     const bboxQ = A.dbQuery(`
       SELECT MIN(center_x), MAX(center_x),
              MIN(center_y), MAX(center_y),
@@ -566,18 +543,46 @@ function setupStreaming(A) {
       }
     } catch(e) { /* no project_metadata table */ }
 
-    if (A.libDb) {
-      const hashParams = A.loadFromHash();
-      if (hashParams && hashParams.bld && A.buildingCentres[hashParams.bld]) {
-        if (hashParams.cx) {
-          A.camera.position.set(Number(hashParams.cx), Number(hashParams.cy), Number(hashParams.cz));
-          A.controls.target.set(Number(hashParams.tx), Number(hashParams.ty), Number(hashParams.tz));
-          A.controls.update();
+    // Deep-link camera restore
+    const hashParams = A.loadFromHash();
+    if (hashParams && hashParams.cx) {
+      A.camera.position.set(Number(hashParams.cx), Number(hashParams.cy), Number(hashParams.cz));
+      A.controls.target.set(Number(hashParams.tx), Number(hashParams.ty), Number(hashParams.tz));
+      A.controls.update();
+    }
+
+    // Draw bbox placeholders immediately (extDb has all needed data)
+    // streamTick() guards on !A.libDb so real meshes won't start until library arrives
+    if (hashParams && hashParams.bld && A.buildingCentres[hashParams.bld]) {
+      A.streamBuilding(hashParams.bld);
+    } else {
+      A.startStreaming();
+    }
+    console.log(`[S241] §BBOX_EARLY placeholders drawn before library fetch`);
+
+    // Now fetch library DB (geometry BLOBs) — streamTick will auto-start meshes
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_fetching||'Fetching {url}...').replace('{url}',A.LIB_URL);
+    try {
+      const libBuf = await A.cachedFetch(A.LIB_URL);
+      A.libDb = new SQL.Database(new Uint8Array(libBuf));
+      console.log(`[S192] §LIB_LOADED size=${(libBuf.byteLength/1024/1024).toFixed(0)}MB`);
+      try {
+        const t = A.libDb.exec("SELECT COUNT(*) FROM component_geometries");
+        console.log(`[S192] §LIB_TABLE component_geometries rows=${t[0].values[0][0]}`);
+      } catch(e2) {
+        console.log(`[S192] §LIB_TABLE component_geometries not found, trying base_geometries`);
+        try {
+          const t2 = A.libDb.exec("SELECT COUNT(*) FROM base_geometries");
+          console.log(`[S192] §LIB_TABLE base_geometries rows=${t2[0].values[0][0]}`);
+        } catch(e3) {
+          console.log(`[S192] §LIB_ERROR no geometry table found`);
         }
-        A.streamBuilding(hashParams.bld);
-      } else {
-        A.startStreaming();
       }
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_lib_loaded||'Library loaded ({size}MB). Streaming nearest building...').replace('{size}',(libBuf.byteLength/1024/1024).toFixed(0));
+    } catch (e) {
+      console.log(`[S200] §LIB_FALLBACK using main DB for geometry (${e.message})`);
+      A.libDb = A.db;
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_geom||'Using main DB for geometry. Streaming...');
     }
   };
 

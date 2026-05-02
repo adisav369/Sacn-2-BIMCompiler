@@ -70,8 +70,8 @@ def extract_building(sandbox_conn, lib_conn, display_name, building_names):
     ec.execute("""CREATE TABLE element_transforms (
         guid TEXT PRIMARY KEY,
         center_x REAL, center_y REAL, center_z REAL,
-        transform_source TEXT,
-        rotation_x REAL DEFAULT 0, rotation_y REAL DEFAULT 0, rotation_z REAL DEFAULT 0)""")
+        rotation_x REAL, rotation_y REAL, rotation_z REAL,
+        bbox_x REAL, bbox_y REAL, bbox_z REAL)""")
 
     ec.execute("""CREATE TABLE element_instances (
         guid TEXT PRIMARY KEY, geometry_hash TEXT)""")
@@ -92,7 +92,18 @@ def extract_building(sandbox_conn, lib_conn, display_name, building_names):
     transforms = sandbox_conn.execute(
         f"SELECT * FROM element_transforms WHERE guid IN ({guid_ph})",
         guids).fetchall()
-    ec.executemany("INSERT INTO element_transforms VALUES (?,?,?,?,?,?,?,?)", transforms)
+    # Adapt source columns to new 10-column schema (guid, cx, cy, cz, rx, ry, rz, bx, by, bz)
+    adapted = []
+    for t in transforms:
+        if len(t) == 8:
+            # Old schema: guid, cx, cy, cz, transform_source, rx, ry, rz → drop transform_source, add bbox nulls
+            adapted.append((t[0], t[1], t[2], t[3], t[5], t[6], t[7], None, None, None))
+        elif len(t) == 10:
+            # New schema already: guid, cx, cy, cz, rx, ry, rz, bx, by, bz
+            adapted.append(t)
+        else:
+            adapted.append(t + (None,) * (10 - len(t)))
+    ec.executemany("INSERT INTO element_transforms VALUES (?,?,?,?,?,?,?,?,?,?)", adapted)
 
     # Copy element_instances
     instances = sandbox_conn.execute(

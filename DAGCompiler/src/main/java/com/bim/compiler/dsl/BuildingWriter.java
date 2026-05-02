@@ -131,11 +131,15 @@ public class BuildingWriter {
             stmt.execute("""
                 CREATE TABLE element_transforms (
                     guid TEXT PRIMARY KEY,
-                    center_x REAL NOT NULL,
-                    center_y REAL NOT NULL,
-                    center_z REAL NOT NULL,
-                    transform_source TEXT DEFAULT 'compiled',
-                    FOREIGN KEY (guid) REFERENCES elements_meta(guid)
+                    center_x REAL,
+                    center_y REAL,
+                    center_z REAL,
+                    rotation_x REAL,
+                    rotation_y REAL,
+                    rotation_z REAL,
+                    bbox_x REAL,
+                    bbox_y REAL,
+                    bbox_z REAL
                 )
             """);
 
@@ -1004,7 +1008,9 @@ public class BuildingWriter {
                                                     p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(),
                                                     p.minZ(), p.maxZ(), null, p.materialName(), p.materialRgba(),
                                                     p.baseGuid());  // §4.3: base IFC GUID (no prefix) for SpatialDiff identity matching
-                                                ep.writeInstance(guid, geoHash);
+                                                ep.writeInstance(guid, geoHash,
+                                                    p.cx(), p.cy(), p.cz(), p.rotationZ(),
+                                                    p.dx(), p.dy(), p.dz());
                                                 written++;
                                                 continue;
                                             }
@@ -1243,7 +1249,9 @@ public class BuildingWriter {
                                                     p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(),
                                                     p.minZ(), p.maxZ(), null, p.materialName(), p.materialRgba(),
                                                     p.baseGuid());  // §4.3: base IFC GUID (no prefix) for SpatialDiff identity matching
-                                                ep.writeInstance(guid, geoHash);
+                                                ep.writeInstance(guid, geoHash,
+                                                    p.cx(), p.cy(), p.cz(), p.rotationZ(),
+                                                    p.dx(), p.dy(), p.dz());
                                                 bound++;
                                                 continue;
                                             }
@@ -1506,7 +1514,9 @@ public class BuildingWriter {
                 ep.writeElementMeta(guid, "IfcRoof", roofName, "ROOF",
                     p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ(),
                     null, p.materialName(), p.materialRgba(), p.elementRef());
-                ep.writeInstance(guid, geoHash);
+                ep.writeInstance(guid, geoHash,
+                    p.cx(), p.cy(), p.cz(), p.rotationZ(),
+                    p.dx(), p.dy(), p.dz());
             }
         } else {
             // Additional roofs — emit as new elements (INSERTs only)
@@ -1517,7 +1527,9 @@ public class BuildingWriter {
             ep.writeElementMeta(guid, "IfcRoof", roofName2, "ROOF",
                 p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ(),
                 null, p.materialName(), p.materialRgba(), p.elementRef());
-            ep.writeInstance(guid, geoHash);
+            ep.writeInstance(guid, geoHash,
+                p.cx(), p.cy(), p.cz(), p.rotationZ(),
+                p.dx(), p.dy(), p.dz());
         }
     }
 
@@ -1576,7 +1588,10 @@ public class BuildingWriter {
             bound.placement().minZ(), bound.placement().maxZ(),
             null, bound.materialName(), bound.materialRgba(),
             bound.placement().elementRef());
-        ep.writeInstance(bound.guid(), bound.geometryHash());
+        ep.writeInstance(bound.guid(), bound.geometryHash(),
+            bound.placement().cx(), bound.placement().cy(), bound.placement().cz(),
+            bound.placement().rotationZ(),
+            bound.placement().dx(), bound.placement().dy(), bound.placement().dz());
     }
 
     /**

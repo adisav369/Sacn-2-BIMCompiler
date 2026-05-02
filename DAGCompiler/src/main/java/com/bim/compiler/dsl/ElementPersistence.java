@@ -85,7 +85,13 @@ public class ElementPersistence {
             geo.minX(), geo.maxX(), geo.minY(), geo.maxY(), geo.minZ(), geo.maxZ(),
             fireRatingHr, materialName, materialRgba);
         if (written) {
-            writeInstance(guid, geoHash);
+            double cx = (geo.minX() + geo.maxX()) / 2;
+            double cy = (geo.minY() + geo.maxY()) / 2;
+            double cz = (geo.minZ() + geo.maxZ()) / 2;
+            double bx = geo.maxX() - geo.minX();
+            double by = geo.maxY() - geo.minY();
+            double bz = geo.maxZ() - geo.minZ();
+            writeInstance(guid, geoHash, cx, cy, cz, 0, bx, by, bz);
         }
     }
 
@@ -298,7 +304,7 @@ public class ElementPersistence {
     }
 
     /**
-     * Write element instance with ENFORCED Pattern B: zero transform.
+     * Write element instance with ENFORCED Pattern B: zero transform, no bbox.
      */
     public void writeInstance(String guid, String geoHash) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
@@ -309,18 +315,45 @@ public class ElementPersistence {
             ps.execute();
         }
 
-        writeElementTransform(guid, 0, 0, 0);
+        writeElementTransform(guid, 0, 0, 0, 0, 0, 0, null, null, null);
     }
 
-    void writeElementTransform(String guid, double centerX, double centerY, double centerZ)
+    /**
+     * Write element instance with placement bbox dimensions.
+     * Matches browser import_db_builder.js 10-column schema.
+     */
+    public void writeInstance(String guid, String geoHash,
+                              double centerX, double centerY, double centerZ,
+                              double rotationZ,
+                              double bboxX, double bboxY, double bboxZ) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+            "INSERT INTO element_instances VALUES (?, ?)"
+        )) {
+            ps.setString(1, guid);
+            ps.setString(2, geoHash);
+            ps.execute();
+        }
+
+        writeElementTransform(guid, centerX, centerY, centerZ, 0, 0, rotationZ, bboxX, bboxY, bboxZ);
+    }
+
+    void writeElementTransform(String guid, double centerX, double centerY, double centerZ,
+                               double rotationX, double rotationY, double rotationZ,
+                               Double bboxX, Double bboxY, Double bboxZ)
             throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO element_transforms VALUES (?, ?, ?, ?, 'compiled')"
+            "INSERT INTO element_transforms VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )) {
             ps.setString(1, guid);
             ps.setDouble(2, centerX);
             ps.setDouble(3, centerY);
             ps.setDouble(4, centerZ);
+            ps.setDouble(5, rotationX);
+            ps.setDouble(6, rotationY);
+            ps.setDouble(7, rotationZ);
+            if (bboxX != null) { ps.setDouble(8, bboxX); } else { ps.setNull(8, java.sql.Types.REAL); }
+            if (bboxY != null) { ps.setDouble(9, bboxY); } else { ps.setNull(9, java.sql.Types.REAL); }
+            if (bboxZ != null) { ps.setDouble(10, bboxZ); } else { ps.setNull(10, java.sql.Types.REAL); }
             ps.execute();
         }
     }

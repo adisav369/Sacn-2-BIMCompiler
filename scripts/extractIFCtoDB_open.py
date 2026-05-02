@@ -61,8 +61,8 @@ CREATE TABLE IF NOT EXISTS element_instances (
 CREATE TABLE IF NOT EXISTS element_transforms (
     guid TEXT PRIMARY KEY,
     center_x REAL, center_y REAL, center_z REAL,
-    rotation_x REAL DEFAULT 0, rotation_y REAL DEFAULT 0, rotation_z REAL DEFAULT 0,
-    transform_source TEXT
+    rotation_x REAL, rotation_y REAL, rotation_z REAL,
+    bbox_x REAL, bbox_y REAL, bbox_z REAL
 );
 CREATE TABLE IF NOT EXISTS rel_contained_in_space (
     element_guid TEXT, space_guid TEXT,
@@ -802,8 +802,8 @@ def extract(ifc_path, output_path, exclude=None, library_db=None):
             space_centroids[sp.GlobalId] = (cx, cy, cz, storey_name)
             conn.execute(
                 "INSERT OR IGNORE INTO element_transforms "
-                "(guid, center_x, center_y, center_z, transform_source) "
-                "VALUES (?,?,?,?,'ifc_space_placement')",
+                "(guid, center_x, center_y, center_z, rotation_x, rotation_y, rotation_z) "
+                "VALUES (?,?,?,?,0,0,0)",
                 (sp.GlobalId, cx, cy, cz))
         except Exception:
             pass
@@ -989,9 +989,10 @@ def extract(ifc_path, output_path, exclude=None, library_db=None):
                     "VALUES (?,?)", (guid, ghash))
                 conn.execute(
                     "INSERT OR IGNORE INTO element_transforms "
-                    "(guid, center_x, center_y, center_z, transform_source) "
-                    "VALUES (?,?,?,?,'ifc_extract')",
-                    (guid, float(center[0]), float(center[1]), float(center[2])))
+                    "(guid, center_x, center_y, center_z, rotation_x, rotation_y, rotation_z, bbox_x, bbox_y, bbox_z) "
+                    "VALUES (?,?,?,?,0,0,0,?,?,?)",
+                    (guid, float(center[0]), float(center[1]), float(center[2]),
+                     float(maxXYZ[0] - minXYZ[0]), float(maxXYZ[1] - minXYZ[1]), float(maxXYZ[2] - minXYZ[2])))
                 space = get_space_for_element(elem)
                 if space:
                     conn.execute(

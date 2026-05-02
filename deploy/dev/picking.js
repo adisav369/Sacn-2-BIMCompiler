@@ -227,7 +227,8 @@ function setupPicking(A) {
     const hlEdges = new THREE.EdgesGeometry(hlGeo);
     hlGeo.dispose();
     const hlLine = new THREE.LineSegments(hlEdges,
-      new THREE.LineBasicMaterial({ color: 0xffff00 }));
+      new THREE.LineBasicMaterial({ color: 0xffff00, depthTest: false }));
+    hlLine.renderOrder = 999;
     if (hit.object.isInstancedMesh && hit.instanceId !== undefined) {
       const _im = new THREE.Matrix4();
       hit.object.getMatrixAt(hit.instanceId, _im);
