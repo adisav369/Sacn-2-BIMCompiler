@@ -31,13 +31,15 @@ function setupTools(A) {
         mat.opacity = 0.15;
         mat.side = THREE.DoubleSide;
       } else {
-        // Restore originals fully
-        mat.opacity = mat.userData.origOpacity ?? 1.0;
-        mat.transparent = mat.userData.origTransparent ?? false;
-        mat.side = mat.userData.origSide ?? THREE.FrontSide;
-        delete mat.userData.origOpacity;
-        delete mat.userData.origTransparent;
-        delete mat.userData.origSide;
+        // Restore originals — only if we saved them (skip late-streamed meshes)
+        if (mat.userData.origOpacity !== undefined) {
+          mat.opacity = mat.userData.origOpacity;
+          mat.transparent = mat.userData.origTransparent;
+          mat.side = mat.userData.origSide;
+          delete mat.userData.origOpacity;
+          delete mat.userData.origTransparent;
+          delete mat.userData.origSide;
+        }
       }
       mat.needsUpdate = true;
     });
