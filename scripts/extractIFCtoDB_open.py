@@ -1269,6 +1269,8 @@ def main():
     parser.add_argument("--exclude", help="Comma-separated IFC classes to additionally exclude")
     parser.add_argument("--library-db", help="Also write component_geometries to this library DB "
                         "(S192c: enables Direct Stream without separate extraction)")
+    parser.add_argument("--skip-normalize", action="store_true",
+                        help="Skip Z-normalization (used by extract_merge_disciplines.py)")
     args = parser.parse_args()
 
     exclude = args.exclude.split(",") if args.exclude else []

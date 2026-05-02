@@ -73,8 +73,9 @@ CREATE TABLE IF NOT EXISTS element_instances (
 );
 CREATE TABLE IF NOT EXISTS element_transforms (
     guid TEXT PRIMARY KEY,
-    center_x REAL, center_y REAL, center_z REAL, transform_source TEXT,
-    rotation_x REAL DEFAULT 0, rotation_y REAL DEFAULT 0, rotation_z REAL DEFAULT 0
+    center_x REAL, center_y REAL, center_z REAL,
+    rotation_x REAL, rotation_y REAL, rotation_z REAL,
+    bbox_x REAL, bbox_y REAL, bbox_z REAL
 );
 CREATE TABLE IF NOT EXISTS rel_contained_in_space (
     element_guid TEXT, space_guid TEXT,
@@ -296,9 +297,14 @@ def merge_db(src_path: Path, dst: sqlite3.Connection, disc_label: str,
         cy += dy
         cz += dz
 
+        # bbox columns (if source has them)
+        has_bbox = 'bbox_x' in src_cols
+        bx = float(row["bbox_x"] or 0) if has_bbox else None
+        by = float(row["bbox_y"] or 0) if has_bbox else None
+        bz = float(row["bbox_z"] or 0) if has_bbox else None
         dst.execute(
-            "INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?,?,?,?)",
-            (row["guid"], cx, cy, cz, row["transform_source"], rx, ry, rz)
+            "INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (row["guid"], cx, cy, cz, rx, ry, rz, bx, by, bz)
         )
 
     if has_rotation and FINE:

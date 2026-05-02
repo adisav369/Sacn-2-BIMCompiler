@@ -417,11 +417,21 @@ async function main() {
   // ── Auto-scale heuristic (mm → m if coords > 500) ──
   let autoScale = 1.0;
   if (transforms.length > 0) {
-    let maxCoord = 0;
-    for (const t of transforms) maxCoord = Math.max(maxCoord, Math.abs(t.cx), Math.abs(t.cy), Math.abs(t.cz));
-    if (maxCoord > 500) {
+    // Auto-scale heuristic: if element SPREAD > 500m, assume mm → /1000
+    // (Don't use absolute coords — buildings can be at large grid offsets in metres)
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity,minZ=Infinity,maxZ=-Infinity;
+    for (const t of transforms) {
+      if(t.cx<minX)minX=t.cx;if(t.cx>maxX)maxX=t.cx;
+      if(t.cy<minY)minY=t.cy;if(t.cy>maxY)maxY=t.cy;
+      if(t.cz<minZ)minZ=t.cz;if(t.cz>maxZ)maxZ=t.cz;
+    }
+    const spread = Math.max(maxX-minX, maxY-minY, maxZ-minZ);
+    if (spread > 500) {
       autoScale = 0.001;
-      for (const t of transforms) { t.cx *= 0.001; t.cy *= 0.001; t.cz *= 0.001; }
+      for (const t of transforms) {
+        t.cx *= 0.001; t.cy *= 0.001; t.cz *= 0.001;
+        if (t.bx) { t.bx *= 0.001; t.by *= 0.001; t.bz *= 0.001; }
+      }
       for (const g of geometries) {
         const vBuf = new Float32Array(g.vertices.buffer, g.vertices.byteOffset, g.vertices.byteLength / 4);
         for (let i = 0; i < vBuf.length; i++) vBuf[i] *= 0.001;

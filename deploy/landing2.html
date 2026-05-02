@@ -977,12 +977,13 @@ async function handleImportFile(file) {
         const dbs = buildImportDBs(SQL, msg);
         const dbBuf = dbs.extractedDb;
 
-        // S224: Check existing projects — prompt Merge/New if any exist
+        // S224: Check existing projects — prompt Merge/New only if filename contains 'revised'
         const existingProjects = await listProjects();
         var projectKey = file.name;  // default: new project keyed by filename
+        const isRevision = /revised|revision|rev\d|_v\d/i.test(file.name);
 
-        if (existingProjects.length > 0) {
-          console.log('[S224] §MERGE_PROMPT existing=' + existingProjects.length + ' file=' + file.name);
+        if (existingProjects.length > 0 && isRevision) {
+          console.log('[S224] §MERGE_PROMPT existing=' + existingProjects.length + ' file=' + file.name + ' (revision detected)');
           const choice = await showMergeModal(existingProjects, file.name);
 
           if (choice.action === 'merge') {
