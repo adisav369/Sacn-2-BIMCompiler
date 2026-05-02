@@ -503,30 +503,39 @@ function setupStreaming(A) {
     A.populateBuildingList();
     A.drawBuildingBoxes();
 
-    // Camera setup from extDb (available immediately)
+    // Camera setup — use element bbox extents for envelope, buildingCentres for position
+    // (new extractions have re-centred center_x/y/z near 0, so MIN/MAX of those is unreliable)
     const bboxQ = A.dbQuery(`
-      SELECT MIN(center_x), MAX(center_x),
+      SELECT MAX(bbox_x), MAX(bbox_y), MAX(bbox_z),
+             MIN(center_x), MAX(center_x),
              MIN(center_y), MAX(center_y),
              MIN(center_z), MAX(center_z)
       FROM element_transforms
     `);
     let envW = 500, envD = 500, envH = 100;
-    if (bboxQ.length > 0 && bboxQ[0][0] != null) {
-      const [xMin, xMax, yMin, yMax, zMin, zMax] = bboxQ[0];
+    if (bboxQ.length > 0 && bboxQ[0][3] != null) {
+      const [, , , xMin, xMax, yMin, yMax, zMin, zMax] = bboxQ[0];
       envW = xMax - xMin;
       envD = yMax - yMin;
       envH = zMax - zMin;
+    }
+    // If envelope is too small (re-centred DB), use sum of bbox spreads from buildingCentres
+    if (envW < 1 && Object.keys(A.buildingCentres).length > 0) {
+      const bc = Object.values(A.buildingCentres)[0];
+      // Estimate from element count: sqrt(count) * typical spacing
+      envW = Math.max(50, Math.sqrt(bc.count) * 2);
+      envD = envW; envH = envW * 0.5;
     }
     const envelope = Math.max(envW, envD, envH);
     for (const bc of Object.values(A.buildingCentres)) {
       bc.envelope = envelope;
     }
     const dist = Math.max(80, envelope * 1.5);
-    const ctr = A.ifc2three(
-      (bboxQ[0]?.[0] + bboxQ[0]?.[1]) / 2 || 0,
-      (bboxQ[0]?.[2] + bboxQ[0]?.[3]) / 2 || 0,
-      (bboxQ[0]?.[4] + bboxQ[0]?.[5]) / 2 || 0
-    );
+    // Use buildingCentres for camera target (has IFC world coords via modelOffset)
+    const firstBc = Object.values(A.buildingCentres)[0];
+    const ctr = firstBc
+      ? A.ifc2three(firstBc.ix, firstBc.iy, firstBc.iz)
+      : A.ifc2three(0, 0, 0);
     A.camera.position.set(ctr.x + dist * 0.6, ctr.y + dist * 0.8, ctr.z + dist * 0.6);
     A.camera.far = Math.max(10000, dist * 5);
     A.camera.updateProjectionMatrix();
