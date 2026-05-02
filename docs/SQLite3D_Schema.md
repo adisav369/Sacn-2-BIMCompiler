@@ -169,6 +169,50 @@ No intermediate format. No conversion. DB BLOBs ARE the GPU buffers.
 
 ---
 
+## Authorship Map — What's Ours vs Third-Party
+
+### Third-party libraries (loaded from CDN, not modified)
+
+| Library | License | What it does | How loaded |
+|---|---|---|---|
+| [web-ifc](https://github.com/ThatOpenCompany/engine_web-ifc) @0.0.77 | MPL-2.0 | C++/WASM IFC parser + tessellator | CDN `unpkg.com` in `import_worker.js` |
+| [sql.js](https://github.com/sql-js/sql.js) @1.10.3 | MIT | SQLite compiled to WASM — runs SQL in browser | CDN `cdnjs.cloudflare.com` in `streaming.js` |
+| [Three.js](https://github.com/mrdoob/three.js) r128 | MIT | WebGL 3D renderer | CDN `cdnjs.cloudflare.com` in HTML |
+| [dxf-parser](https://github.com/gdsestimating/dxf-parser) | MIT | DXF file parsing for 2D plans | Vendored minified `dxf-parser.js` |
+| [ExcelJS](https://github.com/exceljs/exceljs) | MIT | Excel export for BOQ charts | CDN `cdnjs.cloudflare.com` |
+
+None of these libraries are modified. They are called via their public APIs.
+
+### Original BIM OOTB scripts (all by Redhuan D. Oon, MIT)
+
+| Script | What it does | Novelty |
+|---|---|---|
+| `import_worker.js` | Calls web-ifc API → extracts entities → 4×4 transform, Y→Z-up, centroid re-centre, discipline classify, storey map, material extract, geometry dedup (FNV-1a hash), auto-scale mm→m | The extraction pipeline — turns raw web-ifc output into structured DB records |
+| `import_db_builder.js` | Takes extracted data → creates 10-table SQLite schema via sql.js | The schema design — BOM-based, instanced, 4D-ready |
+| `streaming.js` | Queries DB → streams BLOBs → Float32Array → Three.js BufferGeometry → GPU | **The core innovation** — DB BLOBs are GPU buffers, no intermediate format |
+| `picking.js` | Raycast → GUID → SQL query → highlight box from bbox | Click-to-identify from DB, not scene graph |
+| `navigate.js` | Storey/discipline filter, search, tree panel | SQL-driven navigation, not IFC hierarchy |
+| `section_cut.js` | Clipping plane computed from DB geometry | Section cut from DB, not mesh boolean |
+| `elevation.js` | 2D elevation projected from DB geometry | Elevation from DB BLOB vertices |
+| `scene_to_db.js` | Three.js scene → write back to SQLite DB | Reverse pipeline — browser edits persist to DB |
+| `ifc_export_worker.js` | DB → IFC STEP/ISO-10303-21 text file | Pure text generation — **no web-ifc dependency** |
+| `mesh_import_worker.js` | DAE/OBJ/GLB → DB (uses Three.js loaders from CDN) | Multi-format import to same DB schema |
+| `diff.js` | Compare two DBs (base vs variation) | Variation order / design diff from SQL |
+| `walk.js` | First-person walk mode | Camera + collision from DB spatial data |
+| `sitecam.js` | GPS/compass/AR mobile camera overlay | Real-world BIM overlay |
+| `scene.js`, `panels.js`, `helpers.js`, `city.js`, `wizard.js`, `nlp.js`, `locale_loader.js`, `grid_dims.js`, `rates.js`, `title_block.js`, `dxf_export.js`, `semantic_enrichment.js`, `variation_order.js` | UI, i18n, enrichment, export | All original |
+
+### The innovation boundary
+
+web-ifc, sql.js, and Three.js each solve one problem. **No existing project combines them into a serverless BIM pipeline.** The original contribution is:
+
+1. **Schema design** — 10 tables that hold an entire building as queryable data
+2. **Extraction pipeline** — IFC entities → classified, instanced, centroid-recentred DB records
+3. **DB-to-GPU streaming** — SQLite BLOB → Float32Array → BufferGeometry with zero conversion
+4. **Round-trip** — browser edits → DB → IFC export, closing the loop without a server
+
+---
+
 ## Proven Scale
 
 | Building | Elements | Unique Hashes | DB Size |

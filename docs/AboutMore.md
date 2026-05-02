@@ -4,10 +4,10 @@
 
 **BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.**
 
-Version 0.6 alpha (October 2025 - April 2026)
+Version 0.6 alpha (October 2025 - May 2026)
 Creator: Redhuan D. Oon <red1org@gmail.com>
 Tickets: github.com/red1oon/BIMCompiler/issues
-License: GPL-3.0 / MIT
+License: MIT
 
 **Probably the lightest BIM app ever made.**
 
@@ -16,22 +16,55 @@ from SQLite databases directly to the GPU via Three.js. No server, no plugins,
 no build step. Works on desktop and mobile.
 
 17K lines of vanilla JavaScript — no framework, no build step, no npm, no bundler.
-~3MB total download (cached after first visit). Static files only — zero server-side code.
+~4MB total download (cached after first visit). Static files only — zero server-side code.
 Compare typical web BIM viewers at 50K–200K+ lines with Node backends and heavy frameworks.
 
 - 17K lines of JavaScript + HTML
 - 15 languages, locale-aware currency
-- 120 Playwright E2E tests
+- 155 Playwright E2E tests
 - OCI Object Storage (Always Free tier)
 
-### Dependencies
-| Library | Version | Purpose |
-|---------|---------|---------|
-| Three.js | r128 | 3D rendering, WebGL 2 |
-| sql.js | 1.10.3 | WASM SQLite (SQLite 3.44.2) |
-| web-ifc | 0.0.77 | IFC2x3 + IFC4 parsing |
-| SheetJS | 0.20.3 | Excel export |
-| dxf-parser | — | DXF file parsing |
+### Third-Party Libraries (all loaded via CDN, not modified)
+
+| Library | Version | License | What it does |
+|---------|---------|---------|--------------|
+| [Three.js](https://github.com/mrdoob/three.js) | r128 | MIT | WebGL 3D rendering |
+| [sql.js](https://github.com/sql-js/sql.js) | 1.10.3 | MIT | WASM SQLite in browser |
+| [web-ifc](https://github.com/ThatOpenCompany/engine_web-ifc) | 0.0.77 | MPL-2.0 | IFC2x3 + IFC4 parsing/tessellation |
+| [SheetJS](https://github.com/SheetJS/sheetjs) | 0.20.3 | Apache-2.0 | Excel export |
+| [ExcelJS](https://github.com/exceljs/exceljs) | 4.4.0 | MIT | Excel workbook generation |
+| [Chart.js](https://github.com/chartjs/Chart.js) | 4.4.1 | MIT | BOQ charts |
+| [dxf-parser](https://github.com/gdsestimating/dxf-parser) | — | MIT | DXF file parsing (vendored) |
+| [GoatCounter](https://www.goatcounter.com/) | — | EUPL | Privacy-friendly analytics |
+
+None of these are modified. They are called via their public APIs.
+
+### Original BIM OOTB Scripts (by Redhuan D. Oon, MIT)
+
+| Script | What it does | Novelty |
+|--------|-------------|---------|
+| `streaming.js` | DB BLOBs → Float32Array → Three.js GPU | **The core innovation** — no intermediate format |
+| `import_worker.js` | Calls web-ifc API → 4×4 transform, Y→Z-up, centroid re-centre, discipline classify, dedup | The extraction pipeline |
+| `import_db_builder.js` | Raw data → 10-table SQLite schema | The schema design |
+| `picking.js` | Raycast → GUID → SQL → highlight | Click-to-identify from DB |
+| `scene_to_db.js` | Three.js scene → write back to DB | Reverse pipeline |
+| `ifc_export_worker.js` | DB → IFC STEP text file | Pure text generation, no web-ifc |
+| `section_cut.js` | Clipping plane from DB geometry | Section cut from DB |
+| `navigate.js` | Storey/discipline filter, search | SQL-driven navigation |
+| `diff.js` | Compare two DBs | Variation order from SQL |
+| `walk.js` | First-person walk mode | Camera + collision from DB |
+| `sitecam.js` | GPS/compass/AR mobile overlay | Real-world BIM overlay |
+| + 15 more modules | UI, i18n, city mode, BOQ, wizard, NLP, etc. | All original |
+
+### The Innovation Boundary
+
+web-ifc, sql.js, and Three.js each solve one problem. **No existing project combines them
+into a serverless BIM pipeline.** The original contribution is:
+
+1. **Schema design** — 10 tables that hold an entire building as queryable data
+2. **Extraction pipeline** — IFC entities → classified, instanced, centroid-recentred DB records
+3. **DB-to-GPU streaming** — SQLite BLOB → Float32Array → BufferGeometry with zero conversion
+4. **Round-trip** — browser edits → DB → IFC export, closing the loop without a server
 
 ### Language and Currency
 
@@ -79,6 +112,18 @@ browser already consumes. Stage 2 adds server-side compilation, not a new viewer
 - All computation runs in the browser (client-side)
 - OCI Always Free: 10GB storage, 10TB/mo egress
 - Client: 2GB+ RAM, any modern CPU with WebGL 2
+
+---
+
+## DIY Self-Host
+
+Run BIM OOTB on your own machine. ~4MB download, libraries loaded from CDN.
+
+1. Download `deploy/dev/` from [GitHub](https://github.com/red1oon/BIMCompiler)
+2. Run `python3 -m http.server 8080` in the folder
+3. Open `http://localhost:8080` — drop any IFC file
+
+Or use the **DIY Downloader** in the About box of the [live viewer](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html) — it generates an install script for your platform (Windows/Mac/Linux) that handles prerequisites automatically.
 
 ---
 
@@ -207,13 +252,7 @@ See `deploy/OCI_UPLOAD.md` for full procedure.
 | Landing page | 1 | 1,200 |
 | **Total** | **~76** | **~27,400** |
 
-## Key Dependencies (all loaded via CDN, no npm)
-
-- **Three.js** r170 — 3D rendering, BufferGeometry, OrbitControls
-- **sql.js** 1.11 — WASM SQLite in browser
-- **ExcelJS** — Excel export (BOQ charts)
-- **web-ifc** — IFC parsing in Web Worker
-- **dxf-parser** — DXF file parsing for 2D plans
-- **GoatCounter** — privacy-friendly analytics (no cookies)
+---
 
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*
+*Supported by [SYSNOVA Information Systems Limited](https://www.sysnova.co.uk)*

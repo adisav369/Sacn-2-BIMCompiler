@@ -1235,7 +1235,7 @@ async function exportProjectIFC(projectKey, flyout) {
 <!-- About dialog -->
 <div id="about-dialog" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);justify-content:center;align-items:center" onclick="if(event.target===this)this.classList.remove('active')">
   <div style="background:rgba(10,10,30,0.97);border-radius:14px;padding:24px 28px;border:1px solid rgba(79,195,247,0.3);font-family:'Segoe UI',sans-serif;color:#e0e0e0;max-width:380px;width:90%;max-height:85vh;overflow-y:auto;text-align:center">
-    <div style="font-size:36px;margin-bottom:4px">&#127963;&#65039;</div>
+    <img src="sandbox/Sysnova.png" alt="Sysnova" style="height:50px;margin-bottom:8px;background:#f5f0e0;border-radius:6px;padding:4px 10px">
     <div style="font-size:20px;font-weight:700;color:#e0e0e0">BIM</div>
     <div style="font-size:12px;letter-spacing:3px;color:#888;margin-bottom:6px">Out Of The Box</div>
     <div style="color:#888;font-size:11px;margin-bottom:8px">Version 0.6 alpha (October 2025 &#8211; April 2026)</div>
@@ -1286,7 +1286,7 @@ async function exportProjectIFC(projectKey, flyout) {
     <div style="text-align:left;margin-bottom:16px;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px">
       <div style="color:#e8a735;font-size:11px;font-weight:700;margin-bottom:8px">WHAT YOU GET:</div>
       <div style="color:#ccc;font-size:11px;line-height:1.8">
-        &#10003; Complete BIM viewer (~4MB download)<br>
+        &#10003; Complete BIM viewer (~49MB download, ~4MB viewer)<br>
         &#10003; Libraries loaded from CDN on first use, then cached<br>
         &#10003; Drop IFC / OBJ / DAE / GLB files to view<br>
         &#10003; BOQ, 2D Plans, Section Cut, Walk Mode<br>
@@ -1369,9 +1369,11 @@ function downloadDIYScript() {
       '  exit /b 1',
       ')',
       '',
-      'REM Extract',
+      'REM Extract deploy/dev only',
       'echo Extracting...',
-      'tar -xf bim-ootb.zip --strip-components=2 "BIMCompiler-full/deploy/dev"',
+      'powershell -Command "Expand-Archive -Path bim-ootb.zip -DestinationPath _tmp -Force"',
+      'xcopy /s /e /y _tmp\\BIMCompiler-full\\deploy\\dev\\* . >nul',
+      'rmdir /s /q _tmp',
       'del bim-ootb.zip',
       '',
       'echo.',

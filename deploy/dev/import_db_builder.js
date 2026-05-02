@@ -2,6 +2,10 @@
  * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
  * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
  * SPDX-License-Identifier: MIT
+ *
+ * Calls sql.js API (MIT, sql-js/sql.js) — loaded from CDN at runtime, not bundled here.
+ * All code in this file is original work by the author:
+ *   10-table schema design, geometry instancing via hash, BOM-based structure.
  */
 // import_db_builder.js — Shared DB builder for IFC import
 // Both landing2.html and import.js call buildImportDBs(SQL, data)

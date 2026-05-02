@@ -2,6 +2,12 @@
  * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
  * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
  * SPDX-License-Identifier: MIT
+ *
+ * Calls sql.js API (MIT, sql-js/sql.js) — loaded from CDN at runtime, not bundled here.
+ * Calls Three.js API (MIT, mrdoob/three.js) — loaded from CDN at runtime, not bundled here.
+ * All code in this file is original work by the author:
+ *   DB BLOB → Float32Array → BufferGeometry → GPU streaming, instancing,
+ *   discipline phasing, storey filtering, geometry cache.
  */
 // streaming.js — DB loading, building streaming, geometry cache
 function setupStreaming(A) {

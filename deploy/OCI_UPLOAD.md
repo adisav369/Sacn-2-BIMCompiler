@@ -87,6 +87,26 @@ OCI Always Free tier — no charges, no expiry:
 
 Full setup details: `internal/OCI_SETUP.md`
 
+## SYSNOVA Landing Page
+
+### Bucket Landing Arrangement
+
+| Bucket | Landing (`index.html`) | Source file | About box |
+|---|---|---|---|
+| `bim-ootb-live` | SYSNOVA branded (blue, logo, company footer) | `SYSNOVA/index.html` | Sysnova logo + DIY Downloader |
+| `bim-ootb-dev` | Dev landing (dark, DEV banner) | `deploy/landing2.html` | Sysnova logo + DIY Downloader |
+| `bim-ootb-full` | DB download page (no viewer) | `deploy/landing.html` | None |
+| `bim-ootb-live2` | Test mirror of live | `SYSNOVA/index.html` | Sysnova logo + DIY Downloader |
+| `bim-ootb-backup` | Snapshot of live | (copy of live) | Sysnova logo + DIY Downloader |
+
+**⚠ Each bucket keeps its own landing page.** Never replace one with another.
+The About box (with Sysnova logo + DIY Downloader) is the same across all landings
+that have one — update it in both `SYSNOVA/index.html` AND `deploy/landing2.html`,
+then upload each to its own bucket.
+
+- `Sysnova.png` must exist in each bucket: root for live/live2/backup, `sandbox/` for dev.
+- `deploy/landing.html` (full bucket) has no About box — it's a DB download page only.
+
 ## Dev Environment (`bim-ootb-dev`)
 
 Separate bucket for testing changes before production. Zero blast radius.
