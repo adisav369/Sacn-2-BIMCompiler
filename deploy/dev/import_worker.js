@@ -2,6 +2,11 @@
  * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
  * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
  * SPDX-License-Identifier: MIT
+ *
+ * Calls web-ifc API (MPL-2.0, That Open Company) — loaded from CDN at runtime, not bundled here.
+ * All code in this file is original work by the author:
+ *   4x4 transform, Y→Z-up swap, centroid re-centre, discipline classification,
+ *   storey mapping, material extraction, auto-scale heuristic, geometry dedup (FNV-1a).
  */
 // import_worker.js — Web Worker: parse IFC via web-ifc, extract to sql.js DBs
 // Runs off main thread to avoid UI freeze.
@@ -59,7 +64,20 @@ function properClassName(typeCode) {
   return CLASS_NAME_MAP[upper] || ('Ifc' + typeCode.substring(3).charAt(0).toUpperCase() + typeCode.substring(4).toLowerCase());
 }
 
-function classifyDisc(ifcClass) {
+var VALID_DISCS = ['ARC','STR','MEP','PLB','ACMV','ELEC','FP','VENT','HEAT','SAN','COOL','VOID'];
+
+function discFromFilename(fname) {
+  // Extract discipline from filename: LTU_AHouse_HEAT.ifc → HEAT
+  var stem = fname.replace(/\.ifc$/i, '');
+  var parts = stem.split(/[_\-]/);
+  for (var i = parts.length - 1; i >= 0; i--) {
+    if (VALID_DISCS.indexOf(parts[i].toUpperCase()) >= 0) return parts[i].toUpperCase();
+  }
+  return null;
+}
+
+function classifyDisc(ifcClass, filenameDisc) {
+  if (filenameDisc) return filenameDisc;
   return DISC_MAP[ifcClass] || 'ARC';
 }
 
@@ -208,7 +226,7 @@ self.onmessage = async function(e) {
             ifcClass: ifcClass,
             name: el.Name ? el.Name.value : ifcClass + '_' + id,
             storey: elementToStorey[id] || 'Unknown',
-            discipline: classifyDisc(ifcClass),
+            discipline: classifyDisc(ifcClass, discFromFilename(filename)),
             material: '',
           });
         } catch(e) { /* skip unreadable */ }

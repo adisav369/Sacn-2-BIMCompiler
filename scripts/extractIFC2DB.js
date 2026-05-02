@@ -21,15 +21,22 @@ const Database = require('better-sqlite3');
 
 // ── Args ──
 const args = process.argv.slice(2);
-let ifcPath = null, outPath = null;
+let ifcPath = null, outPath = null, discOverride = null;
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--ifc' && args[i+1]) ifcPath = args[++i];
   else if (args[i] === '-o' && args[i+1]) outPath = args[++i];
+  else if (args[i] === '--disc' && args[i+1]) discOverride = args[++i];
 }
 if (!ifcPath || !outPath) {
-  console.error('Usage: node scripts/extractIFC2DB.js --ifc <file.ifc> -o <output.db>');
+  console.error('Usage: node scripts/extractIFC2DB.js --ifc <file.ifc> -o <output.db> [--disc HEAT]');
   process.exit(1);
 }
+const VALID_DISCS = ['ARC','STR','MEP','PLB','ACMV','ELEC','FP','VENT','HEAT','SAN','COOL','VOID'];
+if (discOverride && !VALID_DISCS.includes(discOverride.toUpperCase())) {
+  console.error(`Invalid --disc "${discOverride}". Valid: ${VALID_DISCS.join(', ')}`);
+  process.exit(1);
+}
+if (discOverride) discOverride = discOverride.toUpperCase();
 if (!fs.existsSync(ifcPath)) {
   console.error(`IFC file not found: ${ifcPath}`);
   process.exit(1);
@@ -276,7 +283,7 @@ async function main() {
           ifcClass,
           name: el.Name ? el.Name.value : ifcClass + '_' + id,
           storey: elementToStorey[id] || 'Unknown',
-          discipline: classifyDisc(ifcClass),
+          discipline: discOverride || classifyDisc(ifcClass),
           material: '',
           _bboxX: null, _bboxY: null, _bboxZ: null,
         });

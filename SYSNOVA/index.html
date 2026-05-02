@@ -1,16 +1,16 @@
-<!-- OCI: uploads as index.html to bim-ootb-dev bucket (DEV landing page) -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1a1a2e">
-<title>BIM OOTB — DEV</title>
+<meta name="theme-color" content="#ffffff">
+<title>BIM OOTB — Sysnova Information Systems Limited</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    background: #1a1a2e; color: #e0e0e0;
+    background: #f5f0e8; color: #1a1a2e;
     font-family: 'Segoe UI', system-ui, sans-serif;
     min-height: 100vh;
   }
@@ -18,7 +18,7 @@
     text-align: center; padding: 30px 20px 10px;
   }
   .header h1 {
-    font-size: 28px; color: #4fc3f7; margin-bottom: 4px;
+    font-size: 28px; color: #0277bd; margin-bottom: 4px;
     letter-spacing: 1px;
   }
   .header .tagline {
@@ -30,7 +30,7 @@
   }
   .loading .spinner {
     display: inline-block; width: 30px; height: 30px;
-    border: 3px solid #333; border-top-color: #4fc3f7;
+    border: 3px solid #ccc; border-top-color: #0277bd;
     border-radius: 50%; animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -44,13 +44,13 @@
     max-width: 1200px; margin: 0 auto;
   }
   .card {
-    background: rgba(255,255,255,0.04);
+    background: #1a1a2e;
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: 8px; padding: 14px 16px;
     cursor: pointer; transition: all 0.15s;
   }
   .card:hover {
-    background: rgba(79,195,247,0.08);
+    background: #1e2840;
     border-color: rgba(79,195,247,0.3);
     transform: translateY(-1px);
   }
@@ -58,7 +58,7 @@
   .card .meta { font-size: 12px; color: #888; line-height: 1.6; }
   .card .meta b { color: #ccc; }
   .card .instances {
-    display: inline-block; background: #4fc3f7; color: #000;
+    display: inline-block; background: #0277bd; color: #000;
     font-size: 11px; font-weight: 700; padding: 1px 6px;
     border-radius: 3px; margin-left: 6px;
   }
@@ -71,7 +71,7 @@
     display: block; width: 100%; margin-top: 10px;
     padding: 6px; background: rgba(79,195,247,0.15);
     border: 1px solid rgba(79,195,247,0.3);
-    border-radius: 4px; color: #4fc3f7;
+    border-radius: 4px; color: #0277bd;
     font-size: 12px; font-weight: 600; cursor: pointer;
     transition: background 0.15s;
   }
@@ -83,7 +83,7 @@
   .export-triangle {
     position: absolute; top: 0; right: 0;
     width: 0; height: 0;
-    border-top: 36px solid #4fc3f7;
+    border-top: 36px solid #0277bd;
     border-left: 36px solid transparent;
     cursor: pointer; opacity: 0.7;
     transition: opacity 0.15s;
@@ -102,7 +102,7 @@
     box-shadow: 0 4px 16px rgba(0,0,0,0.5);
   }
   .export-flyout label { display: block; color: #ccc; font-size: 12px; cursor: pointer; padding: 4px 0; }
-  .export-flyout label:hover { color: #4fc3f7; }
+  .export-flyout label:hover { color: #0277bd; }
   .export-flyout input[type=radio] { margin-right: 6px; }
   .export-flyout .ef-row { display: flex; gap: 6px; margin-top: 10px; }
   .export-flyout .ef-btn {
@@ -122,7 +122,7 @@
   .tabs-panel .tab-item {
     padding: 4px 12px; background: rgba(79,195,247,0.15);
     border: 1px solid rgba(79,195,247,0.3); border-radius: 4px;
-    color: #4fc3f7; font-size: 12px; cursor: pointer;
+    color: #0277bd; font-size: 12px; cursor: pointer;
     white-space: nowrap; flex-shrink: 0;
   }
   .tabs-panel .tab-item:hover { background: rgba(79,195,247,0.3); }
@@ -131,15 +131,15 @@
   .section-header {
     padding: 16px 20px 4px; max-width: 1200px; margin: 0 auto;
     font-size: 13px; color: #666; text-transform: uppercase;
-    letter-spacing: 1px; border-top: 1px solid rgba(255,255,255,0.04);
+    letter-spacing: 1px; border-top: 1px solid rgba(0,0,0,0.08);
   }
 
   /* Footer */
   .footer {
-    text-align: center; padding: 20px; font-size: 11px; color: #444;
+    text-align: center; padding: 20px; font-size: 11px; color: #555;
     padding-bottom: 60px; /* space for tabs panel */
   }
-  .footer a { color: #4fc3f7; text-decoration: none; }
+  .footer a { color: #0277bd; text-decoration: none; }
 
   @media (max-width: 600px) {
     .grid { grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
@@ -151,13 +151,13 @@
 </head>
 <body>
 
-<div style="background:#cc6600;color:#fff;text-align:center;padding:6px;font-size:13px;font-weight:700;letter-spacing:2px">DEV ENVIRONMENT — changes tested here before production</div>
 <div class="header">
-  <h1 style="color:#cc6600;margin-bottom:0"><span style="font-size:64px;letter-spacing:42px;margin-left:42px;display:block;margin-bottom:-8px;line-height:0.8;font-family:'Arial Black',Impact,sans-serif;letter-spacing:16px;margin-left:16px">BIM</span><span data-trl="landing_ootb" style="font-size:16px;font-weight:400;font-family:'Arial Black',Impact,sans-serif;letter-spacing:6px;margin-left:6px;color:#cc6600cc;text-transform:lowercase">outofthebox</span></h1>
+  <a href="https://www.sysnova.co.uk/" target="_blank" style="display:block;margin:0 auto 16px;text-decoration:none"><img src="Sysnova.png" alt="Sysnova Information Systems Limited" style="display:block;margin:0 auto;height:80px;width:auto"></a>
+  <h1 style="color:#0277bd;margin-bottom:0"><span style="font-size:64px;display:block;margin-bottom:-8px;line-height:0.8;font-family:'Arial Black',Impact,sans-serif;letter-spacing:16px;margin-left:16px">BIM</span><span data-trl="landing_ootb" style="font-size:16px;font-weight:400;font-family:'Arial Black',Impact,sans-serif;letter-spacing:6px;margin-left:6px;color:#0277bdaa;text-transform:lowercase">outofthebox</span></h1>
   <div style="display:flex;justify-content:center;align-items:center;gap:14px;margin-top:10px">
-    <a href="https://youtu.be/bSyuLQ_c4rw" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:#4fc3f7;font-size:13px;text-decoration:none;padding:4px 8px"><img src="sandbox/YT.png" alt="YouTube" style="height:20px;vertical-align:middle"> <span data-trl="landing_watch_demo">Watch Demo</span></a>
-    <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.toggle('active')" style="display:inline-flex;align-items:center;gap:5px;color:#ccc;font-size:13px;text-decoration:none;padding:4px 8px">&#10067; <span data-trl="landing_about">About</span></a>
-    <a href="javascript:void(0)" id="header-flag-btn" onclick="if(window._TRL_LOADER)_TRL_LOADER.openFlagPicker()" style="display:inline-flex;align-items:center;gap:4px;color:#ccc;font-size:16px;text-decoration:none;padding:4px 8px;cursor:pointer" title="Language">&#127760;</a>
+    <a href="https://youtu.be/bSyuLQ_c4rw" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:#0277bd;font-size:13px;text-decoration:none;padding:4px 8px"><img src="sandbox/YT.png" alt="YouTube" style="height:20px;vertical-align:middle"> <span data-trl="landing_watch_demo">Watch Demo</span></a>
+    <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.toggle('active')" style="display:inline-flex;align-items:center;gap:5px;color:#444;font-size:13px;text-decoration:none;padding:4px 8px">&#10067; <span data-trl="landing_about">About</span></a>
+    <a href="javascript:void(0)" id="header-flag-btn" onclick="if(window._TRL_LOADER)_TRL_LOADER.openFlagPicker()" style="display:inline-flex;align-items:center;gap:4px;color:#444;font-size:16px;text-decoration:none;padding:4px 8px;cursor:pointer" title="Language">&#127760;</a>
   </div>
 </div>
 
@@ -171,7 +171,7 @@
 <div id="content" style="display:none">
   <!-- S222: Hero Import Panel -->
   <div style="max-width:720px;margin:0 auto;padding:24px 20px 8px">
-    <div id="import-zone" style="border:1px solid rgba(79,195,247,0.12);border-radius:16px;padding:40px 32px 28px;text-align:center;cursor:pointer;transition:all 0.15s;background:linear-gradient(180deg,rgba(79,195,247,0.04) 0%,rgba(0,0,0,0) 100%)">
+    <div id="import-zone" style="border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:40px 32px 28px;text-align:center;cursor:pointer;transition:all 0.15s;background:#1a1a2e">
 
       <!-- Headline — Leo Burnett big -->
       <div onclick="event.stopPropagation()" style="pointer-events:auto;cursor:default">
@@ -180,32 +180,32 @@
         <!-- Steps — pure visual, no interaction -->
         <div style="display:flex;justify-content:center;align-items:center;gap:12px;margin:32px 0 28px;flex-wrap:wrap;opacity:0.7">
           <span data-trl="landing_step_import" style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Import</span>
-          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#888;font-size:9px">&mdash;</span>
           <span data-trl="landing_step_view" style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">View</span>
-          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#888;font-size:9px">&mdash;</span>
           <span data-trl="landing_step_compare" style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Compare</span>
-          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#888;font-size:9px">&mdash;</span>
           <span data-trl="landing_step_costed" style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Costed</span>
-          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#888;font-size:9px">&mdash;</span>
           <span data-trl="landing_step_done" style="color:#44cc44;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Done</span>
         </div>
       </div>
 
       <!-- Drop target — this is the only clickable part -->
-      <div style="border:2px dashed rgba(79,195,247,0.2);border-radius:10px;padding:20px;margin:0 auto;max-width:380px;transition:border-color 0.15s">
+      <div style="border:2px dashed rgba(79,195,247,0.4);border-radius:10px;padding:20px;margin:0 auto;max-width:380px;transition:border-color 0.15s">
         <div style="color:#4fc3f7;font-size:14px;font-weight:600;letter-spacing:0.3px"><span data-trl="landing_drop_ifc">Drop IFC or 3D file here</span></div>
-        <div style="color:#444;font-size:11px;margin-top:4px">or tap to browse</div>
+        <div style="color:#888;font-size:11px;margin-top:4px">or tap to browse</div>
       </div>
-      <div id="import-status" style="color:#aaa;font-size:12px;margin-top:10px"></div>
+      <div id="import-status" style="color:#e0e0e0;font-size:12px;margin-top:10px"></div>
       <div style="display:none;margin-top:8px;height:4px;background:#222;border-radius:2px;overflow:hidden;max-width:400px;margin-left:auto;margin-right:auto">
-        <div id="import-progress-bar" style="height:100%;width:0%;background:#4fc3f7;border-radius:2px;transition:width 0.3s"></div>
+        <div id="import-progress-bar" style="height:100%;width:0%;background:#0277bd;border-radius:2px;transition:width 0.3s"></div>
       </div>
       <input type="file" id="import-file-input" accept=".ifc,.dae,.obj,.glb,.gltf,.3ds,.fbx,.stl" style="display:none">
 
       <!-- Footer — quiet -->
       <div style="margin-top:16px;color:#444;font-size:10px;letter-spacing:0.3px">
-        <a href="https://red1oon.github.io/BIMCompiler/StrategicIndustryPositioning/" target="_blank" onclick="event.stopPropagation()" style="color:#4fc3f7;text-decoration:none"><span data-trl="landing_theory">Theory</span> 👁️</a>
-        &middot; <a href="https://youtu.be/hv0kcc_TKvY" target="_blank" onclick="event.stopPropagation()" style="color:#4fc3f7;text-decoration:none"><span data-trl="landing_practical">Practical</span> 👌</a>
+        <a href="https://red1oon.github.io/BIMCompiler/StrategicIndustryPositioning/" target="_blank" onclick="event.stopPropagation()" style="color:#0277bd;text-decoration:none"><span data-trl="landing_theory">Theory</span> 👁️</a>
+        &middot; <a href="https://youtu.be/hv0kcc_TKvY" target="_blank" onclick="event.stopPropagation()" style="color:#0277bd;text-decoration:none"><span data-trl="landing_practical">Practical</span> 👌</a>
       </div>
     </div>
   </div>
@@ -219,11 +219,11 @@
   <!-- S224: Merge/New modal -->
   <div id="merge-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9000;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
     <div style="background:#1a1a2e;border:1px solid rgba(79,195,247,0.2);border-radius:12px;padding:28px 32px;max-width:400px;width:90%;text-align:center">
-      <div style="color:#4fc3f7;font-size:15px;font-weight:600;margin-bottom:12px">Add to existing project?</div>
+      <div style="color:#0277bd;font-size:15px;font-weight:600;margin-bottom:12px">Add to existing project?</div>
       <div id="merge-target" style="color:#ccc;font-size:13px;margin-bottom:16px"></div>
       <select id="merge-select" style="display:none;width:100%;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;margin-bottom:16px"></select>
       <div style="display:flex;gap:10px;justify-content:center">
-        <button id="merge-btn" style="flex:1;padding:12px 20px;background:#4fc3f7;color:#000;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;min-height:44px">Merge</button>
+        <button id="merge-btn" style="flex:1;padding:12px 20px;background:#0277bd;color:#000;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;min-height:44px">Merge</button>
         <button id="merge-new-btn" style="flex:1;padding:12px 20px;background:#333;color:#ccc;border:1px solid #555;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;min-height:44px">New</button>
       </div>
       <div style="color:#555;font-size:10px;margin-top:10px">Enter = Merge · Escape = New</div>
@@ -233,14 +233,14 @@
   <!-- S224: Compare version picker modal -->
   <div id="compare-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9000;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
     <div style="background:#1a1a2e;border:1px solid rgba(79,195,247,0.2);border-radius:12px;padding:28px 32px;max-width:400px;width:90%;text-align:center">
-      <div style="color:#4fc3f7;font-size:15px;font-weight:600;margin-bottom:12px">Compare Versions</div>
+      <div style="color:#0277bd;font-size:15px;font-weight:600;margin-bottom:12px">Compare Versions</div>
       <div style="display:flex;gap:10px;margin-bottom:16px;justify-content:center;align-items:center">
         <select id="compare-a" style="flex:1;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px"></select>
-        <span style="color:#4fc3f7;font-weight:700">vs</span>
+        <span style="color:#0277bd;font-weight:700">vs</span>
         <select id="compare-b" style="flex:1;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px"></select>
       </div>
       <div style="display:flex;gap:10px;justify-content:center">
-        <button id="compare-go-btn" style="flex:1;padding:12px 20px;background:#4fc3f7;color:#000;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;min-height:44px">Compare</button>
+        <button id="compare-go-btn" style="flex:1;padding:12px 20px;background:#0277bd;color:#000;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;min-height:44px">Compare</button>
         <button id="compare-cancel-btn" style="flex:0;padding:12px 20px;background:#333;color:#ccc;border:1px solid #555;border-radius:8px;font-size:14px;cursor:pointer;min-height:44px">Cancel</button>
       </div>
     </div>
@@ -248,15 +248,15 @@
 
   <div id="city-progress" style="display:none; padding:12px 20px; max-width:1200px; margin:0 auto">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px">
-      <span data-trl="landing_complete_city" style="font-size:14px; font-weight:700; color:#4fc3f7; letter-spacing:1px">COMPLETE THE CITY</span>
+      <span data-trl="landing_complete_city" style="font-size:14px; font-weight:700; color:#0277bd; letter-spacing:1px">COMPLETE THE CITY</span>
       <span id="city-count" style="font-size:12px; color:#888">0 / 30 <span data-trl="landing_buildings_explored">buildings explored</span></span>
     </div>
     <div style="height:8px; background:#222; border-radius:4px; overflow:hidden">
-      <div id="city-bar" style="height:100%; width:0%; background:linear-gradient(90deg,#4fc3f7,#44cc44); border-radius:4px; transition:width 0.4s ease"></div>
+      <div id="city-bar" style="height:100%; width:0%; background:linear-gradient(90deg,#0277bd,#44cc44); border-radius:4px; transition:width 0.4s ease"></div>
     </div>
     <div id="city-complete" style="display:none; text-align:center; padding:10px; margin-top:8px; background:rgba(68,204,68,0.1); border:1px solid rgba(68,204,68,0.3); border-radius:6px">
       <span data-trl="landing_city_unlocked" style="color:#44cc44; font-weight:700; font-size:14px; letter-spacing:1px">CITY UNLOCKED</span>
-      <button id="city-launch-btn" onclick="launchCity()" style="margin-left:16px; padding:6px 20px; background:linear-gradient(90deg,#4fc3f7,#44cc44); border:none; border-radius:4px; color:#000; font-weight:700; font-size:13px; cursor:pointer; letter-spacing:1px" data-trl="landing_launch_city">LAUNCH CITY 1M</button>
+      <button id="city-launch-btn" onclick="launchCity()" style="margin-left:16px; padding:6px 20px; background:linear-gradient(90deg,#0277bd,#44cc44); border:none; border-radius:4px; color:#000; font-weight:700; font-size:13px; cursor:pointer; letter-spacing:1px" data-trl="landing_launch_city">LAUNCH CITY 1M</button>
     </div>
   </div>
 
@@ -277,7 +277,11 @@
   &nbsp;&middot;&nbsp;
   <a href="javascript:clearAllCache()" style="color:#ff8a65">Clear Cache</a>
   <div style="margin-top:20px;color:#555;font-size:11px">
-    <span data-trl="landing_created_by">Created by</span> <a href="mailto:red1org@gmail.com" style="color:#4fc3f7;text-decoration:none">Redhuan D. OON</a> (red1) — October 2025
+    <span data-trl="landing_created_by">Created by</span> <a href="mailto:red1org@gmail.com" style="color:#0277bd;text-decoration:none">Redhuan D. OON</a> (red1) — October 2025
+  </div>
+  <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(0,0,0,0.1);font-size:13px;color:#333;letter-spacing:0.5px">
+    <a href="https://www.sysnova.co.uk/" target="_blank" style="text-decoration:none"><strong style="color:#0277bd;font-size:14px;display:block;margin-bottom:3px">Sysnova Information Systems Limited</strong></a>
+    UNITED KINGDOM
   </div>
 </div>
 
@@ -543,13 +547,24 @@ async function loadManifest() {
       if (el && el.children.length === 0) {
         el.innerHTML = '<div style="padding:20px;color:#ff8844;font-size:13px">&#9888; ' +
           e.message + ' &nbsp;<a href="javascript:location.reload()" ' +
-          'style="color:#4fc3f7">Reload</a></div>';
+          'style="color:#0277bd">Reload</a></div>';
       }
     });
   }
 }
 
 loadManifest();
+
+// ── Discipline from filename (landing-side override for prod worker) ──
+var _VALID_DISCS = ['ARC','STR','MEP','PLB','ACMV','ELEC','FP','VENT','HEAT','SAN','COOL','VOID'];
+function _discFromFilename(fname) {
+  var stem = fname.replace(/\.(ifc|obj|stl|dae|glb|gltf|3ds|fbx)$/i, '');
+  var parts = stem.split(/[_\-]/);
+  for (var i = parts.length - 1; i >= 0; i--) {
+    if (_VALID_DISCS.indexOf(parts[i].toUpperCase()) >= 0) return parts[i].toUpperCase();
+  }
+  return null;
+}
 
 // ── S224: IFC Import — Versioned IndexedDB, Merge/New, Compare ──
 const IMPORT_DB_NAME = 'bim_ootb_imports';
@@ -683,7 +698,7 @@ async function deleteProject(key) {
     } catch(e) {}
   }
   var bar = document.getElementById('import-progress-bar');
-  if (bar) { bar.style.width = '0%'; bar.style.background = '#4fc3f7'; bar.parentElement.style.display = 'none'; }
+  if (bar) { bar.style.width = '0%'; bar.style.background = '#0277bd'; bar.parentElement.style.display = 'none'; }
   var st = document.getElementById('import-status');
   if (st) st.textContent = '';
   console.log('[S224] §VERSION_DELETE key=' + key + ' versions=' + (record ? record.versions.length : 0));
@@ -941,7 +956,7 @@ async function handleImportFile(file) {
   status.textContent = 'Reading ' + file.name + ' (' + sizeMB + 'MB)...';
   progressBar.parentElement.style.display = 'block';
   progressBar.style.width = '0%';
-  progressBar.style.background = '#4fc3f7';
+  progressBar.style.background = '#0277bd';
 
   if (file.size > 200 * 1024 * 1024) status.textContent = 'Very large (' + sizeMB + 'MB) — may take a few minutes';
 
@@ -976,10 +991,23 @@ async function handleImportFile(file) {
           });
         }
         const SQL = await initSqlJs({ locateFile: f => 'https://sql.js.org/dist/' + f });
+
+        // Implementing DropIFCMergeNoVarianceDISC.md §3 — discipline from filename override
+        var _fnDisc = _discFromFilename(file.name);
+        if (_fnDisc && msg.elements) {
+          var discBefore = Object.assign({}, msg.meta.disciplines || {});
+          msg.meta.disciplines = {};
+          for (var ei = 0; ei < msg.elements.length; ei++) {
+            msg.elements[ei].discipline = _fnDisc;
+          }
+          msg.meta.disciplines[_fnDisc] = msg.elements.length;
+          console.log('[S224] §DISC_OVERRIDE filename=' + file.name + ' disc=' + _fnDisc + ' elements=' + msg.elements.length);
+        }
+
         const dbs = buildImportDBs(SQL, msg);
         const dbBuf = dbs.extractedDb;
 
-        // S224: Check existing projects — always prompt Merge/New if any exist
+        // S224: Check existing projects — prompt Merge/New if any exist
         const existingProjects = await listProjects();
         var projectKey = file.name;  // default: new project keyed by filename
 
@@ -1006,7 +1034,7 @@ async function handleImportFile(file) {
               status.textContent = 'Merged as v' + vNum + ' into ' + targetKey;
               progressBar.style.width = '100%';
               progressBar.style.background = '#44cc44';
-              setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#4fc3f7'; progressBar.parentElement.style.display = 'none'; }, 3000);
+              setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#0277bd'; progressBar.parentElement.style.display = 'none'; }, 3000);
               renderImportCards();
               worker.terminate();
               return;
@@ -1028,7 +1056,7 @@ async function handleImportFile(file) {
         status.textContent = 'Imported ' + msg.meta.elementCount + ' elements — see your building below \u2193';
         progressBar.style.width = '100%';
         progressBar.style.background = '#44cc44';
-        setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#4fc3f7'; progressBar.parentElement.style.display = 'none'; }, 3000);
+        setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#0277bd'; progressBar.parentElement.style.display = 'none'; }, 3000);
 
         renderImportCards();
       } catch(dbErr) {
@@ -1053,7 +1081,7 @@ async function handleImportFile(file) {
 const dropZone = document.getElementById('import-zone');
 const fileInput = document.getElementById('import-file-input');
 if (dropZone) {
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#4fc3f7'; });
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#0277bd'; });
   dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'rgba(79,195,247,0.3)'; });
   dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = 'rgba(79,195,247,0.3)'; handleImportFile(e.dataTransfer.files[0]); });
   dropZone.addEventListener('click', () => { if (fileInput) fileInput.click(); });
@@ -1073,11 +1101,11 @@ function showExportFlyout(triggerEl, projectKey) {
   var flyout = document.createElement('div');
   flyout.className = 'export-flyout';
   flyout.innerHTML =
-    '<div style="color:#4fc3f7;font-size:11px;font-weight:600;margin-bottom:8px">Export as:</div>' +
+    '<div style="color:#0277bd;font-size:11px;font-weight:600;margin-bottom:8px">Export as:</div>' +
     '<label><input type="radio" name="ef" value="ifc" checked> IFC (.ifc)</label>' +
     '<label><input type="radio" name="ef" value="db"> SQLite (.db)</label>' +
     '<div class="ef-row">' +
-      '<button class="ef-btn" style="background:rgba(79,195,247,0.15);border-color:rgba(79,195,247,0.3);color:#4fc3f7" data-go>Download</button>' +
+      '<button class="ef-btn" style="background:rgba(79,195,247,0.15);border-color:rgba(79,195,247,0.3);color:#0277bd" data-go>Download</button>' +
       '<button class="ef-btn" style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);color:#888" data-cancel>Cancel</button>' +
     '</div>' +
     '<div class="ef-status" style="color:#aaa;font-size:10px;margin-top:6px"></div>';
@@ -1266,205 +1294,19 @@ async function exportProjectIFC(projectKey, flyout) {
 
     <div style="color:#666;font-size:10px;margin-bottom:8px">&#169; 2025 Redhuan D. Oon. GPL-3.0 / MIT.</div>
     <div style="display:flex;justify-content:center;gap:12px;font-size:11px;margin-bottom:8px">
-      <a href="mailto:red1org@gmail.com" style="color:#4fc3f7;text-decoration:none">&#9993; Email</a>
-      <a href="https://github.com/red1oon/BIMCompiler" target="_blank" style="color:#4fc3f7;text-decoration:none">&#11088; GitHub</a>
-      <a href="https://github.com/red1oon/BIMCompiler/issues" target="_blank" style="color:#4fc3f7;text-decoration:none">&#128221; Issues</a>
+      <a href="mailto:red1org@gmail.com" style="color:#0277bd;text-decoration:none">&#9993; Email</a>
+      <a href="https://github.com/red1oon/BIMCompiler" target="_blank" style="color:#0277bd;text-decoration:none">&#11088; GitHub</a>
+      <a href="https://github.com/red1oon/BIMCompiler/issues" target="_blank" style="color:#0277bd;text-decoration:none">&#128221; Issues</a>
     </div>
-    <a href="https://red1oon.github.io/BIMCompiler/AboutMore/" target="_blank" style="color:#4fc3f7;font-size:11px;text-decoration:none">&#128214; READ MORE &#8212; Technical Overview</a><br>
-    <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.remove('active');document.getElementById('diy-dialog').classList.add('active')" style="color:#e8a735;font-size:11px;text-decoration:none;cursor:pointer">&#128736; DIY Downloader</a>
-  </div>
-</div>
-<style>#about-dialog.active{display:flex!important}#diy-dialog.active{display:flex!important}</style>
+    <a href="https://red1oon.github.io/BIMCompiler/AboutMore/" target="_blank" style="color:#0277bd;font-size:11px;text-decoration:none">&#128214; READ MORE &#8212; Technical Overview</a><br>
+    <a href="https://red1oon.github.io/BIMCompiler/MOBILE_DEPLOY/" target="_blank" style="color:#0277bd;font-size:11px;text-decoration:none">&#128736; DIY Self-Host Guide</a>
 
-<!-- DIY Self-Host dialog -->
-<div id="diy-dialog" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:10000;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);justify-content:center;align-items:center" onclick="if(event.target===this)this.classList.remove('active')">
-  <div style="background:rgba(10,10,30,0.97);border-radius:14px;padding:24px 28px;border:1px solid rgba(232,167,53,0.4);font-family:'Segoe UI',sans-serif;color:#e0e0e0;max-width:420px;width:90%;max-height:85vh;overflow-y:auto;text-align:center">
-    <div style="font-size:28px;margin-bottom:8px">&#128736;&#65039;</div>
-    <div style="font-size:18px;font-weight:700;color:#e8a735;margin-bottom:4px">DIY Downloader</div>
-    <div style="color:#aaa;font-size:12px;font-style:italic;margin-bottom:16px">Download everything and run on your own machine!</div>
-
-    <div style="text-align:left;margin-bottom:16px;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px">
-      <div style="color:#e8a735;font-size:11px;font-weight:700;margin-bottom:8px">WHAT YOU GET:</div>
-      <div style="color:#ccc;font-size:11px;line-height:1.8">
-        &#10003; Complete BIM viewer (~4MB download)<br>
-        &#10003; Libraries loaded from CDN on first use, then cached<br>
-        &#10003; Drop IFC / OBJ / DAE / GLB files to view<br>
-        &#10003; BOQ, 2D Plans, Section Cut, Walk Mode<br>
-        &#10003; Your own domain, your own branding<br>
-        &#10003; Still loads cloud buildings via URL if needed
-      </div>
-    </div>
-
-    <div style="text-align:left;margin-bottom:16px;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px">
-      <div style="color:#e8a735;font-size:11px;font-weight:700;margin-bottom:8px">THE SCRIPT WILL:</div>
-      <div style="color:#ccc;font-size:11px;line-height:1.8">
-        1. Check your system (Windows / Mac / Linux)<br>
-        2. Install Python 3 if not found<br>
-        3. Download BIM OOTB viewer + all libraries<br>
-        4. Start a local server on port 8080<br>
-        5. Open your browser &#8212; ready to use!
-      </div>
-    </div>
-
-    <a id="diy-download-btn" href="javascript:void(0)" onclick="downloadDIYScript()" style="display:inline-block;padding:10px 24px;background:#e8a735;color:#000;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;margin-bottom:12px;width:80%">&#11015; Download Install Script</a>
-
-    <div style="color:#666;font-size:9px;margin-top:8px">
-      Requires: Python 3 &#8226; Any modern browser<br>
-      No npm. No Node.js. No build tools.
-    </div>
-
-    <div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)">
-      <div style="color:#555;font-size:9px;margin-bottom:8px">
-        &#169; 2025-2026 <a href="mailto:red1org@gmail.com" style="color:#4fc3f7;text-decoration:none">Redhuan D. Oon</a> (red1). MIT Licensed.<br>
-        Supported by <a href="https://sysnova.co.uk" target="_blank" style="color:#4fc3f7;text-decoration:none">SYSNOVA UK</a>
-      </div>
-      <a href="javascript:void(0)" onclick="document.getElementById('diy-dialog').classList.remove('active')" style="color:#888;font-size:11px;text-decoration:none;cursor:pointer">Close</a>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1)">
+      <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.remove('active');if(window._TRL_LOADER)_TRL_LOADER.openFlagPicker()" style="display:inline-flex;align-items:center;gap:5px;color:#0277bd;font-size:12px;text-decoration:none;cursor:pointer">&#127760; Change Language</a>
     </div>
   </div>
 </div>
-
-<script>
-function downloadDIYScript() {
-  // Detect platform and offer the right script
-  var isWin = navigator.platform.indexOf('Win') > -1;
-  var script, filename, mime;
-
-  if (isWin) {
-    filename = 'bim-ootb-install.bat';
-    mime = 'application/x-bat';
-    script = [
-      '@echo off',
-      'echo ============================================',
-      'echo   BIM OOTB - Self-Host Installer (Windows)',
-      'echo   Copyright (c) 2025-2026 Redhuan D. Oon',
-      'echo ============================================',
-      'echo.',
-      '',
-      'REM Check Python',
-      'python --version >nul 2>&1',
-      'if errorlevel 1 (',
-      '  echo [!] Python not found. Installing via winget...',
-      '  winget install Python.Python.3.12 --accept-package-agreements --accept-source-agreements',
-      '  if errorlevel 1 (',
-      '    echo [!] winget failed. Please install Python from https://python.org/downloads',
-      '    pause',
-      '    exit /b 1',
-      '  )',
-      '  echo [OK] Python installed. You may need to restart this script.',
-      ') else (',
-      '  echo [OK] Python found.',
-      ')',
-      '',
-      'REM Create folder',
-      'set DEST=%USERPROFILE%\\bim-ootb',
-      'if not exist "%DEST%" mkdir "%DEST%"',
-      'cd /d "%DEST%"',
-      '',
-      'REM Download viewer',
-      'echo Downloading BIM OOTB viewer...',
-      'curl -sL -o bim-ootb.zip "https://github.com/red1oon/BIMCompiler/archive/refs/heads/full.zip"',
-      'if errorlevel 1 (',
-      '  echo [!] Download failed. Check your internet connection.',
-      '  pause',
-      '  exit /b 1',
-      ')',
-      '',
-      'REM Extract',
-      'echo Extracting...',
-      'tar -xf bim-ootb.zip --strip-components=2 "BIMCompiler-full/deploy/dev"',
-      'del bim-ootb.zip',
-      '',
-      'echo.',
-      'echo ============================================',
-      'echo   BIM OOTB installed to: %DEST%',
-      'echo   Starting server on http://localhost:8080',
-      'echo   Drop any .ifc file onto the page to view!',
-      'echo ============================================',
-      'echo.',
-      'start http://localhost:8080',
-      'python -m http.server 8080',
-    ].join('\r\n');
-  } else {
-    filename = 'bim-ootb-install.sh';
-    mime = 'application/x-sh';
-    script = [
-      '#!/usr/bin/env bash',
-      '# BIM OOTB - Self-Host Installer (Mac/Linux)',
-      '# Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.',
-      'set -e',
-      'echo ""',
-      'echo "============================================"',
-      'echo "  BIM OOTB - Self-Host Installer"',
-      'echo "  Copyright (c) 2025-2026 Redhuan D. Oon"',
-      'echo "============================================"',
-      'echo ""',
-      '',
-      '# Check Python 3',
-      'if command -v python3 &>/dev/null; then',
-      '  echo "[OK] Python 3 found: $(python3 --version)"',
-      'else',
-      '  echo "[!] Python 3 not found. Installing..."',
-      '  if [[ "$OSTYPE" == "darwin"* ]]; then',
-      '    if command -v brew &>/dev/null; then',
-      '      brew install python3',
-      '    else',
-      '      echo "[!] Install Homebrew first: https://brew.sh"',
-      '      echo "    Then re-run this script."',
-      '      exit 1',
-      '    fi',
-      '  else',
-      '    sudo apt-get update && sudo apt-get install -y python3 || \\',
-      '    sudo dnf install -y python3 || \\',
-      '    sudo pacman -S --noconfirm python',
-      '  fi',
-      '  echo "[OK] Python 3 installed."',
-      'fi',
-      '',
-      '# Create folder',
-      'DEST="$HOME/bim-ootb"',
-      'mkdir -p "$DEST"',
-      'cd "$DEST"',
-      '',
-      '# Download viewer',
-      'echo "Downloading BIM OOTB viewer..."',
-      'curl -sL -o bim-ootb.zip "https://github.com/red1oon/BIMCompiler/archive/refs/heads/full.zip"',
-      '',
-      '# Extract deploy/dev/ only',
-      'echo "Extracting..."',
-      'unzip -qo bim-ootb.zip "BIMCompiler-full/deploy/dev/*" -d _tmp',
-      'cp -r _tmp/BIMCompiler-full/deploy/dev/* .',
-      'rm -rf _tmp bim-ootb.zip',
-      '',
-      'echo ""',
-      'echo "============================================"',
-      'echo "  BIM OOTB installed to: $DEST"',
-      'echo "  Starting server on http://localhost:8080"',
-      'echo "  Drop any .ifc file onto the page to view!"',
-      'echo "============================================"',
-      'echo ""',
-      '',
-      '# Open browser',
-      'if [[ "$OSTYPE" == "darwin"* ]]; then',
-      '  open http://localhost:8080 &',
-      'elif command -v xdg-open &>/dev/null; then',
-      '  xdg-open http://localhost:8080 &',
-      'fi',
-      '',
-      'python3 -m http.server 8080',
-    ].join('\n');
-  }
-
-  var blob = new Blob([script], { type: mime });
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
-
-  document.getElementById('diy-download-btn').textContent = '\u2705 Downloaded! Run the script to install.';
-  document.getElementById('diy-download-btn').style.background = '#44cc44';
-}
-</script>
+<style>#about-dialog.active{display:flex!important}</style>
 <script src="sandbox/locale_loader.js?v=7"></script>
 <script>
 window.addEventListener('trl-ready', function() {
@@ -1477,6 +1319,7 @@ window.addEventListener('trl-ready', function() {
   }
 });
 </script>
+
 
 </body>
 </html>
