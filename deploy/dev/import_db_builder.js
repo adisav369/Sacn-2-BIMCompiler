@@ -25,7 +25,7 @@ function buildImportDBs(SQL, data) {
 
   // Elements
   db.run('CREATE TABLE IF NOT EXISTS elements_meta (guid TEXT PRIMARY KEY, ifc_class TEXT, element_name TEXT, storey TEXT, discipline TEXT, material_name TEXT, material_rgba TEXT, building TEXT)');
-  db.run('CREATE TABLE IF NOT EXISTS element_transforms (guid TEXT PRIMARY KEY, center_x REAL, center_y REAL, center_z REAL, rotation_x REAL, rotation_y REAL, rotation_z REAL)');
+  db.run('CREATE TABLE IF NOT EXISTS element_transforms (guid TEXT PRIMARY KEY, center_x REAL, center_y REAL, center_z REAL, rotation_x REAL, rotation_y REAL, rotation_z REAL, bbox_x REAL, bbox_y REAL, bbox_z REAL)');
   db.run('CREATE TABLE IF NOT EXISTS element_instances (guid TEXT PRIMARY KEY, geometry_hash TEXT)');
 
   var stmtEl = db.prepare('INSERT OR IGNORE INTO elements_meta VALUES (?,?,?,?,?,?,?,?)');
@@ -35,10 +35,10 @@ function buildImportDBs(SQL, data) {
   }
   stmtEl.free();
 
-  var stmtTr = db.prepare('INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?,?,?)');
+  var stmtTr = db.prepare('INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?,?,?,?,?,?)');
   for (var i = 0; i < data.transforms.length; i++) {
     var t = data.transforms[i];
-    stmtTr.run([t.guid, t.cx, t.cy, t.cz, t.rx, t.ry, t.rz]);
+    stmtTr.run([t.guid, t.cx, t.cy, t.cz, t.rx, t.ry, t.rz, t.bx || null, t.by || null, t.bz || null]);
   }
   stmtTr.free();
 

@@ -233,7 +233,8 @@ self.onmessage = async function(e) {
         // Try all geometries in flatMesh, merge vertices
         var allVerts = [], allIdx = [], vertOffset = 0;
         var bestColor = null;
-        for (let gi = 0; gi < flatMesh.geometries.size(); gi++) {
+        var geoCount = flatMesh.geometries.size();
+        for (let gi = 0; gi < geoCount; gi++) {
           var geo = flatMesh.geometries.get(gi);
           var meshData = ifcApi.GetGeometry(modelID, geo.geometryExpressID);
           var vSize = meshData.GetVertexDataSize();
@@ -241,6 +242,18 @@ self.onmessage = async function(e) {
           if (vSize === 0 || iSize === 0) continue;
           var verts = ifcApi.GetVertexArray(meshData.GetVertexData(), vSize);
           var idx = ifcApi.GetIndexArray(meshData.GetIndexData(), iSize);
+          // Extract IfcBoundingBox dimensions (8 verts + 36 indices) before skipping
+          if (verts.length / 6 === 8 && idx.length === 36) {
+            // Extract bbox extents from the 8 box vertices
+            var bxs = [], bys = [], bzs = [];
+            for (var bvi = 0; bvi < 8; bvi++) {
+              bxs.push(verts[bvi * 6]); bys.push(verts[bvi * 6 + 1]); bzs.push(verts[bvi * 6 + 2]);
+            }
+            el._bboxX = Math.max.apply(null, bxs) - Math.min.apply(null, bxs);
+            el._bboxY = Math.max.apply(null, bys) - Math.min.apply(null, bys);
+            el._bboxZ = Math.max.apply(null, bzs) - Math.min.apply(null, bzs);
+            if (geoCount > 1) continue; // skip box geometry, keep dimensions
+          }
           var m = geo.flatTransformation;
           var vc = verts.length / 6;
           // Transform vertices: web-ifc Y-up → IFC Z-up
@@ -275,13 +288,38 @@ self.onmessage = async function(e) {
             positions[vi * 3 + 1] = allVerts[vi * 3 + 1] - cy;
             positions[vi * 3 + 2] = allVerts[vi * 3 + 2] - cz;
           }
+          // Content-hash geometry for dedup: identical shapes share one BLOB
+          var idxBuf = new Int32Array(allIdx).buffer;
+          var hashSrc = new Uint8Array(positions.byteLength + idxBuf.byteLength);
+          hashSrc.set(new Uint8Array(positions.buffer), 0);
+          hashSrc.set(new Uint8Array(idxBuf), positions.byteLength);
+          var h = 0x811c9dc5;
+          for (var hi = 0; hi < hashSrc.length; hi++) {
+            h ^= hashSrc[hi]; h = Math.imul(h, 0x01000193);
+          }
+          var h2 = 0x6c62272e;
+          for (var hi = hashSrc.length - 1; hi >= 0; hi--) {
+            h2 ^= hashSrc[hi]; h2 = Math.imul(h2, 0x01000193);
+          }
+          var geomHash = (h >>> 0).toString(16).padStart(8,'0') + (h2 >>> 0).toString(16).padStart(8,'0');
           geometries.push({
             guid: el.guid,
-            geomHash: el.guid,
+            geomHash: geomHash,
             vertices: positions.buffer,
-            indices: new Int32Array(allIdx).buffer,
+            indices: idxBuf,
           });
-          transforms.push({ guid: el.guid, cx: cx, cy: cy, cz: cz, rx: 0, ry: 0, rz: 0 });
+          // If no IFC bbox was extracted, compute from vertices
+          if (!el._bboxX) {
+            var vxs = [], vys = [], vzs = [];
+            for (var vi2 = 0; vi2 < vertCount; vi2++) {
+              vxs.push(positions[vi2*3]); vys.push(positions[vi2*3+1]); vzs.push(positions[vi2*3+2]);
+            }
+            el._bboxX = Math.max.apply(null, vxs) - Math.min.apply(null, vxs);
+            el._bboxY = Math.max.apply(null, vys) - Math.min.apply(null, vys);
+            el._bboxZ = Math.max.apply(null, vzs) - Math.min.apply(null, vzs);
+          }
+          transforms.push({ guid: el.guid, cx: cx, cy: cy, cz: cz, rx: 0, ry: 0, rz: 0,
+            bx: el._bboxX, by: el._bboxY, bz: el._bboxZ });
           if (bestColor) {
             el.material = bestColor.x.toFixed(3) + ',' + bestColor.y.toFixed(3) + ',' + bestColor.z.toFixed(3) + ',' + bestColor.w.toFixed(3);
             matCount++;

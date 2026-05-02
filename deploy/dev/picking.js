@@ -204,15 +204,26 @@ function setupPicking(A) {
       window._pickHighlight = null;
     }
 
-    // Highlight: size from geometry bbox, position in world space.
-    // Never add as child of hit.object — localToWorld ensures correct placement
-    // regardless of whether geometry is centered at origin.
+    // Highlight: use IFC-extracted bbox if stored, else compute from geometry
+    let hlSizeX, hlSizeY, hlSizeZ;
+    if (guid) {
+      try {
+        const bboxRow = A.dbQuery('SELECT bbox_x, bbox_y, bbox_z FROM element_transforms WHERE guid = ?', [guid]);
+        if (bboxRow.length && bboxRow[0][0] != null) {
+          // IFC bbox extracted at import — axis swap: IFC(x,y,z) → Three(x,z,y)
+          hlSizeX = bboxRow[0][0]; hlSizeY = bboxRow[0][2]; hlSizeZ = bboxRow[0][1];
+        }
+      } catch(e) { /* bbox columns may not exist in older DBs */ }
+    }
     hit.object.geometry.computeBoundingBox();
     const bb = hit.object.geometry.boundingBox;
-    const size = new THREE.Vector3(); bb.getSize(size);
     const localCenter = new THREE.Vector3(); bb.getCenter(localCenter);
+    if (!hlSizeX) {
+      const size = new THREE.Vector3(); bb.getSize(size);
+      hlSizeX = size.x; hlSizeY = size.y; hlSizeZ = size.z;
+    }
     const hlGeo = new THREE.BoxGeometry(
-      Math.max(size.x, 0.2), Math.max(size.y, 0.2), Math.max(size.z, 0.2));
+      Math.max(hlSizeX, 0.01), Math.max(hlSizeY, 0.01), Math.max(hlSizeZ, 0.01));
     const hlEdges = new THREE.EdgesGeometry(hlGeo);
     hlGeo.dispose();
     const hlLine = new THREE.LineSegments(hlEdges,

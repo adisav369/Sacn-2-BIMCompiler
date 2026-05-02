@@ -123,7 +123,7 @@ function setupImport(A) {
     console.log('[S220] §IMPORT_START file=' + file.name + ' size=' + sizeMB + 'MB');
 
     return new Promise((resolve, reject) => {
-      const workerUrl = new URL('import_worker.js?v=4', location.href).href;
+      const workerUrl = new URL('import_worker.js?v=5', location.href).href;
       const worker = new Worker(workerUrl);
 
       worker.onmessage = async function(e) {
@@ -160,6 +160,15 @@ function setupImport(A) {
 
             console.log('[S220] §IMPORT_SAVED key=' + file.name +
               ' db=' + (dbs.extractedDb.byteLength / 1024).toFixed(0) + 'KB');
+
+            // Notify parent window (iDempiere BIM Tab) of successful import
+            if (window.parent !== window) {
+              window.parent.postMessage({
+                type: 'BIM_IFC_LOADED',
+                name: file.name,
+                elementCount: msg.meta.elementCount || 0
+              }, '*');
+            }
 
             if (status) status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_imported||'Imported {n} elements').replace('{n}', msg.meta.elementCount);
             if (progressBar) { progressBar.style.width = '100%'; progressBar.style.background = '#44cc44'; }
@@ -238,6 +247,15 @@ function setupImport(A) {
 
             console.log('[S228] §MESH_SAVED key=' + file.name +
               ' db=' + (dbs.extractedDb.byteLength / 1024).toFixed(0) + 'KB');
+
+            // Notify parent window (iDempiere BIM Tab) of successful import
+            if (window.parent !== window) {
+              window.parent.postMessage({
+                type: 'BIM_IFC_LOADED',
+                name: file.name,
+                elementCount: msg.meta.elementCount || 0
+              }, '*');
+            }
 
             if (status) status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_imported_fmt||'Imported {n} elements from {fmt}').replace('{n}', msg.meta.elementCount).replace('{fmt}', ext.toUpperCase());
             if (progressBar) { progressBar.style.width = '100%'; progressBar.style.background = '#44cc44'; }
