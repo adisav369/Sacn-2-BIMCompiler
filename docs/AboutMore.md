@@ -117,13 +117,41 @@ browser already consumes. Stage 2 adds server-side compilation, not a new viewer
 
 ## DIY Self-Host
 
-Run BIM OOTB on your own machine. ~4MB download, libraries loaded from CDN.
+Run BIM OOTB on your own machine. ~49MB download (full repo), ~4MB viewer.
+Libraries loaded from CDN on first use, then cached offline by the Service Worker.
 
 1. Download `deploy/dev/` from [GitHub](https://github.com/red1oon/BIMCompiler)
 2. Run `python3 -m http.server 8080` in the folder
 3. Open `http://localhost:8080` — drop any IFC file
 
 Or use the **DIY Downloader** in the About box of the [live viewer](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html) — it generates an install script for your platform (Windows/Mac/Linux) that handles prerequisites automatically.
+
+### What gets installed
+
+The script installs to:
+
+- **Windows:** `C:\Users\{you}\bim-ootb\`
+- **Mac/Linux:** `~/bim-ootb/`
+
+Includes everything needed to run:
+
+- All viewer JS modules (~30 files)
+- 14 DXF templates (floor plans, elevations, roof)
+- Cost rates and exchange rate data (`rates.js`)
+- 15 language packs with local currency (`locales/`)
+- Service worker for offline caching (`sw.js`)
+
+No databases are bundled — buildings load from OCI cloud via the manifest,
+and Drop IFC builds your own databases locally in the browser.
+
+### Customisation
+
+- **Landing page:** Edit `index.html` — plain HTML/CSS/JS, no framework
+- **Viewer behaviour:** Edit `config.js` — colours, default views, discipline mapping
+- **Branding:** Edit the header, logo, and About panel in `index.html`
+- **Add buildings:** Drop IFC → Save `.db` → host on your server → link via `?db=` URL
+
+See [4D/5D Analysis](https://red1oon.github.io/BIMCompiler/4D5DAnalysis/) for editing rates, cost templates, and nD configuration.
 
 ---
 

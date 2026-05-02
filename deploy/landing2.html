@@ -158,6 +158,7 @@
     <a href="https://youtu.be/bSyuLQ_c4rw" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:#4fc3f7;font-size:13px;text-decoration:none;padding:4px 8px"><img src="sandbox/YT.png" alt="YouTube" style="height:20px;vertical-align:middle"> <span data-trl="landing_watch_demo">Watch Demo</span></a>
     <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.toggle('active')" style="display:inline-flex;align-items:center;gap:5px;color:#ccc;font-size:13px;text-decoration:none;padding:4px 8px">&#10067; <span data-trl="landing_about">About</span></a>
     <a href="javascript:void(0)" id="header-flag-btn" onclick="if(window._TRL_LOADER)_TRL_LOADER.openFlagPicker()" style="display:inline-flex;align-items:center;gap:4px;color:#ccc;font-size:16px;text-decoration:none;padding:4px 8px;cursor:pointer" title="Language">&#127760;</a>
+    <a href="javascript:void(0)" onclick="if(window.APP&&APP.reportBug)APP.reportBug();else window.open('https://github.com/red1oon/BIMCompiler/issues/new?labels=bug','_blank')" style="display:inline-flex;align-items:center;gap:4px;color:#ccc;font-size:13px;text-decoration:none;padding:4px 8px;cursor:pointer" title="Send to GitHub Issues Tracker"><img src="sandbox/submit.png" alt="Submit" style="height:18px;vertical-align:middle;filter:invert(0.8)"> <span style="font-size:10px">Send to GitHub Issues Tracker</span></a>
   </div>
 </div>
 
@@ -1269,6 +1270,7 @@ async function exportProjectIFC(projectKey, flyout) {
       <a href="mailto:red1org@gmail.com" style="color:#4fc3f7;text-decoration:none">&#9993; Email</a>
       <a href="https://github.com/red1oon/BIMCompiler" target="_blank" style="color:#4fc3f7;text-decoration:none">&#11088; GitHub</a>
       <a href="https://github.com/red1oon/BIMCompiler/issues" target="_blank" style="color:#4fc3f7;text-decoration:none">&#128221; Issues</a>
+      <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.remove('active');if(window.APP&&APP.reportBug)APP.reportBug();else window.open('https://github.com/red1oon/BIMCompiler/issues/new?labels=bug','_blank')" style="color:#ff8a65;text-decoration:none">&#128027; Report Bug</a>
     </div>
     <a href="https://red1oon.github.io/BIMCompiler/AboutMore/" target="_blank" style="color:#4fc3f7;font-size:11px;text-decoration:none">&#128214; READ MORE &#8212; Technical Overview</a><br>
     <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.remove('active');document.getElementById('diy-dialog').classList.add('active')" style="color:#e8a735;font-size:11px;text-decoration:none;cursor:pointer">&#128736; DIY Downloader</a>

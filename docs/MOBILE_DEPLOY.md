@@ -25,7 +25,15 @@ Open any link below in your browser (desktop or phone):
 
 ---
 
-## 2. Run It Locally — 3 Steps
+## 2. DIY Downloader — One-Click Self-Host
+
+The fastest way: click **DIY Downloader** in the About box of the [live viewer](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html). It generates a platform-specific install script that checks prerequisites, downloads the viewer (~49MB), and starts a local server — all automatic.
+
+Installs to `~/bim-ootb/` (Mac/Linux) or `C:\Users\{you}\bim-ootb\` (Windows).
+Includes all templates, rates, 15 language packs. Buildings load from OCI cloud.
+See [About — DIY Self-Host](https://red1oon.github.io/BIMCompiler/AboutMore/#diy-self-host) for full details.
+
+## 3. Run It Locally — Manual (3 Steps)
 
 You only need **Python** (built-in on Linux/Mac, easy install on Windows) and the repo.
 
