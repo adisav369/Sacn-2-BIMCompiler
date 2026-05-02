@@ -33,7 +33,7 @@ function setupTour(A) {
 
     if (A.flyActive) {
       const tour = A.buildTour();
-      if (tour && tour.length >= 2) {
+      if (tour && tour.length >= 1) {
         if (A.buildingsRendered.size > 1) {
           const primaryName = Object.keys(A.buildingCentres)[0];
           for (const name of A.buildingsRendered) {
@@ -127,8 +127,38 @@ function setupTour(A) {
     }
   };
 
-  // S206: Cinematic building tour
+  // S206: Cinematic building tour — nearest-neighbor choreography
   A.buildTour = function() {
+    try { return A._buildTourInner(); } catch(e) {
+      console.error('[TOUR] buildTour crashed:', e.message, e.stack);
+      A.wlog('TOUR CRASH: ' + e.message);
+      return null;
+    }
+  };
+  A._buildTourInner = function() {
+    // ── Helpers ──
+    function dist2(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
+    // Sort points in nearest-neighbor order starting from `start`
+    function nnSort(pts, start) {
+      if (pts.length <= 1) return pts;
+      const out = [], used = new Set();
+      let cur = start;
+      while (out.length < pts.length) {
+        let bestI = -1, bestD = Infinity;
+        for (let i = 0; i < pts.length; i++) {
+          if (used.has(i)) continue;
+          const d = dist2(cur, pts[i]);
+          if (d < bestD) { bestD = d; bestI = i; }
+        }
+        if (bestI < 0) break;
+        used.add(bestI);
+        out.push(pts[bestI]);
+        cur = pts[bestI];
+      }
+      return out;
+    }
+
+    // ── Query data ──
     let doorsByStorey = {};
     try {
       const dr = A.db.exec(`
@@ -182,71 +212,140 @@ function setupTour(A) {
       }
     } catch(e) {}
 
-    const storeys = Object.keys(doorsByStorey).sort();
-    if (storeys.length === 0) return null;
-
-    const actions = [];
-
-    const bc0 = Object.values(A.buildingCentres)[0];
-    if (bc0) {
-      const ctr = A.ifc2three(bc0.ix, bc0.iy, bc0.iz);
-      const orbitR = Math.max(30, (bc0.envelope || 80) * 0.75);
-      actions.push({type:'orbit', cx:ctr.x, cy:ctr.y, cz:ctr.z, radius:orbitR, tiltDeg:40, duration:8});
+    // Sort storeys by elevation, not alphabetically
+    const storeys = Object.keys(storeyZ).sort((a,b) => storeyZ[a] - storeyZ[b]);
+    // Fallback: if storeyZ empty, try doorsByStorey keys
+    if (storeys.length === 0) {
+      const fallback = Object.keys(doorsByStorey).sort();
+      if (fallback.length === 0) return null;
+      storeys.push(...fallback);
     }
 
-    const firstDoor = doorsByStorey[storeys[0]]?.[0];
-    if (!firstDoor) return actions.length > 0 ? actions : null;
+    const actions = [];
+    const bc0 = Object.values(A.buildingCentres)[0];
+    let bldgCtr = null;
+    if (bc0) bldgCtr = A.ifc2three(bc0.ix, bc0.iy, bc0.iz);
+    const envelope = bc0 ? (bc0.envelope || 40) : 40;
 
-    const ep = A.ifc2three(firstDoor.x, firstDoor.y, firstDoor.z);
+    const firstDoor = doorsByStorey[storeys[0]]?.[0];
+    if (!firstDoor && !bldgCtr) return null;
+    const ep = firstDoor ? A.ifc2three(firstDoor.x, firstDoor.y, firstDoor.z) : bldgCtr;
+    if (!bldgCtr) bldgCtr = {x: ep.x, y: ep.y, z: ep.z};
+    const cx = bldgCtr.x, cz = bldgCtr.z;
+
+    // ═══ PART 1: ORBIT — scaled to building ═══
+    const orbitR = Math.max(15, envelope * 0.6);
+    const orbitDur = envelope > 30 ? 6 : 4;  // shorter for small buildings
+    actions.push({type:'orbit', cx:bldgCtr.x, cy:bldgCtr.y, cz:bldgCtr.z,
+                  radius:orbitR, tiltDeg:35, duration:orbitDur});
+
+    // ═══ PART 2: APPROACH — fly to entrance (separate action) ═══
     actions.push({type:'moveTo', x:ep.x, y:ep.y, z:ep.z, name:'Entrance'});
-    actions.push({type:'pause', seconds:0.5});
+
+    // ═══ PART 3: INTERIOR PATH (spline flyPath) ═══
+    // Collect waypoints per storey, nearest-neighbor sorted
+    const flyPts = [];
+    const flyNames = [];
+    const visited = [];
+    const MIN_SEP = envelope > 30 ? 5 : 1;  // tighter dedup for small buildings
+    let lastPos = {x: ep.x, y: ep.y, z: ep.z};
+
+    // Push entrance as first spline point
+    flyPts.push({x: ep.x, y: ep.y + A.WALK_EYE_HEIGHT, z: ep.z});
+    flyNames.push('Entrance');
 
     for (let si = 0; si < storeys.length; si++) {
       const storey = storeys[si];
+      const floorY = A.ifc2three(0, 0, storeyZ[storey] || 0).y + A.WALK_EYE_HEIGHT;
 
+      // Stair transition: nearest stair
       if (si > 0 && stairs.length > 0) {
-        let bestStair = stairs[0];
-        const prevZ = storeyZ[storeys[si-1]] || storeyZ[storeys[0]] || 0;
-        const nextZ = storeyZ[storey] || prevZ + 3;
-        const stairTP = A.ifc2three(bestStair.x, bestStair.y, bestStair.z);
-        actions.push({type:'moveTo', x:stairTP.x, y:A.ifc2three(0,0,prevZ).y, z:stairTP.z, name:'To stairs'});
-        actions.push({type:'pause', seconds:0.5});
-        actions.push({type:'rise', targetY: A.ifc2three(0,0,nextZ).y, name:'Climbing stairs'});
-        actions.push({type:'pause', seconds:0.5});
-        A.wlog(`Tour: stair Z=${prevZ.toFixed(1)} → ${nextZ.toFixed(1)}`);
+        let bestStair = stairs[0], bestSD = Infinity;
+        for (const s of stairs) {
+          const sp = A.ifc2three(s.x, s.y, s.z);
+          const d = dist2(lastPos, sp);
+          if (d < bestSD) { bestSD = d; bestStair = s; }
+        }
+        const sp = A.ifc2three(bestStair.x, bestStair.y, bestStair.z);
+        flyPts.push({x: sp.x, y: lastPos.y || floorY, z: sp.z});
+        flyNames.push('Stairs');
+        flyPts.push({x: sp.x, y: floorY, z: sp.z});
+        flyNames.push(storey);
+        lastPos = {x: sp.x, y: floorY, z: sp.z};
       }
 
+      // Collect rooms or doors
       const rooms = roomsByStorey[storey];
+      let waypoints = [];
       if (rooms && rooms.length > 0) {
-        const limit = Math.min(rooms.length, 2);
-        for (let ri = 0; ri < limit; ri++) {
-          const room = rooms[ri];
-          const rp = A.ifc2three(room.cx, room.cy, room.cz);
-          actions.push({type:'moveTo', x:rp.x, y:rp.y, z:rp.z, name: room.name || `Room ${ri+1}`});
-          actions.push({type:'lookAround', degrees: 360});
+        for (const r of rooms.slice(0, Math.min(rooms.length, 5))) {
+          const rp = A.ifc2three(r.cx, r.cy, r.cz);
+          waypoints.push({x: rp.x, y: floorY, z: rp.z, name: r.name || 'Room'});
         }
       } else {
         const doors = doorsByStorey[storey] || [];
-        const limit = Math.min(doors.length, 2);
-        for (let di = 0; di < limit; di++) {
-          const door = doors[di];
-          const dp = A.ifc2three(door.x, door.y, door.z);
-          actions.push({type:'moveTo', x:dp.x, y:dp.y, z:dp.z, name: door.name?.split(':')[0] || storey});
-          actions.push({type:'lookAround', degrees: 360});
+        let sCtrX = 0, sCtrZ = 0, sN = 0;
+        for (const d of doors) { const dp = A.ifc2three(d.x, d.y, d.z); sCtrX += dp.x; sCtrZ += dp.z; sN++; }
+        if (sN) { sCtrX /= sN; sCtrZ /= sN; }
+        for (let di = 0; di < Math.min(doors.length, 5); di++) {
+          const d = doors[di];
+          const dp = A.ifc2three(d.x, d.y, d.z);
+          if (sN) {
+            const dx = sCtrX - dp.x, dz = sCtrZ - dp.z;
+            const len = Math.hypot(dx, dz);
+            if (len > 0.1) { dp.x += (dx / len) * 2; dp.z += (dz / len) * 2; }
+          }
+          waypoints.push({x: dp.x, y: floorY, z: dp.z, name: d.name?.split(':')[0] || storey});
         }
+      }
+      waypoints = nnSort(waypoints, lastPos);
+      for (const wp of waypoints) {
+        if (visited.some(v => dist2(v, wp) < MIN_SEP)) continue;
+        flyPts.push({x: wp.x, y: wp.y, z: wp.z});
+        flyNames.push(wp.name);
+        visited.push(wp);
+        lastPos = wp;
       }
     }
 
-    if (bc0) {
-      const topZ = Math.max(...Object.values(storeyZ)) || 0;
+    // Only add flyPath if enough interior content
+    let pathLen = 0;
+    for (let i = 1; i < flyPts.length; i++)
+      pathLen += Math.hypot(flyPts[i].x-flyPts[i-1].x, flyPts[i].y-flyPts[i-1].y, flyPts[i].z-flyPts[i-1].z);
+
+    if (pathLen > 30) {
+      // ═══ Big building: full interior flyPath + finale ═══
+      const duration = Math.max(pathLen / 3.5, 8);
+      actions.push({type:'flyPath', points: flyPts, names: flyNames, duration});
+      A.wlog(`FlyPath: ${flyPts.length} pts, ${pathLen.toFixed(0)}m, ${duration.toFixed(0)}s`);
+      // Finale: fly outside+above, pause, land
+      const topZ = Math.max(...Object.values(storeyZ), 0);
       const topY = A.ifc2three(0, 0, topZ).y;
-      actions.push({type:'riseAndTilt', targetY: topY + 20, tiltDeg:80, name:"Bird's eye"});
-      actions.push({type:'pause', seconds:3});
+      const riseH = Math.max(5, Math.min(25, envelope * 0.3));
+      actions.push({type:'moveTo', x:cx + orbitR*0.6, y:topY + riseH - A.WALK_EYE_HEIGHT, z:cz + orbitR*0.6, name:"Bird's eye"});
+    } else {
+      // ═══ Small building: go to middle at floor level, look around ═══
+      actions.push({type:'moveTo', x:cx, y:ep.y - A.WALK_EYE_HEIGHT, z:cz, name:'Centre'});
+      actions.push({type:'lookAround', degrees: 360});
     }
 
-    A.wlog(`Tour built: ${actions.length} actions, ${storeys.length} storeys`);
-    actions.forEach((a,i) => A.wlog(`  [${i}] ${a.type} ${a.name||''}`));
-    window._walkStrategy = `CINE(${actions.length}acts,${storeys.length}fl)`;
+    // ═══ ENDING (both paths): outside at orbit distance, eye level, building centred ═══
+    const endDx = ep.x - cx, endDz = ep.z - cz;
+    const endLen = Math.hypot(endDx, endDz) || 1;
+    const endX = cx + (endDx / endLen) * orbitR;
+    const endZ = cz + (endDz / endLen) * orbitR;
+    actions.push({type:'moveTo', x:endX, y:ep.y, z:endZ, name:'Final'});
+    actions.push({type:'lookAround', degrees:1, lookAtX:cx, lookAtZ:cz});
+    actions.push({type:'pause', seconds:1});
+
+    // §TOUR_PATH — dump full path as JSON for inspection
+    console.log('[TOUR] §TOUR_PATH', JSON.stringify({
+      actions: actions.map(a => ({type:a.type, name:a.name, pts: a.points?.length, dur:a.duration})),
+      flyPts: flyPts.map((p,i) => ({i, x:+p.x.toFixed(1), y:+p.y.toFixed(1), z:+p.z.toFixed(1), name:flyNames[i]||''})),
+      envelope, MIN_SEP, storeys: storeys.length
+    }, null, 0));
+    A.wlog(`Tour: ${actions.length} actions, ${storeys.length} storeys, ${flyPts.length} interior pts`);
+    window._walkStrategy = `CINE(${actions.length}acts,${flyPts.length}pts)`;
     return actions;
   };
 
@@ -281,6 +380,10 @@ function setupTour(A) {
     const act = A.walkActions[A.walkActionIdx];
     const spd = A.walkSpeedMult;
 
+    // Save pre-action state for global smoothing
+    const _prevCamPos = A.camera.position.clone();
+    const _prevTarget = A.controls.target.clone();
+
     if (act.type === 'moveTo') {
       if (A.walkActionT === 0) {
         act._startPos = A.camera.position.clone();
@@ -288,15 +391,40 @@ function setupTour(A) {
         act._dist = A.camera.position.distanceTo(new THREE.Vector3(act.x, act.y + A.WALK_EYE_HEIGHT, act.z));
         const speed = act._dist > 5 ? Math.max(A.WALK_SPEED, act._dist / 3.0) : A.WALK_SPEED;
         act._duration = Math.max(act._dist / (speed * spd), 0.3);
+        // Pre-compute final look direction: if next action has lookAtX/Z, face that way on arrival
+        const nextAct = A.walkActions[A.walkActionIdx + 1];
+        if (nextAct && nextAct.lookAtX !== undefined && nextAct.lookAtZ !== undefined) {
+          act._endLookX = nextAct.lookAtX;
+          act._endLookZ = nextAct.lookAtZ;
+        }
       }
       A.walkActionT += dt;
       const t = Math.min(A.walkActionT / act._duration, 1.0);
       const s = t * t * (3 - 2 * t);
-      const target = new THREE.Vector3(act.x, act.y + A.WALK_EYE_HEIGHT, act.z);
-      A.camera.position.lerpVectors(act._startPos, target, s);
-      const lookAt = target.clone();
-      lookAt.z += 0.1;
-      A.controls.target.lerpVectors(act._startTarget, lookAt, s);
+      const dest = new THREE.Vector3(act.x, act.y + A.WALK_EYE_HEIGHT, act.z);
+      A.camera.position.lerpVectors(act._startPos, dest, s);
+      // Smoothly orient toward the next lookAround target in the last 40% of travel
+      let endTarget;
+      if (act._endLookX !== undefined) {
+        const lookDist = 3.0;
+        const dx = act._endLookX - act.x, dz = act._endLookZ - act.z;
+        const len = Math.hypot(dx, dz) || 1;
+        endTarget = new THREE.Vector3(act.x + dx/len * lookDist, act.y + A.WALK_EYE_HEIGHT, act.z + dz/len * lookDist);
+      } else {
+        endTarget = dest.clone(); endTarget.z += 0.1;
+      }
+      // Blend: first 60% look ahead (toward destination), last 40% turn toward endTarget
+      const blendStart = 0.6;
+      if (t < blendStart) {
+        const aheadTarget = dest.clone(); aheadTarget.z += 0.1;
+        A.controls.target.lerpVectors(act._startTarget, aheadTarget, s);
+      } else {
+        const aheadTarget = dest.clone(); aheadTarget.z += 0.1;
+        const midTarget = new THREE.Vector3().lerpVectors(act._startTarget, aheadTarget, t * t * (3 - 2 * t));
+        const turnT = (t - blendStart) / (1 - blendStart);
+        const turnS = turnT * turnT * (3 - 2 * turnT);
+        A.controls.target.lerpVectors(midTarget, endTarget, turnS);
+      }
       A.controls.update();
       A.status.textContent = `${act.name || 'Walking...'} [${spd}x] camY=${A.camera.position.y.toFixed(1)}`;
       if (t >= 1.0) {
@@ -307,22 +435,41 @@ function setupTour(A) {
 
     } else if (act.type === 'lookAround') {
       const degreesPerSec = A.PAN_SPEED * spd;
+      const totalDeg = act.degrees || 360;
       if (A.walkPanAngle === 0 && A.walkActionT === 0) {
-        const dx = A.controls.target.x - A.camera.position.x;
-        const dz = A.controls.target.z - A.camera.position.z;
-        act._startRad = Math.atan2(dx, dz);
+        // If lookAtX/Z given, center sweep on "face inward" direction
+        if (act.lookAtX !== undefined && act.lookAtZ !== undefined) {
+          const dx = act.lookAtX - A.camera.position.x;
+          const dz = act.lookAtZ - A.camera.position.z;
+          const inwardRad = Math.atan2(dx, dz);
+          act._startRad = inwardRad - totalDeg / 2 * Math.PI / 180;
+        } else {
+          const dx = A.controls.target.x - A.camera.position.x;
+          const dz = A.controls.target.z - A.camera.position.z;
+          act._startRad = Math.atan2(dx, dz);
+        }
       }
       A.walkPanAngle += degreesPerSec * dt;
-      const rad = (act._startRad || 0) + A.walkPanAngle * Math.PI / 180;
+      // Ease-in first 15% and ease-out last 15% for smooth start/stop
+      const progress = Math.min(A.walkPanAngle / totalDeg, 1.0);
+      let easedProgress;
+      if (progress < 0.15) {
+        const p = progress / 0.15;
+        easedProgress = 0.15 * (p * p * (3 - 2 * p));
+      } else if (progress > 0.85) {
+        const p = (progress - 0.85) / 0.15;
+        easedProgress = 0.85 + 0.15 * (p * p * (3 - 2 * p));
+      } else {
+        easedProgress = progress;
+      }
+      const rad = (act._startRad || 0) + easedProgress * totalDeg * Math.PI / 180;
       const lookDist = 3.0;
-      const wantX = A.camera.position.x + lookDist * Math.sin(rad);
-      const wantZ = A.camera.position.z + lookDist * Math.cos(rad);
-      A.controls.target.x += (wantX - A.controls.target.x) * 0.15;
-      A.controls.target.z += (wantZ - A.controls.target.z) * 0.15;
-      A.controls.target.y += (A.camera.position.y - A.controls.target.y) * 0.15;
+      A.controls.target.x = A.camera.position.x + lookDist * Math.sin(rad);
+      A.controls.target.z = A.camera.position.z + lookDist * Math.cos(rad);
+      A.controls.target.y = A.camera.position.y;
       A.controls.update();
       A.status.textContent = `Looking around ${(A.walkPanAngle).toFixed(0)}° [${spd}x]`;
-      if (A.walkPanAngle >= (act.degrees || 360)) {
+      if (A.walkPanAngle >= totalDeg) {
         A.walkActionIdx++;
         A.walkActionT = 0;
         A.walkPanAngle = 0;
@@ -354,12 +501,14 @@ function setupTour(A) {
     } else if (act.type === 'orbit') {
       const tiltRad = (act.tiltDeg || 40) * Math.PI / 180;
       const duration = act.duration || 8;
-      const totalRad = Math.PI;
+      const totalRad = act.fullCircle ? Math.PI * 2 : Math.PI;
       if (A.walkActionT === 0) {
         A.walkOrbitAngle = Math.atan2(A.camera.position.z - act.cz, A.camera.position.x - act.cx);
         act._startAngle = A.walkOrbitAngle;
         act._startY = A.camera.position.y;
         act._groundY = act.cy + A.WALK_EYE_HEIGHT;
+        act._startTarget = A.controls.target.clone();
+        act._startPos = A.camera.position.clone();
         A.wlog(`Orbit: r=${act.radius?.toFixed(0)} from ${(A.walkOrbitAngle*180/Math.PI).toFixed(0)}°`);
       }
       A.walkActionT += dt;
@@ -383,9 +532,19 @@ function setupTour(A) {
       const effectiveTilt = tiltRad * (1 - descentProgress * descentProgress);
       const camX = act.cx + Math.cos(A.walkOrbitAngle) * act.radius * Math.cos(effectiveTilt);
       const camZ = act.cz + Math.sin(A.walkOrbitAngle) * act.radius * Math.cos(effectiveTilt);
-      A.camera.position.set(camX, camY, camZ);
+      // Blend from previous position/look in first 20% for smooth entry
+      const wantPos = new THREE.Vector3(camX, camY, camZ);
       const lookY = act.cy + (camY - act.cy) * descentProgress;
-      A.controls.target.set(act.cx, lookY, act.cz);
+      const wantTarget = new THREE.Vector3(act.cx, lookY, act.cz);
+      if (t < 0.2) {
+        const bt = t / 0.2;
+        const bs = bt * bt * (3 - 2 * bt);
+        A.camera.position.lerpVectors(act._startPos, wantPos, bs);
+        A.controls.target.lerpVectors(act._startTarget, wantTarget, bs);
+      } else {
+        A.camera.position.copy(wantPos);
+        A.controls.target.copy(wantTarget);
+      }
       A.controls.update();
       A.status.textContent = `Aerial sweep ${(t * 100).toFixed(0)}% [${spd}x]`;
       if (t >= 1.0) {
@@ -400,6 +559,7 @@ function setupTour(A) {
         act._startY = A.camera.position.y;
         act._startX = A.camera.position.x;
         act._startZ = A.camera.position.z;
+        act._startTarget = A.controls.target.clone();
       }
       const totalDist = Math.abs(targetY - act._startY);
       if (totalDist < 0.1) { A.walkActionIdx++; A.walkActionT = 0; return; }
@@ -410,11 +570,13 @@ function setupTour(A) {
       A.camera.position.y = act._startY + (targetY - act._startY) * smooth;
       const tiltRad = (act.tiltDeg || 80) * Math.PI / 180 * smooth;
       const lookDist = 5.0;
-      A.controls.target.set(
+      const wantTarget = new THREE.Vector3(
         act._startX,
         A.camera.position.y - lookDist * Math.sin(tiltRad),
         act._startZ + lookDist * Math.cos(tiltRad) * 0.1
       );
+      // Blend from previous look direction to avoid snap
+      A.controls.target.lerpVectors(act._startTarget, wantTarget, smooth);
       A.controls.update();
       A.status.textContent = `${act.name || "Bird's eye"} ${(t * 100).toFixed(0)}% [${spd}x]`;
       if (t >= 1.0) {
@@ -423,10 +585,64 @@ function setupTour(A) {
         A.wlog(`RiseAndTilt done: camY=${A.camera.position.y.toFixed(2)}`);
       }
 
+    } else if (act.type === 'flyPath') {
+      // Catmull-Rom spline flythrough — smooth continuous flight
+      if (A.walkActionT === 0) {
+        try {
+          const rawPts = act.points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+          const camPos = A.camera.position.clone();
+          const distToFirst = camPos.distanceTo(rawPts[0]);
+          const pts3 = distToFirst > 3 ? [camPos, ...rawPts] : rawPts;
+          act._curve = new THREE.CatmullRomCurve3(pts3, false, 'catmullrom', 0.5);
+          act._totalLen = act._curve.getLength();
+          act._prevLook = A.controls.target.clone();
+          console.log(`[TOUR] §FLYPATH_INIT pts=${pts3.length} len=${act._totalLen.toFixed(1)} dur=${act.duration} first=(${rawPts[0].x.toFixed(1)},${rawPts[0].y.toFixed(1)},${rawPts[0].z.toFixed(1)}) cam=(${camPos.x.toFixed(1)},${camPos.y.toFixed(1)},${camPos.z.toFixed(1)})`);
+          // Bail if curve is degenerate
+          if (!act._totalLen || act._totalLen < 1) {
+            console.warn('[TOUR] §FLYPATH_SKIP degenerate curve len=' + act._totalLen);
+            A.walkActionIdx++; A.walkActionT = 0; return;
+          }
+        } catch(e) {
+          console.error('[TOUR] §FLYPATH_CRASH', e.message);
+          A.walkActionIdx++; A.walkActionT = 0; return;
+        }
+      }
+      const duration = (act.duration || 30) / spd;
+      A.walkActionT += dt;
+      const t = Math.min(A.walkActionT / duration, 1.0);
+      const pos = act._curve.getPointAt(t);
+      A.camera.position.copy(pos);
+      const lookT = Math.min(t + 0.03, 0.999);
+      const lookPt = act._curve.getPointAt(lookT);
+      if (!act._prevLook) act._prevLook = lookPt.clone();
+      act._prevLook.lerp(lookPt, 0.15);
+      A.controls.target.copy(act._prevLook);
+      A.controls.update();
+      // Find nearest named point for status
+      const nameIdx = Math.round(t * (act.names.length - 1));
+      let label = '';
+      for (let ni = nameIdx; ni >= 0; ni--) { if (act.names[ni]) { label = act.names[ni]; break; } }
+      A.status.textContent = `${label || 'Flying...'} ${(t * 100).toFixed(0)}% [${spd}x]`;
+      if (t >= 1.0) {
+        A.walkActionIdx++;
+        A.walkActionT = 0;
+        A.wlog('FlyPath complete');
+      }
+
     } else {
       A.walkActionIdx++;
       A.walkActionT = 0;
     }
+
+    // ── Adaptive smoothing: heavy on sudden jumps, light on steady motion ──
+    const posDelta = _prevCamPos.distanceTo(A.camera.position);
+    const tgtDelta = _prevTarget.distanceTo(A.controls.target);
+    const maxDelta = Math.max(posDelta, tgtDelta);
+    // Steady (<0.5m/frame): track closely. Sudden (>2m/frame): dampen hard.
+    const SMOOTH = maxDelta < 0.5 ? 0.6 : maxDelta > 2 ? 0.12 : 0.3;
+    A.camera.position.lerpVectors(_prevCamPos, A.camera.position, SMOOTH);
+    A.controls.target.lerpVectors(_prevTarget, A.controls.target, SMOOTH);
+    A.controls.update();
   };
 
   // ── Legacy path builders (kept for fallback) ──

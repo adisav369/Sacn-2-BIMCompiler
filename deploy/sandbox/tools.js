@@ -21,10 +21,25 @@ function setupTools(A) {
     btn.style.background = A.xrayOn ? '#4fc3f7' : '#444';
     btn.style.color = A.xrayOn ? '#000' : '#fff';
     A.collectMeshes(o => o.isMesh).forEach(obj => {
-      obj.material.transparent = true;
-      obj.material.opacity = A.xrayOn ? 0.15 : (obj.material.userData.origOpacity ?? 1.0);
-      obj.material.side = A.xrayOn ? THREE.DoubleSide : (obj.material.userData.origSide ?? THREE.FrontSide);
-      obj.material.needsUpdate = true;
+      const mat = obj.material;
+      if (A.xrayOn) {
+        // Save originals before modifying
+        if (mat.userData.origOpacity === undefined) mat.userData.origOpacity = mat.opacity;
+        if (mat.userData.origTransparent === undefined) mat.userData.origTransparent = mat.transparent;
+        if (mat.userData.origSide === undefined) mat.userData.origSide = mat.side;
+        mat.transparent = true;
+        mat.opacity = 0.15;
+        mat.side = THREE.DoubleSide;
+      } else {
+        // Restore originals fully
+        mat.opacity = mat.userData.origOpacity ?? 1.0;
+        mat.transparent = mat.userData.origTransparent ?? false;
+        mat.side = mat.userData.origSide ?? THREE.FrontSide;
+        delete mat.userData.origOpacity;
+        delete mat.userData.origTransparent;
+        delete mat.userData.origSide;
+      }
+      mat.needsUpdate = true;
     });
     console.log(`[S200] §XRAY ${A.xrayOn ? 'ON' : 'OFF'}`);
   };
