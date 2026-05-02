@@ -633,10 +633,32 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#dependencies" class="md-nav__link">
+  <a href="#third-party-libraries-all-loaded-via-cdn-not-modified" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Dependencies
+        Third-Party Libraries (all loaded via CDN, not modified)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#original-bim-ootb-scripts-by-redhuan-d-oon-mit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Original BIM OOTB Scripts (by Redhuan D. Oon, MIT)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-innovation-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Innovation Boundary
       
     </span>
   </a>
@@ -693,6 +715,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#diy-self-host" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DIY Self-Host
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -741,17 +774,6 @@
     <span class="md-ellipsis">
       
         Size
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key-dependencies-all-loaded-via-cdn-no-npm" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Dependencies (all loaded via CDN, no npm)
       
     </span>
   </a>
@@ -3367,10 +3389,32 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#dependencies" class="md-nav__link">
+  <a href="#third-party-libraries-all-loaded-via-cdn-not-modified" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Dependencies
+        Third-Party Libraries (all loaded via CDN, not modified)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#original-bim-ootb-scripts-by-redhuan-d-oon-mit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Original BIM OOTB Scripts (by Redhuan D. Oon, MIT)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-innovation-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Innovation Boundary
       
     </span>
   </a>
@@ -3423,6 +3467,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diy-self-host" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DIY Self-Host
+      
+    </span>
+  </a>
   
 </li>
       
@@ -3481,17 +3536,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#key-dependencies-all-loaded-via-cdn-no-npm" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Dependencies (all loaded via CDN, no npm)
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -3515,60 +3559,166 @@
 <h1 id="bim-ootb-technical-overview">BIM OOTB — Technical Overview<a class="headerlink" href="#bim-ootb-technical-overview" title="Permanent link">&para;</a></h1>
 <h2 id="about-settings-panel">About (Settings Panel)<a class="headerlink" href="#about-settings-panel" title="Permanent link">&para;</a></h2>
 <p><strong>BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.</strong></p>
-<p>Version 0.6 alpha (October 2025 - April 2026)
+<p>Version 0.6 alpha (October 2025 - May 2026)
 Creator: Redhuan D. Oon <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a>
 Tickets: github.com/red1oon/BIMCompiler/issues
-License: GPL-3.0 / MIT</p>
+License: MIT</p>
 <p><strong>Probably the lightest BIM app ever made.</strong></p>
 <p>Browser-native BIM viewer. Drop an IFC file or pick a building — geometry streams
 from SQLite databases directly to the GPU via Three.js. No server, no plugins,
 no build step. Works on desktop and mobile.</p>
 <p>17K lines of vanilla JavaScript — no framework, no build step, no npm, no bundler.
-~3MB total download (cached after first visit). Static files only — zero server-side code.
+~4MB total download (cached after first visit). Static files only — zero server-side code.
 Compare typical web BIM viewers at 50K–200K+ lines with Node backends and heavy frameworks.</p>
 <ul>
 <li>17K lines of JavaScript + HTML</li>
 <li>15 languages, locale-aware currency</li>
-<li>120 Playwright E2E tests</li>
+<li>155 Playwright E2E tests</li>
 <li>OCI Object Storage (Always Free tier)</li>
 </ul>
-<h3 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">&para;</a></h3>
+<h3 id="third-party-libraries-all-loaded-via-cdn-not-modified">Third-Party Libraries (all loaded via CDN, not modified)<a class="headerlink" href="#third-party-libraries-all-loaded-via-cdn-not-modified" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
 <th>Library</th>
 <th>Version</th>
-<th>Purpose</th>
+<th>License</th>
+<th>What it does</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Three.js</td>
+<td><a href="https://github.com/mrdoob/three.js">Three.js</a></td>
 <td>r128</td>
-<td>3D rendering, WebGL 2</td>
+<td>MIT</td>
+<td>WebGL 3D rendering</td>
 </tr>
 <tr>
-<td>sql.js</td>
+<td><a href="https://github.com/sql-js/sql.js">sql.js</a></td>
 <td>1.10.3</td>
-<td>WASM SQLite (SQLite 3.44.2)</td>
+<td>MIT</td>
+<td>WASM SQLite in browser</td>
 </tr>
 <tr>
-<td>web-ifc</td>
+<td><a href="https://github.com/ThatOpenCompany/engine_web-ifc">web-ifc</a></td>
 <td>0.0.77</td>
-<td>IFC2x3 + IFC4 parsing</td>
+<td>MPL-2.0</td>
+<td>IFC2x3 + IFC4 parsing/tessellation</td>
 </tr>
 <tr>
-<td>SheetJS</td>
+<td><a href="https://github.com/SheetJS/sheetjs">SheetJS</a></td>
 <td>0.20.3</td>
+<td>Apache-2.0</td>
 <td>Excel export</td>
 </tr>
 <tr>
-<td>dxf-parser</td>
+<td><a href="https://github.com/exceljs/exceljs">ExcelJS</a></td>
+<td>4.4.0</td>
+<td>MIT</td>
+<td>Excel workbook generation</td>
+</tr>
+<tr>
+<td><a href="https://github.com/chartjs/Chart.js">Chart.js</a></td>
+<td>4.4.1</td>
+<td>MIT</td>
+<td>BOQ charts</td>
+</tr>
+<tr>
+<td><a href="https://github.com/gdsestimating/dxf-parser">dxf-parser</a></td>
 <td>—</td>
-<td>DXF file parsing</td>
+<td>MIT</td>
+<td>DXF file parsing (vendored)</td>
+</tr>
+<tr>
+<td><a href="https://www.goatcounter.com/">GoatCounter</a></td>
+<td>—</td>
+<td>EUPL</td>
+<td>Privacy-friendly analytics</td>
 </tr>
 </tbody>
 </table>
+<p>None of these are modified. They are called via their public APIs.</p>
+<h3 id="original-bim-ootb-scripts-by-redhuan-d-oon-mit">Original BIM OOTB Scripts (by Redhuan D. Oon, MIT)<a class="headerlink" href="#original-bim-ootb-scripts-by-redhuan-d-oon-mit" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>What it does</th>
+<th>Novelty</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>streaming.js</code></td>
+<td>DB BLOBs → Float32Array → Three.js GPU</td>
+<td><strong>The core innovation</strong> — no intermediate format</td>
+</tr>
+<tr>
+<td><code>import_worker.js</code></td>
+<td>Calls web-ifc API → 4×4 transform, Y→Z-up, centroid re-centre, discipline classify, dedup</td>
+<td>The extraction pipeline</td>
+</tr>
+<tr>
+<td><code>import_db_builder.js</code></td>
+<td>Raw data → 10-table SQLite schema</td>
+<td>The schema design</td>
+</tr>
+<tr>
+<td><code>picking.js</code></td>
+<td>Raycast → GUID → SQL → highlight</td>
+<td>Click-to-identify from DB</td>
+</tr>
+<tr>
+<td><code>scene_to_db.js</code></td>
+<td>Three.js scene → write back to DB</td>
+<td>Reverse pipeline</td>
+</tr>
+<tr>
+<td><code>ifc_export_worker.js</code></td>
+<td>DB → IFC STEP text file</td>
+<td>Pure text generation, no web-ifc</td>
+</tr>
+<tr>
+<td><code>section_cut.js</code></td>
+<td>Clipping plane from DB geometry</td>
+<td>Section cut from DB</td>
+</tr>
+<tr>
+<td><code>navigate.js</code></td>
+<td>Storey/discipline filter, search</td>
+<td>SQL-driven navigation</td>
+</tr>
+<tr>
+<td><code>diff.js</code></td>
+<td>Compare two DBs</td>
+<td>Variation order from SQL</td>
+</tr>
+<tr>
+<td><code>walk.js</code></td>
+<td>First-person walk mode</td>
+<td>Camera + collision from DB</td>
+</tr>
+<tr>
+<td><code>sitecam.js</code></td>
+<td>GPS/compass/AR mobile overlay</td>
+<td>Real-world BIM overlay</td>
+</tr>
+<tr>
+<td>+ 15 more modules</td>
+<td>UI, i18n, city mode, BOQ, wizard, NLP, etc.</td>
+<td>All original</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-innovation-boundary">The Innovation Boundary<a class="headerlink" href="#the-innovation-boundary" title="Permanent link">&para;</a></h3>
+<p>web-ifc, sql.js, and Three.js each solve one problem. <strong>No existing project combines them
+into a serverless BIM pipeline.</strong> The original contribution is:</p>
+<ol>
+<li><strong>Schema design</strong> — 10 tables that hold an entire building as queryable data</li>
+<li><strong>Extraction pipeline</strong> — IFC entities → classified, instanced, centroid-recentred DB records</li>
+<li><strong>DB-to-GPU streaming</strong> — SQLite BLOB → Float32Array → BufferGeometry with zero conversion</li>
+<li><strong>Round-trip</strong> — browser edits → DB → IFC export, closing the loop without a server</li>
+</ol>
 <h3 id="language-and-currency">Language and Currency<a class="headerlink" href="#language-and-currency" title="Permanent link">&para;</a></h3>
 <p>15 languages with local currency and exchange rates. Click the flag to switch.</p>
 <p><strong>Locale files:</strong> <code>deploy/dev/locales/*.js</code> — one file per country.
@@ -3612,6 +3762,15 @@ browser already consumes. Stage 2 adds server-side compilation, not a new viewer
 <li>OCI Always Free: 10GB storage, 10TB/mo egress</li>
 <li>Client: 2GB+ RAM, any modern CPU with WebGL 2</li>
 </ul>
+<hr />
+<h2 id="diy-self-host">DIY Self-Host<a class="headerlink" href="#diy-self-host" title="Permanent link">&para;</a></h2>
+<p>Run BIM OOTB on your own machine. ~4MB download, libraries loaded from CDN.</p>
+<ol>
+<li>Download <code>deploy/dev/</code> from <a href="https://github.com/red1oon/BIMCompiler">GitHub</a></li>
+<li>Run <code>python3 -m http.server 8080</code> in the folder</li>
+<li>Open <code>http://localhost:8080</code> — drop any IFC file</li>
+</ol>
+<p>Or use the <strong>DIY Downloader</strong> in the About box of the <a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html">live viewer</a> — it generates an install script for your platform (Windows/Mac/Linux) that handles prerequisites automatically.</p>
 <hr />
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>Browser
@@ -3771,16 +3930,9 @@ Rollback: one command copies backup→prod.</p>
 </tr>
 </tbody>
 </table>
-<h2 id="key-dependencies-all-loaded-via-cdn-no-npm">Key Dependencies (all loaded via CDN, no npm)<a class="headerlink" href="#key-dependencies-all-loaded-via-cdn-no-npm" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Three.js</strong> r170 — 3D rendering, BufferGeometry, OrbitControls</li>
-<li><strong>sql.js</strong> 1.11 — WASM SQLite in browser</li>
-<li><strong>ExcelJS</strong> — Excel export (BOQ charts)</li>
-<li><strong>web-ifc</strong> — IFC parsing in Web Worker</li>
-<li><strong>dxf-parser</strong> — DXF file parsing for 2D plans</li>
-<li><strong>GoatCounter</strong> — privacy-friendly analytics (no cookies)</li>
-</ul>
-<p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
+<hr />
+<p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em>
+<em>Supported by <a href="https://www.sysnova.co.uk">SYSNOVA Information Systems Limited</a></em></p>
 
 
 
