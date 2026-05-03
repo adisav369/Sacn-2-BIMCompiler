@@ -284,6 +284,23 @@ Any 3D file becomes a BIM model. Zero IFC knowledge required.
 
 SRS: [`internal/DROP_ZONE_MULTI_FORMAT_SRS.md`](../internal/DROP_ZONE_MULTI_FORMAT_SRS.md)
 
+### Phase 2d: PWA Offline + Install (S243 — DONE)
+
+Load once, use forever. No internet required after first visit.
+
+- [x] **Service Worker** — `sw.js` v243 precaches all 40+ JS/HTML/CDN assets on first visit. Network-first for JS/HTML (always fresh on deploy), cache-first for CDN libs (.wasm, Three.js, sql.js)
+- [x] **IndexedDB caching** — building DBs cached automatically on first view via `A.cachedFetch()`. Second visit = instant, zero network. DB files bypass Service Worker entirely
+- [x] **PWA manifest** — `manifest.webmanifest` enables "Add to Home Screen" on mobile and "Install App" on desktop Chrome. Standalone mode (no browser chrome)
+- [x] **Offline fallback** — `offline.html` shown gracefully when a resource isn't cached and network is down. Guides user to open previously viewed buildings
+- [x] **All entry points wired** — `index.html`, `boq_charts.html`, `2d.html` all register SW + link manifest
+- [x] **App icons** — 192×192 and 512×512 PNG icons for home screen and app launcher
+
+**What works offline:** Full 3D viewer, storey/discipline filters, element picker, NLP voice queries, X-ray, screenshot, measurement, walk mode, 2D plans — anything that doesn't need a new DB download.
+
+**What needs network:** First-time DB download for a building not yet cached, CDN libraries on very first visit ever.
+
+Spec: [`prompts/S243_offline_pwa.md`](../prompts/S243_offline_pwa.md)
+
 ### Phase 3: Analysis — nD Engine in the Browser
 Query-driven overlays — same DB, richer SQL. The **nD engine** ([4D5DAnalysis.md](4D5DAnalysis.md))
 already produces 4D-8D tables from JSON templates + `elements_meta`. Phase 3 ports this
@@ -875,6 +892,24 @@ oci os object put --bucket-name bim-ootb --file deploy/sandbox/tools.js --name t
 | `[S209]` | excel.js, issues.js | Excel export, issue status toggle |
 
 Filter in F12 Console by tag (e.g. `[S209]`) to diagnose issues.
+
+---
+
+## 11. Powerful Scenes
+
+Being locally DB in browser, we utilised all the best technology can offer.
+
+The **Sunglasses** slider (🕶) recolours every element in the scene by its IFC classification, storey, or discipline — giving architects, engineers, and reviewers instant visual contrast without touching the model data. One slider, ten strategies, from professional pastels to full-spectrum analysis.
+
+<figure style="margin: 20px 0;">
+<img src="../assets/images/sunglass_pastel.png" alt="Sunglasses — cool pastel mode on Terminal building" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Cool pastel mode — each IFC class (plates, beams, slabs, columns) gets a distinct professional tint. Terminal building, 48K elements.</figcaption>
+</figure>
+
+<figure style="margin: 20px 0;">
+<img src="../assets/images/sunglass_hard.png" alt="Sunglasses — hard mode, canteen walk-through" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Hard mode — full saturation reveals every IFC type at a glance. Canteen walk-through: furniture (red), slabs (blue), plates (green) now instantly distinguishable.</figcaption>
+</figure>
 
 *See [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) for competitive landscape and market positioning.*
 
