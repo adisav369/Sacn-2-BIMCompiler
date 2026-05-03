@@ -343,42 +343,41 @@ function renderTabs() {
 // Poll for closed tabs
 setInterval(renderTabs, 3000);
 
-// All per-building DBs — direct download, no httpvfs
+// All per-building DBs — single DB per building (S242), no separate library
 const BUILDINGS = {
-  'SampleHouse': { db: 'SampleHouse_extracted.db', lib: 'SampleHouse_library.db' },
-  'BimWhale_Tall': { db: 'BimWhale_Tall_extracted.db', lib: 'BimWhale_Tall_library.db' },
-  'AC90_Jasmin': { db: 'AC90_Jasmin_extracted.db', lib: 'AC90_Jasmin_library.db' },
-  'FZKHaus': { db: 'FZKHaus_extracted.db', lib: 'FZKHaus_library.db' },
-  'Ifc4_FZKHaus': { db: 'FZKHaus_extracted.db', lib: 'FZKHaus_library.db' },
-  'AC90_Niedriha': { db: 'AC90_Niedriha_extracted.db', lib: 'AC90_Niedriha_library.db' },
-  'BimWhale_Basic': { db: 'BimWhale_Basic_extracted.db', lib: 'BimWhale_Basic_library.db' },
-  'VogelGesamt': { db: 'VogelGesamt_extracted.db', lib: 'VogelGesamt_library.db' },
-  'BimWhale_Large': { db: 'BimWhale_Large_extracted.db', lib: 'BimWhale_Large_library.db' },
-  'AC9_HausGH': { db: 'AC9_HausGH_extracted.db', lib: 'AC9_HausGH_library.db' },
-  'HospitalAuckland': { db: 'HospitalAuckland_extracted.db', lib: 'HospitalAuckland_library.db' },
-  'SmileyWest': { db: 'SmileyWest_extracted.db', lib: 'SmileyWest_library.db' },
-  'Jesse': { db: 'Jesse_extracted.db', lib: 'Jesse_library.db' },
-  'AC11Institute': { db: 'AC11Institute_extracted.db', lib: 'AC11Institute_library.db' },
-  'Ifc2x3_AC11Institute': { db: 'AC11Institute_extracted.db', lib: 'AC11Institute_library.db' },
-  'Duplex': { db: 'Duplex_extracted.db', lib: 'Duplex_library.db' },
-  'LTU_AHouse': { db: 'LTU_AHouse_extracted.db', lib: 'LTU_AHouse_library.db' },
-  'Hospital': { db: 'Hospital_extracted.db', lib: 'Hospital_library.db' },
-  'Hospital_3': { db: 'Hospital_3_extracted.db', lib: 'Hospital_3_library.db' },
-  'Terminal': { db: 'Terminal_extracted.db', lib: 'Terminal_library.db' },
-  'Clinic': { db: 'Clinic_extracted.db', lib: 'Clinic_library.db' },
-  'Ifc4_Revit': { db: 'Ifc4_Revit_extracted.db', lib: 'Ifc4_Revit_library.db' },
-  'WBDG_Office': { db: 'WBDG_Office_extracted.db', lib: 'WBDG_Office_library.db' },
-  'HHS_Office_Federated': { db: 'HHS_Office_Federated_extracted.db', lib: 'HHS_Office_Federated_library.db' },
-  'HITOS': { db: 'HITOS_extracted.db', lib: 'HITOS_library.db' },
-  'Esplanades': { db: 'Esplanades_extracted.db', lib: 'Esplanades_library.db' },
-  'HospitalGarage': { db: 'HospitalGarage_extracted.db', lib: 'HospitalGarage_library.db' },
-  'HospitalGarage_2': { db: 'HospitalGarage_2_extracted.db', lib: 'HospitalGarage_2_library.db' },
-  'Schependomlaan': { db: 'Schependomlaan_extracted.db', lib: 'Schependomlaan_library.db' },
-  'SampleCastle': { db: 'SampleCastle_extracted.db', lib: 'SampleCastle_library.db' },
-  'Molio': { db: 'Molio_extracted.db', lib: 'Molio_library.db' },
-  'BimWhale_Advanced': { db: 'BimWhale_Advanced_extracted.db', lib: 'BimWhale_Advanced_library.db' },
+  'SampleHouse': { db: 'SampleHouse_extracted.db' },
+  'BimWhale_Tall': { db: 'BimWhale_Tall_extracted.db' },
+  'AC90_Jasmin': { db: 'AC90_Jasmin_extracted.db' },
+  'FZKHaus': { db: 'FZKHaus_extracted.db' },
+  'Ifc4_FZKHaus': { db: 'FZKHaus_extracted.db' },
+  'AC90_Niedriha': { db: 'AC90_Niedriha_extracted.db' },
+  'BimWhale_Basic': { db: 'BimWhale_Basic_extracted.db' },
+  'VogelGesamt': { db: 'VogelGesamt_extracted.db' },
+  'BimWhale_Large': { db: 'BimWhale_Large_extracted.db' },
+  'AC9_HausGH': { db: 'AC9_HausGH_extracted.db' },
+  'HospitalAuckland': { db: 'HospitalAuckland_extracted.db' },
+  'SmileyWest': { db: 'SmileyWest_extracted.db' },
+  'Jesse': { db: 'Jesse_extracted.db' },
+  'AC11Institute': { db: 'AC11Institute_extracted.db' },
+  'Ifc2x3_AC11Institute': { db: 'AC11Institute_extracted.db' },
+  'Duplex': { db: 'Duplex_extracted.db' },
+  'LTU_AHouse': { db: 'LTU_AHouse_extracted.db' },
+  'Hospital': { db: 'hospital.db' },
+  'Hospital_3': { db: 'Hospital_3_extracted.db' },
+  'Terminal': { db: 'Terminal_extracted.db' },
+  'Clinic': { db: 'Clinic_extracted.db' },
+  'Ifc4_Revit': { db: 'Ifc4_Revit_extracted.db' },
+  'WBDG_Office': { db: 'WBDG_Office_extracted.db' },
+  'HHS_Office_Federated': { db: 'HHS_Office_Federated_extracted.db' },
+  'HITOS': { db: 'HITOS_extracted.db' },
+  'Esplanades': { db: 'Esplanades_extracted.db' },
+  'HospitalGarage': { db: 'HospitalGarage_extracted.db' },
+  'HospitalGarage_2': { db: 'HospitalGarage_2_extracted.db' },
+  'Schependomlaan': { db: 'Schependomlaan_extracted.db' },
+  'SampleCastle': { db: 'SampleCastle_extracted.db' },
+  'Molio': { db: 'Molio_extracted.db' },
+  'BimWhale_Advanced': { db: 'BimWhale_Advanced_extracted.db' },
 };
-const SMALL_BUILDINGS = BUILDINGS;  // backward compat
 
 // Track which buildings the user has viewed (persist in localStorage)
 const _stored = localStorage.getItem('bim_ootb_viewed');
@@ -389,14 +388,14 @@ function saveViewed() {
 }
 
 // DB files served from production bucket — dev only overrides viewer/JS
-const _prodBase = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/';
+const _prodBase = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/';
 
 function openViewer(archName, repBuilding) {
   const bld = BUILDINGS[archName];
   if (!bld) { alert(`No DB for ${archName}`); return; }
   const bldBase = _prodBase + 'buildings/';
   const viewerUrl = _base ? _base + 'sandbox/index.html' : 'sandbox/index.html';
-  const url = viewerUrl + `?db=${bldBase}${bld.db}&lib=${bldBase}${bld.lib}`;
+  const url = viewerUrl + `?db=${bldBase}${bld.db}`; // single DB — lib param retired (S242)
   const win = window.open(url, 'bim_' + archName);
   // window.open returns null if popup is blocked (some mobile browsers)
   if (!win) { location.href = url; return; }
@@ -1359,14 +1358,13 @@ async function exportProjectIFC(projectKey, flyout) {
       <div style="color:#999;font-size:10px;line-height:1.5">Java BOM engine: 2.1M lines &#8226; Python: 2.7M lines<br>SQL rules: 644K lines. Same two-DB output format.</div>
     </div>
 
-    <div style="color:#666;font-size:10px;margin-bottom:8px">&#169; 2025 Redhuan D. Oon. GPL-3.0 / MIT.</div>
+    <div style="color:#888;font-size:10px;margin-bottom:4px">Copyright &#169; 2006 Redhuan D. Oon. MIT License.</div>
+    <div style="color:#666;font-size:9px;line-height:1.4;margin-bottom:10px;padding:4px 8px;background:rgba(255,255,255,0.03);border-radius:4px">Permission is hereby granted, free of charge, to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of this software, subject to the above copyright notice and this permission notice.</div>
     <div style="display:flex;justify-content:center;gap:12px;font-size:11px;margin-bottom:8px">
       <a href="mailto:red1org@gmail.com" style="color:#0277bd;text-decoration:none">&#9993; Email</a>
       <a href="https://github.com/red1oon/BIMCompiler" target="_blank" style="color:#0277bd;text-decoration:none">&#11088; GitHub</a>
-      <a href="https://github.com/red1oon/BIMCompiler/issues" target="_blank" style="color:#0277bd;text-decoration:none">&#128221; Issues</a>
       <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.remove('active');if(window.APP&&APP.reportBug)APP.reportBug();else window.open('https://github.com/red1oon/BIMCompiler/issues/new?labels=bug','_blank')" style="color:#ff8a65;text-decoration:none">&#128027; Report Bug</a>
     </div>
-    <a href="https://red1oon.github.io/BIMCompiler/AboutMore/" target="_blank" style="color:#0277bd;font-size:11px;text-decoration:none">&#128214; READ MORE &#8212; Technical Overview</a><br>
     <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.remove('active');document.getElementById('diy-dialog').classList.add('active')" style="color:#e8a735;font-size:11px;text-decoration:none;cursor:pointer">&#128736; DIY Downloader</a>
   </div>
 </div>

@@ -8,7 +8,7 @@
 // Cache-first for heavy assets (.wasm, images). DB files skip SW (IndexedDB handles them).
 //
 // DEPLOY: bump CACHE_VERSION on every OCI upload. Old caches are purged on activate.
-const CACHE_VERSION = 'v242';
+const CACHE_VERSION = 'v244';
 const CACHE_NAME = 'bim-ootb-' + CACHE_VERSION;
 
 // CDN assets fetched by loader.js — versioned URLs, safe to cache-first
@@ -20,8 +20,62 @@ const CDN_ASSETS = [
   'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
 ];
 
+// Local files to precache on install — viewer works fully offline after first visit.
+// DB files are NOT here — they're cached in IndexedDB by A.cachedFetch().
+const PRECACHE_ASSETS = [
+  // Entry points
+  'index.html',
+  'boq_charts.html',
+  '2d.html',
+  'offline.html',
+  'manifest.webmanifest',
+  // Core viewer modules (order matches index.html script tags)
+  'config.js',
+  'helpers.js',
+  'loader.js',
+  'scene.js',
+  'streaming.js',
+  'panels.js',
+  'tools.js',
+  'picking.js',
+  'tour.js',
+  'measure.js',
+  'sitecam.js',
+  'issues.js',
+  'excel.js',
+  'walk.js',
+  'city.js',
+  'rates.js',
+  'locale_loader.js',
+  'nlp.js',
+  'semantic_enrichment.js',
+  'scene_to_db.js',
+  'import_db_builder.js',
+  'diff.js',
+  'variation_order.js',
+  'import.js',
+  'main.js',
+  // Workers (fetched on demand by import/export flows)
+  'import_worker.js',
+  'ifc_export_worker.js',
+  'mesh_import_worker.js',
+  // Lazy-loaded modules
+  'navigate.js',
+  'wizard.js',
+  'section_cut.js',
+  'dxf-parser.js',
+  'dxf_export.js',
+  'elevation.js',
+  'grid_dims.js',
+  'title_block.js',
+];
+
 self.addEventListener('install', (event) => {
-  // Don't wait — activate immediately so new version takes over
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache =>
+      cache.addAll([...PRECACHE_ASSETS, ...CDN_ASSETS])
+    )
+  );
   self.skipWaiting();
 });
 
@@ -55,7 +109,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   // Skip DB file fetches — handled by IndexedDB in cachedFetch()
-  if (url.endsWith('.db')) return;
+  if (url.split('?')[0].endsWith('.db')) return;
 
   // Navigation requests always network-first
   if (event.request.mode === 'navigate') {
@@ -83,7 +137,7 @@ function networkFirst(request) {
       }
       return resp;
     })
-    .catch(() => caches.match(request));
+    .catch(() => caches.match(request).then(r => r || caches.match('offline.html')));
 }
 
 // Try cache, fall back to network (for heavy/immutable assets)

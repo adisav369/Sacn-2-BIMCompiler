@@ -13,7 +13,7 @@ before meshing starts.
 | Bucket | Purpose |
 |--------|---------|
 | `bim-ootb-live` | **PRODUCTION** — landing + viewer JS |
-| `bim-ootb-live` | **DATABASES** — 30 per-building DB pairs + city index (referenced by landing `_prodBase`) |
+| `bim-ootb-live` | **DATABASES** — 30 per-building single DBs + city index (referenced by landing `_prodBase`) |
 | `bim-ootb-backup` | **SNAPSHOT** — copy of prod taken before each deploy |
 | `bim-ootb-dev` | **STAGING** — test before production |
 | `bim-ootb-live2` | **TEST** — fresh bucket for cache isolation testing |
@@ -66,14 +66,10 @@ for f in config scene helpers streaming panels tools picking tour measure siteca
     --content-type application/javascript --force
 done
 
-# Upload a per-building DB pair
+# Upload a per-building DB (single DB — no separate library)
 oci os object put --bucket-name bim-ootb-live \
   --file deploy/buildings/Hospital_extracted.db \
   --name buildings/Hospital_extracted.db --force
-
-oci os object put --bucket-name bim-ootb-live \
-  --file deploy/buildings/Hospital_library.db \
-  --name buildings/Hospital_library.db --force
 
 # List bucket
 oci os object list --bucket-name bim-ootb-live \
@@ -259,6 +255,24 @@ Mismatch = drift. §9b lists exactly which files differ.
 | Both prod + backup lost | All files in git (`deploy/sandbox/`). Re-create bucket, upload from local |
 
 No git restore needed for rollback. Git is the archive, OCI is the deployment layer.
+
+## Building DB Integrity
+
+**Single source of truth:** `/tmp/reextract/` → `deploy/buildings/` → OCI buckets.
+All three must have the same file. Never upload from project root or ad-hoc locations.
+
+**No duplication across buckets.** Each building DB exists once per bucket. Do not maintain
+separate `_extracted.db` + `_library.db` — single DB only (S242).
+
+**OCI edge cache:** Overwriting an OCI object does NOT invalidate edge cache. If you must
+replace a file, rename the object (e.g. `Hospital_extracted.db` → `hospital.db`) and update
+the landing page BUILDINGS config. Do not use `?v=` query hacks — they break sw.js.
+
+**Anti-drift checklist (after any DB upload):**
+1. Verify `deploy/buildings/{name}.db` matches source
+2. Verify OCI Content-Length matches local `stat -c%s`
+3. Verify landing page BUILDINGS config points to correct filename
+4. If file was overwritten (not new), rename to bust edge cache
 
 **Rules:**
 - ALWAYS snapshot before deploy. No exceptions.
