@@ -2,9 +2,11 @@
 
 ## Architecture
 
-Per-building DB pairs. Each building is split into `{Name}_extracted.db` + `{Name}_library.db`.
-No single monolithic DB. Landing page (`index.html`) loads `manifest.json`, user clicks a building,
-viewer downloads just that building's two DBs. Cached in IndexedDB — second visit is instant.
+Single DB per building. Each building is one `{Name}_extracted.db` containing metadata,
+transforms (with IFC bbox), instances, AND geometry BLOBs. No separate library DB.
+Landing page loads `manifest.json`, user clicks a building, viewer downloads one DB.
+Cached in IndexedDB — second visit is instant. DB is queryable immediately (4D/5D/clash)
+before meshing starts.
 
 ## Buckets
 
@@ -27,18 +29,18 @@ https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/
 ## Files in bim-ootb-live
 
 ```
-index.html                          ← landing page (manifest-driven, 30 building cards)
+index.html                          ← landing page (SYSNOVA branded, manifest-driven)
 sandbox/index.html                  ← modular viewer (S209)
 sandbox/*.js                        ← 15 JS modules
 boq_charts.html                     ← 4D/5D analytics
 manifest.json                       ← 30 archetypes metadata
 buildings/
-  {Name}_extracted.db               ← metadata, transforms, element info (per building)
-  {Name}_library.db                 ← geometry BLOBs, vertices + faces (per building)
+  {Name}_extracted.db               ← single DB: metadata + transforms + bbox + geometry BLOBs
   city_index.db                     ← 786 building bboxes for city mode (324KB)
 ```
 
-30 per-building pairs (e.g. `SampleHouse_extracted.db` + `SampleHouse_library.db`).
+Single DB per building (e.g. `Duplex_extracted.db`). Contains elements_meta,
+element_transforms (with bbox_x/y/z), element_instances, component_geometries.
 
 ## CLI Commands
 
@@ -264,3 +266,21 @@ No git restore needed for rollback. Git is the archive, OCI is the deployment la
 - Rollback = one script: backup → prod. No git, no local files.
 - Git commit (Step 5) is for the record, not for recovery.
 - Smoke test = landing + viewer + phone. All three.
+
+## PWA Offline Support (S243)
+
+Spec: `prompts/S243_offline_pwa.md`. Branch: `full`. Bucket: `bim-ootb-live`.
+
+**Deploy PWA files:**
+```bash
+for f in sw.js manifest.webmanifest offline.html; do
+  oci os object put --bucket-name bim-ootb-live \
+    --file "deploy/dev/$f" --name "sandbox/$f" --force
+done
+oci os object put --bucket-name bim-ootb-live \
+  --file deploy/dev/icons/icon-192.png --name sandbox/icons/icon-192.png --force
+oci os object put --bucket-name bim-ootb-live \
+  --file deploy/dev/icons/icon-512.png --name sandbox/icons/icon-512.png --force
+```
+
+Bump `CACHE_VERSION` in `sw.js` on every deploy.

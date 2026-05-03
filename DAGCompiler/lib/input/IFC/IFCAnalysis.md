@@ -28,6 +28,19 @@ merges at DB level (row-by-row, dedup by geometry_hash). No IFC spatial tree
 re-parenting, no GUID collision risk — every element from every discipline makes
 it into the final DB.
 
+**Option C — Browser Drop IFC merge** (current workflow, S242):
+Drop multiple IFC files onto the BIM OOTB landing page. Each file's discipline is
+detected from filename (LTU_AHouse_HEAT.ifc → HEAT). The browser merges into a single
+DB in IndexedDB. Download the DB. Upload to OCI. Single DB contains all tables:
+`elements_meta`, `element_transforms` (with bbox_x/y/z), `element_instances`,
+`component_geometries`. No separate library DB needed.
+VALID_DISCS: ARC, STR, MEP, PLB, ACMV, ELEC, FP, VENT, HEAT, SAN, COOL, VOID,
+AIR, DUCT, HVAC, MECH, FIRE, SPR, GAS, LIFT, CONV, CIV, LAND, EXT, INT, CEIL, ROOF, SITE, DEMO.
+
+**IFC Export (S242):** Browser exports DB back to IFC using IfcMappedItem instancing.
+Geometry defined once per unique hash as IfcRepresentationMap, elements reference via
+IfcMappedItem + placement. Valid IFC4 output. Proven at 122K elements (LTU).
+
 > **⚠ CRITICAL — S173 Unit Scale Finding:**
 > `ifcopenshell.geom.iterator()` returns ALL coordinates in **metres** regardless
 > of the IFC file's native length unit (mm, feet, etc.). The iterator applies
