@@ -89,6 +89,7 @@ function setupPicking(A) {
     if (el) el.textContent = A._wlog.join('\n');
   };
 
+  A._longPressTimer = null;
   A.canvas.addEventListener('pointerdown', (e) => {
     A.pointerDownPos.x = e.clientX;
     A.pointerDownPos.y = e.clientY;
@@ -100,9 +101,38 @@ function setupPicking(A) {
       document.getElementById('fly-btn').style.color = '#fff';
       document.getElementById('walk-speed-btn').style.display = 'none';
     }
+    // Long-press (500ms) → volume info card (mobile-friendly right-click)
+    if (A.measureActive) {
+      var ev = { clientX: e.clientX, clientY: e.clientY, preventDefault: function(){} };
+      A._longPressTimer = setTimeout(function() {
+        A._longPressTimer = null;
+        A.handleMeasureRightClick(ev);
+      }, 500);
+    }
+  });
+  A.canvas.addEventListener('pointermove', (e) => {
+    // Cancel long-press if finger/mouse moves
+    if (A._longPressTimer) {
+      var dx = e.clientX - A.pointerDownPos.x;
+      var dy = e.clientY - A.pointerDownPos.y;
+      if (Math.sqrt(dx*dx + dy*dy) > 10) {
+        clearTimeout(A._longPressTimer);
+        A._longPressTimer = null;
+      }
+    }
+  });
+
+  A.canvas.addEventListener('dblclick', (e) => {
+    if (A.measureActive) { A.handleMeasureDblClick(e); return; }
+  });
+
+  A.canvas.addEventListener('contextmenu', (e) => {
+    if (A.measureActive) { A.handleMeasureRightClick(e); return; }
   });
 
   A.canvas.addEventListener('pointerup', (e) => {
+    // Cancel long-press on release
+    if (A._longPressTimer) { clearTimeout(A._longPressTimer); A._longPressTimer = null; }
     if (A.measureActive) { A.handleMeasureClick(e); return; }
 
     const dx = e.clientX - A.pointerDownPos.x;

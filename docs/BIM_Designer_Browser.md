@@ -911,6 +911,16 @@ The **Sunglasses** slider (🕶) recolours every element in the scene by its IFC
 <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Hard mode — full saturation reveals every IFC type at a glance. Canteen walk-through: furniture (red), slabs (blue), plates (green) now instantly distinguishable.</figcaption>
 </figure>
 
+<figure style="margin: 20px 0;">
+<img src="../assets/images/measure_area_roof.png" alt="Double-click area — curved roof 515 m²" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Double-click area — curved roof surface area computed from geometry triangles. 515 m² with see-through orange highlight.</figcaption>
+</figure>
+
+<figure style="margin: 20px 0;">
+<img src="../assets/images/measure_volume_card.png" alt="Right-click volume info card" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Right-click room info card — wireframe bounding box, volume (4278 m³), floor area, height, and full element breakdown by IFC class. Mobile: long-press.</figcaption>
+</figure>
+
 *See [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) for competitive landscape and market positioning.*
 
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*
