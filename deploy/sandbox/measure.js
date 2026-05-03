@@ -6,7 +6,10 @@ function setupMeasure(A) {
     const btn = document.getElementById('measure-btn');
     btn.style.background = A.measureActive ? '#4fc3f7' : '#444';
     btn.style.color = A.measureActive ? '#000' : '#fff';
-    A.status.textContent = A.measureActive ? 'Measure — tap two points on building' : '';
+    var isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    A.status.textContent = A.measureActive
+      ? (isMobile ? 'Tap for dimensions. Long-press for Info' : 'Click for dimensions. Right-click for Info')
+      : '';
     if (!A.measureActive) {
       A.clearMeasures();
     }
@@ -50,14 +53,42 @@ function setupMeasure(A) {
     if (!hits.length) return true;
 
     const point = hits[0].point.clone();
+    const hitMesh = hits[0].object;
 
     if (!A.measureFirstPoint) {
       A.measureFirstPoint = point;
+      A._measureFirstMesh = hitMesh;
       const markerGeo = new THREE.SphereGeometry(0.15, 8, 8);
       const markerMat = new THREE.MeshBasicMaterial({ color: 0x4fc3f7 });
       A.measureFirstMarker = new THREE.Mesh(markerGeo, markerMat);
       A.measureFirstMarker.position.copy(point);
       A.measureGroup.add(A.measureFirstMarker);
+      A.status.textContent = 'Tap another spot for length, same spot for Area';
+      console.log('§MEASURE dot placed — tap same dot for area, or tap elsewhere for distance');
+    } else if (point.distanceTo(A.measureFirstPoint) < 0.5) {
+      // Second tap on same spot → area of that element
+      var mesh = A._measureFirstMesh;
+      var area = A._meshArea(mesh);
+      var label = area.toFixed(2) + ' m²';
+      var cls = mesh.userData.ifcClass || '';
+      if (cls) label = cls.replace('Ifc', '') + ': ' + label;
+      A._highlightMesh(mesh, null, 0xff8c00);
+      // Fixed-position label at click point
+      var labelDiv = document.createElement('div');
+      labelDiv.className = 'measure-label';
+      labelDiv.style.cssText = 'position:fixed;z-index:100;background:rgba(0,0,0,0.85);color:#ff8c00;font-size:14px;font-weight:bold;padding:6px 12px;border-radius:6px;border:1px solid #ff8c00;pointer-events:none;white-space:nowrap;font-family:Segoe UI,sans-serif';
+      labelDiv.textContent = label;
+      labelDiv.style.left = (e.clientX + 10) + 'px';
+      labelDiv.style.top = (e.clientY - 30) + 'px';
+      document.body.appendChild(labelDiv);
+      A.measureLabels.push({ div: labelDiv, mid: null });
+      A.status.textContent = label;
+      console.log('§MEASURE_AREA ' + label + ' mesh=' + (mesh.userData.guid || mesh.id));
+      // Remove the first-point marker
+      if (A.measureFirstMarker) A.measureGroup.remove(A.measureFirstMarker);
+      A.measureFirstPoint = null;
+      A.measureFirstMarker = null;
+      A._measureFirstMesh = null;
     } else {
       const p1 = A.measureFirstPoint;
       const p2 = point;
@@ -89,6 +120,7 @@ function setupMeasure(A) {
 
       A.measureFirstPoint = null;
       A.measureFirstMarker = null;
+      A._measureFirstMesh = null;
     }
     return true;
   };
@@ -199,17 +231,23 @@ function setupMeasure(A) {
     var hits = A.raycaster.intersectObjects(meshes, false);
     if (!hits.length) return false;
     var hitMesh = hits[0].object;
-    var storey = hitMesh.userData.storey || 'Unknown';
-    // Collect all storey meshes and count by IFC class
+    var storey = hitMesh.userData.storey;
+    if (storey === undefined || storey === null) storey = 'Unknown';
+    var storeyLabel = storey || 'All Elements';
+    // Collect storey meshes for bounding box, and query DB for accurate class counts
     var roomMeshes = [];
-    var counts = {};
     A.scene.traverse(function(obj) {
       if (obj.isMesh && obj !== A.ground && obj.visible && obj.userData.storey === storey) {
         roomMeshes.push(obj);
-        var cls = (obj.userData.ifcClass || 'Other').replace('Ifc', '');
-        counts[cls] = (counts[cls] || 0) + 1;
       }
     });
+    var counts = {};
+    var dbRows = A.dbQuery(
+      "SELECT REPLACE(m.ifc_class,'Ifc','') AS cls, COUNT(*) AS n FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid WHERE m.storey = ? AND m.ifc_class != 'IfcOpeningElement' GROUP BY cls ORDER BY n DESC",
+      [storey]
+    );
+    var totalFromDb = 0;
+    dbRows.forEach(function(r) { counts[r[0] || 'Other'] = r[1]; totalFromDb += r[1]; });
     // Bounding box of storey
     var roomBox = new THREE.Box3();
     roomMeshes.forEach(function(m) { roomBox.expandByObject(m); });
@@ -222,7 +260,7 @@ function setupMeasure(A) {
     A.measureGroup.add(boxHelper);
     // Build info card
     var lines = [];
-    lines.push('<b style="color:#4fc3f7;font-size:15px">' + storey + '</b>');
+    lines.push('<b style="color:#4fc3f7;font-size:15px">' + storeyLabel + '</b>');
     lines.push('<hr style="border:none;border-top:1px solid #555;margin:4px 0">');
     lines.push('Vol: <b style="color:#ff8c00">' + volume.toFixed(1) + ' m\u00B3</b>');
     lines.push('Floor: <b>' + floorArea.toFixed(1) + ' m\u00B2</b> &nbsp; H: <b>' + size.y.toFixed(1) + 'm</b>');
@@ -232,7 +270,7 @@ function setupMeasure(A) {
       lines.push(cls + ': <b style="color:#4fc3f7">' + counts[cls] + '</b>');
     });
     lines.push('<hr style="border:none;border-top:1px solid #555;margin:4px 0">');
-    lines.push('<span style="color:#888;font-size:10px">Total: ' + roomMeshes.length + ' elements</span>');
+    lines.push('<span style="color:#888;font-size:10px">Total: ' + totalFromDb + ' elements</span>');
     var cardDiv = document.createElement('div');
     cardDiv.style.cssText = 'position:fixed;z-index:200;background:rgba(0,0,0,0.92);color:#e0e0e0;font-size:12px;padding:10px 14px;border-radius:8px;border:1px solid #4fc3f7;pointer-events:none;font-family:Segoe UI,sans-serif;line-height:1.6;min-width:180px';
     // Position at click location
@@ -244,8 +282,8 @@ function setupMeasure(A) {
     document.body.appendChild(cardDiv);
     // Store for cleanup — no 3D tracking needed, fixed position
     A.measureLabels.push({ div: cardDiv, mid: null });
-    A.status.textContent = storey + ' — ' + volume.toFixed(1) + ' m\u00B3';
-    console.log('§MEASURE_VOLUME ' + storey + ' vol=' + volume.toFixed(1) + 'm\u00B3 elements=' + roomMeshes.length + ' counts=' + JSON.stringify(counts));
+    A.status.textContent = storeyLabel + ' — ' + volume.toFixed(1) + ' m\u00B3';
+    console.log('§MEASURE_VOLUME ' + storeyLabel + ' vol=' + volume.toFixed(1) + 'm\u00B3 elements=' + roomMeshes.length + ' counts=' + JSON.stringify(counts));
     return true;
   };
 

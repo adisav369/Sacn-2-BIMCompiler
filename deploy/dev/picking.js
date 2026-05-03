@@ -102,10 +102,12 @@ function setupPicking(A) {
       document.getElementById('walk-speed-btn').style.display = 'none';
     }
     // Long-press (500ms) → volume info card (mobile-friendly right-click)
+    A._longPressFired = false;
     if (A.measureActive) {
       var ev = { clientX: e.clientX, clientY: e.clientY, preventDefault: function(){} };
       A._longPressTimer = setTimeout(function() {
         A._longPressTimer = null;
+        A._longPressFired = true;
         A.handleMeasureRightClick(ev);
       }, 500);
     }
@@ -131,9 +133,10 @@ function setupPicking(A) {
   });
 
   A.canvas.addEventListener('pointerup', (e) => {
-    // Cancel long-press on release
+    // Cancel long-press on release — suppress click if long-press already fired
     if (A._longPressTimer) { clearTimeout(A._longPressTimer); A._longPressTimer = null; }
-    if (A.measureActive) { A.handleMeasureClick(e); return; }
+    if (A._longPressFired) { A._longPressFired = false; return; }
+    if (A.measureActive && e.button === 0) { A.handleMeasureClick(e); return; }
 
     const dx = e.clientX - A.pointerDownPos.x;
     const dy = e.clientY - A.pointerDownPos.y;

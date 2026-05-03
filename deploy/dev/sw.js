@@ -8,7 +8,7 @@
 // Cache-first for heavy assets (.wasm, images). DB files skip SW (IndexedDB handles them).
 //
 // DEPLOY: bump CACHE_VERSION on every OCI upload. Old caches are purged on activate.
-const CACHE_VERSION = 'v244';
+const CACHE_VERSION = 'v245';
 const CACHE_NAME = 'bim-ootb-' + CACHE_VERSION;
 
 // CDN assets fetched by loader.js — versioned URLs, safe to cache-first
