@@ -31,7 +31,7 @@ if (!ifcPath || !outPath) {
   console.error('Usage: node scripts/extractIFC2DB.js --ifc <file.ifc> -o <output.db> [--disc HEAT]');
   process.exit(1);
 }
-const VALID_DISCS = ['ARC','STR','MEP','PLB','ACMV','ELEC','FP','VENT','HEAT','SAN','COOL','VOID'];
+const VALID_DISCS = ['ARC','STR','MEP','PLB','ACMV','ELEC','FP','VENT','HEAT','SAN','COOL','VOID','AIR','DUCT','HVAC','MECH','FIRE','SPR','GAS','LIFT','CONV','CIV','LAND','EXT','INT','CEIL','ROOF','SITE','DEMO'];
 if (discOverride && !VALID_DISCS.includes(discOverride.toUpperCase())) {
   console.error(`Invalid --disc "${discOverride}". Valid: ${VALID_DISCS.join(', ')}`);
   process.exit(1);
@@ -406,12 +406,10 @@ async function main() {
           el.material = elementMaterialColor[el.expressID];
           matCount++;
         } else if (bestColor) {
-          const r = bestColor.x, g = bestColor.y, b = bestColor.z;
-          // Skip near-white geometry colors — viewer uses discipline color instead
-          if (!(r > 0.95 && g > 0.95 && b > 0.95)) {
-            el.material = `${r.toFixed(3)},${g.toFixed(3)},${b.toFixed(3)},${bestColor.w.toFixed(3)}`;
-            matCount++;
-          }
+          let r = bestColor.x, g = bestColor.y, b = bestColor.z;
+          if (r > 0.95 && g > 0.95 && b > 0.95) { r = 0.92; g = 0.90; b = 0.85; }
+          el.material = `${r.toFixed(3)},${g.toFixed(3)},${b.toFixed(3)},${bestColor.w.toFixed(3)}`;
+          matCount++;
         }
       }
     } catch(e) {

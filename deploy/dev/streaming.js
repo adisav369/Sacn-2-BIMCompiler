@@ -54,7 +54,8 @@ function setupStreaming(A) {
         SELECT m.guid, i.geometry_hash, m.material_rgba, m.discipline,
                t.center_x, t.center_y, t.center_z,
                t.rotation_x, t.rotation_y, t.rotation_z,
-               m.storey, m.ifc_class
+               m.storey, m.ifc_class,
+               t.bbox_x, t.bbox_y, t.bbox_z
         FROM elements_meta m
         JOIN element_instances i ON m.guid = i.guid
         JOIN element_transforms t ON t.guid = m.guid
@@ -103,15 +104,18 @@ function setupStreaming(A) {
     const MAX_PLACEHOLDERS = 5000;
     // Sample evenly if building has more elements than cap
     const step = rows.length > MAX_PLACEHOLDERS ? Math.ceil(rows.length / MAX_PLACEHOLDERS) : 1;
-    // row: [guid, hash, rgba, disc, cx, cy, cz, rotX, rotY, rotZ, storey, ifc_class]
+    // row: [guid, hash, rgba, disc, cx, cy, cz, rotX, rotY, rotZ, storey, ifc_class, bbox_x, bbox_y, bbox_z]
     const byDisc = {};
     for (let i = 0; i < rows.length; i += step) {
       const disc = rows[i][3] || '_';
       if (!byDisc[disc]) byDisc[disc] = [];
       byDisc[disc].push(rows[i]);
     }
-    const geo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+    const geo = new THREE.BoxGeometry(1, 1, 1);
     const _m4 = new THREE.Matrix4();
+    const _pos = new THREE.Vector3();
+    const _scl = new THREE.Vector3();
+    const _quat = new THREE.Quaternion();
     for (const [disc, drows] of Object.entries(byDisc)) {
       const color = A.DISC_COLORS[disc] || A.DEFAULT_COLOR;
       const mat = new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.4 });
@@ -119,8 +123,12 @@ function setupStreaming(A) {
       iMesh.frustumCulled = false;
       iMesh.userData.isBboxPlaceholder = true;
       for (let i = 0; i < drows.length; i++) {
-        const p = A.ifc2three(drows[i][4], drows[i][5], drows[i][6]);
-        _m4.makeTranslation(p.x, p.y, p.z);
+        const r = drows[i];
+        const p = A.ifc2three(r[4], r[5], r[6]);
+        const bx = r[12] || 0.3, by = r[13] || 0.3, bz = r[14] || 0.3;
+        _pos.set(p.x, p.y, p.z);
+        _scl.set(bx, bz, by);
+        _m4.compose(_pos, _quat, _scl);
         iMesh.setMatrixAt(i, _m4);
       }
       iMesh.instanceMatrix.needsUpdate = true;
@@ -575,31 +583,8 @@ function setupStreaming(A) {
     }
     console.log(`[S241] §BBOX_EARLY placeholders drawn before library fetch`);
 
-    // Now fetch library DB (geometry BLOBs) — streamTick will auto-start meshes
-    const libName = A.LIB_URL.split('/').pop();
-    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_fetching||'Fetching {url}...').replace('{url}', libName);
-    try {
-      const libBuf = await A.cachedFetch(A.LIB_URL);
-      A.libDb = new SQL.Database(new Uint8Array(libBuf));
-      console.log(`[S192] §LIB_LOADED size=${(libBuf.byteLength/1024/1024).toFixed(0)}MB`);
-      try {
-        const t = A.libDb.exec("SELECT COUNT(*) FROM component_geometries");
-        console.log(`[S192] §LIB_TABLE component_geometries rows=${t[0].values[0][0]}`);
-      } catch(e2) {
-        console.log(`[S192] §LIB_TABLE component_geometries not found, trying base_geometries`);
-        try {
-          const t2 = A.libDb.exec("SELECT COUNT(*) FROM base_geometries");
-          console.log(`[S192] §LIB_TABLE base_geometries rows=${t2[0].values[0][0]}`);
-        } catch(e3) {
-          console.log(`[S192] §LIB_ERROR no geometry table found`);
-        }
-      }
-      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_lib_loaded||'Library loaded ({size}MB). Streaming nearest building...').replace('{size}',(libBuf.byteLength/1024/1024).toFixed(0));
-    } catch (e) {
-      console.log(`[S200] §LIB_FALLBACK using main DB for geometry (${e.message})`);
-      A.libDb = A.db;
-      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_geom||'Using main DB for geometry. Streaming...');
-    }
+    // Single DB — geometry is in the same DB
+    A.libDb = A.db;
   };
 
   // URL deep-link

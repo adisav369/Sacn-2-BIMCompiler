@@ -1256,23 +1256,39 @@ async function exportProjectIFC(projectKey, flyout) {
     }
   } catch(e) {}
 
-  // Read geometries (join instances → geometries)
+  // Read guid→hash map + geometries in batches (avoids OOM on large buildings)
+  var guidHashMap = {};
   try {
-    var geoRows = db.exec("SELECT ei.guid, cg.vertices, cg.faces FROM element_instances ei JOIN component_geometries cg ON ei.geometry_hash = cg.geometry_hash");
-    if (geoRows.length > 0) {
-      for (var r = 0; r < geoRows[0].values.length; r++) {
-        var row = geoRows[0].values[r];
-        geometries.push({ guid: row[0], vertices: row[1], faces: row[2] });
+    var instRows = db.exec("SELECT guid, geometry_hash FROM element_instances WHERE geometry_hash IS NOT NULL");
+    if (instRows.length > 0) {
+      for (var r = 0; r < instRows[0].values.length; r++) {
+        guidHashMap[instRows[0].values[r][0]] = instRows[0].values[r][1];
       }
     }
-  } catch(e) {}
+    // Load unique geometries in batches using exec (compatible with all sql.js versions)
+    var usedHashes = Object.values(guidHashMap).filter(function(v,i,a) { return a.indexOf(v) === i; });
+    statusEl.textContent = 'Loading ' + usedHashes.length + ' unique geometries...';
+    var BATCH = 200;
+    for (var bi = 0; bi < usedHashes.length; bi += BATCH) {
+      var chunk = usedHashes.slice(bi, bi + BATCH);
+      var ph = chunk.map(function(h) { return "'" + h + "'"; }).join(',');
+      var geoRows = db.exec("SELECT geometry_hash, vertices, faces FROM component_geometries WHERE geometry_hash IN (" + ph + ")");
+      if (geoRows.length > 0) {
+        for (var r = 0; r < geoRows[0].values.length; r++) {
+          var row = geoRows[0].values[r];
+          geometries.push({ hash: row[0], vertices: row[1], faces: row[2] });
+        }
+      }
+      if (bi % 2000 === 0 && bi > 0) statusEl.textContent = 'Loading geometries... ' + Math.round(bi/usedHashes.length*100) + '%';
+    }
+  } catch(e) { console.error('Geo load error:', e); }
 
   db.close();
 
   statusEl.textContent = 'Building IFC (' + elements.length + ' elements)...';
 
   // Send to export worker
-  var worker = new Worker('sandbox/ifc_export_worker.js?v=1');
+  var worker = new Worker('sandbox/ifc_export_worker.js?v=2');
   worker.onmessage = function(e) {
     var msg = e.data;
     if (msg.type === 'progress') {
@@ -1305,7 +1321,7 @@ async function exportProjectIFC(projectKey, flyout) {
     worker.terminate();
   };
 
-  worker.postMessage({ elements: elements, transforms: transforms, geometries: geometries, meta: meta });
+  worker.postMessage({ elements: elements, transforms: transforms, geometries: geometries, guidHashMap: guidHashMap, meta: meta });
 }
 </script>
 <script>if(new URLSearchParams(location.search).has('ignore-me'))localStorage.setItem('goatcounter-ignore','t')</script>

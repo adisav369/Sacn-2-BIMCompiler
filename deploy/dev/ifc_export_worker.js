@@ -5,7 +5,7 @@
  */
 // ifc_export_worker.js — S229: Browser IFC Export (STEP text builder)
 // Pure STEP/ISO-10303-21 text generation. No web-ifc dependency.
-// Input:  { elements[], transforms[], geometries[], meta{} }
+// Input:  { elements[], transforms[], geometries[], guidHashMap{}, meta{} }
 // Output: { type:'done', ifcData: ArrayBuffer } or { type:'error', message }
 
 self.onmessage = function(e) {
@@ -69,9 +69,25 @@ function buildIFC(data) {
   // Index transforms and geometries by guid
   var txMap = {};
   for (var i = 0; i < transforms.length; i++) txMap[transforms[i].guid] = transforms[i];
-  var geoMap = {};
+  var guidHashMap = data.guidHashMap || {};
+  // Build hash→geometry lookup from unique geometries
+  var hashGeoMap = {};
   for (var i = 0; i < geometries.length; i++) {
-    if (!geoMap[geometries[i].guid]) geoMap[geometries[i].guid] = geometries[i];
+    var g = geometries[i];
+    hashGeoMap[g.hash || g.guid] = g;  // support both old (guid) and new (hash) format
+  }
+  // Build geoMap: guid → geometry via hash lookup
+  var geoMap = {};
+  if (Object.keys(guidHashMap).length > 0) {
+    for (var guid in guidHashMap) {
+      var geo = hashGeoMap[guidHashMap[guid]];
+      if (geo) geoMap[guid] = geo;
+    }
+  } else {
+    // Legacy: geometries already keyed by guid
+    for (var i = 0; i < geometries.length; i++) {
+      if (!geoMap[geometries[i].guid]) geoMap[geometries[i].guid] = geometries[i];
+    }
   }
 
   var buildingName = meta.buildingName || meta.name || 'Building';
@@ -189,52 +205,27 @@ function buildIFC(data) {
     lines.push('#' + idRelBS + '=IFCRELAGGREGATES(' + stepStr(newGuid()) + ',#' + idOwner + ',$,$,#' + idBuilding + ',(' + storeyIdList.map(function(x) { return '#' + x; }).join(',') + '));');
   }
 
-  postMessage({ type: 'progress', pct: 25, phase: 'Writing elements (' + elements.length + ')...' });
+  postMessage({ type: 'progress', pct: 25, phase: 'Writing geometry maps (' + geometries.length + ' unique)...' });
 
-  // ── Elements + Geometry ──
-  var storeyElements = {};  // storeyId → [elementId]
-  var exportedCount = 0;
+  // ── Phase 1: Build IfcRepresentationMap for each unique geometry hash ──
+  var hashToRepMap = {};  // hash → { repMapId, faceSetId }
 
-  for (var i = 0; i < elements.length; i++) {
-    var el = elements[i];
-    var geo = geoMap[el.guid];
-    if (!geo || !geo.vertices || !geo.faces) continue;  // skip elements without geometry
+  function decodeBLOB(blob, TypedArray) {
+    if (blob instanceof TypedArray) return blob;
+    if (blob instanceof ArrayBuffer) return new TypedArray(blob);
+    if (blob instanceof Uint8Array) return new TypedArray(blob.buffer, blob.byteOffset, blob.byteLength / (TypedArray === Float32Array ? 4 : 4));
+    return null;
+  }
 
-    var tx = txMap[el.guid] || { cx: 0, cy: 0, cz: 0 };
+  for (var gi = 0; gi < geometries.length; gi++) {
+    var geo = geometries[gi];
+    var hash = geo.hash || geo.guid;
+    if (!geo.vertices || !geo.faces) continue;
 
-    // Decode BLOB data
-    var verts, faces;
-    if (geo.vertices instanceof Float32Array) {
-      verts = geo.vertices;
-    } else if (geo.vertices instanceof ArrayBuffer) {
-      verts = new Float32Array(geo.vertices);
-    } else if (geo.vertices instanceof Uint8Array) {
-      verts = new Float32Array(geo.vertices.buffer, geo.vertices.byteOffset, geo.vertices.byteLength / 4);
-    } else {
-      continue;
-    }
+    var verts = decodeBLOB(geo.vertices, Float32Array);
+    var faces = decodeBLOB(geo.faces, Int32Array);
+    if (!verts || !faces || verts.length < 9 || faces.length < 3) continue;
 
-    if (geo.faces instanceof Int32Array || geo.faces instanceof Uint32Array) {
-      faces = geo.faces;
-    } else if (geo.faces instanceof ArrayBuffer) {
-      faces = new Int32Array(geo.faces);
-    } else if (geo.faces instanceof Uint8Array) {
-      faces = new Int32Array(geo.faces.buffer, geo.faces.byteOffset, geo.faces.byteLength / 4);
-    } else {
-      continue;
-    }
-
-    if (verts.length < 9 || faces.length < 3) continue;  // need at least 1 triangle
-
-    // Element placement (absolute position from transforms)
-    var idElPt = next();
-    lines.push('#' + idElPt + '=IFCCARTESIANPOINT((' + stepFloat(tx.cx) + ',' + stepFloat(tx.cy) + ',' + stepFloat(tx.cz) + '));');
-    var idElAx = next();
-    lines.push('#' + idElAx + '=IFCAXIS2PLACEMENT3D(#' + idElPt + ',#' + idDirZ + ',#' + idDirX + ');');
-    var idElLP = next();
-    lines.push('#' + idElLP + '=IFCLOCALPLACEMENT(#' + idWorldLP + ',#' + idElAx + ');');
-
-    // Geometry: IfcCartesianPointList3D + IfcTriangulatedFaceSet
     var numVerts = verts.length / 3;
     var coordParts = [];
     for (var v = 0; v < numVerts; v++) {
@@ -247,22 +238,70 @@ function buildIFC(data) {
     var numTris = faces.length / 3;
     var triParts = [];
     for (var t = 0; t < numTris; t++) {
-      // IFC uses 1-based indices
       triParts.push('(' + (faces[t * 3] + 1) + ',' + (faces[t * 3 + 1] + 1) + ',' + (faces[t * 3 + 2] + 1) + ')');
     }
 
     var idFaceSet = next();
     lines.push('#' + idFaceSet + '=IFCTRIANGULATEDFACESET(#' + idCoordList + ',$,.F.,(' + triParts.join(',') + '),$);');
 
-    // Material colour
-    var styledItemLine = '';
+    // RepresentationMap: origin at 0,0,0 + shape rep
+    var idMapShapeRep = next();
+    lines.push('#' + idMapShapeRep + '=IFCSHAPEREPRESENTATION(#' + idSubCtx + ',' + stepStr('Body') + ',' + stepStr('Tessellation') + ',(#' + idFaceSet + '));');
+    var idMapOrigin = next();
+    lines.push('#' + idMapOrigin + '=IFCAXIS2PLACEMENT3D(#' + idOrigin + ',#' + idDirZ + ',#' + idDirX + ');');
+    var idRepMap = next();
+    lines.push('#' + idRepMap + '=IFCREPRESENTATIONMAP(#' + idMapOrigin + ',#' + idMapShapeRep + ');');
+
+    hashToRepMap[hash] = { repMapId: idRepMap, faceSetId: idFaceSet };
+
+    if (gi % 5000 === 0 && gi > 0) {
+      postMessage({ type: 'progress', pct: 25 + Math.round(gi / geometries.length * 30), phase: 'Geometry maps ' + gi + '/' + geometries.length });
+    }
+  }
+
+  postMessage({ type: 'progress', pct: 55, phase: 'Writing elements (' + elements.length + ')...' });
+
+  // ── Phase 2: Elements — reference RepresentationMap via IfcMappedItem ──
+  var storeyElements = {};  // storeyId → [elementId]
+  var exportedCount = 0;
+
+  for (var i = 0; i < elements.length; i++) {
+    var el = elements[i];
+    // Resolve geometry hash for this element
+    var elHash = guidHashMap[el.guid];
+    var repInfo = elHash ? hashToRepMap[elHash] : null;
+    if (!repInfo) {
+      // Legacy fallback: try geoMap directly
+      var geo = geoMap[el.guid];
+      if (!geo || !geo.vertices || !geo.faces) continue;
+      elHash = geo.hash || el.guid;
+      repInfo = hashToRepMap[elHash];
+      if (!repInfo) continue;
+    }
+
+    var tx = txMap[el.guid] || { cx: 0, cy: 0, cz: 0 };
+
+    // Element placement
+    var idElPt = next();
+    lines.push('#' + idElPt + '=IFCCARTESIANPOINT((' + stepFloat(tx.cx) + ',' + stepFloat(tx.cy) + ',' + stepFloat(tx.cz) + '));');
+    var idElAx = next();
+    lines.push('#' + idElAx + '=IFCAXIS2PLACEMENT3D(#' + idElPt + ',#' + idDirZ + ',#' + idDirX + ');');
+    var idElLP = next();
+    lines.push('#' + idElLP + '=IFCLOCALPLACEMENT(#' + idWorldLP + ',#' + idElAx + ');');
+
+    // IfcMappedItem referencing the RepresentationMap
+    var idMapTarget = next();
+    lines.push('#' + idMapTarget + '=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#' + idOrigin + ',1.,$);');
+    var idMappedItem = next();
+    lines.push('#' + idMappedItem + '=IFCMAPPEDITEM(#' + repInfo.repMapId + ',#' + idMapTarget + ');');
+
+    // Material colour as styled item on the mapped item
     if (el.material) {
       var rgba = String(el.material).split(',').map(Number);
       if (rgba.length >= 3 && !isNaN(rgba[0])) {
         var r = rgba[0] > 1 ? rgba[0] / 255 : rgba[0];
         var g = rgba[1] > 1 ? rgba[1] / 255 : rgba[1];
         var b = rgba[2] > 1 ? rgba[2] / 255 : rgba[2];
-
         var idColour = next();
         lines.push('#' + idColour + '=IFCCOLOURRGB($,' + stepFloat(r) + ',' + stepFloat(g) + ',' + stepFloat(b) + ');');
         var idRendering = next();
@@ -272,13 +311,13 @@ function buildIFC(data) {
         var idPresStyle = next();
         lines.push('#' + idPresStyle + '=IFCPRESENTATIONSTYLEASSIGNMENT((#' + idSurfStyle + '));');
         var idStyledItem = next();
-        lines.push('#' + idStyledItem + '=IFCSTYLEDITEM(#' + idFaceSet + ',(#' + idPresStyle + '),$);');
+        lines.push('#' + idStyledItem + '=IFCSTYLEDITEM(#' + idMappedItem + ',(#' + idPresStyle + '),$);');
       }
     }
 
-    // Shape representation
+    // Shape representation referencing the MappedItem
     var idShapeRep = next();
-    lines.push('#' + idShapeRep + '=IFCSHAPEREPRESENTATION(#' + idSubCtx + ',' + stepStr('Body') + ',' + stepStr('Tessellation') + ',(#' + idFaceSet + '));');
+    lines.push('#' + idShapeRep + '=IFCSHAPEREPRESENTATION(#' + idSubCtx + ',' + stepStr('Body') + ',' + stepStr('MappedRepresentation') + ',(#' + idMappedItem + '));');
     var idProdShape = next();
     lines.push('#' + idProdShape + '=IFCPRODUCTDEFINITIONSHAPE($,$,(#' + idShapeRep + '));');
 
