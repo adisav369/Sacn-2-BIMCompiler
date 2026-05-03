@@ -163,6 +163,8 @@ function setupStreaming(A) {
       r = parts[0]; g = parts[1]; b = parts[2];
       if (parts.length >= 4 && parts[3] < 1.0) a = parts[3];
     }
+    // Tame near-white materials — pull down to light grey for contrast
+    if (r > 0.85 && g > 0.85 && b > 0.85) { r *= 0.82; g *= 0.82; b *= 0.82; }
     const opts = { color: new THREE.Color(r, g, b), flatShading: true };
     if (a < 1.0) { opts.transparent = true; opts.opacity = a; opts.side = THREE.DoubleSide; }
     const mat = new THREE.MeshPhongMaterial(opts);
@@ -313,6 +315,7 @@ function setupStreaming(A) {
         mesh.userData.storey = el.storey;
         mesh.userData.disc = el.disc;
         mesh.userData.guid = el.guid;
+        mesh.userData.ifcClass = el.ifcClass || '';
         A.guidMap[mesh.id] = el.guid;
         if (A.activeStoreyFilter !== null && el.storey !== A.activeStoreyFilter) mesh.visible = false;
         if (A.hiddenDiscs.size > 0 && A.hiddenDiscs.has(el.disc)) mesh.visible = false;
@@ -335,13 +338,14 @@ function setupStreaming(A) {
           _m4.compose(_pos, _quat, _scale);
           iMesh.setMatrixAt(i, _m4);
 
-          meta.push({ guid: el.guid, storey: el.storey, disc: el.disc, instanceIndex: i });
+          meta.push({ guid: el.guid, storey: el.storey, disc: el.disc, ifcClass: el.ifcClass || '', instanceIndex: i });
           A._instanceGuids[el.guid] = { meshId: iMesh.id, instanceIndex: i };
           A.guidMap[iMesh.id + '_' + i] = el.guid;
         }
         iMesh.instanceMatrix.needsUpdate = true;
         iMesh.userData.isInstanced = true;
         iMesh.userData.hash = hash;
+        iMesh.userData.ifcClass = elements[0].ifcClass || '';
         A._instanceMeta[iMesh.id] = meta;
         A.scene.add(iMesh);
         instancedCount += elements.length;

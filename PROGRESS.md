@@ -20,6 +20,15 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S244 DONE (2026-05-03): Sunglasses — material contrast slider + theme toggle.**
+  - 🕶 button replaces ☼: click = reverse background (light/dark), opens slider panel.
+  - Slider (0–100, 10 zones): recolors all meshes by IFC class/storey/discipline with 10 strategies.
+    Warm pastels → cool pastels → earth tones → storey warm/cool → discipline → zebra → mono → random → HARD.
+  - Each IFC class gets unique color via golden-angle hue spacing. Largest classes get most contrasting slots.
+  - Near-white materials (RGB > 0.85) auto-tamed in `_getMaterial` at streaming time.
+  - `ifcClass` stored on mesh/instanced userData for grouping. Zero perf cost — just material swaps.
+  - Deployed to `bim-ootb-live/sandbox/`. Proven on Terminal canteen (IfcSlab vs IfcFurniture contrast).
+
 **S242 DONE (2026-05-03): Single-DB deployment, IFC bbox placeholders, instanced IFC export.**
   - Viewer: single DB only (`A.libDb = A.db`), no library fetch. Config: `LIB_URL` removed.
   - Bbox placeholders: use IFC `bbox_x/y/z` from `element_transforms` (not fixed cubes).

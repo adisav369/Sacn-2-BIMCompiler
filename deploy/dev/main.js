@@ -108,6 +108,9 @@ function initViewer() {
   window.toggleSection = APP.toggleSection;
   window.setSectionAxis = APP.setSectionAxis;
   window.updateSectionPlane = APP.updateSectionPlane;
+  window.toggleSunglass = APP.toggleSunglass;
+  window.closeSunglass = APP.closeSunglass;
+  window.updateAmbience = APP.updateAmbience;
   window.toggleIssues = APP.toggleIssues;
   window.exportIssuesExcel = APP.exportIssuesExcel;
   window.clearAllIssues = APP.clearAllIssues;
@@ -191,4 +194,33 @@ function initViewer() {
     APP.status.textContent = `Error: ${e.message}`;
     console.error(`[S192] §INIT_ERROR`, e);
   });
+
+  // S243: Offline/online status notification
+  function showNetStatus(online) {
+    var id = 'net-status-toast';
+    var old = document.getElementById(id);
+    if (old) old.remove();
+    var div = document.createElement('div');
+    div.id = id;
+    div.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:9999;' +
+      'padding:10px 24px;border-radius:8px;font-size:13px;font-family:Segoe UI,sans-serif;' +
+      'box-shadow:0 4px 12px rgba(0,0,0,0.4);transition:opacity 0.5s;pointer-events:none;';
+    if (online) {
+      div.style.background = 'rgba(39,174,96,0.92)';
+      div.style.color = '#fff';
+      div.textContent = 'Back online';
+      console.log('[S243] §NET_STATUS online');
+    } else {
+      div.style.background = 'rgba(230,126,34,0.92)';
+      div.style.color = '#fff';
+      div.textContent = 'Offline mode — cached buildings still available';
+      console.log('[S243] §NET_STATUS offline');
+    }
+    document.body.appendChild(div);
+    setTimeout(function() { div.style.opacity = '0'; }, online ? 3000 : 5000);
+    setTimeout(function() { if (div.parentNode) div.remove(); }, online ? 3500 : 5500);
+  }
+  window.addEventListener('offline', function() { showNetStatus(false); });
+  window.addEventListener('online', function() { showNetStatus(true); });
+  if (!navigator.onLine) showNetStatus(false);
 }
