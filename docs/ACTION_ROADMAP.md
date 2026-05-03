@@ -85,6 +85,12 @@ Data already in the DB (IfcSpace, IfcSlab geometry). Every planning submission n
 | **Output** | Area (m²), perimeter (m), ceiling height, door count per space |
 | **Spec** | [S211 Space Compliance](../prompts/S211_space_compliance.md) — area vs required, door widths, ceiling checks |
 
+**Done (S245a):** Tap-same-dot area, DB-backed info card, adaptive status text.
+- Single tap = blue dot, tap same dot = area (replaces double-click, works mobile+desktop)
+- Right-click / long-press info card queries DB for per-class element counts (fixes merged mesh gap)
+- Status adapts: desktop "Click/Right-click" vs mobile "Tap/Long-press"
+- Area label appears at click point, not mesh center
+
 ### S246 — Shadow Study (sun position slider)
 
 Animate directional light by hour and date for real-time shadow analysis.
