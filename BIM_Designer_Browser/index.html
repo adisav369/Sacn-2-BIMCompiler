@@ -1474,6 +1474,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#phase-2d-pwa-offline-install-s243-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2d: PWA Offline + Install (S243 — DONE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#phase-3-analysis-nd-engine-in-the-browser" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1979,6 +1990,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-powerful-scenes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Powerful Scenes
+      
+    </span>
+  </a>
   
 </li>
       
@@ -4016,6 +4038,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#phase-2d-pwa-offline-install-s243-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2d: PWA Offline + Install (S243 — DONE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#phase-3-analysis-nd-engine-in-the-browser" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4524,6 +4557,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#11-powerful-scenes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Powerful Scenes
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4909,6 +4953,19 @@ and deployment.</p>
 <li>[x] <strong>Playwright E2E</strong> — 72/72 desktop, 10 spec files covering all features</li>
 </ul>
 <p>SRS: <a href="../internal/DROP_ZONE_MULTI_FORMAT_SRS.md"><code>internal/DROP_ZONE_MULTI_FORMAT_SRS.md</code></a></p>
+<h3 id="phase-2d-pwa-offline-install-s243-done">Phase 2d: PWA Offline + Install (S243 — DONE)<a class="headerlink" href="#phase-2d-pwa-offline-install-s243-done" title="Permanent link">&para;</a></h3>
+<p>Load once, use forever. No internet required after first visit.</p>
+<ul>
+<li>[x] <strong>Service Worker</strong> — <code>sw.js</code> v243 precaches all 40+ JS/HTML/CDN assets on first visit. Network-first for JS/HTML (always fresh on deploy), cache-first for CDN libs (.wasm, Three.js, sql.js)</li>
+<li>[x] <strong>IndexedDB caching</strong> — building DBs cached automatically on first view via <code>A.cachedFetch()</code>. Second visit = instant, zero network. DB files bypass Service Worker entirely</li>
+<li>[x] <strong>PWA manifest</strong> — <code>manifest.webmanifest</code> enables "Add to Home Screen" on mobile and "Install App" on desktop Chrome. Standalone mode (no browser chrome)</li>
+<li>[x] <strong>Offline fallback</strong> — <code>offline.html</code> shown gracefully when a resource isn't cached and network is down. Guides user to open previously viewed buildings</li>
+<li>[x] <strong>All entry points wired</strong> — <code>index.html</code>, <code>boq_charts.html</code>, <code>2d.html</code> all register SW + link manifest</li>
+<li>[x] <strong>App icons</strong> — 192×192 and 512×512 PNG icons for home screen and app launcher</li>
+</ul>
+<p><strong>What works offline:</strong> Full 3D viewer, storey/discipline filters, element picker, NLP voice queries, X-ray, screenshot, measurement, walk mode, 2D plans — anything that doesn't need a new DB download.</p>
+<p><strong>What needs network:</strong> First-time DB download for a building not yet cached, CDN libraries on very first visit ever.</p>
+<p>Spec: <a href="../prompts/S243_offline_pwa.md"><code>prompts/S243_offline_pwa.md</code></a></p>
 <h3 id="phase-3-analysis-nd-engine-in-the-browser">Phase 3: Analysis — nD Engine in the Browser<a class="headerlink" href="#phase-3-analysis-nd-engine-in-the-browser" title="Permanent link">&para;</a></h3>
 <p>Query-driven overlays — same DB, richer SQL. The <strong>nD engine</strong> (<a href="../4D5DAnalysis/">4D5DAnalysis.md</a>)
 already produces 4D-8D tables from JSON templates + <code>elements_meta</code>. Phase 3 ports this
@@ -5771,6 +5828,20 @@ oci<span class="w"> </span>os<span class="w"> </span>object<span class="w"> </sp
 </tbody>
 </table>
 <p>Filter in F12 Console by tag (e.g. <code>[S209]</code>) to diagnose issues.</p>
+<hr />
+<h2 id="11-powerful-scenes">11. Powerful Scenes<a class="headerlink" href="#11-powerful-scenes" title="Permanent link">&para;</a></h2>
+<p>Being locally DB in browser, we utilised all the best technology can offer.</p>
+<p>The <strong>Sunglasses</strong> slider (🕶) recolours every element in the scene by its IFC classification, storey, or discipline — giving architects, engineers, and reviewers instant visual contrast without touching the model data. One slider, ten strategies, from professional pastels to full-spectrum analysis.</p>
+<figure style="margin: 20px 0;">
+<img src="../assets/images/sunglass_pastel.png" alt="Sunglasses — cool pastel mode on Terminal building" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Cool pastel mode — each IFC class (plates, beams, slabs, columns) gets a distinct professional tint. Terminal building, 48K elements.</figcaption>
+</figure>
+
+<figure style="margin: 20px 0;">
+<img src="../assets/images/sunglass_hard.png" alt="Sunglasses — hard mode, canteen walk-through" style="width:100%; border:1px solid #ccc;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Hard mode — full saturation reveals every IFC type at a glance. Canteen walk-through: furniture (red), slabs (blue), plates (green) now instantly distinguishable.</figcaption>
+</figure>
+
 <p><em>See <a href="../StrategicIndustryPositioning/">StrategicIndustryPositioning.md</a> for competitive landscape and market positioning.</em></p>
 <p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
 
