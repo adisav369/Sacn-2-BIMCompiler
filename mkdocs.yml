@@ -88,6 +88,7 @@ nav:
   # ─── BIM Designer ─────────────────────────────────────
   - Designer:
       - BIM OOTB (Browser): BIM_Designer_Browser.md
+      - Clash Detection: CLASH_DETECTION.md
       - SQLite3D Schema: SQLite3D_Schema.md
       - Plugin SDK: PLUGIN_SDK.md
       - Mobile & Cloud: MOBILE_DEPLOY.md

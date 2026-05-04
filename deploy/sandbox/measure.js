@@ -1,12 +1,16 @@
 // measure.js — Measurement tool (two-point distance, area, clash detection)
-// S245c v3 — R-tree built async (for future S245d), queries use bbox arithmetic
+// S245d v1 — Progressive storey loading, COUNT per storey, no N² fallback
 function setupMeasure(A) {
-  console.log('§MEASURE_VERSION S245c-v45');
+  console.log('§MEASURE_VERSION S245d-v1');
 
   // ── Draggable panels ──
   A._makeDraggable = function(el) {
     var ox, oy, sx, sy, dragging = false;
+    var isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    var dragStrip = isMobile ? 50 : 30; // larger grab zone on mobile
     el.style.cursor = 'grab';
+    // Prevent browser scroll/zoom from stealing drag on mobile
+    el.style.touchAction = 'none';
     el.addEventListener('pointerdown', function(e) {
       // Don't drag from interactive elements
       if (e.target.tagName === 'INPUT') return;
@@ -14,7 +18,7 @@ function setupMeasure(A) {
       if (e.target.className && typeof e.target.className === 'string' && e.target.className.indexOf('close') >= 0) return;
       if (e.target.closest('[data-clash-idx]') || e.target.closest('[data-pair]')) return;
       var rect = el.getBoundingClientRect();
-      if (e.clientY - rect.top > 30) return; // only drag from top strip
+      if (e.clientY - rect.top > dragStrip) return;
       dragging = true;
       ox = e.clientX; oy = e.clientY;
       sx = rect.left; sy = rect.top;
@@ -167,13 +171,15 @@ function setupMeasure(A) {
     return result;
   };
 
-  // Query clashes for a SPECIFIC discipline pair, with pagination
+  // Query clashes for a SPECIFIC discipline pair — first storey only when whole-building
+  // Remaining storeys are stored in A._pendingClashStoreys for progressive async loading
   A._queryClashesPair = function(storey, rules, discA, discB, offset) {
     if (!A._hasBbox) return [];
     var w = A._clashWhereParts(rules);
+    A._pendingClashStoreys = [];
+    A._pendingClashArgs = null;
     // No storey → auto-pick storeys with both disciplines (two GROUP BY, no cross-join)
-    var effectiveStorey = storey;
-    if (!effectiveStorey) {
+    if (!storey) {
       var storeysA = {};
       A.dbQuery("SELECT storey, COUNT(*) FROM elements_meta WHERE discipline = '" + discA + "' AND storey IS NOT NULL GROUP BY storey")
         .forEach(function(r) { storeysA[r[0]] = r[1]; });
@@ -181,31 +187,32 @@ function setupMeasure(A) {
       A.dbQuery("SELECT storey, COUNT(*) FROM elements_meta WHERE discipline = '" + discB + "' AND storey IS NOT NULL GROUP BY storey")
         .forEach(function(r) { if (storeysA[r[0]]) both.push([r[0], storeysA[r[0]] + r[1]]); });
       both.sort(function(a, b) { return b[1] - a[1]; });
-      var sRows = both.slice(0, 5).map(function(b) { return [b[0]]; });
-      if (sRows.length) {
-        // Query per-storey, merge results up to page size
-        var allRows = [];
-        for (var si = 0; si < sRows.length && allRows.length < A._CLASH_PAGE_SIZE; si++) {
-          var st = sRows[si][0];
-          var stClause = "ma.storey = '" + st.replace(/'/g, "''") + "' AND mb.storey = ma.storey";
-          var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
-            " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
-          var sql = "SELECT a.guid, b.guid, ma.ifc_class, mb.ifc_class, ma.discipline, mb.discipline," +
-            " ma.element_name, mb.element_name," +
-            " MIN((a.center_x + a.bbox_x/2) - (b.center_x - b.bbox_x/2)," +
-            "     (a.center_y + a.bbox_y/2) - (b.center_y - b.bbox_y/2)," +
-            "     (a.center_z + a.bbox_z/2) - (b.center_z - b.bbox_z/2)) AS overlap_m" +
-            " FROM element_transforms a JOIN elements_meta ma ON a.guid = ma.guid" +
-            " JOIN element_transforms b ON a.guid < b.guid JOIN elements_meta mb ON b.guid = mb.guid" +
-            " WHERE " + stClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin +
-            " LIMIT " + (A._CLASH_PAGE_SIZE - allRows.length);
-          allRows = allRows.concat(A.dbQuery(sql));
-        }
-        console.log('§CLASH_QUERY ' + discA + ' vs ' + discB + ' storeys=' + sRows.length + ' got=' + allRows.length);
-        return allRows;
+      if (!both.length) {
+        console.log('§CLASH_QUERY ' + discA + ' vs ' + discB + ' no shared storeys → 0');
+        return [];
       }
+      // Query FIRST storey only — store rest for progressive loading
+      var firstStorey = both[0][0];
+      A._pendingClashStoreys = both.slice(1).map(function(b) { return b[0]; });
+      A._pendingClashArgs = { rules: rules, discA: discA, discB: discB, w: w };
+      var stClause = "ma.storey = '" + firstStorey.replace(/'/g, "''") + "' AND mb.storey = ma.storey";
+      var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
+        " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
+      var sql = "SELECT a.guid, b.guid, ma.ifc_class, mb.ifc_class, ma.discipline, mb.discipline," +
+        " ma.element_name, mb.element_name," +
+        " MIN((a.center_x + a.bbox_x/2) - (b.center_x - b.bbox_x/2)," +
+        "     (a.center_y + a.bbox_y/2) - (b.center_y - b.bbox_y/2)," +
+        "     (a.center_z + a.bbox_z/2) - (b.center_z - b.bbox_z/2)) AS overlap_m" +
+        " FROM element_transforms a JOIN elements_meta ma ON a.guid = ma.guid" +
+        " JOIN element_transforms b ON a.guid < b.guid JOIN elements_meta mb ON b.guid = mb.guid" +
+        " WHERE " + stClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin +
+        " LIMIT " + A._CLASH_PAGE_SIZE;
+      var allRows = A.dbQuery(sql);
+      console.log('§CLASH_QUERY ' + discA + ' vs ' + discB + ' storey=' + firstStorey + ' got=' + allRows.length + ' pending=' + A._pendingClashStoreys.length);
+      return allRows;
     }
-    var storeyClause = effectiveStorey ? "ma.storey = '" + effectiveStorey.replace(/'/g, "''") + "' AND mb.storey = ma.storey" : '1=1';
+    // Specific storey — direct query, no N² risk
+    var storeyClause = "ma.storey = '" + storey.replace(/'/g, "''") + "' AND mb.storey = ma.storey";
     var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
       " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
     var sql = "SELECT a.guid, b.guid, ma.ifc_class, mb.ifc_class, ma.discipline, mb.discipline," +
@@ -220,6 +227,89 @@ function setupMeasure(A) {
     var rows = A.dbQuery(sql);
     console.log('§CLASH_QUERY ' + discA + ' vs ' + discB + ' offset=' + (offset || 0) + ' got=' + rows.length);
     return rows;
+  };
+
+  // Progressive async loader — queries remaining storeys one at a time with UI yields
+  A._loadRemainingStoreys = function() {
+    if (!A._pendingClashStoreys || !A._pendingClashStoreys.length) return;
+    if (!A._clashRevealActive || !A._clashListDiv) return;
+    var args = A._pendingClashArgs;
+    if (!args) return;
+    var storeys = A._pendingClashStoreys.slice();
+    A._pendingClashStoreys = [];
+    var qi = 0;
+    function _nextStorey() {
+      if (qi >= storeys.length || !A._clashRevealActive || !A._clashListDiv) return;
+      var st = storeys[qi++];
+      var stClause = "ma.storey = '" + st.replace(/'/g, "''") + "' AND mb.storey = ma.storey";
+      var pairCond = "(ma.discipline = '" + args.discA + "' AND mb.discipline = '" + args.discB + "')" +
+        " OR (ma.discipline = '" + args.discB + "' AND mb.discipline = '" + args.discA + "')";
+      var sql = "SELECT a.guid, b.guid, ma.ifc_class, mb.ifc_class, ma.discipline, mb.discipline," +
+        " ma.element_name, mb.element_name," +
+        " MIN((a.center_x + a.bbox_x/2) - (b.center_x - b.bbox_x/2)," +
+        "     (a.center_y + a.bbox_y/2) - (b.center_y - b.bbox_y/2)," +
+        "     (a.center_z + a.bbox_z/2) - (b.center_z - b.bbox_z/2)) AS overlap_m" +
+        " FROM element_transforms a JOIN elements_meta ma ON a.guid = ma.guid" +
+        " JOIN element_transforms b ON a.guid < b.guid JOIN elements_meta mb ON b.guid = mb.guid" +
+        " WHERE " + stClause + " AND (" + pairCond + ")" + args.w.ignoreClause + args.w.bboxJoin +
+        " LIMIT " + A._CLASH_PAGE_SIZE;
+      var rows = A.dbQuery(sql);
+      if (rows.length && A._currentClashes) {
+        A._currentClashes = A._currentClashes.concat(rows);
+        // Re-render list with new data
+        if (A._renderClashList && A._clashListDiv) {
+          var rendered = A._renderClashList();
+          var hdrEl = A._clashListDiv.querySelector('#clash-list-header');
+          var bodyEl = A._clashListDiv.querySelector('#clash-list-body');
+          if (hdrEl) hdrEl.innerHTML = rendered.hdr;
+          if (bodyEl) bodyEl.innerHTML = rendered.body;
+        }
+      }
+      console.log('§CLASH_PROGRESSIVE storey=' + st + ' +' + rows.length + ' total=' + (A._currentClashes ? A._currentClashes.length : 0));
+      setTimeout(_nextStorey, 16);
+    }
+    setTimeout(_nextStorey, 16);
+  };
+
+  // Async COUNT per storey — lightweight, updates header progressively
+  A._countClashesAsync = function(rules, discA, discB) {
+    var stA = {};
+    A.dbQuery("SELECT storey FROM elements_meta WHERE discipline = '" + discA + "' AND storey IS NOT NULL GROUP BY storey")
+      .forEach(function(r) { stA[r[0]] = 1; });
+    var storeys = [];
+    A.dbQuery("SELECT storey FROM elements_meta WHERE discipline = '" + discB + "' AND storey IS NOT NULL GROUP BY storey")
+      .forEach(function(r) { if (stA[r[0]]) storeys.push(r[0]); });
+    var w = A._clashWhereParts(rules);
+    var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
+      " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
+    var total = 0;
+    var qi = 0;
+    function _nextCount() {
+      if (qi >= storeys.length) {
+        if (A._clashListDiv) {
+          var el = A._clashListDiv.querySelector('#clash-total-count');
+          if (el) el.textContent = 'Total: ' + total;
+        }
+        console.log('§CLASH_COUNT total=' + total + ' storeys=' + storeys.length);
+        return;
+      }
+      if (!A._clashRevealActive || !A._clashListDiv) return;
+      var st = storeys[qi++];
+      var stClause = "ma.storey = '" + st.replace(/'/g, "''") + "' AND mb.storey = ma.storey";
+      var sql = "SELECT COUNT(*) FROM element_transforms a" +
+        " JOIN elements_meta ma ON a.guid = ma.guid" +
+        " JOIN element_transforms b ON a.guid < b.guid" +
+        " JOIN elements_meta mb ON b.guid = mb.guid" +
+        " WHERE " + stClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin;
+      var rows = A.dbQuery(sql);
+      if (rows.length) total += rows[0][0];
+      if (A._clashListDiv) {
+        var el = A._clashListDiv.querySelector('#clash-total-count');
+        if (el) el.textContent = 'Total: ' + total + (qi < storeys.length ? '...' : '');
+      }
+      setTimeout(_nextCount, 8);
+    }
+    setTimeout(_nextCount, 50);
   };
 
   // Query ALL clashes for a pair — storey-by-storey to avoid N² timeout. For export only.
@@ -347,7 +437,7 @@ function setupMeasure(A) {
     }
 
     // Build itemised list
-    var shown = Math.min(clashes.length, maxVisible);
+    var shown = Math.min(A._currentClashes.length, maxVisible);
     var listDiv = document.createElement('div');
     listDiv.style.cssText = 'position:fixed;z-index:400;background:rgba(20,60,100,0.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;font-size:11px;padding:0;border-radius:8px;border:1px solid rgba(255,140,0,0.6);font-family:Segoe UI,sans-serif;line-height:1.5;min-width:180px;max-width:240px;max-height:40vh;display:flex;flex-direction:column;pointer-events:auto';
     // Position: right side, above the matrix if it exists
@@ -375,22 +465,24 @@ function setupMeasure(A) {
           '<span style="font-size:9px;color:#aaa">100</span>' +
           '<span id="clash-tol-val" style="font-size:10px;color:#fff;min-width:30px">' + tolMm + 'mm</span></div>';
       }
+      var cc = A._currentClashes || [];
       var sCounts = { '': 0, 'Reviewed': 0, 'Resolved': 0, 'Accepted': 0 };
-      for (var si = 0; si < clashes.length; si++) {
-        var sk = A._clashPairKey(clashes[si][0], clashes[si][1]);
+      for (var si = 0; si < cc.length; si++) {
+        var sk = A._clashPairKey(cc[si][0], cc[si][1]);
         sCounts[A._clashStatuses[sk] || '']++;
       }
-      hdr += '<span style="color:#fff;font-size:11px">' + clashes.length + '</span>';
+      hdr += '<span style="color:#fff;font-size:11px">' + cc.length + ' <span id="clash-total-count" style="color:#888;font-size:10px"></span></span>';
       hdr += '<div style="display:flex;gap:8px;margin:2px 0;font-size:11px;color:#aaa">' +
         '<span>\u{1F7E1}' + sCounts['Reviewed'] + ' RVW</span>' +
         '<span>\u{1F7E2}' + sCounts['Resolved'] + ' SLV</span>' +
         '<span>\u26AA' + sCounts['Accepted'] + ' ACC</span></div>';
       hdr += '<hr style="border:none;border-top:1px solid #555;margin:3px 0">';
 
-      // Scrollable body
+      // Scrollable body — read from A._currentClashes for progressive updates
+      var shown = Math.min(cc.length, maxVisible);
       var body = '';
       for (var i = 0; i < shown; i++) {
-        var c = clashes[i];
+        var c = cc[i];
         var clsA = (c[2] || '?').replace('Ifc', '').replace('StandardCase', '');
         var clsB = (c[3] || '?').replace('Ifc', '').replace('StandardCase', '');
         var overlap = (typeof c[8] === 'number') ? c[8] : 0;
@@ -405,8 +497,8 @@ function setupMeasure(A) {
           ' <b style="color:' + sev.color + '">' + overlap.toFixed(2) + 'm</b>' +
           '</span>';
       }
-      if (clashes.length > maxVisible) {
-        body += '<span style="color:#888;font-size:9px">+' + (clashes.length - maxVisible) + ' more</span>';
+      if (cc.length > maxVisible) {
+        body += '<span style="color:#888;font-size:9px">+' + (cc.length - maxVisible) + ' more</span>';
       }
       return { hdr: hdr, body: body };
     };
@@ -414,7 +506,7 @@ function setupMeasure(A) {
     var rendered = A._renderClashList();
     listDiv.innerHTML =
       '<div id="clash-list-header" style="padding:8px 10px 0;flex-shrink:0">' + rendered.hdr + '</div>' +
-      '<div id="clash-list-body" style="padding:0 10px 8px;overflow-y:auto;flex:1">' + rendered.body + '</div>';
+      '<div id="clash-list-body" style="padding:0 10px 8px;overflow-y:auto;flex:1;touch-action:pan-y">' + rendered.body + '</div>';
     document.body.appendChild(listDiv);
     A._clashListDiv = listDiv;
     A._makeDraggable(listDiv);
@@ -440,29 +532,19 @@ function setupMeasure(A) {
           A._clashPairOffset = A._CLASH_PAGE_SIZE;
           var rect = A._clashMatrixDiv ? A._clashMatrixDiv.getBoundingClientRect() : { left: cardX, top: cardY };
           A._revealClashes(newClashes, rules, rect.left, rect.top, pairLabel, pairRule);
+          A._loadRemainingStoreys();
+          if (!A._currentClashStorey) A._countClashesAsync(rules, parts[0], parts[1]);
         }
       });
     }
 
-    // Click handler — left-click row to fly, right-click/long-press row to toggle status
+    // Click handler — left-click row to fly, right-click/long-press/double-tap row to toggle status
     var statusLongPress = null;
     var statusLongFired = false;
+    var statusMovedTooFar = false;
+    var statusStartX = 0, statusStartY = 0;
 
-    listDiv.addEventListener('pointerdown', function(ev) {
-      var target = ev.target.closest('[data-clash-idx]');
-      if (!target) return;
-      statusLongFired = false;
-      var idx = parseInt(target.getAttribute('data-clash-idx'));
-      statusLongPress = setTimeout(function() {
-        statusLongFired = true;
-        statusLongPress = null;
-        A._toggleClashStatus(idx);
-      }, 400);
-    });
-    listDiv.addEventListener('pointerup', function() {
-      if (statusLongPress) { clearTimeout(statusLongPress); statusLongPress = null; }
-    });
-
+    // Suppress context menu on clash rows (mobile shows native menu otherwise)
     listDiv.addEventListener('contextmenu', function(ev) {
       var target = ev.target.closest('[data-clash-idx]');
       if (!target) return;
@@ -471,7 +553,43 @@ function setupMeasure(A) {
       A._toggleClashStatus(idx);
     });
 
-    // Double-click/tap row → toggle status (mobile-friendly alternative to long-press)
+    listDiv.addEventListener('pointerdown', function(ev) {
+      var target = ev.target.closest('[data-clash-idx]');
+      if (!target) return;
+      statusLongFired = false;
+      statusMovedTooFar = false;
+      statusStartX = ev.clientX;
+      statusStartY = ev.clientY;
+      var idx = parseInt(target.getAttribute('data-clash-idx'));
+      statusLongPress = setTimeout(function() {
+        if (statusMovedTooFar) return;
+        statusLongFired = true;
+        statusLongPress = null;
+        // Visual feedback — brief flash
+        target.style.background = 'rgba(255,140,0,0.3)';
+        setTimeout(function() { target.style.background = ''; }, 200);
+        A._toggleClashStatus(idx);
+      }, 350);
+    });
+    listDiv.addEventListener('pointermove', function(ev) {
+      // Cancel long-press if finger moves too far (scroll, not press)
+      if (statusLongPress) {
+        var dx = ev.clientX - statusStartX, dy = ev.clientY - statusStartY;
+        if (dx * dx + dy * dy > 100) { // 10px threshold
+          statusMovedTooFar = true;
+          clearTimeout(statusLongPress);
+          statusLongPress = null;
+        }
+      }
+    });
+    listDiv.addEventListener('pointerup', function() {
+      if (statusLongPress) { clearTimeout(statusLongPress); statusLongPress = null; }
+    });
+    listDiv.addEventListener('pointercancel', function() {
+      if (statusLongPress) { clearTimeout(statusLongPress); statusLongPress = null; }
+    });
+
+    // Double-tap row → toggle status (mobile-friendly alternative to long-press)
     listDiv.addEventListener('dblclick', function(ev) {
       var target = ev.target.closest('[data-clash-idx]');
       if (!target) return;
@@ -496,7 +614,7 @@ function setupMeasure(A) {
       var target = ev.target.closest('[data-clash-idx]');
       if (!target) return;
       var idx = parseInt(target.getAttribute('data-clash-idx'));
-      var c = clashes[idx];
+      var c = (A._currentClashes || [])[idx];
       if (!c) return;
       // Highlight selected row
       listDiv.querySelectorAll('[data-clash-idx]').forEach(function(el) { el.style.background = ''; });
@@ -610,7 +728,7 @@ function setupMeasure(A) {
     // Dismiss via close X only — no auto-dismiss on canvas click
     // (user needs to orbit around clash mesh without losing it)
 
-    console.log('§CLASH_REVEAL storey=' + (clashes.length ? 'active' : 'none') + ' showing=' + shown);
+    console.log('§CLASH_REVEAL storey=' + (A._currentClashes.length ? 'active' : 'none') + ' showing=' + shown);
     if (A.markDirty) A.markDirty();
   };
 
@@ -885,7 +1003,7 @@ function setupMeasure(A) {
     var w = window.open('', '_blank');
     w.document.write(html);
     w.document.close();
-    console.log('§CLASH_EXPORT html clashes=' + clashes.length);
+    console.log('§CLASH_EXPORT html clashes=' + totalCount);
     A.status.textContent = 'Clash report opened in new tab';
   };
 
@@ -1049,6 +1167,9 @@ function setupMeasure(A) {
       A._currentClashPairLabel = discA + ' vs ' + discB;
       var rect = matDiv.getBoundingClientRect();
       A._revealClashes(clashes, rules, rect.left, rect.top, discA + ' vs ' + discB, rule);
+      // Progressive: load remaining storeys async + COUNT in background
+      A._loadRemainingStoreys();
+      if (!storey) A._countClashesAsync(rules, discA, discB);
       console.log('§CLASH_MATRIX_FILTER ' + discA + ' vs ' + discB + ' page=' + (offset / A._CLASH_PAGE_SIZE + 1));
     });
 
@@ -1457,7 +1578,7 @@ function setupMeasure(A) {
       if (idx >= 0) A.measureLabels.splice(idx, 1);
     });
     A.status.textContent = storeyLabel + ' — ' + volume.toFixed(1) + ' m\u00B3';
-    console.log('§MEASURE_VOLUME ' + storeyLabel + ' vol=' + volume.toFixed(1) + 'm\u00B3 elements=' + roomMeshes.length + ' counts=' + JSON.stringify(counts));
+    console.log('§MEASURE_VOLUME ' + storeyLabel + ' vol=' + volume.toFixed(1) + 'm\u00B3 elements=' + totalFromDb + ' counts=' + JSON.stringify(counts));
 
     // Clash indicator — lazy LIMIT 1 per pair, async, stops at first hit
     A._loadClashRules(function(rules) {
