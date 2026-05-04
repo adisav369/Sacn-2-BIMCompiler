@@ -147,13 +147,16 @@ This is O(N²) per discipline pair on full building — hangs the main thread.
 - SW v249, rtree-sql.js@1.7.0
 
 ### S245d TODO (priority order)
-1. **Whole-building clash count without hanging** — the info card envelope check is instant
-   but the matrix bg check and cell click still hang on full building (no storey filter).
-   Approach: `SELECT COUNT(*)` storey-by-storey then sum. Each storey is 200-4000 elements
-   (fast cross-join), concat counts. Display "Total: 347 (showing 30)" in clash list header.
-   Same pattern for matrix bg check: loop storeys, EXISTS per storey, stop at first hit.
-2. **Whole-building right-click hangs** — the bounding box traversal of all scene meshes is
-   slow on 48k. Use DB envelope query instead of scene traverse for whole-building case.
+1. **Whole-building cell click still slow** — storey-picker is now fast (two GROUP BY),
+   but per-storey LIMIT 30 queries run synchronously across 5 storeys before showing results.
+   Fix: show first storey results immediately, query remaining storeys async with setTimeout
+   yields, append to list progressively. User sees results in <500ms, rest fills in.
+2. **Total clash count in list header** — `SELECT COUNT(*)` per storey (no data columns,
+   just counting), sum across storeys. Faster than data query. Show "Total: 347 (showing 30)".
+3. **Matrix bg check on whole building** — envelope overlap is instant and already works.
+   The actual issue is the info card's lazy `_checkNext` that runs EXISTS per rule pair.
+   On whole building with storey=null, the EXISTS bbox cross-join on 48k hangs.
+   FIXED in v45: now uses envelope check (instant). Verify this works.
 3. HTML report click → viewer scene sync (`window.opener.postMessage`)
 4. Trend tracking (localStorage clash counts per date)
 5. Resolution progress chart in HTML report
