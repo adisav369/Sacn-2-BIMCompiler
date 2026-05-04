@@ -1,0 +1,4349 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+        <link rel="prev" href="../BIM_Designer_Browser/">
+      
+      
+        <link rel="next" href="../SQLite3D_Schema/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Clash Detection - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  
+  
+
+<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-XXXXXXXXXX"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-XXXXXXXXXX",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#clash-detection-browser-native-zero-install" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Clash Detection
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/BIMCompiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../4D5DAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  BIM5D
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../LAST_MILE_PROBLEM/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Last Mile
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BOMBasedCompilation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Specs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../BIM_Designer_Browser/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Enterprise/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/BIMCompiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../AboutMore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About BIM OOTB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ShipYard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beyond Buildings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM5D
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    BIM5D
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4D5DAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4D/5D Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LTUAHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LTU A-House (125K)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Enterprise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Last Mile
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Drift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9 Gates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIMEyes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TheRosettaStoneStrategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (77 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_Browser/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM OOTB (Browser)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clash Detection
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clash Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-problem-with-desktop-clash-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The Problem with Desktop Clash Detection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-the-technology-why-it-works-in-a-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. The Technology: Why It Works in a Browser
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. The Technology: Why It Works in a Browser">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-sqljs-wasm-sqlite-the-query-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 sql.js (WASM SQLite) — The Query Engine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-threejs-webgl-the-renderer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Three.js (WebGL) — The Renderer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-blob-to-gpu-pipeline-no-intermediate-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 BLOB-to-GPU Pipeline — No Intermediate Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. How It Works
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. How It Works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-right-click-info-card-clash-sphere" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Right-Click: Info Card + Clash Sphere
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-clash-matrix-discipline-grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Clash Matrix — Discipline Grid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-cell-click-storey-scoped-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Cell Click: Storey-Scoped Queries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-fly-to-mesh-overlap-visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Fly-To + Mesh Overlap Visualization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-live-tolerance-slider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Live Tolerance Slider
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-in-viewer-review-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 In-Viewer Review Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-clash-rules-json-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Clash Rules — JSON Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-html-clash-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. HTML Clash Report
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-performance-48k-elements-7-disciplines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Performance — 48K Elements, 7 Disciplines
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-architecture-why-sqlite-beats-a-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Architecture — Why SQLite Beats a Server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-roadmap-whats-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Roadmap — What's Next
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Roadmap — What&#39;s Next">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-smart-grouping-r-tree-powered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Smart Grouping (R-tree powered)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-clash-heatmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Clash Heatmap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#83-clearance-violation-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 Clearance Violation Detection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#84-trend-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.4 Trend Tracking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#85-bcf-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.5 BCF Export
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#86-scene-sync-from-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.6 Scene Sync from Report
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#87-storey-heatmap-bar-chart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.7 Storey Heatmap Bar Chart
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-try-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Try It
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SQLite3D_Schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SQLite3D Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PLUGIN_SDK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MOBILE_DEPLOY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mobile & Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation Rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output DB (G4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Enterprise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6D/7D/Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../STANDARDS_COMPLIANCE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Standards Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../REPORTING_ENGINE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporting Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PDF_TERRAIN/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PDF Terrain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2D_LAYOUT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Layout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Database
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GEOMETRY_FORGE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry Forge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FORGE_SUITE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forge Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM OOTB Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VibeProgramming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vibe Programming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HospitalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hospital (HA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RevitAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Revit MEP (RM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LTUAHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LTU A-House (125K)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StressTest_1M/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1M Stress Test
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2D_HTML_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Plans Viewer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RouteTemplate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Find and Navigate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RTreeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    City-Scale RTree
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Localization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Localization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-problem-with-desktop-clash-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The Problem with Desktop Clash Detection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-the-technology-why-it-works-in-a-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. The Technology: Why It Works in a Browser
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. The Technology: Why It Works in a Browser">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-sqljs-wasm-sqlite-the-query-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 sql.js (WASM SQLite) — The Query Engine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-threejs-webgl-the-renderer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Three.js (WebGL) — The Renderer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-blob-to-gpu-pipeline-no-intermediate-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 BLOB-to-GPU Pipeline — No Intermediate Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. How It Works
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. How It Works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-right-click-info-card-clash-sphere" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Right-Click: Info Card + Clash Sphere
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-clash-matrix-discipline-grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Clash Matrix — Discipline Grid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-cell-click-storey-scoped-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Cell Click: Storey-Scoped Queries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-fly-to-mesh-overlap-visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Fly-To + Mesh Overlap Visualization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-live-tolerance-slider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Live Tolerance Slider
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-in-viewer-review-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 In-Viewer Review Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-clash-rules-json-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Clash Rules — JSON Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-html-clash-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. HTML Clash Report
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-performance-48k-elements-7-disciplines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Performance — 48K Elements, 7 Disciplines
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-architecture-why-sqlite-beats-a-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Architecture — Why SQLite Beats a Server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-roadmap-whats-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Roadmap — What's Next
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Roadmap — What&#39;s Next">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-smart-grouping-r-tree-powered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Smart Grouping (R-tree powered)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-clash-heatmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Clash Heatmap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#83-clearance-violation-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 Clearance Violation Detection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#84-trend-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.4 Trend Tracking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#85-bcf-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.5 BCF Export
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#86-scene-sync-from-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.6 Scene Sync from Report
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#87-storey-heatmap-bar-chart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.7 Storey Heatmap Bar Chart
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-try-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Try It
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="clash-detection-browser-native-zero-install">Clash Detection — Browser-Native, Zero Install<a class="headerlink" href="#clash-detection-browser-native-zero-install" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Foundation:</strong> <a href="../BIM_Designer_Browser/">BIM_Designer_Browser.md</a> | <a href="../SQLite3D_Schema/">SQLite3D_Schema.md</a> | <a href="../ROADMAP/">ROADMAP.md</a> | <a href="../BIM_COBOL/">BIM_COBOL.md</a> (CHECK CLASH verbs)</p>
+</blockquote>
+<div class="bim-banner">
+<p><b>48,000 elements. 12 discipline-pair rules. One browser tab. Zero server.</b> Clash detection that runs entirely in the browser — SQL queries against a local SQLite database, bounding-box geometry rendered by the GPU, results in milliseconds. No Navisworks. No license. No desktop.</p>
+</div>
+<p><strong>Version:</strong> 1.0 (2026-05-04)
+<strong>Status:</strong> LIVE — storey-scoped progressive queries, discipline matrix, in-viewer review workflow
+<strong>Depends on:</strong> <code>measure.js</code>, <code>clash_rules.json</code>, <code>rtree-sql.js</code> (WASM), Three.js</p>
+<hr />
+<h2 id="1-the-problem-with-desktop-clash-detection">1. The Problem with Desktop Clash Detection<a class="headerlink" href="#1-the-problem-with-desktop-clash-detection" title="Permanent link">&para;</a></h2>
+<p>Every BIM coordination meeting plays the same scene: someone opens Navisworks, runs a clash test, and the team stares at <strong>thousands of red dots</strong> with no context, no priority, and no way to act on them without switching tools.</p>
+<table>
+<thead>
+<tr>
+<th>Pain Point</th>
+<th>Navisworks / Solibri</th>
+<th>BIM OOTB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Install</td>
+<td>8GB desktop app, Windows only</td>
+<td><strong>Zero</strong> — one browser tab</td>
+</tr>
+<tr>
+<td>Cost</td>
+<td>$3,570/yr (Navisworks) / $3,400/yr (Solibri)</td>
+<td><strong>Free</strong></td>
+</tr>
+<tr>
+<td>Clash review</td>
+<td>Export HTML report, lose 3D context</td>
+<td><strong>In-viewer</strong> — click row, fly to clash</td>
+</tr>
+<tr>
+<td>Tolerance</td>
+<td>Set once, re-run entire test</td>
+<td><strong>Live slider</strong> — adjust and re-query instantly</td>
+</tr>
+<tr>
+<td>Grouping</td>
+<td>Manual (Navisworks) or basic (Solibri)</td>
+<td><strong>Storey-scoped</strong> — automatic, no N^2 explosion</td>
+</tr>
+<tr>
+<td>Mobile</td>
+<td>No (Navisworks/Solibri), partial (Revizto)</td>
+<td><strong>Yes</strong> — same URL, any device</td>
+</tr>
+<tr>
+<td>Offline</td>
+<td>Desktop only</td>
+<td><strong>Yes</strong> — PWA with cached DB</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-the-technology-why-it-works-in-a-browser">2. The Technology: Why It Works in a Browser<a class="headerlink" href="#2-the-technology-why-it-works-in-a-browser" title="Permanent link">&para;</a></h2>
+<p>Three technologies make this possible. None is new individually — the combination at this scale is.</p>
+<h3 id="21-sqljs-wasm-sqlite-the-query-engine">2.1 sql.js (WASM SQLite) — The Query Engine<a class="headerlink" href="#21-sqljs-wasm-sqlite-the-query-engine" title="Permanent link">&para;</a></h3>
+<p><a href="https://github.com/sql-js/sql.js">sql.js</a> compiles the entire SQLite C library to WebAssembly. The browser downloads a ~1MB <code>.wasm</code> file and gains a full SQL engine running at near-native speed — the same SQLite that powers every smartphone on earth.</p>
+<p>We use <a href="https://www.npmjs.com/package/rtree-sql.js">rtree-sql.js</a>, a build with <code>SQLITE_ENABLE_RTREE</code> compiled in, enabling R-tree spatial indexes for single-element lookups in O(log N).</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Envelope overlap check: one GROUP BY, instant on 48K elements</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">discipline</span><span class="p">,</span>
+<span class="w">       </span><span class="k">MIN</span><span class="p">(</span><span class="n">center_x</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">bbox_x</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="k">MAX</span><span class="p">(</span><span class="n">center_x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">bbox_x</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span>
+<span class="w">       </span><span class="k">MIN</span><span class="p">(</span><span class="n">center_y</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">bbox_y</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="k">MAX</span><span class="p">(</span><span class="n">center_y</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">bbox_y</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span>
+<span class="w">       </span><span class="k">MIN</span><span class="p">(</span><span class="n">center_z</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">bbox_z</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="k">MAX</span><span class="p">(</span><span class="n">center_z</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">bbox_z</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">element_transforms</span><span class="w"> </span><span class="n">t</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">elements_meta</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">guid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">guid</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">discipline</span>
+</code></pre></div>
+<p>This single query computes the spatial envelope of every discipline — if two envelopes don't overlap, there are zero clashes between them. No geometry needed. Pure arithmetic.</p>
+<h3 id="22-threejs-webgl-the-renderer">2.2 Three.js (WebGL) — The Renderer<a class="headerlink" href="#22-threejs-webgl-the-renderer" title="Permanent link">&para;</a></h3>
+<p><a href="https://threejs.org/">Three.js</a> wraps the browser's GPU API. When a clash is detected, we create clipped mesh geometry at the overlap zone — red for element A, blue for element B — rendered with <code>depthTest:false</code> so they're always visible through surrounding structure.</p>
+<h3 id="23-blob-to-gpu-pipeline-no-intermediate-format">2.3 BLOB-to-GPU Pipeline — No Intermediate Format<a class="headerlink" href="#23-blob-to-gpu-pipeline-no-intermediate-format" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>SQLite DB (WASM)              Three.js (WebGL/GPU)
+     |                              |
+     |  SELECT vertices, faces      |
+     |  FROM component_geometries   |
+     |  WHERE geometry_hash = ?     |
+     v                              |
+  Uint8Array (BLOB)                 |
+     |                              |
+     |  new Float32Array(blob)      |
+     v                              |
+  Float32Array  ──────────────────&gt; BufferGeometry ──&gt; GPU
+</code></pre></div>
+<p>No glTF. No OBJ. No server-side conversion. The BLOB in the database IS the mesh. The browser IS the renderer. Clash detection queries the same database that renders the 3D model — geometry and metadata share one query layer.</p>
+<hr />
+<h2 id="3-how-it-works">3. How It Works<a class="headerlink" href="#3-how-it-works" title="Permanent link">&para;</a></h2>
+<h3 id="31-right-click-info-card-clash-sphere">3.1 Right-Click: Info Card + Clash Sphere<a class="headerlink" href="#31-right-click-info-card-clash-sphere" title="Permanent link">&para;</a></h3>
+<p>Right-click any element to see its storey info card — element counts by IFC class, bounding box volume, floor area. At the bottom, a <strong>clash sphere</strong> lights up:</p>
+<ul>
+<li><strong>Green</strong> — discipline envelopes don't overlap. Zero clashes guaranteed.</li>
+<li><strong>Orange</strong> — envelopes overlap. Click to open the Clash Matrix.</li>
+</ul>
+<figure style="margin: 20px 0;">
+<img src="assets/images/clash_storey_infocard.png" alt="Storey info card with clash sphere and element counts" style="width:100%; border:1px solid #333; border-radius:8px;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Right-click a storey: element counts, volume, and clash sphere. Orange = possible clashes — click to open the matrix.</figcaption>
+</figure>
+
+<p>Right-click empty space for <strong>whole-building</strong> analysis — same card, DB envelope instead of scene traversal (instant on any size building).</p>
+<h3 id="32-clash-matrix-discipline-grid">3.2 Clash Matrix — Discipline Grid<a class="headerlink" href="#32-clash-matrix-discipline-grid" title="Permanent link">&para;</a></h3>
+<p>The matrix shows every discipline pair. Each cell is a sphere:</p>
+<ul>
+<li><strong>Green</strong> = envelopes don't intersect — guaranteed clear</li>
+<li><strong>Orange</strong> = envelopes overlap — clashes possible</li>
+<li><strong>Red</strong> = hard clashes found (&gt;50mm penetration)</li>
+<li><strong>Dash</strong> = no rule defined for this pair</li>
+</ul>
+<figure style="margin: 20px 0;">
+<img src="assets/images/clash_matrix_whole_building.png" alt="Clash Matrix showing 7 disciplines with colour-coded spheres" style="width:100%; border:1px solid #333; border-radius:8px;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Whole-building clash matrix — 7 disciplines, 12 rules. Background check uses envelope overlap (instant). Click any orange/red cell to drill into individual clashes.</figcaption>
+</figure>
+
+<h3 id="33-cell-click-storey-scoped-queries">3.3 Cell Click: Storey-Scoped Queries<a class="headerlink" href="#33-cell-click-storey-scoped-queries" title="Permanent link">&para;</a></h3>
+<p>Click a matrix cell to query clashes for that discipline pair. The query strategy avoids the N^2 trap:</p>
+<ol>
+<li><strong>Find shared storeys</strong> — two <code>GROUP BY</code> queries (instant)</li>
+<li><strong>Query first storey</strong> — cross-join scoped to one storey (200-4000 elements, fast)</li>
+<li><strong>Show results immediately</strong> — user sees clashes in &lt;500ms</li>
+<li><strong>Load remaining storeys progressively</strong> — <code>setTimeout</code> yields between each storey query, results append to the list without blocking the UI</li>
+<li><strong>COUNT in background</strong> — lightweight <code>SELECT COUNT(*)</code> per storey, total shown in header</li>
+</ol>
+<div class="highlight"><pre><span></span><code>User clicks cell
+      |
+      v
+  Query storey list (2 GROUP BYs, instant)
+      |
+      v
+  Query FIRST storey (LIMIT 30, &lt;100ms)
+      |
+      v
+  RENDER LIST  &lt;-- user sees results here
+      |
+      +---&gt; async: query storey 2 (setTimeout yield)
+      +---&gt; async: query storey 3 ...
+      +---&gt; async: COUNT per storey (header updates)
+</code></pre></div>
+<p>This architecture means a 48,000-element building with 7 disciplines never hangs the browser. Each storey query is scoped to a few hundred elements — the cross-join is O(n^2) but n is small.</p>
+<h3 id="34-fly-to-mesh-overlap-visualization">3.4 Fly-To + Mesh Overlap Visualization<a class="headerlink" href="#34-fly-to-mesh-overlap-visualization" title="Permanent link">&para;</a></h3>
+<p>Click any clash row to fly the camera to the overlap zone. The viewer shows:</p>
+<ul>
+<li><strong>Red mesh</strong> — clipped geometry of element A at the overlap</li>
+<li><strong>Blue mesh</strong> — clipped geometry of element B</li>
+<li><strong>Orange wireframe</strong> — bounding box of the storey</li>
+<li>Camera distance based on overlap size, not element bbox — tight framing on the actual clash</li>
+</ul>
+<figure style="margin: 20px 0;">
+<img src="assets/images/clash_matrix_flyto.png" alt="Clash fly-to showing red/blue overlap meshes between pipe and slab" style="width:100%; border:1px solid #333; border-radius:8px;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">MEP vs ARC clash: pipe penetrating slab. Red/blue mesh at overlap zone, tolerance slider (25mm), clash list with severity colours. All in the browser.</figcaption>
+</figure>
+
+<h3 id="35-live-tolerance-slider">3.5 Live Tolerance Slider<a class="headerlink" href="#35-live-tolerance-slider" title="Permanent link">&para;</a></h3>
+<p>Drag the slider (1mm to 100mm) and the query re-runs instantly with the new tolerance. No need to close a dialog, re-configure, and re-run the entire test — the feedback loop is sub-second.</p>
+<h3 id="36-in-viewer-review-workflow">3.6 In-Viewer Review Workflow<a class="headerlink" href="#36-in-viewer-review-workflow" title="Permanent link">&para;</a></h3>
+<p>Right-click or long-press any clash row to cycle its status:</p>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Icon</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(none)</td>
+<td>Row number</td>
+<td>New — not yet reviewed</td>
+</tr>
+<tr>
+<td>Reviewed</td>
+<td>Yellow circle</td>
+<td>Acknowledged, under investigation</td>
+</tr>
+<tr>
+<td>Resolved</td>
+<td>Green circle</td>
+<td>Fix applied, pending verification</td>
+</tr>
+<tr>
+<td>Accepted</td>
+<td>White circle</td>
+<td>Intentional — no action needed</td>
+</tr>
+</tbody>
+</table>
+<p>Statuses persist in <code>localStorage</code> per building. No server, no login, no export/import cycle.</p>
+<hr />
+<h2 id="4-clash-rules-json-configuration">4. Clash Rules — JSON Configuration<a class="headerlink" href="#4-clash-rules-json-configuration" title="Permanent link">&para;</a></h2>
+<p>Rules are defined in <code>clash_rules.json</code> — 12 discipline pairs with per-pair tolerance and ignore lists:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;clash_rules&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ARC vs STR&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;discipline&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ARC&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;target&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;discipline&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;STR&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;tolerance_m&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.025</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;ignore_classes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;IfcOpeningElement&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;IfcSpace&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;IfcBuildingElementProxy&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MEP vs STR&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;discipline&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MEP&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;target&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;discipline&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;STR&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;tolerance_m&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.050</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;ignore_classes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;IfcOpeningElement&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;IfcSpace&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;hard&quot;</span><span class="p">:</span><span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;min_overlap_m&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.050</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;color&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;#ff0000&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Hard clash&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;soft&quot;</span><span class="p">:</span><span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;min_overlap_m&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.010</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;color&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;#ff8c00&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Soft clash&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;clearance&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;max_gap_m&quot;</span><span class="p">:</span><span class="w">     </span><span class="mf">0.100</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;color&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;#ffff00&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Clearance violation&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Currently 12 rules covering: ARC/STR, MEP/STR, MEP/ARC, ELEC/ARC, ELEC/STR, ELEC/MEP, FP/ARC, FP/STR, FP/MEP, ACMV/ARC, ACMV/STR, ACMV/MEP.</p>
+<hr />
+<h2 id="5-html-clash-report">5. HTML Clash Report<a class="headerlink" href="#5-html-clash-report" title="Permanent link">&para;</a></h2>
+<p>Click the clipboard icon on the matrix to generate a full analytics report in a new tab:</p>
+<figure style="margin: 20px 0;">
+<img src="assets/images/clash_report_html.png" alt="HTML clash report with matrix snapshot, charts, and action sheet" style="width:100%; border:1px solid #333; border-radius:8px;"/>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">HTML clash report — matrix snapshot, severity/status/discipline charts, radar, top offenders, editable action sheet, CSV export. Standalone HTML, no server.</figcaption>
+</figure>
+
+<p>The report includes:</p>
+<ul>
+<li><strong>Matrix snapshot</strong> — the discipline grid as rendered at time of export</li>
+<li><strong>6 charts</strong> — severity distribution, status breakdown, discipline pair counts, IFC class pair frequency, radar overview, top offender elements</li>
+<li><strong>Editable action sheet</strong> — assign responsibility, add notes, set due dates</li>
+<li><strong>CSV export</strong> — one click to download for spreadsheet analysis</li>
+<li><strong>Standalone</strong> — the entire report is one HTML file with embedded Chart.js. Email it, share it, open it offline.</li>
+</ul>
+<hr />
+<h2 id="6-performance-48k-elements-7-disciplines">6. Performance — 48K Elements, 7 Disciplines<a class="headerlink" href="#6-performance-48k-elements-7-disciplines" title="Permanent link">&para;</a></h2>
+<p>Tested on <strong>Terminal</strong> (48,428 elements, 7 disciplines — the largest building in the test suite):</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Time</th>
+<th>Technique</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R-tree build</td>
+<td>1.2s</td>
+<td>Async batches of 5000, <code>setTimeout</code> yields</td>
+</tr>
+<tr>
+<td>Matrix background check</td>
+<td>Instant</td>
+<td>Discipline envelope overlap (one <code>GROUP BY</code>)</td>
+</tr>
+<tr>
+<td>Cell click (first results)</td>
+<td>&lt;500ms</td>
+<td>First storey only, LIMIT 30</td>
+</tr>
+<tr>
+<td>Remaining storeys</td>
+<td>Progressive</td>
+<td>One query per storey, async with UI yields</td>
+</tr>
+<tr>
+<td>Total COUNT</td>
+<td>Background</td>
+<td><code>SELECT COUNT(*)</code> per storey, no data columns</td>
+</tr>
+<tr>
+<td>Fly-to camera</td>
+<td>Instant</td>
+<td>Camera distance from overlap size, not element bbox</td>
+</tr>
+</tbody>
+</table>
+<p>The key insight: <strong>never cross-join the whole building</strong>. Scope every query to a single storey (200-4000 elements) and the O(n^2) cross-join stays fast. The R-tree is built for future features (smart grouping, heatmap, clearance) where single-element lookups with constant bounds are the use case.</p>
+<hr />
+<h2 id="7-architecture-why-sqlite-beats-a-server">7. Architecture — Why SQLite Beats a Server<a class="headerlink" href="#7-architecture-why-sqlite-beats-a-server" title="Permanent link">&para;</a></h2>
+<p>Traditional clash detection tools (Navisworks, Solibri, BIM Collab Zoom) require either a desktop install or a cloud server. We need neither.</p>
+<div class="highlight"><pre><span></span><code>Traditional:  IFC file ──&gt; Server ──&gt; Parse ──&gt; Store ──&gt; Query ──&gt; Render
+BIM OOTB:     IFC file ──&gt; Extract ──&gt; SQLite DB ──&gt; Browser (WASM + GPU)
+</code></pre></div>
+<p>The SQLite database IS the application state:</p>
+<ul>
+<li><strong>Metadata</strong> (<code>elements_meta</code>) — GUID, IFC class, discipline, storey, element name</li>
+<li><strong>Transforms</strong> (<code>element_transforms</code>) — center XYZ, bbox dimensions</li>
+<li><strong>Geometry</strong> (<code>component_geometries</code>) — pre-tessellated vertex/face BLOBs</li>
+</ul>
+<p>One <code>SELECT</code> gives you clash candidates. Another <code>SELECT</code> gives you the mesh to render. Same database, same query layer, same browser tab. The DB file is the deployment artifact — upload it to any static hosting (OCI Object Storage, S3, GitHub Pages, a USB stick) and it works.</p>
+<p>SQLite's advantages for this use case:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Benefit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Zero-configuration</td>
+<td>No server process, no connection string</td>
+</tr>
+<tr>
+<td>Single-file</td>
+<td>One <code>.db</code> per building, trivial to distribute</td>
+</tr>
+<tr>
+<td>Read-only WASM</td>
+<td>Browser can't corrupt the source DB</td>
+</tr>
+<tr>
+<td>SQL query optimizer</td>
+<td>Indexes, joins, GROUP BY — decades of optimization</td>
+</tr>
+<tr>
+<td>R-tree extension</td>
+<td>Spatial indexing compiled into the WASM build</td>
+</tr>
+<tr>
+<td>Portable</td>
+<td>Same DB works in Node.js extraction, Blender bridge, or browser</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-roadmap-whats-next">8. Roadmap — What's Next<a class="headerlink" href="#8-roadmap-whats-next" title="Permanent link">&para;</a></h2>
+<h3 id="81-smart-grouping-r-tree-powered">8.1 Smart Grouping (R-tree powered)<a class="headerlink" href="#81-smart-grouping-r-tree-powered" title="Permanent link">&para;</a></h3>
+<p>Cluster nearby clashes into groups using R-tree constant-bounds lookups:
+"Find all elements within 1m of this clash" — O(log N) per lookup.
+Show cluster count on matrix spheres instead of raw totals. Click cluster to expand.</p>
+<h3 id="82-clash-heatmap">8.2 Clash Heatmap<a class="headerlink" href="#82-clash-heatmap" title="Permanent link">&para;</a></h3>
+<p>R-tree range query: count clashes per zone per storey. Colour-code the 3D model by clash density. Red zones = high concentration = prioritize. Requires only counting queries, no geometry.</p>
+<h3 id="83-clearance-violation-detection">8.3 Clearance Violation Detection<a class="headerlink" href="#83-clearance-violation-detection" title="Permanent link">&para;</a></h3>
+<p>Expanded-bounds R-tree query: "Find elements within 5cm of this pipe." Already defined in <code>clash_rules.json</code> severity levels. Navisworks calls this "near miss" and requires a separate test setup — here it's a parameter change.</p>
+<h3 id="84-trend-tracking">8.4 Trend Tracking<a class="headerlink" href="#84-trend-tracking" title="Permanent link">&para;</a></h3>
+<p>Store clash counts per discipline pair per date in <code>localStorage</code>. Show delta: "Last check: 45 clashes. Now 32." Progress visible across sessions without any server.</p>
+<h3 id="85-bcf-export">8.5 BCF Export<a class="headerlink" href="#85-bcf-export" title="Permanent link">&para;</a></h3>
+<p>Industry-standard clash exchange format (<a href="https://www.buildingsmart.org/standards/bsi-standards/bim-collaboration-format-bcf/">BIM Collaboration Format</a>). One clash becomes one BCF topic with viewpoint, camera position, and element GUIDs. Interoperable with any BCF-compatible tool.</p>
+<h3 id="86-scene-sync-from-report">8.6 Scene Sync from Report<a class="headerlink" href="#86-scene-sync-from-report" title="Permanent link">&para;</a></h3>
+<p>Click a clash row in the HTML report and the 3D viewer (if open) flies to that clash via <code>window.opener.postMessage</code>. Report becomes a live navigation tool, not a dead PDF.</p>
+<h3 id="87-storey-heatmap-bar-chart">8.7 Storey Heatmap Bar Chart<a class="headerlink" href="#87-storey-heatmap-bar-chart" title="Permanent link">&para;</a></h3>
+<p>Horizontal bar chart showing clash density per storey — storey-scoped counts are instant (already proven). Visual priority map: "Floor 3 has 120 clashes, Floor 7 has 4."</p>
+<hr />
+<h2 id="9-files">9. Files<a class="headerlink" href="#9-files" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>deploy/dev/measure.js</code></td>
+<td>Clash detection engine — queries, matrix, visualization, report</td>
+</tr>
+<tr>
+<td><code>deploy/dev/clash_rules.json</code></td>
+<td>12 discipline-pair rules with tolerances</td>
+</tr>
+<tr>
+<td><code>deploy/dev/loader.js</code></td>
+<td>CDN reference for rtree-sql.js@1.7.0 WASM</td>
+</tr>
+<tr>
+<td><code>deploy/dev/sw.js</code></td>
+<td>Service worker cache for WASM + DB files</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-try-it">10. Try It<a class="headerlink" href="#10-try-it" title="Permanent link">&para;</a></h2>
+<p>Open the <a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html">BIM OOTB viewer</a>, load any multi-discipline building (Terminal recommended), activate the Measure tool, right-click any element or empty space, and click the clash sphere.</p>
+<p>No install. No sign-up. No server. Just a browser.</p>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/red1oon/BIMCompiler" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/red1oon/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
