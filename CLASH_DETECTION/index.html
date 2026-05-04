@@ -3806,11 +3806,6 @@
 <p><strong>Version:</strong> 1.0 (2026-05-04)
 <strong>Status:</strong> LIVE — storey-scoped progressive queries, discipline matrix, in-viewer review workflow
 <strong>Depends on:</strong> <code>measure.js</code>, <code>clash_rules.json</code>, <code>rtree-sql.js</code> (WASM), Three.js</p>
-<figure style="margin: 20px 0;">
-<img src="../assets/images/clash_early_bbox.png" alt="BIM OOTB Clash Detection — red bounding-box overlaps in a multi-discipline building" style="width:100%; border:1px solid #333; border-radius:8px;"/>
-<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Clash detection in the browser — red highlights on clashing elements, clash list, and storey info card. 48K-element airport terminal, 7 disciplines.</figcaption>
-</figure>
-
 <hr />
 <h2 id="1-the-problem-with-desktop-clash-detection">1. The Problem with Desktop Clash Detection<a class="headerlink" href="#1-the-problem-with-desktop-clash-detection" title="Permanent link">&para;</a></h2>
 <p>Every BIM coordination meeting plays the same scene: someone opens Navisworks, runs a clash test, and the team stares at <strong>thousands of red dots</strong> with no context, no priority, and no way to act on them without switching tools.</p>
@@ -3886,11 +3881,6 @@
 <li><strong>Red</strong> = hard clashes found (&gt;50mm penetration)</li>
 <li><strong>Dash</strong> = no rule defined for this pair</li>
 </ul>
-<figure style="margin: 20px 0;">
-<img src="../assets/images/clash_matrix_whole_building.png" alt="Clash Matrix showing 7 disciplines with colour-coded spheres" style="width:100%; border:1px solid #333; border-radius:8px;"/>
-<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Whole-building clash matrix — 7 disciplines, 12 rules. Background check uses envelope overlap (instant). Click any orange/red cell to drill into individual clashes.</figcaption>
-</figure>
-
 <h3 id="33-cell-click-storey-scoped-queries">3.3 Cell Click: Storey-Scoped Queries<a class="headerlink" href="#33-cell-click-storey-scoped-queries" title="Permanent link">&para;</a></h3>
 <p>Click a matrix cell to query clashes for that discipline pair. The query strategy avoids the N^2 trap:</p>
 <ol>
@@ -3996,11 +3986,6 @@
 <hr />
 <h2 id="5-html-clash-report">5. HTML Clash Report<a class="headerlink" href="#5-html-clash-report" title="Permanent link">&para;</a></h2>
 <p>Click the clipboard icon on the matrix to generate a full analytics report in a new tab:</p>
-<figure style="margin: 20px 0;">
-<img src="../assets/images/clash_report_html.png" alt="HTML clash report with matrix snapshot, charts, and action sheet" style="width:100%; border:1px solid #333; border-radius:8px;"/>
-<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">HTML clash report — matrix snapshot, severity/status/discipline charts, radar, top offenders, editable action sheet, CSV export. Standalone HTML, no server.</figcaption>
-</figure>
-
 <p>The report includes:</p>
 <ul>
 <li><strong>Matrix snapshot</strong> — the discipline grid as rendered at time of export</li>
