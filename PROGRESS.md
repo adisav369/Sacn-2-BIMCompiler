@@ -20,6 +20,16 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S246 DONE (2026-05-04): Clash Snag + R-tree perf + full-mesh LOD.**
+  - Snag: long-press clash row → JPEG capture (async toBlob) → metadata strip (severity, GPS, timestamp) → freehand annotation → share via Web Share API + deep-link URL.
+  - Deep-link: `#clash=guidA|guidB&cam=x,y,z&tgt=...` — recipient opens, auto-flies to clash, red/orange highlights.
+  - R-tree perf: pre-load discB into JS map (halves SQL calls), progressive loader + COUNT + EXISTS all R-tree.
+  - Accept propagation: Accepted status applies to all same IFC class pairs in session cache.
+  - DLOD disabled: S232 InstancedMesh batching sufficient, full scene stays during clash analysis.
+  - Clash viz: discipline-colored full mesh (25% opacity) + bright red/orange clipped overlap (depthWrite:false).
+  - Report: R-tree counts across all pairs (envelope skip), max_report in clash_rules.json, standards references.
+  - Dev banner baked into deploy/dev/index.html, absent from deploy/live/.
+
 **S245c DONE (2026-05-04): R-tree + Clash Performance & UX overhaul.**
   - WASM swap: sql.js → rtree-sql.js@1.7.0 (CDN, SQLITE_ENABLE_RTREE). SW cache v249.
   - R-tree built async (5k batches, ~1.2s non-blocking). For S245d single-element lookups.
