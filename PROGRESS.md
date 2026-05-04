@@ -20,6 +20,18 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S245b DONE (2026-05-04): Clash Detection + Measure UX overhaul.**
+  - Measure: tap-same-dot for area (replaces double-click), DB-backed info card, adaptive status text.
+  - Clash Matrix: visual grid with 3D CSS spheres (pulsing grey → green/orange/red).
+  - Lazy loading: matrix instant, async sampled check per pair, full query only on click.
+  - Click cell → LIMIT 30 paginated clash list with tolerance slider (1-100mm).
+  - Click clash row → fly-to + clipped actual meshes at overlap zone (depthTest:false).
+  - Review status cycle: Reviewed → Resolved → Accepted (localStorage persisted).
+  - Excel export from matrix title bar. clash_rules.json: 6 discipline pair rules.
+  - Glass UI (backdrop-filter blur), draggable panels, constant-size measure dots.
+  - Runtime SQL indexes (discipline, storey, center_x). Performance: skip dimming >3k meshes.
+  - **Next:** S245c R-tree spatial index for instant clash checks. Spec: `prompts/S245c_rtree_clash.md`
+
 **S244 DONE (2026-05-03): Sunglasses — material contrast slider + theme toggle.**
   - 🕶 button replaces ☼: click = reverse background (light/dark), opens slider panel.
   - Slider (0–100, 10 zones): recolors all meshes by IFC class/storey/discipline with 10 strategies.
@@ -53,6 +65,10 @@
   - Remaining: wizard.js traversals, measure.js traverse (low priority)
 
 **S236 DONE: 2D Plans browser DXF viewer.** `deploy/dev/2d.html`, Canvas2D, dxf-parser.
+
+**S243 DONE: Offline PWA.** SW precache, manifest, install prompt, offline/online toast. 45/45 Playwright PASS + 7/7 offline sandbox test. Mobile confirmed.
+
+**S240 UPDATED: 4D Gantt Sync spec.** Added §0 Prelim Check (8-point audit), §0.3 Template System (rates.js-driven, user-checkable, export/import). Ready to implement.
 
 **S233b DONE: Find & Navigate.** Indoor wayfinding. 26/26 Playwright PASS.
 
