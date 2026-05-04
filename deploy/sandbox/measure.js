@@ -1,6 +1,33 @@
 // measure.js — Measurement tool (two-point distance, area, clash detection)
 function setupMeasure(A) {
 
+  // ── Draggable panels ──
+  A._makeDraggable = function(el) {
+    var ox, oy, sx, sy, dragging = false;
+    el.style.cursor = 'grab';
+    el.addEventListener('pointerdown', function(e) {
+      // Don't drag from interactive elements
+      if (e.target.tagName === 'INPUT') return;
+      if (e.target.id && (e.target.id.indexOf('close') >= 0 || e.target.id.indexOf('export') >= 0)) return;
+      if (e.target.closest('[data-clash-idx]') || e.target.closest('[data-pair]')) return;
+      var rect = el.getBoundingClientRect();
+      if (e.clientY - rect.top > 30) return; // only drag from top strip
+      dragging = true;
+      ox = e.clientX; oy = e.clientY;
+      sx = rect.left; sy = rect.top;
+      el.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    el.addEventListener('pointermove', function(e) {
+      if (!dragging) return;
+      el.style.left = (sx + e.clientX - ox) + 'px';
+      el.style.top = (sy + e.clientY - oy) + 'px';
+      el.style.right = 'auto';
+      el.style.bottom = 'auto';
+    });
+    el.addEventListener('pointerup', function() { dragging = false; });
+  };
+
   // ── Clash detection (bbox overlap from DB, rules from clash_rules.json) ──
   A._clashRules = null;
   A._clashRulesLoading = false;
@@ -24,8 +51,22 @@ function setupMeasure(A) {
   // bbox_x/y/z are FULL widths, centered at center_x/y/z
   A._CLASH_PAGE_SIZE = 30;
 
-  // Build the shared WHERE clause parts
+  // Ensure indexes exist for clash queries — one-time cost per session
+  A._clashIndexesReady = false;
+  A._ensureClashIndexes = function() {
+    if (A._clashIndexesReady || !A.db) return;
+    try {
+      A.db.run("CREATE INDEX IF NOT EXISTS idx_meta_disc ON elements_meta(discipline)");
+      A.db.run("CREATE INDEX IF NOT EXISTS idx_meta_storey ON elements_meta(storey)");
+      A.db.run("CREATE INDEX IF NOT EXISTS idx_trans_cx ON element_transforms(center_x)");
+      A._clashIndexesReady = true;
+      console.log('§CLASH_INDEXES created');
+    } catch(e) { console.warn('§CLASH_INDEXES failed', e); }
+  };
+
+  // Build the shared WHERE clause parts (also ensures indexes)
   A._clashWhereParts = function(rules) {
+    A._ensureClashIndexes();
     var ignoreSet = {};
     rules.clash_rules.forEach(function(r) {
       (r.ignore_classes || []).forEach(function(c) { ignoreSet[c] = 1; });
@@ -256,6 +297,7 @@ function setupMeasure(A) {
     listDiv.innerHTML = A._renderClashList();
     document.body.appendChild(listDiv);
     A._clashListDiv = listDiv;
+    A._makeDraggable(listDiv);
     A.measureLabels.push({ div: listDiv, mid: null });
 
     // Tolerance slider — re-query on change
@@ -335,11 +377,63 @@ function setupMeasure(A) {
       if (posRows.length >= 2) {
         var pA = A.ifc2three(posRows[0][0], posRows[0][1], posRows[0][2]);
         var pB = A.ifc2three(posRows[1][0], posRows[1][1], posRows[1][2]);
-        var mid = new THREE.Vector3().addVectors(
-          new THREE.Vector3(pA.x, pA.y, pA.z),
-          new THREE.Vector3(pB.x, pB.y, pB.z)
-        ).multiplyScalar(0.5);
-        // Estimate view distance from bbox sizes
+        var vA = new THREE.Vector3(pA.x, pA.y, pA.z);
+        var vB = new THREE.Vector3(pB.x, pB.y, pB.z);
+        var mid = new THREE.Vector3().addVectors(vA, vB).multiplyScalar(0.5);
+
+        // Yellow wireframe boxes around each element
+        // Remove previous clash highlights
+        if (A._clashHighlights) {
+          A._clashHighlights.forEach(function(h) { A.measureGroup.remove(h); });
+        }
+        A._clashHighlights = [];
+        var sev = A._clashSeverity((typeof c[8] === 'number') ? c[8] : 0, rules);
+        var sevColor = parseInt(sev.color.replace('#', ''), 16);
+        [{ p: pA, r: posRows[0] }, { p: pB, r: posRows[1] }].forEach(function(item) {
+          // bbox values are full widths in IFC space; swap Y/Z for Three.js
+          var bx = item.r[3], by = item.r[5], bz = item.r[4]; // IFC bbox_x→x, bbox_z→y, bbox_y→z
+          var boxGeo = new THREE.BoxGeometry(bx, by, bz);
+          var boxMat = new THREE.MeshBasicMaterial({ color: sevColor, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthTest: false });
+          var boxMesh = new THREE.Mesh(boxGeo, boxMat);
+          boxMesh.position.set(item.p.x, item.p.y, item.p.z);
+          A.measureGroup.add(boxMesh);
+          A._clashHighlights.push(boxMesh);
+        });
+
+        // Compute overlap zone — intersection of the two bboxes in IFC space
+        var rA = posRows[0], rB = posRows[1];
+        // IFC min/max per axis (center ± half-width)
+        var oxMin = Math.max(rA[0] - rA[3]/2, rB[0] - rB[3]/2);
+        var oxMax = Math.min(rA[0] + rA[3]/2, rB[0] + rB[3]/2);
+        var oyMin = Math.max(rA[1] - rA[4]/2, rB[1] - rB[4]/2);
+        var oyMax = Math.min(rA[1] + rA[4]/2, rB[1] + rB[4]/2);
+        var ozMin = Math.max(rA[2] - rA[5]/2, rB[2] - rB[5]/2);
+        var ozMax = Math.min(rA[2] + rA[5]/2, rB[2] + rB[5]/2);
+        if (oxMin < oxMax && oyMin < oyMax && ozMin < ozMax) {
+          // There's a real overlap volume — draw it
+          var ocx = (oxMin + oxMax) / 2, ocy = (oyMin + oyMax) / 2, ocz = (ozMin + ozMax) / 2;
+          var oPos = A.ifc2three(ocx, ocy, ocz);
+          // Overlap dimensions: swap Y/Z for Three.js
+          var odx = oxMax - oxMin, ody = ozMax - ozMin, odz = oyMax - oyMin;
+          // Ensure minimum visible size
+          odx = Math.max(odx, 0.1); ody = Math.max(ody, 0.1); odz = Math.max(odz, 0.1);
+          var oGeo = new THREE.BoxGeometry(odx, ody, odz);
+          var oMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthTest: false });
+          var oMesh = new THREE.Mesh(oGeo, oMat);
+          oMesh.position.set(oPos.x, oPos.y, oPos.z);
+          A.measureGroup.add(oMesh);
+          A._clashHighlights.push(oMesh);
+          // Also add wireframe edges on the overlap box for clarity
+          var oEdge = new THREE.LineSegments(
+            new THREE.EdgesGeometry(oGeo),
+            new THREE.LineBasicMaterial({ color: sevColor, linewidth: 2, depthTest: false })
+          );
+          oEdge.position.copy(oMesh.position);
+          A.measureGroup.add(oEdge);
+          A._clashHighlights.push(oEdge);
+        }
+
+        // Fly camera
         var maxBbox = Math.max(posRows[0][3], posRows[0][4], posRows[0][5],
                                posRows[1][3], posRows[1][4], posRows[1][5]);
         var dist = Math.max(maxBbox * 3, 5);
@@ -563,6 +657,7 @@ function setupMeasure(A) {
     matDiv.style.top = topPos + 'px';
 
     A._clashMatrixDiv = matDiv;
+    A._makeDraggable(matDiv);
     A.measureLabels.push({ div: matDiv, mid: null });
 
     // Export from matrix — queries all pairs and exports
@@ -986,6 +1081,7 @@ function setupMeasure(A) {
     cardDiv.style.top = cy + 'px';
     // Store for cleanup — no 3D tracking needed, fixed position
     A.measureLabels.push({ div: cardDiv, mid: null });
+    A._makeDraggable(cardDiv);
     // Close X
     var closeBtn = cardDiv.querySelector('.clash-card-close');
     if (closeBtn) closeBtn.addEventListener('click', function() {
