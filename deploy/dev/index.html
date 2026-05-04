@@ -6,7 +6,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BIM OOTB v3</title>
+<title>BIM OOTB v3 — DEV</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#4fc3f7">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -538,7 +538,7 @@ if(new URLSearchParams(location.search).get('embedded')!=='true'){
 </script>
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js?v=249')
+  navigator.serviceWorker.register('sw.js?v=250')
     .then(function(r){console.log('§SW_REG scope='+r.scope)})
     .catch(function(e){console.warn('§SW_REG_FAIL',e)});
 }

@@ -1,5 +1,23 @@
 # OCI Object Storage — BIM OOTB Deployment
 
+## ⚠ RULES — READ BEFORE ANY ACTION
+
+1. **NEVER upload without first downloading and diffing the target.** Assume nothing.
+2. **NEVER delete without verifying nothing references it.**
+3. **One file at a time. Verify after each.**
+4. **Landing = `SYSNOVA/index.html`. Viewer = `deploy/dev/index.html`. DO NOT MIX.**
+5. **Local `deploy/dev/` → bucket `sandbox/`. Local `SYSNOVA/` → bucket root `index.html`.**
+
+## Strategy
+
+Four OCI buckets as independent silos — each can be opened side by side for instant visual comparison.
+If one breaks, compare with the others to spot what's wrong without needing git or logs.
+
+- `bim-ootb-live` — production, users see this
+- `bim-ootb-dev` — staging/testing, safe to break
+- `bim-ootb-backup` — snapshot before deploy, rollback target
+- `bim-ootb-full` — DB download page (older setup)
+
 ## Architecture
 
 Single DB per building. Each building is one `{Name}_extracted.db` containing metadata,
@@ -45,24 +63,20 @@ element_transforms (with bbox_x/y/z), element_instances, component_geometries.
 ## CLI Commands
 
 ```bash
-# Upload landing page (sed-strip DEV markers from landing2.html — see Step 3)
-sed -e 's/BIM OOTB — DEV/BIM OOTB/' \
-    -e 's|<div style="background:#cc6600.*DEV ENVIRONMENT.*</div>||' \
-    -e 's|<h1 style="color:#cc6600">BIM OOTB — DEV</h1>|<h1>BIM OOTB</h1>|' \
-    deploy/landing2.html > deploy/sandbox/landing.html
+# Upload landing page (live = SYSNOVA/index.html as-is)
 oci os object put --bucket-name bim-ootb-live \
-  --file deploy/sandbox/landing.html --name index.html \
+  --file SYSNOVA/index.html --name index.html \
   --content-type text/html --force
 
-# Upload modular viewer (S209)
+# Upload modular viewer
 oci os object put --bucket-name bim-ootb-live \
-  --file deploy/sandbox/index.html --name sandbox/index.html \
+  --file deploy/dev/index.html --name sandbox/index.html \
   --content-type text/html --force
 
-# Upload JS modules
-for f in config scene helpers streaming panels tools picking tour measure sitecam issues walk city main loader diff nlp variation_order import import_db_builder import_worker rates excel; do
+# Upload JS modules (from deploy/dev/ — working copy)
+for f in config scene helpers streaming panels tools picking tour measure sitecam issues walk city main loader diff nlp variation_order import import_db_builder import_worker rates excel sw; do
   oci os object put --bucket-name bim-ootb-live \
-    --file "deploy/sandbox/${f}.js" --name "sandbox/${f}.js" \
+    --file "deploy/dev/${f}.js" --name "sandbox/${f}.js" \
     --content-type application/javascript --force
 done
 
@@ -92,15 +106,15 @@ Full setup details: `internal/OCI_SETUP.md`
 | Bucket | Landing (`index.html`) | Source file | About box |
 |---|---|---|---|
 | `bim-ootb-live` | SYSNOVA branded (blue, logo, company footer) | `SYSNOVA/index.html` | Sysnova logo + DIY Downloader |
-| `bim-ootb-dev` | Dev landing (dark, DEV banner) | `deploy/landing2.html` | Sysnova logo + DIY Downloader |
+| `bim-ootb-dev` | SYSNOVA + orange "DEVELOPMENT SITE" banner | `SYSNOVA/index.html` + sed banner | Sysnova logo + DIY Downloader |
 | `bim-ootb-full` | DB download page (no viewer) | `deploy/landing.html` | None |
 | `bim-ootb-live2` | Test mirror of live | `SYSNOVA/index.html` | Sysnova logo + DIY Downloader |
 | `bim-ootb-backup` | Snapshot of live | (copy of live) | Sysnova logo + DIY Downloader |
 
 **⚠ Each bucket keeps its own landing page.** Never replace one with another.
-The About box (with Sysnova logo + DIY Downloader) is the same across all landings
-that have one — update it in both `SYSNOVA/index.html` AND `deploy/landing2.html`,
-then upload each to its own bucket.
+**⚠ NEVER assume bucket structure from memory — ALWAYS download and check before uploading.**
+**⚠ NEVER delete any file without first verifying nothing references it.**
+`SYSNOVA/index.html` is the single source for all landings. Dev gets a banner injected via sed at upload time.
 
 - `Sysnova.png` must exist in each bucket: root for live/live2/backup, `sandbox/` for dev.
 - `deploy/landing.html` (full bucket) has no About box — it's a DB download page only.
@@ -114,23 +128,28 @@ Separate bucket for testing changes before production. Zero blast radius.
 https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/index.html
 ```
 
-**Local files:** `deploy/dev/` — only changed files, rest served from production sandbox copies.
+**Local files:** `deploy/dev/` — working copy, always edit here, upload to bucket `sandbox/`.
 
 **Path mapping (local → bucket):**
 | Local file | Bucket object name | Why |
 |---|---|---|
-| `deploy/landing2.html` | `index.html` | Landing page (root) |
+| `SYSNOVA/index.html` (+ sed banner for dev) | `index.html` | Landing page (root) |
 | `deploy/dev/*.js` | `sandbox/*.js` | Viewer JS modules (always `sandbox/` in bucket) |
 | `deploy/dev/index.html` | `sandbox/index.html` | Viewer HTML |
 | `deploy/dev/boq_charts.html` | `boq_charts.html` | Charts page (root, not sandbox/) |
 
 **⚠ The bucket has NO `dev/` prefix.** Both dev and prod buckets use `sandbox/` for viewer files.
-`deploy/dev/` is a LOCAL-ONLY directory — it maps to `sandbox/` in the bucket.
-`deploy/sandbox/` is the local PROD copy — never upload it to the dev bucket.
+`deploy/dev/` is the LOCAL working directory — it maps to `sandbox/` in the bucket.
+`deploy/live/` is the local PROD snapshot — reference only, do not edit directly.
+`SYSNOVA/index.html` is the landing page source — upload directly (live) or with banner (dev).
 
 ```bash
-# Deploy dev landing + changed files
-oci os object put --bucket-name bim-ootb-dev --file deploy/landing2.html --name index.html --content-type text/html --force
+# Deploy dev landing (SYSNOVA landing + banner injected)
+sed '/<body>/a\<div style="background:#ff8c00;color:#000;text-align:center;padding:8px;font-weight:bold;font-size:14px;font-family:Segoe UI,sans-serif;letter-spacing:1px">DEVELOPMENT SITE FOR BACK UP TESTING</div>' \
+  SYSNOVA/index.html > /tmp/dev_landing.html
+oci os object put --bucket-name bim-ootb-dev --file /tmp/dev_landing.html --name index.html --content-type text/html --force
+
+# Deploy dev viewer JS
 oci os object put --bucket-name bim-ootb-dev --file deploy/dev/sitecam.js --name sandbox/sitecam.js --content-type application/javascript --force
 oci os object put --bucket-name bim-ootb-dev --file deploy/dev/boq_charts.html --name boq_charts.html --content-type text/html --force
 ```
@@ -139,11 +158,12 @@ oci os object put --bucket-name bim-ootb-dev --file deploy/dev/boq_charts.html -
 
 ### Deploy SOP (dev → production)
 
-Steps 1–4 operate at OCI level. Step 5 syncs back locally so `deploy/sandbox/` stays current.
+Steps 1–4 operate at OCI level. Step 5 syncs back locally so `deploy/live/` stays current.
+**⚠ BEFORE ANY UPLOAD: download the target file from bucket, diff against local. NEVER overwrite blind.**
 
 ```
 Step 1 — TEST        Run ALL tests. Both must pass.
-                       a) node deploy/sandbox/test_all.js   (full suite)
+                       a) node deploy/live/test_all.js   (full suite)
                        b) node deploy/dev/s2XX_test.js      (feature-specific)
 Step 2 — MINIFY      Build deploy/min/ from deploy/dev/ (never edit min/ directly)
                        bash scripts/minify_viewer.sh
@@ -155,16 +175,10 @@ Step 3 — SNAPSHOT    OCI copy: prod → backup  (save current live state)
 Step 4 — DEPLOY      minify_viewer.sh --upload full  OR manual OCI upload from deploy/min/
                        a) sandbox/ JS: bash scripts/minify_viewer.sh --upload full
                           (combines Step 2+4 in one command)
-                       b) root index.html:  sed-strip DEV markers from landing2.html → deploy/sandbox/landing.html
-                          - landing2.html has DEV banner + DEV title — NEVER upload as-is to prod
-                          - Strip: title "DEV", orange DEV banner, h1 "DEV"
-                          - Command: sed -e 's/BIM OOTB — DEV/BIM OOTB/' \
-                              -e 's|<div style="background:#cc6600.*DEV ENVIRONMENT.*</div>||' \
-                              -e 's|<h1 style="color:#cc6600">BIM OOTB — DEV</h1>|<h1>BIM OOTB</h1>|' \
-                              deploy/landing2.html > deploy/sandbox/landing.html
-                          - Verify: grep -c "DEV ENVIRONMENT" deploy/sandbox/landing.html  # must be 0
-                          - Upload: oci os object put --bucket-name bim-ootb-live --file deploy/sandbox/landing.html \
-                              --name index.html --content-type text/html --force
+                       b) root index.html:  upload SYSNOVA/index.html directly
+                          - Command: oci os object put --bucket-name bim-ootb-live \
+                              --file SYSNOVA/index.html --name index.html \
+                              --content-type text/html --force
                           One artifact, one location. Durable, git-tracked, survives reboots.
 Step 5 — SMOKE       Verify deploy before visual check.
                        a) curl checks (all must pass):
@@ -178,9 +192,8 @@ Step 5 — SMOKE       Verify deploy before visual check.
                           - Building cards load from manifest
                           - Drop IFC zone visible
 Step 6 — COMMIT      git add + commit.
-                       - deploy/sandbox/landing.html was already written in Step 4
                        - deploy/min/ is regenerated — no need to commit (gitignored or rebuilt on demand)
-                       - git add deploy/dev/ deploy/landing2.html && git commit
+                       - git add deploy/dev/ SYSNOVA/ && git commit
 ```
 
 **If broken after Step 4 — ROLLBACK (two commands):**
@@ -202,7 +215,7 @@ No git involved. Backup bucket IS the known-good version.
 **Commands:**
 ```bash
 # Step 1: Tests
-node deploy/sandbox/test_all.js
+node deploy/live/test_all.js
 node deploy/dev/s211_test.js      # adjust per sprint
 
 # Step 2: Minify dev → min
@@ -224,7 +237,7 @@ bash scripts/minify_viewer.sh --upload full
 # Check on phone too — mobile Safari caches aggressively.
 
 # Step 6: Commit
-git add deploy/dev/ deploy/landing2.html
+git add deploy/dev/ SYSNOVA/
 git commit -m "[SXXX] Description"
 
 # Rollback (if Step 5 fails):
@@ -252,7 +265,7 @@ Mismatch = drift. §9b lists exactly which files differ.
 | Partial copy (network cut) | Re-run the same copy command — idempotent, overwrites all |
 | Browser serves stale version | Hard refresh (Ctrl+Shift+R), bump `?v=` query strings |
 | Prod bucket lost | Copy from backup: `bash scripts/oci_bucket_copy.sh bim-ootb-backup bim-ootb-live` |
-| Both prod + backup lost | All files in git (`deploy/sandbox/`). Re-create bucket, upload from local |
+| Both prod + backup lost | All files in git (`deploy/dev/` + `SYSNOVA/`). Re-create bucket, upload from local |
 
 No git restore needed for rollback. Git is the archive, OCI is the deployment layer.
 

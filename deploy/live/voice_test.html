@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BIM OOTB — Voice Command Test</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background: #1a1a2e; color: #e0e0e0; margin: 0; padding: 20px; }
+  h2 { color: #4fc3f7; margin-top: 0; }
+  #mic-btn {
+    width: 80px; height: 80px; border-radius: 50%; border: 3px solid #4fc3f7;
+    background: #222; color: #4fc3f7; font-size: 36px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; margin: 20px auto;
+    transition: all 0.2s;
+  }
+  #mic-btn.listening { background: #f44336; border-color: #f44336; color: #fff; animation: pulse 1s infinite; }
+  #mic-btn:hover { background: #333; }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  #heard { font-size: 24px; text-align: center; min-height: 40px; color: #fff; margin: 10px 0; }
+  #heard .interim { color: #888; font-style: italic; }
+  #status { text-align: center; color: #4fc3f7; font-size: 14px; margin: 10px 0; }
+  #log { background: #111; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 13px;
+         max-height: 400px; overflow-y: auto; margin-top: 20px; }
+  .log-entry { margin: 6px 0; padding: 6px 8px; border-radius: 4px; }
+  .log-ok { background: #1b3a1b; border-left: 3px solid #4caf50; }
+  .log-bad { background: #3a1b1b; border-left: 3px solid #f44336; }
+  .log-info { background: #1b2a3a; border-left: 3px solid #4fc3f7; }
+  .script-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+  .script-table td { padding: 6px 8px; border-bottom: 1px solid #333; }
+  .script-table td:first-child { color: #4fc3f7; font-weight: bold; white-space: nowrap; }
+  .unsupported { text-align: center; color: #f44336; font-size: 18px; padding: 40px; }
+</style>
+</head>
+<body>
+
+<h2>Voice Command Test</h2>
+<p>Tap the mic, say a command, see what the browser hears. Test on your phone.</p>
+
+<div id="unsupported" class="unsupported" style="display:none">
+  Web Speech API not supported in this browser.<br>
+  Use Chrome (Android/desktop) or Safari (iOS).
+</div>
+
+<div id="main">
+  <button id="mic-btn" onclick="toggleMic()">🎤</button>
+  <div id="heard"></div>
+  <div id="status">Tap mic to start</div>
+
+  <h3 style="color:#4fc3f7;margin-top:30px">Test Script — Say These</h3>
+  <table class="script-table">
+    <tr><td>count doors</td><td>Should hear: "count doors"</td></tr>
+    <tr><td>floor one walls</td><td>Should hear: "floor one walls" or "floor 1 walls"</td></tr>
+    <tr><td>total cost</td><td>Should hear: "total cost"</td></tr>
+    <tr><td>show structure</td><td>Should hear: "show structure"</td></tr>
+    <tr><td>find fire doors</td><td>Should hear: "find fire doors"</td></tr>
+    <tr><td>count beams</td><td>Should hear: "count beams" (not "beans"!)</td></tr>
+    <tr><td>show plumbing</td><td>Should hear: "show plumbing"</td></tr>
+    <tr><td>floor two lights</td><td>Should hear: "floor two lights" or "floor 2 lights"</td></tr>
+    <tr><td>how many columns</td><td>Should hear: "how many columns"</td></tr>
+    <tr><td>cost of pipes</td><td>Should hear: "cost of pipes"</td></tr>
+  </table>
+
+  <div id="log"></div>
+</div>
+
+<script>
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SR) {
+  document.getElementById('unsupported').style.display = 'block';
+  document.getElementById('main').style.display = 'none';
+}
+
+let recognition = null;
+let listening = false;
+let testCount = 0;
+
+// Simple NLP intent matcher (same patterns as S211 spec)
+const PATTERNS = [
+  { re: /^count (\w+)$/i,                intent: 'COUNT',  desc: m => `COUNT ${m[1]}` },
+  { re: /^how many (\w+)$/i,             intent: 'COUNT',  desc: m => `COUNT ${m[1]}` },
+  { re: /^floor (\w+) (\w+)$/i,          intent: 'COUNT',  desc: m => `COUNT ${m[2]} on floor ${m[1]}` },
+  { re: /^level (\w+) (\w+)$/i,          intent: 'COUNT',  desc: m => `COUNT ${m[2]} on level ${m[1]}` },
+  { re: /^total (cost|area|length)/i,    intent: 'TOTAL',  desc: m => `TOTAL ${m[1]}` },
+  { re: /^cost of (\w+)$/i,              intent: 'COST',   desc: m => `COST of ${m[1]}` },
+  { re: /^show (\w+)$/i,                 intent: 'DISC',   desc: m => `SHOW discipline ${m[1]}` },
+  { re: /^find (.+)$/i,                  intent: 'SEARCH', desc: m => `SEARCH "${m[1]}"` },
+  { re: /^search (.+)$/i,                intent: 'SEARCH', desc: m => `SEARCH "${m[1]}"` },
+  { re: /^what disciplines/i,            intent: 'DISC',   desc: () => `LIST disciplines` },
+  { re: /^ground floor (\w+)$/i,         intent: 'COUNT',  desc: m => `COUNT ${m[1]} on ground` },
+];
+
+function matchIntent(text) {
+  const clean = text.toLowerCase().replace(/[?.!,]/g, '').trim();
+  for (const p of PATTERNS) {
+    const m = clean.match(p.re);
+    if (m) return { intent: p.intent, desc: p.desc(m), matched: true };
+  }
+  return { intent: null, desc: null, matched: false };
+}
+
+function toggleMic() {
+  if (listening) { recognition.stop(); return; }
+
+  recognition = new SR();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+  recognition.maxAlternatives = 3;
+
+  const btn = document.getElementById('mic-btn');
+  const heard = document.getElementById('heard');
+  const status = document.getElementById('status');
+
+  recognition.onstart = () => {
+    listening = true;
+    btn.classList.add('listening');
+    heard.innerHTML = '';
+    status.textContent = 'Listening...';
+  };
+
+  recognition.onresult = (e) => {
+    let interim = '';
+    let final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) {
+        final = t;
+        const conf = (e.results[i][0].confidence * 100).toFixed(0);
+
+        // Also show alternatives
+        const alts = [];
+        for (let a = 1; a < e.results[i].length; a++) {
+          alts.push(e.results[i][a].transcript);
+        }
+
+        const result = matchIntent(final);
+        testCount++;
+
+        const logDiv = document.getElementById('log');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry ' + (result.matched ? 'log-ok' : 'log-bad');
+
+        let html = `<b>#${testCount}</b> Heard: "<b>${final}</b>" (${conf}% confidence)`;
+        if (alts.length) html += `<br>Alternatives: ${alts.map(a => '"' + a + '"').join(', ')}`;
+        if (result.matched) {
+          html += `<br>→ Intent: <span style="color:#4caf50">${result.desc}</span>`;
+        } else {
+          html += `<br>→ <span style="color:#f44336">No pattern match</span> — would show "Did you mean...?"`;
+        }
+        entry.innerHTML = html;
+        logDiv.insertBefore(entry, logDiv.firstChild);
+
+        heard.innerHTML = `"${final}"`;
+        status.textContent = result.matched ? `Matched: ${result.desc}` : 'No match — try a shorter command';
+      } else {
+        interim += t;
+      }
+    }
+    if (interim && !final) {
+      heard.innerHTML = `<span class="interim">${interim}</span>`;
+    }
+  };
+
+  recognition.onerror = (e) => {
+    const logDiv = document.getElementById('log');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry log-info';
+    entry.innerHTML = `Error: ${e.error}${e.error === 'no-speech' ? ' (nothing detected — try again)' : ''}`;
+    logDiv.insertBefore(entry, logDiv.firstChild);
+    status.textContent = `Error: ${e.error}`;
+  };
+
+  recognition.onend = () => {
+    listening = false;
+    btn.classList.remove('listening');
+    if (status.textContent === 'Listening...') status.textContent = 'Tap mic to start';
+  };
+
+  recognition.start();
+}
+</script>
+</body>
+</html>

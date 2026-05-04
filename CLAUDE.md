@@ -3,7 +3,7 @@
 ## PRIME RULE
 **EXTRACT OR COMPILE ONLY.** Query the database. Copy patterns you find. Compute positions via verbs. Never invent.
 
-**NEVER TOUCH PRODUCTION.** `deploy/sandbox/` is LIVE. Do not read it to edit, do not edit it, do not write to it. All dev work goes to `deploy/dev/` ONLY. Promote to sandbox only when the user explicitly says "promote to prod".
+**NEVER TOUCH PRODUCTION.** `deploy/live/` is the production snapshot — do not edit directly. All dev work goes to `deploy/dev/` ONLY. Read `deploy/OCI_UPLOAD.md` §RULES before any OCI upload.
 
 ## BOM PRINCIPLE
 A BOM is a recipe: one parent, N children, each with a quantity. Each child can itself be a BOM — building → floor → room → furniture → leaf, recursively. Each level is atomic and self-contained. **Three Concerns never merge:** WHAT (Orders, Categories, Products), HOW (BOMs, AttributeSets, Validation), WHERE (output.db for 4D–8D downstream).
@@ -47,7 +47,7 @@ Before ending, update PROGRESS.md with:
 - **Traceability:** Check `TestArchitecture.md` §Traceability Matrix before and after changes
 
 ## Sacred Files (edit with extreme care)
-- `deploy/sandbox/*` — PRODUCTION, never edit (see PRIME RULE)
+- `deploy/live/*` — PRODUCTION snapshot, never edit (see PRIME RULE)
 - `migration/*.sql` — append only, never modify existing migrations
 - `BuildingCompiler.java` — main orchestrator, many dependencies
 - `RosettaStoneGateTest.java` — defines G1-G6 gates, changes break CI

@@ -5,9 +5,12 @@ function setupConfig(A) {
   const _ociMatch = location.href.match(/(https:\/\/objectstorage\.[^/]+\/n\/[^/]+\/b\/[^/]+\/o\/)/);
   const _base = _ociMatch ? _ociMatch[1] : '';
   A.DB_URL = _params.get('db') || (_base ? _base + 'Duplex_extracted.db' : 'buildings/Duplex_extracted.db');
-  A.LIB_URL = _params.get('lib') || (_base ? _base + 'Duplex_library.db' : 'buildings/Duplex_library.db');
   A.CITY_URL = _params.get('city') || null;
   A.BLD_BASE = _params.get('bldbase') || '';
+
+  // iDempiere BIM Tab: embedded mode + project record ID
+  A.EMBEDDED = _params.get('embedded') === 'true';
+  A.RECORD_ID = _params.get('record') || null;
 
   // Discipline colours (same as Blender addon)
   A.DISC_COLORS = {
