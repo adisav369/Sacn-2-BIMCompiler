@@ -389,48 +389,74 @@ function setupMeasure(A) {
         A._clashHighlights = [];
         var sev = A._clashSeverity((typeof c[8] === 'number') ? c[8] : 0, rules);
         var sevColor = parseInt(sev.color.replace('#', ''), 16);
-        [{ p: pA, r: posRows[0] }, { p: pB, r: posRows[1] }].forEach(function(item) {
-          // bbox values are full widths in IFC space; swap Y/Z for Three.js
-          var bx = item.r[3], by = item.r[5], bz = item.r[4]; // IFC bbox_x→x, bbox_z→y, bbox_y→z
-          var boxGeo = new THREE.BoxGeometry(bx, by, bz);
-          var boxMat = new THREE.MeshBasicMaterial({ color: sevColor, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthTest: false });
-          var boxMesh = new THREE.Mesh(boxGeo, boxMat);
-          boxMesh.position.set(item.p.x, item.p.y, item.p.z);
-          A.measureGroup.add(boxMesh);
-          A._clashHighlights.push(boxMesh);
-        });
 
-        // Compute overlap zone — intersection of the two bboxes in IFC space
+        // Compute overlap zone in Three.js space — used for clipping planes
         var rA = posRows[0], rB = posRows[1];
-        // IFC min/max per axis (center ± half-width)
+        // IFC overlap bounds
         var oxMin = Math.max(rA[0] - rA[3]/2, rB[0] - rB[3]/2);
         var oxMax = Math.min(rA[0] + rA[3]/2, rB[0] + rB[3]/2);
         var oyMin = Math.max(rA[1] - rA[4]/2, rB[1] - rB[4]/2);
         var oyMax = Math.min(rA[1] + rA[4]/2, rB[1] + rB[4]/2);
         var ozMin = Math.max(rA[2] - rA[5]/2, rB[2] - rB[5]/2);
         var ozMax = Math.min(rA[2] + rA[5]/2, rB[2] + rB[5]/2);
+
         if (oxMin < oxMax && oyMin < oyMax && ozMin < ozMax) {
-          // There's a real overlap volume — draw it
-          var ocx = (oxMin + oxMax) / 2, ocy = (oyMin + oyMax) / 2, ocz = (ozMin + ozMax) / 2;
-          var oPos = A.ifc2three(ocx, ocy, ocz);
-          // Overlap dimensions: swap Y/Z for Three.js
-          var odx = oxMax - oxMin, ody = ozMax - ozMin, odz = oyMax - oyMin;
-          // Ensure minimum visible size
-          odx = Math.max(odx, 0.1); ody = Math.max(ody, 0.1); odz = Math.max(odz, 0.1);
-          var oGeo = new THREE.BoxGeometry(odx, ody, odz);
-          var oMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthTest: false });
-          var oMesh = new THREE.Mesh(oGeo, oMat);
-          oMesh.position.set(oPos.x, oPos.y, oPos.z);
-          A.measureGroup.add(oMesh);
-          A._clashHighlights.push(oMesh);
-          // Also add wireframe edges on the overlap box for clarity
-          var oEdge = new THREE.LineSegments(
-            new THREE.EdgesGeometry(oGeo),
-            new THREE.LineBasicMaterial({ color: sevColor, linewidth: 2, depthTest: false })
-          );
-          oEdge.position.copy(oMesh.position);
-          A.measureGroup.add(oEdge);
-          A._clashHighlights.push(oEdge);
+          // Convert overlap bounds to Three.js space
+          var oMinT = A.ifc2three(oxMin, oyMin, ozMin);
+          var oMaxT = A.ifc2three(oxMax, oyMax, ozMax);
+          // Normalize min/max per axis (ifc2three flips Z)
+          var tXmin = Math.min(oMinT.x, oMaxT.x), tXmax = Math.max(oMinT.x, oMaxT.x);
+          var tYmin = Math.min(oMinT.y, oMaxT.y), tYmax = Math.max(oMinT.y, oMaxT.y);
+          var tZmin = Math.min(oMinT.z, oMaxT.z), tZmax = Math.max(oMinT.z, oMaxT.z);
+
+          // 6 clipping planes defining the overlap box
+          var clipPlanes = [
+            new THREE.Plane(new THREE.Vector3( 1, 0, 0), -tXmin),
+            new THREE.Plane(new THREE.Vector3(-1, 0, 0),  tXmax),
+            new THREE.Plane(new THREE.Vector3( 0, 1, 0), -tYmin),
+            new THREE.Plane(new THREE.Vector3( 0,-1, 0),  tYmax),
+            new THREE.Plane(new THREE.Vector3( 0, 0, 1), -tZmin),
+            new THREE.Plane(new THREE.Vector3( 0, 0,-1),  tZmax)
+          ];
+
+          // Fetch actual mesh geometry for both elements
+          var hashRows = A.dbQuery("SELECT guid, geometry_hash FROM element_instances WHERE guid IN (?, ?)", [c[0], c[1]]);
+          var colors = [0xff4444, 0x4488ff]; // red-ish, blue-ish to distinguish
+          hashRows.forEach(function(hr, hi) {
+            var geo = A.meshCache[hr[1]];
+            if (!geo) {
+              // Fetch from DB if not cached
+              var gRows = A.dbQuery("SELECT vertices, faces FROM component_geometries WHERE geometry_hash = ?", [hr[1]]);
+              if (gRows.length && gRows[0][0] && gRows[0][1]) {
+                geo = A.blobToGeometry(gRows[0][0], gRows[0][1]);
+                if (geo) A.meshCache[hr[1]] = geo;
+              }
+            }
+            if (!geo) return;
+            // Get this element's transform
+            var tRow = A.dbQuery("SELECT center_x, center_y, center_z, rotation_x, rotation_y, rotation_z FROM element_transforms WHERE guid = ?", [hr[0]]);
+            if (!tRow.length) return;
+            var pos = A.ifc2three(tRow[0][0], tRow[0][1], tRow[0][2]);
+            var mat = new THREE.MeshBasicMaterial({
+              color: colors[hi],
+              transparent: true,
+              opacity: 0.6,
+              side: THREE.DoubleSide,
+              depthTest: false,
+              clippingPlanes: clipPlanes,
+              clipShadows: true
+            });
+            var mesh = new THREE.Mesh(geo.clone(), mat);
+            mesh.position.set(pos.x, pos.y, pos.z);
+            if (tRow[0][3] || tRow[0][4] || tRow[0][5]) {
+              mesh.rotation.set(tRow[0][3] || 0, tRow[0][5] || 0, -(tRow[0][4] || 0));
+            }
+            A.measureGroup.add(mesh);
+            A._clashHighlights.push(mesh);
+          });
+
+          // Enable clipping on renderer if not already
+          if (A.renderer) A.renderer.localClippingEnabled = true;
         }
 
         // Fly camera
@@ -727,29 +753,41 @@ function setupMeasure(A) {
       console.log('§CLASH_MATRIX_FILTER ' + discA + ' vs ' + discB + ' page=' + (offset / A._CLASH_PAGE_SIZE + 1));
     });
 
-    // Async background check — one pair at a time, updates spheres as results come in
+    // Background check — sample 50 elements per side, check bbox overlap
+    // Fast approximation: orange = sampled clash found, green = none in sample
     var _qi = 0;
+    var checked = {};
     var w = A._clashWhereParts(rules);
     var storeyClause = storey ? "ma.storey = '" + storey.replace(/'/g, "''") + "' AND mb.storey = ma.storey" : '1=1';
-    // Dedupe: only check unique unordered pairs (ARC|STR = STR|ARC)
-    var checked = {};
     function _bgCheck() {
       if (_qi >= activePairs.length) return;
       if (!A._clashMatrixDiv) return;
       var p = activePairs[_qi++];
       var sortedKey = [p.discA, p.discB].sort().join('|');
       if (checked[sortedKey]) {
-        // Already checked the reverse — copy result
         var cell = matDiv.querySelector('[data-pair="' + p.key + '"]');
         if (cell) cell.innerHTML = checked[sortedKey];
         setTimeout(_bgCheck, 0);
         return;
       }
-      var pairCond = "(ma.discipline = '" + p.discA + "' AND mb.discipline = '" + p.discB + "')" +
-        " OR (ma.discipline = '" + p.discB + "' AND mb.discipline = '" + p.discA + "')";
-      var sql = "SELECT 1 FROM element_transforms a JOIN elements_meta ma ON a.guid = ma.guid" +
-        " JOIN element_transforms b ON a.guid < b.guid JOIN elements_meta mb ON b.guid = mb.guid" +
-        " WHERE " + storeyClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin + " LIMIT 1";
+      // Sample: pick 50 random from each side, check bbox overlap
+      var pairCond = "(ma.discipline = '" + p.discA + "' AND mb.discipline = '" + p.discB + "')";
+      var sql = "SELECT 1 FROM" +
+        " (SELECT guid, center_x, center_y, center_z, bbox_x, bbox_y, bbox_z FROM element_transforms WHERE guid IN" +
+        "   (SELECT guid FROM elements_meta WHERE discipline = '" + p.discA + "'" +
+        (storey ? " AND storey = '" + storey.replace(/'/g, "''") + "'" : "") +
+        "    ORDER BY RANDOM() LIMIT 50)) a," +
+        " (SELECT guid, center_x, center_y, center_z, bbox_x, bbox_y, bbox_z FROM element_transforms WHERE guid IN" +
+        "   (SELECT guid FROM elements_meta WHERE discipline = '" + p.discB + "'" +
+        (storey ? " AND storey = '" + storey.replace(/'/g, "''") + "'" : "") +
+        "    ORDER BY RANDOM() LIMIT 50)) b" +
+        " WHERE (a.center_x - a.bbox_x/2) < (b.center_x + b.bbox_x/2)" +
+        " AND (a.center_x + a.bbox_x/2) > (b.center_x - b.bbox_x/2)" +
+        " AND (a.center_y - a.bbox_y/2) < (b.center_y + b.bbox_y/2)" +
+        " AND (a.center_y + a.bbox_y/2) > (b.center_y - b.bbox_y/2)" +
+        " AND (a.center_z - a.bbox_z/2) < (b.center_z + b.bbox_z/2)" +
+        " AND (a.center_z + a.bbox_z/2) > (b.center_z - b.bbox_z/2)" +
+        " LIMIT 1";
       var rows = A.dbQuery(sql);
       var sphere = rows.length > 0 ? _msphere('#ff8c00') : _msphere('#4caf50');
       checked[sortedKey] = sphere;
