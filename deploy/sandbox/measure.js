@@ -525,24 +525,39 @@ function setupMeasure(A) {
       statusCounts[st]++;
     });
 
-    // Header rows
+    // ── Sheet 1: Clash Coordination Template ──
     var rows = [];
-    rows.push(['Clash Report: ' + building, '', '', '', '', '', '', '', date]);
-    rows.push(['Total: ' + clashes.length,
-               'Reviewed: ' + statusCounts['Reviewed'],
-               'Resolved: ' + statusCounts['Resolved'],
-               'Accepted: ' + statusCounts['Accepted']]);
+    // Title block
+    rows.push(['CLASH COORDINATION REPORT']);
+    rows.push(['Project:', building, '', 'Date:', date, '', 'Prepared by:', '']);
+    rows.push(['Total Clashes:', clashes.length,
+               'Reviewed:', statusCounts['Reviewed'],
+               'Resolved:', statusCounts['Resolved'],
+               'Accepted:', statusCounts['Accepted']]);
     rows.push([]);
-    rows.push(['#', 'Element A', 'Class A', 'Disc A', 'Element B', 'Class B', 'Disc B', 'Storey', 'Overlap (m)', 'Severity', 'Status']);
+    // Column headers — data + assignment template columns
+    rows.push([
+      '#', 'Element A', 'Class A', 'Disc A',
+      'Element B', 'Class B', 'Disc B',
+      'Storey', 'Overlap (m)', 'Severity', 'Status',
+      'Assigned To', 'Priority', 'Action Required', 'Target Date', 'Date Resolved', 'Remarks'
+    ]);
 
     clashes.forEach(function(c, i) {
       var overlap = (typeof c[8] === 'number') ? c[8] : 0;
       var sev = A._clashSeverity(overlap, rules);
       var pairKey = A._clashPairKey(c[0], c[1]);
       var status = A._clashStatuses[pairKey] || '';
-      // Get storey from DB
-      var storeyRows = A.dbQuery("SELECT storey FROM elements_meta WHERE guid = ?", [c[0]]);
-      var storey = storeyRows.length ? storeyRows[0][0] : '';
+      // Get storey + check for linked schedule task
+      var metaA = A.dbQuery("SELECT storey, element_name FROM elements_meta WHERE guid = ?", [c[0]]);
+      var storey = metaA.length ? metaA[0][0] : '';
+      // Try to find related task from schedule
+      var taskInfo = '';
+      var taskRows = A.dbQuery(
+        "SELECT t.task_name, t.start_date FROM tasks t JOIN task_elements te ON t.task_id = te.task_id WHERE te.guid = ? LIMIT 1",
+        [c[0]]
+      );
+      if (taskRows.length) taskInfo = taskRows[0][0] + (taskRows[0][1] ? ' (' + taskRows[0][1] + ')' : '');
       rows.push([
         i + 1,
         (c[6] || '').replace('Ifc', ''),
@@ -554,19 +569,54 @@ function setupMeasure(A) {
         storey,
         parseFloat(overlap.toFixed(3)),
         sev.label,
-        status
+        status,
+        '', // Assigned To — user fills in
+        sev.level === 'hard' ? 'HIGH' : sev.level === 'soft' ? 'MEDIUM' : 'LOW',
+        '', // Action Required — user fills in
+        '', // Target Date — user fills in
+        '', // Date Resolved — user fills in
+        taskInfo // Remarks — pre-filled with schedule task if found
       ]);
     });
 
     var ws = XLSX.utils.aoa_to_sheet(rows);
     // Column widths
     ws['!cols'] = [
-      { wch: 4 }, { wch: 20 }, { wch: 14 }, { wch: 6 },
-      { wch: 20 }, { wch: 14 }, { wch: 6 },
-      { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 12 }
+      { wch: 4 }, { wch: 18 }, { wch: 12 }, { wch: 6 },
+      { wch: 18 }, { wch: 12 }, { wch: 6 },
+      { wch: 14 }, { wch: 9 }, { wch: 10 }, { wch: 10 },
+      { wch: 16 }, { wch: 8 }, { wch: 22 }, { wch: 12 }, { wch: 12 }, { wch: 24 }
     ];
+
+    // ── Sheet 2: Tolerance Settings ──
+    var tolRows = [];
+    tolRows.push(['CLASH TOLERANCE SETTINGS']);
+    tolRows.push(['Source Disc', 'Target Disc', 'Tolerance (mm)', 'Ignored Classes']);
+    if (rules && rules.clash_rules) {
+      rules.clash_rules.forEach(function(r) {
+        tolRows.push([
+          r.source.discipline,
+          r.target.discipline,
+          (r.tolerance_m * 1000).toFixed(0),
+          (r.ignore_classes || []).join(', ')
+        ]);
+      });
+    }
+    tolRows.push([]);
+    tolRows.push(['Severity Levels']);
+    tolRows.push(['Level', 'Threshold', 'Color']);
+    if (rules && rules.severity) {
+      tolRows.push(['Hard clash', '>' + (rules.severity.hard.min_overlap_m * 1000) + 'mm overlap', rules.severity.hard.color]);
+      tolRows.push(['Soft clash', '>' + (rules.severity.soft.min_overlap_m * 1000) + 'mm overlap', rules.severity.soft.color]);
+      tolRows.push(['Clearance', '<' + (rules.severity.clearance.max_gap_m * 1000) + 'mm gap', rules.severity.clearance.color]);
+    }
+    var ws2 = XLSX.utils.aoa_to_sheet(tolRows);
+    ws2['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 40 }];
+
+    // ── Build workbook ──
     var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Clashes');
+    XLSX.utils.book_append_sheet(wb, ws, 'Clash Report');
+    XLSX.utils.book_append_sheet(wb, ws2, 'Tolerance Settings');
     var filename = building.replace(/\s+/g, '_') + '_clashes_' + date + '.xlsx';
     XLSX.writeFile(wb, filename);
     console.log('§CLASH_EXPORT clashes=' + clashes.length +
