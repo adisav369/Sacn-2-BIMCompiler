@@ -145,6 +145,8 @@ function initViewer() {
       if (APP.walkMode) { APP.walkTick(); } else { APP.flyTick(); }
     }
     APP.streamTick();
+    // S245e: Clash DLOD proximity LOD update (throttled internally to 100ms)
+    if (APP._clashModeActive && APP._updateClashLOD) APP._updateClashLOD();
     APP.walkModeGpsTick();
     // Device orientation LAST — nothing may overwrite the quaternion after this
     if (APP.walkModeActive) APP.walkOrientTick();

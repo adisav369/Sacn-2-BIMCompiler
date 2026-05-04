@@ -1,7 +1,7 @@
 // measure.js — Measurement tool (two-point distance, area, clash detection)
 // S245d v1 — Progressive storey loading, COUNT per storey, no N² fallback
 function setupMeasure(A) {
-  console.log('§MEASURE_VERSION S245d-v2');
+  console.log('§MEASURE_VERSION S245e-v1');
 
   // Mobile detection — disable backdrop-filter blur (GPU-expensive on mobile)
   var _isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -1041,6 +1041,8 @@ function setupMeasure(A) {
   A._showClashMatrix = function(rules, anchorDiv) {
     // Already showing — do nothing
     if (A._clashMatrixDiv) return;
+    // S245e: Auto-enter clash DLOD mode when matrix opens
+    if (!A._clashModeActive && A._enterClashMode) A._enterClashMode();
 
     // Only show disciplines actually present in this building
     var dbDiscSet = {};
@@ -1126,8 +1128,9 @@ function setupMeasure(A) {
     // Position: below the info card, aligned right
     var anchorRect = anchorDiv.getBoundingClientRect();
     matDiv.style.right = '10px';
+    var scopeLabel = storey ? storey : 'Whole Building';
     matDiv.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center">' +
-      '<b style="color:#4fc3f7;font-size:12px">Clash Matrix</b>' +
+      '<b style="color:#4fc3f7;font-size:12px">Clash Matrix — ' + scopeLabel + '</b>' +
       '<span style="display:flex;gap:8px;align-items:center">' +
       '<span id="clash-matrix-export" style="cursor:pointer;font-size:16px" title="Clash Report">📋</span>' +
       '<span id="clash-matrix-close" style="cursor:pointer;color:#aaa;font-size:22px;line-height:1;padding:6px">\u2715</span></span></div>' +
@@ -1154,6 +1157,8 @@ function setupMeasure(A) {
       ev.stopPropagation();
       if (A._clashRevealActive) A._dismissClashes();
       if (A._clashMatrixDiv) { A._clashMatrixDiv.remove(); A._clashMatrixDiv = null; }
+      // S245e: Exit clash DLOD mode when matrix closed via X
+      if (A._clashModeActive && A._exitClashMode) A._exitClashMode();
     };
     matDiv.querySelector('#clash-matrix-close').addEventListener('pointerup', _matClose);
     matDiv.querySelector('#clash-matrix-close').addEventListener('click', _matClose);
@@ -1273,6 +1278,8 @@ function setupMeasure(A) {
     if (!keepMatrix && A._clashMatrixDiv) {
       A._clashMatrixDiv.remove();
       A._clashMatrixDiv = null;
+      // S245e: Exit clash DLOD mode when matrix fully dismissed
+      if (A._clashModeActive && A._exitClashMode) A._exitClashMode();
     }
     if (A.markDirty) A.markDirty();
     console.log('§CLASH_DISMISS' + (keepMatrix ? ' (list only)' : ''));
@@ -1722,5 +1729,250 @@ function setupMeasure(A) {
         }
       });
     }
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // S245e — Clash DLOD: Lightweight Clash Analysis Mode
+  // Implementing S245e_clash_dlod.md §Level 0-3
+  // ══════════════════════════════════════════════════════════════════════════
+
+  A._clashModeActive = false;
+  A._clashBboxCloud = [];        // InstancedMesh array for bbox wireframe cloud
+  A._clashLodUpdateFreq = 100;   // ms — throttle proximity queries
+  A._lastClashLodUpdate = 0;
+  A._clashProxSet = new Set();   // GUIDs currently rendered as real mesh in LOD
+  A._clashProxMeshes = [];       // Real meshes loaded for proximity LOD
+
+  // ── Enter Clash Mode ──────────────────────────────────────────────────────
+  // Hides full scene geometry, renders bbox wireframe cloud (one InstancedMesh per discipline)
+  A._enterClashMode = function() {
+    if (A._clashModeActive) return;
+    if (!A.db || !A._hasBbox) {
+      console.warn('§CLASH_DLOD cannot enter — no bbox data');
+      return;
+    }
+    if (!A._clashRtreeReady) {
+      A._ensureClashIndexes();
+      console.log('§CLASH_DLOD R-tree not ready yet — building...');
+    }
+
+    // Hide all streamed geometry (meshes + instanced meshes + merged)
+    A.collectMeshes(function(o) {
+      return (o.isMesh || o.isInstancedMesh || o.isLineSegments) &&
+             !o.userData.isBboxPlaceholder && o !== A.ground;
+    }).forEach(function(o) {
+      o.userData._clashHidden = true;
+      o.visible = false;
+    });
+
+    // Query all elements with bbox data
+    var t0 = performance.now();
+    var rows = A.dbQuery(
+      "SELECT m.guid, m.discipline, t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z " +
+      "FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid " +
+      "WHERE m.building = ? AND t.bbox_x IS NOT NULL",
+      [A.activeBuilding]
+    );
+    if (!rows.length) {
+      console.warn('§CLASH_DLOD no elements found');
+      return;
+    }
+
+    // Group by discipline
+    var byDisc = {};
+    for (var i = 0; i < rows.length; i++) {
+      var disc = rows[i][1] || '_';
+      if (!byDisc[disc]) byDisc[disc] = [];
+      byDisc[disc].push(rows[i]);
+    }
+
+    // Build one InstancedMesh per discipline (wireframe boxes)
+    var geo = new THREE.BoxGeometry(1, 1, 1);
+    var _m4 = new THREE.Matrix4();
+    var _pos = new THREE.Vector3();
+    var _scl = new THREE.Vector3();
+    var _quat = new THREE.Quaternion();
+    var totalInstances = 0;
+
+    for (var disc in byDisc) {
+      var drows = byDisc[disc];
+      var color = A.DISC_COLORS[disc] || A.DEFAULT_COLOR;
+      var mat = new THREE.MeshBasicMaterial({
+        color: color, wireframe: true, transparent: true, opacity: 0.35
+      });
+      var iMesh = new THREE.InstancedMesh(geo, mat, drows.length);
+      iMesh.frustumCulled = false;
+      iMesh.userData.isClashBbox = true;
+      iMesh.userData.disc = disc;
+
+      for (var j = 0; j < drows.length; j++) {
+        var r = drows[j];
+        var p = A.ifc2three(r[2], r[3], r[4]);
+        var bx = r[5] || 0.3, by = r[6] || 0.3, bz = r[7] || 0.3;
+        _pos.set(p.x, p.y, p.z);
+        _scl.set(bx, bz, by); // IFC Y↔Z swap
+        _m4.compose(_pos, _quat, _scl);
+        iMesh.setMatrixAt(j, _m4);
+      }
+      iMesh.instanceMatrix.needsUpdate = true;
+      A.scene.add(iMesh);
+      A._clashBboxCloud.push(iMesh);
+      totalInstances += drows.length;
+    }
+
+    A._clashModeActive = true;
+    A._clashProxSet = new Set();
+    A._clashProxMeshes = [];
+    var ms = (performance.now() - t0).toFixed(0);
+    console.log('§CLASH_DLOD_ENTER elements=' + totalInstances + ' discs=' + Object.keys(byDisc).length + ' time=' + ms + 'ms');
+    if (A.markDirty) A.markDirty();
+  };
+
+  // ── Exit Clash Mode ───────────────────────────────────────────────────────
+  A._exitClashMode = function() {
+    if (!A._clashModeActive) return;
+
+    // Remove bbox cloud
+    for (var i = 0; i < A._clashBboxCloud.length; i++) {
+      A.scene.remove(A._clashBboxCloud[i]);
+      A._clashBboxCloud[i].material.dispose();
+    }
+    if (A._clashBboxCloud.length) A._clashBboxCloud[0].geometry.dispose();
+    A._clashBboxCloud = [];
+
+    // Remove proximity LOD meshes
+    for (var j = 0; j < A._clashProxMeshes.length; j++) {
+      A.scene.remove(A._clashProxMeshes[j]);
+      // Don't dispose geometry — it's from meshCache
+    }
+    A._clashProxMeshes = [];
+    A._clashProxSet = new Set();
+
+    // Restore hidden geometry
+    A.collectMeshes(function(o) {
+      return o.userData._clashHidden;
+    }).forEach(function(o) {
+      delete o.userData._clashHidden;
+      // Respect storey/disc filters
+      var storeyOk = A.activeStoreyFilter === null || o.userData.storey === A.activeStoreyFilter;
+      var discOk = !A.hiddenDiscs.has(o.userData.disc);
+      o.visible = storeyOk && discOk;
+    });
+
+    A._clashModeActive = false;
+    console.log('§CLASH_DLOD_EXIT');
+    if (A.markDirty) A.markDirty();
+  };
+
+  // ── Camera Proximity LOD (Level 2) ────────────────────────────────────────
+  // Called from animate loop (throttled). Loads real meshes near camera target.
+  A._updateClashLOD = function() {
+    if (!A._clashModeActive || !A._clashRtreeReady || !A.db) return;
+    var now = performance.now();
+    if (now - A._lastClashLodUpdate < A._clashLodUpdateFreq) return;
+    A._lastClashLodUpdate = now;
+
+    // Query frustum around controls.target (where camera is looking)
+    var target = A.controls.target;
+    // Convert Three.js target back to IFC coords for R-tree query
+    // ifc2three: x = ix - offset.x, y = iz - offset.z, z = -(iy - offset.y)
+    // Inverse: ix = x + offset.x, iy = -(z) + offset.y, iz = y + offset.z
+    var ix = target.x + A.modelOffset.x;
+    var iy = -target.z + A.modelOffset.y;
+    var iz = target.y + A.modelOffset.z;
+
+    // Proximity radius — scale with camera distance (closer = smaller query area)
+    var camDist = A.camera.position.distanceTo(target);
+    var radius = Math.max(camDist * 0.5, 2); // At least 2m, scales with distance
+    var maxRadius = 20; // Cap at 20m to avoid loading too many
+    if (radius > maxRadius) radius = maxRadius;
+
+    var sql = "SELECT id FROM elements_rtree WHERE " +
+      "maxX >= " + (ix - radius) + " AND minX <= " + (ix + radius) + " AND " +
+      "maxY >= " + (iy - radius) + " AND minY <= " + (iy + radius) + " AND " +
+      "maxZ >= " + (iz - radius) + " AND minZ <= " + (iz + radius);
+
+    var rtreeRows;
+    try { rtreeRows = A.dbQuery(sql); }
+    catch(e) { return; }
+
+    if (!rtreeRows.length) return;
+
+    // Limit to 50 nearest elements
+    var rowids = rtreeRows.slice(0, 50).map(function(r) { return r[0]; });
+
+    // Get GUIDs for these rowids
+    var ph = rowids.map(function() { return '?'; }).join(',');
+    var guidRows = A.dbQuery(
+      "SELECT guid, center_x, center_y, center_z, rotation_x, rotation_y, rotation_z " +
+      "FROM element_transforms WHERE rowid IN (" + ph + ")", rowids
+    );
+
+    // Determine which GUIDs are new (not already loaded)
+    var newGuids = [];
+    var currentSet = new Set();
+    for (var i = 0; i < guidRows.length; i++) {
+      currentSet.add(guidRows[i][0]);
+      if (!A._clashProxSet.has(guidRows[i][0])) newGuids.push(guidRows[i]);
+    }
+
+    // Remove meshes for GUIDs no longer in proximity
+    var toRemove = [];
+    A._clashProxMeshes = A._clashProxMeshes.filter(function(mesh) {
+      if (!currentSet.has(mesh.userData.guid)) {
+        A.scene.remove(mesh);
+        toRemove.push(mesh.userData.guid);
+        return false;
+      }
+      return true;
+    });
+    toRemove.forEach(function(g) { A._clashProxSet.delete(g); });
+
+    // Load real meshes for new GUIDs
+    if (!newGuids.length) return;
+    var guidsToLoad = newGuids.map(function(r) { return r[0]; });
+    var ph2 = guidsToLoad.map(function() { return '?'; }).join(',');
+    var hashRows = A.dbQuery(
+      "SELECT guid, geometry_hash FROM element_instances WHERE guid IN (" + ph2 + ")", guidsToLoad
+    );
+    var hashMap = {};
+    hashRows.forEach(function(r) { hashMap[r[0]] = r[1]; });
+
+    var loaded = 0;
+    for (var k = 0; k < newGuids.length; k++) {
+      var guid = newGuids[k][0];
+      var hash = hashMap[guid];
+      if (!hash) continue;
+      var geo = A.meshCache[hash];
+      if (!geo) continue; // Only use already-cached geometry (don't hit libDb in animate)
+
+      var pos = A.ifc2three(newGuids[k][1], newGuids[k][2], newGuids[k][3]);
+      var mat = new THREE.MeshPhongMaterial({
+        color: 0xaaaaaa, transparent: true, opacity: 0.6, flatShading: true
+      });
+      var mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(pos.x, pos.y, pos.z);
+      if (newGuids[k][4] || newGuids[k][5] || newGuids[k][6]) {
+        mesh.rotation.set(newGuids[k][4] || 0, newGuids[k][6] || 0, -(newGuids[k][5] || 0));
+      }
+      mesh.userData.guid = guid;
+      mesh.userData.isClashProx = true;
+      mesh.renderOrder = 10; // Above wireframes
+      A.scene.add(mesh);
+      A._clashProxMeshes.push(mesh);
+      A._clashProxSet.add(guid);
+      loaded++;
+    }
+
+    if (loaded > 0) {
+      console.log('§CLASH_LOD prox=' + A._clashProxSet.size + ' new=' + loaded + ' radius=' + radius.toFixed(1) + 'm');
+      if (A.markDirty) A.markDirty();
+    }
+  };
+
+  // ── Toggle (for UI button / keyboard shortcut) ─────────────────────────────
+  A.toggleClashMode = function() {
+    if (A._clashModeActive) A._exitClashMode();
+    else A._enterClashMode();
   };
 }
