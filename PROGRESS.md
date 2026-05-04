@@ -21,16 +21,22 @@
 ## Active Work — Browser BIM OOTB
 
 **S245c DONE (2026-05-04): R-tree + Clash Performance & UX overhaul.**
-  - WASM swap: sql.js → rtree-sql.js@1.7.0 (CDN, SQLITE_ENABLE_RTREE). SW cache v248.
+  - WASM swap: sql.js → rtree-sql.js@1.7.0 (CDN, SQLITE_ENABLE_RTREE). SW cache v249.
   - R-tree built async (5k batches, ~1.2s non-blocking). For S245d single-element lookups.
   - R-tree self-join O(N²) — not viable for pair-finding. All queries stay bbox arithmetic.
-  - Matrix bg check: discipline envelope overlap (one GROUP BY, instant, accurate green/orange).
-  - Cell click: LIMIT 30 without ORDER BY (instant, no N² sort timeout).
-  - Clash viz: clipped actual mesh (red+blue) at overlap zone. Camera zooms to overlap size.
+  - Matrix bg check: discipline envelope overlap (one GROUP BY, instant, accurate).
+  - Cell click: LIMIT 30 storey-scoped (auto-picks top 5 storeys, avoids full-building N²).
+  - Clash viz: clipped actual mesh (red+blue) at overlap zone. Camera targets overlap centre.
+  - Overlap clipping padded to 0.3m min visibility. Row highlight on selected clash.
   - Matrix persists on cell click. Measure dots disabled while panels open.
-  - Info card X close fixed (draggable respects class-based close buttons).
-  - Status toggle: right-click + long-press + double-click. No auto-dismiss on canvas.
-  - **Next:** S245d smart grouping, heatmap, clearance (R-tree single-element queries).
+  - Info card X close fixed. No auto-dismiss on canvas click.
+  - Status: 🟡RVW 🟢SLV ⚪ACC with live counts. Right-click/long-press/double-click toggle.
+  - clash_rules.json: 6→12 rules (added ELEC/FP/ACMV pairs, removed dead HVAC/PLUMB).
+  - Right-click empty space = whole-building info card (all storeys, all disciplines).
+  - HTML report: matrix snapshot, stat cards, 6 Chart.js charts (severity, status, disc pair,
+    class pair, discipline risk radar, top offenders), matrix summary table, editable action sheet.
+  - CSV export from HTML report (includes editable fields). Sorted by severity, capped at 100.
+  - **Next:** S245d — see `prompts/S245c_rtree_clash.md` §S245d. Key: query heat problem.
 
 **S245b DONE (2026-05-04): Clash Detection + Measure UX overhaul.**
   - Measure: tap-same-dot for area (replaces double-click), DB-backed info card, adaptive status text.

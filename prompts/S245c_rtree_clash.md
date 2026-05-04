@@ -115,6 +115,43 @@ What we already beat them on:
 | Smart grouping | Manual | Auto | Basic | **R-tree ready** |
 | Heatmap | No | No | No | **R-tree ready** |
 
+## S245d Resume — Critical Context
+
+### The Query Heat Problem
+Terminal has 48,428 elements × 7 disciplines. The fundamental clash query is a cross-join
+(`element_transforms a JOIN element_transforms b ON a.guid < b.guid`) with bbox overlap check.
+This is O(N²) per discipline pair on full building — hangs the main thread.
+
+**What works (keep):**
+- Storey-scoped queries: each storey has 200-4000 elements → cross-join is fast
+- Discipline envelope overlap: one GROUP BY, instant, accurate for green/orange matrix
+- LIMIT 30 without ORDER BY: short-circuits at first 30 matches
+- Auto-pick top 5 storeys: `_queryClashesPair` finds storeys with both disciplines
+
+**What hangs (avoid):**
+- Full-building cross-join without storey filter (48k × 48k)
+- ORDER BY overlap_m DESC on cross-join (forces full scan before LIMIT)
+- Exhaustive loops: `while(true) { batch = query(offset); offset += 30; }`
+- R-tree self-join (`rtree a JOIN rtree b`) — worse than bbox, tested and proven O(N²)
+
+**What R-tree CAN do (S245d features):**
+- Single-element lookups: "find all elements within 1m of THIS element" — constant bounds
+- Smart grouping, heatmap, clearance detection — all constant-bounds queries
+
+### Current State (v43, measure.js?v=27)
+- 12 clash rules in clash_rules.json (ELEC/FP/ACMV pairs added)
+- Right-click empty space = whole-building info card
+- HTML report: 6 charts (severity, status, disc pair, class pair, radar, top offenders)
+- Matrix snapshot in HTML report (top-right). Editable action sheet. CSV export.
+- Status: 🟡RVW 🟢SLV ⚪ACC. Row highlight. Sticky header.
+- SW v249, rtree-sql.js@1.7.0
+
+### S245d TODO
+1. HTML report click → viewer scene sync (`window.opener.postMessage`)
+2. Trend tracking (localStorage clash counts per date)
+3. Resolution progress chart in HTML report
+4. Storey heatmap bar chart (clash density per storey — needs storey-scoped counts)
+
 ## Reference
 - [rtree-sql.js](https://www.npmjs.com/package/rtree-sql.js) — pre-built with SQLITE_ENABLE_RTREE
 - [SQLite R-tree docs](https://sqlite.org/rtree.html) — constant-bounds queries only
