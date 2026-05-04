@@ -194,6 +194,15 @@ function setupMeasure(A) {
     var w = A._clashWhereParts(rules);
     A._pendingClashStoreys = [];
     A._pendingClashArgs = null;
+
+    // ── R-tree accelerated clash query (S245e) ──
+    // Instead of O(n²) cross-join, iterate elements of discA and use R-tree
+    // to find overlapping elements of discB. O(n log n) total.
+    if (A._clashRtreeReady) {
+      return A._queryClashesPairRtree(storey, rules, discA, discB, offset, w);
+    }
+
+    // Fallback: original cross-join (only if R-tree not ready)
     // No storey → auto-pick storeys with both disciplines (two GROUP BY, no cross-join)
     if (!storey) {
       var storeysA = {};
@@ -207,7 +216,6 @@ function setupMeasure(A) {
         console.log('§CLASH_QUERY ' + discA + ' vs ' + discB + ' no shared storeys → 0');
         return [];
       }
-      // Query FIRST storey only — store rest for progressive loading
       var firstStorey = both[0][0];
       A._pendingClashStoreys = both.slice(1).map(function(b) { return b[0]; });
       A._pendingClashArgs = { rules: rules, discA: discA, discB: discB, w: w };
@@ -224,10 +232,9 @@ function setupMeasure(A) {
         " WHERE " + stClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin +
         " LIMIT " + A._CLASH_PAGE_SIZE;
       var allRows = A.dbQuery(sql);
-      console.log('§CLASH_QUERY ' + discA + ' vs ' + discB + ' storey=' + firstStorey + ' got=' + allRows.length + ' pending=' + A._pendingClashStoreys.length);
+      console.log('§CLASH_QUERY fallback ' + discA + ' vs ' + discB + ' storey=' + firstStorey + ' got=' + allRows.length);
       return allRows;
     }
-    // Specific storey — direct query, no N² risk
     var storeyClause = "ma.storey = '" + storey.replace(/'/g, "''") + "' AND mb.storey = ma.storey";
     var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
       " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
@@ -241,8 +248,98 @@ function setupMeasure(A) {
       " WHERE " + storeyClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin +
       " LIMIT " + A._CLASH_PAGE_SIZE + " OFFSET " + (offset || 0);
     var rows = A.dbQuery(sql);
-    console.log('§CLASH_QUERY ' + discA + ' vs ' + discB + ' offset=' + (offset || 0) + ' got=' + rows.length);
+    console.log('§CLASH_QUERY fallback ' + discA + ' vs ' + discB + ' offset=' + (offset || 0) + ' got=' + rows.length);
     return rows;
+  };
+
+  // ── R-tree accelerated clash pair query ──────────────────────────────────
+  // For each element of discA, query R-tree for overlapping elements of discB.
+  // O(n * log N) instead of O(n²). Stops at PAGE_SIZE results.
+  A._queryClashesPairRtree = function(storey, rules, discA, discB, offset, w) {
+    var t0 = performance.now();
+    var ignoreSet = {};
+    rules.clash_rules.forEach(function(r) {
+      (r.ignore_classes || []).forEach(function(c) { ignoreSet[c] = 1; });
+    });
+
+    // Get all elements of discA (with bbox)
+    var storeyFilter = storey ? " AND m.storey = '" + storey.replace(/'/g, "''") + "'" : "";
+    var ignoreFilter = Object.keys(ignoreSet).length ?
+      " AND m.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" : "";
+    var rowsA = A.dbQuery(
+      "SELECT t.rowid, m.guid, m.ifc_class, m.element_name, m.storey," +
+      " t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z" +
+      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
+      " WHERE m.discipline = '" + discA + "'" + storeyFilter + ignoreFilter +
+      " AND t.bbox_x IS NOT NULL"
+    );
+
+    var results = [];
+    var seen = {};  // "guidA|guidB" dedup
+    var skip = offset || 0;
+    var limit = A._CLASH_PAGE_SIZE;
+
+    for (var i = 0; i < rowsA.length && results.length < limit; i++) {
+      var ra = rowsA[i];
+      // ra: [rowid, guid, ifc_class, element_name, storey, cx, cy, cz, bx, by, bz]
+      var minX = ra[5] - ra[8]/2, maxX = ra[5] + ra[8]/2;
+      var minY = ra[6] - ra[9]/2, maxY = ra[6] + ra[9]/2;
+      var minZ = ra[7] - ra[10]/2, maxZ = ra[7] + ra[10]/2;
+
+      // R-tree query: elements overlapping this bbox
+      var rtSql = "SELECT r.id FROM elements_rtree r WHERE " +
+        "r.maxX >= " + minX + " AND r.minX <= " + maxX + " AND " +
+        "r.maxY >= " + minY + " AND r.minY <= " + maxY + " AND " +
+        "r.maxZ >= " + minZ + " AND r.minZ <= " + maxZ;
+      var candidates;
+      try { candidates = A.dbQuery(rtSql); } catch(e) { continue; }
+
+      if (!candidates.length) continue;
+
+      // Filter candidates: must be discB, not same guid, not ignored class
+      var candRowids = candidates.map(function(c) { return c[0]; });
+      var ph = candRowids.map(function() { return '?'; }).join(',');
+      var bRows = A.dbQuery(
+        "SELECT t.rowid, m.guid, m.ifc_class, m.element_name," +
+        " t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z" +
+        " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
+        " WHERE t.rowid IN (" + ph + ") AND m.discipline = '" + discB + "'" +
+        (storey ? " AND m.storey = '" + storey.replace(/'/g, "''") + "'" : "") +
+        ignoreFilter, candRowids
+      );
+
+      for (var j = 0; j < bRows.length && results.length < limit; j++) {
+        var rb = bRows[j];
+        if (rb[1] === ra[1]) continue; // same element
+        var key = ra[1] < rb[1] ? ra[1] + '|' + rb[1] : rb[1] + '|' + ra[1];
+        if (seen[key]) continue;
+        seen[key] = 1;
+
+        // Verify actual bbox overlap (R-tree is approximate — inflated by tolerance)
+        var bMinX = rb[4] - rb[7]/2, bMaxX = rb[4] + rb[7]/2;
+        var bMinY = rb[5] - rb[8]/2, bMaxY = rb[5] + rb[8]/2;
+        var bMinZ = rb[6] - rb[9]/2, bMaxZ = rb[6] + rb[9]/2;
+        if (maxX <= bMinX || minX >= bMaxX) continue;
+        if (maxY <= bMinY || minY >= bMaxY) continue;
+        if (maxZ <= bMinZ || minZ >= bMaxZ) continue;
+
+        // Compute overlap depth
+        var ox = Math.min(maxX, bMaxX) - Math.max(minX, bMinX);
+        var oy = Math.min(maxY, bMaxY) - Math.max(minY, bMinY);
+        var oz = Math.min(maxZ, bMaxZ) - Math.max(minZ, bMinZ);
+        var overlap = Math.min(ox, oy, oz);
+
+        if (skip > 0) { skip--; continue; }
+
+        results.push([ra[1], rb[1], ra[2], rb[2], discA, discB, ra[3], rb[3], overlap]);
+      }
+    }
+
+    var ms = (performance.now() - t0).toFixed(0);
+    console.log('§CLASH_QUERY_RTREE ' + discA + ' vs ' + discB +
+      (storey ? ' storey=' + storey : ' whole') +
+      ' elementsA=' + rowsA.length + ' results=' + results.length + ' time=' + ms + 'ms');
+    return results;
   };
 
   // Progressive async loader — queries remaining storeys one at a time with UI yields
