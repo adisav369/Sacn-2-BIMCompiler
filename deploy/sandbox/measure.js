@@ -1,7 +1,7 @@
 // measure.js — Measurement tool (two-point distance, area, clash detection)
 // S245c v3 — R-tree built async (for future S245d), queries use bbox arithmetic
 function setupMeasure(A) {
-  console.log('§MEASURE_VERSION S245c-v15');
+  console.log('§MEASURE_VERSION S245c-v21');
 
   // ── Draggable panels ──
   A._makeDraggable = function(el) {
@@ -171,7 +171,38 @@ function setupMeasure(A) {
   A._queryClashesPair = function(storey, rules, discA, discB, offset) {
     if (!A._hasBbox) return [];
     var w = A._clashWhereParts(rules);
-    var storeyClause = storey ? "ma.storey = '" + storey.replace(/'/g, "''") + "' AND mb.storey = ma.storey" : '1=1';
+    // No storey → auto-pick storeys with both disciplines to avoid full-building N² join
+    var effectiveStorey = storey;
+    if (!effectiveStorey) {
+      var sRows = A.dbQuery(
+        "SELECT a.storey FROM elements_meta a JOIN elements_meta b ON a.storey = b.storey" +
+        " WHERE a.discipline IN ('" + discA + "','" + discB + "') AND b.discipline IN ('" + discA + "','" + discB + "')" +
+        " AND a.discipline != b.discipline GROUP BY a.storey ORDER BY COUNT(*) DESC LIMIT 5"
+      );
+      if (sRows.length) {
+        // Query per-storey, merge results up to page size
+        var allRows = [];
+        for (var si = 0; si < sRows.length && allRows.length < A._CLASH_PAGE_SIZE; si++) {
+          var st = sRows[si][0];
+          var stClause = "ma.storey = '" + st.replace(/'/g, "''") + "' AND mb.storey = ma.storey";
+          var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
+            " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
+          var sql = "SELECT a.guid, b.guid, ma.ifc_class, mb.ifc_class, ma.discipline, mb.discipline," +
+            " ma.element_name, mb.element_name," +
+            " MIN((a.center_x + a.bbox_x/2) - (b.center_x - b.bbox_x/2)," +
+            "     (a.center_y + a.bbox_y/2) - (b.center_y - b.bbox_y/2)," +
+            "     (a.center_z + a.bbox_z/2) - (b.center_z - b.bbox_z/2)) AS overlap_m" +
+            " FROM element_transforms a JOIN elements_meta ma ON a.guid = ma.guid" +
+            " JOIN element_transforms b ON a.guid < b.guid JOIN elements_meta mb ON b.guid = mb.guid" +
+            " WHERE " + stClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin +
+            " LIMIT " + (A._CLASH_PAGE_SIZE - allRows.length);
+          allRows = allRows.concat(A.dbQuery(sql));
+        }
+        console.log('§CLASH_QUERY ' + discA + ' vs ' + discB + ' storeys=' + sRows.length + ' got=' + allRows.length);
+        return allRows;
+      }
+    }
+    var storeyClause = effectiveStorey ? "ma.storey = '" + effectiveStorey.replace(/'/g, "''") + "' AND mb.storey = ma.storey" : '1=1';
     var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
       " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
     var sql = "SELECT a.guid, b.guid, ma.ifc_class, mb.ifc_class, ma.discipline, mb.discipline," +
@@ -228,9 +259,9 @@ function setupMeasure(A) {
   A._clashStatusCycle = ['', 'Reviewed', 'Resolved', 'Accepted'];
   A._clashStatusStyles = {
     '':         { icon: '',  style: '' },
-    'Reviewed': { icon: '\u{1F535}', style: 'opacity:0.7' },
-    'Resolved': { icon: '\u2705', style: 'text-decoration:line-through;opacity:0.6' },
-    'Accepted': { icon: '\u2796', style: 'font-style:italic;color:#888' }
+    'Reviewed': { icon: '\u{1F7E1}', style: 'opacity:0.7' },
+    'Resolved': { icon: '\u{1F7E2}', style: 'text-decoration:line-through;opacity:0.6' },
+    'Accepted': { icon: '\u26AA', style: 'font-style:italic;color:#888' }
   };
 
   // Load/save statuses from localStorage
@@ -311,7 +342,18 @@ function setupMeasure(A) {
           '<span style="font-size:9px;color:#aaa">100</span>' +
           '<span id="clash-tol-val" style="font-size:10px;color:#fff;min-width:30px">' + tolMm + 'mm</span></div>');
       }
+      // Count statuses
+      var sCounts = { '': 0, 'Reviewed': 0, 'Resolved': 0, 'Accepted': 0 };
+      for (var si = 0; si < clashes.length; si++) {
+        var sk = A._clashPairKey(clashes[si][0], clashes[si][1]);
+        sCounts[A._clashStatuses[sk] || '']++;
+      }
       lines.push('<span style="color:#fff;font-size:11px">' + clashes.length + '</span>');
+      // Status legend with counts
+      lines.push('<div style="display:flex;gap:10px;margin:2px 0;font-size:13px;color:#aaa">' +
+        '<span>\u{1F7E1}' + sCounts['Reviewed'] + '</span>' +
+        '<span>\u{1F7E2}' + sCounts['Resolved'] + '</span>' +
+        '<span>\u26AA' + sCounts['Accepted'] + '</span></div>');
       lines.push('<hr style="border:none;border-top:1px solid #555;margin:3px 0">');
 
       for (var i = 0; i < shown; i++) {
@@ -458,6 +500,12 @@ function setupMeasure(A) {
           var tXmin = Math.min(oMinT.x, oMaxT.x), tXmax = Math.max(oMinT.x, oMaxT.x);
           var tYmin = Math.min(oMinT.y, oMaxT.y), tYmax = Math.max(oMinT.y, oMaxT.y);
           var tZmin = Math.min(oMinT.z, oMaxT.z), tZmax = Math.max(oMinT.z, oMaxT.z);
+          // Pad thin overlaps to minimum 0.3m so they're always visible
+          var PAD = 0.3;
+          var cx = (tXmin+tXmax)/2, cy = (tYmin+tYmax)/2, cz = (tZmin+tZmax)/2;
+          if (tXmax-tXmin < PAD) { tXmin = cx-PAD/2; tXmax = cx+PAD/2; }
+          if (tYmax-tYmin < PAD) { tYmin = cy-PAD/2; tYmax = cy+PAD/2; }
+          if (tZmax-tZmin < PAD) { tZmin = cz-PAD/2; tZmax = cz+PAD/2; }
 
           // 6 clipping planes defining the overlap box
           var clipPlanes = [
@@ -777,24 +825,19 @@ function setupMeasure(A) {
     A._makeDraggable(matDiv);
     A.measureLabels.push({ div: matDiv, mid: null });
 
-    // Export from matrix — queries all pairs and exports
+    // Export from matrix — first 30 per pair (capped to avoid timeout on large buildings)
+    var MAX_EXPORT_PER_PAIR = 30;
     matDiv.querySelector('#clash-matrix-export').addEventListener('click', function(ev) {
       ev.stopPropagation();
-      // Collect all clashes from all pairs
       var allClashes = [];
       var storey = A._currentClashStorey;
       rules.clash_rules.forEach(function(r) {
-        var offset = 0;
-        while (true) {
-          var batch = A._queryClashesPair(storey, rules, r.source.discipline, r.target.discipline, offset);
-          if (!batch.length) break;
-          allClashes = allClashes.concat(batch);
-          offset += A._CLASH_PAGE_SIZE;
-          if (batch.length < A._CLASH_PAGE_SIZE) break;
-        }
+        var batch = A._queryClashesPair(storey, rules, r.source.discipline, r.target.discipline, 0);
+        if (batch.length) allClashes = allClashes.concat(batch);
       });
       A._currentClashes = allClashes;
       A._exportClashReport();
+      console.log('§CLASH_EXPORT_MATRIX pairs=' + rules.clash_rules.length + ' total=' + allClashes.length);
     });
 
     // Close X for matrix
@@ -1270,32 +1313,35 @@ function setupMeasure(A) {
         return;
       }
 
-      // Async: check one rule at a time, LIMIT 1, stop at first hit
-      var ri = 0;
+      // Quick check: discipline envelope overlap (instant, no cross-join)
       var w = A._clashWhereParts(rules);
-      var storeyClause = storey ? "ma.storey = '" + storey.replace(/'/g, "''") + "' AND mb.storey = ma.storey" : '1=1';
-
-      function _checkNext() {
-        if (ri >= activeRules.length) {
-          _updateSphere('#4caf50'); // all checked, no clashes
-          return;
-        }
-        if (!cardDiv.parentNode) return; // card was closed
-        var r = activeRules[ri++];
-        var pairCond = "(ma.discipline = '" + r.source.discipline + "' AND mb.discipline = '" + r.target.discipline + "')" +
-          " OR (ma.discipline = '" + r.target.discipline + "' AND mb.discipline = '" + r.source.discipline + "')";
-        var sql = "SELECT 1 FROM element_transforms a JOIN elements_meta ma ON a.guid = ma.guid" +
-          " JOIN element_transforms b ON a.guid < b.guid JOIN elements_meta mb ON b.guid = mb.guid" +
-          " WHERE " + storeyClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin + " LIMIT 1";
-        var rows = A.dbQuery(sql);
-        if (rows.length > 0) {
-          _updateSphere('#ff8c00'); // found clash — orange, stop checking
-          console.log('§CLASH_QUICK hit ' + r.source.discipline + ' vs ' + r.target.discipline);
-          return;
-        }
-        setTimeout(_checkNext, 10); // yield then check next pair
+      var envSql = "SELECT m.discipline," +
+        " MIN(t.center_x - t.bbox_x/2), MAX(t.center_x + t.bbox_x/2)," +
+        " MIN(t.center_y - t.bbox_y/2), MAX(t.center_y + t.bbox_y/2)," +
+        " MIN(t.center_z - t.bbox_z/2), MAX(t.center_z + t.bbox_z/2)" +
+        " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
+        " WHERE m.discipline IS NOT NULL" +
+        (storey ? " AND m.storey = '" + storey.replace(/'/g, "''") + "'" : "") +
+        " GROUP BY m.discipline";
+      var envRows = A.dbQuery(envSql);
+      var envMap = {};
+      envRows.forEach(function(r) {
+        envMap[r[0]] = { minX: r[1], maxX: r[2], minY: r[3], maxY: r[4], minZ: r[5], maxZ: r[6] };
+      });
+      var anyOverlap = activeRules.some(function(r) {
+        var eA = envMap[r.source.discipline], eB = envMap[r.target.discipline];
+        if (!eA || !eB) return false;
+        return eA.minX < eB.maxX && eA.maxX > eB.minX &&
+               eA.minY < eB.maxY && eA.maxY > eB.minY &&
+               eA.minZ < eB.maxZ && eA.maxZ > eB.minZ;
+      });
+      if (anyOverlap) {
+        _updateSphere('#ff8c00');
+        console.log('§CLASH_QUICK envelope overlap found');
+      } else {
+        _updateSphere('#4caf50');
+        console.log('§CLASH_QUICK no envelope overlap');
       }
-      setTimeout(_checkNext, 50);
     });
 
     return true;
