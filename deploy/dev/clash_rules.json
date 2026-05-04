@@ -1,0 +1,56 @@
+{
+  "clash_rules": [
+    {
+      "name": "ARC vs STR",
+      "source": { "discipline": "ARC" },
+      "target": { "discipline": "STR" },
+      "tolerance_m": 0.025,
+      "ignore_classes": ["IfcOpeningElement", "IfcSpace", "IfcBuildingElementProxy"]
+    },
+    {
+      "name": "MEP vs STR",
+      "source": { "discipline": "MEP" },
+      "target": { "discipline": "STR" },
+      "tolerance_m": 0.050,
+      "ignore_classes": ["IfcOpeningElement", "IfcSpace"]
+    },
+    {
+      "name": "MEP vs ARC",
+      "source": { "discipline": "MEP" },
+      "target": { "discipline": "ARC" },
+      "tolerance_m": 0.025,
+      "ignore_classes": ["IfcOpeningElement", "IfcSpace", "IfcCovering"]
+    },
+    {
+      "name": "ELEC vs PLUMB",
+      "source": { "discipline": "ELEC" },
+      "target": { "discipline": "PLUMB" },
+      "tolerance_m": 0.050,
+      "ignore_classes": ["IfcOpeningElement"]
+    },
+    {
+      "name": "HVAC vs STR",
+      "source": { "discipline": "HVAC" },
+      "target": { "discipline": "STR" },
+      "tolerance_m": 0.075,
+      "ignore_classes": ["IfcOpeningElement"]
+    },
+    {
+      "name": "HVAC vs ARC",
+      "source": { "discipline": "HVAC" },
+      "target": { "discipline": "ARC" },
+      "tolerance_m": 0.050,
+      "ignore_classes": ["IfcOpeningElement", "IfcCovering"]
+    }
+  ],
+  "severity": {
+    "hard":      { "min_overlap_m": 0.050, "color": "#ff0000", "label": "Hard clash" },
+    "soft":      { "min_overlap_m": 0.010, "color": "#ff8c00", "label": "Soft clash" },
+    "clearance": { "max_gap_m":     0.100, "color": "#ffff00", "label": "Clearance violation" }
+  },
+  "display": {
+    "max_visible": 20,
+    "dim_opacity": 0.1,
+    "pulse_speed_s": 1.5
+  }
+}
