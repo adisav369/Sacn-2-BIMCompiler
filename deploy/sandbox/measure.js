@@ -1,7 +1,7 @@
 // measure.js — Measurement tool (two-point distance, area, clash detection)
 // S245c v3 — R-tree built async (for future S245d), queries use bbox arithmetic
 function setupMeasure(A) {
-  console.log('§MEASURE_VERSION S245c-v28');
+  console.log('§MEASURE_VERSION S245c-v40');
 
   // ── Draggable panels ──
   A._makeDraggable = function(el) {
@@ -217,6 +217,35 @@ function setupMeasure(A) {
     var rows = A.dbQuery(sql);
     console.log('§CLASH_QUERY ' + discA + ' vs ' + discB + ' offset=' + (offset || 0) + ' got=' + rows.length);
     return rows;
+  };
+
+  // Query ALL clashes for a pair — storey-by-storey to avoid N² timeout. For export only.
+  A._queryClashesPairAll = function(rules, discA, discB) {
+    if (!A._hasBbox) return [];
+    var w = A._clashWhereParts(rules);
+    var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
+      " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
+    // Get all storeys with both disciplines
+    var sRows = A.dbQuery(
+      "SELECT a.storey FROM elements_meta a JOIN elements_meta b ON a.storey = b.storey" +
+      " WHERE a.discipline IN ('" + discA + "','" + discB + "') AND b.discipline IN ('" + discA + "','" + discB + "')" +
+      " AND a.discipline != b.discipline GROUP BY a.storey"
+    );
+    var allRows = [];
+    sRows.forEach(function(sr) {
+      var stClause = "ma.storey = '" + sr[0].replace(/'/g, "''") + "' AND mb.storey = ma.storey";
+      var sql = "SELECT a.guid, b.guid, ma.ifc_class, mb.ifc_class, ma.discipline, mb.discipline," +
+        " ma.element_name, mb.element_name," +
+        " MIN((a.center_x + a.bbox_x/2) - (b.center_x - b.bbox_x/2)," +
+        "     (a.center_y + a.bbox_y/2) - (b.center_y - b.bbox_y/2)," +
+        "     (a.center_z + a.bbox_z/2) - (b.center_z - b.bbox_z/2)) AS overlap_m" +
+        " FROM element_transforms a JOIN elements_meta ma ON a.guid = ma.guid" +
+        " JOIN element_transforms b ON a.guid < b.guid JOIN elements_meta mb ON b.guid = mb.guid" +
+        " WHERE " + stClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin;
+      allRows = allRows.concat(A.dbQuery(sql));
+    });
+    console.log('§CLASH_QUERY_ALL ' + discA + ' vs ' + discB + ' storeys=' + sRows.length + ' total=' + allRows.length);
+    return allRows;
   };
 
   // Fast check: any clashes at all? (for info card sphere — just yes/no)
@@ -465,6 +494,9 @@ function setupMeasure(A) {
       var idx = parseInt(target.getAttribute('data-clash-idx'));
       var c = clashes[idx];
       if (!c) return;
+      // Highlight selected row
+      listDiv.querySelectorAll('[data-clash-idx]').forEach(function(el) { el.style.background = ''; });
+      target.style.background = 'rgba(79,195,247,0.25)';
       // Fly to pair — get positions from DB (works for merged/instanced meshes too)
       var posRows = A.dbQuery(
         "SELECT t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z FROM element_transforms t WHERE t.guid IN (?, ?)",
@@ -604,52 +636,184 @@ function setupMeasure(A) {
     console.log('§CLASH_STATUS guidA=' + c[0] + ' guidB=' + c[1] + ' status=' + (next || 'none'));
   };
 
-  // Export clash report as Excel — dumps _currentClashes only (no queries)
+  // Export clash report — opens HTML analytics tab from loaded clashes
+  A._currentClashPairLabel = '';
   A._exportClashReport = function() {
-    var clashes = A._currentClashes;
-    if (!clashes || !clashes.length) { A.status.textContent = 'No clashes to export'; return; }
-    if (typeof XLSX === 'undefined') { alert('Excel library not loaded'); return; }
     var rules = A._currentClashRules;
+    if (!rules) return;
     var building = A.activeBuilding || 'Building';
     var date = new Date().toISOString().slice(0, 10);
+    var storey = A._currentClashStorey || 'All';
+    var pairLabel = A._currentClashPairLabel || 'All Pairs';
 
-    var sc = { '': 0, 'Reviewed': 0, 'Resolved': 0, 'Accepted': 0 };
-    clashes.forEach(function(c) {
+    // Use loaded clashes — no heavy queries
+    var allClashes = A._currentClashes || [];
+    if (!allClashes.length) { A.status.textContent = 'No clashes to report — click a matrix cell first'; return; }
+    var totalCount = allClashes.length;
+    var MAX_REPORT = 100;
+    // Sort by overlap desc (worst first) before capping
+    allClashes.sort(function(a, b) {
+      var oa = (typeof a[8] === 'number') ? a[8] : 0;
+      var ob = (typeof b[8] === 'number') ? b[8] : 0;
+      return ob - oa;
+    });
+    if (allClashes.length > MAX_REPORT) allClashes = allClashes.slice(0, MAX_REPORT);
+
+    // Snapshot matrix HTML from viewer (if open)
+    var matrixSnapshot = '';
+    if (A._clashMatrixDiv) {
+      matrixSnapshot = A._clashMatrixDiv.innerHTML;
+    }
+
+    // Build pair summary from loaded clashes
+    var pairSummary = [];
+    var pairMap = {};
+    allClashes.forEach(function(c) {
+      var key = (c[4] || '?') + '|' + (c[5] || '?');
+      if (!pairMap[key]) pairMap[key] = { src: c[4] || '?', tgt: c[5] || '?', count: 0, reviewed: 0, resolved: 0, accepted: 0 };
+      pairMap[key].count++;
       var st = A._clashStatuses[A._clashPairKey(c[0], c[1])] || '';
-      sc[st]++;
+      if (st === 'Reviewed') pairMap[key].reviewed++;
+      else if (st === 'Resolved') pairMap[key].resolved++;
+      else if (st === 'Accepted') pairMap[key].accepted++;
+    });
+    Object.keys(pairMap).forEach(function(k) {
+      var p = pairMap[k];
+      var rule = rules.clash_rules.find(function(r) {
+        return (r.source.discipline === p.src && r.target.discipline === p.tgt) ||
+               (r.source.discipline === p.tgt && r.target.discipline === p.src);
+      });
+      p.tolMm = rule ? (rule.tolerance_m * 1000).toFixed(0) : '25';
+      pairSummary.push(p);
     });
 
+    // Prepare data
+    var sc = { 'New': 0, 'Reviewed': 0, 'Resolved': 0, 'Accepted': 0 };
+    var sevCounts = {};
+    var classCounts = {};
+    var discPairCounts = {};
     var rows = [];
-    rows.push(['CLASH COORDINATION REPORT']);
-    rows.push(['Project:', building, 'Date:', date, 'Storey:', A._currentClashStorey || 'All']);
-    rows.push(['Clashes:', clashes.length, 'Reviewed:', sc['Reviewed'], 'Resolved:', sc['Resolved'], 'Accepted:', sc['Accepted']]);
-    rows.push([]);
-    rows.push(['#', 'Element A', 'Class A', 'Disc A', 'Element B', 'Class B', 'Disc B',
-      'Overlap (m)', 'Severity', 'Status', 'Assigned To', 'Action', 'Target Date']);
-    clashes.forEach(function(c, i) {
+    allClashes.forEach(function(c, i) {
       var overlap = (typeof c[8] === 'number') ? c[8] : 0;
       var sev = A._clashSeverity(overlap, rules);
       var status = A._clashStatuses[A._clashPairKey(c[0], c[1])] || '';
-      rows.push([
-        i + 1,
-        (c[6] || '').replace('Ifc', ''), (c[2] || '').replace('Ifc', ''), c[4] || '',
-        (c[7] || '').replace('Ifc', ''), (c[3] || '').replace('Ifc', ''), c[5] || '',
-        parseFloat(overlap.toFixed(3)), sev.label, status, '', '', ''
-      ]);
+      sc[status || 'New']++;
+      sevCounts[sev.label] = (sevCounts[sev.label] || 0) + 1;
+      var clsA = (c[2] || '?').replace('Ifc', '').replace('StandardCase', '');
+      var clsB = (c[3] || '?').replace('Ifc', '').replace('StandardCase', '');
+      var classPair = clsA + ' vs ' + clsB;
+      classCounts[classPair] = (classCounts[classPair] || 0) + 1;
+      var discPair = (c[4] || '?') + ' vs ' + (c[5] || '?');
+      discPairCounts[discPair] = (discPairCounts[discPair] || 0) + 1;
+      rows.push({
+        n: i + 1, elA: (c[6] || '').replace('Ifc', ''), clsA: clsA, discA: c[4] || '',
+        elB: (c[7] || '').replace('Ifc', ''), clsB: clsB, discB: c[5] || '',
+        overlap: overlap.toFixed(3), sev: sev.label, status: status || 'New',
+        prio: sev.level === 'hard' ? 'HIGH' : sev.level === 'soft' ? 'MEDIUM' : 'LOW'
+      });
     });
 
-    var ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [
-      { wch: 4 }, { wch: 18 }, { wch: 12 }, { wch: 6 },
-      { wch: 18 }, { wch: 12 }, { wch: 6 },
-      { wch: 9 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 20 }, { wch: 12 }
-    ];
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Clash Report');
-    var filename = building.replace(/\s+/g, '_') + '_clashes_' + date + '.xlsx';
-    XLSX.writeFile(wb, filename);
-    console.log('§CLASH_EXPORT xlsx clashes=' + clashes.length);
-    A.status.textContent = 'Exported ' + filename;
+    var classPairs = Object.keys(classCounts).sort(function(a, b) { return classCounts[b] - classCounts[a]; });
+    var discPairs = Object.keys(discPairCounts).sort(function(a, b) { return discPairCounts[b] - discPairCounts[a]; });
+
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+      '<title>Clash Report — ' + pairLabel + ' — ' + building + '</title>' +
+      '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>' +
+      '<style>' +
+      '* { margin:0; padding:0; box-sizing:border-box; }' +
+      'body { background:#1a1a2e; color:#e0e0e0; font-family:Segoe UI,sans-serif; padding:20px; }' +
+      'h1 { color:#4fc3f7; font-size:20px; margin-bottom:4px; }' +
+      '.subtitle { color:#888; font-size:12px; margin-bottom:16px; }' +
+      '.charts { display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:1200px; }' +
+      '.chart-box { background:rgba(255,255,255,0.05); border-radius:8px; padding:16px; border:1px solid rgba(255,255,255,0.08); }' +
+      '.chart-box h2 { color:#4fc3f7; font-size:14px; margin-bottom:8px; }' +
+      '.chart-box.full { grid-column:1/-1; }' +
+      'canvas { max-width:100%; }' +
+      'table { border-collapse:collapse; width:100%; font-size:11px; margin-top:8px; }' +
+      'th { background:rgba(79,195,247,0.15); color:#4fc3f7; text-align:left; padding:4px 8px; position:sticky; top:0; }' +
+      'td { padding:3px 8px; border-bottom:1px solid rgba(255,255,255,0.05); }' +
+      'tr:hover td { background:rgba(255,255,255,0.05); }' +
+      'td[contenteditable] { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); min-width:60px; }' +
+      'td[contenteditable]:focus { outline:1px solid #4fc3f7; background:rgba(79,195,247,0.1); }' +
+      '.toolbar { position:fixed; top:16px; right:16px; z-index:10; display:flex; gap:8px; }' +
+      '.toolbar button { background:#333; color:#fff; border:1px solid #555; border-radius:4px; padding:6px 12px; cursor:pointer; font-size:12px; }' +
+      '.toolbar button:hover { background:#4fc3f7; color:#000; }' +
+      '.stat-cards { display:flex; gap:12px; margin-bottom:16px; }' +
+      '.stat-card { background:rgba(255,255,255,0.05); border-radius:8px; padding:12px 20px; text-align:center; border:1px solid rgba(255,255,255,0.08); flex:1; }' +
+      '.stat-card .num { font-size:28px; font-weight:bold; }' +
+      '.stat-card .lbl { font-size:11px; color:#888; }' +
+      '</style></head><body>' +
+      '<div class="toolbar">' +
+      '<button onclick="downloadCSV()">CSV</button>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:16px">' +
+      '<div><h1>Clash Coordination Report — ' + pairLabel + '</h1>' +
+      '<div class="subtitle">' + building + ' &mdash; ' + date + ' &mdash; Storey: ' + storey +
+      (totalCount > MAX_REPORT ? ' &mdash; Showing ' + MAX_REPORT + ' of ' + totalCount + ' clashes' : '') + '</div></div>' +
+      (matrixSnapshot ? '<div class="chart-box" style="flex-shrink:0;margin:0">' + matrixSnapshot + '</div>' : '') +
+      '</div>' +
+      '<div class="stat-cards">' +
+      '<div class="stat-card" title="Total bbox overlaps detected across all discipline pairs (top 30 per pair)"><div class="num" style="color:#ff4444">' + allClashes.length + '</div><div class="lbl">Total Clashes</div></div>' +
+      '<div class="stat-card" title="Acknowledged clashes under investigation"><div class="num" style="color:#FFD700">' + sc['Reviewed'] + '</div><div class="lbl">Reviewed</div></div>' +
+      '<div class="stat-card" title="Clashes fixed in the model — ready for re-check"><div class="num" style="color:#4caf50">' + sc['Resolved'] + '</div><div class="lbl">Resolved</div></div>' +
+      '<div class="stat-card" title="Risk accepted — no design change needed (e.g. intentional penetration)"><div class="num" style="color:#888">' + sc['Accepted'] + '</div><div class="lbl">Accepted</div></div>' +
+      '</div>' +
+      '<div class="charts">' +
+      '<div class="chart-box"><h2>By Severity</h2><canvas id="sevChart"></canvas></div>' +
+      '<div class="chart-box"><h2>By Status</h2><canvas id="statusChart"></canvas></div>' +
+      '<div class="chart-box"><h2>By Discipline Pair</h2><canvas id="discChart"></canvas></div>' +
+      '<div class="chart-box"><h2>By Element Class</h2><canvas id="classChart"></canvas></div>' +
+      '<div class="chart-box full"><h2>Discipline Matrix Summary</h2>' +
+      '<table><thead><tr><th>Source</th><th>Target</th><th>Tolerance</th><th>Clashes</th><th>Reviewed</th><th>Resolved</th><th>Accepted</th><th>Open</th></tr></thead><tbody>';
+
+    pairSummary.forEach(function(ps) {
+      var open = ps.count - ps.reviewed - ps.resolved - ps.accepted;
+      var openColor = open > 0 ? '#ff4444' : '#4caf50';
+      var pct = ps.count > 0 ? ((ps.resolved + ps.accepted) * 100 / ps.count).toFixed(0) : 100;
+      var tip = ps.src + ' vs ' + ps.tgt + ': ' + ps.count + ' clashes found (tolerance ' + ps.tolMm + 'mm). ' +
+        pct + '% resolved/accepted. ' + open + ' still need attention.';
+      html += '<tr title="' + tip + '"><td>' + ps.src + '</td><td>' + ps.tgt + '</td><td>' + ps.tolMm + 'mm</td>' +
+        '<td>' + ps.count + '</td><td>' + ps.reviewed + '</td><td>' + ps.resolved + '</td><td>' + ps.accepted + '</td>' +
+        '<td style="color:' + openColor + ';font-weight:bold">' + open + '</td></tr>';
+    });
+
+    html += '</tbody></table></div>' +
+      '<div class="chart-box full"><h2>Clash Details — Coordination Action Sheet</h2>' +
+      '<table id="detail-table"><thead><tr><th>#</th><th>Element A</th><th>Class</th><th>Disc</th><th>Element B</th><th>Class</th><th>Disc</th><th>Overlap</th><th>Severity</th><th>Status</th><th>Assigned To</th><th>Priority</th><th>Action Required</th><th>Target Date</th></tr></thead><tbody>';
+
+    rows.forEach(function(r) {
+      var rowColor = r.sev === 'Hard clash' ? '#ff4444' : r.sev === 'Soft clash' ? '#ff8c00' : '#4fc3f7';
+      var tip = r.elA + ' (' + r.clsA + ', ' + r.discA + ') overlaps ' + r.elB + ' (' + r.clsB + ', ' + r.discB + ') by ' + r.overlap + 'm. ' + r.sev + ' — ' + r.prio + ' priority.';
+      html += '<tr data-n="' + r.n + '" title="' + tip.replace(/"/g, '&quot;') + '"><td>' + r.n + '</td><td>' + r.elA + '</td><td>' + r.clsA + '</td><td>' + r.discA +
+        '</td><td>' + r.elB + '</td><td>' + r.clsB + '</td><td>' + r.discB +
+        '</td><td style="color:' + rowColor + '">' + r.overlap + 'm</td><td>' + r.sev + '</td><td>' + r.status +
+        '</td><td contenteditable="true"></td><td>' + r.prio + '</td><td contenteditable="true"></td><td contenteditable="true"></td></tr>';
+    });
+
+    html += '</tbody></table></div></div>' +
+      '<script>' +
+      'var sevData=' + JSON.stringify(sevCounts) + ';' +
+      'var statusData=' + JSON.stringify(sc) + ';' +
+      'var classPairs=' + JSON.stringify(classPairs) + ';' +
+      'var classCounts=' + JSON.stringify(classCounts) + ';' +
+      'var discPairs=' + JSON.stringify(discPairs) + ';' +
+      'var discPairCounts=' + JSON.stringify(discPairCounts) + ';' +
+      'new Chart(document.getElementById("sevChart"),{type:"doughnut",data:{labels:Object.keys(sevData),datasets:[{data:Object.values(sevData),backgroundColor:["#ff4444","#ff8c00","#4fc3f7"]}]},options:{plugins:{legend:{labels:{color:"#ccc"}}}}});' +
+      'new Chart(document.getElementById("statusChart"),{type:"doughnut",data:{labels:Object.keys(statusData),datasets:[{data:Object.values(statusData),backgroundColor:["#ff4444","#FFD700","#4caf50","#888"]}]},options:{plugins:{legend:{labels:{color:"#ccc"}}}}});' +
+      'new Chart(document.getElementById("discChart"),{type:"bar",data:{labels:discPairs,datasets:[{label:"Clashes",data:discPairs.map(function(p){return discPairCounts[p]}),backgroundColor:"#ff8c00"}]},options:{indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#ccc"}},y:{ticks:{color:"#ccc"}}}}});' +
+      'new Chart(document.getElementById("classChart"),{type:"bar",data:{labels:classPairs,datasets:[{label:"Clashes",data:classPairs.map(function(p){return classCounts[p]}),backgroundColor:"#4fc3f7"}]},options:{indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#ccc"}},y:{ticks:{color:"#ccc"}}}}});' +
+      'function downloadCSV(){' +
+      'var lines=["#,Element A,Class A,Disc A,Element B,Class B,Disc B,Overlap (m),Severity,Status,Assigned To,Priority,Action Required,Target Date"];' +
+      'document.querySelectorAll("#detail-table tbody tr").forEach(function(tr){var cells=tr.querySelectorAll("td");if(cells.length>=14){' +
+      'lines.push(Array.from(cells).map(function(td){return (td.textContent||"").replace(/,/g," ")}).join(","))}});' +
+      'var b=new Blob([lines.join("\\n")],{type:"text/csv"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="' + building.replace(/\s+/g, '_') + '_clashes_' + date + '.csv";a.click();}' +
+      '<\/script></body></html>';
+
+    var w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    console.log('§CLASH_EXPORT html clashes=' + clashes.length);
+    A.status.textContent = 'Clash report opened in new tab';
   };
 
   // ── Clash Matrix — visual grid of discipline pair rules ──
@@ -746,7 +910,7 @@ function setupMeasure(A) {
     matDiv.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center">' +
       '<b style="color:#4fc3f7;font-size:12px">Clash Matrix</b>' +
       '<span style="display:flex;gap:8px;align-items:center">' +
-      '<span id="clash-matrix-export" style="cursor:pointer;font-size:16px" title="Export">📊</span>' +
+      '<span id="clash-matrix-export" style="cursor:pointer;font-size:16px" title="Clash Report">📋</span>' +
       '<span id="clash-matrix-close" style="cursor:pointer;color:#aaa;font-size:16px;line-height:1">\u2715</span></span></div>' +
       '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.15);margin:4px 0">' + html;
     document.body.appendChild(matDiv);
@@ -761,19 +925,10 @@ function setupMeasure(A) {
     A._makeDraggable(matDiv);
     A.measureLabels.push({ div: matDiv, mid: null });
 
-    // Export from matrix — first 30 per pair (capped to avoid timeout on large buildings)
-    var MAX_EXPORT_PER_PAIR = 30;
+    // Export from matrix — uses whatever clashes are already loaded
     matDiv.querySelector('#clash-matrix-export').addEventListener('click', function(ev) {
       ev.stopPropagation();
-      var allClashes = [];
-      var storey = A._currentClashStorey;
-      rules.clash_rules.forEach(function(r) {
-        var batch = A._queryClashesPair(storey, rules, r.source.discipline, r.target.discipline, 0);
-        if (batch.length) allClashes = allClashes.concat(batch);
-      });
-      A._currentClashes = allClashes;
       A._exportClashReport();
-      console.log('§CLASH_EXPORT_MATRIX pairs=' + rules.clash_rules.length + ' total=' + allClashes.length);
     });
 
     // Close X for matrix
@@ -818,6 +973,7 @@ function setupMeasure(A) {
       }
       A._clashPairOffset = offset + A._CLASH_PAGE_SIZE;
       A._currentClashes = clashes;
+      A._currentClashPairLabel = discA + ' vs ' + discB;
       var rect = matDiv.getBoundingClientRect();
       A._revealClashes(clashes, rules, rect.left, rect.top, discA + ' vs ' + discB, rule);
       console.log('§CLASH_MATRIX_FILTER ' + discA + ' vs ' + discB + ' page=' + (offset / A._CLASH_PAGE_SIZE + 1));
