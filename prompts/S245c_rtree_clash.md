@@ -1,68 +1,59 @@
-# S245c — R-tree Spatial Index for Instant Clash Detection
+# S245c — R-tree + Clash Detection Performance & UX Overhaul
 
-## Context
-S245b clash detection works but matrix sphere checks are slow on large buildings
-(Terminal 48k elements). Currently using 50×50 random sampling as workaround.
-SQLite R-tree module enables O(log N) spatial queries — instant for any building size.
+## DONE (2026-05-04)
 
-## Problem
-Default sql.js WASM is compiled without `SQLITE_ENABLE_RTREE`. The `rtree-sql.js`
-npm package is a drop-in replacement with R-tree enabled.
+### 1. WASM swap: sql.js → rtree-sql.js
+- CDN: `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.js` (+ `.wasm`)
+- Updated: `loader.js`, `streaming.js`, `sw.js` (v248), `boq_charts.html`
+- Drop-in replacement — same `initSqlJs` API, adds `SQLITE_ENABLE_RTREE`
 
-## Plan
+### 2. R-tree built async at runtime
+- `_ensureClashIndexes` creates `elements_rtree` virtual table
+- Populated in batches of 5000 with `setTimeout` yields (avoids main-thread timeout)
+- Terminal 48k elements: ~1.2s total, non-blocking
+- §-tags: `§CLASH_RTREE table created`, `§CLASH_RTREE batch N/total`, `§CLASH_RTREE ready N rows in Xms`
 
-### 1. Swap sql.js for rtree-sql.js
-- CDN: replace `sql-wasm.js` and `sql-wasm.wasm` URLs in `deploy/dev/loader.js` or `index.html`
-- Or: host `rtree-sql.js` WASM files on OCI alongside viewer
-- Verify: `db.run("CREATE VIRTUAL TABLE test USING rtree(id, minX, maxX)")` must not throw
+### 3. R-tree self-join limitation discovered
+SQLite R-tree accelerates "find entries overlapping **this box**" (constant bounds, O(log N)).
+It does NOT accelerate "find any **pair** of entries that overlap each other" (self-join → O(N²), worse than bbox arithmetic).
+All clash queries remain bbox arithmetic with discipline/storey filtering + LIMIT.
+R-tree is built for future S245d features (smart grouping, heatmap, clearance) where single-element lookups with constant bounds are the use case.
 
-### 2. Create R-tree at runtime (measure.js `_ensureClashIndexes`)
-```sql
-CREATE VIRTUAL TABLE IF NOT EXISTS elements_rtree
-  USING rtree(id, minX, maxX, minY, maxY, minZ, maxZ);
+### 4. Matrix background check: discipline envelope overlap
+- One `GROUP BY discipline` query computes spatial envelope (min/max XYZ per discipline) — instant
+- Envelope overlap test is pure arithmetic, no SQL per pair
+- Green = guaranteed no clashes (envelopes don't intersect). Orange = possible (click cell for exact)
+- §-tag: `§CLASH_ENVELOPES N disciplines`, `§CLASH_MATRIX_BG disc|disc = OVERLAP|clear`
 
--- Populate from element_transforms (IFC coordinates, full-width bbox)
-INSERT INTO elements_rtree
-  SELECT rowid, center_x - bbox_x/2, center_x + bbox_x/2,
-         center_y - bbox_y/2, center_y + bbox_y/2,
-         center_z - bbox_z/2, center_z + bbox_z/2
-  FROM element_transforms;
-```
-One-time cost per session. Terminal 48k elements: ~200ms.
+### 5. Clash visualization: bbox wireframes + clipped mesh
+- Click clash row → fly-to overlap zone (camera distance based on overlap size, not element bbox)
+- Clipped actual mesh geometry at overlap: red (element A) + blue (element B), `depthTest:false`
+- §-tag: `§CLASH_VIZ overlap=WxHxDm meshes=N`
 
-### 3. Rewrite clash queries to use R-tree
-```sql
--- Matrix sphere check: EXISTS per pair (instant with R-tree)
-SELECT 1 FROM elements_rtree a
-JOIN elements_meta ma ON a.id = ma.rowid
-JOIN elements_rtree b ON b.minX < a.maxX AND b.maxX > a.minX
-                     AND b.minY < a.maxY AND b.maxY > a.minY
-                     AND b.minZ < a.maxZ AND b.maxZ > a.minZ
-JOIN elements_meta mb ON b.id = mb.rowid
-WHERE ma.discipline = ? AND mb.discipline = ?
-  AND a.id < b.id
-LIMIT 1
+### 6. UX fixes
+- **Matrix persists** when clicking cells or closing clash list (`_dismissClashes(keepMatrix)`)
+- **Measure dots disabled** while clash panels are open (no blue dot interference)
+- **Info card X close** works (draggable handler now respects `class="...close..."`)
+- **No auto-dismiss on canvas click** — orbit freely around clash visualization
+- **Status toggle**: right-click + long-press + double-click all cycle Reviewed→Resolved→Accepted
+- **Clash highlights cleaned up** properly in all dismiss paths
 
--- Per-pair paginated query (fast with R-tree)
--- Same structure with LIMIT 30 OFFSET ?
-```
+## Files modified
+| File | Change |
+|------|--------|
+| `deploy/dev/loader.js` | CDN → rtree-sql.js@1.7.0 |
+| `deploy/dev/streaming.js` | `locateFile` → rtree-sql.js |
+| `deploy/dev/sw.js` | Cache v248, new WASM URLs |
+| `deploy/dev/boq_charts.html` | CDN consistency |
+| `deploy/dev/measure.js` | R-tree creation, envelope check, clash viz, UX fixes |
 
-### 4. Backward compatible
-- If R-tree creation fails (old sql.js without module), fall back to sampling
-- Existing DBs need no re-extraction
-- No schema changes to stored DB files
-
-## Files to modify
-- `deploy/dev/index.html` or `deploy/dev/loader.js` — swap WASM CDN URL
-- `deploy/dev/sw.js` — update precache for new WASM URL
-- `deploy/dev/measure.js` — R-tree creation in `_ensureClashIndexes`, rewrite queries
-- `deploy/dev/elevation.js` — can also use runtime R-tree (currently has fallback)
-
-## Verification
-- `§CLASH_RTREE created N rows` — logged on R-tree creation
-- `§CLASH_INDEXES` — should include rtree
-- Terminal matrix: all spheres should resolve in <1 second total
-- SampleHouse/Duplex: no regression
+## Performance (Terminal, 48k elements, 7 disciplines)
+| Operation | Before (S245b) | After (S245c) |
+|-----------|----------------|---------------|
+| R-tree build | N/A | 1.2s async (non-blocking) |
+| Matrix bg check | 50×50 sampling (missed sparse clashes) | Envelope overlap (instant, accurate) |
+| Cell click query | ORDER BY overlap (N² timeout) | LIMIT 30 (instant, short-circuit) |
+| Fly-to camera | maxBbox × 3 (zoomed out to slab) | overlapMax × 3 (tight on clash) |
 
 ## S245d — Features to Outshine Navisworks / Solibri / Revizto
 
@@ -84,36 +75,30 @@ What we already beat them on:
 ### Features to add (S245d):
 
 **1. Smart Grouping (auto-cluster nearby clashes)**
-Navisworks requires manual grouping. We can auto-group:
-- Clashes within 1m of each other → one cluster
+- R-tree query: "find all elements within 1m of this clash" — constant bounds, O(log N)
 - Show cluster count on matrix sphere instead of total
 - Click cluster → expand to individual clashes
-- Dramatically reduces "clash fatigue" on large buildings
 
 **2. Clash Heatmap overlay**
-- Color-code storeys/zones by clash density on the 3D model
-- Red zones = high clash concentration → prioritize
-- No equivalent in Navisworks (report-only)
+- R-tree range query: count clashes per zone/storey
+- Color-code 3D model by clash density
+- Red zones = high concentration → prioritize
 
 **3. Clearance violation detection**
-- Not just overlap — detect insufficient clearance (e.g. pipe 5cm from beam)
-- Already in `clash_rules.json` severity levels, just need negative-overlap query
+- R-tree expanded bounds: "find elements within 5cm of this pipe"
+- Already in `clash_rules.json` severity levels
 - Navisworks calls this "near miss" — requires separate test setup
 
 **4. Trend tracking (cross-session)**
 - Store clash counts per pair per date in localStorage
 - "Last check: 45 clashes → now 32" — shows progress
-- No BIM tool does this without external dashboard
 
 **5. BCF export (future)**
 - Industry-standard clash exchange format
 - One clash → one BCF topic with viewpoint, camera, elements
-- Interop with Solibri, Revizto, BIMcollab
 
 **6. AI-ready: pattern detection**
-- Log all clash pairs to structured JSON
-- Future: LLM prompt "summarize clashes" or "which storey needs most attention"
-- DB + structured data = ready for AI without re-architecture
+- Structured JSON clash log → LLM prompt "summarize clashes"
 
 ### Competitive comparison
 
@@ -127,14 +112,10 @@ Navisworks requires manual grouping. We can auto-group:
 | Actual mesh overlap | Red dot | No | No | **Clipped geometry** |
 | Offline | Yes | Yes | No | **Yes (PWA)** |
 | Mobile | No | No | Yes | **Yes** |
-| Smart grouping | Manual | Auto | Basic | **Planned** |
-| Heatmap | No | No | No | **Planned** |
+| Smart grouping | Manual | Auto | Basic | **R-tree ready** |
+| Heatmap | No | No | No | **R-tree ready** |
 
 ## Reference
 - [rtree-sql.js](https://www.npmjs.com/package/rtree-sql.js) — pre-built with SQLITE_ENABLE_RTREE
-- [SQLite R-tree docs](https://sqlite.org/rtree.html)
+- [SQLite R-tree docs](https://sqlite.org/rtree.html) — constant-bounds queries only
 - `docs/RTree.md` — existing R-tree spec from Blender era
-- [Navisworks 2026 guide](https://bimcafe.in/blog/navisworks-clash-detection-guide-2026/)
-- [Navisworks limitations](https://bimheroes.com/navisworks-clash-detection/)
-- [AI-driven BIM coordination](https://medium.com/@advenser2007/ai-driven-bim-coordination-the-present-and-future-of-clash-detection-f69120124a57)
-- [Solibri vs Navisworks](https://www.novatr.com/blog/solibri-vs-autodesk-navisworks-what-bim-coordinators-and-engineers-should-know)

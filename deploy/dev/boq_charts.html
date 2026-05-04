@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <title>BIM OOTB — 4D/5D Analytics</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#4fc3f7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; padding: 20px; }
@@ -46,7 +50,7 @@
 <div class="charts" id="charts"></div>
 <div id="status"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
@@ -555,7 +559,7 @@ async function fetchDbBuffer(url) {
 
 async function init() {
   const SQL = await initSqlJs({
-    locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
+    locateFile: f => `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/${f}`
   });
   document.getElementById('info').textContent = `Loading ${DB_URL}...`;
   const buf = await fetchDbBuffer(DB_URL);
@@ -1812,6 +1816,13 @@ function toggleTheme() {
   window.addEventListener('trl-ready',go,{once:true});
   setTimeout(go,3000); // fallback: init anyway if locale fetch fails
 })();
+</script>
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js?v=243')
+    .then(function(r){console.log('§SW_REG scope='+r.scope)})
+    .catch(function(e){console.warn('§SW_REG_FAIL',e)});
+}
 </script>
 </body>
 </html>

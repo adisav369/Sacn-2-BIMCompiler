@@ -50,12 +50,17 @@ function setupStreaming(A) {
     } else {
       A.streamQueue = [];
       A.streamIdx = 0;
+      // Detect bbox columns (old DBs may not have them)
+      if (A._hasBbox === undefined) {
+        try { A.db.exec("SELECT bbox_x FROM element_transforms LIMIT 1"); A._hasBbox = true; }
+        catch(e) { A._hasBbox = false; }
+      }
+      const bboxCols = A._hasBbox ? ', t.bbox_x, t.bbox_y, t.bbox_z' : '';
       const rows = A.dbQuery(`
         SELECT m.guid, i.geometry_hash, m.material_rgba, m.discipline,
                t.center_x, t.center_y, t.center_z,
                t.rotation_x, t.rotation_y, t.rotation_z,
-               m.storey, m.ifc_class,
-               t.bbox_x, t.bbox_y, t.bbox_z
+               m.storey, m.ifc_class${bboxCols}
         FROM elements_meta m
         JOIN element_instances i ON m.guid = i.guid
         JOIN element_transforms t ON t.guid = m.guid
@@ -459,7 +464,7 @@ function setupStreaming(A) {
   A.init = async function() {
     A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_wasm||'Loading WebAssembly...');
     const SQL = await initSqlJs({
-      locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
+      locateFile: f => `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/${f}`
     });
 
     if (A.CITY_URL) {
@@ -523,13 +528,14 @@ function setupStreaming(A) {
 
     // Camera setup — use element bbox extents for envelope, buildingCentres for position
     // (new extractions have re-centred center_x/y/z near 0, so MIN/MAX of those is unreliable)
-    const bboxQ = A.dbQuery(`
-      SELECT MAX(bbox_x), MAX(bbox_y), MAX(bbox_z),
-             MIN(center_x), MAX(center_x),
-             MIN(center_y), MAX(center_y),
-             MIN(center_z), MAX(center_z)
-      FROM element_transforms
-    `);
+    const bboxQ = A.dbQuery(A._hasBbox
+      ? `SELECT MAX(bbox_x), MAX(bbox_y), MAX(bbox_z),
+              MIN(center_x), MAX(center_x), MIN(center_y), MAX(center_y), MIN(center_z), MAX(center_z)
+         FROM element_transforms`
+      : `SELECT NULL, NULL, NULL,
+              MIN(center_x), MAX(center_x), MIN(center_y), MAX(center_y), MIN(center_z), MAX(center_z)
+         FROM element_transforms`
+    );
     let envW = 500, envD = 500, envH = 100;
     if (bboxQ.length > 0 && bboxQ[0][3] != null) {
       const [, , , xMin, xMax, yMin, yMax, zMin, zMax] = bboxQ[0];

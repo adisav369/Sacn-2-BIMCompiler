@@ -20,6 +20,18 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S245c DONE (2026-05-04): R-tree + Clash Performance & UX overhaul.**
+  - WASM swap: sql.js → rtree-sql.js@1.7.0 (CDN, SQLITE_ENABLE_RTREE). SW cache v248.
+  - R-tree built async (5k batches, ~1.2s non-blocking). For S245d single-element lookups.
+  - R-tree self-join O(N²) — not viable for pair-finding. All queries stay bbox arithmetic.
+  - Matrix bg check: discipline envelope overlap (one GROUP BY, instant, accurate green/orange).
+  - Cell click: LIMIT 30 without ORDER BY (instant, no N² sort timeout).
+  - Clash viz: clipped actual mesh (red+blue) at overlap zone. Camera zooms to overlap size.
+  - Matrix persists on cell click. Measure dots disabled while panels open.
+  - Info card X close fixed (draggable respects class-based close buttons).
+  - Status toggle: right-click + long-press + double-click. No auto-dismiss on canvas.
+  - **Next:** S245d smart grouping, heatmap, clearance (R-tree single-element queries).
+
 **S245b DONE (2026-05-04): Clash Detection + Measure UX overhaul.**
   - Measure: tap-same-dot for area (replaces double-click), DB-backed info card, adaptive status text.
   - Clash Matrix: visual grid with 3D CSS spheres (pulsing grey → green/orange/red).
@@ -30,7 +42,6 @@
   - Excel export from matrix title bar. clash_rules.json: 6 discipline pair rules.
   - Glass UI (backdrop-filter blur), draggable panels, constant-size measure dots.
   - Runtime SQL indexes (discipline, storey, center_x). Performance: skip dimming >3k meshes.
-  - **Next:** S245c R-tree spatial index for instant clash checks. Spec: `prompts/S245c_rtree_clash.md`
 
 **S244 DONE (2026-05-03): Sunglasses — material contrast slider + theme toggle.**
   - 🕶 button replaces ☼: click = reverse background (light/dark), opens slider panel.

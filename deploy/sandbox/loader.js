@@ -9,7 +9,7 @@ const _timerIv = setInterval(() => {
 const LIBS = [
   { name: 'Three.js',       url: 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js' },
   { name: 'OrbitControls',   url: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js' },
-  { name: 'SQLite (WASM)',   url: 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js' },
+  { name: 'SQLite (WASM+RTree)', url: 'https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.js' },
   { name: 'SheetJS (Excel)', url: 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js' },
 ];
 
