@@ -1,7 +1,7 @@
 // measure.js — Measurement tool (two-point distance, area, clash detection)
 // S245c v3 — R-tree built async (for future S245d), queries use bbox arithmetic
 function setupMeasure(A) {
-  console.log('§MEASURE_VERSION S245c-v43');
+  console.log('§MEASURE_VERSION S245c-v45');
 
   // ── Draggable panels ──
   A._makeDraggable = function(el) {
@@ -171,14 +171,17 @@ function setupMeasure(A) {
   A._queryClashesPair = function(storey, rules, discA, discB, offset) {
     if (!A._hasBbox) return [];
     var w = A._clashWhereParts(rules);
-    // No storey → auto-pick storeys with both disciplines to avoid full-building N² join
+    // No storey → auto-pick storeys with both disciplines (two GROUP BY, no cross-join)
     var effectiveStorey = storey;
     if (!effectiveStorey) {
-      var sRows = A.dbQuery(
-        "SELECT a.storey FROM elements_meta a JOIN elements_meta b ON a.storey = b.storey" +
-        " WHERE a.discipline IN ('" + discA + "','" + discB + "') AND b.discipline IN ('" + discA + "','" + discB + "')" +
-        " AND a.discipline != b.discipline GROUP BY a.storey ORDER BY COUNT(*) DESC LIMIT 5"
-      );
+      var storeysA = {};
+      A.dbQuery("SELECT storey, COUNT(*) FROM elements_meta WHERE discipline = '" + discA + "' AND storey IS NOT NULL GROUP BY storey")
+        .forEach(function(r) { storeysA[r[0]] = r[1]; });
+      var both = [];
+      A.dbQuery("SELECT storey, COUNT(*) FROM elements_meta WHERE discipline = '" + discB + "' AND storey IS NOT NULL GROUP BY storey")
+        .forEach(function(r) { if (storeysA[r[0]]) both.push([r[0], storeysA[r[0]] + r[1]]); });
+      both.sort(function(a, b) { return b[1] - a[1]; });
+      var sRows = both.slice(0, 5).map(function(b) { return [b[0]]; });
       if (sRows.length) {
         // Query per-storey, merge results up to page size
         var allRows = [];
@@ -225,12 +228,13 @@ function setupMeasure(A) {
     var w = A._clashWhereParts(rules);
     var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
       " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
-    // Get all storeys with both disciplines
-    var sRows = A.dbQuery(
-      "SELECT a.storey FROM elements_meta a JOIN elements_meta b ON a.storey = b.storey" +
-      " WHERE a.discipline IN ('" + discA + "','" + discB + "') AND b.discipline IN ('" + discA + "','" + discB + "')" +
-      " AND a.discipline != b.discipline GROUP BY a.storey"
-    );
+    // Get all storeys with both disciplines (two GROUP BY, no cross-join)
+    var stA = {};
+    A.dbQuery("SELECT storey FROM elements_meta WHERE discipline = '" + discA + "' AND storey IS NOT NULL GROUP BY storey")
+      .forEach(function(r) { stA[r[0]] = 1; });
+    var sRows = [];
+    A.dbQuery("SELECT storey FROM elements_meta WHERE discipline = '" + discB + "' AND storey IS NOT NULL GROUP BY storey")
+      .forEach(function(r) { if (stA[r[0]]) sRows.push([r[0]]); });
     var allRows = [];
     sRows.forEach(function(sr) {
       var stClause = "ma.storey = '" + sr[0].replace(/'/g, "''") + "' AND mb.storey = ma.storey";
@@ -1366,12 +1370,7 @@ function setupMeasure(A) {
       if (storey === undefined || storey === null) storey = 'Unknown';
       storeyLabel = storey || 'All Elements';
     }
-    // Collect meshes for bounding box, and query DB for accurate class counts
-    var roomMeshes = [];
-    A.scene.traverse(function(obj) {
-      if (!obj.isMesh || obj === A.ground || !obj.visible) return;
-      if (!storey || obj.userData.storey === storey) roomMeshes.push(obj);
-    });
+    // Class counts from DB (instant GROUP BY)
     var counts = {};
     var dbRows;
     if (storey) {
@@ -1386,16 +1385,36 @@ function setupMeasure(A) {
     }
     var totalFromDb = 0;
     dbRows.forEach(function(r) { counts[r[0] || 'Other'] = r[1]; totalFromDb += r[1]; });
-    // Bounding box of storey
-    var roomBox = new THREE.Box3();
-    roomMeshes.forEach(function(m) { roomBox.expandByObject(m); });
+
+    // Bounding box — DB envelope for whole building (instant), scene traverse for storey
     var size = new THREE.Vector3();
-    roomBox.getSize(size);
-    var volume = size.x * size.y * size.z;
-    var floorArea = size.x * size.z;
-    // Draw wireframe bounding box (orange)
-    var boxHelper = new THREE.Box3Helper(roomBox, 0xff8c00);
-    A.measureGroup.add(boxHelper);
+    var volume = 0, floorArea = 0;
+    if (storey) {
+      var roomMeshes = [];
+      A.scene.traverse(function(obj) {
+        if (obj.isMesh && obj !== A.ground && obj.visible && obj.userData.storey === storey) roomMeshes.push(obj);
+      });
+      var roomBox = new THREE.Box3();
+      roomMeshes.forEach(function(m) { roomBox.expandByObject(m); });
+      roomBox.getSize(size);
+      volume = size.x * size.y * size.z;
+      floorArea = size.x * size.z;
+      var boxHelper = new THREE.Box3Helper(roomBox, 0xff8c00);
+      A.measureGroup.add(boxHelper);
+    } else {
+      // Whole building — use DB envelope, no scene traverse
+      var envRow = A.dbQuery(
+        "SELECT MIN(center_x - bbox_x/2), MAX(center_x + bbox_x/2)," +
+        " MIN(center_y - bbox_y/2), MAX(center_y + bbox_y/2)," +
+        " MIN(center_z - bbox_z/2), MAX(center_z + bbox_z/2) FROM element_transforms"
+      );
+      if (envRow.length) {
+        var r = envRow[0];
+        size.set(r[1] - r[0], r[5] - r[4], r[3] - r[2]); // ifc: x=x, y→z, z→y in three
+        volume = (r[1]-r[0]) * (r[3]-r[2]) * (r[5]-r[4]);
+        floorArea = (r[1]-r[0]) * (r[3]-r[2]);
+      }
+    }
     // Build info card
     var lines = [];
     lines.push('<div style="display:flex;justify-content:space-between;align-items:center">' +
