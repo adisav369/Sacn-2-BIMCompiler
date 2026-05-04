@@ -22,25 +22,67 @@
       "ignore_classes": ["IfcOpeningElement", "IfcSpace", "IfcCovering"]
     },
     {
-      "name": "ELEC vs PLUMB",
+      "name": "ELEC vs ARC",
       "source": { "discipline": "ELEC" },
-      "target": { "discipline": "PLUMB" },
+      "target": { "discipline": "ARC" },
+      "tolerance_m": 0.025,
+      "ignore_classes": ["IfcOpeningElement", "IfcSpace"]
+    },
+    {
+      "name": "ELEC vs STR",
+      "source": { "discipline": "ELEC" },
+      "target": { "discipline": "STR" },
       "tolerance_m": 0.050,
       "ignore_classes": ["IfcOpeningElement"]
     },
     {
-      "name": "HVAC vs STR",
-      "source": { "discipline": "HVAC" },
+      "name": "ELEC vs MEP",
+      "source": { "discipline": "ELEC" },
+      "target": { "discipline": "MEP" },
+      "tolerance_m": 0.025,
+      "ignore_classes": ["IfcOpeningElement"]
+    },
+    {
+      "name": "FP vs ARC",
+      "source": { "discipline": "FP" },
+      "target": { "discipline": "ARC" },
+      "tolerance_m": 0.025,
+      "ignore_classes": ["IfcOpeningElement", "IfcSpace"]
+    },
+    {
+      "name": "FP vs STR",
+      "source": { "discipline": "FP" },
+      "target": { "discipline": "STR" },
+      "tolerance_m": 0.050,
+      "ignore_classes": ["IfcOpeningElement"]
+    },
+    {
+      "name": "FP vs MEP",
+      "source": { "discipline": "FP" },
+      "target": { "discipline": "MEP" },
+      "tolerance_m": 0.050,
+      "ignore_classes": ["IfcOpeningElement"]
+    },
+    {
+      "name": "ACMV vs ARC",
+      "source": { "discipline": "ACMV" },
+      "target": { "discipline": "ARC" },
+      "tolerance_m": 0.050,
+      "ignore_classes": ["IfcOpeningElement", "IfcCovering"]
+    },
+    {
+      "name": "ACMV vs STR",
+      "source": { "discipline": "ACMV" },
       "target": { "discipline": "STR" },
       "tolerance_m": 0.075,
       "ignore_classes": ["IfcOpeningElement"]
     },
     {
-      "name": "HVAC vs ARC",
-      "source": { "discipline": "HVAC" },
-      "target": { "discipline": "ARC" },
+      "name": "ACMV vs MEP",
+      "source": { "discipline": "ACMV" },
+      "target": { "discipline": "MEP" },
       "tolerance_m": 0.050,
-      "ignore_classes": ["IfcOpeningElement", "IfcCovering"]
+      "ignore_classes": ["IfcOpeningElement"]
     }
   ],
   "severity": {

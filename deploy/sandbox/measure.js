@@ -1,7 +1,7 @@
 // measure.js — Measurement tool (two-point distance, area, clash detection)
 // S245c v3 — R-tree built async (for future S245d), queries use bbox arithmetic
 function setupMeasure(A) {
-  console.log('§MEASURE_VERSION S245c-v40');
+  console.log('§MEASURE_VERSION S245c-v43');
 
   // ── Draggable panels ──
   A._makeDraggable = function(el) {
@@ -692,6 +692,8 @@ function setupMeasure(A) {
     var sevCounts = {};
     var classCounts = {};
     var discPairCounts = {};
+    var discInvolvement = {}; // how many clashes each discipline is involved in
+    var elementFreq = {}; // which elements appear most often in clashes
     var rows = [];
     allClashes.forEach(function(c, i) {
       var overlap = (typeof c[8] === 'number') ? c[8] : 0;
@@ -705,6 +707,15 @@ function setupMeasure(A) {
       classCounts[classPair] = (classCounts[classPair] || 0) + 1;
       var discPair = (c[4] || '?') + ' vs ' + (c[5] || '?');
       discPairCounts[discPair] = (discPairCounts[discPair] || 0) + 1;
+      // Per-discipline involvement
+      var dA = c[4] || '?', dB = c[5] || '?';
+      discInvolvement[dA] = (discInvolvement[dA] || 0) + 1;
+      discInvolvement[dB] = (discInvolvement[dB] || 0) + 1;
+      // Top offender elements
+      var nameA = (c[6] || '').replace('Ifc', '') || c[0];
+      var nameB = (c[7] || '').replace('Ifc', '') || c[1];
+      elementFreq[nameA] = (elementFreq[nameA] || 0) + 1;
+      elementFreq[nameB] = (elementFreq[nameB] || 0) + 1;
       rows.push({
         n: i + 1, elA: (c[6] || '').replace('Ifc', ''), clsA: clsA, discA: c[4] || '',
         elB: (c[7] || '').replace('Ifc', ''), clsB: clsB, discB: c[5] || '',
@@ -715,6 +726,49 @@ function setupMeasure(A) {
 
     var classPairs = Object.keys(classCounts).sort(function(a, b) { return classCounts[b] - classCounts[a]; });
     var discPairs = Object.keys(discPairCounts).sort(function(a, b) { return discPairCounts[b] - discPairCounts[a]; });
+    // Radar: ALL disciplines — instant metrics, no clash cross-joins
+    // Axis 1: element count, Axis 2: envelope overlap count (how many other discs it overlaps with)
+    var radarDiscs = [];
+    var radarElements = [];
+    var radarOverlaps = [];
+    var radarRules = [];
+    var discElCounts = {};
+    var dcR = A.dbQuery("SELECT discipline, COUNT(*) FROM elements_meta WHERE discipline IS NOT NULL GROUP BY discipline");
+    dcR.forEach(function(r) { discElCounts[r[0]] = r[1]; });
+    // Compute envelopes for overlap count
+    var envSql2 = "SELECT m.discipline," +
+      " MIN(t.center_x - t.bbox_x/2), MAX(t.center_x + t.bbox_x/2)," +
+      " MIN(t.center_y - t.bbox_y/2), MAX(t.center_y + t.bbox_y/2)," +
+      " MIN(t.center_z - t.bbox_z/2), MAX(t.center_z + t.bbox_z/2)" +
+      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
+      " WHERE m.discipline IS NOT NULL GROUP BY m.discipline";
+    var envR = A.dbQuery(envSql2);
+    var envs = {};
+    envR.forEach(function(r) { envs[r[0]] = { minX:r[1], maxX:r[2], minY:r[3], maxY:r[4], minZ:r[5], maxZ:r[6] }; });
+    var allDiscs = Object.keys(discElCounts).sort();
+    allDiscs.forEach(function(d) {
+      radarDiscs.push(d);
+      radarElements.push(discElCounts[d] || 0);
+      // Count how many other disciplines this one overlaps with spatially
+      var overlapN = 0;
+      var eA = envs[d];
+      if (eA) allDiscs.forEach(function(d2) {
+        if (d2 === d) return;
+        var eB = envs[d2];
+        if (eB && eA.minX < eB.maxX && eA.maxX > eB.minX &&
+            eA.minY < eB.maxY && eA.maxY > eB.minY &&
+            eA.minZ < eB.maxZ && eA.maxZ > eB.minZ) overlapN++;
+      });
+      radarOverlaps.push(overlapN);
+      // Count clash rules involving this discipline
+      var ruleN = rules.clash_rules.filter(function(r) {
+        return r.source.discipline === d || r.target.discipline === d;
+      }).length;
+      radarRules.push(ruleN);
+    });
+    // Top offenders: elements in most clashes (top 10)
+    var topOffenders = Object.keys(elementFreq).sort(function(a, b) { return elementFreq[b] - elementFreq[a]; }).slice(0, 10);
+    var topOffenderCounts = topOffenders.map(function(e) { return elementFreq[e]; });
 
     var html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
       '<title>Clash Report — ' + pairLabel + ' — ' + building + '</title>' +
@@ -763,6 +817,8 @@ function setupMeasure(A) {
       '<div class="chart-box"><h2>By Status</h2><canvas id="statusChart"></canvas></div>' +
       '<div class="chart-box"><h2>By Discipline Pair</h2><canvas id="discChart"></canvas></div>' +
       '<div class="chart-box"><h2>By Element Class</h2><canvas id="classChart"></canvas></div>' +
+      '<div class="chart-box"><h2>Discipline Risk Profile</h2><canvas id="radarChart"></canvas></div>' +
+      '<div class="chart-box"><h2>Top Offenders — Fix These First</h2><canvas id="offenderChart"></canvas></div>' +
       '<div class="chart-box full"><h2>Discipline Matrix Summary</h2>' +
       '<table><thead><tr><th>Source</th><th>Target</th><th>Tolerance</th><th>Clashes</th><th>Reviewed</th><th>Resolved</th><th>Accepted</th><th>Open</th></tr></thead><tbody>';
 
@@ -802,6 +858,19 @@ function setupMeasure(A) {
       'new Chart(document.getElementById("statusChart"),{type:"doughnut",data:{labels:Object.keys(statusData),datasets:[{data:Object.values(statusData),backgroundColor:["#ff4444","#FFD700","#4caf50","#888"]}]},options:{plugins:{legend:{labels:{color:"#ccc"}}}}});' +
       'new Chart(document.getElementById("discChart"),{type:"bar",data:{labels:discPairs,datasets:[{label:"Clashes",data:discPairs.map(function(p){return discPairCounts[p]}),backgroundColor:"#ff8c00"}]},options:{indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#ccc"}},y:{ticks:{color:"#ccc"}}}}});' +
       'new Chart(document.getElementById("classChart"),{type:"bar",data:{labels:classPairs,datasets:[{label:"Clashes",data:classPairs.map(function(p){return classCounts[p]}),backgroundColor:"#4fc3f7"}]},options:{indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#ccc"}},y:{ticks:{color:"#ccc"}}}}});' +
+      'var radarDiscs=' + JSON.stringify(radarDiscs) + ';' +
+      'var radarOverlaps=' + JSON.stringify(radarOverlaps) + ';' +
+      'var radarRules=' + JSON.stringify(radarRules) + ';' +
+      'var radarElements=' + JSON.stringify(radarElements) + ';' +
+      'var maxEl=Math.max.apply(null,radarElements)||1;' +
+      'new Chart(document.getElementById("radarChart"),{type:"radar",data:{labels:radarDiscs,datasets:[' +
+      '{label:"Spatial overlaps",data:radarOverlaps,backgroundColor:"rgba(255,68,68,0.15)",borderColor:"#ff4444",pointBackgroundColor:"#ff4444"},' +
+      '{label:"Clash rules",data:radarRules,backgroundColor:"rgba(255,140,0,0.15)",borderColor:"#ff8c00",pointBackgroundColor:"#ff8c00"},' +
+      '{label:"Elements (scaled)",data:radarElements.map(function(e){return Math.round(e/maxEl*6)}),backgroundColor:"rgba(79,195,247,0.1)",borderColor:"#4fc3f7",pointBackgroundColor:"#4fc3f7"}' +
+      ']},options:{scales:{r:{ticks:{color:"#888",backdropColor:"transparent"},grid:{color:"rgba(255,255,255,0.1)"},pointLabels:{color:"#ccc",font:{size:13}}}},plugins:{legend:{labels:{color:"#ccc"}}}}});' +
+      'var topOff=' + JSON.stringify(topOffenders) + ';' +
+      'var topOffC=' + JSON.stringify(topOffenderCounts) + ';' +
+      'new Chart(document.getElementById("offenderChart"),{type:"bar",data:{labels:topOff,datasets:[{label:"Appears in N clashes",data:topOffC,backgroundColor:"#ff4444"}]},options:{indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#ccc"}},y:{ticks:{color:"#ccc",font:{size:10}}}}}});' +
       'function downloadCSV(){' +
       'var lines=["#,Element A,Class A,Disc A,Element B,Class B,Disc B,Overlap (m),Severity,Status,Assigned To,Priority,Action Required,Target Date"];' +
       'document.querySelectorAll("#detail-table tbody tr").forEach(function(tr){var cells=tr.querySelectorAll("td");if(cells.length>=14){' +
@@ -1289,23 +1358,32 @@ function setupMeasure(A) {
     var meshes = [];
     A.scene.traverse(function(obj) { if (obj.isMesh && obj !== A.ground && obj.visible) meshes.push(obj); });
     var hits = A.raycaster.intersectObjects(meshes, false);
-    if (!hits.length) return false;
-    var hitMesh = hits[0].object;
-    var storey = hitMesh.userData.storey;
-    if (storey === undefined || storey === null) storey = 'Unknown';
-    var storeyLabel = storey || 'All Elements';
-    // Collect storey meshes for bounding box, and query DB for accurate class counts
+    var hitMesh = hits.length ? hits[0].object : null;
+    var storey = null;
+    var storeyLabel = 'Whole Building';
+    if (hitMesh) {
+      storey = hitMesh.userData.storey;
+      if (storey === undefined || storey === null) storey = 'Unknown';
+      storeyLabel = storey || 'All Elements';
+    }
+    // Collect meshes for bounding box, and query DB for accurate class counts
     var roomMeshes = [];
     A.scene.traverse(function(obj) {
-      if (obj.isMesh && obj !== A.ground && obj.visible && obj.userData.storey === storey) {
-        roomMeshes.push(obj);
-      }
+      if (!obj.isMesh || obj === A.ground || !obj.visible) return;
+      if (!storey || obj.userData.storey === storey) roomMeshes.push(obj);
     });
     var counts = {};
-    var dbRows = A.dbQuery(
-      "SELECT REPLACE(m.ifc_class,'Ifc','') AS cls, COUNT(*) AS n FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid WHERE m.storey = ? AND m.ifc_class != 'IfcOpeningElement' GROUP BY cls ORDER BY n DESC",
-      [storey]
-    );
+    var dbRows;
+    if (storey) {
+      dbRows = A.dbQuery(
+        "SELECT REPLACE(m.ifc_class,'Ifc','') AS cls, COUNT(*) AS n FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid WHERE m.storey = ? AND m.ifc_class != 'IfcOpeningElement' GROUP BY cls ORDER BY n DESC",
+        [storey]
+      );
+    } else {
+      dbRows = A.dbQuery(
+        "SELECT REPLACE(m.ifc_class,'Ifc','') AS cls, COUNT(*) AS n FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid WHERE m.ifc_class != 'IfcOpeningElement' GROUP BY cls ORDER BY n DESC LIMIT 20"
+      );
+    }
     var totalFromDb = 0;
     dbRows.forEach(function(r) { counts[r[0] || 'Other'] = r[1]; totalFromDb += r[1]; });
     // Bounding box of storey
