@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // sitecam.js — Site Camera (mobile site inspection), photo composite, markup, voice notes
 function setupSitecam(A) {
   // Remove text/voice button from toolbar (user types in WhatsApp after sharing)
@@ -14,9 +19,10 @@ function setupSitecam(A) {
       snagBtn.style.cssText = 'display:none;position:fixed;bottom:20px;right:16px;z-index:14;background:#f44336;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(244,67,54,0.4)';
       document.body.appendChild(snagBtn);
       // Sync visibility: picking.js toggles snag-btn-row, mirror to our fixed button
-      new MutationObserver(() => {
+      A._snagObserver = new MutationObserver(() => {
         snagBtn.style.display = snagRow.style.display === 'none' ? 'none' : 'block';
-      }).observe(snagRow, { attributes: true, attributeFilter: ['style'] });
+      });
+      A._snagObserver.observe(snagRow, { attributes: true, attributeFilter: ['style'] });
     }
   }
 
@@ -40,7 +46,7 @@ function setupSitecam(A) {
   };
 
   A._formatGps = function(pos) {
-    if (!pos) return 'GPS: unavailable';
+    if (!pos) return typeof _TRL!=='undefined'&&_TRL.ui_gps_unavailable||'GPS: unavailable';
     const lat = pos.coords.latitude;
     const lng = pos.coords.longitude;
     const ns = lat >= 0 ? 'N' : 'S';
@@ -100,7 +106,7 @@ function setupSitecam(A) {
         { enableHighAccuracy: true, timeout: 10000 }
       );
     } else {
-      document.getElementById('site-cam-gps').textContent = 'GPS: not supported';
+      document.getElementById('site-cam-gps').textContent = typeof _TRL!=='undefined'&&_TRL.ui_gps_unsupported||'GPS: not supported';
     }
 
     // Only add compass listener if NOT in walk mode (walk mode has its own orientation)
@@ -272,7 +278,7 @@ function setupSitecam(A) {
       ctx.fillRect(pipX, pipY + pipH - 18, pipW, 18);
       ctx.fillStyle = '#4fc3f7';
       ctx.font = '10px sans-serif';
-      ctx.fillText('BIM Model View', pipX + 4, pipY + pipH - 5);
+      ctx.fillText(typeof _TRL!=='undefined'&&_TRL.ui_model_view||'BIM Model View', pipX + 4, pipY + pipH - 5);
     }
 
     const footH = compassText ? 42 : 28;
@@ -281,7 +287,7 @@ function setupSitecam(A) {
     ctx.font = '12px monospace';
     if (compassText) {
       ctx.fillStyle = '#ffff00';
-      ctx.fillText(`Bearing: ${compassText}`, 10, c.height - 26);
+      ctx.fillText((typeof _TRL!=='undefined'&&_TRL.ui_bearing||'Bearing') + ': ' + compassText, 10, c.height - 26);
     }
     ctx.fillStyle = '#00ff00';
     ctx.fillText(gpsText, 10, c.height - 10);
@@ -297,7 +303,7 @@ function setupSitecam(A) {
 
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
     ctx.font = '10px sans-serif';
-    const wm = 'BIM OOTB — Site Inspection';
+    const wm = typeof _TRL!=='undefined'&&_TRL.ui_sitecam_watermark||'BIM OOTB \u2014 Site Inspection';
     ctx.fillText(wm, (c.width - ctx.measureText(wm).width) / 2, c.height - 10);
 
     const mc = document.getElementById('site-cam-markup');
@@ -442,6 +448,7 @@ function setupSitecam(A) {
     document.getElementById('site-cam-preview').classList.remove('active');
     A._camPhotoBlob = null;
     A._markupListenersSet = false;
+    A._pendingClashSnag = null; // S246: Clear clash snag state on close
   };
 
   A.shareSitePhoto = async function() {

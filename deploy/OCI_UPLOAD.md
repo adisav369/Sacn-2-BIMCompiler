@@ -68,9 +68,9 @@ oci os object put --bucket-name bim-ootb-live \
   --file SYSNOVA/index.html --name index.html \
   --content-type text/html --force
 
-# Upload modular viewer
+# Upload modular viewer (deploy/live/ has NO banner — upload directly)
 oci os object put --bucket-name bim-ootb-live \
-  --file deploy/dev/index.html --name sandbox/index.html \
+  --file deploy/live/index.html --name sandbox/index.html \
   --content-type text/html --force
 
 # Upload JS modules (from deploy/dev/ — working copy)
@@ -144,10 +144,8 @@ https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o
 `SYSNOVA/index.html` is the landing page source — upload directly (live) or with banner (dev).
 
 ```bash
-# Deploy dev landing (SYSNOVA landing + banner injected)
-sed '/<body>/a\<div style="background:#ff8c00;color:#000;text-align:center;padding:8px;font-weight:bold;font-size:14px;font-family:Segoe UI,sans-serif;letter-spacing:1px">DEVELOPMENT SITE FOR BACK UP TESTING</div>' \
-  SYSNOVA/index.html > /tmp/dev_landing.html
-oci os object put --bucket-name bim-ootb-dev --file /tmp/dev_landing.html --name index.html --content-type text/html --force
+# Deploy dev viewer (banner is in the file — upload as-is)
+oci os object put --bucket-name bim-ootb-dev --file deploy/dev/index.html --name sandbox/index.html --content-type text/html --force
 
 # Deploy dev viewer JS
 oci os object put --bucket-name bim-ootb-dev --file deploy/dev/sitecam.js --name sandbox/sitecam.js --content-type application/javascript --force

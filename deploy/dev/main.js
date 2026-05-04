@@ -98,8 +98,9 @@ function initViewer() {
   window.closeSiteCamera = APP.closeSiteCamera;
   window.snapSitePhoto = APP.snapSitePhoto;
   window.closeSitePreview = APP.closeSitePreview;
-  window.shareSitePhoto = APP.shareSitePhoto;
-  window.downloadSitePhoto = APP.downloadSitePhoto;
+  // S246: If clash snag pending, use clash-specific share/save flow
+  window.shareSitePhoto = function() { return APP._pendingClashSnag ? APP._shareClashSnag() : APP.shareSitePhoto(); };
+  window.downloadSitePhoto = function() { return APP._pendingClashSnag ? APP._downloadClashSnag() : APP.downloadSitePhoto(); };
   window.setMarkupTool = APP.setMarkupTool;
   window.setMarkupColor = APP.setMarkupColor;
   window.undoMarkup = APP.undoMarkup;
@@ -190,6 +191,60 @@ function initViewer() {
         }, 2000);
       } catch(e) {
         console.log('[S223] §DIFF_DB_ERROR ' + e.message);
+      }
+    }
+
+    // S246: Deep-link clash auto-fly — #clash=guidA|guidB&cam=x,y,z&tgt=tx,ty,tz&tol=mm
+    const hashParams = {};
+    location.hash.slice(1).split('&').forEach(function(p) { const kv = p.split('='); if (kv[0]) hashParams[kv[0]] = decodeURIComponent(kv[1] || ''); });
+    const clashParam = hashParams.clash;
+    if (clashParam && APP.db) {
+      const [guidA, guidB] = clashParam.split('|');
+      if (guidA && guidB) {
+        let clashChecks = 0;
+        const clashTimer = setInterval(function() {
+          clashChecks++;
+          if (APP.streamedCount > 10 || clashChecks > 20) {
+            clearInterval(clashTimer);
+            const camStr = hashParams.cam;
+            const tgtStr = hashParams.tgt;
+
+            if (camStr && tgtStr) {
+              const cam = camStr.split(',').map(Number);
+              const tgt = tgtStr.split(',').map(Number);
+              if (cam.length === 3 && tgt.length === 3) {
+                APP.camera.position.set(cam[0], cam[1], cam[2]);
+                APP.controls.target.set(tgt[0], tgt[1], tgt[2]);
+                APP.controls.update();
+              }
+            }
+
+            const posRows = APP.dbQuery(
+              "SELECT t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z FROM element_transforms t WHERE t.guid IN (?, ?)",
+              [guidA, guidB]
+            );
+            if (posRows.length >= 2) {
+              const bboxColors = [0xff4444, 0x4488ff];
+              for (let bi = 0; bi < 2; bi++) {
+                const br = posRows[bi];
+                const bMin = APP.ifc2three(br[0] - br[3]/2, br[1] - br[4]/2, br[2] - br[5]/2);
+                const bMax = APP.ifc2three(br[0] + br[3]/2, br[1] + br[4]/2, br[2] + br[5]/2);
+                const bb = new THREE.Box3(
+                  new THREE.Vector3(Math.min(bMin.x,bMax.x), Math.min(bMin.y,bMax.y), Math.min(bMin.z,bMax.z)),
+                  new THREE.Vector3(Math.max(bMin.x,bMax.x), Math.max(bMin.y,bMax.y), Math.max(bMin.z,bMax.z))
+                );
+                const bHelper = new THREE.Box3Helper(bb, bboxColors[bi]);
+                APP.measureGroup.add(bHelper);
+              }
+              if (APP.markDirty) APP.markDirty();
+            }
+
+            const tolMm = hashParams.tol || '25';
+            const storeyParam = hashParams.st || '';
+            APP.status.textContent = 'Clash: ' + guidA.substring(0, 8) + ' \u2194 ' + guidB.substring(0, 8) + ' | Storey: ' + storeyParam + ' | Tol: ' + tolMm + 'mm';
+            console.log('§CLASH_DEEPLINK guidA=' + guidA + ' guidB=' + guidB + ' storey=' + storeyParam + ' tol=' + tolMm);
+          }
+        }, 1500);
       }
     }
   }).catch(e => {

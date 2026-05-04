@@ -1,5 +1,5 @@
 // measure.js — Measurement tool (two-point distance, area, clash detection)
-// S245d v1 — Progressive storey loading, COUNT per storey, no N² fallback
+// S246 v1 — Clash Snag: snap viewport, annotate, share deep-link
 function setupMeasure(A) {
   console.log('§MEASURE_VERSION S245e-v1');
 
@@ -59,10 +59,11 @@ function setupMeasure(A) {
     if (A._clashRules) { cb(A._clashRules); return; }
     if (A._clashRulesLoading) return;
     A._clashRulesLoading = true;
-    fetch('clash_rules.json?v=1').then(function(r) { return r.json(); }).then(function(j) {
+    fetch('clash_rules.json?v=2').then(function(r) { return r.json(); }).then(function(j) {
       A._clashRules = j;
       A._clashRulesLoading = false;
-      console.log('§CLASH_RULES loaded ' + j.clash_rules.length + ' rules');
+      if (j.display && j.display.max_report) A._CLASH_PAGE_SIZE = j.display.max_report;
+      console.log('§CLASH_RULES loaded ' + j.clash_rules.length + ' rules pageSize=' + A._CLASH_PAGE_SIZE);
       cb(j);
     }).catch(function(e) {
       A._clashRulesLoading = false;
@@ -72,7 +73,7 @@ function setupMeasure(A) {
 
   // Clash query helpers
   // bbox_x/y/z are FULL widths, centered at center_x/y/z
-  A._CLASH_PAGE_SIZE = 30;
+  A._CLASH_PAGE_SIZE = 200; // Updated from clash_rules.json display.max_report on load
 
   // Ensure indexes exist for clash queries — one-time cost per session
   A._clashIndexesReady = false;
@@ -153,11 +154,9 @@ function setupMeasure(A) {
   };
 
   // Quick EXISTS check per discipline pair — for matrix spheres
-  // bbox arithmetic + LIMIT 1 (fast on any size building)
+  // S246perf: R-tree probe when ready (was O(n²) cross-join LIMIT 1)
   A._clashExistsPerPair = function(storey, rules) {
     if (!A._hasBbox) return {};
-    var w = A._clashWhereParts(rules);
-    var storeyClause = storey ? "ma.storey = '" + storey.replace(/'/g, "''") + "' AND mb.storey = ma.storey" : '1=1';
     var discCounts = {};
     var dcRows = A.dbQuery("SELECT discipline, COUNT(*) FROM elements_meta WHERE discipline IS NOT NULL GROUP BY discipline");
     dcRows.forEach(function(r) { discCounts[r[0]] = r[1]; });
@@ -170,19 +169,36 @@ function setupMeasure(A) {
         result[key] = 0; result[key2] = 0;
         return;
       }
-      var pairCond = "(ma.discipline = '" + r.source.discipline + "' AND mb.discipline = '" + r.target.discipline + "')" +
-        " OR (ma.discipline = '" + r.target.discipline + "' AND mb.discipline = '" + r.source.discipline + "')";
-      var sql = "SELECT 1 FROM element_transforms a" +
-        " JOIN elements_meta ma ON a.guid = ma.guid" +
-        " JOIN element_transforms b ON a.guid < b.guid" +
-        " JOIN elements_meta mb ON b.guid = mb.guid" +
-        " WHERE " + storeyClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin +
-        " LIMIT 1";
-      var rows = A.dbQuery(sql);
-      var hasClash = rows.length > 0 ? 1 : 0;
-      result[key] = hasClash;
-      result[key2] = hasClash;
-      console.log('§CLASH_EXISTS ' + key + ' = ' + hasClash);
+
+      if (A._clashRtreeReady) {
+        // R-tree EXISTS: probe with PAGE_SIZE=1 — stops at first hit
+        var w = A._clashWhereParts(rules);
+        var savedPS = A._CLASH_PAGE_SIZE;
+        A._CLASH_PAGE_SIZE = 1;
+        var hits = A._queryClashesPairRtree(storey, rules, r.source.discipline, r.target.discipline, 0, w);
+        A._CLASH_PAGE_SIZE = savedPS;
+        var hasClash = hits.length > 0 ? 1 : 0;
+        result[key] = hasClash;
+        result[key2] = hasClash;
+        console.log('§CLASH_EXISTS_RTREE ' + key + ' = ' + hasClash);
+      } else {
+        // Fallback: cross-join LIMIT 1
+        var w = A._clashWhereParts(rules);
+        var storeyClause = storey ? "ma.storey = '" + storey.replace(/'/g, "''") + "' AND mb.storey = ma.storey" : '1=1';
+        var pairCond = "(ma.discipline = '" + r.source.discipline + "' AND mb.discipline = '" + r.target.discipline + "')" +
+          " OR (ma.discipline = '" + r.target.discipline + "' AND mb.discipline = '" + r.source.discipline + "')";
+        var sql = "SELECT 1 FROM element_transforms a" +
+          " JOIN elements_meta ma ON a.guid = ma.guid" +
+          " JOIN element_transforms b ON a.guid < b.guid" +
+          " JOIN elements_meta mb ON b.guid = mb.guid" +
+          " WHERE " + storeyClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin +
+          " LIMIT 1";
+        var rows = A.dbQuery(sql);
+        var hasClash = rows.length > 0 ? 1 : 0;
+        result[key] = hasClash;
+        result[key2] = hasClash;
+        console.log('§CLASH_EXISTS ' + key + ' = ' + hasClash);
+      }
     });
     return result;
   };
@@ -194,6 +210,15 @@ function setupMeasure(A) {
     var w = A._clashWhereParts(rules);
     A._pendingClashStoreys = [];
     A._pendingClashArgs = null;
+
+    // ── R-tree accelerated clash query (S245e) ──
+    // Instead of O(n²) cross-join, iterate elements of discA and use R-tree
+    // to find overlapping elements of discB. O(n log n) total.
+    if (A._clashRtreeReady) {
+      return A._queryClashesPairRtree(storey, rules, discA, discB, offset, w);
+    }
+
+    // Fallback: original cross-join (only if R-tree not ready)
     // No storey → auto-pick storeys with both disciplines (two GROUP BY, no cross-join)
     if (!storey) {
       var storeysA = {};
@@ -207,7 +232,6 @@ function setupMeasure(A) {
         console.log('§CLASH_QUERY ' + discA + ' vs ' + discB + ' no shared storeys → 0');
         return [];
       }
-      // Query FIRST storey only — store rest for progressive loading
       var firstStorey = both[0][0];
       A._pendingClashStoreys = both.slice(1).map(function(b) { return b[0]; });
       A._pendingClashArgs = { rules: rules, discA: discA, discB: discB, w: w };
@@ -224,10 +248,9 @@ function setupMeasure(A) {
         " WHERE " + stClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin +
         " LIMIT " + A._CLASH_PAGE_SIZE;
       var allRows = A.dbQuery(sql);
-      console.log('§CLASH_QUERY ' + discA + ' vs ' + discB + ' storey=' + firstStorey + ' got=' + allRows.length + ' pending=' + A._pendingClashStoreys.length);
+      console.log('§CLASH_QUERY fallback ' + discA + ' vs ' + discB + ' storey=' + firstStorey + ' got=' + allRows.length);
       return allRows;
     }
-    // Specific storey — direct query, no N² risk
     var storeyClause = "ma.storey = '" + storey.replace(/'/g, "''") + "' AND mb.storey = ma.storey";
     var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
       " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
@@ -241,11 +264,156 @@ function setupMeasure(A) {
       " WHERE " + storeyClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin +
       " LIMIT " + A._CLASH_PAGE_SIZE + " OFFSET " + (offset || 0);
     var rows = A.dbQuery(sql);
-    console.log('§CLASH_QUERY ' + discA + ' vs ' + discB + ' offset=' + (offset || 0) + ' got=' + rows.length);
+    console.log('§CLASH_QUERY fallback ' + discA + ' vs ' + discB + ' offset=' + (offset || 0) + ' got=' + rows.length);
     return rows;
   };
 
+  // ── R-tree accelerated clash pair query ──────────────────────────────────
+  // For each element of discA, query R-tree for overlapping elements of discB.
+  // O(n * log N) instead of O(n²). Stops at PAGE_SIZE results.
+  A._queryClashesPairRtree = function(storey, rules, discA, discB, offset, w) {
+    var t0 = performance.now();
+    var ignoreSet = {};
+    rules.clash_rules.forEach(function(r) {
+      (r.ignore_classes || []).forEach(function(c) { ignoreSet[c] = 1; });
+    });
+
+    var storeyFilter = storey ? " AND m.storey = '" + storey.replace(/'/g, "''") + "'" : "";
+    var ignoreFilter = Object.keys(ignoreSet).length ?
+      " AND m.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" : "";
+
+    // Pre-load ALL discB elements into a JS map keyed by rowid — ONE query instead of N
+    var bMap = {};
+    var rowsB = A.dbQuery(
+      "SELECT t.rowid, m.guid, m.ifc_class, m.element_name," +
+      " t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z" +
+      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
+      " WHERE m.discipline = '" + discB + "'" + storeyFilter + ignoreFilter +
+      " AND t.bbox_x IS NOT NULL"
+    );
+    for (var bi = 0; bi < rowsB.length; bi++) {
+      bMap[rowsB[bi][0]] = rowsB[bi]; // keyed by rowid
+    }
+
+    // Get all elements of discA (with bbox)
+    var rowsA = A.dbQuery(
+      "SELECT t.rowid, m.guid, m.ifc_class, m.element_name, m.storey," +
+      " t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z" +
+      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
+      " WHERE m.discipline = '" + discA + "'" + storeyFilter + ignoreFilter +
+      " AND t.bbox_x IS NOT NULL"
+    );
+
+    var results = [];
+    var seen = {};
+    var skip = offset || 0;
+    var limit = A._CLASH_PAGE_SIZE;
+
+    for (var i = 0; i < rowsA.length && results.length < limit; i++) {
+      var ra = rowsA[i];
+      var minX = ra[5] - ra[8]/2, maxX = ra[5] + ra[8]/2;
+      var minY = ra[6] - ra[9]/2, maxY = ra[6] + ra[9]/2;
+      var minZ = ra[7] - ra[10]/2, maxZ = ra[7] + ra[10]/2;
+
+      // R-tree query: rowids overlapping this bbox — ONE SQL per element of discA
+      var rtSql = "SELECT r.id FROM elements_rtree r WHERE " +
+        "r.maxX >= " + minX + " AND r.minX <= " + maxX + " AND " +
+        "r.maxY >= " + minY + " AND r.minY <= " + maxY + " AND " +
+        "r.maxZ >= " + minZ + " AND r.minZ <= " + maxZ;
+      var candidates;
+      try { candidates = A.dbQuery(rtSql); } catch(e) { continue; }
+
+      // Filter via pre-loaded JS map — zero SQL
+      for (var ci = 0; ci < candidates.length && results.length < limit; ci++) {
+        var rb = bMap[candidates[ci][0]];
+        if (!rb) continue; // not discB, or ignored class
+        if (rb[1] === ra[1]) continue;
+        var key = ra[1] < rb[1] ? ra[1] + '|' + rb[1] : rb[1] + '|' + ra[1];
+        if (seen[key]) continue;
+        seen[key] = 1;
+
+        // Verify actual bbox overlap
+        var bMinX = rb[4] - rb[7]/2, bMaxX = rb[4] + rb[7]/2;
+        var bMinY = rb[5] - rb[8]/2, bMaxY = rb[5] + rb[8]/2;
+        var bMinZ = rb[6] - rb[9]/2, bMaxZ = rb[6] + rb[9]/2;
+        if (maxX <= bMinX || minX >= bMaxX) continue;
+        if (maxY <= bMinY || minY >= bMaxY) continue;
+        if (maxZ <= bMinZ || minZ >= bMaxZ) continue;
+
+        var ox = Math.min(maxX, bMaxX) - Math.max(minX, bMinX);
+        var oy = Math.min(maxY, bMaxY) - Math.max(minY, bMinY);
+        var oz = Math.min(maxZ, bMaxZ) - Math.max(minZ, bMinZ);
+        var overlap = Math.min(ox, oy, oz);
+
+        if (skip > 0) { skip--; continue; }
+        results.push([ra[1], rb[1], ra[2], rb[2], discA, discB, ra[3], rb[3], overlap]);
+      }
+    }
+
+    var ms = (performance.now() - t0).toFixed(0);
+    console.log('§CLASH_QUERY_RTREE ' + discA + ' vs ' + discB +
+      (storey ? ' storey=' + storey : ' whole') +
+      ' A=' + rowsA.length + ' B=' + rowsB.length + ' hits=' + results.length +
+      ' sql=' + (rowsA.length + 2) + ' time=' + ms + 'ms');
+    return results;
+  };
+
+  // S246perf: Lean R-tree counter — same logic as query but only counts, no arrays
+  A._countClashesRtree = function(storey, rules, discA, discB) {
+    var ignoreSet = {};
+    rules.clash_rules.forEach(function(r) {
+      (r.ignore_classes || []).forEach(function(c) { ignoreSet[c] = 1; });
+    });
+    var storeyFilter = storey ? " AND m.storey = '" + storey.replace(/'/g, "''") + "'" : "";
+    var ignoreFilter = Object.keys(ignoreSet).length ?
+      " AND m.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" : "";
+
+    var bMap = {};
+    A.dbQuery(
+      "SELECT t.rowid, t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z, m.guid" +
+      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
+      " WHERE m.discipline = '" + discB + "'" + storeyFilter + ignoreFilter + " AND t.bbox_x IS NOT NULL"
+    ).forEach(function(r) { bMap[r[0]] = r; });
+
+    var rowsA = A.dbQuery(
+      "SELECT t.rowid, m.guid, t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z" +
+      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
+      " WHERE m.discipline = '" + discA + "'" + storeyFilter + ignoreFilter + " AND t.bbox_x IS NOT NULL"
+    );
+
+    var count = 0;
+    var seen = {};
+    for (var i = 0; i < rowsA.length; i++) {
+      var ra = rowsA[i];
+      var minX = ra[2] - ra[5]/2, maxX = ra[2] + ra[5]/2;
+      var minY = ra[3] - ra[6]/2, maxY = ra[3] + ra[6]/2;
+      var minZ = ra[4] - ra[7]/2, maxZ = ra[4] + ra[7]/2;
+      var cands;
+      try {
+        cands = A.dbQuery("SELECT r.id FROM elements_rtree r WHERE " +
+          "r.maxX >= " + minX + " AND r.minX <= " + maxX + " AND " +
+          "r.maxY >= " + minY + " AND r.minY <= " + maxY + " AND " +
+          "r.maxZ >= " + minZ + " AND r.minZ <= " + maxZ);
+      } catch(e) { continue; }
+      for (var ci = 0; ci < cands.length; ci++) {
+        var rb = bMap[cands[ci][0]];
+        if (!rb || rb[7] === ra[1]) continue;
+        var key = ra[1] < rb[7] ? ra[1] + '|' + rb[7] : rb[7] + '|' + ra[1];
+        if (seen[key]) continue;
+        seen[key] = 1;
+        var bMinX = rb[1] - rb[4]/2, bMaxX = rb[1] + rb[4]/2;
+        var bMinY = rb[2] - rb[5]/2, bMaxY = rb[2] + rb[5]/2;
+        var bMinZ = rb[3] - rb[6]/2, bMaxZ = rb[3] + rb[6]/2;
+        if (maxX > bMinX && minX < bMaxX && maxY > bMinY && minY < bMaxY && maxZ > bMinZ && minZ < bMaxZ) {
+          count++;
+        }
+      }
+    }
+    return count;
+  };
+
   // Progressive async loader — queries remaining storeys one at a time with UI yields
+  // S246perf: Uses R-tree path when ready (was hardcoded O(n²) cross-join)
   A._loadRemainingStoreys = function() {
     if (!A._pendingClashStoreys || !A._pendingClashStoreys.length) return;
     if (!A._clashRevealActive || !A._clashListDiv) return;
@@ -257,22 +425,25 @@ function setupMeasure(A) {
     function _nextStorey() {
       if (qi >= storeys.length || !A._clashRevealActive || !A._clashListDiv) return;
       var st = storeys[qi++];
-      var stClause = "ma.storey = '" + st.replace(/'/g, "''") + "' AND mb.storey = ma.storey";
-      var pairCond = "(ma.discipline = '" + args.discA + "' AND mb.discipline = '" + args.discB + "')" +
-        " OR (ma.discipline = '" + args.discB + "' AND mb.discipline = '" + args.discA + "')";
-      var sql = "SELECT a.guid, b.guid, ma.ifc_class, mb.ifc_class, ma.discipline, mb.discipline," +
-        " ma.element_name, mb.element_name," +
-        " MIN((a.center_x + a.bbox_x/2) - (b.center_x - b.bbox_x/2)," +
-        "     (a.center_y + a.bbox_y/2) - (b.center_y - b.bbox_y/2)," +
-        "     (a.center_z + a.bbox_z/2) - (b.center_z - b.bbox_z/2)) AS overlap_m" +
-        " FROM element_transforms a JOIN elements_meta ma ON a.guid = ma.guid" +
-        " JOIN element_transforms b ON a.guid < b.guid JOIN elements_meta mb ON b.guid = mb.guid" +
-        " WHERE " + stClause + " AND (" + pairCond + ")" + args.w.ignoreClause + args.w.bboxJoin +
-        " LIMIT " + A._CLASH_PAGE_SIZE;
-      var rows = A.dbQuery(sql);
+      // Route through the same path as initial query — uses R-tree when ready
+      var rows = A._clashRtreeReady
+        ? A._queryClashesPairRtree(st, args.rules, args.discA, args.discB, 0, args.w)
+        : (function() {
+            var stClause = "ma.storey = '" + st.replace(/'/g, "''") + "' AND mb.storey = ma.storey";
+            var pairCond = "(ma.discipline = '" + args.discA + "' AND mb.discipline = '" + args.discB + "')" +
+              " OR (ma.discipline = '" + args.discB + "' AND mb.discipline = '" + args.discA + "')";
+            return A.dbQuery("SELECT a.guid, b.guid, ma.ifc_class, mb.ifc_class, ma.discipline, mb.discipline," +
+              " ma.element_name, mb.element_name," +
+              " MIN((a.center_x + a.bbox_x/2) - (b.center_x - b.bbox_x/2)," +
+              "     (a.center_y + a.bbox_y/2) - (b.center_y - b.bbox_y/2)," +
+              "     (a.center_z + a.bbox_z/2) - (b.center_z - b.bbox_z/2)) AS overlap_m" +
+              " FROM element_transforms a JOIN elements_meta ma ON a.guid = ma.guid" +
+              " JOIN element_transforms b ON a.guid < b.guid JOIN elements_meta mb ON b.guid = mb.guid" +
+              " WHERE " + stClause + " AND (" + pairCond + ")" + args.w.ignoreClause + args.w.bboxJoin +
+              " LIMIT " + A._CLASH_PAGE_SIZE);
+          })();
       if (rows.length && A._currentClashes) {
         A._currentClashes = A._currentClashes.concat(rows);
-        // Re-render list with new data
         if (A._renderClashList && A._clashListDiv) {
           var rendered = A._renderClashList();
           var hdrEl = A._clashListDiv.querySelector('#clash-list-header');
@@ -281,13 +452,13 @@ function setupMeasure(A) {
           if (bodyEl) bodyEl.innerHTML = rendered.body;
         }
       }
-      console.log('§CLASH_PROGRESSIVE storey=' + st + ' +' + rows.length + ' total=' + (A._currentClashes ? A._currentClashes.length : 0));
+      console.log('§CLASH_PROGRESSIVE storey=' + st + ' +' + rows.length + ' total=' + (A._currentClashes ? A._currentClashes.length : 0) + ' rtree=' + A._clashRtreeReady);
       setTimeout(_nextStorey, 16);
     }
     setTimeout(_nextStorey, 16);
   };
 
-  // Async COUNT per storey — lightweight, updates header progressively
+  // Async COUNT per storey — S246perf: R-tree counting, no cross-join
   A._countClashesAsync = function(rules, discA, discB) {
     var stA = {};
     A.dbQuery("SELECT storey FROM elements_meta WHERE discipline = '" + discA + "' AND storey IS NOT NULL GROUP BY storey")
@@ -295,30 +466,40 @@ function setupMeasure(A) {
     var storeys = [];
     A.dbQuery("SELECT storey FROM elements_meta WHERE discipline = '" + discB + "' AND storey IS NOT NULL GROUP BY storey")
       .forEach(function(r) { if (stA[r[0]]) storeys.push(r[0]); });
-    var w = A._clashWhereParts(rules);
-    var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
-      " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
+
     var total = 0;
     var qi = 0;
+
     function _nextCount() {
       if (qi >= storeys.length) {
         if (A._clashListDiv) {
           var el = A._clashListDiv.querySelector('#clash-total-count');
           if (el) el.textContent = 'Total: ' + total;
         }
-        console.log('§CLASH_COUNT total=' + total + ' storeys=' + storeys.length);
+        console.log('§CLASH_COUNT total=' + total + ' storeys=' + storeys.length + ' rtree=' + A._clashRtreeReady);
         return;
       }
       if (!A._clashRevealActive || !A._clashListDiv) return;
       var st = storeys[qi++];
-      var stClause = "ma.storey = '" + st.replace(/'/g, "''") + "' AND mb.storey = ma.storey";
-      var sql = "SELECT COUNT(*) FROM element_transforms a" +
-        " JOIN elements_meta ma ON a.guid = ma.guid" +
-        " JOIN element_transforms b ON a.guid < b.guid" +
-        " JOIN elements_meta mb ON b.guid = mb.guid" +
-        " WHERE " + stClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin;
-      var rows = A.dbQuery(sql);
-      if (rows.length) total += rows[0][0];
+
+      if (A._clashRtreeReady) {
+        // R-tree count: lightweight — pre-load discB map, iterate discA, count overlaps
+        total += A._countClashesRtree(st, rules, discA, discB);
+      } else {
+        // Fallback cross-join COUNT
+        var w = A._clashWhereParts(rules);
+        var stClause = "ma.storey = '" + st.replace(/'/g, "''") + "' AND mb.storey = ma.storey";
+        var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
+          " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
+        var sql = "SELECT COUNT(*) FROM element_transforms a" +
+          " JOIN elements_meta ma ON a.guid = ma.guid" +
+          " JOIN element_transforms b ON a.guid < b.guid" +
+          " JOIN elements_meta mb ON b.guid = mb.guid" +
+          " WHERE " + stClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin;
+        var cRows = A.dbQuery(sql);
+        if (cRows.length) total += cRows[0][0];
+      }
+
       if (A._clashListDiv) {
         var el = A._clashListDiv.querySelector('#clash-total-count');
         if (el) el.textContent = 'Total: ' + total + (qi < storeys.length ? '...' : '');
@@ -425,6 +606,7 @@ function setupMeasure(A) {
     if (!c) return;
     var rules = A._currentClashRules;
     if (!rules) return;
+    // Full scene stays — S232 InstancedMesh batching, no DLOD needed
     // Highlight selected row
     if (A._clashListDiv) {
       A._clashListDiv.querySelectorAll('[data-clash-idx]').forEach(function(el) { el.style.background = ''; });
@@ -480,8 +662,8 @@ function setupMeasure(A) {
         new THREE.Plane(new THREE.Vector3( 0, 0,-1),  tZmax)
       ];
 
-      var hashRows = A.dbQuery("SELECT guid, geometry_hash FROM element_instances WHERE guid IN (?, ?)", [c[0], c[1]]);
-      var meshColors = [0xff4444, 0x4488ff];
+      var hashRows = A.dbQuery("SELECT i.guid, i.geometry_hash, m.discipline FROM element_instances i JOIN elements_meta m ON i.guid = m.guid WHERE i.guid IN (?, ?)", [c[0], c[1]]);
+      var meshColors = [0xff2222, 0xff8800];
       hashRows.forEach(function(hr, hi) {
         var geo = A.meshCache[hr[1]];
         if (!geo) {
@@ -495,10 +677,27 @@ function setupMeasure(A) {
         var tRow = A.dbQuery("SELECT center_x, center_y, center_z, rotation_x, rotation_y, rotation_z FROM element_transforms WHERE guid = ?", [hr[0]]);
         if (!tRow.length) return;
         var pos = A.ifc2three(tRow[0][0], tRow[0][1], tRow[0][2]);
-        // Clipped mesh at overlap — different renderOrder so both visible
+        var disc = hr[2] || '';
+        var discColor = (A.DISC_COLORS && A.DISC_COLORS[disc]) || meshColors[hi];
+
+        // Full unclipped mesh — discipline color, shows full pipe/slab length
+        var fullMat = new THREE.MeshPhongMaterial({
+          color: discColor, transparent: true, opacity: 0.25,
+          side: THREE.DoubleSide, depthWrite: false, flatShading: true
+        });
+        var fullMesh = new THREE.Mesh(geo.clone(), fullMat);
+        fullMesh.position.set(pos.x, pos.y, pos.z);
+        if (tRow[0][3] || tRow[0][4] || tRow[0][5]) {
+          fullMesh.rotation.set(tRow[0][3] || 0, tRow[0][5] || 0, -(tRow[0][4] || 0));
+        }
+        fullMesh.renderOrder = 996 + hi;
+        A.measureGroup.add(fullMesh);
+        A._clashHighlights.push(fullMesh);
+
+        // Clipped mesh at overlap — bright red/blue, both always visible
         var mat = new THREE.MeshBasicMaterial({
-          color: meshColors[hi], transparent: true, opacity: hi === 0 ? 0.5 : 0.4,
-          side: THREE.DoubleSide, depthTest: false,
+          color: meshColors[hi], transparent: true, opacity: 0.6,
+          side: THREE.DoubleSide, depthTest: false, depthWrite: false,
           clippingPlanes: clipPlanes, clipShadows: true
         });
         var mesh = new THREE.Mesh(geo.clone(), mat);
@@ -510,20 +709,7 @@ function setupMeasure(A) {
         A.measureGroup.add(mesh);
         A._clashHighlights.push(mesh);
       });
-      // Bbox wireframes for EACH clashing element (always visible, even if clipped mesh fails)
-      var bboxColors = [0xff4444, 0x4488ff];
-      for (var bi = 0; bi < 2 && bi < posRows.length; bi++) {
-        var br = posRows[bi];
-        var bMin = A.ifc2three(br[0] - br[3]/2, br[1] - br[4]/2, br[2] - br[5]/2);
-        var bMax = A.ifc2three(br[0] + br[3]/2, br[1] + br[4]/2, br[2] + br[5]/2);
-        var bb = new THREE.Box3(
-          new THREE.Vector3(Math.min(bMin.x,bMax.x), Math.min(bMin.y,bMax.y), Math.min(bMin.z,bMax.z)),
-          new THREE.Vector3(Math.max(bMin.x,bMax.x), Math.max(bMin.y,bMax.y), Math.max(bMin.z,bMax.z))
-        );
-        var bHelper = new THREE.Box3Helper(bb, bboxColors[bi]);
-        A.measureGroup.add(bHelper);
-        A._clashHighlights.push(bHelper);
-      }
+      // No bbox wireframes — full material meshes + red/orange overlap are clear enough
       if (A.renderer) A.renderer.localClippingEnabled = true;
       var sx = tXmax - tXmin, sy = tYmax - tYmin, sz = tZmax - tZmin;
       console.log('§CLASH_VIZ overlap=' + sx.toFixed(2) + 'x' + sy.toFixed(2) + 'x' + sz.toFixed(2) + 'm meshes=' + hashRows.length);
@@ -544,6 +730,258 @@ function setupMeasure(A) {
       if (A.markDirty) A.markDirty();
     }
     console.log('§CLASH_DETAIL guidA=' + c[0] + ' guidB=' + c[1] + ' overlap=' + ((typeof c[8] === 'number') ? c[8].toFixed(3) : '?') + 'm');
+  };
+
+  // S246: Build deep-link URL for a clash pair
+  A._buildClashDeepLink = function(c) {
+    if (!c) return '';
+    var p = A.camera.position;
+    var t = A.controls.target;
+    var rules = A._currentClashRules;
+    var firstRule = rules && rules.clash_rules && rules.clash_rules[0];
+    var tolMm = firstRule ? Math.round((firstRule.tolerance_m || 0.025) * 1000) : 25;
+    // Find storey for this clash pair
+    var storeyRows = A.dbQuery("SELECT storey FROM element_transforms WHERE guid = ?", [c[0]]);
+    var storey = storeyRows.length ? storeyRows[0][0] : '';
+    // Short deep-link using hash fragment — avoids repeating the long OCI base URL
+    var dbParam = new URLSearchParams(location.search).get('db') || '';
+    var hash = '#clash=' + c[0] + '|' + c[1] +
+      '&st=' + encodeURIComponent(storey || '') +
+      '&cam=' + p.x.toFixed(0) + ',' + p.y.toFixed(0) + ',' + p.z.toFixed(0) +
+      '&tgt=' + t.x.toFixed(0) + ',' + t.y.toFixed(0) + ',' + t.z.toFixed(0) +
+      '&tol=' + tolMm;
+    return location.origin + location.pathname + (dbParam ? '?db=' + encodeURIComponent(dbParam) : '') + hash;
+  };
+
+  // S246: Snag a clash — capture viewport, composite metadata, open markup preview
+  A._snagClash = function(idx) {
+    var c = (A._currentClashes || [])[idx];
+    if (!c) return;
+    // First fly to the clash so meshes are visible
+    A._flyToClash(idx);
+
+    // Render one frame to ensure clash meshes are drawn
+    if (A.renderer) A.renderer.render(A.scene, A.camera);
+
+    // Acquire GPS (same as sitecam — non-blocking, result stored for share/save)
+    A._camGpsPos = null;
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        function(pos) { A._camGpsPos = pos; },
+        function() {},
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    // Build clash metadata while canvas encodes (non-blocking)
+    var clsA = (c[2] || '?').replace('Ifc', '').replace('StandardCase', '');
+    var clsB = (c[3] || '?').replace('Ifc', '').replace('StandardCase', '');
+    var overlap = (typeof c[8] === 'number') ? c[8] : 0;
+    var sev = A._clashSeverity(overlap, A._currentClashRules);
+    var storeyRows = A.dbQuery("SELECT storey FROM element_transforms WHERE guid = ?", [c[0]]);
+    var storey = storeyRows.length ? storeyRows[0][0] : '?';
+    var deepLink = A._buildClashDeepLink(c);
+
+    // Store pending clash snag info for share/save
+    A._pendingClashSnag = {
+      type: 'clash',
+      element_a_guid: c[0],
+      element_b_guid: c[1],
+      element_a_class: c[2] || '',
+      element_b_class: c[3] || '',
+      element_a_name: c[6] || '',
+      element_b_name: c[7] || '',
+      discipline_a: c[4] || '',
+      discipline_b: c[5] || '',
+      discipline_pair: (c[4] || '') + '|' + (c[5] || ''),
+      overlap_mm: Math.round(overlap * 1000),
+      severity: sev.label || 'unknown',
+      storey: storey,
+      camera_pos: { x: A.camera.position.x, y: A.camera.position.y, z: A.camera.position.z },
+      camera_target: { x: A.controls.target.x, y: A.controls.target.y, z: A.controls.target.z },
+      deep_link: deepLink
+    };
+
+    // Capture viewport as JPEG blob (async — doesn't freeze main thread like toDataURL PNG)
+    var t0 = performance.now();
+    A.canvas.toBlob(function(blob) {
+      var blobUrl = URL.createObjectURL(blob);
+      var img = new Image();
+      img.onload = function() {
+        URL.revokeObjectURL(blobUrl);
+        var cW = img.width, cH = img.height;
+        var stripH = 52;
+        var c2 = document.createElement('canvas');
+        c2.width = cW;
+        c2.height = cH + stripH;
+        var ctx = c2.getContext('2d');
+
+        ctx.drawImage(img, 0, 0, cW, cH);
+
+        // Metadata strip — all info in one strip, no separate footer
+        var gpsText = A._formatGps ? A._formatGps(A._camGpsPos) : '';
+        var tsText = A._formatTimestamp ? A._formatTimestamp() : new Date().toLocaleString();
+        var stripTotal = 66;
+        c2.height = cH + stripTotal;
+        ctx.drawImage(img, 0, 0, cW, cH); // redraw since canvas resized
+
+        ctx.fillStyle = 'rgba(0,0,0,0.8)';
+        ctx.fillRect(0, cH, cW, stripTotal);
+
+        // Line 1: Clash severity + overlap
+        ctx.font = 'bold 13px "Segoe UI", sans-serif';
+        ctx.fillStyle = sev.color || '#ff8c00';
+        ctx.fillText('CLASH: ' + clsA + ' \u2194 ' + clsB + '  ' + overlap.toFixed(3) + 'm (' + (sev.label || '') + ')', 10, cH + 16);
+
+        // Line 2: Element names
+        ctx.font = '11px "Segoe UI", sans-serif';
+        ctx.fillStyle = '#ccc';
+        ctx.fillText((c[6] || c[0]).substring(0, 40) + ' / ' + (c[7] || c[1]).substring(0, 40), 10, cH + 32);
+
+        // Line 3: Discipline + storey
+        ctx.fillStyle = '#4fc3f7';
+        ctx.fillText((c[4] || '') + ' vs ' + (c[5] || '') + '  \u2014  Storey: ' + storey, 10, cH + 47);
+
+        // Line 4: GPS + timestamp
+        ctx.font = '11px monospace';
+        ctx.fillStyle = '#00ff00';
+        ctx.fillText(gpsText, 10, cH + 62);
+        var tw = ctx.measureText(tsText).width;
+        ctx.fillText(tsText, cW - tw - 10, cH + 62);
+
+        // Open markup preview
+        var mc = document.getElementById('site-cam-markup');
+        mc.width = c2.width;
+        mc.height = c2.height;
+        mc.getContext('2d').drawImage(c2, 0, 0);
+        A._markupBaseImage = c2;
+        A._markupStrokes = [];
+        A._camPhotoBlob = null;
+        A._markupListenersSet = false;
+        document.getElementById('site-cam-preview').classList.add('active');
+        history.pushState({ sitePreview: true }, '');
+        A._initMarkupListeners(mc);
+
+        var ms = (performance.now() - t0).toFixed(0);
+        console.log('§CLASH_SNAG idx=' + idx + ' guidA=' + c[0] + ' guidB=' + c[1] + ' overlap=' + overlap.toFixed(3) + 'm snap=' + ms + 'ms');
+      };
+      img.src = blobUrl;
+    }, 'image/jpeg', 0.85);
+  };
+
+  // S246: Share clash snag — override for clash-specific text + deep-link
+  A._shareClashSnag = async function() {
+    var cs = A._pendingClashSnag;
+    if (!cs) { if (A.shareSitePhoto) A.shareSitePhoto(); return; }
+
+    var blob = await A._getMarkupBlob();
+    if (!blob) return;
+
+    var title = 'Clash: ' + cs.discipline_pair.replace('|', ' vs ') + ' \u2014 ' + cs.severity;
+    var gpsLine = A._camGpsPos ? '\nGPS: ' + A._formatGps(A._camGpsPos) : '';
+    var mapsLink = A._camGpsPos ? '\nhttps://maps.google.com/?q=' + A._camGpsPos.coords.latitude + ',' + A._camGpsPos.coords.longitude : '';
+    var text = 'Clash: ' + cs.discipline_a + ' vs ' + cs.discipline_b +
+      '\n' + cs.element_a_name + ' / ' + cs.element_b_name +
+      '\nStorey ' + cs.storey + ' \u2014 ' + cs.overlap_mm + 'mm (' + cs.severity + ')' +
+      gpsLine + mapsLink +
+      '\n\n' + cs.deep_link;
+
+    var fileName = 'Clash_' + cs.discipline_pair.replace('|', '_') + '_' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.jpg';
+    var photoFile = new File([blob], fileName, { type: 'image/jpeg' });
+
+    var shared = false;
+    if (navigator.share && navigator.canShare) {
+      var data = { files: [photoFile], title: title, text: text };
+      if (navigator.canShare(data)) {
+        try {
+          await navigator.share(data);
+          shared = true;
+          console.log('§CLASH_SNAG_SHARE OK');
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            A.closeSitePreview();
+            A._pendingClashSnag = null;
+            console.log('§CLASH_SNAG_SHARE_ABORT');
+            return;
+          }
+          console.log('§CLASH_SNAG_SHARE_ERR ' + err.message);
+        }
+      }
+    }
+    if (!shared) {
+      // Fallback: copy deep-link to clipboard
+      try {
+        await navigator.clipboard.writeText(cs.deep_link);
+        A.status.textContent = 'Deep-link copied to clipboard';
+        console.log('§CLASH_SNAG_CLIPBOARD OK');
+      } catch (e) {
+        // Last resort: open WhatsApp with text
+        window.open('https://wa.me/?text=' + encodeURIComponent(title + '\n' + text), '_blank');
+        console.log('§CLASH_SNAG_WA_FALLBACK');
+      }
+    }
+
+    // Save to IndexedDB
+    A._saveClashIssue(cs, blob);
+    A.closeSitePreview();
+    A._pendingClashSnag = null;
+    A.status.textContent = shared ? '\uD83D\uDCF8 Clash snag shared' : '\uD83D\uDCCB Deep-link copied';
+  };
+
+  // S246: Download clash snag (save annotated image to file)
+  A._downloadClashSnag = async function() {
+    var cs = A._pendingClashSnag;
+    if (!cs) { if (A.downloadSitePhoto) A.downloadSitePhoto(); return; }
+    var blob = await A._getMarkupBlob();
+    if (!blob) return;
+    var fileName = 'Clash_' + cs.discipline_pair.replace('|', '_') + '_' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.jpg';
+    var link = document.createElement('a');
+    link.download = fileName;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    A._saveClashIssue(cs, blob);
+    A._pendingClashSnag = null;
+    console.log('§CLASH_SNAG_DOWNLOAD ' + fileName);
+  };
+
+  // S246: Save clash snag to IndexedDB (extended issue record)
+  A._saveClashIssue = async function(cs, blob) {
+    try {
+      var db = await A._openIssuesDB();
+      var tx = db.transaction('issues', 'readwrite');
+      tx.objectStore('issues').add({
+        type: 'clash',
+        jpeg_blob: blob,
+        timestamp: new Date().toISOString(),
+        element_guid: cs.element_a_guid,
+        element_class: cs.element_a_class,
+        element_name: cs.element_a_name,
+        building: A.activeBuilding || '',
+        storey: cs.storey || '',
+        discipline: cs.discipline_pair,
+        notes: '',
+        // Clash-specific fields
+        element_b_guid: cs.element_b_guid,
+        element_b_class: cs.element_b_class,
+        element_b_name: cs.element_b_name,
+        discipline_pair: cs.discipline_pair,
+        overlap_mm: cs.overlap_mm,
+        severity: cs.severity,
+        tolerance_mm: cs.overlap_mm, // tolerance used at query time
+        camera_pos: JSON.stringify(cs.camera_pos),
+        camera_target: JSON.stringify(cs.camera_target),
+        deep_link: cs.deep_link,
+        gps_lat: A._camGpsPos ? A._camGpsPos.coords.latitude : null,
+        gps_lng: A._camGpsPos ? A._camGpsPos.coords.longitude : null,
+        gps_accuracy: A._camGpsPos ? A._camGpsPos.coords.accuracy : null,
+        compass_heading: A._camHeading || null
+      });
+      await new Promise(function(resolve, reject) { tx.oncomplete = resolve; tx.onerror = reject; });
+      db.close();
+      console.log('§CLASH_SNAG_SAVED guid_a=' + cs.element_a_guid + ' guid_b=' + cs.element_b_guid);
+    } catch (err) {
+      console.error('§CLASH_SNAG_SAVE_ERR ' + err.message);
+    }
   };
 
   A._revealClashes = function(clashes, rules, cardX, cardY, pairLabel, pairRule) {
@@ -601,7 +1039,7 @@ function setupMeasure(A) {
         '<span>\u26AA' + sCounts['Accepted'] + ' ACC</span></div>';
       hdr += '<hr style="border:none;border-top:1px solid #555;margin:3px 0">';
 
-      // Scrollable body — read from A._currentClashes for progressive updates
+      // Scrollable body
       var shown = Math.min(cc.length, maxVisible);
       var body = '';
       for (var i = 0; i < shown; i++) {
@@ -688,10 +1126,10 @@ function setupMeasure(A) {
         if (statusMovedTooFar) return;
         statusLongFired = true;
         statusLongPress = null;
-        // Visual feedback — brief flash
-        target.style.background = 'rgba(255,140,0,0.3)';
+        // S246: Long-press → Snag (capture + annotate + share)
+        target.style.background = 'rgba(244,67,54,0.3)';
         setTimeout(function() { target.style.background = ''; }, 200);
-        A._toggleClashStatus(idx);
+        A._snagClash(idx);
       }, 350);
     });
     listDiv.addEventListener('pointermove', function(ev) {
@@ -774,8 +1212,22 @@ function setupMeasure(A) {
     } else {
       delete A._clashStatuses[pairKey];
     }
+
+    // Accepted applies to all clashes with same IFC class pair (session cache)
+    if (next === 'Accepted') {
+      var clsA = c[2], clsB = c[3];
+      var applied = 0;
+      for (var i = 0; i < A._currentClashes.length; i++) {
+        var ci = A._currentClashes[i];
+        if ((ci[2] === clsA && ci[3] === clsB) || (ci[2] === clsB && ci[3] === clsA)) {
+          var pk = A._clashPairKey(ci[0], ci[1]);
+          if (!A._clashStatuses[pk]) { A._clashStatuses[pk] = 'Accepted'; applied++; }
+        }
+      }
+      if (applied) console.log('§CLASH_ACCEPT_ALL class=' + clsA + '|' + clsB + ' applied=' + applied);
+    }
+
     A._saveClashStatuses();
-    // Re-render list
     if (A._clashListDiv && A._renderClashList) {
       var r = A._renderClashList();
       var hdrEl = A._clashListDiv.querySelector('#clash-list-header');
@@ -796,18 +1248,52 @@ function setupMeasure(A) {
     var storey = A._currentClashStorey || 'All';
     var pairLabel = A._currentClashPairLabel || 'All Pairs';
 
-    // Use loaded clashes — no heavy queries
-    var allClashes = A._currentClashes || [];
-    if (!allClashes.length) { A.status.textContent = 'No clashes to report — click a matrix cell first'; return; }
-    var totalCount = allClashes.length;
-    var MAX_REPORT = 100;
-    // Sort by overlap desc (worst first) before capping
+    // Listing = whatever is currently loaded from cell click. Charts use counts.
+    var MAX_REPORT = (rules.display && rules.display.max_report) || 200;
+    var allClashes = (A._currentClashes || []).slice();
+    // Count per pair — envelope check first (instant), R-tree count only where envelopes overlap
+    var _pairCounts = {};
+    if (A._clashRtreeReady) {
+      // Compute discipline envelopes (one GROUP BY, instant)
+      var _envs = {};
+      A.dbQuery("SELECT m.discipline, MIN(t.center_x-t.bbox_x/2), MAX(t.center_x+t.bbox_x/2)," +
+        " MIN(t.center_y-t.bbox_y/2), MAX(t.center_y+t.bbox_y/2)," +
+        " MIN(t.center_z-t.bbox_z/2), MAX(t.center_z+t.bbox_z/2)" +
+        " FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid" +
+        " WHERE m.discipline IS NOT NULL GROUP BY m.discipline")
+        .forEach(function(r) { _envs[r[0]] = { minX:r[1], maxX:r[2], minY:r[3], maxY:r[4], minZ:r[5], maxZ:r[6] }; });
+      rules.clash_rules.forEach(function(r) {
+        var eA = _envs[r.source.discipline], eB = _envs[r.target.discipline];
+        // Skip if envelopes don't overlap — guaranteed zero clashes
+        if (!eA || !eB || eA.minX >= eB.maxX || eA.maxX <= eB.minX ||
+            eA.minY >= eB.maxY || eA.maxY <= eB.minY ||
+            eA.minZ >= eB.maxZ || eA.maxZ <= eB.minZ) {
+          _pairCounts[r.source.discipline + '|' + r.target.discipline] = 0;
+          return;
+        }
+        var count = A._countClashesRtree(null, rules, r.source.discipline, r.target.discipline);
+        _pairCounts[r.source.discipline + '|' + r.target.discipline] = count;
+      });
+    }
+    A._reportPairCounts = _pairCounts;
+    if (allClashes.length > MAX_REPORT) allClashes = allClashes.slice(0, MAX_REPORT);
+    // Total = sum of R-tree counts across all pairs (full building)
+    var totalCount = 0;
+    Object.keys(_pairCounts).forEach(function(k) { totalCount += _pairCounts[k]; });
+    if (!totalCount) totalCount = allClashes.length;
+    if (!allClashes.length && !totalCount) { A.status.textContent = 'No clashes — open matrix first'; return; }
+    // Sort by overlap desc (worst first), then Accepted last
     allClashes.sort(function(a, b) {
+      var stA = A._clashStatuses[A._clashPairKey(a[0], a[1])] || '';
+      var stB = A._clashStatuses[A._clashPairKey(b[0], b[1])] || '';
+      if (stA === 'Accepted' && stB !== 'Accepted') return 1;
+      if (stB === 'Accepted' && stA !== 'Accepted') return -1;
       var oa = (typeof a[8] === 'number') ? a[8] : 0;
       var ob = (typeof b[8] === 'number') ? b[8] : 0;
       return ob - oa;
     });
     if (allClashes.length > MAX_REPORT) allClashes = allClashes.slice(0, MAX_REPORT);
+    pairLabel = 'All Pairs';
 
     // Snapshot matrix HTML from viewer (if open)
     var matrixSnapshot = '';
@@ -857,6 +1343,8 @@ function setupMeasure(A) {
       classCounts[classPair] = (classCounts[classPair] || 0) + 1;
       var discPair = (c[4] || '?') + ' vs ' + (c[5] || '?');
       discPairCounts[discPair] = (discPairCounts[discPair] || 0) + 1;
+      // Also track disc pair key for merging R-tree counts later
+      discPairCounts['_listed_' + (c[4]||'') + '|' + (c[5]||'')] = 1;
       // Per-discipline involvement
       var dA = c[4] || '?', dB = c[5] || '?';
       discInvolvement[dA] = (discInvolvement[dA] || 0) + 1;
@@ -874,6 +1362,17 @@ function setupMeasure(A) {
       });
     });
 
+    // Merge R-tree counts for all pairs (charts show full building, not just loaded pair)
+    if (_pairCounts) {
+      Object.keys(_pairCounts).forEach(function(k) {
+        var parts = k.split('|');
+        var label = parts[0] + ' vs ' + parts[1];
+        if (!discPairCounts[label]) discPairCounts[label] = _pairCounts[k];
+        else if (!discPairCounts['_listed_' + k]) discPairCounts[label] = _pairCounts[k];
+      });
+    }
+    // Clean internal keys
+    Object.keys(discPairCounts).forEach(function(k) { if (k.indexOf('_listed_') === 0) delete discPairCounts[k]; });
     var classPairs = Object.keys(classCounts).sort(function(a, b) { return classCounts[b] - classCounts[a]; });
     var discPairs = Object.keys(discPairCounts).sort(function(a, b) { return discPairCounts[b] - discPairCounts[a]; });
     // Radar: ALL disciplines — instant metrics, no clash cross-joins
@@ -951,13 +1450,24 @@ function setupMeasure(A) {
       '<button onclick="downloadCSV()">CSV</button>' +
       '</div>' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:16px">' +
-      '<div><h1>Clash Coordination Report — ' + pairLabel + '</h1>' +
+      '<div style="flex:1"><h1>Clash Coordination Report — ' + pairLabel + '</h1>' +
       '<div class="subtitle">' + building + ' &mdash; ' + date + ' &mdash; Storey: ' + storey +
-      (totalCount > MAX_REPORT ? ' &mdash; Showing ' + MAX_REPORT + ' of ' + totalCount + ' clashes' : '') + '</div></div>' +
+      ' &mdash; ' + totalCount + ' clashes' + (totalCount > allClashes.length ? ' (listing top ' + allClashes.length + ')' : '') + '</div>' +
+      '<div style="margin-top:10px;font-size:12px;color:#bbb;line-height:1.7;max-width:520px">' +
+      '<b style="color:#4fc3f7;font-size:22px">Compliance &amp; Reference Standards</b><br>' +
+      'ISO 19650-1:2018 &mdash; Organization and digitization of information about buildings and civil engineering works<br>' +
+      'ISO 19650-2:2018 &mdash; Delivery phase of assets (clash avoidance &amp; coordination workflow)<br>' +
+      'buildingSMART IFC4 &mdash; Industry Foundation Classes, spatial &amp; geometric intersection semantics<br>' +
+      'BIM Collaboration Format (BCF 3.0) &mdash; Clash topic exchange, viewpoint, element GUID referencing<br>' +
+      'PAS 1192-2:2013 / BS EN ISO 19650 &mdash; UK BIM Level 2 coordination &amp; clash management protocol<br>' +
+      'Singapore BIM Guide v2.0 &mdash; Clash detection requirements for regulatory submission (BCA/CORENET)<br>' +
+      'NATSPEC BIM Reference Schedule &mdash; Tolerance definitions per discipline pair (ARC/STR/MEP)<br>' +
+      '<span style="color:#888">Analysis: R-tree spatial index, O(n log N) per discipline pair. Tolerances per clash_rules.json.</span>' +
+      '</div></div>' +
       (matrixSnapshot ? '<div class="chart-box" style="flex-shrink:0;margin:0">' + matrixSnapshot + '</div>' : '') +
       '</div>' +
       '<div class="stat-cards">' +
-      '<div class="stat-card" title="Total bbox overlaps detected across all discipline pairs (top 30 per pair)"><div class="num" style="color:#ff4444">' + allClashes.length + '</div><div class="lbl">Total Clashes</div></div>' +
+      '<div class="stat-card" title="Total bbox overlaps detected across all discipline pairs"><div class="num" style="color:#ff4444">' + totalCount + '</div><div class="lbl">Total Clashes</div></div>' +
       '<div class="stat-card" title="Acknowledged clashes under investigation"><div class="num" style="color:#FFD700">' + sc['Reviewed'] + '</div><div class="lbl">Reviewed</div></div>' +
       '<div class="stat-card" title="Clashes fixed in the model — ready for re-check"><div class="num" style="color:#4caf50">' + sc['Resolved'] + '</div><div class="lbl">Resolved</div></div>' +
       '<div class="stat-card" title="Risk accepted — no design change needed (e.g. intentional penetration)"><div class="num" style="color:#888">' + sc['Accepted'] + '</div><div class="lbl">Accepted</div></div>' +
@@ -1041,8 +1551,7 @@ function setupMeasure(A) {
   A._showClashMatrix = function(rules, anchorDiv) {
     // Already showing — do nothing
     if (A._clashMatrixDiv) return;
-    // S245e: Auto-enter clash DLOD mode when matrix opens
-    if (!A._clashModeActive && A._enterClashMode) A._enterClashMode();
+    // Full scene stays — S232 InstancedMesh batching keeps it light
 
     // Only show disciplines actually present in this building
     var dbDiscSet = {};
@@ -1132,7 +1641,7 @@ function setupMeasure(A) {
     matDiv.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center">' +
       '<b style="color:#4fc3f7;font-size:12px">Clash Matrix — ' + scopeLabel + '</b>' +
       '<span style="display:flex;gap:8px;align-items:center">' +
-      '<span id="clash-matrix-export" style="cursor:pointer;font-size:16px" title="Clash Report">📋</span>' +
+      '<span id="clash-matrix-export" style="cursor:pointer;font-size:16px" title="Clash Report">📊</span>' +
       '<span id="clash-matrix-close" style="cursor:pointer;color:#aaa;font-size:22px;line-height:1;padding:6px">\u2715</span></span></div>' +
       '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.15);margin:4px 0">' + html;
     document.body.appendChild(matDiv);
@@ -1787,21 +2296,25 @@ function setupMeasure(A) {
     }
 
     // Build one InstancedMesh per discipline (wireframe boxes)
+    // Also build guid→instance map so proximity LOD can hide nearby bboxes
+    A._clashBboxMap = {}; // guid → { iMesh, idx, matrix }
     var geo = new THREE.BoxGeometry(1, 1, 1);
     var _m4 = new THREE.Matrix4();
     var _pos = new THREE.Vector3();
     var _scl = new THREE.Vector3();
     var _quat = new THREE.Quaternion();
+    var _zeroM4 = new THREE.Matrix4().compose(new THREE.Vector3(), new THREE.Quaternion(), new THREE.Vector3(0, 0, 0));
     var totalInstances = 0;
 
     for (var disc in byDisc) {
       var drows = byDisc[disc];
       var color = A.DISC_COLORS[disc] || A.DEFAULT_COLOR;
       var mat = new THREE.MeshBasicMaterial({
-        color: color, wireframe: true, transparent: true, opacity: 0.35
+        color: color, wireframe: true, transparent: true, opacity: 0.2, depthWrite: false
       });
       var iMesh = new THREE.InstancedMesh(geo, mat, drows.length);
       iMesh.frustumCulled = false;
+      iMesh.renderOrder = -1;
       iMesh.userData.isClashBbox = true;
       iMesh.userData.disc = disc;
 
@@ -1810,9 +2323,11 @@ function setupMeasure(A) {
         var p = A.ifc2three(r[2], r[3], r[4]);
         var bx = r[5] || 0.3, by = r[6] || 0.3, bz = r[7] || 0.3;
         _pos.set(p.x, p.y, p.z);
-        _scl.set(bx, bz, by); // IFC Y↔Z swap
+        _scl.set(bx, bz, by);
         _m4.compose(_pos, _quat, _scl);
         iMesh.setMatrixAt(j, _m4);
+        // Store original matrix for restoring when proximity mesh leaves
+        A._clashBboxMap[r[0]] = { iMesh: iMesh, idx: j, matrix: _m4.clone() };
       }
       iMesh.instanceMatrix.needsUpdate = true;
       A.scene.add(iMesh);
@@ -1866,6 +2381,7 @@ function setupMeasure(A) {
 
   // ── Camera Proximity LOD (Level 2) ────────────────────────────────────────
   // Called from animate loop (throttled). Loads real meshes near camera target.
+  var _zeroM4 = new THREE.Matrix4().compose(new THREE.Vector3(), new THREE.Quaternion(), new THREE.Vector3(0, 0, 0));
   A._updateClashLOD = function() {
     if (!A._clashModeActive || !A._clashRtreeReady || !A.db) return;
     var now = performance.now();
@@ -1884,7 +2400,7 @@ function setupMeasure(A) {
     // Proximity radius — scale with camera distance (closer = smaller query area)
     var camDist = A.camera.position.distanceTo(target);
     var radius = Math.max(camDist * 0.5, 2); // At least 2m, scales with distance
-    var maxRadius = 20; // Cap at 20m to avoid loading too many
+    var maxRadius = 20; // Cap at 20m
     if (radius > maxRadius) radius = maxRadius;
 
     var sql = "SELECT id FROM elements_rtree WHERE " +
@@ -1904,8 +2420,8 @@ function setupMeasure(A) {
     // Get GUIDs for these rowids
     var ph = rowids.map(function() { return '?'; }).join(',');
     var guidRows = A.dbQuery(
-      "SELECT guid, center_x, center_y, center_z, rotation_x, rotation_y, rotation_z " +
-      "FROM element_transforms WHERE rowid IN (" + ph + ")", rowids
+      "SELECT t.guid, t.center_x, t.center_y, t.center_z, t.rotation_x, t.rotation_y, t.rotation_z, m.discipline, m.material_rgba " +
+      "FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid WHERE t.rowid IN (" + ph + ")", rowids
     );
 
     // Determine which GUIDs are new (not already loaded)
@@ -1916,11 +2432,17 @@ function setupMeasure(A) {
       if (!A._clashProxSet.has(guidRows[i][0])) newGuids.push(guidRows[i]);
     }
 
-    // Remove meshes for GUIDs no longer in proximity
+    // Remove meshes for GUIDs no longer in proximity — restore their bbox instances
     var toRemove = [];
     A._clashProxMeshes = A._clashProxMeshes.filter(function(mesh) {
       if (!currentSet.has(mesh.userData.guid)) {
         A.scene.remove(mesh);
+        // Restore bbox instance
+        var bInfo = A._clashBboxMap && A._clashBboxMap[mesh.userData.guid];
+        if (bInfo) {
+          bInfo.iMesh.setMatrixAt(bInfo.idx, bInfo.matrix);
+          bInfo.iMesh.instanceMatrix.needsUpdate = true;
+        }
         toRemove.push(mesh.userData.guid);
         return false;
       }
@@ -1944,11 +2466,23 @@ function setupMeasure(A) {
       var hash = hashMap[guid];
       if (!hash) continue;
       var geo = A.meshCache[hash];
-      if (!geo) continue; // Only use already-cached geometry (don't hit libDb in animate)
+      if (!geo) {
+        // Load from DB — just enough nearby pieces for context
+        var gRows = A.dbQuery("SELECT vertices, faces FROM component_geometries WHERE geometry_hash = ?", [hash]);
+        if (gRows.length && gRows[0][0] && gRows[0][1]) {
+          geo = A.blobToGeometry(gRows[0][0], gRows[0][1]);
+          if (geo) A.meshCache[hash] = geo;
+        }
+      }
+      if (!geo) continue;
 
       var pos = A.ifc2three(newGuids[k][1], newGuids[k][2], newGuids[k][3]);
+      // Use original color but force opaque — avoids transparency sorting artifacts
+      var rgba = newGuids[k][8] || null;
+      var baseMat = A._getMaterial ? A._getMaterial(rgba) : null;
       var mat = new THREE.MeshPhongMaterial({
-        color: 0xaaaaaa, transparent: true, opacity: 0.6, flatShading: true
+        color: baseMat ? baseMat.color : 0xaaaaaa,
+        transparent: false, flatShading: true, side: THREE.DoubleSide
       });
       var mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(pos.x, pos.y, pos.z);
@@ -1957,10 +2491,16 @@ function setupMeasure(A) {
       }
       mesh.userData.guid = guid;
       mesh.userData.isClashProx = true;
-      mesh.renderOrder = 10; // Above wireframes
+      mesh.renderOrder = 10;
       A.scene.add(mesh);
       A._clashProxMeshes.push(mesh);
       A._clashProxSet.add(guid);
+      // Hide corresponding bbox instance
+      var bInfo = A._clashBboxMap && A._clashBboxMap[guid];
+      if (bInfo) {
+        bInfo.iMesh.setMatrixAt(bInfo.idx, _zeroM4);
+        bInfo.iMesh.instanceMatrix.needsUpdate = true;
+      }
       loaded++;
     }
 

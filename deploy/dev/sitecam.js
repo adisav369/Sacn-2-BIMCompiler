@@ -448,6 +448,7 @@ function setupSitecam(A) {
     document.getElementById('site-cam-preview').classList.remove('active');
     A._camPhotoBlob = null;
     A._markupListenersSet = false;
+    A._pendingClashSnag = null; // S246: Clear clash snag state on close
   };
 
   A.shareSitePhoto = async function() {
