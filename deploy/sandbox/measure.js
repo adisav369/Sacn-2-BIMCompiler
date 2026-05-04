@@ -1,18 +1,34 @@
 // measure.js — Measurement tool (two-point distance, area, clash detection)
 // S245d v1 — Progressive storey loading, COUNT per storey, no N² fallback
 function setupMeasure(A) {
-  console.log('§MEASURE_VERSION S245d-v1');
+  console.log('§MEASURE_VERSION S245d-v2');
+
+  // Mobile detection — disable backdrop-filter blur (GPU-expensive on mobile)
+  var _isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  var _panelBg = _isMobile ? 'background:rgba(15,45,80,0.92);' : 'background:rgba(20,60,100,0.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);';
+  var _panelBgStrong = _isMobile ? 'background:rgba(15,45,80,0.95);' : 'background:rgba(20,60,100,0.65);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);';
 
   // ── Draggable panels ──
   A._makeDraggable = function(el) {
     var ox, oy, sx, sy, dragging = false;
-    var isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    var dragStrip = isMobile ? 50 : 30; // larger grab zone on mobile
+    var dragStrip = _isMobile ? 50 : 30;
     el.style.cursor = 'grab';
-    // Prevent browser scroll/zoom from stealing drag on mobile
-    el.style.touchAction = 'none';
+    // On mobile, intercept touch BEFORE the browser claims it for scroll/pan.
+    // Only preventDefault in the drag zone; elsewhere let browser handle normally.
+    if (_isMobile) {
+      el.addEventListener('touchstart', function(e) {
+        if (e.target.tagName === 'INPUT') return;
+        if (e.target.closest('[data-clash-idx]') || e.target.closest('[data-pair]')) return;
+        // Don't block close/export buttons
+        var tgt = e.target;
+        if (tgt.id && (tgt.id.indexOf('close') >= 0 || tgt.id.indexOf('export') >= 0)) return;
+        if (tgt.className && typeof tgt.className === 'string' && tgt.className.indexOf('close') >= 0) return;
+        var rect = el.getBoundingClientRect();
+        var t = e.touches[0];
+        if (t.clientY - rect.top <= dragStrip) e.preventDefault();
+      }, { passive: false });
+    }
     el.addEventListener('pointerdown', function(e) {
-      // Don't drag from interactive elements
       if (e.target.tagName === 'INPUT') return;
       if (e.target.id && (e.target.id.indexOf('close') >= 0 || e.target.id.indexOf('export') >= 0)) return;
       if (e.target.className && typeof e.target.className === 'string' && e.target.className.indexOf('close') >= 0) return;
@@ -403,6 +419,133 @@ function setupMeasure(A) {
   };
   A._clashPairKey = function(guidA, guidB) { return guidA + '|' + guidB; };
 
+  // Fly to a specific clash by index — extracted for pointerup (mobile) and click (desktop)
+  A._flyToClash = function(idx) {
+    var c = (A._currentClashes || [])[idx];
+    if (!c) return;
+    var rules = A._currentClashRules;
+    if (!rules) return;
+    // Highlight selected row
+    if (A._clashListDiv) {
+      A._clashListDiv.querySelectorAll('[data-clash-idx]').forEach(function(el) { el.style.background = ''; });
+      var rowEl = A._clashListDiv.querySelector('[data-clash-idx="' + idx + '"]');
+      if (rowEl) rowEl.style.background = 'rgba(79,195,247,0.25)';
+    }
+    // Fly to pair — get positions from DB
+    var posRows = A.dbQuery(
+      "SELECT t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z FROM element_transforms t WHERE t.guid IN (?, ?)",
+      [c[0], c[1]]
+    );
+    if (posRows.length < 2) return;
+    var pA = A.ifc2three(posRows[0][0], posRows[0][1], posRows[0][2]);
+    var pB = A.ifc2three(posRows[1][0], posRows[1][1], posRows[1][2]);
+    var mid = new THREE.Vector3().addVectors(
+      new THREE.Vector3(pA.x, pA.y, pA.z),
+      new THREE.Vector3(pB.x, pB.y, pB.z)
+    ).multiplyScalar(0.5);
+
+    // Remove previous clash highlights
+    if (A._clashHighlights) {
+      A._clashHighlights.forEach(function(h) { A.measureGroup.remove(h); });
+    }
+    A._clashHighlights = [];
+
+    // Overlap zone
+    var rA = posRows[0], rB = posRows[1];
+    var oxMin = Math.max(rA[0] - rA[3]/2, rB[0] - rB[3]/2);
+    var oxMax = Math.min(rA[0] + rA[3]/2, rB[0] + rB[3]/2);
+    var oyMin = Math.max(rA[1] - rA[4]/2, rB[1] - rB[4]/2);
+    var oyMax = Math.min(rA[1] + rA[4]/2, rB[1] + rB[4]/2);
+    var ozMin = Math.max(rA[2] - rA[5]/2, rB[2] - rB[5]/2);
+    var ozMax = Math.min(rA[2] + rA[5]/2, rB[2] + rB[5]/2);
+
+    if (oxMin < oxMax && oyMin < oyMax && ozMin < ozMax) {
+      var oMinT = A.ifc2three(oxMin, oyMin, ozMin);
+      var oMaxT = A.ifc2three(oxMax, oyMax, ozMax);
+      var tXmin = Math.min(oMinT.x, oMaxT.x), tXmax = Math.max(oMinT.x, oMaxT.x);
+      var tYmin = Math.min(oMinT.y, oMaxT.y), tYmax = Math.max(oMinT.y, oMaxT.y);
+      var tZmin = Math.min(oMinT.z, oMaxT.z), tZmax = Math.max(oMinT.z, oMaxT.z);
+      var PAD = 0.3;
+      var cx = (tXmin+tXmax)/2, cy = (tYmin+tYmax)/2, cz = (tZmin+tZmax)/2;
+      if (tXmax-tXmin < PAD) { tXmin = cx-PAD/2; tXmax = cx+PAD/2; }
+      if (tYmax-tYmin < PAD) { tYmin = cy-PAD/2; tYmax = cy+PAD/2; }
+      if (tZmax-tZmin < PAD) { tZmin = cz-PAD/2; tZmax = cz+PAD/2; }
+
+      var clipPlanes = [
+        new THREE.Plane(new THREE.Vector3( 1, 0, 0), -tXmin),
+        new THREE.Plane(new THREE.Vector3(-1, 0, 0),  tXmax),
+        new THREE.Plane(new THREE.Vector3( 0, 1, 0), -tYmin),
+        new THREE.Plane(new THREE.Vector3( 0,-1, 0),  tYmax),
+        new THREE.Plane(new THREE.Vector3( 0, 0, 1), -tZmin),
+        new THREE.Plane(new THREE.Vector3( 0, 0,-1),  tZmax)
+      ];
+
+      var hashRows = A.dbQuery("SELECT guid, geometry_hash FROM element_instances WHERE guid IN (?, ?)", [c[0], c[1]]);
+      var meshColors = [0xff4444, 0x4488ff];
+      hashRows.forEach(function(hr, hi) {
+        var geo = A.meshCache[hr[1]];
+        if (!geo) {
+          var gRows = A.dbQuery("SELECT vertices, faces FROM component_geometries WHERE geometry_hash = ?", [hr[1]]);
+          if (gRows.length && gRows[0][0] && gRows[0][1]) {
+            geo = A.blobToGeometry(gRows[0][0], gRows[0][1]);
+            if (geo) A.meshCache[hr[1]] = geo;
+          }
+        }
+        if (!geo) return;
+        var tRow = A.dbQuery("SELECT center_x, center_y, center_z, rotation_x, rotation_y, rotation_z FROM element_transforms WHERE guid = ?", [hr[0]]);
+        if (!tRow.length) return;
+        var pos = A.ifc2three(tRow[0][0], tRow[0][1], tRow[0][2]);
+        // Clipped mesh at overlap — different renderOrder so both visible
+        var mat = new THREE.MeshBasicMaterial({
+          color: meshColors[hi], transparent: true, opacity: hi === 0 ? 0.5 : 0.4,
+          side: THREE.DoubleSide, depthTest: false,
+          clippingPlanes: clipPlanes, clipShadows: true
+        });
+        var mesh = new THREE.Mesh(geo.clone(), mat);
+        mesh.position.set(pos.x, pos.y, pos.z);
+        if (tRow[0][3] || tRow[0][4] || tRow[0][5]) {
+          mesh.rotation.set(tRow[0][3] || 0, tRow[0][5] || 0, -(tRow[0][4] || 0));
+        }
+        mesh.renderOrder = 998 + hi; // A=998, B=999 — both draw, B on top
+        A.measureGroup.add(mesh);
+        A._clashHighlights.push(mesh);
+      });
+      // Bbox wireframes for EACH clashing element (always visible, even if clipped mesh fails)
+      var bboxColors = [0xff4444, 0x4488ff];
+      for (var bi = 0; bi < 2 && bi < posRows.length; bi++) {
+        var br = posRows[bi];
+        var bMin = A.ifc2three(br[0] - br[3]/2, br[1] - br[4]/2, br[2] - br[5]/2);
+        var bMax = A.ifc2three(br[0] + br[3]/2, br[1] + br[4]/2, br[2] + br[5]/2);
+        var bb = new THREE.Box3(
+          new THREE.Vector3(Math.min(bMin.x,bMax.x), Math.min(bMin.y,bMax.y), Math.min(bMin.z,bMax.z)),
+          new THREE.Vector3(Math.max(bMin.x,bMax.x), Math.max(bMin.y,bMax.y), Math.max(bMin.z,bMax.z))
+        );
+        var bHelper = new THREE.Box3Helper(bb, bboxColors[bi]);
+        A.measureGroup.add(bHelper);
+        A._clashHighlights.push(bHelper);
+      }
+      if (A.renderer) A.renderer.localClippingEnabled = true;
+      var sx = tXmax - tXmin, sy = tYmax - tYmin, sz = tZmax - tZmin;
+      console.log('§CLASH_VIZ overlap=' + sx.toFixed(2) + 'x' + sy.toFixed(2) + 'x' + sz.toFixed(2) + 'm meshes=' + hashRows.length);
+    }
+
+    // Fly camera to overlap centre
+    var overlapMax = 0.5;
+    if (oxMin < oxMax && oyMin < oyMax && ozMin < ozMax) {
+      overlapMax = Math.max(oxMax - oxMin, oyMax - oyMin, ozMax - ozMin, 0.5);
+      var oCenter = A.ifc2three((oxMin+oxMax)/2, (oyMin+oyMax)/2, (ozMin+ozMax)/2);
+      mid.set(oCenter.x, oCenter.y, oCenter.z);
+    }
+    var dist = Math.max(overlapMax * 3, 2);
+    if (A.controls && A.controls.target) {
+      A.controls.target.copy(mid);
+      A.camera.position.set(mid.x + dist * 0.6, mid.y + dist * 0.5, mid.z + dist * 0.6);
+      A.controls.update();
+      if (A.markDirty) A.markDirty();
+    }
+    console.log('§CLASH_DETAIL guidA=' + c[0] + ' guidB=' + c[1] + ' overlap=' + ((typeof c[8] === 'number') ? c[8].toFixed(3) : '?') + 'm');
+  };
+
   A._revealClashes = function(clashes, rules, cardX, cardY, pairLabel, pairRule) {
     if (A._clashRevealActive) A._dismissClashes(true);
     A._clashRevealActive = true;
@@ -413,33 +556,13 @@ function setupMeasure(A) {
     var dimOpacity = display.dim_opacity || 0.1;
     var maxVisible = display.max_visible || 20;
 
-    // Collect GUIDs of clashing elements
-    var clashGuids = {};
-    clashes.forEach(function(r) { clashGuids[r[0]] = 1; clashGuids[r[1]] = 1; });
-
-    // Count visible meshes to decide dimming strategy
-    var meshCount = 0;
-    A.scene.traverse(function(obj) { if (obj.isMesh && obj !== A.ground) meshCount++; });
-
-    // Dim non-clashing meshes — skip on large scenes (>3000 meshes) for performance
-    if (meshCount <= 3000) {
-      A.scene.traverse(function(obj) {
-        if (!obj.isMesh || obj === A.ground || !obj.visible) return;
-        var guid = obj.userData.guid;
-        if (guid && clashGuids[guid]) return;
-        A._clashBackups.push({ mesh: obj, origMat: obj.material });
-        var dimMat = obj.material.clone();
-        dimMat.transparent = true;
-        dimMat.opacity = dimOpacity;
-        dimMat.needsUpdate = true;
-        obj.material = dimMat;
-      });
-    }
+    // Dimming removed — was cloning every mesh material (expensive, didn't visibly work).
+    // Clash elements are shown via red/blue overlap meshes + fly-to camera instead.
 
     // Build itemised list
     var shown = Math.min(A._currentClashes.length, maxVisible);
     var listDiv = document.createElement('div');
-    listDiv.style.cssText = 'position:fixed;z-index:400;background:rgba(20,60,100,0.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;font-size:11px;padding:0;border-radius:8px;border:1px solid rgba(255,140,0,0.6);font-family:Segoe UI,sans-serif;line-height:1.5;min-width:180px;max-width:240px;max-height:40vh;display:flex;flex-direction:column;pointer-events:auto';
+    listDiv.style.cssText = 'position:fixed;z-index:400;' + _panelBg + 'color:#fff;font-size:11px;padding:0;border-radius:8px;border:1px solid rgba(255,140,0,0.6);font-family:Segoe UI,sans-serif;line-height:1.5;min-width:180px;max-width:240px;max-height:40vh;display:flex;flex-direction:column;pointer-events:auto';
     // Position: right side, above the matrix if it exists
     listDiv.style.right = '10px';
     if (A._clashMatrixDiv) {
@@ -457,7 +580,7 @@ function setupMeasure(A) {
         var tolMm = pairRule ? (pairRule.tolerance_m * 1000).toFixed(0) : '25';
         hdr += '<div style="display:flex;justify-content:space-between;align-items:center">' +
           '<b style="color:#4fc3f7;font-size:12px">' + pairLabel + '</b>' +
-          '<span id="clash-list-close" style="cursor:pointer;color:#aaa;font-size:16px;line-height:1">\u2715</span></div>';
+          '<span id="clash-list-close" style="cursor:pointer;color:#aaa;font-size:22px;line-height:1;padding:6px">\u2715</span></div>';
         hdr += '<div style="display:flex;align-items:center;gap:4px;margin:2px 0">' +
           '<span style="font-size:9px;color:#aaa">1</span>' +
           '<input id="clash-tol-slider" type="range" min="1" max="100" value="' + tolMm + '" ' +
@@ -582,8 +705,16 @@ function setupMeasure(A) {
         }
       }
     });
-    listDiv.addEventListener('pointerup', function() {
+    listDiv.addEventListener('pointerup', function(ev) {
       if (statusLongPress) { clearTimeout(statusLongPress); statusLongPress = null; }
+      // Quick tap (not long-press, not moved) → fly to clash immediately (no 300ms click delay)
+      if (!statusLongFired && !statusMovedTooFar) {
+        var target = ev.target.closest('[data-clash-idx]');
+        if (target) {
+          var idx = parseInt(target.getAttribute('data-clash-idx'));
+          A._flyToClash(idx);
+        }
+      }
     });
     listDiv.addEventListener('pointercancel', function() {
       if (statusLongPress) { clearTimeout(statusLongPress); statusLongPress = null; }
@@ -598,6 +729,11 @@ function setupMeasure(A) {
       A._toggleClashStatus(idx);
     });
 
+    // pointerup on close/export — fires before click, no 300ms delay on mobile
+    listDiv.addEventListener('pointerup', function(ev) {
+      if (ev.target.id === 'clash-list-close') { ev.stopPropagation(); A._dismissClashes(true); return; }
+      if (ev.target.id === 'clash-export-btn' || ev.target.closest('#clash-export-btn')) { ev.stopPropagation(); A._exportClashReport(); return; }
+    });
     listDiv.addEventListener('click', function(ev) {
       if (statusLongFired) { statusLongFired = false; return; }
       // Close X
@@ -610,118 +746,10 @@ function setupMeasure(A) {
         A._exportClashReport();
         return;
       }
-      // Slider handled separately below
-      var target = ev.target.closest('[data-clash-idx]');
-      if (!target) return;
-      var idx = parseInt(target.getAttribute('data-clash-idx'));
-      var c = (A._currentClashes || [])[idx];
-      if (!c) return;
-      // Highlight selected row
-      listDiv.querySelectorAll('[data-clash-idx]').forEach(function(el) { el.style.background = ''; });
-      target.style.background = 'rgba(79,195,247,0.25)';
-      // Fly to pair — get positions from DB (works for merged/instanced meshes too)
-      var posRows = A.dbQuery(
-        "SELECT t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z FROM element_transforms t WHERE t.guid IN (?, ?)",
-        [c[0], c[1]]
-      );
-      if (posRows.length >= 2) {
-        var pA = A.ifc2three(posRows[0][0], posRows[0][1], posRows[0][2]);
-        var pB = A.ifc2three(posRows[1][0], posRows[1][1], posRows[1][2]);
-        var vA = new THREE.Vector3(pA.x, pA.y, pA.z);
-        var vB = new THREE.Vector3(pB.x, pB.y, pB.z);
-        var mid = new THREE.Vector3().addVectors(vA, vB).multiplyScalar(0.5);
-
-        // Remove previous clash highlights
-        if (A._clashHighlights) {
-          A._clashHighlights.forEach(function(h) { A.measureGroup.remove(h); });
-        }
-        A._clashHighlights = [];
-        var sev = A._clashSeverity((typeof c[8] === 'number') ? c[8] : 0, rules);
-        var sevColor = parseInt(sev.color.replace('#', ''), 16);
-
-        // Overlap zone
-        var rA = posRows[0], rB = posRows[1];
-        var oxMin = Math.max(rA[0] - rA[3]/2, rB[0] - rB[3]/2);
-        var oxMax = Math.min(rA[0] + rA[3]/2, rB[0] + rB[3]/2);
-        var oyMin = Math.max(rA[1] - rA[4]/2, rB[1] - rB[4]/2);
-        var oyMax = Math.min(rA[1] + rA[4]/2, rB[1] + rB[4]/2);
-        var ozMin = Math.max(rA[2] - rA[5]/2, rB[2] - rB[5]/2);
-        var ozMax = Math.min(rA[2] + rA[5]/2, rB[2] + rB[5]/2);
-
-        if (oxMin < oxMax && oyMin < oyMax && ozMin < ozMax) {
-          var oMinT = A.ifc2three(oxMin, oyMin, ozMin);
-          var oMaxT = A.ifc2three(oxMax, oyMax, ozMax);
-          var tXmin = Math.min(oMinT.x, oMaxT.x), tXmax = Math.max(oMinT.x, oMaxT.x);
-          var tYmin = Math.min(oMinT.y, oMaxT.y), tYmax = Math.max(oMinT.y, oMaxT.y);
-          var tZmin = Math.min(oMinT.z, oMaxT.z), tZmax = Math.max(oMinT.z, oMaxT.z);
-          // Pad thin overlaps to minimum 0.3m so they're always visible
-          var PAD = 0.3;
-          var cx = (tXmin+tXmax)/2, cy = (tYmin+tYmax)/2, cz = (tZmin+tZmax)/2;
-          if (tXmax-tXmin < PAD) { tXmin = cx-PAD/2; tXmax = cx+PAD/2; }
-          if (tYmax-tYmin < PAD) { tYmin = cy-PAD/2; tYmax = cy+PAD/2; }
-          if (tZmax-tZmin < PAD) { tZmin = cz-PAD/2; tZmax = cz+PAD/2; }
-
-          // 6 clipping planes defining the overlap box
-          var clipPlanes = [
-            new THREE.Plane(new THREE.Vector3( 1, 0, 0), -tXmin),
-            new THREE.Plane(new THREE.Vector3(-1, 0, 0),  tXmax),
-            new THREE.Plane(new THREE.Vector3( 0, 1, 0), -tYmin),
-            new THREE.Plane(new THREE.Vector3( 0,-1, 0),  tYmax),
-            new THREE.Plane(new THREE.Vector3( 0, 0, 1), -tZmin),
-            new THREE.Plane(new THREE.Vector3( 0, 0,-1),  tZmax)
-          ];
-
-          // Clipped actual mesh geometry at overlap zone (red = A, blue = B)
-          var hashRows = A.dbQuery("SELECT guid, geometry_hash FROM element_instances WHERE guid IN (?, ?)", [c[0], c[1]]);
-          var meshColors = [0xff4444, 0x4488ff];
-          hashRows.forEach(function(hr, hi) {
-            var geo = A.meshCache[hr[1]];
-            if (!geo) {
-              var gRows = A.dbQuery("SELECT vertices, faces FROM component_geometries WHERE geometry_hash = ?", [hr[1]]);
-              if (gRows.length && gRows[0][0] && gRows[0][1]) {
-                geo = A.blobToGeometry(gRows[0][0], gRows[0][1]);
-                if (geo) A.meshCache[hr[1]] = geo;
-              }
-            }
-            if (!geo) return;
-            var tRow = A.dbQuery("SELECT center_x, center_y, center_z, rotation_x, rotation_y, rotation_z FROM element_transforms WHERE guid = ?", [hr[0]]);
-            if (!tRow.length) return;
-            var pos = A.ifc2three(tRow[0][0], tRow[0][1], tRow[0][2]);
-            var mat = new THREE.MeshBasicMaterial({
-              color: meshColors[hi], transparent: true, opacity: 0.6,
-              side: THREE.DoubleSide, depthTest: false,
-              clippingPlanes: clipPlanes, clipShadows: true
-            });
-            var mesh = new THREE.Mesh(geo.clone(), mat);
-            mesh.position.set(pos.x, pos.y, pos.z);
-            if (tRow[0][3] || tRow[0][4] || tRow[0][5]) {
-              mesh.rotation.set(tRow[0][3] || 0, tRow[0][5] || 0, -(tRow[0][4] || 0));
-            }
-            mesh.renderOrder = 999;
-            A.measureGroup.add(mesh);
-            A._clashHighlights.push(mesh);
-          });
-
-          if (A.renderer) A.renderer.localClippingEnabled = true;
-          var sx = tXmax - tXmin, sy = tYmax - tYmin, sz = tZmax - tZmin;
-          console.log('§CLASH_VIZ overlap=' + sx.toFixed(2) + 'x' + sy.toFixed(2) + 'x' + sz.toFixed(2) + 'm meshes=' + hashRows.length);
-        }
-
-        // Fly camera to overlap centre (not element midpoint)
-        var overlapMax = 0.5;
-        if (oxMin < oxMax && oyMin < oyMax && ozMin < ozMax) {
-          overlapMax = Math.max(oxMax - oxMin, oyMax - oyMin, ozMax - ozMin, 0.5);
-          var oCenter = A.ifc2three((oxMin+oxMax)/2, (oyMin+oyMax)/2, (ozMin+ozMax)/2);
-          mid.set(oCenter.x, oCenter.y, oCenter.z);
-        }
-        var dist = Math.max(overlapMax * 3, 2);
-        if (A.controls && A.controls.target) {
-          A.controls.target.copy(mid);
-          A.camera.position.set(mid.x + dist * 0.6, mid.y + dist * 0.5, mid.z + dist * 0.6);
-          A.controls.update();
-          if (A.markDirty) A.markDirty();
-        }
-        console.log('§CLASH_DETAIL guidA=' + c[0] + ' guidB=' + c[1] + ' overlap=' + ((typeof c[8] === 'number') ? c[8].toFixed(3) : '?') + 'm');
+      // On desktop, click also triggers fly-to (mobile uses pointerup above)
+      if (!_isMobile) {
+        var target = ev.target.closest('[data-clash-idx]');
+        if (target) A._flyToClash(parseInt(target.getAttribute('data-clash-idx')));
       }
     });
 
@@ -1093,7 +1121,7 @@ function setupMeasure(A) {
     html += '</table>';
 
     var matDiv = document.createElement('div');
-    matDiv.style.cssText = 'position:fixed;z-index:350;background:rgba(20,60,100,0.65);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#fff;padding:10px;border-radius:8px;border:1px solid rgba(79,195,247,0.5);font-family:Segoe UI,sans-serif;pointer-events:auto';
+    matDiv.style.cssText = 'position:fixed;z-index:350;' + _panelBgStrong + 'color:#fff;padding:10px;border-radius:8px;border:1px solid rgba(79,195,247,0.5);font-family:Segoe UI,sans-serif;pointer-events:auto';
 
     // Position: below the info card, aligned right
     var anchorRect = anchorDiv.getBoundingClientRect();
@@ -1102,7 +1130,7 @@ function setupMeasure(A) {
       '<b style="color:#4fc3f7;font-size:12px">Clash Matrix</b>' +
       '<span style="display:flex;gap:8px;align-items:center">' +
       '<span id="clash-matrix-export" style="cursor:pointer;font-size:16px" title="Clash Report">📋</span>' +
-      '<span id="clash-matrix-close" style="cursor:pointer;color:#aaa;font-size:16px;line-height:1">\u2715</span></span></div>' +
+      '<span id="clash-matrix-close" style="cursor:pointer;color:#aaa;font-size:22px;line-height:1;padding:6px">\u2715</span></span></div>' +
       '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.15);margin:4px 0">' + html;
     document.body.appendChild(matDiv);
     // Adjust vertical to fit
@@ -1116,19 +1144,19 @@ function setupMeasure(A) {
     A._makeDraggable(matDiv);
     A.measureLabels.push({ div: matDiv, mid: null });
 
-    // Export from matrix — uses whatever clashes are already loaded
-    matDiv.querySelector('#clash-matrix-export').addEventListener('click', function(ev) {
-      ev.stopPropagation();
-      A._exportClashReport();
-    });
+    // Export from matrix
+    var _matExport = function(ev) { ev.stopPropagation(); A._exportClashReport(); };
+    matDiv.querySelector('#clash-matrix-export').addEventListener('pointerup', _matExport);
+    matDiv.querySelector('#clash-matrix-export').addEventListener('click', _matExport);
 
     // Close X for matrix
-    matDiv.querySelector('#clash-matrix-close').addEventListener('click', function(ev) {
+    var _matClose = function(ev) {
       ev.stopPropagation();
       if (A._clashRevealActive) A._dismissClashes();
-      A._clashMatrixDiv.remove();
-      A._clashMatrixDiv = null;
-    });
+      if (A._clashMatrixDiv) { A._clashMatrixDiv.remove(); A._clashMatrixDiv = null; }
+    };
+    matDiv.querySelector('#clash-matrix-close').addEventListener('pointerup', _matClose);
+    matDiv.querySelector('#clash-matrix-close').addEventListener('click', _matClose);
 
     // Click cell → open filtered clash list for that pair
     matDiv.addEventListener('click', function(ev) {
@@ -1281,6 +1309,7 @@ function setupMeasure(A) {
     // Dismiss clash reveal if active
     A._dismissClashes();
     A._guidToMesh = null; // invalidate cache
+    A._infoCardDiv = null;
     console.log('§MEASURE cleared all');
   };
 
@@ -1330,7 +1359,7 @@ function setupMeasure(A) {
       // Fixed-position label at click point
       var labelDiv = document.createElement('div');
       labelDiv.className = 'measure-label';
-      labelDiv.style.cssText = 'position:fixed;z-index:100;background:rgba(20,60,100,0.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#cc6600;font-size:14px;font-weight:bold;padding:6px 12px;border-radius:6px;border:1px solid rgba(255,140,0,0.6);pointer-events:none;white-space:nowrap;font-family:Segoe UI,sans-serif';
+      labelDiv.style.cssText = 'position:fixed;z-index:100;' + _panelBg + 'color:#cc6600;font-size:14px;font-weight:bold;padding:6px 12px;border-radius:6px;border:1px solid rgba(255,140,0,0.6);pointer-events:none;white-space:nowrap;font-family:Segoe UI,sans-serif';
       labelDiv.textContent = label;
       labelDiv.style.left = Math.min(e.clientX + 10, window.innerWidth - 200) + 'px';
       labelDiv.style.top = Math.min(Math.max(e.clientY - 30, 10), window.innerHeight - 50) + 'px';
@@ -1445,7 +1474,7 @@ function setupMeasure(A) {
     box.getCenter(center);
     var labelDiv = document.createElement('div');
     labelDiv.className = 'measure-label';
-    labelDiv.style.cssText = 'position:fixed;z-index:100;background:rgba(20,60,100,0.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#cc6600;font-size:14px;font-weight:bold;padding:6px 12px;border-radius:6px;border:1px solid rgba(255,140,0,0.6);pointer-events:none;white-space:nowrap;font-family:Segoe UI,sans-serif';
+    labelDiv.style.cssText = 'position:fixed;z-index:100;' + _panelBg + 'color:#cc6600;font-size:14px;font-weight:bold;padding:6px 12px;border-radius:6px;border:1px solid rgba(255,140,0,0.6);pointer-events:none;white-space:nowrap;font-family:Segoe UI,sans-serif';
     labelDiv.textContent = text;
     document.body.appendChild(labelDiv);
     A.measureLabels.push({ div: labelDiv, mid: center, p1: center, p2: center });
@@ -1474,8 +1503,12 @@ function setupMeasure(A) {
   };
 
   // ── Right-click: bounding box wireframe + info card ──
+  A._infoCardDiv = null;
   A.handleMeasureRightClick = function(e) {
     if (!A.measureActive) return false;
+    // Block if info card, clash matrix, or clash list already open
+    if (A._infoCardDiv && A._infoCardDiv.parentNode) return false;
+    if (A._clashMatrixDiv || A._clashListDiv) return false;
     e.preventDefault();
     A.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     A.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -1540,7 +1573,7 @@ function setupMeasure(A) {
     var lines = [];
     lines.push('<div style="display:flex;justify-content:space-between;align-items:center">' +
       '<b style="color:#4fc3f7;font-size:15px">' + storeyLabel + '</b>' +
-      '<span class="clash-card-close" style="cursor:pointer;color:#aaa;font-size:16px;line-height:1">\u2715</span></div>');
+      '<span class="clash-card-close" style="cursor:pointer;color:#aaa;font-size:22px;line-height:1;padding:6px">\u2715</span></div>');
     lines.push('<hr style="border:none;border-top:1px solid #555;margin:4px 0">');
     lines.push('Vol: <b style="color:#ff8c00">' + volume.toFixed(1) + ' m\u00B3</b>');
     lines.push('Floor: <b>' + floorArea.toFixed(1) + ' m\u00B2</b> &nbsp; H: <b>' + size.y.toFixed(1) + 'm</b>');
@@ -1556,7 +1589,7 @@ function setupMeasure(A) {
     lines.push('<hr style="border:none;border-top:1px solid #555;margin:4px 0">');
     lines.push(clashPlaceholder);
     var cardDiv = document.createElement('div');
-    cardDiv.style.cssText = 'position:fixed;z-index:200;background:rgba(20,60,100,0.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;font-size:12px;padding:10px 14px;border-radius:8px;border:1px solid rgba(79,195,247,0.6);pointer-events:auto;font-family:Segoe UI,sans-serif;line-height:1.6;min-width:180px';
+    cardDiv.style.cssText = 'position:fixed;z-index:200;' + _panelBg + 'color:#fff;font-size:12px;padding:10px 14px;border-radius:8px;border:1px solid rgba(79,195,247,0.6);pointer-events:auto;font-family:Segoe UI,sans-serif;line-height:1.6;min-width:180px';
     // Position at click location, then adjust to fit in viewport
     cardDiv.innerHTML = lines.join('<br>');
     document.body.appendChild(cardDiv);
@@ -1570,13 +1603,20 @@ function setupMeasure(A) {
     // Store for cleanup — no 3D tracking needed, fixed position
     A.measureLabels.push({ div: cardDiv, mid: null });
     A._makeDraggable(cardDiv);
+    A._infoCardDiv = cardDiv;
     // Close X
     var closeBtn = cardDiv.querySelector('.clash-card-close');
-    if (closeBtn) closeBtn.addEventListener('click', function() {
-      cardDiv.remove();
-      var idx = A.measureLabels.findIndex(function(m) { return m.div === cardDiv; });
-      if (idx >= 0) A.measureLabels.splice(idx, 1);
-    });
+    if (closeBtn) {
+      var _closeCard = function(ev) {
+        ev.stopPropagation();
+        cardDiv.remove();
+        A._infoCardDiv = null;
+        var idx = A.measureLabels.findIndex(function(m) { return m.div === cardDiv; });
+        if (idx >= 0) A.measureLabels.splice(idx, 1);
+      };
+      closeBtn.addEventListener('pointerup', _closeCard);
+      closeBtn.addEventListener('click', _closeCard);
+    }
     A.status.textContent = storeyLabel + ' — ' + volume.toFixed(1) + ' m\u00B3';
     console.log('§MEASURE_VOLUME ' + storeyLabel + ' vol=' + volume.toFixed(1) + 'm\u00B3 elements=' + totalFromDb + ' counts=' + JSON.stringify(counts));
 
