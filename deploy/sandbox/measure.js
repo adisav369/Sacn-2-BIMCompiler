@@ -1,7 +1,7 @@
 // measure.js — Measurement tool (two-point distance, area, clash detection)
 // S245c v3 — R-tree built async (for future S245d), queries use bbox arithmetic
 function setupMeasure(A) {
-  console.log('§MEASURE_VERSION S245c-v23');
+  console.log('§MEASURE_VERSION S245c-v28');
 
   // ── Draggable panels ──
   A._makeDraggable = function(el) {
@@ -316,7 +316,7 @@ function setupMeasure(A) {
     // Build itemised list
     var shown = Math.min(clashes.length, maxVisible);
     var listDiv = document.createElement('div');
-    listDiv.style.cssText = 'position:fixed;z-index:400;background:rgba(20,60,100,0.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;font-size:11px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,140,0,0.6);font-family:Segoe UI,sans-serif;line-height:1.5;min-width:180px;max-width:240px;max-height:40vh;overflow-y:auto;pointer-events:auto';
+    listDiv.style.cssText = 'position:fixed;z-index:400;background:rgba(20,60,100,0.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;font-size:11px;padding:0;border-radius:8px;border:1px solid rgba(255,140,0,0.6);font-family:Segoe UI,sans-serif;line-height:1.5;min-width:180px;max-width:240px;max-height:40vh;display:flex;flex-direction:column;pointer-events:auto';
     // Position: right side, above the matrix if it exists
     listDiv.style.right = '10px';
     if (A._clashMatrixDiv) {
@@ -328,37 +328,36 @@ function setupMeasure(A) {
     }
 
     A._renderClashList = function() {
-      var lines = [];
-      // Header: pair label + tolerance slider
+      // Sticky header
+      var hdr = '';
       if (pairLabel) {
         var tolMm = pairRule ? (pairRule.tolerance_m * 1000).toFixed(0) : '25';
-        lines.push('<div style="display:flex;justify-content:space-between;align-items:center">' +
+        hdr += '<div style="display:flex;justify-content:space-between;align-items:center">' +
           '<b style="color:#4fc3f7;font-size:12px">' + pairLabel + '</b>' +
-          '<span id="clash-list-close" style="cursor:pointer;color:#aaa;font-size:16px;line-height:1">\u2715</span></div>');
-        lines.push('<div style="display:flex;align-items:center;gap:4px;margin:2px 0">' +
+          '<span id="clash-list-close" style="cursor:pointer;color:#aaa;font-size:16px;line-height:1">\u2715</span></div>';
+        hdr += '<div style="display:flex;align-items:center;gap:4px;margin:2px 0">' +
           '<span style="font-size:9px;color:#aaa">1</span>' +
           '<input id="clash-tol-slider" type="range" min="1" max="100" value="' + tolMm + '" ' +
           'style="flex:1;height:4px;accent-color:#4fc3f7;cursor:pointer">' +
           '<span style="font-size:9px;color:#aaa">100</span>' +
-          '<span id="clash-tol-val" style="font-size:10px;color:#fff;min-width:30px">' + tolMm + 'mm</span></div>');
+          '<span id="clash-tol-val" style="font-size:10px;color:#fff;min-width:30px">' + tolMm + 'mm</span></div>';
       }
-      // Count statuses
       var sCounts = { '': 0, 'Reviewed': 0, 'Resolved': 0, 'Accepted': 0 };
       for (var si = 0; si < clashes.length; si++) {
         var sk = A._clashPairKey(clashes[si][0], clashes[si][1]);
         sCounts[A._clashStatuses[sk] || '']++;
       }
-      lines.push('<span style="color:#fff;font-size:11px">' + clashes.length + '</span>');
-      // Status legend with counts
-      lines.push('<div style="display:flex;gap:10px;margin:2px 0;font-size:13px;color:#aaa">' +
-        '<span>\u{1F7E1}' + sCounts['Reviewed'] + '</span>' +
-        '<span>\u{1F7E2}' + sCounts['Resolved'] + '</span>' +
-        '<span>\u26AA' + sCounts['Accepted'] + '</span></div>');
-      lines.push('<hr style="border:none;border-top:1px solid #555;margin:3px 0">');
+      hdr += '<span style="color:#fff;font-size:11px">' + clashes.length + '</span>';
+      hdr += '<div style="display:flex;gap:8px;margin:2px 0;font-size:11px;color:#aaa">' +
+        '<span>\u{1F7E1}' + sCounts['Reviewed'] + ' RVW</span>' +
+        '<span>\u{1F7E2}' + sCounts['Resolved'] + ' SLV</span>' +
+        '<span>\u26AA' + sCounts['Accepted'] + ' ACC</span></div>';
+      hdr += '<hr style="border:none;border-top:1px solid #555;margin:3px 0">';
 
+      // Scrollable body
+      var body = '';
       for (var i = 0; i < shown; i++) {
         var c = clashes[i];
-        // Brief: class abbreviations only (e.g. "Wall↔Beam 0.12m")
         var clsA = (c[2] || '?').replace('Ifc', '').replace('StandardCase', '');
         var clsB = (c[3] || '?').replace('Ifc', '').replace('StandardCase', '');
         var overlap = (typeof c[8] === 'number') ? c[8] : 0;
@@ -366,22 +365,23 @@ function setupMeasure(A) {
         var pairKey = A._clashPairKey(c[0], c[1]);
         var status = A._clashStatuses[pairKey] || '';
         var ss = A._clashStatusStyles[status];
-        lines.push(
+        body +=
           '<span data-clash-idx="' + i + '" style="cursor:pointer;display:block;padding:1px 0;' + ss.style + '">' +
           (ss.icon ? ss.icon : '<span style="color:#888">' + (i + 1) + '</span>') +
           ' ' + clsA + '\u2194' + clsB +
           ' <b style="color:' + sev.color + '">' + overlap.toFixed(2) + 'm</b>' +
-          '</span>'
-        );
+          '</span>';
       }
       if (clashes.length > maxVisible) {
-        lines.push('<span style="color:#888;font-size:9px">+' + (clashes.length - maxVisible) + ' more \u2192 Export</span>');
+        body += '<span style="color:#888;font-size:9px">+' + (clashes.length - maxVisible) + ' more</span>';
       }
-      // No export here — export is on the matrix title bar
-      return lines.join('<br>');
+      return { hdr: hdr, body: body };
     };
 
-    listDiv.innerHTML = A._renderClashList();
+    var rendered = A._renderClashList();
+    listDiv.innerHTML =
+      '<div id="clash-list-header" style="padding:8px 10px 0;flex-shrink:0">' + rendered.hdr + '</div>' +
+      '<div id="clash-list-body" style="padding:0 10px 8px;overflow-y:auto;flex:1">' + rendered.body + '</div>';
     document.body.appendChild(listDiv);
     A._clashListDiv = listDiv;
     A._makeDraggable(listDiv);
@@ -595,84 +595,60 @@ function setupMeasure(A) {
     A._saveClashStatuses();
     // Re-render list
     if (A._clashListDiv && A._renderClashList) {
-      A._clashListDiv.innerHTML = A._renderClashList();
+      var r = A._renderClashList();
+      var hdrEl = A._clashListDiv.querySelector('#clash-list-header');
+      var bodyEl = A._clashListDiv.querySelector('#clash-list-body');
+      if (hdrEl) hdrEl.innerHTML = r.hdr;
+      if (bodyEl) bodyEl.innerHTML = r.body;
     }
     console.log('§CLASH_STATUS guidA=' + c[0] + ' guidB=' + c[1] + ' status=' + (next || 'none'));
   };
 
-  // Export clash report as Excel — summary + one sheet per pair (first 30 each)
+  // Export clash report as Excel — dumps _currentClashes only (no queries)
   A._exportClashReport = function() {
+    var clashes = A._currentClashes;
+    if (!clashes || !clashes.length) { A.status.textContent = 'No clashes to export'; return; }
     if (typeof XLSX === 'undefined') { alert('Excel library not loaded'); return; }
     var rules = A._currentClashRules;
-    if (!rules) return;
     var building = A.activeBuilding || 'Building';
     var date = new Date().toISOString().slice(0, 10);
-    var storey = A._currentClashStorey;
-    var wb = XLSX.utils.book_new();
 
-    // ── Sheet 1: Summary ──
-    var sum = [];
-    sum.push(['CLASH COORDINATION SUMMARY']);
-    sum.push(['Project:', building, '', 'Date:', date, '', 'Storey:', storey || 'All']);
-    sum.push([]);
-    sum.push(['Source', 'Target', 'Tolerance (mm)', 'Clashes (top 30)', 'Reviewed', 'Resolved', 'Accepted']);
-    var totalAll = 0;
-    var pairSheets = [];
-    rules.clash_rules.forEach(function(r) {
-      var clashes = A._queryClashesPair(storey, rules, r.source.discipline, r.target.discipline, 0);
-      var sc = { 'Reviewed': 0, 'Resolved': 0, 'Accepted': 0 };
-      clashes.forEach(function(c) {
-        var st = A._clashStatuses[A._clashPairKey(c[0], c[1])] || '';
-        if (sc[st] !== undefined) sc[st]++;
-      });
-      sum.push([
-        r.source.discipline, r.target.discipline,
-        (r.tolerance_m * 1000).toFixed(0),
-        clashes.length, sc['Reviewed'], sc['Resolved'], sc['Accepted']
+    var sc = { '': 0, 'Reviewed': 0, 'Resolved': 0, 'Accepted': 0 };
+    clashes.forEach(function(c) {
+      var st = A._clashStatuses[A._clashPairKey(c[0], c[1])] || '';
+      sc[st]++;
+    });
+
+    var rows = [];
+    rows.push(['CLASH COORDINATION REPORT']);
+    rows.push(['Project:', building, 'Date:', date, 'Storey:', A._currentClashStorey || 'All']);
+    rows.push(['Clashes:', clashes.length, 'Reviewed:', sc['Reviewed'], 'Resolved:', sc['Resolved'], 'Accepted:', sc['Accepted']]);
+    rows.push([]);
+    rows.push(['#', 'Element A', 'Class A', 'Disc A', 'Element B', 'Class B', 'Disc B',
+      'Overlap (m)', 'Severity', 'Status', 'Assigned To', 'Action', 'Target Date']);
+    clashes.forEach(function(c, i) {
+      var overlap = (typeof c[8] === 'number') ? c[8] : 0;
+      var sev = A._clashSeverity(overlap, rules);
+      var status = A._clashStatuses[A._clashPairKey(c[0], c[1])] || '';
+      rows.push([
+        i + 1,
+        (c[6] || '').replace('Ifc', ''), (c[2] || '').replace('Ifc', ''), c[4] || '',
+        (c[7] || '').replace('Ifc', ''), (c[3] || '').replace('Ifc', ''), c[5] || '',
+        parseFloat(overlap.toFixed(3)), sev.label, status, '', '', ''
       ]);
-      totalAll += clashes.length;
-      if (clashes.length) pairSheets.push({ label: r.source.discipline + ' vs ' + r.target.discipline, clashes: clashes });
-    });
-    sum.push([]);
-    sum.push(['Total:', '', '', totalAll]);
-    sum.push([]);
-    sum.push(['Severity Levels']);
-    if (rules.severity) {
-      sum.push(['Hard clash', '>' + (rules.severity.hard.min_overlap_m * 1000) + 'mm']);
-      sum.push(['Soft clash', '>' + (rules.severity.soft.min_overlap_m * 1000) + 'mm']);
-      sum.push(['Clearance', '<' + (rules.severity.clearance.max_gap_m * 1000) + 'mm gap']);
-    }
-    var ws1 = XLSX.utils.aoa_to_sheet(sum);
-    ws1['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
-    XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
-
-    // ── Per-pair sheets (first 30 each) ──
-    pairSheets.forEach(function(ps) {
-      var rows = [];
-      rows.push(['#', 'Element A', 'Class A', 'Element B', 'Class B', 'Storey', 'Overlap (m)', 'Severity', 'Status', 'Assigned To', 'Action', 'Target Date']);
-      ps.clashes.forEach(function(c, i) {
-        var overlap = (typeof c[8] === 'number') ? c[8] : 0;
-        var sev = A._clashSeverity(overlap, rules);
-        var status = A._clashStatuses[A._clashPairKey(c[0], c[1])] || '';
-        var metaA = A.dbQuery("SELECT storey FROM elements_meta WHERE guid = ?", [c[0]]);
-        rows.push([
-          i + 1,
-          (c[6] || '').replace('Ifc', ''), (c[2] || '').replace('Ifc', ''),
-          (c[7] || '').replace('Ifc', ''), (c[3] || '').replace('Ifc', ''),
-          metaA.length ? metaA[0][0] : '',
-          parseFloat(overlap.toFixed(3)), sev.label, status,
-          '', '', ''
-        ]);
-      });
-      var ws = XLSX.utils.aoa_to_sheet(rows);
-      ws['!cols'] = [{ wch: 4 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 12 }, { wch: 14 }, { wch: 9 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 20 }, { wch: 12 }];
-      // Sheet name max 31 chars
-      XLSX.utils.book_append_sheet(wb, ws, ps.label.slice(0, 31));
     });
 
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 4 }, { wch: 18 }, { wch: 12 }, { wch: 6 },
+      { wch: 18 }, { wch: 12 }, { wch: 6 },
+      { wch: 9 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 20 }, { wch: 12 }
+    ];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Clash Report');
     var filename = building.replace(/\s+/g, '_') + '_clashes_' + date + '.xlsx';
     XLSX.writeFile(wb, filename);
-    console.log('§CLASH_EXPORT pairs=' + pairSheets.length + ' total=' + totalAll + ' file=' + filename);
+    console.log('§CLASH_EXPORT xlsx clashes=' + clashes.length);
     A.status.textContent = 'Exported ' + filename;
   };
 
