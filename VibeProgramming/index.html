@@ -2594,6 +2594,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-technology-convergence-why-this-was-impossible-before-2025" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Technology Convergence — Why This Was Impossible Before 2025
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Technology Convergence — Why This Was Impossible Before 2025">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#timeline-of-key-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timeline of Key Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-critical-convergence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Critical Convergence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-solo-multiplier-its-not-speed-its-capability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Solo Multiplier — It's Not Speed, It's Capability
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#for-the-bonsaiblenderbim-community" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3888,6 +3938,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-technology-convergence-why-this-was-impossible-before-2025" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Technology Convergence — Why This Was Impossible Before 2025
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Technology Convergence — Why This Was Impossible Before 2025">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#timeline-of-key-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timeline of Key Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-critical-convergence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Critical Convergence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-solo-multiplier-its-not-speed-its-capability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Solo Multiplier — It's Not Speed, It's Capability
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#for-the-bonsaiblenderbim-community" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4423,6 +4523,157 @@ Proven at 126K elements (LTU AHouse).
 </tbody>
 </table>
 <p>Each constraint was discovered in practice, not anticipated. Claude Code explored the solution space; the domain expert evaluated whether each result was correct. The schema that emerged is now published as a candidate open standard — not because it was designed to be one, but because 60 sessions of real-world pressure produced something that actually works.</p>
+<hr />
+<h2 id="the-technology-convergence-why-this-was-impossible-before-2025">The Technology Convergence — Why This Was Impossible Before 2025<a class="headerlink" href="#the-technology-convergence-why-this-was-impossible-before-2025" title="Permanent link">&para;</a></h2>
+<p>The BIM OOTB browser viewer and clash detection system depends on a stack that only became viable in 2025-2026. None of these components existed in production-ready form two years earlier.</p>
+<h3 id="timeline-of-key-dependencies">Timeline of Key Dependencies<a class="headerlink" href="#timeline-of-key-dependencies" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Technology</th>
+<th>Release / Milestone</th>
+<th>Date</th>
+<th>What it enabled</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>sql.js</strong></td>
+<td>v1.6.0 — stable WASM SQLite for browsers</td>
+<td>Feb 2022</td>
+<td>SQLite queries in the browser without a server</td>
+</tr>
+<tr>
+<td><strong>Three.js</strong> r128</td>
+<td>InstancedMesh stable, frustumCulled support</td>
+<td>Jan 2021</td>
+<td>48K elements in one scene via instanced draw calls</td>
+</tr>
+<tr>
+<td><strong>Three.js</strong> r147+</td>
+<td>Improved InstancedMesh + mobile WebGL2</td>
+<td>Late 2022</td>
+<td>Mobile GPU could handle instanced BIM scenes</td>
+</tr>
+<tr>
+<td><strong>web-ifc</strong> v0.0.36+</td>
+<td>C++/WASM IFC parser, tessellation in browser</td>
+<td>2023</td>
+<td>IFC import without server — <code>extractIFC2DB.js</code></td>
+</tr>
+<tr>
+<td><strong>Web Share API</strong></td>
+<td>Level 2 — file sharing (images + text)</td>
+<td>Chrome 93 (Aug 2021), Safari 15 (Sep 2021)</td>
+<td>Share annotated clash images directly to WhatsApp/Telegram</td>
+</tr>
+<tr>
+<td><strong>rtree-sql.js</strong> v1.7.0</td>
+<td>sql.js fork with <code>SQLITE_ENABLE_RTREE</code> compiled in</td>
+<td>2025</td>
+<td>R-tree spatial index in WASM — O(n log N) clash queries in browser</td>
+</tr>
+<tr>
+<td><strong>Canvas.toBlob()</strong></td>
+<td>Stable across all browsers including iOS Safari</td>
+<td>2023</td>
+<td>Async viewport capture without freezing mobile UI</td>
+</tr>
+<tr>
+<td><strong>Service Worker</strong> Cache API</td>
+<td>Mature + predictable across Chrome/Safari/Firefox</td>
+<td>2023-2024</td>
+<td>Offline PWA with reliable WASM + DB caching</td>
+</tr>
+<tr>
+<td><strong>Claude Code</strong> (AI pair programming)</td>
+<td>Anthropic CLI release</td>
+<td>2025</td>
+<td>Domain expert + AI = 60-90x solo velocity</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-critical-convergence">The Critical Convergence<a class="headerlink" href="#the-critical-convergence" title="Permanent link">&para;</a></h3>
+<p>The R-tree WASM build (<code>rtree-sql.js</code>) was the final piece. Without it:</p>
+<ul>
+<li>Clash detection required O(n^2) cross-joins — <strong>unusable on mobile</strong> for buildings &gt;5K elements</li>
+<li>Proximity LOD (load real meshes near camera) was impossible without spatial queries</li>
+<li>The entire S245-S246 clash feature set (matrix, fly-to, snag, deep-link) depends on R-tree being fast enough to run in the browser's main thread</li>
+</ul>
+<p>This package appeared on npm in 2025. Before that, the only options were server-side PostGIS (kills the zero-install premise) or a custom WASM build of SQLite with R-tree flags (months of build engineering).</p>
+<h3 id="the-solo-multiplier-its-not-speed-its-capability">The Solo Multiplier — It's Not Speed, It's Capability<a class="headerlink" href="#the-solo-multiplier-its-not-speed-its-capability" title="Permanent link">&para;</a></h3>
+<p>This is not "I could have done it in 36 months, AI did it in 1." <strong>It could not have been done at all.</strong> A solo developer — even a competent one — hitting the WASM R-tree wall, Three.js clipping planes, service worker cache invalidation, and mobile touch event handling would not eventually get there slower. They would <strong>stop</strong>. You can't Google what you don't know to search for.</p>
+<p><strong>Actual project timeline (git history):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Duration</th>
+<th>What was built</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Spatial DB discovery → Blender pipeline (S165-S193)</td>
+<td>Oct-Dec 2025 (~2 months)</td>
+<td>R-tree, GN instancing, DLOD — hit Blender's hard ceiling</td>
+</tr>
+<tr>
+<td>Browser pivot (S195-S231)</td>
+<td>Jan-Apr 2026 (~3 months)</td>
+<td>sql.js WASM, Three.js streaming, InstancedMesh, mobile PWA</td>
+</tr>
+<tr>
+<td>Clash detection + snag + share (S245-S246)</td>
+<td>May 2026 (~2 days)</td>
+<td>R-tree queries, matrix, fly-to, annotate, deep-link</td>
+</tr>
+<tr>
+<td><strong>Total elapsed</strong></td>
+<td><strong>~6 months</strong></td>
+<td>Full browser BIM viewer + clash detection + sharing</td>
+</tr>
+<tr>
+<td><strong>Compressed (hindsight, no dead ends)</strong></td>
+<td><strong>~1 month</strong></td>
+<td>If you already knew what worked</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Cost comparison:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Duration</th>
+<th>Cost</th>
+<th>Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Traditional team (5-6 people)</td>
+<td>3-4 months</td>
+<td>$150K-$300K</td>
+<td>Delivered but slow to pivot</td>
+</tr>
+<tr>
+<td>Solo developer, pre-AI</td>
+<td>36 months</td>
+<td>Time</td>
+<td><strong>Abandoned</strong> — too many unknowns outside domain expertise</td>
+</tr>
+<tr>
+<td>Solo domain expert + AI</td>
+<td>6 months (1 month compressed)</td>
+<td>~$500 total API cost</td>
+<td>Shipped, deployed, live on phones</td>
+</tr>
+</tbody>
+</table>
+<p>The team comparison is not a speed ratio. A team <em>can</em> build it — but they'd never pivot from Blender to browser in one conversation. The sunk cost of 3 engineers hired for Blender would anchor the project for months. The solo pre-AI comparison is not a speed ratio either — it's a binary: <strong>possible vs impossible</strong>. The WASM R-tree spatial index, the Three.js clipping planes with depth buffer management, the service worker cache versioning — these are not things a BIM domain expert learns by Googling. They are outside the search radius entirely.</p>
+<p>AI doesn't make you faster. <strong>AI makes the unreachable reachable.</strong> The domain expert provides judgment that AI cannot: whether 25mm tolerance makes engineering sense, whether a pipe through a wall is a false positive, whether the building loads correctly on a foreman's phone. Speed without domain judgment produces fast garbage. Domain judgment without AI produces slow abandonment.</p>
+<p>The combination — domain expert steering, AI building — is a new category. Not faster programming. Not no-code. Not outsourcing. A single mind with the full context, building at the speed of thought, with guard rails that only decades of industry experience can provide.</p>
 <hr />
 <h2 id="for-the-bonsaiblenderbim-community">For the Bonsai/BlenderBIM Community<a class="headerlink" href="#for-the-bonsaiblenderbim-community" title="Permanent link">&para;</a></h2>
 <p>If you're evaluating this project and wondering whether vibe-programmed code can be trusted:</p>
