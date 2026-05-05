@@ -194,55 +194,49 @@ function initViewer() {
       }
     }
 
-    // S246: Deep-link clash auto-fly — #clash=guidA|guidB&cam=x,y,z&tgt=tx,ty,tz&tol=mm
+    // S246: Deep-link clash auto-fly — #clash=guidA~guidB&cam=x,y,z&tgt=tx,ty,tz&tol=mm
     const hashParams = {};
     location.hash.slice(1).split('&').forEach(function(p) { const kv = p.split('='); if (kv[0]) hashParams[kv[0]] = decodeURIComponent(kv[1] || ''); });
     const clashParam = hashParams.clash;
     if (clashParam && APP.db) {
-      const [guidA, guidB] = clashParam.split('|');
+      const [guidA, guidB] = clashParam.split('~');
       if (guidA && guidB) {
         let clashChecks = 0;
         const clashTimer = setInterval(function() {
           clashChecks++;
           if (APP.streamedCount > 10 || clashChecks > 20) {
             clearInterval(clashTimer);
-            const camStr = hashParams.cam;
-            const tgtStr = hashParams.tgt;
-
-            if (camStr && tgtStr) {
-              const cam = camStr.split(',').map(Number);
-              const tgt = tgtStr.split(',').map(Number);
-              if (cam.length === 3 && tgt.length === 3) {
-                APP.camera.position.set(cam[0], cam[1], cam[2]);
-                APP.controls.target.set(tgt[0], tgt[1], tgt[2]);
-                APP.controls.update();
-              }
-            }
-
-            const posRows = APP.dbQuery(
-              "SELECT t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z FROM element_transforms t WHERE t.guid IN (?, ?)",
+            // Query element metadata to build a clash entry for _flyToClash
+            const metaRows = APP.dbQuery(
+              "SELECT m.guid, m.ifc_class, m.discipline, m.element_name FROM elements_meta m WHERE m.guid IN (?, ?)",
               [guidA, guidB]
             );
-            if (posRows.length >= 2) {
-              const bboxColors = [0xff4444, 0x4488ff];
-              for (let bi = 0; bi < 2; bi++) {
-                const br = posRows[bi];
-                const bMin = APP.ifc2three(br[0] - br[3]/2, br[1] - br[4]/2, br[2] - br[5]/2);
-                const bMax = APP.ifc2three(br[0] + br[3]/2, br[1] + br[4]/2, br[2] + br[5]/2);
-                const bb = new THREE.Box3(
-                  new THREE.Vector3(Math.min(bMin.x,bMax.x), Math.min(bMin.y,bMax.y), Math.min(bMin.z,bMax.z)),
-                  new THREE.Vector3(Math.max(bMin.x,bMax.x), Math.max(bMin.y,bMax.y), Math.max(bMin.z,bMax.z))
-                );
-                const bHelper = new THREE.Box3Helper(bb, bboxColors[bi]);
-                APP.measureGroup.add(bHelper);
+            var mA = metaRows.find(function(r) { return r[0] === guidA; }) || [guidA, '?', '?', '?'];
+            var mB = metaRows.find(function(r) { return r[0] === guidB; }) || [guidB, '?', '?', '?'];
+            // Build clash array: [guidA, guidB, clsA, clsB, discA, discB, nameA, nameB, overlap]
+            var clashEntry = [guidA, guidB, mA[1], mB[1], mA[2], mB[2], mA[3], mB[3], 0];
+            // Load clash rules for _flyToClash
+            APP._loadClashRules(function(rules) {
+              APP._currentClashRules = rules;
+              APP._currentClashes = [clashEntry];
+              APP._clashHighlights = [];
+              APP.measureActive = true;
+              // Set exact saved cam position BEFORE fly — so _flyToClash flies TO the saved view
+              const camStr = hashParams.cam;
+              const tgtStr = hashParams.tgt;
+              if (camStr && tgtStr) {
+                const cam = camStr.split(',').map(Number);
+                const tgt = tgtStr.split(',').map(Number);
+                if (cam.length === 3 && tgt.length === 3) {
+                  APP._deepLinkCamOverride = { pos: cam, tgt: tgt };
+                }
               }
-              if (APP.markDirty) APP.markDirty();
-            }
-
-            const tolMm = hashParams.tol || '25';
-            const storeyParam = hashParams.st || '';
-            APP.status.textContent = 'Clash: ' + guidA.substring(0, 8) + ' \u2194 ' + guidB.substring(0, 8) + ' | Storey: ' + storeyParam + ' | Tol: ' + tolMm + 'mm';
-            console.log('§CLASH_DEEPLINK guidA=' + guidA + ' guidB=' + guidB + ' storey=' + storeyParam + ' tol=' + tolMm);
+              APP._flyToClash(0);
+              const storeyParam = hashParams.st || '';
+              const tolMm = hashParams.tol || '25';
+              APP.status.textContent = 'Clash: ' + (mA[3] || guidA).substring(0, 20) + ' \u2194 ' + (mB[3] || guidB).substring(0, 20) + ' | Storey: ' + storeyParam + ' | Tol: ' + tolMm + 'mm';
+              console.log('§CLASH_DEEPLINK guidA=' + guidA + ' guidB=' + guidB + ' storey=' + storeyParam + ' tol=' + tolMm);
+            });
           }
         }, 1500);
       }

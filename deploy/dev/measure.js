@@ -724,10 +724,32 @@ function setupMeasure(A) {
     }
     var dist = Math.max(overlapMax * 3, 2);
     if (A.controls && A.controls.target) {
-      A.controls.target.copy(mid);
-      A.camera.position.set(mid.x + dist * 0.6, mid.y + dist * 0.5, mid.z + dist * 0.6);
-      A.controls.update();
-      if (A.markDirty) A.markDirty();
+      var endTarget, endPos;
+      // Deep-link override: fly to exact saved camera position
+      if (A._deepLinkCamOverride) {
+        var ov = A._deepLinkCamOverride;
+        endPos = new THREE.Vector3(ov.pos[0], ov.pos[1], ov.pos[2]);
+        endTarget = new THREE.Vector3(ov.tgt[0], ov.tgt[1], ov.tgt[2]);
+        A._deepLinkCamOverride = null;
+      } else {
+        endTarget = mid.clone();
+        endPos = new THREE.Vector3(mid.x + dist * 0.6, mid.y + dist * 0.5, mid.z + dist * 0.6);
+      }
+      var startTarget = A.controls.target.clone();
+      var startPos = A.camera.position.clone();
+      var duration = 2000; // ms
+      var t0 = performance.now();
+      function _animFly() {
+        var t = Math.min((performance.now() - t0) / duration, 1);
+        // Ease-in-out cubic — smooth start and end
+        var e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        A.camera.position.lerpVectors(startPos, endPos, e);
+        A.controls.target.lerpVectors(startTarget, endTarget, e);
+        A.controls.update();
+        if (A.markDirty) A.markDirty();
+        if (t < 1) requestAnimationFrame(_animFly);
+      }
+      _animFly();
     }
     console.log('§CLASH_DETAIL guidA=' + c[0] + ' guidB=' + c[1] + ' overlap=' + ((typeof c[8] === 'number') ? c[8].toFixed(3) : '?') + 'm');
   };
@@ -745,10 +767,10 @@ function setupMeasure(A) {
     var storey = storeyRows.length ? storeyRows[0][0] : '';
     // Short deep-link using hash fragment — avoids repeating the long OCI base URL
     var dbParam = new URLSearchParams(location.search).get('db') || '';
-    var hash = '#clash=' + c[0] + '|' + c[1] +
+    var hash = '#clash=' + c[0] + '~' + c[1] +
       '&st=' + encodeURIComponent(storey || '') +
-      '&cam=' + p.x.toFixed(0) + ',' + p.y.toFixed(0) + ',' + p.z.toFixed(0) +
-      '&tgt=' + t.x.toFixed(0) + ',' + t.y.toFixed(0) + ',' + t.z.toFixed(0) +
+      '&cam=' + p.x.toFixed(2) + ',' + p.y.toFixed(2) + ',' + p.z.toFixed(2) +
+      '&tgt=' + t.x.toFixed(2) + ',' + t.y.toFixed(2) + ',' + t.z.toFixed(2) +
       '&tol=' + tolMm;
     return location.origin + location.pathname + (dbParam ? '?db=' + encodeURIComponent(dbParam) : '') + hash;
   };
@@ -757,10 +779,8 @@ function setupMeasure(A) {
   A._snagClash = function(idx) {
     var c = (A._currentClashes || [])[idx];
     if (!c) return;
-    // First fly to the clash so meshes are visible
-    A._flyToClash(idx);
-
-    // Render one frame to ensure clash meshes are drawn
+    // Snap current user view as-is — user already orbited to desired angle
+    // Render one frame to ensure current state is drawn
     if (A.renderer) A.renderer.render(A.scene, A.camera);
 
     // Acquire GPS (same as sitecam — non-blocking, result stored for share/save)

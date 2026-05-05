@@ -145,6 +145,60 @@ function setupIssues(A) {
     document.getElementById('issue-d-time').textContent = iss.timestamp ? new Date(iss.timestamp).toLocaleString() : '-';
     document.getElementById('issue-d-notes').textContent = iss.notes || '-';
 
+    // Deep-link (clash snags have it, regular snags don't)
+    const linkRow = document.getElementById('issue-d-link-row');
+    const linkEl = document.getElementById('issue-d-link');
+    if (iss.deep_link) {
+      linkRow.style.display = '';
+      linkEl.href = '#';
+      linkEl.textContent = 'Fly to clash';
+      linkEl.onclick = function(ev) {
+        ev.preventDefault();
+        // Parse deep-link hash and fly in-place
+        var url = iss.deep_link;
+        var hashPart = url.indexOf('#') >= 0 ? url.substring(url.indexOf('#') + 1) : '';
+        var hp = {};
+        hashPart.split('&').forEach(function(p) { var kv = p.split('='); if (kv[0]) hp[kv[0]] = decodeURIComponent(kv[1] || ''); });
+        var clash = hp.clash;
+        if (clash && A._flyToClash && A._loadClashRules) {
+          var parts = clash.split('~');
+          if (parts.length === 2) {
+            var metaRows = A.dbQuery("SELECT m.guid, m.ifc_class, m.discipline, m.element_name FROM elements_meta m WHERE m.guid IN (?, ?)", [parts[0], parts[1]]);
+            var mA = metaRows.find(function(r) { return r[0] === parts[0]; }) || [parts[0], '?', '?', '?'];
+            var mB = metaRows.find(function(r) { return r[0] === parts[1]; }) || [parts[1], '?', '?', '?'];
+            A._loadClashRules(function(rules) {
+              A._currentClashRules = rules;
+              A._currentClashes = [[parts[0], parts[1], mA[1], mB[1], mA[2], mB[2], mA[3], mB[3], 0]];
+              A._clashHighlights = [];
+              A.measureActive = true;
+              if (hp.cam && hp.tgt) {
+                var cam = hp.cam.split(',').map(Number);
+                var tgt = hp.tgt.split(',').map(Number);
+                if (cam.length === 3 && tgt.length === 3) A._deepLinkCamOverride = { pos: cam, tgt: tgt };
+              }
+              A._flyToClash(0);
+              // Close issues panel
+              var panel = document.getElementById('issues-panel');
+              if (panel) panel.classList.remove('active');
+              A.status.textContent = 'Clash: ' + (mA[3] || parts[0]).substring(0, 20) + ' \u2194 ' + (mB[3] || parts[1]).substring(0, 20);
+            });
+          }
+        }
+      };
+      // Share button — Web Share API or clipboard
+      const shareBtn = document.getElementById('issue-d-share');
+      shareBtn.onclick = async function() {
+        var title = 'Clash: ' + (iss.element_class || '') + ' \u2194 ' + (iss.element_b_class || '');
+        var text = title + '\n' + (iss.element_name || '') + ' / ' + (iss.element_b_name || '') + '\nStorey: ' + (iss.storey || '') + '\n\n' + iss.deep_link;
+        if (navigator.share) {
+          try { await navigator.share({ title: title, text: text }); return; } catch(e) { if (e.name === 'AbortError') return; }
+        }
+        try { await navigator.clipboard.writeText(iss.deep_link); A.status.textContent = 'Link copied'; } catch(e) {}
+      };
+    } else {
+      linkRow.style.display = 'none';
+    }
+
     // Status toggle button
     const statusBtn = document.getElementById('issue-d-status-btn');
     const status = iss.status || 'open';

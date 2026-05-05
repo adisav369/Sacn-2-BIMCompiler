@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // issues.js — Issue Log (IndexedDB persistence), export to Excel
 function setupIssues(A) {
 
@@ -61,15 +66,20 @@ function setupIssues(A) {
   A._blobToThumbUrl = function(blob) {
     return new Promise(resolve => {
       const img = new Image();
+      const blobUrl = URL.createObjectURL(blob);
       img.onload = () => {
         const w = 100, h = Math.round(img.height * (100 / img.width));
         const c = document.createElement('canvas');
         c.width = w; c.height = h;
         c.getContext('2d').drawImage(img, 0, 0, w, h);
-        URL.revokeObjectURL(img.src);
+        URL.revokeObjectURL(blobUrl);
         resolve(c.toDataURL('image/jpeg', 0.7));
       };
-      img.src = URL.createObjectURL(blob);
+      img.onerror = () => {
+        URL.revokeObjectURL(blobUrl);
+        resolve(null);
+      };
+      img.src = blobUrl;
     });
   };
 
@@ -135,6 +145,60 @@ function setupIssues(A) {
     document.getElementById('issue-d-time').textContent = iss.timestamp ? new Date(iss.timestamp).toLocaleString() : '-';
     document.getElementById('issue-d-notes').textContent = iss.notes || '-';
 
+    // Deep-link (clash snags have it, regular snags don't)
+    const linkRow = document.getElementById('issue-d-link-row');
+    const linkEl = document.getElementById('issue-d-link');
+    if (iss.deep_link) {
+      linkRow.style.display = '';
+      linkEl.href = '#';
+      linkEl.textContent = 'Fly to clash';
+      linkEl.onclick = function(ev) {
+        ev.preventDefault();
+        // Parse deep-link hash and fly in-place
+        var url = iss.deep_link;
+        var hashPart = url.indexOf('#') >= 0 ? url.substring(url.indexOf('#') + 1) : '';
+        var hp = {};
+        hashPart.split('&').forEach(function(p) { var kv = p.split('='); if (kv[0]) hp[kv[0]] = decodeURIComponent(kv[1] || ''); });
+        var clash = hp.clash;
+        if (clash && A._flyToClash && A._loadClashRules) {
+          var parts = clash.split('~');
+          if (parts.length === 2) {
+            var metaRows = A.dbQuery("SELECT m.guid, m.ifc_class, m.discipline, m.element_name FROM elements_meta m WHERE m.guid IN (?, ?)", [parts[0], parts[1]]);
+            var mA = metaRows.find(function(r) { return r[0] === parts[0]; }) || [parts[0], '?', '?', '?'];
+            var mB = metaRows.find(function(r) { return r[0] === parts[1]; }) || [parts[1], '?', '?', '?'];
+            A._loadClashRules(function(rules) {
+              A._currentClashRules = rules;
+              A._currentClashes = [[parts[0], parts[1], mA[1], mB[1], mA[2], mB[2], mA[3], mB[3], 0]];
+              A._clashHighlights = [];
+              A.measureActive = true;
+              if (hp.cam && hp.tgt) {
+                var cam = hp.cam.split(',').map(Number);
+                var tgt = hp.tgt.split(',').map(Number);
+                if (cam.length === 3 && tgt.length === 3) A._deepLinkCamOverride = { pos: cam, tgt: tgt };
+              }
+              A._flyToClash(0);
+              // Close issues panel
+              var panel = document.getElementById('issues-panel');
+              if (panel) panel.classList.remove('active');
+              A.status.textContent = 'Clash: ' + (mA[3] || parts[0]).substring(0, 20) + ' \u2194 ' + (mB[3] || parts[1]).substring(0, 20);
+            });
+          }
+        }
+      };
+      // Share button — Web Share API or clipboard
+      const shareBtn = document.getElementById('issue-d-share');
+      shareBtn.onclick = async function() {
+        var title = 'Clash: ' + (iss.element_class || '') + ' \u2194 ' + (iss.element_b_class || '');
+        var text = title + '\n' + (iss.element_name || '') + ' / ' + (iss.element_b_name || '') + '\nStorey: ' + (iss.storey || '') + '\n\n' + iss.deep_link;
+        if (navigator.share) {
+          try { await navigator.share({ title: title, text: text }); return; } catch(e) { if (e.name === 'AbortError') return; }
+        }
+        try { await navigator.clipboard.writeText(iss.deep_link); A.status.textContent = 'Link copied'; } catch(e) {}
+      };
+    } else {
+      linkRow.style.display = 'none';
+    }
+
     // Status toggle button
     const statusBtn = document.getElementById('issue-d-status-btn');
     const status = iss.status || 'open';
@@ -154,7 +218,12 @@ function setupIssues(A) {
         // Re-render list behind detail so card icon updates immediately
         A._renderIssueList();
         console.log('[S210] §STATUS_TOGGLE id=' + iss.id + ' to=' + newStatus);
-      } catch(err) { console.error('[S209] §STATUS_ERR', err); }
+      } catch(err) {
+        iss.status = (newStatus === 'fixed') ? 'open' : 'fixed'; // revert on failure
+        statusBtn.textContent = iss.status === 'fixed' ? '✅ Fixed — tap to reopen' : '🔴 Open — tap to mark Fixed';
+        statusBtn.style.background = iss.status === 'fixed' ? '#2e7d32' : '#c62828';
+        console.error('[S227] §STATUS_ERR id=' + iss.id + ' ' + err.message);
+      }
     };
   };
 
