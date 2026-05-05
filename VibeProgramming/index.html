@@ -2628,6 +2628,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#no-prior-art-in-any-industry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No Prior Art — In Any Industry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-solo-multiplier-its-not-speed-its-capability" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3972,6 +3983,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#no-prior-art-in-any-industry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No Prior Art — In Any Industry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-solo-multiplier-its-not-speed-its-capability" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4611,8 +4633,84 @@ Proven at 126K elements (LTU AHouse).
 <li><strong>web-ifc v0.0.57–0.0.72</strong> (Aug 2024 – Oct 2025) — a burst of 16 releases that hardened IFC4 tessellation. The parser we built on (v0.0.72) was released the same month we started the project.</li>
 <li><strong>rtree-sql.js v1.7.0</strong> (Jun 2022) — existed for 3 years but was obscure. Nobody had combined it with Three.js for BIM clash detection. The discovery was ours.</li>
 </ol>
-<p>Without any one of these: no product. sql.js unstable = browser crashes. web-ifc immature = broken geometry. rtree-sql.js absent = O(n²) clash queries = unusable on mobile. The window where all three were simultaneously production-ready opened in late 2024. We walked through it in Oct 2025.</p>
-<p><strong>No prior art exists for this combination.</strong> There is no open-source project, no commercial product, and no academic paper that combines WASM SQLite with R-tree spatial indexing, Three.js GPU streaming from BLOB geometry, and browser-native clash detection with one-tap 3D deep-link sharing. Each component has its own community. Nobody had connected them. The convergence was invisible until someone with the domain need — BIM coordination on a construction site — went looking for it.</p>
+<p><strong>What actually runs in the viewer (verified from <code>loader.js</code>):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Version</th>
+<th>Date</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>rtree-sql.js</strong></td>
+<td>v1.7.0</td>
+<td>3 Jun 2022</td>
+<td>All DB queries + R-tree clash detection — loaded on <strong>every page view</strong></td>
+</tr>
+<tr>
+<td><strong>Three.js</strong></td>
+<td>r128</td>
+<td>23 Apr 2021</td>
+<td>3D rendering, InstancedMesh, clipping — loaded on <strong>every page view</strong></td>
+</tr>
+<tr>
+<td><strong>web-ifc</strong></td>
+<td>v0.0.77</td>
+<td>6 Mar 2026</td>
+<td>IFC parsing — loaded <strong>only when user drops an IFC file</strong></td>
+</tr>
+<tr>
+<td><strong>SheetJS</strong></td>
+<td>v0.20.3</td>
+<td>—</td>
+<td>Excel export — loaded on <strong>every page view</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The core viewer (DB streaming, 3D rendering, clash detection, sharing) runs entirely on <strong>rtree-sql.js v1.7.0 (2022)</strong> and <strong>Three.js r128 (2021)</strong>. Both are 3-4 years old. The sql.js stability fixes from 2024 are not in our build (rtree-sql.js is a separate fork). web-ifc only matters for IFC import — the viewer never touches it. <strong>This product could have been built in 2022</strong> — the technology was ready. Nobody connected the pieces until Oct 2025.</p>
+<h3 id="no-prior-art-in-any-industry">No Prior Art — In Any Industry<a class="headerlink" href="#no-prior-art-in-any-industry" title="Permanent link">&para;</a></h3>
+<p>A search across npm, GitHub, academic databases, and industry tools confirms: <strong>no application in the world streams 3D geometry from a SQLite database directly to the GPU in a browser.</strong> Not in BIM. Not in GIS. Not in CAD. Not in gaming. Not in mapping.</p>
+<p>The closest prior art:</p>
+<table>
+<thead>
+<tr>
+<th>Project</th>
+<th>What it does</th>
+<th>Why it's not the same</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sdlgl3c-sqlite</code> (GitHub)</td>
+<td>Loads 3D models from SQLite via OpenGL</td>
+<td>Desktop native (C/C++), not browser, not WASM</td>
+</tr>
+<tr>
+<td>SpatiaLite / GeoPackage</td>
+<td>SQLite with spatial extensions</td>
+<td>2D GIS data, no 3D geometry BLOBs, no GPU rendering</td>
+</tr>
+<tr>
+<td>CesiumJS / deck.gl</td>
+<td>Browser 3D for GIS</td>
+<td>Server-side tile rendering, not client-side SQLite</td>
+</tr>
+<tr>
+<td>IFC.js / That Open Engine</td>
+<td>Browser IFC viewer</td>
+<td>Loads IFC files directly, not from SQLite DB</td>
+</tr>
+<tr>
+<td>Speckle / Bimdata</td>
+<td>Browser BIM viewers</td>
+<td>Server-rendered, require accounts, no offline</td>
+</tr>
+</tbody>
+</table>
+<p>The BIM OOTB pipeline — <strong>SQLite BLOB → Float32Array → BufferGeometry → GPU</strong> — has no precedent in any industry. Every other 3D browser application either uses server-side rendering, proprietary file formats, or requires a backend. None store geometry as SQLite BLOBs and stream them to WebGL in the client. The combination was invisible because it crosses three communities (database, 3D graphics, construction) that don't talk to each other.</p>
 <h3 id="the-solo-multiplier-its-not-speed-its-capability">The Solo Multiplier — It's Not Speed, It's Capability<a class="headerlink" href="#the-solo-multiplier-its-not-speed-its-capability" title="Permanent link">&para;</a></h3>
 <p>This is not "I could have done it in 36 months, AI did it in 1." <strong>It could not have been done at all.</strong> A solo developer — even a competent one — hitting the WASM R-tree wall, Three.js clipping planes, service worker cache invalidation, and mobile touch event handling would not eventually get there slower. They would <strong>stop</strong>. You can't Google what you don't know to search for.</p>
 <p><strong>Actual project timeline (git history):</strong></p>
