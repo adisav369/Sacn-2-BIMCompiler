@@ -349,17 +349,33 @@ The R-tree WASM build (`rtree-sql.js`) was the final piece. Without it:
 
 This package appeared on npm in 2025. Before that, the only options were server-side PostGIS (kills the zero-install premise) or a custom WASM build of SQLite with R-tree flags (months of build engineering).
 
-### The Solo Multiplier
+### The Solo Multiplier — It's Not Speed, It's Capability
 
-| Scenario | Duration | Cost estimate |
-|----------|----------|--------------|
-| Traditional team (5-6 people: BIM expert, Three.js, WASM, mobile, QA, DevOps) | 3-4 months | $150K-$300K |
-| Solo developer, pre-AI (Google + Stack Overflow + trial-and-error) | 6-12 months | Time cost — and likely abandoned at the WASM wall |
-| Solo domain expert + AI (this project) | **1 day** (S245b-S246: 19 commits, 2,700 lines) | ~$20 API cost |
+This is not "I could have done it in 36 months, AI did it in 1." **It could not have been done at all.** A solo developer — even a competent one — hitting the WASM R-tree wall, Three.js clipping planes, service worker cache invalidation, and mobile touch event handling would not eventually get there slower. They would **stop**. You can't Google what you don't know to search for.
 
-The 400x team multiplier breaks down as: 60-90x AI velocity gain, compounded by zero communication overhead (1 mind vs 5), zero integration friction (1 codebase vs 5 branches), and zero onboarding cost (AI reads the full repo instantly).
+**Actual project timeline (git history):**
 
-The honest caveat: the domain expert must know what *correct* looks like. AI types fast but cannot judge whether a clash tolerance of 25mm makes engineering sense, whether a pipe through a wall is a false positive, or whether the R-tree query is returning geometrically valid overlaps. Speed without domain judgement produces fast garbage.
+| Phase | Duration | What was built |
+|-------|----------|---------------|
+| Spatial DB discovery → Blender pipeline (S165-S193) | Oct-Dec 2025 (~2 months) | R-tree, GN instancing, DLOD — hit Blender's hard ceiling |
+| Browser pivot (S195-S231) | Jan-Apr 2026 (~3 months) | sql.js WASM, Three.js streaming, InstancedMesh, mobile PWA |
+| Clash detection + snag + share (S245-S246) | May 2026 (~2 days) | R-tree queries, matrix, fly-to, annotate, deep-link |
+| **Total elapsed** | **~6 months** | Full browser BIM viewer + clash detection + sharing |
+| **Compressed (hindsight, no dead ends)** | **~1 month** | If you already knew what worked |
+
+**Cost comparison:**
+
+| Scenario | Duration | Cost | Outcome |
+|----------|----------|------|---------|
+| Traditional team (5-6 people) | 3-4 months | $150K-$300K | Delivered but slow to pivot |
+| Solo developer, pre-AI | 36 months | Time | **Abandoned** — too many unknowns outside domain expertise |
+| Solo domain expert + AI | 6 months (1 month compressed) | ~$500 total API cost | Shipped, deployed, live on phones |
+
+The team comparison is not a speed ratio. A team *can* build it — but they'd never pivot from Blender to browser in one conversation. The sunk cost of 3 engineers hired for Blender would anchor the project for months. The solo pre-AI comparison is not a speed ratio either — it's a binary: **possible vs impossible**. The WASM R-tree spatial index, the Three.js clipping planes with depth buffer management, the service worker cache versioning — these are not things a BIM domain expert learns by Googling. They are outside the search radius entirely.
+
+AI doesn't make you faster. **AI makes the unreachable reachable.** The domain expert provides judgment that AI cannot: whether 25mm tolerance makes engineering sense, whether a pipe through a wall is a false positive, whether the building loads correctly on a foreman's phone. Speed without domain judgment produces fast garbage. Domain judgment without AI produces slow abandonment.
+
+The combination — domain expert steering, AI building — is a new category. Not faster programming. Not no-code. Not outsourcing. A single mind with the full context, building at the speed of thought, with guard rails that only decades of industry experience can provide.
 
 ---
 
