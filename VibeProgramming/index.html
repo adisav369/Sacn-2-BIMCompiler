@@ -2606,10 +2606,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#timeline-of-key-dependencies" class="md-nav__link">
+  <a href="#timeline-of-key-dependencies-npm-exact-dates" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Timeline of Key Dependencies
+        Timeline of Key Dependencies (npm exact dates)
       
     </span>
   </a>
@@ -3950,10 +3950,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#timeline-of-key-dependencies" class="md-nav__link">
+  <a href="#timeline-of-key-dependencies-npm-exact-dates" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Timeline of Key Dependencies
+        Timeline of Key Dependencies (npm exact dates)
       
     </span>
   </a>
@@ -4526,81 +4526,93 @@ Proven at 126K elements (LTU AHouse).
 <hr />
 <h2 id="the-technology-convergence-why-this-was-impossible-before-2025">The Technology Convergence — Why This Was Impossible Before 2025<a class="headerlink" href="#the-technology-convergence-why-this-was-impossible-before-2025" title="Permanent link">&para;</a></h2>
 <p>The BIM OOTB browser viewer and clash detection system depends on a stack that only became viable in 2025-2026. None of these components existed in production-ready form two years earlier.</p>
-<h3 id="timeline-of-key-dependencies">Timeline of Key Dependencies<a class="headerlink" href="#timeline-of-key-dependencies" title="Permanent link">&para;</a></h3>
+<h3 id="timeline-of-key-dependencies-npm-exact-dates">Timeline of Key Dependencies (npm exact dates)<a class="headerlink" href="#timeline-of-key-dependencies-npm-exact-dates" title="Permanent link">&para;</a></h3>
+<p>The packages existed for years. But <strong>production stability</strong> — the point where you can trust them with a 48K-element building on a phone — converged in a narrow window.</p>
 <table>
 <thead>
 <tr>
 <th>Technology</th>
-<th>Release / Milestone</th>
-<th>Date</th>
+<th>First release</th>
+<th>Production-stable</th>
+<th>Exact date</th>
 <th>What it enabled</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><strong>sql.js</strong></td>
-<td>v1.6.0 — stable WASM SQLite for browsers</td>
-<td>Feb 2022</td>
-<td>SQLite queries in the browser without a server</td>
+<td>v0.1.1 (May 2014)</td>
+<td>v1.10.3</td>
+<td><strong>14 Apr 2024</strong></td>
+<td>WASM SQLite — reliable memory, large DBs, no crashes</td>
 </tr>
 <tr>
-<td><strong>Three.js</strong> r128</td>
-<td>InstancedMesh stable, frustumCulled support</td>
-<td>Jan 2021</td>
-<td>48K elements in one scene via instanced draw calls</td>
+<td><strong>sql.js</strong></td>
+<td></td>
+<td>v1.12.0</td>
+<td><strong>29 Oct 2024</strong></td>
+<td>Last stability fix before our Oct 2025 discovery</td>
 </tr>
 <tr>
-<td><strong>Three.js</strong> r147+</td>
-<td>Improved InstancedMesh + mobile WebGL2</td>
-<td>Late 2022</td>
-<td>Mobile GPU could handle instanced BIM scenes</td>
+<td><strong>rtree-sql.js</strong></td>
+<td>v1.0.0 (Oct 2019)</td>
+<td>v1.7.0</td>
+<td><strong>3 Jun 2022</strong></td>
+<td>R-tree WASM — O(n log N) spatial clash queries in browser</td>
 </tr>
 <tr>
-<td><strong>web-ifc</strong> v0.0.36+</td>
-<td>C++/WASM IFC parser, tessellation in browser</td>
-<td>2023</td>
-<td>IFC import without server — <code>extractIFC2DB.js</code></td>
+<td><strong>Three.js</strong></td>
+<td>r1 (2010)</td>
+<td>r128</td>
+<td><strong>23 Apr 2021</strong></td>
+<td>Stable InstancedMesh — 48K elements, mobile GPU viable</td>
+</tr>
+<tr>
+<td><strong>web-ifc</strong></td>
+<td>v0.0.36 (Aug 2022)</td>
+<td>v0.0.57-0.0.66</td>
+<td><strong>Aug–Nov 2024</strong></td>
+<td>10 releases in 4 months — IFC4 tessellation hardened</td>
+</tr>
+<tr>
+<td><strong>web-ifc</strong></td>
+<td></td>
+<td>v0.0.72</td>
+<td><strong>2 Oct 2025</strong></td>
+<td>Released the same month we discovered spatial DB</td>
 </tr>
 <tr>
 <td><strong>Web Share API</strong></td>
-<td>Level 2 — file sharing (images + text)</td>
-<td>Chrome 93 (Aug 2021), Safari 15 (Sep 2021)</td>
-<td>Share annotated clash images directly to WhatsApp/Telegram</td>
+<td>Chrome 89 (Mar 2021)</td>
+<td>Safari 15</td>
+<td><strong>Sep 2021</strong></td>
+<td>File sharing (images + text) to WhatsApp/Telegram</td>
 </tr>
 <tr>
-<td><strong>rtree-sql.js</strong> v1.7.0</td>
-<td>sql.js fork with <code>SQLITE_ENABLE_RTREE</code> compiled in</td>
-<td>2025</td>
-<td>R-tree spatial index in WASM — O(n log N) clash queries in browser</td>
+<td><strong>Service Workers</strong></td>
+<td>Chrome 40 (2015)</td>
+<td>Safari + Chrome stable</td>
+<td><strong>2023–2024</strong></td>
+<td>Reliable offline PWA with WASM + DB caching</td>
 </tr>
 <tr>
-<td><strong>Canvas.toBlob()</strong></td>
-<td>Stable across all browsers including iOS Safari</td>
-<td>2023</td>
-<td>Async viewport capture without freezing mobile UI</td>
-</tr>
-<tr>
-<td><strong>Service Worker</strong> Cache API</td>
-<td>Mature + predictable across Chrome/Safari/Firefox</td>
-<td>2023-2024</td>
-<td>Offline PWA with reliable WASM + DB caching</td>
-</tr>
-<tr>
-<td><strong>Claude Code</strong> (AI pair programming)</td>
-<td>Anthropic CLI release</td>
-<td>2025</td>
-<td>Domain expert + AI = 60-90x solo velocity</td>
+<td><strong>Claude Code</strong></td>
+<td></td>
+<td>Anthropic CLI</td>
+<td><strong>2025</strong></td>
+<td>AI pair programming — domain expert + AI</td>
 </tr>
 </tbody>
 </table>
 <h3 id="the-critical-convergence">The Critical Convergence<a class="headerlink" href="#the-critical-convergence" title="Permanent link">&para;</a></h3>
-<p>The R-tree WASM build (<code>rtree-sql.js</code>) was the final piece. Without it:</p>
-<ul>
-<li>Clash detection required O(n^2) cross-joins — <strong>unusable on mobile</strong> for buildings &gt;5K elements</li>
-<li>Proximity LOD (load real meshes near camera) was impossible without spatial queries</li>
-<li>The entire S245-S246 clash feature set (matrix, fly-to, snag, deep-link) depends on R-tree being fast enough to run in the browser's main thread</li>
-</ul>
-<p>This package appeared on npm in 2025. Before that, the only options were server-side PostGIS (kills the zero-install premise) or a custom WASM build of SQLite with R-tree flags (months of build engineering).</p>
+<p>Three things happened in the same narrow window:</p>
+<ol>
+<li><strong>sql.js v1.12.0</strong> (29 Oct 2024) — fixed WASM memory stability for large databases. Without this, a 48K-element building would crash the browser tab.</li>
+<li><strong>web-ifc v0.0.57–0.0.72</strong> (Aug 2024 – Oct 2025) — a burst of 16 releases that hardened IFC4 tessellation. The parser we built on (v0.0.72) was released the same month we started the project.</li>
+<li><strong>rtree-sql.js v1.7.0</strong> (Jun 2022) — existed for 3 years but was obscure. Nobody had combined it with Three.js for BIM clash detection. The discovery was ours.</li>
+</ol>
+<p>Without any one of these: no product. sql.js unstable = browser crashes. web-ifc immature = broken geometry. rtree-sql.js absent = O(n²) clash queries = unusable on mobile. The window where all three were simultaneously production-ready opened in late 2024. We walked through it in Oct 2025.</p>
+<p><strong>No prior art exists for this combination.</strong> There is no open-source project, no commercial product, and no academic paper that combines WASM SQLite with R-tree spatial indexing, Three.js GPU streaming from BLOB geometry, and browser-native clash detection with one-tap 3D deep-link sharing. Each component has its own community. Nobody had connected them. The convergence was invisible until someone with the domain need — BIM coordination on a construction site — went looking for it.</p>
 <h3 id="the-solo-multiplier-its-not-speed-its-capability">The Solo Multiplier — It's Not Speed, It's Capability<a class="headerlink" href="#the-solo-multiplier-its-not-speed-its-capability" title="Permanent link">&para;</a></h3>
 <p>This is not "I could have done it in 36 months, AI did it in 1." <strong>It could not have been done at all.</strong> A solo developer — even a competent one — hitting the WASM R-tree wall, Three.js clipping planes, service worker cache invalidation, and mobile touch event handling would not eventually get there slower. They would <strong>stop</strong>. You can't Google what you don't know to search for.</p>
 <p><strong>Actual project timeline (git history):</strong></p>
