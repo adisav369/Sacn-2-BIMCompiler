@@ -2628,6 +2628,34 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#the-discovery-chain-how-ai-found-what-google-could-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Discovery Chain — How AI Found What Google Could Not
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Discovery Chain — How AI Found What Google Could Not">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#without-ai-what-path-leads-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Without AI, what path leads here?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#no-prior-art-in-any-industry" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3983,6 +4011,34 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#the-discovery-chain-how-ai-found-what-google-could-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Discovery Chain — How AI Found What Google Could Not
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Discovery Chain — How AI Found What Google Could Not">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#without-ai-what-path-leads-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Without AI, what path leads here?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#no-prior-art-in-any-industry" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4633,6 +4689,84 @@ Proven at 126K elements (LTU AHouse).
 <li><strong>web-ifc v0.0.57–0.0.72</strong> (Aug 2024 – Oct 2025) — a burst of 16 releases that hardened IFC4 tessellation. The parser we built on (v0.0.72) was released the same month we started the project.</li>
 <li><strong>rtree-sql.js v1.7.0</strong> (Jun 2022) — existed for 3 years but was obscure. Nobody had combined it with Three.js for BIM clash detection. The discovery was ours.</li>
 </ol>
+<h3 id="the-discovery-chain-how-ai-found-what-google-could-not">The Discovery Chain — How AI Found What Google Could Not<a class="headerlink" href="#the-discovery-chain-how-ai-found-what-google-could-not" title="Permanent link">&para;</a></h3>
+<p>The turning point of this entire project was not a line of code. It was a <strong>discovery</strong>: that an obscure npm package called <code>rtree-sql.js</code> — a fork of sql.js with one Makefile flag changed (<code>-DSQLITE_ENABLE_RTREE=1</code>) — could turn a browser tab into a spatial database engine capable of O(n log N) clash detection on 48,000 building elements.</p>
+<p>Consider the chain of people who made this possible, none of whom knew each other or intended what we built:</p>
+<table>
+<thead>
+<tr>
+<th>Who</th>
+<th>When</th>
+<th>What they did</th>
+<th>Why they did it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Alon Zakai</strong> (Mozilla)</td>
+<td>2010</td>
+<td>Created Emscripten — C/C++ → JavaScript compiler</td>
+<td>Wanted to port his C++ game (Sauerbraten) to the browser</td>
+</tr>
+<tr>
+<td><strong>Zakai</strong></td>
+<td>Feb 2012</td>
+<td>First commit to <code>sql.js</code> — SQLite compiled to JS</td>
+<td>Demo of Emscripten's power. "Look, SQLite compiles." Not a product.</td>
+</tr>
+<tr>
+<td><strong>Ophir Lojkine</strong> (Paris)</td>
+<td>~2014</td>
+<td>Took over sql.js maintenance, added real API</td>
+<td>Needed a browser SQLite for his own projects (Dezoomify, later SQLPage)</td>
+</tr>
+<tr>
+<td><strong>W3C / browser vendors</strong></td>
+<td>Mar 2017</td>
+<td>WebAssembly MVP ships in Firefox 52, Chrome 57</td>
+<td>Performance standard for compiled languages in the browser</td>
+</tr>
+<tr>
+<td><strong>Anonymous</strong></td>
+<td>Oct 2019</td>
+<td>Published <code>rtree-sql.js</code> — sql.js + one compile flag</td>
+<td>Needed spatial queries in the browser. Probably GIS, not BIM.</td>
+</tr>
+<tr>
+<td><strong>Lojkine + contributors</strong></td>
+<td>Oct 2024</td>
+<td>sql.js v1.12.0 — WASM memory stability for large DBs</td>
+<td>Bug fixes. No idea anyone would stream 48K building elements.</td>
+</tr>
+<tr>
+<td><strong>Redhuan D. Oon</strong></td>
+<td>Oct 2025</td>
+<td>Connected SQLite BLOBs → Float32Array → Three.js GPU</td>
+<td>Needed zero-install BIM viewer for site foremen on phones</td>
+</tr>
+</tbody>
+</table>
+<p>A game developer's side project → a French student's maintenance work → an anonymous fork with one flag → a Malaysian ERP architect who knew what a BOM was. <strong>Four communities that never intersect</strong> (compilers, databases, 3D graphics, construction) produced the ingredients. AI connected them.</p>
+<h4 id="without-ai-what-path-leads-here">Without AI, what path leads here?<a class="headerlink" href="#without-ai-what-path-leads-here" title="Permanent link">&para;</a></h4>
+<p>An ERP architect who knows Java, iDempiere, and BIM would need to:</p>
+<ol>
+<li>
+<p><strong>Know that SQLite can run in a browser.</strong> This means knowing about Emscripten, knowing that C libraries can compile to WASM, and knowing that sql.js exists. None of this appears in BIM literature, ERP forums, or construction technology conferences. The search term "SQLite in browser" leads to sql.js — but only if you already know to ask.</p>
+</li>
+<li>
+<p><strong>Know that SQLite has a spatial index.</strong> R-tree is a compile-time extension in SQLite, off by default. It is documented in SQLite's C API docs, not in any JavaScript context. The search term "spatial index JavaScript" leads to Turf.js, RBush, or PostGIS — not to SQLite R-tree.</p>
+</li>
+<li>
+<p><strong>Know that someone compiled sql.js with the R-tree flag.</strong> The package <code>rtree-sql.js</code> had minimal downloads, no blog posts, no tutorials, no Stack Overflow answers. Searching "R-tree WASM" or "spatial query browser" does not surface it. You would need to read sql.js GitHub issue <a href="https://github.com/sql-js/sql.js/issues/390">#390</a> ("How to turn on rtree?"), follow the thread, and find the fork. This is a mass shooting in the dark.</p>
+</li>
+<li>
+<p><strong>Know that geometry BLOBs can go straight to WebGL.</strong> The idea that <code>new Float32Array(blob)</code> produces a valid <code>BufferGeometry</code> for Three.js is not documented anywhere. It requires knowing both the SQLite BLOB storage format (just raw bytes) and the Three.js buffer attribute API (just typed arrays). These two facts live in different documentation universes.</p>
+</li>
+<li>
+<p><strong>Connect all four in the right order.</strong> Even if you discovered each piece independently, the architectural insight — that the SQLite file IS the delivery format, no server, no conversion, no API — requires seeing across all four domains simultaneously.</p>
+</li>
+</ol>
+<p><strong>No search engine connects these.</strong> Google returns results within a domain. "SQLite spatial browser 3D BIM" returns nothing useful — the intersection has zero prior art. An AI trained across all four domains can hold the connection in a single context window: "You have geometry as BLOBs in SQLite. There is a WASM build of SQLite with R-tree. Three.js accepts Float32Array. The browser is the viewer." That sentence crosses four knowledge boundaries. It took one AI conversation to say it. It would have taken a human years of accidental discovery — or never.</p>
 <p><strong>What actually runs in the viewer (verified from <code>loader.js</code>):</strong></p>
 <table>
 <thead>
