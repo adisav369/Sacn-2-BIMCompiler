@@ -79,6 +79,7 @@ function initViewer() {
     });
     return APP._wizardPromise;
   };
+  if (typeof setupGridOverlay === 'function') setupGridOverlay(APP);
   if (typeof setupImport === 'function') setupImport(APP);
   if (typeof setupDiff === 'function') setupDiff(APP);
 
@@ -122,16 +123,18 @@ function initViewer() {
   window.cycleWalkSpeed = APP.cycleWalkSpeed;
   if (APP.toggleNlp) window.toggleNlp = APP.toggleNlp;
   window.toggleVariance = function() { if (APP.toggleVariance) APP.toggleVariance(); };
+  // 2D button: toggle grid overlay in same scene (no new tab)
   window.open2DPlans = function() {
-    const p = new URLSearchParams(location.search);
-    const db = p.get('db') || '';
-    const lib = p.get('lib') || '';
-    const bld = APP.activeBuilding || '';
-    const url = '2d.html?db=' + encodeURIComponent(db) +
-                '&lib=' + encodeURIComponent(lib) +
-                '&bld=' + encodeURIComponent(bld);
-    console.log('§2D_OPEN db=' + db + ' lib=' + lib + ' bld=' + bld + ' url=' + url);
-    window.open(url, '_blank');
+    if (typeof APP.toggleGridOverlay === 'function') {
+      APP.toggleGridOverlay();
+    } else {
+      console.warn('§2D_OPEN grid_overlay.js not loaded — falling back to 2d.html');
+      const p = new URLSearchParams(location.search);
+      const db = p.get('db') || '';
+      const lib = p.get('lib') || '';
+      const bld = APP.activeBuilding || '';
+      window.open('2d.html?db=' + encodeURIComponent(db) + '&lib=' + encodeURIComponent(lib) + '&bld=' + encodeURIComponent(bld), '_blank');
+    }
   };
 
   // Render loop — on-demand: only render when camera moves or streaming is active
