@@ -1626,6 +1626,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#live-demonstration-shareable-clash-deep-link" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live Demonstration — Shareable Clash Deep-Link
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#how-to-rebuild-from-source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3824,6 +3835,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#live-demonstration-shareable-clash-deep-link" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live Demonstration — Shareable Clash Deep-Link
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#how-to-rebuild-from-source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4356,6 +4378,18 @@ Filter: storey/discipline → hide/show InstancedMesh instances
 </tr>
 </tbody>
 </table>
+<h3 id="live-demonstration-shareable-clash-deep-link">Live Demonstration — Shareable Clash Deep-Link<a class="headerlink" href="#live-demonstration-shareable-clash-deep-link" title="Permanent link">&para;</a></h3>
+<p>The R-tree powers the entire clash detection pipeline: spatial index → O(log N) query → fly-to → shareable URL. This link opens a specific clash pair in the Hospital Garage (63K elements), pre-positioned at the overlap zone:</p>
+<p><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/sandbox/index.html?db=https%3A%2F%2Fobjectstorage.ap-kulai-2.oraclecloud.com%2Fn%2Fax3cp6tzwuy2%2Fb%2Fbim-ootb-live%2Fo%2Fbuildings%2FHospitalGarage_extracted.db#clash=0GjpF04mX1K8P$TdM8fU2_~3ltWc9XO98DfOXi0yjJr4p&amp;st=&amp;cam=-44.21,-8.22,-42.42&amp;tgt=-52.01,-7.95,-35.39&amp;tol=25"><strong>Open Clash Pair — Hospital Garage MEP vs ARC</strong></a></p>
+<p>URL anatomy:
+<div class="highlight"><pre><span></span><code>?db=...HospitalGarage_extracted.db     ← SQLite DB with R-tree
+#clash=GUID_A~GUID_B                   ← the two clashing elements
+&amp;st=                                   ← storey (empty = whole building)
+&amp;cam=-44.21,-8.22,-42.42               ← camera position (metres)
+&amp;tgt=-52.01,-7.95,-35.39               ← camera target (look-at point)
+&amp;tol=25                                ← tolerance in mm
+</code></pre></div></p>
+<p>What happens on load: viewer opens DB → builds R-tree async → parses <code>#clash</code> URL → locates both elements by GUID → positions camera → highlights overlap zone in red/blue. <strong>Zero server. Zero login. Zero install.</strong> Paste this URL in WhatsApp — the recipient sees the 3D clash on their phone.</p>
 <h3 id="how-to-rebuild-from-source">How to Rebuild from Source<a class="headerlink" href="#how-to-rebuild-from-source" title="Permanent link">&para;</a></h3>
 <p>Since rtree-sql.js is abandoned, we can rebuild from sql.js (its upstream) at any time:</p>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/sql-js/sql.js
