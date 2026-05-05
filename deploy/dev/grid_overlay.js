@@ -376,6 +376,8 @@ function setupGridOverlay(APP) {
       log('§GRID_VIEW floor_clip cutZ_ifc=' + cutZ.toFixed(2) + ' cutY_three=' + cutY.toFixed(2) + ' clipped=' + clipped + ' furniture_skipped=' + skipped);
     }
 
+    // Elevations: NO forced theme, NO clipping — pure facade projection
+
     activeView = mode;
     updateViewButtons();
     A.markDirty();
