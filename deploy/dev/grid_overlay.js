@@ -344,34 +344,36 @@ function setupGridOverlay(APP) {
     A.controls.update();
 
     // Floor plan: apply horizontal section cut ~1m above slab level
-    clearFloorClip(); // clear any previous
+    // Skip furniture (IfcFurnishingElement) — show them unclipped
+    clearFloorClip();
     if (mode === 'floor' || mode === 'floor1') {
-      // Determine cut height: floor=ground+1m, floor1=upper storey+1m
       var cutZ;
       if (mode === 'floor1') {
-        // Upper storey: cut at midpoint between ground and roof
         cutZ = env.zMin + bldH * 0.55;
       } else {
         cutZ = env.zMin + 1.0; // 1m above ground slab
       }
       var cutY = (cutZ - A.modelOffset.z); // IFC Z → Three Y
-      // Clip plane: normal pointing DOWN (-Y), cuts everything above cutY
       floorClipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), cutY);
       A.renderer.localClippingEnabled = true;
-      // Save existing clip state and apply floor clip
       savedClipState = [];
+      var skipClasses = { 'IfcFurnishingElement': 1, 'IfcFurniture': 1 };
+      var clipped = 0, skipped = 0;
       A.collectMeshes(function(o) { return o.isMesh; }).forEach(function(obj) {
         savedClipState.push({ mesh: obj, planes: obj.material.clippingPlanes || [] });
+        var cls = (obj.userData && obj.userData.ifcClass) || '';
+        if (skipClasses[cls]) {
+          skipped++;
+          return; // don't clip furniture — show as-is
+        }
         obj.material.clippingPlanes = [floorClipPlane];
         obj.material.clipShadows = true;
         obj.material.needsUpdate = true;
+        clipped++;
       });
-      log('§GRID_VIEW floor_clip cutZ_ifc=' + cutZ.toFixed(2) + ' cutY_three=' + cutY.toFixed(2));
-    }
-
-    // High contrast for all locked views: white bg, dark lines
-    if (!A.lightTheme) {
-      A.toggleTheme();
+      // Force light theme for floor plan print contrast
+      if (!A.lightTheme) A.toggleTheme();
+      log('§GRID_VIEW floor_clip cutZ_ifc=' + cutZ.toFixed(2) + ' cutY_three=' + cutY.toFixed(2) + ' clipped=' + clipped + ' furniture_skipped=' + skipped);
     }
 
     activeView = mode;
@@ -429,10 +431,11 @@ function setupGridOverlay(APP) {
     }
 
     // Restore floor clip if active
+    var wasFloor = (activeView === 'floor' || activeView === 'floor1');
     clearFloorClip();
 
-    // Restore dark theme if we forced light for print contrast
-    if (A.lightTheme) {
+    // Restore dark theme only if floor plan forced it
+    if (wasFloor && A.lightTheme) {
       A.toggleTheme();
     }
 
