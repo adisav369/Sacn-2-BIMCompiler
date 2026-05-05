@@ -107,7 +107,7 @@
 
     var empty = { xLines: [], yLines: [] };
 
-    // Query columns
+    // Query columns first; fall back to walls if no columns found
     var sql =
       "SELECT m.guid, t.center_x, t.center_y " +
       "FROM elements_meta m " +
@@ -115,24 +115,41 @@
       "WHERE m.ifc_class IN ('IfcColumn')";
 
     var result;
+    var source = 'column';
     try {
       result = db.exec(sql);
     } catch (e) {
       log('§GD_COLUMNS query error: ' + e.message);
-      return empty;
+    }
+
+    // Fallback: if no columns, use wall endpoints for grid alignment
+    if (!result || !result.length || !result[0].values.length || result[0].values.length < 2) {
+      log('§GD_COLUMNS found=' + (result && result.length && result[0].values ? result[0].values.length : 0) + ' — falling back to walls');
+      source = 'wall';
+      var wallSql =
+        "SELECT m.guid, t.center_x, t.center_y " +
+        "FROM elements_meta m " +
+        "JOIN element_transforms t ON m.guid = t.guid " +
+        "WHERE m.ifc_class IN ('IfcWall', 'IfcWallStandardCase')";
+      try {
+        result = db.exec(wallSql);
+      } catch (e2) {
+        log('§GD_WALLS query error: ' + e2.message);
+        return empty;
+      }
     }
 
     if (!result || !result.length || !result[0].values.length) {
-      log('§GD_COLUMNS found=0');
-      console.warn('[GridDims] No columns found — returning empty grids');
+      log('§GD_ELEMENTS found=0 source=' + source);
+      console.warn('[GridDims] No columns or walls found — returning empty grids');
       return empty;
     }
 
     var rows = result[0].values;
-    log('§GD_COLUMNS found=' + rows.length);
+    log('§GD_ELEMENTS found=' + rows.length + ' source=' + source);
 
-    if (rows.length < 3) {
-      console.warn('[GridDims] Fewer than 3 columns (' + rows.length + ') — returning empty grids');
+    if (rows.length < 2) {
+      console.warn('[GridDims] Fewer than 2 elements (' + rows.length + ') — returning empty grids');
       return empty;
     }
 
@@ -245,7 +262,7 @@
     var yLines = gridResult.yLines || [];
 
     // X-axis bay dimensions (between adjacent grids)
-    if (xLines.length > 2) {
+    if (xLines.length > 1) {
       for (var i = 0; i < xLines.length - 1; i++) {
         var dist = xLines[i + 1].position - xLines[i].position;
         dims.push({
@@ -277,7 +294,7 @@
     }
 
     // Y-axis bay dimensions
-    if (yLines.length > 2) {
+    if (yLines.length > 1) {
       for (var j = 0; j < yLines.length - 1; j++) {
         var distY = yLines[j + 1].position - yLines[j].position;
         dims.push({
