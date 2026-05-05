@@ -2001,6 +2001,78 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#rethink-grid-overlay-mode-annotation-in-the-3d-scene" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rethink: Grid Overlay Mode — Annotation in the 3D Scene
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Rethink: Grid Overlay Mode — Annotation in the 3D Scene">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-problem-with-the-dxf-intermediary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Problem with the DXF Intermediary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-new-direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The New Direction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-is-better" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Is Better
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-design-choices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Design Choices
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phases
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3412,6 +3484,78 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#rethink-grid-overlay-mode-annotation-in-the-3d-scene" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rethink: Grid Overlay Mode — Annotation in the 3D Scene
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Rethink: Grid Overlay Mode — Annotation in the 3D Scene">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-problem-with-the-dxf-intermediary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Problem with the DXF Intermediary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-new-direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The New Direction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-is-better" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Is Better
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-design-choices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Design Choices
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phases
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3657,6 +3801,113 @@ synthesised or abbreviated in code.</p>
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="rethink-grid-overlay-mode-annotation-in-the-3d-scene">Rethink: Grid Overlay Mode — Annotation in the 3D Scene<a class="headerlink" href="#rethink-grid-overlay-mode-annotation-in-the-3d-scene" title="Permanent link">&para;</a></h2>
+<p><strong>Status:</strong> SPEC (<code>prompts/2D_022_grid_overlay_mode.md</code>) — not yet implemented</p>
+<h3 id="the-problem-with-the-dxf-intermediary">The Problem with the DXF Intermediary<a class="headerlink" href="#the-problem-with-the-dxf-intermediary" title="Permanent link">&para;</a></h3>
+<p>The pipeline above (§Layout Engine, §Current State) produces DXF files — external 2D drawings with pre-computed dimension tiers, crowded-bay triage, and JKR/ISO title blocks. This works, but introduces friction:</p>
+<table>
+<thead>
+<tr>
+<th>DXF intermediary approach</th>
+<th>In-scene grid overlay</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Separate file, separate viewer, separate tab</td>
+<td>Same 3D scene — annotations live in the model</td>
+</tr>
+<tr>
+<td>Static — regenerate on any change</td>
+<td>Live — grids update as user adjusts</td>
+</tr>
+<tr>
+<td>Dimension tiers (3 offset levels) over-engineered</td>
+<td>One floating card, all spans at a glance</td>
+</tr>
+<tr>
+<td>User loses spatial context switching tabs</td>
+<td>User stays in 3D, grids rotate/pan with model</td>
+</tr>
+<tr>
+<td>Requires DXF parsing library</td>
+<td>Zero extra dependency — Three.js line geometry</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-new-direction">The New Direction<a class="headerlink" href="#the-new-direction" title="Permanent link">&para;</a></h3>
+<p>Press the 2D icon → the viewer enters <strong>Grid Mode</strong>. Instead of switching to a 2D canvas:</p>
+<ol>
+<li><strong>Grid lines appear as 3D scene objects</strong> — thin black lines overlaid on the model, extending past the building bbox with bubble labels (A, B, C / 1, 2, 3) at both ends</li>
+<li><strong>Auto-detected from geometry</strong> — cluster wall start/end X/Y coordinates, column centres, or IfcGrid entities if present</li>
+<li><strong>Snap-to-align</strong> — grids only rest at alignable positions (wall faces, centrelines, column centres, opening edges). Not freeflow.</li>
+<li><strong>Floating measurements card</strong> — frosted-glass panel in the scene showing all bay spacings (<code>A-B: 6.000m</code>, <code>B-C: 4.500m</code>, total). Updates live on drag.</li>
+<li><strong>Persisted to DB</strong> — <code>grids</code> table in the building SQLite. Survive reload. User-confirmed grids take priority over auto-detection.</li>
+</ol>
+<h3 id="why-this-is-better">Why This Is Better<a class="headerlink" href="#why-this-is-better" title="Permanent link">&para;</a></h3>
+<p>The grid IS the dimension system. You don't need a separate drawing to read bay spacings — they're in the 3D scene, attached to the model, updating as you adjust. The section-cut floor plan (<code>section_cut.js</code>) remains for pure 2D plan views, but <strong>dimensioning is handled by the grid overlay, not by DXF generation</strong>.</p>
+<p>This replaces:
+- DXF dimension generation pipeline (§4–§7 of the original spec)
+- Triage panel for crowded bay text
+- Grid reference info panel
+- The separate 2D tab workflow for reading bay spacing</p>
+<h3 id="key-design-choices">Key Design Choices<a class="headerlink" href="#key-design-choices" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Grid lines are <code>THREE.Line</code> objects in a <code>gridGroup</code></td>
+<td>Pan/rotate/zoom with model naturally. No z-fighting (no depth-fill).</td>
+</tr>
+<tr>
+<td>Bubbles via <code>CSS2DRenderer</code> sprites</td>
+<td>Always screen-readable regardless of zoom. Same pattern as storey info cards.</td>
+</tr>
+<tr>
+<td>Snap tolerance 200mm, Shift overrides</td>
+<td>Prevents meaningless positions while allowing rare exceptions</td>
+</tr>
+<tr>
+<td>Measurements card is <code>CSS2DObject</code> anchored to building bbox</td>
+<td>Moves with model, avoids fixed-panel occlusion</td>
+</tr>
+<tr>
+<td><code>grids</code> table in building DB</td>
+<td>Same offline-first, zero-server architecture as everything else</td>
+</tr>
+</tbody>
+</table>
+<h3 id="phases">Phases<a class="headerlink" href="#phases" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A — MVP</strong></td>
+<td>Grid mode toggle, wall-alignment auto-detect, render with bubbles, measurements card, click/drag/snap, DB persistence</td>
+</tr>
+<tr>
+<td><strong>B — Polish</strong></td>
+<td>IfcGrid import, snap override, context menu (rename, show aligned elements), mobile touch</td>
+</tr>
+<tr>
+<td><strong>C — Export</strong></td>
+<td>Grid dimensions as CSV, stamp grid lines onto section-cut floor plan output</td>
+</tr>
+</tbody>
+</table>
+<p>Full spec with diagnostic log tags: <a href="https://github.com/red1oon/BIMCompiler/blob/full/prompts/2D_022_grid_overlay_mode.md"><code>prompts/2D_022_grid_overlay_mode.md</code></a></p>
+<hr />
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <p><strong>Module:</strong> <code>2D_Layout/</code> in <a href="https://github.com/red1oon/BIMCompiler">BIMCompiler</a> repository.
 Full technical spec: <code>2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md</code> (§12a Layout Engine,
