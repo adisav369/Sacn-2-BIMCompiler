@@ -1458,6 +1458,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#37-shareable-clash-deep-link" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 Shareable Clash Deep-Link
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3611,6 +3622,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#37-shareable-clash-deep-link" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 Shareable Clash Deep-Link
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3955,6 +3977,22 @@
 </tbody>
 </table>
 <p>Statuses persist in <code>localStorage</code> per building. No server, no login, no export/import cycle.</p>
+<h3 id="37-shareable-clash-deep-link">3.7 Shareable Clash Deep-Link<a class="headerlink" href="#37-shareable-clash-deep-link" title="Permanent link">&para;</a></h3>
+<p>Click the share icon on any clash pair to copy a URL that encodes the full viewing state — building DB, clash pair GUIDs, camera position, target, tolerance, and storey filter. Anyone opening that link sees exactly the same clash, from the same angle, with the same settings. No login, no server, no app install.</p>
+<figure style="margin: 20px 0;">
+<a href="https://youtu.be/8jSSQSv0SJg" target="_blank"><img src="https://img.youtube.com/vi/8jSSQSv0SJg/hqdefault.jpg" alt="15-second demo: clicking a shared clash analysis link" style="width:100%; border:1px solid #333; border-radius:8px;"/></a>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">15-second demo: opening a shared clash link — the viewer loads the building, flies to the clash pair, and highlights the overlap. <a href="https://youtu.be/8jSSQSv0SJg">Watch on YouTube</a></figcaption>
+</figure>
+
+<p>URL anatomy:
+<div class="highlight"><pre><span></span><code>?db=...HospitalGarage_extracted.db     ← SQLite DB source
+#clash=GUID_A~GUID_B                   ← the two clashing elements
+&amp;st=                                   ← storey filter (empty = whole building)
+&amp;cam=-44.21,-8.22,-42.42               ← camera position (metres)
+&amp;tgt=-52.01,-7.95,-35.39               ← camera target (look-at point)
+&amp;tol=25                                ← tolerance in mm
+</code></pre></div></p>
+<p>This is collaboration via URL — one person finds a clash, shares the link, the recipient opens it and sees the exact same view. The URL <em>is</em> the coordination tool.</p>
 <hr />
 <h2 id="4-clash-rules-json-configuration">4. Clash Rules — JSON Configuration<a class="headerlink" href="#4-clash-rules-json-configuration" title="Permanent link">&para;</a></h2>
 <p>Rules are defined in <code>clash_rules.json</code> — 12 discipline pairs with per-pair tolerance and ignore lists:</p>

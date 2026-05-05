@@ -4044,7 +4044,10 @@
 <span class="w">    </span><span class="k">key</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
 <span class="w">    </span><span class="n">value</span><span class="w"> </span><span class="nb">TEXT</span>
 <span class="p">);</span>
-<span class="c1">-- Keys: project_name, building_name, import_date, source_file</span>
+<span class="c1">-- Keys: project_name, building_name, import_date, source_file, source_uri</span>
+<span class="c1">-- source_uri: Origin URI of the IFC (supports https://, future ifc:// scheme).</span>
+<span class="c1">--   Enables provenance tracking, re-fetch/recompile, and interoperability</span>
+<span class="c1">--   with emerging IFC URI standards (e.g. proposed ifc:// addressing).</span>
 
 <span class="c1">-- Element catalog (WHAT is in the building)</span>
 <span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">elements_meta</span><span class="w"> </span><span class="p">(</span>
