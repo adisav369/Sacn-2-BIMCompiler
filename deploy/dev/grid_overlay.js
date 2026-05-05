@@ -42,7 +42,9 @@ function setupGridOverlay(APP) {
   var savedCamera = null;      // { pos, target, up, fov } before first lock
   var orthoCamera = null;      // shared OrthographicCamera for locked views
   var origCamera = null;       // reference to the original PerspectiveCamera
-  var activeView = null;       // 'front'|'rear'|'left'|'right'|'roof'|null
+  var activeView = null;       // 'front'|'rear'|'left'|'right'|'roof'|'floor'|'floor1'|null
+  var floorClipPlane = null;   // THREE.Plane for floor plan section cut
+  var savedClipState = [];     // backup of material clippingPlanes before floor lock
 
   // ── Constants ─────────────────────────────────────────────────────
   var COLOR_HIGHLIGHT = 0xff6600;     // bright orange on selection
@@ -308,6 +310,12 @@ function setupGridOverlay(APP) {
       halfW = (bldW / 2) * margin;
       halfH = (bldD / 2) * margin;
       upVec = new THREE.Vector3(0, 0, -1); // north faces up
+    } else if (mode === 'floor' || mode === 'floor1') {
+      // Floor Plan: top-down + horizontal section cut ~1m above slab
+      camPos = new THREE.Vector3(centre.x, centre.y + dist, centre.z);
+      halfW = (bldW / 2) * margin;
+      halfH = (bldD / 2) * margin;
+      upVec = new THREE.Vector3(0, 0, -1);
     } else {
       return;
     }
@@ -335,10 +343,56 @@ function setupGridOverlay(APP) {
     A.controls.enableZoom = true;
     A.controls.update();
 
+    // Floor plan: apply horizontal section cut ~1m above slab level
+    clearFloorClip(); // clear any previous
+    if (mode === 'floor' || mode === 'floor1') {
+      // Determine cut height: floor=ground+1m, floor1=upper storey+1m
+      var cutZ;
+      if (mode === 'floor1') {
+        // Upper storey: cut at midpoint between ground and roof
+        cutZ = env.zMin + bldH * 0.55;
+      } else {
+        cutZ = env.zMin + 1.0; // 1m above ground slab
+      }
+      var cutY = (cutZ - A.modelOffset.z); // IFC Z → Three Y
+      // Clip plane: normal pointing DOWN (-Y), cuts everything above cutY
+      floorClipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), cutY);
+      A.renderer.localClippingEnabled = true;
+      // Save existing clip state and apply floor clip
+      savedClipState = [];
+      A.collectMeshes(function(o) { return o.isMesh; }).forEach(function(obj) {
+        savedClipState.push({ mesh: obj, planes: obj.material.clippingPlanes || [] });
+        obj.material.clippingPlanes = [floorClipPlane];
+        obj.material.clipShadows = true;
+        obj.material.needsUpdate = true;
+      });
+      log('§GRID_VIEW floor_clip cutZ_ifc=' + cutZ.toFixed(2) + ' cutY_three=' + cutY.toFixed(2));
+    }
+
+    // High contrast for all locked views: white bg, dark lines
+    if (!A.lightTheme) {
+      A.toggleTheme();
+    }
+
     activeView = mode;
     updateViewButtons();
     A.markDirty();
     log('§GRID_VIEW mode=' + mode + ' centre=(' + centre.x.toFixed(1) + ',' + centre.y.toFixed(1) + ',' + centre.z.toFixed(1) + ') dist=' + dist.toFixed(1));
+  }
+
+  /** Clear floor plan section clipping */
+  function clearFloorClip() {
+    if (!floorClipPlane) return;
+    for (var i = 0; i < savedClipState.length; i++) {
+      var entry = savedClipState[i];
+      if (entry.mesh && entry.mesh.material) {
+        entry.mesh.material.clippingPlanes = entry.planes;
+        entry.mesh.material.needsUpdate = true;
+      }
+    }
+    savedClipState = [];
+    floorClipPlane = null;
+    log('§GRID_VIEW floor_clip cleared');
   }
 
   /** Unlock: restore the original perspective camera */
@@ -372,6 +426,14 @@ function setupGridOverlay(APP) {
     // Re-bind the original resize handler
     if (A._onResize) {
       A._onResize();
+    }
+
+    // Restore floor clip if active
+    clearFloorClip();
+
+    // Restore dark theme if we forced light for print contrast
+    if (A.lightTheme) {
+      A.toggleTheme();
     }
 
     savedCamera = null;
@@ -581,6 +643,8 @@ function setupGridOverlay(APP) {
     // View preset buttons at the top of the panel
     var viewHtml = '<div style="display:flex;gap:3px;margin:4px 0 6px;flex-wrap:wrap">';
     var views = [
+      { key: 'floor', label: 'GF' },
+      { key: 'floor1', label: 'L1' },
       { key: 'front', label: 'F' },
       { key: 'rear', label: 'R' },
       { key: 'left', label: 'L' },
@@ -754,6 +818,7 @@ function setupGridOverlay(APP) {
     if (active) {
       active = false;
       if (zoomAnim) { cancelAnimationFrame(zoomAnim); zoomAnim = null; }
+      clearFloorClip();
       if (activeView) unlockView();
       if (gridGroup) { gridGroup.visible = false; }
       if (gridPanel) { gridPanel.style.display = 'none'; }
