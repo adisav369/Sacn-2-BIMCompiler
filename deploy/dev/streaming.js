@@ -600,6 +600,8 @@ function setupStreaming(A) {
   // URL deep-link
   A.updateHash = function() {
     if (!A.activeBuilding) return;
+    // Don't overwrite clash deep-link hash
+    if (location.hash.indexOf('clash=') >= 0) return;
     const p = A.camera.position;
     const t = A.controls.target;
     location.hash = `bld=${A.activeBuilding}&cx=${p.x.toFixed(0)}&cy=${p.y.toFixed(0)}&cz=${p.z.toFixed(0)}&tx=${t.x.toFixed(0)}&ty=${t.y.toFixed(0)}&tz=${t.z.toFixed(0)}`;

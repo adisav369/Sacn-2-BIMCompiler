@@ -8,6 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BIM OOTB v3 — DEV</title>
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.wasm" as="fetch" crossorigin>
 <meta name="theme-color" content="#4fc3f7">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -196,6 +197,7 @@
   .issue-card .issue-meta .issue-ts { color: #888; font-size: 10px; }
   #issue-detail-view {
     display: none; flex-direction: column; align-items: center; gap: 8px;
+    overflow-y: auto; max-height: 70vh;
   }
   #issue-detail-view.active { display: flex; }
   #issue-detail-view img { max-width: 100%; max-height: 40vh; border-radius: 4px; }
@@ -381,6 +383,7 @@
   <div id="issue-detail-view">
     <button onclick="_issueBackToList()" style="align-self:flex-start;padding:4px 10px;background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:11px">&larr; <span data-trl="ui_back">Back</span></button>
     <img id="issue-detail-img" src="">
+    <div class="detail-row" id="issue-d-link-row" style="display:none"><a id="issue-d-link" href="#" style="color:#4fc3f7;font-size:12px;font-weight:bold">-</a> <button id="issue-d-share" style="background:#333;color:#4fc3f7;border:1px solid #555;border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;margin-left:8px">Share</button></div>
     <div class="detail-row"><span class="label" data-trl="ui_class">Class</span>: <span class="value" id="issue-d-class">-</span></div>
     <div class="detail-row"><span class="label" data-trl="ui_name">Name</span>: <span class="value" id="issue-d-name">-</span></div>
     <div class="detail-row"><span class="label" data-trl="ui_guid">GUID</span>: <span class="value" id="issue-d-guid" style="font-size:10px">-</span></div>
@@ -391,7 +394,6 @@
     <div class="detail-row"><span class="label" data-trl="ui_compass">Compass</span>: <span class="value" id="issue-d-compass">-</span></div>
     <div class="detail-row"><span class="label" data-trl="ui_time">Time</span>: <span class="value" id="issue-d-time">-</span></div>
     <div class="detail-row"><span class="label" data-trl="ui_notes">Notes</span>: <span class="value" id="issue-d-notes">-</span></div>
-    <div class="detail-row" id="issue-d-link-row" style="display:none"><span class="label">Link</span>: <a id="issue-d-link" href="#" style="color:#4fc3f7;font-size:11px">-</a> <button id="issue-d-share" style="background:#333;color:#4fc3f7;border:1px solid #555;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;margin-left:6px">Share</button></div>
     <button id="issue-d-status-btn" style="margin-top:8px;padding:8px 16px;border:none;border-radius:6px;color:#fff;font-size:13px;cursor:pointer;width:100%">🔴 <span data-trl="ui_open">Open</span></button>
   </div>
 </div>
@@ -477,7 +479,7 @@
 <script src="config.js?v=3"></script>
 <script src="scene.js?v=4"></script>
 <script src="helpers.js?v=1"></script>
-<script src="streaming.js?v=15"></script>
+<script src="streaming.js?v=16"></script>
 <script src="panels.js?v=5"></script>
 <script src="tools.js?v=5"></script>
 <script src="picking.js?v=12"></script>
