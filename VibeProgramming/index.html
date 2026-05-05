@@ -2656,6 +2656,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#why-r-tree-is-load-bearing-not-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why R-tree Is Load-Bearing — Not Optional
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#no-prior-art-in-any-industry" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4039,6 +4050,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#why-r-tree-is-load-bearing-not-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why R-tree Is Load-Bearing — Not Optional
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#no-prior-art-in-any-industry" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4767,6 +4789,38 @@ Proven at 126K elements (LTU AHouse).
 </li>
 </ol>
 <p><strong>No search engine connects these.</strong> Google returns results within a domain. "SQLite spatial browser 3D BIM" returns nothing useful — the intersection has zero prior art. An AI trained across all four domains can hold the connection in a single context window: "You have geometry as BLOBs in SQLite. There is a WASM build of SQLite with R-tree. Three.js accepts Float32Array. The browser is the viewer." That sentence crosses four knowledge boundaries. It took one AI conversation to say it. It would have taken a human years of accidental discovery — or never.</p>
+<h3 id="why-r-tree-is-load-bearing-not-optional">Why R-tree Is Load-Bearing — Not Optional<a class="headerlink" href="#why-r-tree-is-load-bearing-not-optional" title="Permanent link">&para;</a></h3>
+<p>The R-tree spatial index is not an optimisation. It is the reason the product works on a phone. Without it, clash detection is a mathematical impossibility at building scale.</p>
+<p><strong>What it is:</strong> SQLite's R-tree is a compile-time extension (off by default) that creates a virtual table indexing objects by their bounding boxes in N dimensions. A query like "which elements overlap this box?" completes in <strong>O(log N)</strong> instead of scanning every row. It was designed by <a href="https://en.wikipedia.org/wiki/R-tree">Antonin Guttman in 1984</a> for spatial databases — and it sat inside SQLite for years, unused in the browser, because nobody compiled it into the WASM build. The anonymous author of <code>rtree-sql.js</code> added one flag (<code>-DSQLITE_ENABLE_RTREE=1</code>) to the sql.js Makefile and published it to npm. That single flag is the difference between a product and a demo.</p>
+<p><strong>Where it runs in BIM OOTB</strong> (three modules, 43 code references):</p>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>What R-tree does</th>
+<th>Without R-tree</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>measure.js</code> (clash detection)</td>
+<td>For each MEP element, probe R-tree for overlapping ARC/STR elements. 500 probes × O(log 48K) = <strong>sub-second</strong>.</td>
+<td>O(n²) cross-join: 500 × 47,500 = <strong>23.75 million</strong> row comparisons. Browser tab freezes or crashes.</td>
+</tr>
+<tr>
+<td><code>section_cut.js</code> (storey slicing)</td>
+<td>Query elements within a Z-range slab. R-tree returns only elements in that band.</td>
+<td>Full-table scan of all transforms, then filter by Z in JavaScript. Slow on large buildings.</td>
+</tr>
+<tr>
+<td><code>elevation.js</code> (building extents)</td>
+<td>Min/max of all bounding boxes along any axis — one R-tree aggregate.</td>
+<td>Full scan of <code>element_transforms</code> — works but slower, no spatial pruning.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The maths:</strong> A 48,000-element airport terminal with 7 disciplines and 12 clash rules requires checking every discipline pair. Without R-tree, the naïve approach is a cross-join — <code>O(n²)</code> per pair. With 12 rules and ~7,000 elements per discipline on average, that's 12 × 7,000² = <strong>588 million</strong> comparisons. The browser has ~5 seconds before the user assumes it's broken. R-tree reduces this to 12 × 7,000 × O(log 48,000) ≈ <strong>12 × 7,000 × 16 = 1.3 million</strong> operations — a <strong>450× speedup</strong>. That's the difference between "instant" and "dead."</p>
+<p><strong>The irony:</strong> R-tree has been part of SQLite since <a href="https://sqlite.org/changes.html">version 3.6.10 (2009)</a>. It has been available as a compile flag for 17 years. The browser WASM build of SQLite (sql.js) existed since 2012. But nobody compiled the two together until <code>rtree-sql.js</code> appeared in 2019 — and even then, almost nobody used it. Our clash detection, running live on phones in 2026, depends on a 1984 algorithm, compiled through a 2010 toolchain, into a 2019 package, discovered by an AI in 2025.</p>
 <p><strong>What actually runs in the viewer (verified from <code>loader.js</code>):</strong></p>
 <table>
 <thead>
