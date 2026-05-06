@@ -150,8 +150,8 @@ var GridContours = (function() {
       segCount += edges.length;
     }
 
-    // Hide 3D meshes for clean line drawing
-    hideMeshes(APP);
+    // 3D meshes stay visible — elevation edges overlay on top.
+    // User can toggle mesh visibility independently if desired.
 
     APP.markDirty();
     log('§EDGE_RENDER mode=' + viewMode + ' elements=' + edgeData.length + ' segments=' + segCount);

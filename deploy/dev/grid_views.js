@@ -44,7 +44,7 @@ var GridViews = (function() {
   var _origCamera = null;       // reference to the original PerspectiveCamera
   var _activeView = null;       // current mode key or null
   var _floorClipPlane = null;   // THREE.Plane for floor plan section cut
-  var _floorForcedLight = false;// true if WE toggled theme to light
+  // No forced theme state — user controls theme
   var _resizeHandler = null;    // resize event handler ref
 
   function log(msg) { console.log('[GridViews] ' + msg); }
@@ -185,19 +185,10 @@ var GridViews = (function() {
     log('§VIEW_CLIP cleared');
   }
 
-  // ── Theme (floor plan only) ───────────────────────────────────────
-
-  function applyFloorTheme(A) {
-    if (!A.lightTheme) { A.toggleTheme(); _floorForcedLight = true; }
-    else { _floorForcedLight = false; }
-  }
-
-  function restoreFloorTheme(A) {
-    if (_floorForcedLight) {
-      A.toggleTheme();
-      _floorForcedLight = false;
-    }
-  }
+  // ── Theme ──────────────────────────────────────────────────────────
+  // No forced theme toggle. User controls theme via sunglasses button.
+  // Removed: applyFloorTheme / restoreFloorTheme — was inverting background
+  // without user request (invention, not extraction).
 
   // ── Public API ────────────────────────────────────────────────────
 
@@ -225,7 +216,6 @@ var GridViews = (function() {
     var def = VIEW_DEFS[mode];
     if (def.clip) {
       applyFloorClip(A, env, mode);
-      applyFloorTheme(A);
     }
 
     _activeView = mode;
@@ -264,7 +254,7 @@ var GridViews = (function() {
 
     var wasFloor = (_activeView === 'floor' || _activeView === 'floor1');
     clearFloorClip(A);
-    if (wasFloor) restoreFloorTheme(A);
+    // No theme restore needed — user controls theme
 
     _savedCamera = null;
     _activeView = null;

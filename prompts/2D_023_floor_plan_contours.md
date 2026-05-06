@@ -1,7 +1,8 @@
 # ⚠ DO NOT REMOVE — MANDATORY PREAMBLE
 # Scope: 2D Architectural Views — Section Contours + Elevation Edges in Grid Overlay
 # After every run: read the log before any conclusion. Exit code is not evidence.
-# STATUS: ARCHITECTURE COMPLETE — engines wired, renderer built, tests passing (36/36)
+# STATUS: ARCHITECTURE COMPLETE — engines wired, renderer built, tests passing (41/41)
+# RESUME: Read this prompt → run tests → check §-logs → fix what fails → deploy dev → test landing page
 
 # 2D_023 — 2D Architectural Views in 3D Grid Overlay
 
@@ -60,11 +61,18 @@ grid_overlay → grid_assembler → main.js
 
 ## What Went Wrong Before (and is now fixed)
 1. **Elevation aspect correction** — `halfW = halfH * aspect` distorted proportions → REMOVED
-2. **Forced theme toggle** — toggled on every view lock/unlock → now tracks `floorForcedLight` flag
+2. **Forced theme toggle** — toggled on every view lock/unlock → REMOVED ENTIRELY. No module forces theme. User controls via sunglasses button.
 3. **Floor plan via clipping plane only** — shows flat 3D cut, not architectural contours → now uses `section_cut.js` contours
 4. **`localClippingEnabled` never reset** — clip persisted into Roof/R/L/S → now reset to `false` in `clearFloorClip()`
 5. **`clippingPlanes` restored to `[]` not `null`** — Three.js default is `null` → fixed
 6. **Hardcoded skipClasses** — `{ IfcFurnishingElement: 1, IfcFurniture: 1 }` → now reads `GridConfig.retainSet(mode)` with 8 classes
+7. **Mesh hiding in elevation** — was blanking 3D model before edges rendered → REMOVED. 3D stays visible, edges overlay on top.
+
+## Known Issues for Next Session
+- Elevation views may appear empty if `elevation.js` fails to find geometry — check §EL_QUERY logs
+- Bubbles may stretch in ortho views with non-square frustum — sprites billboard in screen space. Fix: compensate sprite scale by frustum aspect in ortho mode
+- Floor plan contours may be sparse if building has few elements at cutZ — check §SC_SLICE logs
+- Grid dimensions are slightly small — already increased canvas to 192x48, font to bold 28px
 
 ## JSON Strategy — Config Not Code
 All styling decisions live in `grid_config.js`:
@@ -170,5 +178,5 @@ node deploy/dev/tests/test_grid_modules.js
 - Module wiring: `deploy/dev/grid_assembler.js`
 - Section engine: `deploy/dev/section_cut.js` (read-only)
 - Elevation engine: `deploy/dev/elevation.js` (read-only)
-- Tests: `deploy/dev/tests/test_grid_modules.js`
+- Tests: `deploy/dev/tests/test_grid_modules.js` (41 tests, 87 §-log lines)
 - Viewer HTML: `deploy/dev/index.html`

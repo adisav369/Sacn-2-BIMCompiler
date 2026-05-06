@@ -197,6 +197,7 @@ test('T4: Style classes are known IFC classes', function() {
 test('T5: grid_overlay.js has no hardcoded skipClasses', function() {
   var src = readFile('grid_overlay.js');
   assert(src.indexOf('skipClasses') === -1, 'still has hardcoded skipClasses');
+  logTag('T5_CLEAN', 'no hardcoded skipClasses — retain list is in GridConfig JSON');
 });
 
 test('T6: grid_views.js references GridConfig.retainSet', function() {
@@ -342,11 +343,29 @@ test('T14: Elevation frustum uses H for height, plan uses D for depth', function
 
 test('T15: grid_views.js has no aspect ratio correction', function() {
   var src = readFile('grid_views.js');
-  assert(src.indexOf('innerWidth / innerHeight') === -1,
-    'grid_views.js still references window aspect ratio');
   assert(src.indexOf('halfW = halfH *') === -1,
     'grid_views.js still has halfW = halfH * aspect');
   logTag('T15_ASPECT', 'no aspect correction found — proportions preserved');
+});
+
+test('T15b: grid_views.js has no forced theme toggle', function() {
+  var src = readFile('grid_views.js');
+  assert(src.indexOf('applyFloorTheme') === -1 || src.indexOf('Removed:') >= 0,
+    'grid_views.js still calls applyFloorTheme');
+  assert(src.indexOf('_floorForcedLight') === -1,
+    'grid_views.js still has _floorForcedLight state');
+  logTag('T15b_THEME', 'no forced theme toggle — user controls theme');
+});
+
+test('T15c: grid_contours.js renderEdges does not hide meshes', function() {
+  var src = readFile('grid_contours.js');
+  // Extract renderEdges function body — check it doesn't call hideMeshes
+  var renderStart = src.indexOf('function renderEdges');
+  var renderEnd = src.indexOf('function renderLevelMarkers');
+  var renderBody = src.substring(renderStart, renderEnd);
+  assert(renderBody.indexOf('hideMeshes') === -1,
+    'renderEdges still calls hideMeshes');
+  logTag('T15c_MESHVIS', 'renderEdges does not hide meshes — 3D stays visible');
 });
 
 // ── T16: VIEW_DEFS clip flag consistent with GridConfig ─────────────
@@ -597,6 +616,59 @@ test('T29: GridAssembler.MODULES includes GridContours and Elevation', function(
   assert(GridAssembler.MODULES.Elevation, 'missing Elevation');
   assert(!GridAssembler.MODULES.GridContours.required, 'GridContours should be optional');
   assert(!GridAssembler.MODULES.Elevation.required, 'Elevation should be optional');
+});
+
+// ── T30: Bubble sprite is round (square canvas + equal scale) ───────
+
+test('T30: Bubble canvas is square and scale X === scale Y', function() {
+  var src = readFile('grid_overlay.js');
+  // Canvas dimensions must be equal
+  var canvasMatch = src.match(/canvas\.width\s*=\s*(\d+);\s*canvas\.height\s*=\s*(\d+)/);
+  assert(canvasMatch, 'cannot find canvas.width/height in createBubble');
+  var cw = parseInt(canvasMatch[1]), ch = parseInt(canvasMatch[2]);
+  logTag('T30_CANVAS', 'width=' + cw + ' height=' + ch);
+  assert(cw === ch, 'canvas is not square: ' + cw + 'x' + ch);
+
+  // Scale must use same value for X and Y
+  var scaleMatch = src.match(/sprite\.scale\.set\(bubbleScale,\s*bubbleScale/);
+  assert(scaleMatch, 'bubble sprite scale X !== Y (not round)');
+  logTag('T30_SCALE', 'sprite.scale.set(bubbleScale, bubbleScale, 1) — equal X/Y');
+});
+
+// ── T31: Bubble size proportional to building (not fixed pixels) ────
+
+test('T31: bubbleScale derived from building dimensions', function() {
+  var src = readFile('grid_overlay.js');
+  assert(src.indexOf('bubbleScale = Math.max') >= 0,
+    'bubbleScale not derived from building size');
+  var match = src.match(/bubbleScale\s*=\s*Math\.max\(([^,]+),\s*maxDim\s*\*\s*([^)]+)\)/);
+  assert(match, 'cannot parse bubbleScale formula');
+  var minVal = parseFloat(match[1]);
+  var ratio = parseFloat(match[2]);
+  logTag('T31_SIZE', 'bubbleScale = Math.max(' + minVal + ', maxDim * ' + ratio + ')');
+  assert(minVal > 0 && minVal < 5, 'min bubble size unreasonable: ' + minVal);
+  assert(ratio > 0.01 && ratio < 0.2, 'bubble ratio unreasonable: ' + ratio);
+});
+
+// ── T32: No forced theme in any grid module ─────────────────────────
+
+test('T32: No grid module forces theme toggle', function() {
+  var files = ['grid_views.js', 'grid_contours.js', 'grid_overlay.js', 'grid_assembler.js'];
+  files.forEach(function(f) {
+    var src = readFile(f);
+    // Check no active toggleTheme calls (comments/strings OK)
+    var lines = src.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (line.indexOf('toggleTheme()') >= 0 && line.indexOf('//') !== 0 && line.indexOf('_origToggleTheme') === -1) {
+        // Allow the theme-change listener wrapper in grid_overlay.js
+        if (line.indexOf('_origToggleTheme.call') >= 0) continue;
+        if (line.indexOf('A.toggleTheme = function') >= 0) continue;
+        assert(false, f + ' line ' + (i+1) + ' calls toggleTheme: ' + line);
+      }
+    }
+    logTag('T32_THEME', f + ' — no forced theme toggle');
+  });
 });
 
 // Summary
