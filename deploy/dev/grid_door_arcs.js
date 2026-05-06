@@ -74,10 +74,49 @@ var DoorArcs = (function() {
   }
 
   /**
-   * Generate quarter-circle arc points from hinge → free endpoint.
-   * Arc sweeps 90 degrees from the free point direction.
+   * Determine swing direction from wall orientation.
+   * The door opens AWAY from the wall centre line, into the room.
+   * Uses 2D cross product: wallDir × doorDir > 0 → CCW, else CW.
    *
-   * @param {{ hinge: [x,y], free: [x,y], radius: number }} arc
+   * @param {{ hinge: [x,y], free: [x,y] }} hingeResult
+   * @param {Array} wallContours — wall polylines to find host wall direction
+   * @returns {number} +1 (CCW) or -1 (CW)
+   */
+  function detectSwingDirection(hingeResult, wallContours) {
+    var hx = hingeResult.hinge[0], hy = hingeResult.hinge[1];
+    var fx = hingeResult.free[0], fy = hingeResult.free[1];
+
+    // Door direction: hinge → free
+    var doorDx = fx - hx, doorDy = fy - hy;
+
+    // Find the nearest wall segment to the hinge — its direction gives wall axis
+    var bestDist = Infinity, wallDx = 1, wallDy = 0;
+    for (var w = 0; w < wallContours.length; w++) {
+      var wc = wallContours[w];
+      for (var wi = 0; wi < wc.length - 1; wi++) {
+        var mx = (wc[wi][0] + wc[wi + 1][0]) / 2;
+        var my = (wc[wi][1] + wc[wi + 1][1]) / 2;
+        var d = Math.sqrt((mx - hx) * (mx - hx) + (my - hy) * (my - hy));
+        if (d < bestDist) {
+          bestDist = d;
+          wallDx = wc[wi + 1][0] - wc[wi][0];
+          wallDy = wc[wi + 1][1] - wc[wi][1];
+        }
+      }
+    }
+
+    // 2D cross product: wallDir × doorDir
+    // Positive → door opens to the left of wall direction (CCW sweep)
+    // Negative → door opens to the right (CW sweep = negative π/2)
+    var cross = wallDx * doorDy - wallDy * doorDx;
+    return cross >= 0 ? 1 : -1;
+  }
+
+  /**
+   * Generate quarter-circle arc points from hinge → free endpoint.
+   * Arc sweeps 90 degrees — direction determined by swing sign.
+   *
+   * @param {{ hinge: [x,y], free: [x,y], radius: number, swing: number }} arc
    * @returns {Array} [[x,y], ...] polyline points for the arc
    */
   function computeArcPoints(arc) {
@@ -87,7 +126,8 @@ var DoorArcs = (function() {
 
     // Start angle: direction from hinge to free point
     var startAngle = Math.atan2(fy - hy, fx - hx);
-    var sweep = Math.PI / 2; // quarter circle
+    // Sweep: +π/2 (CCW) or -π/2 (CW) based on detected swing direction
+    var sweep = (arc.swing || 1) * Math.PI / 2;
 
     var points = [];
     for (var i = 0; i <= ARC_SEGMENTS; i++) {
@@ -126,16 +166,22 @@ var DoorArcs = (function() {
         var hingeResult = findHinge(dContours[dc], wallContours);
         if (!hingeResult) continue;
 
+        // Determine swing direction from wall orientation
+        var swing = detectSwingDirection(hingeResult, wallContours);
+        hingeResult.swing = swing;
+
         var arcPoints = computeArcPoints(hingeResult);
         arcs.push({
           guid: door.guid,
           hinge: hingeResult.hinge,
           free: hingeResult.free,
           radius: hingeResult.radius,
+          swing: swing,
           points: arcPoints
         });
         log('§DOOR_ARC_DETECT guid=' + door.guid + ' radius=' + hingeResult.radius.toFixed(3) +
-            ' hinge=(' + hingeResult.hinge[0].toFixed(2) + ',' + hingeResult.hinge[1].toFixed(2) + ')');
+            ' hinge=(' + hingeResult.hinge[0].toFixed(2) + ',' + hingeResult.hinge[1].toFixed(2) +
+            ') swing=' + (swing > 0 ? 'CCW' : 'CW'));
       }
     }
     return arcs;
@@ -174,6 +220,7 @@ var DoorArcs = (function() {
     generateArcs:  generateArcs,
     createArcLine: createArcLine,
     findHinge:     findHinge,
-    computeArcPoints: computeArcPoints
+    computeArcPoints: computeArcPoints,
+    detectSwingDirection: detectSwingDirection
   };
 })();

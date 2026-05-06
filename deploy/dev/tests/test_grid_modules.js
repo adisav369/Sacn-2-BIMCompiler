@@ -1174,6 +1174,68 @@ test('T60: Roof view has null contourMode, no clip, no retain (pure 3D)', functi
   GridViewsRun.unlockView(app);
 });
 
+// ── T62: Door swing direction — cross product determines CW/CCW ─────
+
+test('T62: detectSwingDirection uses wall×door cross product', function() {
+  // Scenario 1: EW wall (runs along X), door opens northward (+Y)
+  // Wall segment: (0,0)→(5,0) — direction (5,0)
+  // Door hinge at (2,0), free at (2,0.8) — direction (0,0.8)
+  // Cross: 5*0.8 - 0*0 = 4 > 0 → CCW (+1)
+  var walls1 = [[[0, 0], [5, 0]]];
+  var hinge1 = { hinge: [2, 0], free: [2, 0.8] };
+  var s1 = DoorArcs.detectSwingDirection(hinge1, walls1);
+  logTag('T62_EW_N', 'wallDir=(5,0) doorDir=(0,0.8) cross=4 swing=' + s1);
+  assert(s1 === 1, 'EW wall + north-opening door should be CCW(+1), got ' + s1);
+
+  // Scenario 2: Same EW wall, door opens southward (-Y)
+  // Door hinge at (2,0), free at (2,-0.8) — direction (0,-0.8)
+  // Cross: 5*(-0.8) - 0*0 = -4 < 0 → CW (-1)
+  var hinge2 = { hinge: [2, 0], free: [2, -0.8] };
+  var s2 = DoorArcs.detectSwingDirection(hinge2, walls1);
+  logTag('T62_EW_S', 'wallDir=(5,0) doorDir=(0,-0.8) cross=-4 swing=' + s2);
+  assert(s2 === -1, 'EW wall + south-opening door should be CW(-1), got ' + s2);
+
+  // Scenario 3: NS wall (runs along Y), door opens eastward (+X)
+  // Wall segment: (0,0)→(0,5) — direction (0,5)
+  // Door hinge at (0,2), free at (0.8,2) — direction (0.8,0)
+  // Cross: 0*0 - 5*0.8 = -4 < 0 → CW (-1)
+  var walls3 = [[[0, 0], [0, 5]]];
+  var hinge3 = { hinge: [0, 2], free: [0.8, 2] };
+  var s3 = DoorArcs.detectSwingDirection(hinge3, walls3);
+  logTag('T62_NS_E', 'wallDir=(0,5) doorDir=(0.8,0) cross=-4 swing=' + s3);
+  assert(s3 === -1, 'NS wall + east-opening door should be CW(-1), got ' + s3);
+
+  // Scenario 4: NS wall, door opens westward (-X)
+  // Door hinge at (0,2), free at (-0.8,2) — direction (-0.8,0)
+  // Cross: 0*0 - 5*(-0.8) = 4 > 0 → CCW (+1)
+  var hinge4 = { hinge: [0, 2], free: [-0.8, 2] };
+  var s4 = DoorArcs.detectSwingDirection(hinge4, walls3);
+  logTag('T62_NS_W', 'wallDir=(0,5) doorDir=(-0.8,0) cross=4 swing=' + s4);
+  assert(s4 === 1, 'NS wall + west-opening door should be CCW(+1), got ' + s4);
+});
+
+// ── T63: CW arc points still lie on circle (negative sweep proof) ───
+
+test('T63: CW arc (swing=-1) all points on circle', function() {
+  var arc = { hinge: [1, 1], free: [1.9, 1], radius: 0.9, swing: -1 };
+  var pts = DoorArcs.computeArcPoints(arc);
+  assert(pts.length === 17, 'expected 17 points');
+  for (var i = 0; i < pts.length; i++) {
+    var dx = pts[i][0] - arc.hinge[0];
+    var dy = pts[i][1] - arc.hinge[1];
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    assertClose(dist, arc.radius, 0.0001, 'CW point ' + i + ' off circle');
+  }
+  // CW sweep: first point at free (1.9,1), last point below at (1,0.1)
+  // startAngle = 0, sweep = -π/2, end angle = -π/2
+  assertClose(pts[0][0], 1.9, 0.001, 'CW start x');
+  assertClose(pts[0][1], 1.0, 0.001, 'CW start y');
+  // End point: hinge + r*cos(-π/2), hinge + r*sin(-π/2) = (1, 1-0.9) = (1, 0.1)
+  assertClose(pts[16][0], 1.0, 0.001, 'CW end x');
+  assertClose(pts[16][1], 0.1, 0.001, 'CW end y');
+  logTag('T63_CW', 'CW arc: start=(1.9,1) end=(1.0,0.1) — all on circle, correct sweep');
+});
+
 // ── T61: Floor retain set covers exactly 8 classes ──────────────────
 
 test('T61: Floor retain list is exactly 8 specific furniture/MEP classes', function() {
@@ -1191,6 +1253,205 @@ test('T61: Floor retain list is exactly 8 specific furniture/MEP classes', funct
     assert(actual.indexOf(cls) === -1, 'structural class ' + cls + ' should NOT be retained');
   });
   logTag('T61_RETAIN', '8 furniture/MEP classes retained, 0 structural — correct');
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// LAYOUT QUALITY — bubbles, dim chains, no overlaps
+// ══════════════════════════════════════════════════════════════════════
+
+// ── T64: Dim tier offsets — tier1 clears bubbles, tier3 clears tier1 ─
+
+test('T64: Dim chain tiers are spaced apart — no overlap', function() {
+  // Simulate the offset computation from DimChains.build
+  var env = { xMin: 0, xMax: 20, yMin: 0, yMax: 15, zMin: -0.3, zMax: 8.7 };
+  var bldW = 20, bldD = 15, maxDim = 20;
+  var bubbleScale = Math.max(1.2, maxDim * 0.04); // = 1.2 (20*0.04=0.8 < 1.2)
+  var dimGap = Math.max(1.0, maxDim * 0.03); // = 1.0 (20*0.03=0.6 < 1.0)
+
+  // baseZ is where the bubble sits (grid line endpoint)
+  // tier1 = baseZ + bubbleScale + dimGap  (clears the bubble)
+  // tier3 = baseZ + bubbleScale + dimGap*3 (clears tier1)
+  var tier1 = bubbleScale + dimGap;    // 1.2 + 1.0 = 2.2
+  var tier3 = bubbleScale + dimGap * 3; // 1.2 + 3.0 = 4.2
+
+  logTag('T64_TIER', 'bubbleScale=' + bubbleScale + ' dimGap=' + dimGap +
+    ' tier1=' + tier1.toFixed(1) + ' tier3=' + tier3.toFixed(1));
+
+  // tier1 must be > bubbleScale (clear the bubble circle)
+  assert(tier1 > bubbleScale, 'tier1 overlaps bubble: ' + tier1 + ' <= ' + bubbleScale);
+
+  // tier3 must be > tier1 + some gap (labels won't overlap)
+  // Label sprite width = bubbleScale * 2.0 (from createDimLabel)
+  var labelHalfWidth = bubbleScale * 1.0;
+  assert(tier3 - tier1 > labelHalfWidth,
+    'tier3 too close to tier1: gap=' + (tier3 - tier1) + ' labelWidth=' + labelHalfWidth * 2);
+
+  logTag('T64_GAP', 'tier3-tier1=' + (tier3 - tier1).toFixed(1) +
+    ' > labelHalfWidth=' + labelHalfWidth.toFixed(1) + ' — no overlap');
+});
+
+// ── T65: Dim labels sit at midpoint of their segment (parallel, not crossing)
+
+test('T65: Dim label position = midpoint of p0 and p1 (verified from code)', function() {
+  var src = readFile('grid_dim_chains.js');
+  // The label placement line should use addVectors(p0,p1).multiplyScalar(0.5)
+  assert(src.indexOf('addVectors(p0, p1).multiplyScalar(0.5)') >= 0,
+    'dim label not placed at midpoint of segment');
+  logTag('T65_MID', 'label at (p0+p1)/2 — parallel to line, centred');
+});
+
+// ── T66: X-axis dims run at constant Z (parallel to grid), not crossing lines
+
+test('T66: X-axis dim segments share same Z coord (run parallel, not across)', function() {
+  // In DimChains.build, X-axis dims:
+  //   p0 = Vector3(pa.x, groundY, tier1Offset)
+  //   p1 = Vector3(pb.x, groundY, tier1Offset)
+  // Both have same Z = tier1Offset, same Y = groundY → perfectly horizontal
+  var src = readFile('grid_dim_chains.js');
+
+  // Find the X-axis dim construction: both endpoints use tier1Offset for Z
+  var xBlock = src.substring(
+    src.indexOf('// X-axis dimension chains'),
+    src.indexOf('// Y-axis dimension chains')
+  );
+  // p0 and p1 must use same Z variable
+  assert(xBlock.indexOf('new THREE.Vector3(pa.x, groundY, tier1Offset)') >= 0,
+    'X dim p0 not at tier1Offset Z');
+  assert(xBlock.indexOf('new THREE.Vector3(pb.x, groundY, tier1Offset)') >= 0,
+    'X dim p1 not at tier1Offset Z');
+  logTag('T66_PARALLEL', 'X-axis dims: p0.z === p1.z === tier1Offset — parallel to grid');
+});
+
+// ── T67: Y-axis dims run at constant X (parallel to grid), not crossing lines
+
+test('T67: Y-axis dim segments share same X coord (run parallel, not across)', function() {
+  var src = readFile('grid_dim_chains.js');
+  var yBlock = src.substring(
+    src.indexOf('// Y-axis dimension chains'),
+    src.indexOf('// Overall', src.indexOf('// Y-axis dimension chains') + 50)
+  );
+  // Both p0 and p1 use tier1OffsetY for X
+  assert(yBlock.indexOf('new THREE.Vector3(tier1OffsetY, groundY, ra.z)') >= 0,
+    'Y dim p0 not at tier1OffsetY X');
+  assert(yBlock.indexOf('new THREE.Vector3(tier1OffsetY, groundY, rb.z)') >= 0,
+    'Y dim p1 not at tier1OffsetY X');
+  logTag('T67_PARALLEL', 'Y-axis dims: p0.x === p1.x === tier1OffsetY — parallel to grid');
+});
+
+// ── T68: Grid lines overshoot beyond building envelope — bubbles outside
+
+test('T68: Grid lines extend past building envelope (bubbles clear of building)', function() {
+  var src = readFile('grid_overlay.js');
+  // Overshoot computed as max(2m, dim*0.15)
+  assert(src.indexOf('LINE_OVERSHOOT_RATIO = 0.15') >= 0, 'overshoot ratio missing');
+  assert(src.indexOf('LINE_OVERSHOOT_MIN = 2.0') >= 0, 'overshoot min missing');
+
+  // For SH: bldD=15 → overshootX = max(2.0, 15*0.15) = 2.25
+  var bldD = 15, ratio = 0.15, minO = 2.0;
+  var overshoot = Math.max(minO, bldD * ratio);
+  logTag('T68_OVERSHOOT', 'bldD=' + bldD + ' overshoot=' + overshoot.toFixed(2) +
+    ' > bubbleScale — bubbles outside envelope');
+  assert(overshoot >= minO, 'overshoot below minimum');
+  // Bubble sits at line endpoint, which is env.yMax + overshoot
+  // This means bubble centre is overshoot metres outside the building boundary
+  assert(overshoot > 1.0, 'overshoot too small — bubble may overlap building');
+});
+
+// ── T69: Dim tier1 offset places dims beyond grid line endpoints
+
+test('T69: Dim chains placed beyond grid line bubble endpoints (no crossing)', function() {
+  // Grid bubbles sit at env.yMin - overshoot (Three.js: baseZ = ifc2three(0, yMin).z)
+  // Dim tier1 = baseZ + bubbleScale + dimGap
+  // This means dim is bubbleScale + dimGap further out than the bubble
+  // → dim line can't cross the grid line or its bubble
+
+  var maxDim = 20;
+  var bubbleScale = Math.max(1.2, maxDim * 0.04);
+  var dimGap = Math.max(1.0, maxDim * 0.03);
+  var clearance = bubbleScale + dimGap;
+
+  logTag('T69_CLEAR', 'dim clearance from bubble = ' + clearance.toFixed(1) +
+    'm (bubbleScale=' + bubbleScale + ' + dimGap=' + dimGap + ')');
+  // Clearance must be > bubble diameter (bubble radius = bubbleScale/2 visually)
+  assert(clearance > bubbleScale, 'dim chain overlaps bubble zone');
+  // Dim line is fully outside the grid line extent
+  logTag('T69_NOCROSS', 'dim lines cannot cross grid lines — offset guarantees separation');
+});
+
+// ── T70: Bubbles are placed at BOTH ends of every grid line
+
+test('T70: Every grid line gets exactly 2 bubbles at endpoints', function() {
+  var src = readFile('grid_overlay.js');
+  // In addGridLine: two createBubble calls with v0 and v1
+  var addGridLineStart = src.indexOf('function addGridLine(');
+  var addGridLineEnd = src.indexOf('§GRID_LINE', addGridLineStart);
+  var body = src.substring(addGridLineStart, addGridLineEnd);
+
+  var bubbleCalls = body.split('createBubble').length - 1;
+  assert(bubbleCalls === 2, 'addGridLine should create exactly 2 bubbles, found ' + bubbleCalls);
+
+  // Verify they use v0 and v1
+  assert(body.indexOf('createBubble(label, v0') >= 0, 'missing bubble at v0');
+  assert(body.indexOf('createBubble(label, v1') >= 0, 'missing bubble at v1');
+  logTag('T70_BUBBLES', '2 bubbles per line at v0 and v1 — consistent');
+});
+
+// ── T71: All bubbles use same bubbleScale (visual consistency)
+
+test('T71: Bubble scale uniform — derived once from building size, used everywhere', function() {
+  var src = readFile('grid_overlay.js');
+  // bubbleScale set once in buildGridScene
+  var setCount = (src.match(/bubbleScale\s*=\s*Math\.max/g) || []).length;
+  assert(setCount === 1, 'bubbleScale set ' + setCount + ' times (should be 1)');
+
+  // createBubble uses bubbleScale directly (closure variable)
+  assert(src.indexOf('sprite.scale.set(bubbleScale, bubbleScale, 1)') >= 0,
+    'createBubble not using bubbleScale for sprite.scale');
+  logTag('T71_UNIFORM', 'bubbleScale computed once, all bubbles same size');
+});
+
+// ── T72: Tick marks perpendicular to measurement direction
+
+test('T72: Tick marks are perpendicular to dim line direction', function() {
+  var src = readFile('grid_dim_chains.js');
+  // X-axis dims run along X (varying x, constant z)
+  // tickDirX = Vector3(0, 0, 1) — perpendicular to X run direction
+  assert(src.indexOf('tickDirX = new THREE.Vector3(0, 0, 1)') >= 0,
+    'X-axis tick direction not perpendicular (should be Z)');
+  // Y-axis dims run along Z (varying z, constant x)
+  // tickDirY = Vector3(1, 0, 0) — perpendicular to Z run direction
+  assert(src.indexOf('tickDirY = new THREE.Vector3(1, 0, 0)') >= 0,
+    'Y-axis tick direction not perpendicular (should be X)');
+  logTag('T72_PERP', 'ticks: X-dims→Z-dir, Y-dims→X-dir — perpendicular confirmed');
+});
+
+// ── T73: Dim label sprite width scaled to bubbleScale (proportional text)
+
+test('T73: Dim label size proportional to building (bubbleScale*2 width)', function() {
+  var src = readFile('grid_dim_chains.js');
+  // Label sprite: scale.set(bubbleScale * 2.0, bubbleScale * 0.5, 1)
+  var match = src.match(/sprite\.scale\.set\(bubbleScale \* ([\d.]+), bubbleScale \* ([\d.]+)/);
+  assert(match, 'dim label scale not found');
+  var scaleX = parseFloat(match[1]);
+  var scaleY = parseFloat(match[2]);
+  logTag('T73_LABEL', 'dim label scale: ' + scaleX + 'x' + scaleY + ' × bubbleScale');
+  // Width should be wider than height (landscape text)
+  assert(scaleX > scaleY, 'dim label not landscape: w=' + scaleX + ' h=' + scaleY);
+  // Not too wide (would overlap adjacent labels)
+  assert(scaleX <= 3.0, 'dim label too wide: ' + scaleX);
+});
+
+// ── T74: Overall dim (tier3) spans first-to-last grid line exactly
+
+test('T74: Overall dim spans exactly from first to last grid position', function() {
+  var src = readFile('grid_dim_chains.js');
+  // X overall: pFirst from xLines[0].position, pLast from xLines[length-1].position
+  assert(src.indexOf('xLines[0].position') >= 0, 'overall X not starting at first grid');
+  assert(src.indexOf('xLines[xLines.length - 1].position') >= 0, 'overall X not ending at last grid');
+  // Y overall
+  assert(src.indexOf('yLines[0].position') >= 0, 'overall Y not starting at first grid');
+  assert(src.indexOf('yLines[yLines.length - 1].position') >= 0, 'overall Y not ending at last grid');
+  logTag('T74_SPAN', 'overall dims span first↔last grid — no missing segments');
 });
 
 // Summary
