@@ -322,7 +322,7 @@ function setupGridOverlay(APP) {
       for (var i = 0; i < xLines.length - 1; i++) {
         var dist = Math.abs(xLines[i + 1].position - xLines[i].position);
         var lbl = xLines[i].label + '–' + xLines[i + 1].label;
-        html += '<div class="grid-row" data-label="' + xLines[i].label + '" style="padding:3px 4px;cursor:pointer;border-radius:3px;font-size:12px;display:flex;justify-content:space-between">' +
+        html += '<div class="grid-row" data-label="' + xLines[i].label + '" data-label-end="' + xLines[i + 1].label + '" style="padding:3px 4px;cursor:pointer;border-radius:3px;font-size:12px;display:flex;justify-content:space-between">' +
           '<span>' + lbl + '</span><span style="color:' + panelDimText() + '">' + (dist * 1000).toFixed(0) + ' mm</span></div>';
       }
       var totalX = Math.abs(xLines[xLines.length - 1].position - xLines[0].position);
@@ -336,7 +336,7 @@ function setupGridOverlay(APP) {
       for (var j = 0; j < yLines.length - 1; j++) {
         var dist2 = Math.abs(yLines[j + 1].position - yLines[j].position);
         var lbl2 = yLines[j].label + '–' + yLines[j + 1].label;
-        html += '<div class="grid-row" data-label="' + yLines[j].label + '" style="padding:3px 4px;cursor:pointer;border-radius:3px;font-size:12px;display:flex;justify-content:space-between">' +
+        html += '<div class="grid-row" data-label="' + yLines[j].label + '" data-label-end="' + yLines[j + 1].label + '" style="padding:3px 4px;cursor:pointer;border-radius:3px;font-size:12px;display:flex;justify-content:space-between">' +
           '<span>' + lbl2 + '</span><span style="color:' + panelDimText() + '">' + (dist2 * 1000).toFixed(0) + ' mm</span></div>';
       }
       var totalY = Math.abs(yLines[yLines.length - 1].position - yLines[0].position);
@@ -364,17 +364,19 @@ function setupGridOverlay(APP) {
 
   function onPanelRowClick(e) {
     var label = e.currentTarget.getAttribute('data-label');
+    var labelEnd = e.currentTarget.getAttribute('data-label-end');
     if (!label) return;
-    highlightGrid(label);
+    highlightGrid(label, labelEnd);
     zoomToGrid(label);
   }
 
-  function highlightGrid(label) {
+  function highlightGrid(label, labelEnd) {
     // Reset all lines to theme-aware default
     var defColor = lineColor();
     for (var key in lineMeshes) {
       if (lineMeshes[key].line) {
         lineMeshes[key].line.material.color.setHex(defColor);
+        lineMeshes[key].line.material.linewidth = 1;
       }
     }
 
@@ -387,11 +389,58 @@ function setupGridOverlay(APP) {
       }
     }
 
-    selectedLabel = label;
+    // Remove previous slab
+    if (gridGroup) {
+      var toRemove = [];
+      gridGroup.traverse(function(obj) {
+        if (obj.userData && obj.userData.isHighlightSlab) toRemove.push(obj);
+      });
+      for (var r = 0; r < toRemove.length; r++) {
+        if (toRemove[r].geometry) toRemove[r].geometry.dispose();
+        if (toRemove[r].material) toRemove[r].material.dispose();
+        gridGroup.remove(toRemove[r]);
+      }
+    }
 
-    // Highlight the selected line — bright orange
-    if (lineMeshes[label] && lineMeshes[label].line) {
-      lineMeshes[label].line.material.color.setHex(COLOR_HIGHLIGHT);
+    selectedLabel = label;
+    var highlightSet = {};
+    highlightSet[label] = true;
+    if (labelEnd) highlightSet[labelEnd] = true;
+
+    // Highlight BOTH grid lines — bright orange, thicker
+    for (var hl in highlightSet) {
+      if (lineMeshes[hl] && lineMeshes[hl].line) {
+        lineMeshes[hl].line.material.color.setHex(COLOR_HIGHLIGHT);
+        lineMeshes[hl].line.material.linewidth = 3;
+      }
+    }
+
+    // Orange transparent slab between the two grid lines
+    if (labelEnd && lineMeshes[label] && lineMeshes[labelEnd] && gridGroup) {
+      var a = lineMeshes[label];
+      var b = lineMeshes[labelEnd];
+      // Build quad from the 4 corners: a.v0, a.v1, b.v1, b.v0
+      var slabGeo = new THREE.BufferGeometry();
+      var positions = new Float32Array([
+        a.v0.x, a.v0.y, a.v0.z,
+        a.v1.x, a.v1.y, a.v1.z,
+        b.v1.x, b.v1.y, b.v1.z,
+        a.v0.x, a.v0.y, a.v0.z,
+        b.v1.x, b.v1.y, b.v1.z,
+        b.v0.x, b.v0.y, b.v0.z
+      ]);
+      slabGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      var slabMat = new THREE.MeshBasicMaterial({
+        color: 0xff6600,
+        transparent: true,
+        opacity: 0.12,
+        side: THREE.DoubleSide,
+        depthTest: false
+      });
+      var slab = new THREE.Mesh(slabGeo, slabMat);
+      slab.renderOrder = 998;
+      slab.userData.isHighlightSlab = true;
+      gridGroup.add(slab);
     }
 
     // Highlight matching panel rows
@@ -409,7 +458,7 @@ function setupGridOverlay(APP) {
         if (obj.isSprite && obj.userData.gridLabel) {
           if (obj.material.map) obj.material.map.dispose();
           obj.material.dispose();
-          var isHL = (obj.userData.gridLabel === label);
+          var isHL = !!highlightSet[obj.userData.gridLabel];
           var fresh = createBubble(obj.userData.gridLabel, obj.position, isHL);
           obj.material = fresh.material;
         }
@@ -417,7 +466,7 @@ function setupGridOverlay(APP) {
     }
 
     A.markDirty();
-    log('§GRID_ZOOM highlight=' + label);
+    log('§GRID_ZOOM highlight=' + label + (labelEnd ? '+' + labelEnd : '') + ' slab=' + !!labelEnd);
   }
 
   function zoomToGrid(label) {

@@ -159,60 +159,15 @@
     var bounds = getGlobalBounds(db, axis);
     if (!bounds) { console.warn('§EL_QUERY face=' + face + ' candidates=0 (no bounds data)'); return []; }
 
-    var depth = bounds.gmax - bounds.gmin;
-    var margin = depth * 0.3;
-
-    // Query all elements with geometry — try rtree, fallback to transforms
-    var colMap = { X: 'center_x', Y: 'center_y', Z: 'center_z' };
-    var filterCol = colMap[axis];
+    // Project ALL elements — no depth filter. Architectural elevations flatten
+    // the entire building onto the view plane. Depth sort handles visibility.
     var result = null;
-
-    // Try rtree path (may fail if sql.js lacks R-tree support)
-    if (hasTable(db, 'elements_rtree')) {
-      try {
-        var filterSQL;
-        if (cfg.filterSide === 'min') {
-          filterSQL = 'er.min' + axis + ' <= ' + (bounds.gmin + margin);
-        } else {
-          filterSQL = 'er.max' + axis + ' >= ' + (bounds.gmax - margin);
-        }
-        result = db.exec(
-          'SELECT em.guid, em.ifc_class, ei.geometry_hash, ' +
-          'et.center_x, et.center_y, et.center_z ' +
-          'FROM elements_meta em ' +
-          'JOIN element_instances ei ON ei.guid = em.guid ' +
-          'JOIN element_transforms et ON et.guid = em.guid ' +
-          'JOIN elements_rtree er ON er.id = em.id ' +
-          'WHERE ' + filterSQL);
-      } catch (e) {
-        console.log('§EL_QUERY rtree failed, using transforms: ' + e.message);
-        result = null;
-      }
-    }
-
-    // Fallback: filter by center coordinate
-    if (!result || result.length === 0) {
-      var thresh;
-      var sql;
-      if (cfg.filterSide === 'min') {
-        thresh = bounds.gmin + margin;
-        sql = 'SELECT em.guid, em.ifc_class, ei.geometry_hash, ' +
+    var sql = 'SELECT em.guid, em.ifc_class, ei.geometry_hash, ' +
               'et.center_x, et.center_y, et.center_z ' +
               'FROM elements_meta em ' +
               'JOIN element_instances ei ON ei.guid = em.guid ' +
-              'JOIN element_transforms et ON et.guid = em.guid ' +
-              'WHERE et.' + filterCol + ' <= ' + thresh;
-      } else {
-        thresh = bounds.gmax - margin;
-        sql = 'SELECT em.guid, em.ifc_class, ei.geometry_hash, ' +
-              'et.center_x, et.center_y, et.center_z ' +
-              'FROM elements_meta em ' +
-              'JOIN element_instances ei ON ei.guid = em.guid ' +
-              'JOIN element_transforms et ON et.guid = em.guid ' +
-              'WHERE et.' + filterCol + ' >= ' + thresh;
-      }
-      try { result = db.exec(sql); } catch (e) { result = null; }
-    }
+              'JOIN element_transforms et ON et.guid = em.guid';
+    try { result = db.exec(sql); } catch (e) { result = null; }
 
     if (!result || result.length === 0) {
       console.log('§EL_QUERY face=' + face + ' candidates=0');
@@ -227,7 +182,7 @@
       }
     }
     console.log('§EL_QUERY face=' + face + ' candidates=' + candidates.length +
-                ' (from ' + rows.length + ' query hits, margin=' + margin.toFixed(2) + 'm)');
+                ' (from ' + rows.length + ' total elements, full projection)');
 
     if (candidates.length === 0) return [];
 
