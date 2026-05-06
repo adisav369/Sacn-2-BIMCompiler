@@ -136,7 +136,7 @@ function setupPicking(A) {
     // Cancel long-press on release — suppress click if long-press already fired
     if (A._longPressTimer) { clearTimeout(A._longPressTimer); A._longPressTimer = null; }
     if (A._longPressFired) { A._longPressFired = false; return; }
-    if (A.measureActive && e.button === 0) { A.handleMeasureClick(e); return; }
+    if (A.measureActive && e.button === 0) { if (A.handleMeasureClick(e)) return; }
 
     const dx = e.clientX - A.pointerDownPos.x;
     const dy = e.clientY - A.pointerDownPos.y;

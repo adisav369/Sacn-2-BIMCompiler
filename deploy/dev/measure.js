@@ -139,6 +139,7 @@ function setupMeasure(A) {
             var ms = (performance.now() - t0).toFixed(0);
             A._clashRtreeReady = true;
             A._clashRtreeBuilding = false;
+            if (A.status && A.status.textContent.indexOf('spatial index') >= 0) A.status.textContent = 'Spatial index ready';
             console.log('§CLASH_RTREE ready ' + n + ' rows in ' + ms + 'ms');
           }
         } catch(e) {
@@ -295,93 +296,59 @@ function setupMeasure(A) {
   };
 
   // ── R-tree accelerated clash pair query ──────────────────────────────────
-  // For each element of discA, query R-tree for overlapping elements of discB.
-  // O(n * log N) instead of O(n²). Stops at PAGE_SIZE results.
+  // S246b: Single SQL R-tree join — same pattern as _countClashesRtree but returns rows.
+  // Was: N separate R-tree queries (one per element of discA) → 4000+ SQL calls.
+  // Now: 1 SQL call regardless of element count.
   A._queryClashesPairRtree = function(storey, rules, discA, discB, offset, w) {
     var t0 = performance.now();
     var ignoreSet = {};
     rules.clash_rules.forEach(function(r) {
       (r.ignore_classes || []).forEach(function(c) { ignoreSet[c] = 1; });
     });
-
-    var storeyFilter = storey ? " AND m.storey = '" + storey.replace(/'/g, "''") + "'" : "";
+    var storeyFilterA = storey ? " AND ma.storey = '" + storey.replace(/'/g, "''") + "'" : "";
+    var storeyFilterB = storey ? " AND mb.storey = '" + storey.replace(/'/g, "''") + "'" : "";
     var ignoreFilter = Object.keys(ignoreSet).length ?
-      " AND m.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" : "";
+      " AND ma.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" +
+      " AND mb.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" : "";
 
-    // Pre-load ALL discB elements into a JS map keyed by rowid — ONE query instead of N
-    var bMap = {};
-    var rowsB = A.dbQuery(
-      "SELECT t.rowid, m.guid, m.ifc_class, m.element_name," +
-      " t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z" +
-      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
-      " WHERE m.discipline = '" + discB + "'" + storeyFilter + ignoreFilter +
-      " AND t.bbox_x IS NOT NULL"
-    );
-    for (var bi = 0; bi < rowsB.length; bi++) {
-      bMap[rowsB[bi][0]] = rowsB[bi]; // keyed by rowid
-    }
-
-    // Get all elements of discA (with bbox)
-    var rowsA = A.dbQuery(
-      "SELECT t.rowid, m.guid, m.ifc_class, m.element_name, m.storey," +
-      " t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z" +
-      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
-      " WHERE m.discipline = '" + discA + "'" + storeyFilter + ignoreFilter +
-      " AND t.bbox_x IS NOT NULL"
-    );
-
-    var results = [];
-    var seen = {};
-    var skip = offset || 0;
     var limit = A._CLASH_PAGE_SIZE;
-
-    for (var i = 0; i < rowsA.length && results.length < limit; i++) {
-      var ra = rowsA[i];
-      var minX = ra[5] - ra[8]/2, maxX = ra[5] + ra[8]/2;
-      var minY = ra[6] - ra[9]/2, maxY = ra[6] + ra[9]/2;
-      var minZ = ra[7] - ra[10]/2, maxZ = ra[7] + ra[10]/2;
-
-      // R-tree query: rowids overlapping this bbox — ONE SQL per element of discA
-      var rtSql = "SELECT r.id FROM elements_rtree r WHERE " +
-        "r.maxX >= " + minX + " AND r.minX <= " + maxX + " AND " +
-        "r.maxY >= " + minY + " AND r.minY <= " + maxY + " AND " +
-        "r.maxZ >= " + minZ + " AND r.minZ <= " + maxZ;
-      var candidates;
-      try { candidates = A.dbQuery(rtSql); } catch(e) { continue; }
-
-      // Filter via pre-loaded JS map — zero SQL
-      for (var ci = 0; ci < candidates.length && results.length < limit; ci++) {
-        var rb = bMap[candidates[ci][0]];
-        if (!rb) continue; // not discB, or ignored class
-        if (rb[1] === ra[1]) continue;
-        var key = ra[1] < rb[1] ? ra[1] + '|' + rb[1] : rb[1] + '|' + ra[1];
-        if (seen[key]) continue;
-        seen[key] = 1;
-
-        // Verify actual bbox overlap
-        var bMinX = rb[4] - rb[7]/2, bMaxX = rb[4] + rb[7]/2;
-        var bMinY = rb[5] - rb[8]/2, bMaxY = rb[5] + rb[8]/2;
-        var bMinZ = rb[6] - rb[9]/2, bMaxZ = rb[6] + rb[9]/2;
-        if (maxX <= bMinX || minX >= bMaxX) continue;
-        if (maxY <= bMinY || minY >= bMaxY) continue;
-        if (maxZ <= bMinZ || minZ >= bMaxZ) continue;
-
-        var ox = Math.min(maxX, bMaxX) - Math.max(minX, bMinX);
-        var oy = Math.min(maxY, bMaxY) - Math.max(minY, bMinY);
-        var oz = Math.min(maxZ, bMaxZ) - Math.max(minZ, bMinZ);
-        var overlap = Math.min(ox, oy, oz);
-
-        if (skip > 0) { skip--; continue; }
-        results.push([ra[1], rb[1], ra[2], rb[2], discA, discB, ra[3], rb[3], overlap]);
-      }
+    var skip = offset || 0;
+    try {
+      var sql = "SELECT ma.guid, mb.guid, ma.ifc_class, mb.ifc_class," +
+        " '" + discA + "', '" + discB + "', ma.element_name, mb.element_name," +
+        " MIN((ta.center_x + ta.bbox_x/2) - (tb.center_x - tb.bbox_x/2)," +
+        "     (ta.center_y + ta.bbox_y/2) - (tb.center_y - tb.bbox_y/2)," +
+        "     (ta.center_z + ta.bbox_z/2) - (tb.center_z - tb.bbox_z/2)) AS overlap_m" +
+        " FROM element_transforms ta" +
+        " JOIN elements_meta ma ON ta.guid = ma.guid" +
+        " JOIN elements_rtree r ON r.maxX >= (ta.center_x - ta.bbox_x/2) AND r.minX <= (ta.center_x + ta.bbox_x/2)" +
+        "   AND r.maxY >= (ta.center_y - ta.bbox_y/2) AND r.minY <= (ta.center_y + ta.bbox_y/2)" +
+        "   AND r.maxZ >= (ta.center_z - ta.bbox_z/2) AND r.minZ <= (ta.center_z + ta.bbox_z/2)" +
+        " JOIN element_transforms tb ON tb.rowid = r.id AND tb.guid != ta.guid" +
+        " JOIN elements_meta mb ON tb.guid = mb.guid" +
+        " WHERE ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "'" +
+        storeyFilterA + storeyFilterB + ignoreFilter +
+        " AND ta.bbox_x IS NOT NULL AND tb.bbox_x IS NOT NULL" +
+        " AND (ta.center_x + ta.bbox_x/2) > (tb.center_x - tb.bbox_x/2)" +
+        " AND (ta.center_x - ta.bbox_x/2) < (tb.center_x + tb.bbox_x/2)" +
+        " AND (ta.center_y + ta.bbox_y/2) > (tb.center_y - tb.bbox_y/2)" +
+        " AND (ta.center_y - ta.bbox_y/2) < (tb.center_y + tb.bbox_y/2)" +
+        " AND (ta.center_z + ta.bbox_z/2) > (tb.center_z - tb.bbox_z/2)" +
+        " AND (ta.center_z - ta.bbox_z/2) < (tb.center_z + tb.bbox_z/2)" +
+        " AND ta.guid < tb.guid" +
+        " GROUP BY ma.guid, mb.guid" +
+        " ORDER BY overlap_m DESC" +
+        " LIMIT " + limit + " OFFSET " + skip;
+      var results = A.dbQuery(sql);
+      var ms = (performance.now() - t0).toFixed(0);
+      console.log('§CLASH_QUERY_RTREE ' + discA + ' vs ' + discB +
+        (storey ? ' storey=' + storey : ' whole') +
+        ' hits=' + results.length + ' sql=1 time=' + ms + 'ms');
+      return results;
+    } catch(e) {
+      console.warn('§CLASH_QUERY_RTREE_ERR ' + e.message);
+      return [];
     }
-
-    var ms = (performance.now() - t0).toFixed(0);
-    console.log('§CLASH_QUERY_RTREE ' + discA + ' vs ' + discB +
-      (storey ? ' storey=' + storey : ' whole') +
-      ' A=' + rowsA.length + ' B=' + rowsB.length + ' hits=' + results.length +
-      ' sql=' + (rowsA.length + 2) + ' time=' + ms + 'ms');
-    return results;
   };
 
   // S246perf: R-tree counter — single SQL join, no JS loop per element
@@ -474,47 +441,54 @@ function setupMeasure(A) {
   };
 
   // Async COUNT per storey — S246perf: R-tree counting, no cross-join
+  // S246b: R-tree path = single query, no storey loop. Fallback still loops for cross-join.
   A._countClashesAsync = function(rules, discA, discB) {
+    if (A._clashRtreeReady) {
+      // Single R-tree COUNT across all storeys — instant
+      var total = A._countClashesRtree(null, rules, discA, discB);
+      if (A._clashListDiv) {
+        var el = A._clashListDiv.querySelector('#clash-total-count');
+        if (el) el.textContent = 'Total: ' + total;
+      }
+      if (!A._cachedPairCounts) A._cachedPairCounts = {};
+      var key = [discA, discB].sort().join('|');
+      A._cachedPairCounts[key] = total;
+      console.log('§CLASH_COUNT total=' + total + ' rtree=true cached=' + key);
+      return;
+    }
+    // Fallback: storey-by-storey cross-join (R-tree not ready)
     var stA = {};
     A.dbQuery("SELECT storey FROM elements_meta WHERE discipline = '" + discA + "' AND storey IS NOT NULL GROUP BY storey")
       .forEach(function(r) { stA[r[0]] = 1; });
     var storeys = [];
     A.dbQuery("SELECT storey FROM elements_meta WHERE discipline = '" + discB + "' AND storey IS NOT NULL GROUP BY storey")
       .forEach(function(r) { if (stA[r[0]]) storeys.push(r[0]); });
-
-    var total = 0;
-    var qi = 0;
-
+    var total = 0, qi = 0;
     function _nextCount() {
       if (qi >= storeys.length) {
         if (A._clashListDiv) {
           var el = A._clashListDiv.querySelector('#clash-total-count');
           if (el) el.textContent = 'Total: ' + total;
         }
-        console.log('§CLASH_COUNT total=' + total + ' storeys=' + storeys.length + ' rtree=' + A._clashRtreeReady);
+        if (!A._cachedPairCounts) A._cachedPairCounts = {};
+        var key = [discA, discB].sort().join('|');
+        A._cachedPairCounts[key] = total;
+        console.log('§CLASH_COUNT total=' + total + ' storeys=' + storeys.length + ' rtree=false cached=' + key);
         return;
       }
       if (!A._clashRevealActive || !A._clashListDiv) return;
       var st = storeys[qi++];
-
-      if (A._clashRtreeReady) {
-        // R-tree count: lightweight — pre-load discB map, iterate discA, count overlaps
-        total += A._countClashesRtree(st, rules, discA, discB);
-      } else {
-        // Fallback cross-join COUNT
-        var w = A._clashWhereParts(rules);
-        var stClause = "ma.storey = '" + st.replace(/'/g, "''") + "' AND mb.storey = ma.storey";
-        var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
-          " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
-        var sql = "SELECT COUNT(*) FROM element_transforms a" +
-          " JOIN elements_meta ma ON a.guid = ma.guid" +
-          " JOIN element_transforms b ON a.guid < b.guid" +
-          " JOIN elements_meta mb ON b.guid = mb.guid" +
-          " WHERE " + stClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin;
-        var cRows = A.dbQuery(sql);
-        if (cRows.length) total += cRows[0][0];
-      }
-
+      var w = A._clashWhereParts(rules);
+      var stClause = "ma.storey = '" + st.replace(/'/g, "''") + "' AND mb.storey = ma.storey";
+      var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
+        " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
+      var sql = "SELECT COUNT(*) FROM element_transforms a" +
+        " JOIN elements_meta ma ON a.guid = ma.guid" +
+        " JOIN element_transforms b ON a.guid < b.guid" +
+        " JOIN elements_meta mb ON b.guid = mb.guid" +
+        " WHERE " + stClause + " AND (" + pairCond + ")" + w.ignoreClause + w.bboxJoin;
+      var cRows = A.dbQuery(sql);
+      if (cRows.length) total += cRows[0][0];
       if (A._clashListDiv) {
         var el = A._clashListDiv.querySelector('#clash-total-count');
         if (el) el.textContent = 'Total: ' + total + (qi < storeys.length ? '...' : '');
@@ -524,13 +498,17 @@ function setupMeasure(A) {
     setTimeout(_nextCount, 50);
   };
 
-  // Query ALL clashes for a pair — storey-by-storey to avoid N² timeout. For export only.
+  // Query ALL clashes for a pair — S246b: single R-tree query (was storey-by-storey cross-join)
   A._queryClashesPairAll = function(rules, discA, discB) {
     if (!A._hasBbox) return [];
+    if (A._clashRtreeReady) {
+      // Single R-tree join — no storey loop, no page limit
+      return A._queryClashesPairRtree(null, rules, discA, discB, 0, null);
+    }
+    // Fallback: storey-by-storey cross-join (R-tree not ready)
     var w = A._clashWhereParts(rules);
     var pairCond = "(ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "')" +
       " OR (ma.discipline = '" + discB + "' AND mb.discipline = '" + discA + "')";
-    // Get all storeys with both disciplines (two GROUP BY, no cross-join)
     var stA = {};
     A.dbQuery("SELECT storey FROM elements_meta WHERE discipline = '" + discA + "' AND storey IS NOT NULL GROUP BY storey")
       .forEach(function(r) { stA[r[0]] = 1; });
@@ -934,23 +912,65 @@ function setupMeasure(A) {
       }
     }
     if (!shared) {
-      // Fallback: copy deep-link to clipboard
-      try {
-        await navigator.clipboard.writeText(cs.deep_link);
-        A.status.textContent = 'Deep-link copied to clipboard';
-        console.log('§CLASH_SNAG_CLIPBOARD OK');
-      } catch (e) {
-        // Last resort: open WhatsApp with text
-        window.open('https://wa.me/?text=' + encodeURIComponent(title + '\n' + text), '_blank');
-        console.log('§CLASH_SNAG_WA_FALLBACK');
-      }
+      // S246b: Desktop share panel — Copy + WhatsApp + Email buttons
+      var waUrl = 'https://wa.me/?text=' + encodeURIComponent(title + '\n' + text);
+      var emailUrl = 'mailto:?subject=' + encodeURIComponent(title) + '&body=' + encodeURIComponent(text);
+      var panel = document.createElement('div');
+      panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:rgba(30,30,50,0.97);border-radius:12px;padding:20px 24px;border:1px solid rgba(79,195,247,0.5);font-family:Segoe UI,sans-serif;text-align:center;backdrop-filter:blur(8px)';
+      panel.innerHTML = '<div style="color:#4fc3f7;font-size:14px;margin-bottom:12px;font-weight:bold">Share Clash Snag</div>' +
+        '<button id="share-copy" style="display:block;width:100%;margin:6px 0;padding:10px;background:#333;color:#fff;border:1px solid #555;border-radius:6px;cursor:pointer;font-size:13px">📋 Copy Image + Link (Ctrl+V to paste)</button>' +
+        '<button id="share-wa" style="display:block;width:100%;margin:6px 0;padding:10px;background:#25d366;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">💬 WhatsApp</button>' +
+        '<button id="share-email" style="display:block;width:100%;margin:6px 0;padding:10px;background:#1a73e8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">📧 Email</button>' +
+        '<button id="share-close" style="display:block;width:100%;margin:10px 0 0;padding:8px;background:transparent;color:#888;border:1px solid #555;border-radius:6px;cursor:pointer;font-size:12px">Cancel</button>';
+      document.body.appendChild(panel);
+      var _dismiss = function() {
+        panel.remove();
+        A._saveClashIssue(cs, blob);
+        A.closeSitePreview();
+        A._pendingClashSnag = null;
+      };
+      // Copy: image (PNG for clipboard) + deep-link text — user can Ctrl+V in WhatsApp/Email
+      panel.querySelector('#share-copy').addEventListener('click', async function() {
+        try {
+          // Convert JPEG blob to PNG (clipboard API requires image/png)
+          var img = new Image();
+          var pngBlob = await new Promise(function(resolve) {
+            img.onload = function() {
+              var c = document.createElement('canvas');
+              c.width = img.width; c.height = img.height;
+              c.getContext('2d').drawImage(img, 0, 0);
+              c.toBlob(function(b) { resolve(b); }, 'image/png');
+            };
+            img.src = URL.createObjectURL(blob);
+          });
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'image/png': pngBlob,
+              'text/plain': new Blob([cs.deep_link], { type: 'text/plain' })
+            })
+          ]);
+          A.status.textContent = 'Image + link copied — Ctrl+V to paste';
+          console.log('§CLASH_SNAG_CLIPBOARD image+text OK');
+        } catch(e) {
+          // Fallback: text only
+          try { await navigator.clipboard.writeText(cs.deep_link); } catch(e2) {}
+          A.status.textContent = 'Deep-link copied (image copy not supported)';
+          console.log('§CLASH_SNAG_CLIPBOARD text-only fallback: ' + e.message);
+        }
+        _dismiss();
+      });
+      panel.querySelector('#share-wa').addEventListener('click', function() { window.open(waUrl, '_blank'); _dismiss(); console.log('§CLASH_SNAG_WA'); });
+      panel.querySelector('#share-email').addEventListener('click', function() { window.open(emailUrl, '_blank'); _dismiss(); console.log('§CLASH_SNAG_EMAIL'); });
+      panel.querySelector('#share-close').addEventListener('click', _dismiss);
+      console.log('§CLASH_SNAG_SHARE_PANEL shown (desktop fallback)');
+      return; // Don't close preview yet — user picks from panel
     }
 
     // Save to IndexedDB
     A._saveClashIssue(cs, blob);
     A.closeSitePreview();
     A._pendingClashSnag = null;
-    A.status.textContent = shared ? '\uD83D\uDCF8 Clash snag shared' : '\uD83D\uDCCB Deep-link copied';
+    A.status.textContent = '\uD83D\uDCF8 Clash snag shared';
   };
 
   // S246: Download clash snag (save annotated image to file)
@@ -1264,10 +1284,13 @@ function setupMeasure(A) {
   };
 
   // Export clash report — opens HTML analytics tab from loaded clashes
+  // S246b: async with progress bar, caches envelopes + pair counts
   A._currentClashPairLabel = '';
   A._exportClashReport = function() {
     var rules = A._currentClashRules;
     if (!rules) return;
+    if (A._exportInProgress) { A.status.textContent = 'Report already generating...'; return; }
+    A._exportInProgress = true;
     var building = A.activeBuilding || 'Building';
     var date = new Date().toISOString().slice(0, 10);
     var storey = A._currentClashStorey || 'All';
@@ -1276,46 +1299,80 @@ function setupMeasure(A) {
     // Listing = whatever is currently loaded from cell click. Charts use counts.
     var MAX_REPORT = (rules.display && rules.display.max_report) || 200;
     var allClashes = (A._currentClashes || []).slice();
-    // Count per pair — envelope check first (instant), R-tree count only where envelopes overlap
+    // Count per pair — reuse cache, envelope check, async R-tree count
     var _pairCounts = {};
-    if (A._clashRtreeReady) {
-      // Compute discipline envelopes (one GROUP BY, instant)
-      var _envs = {};
+    // Reuse cached envelopes from matrix (avoid duplicate GROUP BY)
+    var _envs = A._clashEnvelopes || {};
+    if (!Object.keys(_envs).length) {
       A.dbQuery("SELECT m.discipline, MIN(t.center_x-t.bbox_x/2), MAX(t.center_x+t.bbox_x/2)," +
         " MIN(t.center_y-t.bbox_y/2), MAX(t.center_y+t.bbox_y/2)," +
         " MIN(t.center_z-t.bbox_z/2), MAX(t.center_z+t.bbox_z/2)" +
         " FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid" +
         " WHERE m.discipline IS NOT NULL GROUP BY m.discipline")
         .forEach(function(r) { _envs[r[0]] = { minX:r[1], maxX:r[2], minY:r[3], maxY:r[4], minZ:r[5], maxZ:r[6] }; });
-      rules.clash_rules.forEach(function(r) {
-        var eA = _envs[r.source.discipline], eB = _envs[r.target.discipline];
-        // Skip if envelopes don't overlap — guaranteed zero clashes
-        if (!eA || !eB || eA.minX >= eB.maxX || eA.maxX <= eB.minX ||
-            eA.minY >= eB.maxY || eA.maxY <= eB.minY ||
-            eA.minZ >= eB.maxZ || eA.maxZ <= eB.minZ) {
-          _pairCounts[r.source.discipline + '|' + r.target.discipline] = 0;
-          return;
-        }
-        // Storey-loop count — avoids whole-building N² explosion
-        var count = 0;
-        var stA = {}, stB = [];
-        A.dbQuery("SELECT storey FROM elements_meta WHERE discipline = '" + r.source.discipline + "' AND storey IS NOT NULL GROUP BY storey")
-          .forEach(function(s) { stA[s[0]] = 1; });
-        A.dbQuery("SELECT storey FROM elements_meta WHERE discipline = '" + r.target.discipline + "' AND storey IS NOT NULL GROUP BY storey")
-          .forEach(function(s) { if (stA[s[0]]) stB.push(s[0]); });
-        for (var si = 0; si < stB.length; si++) {
-          count += A._countClashesRtree(stB[si], rules, r.source.discipline, r.target.discipline);
-        }
-        _pairCounts[r.source.discipline + '|' + r.target.discipline] = count;
-      });
+      A._clashEnvelopes = _envs;
     }
-    A._reportPairCounts = _pairCounts;
+    // Build work queue: only pairs that need R-tree counting (envelope overlap + not cached)
+    var _pairQueue = [];
+    var cache = A._cachedPairCounts || {};
+    var t0 = performance.now();
+    rules.clash_rules.forEach(function(r) {
+      var key = r.source.discipline + '|' + r.target.discipline;
+      var sortedKey = [r.source.discipline, r.target.discipline].sort().join('|');
+      var eA = _envs[r.source.discipline], eB = _envs[r.target.discipline];
+      if (!eA || !eB || eA.minX >= eB.maxX || eA.maxX <= eB.minX ||
+          eA.minY >= eB.maxY || eA.maxY <= eB.minY ||
+          eA.minZ >= eB.maxZ || eA.maxZ <= eB.minZ) {
+        _pairCounts[key] = 0; return;
+      }
+      if (cache[sortedKey] !== undefined) {
+        _pairCounts[key] = cache[sortedKey]; return;
+      }
+      _pairQueue.push({ key: key, discA: r.source.discipline, discB: r.target.discipline });
+    });
+    var total = rules.clash_rules.length, done = total - _pairQueue.length;
+    A.status.textContent = 'Generating report\u2026 ' + done + '/' + total + ' pairs';
+    console.log('§EXPORT_START pairs=' + total + ' cached=' + done + ' toCount=' + _pairQueue.length);
+
+    // Async storey-loop R-tree count — one pair per yield
+    var qi = 0;
+    function _nextPair() {
+      if (qi >= _pairQueue.length) {
+        A._reportPairCounts = _pairCounts;
+        var ms = (performance.now() - t0).toFixed(0);
+        console.log('§EXPORT_COUNTS done in ' + ms + 'ms');
+        A._buildExportHtml(rules, building, date, storey, pairLabel, allClashes, _pairCounts, _envs, MAX_REPORT);
+        return;
+      }
+      var p = _pairQueue[qi++];
+      A.status.textContent = 'Counting ' + p.discA + ' vs ' + p.discB + '\u2026 ' + (done + qi) + '/' + total;
+      // S246b: single R-tree count across all storeys — no storey loop needed
+      if (A._clashRtreeReady) {
+        var count = A._countClashesRtree(null, rules, p.discA, p.discB);
+        _pairCounts[p.key] = count;
+        // Cache for future exports
+        var sk = [p.discA, p.discB].sort().join('|');
+        if (!A._cachedPairCounts) A._cachedPairCounts = {};
+        A._cachedPairCounts[sk] = count;
+      }
+      setTimeout(_nextPair, 5);
+    }
+    if (_pairQueue.length > 0 && A._clashRtreeReady) {
+      setTimeout(_nextPair, 5);
+    } else {
+      A._reportPairCounts = _pairCounts;
+      A._buildExportHtml(rules, building, date, storey, pairLabel, allClashes, _pairCounts, _envs, MAX_REPORT);
+    }
+  };
+  // S246b: separated HTML builder from count loop — called after async counts complete
+  A._buildExportHtml = function(rules, building, date, storey, pairLabel, allClashes, _pairCounts, _envs, MAX_REPORT) {
+    A.status.textContent = 'Building report\u2026';
     if (allClashes.length > MAX_REPORT) allClashes = allClashes.slice(0, MAX_REPORT);
     // Total = sum of R-tree counts across all pairs (full building)
     var totalCount = 0;
     Object.keys(_pairCounts).forEach(function(k) { totalCount += _pairCounts[k]; });
     if (!totalCount) totalCount = allClashes.length;
-    if (!allClashes.length && !totalCount) { A.status.textContent = 'No clashes — open matrix first'; return; }
+    if (!allClashes.length && !totalCount) { A._exportInProgress = false; A.status.textContent = 'No clashes — open matrix first'; return; }
     // Sort by overlap desc (worst first), then Accepted last
     allClashes.sort(function(a, b) {
       var stA = A._clashStatuses[A._clashPairKey(a[0], a[1])] || '';
@@ -1418,16 +1475,8 @@ function setupMeasure(A) {
     var discElCounts = {};
     var dcR = A.dbQuery("SELECT discipline, COUNT(*) FROM elements_meta WHERE discipline IS NOT NULL GROUP BY discipline");
     dcR.forEach(function(r) { discElCounts[r[0]] = r[1]; });
-    // Compute envelopes for overlap count
-    var envSql2 = "SELECT m.discipline," +
-      " MIN(t.center_x - t.bbox_x/2), MAX(t.center_x + t.bbox_x/2)," +
-      " MIN(t.center_y - t.bbox_y/2), MAX(t.center_y + t.bbox_y/2)," +
-      " MIN(t.center_z - t.bbox_z/2), MAX(t.center_z + t.bbox_z/2)" +
-      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
-      " WHERE m.discipline IS NOT NULL GROUP BY m.discipline";
-    var envR = A.dbQuery(envSql2);
-    var envs = {};
-    envR.forEach(function(r) { envs[r[0]] = { minX:r[1], maxX:r[2], minY:r[3], maxY:r[4], minZ:r[5], maxZ:r[6] }; });
+    // S246b: reuse cached envelopes (passed in from async count phase)
+    var envs = _envs;
     var allDiscs = Object.keys(discElCounts).sort();
     allDiscs.forEach(function(d) {
       radarDiscs.push(d);
@@ -1575,6 +1624,7 @@ function setupMeasure(A) {
     var w = window.open('', '_blank');
     w.document.write(html);
     w.document.close();
+    A._exportInProgress = false;
     console.log('§CLASH_EXPORT html clashes=' + totalCount);
     A.status.textContent = 'Clash report opened in new tab';
   };
@@ -1765,6 +1815,8 @@ function setupMeasure(A) {
     envRows.forEach(function(r) {
       envelopes[r[0]] = { minX: r[1], maxX: r[2], minY: r[3], maxY: r[4], minZ: r[5], maxZ: r[6] };
     });
+    // S246b: cache envelopes for export/radar reuse
+    A._clashEnvelopes = envelopes;
     console.log('§CLASH_ENVELOPES ' + Object.keys(envelopes).length + ' disciplines');
 
     // Step 2: check each pair — envelopes don't overlap = guaranteed green, else orange (possible clash)
@@ -1887,7 +1939,7 @@ function setupMeasure(A) {
   A._measureClickTimer = null;
   A.handleMeasureClick = function(e) {
     if (!A.measureActive) return false;
-    // Don't place dots while clash panels are open — let user orbit freely
+    // S246b: clash panels open → fall through to normal IFC pick (yellow highlight + info panel)
     if (A._clashMatrixDiv || A._clashListDiv) return false;
     // Debounce: wait 250ms to see if double-click follows
     if (A._measureClickTimer) { clearTimeout(A._measureClickTimer); A._measureClickTimer = null; }
@@ -1897,8 +1949,11 @@ function setupMeasure(A) {
   };
 
   A._doMeasureClick = function(e) {
-    A.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-    A.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    // S246b: use canvas bounds for NDC — correct when DevTools/chrome shrinks viewport
+    var canvas = A.renderer ? A.renderer.domElement : null;
+    var rect = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+    A.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    A.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     A.raycaster.setFromCamera(A.mouse, A.camera);
 
     const meshes = [];
@@ -2077,7 +2132,7 @@ function setupMeasure(A) {
   A._infoCardDiv = null;
   A.handleMeasureRightClick = function(e) {
     if (!A.measureActive) return false;
-    // Block if clash matrix or clash list already open (not info card — it auto-dismisses)
+    // Block heavy info card while clash panels are open — user has normal IFC pick via click
     if (A._clashMatrixDiv || A._clashListDiv) return false;
     // Dismiss existing info card before opening new one
     if (A._infoCardDiv && A._infoCardDiv.parentNode) A._infoCardDiv.remove();
@@ -2319,6 +2374,7 @@ function setupMeasure(A) {
     }
     if (!A._clashRtreeReady) {
       A._ensureClashIndexes();
+      A.status.textContent = 'Building spatial index\u2026';
       console.log('§CLASH_DLOD R-tree not ready yet — building...');
     }
 

@@ -174,16 +174,19 @@ function setupIssues(A) {
               A._currentClashRules = rules;
               A._currentClashes = [[parts[0], parts[1], mA[1], mB[1], mA[2], mB[2], mA[3], mB[3], 0]];
               A._clashHighlights = [];
-              A.measureActive = true;
+              // Activate measure mode properly (button + status)
+              if (!A.measureActive) A.toggleMeasure();
               if (hp.cam && hp.tgt) {
                 var cam = hp.cam.split(',').map(Number);
                 var tgt = hp.tgt.split(',').map(Number);
                 if (cam.length === 3 && tgt.length === 3) A._deepLinkCamOverride = { pos: cam, tgt: tgt };
               }
               A._flyToClash(0);
-              // Close issues panel
+              // Close issues panel + restore toolbox (toggleIssues hides it)
               var panel = document.getElementById('issues-panel');
               if (panel) panel.classList.remove('active');
+              var tb = document.getElementById('search-box');
+              if (tb) tb.style.display = '';
               A.status.textContent = 'Clash: ' + (mA[3] || parts[0]).substring(0, 20) + ' \u2194 ' + (mB[3] || parts[1]).substring(0, 20);
             });
           }
