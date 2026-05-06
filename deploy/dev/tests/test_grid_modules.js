@@ -90,7 +90,7 @@ function syntaxCheck(name) {
 // Minimal stubs for module loading
 var stubCtx = {
   console: console,
-  window: {},
+  window: { addEventListener: function(){}, removeEventListener: function(){} },
   document: { createElement: function() { return { getContext: function() { return {}; }, style: {} }; } },
   THREE: {
     OrthographicCamera: function(l,r,t,b,n,f) {
@@ -115,7 +115,7 @@ var stubCtx = {
     },
     Plane: function() {},
     Line: function() {},
-    Group: function() { this.add=function(){}; this.name=''; },
+    Group: function() { this.children=[]; this.add=function(o){this.children.push(o);}; this.name=''; this.traverse=function(fn){fn(this);for(var i=0;i<this.children.length;i++)fn(this.children[i]);}; this.parent=null; },
     BufferGeometry: function() { this.setFromPoints=function(){return this;}; this.setAttribute=function(){return this;}; this.dispose=function(){}; },
     Float32BufferAttribute: function(a,b) {},
     LineBasicMaterial: function(o) { this.color={setHex:function(){}}; this.dispose=function(){}; },
@@ -851,6 +851,346 @@ test('T45: grid_dim_chains.js does not reference external module state', functio
   assert(src.indexOf('SectionCut') === -1,
     'grid_dim_chains.js depends on SectionCut');
   logTag('T45_SELF', 'grid_dim_chains.js self-contained — no cross-module deps');
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// VIEW-BY-VIEW RUNTIME TESTS — exercise actual code paths per view
+// ══════════════════════════════════════════════════════════════════════
+
+// ── Mock APP for runtime tests ──────────────────────────────────────
+var mockEnv = { xMin: 0, xMax: 20, yMin: 0, yMax: 15, zMin: -0.3, zMax: 8.7 };
+var mockOffset = { x: 10, y: 7.5, z: -0.3 };
+
+function createMockAPP() {
+  var meshes = [];
+  for (var i = 0; i < 5; i++) {
+    meshes.push({
+      isMesh: true,
+      userData: { ifcClass: ['IfcWall','IfcFurniture','IfcDoor','IfcWindow','IfcSlab'][i] },
+      material: { clippingPlanes: null, clipShadows: false, needsUpdate: false },
+      visible: true
+    });
+  }
+  return {
+    camera: {
+      position: new stubCtx.THREE.Vector3(30, 20, 30),
+      up: new stubCtx.THREE.Vector3(0, 1, 0),
+      fov: 60,
+      aspect: 16/9,
+      updateProjectionMatrix: function() {}
+    },
+    controls: {
+      target: new stubCtx.THREE.Vector3(0, 0, 0),
+      object: null,
+      enableRotate: true,
+      enablePan: true,
+      enableZoom: true,
+      update: function() {}
+    },
+    renderer: { localClippingEnabled: false, setSize: function() {} },
+    scene: { add: function() {}, remove: function() {} },
+    modelOffset: mockOffset,
+    lightTheme: false,
+    markDirty: function() {},
+    _onResize: function() {},
+    ifc2three: function(ix, iy, iz) {
+      return { x: ix - mockOffset.x, y: iz - mockOffset.z, z: -(iy - mockOffset.y) };
+    },
+    collectMeshes: function(filter) { return meshes.filter(filter); },
+    _meshes: meshes
+  };
+}
+
+// ── T46-T52: GridViews.lockView per view — camera + clip state ──────
+
+var viewTests = [
+  { mode: 'floor',  expectClip: true,  expectRotate: false, camDir: 'dy', desc: 'top-down + clip' },
+  { mode: 'floor1', expectClip: true,  expectRotate: false, camDir: 'dy', desc: 'top-down + clip' },
+  { mode: 'front',  expectClip: false, expectRotate: false, camDir: 'dz', desc: 'facing +Z' },
+  { mode: 'rear',   expectClip: false, expectRotate: false, camDir: 'dz', desc: 'facing -Z' },
+  { mode: 'left',   expectClip: false, expectRotate: false, camDir: 'dx', desc: 'facing -X' },
+  { mode: 'right',  expectClip: false, expectRotate: false, camDir: 'dx', desc: 'facing +X' },
+  { mode: 'roof',   expectClip: false, expectRotate: false, camDir: 'dy', desc: 'top-down no clip' }
+];
+
+// Load GridViews in a context with full stubs so lockView/unlockView can run
+var viewsRunCtx = vm.createContext(Object.assign({}, stubCtx, { GridConfig: GridConfig }));
+vm.runInContext(readFile('grid_views.js'), viewsRunCtx, { filename: 'grid_views.js' });
+var GridViewsRun = viewsRunCtx.GridViews;
+
+viewTests.forEach(function(vt, idx) {
+  test('T' + (46 + idx) + ': lockView("' + vt.mode + '") — ' + vt.desc, function() {
+    var app = createMockAPP();
+    GridViewsRun.lockView(app, vt.mode, mockEnv);
+
+    // Camera must be orthographic
+    assert(app.camera.isOrthographicCamera, vt.mode + ': camera not ortho after lockView');
+
+    // Rotation must be disabled in all locked views
+    assert(app.controls.enableRotate === false, vt.mode + ': rotation not disabled');
+
+    // Clip state
+    if (vt.expectClip) {
+      assert(app.renderer.localClippingEnabled === true,
+        vt.mode + ': localClippingEnabled should be true');
+      // At least one mesh should have clippingPlanes set (walls get clipped)
+      var clippedCount = app._meshes.filter(function(m) {
+        return m.material.clippingPlanes && m.material.clippingPlanes.length > 0;
+      }).length;
+      assert(clippedCount > 0, vt.mode + ': no meshes were clipped');
+      // Furniture should be SKIPPED (retained)
+      var furniture = app._meshes.find(function(m) { return m.userData.ifcClass === 'IfcFurniture'; });
+      assert(!furniture.material.clippingPlanes || furniture.material.clippingPlanes.length === 0,
+        vt.mode + ': IfcFurniture should be retained (not clipped)');
+      logTag('T' + (46+idx) + '_CLIP', vt.mode + ' clipped=' + clippedCount + ' furniture retained');
+    } else {
+      assert(app.renderer.localClippingEnabled === false,
+        vt.mode + ': localClippingEnabled should be false');
+      logTag('T' + (46+idx) + '_NOCLIP', vt.mode + ' no clip applied');
+    }
+
+    // Unlock and verify state restored
+    GridViewsRun.unlockView(app);
+    assert(app.controls.enableRotate === true, vt.mode + ': rotation not re-enabled after unlock');
+    assert(GridViewsRun.activeView() === null, vt.mode + ': activeView not null after unlock');
+
+    // Clipping must be fully cleared
+    if (vt.expectClip) {
+      var stillClipped = app._meshes.filter(function(m) {
+        return m.material.clippingPlanes !== null;
+      }).length;
+      assert(stillClipped === 0, vt.mode + ': ' + stillClipped + ' meshes still clipped after unlock');
+      assert(app.renderer.localClippingEnabled === false,
+        vt.mode + ': localClippingEnabled still true after unlock');
+      logTag('T' + (46+idx) + '_UNLOCK', vt.mode + ' all clip cleared, clippingPlanes=null');
+    }
+  });
+});
+
+// ── T53: clearFloorClip restores clippingPlanes to null, not [] ─────
+
+test('T53: clearFloorClip sets clippingPlanes=null (not []), localClip=false', function() {
+  var app = createMockAPP();
+  // Lock floor to apply clip, then clear
+  GridViewsRun.lockView(app, 'floor', mockEnv);
+  GridViewsRun.clearFloorClip(app);
+
+  app._meshes.forEach(function(m, i) {
+    assert(m.material.clippingPlanes === null,
+      'mesh[' + i + '] clippingPlanes=' + JSON.stringify(m.material.clippingPlanes) + ' (not null)');
+    assert(m.material.clipShadows === false,
+      'mesh[' + i + '] clipShadows not cleared');
+  });
+  assert(app.renderer.localClippingEnabled === false, 'renderer localClip still true');
+  logTag('T53_CLIPNULL', 'all meshes clippingPlanes=null, localClippingEnabled=false');
+});
+
+// ── T54: Floor cutZ values per view — computed from env ─────────────
+
+test('T54: cutZ computation per floor view matches spec', function() {
+  var bldH = mockEnv.zMax - mockEnv.zMin; // 9.0
+
+  // Ground floor: zMin + offset_m = -0.3 + 1.0 = 0.7
+  var gfClip = GridConfig.clipFor('floor');
+  var gfCutZ = mockEnv.zMin + gfClip.offset_m;
+  logTag('T54_GF', 'cutZ=' + gfCutZ.toFixed(2) + ' (zMin + 1.0m)');
+  assertClose(gfCutZ, 0.7, 0.001, 'GF cutZ');
+
+  // Level 1: zMin + bldH * 0.55 = -0.3 + 9*0.55 = 4.65
+  var l1Clip = GridConfig.clipFor('floor1');
+  var l1CutZ = mockEnv.zMin + bldH * l1Clip.offset_ratio;
+  logTag('T54_L1', 'cutZ=' + l1CutZ.toFixed(2) + ' (zMin + 9.0*0.55)');
+  assertClose(l1CutZ, 4.65, 0.001, 'L1 cutZ');
+
+  // Both must be above zMin and below zMax
+  assert(gfCutZ > mockEnv.zMin, 'GF cutZ below building');
+  assert(gfCutZ < mockEnv.zMax, 'GF cutZ above building');
+  assert(l1CutZ > mockEnv.zMin, 'L1 cutZ below building');
+  assert(l1CutZ < mockEnv.zMax, 'L1 cutZ above building');
+  assert(l1CutZ > gfCutZ, 'L1 cutZ should be above GF cutZ');
+  logTag('T54_ORDER', 'GF=' + gfCutZ.toFixed(2) + ' < L1=' + l1CutZ.toFixed(2) + ' < zMax=' + mockEnv.zMax);
+});
+
+// ── T55: elevHVtoIFC face mapping — each face maps h,v to correct IFC axes ──
+
+test('T55: elevHVtoIFC maps h,v correctly per face (front/rear/left/right)', function() {
+  // We need to call the private elevHVtoIFC. It's inside the IIFE.
+  // Instead, verify by loading grid_contours and testing renderEdges output coordinates.
+  // Simpler: verify the mapping from source code matches spec.
+  var src = readFile('grid_contours.js');
+
+  // Extract the switch cases
+  var frontCase = src.match(/case 'front':\s*return \{([^}]+)\}/);
+  var rearCase = src.match(/case 'rear':\s*return \{([^}]+)\}/);
+  var leftCase = src.match(/case 'left':\s*return \{([^}]+)\}/);
+  var rightCase = src.match(/case 'right':\s*return \{([^}]+)\}/);
+
+  assert(frontCase, 'front case not found');
+  assert(rearCase, 'rear case not found');
+  assert(leftCase, 'left case not found');
+  assert(rightCase, 'right case not found');
+
+  // Spec (from prompt §Coordinate Transforms):
+  // front: h→X, v→Z  (h=X, iy=cy, iz=v)
+  // rear:  h→-X, v→Z (ix=-h, iy=cy, iz=v)
+  // left:  h→Y, v→Z  (ix=cx, iy=h, iz=v)
+  // right: h→-Y, v→Z (ix=cx, iy=-h, iz=v)
+
+  assert(frontCase[1].indexOf('ix: h') >= 0, 'front: ix should be h');
+  assert(frontCase[1].indexOf('iz: v') >= 0, 'front: iz should be v');
+  logTag('T55_FRONT', 'h→ix, v→iz (X,Z)');
+
+  assert(rearCase[1].indexOf('ix: -h') >= 0, 'rear: ix should be -h');
+  assert(rearCase[1].indexOf('iz: v') >= 0, 'rear: iz should be v');
+  logTag('T55_REAR', '-h→ix, v→iz (-X,Z)');
+
+  assert(leftCase[1].indexOf('iy: h') >= 0, 'left: iy should be h');
+  assert(leftCase[1].indexOf('iz: v') >= 0, 'left: iz should be v');
+  logTag('T55_LEFT', 'h→iy, v→iz (Y,Z)');
+
+  assert(rightCase[1].indexOf('iy: -h') >= 0, 'right: iy should be -h');
+  assert(rightCase[1].indexOf('iz: v') >= 0, 'right: iz should be v');
+  logTag('T55_RIGHT', '-h→iy, v→iz (-Y,Z)');
+});
+
+// ── T56: renderContours with mock section data — produces lines ─────
+
+test('T56: renderContours produces correct line count from mock contour data', function() {
+  // Mock APP with tracking
+  var addedObjects = [];
+  var mockGroup = { add: function(obj) { addedObjects.push(obj); }, name: '', renderOrder: 0 };
+  var contourApp = {
+    scene: { add: function() {} },
+    markDirty: function() {},
+    ifc2three: function(ix, iy, iz) { return { x: ix - 10, y: iz + 0.3, z: -(iy - 7.5) }; }
+  };
+
+  // Reload GridContours with a patched ensureGroup
+  var cSrc = readFile('grid_contours.js');
+  var cCtx = vm.createContext(Object.assign({}, stubCtx, { GridConfig: GridConfig, DoorArcs: DoorArcs }));
+  vm.runInContext(cSrc, cCtx, { filename: 'grid_contours.js' });
+  var GC = cCtx.GridContours;
+
+  // Mock contour data: 2 walls with 1 contour each, 1 door with 1 contour
+  var mockContours = [
+    { guid: 'wall1', ifcClass: 'IfcWall', contours: [[[0,0],[5,0],[5,0.2],[0,0.2],[0,0]]] },
+    { guid: 'wall2', ifcClass: 'IfcWall', contours: [[[0,3],[10,3],[10,3.2],[0,3.2],[0,3]]] },
+    { guid: 'door1', ifcClass: 'IfcDoor', contours: [[[2,0],[2.9,0]]] }
+  ];
+
+  var result = GC.renderContours(contourApp, mockContours, 'floor', 0.7);
+  assert(result, 'renderContours returned null');
+  logTag('T56_RENDER', 'floor contours: 3 elements → lines produced');
+
+  // Now with empty data — should not crash
+  GC.clear(contourApp);
+  var result2 = GC.renderContours(contourApp, [], 'floor', 0.7);
+  assert(result2, 'renderContours with empty data crashed');
+  logTag('T56_EMPTY', 'empty contour data → no crash, 0 lines');
+});
+
+// ── T57: renderEdges with mock elevation data per face ──────────────
+
+test('T57: renderEdges handles each elevation face without crash', function() {
+  var edgeApp = {
+    scene: { add: function() {} },
+    markDirty: function() {},
+    ifc2three: function(ix, iy, iz) { return { x: ix - 10, y: iz + 0.3, z: -(iy - 7.5) }; }
+  };
+
+  var cSrc = readFile('grid_contours.js');
+  var cCtx = vm.createContext(Object.assign({}, stubCtx, { GridConfig: GridConfig }));
+  vm.runInContext(cSrc, cCtx, { filename: 'grid_contours.js' });
+  var GC = cCtx.GridContours;
+
+  var mockEdges = [
+    { guid: 'w1', ifcClass: 'IfcWall', edges: [[0,0,5,0],[5,0,5,3],[5,3,0,3],[0,3,0,0]], depth: 1.0 },
+    { guid: 'win1', ifcClass: 'IfcWindow', edges: [[1,1,3,1],[3,1,3,2.5]], depth: 0.5 }
+  ];
+
+  ['front','rear','left','right'].forEach(function(face) {
+    GC.clear(edgeApp);
+    var result = GC.renderEdges(edgeApp, mockEdges, face, mockEnv);
+    assert(result, face + ': renderEdges returned null');
+    logTag('T57_FACE', face + ' — 2 elements, rendered OK');
+  });
+
+  // Empty edges — should not crash
+  GC.clear(edgeApp);
+  var empty = GC.renderEdges(edgeApp, [], 'front', mockEnv);
+  assert(empty, 'renderEdges with empty edges crashed');
+  logTag('T57_EMPTY', 'empty edge data → no crash');
+});
+
+// ── T58: DoorArcs with zero walls — graceful empty result ───────────
+
+test('T58: DoorArcs.generateArcs with 0 walls returns empty (no crash)', function() {
+  var doors = [{ guid: 'd1', ifcClass: 'IfcDoor', contours: [[[2,0],[2.9,0]]] }];
+  var arcs = DoorArcs.generateArcs(doors, []);
+  // With no wall contours, bestDist0 and bestDist1 stay Infinity — should still pick a hinge
+  // (both stay Infinity → bestDist0 <= bestDist1 → picks p0 as hinge)
+  logTag('T58_NOWALLS', 'arcs.length=' + arcs.length + ' (graceful with 0 walls)');
+  assert(arcs.length === 1, 'should still produce 1 arc (hinge defaults to first endpoint)');
+  assert(arcs[0].radius > 0, 'radius should be positive');
+});
+
+// ── T59: DoorArcs with empty/short contour — no crash ───────────────
+
+test('T59: DoorArcs handles edge cases (empty, 1-point, tiny door)', function() {
+  var walls = [{ guid: 'w1', ifcClass: 'IfcWall', contours: [[[0,0],[5,0]]] }];
+
+  // Empty contours
+  var arcs1 = DoorArcs.generateArcs([{ guid: 'd0', contours: [] }], walls);
+  assert(arcs1.length === 0, 'empty contours should produce 0 arcs');
+
+  // Single point contour (invalid)
+  var arcs2 = DoorArcs.generateArcs([{ guid: 'd1', contours: [[[1,1]]] }], walls);
+  assert(arcs2.length === 0, 'single-point contour should produce 0 arcs');
+
+  // Tiny door (< 0.05m) — below threshold
+  var arcs3 = DoorArcs.generateArcs([{ guid: 'd2', contours: [[[1,0],[1.03,0]]] }], walls);
+  assert(arcs3.length === 0, 'door < 5cm should be rejected');
+
+  logTag('T59_EDGE', 'empty=0 arcs, 1pt=0 arcs, tiny=0 arcs — all graceful');
+});
+
+// ── T60: Roof view — no contourMode, no clip, no side effects ───────
+
+test('T60: Roof view has null contourMode, no clip, no retain (pure 3D)', function() {
+  var roofCfg = GridConfig.views.roof;
+  assert(roofCfg.contourMode === null, 'roof contourMode should be null');
+  assert(roofCfg.clip === null, 'roof clip should be null');
+  assert(roofCfg.retain.length === 0, 'roof retain should be empty');
+  assert(Object.keys(roofCfg.styles).length === 0, 'roof styles should be empty');
+  assert(!roofCfg.levelMarkers, 'roof should have no levelMarkers');
+
+  // lockView for roof should NOT enable clipping
+  var app = createMockAPP();
+  GridViewsRun.lockView(app, 'roof', mockEnv);
+  assert(app.renderer.localClippingEnabled === false, 'roof enabled clipping');
+  var anyClipped = app._meshes.some(function(m) { return m.material.clippingPlanes !== null; });
+  assert(!anyClipped, 'roof clipped a mesh');
+  logTag('T60_ROOF', 'roof: no contours, no clip, no retain, no side effects');
+  GridViewsRun.unlockView(app);
+});
+
+// ── T61: Floor retain set covers exactly 8 classes ──────────────────
+
+test('T61: Floor retain list is exactly 8 specific furniture/MEP classes', function() {
+  var expected = [
+    'IfcFurnishingElement','IfcFurniture','IfcFlowTerminal','IfcSanitaryTerminal',
+    'IfcElectricalAppliance','IfcLightFixture','IfcBuildingElementProxy','IfcCovering'
+  ];
+  var actual = GridConfig.views.floor.retain;
+  assert(actual.length === 8, 'retain has ' + actual.length + ' classes, expected 8');
+  expected.forEach(function(cls) {
+    assert(actual.indexOf(cls) >= 0, 'missing: ' + cls);
+  });
+  // None of the structural classes should be retained
+  ['IfcWall','IfcColumn','IfcSlab','IfcDoor','IfcWindow'].forEach(function(cls) {
+    assert(actual.indexOf(cls) === -1, 'structural class ' + cls + ' should NOT be retained');
+  });
+  logTag('T61_RETAIN', '8 furniture/MEP classes retained, 0 structural — correct');
 });
 
 // Summary

@@ -1,9 +1,4 @@
 // loader.js — Progressive script loader with per-library progress
-// Kick off WASM binary fetch immediately — downloads in parallel with JS libs
-// so it's ready by the time initSqlJs needs it (eliminates first-load stall on mobile)
-const _wasmBinaryPromise = fetch('https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.wasm')
-  .then(r => r.ok ? r.arrayBuffer().then(b => new Uint8Array(b)) : null)
-  .catch(() => null);
 const _loadStart = performance.now();
 const _elapsedEl = document.getElementById('load-elapsed');
 const _timerIv = setInterval(() => {

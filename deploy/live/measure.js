@@ -1821,16 +1821,8 @@ function setupMeasure(A) {
     btn.style.color = A.measureActive ? '#000' : '#fff';
     var isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     A.status.textContent = A.measureActive
-      ? (isMobile ? 'Tap for dimensions. Long-press for Info. Tap here to exit.' : 'Click for dimensions. Right-click for Info')
+      ? (isMobile ? 'Tap for dimensions. Long-press for Info' : 'Click for dimensions. Right-click for Info')
       : '';
-    // Mobile: tap status bar to exit measure mode
-    if (A.measureActive && isMobile) {
-      A.status.style.cursor = 'pointer';
-      A.status.onclick = function() { if (A.measureActive) A.toggleMeasure(); };
-    } else {
-      A.status.style.cursor = '';
-      A.status.onclick = null;
-    }
     if (!A.measureActive) {
       A.clearMeasures();
     }

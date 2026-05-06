@@ -463,13 +463,9 @@ function setupStreaming(A) {
   // DB init
   A.init = async function() {
     A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_wasm||'Loading WebAssembly...');
-    // Use WASM binary pre-fetched by loader.js (started in parallel with JS libs)
-    var sqlOpts = { locateFile: f => `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/${f}` };
-    if (typeof _wasmBinaryPromise !== 'undefined') {
-      var preloaded = await _wasmBinaryPromise;
-      if (preloaded) sqlOpts.wasmBinary = preloaded;
-    }
-    const SQL = await initSqlJs(sqlOpts);
+    const SQL = await initSqlJs({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/${f}`
+    });
 
     if (A.CITY_URL) {
       await A.initCity(SQL);
