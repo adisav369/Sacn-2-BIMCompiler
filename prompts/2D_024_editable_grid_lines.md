@@ -1,14 +1,14 @@
 # ⚠ DO NOT REMOVE — MANDATORY PREAMBLE
-# Scope: 2D Grid Line Editing — Drag grid lines to reposition, write deltas to DB
+# Scope: 2D Grid Line Editing — Drag grid lines, rules-driven cascade, shadow outlines, compound undo
 # After every run: read the log before any conclusion. Exit code is not evidence.
-# STATUS: NEW — spec only, no implementation yet
-# RESUME: Read this prompt → run tests (83/83) → implement drag → test → deploy dev
+# STATUS: IMPLEMENTING — grid_drag.js + grid_rules.json + tests
+# RESUME: Read this prompt → run tests → verify §-logs → deploy dev
 
-# 2D_024 — Editable Grid Lines
+# 2D_024 — Editable Grid Lines with Rules-Driven Cascade
 
-## Context — What Exists (commit 9a6c9cf3)
+## Context — What Exists (commit 9a6c9cf3 + this session)
 
-### Architecture (10 modules, 83 tests, 146 §-logs)
+### Architecture (11 modules, 83+ tests, 146+ §-logs)
 
 | File | Concern | Lines |
 |------|---------|-------|
@@ -17,113 +17,166 @@
 | `grid_contours.js` | 2D line renderer (engine output → Three.js) | 267 |
 | `grid_door_arcs.js` | Door swing arcs (cross-product direction) | 210 |
 | `grid_dim_chains.js` | Dimension chain rendering | 193 |
-| `grid_overlay.js` | Grid scene, panel, orchestration | 590 |
-| `grid_assembler.js` | Module wiring, preflight | 87 |
+| **`grid_drag.js`** | **Drag editing + cascade + shadow + undo (NEW)** | **~300** |
+| `grid_overlay.js` | Grid scene, panel, orchestration + state accessor | 640 |
+| `grid_assembler.js` | Module wiring, preflight | 90 |
 | `grid_dims.js` | Grid detection from columns | 450 |
 | `section_cut.js` | Horizontal mesh slicing → contours | 360 |
 | `elevation.js` | Full orthographic projection → edges | 310 |
 
 ### Current Interaction
-- Click bay row (e.g. "1–5") → both grid lines highlight orange + transparent slab between them
-- Grid lines are static — positions come from `GridDims.detectGrids()` which reads column positions from DB
+- Click bay row (e.g. "1–5") → both grid lines highlight orange + transparent slab
+- Grid lines are static — positions from `GridDims.detectGrids()` reading column positions from DB
 
 ### What This Prompt Adds
-Drag-to-reposition grid lines. The grid line becomes a handle — drag it and the dimension chain, bubbles, and panel update live. On release, the delta is recorded.
+1. **Drag-to-reposition** grid lines with rules-driven constraints
+2. **Post-move cascade** repositions furniture/devices/switches per clearance rules
+3. **Shadow outlines** show proposed element positions before commit
+4. **Compound undo** reverts grid + all cascaded elements in one shot
+5. **All constants from `grid_rules.json`** — zero hardcoded values
 
-## §1 — Drag Rules (constraints)
+## §1 — Rules JSON (`grid_rules.json`)
+
+ALL drag constraints and cascade strategies are defined in this JSON file.
+Code reads from this file — never hardcodes values.
+
+```json
+{
+  "grid_move": {
+    "min_bay_m":    0.5,    // minimum bay width (prevents unreasonable rooms)
+    "max_extend_m": 5.0,    // max beyond original building envelope
+    "snap_m":       0.05,   // 50mm snap granularity
+    "max_step_m":   2.0     // max distance per single drag gesture
+  },
+  "clearance": [
+    { "class": "IfcFurnishingElement", "wall_min_m": 0.1, "grid_min_m": 0.3, "strategy": "proportional" },
+    { "class": "IfcSwitchingDevice",   "wall_min_m": 0.15, "grid_min_m": 0.0, "strategy": "pin_to_wall" },
+    { "class": "IfcOutlet",            "wall_min_m": 0.05, "grid_min_m": 0.0, "strategy": "pin_to_wall" },
+    { "class": "IfcLightFixture",      "ceiling_min_m": 0.0, "grid_min_m": 0.5, "strategy": "center_bay" },
+    { "class": "IfcFlowTerminal",      "wall_min_m": 0.05, "grid_min_m": 0.0, "strategy": "pin_to_wall" },
+    { "class": "IfcSanitaryTerminal",  "wall_min_m": 0.1, "grid_min_m": 0.0, "strategy": "pin_to_wall" }
+  ],
+  "shadow": {
+    "color":   "#ff6600",
+    "opacity":  0.35,
+    "dash_m":   0.3
+  }
+}
+```
+
+## §2 — Drag Rules (constraints from grid_rules.json)
 
 ### Rule 1: Cannot cross neighbours
-A grid line CANNOT be dragged past its adjacent grid line. Grid 3 sits between 2 and 4 — it cannot go left of 2 or right of 4. This preserves grid ordering.
+Grid line CANNOT be dragged past its adjacent line. Preserves ordering.
 
-**Maths:** For X-axis grid at index `i` with positions `pos[0..n-1]`:
-```
-pos[i-1] + MIN_GAP  ≤  pos[i]  ≤  pos[i+1] - MIN_GAP
-```
-Edge grids (i=0, i=n-1): only one-sided constraint.
+**Maths:** `pos[i-1] + min_bay_m ≤ pos[i] ≤ pos[i+1] - min_bay_m`
 
 ### Rule 2: Minimum bay width
-No bay may become narrower than `MIN_GAP`. This prevents unreasonably thin rooms.
-
-**Value:** `MIN_GAP = 0.5` metres (500mm). Below this, no structural element fits.
+No bay narrower than `min_bay_m`. Prevents unreasonably thin rooms.
 
 ### Rule 3: Outermost grids have envelope limit
-The first and last grid lines on each axis cannot be dragged more than `MAX_EXTEND` beyond the original building envelope.
+First/last grid lines cannot exceed `max_extend_m` beyond original envelope.
 
-**Value:** `MAX_EXTEND = 5.0` metres. Prevents dragging a grid line to infinity.
-
-**Maths:** For first grid on X-axis:
-```
-originalEnv.xMin - MAX_EXTEND  ≤  pos[0]
-pos[n-1]  ≤  originalEnv.xMax + MAX_EXTEND
-```
+**Maths:** `originalEnv.xMin - max_extend_m ≤ pos[0]`
 
 ### Rule 4: Snap granularity
-Positions snap to nearest `SNAP = 0.05` metres (50mm). Prevents sub-centimetre jitter.
-
-**Maths:** `pos = Math.round(pos / SNAP) * SNAP`
+`pos = Math.round(pos / snap_m) * snap_m`
 
 ### Rule 5: Drag axis locked
-An X-axis grid line (constant IFC X, runs along Y) can only be dragged along the X direction. No diagonal movement. Same for Y-axis: Y-direction only.
+X-axis grid moves in X only. Y-axis in Y only. No diagonal.
 
-### Summary of constants
-```javascript
-var MIN_GAP    = 0.5;   // metres — minimum bay width
-var MAX_EXTEND = 5.0;   // metres — max beyond original envelope
-var SNAP       = 0.05;  // metres — snap granularity (50mm)
-```
+### Rule 6: Max step per gesture
+Single drag gesture limited to `max_step_m` from start position.
 
-## §2 — Interaction Design
+**Maths:** `startPos - max_step_m ≤ pos ≤ startPos + max_step_m`
+
+## §3 — Interaction Design
 
 ### Drag Start
-- User presses (pointerdown) on a grid line or its bubble in the 3D scene
-- Raycaster identifies the grid line by `userData.gridLabel`
-- The line enters drag mode: colour changes to bright orange, cursor changes
+- pointerdown on grid line or bubble in 3D scene
+- Raycaster identifies by `userData.gridLabel`
+- Line → orange, linewidth 3; orbit controls disabled
 
 ### Drag Move
-- Pointer moves → compute delta in IFC coordinates along the locked axis
-- Apply constraints (§1 Rules 1–4)
-- Update grid line position, both bubbles, dimension chain segments, panel text — all live
+- Pointer → IFC coordinates via ground-plane raycast
+- Apply constraints (§2 Rules 1-6, all from grid_rules.json)
+- Update grid line, bubbles, dim chains, panel — all live
+- Cascade: compute proposed element repositioning
+- Show shadow outlines at proposed positions
 
 ### Drag End (pointerup)
-- Snap final position (Rule 4)
-- Record delta: `{ label, axis, oldPos, newPos, delta }`
-- Update `gridData` in memory (the working copy, not the DB columns yet)
-- Rebuild panel with new dimensions
-- Rebuild dimension chains
-- Log: `§GRID_DRAG label=3 axis=X oldPos=12.900 newPos=14.200 delta=+1.300`
+- Record compound undo: `{ grid: {label, axis, oldPos, newPos}, elements: [{guid, oldX, oldY, newX, newY, strategy}] }`
+- Clear shadow outlines
+- Re-enable orbit controls
+- Log: `§GRID_DRAG label=3 axis=X oldPos=12.900 newPos=14.200 delta=+1.300 cascaded=5`
 
-### Visual Feedback During Drag
-- Dragged line: orange, linewidth 3
-- Adjacent lines: pulse or highlight to show constraint boundaries
-- Dimension text between dragged line and neighbours: live-update in mm
-- If drag hits constraint: line stops, no rubber-banding past the limit
+## §4 — Post-Move Cascade
 
-## §3 — What Updates on Drag
+### Three strategies (from grid_rules.json clearance array):
+
+| Strategy | Behaviour | Use case |
+|----------|-----------|----------|
+| `proportional` | Scale position within bay: `newPos = loNew + t * newWidth` where `t = (coord - lo) / oldWidth`. Enforce `grid_min_m` clearance from bay edges. | Furniture — moves proportionally as room stretches/shrinks |
+| `pin_to_wall` | Stay at same distance from nearest bay edge. Enforce `wall_min_m`. | Switches, outlets — pinned to wall face |
+| `center_bay` | Place at centre: `(loNew + hiNew) / 2` | Light fixtures — always centred in bay |
+
+### Affected bays
+When grid line at index `i` moves, two bays are affected:
+- Bay before: grid[i-1] .. grid[i]
+- Bay after:  grid[i] .. grid[i+1]
+
+Elements in these bays are queried by IFC class + coordinate range from `elements_meta JOIN element_transforms`.
+
+## §5 — Shadow Outlines
+
+- Wireframe boxes (THREE.EdgesGeometry) at proposed new positions
+- Colour/opacity from `grid_rules.json → shadow`
+- Created during drag (live preview), cleared on pointerup
+- Each shadow tagged with `userData.shadowGuid` for identification
+
+## §6 — Compound Undo
+
+Each drag gesture produces one compound record:
+```javascript
+{
+  grid:     { label, axis, idx, oldPos, newPos, delta },
+  elements: [ { guid, ifcClass, oldX, oldY, newX, newY, strategy } ]
+}
+```
+
+`GridDrag.undo()` pops the last record, reverts the grid line shift + logs each element revert.
+
+## §7 — What Updates on Drag
 
 | Element | Update |
 |---------|--------|
-| Grid line (Three.js Line) | v0.x / v0.z and v1.x / v1.z shift by delta |
+| Grid line (Three.js Line) | v0/v1 shift by delta on locked axis |
 | Both bubbles (Sprites) | position shifts by delta |
-| Dim chain — bay segments touching this line | endpoints shift, label recalculated |
-| Dim chain — overall segment | endpoints shift if first/last line |
+| Dim chain segments | endpoints shift, label recalculated |
 | Panel text | bay distance recalculated in mm |
-| Panel total | recalculated |
-| Contours | NOT updated during drag — too expensive. Recompute on view change. |
-| Elevation edges | NOT updated during drag — recompute on view change. |
+| Shadow outlines | wireframe boxes at proposed cascade positions |
+| Contours | NOT updated during drag — too expensive |
+| Elevation edges | NOT updated during drag |
 
-## §4 — Module Placement
+## §8 — Module Placement
 
-### New module: `grid_drag.js`
-Single concern: pointer event handling + constraint logic for grid line repositioning.
+### `grid_drag.js` (IIFE → `GridDrag`)
+Single concern: pointer events + constraint logic + cascade maths + shadow display.
 
-**Depends on:** `grid_overlay.js` (reads `lineMeshes`, `gridData`), `DimChains` (rebuild), Three.js raycaster.
+**Depends on:** `grid_overlay.js` (reads state via `A._gridOverlayState`), `DimChains`, `grid_rules.json` (fetched on init).
 
 **API:**
 ```javascript
-GridDrag.init(APP, gridOverlayState)  // wire pointer events
-GridDrag.enabled()                     // true if drag mode active
-GridDrag.history()                     // array of {label, axis, oldPos, newPos, delta}
-GridDrag.undo()                        // revert last drag
+GridDrag.init(APP, state)                    // wire pointer events
+GridDrag.loadRules(json)                     // load parsed rules JSON
+GridDrag.rules()                             // current rules object
+GridDrag.enabled()                           // true if drag in progress
+GridDrag.history()                           // compound undo records
+GridDrag.undo()                              // revert last drag + cascade
+GridDrag.clamp(pos, idx, positions, axis, env, rules, startPos)
+GridDrag.snap(pos, snapM)
+GridDrag.cascadeElements(axis, idx, oldPos, newPos, gridLines, db, rules)
+GridDrag.applyStrategy(strategy, axis, cx, cy, bay, rule)
 ```
 
 ### Load order (index.html)
@@ -136,38 +189,58 @@ GridDrag.undo()                        // revert last drag
 GridDrag: { required: false, desc: 'grid line drag editing' }
 ```
 
-## §5 — What NOT to Do
-- Do NOT recompute contours or elevation during drag — too expensive, recompute on view switch
-- Do NOT write to DB during drag — deltas are in-memory until explicit save
-- Do NOT allow diagonal drag — axis-locked only
-- Do NOT invent positions — all positions derive from column DB data + user delta
-- Do NOT break existing click-to-highlight — drag is a separate gesture (pointerdown+move vs pointerup-only)
+### State accessor (`grid_overlay.js`)
+`A._gridOverlayState` exposes closure variables as live getters:
+`{ active, gridGroup, gridData, envCache, lineMeshes, bubbleScale, rebuildPanel() }`
 
-## §6 — Future (not this prompt)
-- Save deltas to DB (`element_transforms` update or new `grid_deltas` table)
+## §9 — What NOT to Do
+- Do NOT recompute contours or elevation during drag
+- Do NOT write to DB during drag — deltas are in-memory until explicit commit
+- Do NOT allow diagonal drag
+- Do NOT invent positions — all derive from DB + user delta
+- Do NOT hardcode any constant — all from grid_rules.json
+- Do NOT modify grid_rules.json without explicit instruction (feedback: no_invent_rules)
+- Do NOT break existing click-to-highlight
+
+## §10 — Future (not this prompt)
+- Commit button → writes grid deltas + element moves to DB
 - Feed deltas to DXFSyncVerb-style recompilation
 - RouteWalker re-routes MEP through new geometry
-- Undo/redo stack beyond single undo
+- Multi-undo / redo stack
+- Visual diff mode: before/after toggle
 
-## §7 — Testing Strategy
+## §11 — Testing Strategy
 
-### New tests to add
-| Test | What it proves |
-|------|---------------|
-| T75 | MIN_GAP prevents bay < 500mm |
-| T76 | Grid cannot cross neighbour (ordering preserved) |
-| T77 | Outermost grid respects MAX_EXTEND |
-| T78 | SNAP rounds to 50mm |
-| T79 | Drag axis locked (X-grid moves only in X) |
-| T80 | Delta recorded with correct old/new positions |
-| T81 | Dimension chain updates after drag |
-| T82 | Panel text updates after drag |
-| T83 | Undo reverts to original position |
+### New tests to add (T75+)
+| Test | What it proves | §-log |
+|------|---------------|-------|
+| T75 | grid_rules.json parses without error | §T75_RULES |
+| T76 | min_bay_m prevents bay < 500mm | §T76_MINGAP |
+| T77 | Grid cannot cross neighbour (ordering preserved) | §T77_NOCROSS |
+| T78 | Outermost grid respects max_extend_m | §T78_ENVELOPE |
+| T79 | snap rounds to snap_m (50mm) | §T79_SNAP |
+| T80 | Drag axis locked (X-grid moves only in X) | §T80_AXISLOCK |
+| T81 | max_step_m limits single gesture distance | §T81_MAXSTEP |
+| T82 | Delta recorded with correct old/new positions | §T82_DELTA |
+| T83 | Compound undo record includes grid + elements | §T83_COMPOUND |
+| T84 | Undo reverts grid to original position | §T84_UNDO |
+| T85 | proportional strategy scales position in bay | §T85_PROPORTIONAL |
+| T86 | pin_to_wall strategy preserves wall distance | §T86_PINWALL |
+| T87 | center_bay strategy centres element | §T87_CENTER |
+| T88 | clearance rules filter correct IFC classes | §T88_CLASSES |
+| T89 | Dim chain updates after drag (rebuild called) | §T89_DIMCHAIN |
+| T90 | Panel text updates after drag | §T90_PANEL |
+| T91 | GridDrag in assembler module registry | §T91_ASSEMBLER |
+| T92 | grid_drag.js in correct load order in index.html | §T92_ORDER |
 
 ### Maths proofs
 - Constraint: `pos[i-1] + 0.5 ≤ pos[i] ≤ pos[i+1] - 0.5` — test with synthetic grids
 - Snap: `round(1.273 / 0.05) * 0.05 = 1.25` — exact arithmetic
 - Envelope: `pos[0] ≥ env.xMin - 5.0` — boundary test
+- max_step: `|pos - startPos| ≤ 2.0` — clamp test
+- proportional: `t = 0.3 → newPos = loNew + 0.3 * newWidth` — exact
+- pin_to_wall: `distLo = 0.5 → newPos = loNew + 0.5` — exact
+- center_bay: `(3.0 + 7.0) / 2 = 5.0` — exact
 
 ## Files Reference
 - Grid config: `deploy/dev/grid_config.js`
@@ -175,10 +248,11 @@ GridDrag: { required: false, desc: 'grid line drag editing' }
 - 2D renderer: `deploy/dev/grid_contours.js`
 - Door arcs: `deploy/dev/grid_door_arcs.js`
 - Dim chains: `deploy/dev/grid_dim_chains.js`
-- Grid scene/panel: `deploy/dev/grid_overlay.js`
-- Module wiring: `deploy/dev/grid_assembler.js`
+- **Grid drag: `deploy/dev/grid_drag.js` (NEW)**
+- **Grid rules: `deploy/dev/grid_rules.json` (NEW)**
+- Grid scene/panel: `deploy/dev/grid_overlay.js` (updated — state accessor)
+- Module wiring: `deploy/dev/grid_assembler.js` (updated — GridDrag registered)
 - Section engine: `deploy/dev/section_cut.js`
 - Elevation engine: `deploy/dev/elevation.js`
-- **NEW — Grid drag: `deploy/dev/grid_drag.js`**
-- Tests: `deploy/dev/tests/test_grid_modules.js` (83 tests, 146 §-log lines)
-- Viewer HTML: `deploy/dev/index.html`
+- Tests: `deploy/dev/tests/test_grid_modules.js`
+- Viewer HTML: `deploy/dev/index.html` (updated — grid_drag.js script tag)

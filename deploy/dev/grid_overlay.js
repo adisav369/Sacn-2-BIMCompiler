@@ -616,5 +616,24 @@ function setupGridOverlay(APP) {
     A.markDirty();
   };
 
+  // ── State accessor for GridDrag ──────────────────────────────────
+  // Exposes closure variables as a live-read object so grid_drag.js
+  // can access scene state without coupling to internals.
+  A._gridOverlayState = {
+    get active()      { return active; },
+    get gridGroup()   { return gridGroup; },
+    get gridData()    { return gridData; },
+    get envCache()    { return envCache; },
+    get lineMeshes()  { return lineMeshes; },
+    get bubbleScale() { return bubbleScale; },
+    rebuildPanel:     function(grids) { buildPanel(grids); }
+  };
+
+  // Wire GridDrag if available
+  if (typeof GridDrag !== 'undefined' && GridDrag.init) {
+    GridDrag.init(A, A._gridOverlayState);
+    log('§GRID_INIT GridDrag wired');
+  }
+
   log('§GRID_INIT ready');
 }

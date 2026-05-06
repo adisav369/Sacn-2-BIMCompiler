@@ -33,6 +33,7 @@ var GridAssembler = (function() {
     Elevation:        { required: false, desc: 'elevation projection engine' },
     GridContours:     { required: false, desc: '2D contour/edge renderer' },
     DimChains:        { required: false, desc: 'dimension chain renderer' },
+    GridDrag:         { required: false, desc: 'grid line drag editing' },
     setupGridOverlay: { required: true,  desc: 'grid scene/panel' }
   };
 
