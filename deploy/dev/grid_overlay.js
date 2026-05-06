@@ -38,13 +38,7 @@ function setupGridOverlay(APP) {
   var envCache = null;         // cached building envelope
   var zoomAnim = null;         // current zoom animation ID (for cancellation)
 
-  // ── Elevation View State ──────────────────────────────────────────
-  var savedCamera = null;      // { pos, target, up, fov } before first lock
-  var orthoCamera = null;      // shared OrthographicCamera for locked views
-  var origCamera = null;       // reference to the original PerspectiveCamera
-  var activeView = null;       // 'front'|'rear'|'left'|'right'|'roof'|'floor'|'floor1'|null
-  var floorClipPlane = null;   // THREE.Plane for floor plan section cut
-  var savedClipState = [];     // backup of material clippingPlanes before floor lock
+  // View state is managed by GridViews (grid_views.js)
 
   // ── Constants ─────────────────────────────────────────────────────
   var COLOR_HIGHLIGHT = 0xff6600;     // bright orange on selection
@@ -200,271 +194,76 @@ function setupGridOverlay(APP) {
         ' three=[(' + v0.x.toFixed(1) + ',' + v0.z.toFixed(1) + ')→(' + v1.x.toFixed(1) + ',' + v1.z.toFixed(1) + ')]');
   }
 
-  // ── Elevation View Presets ─────────────────────────────────────────
+  // ── View Presets (delegated to GridViews) ───────────────────────────
 
   var VIEW_BTN_STYLE = 'background:#444;color:#ccc;border:1px solid #666;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer';
   var VIEW_BTN_ACTIVE = 'background:#4fc3f7;color:#000;border:1px solid #666;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer';
 
-  /** Compute building centre in Three.js coords from envCache */
-  function buildingCentre3(env) {
-    var cx = (env.xMin + env.xMax) / 2;
-    var cy = (env.yMin + env.yMax) / 2;
-    var cz = (env.zMin + env.zMax) / 2;
-    var t = A.ifc2three(cx, cy, cz);
-    return new THREE.Vector3(t.x, t.y, t.z);
-  }
-
-  /** Save the original perspective camera state (once) */
-  function saveCameraState() {
-    if (savedCamera) return; // already saved
-    origCamera = A.camera;
-    savedCamera = {
-      pos: A.camera.position.clone(),
-      target: A.controls.target.clone(),
-      up: A.camera.up.clone(),
-      fov: A.camera.fov
-    };
-  }
-
-  /** Create or update the shared orthographic camera */
-  function getOrthoCamera(halfW, halfH, near, far) {
-    if (!orthoCamera) {
-      orthoCamera = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, near, far);
-    } else {
-      orthoCamera.left = -halfW;
-      orthoCamera.right = halfW;
-      orthoCamera.top = halfH;
-      orthoCamera.bottom = -halfH;
-      orthoCamera.near = near;
-      orthoCamera.far = far;
-    }
-    orthoCamera.updateProjectionMatrix();
-    return orthoCamera;
-  }
-
-  /** Switch the renderer to use a given camera and rebind controls */
-  function swapCamera(cam) {
-    A.camera = cam;
-    A.controls.object = cam;
-    cam.updateProjectionMatrix();
-    A.controls.update();
-    // Re-bind resize handler for ortho vs perspective
-    if (A._gridViewResize) {
-      window.removeEventListener('resize', A._gridViewResize);
-    }
-    if (cam.isOrthographicCamera) {
-      A._gridViewResize = function() {
-        var aspect = window.innerWidth / window.innerHeight;
-        var halfH = (cam.top);
-        var halfW = halfH * aspect;
-        cam.left = -halfW;
-        cam.right = halfW;
-        cam.updateProjectionMatrix();
-        A.renderer.setSize(window.innerWidth, window.innerHeight);
-      };
-      window.addEventListener('resize', A._gridViewResize);
-    }
-    A.markDirty();
-  }
-
-  /** Lock camera to an elevation/roof view */
-  function lockView(mode) {
-    if (!envCache) return;
-    saveCameraState();
-
-    var env = envCache;
-    var centre = buildingCentre3(env);
-    // Building dimensions in IFC metres
-    var bldW = env.xMax - env.xMin;   // IFC X → Three X width
-    var bldD = env.yMax - env.yMin;   // IFC Y → Three Z depth
-    var bldH = env.zMax - env.zMin;   // IFC Z → Three Y height
-    var margin = 1.2; // 20% margin around building
-    var dist = Math.max(bldW, bldD, bldH) * 2;
-
-    var camPos, halfW, halfH, upVec;
-    upVec = new THREE.Vector3(0, 1, 0); // default up
-
-    if (mode === 'front') {
-      // Front: look from +Z (Three.js) = IFC -Y direction
-      camPos = new THREE.Vector3(centre.x, centre.y, centre.z + dist);
-      halfW = (bldW / 2) * margin;
-      halfH = (bldH / 2) * margin;
-    } else if (mode === 'rear') {
-      // Rear: look from -Z (Three.js) = IFC +Y direction
-      camPos = new THREE.Vector3(centre.x, centre.y, centre.z - dist);
-      halfW = (bldW / 2) * margin;
-      halfH = (bldH / 2) * margin;
-    } else if (mode === 'left') {
-      // Left: look from -X
-      camPos = new THREE.Vector3(centre.x - dist, centre.y, centre.z);
-      halfW = (bldD / 2) * margin;
-      halfH = (bldH / 2) * margin;
-    } else if (mode === 'right') {
-      // Right/Side: look from +X
-      camPos = new THREE.Vector3(centre.x + dist, centre.y, centre.z);
-      halfW = (bldD / 2) * margin;
-      halfH = (bldH / 2) * margin;
-    } else if (mode === 'roof') {
-      // Roof: top-down, look from +Y (Three.js up)
-      camPos = new THREE.Vector3(centre.x, centre.y + dist, centre.z);
-      halfW = (bldW / 2) * margin;
-      halfH = (bldD / 2) * margin;
-      upVec = new THREE.Vector3(0, 0, -1); // north faces up
-    } else if (mode === 'floor' || mode === 'floor1') {
-      // Floor Plan: top-down + horizontal section cut ~1m above slab
-      camPos = new THREE.Vector3(centre.x, centre.y + dist, centre.z);
-      halfW = (bldW / 2) * margin;
-      halfH = (bldD / 2) * margin;
-      upVec = new THREE.Vector3(0, 0, -1);
-    } else {
-      return;
-    }
-
-    // Adjust for aspect ratio
-    var aspect = window.innerWidth / window.innerHeight;
-    if (aspect > 1) {
-      // Wide screen: expand width to match
-      if (halfW / halfH < aspect) halfW = halfH * aspect;
-    } else {
-      // Tall screen: expand height to match
-      if (halfH / halfW < (1 / aspect)) halfH = halfW / aspect;
-    }
-
-    var cam = getOrthoCamera(halfW, halfH, 0.1, dist * 4);
-    cam.position.copy(camPos);
-    cam.up.copy(upVec);
-    cam.lookAt(centre);
-
-    A.controls.target.copy(centre);
-    swapCamera(cam);
-
-    A.controls.enableRotate = false;
-    A.controls.enablePan = true;
-    A.controls.enableZoom = true;
-    A.controls.update();
-
-    // Floor plan: apply horizontal section cut ~1m above slab level
-    // Skip furniture (IfcFurnishingElement) — show them unclipped
-    clearFloorClip();
-    if (mode === 'floor' || mode === 'floor1') {
-      var cutZ;
-      if (mode === 'floor1') {
-        cutZ = env.zMin + bldH * 0.55;
-      } else {
-        cutZ = env.zMin + 1.0; // 1m above ground slab
-      }
-      var cutY = (cutZ - A.modelOffset.z); // IFC Z → Three Y
-      floorClipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), cutY);
-      A.renderer.localClippingEnabled = true;
-      savedClipState = [];
-      var skipClasses = { 'IfcFurnishingElement': 1, 'IfcFurniture': 1 };
-      var clipped = 0, skipped = 0;
-      A.collectMeshes(function(o) { return o.isMesh; }).forEach(function(obj) {
-        savedClipState.push({ mesh: obj, planes: obj.material.clippingPlanes || [] });
-        var cls = (obj.userData && obj.userData.ifcClass) || '';
-        if (skipClasses[cls]) {
-          skipped++;
-          return; // don't clip furniture — show as-is
-        }
-        obj.material.clippingPlanes = [floorClipPlane];
-        obj.material.clipShadows = true;
-        obj.material.needsUpdate = true;
-        clipped++;
-      });
-      // Force light theme for floor plan print contrast
-      if (!A.lightTheme) A.toggleTheme();
-      log('§GRID_VIEW floor_clip cutZ_ifc=' + cutZ.toFixed(2) + ' cutY_three=' + cutY.toFixed(2) + ' clipped=' + clipped + ' furniture_skipped=' + skipped);
-    }
-
-    // Elevations: NO forced theme, NO clipping — pure facade projection
-
-    activeView = mode;
-    updateViewButtons();
-    A.markDirty();
-    log('§GRID_VIEW mode=' + mode + ' centre=(' + centre.x.toFixed(1) + ',' + centre.y.toFixed(1) + ',' + centre.z.toFixed(1) + ') dist=' + dist.toFixed(1));
-  }
-
-  /** Clear floor plan section clipping */
-  function clearFloorClip() {
-    if (!floorClipPlane) return;
-    for (var i = 0; i < savedClipState.length; i++) {
-      var entry = savedClipState[i];
-      if (entry.mesh && entry.mesh.material) {
-        entry.mesh.material.clippingPlanes = entry.planes;
-        entry.mesh.material.needsUpdate = true;
-      }
-    }
-    savedClipState = [];
-    floorClipPlane = null;
-    log('§GRID_VIEW floor_clip cleared');
-  }
-
-  /** Unlock: restore the original perspective camera */
-  function unlockView() {
-    if (!savedCamera || !origCamera) {
-      activeView = null;
-      updateViewButtons();
-      log('§GRID_VIEW mode=unlock (no saved state)');
-      return;
-    }
-
-    // Remove ortho resize handler
-    if (A._gridViewResize) {
-      window.removeEventListener('resize', A._gridViewResize);
-      A._gridViewResize = null;
-    }
-
-    origCamera.position.copy(savedCamera.pos);
-    origCamera.up.copy(savedCamera.up);
-    origCamera.fov = savedCamera.fov;
-    origCamera.aspect = window.innerWidth / window.innerHeight;
-    origCamera.updateProjectionMatrix();
-
-    A.camera = origCamera;
-    A.controls.object = origCamera;
-    A.controls.target.copy(savedCamera.target);
-    A.controls.enableRotate = true;
-    A.controls.enablePan = true;
-    A.controls.update();
-
-    // Re-bind the original resize handler
-    if (A._onResize) {
-      A._onResize();
-    }
-
-    // Restore floor clip if active
-    var wasFloor = (activeView === 'floor' || activeView === 'floor1');
-    clearFloorClip();
-
-    // Restore dark theme only if floor plan forced it
-    if (wasFloor && A.lightTheme) {
-      A.toggleTheme();
-    }
-
-    savedCamera = null;
-    activeView = null;
-    updateViewButtons();
-    A.markDirty();
-    log('§GRID_VIEW mode=unlock');
-  }
-
   /** Update active state on all view buttons */
   function updateViewButtons() {
+    var av = GridViews.activeView();
     var btns = document.querySelectorAll('.grid-view-btn');
     for (var i = 0; i < btns.length; i++) {
       var v = btns[i].getAttribute('data-view');
-      btns[i].style.cssText = (v === activeView) ? VIEW_BTN_ACTIVE : VIEW_BTN_STYLE;
+      btns[i].style.cssText = (v === av) ? VIEW_BTN_ACTIVE : VIEW_BTN_STYLE;
     }
   }
 
-  /** Handle view button click */
+  /** Handle view button click — orchestrates engines → renderer */
   function onViewBtnClick(e) {
     var mode = e.currentTarget.getAttribute('data-view');
     if (!mode) return;
+
+    // Clear previous contours
+    if (typeof GridContours !== 'undefined') GridContours.clear(A);
+
     if (mode === 'unlock') {
-      unlockView();
+      GridViews.unlockView(A);
     } else {
-      lockView(mode);
+      GridViews.lockView(A, mode, envCache);
+      renderContoursForView(mode);
+    }
+    updateViewButtons();
+  }
+
+  /** Orchestrate: read contourMode from config, call engine, pass to renderer */
+  function renderContoursForView(mode) {
+    if (typeof GridConfig === 'undefined') return;
+    var contourMode = GridConfig.contourModeFor(mode);
+    if (!contourMode) return; // null = no contours (e.g. roof)
+
+    if (contourMode === 'section' && typeof SectionCut !== 'undefined' && typeof GridContours !== 'undefined') {
+      // Floor plan: section cut → contours + door arcs
+      var clipCfg = GridConfig.clipFor(mode);
+      var bldH = envCache.zMax - envCache.zMin;
+      var cutZ = (clipCfg && clipCfg.offset_ratio)
+        ? envCache.zMin + bldH * clipCfg.offset_ratio
+        : envCache.zMin + ((clipCfg && clipCfg.offset_m) || 1.0);
+
+      var results = SectionCut.sectionCut(A.db, A.libDb, cutZ, null);
+      GridContours.renderContours(A, results, mode, cutZ);
+
+      // Door arcs
+      if (typeof DoorArcs !== 'undefined') {
+        var doors = results.filter(function(r) { return r.ifcClass === 'IfcDoor'; });
+        var walls = results.filter(function(r) { return r.ifcClass === 'IfcWall' || r.ifcClass === 'IfcWallStandardCase'; });
+        var arcs = DoorArcs.generateArcs(doors, walls);
+        GridContours.addDoorArcs(A, arcs, mode, cutZ);
+      }
+      log('§GRID_VIEW contours=section mode=' + mode + ' cutZ=' + cutZ.toFixed(2));
+
+    } else if (contourMode === 'elevation' && typeof Elevation !== 'undefined' && typeof GridContours !== 'undefined') {
+      // Elevation: projected edges + level markers
+      var face = mode; // front/rear/left/right map directly to Elevation face names
+      var edgeData = Elevation.generateElevation(A.db, A.libDb, face);
+      GridContours.renderEdges(A, edgeData, mode, envCache);
+
+      // Level markers
+      if (typeof SectionCut !== 'undefined') {
+        var storeys = SectionCut.detectStoreys(A.db);
+        GridContours.renderLevelMarkers(A, storeys, mode, envCache);
+      }
+      log('§GRID_VIEW contours=elevation mode=' + mode + ' edges=' + edgeData.length);
     }
   }
 
@@ -474,28 +273,28 @@ function setupGridOverlay(APP) {
   /** Create a text sprite showing a dimension value in mm */
   function createDimLabel(text, position) {
     var canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 32;
+    canvas.width = 192;
+    canvas.height = 48;
     var ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, 128, 32);
-    ctx.font = '20px sans-serif';
+    ctx.clearRect(0, 0, 192, 48);
+    ctx.font = 'bold 28px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     if (isLight()) {
       ctx.fillStyle = '#000000';
-      ctx.fillText(text, 64, 16);
+      ctx.fillText(text, 96, 24);
     } else {
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 3;
-      ctx.strokeText(text, 64, 16);
+      ctx.lineWidth = 4;
+      ctx.strokeText(text, 96, 24);
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(text, 64, 16);
+      ctx.fillText(text, 96, 24);
     }
     var texture = new THREE.CanvasTexture(canvas);
     var mat = new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true });
     var sprite = new THREE.Sprite(mat);
     sprite.position.copy(position);
-    sprite.scale.set(bubbleScale * 1.6, bubbleScale * 0.4, 1);
+    sprite.scale.set(bubbleScale * 2.0, bubbleScale * 0.5, 1);
     sprite.renderOrder = 1001;
     sprite.userData.isDimChain = true;
     return sprite;
@@ -658,7 +457,7 @@ function setupGridOverlay(APP) {
       { key: 'unlock', label: '\uD83D\uDD13' }
     ];
     for (var vi = 0; vi < views.length; vi++) {
-      var vStyle = (views[vi].key === activeView) ? VIEW_BTN_ACTIVE : VIEW_BTN_STYLE;
+      var vStyle = (views[vi].key === GridViews.activeView()) ? VIEW_BTN_ACTIVE : VIEW_BTN_STYLE;
       viewHtml += '<button class="grid-view-btn" data-view="' + views[vi].key + '" style="' + vStyle + '">' + views[vi].label + '</button>';
     }
     viewHtml += '</div>';
@@ -823,8 +622,9 @@ function setupGridOverlay(APP) {
     if (active) {
       active = false;
       if (zoomAnim) { cancelAnimationFrame(zoomAnim); zoomAnim = null; }
-      clearFloorClip();
-      if (activeView) unlockView();
+      if (typeof GridContours !== 'undefined') GridContours.clear(A);
+      GridViews.clearFloorClip(A);
+      if (GridViews.activeView()) GridViews.unlockView(A);
       if (gridGroup) { gridGroup.visible = false; }
       if (gridPanel) { gridPanel.style.display = 'none'; }
       A.markDirty();

@@ -79,7 +79,8 @@ function initViewer() {
     });
     return APP._wizardPromise;
   };
-  if (typeof setupGridOverlay === 'function') setupGridOverlay(APP);
+  if (typeof GridAssembler !== 'undefined') GridAssembler.init(APP);
+  else if (typeof setupGridOverlay === 'function') setupGridOverlay(APP);
   if (typeof setupImport === 'function') setupImport(APP);
   if (typeof setupDiff === 'function') setupDiff(APP);
 
