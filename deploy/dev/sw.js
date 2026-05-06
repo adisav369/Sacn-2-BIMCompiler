@@ -8,7 +8,7 @@
 // Cache-first for heavy assets (.wasm, images). DB files skip SW (IndexedDB handles them).
 //
 // DEPLOY: bump CACHE_VERSION on every OCI upload. Old caches are purged on activate.
-const CACHE_VERSION = 'v252';
+const CACHE_VERSION = 'v254';
 const CACHE_NAME = 'bim-ootb-' + CACHE_VERSION;
 
 // Local copies of vendor libs — single-origin, no CDN dependency
@@ -142,15 +142,23 @@ self.addEventListener('fetch', (event) => {
 
 // Try network, fall back to cache (for files that change on deploy)
 function networkFirst(request) {
+  // Strip ?v=N query string for cache matching — HTML references main.js?v=11
+  // but precache stores main.js. Both should match.
+  var cacheUrl = request.url.split('?')[0];
   return fetch(request)
     .then(resp => {
       if (resp && resp.status === 200) {
         const clone = resp.clone();
-        caches.open(CACHE_NAME).then(c => c.put(request, clone));
+        caches.open(CACHE_NAME).then(c => c.put(cacheUrl, clone));
       }
       return resp;
     })
-    .catch(() => caches.match(request).then(r => r || caches.match('offline.html')));
+    .catch(() => caches.match(cacheUrl).then(r => {
+      if (r) return r;
+      // Only return offline.html for navigation/HTML requests — not for .js
+      if (request.url.endsWith('.js')) return new Response('', { status: 503 });
+      return caches.match('offline.html');
+    }));
 }
 
 // Try cache, fall back to network (for heavy/immutable assets)

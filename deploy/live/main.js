@@ -170,7 +170,7 @@ function initViewer() {
     if (diffDbUrl && APP.db && typeof APP.computeDiff === 'function') {
       try {
         const buf = await APP.cachedFetch(diffDbUrl);
-        const SQL = await initSqlJs({ locateFile: f => 'https://sql.js.org/dist/' + f });
+        const SQL = await initSqlJs({ locateFile: f => `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/${f}` });
         APP.diffDb = new SQL.Database(new Uint8Array(buf));
         console.log('[S223] §DIFF_DB_LOADED url=' + diffDbUrl);
         APP.computeDiff();

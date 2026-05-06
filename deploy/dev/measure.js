@@ -78,64 +78,87 @@ function setupMeasure(A) {
   // Ensure indexes exist for clash queries — one-time cost per session
   A._clashIndexesReady = false;
   A._clashRtreeReady = false;
+  A._clashRtreeBuilding = false;
+
+  // Async index+R-tree builder — yields between each step to avoid blocking UI
+  // Called eagerly after DB loads (not lazily on first clash open)
   A._ensureClashIndexes = function() {
     if (A._clashIndexesReady || !A.db) return;
-    try {
-      A.db.run("CREATE INDEX IF NOT EXISTS idx_meta_disc ON elements_meta(discipline)");
-      A.db.run("CREATE INDEX IF NOT EXISTS idx_meta_storey ON elements_meta(storey)");
-      A.db.run("CREATE INDEX IF NOT EXISTS idx_trans_cx ON element_transforms(center_x)");
-      A._clashIndexesReady = true;
-      console.log('§CLASH_INDEXES created');
-    } catch(e) { console.warn('§CLASH_INDEXES failed', e); }
-    // R-tree spatial index — requires rtree-sql.js WASM (SQLITE_ENABLE_RTREE)
-    // Populated async in batches to avoid main-thread timeout on large buildings
-    if (!A._clashRtreeReady && !A._clashRtreeBuilding) {
+    A._clashIndexesReady = true; // prevent re-entry
+
+    // Step through indexes one at a time with yields
+    var idxSteps = [
+      "CREATE INDEX IF NOT EXISTS idx_meta_disc ON elements_meta(discipline)",
+      "CREATE INDEX IF NOT EXISTS idx_meta_storey ON elements_meta(storey)",
+      "CREATE INDEX IF NOT EXISTS idx_trans_cx ON element_transforms(center_x)"
+    ];
+    var si = 0;
+    function _nextIndex() {
+      if (si >= idxSteps.length) {
+        console.log('§CLASH_INDEXES created');
+        _startRtree();
+        return;
+      }
+      try { A.db.run(idxSteps[si]); } catch(e) { console.warn('§CLASH_INDEX_SKIP', e.message); }
+      si++;
+      setTimeout(_nextIndex, 5);
+    }
+
+    function _startRtree() {
+      if (A._clashRtreeReady || A._clashRtreeBuilding) return;
       try {
         A.db.run("DROP TABLE IF EXISTS elements_rtree");
         A.db.run("CREATE VIRTUAL TABLE elements_rtree USING rtree(id, minX, maxX, minY, maxY, minZ, maxZ)");
-        console.log('§CLASH_RTREE table created, populating async...');
         A._clashRtreeBuilding = true;
-        A._buildRtreeAsync();
+        console.log('§CLASH_RTREE table created, populating async...');
+        _buildRtreeBatches();
       } catch(e) {
         A._clashRtreeReady = false;
         A._clashRtreeBuilding = false;
-        console.warn('§CLASH_RTREE FAILED — ' + e.message + ' (falling back to bbox arithmetic)');
+        console.warn('§CLASH_RTREE FAILED — ' + e.message);
       }
     }
+
+    var RTREE_BATCH = 5000;
+    function _buildRtreeBatches() {
+      var total = A.dbQuery("SELECT COUNT(*) FROM element_transforms");
+      var n = total.length ? total[0][0] : 0;
+      var offset = 0;
+      var t0 = performance.now();
+      function _insertBatch() {
+        if (!A.db) { A._clashRtreeBuilding = false; return; }
+        try {
+          A.db.run("BEGIN");
+          A.db.run("INSERT INTO elements_rtree SELECT rowid, center_x - bbox_x/2, center_x + bbox_x/2, center_y - bbox_y/2, center_y + bbox_y/2, center_z - bbox_z/2, center_z + bbox_z/2 FROM element_transforms LIMIT " + RTREE_BATCH + " OFFSET " + offset);
+          A.db.run("COMMIT");
+          offset += RTREE_BATCH;
+          if (offset < n) {
+            console.log('§CLASH_RTREE batch ' + offset + '/' + n);
+            setTimeout(_insertBatch, 10);
+          } else {
+            var ms = (performance.now() - t0).toFixed(0);
+            A._clashRtreeReady = true;
+            A._clashRtreeBuilding = false;
+            console.log('§CLASH_RTREE ready ' + n + ' rows in ' + ms + 'ms');
+          }
+        } catch(e) {
+          try { A.db.run("ROLLBACK"); } catch(re) {}
+          A._clashRtreeBuilding = false;
+          console.warn('§CLASH_RTREE batch failed at offset=' + offset + ' — ' + e.message);
+        }
+      }
+      setTimeout(_insertBatch, 10);
+    }
+
+    setTimeout(_nextIndex, 5);
   };
 
-  // Async R-tree population — batched INSERT to avoid main-thread timeout
-  A._clashRtreeBuilding = false;
-  var RTREE_BATCH = 5000;
-  A._buildRtreeAsync = function() {
-    var total = A.dbQuery("SELECT COUNT(*) FROM element_transforms");
-    var n = total.length ? total[0][0] : 0;
-    var offset = 0;
-    var t0 = performance.now();
-    function _insertBatch() {
-      if (!A.db) { A._clashRtreeBuilding = false; return; }
-      try {
-        A.db.run("BEGIN");
-        A.db.run("INSERT INTO elements_rtree SELECT rowid, center_x - bbox_x/2, center_x + bbox_x/2, center_y - bbox_y/2, center_y + bbox_y/2, center_z - bbox_z/2, center_z + bbox_z/2 FROM element_transforms LIMIT " + RTREE_BATCH + " OFFSET " + offset);
-        A.db.run("COMMIT");
-        offset += RTREE_BATCH;
-        if (offset < n) {
-          console.log('§CLASH_RTREE batch ' + offset + '/' + n);
-          setTimeout(_insertBatch, 10);
-        } else {
-          var ms = (performance.now() - t0).toFixed(0);
-          A._clashRtreeReady = true;
-          A._clashRtreeBuilding = false;
-          console.log('§CLASH_RTREE ready ' + n + ' rows in ' + ms + 'ms');
-        }
-      } catch(e) {
-        try { A.db.run("ROLLBACK"); } catch(re) {}
-        A._clashRtreeBuilding = false;
-        console.warn('§CLASH_RTREE batch failed at offset=' + offset + ' — ' + e.message);
-      }
-    }
-    setTimeout(_insertBatch, 10);
-  };
+  // Eager start: kick off index+R-tree building as soon as DB is loaded
+  // (streaming.js sets A.db, then streamTick processes meshes — we piggyback)
+  setTimeout(function _waitForDb() {
+    if (A.db) { A._ensureClashIndexes(); }
+    else { setTimeout(_waitForDb, 500); }
+  }, 1000);
 
   // Build the shared WHERE clause parts (also ensures indexes)
   A._clashWhereParts = function(rules) {
@@ -361,58 +384,47 @@ function setupMeasure(A) {
     return results;
   };
 
-  // S246perf: Lean R-tree counter — same logic as query but only counts, no arrays
+  // S246perf: R-tree counter — single SQL join, no JS loop per element
   A._countClashesRtree = function(storey, rules, discA, discB) {
     var ignoreSet = {};
     rules.clash_rules.forEach(function(r) {
       (r.ignore_classes || []).forEach(function(c) { ignoreSet[c] = 1; });
     });
-    var storeyFilter = storey ? " AND m.storey = '" + storey.replace(/'/g, "''") + "'" : "";
+    var storeyFilterA = storey ? " AND ma.storey = '" + storey.replace(/'/g, "''") + "'" : "";
+    var storeyFilterB = storey ? " AND mb.storey = '" + storey.replace(/'/g, "''") + "'" : "";
     var ignoreFilter = Object.keys(ignoreSet).length ?
-      " AND m.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" : "";
+      " AND ma.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" +
+      " AND mb.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" : "";
 
-    var bMap = {};
-    A.dbQuery(
-      "SELECT t.rowid, t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z, m.guid" +
-      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
-      " WHERE m.discipline = '" + discB + "'" + storeyFilter + ignoreFilter + " AND t.bbox_x IS NOT NULL"
-    ).forEach(function(r) { bMap[r[0]] = r; });
-
-    var rowsA = A.dbQuery(
-      "SELECT t.rowid, m.guid, t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z" +
-      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
-      " WHERE m.discipline = '" + discA + "'" + storeyFilter + ignoreFilter + " AND t.bbox_x IS NOT NULL"
-    );
-
-    var count = 0;
-    var seen = {};
-    for (var i = 0; i < rowsA.length; i++) {
-      var ra = rowsA[i];
-      var minX = ra[2] - ra[5]/2, maxX = ra[2] + ra[5]/2;
-      var minY = ra[3] - ra[6]/2, maxY = ra[3] + ra[6]/2;
-      var minZ = ra[4] - ra[7]/2, maxZ = ra[4] + ra[7]/2;
-      var cands;
-      try {
-        cands = A.dbQuery("SELECT r.id FROM elements_rtree r WHERE " +
-          "r.maxX >= " + minX + " AND r.minX <= " + maxX + " AND " +
-          "r.maxY >= " + minY + " AND r.minY <= " + maxY + " AND " +
-          "r.maxZ >= " + minZ + " AND r.minZ <= " + maxZ);
-      } catch(e) { continue; }
-      for (var ci = 0; ci < cands.length; ci++) {
-        var rb = bMap[cands[ci][0]];
-        if (!rb || rb[7] === ra[1]) continue;
-        var key = ra[1] < rb[7] ? ra[1] + '|' + rb[7] : rb[7] + '|' + ra[1];
-        if (seen[key]) continue;
-        seen[key] = 1;
-        var bMinX = rb[1] - rb[4]/2, bMaxX = rb[1] + rb[4]/2;
-        var bMinY = rb[2] - rb[5]/2, bMaxY = rb[2] + rb[5]/2;
-        var bMinZ = rb[3] - rb[6]/2, bMaxZ = rb[3] + rb[6]/2;
-        if (maxX > bMinX && minX < bMaxX && maxY > bMinY && minY < bMaxY && maxZ > bMinZ && minZ < bMaxZ) {
-          count++;
-        }
-      }
+    // Single SQL: for each element A, count R-tree overlapping elements of discB
+    // Uses R-tree join internally — SQLite handles the iteration, not JS
+    try {
+      var sql = "SELECT COUNT(*) FROM (" +
+        "SELECT DISTINCT CASE WHEN ta.guid < tb.guid THEN ta.guid||'|'||tb.guid ELSE tb.guid||'|'||ta.guid END AS pair" +
+        " FROM element_transforms ta" +
+        " JOIN elements_meta ma ON ta.guid = ma.guid" +
+        " JOIN elements_rtree r ON r.maxX >= (ta.center_x - ta.bbox_x/2) AND r.minX <= (ta.center_x + ta.bbox_x/2)" +
+        "   AND r.maxY >= (ta.center_y - ta.bbox_y/2) AND r.minY <= (ta.center_y + ta.bbox_y/2)" +
+        "   AND r.maxZ >= (ta.center_z - ta.bbox_z/2) AND r.minZ <= (ta.center_z + ta.bbox_z/2)" +
+        " JOIN element_transforms tb ON tb.rowid = r.id AND tb.guid != ta.guid" +
+        " JOIN elements_meta mb ON tb.guid = mb.guid" +
+        " WHERE ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "'" +
+        storeyFilterA + storeyFilterB + ignoreFilter +
+        " AND ta.bbox_x IS NOT NULL AND tb.bbox_x IS NOT NULL" +
+        // Tight bbox confirmation (R-tree gives candidates, this confirms overlap)
+        " AND (ta.center_x + ta.bbox_x/2) > (tb.center_x - tb.bbox_x/2)" +
+        " AND (ta.center_x - ta.bbox_x/2) < (tb.center_x + tb.bbox_x/2)" +
+        " AND (ta.center_y + ta.bbox_y/2) > (tb.center_y - tb.bbox_y/2)" +
+        " AND (ta.center_y - ta.bbox_y/2) < (tb.center_y + tb.bbox_y/2)" +
+        " AND (ta.center_z + ta.bbox_z/2) > (tb.center_z - tb.bbox_z/2)" +
+        " AND (ta.center_z - ta.bbox_z/2) < (tb.center_z + tb.bbox_z/2)" +
+        ")";
+      var result = A.dbQuery(sql);
+      return result.length ? result[0][0] : 0;
+    } catch(e) {
+      console.warn('§CLASH_RTREE_COUNT_ERR ' + e.message);
+      return 0;
     }
-    return count;
   };
 
   // Progressive async loader — queries remaining storeys one at a time with UI yields
@@ -825,71 +837,61 @@ function setupMeasure(A) {
       deep_link: deepLink
     };
 
-    // Capture viewport as JPEG blob (async — doesn't freeze main thread like toDataURL PNG)
+    // Capture viewport — direct drawImage from WebGL canvas (no toBlob/Image roundtrip)
     var t0 = performance.now();
-    A.canvas.toBlob(function(blob) {
-      var blobUrl = URL.createObjectURL(blob);
-      var img = new Image();
-      img.onload = function() {
-        URL.revokeObjectURL(blobUrl);
-        var cW = img.width, cH = img.height;
-        var stripH = 52;
-        var c2 = document.createElement('canvas');
-        c2.width = cW;
-        c2.height = cH + stripH;
-        var ctx = c2.getContext('2d');
+    var cW = A.canvas.width, cH = A.canvas.height;
+    var stripTotal = 66;
+    var c2 = document.createElement('canvas');
+    c2.width = cW;
+    c2.height = cH + stripTotal;
+    var ctx = c2.getContext('2d');
 
-        ctx.drawImage(img, 0, 0, cW, cH);
+    // Draw WebGL canvas directly — requires preserveDrawingBuffer OR render just happened (line 776)
+    ctx.drawImage(A.canvas, 0, 0, cW, cH);
 
-        // Metadata strip — all info in one strip, no separate footer
-        var gpsText = A._formatGps ? A._formatGps(A._camGpsPos) : '';
-        var tsText = A._formatTimestamp ? A._formatTimestamp() : new Date().toLocaleString();
-        var stripTotal = 66;
-        c2.height = cH + stripTotal;
-        ctx.drawImage(img, 0, 0, cW, cH); // redraw since canvas resized
+    // Metadata strip
+    var gpsText = A._formatGps ? A._formatGps(A._camGpsPos) : '';
+    var tsText = A._formatTimestamp ? A._formatTimestamp() : new Date().toLocaleString();
 
-        ctx.fillStyle = 'rgba(0,0,0,0.8)';
-        ctx.fillRect(0, cH, cW, stripTotal);
+    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    ctx.fillRect(0, cH, cW, stripTotal);
 
-        // Line 1: Clash severity + overlap
-        ctx.font = 'bold 13px "Segoe UI", sans-serif';
-        ctx.fillStyle = sev.color || '#ff8c00';
-        ctx.fillText('CLASH: ' + clsA + ' \u2194 ' + clsB + '  ' + overlap.toFixed(3) + 'm (' + (sev.label || '') + ')', 10, cH + 16);
+    // Line 1: Clash severity + overlap
+    ctx.font = 'bold 13px "Segoe UI", sans-serif';
+    ctx.fillStyle = sev.color || '#ff8c00';
+    ctx.fillText('CLASH: ' + clsA + ' \u2194 ' + clsB + '  ' + overlap.toFixed(3) + 'm (' + (sev.label || '') + ')', 10, cH + 16);
 
-        // Line 2: Element names
-        ctx.font = '11px "Segoe UI", sans-serif';
-        ctx.fillStyle = '#ccc';
-        ctx.fillText((c[6] || c[0]).substring(0, 40) + ' / ' + (c[7] || c[1]).substring(0, 40), 10, cH + 32);
+    // Line 2: Element names
+    ctx.font = '11px "Segoe UI", sans-serif';
+    ctx.fillStyle = '#ccc';
+    ctx.fillText((c[6] || c[0]).substring(0, 40) + ' / ' + (c[7] || c[1]).substring(0, 40), 10, cH + 32);
 
-        // Line 3: Discipline + storey
-        ctx.fillStyle = '#4fc3f7';
-        ctx.fillText((c[4] || '') + ' vs ' + (c[5] || '') + '  \u2014  Storey: ' + storey, 10, cH + 47);
+    // Line 3: Discipline + storey
+    ctx.fillStyle = '#4fc3f7';
+    ctx.fillText((c[4] || '') + ' vs ' + (c[5] || '') + '  \u2014  Storey: ' + storey, 10, cH + 47);
 
-        // Line 4: GPS + timestamp
-        ctx.font = '11px monospace';
-        ctx.fillStyle = '#00ff00';
-        ctx.fillText(gpsText, 10, cH + 62);
-        var tw = ctx.measureText(tsText).width;
-        ctx.fillText(tsText, cW - tw - 10, cH + 62);
+    // Line 4: GPS + timestamp
+    ctx.font = '11px monospace';
+    ctx.fillStyle = '#00ff00';
+    ctx.fillText(gpsText, 10, cH + 62);
+    var tw = ctx.measureText(tsText).width;
+    ctx.fillText(tsText, cW - tw - 10, cH + 62);
 
-        // Open markup preview
-        var mc = document.getElementById('site-cam-markup');
-        mc.width = c2.width;
-        mc.height = c2.height;
-        mc.getContext('2d').drawImage(c2, 0, 0);
-        A._markupBaseImage = c2;
-        A._markupStrokes = [];
-        A._camPhotoBlob = null;
-        A._markupListenersSet = false;
-        document.getElementById('site-cam-preview').classList.add('active');
-        history.pushState({ sitePreview: true }, '');
-        A._initMarkupListeners(mc);
+    // Open markup preview
+    var mc = document.getElementById('site-cam-markup');
+    mc.width = c2.width;
+    mc.height = c2.height;
+    mc.getContext('2d').drawImage(c2, 0, 0);
+    A._markupBaseImage = c2;
+    A._markupStrokes = [];
+    A._camPhotoBlob = null;
+    A._markupListenersSet = false;
+    document.getElementById('site-cam-preview').classList.add('active');
+    history.pushState({ sitePreview: true }, '');
+    A._initMarkupListeners(mc);
 
-        var ms = (performance.now() - t0).toFixed(0);
-        console.log('§CLASH_SNAG idx=' + idx + ' guidA=' + c[0] + ' guidB=' + c[1] + ' overlap=' + overlap.toFixed(3) + 'm snap=' + ms + 'ms');
-      };
-      img.src = blobUrl;
-    }, 'image/jpeg', 0.85);
+    var ms = (performance.now() - t0).toFixed(0);
+    console.log('§CLASH_SNAG idx=' + idx + ' guidA=' + c[0] + ' guidB=' + c[1] + ' overlap=' + overlap.toFixed(3) + 'm snap=' + ms + 'ms');
   };
 
   // S246: Share clash snag — override for clash-specific text + deep-link
@@ -1845,6 +1847,8 @@ function setupMeasure(A) {
     }
     if (!A.measureActive) {
       if (A._measureClickTimer) { clearTimeout(A._measureClickTimer); A._measureClickTimer = null; }
+      if (A._longPressTimer) { clearTimeout(A._longPressTimer); A._longPressTimer = null; }
+      A._longPressFired = false;
       A.clearMeasures();
     }
     console.log(`§MEASURE mode ${A.measureActive ? 'ON' : 'OFF'}`);
@@ -2063,9 +2067,11 @@ function setupMeasure(A) {
   A._infoCardDiv = null;
   A.handleMeasureRightClick = function(e) {
     if (!A.measureActive) return false;
-    // Block if info card, clash matrix, or clash list already open
-    if (A._infoCardDiv && A._infoCardDiv.parentNode) return false;
+    // Block if clash matrix or clash list already open (not info card — it auto-dismisses)
     if (A._clashMatrixDiv || A._clashListDiv) return false;
+    // Dismiss existing info card before opening new one
+    if (A._infoCardDiv && A._infoCardDiv.parentNode) A._infoCardDiv.remove();
+    A._infoCardDiv = null;
     e.preventDefault();
     A.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     A.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;

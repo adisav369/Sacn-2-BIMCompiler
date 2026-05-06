@@ -8,7 +8,7 @@ function setupScene(A) {
   const canvas = document.getElementById('canvas');
   A.canvas = canvas;
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setClearColor(0x1a1a2e);

@@ -193,6 +193,8 @@ function setupPanels(A) {
 
     function hideAll() {
       panelIds.forEach(pid => {
+        // Keep toolbox visible while measure mode is active (user needs it to toggle off)
+        if (pid === 'search-box' && window.APP && window.APP.measureActive) return;
         const el = document.getElementById(pid);
         if (el) el.classList.add('swipe-hidden');
       });

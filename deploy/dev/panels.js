@@ -5,6 +5,12 @@
  */
 // panels.js — Panel collapse, storey/disc filters, building list, HUD, swipe
 function setupPanels(A) {
+  // Prevent touch/click on floating panels from reaching canvas underneath
+  ['hud','search-box','storey-panel','disc-panel','info-panel','issues-panel','status'].forEach(function(pid) {
+    var el = document.getElementById(pid);
+    if (el) el.addEventListener('pointerdown', function(e) { e.stopPropagation(); });
+  });
+
   // Panel collapse
   A.togglePanel = function(id) {
     const body = document.getElementById(id);
@@ -165,11 +171,11 @@ function setupPanels(A) {
 
     function hideAll() {
       panelIds.forEach(pid => {
-        // Keep toolbox visible while measure mode is active (user needs it to toggle off)
-        if (pid === 'search-box' && window.APP && window.APP.measureActive) return;
         const el = document.getElementById(pid);
         if (el) el.classList.add('swipe-hidden');
       });
+      // If measure was active and toolbox just got hidden, exit measure mode
+      if (window.APP && window.APP.measureActive) window.APP.toggleMeasure();
       panelsHidden = true;
       const s = document.getElementById('status');
       if (s) s.textContent = '<> ' + (typeof _TRL!=='undefined'&&_TRL.ui_swipe_show||'Swipe to show panels');
