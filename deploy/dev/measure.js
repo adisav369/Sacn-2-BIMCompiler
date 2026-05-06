@@ -778,7 +778,7 @@ function setupMeasure(A) {
     var firstRule = rules && rules.clash_rules && rules.clash_rules[0];
     var tolMm = firstRule ? Math.round((firstRule.tolerance_m || 0.025) * 1000) : 25;
     // Find storey for this clash pair
-    var storeyRows = A.dbQuery("SELECT storey FROM element_transforms WHERE guid = ?", [c[0]]);
+    var storeyRows = A.dbQuery("SELECT storey FROM elements_meta WHERE guid = ?", [c[0]]);
     var storey = storeyRows.length ? storeyRows[0][0] : '';
     // Short deep-link using hash fragment — avoids repeating the long OCI base URL
     var dbParam = new URLSearchParams(location.search).get('db') || '';
@@ -813,7 +813,7 @@ function setupMeasure(A) {
     var clsB = (c[3] || '?').replace('Ifc', '').replace('StandardCase', '');
     var overlap = (typeof c[8] === 'number') ? c[8] : 0;
     var sev = A._clashSeverity(overlap, A._currentClashRules);
-    var storeyRows = A.dbQuery("SELECT storey FROM element_transforms WHERE guid = ?", [c[0]]);
+    var storeyRows = A.dbQuery("SELECT storey FROM elements_meta WHERE guid = ?", [c[0]]);
     var storey = storeyRows.length ? storeyRows[0][0] : '?';
     var deepLink = A._buildClashDeepLink(c);
 
