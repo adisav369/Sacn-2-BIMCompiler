@@ -1855,22 +1855,32 @@ function setupMeasure(A) {
   };
 
   A.clearMeasures = function() {
-    while (A.measureGroup.children.length) {
-      A.measureGroup.remove(A.measureGroup.children[0]);
+    try {
+      while (A.measureGroup.children.length) {
+        A.measureGroup.remove(A.measureGroup.children[0]);
+      }
+      A.measureLabels.forEach(m => { try { m.div.remove(); } catch(e) {} });
+      A.measureLabels = [];
+      A.measureFirstPoint = null;
+      A.measureFirstMarker = null;
+      // Restore any orange-highlighted meshes
+      if (A._areaBackups) {
+        A._areaBackups.forEach(b => { try { b.mesh.material = b.origMat; } catch(e) {} });
+        A._areaBackups = [];
+      }
+      // Dismiss clash reveal if active
+      A._dismissClashes();
+    } catch(e) {
+      console.warn('§MEASURE_CLEAR_ERR', e.message);
     }
-    A.measureLabels.forEach(m => m.div.remove());
-    A.measureLabels = [];
-    A.measureFirstPoint = null;
-    A.measureFirstMarker = null;
-    // Restore any orange-highlighted meshes
-    if (A._areaBackups) {
-      A._areaBackups.forEach(b => { b.mesh.material = b.origMat; });
-      A._areaBackups = [];
-    }
-    // Dismiss clash reveal if active
-    A._dismissClashes();
-    A._guidToMesh = null; // invalidate cache
+    // Always reset state — even if cleanup above threw
+    A._guidToMesh = null;
     A._infoCardDiv = null;
+    A._clashMatrixDiv = null;
+    A._clashListDiv = null;
+    // Ensure toolbox is visible (issues.js hides it, clash flow may not restore it)
+    var tb = document.getElementById('search-box');
+    if (tb) tb.style.display = '';
     console.log('§MEASURE cleared all');
   };
 
