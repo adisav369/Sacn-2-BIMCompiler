@@ -32,6 +32,7 @@ var GridAssembler = (function() {
     SectionCut:       { required: false, desc: 'mesh slicing engine' },
     Elevation:        { required: false, desc: 'elevation projection engine' },
     GridContours:     { required: false, desc: '2D contour/edge renderer' },
+    DimChains:        { required: false, desc: 'dimension chain renderer' },
     setupGridOverlay: { required: true,  desc: 'grid scene/panel' }
   };
 

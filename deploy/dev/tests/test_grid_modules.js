@@ -26,6 +26,20 @@
  *   T19: GridViews lockView frustum geometry — halfW/halfH from building dims only
  *   T20: DoorArcs arc midpoint lies on circle (geometric proof)
  *   T21: Baseline functions preserved — buildGridScene, addGridLine, createBubble
+ *   T22-T32: (see inline) — config alignment, maths, no forced theme
+ *   T33: No dead hideMeshes/restoreMeshes code in grid_contours.js
+ *   T34: Elevation views share same style object (DRY — same reference)
+ *   T35: Floor views share same retain array (DRY — same reference)
+ *   T36: grid_overlay.js has no inline dim rendering (extracted)
+ *   T37: DimChains module API contract
+ *   T38: grid_dim_chains.js in correct load order
+ *   T39: GridConfig uses IIFE enclosure
+ *   T40: grid_overlay.js delegates to DimChains
+ *   T41: grid_contours.js clear() has no mesh visibility side effects
+ *   T42: Elevation levelMarkers share same reference
+ *   T43: GridAssembler registers DimChains
+ *   T44: No dim-label canvas rendering in grid_overlay.js
+ *   T45: grid_dim_chains.js is self-contained (no cross-module deps)
  */
 
 var fs = require('fs');
@@ -669,6 +683,174 @@ test('T32: No grid module forces theme toggle', function() {
     }
     logTag('T32_THEME', f + ' — no forced theme toggle');
   });
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// HARDENING — catch drift, dead code, concern violations
+// ══════════════════════════════════════════════════════════════════════
+
+// ── T33: No dead hideMeshes/restoreMeshes in grid_contours.js ───────
+
+test('T33: grid_contours.js has no dead hideMeshes/restoreMeshes code', function() {
+  var src = readFile('grid_contours.js');
+  assert(src.indexOf('hideMeshes') === -1,
+    'grid_contours.js still has hideMeshes (dead code)');
+  assert(src.indexOf('restoreMeshes') === -1,
+    'grid_contours.js still has restoreMeshes (dead code)');
+  assert(src.indexOf('_meshHidden') === -1,
+    'grid_contours.js still has _meshHidden state (dead)');
+  logTag('T33_DEAD', 'no hideMeshes/restoreMeshes/meshHidden — clean');
+});
+
+// ── T34: All elevation views share identical styles (DRY proof) ─────
+
+test('T34: Elevation views share same style object (DRY, not copy-paste)', function() {
+  var frontStyles = GridConfig.views.front.styles;
+  var rearStyles = GridConfig.views.rear.styles;
+  var leftStyles = GridConfig.views.left.styles;
+  var rightStyles = GridConfig.views.right.styles;
+  // All must be the same reference (DRY) — not just equal values
+  assert(frontStyles === rearStyles, 'front/rear styles are not same reference');
+  assert(frontStyles === leftStyles, 'front/left styles are not same reference');
+  assert(frontStyles === rightStyles, 'front/right styles are not same reference');
+  logTag('T34_DRY', 'all elevation styles === same object reference');
+});
+
+// ── T35: Floor views share same retain list (DRY proof) ─────────────
+
+test('T35: Floor views share same retain array (DRY, not copy-paste)', function() {
+  var floorRetain = GridConfig.views.floor.retain;
+  var floor1Retain = GridConfig.views.floor1.retain;
+  assert(floorRetain === floor1Retain, 'floor/floor1 retain are not same reference');
+  logTag('T35_DRY', 'floor retain === floor1 retain (same reference)');
+});
+
+// ── T36: grid_overlay.js does not contain dim chain rendering code ───
+
+test('T36: grid_overlay.js has no inline dim rendering (separated to DimChains)', function() {
+  var src = readFile('grid_overlay.js');
+  assert(src.indexOf('function createDimLabel') === -1,
+    'grid_overlay.js still has createDimLabel (should be in grid_dim_chains.js)');
+  assert(src.indexOf('function addDimSegment') === -1,
+    'grid_overlay.js still has addDimSegment (should be in grid_dim_chains.js)');
+  assert(src.indexOf('new THREE.LineDashedMaterial') === -1,
+    'grid_overlay.js still creates dashed materials inline');
+  logTag('T36_CONCERN', 'dim chain rendering extracted — grid_overlay.js clean');
+});
+
+// ── T37: DimChains module API contract ──────────────────────────────
+
+test('T37: DimChains exports build and remove', function() {
+  syntaxCheck('grid_dim_chains.js');
+  var dimSrc = readFile('grid_dim_chains.js');
+  var dimCtx = vm.createContext(Object.assign({}, stubCtx));
+  vm.runInContext(dimSrc, dimCtx, { filename: 'grid_dim_chains.js' });
+  var DC = dimCtx.DimChains;
+  assert(DC, 'DimChains not defined');
+  assert(typeof DC.build === 'function', 'DimChains.build not a function');
+  assert(typeof DC.remove === 'function', 'DimChains.remove not a function');
+  logTag('T37_API', 'DimChains.build + DimChains.remove — OK');
+});
+
+// ── T38: index.html loads grid_dim_chains.js in correct order ───────
+
+test('T38: index.html loads grid_dim_chains before grid_overlay', function() {
+  var html = readFile('index.html');
+  var dcPos = html.indexOf('grid_dim_chains.js');
+  var ovPos = html.indexOf('grid_overlay.js');
+  assert(dcPos >= 0, 'grid_dim_chains.js missing from index.html');
+  assert(dcPos < ovPos, 'grid_dim_chains.js must load before grid_overlay.js');
+  logTag('T38_ORDER', 'grid_dim_chains.js at pos ' + dcPos + ' < grid_overlay.js at ' + ovPos);
+});
+
+// ── T39: GridConfig uses IIFE (not bare object exposed to mutation) ──
+
+test('T39: GridConfig is enclosed in IIFE', function() {
+  var src = readFile('grid_config.js');
+  assert(src.indexOf('var GridConfig = (function()') >= 0,
+    'GridConfig not wrapped in IIFE — exposed to uncontrolled mutation');
+  logTag('T39_IIFE', 'GridConfig wrapped in IIFE');
+});
+
+// ── T40: grid_overlay.js delegates to DimChains (not DIY) ───────────
+
+test('T40: grid_overlay.js calls DimChains.build and DimChains.remove', function() {
+  var src = readFile('grid_overlay.js');
+  assert(src.indexOf('DimChains.build') >= 0,
+    'grid_overlay.js does not call DimChains.build');
+  assert(src.indexOf('DimChains.remove') >= 0,
+    'grid_overlay.js does not call DimChains.remove');
+  logTag('T40_DELEGATE', 'grid_overlay.js delegates dims to DimChains');
+});
+
+// ── T41: grid_contours.js has no residual mesh visibility concerns ───
+
+test('T41: grid_contours.js clear() does not reference mesh visibility', function() {
+  var src = readFile('grid_contours.js');
+  var clearStart = src.indexOf('function clear(');
+  var clearEnd = src.indexOf('return {', clearStart);
+  var clearBody = src.substring(clearStart, clearEnd);
+  assert(clearBody.indexOf('visible') === -1,
+    'clear() still references mesh visibility');
+  assert(clearBody.indexOf('Mesh') === -1,
+    'clear() still references Mesh operations');
+  logTag('T41_CLEAN', 'clear() only disposes contour group — no mesh side effects');
+});
+
+// ── T42: All elevation levelMarkers share same config (DRY) ─────────
+
+test('T42: All elevation levelMarkers are same reference', function() {
+  var fLM = GridConfig.views.front.levelMarkers;
+  var rLM = GridConfig.views.rear.levelMarkers;
+  var lLM = GridConfig.views.left.levelMarkers;
+  var sLM = GridConfig.views.right.levelMarkers;
+  assert(fLM === rLM, 'front/rear levelMarkers not same ref');
+  assert(fLM === lLM, 'front/left levelMarkers not same ref');
+  assert(fLM === sLM, 'front/right levelMarkers not same ref');
+  logTag('T42_DRY', 'levelMarkers shared reference across all elevation views');
+});
+
+// ── T43: GridAssembler registers DimChains ──────────────────────────
+
+test('T43: GridAssembler.MODULES includes DimChains', function() {
+  // Reload assembler with updated source
+  var asmSrc2 = readFile('grid_assembler.js');
+  var asmCtx2 = vm.createContext(Object.assign({}, stubCtx));
+  vm.runInContext(asmSrc2, asmCtx2, { filename: 'grid_assembler.js' });
+  assert(asmCtx2.GridAssembler.MODULES.DimChains, 'missing DimChains in MODULES');
+  assert(!asmCtx2.GridAssembler.MODULES.DimChains.required, 'DimChains should be optional');
+  logTag('T43_REG', 'DimChains registered as optional module');
+});
+
+// ── T44: No rendering code in grid_overlay.js (canvas/texture/sprite) ─
+
+test('T44: grid_overlay.js has no canvas text rendering (concern violation)', function() {
+  var src = readFile('grid_overlay.js');
+  // It should still have createBubble (bubble sprites are part of grid scene),
+  // but should NOT have dimension-specific canvas rendering
+  var lines = src.split('\n');
+  var dimCanvasCount = 0;
+  for (var i = 0; i < lines.length; i++) {
+    // Look for canvas 192x48 pattern that was the dim label canvas
+    if (lines[i].indexOf('192') >= 0 && lines[i].indexOf('48') >= 0) dimCanvasCount++;
+  }
+  assert(dimCanvasCount === 0,
+    'grid_overlay.js still has 192x48 canvas code (dim label rendering not extracted)');
+  logTag('T44_CONCERN', 'no dim-label canvas rendering in grid_overlay.js');
+});
+
+// ── T45: grid_dim_chains.js is self-contained (no external state) ────
+
+test('T45: grid_dim_chains.js does not reference external module state', function() {
+  var src = readFile('grid_dim_chains.js');
+  // Should not reference GridConfig, GridViews, SectionCut, etc.
+  assert(src.indexOf('GridConfig') === -1,
+    'grid_dim_chains.js depends on GridConfig (should receive style via params)');
+  assert(src.indexOf('GridViews') === -1,
+    'grid_dim_chains.js depends on GridViews');
+  assert(src.indexOf('SectionCut') === -1,
+    'grid_dim_chains.js depends on SectionCut');
+  logTag('T45_SELF', 'grid_dim_chains.js self-contained — no cross-module deps');
 });
 
 // Summary

@@ -23,7 +23,6 @@ var GridContours = (function() {
   'use strict';
 
   var _group = null;       // THREE.Group holding all contour/edge lines
-  var _meshHidden = false; // true if we hid 3D meshes for elevation mode
 
   function log(msg) { console.log('[GridContours] ' + msg); }
 
@@ -241,25 +240,6 @@ var GridContours = (function() {
     log('§CONTOUR_RENDER door_arcs=' + arcs.length);
   }
 
-  // ── Mesh Visibility ───────────────────────────────────────────────
-
-  function hideMeshes(APP) {
-    APP.collectMeshes(function(o) { return o.isMesh; }).forEach(function(obj) {
-      obj.userData._contourHidden = true;
-      obj.visible = false;
-    });
-    _meshHidden = true;
-  }
-
-  function restoreMeshes(APP) {
-    if (!_meshHidden) return;
-    APP.collectMeshes(function(o) { return o.isMesh && o.userData._contourHidden; }).forEach(function(obj) {
-      delete obj.userData._contourHidden;
-      obj.visible = true;
-    });
-    _meshHidden = false;
-  }
-
   // ── Cleanup ───────────────────────────────────────────────────────
 
   function clear(APP) {
@@ -270,7 +250,6 @@ var GridContours = (function() {
       if (_group.parent) _group.parent.remove(_group);
       _group = null;
     }
-    restoreMeshes(APP);
     if (APP.markDirty) APP.markDirty();
     log('§CONTOUR_CLEAR done');
   }
