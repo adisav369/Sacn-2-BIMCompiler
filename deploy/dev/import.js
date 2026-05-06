@@ -147,7 +147,7 @@ function setupImport(A) {
 
           // Build sql.js DBs on main thread (sql.js already loaded)
           try {
-            const SQL = await initSqlJs({ locateFile: f => 'https://sql.js.org/dist/' + f });
+            const SQL = await initSqlJs({ locateFile: f => 'lib/' + f });
             const dbs = buildImportDBs(SQL, msg);
 
             // Save to IndexedDB — single DB (geometry + metadata in one)
@@ -235,7 +235,7 @@ function setupImport(A) {
             ' geom=' + msg.meta.geomCount + ' format=' + msg.meta.sourceFormat);
 
           try {
-            var SQL = await initSqlJs({ locateFile: function(f) { return 'https://sql.js.org/dist/' + f; } });
+            var SQL = await initSqlJs({ locateFile: function(f) { return 'lib/' + f; } });
             var dbs = buildImportDBs(SQL, msg);
 
             var record = {
@@ -399,7 +399,7 @@ function setupImport(A) {
     if (!dbBuf) { alert('No DB data'); return; }
 
     // Load sql.js if needed
-    var SQL = await initSqlJs({ locateFile: function(f) { return 'https://sql.js.org/dist/' + f; } });
+    var SQL = await initSqlJs({ locateFile: function(f) { return 'lib/' + f; } });
     var db = new SQL.Database(new Uint8Array(dbBuf));
 
     var elements = [], transforms = [], geometries = [];

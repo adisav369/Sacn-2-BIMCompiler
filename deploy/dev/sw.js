@@ -8,10 +8,19 @@
 // Cache-first for heavy assets (.wasm, images). DB files skip SW (IndexedDB handles them).
 //
 // DEPLOY: bump CACHE_VERSION on every OCI upload. Old caches are purged on activate.
-const CACHE_VERSION = 'v251';
+const CACHE_VERSION = 'v252';
 const CACHE_NAME = 'bim-ootb-' + CACHE_VERSION;
 
-// CDN assets fetched by loader.js — versioned URLs, safe to cache-first
+// Local copies of vendor libs — single-origin, no CDN dependency
+const LOCAL_LIBS = [
+  'lib/three.min.js',
+  'lib/OrbitControls.js',
+  'lib/sql-wasm.js',
+  'lib/sql-wasm.wasm',
+  'lib/xlsx.full.min.js',
+];
+
+// CDN fallback URLs — cached opportunistically if loader falls back to them
 const CDN_ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
   'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js',
@@ -75,7 +84,7 @@ const PRECACHE_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
-      cache.addAll([...PRECACHE_ASSETS, ...CDN_ASSETS])
+      cache.addAll([...PRECACHE_ASSETS, ...LOCAL_LIBS])
     )
   );
   self.skipWaiting();
@@ -94,7 +103,9 @@ self.addEventListener('activate', (event) => {
 function isNetworkFirst(url) {
   // Local .html and .js files change on every deploy — always try network first
   if (url.endsWith('.html') || url.endsWith('.js')) {
-    // CDN assets are versioned and immutable — keep them cache-first
+    // lib/ files are versioned and immutable — keep them cache-first
+    if (url.includes('/lib/')) return false;
+    // CDN fallback assets are also immutable — keep them cache-first
     for (const cdn of CDN_ASSETS) {
       if (url === cdn) return false;
     }

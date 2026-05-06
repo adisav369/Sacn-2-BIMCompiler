@@ -1,4 +1,10 @@
-// loader.js — Progressive script loader with per-library progress
+// loader.js — Progressive script loader: local-first, CDN fallback
+// WASM binary fetch starts immediately — downloads in parallel with JS libs
+const _wasmBinaryPromise = fetch('lib/sql-wasm.wasm')
+  .then(r => r.ok ? r.arrayBuffer().then(b => new Uint8Array(b)) : null)
+  .catch(() => fetch('https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.wasm')
+    .then(r => r.ok ? r.arrayBuffer().then(b => new Uint8Array(b)) : null)
+    .catch(() => null));
 const _loadStart = performance.now();
 const _elapsedEl = document.getElementById('load-elapsed');
 const _timerIv = setInterval(() => {
@@ -6,11 +12,20 @@ const _timerIv = setInterval(() => {
   _elapsedEl.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 }, 1000);
 
+// Local-first, CDN fallback
 const LIBS = [
-  { name: 'Three.js',       url: 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js' },
-  { name: 'OrbitControls',   url: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js' },
-  { name: 'SQLite (WASM+RTree)', url: 'https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.js' },
-  { name: 'SheetJS (Excel)', url: 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js' },
+  { name: 'Three.js',
+    url: 'lib/three.min.js',
+    cdn: 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js' },
+  { name: 'OrbitControls',
+    url: 'lib/OrbitControls.js',
+    cdn: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js' },
+  { name: 'SQLite (WASM+RTree)',
+    url: 'lib/sql-wasm.js',
+    cdn: 'https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.js' },
+  { name: 'SheetJS (Excel)',
+    url: 'lib/xlsx.full.min.js',
+    cdn: 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js' },
 ];
 
 // Create progress rows
@@ -38,6 +53,7 @@ async function fetchWithProgress(url, index) {
   statusEl.style.color = '#4fc3f7';
 
   const resp = await fetch(url);
+  if (!resp.ok) throw new Error(url + ' → ' + resp.status);
   const total = +resp.headers.get('Content-Length') || 0;
   const reader = resp.body.getReader();
   const chunks = [];
@@ -75,12 +91,28 @@ async function fetchWithProgress(url, index) {
   });
 }
 
+// Local-first, CDN fallback loader
+async function loadLib(index) {
+  var lib = LIBS[index];
+  try {
+    await fetchWithProgress(lib.url, index);
+    return;
+  } catch(e) {
+    console.warn('[loader] §LOCAL_FAIL ' + lib.name + ' — falling back to CDN');
+    var statusEl = document.getElementById('lib-' + index + '-status');
+    if (statusEl) { statusEl.textContent = 'CDN fallback...'; statusEl.style.color = '#ff8c00'; }
+    var barEl = document.getElementById('lib-' + index + '-bar');
+    if (barEl) { barEl.style.width = '0%'; barEl.style.background = '#4fc3f7'; }
+  }
+  await fetchWithProgress(lib.cdn, index);
+}
+
 async function loadAllLibs() {
   // Three.js must load before OrbitControls (dependency)
-  await fetchWithProgress(LIBS[0].url, 0);  // Three.js
-  await fetchWithProgress(LIBS[1].url, 1);  // OrbitControls (needs THREE global)
+  await loadLib(0);  // Three.js
+  await loadLib(1);  // OrbitControls (needs THREE global)
   // sql.js is needed for DB; load it before starting viewer
-  await fetchWithProgress(LIBS[2].url, 2);
+  await loadLib(2);
 
   // Critical path done — start viewer now, don't wait for SheetJS (4MB, non-critical)
   clearInterval(_timerIv);
@@ -95,7 +127,7 @@ async function loadAllLibs() {
   }
 
   // SheetJS loads in background — excel.js handles typeof XLSX === 'undefined' gracefully
-  fetchWithProgress(LIBS[3].url, 3).catch(e => {
+  loadLib(3).catch(e => {
     console.warn('[loader] §SHEETJS_LOAD_FAIL (Excel export unavailable):', e.message);
   });
 }

@@ -31,6 +31,8 @@ output/
 
 # Dependencies (download via Maven)
 lib/
+!deploy/dev/lib/
+!deploy/live/lib/
 
 # Large binary databases — track small files, ignore rest of library/
 /library/*

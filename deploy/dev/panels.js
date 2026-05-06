@@ -165,6 +165,8 @@ function setupPanels(A) {
 
     function hideAll() {
       panelIds.forEach(pid => {
+        // Keep toolbox visible while measure mode is active (user needs it to toggle off)
+        if (pid === 'search-box' && window.APP && window.APP.measureActive) return;
         const el = document.getElementById(pid);
         if (el) el.classList.add('swipe-hidden');
       });
@@ -176,7 +178,12 @@ function setupPanels(A) {
     function showAll() {
       panelIds.forEach(pid => {
         const el = document.getElementById(pid);
-        if (el) el.classList.remove('swipe-hidden');
+        if (el) {
+          el.classList.remove('swipe-hidden');
+          // Also clear collapsed on panel bodies inside — prevents invisible-but-present state
+          var body = el.querySelector('.panel-body');
+          if (body) body.classList.remove('collapsed');
+        }
       });
       panelsHidden = false;
       const s = document.getElementById('status');

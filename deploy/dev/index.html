@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BIM OOTB v3 — DEV</title>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="preload" href="https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.wasm" as="fetch" crossorigin>
+<link rel="preload" href="lib/sql-wasm.wasm" as="fetch">
 <meta name="theme-color" content="#4fc3f7">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -477,19 +477,19 @@
 </div>
 
 <script src="loader.js?v=4"></script>
-<script src="config.js?v=3"></script>
-<script src="scene.js?v=4"></script>
-<script src="helpers.js?v=1"></script>
-<script src="streaming.js?v=16"></script>
-<script src="panels.js?v=5"></script>
-<script src="tools.js?v=5"></script>
-<script src="picking.js?v=12"></script>
-<script src="tour.js?v=3"></script>
-<script src="measure.js?v=32"></script>
-<script src="sitecam.js?v=6"></script>
-<script src="issues.js?v=4"></script>
-<script src="excel.js?v=4"></script>
-<script src="walk.js?v=7"></script>
+<script src="config.js?v=3" onerror="console.warn('§LOAD_FAIL config.js')"></script>
+<script src="scene.js?v=4" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
+<script src="helpers.js?v=1" onerror="console.warn('§LOAD_FAIL helpers.js')"></script>
+<script src="streaming.js?v=16" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
+<script src="panels.js?v=5" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
+<script src="tools.js?v=5" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
+<script src="picking.js?v=12" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
+<script src="tour.js?v=3" onerror="console.warn('§LOAD_FAIL tour.js')"></script>
+<script src="measure.js?v=32" onerror="console.warn('§LOAD_FAIL measure.js')"></script>
+<script src="sitecam.js?v=6" onerror="console.warn('§LOAD_FAIL sitecam.js')"></script>
+<script src="issues.js?v=4" onerror="console.warn('§LOAD_FAIL issues.js')"></script>
+<script src="excel.js?v=4" onerror="console.warn('§LOAD_FAIL excel.js')"></script>
+<script src="walk.js?v=7" onerror="console.warn('§LOAD_FAIL walk.js')"></script>
 <!-- navigate.js lazy-loaded on demand by main.js A.loadNavigate() -->
 <script src="city.js?v=5"></script>
 <script src="rates.js?v=1"></script>
@@ -507,8 +507,9 @@
 <script src="grid_door_arcs.js?v=1" onerror="console.warn('[DoorArcs] grid_door_arcs.js skipped')"></script>
 <script src="section_cut.js?v=5" onerror="console.warn('[SectionCut] section_cut.js skipped')"></script>
 <script src="elevation.js?v=1" onerror="console.warn('[Elevation] elevation.js skipped')"></script>
-<script src="grid_contours.js?v=1" onerror="console.warn('[GridContours] grid_contours.js skipped')"></script>
-<script src="grid_overlay.js?v=3" onerror="console.warn('[GridOverlay] grid_overlay.js skipped — file not found or error')"></script>
+<script src="grid_contours.js?v=2" onerror="console.warn('[GridContours] grid_contours.js skipped')"></script>
+<script src="grid_dim_chains.js?v=1" onerror="console.warn('[DimChains] grid_dim_chains.js skipped')"></script>
+<script src="grid_overlay.js?v=4" onerror="console.warn('[GridOverlay] grid_overlay.js skipped — file not found or error')"></script>
 <script src="grid_assembler.js?v=1" onerror="console.warn('[GridAssembler] grid_assembler.js skipped')"></script>
 <script src="main.js?v=11"></script>
 <!-- Styled tooltip bubbles for [data-trl-title] buttons — appended to body, not clipped by overflow:hidden -->

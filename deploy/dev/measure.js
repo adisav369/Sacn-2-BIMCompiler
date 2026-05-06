@@ -115,7 +115,9 @@ function setupMeasure(A) {
     function _insertBatch() {
       if (!A.db) { A._clashRtreeBuilding = false; return; }
       try {
+        A.db.run("BEGIN");
         A.db.run("INSERT INTO elements_rtree SELECT rowid, center_x - bbox_x/2, center_x + bbox_x/2, center_y - bbox_y/2, center_y + bbox_y/2, center_z - bbox_z/2, center_z + bbox_z/2 FROM element_transforms LIMIT " + RTREE_BATCH + " OFFSET " + offset);
+        A.db.run("COMMIT");
         offset += RTREE_BATCH;
         if (offset < n) {
           console.log('§CLASH_RTREE batch ' + offset + '/' + n);
@@ -127,6 +129,7 @@ function setupMeasure(A) {
           console.log('§CLASH_RTREE ready ' + n + ' rows in ' + ms + 'ms');
         }
       } catch(e) {
+        try { A.db.run("ROLLBACK"); } catch(re) {}
         A._clashRtreeBuilding = false;
         console.warn('§CLASH_RTREE batch failed at offset=' + offset + ' — ' + e.message);
       }
@@ -1291,7 +1294,16 @@ function setupMeasure(A) {
           _pairCounts[r.source.discipline + '|' + r.target.discipline] = 0;
           return;
         }
-        var count = A._countClashesRtree(null, rules, r.source.discipline, r.target.discipline);
+        // Storey-loop count — avoids whole-building N² explosion
+        var count = 0;
+        var stA = {}, stB = [];
+        A.dbQuery("SELECT storey FROM elements_meta WHERE discipline = '" + r.source.discipline + "' AND storey IS NOT NULL GROUP BY storey")
+          .forEach(function(s) { stA[s[0]] = 1; });
+        A.dbQuery("SELECT storey FROM elements_meta WHERE discipline = '" + r.target.discipline + "' AND storey IS NOT NULL GROUP BY storey")
+          .forEach(function(s) { if (stA[s[0]]) stB.push(s[0]); });
+        for (var si = 0; si < stB.length; si++) {
+          count += A._countClashesRtree(stB[si], rules, r.source.discipline, r.target.discipline);
+        }
         _pairCounts[r.source.discipline + '|' + r.target.discipline] = count;
       });
     }
@@ -1821,9 +1833,18 @@ function setupMeasure(A) {
     btn.style.color = A.measureActive ? '#000' : '#fff';
     var isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     A.status.textContent = A.measureActive
-      ? (isMobile ? 'Tap for dimensions. Long-press for Info' : 'Click for dimensions. Right-click for Info')
+      ? (isMobile ? 'Tap for dimensions. Long-press for Info. Tap here to exit.' : 'Click for dimensions. Right-click for Info')
       : '';
+    // Mobile: tap status bar to exit measure mode
+    if (A.measureActive && isMobile) {
+      A.status.style.cursor = 'pointer';
+      A.status.onclick = function() { if (A.measureActive) A.toggleMeasure(); };
+    } else {
+      A.status.style.cursor = '';
+      A.status.onclick = null;
+    }
     if (!A.measureActive) {
+      if (A._measureClickTimer) { clearTimeout(A._measureClickTimer); A._measureClickTimer = null; }
       A.clearMeasures();
     }
     console.log(`§MEASURE mode ${A.measureActive ? 'ON' : 'OFF'}`);

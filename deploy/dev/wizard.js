@@ -1623,12 +1623,12 @@
     if (typeof initSqlJs === 'undefined') {
       await new Promise(function(resolve) {
         var s = document.createElement('script');
-        s.src = 'https://sql.js.org/dist/sql-wasm.js';
+        s.src = 'lib/sql-wasm.js';
         s.onload = resolve;
         document.head.appendChild(s);
       });
     }
-    var SQL = await initSqlJs({ locateFile: function(f) { return 'https://sql.js.org/dist/' + f; } });
+    var SQL = await initSqlJs({ locateFile: function(f) { return 'lib/' + f; } });
     var db = new SQL.Database(new Uint8Array(dbBuffer));
 
     // S230b: Skip wizard if already completed for this project

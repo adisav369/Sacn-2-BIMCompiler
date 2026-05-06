@@ -398,8 +398,10 @@ function setupSitecam(A) {
   };
 
   A._initMarkupListeners = function(mc) {
-    if (A._markupListenersSet) return;
+    // Reset flag each time so retake/new snag gets fresh listeners
+    if (A._markupListenersSet && A._markupCanvas === mc) return;
     A._markupListenersSet = true;
+    A._markupCanvas = mc;
     let currentStroke = null;
 
     function onStart(e) {
@@ -452,6 +454,8 @@ function setupSitecam(A) {
   };
 
   A.shareSitePhoto = async function() {
+    // Route clash snags to clash-specific share (has both GUIDs, overlap, deep-link)
+    if (A._pendingClashSnag && A._shareClashSnag) { A._shareClashSnag(); return; }
     const blob = await A._getMarkupBlob();
     if (!blob) return;
     const info = A._getCamBimInfo();
@@ -508,6 +512,8 @@ function setupSitecam(A) {
   };
 
   A.downloadSitePhoto = async function() {
+    // Route clash snags to clash-specific download (has both GUIDs, overlap, deep-link)
+    if (A._pendingClashSnag && A._downloadClashSnag) { A._downloadClashSnag(); return; }
     const blob = await A._getMarkupBlob();
     if (!blob) return;
     const info = A._getCamBimInfo();

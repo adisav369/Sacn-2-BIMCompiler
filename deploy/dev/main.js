@@ -8,21 +8,10 @@
 function initViewer() {
   const APP = window.APP = {};
 
-  // Initialize modules in order
-  setupConfig(APP);
-  setupScene(APP);
-  setupHelpers(APP);
-  setupStreaming(APP);
-  setupPanels(APP);
-  setupTools(APP);
-  setupPicking(APP);
-  setupTour(APP);
-  setupMeasure(APP);
-  setupSitecam(APP);
-  setupIssues(APP);
-  setupExcel(APP);
-  setupWalk(APP);
-  setupCity(APP);
+  // Initialize modules in order — guarded so a single script load failure doesn't kill the viewer
+  var _mods = [setupConfig, setupScene, setupHelpers, setupStreaming, setupPanels, setupTools,
+    setupPicking, setupTour, setupMeasure, setupSitecam, setupIssues, setupExcel, setupWalk, setupCity];
+  _mods.forEach(function(fn) { if (typeof fn === 'function') fn(APP); });
   if (typeof setupNlp === 'function') setupNlp(APP);
   // navigate.js lazy-loaded on demand (78KB saved on first paint)
   APP._navigateLoaded = false;
@@ -174,7 +163,8 @@ function initViewer() {
     if (diffDbUrl && APP.db && typeof APP.computeDiff === 'function') {
       try {
         const buf = await APP.cachedFetch(diffDbUrl);
-        const SQL = await initSqlJs({ locateFile: f => 'https://sql.js.org/dist/' + f });
+        // Reuse SQL instance from A.init() — avoids re-downloading WASM
+        var SQL = APP._SQL || await initSqlJs({ locateFile: f => 'lib/' + f });
         APP.diffDb = new SQL.Database(new Uint8Array(buf));
         console.log('[S223] §DIFF_DB_LOADED url=' + diffDbUrl);
         APP.computeDiff();
@@ -210,6 +200,7 @@ function initViewer() {
           clashChecks++;
           if (APP.streamedCount > 10 || clashChecks > 20) {
             clearInterval(clashTimer);
+            try {
             // Query element metadata to build a clash entry for _flyToClash
             const metaRows = APP.dbQuery(
               "SELECT m.guid, m.ifc_class, m.discipline, m.element_name FROM elements_meta m WHERE m.guid IN (?, ?)",
@@ -241,6 +232,7 @@ function initViewer() {
               APP.status.textContent = 'Clash: ' + (mA[3] || guidA).substring(0, 20) + ' \u2194 ' + (mB[3] || guidB).substring(0, 20) + ' | Storey: ' + storeyParam + ' | Tol: ' + tolMm + 'mm';
               console.log('§CLASH_DEEPLINK guidA=' + guidA + ' guidB=' + guidB + ' storey=' + storeyParam + ' tol=' + tolMm);
             });
+            } catch(err) { console.error('§CLASH_DEEPLINK_ERR', err); }
           }
         }, 1500);
       }

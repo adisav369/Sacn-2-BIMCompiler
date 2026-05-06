@@ -125,7 +125,7 @@ function setupImport(A) {
 
           // Build sql.js DBs on main thread (sql.js already loaded)
           try {
-            const SQL = await initSqlJs({ locateFile: f => 'https://sql.js.org/dist/' + f });
+            const SQL = await initSqlJs({ locateFile: f => `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/${f}` });
             const dbs = buildImportDBs(SQL, msg);
 
             // Save to IndexedDB — single DB (geometry + metadata in one)
