@@ -20,6 +20,21 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S246b IN PROGRESS (2026-05-06): WASM/SW/panel hardening + local-first libs.**
+  - Vendor libs (Three.js, OrbitControls, sql-wasm, SheetJS) localised to `lib/` in ootb-dev — single origin, CDN fallback. ootb-live stays CDN-only for A/B comparison.
+  - SW v254: cache key strips `?v=N` (was causing cache miss → offline.html served as JS → initViewer undefined). `.js` fallback returns 503 not offline.html.
+  - R-tree + indexes built eagerly after DB loads (was lazy on first clash open — caused matrix stall on large buildings).
+  - `_countClashesRtree` rewritten as single SQL R-tree join (was N queries per discA element).
+  - Clash snag: direct `drawImage` from WebGL canvas (was `toBlob→Image` roundtrip ~500ms → now ~5ms). `preserveDrawingBuffer` enabled.
+  - Long-press: timer/flag cleaned on measure toggle off. Info card auto-dismisses instead of blocking.
+  - Panel touch-through: `pointerdown.stopPropagation` on all static panels.
+  - Swipe-hide exits measure mode. Swipe-show clears `collapsed` class.
+  - Clash snag routing: Share/Save → clash-specific save with both GUIDs, overlap, deep-link.
+  - Issues list filtered to active building.
+  - 11 code quality fixes from codebase audit (setup guards, onerror on scripts, IDB error handling, etc.)
+  - **Still investigating:** panel touch-through may still seep on some mobile browsers. Large building clash matrix may still have initial delay during R-tree population. InitViewer undefined may recur if SW cache cycle needs 2 reloads.
+  - **Next session:** continue troubleshooting panel event propagation, verify R-tree eager build timing on large buildings, test SW v254 cache key fix across browsers.
+
 **S246 DONE (2026-05-04): Clash Snag + R-tree perf + full-mesh LOD.**
   - Snag: long-press clash row → JPEG capture (async toBlob) → metadata strip (severity, GPS, timestamp) → freehand annotation → share via Web Share API + deep-link URL.
   - Deep-link: `#clash=guidA~guidB&cam=x,y,z&tgt=...` — recipient opens, 2s cinematic fly-to, red/orange highlights. Desktop + mobile.
