@@ -5,6 +5,7 @@ repo_url: https://github.com/red1oon/BIMCompiler
 
 theme:
   name: material
+  custom_dir: overrides
   palette:
     - scheme: default
       primary: blue grey
@@ -48,8 +49,9 @@ extra_css:
 
 extra:
   analytics:
-    provider: google
-    property: G-XXXXXXXXXX  # Replace with your GA4 Measurement ID from https://analytics.google.com/
+    provider: custom
+    # GoatCounter — privacy-friendly, no cookies, GDPR compliant
+    # Dashboard: https://red1oon.goatcounter.com
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/red1oon/BIMCompiler
