@@ -494,7 +494,8 @@ function generateSchedule(activities, startDateStr) {
         tasks.push({
           id: taskId,
           wbs: `1.${act.rules.sequence}.${taskId}`,
-          name: `${storey} - Install ${act.cls.replace('Ifc','')} (${act.disc})`,
+          name: `${storey} - ${act.cls.replace('Ifc','').replace('BuildingElementProxy','BldgProxy').replace('StandardCase','Std').replace('DistributionElement','DistElem').replace('FireSuppressionTerminal','FireSup').replace('ElectricAppliance','ElecApp')} (${act.disc})`,
+          ifcClass: act.cls,
           phase,
           discipline: act.disc,
           storey,
@@ -520,6 +521,167 @@ function generateSchedule(activities, startDateStr) {
     }
   }
   return tasks;
+}
+
+// ============================================================================
+// 4D SCHEDULE AUDIT — S240 §0.1 (8 checks, must all PASS before sync)
+// ============================================================================
+function audit4DSchedule(scheduleData, db, qtoData) {
+  const results = [];
+  const PHASE_ORDER = ['Substructure','Superstructure','MEP Rough-in','Architecture','MEP Final','Finishes'];
+
+  // Check 1: Task coverage — every IFC class in DB maps to SEQUENCE_RULES (no DEFAULT)
+  const dbClasses = qtoData.map(r => r.cls);
+  const unmapped = [...new Set(dbClasses.filter(c => !SEQUENCE_RULES[c]))];
+  const c1 = unmapped.length === 0;
+  console.log('§4D_AUDIT_COVERAGE ' + (c1 ? 'PASS' : 'FAIL') + ' unmapped=[' + unmapped.join(',') + ']');
+  results.push({name:'COVERAGE', pass:c1});
+
+  // Check 2: Phase order — no phase inversion in task sequence
+  let c2 = true;
+  let lastPhaseIdx = -1;
+  const tasksByOrder = [...scheduleData].sort((a,b) => a.startDay - b.startDay || PHASE_ORDER.indexOf(a.phase) - PHASE_ORDER.indexOf(b.phase));
+  for (const t of tasksByOrder) {
+    const pi = PHASE_ORDER.indexOf(t.phase);
+    if (pi < 0) continue;
+    // Allow same phase — only flag if a later task's phase is strictly earlier AND starts later
+    // Phase inversion = a task in an earlier phase starts AFTER a task in a later phase on the SAME storey
+  }
+  // Stricter check: per-storey, no earlier phase starting after a later phase
+  const storeyPhaseStarts = {};
+  for (const t of scheduleData) {
+    const key = t.storey + '|||' + t.phase;
+    if (!storeyPhaseStarts[key] || t.startDay < storeyPhaseStarts[key]) {
+      storeyPhaseStarts[key] = t.startDay;
+    }
+  }
+  const storeys = [...new Set(scheduleData.map(t => t.storey))];
+  const inversions = [];
+  for (const st of storeys) {
+    for (let i = 0; i < PHASE_ORDER.length - 1; i++) {
+      for (let j = i + 1; j < PHASE_ORDER.length; j++) {
+        const earlyStart = storeyPhaseStarts[st + '|||' + PHASE_ORDER[i]];
+        const lateStart = storeyPhaseStarts[st + '|||' + PHASE_ORDER[j]];
+        if (earlyStart !== undefined && lateStart !== undefined && lateStart < earlyStart) {
+          inversions.push(st + ':' + PHASE_ORDER[j] + '<' + PHASE_ORDER[i]);
+          c2 = false;
+        }
+      }
+    }
+  }
+  console.log('§4D_AUDIT_PHASE_ORDER ' + (c2 ? 'PASS' : 'FAIL') + (inversions.length ? ' inversions=[' + inversions.join(',') + ']' : ' ok=true'));
+  results.push({name:'PHASE_ORDER', pass:c2});
+
+  // Check 3: Storey order — within each phase, storeys run bottom-up
+  let c3 = true;
+  const storeyViolations = [];
+  function storeyRank(s) {
+    if (!s) return 999;
+    const u = s.toUpperCase();
+    if (u.includes('ROOF')) return 900;
+    if (u.includes('BASEMENT') || u.startsWith('B')) return -10 + (parseInt(u.replace(/\D/g,''))||0);
+    if (u === 'GROUND' || u === 'G' || u === 'G0' || u === 'GF') return 0;
+    const n = parseInt(u.replace(/\D/g,''));
+    return isNaN(n) ? 50 : n;
+  }
+  for (const phase of PHASE_ORDER) {
+    const phaseTasks = scheduleData.filter(t => t.phase === phase);
+    const storeyStarts = {};
+    for (const t of phaseTasks) {
+      if (!storeyStarts[t.storey] || t.startDay < storeyStarts[t.storey]) {
+        storeyStarts[t.storey] = t.startDay;
+      }
+    }
+    const sorted = Object.entries(storeyStarts).sort((a,b) => a[1] - b[1]);
+    for (let i = 1; i < sorted.length; i++) {
+      if (storeyRank(sorted[i][0]) < storeyRank(sorted[i-1][0])) {
+        storeyViolations.push(phase + ':' + sorted[i-1][0] + '>' + sorted[i][0]);
+        c3 = false;
+      }
+    }
+  }
+  console.log('§4D_AUDIT_STOREY_ORDER ' + (c3 ? 'PASS' : 'FAIL') + (storeyViolations.length ? ' violations=[' + storeyViolations.join(',') + ']' : ' ok=true'));
+  results.push({name:'STOREY_ORDER', pass:c3});
+
+  // Check 4: Duration sanity — no task >120 days, no task <1 day
+  const outliers = scheduleData.filter(t => t.duration > 120 || t.duration < 1).map(t => t.name + '=' + t.duration + 'd');
+  const c4 = outliers.length === 0;
+  console.log('§4D_AUDIT_DURATION ' + (c4 ? 'PASS' : 'FAIL') + ' outliers=[' + outliers.join(',') + ']');
+  results.push({name:'DURATION', pass:c4});
+
+  // Check 5: Overlap sanity — no two tasks with same resource AND same IFC class on same storey
+  // Different classes by same trade is normal (e.g. FlowFitting + FlowSegment by PLUMBER)
+  let c5 = true;
+  const conflicts = [];
+  function _taskClass(t) { return t.ifcClass || ''; }
+  for (let i = 0; i < scheduleData.length; i++) {
+    for (let j = i + 1; j < scheduleData.length; j++) {
+      const a = scheduleData[i], b = scheduleData[j];
+      if (a.storey === b.storey && a.resource && a.resource === b.resource &&
+          _taskClass(a) === _taskClass(b) &&
+          a.startDay < b.finishDay && b.startDay < a.finishDay) {
+        conflicts.push(a.name + ' vs ' + b.name);
+        c5 = false;
+      }
+    }
+  }
+  console.log('§4D_AUDIT_OVERLAP ' + (c5 ? 'PASS' : 'FAIL') + ' conflicts=[' + conflicts.slice(0,5).join('; ') + (conflicts.length > 5 ? '..+' + (conflicts.length-5) : '') + ']');
+  results.push({name:'OVERLAP', pass:c5});
+
+  // Check 6: Total duration — project total ≤ 3× naive serial sum
+  const serialSum = scheduleData.reduce((s,t) => s + t.duration, 0);
+  const projectDays = scheduleData.length ? Math.max(...scheduleData.map(t => t.finishDay)) : 0;
+  const ratio = serialSum > 0 ? (projectDays / serialSum).toFixed(2) : 0;
+  const c6 = projectDays <= 3 * serialSum;
+  console.log('§4D_AUDIT_TOTAL ' + (c6 ? 'PASS' : 'FAIL') + ' days=' + projectDays + ' serial=' + Math.round(serialSum) + ' ratio=' + ratio);
+  results.push({name:'TOTAL', pass:c6});
+
+  // Check 7: Gantt bar labels — ≤40 chars, no undefined/[object Object]
+  const badLabels = scheduleData.filter(t => !t.name || t.name.length > 40 || t.name.includes('undefined') || t.name.includes('[object'));
+  const c7 = badLabels.length === 0;
+  console.log('§4D_AUDIT_LABELS ' + (c7 ? 'PASS' : 'FAIL') + (badLabels.length ? ' bad=[' + badLabels.map(t=>t.name).join(',') + ']' : ' ok=true'));
+  results.push({name:'LABELS', pass:c7});
+
+  // Check 8: Task↔GUID resolution — every task resolves to ≥1 GUID
+  let c8 = true;
+  const orphaned = [];
+  if (db) {
+    for (const t of scheduleData) {
+      const ifcClass = t.ifcClass;
+      if (!ifcClass) { orphaned.push(t.name); c8 = false; continue; }
+      try {
+        const res = db.exec("SELECT COUNT(*) FROM elements_meta WHERE ifc_class = '" +
+          ifcClass.replace(/'/g,"''") + "' AND storey = '" +
+          (t.storey||'').replace(/'/g,"''") + "'");
+        const count = res[0]?.values[0]?.[0] || 0;
+        if (count === 0) { orphaned.push(t.name + '(0 GUIDs)'); c8 = false; }
+      } catch(e) {
+        orphaned.push(t.name + '(query error)');
+        c8 = false;
+      }
+    }
+  }
+  console.log('§4D_AUDIT_GUIDS ' + (c8 ? 'PASS' : 'FAIL') + ' orphaned=[' + orphaned.slice(0,5).join(',') + (orphaned.length > 5 ? '..+' + (orphaned.length-5) : '') + ']');
+  results.push({name:'GUIDS', pass:c8});
+
+  // Summary
+  const failCount = results.filter(r => !r.pass).length;
+  console.log('§4D_AUDIT_SUMMARY pass=' + results.filter(r=>r.pass).length + ' fail=' + failCount + ' total=8');
+
+  // Show warning banner if any fail
+  if (failCount > 0) {
+    let banner = document.getElementById('audit4d-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'audit4d-banner';
+      banner.style.cssText = 'background:#fff3cd;color:#856404;border:1px solid #ffc107;padding:8px 12px;margin:8px 0;border-radius:4px;font-weight:bold;';
+      const info = document.getElementById('info');
+      if (info) info.parentNode.insertBefore(banner, info.nextSibling);
+    }
+    banner.textContent = '\u26a0 Schedule has ' + failCount + ' issue' + (failCount>1?'s':'') + ' \u2014 check console (F12) for \xa74D_AUDIT details.';
+  }
+
+  return { results, failCount };
 }
 
 // ============================================================================
@@ -620,6 +782,24 @@ async function init() {
   // Generate 4D schedule
   scheduleData = generateSchedule(qtoData, '2025-01-06');
 
+  // S240 §0.1: Run 8-check audit before any 4D sync
+  const auditResult = audit4DSchedule(scheduleData, db, qtoData);
+
+  // S240 §2: Resolve GUIDs per task (one-time, for BroadcastChannel sync)
+  for (const t of scheduleData) {
+    const ifcClass = t.ifcClass;
+    if (!ifcClass) { t.guids = []; continue; }
+    try {
+      const res = db.exec("SELECT guid FROM elements_meta WHERE ifc_class = '" +
+        ifcClass.replace(/'/g,"''") + "' AND storey = '" +
+        (t.storey||'').replace(/'/g,"''") + "' AND building = '" +
+        (bldName||'').replace(/'/g,"''") + "'");
+      t.guids = res[0] ? res[0].values.map(r => r[0]) : [];
+    } catch(e) { t.guids = []; }
+  }
+  const totalGuids = scheduleData.reduce((s,t) => s + t.guids.length, 0);
+  console.log('§4D_GUID_RESOLVE tasks=' + scheduleData.length + ' totalGuids=' + totalGuids);
+
   const grandTotal = grandMaterial + grandLabor + grandEquip;
   const projDaysInit = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
   console.log(`§QTO: ${qtoData.length} rows | ${totalQty} elements`);
@@ -629,6 +809,28 @@ async function init() {
   console.log(`§UNMAPPED: ${unmapped.length ? unmapped.join(', ') : 'NONE'}`);
   document.getElementById('info').textContent =
     `${bldName} | ${totalQty.toLocaleString()} elements | ${CUR}${grandTotal.toLocaleString()} (Mat ${grandMaterial.toLocaleString()} + Lab ${grandLabor.toLocaleString()} + Equip ${grandEquip.toLocaleString()})`;
+
+  // S240: Copy URL button — share exact chart view
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = '\ud83d\udccb Copy URL';
+  copyBtn.style.cssText = 'margin:4px 8px;padding:4px 12px;background:#2d5f8a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;vertical-align:middle;';
+  copyBtn.onclick = function() {
+    navigator.clipboard.writeText(location.href).then(function() {
+      copyBtn.textContent = '\u2713 Copied!';
+      setTimeout(function() { copyBtn.textContent = '\ud83d\udccb Copy URL'; }, 2000);
+    }).catch(function() {
+      // Fallback for older browsers
+      var ta = document.createElement('textarea');
+      ta.value = location.href;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      copyBtn.textContent = '\u2713 Copied!';
+      setTimeout(function() { copyBtn.textContent = '\ud83d\udccb Copy URL'; }, 2000);
+    });
+  };
+  document.getElementById('info').parentNode.insertBefore(copyBtn, document.getElementById('info').nextSibling);
 
   // S224: Load diff DB if present — compute variance for VO sheets in Excel
   if (DIFF_DB_URL) {
@@ -888,6 +1090,39 @@ function renderCharts() {
     }
   }));
   logChart(9,'Stacked','Gantt Timeline',top15.length);
+
+  // S240: BroadcastChannel for 4D Gantt→Viewer sync
+  let _bim4d = null;
+  try { _bim4d = new BroadcastChannel('bim_4d'); } catch(e) { console.log('§4D_CHANNEL_FAIL ' + e.message); }
+
+  // Click handler: click a Gantt bar → broadcast highlight to viewer
+  if (_bim4d) {
+    ganttCanvas.addEventListener('click', function(evt) {
+      const chart = chartInstances[chartInstances.length - 1]; // last chart = Gantt (chart 9)
+      if (!chart) return;
+      const points = chart.getElementsAtEventForMode(evt, 'nearest', {intersect:true}, false);
+      if (!points.length) {
+        // Clicked empty space — reset viewer highlights
+        _bim4d.postMessage({ type: '4D_RESET' });
+        console.log('§4D_BROADCAST type=4D_RESET (background click)');
+        return;
+      }
+      const idx = points[0].index;
+      const task = top15[idx];
+      if (!task) return;
+      const phaseColor = PHASE_COLORS[task.phase] || '#888888';
+      _bim4d.postMessage({
+        type: '4D_HIGHLIGHT',
+        guids: task.guids || [],
+        phase: task.phase,
+        color: phaseColor,
+        taskName: task.name
+      });
+      console.log('§4D_BROADCAST type=4D_HIGHLIGHT task="' + task.name + '" guids=' + (task.guids||[]).length + ' phase=' + task.phase + ' color=' + phaseColor);
+    });
+
+    console.log('§4D_CHANNEL_READY sender=boq_charts');
+  }
 
   // ── S225: Variance Chart (when diff data present) ──
   if (diffResult) {

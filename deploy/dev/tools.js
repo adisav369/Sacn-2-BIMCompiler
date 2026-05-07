@@ -427,7 +427,9 @@ function setupTools(A) {
     const hits = A.raycaster.intersectObjects(meshes, false);
 
     if (A.hoverHighlight) {
-      A.hoverHighlight.material.emissive.setHex(0x000000);
+      // S240: restore 4D phase colour if active, otherwise reset to black
+      var _restoreHex = A.hoverHighlight._4dColor !== undefined ? A.hoverHighlight._4dColor : 0x000000;
+      A.hoverHighlight.material.emissive.setHex(_restoreHex);
       A.hoverHighlight = null;
     }
 

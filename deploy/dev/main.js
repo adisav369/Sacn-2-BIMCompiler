@@ -134,6 +134,73 @@ function initViewer() {
     }
   };
 
+  // S240: BroadcastChannel listener — 4D Gantt→Viewer highlight sync
+  var _4dHighlights = [];
+  try {
+    var _bim4d = new BroadcastChannel('bim_4d');
+    _bim4d.onmessage = function(evt) {
+      var msg = evt.data;
+      if (!msg || !msg.type) return;
+
+      // Reset previous highlights
+      _4dHighlights.forEach(function(obj) {
+        if (obj.material && obj._4dOrigEmissive !== undefined) {
+          obj.material.emissive.setHex(obj._4dOrigEmissive);
+          delete obj._4dOrigEmissive;
+          delete obj._4dColor;
+        }
+      });
+      _4dHighlights = [];
+
+      if (msg.type === '4D_RESET') {
+        console.log('§4D_RECV type=4D_RESET cleared=' + _4dHighlights.length);
+        APP.markDirty();
+        return;
+      }
+
+      if (msg.type === '4D_HIGHLIGHT') {
+        // Single task highlight — all GUIDs in one phase color
+        var guidSet = new Set(msg.guids || []);
+        var color = parseInt((msg.color || '#888888').replace('#',''), 16);
+        APP.collectMeshes(function(o) { return o.isMesh; }).forEach(function(obj) {
+          var g = APP.guidMap[obj.id] || obj.userData.guid;
+          if (g && guidSet.has(g)) {
+            obj._4dOrigEmissive = obj.material.emissive.getHex();
+            obj._4dColor = color;
+            obj.material.emissive.setHex(color);
+            _4dHighlights.push(obj);
+          }
+        });
+        console.log('§4D_RECV type=4D_HIGHLIGHT task="' + msg.taskName + '" meshes=' + _4dHighlights.length + '/' + guidSet.size + ' color=' + msg.color);
+        APP.markDirty();
+      }
+
+      if (msg.type === '4D_HIGHLIGHT_ALL') {
+        // All phases — each GUID gets its phase color
+        var phases = msg.phases || {};
+        var guidToColor = {};
+        for (var phase in phases) {
+          var c = parseInt((phases[phase].color || '#888').replace('#',''), 16);
+          (phases[phase].guids || []).forEach(function(g) { guidToColor[g] = c; });
+        }
+        APP.collectMeshes(function(o) { return o.isMesh; }).forEach(function(obj) {
+          var g = APP.guidMap[obj.id] || obj.userData.guid;
+          if (g && guidToColor[g] !== undefined) {
+            obj._4dOrigEmissive = obj.material.emissive.getHex();
+            obj._4dColor = guidToColor[g];
+            obj.material.emissive.setHex(guidToColor[g]);
+            _4dHighlights.push(obj);
+          }
+        });
+        console.log('§4D_RECV type=4D_HIGHLIGHT_ALL meshes=' + _4dHighlights.length + ' phases=' + Object.keys(phases).length);
+        APP.markDirty();
+      }
+    };
+    console.log('§4D_CHANNEL_READY listener=viewer');
+  } catch(e) {
+    console.log('§4D_CHANNEL_FAIL ' + e.message);
+  }
+
   // Render loop — on-demand: only render when camera moves or streaming is active
   let _needsRender = true;
   APP.controls.addEventListener('change', () => { _needsRender = true; });

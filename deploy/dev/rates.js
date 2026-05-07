@@ -52,6 +52,13 @@ var RATES = {
   IfcElectricAppliance:{rate:485,unit:'EA',desc:'Electric Appliance'},
   IfcFurniture:{rate:1500,unit:'EA',desc:'Furniture'},
   IfcOpeningElement:{rate:0,unit:'EA',desc:'Opening (void)'},
+  IfcDistributionElement:{rate:500,unit:'EA',desc:'Distribution Element'},
+  IfcFireSuppressionTerminal:{rate:450,unit:'EA',desc:'Fire Sprinkler Head'},
+  IfcAirTerminal:{rate:380,unit:'EA',desc:'Air Diffuser/Grille'},
+  IfcValve:{rate:280,unit:'EA',desc:'Pipe Valve'},
+  IfcAlarm:{rate:350,unit:'EA',desc:'Fire Alarm Device'},
+  IfcController:{rate:1200,unit:'EA',desc:'Building Controller'},
+  IfcRampFlight:{rate:3500,unit:'EA',desc:'Ramp Flight'},
   IfcBuildingElementPart:{rate:0,unit:'EA',desc:'Building Element Part'},
 };
 var RATES_DEFAULT = {rate:500,unit:'EA',desc:'Misc Element'};
@@ -68,27 +75,39 @@ function getRate(ifcClass) {
 var LABOR_RATES = {
   HVAC_TECH: {
     rate_per_day: 185, crew_size: 2, trade: 'HVAC Technician (Skilled)',
-    productivity: {IfcDuct:18,IfcDuctSegment:18,IfcDuctFitting:12}
+    productivity: {IfcDuct:18,IfcDuctSegment:18,IfcDuctFitting:12,IfcFlowMovingDevice:4,IfcEnergyConversionDevice:3,IfcFlowTerminal:12,IfcAirTerminal:20}
   },
   PLUMBER: {
     rate_per_day: 165, crew_size: 2, trade: 'Pipefitter (Skilled)',
-    productivity: {IfcPipe:25,IfcPipeSegment:25,IfcPipeFitting:15}
+    productivity: {IfcPipe:25,IfcPipeSegment:25,IfcPipeFitting:15,IfcFlowSegment:20,IfcFlowFitting:15,IfcFlowStorageDevice:4,IfcFlowTreatmentDevice:4,IfcDistributionElement:8,IfcValve:20,IfcFireSuppressionTerminal:25}
   },
   ELECTRICIAN: {
     rate_per_day: 175, crew_size: 2, trade: 'Electrician (Skilled)',
-    productivity: {IfcCableCarrier:30,IfcCableCarrierSegment:30,IfcLightFixture:20,IfcOutlet:25}
+    productivity: {IfcCableCarrier:30,IfcCableCarrierSegment:30,IfcLightFixture:20,IfcOutlet:25,IfcElectricAppliance:15,IfcFlowController:10,IfcAlarm:25,IfcController:10}
   },
   STEEL_ERECTOR: {
     rate_per_day: 195, crew_size: 4, trade: 'Steel Erector (Skilled)',
-    productivity: {IfcBeam:8,IfcColumn:6}
+    productivity: {IfcBeam:8,IfcColumn:6,IfcPlate:12,IfcMember:10}
   },
   CONCRETE_GANG: {
     rate_per_day: 145, crew_size: 6, trade: 'Concrete Gang (Mixed)',
-    productivity: {IfcSlab:35}
+    productivity: {IfcSlab:35,IfcFooting:6,IfcPile:4,IfcReinforcingBar:50,IfcRampFlight:3}
   },
   MASON: {
     rate_per_day: 155, crew_size: 3, trade: 'Mason (Skilled) + Laborers',
-    productivity: {IfcWall:12,IfcWallStandardCase:12}
+    productivity: {IfcWall:12,IfcWallStandardCase:12,IfcOpeningElement:20,IfcBuildingElementPart:15}
+  },
+  CARPENTER: {
+    rate_per_day: 165, crew_size: 2, trade: 'Carpenter (Skilled)',
+    productivity: {IfcDoor:6,IfcWindow:6,IfcStair:2,IfcStairFlight:3,IfcRailing:15,IfcCurtainWall:8}
+  },
+  ROOFER: {
+    rate_per_day: 175, crew_size: 3, trade: 'Roofer (Skilled)',
+    productivity: {IfcRoof:25}
+  },
+  FINISHER: {
+    rate_per_day: 135, crew_size: 2, trade: 'Finisher (Skilled)',
+    productivity: {IfcCovering:20,IfcFurniture:8,IfcFurnishingElement:8}
   },
   LABORER: {
     rate_per_day: 95, crew_size: 1, trade: 'General Laborer',
@@ -144,6 +163,13 @@ var SEQUENCE_RULES = {
   IfcFlowStorageDevice:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
   IfcFlowTreatmentDevice:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
   IfcEnergyConversionDevice:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
+  IfcDistributionElement:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  IfcValve:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
+  // MEP Final
+  IfcFireSuppressionTerminal:{phase:'MEP Final',sequence:9,resource:'PLUMBER'},
+  IfcAirTerminal:{phase:'MEP Final',sequence:9,resource:'HVAC_TECH'},
+  IfcAlarm:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
+  IfcController:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
   // Architecture
   IfcWall:{phase:'Architecture',sequence:6,resource:'MASON'},
   IfcWallStandardCase:{phase:'Architecture',sequence:6,resource:'MASON'},
@@ -154,6 +180,7 @@ var SEQUENCE_RULES = {
   IfcStair:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
   IfcStairFlight:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
   IfcRailing:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
+  IfcRampFlight:{phase:'Architecture',sequence:7,resource:'CONCRETE_GANG'},
   IfcRoof:{phase:'Architecture',sequence:8,resource:'ROOFER'},
   IfcBuildingElementProxy:{phase:'Architecture',sequence:6,resource:null},
   IfcCurtainWall:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
@@ -194,13 +221,15 @@ var WORK_PACKAGES = [
   { id: 'PACKAGE 1', name: 'SUBSTRUCTURE', color: '8E44AD',
     classes: ['IfcFooting','IfcPile','IfcReinforcingBar'] },
   { id: 'PACKAGE 2', name: 'SUPERSTRUCTURE', color: '2980B9',
-    classes: ['IfcColumn','IfcBeam','IfcSlab','IfcWall','IfcWallStandardCase','IfcCurtainWall','IfcRoof','IfcPlate','IfcMember'] },
+    classes: ['IfcColumn','IfcBeam','IfcSlab','IfcPlate','IfcMember'] },
   { id: 'PACKAGE 3', name: 'MEP ROUGH-IN', color: 'D35400',
-    classes: ['IfcDuct','IfcDuctSegment','IfcDuctFitting','IfcPipe','IfcPipeSegment','IfcPipeFitting','IfcCableCarrier','IfcCableCarrierSegment','IfcFlowSegment','IfcFlowFitting','IfcFlowController','IfcFlowMovingDevice','IfcFlowStorageDevice','IfcFlowTreatmentDevice','IfcEnergyConversionDevice'] },
-  { id: 'PACKAGE 4', name: 'FINISHES', color: '27AE60',
-    classes: ['IfcCovering','IfcDoor','IfcWindow','IfcFurniture','IfcFurnishingElement','IfcStair','IfcStairFlight','IfcRailing'] },
-  { id: 'PACKAGE 5', name: 'MEP FINAL FIX', color: 'C0392B',
-    classes: ['IfcFlowTerminal','IfcLightFixture','IfcOutlet','IfcElectricAppliance'] },
+    classes: ['IfcDuct','IfcDuctSegment','IfcDuctFitting','IfcPipe','IfcPipeSegment','IfcPipeFitting','IfcCableCarrier','IfcCableCarrierSegment','IfcFlowSegment','IfcFlowFitting','IfcFlowController','IfcFlowMovingDevice','IfcFlowStorageDevice','IfcFlowTreatmentDevice','IfcEnergyConversionDevice','IfcDistributionElement','IfcValve'] },
+  { id: 'PACKAGE 4', name: 'ARCHITECTURE', color: 'ED7D31',
+    classes: ['IfcWall','IfcWallStandardCase','IfcCurtainWall','IfcDoor','IfcWindow','IfcStair','IfcStairFlight','IfcRailing','IfcRoof','IfcRampFlight'] },
+  { id: 'PACKAGE 5', name: 'FINISHES', color: '27AE60',
+    classes: ['IfcCovering','IfcFurniture','IfcFurnishingElement'] },
+  { id: 'PACKAGE 6', name: 'MEP FINAL FIX', color: 'C0392B',
+    classes: ['IfcFlowTerminal','IfcLightFixture','IfcOutlet','IfcElectricAppliance','IfcFireSuppressionTerminal','IfcAirTerminal','IfcAlarm','IfcController'] },
 ];
 
 // ============================================================================
