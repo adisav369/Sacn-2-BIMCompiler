@@ -34,6 +34,7 @@ function setupStreaming(A) {
   };
 
   A.streamBuilding = function(nearest) {
+    if (A.buildingsRendered.has(nearest)) { console.log('§DS_SKIP_RENDERED bld=' + nearest); return; }
     if (A.activeBuilding && A.streaming && A.streamIdx < A.streamQueue.length) {
       A.savedStreams[A.activeBuilding] = { queue: A.streamQueue, idx: A.streamIdx };
     }
