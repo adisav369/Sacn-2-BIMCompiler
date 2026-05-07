@@ -47,6 +47,31 @@ function setupGridOverlay(APP) {
   var PANEL_ID = 'grid-overlay-panel';
   var BUBBLE_MAX_SCREEN_FRAC = 0.02; // max 2% of visible width in ortho
 
+  // ── Storey-aware cut height ────────────────────────────────────────
+
+  /** Use detectStoreys() to find actual storey floor elevations instead of fixed offsets.
+   *  floor → lowest storey + 1m, floor1 → second storey + 1m */
+  function computeStoreyAwareCutZ(mode) {
+    if (!A.db || typeof SectionCut === 'undefined' || !SectionCut.detectStoreys) return null;
+    var storeys = SectionCut.detectStoreys(A.db);
+    if (!storeys.length) return null;
+    // Filter out storeys with very few elements (e.g. "Ground Floor" with 1 element)
+    var significant = storeys.filter(function(s) { return s.elementCount >= 5; });
+    if (!significant.length) significant = storeys;
+    if (mode === 'floor') {
+      var cutZ = significant[0].floorZ + 1.0;
+      log('§GRID_STOREY GF cutZ=' + cutZ.toFixed(2) + ' storey="' + significant[0].name +
+          '" floorZ=' + significant[0].floorZ.toFixed(2) + ' (n=' + significant[0].elementCount + ')');
+      return cutZ;
+    } else if (mode === 'floor1' && significant.length > 1) {
+      var cutZ = significant[1].floorZ + 1.0;
+      log('§GRID_STOREY L1 cutZ=' + cutZ.toFixed(2) + ' storey="' + significant[1].name +
+          '" floorZ=' + significant[1].floorZ.toFixed(2) + ' (n=' + significant[1].elementCount + ')');
+      return cutZ;
+    }
+    return null;
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────
 
   function log(msg) { console.log('[GridOverlay] ' + msg); }
@@ -242,26 +267,33 @@ function setupGridOverlay(APP) {
     if (mode === 'unlock') {
       GridViews.unlockView(A);
     } else {
-      GridViews.lockView(A, mode, envCache);
-      renderContoursForView(mode);
+      var cutZ = computeStoreyAwareCutZ(mode);
+      GridViews.lockView(A, mode, envCache, cutZ);
+      renderContoursForView(mode, cutZ);
       clampBubbleScales();
     }
     updateViewButtons();
   }
 
-  /** Orchestrate: read contourMode from config, call engine, pass to renderer */
-  function renderContoursForView(mode) {
+  /** Orchestrate: read contourMode from config, call engine, pass to renderer.
+   *  cutZOverride = storey-aware cut height (from computeStoreyAwareCutZ). */
+  function renderContoursForView(mode, cutZOverride) {
     if (typeof GridConfig === 'undefined') return;
     var contourMode = GridConfig.contourModeFor(mode);
     if (!contourMode) return; // null = no contours (e.g. roof)
 
     if (contourMode === 'section' && typeof SectionCut !== 'undefined' && typeof GridContours !== 'undefined') {
       // Floor plan: section cut → contours + door arcs
-      var clipCfg = GridConfig.clipFor(mode);
-      var bldH = envCache.zMax - envCache.zMin;
-      var cutZ = (clipCfg && clipCfg.offset_ratio)
-        ? envCache.zMin + bldH * clipCfg.offset_ratio
-        : envCache.zMin + ((clipCfg && clipCfg.offset_m) || 1.0);
+      var cutZ;
+      if (cutZOverride != null) {
+        cutZ = cutZOverride;
+      } else {
+        var clipCfg = GridConfig.clipFor(mode);
+        var bldH = envCache.zMax - envCache.zMin;
+        cutZ = (clipCfg && clipCfg.offset_ratio)
+          ? envCache.zMin + bldH * clipCfg.offset_ratio
+          : envCache.zMin + ((clipCfg && clipCfg.offset_m) || 1.0);
+      }
 
       var results = SectionCut.sectionCut(A.db, A.libDb, cutZ, null);
       GridContours.renderContours(A, results, mode, cutZ);

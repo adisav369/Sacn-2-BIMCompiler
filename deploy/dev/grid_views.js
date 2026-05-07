@@ -166,15 +166,19 @@ var GridViews = (function() {
 
   // ── Clipping (floor plan only) ────────────────────────────────────
 
-  /** Apply horizontal section cut — reads clip + retain config from GridConfig */
-  function applyFloorClip(A, env, viewMode) {
-    var clipCfg = (typeof GridConfig !== 'undefined') ? GridConfig.clipFor(viewMode) : null;
-    var bldH = env.zMax - env.zMin;
+  /** Apply horizontal section cut — uses storey-aware cutZ if provided, else falls back to config */
+  function applyFloorClip(A, env, viewMode, cutZOverride) {
     var cutZ;
-    if (clipCfg && clipCfg.offset_ratio) {
-      cutZ = env.zMin + bldH * clipCfg.offset_ratio;
+    if (cutZOverride != null) {
+      cutZ = cutZOverride;
     } else {
-      cutZ = env.zMin + ((clipCfg && clipCfg.offset_m) || 1.0);
+      var clipCfg = (typeof GridConfig !== 'undefined') ? GridConfig.clipFor(viewMode) : null;
+      var bldH = env.zMax - env.zMin;
+      if (clipCfg && clipCfg.offset_ratio) {
+        cutZ = env.zMin + bldH * clipCfg.offset_ratio;
+      } else {
+        cutZ = env.zMin + ((clipCfg && clipCfg.offset_m) || 1.0);
+      }
     }
     var cutY = cutZ - A.modelOffset.z;
 
@@ -218,8 +222,8 @@ var GridViews = (function() {
 
   // ── Public API ────────────────────────────────────────────────────
 
-  /** Lock camera to a named view preset */
-  function lockView(A, mode, env) {
+  /** Lock camera to a named view preset. cutZ = storey-aware cut height (optional). */
+  function lockView(A, mode, env, cutZ) {
     if (!env || !VIEW_DEFS[mode]) return;
     saveCameraState(A);
 
@@ -244,7 +248,7 @@ var GridViews = (function() {
     // Concern 2: Clip + theme — only if view definition says so
     var def = VIEW_DEFS[mode];
     if (def.clip) {
-      applyFloorClip(A, env, mode);
+      applyFloorClip(A, env, mode, cutZ);
     }
 
     _activeView = mode;
