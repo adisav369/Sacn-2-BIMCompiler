@@ -624,34 +624,20 @@ A.printQRSheet = function(spots) {
 
 ## OPEN BUGS (next session)
 
-### BUG-1: BBox highlight wrong position on element click
-**Symptom:** Yellow wireframe bbox appears at wrong location when clicking an element.
-**Context:** §10 was implemented using DB `center_x/y/z` via `ifc2three()` but this
-produced worse results than the original geometry-local approach. §10 was reverted to
-use `hit.object.geometry.boundingBox` + `localToWorld()` / instance matrix decomposition.
-The original code (pre-S250) also had this bug — it is NOT a regression.
-**Root cause investigation needed:**
-- For **InstancedMesh**: instance matrix positions geometry at `ifc2three(cx, cy, cz)`,
-  but the geometry vertices may have their own local origin (tack point) ≠ (0,0,0).
-  The `localCenter` from `boundingBox.getCenter()` reflects this offset.
-  `localToWorld` with the instance matrix should give correct world pos — verify.
-- For **merged meshes**: geometry is combined for the whole group. The bbox of the
-  entire merged geometry is wrong for a single element. Need to use DB position
-  for merged meshes specifically, or compute per-element bbox from the hit face.
-- Add `§BBOX_DEBUG` log: print geometry localCenter, world position, DB position,
-  instance matrix position — compare to find the mismatch.
-**Files:** `deploy/dev/picking.js` lines 252-300
+### BUG-1: BBox highlight wrong position on element click — FIXED
+**Root cause:** Three mesh types, only merged mesh was broken:
+- **InstancedMesh / Individual Mesh**: geometry bbox + localToWorld/instanceMatrix → correct position & size.
+- **Merged Mesh (mobile)**: geometry bbox covered the ENTIRE merge group (all elements in storey|disc|rgba bucket). Both position (group center) and size (group extent) were wrong for the individual element.
+**Fix (picking.js):** When `hit.object.userData.isMerged`, query `element_transforms` for per-element `center_x/y/z` + `bbox_x/y/z`. Position via `ifc2three()`, size via IFC→Three axis swap (X,Z,Y). Fallback to `hit.point` with 0.3m box on DB miss.
+**Bonus:** Individual Mesh now copies `hit.object.quaternion` to highlight (was missing rotation).
+**Debug:** `§BBOX_DEBUG` logs on every pick — compares geometry-derived vs DB position with delta (Δ).
+**Files:** `deploy/dev/picking.js` lines 265-350
 
-### BUG-2: Panel click seeps through to canvas on mobile
-**Symptom:** Tapping a storey/discipline button also triggers a pick on the 3D canvas behind.
-**Context:** All canvas event listeners are on `A.canvas` element. Panels have `pointer-events: auto`.
-On desktop this works. On mobile, touch events may propagate differently.
-**Root cause investigation needed:**
-- Check if `e.target` in the canvas `pointerup` handler is actually the canvas or a panel element
-- Mobile WebView may fire pointer events on canvas even when touch starts on an overlapping div
-- Possible fix: in `pointerdown`/`pointerup` handlers, check `e.target === A.canvas`
-- Or: add `e.stopPropagation()` to panel elements' `pointerdown` listeners
-**Files:** `deploy/dev/picking.js` lines 93-155, panel CSS in `deploy/dev/index.html`
+### BUG-2: Panel click seeps through to canvas on mobile — FIXED
+**Root cause:** Mobile touch events on overlapping panel divs propagate to `A.canvas` listeners.
+**Fix (picking.js):** Added `e.target !== A.canvas` guard in both `pointerdown` (line 94) and `pointerup` picking handler (line 154). Logs `§PICK_GUARD` when blocked.
+No `stopPropagation()` on panels (respects clash panel constraint). No HTML/CSS changes.
+**Files:** `deploy/dev/picking.js` lines 93-160
 
 ---
 

@@ -102,7 +102,7 @@ function setupPicking(A) {
       document.getElementById('walk-speed-btn').style.display = 'none';
     }
     // Long-press (500ms) → volume info card (mobile-friendly right-click)
-    // Only start on single-finger touch; cancel if pinch (2nd pointer)
+    // Only start on single-finger touch; cancel if pinch (2nd pointer) or any move
     A._longPressFired = false;
     A._pointerCount = (A._pointerCount || 0) + 1;
     if (A._pointerCount > 1 && A._longPressTimer) {
@@ -113,6 +113,11 @@ function setupPicking(A) {
       var ev = { clientX: e.clientX, clientY: e.clientY, preventDefault: function(){} };
       A._longPressTimer = setTimeout(function() {
         A._longPressTimer = null;
+        // Re-check: if a 2nd finger arrived during the wait, abort (pinch/zoom in progress)
+        if (A._pointerCount > 1) {
+          console.log('§LONGPRESS cancelled — multi-touch (pinch/zoom)');
+          return;
+        }
         A._longPressFired = true;
         A.handleMeasureRightClick(ev);
       }, 500);
@@ -261,12 +266,75 @@ function setupPicking(A) {
       window._pickHighlight = null;
     }
 
-    // Highlight: compute bbox from geometry + instance/world position
-    hit.object.geometry.computeBoundingBox();
-    const bb = hit.object.geometry.boundingBox;
-    const localCenter = new THREE.Vector3(); bb.getCenter(localCenter);
-    const size = new THREE.Vector3(); bb.getSize(size);
-    let hlSizeX = size.x, hlSizeY = size.y, hlSizeZ = size.z;
+    // Highlight: compute bbox position + size per mesh type
+    let hlSizeX, hlSizeY, hlSizeZ;
+    const hlPos = new THREE.Vector3();
+    const hlQuat = new THREE.Quaternion();
+
+    if (hit.object.userData.isMerged && guid) {
+      // S250 BUG-1: merged mesh geometry bbox covers entire group — use per-element DB data
+      try {
+        const bboxRows = A.dbQuery(
+          'SELECT center_x, center_y, center_z, bbox_x, bbox_y, bbox_z FROM element_transforms WHERE guid = ?',
+          [guid]
+        );
+        if (bboxRows.length && bboxRows[0][0] != null) {
+          const dbC = A.ifc2three(bboxRows[0][0], bboxRows[0][1], bboxRows[0][2]);
+          hlPos.set(dbC.x, dbC.y, dbC.z);
+          hlSizeX = bboxRows[0][3] || 0.3;                // IFC X → Three X
+          hlSizeY = bboxRows[0][5] || 0.3;                // IFC Z → Three Y
+          hlSizeZ = bboxRows[0][4] || 0.3;                // IFC Y → Three Z
+          console.log('§BBOX_DEBUG MERGED guid=' + guid.substring(0, 8) +
+            ' pos=(' + hlPos.x.toFixed(2) + ',' + hlPos.y.toFixed(2) + ',' + hlPos.z.toFixed(2) + ')' +
+            ' size=(' + hlSizeX.toFixed(2) + ',' + hlSizeY.toFixed(2) + ',' + hlSizeZ.toFixed(2) + ')');
+        } else {
+          hlPos.copy(hit.point);
+          hlSizeX = hlSizeY = hlSizeZ = 0.3;
+          console.log('§BBOX_DEBUG MERGED fallback — no DB row for ' + guid.substring(0, 8));
+        }
+      } catch (e) {
+        hlPos.copy(hit.point);
+        hlSizeX = hlSizeY = hlSizeZ = 0.3;
+        console.log('§BBOX_DEBUG MERGED err=' + e.message);
+      }
+    } else {
+      // Individual Mesh or InstancedMesh: geometry bbox is per-element — correct
+      hit.object.geometry.computeBoundingBox();
+      const bb = hit.object.geometry.boundingBox;
+      const localCenter = new THREE.Vector3(); bb.getCenter(localCenter);
+      const size = new THREE.Vector3(); bb.getSize(size);
+      hlSizeX = size.x; hlSizeY = size.y; hlSizeZ = size.z;
+
+      if (hit.object.isInstancedMesh && hit.instanceId !== undefined) {
+        const _im = new THREE.Matrix4();
+        hit.object.getMatrixAt(hit.instanceId, _im);
+        hlPos.copy(localCenter.clone().applyMatrix4(_im));
+        const _ip = new THREE.Vector3(), _iq = new THREE.Quaternion(), _is = new THREE.Vector3();
+        _im.decompose(_ip, _iq, _is);
+        hlQuat.copy(_iq);
+      } else {
+        hlPos.copy(hit.object.localToWorld(localCenter));
+        hlQuat.copy(hit.object.quaternion);
+      }
+
+      // §BBOX_DEBUG: compare geometry-derived vs DB position
+      if (guid) {
+        try {
+          const dbRows = A.dbQuery(
+            'SELECT center_x, center_y, center_z FROM element_transforms WHERE guid = ?', [guid]
+          );
+          if (dbRows.length && dbRows[0][0] != null) {
+            const dbC = A.ifc2three(dbRows[0][0], dbRows[0][1], dbRows[0][2]);
+            console.log('§BBOX_DEBUG guid=' + guid.substring(0, 8) +
+              ' hlPos=(' + hlPos.x.toFixed(2) + ',' + hlPos.y.toFixed(2) + ',' + hlPos.z.toFixed(2) + ')' +
+              ' dbPos=(' + dbC.x.toFixed(2) + ',' + dbC.y.toFixed(2) + ',' + dbC.z.toFixed(2) + ')' +
+              ' \u0394=(' + (hlPos.x - dbC.x).toFixed(3) + ',' + (hlPos.y - dbC.y).toFixed(3) + ',' + (hlPos.z - dbC.z).toFixed(3) + ')' +
+              (hit.object.isInstancedMesh ? ' INSTANCED' : ' SINGLE'));
+          }
+        } catch (e) { /* debug only */ }
+      }
+    }
+
     const hlGeo = new THREE.BoxGeometry(
       Math.max(hlSizeX, 0.01), Math.max(hlSizeY, 0.01), Math.max(hlSizeZ, 0.01));
     const hlEdges = new THREE.EdgesGeometry(hlGeo);
@@ -274,18 +342,8 @@ function setupPicking(A) {
     const hlLine = new THREE.LineSegments(hlEdges,
       new THREE.LineBasicMaterial({ color: 0xffff00, depthTest: false }));
     hlLine.renderOrder = 999;
-    if (hit.object.isInstancedMesh && hit.instanceId !== undefined) {
-      const _im = new THREE.Matrix4();
-      hit.object.getMatrixAt(hit.instanceId, _im);
-      const worldCenter = localCenter.clone().applyMatrix4(_im);
-      const _ip = new THREE.Vector3(), _iq = new THREE.Quaternion(), _is = new THREE.Vector3();
-      _im.decompose(_ip, _iq, _is);
-      hlLine.position.copy(worldCenter);
-      hlLine.quaternion.copy(_iq);
-    } else {
-      // Individual Mesh or merged-resolved: convert local bbox centre to world space
-      hlLine.position.copy(hit.object.localToWorld(localCenter));
-    }
+    hlLine.position.copy(hlPos);
+    hlLine.quaternion.copy(hlQuat);
     A.scene.add(hlLine);
     window._pickHighlight = hlLine;
 

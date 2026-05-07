@@ -64,7 +64,7 @@
     border: 1px solid rgba(255,255,255,0.08);
     backdrop-filter: blur(8px);
     font-size: 12px; line-height: 1.6; min-width: 240px; max-width: 320px;
-    display: none;
+    display: none; pointer-events: auto;
   }
   #info-panel .label { color: #888; }
   #info-panel .value { color: #fff; }
@@ -73,7 +73,7 @@
     background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 12px;
     border: 1px solid rgba(255,255,255,0.08);
     backdrop-filter: blur(8px);
-    font-size: 12px; display: none;
+    font-size: 12px; display: none; pointer-events: auto;
   }
   #storey-panel button {
     display: block; width: 100%; text-align: left;
@@ -339,8 +339,8 @@
       <button id="measure-btn" onclick="toggleMeasure();event.stopPropagation()" data-trl-title="ui_tt_measure" title="Measure" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📐</button>
       <button id="section-btn" onclick="toggleSection();event.stopPropagation()" data-trl-title="ui_tt_section" title="Section Cut" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">✂</button>
       <button class="desktop-only" onclick="open2DPlans();event.stopPropagation()" data-trl-title="ui_tt_2d" title="2D Plans" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;padding:2px;line-height:1"><img src="2D.png" alt="2D" style="width:18px;height:18px;vertical-align:middle"></button>
-      <button onclick="if(APP&&APP.reportBug)APP.reportBug();event.stopPropagation()" data-trl-title="ui_tt_help" title="Help / Report Bug" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">❓</button>
       <button id="header-flag-btn" onclick="location.href='../index.html'" data-trl-title="ui_tt_home" title="Home" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">🌐</button>
+      <button onclick="if(APP&&APP.reportBug)APP.reportBug();event.stopPropagation()" data-trl-title="ui_tt_help" title="Help / Report Bug" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">🛟</button>
     </div>
     <div id="building-list" style="max-height:400px;overflow-y:auto"></div>
   </div>
@@ -363,7 +363,7 @@
 <div id="disc-panel" style="position:fixed;bottom:50px;left:16px;z-index:10;
   background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 12px;
   border:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(8px);
-  font-size:12px;display:none;cursor:default">
+  font-size:12px;display:none;cursor:default;pointer-events:auto">
   <b style="display:block;width:100%;padding:8px 12px;color:#4fc3f7;font-size:12px;cursor:pointer" onclick="togglePanel('disc-body')" data-trl="ui_disciplines">Disciplines</b>
   <div id="disc-body" class="panel-body"></div>
 </div>
@@ -492,7 +492,7 @@
 <script src="streaming.js?v=17" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
 <script src="panels.js?v=6" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
 <script src="tools.js?v=5" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
-<script src="picking.js?v=13" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
+<script src="picking.js?v=14" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
 <script src="tour.js?v=3" onerror="console.warn('§LOAD_FAIL tour.js')"></script>
 <script src="measure.js?v=33" onerror="console.warn('§LOAD_FAIL measure.js')"></script>
 <script src="sitecam.js?v=6" onerror="console.warn('§LOAD_FAIL sitecam.js')"></script>
@@ -561,7 +561,7 @@ if(new URLSearchParams(location.search).get('embedded')!=='true'){
 </script>
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js?v=258')
+  navigator.serviceWorker.register('sw.js?v=259')
     .then(function(r){console.log('§SW_REG scope='+r.scope)})
     .catch(function(e){console.warn('§SW_REG_FAIL',e)});
 }
