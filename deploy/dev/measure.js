@@ -1485,13 +1485,19 @@ function setupMeasure(A) {
       matrixSnapshot = A._clashMatrixDiv.innerHTML;
     }
 
-    // Build pair summary from loaded clashes
+    // Build pair summary — seed from ALL rules + R-tree counts, overlay with loaded clashes
     var pairSummary = [];
     var pairMap = {};
+    // Seed every rule pair so none are missing from the summary table
+    rules.clash_rules.forEach(function(r) {
+      var key = r.source.discipline + '|' + r.target.discipline;
+      var count = _pairCounts[key] || 0;
+      if (!pairMap[key]) pairMap[key] = { src: r.source.discipline, tgt: r.target.discipline, count: count, reviewed: 0, resolved: 0, accepted: 0 };
+    });
+    // Overlay with loaded clash statuses
     allClashes.forEach(function(c) {
       var key = (c[4] || '?') + '|' + (c[5] || '?');
       if (!pairMap[key]) pairMap[key] = { src: c[4] || '?', tgt: c[5] || '?', count: 0, reviewed: 0, resolved: 0, accepted: 0 };
-      pairMap[key].count++;
       var st = A._clashStatuses[A._clashPairKey(c[0], c[1])] || '';
       if (st === 'Reviewed') pairMap[key].reviewed++;
       else if (st === 'Resolved') pairMap[key].resolved++;
@@ -1647,10 +1653,10 @@ function setupMeasure(A) {
       '</div>' +
       '<div class="charts">' +
       '<div class="chart-box"><h2>By Discipline Pair</h2><canvas id="discChart"></canvas></div>' +
-      '<div class="chart-box"><h2>Top Offenders — Fix These First</h2><canvas id="offenderChart"></canvas></div>' +
+      '<div class="chart-box"><h2>Discipline Risk Profile</h2><canvas id="radarChart"></canvas></div>' +
       '<div class="chart-box"><h2>By Severity</h2><canvas id="sevChart"></canvas></div>' +
       '<div class="chart-box"><h2>By Status</h2><canvas id="statusChart"></canvas></div>' +
-      '<div class="chart-box"><h2>Discipline Risk Profile</h2><canvas id="radarChart"></canvas></div>' +
+      '<div class="chart-box"><h2>Top Offenders — Fix These First</h2><canvas id="offenderChart"></canvas></div>' +
       '<div class="chart-box"><h2>By Element Class</h2><canvas id="classChart"></canvas></div>' +
       '<div class="chart-box full"><h2>Discipline Matrix Summary</h2>' +
       '<table><thead><tr><th>Source</th><th>Target</th><th>Tolerance</th><th>Clashes</th><th>Reviewed</th><th>Resolved</th><th>Accepted</th><th>Open</th></tr></thead><tbody>';
@@ -1690,8 +1696,8 @@ function setupMeasure(A) {
       'var classCounts=' + JSON.stringify(classCounts) + ';' +
       'var discPairs=' + JSON.stringify(discPairs) + ';' +
       'var discPairCounts=' + JSON.stringify(discPairCounts) + ';' +
-      'new Chart(document.getElementById("sevChart"),{type:"doughnut",data:{labels:Object.keys(sevData),datasets:[{data:Object.values(sevData),backgroundColor:["#ff4444","#ff8c00","#4fc3f7"]}]},options:{plugins:{legend:{labels:{color:"#ccc"}}}}});' +
-      'new Chart(document.getElementById("statusChart"),{type:"doughnut",data:{labels:Object.keys(statusData),datasets:[{data:Object.values(statusData),backgroundColor:["#ff4444","#FFD700","#4caf50","#888"]}]},options:{plugins:{legend:{labels:{color:"#ccc"}}}}});' +
+      'new Chart(document.getElementById("sevChart"),{type:"doughnut",data:{labels:Object.keys(sevData),datasets:[{data:Object.values(sevData),backgroundColor:["#ff4444","#ff8c00","#4fc3f7"]}]},options:{cutout:"45%",plugins:{legend:{position:"top",align:"end",labels:{color:"#ccc",font:{size:14},padding:10}}}}});' +
+      'new Chart(document.getElementById("statusChart"),{type:"doughnut",data:{labels:Object.keys(statusData),datasets:[{data:Object.values(statusData),backgroundColor:["#ff4444","#FFD700","#4caf50","#888"]}]},options:{cutout:"45%",plugins:{legend:{position:"top",align:"end",labels:{color:"#ccc",font:{size:14},padding:10}}}}});' +
       'new Chart(document.getElementById("discChart"),{type:"bar",data:{labels:discPairs,datasets:[{label:"Clashes",data:discPairs.map(function(p){return discPairCounts[p]}),backgroundColor:"#ff8c00"}]},options:{indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#ccc"}},y:{ticks:{color:"#ccc"}}}}});' +
       'new Chart(document.getElementById("classChart"),{type:"bar",data:{labels:classPairs,datasets:[{label:"Clashes",data:classPairs.map(function(p){return classCounts[p]}),backgroundColor:"#4fc3f7"}]},options:{indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#ccc"}},y:{ticks:{color:"#ccc"}}}}});' +
       'var radarDiscs=' + JSON.stringify(radarDiscs) + ';' +
@@ -2126,7 +2132,7 @@ function setupMeasure(A) {
     btn.style.color = A.measureActive ? '#000' : '#fff';
     // Grey out / restore 2D button
     var g2d = document.getElementById('grid-2d-btn');
-    if (g2d) { g2d.style.opacity = A.measureActive ? '0.3' : '1'; g2d.style.pointerEvents = A.measureActive ? 'none' : ''; }
+    if (g2d) { g2d.style.opacity = A.measureActive ? '0.3' : '1'; }
     var isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     A.status.textContent = A.measureActive
       ? (isMobile ? 'Tap for dimensions. Long-press for Info. Tap here to exit.' : 'Click for dimensions. Right-click for Info')

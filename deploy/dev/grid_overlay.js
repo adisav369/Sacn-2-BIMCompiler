@@ -806,7 +806,7 @@ function setupGridOverlay(APP) {
       var btn2d = document.getElementById('grid-2d-btn');
       if (btn2d) { btn2d.style.background = '#444'; btn2d.style.borderColor = '#666'; }
       var mBtn = document.getElementById('measure-btn');
-      if (mBtn) { mBtn.style.opacity = '1'; mBtn.style.pointerEvents = ''; }
+      if (mBtn) { mBtn.style.opacity = '1'; }
       A.markDirty();
       log('§GRID_MODE state=exit');
       return;
@@ -817,7 +817,7 @@ function setupGridOverlay(APP) {
     var btn2d = document.getElementById('grid-2d-btn');
     if (btn2d) { btn2d.style.background = '#4fc3f7'; btn2d.style.borderColor = '#4fc3f7'; }
     var mBtn = document.getElementById('measure-btn');
-    if (mBtn) { mBtn.style.opacity = '0.3'; mBtn.style.pointerEvents = 'none'; }
+    if (mBtn) { mBtn.style.opacity = '0.3'; }
     log('§GRID_MODE state=enter');
 
     // If already built, just show
