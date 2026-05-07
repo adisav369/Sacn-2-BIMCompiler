@@ -70,6 +70,15 @@ Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://w
 
     [:octicons-arrow-right-24: Test architecture](TestArchitecture.md) · [:octicons-arrow-right-24: Compliance](STANDARDS_COMPLIANCE_SRS.md)
 
+-   **Clash Detection — In the Browser**
+
+    ---
+
+    12 discipline-pair rules. [Clash matrix](CLASH_DETECTION.md), fly-to visualization, live tolerance slider,
+    in-viewer review workflow. 48K elements, zero server. Replaces Navisworks ($3,570/yr).
+
+    [:octicons-arrow-right-24: Clash Detection](CLASH_DETECTION.md)
+
 -   **ERP-Native + Reports**
 
     ---
@@ -78,6 +87,16 @@ Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://w
     Same compiled output produces [BOM schedules, compliance certificates, cost reports](REPORTING_ENGINE_SRS.md).
 
     [:octicons-arrow-right-24: ERP world view](MANIFESTO.md) · [:octicons-arrow-right-24: Reporting](REPORTING_ENGINE_SRS.md)
+
+-   **Enterprise Security — No Server Required**
+
+    ---
+
+    3-layer cryptographic verification: HMAC pipeline attestation, Ed25519 identity signing,
+    SHA-256 transport integrity. Beats BIM360/Trimble on every attack vector.
+    Free to view. Pay for [authenticated collaboration](EnterpriseAuthentication.md).
+
+    [:octicons-arrow-right-24: Security Architecture](EnterpriseAuthentication.md)
 
 </div>
 

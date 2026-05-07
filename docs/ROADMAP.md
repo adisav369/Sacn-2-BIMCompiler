@@ -15,6 +15,9 @@ DB = model. Template = view. Browser = runtime. Three concerns, never merged.
 | S228 | Drop Zone multi-format: OBJ, STL, DAE, GLB/GLTF, FBX, 3DS. Auto up-axis + scale | `deploy/dev/mesh_import_worker.js` |
 | S229a | Guided classification wizard — 6-step flow for non-IFC meshes | `deploy/dev/wizard.js` |
 | S229b | IFC export — DB → .ifc download. Pure STEP text builder, 30-test round-trip | `deploy/dev/ifc_export_worker.js` |
+| S250 §8 | Save & Contribute — lazy-loaded upload with DB integrity validation | `deploy/dev/contribute.js` |
+
+**Security:** Enterprise authentication via 3-layer cryptographic verification — see [`docs/EnterpriseAuthentication.md`](EnterpriseAuthentication.md).
 
 **Tests:** 72/72 Playwright E2E (desktop), 53/55 pure-function. Suite: `deploy/dev/tests/`.
 
@@ -91,6 +94,10 @@ Stage 5 — History: Arrow-down on empty search bar → dropdown of last 5 queri
 Mobile: toast card is full-width at bottom. Desktop: card is 350px, bottom-right.
 
 ### S211a — Clash Detection (template-driven, R-tree bbox)
+
+!!! success "SHIPPED — S245c/d"
+    Browser-native clash detection is live. 12 discipline-pair rules, storey-scoped progressive queries, clash matrix, in-viewer review workflow, HTML report. See **[Clash Detection](CLASH_DETECTION.md)** for the full feature guide.
+
 Port the Python clash detector (`federation/clash/detector.py`) to browser JS.
 R-tree bbox collision against sql.js — same algorithm, same O(n log n) with spatial prefiltering.
 

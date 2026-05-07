@@ -25,6 +25,8 @@
 | Bbox recalculated from vertices | Bbox extracted from IFC IfcBoundingBox representation |
 | GPL entanglement (Blender) | MIT license throughout |
 
+**Security & Collaboration:** When this DB is contributed to the shared gallery, a 3-layer cryptographic verification chain (HMAC pipeline attestation + Ed25519 identity + transport integrity) ensures only valid, verified databases are accepted. See [`EnterpriseAuthentication.md`](EnterpriseAuthentication.md).
+
 ---
 
 ## Schema (10 tables, one DB)
@@ -39,7 +41,10 @@ CREATE TABLE project_metadata (
     key TEXT PRIMARY KEY,
     value TEXT
 );
--- Keys: project_name, building_name, import_date, source_file
+-- Keys: project_name, building_name, import_date, source_file, source_uri
+-- source_uri: Origin URI of the IFC (supports https://, future ifc:// scheme).
+--   Enables provenance tracking, re-fetch/recompile, and interoperability
+--   with emerging IFC URI standards (e.g. proposed ifc:// addressing).
 
 -- Element catalog (WHAT is in the building)
 CREATE TABLE elements_meta (
@@ -211,6 +216,128 @@ web-ifc, sql.js, and Three.js each solve one problem. **No existing project comb
 3. **DB-to-GPU streaming** — SQLite BLOB → Float32Array → BufferGeometry with zero conversion
 4. **Round-trip** — browser edits → DB → IFC export, closing the loop without a server
 5. **R-tree clash detection** — `rtree-sql.js` WASM (2025) enables O(n log N) spatial clash queries entirely in the browser. The critical enabler for S245-S246 clash detection, proximity LOD, and deep-link sharing. See [VibeProgramming.md §Technology Convergence](VibeProgramming.md#the-technology-convergence--why-this-was-impossible-before-2025) for the full timeline.
+
+---
+
+## WASM Engine: rtree-sql.js — Source, Safekeeping, Contribution
+
+### The Engine That Makes This Possible
+
+The entire BIM OOTB viewer runs on **one npm package**: [`rtree-sql.js`](https://www.npmjs.com/package/rtree-sql.js) v1.7.0 by Daniel Barela (`danielbarela`). It is a rebuild of [sql.js](https://github.com/sql-js/sql.js) with a single compile flag added: `-DSQLITE_ENABLE_RTREE=1`. That flag enables SQLite's R-tree spatial index module — the algorithm (Guttman, 1984) that gives us O(log N) spatial queries instead of O(n²) cross-joins. Without it, clash detection on 48K elements is mathematically impossible in a browser.
+
+**The package is effectively abandoned.** Three versions ever published (1.0.0, 1.0.1, 1.7.0). Last update: 3 June 2022. No public GitHub repository. No documentation beyond the sql.js README. No maintainer activity in 3 years.
+
+### Local Safekeeping
+
+CDN dependency is a single point of failure. Local copies are kept for continuity:
+
+```
+BIMOOTB/lib/rtree-sql/
+  sql-wasm.js      — 49KB  (WASM loader, MIT license)
+  sql-wasm.wasm    — 631KB (SQLite 3.x + R-tree, compiled via Emscripten)
+```
+
+Verified working: R-tree `CREATE VIRTUAL TABLE ... USING rtree(...)` executes successfully. This is the exact binary served by `cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/`.
+
+### Source Repositories
+
+| Package | Source | License | Status | Our dependency |
+|---------|--------|---------|--------|----------------|
+| **rtree-sql.js** v1.7.0 | No public repo (npm only, `danielbarela`) | MIT | **Stale** — last update Jun 2022 | **Critical** — loaded on every page view |
+| **sql.js** v1.14.1 | [github.com/sql-js/sql.js](https://github.com/sql-js/sql.js) | MIT | Active (Ophir Lojkine) | Upstream of rtree-sql.js |
+| **SQLite** (C source) | [sqlite.org/src](https://sqlite.org/src/dir?ci=tip) | Public domain | Active (D. Richard Hipp) | Compiled into WASM |
+| **Emscripten** | [github.com/emscripten-core/emscripten](https://github.com/emscripten-core/emscripten) | MIT | Active (Alon Zakai + community) | Compiler toolchain |
+| **Three.js** r128 | [github.com/mrdoob/three.js](https://github.com/mrdoob/three.js) | MIT | Active | 3D renderer |
+| **web-ifc** v0.0.77 | [github.com/ThatOpenCompany/engine](https://github.com/ThatOpenCompany/engine) | MPL-2.0 | Active | IFC parser (import only) |
+
+### Live Demonstration — Shareable Clash Deep-Link
+
+The R-tree powers the entire clash detection pipeline: spatial index → O(log N) query → fly-to → shareable URL. This link opens a specific clash pair in the Hospital Garage (63K elements), pre-positioned at the overlap zone:
+
+[**Open Clash Pair — Hospital Garage MEP vs ARC**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/sandbox/index.html?db=https%3A%2F%2Fobjectstorage.ap-kulai-2.oraclecloud.com%2Fn%2Fax3cp6tzwuy2%2Fb%2Fbim-ootb-live%2Fo%2Fbuildings%2FHospitalGarage_extracted.db#clash=0GjpF04mX1K8P$TdM8fU2_~3ltWc9XO98DfOXi0yjJr4p&st=&cam=-44.21,-8.22,-42.42&tgt=-52.01,-7.95,-35.39&tol=25)
+
+URL anatomy:
+```
+?db=...HospitalGarage_extracted.db     ← SQLite DB with R-tree
+#clash=GUID_A~GUID_B                   ← the two clashing elements
+&st=                                   ← storey (empty = whole building)
+&cam=-44.21,-8.22,-42.42               ← camera position (metres)
+&tgt=-52.01,-7.95,-35.39               ← camera target (look-at point)
+&tol=25                                ← tolerance in mm
+```
+
+What happens on load: viewer opens DB → builds R-tree async → parses `#clash` URL → locates both elements by GUID → positions camera → highlights overlap zone in red/blue. **Zero server. Zero login. Zero install.** Paste this URL in WhatsApp — the recipient sees the 3D clash on their phone.
+
+### How to Rebuild from Source
+
+Since rtree-sql.js is abandoned, we can rebuild from sql.js (its upstream) at any time:
+
+```bash
+git clone https://github.com/sql-js/sql.js
+cd sql.js
+
+# Add R-tree flag to Makefile (the ONLY change Barela made)
+# Find the SQLITEFLAGS line and append:
+#   -DSQLITE_ENABLE_RTREE=1
+
+make
+
+# Output: dist/sql-wasm.js + dist/sql-wasm.wasm (with R-tree enabled)
+# Verify:
+node -e "
+const fs = require('fs');
+const initSqlJs = require('./dist/sql-wasm.js');
+initSqlJs({ wasmBinary: fs.readFileSync('./dist/sql-wasm.wasm') }).then(SQL => {
+  const db = new SQL.Database();
+  db.run('CREATE VIRTUAL TABLE t USING rtree(id, x0, x1, y0, y1, z0, z1)');
+  console.log('R-tree: OK');
+});
+"
+```
+
+This produces a newer SQLite (with memory fixes from 2024-2025) while retaining R-tree support. Consider publishing as a maintained fork if contributing upstream fails.
+
+### Contribution Opportunities
+
+Areas where our production experience gives us unique credibility to contribute back:
+
+#### To sql-js/sql.js — R-tree as a standard build option
+
+| What | Why we're qualified | Where |
+|------|-------------------|-------|
+| PR: R-tree build variant | We are likely the heaviest production user of R-tree in WASM. [Issue #390](https://github.com/sql-js/sql.js/issues/390) has been open since 2020, unanswered. | PR to sql-js/sql.js |
+| Benchmark: large DB stress testing | 48K–126K elements, batch INSERT into R-tree, spatial query timing on mobile | Issue with data |
+| Documentation: BLOB-to-GPU pattern | No application in any industry streams geometry from SQLite BLOBs to WebGL. We invented this pipeline. | Wiki or example |
+
+#### To Three.js — InstancedMesh from database BLOBs
+
+| What | Why we're qualified | Where |
+|------|-------------------|-------|
+| Example: SQLite → BufferGeometry → InstancedMesh | Working pipeline: `new Float32Array(blob)` → `setAttribute('position', ...)` → GPU. No tutorial exists. | three.js/examples |
+| Mobile GPU instancing limits | Real data: which phones fail at which element count, memory thresholds | Documentation |
+| DLOD (proximity level-of-detail) with spatial index | Our approach: R-tree query near camera → load real meshes, wireframe the rest. Novel. | Example/blog |
+
+#### To web-ifc / That Open Engine — IFC4 edge cases at scale
+
+| What | Why we're qualified | Where |
+|------|-------------------|-------|
+| Tessellation bugs at scale | 48K elements across 7 disciplines — we've hit edge cases others haven't. | Bug reports with reproducible IFC files |
+| IFC → SQLite extraction pipeline | Our `extractIFC2DB.js` is a reference implementation: entity classification, transform extraction, geometry dedup. | Documentation contribution |
+
+#### To SQLite (sqlite.org forum) — R-tree in WASM real-world data
+
+| What | Why we're qualified | Where |
+|------|-------------------|-------|
+| R-tree performance in WASM: benchmarks | Timing: batch INSERT of 48K bboxes, spatial query latency on mobile Chrome/Safari. The SQLite WASM team has no BIM/3D users. | [Forum post](https://sqlite.org/forum) |
+| BLOB streaming at scale | Using SQLite as a geometry delivery format (not just data storage) is unprecedented. Our experience informs their WASM roadmap. | Forum post |
+
+#### New npm package — maintained fork
+
+| What | Rationale |
+|------|-----------|
+| Publish `@bimootb/sql-rtree` (or similar) | Our most critical dependency is a 3-year-old package from an inactive author. One npm unpublish and our CDN breaks. Own your supply chain. |
+| Include: R-tree + FTS5 (future full-text search) | FTS5 enables "search by element name" across 48K elements — future feature with zero cost to add at compile time. |
+| Pin SQLite version, test against our DBs | Regression testing with real buildings, not toy data. |
 
 ---
 
