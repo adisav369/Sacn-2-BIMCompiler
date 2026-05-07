@@ -969,10 +969,12 @@ function setupMeasure(A) {
       var panel = document.createElement('div');
       panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:rgba(30,30,50,0.97);border-radius:12px;padding:20px 24px;border:1px solid rgba(79,195,247,0.5);font-family:Segoe UI,sans-serif;text-align:center;backdrop-filter:blur(8px)';
       panel.innerHTML = '<div style="color:#4fc3f7;font-size:14px;margin-bottom:12px;font-weight:bold">Share Clash Snag</div>' +
-        '<button id="share-copy" style="display:block;width:100%;margin:6px 0;padding:10px;background:#333;color:#fff;border:1px solid #555;border-radius:6px;cursor:pointer;font-size:13px">📋 Copy Image + Link (Ctrl+V to paste)</button>' +
+        '<button id="share-copy" style="display:block;width:100%;margin:6px 0;padding:10px;background:#333;color:#fff;border:1px solid #555;border-radius:6px;cursor:pointer;font-size:13px">🔗 Copy URL</button>' +
         '<button id="share-wa" style="display:block;width:100%;margin:6px 0;padding:10px;background:#25d366;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">💬 WhatsApp</button>' +
+        '<div style="color:#888;font-size:10px;margin:-4px 0 4px;font-style:italic">Paste copied image before sending</div>' +
         '<button id="share-email" style="display:block;width:100%;margin:6px 0;padding:10px;background:#1a73e8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">📧 Email</button>' +
-        '<button id="share-qr" style="display:block;width:100%;margin:6px 0;padding:10px;background:#555;color:#fff;border:1px solid #777;border-radius:6px;cursor:pointer;font-size:13px">QR Code</button>' +
+        '<div style="color:#888;font-size:10px;margin:-4px 0 4px;font-style:italic">Paste copied image before sending</div>' +
+        '<button id="share-qr" style="display:block;width:100%;margin:6px 0;padding:10px;background:#555;color:#fff;border:1px solid #777;border-radius:6px;cursor:pointer;font-size:13px">📱 QR Code</button>' +
         '<button id="share-close" style="display:block;width:100%;margin:10px 0 0;padding:8px;background:transparent;color:#888;border:1px solid #555;border-radius:6px;cursor:pointer;font-size:12px">Cancel</button>';
       document.body.appendChild(panel);
       var _dismiss = function() {
@@ -981,44 +983,62 @@ function setupMeasure(A) {
         A.closeSitePreview();
         A._pendingClashSnag = null;
       };
-      // Copy: image (PNG for clipboard) + deep-link text — user can Ctrl+V in WhatsApp/Email
+      // Copy URL to clipboard with confirmation dialog
       panel.querySelector('#share-copy').addEventListener('click', async function() {
         try {
-          // Convert JPEG blob to PNG (clipboard API requires image/png)
-          var img = new Image();
-          var pngBlob = await new Promise(function(resolve) {
-            img.onload = function() {
-              var c = document.createElement('canvas');
-              c.width = img.width; c.height = img.height;
-              c.getContext('2d').drawImage(img, 0, 0);
-              c.toBlob(function(b) { resolve(b); }, 'image/png');
-            };
+          await navigator.clipboard.writeText(cs.deep_link);
+          console.log('§CLASH_SNAG_CLIPBOARD url OK');
+        } catch(e) {
+          console.log('§CLASH_SNAG_CLIPBOARD err: ' + e.message);
+        }
+        panel.remove();
+        var dlg = document.createElement('div');
+        dlg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10001;background:rgba(30,30,50,0.97);border-radius:12px;padding:24px 32px;border:1px solid rgba(79,195,247,0.5);text-align:center;font-family:Segoe UI,sans-serif;backdrop-filter:blur(8px)';
+        dlg.innerHTML = '<div style="color:#4fc3f7;font-size:16px;font-weight:bold;margin-bottom:10px">🔗 URL Copied</div>' +
+          '<div style="color:#ccc;font-size:13px;margin-bottom:16px;max-width:340px">Clash deep-link copied to clipboard.<br>Paste in WhatsApp, Email, or any medium to share.</div>' +
+          '<button style="padding:8px 24px;background:#4fc3f7;color:#000;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold">OK</button>';
+        dlg.querySelector('button').onclick = function() { dlg.remove(); _dismiss(); };
+        document.body.appendChild(dlg);
+      });
+      panel.querySelector('#share-wa').addEventListener('click', async function() {
+        try {
+          var img = new Image(); var pngBlob = await new Promise(function(resolve) {
+            img.onload = function() { var c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.getContext('2d').drawImage(img, 0, 0); c.toBlob(function(b) { resolve(b); }, 'image/png'); };
             img.src = URL.createObjectURL(blob);
           });
-          await navigator.clipboard.write([
-            new ClipboardItem({
-              'image/png': pngBlob,
-              'text/plain': new Blob([cs.deep_link], { type: 'text/plain' })
-            })
-          ]);
-          A.status.textContent = 'Image + link copied — Ctrl+V to paste';
-          console.log('§CLASH_SNAG_CLIPBOARD image+text OK');
-        } catch(e) {
-          // Fallback: text only
-          try { await navigator.clipboard.writeText(cs.deep_link); } catch(e2) {}
-          A.status.textContent = 'Deep-link copied (image copy not supported)';
-          console.log('§CLASH_SNAG_CLIPBOARD text-only fallback: ' + e.message);
-        }
-        _dismiss();
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+          console.log('§CLASH_SNAG_WA image copied');
+        } catch(e) { console.log('§CLASH_SNAG_WA image copy failed: ' + e.message); }
+        window.open(waUrl, '_blank'); _dismiss(); console.log('§CLASH_SNAG_WA');
       });
-      panel.querySelector('#share-wa').addEventListener('click', function() { window.open(waUrl, '_blank'); _dismiss(); console.log('§CLASH_SNAG_WA'); });
-      panel.querySelector('#share-email').addEventListener('click', function() { window.open(emailUrl, '_blank'); _dismiss(); console.log('§CLASH_SNAG_EMAIL'); });
-      panel.querySelector('#share-qr').addEventListener('click', function() {
+      panel.querySelector('#share-email').addEventListener('click', async function() {
+        try {
+          var img = new Image(); var pngBlob = await new Promise(function(resolve) {
+            img.onload = function() { var c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.getContext('2d').drawImage(img, 0, 0); c.toBlob(function(b) { resolve(b); }, 'image/png'); };
+            img.src = URL.createObjectURL(blob);
+          });
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+          console.log('§CLASH_SNAG_EMAIL image copied');
+        } catch(e) { console.log('§CLASH_SNAG_EMAIL image copy failed: ' + e.message); }
+        window.open(emailUrl, '_blank'); _dismiss(); console.log('§CLASH_SNAG_EMAIL');
+      });
+      panel.querySelector('#share-qr').addEventListener('click', async function() {
         panel.remove();
+        // Copy deep-link to clipboard, then show QR overlay with confirmation dialog
+        var label = 'Clash: ' + cs.discipline_pair.replace('|', ' vs ');
+        try { await navigator.clipboard.writeText(cs.deep_link); } catch(e) {}
         if (A.showQRShare) {
-          A.showQRShare(cs.deep_link, 'Clash: ' + cs.discipline_pair.replace('|', ' vs '));
+          A.showQRShare(cs.deep_link, label);
         }
-        console.log('§CLASH_SNAG_QR shown deepLink=' + (cs.deep_link || '').substring(0, 60));
+        // Show confirmation dialog over QR
+        var dlg = document.createElement('div');
+        dlg.style.cssText = 'position:fixed;bottom:20%;left:50%;transform:translateX(-50%);z-index:10001;background:rgba(30,30,50,0.97);border-radius:12px;padding:20px 28px;border:1px solid rgba(79,195,247,0.5);text-align:center;font-family:Segoe UI,sans-serif';
+        dlg.innerHTML = '<div style="color:#4fc3f7;font-size:15px;font-weight:bold;margin-bottom:8px">QR/URL Link Copied</div>' +
+          '<div style="color:#ccc;font-size:12px;margin-bottom:14px;max-width:300px">Paste in WhatsApp, Email, or any medium to share.<br>Or scan the QR code above.</div>' +
+          '<button style="padding:8px 20px;background:#4fc3f7;color:#000;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold">OK</button>';
+        dlg.querySelector('button').onclick = function() { dlg.remove(); };
+        document.body.appendChild(dlg);
+        console.log('§CLASH_SNAG_QR shown+copied deepLink=' + (cs.deep_link || '').substring(0, 60));
       });
       panel.querySelector('#share-close').addEventListener('click', _dismiss);
       console.log('§CLASH_SNAG_SHARE_PANEL shown (desktop fallback)');
@@ -1583,23 +1603,27 @@ function setupMeasure(A) {
       '</style></head><body>' +
       '<div class="toolbar">' +
       '<button onclick="if(window.opener&&window.opener._bimApp&&window.opener._bimApp._exportCSVBackground){window.opener._bimApp._exportCSVBackground()}else{alert(\'Open from viewer to export CSV\')}">Download CSV</button>' +
+      '<button onclick="_shareReport()">Share Report</button>' +
       '</div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:16px">' +
-      '<div style="flex:1"><h1>Clash Coordination Report — ' + pairLabel + '</h1>' +
-      '<div class="subtitle">' + building + ' &mdash; ' + date + ' &mdash; Storey: ' + storey +
-      ' &mdash; ' + totalCount + ' clashes' + (totalCount > allClashes.length ? ' (listing top ' + allClashes.length + ')' : '') + '</div>' +
-      '<div style="margin-top:10px;font-size:12px;color:#bbb;line-height:1.7;max-width:520px">' +
-      '<b style="color:#4fc3f7;font-size:22px">Compliance &amp; Reference Standards</b><br>' +
-      'ISO 19650-1:2018 &mdash; Organization and digitization of information about buildings and civil engineering works<br>' +
-      'ISO 19650-2:2018 &mdash; Delivery phase of assets (clash avoidance &amp; coordination workflow)<br>' +
-      'buildingSMART IFC4 &mdash; Industry Foundation Classes, spatial &amp; geometric intersection semantics<br>' +
-      'BIM Collaboration Format (BCF 3.0) &mdash; Clash topic exchange, viewpoint, element GUID referencing<br>' +
-      'PAS 1192-2:2013 / BS EN ISO 19650 &mdash; UK BIM Level 2 coordination &amp; clash management protocol<br>' +
-      'Singapore BIM Guide v2.0 &mdash; Clash detection requirements for regulatory submission (BCA/CORENET)<br>' +
-      'NATSPEC BIM Reference Schedule &mdash; Tolerance definitions per discipline pair (ARC/STR/MEP)<br>' +
-      '<span style="color:#888">Analysis: R-tree spatial index, O(n log N) per discipline pair. Tolerances per clash_rules.json.</span>' +
-      '</div></div>' +
-      (matrixSnapshot ? '<div class="chart-box" style="flex-shrink:0;margin:0">' + matrixSnapshot + '</div>' : '') +
+      '<div style="display:flex;gap:20px;margin-bottom:16px;align-items:stretch">' +
+      '<div style="flex:0 0 auto;max-width:280px">' +
+      '<h1 style="font-size:24px;margin-bottom:6px;color:#4fc3f7">Clash Coordination Report</h1>' +
+      '<div class="subtitle">' + pairLabel + '<br>' + building + '<br>' + date + '<br>Storey: ' + storey +
+      '<br>' + totalCount + ' clashes' + (totalCount > allClashes.length ? ' (top ' + allClashes.length + ')' : '') + '</div>' +
+      '</div>' +
+      '<div style="flex:1;background:rgba(79,195,247,0.06);border:1px solid rgba(79,195,247,0.15);border-radius:8px;padding:20px 24px;line-height:2.2">' +
+      '<b style="color:#4fc3f7;font-size:26px;display:block;margin-bottom:12px">Compliance &amp; Reference Standards</b>' +
+      '<span style="font-size:18px;color:#ccc">' +
+      'ISO 19650-1:2018 &mdash; Organization &amp; digitization of building information<br>' +
+      'ISO 19650-2:2018 &mdash; Delivery phase clash avoidance &amp; coordination<br>' +
+      'buildingSMART IFC4 &mdash; Spatial &amp; geometric intersection semantics<br>' +
+      'BCF 3.0 &mdash; Clash topic exchange, viewpoint, GUID referencing<br>' +
+      'PAS 1192-2 / BS EN ISO 19650 &mdash; UK BIM Level 2 coordination<br>' +
+      'Singapore BIM Guide v2.0 &mdash; BCA/CORENET submission requirements<br>' +
+      'NATSPEC BIM Reference Schedule &mdash; Tolerance definitions per discipline pair</span><br>' +
+      '<span style="color:#888;font-size:11px">R-tree spatial index, O(n log N) per pair. Tolerances per clash_rules.json.</span>' +
+      '</div>' +
+      (matrixSnapshot ? '<div style="flex:0 0 auto" class="chart-box">' + matrixSnapshot + '</div>' : '') +
       '</div>' +
       '<div class="stat-cards">' +
       '<div class="stat-card" title="Total bbox overlaps detected across all discipline pairs"><div class="num" style="color:#ff4444">' + totalCount + '</div><div class="lbl">Total Clashes</div></div>' +
@@ -1631,6 +1655,18 @@ function setupMeasure(A) {
     html += '</tbody></table></div>' +
       '</div>' +
       '<script>' +
+      'function _shareReport(){' +
+      'var html=document.documentElement.outerHTML;' +
+      'var blob=new Blob([html],{type:"text/html"});' +
+      'var a=document.createElement("a");' +
+      'a.download="ClashReport_' + building.replace(/[^a-zA-Z0-9]/g, '_') + '_' + date.replace(/[^0-9-]/g, '') + '.html";' +
+      'a.href=URL.createObjectURL(blob);a.click();' +
+      'var d=document.createElement("div");' +
+      'd.style.cssText="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:rgba(30,30,50,0.97);border-radius:12px;padding:24px 32px;border:1px solid rgba(79,195,247,0.5);text-align:center;font-family:Segoe UI,sans-serif";' +
+      'd.innerHTML="<div style=\\"color:#4fc3f7;font-size:16px;font-weight:bold;margin-bottom:12px\\">Report Downloaded</div>"' +
+      '+"<div style=\\"color:#ccc;font-size:13px;margin-bottom:16px;max-width:360px\\">HTML file saved. Share via WhatsApp, Email, or any medium.<br>Recipient opens it in any browser — full charts, no setup needed.</div>"' +
+      '+"<button onclick=\\"this.parentElement.remove()\\" style=\\"padding:8px 24px;background:#4fc3f7;color:#000;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold\\">OK</button>";' +
+      'document.body.appendChild(d)}' +
       'var sevData=' + JSON.stringify(sevCounts) + ';' +
       'var statusData=' + JSON.stringify(sc) + ';' +
       'var classPairs=' + JSON.stringify(classPairs) + ';' +

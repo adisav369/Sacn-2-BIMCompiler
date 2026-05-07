@@ -8,7 +8,7 @@
 // Cache-first for heavy assets (.wasm, images). DB files skip SW (IndexedDB handles them).
 //
 // DEPLOY: bump CACHE_VERSION on every OCI upload. Old caches are purged on activate.
-const CACHE_VERSION = 'v259';
+const CACHE_VERSION = 'v266';
 const CACHE_NAME = 'bim-ootb-' + CACHE_VERSION;
 
 // Local copies of vendor libs — single-origin, no CDN dependency
@@ -101,13 +101,15 @@ self.addEventListener('activate', (event) => {
 
 // Returns true for URLs that should use network-first strategy
 function isNetworkFirst(url) {
+  // Strip ?v=N query string before checking extension — HTML uses ?v= cache busters
+  var base = url.split('?')[0];
   // Local .html and .js files change on every deploy — always try network first
-  if (url.endsWith('.html') || url.endsWith('.js')) {
+  if (base.endsWith('.html') || base.endsWith('.js')) {
     // lib/ files are versioned and immutable — keep them cache-first
-    if (url.includes('/lib/')) return false;
+    if (base.includes('/lib/')) return false;
     // CDN fallback assets are also immutable — keep them cache-first
     for (const cdn of CDN_ASSETS) {
-      if (url === cdn) return false;
+      if (url === cdn || base === cdn) return false;
     }
     return true;
   }
