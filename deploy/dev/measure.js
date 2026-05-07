@@ -1446,6 +1446,20 @@ function setupMeasure(A) {
   // S246b: separated HTML builder from count loop — called after async counts complete
   A._buildExportHtml = function(rules, building, date, storey, pairLabel, allClashes, _pairCounts, _envs, MAX_REPORT) {
     A.status.textContent = 'Building report\u2026';
+    // If no clashes loaded (no cell clicked), load from all pairs via R-tree
+    if (!allClashes.length && A._clashRtreeReady) {
+      var perPairCap = Math.max(20, Math.floor(MAX_REPORT / Math.max(Object.keys(_pairCounts).length, 1)));
+      rules.clash_rules.forEach(function(r) {
+        var key = r.source.discipline + '|' + r.target.discipline;
+        if (!_pairCounts[key]) return;
+        var oldPageSize = A._CLASH_PAGE_SIZE;
+        A._CLASH_PAGE_SIZE = perPairCap;
+        var rows = A._queryClashesPairRtree(null, rules, r.source.discipline, r.target.discipline, 0, null);
+        A._CLASH_PAGE_SIZE = oldPageSize;
+        rows.forEach(function(row) { allClashes.push(row); });
+      });
+      console.log('§EXPORT_AUTOLOAD loaded ' + allClashes.length + ' clashes from all pairs (cap=' + perPairCap + '/pair)');
+    }
     if (allClashes.length > MAX_REPORT) allClashes = allClashes.slice(0, MAX_REPORT);
     // Total = sum of R-tree counts across all pairs (full building)
     var totalCount = 0;
@@ -1632,12 +1646,12 @@ function setupMeasure(A) {
       '<div class="stat-card" title="Risk accepted — no design change needed (e.g. intentional penetration)"><div class="num" style="color:#888">' + sc['Accepted'] + '</div><div class="lbl">Accepted</div></div>' +
       '</div>' +
       '<div class="charts">' +
+      '<div class="chart-box"><h2>By Discipline Pair</h2><canvas id="discChart"></canvas></div>' +
+      '<div class="chart-box"><h2>Top Offenders — Fix These First</h2><canvas id="offenderChart"></canvas></div>' +
       '<div class="chart-box"><h2>By Severity</h2><canvas id="sevChart"></canvas></div>' +
       '<div class="chart-box"><h2>By Status</h2><canvas id="statusChart"></canvas></div>' +
-      '<div class="chart-box"><h2>By Discipline Pair</h2><canvas id="discChart"></canvas></div>' +
-      '<div class="chart-box"><h2>By Element Class</h2><canvas id="classChart"></canvas></div>' +
       '<div class="chart-box"><h2>Discipline Risk Profile</h2><canvas id="radarChart"></canvas></div>' +
-      '<div class="chart-box"><h2>Top Offenders — Fix These First</h2><canvas id="offenderChart"></canvas></div>' +
+      '<div class="chart-box"><h2>By Element Class</h2><canvas id="classChart"></canvas></div>' +
       '<div class="chart-box full"><h2>Discipline Matrix Summary</h2>' +
       '<table><thead><tr><th>Source</th><th>Target</th><th>Tolerance</th><th>Clashes</th><th>Reviewed</th><th>Resolved</th><th>Accepted</th><th>Open</th></tr></thead><tbody>';
 
@@ -1652,7 +1666,10 @@ function setupMeasure(A) {
         '<td style="color:' + openColor + ';font-weight:bold">' + open + '</td></tr>';
     });
 
-    html += '</tbody></table></div>' +
+    html += '</tbody></table>' +
+      '<div style="margin-top:12px;text-align:right">' +
+      '<button onclick="if(window.opener&&window.opener._bimApp&&window.opener._bimApp._exportCSVBackground){window.opener._bimApp._exportCSVBackground()}else{alert(\'Open from viewer to export CSV\')}" style="background:#333;color:#fff;border:1px solid #555;border-radius:4px;padding:8px 16px;cursor:pointer;font-size:12px">Download Full CSV</button>' +
+      '</div></div>' +
       '</div>' +
       '<script>' +
       'function _shareReport(){' +
@@ -2098,10 +2115,18 @@ function setupMeasure(A) {
   };
 
   A.toggleMeasure = function() {
+    // Block if 2D grid overlay is active
+    if (!A.measureActive && typeof GridViews !== 'undefined' && GridViews.activeView()) {
+      A.status.textContent = 'Close 2D view first';
+      return;
+    }
     A.measureActive = !A.measureActive;
     const btn = document.getElementById('measure-btn');
     btn.style.background = A.measureActive ? '#4fc3f7' : '#444';
     btn.style.color = A.measureActive ? '#000' : '#fff';
+    // Grey out / restore 2D button
+    var g2d = document.getElementById('grid-2d-btn');
+    if (g2d) { g2d.style.opacity = A.measureActive ? '0.3' : '1'; g2d.style.pointerEvents = A.measureActive ? 'none' : ''; }
     var isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     A.status.textContent = A.measureActive
       ? (isMobile ? 'Tap for dimensions. Long-press for Info. Tap here to exit.' : 'Click for dimensions. Right-click for Info')

@@ -176,36 +176,95 @@ function setupGridOverlay(APP) {
       }
     });
 
-    // Density filter: hide bubbles that would overlap on screen.
-    // Screen fraction per bubble = bubbleScale / visW. If two bubbles are closer
-    // than 2.5× that screen fraction (in world units), hide the middle one.
-    var screenBubbleFrac = s / visW;
-    var minGap = (screenBubbleFrac > 0.015) ? s * 2.5 : 0; // only filter when bubbles > 1.5% of screen
-    var labels = Object.keys(bubblesByLabel);
-    // Separate X-axis and Y-axis labels using lineMeshes axis info
-    var xLabels = [], yLabels = [];
-    for (var li = 0; li < labels.length; li++) {
-      var entry = lineMeshes[labels[li]];
-      if (entry && entry.line && entry.line.userData.gridAxis === 'Y') {
-        yLabels.push(labels[li]);
-      } else {
-        xLabels.push(labels[li]);
+    // Screen-space density filter: project bubble midpoints to screen,
+    // hide labels whose projected positions overlap across ALL axes.
+    // This makes Z-axis grids disappear when the side face rotates edge-on.
+    var hiddenLabels = {};
+    var screenPts = []; // { label, sx, sy } — screen coords of each label's midpoint
+    var cam = A.camera;
+    var halfW = window.innerWidth / 2;
+    var halfH = window.innerHeight / 2;
+    for (var lbl in bubblesByLabel) {
+      var sprites = bubblesByLabel[lbl];
+      if (!sprites.length) continue;
+      // Use midpoint of the grid line for projection
+      var entry = lineMeshes[lbl];
+      if (!entry) continue;
+      var mid = new THREE.Vector3().addVectors(entry.v0, entry.v1).multiplyScalar(0.5);
+      var projected = mid.clone().project(cam);
+      screenPts.push({
+        label: lbl,
+        sx: (projected.x * halfW) + halfW,
+        sy: -(projected.y * halfH) + halfH
+      });
+    }
+    // Sort by screen X then Y for proximity check
+    screenPts.sort(function(a, b) { return a.sx - b.sx || a.sy - b.sy; });
+    // Min screen-pixel gap between bubbles (based on bubble screen size)
+    var bubbleScreenPx = (s / visDim) * Math.min(window.innerWidth, window.innerHeight);
+    var minScreenGap = bubbleScreenPx * 2.0;
+    // Greedy: show first, hide if too close to last shown
+    if (screenPts.length > 1) {
+      var lastShown = screenPts[0];
+      for (var pi = 1; pi < screenPts.length; pi++) {
+        var dx = screenPts[pi].sx - lastShown.sx;
+        var dy = screenPts[pi].sy - lastShown.sy;
+        var screenDist = Math.sqrt(dx * dx + dy * dy);
+        if (screenDist < minScreenGap) {
+          hiddenLabels[screenPts[pi].label] = true;
+        } else {
+          lastShown = screenPts[pi];
+        }
       }
     }
 
-    // For each axis, sort by grid position and hide overlapping
-    var hiddenLabels = {};
-    filterAxisLabels(xLabels, minGap, hiddenLabels);
-    filterAxisLabels(yLabels, minGap, hiddenLabels);
+    // Face-direction check: compute camera direction relative to building centre
+    // Back-facing grids → x-ray (opacity 0.15), edge-on → faded (0.4)
+    var camDir = new THREE.Vector3();
+    cam.getWorldDirection(camDir);
+    // Face normals in Three.js coords: front(+Z)=yMax, back(-Z), left(-X)=xMin, right(+X)
+    // XY ground grids: normal = up (+Y)
+    var dotFront = -camDir.z;  // front face normal is +Z in Three.js
+    var dotLeft  = -camDir.x;  // left face normal is -X in Three.js
+    var dotUp    = -camDir.y;  // ground plane normal is +Y
 
-    // Apply visibility
-    for (var lbl in bubblesByLabel) {
-      var vis = !hiddenLabels[lbl];
-      var sprites = bubblesByLabel[lbl];
-      for (var si = 0; si < sprites.length; si++) sprites[si].visible = vis;
-      // Also hide/show matching grid lines
-      if (lineMeshes[lbl] && lineMeshes[lbl].line) {
-        lineMeshes[lbl].line.visible = vis;
+    // Apply visibility + face-direction opacity
+    for (var lbl2 in bubblesByLabel) {
+      var vis = !hiddenLabels[lbl2];
+      var spr = bubblesByLabel[lbl2];
+      var entry2 = lineMeshes[lbl2];
+      var axis2 = entry2 && entry2.line ? entry2.line.userData.gridAxis : '';
+
+      // Compute opacity based on face direction
+      var opacity = 1.0;
+      if (axis2 === 'Z') {
+        // Z grids: check which face they're on (label ends with 'f' or 'l')
+        var isFront = lbl2.charAt(lbl2.length - 1) === 'f';
+        var dot = isFront ? dotFront : dotLeft;
+        if (dot < -0.1) {
+          opacity = 0.12; // back-facing → x-ray ghost
+        } else if (dot < 0.3) {
+          opacity = 0.3;  // edge-on → faded
+        }
+      } else {
+        // XY ground grids: fade when viewed from below
+        if (dotUp < -0.1) opacity = 0.12;
+        else if (dotUp < 0.2) opacity = 0.4;
+      }
+
+      for (var si = 0; si < spr.length; si++) {
+        spr[si].visible = vis;
+        if (vis) {
+          spr[si].material.opacity = opacity;
+          spr[si].material.transparent = (opacity < 1.0);
+        }
+      }
+      if (entry2 && entry2.line) {
+        entry2.line.visible = vis;
+        if (vis) {
+          entry2.line.material.opacity = opacity;
+          entry2.line.material.transparent = (opacity < 1.0);
+        }
       }
     }
 
@@ -743,18 +802,22 @@ function setupGridOverlay(APP) {
         lineMeshes = {};
       }
       if (gridPanel) { gridPanel.style.display = 'none'; }
-      // Un-highlight the 2D button
+      // Un-highlight 2D button, un-grey Measure button
       var btn2d = document.getElementById('grid-2d-btn');
       if (btn2d) { btn2d.style.background = '#444'; btn2d.style.borderColor = '#666'; }
+      var mBtn = document.getElementById('measure-btn');
+      if (mBtn) { mBtn.style.opacity = '1'; mBtn.style.pointerEvents = ''; }
       A.markDirty();
       log('§GRID_MODE state=exit');
       return;
     }
 
     active = true;
-    // Highlight the 2D button
+    // Highlight 2D button, grey out Measure button
     var btn2d = document.getElementById('grid-2d-btn');
     if (btn2d) { btn2d.style.background = '#4fc3f7'; btn2d.style.borderColor = '#4fc3f7'; }
+    var mBtn = document.getElementById('measure-btn');
+    if (mBtn) { mBtn.style.opacity = '0.3'; mBtn.style.pointerEvents = 'none'; }
     log('§GRID_MODE state=enter');
 
     // If already built, just show

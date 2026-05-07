@@ -117,6 +117,11 @@ function initViewer() {
   window._isMobile = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
   window.open2DPlans = function() {
     if (window._isMobile) { APP.status.textContent = '2D views are desktop-only'; console.log('§2D_GATE skip — mobile'); return; }
+    // Block if Measure is active
+    if (APP.measureActive) {
+      APP.status.textContent = 'Close Measure first';
+      return;
+    }
     if (typeof APP.toggleGridOverlay === 'function') {
       APP.toggleGridOverlay();
     } else {
