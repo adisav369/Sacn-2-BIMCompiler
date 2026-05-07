@@ -186,8 +186,46 @@ var DimChains = (function() {
     }
   }
 
+  /** Clamp dim label sprites + density filter: hide labels that would overlap at current zoom.
+   *  visW = visible world width — labels whose text sprite width > gap between them get hidden.
+   *  Zooming in shrinks visW → reveals progressively more labels. */
+  function clampScales(gridGroup, origBubbleScale, clampedScale, visW) {
+    if (!gridGroup) return;
+    // Collect dim sprites with positions for density check
+    var dimSprites = [];
+    gridGroup.traverse(function(obj) {
+      if (obj.isSprite && obj.userData.isDimChain) {
+        obj.scale.set(clampedScale * 2.0, clampedScale * 0.5, 1);
+        dimSprites.push(obj);
+      }
+    });
+    // Density filter: hide labels whose screen-space width would overlap neighbours
+    if (!visW || dimSprites.length < 2) return;
+    var labelScreenW = clampedScale * 2.0; // world-unit width of label sprite
+    // Min gap between labels to stay readable (2× label width)
+    var minGap = labelScreenW * 2.0;
+    // Sort by X then Z for proximity checks (works for both horizontal and vertical chains)
+    dimSprites.sort(function(a, b) {
+      var dx = a.position.x - b.position.x;
+      return dx !== 0 ? dx : a.position.z - b.position.z;
+    });
+    // Show first, then only show next if far enough from last shown
+    var lastShown = dimSprites[0];
+    lastShown.visible = true;
+    for (var i = 1; i < dimSprites.length; i++) {
+      var dist = dimSprites[i].position.distanceTo(lastShown.position);
+      if (dist < minGap) {
+        dimSprites[i].visible = false;
+      } else {
+        dimSprites[i].visible = true;
+        lastShown = dimSprites[i];
+      }
+    }
+  }
+
   return {
-    build:  build,
-    remove: remove
+    build:       build,
+    remove:      remove,
+    clampScales: clampScales
   };
 })();

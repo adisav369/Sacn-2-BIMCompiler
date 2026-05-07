@@ -45,6 +45,7 @@ function setupGridOverlay(APP) {
   var LINE_OVERSHOOT_RATIO = 0.15;   // extend 15% of building dim past envelope
   var LINE_OVERSHOOT_MIN = 2.0;      // at least 2m overshoot
   var PANEL_ID = 'grid-overlay-panel';
+  var BUBBLE_MAX_SCREEN_FRAC = 0.02; // max 2% of visible width in ortho
 
   // ── Helpers ───────────────────────────────────────────────────────
 
@@ -113,6 +114,27 @@ function setupGridOverlay(APP) {
     sprite.renderOrder = 1000;
     sprite.userData.gridLabel = label;
     return sprite;
+  }
+
+  /** Clamp bubble + dim sprites so they never exceed BUBBLE_MAX_SCREEN_FRAC of ortho view.
+   *  When dense, hides dim labels that would overlap; zooming in reveals them progressively. */
+  function clampBubbleScales() {
+    if (!active || !gridGroup) return;
+    var cam = A.camera;
+    if (!cam.isOrthographicCamera) return;
+    // OrbitControls zooms ortho via camera.zoom — actual visible width = (right-left)/zoom
+    var visW = (cam.right - cam.left) / (cam.zoom || 1);
+    var maxS = visW * BUBBLE_MAX_SCREEN_FRAC;
+    var s = Math.min(bubbleScale, maxS);
+    gridGroup.traverse(function(obj) {
+      if (obj.isSprite && obj.userData.gridLabel) {
+        obj.scale.set(s, s, 1);
+      }
+    });
+    // Clamp dim chain labels + density filter
+    if (typeof DimChains !== 'undefined' && DimChains.clampScales) {
+      DimChains.clampScales(gridGroup, bubbleScale, s, visW);
+    }
   }
 
   // ── Build Grid Scene Objects ──────────────────────────────────────
@@ -222,6 +244,7 @@ function setupGridOverlay(APP) {
     } else {
       GridViews.lockView(A, mode, envCache);
       renderContoursForView(mode);
+      clampBubbleScales();
     }
     updateViewButtons();
   }
@@ -650,6 +673,9 @@ function setupGridOverlay(APP) {
     GridDrag.init(A, A._gridOverlayState);
     log('§GRID_INIT GridDrag wired');
   }
+
+  // Clamp bubble sizes on every camera change (zoom/pan in ortho views)
+  A.controls.addEventListener('change', clampBubbleScales);
 
   log('§GRID_INIT ready');
 }
