@@ -160,10 +160,10 @@ function setupGridOverlay(APP) {
       visH = 2 * dist * Math.tan(vFov / 2);
       visW = visH * cam.aspect;
     }
-    // Cap uses the SMALLER dimension — elevation views are narrow, plan views are wide
+    // Bubbles stay at natural world-unit size — Three.js sprites grow naturally with zoom.
+    // Density filter handles overlap. No scale modification = no reverse effect.
     var visDim = Math.min(visW, visH);
-    var maxS = visDim * BUBBLE_MAX_SCREEN_FRAC;
-    var s = Math.min(bubbleScale, maxS);
+    var s = bubbleScale;
 
     // Collect bubble sprites grouped by label for density check
     var bubblesByLabel = {};
@@ -308,9 +308,64 @@ function setupGridOverlay(APP) {
       addGridLine(yLines[j].label, 'Y', yPos, w0, w1);
     }
 
+    // Z-axis grids: horizontal storey level lines on building faces
+    buildZGrids(env, overshootX, overshootY);
+
     A.scene.add(gridGroup);
     A.markDirty();
     log('§GRID_MODE lines=' + Object.keys(lineMeshes).length + ' added to scene');
+  }
+
+  /** Build Z-axis (storey level) grid lines — horizontal lines at each storey elevation.
+   *  Front face: runs along X at yMax. Left face: runs along Y at xMin.
+   *  Labelled GF, L1, L2... from detectStoreys(). */
+  function buildZGrids(env, overshootX, overshootY) {
+    if (!A.db || typeof SectionCut === 'undefined' || !SectionCut.detectStoreys) return;
+    var storeys = SectionCut.detectStoreys(A.db);
+    if (storeys.length < 2) return;
+
+    // Abbreviate storey names: "Ground Floor" → "GF", "1st Floor" → "L1", etc.
+    var zLabels = [];
+    for (var si = 0; si < storeys.length; si++) {
+      var name = storeys[si].name || '';
+      var abbr;
+      if (/ground|gf/i.test(name)) abbr = 'GF';
+      else if (/roof/i.test(name)) abbr = 'RF';
+      else if (/basement|bsmt/i.test(name)) abbr = 'B' + (si + 1);
+      else {
+        // Extract floor number or use index
+        var numMatch = name.match(/(\d+)/);
+        abbr = 'L' + (numMatch ? numMatch[1] : si);
+      }
+      // Skip if too few elements (noise)
+      if (storeys[si].elementCount < 5) continue;
+      zLabels.push({ label: abbr, ifcZ: storeys[si].floorZ, name: name });
+    }
+    if (zLabels.length < 2) return;
+
+    // Front face: lines run along IFC X at yMax (front of building)
+    for (var fi = 0; fi < zLabels.length; fi++) {
+      var zl = zLabels[fi];
+      var fp0 = A.ifc2three(env.xMin - overshootY, env.yMax, zl.ifcZ);
+      var fp1 = A.ifc2three(env.xMax + overshootY, env.yMax, zl.ifcZ);
+      var fv0 = new THREE.Vector3(fp0.x, fp0.y, fp0.z);
+      var fv1 = new THREE.Vector3(fp1.x, fp1.y, fp1.z);
+      var fLabel = zl.label + 'f';
+      addGridLine(fLabel, 'Z', zl.ifcZ, fv0, fv1);
+    }
+
+    // Left face: lines run along IFC Y at xMin (left side)
+    for (var li = 0; li < zLabels.length; li++) {
+      var zll = zLabels[li];
+      var lp0 = A.ifc2three(env.xMin, env.yMin - overshootX, zll.ifcZ);
+      var lp1 = A.ifc2three(env.xMin, env.yMax + overshootX, zll.ifcZ);
+      var lv0 = new THREE.Vector3(lp0.x, lp0.y, lp0.z);
+      var lv1 = new THREE.Vector3(lp1.x, lp1.y, lp1.z);
+      var lLabel = zll.label + 'l';
+      addGridLine(lLabel, 'Z', zll.ifcZ, lv0, lv1);
+    }
+
+    log('§GRID_Z storeys=' + zLabels.length + ' labels=' + zLabels.map(function(z) { return z.label; }).join(','));
   }
 
   function addGridLine(label, axis, ifcPos, v0, v1) {
@@ -688,12 +743,18 @@ function setupGridOverlay(APP) {
         lineMeshes = {};
       }
       if (gridPanel) { gridPanel.style.display = 'none'; }
+      // Un-highlight the 2D button
+      var btn2d = document.getElementById('grid-2d-btn');
+      if (btn2d) { btn2d.style.background = '#444'; btn2d.style.borderColor = '#666'; }
       A.markDirty();
       log('§GRID_MODE state=exit');
       return;
     }
 
     active = true;
+    // Highlight the 2D button
+    var btn2d = document.getElementById('grid-2d-btn');
+    if (btn2d) { btn2d.style.background = '#4fc3f7'; btn2d.style.borderColor = '#4fc3f7'; }
     log('§GRID_MODE state=enter');
 
     // If already built, just show

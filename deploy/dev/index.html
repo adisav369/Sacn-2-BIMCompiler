@@ -338,7 +338,7 @@
       <button onclick="toggleIssues();event.stopPropagation()" data-trl-title="ui_tt_issues" title="Issues" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📋</button>
       <button id="measure-btn" onclick="toggleMeasure();event.stopPropagation()" data-trl-title="ui_tt_measure" title="Measure" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📐</button>
       <button id="section-btn" onclick="toggleSection();event.stopPropagation()" data-trl-title="ui_tt_section" title="Section Cut" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">✂</button>
-      <button class="desktop-only" onclick="open2DPlans();event.stopPropagation()" data-trl-title="ui_tt_2d" title="2D Plans" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;padding:2px;line-height:1"><img src="2D.png" alt="2D" style="width:18px;height:18px;vertical-align:middle"></button>
+      <button id="grid-2d-btn" onclick="open2DPlans();event.stopPropagation()" data-trl-title="ui_tt_2d" title="2D Grid Views" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;padding:2px;line-height:1"><img src="icons/2Dicon.png" alt="2D" style="width:22px;height:22px;vertical-align:middle;filter:invert(1)"></button>
       <button id="header-flag-btn" onclick="location.href='../index.html'" data-trl-title="ui_tt_home" title="Home" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">🌐</button>
       <button onclick="if(APP&&APP.reportBug)APP.reportBug();event.stopPropagation()" data-trl-title="ui_tt_help" title="Help / Report Bug" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">🛟</button>
     </div>
@@ -512,14 +512,14 @@
 <script src="import.js?v=3"></script>
 <script src="grid_dims.js?v=4"></script>
 <script src="grid_config.js?v=2" onerror="console.warn('[GridConfig] grid_config.js skipped')"></script>
-<script src="grid_views.js?v=7" onerror="console.warn('[GridViews] grid_views.js skipped')"></script>
+<script src="grid_views.js?v=8" onerror="console.warn('[GridViews] grid_views.js skipped')"></script>
 <script src="grid_door_arcs.js?v=1" onerror="console.warn('[DoorArcs] grid_door_arcs.js skipped')"></script>
 <script src="section_cut.js?v=5" onerror="console.warn('[SectionCut] section_cut.js skipped')"></script>
 <script src="elevation.js?v=1" onerror="console.warn('[Elevation] elevation.js skipped')"></script>
 <script src="grid_contours.js?v=4" onerror="console.warn('[GridContours] grid_contours.js skipped')"></script>
 <script src="grid_dim_chains.js?v=4" onerror="console.warn('[DimChains] grid_dim_chains.js skipped')"></script>
-<script src="grid_drag.js?v=1" onerror="console.warn('[GridDrag] grid_drag.js skipped')"></script>
-<script src="grid_overlay.js?v=18" onerror="console.warn('[GridOverlay] grid_overlay.js skipped — file not found or error')"></script>
+<script src="grid_drag.js?v=2" onerror="console.warn('[GridDrag] grid_drag.js skipped')"></script>
+<script src="grid_overlay.js?v=21" onerror="console.warn('[GridOverlay] grid_overlay.js skipped — file not found or error')"></script>
 <script src="grid_assembler.js?v=2" onerror="console.warn('[GridAssembler] grid_assembler.js skipped')"></script>
 <script src="print_sheet.js?v=2" onerror="console.warn('[PrintSheet] print_sheet.js skipped')"></script>
 <script src="main.js?v=12"></script>

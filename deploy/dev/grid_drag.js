@@ -45,6 +45,10 @@ var GridDrag = (function() {
   var origEnv = null;      // original building envelope (frozen at first drag)
   var hist = [];           // compound undo history
   var shadowGroup = null;  // THREE.Group for shadow outlines
+  var longPressTimer = null; // long-press gate timer
+  var longPressReady = false; // true after long press confirmed
+  var pendingDown = null;     // stored pointerdown event for deferred drag start
+  var LONG_PRESS_MS = 400;    // hold time before drag activates
 
   function log(msg) { console.log('[GridDrag] ' + msg); }
 
@@ -397,6 +401,7 @@ var GridDrag = (function() {
     if (!R) { log('§GRID_DRAG no rules loaded — drag disabled'); return; }
     if (evt.button !== 0) return;
 
+    // Raycast to check if pointer is on a grid line/bubble
     var rect = A.renderer.domElement.getBoundingClientRect();
     var ndcX = ((evt.clientX - rect.left) / rect.width) * 2 - 1;
     var ndcY = -((evt.clientY - rect.top) / rect.height) * 2 + 1;
@@ -420,6 +425,19 @@ var GridDrag = (function() {
     }
     if (!label || !axis) return;
 
+    // Long-press gate: store pending drag, activate after LONG_PRESS_MS
+    pendingDown = { label: label, axis: axis, evt: evt };
+    longPressReady = false;
+    if (longPressTimer) clearTimeout(longPressTimer);
+    longPressTimer = setTimeout(function() {
+      if (!pendingDown) return;
+      longPressReady = true;
+      startDrag(pendingDown.label, pendingDown.axis, pendingDown.evt);
+    }, LONG_PRESS_MS);
+  }
+
+  /** Activate drag after long press confirmed */
+  function startDrag(label, axis, evt) {
     var lines = (axis === 'X') ? st.gridData.xLines : st.gridData.yLines;
     var idx = -1;
     for (var i = 0; i < lines.length; i++) {
@@ -449,11 +467,16 @@ var GridDrag = (function() {
 
     evt.preventDefault();
     evt.stopPropagation();
-    log('§GRID_DRAG start label=' + label + ' axis=' + axis + ' idx=' + idx +
+    log('§GRID_DRAG start (long-press) label=' + label + ' axis=' + axis + ' idx=' + idx +
         ' pos=' + dragStartIFC.toFixed(3) + ' max_step=' + R.grid_move.max_step_m);
   }
 
   function onPointerMove(evt) {
+    // If pointer moves before long-press completes, cancel — it's a pan/orbit, not drag
+    if (pendingDown && !longPressReady) {
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+      pendingDown = null;
+    }
     if (!dragging) return;
 
     var ifcPos = pointerToIFC(evt);
@@ -486,6 +509,10 @@ var GridDrag = (function() {
   }
 
   function onPointerUp(evt) {
+    // Cancel long-press timer if released before threshold
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    pendingDown = null;
+    longPressReady = false;
     if (!dragging) return;
     if (A.controls) A.controls.enabled = true;
 

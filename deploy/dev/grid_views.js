@@ -126,9 +126,7 @@ var GridViews = (function() {
     var bldW = env.xMax - env.xMin;
     var bldD = env.yMax - env.yMin;
     var bldH = env.zMax - env.zMin;
-    // Plan views (roof/floor) need wider margin for grid overshoot + bubbles + dims
-    var isPlan = (mode === 'roof' || mode === 'floor' || mode === 'floor1');
-    var margin = isPlan ? 1.5 : 1.2;
+    var margin = 1.5; // includes grid overshoot + bubbles + dim chains
     var dist = Math.max(bldW, bldD, bldH) * 2;
 
     var dims = { W: bldW, D: bldD, H: bldH };
