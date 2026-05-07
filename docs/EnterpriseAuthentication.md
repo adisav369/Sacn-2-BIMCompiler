@@ -240,13 +240,13 @@ This catches honest mistakes (wrong file selected) without network round-trip. S
 | Phase | Scope | Effort | Status |
 |-------|-------|--------|--------|
 | 1 | Read-only sharing, advisory permissions | — | **Done** |
-| 1b | Save & Contribute with DB integrity validation (`contribute.js`) | Lazy-loaded module | **Done** |
+| 1b | Unified Share sheet — Save as IFC/DB, Contribute, WhatsApp/Email/Copy Link (`share.js`) | Lazy-loaded module | **Done** |
 | 2 | PAR-scoped upload (time-limited, prefix-restricted) | OCI PAR configuration | Ready to activate |
 | 3 | Ed25519 signed uploads + serverless gatekeeper | One function + browser crypto | Spec complete |
 | 4 | FIDO2/WebAuthn hardware key support | Browser API integration | Spec complete |
 | 5 | Air-gapped mode (offline signing, batch upload) | Key-pair only, no network dependency | Designed |
 
-## UX Flow: Save & Contribute
+## UX Flow: Share Sheet
 
 ```
 User drops IFC → extraction runs → DB built → saved to IndexedDB

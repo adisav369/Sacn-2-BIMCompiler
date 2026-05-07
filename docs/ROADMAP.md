@@ -15,7 +15,7 @@ DB = model. Template = view. Browser = runtime. Three concerns, never merged.
 | S228 | Drop Zone multi-format: OBJ, STL, DAE, GLB/GLTF, FBX, 3DS. Auto up-axis + scale | `deploy/dev/mesh_import_worker.js` |
 | S229a | Guided classification wizard — 6-step flow for non-IFC meshes | `deploy/dev/wizard.js` |
 | S229b | IFC export — DB → .ifc download. Pure STEP text builder, 30-test round-trip | `deploy/dev/ifc_export_worker.js` |
-| S250 §8 | Save & Contribute — lazy-loaded upload with DB integrity validation | `deploy/dev/contribute.js` |
+| S250 §8 | Share sheet — Save as IFC/DB, Contribute to OOTB, WhatsApp/Email/Copy Link (lazy-loaded) | `deploy/dev/share.js` |
 
 **Security:** Enterprise authentication via 3-layer cryptographic verification — see [`docs/EnterpriseAuthentication.md`](EnterpriseAuthentication.md).
 
