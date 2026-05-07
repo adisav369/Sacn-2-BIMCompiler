@@ -62,10 +62,15 @@ var GridContours = (function() {
     var group = ensureGroup(APP);
     var lineCount = 0;
 
+    // Structural classes: render as filled polygons (solid black = wall thickness visible)
+    // IfcSlab excluded — slab contour covers entire floor area, obscures walls
+    var FILL_CLASSES = { 'IfcWall': 1, 'IfcWallStandardCase': 1, 'IfcColumn': 1 };
+
     for (var i = 0; i < contourData.length; i++) {
       var el = contourData[i];
       var style = GridConfig.styleFor(viewMode, el.ifcClass);
       var contours = el.contours || [];
+      var doFill = !!FILL_CLASSES[el.ifcClass];
 
       for (var c = 0; c < contours.length; c++) {
         var pts = contours[c].points || contours[c];
@@ -77,6 +82,28 @@ var GridContours = (function() {
           threePoints.push(new THREE.Vector3(t.x, t.y, t.z));
         }
 
+        // Filled polygon for structural elements (shows wall thickness)
+        if (doFill && threePoints.length >= 3) {
+          var shape = new THREE.Shape();
+          shape.moveTo(threePoints[0].x, threePoints[0].z); // XZ plane (Y is up)
+          for (var sp = 1; sp < threePoints.length; sp++) {
+            shape.lineTo(threePoints[sp].x, threePoints[sp].z);
+          }
+          shape.closePath();
+          var shapeGeom = new THREE.ShapeGeometry(shape);
+          // ShapeGeometry creates in XY — rotate to XZ (floor plan)
+          shapeGeom.rotateX(-Math.PI / 2);
+          var fillMat = new THREE.MeshBasicMaterial({
+            color: style.color, side: THREE.DoubleSide, depthTest: false
+          });
+          var fillMesh = new THREE.Mesh(shapeGeom, fillMat);
+          fillMesh.position.y = threePoints[0].y;
+          fillMesh.renderOrder = 1099;
+          fillMesh.userData = { isContour: true, guid: el.guid, ifcClass: el.ifcClass };
+          group.add(fillMesh);
+        }
+
+        // Outline stroke (all elements)
         var geom = new THREE.BufferGeometry().setFromPoints(threePoints);
         var mat = new THREE.LineBasicMaterial({ color: style.color, linewidth: style.weight || 1 });
         var line = new THREE.Line(geom, mat);

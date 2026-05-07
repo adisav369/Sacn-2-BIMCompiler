@@ -44,6 +44,7 @@ var GridViews = (function() {
   var _origCamera = null;       // reference to the original PerspectiveCamera
   var _activeView = null;       // current mode key or null
   var _floorClipPlane = null;   // THREE.Plane for floor plan section cut
+  var _savedLighting = null;    // saved ambient/sun intensity before 2D boost
   // No forced theme state — user controls theme
   var _resizeHandler = null;    // resize event handler ref
 
@@ -125,7 +126,9 @@ var GridViews = (function() {
     var bldW = env.xMax - env.xMin;
     var bldD = env.yMax - env.yMin;
     var bldH = env.zMax - env.zMin;
-    var margin = 1.2; // envCache is center points, not mesh extents
+    // Plan views (roof/floor) need wider margin for grid overshoot + bubbles + dims
+    var isPlan = (mode === 'roof' || mode === 'floor' || mode === 'floor1');
+    var margin = isPlan ? 1.5 : 1.2;
     var dist = Math.max(bldW, bldD, bldH) * 2;
 
     var dims = { W: bldW, D: bldD, H: bldH };
@@ -251,6 +254,15 @@ var GridViews = (function() {
       applyFloorClip(A, env, mode, cutZ);
     }
 
+    // Concern 3: Boost lighting for ortho views — flat angle makes sides grey
+    if (!_savedLighting && A.ambient && A.sun) {
+      _savedLighting = { ambInt: A.ambient.intensity, sunInt: A.sun.intensity };
+      A.ambient.intensity = 1.2;
+      A.sun.intensity = 0.6;
+      log('§VIEW_LIGHT boost ambient=1.2 sun=0.6 (was ' +
+          _savedLighting.ambInt.toFixed(1) + '/' + _savedLighting.sunInt.toFixed(1) + ')');
+    }
+
     _activeView = mode;
     A.markDirty();
     log('§VIEW_LOCK mode=' + mode + ' centre=(' + centre.x.toFixed(1) + ',' +
@@ -287,7 +299,15 @@ var GridViews = (function() {
 
     var wasFloor = (_activeView === 'floor' || _activeView === 'floor1');
     clearFloorClip(A);
-    // No theme restore needed — user controls theme
+
+    // Restore lighting
+    if (_savedLighting && A.ambient && A.sun) {
+      A.ambient.intensity = _savedLighting.ambInt;
+      A.sun.intensity = _savedLighting.sunInt;
+      log('§VIEW_LIGHT restored ambient=' + _savedLighting.ambInt.toFixed(1) +
+          ' sun=' + _savedLighting.sunInt.toFixed(1));
+      _savedLighting = null;
+    }
 
     _savedCamera = null;
     _activeView = null;

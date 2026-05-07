@@ -90,7 +90,9 @@ function setupPicking(A) {
   };
 
   A._longPressTimer = null;
+  A._canvasPointerDown = false;  // BUG-2: track that pointerdown started on canvas
   A.canvas.addEventListener('pointerdown', (e) => {
+    A._canvasPointerDown = true;
     A.pointerDownPos.x = e.clientX;
     A.pointerDownPos.y = e.clientY;
     if (A.flyActive || A.walkMode) {
@@ -152,7 +154,14 @@ function setupPicking(A) {
   A.canvas.addEventListener('pointerup', (e) => {
     // Cancel long-press on release — suppress click if long-press already fired
     if (A._longPressTimer) { clearTimeout(A._longPressTimer); A._longPressTimer = null; }
-    if (A._longPressFired) { A._longPressFired = false; return; }
+    if (A._longPressFired) { A._longPressFired = false; A._canvasPointerDown = false; return; }
+
+    // BUG-2 S250: Only pick if pointerdown started on canvas (not on a panel)
+    if (!A._canvasPointerDown) {
+      console.log('§PICK_GUARD blocked — pointerdown was not on canvas');
+      return;
+    }
+    A._canvasPointerDown = false;
 
     const dx = e.clientX - A.pointerDownPos.x;
     const dy = e.clientY - A.pointerDownPos.y;
@@ -212,6 +221,12 @@ function setupPicking(A) {
       const iy = -hp.z + A.modelOffset.y;
       const iz = hp.y + A.modelOffset.z;
       const ud = hit.object.userData;
+      // In floor plan view, constrain Z to near the cut plane so we pick furniture not roof
+      const isFloorView = typeof GridViews !== 'undefined' &&
+        (GridViews.activeView() === 'floor' || GridViews.activeView() === 'floor1');
+      const zConstraint = isFloorView ? 'AND ABS(t.center_z - ?) < 2.0' : '';
+      const params = [ix, ix, iy, iy, iz, iz, ud.storey || '', ud.disc || ''];
+      if (isFloorView) params.push(iz);
       try {
         const near = A.dbQuery(`
           SELECT m.guid,
@@ -220,9 +235,9 @@ function setupPicking(A) {
             (t.center_z - ?) * (t.center_z - ?) AS dist2
           FROM elements_meta m
           JOIN element_transforms t ON t.guid = m.guid
-          WHERE m.storey = ? AND m.discipline = ?
+          WHERE m.storey = ? AND m.discipline = ? ${zConstraint}
           ORDER BY dist2 ASC LIMIT 1
-        `, [ix, ix, iy, iy, iz, iz, ud.storey || '', ud.disc || '']);
+        `, params);
         if (near.length) { guid = near[0][0]; hit._mergedResolved = true; }
       } catch(e) {
         console.log(`§PICK_MERGE_ERR ${e.message}`);

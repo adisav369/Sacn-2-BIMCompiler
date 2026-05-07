@@ -30,16 +30,16 @@ var GridConfig = (function() {
   ];
 
   var FLOOR_STYLES = {
-    'IfcWall':              { color: '#000000', weight: 2.0 },
-    'IfcWallStandardCase':  { color: '#000000', weight: 2.0 },
-    'IfcColumn':            { color: '#000000', weight: 2.0 },
-    'IfcDoor':              { color: '#333333', weight: 1.0, arc: true },
-    'IfcWindow':            { color: '#4488CC', weight: 0.5 },
-    'IfcSlab':              { color: '#999999', weight: 0.3 },
-    'IfcFurnishingElement': { color: '#888888', weight: 0.5 },
-    'IfcFurniture':         { color: '#888888', weight: 0.5 },
-    'IfcStair':             { color: '#666666', weight: 1.0 },
-    'IfcRailing':           { color: '#AAAAAA', weight: 0.3 }
+    'IfcWall':              { color: '#000000', weight: 3.0 },
+    'IfcWallStandardCase':  { color: '#000000', weight: 3.0 },
+    'IfcColumn':            { color: '#111111', weight: 2.0 },
+    'IfcDoor':              { color: '#555555', weight: 1.0, arc: true },
+    'IfcWindow':            { color: '#6699BB', weight: 0.5 },
+    'IfcSlab':              { color: '#BBBBBB', weight: 0.3 },
+    'IfcFurnishingElement': { color: '#999999', weight: 0.5 },
+    'IfcFurniture':         { color: '#999999', weight: 0.5 },
+    'IfcStair':             { color: '#777777', weight: 1.0 },
+    'IfcRailing':           { color: '#CCCCCC', weight: 0.3 }
   };
 
   var ELEVATION_STYLES = {

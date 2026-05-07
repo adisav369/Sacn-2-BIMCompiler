@@ -140,8 +140,15 @@ function setupTools(A) {
     A.status.textContent = `4D/5D analytics opened for ${bld} (Save 5D BOQ / Save 4D Schedule)`;
   };
 
-  // Screenshot
+  // Screenshot — in 2D grid mode, produces A3 print sheet with title block
   A.screenshot = function() {
+    // If in 2D view and PrintSheet is available, use A3 print sheet
+    if (typeof GridViews !== 'undefined' && GridViews.activeView() &&
+        typeof PrintSheet !== 'undefined') {
+      PrintSheet.capture(A);
+      return;
+    }
+    // Fallback: regular screenshot
     A.renderer.render(A.scene, A.camera);
     const link = document.createElement('a');
     link.download = `BIM_OOTB_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.png`;

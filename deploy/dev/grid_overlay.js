@@ -45,26 +45,28 @@ function setupGridOverlay(APP) {
   var LINE_OVERSHOOT_RATIO = 0.15;   // extend 15% of building dim past envelope
   var LINE_OVERSHOOT_MIN = 2.0;      // at least 2m overshoot
   var PANEL_ID = 'grid-overlay-panel';
-  var BUBBLE_MAX_SCREEN_FRAC = 0.02; // max 2% of visible width in ortho
+  var BUBBLE_MAX_SCREEN_FRAC = 0.035; // max 3.5% of smaller screen dimension
 
   // ── Storey-aware cut height ────────────────────────────────────────
 
   /** Use detectStoreys() to find actual storey floor elevations instead of fixed offsets.
-   *  floor → lowest storey + 1m, floor1 → second storey + 1m */
+   *  floor → lowest storey + 1.2m, floor1 → second storey + 1.2m
+   *  +1.2m clears typical slab thickness (0.15–0.3m) and cuts through walls cleanly */
   function computeStoreyAwareCutZ(mode) {
     if (!A.db || typeof SectionCut === 'undefined' || !SectionCut.detectStoreys) return null;
     var storeys = SectionCut.detectStoreys(A.db);
     if (!storeys.length) return null;
+    var CUT_ABOVE = 1.2; // metres above storey floor — clears slabs
     // Filter out storeys with very few elements (e.g. "Ground Floor" with 1 element)
     var significant = storeys.filter(function(s) { return s.elementCount >= 5; });
     if (!significant.length) significant = storeys;
     if (mode === 'floor') {
-      var cutZ = significant[0].floorZ + 1.0;
+      var cutZ = significant[0].floorZ + CUT_ABOVE;
       log('§GRID_STOREY GF cutZ=' + cutZ.toFixed(2) + ' storey="' + significant[0].name +
           '" floorZ=' + significant[0].floorZ.toFixed(2) + ' (n=' + significant[0].elementCount + ')');
       return cutZ;
     } else if (mode === 'floor1' && significant.length > 1) {
-      var cutZ = significant[1].floorZ + 1.0;
+      var cutZ = significant[1].floorZ + CUT_ABOVE;
       log('§GRID_STOREY L1 cutZ=' + cutZ.toFixed(2) + ' storey="' + significant[1].name +
           '" floorZ=' + significant[1].floorZ.toFixed(2) + ' (n=' + significant[1].elementCount + ')');
       return cutZ;
@@ -141,24 +143,111 @@ function setupGridOverlay(APP) {
     return sprite;
   }
 
-  /** Clamp bubble + dim sprites so they never exceed BUBBLE_MAX_SCREEN_FRAC of ortho view.
-   *  When dense, hides dim labels that would overlap; zooming in reveals them progressively. */
+  /** Density filter + screen-space cap for bubbles and dim labels.
+   *  Ceiling: bubbles never exceed BUBBLE_MAX_SCREEN_FRAC of visible width (prevents huge bubbles zoomed out).
+   *  Floor: bubbles never shrink below bubbleScale (prevents tiny bubbles zoomed in).
+   *  Density filter hides overlapping bubbles; zooming in reveals more. */
   function clampBubbleScales() {
     if (!active || !gridGroup) return;
     var cam = A.camera;
-    if (!cam.isOrthographicCamera) return;
-    // OrbitControls zooms ortho via camera.zoom — actual visible width = (right-left)/zoom
-    var visW = (cam.right - cam.left) / (cam.zoom || 1);
-    var maxS = visW * BUBBLE_MAX_SCREEN_FRAC;
+    var visW, visH;
+    if (cam.isOrthographicCamera) {
+      visW = (cam.right - cam.left) / (cam.zoom || 1);
+      visH = (cam.top - cam.bottom) / (cam.zoom || 1);
+    } else {
+      var dist = cam.position.distanceTo(A.controls.target);
+      var vFov = cam.fov * Math.PI / 180;
+      visH = 2 * dist * Math.tan(vFov / 2);
+      visW = visH * cam.aspect;
+    }
+    // Cap uses the SMALLER dimension — elevation views are narrow, plan views are wide
+    var visDim = Math.min(visW, visH);
+    var maxS = visDim * BUBBLE_MAX_SCREEN_FRAC;
     var s = Math.min(bubbleScale, maxS);
+
+    // Collect bubble sprites grouped by label for density check
+    var bubblesByLabel = {};
     gridGroup.traverse(function(obj) {
       if (obj.isSprite && obj.userData.gridLabel) {
         obj.scale.set(s, s, 1);
+        var lbl = obj.userData.gridLabel;
+        if (!bubblesByLabel[lbl]) bubblesByLabel[lbl] = [];
+        bubblesByLabel[lbl].push(obj);
       }
     });
+
+    // Density filter: hide bubbles that would overlap on screen.
+    // Screen fraction per bubble = bubbleScale / visW. If two bubbles are closer
+    // than 2.5× that screen fraction (in world units), hide the middle one.
+    var screenBubbleFrac = s / visW;
+    var minGap = (screenBubbleFrac > 0.015) ? s * 2.5 : 0; // only filter when bubbles > 1.5% of screen
+    var labels = Object.keys(bubblesByLabel);
+    // Separate X-axis and Y-axis labels using lineMeshes axis info
+    var xLabels = [], yLabels = [];
+    for (var li = 0; li < labels.length; li++) {
+      var entry = lineMeshes[labels[li]];
+      if (entry && entry.line && entry.line.userData.gridAxis === 'Y') {
+        yLabels.push(labels[li]);
+      } else {
+        xLabels.push(labels[li]);
+      }
+    }
+
+    // For each axis, sort by grid position and hide overlapping
+    var hiddenLabels = {};
+    filterAxisLabels(xLabels, minGap, hiddenLabels);
+    filterAxisLabels(yLabels, minGap, hiddenLabels);
+
+    // Apply visibility
+    for (var lbl in bubblesByLabel) {
+      var vis = !hiddenLabels[lbl];
+      var sprites = bubblesByLabel[lbl];
+      for (var si = 0; si < sprites.length; si++) sprites[si].visible = vis;
+      // Also hide/show matching grid lines
+      if (lineMeshes[lbl] && lineMeshes[lbl].line) {
+        lineMeshes[lbl].line.visible = vis;
+      }
+    }
+
+    // Sync panel: dim hidden grid rows
+    syncPanelVisibility(hiddenLabels);
+
     // Clamp dim chain labels + density filter
     if (typeof DimChains !== 'undefined' && DimChains.clampScales) {
       DimChains.clampScales(gridGroup, bubbleScale, s, visW);
+    }
+  }
+
+  /** Sort labels by grid position, hide those too close to last visible */
+  function filterAxisLabels(labels, minGap, hiddenLabels) {
+    if (labels.length < 2) return;
+    // Sort by IFC position
+    labels.sort(function(a, b) {
+      var pa = lineMeshes[a] ? lineMeshes[a].line.userData.gridPos : 0;
+      var pb = lineMeshes[b] ? lineMeshes[b].line.userData.gridPos : 0;
+      return pa - pb;
+    });
+    // Always show first and last
+    var lastShownPos = lineMeshes[labels[0]] ? lineMeshes[labels[0]].line.userData.gridPos : 0;
+    for (var i = 1; i < labels.length - 1; i++) {
+      var pos = lineMeshes[labels[i]] ? lineMeshes[labels[i]].line.userData.gridPos : 0;
+      if (Math.abs(pos - lastShownPos) < minGap) {
+        hiddenLabels[labels[i]] = true;
+      } else {
+        lastShownPos = pos;
+      }
+    }
+  }
+
+  /** Dim/undim panel rows to match bubble visibility */
+  function syncPanelVisibility(hiddenLabels) {
+    if (!gridPanel) return;
+    var rows = gridPanel.querySelectorAll('.grid-row');
+    for (var i = 0; i < rows.length; i++) {
+      var lbl = rows[i].getAttribute('data-label');
+      var lblEnd = rows[i].getAttribute('data-label-end');
+      var hidden = hiddenLabels[lbl] || hiddenLabels[lblEnd];
+      rows[i].style.opacity = hidden ? '0.3' : '1';
     }
   }
 
@@ -190,7 +279,7 @@ function setupGridOverlay(APP) {
     var overshootY = Math.max(LINE_OVERSHOOT_MIN, bldW * LINE_OVERSHOOT_RATIO);
 
     // Bubble size: ~4% of max building dimension
-    bubbleScale = Math.max(1.2, maxDim * 0.04);
+    bubbleScale = Math.max(1.0, maxDim * 0.035);
     log('§GRID_BBOX bldW=' + bldW.toFixed(1) + ' bldD=' + bldD.toFixed(1) +
         ' bldH=' + bldH.toFixed(1) + ' bubbleScale=' + bubbleScale.toFixed(2));
 
@@ -356,10 +445,10 @@ function setupGridOverlay(APP) {
     var views = [
       { key: 'floor', label: 'GF' },
       { key: 'floor1', label: 'L1' },
-      { key: 'front', label: 'F' },
-      { key: 'rear', label: 'R' },
-      { key: 'left', label: 'L' },
-      { key: 'right', label: 'S' },
+      { key: 'front', label: 'Front' },
+      { key: 'rear', label: 'Back' },
+      { key: 'left', label: 'Left' },
+      { key: 'right', label: 'Right' },
       { key: 'roof', label: 'Roof' },
       { key: 'unlock', label: '\uD83D\uDD13' }
     ];

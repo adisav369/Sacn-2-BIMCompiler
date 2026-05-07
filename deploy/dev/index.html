@@ -15,7 +15,7 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-  #canvas { width: 100vw; height: 100vh; display: block; }
+  #canvas { width: 100vw; height: 100vh; display: block; touch-action: none; }
   #hud {
     position: fixed; top: 16px; left: 16px; z-index: 10;
     background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 12px;
@@ -491,10 +491,10 @@
 <script src="helpers.js?v=3" onerror="console.warn('§LOAD_FAIL helpers.js')"></script>
 <script src="streaming.js?v=17" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
 <script src="panels.js?v=6" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
-<script src="tools.js?v=5" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
-<script src="picking.js?v=14" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
+<script src="tools.js?v=6" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
+<script src="picking.js?v=16" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
 <script src="tour.js?v=3" onerror="console.warn('§LOAD_FAIL tour.js')"></script>
-<script src="measure.js?v=33" onerror="console.warn('§LOAD_FAIL measure.js')"></script>
+<script src="measure.js?v=37" onerror="console.warn('§LOAD_FAIL measure.js')"></script>
 <script src="sitecam.js?v=6" onerror="console.warn('§LOAD_FAIL sitecam.js')"></script>
 <script src="issues.js?v=4" onerror="console.warn('§LOAD_FAIL issues.js')"></script>
 <script src="excel.js?v=4" onerror="console.warn('§LOAD_FAIL excel.js')"></script>
@@ -511,16 +511,17 @@
 <script src="variation_order.js?v=2"></script>
 <script src="import.js?v=3"></script>
 <script src="grid_dims.js?v=4"></script>
-<script src="grid_config.js?v=1" onerror="console.warn('[GridConfig] grid_config.js skipped')"></script>
-<script src="grid_views.js?v=3" onerror="console.warn('[GridViews] grid_views.js skipped')"></script>
+<script src="grid_config.js?v=2" onerror="console.warn('[GridConfig] grid_config.js skipped')"></script>
+<script src="grid_views.js?v=7" onerror="console.warn('[GridViews] grid_views.js skipped')"></script>
 <script src="grid_door_arcs.js?v=1" onerror="console.warn('[DoorArcs] grid_door_arcs.js skipped')"></script>
 <script src="section_cut.js?v=5" onerror="console.warn('[SectionCut] section_cut.js skipped')"></script>
 <script src="elevation.js?v=1" onerror="console.warn('[Elevation] elevation.js skipped')"></script>
-<script src="grid_contours.js?v=2" onerror="console.warn('[GridContours] grid_contours.js skipped')"></script>
-<script src="grid_dim_chains.js?v=3" onerror="console.warn('[DimChains] grid_dim_chains.js skipped')"></script>
+<script src="grid_contours.js?v=4" onerror="console.warn('[GridContours] grid_contours.js skipped')"></script>
+<script src="grid_dim_chains.js?v=4" onerror="console.warn('[DimChains] grid_dim_chains.js skipped')"></script>
 <script src="grid_drag.js?v=1" onerror="console.warn('[GridDrag] grid_drag.js skipped')"></script>
-<script src="grid_overlay.js?v=9" onerror="console.warn('[GridOverlay] grid_overlay.js skipped — file not found or error')"></script>
+<script src="grid_overlay.js?v=18" onerror="console.warn('[GridOverlay] grid_overlay.js skipped — file not found or error')"></script>
 <script src="grid_assembler.js?v=2" onerror="console.warn('[GridAssembler] grid_assembler.js skipped')"></script>
+<script src="print_sheet.js?v=2" onerror="console.warn('[PrintSheet] print_sheet.js skipped')"></script>
 <script src="main.js?v=12"></script>
 <!-- Styled tooltip bubbles for [data-trl-title] buttons — appended to body, not clipped by overflow:hidden -->
 <style>#ootb-tip{display:none;position:fixed;z-index:9990;background:rgba(10,10,30,0.92);color:#4fc3f7;font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid rgba(79,195,247,0.35);pointer-events:none;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.4)}</style>
@@ -561,7 +562,7 @@ if(new URLSearchParams(location.search).get('embedded')!=='true'){
 </script>
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js?v=259')
+  navigator.serviceWorker.register('sw.js?v=265')
     .then(function(r){console.log('§SW_REG scope='+r.scope)})
     .catch(function(e){console.warn('§SW_REG_FAIL',e)});
 }

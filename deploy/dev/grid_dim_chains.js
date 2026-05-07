@@ -114,56 +114,70 @@ var DimChains = (function() {
     var xLines = grids.xLines || [];
     var yLines = grids.yLines || [];
 
-    // X-axis dimension chains (below building in Three.js = +Z)
+    // X-axis dimension chains — both sides (yMin = near, yMax = far)
     if (xLines.length > 1) {
-      var refZ = APP.ifc2three(0, env.yMin, env.zMin);
-      var baseZ = refZ.z;
-      var tier1Offset = baseZ + bubbleScale + dimGap;
       var tickDirX = new THREE.Vector3(0, 0, 1);
 
+      // Near side (yMin)
+      var refZNear = APP.ifc2three(0, env.yMin, env.zMin);
+      var t1Near = refZNear.z + bubbleScale + dimGap;
+      // Far side (yMax)
+      var refZFar = APP.ifc2three(0, env.yMax, env.zMin);
+      var t1Far = refZFar.z - bubbleScale - dimGap;
+
       for (var i = 0; i < xLines.length - 1; i++) {
-        var pa = APP.ifc2three(xLines[i].position, env.yMin, env.zMin);
-        var pb = APP.ifc2three(xLines[i + 1].position, env.yMin, env.zMin);
-        var p0 = new THREE.Vector3(pa.x, groundY, tier1Offset);
-        var p1 = new THREE.Vector3(pb.x, groundY, tier1Offset);
+        var paN = APP.ifc2three(xLines[i].position, env.yMin, env.zMin);
+        var pbN = APP.ifc2three(xLines[i + 1].position, env.yMin, env.zMin);
         var distX = Math.abs(xLines[i + 1].position - xLines[i].position);
-        addDimSegment(APP, p0, p1, tickDirX, (distX * 1000).toFixed(0), gridGroup, bubbleScale);
+        var label = (distX * 1000).toFixed(0);
+        // Near
+        addDimSegment(APP, new THREE.Vector3(paN.x, groundY, t1Near),
+          new THREE.Vector3(pbN.x, groundY, t1Near), tickDirX, label, gridGroup, bubbleScale);
+        // Far
+        addDimSegment(APP, new THREE.Vector3(paN.x, groundY, t1Far),
+          new THREE.Vector3(pbN.x, groundY, t1Far), tickDirX, label, gridGroup, bubbleScale);
       }
 
-      // Overall
-      var tier3Offset = baseZ + bubbleScale + dimGap * 3;
+      // Overall — near side only (avoids clutter)
+      var t3Near = refZNear.z + bubbleScale + dimGap * 3;
       var pFirst = APP.ifc2three(xLines[0].position, env.yMin, env.zMin);
       var pLast = APP.ifc2three(xLines[xLines.length - 1].position, env.yMin, env.zMin);
-      var q0 = new THREE.Vector3(pFirst.x, groundY, tier3Offset);
-      var q1 = new THREE.Vector3(pLast.x, groundY, tier3Offset);
       var totalX = Math.abs(xLines[xLines.length - 1].position - xLines[0].position);
-      addDimSegment(APP, q0, q1, tickDirX, (totalX * 1000).toFixed(0), gridGroup, bubbleScale);
+      addDimSegment(APP, new THREE.Vector3(pFirst.x, groundY, t3Near),
+        new THREE.Vector3(pLast.x, groundY, t3Near), tickDirX, (totalX * 1000).toFixed(0), gridGroup, bubbleScale);
     }
 
-    // Y-axis dimension chains (left of building in Three.js = -X)
+    // Y-axis dimension chains — both sides (xMin = left, xMax = right)
     if (yLines.length > 1) {
-      var refX = APP.ifc2three(env.xMin, 0, env.zMin);
-      var baseX = refX.x;
-      var tier1OffsetY = baseX - bubbleScale - dimGap;
       var tickDirY = new THREE.Vector3(1, 0, 0);
 
+      // Left side (xMin)
+      var refXLeft = APP.ifc2three(env.xMin, 0, env.zMin);
+      var t1Left = refXLeft.x - bubbleScale - dimGap;
+      // Right side (xMax)
+      var refXRight = APP.ifc2three(env.xMax, 0, env.zMin);
+      var t1Right = refXRight.x + bubbleScale + dimGap;
+
       for (var j = 0; j < yLines.length - 1; j++) {
-        var ra = APP.ifc2three(env.xMin, yLines[j].position, env.zMin);
-        var rb = APP.ifc2three(env.xMin, yLines[j + 1].position, env.zMin);
-        var r0 = new THREE.Vector3(tier1OffsetY, groundY, ra.z);
-        var r1 = new THREE.Vector3(tier1OffsetY, groundY, rb.z);
+        var raL = APP.ifc2three(env.xMin, yLines[j].position, env.zMin);
+        var rbL = APP.ifc2three(env.xMin, yLines[j + 1].position, env.zMin);
         var distY = Math.abs(yLines[j + 1].position - yLines[j].position);
-        addDimSegment(APP, r0, r1, tickDirY, (distY * 1000).toFixed(0), gridGroup, bubbleScale);
+        var labelY = (distY * 1000).toFixed(0);
+        // Left
+        addDimSegment(APP, new THREE.Vector3(t1Left, groundY, raL.z),
+          new THREE.Vector3(t1Left, groundY, rbL.z), tickDirY, labelY, gridGroup, bubbleScale);
+        // Right
+        addDimSegment(APP, new THREE.Vector3(t1Right, groundY, raL.z),
+          new THREE.Vector3(t1Right, groundY, rbL.z), tickDirY, labelY, gridGroup, bubbleScale);
       }
 
-      // Overall
-      var tier3OffsetY = baseX - bubbleScale - dimGap * 3;
+      // Overall — left side only
+      var t3Left = refXLeft.x - bubbleScale - dimGap * 3;
       var sFirst = APP.ifc2three(env.xMin, yLines[0].position, env.zMin);
       var sLast = APP.ifc2three(env.xMin, yLines[yLines.length - 1].position, env.zMin);
-      var s0 = new THREE.Vector3(tier3OffsetY, groundY, sFirst.z);
-      var s1 = new THREE.Vector3(tier3OffsetY, groundY, sLast.z);
       var totalY = Math.abs(yLines[yLines.length - 1].position - yLines[0].position);
-      addDimSegment(APP, s0, s1, tickDirY, (totalY * 1000).toFixed(0), gridGroup, bubbleScale);
+      addDimSegment(APP, new THREE.Vector3(t3Left, groundY, sFirst.z),
+        new THREE.Vector3(t3Left, groundY, sLast.z), tickDirY, (totalY * 1000).toFixed(0), gridGroup, bubbleScale);
     }
 
     log('§DIM_CHAIN built');
