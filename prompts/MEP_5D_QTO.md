@@ -452,6 +452,178 @@ SELECT * FROM qto_cache WHERE rate_template = 'cidb2024_my';
 5. Test: building with no MEP in IFC → RouteWalker generates → browser shows MEP BOQ
 
 ## ────────────────────────────────────────────────────────────
+## Test Buildings + Validation Routine
+## ────────────────────────────────────────────────────────────
+
+### Candidate Buildings (zero MEP in IFC — RouteWalker targets)
+
+| Building | Elements | ARC | STR | Role |
+|----------|----------|-----|-----|------|
+| SampleHouse | 60 | 40 | 20 | Tier 1: Smoke test — fastest iteration |
+| Duplex | 218 | 199 | 19 | Tier 1: Small residential — plumbing-heavy |
+| Jesse | 676 | 381 | 295 | Tier 2: Mid-size mixed — validates storey routing |
+| AC11Institute | 986 | 984 | 2 | Tier 2: Institutional — multiple rooms, corridors |
+| HospitalGarage | 1,271 | 515 | 756 | Tier 2: STR-heavy — needs fire suppression routing |
+| Esplanades | 2,544 | 2,470 | 74 | Tier 3: Stress test — large, complex envelope |
+
+### MEP-Rich Buildings (validation — real IFC MEP to compare against)
+
+| Building | Elements | MEP | Role |
+|----------|----------|-----|------|
+| HHS_Office_Federated | 6,871 | 3,390 | Validate unit-aware QTO against real MEP |
+| Hospital | 63,415 | 45,946 | Validate at scale — PLB, ELEC, FP, ACMV disciplines |
+| Terminal | 48,428 | 11,850 | Validate multi-discipline MEP costing |
+| Ifc4_Revit | 11,505 | 3,587 | Validate IFC4 MEP extraction path |
+
+### Test Routine — Sprint 1 (Unit-Aware QTO)
+
+```
+T_MEP_01: Rate template loads from JSON
+  1. Open boq_charts.html?db=...Hospital...&rates=cidb2024_my
+  2. Console: §QTO_RATES_LOADED template=cidb2024_my classes≥50
+  3. PASS if rates loaded, charts render
+
+T_MEP_02: Linear elements use bbox length (M unit)
+  1. Open boq_charts.html with Hospital (has IfcPipeSegment)
+  2. Console: §QTO_UNIT cls=IfcPipeSegment unit=M qty>0
+  3. Qty must be SUM of bbox longest axis, NOT element count
+  4. Compare: old qty (count) vs new qty (metres) — must differ
+  5. PASS if qty is in metres, not element count
+
+T_MEP_03: Area elements use bbox area (M2 unit)
+  1. Open boq_charts.html with any building having IfcSlab
+  2. Console: §QTO_UNIT cls=IfcSlab unit=M2 qty>0
+  3. Qty must be SUM of (axis1 × axis2), NOT element count
+  4. PASS if qty is in m², not element count
+
+T_MEP_04: EA elements unchanged (count)
+  1. Open boq_charts.html with any building having IfcDoor
+  2. Console: §QTO_UNIT cls=IfcDoor unit=EA qty>0
+  3. Qty must equal COUNT(*) for that class
+  4. PASS if qty matches element count
+
+T_MEP_05: Fallback when bbox is NULL
+  1. If any element has NULL bbox_x → should fall back to count
+  2. Console: §QTO_WARN no bbox for guid=..., using count fallback
+  3. PASS if no crash, fallback logged
+```
+
+### Test Routine — Sprint 2 (MEP BOQ Output)
+
+```
+T_MEP_10: MEP button exists on toolbar
+  1. Open boq_charts.html with any building
+  2. Toolbar shows [5D] [4D] [MEP] [☀] [📋]
+  3. PASS if MEP button visible
+
+T_MEP_11: MEP report renders SMM sections (MEP-rich building)
+  1. Click MEP button with Hospital loaded
+  2. Report opens with sections R/S/T/U/V
+  3. Each section has items with Qty, UOM, Rate, Amount
+  4. Console: §MEP_BOQ sections≥3 total>0
+  5. PASS if all sections render with data
+
+T_MEP_12: MEP report for zero-MEP building (pre-RouteWalker)
+  1. Click MEP button with SampleHouse loaded
+  2. Report shows "No MEP elements found" or empty sections
+  3. Summary shows MEP Total = 0
+  4. Console: §MEP_BOQ sections=0 total=0
+  5. PASS if handles gracefully, no crash
+
+T_MEP_13: Copy URL on MEP report
+  1. Open MEP report, click 📋
+  2. Pasted URL opens same report with same data
+  3. PASS if URL is shareable
+
+T_MEP_14: Share Report downloads self-contained HTML
+  1. Click Share Report on MEP report
+  2. HTML file downloads, opens standalone in browser
+  3. PASS if charts render without network
+```
+
+### Test Routine — Sprint 3 (CSV + Reinstatement)
+
+```
+T_MEP_20: CSV export from MEP report
+  1. Click CSV button on MEP report (Hospital)
+  2. File downloads as MEP_BOQ_Hospital_{date}.csv
+  3. Open in Excel — columns: Section, Item, Description, Qty, UOM, Rate, Amount
+  4. Console: §MEP_CSV rows>0
+  5. PASS if CSV opens correctly in Excel with UTF-8
+
+T_MEP_21: CSV export from 5D report
+  1. Click CSV button on existing 5D export (Hospital)
+  2. File downloads with SMM section column
+  3. PASS if CSV has Section column populated
+
+T_MEP_22: Reinstatement value in MEP report
+  1. Open MEP report for Hospital
+  2. Summary block shows: MEP Subtotal + Preliminaries + ProfFees + Contingency = Insured Value
+  3. Percentages match rate template provisions
+  4. Console: §REINSTATEMENT mep>0
+  5. PASS if insured value = subtotal × (1 + prel% + prof% + cont%)
+
+T_MEP_23: Reinstatement CSV for valuers
+  1. Separate CSV: Reinstatement_{building}_{date}.csv
+  2. Rows: Structure, Architecture, MEP, TOTAL
+  3. Columns: Subtotal, Preliminaries, ProfFees, Contingency, ReinstValue
+  4. PASS if totals match HTML report
+```
+
+### Test Routine — Sprint 4 (RouteWalker Bridge)
+
+```
+T_MEP_30: RouteWalker generates MEP for zero-MEP building
+  1. Run RouteWalker on SampleHouse (Java pipeline)
+  2. Log: §RW_SYNC building=SampleHouse elements>0 cwPipes>0
+  3. Query extracted DB: SELECT COUNT(*) FROM elements_meta WHERE guid LIKE 'RW-%'
+  4. PASS if RW-prefixed elements exist with discipline PLB/ACMV/ELEC
+
+T_MEP_31: Browser reads RouteWalker-generated MEP
+  1. Open boq_charts.html with SampleHouse (post-RouteWalker)
+  2. MEP elements appear in QTO with real lengths (from bbox)
+  3. Console: §QTO_UNIT cls=IfcPipeSegment unit=M qty>0
+  4. PASS if browser treats RW-generated MEP same as IFC-extracted
+
+T_MEP_32: MEP report for RouteWalker building
+  1. Click MEP button with SampleHouse (post-RouteWalker)
+  2. SMM sections R/S show pipe data with lengths
+  3. Reinstatement value > 0
+  4. PASS if full MEP BOQ from zero-MEP IFC
+
+T_MEP_33: Compare RouteWalker vs real MEP
+  1. Hospital has real MEP — run MEP report
+  2. SampleHouse has RouteWalker MEP — run MEP report
+  3. Both produce same format (SMM sections, CSV columns)
+  4. PASS if output format is identical regardless of source
+
+T_MEP_34: QTO cache write + fast reload
+  1. Open boq_charts.html with SampleHouse (first visit)
+  2. Console: §QTO_CACHE_WRITE template=cidb2024_my rows>0
+  3. Reload same page
+  4. Console: §QTO_CACHE_HIT template=cidb2024_my rows>0
+  5. PASS if second load skips computation
+
+T_MEP_35: Rate template swap invalidates cache
+  1. Load SampleHouse with ?rates=cidb2024_my → cache written
+  2. Reload with ?rates=bcis2024_uk → must recompute, not use old cache
+  3. Console: §QTO_CACHE_WRITE template=bcis2024_uk (new cache)
+  4. PASS if different template triggers fresh computation
+
+T_MEP_36: Tier 2 validation — Jesse (mid-size)
+  1. Run RouteWalker on Jesse → sync to DB
+  2. Open MEP report → verify storey-by-storey routing
+  3. Multiple storeys should have independent MEP routes
+  4. PASS if routes respect storey boundaries
+
+T_MEP_37: Tier 3 stress test — Esplanades (2,544 elements)
+  1. Run RouteWalker on Esplanades → sync to DB
+  2. Open MEP report → must complete within 5 seconds
+  3. Console: §CLASH_REPORT_DONE (if applicable)
+  4. PASS if renders without timeout or browser freeze
+```
+
+## ────────────────────────────────────────────────────────────
 ## Files to Create / Modify
 ## ────────────────────────────────────────────────────────────
 
