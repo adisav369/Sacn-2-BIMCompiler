@@ -7,7 +7,7 @@
 
 **Version:** 0.2 (2026-04-27)
 **Status:** LIVE — 37 buildings streaming from OCI Object Storage
-**Depends on:** `deploy/sandbox/index.html` + 18 JS modules, per-building DBs
+**Depends on:** `deploy/dev/index.html` + 18 JS modules, per-building DBs
 
 ---
 
@@ -47,7 +47,7 @@ cd deploy
 python3 -m http.server 8080
 
 # 3. Open in your browser
-# http://localhost:8080/sandbox/landing.html
+# http://localhost:8080/dev/index.html
 ```
 
 That's it. The landing page lists all buildings. Click one — it loads from the `buildings/` folder.
@@ -56,9 +56,9 @@ That's it. The landing page lists all buildings. Click one — it loads from the
 
 | Folder | Contents | Size |
 |--------|----------|------|
-| `deploy/sandbox/` | HTML viewer + 18 JS modules | ~200 KB |
+| `deploy/dev/` | HTML viewer + 18 JS modules | ~200 KB |
 | `deploy/buildings/` | 31 buildings × 2 DBs each (extracted + library) | ~2 GB total |
-| `deploy/sandbox/boq_charts.html` | 4D/5D analytics dashboard | ~50 KB |
+| `deploy/dev/boq_charts.html` | 4D/5D analytics dashboard | ~50 KB |
 
 **Smallest building to test with:** Duplex (~3 MB total). SampleHouse is even smaller (~500 KB).
 
@@ -79,7 +79,7 @@ That's it. The landing page lists all buildings. Click one — it loads from the
 git clone https://github.com/red1oon/BIMCompiler.git
 cd BIMCompiler\deploy
 python -m http.server 8080
-# Open: http://localhost:8080/sandbox/landing.html
+# Open: http://localhost:8080/dev/index.html
 
 # Or WSL Ubuntu:
 git clone https://github.com/red1oon/BIMCompiler.git
@@ -368,7 +368,7 @@ oci os bucket create \
   --public-access-type ObjectRead
 
 # 3. Upload viewer + DBs
-oci os object put --bucket-name my-bim-viewer --file deploy/sandbox/index.html \
+oci os object put --bucket-name my-bim-viewer --file deploy/dev/index.html \
   --content-type text/html --name index.html
 oci os object put --bucket-name my-bim-viewer --file deploy/buildings/Duplex_extracted.db \
   --content-type application/octet-stream --name Duplex_extracted.db
@@ -473,7 +473,7 @@ All leverage the existing stack: phone sensors + BIM DB + Walk/Site mode.
 
 ## 10. Files
 
-### Production (`deploy/sandbox/` → live OCI bucket)
+### Production (`deploy/live/` → live OCI bucket)
 
 | File | Role |
 |------|------|

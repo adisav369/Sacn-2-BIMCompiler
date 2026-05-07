@@ -181,8 +181,8 @@ No intermediate format. No conversion. DB BLOBs ARE the GPU buffers.
 | Library | License | What it does | How loaded |
 |---|---|---|---|
 | [web-ifc](https://github.com/ThatOpenCompany/engine_web-ifc) @0.0.77 | MPL-2.0 | C++/WASM IFC parser + tessellator | CDN `unpkg.com` in `import_worker.js` |
-| [sql.js](https://github.com/sql-js/sql.js) @1.10.3 | MIT | SQLite compiled to WASM — runs SQL in browser | CDN `cdnjs.cloudflare.com` in `streaming.js` |
-| [Three.js](https://github.com/mrdoob/three.js) r128 | MIT | WebGL 3D renderer | CDN `cdnjs.cloudflare.com` in HTML |
+| [sql.js](https://github.com/sql-js/sql.js) @1.10.3 | MIT | SQLite compiled to WASM — runs SQL in browser | Local `lib/` (CDN fallback) |
+| [Three.js](https://github.com/mrdoob/three.js) r128 | MIT | WebGL 3D renderer | Local `lib/` (CDN fallback) |
 | [dxf-parser](https://github.com/gdsestimating/dxf-parser) | MIT | DXF file parsing for 2D plans | Vendored minified `dxf-parser.js` |
 | [ExcelJS](https://github.com/exceljs/exceljs) | MIT | Excel export for BOQ charts | CDN `cdnjs.cloudflare.com` |
 
@@ -238,6 +238,8 @@ BIMOOTB/lib/rtree-sql/
 ```
 
 Verified working: R-tree `CREATE VIRTUAL TABLE ... USING rtree(...)` executes successfully. This is the exact binary served by `cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/`.
+
+The WASM binary is also vendored locally at `deploy/dev/lib/sql-wasm.wasm` for local-first loading (CDN fallback).
 
 ### Source Repositories
 

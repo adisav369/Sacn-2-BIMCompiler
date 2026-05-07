@@ -7,7 +7,7 @@ DB = model. Template = view. Browser = runtime. Three concerns, never merged.
 
 | # | What | Key files |
 |---|------|-----------|
-| S200–S209b | Browser viewer, site camera, walk mode, mobile UX, cinematic tour, modular refactor | `deploy/sandbox/` (16 modules) |
+| S200–S209b | Browser viewer, site camera, walk mode, mobile UX, cinematic tour, modular refactor | `deploy/dev/` (16 modules) |
 | S210 | BOQ charts, template + forex, work packages, chart images in Excel | `deploy/dev/boq_charts.html` |
 | S220 | Browser IFC import (web-ifc WASM, IFC2x3+IFC4, 122K elements proven) | `deploy/dev/import.js` |
 | S222–S224 | DB refactor, diff engine, Variation Order Excel (FIDIC Clause 12), versioned IndexedDB v2 | `deploy/dev/` |
@@ -34,7 +34,7 @@ Voice input via Web Speech API (built into Chrome/Safari — no server, no key, 
 - `query_patterns.py` — 40+ patterns across 8 categories (element_count, manufacturer, property, quantity, cost, material, freetext, discipline)
 - `query_executor.py` — execute + format results
 
-**Browser port (`deploy/sandbox/nlp.js`):**
+**Browser port (`deploy/dev/nlp.js`):**
 - Port intent classifier + query patterns to JS (no Python dependency)
 - Wire to existing search input (`#search-box` in index.html, currently hidden)
 - `db.exec(generatedSQL)` against loaded sql.js DB — zero server round-trip

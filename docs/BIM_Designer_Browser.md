@@ -1,5 +1,5 @@
 # BIM Designer — Browser Edition
-> **Foundation:** [BIM_Designer.md](BIM_Designer.md) · [RTreeGuide.md](RTreeGuide.md) · [MANIFESTO.md](MANIFESTO.md) · [4D5DAnalysis.md](4D5DAnalysis.md)
+> **Foundation:** [BIM_Designer.md](BIM_Designer.md) · [RTreeGuide.md](RTreeGuide.md) · [MANIFESTO.md](MANIFESTO.md) · [4D5DAnalysis.md](4D5DAnalysis.md) · [Clash Detection](CLASH_DETECTION.md)
 
 <div class="bim-banner" markdown>
 <b>BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.</b> One HTML file. Two SQLite DBs. Zero server. 126K elements streaming in your browser — no install, no conversion, no vendor lock-in. The DB IS the application.
@@ -7,7 +7,7 @@
 
 **Version:** 0.3 (2026-04-26)
 **Status:** LIVE — browser BIM Designer with multi-format import, IFC export, guided wizard
-**Depends on:** `deploy/sandbox/index.html` + JS modules, per-building DBs in `deploy/buildings/`
+**Depends on:** `deploy/dev/index.html` + JS modules, per-building DBs in `deploy/buildings/`
 
 <figure style="margin: 20px 0;">
 <img src="../assets/images/OOTB.png" alt="BIM OOTB — Browser-native BIM viewer" style="width:100%; border:1px solid #ccc;"/>
@@ -35,7 +35,7 @@ The enabling technology is **WebAssembly (WASM)** — a binary instruction forma
 that runs native-speed code inside the browser sandbox. What matters for us:
 
 **sql.js** compiles the entire SQLite C library (~250K lines) to WASM. The browser
-downloads a ~1MB `.wasm` file from CDN, and from that point it has a full SQL
+downloads a ~1MB `.wasm` file (vendored locally in `lib/`, CDN fallback), and from that point it has a full SQL
 engine running locally — the same SQLite that powers every smartphone on earth.
 When we call `db.exec("SELECT vertices FROM component_geometries WHERE ...")`,
 that query runs inside the browser tab at near-native speed. No server round-trip.
@@ -421,6 +421,8 @@ The browser re-renders the result.
                           └─────────────────────────┘
 ```
 
+> **Note:** The Phase 4 server uses `component_library.db` for compilation. The browser viewer uses single per-building `{Name}_extracted.db` files (metadata + transforms + geometry BLOBs), not `component_library.db`.
+
 ### 4.4 The Bridge — Is It a Hindrance?
 
 **No, and here's why:**
@@ -726,7 +728,7 @@ For clients who only need one building:
 ```bash
 # Extract single building to standalone DB
 scripts/extract_building.sh T0_Hospital > deploy/Hospital_extracted.db
-# Upload: bim_designer.html + Hospital_extracted.db + component_library.db
+# Upload: bim_designer.html + Hospital_extracted.db (single per-building DB)
 # Total: ~70MB instead of 1.1GB
 ```
 
@@ -745,7 +747,7 @@ scripts/extract_building.sh T0_Hospital > deploy/Hospital_extracted.db
 - [x] IndexedDB cache (download once, instant revisit)
 - [x] City mode (city_index.db, 786 bboxes, click-to-stream)
 - [x] "Complete the City" gamification (progress bar, LAUNCH CITY button)
-- [x] Modular refactor (rtree_browser_demo → sandbox/ with 16 JS modules, S209)
+- [x] Modular refactor (rtree_browser_demo → live/ with 16 JS modules, S209)
 - [ ] Java compiler container for Phase 4
 
 ---
@@ -759,7 +761,7 @@ For file structure, call chain, OCI bucket layout, deployment rules, and debug/t
 
 ### 8.1 Key Technical Decisions
 
-1. **No build step.** 16 plain JS modules, CDN dependencies. No npm, no webpack, no React.
+1. **No build step.** 16 plain JS modules, local-first dependencies (`lib/`, CDN fallback). No npm, no webpack, no React.
 2. **sql.js over REST.** The browser IS the database client. No API layer to maintain.
 3. **Three.js r128 (stable).** Not latest — proven, small, well-documented.
 4. **BufferGeometry from BLOBs.** Same pipeline as Blender's `from_pydata()`. Vertex swap: IFC (x,y,z) → Three.js (x,z,-y).
@@ -769,7 +771,7 @@ For file structure, call chain, OCI bucket layout, deployment rules, and debug/t
 ### 8.2 Test Suite
 
 ```bash
-node deploy/sandbox/test_all.js    # 149 tests, must be 100%
+node deploy/dev/test_all.js    # 149 tests, must be 100%
 ```
 
 Covers: JS syntax, module wiring, button→function mapping, z-index hierarchy, OCI live + content match, URL integrity (greedy regex proof), DB chart data verification, button wiring audit. See [§10 full breakdown](PLUGIN_SDK.md#2-plugin-structure) for details.
@@ -870,15 +872,15 @@ Full technical details have moved to dedicated specs:
 
 ```bash
 # Test (must be 149/149 before deploy)
-node deploy/sandbox/test_all.js
+node deploy/dev/test_all.js
 
 # Local dev server
 cd deploy && python3 -m http.server 8080
 # → http://localhost:8080/landing.html
 
 # Deploy to OCI (both buckets)
-oci os object put --bucket-name bim-ootb-live --file deploy/sandbox/tools.js --name sandbox/tools.js --content-type application/javascript --force
-oci os object put --bucket-name bim-ootb --file deploy/sandbox/tools.js --name tools.js --content-type application/javascript --force
+oci os object put --bucket-name bim-ootb-live --file deploy/dev/tools.js --name sandbox/tools.js --content-type application/javascript --force
+oci os object put --bucket-name bim-ootb --file deploy/dev/tools.js --name tools.js --content-type application/javascript --force
 ```
 
 ### Console Log Tags

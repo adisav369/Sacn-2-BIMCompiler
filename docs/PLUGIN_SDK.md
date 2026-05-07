@@ -5,7 +5,7 @@
 A plugin is one JS file + one JSON manifest. No build step, no SDK install, no API key.
 The browser IDE lets you write, test, and publish plugins without leaving the browser.
 
-**IDE:** `deploy/sandbox/ide.html`
+**IDE:** `deploy/dev/ide.html`
 **Test harness:** `node plugin_test.js plugins/my_plugin/`
 **Fixture DB:** Duplex (1119 elements, 2.8MB)
 

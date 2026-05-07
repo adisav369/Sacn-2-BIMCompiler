@@ -246,7 +246,7 @@ deploy/
     tests/             Playwright E2E suite (26 files, 5.2K lines)
     test/              Manual test harnesses
     test-results/      Playwright artifacts (gitignored)
-  sandbox/             Production mirror (promote from dev, never edit)
+  live/               Production mirror (promote from dev, never edit)
     *.js, *.html       Prod JS + viewer HTML
     landing.html       Prod landing (generated from landing2.html)
   landing2.html        Landing page SOURCE (dev markers, sed-stripped for prod)
