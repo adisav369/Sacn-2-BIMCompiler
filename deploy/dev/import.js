@@ -322,20 +322,21 @@ function setupImport(A) {
     console.log('[S220] §IMPORT_DELETE key=' + key);
   };
 
-  // ── S250 §8: Contribute — lazy-loaded from contribute.js ──
+  // ── S250 §8: Share Sheet — lazy-loaded from share.js ──
   // Zero bytes on initial fetch. Script loads only when user clicks Share.
-  A._getImport = getImport;  // Expose for contribute.js
-  A.contributeBuilding = async function(key) {
-    if (!A._contributeLoaded) {
+  // Unified: Save as IFC / Save as DB / Contribute to OOTB + WhatsApp / Email / Copy Link.
+  // See docs/EnterpriseAuthentication.md for security architecture.
+  A._getImport = getImport;  // Expose for share.js
+  A.openShareSheet = async function(key) {
+    if (!A._shareLoaded) {
       var script = document.createElement('script');
-      script.src = 'contribute.js?v=1';
-      script.onload = function() { A._contributeLoaded = true; A.contributeBuilding(key); };
-      script.onerror = function() { alert('Failed to load contribute module'); };
+      script.src = 'share.js?v=1';
+      script.onload = function() { A._shareLoaded = true; A.openShareSheet(key); };
+      script.onerror = function() { alert('Failed to load share module'); };
       document.head.appendChild(script);
       return;
     }
-    // After lazy load, contribute.js overwrites this function — call through
-    console.log('§CONTRIBUTE stub — should not reach here after load');
+    console.log('§SHARE stub — should not reach here after load');
   };
 
   // ── Render import cards (for landing page) ──
@@ -386,14 +387,12 @@ function setupImport(A) {
         '<div class="disc-bars">' + discBars + '</div>' +
         '<div style="display:flex;gap:6px;margin-top:10px">' +
           '<button class="open-btn" style="flex:1" data-key="' + item.key + '">Open</button>' +
-          '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(79,195,247,0.1);border-color:rgba(79,195,247,0.2);color:#4fc3f7;font-size:10px" data-ifc="' + item.key + '">IFC</button>' +
-          '<button class="open-btn" data-contribute="' + item.key + '" style="flex:0;padding:6px 10px;background:rgba(76,175,80,0.15);border-color:rgba(76,175,80,0.3);color:#4caf50;font-size:10px">&uarr; Share</button>' +
+          '<button class="open-btn" data-share="' + item.key + '" style="flex:0;padding:6px 10px;background:rgba(76,175,80,0.15);border-color:rgba(76,175,80,0.3);color:#4caf50;font-size:10px">Share</button>' +
           '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + item.key + '">x</button>' +
         '</div>';
 
       card.querySelector('[data-key]').onclick = function() { A.openImported(this.dataset.key); };
-      card.querySelector('[data-ifc]').onclick = function(e) { e.stopPropagation(); A.exportIFC(this.dataset.ifc); };
-      card.querySelector('[data-contribute]').onclick = function(e) { e.stopPropagation(); A.contributeBuilding(this.dataset.contribute); };
+      card.querySelector('[data-share]').onclick = function(e) { e.stopPropagation(); A.openShareSheet(this.dataset.share); };
       card.querySelector('[data-del]').onclick = function(e) {
         e.stopPropagation();
         if (confirm('Delete ' + item.meta.name + '?')) A.deleteImported(this.dataset.del);
