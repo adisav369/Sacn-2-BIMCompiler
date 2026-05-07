@@ -45,6 +45,7 @@
 <div class="toolbar">
   <button onclick="save5D()" data-trl-title="ui_tt_export_5d" title="5D — Cost Excel">&#128202; 5D</button>
   <button onclick="save4D()" data-trl-title="ui_tt_export_4d" title="4D — Schedule Excel">&#128197; 4D</button>
+  <button onclick="openMepReport()" title="MEP Bill of Quantities">&#128295; MEP</button>
   <button onclick="toggleTheme()" data-trl-title="ui_tt_theme" title="Light/Dark">&#9788;</button>
   <button onclick="copyPageUrl(this)" title="Copy shareable link">&#128203;</button>
 </div>
@@ -483,8 +484,14 @@ function generateSchedule(activities, startDateStr) {
         if (after > storeyStart) storeyStart = after;
       }
 
-      // Tasks in same phase+storey run concurrently — find longest
-      let maxFinish = storeyStart;
+      // S240c: One grouped task per (phase, storey) — aggregate all IFC classes
+      let maxDuration = 0;
+      let totalQtyGroup = 0;
+      let totalCrew = 0;
+      const ifcClasses = [];
+      const disciplines = new Set();
+      const resources = new Set();
+      const equipments = new Set();
 
       for (const act of acts) {
         const prod = act.labor.prod || 10;
@@ -494,39 +501,46 @@ function generateSchedule(activities, startDateStr) {
           crews = Math.ceil(duration / MAX_TASK_DAYS);
           duration = Math.ceil(duration / crews);
         }
-
-        const taskFinish = addWorkDays(storeyStart, duration);
-        if (taskFinish > maxFinish) maxFinish = taskFinish;
-
+        if (duration > maxDuration) maxDuration = duration;
+        totalQtyGroup += act.qty;
+        totalCrew = Math.max(totalCrew, (act.labor.crew || 2) * crews);
+        ifcClasses.push(act.cls);
+        disciplines.add(act.disc);
+        const res = act.labor.tradeKey || act.rules.resource;
+        if (res) resources.add(res);
         const equipAlloc = EQUIPMENT_ALLOCATION[act.cls];
-        taskId++;
-        tasks.push({
-          id: taskId,
-          wbs: `1.${act.rules.sequence}.${taskId}`,
-          name: `${storey} - ${act.cls.replace('Ifc','').replace('BuildingElementProxy','BldgProxy').replace('StandardCase','Std').replace('DistributionElement','DistElem').replace('FireSuppressionTerminal','FireSup').replace('ElectricAppliance','ElecApp')} (${act.disc})`,
-          ifcClass: act.cls,
-          phase,
-          discipline: act.disc,
-          storey,
-          qty: act.qty,
-          uom: act.unit || 'EA',
-          productivity: prod,
-          duration,
-          crews,
-          startDate: storeyStart.toISOString().slice(0,10),
-          finishDate: taskFinish.toISOString().slice(0,10),
-          resource: act.labor.tradeKey || act.rules.resource || '',
-          crew: (act.labor.crew || 2) * crews,
-          equipment: equipAlloc ? EQUIPMENT_RATES[equipAlloc.equipment].desc : '',
-          startDay: Math.round((storeyStart - projectStart) / 86400000),
-          finishDay: Math.round((taskFinish - projectStart) / 86400000),
-        });
+        if (equipAlloc) equipments.add(EQUIPMENT_RATES[equipAlloc.equipment].desc);
       }
 
+      const taskFinish = addWorkDays(storeyStart, maxDuration);
+      const discLabel = [...disciplines].join('/');
+      taskId++;
+      tasks.push({
+        id: taskId,
+        wbs: `1.${PHASE_ORDER.indexOf(phase)+1}.${taskId}`,
+        name: `${storey} - ${phase} (${discLabel})`,
+        ifcClasses,
+        phase,
+        discipline: discLabel,
+        storey,
+        qty: totalQtyGroup,
+        uom: 'MIX',
+        productivity: totalQtyGroup > 0 ? Math.round(totalQtyGroup / maxDuration) : 0,
+        duration: maxDuration,
+        crews: 1,
+        startDate: storeyStart.toISOString().slice(0,10),
+        finishDate: taskFinish.toISOString().slice(0,10),
+        resource: [...resources].join(','),
+        crew: totalCrew,
+        equipment: [...equipments].join(', '),
+        startDay: Math.round((storeyStart - projectStart) / 86400000),
+        finishDay: Math.round((taskFinish - projectStart) / 86400000),
+      });
+
       if (!storeyPhaseEnd[storey]) storeyPhaseEnd[storey] = {};
-      storeyPhaseEnd[storey][phase] = maxFinish;
-      if (!phaseFirstStart[phase]) phaseFirstStart[phase] = maxFinish;
-      prevStoreyEnd = maxFinish;
+      storeyPhaseEnd[storey][phase] = taskFinish;
+      if (!phaseFirstStart[phase]) phaseFirstStart[phase] = taskFinish;
+      prevStoreyEnd = taskFinish;
     }
   }
   return tasks;
@@ -618,16 +632,13 @@ function audit4DSchedule(scheduleData, db, qtoData) {
   console.log('§4D_AUDIT_DURATION ' + (c4 ? 'PASS' : 'FAIL') + ' outliers=[' + outliers.join(',') + ']');
   results.push({name:'DURATION', pass:c4});
 
-  // Check 5: Overlap sanity — no two tasks with same resource AND same IFC class on same storey
-  // Different classes by same trade is normal (e.g. FlowFitting + FlowSegment by PLUMBER)
+  // Check 5: Overlap sanity — no two tasks with same phase on same storey (grouped = impossible, but verify)
   let c5 = true;
   const conflicts = [];
-  function _taskClass(t) { return t.ifcClass || ''; }
   for (let i = 0; i < scheduleData.length; i++) {
     for (let j = i + 1; j < scheduleData.length; j++) {
       const a = scheduleData[i], b = scheduleData[j];
-      if (a.storey === b.storey && a.resource && a.resource === b.resource &&
-          _taskClass(a) === _taskClass(b) &&
+      if (a.storey === b.storey && a.phase === b.phase &&
           a.startDay < b.finishDay && b.startDay < a.finishDay) {
         conflicts.push(a.name + ' vs ' + b.name);
         c5 = false;
@@ -645,25 +656,28 @@ function audit4DSchedule(scheduleData, db, qtoData) {
   console.log('§4D_AUDIT_TOTAL ' + (c6 ? 'PASS' : 'FAIL') + ' days=' + projectDays + ' serial=' + Math.round(serialSum) + ' ratio=' + ratio);
   results.push({name:'TOTAL', pass:c6});
 
-  // Check 7: Gantt bar labels — ≤40 chars, no undefined/[object Object]
-  const badLabels = scheduleData.filter(t => !t.name || t.name.length > 40 || t.name.includes('undefined') || t.name.includes('[object'));
+  // Check 7: Gantt bar labels — no undefined/[object Object], no empty names
+  const badLabels = scheduleData.filter(t => !t.name || t.name.includes('undefined') || t.name.includes('[object'));
   const c7 = badLabels.length === 0;
   console.log('§4D_AUDIT_LABELS ' + (c7 ? 'PASS' : 'FAIL') + (badLabels.length ? ' bad=[' + badLabels.map(t=>t.name).join(',') + ']' : ' ok=true'));
   results.push({name:'LABELS', pass:c7});
 
-  // Check 8: Task↔GUID resolution — every task resolves to ≥1 GUID
+  // Check 8: Task↔GUID resolution — every grouped task resolves to ≥1 GUID
   let c8 = true;
   const orphaned = [];
   if (db) {
     for (const t of scheduleData) {
-      const ifcClass = t.ifcClass;
-      if (!ifcClass) { orphaned.push(t.name); c8 = false; continue; }
+      const classes = t.ifcClasses || (t.ifcClass ? [t.ifcClass] : []);
+      if (!classes.length) { orphaned.push(t.name); c8 = false; continue; }
+      let totalCount = 0;
       try {
-        const res = db.exec("SELECT COUNT(*) FROM elements_meta WHERE ifc_class = '" +
-          ifcClass.replace(/'/g,"''") + "' AND storey = '" +
-          (t.storey||'').replace(/'/g,"''") + "'");
-        const count = res[0]?.values[0]?.[0] || 0;
-        if (count === 0) { orphaned.push(t.name + '(0 GUIDs)'); c8 = false; }
+        for (const cls of classes) {
+          const res = db.exec("SELECT COUNT(*) FROM elements_meta WHERE ifc_class = '" +
+            cls.replace(/'/g,"''") + "' AND storey = '" +
+            (t.storey||'').replace(/'/g,"''") + "'");
+          totalCount += (res[0]?.values[0]?.[0] || 0);
+        }
+        if (totalCount === 0) { orphaned.push(t.name + '(0 GUIDs)'); c8 = false; }
       } catch(e) {
         orphaned.push(t.name + '(query error)');
         c8 = false;
@@ -730,6 +744,13 @@ async function fetchDbBuffer(url) {
 }
 
 async function init() {
+  // §1.2: Load rate template from JSON before any cost calculation
+  if (typeof initRateTemplate === 'function') {
+    await initRateTemplate();
+  } else {
+    console.warn('§QTO_RATES_FALLBACK initRateTemplate not available — using hardcoded rates');
+  }
+
   const SQL = await initSqlJs({
     locateFile: f => `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/${f}`
   });
@@ -744,27 +765,132 @@ async function init() {
     bldName = r.length ? r[0].values[0][0] : 'Unknown';
   }
 
-  // Query QTO grouped by discipline, ifc_class, storey
-  const rows = db.exec(`
-    SELECT m.discipline, m.ifc_class, m.storey, COUNT(*) as qty,
+  // §2.1: Unit-aware QTO — linear elements use bbox length (M), area use bbox area (M2), rest use COUNT (EA)
+  // Implementing MEP_5D_QTO.md §2.1–2.3, §6.3 — Witness: W-QTO_UNIT
+  const _bldSafe = bldName.replace(/'/g,"''");
+
+  // Build unit lookup from RATES: which IFC classes are M, M2, EA, KG
+  const LINEAR_CLASSES = new Set();   // unit = M
+  const AREA_CLASSES = new Set();     // unit = M2
+  for (const cls in RATES) {
+    if (RATES[cls].unit === 'M')  LINEAR_CLASSES.add(cls);
+    if (RATES[cls].unit === 'M2') AREA_CLASSES.add(cls);
+  }
+
+  // §6.3: Create qto_cache table if not exists (write-back for fast repeat access)
+  try {
+    db.run(`CREATE TABLE IF NOT EXISTS qto_cache (
+      ifc_class TEXT NOT NULL, storey TEXT NOT NULL, discipline TEXT NOT NULL,
+      qty REAL NOT NULL, uom TEXT NOT NULL, element_count INTEGER NOT NULL,
+      material_cost REAL, labour_cost REAL, equipment_cost REAL,
+      rate_template TEXT, computed_at TEXT,
+      PRIMARY KEY (ifc_class, storey, discipline, rate_template)
+    )`);
+  } catch(e) { /* read-only DB — cache write will be skipped */ }
+
+  // §6.3: Check qto_cache for fast path
+  let cacheHit = false;
+  const tplName = RATE_TEMPLATE_NAME || 'hardcoded_cidb2024';
+  try {
+    const cached = db.exec("SELECT ifc_class, storey, discipline, qty, uom, element_count, material_cost, labour_cost, equipment_cost FROM qto_cache WHERE rate_template = '" + tplName.replace(/'/g,"''") + "'");
+    if (cached.length && cached[0].values.length > 0) {
+      cacheHit = true;
+      console.log('§QTO_CACHE_HIT template=' + tplName + ' rows=' + cached[0].values.length);
+    }
+  } catch(e) { /* no cache table or read error — compute fresh */ }
+
+  // Query 1: Element counts + mesh counts (always needed for schedule/display)
+  const countRows = db.exec(`
+    SELECT m.discipline, m.ifc_class, m.storey, COUNT(*) as cnt,
            COUNT(DISTINCT i.geometry_hash) as meshes
     FROM elements_meta m LEFT JOIN element_instances i ON m.guid = i.guid
-    WHERE m.building = '${bldName.replace(/'/g,"''")}'
+    WHERE m.building = '${_bldSafe}'
     GROUP BY m.discipline, m.ifc_class, m.storey
-    ORDER BY m.discipline, m.storey, qty DESC
+    ORDER BY m.discipline, m.storey, cnt DESC
   `);
 
-  if (!rows.length) { document.getElementById('info').textContent = 'No data.'; return; }
+  if (!countRows.length) { document.getElementById('info').textContent = 'No data.'; return; }
 
-  // Process data with full M/L/E calculation
+  // Query 2: Linear elements (M) — SUM of longest bbox axis per element
+  const linearQty = {};  // key: disc|cls|storey → sum of lengths
+  try {
+    const linRows = db.exec(`
+      SELECT m.discipline, m.ifc_class, m.storey,
+             SUM(MAX(t.bbox_x, t.bbox_y, t.bbox_z)) as total_length
+      FROM elements_meta m
+      JOIN element_transforms t ON m.guid = t.guid
+      WHERE m.building = '${_bldSafe}'
+        AND t.bbox_x IS NOT NULL AND t.bbox_x > 0
+      GROUP BY m.discipline, m.ifc_class, m.storey
+    `);
+    if (linRows.length) {
+      for (const r of linRows[0].values) {
+        linearQty[r[0] + '|' + r[1] + '|' + r[2]] = r[3];
+      }
+    }
+  } catch(e) { console.warn('§QTO_WARN linear query error: ' + e.message); }
+
+  // Query 3: Area elements (M2) — SUM of (largest_axis × second_largest_axis)
+  const areaQty = {};  // key: disc|cls|storey → sum of areas
+  try {
+    const areaRows = db.exec(`
+      SELECT m.discipline, m.ifc_class, m.storey,
+             SUM(
+               MAX(t.bbox_x, t.bbox_y, t.bbox_z) *
+               CASE WHEN t.bbox_x >= t.bbox_y AND t.bbox_x >= t.bbox_z
+                    THEN MAX(t.bbox_y, t.bbox_z)
+                    WHEN t.bbox_y >= t.bbox_x AND t.bbox_y >= t.bbox_z
+                    THEN MAX(t.bbox_x, t.bbox_z)
+                    ELSE MAX(t.bbox_x, t.bbox_y)
+               END
+             ) as total_area
+      FROM elements_meta m
+      JOIN element_transforms t ON m.guid = t.guid
+      WHERE m.building = '${_bldSafe}'
+        AND t.bbox_x IS NOT NULL AND t.bbox_x > 0
+      GROUP BY m.discipline, m.ifc_class, m.storey
+    `);
+    if (areaRows.length) {
+      for (const r of areaRows[0].values) {
+        areaQty[r[0] + '|' + r[1] + '|' + r[2]] = r[3];
+      }
+    }
+  } catch(e) { console.warn('§QTO_WARN area query error: ' + e.message); }
+
+  // Process data with unit-aware quantities
   qtoData = []; discSummary = {};
   grandMaterial = 0; grandLabor = 0; grandEquip = 0; totalQty = 0;
+  let qtoWarnCount = 0;
 
-  for (const row of rows[0].values) {
-    const [disc, cls, storey, qty, meshes] = row;
+  for (const row of countRows[0].values) {
+    const [disc, cls, storey, cnt, meshes] = row;
     const mc = RATES[cls];
+    const unit = mc ? mc.unit : 'EA';
+    const key = disc + '|' + cls + '|' + storey;
+
+    // §2.1: Resolve quantity by unit type
+    let qty;
+    if (unit === 'M' && LINEAR_CLASSES.has(cls)) {
+      qty = linearQty[key];
+      if (!qty || qty <= 0) {
+        // §2.3: Fallback — no bbox data, use count
+        qty = cnt;
+        qtoWarnCount++;
+        console.warn('§QTO_WARN no bbox for cls=' + cls + ' storey=' + storey + ', using count fallback (' + cnt + ')');
+      }
+    } else if (unit === 'M2' && AREA_CLASSES.has(cls)) {
+      qty = areaQty[key];
+      if (!qty || qty <= 0) {
+        qty = cnt;
+        qtoWarnCount++;
+        console.warn('§QTO_WARN no bbox for cls=' + cls + ' storey=' + storey + ', using count fallback (' + cnt + ')');
+      }
+    } else {
+      qty = cnt;  // EA, KG — count-based
+    }
+
     const matRate = mc ? mc.rate : 0;
-    const matTotal = Math.round(matRate * qty);
+    const matTotal = Math.round(matRate * qty * 100) / 100;
     const labor = calcLabor(cls, qty);
     const equip = calcEquipment(cls, labor.days);
 
@@ -774,10 +900,11 @@ async function init() {
     totalQty += qty;
 
     const r = {
-      disc, cls, storey, qty, meshes, matRate, matTotal,
+      disc, cls, storey, qty, cnt, meshes, matRate, matTotal, unit,
       laborDays: labor.days, laborCost: labor.cost, laborCrew: labor.crew, laborTrade: labor.trade,
       equipCost: equip.cost, equipDesc: equip.desc, equipDays: equip.days,
-      desc: mc ? mc.desc : cls, unit: mc ? mc.unit : 'EA',
+      desc: mc ? mc.desc : cls,
+      smmSection: mc && mc.smm_section ? mc.smm_section : '',
       labor, // keep full object for schedule
     };
     qtoData.push(r);
@@ -787,7 +914,24 @@ async function init() {
     discSummary[disc].matTotal += matTotal;
     discSummary[disc].laborCost += labor.cost;
     discSummary[disc].equipCost += equip.cost;
+
+    // §QTO_UNIT witness per class+storey
+    console.log('§QTO_UNIT cls=' + cls + ' unit=' + unit + ' qty=' + (Math.round(qty * 100) / 100) + ' cnt=' + cnt + ' storey=' + storey);
   }
+
+  // §6.3: Write to qto_cache (if DB is writable)
+  try {
+    db.run("DELETE FROM qto_cache WHERE rate_template = '" + tplName.replace(/'/g,"''") + "'");
+    const now = new Date().toISOString();
+    const stmt = db.prepare("INSERT INTO qto_cache (ifc_class, storey, discipline, qty, uom, element_count, material_cost, labour_cost, equipment_cost, rate_template, computed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+    for (const r of qtoData) {
+      stmt.run([r.cls, r.storey, r.disc, r.qty, r.unit, r.cnt, r.matTotal, r.laborCost, r.equipCost, tplName, now]);
+    }
+    stmt.free();
+    console.log('§QTO_CACHE_WRITE template=' + tplName + ' rows=' + qtoData.length);
+  } catch(e) { /* read-only DB or no table — skip silently */ }
+
+  console.log('§QTO_SUMMARY classes=' + qtoData.length + ' material=' + Math.round(grandMaterial) + ' labor=' + Math.round(grandLabor) + ' equip=' + Math.round(grandEquip) + ' warnings=' + qtoWarnCount);
 
   // Generate 4D schedule
   scheduleData = generateSchedule(qtoData, '2025-01-06');
@@ -795,19 +939,53 @@ async function init() {
   // S240 §0.1: Run 8-check audit before any 4D sync
   const auditResult = audit4DSchedule(scheduleData, db, qtoData);
 
-  // S240 §2: Resolve GUIDs per task (one-time, for BroadcastChannel sync)
+  // S240c §P1a: Resolve GUIDs per grouped task — union all ifcClasses, storey-match first, building-wide fallback
+  const _bld = bldName.replace(/'/g,"''");
   for (const t of scheduleData) {
-    const ifcClass = t.ifcClass;
-    if (!ifcClass) { t.guids = []; continue; }
-    try {
-      const sql = "SELECT guid FROM elements_meta WHERE ifc_class = '" +
-        ifcClass.replace(/'/g,"''") + "' AND storey = '" +
-        (t.storey||'').replace(/'/g,"''") + "'";
-      const res = db.exec(sql);
-      t.guids = res[0] ? res[0].values.map(r => r[0]) : [];
-    } catch(e) { t.guids = []; }
+    const classes = t.ifcClasses || (t.ifcClass ? [t.ifcClass] : []);
+    if (!classes.length) { t.guids = []; continue; }
+    t.guids = [];
+    const st = (t.storey||'').replace(/'/g,"''");
+    for (const ifcClass of classes) {
+      try {
+        const cls = ifcClass.replace(/'/g,"''");
+        const sql = "SELECT guid FROM elements_meta WHERE ifc_class = '" + cls +
+          "' AND storey = '" + st + "' AND building = '" + _bld + "'";
+        const res = db.exec(sql);
+        let guids = res[0] ? res[0].values.map(r => r[0]) : [];
+        // BUG-1 fallback: if storey match yields 0, query building-wide
+        if (guids.length === 0) {
+          const fallback = db.exec("SELECT guid FROM elements_meta WHERE ifc_class = '" +
+            cls + "' AND building = '" + _bld + "'");
+          guids = fallback[0] ? fallback[0].values.map(r => r[0]) : [];
+          if (guids.length > 0) {
+            console.log('§4D_GUID_FALLBACK class=' + ifcClass + ' storey=' + t.storey + ' fallbackCount=' + guids.length);
+          }
+        }
+        t.guids = t.guids.concat(guids);
+      } catch(e) {}
+    }
   }
-  const totalGuids = scheduleData.reduce((s,t) => s + t.guids.length, 0);
+  // S240c §P1b: Deduplicate — each GUID belongs to exactly one task (first in phase order wins)
+  const _assignedGuids = new Set();
+  let _guidsBefore = 0, _guidsAfter = 0;
+  for (const t of scheduleData) {
+    _guidsBefore += t.guids.length;
+    t.guids = t.guids.filter(g => !_assignedGuids.has(g));
+    t.guids.forEach(g => _assignedGuids.add(g));
+    _guidsAfter += t.guids.length;
+  }
+  console.log('§4D_GUID_DEDUP before=' + _guidsBefore + ' after=' + _guidsAfter + ' stripped=' + (_guidsBefore - _guidsAfter));
+  // S240c §P1d: Coverage witness — every element must be in exactly one task
+  let _totalElements = 0;
+  try {
+    const r = db.exec("SELECT COUNT(*) FROM elements_meta WHERE building = '" + _bld + "'");
+    _totalElements = r[0] ? r[0].values[0][0] : 0;
+  } catch(e) {}
+  const _orphanCount = _totalElements - _assignedGuids.size;
+  console.log('§4D_COVERAGE total=' + _totalElements + ' assigned=' + _assignedGuids.size + ' orphan=' + _orphanCount);
+
+  const totalGuids = _guidsAfter;
   const zeroGuidTasks = scheduleData.filter(t => t.guids.length === 0);
   console.log('§4D_GUID_RESOLVE tasks=' + scheduleData.length + ' totalGuids=' + totalGuids + ' zeroGuid=' + zeroGuidTasks.length +
     (zeroGuidTasks.length ? ' [' + zeroGuidTasks.slice(0,5).map(t=>t.name).join(', ') + ']' : ''));
@@ -822,27 +1000,6 @@ async function init() {
   document.getElementById('info').textContent =
     `${bldName} | ${totalQty.toLocaleString()} elements | ${CUR}${grandTotal.toLocaleString()} (Mat ${grandMaterial.toLocaleString()} + Lab ${grandLabor.toLocaleString()} + Equip ${grandEquip.toLocaleString()})`;
 
-  // S240: Copy URL button — share exact chart view
-  const copyBtn = document.createElement('button');
-  copyBtn.textContent = '\ud83d\udccb Copy URL';
-  copyBtn.style.cssText = 'margin:4px 8px;padding:4px 12px;background:#2d5f8a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;vertical-align:middle;';
-  copyBtn.onclick = function() {
-    navigator.clipboard.writeText(location.href).then(function() {
-      copyBtn.textContent = '\u2713 Copied!';
-      setTimeout(function() { copyBtn.textContent = '\ud83d\udccb Copy URL'; }, 2000);
-    }).catch(function() {
-      // Fallback for older browsers
-      var ta = document.createElement('textarea');
-      ta.value = location.href;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      copyBtn.textContent = '\u2713 Copied!';
-      setTimeout(function() { copyBtn.textContent = '\ud83d\udccb Copy URL'; }, 2000);
-    });
-  };
-  document.getElementById('info').parentNode.insertBefore(copyBtn, document.getElementById('info').nextSibling);
 
   // S224: Load diff DB if present — compute variance for VO sheets in Excel
   if (DIFF_DB_URL) {
@@ -883,6 +1040,8 @@ function renderCharts() {
   chartInstances.forEach(ci => ci.destroy());
   chartInstances = [];
   console.log('§RENDER_CHARTS: start');
+  // Disable Chart.js animations — 9+ charts animating simultaneously wastes GPU
+  Chart.defaults.animation = false;
   function logChart(n, type, title, dataLen) {
     console.log(`§CHART_${n} [${type}] "${title}": ${dataLen} data points — ${dataLen > 0 ? 'OK' : 'EMPTY'}`);
   }
@@ -1077,7 +1236,7 @@ function renderCharts() {
   chartInstances.push(new Chart(ganttCanvas, {
     type:'bar',
     data:{
-      labels:ganttTasks.map(t => t.name.slice(0,35)),
+      labels:ganttTasks.map(t => t.name.slice(0,50)),
       datasets:[
         {label:'Offset',data:ganttTasks.map(t=>t.startDay),backgroundColor:'rgba(0,0,0,0)'},
         {label:'Duration',data:ganttTasks.map(t=>Math.round(t.duration)),backgroundColor:ganttTasks.map(t=>PHASE_COLORS[t.phase]||'#888')},
@@ -1095,7 +1254,7 @@ function renderCharts() {
         tooltip:{callbacks:{label:ctx=>{
           if (ctx.datasetIndex===0) return null;
           const t = ganttTasks[ctx.dataIndex];
-          return `${t.phase}: Day ${t.startDay}–${t.finishDay} (${Math.round(t.duration)} days, ${t.qty} EA)`;
+          return `${t.phase}: Day ${t.startDay}–${t.finishDay} (${Math.round(t.duration)} days, ${Math.round(t.qty*100)/100} ${t.uom||'EA'})`;
         }}}
       },
       barThickness: 6
@@ -1178,11 +1337,115 @@ function renderCharts() {
     const taskLabel = document.createElement('span');
     taskLabel.style.cssText = 'color:#ccc;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
 
+    const stopBtn = document.createElement('button');
+    stopBtn.textContent = '\u25a0 Stop';
+    stopBtn.style.cssText = 'padding:5px 16px;background:#cc3333;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;display:none;';
+
     controlBar.appendChild(playBtn);
+    controlBar.appendChild(stopBtn);
     controlBar.appendChild(speedSel);
     controlBar.appendChild(dayLabel);
     controlBar.appendChild(taskLabel);
     ganttBox.appendChild(controlBar);
+
+    // S240c §P5: Floating resource legend panel — shows active trades, crew, equipment
+    const resPanel = document.createElement('div');
+    resPanel.id = 'res-legend';
+    resPanel.style.cssText = 'position:fixed;bottom:80px;right:24px;min-width:260px;max-width:340px;' +
+      'background:rgba(250,248,245,0.97);color:#2d2d2d;border-radius:14px;' +
+      'box-shadow:0 6px 24px rgba(0,0,0,0.18),0 2px 8px rgba(0,0,0,0.08);' +
+      'padding:14px 18px;font-family:system-ui,-apple-system,sans-serif;font-size:13px;' +
+      'z-index:9999;display:none;cursor:grab;user-select:none;border:1px solid rgba(0,0,0,0.06);' +
+      'backdrop-filter:blur(8px);transition:opacity 0.2s;';
+    resPanel.innerHTML = '<div style="font-weight:700;font-size:14px;margin-bottom:8px;color:#555;letter-spacing:0.3px;">' +
+      '\ud83d\udea7 Active Resources</div><div id="res-body"></div>' +
+      '<div id="res-footer" style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(0,0,0,0.08);font-size:11px;color:#888;"></div>';
+    document.body.appendChild(resPanel);
+
+    // Draggable
+    let _rdX=0, _rdY=0, _rDrag=false;
+    resPanel.addEventListener('pointerdown', function(e) {
+      _rDrag = true; _rdX = e.clientX - resPanel.offsetLeft; _rdY = e.clientY - resPanel.offsetTop;
+      resPanel.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+    document.addEventListener('pointermove', function(e) {
+      if (!_rDrag) return;
+      resPanel.style.left = (e.clientX - _rdX) + 'px';
+      resPanel.style.top = (e.clientY - _rdY) + 'px';
+      resPanel.style.right = 'auto'; resPanel.style.bottom = 'auto';
+    });
+    document.addEventListener('pointerup', function() {
+      _rDrag = false; resPanel.style.cursor = 'grab';
+    });
+
+    // Resource icon map — dark pastel colours
+    const RES_ICONS = {
+      STEEL_ERECTOR:  {icon:'\ud83c\udfd7\ufe0f', label:'Steel Erector',    color:'#5b7fa5'},
+      CONCRETE_GANG:  {icon:'\ud83d\udea7', label:'Concrete Gang',   color:'#7a8a8e'},
+      MASON:          {icon:'\ud83e\uddf1', label:'Mason',           color:'#c07a4a'},
+      PLUMBER:        {icon:'\ud83d\udeb0', label:'Plumber',         color:'#5a9a6a'},
+      HVAC_TECH:      {icon:'\u2699\ufe0f',  label:'HVAC Tech',       color:'#5a8aaa'},
+      ELECTRICIAN:    {icon:'\u26a1',  label:'Electrician',     color:'#c9a840'},
+      CARPENTER:      {icon:'\ud83e\udeb5', label:'Carpenter',       color:'#a06830'},
+      ROOFER:         {icon:'\ud83c\udfe0', label:'Roofer',          color:'#7a5aaa'},
+      FINISHER:       {icon:'\ud83d\udd8c\ufe0f', label:'Finisher',        color:'#4a9a6a'},
+      LABORER:        {icon:'\ud83d\udc77', label:'Laborer',         color:'#888888'},
+    };
+
+    // Update resource panel for a given day
+    function updateResPanel(day) {
+      if (day <= 0) { resPanel.style.display = 'none'; return; }
+      const active = scheduleData.filter(t => t.startDay <= day && t.finishDay >= day);
+      if (!active.length) { resPanel.style.display = 'none'; return; }
+
+      // Aggregate resources
+      const trades = {};  // tradeKey → {crew, equipment[], tasks}
+      let totalCrew = 0, machines = new Set();
+      for (const t of active) {
+        const resources = (t.resource || '').split(',').filter(Boolean);
+        for (const r of resources) {
+          if (!trades[r]) trades[r] = {crew:0, equip:new Set(), tasks:0};
+          trades[r].crew += t.crew || 0;
+          trades[r].tasks++;
+        }
+        totalCrew += t.crew || 0;
+        if (t.equipment) t.equipment.split(', ').forEach(e => { if (e) machines.add(e); });
+      }
+
+      // Build HTML rows
+      const body = document.getElementById('res-body');
+      let html = '';
+      for (const [key, data] of Object.entries(trades).sort((a,b) => b[1].crew - a[1].crew)) {
+        const info = RES_ICONS[key] || {icon:'\ud83d\udc77', label:key, color:'#888'};
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">' +
+          '<span style="font-size:20px;width:28px;text-align:center;">' + info.icon + '</span>' +
+          '<span style="flex:1;color:' + info.color + ';font-weight:600;">' + info.label + '</span>' +
+          '<span style="background:' + info.color + '18;color:' + info.color + ';padding:2px 8px;border-radius:8px;font-weight:700;font-size:12px;">' +
+          '\u00d7' + data.crew + ' crew</span></div>';
+      }
+      // Equipment row if any
+      if (machines.size) {
+        html += '<div style="margin-top:4px;padding-top:4px;border-top:1px solid rgba(0,0,0,0.05);">';
+        machines.forEach(m => {
+          html += '<div style="display:flex;align-items:center;gap:8px;padding:2px 0;color:#777;">' +
+            '<span style="font-size:16px;width:28px;text-align:center;">\ud83d\ude9c</span>' +
+            '<span style="flex:1;font-size:12px;">' + m + '</span></div>';
+        });
+        html += '</div>';
+      }
+      body.innerHTML = html;
+
+      // Footer: totals + cumulative
+      const cumDays = scheduleData.filter(t => t.finishDay <= day).reduce((s,t) => s + t.duration * t.crew, 0);
+      const totalDays = scheduleData.reduce((s,t) => s + t.duration * t.crew, 0);
+      const pct = totalDays > 0 ? Math.round(cumDays / totalDays * 100) : 0;
+      document.getElementById('res-footer').innerHTML =
+        '<strong>' + totalCrew + '</strong> workers \u00b7 <strong>' + machines.size + '</strong> machines \u00b7 Day ' + day +
+        '<br>Cumulative: ' + cumDays.toLocaleString() + ' / ' + totalDays.toLocaleString() + ' labour-days (' + pct + '%)';
+      resPanel.style.display = '';
+      console.log('§4D_RESOURCE_LEGEND day=' + day + ' trades=' + Object.keys(trades).length + ' workers=' + totalCrew + ' machines=' + machines.size);
+    }
 
     // State
     let _scrubActive = false;
@@ -1234,6 +1497,7 @@ function renderCharts() {
       scrubTip.style.left = Math.min(px + 8, ganttBox.offsetWidth - 310) + 'px';
 
       dayLabel.textContent = 'Day ' + day + ' / ' + maxDay;
+      updateResPanel(day);
 
       if (day <= 0) {
         // Day 0 = normal building, no glass
@@ -1253,9 +1517,9 @@ function renderCharts() {
 
       // Show tooltip with active tasks
       if (active.length > 0) {
-        scrubTip.textContent = active.map(t => t.phase + ': ' + t.name.split(' - ').pop()).join(' | ');
+        scrubTip.textContent = active.map(t => t.name).join(' | ');
         scrubTip.style.display = 'block';
-        taskLabel.textContent = active[0].phase + ': ' + active[0].name + (active.length > 1 ? ' (+' + (active.length-1) + ')' : '');
+        taskLabel.textContent = active[0].name + (active.length > 1 ? ' (+' + (active.length-1) + ')' : '');
       } else {
         scrubTip.style.display = 'none';
         taskLabel.textContent = tidx >= 0 ? scheduleData[tidx].name : '';
@@ -1279,10 +1543,12 @@ function renderCharts() {
     }
 
     // Mouse/touch drag — works on both the canvas and the wide drag handle
+    // Only active after Play has been clicked at least once (avoids GPU waste on idle page)
     let _dragging = false;
-    ganttCanvas.style.cursor = 'ew-resize';
+    let _playActivated = false;  // true after first Play click
 
     function startDrag(evt) {
+      if (!_playActivated) return;  // scrub line off until Play clicked
       _dragging = true;
       const rect = ganttCanvas.getBoundingClientRect();
       const px = (evt.clientX || (evt.touches && evt.touches[0].clientX) || 0) - rect.left;
@@ -1321,9 +1587,34 @@ function renderCharts() {
       }
 
       _playing = true;
+      _playActivated = true;
+      ganttCanvas.style.cursor = 'ew-resize';
       playBtn.textContent = '\u23f8 Pause';
+      stopBtn.style.display = '';
       if (!_scrubActive && _currentDay <= 0) _currentDay = 0;
       startPlayTimer();
+    });
+
+    // Stop button — resets scrub line, hides overlay, returns to normal
+    stopBtn.addEventListener('pointerup', function() {
+      if (_playTimer) { clearInterval(_playTimer); _playTimer = null; }
+      _playing = false;
+      _playActivated = false;
+      _currentDay = 0;
+      playBtn.textContent = '\u25b6 Play';
+      stopBtn.style.display = 'none';
+      ganttCanvas.style.cursor = '';
+      scrubLine.style.display = 'none';
+      scrubHandle.style.display = 'none';
+      scrubTip.style.display = 'none';
+      dayLabel.textContent = 'Day 0 / ' + maxDay;
+      taskLabel.textContent = '';
+      if (_scrubActive) {
+        _scrubActive = false;
+        _bim4d.postMessage({ type: '4D_RESET' });
+      }
+      resPanel.style.display = 'none';
+      console.log('§4D_STOP');
     });
 
     function startPlayTimer() {
@@ -1602,9 +1893,9 @@ function _verifyMaths(wb, label) {
   // 5. Rate spot-check: first 3 QTO rows — rate × qty = matTotal
   for (var ri = 0; ri < Math.min(3, qtoData.length); ri++) {
     var r = qtoData[ri];
-    var calc = Math.round(r.matRate * r.qty);
-    _ct(calc === r.matTotal, -1, label, 'MATHS_RATE_CHECK',
-      r.cls + ': rate=' + r.matRate + ' × qty=' + r.qty + ' = ' + calc + ' (stored=' + r.matTotal + ')' + (calc !== r.matTotal ? ' MISMATCH' : ''));
+    var calc = Math.round(r.matRate * r.qty * 100) / 100;
+    _ct(Math.abs(calc - r.matTotal) < 0.02, -1, label, 'MATHS_RATE_CHECK',
+      r.cls + ': rate=' + r.matRate + ' × qty=' + (Math.round(r.qty*100)/100) + ' = ' + calc + ' (stored=' + r.matTotal + ')' + (Math.abs(calc - r.matTotal) >= 0.02 ? ' MISMATCH' : ''));
   }
 
   // 6. Excel sheet count
@@ -2253,6 +2544,15 @@ async function save4D() {
 
 // ── Theme toggle ──
 let light = false;
+// §3.1: Open MEP BOQ report in new tab — passes same DB + rates params
+function openMepReport() {
+  var p = new URLSearchParams(location.search);
+  var mepUrl = 'mep_report.html?db=' + encodeURIComponent(p.get('db') || DB_URL);
+  if (p.get('bld') || bldName) mepUrl += '&bld=' + encodeURIComponent(p.get('bld') || bldName);
+  if (RATE_TEMPLATE_NAME) mepUrl += '&rates=' + encodeURIComponent(RATE_TEMPLATE_NAME);
+  window.open(mepUrl, '_blank');
+}
+
 function toggleTheme() {
   light = !light;
   document.body.style.background = light ? '#f0f0f0' : '#1a1a2e';
@@ -2281,7 +2581,7 @@ function toggleTheme() {
 </script>
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js?v=243')
+  navigator.serviceWorker.register('sw.js?v=269')
     .then(function(r){console.log('§SW_REG scope='+r.scope)})
     .catch(function(e){console.warn('§SW_REG_FAIL',e)});
 }

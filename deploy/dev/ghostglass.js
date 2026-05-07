@@ -90,22 +90,19 @@ function setupGhostGlass(APP) {
     mesh._4dColor = undefined;
   }
 
-  // Rotating highlight colours — cycles per task
-  var ACTIVE_COLORS = [0xff8c00, 0x44ff44, 0xff4444, 0xffff00, 0x00ccff];
-  var _colorIndex = 0;
-
+  // S240c §P2: Active colour = phase colour (not rotating rainbow)
   function makeActive(mesh, phaseColor) {
     ensureOwnMaterial(mesh);
     var mat = mesh.material;
-    var activeColor = ACTIVE_COLORS[_colorIndex % ACTIVE_COLORS.length];
+    var c = phaseColor || 0xff8c00;
     mat.transparent = true;
     mat.opacity = 0.85;
-    mat.color.setHex(activeColor);
-    mat.depthTest = false;      // shine through everything (clash trick)
+    mat.color.setHex(c);
+    mat.depthTest = false;      // shine through built structure — shows active work behind walls
     mat.depthWrite = false;
-    if (mat.emissive) { mat.emissive.setHex(activeColor); mat.emissiveIntensity = 1.0; }
+    if (mat.emissive) { mat.emissive.setHex(c); mat.emissiveIntensity = 0.6; }
     mat.needsUpdate = true;
-    mesh._4dColor = activeColor;
+    mesh._4dColor = c;
     mesh.renderOrder = 999;     // draw on top
   }
 
@@ -124,22 +121,34 @@ function setupGhostGlass(APP) {
     mesh.renderOrder = 0;
   }
 
-  // Restore all materials from cache
+  // Restore all materials AND instance matrices from cache
   function restoreAll() {
     if (!_materialCache) return;
     var restored = 0;
     APP.collectMeshes(function(o) { return o.isMesh || o.isInstancedMesh; }).forEach(function(obj) {
       var cached = _materialCache.get(obj.id);
       if (!cached) return;
-      // Use cloned material if it exists, otherwise original
       var mat = obj.material;
       mat.color.setHex(cached.color);
       mat.opacity = cached.opacity;
       mat.transparent = cached.transparent;
       mat.depthWrite = cached.depthWrite;
+      mat.depthTest = true;
       if (mat.emissive) { mat.emissive.setHex(cached.emissive); mat.emissiveIntensity = cached.emissiveIntensity; }
       mat.needsUpdate = true;
+      obj.renderOrder = 0;
       delete obj._4dColor;
+      // Restore InstancedMesh matrices — undo zero-scale from ghost glass
+      if (obj.isInstancedMesh && APP._instanceMeta && APP._instanceMeta[obj.id]) {
+        var metas = APP._instanceMeta[obj.id];
+        for (var i = 0; i < metas.length; i++) {
+          if (metas[i]._origMatrix) {
+            obj.setMatrixAt(i, metas[i]._origMatrix);
+          }
+        }
+        obj.instanceMatrix.needsUpdate = true;
+        obj.visible = true;
+      }
       restored++;
     });
     console.log('§4D_GLASS_RESET restored=' + restored);
@@ -153,8 +162,8 @@ function setupGhostGlass(APP) {
 
     var t0 = performance.now();
 
-    // Rotate colour for this task
-    _colorIndex = n;
+    // S240c §P2: Phase colour for active task
+    var activePhaseColor = PHASE_HEX[_tasks[n].phase] || 0xff8c00;
 
     // Collect GUID sets — each GUID belongs to ONE state only (first assignment wins)
     var builtGuids = {};   // guid → phaseColor
@@ -188,50 +197,95 @@ function setupGhostGlass(APP) {
       for (var gi = 0; gi < tguids.length; gi++) allTaskGuids[tguids[gi]] = true;
     }
 
-    // Apply states: built + glass immediately, active staggered
-    // At last task: leftover elements (not in any task) become BUILT too
     var isLastTask = (n >= _tasks.length - 1);
-    var counts = {glass:0, active:0, built:0, leftover:0};
-    var activeMeshes = [];  // collect for stagger
+    var counts = {glass:0, active:0, built:0};
+    // S240c §P2: Apply states — all immediate, no stagger (scrubber is the animation)
     APP.collectMeshes(function(o) { return o.isMesh || o.isInstancedMesh; }).forEach(function(obj) {
+      // S240c: InstancedMesh — per-instance state via zero-scale (same pattern as outliner)
+      // Glass = hidden (zero-scale). Built = visible + solid. Active = visible + glow + ripple.
+      if (obj.isInstancedMesh && APP._instanceMeta && APP._instanceMeta[obj.id]) {
+        var metas = APP._instanceMeta[obj.id];
+        var _zero = new THREE.Matrix4().makeScale(0, 0, 0);
+        var activeIndices = [];
+        var builtIndices = [];
+        var glassIndices = [];
+        for (var mi = 0; mi < metas.length; mi++) {
+          var ig = metas[mi].guid;
+          // Save original matrix on first encounter
+          if (!metas[mi]._origMatrix) {
+            metas[mi]._origMatrix = new THREE.Matrix4();
+            obj.getMatrixAt(mi, metas[mi]._origMatrix);
+          }
+          if (activeGuids[ig] !== undefined) { activeIndices.push(mi); }
+          else if (builtGuids[ig] !== undefined) { builtIndices.push(mi); }
+          else if (isLastTask) { builtIndices.push(mi); }
+          else { glassIndices.push(mi); }
+        }
+        // Glass instances → zero-scale (invisible = ghost glass effect)
+        for (var gi = 0; gi < glassIndices.length; gi++) {
+          obj.setMatrixAt(glassIndices[gi], _zero);
+        }
+        // Built instances → restore matrix (visible)
+        for (var bi = 0; bi < builtIndices.length; bi++) {
+          obj.setMatrixAt(builtIndices[bi], metas[builtIndices[bi]]._origMatrix);
+        }
+        // Decide material: active glow if any active, else built solid
+        if (activeIndices.length > 0) {
+          makeActive(obj, activePhaseColor);
+          // Active instances: zero-scale first, then ripple reveal
+          for (var ai = 0; ai < activeIndices.length; ai++) {
+            obj.setMatrixAt(activeIndices[ai], _zero);
+          }
+          obj.instanceMatrix.needsUpdate = true;
+          // Ripple: batch-reveal ~10K per frame
+          var BATCH = Math.max(500, Math.ceil(activeIndices.length / 6));
+          var revealed = 0;
+          (function ripple() {
+            var end = Math.min(revealed + BATCH, activeIndices.length);
+            for (var ri = revealed; ri < end; ri++) {
+              obj.setMatrixAt(activeIndices[ri], metas[activeIndices[ri]]._origMatrix);
+            }
+            obj.instanceMatrix.needsUpdate = true;
+            revealed = end;
+            APP.markDirty();
+            if (revealed < activeIndices.length) requestAnimationFrame(ripple);
+          })();
+          counts.active++;
+        } else if (builtIndices.length > 0) {
+          makeBuilt(obj, _guidPhaseColor[metas[builtIndices[0]].guid] || 0x888888);
+          obj.instanceMatrix.needsUpdate = true;
+          counts.built++;
+        } else {
+          // All glass — hide entire mesh
+          makeGlass(obj);
+          obj.instanceMatrix.needsUpdate = true;
+          counts.glass++;
+        }
+        obj.visible = (activeIndices.length + builtIndices.length) > 0;
+        return;
+      }
+      // Regular Mesh — single GUID lookup
       var g = APP.guidMap[obj.id] || obj.userData.guid;
-      if (!g) { makeGlass(obj); counts.glass++; return; }
+      if (!g) {
+        if (isLastTask) { makeBuilt(obj, 0x888888); counts.built++; }
+        else { makeGlass(obj); counts.glass++; }
+        return;
+      }
       if (activeGuids[g] !== undefined) {
-        // Start as glass, will stagger to active
-        makeGlass(obj);
-        activeMeshes.push(obj);
+        makeActive(obj, activePhaseColor);
         counts.active++;
       }
       else if (builtGuids[g] !== undefined) { makeBuilt(obj, builtGuids[g]); counts.built++; }
-      else if (isLastTask && allTaskGuids[g]) {
-        // Last task and this guid belongs to a task — mark as built
+      else if (isLastTask) {
         makeBuilt(obj, _guidPhaseColor[g] || 0x888888); counts.built++;
-      }
-      else if (!allTaskGuids[g] && n >= _tasks.length * 0.7) {
-        // Past 70% of tasks: unassigned elements progressively appear as built
-        makeBuilt(obj, 0x888888); counts.leftover++;
       }
       else { makeGlass(obj); counts.glass++; }
     });
 
-    // Stagger active meshes: ripple in over 2-5 seconds depending on count
-    var RIPPLE_MS = activeMeshes.length > 100 ? 5000 : 2000;
-    var staggerDelay = activeMeshes.length > 1 ? RIPPLE_MS / activeMeshes.length : 0;
-    for (var k = 0; k < activeMeshes.length; k++) {
-      (function(mesh, delay) {
-        if (delay < 2) { makeActive(mesh, 0xff8c00); return; }
-        setTimeout(function() {
-          makeActive(mesh, 0xff8c00);
-          APP.markDirty();
-        }, delay);
-      })(activeMeshes[k], k * staggerDelay);
-    }
-
     var elapsed = (performance.now() - t0).toFixed(1);
     console.log('§4D_GLASS_SEEK task=' + n + '/' + _tasks.length +
+      ' phase=' + _tasks[n].phase +
       ' active=' + counts.active + ' built=' + counts.built + ' glass=' + counts.glass +
-      ' leftover=' + (counts.leftover||0) +
-      ' stagger=' + Math.round(activeMeshes.length * staggerDelay) + 'ms' +
       ' ms=' + elapsed + ' name="' + _tasks[n].name + '"');
     APP.markDirty();
   }
@@ -255,18 +309,27 @@ function setupGhostGlass(APP) {
   // Public API — called by main.js BroadcastChannel handler
   APP._ghostGlass = {
     play: function(tasks, speed) {
-      buildGuidMap();
-      snapshotMaterials();
-      _tasks = tasks;
-      buildPhaseColors(tasks);
-
-      // Everything goes glass — Gantt will send 4D_SEEK to fill in tasks
-      APP.collectMeshes(function(o) { return o.isMesh || o.isInstancedMesh; }).forEach(makeGlass);
-      APP.markDirty();
-
-      _state = 'PLAYING';
-      _taskIndex = -1;
-      console.log('§4D_GLASS_PLAY tasks=' + tasks.length);
+      // S240c §P1c: Wait for streaming to finish before applying glass
+      function applyGlass() {
+        buildGuidMap();
+        snapshotMaterials();
+        _tasks = tasks;
+        buildPhaseColors(tasks);
+        APP.collectMeshes(function(o) { return o.isMesh || o.isInstancedMesh; }).forEach(makeGlass);
+        APP.markDirty();
+        _state = 'PLAYING';
+        _taskIndex = -1;
+        console.log('§4D_GLASS_PLAY tasks=' + tasks.length);
+      }
+      if (APP.streamedCount > 0) { applyGlass(); return; }
+      var retries = 0;
+      function waitForStream() {
+        if (APP.streamedCount > 0) { applyGlass(); return; }
+        retries++;
+        if (retries > 60) { console.warn('§4D_GLASS_WAIT timeout — no meshes after 60 frames'); applyGlass(); return; }
+        requestAnimationFrame(waitForStream);
+      }
+      requestAnimationFrame(waitForStream);
     },
 
     pause: function() {
