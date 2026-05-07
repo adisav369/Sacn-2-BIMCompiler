@@ -63,11 +63,13 @@ function setupTools(A) {
     if (A.sectionOn) {
       A.applySectionAxis();
     } else {
+      A.renderer.localClippingEnabled = false;
       A.collectMeshes(o => o.isMesh).forEach(obj => {
         obj.material.clippingPlanes = [];
         obj.material.needsUpdate = true;
       });
       console.log('[S205] §SECTION OFF');
+      if (A.onSectionOff) A.onSectionOff();
     }
   };
 
@@ -101,6 +103,7 @@ function setupTools(A) {
     slider.step = ((axMax - axMin) / 500).toFixed(3);
     slider.value = axMax.toFixed(1);
     A.sectionPlane.constant = axMax;
+    A.renderer.localClippingEnabled = true;
     A.collectMeshes(o => o.isMesh).forEach(obj => {
       obj.material.clippingPlanes = [A.sectionPlane];
       obj.material.clipShadows = true;
@@ -114,6 +117,7 @@ function setupTools(A) {
     const v = parseFloat(val);
     A.sectionPlane.constant = v;
     document.getElementById('section-val').textContent = v.toFixed(1) + ' m';
+    if (A.onSectionSliderChange) A.onSectionSliderChange(v);
   };
 
   // 4D/5D Export

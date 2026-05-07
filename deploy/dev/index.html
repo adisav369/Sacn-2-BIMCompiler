@@ -489,7 +489,7 @@
 <script src="config.js?v=4" onerror="console.warn('§LOAD_FAIL config.js')"></script>
 <script src="scene.js?v=4" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
 <script src="helpers.js?v=3" onerror="console.warn('§LOAD_FAIL helpers.js')"></script>
-<script src="streaming.js?v=17" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
+<script src="streaming.js?v=18" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
 <script src="panels.js?v=6" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
 <script src="tools.js?v=6" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
 <script src="picking.js?v=16" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
@@ -501,7 +501,7 @@
 <script src="walk.js?v=7" onerror="console.warn('§LOAD_FAIL walk.js')"></script>
 <!-- navigate.js lazy-loaded on demand by main.js A.loadNavigate() -->
 <script src="city.js?v=6"></script>
-<script src="rates.js?v=1"></script>
+<script src="rates.js?v=2"></script>
 <script src="locale_loader.js?v=7"></script>
 <script src="nlp.js?v=4"></script>
 <script src="semantic_enrichment.js?v=1"></script>
@@ -519,10 +519,11 @@
 <script src="grid_contours.js?v=4" onerror="console.warn('[GridContours] grid_contours.js skipped')"></script>
 <script src="grid_dim_chains.js?v=4" onerror="console.warn('[DimChains] grid_dim_chains.js skipped')"></script>
 <script src="grid_drag.js?v=2" onerror="console.warn('[GridDrag] grid_drag.js skipped')"></script>
-<script src="grid_overlay.js?v=23" onerror="console.warn('[GridOverlay] grid_overlay.js skipped — file not found or error')"></script>
+<script src="grid_scissors.js?v=1" onerror="console.warn('[GridScissors] grid_scissors.js skipped')"></script>
+<script src="grid_overlay.js?v=24" onerror="console.warn('[GridOverlay] grid_overlay.js skipped — file not found or error')"></script>
 <script src="grid_assembler.js?v=2" onerror="console.warn('[GridAssembler] grid_assembler.js skipped')"></script>
 <script src="print_sheet.js?v=2" onerror="console.warn('[PrintSheet] print_sheet.js skipped')"></script>
-<script src="main.js?v=13"></script>
+<script src="main.js?v=14"></script>
 <!-- Styled tooltip bubbles for [data-trl-title] buttons — appended to body, not clipped by overflow:hidden -->
 <style>#ootb-tip{display:none;position:fixed;z-index:9990;background:rgba(10,10,30,0.92);color:#4fc3f7;font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid rgba(79,195,247,0.35);pointer-events:none;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.4)}</style>
 <script>
@@ -562,7 +563,7 @@ if(new URLSearchParams(location.search).get('embedded')!=='true'){
 </script>
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js?v=265')
+  navigator.serviceWorker.register('sw.js?v=267')
     .then(function(r){console.log('§SW_REG scope='+r.scope)})
     .catch(function(e){console.warn('§SW_REG_FAIL',e)});
 }

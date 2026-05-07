@@ -94,6 +94,47 @@
     return String(Math.round(mm));
   }
 
+  /**
+   * Drop sub-structural lines: keep first/last, drop any interior line where
+   * both adjacent bays are < MIN_BAY_DISPLAY. Repeat until stable.
+   */
+  function filterStructural(lines) {
+    var result = lines.slice();
+    var changed = true;
+    while (changed && result.length > 2) {
+      changed = false;
+      var next = [result[0]];
+      for (var i = 1; i < result.length - 1; i++) {
+        var prev = result[i].position - result[i - 1].position;
+        var nxt  = result[i + 1].position - result[i].position;
+        if (prev >= MIN_BAY_DISPLAY && nxt >= MIN_BAY_DISPLAY) {
+          next.push(result[i]);
+        } else {
+          changed = true;
+        }
+      }
+      next.push(result[result.length - 1]);
+      result = next;
+    }
+    return result;
+  }
+
+  /**
+   * Stride-thin crowded grids: keep first + last + every Nth interior line
+   * so the total never exceeds MAX_GRID_LINES.
+   */
+  function thinGrids(lines) {
+    if (lines.length <= MAX_GRID_LINES) return lines;
+    var interior = lines.slice(1, lines.length - 1);
+    var stride = Math.ceil(interior.length / (MAX_GRID_LINES - 2));
+    var kept = [lines[0]];
+    for (var ti = 0; ti < interior.length; ti++) {
+      if (ti % stride === 0) kept.push(interior[ti]);
+    }
+    kept.push(lines[lines.length - 1]);
+    return kept;
+  }
+
   // ── detectGrids ─────────────────────────────────────────────────
 
   /**
@@ -187,30 +228,6 @@
     xLines = snapGrids(xLines);
     yLines = snapGrids(yLines);
 
-    // Drop sub-structural lines: keep first/last, drop any interior line where
-    // both adjacent bays are < MIN_BAY_DISPLAY (close column pairs, not structural bays)
-    // Keep a line only if BOTH adjacent bays are structural (≥ MIN_BAY_DISPLAY).
-    // Repeat until stable — handles cascades where removing one line merges two small bays.
-    function filterStructural(lines) {
-      var result = lines.slice();
-      var changed = true;
-      while (changed && result.length > 2) {
-        changed = false;
-        var next = [result[0]];
-        for (var i = 1; i < result.length - 1; i++) {
-          var prev = result[i].position - result[i - 1].position;
-          var nxt  = result[i + 1].position - result[i].position;
-          if (prev >= MIN_BAY_DISPLAY && nxt >= MIN_BAY_DISPLAY) {
-            next.push(result[i]);
-          } else {
-            changed = true;
-          }
-        }
-        next.push(result[result.length - 1]);
-        result = next;
-      }
-      return result;
-    }
     var xFiltered = filterStructural(xLines);
     var yFiltered = filterStructural(yLines);
     if (xFiltered.length !== xLines.length || yFiltered.length !== yLines.length) {
@@ -220,20 +237,6 @@
     xLines = xFiltered;
     yLines = yFiltered;
 
-    // Stride-thinning for crowded grids: keep first + last + every Nth interior line
-    // so the total never exceeds MAX_GRID_LINES. Suppressed lines are noted in §GD_THIN.
-    function thinGrids(lines) {
-      if (lines.length <= MAX_GRID_LINES) return lines;
-      var interior = lines.slice(1, lines.length - 1);
-      // Choose stride so that ceil(interior.length / stride) ≤ MAX_GRID_LINES - 2
-      var stride = Math.ceil(interior.length / (MAX_GRID_LINES - 2));
-      var kept = [lines[0]];
-      for (var ti = 0; ti < interior.length; ti++) {
-        if (ti % stride === 0) kept.push(interior[ti]);
-      }
-      kept.push(lines[lines.length - 1]);
-      return kept;
-    }
     var xThin = thinGrids(xLines);
     var yThin = thinGrids(yLines);
     if (xThin.length !== xLines.length || yThin.length !== yLines.length) {
@@ -442,11 +445,84 @@
     return cmds;
   }
 
+  // ── detectGridsAtPlane ───────────────────────────────────────────
+
+  /**
+   * Detect grid lines from structural elements crossing a horizontal cut plane.
+   * Same clustering as detectGrids() but filtered to elements whose vertical
+   * extent includes cutZ (IFC metres).
+   * @param {object} db - sql.js database instance
+   * @param {number} cutZ - IFC Z height of the cut plane
+   * @param {number} [tolerance=0.3] - clustering tolerance in meters
+   * @returns {{xLines: Array, yLines: Array}}
+   */
+  function detectGridsAtPlane(db, cutZ, tolerance) {
+    if (tolerance === undefined || tolerance === null) tolerance = DEFAULT_TOLERANCE;
+    var empty = { xLines: [], yLines: [] };
+
+    var sql =
+      "SELECT m.guid, t.center_x, t.center_y " +
+      "FROM elements_meta m " +
+      "JOIN element_transforms t ON m.guid = t.guid " +
+      "WHERE m.ifc_class IN ('IfcColumn','IfcWall','IfcWallStandardCase') " +
+      "  AND (t.center_z - COALESCE(t.bbox_z,3.0)/2) <= " + Number(cutZ) +
+      "  AND (t.center_z + COALESCE(t.bbox_z,3.0)/2) >= " + Number(cutZ);
+
+    var result;
+    try {
+      result = db.exec(sql);
+    } catch (e) {
+      log('§GD_PLANE query error: ' + e.message);
+      return empty;
+    }
+
+    if (!result || !result.length || !result[0].values.length) {
+      log('§GD_PLANE cutZ=' + cutZ.toFixed(2) + ' elements=0');
+      return empty;
+    }
+
+    var rows = result[0].values;
+    log('§GD_PLANE cutZ=' + cutZ.toFixed(2) + ' elements=' + rows.length);
+
+    var xEntries = [], yEntries = [];
+    for (var i = 0; i < rows.length; i++) {
+      xEntries.push({ pos: rows[i][1], guid: rows[i][0] });
+      yEntries.push({ pos: rows[i][2], guid: rows[i][0] });
+    }
+
+    var xClusters = clusterEntries(xEntries, tolerance);
+    var yClusters = clusterEntries(yEntries, tolerance);
+
+    var xLines = xClusters.map(function (c, idx) {
+      return { label: String(idx + 1), position: c.position, guids: c.guids };
+    });
+    var letterSeq = 'A,B,C,D,E,F,G,H,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z'.split(',');
+    var yLines = yClusters.map(function (c, idx) {
+      var lbl = idx < letterSeq.length ? letterSeq[idx] : String.fromCharCode(65 + idx);
+      return { label: lbl, position: c.position, guids: c.guids };
+    });
+
+    xLines = snapGrids(xLines);
+    yLines = snapGrids(yLines);
+    xLines = filterStructural(xLines);
+    yLines = filterStructural(yLines);
+    xLines = thinGrids(xLines);
+    yLines = thinGrids(yLines);
+
+    // Relabel sequentially after filtering — survivors keep position but get clean A,B,C / 1,2,3
+    for (var ri = 0; ri < xLines.length; ri++) xLines[ri].label = String(ri + 1);
+    for (var rj = 0; rj < yLines.length; rj++) yLines[rj].label = rj < letterSeq.length ? letterSeq[rj] : String.fromCharCode(65 + rj);
+
+    log('§GD_PLANE_GRIDS cutZ=' + cutZ.toFixed(2) + ' xLines=' + xLines.length + ' yLines=' + yLines.length);
+    return { xLines: xLines, yLines: yLines };
+  }
+
   // ── Attach to window ────────────────────────────────────────────
 
   if (typeof window !== 'undefined') {
     window.GridDims = {
       detectGrids: detectGrids,
+      detectGridsAtPlane: detectGridsAtPlane,
       generateDimensions: generateDimensions,
       renderGridEntities: renderGridEntities
     };

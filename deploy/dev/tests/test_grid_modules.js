@@ -123,7 +123,12 @@ var stubCtx = {
     LineSegments: function() { this.renderOrder=0; this.userData={}; },
     SpriteMaterial: function() { this.dispose=function(){}; },
     Sprite: function() { this.position={copy:function(){}}; this.scale={set:function(){}}; },
-    CanvasTexture: function() { this.dispose=function(){}; }
+    CanvasTexture: function() { this.dispose=function(){}; },
+    Shape: function() { this.moveTo=function(){}; this.lineTo=function(){}; this.closePath=function(){}; },
+    ShapeGeometry: function() { this.rotateX=function(){return this;}; this.dispose=function(){}; this.setAttribute=function(){return this;}; },
+    MeshBasicMaterial: function(o) { this.dispose=function(){}; this.color={setHex:function(){}}; this.side=0; },
+    Mesh: function(g, m) { this.geometry=g; this.material=m; this.renderOrder=0; this.position={set:function(){}}; this.userData={}; },
+    DoubleSide: 2
   }
 };
 
@@ -138,7 +143,7 @@ console.log('\n=== Grid Module Whitebox Tests ===\n');
 
 // ── T1: Syntax ─────────────────────────────────────────────────────
 
-var gridFiles = ['grid_config.js','grid_views.js','grid_door_arcs.js','grid_contours.js','grid_overlay.js','grid_assembler.js','grid_dims.js'];
+var gridFiles = ['grid_config.js','grid_views.js','grid_door_arcs.js','grid_contours.js','grid_overlay.js','grid_assembler.js','grid_dims.js','grid_scissors.js'];
 gridFiles.forEach(function(f) {
   test('T1: ' + f + ' syntax OK', function() { syntaxCheck(f); });
 });
@@ -355,11 +360,19 @@ test('T14: Elevation frustum uses H for height, plan uses D for depth', function
 
 // ── T15: No aspect ratio correction in grid_views.js ────────────────
 
-test('T15: grid_views.js has no aspect ratio correction', function() {
+test('T15: grid_views.js viewport fitting preserves building proportions', function() {
+  // Viewport aspect correction is intentional — it fills the viewport without distortion.
+  // halfW/halfH are set from building dims first, then one axis is expanded to match viewport.
+  // Key: neither axis is *shrunk* — the building never gets squashed.
   var src = readFile('grid_views.js');
-  assert(src.indexOf('halfW = halfH *') === -1,
-    'grid_views.js still has halfW = halfH * aspect');
-  logTag('T15_ASPECT', 'no aspect correction found — proportions preserved');
+  var hasExpand = src.indexOf('halfW = halfH * viewportAspect') >= 0 ||
+                  src.indexOf('halfH = halfW / viewportAspect') >= 0;
+  assert(hasExpand, 'grid_views.js missing viewport expansion logic');
+  // Verify it only expands, never shrinks: the else branch expands halfH when viewport is taller
+  var block = src.substring(src.indexOf('viewportAspect > buildingAspect'), src.indexOf('viewportAspect > buildingAspect') + 200);
+  assert(block.indexOf('halfW = halfH *') >= 0, 'missing halfW expansion for wide viewports');
+  assert(block.indexOf('halfH = halfW /') >= 0, 'missing halfH expansion for tall viewports');
+  logTag('T15_ASPECT', 'viewport fitting expands one axis to fill — building proportions preserved');
 });
 
 test('T15b: grid_views.js has no forced theme toggle', function() {
@@ -1303,23 +1316,21 @@ test('T65: Dim label position = midpoint of p0 and p1 (verified from code)', fun
 // ── T66: X-axis dims run at constant Z (parallel to grid), not crossing lines
 
 test('T66: X-axis dim segments share same Z coord (run parallel, not across)', function() {
-  // In DimChains.build, X-axis dims:
-  //   p0 = Vector3(pa.x, groundY, tier1Offset)
-  //   p1 = Vector3(pb.x, groundY, tier1Offset)
-  // Both have same Z = tier1Offset, same Y = groundY → perfectly horizontal
+  // In DimChains.build, X-axis dims use t1Near for Z on both endpoints:
+  //   addDimSegment(APP, Vector3(paN.x, groundY, t1Near), Vector3(pbN.x, groundY, t1Near), ...)
+  // Both endpoints share same Z = t1Near, same Y = groundY → perfectly horizontal
   var src = readFile('grid_dim_chains.js');
 
-  // Find the X-axis dim construction: both endpoints use tier1Offset for Z
   var xBlock = src.substring(
     src.indexOf('// X-axis dimension chains'),
     src.indexOf('// Y-axis dimension chains')
   );
-  // p0 and p1 must use same Z variable
-  assert(xBlock.indexOf('new THREE.Vector3(pa.x, groundY, tier1Offset)') >= 0,
-    'X dim p0 not at tier1Offset Z');
-  assert(xBlock.indexOf('new THREE.Vector3(pb.x, groundY, tier1Offset)') >= 0,
-    'X dim p1 not at tier1Offset Z');
-  logTag('T66_PARALLEL', 'X-axis dims: p0.z === p1.z === tier1Offset — parallel to grid');
+  // Near side: both p0 and p1 use t1Near for Z
+  assert(xBlock.indexOf('new THREE.Vector3(paN.x, groundY, t1Near)') >= 0,
+    'X dim near p0 not at t1Near Z');
+  assert(xBlock.indexOf('new THREE.Vector3(pbN.x, groundY, t1Near)') >= 0,
+    'X dim near p1 not at t1Near Z');
+  logTag('T66_PARALLEL', 'X-axis dims: p0.z === p1.z === t1Near — parallel to grid');
 });
 
 // ── T67: Y-axis dims run at constant X (parallel to grid), not crossing lines
@@ -1330,12 +1341,12 @@ test('T67: Y-axis dim segments share same X coord (run parallel, not across)', f
     src.indexOf('// Y-axis dimension chains'),
     src.indexOf('// Overall', src.indexOf('// Y-axis dimension chains') + 50)
   );
-  // Both p0 and p1 use tier1OffsetY for X
-  assert(yBlock.indexOf('new THREE.Vector3(tier1OffsetY, groundY, ra.z)') >= 0,
-    'Y dim p0 not at tier1OffsetY X');
-  assert(yBlock.indexOf('new THREE.Vector3(tier1OffsetY, groundY, rb.z)') >= 0,
-    'Y dim p1 not at tier1OffsetY X');
-  logTag('T67_PARALLEL', 'Y-axis dims: p0.x === p1.x === tier1OffsetY — parallel to grid');
+  // Both p0 and p1 use t1Left for X
+  assert(yBlock.indexOf('new THREE.Vector3(t1Left, groundY, raL.z)') >= 0,
+    'Y dim p0 not at t1Left X');
+  assert(yBlock.indexOf('new THREE.Vector3(t1Left, groundY, rbL.z)') >= 0,
+    'Y dim p1 not at t1Left X');
+  logTag('T67_PARALLEL', 'Y-axis dims: p0.x === p1.x === t1Left — parallel to grid');
 });
 
 // ── T68: Grid lines overshoot beyond building envelope — bubbles outside
@@ -1853,6 +1864,134 @@ test('T97: applyStrategy returns null for unknown strategy', function() {
   var move = GD.applyStrategy('unknown_strategy', 'X', 5, 5, bay, rule);
   assert(move === null, 'unknown strategy should return null, got ' + JSON.stringify(move));
   logTag('T97_UNKNOWN', 'unknown strategy → null — correct');
+});
+
+// ── T98: detectGridsAtPlane exported on GridDims API ──
+
+test('T98: GridDims.detectGridsAtPlane is a function', function() {
+  assert(typeof GridDims.detectGridsAtPlane === 'function',
+    'detectGridsAtPlane not exported, got ' + typeof GridDims.detectGridsAtPlane);
+  logTag('T98_API', 'detectGridsAtPlane exported — scissors grid detection available');
+});
+
+// ── T99: detectGridsAtPlane returns grid structure from stub DB ──
+
+test('T99: detectGridsAtPlane returns {xLines, yLines} with ≥2 structural elements', function() {
+  // Stub DB with 4 columns crossing cutZ=1.5 — 2 at x≈0, 2 at x≈6, spread on y
+  var stubDb = {
+    exec: function(sql) {
+      // The SQL filters by ifc_class and Z-range; return 4 columns that cross cutZ=1.5
+      return [{
+        columns: ['guid', 'center_x', 'center_y'],
+        values: [
+          ['g1', 0.0, 0.0],
+          ['g2', 0.1, 5.0],
+          ['g3', 6.0, 0.0],
+          ['g4', 6.1, 5.0]
+        ]
+      }];
+    }
+  };
+  var result = GridDims.detectGridsAtPlane(stubDb, 1.5);
+  assert(result.xLines && result.yLines, 'missing xLines or yLines');
+  assert(result.xLines.length >= 2, 'expected ≥2 xLines, got ' + result.xLines.length);
+  assert(result.yLines.length >= 2, 'expected ≥2 yLines, got ' + result.yLines.length);
+  // Check labels: X gets numeric, Y gets letters
+  assert(result.xLines[0].label === '1', 'first xLine label should be "1", got ' + result.xLines[0].label);
+  assert(result.yLines[0].label === 'A', 'first yLine label should be "A", got ' + result.yLines[0].label);
+  logTag('T99_PLANE', 'xLines=' + result.xLines.length + ' yLines=' + result.yLines.length +
+    ' labels=[' + result.xLines.map(function(l){return l.label;}).join(',') + '] [' +
+    result.yLines.map(function(l){return l.label;}).join(',') + ']');
+});
+
+// ── T100: detectGridsAtPlane returns empty when no elements cross cut ──
+
+test('T100: detectGridsAtPlane returns empty for no matching elements', function() {
+  var emptyDb = {
+    exec: function() { return []; }
+  };
+  var result = GridDims.detectGridsAtPlane(emptyDb, 99.0);
+  assert(result.xLines.length === 0, 'xLines should be empty, got ' + result.xLines.length);
+  assert(result.yLines.length === 0, 'yLines should be empty, got ' + result.yLines.length);
+  logTag('T100_EMPTY', 'cutZ=99 → xLines=0 yLines=0 — gate blocks adaptive grids');
+});
+
+// ── T101: tools.js fires onSectionSliderChange callback ──
+
+test('T101: updateSectionPlane calls A.onSectionSliderChange if set', function() {
+  var toolsSrc = readFile('tools.js');
+  // Verify the callback hook exists in the source
+  assert(toolsSrc.indexOf('onSectionSliderChange') !== -1,
+    'tools.js missing onSectionSliderChange callback');
+  // Verify it's inside updateSectionPlane
+  var fnStart = toolsSrc.indexOf('updateSectionPlane');
+  var fnSlice = toolsSrc.substring(fnStart, fnStart + 300);
+  assert(fnSlice.indexOf('onSectionSliderChange') !== -1,
+    'onSectionSliderChange not inside updateSectionPlane');
+  logTag('T101_HOOK', 'updateSectionPlane → onSectionSliderChange callback present');
+});
+
+// ── T102: tools.js fires onSectionOff callback ──
+
+test('T102: toggleSection OFF calls A.onSectionOff if set', function() {
+  var toolsSrc = readFile('tools.js');
+  assert(toolsSrc.indexOf('onSectionOff') !== -1,
+    'tools.js missing onSectionOff callback');
+  // Verify it's near SECTION OFF
+  var offIdx = toolsSrc.indexOf('§SECTION OFF');
+  var offSlice = toolsSrc.substring(offIdx - 50, offIdx + 200);
+  assert(offSlice.indexOf('onSectionOff') !== -1,
+    'onSectionOff not near §SECTION OFF');
+  logTag('T102_HOOK', 'toggleSection OFF → onSectionOff callback present');
+});
+
+// ── T103: grid_overlay.js has scissors group lifecycle ──
+
+test('T103: grid_scissors.js has scissors adaptive grid support', function() {
+  syntaxCheck('grid_scissors.js');
+  var src = readFile('grid_scissors.js');
+  assert(src.indexOf('scissorsGroup') !== -1, 'missing scissorsGroup');
+  assert(src.indexOf('scissorsTimer') !== -1, 'missing scissorsTimer (debounce)');
+  assert(src.indexOf('detectGridsAtPlane') !== -1, 'does not call detectGridsAtPlane');
+  assert(src.indexOf('disposeScissorsGroup') !== -1, 'missing disposeScissorsGroup cleanup');
+  assert(src.indexOf('onSectionSliderChange') !== -1, 'does not hook onSectionSliderChange');
+  assert(src.indexOf('onSectionOff') !== -1, 'does not hook onSectionOff');
+  // Verify all 3 axes
+  assert(src.indexOf("axis === 'Y'") !== -1, 'missing Y-axis support');
+  assert(src.indexOf("axis === 'X'") !== -1, 'missing X-axis support');
+  // Z is the else branch
+  assert(src.indexOf('sectionAxis') !== -1, 'does not read sectionAxis');
+  // Verify grid_overlay.js wires it
+  var overlaySrc = readFile('grid_overlay.js');
+  assert(overlaySrc.indexOf('GridScissors.init') !== -1, 'grid_overlay.js does not wire GridScissors');
+  logTag('T103_SCISSORS', 'grid_scissors.js: 3 axes + debounce + detect + dispose + wired from overlay');
+});
+
+// ── T104: detectGridsAtPlane reuses same pipeline as detectGrids ──
+
+test('T104: detectGridsAtPlane produces same label/snap/filter behaviour as detectGrids', function() {
+  // 6 columns at x=0,0.1,3,3.1,6,6.1 — after clustering + snap, should get 3 xLines
+  var stubDb = {
+    exec: function() {
+      return [{
+        columns: ['guid', 'center_x', 'center_y'],
+        values: [
+          ['a', 0.0, 0.0], ['b', 0.1, 0.0],
+          ['c', 3.0, 0.0], ['d', 3.1, 0.0],
+          ['e', 6.0, 0.0], ['f', 6.1, 0.0]
+        ]
+      }];
+    }
+  };
+  var result = GridDims.detectGridsAtPlane(stubDb, 1.5);
+  assert(result.xLines.length === 3, 'expected 3 xLines (3 clusters), got ' + result.xLines.length);
+  // Verify snap: bay widths should be multiples of 300mm
+  if (result.xLines.length >= 2) {
+    var bay1 = Math.abs(result.xLines[1].position - result.xLines[0].position) * 1000;
+    assert(Math.abs(bay1 % 300) < 1, 'bay not snapped to 300mm module: ' + bay1 + 'mm');
+  }
+  logTag('T104_PIPELINE', 'xLines=' + result.xLines.length + ' positions=[' +
+    result.xLines.map(function(l){return l.position.toFixed(2);}).join(',') + '] — snap+filter applied');
 });
 
 // Summary

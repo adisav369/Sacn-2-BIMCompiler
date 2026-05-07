@@ -910,7 +910,13 @@ function setupGridOverlay(APP) {
     get envCache()    { return envCache; },
     get lineMeshes()  { return lineMeshes; },
     get bubbleScale() { return bubbleScale; },
-    rebuildPanel:     function(grids) { buildPanel(grids); }
+    rebuildPanel:     function(grids) { buildPanel(grids); },
+    createBubble:     createBubble,
+    lineColor:        lineColor,
+    removeDimChains:  removeDimChains,
+    buildDimChains:   function(grids, env) { buildDimChains(grids, env); },
+    LINE_OVERSHOOT_MIN:   LINE_OVERSHOOT_MIN,
+    LINE_OVERSHOOT_RATIO: LINE_OVERSHOOT_RATIO
   };
 
   // Wire GridDrag if available
@@ -921,6 +927,12 @@ function setupGridOverlay(APP) {
 
   // Clamp bubble sizes on every camera change (zoom/pan in ortho views)
   A.controls.addEventListener('change', clampBubbleScales);
+
+  // Wire GridScissors if available (adaptive grids at cut plane)
+  if (typeof GridScissors !== 'undefined' && GridScissors.init) {
+    GridScissors.init(A, A._gridOverlayState);
+    log('§GRID_INIT GridScissors wired');
+  }
 
   log('§GRID_INIT ready');
 }
