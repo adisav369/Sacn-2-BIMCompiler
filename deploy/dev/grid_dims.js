@@ -246,6 +246,10 @@
     xLines = xThin;
     yLines = yThin;
 
+    // Relabel sequentially after filtering — survivors get clean 1,2,3 / A,B,C
+    for (var ri = 0; ri < xLines.length; ri++) xLines[ri].label = String(ri + 1);
+    for (var rj = 0; rj < yLines.length; rj++) yLines[rj].label = rj < letterSeq.length ? letterSeq[rj] : String.fromCharCode(65 + rj);
+
     log('§GD_GRIDS xLines=' + xLines.length + ' yLines=' + yLines.length);
 
     return { xLines: xLines, yLines: yLines };
@@ -464,7 +468,7 @@
       "SELECT m.guid, t.center_x, t.center_y " +
       "FROM elements_meta m " +
       "JOIN element_transforms t ON m.guid = t.guid " +
-      "WHERE m.ifc_class IN ('IfcColumn','IfcWall','IfcWallStandardCase') " +
+      "WHERE m.ifc_class IN ('IfcColumn','IfcWall','IfcWallStandardCase','IfcBeam','IfcMember') " +
       "  AND (t.center_z - COALESCE(t.bbox_z,3.0)/2) <= " + Number(cutZ) +
       "  AND (t.center_z + COALESCE(t.bbox_z,3.0)/2) >= " + Number(cutZ);
 

@@ -73,7 +73,7 @@ var GridScissors = (function() {
       "SELECT m.guid, t.center_x, t.center_y, t.center_z " +
       "FROM elements_meta m " +
       "JOIN element_transforms t ON m.guid = t.guid " +
-      "WHERE m.ifc_class IN ('IfcColumn','IfcWall','IfcWallStandardCase') " +
+      "WHERE m.ifc_class IN ('IfcColumn','IfcWall','IfcWallStandardCase','IfcBeam','IfcMember') " +
       "  AND (t." + col + " - COALESCE(t." + bboxCol + ",3.0)/2) <= " + Number(cutVal) +
       "  AND (t." + col + " + COALESCE(t." + bboxCol + ",3.0)/2) >= " + Number(cutVal);
 
