@@ -20,6 +20,16 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S250b DONE (2026-05-07): Scissors-driven adaptive grids (2D_025 D1).**
+  - `grid_scissors.js`: new module — 3-axis cut detection, debounced slider, dispose/restore lifecycle.
+  - `grid_dims.js`: `detectGridsAtPlane(db, cutZ)` + hoisted filter/thin, sequential relabelling, IfcBeam/IfcMember.
+  - `section_cut.js`: `lookupGeometry` fallback for BLOB-only DBs (SampleHouse schema).
+  - `grid_door_arcs.js`: `extractLeafAxis` — real closed-polygon contours, bbox-based leaf detection. 3 arcs on SH verified (852mm double, 726mm singles).
+  - `tools.js`: `localClippingEnabled` fix (pre-existing bug), slider/off callbacks.
+  - Wall contour thickness from real mesh: 290mm exterior, 95mm interior (SH verified).
+  - 114/114 grid module tests pass.
+  - **Next:** D1 fine-tuning (stair symbols, roof removal, opening dims), then D2 (save section), D3 (print sheet).
+
 **S246b IN PROGRESS (2026-05-06): WASM/SW/panel hardening + local-first libs.**
   - Vendor libs (Three.js, OrbitControls, sql-wasm, SheetJS) localised to `lib/` in ootb-dev — single origin, CDN fallback. ootb-live stays CDN-only for A/B comparison.
   - SW v254: cache key strips `?v=N` (was causing cache miss → offline.html served as JS → initViewer undefined). `.js` fallback returns 503 not offline.html.
