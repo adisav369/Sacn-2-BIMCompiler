@@ -149,6 +149,66 @@ synthesised or abbreviated in code.
 | Sections | Stub — hatching per material pending | — |
 | Java port | 6 stub classes created, Python prototype as reference | `2D_Layout/src/main/java/com/bim/layout/` |
 
+---
+
+## Rethink: Grid Overlay Mode — Annotation in the 3D Scene
+
+**Status:** SPEC (`prompts/2D_022_grid_overlay_mode.md`) — not yet implemented
+
+### The Problem with the DXF Intermediary
+
+The pipeline above (§Layout Engine, §Current State) produces DXF files — external 2D drawings with pre-computed dimension tiers, crowded-bay triage, and JKR/ISO title blocks. This works, but introduces friction:
+
+| DXF intermediary approach | In-scene grid overlay |
+|---|---|
+| Separate file, separate viewer, separate tab | Same 3D scene — annotations live in the model |
+| Static — regenerate on any change | Live — grids update as user adjusts |
+| Dimension tiers (3 offset levels) over-engineered | One floating card, all spans at a glance |
+| User loses spatial context switching tabs | User stays in 3D, grids rotate/pan with model |
+| Requires DXF parsing library | Zero extra dependency — Three.js line geometry |
+
+### The New Direction
+
+Press the 2D icon → the viewer enters **Grid Mode**. Instead of switching to a 2D canvas:
+
+1. **Grid lines appear as 3D scene objects** — thin black lines overlaid on the model, extending past the building bbox with bubble labels (A, B, C / 1, 2, 3) at both ends
+2. **Auto-detected from geometry** — cluster wall start/end X/Y coordinates, column centres, or IfcGrid entities if present
+3. **Snap-to-align** — grids only rest at alignable positions (wall faces, centrelines, column centres, opening edges). Not freeflow.
+4. **Floating measurements card** — frosted-glass panel in the scene showing all bay spacings (`A-B: 6.000m`, `B-C: 4.500m`, total). Updates live on drag.
+5. **Persisted to DB** — `grids` table in the building SQLite. Survive reload. User-confirmed grids take priority over auto-detection.
+
+### Why This Is Better
+
+The grid IS the dimension system. You don't need a separate drawing to read bay spacings — they're in the 3D scene, attached to the model, updating as you adjust. The section-cut floor plan (`section_cut.js`) remains for pure 2D plan views, but **dimensioning is handled by the grid overlay, not by DXF generation**.
+
+This replaces:
+- DXF dimension generation pipeline (§4–§7 of the original spec)
+- Triage panel for crowded bay text
+- Grid reference info panel
+- The separate 2D tab workflow for reading bay spacing
+
+### Key Design Choices
+
+| Decision | Rationale |
+|----------|-----------|
+| Grid lines are `THREE.Line` objects in a `gridGroup` | Pan/rotate/zoom with model naturally. No z-fighting (no depth-fill). |
+| Bubbles via `CSS2DRenderer` sprites | Always screen-readable regardless of zoom. Same pattern as storey info cards. |
+| Snap tolerance 200mm, Shift overrides | Prevents meaningless positions while allowing rare exceptions |
+| Measurements card is `CSS2DObject` anchored to building bbox | Moves with model, avoids fixed-panel occlusion |
+| `grids` table in building DB | Same offline-first, zero-server architecture as everything else |
+
+### Phases
+
+| Phase | Scope |
+|-------|-------|
+| **A — MVP** | Grid mode toggle, wall-alignment auto-detect, render with bubbles, measurements card, click/drag/snap, DB persistence |
+| **B — Polish** | IfcGrid import, snap override, context menu (rename, show aligned elements), mobile touch |
+| **C — Export** | Grid dimensions as CSV, stamp grid lines onto section-cut floor plan output |
+
+Full spec with diagnostic log tags: [`prompts/2D_022_grid_overlay_mode.md`](https://github.com/red1oon/BIMCompiler/blob/full/prompts/2D_022_grid_overlay_mode.md)
+
+---
+
 ## Source
 
 **Module:** `2D_Layout/` in [BIMCompiler](https://github.com/red1oon/BIMCompiler) repository.

@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BIM OOTB — 2D Plans</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#4fc3f7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #1a1a2e; color: #ccc; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
@@ -48265,5 +48269,12 @@ function exportDxf() {
 loadDatabases();
 </script>
 <script src="locale_loader.js?v=6"></script>
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js?v=243')
+    .then(function(r){console.log('§SW_REG scope='+r.scope)})
+    .catch(function(e){console.warn('§SW_REG_FAIL',e)});
+}
+</script>
 </body>
 </html>
