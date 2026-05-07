@@ -25,12 +25,13 @@
 | **Localisation (S225b)** | 15 locales, rates.js single source. |
 | **Cinematic fly tour** | Spline flythrough, adaptive smoothing, x-ray integration. |
 | **Bug reporter** | GitHub + email bug report, HELP FAB, DIY fixes. |
-| **BOQ charts (S210)** | ExcelJS, WP PACKAGE 1-5, USD, chart images. [4D5DAnalysis](4D5DAnalysis.md) |
+| **4D Ghost Glass (S240b)** | Gantt→Viewer live sync. ghostglass.js: glass-to-solid construction animation, orange scrub line, Play/Pause/Speed, rotating highlight colours, depthTest:false shine-through. 8-check CTFL audit gate. 212 Playwright tests. [S240 Prompt](../prompts/S240_4d_viewer_sync.md) |
+| **BOQ charts (S210)** | ExcelJS, WP PACKAGE 1-6, USD, chart images. [4D5DAnalysis](4D5DAnalysis.md) |
 | **Compilation pipeline** | 11 stages, 77 verbs, 7,403 products in ERP.db |
 | **Rosetta Stone fleet** | 21 buildings, 116/157 gates PASS, 4 ALL GREEN. 9-gate system |
 | **Blender federation** | City-scale R-tree streaming. 1M elements, 786 buildings. [RTree.md](RTree.md) |
 | **2D Layout** | Python DXF generator — SH 6/6, DX 7/7. Java DxfWriter Phase 0-1. [2D spec](../2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md) |
-| **Playwright E2E suite** | 155 tests, 18 specs. `deploy/dev/tests/` |
+| **Playwright E2E suite** | 212 tests, 22 specs. `deploy/dev/tests/` |
 | **Documentation** | 61+ published specs, docs site live. [INDEX.md](INDEX.md) |
 | **Academic paper** | [Deterministic Spatial Compilation](SPATIAL_COMPILATION_PAPER.md) — 0.002mm worst-case drift |
 
@@ -125,6 +126,7 @@ Template-driven clash detection with severity heatmap. No server.
 | **Severity** | Hard (red), soft (orange), near-miss (yellow) — configurable tolerance |
 | **Output** | Clash list panel, sortable, export to Excel or BCF XML |
 | **Spec** | [ROADMAP.md §S211a](ROADMAP.md#s211a--clash-detection-template-driven-r-tree-bbox) |
+| **SHIPPED** | **[Clash Detection — full feature guide](CLASH_DETECTION.md)** (S245c/d, 2026-05-04) |
 
 ### S211b — Heatmap Costing ($ → colour by value)
 
