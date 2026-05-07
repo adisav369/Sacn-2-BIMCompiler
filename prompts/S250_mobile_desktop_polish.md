@@ -1,8 +1,8 @@
 # ⚠ DO NOT REMOVE — MANDATORY PREAMBLE
 # Scope: Mobile/Desktop UX polish — 10 items across toolbar, clash, 2D, import, performance
 # After every run: read the log before any conclusion. Exit code is not evidence.
-# STATUS: NEW — spec only, no implementation yet
-# RESUME: Read this prompt → pick item → implement → test → deploy dev
+# STATUS: IMPLEMENTED — deployed to ootb-dev, 2 open bugs remain
+# RESUME: Read §OPEN BUGS below → fix → test → deploy dev
 
 # S250 — Mobile/Desktop UX Polish
 
@@ -622,7 +622,40 @@ A.printQRSheet = function(spots) {
 
 ---
 
-## Session Plan
+## OPEN BUGS (next session)
+
+### BUG-1: BBox highlight wrong position on element click
+**Symptom:** Yellow wireframe bbox appears at wrong location when clicking an element.
+**Context:** §10 was implemented using DB `center_x/y/z` via `ifc2three()` but this
+produced worse results than the original geometry-local approach. §10 was reverted to
+use `hit.object.geometry.boundingBox` + `localToWorld()` / instance matrix decomposition.
+The original code (pre-S250) also had this bug — it is NOT a regression.
+**Root cause investigation needed:**
+- For **InstancedMesh**: instance matrix positions geometry at `ifc2three(cx, cy, cz)`,
+  but the geometry vertices may have their own local origin (tack point) ≠ (0,0,0).
+  The `localCenter` from `boundingBox.getCenter()` reflects this offset.
+  `localToWorld` with the instance matrix should give correct world pos — verify.
+- For **merged meshes**: geometry is combined for the whole group. The bbox of the
+  entire merged geometry is wrong for a single element. Need to use DB position
+  for merged meshes specifically, or compute per-element bbox from the hit face.
+- Add `§BBOX_DEBUG` log: print geometry localCenter, world position, DB position,
+  instance matrix position — compare to find the mismatch.
+**Files:** `deploy/dev/picking.js` lines 252-300
+
+### BUG-2: Panel click seeps through to canvas on mobile
+**Symptom:** Tapping a storey/discipline button also triggers a pick on the 3D canvas behind.
+**Context:** All canvas event listeners are on `A.canvas` element. Panels have `pointer-events: auto`.
+On desktop this works. On mobile, touch events may propagate differently.
+**Root cause investigation needed:**
+- Check if `e.target` in the canvas `pointerup` handler is actually the canvas or a panel element
+- Mobile WebView may fire pointer events on canvas even when touch starts on an overlapping div
+- Possible fix: in `pointerdown`/`pointerup` handlers, check `e.target === A.canvas`
+- Or: add `e.stopPropagation()` to panel elements' `pointerdown` listeners
+**Files:** `deploy/dev/picking.js` lines 93-155, panel CSS in `deploy/dev/index.html`
+
+---
+
+## Session Plan (DONE — all items implemented)
 
 Items are independent — can be done in any order. Suggested grouping:
 
