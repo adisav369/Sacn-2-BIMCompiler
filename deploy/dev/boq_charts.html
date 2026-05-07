@@ -46,6 +46,7 @@
   <button onclick="save5D()" data-trl-title="ui_tt_export_5d" title="5D — Cost Excel">&#128202; 5D</button>
   <button onclick="save4D()" data-trl-title="ui_tt_export_4d" title="4D — Schedule Excel">&#128197; 4D</button>
   <button onclick="toggleTheme()" data-trl-title="ui_tt_theme" title="Light/Dark">&#9788;</button>
+  <button onclick="copyPageUrl(this)" title="Copy shareable link">&#128203;</button>
 </div>
 <div class="charts" id="charts"></div>
 <div id="status"></div>
@@ -58,6 +59,14 @@
 <script src="rates.js"></script>
 
 <script>
+function copyPageUrl(btn) {
+  var url = location.href;
+  navigator.clipboard.writeText(url).then(function() {
+    var orig = btn.innerHTML; btn.innerHTML = '&#10003;'; btn.style.color = '#44cc44';
+    setTimeout(function() { btn.innerHTML = orig; btn.style.color = ''; }, 1500);
+  }).catch(function() { prompt('Copy this URL:', url); });
+}
+
 const params = new URLSearchParams(location.search);
 const DB_URL = params.get('db') || 'sandbox_1M_extracted.db';
 const DIFF_DB_URL = params.get('diffdb') || '';
@@ -678,7 +687,8 @@ function audit4DSchedule(scheduleData, db, qtoData) {
       const info = document.getElementById('info');
       if (info) info.parentNode.insertBefore(banner, info.nextSibling);
     }
-    banner.textContent = '\u26a0 Schedule has ' + failCount + ' issue' + (failCount>1?'s':'') + ' \u2014 check console (F12) for \xa74D_AUDIT details.';
+    var failNames = results.filter(r => !r.pass).map(r => r.name);
+    banner.textContent = '\u26a0 Schedule audit: ' + failNames.join(', ') + (failNames.indexOf('COVERAGE') >= 0 && unmapped.length ? ' \u2014 unmapped: ' + unmapped.join(', ') : '');
   }
 
   return { results, failCount };

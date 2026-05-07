@@ -1624,6 +1624,7 @@ function setupMeasure(A) {
       '<div class="toolbar">' +
       '<button onclick="if(window.opener&&window.opener._bimApp&&window.opener._bimApp._exportCSVBackground){window.opener._bimApp._exportCSVBackground()}else{alert(\'Open from viewer to export CSV\')}">Download CSV</button>' +
       '<button onclick="_shareReport()">Share Report</button>' +
+      '<button onclick="_copyUrl(this)" title="Copy shareable link">&#128203;</button>' +
       '</div>' +
       '<div style="display:flex;gap:20px;margin-bottom:16px;align-items:stretch">' +
       '<div style="flex:0 0 auto;max-width:280px">' +
@@ -1690,6 +1691,16 @@ function setupMeasure(A) {
       '+"<div style=\\"color:#ccc;font-size:13px;margin-bottom:16px;max-width:360px\\">HTML file saved. Share via WhatsApp, Email, or any medium.<br>Recipient opens it in any browser — full charts, no setup needed.</div>"' +
       '+"<button onclick=\\"this.parentElement.remove()\\" style=\\"padding:8px 24px;background:#4fc3f7;color:#000;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold\\">OK</button>";' +
       'document.body.appendChild(d)}' +
+      'function _copyUrl(btn){' +
+      'var url="' + (function() {
+        var m = (typeof location !== 'undefined' ? location.href : '').match(/(https:\/\/objectstorage\.[^/]+\/n\/[^/]+\/b\/[^/]+\/o\/)/);
+        var base = m ? m[1] : '';
+        return base + 'clash_report.html?db=' + encodeURIComponent(A.DB_URL || '') + '&bld=' + encodeURIComponent(building);
+      })() + '";' +
+      'navigator.clipboard.writeText(url).then(function(){' +
+      'var o=btn.innerHTML;btn.innerHTML="\\u2713";btn.style.color="#44cc44";' +
+      'setTimeout(function(){btn.innerHTML=o;btn.style.color=""},1500)' +
+      '}).catch(function(){prompt("Copy this URL:",url)})}' +
       'var sevData=' + JSON.stringify(sevCounts) + ';' +
       'var statusData=' + JSON.stringify(sc) + ';' +
       'var classPairs=' + JSON.stringify(classPairs) + ';' +
