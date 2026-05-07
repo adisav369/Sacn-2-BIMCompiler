@@ -61,10 +61,7 @@
   
 
 
-  
-  
-
-<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-XXXXXXXXXX"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-XXXXXXXXXX",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  <script data-goatcounter="https://red1oon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
   
     <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
   
@@ -4627,7 +4624,7 @@
 </div>
 <p><strong>Version:</strong> 0.3 (2026-04-26)
 <strong>Status:</strong> LIVE — browser BIM Designer with multi-format import, IFC export, guided wizard
-<strong>Depends on:</strong> <code>deploy/sandbox/index.html</code> + JS modules, per-building DBs in <code>deploy/buildings/</code></p>
+<strong>Depends on:</strong> <code>deploy/dev/index.html</code> + JS modules, per-building DBs in <code>deploy/buildings/</code></p>
 <figure style="margin: 20px 0;">
 <img src="../assets/images/OOTB.png" alt="BIM OOTB — Browser-native BIM viewer" style="width:100%; border:1px solid #ccc;"/>
 <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">BIM OOTB — 126K elements streaming in the browser. No install, no server, no conversion.</figcaption>
@@ -4648,7 +4645,7 @@ renders IFC buildings in the browser with:
 <p>The enabling technology is <strong>WebAssembly (WASM)</strong> — a binary instruction format
 that runs native-speed code inside the browser sandbox. What matters for us:</p>
 <p><strong>sql.js</strong> compiles the entire SQLite C library (~250K lines) to WASM. The browser
-downloads a ~1MB <code>.wasm</code> file from CDN, and from that point it has a full SQL
+downloads a ~1MB <code>.wasm</code> file (vendored locally in <code>lib/</code>, CDN fallback), and from that point it has a full SQL
 engine running locally — the same SQLite that powers every smartphone on earth.
 When we call <code>db.exec("SELECT vertices FROM component_geometries WHERE ...")</code>,
 that query runs inside the browser tab at near-native speed. No server round-trip.</p>
@@ -5137,6 +5134,9 @@ The browser re-renders the result.</p>
                           │  HTML viewer             │
                           └─────────────────────────┘
 </code></pre></div>
+<blockquote>
+<p><strong>Note:</strong> The Phase 4 server uses <code>component_library.db</code> for compilation. The browser viewer uses single per-building <code>{Name}_extracted.db</code> files (metadata + transforms + geometry BLOBs), not <code>component_library.db</code>.</p>
+</blockquote>
 <h3 id="44-the-bridge-is-it-a-hindrance">4.4 The Bridge — Is It a Hindrance?<a class="headerlink" href="#44-the-bridge-is-it-a-hindrance" title="Permanent link">&para;</a></h3>
 <p><strong>No, and here's why:</strong></p>
 <table>
@@ -5699,7 +5699,7 @@ Platform setup: <a href="../SYSTEMS_INSTALLER_GUIDE/">Systems Installer Guide</a
 <p>For clients who only need one building:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Extract single building to standalone DB</span>
 scripts/extract_building.sh<span class="w"> </span>T0_Hospital<span class="w"> </span>&gt;<span class="w"> </span>deploy/Hospital_extracted.db
-<span class="c1"># Upload: bim_designer.html + Hospital_extracted.db + component_library.db</span>
+<span class="c1"># Upload: bim_designer.html + Hospital_extracted.db (single per-building DB)</span>
 <span class="c1"># Total: ~70MB instead of 1.1GB</span>
 </code></pre></div>
 <h3 id="74-deliverables-checklist">7.4 Deliverables Checklist<a class="headerlink" href="#74-deliverables-checklist" title="Permanent link">&para;</a></h3>
@@ -5717,7 +5717,7 @@ scripts/extract_building.sh<span class="w"> </span>T0_Hospital<span class="w"> <
 <li>[x] IndexedDB cache (download once, instant revisit)</li>
 <li>[x] City mode (city_index.db, 786 bboxes, click-to-stream)</li>
 <li>[x] "Complete the City" gamification (progress bar, LAUNCH CITY button)</li>
-<li>[x] Modular refactor (rtree_browser_demo → sandbox/ with 16 JS modules, S209)</li>
+<li>[x] Modular refactor (rtree_browser_demo → live/ with 16 JS modules, S209)</li>
 <li>[ ] Java compiler container for Phase 4</li>
 </ul>
 <hr />
@@ -5729,7 +5729,7 @@ scripts/extract_building.sh<span class="w"> </span>T0_Hospital<span class="w"> <
 </ul>
 <h3 id="81-key-technical-decisions">8.1 Key Technical Decisions<a class="headerlink" href="#81-key-technical-decisions" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>No build step.</strong> 16 plain JS modules, CDN dependencies. No npm, no webpack, no React.</li>
+<li><strong>No build step.</strong> 16 plain JS modules, local-first dependencies (<code>lib/</code>, CDN fallback). No npm, no webpack, no React.</li>
 <li><strong>sql.js over REST.</strong> The browser IS the database client. No API layer to maintain.</li>
 <li><strong>Three.js r128 (stable).</strong> Not latest — proven, small, well-documented.</li>
 <li><strong>BufferGeometry from BLOBs.</strong> Same pipeline as Blender's <code>from_pydata()</code>. Vertex swap: IFC (x,y,z) → Three.js (x,z,-y).</li>
@@ -5737,7 +5737,7 @@ scripts/extract_building.sh<span class="w"> </span>T0_Hospital<span class="w"> <
 <li><strong>Plugin architecture.</strong> Each module follows <code>function setup*(APP)</code> pattern. Same pattern for core and community plugins.</li>
 </ol>
 <h3 id="82-test-suite">8.2 Test Suite<a class="headerlink" href="#82-test-suite" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>node<span class="w"> </span>deploy/sandbox/test_all.js<span class="w">    </span><span class="c1"># 149 tests, must be 100%</span>
+<div class="highlight"><pre><span></span><code>node<span class="w"> </span>deploy/dev/test_all.js<span class="w">    </span><span class="c1"># 149 tests, must be 100%</span>
 </code></pre></div>
 <p>Covers: JS syntax, module wiring, button→function mapping, z-index hierarchy, OCI live + content match, URL integrity (greedy regex proof), DB chart data verification, button wiring audit. See <a href="../PLUGIN_SDK/#2-plugin-structure">§10 full breakdown</a> for details.</p>
 <hr />
@@ -5810,15 +5810,15 @@ This is not speculative; it's a straightforward port of proven code.</p>
 </ul>
 <h3 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Test (must be 149/149 before deploy)</span>
-node<span class="w"> </span>deploy/sandbox/test_all.js
+node<span class="w"> </span>deploy/dev/test_all.js
 
 <span class="c1"># Local dev server</span>
 <span class="nb">cd</span><span class="w"> </span>deploy<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span><span class="m">8080</span>
 <span class="c1"># → http://localhost:8080/landing.html</span>
 
 <span class="c1"># Deploy to OCI (both buckets)</span>
-oci<span class="w"> </span>os<span class="w"> </span>object<span class="w"> </span>put<span class="w"> </span>--bucket-name<span class="w"> </span>bim-ootb-live<span class="w"> </span>--file<span class="w"> </span>deploy/sandbox/tools.js<span class="w"> </span>--name<span class="w"> </span>sandbox/tools.js<span class="w"> </span>--content-type<span class="w"> </span>application/javascript<span class="w"> </span>--force
-oci<span class="w"> </span>os<span class="w"> </span>object<span class="w"> </span>put<span class="w"> </span>--bucket-name<span class="w"> </span>bim-ootb<span class="w"> </span>--file<span class="w"> </span>deploy/sandbox/tools.js<span class="w"> </span>--name<span class="w"> </span>tools.js<span class="w"> </span>--content-type<span class="w"> </span>application/javascript<span class="w"> </span>--force
+oci<span class="w"> </span>os<span class="w"> </span>object<span class="w"> </span>put<span class="w"> </span>--bucket-name<span class="w"> </span>bim-ootb-live<span class="w"> </span>--file<span class="w"> </span>deploy/dev/tools.js<span class="w"> </span>--name<span class="w"> </span>sandbox/tools.js<span class="w"> </span>--content-type<span class="w"> </span>application/javascript<span class="w"> </span>--force
+oci<span class="w"> </span>os<span class="w"> </span>object<span class="w"> </span>put<span class="w"> </span>--bucket-name<span class="w"> </span>bim-ootb<span class="w"> </span>--file<span class="w"> </span>deploy/dev/tools.js<span class="w"> </span>--name<span class="w"> </span>tools.js<span class="w"> </span>--content-type<span class="w"> </span>application/javascript<span class="w"> </span>--force
 </code></pre></div>
 <h3 id="console-log-tags">Console Log Tags<a class="headerlink" href="#console-log-tags" title="Permanent link">&para;</a></h3>
 <table>

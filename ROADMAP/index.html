@@ -61,10 +61,7 @@
   
 
 
-  
-  
-
-<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-XXXXXXXXXX"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-XXXXXXXXXX",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  <script data-goatcounter="https://red1oon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
   
     <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
   
@@ -3932,7 +3929,7 @@
 <tr>
 <td>S200–S209b</td>
 <td>Browser viewer, site camera, walk mode, mobile UX, cinematic tour, modular refactor</td>
-<td><code>deploy/sandbox/</code> (16 modules)</td>
+<td><code>deploy/dev/</code> (16 modules)</td>
 </tr>
 <tr>
 <td>S210</td>
@@ -3969,8 +3966,14 @@
 <td>IFC export — DB → .ifc download. Pure STEP text builder, 30-test round-trip</td>
 <td><code>deploy/dev/ifc_export_worker.js</code></td>
 </tr>
+<tr>
+<td>S250 §8</td>
+<td>Share sheet — Save as IFC/DB, Contribute to OOTB, WhatsApp/Email/Copy Link (lazy-loaded)</td>
+<td><code>deploy/dev/share.js</code></td>
+</tr>
 </tbody>
 </table>
+<p><strong>Security:</strong> Enterprise authentication via 3-layer cryptographic verification — see <a href="../EnterpriseAuthentication/"><code>docs/EnterpriseAuthentication.md</code></a>.</p>
 <p><strong>Tests:</strong> 72/72 Playwright E2E (desktop), 53/55 pure-function. Suite: <code>deploy/dev/tests/</code>.</p>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
 <h3 id="s211-nlp-query-dsl-harden-browser-port-voice">S211 — NLP Query DSL (harden + browser port + voice)<a class="headerlink" href="#s211-nlp-query-dsl-harden-browser-port-voice" title="Permanent link">&para;</a></h3>
@@ -3982,7 +3985,7 @@ Voice input via Web Speech API (built into Chrome/Safari — no server, no key, 
 - <code>query_parser.py</code> — NL → SQL with IFC synonyms (150+ terms), pluralization, storey normalization (EN/MY/DE/FR)
 - <code>query_patterns.py</code> — 40+ patterns across 8 categories (element_count, manufacturer, property, quantity, cost, material, freetext, discipline)
 - <code>query_executor.py</code> — execute + format results</p>
-<p><strong>Browser port (<code>deploy/sandbox/nlp.js</code>):</strong>
+<p><strong>Browser port (<code>deploy/dev/nlp.js</code>):</strong>
 - Port intent classifier + query patterns to JS (no Python dependency)
 - Wire to existing search input (<code>#search-box</code> in index.html, currently hidden)
 - <code>db.exec(generatedSQL)</code> against loaded sql.js DB — zero server round-trip

@@ -61,10 +61,7 @@
   
 
 
-  
-  
-
-<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-XXXXXXXXXX"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-XXXXXXXXXX",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  <script data-goatcounter="https://red1oon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
   
     <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
   
@@ -3802,7 +3799,7 @@
 <h2 id="1-overview">1. Overview<a class="headerlink" href="#1-overview" title="Permanent link">&para;</a></h2>
 <p>A plugin is one JS file + one JSON manifest. No build step, no SDK install, no API key.
 The browser IDE lets you write, test, and publish plugins without leaving the browser.</p>
-<p><strong>IDE:</strong> <code>deploy/sandbox/ide.html</code>
+<p><strong>IDE:</strong> <code>deploy/dev/ide.html</code>
 <strong>Test harness:</strong> <code>node plugin_test.js plugins/my_plugin/</code>
 <strong>Fixture DB:</strong> Duplex (1119 elements, 2.8MB)</p>
 <h2 id="2-install-remove-toggle">2. Install / Remove / Toggle<a class="headerlink" href="#2-install-remove-toggle" title="Permanent link">&para;</a></h2>

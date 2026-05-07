@@ -61,10 +61,7 @@
   
 
 
-  
-  
-
-<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-XXXXXXXXXX"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-XXXXXXXXXX",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  <script data-goatcounter="https://red1oon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
   
     <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
   
@@ -4035,6 +4032,7 @@
 </tr>
 </tbody>
 </table>
+<p><strong>Security &amp; Collaboration:</strong> When this DB is contributed to the shared gallery, a 3-layer cryptographic verification chain (HMAC pipeline attestation + Ed25519 identity + transport integrity) ensures only valid, verified databases are accepted. See <a href="../EnterpriseAuthentication/"><code>EnterpriseAuthentication.md</code></a>.</p>
 <hr />
 <h2 id="schema-10-tables-one-db">Schema (10 tables, one DB)<a class="headerlink" href="#schema-10-tables-one-db" title="Permanent link">&para;</a></h2>
 <p>Produced by <code>scripts/extractIFC2DB.js</code> (Node.js) or browser Drop IFC (<code>import_worker.js</code> + <code>import_db_builder.js</code>). Both produce identical output.</p>
@@ -4199,13 +4197,13 @@ Filter: storey/discipline → hide/show InstancedMesh instances
 <td><a href="https://github.com/sql-js/sql.js">sql.js</a> @1.10.3</td>
 <td>MIT</td>
 <td>SQLite compiled to WASM — runs SQL in browser</td>
-<td>CDN <code>cdnjs.cloudflare.com</code> in <code>streaming.js</code></td>
+<td>Local <code>lib/</code> (CDN fallback)</td>
 </tr>
 <tr>
 <td><a href="https://github.com/mrdoob/three.js">Three.js</a> r128</td>
 <td>MIT</td>
 <td>WebGL 3D renderer</td>
-<td>CDN <code>cdnjs.cloudflare.com</code> in HTML</td>
+<td>Local <code>lib/</code> (CDN fallback)</td>
 </tr>
 <tr>
 <td><a href="https://github.com/gdsestimating/dxf-parser">dxf-parser</a></td>
@@ -4325,6 +4323,7 @@ Filter: storey/discipline → hide/show InstancedMesh instances
   sql-wasm.wasm    — 631KB (SQLite 3.x + R-tree, compiled via Emscripten)
 </code></pre></div>
 <p>Verified working: R-tree <code>CREATE VIRTUAL TABLE ... USING rtree(...)</code> executes successfully. This is the exact binary served by <code>cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/</code>.</p>
+<p>The WASM binary is also vendored locally at <code>deploy/dev/lib/sql-wasm.wasm</code> for local-first loading (CDN fallback).</p>
 <h3 id="source-repositories">Source Repositories<a class="headerlink" href="#source-repositories" title="Permanent link">&para;</a></h3>
 <table>
 <thead>

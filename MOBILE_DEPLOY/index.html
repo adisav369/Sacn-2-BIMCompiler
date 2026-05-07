@@ -61,10 +61,7 @@
   
 
 
-  
-  
-
-<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-XXXXXXXXXX"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-XXXXXXXXXX",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  <script data-goatcounter="https://red1oon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
   
     <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
   
@@ -1876,10 +1873,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#production-deploysandbox-live-oci-bucket" class="md-nav__link">
+  <a href="#production-deploylive-live-oci-bucket" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Production (deploy/sandbox/ → live OCI bucket)
+        Production (deploy/live/ → live OCI bucket)
       
     </span>
   </a>
@@ -4151,10 +4148,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#production-deploysandbox-live-oci-bucket" class="md-nav__link">
+  <a href="#production-deploylive-live-oci-bucket" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Production (deploy/sandbox/ → live OCI bucket)
+        Production (deploy/live/ → live OCI bucket)
       
     </span>
   </a>
@@ -4217,7 +4214,7 @@
 </div>
 <p><strong>Version:</strong> 0.2 (2026-04-27)
 <strong>Status:</strong> LIVE — 37 buildings streaming from OCI Object Storage
-<strong>Depends on:</strong> <code>deploy/sandbox/index.html</code> + 18 JS modules, per-building DBs</p>
+<strong>Depends on:</strong> <code>deploy/dev/index.html</code> + 18 JS modules, per-building DBs</p>
 <hr />
 <h2 id="1-try-it-now-zero-install">1. Try It Now — Zero Install<a class="headerlink" href="#1-try-it-now-zero-install" title="Permanent link">&para;</a></h2>
 <p>Open any link below in your browser (desktop or phone):</p>
@@ -4269,7 +4266,7 @@ git<span class="w"> </span>clone<span class="w"> </span>https://github.com/red1o
 python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span><span class="m">8080</span>
 
 <span class="c1"># 3. Open in your browser</span>
-<span class="c1"># http://localhost:8080/sandbox/landing.html</span>
+<span class="c1"># http://localhost:8080/dev/index.html</span>
 </code></pre></div>
 <p>That's it. The landing page lists all buildings. Click one — it loads from the <code>buildings/</code> folder.</p>
 <p><strong>What's in the box:</strong></p>
@@ -4283,7 +4280,7 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 </thead>
 <tbody>
 <tr>
-<td><code>deploy/sandbox/</code></td>
+<td><code>deploy/dev/</code></td>
 <td>HTML viewer + 18 JS modules</td>
 <td>~200 KB</td>
 </tr>
@@ -4293,7 +4290,7 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 <td>~2 GB total</td>
 </tr>
 <tr>
-<td><code>deploy/sandbox/boq_charts.html</code></td>
+<td><code>deploy/dev/boq_charts.html</code></td>
 <td>4D/5D analytics dashboard</td>
 <td>~50 KB</td>
 </tr>
@@ -4337,7 +4334,7 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 <span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">://</span><span class="n">github</span><span class="p">.</span><span class="n">com</span><span class="p">/</span><span class="n">red1oon</span><span class="p">/</span><span class="n">BIMCompiler</span><span class="p">.</span><span class="n">git</span>
 <span class="nb">cd </span><span class="n">BIMCompiler</span><span class="p">\</span><span class="n">deploy</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">http</span><span class="p">.</span><span class="n">server</span> <span class="n">8080</span>
-<span class="c"># Open: http://localhost:8080/sandbox/landing.html</span>
+<span class="c"># Open: http://localhost:8080/dev/index.html</span>
 
 <span class="c"># Or WSL Ubuntu:</span>
 <span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">://</span><span class="n">github</span><span class="p">.</span><span class="n">com</span><span class="p">/</span><span class="n">red1oon</span><span class="p">/</span><span class="n">BIMCompiler</span><span class="p">.</span><span class="n">git</span>
@@ -5028,7 +5025,7 @@ oci<span class="w"> </span>os<span class="w"> </span>bucket<span class="w"> </sp
 <span class="w">  </span>--public-access-type<span class="w"> </span>ObjectRead
 
 <span class="c1"># 3. Upload viewer + DBs</span>
-oci<span class="w"> </span>os<span class="w"> </span>object<span class="w"> </span>put<span class="w"> </span>--bucket-name<span class="w"> </span>my-bim-viewer<span class="w"> </span>--file<span class="w"> </span>deploy/sandbox/index.html<span class="w"> </span><span class="se">\</span>
+oci<span class="w"> </span>os<span class="w"> </span>object<span class="w"> </span>put<span class="w"> </span>--bucket-name<span class="w"> </span>my-bim-viewer<span class="w"> </span>--file<span class="w"> </span>deploy/dev/index.html<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--content-type<span class="w"> </span>text/html<span class="w"> </span>--name<span class="w"> </span>index.html
 oci<span class="w"> </span>os<span class="w"> </span>object<span class="w"> </span>put<span class="w"> </span>--bucket-name<span class="w"> </span>my-bim-viewer<span class="w"> </span>--file<span class="w"> </span>deploy/buildings/Duplex_extracted.db<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--content-type<span class="w"> </span>application/octet-stream<span class="w"> </span>--name<span class="w"> </span>Duplex_extracted.db
@@ -5162,7 +5159,7 @@ oci<span class="w"> </span>os<span class="w"> </span>bucket<span class="w"> </sp
 </ol>
 <hr />
 <h2 id="10-files">10. Files<a class="headerlink" href="#10-files" title="Permanent link">&para;</a></h2>
-<h3 id="production-deploysandbox-live-oci-bucket">Production (<code>deploy/sandbox/</code> → live OCI bucket)<a class="headerlink" href="#production-deploysandbox-live-oci-bucket" title="Permanent link">&para;</a></h3>
+<h3 id="production-deploylive-live-oci-bucket">Production (<code>deploy/live/</code> → live OCI bucket)<a class="headerlink" href="#production-deploylive-live-oci-bucket" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
