@@ -13,6 +13,7 @@ function initViewer() {
     setupPicking, setupTour, setupMeasure, setupSitecam, setupIssues, setupExcel, setupWalk, setupCity];
   _mods.forEach(function(fn) { if (typeof fn === 'function') fn(APP); });
   if (typeof setupNlp === 'function') setupNlp(APP);
+  if (typeof setupGhostGlass === 'function') setupGhostGlass(APP);
   // navigate.js lazy-loaded on demand (78KB saved on first paint)
   APP._navigateLoaded = false;
   APP.loadNavigate = function() {
@@ -153,8 +154,27 @@ function initViewer() {
       _4dHighlights = [];
 
       if (msg.type === '4D_RESET') {
-        console.log('§4D_RECV type=4D_RESET cleared=' + _4dHighlights.length);
+        if (APP._ghostGlass) APP._ghostGlass.reset();
+        console.log('§4D_RECV type=4D_RESET');
         APP.markDirty();
+        return;
+      }
+
+      // S240b: Ghost glass animation messages — delegate to ghostglass.js
+      if (msg.type === '4D_PLAY' && APP._ghostGlass) {
+        APP._ghostGlass.play(msg.tasks || [], msg.speed || 1.0);
+        return;
+      }
+      if (msg.type === '4D_PAUSE' && APP._ghostGlass) {
+        APP._ghostGlass.pause();
+        return;
+      }
+      if (msg.type === '4D_RESUME' && APP._ghostGlass) {
+        APP._ghostGlass.resume(msg.speed);
+        return;
+      }
+      if (msg.type === '4D_SEEK' && APP._ghostGlass) {
+        APP._ghostGlass.seek(msg.taskIndex);
         return;
       }
 

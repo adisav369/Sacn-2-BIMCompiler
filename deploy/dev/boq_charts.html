@@ -790,15 +790,17 @@ async function init() {
     const ifcClass = t.ifcClass;
     if (!ifcClass) { t.guids = []; continue; }
     try {
-      const res = db.exec("SELECT guid FROM elements_meta WHERE ifc_class = '" +
+      const sql = "SELECT guid FROM elements_meta WHERE ifc_class = '" +
         ifcClass.replace(/'/g,"''") + "' AND storey = '" +
-        (t.storey||'').replace(/'/g,"''") + "' AND building = '" +
-        (bldName||'').replace(/'/g,"''") + "'");
+        (t.storey||'').replace(/'/g,"''") + "'";
+      const res = db.exec(sql);
       t.guids = res[0] ? res[0].values.map(r => r[0]) : [];
     } catch(e) { t.guids = []; }
   }
   const totalGuids = scheduleData.reduce((s,t) => s + t.guids.length, 0);
-  console.log('§4D_GUID_RESOLVE tasks=' + scheduleData.length + ' totalGuids=' + totalGuids);
+  const zeroGuidTasks = scheduleData.filter(t => t.guids.length === 0);
+  console.log('§4D_GUID_RESOLVE tasks=' + scheduleData.length + ' totalGuids=' + totalGuids + ' zeroGuid=' + zeroGuidTasks.length +
+    (zeroGuidTasks.length ? ' [' + zeroGuidTasks.slice(0,5).map(t=>t.name).join(', ') + ']' : ''));
 
   const grandTotal = grandMaterial + grandLabor + grandEquip;
   const projDaysInit = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
@@ -1053,43 +1055,43 @@ function renderCharts() {
   }));
   logChart(8,'Gantt','Milestone Timeline',phaseList.length);
 
-  // ── 9. Strategic Gantt — Top 15 longest tasks (stacked bar — from schedule_export.py) ──
-  const top15 = [...scheduleData].sort((a,b) => b.duration - a.duration).slice(0,15).sort((a,b) => a.startDay - b.startDay);
+  // ── 9. Full Gantt — ALL tasks sorted by start day (for 4D sync) ──
+  const ganttTasks = [...scheduleData].sort((a,b) => a.startDay - b.startDay);
 
   const ganttBox = el('div','chart-box full');
   ganttBox.innerHTML = '<h2>' + _TRL.t_gantt + '</h2>';
   const ganttCanvas = el('canvas');
-  ganttCanvas.height = 350;
+  ganttCanvas.height = 400;
   ganttBox.appendChild(ganttCanvas); c.appendChild(ganttBox);
 
   chartInstances.push(new Chart(ganttCanvas, {
     type:'bar',
     data:{
-      labels:top15.map(t => t.name.slice(0,40)),
+      labels:ganttTasks.map(t => t.name.slice(0,35)),
       datasets:[
-        {label:'Offset',data:top15.map(t=>t.startDay),backgroundColor:'rgba(0,0,0,0)'},
-        {label:'Duration',data:top15.map(t=>Math.round(t.duration)),backgroundColor:top15.map(t=>PHASE_COLORS[t.phase]||'#888')},
+        {label:'Offset',data:ganttTasks.map(t=>t.startDay),backgroundColor:'rgba(0,0,0,0)'},
+        {label:'Duration',data:ganttTasks.map(t=>Math.round(t.duration)),backgroundColor:ganttTasks.map(t=>PHASE_COLORS[t.phase]||'#888')},
       ]
     },
     options:{
       indexAxis:'y',
-      aspectRatio:2.5,
+      aspectRatio: 1.0,
       scales:{
-        x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},
-        y:{stacked:true,ticks:{color:'#ccc',font:{size:9}},grid:{color:'rgba(255,255,255,0.1)'}}
+        x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#fff',font:{size:14}},ticks:{color:'#ddd',font:{size:12}},grid:{color:'rgba(255,255,255,0.1)'}},
+        y:{stacked:true,ticks:{color:'#ccc',font:{size:Math.max(7, Math.min(10, 180/ganttTasks.length))}},grid:{color:'rgba(255,255,255,0.05)'}}
       },
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{label:ctx=>{
           if (ctx.datasetIndex===0) return null;
-          const t = top15[ctx.dataIndex];
+          const t = ganttTasks[ctx.dataIndex];
           return `${t.phase}: Day ${t.startDay}–${t.finishDay} (${Math.round(t.duration)} days, ${t.qty} EA)`;
         }}}
       },
-      barThickness:12
+      barThickness: 6
     }
   }));
-  logChart(9,'Stacked','Gantt Timeline',top15.length);
+  logChart(9,'Stacked','Gantt Timeline',ganttTasks.length);
 
   // S240: BroadcastChannel for 4D Gantt→Viewer sync
   let _bim4d = null;
@@ -1108,7 +1110,7 @@ function renderCharts() {
         return;
       }
       const idx = points[0].index;
-      const task = top15[idx];
+      const task = ganttTasks[idx];
       if (!task) return;
       const phaseColor = PHASE_COLORS[task.phase] || '#888888';
       _bim4d.postMessage({
@@ -1121,7 +1123,222 @@ function renderCharts() {
       console.log('§4D_BROADCAST type=4D_HIGHLIGHT task="' + task.name + '" guids=' + (task.guids||[]).length + ' phase=' + task.phase + ' color=' + phaseColor);
     });
 
-    console.log('§4D_CHANNEL_READY sender=boq_charts');
+    // S240b: Timeline scrub — orange vertical line overlaid ON the Gantt chart
+    const ganttChart = chartInstances[chartInstances.length - 1];
+    const maxDay = Math.max(...scheduleData.map(t => t.finishDay), 1);
+
+    // Make ganttBox position:relative so we can overlay absolutely
+    ganttBox.style.position = 'relative';
+
+    // Orange vertical scrub line — overlaid on the Gantt canvas
+    const scrubLine = document.createElement('div');
+    scrubLine.style.cssText = 'position:absolute;top:0;width:4px;height:100%;background:rgba(255,140,0,0.9);pointer-events:none;z-index:10;box-shadow:0 0 12px rgba(255,140,0,0.7),0 0 24px rgba(255,140,0,0.3);transition:left 0.06s ease-out;display:none;border-radius:2px;';
+    ganttBox.appendChild(scrubLine);
+
+    // Wide invisible drag handle — 30px wide, easy to grab
+    const scrubHandle = document.createElement('div');
+    scrubHandle.style.cssText = 'position:absolute;top:0;width:30px;height:100%;background:transparent;z-index:12;cursor:ew-resize;display:none;margin-left:-13px;';
+    ganttBox.appendChild(scrubHandle);
+
+    // Activity tooltip — floats next to the scrub line
+    const scrubTip = document.createElement('div');
+    scrubTip.style.cssText = 'position:absolute;top:8px;background:rgba(20,20,40,0.92);color:#ff8c00;font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid rgba(255,140,0,0.4);pointer-events:none;z-index:11;white-space:nowrap;display:none;max-width:300px;overflow:hidden;text-overflow:ellipsis;';
+    ganttBox.appendChild(scrubTip);
+
+    // Control bar below chart
+    const controlBar = document.createElement('div');
+    controlBar.style.cssText = 'display:flex;align-items:center;margin:6px 0;gap:8px;';
+
+    const playBtn = document.createElement('button');
+    playBtn.textContent = '\u25b6 Play';
+    playBtn.style.cssText = 'padding:5px 16px;background:#ff8c00;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;';
+
+    const speedSel = document.createElement('select');
+    speedSel.style.cssText = 'padding:3px 8px;background:#333;color:#ff8c00;border:1px solid #ff8c00;border-radius:4px;font-size:12px;';
+    [1, 2, 4, 8].forEach(function(s) {
+      var opt = document.createElement('option');
+      opt.value = s; opt.textContent = s + '\u00d7';
+      speedSel.appendChild(opt);
+    });
+
+    const dayLabel = document.createElement('span');
+    dayLabel.style.cssText = 'color:#ff8c00;font-size:13px;font-weight:bold;';
+    dayLabel.textContent = 'Day 0 / ' + maxDay;
+
+    const taskLabel = document.createElement('span');
+    taskLabel.style.cssText = 'color:#ccc;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+
+    controlBar.appendChild(playBtn);
+    controlBar.appendChild(speedSel);
+    controlBar.appendChild(dayLabel);
+    controlBar.appendChild(taskLabel);
+    ganttBox.appendChild(controlBar);
+
+    // State
+    let _scrubActive = false;
+    let _playTimer = null;
+    let _playing = false;
+    let _currentDay = 0;
+
+    // Get Gantt chart plot area pixel bounds (x-axis area only)
+    function getPlotArea() {
+      const xScale = ganttChart.scales.x;
+      return { left: xScale.left, right: xScale.right, top: ganttChart.chartArea.top, bottom: ganttChart.chartArea.bottom };
+    }
+
+    // Map pixel X → day number
+    function pixelToDay(px) {
+      const area = getPlotArea();
+      const ratio = Math.max(0, Math.min(1, (px - area.left) / (area.right - area.left)));
+      return Math.round(ratio * maxDay);
+    }
+
+    // Map day → pixel X
+    function dayToPixel(day) {
+      const area = getPlotArea();
+      return area.left + (day / maxDay) * (area.right - area.left);
+    }
+
+    // Find task index for a given day
+    function dayToTaskIndex(day) {
+      let best = -1;
+      for (let i = 0; i < scheduleData.length; i++) {
+        if (scheduleData[i].startDay <= day) best = i;
+      }
+      return best;
+    }
+
+    // Find ALL active tasks at a given day (for tooltip)
+    function tasksAtDay(day) {
+      return scheduleData.filter(t => t.startDay <= day && t.finishDay >= day);
+    }
+
+    // Apply scrub state
+    function applyScrub(day) {
+      _currentDay = day;
+      const px = dayToPixel(day);
+      scrubLine.style.left = px + 'px';
+      scrubLine.style.display = 'block';
+      scrubHandle.style.left = px + 'px';
+      scrubHandle.style.display = 'block';
+      scrubTip.style.left = Math.min(px + 8, ganttBox.offsetWidth - 310) + 'px';
+
+      dayLabel.textContent = 'Day ' + day + ' / ' + maxDay;
+
+      if (day <= 0) {
+        // Day 0 = normal building, no glass
+        scrubTip.style.display = 'none';
+        taskLabel.textContent = '';
+        if (_scrubActive) {
+          _scrubActive = false;
+          _bim4d.postMessage({ type: '4D_RESET' });
+          console.log('§4D_SCRUB day=0 RESET');
+        }
+        return;
+      }
+
+      // Day 1+ = ghost glass mode
+      const active = tasksAtDay(day);
+      const tidx = dayToTaskIndex(day);
+
+      // Show tooltip with active tasks
+      if (active.length > 0) {
+        scrubTip.textContent = active.map(t => t.phase + ': ' + t.name.split(' - ').pop()).join(' | ');
+        scrubTip.style.display = 'block';
+        taskLabel.textContent = active[0].phase + ': ' + active[0].name + (active.length > 1 ? ' (+' + (active.length-1) + ')' : '');
+      } else {
+        scrubTip.style.display = 'none';
+        taskLabel.textContent = tidx >= 0 ? scheduleData[tidx].name : '';
+      }
+
+      if (!_scrubActive) {
+        _scrubActive = true;
+        // Send 4D_PLAY with full task list — viewer enters glass mode
+        _bim4d.postMessage({ type: '4D_PLAY', tasks: scheduleData, speed: 1.0 });
+        console.log('§4D_SCRUB_START tasks=' + scheduleData.length);
+        // Small delay to let glass apply before first seek
+        setTimeout(function() {
+          if (tidx >= 0) _bim4d.postMessage({ type: '4D_SEEK', taskIndex: tidx });
+        }, 100);
+        return;
+      }
+
+      if (tidx >= 0) {
+        _bim4d.postMessage({ type: '4D_SEEK', taskIndex: tidx });
+      }
+    }
+
+    // Mouse/touch drag — works on both the canvas and the wide drag handle
+    let _dragging = false;
+    ganttCanvas.style.cursor = 'ew-resize';
+
+    function startDrag(evt) {
+      _dragging = true;
+      const rect = ganttCanvas.getBoundingClientRect();
+      const px = (evt.clientX || (evt.touches && evt.touches[0].clientX) || 0) - rect.left;
+      applyScrub(pixelToDay(px));
+    }
+    function moveDrag(evt) {
+      if (!_dragging) return;
+      evt.preventDefault();
+      const rect = ganttCanvas.getBoundingClientRect();
+      const px = (evt.clientX || (evt.touches && evt.touches[0].clientX) || 0) - rect.left;
+      applyScrub(pixelToDay(px));
+    }
+    function endDrag() { _dragging = false; }
+
+    // Canvas drag
+    ganttCanvas.addEventListener('pointerdown', startDrag);
+    ganttCanvas.addEventListener('pointermove', moveDrag);
+    ganttCanvas.addEventListener('pointerup', endDrag);
+    ganttCanvas.addEventListener('pointerleave', endDrag);
+    // Handle drag (the wide invisible bar)
+    scrubHandle.addEventListener('pointerdown', function(evt) {
+      evt.stopPropagation();
+      _dragging = true;
+    });
+    document.addEventListener('pointermove', moveDrag);
+    document.addEventListener('pointerup', endDrag);
+
+    // Play button
+    playBtn.addEventListener('pointerup', function() {
+      if (_playing) {
+        clearInterval(_playTimer); _playTimer = null;
+        _playing = false;
+        playBtn.textContent = '\u25b6 Play';
+        _bim4d.postMessage({ type: '4D_PAUSE' });
+        return;
+      }
+
+      _playing = true;
+      playBtn.textContent = '\u23f8 Pause';
+      if (!_scrubActive && _currentDay <= 0) _currentDay = 0;
+      startPlayTimer();
+    });
+
+    function startPlayTimer() {
+      if (_playTimer) clearInterval(_playTimer);
+      const speed = parseInt(speedSel.value) || 1;
+      const step = Math.max(1, Math.round(maxDay / Math.max(scheduleData.length, 1)));
+      _playTimer = setInterval(function() {
+        _currentDay += step * speed;
+        if (_currentDay > maxDay) {
+          _currentDay = maxDay;
+          clearInterval(_playTimer); _playTimer = null;
+          _playing = false;
+          playBtn.textContent = '\u25b6 Play';
+        }
+        applyScrub(_currentDay);
+      }, 800);
+      console.log('§4D_PLAY_TIMER speed=' + speed + 'x step=' + step + ' interval=800ms');
+    }
+
+    // Speed change during playback restarts timer
+    speedSel.addEventListener('change', function() {
+      if (_playing) startPlayTimer();
+    });
+
+    console.log('§4D_CHANNEL_READY sender=boq_charts scrubber=true');
   }
 
   // ── S225: Variance Chart (when diff data present) ──
