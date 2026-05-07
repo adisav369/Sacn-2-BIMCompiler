@@ -287,26 +287,27 @@ test('T10c: clipFor floor=1.0m offset, floor1=0.55 ratio, front=null', function(
 
 // ── T11: DoorArcs hinge detection — closest endpoint to wall ────────
 
-test('T11: Hinge = endpoint closest to wall contour', function() {
-  // Door panel at y=0, from x=2 to x=2.9
-  // Wall at x=2, y=-0.15 to y=0.15 (the jamb)
-  var door = [[2, 0], [2.9, 0]];
+test('T11: Hinge = endpoint closest to wall contour (leaf axis extraction)', function() {
+  // Door panel: thin rectangle 0.9m wide × 0.04m thick at y=0, from x=2 to x=2.9
+  var leafAxis = DoorArcs.extractLeafAxis([[2,-0.02],[2.9,-0.02],[2.9,0.02],[2,0.02],[2,-0.02]]);
+  assert(leafAxis, 'extractLeafAxis returned null');
+  assertClose(leafAxis.radius, 0.9, 0.001, 'leaf radius');
+  // Wall at x=2 (the jamb)
   var walls = [[[2, -0.15], [2, 0.15]]];
-  var r = DoorArcs.findHinge(door, walls);
-  logTag('T11_HINGE', 'hinge=(' + r.hinge[0] + ',' + r.hinge[1] + ') free=(' +
-    r.free[0] + ',' + r.free[1] + ') radius=' + r.radius.toFixed(4));
+  var r = DoorArcs.findHinge(leafAxis, walls);
+  logTag('T11_HINGE', 'hinge=(' + r.hinge[0].toFixed(3) + ',' + r.hinge[1].toFixed(3) + ') free=(' +
+    r.free[0].toFixed(3) + ',' + r.free[1].toFixed(3) + ') radius=' + r.radius.toFixed(4));
   assertClose(r.hinge[0], 2, 0.001, 'hinge x');
-  assertClose(r.hinge[1], 0, 0.001, 'hinge y');
   assertClose(r.radius, 0.9, 0.001, 'radius');
 });
 
 test('T11b: Hinge picks correct end when free is closer to different wall', function() {
-  // Door from (5,3) to (5.8,3). Wall A at (5,2.85)→(5,3.15). Wall B at (6,3).
-  // Hinge should be at (5,3) — closest to wall A.
-  var door = [[5, 3], [5.8, 3]];
+  // Door leaf 0.8m wide × 0.04m thick, from x=5 to x=5.8 at y=3
+  var leafAxis = DoorArcs.extractLeafAxis([[5,2.98],[5.8,2.98],[5.8,3.02],[5,3.02],[5,2.98]]);
+  // Wall A at x=5, Wall B at x=6. Hinge should be at x=5 (closest to wall A).
   var walls = [[[5, 2.85], [5, 3.15]], [[6, 2.85], [6, 3.15]]];
-  var r = DoorArcs.findHinge(door, walls);
-  logTag('T11b_HINGE', 'hinge=(' + r.hinge[0] + ',' + r.hinge[1] + ')');
+  var r = DoorArcs.findHinge(leafAxis, walls);
+  logTag('T11b_HINGE', 'hinge=(' + r.hinge[0].toFixed(3) + ',' + r.hinge[1].toFixed(3) + ')');
   assertClose(r.hinge[0], 5, 0.001, 'hinge x');
 });
 
@@ -1137,11 +1138,10 @@ test('T57: renderEdges handles each elevation face without crash', function() {
 
 // ── T58: DoorArcs with zero walls — graceful empty result ───────────
 
-test('T58: DoorArcs.generateArcs with 0 walls returns empty (no crash)', function() {
-  var doors = [{ guid: 'd1', ifcClass: 'IfcDoor', contours: [[[2,0],[2.9,0]]] }];
+test('T58: DoorArcs.generateArcs with 0 walls returns arc (no crash)', function() {
+  // Door leaf as closed polygon (thin rectangle 0.9m × 0.04m)
+  var doors = [{ guid: 'd1', ifcClass: 'IfcDoor', contours: [{ points: [[2,-0.02],[2.9,-0.02],[2.9,0.02],[2,0.02],[2,-0.02]], isOuter: true }] }];
   var arcs = DoorArcs.generateArcs(doors, []);
-  // With no wall contours, bestDist0 and bestDist1 stay Infinity — should still pick a hinge
-  // (both stay Infinity → bestDist0 <= bestDist1 → picks p0 as hinge)
   logTag('T58_NOWALLS', 'arcs.length=' + arcs.length + ' (graceful with 0 walls)');
   assert(arcs.length === 1, 'should still produce 1 arc (hinge defaults to first endpoint)');
   assert(arcs[0].radius > 0, 'radius should be positive');

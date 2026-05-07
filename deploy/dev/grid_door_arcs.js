@@ -40,16 +40,45 @@ var DoorArcs = (function() {
    * @param {Array} wallContours - array of [[x,y], ...] wall contour polylines
    * @returns {{ hinge: [x,y], free: [x,y], radius: number }} or null
    */
-  function findHinge(doorContour, wallContours) {
-    if (!doorContour || doorContour.length < 2) return null;
+  /**
+   * Extract the door leaf axis from a closed contour polygon.
+   * A door panel cross-section is a thin rectangle: long axis = door width,
+   * short axis = panel thickness (~0.04m). We find the bbox, determine the
+   * long axis, and return its midpoint endpoints as p0 and p1.
+   *
+   * @param {Array} pts - [[x,y], ...] closed polygon
+   * @returns {{ p0: [x,y], p1: [x,y], radius: number }} or null
+   */
+  function extractLeafAxis(pts) {
+    if (!pts || pts.length < 4) return null;
+    var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (var i = 0; i < pts.length; i++) {
+      if (pts[i][0] < minX) minX = pts[i][0];
+      if (pts[i][0] > maxX) maxX = pts[i][0];
+      if (pts[i][1] < minY) minY = pts[i][1];
+      if (pts[i][1] > maxY) maxY = pts[i][1];
+    }
+    var w = maxX - minX, h = maxY - minY;
+    var longAxis = Math.max(w, h);
+    if (longAxis < 0.3) return null; // too small to be a door leaf (< 30cm)
 
-    var p0 = doorContour[0];
-    var p1 = doorContour[doorContour.length - 1];
-    var radius = Math.sqrt(
-      (p1[0] - p0[0]) * (p1[0] - p0[0]) +
-      (p1[1] - p0[1]) * (p1[1] - p0[1])
-    );
-    if (radius < 0.05) return null; // too small to be a real door
+    var midX = (minX + maxX) / 2, midY = (minY + maxY) / 2;
+    var p0, p1;
+    if (w >= h) {
+      // Long axis is X — endpoints at left/right midpoints
+      p0 = [minX, midY];
+      p1 = [maxX, midY];
+    } else {
+      // Long axis is Y — endpoints at bottom/top midpoints
+      p0 = [midX, minY];
+      p1 = [midX, maxY];
+    }
+    return { p0: p0, p1: p1, radius: longAxis };
+  }
+
+  function findHinge(leafAxis, wallContours) {
+    if (!leafAxis) return null;
+    var p0 = leafAxis.p0, p1 = leafAxis.p1, radius = leafAxis.radius;
 
     // Find which endpoint is closest to any wall contour point — that's the hinge
     var bestDist0 = Infinity, bestDist1 = Infinity;
@@ -168,27 +197,36 @@ var DoorArcs = (function() {
     for (var d = 0; d < doorElements.length; d++) {
       var door = doorElements[d];
       var dContours = door.contours || [];
+
+      // Find the leaf contour — the one with the largest long-axis (= door width).
+      // Small contours are hinges, handles, frame details — skip them.
+      var bestLeaf = null;
       for (var dc = 0; dc < dContours.length; dc++) {
-        var hingeResult = findHinge(contourPoints(dContours[dc]), wallContours);
-        if (!hingeResult) continue;
-
-        // Determine swing direction from wall orientation
-        var swing = detectSwingDirection(hingeResult, wallContours);
-        hingeResult.swing = swing;
-
-        var arcPoints = computeArcPoints(hingeResult);
-        arcs.push({
-          guid: door.guid,
-          hinge: hingeResult.hinge,
-          free: hingeResult.free,
-          radius: hingeResult.radius,
-          swing: swing,
-          points: arcPoints
-        });
-        log('§DOOR_ARC_DETECT guid=' + door.guid + ' radius=' + hingeResult.radius.toFixed(3) +
-            ' hinge=(' + hingeResult.hinge[0].toFixed(2) + ',' + hingeResult.hinge[1].toFixed(2) +
-            ') swing=' + (swing > 0 ? 'CCW' : 'CW'));
+        var pts = contourPoints(dContours[dc]);
+        var leaf = extractLeafAxis(pts);
+        if (leaf && (!bestLeaf || leaf.radius > bestLeaf.radius)) {
+          bestLeaf = leaf;
+        }
       }
+
+      var hingeResult = findHinge(bestLeaf, wallContours);
+      if (!hingeResult) continue;
+
+      var swing = detectSwingDirection(hingeResult, wallContours);
+      hingeResult.swing = swing;
+
+      var arcPoints = computeArcPoints(hingeResult);
+      arcs.push({
+        guid: door.guid,
+        hinge: hingeResult.hinge,
+        free: hingeResult.free,
+        radius: hingeResult.radius,
+        swing: swing,
+        points: arcPoints
+      });
+      log('§DOOR_ARC_DETECT guid=' + door.guid + ' radius=' + hingeResult.radius.toFixed(3) +
+          ' hinge=(' + hingeResult.hinge[0].toFixed(2) + ',' + hingeResult.hinge[1].toFixed(2) +
+          ') swing=' + (swing > 0 ? 'CCW' : 'CW'));
     }
     return arcs;
   }
@@ -225,6 +263,7 @@ var DoorArcs = (function() {
   return {
     generateArcs:  generateArcs,
     createArcLine: createArcLine,
+    extractLeafAxis: extractLeafAxis,
     findHinge:     findHinge,
     computeArcPoints: computeArcPoints,
     detectSwingDirection: detectSwingDirection
