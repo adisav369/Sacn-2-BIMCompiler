@@ -442,6 +442,108 @@ schedule qto carbon asset safety  smooth nav
    hazard_register) now include `building` column. Single-building DBs unaffected.
 3. **28/28 unit tests PASS** — backwards compatible, no regression.
 
+## 4D Ghost Glass — Live Construction Animation (S240b)
+
+**"Watch your building get built."**
+
+The Gantt chart (boq_charts.html) now drives a live construction animation in the
+3D viewer via BroadcastChannel. Two browser tabs, side by side — drag a timeline
+scrubber on the Gantt and the building constructs itself in real time.
+
+### How It Works
+
+1. User opens the **viewer** (Tab 1) and **BOQ charts** (Tab 2) for the same building
+2. The Gantt chart shows **all construction tasks** as horizontal bars, colour-coded by phase
+3. An **orange vertical scrub line** overlays the Gantt — drag it left/right to scrub time
+4. On first touch (Day 1+), the building turns into a **glass shell** (0.03 opacity)
+5. As the scrubber crosses each task's start day, those elements **snap to solid** with a bright glow
+6. Elements already built restore to **normal solid material** — the building fills in progressively
+7. Drag back to Day 0 → building fully restores to normal
+
+### Visual States
+
+| State | Appearance | When |
+|-------|-----------|------|
+| **GLASS** | Near-invisible shell (0.03 opacity, pale blue) | Future — not yet constructed |
+| **ACTIVE** | Bright glow, shines through all geometry (`depthTest:false`) | Currently being constructed |
+| **BUILT** | Solid original material (full opacity) | Already constructed |
+
+Active elements use **rotating highlight colours** (orange → green → red → yellow → cyan)
+cycling per task, so MEP rough-in is visually distinct from structural steel. The glow
+uses `depthTest:false` (the same technique as clash detection) so pipes and ducts behind
+walls are visible through the structure.
+
+### Controls
+
+```
+[ ▶ Play ] [ ⏸ Pause ]   Speed: [1×] [2×] [4×] [8×]   Day 42 / 312   Superstructure: Beam (STR)
+```
+
+- **Drag on Gantt** — scrub the orange line across the timeline
+- **Play button** — auto-advance through all tasks at selected speed
+- **Day 0** — building fully restores (no glass, normal materials)
+- **Click a Gantt bar** — highlights just that task's elements in the viewer
+- **Copy URL** — share the exact chart view with anyone
+
+### CTFL Audit Gate
+
+Before animation starts, an 8-check audit validates the schedule quality:
+
+| Check | What |
+|-------|------|
+| COVERAGE | Every IFC class maps to a SEQUENCE_RULE (no defaults) |
+| PHASE_ORDER | No phase inversions per storey |
+| STOREY_ORDER | Bottom-up within each phase |
+| DURATION | All tasks 1–120 days |
+| OVERLAP | No same-trade + same-class overlap on same storey |
+| TOTAL | Project duration ≤ 3× serial sum |
+| LABELS | No truncated or undefined labels |
+| GUIDS | Every task resolves to ≥1 element GUID |
+
+Failed checks show a yellow warning banner. Console `§4D_AUDIT_*` tags show details.
+
+### Architecture
+
+```
+boq_charts.html                         index.html (viewer)
+┌──────────────────┐                    ┌──────────────────┐
+│ generateSchedule │                    │ ghostglass.js    │
+│ audit4DSchedule  │   BroadcastChannel │ setupGhostGlass  │
+│ GUID resolution  │──── bim_4d ──────►│ makeGlass/Active │
+│ scrubber + Play  │  4D_PLAY/SEEK/RESET│ makeBuilt/restore│
+│ Copy URL button  │                    │ material cache   │
+└──────────────────┘                    └──────────────────┘
+     rates.js                                main.js
+  SEQUENCE_RULES                         BroadcastChannel
+  LABOR_RATES                              listener +
+  PHASE_COLORS                             delegation
+```
+
+No server. No WebSocket. Pure `BroadcastChannel` between same-origin tabs.
+`ghostglass.js` is a pure renderer — no internal timer. The Gantt controls all pacing.
+
+### What This Replaces
+
+| Capability | Commercial tool | Cost/yr | Our approach |
+|-----------|----------------|---------|-------------|
+| 4D playback | Synchro Pro | $25K | Ghost glass animation |
+| Construction sim | Navisworks TimeLiner | $8K | Drag scrubber on Gantt |
+| Phase visualization | Custom Gantt tools | $5-15K | BroadcastChannel sync |
+| **Total** | | **$38-48K** | **Free, browser-native** |
+
+### Files
+
+| File | Role |
+|------|------|
+| `deploy/dev/ghostglass.js` | Glass-to-solid animation engine |
+| `deploy/dev/boq_charts.html` | Audit, GUID resolution, scrubber, Play/Pause |
+| `deploy/dev/main.js` | BroadcastChannel listener, ghostglass delegation |
+| `deploy/dev/rates.js` | SEQUENCE_RULES, LABOR_RATES, PHASE_COLORS (50+ IFC classes) |
+| `deploy/dev/tools.js` | Hover preserves 4D phase colours |
+| `deploy/dev/tests/specs/22-4d-audit.spec.js` | 8 Playwright tests for audit gate |
+
+---
+
 ## Next Steps
 
 1. **Browser nD engine** — port to JavaScript for [BIM OOTB](BIM_Designer_Browser.md) Phase 3.
