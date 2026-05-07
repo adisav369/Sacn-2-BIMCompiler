@@ -526,7 +526,23 @@ function setupGridOverlay(APP) {
       if (typeof GridContours !== 'undefined') GridContours.clear(A);
       GridViews.clearFloorClip(A);
       if (GridViews.activeView()) GridViews.unlockView(A);
-      if (gridGroup) { gridGroup.visible = false; }
+      // S250 §6: Dispose all canvas textures (bubbles + dim labels) to free GPU memory
+      if (gridGroup) {
+        var texCount = 0;
+        gridGroup.traverse(function(obj) {
+          if (obj.material && obj.material.map) {
+            obj.material.map.dispose();
+            texCount++;
+          }
+          if (obj.material) obj.material.dispose();
+          if (obj.geometry) obj.geometry.dispose();
+        });
+        A.scene.remove(gridGroup);
+        console.log('§GRID_TEARDOWN disposing ' + texCount + ' textures');
+        gridGroup = null;
+        gridData = null;
+        lineMeshes = {};
+      }
       if (gridPanel) { gridPanel.style.display = 'none'; }
       A.markDirty();
       log('§GRID_MODE state=exit');

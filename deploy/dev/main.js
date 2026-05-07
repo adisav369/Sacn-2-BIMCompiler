@@ -114,7 +114,9 @@ function initViewer() {
   if (APP.toggleNlp) window.toggleNlp = APP.toggleNlp;
   window.toggleVariance = function() { if (APP.toggleVariance) APP.toggleVariance(); };
   // 2D button: toggle grid overlay in same scene (no new tab)
+  window._isMobile = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
   window.open2DPlans = function() {
+    if (window._isMobile) { APP.status.textContent = '2D views are desktop-only'; console.log('§2D_GATE skip — mobile'); return; }
     if (typeof APP.toggleGridOverlay === 'function') {
       APP.toggleGridOverlay();
     } else {

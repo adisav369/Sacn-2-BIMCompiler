@@ -322,6 +322,57 @@ function setupImport(A) {
     console.log('[S220] §IMPORT_DELETE key=' + key);
   };
 
+  // ── S250 §8: Contribute building to shared folder ──
+  A.contributeBuilding = async function(key) {
+    var record = await getImport(key);
+    if (!record || !A.CONTRIBUTE_PAR) { console.log('§CONTRIBUTE skip — no record or PAR'); return; }
+    var meta = record.meta;
+    var filename = (meta.filename || meta.name).replace(/\.[^.]+$/, '') + '_extracted.db';
+    var blob = new Blob([record.data || record.extractedDb], { type: 'application/octet-stream' });
+    var url = A.CONTRIBUTE_PAR + filename;
+    var status = document.getElementById('import-status');
+    if (status) status.textContent = 'Uploading to shared folder...';
+    try {
+      var resp = await fetch(url, { method: 'PUT', body: blob });
+      if (resp.ok) {
+        if (status) status.textContent = 'Contributed: ' + filename;
+        console.log('§CONTRIBUTE ok file=' + filename);
+        var metaBlob = new Blob([JSON.stringify({
+          filename: filename,
+          elements: meta.elementCount,
+          disciplines: Object.keys(meta.disciplines || {}),
+          date: new Date().toISOString(),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        })], { type: 'application/json' });
+        await fetch(A.CONTRIBUTE_PAR + filename + '.meta.json', { method: 'PUT', body: metaBlob });
+        console.log('§CONTRIBUTE meta ok file=' + filename + '.meta.json');
+        // Update contributed/index.json
+        var indexUrl = A.CONTRIBUTE_PAR + 'index.json';
+        var existing = [];
+        try {
+          var idxResp = await fetch(indexUrl);
+          if (idxResp.ok) existing = await idxResp.json();
+        } catch(e) { console.log('§CONTRIBUTE index.json fetch skip — ' + e.message); }
+        existing.push({
+          filename: filename,
+          elements: meta.elementCount,
+          disciplines: Object.keys(meta.disciplines || {}),
+          date: new Date().toISOString(),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        });
+        var idxBlob = new Blob([JSON.stringify(existing)], { type: 'application/json' });
+        await fetch(indexUrl, { method: 'PUT', body: idxBlob });
+        console.log('§CONTRIBUTE index.json updated entries=' + existing.length);
+      } else {
+        if (status) status.textContent = 'Upload failed: ' + resp.status;
+        console.log('§CONTRIBUTE fail status=' + resp.status);
+      }
+    } catch(e) {
+      if (status) status.textContent = 'Upload error: ' + e.message;
+      console.log('§CONTRIBUTE error ' + e.message);
+    }
+  };
+
   // ── Render import cards (for landing page) ──
   A.renderImportCards = async function() {
     const container = document.getElementById('my-buildings-grid');
@@ -371,11 +422,13 @@ function setupImport(A) {
         '<div style="display:flex;gap:6px;margin-top:10px">' +
           '<button class="open-btn" style="flex:1" data-key="' + item.key + '">Open</button>' +
           '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(79,195,247,0.1);border-color:rgba(79,195,247,0.2);color:#4fc3f7;font-size:10px" data-ifc="' + item.key + '">IFC</button>' +
+          '<button class="open-btn" data-contribute="' + item.key + '" style="flex:0;padding:6px 10px;background:rgba(76,175,80,0.15);border-color:rgba(76,175,80,0.3);color:#4caf50;font-size:10px">&uarr; Share</button>' +
           '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + item.key + '">x</button>' +
         '</div>';
 
       card.querySelector('[data-key]').onclick = function() { A.openImported(this.dataset.key); };
       card.querySelector('[data-ifc]').onclick = function(e) { e.stopPropagation(); A.exportIFC(this.dataset.ifc); };
+      card.querySelector('[data-contribute]').onclick = function(e) { e.stopPropagation(); A.contributeBuilding(this.dataset.contribute); };
       card.querySelector('[data-del]').onclick = function(e) {
         e.stopPropagation();
         if (confirm('Delete ' + item.meta.name + '?')) A.deleteImported(this.dataset.del);

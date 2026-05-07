@@ -162,52 +162,17 @@ function setupPanels(A) {
       Object.entries(A.discCounts).slice(0, 6).map(([d, c]) => `${d}:${c.toLocaleString()}`).join(' ') + '</small>';
   };
 
-  // Swipe-to-dismiss (mobile)
-  (function() {
-    if (!('ontouchstart' in window)) return;
-    let startX = 0;
-    const panelIds = ['hud','search-box','storey-panel','disc-panel','info-panel'];
-    let panelsHidden = false;
-
-    function hideAll() {
-      panelIds.forEach(pid => {
-        const el = document.getElementById(pid);
-        if (el) el.classList.add('swipe-hidden');
-      });
-      // If measure was active and toolbox just got hidden, exit measure mode
-      if (window.APP && window.APP.measureActive) window.APP.toggleMeasure();
-      panelsHidden = true;
-      const s = document.getElementById('status');
-      if (s) s.textContent = '<> ' + (typeof _TRL!=='undefined'&&_TRL.ui_swipe_show||'Swipe to show panels');
-    }
-
-    function showAll() {
-      panelIds.forEach(pid => {
-        const el = document.getElementById(pid);
-        if (el) {
-          el.classList.remove('swipe-hidden');
-          // Also clear collapsed on panel bodies inside — prevents invisible-but-present state
-          var body = el.querySelector('.panel-body');
-          if (body) body.classList.remove('collapsed');
-        }
-      });
-      panelsHidden = false;
-      const s = document.getElementById('status');
-      if (s) s.textContent = '';
-    }
-
-    document.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, {passive:true});
-    document.addEventListener('touchend', e => {
-      const dx = e.changedTouches[0].clientX - startX;
-      if (Math.abs(dx) > 60) {
-        if (panelsHidden) showAll(); else hideAll();
-      }
-    }, {passive:true});
-
-    setTimeout(() => {
-      const s = document.getElementById('status');
-      if (s) s.textContent = '<> ' + (typeof _TRL!=='undefined'&&_TRL.ui_swipe_hide||'Swipe to hide panels');
-      setTimeout(() => { if (s && s.textContent.includes('Swipe')) s.textContent = ''; }, 4000);
-    }, 3000);
-  })();
+  // Panel toggle (S250 §5 — replaces swipe-to-dismiss)
+  var panelIds = ['hud','search-box','storey-panel','disc-panel','info-panel'];
+  var panelsHidden = false;
+  window.toggleAllPanels = function() {
+    panelsHidden = !panelsHidden;
+    panelIds.forEach(function(pid) {
+      var el = document.getElementById(pid);
+      if (el) el.classList.toggle('swipe-hidden', panelsHidden);
+    });
+    var btn = document.getElementById('panel-toggle-btn');
+    if (btn) btn.textContent = panelsHidden ? '+' : '−';
+    console.log('§PANEL_TOGGLE panelsHidden=' + panelsHidden);
+  };
 }

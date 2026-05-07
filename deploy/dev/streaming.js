@@ -473,7 +473,14 @@ function setupStreaming(A) {
     A._SQL = SQL; // Cache for reuse (diff DB, import) — avoids re-downloading WASM
 
     if (A.CITY_URL) {
-      await A.initCity(SQL);
+      // S250 §6: On mobile, defer city_index.db auto-load to save memory
+      if (A._isMobile) {
+        console.log('§CITY_DEFER mobile — skipped auto-load');
+        A._citySQL = SQL; // stash for manual trigger
+        A.status.textContent = 'City mode available — tap City button to load';
+      } else {
+        await A.initCity(SQL);
+      }
       return;
     }
 

@@ -21,6 +21,15 @@ function setupCity(A) {
   document.body.appendChild(clearBtn);
   }
 
+  // S250 §6: Manual trigger for deferred mobile city load
+  A.loadCityManual = async function() {
+    if (A.cityDb) return; // already loaded
+    var sql = A._citySQL || A._SQL;
+    if (!sql) { console.warn('§CITY_DEFER no SQL engine available'); return; }
+    console.log('§CITY_DEFER mobile — manual trigger, loading now');
+    await A.initCity(sql);
+  };
+
   A.initCity = async function(SQL) {
     A.citySQL = SQL;
     A.status.textContent = `Fetching city index (${A.CITY_URL})...`;

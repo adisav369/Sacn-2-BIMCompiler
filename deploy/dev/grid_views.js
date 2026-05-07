@@ -102,7 +102,15 @@ var GridViews = (function() {
     if (cam.isOrthographicCamera) {
       _resizeHandler = function() {
         A.renderer.setSize(window.innerWidth, window.innerHeight);
+        // §7 — Recompute ortho frustum with new viewport aspect ratio
+        var newAspect = window.innerWidth / window.innerHeight;
+        var curHalfH = cam.top; // current half-height (positive)
+        var curHalfW = curHalfH * newAspect;
+        cam.left = -curHalfW;
+        cam.right = curHalfW;
         cam.updateProjectionMatrix();
+        console.log('§GRID_VIEW resize aspect=' + newAspect.toFixed(3) +
+            ' halfW=' + curHalfW.toFixed(2) + ' halfH=' + curHalfH.toFixed(2));
       };
       window.addEventListener('resize', _resizeHandler);
     }
@@ -123,6 +131,24 @@ var GridViews = (function() {
     var dims = { W: bldW, D: bldD, H: bldH };
     var halfW = (dims[def.fw] / 2) * margin;
     var halfH = (dims[def.fh] / 2) * margin;
+
+    // §7 — Viewport aspect ratio correction to prevent bubble skewing
+    var viewportAspect = window.innerWidth / window.innerHeight;
+    var buildingAspect = halfW / halfH;
+    if (viewportAspect > buildingAspect) {
+      halfW = halfH * viewportAspect;
+    } else {
+      halfH = halfW / viewportAspect;
+    }
+
+    // §7 — Pre-render guard: abort if frustum aspect still mismatches viewport
+    var frustumAspect = halfW / halfH;
+    var vpAspect = window.innerWidth / window.innerHeight;
+    if (Math.abs(frustumAspect - vpAspect) > 0.01) {
+      console.log('§GRID_VIEW ABORT — frustum aspect ' + frustumAspect.toFixed(3) +
+          ' ≠ viewport ' + vpAspect.toFixed(3) + ' — would skew');
+      return null;
+    }
 
     var camPos = new THREE.Vector3(
       centre.x + def.dx * dist,
@@ -202,9 +228,12 @@ var GridViews = (function() {
     // Always clear previous clip first — non-negotiable
     clearFloorClip(A);
 
-    // Concern 1: Camera
+    // Concern 1: Camera — §7: null means aspect mismatch, do not enter 2D mode
     var cam = positionOrthoCamera(A, mode, env, centre);
-    if (!cam) return;
+    if (!cam) {
+      console.log('§GRID_VIEW lockView aborted — setupCamera returned null for mode=' + mode);
+      return;
+    }
     A.controls.target.copy(centre);
     swapCamera(A, cam);
     A.controls.enableRotate = false;

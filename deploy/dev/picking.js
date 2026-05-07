@@ -102,8 +102,14 @@ function setupPicking(A) {
       document.getElementById('walk-speed-btn').style.display = 'none';
     }
     // Long-press (500ms) → volume info card (mobile-friendly right-click)
+    // Only start on single-finger touch; cancel if pinch (2nd pointer)
     A._longPressFired = false;
-    if (A.measureActive) {
+    A._pointerCount = (A._pointerCount || 0) + 1;
+    if (A._pointerCount > 1 && A._longPressTimer) {
+      // Second finger down = pinch — cancel long-press
+      clearTimeout(A._longPressTimer);
+      A._longPressTimer = null;
+    } else if (A.measureActive && A._pointerCount === 1) {
       var ev = { clientX: e.clientX, clientY: e.clientY, preventDefault: function(){} };
       A._longPressTimer = setTimeout(function() {
         A._longPressTimer = null;
@@ -111,6 +117,12 @@ function setupPicking(A) {
         A.handleMeasureRightClick(ev);
       }, 500);
     }
+  });
+  A.canvas.addEventListener('pointerup', () => {
+    A._pointerCount = Math.max(0, (A._pointerCount || 1) - 1);
+  });
+  A.canvas.addEventListener('pointercancel', () => {
+    A._pointerCount = Math.max(0, (A._pointerCount || 1) - 1);
   });
   A.canvas.addEventListener('pointermove', (e) => {
     // Cancel long-press if finger/mouse moves
@@ -136,11 +148,23 @@ function setupPicking(A) {
     // Cancel long-press on release — suppress click if long-press already fired
     if (A._longPressTimer) { clearTimeout(A._longPressTimer); A._longPressTimer = null; }
     if (A._longPressFired) { A._longPressFired = false; return; }
-    if (A.measureActive && e.button === 0) { if (A.handleMeasureClick(e)) return; }
 
     const dx = e.clientX - A.pointerDownPos.x;
     const dy = e.clientY - A.pointerDownPos.y;
-    if (Math.sqrt(dx*dx + dy*dy) > 5) return;
+    if (Math.sqrt(dx*dx + dy*dy) > 5) return; // drag, not tap — skip all click logic
+
+    // Double-tap detection for mobile (dblclick doesn't fire on touch)
+    var now = Date.now();
+    if (A.measureActive && e.button === 0) {
+      if (A._lastMeasureTap && (now - A._lastMeasureTap) < 350) {
+        A._lastMeasureTap = 0;
+        if (A._measureClickTimer) { clearTimeout(A._measureClickTimer); A._measureClickTimer = null; }
+        A.handleMeasureDblClick(e);
+        return;
+      }
+      A._lastMeasureTap = now;
+      if (A.handleMeasureClick(e)) return;
+    }
     if (e.shiftKey || e.button !== 0) return;
 
     A.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -237,24 +261,12 @@ function setupPicking(A) {
       window._pickHighlight = null;
     }
 
-    // Highlight: use IFC-extracted bbox if stored, else compute from geometry
-    let hlSizeX, hlSizeY, hlSizeZ;
-    if (guid) {
-      try {
-        const bboxRow = A.dbQuery('SELECT bbox_x, bbox_y, bbox_z FROM element_transforms WHERE guid = ?', [guid]);
-        if (bboxRow.length && bboxRow[0][0] != null) {
-          // IFC bbox extracted at import — axis swap: IFC(x,y,z) → Three(x,z,y)
-          hlSizeX = bboxRow[0][0]; hlSizeY = bboxRow[0][2]; hlSizeZ = bboxRow[0][1];
-        }
-      } catch(e) { /* bbox columns may not exist in older DBs */ }
-    }
+    // Highlight: compute bbox from geometry + instance/world position
     hit.object.geometry.computeBoundingBox();
     const bb = hit.object.geometry.boundingBox;
     const localCenter = new THREE.Vector3(); bb.getCenter(localCenter);
-    if (!hlSizeX) {
-      const size = new THREE.Vector3(); bb.getSize(size);
-      hlSizeX = size.x; hlSizeY = size.y; hlSizeZ = size.z;
-    }
+    const size = new THREE.Vector3(); bb.getSize(size);
+    let hlSizeX = size.x, hlSizeY = size.y, hlSizeZ = size.z;
     const hlGeo = new THREE.BoxGeometry(
       Math.max(hlSizeX, 0.01), Math.max(hlSizeY, 0.01), Math.max(hlSizeZ, 0.01));
     const hlEdges = new THREE.EdgesGeometry(hlGeo);

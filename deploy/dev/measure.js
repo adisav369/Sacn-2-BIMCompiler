@@ -156,10 +156,15 @@ function setupMeasure(A) {
 
   // Eager start: kick off index+R-tree building as soon as DB is loaded
   // (streaming.js sets A.db, then streamTick processes meshes — we piggyback)
-  setTimeout(function _waitForDb() {
-    if (A.db) { A._ensureClashIndexes(); }
-    else { setTimeout(_waitForDb, 500); }
-  }, 1000);
+  // S250 §6: On mobile, defer R-tree build to first clash request (saves RAM + CPU on load)
+  if (_isMobile) {
+    console.log('§RTREE_DEFER mobile — deferred to first clash request');
+  } else {
+    setTimeout(function _waitForDb() {
+      if (A.db) { A._ensureClashIndexes(); }
+      else { setTimeout(_waitForDb, 500); }
+    }, 1000);
+  }
 
   // Build the shared WHERE clause parts (also ensures indexes)
   A._clashWhereParts = function(rules) {
@@ -297,101 +302,147 @@ function setupMeasure(A) {
 
   // ── R-tree accelerated clash pair query ──────────────────────────────────
   // S246b: Single SQL R-tree join — same pattern as _countClashesRtree but returns rows.
-  // Was: N separate R-tree queries (one per element of discA) → 4000+ SQL calls.
-  // Now: 1 SQL call regardless of element count.
+  // Hybrid: pre-load discB into JS map, then N small R-tree queries (one per discA element).
+  // Each R-tree query is O(log N) so total is O(A * log N). Proven fast in production.
   A._queryClashesPairRtree = function(storey, rules, discA, discB, offset, w) {
     var t0 = performance.now();
     var ignoreSet = {};
     rules.clash_rules.forEach(function(r) {
       (r.ignore_classes || []).forEach(function(c) { ignoreSet[c] = 1; });
     });
-    var storeyFilterA = storey ? " AND ma.storey = '" + storey.replace(/'/g, "''") + "'" : "";
-    var storeyFilterB = storey ? " AND mb.storey = '" + storey.replace(/'/g, "''") + "'" : "";
+    var storeyFilter = storey ? " AND m.storey = '" + storey.replace(/'/g, "''") + "'" : "";
     var ignoreFilter = Object.keys(ignoreSet).length ?
-      " AND ma.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" +
-      " AND mb.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" : "";
+      " AND m.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" : "";
 
-    var limit = A._CLASH_PAGE_SIZE;
-    var skip = offset || 0;
-    try {
-      var sql = "SELECT ma.guid, mb.guid, ma.ifc_class, mb.ifc_class," +
-        " '" + discA + "', '" + discB + "', ma.element_name, mb.element_name," +
-        " MIN((ta.center_x + ta.bbox_x/2) - (tb.center_x - tb.bbox_x/2)," +
-        "     (ta.center_y + ta.bbox_y/2) - (tb.center_y - tb.bbox_y/2)," +
-        "     (ta.center_z + ta.bbox_z/2) - (tb.center_z - tb.bbox_z/2)) AS overlap_m" +
-        " FROM element_transforms ta" +
-        " JOIN elements_meta ma ON ta.guid = ma.guid" +
-        " JOIN elements_rtree r ON r.maxX >= (ta.center_x - ta.bbox_x/2) AND r.minX <= (ta.center_x + ta.bbox_x/2)" +
-        "   AND r.maxY >= (ta.center_y - ta.bbox_y/2) AND r.minY <= (ta.center_y + ta.bbox_y/2)" +
-        "   AND r.maxZ >= (ta.center_z - ta.bbox_z/2) AND r.minZ <= (ta.center_z + ta.bbox_z/2)" +
-        " JOIN element_transforms tb ON tb.rowid = r.id AND tb.guid != ta.guid" +
-        " JOIN elements_meta mb ON tb.guid = mb.guid" +
-        " WHERE ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "'" +
-        storeyFilterA + storeyFilterB + ignoreFilter +
-        " AND ta.bbox_x IS NOT NULL AND tb.bbox_x IS NOT NULL" +
-        " AND (ta.center_x + ta.bbox_x/2) > (tb.center_x - tb.bbox_x/2)" +
-        " AND (ta.center_x - ta.bbox_x/2) < (tb.center_x + tb.bbox_x/2)" +
-        " AND (ta.center_y + ta.bbox_y/2) > (tb.center_y - tb.bbox_y/2)" +
-        " AND (ta.center_y - ta.bbox_y/2) < (tb.center_y + tb.bbox_y/2)" +
-        " AND (ta.center_z + ta.bbox_z/2) > (tb.center_z - tb.bbox_z/2)" +
-        " AND (ta.center_z - ta.bbox_z/2) < (tb.center_z + tb.bbox_z/2)" +
-        " AND ta.guid < tb.guid" +
-        " GROUP BY ma.guid, mb.guid" +
-        " ORDER BY overlap_m DESC" +
-        " LIMIT " + limit + " OFFSET " + skip;
-      var results = A.dbQuery(sql);
-      var ms = (performance.now() - t0).toFixed(0);
-      console.log('§CLASH_QUERY_RTREE ' + discA + ' vs ' + discB +
-        (storey ? ' storey=' + storey : ' whole') +
-        ' hits=' + results.length + ' sql=1 time=' + ms + 'ms');
-      return results;
-    } catch(e) {
-      console.warn('§CLASH_QUERY_RTREE_ERR ' + e.message);
-      return [];
+    // Pre-load ALL discB elements into a JS map keyed by rowid — ONE query
+    var bMap = {};
+    var rowsB = A.dbQuery(
+      "SELECT t.rowid, m.guid, m.ifc_class, m.element_name," +
+      " t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z" +
+      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
+      " WHERE m.discipline = '" + discB + "'" + storeyFilter + ignoreFilter +
+      " AND t.bbox_x IS NOT NULL"
+    );
+    for (var bi = 0; bi < rowsB.length; bi++) {
+      bMap[rowsB[bi][0]] = rowsB[bi]; // keyed by rowid
     }
+
+    // Get all elements of discA (with bbox)
+    var rowsA = A.dbQuery(
+      "SELECT t.rowid, m.guid, m.ifc_class, m.element_name, m.storey," +
+      " t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z" +
+      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
+      " WHERE m.discipline = '" + discA + "'" + storeyFilter + ignoreFilter +
+      " AND t.bbox_x IS NOT NULL"
+    );
+
+    var results = [];
+    var seen = {};
+    var skip = offset || 0;
+    var limit = A._CLASH_PAGE_SIZE;
+
+    for (var i = 0; i < rowsA.length && results.length < limit; i++) {
+      var ra = rowsA[i];
+      var minX = ra[5] - ra[8]/2, maxX = ra[5] + ra[8]/2;
+      var minY = ra[6] - ra[9]/2, maxY = ra[6] + ra[9]/2;
+      var minZ = ra[7] - ra[10]/2, maxZ = ra[7] + ra[10]/2;
+
+      // R-tree query: rowids overlapping this bbox
+      var rtSql = "SELECT r.id FROM elements_rtree r WHERE " +
+        "r.maxX >= " + minX + " AND r.minX <= " + maxX + " AND " +
+        "r.maxY >= " + minY + " AND r.minY <= " + maxY + " AND " +
+        "r.maxZ >= " + minZ + " AND r.minZ <= " + maxZ;
+      var candidates;
+      try { candidates = A.dbQuery(rtSql); } catch(e) { continue; }
+
+      // Filter via pre-loaded JS map — zero SQL
+      for (var ci = 0; ci < candidates.length && results.length < limit; ci++) {
+        var rb = bMap[candidates[ci][0]];
+        if (!rb) continue; // not discB, or ignored class
+        if (rb[1] === ra[1]) continue; // same element
+        var key = ra[1] < rb[1] ? ra[1] + '|' + rb[1] : rb[1] + '|' + ra[1];
+        if (seen[key]) continue;
+        seen[key] = 1;
+
+        // Verify actual bbox overlap (R-tree is approximate)
+        var bMinX = rb[4] - rb[7]/2, bMaxX = rb[4] + rb[7]/2;
+        var bMinY = rb[5] - rb[8]/2, bMaxY = rb[5] + rb[8]/2;
+        var bMinZ = rb[6] - rb[9]/2, bMaxZ = rb[6] + rb[9]/2;
+        if (maxX <= bMinX || minX >= bMaxX) continue;
+        if (maxY <= bMinY || minY >= bMaxY) continue;
+        if (maxZ <= bMinZ || minZ >= bMaxZ) continue;
+
+        var ox = Math.min(maxX, bMaxX) - Math.max(minX, bMinX);
+        var oy = Math.min(maxY, bMaxY) - Math.max(minY, bMinY);
+        var oz = Math.min(maxZ, bMaxZ) - Math.max(minZ, bMinZ);
+        var overlap = Math.min(ox, oy, oz);
+
+        if (skip > 0) { skip--; continue; }
+        results.push([ra[1], rb[1], ra[2], rb[2], discA, discB, ra[3], rb[3], overlap]);
+      }
+    }
+
+    var ms = (performance.now() - t0).toFixed(0);
+    console.log('§CLASH_QUERY_RTREE ' + discA + ' vs ' + discB +
+      (storey ? ' storey=' + storey : ' whole') +
+      ' A=' + rowsA.length + ' B=' + rowsB.length + ' hits=' + results.length +
+      ' sql=' + (rowsA.length + 2) + ' time=' + ms + 'ms');
+    return results;
   };
 
-  // S246perf: R-tree counter — single SQL join, no JS loop per element
+  // S246perf: Lean R-tree counter — hybrid: pre-load discB map, N R-tree queries, JS filter
   A._countClashesRtree = function(storey, rules, discA, discB) {
     var ignoreSet = {};
     rules.clash_rules.forEach(function(r) {
       (r.ignore_classes || []).forEach(function(c) { ignoreSet[c] = 1; });
     });
-    var storeyFilterA = storey ? " AND ma.storey = '" + storey.replace(/'/g, "''") + "'" : "";
-    var storeyFilterB = storey ? " AND mb.storey = '" + storey.replace(/'/g, "''") + "'" : "";
+    var storeyFilter = storey ? " AND m.storey = '" + storey.replace(/'/g, "''") + "'" : "";
     var ignoreFilter = Object.keys(ignoreSet).length ?
-      " AND ma.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" +
-      " AND mb.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" : "";
+      " AND m.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" : "";
 
-    // Single SQL: for each element A, count R-tree overlapping elements of discB
-    // Uses R-tree join internally — SQLite handles the iteration, not JS
-    try {
-      var sql = "SELECT COUNT(*) FROM (" +
-        "SELECT DISTINCT CASE WHEN ta.guid < tb.guid THEN ta.guid||'|'||tb.guid ELSE tb.guid||'|'||ta.guid END AS pair" +
-        " FROM element_transforms ta" +
-        " JOIN elements_meta ma ON ta.guid = ma.guid" +
-        " JOIN elements_rtree r ON r.maxX >= (ta.center_x - ta.bbox_x/2) AND r.minX <= (ta.center_x + ta.bbox_x/2)" +
-        "   AND r.maxY >= (ta.center_y - ta.bbox_y/2) AND r.minY <= (ta.center_y + ta.bbox_y/2)" +
-        "   AND r.maxZ >= (ta.center_z - ta.bbox_z/2) AND r.minZ <= (ta.center_z + ta.bbox_z/2)" +
-        " JOIN element_transforms tb ON tb.rowid = r.id AND tb.guid != ta.guid" +
-        " JOIN elements_meta mb ON tb.guid = mb.guid" +
-        " WHERE ma.discipline = '" + discA + "' AND mb.discipline = '" + discB + "'" +
-        storeyFilterA + storeyFilterB + ignoreFilter +
-        " AND ta.bbox_x IS NOT NULL AND tb.bbox_x IS NOT NULL" +
-        // Tight bbox confirmation (R-tree gives candidates, this confirms overlap)
-        " AND (ta.center_x + ta.bbox_x/2) > (tb.center_x - tb.bbox_x/2)" +
-        " AND (ta.center_x - ta.bbox_x/2) < (tb.center_x + tb.bbox_x/2)" +
-        " AND (ta.center_y + ta.bbox_y/2) > (tb.center_y - tb.bbox_y/2)" +
-        " AND (ta.center_y - ta.bbox_y/2) < (tb.center_y + tb.bbox_y/2)" +
-        " AND (ta.center_z + ta.bbox_z/2) > (tb.center_z - tb.bbox_z/2)" +
-        " AND (ta.center_z - ta.bbox_z/2) < (tb.center_z + tb.bbox_z/2)" +
-        ")";
-      var result = A.dbQuery(sql);
-      return result.length ? result[0][0] : 0;
-    } catch(e) {
-      console.warn('§CLASH_RTREE_COUNT_ERR ' + e.message);
-      return 0;
+    // Hybrid: pre-load discB into JS map, N R-tree queries, JS bbox verify — same as query path
+    var bMap = {};
+    A.dbQuery(
+      "SELECT t.rowid, t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z, m.guid" +
+      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
+      " WHERE m.discipline = '" + discB + "'" + storeyFilter + ignoreFilter + " AND t.bbox_x IS NOT NULL"
+    ).forEach(function(r) { bMap[r[0]] = r; });
+
+    var rowsA = A.dbQuery(
+      "SELECT t.rowid, m.guid, t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z" +
+      " FROM element_transforms t JOIN elements_meta m ON t.guid = m.guid" +
+      " WHERE m.discipline = '" + discA + "'" + storeyFilter + ignoreFilter + " AND t.bbox_x IS NOT NULL"
+    );
+
+    var count = 0;
+    var seen = {};
+    for (var i = 0; i < rowsA.length; i++) {
+      var ra = rowsA[i];
+      var minX = ra[2] - ra[5]/2, maxX = ra[2] + ra[5]/2;
+      var minY = ra[3] - ra[6]/2, maxY = ra[3] + ra[6]/2;
+      var minZ = ra[4] - ra[7]/2, maxZ = ra[4] + ra[7]/2;
+      var cands;
+      try {
+        cands = A.dbQuery("SELECT r.id FROM elements_rtree r WHERE " +
+          "r.maxX >= " + minX + " AND r.minX <= " + maxX + " AND " +
+          "r.maxY >= " + minY + " AND r.minY <= " + maxY + " AND " +
+          "r.maxZ >= " + minZ + " AND r.minZ <= " + maxZ);
+      } catch(e) { continue; }
+      for (var ci = 0; ci < cands.length; ci++) {
+        var rb = bMap[cands[ci][0]];
+        if (!rb || rb[7] === ra[1]) continue;
+        var key = ra[1] < rb[7] ? ra[1] + '|' + rb[7] : rb[7] + '|' + ra[1];
+        if (seen[key]) continue;
+        seen[key] = 1;
+        var bMinX = rb[1] - rb[4]/2, bMaxX = rb[1] + rb[4]/2;
+        var bMinY = rb[2] - rb[5]/2, bMaxY = rb[2] + rb[5]/2;
+        var bMinZ = rb[3] - rb[6]/2, bMaxZ = rb[3] + rb[6]/2;
+        if (maxX > bMinX && minX < bMaxX && maxY > bMinY && minY < bMaxY && maxZ > bMinZ && minZ < bMaxZ) {
+          count++;
+        }
+      }
     }
+    return count;
   };
 
   // Progressive async loader — queries remaining storeys one at a time with UI yields
@@ -921,6 +972,7 @@ function setupMeasure(A) {
         '<button id="share-copy" style="display:block;width:100%;margin:6px 0;padding:10px;background:#333;color:#fff;border:1px solid #555;border-radius:6px;cursor:pointer;font-size:13px">📋 Copy Image + Link (Ctrl+V to paste)</button>' +
         '<button id="share-wa" style="display:block;width:100%;margin:6px 0;padding:10px;background:#25d366;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">💬 WhatsApp</button>' +
         '<button id="share-email" style="display:block;width:100%;margin:6px 0;padding:10px;background:#1a73e8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">📧 Email</button>' +
+        '<button id="share-qr" style="display:block;width:100%;margin:6px 0;padding:10px;background:#555;color:#fff;border:1px solid #777;border-radius:6px;cursor:pointer;font-size:13px">QR Code</button>' +
         '<button id="share-close" style="display:block;width:100%;margin:10px 0 0;padding:8px;background:transparent;color:#888;border:1px solid #555;border-radius:6px;cursor:pointer;font-size:12px">Cancel</button>';
       document.body.appendChild(panel);
       var _dismiss = function() {
@@ -961,6 +1013,13 @@ function setupMeasure(A) {
       });
       panel.querySelector('#share-wa').addEventListener('click', function() { window.open(waUrl, '_blank'); _dismiss(); console.log('§CLASH_SNAG_WA'); });
       panel.querySelector('#share-email').addEventListener('click', function() { window.open(emailUrl, '_blank'); _dismiss(); console.log('§CLASH_SNAG_EMAIL'); });
+      panel.querySelector('#share-qr').addEventListener('click', function() {
+        panel.remove();
+        if (A.showQRShare) {
+          A.showQRShare(cs.deep_link, 'Clash: ' + cs.discipline_pair.replace('|', ' vs '));
+        }
+        console.log('§CLASH_SNAG_QR shown deepLink=' + (cs.deep_link || '').substring(0, 60));
+      });
       panel.querySelector('#share-close').addEventListener('click', _dismiss);
       console.log('§CLASH_SNAG_SHARE_PANEL shown (desktop fallback)');
       return; // Don't close preview yet — user picks from panel
@@ -1421,7 +1480,6 @@ function setupMeasure(A) {
     var discPairCounts = {};
     var discInvolvement = {}; // how many clashes each discipline is involved in
     var elementFreq = {}; // which elements appear most often in clashes
-    var rows = [];
     allClashes.forEach(function(c, i) {
       var overlap = (typeof c[8] === 'number') ? c[8] : 0;
       var sev = A._clashSeverity(overlap, rules);
@@ -1445,12 +1503,6 @@ function setupMeasure(A) {
       var nameB = (c[7] || '').replace('Ifc', '') || c[1];
       elementFreq[nameA] = (elementFreq[nameA] || 0) + 1;
       elementFreq[nameB] = (elementFreq[nameB] || 0) + 1;
-      rows.push({
-        n: i + 1, elA: (c[6] || '').replace('Ifc', ''), clsA: clsA, discA: c[4] || '',
-        elB: (c[7] || '').replace('Ifc', ''), clsB: clsB, discB: c[5] || '',
-        overlap: overlap.toFixed(3), sev: sev.label, status: status || 'New',
-        prio: sev.level === 'hard' ? 'HIGH' : sev.level === 'soft' ? 'MEDIUM' : 'LOW'
-      });
     });
 
     // Merge R-tree counts for all pairs (charts show full building, not just loaded pair)
@@ -1530,7 +1582,7 @@ function setupMeasure(A) {
       '.stat-card .lbl { font-size:11px; color:#888; }' +
       '</style></head><body>' +
       '<div class="toolbar">' +
-      '<button onclick="downloadCSV()">CSV</button>' +
+      '<button onclick="if(window.opener&&window.opener._bimApp&&window.opener._bimApp._exportCSVBackground){window.opener._bimApp._exportCSVBackground()}else{alert(\'Open from viewer to export CSV\')}">Download CSV</button>' +
       '</div>' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:16px">' +
       '<div style="flex:1"><h1>Clash Coordination Report — ' + pairLabel + '</h1>' +
@@ -1577,19 +1629,7 @@ function setupMeasure(A) {
     });
 
     html += '</tbody></table></div>' +
-      '<div class="chart-box full"><h2>Clash Details — Coordination Action Sheet</h2>' +
-      '<table id="detail-table"><thead><tr><th>#</th><th>Element A</th><th>Class</th><th>Disc</th><th>Element B</th><th>Class</th><th>Disc</th><th>Overlap</th><th>Severity</th><th>Status</th><th>Assigned To</th><th>Priority</th><th>Action Required</th><th>Target Date</th></tr></thead><tbody>';
-
-    rows.forEach(function(r) {
-      var rowColor = r.sev === 'Hard clash' ? '#ff4444' : r.sev === 'Soft clash' ? '#ff8c00' : '#4fc3f7';
-      var tip = r.elA + ' (' + r.clsA + ', ' + r.discA + ') overlaps ' + r.elB + ' (' + r.clsB + ', ' + r.discB + ') by ' + r.overlap + 'm. ' + r.sev + ' — ' + r.prio + ' priority.';
-      html += '<tr data-n="' + r.n + '" title="' + tip.replace(/"/g, '&quot;') + '"><td>' + r.n + '</td><td>' + r.elA + '</td><td>' + r.clsA + '</td><td>' + r.discA +
-        '</td><td>' + r.elB + '</td><td>' + r.clsB + '</td><td>' + r.discB +
-        '</td><td style="color:' + rowColor + '">' + r.overlap + 'm</td><td>' + r.sev + '</td><td>' + r.status +
-        '</td><td contenteditable="true"></td><td>' + r.prio + '</td><td contenteditable="true"></td><td contenteditable="true"></td></tr>';
-    });
-
-    html += '</tbody></table></div></div>' +
+      '</div>' +
       '<script>' +
       'var sevData=' + JSON.stringify(sevCounts) + ';' +
       'var statusData=' + JSON.stringify(sc) + ';' +
@@ -1614,25 +1654,137 @@ function setupMeasure(A) {
       'var topOff=' + JSON.stringify(topOffenders) + ';' +
       'var topOffC=' + JSON.stringify(topOffenderCounts) + ';' +
       'new Chart(document.getElementById("offenderChart"),{type:"bar",data:{labels:topOff,datasets:[{label:"Appears in N clashes",data:topOffC,backgroundColor:"#ff4444"}]},options:{indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#ccc"}},y:{ticks:{color:"#ccc",font:{size:10}}}}}});' +
-      'function downloadCSV(){' +
-      'var lines=["#,Element A,Class A,Disc A,Element B,Class B,Disc B,Overlap (m),Severity,Status,Assigned To,Priority,Action Required,Target Date"];' +
-      'document.querySelectorAll("#detail-table tbody tr").forEach(function(tr){var cells=tr.querySelectorAll("td");if(cells.length>=14){' +
-      'lines.push(Array.from(cells).map(function(td){return (td.textContent||"").replace(/,/g," ")}).join(","))}});' +
-      'var b=new Blob([lines.join("\\n")],{type:"text/csv"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="' + building.replace(/\s+/g, '_') + '_clashes_' + date + '.csv";a.click();}' +
       '<\/script></body></html>';
 
+    // Expose app reference so the report window's Download CSV button can call back
+    window._bimApp = A;
     var w = window.open('', '_blank');
     w.document.write(html);
     w.document.close();
     A._exportInProgress = false;
-    console.log('§CLASH_EXPORT html clashes=' + totalCount);
+    console.log('§CLASH_EXPORT html clashes=' + totalCount + ' (no detail table, CSV via background)');
     A.status.textContent = 'Clash report opened in new tab';
+  };
+
+  // ── Background CSV export — queries one discipline pair at a time ──
+  // Implementing S250 §3 — Background CSV: no DOM, yields between pairs
+  A._exportCSVBackground = function() {
+    var rules = A._currentClashRules;
+    if (!rules || !A.db) { A.status.textContent = 'No clash data — open matrix first'; return; }
+    if (A._csvExportInProgress) { A.status.textContent = 'CSV export already in progress...'; return; }
+    A._csvExportInProgress = true;
+
+    var building = A.activeBuilding || 'Building';
+    var date = new Date().toISOString().slice(0, 10);
+    var csvLines = ['#,Element A,Class A,Disc A,Element B,Class B,Disc B,Overlap (m),Severity,Status'];
+    var totalRows = 0;
+
+    // Build pair queue from clash rules — only pairs with envelope overlap
+    var envs = A._clashEnvelopes || {};
+    if (!Object.keys(envs).length) {
+      A.dbQuery("SELECT m.discipline, MIN(t.center_x-t.bbox_x/2), MAX(t.center_x+t.bbox_x/2)," +
+        " MIN(t.center_y-t.bbox_y/2), MAX(t.center_y+t.bbox_y/2)," +
+        " MIN(t.center_z-t.bbox_z/2), MAX(t.center_z+t.bbox_z/2)" +
+        " FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid" +
+        " WHERE m.discipline IS NOT NULL GROUP BY m.discipline")
+        .forEach(function(r) { envs[r[0]] = { minX:r[1], maxX:r[2], minY:r[3], maxY:r[4], minZ:r[5], maxZ:r[6] }; });
+      A._clashEnvelopes = envs;
+    }
+
+    var pairQueue = [];
+    var seen = {};
+    rules.clash_rules.forEach(function(r) {
+      var sortedKey = [r.source.discipline, r.target.discipline].sort().join('|');
+      if (seen[sortedKey]) return;
+      seen[sortedKey] = 1;
+      var eA = envs[r.source.discipline], eB = envs[r.target.discipline];
+      if (!eA || !eB || eA.minX >= eB.maxX || eA.maxX <= eB.minX ||
+          eA.minY >= eB.maxY || eA.maxY <= eB.minY ||
+          eA.minZ >= eB.maxZ || eA.maxZ <= eB.minZ) return;
+      pairQueue.push({ discA: r.source.discipline, discB: r.target.discipline });
+    });
+
+    var totalPairs = pairQueue.length;
+    var qi = 0;
+    var savedPageSize = A._CLASH_PAGE_SIZE;
+
+    function _nextPair() {
+      if (qi >= pairQueue.length) {
+        // Done — restore page size, build blob and auto-download
+        A._CLASH_PAGE_SIZE = savedPageSize;
+        var blob = new Blob([csvLines.join('\n')], { type: 'text/csv' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = building.replace(/\s+/g, '_') + '_clashes_' + date + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        A._csvExportInProgress = false;
+        A.status.textContent = 'CSV exported — ' + totalRows + ' clashes';
+        console.log('§CSV_EXPORT pairs=' + totalPairs + ' rows=' + totalRows);
+        return;
+      }
+
+      var p = pairQueue[qi++];
+      A.status.textContent = 'Exporting CSV\u2026 pair ' + qi + '/' + totalPairs;
+
+      // Query all clashes for this pair — use large page size to get everything
+      A._CLASH_PAGE_SIZE = 50000;
+      var w = A._clashWhereParts(rules);
+      var rows;
+      if (A._clashRtreeReady) {
+        rows = A._queryClashesPairRtree(null, rules, p.discA, p.discB, 0, w);
+      } else {
+        // Fallback: cross-join
+        var pairCond = "(ma.discipline = '" + p.discA + "' AND mb.discipline = '" + p.discB + "')" +
+          " OR (ma.discipline = '" + p.discB + "' AND mb.discipline = '" + p.discA + "')";
+        var sql = "SELECT a.guid, b.guid, ma.ifc_class, mb.ifc_class, ma.discipline, mb.discipline," +
+          " ma.element_name, mb.element_name," +
+          " MIN((a.center_x + a.bbox_x/2) - (b.center_x - b.bbox_x/2)," +
+          "     (a.center_y + a.bbox_y/2) - (b.center_y - b.bbox_y/2)," +
+          "     (a.center_z + a.bbox_z/2) - (b.center_z - b.bbox_z/2)) AS overlap_m" +
+          " FROM element_transforms a JOIN elements_meta ma ON a.guid = ma.guid" +
+          " JOIN element_transforms b ON a.guid < b.guid JOIN elements_meta mb ON b.guid = mb.guid" +
+          " WHERE (" + pairCond + ")" + w.ignoreClause + w.bboxJoin +
+          " LIMIT 50000";
+        rows = A.dbQuery(sql);
+      }
+
+      // Append rows to CSV lines (no DOM, pure string array)
+      rows.forEach(function(c) {
+        totalRows++;
+        var overlap = (typeof c[8] === 'number') ? c[8] : 0;
+        var sev = A._clashSeverity(overlap, rules);
+        var status = A._clashStatuses[A._clashPairKey(c[0], c[1])] || 'New';
+        var elA = ((c[6] || '').replace('Ifc', '') || c[0]).replace(/,/g, ' ');
+        var clsA = (c[2] || '?').replace('Ifc', '').replace('StandardCase', '').replace(/,/g, ' ');
+        var elB = ((c[7] || '').replace('Ifc', '') || c[1]).replace(/,/g, ' ');
+        var clsB = (c[3] || '?').replace('Ifc', '').replace('StandardCase', '').replace(/,/g, ' ');
+        csvLines.push(totalRows + ',' + elA + ',' + clsA + ',' + (c[4] || '') + ',' +
+          elB + ',' + clsB + ',' + (c[5] || '') + ',' + overlap.toFixed(3) + ',' +
+          sev.label + ',' + status);
+      });
+
+      // Yield to UI between pairs
+      setTimeout(_nextPair, 8);
+    }
+
+    if (totalPairs === 0) {
+      A._csvExportInProgress = false;
+      A.status.textContent = 'No clash pairs to export';
+      console.log('§CSV_EXPORT pairs=0 rows=0');
+      return;
+    }
+    setTimeout(_nextPair, 8);
   };
 
   // ── Clash Matrix — visual grid of discipline pair rules ──
   A._clashMatrixDiv = null;
 
   A._showClashMatrix = function(rules, anchorDiv) {
+    if (_isMobile) { console.log('§CLASH_MATRIX skip — mobile'); return; }
     // Already showing — do nothing
     if (A._clashMatrixDiv) return;
     // Full scene stays — S232 InstancedMesh batching keeps it light
@@ -1822,8 +1974,15 @@ function setupMeasure(A) {
     // Step 2: check each pair — envelopes don't overlap = guaranteed green, else orange (possible clash)
     var _qi = 0;
     var checked = {};
+    // Collect pairs that have envelope overlap — will count these async
+    var overlapPairs = [];
+
     function _bgCheck() {
-      if (_qi >= activePairs.length) return;
+      if (_qi >= activePairs.length) {
+        // All envelope checks done — start async count pass for orange pairs
+        if (overlapPairs.length && A._clashRtreeReady) setTimeout(_countPass, 50);
+        return;
+      }
       if (!A._clashMatrixDiv) return;
       var p = activePairs[_qi++];
       var sortedKey = [p.discA, p.discB].sort().join('|');
@@ -1846,9 +2005,31 @@ function setupMeasure(A) {
       var cell2 = matDiv.querySelector('[data-pair="' + p.discB + '|' + p.discA + '"]');
       if (cell1) cell1.innerHTML = sphere;
       if (cell2) cell2.innerHTML = sphere;
+      if (overlaps) overlapPairs.push(p);
       console.log('§CLASH_MATRIX_BG ' + p.discA + '|' + p.discB + ' = ' + (overlaps ? 'OVERLAP' : 'clear'));
       setTimeout(_bgCheck, 5);
     }
+
+    // Phase 2: async COUNT per overlapping pair — sizes dots small/mid/max
+    var _ci = 0;
+    function _countPass() {
+      if (_ci >= overlapPairs.length) return;
+      if (!A._clashMatrixDiv) return;
+      var p = overlapPairs[_ci++];
+      var n = A._countClashesRtree(null, rules, p.discA, p.discB);
+      // Dot size: small=8px (1-10), mid=14px (11-50), max=20px (51+)
+      var sz = n > 50 ? 20 : n > 10 ? 14 : 8;
+      var color = n > 50 ? '#ff0000' : n > 10 ? '#ff8c00' : '#ffcc00';
+      var sphere = '<span title="' + n + ' clashes" style="display:inline-block;width:' + sz + 'px;height:' + sz + 'px;border-radius:50%;' +
+        'background:radial-gradient(circle at 35% 35%,#fff,' + color + ' 60%,#111);vertical-align:middle"></span>';
+      var cell1 = matDiv.querySelector('[data-pair="' + p.discA + '|' + p.discB + '"]');
+      var cell2 = matDiv.querySelector('[data-pair="' + p.discB + '|' + p.discA + '"]');
+      if (cell1) cell1.innerHTML = sphere;
+      if (cell2) cell2.innerHTML = sphere;
+      console.log('§CLASH_MATRIX_COUNT ' + p.discA + '|' + p.discB + ' = ' + n + ' size=' + sz + 'px');
+      setTimeout(_countPass, 8);
+    }
+
     setTimeout(_bgCheck, 50);
 
     console.log('§CLASH_MATRIX shown discs=' + discs.join(',') + ' rtree=' + A._clashRtreeReady);
@@ -2249,7 +2430,11 @@ function setupMeasure(A) {
     console.log('§MEASURE_VOLUME ' + storeyLabel + ' vol=' + volume.toFixed(1) + 'm\u00B3 elements=' + totalFromDb + ' counts=' + JSON.stringify(counts));
 
     // Clash indicator — lazy LIMIT 1 per pair, async, stops at first hit
-    A._loadClashRules(function(rules) {
+    if (_isMobile) {
+      var clashEl2 = cardDiv.querySelector('#clash-count-line');
+      if (clashEl2) clashEl2.innerHTML = '<span style="color:#888;font-size:10px">Check Clash at Desktop..</span>';
+      console.log('§CLASH_INDICATOR skip — mobile');
+    } else A._loadClashRules(function(rules) {
       var clashEl = cardDiv.querySelector('#clash-count-line');
       if (!clashEl) return;
       A._currentClashRules = rules;

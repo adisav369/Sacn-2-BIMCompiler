@@ -114,16 +114,33 @@ async function loadAllLibs() {
   // sql.js is needed for DB; load it before starting viewer
   await loadLib(2);
 
-  // Critical path done — start viewer now, don't wait for SheetJS (4MB, non-critical)
+  // Critical path done — wait for main.js to define initViewer (may still be loading on mobile)
   clearInterval(_timerIv);
-  document.getElementById('load-overlay').style.display = 'none';
-  document.getElementById('canvas').style.display = 'block';
 
-  try {
-    initViewer();
-  } catch(e) {
-    document.getElementById('status').textContent = `Init error: ${e.message}`;
-    console.error('[S205] §INIT_VIEWER_ERROR', e);
+  function _startViewer() {
+    document.getElementById('load-overlay').style.display = 'none';
+    document.getElementById('canvas').style.display = 'block';
+    try {
+      initViewer();
+    } catch(e) {
+      document.getElementById('status').textContent = `Init error: ${e.message}`;
+      console.error('[S205] §INIT_VIEWER_ERROR', e);
+    }
+  }
+
+  if (typeof initViewer === 'function') {
+    _startViewer();
+  } else {
+    // main.js hasn't loaded yet — poll briefly (mobile: local WASM faster than script parse)
+    var _waitCount = 0;
+    var _waitIv = setInterval(function() {
+      if (typeof initViewer === 'function') { clearInterval(_waitIv); _startViewer(); }
+      else if (++_waitCount > 100) { // 5s max
+        clearInterval(_waitIv);
+        document.getElementById('status').textContent = 'Error: main.js failed to load';
+        console.error('§INIT_VIEWER_TIMEOUT initViewer not defined after 5s');
+      }
+    }, 50);
   }
 
   // SheetJS loads in background — excel.js handles typeof XLSX === 'undefined' gracefully

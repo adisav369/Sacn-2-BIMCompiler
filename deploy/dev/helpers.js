@@ -307,26 +307,154 @@ function setupHelpers(A) {
     }
   };
 
-  // ── Floating bug-report FAB — show on idle, hide on camera move ───────────
-  // Uses pointer/touch/wheel events on canvas — works regardless of controls init order.
-  var _bugFab = document.getElementById('bug-fab');
-  if (_bugFab) {
-    var _idleTimer = null;
-    var _showFab = function() { if (_bugFab) _bugFab.style.display = 'block'; };
-    var _hideFab = function() { if (_bugFab) _bugFab.style.display = 'none'; };
-    var _onMove = function() {
-      _hideFab();
-      if (_idleTimer) clearTimeout(_idleTimer);
-      _idleTimer = setTimeout(_showFab, 2000);
-    };
-    var cvs = document.querySelector('canvas');
-    if (cvs) {
-      cvs.addEventListener('pointerdown', _onMove);
-      cvs.addEventListener('wheel', _onMove);
-    }
-    // Show after initial 10s idle
-    setTimeout(_showFab, 10000);
-  }
+  // bug-fab replaced by toolbar ❓ button (S250 §4) — idle-timer removed
 
-  console.log('§HELPERS_READY collectMeshes+filterInstancedMesh+dbQuery+reportBug+bugFab');
+  // ── §11 QR Code Sharing ──────────────────────────────────────────────────
+  // Implementing S250 §11 — QR Code Sharing
+
+  // QR generation (requires qrcode.min.js)
+  A.generateQR = function(url, size) {
+    if (typeof qrcode !== 'function') { console.log('§QR_GEN no qrcode lib'); return null; }
+    var qr = qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+    var canvas = document.createElement('canvas');
+    var cellSize = Math.floor(size / qr.getModuleCount());
+    var totalSize = cellSize * qr.getModuleCount();
+    canvas.width = totalSize;
+    canvas.height = totalSize;
+    var ctx = canvas.getContext('2d');
+    for (var r = 0; r < qr.getModuleCount(); r++) {
+      for (var c = 0; c < qr.getModuleCount(); c++) {
+        ctx.fillStyle = qr.isDark(r, c) ? '#000000' : '#ffffff';
+        ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+      }
+    }
+    console.log('§QR_GEN size=' + totalSize + ' url=' + url.substring(0, 60));
+    return canvas;
+  };
+
+  A.addQRBorder = function(canvas, borderColor) {
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width, h = canvas.height;
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(2, 2, w - 4, h - 4);
+  };
+
+  A.showQRShare = function(url, label) {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;' +
+      'background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;' +
+      'justify-content:center;flex-direction:column;cursor:pointer';
+    var canvas = A.generateQR(url, 280);
+    if (!canvas) return;
+    canvas.style.cssText = 'border:12px solid white;border-radius:8px;cursor:pointer';
+    var link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.appendChild(canvas);
+    overlay.appendChild(link);
+    var lbl = document.createElement('div');
+    lbl.style.cssText = 'color:white;margin-top:12px;font-size:14px;text-align:center';
+    lbl.textContent = (label || 'Scan to share') + ' \u00B7 Tap to open';
+    overlay.appendChild(lbl);
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
+    console.log('§QR_SHARE shown label=' + (label || 'none'));
+  };
+
+  A.printQRSheet = function(spots) {
+    var html = '<html><head><style>' +
+      'body{font-family:sans-serif;margin:20px}' +
+      '.card{display:inline-block;width:180px;border:1px solid #ccc;' +
+      'padding:12px;margin:8px;text-align:center;page-break-inside:avoid}' +
+      '.label{font-weight:bold;font-size:12px}' +
+      '.meta{font-size:9px;color:#666;margin-top:4px}' +
+      '</style></head><body>';
+    spots.forEach(function(s) {
+      html += '<div class="card">' +
+        '<div class="label">' + (s.label || '') + '</div>' +
+        '<div class="meta">' + (s.building || '') + ' \u00B7 ' + (s.date || '') + '</div></div>';
+    });
+    html += '</body></html>';
+    var w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); }
+    console.log('§QR_PRINT spots=' + spots.length);
+  };
+
+  // ── Issue Snags DB table + 3D rendering ─────────────────────────────────
+  A._initSnagTable = function() {
+    if (!A.db) return;
+    A.db.run('CREATE TABLE IF NOT EXISTS issue_snags (' +
+      'id INTEGER PRIMARY KEY AUTOINCREMENT,' +
+      'guid TEXT,' +
+      'ifc_x REAL, ifc_y REAL, ifc_z REAL,' +
+      'cam_x REAL, cam_y REAL, cam_z REAL,' +
+      'tgt_x REAL, tgt_y REAL, tgt_z REAL,' +
+      'label TEXT,' +
+      "status TEXT DEFAULT 'open'," +
+      'deep_link TEXT,' +
+      'qr_png BLOB,' +
+      "created_at TEXT DEFAULT (datetime('now'))," +
+      'clash_pair TEXT)');
+    console.log('§SNAG_TABLE initialized');
+  };
+
+  A._snagGroup = null;
+
+  A._renderSnagStamps = function() {
+    if (!A.db || typeof THREE === 'undefined') return;
+    if (!A._snagGroup) {
+      A._snagGroup = new THREE.Group();
+      A._snagGroup.name = 'snagStamps';
+      if (A.scene) A.scene.add(A._snagGroup);
+    }
+    // Clear existing
+    while (A._snagGroup.children.length) {
+      var c = A._snagGroup.children[0];
+      if (c.material && c.material.map) c.material.map.dispose();
+      if (c.material) c.material.dispose();
+      A._snagGroup.remove(c);
+    }
+    var rows = A.dbQuery('SELECT id, ifc_x, ifc_y, ifc_z, label, status, deep_link FROM issue_snags');
+    if (!rows || !rows.length) return;
+    rows.forEach(function(r) {
+      var pos = A.ifc2three(r[1], r[2], r[3]);
+      var canvas = A.generateQR(r[6], 128);
+      if (!canvas) return;
+      var borderColor = r[5] === 'resolved' ? '#4caf50' : r[5] === 'reviewed' ? '#ffeb3b' : '#f44336';
+      A.addQRBorder(canvas, borderColor);
+      var texture = new THREE.CanvasTexture(canvas);
+      var mat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+      var sprite = new THREE.Sprite(mat);
+      sprite.position.set(pos.x, pos.y, pos.z);
+      sprite.scale.set(0.5, 0.5, 1);
+      sprite.renderOrder = 1002;
+      sprite.userData = { snagId: r[0], deepLink: r[6], label: r[4] };
+      A._snagGroup.add(sprite);
+    });
+    console.log('§SNAG_STAMPS rendered count=' + rows.length);
+  };
+
+  A.createSnag = function(opts) {
+    if (!A.db) return;
+    var cam = A.camera ? A.camera.position : {x:0,y:0,z:0};
+    var tgt = A.controls ? A.controls.target : {x:0,y:0,z:0};
+    var baseUrl = window.location.href.split('#')[0];
+    var deepLink = baseUrl + '#issue=new&cam=' + cam.x.toFixed(2) + ',' + cam.y.toFixed(2) + ',' + cam.z.toFixed(2) +
+      '&tgt=' + tgt.x.toFixed(2) + ',' + tgt.y.toFixed(2) + ',' + tgt.z.toFixed(2);
+    if (opts.guid) deepLink += '&guid=' + opts.guid;
+
+    A.db.run('INSERT INTO issue_snags (guid, ifc_x, ifc_y, ifc_z, cam_x, cam_y, cam_z, tgt_x, tgt_y, tgt_z, label, deep_link, clash_pair) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [opts.guid || null, opts.ifc_x || 0, opts.ifc_y || 0, opts.ifc_z || 0,
+       cam.x, cam.y, cam.z, tgt.x, tgt.y, tgt.z,
+       opts.label || '', deepLink, opts.clashPair || null]);
+
+    A._renderSnagStamps();
+    A.showQRShare(deepLink, opts.label);
+    console.log('§SNAG_CREATE label=' + (opts.label || 'none') + ' guid=' + (opts.guid || 'none'));
+  };
+
+  console.log('§HELPERS_READY collectMeshes+filterInstancedMesh+dbQuery+reportBug+QR+snags');
 }
