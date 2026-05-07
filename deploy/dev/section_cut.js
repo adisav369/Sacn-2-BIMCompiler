@@ -343,12 +343,27 @@ function lookupGeometry(db, libDb, geometryHash) {
     for (var di = 0; di < dbs.length; di++) {
         for (var ti = 0; ti < tables.length; ti++) {
             if (!hasTable(dbs[di], tables[ti])) continue;
+            // Try with vertex_count/face_count first (full schema)
             var sql = "SELECT vertices, faces, vertex_count, face_count FROM " +
                       tables[ti] + " WHERE geometry_hash = '" + escaped + "' LIMIT 1";
             try {
                 var res = dbs[di].exec(sql);
                 if (res.length > 0 && res[0].values.length > 0) return res[0].values[0];
-            } catch (e) { /* table might not exist */ }
+            } catch (e) {
+                // Fall back to BLOBs only — infer counts from byte lengths
+                try {
+                    var sql2 = "SELECT vertices, faces FROM " +
+                               tables[ti] + " WHERE geometry_hash = '" + escaped + "' LIMIT 1";
+                    var res2 = dbs[di].exec(sql2);
+                    if (res2.length > 0 && res2[0].values.length > 0) {
+                        var row = res2[0].values[0];
+                        var vBlob = row[0], fBlob = row[1];
+                        var vCount = vBlob ? Math.floor(vBlob.byteLength / 12) : 0;  // 3 floats × 4 bytes
+                        var fCount = fBlob ? Math.floor(fBlob.byteLength / 12) : 0;  // 3 ints × 4 bytes
+                        return [vBlob, fBlob, vCount, fCount];
+                    }
+                } catch (e2) { /* genuinely missing */ }
+            }
         }
     }
     return null;

@@ -148,13 +148,19 @@ var DoorArcs = (function() {
    * @param {Array} wallElements - section cut results filtered to IfcWall/IfcWallStandardCase
    * @returns {Array} [{ guid, hinge, free, radius, points }]
    */
+  /** Extract raw point array from contour (handles both {points} objects and raw arrays) */
+  function contourPoints(c) {
+    return c && c.points ? c.points : c;
+  }
+
   function generateArcs(doorElements, wallElements) {
-    // Collect all wall contour polylines
+    // Collect all wall contour polylines (unwrap {points, isOuter} if needed)
     var wallContours = [];
     for (var w = 0; w < wallElements.length; w++) {
       var wContours = wallElements[w].contours || [];
       for (var wc = 0; wc < wContours.length; wc++) {
-        wallContours.push(wContours[wc]);
+        var pts = contourPoints(wContours[wc]);
+        if (pts && pts.length >= 2) wallContours.push(pts);
       }
     }
 
@@ -163,7 +169,7 @@ var DoorArcs = (function() {
       var door = doorElements[d];
       var dContours = door.contours || [];
       for (var dc = 0; dc < dContours.length; dc++) {
-        var hingeResult = findHinge(dContours[dc], wallContours);
+        var hingeResult = findHinge(contourPoints(dContours[dc]), wallContours);
         if (!hingeResult) continue;
 
         // Determine swing direction from wall orientation
