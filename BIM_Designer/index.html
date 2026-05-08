@@ -326,7 +326,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../BIM_Designer_Browser/" class="md-tabs__link">
+        <a href="../BIM_Modeller_OOTB/" class="md-tabs__link">
           
   
   
@@ -1213,6 +1213,8 @@
       
         
       
+        
+      
     
     
     
@@ -1260,6 +1262,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Modeller_OOTB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Browser as Modeller
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -6577,6 +6607,10 @@
 <blockquote>
 <p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
+<div class="admonition warning">
+<p class="admonition-title">Superseded</p>
+<p>This document describes a server-assisted GUI architecture that assumed a Java backend. The browser-native modelling approach has since proven this model unnecessary. <strong>See <a href="../BIM_Modeller_OOTB/">BIM Modeller OOTB</a></strong> for the current theoretical framework — the kernel-op log, coordinate unification, and constraint-as-query patterns that replace the server dependency described here. This document is retained as historical context for the compiler's GUI design intent.</p>
+</div>
 <div class="bim-banner">
 <p><b>The GUI is a parameter chooser that triggers compilation.</b> Every concept the Designer needs already exists — tack convention, BOM cascade, verbs, EntityType governance.</p>
 </div>
