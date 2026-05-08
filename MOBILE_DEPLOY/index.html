@@ -1864,10 +1864,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#phase-e-ar-overlay-future" class="md-nav__link">
+  <a href="#phase-e-interactive-modelling-kernel_ops-in-progress-2d_029" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase E: AR Overlay (FUTURE)
+        Phase E: Interactive Modelling — kernel_ops (IN PROGRESS — 2D_029)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-f-ar-overlay-future" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase F: AR Overlay (FUTURE)
       
     </span>
   </a>
@@ -4169,10 +4180,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#phase-e-ar-overlay-future" class="md-nav__link">
+  <a href="#phase-e-interactive-modelling-kernel_ops-in-progress-2d_029" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase E: AR Overlay (FUTURE)
+        Phase E: Interactive Modelling — kernel_ops (IN PROGRESS — 2D_029)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-f-ar-overlay-future" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase F: AR Overlay (FUTURE)
       
     </span>
   </a>
@@ -4272,9 +4294,10 @@
 <div class="bim-banner">
 <p><b>BIM in your pocket.</b> One HTML viewer. Two SQLite DBs per building. Works on desktop and mobile — same URL, same code. No server, no install, no account.</p>
 </div>
-<p><strong>Version:</strong> 0.2 (2026-04-27)
+<p><strong>Version:</strong> 0.3 (2026-05-09)
 <strong>Status:</strong> LIVE — 37 buildings streaming from OCI Object Storage
-<strong>Depends on:</strong> <code>deploy/dev/index.html</code> + 18 JS modules, per-building DBs</p>
+<strong>Depends on:</strong> <code>deploy/dev/index.html</code> + 30+ JS modules, per-building DBs
+<strong>New:</strong> <a href="../BIM_2D_Guide/">2D Guide</a> | <a href="../BIM_Modeller_OOTB/#the-modelling-inversion">kernel_ops architecture</a> | <a href="../2D_LAYOUT/">2D Layout</a></p>
 <hr />
 <h2 id="1-try-it-now-zero-install">1. Try It Now — Zero Install<a class="headerlink" href="#1-try-it-now-zero-install" title="Permanent link">&para;</a></h2>
 <p>Open any link below in your browser (desktop or phone):</p>
@@ -4341,8 +4364,8 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 <tbody>
 <tr>
 <td><code>deploy/dev/</code></td>
-<td>HTML viewer + 18 JS modules</td>
-<td>~200 KB</td>
+<td>HTML viewer + 30+ JS modules</td>
+<td>~400 KB</td>
 </tr>
 <tr>
 <td><code>deploy/buildings/</code></td>
@@ -4353,6 +4376,16 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 <td><code>deploy/dev/boq_charts.html</code></td>
 <td>4D/5D analytics dashboard</td>
 <td>~50 KB</td>
+</tr>
+<tr>
+<td><code>deploy/dev/mep_report.html</code></td>
+<td>MEP quantity takeoff report</td>
+<td>~30 KB</td>
+</tr>
+<tr>
+<td><code>deploy/dev/clash_report.html</code></td>
+<td>Clash analysis matrix page</td>
+<td>~40 KB</td>
 </tr>
 </tbody>
 </table>
@@ -4617,6 +4650,62 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 <td><strong>issues</strong></td>
 <td><code>17-find-navigate</code></td>
 <td>Search elements, waypoint navigation. Dev only — needs <code>navigate.js</code></td>
+</tr>
+<tr>
+<td><strong>4D Gantt → Scene</strong></td>
+<td>OK</td>
+<td>OK</td>
+<td>—</td>
+<td>BroadcastChannel sync: Gantt chart phases animate ghostglass overlays on 3D model. Dev only</td>
+</tr>
+<tr>
+<td><strong>Clash Analysis Matrix</strong></td>
+<td>OK</td>
+<td>OK</td>
+<td>—</td>
+<td>Rule-driven clash detection (R-tree spatial + class rules), matrix panel, deep-link to element pairs. Dev only</td>
+</tr>
+<tr>
+<td><strong>MEP QTO Report</strong></td>
+<td>OK</td>
+<td>OK</td>
+<td><code>25-mep-report</code></td>
+<td>MEP-specific quantity takeoff page — discipline counts, cable/pipe runs. Dev only</td>
+</tr>
+<tr>
+<td><strong>Grid Overlay + 2D Plans</strong></td>
+<td>OK</td>
+<td>OK</td>
+<td><code>28-storey-band</code>, <code>29-3d-grid-kernel</code></td>
+<td>G key toggle, GF/L1 floor plans, door arcs, dim chains, scissors. Dev only</td>
+</tr>
+<tr>
+<td><strong>kernel_ops Log</strong></td>
+<td>OK</td>
+<td>OK</td>
+<td><code>29-3d-grid-kernel</code></td>
+<td>Transactional operation log — grid drag persists across reload, undo/redo, crash recovery. Dev only</td>
+</tr>
+<tr>
+<td><strong>Cost Panel (Live BOQ)</strong></td>
+<td>OK</td>
+<td>OK</td>
+<td><code>29-3d-grid-kernel</code></td>
+<td>Spatial BOQ query scoped to grid positions, updates on drag. Dev only</td>
+</tr>
+<tr>
+<td><strong>3D Grid Planes</strong></td>
+<td>OK</td>
+<td>OK</td>
+<td><code>29-3d-grid-kernel</code></td>
+<td>Semi-transparent axis-coloured planes during grid drag. Dev only</td>
+</tr>
+<tr>
+<td><strong>Opening Labels</strong></td>
+<td>OK</td>
+<td>OK</td>
+<td><code>29-3d-grid-kernel</code></td>
+<td>Door/window width + type tag sprites on floor plans. Dev only</td>
 </tr>
 </tbody>
 </table>
@@ -5180,30 +5269,43 @@ oci<span class="w"> </span>os<span class="w"> </span>bucket<span class="w"> </sp
 </tr>
 </tbody>
 </table>
-<h3 id="phase-e-ar-overlay-future">Phase E: AR Overlay (FUTURE)<a class="headerlink" href="#phase-e-ar-overlay-future" title="Permanent link">&para;</a></h3>
+<h3 id="phase-e-interactive-modelling-kernel_ops-in-progress-2d_029">Phase E: Interactive Modelling — kernel_ops (IN PROGRESS — 2D_029)<a class="headerlink" href="#phase-e-interactive-modelling-kernel_ops-in-progress-2d_029" title="Permanent link">&para;</a></h3>
+<p>First transactional write path for the browser BIM modeller. See <a href="../BIM_Modeller_OOTB/">BIM_Modeller_OOTB</a> for theory, <a href="../BIM_2D_Guide/">2D Guide</a> for user guide.</p>
+<ul>
+<li>[x] <code>kernel_ops</code> table — transactional log, every operation is a committed row</li>
+<li>[x] Grid drag → <code>commitOp('GRID_MOVE')</code> — persists across reload, no save button</li>
+<li>[x] Undo/redo (Ctrl+Z / Ctrl+Y) — soft delete with <code>undone</code> flag</li>
+<li>[x] Cost panel — live spatial BOQ on grid drag</li>
+<li>[x] 3D grid planes — semi-transparent axis-coloured planes during drag</li>
+<li>[x] Opening callout labels — width + type tag on doors/windows</li>
+<li>[x] G key shortcut — toggles grid overlay</li>
+<li>[x] 20 wiring tests + audit pass</li>
+<li>[ ] <strong>P1: Grid alignment</strong> — snap-to-wall post-processing for complex buildings</li>
+<li>[ ] <strong>P2: Saved section restore</strong> — click saved section in panel → restore view</li>
+<li>[ ] <strong>P3: 2D convention parser</strong> — arcs, line weights, noise filter for all section views</li>
+<li>[ ] <strong>P4: Drag-as-variant</strong> — save dragged grid as new building fork (the killer feature)</li>
+<li>[ ] <strong>P5: Proof 2</strong> — reparametrizable wall height (Extrude op, Manifold WASM Boolean)</li>
+</ul>
+<h3 id="phase-f-ar-overlay-future">Phase F: AR Overlay (FUTURE)<a class="headerlink" href="#phase-f-ar-overlay-future" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
 <th>Step</th>
 <th>Feature</th>
-<th>Effort</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>10</td>
 <td>WebXR session with camera feed</td>
-<td>4 hours</td>
 </tr>
 <tr>
 <td>11</td>
 <td>GPS + compass alignment of Three.js scene over real building</td>
-<td>8 hours</td>
 </tr>
 <tr>
 <td>12</td>
 <td>Tap-through-camera element picking</td>
-<td>4 hours</td>
 </tr>
 </tbody>
 </table>
@@ -5355,6 +5457,86 @@ oci<span class="w"> </span>os<span class="w"> </span>bucket<span class="w"> </sp
 <td><code>ifc_export_worker.js</code></td>
 <td>DB → IFC STEP text builder</td>
 <td>S229b</td>
+</tr>
+<tr>
+<td><code>kernel_ops.js</code></td>
+<td>Transactional op log — commitOp/undoOp/redoOp/replayOps</td>
+<td>2D_029</td>
+</tr>
+<tr>
+<td><code>cost_panel.js</code></td>
+<td>Live BOQ panel scoped to grid positions</td>
+<td>2D_029</td>
+</tr>
+<tr>
+<td><code>grid_overlay.js</code></td>
+<td>Grid overlay + 3D planes + storey band visibility</td>
+<td>2D_022–029</td>
+</tr>
+<tr>
+<td><code>grid_drag.js</code></td>
+<td>Grid line drag editing + cascade + kernel_ops commit</td>
+<td>2D_024–029</td>
+</tr>
+<tr>
+<td><code>grid_door_arcs.js</code></td>
+<td>Door arcs, window dashes, stair symbols, opening labels</td>
+<td>2D_023–029</td>
+</tr>
+<tr>
+<td><code>grid_dims.js</code></td>
+<td>Column/wall cluster detection, opportunity-vote algorithm</td>
+<td>2D_022–028</td>
+</tr>
+<tr>
+<td><code>grid_scissors.js</code></td>
+<td>Scissors-driven adaptive grids at cut plane</td>
+<td>2D_025</td>
+</tr>
+<tr>
+<td><code>section_cut.js</code></td>
+<td>Triangle mesh slicer — 2D contours from 3D geometry</td>
+<td>2D_023</td>
+</tr>
+<tr>
+<td><code>elevation.js</code></td>
+<td>Elevation edge projection + level markers</td>
+<td>2D_027</td>
+</tr>
+<tr>
+<td><code>grid_contours.js</code></td>
+<td>Contour line renderer (wall/column/door styles)</td>
+<td>2D_023</td>
+</tr>
+<tr>
+<td><code>grid_dim_chains.js</code></td>
+<td>Dimension chain annotation sprites</td>
+<td>2D_025</td>
+</tr>
+<tr>
+<td><code>print_sheet.js</code></td>
+<td>A3 print preview + title block + corporate.json</td>
+<td>2D_025</td>
+</tr>
+<tr>
+<td><code>clash_report.js</code></td>
+<td>Clash detection matrix panel — rule-driven, R-tree spatial</td>
+<td>S245</td>
+</tr>
+<tr>
+<td><code>export_4d.js</code></td>
+<td>4D Gantt export + BroadcastChannel scene sync</td>
+<td>S240</td>
+</tr>
+<tr>
+<td><code>ghostglass.js</code></td>
+<td>Ghost glass overlays for 4D phase animation</td>
+<td>S240b</td>
+</tr>
+<tr>
+<td><code>mep_qto_populate.js</code></td>
+<td>MEP quantity takeoff populator</td>
+<td>S248</td>
 </tr>
 </tbody>
 </table>
