@@ -71,16 +71,6 @@ function initViewer() {
   };
   if (typeof GridAssembler !== 'undefined') GridAssembler.init(APP);
   else if (typeof setupGridOverlay === 'function') setupGridOverlay(APP);
-  // Fallback: GridAssembler.init() returns false when it can't find setupGridOverlay
-  // on window (it's a plain function, not window-attached). Call it directly.
-  if (typeof APP.toggleGridOverlay !== 'function' && typeof setupGridOverlay === 'function') {
-    console.log('§INIT_FALLBACK GridAssembler.init did not attach toggleGridOverlay — calling setupGridOverlay directly');
-    setupGridOverlay(APP);
-  }
-  // §INIT_DIAG — log final state
-  console.log('§INIT_DIAG GridAssembler=' + (typeof GridAssembler !== 'undefined') +
-    ' setupGridOverlay=' + (typeof setupGridOverlay === 'function') +
-    ' toggleGridOverlay=' + (typeof APP.toggleGridOverlay === 'function'));
   if (typeof setupImport === 'function') setupImport(APP);
   if (typeof setupDiff === 'function') setupDiff(APP);
 
@@ -127,10 +117,10 @@ function initViewer() {
   // 2D button: toggle grid overlay in same scene (no new tab)
   window._isMobile = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
   window.open2DPlans = function() {
-    if (window._isMobile) { APP.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_2d_desktop_only||'2D views are desktop-only'; console.log('§2D_GATE skip — mobile'); return; }
+    if (window._isMobile) { APP.status.textContent = '2D views are desktop-only'; console.log('§2D_GATE skip — mobile'); return; }
     // Block if Measure is active
     if (APP.measureActive) {
-      APP.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_close_measure||'Close Measure first';
+      APP.status.textContent = 'Close Measure first';
       return;
     }
     if (typeof APP.toggleGridOverlay === 'function') {
@@ -525,12 +515,12 @@ function initViewer() {
     if (online) {
       div.style.background = 'rgba(39,174,96,0.92)';
       div.style.color = '#fff';
-      div.textContent = typeof _TRL!=='undefined'&&_TRL.ui_back_online||'Back online';
+      div.textContent = 'Back online';
       console.log('[S243] §NET_STATUS online');
     } else {
       div.style.background = 'rgba(230,126,34,0.92)';
       div.style.color = '#fff';
-      div.textContent = typeof _TRL!=='undefined'&&_TRL.ui_offline_mode||'Offline mode \u2014 cached buildings still available';
+      div.textContent = 'Offline mode — cached buildings still available';
       console.log('[S243] §NET_STATUS offline');
     }
     document.body.appendChild(div);
