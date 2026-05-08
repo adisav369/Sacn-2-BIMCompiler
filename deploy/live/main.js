@@ -8,22 +8,12 @@
 function initViewer() {
   const APP = window.APP = {};
 
-  // Initialize modules in order
-  setupConfig(APP);
-  setupScene(APP);
-  setupHelpers(APP);
-  setupStreaming(APP);
-  setupPanels(APP);
-  setupTools(APP);
-  setupPicking(APP);
-  setupTour(APP);
-  setupMeasure(APP);
-  setupSitecam(APP);
-  setupIssues(APP);
-  setupExcel(APP);
-  setupWalk(APP);
-  setupCity(APP);
+  // Initialize modules in order — guarded so a single script load failure doesn't kill the viewer
+  var _mods = [setupConfig, setupScene, setupHelpers, setupStreaming, setupPanels, setupTools,
+    setupPicking, setupTour, setupMeasure, setupSitecam, setupIssues, setupExcel, setupWalk, setupCity];
+  _mods.forEach(function(fn) { if (typeof fn === 'function') fn(APP); });
   if (typeof setupNlp === 'function') setupNlp(APP);
+  if (typeof setupGhostGlass === 'function') setupGhostGlass(APP);
   // navigate.js lazy-loaded on demand (78KB saved on first paint)
   APP._navigateLoaded = false;
   APP.loadNavigate = function() {
@@ -79,6 +69,8 @@ function initViewer() {
     });
     return APP._wizardPromise;
   };
+  if (typeof GridAssembler !== 'undefined') GridAssembler.init(APP);
+  else if (typeof setupGridOverlay === 'function') setupGridOverlay(APP);
   if (typeof setupImport === 'function') setupImport(APP);
   if (typeof setupDiff === 'function') setupDiff(APP);
 
@@ -122,17 +114,278 @@ function initViewer() {
   window.cycleWalkSpeed = APP.cycleWalkSpeed;
   if (APP.toggleNlp) window.toggleNlp = APP.toggleNlp;
   window.toggleVariance = function() { if (APP.toggleVariance) APP.toggleVariance(); };
+  // 2D button: toggle grid overlay in same scene (no new tab)
+  window._isMobile = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
   window.open2DPlans = function() {
-    const p = new URLSearchParams(location.search);
-    const db = p.get('db') || '';
-    const lib = p.get('lib') || '';
-    const bld = APP.activeBuilding || '';
-    const url = '2d.html?db=' + encodeURIComponent(db) +
-                '&lib=' + encodeURIComponent(lib) +
-                '&bld=' + encodeURIComponent(bld);
-    console.log('§2D_OPEN db=' + db + ' lib=' + lib + ' bld=' + bld + ' url=' + url);
-    window.open(url, '_blank');
+    if (window._isMobile) { APP.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_2d_desktop_only||'2D views are desktop-only'; console.log('§2D_GATE skip — mobile'); return; }
+    // Block if Measure is active
+    if (APP.measureActive) {
+      APP.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_close_measure||'Close Measure first';
+      return;
+    }
+    if (typeof APP.toggleGridOverlay === 'function') {
+      APP.toggleGridOverlay();
+    } else {
+      console.warn('§2D_OPEN grid_overlay.js not loaded — falling back to 2d.html');
+      const p = new URLSearchParams(location.search);
+      const db = p.get('db') || '';
+      const lib = p.get('lib') || '';
+      const bld = APP.activeBuilding || '';
+      window.open('2d.html?db=' + encodeURIComponent(db) + '&lib=' + encodeURIComponent(lib) + '&bld=' + encodeURIComponent(bld), '_blank');
+    }
   };
+
+  // S240: BroadcastChannel listener — 4D Gantt→Viewer highlight sync
+  var _4dHighlights = [];
+  try {
+    var _bim4d = new BroadcastChannel('bim_4d');
+    _bim4d.onmessage = function(evt) {
+      var msg = evt.data;
+      if (!msg || !msg.type) return;
+
+      // Ping/pong for connectivity check
+      if (msg.type === '4D_PING') {
+        _bim4d.postMessage({ type: '4D_PONG', from: 'viewer', ts: Date.now() });
+        console.log('§4D_RECV type=4D_PING → sent PONG');
+        return;
+      }
+      // Resource messages — no highlight reset needed
+      if (msg.type === '4D_RESOURCES' || msg.type === '4D_RESOURCES_HIDE') {
+        // handled below, skip highlight reset
+      } else {
+        // Reset previous highlights (only for 4D scene messages)
+        _4dHighlights.forEach(function(obj) {
+          if (obj.material && obj._4dOrigEmissive !== undefined) {
+            obj.material.emissive.setHex(obj._4dOrigEmissive);
+            delete obj._4dOrigEmissive;
+            delete obj._4dColor;
+          }
+        });
+        _4dHighlights = [];
+      }
+
+      if (msg.type === '4D_RESET') {
+        if (APP._ghostGlass) APP._ghostGlass.reset();
+        console.log('§4D_RECV type=4D_RESET');
+        APP.markDirty();
+        return;
+      }
+
+      // S240b: Ghost glass animation messages — delegate to ghostglass.js
+      if (msg.type === '4D_PLAY') {
+        console.log('§4D_RECV type=4D_PLAY tasks=' + (msg.tasks||[]).length + ' ghostGlass=' + !!APP._ghostGlass);
+        if (APP._ghostGlass) APP._ghostGlass.play(msg.tasks || [], msg.speed || 1.0);
+        else console.warn('§4D_RECV ghostglass NOT READY — setupGhostGlass not called');
+        return;
+      }
+      if (msg.type === '4D_PAUSE' && APP._ghostGlass) {
+        APP._ghostGlass.pause();
+        return;
+      }
+      if (msg.type === '4D_RESUME' && APP._ghostGlass) {
+        APP._ghostGlass.resume(msg.speed);
+        return;
+      }
+      if (msg.type === '4D_SEEK') {
+        if (APP._ghostGlass) APP._ghostGlass.seek(msg.taskIndex);
+        console.log('§4D_RECV type=4D_SEEK task=' + msg.taskIndex + ' ghostGlass=' + !!APP._ghostGlass);
+        return;
+      }
+
+      if (msg.type === '4D_HIGHLIGHT') {
+        // Single task highlight — all GUIDs in one phase color
+        var guidSet = new Set(msg.guids || []);
+        var color = parseInt((msg.color || '#888888').replace('#',''), 16);
+        APP.collectMeshes(function(o) { return o.isMesh; }).forEach(function(obj) {
+          var g = APP.guidMap[obj.id] || obj.userData.guid;
+          if (g && guidSet.has(g)) {
+            obj._4dOrigEmissive = obj.material.emissive.getHex();
+            obj._4dColor = color;
+            obj.material.emissive.setHex(color);
+            _4dHighlights.push(obj);
+          }
+        });
+        console.log('§4D_RECV type=4D_HIGHLIGHT task="' + msg.taskName + '" meshes=' + _4dHighlights.length + '/' + guidSet.size + ' color=' + msg.color);
+        APP.markDirty();
+      }
+
+      // S240c §P5: Resource legend panel — rendered in viewer, data from charts
+      if (msg.type === '4D_RESOURCES') {
+        var panel = document.getElementById('res-legend');
+        if (!panel) {
+          panel = document.createElement('div');
+          panel.id = 'res-legend';
+          panel.style.cssText = 'position:fixed;bottom:60px;right:20px;min-width:280px;max-width:360px;' +
+            'background:rgba(20,25,35,0.55);color:#eee;border-radius:16px;' +
+            'box-shadow:0 8px 32px rgba(0,0,0,0.35),0 2px 8px rgba(0,0,0,0.2);' +
+            'padding:0;font-family:system-ui,-apple-system,sans-serif;font-size:13px;' +
+            'z-index:9999;cursor:grab;user-select:none;' +
+            'backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);' +
+            'border:1px solid rgba(255,255,255,0.08);overflow:hidden;';
+          // Title bar
+          // Status banner
+          var statusBar = document.createElement('div');
+          statusBar.id = 'res-status';
+          statusBar.style.cssText = 'padding:10px 16px;text-align:center;font-weight:900;font-size:16px;letter-spacing:1.5px;text-transform:uppercase;';
+          panel.appendChild(statusBar);
+          // Donut charts — progress + cost
+          var donutRow = document.createElement('div');
+          donutRow.id = 'res-donuts';
+          donutRow.style.cssText = 'display:flex;justify-content:center;gap:20px;padding:12px 16px 8px;border-bottom:1px solid rgba(255,255,255,0.06);';
+          donutRow.innerHTML =
+            '<div style="text-align:center;">' +
+            '<div id="donut-progress" style="width:90px;height:90px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"></div>' +
+            '<div style="font-size:10px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.5px;">Time</div></div>' +
+            '<div style="text-align:center;">' +
+            '<div id="donut-cost" style="width:90px;height:90px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"></div>' +
+            '<div style="font-size:10px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.5px;">Progress</div></div>';
+          panel.appendChild(donutRow);
+          // Title bar
+          var titleBar = document.createElement('div');
+          titleBar.style.cssText = 'padding:8px 16px 8px;border-bottom:1px solid rgba(255,255,255,0.1);';
+          titleBar.innerHTML = '<div style="font-weight:700;font-size:13px;color:rgba(255,255,255,0.6);letter-spacing:0.5px;">' +
+            '\ud83d\udea7 Site Resources</div>';
+          panel.appendChild(titleBar);
+          // Body
+          var body = document.createElement('div');
+          body.id = 'res-body';
+          body.style.cssText = 'padding:8px 16px;';
+          panel.appendChild(body);
+          // Footer
+          var footer = document.createElement('div');
+          footer.id = 'res-footer';
+          footer.style.cssText = 'padding:8px 16px 10px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:rgba(255,255,255,0.5);';
+          panel.appendChild(footer);
+          // Grand total bar
+          var grandBar = document.createElement('div');
+          grandBar.id = 'res-grand';
+          grandBar.style.cssText = 'padding:10px 16px;background:rgba(0,0,0,0.2);' +
+            'border-top:1px solid rgba(255,255,255,0.06);text-align:center;';
+          panel.appendChild(grandBar);
+          document.body.appendChild(panel);
+          // Draggable
+          var _rdX=0,_rdY=0,_rDrag=false;
+          panel.addEventListener('pointerdown', function(e) {
+            _rDrag=true; _rdX=e.clientX-panel.offsetLeft; _rdY=e.clientY-panel.offsetTop;
+            panel.style.cursor='grabbing'; e.preventDefault();
+          });
+          document.addEventListener('pointermove', function(e) {
+            if(!_rDrag)return;
+            panel.style.left=(e.clientX-_rdX)+'px';
+            panel.style.top=(e.clientY-_rdY)+'px';
+            panel.style.right='auto'; panel.style.bottom='auto';
+          });
+          document.addEventListener('pointerup', function() { _rDrag=false; panel.style.cursor='grab'; });
+        }
+        // Render trades with bars
+        var body = document.getElementById('res-body');
+        var maxCrew = msg.maxCrew || 1;
+        var html = '';
+        var trades = msg.trades || [];
+        for (var ti = 0; ti < trades.length; ti++) {
+          var tr = trades[ti];
+          var barPct = maxCrew > 0 ? Math.round((tr.crew / maxCrew) * 100) : 0;
+          var opacity = '1';
+          html += '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;opacity:' + opacity + ';">' +
+            '<span style="font-size:18px;width:26px;text-align:center;flex-shrink:0;">' + tr.icon + '</span>' +
+            '<span style="width:80px;font-size:11px;color:' + tr.color + ';font-weight:600;flex-shrink:0;">' + tr.label + '</span>' +
+            '<div style="flex:1;height:20px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;position:relative;">' +
+            '<div style="height:100%;width:' + barPct + '%;background:' + tr.color + ';border-radius:4px;transition:width 0.3s;"></div>' +
+            '</div>' +
+            '<span style="width:36px;text-align:right;font-size:16px;font-weight:800;color:' + tr.color + ';flex-shrink:0;">' +
+            tr.crew + '</span></div>';
+        }
+        // Equipment
+        var machines = msg.machines || [];
+        if (machines.length) {
+          html += '<div style="margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.05);">';
+          for (var mi = 0; mi < machines.length; mi++) {
+            html += '<div style="display:flex;align-items:center;gap:6px;padding:1px 0;color:rgba(255,255,255,0.5);">' +
+              '<span style="font-size:14px;width:26px;text-align:center;">\ud83d\ude9c</span>' +
+              '<span style="font-size:11px;">' + machines[mi] + '</span></div>';
+          }
+          html += '</div>';
+        }
+        body.innerHTML = html;
+        // Footer
+        document.getElementById('res-footer').innerHTML =
+          '<strong style="color:rgba(255,255,255,0.8);">' + msg.totalCrew + '</strong> workers \u00b7 ' +
+          '<strong style="color:rgba(255,255,255,0.8);">' + machines.length + '</strong> machines \u00b7 Day ' + msg.day + '/' + msg.maxDay +
+          ' \u00b7 ' + msg.pct + '% complete';
+        // Project status banner — mock: first third=ahead, middle=delays, last=on time
+        var statusEl = document.getElementById('res-status');
+        if (statusEl) {
+          var dayRatio = msg.maxDay > 0 ? msg.day / msg.maxDay : 0;
+          var statusText, statusBg, statusColor;
+          if (dayRatio < 0.33) {
+            statusText = '\u25b2 AHEAD OF TIME'; statusBg = 'rgba(76,175,80,0.2)'; statusColor = '#66bb6a';
+          } else if (dayRatio < 0.66) {
+            statusText = '\u25bc DELAYS'; statusBg = 'rgba(244,67,54,0.2)'; statusColor = '#ef5350';
+          } else {
+            statusText = '\u25c6 ON TIME'; statusBg = 'rgba(66,165,245,0.2)'; statusColor = '#42a5f5';
+          }
+          statusEl.style.background = statusBg;
+          statusEl.style.color = statusColor;
+          statusEl.textContent = statusText;
+        }
+        // Donut charts — Time Elapsed vs Physical Progress
+        var timePct = msg.maxDay > 0 ? Math.round(msg.day / msg.maxDay * 100) : 0;
+        timePct = Math.min(timePct, 100);
+        var progPct = msg.progressPct || 0;
+        var cur = msg.cur || 'RM';
+        var gt = msg.grandTotal || 0;
+        var costToDate = Math.round(gt * progPct / 100);
+        // Left: Time elapsed (blue)
+        var dp = document.getElementById('donut-progress');
+        if (dp) {
+          dp.style.background = 'conic-gradient(#42a5f5 0% ' + timePct + '%, rgba(255,255,255,0.08) ' + timePct + '% 100%)';
+          dp.innerHTML = '<div style="width:62px;height:62px;border-radius:50%;background:rgba(20,25,35,0.85);display:flex;align-items:center;justify-content:center;' +
+            'font-size:18px;font-weight:900;color:#42a5f5;">' + timePct + '%</div>';
+        }
+        // Right: Physical progress (green)
+        var dc = document.getElementById('donut-cost');
+        if (dc) {
+          dc.style.background = 'conic-gradient(#66bb6a 0% ' + progPct + '%, rgba(255,255,255,0.08) ' + progPct + '% 100%)';
+          dc.innerHTML = '<div style="width:62px;height:62px;border-radius:50%;background:rgba(20,25,35,0.85);display:flex;align-items:center;justify-content:center;' +
+            'font-size:18px;font-weight:900;color:#66bb6a;">' + progPct + '%</div>';
+        }
+        // Grand total footer
+        var grand = document.getElementById('res-grand');
+        grand.innerHTML = '<span style="color:rgba(255,255,255,0.4);">' + cur + ' ' + costToDate.toLocaleString() + ' / ' + cur + ' ' + gt.toLocaleString() + '</span>';
+        panel.style.display = '';
+        return;
+      }
+      if (msg.type === '4D_RESOURCES_HIDE') {
+        var p = document.getElementById('res-legend');
+        if (p) p.style.display = 'none';
+        return;
+      }
+
+      if (msg.type === '4D_HIGHLIGHT_ALL') {
+        // All phases — each GUID gets its phase color
+        var phases = msg.phases || {};
+        var guidToColor = {};
+        for (var phase in phases) {
+          var c = parseInt((phases[phase].color || '#888').replace('#',''), 16);
+          (phases[phase].guids || []).forEach(function(g) { guidToColor[g] = c; });
+        }
+        APP.collectMeshes(function(o) { return o.isMesh; }).forEach(function(obj) {
+          var g = APP.guidMap[obj.id] || obj.userData.guid;
+          if (g && guidToColor[g] !== undefined) {
+            obj._4dOrigEmissive = obj.material.emissive.getHex();
+            obj._4dColor = guidToColor[g];
+            obj.material.emissive.setHex(guidToColor[g]);
+            _4dHighlights.push(obj);
+          }
+        });
+        console.log('§4D_RECV type=4D_HIGHLIGHT_ALL meshes=' + _4dHighlights.length + ' phases=' + Object.keys(phases).length);
+        APP.markDirty();
+      }
+    };
+    console.log('§4D_CHANNEL_READY listener=viewer');
+  } catch(e) {
+    console.log('§4D_CHANNEL_FAIL ' + e.message);
+  }
 
   // Render loop — on-demand: only render when camera moves or streaming is active
   let _needsRender = true;
@@ -170,7 +423,8 @@ function initViewer() {
     if (diffDbUrl && APP.db && typeof APP.computeDiff === 'function') {
       try {
         const buf = await APP.cachedFetch(diffDbUrl);
-        const SQL = await initSqlJs({ locateFile: f => `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/${f}` });
+        // Reuse SQL instance from A.init() — avoids re-downloading WASM
+        var SQL = APP._SQL || await initSqlJs({ locateFile: f => 'lib/' + f });
         APP.diffDb = new SQL.Database(new Uint8Array(buf));
         console.log('[S223] §DIFF_DB_LOADED url=' + diffDbUrl);
         APP.computeDiff();
@@ -206,6 +460,7 @@ function initViewer() {
           clashChecks++;
           if (APP.streamedCount > 10 || clashChecks > 20) {
             clearInterval(clashTimer);
+            try {
             // Query element metadata to build a clash entry for _flyToClash
             const metaRows = APP.dbQuery(
               "SELECT m.guid, m.ifc_class, m.discipline, m.element_name FROM elements_meta m WHERE m.guid IN (?, ?)",
@@ -237,6 +492,7 @@ function initViewer() {
               APP.status.textContent = 'Clash: ' + (mA[3] || guidA).substring(0, 20) + ' \u2194 ' + (mB[3] || guidB).substring(0, 20) + ' | Storey: ' + storeyParam + ' | Tol: ' + tolMm + 'mm';
               console.log('§CLASH_DEEPLINK guidA=' + guidA + ' guidB=' + guidB + ' storey=' + storeyParam + ' tol=' + tolMm);
             });
+            } catch(err) { console.error('§CLASH_DEEPLINK_ERR', err); }
           }
         }, 1500);
       }
@@ -259,12 +515,12 @@ function initViewer() {
     if (online) {
       div.style.background = 'rgba(39,174,96,0.92)';
       div.style.color = '#fff';
-      div.textContent = 'Back online';
+      div.textContent = typeof _TRL!=='undefined'&&_TRL.ui_back_online||'Back online';
       console.log('[S243] §NET_STATUS online');
     } else {
       div.style.background = 'rgba(230,126,34,0.92)';
       div.style.color = '#fff';
-      div.textContent = 'Offline mode — cached buildings still available';
+      div.textContent = typeof _TRL!=='undefined'&&_TRL.ui_offline_mode||'Offline mode \u2014 cached buildings still available';
       console.log('[S243] §NET_STATUS offline');
     }
     document.body.appendChild(div);

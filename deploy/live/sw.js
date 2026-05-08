@@ -8,10 +8,19 @@
 // Cache-first for heavy assets (.wasm, images). DB files skip SW (IndexedDB handles them).
 //
 // DEPLOY: bump CACHE_VERSION on every OCI upload. Old caches are purged on activate.
-const CACHE_VERSION = 'v251';
+const CACHE_VERSION = 'v269';
 const CACHE_NAME = 'bim-ootb-' + CACHE_VERSION;
 
-// CDN assets fetched by loader.js — versioned URLs, safe to cache-first
+// Local copies of vendor libs — single-origin, no CDN dependency
+const LOCAL_LIBS = [
+  'lib/three.min.js',
+  'lib/OrbitControls.js',
+  'lib/sql-wasm.js',
+  'lib/sql-wasm.wasm',
+  'lib/xlsx.full.min.js',
+];
+
+// CDN fallback URLs — cached opportunistically if loader falls back to them
 const CDN_ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
   'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js',
@@ -26,6 +35,7 @@ const PRECACHE_ASSETS = [
   // Entry points
   'index.html',
   'boq_charts.html',
+  'mep_report.html',
   '2d.html',
   'offline.html',
   'manifest.webmanifest',
@@ -70,12 +80,13 @@ const PRECACHE_ASSETS = [
   'title_block.js',
   // Config files
   'clash_rules.json',
+  'rates/cidb2024_my.json',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
-      cache.addAll([...PRECACHE_ASSETS, ...CDN_ASSETS])
+      cache.addAll([...PRECACHE_ASSETS, ...LOCAL_LIBS])
     )
   );
   self.skipWaiting();
@@ -92,11 +103,15 @@ self.addEventListener('activate', (event) => {
 
 // Returns true for URLs that should use network-first strategy
 function isNetworkFirst(url) {
+  // Strip ?v=N query string before checking extension — HTML uses ?v= cache busters
+  var base = url.split('?')[0];
   // Local .html and .js files change on every deploy — always try network first
-  if (url.endsWith('.html') || url.endsWith('.js')) {
-    // CDN assets are versioned and immutable — keep them cache-first
+  if (base.endsWith('.html') || base.endsWith('.js')) {
+    // lib/ files are versioned and immutable — keep them cache-first
+    if (base.includes('/lib/')) return false;
+    // CDN fallback assets are also immutable — keep them cache-first
     for (const cdn of CDN_ASSETS) {
-      if (url === cdn) return false;
+      if (url === cdn || base === cdn) return false;
     }
     return true;
   }
@@ -131,15 +146,23 @@ self.addEventListener('fetch', (event) => {
 
 // Try network, fall back to cache (for files that change on deploy)
 function networkFirst(request) {
+  // Strip ?v=N query string for cache matching — HTML references main.js?v=11
+  // but precache stores main.js. Both should match.
+  var cacheUrl = request.url.split('?')[0];
   return fetch(request)
     .then(resp => {
       if (resp && resp.status === 200) {
         const clone = resp.clone();
-        caches.open(CACHE_NAME).then(c => c.put(request, clone));
+        caches.open(CACHE_NAME).then(c => c.put(cacheUrl, clone));
       }
       return resp;
     })
-    .catch(() => caches.match(request).then(r => r || caches.match('offline.html')));
+    .catch(() => caches.match(cacheUrl).then(r => {
+      if (r) return r;
+      // Only return offline.html for navigation/HTML requests — not for .js
+      if (request.url.endsWith('.js')) return new Response('', { status: 503 });
+      return caches.match('offline.html');
+    }));
 }
 
 // Try cache, fall back to network (for heavy/immutable assets)

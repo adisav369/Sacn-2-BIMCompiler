@@ -34,6 +34,7 @@ function setupStreaming(A) {
   };
 
   A.streamBuilding = function(nearest) {
+    if (A.buildingsRendered.has(nearest)) { console.log('§DS_SKIP_RENDERED bld=' + nearest); return; }
     if (A.activeBuilding && A.streaming && A.streamIdx < A.streamQueue.length) {
       A.savedStreams[A.activeBuilding] = { queue: A.streamQueue, idx: A.streamIdx };
     }
@@ -463,12 +464,24 @@ function setupStreaming(A) {
   // DB init
   A.init = async function() {
     A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_wasm||'Loading WebAssembly...');
-    const SQL = await initSqlJs({
-      locateFile: f => `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/${f}`
-    });
+    // Use WASM binary pre-fetched by loader.js (started in parallel with JS libs)
+    var sqlOpts = { locateFile: f => 'lib/' + f };
+    if (typeof _wasmBinaryPromise !== 'undefined') {
+      var preloaded = await _wasmBinaryPromise;
+      if (preloaded) sqlOpts.wasmBinary = preloaded;
+    }
+    const SQL = await initSqlJs(sqlOpts);
+    A._SQL = SQL; // Cache for reuse (diff DB, import) — avoids re-downloading WASM
 
     if (A.CITY_URL) {
-      await A.initCity(SQL);
+      // S250 §6: On mobile, defer city_index.db auto-load to save memory
+      if (A._isMobile) {
+        console.log('§CITY_DEFER mobile — skipped auto-load');
+        A._citySQL = SQL; // stash for manual trigger
+        A.status.textContent = 'City mode available — tap City button to load';
+      } else {
+        await A.initCity(SQL);
+      }
       return;
     }
 

@@ -1,5 +1,27 @@
-// import.js — IFC Import: file picker → web-ifc worker → sql.js DBs → IndexedDB → viewer
-// S220: "IFC to 5D in 60 seconds. On your phone. Zero install."
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
+// import.js — Multi-Format Import: IFC + DAE/OBJ/GLB/3DS/FBX/STL
+// S220: IFC import. S228: mesh format support via semantic enrichment.
+
+// S228: Multi-format detection
+var FORMAT_ROUTES = {
+  'ifc':  'ifc',
+  'dae':  'mesh',
+  'obj':  'mesh',
+  'glb':  'mesh',
+  'gltf': 'mesh',
+  '3ds':  'mesh',
+  'fbx':  'mesh',
+  'stl':  'mesh',
+};
+
+function detectFormat(filename) {
+  var ext = filename.split('.').pop().toLowerCase();
+  return { ext: ext, route: FORMAT_ROUTES[ext] || null };
+}
 
 function setupImport(A) {
   const IMPORT_DB_NAME = 'bim_ootb_imports';
@@ -87,21 +109,21 @@ function setupImport(A) {
     const status = document.getElementById('import-status');
     const progressBar = document.getElementById('import-progress-bar');
     const importZone = document.getElementById('import-zone');
-    if (status) status.textContent = 'Reading file...';
+    if (status) status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_reading_file||'Reading file...';
     if (progressBar) { progressBar.style.width = '0%'; progressBar.parentElement.style.display = 'block'; }
 
     const sizeMB = (file.size / 1024 / 1024).toFixed(1);
     if (file.size > 200 * 1024 * 1024) {
-      if (status) status.textContent = 'Very large file (' + sizeMB + 'MB) — may take a few minutes';
+      if (status) status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_large_file||'Very large file ({n}MB) \u2014 may take a few minutes').replace('{n}', sizeMB);
     } else if (file.size > 50 * 1024 * 1024) {
-      if (status) status.textContent = 'Large file (' + sizeMB + 'MB) — please wait...';
+      if (status) status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_med_file||'Large file ({n}MB) \u2014 please wait...').replace('{n}', sizeMB);
     }
 
     const arrayBuffer = await file.arrayBuffer();
     console.log('[S220] §IMPORT_START file=' + file.name + ' size=' + sizeMB + 'MB');
 
     return new Promise((resolve, reject) => {
-      const workerUrl = new URL('import_worker.js?v=4', location.href).href;
+      const workerUrl = new URL('import_worker.js?v=5', location.href).href;
       const worker = new Worker(workerUrl);
 
       worker.onmessage = async function(e) {
@@ -120,12 +142,12 @@ function setupImport(A) {
           return;
         }
         if (msg.type === 'done') {
-          if (status) status.textContent = 'Building databases...';
+          if (status) status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_building_dbs||'Building databases...';
           console.log('[S220] §IMPORT_PARSED elements=' + msg.meta.elementCount + ' geom=' + msg.meta.geomCount);
 
           // Build sql.js DBs on main thread (sql.js already loaded)
           try {
-            const SQL = await initSqlJs({ locateFile: f => `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/${f}` });
+            const SQL = await initSqlJs({ locateFile: f => 'lib/' + f });
             const dbs = buildImportDBs(SQL, msg);
 
             // Save to IndexedDB — single DB (geometry + metadata in one)
@@ -139,7 +161,16 @@ function setupImport(A) {
             console.log('[S220] §IMPORT_SAVED key=' + file.name +
               ' db=' + (dbs.extractedDb.byteLength / 1024).toFixed(0) + 'KB');
 
-            if (status) status.textContent = 'Imported ' + msg.meta.elementCount + ' elements';
+            // Notify parent window (iDempiere BIM Tab) of successful import
+            if (window.parent !== window) {
+              window.parent.postMessage({
+                type: 'BIM_IFC_LOADED',
+                name: file.name,
+                elementCount: msg.meta.elementCount || 0
+              }, '*');
+            }
+
+            if (status) status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_imported||'Imported {n} elements').replace('{n}', msg.meta.elementCount);
             if (progressBar) { progressBar.style.width = '100%'; progressBar.style.background = '#44cc44'; }
 
             // Refresh card list
@@ -164,6 +195,91 @@ function setupImport(A) {
       };
 
       worker.postMessage({ arrayBuffer, filename: file.name }, [arrayBuffer]);
+    });
+  };
+
+  // ── Process mesh file (DAE/OBJ/GLB/3DS/FBX/STL) — S228 ──
+  A.importMesh = async function(file, ext) {
+    var status = document.getElementById('import-status');
+    var progressBar = document.getElementById('import-progress-bar');
+    if (status) status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_reading_fmt||'Reading {fmt} file...').replace('{fmt}', ext.toUpperCase());
+    if (progressBar) { progressBar.style.width = '0%'; progressBar.parentElement.style.display = 'block'; }
+
+    var sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    console.log('[S228] §MESH_IMPORT_START file=' + file.name + ' ext=' + ext + ' size=' + sizeMB + 'MB');
+
+    var arrayBuffer = await file.arrayBuffer();
+
+    return new Promise(function(resolve, reject) {
+      var workerUrl = new URL('mesh_import_worker.js?v=1', location.href).href;
+      var worker = new Worker(workerUrl);
+
+      worker.onmessage = async function(e) {
+        var msg = e.data;
+        if (msg.type === 'progress') {
+          if (status) status.textContent = msg.phase;
+          if (progressBar) progressBar.style.width = msg.pct + '%';
+          return;
+        }
+        if (msg.type === 'error') {
+          console.log('[S228] §MESH_IMPORT_ERROR ' + msg.message);
+          if (status) status.textContent = 'Import failed: ' + msg.message;
+          if (progressBar) progressBar.style.background = '#cc4444';
+          worker.terminate();
+          reject(new Error(msg.message));
+          return;
+        }
+        if (msg.type === 'done') {
+          if (status) status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_building_dbs||'Building databases...';
+          console.log('[S228] §MESH_PARSED elements=' + msg.meta.elementCount +
+            ' geom=' + msg.meta.geomCount + ' format=' + msg.meta.sourceFormat);
+
+          try {
+            var SQL = await initSqlJs({ locateFile: function(f) { return 'lib/' + f; } });
+            var dbs = buildImportDBs(SQL, msg);
+
+            var record = {
+              meta: msg.meta,
+              extractedDb: dbs.extractedDb,
+              libraryDb: dbs.extractedDb,
+            };
+            await saveImport(file.name, record);
+
+            console.log('[S228] §MESH_SAVED key=' + file.name +
+              ' db=' + (dbs.extractedDb.byteLength / 1024).toFixed(0) + 'KB');
+
+            // Notify parent window (iDempiere BIM Tab) of successful import
+            if (window.parent !== window) {
+              window.parent.postMessage({
+                type: 'BIM_IFC_LOADED',
+                name: file.name,
+                elementCount: msg.meta.elementCount || 0
+              }, '*');
+            }
+
+            if (status) status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_imported_fmt||'Imported {n} elements from {fmt}').replace('{n}', msg.meta.elementCount).replace('{fmt}', ext.toUpperCase());
+            if (progressBar) { progressBar.style.width = '100%'; progressBar.style.background = '#44cc44'; }
+            if (A.renderImportCards) A.renderImportCards();
+
+            worker.terminate();
+            resolve(record);
+          } catch(dbErr) {
+            console.log('[S228] §MESH_DB_ERROR ' + dbErr.message);
+            if (status) status.textContent = 'DB build failed: ' + dbErr.message;
+            worker.terminate();
+            reject(dbErr);
+          }
+        }
+      };
+
+      worker.onerror = function(err) {
+        console.log('[S228] §MESH_WORKER_ERROR ' + err.message);
+        if (status) status.textContent = 'Worker error: ' + err.message;
+        worker.terminate();
+        reject(err);
+      };
+
+      worker.postMessage({ arrayBuffer: arrayBuffer, filename: file.name, ext: ext }, [arrayBuffer]);
     });
   };
 
@@ -206,6 +322,23 @@ function setupImport(A) {
     console.log('[S220] §IMPORT_DELETE key=' + key);
   };
 
+  // ── S250 §8: Share Sheet — lazy-loaded from share.js ──
+  // Zero bytes on initial fetch. Script loads only when user clicks Share.
+  // Unified: Save as IFC / Save as DB / Contribute to OOTB + WhatsApp / Email / Copy Link.
+  // See docs/EnterpriseAuthentication.md for security architecture.
+  A._getImport = getImport;  // Expose for share.js
+  A.openShareSheet = async function(key) {
+    if (!A._shareLoaded) {
+      var script = document.createElement('script');
+      script.src = 'share.js?v=1';
+      script.onload = function() { A._shareLoaded = true; A.openShareSheet(key); };
+      script.onerror = function() { alert('Failed to load share module'); };
+      document.head.appendChild(script);
+      return;
+    }
+    console.log('§SHARE stub — should not reach here after load');
+  };
+
   // ── Render import cards (for landing page) ──
   A.renderImportCards = async function() {
     const container = document.getElementById('my-buildings-grid');
@@ -240,9 +373,13 @@ function setupImport(A) {
         return '<span class="disc-bar" style="width:' + pct + '%;background:' + color + '" title="' + d + ': ' + c + '"></span>';
       }).join('');
 
-      var displayName = (item.meta.filename || item.meta.name || '').replace(/\.ifc$/i, '');
+      var displayName = (item.meta.filename || item.meta.name || '').replace(/\.(ifc|dae|obj|glb|gltf|3ds|fbx|stl)$/i, '');
+      var formatBadge = (meta.sourceFormat && meta.sourceFormat !== '.ifc')
+        ? ' <span style="background:rgba(79,195,247,0.15);padding:2px 6px;border-radius:4px;font-size:11px">'
+          + meta.sourceFormat.toUpperCase().replace('.','') + '</span>'
+        : '';
       card.innerHTML =
-        '<div class="name">' + displayName + '</div>' +
+        '<div class="name">' + displayName + formatBadge + '</div>' +
         '<div class="meta">' +
           '<b>' + total.toLocaleString() + '</b> elements' +
           ' · ' + Object.keys(discs).join(', ') +
@@ -250,16 +387,115 @@ function setupImport(A) {
         '<div class="disc-bars">' + discBars + '</div>' +
         '<div style="display:flex;gap:6px;margin-top:10px">' +
           '<button class="open-btn" style="flex:1" data-key="' + item.key + '">Open</button>' +
+          '<button class="open-btn" data-share="' + item.key + '" style="flex:0;padding:6px 10px;background:rgba(76,175,80,0.15);border-color:rgba(76,175,80,0.3);color:#4caf50;font-size:10px">Share</button>' +
           '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + item.key + '">x</button>' +
         '</div>';
 
       card.querySelector('[data-key]').onclick = function() { A.openImported(this.dataset.key); };
+      card.querySelector('[data-share]').onclick = function(e) { e.stopPropagation(); A.openShareSheet(this.dataset.share); };
       card.querySelector('[data-del]').onclick = function(e) {
         e.stopPropagation();
         if (confirm('Delete ' + item.meta.name + '?')) A.deleteImported(this.dataset.del);
       };
       container.appendChild(card);
     }
+  };
+
+  // ── S229: Export IFC from IndexedDB ──
+  A.exportIFC = async function(key) {
+    var record = await getImport(key);
+    if (!record) { alert('Building not found'); return; }
+
+    // S233: Read versioned DB (wizard-modified), not legacy v1
+    var dbBuf;
+    if (record.versions && record.versions.length > 0) {
+      dbBuf = record.versions[record.latestVersion || 0].db;
+    } else {
+      dbBuf = record.extractedDb;
+    }
+    if (!dbBuf) { alert('No DB data'); return; }
+
+    // Load sql.js if needed
+    var SQL = await initSqlJs({ locateFile: function(f) { return 'lib/' + f; } });
+    var db = new SQL.Database(new Uint8Array(dbBuf));
+
+    var elements = [], transforms = [], geometries = [];
+    var meta = { buildingName: key.replace(/\.(ifc|obj|stl|dae|glb|gltf|3ds|fbx)$/i, '') };
+
+    try {
+      var pmRows = db.exec("SELECT key, value FROM project_metadata");
+      if (pmRows.length > 0) {
+        for (var r = 0; r < pmRows[0].values.length; r++) {
+          if (pmRows[0].values[r][0] === 'building_name') meta.buildingName = pmRows[0].values[r][1];
+          if (pmRows[0].values[r][0] === 'project_name') meta.projectName = pmRows[0].values[r][1];
+        }
+      }
+    } catch(e) {}
+
+    try {
+      var elRows = db.exec("SELECT guid, ifc_class, element_name, storey, discipline, material_rgba FROM elements_meta");
+      if (elRows.length > 0) {
+        for (var r = 0; r < elRows[0].values.length; r++) {
+          var row = elRows[0].values[r];
+          elements.push({ guid: row[0], ifcClass: row[1], name: row[2], storey: row[3], discipline: row[4], material: row[5] });
+        }
+      }
+    } catch(e) { alert('Error reading elements: ' + e.message); return; }
+
+    try {
+      var txRows = db.exec("SELECT guid, center_x, center_y, center_z FROM element_transforms");
+      if (txRows.length > 0) {
+        for (var r = 0; r < txRows[0].values.length; r++) {
+          var row = txRows[0].values[r];
+          transforms.push({ guid: row[0], cx: row[1], cy: row[2], cz: row[3] });
+        }
+      }
+    } catch(e) {}
+
+    try {
+      var geoRows = db.exec("SELECT ei.guid, cg.vertices, cg.faces FROM element_instances ei JOIN component_geometries cg ON ei.geometry_hash = cg.geometry_hash");
+      if (geoRows.length > 0) {
+        for (var r = 0; r < geoRows[0].values.length; r++) {
+          var row = geoRows[0].values[r];
+          geometries.push({ guid: row[0], vertices: row[1], faces: row[2] });
+        }
+      }
+    } catch(e) {}
+
+    db.close();
+
+    var status = document.getElementById('import-status');
+    if (status) status.textContent = 'Exporting IFC (' + elements.length + ' elements)...';
+
+    var worker = new Worker(new URL('ifc_export_worker.js?v=1', location.href).href);
+    worker.onmessage = function(e) {
+      var msg = e.data;
+      if (msg.type === 'progress') {
+        if (status) status.textContent = msg.phase;
+        return;
+      }
+      if (msg.type === 'error') {
+        if (status) status.textContent = 'Export failed: ' + msg.message;
+        worker.terminate();
+        return;
+      }
+      if (msg.type === 'done') {
+        var blob = new Blob([msg.ifcData], { type: 'application/octet-stream' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = meta.buildingName + '.ifc';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        if (status) status.textContent = 'Downloaded ' + meta.buildingName + '.ifc (' + (msg.ifcData.byteLength / 1024).toFixed(0) + ' KB)';
+        console.log('[S229] §EXPORT_IFC key=' + key + ' size=' + (msg.ifcData.byteLength / 1024).toFixed(0) + 'KB');
+        worker.terminate();
+      }
+    };
+    worker.onerror = function(err) {
+      if (status) status.textContent = 'Export error: ' + err.message;
+      worker.terminate();
+    };
+    worker.postMessage({ elements: elements, transforms: transforms, geometries: geometries, meta: meta });
   };
 
   // ── Wire up drop zone + file picker ──
@@ -281,11 +517,16 @@ function setupImport(A) {
       e.preventDefault();
       dropZone.style.borderColor = 'rgba(79,195,247,0.3)';
       dropZone.style.background = 'rgba(79,195,247,0.04)';
-      const file = e.dataTransfer.files[0];
-      if (file && /\.ifc$/i.test(file.name)) {
+      var file = e.dataTransfer.files[0];
+      if (!file) return;
+      var fmt = detectFormat(file.name);
+      if (fmt.route === 'ifc') {
         A.importIFC(file);
+      } else if (fmt.route === 'mesh') {
+        A.importMesh(file, fmt.ext);
       } else {
-        document.getElementById('import-status').textContent = 'Please drop an .ifc file';
+        document.getElementById('import-status').textContent =
+          (typeof _TRL!=='undefined'&&_TRL.ui_unsupported||'Unsupported: .{ext} \u2014 Accepted: IFC, DAE, OBJ, GLB, 3DS, FBX, STL').replace('{ext}', fmt.ext);
       }
     });
 
@@ -296,12 +537,19 @@ function setupImport(A) {
   }
 
   if (fileInput) {
+    // S228: accept multi-format
+    fileInput.accept = '.ifc,.dae,.obj,.glb,.gltf,.3ds,.fbx,.stl';
     fileInput.addEventListener('change', function() {
-      const file = fileInput.files[0];
-      if (file && /\.ifc$/i.test(file.name)) {
-        A.importIFC(file);
+      var file = fileInput.files[0];
+      if (file) {
+        var fmt = detectFormat(file.name);
+        if (fmt.route === 'ifc') {
+          A.importIFC(file);
+        } else if (fmt.route === 'mesh') {
+          A.importMesh(file, fmt.ext);
+        }
       }
-      fileInput.value = ''; // reset for re-import of same file
+      fileInput.value = '';
     });
   }
 

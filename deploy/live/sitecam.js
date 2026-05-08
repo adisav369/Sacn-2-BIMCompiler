@@ -398,8 +398,10 @@ function setupSitecam(A) {
   };
 
   A._initMarkupListeners = function(mc) {
-    if (A._markupListenersSet) return;
+    // Reset flag each time so retake/new snag gets fresh listeners
+    if (A._markupListenersSet && A._markupCanvas === mc) return;
     A._markupListenersSet = true;
+    A._markupCanvas = mc;
     let currentStroke = null;
 
     function onStart(e) {

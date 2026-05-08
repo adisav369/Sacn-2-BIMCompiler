@@ -63,11 +63,13 @@ function setupTools(A) {
     if (A.sectionOn) {
       A.applySectionAxis();
     } else {
+      A.renderer.localClippingEnabled = false;
       A.collectMeshes(o => o.isMesh).forEach(obj => {
         obj.material.clippingPlanes = [];
         obj.material.needsUpdate = true;
       });
       console.log('[S205] §SECTION OFF');
+      if (A.onSectionOff) A.onSectionOff();
     }
   };
 
@@ -101,6 +103,7 @@ function setupTools(A) {
     slider.step = ((axMax - axMin) / 500).toFixed(3);
     slider.value = axMax.toFixed(1);
     A.sectionPlane.constant = axMax;
+    A.renderer.localClippingEnabled = true;
     A.collectMeshes(o => o.isMesh).forEach(obj => {
       obj.material.clippingPlanes = [A.sectionPlane];
       obj.material.clipShadows = true;
@@ -114,11 +117,12 @@ function setupTools(A) {
     const v = parseFloat(val);
     A.sectionPlane.constant = v;
     document.getElementById('section-val').textContent = v.toFixed(1) + ' m';
+    if (A.onSectionSliderChange) A.onSectionSliderChange(v);
   };
 
   // 4D/5D Export
   A.export4D5D = function() {
-    if (!A.db || !A.activeBuilding) { A.status.textContent = 'Select a building first.'; return; }
+    if (!A.db || !A.activeBuilding) { A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_select_building||'Select a building first.'; return; }
     const bld = A.activeBuilding;
     const dbParam = new URLSearchParams(location.search).get('db') || 'yourproject_extracted.db';
     // S223: import:// URLs → boq_charts co-located (../boq_charts.html from sandbox/)
@@ -137,11 +141,18 @@ function setupTools(A) {
       chartsUrl = base + 'boq_charts.html?db=' + encodeURIComponent(dbParam) + '&bld=' + bld + diffParam + cacheBust;
     }
     window.open(chartsUrl, '_blank');
-    A.status.textContent = `4D/5D analytics opened for ${bld} (Save 5D BOQ / Save 4D Schedule)`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_analytics_opened||'4D/5D analytics opened for {name}').replace('{name}', bld);
   };
 
-  // Screenshot
+  // Screenshot — in 2D grid mode, produces A3 print sheet with title block
   A.screenshot = function() {
+    // If in 2D view and PrintSheet is available, use A3 print sheet
+    if (typeof GridViews !== 'undefined' && GridViews.activeView() &&
+        typeof PrintSheet !== 'undefined') {
+      PrintSheet.capture(A);
+      return;
+    }
+    // Fallback: regular screenshot
     A.renderer.render(A.scene, A.camera);
     const link = document.createElement('a');
     link.download = `BIM_OOTB_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.png`;
@@ -152,7 +163,7 @@ function setupTools(A) {
     document.body.appendChild(flash);
     setTimeout(() => { flash.style.opacity = '0'; flash.style.transition = 'opacity 0.3s'; }, 50);
     setTimeout(() => document.body.removeChild(flash), 400);
-    A.status.textContent = 'Screenshot saved to Downloads/';
+    A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_screenshot_saved||'Screenshot saved to Downloads/';
   };
 
   // Fullscreen
@@ -416,7 +427,9 @@ function setupTools(A) {
     const hits = A.raycaster.intersectObjects(meshes, false);
 
     if (A.hoverHighlight) {
-      A.hoverHighlight.material.emissive.setHex(0x000000);
+      // S240: restore 4D phase colour if active, otherwise reset to black
+      var _restoreHex = A.hoverHighlight._4dColor !== undefined ? A.hoverHighlight._4dColor : 0x000000;
+      A.hoverHighlight.material.emissive.setHex(_restoreHex);
       A.hoverHighlight = null;
     }
 

@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // city.js — City mode: lightweight index, bboxes, on-demand building download
 function setupCity(A) {
   A.cityDb = null;
@@ -10,15 +15,24 @@ function setupCity(A) {
   const clearBtn = document.createElement('button');
   clearBtn.id = 'city-clear-btn';
   clearBtn.title = 'Clear loaded meshes (free RAM)';
-  clearBtn.textContent = '🗑 Clear';
+  clearBtn.textContent = '\uD83D\uDDD1 ' + (typeof _TRL!=='undefined'&&_TRL.ui_clear||'Clear');
   clearBtn.style.cssText = 'position:fixed;bottom:40px;right:16px;z-index:15;padding:8px 16px;background:#cc4444;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px;box-shadow:0 2px 8px rgba(204,68,68,0.4)';
   clearBtn.onclick = function() { A.cityClear(); };
   document.body.appendChild(clearBtn);
   }
 
+  // S250 §6: Manual trigger for deferred mobile city load
+  A.loadCityManual = async function() {
+    if (A.cityDb) return; // already loaded
+    var sql = A._citySQL || A._SQL;
+    if (!sql) { console.warn('§CITY_DEFER no SQL engine available'); return; }
+    console.log('§CITY_DEFER mobile — manual trigger, loading now');
+    await A.initCity(sql);
+  };
+
   A.initCity = async function(SQL) {
     A.citySQL = SQL;
-    A.status.textContent = `Fetching city index (${A.CITY_URL})...`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_fetching_city||'Fetching city index ({url})...').replace('{url}', A.CITY_URL);
     const buf = await A.cachedFetch(A.CITY_URL);
     A.cityDb = new SQL.Database(new Uint8Array(buf));
     console.log(`[S203] §CITY_INDEX size=${(buf.byteLength/1024).toFixed(0)}KB`);
@@ -103,6 +117,7 @@ function setupCity(A) {
         if (sx < 0.1 || sy < 0.1 || sz < 0.1) continue;
         const geo = new THREE.BoxGeometry(sx, sy, sz);
         const edges = new THREE.EdgesGeometry(geo);
+        geo.dispose(); // intermediate geometry no longer needed
         const line = new THREE.LineSegments(edges,
           new THREE.LineBasicMaterial({ color, opacity: 0.6, transparent: true }));
         line.position.set(c.x, c.y, c.z);
@@ -125,11 +140,10 @@ function setupCity(A) {
     A.controls.update();
 
     console.log(`[S203] §CITY_READY buildings=${Object.keys(A.buildingCentres).length} archetypes=${Object.keys(A.cityArchetypes).length} elements=${A.totalElements}`);
-    A.status.textContent = `CITY MODE — ${Object.keys(A.buildingCentres).length} buildings, ${A.totalElements.toLocaleString()} elements. Click a building to load.`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_city_mode||'CITY MODE \u2014 {n} buildings, {m} elements. Click a building to load.').replace('{n}', Object.keys(A.buildingCentres).length).replace('{m}', A.totalElements.toLocaleString());
   };
 
   // Override flyTo for city mode
-  const _origFlyTo = A.flyTo;
   A.flyTo = function(buildingName) {
     const bc = A.buildingCentres[buildingName];
     if (!bc) return;
@@ -145,27 +159,27 @@ function setupCity(A) {
       document.getElementById('s-active').style.color = '#4fc3f7';
       document.getElementById('s-progress').style.width = '0%';
       document.getElementById('s-progress').style.background = '#4fc3f7';
-      A.status.textContent = `Flew to ${buildingName} (${bc.count} elements)`;
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_flew_to||'Flew to {name} ({n} elements)').replace('{name}', buildingName).replace('{n}', bc.count);
       if (A.libDb) A.streamBuilding(buildingName);
       return;
     }
 
     if (A.buildingsRendered.has(buildingName)) {
-      A.status.textContent = `${buildingName} already loaded (${bc.count} elements)`;
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_already_loaded||'{name} already loaded ({n} elements)').replace('{name}', buildingName).replace('{n}', bc.count);
       return;
     }
     A.cityLoadBuilding(buildingName);
   };
 
   A.cityLoadBuilding = async function(buildingName) {
-    const archRow = A.cityDb.exec(`SELECT archetype FROM building_archetype WHERE building = '${buildingName}'`);
-    if (!archRow.length) { A.status.textContent = `Unknown building: ${buildingName}`; return; }
+    const archRow = A.cityDb.exec(`SELECT archetype FROM building_archetype WHERE building = ?`, [buildingName]);
+    if (!archRow.length) { A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_unknown_building||'Unknown building: {name}').replace('{name}', buildingName); return; }
     const archetype = archRow[0].values[0][0];
     const files = A.cityArchetypes[archetype];
-    if (!files) { A.status.textContent = `No DB for archetype: ${archetype}`; return; }
+    if (!files) { A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_no_db_arch||'No DB for archetype: {name}').replace('{name}', archetype); return; }
 
     if (!A.cityBuildingDbs[archetype]) {
-      A.status.textContent = `Downloading ${archetype}...`;
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_downloading||'Downloading {name}...').replace('{name}', archetype);
       const extUrl = A.BLD_BASE + files.db;
       const libUrl = A.BLD_BASE + files.lib;
 
@@ -178,20 +192,20 @@ function setupCity(A) {
       const libDb2 = new A.citySQL.Database(new Uint8Array(libBuf));
       A.cityBuildingDbs[archetype] = { db: extDb, libDb: libDb2 };
       console.log(`[S203] §CITY_DL archetype=${archetype} ext=${(extBuf.byteLength/1024/1024).toFixed(1)}MB lib=${(libBuf.byteLength/1024/1024).toFixed(1)}MB`);
-      A.status.textContent = `Downloaded ${archetype}. Streaming ${buildingName}...`;
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_downloaded_bld||'Downloaded {name}. Streaming {bld}...').replace('{name}', archetype).replace('{bld}', buildingName);
     }
 
     const saved = { db: A.db, libDb: A.libDb };
     A.db = A.cityBuildingDbs[archetype].db;
     A.libDb = A.cityBuildingDbs[archetype].libDb;
 
-    const bldInDb = A.db.exec(`SELECT DISTINCT building FROM elements_meta`);
-    const dbBldName = bldInDb.length > 0 ? bldInDb[0].values[0][0] : buildingName;
+    const bldInDb = A.dbQuery(`SELECT DISTINCT building FROM elements_meta`);
+    const dbBldName = bldInDb.length > 0 ? bldInDb[0][0] : buildingName;
 
-    const arcCentre = A.db.exec(`SELECT AVG(center_x), AVG(center_y), AVG(center_z) FROM element_transforms`);
-    const arcX = arcCentre[0].values[0][0];
-    const arcY = arcCentre[0].values[0][1];
-    const arcZ = arcCentre[0].values[0][2];
+    const arcCentre = A.dbQuery(`SELECT AVG(center_x), AVG(center_y), AVG(center_z) FROM element_transforms`);
+    const arcX = arcCentre[0][0];
+    const arcY = arcCentre[0][1];
+    const arcZ = arcCentre[0][2];
 
     const bc = A.buildingCentres[buildingName];
     const tgtX = bc.ix, tgtY = bc.iy, tgtZ = bc.iz;
@@ -200,7 +214,7 @@ function setupCity(A) {
     const offY = tgtY - arcY;
     const offZ = tgtZ - arcZ;
 
-    const rows = A.db.exec(`
+    const rows = A.dbQuery(`
       SELECT m.guid, i.geometry_hash, m.material_rgba, m.discipline,
              t.center_x, t.center_y, t.center_z,
              t.rotation_x, t.rotation_y, t.rotation_z,
@@ -213,12 +227,12 @@ function setupCity(A) {
     `);
 
     if (!rows.length) {
-      A.status.textContent = `No streamable elements for ${buildingName}`;
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_no_elements||'No streamable elements for {name}').replace('{name}', buildingName);
       A.db = saved.db; A.libDb = saved.libDb;
       return;
     }
 
-    const offsetRows = rows[0].values.map(row => {
+    const offsetRows = rows.map(row => {
       const r = [...row];
       r[4] += offX;
       r[5] += offY;
@@ -236,7 +250,7 @@ function setupCity(A) {
     document.getElementById('s-building-total').textContent = A.activeBuildingTotal.toLocaleString();
     document.getElementById('s-progress').style.width = '0%';
     document.getElementById('s-progress').style.background = '#4fc3f7';
-    A.status.textContent = `STREAMING ${buildingName} — 0/${A.streamQueue.length.toLocaleString()} elements`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_streaming_bld||'STREAMING {name} \u2014 0/{n} elements').replace('{name}', buildingName).replace('{n}', A.streamQueue.length.toLocaleString());
 
     A.db = saved.db;
     A.libDb = A.cityBuildingDbs[archetype].libDb;
@@ -247,10 +261,7 @@ function setupCity(A) {
     A.streaming = false;
     A.streamQueue = [];
     A.streamIdx = 0;
-    const toRemove = [];
-    A.scene.traverse(obj => {
-      if (obj.isMesh && obj !== A.ground) toRemove.push(obj);
-    });
+    const toRemove = A.collectMeshes(o => o.isMesh);
     toRemove.forEach(obj => {
       A.scene.remove(obj);
       if (obj.geometry) obj.geometry.dispose();
@@ -265,6 +276,6 @@ function setupCity(A) {
     if ((el = document.getElementById('s-active'))) el.textContent = '—';
     if ((el = document.getElementById('s-progress'))) el.style.width = '0%';
     console.log(`[S210] §CITY_CLEAR removed=${toRemove.length} meshes freed`);
-    A.status.textContent = `CLEARED — ${toRemove.length} meshes removed.`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_cleared||'CLEARED \u2014 {n} meshes removed.').replace('{n}', toRemove.length);
   };
 }

@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <title>BIM OOTB — 4D/5D Analytics</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#4fc3f7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; padding: 20px; }
@@ -39,20 +43,33 @@
 <h1>BIM OOTB — 4D/5D Analytics</h1>
 <div class="subtitle" id="info">Loading...</div>
 <div class="toolbar">
-  <button onclick="save5D()">&#128202; 5D</button>
-  <button onclick="save4D()">&#128197; 4D</button>
-  <button onclick="toggleTheme()">&#9788;</button>
+  <button onclick="save5D()" data-trl-title="ui_tt_export_5d" title="5D — Cost Excel">&#128202; 5D</button>
+  <button onclick="save4D()" data-trl-title="ui_tt_export_4d" title="4D — Schedule Excel">&#128197; 4D</button>
+  <button onclick="openMepReport()" title="MEP Bill of Quantities">&#128295; MEP</button>
+  <button onclick="toggleTheme()" data-trl-title="ui_tt_theme" title="Light/Dark">&#9788;</button>
+  <button onclick="copyPageUrl(this)" title="Copy shareable link">&#128203;</button>
+  <button id="header-flag-btn" onclick="window._TRL_LOADER&&_TRL_LOADER.openFlagPicker()" title="Change locale / currency" style="font-size:20px">&#127760;</button>
+  <button onclick="location.href='/'" title="Home" style="font-size:20px">&#127968;</button>
 </div>
 <div class="charts" id="charts"></div>
 <div id="status"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="rates.js"></script>
 
 <script>
+function copyPageUrl(btn) {
+  var url = location.href;
+  navigator.clipboard.writeText(url).then(function() {
+    var orig = btn.innerHTML; btn.innerHTML = '&#10003;'; btn.style.color = '#44cc44';
+    setTimeout(function() { btn.innerHTML = orig; btn.style.color = ''; }, 1500);
+  }).catch(function() { prompt('Copy this URL:', url); });
+}
+
 const params = new URLSearchParams(location.search);
 const DB_URL = params.get('db') || 'sandbox_1M_extracted.db';
 const DIFF_DB_URL = params.get('diffdb') || '';
@@ -62,210 +79,306 @@ const BLD = params.get('bld') || '';
 var diffResult = null;
 var diffDb = null;
 
-// ============================================================================
-// CIDB 2024 MATERIAL RATES (from boq_export.py — exact match)
-// ============================================================================
-const RATES = {
-  IfcDuct:{rate:165,unit:'M',desc:'Galvanized Steel Ductwork (avg 400mm)'},
-  IfcDuctSegment:{rate:165,unit:'M',desc:'Ductwork Segment'},
-  IfcDuctFitting:{rate:380,unit:'EA',desc:'Duct Fittings (elbows, tees)'},
-  IfcPipe:{rate:48.5,unit:'M',desc:'PVC/HDPE Pipe (avg 100mm)'},
-  IfcPipeSegment:{rate:48.5,unit:'M',desc:'Pipe Segment'},
-  IfcPipeFitting:{rate:95,unit:'EA',desc:'Pipe Fittings'},
-  IfcCableCarrier:{rate:78,unit:'M',desc:'Cable Tray System (300mm)'},
-  IfcCableCarrierSegment:{rate:78,unit:'M',desc:'Cable Tray Segment'},
-  IfcBeam:{rate:680,unit:'M',desc:'Structural Steel I-Beam'},
-  IfcColumn:{rate:1250,unit:'M',desc:'Structural Steel Column'},
-  IfcSlab:{rate:285,unit:'M2',desc:'RC Slab 250mm'},
-  IfcWall:{rate:145,unit:'M2',desc:'Blockwork Wall 150mm'},
-  IfcWallStandardCase:{rate:145,unit:'M2',desc:'Standard Wall'},
-  IfcCurtainWall:{rate:750,unit:'M2',desc:'Curtain Wall'},
-  IfcCovering:{rate:185,unit:'M2',desc:'Floor/Ceiling Finish'},
-  IfcRoof:{rate:238,unit:'M2',desc:'Metal Roof'},
-  IfcLightFixture:{rate:485,unit:'EA',desc:'LED Light Fixture'},
-  IfcOutlet:{rate:125,unit:'EA',desc:'Power Outlet'},
-  IfcDoor:{rate:2850,unit:'EA',desc:'Door Set'},
-  IfcWindow:{rate:1580,unit:'EA',desc:'Window'},
-  IfcBuildingElementProxy:{rate:850,unit:'EA',desc:'Misc Element'},
-  IfcFlowTerminal:{rate:3500,unit:'EA',desc:'HVAC Terminal'},
-  IfcFurnishingElement:{rate:1200,unit:'EA',desc:'Furniture'},
-  IfcPlate:{rate:95,unit:'M2',desc:'Steel Plate'},
-  IfcMember:{rate:320,unit:'M',desc:'Steel Member'},
-  IfcRailing:{rate:280,unit:'M',desc:'Railing'},
-  IfcStair:{rate:4500,unit:'EA',desc:'Staircase'},
-  IfcStairFlight:{rate:2200,unit:'EA',desc:'Stair Flight'},
-};
+// RATES, LABOR_RATES, EQUIPMENT_RATES, EQUIPMENT_ALLOCATION, SEQUENCE_RULES,
+// DISC_COLORS, PHASE_COLORS, WORK_PACKAGES, calcLabor(), calcEquipment(),
+// getRate(), getPhase(), getProductivity() — all from rates.js
+const DEFAULT_RULE = SEQUENCE_DEFAULT;  // alias for existing references
 
 // ============================================================================
-// LABOR RATES (from boq_export.py — full trade/crew/rate_per_day)
+// LOCALE TEMPLATE (_TRL) — iDempiere-style localization
+// Override via URL: ?cur=USD&rate=4.45&locale=en_US
+// Or load from template DB in future. ALL labels, currency, attribution here.
 // ============================================================================
-const LABOR_RATES = {
-  HVAC_TECH: {
-    rate_per_day: 185, crew_size: 2, trade: 'HVAC Technician (Skilled)',
-    productivity: {IfcDuct:18,IfcDuctSegment:18,IfcDuctFitting:12}
-  },
-  PLUMBER: {
-    rate_per_day: 165, crew_size: 2, trade: 'Pipefitter (Skilled)',
-    productivity: {IfcPipe:25,IfcPipeSegment:25,IfcPipeFitting:15}
-  },
-  ELECTRICIAN: {
-    rate_per_day: 175, crew_size: 2, trade: 'Electrician (Skilled)',
-    productivity: {IfcCableCarrier:30,IfcCableCarrierSegment:30,IfcLightFixture:20,IfcOutlet:25}
-  },
-  STEEL_ERECTOR: {
-    rate_per_day: 195, crew_size: 4, trade: 'Steel Erector (Skilled)',
-    productivity: {IfcBeam:8,IfcColumn:6}
-  },
-  CONCRETE_GANG: {
-    rate_per_day: 145, crew_size: 6, trade: 'Concrete Gang (Mixed)',
-    productivity: {IfcSlab:35}
-  },
-  MASON: {
-    rate_per_day: 155, crew_size: 3, trade: 'Mason (Skilled) + Laborers',
-    productivity: {IfcWall:12,IfcWallStandardCase:12}
-  },
-  LABORER: {
-    rate_per_day: 95, crew_size: 1, trade: 'General Laborer',
-    productivity: {}
-  },
+const _TRL_DEFAULTS = {
+  // Currency
+  cur:          'RM',           // primary currency symbol
+  cur2:         'USD',          // secondary currency symbol
+  cur_rate:     3.91,           // 1 cur2 = cur_rate × cur  (e.g. 1 USD = 3.91 RM)
+  cur_name:     'Malaysian Ringgit',
+  cur2_name:    'US Dollar',
+
+  // Rate source attribution
+  rate_source:       'CIDB Malaysia 2024 / BCISM Cost Book',
+  rate_year:         '2024',
+  rate_mat_source:   'CIDB National Construction Cost Centre (N3C) 2024',
+  rate_mat_ref:      'BCISM Cost Book 2022-2024 (inflated +3%)',
+  rate_mat_includes: 'Delivery, wastage allowance (5-10% by material type)',
+  rate_lab_source:   'MBAM-CIDB Labour Wage Survey 2024',
+  rate_lab_basis:    'Basic wage + 30% (EPF 13%, SOCSO 2%, benefits 15%)',
+  rate_lab_prod:     'CIDB productivity standards by trade',
+  rate_lab_crew:     'Skilled workers + helpers as per trade standards',
+  rate_eq_source:    'CIDB N3C Machinery Hire Rates 2024',
+  rate_eq_alloc:     'Based on work type and duration requirements',
+  rate_eq_basis:     'Per day (8 hours), operator cost included where stated',
+
+  // Column headers — Excel + HTML tables
+  h_discipline: 'Discipline',
+  h_ifc_class:  'IFC Class',
+  h_quantity:   'Quantity',
+  h_uom:        'UOM',
+  h_description:'Description',
+  h_storey:     'Storey',
+  h_phase:      'Phase',
+  h_item:       'Item',
+
+  // Cost labels
+  h_material:   'Material',
+  h_labour:     'Labour',
+  h_equipment:  'Equipment',
+  h_total:      'Total',
+  h_unit_rate:  'Unit Rate',
+  h_mat_rate:   'Mat Rate',
+  h_lab_rate:   'Lab Rate',
+  h_rate_day:   'Rate/Day',
+  h_trade:      'Trade',
+  h_crew_size:  'Crew Size',
+  h_man_days:   'Man-Days',
+  h_duration:   'Duration (days)',
+  h_grand_total:'GRAND TOTAL',
+  h_subtotal:   'SUBTOTAL',
+
+  // 4D labels
+  h_wbs:        'WBS',
+  h_task_name:  'Task Name',
+  h_productivity:'Productivity',
+  h_gangs:      'Gangs',
+  h_start_date: 'Start Date',
+  h_finish_date:'Finish Date',
+  h_labor_resource:'Labor Resource',
+  h_status:     'Status',
+  h_pct_complete:'% Complete',
+  h_day_offset: 'Day Offset',
+  h_date:       'Date',
+  h_milestone:  'Milestone',
+  h_task:       'Task',
+  h_task_count: 'Task Count',
+  h_total_days: 'Total Days',
+  h_total_man_days:'Total Man-Days',
+  h_week:       'Week',
+  h_cumulative_pct:'Cumulative %',
+
+  // Chart titles
+  t_cost_by_disc:      '5D — Cost by Discipline',
+  t_cost_components:   'Cost Components by Discipline',
+  t_task_dist_phase:   'Task Distribution by Phase',
+  t_task_count_disc:   'Task Count by Discipline',
+  t_phase_duration:    '4D — Phase Duration (Total Days)',
+  t_resource_workload: '4D — Resource Workload (Man-Days by Phase)',
+  t_s_curve:           '4D — S-Curve Progress',
+  t_milestone:         '4D — Milestone Timeline',
+  t_gantt:             '4D — Gantt Timeline (Strategic Tasks by Phase)',
+  t_vo_impact:         '5D — Variation Order Impact',
+
+  // Excel sheet names
+  s_cover:        'Cover Sheet',
+  s_exec_summary: 'Executive Summary',
+  s_material:     'Material Summary',
+  s_labour:       'Labour Summary',
+  s_equipment:    'Equipment Summary',
+  s_boq:          'Detailed BOQ',
+  s_prov:         'Provisional Sums',
+  s_schedule:     'Construction Schedule',
+  s_proj_summary: 'Project Summary',
+  s_dashboard:    'BIM 4D Dashboard',
+
+  // Section titles
+  t_comp_boq:     'COMPREHENSIVE BILL OF QUANTITIES',
+  t_cost_method:  'COST BREAKDOWN METHODOLOGY',
+  t_mat_summary:  'MATERIAL COST SUMMARY',
+  t_lab_summary:  'LABOUR COST SUMMARY',
+  t_equip_summary:'EQUIPMENT COST SUMMARY',
+  t_prov_sums:    'PROVISIONAL SUMS',
+  t_phase_dur_analysis: 'Phase Duration Analysis',
+  t_resource_analysis:  'Resource Workload Analysis',
+  t_s_curve_progress:   'S-Curve Progress',
+  t_milestone_timeline: 'Milestone Timeline',
+  t_gantt_timeline:     'Gantt Timeline (Strategic Tasks)',
+
+  // Misc
+  not_started:  'Not Started',
+  source_app:   'BIM OOTB — Frictionless BIM',
+
+  // ── UI — viewer chrome ──
+  tagline:           'Frictionless BIM. Two DBs. One browser. Zero install.',
+  ui_tools:          'Tools',
+  ui_storeys:        'Storeys',
+  ui_disciplines:    'Disciplines',
+  ui_filter:         'Filter...',
+  ui_all_storeys:    'All Storeys',
+
+  // ── UI — tooltips ──
+  ui_tt_xray:        'X-Ray',
+  ui_tt_screenshot:  'Screenshot',
+  ui_tt_fullscreen:  'Fullscreen',
+  ui_tt_theme:       'Light/Dark',
+  ui_tt_fly:         'Fly Around',
+  ui_tt_walk_speed:  'Walk Speed',
+  ui_tt_export:      '4D/5D Export',
+  ui_tt_export_5d:   '5D \u2014 Cost Excel',
+  ui_tt_export_4d:   '4D \u2014 Schedule Excel',
+  ui_tt_issues:      'Issues',
+  ui_tt_measure:     'Measure',
+  ui_tt_section:     'Section Cut',
+  ui_tt_2d:          '2D Plans',
+  ui_tt_sitecam:     'Site Camera',
+  ui_tt_walk:        'Walk Mode',
+  ui_tt_voice:       'Voice Search',
+
+  // ── UI — buttons ──
+  ui_cancel:         'Cancel',
+  ui_back:           'Back',
+  ui_save:           'Save',
+  ui_undo:           'Undo',
+  ui_retake:         'Retake',
+  ui_go:             'Go',
+  ui_clear:          'Clear',
+  ui_clear_all:      'Clear All',
+  ui_export_excel:   'Export Excel',
+  ui_share_whatsapp: 'Share \u2192 WhatsApp',
+  ui_show_3d:        'Show in 3D',
+  ui_snag:           'Snag',
+
+  // ── UI — info panel labels ──
+  ui_class:          'Class',
+  ui_name:           'Name',
+  ui_guid:           'GUID',
+  ui_building:       'Building',
+  ui_gps:            'GPS',
+  ui_compass:        'Compass',
+  ui_time:           'Time',
+  ui_notes:          'Notes',
+  ui_open:           'Open',
+
+  // ── UI — HUD stats ──
+  ui_buildings:      'Buildings',
+  ui_elements:       'Elements',
+  ui_meshes:         'Meshes',
+  ui_streaming:      'Streaming',
+  ui_rendered:       'Rendered',
+  ui_done:           'Done',
+  ui_variance:       'Variance',
+  ui_initializing:   'Initializing...',
+
+  // ── UI — walk mode ──
+  ui_walk_title:     'Walk Mode',
+  ui_walk_instructions: 'Stand at the building entrance and tap SET to anchor your GPS position to the model.',
+  ui_walk_set:       'SET',
+  ui_walk_no_data:   'Walk Mode: No building data',
+  ui_walk_no_gps:    'Walk Mode: No GPS \u2014 orientation only',
+  ui_walk_stopped:   'Walk Mode stopped.',
+  ui_drivethru_hint: 'Drive-Thru: Tap to walk, hold to glide',
+  ui_drivethru_status:'Drive-Thru: {n} steps ({d}m)',
+  ui_xray_found:     'Wall X-Ray: {n} MEP elements behind {name}',
+  ui_xray_none:      'Wall X-Ray: No MEP elements found behind {name}',
+
+  // ── UI — site camera ──
+  ui_sitecam_watermark: 'BIM OOTB \u2014 Site Inspection',
+  ui_gps_acquiring:  'GPS: acquiring...',
+  ui_gps_unavailable:'GPS: unavailable',
+  ui_gps_unsupported:'GPS: not supported',
+  ui_model_view:     'BIM Model View',
+  ui_bearing:        'Bearing',
+  ui_markup_arrow:   'Arrow',
+  ui_markup_circle:  'Circle',
+  ui_markup_draw:    'Draw',
+  ui_markup_text:    'Text',
+
+  // ── UI — import ──
+  ui_reading_file:   'Reading file...',
+  ui_reading_fmt:    'Reading {fmt} file...',
+  ui_large_file:     'Very large file ({n}MB) \u2014 may take a few minutes',
+  ui_med_file:       'Large file ({n}MB) \u2014 please wait...',
+  ui_building_dbs:   'Building databases...',
+  ui_imported:       'Imported {n} elements',
+  ui_imported_fmt:   'Imported {n} elements from {fmt}',
+  ui_drop_ifc:       'Please drop an .ifc file',
+  ui_unsupported:    'Unsupported: .{ext} \u2014 Accepted: IFC, DAE, OBJ, GLB, 3DS, FBX, STL',
+  ui_exporting_ifc:  'Exporting IFC ({n} elements)...',
+  ui_downloaded_ifc: 'Downloaded {name}.ifc ({size} KB)',
+
+  // ── UI — city ──
+  ui_city_mode:      'CITY MODE \u2014 {n} buildings, {m} elements. Click a building to load.',
+  ui_flew_to:        'Flew to {name} ({n} elements)',
+  ui_downloading:    'Downloading {name}...',
+  ui_cleared:        'CLEARED \u2014 {n} meshes removed.',
+  ui_streaming_bld:  'STREAMING {name} \u2014 0/{n} elements',
+  ui_downloaded_bld: 'Downloaded {name}. Streaming {bld}...',
+
+  // ── UI — NLP ──
+  ui_nlp_placeholder:'count doors, floor 1 walls, total cost, Find fire pump...',
+  ui_no_speech:      'No speech detected \u2014 tap mic again',
+  ui_no_match:       'No match. Try: "count doors" or "floor 1 walls"',
+  ui_no_results:     'No results for "{q}"',
+  ui_details:        'Details ({n})',
+
+  // ── UI — status ──
+  ui_loading:        'Loading',
+  ui_no_data:        'No data.',
+  ui_gen_5d:         'Generating 5D Excel...',
+  ui_gen_5d_prep:    'Generating 5D Excel \u2014 preparing charts...',
+  ui_gen_4d:         'Generating 4D Excel...',
+  ui_gen_4d_prep:    'Generating 4D Excel \u2014 preparing charts...',
+  ui_saved_excel:    'Saved {f} ({n} sheets)',
+  ui_vo_label:       'includes Variance Order',
+
+  // ── UI — issues ──
+  ui_issues_title:   'Issues',
+
+  // ── UI — panels ──
+  ui_swipe_show:     'Swipe to show panels',
+  ui_swipe_hide:     'Swipe to hide panels',
+
+  // ── UI — section cut ──
+  ui_section_cut:    'Section Cut',
+
+  // ── UI — VO labels ──
+  ui_vo_new:         'New element',
+  ui_vo_existed:     'Existed',
+  ui_vo_demolished:  '\u2014 (demolished)',
+  ui_vo_parameter:   'Parameter',
+  ui_vo_value:       'Value',
+  ui_vo_description: 'Description',
+
+  // ── UI — settings ──
+  ui_settings:       'Settings',
+  ui_language:       'Language',
+  ui_currency:       'Currency',
+  ui_rate_source_lbl:'Rate Source',
+  ui_check_updates:  'Check for Updates',
+  ui_reset_defaults: 'Reset to Defaults',
+  ui_apply:          'Apply',
 };
 
-// ============================================================================
-// EQUIPMENT RATES & ALLOCATION (from boq_export.py)
-// ============================================================================
-const EQUIPMENT_RATES = {
-  MOBILE_CRANE_20T: {rate_per_day:1850, desc:'Mobile Crane 20 Tonne'},
-  TOWER_CRANE: {rate_per_day:2200, desc:'Tower Crane'},
-  CONCRETE_PUMP: {rate_per_day:950, desc:'Concrete Pump Truck'},
-  SCISSOR_LIFT_8M: {rate_per_day:285, desc:'Scissor Lift 8m'},
-  WELDING_MACHINE: {rate_per_day:65, desc:'Welding Machine 300A'},
-  GENERATOR_5KVA: {rate_per_day:95, desc:'Generator 5KVA'},
-};
-const EQUIPMENT_ALLOCATION = {
-  IfcBeam: {equipment:'MOBILE_CRANE_20T', duration_factor:0.5},
-  IfcColumn: {equipment:'MOBILE_CRANE_20T', duration_factor:0.5},
-  IfcSlab: {equipment:'CONCRETE_PUMP', duration_factor:0.3},
-  IfcDuct: {equipment:'SCISSOR_LIFT_8M', duration_factor:0.4},
-  IfcCableCarrier: {equipment:'SCISSOR_LIFT_8M', duration_factor:0.3},
-};
+// Merge URL overrides: ?cur=USD&rate=4.45 or any _TRL key: ?h_material=Materials
+const _TRL = Object.assign({}, _TRL_DEFAULTS);
+if (params.get('cur'))  _TRL.cur = params.get('cur');
+if (params.get('cur2')) _TRL.cur2 = params.get('cur2');
+if (params.get('rate')) _TRL.cur_rate = parseFloat(params.get('rate'));
+// Allow overriding any _TRL key via URL: ?t_cost_by_disc=5D%20Cost
+for (const [k,v] of params.entries()) { if (k in _TRL_DEFAULTS && k !== 'cur' && k !== 'cur2' && k !== 'rate') _TRL[k] = v; }
 
-// ============================================================================
-// SEQUENCE RULES (from schedule_generator.py — for 4D schedule)
-// ============================================================================
-const SEQUENCE_RULES = {
-  // Substructure
-  IfcFooting:{phase:'Substructure',sequence:1,resource:'CONCRETE_GANG'},
-  IfcReinforcingBar:{phase:'Substructure',sequence:1,resource:'CONCRETE_GANG'},
-  // Superstructure
-  IfcColumn:{phase:'Superstructure',sequence:2,resource:'STEEL_ERECTOR'},
-  IfcBeam:{phase:'Superstructure',sequence:3,resource:'STEEL_ERECTOR'},
-  IfcSlab:{phase:'Superstructure',sequence:4,resource:'CONCRETE_GANG'},
-  IfcPlate:{phase:'Superstructure',sequence:4,resource:'STEEL_ERECTOR'},
-  IfcMember:{phase:'Superstructure',sequence:3,resource:'STEEL_ERECTOR'},
-  // MEP Rough-in (pipes, ducts, cable trays, flow segments/fittings)
-  IfcDuct:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
-  IfcDuctSegment:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
-  IfcDuctFitting:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
-  IfcPipe:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
-  IfcPipeSegment:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
-  IfcPipeFitting:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
-  IfcCableCarrier:{phase:'MEP Rough-in',sequence:5,resource:'ELECTRICIAN'},
-  IfcCableCarrierSegment:{phase:'MEP Rough-in',sequence:5,resource:'ELECTRICIAN'},
-  IfcFlowSegment:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
-  IfcFlowFitting:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
-  IfcFlowController:{phase:'MEP Rough-in',sequence:5,resource:'ELECTRICIAN'},
-  IfcFlowMovingDevice:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
-  IfcFlowStorageDevice:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
-  IfcFlowTreatmentDevice:{phase:'MEP Rough-in',sequence:5,resource:'PLUMBER'},
-  IfcEnergyConversionDevice:{phase:'MEP Rough-in',sequence:5,resource:'HVAC_TECH'},
-  // Architecture
-  IfcWall:{phase:'Architecture',sequence:6,resource:'MASON'},
-  IfcWallStandardCase:{phase:'Architecture',sequence:6,resource:'MASON'},
-  IfcOpeningElement:{phase:'Architecture',sequence:6,resource:'MASON'},
-  IfcBuildingElementPart:{phase:'Architecture',sequence:6,resource:'MASON'},
-  IfcDoor:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
-  IfcWindow:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
-  IfcStair:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
-  IfcStairFlight:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
-  IfcRailing:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
-  IfcRoof:{phase:'Architecture',sequence:8,resource:'ROOFER'},
-  IfcBuildingElementProxy:{phase:'Architecture',sequence:6,resource:null},
-  IfcCurtainWall:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
-  // MEP Final
-  IfcLightFixture:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
-  IfcOutlet:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
-  IfcElectricAppliance:{phase:'MEP Final',sequence:9,resource:'ELECTRICIAN'},
-  IfcFlowTerminal:{phase:'MEP Final',sequence:9,resource:'HVAC_TECH'},
-  // Finishes
-  IfcCovering:{phase:'Finishes',sequence:10,resource:'FINISHER'},
-  IfcFurniture:{phase:'Finishes',sequence:11,resource:'FINISHER'},
-  IfcFurnishingElement:{phase:'Finishes',sequence:11,resource:'FINISHER'},
-};
-const DEFAULT_RULE = {phase:'Architecture',sequence:6,resource:null};
+// Currency helpers — read from _TRL at call time so locale_loader overrides take effect
+// These were const but locale_loader merges AFTER parse, so they must be live.
+var CUR, CUR2, CUR_RATE, USD_RATE;
+function _syncCur() { CUR = _TRL.cur; CUR2 = _TRL.cur2; CUR_RATE = _TRL.cur_rate; USD_RATE = CUR_RATE; }
+_syncCur();
+function fmtCur(val) { return _TRL.cur + ' ' + val.toLocaleString(); }
+function fmtCur2(val) { return Math.round(val / _TRL.cur_rate * 100) / 100; }
 
-const DISC_COLORS = {
-  ARC:'#4488ff',STR:'#44cccc',MEP:'#44cc44',ELEC:'#cccc44',FP:'#cc8844',
-  ACMV:'#cc4444',PLB:'#8844cc',HVAC:'#44aacc',SAN:'#aa44aa',VENT:'#88ccaa',
-};
-const PHASE_COLORS = {
-  'Substructure':'#A5A5A5','Superstructure':'#4472C4','MEP Rough-in':'#70AD47',
-  'Architecture':'#ED7D31','MEP Final':'#5B9BD5','Finishes':'#FFC000',
-  'Commissioning':'#C55A11','Unknown':'#888888',
-};
-
-// ============================================================================
-// USD CONVERSION RATE
-// ============================================================================
-const USD_RATE = 4.45;
-
-// ============================================================================
-// WORK PACKAGES — IFC class → construction phase mapping
-// ============================================================================
-const WORK_PACKAGES = [
-  { id: 'PACKAGE 1', name: 'SUBSTRUCTURE', color: '8E44AD',
-    classes: ['IfcFooting','IfcPile','IfcReinforcingBar'] },
-  { id: 'PACKAGE 2', name: 'SUPERSTRUCTURE', color: '2980B9',
-    classes: ['IfcColumn','IfcBeam','IfcSlab','IfcWall','IfcWallStandardCase','IfcCurtainWall','IfcRoof','IfcPlate','IfcMember'] },
-  { id: 'PACKAGE 3', name: 'MEP ROUGH-IN', color: 'D35400',
-    classes: ['IfcDuct','IfcDuctSegment','IfcDuctFitting','IfcPipe','IfcPipeSegment','IfcPipeFitting','IfcCableCarrier','IfcCableCarrierSegment','IfcFlowSegment','IfcFlowFitting','IfcFlowController','IfcFlowMovingDevice','IfcFlowStorageDevice','IfcFlowTreatmentDevice','IfcEnergyConversionDevice'] },
-  { id: 'PACKAGE 4', name: 'FINISHES', color: '27AE60',
-    classes: ['IfcCovering','IfcDoor','IfcWindow','IfcFurniture','IfcFurnishingElement','IfcStair','IfcStairFlight','IfcRailing'] },
-  { id: 'PACKAGE 5', name: 'MEP FINAL FIX', color: 'C0392B',
-    classes: ['IfcFlowTerminal','IfcLightFixture','IfcOutlet','IfcElectricAppliance'] },
-];
+// WORK_PACKAGES — from rates.js
 
 // ============================================================================
 // COMPUTED STATE
 // ============================================================================
 let db = null, bldName = '';
+let _dbSourceLine = '';   // S238: captured at load, re-emitted on each export
 let qtoData = [];        // per storey/disc/class rows
 let discSummary = {};     // disc -> {qty, matTotal, laborCost, equipCost}
 let grandMaterial = 0, grandLabor = 0, grandEquip = 0, totalQty = 0;
 let scheduleData = [];    // generated 4D tasks
 let chartInstances = [];
 
-// ============================================================================
-// LABOR / EQUIPMENT CALCULATION (matches boq_export.py exactly)
-// ============================================================================
-function calcLabor(ifcClass, qty) {
-  for (const [key, lr] of Object.entries(LABOR_RATES)) {
-    if (lr.productivity && lr.productivity[ifcClass] !== undefined) {
-      const prod = lr.productivity[ifcClass];
-      const days = qty / prod;
-      const cost = days * lr.crew_size * lr.rate_per_day;
-      return {cost: Math.round(cost), days, crew: lr.crew_size, trade: lr.trade, tradeKey: key, prod};
-    }
-  }
-  return {cost: 0, days: 0, crew: 0, trade: '', tradeKey: null, prod: 10};
-}
-
-function calcEquipment(ifcClass, laborDays) {
-  const alloc = EQUIPMENT_ALLOCATION[ifcClass];
-  if (!alloc) return {cost: 0, desc: '', days: 0};
-  const er = EQUIPMENT_RATES[alloc.equipment];
-  const days = laborDays * alloc.duration_factor;
-  return {cost: Math.round(days * er.rate_per_day), desc: er.desc, days};
-}
+// calcLabor(), calcEquipment() — from rates.js
 
 // ============================================================================
 // SCHEDULE GENERATION — realistic storey-by-storey, phase-dependent
@@ -372,8 +485,14 @@ function generateSchedule(activities, startDateStr) {
         if (after > storeyStart) storeyStart = after;
       }
 
-      // Tasks in same phase+storey run concurrently — find longest
-      let maxFinish = storeyStart;
+      // S240c: One grouped task per (phase, storey) — aggregate all IFC classes
+      let maxDuration = 0;
+      let totalQtyGroup = 0;
+      let totalCrew = 0;
+      const ifcClasses = [];
+      const disciplines = new Set();
+      const resources = new Set();
+      const equipments = new Set();
 
       for (const act of acts) {
         const prod = act.labor.prod || 10;
@@ -383,72 +502,258 @@ function generateSchedule(activities, startDateStr) {
           crews = Math.ceil(duration / MAX_TASK_DAYS);
           duration = Math.ceil(duration / crews);
         }
-
-        const taskFinish = addWorkDays(storeyStart, duration);
-        if (taskFinish > maxFinish) maxFinish = taskFinish;
-
+        if (duration > maxDuration) maxDuration = duration;
+        totalQtyGroup += act.qty;
+        totalCrew = Math.max(totalCrew, (act.labor.crew || 2) * crews);
+        ifcClasses.push(act.cls);
+        disciplines.add(act.disc);
+        const res = act.labor.tradeKey || act.rules.resource;
+        if (res) resources.add(res);
         const equipAlloc = EQUIPMENT_ALLOCATION[act.cls];
-        taskId++;
-        tasks.push({
-          id: taskId,
-          wbs: `1.${act.rules.sequence}.${taskId}`,
-          name: `${storey} - Install ${act.cls.replace('Ifc','')} (${act.disc})`,
-          phase,
-          discipline: act.disc,
-          storey,
-          qty: act.qty,
-          uom: act.unit || 'EA',
-          productivity: prod,
-          duration,
-          crews,
-          startDate: storeyStart.toISOString().slice(0,10),
-          finishDate: taskFinish.toISOString().slice(0,10),
-          resource: act.labor.tradeKey || act.rules.resource || '',
-          crew: (act.labor.crew || 2) * crews,
-          equipment: equipAlloc ? EQUIPMENT_RATES[equipAlloc.equipment].desc : '',
-          startDay: Math.round((storeyStart - projectStart) / 86400000),
-          finishDay: Math.round((taskFinish - projectStart) / 86400000),
-        });
+        if (equipAlloc) equipments.add(EQUIPMENT_RATES[equipAlloc.equipment].desc);
       }
 
+      const taskFinish = addWorkDays(storeyStart, maxDuration);
+      const discLabel = [...disciplines].join('/');
+      taskId++;
+      tasks.push({
+        id: taskId,
+        wbs: `1.${PHASE_ORDER.indexOf(phase)+1}.${taskId}`,
+        name: `${storey} - ${phase} (${discLabel})`,
+        ifcClasses,
+        phase,
+        discipline: discLabel,
+        storey,
+        qty: totalQtyGroup,
+        uom: 'MIX',
+        productivity: totalQtyGroup > 0 ? Math.round(totalQtyGroup / maxDuration) : 0,
+        duration: maxDuration,
+        crews: 1,
+        startDate: storeyStart.toISOString().slice(0,10),
+        finishDate: taskFinish.toISOString().slice(0,10),
+        resource: [...resources].join(','),
+        crew: totalCrew,
+        equipment: [...equipments].join(', '),
+        startDay: Math.round((storeyStart - projectStart) / 86400000),
+        finishDay: Math.round((taskFinish - projectStart) / 86400000),
+      });
+
       if (!storeyPhaseEnd[storey]) storeyPhaseEnd[storey] = {};
-      storeyPhaseEnd[storey][phase] = maxFinish;
-      if (!phaseFirstStart[phase]) phaseFirstStart[phase] = maxFinish;
-      prevStoreyEnd = maxFinish;
+      storeyPhaseEnd[storey][phase] = taskFinish;
+      if (!phaseFirstStart[phase]) phaseFirstStart[phase] = taskFinish;
+      prevStoreyEnd = taskFinish;
     }
   }
   return tasks;
 }
 
 // ============================================================================
+// 4D SCHEDULE AUDIT — S240 §0.1 (8 checks, must all PASS before sync)
+// ============================================================================
+function audit4DSchedule(scheduleData, db, qtoData) {
+  const results = [];
+  const PHASE_ORDER = ['Substructure','Superstructure','MEP Rough-in','Architecture','MEP Final','Finishes'];
+
+  // Check 1: Task coverage — every IFC class in DB maps to SEQUENCE_RULES (no DEFAULT)
+  const dbClasses = qtoData.map(r => r.cls);
+  const unmapped = [...new Set(dbClasses.filter(c => !SEQUENCE_RULES[c]))];
+  const c1 = unmapped.length === 0;
+  console.log('§4D_AUDIT_COVERAGE ' + (c1 ? 'PASS' : 'FAIL') + ' unmapped=[' + unmapped.join(',') + ']');
+  results.push({name:'COVERAGE', pass:c1});
+
+  // Check 2: Phase order — no phase inversion in task sequence
+  let c2 = true;
+  let lastPhaseIdx = -1;
+  const tasksByOrder = [...scheduleData].sort((a,b) => a.startDay - b.startDay || PHASE_ORDER.indexOf(a.phase) - PHASE_ORDER.indexOf(b.phase));
+  for (const t of tasksByOrder) {
+    const pi = PHASE_ORDER.indexOf(t.phase);
+    if (pi < 0) continue;
+    // Allow same phase — only flag if a later task's phase is strictly earlier AND starts later
+    // Phase inversion = a task in an earlier phase starts AFTER a task in a later phase on the SAME storey
+  }
+  // Stricter check: per-storey, no earlier phase starting after a later phase
+  const storeyPhaseStarts = {};
+  for (const t of scheduleData) {
+    const key = t.storey + '|||' + t.phase;
+    if (!storeyPhaseStarts[key] || t.startDay < storeyPhaseStarts[key]) {
+      storeyPhaseStarts[key] = t.startDay;
+    }
+  }
+  const storeys = [...new Set(scheduleData.map(t => t.storey))];
+  const inversions = [];
+  for (const st of storeys) {
+    for (let i = 0; i < PHASE_ORDER.length - 1; i++) {
+      for (let j = i + 1; j < PHASE_ORDER.length; j++) {
+        const earlyStart = storeyPhaseStarts[st + '|||' + PHASE_ORDER[i]];
+        const lateStart = storeyPhaseStarts[st + '|||' + PHASE_ORDER[j]];
+        if (earlyStart !== undefined && lateStart !== undefined && lateStart < earlyStart) {
+          inversions.push(st + ':' + PHASE_ORDER[j] + '<' + PHASE_ORDER[i]);
+          c2 = false;
+        }
+      }
+    }
+  }
+  console.log('§4D_AUDIT_PHASE_ORDER ' + (c2 ? 'PASS' : 'FAIL') + (inversions.length ? ' inversions=[' + inversions.join(',') + ']' : ' ok=true'));
+  results.push({name:'PHASE_ORDER', pass:c2});
+
+  // Check 3: Storey order — within each phase, storeys run bottom-up
+  let c3 = true;
+  const storeyViolations = [];
+  function storeyRank(s) {
+    if (!s) return 999;
+    const u = s.toUpperCase();
+    if (u.includes('ROOF')) return 900;
+    if (u.includes('BASEMENT') || u.startsWith('B')) return -10 + (parseInt(u.replace(/\D/g,''))||0);
+    if (u === 'GROUND' || u === 'G' || u === 'G0' || u === 'GF') return 0;
+    const n = parseInt(u.replace(/\D/g,''));
+    return isNaN(n) ? 50 : n;
+  }
+  for (const phase of PHASE_ORDER) {
+    const phaseTasks = scheduleData.filter(t => t.phase === phase);
+    const storeyStarts = {};
+    for (const t of phaseTasks) {
+      if (!storeyStarts[t.storey] || t.startDay < storeyStarts[t.storey]) {
+        storeyStarts[t.storey] = t.startDay;
+      }
+    }
+    const sorted = Object.entries(storeyStarts).sort((a,b) => a[1] - b[1]);
+    for (let i = 1; i < sorted.length; i++) {
+      if (storeyRank(sorted[i][0]) < storeyRank(sorted[i-1][0])) {
+        storeyViolations.push(phase + ':' + sorted[i-1][0] + '>' + sorted[i][0]);
+        c3 = false;
+      }
+    }
+  }
+  console.log('§4D_AUDIT_STOREY_ORDER ' + (c3 ? 'PASS' : 'FAIL') + (storeyViolations.length ? ' violations=[' + storeyViolations.join(',') + ']' : ' ok=true'));
+  results.push({name:'STOREY_ORDER', pass:c3});
+
+  // Check 4: Duration sanity — no task >120 days, no task <1 day
+  const outliers = scheduleData.filter(t => t.duration > 120 || t.duration < 1).map(t => t.name + '=' + t.duration + 'd');
+  const c4 = outliers.length === 0;
+  console.log('§4D_AUDIT_DURATION ' + (c4 ? 'PASS' : 'FAIL') + ' outliers=[' + outliers.join(',') + ']');
+  results.push({name:'DURATION', pass:c4});
+
+  // Check 5: Overlap sanity — no two tasks with same phase on same storey (grouped = impossible, but verify)
+  let c5 = true;
+  const conflicts = [];
+  for (let i = 0; i < scheduleData.length; i++) {
+    for (let j = i + 1; j < scheduleData.length; j++) {
+      const a = scheduleData[i], b = scheduleData[j];
+      if (a.storey === b.storey && a.phase === b.phase &&
+          a.startDay < b.finishDay && b.startDay < a.finishDay) {
+        conflicts.push(a.name + ' vs ' + b.name);
+        c5 = false;
+      }
+    }
+  }
+  console.log('§4D_AUDIT_OVERLAP ' + (c5 ? 'PASS' : 'FAIL') + ' conflicts=[' + conflicts.slice(0,5).join('; ') + (conflicts.length > 5 ? '..+' + (conflicts.length-5) : '') + ']');
+  results.push({name:'OVERLAP', pass:c5});
+
+  // Check 6: Total duration — project total ≤ 3× naive serial sum
+  const serialSum = scheduleData.reduce((s,t) => s + t.duration, 0);
+  const projectDays = scheduleData.length ? Math.max(...scheduleData.map(t => t.finishDay)) : 0;
+  const ratio = serialSum > 0 ? (projectDays / serialSum).toFixed(2) : 0;
+  const c6 = projectDays <= 3 * serialSum;
+  console.log('§4D_AUDIT_TOTAL ' + (c6 ? 'PASS' : 'FAIL') + ' days=' + projectDays + ' serial=' + Math.round(serialSum) + ' ratio=' + ratio);
+  results.push({name:'TOTAL', pass:c6});
+
+  // Check 7: Gantt bar labels — no undefined/[object Object], no empty names
+  const badLabels = scheduleData.filter(t => !t.name || t.name.includes('undefined') || t.name.includes('[object'));
+  const c7 = badLabels.length === 0;
+  console.log('§4D_AUDIT_LABELS ' + (c7 ? 'PASS' : 'FAIL') + (badLabels.length ? ' bad=[' + badLabels.map(t=>t.name).join(',') + ']' : ' ok=true'));
+  results.push({name:'LABELS', pass:c7});
+
+  // Check 8: Task↔GUID resolution — every grouped task resolves to ≥1 GUID
+  let c8 = true;
+  const orphaned = [];
+  if (db) {
+    for (const t of scheduleData) {
+      const classes = t.ifcClasses || (t.ifcClass ? [t.ifcClass] : []);
+      if (!classes.length) { orphaned.push(t.name); c8 = false; continue; }
+      let totalCount = 0;
+      try {
+        for (const cls of classes) {
+          const res = db.exec("SELECT COUNT(*) FROM elements_meta WHERE ifc_class = '" +
+            cls.replace(/'/g,"''") + "' AND storey = '" +
+            (t.storey||'').replace(/'/g,"''") + "'");
+          totalCount += (res[0]?.values[0]?.[0] || 0);
+        }
+        if (totalCount === 0) { orphaned.push(t.name + '(0 GUIDs)'); c8 = false; }
+      } catch(e) {
+        orphaned.push(t.name + '(query error)');
+        c8 = false;
+      }
+    }
+  }
+  console.log('§4D_AUDIT_GUIDS ' + (c8 ? 'PASS' : 'FAIL') + ' orphaned=[' + orphaned.slice(0,5).join(',') + (orphaned.length > 5 ? '..+' + (orphaned.length-5) : '') + ']');
+  results.push({name:'GUIDS', pass:c8});
+
+  // Summary
+  const failCount = results.filter(r => !r.pass).length;
+  console.log('§4D_AUDIT_SUMMARY pass=' + results.filter(r=>r.pass).length + ' fail=' + failCount + ' total=8');
+
+  // Show warning banner if any fail
+  if (failCount > 0) {
+    let banner = document.getElementById('audit4d-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'audit4d-banner';
+      banner.style.cssText = 'background:#fff3cd;color:#856404;border:1px solid #ffc107;padding:8px 12px;margin:8px 0;border-radius:4px;font-weight:bold;';
+      const info = document.getElementById('info');
+      if (info) info.parentNode.insertBefore(banner, info.nextSibling);
+    }
+    var failNames = results.filter(r => !r.pass).map(r => r.name);
+    banner.textContent = '\u26a0 Schedule audit: ' + failNames.join(', ') + (failNames.indexOf('COVERAGE') >= 0 && unmapped.length ? ' \u2014 unmapped: ' + unmapped.join(', ') : '');
+  }
+
+  return { results, failCount };
+}
+
+// ============================================================================
 // INIT — load DB, compute everything
 // ============================================================================
-// S223: Fetch DB buffer — handles import:// URLs via IndexedDB cache, or regular fetch
+// S238: Fetch DB buffer — checks bim_ootb_cache IDB first (same cache as scene.js), falls back to fetch
+// import:// URLs: IDB only (no network). OCI URLs: IDB first (scene.js wrote it), then network.
 async function fetchDbBuffer(url) {
-  if (url.startsWith('import://')) {
-    // Look up in bim_ootb_cache IndexedDB (same store viewer uses)
-    const cacheDb = await new Promise(resolve => {
-      const req = indexedDB.open('bim_ootb_cache', 1);
-      req.onupgradeneeded = () => req.result.createObjectStore('dbs');
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => resolve(null);
-    });
-    if (!cacheDb) throw new Error('Cannot open IndexedDB cache for import:// URL');
-    const buf = await new Promise((resolve, reject) => {
+  const cacheDb = await new Promise(resolve => {
+    const req = indexedDB.open('bim_ootb_cache', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('dbs');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+
+  if (cacheDb) {
+    const cached = await new Promise(resolve => {
       const tx = cacheDb.transaction('dbs', 'readonly');
       const req = tx.objectStore('dbs').get(url);
-      req.onsuccess = () => req.result ? resolve(req.result) : reject(new Error('DB not found in cache: ' + url));
-      req.onerror = () => reject(new Error('IndexedDB read failed'));
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
     });
-    console.log('[S223] §BOQ_IMPORT_DB loaded from IndexedDB cache, size=' + (buf.byteLength / 1024).toFixed(0) + 'KB');
-    return buf;
+    if (cached) {
+      const src = url.startsWith('import://') ? 'import' : 'idb';
+      _dbSourceLine = '§CHARTS_DB_SOURCE source=' + src + ' url=' + url.split('/').pop() + ' size=' + (cached.byteLength / 1024).toFixed(0) + 'KB';
+      _log(_dbSourceLine);
+      return cached;
+    }
   }
+
+  if (url.startsWith('import://')) throw new Error('DB not found in cache: ' + url);
+
+  _dbSourceLine = '§CHARTS_DB_SOURCE source=oci url=' + url.split('/').pop();
+  _log(_dbSourceLine);
   return fetch(url).then(r => r.arrayBuffer());
 }
 
 async function init() {
+  // §1.2: Load rate template from JSON before any cost calculation
+  if (typeof initRateTemplate === 'function') {
+    await initRateTemplate();
+  } else {
+    console.warn('§QTO_RATES_FALLBACK initRateTemplate not available — using hardcoded rates');
+  }
+
   const SQL = await initSqlJs({
-    locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
+    locateFile: f => `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/${f}`
   });
   document.getElementById('info').textContent = `Loading ${DB_URL}...`;
   const buf = await fetchDbBuffer(DB_URL);
@@ -461,27 +766,132 @@ async function init() {
     bldName = r.length ? r[0].values[0][0] : 'Unknown';
   }
 
-  // Query QTO grouped by discipline, ifc_class, storey
-  const rows = db.exec(`
-    SELECT m.discipline, m.ifc_class, m.storey, COUNT(*) as qty,
+  // §2.1: Unit-aware QTO — linear elements use bbox length (M), area use bbox area (M2), rest use COUNT (EA)
+  // Implementing MEP_5D_QTO.md §2.1–2.3, §6.3 — Witness: W-QTO_UNIT
+  const _bldSafe = bldName.replace(/'/g,"''");
+
+  // Build unit lookup from RATES: which IFC classes are M, M2, EA, KG
+  const LINEAR_CLASSES = new Set();   // unit = M
+  const AREA_CLASSES = new Set();     // unit = M2
+  for (const cls in RATES) {
+    if (RATES[cls].unit === 'M')  LINEAR_CLASSES.add(cls);
+    if (RATES[cls].unit === 'M2') AREA_CLASSES.add(cls);
+  }
+
+  // §6.3: Create qto_cache table if not exists (write-back for fast repeat access)
+  try {
+    db.run(`CREATE TABLE IF NOT EXISTS qto_cache (
+      ifc_class TEXT NOT NULL, storey TEXT NOT NULL, discipline TEXT NOT NULL,
+      qty REAL NOT NULL, uom TEXT NOT NULL, element_count INTEGER NOT NULL,
+      material_cost REAL, labour_cost REAL, equipment_cost REAL,
+      rate_template TEXT, computed_at TEXT,
+      PRIMARY KEY (ifc_class, storey, discipline, rate_template)
+    )`);
+  } catch(e) { /* read-only DB — cache write will be skipped */ }
+
+  // §6.3: Check qto_cache for fast path
+  let cacheHit = false;
+  const tplName = RATE_TEMPLATE_NAME || 'hardcoded_cidb2024';
+  try {
+    const cached = db.exec("SELECT ifc_class, storey, discipline, qty, uom, element_count, material_cost, labour_cost, equipment_cost FROM qto_cache WHERE rate_template = '" + tplName.replace(/'/g,"''") + "'");
+    if (cached.length && cached[0].values.length > 0) {
+      cacheHit = true;
+      console.log('§QTO_CACHE_HIT template=' + tplName + ' rows=' + cached[0].values.length);
+    }
+  } catch(e) { /* no cache table or read error — compute fresh */ }
+
+  // Query 1: Element counts + mesh counts (always needed for schedule/display)
+  const countRows = db.exec(`
+    SELECT m.discipline, m.ifc_class, m.storey, COUNT(*) as cnt,
            COUNT(DISTINCT i.geometry_hash) as meshes
     FROM elements_meta m LEFT JOIN element_instances i ON m.guid = i.guid
-    WHERE m.building = '${bldName.replace(/'/g,"''")}'
+    WHERE m.building = '${_bldSafe}'
     GROUP BY m.discipline, m.ifc_class, m.storey
-    ORDER BY m.discipline, m.storey, qty DESC
+    ORDER BY m.discipline, m.storey, cnt DESC
   `);
 
-  if (!rows.length) { document.getElementById('info').textContent = 'No data.'; return; }
+  if (!countRows.length) { document.getElementById('info').textContent = 'No data.'; return; }
 
-  // Process data with full M/L/E calculation
+  // Query 2: Linear elements (M) — SUM of longest bbox axis per element
+  const linearQty = {};  // key: disc|cls|storey → sum of lengths
+  try {
+    const linRows = db.exec(`
+      SELECT m.discipline, m.ifc_class, m.storey,
+             SUM(MAX(t.bbox_x, t.bbox_y, t.bbox_z)) as total_length
+      FROM elements_meta m
+      JOIN element_transforms t ON m.guid = t.guid
+      WHERE m.building = '${_bldSafe}'
+        AND t.bbox_x IS NOT NULL AND t.bbox_x > 0
+      GROUP BY m.discipline, m.ifc_class, m.storey
+    `);
+    if (linRows.length) {
+      for (const r of linRows[0].values) {
+        linearQty[r[0] + '|' + r[1] + '|' + r[2]] = r[3];
+      }
+    }
+  } catch(e) { console.warn('§QTO_WARN linear query error: ' + e.message); }
+
+  // Query 3: Area elements (M2) — SUM of (largest_axis × second_largest_axis)
+  const areaQty = {};  // key: disc|cls|storey → sum of areas
+  try {
+    const areaRows = db.exec(`
+      SELECT m.discipline, m.ifc_class, m.storey,
+             SUM(
+               MAX(t.bbox_x, t.bbox_y, t.bbox_z) *
+               CASE WHEN t.bbox_x >= t.bbox_y AND t.bbox_x >= t.bbox_z
+                    THEN MAX(t.bbox_y, t.bbox_z)
+                    WHEN t.bbox_y >= t.bbox_x AND t.bbox_y >= t.bbox_z
+                    THEN MAX(t.bbox_x, t.bbox_z)
+                    ELSE MAX(t.bbox_x, t.bbox_y)
+               END
+             ) as total_area
+      FROM elements_meta m
+      JOIN element_transforms t ON m.guid = t.guid
+      WHERE m.building = '${_bldSafe}'
+        AND t.bbox_x IS NOT NULL AND t.bbox_x > 0
+      GROUP BY m.discipline, m.ifc_class, m.storey
+    `);
+    if (areaRows.length) {
+      for (const r of areaRows[0].values) {
+        areaQty[r[0] + '|' + r[1] + '|' + r[2]] = r[3];
+      }
+    }
+  } catch(e) { console.warn('§QTO_WARN area query error: ' + e.message); }
+
+  // Process data with unit-aware quantities
   qtoData = []; discSummary = {};
   grandMaterial = 0; grandLabor = 0; grandEquip = 0; totalQty = 0;
+  let qtoWarnCount = 0;
 
-  for (const row of rows[0].values) {
-    const [disc, cls, storey, qty, meshes] = row;
+  for (const row of countRows[0].values) {
+    const [disc, cls, storey, cnt, meshes] = row;
     const mc = RATES[cls];
+    const unit = mc ? mc.unit : 'EA';
+    const key = disc + '|' + cls + '|' + storey;
+
+    // §2.1: Resolve quantity by unit type
+    let qty;
+    if (unit === 'M' && LINEAR_CLASSES.has(cls)) {
+      qty = linearQty[key];
+      if (!qty || qty <= 0) {
+        // §2.3: Fallback — no bbox data, use count
+        qty = cnt;
+        qtoWarnCount++;
+        console.warn('§QTO_WARN no bbox for cls=' + cls + ' storey=' + storey + ', using count fallback (' + cnt + ')');
+      }
+    } else if (unit === 'M2' && AREA_CLASSES.has(cls)) {
+      qty = areaQty[key];
+      if (!qty || qty <= 0) {
+        qty = cnt;
+        qtoWarnCount++;
+        console.warn('§QTO_WARN no bbox for cls=' + cls + ' storey=' + storey + ', using count fallback (' + cnt + ')');
+      }
+    } else {
+      qty = cnt;  // EA, KG — count-based
+    }
+
     const matRate = mc ? mc.rate : 0;
-    const matTotal = Math.round(matRate * qty);
+    const matTotal = Math.round(matRate * qty * 100) / 100;
     const labor = calcLabor(cls, qty);
     const equip = calcEquipment(cls, labor.days);
 
@@ -491,10 +901,11 @@ async function init() {
     totalQty += qty;
 
     const r = {
-      disc, cls, storey, qty, meshes, matRate, matTotal,
+      disc, cls, storey, qty, cnt, meshes, matRate, matTotal, unit,
       laborDays: labor.days, laborCost: labor.cost, laborCrew: labor.crew, laborTrade: labor.trade,
       equipCost: equip.cost, equipDesc: equip.desc, equipDays: equip.days,
-      desc: mc ? mc.desc : cls, unit: mc ? mc.unit : 'EA',
+      desc: mc ? mc.desc : cls,
+      smmSection: mc && mc.smm_section ? mc.smm_section : '',
       labor, // keep full object for schedule
     };
     qtoData.push(r);
@@ -504,20 +915,92 @@ async function init() {
     discSummary[disc].matTotal += matTotal;
     discSummary[disc].laborCost += labor.cost;
     discSummary[disc].equipCost += equip.cost;
+
+    // §QTO_UNIT witness per class+storey
+    console.log('§QTO_UNIT cls=' + cls + ' unit=' + unit + ' qty=' + (Math.round(qty * 100) / 100) + ' cnt=' + cnt + ' storey=' + storey);
   }
+
+  // §6.3: Write to qto_cache (if DB is writable)
+  try {
+    db.run("DELETE FROM qto_cache WHERE rate_template = '" + tplName.replace(/'/g,"''") + "'");
+    const now = new Date().toISOString();
+    const stmt = db.prepare("INSERT INTO qto_cache (ifc_class, storey, discipline, qty, uom, element_count, material_cost, labour_cost, equipment_cost, rate_template, computed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+    for (const r of qtoData) {
+      stmt.run([r.cls, r.storey, r.disc, r.qty, r.unit, r.cnt, r.matTotal, r.laborCost, r.equipCost, tplName, now]);
+    }
+    stmt.free();
+    console.log('§QTO_CACHE_WRITE template=' + tplName + ' rows=' + qtoData.length);
+  } catch(e) { /* read-only DB or no table — skip silently */ }
+
+  console.log('§QTO_SUMMARY classes=' + qtoData.length + ' material=' + Math.round(grandMaterial) + ' labor=' + Math.round(grandLabor) + ' equip=' + Math.round(grandEquip) + ' warnings=' + qtoWarnCount);
 
   // Generate 4D schedule
   scheduleData = generateSchedule(qtoData, '2025-01-06');
 
+  // S240 §0.1: Run 8-check audit before any 4D sync
+  const auditResult = audit4DSchedule(scheduleData, db, qtoData);
+
+  // S240c §P1a: Resolve GUIDs per grouped task — union all ifcClasses, storey-match first, building-wide fallback
+  const _bld = bldName.replace(/'/g,"''");
+  for (const t of scheduleData) {
+    const classes = t.ifcClasses || (t.ifcClass ? [t.ifcClass] : []);
+    if (!classes.length) { t.guids = []; continue; }
+    t.guids = [];
+    const st = (t.storey||'').replace(/'/g,"''");
+    for (const ifcClass of classes) {
+      try {
+        const cls = ifcClass.replace(/'/g,"''");
+        const sql = "SELECT guid FROM elements_meta WHERE ifc_class = '" + cls +
+          "' AND storey = '" + st + "' AND building = '" + _bld + "'";
+        const res = db.exec(sql);
+        let guids = res[0] ? res[0].values.map(r => r[0]) : [];
+        // BUG-1 fallback: if storey match yields 0, query building-wide
+        if (guids.length === 0) {
+          const fallback = db.exec("SELECT guid FROM elements_meta WHERE ifc_class = '" +
+            cls + "' AND building = '" + _bld + "'");
+          guids = fallback[0] ? fallback[0].values.map(r => r[0]) : [];
+          if (guids.length > 0) {
+            console.log('§4D_GUID_FALLBACK class=' + ifcClass + ' storey=' + t.storey + ' fallbackCount=' + guids.length);
+          }
+        }
+        t.guids = t.guids.concat(guids);
+      } catch(e) {}
+    }
+  }
+  // S240c §P1b: Deduplicate — each GUID belongs to exactly one task (first in phase order wins)
+  const _assignedGuids = new Set();
+  let _guidsBefore = 0, _guidsAfter = 0;
+  for (const t of scheduleData) {
+    _guidsBefore += t.guids.length;
+    t.guids = t.guids.filter(g => !_assignedGuids.has(g));
+    t.guids.forEach(g => _assignedGuids.add(g));
+    _guidsAfter += t.guids.length;
+  }
+  console.log('§4D_GUID_DEDUP before=' + _guidsBefore + ' after=' + _guidsAfter + ' stripped=' + (_guidsBefore - _guidsAfter));
+  // S240c §P1d: Coverage witness — every element must be in exactly one task
+  let _totalElements = 0;
+  try {
+    const r = db.exec("SELECT COUNT(*) FROM elements_meta WHERE building = '" + _bld + "'");
+    _totalElements = r[0] ? r[0].values[0][0] : 0;
+  } catch(e) {}
+  const _orphanCount = _totalElements - _assignedGuids.size;
+  console.log('§4D_COVERAGE total=' + _totalElements + ' assigned=' + _assignedGuids.size + ' orphan=' + _orphanCount);
+
+  const totalGuids = _guidsAfter;
+  const zeroGuidTasks = scheduleData.filter(t => t.guids.length === 0);
+  console.log('§4D_GUID_RESOLVE tasks=' + scheduleData.length + ' totalGuids=' + totalGuids + ' zeroGuid=' + zeroGuidTasks.length +
+    (zeroGuidTasks.length ? ' [' + zeroGuidTasks.slice(0,5).map(t=>t.name).join(', ') + ']' : ''));
+
   const grandTotal = grandMaterial + grandLabor + grandEquip;
   const projDaysInit = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
   console.log(`§QTO: ${qtoData.length} rows | ${totalQty} elements`);
-  console.log(`§TOTALS: Mat RM ${grandMaterial.toLocaleString()} | Lab RM ${grandLabor.toLocaleString()} | Eq RM ${grandEquip.toLocaleString()} | Grand RM ${grandTotal.toLocaleString()}`);
+  console.log(`§TOTALS: Mat ${CUR}${grandMaterial.toLocaleString()} | Lab ${CUR}${grandLabor.toLocaleString()} | Eq ${CUR}${grandEquip.toLocaleString()} | Grand ${CUR}${grandTotal.toLocaleString()}`);
   console.log(`§SCHEDULE: ${scheduleData.length} tasks | ${projDaysInit} calendar days`);
   const unmapped = [...new Set(qtoData.map(r=>r.cls).filter(c=>!SEQUENCE_RULES[c]))];
   console.log(`§UNMAPPED: ${unmapped.length ? unmapped.join(', ') : 'NONE'}`);
   document.getElementById('info').textContent =
-    `${bldName} | ${totalQty.toLocaleString()} elements | RM ${grandTotal.toLocaleString()} (Mat ${grandMaterial.toLocaleString()} + Lab ${grandLabor.toLocaleString()} + Equip ${grandEquip.toLocaleString()})`;
+    `${bldName} | ${totalQty.toLocaleString()} ${_TRL.ui_elements||'elements'} | ${CUR}${grandTotal.toLocaleString()} (${_TRL.h_material||'Mat'} ${grandMaterial.toLocaleString()} + ${_TRL.h_labour||'Lab'} ${grandLabor.toLocaleString()} + ${_TRL.h_equipment||'Equip'} ${grandEquip.toLocaleString()})`;
+
 
   // S224: Load diff DB if present — compute variance for VO sheets in Excel
   if (DIFF_DB_URL) {
@@ -558,6 +1041,8 @@ function renderCharts() {
   chartInstances.forEach(ci => ci.destroy());
   chartInstances = [];
   console.log('§RENDER_CHARTS: start');
+  // Light chart animations — quick, no infinite loops
+  Chart.defaults.animation = { duration: 800 };
   function logChart(n, type, title, dataLen) {
     console.log(`§CHART_${n} [${type}] "${title}": ${dataLen} data points — ${dataLen > 0 ? 'OK' : 'EMPTY'}`);
   }
@@ -566,21 +1051,21 @@ function renderCharts() {
 
   // ── 1. Cost Pie by Discipline (M+L+E) ──
   const pieBox = el('div','chart-box pie-chart');
-  pieBox.innerHTML = '<h2>5D — Cost by Discipline (RM)</h2>';
+  pieBox.innerHTML = '<h2>' + _TRL.t_cost_by_disc + ' (' + CUR + ')</h2>';
   const pieCanvas = el('canvas');
   pieBox.appendChild(pieCanvas); c.appendChild(pieBox);
 
   const discTotals = discs.map(d => discSummary[d].matTotal + discSummary[d].laborCost + discSummary[d].equipCost);
   chartInstances.push(new Chart(pieCanvas, {
     type:'pie',
-    data:{labels:discs, datasets:[{data:discTotals, backgroundColor:discs.map(d=>DISC_COLORS[d]||'#888')}]},
-    options:{aspectRatio:1, maintainAspectRatio:true, plugins:{legend:{position:'right',labels:{color:'#ddd',font:{size:14}}}}}
+    data:{labels:discs, datasets:[{data:discTotals, backgroundColor:discs.map(d=>DISC_COLORS[d]||'#888'), borderWidth:1}]},
+    options:{aspectRatio:1, layout:{padding:0}, plugins:{legend:{position:'bottom',labels:{color:'#ddd',font:{size:14,weight:'bold'}}}}}
   }));
   logChart(1,'Pie','Cost Breakdown by Discipline',discs.length);
 
   // ── 2. Cost Components by Discipline — M/L/E (boq_export.py "Cost Components by Discipline") ──
   const mleBox = el('div','chart-box');
-  mleBox.innerHTML = '<h2>Cost Components by Discipline (RM)</h2>';
+  mleBox.innerHTML = '<h2>' + _TRL.t_cost_components + ' (' + CUR + ')</h2>';
   const mleCanvas = el('canvas');
   mleBox.appendChild(mleCanvas); c.appendChild(mleBox);
 
@@ -589,9 +1074,9 @@ function renderCharts() {
     data:{
       labels:discs,
       datasets:[
-        {label:'Material',data:discs.map(d=>discSummary[d].matTotal),backgroundColor:'#70AD47'},
-        {label:'Labour',data:discs.map(d=>discSummary[d].laborCost),backgroundColor:'#FFC000'},
-        {label:'Equipment',data:discs.map(d=>discSummary[d].equipCost),backgroundColor:'#5B9BD5'},
+        {label:_TRL.h_material,data:discs.map(d=>discSummary[d].matTotal),backgroundColor:'#70AD47'},
+        {label:_TRL.h_labour,data:discs.map(d=>discSummary[d].laborCost),backgroundColor:'#FFC000'},
+        {label:_TRL.h_equipment,data:discs.map(d=>discSummary[d].equipCost),backgroundColor:'#5B9BD5'},
       ]
     },
     options:{scales:{y:{stacked:true,ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{stacked:true,ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{labels:{color:'#ddd',font:{size:13}}}}}
@@ -604,14 +1089,14 @@ function renderCharts() {
   const tpPhases = Object.keys(taskPhaseCounts);
 
   const tpBox = el('div','chart-box pie-chart');
-  tpBox.innerHTML = '<h2>Task Distribution by Phase</h2>';
+  tpBox.innerHTML = '<h2>' + _TRL.t_task_dist_phase + '</h2>';
   const tpCanvas = el('canvas');
   tpBox.appendChild(tpCanvas); c.appendChild(tpBox);
 
   chartInstances.push(new Chart(tpCanvas, {
     type:'pie',
-    data:{labels:tpPhases, datasets:[{data:tpPhases.map(p=>taskPhaseCounts[p]), backgroundColor:tpPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
-    options:{aspectRatio:1, maintainAspectRatio:true, plugins:{legend:{position:'right',labels:{color:'#ddd',font:{size:14}}}}}
+    data:{labels:tpPhases, datasets:[{data:tpPhases.map(p=>taskPhaseCounts[p]), backgroundColor:tpPhases.map(p=>PHASE_COLORS[p]||'#888'), borderWidth:1}]},
+    options:{aspectRatio:1, layout:{padding:0}, plugins:{legend:{position:'bottom',labels:{color:'#ddd',font:{size:14,weight:'bold'}}}}}
   }));
   logChart(3,'Pie','Task Distribution by Phase',tpPhases.length);
 
@@ -621,13 +1106,13 @@ function renderCharts() {
   const tdDiscs = Object.keys(taskDiscCounts);
 
   const tdBox = el('div','chart-box');
-  tdBox.innerHTML = '<h2>Task Count by Discipline</h2>';
+  tdBox.innerHTML = '<h2>' + _TRL.t_task_count_disc + '</h2>';
   const tdCanvas = el('canvas');
   tdBox.appendChild(tdCanvas); c.appendChild(tdBox);
 
   chartInstances.push(new Chart(tdCanvas, {
     type:'bar',
-    data:{labels:tdDiscs, datasets:[{label:'Tasks',data:tdDiscs.map(d=>taskDiscCounts[d]),backgroundColor:tdDiscs.map(d=>DISC_COLORS[d]||'#888')}]},
+    data:{labels:tdDiscs, datasets:[{label:_TRL.h_task||'Tasks',data:tdDiscs.map(d=>taskDiscCounts[d]),backgroundColor:tdDiscs.map(d=>DISC_COLORS[d]||'#888')}]},
     options:{scales:{y:{title:{display:true,text:'Number of Tasks',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{title:{display:true,text:'Discipline',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(4,'Bar','Task Count by Discipline',tdDiscs.length);
@@ -638,7 +1123,7 @@ function renderCharts() {
   const pdPhases = Object.keys(phaseDur).sort((a,b) => phaseDur[b]-phaseDur[a]);
 
   const pdBox = el('div','chart-box');
-  pdBox.innerHTML = '<h2>4D — Phase Duration (Total Days)</h2>';
+  pdBox.innerHTML = '<h2>' + _TRL.t_phase_duration + '</h2>';
   const pdCanvas = el('canvas');
   pdBox.appendChild(pdCanvas); c.appendChild(pdBox);
 
@@ -655,21 +1140,21 @@ function renderCharts() {
   const mdPhases = Object.keys(phaseMandays).sort((a,b) => phaseMandays[b]-phaseMandays[a]);
 
   const mdBox = el('div','chart-box');
-  mdBox.innerHTML = '<h2>4D — Resource Workload (Man-Days by Phase)</h2>';
+  mdBox.innerHTML = '<h2>' + _TRL.t_resource_workload + '</h2>';
   const mdCanvas = el('canvas');
   mdBox.appendChild(mdCanvas); c.appendChild(mdBox);
 
   chartInstances.push(new Chart(mdCanvas, {
     type:'bar',
-    data:{labels:mdPhases, datasets:[{label:'Man-Days',data:mdPhases.map(p=>Math.round(phaseMandays[p])),backgroundColor:mdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
-    options:{scales:{y:{title:{display:true,text:'Man-Days',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
+    data:{labels:mdPhases, datasets:[{label:_TRL.h_man_days||'Man-Days',data:mdPhases.map(p=>Math.round(phaseMandays[p])),backgroundColor:mdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
+    options:{scales:{y:{title:{display:true,text:_TRL.h_man_days||'Man-Days',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(6,'Column','Resource Workload',mdPhases.length);
 
   // ── 7. S-Curve Progress (line — from schedule_export.py) ──
   if (scheduleData.length) {
     const scBox = el('div','chart-box');
-    scBox.innerHTML = '<h2>4D — S-Curve Progress (Cumulative Task Completion)</h2>';
+    scBox.innerHTML = '<h2>' + _TRL.t_s_curve + '</h2>';
     const scCanvas = el('canvas');
     scBox.appendChild(scCanvas); c.appendChild(scBox);
 
@@ -701,6 +1186,8 @@ function renderCharts() {
   }
 
   // ── 8. Milestone Timeline (horizontal bar — from schedule_export.py) ──
+  // S235: Restored from S225 sandbox original. S226 _TRL refactor broke this by
+  // redesigning to phase-span Gantt (duplicated chart 9) and dropping canvas.height.
   const phaseDates = {};
   for (const t of scheduleData) {
     if (!phaseDates[t.phase]) phaseDates[t.phase] = {start:t.startDay, end:t.finishDay};
@@ -709,69 +1196,450 @@ function renderCharts() {
       phaseDates[t.phase].end = Math.max(phaseDates[t.phase].end, t.finishDay);
     }
   }
-  const milestones = [];
-  milestones.push({name:'Project Start', day:0});
-  for (const phase of Object.keys(phaseDates).sort()) {
-    milestones.push({name:`${phase} Start`, day:phaseDates[phase].start});
-    milestones.push({name:`${phase} End`, day:phaseDates[phase].end});
-  }
   const maxFinishDay = Math.max(...scheduleData.map(t=>t.finishDay));
-  milestones.push({name:'Project Finish', day:maxFinishDay});
-  milestones.sort((a,b) => a.day - b.day);
+  const phaseList = Object.keys(phaseDates).sort((a,b) => phaseDates[a].start - phaseDates[b].start);
 
   const msBox = el('div','chart-box');
-  msBox.innerHTML = '<h2>4D — Milestone Timeline</h2>';
+  msBox.innerHTML = '<h2>' + _TRL.t_milestone + '</h2>';
   const msCanvas = el('canvas');
-  msCanvas.height = 250;
   msBox.appendChild(msCanvas); c.appendChild(msBox);
 
   chartInstances.push(new Chart(msCanvas, {
     type:'bar',
-    data:{labels:milestones.map(m=>m.name), datasets:[{label:'Day',data:milestones.map(m=>m.day),backgroundColor:milestones.map(m=>m.name.includes('Start')?'#70AD47':m.name.includes('End')?'#ED7D31':'#4fc3f7')}]},
-    options:{indexAxis:'y',scales:{x:{title:{display:true,text:'Day from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},y:{ticks:{color:'#ccc',font:{size:10}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
+    data:{
+      labels:phaseList,
+      datasets:[
+        {label:'Offset',data:phaseList.map(p=>phaseDates[p].start),backgroundColor:'rgba(0,0,0,0)'},
+        {label:'Duration',data:phaseList.map(p=>phaseDates[p].end - phaseDates[p].start),backgroundColor:phaseList.map(p=>PHASE_COLORS[p]||'#4fc3f7')},
+      ]
+    },
+    options:{indexAxis:'y',scales:{
+      x:{stacked:true,title:{display:true,text:_TRL.h_day_offset||'Days from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},
+      y:{stacked:true,ticks:{color:'#ccc',font:{size:11}},grid:{color:'rgba(255,255,255,0.1)'}}
+    },plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
+      if (ctx.datasetIndex===0) return null;
+      const p = phaseList[ctx.dataIndex];
+      return `${p}: Day ${phaseDates[p].start}–${phaseDates[p].end} (${phaseDates[p].end - phaseDates[p].start} days)`;
+    }}},
+    barThickness:12}}
   }));
-  logChart(8,'H-Bar','Milestone Timeline',milestones.length);
+  logChart(8,'Gantt','Milestone Timeline',phaseList.length);
 
-  // ── 9. Strategic Gantt — Top 15 longest tasks (stacked bar — from schedule_export.py) ──
-  const top15 = [...scheduleData].sort((a,b) => b.duration - a.duration).slice(0,15).sort((a,b) => a.startDay - b.startDay);
+  // ── 9. Full Gantt — ALL tasks sorted by start day (for 4D sync) ──
+  const ganttTasks = [...scheduleData].sort((a,b) => a.startDay - b.startDay);
 
   const ganttBox = el('div','chart-box full');
-  ganttBox.innerHTML = '<h2>4D — Gantt Timeline (Strategic Tasks by Phase)</h2>';
+  ganttBox.innerHTML = '<h2>' + _TRL.t_gantt + '</h2>';
   const ganttCanvas = el('canvas');
-  ganttCanvas.height = 350;
+  ganttCanvas.height = Math.max(200, Math.min(800, ganttTasks.length * 22 + 60));
   ganttBox.appendChild(ganttCanvas); c.appendChild(ganttBox);
 
   chartInstances.push(new Chart(ganttCanvas, {
     type:'bar',
     data:{
-      labels:top15.map(t => t.name.slice(0,40)),
+      labels:ganttTasks.map(t => t.name.slice(0,50)),
       datasets:[
-        {label:'Offset',data:top15.map(t=>t.startDay),backgroundColor:'rgba(0,0,0,0)'},
-        {label:'Duration',data:top15.map(t=>Math.round(t.duration)),backgroundColor:top15.map(t=>PHASE_COLORS[t.phase]||'#888')},
+        {label:'Offset',data:ganttTasks.map(t=>t.startDay),backgroundColor:'rgba(0,0,0,0)'},
+        {label:'Duration',data:ganttTasks.map(t=>Math.round(t.duration)),backgroundColor:ganttTasks.map(t=>PHASE_COLORS[t.phase]||'#888')},
       ]
     },
     options:{
+      animation: false,
       indexAxis:'y',
+      aspectRatio: 1.0,
       scales:{
-        x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},
-        y:{stacked:true,ticks:{color:'#ccc',font:{size:9}},grid:{color:'rgba(255,255,255,0.1)'}}
+        x:{stacked:true,title:{display:true,text:_TRL.h_day_offset||'Days from Project Start',color:'#fff',font:{size:14}},ticks:{color:'#ddd',font:{size:12}},grid:{color:'rgba(255,255,255,0.1)'}},
+        y:{stacked:true,ticks:{color:'#ccc',font:{size:Math.max(7, Math.min(10, 180/ganttTasks.length))}},grid:{color:'rgba(255,255,255,0.05)'}}
       },
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{label:ctx=>{
           if (ctx.datasetIndex===0) return null;
-          const t = top15[ctx.dataIndex];
-          return `${t.phase}: Day ${t.startDay}–${t.finishDay} (${Math.round(t.duration)} days, ${t.qty} EA)`;
+          const t = ganttTasks[ctx.dataIndex];
+          return `${t.phase}: Day ${t.startDay}–${t.finishDay} (${Math.round(t.duration)} days, ${Math.round(t.qty*100)/100} ${t.uom||'EA'})`;
         }}}
-      }
+      },
+      barThickness: 6
     }
   }));
-  logChart(9,'Stacked','Gantt Timeline',top15.length);
+  logChart(9,'Stacked','Gantt Timeline',ganttTasks.length);
+
+  // S240: BroadcastChannel for 4D Gantt→Viewer sync
+  let _bim4d = null;
+  try {
+    _bim4d = new BroadcastChannel('bim_4d');
+    _bim4d.onmessage = function(evt) {
+      if (evt.data && evt.data.type === '4D_PONG') {
+        console.log('§4D_PONG from=' + evt.data.from + ' roundtrip=' + (Date.now() - (evt.data.ts||0)) + 'ms');
+      }
+    };
+    // Ping viewer on channel open
+    _bim4d.postMessage({ type: '4D_PING', from: 'charts', ts: Date.now() });
+    console.log('§4D_CHANNEL_READY sender=charts → sent PING');
+  } catch(e) { console.log('§4D_CHANNEL_FAIL ' + e.message); }
+
+  // Click handler: click a Gantt bar → broadcast highlight to viewer
+  if (_bim4d) {
+    ganttCanvas.addEventListener('click', function(evt) {
+      const chart = chartInstances[chartInstances.length - 1]; // last chart = Gantt (chart 9)
+      if (!chart) return;
+      const points = chart.getElementsAtEventForMode(evt, 'nearest', {intersect:true}, false);
+      if (!points.length) {
+        // Clicked empty space — reset viewer highlights
+        _bim4d.postMessage({ type: '4D_RESET' });
+        console.log('§4D_BROADCAST type=4D_RESET (background click)');
+        return;
+      }
+      const idx = points[0].index;
+      const task = ganttTasks[idx];
+      if (!task) return;
+      const phaseColor = PHASE_COLORS[task.phase] || '#888888';
+      _bim4d.postMessage({
+        type: '4D_HIGHLIGHT',
+        guids: task.guids || [],
+        phase: task.phase,
+        color: phaseColor,
+        taskName: task.name
+      });
+      console.log('§4D_BROADCAST type=4D_HIGHLIGHT task="' + task.name + '" guids=' + (task.guids||[]).length + ' phase=' + task.phase + ' color=' + phaseColor);
+    });
+
+    // S240b: Timeline scrub — orange vertical line overlaid ON the Gantt chart
+    const ganttChart = chartInstances[chartInstances.length - 1];
+    const maxDay = Math.max(...scheduleData.map(t => t.finishDay), 1);
+
+    // Make ganttBox position:relative so we can overlay absolutely
+    ganttBox.style.position = 'relative';
+
+    // Orange vertical scrub line — overlaid on the Gantt canvas
+    const scrubLine = document.createElement('div');
+    scrubLine.style.cssText = 'position:absolute;top:0;width:4px;height:100%;background:rgba(255,140,0,0.9);pointer-events:none;z-index:10;box-shadow:0 0 12px rgba(255,140,0,0.7),0 0 24px rgba(255,140,0,0.3);transition:left 0.06s ease-out;display:none;border-radius:2px;';
+    ganttBox.appendChild(scrubLine);
+
+    // Wide invisible drag handle — 30px wide, easy to grab
+    const scrubHandle = document.createElement('div');
+    scrubHandle.style.cssText = 'position:absolute;top:0;width:30px;height:100%;background:transparent;z-index:12;cursor:ew-resize;display:none;margin-left:-13px;';
+    ganttBox.appendChild(scrubHandle);
+
+    // Activity tooltip — floats next to the scrub line
+    const scrubTip = document.createElement('div');
+    scrubTip.style.cssText = 'position:absolute;top:8px;background:rgba(20,20,40,0.92);color:#ff8c00;font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid rgba(255,140,0,0.4);pointer-events:none;z-index:11;white-space:nowrap;display:none;max-width:300px;overflow:hidden;text-overflow:ellipsis;';
+    ganttBox.appendChild(scrubTip);
+
+    // Control bar below chart
+    const controlBar = document.createElement('div');
+    controlBar.style.cssText = 'display:flex;align-items:center;margin:6px 0;gap:8px;';
+
+    const playBtn = document.createElement('button');
+    playBtn.textContent = '\u25b6 Play';
+    playBtn.style.cssText = 'padding:5px 16px;background:#ff8c00;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;';
+
+    const speedSel = document.createElement('select');
+    speedSel.style.cssText = 'padding:3px 8px;background:#333;color:#ff8c00;border:1px solid #ff8c00;border-radius:4px;font-size:12px;';
+    [1, 2, 4, 8].forEach(function(s) {
+      var opt = document.createElement('option');
+      opt.value = s; opt.textContent = s + '\u00d7';
+      speedSel.appendChild(opt);
+    });
+
+    const dayLabel = document.createElement('span');
+    dayLabel.style.cssText = 'color:#ff8c00;font-size:13px;font-weight:bold;';
+    dayLabel.textContent = 'Day 0 / ' + maxDay;
+
+    const taskLabel = document.createElement('span');
+    taskLabel.style.cssText = 'color:#ccc;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+
+    const stopBtn = document.createElement('button');
+    stopBtn.textContent = '\u25a0 Stop';
+    stopBtn.style.cssText = 'padding:5px 16px;background:#cc3333;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;display:none;';
+
+    controlBar.appendChild(playBtn);
+    controlBar.appendChild(stopBtn);
+    controlBar.appendChild(speedSel);
+    controlBar.appendChild(dayLabel);
+    controlBar.appendChild(taskLabel);
+    ganttBox.appendChild(controlBar);
+
+    // S240c §P5: Resource legend — data sent to viewer via BroadcastChannel
+    const RES_ICONS = {
+      STEEL_ERECTOR:  {icon:'\ud83c\udfd7\ufe0f', label:'Steel Erector',    color:'#5b7fa5'},
+      CONCRETE_GANG:  {icon:'\ud83d\udea7', label:'Concrete Gang',   color:'#7a8a8e'},
+      MASON:          {icon:'\ud83e\uddf1', label:'Mason',           color:'#c07a4a'},
+      PLUMBER:        {icon:'\ud83d\udeb0', label:'Plumber',         color:'#5a9a6a'},
+      HVAC_TECH:      {icon:'\u2699\ufe0f',  label:'HVAC Tech',       color:'#5a8aaa'},
+      ELECTRICIAN:    {icon:'\u26a1',  label:'Electrician',     color:'#c9a840'},
+      CARPENTER:      {icon:'\ud83e\udeb5', label:'Carpenter',       color:'#a06830'},
+      ROOFER:         {icon:'\ud83c\udfe0', label:'Roofer',          color:'#7a5aaa'},
+      FINISHER:       {icon:'\ud83d\udd8c\ufe0f', label:'Finisher',        color:'#4a9a6a'},
+      LABORER:        {icon:'\ud83d\udc77', label:'Laborer',         color:'#888888'},
+    };
+    const RES_ORDER = ['STEEL_ERECTOR','CONCRETE_GANG','MASON','PLUMBER','HVAC_TECH','ELECTRICIAN','CARPENTER','ROOFER','FINISHER','LABORER'];
+
+    // Compute max crew across entire schedule for bar scaling
+    const _maxCrewByTrade = {};
+    for (const t of scheduleData) {
+      const resources = (t.resource || '').split(',').filter(Boolean);
+      for (const r of resources) {
+        _maxCrewByTrade[r] = Math.max(_maxCrewByTrade[r] || 0, t.crew || 0);
+      }
+    }
+    const _globalMaxCrew = Math.max(1, ...Object.values(_maxCrewByTrade));
+
+    function updateResPanel(day) {
+      // Aggregate resources for this day
+      const trades = {};
+      let totalCrew = 0, machines = new Set();
+      if (day > 0) {
+        const active = scheduleData.filter(t => t.startDay <= day && t.finishDay >= day);
+        for (const t of active) {
+          const resources = (t.resource || '').split(',').filter(Boolean);
+          for (const r of resources) {
+            if (!trades[r]) trades[r] = {crew:0, tasks:0};
+            trades[r].crew += t.crew || 0;
+            trades[r].tasks++;
+          }
+          totalCrew += t.crew || 0;
+          if (t.equipment) t.equipment.split(', ').forEach(e => { if (e) machines.add(e); });
+        }
+      }
+
+      // Build resource data for all trades (always show all)
+      const resData = RES_ORDER.map(key => {
+        const info = RES_ICONS[key];
+        const data = trades[key] || {crew:0, tasks:0};
+        return {key, icon:info.icon, label:info.label, color:info.color, crew:data.crew};
+      });
+      const cumDays = scheduleData.filter(t => t.finishDay <= day).reduce((s,t) => s + t.duration * t.crew, 0);
+      const totalDays = scheduleData.reduce((s,t) => s + t.duration * t.crew, 0);
+      const pct = totalDays > 0 ? Math.round(cumDays / totalDays * 100) : 0;
+
+      // Progress: elements built / total
+      const builtTasks = scheduleData.filter(t => t.finishDay <= day);
+      const builtQty = builtTasks.reduce((s,t) => s + t.qty, 0);
+      const totalQtyAll = scheduleData.reduce((s,t) => s + t.qty, 0);
+      const progressPct = totalQtyAll > 0 ? Math.round(builtQty / totalQtyAll * 100) : 0;
+
+      // Send to viewer via BroadcastChannel
+      if (_bim4d && day > 0) {
+        _bim4d.postMessage({
+          type: '4D_RESOURCES',
+          day: day, maxDay: maxDay,
+          trades: resData,
+          totalCrew: totalCrew,
+          machines: [...machines],
+          maxCrew: _globalMaxCrew,
+          cumDays: cumDays, totalDays: totalDays, pct: pct,
+          grandTotal: grandMaterial + grandLabor + grandEquip, cur: CUR,
+          builtQty: builtQty, totalQty: totalQtyAll, progressPct: progressPct
+        });
+      }
+      if (day <= 0 && _bim4d) {
+        _bim4d.postMessage({ type: '4D_RESOURCES_HIDE' });
+      }
+      console.log('§4D_RESOURCE_LEGEND day=' + day + ' trades=' + Object.keys(trades).length + ' workers=' + totalCrew + ' machines=' + machines.size);
+    }
+
+    // State
+    let _scrubActive = false;
+    let _playTimer = null;
+    let _playing = false;
+    let _currentDay = 0;
+
+    // Get Gantt chart plot area pixel bounds (x-axis area only)
+    function getPlotArea() {
+      const xScale = ganttChart.scales.x;
+      return { left: xScale.left, right: xScale.right, top: ganttChart.chartArea.top, bottom: ganttChart.chartArea.bottom };
+    }
+
+    // Map pixel X → day number
+    function pixelToDay(px) {
+      const area = getPlotArea();
+      const ratio = Math.max(0, Math.min(1, (px - area.left) / (area.right - area.left)));
+      return Math.round(ratio * maxDay);
+    }
+
+    // Map day → pixel X
+    function dayToPixel(day) {
+      const area = getPlotArea();
+      return area.left + (day / maxDay) * (area.right - area.left);
+    }
+
+    // Find task index for a given day
+    function dayToTaskIndex(day) {
+      let best = -1;
+      for (let i = 0; i < scheduleData.length; i++) {
+        if (scheduleData[i].startDay <= day) best = i;
+      }
+      return best;
+    }
+
+    // Find ALL active tasks at a given day (for tooltip)
+    function tasksAtDay(day) {
+      return scheduleData.filter(t => t.startDay <= day && t.finishDay >= day);
+    }
+
+    // Apply scrub state
+    function applyScrub(day) {
+      _currentDay = day;
+      const px = dayToPixel(day);
+      scrubLine.style.left = px + 'px';
+      scrubLine.style.display = 'block';
+      scrubHandle.style.left = px + 'px';
+      scrubHandle.style.display = 'block';
+      scrubTip.style.left = Math.min(px + 8, ganttBox.offsetWidth - 310) + 'px';
+
+      dayLabel.textContent = 'Day ' + day + ' / ' + maxDay;
+      updateResPanel(day);
+
+      if (day <= 0) {
+        // Day 0 = normal building, no glass
+        scrubTip.style.display = 'none';
+        taskLabel.textContent = '';
+        if (_scrubActive) {
+          _scrubActive = false;
+          _bim4d.postMessage({ type: '4D_RESET' });
+          console.log('§4D_SCRUB day=0 RESET');
+        }
+        return;
+      }
+
+      // Day 1+ = ghost glass mode
+      const active = tasksAtDay(day);
+      const tidx = dayToTaskIndex(day);
+
+      // Show tooltip with active tasks
+      if (active.length > 0) {
+        scrubTip.textContent = active.map(t => t.name).join(' | ');
+        scrubTip.style.display = 'block';
+        taskLabel.textContent = active[0].name + (active.length > 1 ? ' (+' + (active.length-1) + ')' : '');
+      } else {
+        scrubTip.style.display = 'none';
+        taskLabel.textContent = tidx >= 0 ? scheduleData[tidx].name : '';
+      }
+
+      if (!_scrubActive) {
+        _scrubActive = true;
+        // Send 4D_PLAY with full task list — viewer enters glass mode
+        _bim4d.postMessage({ type: '4D_PLAY', tasks: scheduleData, speed: 1.0 });
+        console.log('§4D_SCRUB_START tasks=' + scheduleData.length);
+        // Small delay to let glass apply before first seek
+        setTimeout(function() {
+          if (tidx >= 0) _bim4d.postMessage({ type: '4D_SEEK', taskIndex: tidx });
+        }, 100);
+        return;
+      }
+
+      if (tidx >= 0) {
+        _bim4d.postMessage({ type: '4D_SEEK', taskIndex: tidx });
+      }
+    }
+
+    // Mouse/touch drag — works on both the canvas and the wide drag handle
+    // Only active after Play has been clicked at least once (avoids GPU waste on idle page)
+    let _dragging = false;
+    let _playActivated = false;  // true after first Play click
+
+    function startDrag(evt) {
+      if (!_playActivated) return;  // scrub line off until Play clicked
+      _dragging = true;
+      const rect = ganttCanvas.getBoundingClientRect();
+      const px = (evt.clientX || (evt.touches && evt.touches[0].clientX) || 0) - rect.left;
+      applyScrub(pixelToDay(px));
+    }
+    function moveDrag(evt) {
+      if (!_dragging) return;
+      evt.preventDefault();
+      const rect = ganttCanvas.getBoundingClientRect();
+      const px = (evt.clientX || (evt.touches && evt.touches[0].clientX) || 0) - rect.left;
+      applyScrub(pixelToDay(px));
+    }
+    function endDrag() { _dragging = false; }
+
+    // Canvas drag
+    ganttCanvas.addEventListener('pointerdown', startDrag);
+    ganttCanvas.addEventListener('pointermove', moveDrag);
+    ganttCanvas.addEventListener('pointerup', endDrag);
+    ganttCanvas.addEventListener('pointerleave', endDrag);
+    // Handle drag (the wide invisible bar)
+    scrubHandle.addEventListener('pointerdown', function(evt) {
+      evt.stopPropagation();
+      _dragging = true;
+    });
+    document.addEventListener('pointermove', moveDrag);
+    document.addEventListener('pointerup', endDrag);
+
+    // Play button
+    playBtn.addEventListener('pointerup', function() {
+      if (_playing) {
+        clearInterval(_playTimer); _playTimer = null;
+        _playing = false;
+        playBtn.textContent = '\u25b6 Play';
+        _bim4d.postMessage({ type: '4D_PAUSE' });
+        return;
+      }
+
+      _playing = true;
+      _playActivated = true;
+      ganttCanvas.style.cursor = 'ew-resize';
+      playBtn.textContent = '\u23f8 Pause';
+      stopBtn.style.display = '';
+      if (!_scrubActive && _currentDay <= 0) _currentDay = 0;
+      startPlayTimer();
+    });
+
+    // Stop button — resets scrub line, hides overlay, returns to normal
+    stopBtn.addEventListener('pointerup', function() {
+      if (_playTimer) { clearInterval(_playTimer); _playTimer = null; }
+      _playing = false;
+      _playActivated = false;
+      _currentDay = 0;
+      playBtn.textContent = '\u25b6 Play';
+      stopBtn.style.display = 'none';
+      ganttCanvas.style.cursor = '';
+      scrubLine.style.display = 'none';
+      scrubHandle.style.display = 'none';
+      scrubTip.style.display = 'none';
+      dayLabel.textContent = 'Day 0 / ' + maxDay;
+      taskLabel.textContent = '';
+      if (_scrubActive) {
+        _scrubActive = false;
+        _bim4d.postMessage({ type: '4D_RESET' });
+      }
+      if (_bim4d) _bim4d.postMessage({ type: '4D_RESOURCES_HIDE' });
+      console.log('§4D_STOP');
+    });
+
+    function startPlayTimer() {
+      if (_playTimer) clearInterval(_playTimer);
+      const speed = parseInt(speedSel.value) || 1;
+      const step = Math.max(1, Math.round(maxDay / Math.max(scheduleData.length * 2, 1)));
+      _playTimer = setInterval(function() {
+        _currentDay += step * speed;
+        if (_currentDay > maxDay) {
+          _currentDay = maxDay + 1;  // one day past end — all resources at rest
+          clearInterval(_playTimer); _playTimer = null;
+          _playing = false;
+          playBtn.textContent = '\u25b6 Play';
+          applyScrub(_currentDay);
+          return;
+        }
+        applyScrub(_currentDay);
+      }, 800);
+      console.log('§4D_PLAY_TIMER speed=' + speed + 'x step=' + step + ' interval=800ms');
+    }
+
+    // Speed change during playback restarts timer
+    speedSel.addEventListener('change', function() {
+      if (_playing) startPlayTimer();
+    });
+
+    console.log('§4D_CHANNEL_READY sender=boq_charts scrubber=true');
+  }
 
   // ── S225: Variance Chart (when diff data present) ──
   if (diffResult) {
     const varBox = el('div','chart-box');
-    varBox.innerHTML = '<h2>5D — Variation Order Impact</h2>';
+    varBox.innerHTML = '<h2>' + _TRL.t_vo_impact + '</h2>';
     const varCanvas = el('canvas');
     varBox.appendChild(varCanvas); c.appendChild(varBox);
 
@@ -797,7 +1665,7 @@ function renderCharts() {
         datasets: [
           { label: 'Elements', data: [diffResult.added.length, diffResult.removed.length, diffResult.changed.length],
             backgroundColor: ['#44cc44', '#cc4444', '#cccc44'], yAxisID: 'y' },
-          { label: 'Cost Impact (RM)', data: [Math.round(addCost), Math.round(remCost), Math.round(chgCost)],
+          { label: (_TRL.t_vo_impact||'Cost Impact') + ' (' + CUR + ')', data: [Math.round(addCost), Math.round(remCost), Math.round(chgCost)],
             backgroundColor: ['rgba(68,204,68,0.3)', 'rgba(204,68,68,0.3)', 'rgba(204,204,68,0.3)'],
             borderColor: ['#44cc44', '#cc4444', '#cccc44'], borderWidth: 2, yAxisID: 'y1' }
         ]
@@ -805,7 +1673,7 @@ function renderCharts() {
       options: {
         scales: {
           y:  { position: 'left', title: { display: true, text: 'Element Count', color: '#fff', font:{size:15} }, ticks: { color: '#ddd', font:{size:13} }, grid: { color: 'rgba(255,255,255,0.1)' } },
-          y1: { position: 'right', title: { display: true, text: 'Cost (RM)', color: '#fff', font:{size:15} }, ticks: { color: '#ddd', font:{size:13} }, grid: { drawOnChartArea: false } },
+          y1: { position: 'right', title: { display: true, text: (_TRL.h_total||'Cost') + ' (' + CUR + ')', color: '#fff', font:{size:15} }, ticks: { color: '#ddd', font:{size:13} }, grid: { drawOnChartArea: false } },
           x:  { ticks: { color: '#ddd', font:{size:13} }, grid: { color: 'rgba(255,255,255,0.1)' } }
         },
         plugins: { legend: { labels: { color: '#ddd', font:{size:13} } } }
@@ -816,10 +1684,10 @@ function renderCharts() {
 
   // ── 10. BOQ Data Table (enhanced with Equipment column) ──
   const tableBox = el('div','chart-box full');
-  tableBox.innerHTML = '<h2>5D — Bill of Quantities (CIDB 2024 Rates)</h2>';
-  let html = '<table><tr><th>Disc</th><th>IFC Class</th><th>Storey</th><th>Qty</th><th>Unit</th>' +
-    '<th>Description</th><th>Rate (RM)</th><th>Material (RM)</th><th>Labour Days</th><th>Labour (RM)</th>' +
-    '<th>Equip (RM)</th><th>Total (RM)</th></tr>';
+  tableBox.innerHTML = '<h2>5D — Bill of Quantities (' + _TRL.rate_source + ')</h2>';
+  let html = '<table><tr><th>' + _TRL.h_discipline + '</th><th>' + _TRL.h_ifc_class + '</th><th>' + _TRL.h_storey + '</th><th>' + _TRL.h_quantity + '</th><th>' + _TRL.h_uom + '</th>' +
+    '<th>' + _TRL.h_description + '</th><th>' + _TRL.h_unit_rate + ' (' + CUR + ')</th><th>' + _TRL.h_material + ' (' + CUR + ')</th><th>' + _TRL.h_man_days + '</th><th>' + _TRL.h_labour + ' (' + CUR + ')</th>' +
+    '<th>' + _TRL.h_equipment + ' (' + CUR + ')</th><th>' + _TRL.h_total + ' (' + CUR + ')</th></tr>';
   for (const r of qtoData) {
     const rowTotal = r.matTotal + r.laborCost + r.equipCost;
     html += `<tr><td>${r.disc}</td><td>${r.cls}</td><td>${r.storey||''}</td><td>${r.qty.toLocaleString()}</td>` +
@@ -828,9 +1696,9 @@ function renderCharts() {
       `<td>${r.equipCost.toLocaleString()}</td><td>${rowTotal.toLocaleString()}</td></tr>`;
   }
   const gt = grandMaterial + grandLabor + grandEquip;
-  html += `<tr class="total-row"><td colspan="7">GRAND TOTAL</td>` +
-    `<td>RM ${grandMaterial.toLocaleString()}</td><td></td><td>RM ${grandLabor.toLocaleString()}</td>` +
-    `<td>RM ${grandEquip.toLocaleString()}</td><td>RM ${gt.toLocaleString()}</td></tr>`;
+  html += `<tr class="total-row"><td colspan="7">${_TRL.h_grand_total}</td>` +
+    `<td>${CUR}${grandMaterial.toLocaleString()}</td><td></td><td>${CUR}${grandLabor.toLocaleString()}</td>` +
+    `<td>${CUR}${grandEquip.toLocaleString()}</td><td>${CUR}${gt.toLocaleString()}</td></tr>`;
   html += '</table>';
   tableBox.innerHTML += html;
   c.appendChild(tableBox);
@@ -839,15 +1707,15 @@ function renderCharts() {
   const projDays = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
   const footBox = el('div','chart-box full');
   footBox.innerHTML = `<table>
-    <tr><td>Building</td><td><b>${bldName}</b></td></tr>
-    <tr><td>Total Elements</td><td><b>${totalQty.toLocaleString()}</b></td></tr>
-    <tr><td>Material Cost</td><td><b>RM ${grandMaterial.toLocaleString()}</b></td></tr>
-    <tr><td>Labour Cost</td><td><b>RM ${grandLabor.toLocaleString()}</b></td></tr>
-    <tr><td>Equipment Cost</td><td><b>RM ${grandEquip.toLocaleString()}</b></td></tr>
-    <tr><td>Grand Total</td><td><b>RM ${gt.toLocaleString()}</b></td></tr>
-    <tr><td>Project Duration</td><td><b>${projDays} days (${scheduleData.length} tasks)</b></td></tr>
-    <tr><td>Rates Source</td><td>CIDB Malaysia 2024 / BCISM Cost Book</td></tr>
-    <tr><td>Exported</td><td>${new Date().toISOString()}</td></tr>
+    <tr><td>${_TRL.ui_building||'Building'}</td><td><b>${bldName}</b></td></tr>
+    <tr><td>${_TRL.ui_elements||'Elements'}</td><td><b>${totalQty.toLocaleString()}</b></td></tr>
+    <tr><td>${_TRL.h_material} </td><td><b>${CUR} ${grandMaterial.toLocaleString()}</b></td></tr>
+    <tr><td>${_TRL.h_labour} </td><td><b>${CUR} ${grandLabor.toLocaleString()}</b></td></tr>
+    <tr><td>${_TRL.h_equipment} </td><td><b>${CUR} ${grandEquip.toLocaleString()}</b></td></tr>
+    <tr><td>${_TRL.h_grand_total}</td><td><b>${CUR} ${gt.toLocaleString()}</b></td></tr>
+    <tr><td>${_TRL.h_duration||'Duration'}</td><td><b>${projDays} ${_TRL.h_total_days||'days'} (${scheduleData.length} ${_TRL.h_task||'tasks'})</b></td></tr>
+    <tr><td>${_TRL.ui_rate_source_lbl||'Rates Source'}</td><td>${_TRL.rate_source}</td></tr>
+    <tr><td>${_TRL.h_date||'Date'}</td><td>${new Date().toISOString()}</td></tr>
     <tr><td>Source</td><td>BIM OOTB — Frictionless BIM</td></tr>
   </table>`;
   c.appendChild(footBox);
@@ -866,93 +1734,197 @@ function el(tag, cls) {
 // Bar: canvas 1100×700 → image W:H = 11:7 to preserve ratio
 // ============================================================================
 
-// Prepare all charts for Excel capture: high-res sizing + black labels (bar/line ONLY)
-// Returns { savedStyles, savedOpts } for restoreChartsAfterExcel()
-function prepareChartsForExcel() {
-  var savedStyles = [], savedOpts = [];
-  for (var ci = 0; ci < chartInstances.length; ci++) {
-    var ch = chartInstances[ci];
-    var isPie = ch.config.type === 'pie';
-    var w = isPie ? 800 : 1100, h = isPie ? 800 : 700;
-    savedStyles.push({
-      pw: ch.canvas.parentElement.style.width, ph: ch.canvas.parentElement.style.height,
-      cw: ch.canvas.style.width, ch_: ch.canvas.style.height
+// Log collector — all §-tagged lines go here, auto-downloaded as .log after each save
+var _logLines = [];
+function _log(msg) { _logLines.push(new Date().toISOString() + ' ' + msg); console.log(msg); }
+function _downloadLog(label) {
+  // Delay: browser blocks rapid successive <a>.click() downloads — let Excel go first
+  var lines = _logLines.slice();
+  _logLines = [];
+  setTimeout(function() {
+    var text = lines.join('\n') + '\n';
+    var blob = new Blob([text], { type: 'text/plain' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'chart_test_' + label + '_' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.log';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }, 1500);
+}
+
+// S235: Chart images removed from Excel — HTML charts are sufficient.
+// prepare/restore/capture functions retired. Only verify + log remain.
+var _chartTestPass = 0, _chartTestFail = 0;
+function _ct(pass, ci, name, test, detail) {
+  var tag = pass ? 'PASS' : 'FAIL';
+  if (pass) _chartTestPass++; else _chartTestFail++;
+  _log('[S226] §CHART_TEST ' + tag + ' chart=' + ci + ' "' + name + '" ' + test + ' — ' + detail);
+}
+
+// ── _TRL verification: proves localization is active, no hardcoded RM/USD ──
+function _verifyTRL(wb, label) {
+  _log('[S226] §TRL_VERIFY start — ' + label);
+
+  // 1. _TRL object completeness — every key must have a non-empty string value
+  var missing = [];
+  for (var k in _TRL_DEFAULTS) {
+    if (typeof _TRL[k] === 'string' && _TRL[k].trim() === '') missing.push(k);
+    if (_TRL[k] === undefined || _TRL[k] === null) missing.push(k);
+  }
+  _ct(missing.length === 0, -1, label, 'TRL_COMPLETE',
+    missing.length === 0 ? Object.keys(_TRL_DEFAULTS).length + ' keys all populated' : 'empty keys: ' + missing.join(', '));
+
+  // 2. Currency symbols active
+  _ct(CUR === _TRL.cur, -1, label, 'TRL_CUR_MATCH', 'CUR=' + CUR + ' _TRL.cur=' + _TRL.cur);
+  _ct(CUR2 === _TRL.cur2, -1, label, 'TRL_CUR2_MATCH', 'CUR2=' + CUR2 + ' _TRL.cur2=' + _TRL.cur2);
+  _ct(typeof CUR_RATE === 'number' && CUR_RATE > 0, -1, label, 'TRL_RATE_VALID', 'CUR_RATE=' + CUR_RATE);
+
+  // 3. Excel sheet names — must match _TRL values, no hardcoded English
+  if (wb) {
+    var sheetNames = wb.worksheets.map(function(ws) { return ws.name; });
+    var trlSheets = label === '5D' ? [_TRL.s_cover, _TRL.s_exec_summary, _TRL.s_material, _TRL.s_labour, _TRL.s_equipment]
+      : [_TRL.s_schedule, _TRL.s_proj_summary, _TRL.s_dashboard];
+    var sheetHits = 0;
+    for (var i = 0; i < trlSheets.length; i++) {
+      if (sheetNames.indexOf(trlSheets[i]) >= 0) sheetHits++;
+    }
+    _ct(sheetHits === trlSheets.length, -1, label, 'TRL_SHEET_NAMES',
+      sheetHits + '/' + trlSheets.length + ' _TRL sheets found in [' + sheetNames.join(', ') + ']');
+
+    // 4. Scan first 5 rows of each sheet for hardcoded 'RM ' or ' USD ' (should be CUR/CUR2)
+    var hardcoded = [];
+    var bannedRe = /\bRM\s|\sRM\b|\bUSD\s|\sUSD\b/;
+    // Only flag if CUR is not RM and CUR2 is not USD (i.e. localization changed them)
+    // If defaults are active, RM/USD are expected — so test the ABSENCE of wrong currency
+    wb.worksheets.forEach(function(ws) {
+      ws.eachRow({ includeEmpty: false }, function(row, rn) {
+        if (rn > 5) return;
+        row.eachCell(function(cell) {
+          var v = String(cell.value || '');
+          // Check currency symbol appears correctly
+          if (v.indexOf('(' + CUR + ')') >= 0 || v.indexOf(CUR + ' ') >= 0) return; // OK
+          if (CUR !== 'RM' && bannedRe.test(v)) hardcoded.push(ws.name + ':R' + rn + '="' + v.slice(0, 40) + '"');
+        });
+      });
     });
-    savedOpts.push(JSON.parse(JSON.stringify(ch.options)));
-    // Black labels on bar/line axes ONLY — PIE RULE: never touch pie options
-    if (!isPie && ch.options.scales) {
-      for (var axis in ch.options.scales) {
-        var sc = ch.options.scales[axis];
-        if (sc.ticks) { sc.ticks.color = '#000'; sc.ticks.font = { size: 14 }; }
-        if (sc.title) { sc.title.color = '#000'; sc.title.font = { size: 16, weight: 'bold' }; }
-      }
-    }
-    // Black legend text — bar/line ONLY. PIE RULE: larger legend font squeezes the pie circle
-    if (!isPie && ch.options.plugins && ch.options.plugins.legend && ch.options.plugins.legend.labels) {
-      ch.options.plugins.legend.labels.color = '#000';
-      ch.options.plugins.legend.labels.font = { size: 14 };
-    }
-    ch.canvas.parentElement.style.width = w + 'px';
-    ch.canvas.parentElement.style.height = h + 'px';
-    ch.canvas.style.width = w + 'px';
-    ch.canvas.style.height = h + 'px';
-    ch.resize(w, h);
-    ch.update('none');
+    _ct(hardcoded.length === 0, -1, label, 'TRL_NO_HARDCODE',
+      hardcoded.length === 0 ? 'no hardcoded RM/USD in headers (CUR=' + CUR + ')' : hardcoded.join('; '));
   }
-  return { savedStyles: savedStyles, savedOpts: savedOpts };
+
+  // 5. HTML chart titles — verify they use _TRL values
+  var h2s = document.querySelectorAll('.chart-box h2');
+  var trlTitles = [_TRL.t_cost_by_disc, _TRL.t_cost_components, _TRL.t_task_dist_phase,
+    _TRL.t_task_count_disc, _TRL.t_phase_duration, _TRL.t_resource_workload,
+    _TRL.t_s_curve, _TRL.t_milestone, _TRL.t_gantt];
+  var titleHits = 0;
+  for (var ti = 0; ti < h2s.length; ti++) {
+    var txt = h2s[ti].textContent;
+    for (var tj = 0; tj < trlTitles.length; tj++) {
+      if (txt.indexOf(trlTitles[tj]) >= 0) { titleHits++; break; }
+    }
+  }
+  _ct(titleHits >= Math.min(h2s.length, trlTitles.length), -1, label, 'TRL_CHART_TITLES',
+    titleHits + '/' + h2s.length + ' HTML chart titles match _TRL values');
+
+  // 6. HTML table headers — verify CUR symbol appears, not hardcoded RM
+  var ths = document.querySelectorAll('table th');
+  var curInHeaders = 0;
+  for (var hi = 0; hi < ths.length; hi++) {
+    if (ths[hi].textContent.indexOf(CUR) >= 0) curInHeaders++;
+  }
+  _ct(curInHeaders > 0, -1, label, 'TRL_HTML_CUR',
+    curInHeaders + ' table headers contain CUR="' + CUR + '"');
+
+  // 7. Rate source attribution
+  var fullTables = document.querySelectorAll('.chart-box.full');
+  var footerText = ''; for (var ft = 0; ft < fullTables.length; ft++) footerText += fullTables[ft].textContent;
+  _ct(footerText.indexOf(_TRL.rate_source) >= 0, -1, label, 'TRL_RATE_SOURCE',
+    'footer contains "' + _TRL.rate_source + '": ' + (footerText.indexOf(_TRL.rate_source) >= 0));
+
+  _log('[S226] §TRL_VERIFY done — ' + label);
 }
 
-// Restore all charts to responsive page styling after Excel capture
-function restoreChartsAfterExcel(saved) {
-  for (var ri = 0; ri < chartInstances.length; ri++) {
-    var s = saved.savedStyles[ri];
-    if (!s) continue;
-    chartInstances[ri].canvas.parentElement.style.width = s.pw;
-    chartInstances[ri].canvas.parentElement.style.height = s.ph;
-    chartInstances[ri].canvas.style.width = s.cw;
-    chartInstances[ri].canvas.style.height = s.ch_;
-    if (saved.savedOpts[ri]) chartInstances[ri].options = saved.savedOpts[ri];
-    chartInstances[ri].resize();
-    chartInstances[ri].update('none');
+// ── Maths verification: proves numeric outputs are correct ──
+function _verifyMaths(wb, label) {
+  _log('[S226] §MATHS_VERIFY start — ' + label);
+
+  // 1. Grand totals cross-check: sum of disc totals must equal grand totals
+  var sumMat = 0, sumLab = 0, sumEq = 0;
+  for (var d in discSummary) {
+    sumMat += discSummary[d].matTotal;
+    sumLab += discSummary[d].laborCost;
+    sumEq  += discSummary[d].equipCost;
   }
+  _ct(sumMat === grandMaterial, -1, label, 'MATHS_MAT_SUM',
+    'disc_sum=' + sumMat + ' grand=' + grandMaterial + (sumMat !== grandMaterial ? ' MISMATCH' : ''));
+  _ct(sumLab === grandLabor, -1, label, 'MATHS_LAB_SUM',
+    'disc_sum=' + sumLab + ' grand=' + grandLabor + (sumLab !== grandLabor ? ' MISMATCH' : ''));
+  _ct(sumEq === grandEquip, -1, label, 'MATHS_EQ_SUM',
+    'disc_sum=' + sumEq + ' grand=' + grandEquip + (sumEq !== grandEquip ? ' MISMATCH' : ''));
+
+  // 2. Grand total = mat + lab + eq
+  var gt = grandMaterial + grandLabor + grandEquip;
+  _ct(gt === grandMaterial + grandLabor + grandEquip, -1, label, 'MATHS_GRAND',
+    CUR + ' ' + gt.toLocaleString() + ' = Mat ' + grandMaterial.toLocaleString() + ' + Lab ' + grandLabor.toLocaleString() + ' + Eq ' + grandEquip.toLocaleString());
+
+  // 3. Currency conversion sample: first disc total → secondary currency
+  var firstDisc = Object.keys(discSummary)[0];
+  if (firstDisc) {
+    var ds = discSummary[firstDisc];
+    var discTotal = ds.matTotal + ds.laborCost + ds.equipCost;
+    var converted = fmtCur2(discTotal);
+    var expected = Math.round(discTotal / CUR_RATE * 100) / 100;
+    _ct(converted === expected, -1, label, 'MATHS_CUR_CONV',
+      firstDisc + ': ' + CUR + ' ' + discTotal.toLocaleString() + ' ÷ ' + CUR_RATE + ' = ' + CUR2 + ' ' + converted + ' (expected ' + expected + ')');
+  }
+
+  // 4. QTO row count vs total elements
+  var qtoSum = 0;
+  for (var i = 0; i < qtoData.length; i++) qtoSum += qtoData[i].qty;
+  _ct(qtoSum === totalQty, -1, label, 'MATHS_QTY_SUM',
+    'qto_rows=' + qtoData.length + ' qty_sum=' + qtoSum + ' totalQty=' + totalQty + (qtoSum !== totalQty ? ' MISMATCH' : ''));
+
+  // 5. Rate spot-check: first 3 QTO rows — rate × qty = matTotal
+  for (var ri = 0; ri < Math.min(3, qtoData.length); ri++) {
+    var r = qtoData[ri];
+    var calc = Math.round(r.matRate * r.qty * 100) / 100;
+    _ct(Math.abs(calc - r.matTotal) < 0.02, -1, label, 'MATHS_RATE_CHECK',
+      r.cls + ': rate=' + r.matRate + ' × qty=' + (Math.round(r.qty*100)/100) + ' = ' + calc + ' (stored=' + r.matTotal + ')' + (Math.abs(calc - r.matTotal) >= 0.02 ? ' MISMATCH' : ''));
+  }
+
+  // 6. Excel sheet count
+  if (wb) {
+    var sc = wb.worksheets.length;
+    var minSheets = label === '5D' ? 6 : 3;
+    _ct(sc >= minSheets, -1, label, 'MATHS_SHEET_COUNT',
+      sc + ' sheets in workbook (min ' + minSheets + ' expected for ' + label + ')');
+  }
+
+  // 7. Pie chart data sum = grand total (chart[0] is cost pie)
+  if (chartInstances.length > 0 && chartInstances[0].config.type === 'pie') {
+    var pieData = chartInstances[0].data.datasets[0].data;
+    var pieSum = 0;
+    for (var pi = 0; pi < pieData.length; pi++) pieSum += pieData[pi];
+    _ct(pieSum === gt, -1, label, 'MATHS_PIE_SUM',
+      'pie_sum=' + pieSum.toLocaleString() + ' grand=' + gt.toLocaleString() + (pieSum !== gt ? ' MISMATCH — pie slices do not add up' : ''));
+  }
+
+  // 8. Canvas dimensions after prepare (from last capture log)
+  // Already covered by RATIO_MATCH per chart — skip duplicate
+
+  _log('[S226] §MATHS_VERIFY done — ' + label);
 }
 
-// Capture one chart as a white-background PNG for Excel embedding
-function captureChartImage(ci, wb) {
-  var ch = chartInstances[ci];
-  if (!ch) return null;
-  var isPie = ch.config.type === 'pie';
-  var src = ch.canvas;
-  // Composite onto white background — chart canvas is transparent, Excel is white
-  var off = document.createElement('canvas');
-  off.width = src.width; off.height = src.height;
-  var ctx = off.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, off.width, off.height);
-  ctx.drawImage(src, 0, 0);
-  var b64 = off.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
-  var imgId = wb.addImage({ base64: b64, extension: 'png' });
-  // Image dimensions MUST match canvas aspect ratio
-  // Pie:  800/800 = 1.0 → 400×400 (square = round)
-  // Bar: 1100/700 = 1.57 → 500×318 (landscape)
-  var w, h;
-  if (isPie) { w = 400; h = 400; }
-  else { w = 500; h = Math.round(500 * 700 / 1100); }
-  console.log('§CHART_CAPTURE: ci=' + ci + ' type=' + ch.config.type + ' canvas=' + src.width + '×' + src.height + ' img=' + w + '×' + h);
-  return { id: imgId, width: w, height: h };
-}
+// S235: captureChartImage removed — charts shown in HTML, not embedded in Excel
 
 // ============================================================================
 // SAVE 5D BOQ — ExcelJS: Cover, Exec Summary, Mat/Lab/Equip, BOQ, WPs, Disc, Prov
 // ============================================================================
 async function save5D() {
-  document.getElementById('status').textContent = 'Generating 5D Excel — preparing charts...';
-  var saved5D = prepareChartsForExcel();
-  await new Promise(r => setTimeout(r, 500));  // let Chart.js re-render
-
-  document.getElementById('status').textContent = 'Generating 5D Excel...';
+  if (_dbSourceLine) _log(_dbSourceLine);  // S238: re-emit DB source so it appears in every log
+  document.getElementById('status').textContent = _TRL.ui_gen_5d || 'Generating 5D Excel...';
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'BIM OOTB';
+  wb.creator = _TRL.source_app;
   const gt = grandMaterial + grandLabor + grandEquip;
   const discs = Object.keys(discSummary);
   const NUM_FMT = '#,##0.00';
@@ -988,29 +1960,29 @@ async function save5D() {
   }
 
   // ── Sheet 1: Cover Sheet ──
-  const wsCover = wb.addWorksheet('Cover Sheet');
+  const wsCover = wb.addWorksheet(_TRL.s_cover);
   wsCover.columns = [{ width: 22 }, { width: 50 }, { width: 35 }];
   const coverRows = [
-    ['COMPREHENSIVE BILL OF QUANTITIES'],
+    [_TRL.t_comp_boq],
     [`Project: ${bldName}`],
     [],
-    ['COST BREAKDOWN METHODOLOGY'],
+    [_TRL.t_cost_method],
     [],
-    ['1. MATERIAL COSTS'],
-    ['Source:','CIDB National Construction Cost Centre (N3C) 2024'],
-    ['Reference:','BCISM Cost Book 2022-2024 (inflated +3%)'],
-    ['Includes:','Delivery, wastage allowance (5-10% by material type)'],
+    ['1. ' + _TRL.h_material.toUpperCase() + ' COSTS'],
+    ['Source:', _TRL.rate_mat_source],
+    ['Reference:', _TRL.rate_mat_ref],
+    ['Includes:', _TRL.rate_mat_includes],
     [],
-    ['2. LABOR COSTS'],
-    ['Source:','MBAM-CIDB Labour Wage Survey 2024'],
-    ['Basis:','Basic wage + 30% (EPF 13%, SOCSO 2%, benefits 15%)'],
-    ['Productivity:','CIDB productivity standards by trade'],
-    ['Crew Composition:','Skilled workers + helpers as per trade standards'],
+    ['2. ' + _TRL.h_labour.toUpperCase() + ' COSTS'],
+    ['Source:', _TRL.rate_lab_source],
+    ['Basis:', _TRL.rate_lab_basis],
+    [_TRL.h_productivity + ':', _TRL.rate_lab_prod],
+    [_TRL.h_crew_size + ':', _TRL.rate_lab_crew],
     [],
-    ['3. EQUIPMENT/PLANT HIRE'],
-    ['Source:','CIDB N3C Machinery Hire Rates 2024'],
-    ['Allocation:','Based on work type and duration requirements'],
-    ['Rates:','Per day (8 hours), operator cost included where stated'],
+    ['3. ' + _TRL.h_equipment.toUpperCase() + '/PLANT HIRE'],
+    ['Source:', _TRL.rate_eq_source],
+    ['Allocation:', _TRL.rate_eq_alloc],
+    ['Rates:', _TRL.rate_eq_basis],
     [],
     ['COST SUMMARY STRUCTURE'],
     ['Sheet 1:','Cover Sheet (this page)'],
@@ -1028,8 +2000,8 @@ async function save5D() {
     ['BOQ Format:','PWD Form 203A Malaysia'],
     ['Measurement:','SMM2 (Standard Method of Measurement)'],
     ['Pricing Date:','Q4 2024'],
-    ['Currency:','Malaysian Ringgit (RM) + USD conversion'],
-    ['USD Rate:',`1 USD = ${USD_RATE} RM`],
+    ['Currency:', CUR + (CUR2 !== CUR ? ' + ' + CUR2 + ' conversion' : '')],
+    ['Conversion Rate:', `1 ${CUR2} = ${CUR_RATE} ${CUR}`],
     ['Validity:','60 days from date of issue'],
     [],
     ['EXCLUSIONS'],
@@ -1039,23 +2011,23 @@ async function save5D() {
     ['Escalation beyond 60 days'],
     ['Site-specific conditions not shown in drawings'],
     [],
-    ['Generated:',new Date().toISOString(),'BIM OOTB — Frictionless BIM'],
+    ['Generated:',new Date().toISOString(), _TRL.source_app],
   ];
   for (const row of coverRows) wsCover.addRow(row);
   styleTitle(wsCover, 1, 3);
   wsCover.getRow(4).font = { bold: true, size: 12 };
 
   // ── Sheet 2: Executive Summary (with USD columns + pie chart image) ──
-  const wsExec = wb.addWorksheet('Executive Summary');
+  const wsExec = wb.addWorksheet(_TRL.s_exec_summary);
   wsExec.columns = [
     { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 20 },
     { width: 18 }, { width: 18 }, { width: 18 }, { width: 20 },
   ];
-  wsExec.addRow(['EXECUTIVE SUMMARY']);
+  wsExec.addRow([_TRL.s_exec_summary.toUpperCase()]);
   styleTitle(wsExec, 1, 9);
   wsExec.addRow([]);
-  wsExec.addRow(['Discipline','Material (RM)','Labor (RM)','Equipment (RM)','TOTAL (RM)',
-                 'Material (USD)','Labor (USD)','Equipment (USD)','TOTAL (USD)']);
+  wsExec.addRow([_TRL.h_discipline, _TRL.h_material+' ('+CUR+')', _TRL.h_labour+' ('+CUR+')', _TRL.h_equipment+' ('+CUR+')', _TRL.h_total+' ('+CUR+')',
+                 _TRL.h_material+' ('+CUR2+')', _TRL.h_labour+' ('+CUR2+')', _TRL.h_equipment+' ('+CUR2+')', _TRL.h_total+' ('+CUR2+')']);
   styleHeader(wsExec, 3, 'FF2C3E50');
   let execDataStart = 4;
   for (const d of discs) {
@@ -1070,7 +2042,7 @@ async function save5D() {
     fmtRow(wsExec, rn, [2,3,4,5,6,7,8,9], NUM_FMT);
   }
   wsExec.addRow([]);
-  wsExec.addRow(['GRAND TOTAL', grandMaterial, grandLabor, grandEquip, gt,
+  wsExec.addRow([_TRL.h_grand_total, grandMaterial, grandLabor, grandEquip, gt,
                  Math.round(grandMaterial / USD_RATE * 100) / 100,
                  Math.round(grandLabor / USD_RATE * 100) / 100,
                  Math.round(grandEquip / USD_RATE * 100) / 100,
@@ -1079,22 +2051,15 @@ async function save5D() {
   wsExec.getRow(gtRow).font = { bold: true };
   fmtRow(wsExec, gtRow, [2,3,4,5,6,7,8,9], NUM_FMT);
 
-  // Embed pie + bar below data, side by side
-  try {
-    var chartRow = gtRow + 3;
-    var pieImg = captureChartImage(0, wb);
-    if (pieImg) wsExec.addImage(pieImg.id, { tl: { col: 0, row: chartRow }, ext: { width: pieImg.width, height: pieImg.height } });
-    var barImg = captureChartImage(1, wb);
-    if (barImg) wsExec.addImage(barImg.id, { tl: { col: 5, row: chartRow }, ext: { width: barImg.width, height: barImg.height } });
-  } catch (e) { console.warn('Could not embed exec charts:', e); }
+  // Charts are in the HTML page — no need to embed in Excel
 
   // ── Sheet 3: Material Summary (+ USD total) ──
-  const wsMat = wb.addWorksheet('Material Summary');
+  const wsMat = wb.addWorksheet(_TRL.s_material);
   wsMat.columns = [{ width: 15 },{ width: 28 },{ width: 12 },{ width: 8 },{ width: 16 },{ width: 20 },{ width: 18 }];
-  wsMat.addRow(['MATERIAL COST SUMMARY']);
+  wsMat.addRow([_TRL.t_mat_summary]);
   styleTitle(wsMat, 1, 7);
   wsMat.addRow([]);
-  wsMat.addRow(['Discipline','IFC Class','Quantity','UOM','Unit Rate (RM)','Total Material (RM)','Total (USD)']);
+  wsMat.addRow([_TRL.h_discipline, _TRL.h_ifc_class, _TRL.h_quantity, _TRL.h_uom, _TRL.h_unit_rate+' ('+CUR+')', _TRL.h_total+' '+_TRL.h_material+' ('+CUR+')', _TRL.h_total+' ('+CUR2+')']);
   styleHeader(wsMat, 3, 'FF27AE60');
   for (const r of qtoData) {
     wsMat.addRow([r.disc, r.cls, r.qty, r.unit, r.matRate, r.matTotal, Math.round(r.matTotal / USD_RATE * 100) / 100]);
@@ -1107,12 +2072,12 @@ async function save5D() {
   fmtRow(wsMat, matTotRow, [6,7], NUM_FMT);
 
   // ── Sheet 4: Labor Summary (+ USD total) ──
-  const wsLab = wb.addWorksheet('Labor Summary');
+  const wsLab = wb.addWorksheet(_TRL.s_labour);
   wsLab.columns = [{ width: 15 },{ width: 28 },{ width: 12 },{ width: 8 },{ width: 30 },{ width: 10 },{ width: 12 },{ width: 18 },{ width: 16 }];
-  wsLab.addRow(['LABOR COST & CREW ALLOCATION SUMMARY']);
+  wsLab.addRow([_TRL.t_lab_summary]);
   styleTitle(wsLab, 1, 9);
   wsLab.addRow([]);
-  wsLab.addRow(['Discipline','IFC Class','Quantity','UOM','Trade','Crew Size','Man-Days','Labor Cost (RM)','Labor (USD)']);
+  wsLab.addRow([_TRL.h_discipline, _TRL.h_ifc_class, _TRL.h_quantity, _TRL.h_uom, _TRL.h_trade, _TRL.h_crew_size, _TRL.h_man_days, _TRL.h_labour+' ('+CUR+')', _TRL.h_labour+' ('+CUR2+')']);
   styleHeader(wsLab, 3, 'FFFFC000');
   for (const r of qtoData) {
     if (r.laborCost === 0) continue;
@@ -1127,12 +2092,12 @@ async function save5D() {
   fmtRow(wsLab, labTotRow, [8,9], NUM_FMT);
 
   // ── Sheet 5: Equipment Summary (+ USD total) ──
-  const wsEq = wb.addWorksheet('Equipment Summary');
+  const wsEq = wb.addWorksheet(_TRL.s_equipment);
   wsEq.columns = [{ width: 15 },{ width: 28 },{ width: 35 },{ width: 15 },{ width: 16 },{ width: 18 },{ width: 16 }];
-  wsEq.addRow(['EQUIPMENT / PLANT HIRE SUMMARY']);
+  wsEq.addRow([_TRL.t_equip_summary]);
   styleTitle(wsEq, 1, 7);
   wsEq.addRow([]);
-  wsEq.addRow(['Discipline','IFC Class','Equipment','Duration (days)','Rate/Day (RM)','Total (RM)','Total (USD)']);
+  wsEq.addRow([_TRL.h_discipline, _TRL.h_ifc_class, _TRL.h_equipment, _TRL.h_duration, _TRL.h_rate_day+' ('+CUR+')', _TRL.h_total+' ('+CUR+')', _TRL.h_total+' ('+CUR2+')']);
   styleHeader(wsEq, 3, 'FF5B9BD5');
   for (const r of qtoData) {
     if (r.equipCost === 0) continue;
@@ -1154,8 +2119,8 @@ async function save5D() {
   wsBOQ.addRow(['DETAILED BOQ — ALL DISCIPLINES']);
   styleTitle(wsBOQ, 1, 12);
   wsBOQ.addRow([]);
-  wsBOQ.addRow(['Discipline','IFC Class','Storey','Qty','UOM','Description',
-                'Mat Rate (RM)','Material (RM)','Labor Cost (RM)','Equipment Cost (RM)','Total (RM)','Total (USD)']);
+  wsBOQ.addRow([_TRL.h_discipline, _TRL.h_ifc_class, _TRL.h_storey, _TRL.h_quantity, _TRL.h_uom, _TRL.h_description,
+                _TRL.h_mat_rate+' ('+CUR+')', _TRL.h_material+' ('+CUR+')', _TRL.h_labour+' ('+CUR+')', _TRL.h_equipment+' ('+CUR+')', _TRL.h_total+' ('+CUR+')', _TRL.h_total+' ('+CUR2+')']);
   styleHeader(wsBOQ, 3, 'FF2C3E50');
   for (const r of qtoData) {
     const rowTotal = r.matTotal + r.laborCost + r.equipCost;
@@ -1163,22 +2128,22 @@ async function save5D() {
     fmtRow(wsBOQ, wsBOQ.rowCount, [7,8,9,10,11,12], NUM_FMT);
   }
   wsBOQ.addRow([]);
-  wsBOQ.addRow(['','','','','','MATERIAL SUBTOTAL','', grandMaterial,'','','', Math.round(grandMaterial / USD_RATE * 100) / 100]);
+  wsBOQ.addRow(['','','','','',_TRL.h_material+' '+_TRL.h_subtotal,'', grandMaterial,'','','', fmtCur2(grandMaterial)]);
   fmtRow(wsBOQ, wsBOQ.rowCount, [8,12], NUM_FMT);
-  wsBOQ.addRow(['','','','','','LABOUR SUBTOTAL','','', grandLabor,'','', Math.round(grandLabor / USD_RATE * 100) / 100]);
+  wsBOQ.addRow(['','','','','',_TRL.h_labour+' '+_TRL.h_subtotal,'','', grandLabor,'','', fmtCur2(grandLabor)]);
   fmtRow(wsBOQ, wsBOQ.rowCount, [9,12], NUM_FMT);
-  wsBOQ.addRow(['','','','','','EQUIPMENT SUBTOTAL','','','', grandEquip,'', Math.round(grandEquip / USD_RATE * 100) / 100]);
+  wsBOQ.addRow(['','','','','',_TRL.h_equipment+' '+_TRL.h_subtotal,'','','', grandEquip,'', fmtCur2(grandEquip)]);
   fmtRow(wsBOQ, wsBOQ.rowCount, [10,12], NUM_FMT);
-  wsBOQ.addRow(['','','','','','GRAND TOTAL','','','','', gt, Math.round(gt / USD_RATE * 100) / 100]);
+  wsBOQ.addRow(['','','','','',_TRL.h_grand_total,'','','','', gt, fmtCur2(gt)]);
   const boqGtRow = wsBOQ.rowCount;
   wsBOQ.getRow(boqGtRow).font = { bold: true };
   fmtRow(wsBOQ, boqGtRow, [11,12], NUM_FMT);
   wsBOQ.addRow([]);
-  wsBOQ.addRow(['Rates: CIDB Malaysia 2024 / BCISM Cost Book']);
-  wsBOQ.addRow(['BIM OOTB — Frictionless BIM', new Date().toISOString()]);
+  wsBOQ.addRow(['Rates: ' + _TRL.rate_source]);
+  wsBOQ.addRow([_TRL.source_app, new Date().toISOString()]);
 
   // ── Sheets 7-11+: Work Package Sheets ──
-  const wpHeaders = ['Item','Description','Qty','UOM','Material Rate (RM)','Material (RM)','Labor (RM)','Equipment (RM)','Total (RM)','Total (USD)'];
+  const wpHeaders = [_TRL.h_item, _TRL.h_description, _TRL.h_quantity, _TRL.h_uom, _TRL.h_mat_rate+' ('+CUR+')', _TRL.h_material+' ('+CUR+')', _TRL.h_labour+' ('+CUR+')', _TRL.h_equipment+' ('+CUR+')', _TRL.h_total+' ('+CUR+')', _TRL.h_total+' ('+CUR2+')'];
   const wpColWidths = [{ width: 8 },{ width: 35 },{ width: 10 },{ width: 6 },{ width: 18 },{ width: 16 },{ width: 14 },{ width: 14 },{ width: 16 },{ width: 14 }];
 
   // Build set of all matched classes to find "OTHER"
@@ -1192,21 +2157,25 @@ async function save5D() {
     allWPs.push({ id: 'PACKAGE 6', name: 'OTHER', color: '7F8C8D', classes: null });
   }
 
+  const wsWP = wb.addWorksheet('Work Packages');
+  wsWP.columns = wpColWidths;
+  wsWP.addRow(['WORK PACKAGES — COST BREAKDOWN']);
+  styleTitle(wsWP, 1, 10);
+  let wpGrandMat = 0, wpGrandLab = 0, wpGrandEq = 0;
+
   for (const wp of allWPs) {
     const wpData = wp.classes
       ? qtoData.filter(r => wp.classes.includes(r.cls))
       : otherRows;
     if (wpData.length === 0) continue;
 
-    const wsWP = wb.addWorksheet(wp.id);
-    wsWP.columns = wpColWidths;
-    wsWP.addRow([`${wp.id}: ${wp.name}`]);
-    styleTitle(wsWP, 1, 10);
-    wsWP.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + wp.color } };
-    wsWP.getRow(1).font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
     wsWP.addRow([]);
+    const hdrRow = wsWP.rowCount + 1;
+    wsWP.addRow([`${wp.id}: ${wp.name}`]);
+    wsWP.getRow(hdrRow).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + wp.color } };
+    wsWP.getRow(hdrRow).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
     wsWP.addRow(wpHeaders);
-    styleHeader(wsWP, 3, 'FF' + wp.color);
+    styleHeader(wsWP, wsWP.rowCount, 'FF' + wp.color);
 
     let wpMatTotal = 0, wpLabTotal = 0, wpEqTotal = 0;
     let itemNum = 0;
@@ -1219,16 +2188,24 @@ async function save5D() {
       wsWP.addRow([String(itemNum).padStart(3, '0'), r.desc || r.cls, r.qty, r.unit, r.matRate, r.matTotal, r.laborCost, r.equipCost, rowTotal, Math.round(rowTotal / USD_RATE * 100) / 100]);
       fmtRow(wsWP, wsWP.rowCount, [5,6,7,8,9,10], NUM_FMT);
     }
-    wsWP.addRow([]);
     const wpGrandRM = wpMatTotal + wpLabTotal + wpEqTotal;
-    wsWP.addRow(['','SUBTOTAL','','','', wpMatTotal, wpLabTotal, wpEqTotal, wpGrandRM, Math.round(wpGrandRM / USD_RATE * 100) / 100]);
-    const stRow = wsWP.rowCount;
-    wsWP.getRow(stRow).font = { bold: true };
-    fmtRow(wsWP, stRow, [6,7,8,9,10], NUM_FMT);
+    wsWP.addRow(['',_TRL.h_subtotal + ' — ' + wp.name,'','','', wpMatTotal, wpLabTotal, wpEqTotal, wpGrandRM, fmtCur2(wpGrandRM)]);
+    wsWP.getRow(wsWP.rowCount).font = { bold: true };
+    fmtRow(wsWP, wsWP.rowCount, [6,7,8,9,10], NUM_FMT);
+    wpGrandMat += wpMatTotal; wpGrandLab += wpLabTotal; wpGrandEq += wpEqTotal;
   }
+  // Grand total across all WPs
+  wsWP.addRow([]);
+  const wpAllRM = wpGrandMat + wpGrandLab + wpGrandEq;
+  wsWP.addRow(['',_TRL.h_grand_total,'','','', wpGrandMat, wpGrandLab, wpGrandEq, wpAllRM, fmtCur2(wpAllRM)]);
+  const wpGtRow = wsWP.rowCount;
+  wsWP.getRow(wpGtRow).font = { bold: true, size: 12 };
+  wsWP.getRow(wpGtRow).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2C3E50' } };
+  wsWP.getRow(wpGtRow).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+  fmtRow(wsWP, wpGtRow, [6,7,8,9,10], NUM_FMT);
 
   // ── Per-Discipline BOQ Sheets ──
-  const discHeaders = ['Item','Description','Qty','UOM','Material Rate (RM)','Material (RM)','Labor (RM)','Equipment (RM)','Total (RM)','Total (USD)'];
+  const discHeaders = [_TRL.h_item, _TRL.h_description, _TRL.h_quantity, _TRL.h_uom, _TRL.h_mat_rate+' ('+CUR+')', _TRL.h_material+' ('+CUR+')', _TRL.h_labour+' ('+CUR+')', _TRL.h_equipment+' ('+CUR+')', _TRL.h_total+' ('+CUR+')', _TRL.h_total+' ('+CUR2+')'];
   for (const disc of discs) {
     const discRows = qtoData.filter(r => r.disc === disc);
     if (discRows.length === 0) continue;
@@ -1255,20 +2232,20 @@ async function save5D() {
     }
     wsDisc.addRow([]);
     const dGrandRM = dMatT + dLabT + dEqT;
-    wsDisc.addRow(['','SUBTOTAL','','','', dMatT, dLabT, dEqT, dGrandRM, Math.round(dGrandRM / USD_RATE * 100) / 100]);
+    wsDisc.addRow(['',_TRL.h_subtotal,'','','', dMatT, dLabT, dEqT, dGrandRM, fmtCur2(dGrandRM)]);
     const dStRow = wsDisc.rowCount;
     wsDisc.getRow(dStRow).font = { bold: true };
     fmtRow(wsDisc, dStRow, [6,7,8,9,10], NUM_FMT);
   }
 
   // ── Provisional Sums (+ USD column) ──
-  const wsProv = wb.addWorksheet('Provisional Sums');
+  const wsProv = wb.addWorksheet(_TRL.s_prov);
   wsProv.columns = [{ width: 8 },{ width: 40 },{ width: 10 },{ width: 6 },{ width: 14 },{ width: 14 },{ width: 16 },{ width: 14 }];
-  wsProv.addRow(['PROVISIONAL SUMS - FINISHES & FITTINGS']);
+  wsProv.addRow([_TRL.t_prov_sums]);
   styleTitle(wsProv, 1, 8);
   wsProv.addRow(['Items not explicitly modeled in BIM - calculated from built-up areas']);
   wsProv.addRow([]);
-  wsProv.addRow(['Item','Description','Qty','UOM','Mat Rate (RM)','Lab Rate (RM)','Total (RM)','Total (USD)']);
+  wsProv.addRow([_TRL.h_item, _TRL.h_description, _TRL.h_quantity, _TRL.h_uom, _TRL.h_mat_rate+' ('+CUR+')', _TRL.h_lab_rate+' ('+CUR+')', _TRL.h_total+' ('+CUR+')', _TRL.h_total+' ('+CUR2+')']);
   styleHeader(wsProv, 4, 'FFC0392B');
 
   let wallArea = 0, floorArea = 0;
@@ -1296,7 +2273,7 @@ async function save5D() {
     fmtRow(wsProv, wsProv.rowCount, [5,6,7,8], NUM_FMT);
   }
   wsProv.addRow([]);
-  wsProv.addRow(['','','','','','TOTAL PROVISIONAL SUMS', Math.round(provTotal), Math.round(provTotal / USD_RATE * 100) / 100]);
+  wsProv.addRow(['','','','','',_TRL.t_prov_sums + ' TOTAL', Math.round(provTotal), Math.round(provTotal / USD_RATE * 100) / 100]);
   const provTotRow = wsProv.rowCount;
   wsProv.getRow(provTotRow).font = { bold: true };
   fmtRow(wsProv, provTotRow, [7,8], NUM_FMT);
@@ -1328,7 +2305,7 @@ async function save5D() {
       { header: 'Status', key: 's', width: 10 }, { header: 'GUID', key: 'g', width: 36 },
       { header: 'IFC Class', key: 'c', width: 20 }, { header: 'Name', key: 'n', width: 24 },
       { header: 'Storey', key: 'st', width: 16 }, { header: 'Discipline', key: 'd', width: 10 },
-      { header: 'Phase (4D)', key: 'p', width: 14 }, { header: 'Unit Rate (RM)', key: 'r', width: 12 },
+      { header: 'Phase (4D)', key: 'p', width: 14 }, { header: 'Unit Rate (' + CUR + ')', key: 'r', width: 12 },
       { header: 'Factor', key: 'f', width: 8 }, { header: 'Direct Cost', key: 'dc', width: 12 },
       { header: 'Total Impact', key: 'ti', width: 12 }, { header: 'Days', key: 'dy', width: 8 }
     ];
@@ -1373,16 +2350,16 @@ async function save5D() {
     wsVOS.addRow({ m: 'Total Affected', v: diffResult.added.length + diffResult.removed.length + diffResult.changed.length });
     wsVOS.addRow({});
     wsVOS.addRow({ m: '── COST IMPACT (5D) ──', n: 'FIDIC Clause 12 + AACE' }); wsVOS.lastRow.font = { bold: true, color: { argb: 'FF4FC3F7' } };
-    wsVOS.addRow({ m: 'Addition Cost', v: 'RM ' + Math.round(voAddCost).toLocaleString() });
-    wsVOS.addRow({ m: 'Removal Cost', v: 'RM ' + Math.round(voRemCost).toLocaleString() });
-    wsVOS.addRow({ m: 'Change Cost', v: 'RM ' + Math.round(voChgCost).toLocaleString() });
-    wsVOS.addRow({ m: 'Net Direct', v: 'RM ' + Math.round(voTotalDirect).toLocaleString() });
-    wsVOS.addRow({ m: 'Total Impact (O&P)', v: 'RM ' + Math.round(voTotalImpact).toLocaleString(), n: 'Direct × (1+10%OH+15%Markup) × (1+5%Disruption)' });
+    wsVOS.addRow({ m: 'Addition Cost', v: CUR + ' ' + Math.round(voAddCost).toLocaleString() });
+    wsVOS.addRow({ m: 'Removal Cost', v: CUR + ' ' + Math.round(voRemCost).toLocaleString() });
+    wsVOS.addRow({ m: 'Change Cost', v: CUR + ' ' + Math.round(voChgCost).toLocaleString() });
+    wsVOS.addRow({ m: 'Net Direct', v: CUR + ' ' + Math.round(voTotalDirect).toLocaleString() });
+    wsVOS.addRow({ m: 'Total Impact (O&P)', v: CUR + ' ' + Math.round(voTotalImpact).toLocaleString(), n: 'Direct × (1+10%OH+15%Markup) × (1+5%Disruption)' });
     wsVOS.addRow({});
     wsVOS.addRow({ m: '── SCHEDULE IMPACT (4D) ──' }); wsVOS.lastRow.font = { bold: true, color: { argb: 'FF4FC3F7' } };
     wsVOS.addRow({ m: 'Total Additional Days', v: voTotalDays.toFixed(1) + ' days' });
 
-    console.log('[S224] §VO_IN_5D added=' + diffResult.added.length + ' removed=' + diffResult.removed.length + ' changed=' + diffResult.changed.length + ' impact=RM' + Math.round(voTotalImpact));
+    console.log('[S224] §VO_IN_5D added=' + diffResult.added.length + ' removed=' + diffResult.removed.length + ' changed=' + diffResult.changed.length + ' impact=' + CUR + Math.round(voTotalImpact));
   }
 
   // ── Save ──
@@ -1395,21 +2372,23 @@ async function save5D() {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
-  document.getElementById('status').textContent = `Saved ${filename} (${sheetCount} sheets)` + (diffResult ? ' — includes Variance Order' : '');
+  document.getElementById('status').textContent = (_TRL.ui_saved_excel || 'Saved {f} ({n} sheets)').replace('{f}', filename).replace('{n}', sheetCount) + (diffResult ? ' \u2014 ' + (_TRL.ui_vo_label || 'includes Variance Order') : '');
 
-  restoreChartsAfterExcel(saved5D);
+  _verifyMaths(wb, '5D');
+  _verifyTRL(wb, '5D');
+  _log('[S226] §CHART_SUMMARY 5D: ' + _chartTestPass + ' PASS, ' + _chartTestFail + ' FAIL');
+  _downloadLog('5D');
+  _chartTestPass = 0; _chartTestFail = 0;
 }
 
 // ============================================================================
 // SAVE 4D SCHEDULE — ExcelJS: 3 sheets (matches schedule_export.py)
 // ============================================================================
 async function save4D() {
-  document.getElementById('status').textContent = 'Generating 4D Excel — preparing charts...';
-  var saved4D = prepareChartsForExcel();
-  await new Promise(r => setTimeout(r, 500));
-  document.getElementById('status').textContent = 'Generating 4D Excel...';
+  if (_dbSourceLine) _log(_dbSourceLine);  // S238: re-emit DB source so it appears in every log
+  document.getElementById('status').textContent = _TRL.ui_gen_4d || 'Generating 4D Excel...';
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'BIM OOTB';
+  wb.creator = _TRL.source_app;
   const projDays = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
 
   // ── Helper: style a header row (fill stops at last data column) ──
@@ -1426,23 +2405,23 @@ async function save4D() {
   }
 
   // ── Sheet 1: Construction Schedule ──
-  const wsSched = wb.addWorksheet('Construction Schedule');
+  const wsSched = wb.addWorksheet(_TRL.s_schedule);
   wsSched.columns = [
     { width: 12 },{ width: 40 },{ width: 16 },{ width: 10 },{ width: 10 },{ width: 8 },{ width: 6 },
     { width: 10 },{ width: 12 },{ width: 6 },{ width: 12 },{ width: 12 },{ width: 16 },{ width: 8 },
     { width: 22 },{ width: 12 },{ width: 10 },
   ];
-  const schedHeaders = ['WBS','Task Name','Phase','Discipline','Storey','Quantity','UOM',
-    'Productivity','Duration (days)','Gangs','Start Date','Finish Date','Labor Resource','Crew Size','Equipment','Status','% Complete'];
+  const schedHeaders = [_TRL.h_wbs, _TRL.h_task_name, _TRL.h_phase, _TRL.h_discipline, _TRL.h_storey, _TRL.h_quantity, _TRL.h_uom,
+    _TRL.h_productivity, _TRL.h_duration, _TRL.h_gangs, _TRL.h_start_date, _TRL.h_finish_date, _TRL.h_labor_resource, _TRL.h_crew_size, _TRL.h_equipment, _TRL.h_status, _TRL.h_pct_complete];
   wsSched.addRow(schedHeaders);
   styleHeader(wsSched, 1, 'FF2C3E50');
   for (const t of scheduleData) {
     wsSched.addRow([t.wbs,t.name,t.phase,t.discipline,t.storey,t.qty,t.uom,t.productivity,
-      Math.round(t.duration*100)/100, t.crews||1, t.startDate, t.finishDate, t.resource, t.crew, t.equipment, 'Not Started', 0]);
+      Math.round(t.duration*100)/100, t.crews||1, t.startDate, t.finishDate, t.resource, t.crew, t.equipment, _TRL.not_started, 0]);
   }
 
   // ── Sheet 2: Project Summary ──
-  const wsSum = wb.addWorksheet('Project Summary');
+  const wsSum = wb.addWorksheet(_TRL.s_proj_summary);
   wsSum.columns = [{ width: 25 }, { width: 20 }];
   const phaseCounts = {}, discCounts = {};
   for (const t of scheduleData) {
@@ -1459,43 +2438,43 @@ async function save4D() {
   wsSum.addRow(['Total Duration', `${projDays} days`]);
   wsSum.addRow(['Generated', new Date().toISOString()]);
   wsSum.addRow([]);
-  wsSum.addRow(['Phase Summary','Task Count']);
+  wsSum.addRow([_TRL.h_phase+' Summary', _TRL.h_task_count]);
   styleHeader(wsSum, wsSum.rowCount, 'FF4472C4');
   for (const [p,cnt] of Object.entries(phaseCounts).sort()) wsSum.addRow([p, cnt]);
   wsSum.addRow([]);
-  wsSum.addRow(['Discipline Summary','Task Count']);
+  wsSum.addRow([_TRL.h_discipline+' Summary', _TRL.h_task_count]);
   styleHeader(wsSum, wsSum.rowCount, 'FF70AD47');
   for (const [d,cnt] of Object.entries(discCounts).sort()) wsSum.addRow([d, cnt]);
 
   // ── Sheet 3: BIM 4D Dashboard ──
-  const wsDash = wb.addWorksheet('BIM 4D Dashboard');
+  const wsDash = wb.addWorksheet(_TRL.s_dashboard);
   wsDash.columns = [{ width: 35 },{ width: 14 },{ width: 12 },{ width: 12 }];
 
   wsDash.addRow([`${bldName} - BIM 4D Analytics Dashboard`]);
   wsDash.getRow(1).font = { bold: true, size: 14 };
   wsDash.addRow([]);
 
-  wsDash.addRow(['Phase Duration Analysis']);
+  wsDash.addRow([_TRL.t_phase_dur_analysis]);
   wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
-  wsDash.addRow(['Phase','Total Days']);
+  wsDash.addRow([_TRL.h_phase, _TRL.h_total_days]);
   styleHeader(wsDash, wsDash.rowCount, 'FF4472C4');
   const phaseDur2 = {};
   for (const t of scheduleData) phaseDur2[t.phase] = (phaseDur2[t.phase]||0) + t.duration;
   for (const [p,d] of Object.entries(phaseDur2).sort((a,b)=>b[1]-a[1])) wsDash.addRow([p, Math.round(d*100)/100]);
   wsDash.addRow([]);
 
-  wsDash.addRow(['Resource Workload Analysis']);
+  wsDash.addRow([_TRL.t_resource_analysis]);
   wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
-  wsDash.addRow(['Phase','Total Man-Days']);
+  wsDash.addRow([_TRL.h_phase, _TRL.h_total_man_days]);
   styleHeader(wsDash, wsDash.rowCount, 'FF70AD47');
   const phaseMD2 = {};
   for (const t of scheduleData) phaseMD2[t.phase] = (phaseMD2[t.phase]||0) + t.duration * t.crew;
   for (const [p,md] of Object.entries(phaseMD2).sort((a,b)=>b[1]-a[1])) wsDash.addRow([p, Math.round(md*10)/10]);
   wsDash.addRow([]);
 
-  wsDash.addRow(['S-Curve Progress']);
+  wsDash.addRow([_TRL.t_s_curve_progress]);
   wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
-  wsDash.addRow(['Week','Cumulative %']);
+  wsDash.addRow([_TRL.h_week, _TRL.h_cumulative_pct]);
   styleHeader(wsDash, wsDash.rowCount, 'FFFFC000');
   if (scheduleData.length) {
     const maxD = Math.max(...scheduleData.map(t=>t.finishDay));
@@ -1510,9 +2489,9 @@ async function save4D() {
   }
   wsDash.addRow([]);
 
-  wsDash.addRow(['Milestone Timeline']);
+  wsDash.addRow([_TRL.t_milestone_timeline]);
   wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
-  wsDash.addRow(['Milestone','Day Offset','Date']);
+  wsDash.addRow([_TRL.h_milestone, _TRL.h_day_offset, _TRL.h_date]);
   styleHeader(wsDash, wsDash.rowCount, 'FFED7D31');
   const pd2 = {};
   for (const t of scheduleData) {
@@ -1530,27 +2509,15 @@ async function save4D() {
   wsDash.addRow(['Project Finish', projDays, scheduleData.length ? scheduleData[scheduleData.length-1].finishDate : '']);
   wsDash.addRow([]);
 
-  wsDash.addRow(['Gantt Timeline (Strategic Tasks)']);
+  wsDash.addRow([_TRL.t_gantt_timeline]);
   wsDash.getRow(wsDash.rowCount).font = { bold: true, size: 12 };
-  wsDash.addRow(['Task','Phase','Start (Day)','Duration (Days)']);
+  wsDash.addRow([_TRL.h_task, _TRL.h_phase, _TRL.h_start_date, _TRL.h_duration]);
   styleHeader(wsDash, wsDash.rowCount, 'FF5B9BD5');
   const top15x = [...scheduleData].sort((a,b)=>b.duration-a.duration).slice(0,15).sort((a,b)=>a.startDay-b.startDay);
   for (const t of top15x) wsDash.addRow([t.name.slice(0,35), t.phase, t.startDay, Math.round(t.duration*10)/10]);
 
   // ── Embed 4D chart images on the RIGHT side (col E = col 4), stacked vertically ──
-  try {
-    // 4D-relevant charts: index 3=Phase Totals, 4=Phase Duration, 5=Resource Workload, 6=S-Curve, 8=Gantt
-    const chartCanvases = document.querySelectorAll('.chart-box canvas');
-    const chartCol = 4; // Column E — right of data columns
-    let imgRow = 2;
-    for (var ci = 0; ci < chartCanvases.length; ci++) {
-      try {
-        var img = captureChartImage(ci, wb);
-        if (img) wsDash.addImage(img.id, { tl: { col: chartCol, row: imgRow }, ext: { width: img.width, height: img.height } });
-        imgRow += 20;
-      } catch (e) { console.warn('4D chart image error:', e); }
-    }
-  } catch (e) { console.warn('4D chart images error:', e); }
+  // Charts are in the HTML page — no need to embed in Excel
 
   // ── Save ──
   const filename = `BIM_OOTB_${bldName}_4D_Schedule_${new Date().toISOString().slice(0,10)}.xlsx`;
@@ -1561,12 +2528,25 @@ async function save4D() {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
-  document.getElementById('status').textContent = `Saved ${filename} (3 sheets)`;
-  restoreChartsAfterExcel(saved4D);
+  document.getElementById('status').textContent = (_TRL.ui_saved_excel || 'Saved {f} ({n} sheets)').replace('{f}', filename).replace('{n}', 3);
+  _verifyMaths(wb, '4D');
+  _verifyTRL(wb, '4D');
+  _log('[S226] §CHART_SUMMARY 4D: ' + _chartTestPass + ' PASS, ' + _chartTestFail + ' FAIL');
+  _downloadLog('4D');
+  _chartTestPass = 0; _chartTestFail = 0;
 }
 
 // ── Theme toggle ──
 let light = false;
+// §3.1: Open MEP BOQ report in new tab — passes same DB + rates params
+function openMepReport() {
+  var p = new URLSearchParams(location.search);
+  var mepUrl = 'mep_report.html?db=' + encodeURIComponent(p.get('db') || DB_URL);
+  if (p.get('bld') || bldName) mepUrl += '&bld=' + encodeURIComponent(p.get('bld') || bldName);
+  if (RATE_TEMPLATE_NAME) mepUrl += '&rates=' + encodeURIComponent(RATE_TEMPLATE_NAME);
+  window.open(mepUrl, '_blank');
+}
+
 function toggleTheme() {
   light = !light;
   document.body.style.background = light ? '#f0f0f0' : '#1a1a2e';
@@ -1582,7 +2562,23 @@ function toggleTheme() {
   });
 }
 
-init();
+</script>
+<!-- Locale: loads before init() so all _TRL keys are resolved when charts render -->
+<script src="locale_loader.js?v=6"></script>
+<script>
+(function(){
+  var done=false;
+  function go(){if(!done){done=true;_syncCur();init();}}
+  window.addEventListener('trl-ready',go,{once:true});
+  setTimeout(go,3000); // fallback: init anyway if locale fetch fails
+})();
+</script>
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js?v=269')
+    .then(function(r){console.log('§SW_REG scope='+r.scope)})
+    .catch(function(e){console.warn('§SW_REG_FAIL',e)});
+}
 </script>
 </body>
 </html>

@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // walk.js — Walk Mode (GPS blue dot, step detection, wall X-ray)
 function setupWalk(A) {
   // Walk Mode compass/tilt state
@@ -5,6 +10,9 @@ function setupWalk(A) {
   A.walkLockedHeading = null;
   A.walkLiveTilt = 0;
   A.walkOrientationHandler = null;
+
+  // No-op until setWalkAnchor initializes the real one (navigate.js may set walkModeActive before anchor)
+  A.walkOrientTick = A.walkOrientTick || function() {};
 
   // Step detection state
   A.walkStepHandler = null;
@@ -33,7 +41,7 @@ function setupWalk(A) {
       if (bld) {
         A.walkAnchorIFC = { x: bld.ix, y: bld.iy, z: bld.iz };
       } else {
-        A.status.textContent = 'Walk Mode: No building data';
+        A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_walk_no_data||'Walk Mode: No building data';
         return;
       }
     }
@@ -169,7 +177,7 @@ function setupWalk(A) {
           A.startWalkGpsTracking();
           console.log(`[S207] §WALK_GPS anchored (${A.walkAnchorGPS.lat.toFixed(6)},${A.walkAnchorGPS.lng.toFixed(6)})`);
         },
-        () => { A.status.textContent = 'Walk Mode: No GPS — orientation only'; },
+        () => { A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_walk_no_gps||'Walk Mode: No GPS \u2014 orientation only'; },
         { enableHighAccuracy: true, timeout: 10000 }
       );
     }
@@ -181,13 +189,9 @@ function setupWalk(A) {
     // Drive-Thru replaces shake-to-walk — no startStepDetection()
     A.startDriveThru();
 
-    A.status.textContent = 'Drive-Thru: Tap to walk, hold to glide';
+    A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_drivethru_hint||'Drive-Thru: Tap to walk, hold to glide';
     console.log(`[S207] §WALK_MODE_START anchor IFC=(${A.walkAnchorIFC.x.toFixed(1)},${A.walkAnchorIFC.y.toFixed(1)},${A.walkAnchorIFC.z.toFixed(1)})`);
   };
-
-  // startWalkOrientation RETIRED — was adding 2 extra deviceorientation listeners
-  // that caused jitter. All orientation handled by _walkOrientListener + walkOrientTick.
-  A.startWalkOrientation = function() {};
 
   A.findNearestDoorPosition = function() {
     if (!A.db) return null;
@@ -195,7 +199,7 @@ function setupWalk(A) {
     if (!bld) return null;
     try {
       // Get lowest storey that has doors (ground floor entrance)
-      const stRows = A.db.exec(`
+      const stRows = A.dbQuery(`
         SELECT m.storey, MIN(t.center_z) as min_z
         FROM elements_meta m
         JOIN element_transforms t ON m.guid = t.guid
@@ -204,7 +208,7 @@ function setupWalk(A) {
         ORDER BY min_z ASC
         LIMIT 1
       `);
-      const lowestStorey = (stRows.length > 0 && stRows[0].values.length > 0) ? stRows[0].values[0][0] : null;
+      const lowestStorey = stRows.length > 0 ? stRows[0][0] : null;
 
       // Get all doors on that storey, pick the one furthest from building centre (exterior door)
       let query = `
@@ -213,20 +217,21 @@ function setupWalk(A) {
         JOIN element_transforms t ON m.guid = t.guid
         WHERE m.ifc_class IN ('IfcDoor', 'IfcDoorStandardCase')
       `;
-      if (lowestStorey) query += ` AND m.storey = '${lowestStorey.replace(/'/g, "''")}'`;
+      var stParams = [];
+      if (lowestStorey) { query += ` AND m.storey = ?`; stParams.push(lowestStorey); }
 
-      const rows = A.db.exec(query);
-      if (rows.length === 0 || rows[0].values.length === 0) return null;
+      const rows = A.dbQuery(query, stParams);
+      if (!rows.length) return null;
 
       // Pick ground-floor door nearest to current camera position
       const camIfc = { x: A.camera.position.x + A.modelOffset.x, y: -(A.camera.position.z) + A.modelOffset.y };
       let best = null, bestDist = Infinity;
-      for (const [x, y, z] of rows[0].values) {
+      for (const [x, y, z] of rows) {
         const dx = x - camIfc.x, dy = y - camIfc.y;
         const dist = dx * dx + dy * dy;
         if (dist < bestDist) { bestDist = dist; best = { x, y, z }; }
       }
-      console.log(`[S208] §WALK_DOOR picked (${best.x.toFixed(1)},${best.y.toFixed(1)},${best.z.toFixed(1)}) dist=${Math.sqrt(bestDist).toFixed(1)}m from ${rows[0].values.length} doors`);
+      console.log(`[S208] §WALK_DOOR picked (${best.x.toFixed(1)},${best.y.toFixed(1)},${best.z.toFixed(1)}) dist=${Math.sqrt(bestDist).toFixed(1)}m from ${rows.length} doors`);
       return best;
     } catch(e) { /* no doors */ }
     return null;
@@ -236,14 +241,14 @@ function setupWalk(A) {
     A.walkStoreyLevels = [];
     if (!A.db) return;
     try {
-      const rows = A.db.exec(`
+      const rows = A.dbQuery(`
         SELECT DISTINCT storey, MIN(center_z) as floor_z
         FROM elements_meta JOIN element_transforms USING(guid)
         WHERE storey IS NOT NULL
         GROUP BY storey ORDER BY floor_z
       `);
       if (rows.length > 0) {
-        A.walkStoreyLevels = rows[0].values.map(r => ({ storey: r[0], floorZ: r[1] }));
+        A.walkStoreyLevels = rows.map(r => ({ storey: r[0], floorZ: r[1] }));
         console.log(`[S205] §WALK_STOREYS ${A.walkStoreyLevels.length} levels cached`);
       }
     } catch(e) { /* no storey data */ }
@@ -332,8 +337,12 @@ function setupWalk(A) {
     A.controls.enabled = true; // Restore OrbitControls
     A.walkLockedHeading = null;
     A.walkCompassReadings = [];
+    const snagRow = document.getElementById('snag-btn-row');
+    if (snagRow) snagRow.style.display = 'none';
     document.getElementById('walk-mode-btn').classList.remove('active');
-    A.status.textContent = 'Walk Mode stopped.';
+    // Fly back to building overview so OrbitControls has a sensible target
+    if (A.activeBuilding && A.flyTo) A.flyTo(A.activeBuilding);
+    A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_walk_stopped||'Walk Mode stopped.';
     console.log('[S207] §WALK_MODE_STOP');
   };
 
@@ -451,7 +460,7 @@ function setupWalk(A) {
     A.camera.position.add(dir);
 
     const dist = (A.walkStepCount * A.WALK_STEP_DISTANCE).toFixed(1);
-    A.status.textContent = `Drive-Thru: ${A.walkStepCount} steps (${dist}m)`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_drivethru_status||'Drive-Thru: {n} steps ({d}m)').replace('{n}', A.walkStepCount).replace('{d}', dist);
   };
 
   // No floor/stair snap — camera moves in the direction you point the phone.
@@ -465,12 +474,12 @@ function setupWalk(A) {
     if (!guid) return false;
 
     try {
-      const rows = A.db.exec(`
+      const rows = A.dbQuery(`
         SELECT ifc_class, storey, element_name
-        FROM elements_meta WHERE guid = '${guid}'
-      `);
-      if (!rows.length || !rows[0].values.length) return false;
-      const [ifcClass, storey, elemName] = rows[0].values[0];
+        FROM elements_meta WHERE guid = ?
+      `, [guid]);
+      if (!rows.length) return false;
+      const [ifcClass, storey, elemName] = rows[0];
 
       if (!ifcClass || (!ifcClass.includes('Wall') && !ifcClass.includes('wall'))) return false;
 
@@ -478,12 +487,12 @@ function setupWalk(A) {
 
       console.log(`[S205] §WALL_XRAY class=${ifcClass} storey=${storey} name=${elemName}`);
 
-      const wallRows = A.db.exec(`
+      const wallRows = A.dbQuery(`
         SELECT center_x, center_y, center_z
-        FROM element_transforms WHERE guid = '${guid}'
-      `);
+        FROM element_transforms WHERE guid = ?
+      `, [guid]);
       if (!wallRows.length) return false;
-      const [wallX, wallY, wallZ] = wallRows[0].values[0];
+      const [wallX, wallY, wallZ] = wallRows[0];
 
       A.wallXrayActive = true;
       const mat = hitObject.material;
@@ -498,25 +507,25 @@ function setupWalk(A) {
       mat.side = THREE.DoubleSide;
       mat.needsUpdate = true;
 
-      const mepRows = A.db.exec(`
+      const mepRows = A.dbQuery(`
         SELECT m.guid, m.ifc_class, m.element_name, m.discipline,
                t.center_x, t.center_y, t.center_z
         FROM elements_meta m
         JOIN element_transforms t ON m.guid = t.guid
         WHERE m.discipline IN ('MEP','ELEC','PLB','ACMV','FP','HVAC','MEC')
-          AND m.storey = '${storey}'
-          AND ABS(t.center_x - ${wallX}) < 2.0
-          AND ABS(t.center_y - ${wallY}) < 2.0
-      `);
+          AND m.storey = ?
+          AND ABS(t.center_x - ?) < 2.0
+          AND ABS(t.center_y - ?) < 2.0
+      `, [storey, wallX, wallY]);
 
-      if (mepRows.length > 0 && mepRows[0].values.length > 0) {
-        console.log(`[S205] §WALL_MEP found=${mepRows[0].values.length} near wall`);
+      if (mepRows.length > 0) {
+        console.log(`[S205] §WALL_MEP found=${mepRows.length} near wall`);
 
-        const mepGuids = new Set(mepRows[0].values.map(r => r[0]));
+        const mepGuids = new Set(mepRows.map(r => r[0]));
         let highlighted = 0;
 
-        A.scene.traverse(obj => {
-          if (obj.isMesh && obj.userData.guid && mepGuids.has(obj.userData.guid)) {
+        A.collectMeshes(o => o.isMesh && o.userData.guid && mepGuids.has(o.userData.guid))
+          .forEach(obj => {
             A.wallXrayOriginals.push({
               mesh: obj,
               origOpacity: obj.material.opacity,
@@ -531,10 +540,9 @@ function setupWalk(A) {
             obj.material.opacity = 1.0;
             obj.material.needsUpdate = true;
             highlighted++;
-          }
-        });
+          });
 
-        for (const [mGuid, mClass, mName, mDisc, mCx, mCy, mCz] of mepRows[0].values) {
+        for (const [mGuid, mClass, mName, mDisc, mCx, mCy, mCz] of mepRows) {
           if (!highlighted || !A.findMeshByGuid(mGuid)) {
             const tp = A.ifc2three(mCx, mCy, mCz);
             const markerGeo = new THREE.SphereGeometry(0.15, 8, 8);
@@ -550,9 +558,9 @@ function setupWalk(A) {
           }
         }
 
-        A.status.textContent = `Wall X-Ray: ${mepRows[0].values.length} MEP elements behind ${elemName || ifcClass}`;
+        A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_xray_found||'Wall X-Ray: {n} MEP elements behind {name}').replace('{n}', mepRows[0].values.length).replace('{name}', elemName || ifcClass);
       } else {
-        A.status.textContent = `Wall X-Ray: No MEP elements found behind ${elemName || ifcClass}`;
+        A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_xray_none||'Wall X-Ray: No MEP elements found behind {name}').replace('{name}', elemName || ifcClass);
       }
 
       return true;
@@ -563,11 +571,7 @@ function setupWalk(A) {
   };
 
   A.findMeshByGuid = function(guid) {
-    let found = null;
-    A.scene.traverse(obj => {
-      if (obj.isMesh && obj.userData.guid === guid) found = obj;
-    });
-    return found;
+    return A.collectMeshes(o => o.isMesh && o.userData.guid === guid)[0] || null;
   };
 
   A.restoreWallXray = function() {

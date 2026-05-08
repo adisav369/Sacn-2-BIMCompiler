@@ -43,10 +43,11 @@ function setupIssues(A) {
       };
       const db = await A._openIssuesDB();
       const tx = db.transaction('issues', 'readwrite');
-      tx.objectStore('issues').add(issue);
+      var addReq = tx.objectStore('issues').add(issue);
+      addReq.onerror = function() { console.error('[S205] §ISSUE_ADD_ERR', addReq.error); };
       await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = reject; });
       db.close();
-      console.log('[S205] Issue saved to log', issue.element_class, issue.storey);
+      console.log('[S205] §ISSUE_SAVED', issue.element_class, issue.storey);
     } catch (err) {
       console.error('[S205] Failed to save issue', err);
     }
@@ -96,9 +97,12 @@ function setupIssues(A) {
     const detail = document.getElementById('issue-detail-view');
     detail.classList.remove('active');
     list.style.display = '';
-    const issues = await A._getAllIssues();
+    var allIssues = await A._getAllIssues();
+    // Filter to active building — each building sees only its own issues
+    var bld = A.activeBuilding || '';
+    var issues = bld ? allIssues.filter(function(i) { return !i.building || i.building === bld; }) : allIssues;
     if (issues.length === 0) {
-      list.innerHTML = '<div class="issues-empty">No issues logged yet.<br>Use Site Camera to snap and save photos.</div>';
+      list.innerHTML = '<div class="issues-empty">No issues for ' + (bld || 'this building') + '.<br>Use Site Camera to snap and save photos.</div>';
       return;
     }
     list.innerHTML = '';
@@ -170,16 +174,19 @@ function setupIssues(A) {
               A._currentClashRules = rules;
               A._currentClashes = [[parts[0], parts[1], mA[1], mB[1], mA[2], mB[2], mA[3], mB[3], 0]];
               A._clashHighlights = [];
-              A.measureActive = true;
+              // Activate measure mode properly (button + status)
+              if (!A.measureActive) A.toggleMeasure();
               if (hp.cam && hp.tgt) {
                 var cam = hp.cam.split(',').map(Number);
                 var tgt = hp.tgt.split(',').map(Number);
                 if (cam.length === 3 && tgt.length === 3) A._deepLinkCamOverride = { pos: cam, tgt: tgt };
               }
               A._flyToClash(0);
-              // Close issues panel
+              // Close issues panel + restore toolbox (toggleIssues hides it)
               var panel = document.getElementById('issues-panel');
               if (panel) panel.classList.remove('active');
+              var tb = document.getElementById('search-box');
+              if (tb) tb.style.display = '';
               A.status.textContent = 'Clash: ' + (mA[3] || parts[0]).substring(0, 20) + ' \u2194 ' + (mB[3] || parts[1]).substring(0, 20);
             });
           }

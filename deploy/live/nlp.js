@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // nlp.js — Voice command + NLP query DSL (S211)
 // Standalone module. No dependencies on walk.js, sitecam.js, or any other module.
 // Uses Web Speech API (browser-native, no server, no cost) + keyword intent matching.
@@ -270,7 +275,7 @@ function setupNlp(A) {
     const parsed = parseQuery(text);
     if (!parsed) {
       // Unknown query — suggest closest
-      showToast('No match. Try: "count doors" or "floor 1 walls"', null, 'warn');
+      showToast(typeof _TRL!=='undefined'&&_TRL.ui_no_match||'No match. Try: "count doors" or "floor 1 walls"', null, 'warn');
       console.log('[S211] §NLP_NO_MATCH input="' + text + '"');
       return;
     }
@@ -286,7 +291,7 @@ function setupNlp(A) {
           const cls = A.db.exec('SELECT DISTINCT ifc_class FROM elements_meta ' + bldAvail.sql + ' ORDER BY ifc_class LIMIT 10', bldAvail.params);
           if (cls.length) avail = '\nAvailable: ' + cls[0].values.map(r => r[0]).join(', ');
         } catch(e) { console.warn('[S227] §NLP_AVAIL_ERR ' + e.message); }
-        showToast('No results for "' + parsed.desc + '"' + avail, null, 'info');
+        showToast((typeof _TRL!=='undefined'&&_TRL.ui_no_results||'No results for "{q}"').replace('{q}', parsed.desc) + avail, null, 'info');
         console.log('[S211] §NLP_EMPTY desc="' + parsed.desc + '"');
         return;
       }
@@ -305,11 +310,15 @@ function setupNlp(A) {
           const qty = r[qtyIdx] || 0;
           const cost = calcCost(cls, qty);
           totalCost += cost;
-          if (cost > 0) costRows.push([cls, qty, 'RM ' + cost.toLocaleString()]);
+          var _cur = typeof _TRL!=='undefined'&&_TRL.cur||'RM';
+          if (cost > 0) costRows.push([cls, qty, _cur + ' ' + cost.toLocaleString()]);
         }
-        const usd = totalCost / 4.42; // MYR→USD approximate rate
-        summary = 'RM ' + totalCost.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0}) +
-          ' (USD ' + usd.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0}) + ') — ' + parsed.desc;
+        var _cur = typeof _TRL!=='undefined'&&_TRL.cur||'RM';
+        var _cur2 = typeof _TRL!=='undefined'&&_TRL.cur2||'USD';
+        var _rate = typeof _TRL!=='undefined'&&_TRL.cur_rate||3.91;
+        const usd = totalCost / _rate;
+        summary = _cur + ' ' + totalCost.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0}) +
+          ' (' + _cur2 + ' ' + usd.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0}) + ') \u2014 ' + parsed.desc;
         // Replace vals with cost breakdown for Details view
         if (costRows.length) {
           rows[0].columns = ['ifc_class', 'qty', 'cost'];
@@ -339,13 +348,11 @@ function setupNlp(A) {
   function highlightGuids(guids) {
     clearHighlights();
     const guidSet = new Set(guids);
-    A.scene.traverse(obj => {
-      if (obj.isMesh && obj !== A.ground) {
-        const g = A.guidMap[obj.id];
-        if (g && guidSet.has(g)) {
-          obj.material.emissive.setHex(0x224422);
-          _nlpHighlights.push(obj);
-        }
+    A.collectMeshes(o => o.isMesh).forEach(obj => {
+      const g = A.guidMap[obj.id];
+      if (g && guidSet.has(g)) {
+        obj.material.emissive.setHex(0x224422);
+        _nlpHighlights.push(obj);
       }
     });
     console.log('[S211] §NLP_HIGHLIGHT n=' + _nlpHighlights.length + '/' + guids.length);
@@ -379,7 +386,7 @@ function setupNlp(A) {
     // Show in 3D button (if guid results)
     if (data && data.cols && data.cols.includes('guid')) {
       const btn3d = document.createElement('button');
-      btn3d.textContent = 'Show in 3D';
+      btn3d.textContent = typeof _TRL!=='undefined'&&_TRL.ui_show_3d||'Show in 3D';
       btn3d.style.cssText = 'background:#4fc3f7;color:#000;border:none;border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;margin-right:6px';
       btn3d.onclick = () => { highlightGuids(data.vals.map(r => r[data.cols.indexOf('guid')])); };
       _toast.appendChild(btn3d);
@@ -387,7 +394,7 @@ function setupNlp(A) {
     // Expand to table (on demand)
     if (data && data.vals && data.vals.length > 0) {
       const expandBtn = document.createElement('button');
-      expandBtn.textContent = 'Details (' + data.vals.length + ')';
+      expandBtn.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_details||'Details ({n})').replace('{n}', data.vals.length);
       expandBtn.style.cssText = 'background:transparent;color:#4fc3f7;border:1px solid #4fc3f7;border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;margin-right:6px';
       expandBtn.onclick = () => {
         if (_toast.querySelector('.nlp-table')) { _toast.querySelector('.nlp-table').remove(); return; }
@@ -437,7 +444,7 @@ function setupNlp(A) {
   const input = document.createElement('input');
   input.id = 'nlp-input';
   input.type = 'text';
-  input.placeholder = 'count doors, floor 1 walls, total cost, Find fire pump...';
+  input.placeholder = typeof _TRL!=='undefined'&&_TRL.ui_nlp_placeholder||'count doors, floor 1 walls, total cost, Find fire pump...';
   input.style.cssText = 'flex:1;background:#222;color:#fff;border:1px solid #555;border-radius:4px;' +
     'padding:8px 10px;font-size:14px;font-family:"Segoe UI",sans-serif;outline:none';
   input.addEventListener('keydown', e => {
@@ -453,7 +460,7 @@ function setupNlp(A) {
   // Go button — subdued so mic stands out
   const goBtn = document.createElement('button');
   goBtn.id = 'nlp-go';
-  goBtn.textContent = 'Go';
+  goBtn.textContent = typeof _TRL!=='undefined'&&_TRL.ui_go||'Go';
   goBtn.style.cssText = 'background:#444;color:#888;border:1px solid #555;border-radius:4px;' +
     'cursor:pointer;font-size:13px;padding:8px 10px;line-height:1;flex-shrink:0';
   goBtn.onclick = () => { A._nlpExecute ? A._nlpExecute(input.value) : executeQuery(input.value); };
@@ -466,7 +473,7 @@ function setupNlp(A) {
     const micBtn = document.createElement('button');
     micBtn.id = 'nlp-mic';
     micBtn.textContent = '\uD83C\uDFA4'; // 🎤
-    micBtn.title = 'Voice command';
+    micBtn.title = typeof _TRL!=='undefined'&&_TRL.ui_tt_voice||'Voice command';
     micBtn.style.cssText = 'background:#444;color:#fff;border:1px solid #666;border-radius:4px;' +
       'cursor:pointer;font-size:20px;padding:6px 10px;line-height:1;flex-shrink:0;transition:background 0.2s';
     micBtn.onclick = toggleVoice;
@@ -590,7 +597,7 @@ function setupNlp(A) {
     _recognition.onerror = (e) => {
       console.log('[S211] §VOICE_ERR ' + e.error);
       if (e.error === 'no-speech') {
-        A.status.textContent = 'No speech detected — tap mic again';
+        A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_no_speech||'No speech detected \u2014 tap mic again';
       }
     };
     _recognition.onend = () => {
@@ -615,6 +622,8 @@ function setupNlp(A) {
       dismissToast();
       dismissHistory();
       if (_listening && _recognition) _recognition.stop();
+      // S233: closing search bar also exits find/navigate
+      if (typeof A.closeFindPanel === 'function') A.closeFindPanel();
     }
     const btn = document.getElementById('nlp-btn');
     if (btn) {

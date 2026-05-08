@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // picking.js — Click-to-identify (raycaster), walk/wall state, pointer handlers
 
 // S233: Polyfill InstancedMesh.raycast for Three.js r128 (native in r132+)
@@ -84,7 +89,10 @@ function setupPicking(A) {
     if (el) el.textContent = A._wlog.join('\n');
   };
 
+  A._longPressTimer = null;
+  A._canvasPointerDown = false;  // BUG-2: track that pointerdown started on canvas
   A.canvas.addEventListener('pointerdown', (e) => {
+    A._canvasPointerDown = true;
     A.pointerDownPos.x = e.clientX;
     A.pointerDownPos.y = e.clientY;
     if (A.flyActive || A.walkMode) {
@@ -95,14 +103,82 @@ function setupPicking(A) {
       document.getElementById('fly-btn').style.color = '#fff';
       document.getElementById('walk-speed-btn').style.display = 'none';
     }
+    // Long-press (500ms) → volume info card (mobile-friendly right-click)
+    // Only start on single-finger touch; cancel if pinch (2nd pointer) or any move
+    A._longPressFired = false;
+    A._pointerCount = (A._pointerCount || 0) + 1;
+    if (A._pointerCount > 1 && A._longPressTimer) {
+      // Second finger down = pinch — cancel long-press
+      clearTimeout(A._longPressTimer);
+      A._longPressTimer = null;
+    } else if (A.measureActive && A._pointerCount === 1) {
+      var ev = { clientX: e.clientX, clientY: e.clientY, preventDefault: function(){} };
+      A._longPressTimer = setTimeout(function() {
+        A._longPressTimer = null;
+        // Re-check: if a 2nd finger arrived during the wait, abort (pinch/zoom in progress)
+        if (A._pointerCount > 1) {
+          console.log('§LONGPRESS cancelled — multi-touch (pinch/zoom)');
+          return;
+        }
+        A._longPressFired = true;
+        A.handleMeasureRightClick(ev);
+      }, 500);
+    }
+  });
+  A.canvas.addEventListener('pointerup', () => {
+    A._pointerCount = Math.max(0, (A._pointerCount || 1) - 1);
+  });
+  A.canvas.addEventListener('pointercancel', () => {
+    A._pointerCount = Math.max(0, (A._pointerCount || 1) - 1);
+  });
+  A.canvas.addEventListener('pointermove', (e) => {
+    // Cancel long-press if finger/mouse moves
+    if (A._longPressTimer) {
+      var dx = e.clientX - A.pointerDownPos.x;
+      var dy = e.clientY - A.pointerDownPos.y;
+      if (Math.sqrt(dx*dx + dy*dy) > 10) {
+        clearTimeout(A._longPressTimer);
+        A._longPressTimer = null;
+      }
+    }
+  });
+
+  A.canvas.addEventListener('dblclick', (e) => {
+    if (A.measureActive) { A.handleMeasureDblClick(e); return; }
+  });
+
+  A.canvas.addEventListener('contextmenu', (e) => {
+    if (A.measureActive) { A.handleMeasureRightClick(e); return; }
   });
 
   A.canvas.addEventListener('pointerup', (e) => {
-    if (A.measureActive) { A.handleMeasureClick(e); return; }
+    // Cancel long-press on release — suppress click if long-press already fired
+    if (A._longPressTimer) { clearTimeout(A._longPressTimer); A._longPressTimer = null; }
+    if (A._longPressFired) { A._longPressFired = false; A._canvasPointerDown = false; return; }
+
+    // BUG-2 S250: Only pick if pointerdown started on canvas (not on a panel)
+    if (!A._canvasPointerDown) {
+      console.log('§PICK_GUARD blocked — pointerdown was not on canvas');
+      return;
+    }
+    A._canvasPointerDown = false;
 
     const dx = e.clientX - A.pointerDownPos.x;
     const dy = e.clientY - A.pointerDownPos.y;
-    if (Math.sqrt(dx*dx + dy*dy) > 5) return;
+    if (Math.sqrt(dx*dx + dy*dy) > 5) return; // drag, not tap — skip all click logic
+
+    // Double-tap detection for mobile (dblclick doesn't fire on touch)
+    var now = Date.now();
+    if (A.measureActive && e.button === 0) {
+      if (A._lastMeasureTap && (now - A._lastMeasureTap) < 350) {
+        A._lastMeasureTap = 0;
+        if (A._measureClickTimer) { clearTimeout(A._measureClickTimer); A._measureClickTimer = null; }
+        A.handleMeasureDblClick(e);
+        return;
+      }
+      A._lastMeasureTap = now;
+      if (A.handleMeasureClick(e)) return;
+    }
     if (e.shiftKey || e.button !== 0) return;
 
     A.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -111,8 +187,7 @@ function setupPicking(A) {
 
     // City mode: check bbox wireframes first
     if (A.CITY_URL) {
-      const bboxes = [];
-      A.scene.traverse(obj => { if (obj.isLineSegments && obj.userData.building) bboxes.push(obj); });
+      const bboxes = A.collectMeshes(o => o.isLineSegments && o.userData.building);
       const bboxHits = A.raycaster.intersectObjects(bboxes, false);
       if (bboxHits.length > 0) {
         const bldName = bboxHits[0].object.userData.building;
@@ -123,8 +198,7 @@ function setupPicking(A) {
 
     if (!A.db) return;
 
-    const meshes = [];
-    A.scene.traverse(obj => { if ((obj.isMesh || obj.isInstancedMesh) && obj !== A.ground && obj.visible) meshes.push(obj); });
+    const meshes = A.collectMeshes(o => (o.isMesh || o.isInstancedMesh) && o.visible);
     const hits = A.raycaster.intersectObjects(meshes, false);
 
     if (!hits.length) {
@@ -139,19 +213,51 @@ function setupPicking(A) {
       const meta = A._instanceMeta[hit.object.id][hit.instanceId];
       if (meta) guid = meta.guid;
     }
-    // S232: Merged mesh — no individual guid, show group info
+    // S232: Merged mesh — resolve nearest element by hit-point distance in DB
     if (!guid && hit.object.userData.isMerged) {
+      // Convert Three.js hit point back to IFC coordinates
+      const hp = hit.point;
+      const ix = hp.x + A.modelOffset.x;
+      const iy = -hp.z + A.modelOffset.y;
+      const iz = hp.y + A.modelOffset.z;
       const ud = hit.object.userData;
-      document.getElementById('info-class').textContent = `Merged group (${ud.mergedCount} elements)`;
-      document.getElementById('info-name').textContent = '—';
-      document.getElementById('info-guid').textContent = '—';
-      document.getElementById('info-building').textContent = A.activeBuilding || '—';
-      document.getElementById('info-storey').textContent = ud.storey || '—';
-      document.getElementById('info-disc').textContent = ud.disc || '—';
-      document.getElementById('info-material').textContent = '—';
-      document.getElementById('info-panel').style.display = 'block';
-      console.log(`§PICK merged group storey=${ud.storey} disc=${ud.disc} count=${ud.mergedCount}`);
-      return;
+      // In floor plan view, constrain Z to near the cut plane so we pick furniture not roof
+      const isFloorView = typeof GridViews !== 'undefined' &&
+        (GridViews.activeView() === 'floor' || GridViews.activeView() === 'floor1');
+      const zConstraint = isFloorView ? 'AND ABS(t.center_z - ?) < 2.0' : '';
+      const params = [ix, ix, iy, iy, iz, iz, ud.storey || '', ud.disc || ''];
+      if (isFloorView) params.push(iz);
+      try {
+        const near = A.dbQuery(`
+          SELECT m.guid,
+            (t.center_x - ?) * (t.center_x - ?) +
+            (t.center_y - ?) * (t.center_y - ?) +
+            (t.center_z - ?) * (t.center_z - ?) AS dist2
+          FROM elements_meta m
+          JOIN element_transforms t ON t.guid = m.guid
+          WHERE m.storey = ? AND m.discipline = ? ${zConstraint}
+          ORDER BY dist2 ASC LIMIT 1
+        `, params);
+        if (near.length) { guid = near[0][0]; hit._mergedResolved = true; }
+      } catch(e) {
+        console.log(`§PICK_MERGE_ERR ${e.message}`);
+      }
+      if (!guid) {
+        // Fallback: show group-level info only
+        document.getElementById('info-class').textContent = `Merged group (${ud.mergedCount} elements)`;
+        document.getElementById('info-name').textContent = '—';
+        document.getElementById('info-guid').textContent = '—';
+        document.getElementById('info-building').textContent = A.activeBuilding || '—';
+        document.getElementById('info-storey').textContent = ud.storey || '—';
+        document.getElementById('info-disc').textContent = ud.disc || '—';
+        document.getElementById('info-material').textContent = '—';
+        document.getElementById('info-panel').style.display = 'block';
+        const snagRow = document.getElementById('snag-btn-row');
+        if (snagRow) snagRow.style.display = A.walkModeActive ? 'block' : 'none';
+        console.log(`§PICK merged fallback storey=${ud.storey} disc=${ud.disc}`);
+        return;
+      }
+      console.log(`§PICK merged→resolved guid=${guid}`);
     }
     if (!guid) guid = A.guidMap[hit.object.id];
     if (!guid) {
@@ -166,48 +272,108 @@ function setupPicking(A) {
       A.restoreWallXray();
     }
 
-    // Yellow highlight bbox
+    // Yellow highlight bbox — dispose previous to prevent GPU geometry/material leak
     if (window._pickHighlight) {
-      window._pickHighlight.parent.remove(window._pickHighlight);
+      const prev = window._pickHighlight;
+      if (prev.parent) prev.parent.remove(prev);
+      prev.geometry.dispose();
+      prev.material.dispose();
       window._pickHighlight = null;
     }
-    hit.object.geometry.computeBoundingBox();
-    const bb = hit.object.geometry.boundingBox;
-    const size = new THREE.Vector3();
-    bb.getSize(size);
-    const center = new THREE.Vector3();
-    bb.getCenter(center);
-    const hlGeo = new THREE.BoxGeometry(size.x, size.y, size.z);
-    const hlEdges = new THREE.EdgesGeometry(hlGeo);
-    const hlLine = new THREE.LineSegments(hlEdges,
-      new THREE.LineBasicMaterial({ color: 0xffff00 }));
 
-    if (hit.object.isInstancedMesh && hit.instanceId !== undefined) {
-      // S233: InstancedMesh — transform geometry bbox by this instance's matrix
-      const _im = new THREE.Matrix4();
-      hit.object.getMatrixAt(hit.instanceId, _im);
-      // Transform bbox center into world space via instance matrix
-      const worldCenter = center.clone().applyMatrix4(_im);
-      hlLine.position.copy(worldCenter);
-      // Extract rotation from instance matrix
-      const _ip = new THREE.Vector3(), _iq = new THREE.Quaternion(), _is = new THREE.Vector3();
-      _im.decompose(_ip, _iq, _is);
-      hlLine.quaternion.copy(_iq);
-      A.scene.add(hlLine);
+    // Highlight: compute bbox position + size per mesh type
+    let hlSizeX, hlSizeY, hlSizeZ;
+    const hlPos = new THREE.Vector3();
+    const hlQuat = new THREE.Quaternion();
+
+    if (hit.object.userData.isMerged && guid) {
+      // S250 BUG-1: merged mesh geometry bbox covers entire group — use per-element DB data
+      try {
+        const bboxRows = A.dbQuery(
+          'SELECT center_x, center_y, center_z, bbox_x, bbox_y, bbox_z FROM element_transforms WHERE guid = ?',
+          [guid]
+        );
+        if (bboxRows.length && bboxRows[0][0] != null) {
+          const dbC = A.ifc2three(bboxRows[0][0], bboxRows[0][1], bboxRows[0][2]);
+          hlPos.set(dbC.x, dbC.y, dbC.z);
+          hlSizeX = bboxRows[0][3] || 0.3;                // IFC X → Three X
+          hlSizeY = bboxRows[0][5] || 0.3;                // IFC Z → Three Y
+          hlSizeZ = bboxRows[0][4] || 0.3;                // IFC Y → Three Z
+          console.log('§BBOX_DEBUG MERGED guid=' + guid.substring(0, 8) +
+            ' pos=(' + hlPos.x.toFixed(2) + ',' + hlPos.y.toFixed(2) + ',' + hlPos.z.toFixed(2) + ')' +
+            ' size=(' + hlSizeX.toFixed(2) + ',' + hlSizeY.toFixed(2) + ',' + hlSizeZ.toFixed(2) + ')');
+        } else {
+          hlPos.copy(hit.point);
+          hlSizeX = hlSizeY = hlSizeZ = 0.3;
+          console.log('§BBOX_DEBUG MERGED fallback — no DB row for ' + guid.substring(0, 8));
+        }
+      } catch (e) {
+        hlPos.copy(hit.point);
+        hlSizeX = hlSizeY = hlSizeZ = 0.3;
+        console.log('§BBOX_DEBUG MERGED err=' + e.message);
+      }
     } else {
-      hlLine.position.copy(center);
-      hit.object.add(hlLine);
+      // Individual Mesh or InstancedMesh: geometry bbox is per-element — correct
+      hit.object.geometry.computeBoundingBox();
+      const bb = hit.object.geometry.boundingBox;
+      const localCenter = new THREE.Vector3(); bb.getCenter(localCenter);
+      const size = new THREE.Vector3(); bb.getSize(size);
+      hlSizeX = size.x; hlSizeY = size.y; hlSizeZ = size.z;
+
+      if (hit.object.isInstancedMesh && hit.instanceId !== undefined) {
+        const _im = new THREE.Matrix4();
+        hit.object.getMatrixAt(hit.instanceId, _im);
+        hlPos.copy(localCenter.clone().applyMatrix4(_im));
+        const _ip = new THREE.Vector3(), _iq = new THREE.Quaternion(), _is = new THREE.Vector3();
+        _im.decompose(_ip, _iq, _is);
+        hlQuat.copy(_iq);
+      } else {
+        hlPos.copy(hit.object.localToWorld(localCenter));
+        hlQuat.copy(hit.object.quaternion);
+      }
+
+      // §BBOX_DEBUG: compare geometry-derived vs DB position
+      if (guid) {
+        try {
+          const dbRows = A.dbQuery(
+            'SELECT center_x, center_y, center_z FROM element_transforms WHERE guid = ?', [guid]
+          );
+          if (dbRows.length && dbRows[0][0] != null) {
+            const dbC = A.ifc2three(dbRows[0][0], dbRows[0][1], dbRows[0][2]);
+            console.log('§BBOX_DEBUG guid=' + guid.substring(0, 8) +
+              ' hlPos=(' + hlPos.x.toFixed(2) + ',' + hlPos.y.toFixed(2) + ',' + hlPos.z.toFixed(2) + ')' +
+              ' dbPos=(' + dbC.x.toFixed(2) + ',' + dbC.y.toFixed(2) + ',' + dbC.z.toFixed(2) + ')' +
+              ' \u0394=(' + (hlPos.x - dbC.x).toFixed(3) + ',' + (hlPos.y - dbC.y).toFixed(3) + ',' + (hlPos.z - dbC.z).toFixed(3) + ')' +
+              (hit.object.isInstancedMesh ? ' INSTANCED' : ' SINGLE'));
+          }
+        } catch (e) { /* debug only */ }
+      }
     }
+
+    const hlGeo = new THREE.BoxGeometry(
+      Math.max(hlSizeX, 0.01), Math.max(hlSizeY, 0.01), Math.max(hlSizeZ, 0.01));
+    const hlEdges = new THREE.EdgesGeometry(hlGeo);
+    hlGeo.dispose();
+    const hlLine = new THREE.LineSegments(hlEdges,
+      new THREE.LineBasicMaterial({ color: 0xffff00, depthTest: false }));
+    hlLine.renderOrder = 999;
+    hlLine.position.copy(hlPos);
+    hlLine.quaternion.copy(hlQuat);
+    A.scene.add(hlLine);
     window._pickHighlight = hlLine;
 
     try {
-      const rows = A.db.exec(`
+      // S239: parameterized query (was string interpolation — SQL injection risk)
+      const rows = A.dbQuery(`
         SELECT m.ifc_class, m.element_name, m.guid, m.building, m.storey,
                m.discipline, m.material_rgba
-        FROM elements_meta m WHERE m.guid = '${guid}'
-      `);
-      if (!rows.length || !rows[0].values.length) return;
-      const [cls, name, g, bld, storey, disc, mat] = rows[0].values[0];
+        FROM elements_meta m WHERE m.guid = ?
+      `, [guid]);
+      if (!rows.length) {
+        document.getElementById('info-panel').style.display = 'none';
+        return;
+      }
+      const [cls, name, g, bld, storey, disc, mat] = rows[0];
       document.getElementById('info-class').textContent = cls || '—';
       document.getElementById('info-name').textContent = name || '—';
       document.getElementById('info-guid').textContent = g || '—';

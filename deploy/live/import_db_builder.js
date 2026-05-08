@@ -1,3 +1,12 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ *
+ * Calls sql.js API (MIT, sql-js/sql.js) — loaded from CDN at runtime, not bundled here.
+ * All code in this file is original work by the author:
+ *   10-table schema design, geometry instancing via hash, BOM-based structure.
+ */
 // import_db_builder.js — Shared DB builder for IFC import
 // Both landing2.html and import.js call buildImportDBs(SQL, data)
 // Returns ONE database with all 4 tables (metadata + geometry).
@@ -11,17 +20,20 @@ function buildImportDBs(SQL, data) {
   var db = new SQL.Database();
 
   // S224: Use filename (without .ifc) as building name — IFC project name is often generic ("Project")
-  var buildingName = (data.meta.filename || data.meta.name || 'Import').replace(/\.ifc$/i, '');
+  var buildingName = (data.meta.filename || data.meta.name || 'Import').replace(/\.(ifc|dae|obj|glb|gltf|3ds|fbx|stl)$/i, '');
 
   // Project metadata
   db.run('CREATE TABLE IF NOT EXISTS project_metadata (key TEXT PRIMARY KEY, value TEXT)');
-  db.run('INSERT INTO project_metadata VALUES (?,?),(?,?),(?,?)',
-    ['project_name', data.meta.name, 'import_date', new Date().toISOString(), 'building_name', buildingName]);
+  db.run('INSERT INTO project_metadata VALUES (?,?),(?,?),(?,?),(?,?)',
+    ['project_name', data.meta.name, 'import_date', new Date().toISOString(), 'building_name', buildingName, 'source_uri', data.meta.source_uri || '']);
 
   // Elements
   db.run('CREATE TABLE IF NOT EXISTS elements_meta (guid TEXT PRIMARY KEY, ifc_class TEXT, element_name TEXT, storey TEXT, discipline TEXT, material_name TEXT, material_rgba TEXT, building TEXT)');
-  db.run('CREATE TABLE IF NOT EXISTS element_transforms (guid TEXT PRIMARY KEY, center_x REAL, center_y REAL, center_z REAL, rotation_x REAL, rotation_y REAL, rotation_z REAL)');
+  db.run('CREATE TABLE IF NOT EXISTS element_transforms (guid TEXT PRIMARY KEY, center_x REAL, center_y REAL, center_z REAL, rotation_x REAL, rotation_y REAL, rotation_z REAL, bbox_x REAL, bbox_y REAL, bbox_z REAL)');
   db.run('CREATE TABLE IF NOT EXISTS element_instances (guid TEXT PRIMARY KEY, geometry_hash TEXT)');
+
+  // Transaction wrapping — 10x+ speedup for large IFC imports (thousands of rows)
+  db.run('BEGIN');
 
   var stmtEl = db.prepare('INSERT OR IGNORE INTO elements_meta VALUES (?,?,?,?,?,?,?,?)');
   for (var i = 0; i < data.elements.length; i++) {
@@ -30,10 +42,10 @@ function buildImportDBs(SQL, data) {
   }
   stmtEl.free();
 
-  var stmtTr = db.prepare('INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?,?,?)');
+  var stmtTr = db.prepare('INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?,?,?,?,?,?)');
   for (var i = 0; i < data.transforms.length; i++) {
     var t = data.transforms[i];
-    stmtTr.run([t.guid, t.cx, t.cy, t.cz, t.rx, t.ry, t.rz]);
+    stmtTr.run([t.guid, t.cx, t.cy, t.cz, t.rx, t.ry, t.rz, t.bx || null, t.by || null, t.bz || null]);
   }
   stmtTr.free();
 
@@ -51,6 +63,8 @@ function buildImportDBs(SQL, data) {
     stmtGeo.run([g.geomHash, new Uint8Array(g.vertices), new Uint8Array(g.indices), buildingName]);
   }
   stmtGeo.free();
+
+  db.run('COMMIT');
 
   console.log('[S220] §DB_BUILD single_db: elements=' + data.elements.length + ' transforms=' + data.transforms.length + ' instances=' + data.geometries.length + ' geometries=' + data.geometries.length);
 

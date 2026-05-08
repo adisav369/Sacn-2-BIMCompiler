@@ -6,9 +6,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BIM OOTB v3 — DEV</title>
+<title>BIM OOTB v3</title>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="preload" href="https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.wasm" as="fetch" crossorigin>
 <meta name="theme-color" content="#4fc3f7">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,7 +15,7 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-  #canvas { width: 100vw; height: 100vh; display: block; }
+  #canvas { width: 100vw; height: 100vh; display: block; touch-action: none; }
   #hud {
     position: fixed; top: 16px; left: 16px; z-index: 10;
     background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 12px;
@@ -65,7 +64,7 @@
     border: 1px solid rgba(255,255,255,0.08);
     backdrop-filter: blur(8px);
     font-size: 12px; line-height: 1.6; min-width: 240px; max-width: 320px;
-    display: none;
+    display: none; pointer-events: auto;
   }
   #info-panel .label { color: #888; }
   #info-panel .value { color: #fff; }
@@ -74,7 +73,7 @@
     background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 12px;
     border: 1px solid rgba(255,255,255,0.08);
     backdrop-filter: blur(8px);
-    font-size: 12px; display: none;
+    font-size: 12px; display: none; pointer-events: auto;
   }
   #storey-panel button {
     display: block; width: 100%; text-align: left;
@@ -274,6 +273,8 @@
 
     /* Hide building list + search on mobile */
     #building-list { display: none !important; }
+    .desktop-only { display: none !important; }
+    #panel-toggle-btn { display: block !important; }
   }
 
   /* ── Landscape: everything tight, persist Walk/Site ── */
@@ -336,8 +337,9 @@
       <button onclick="toggleIssues();event.stopPropagation()" data-trl-title="ui_tt_issues" title="Issues" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📋</button>
       <button id="measure-btn" onclick="toggleMeasure();event.stopPropagation()" data-trl-title="ui_tt_measure" title="Measure" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📐</button>
       <button id="section-btn" onclick="toggleSection();event.stopPropagation()" data-trl-title="ui_tt_section" title="Section Cut" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">✂</button>
-      <button onclick="open2DPlans();event.stopPropagation()" data-trl-title="ui_tt_2d" title="2D Plans" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;padding:2px;line-height:1"><img src="2D.png" alt="2D" style="width:18px;height:18px;vertical-align:middle"></button>
+      <button id="grid-2d-btn" onclick="open2DPlans();event.stopPropagation()" data-trl-title="ui_tt_2d" title="2D Grid Views" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;padding:2px;line-height:1"><img src="icons/2Dicon.png" alt="2D" style="width:22px;height:22px;vertical-align:middle;filter:invert(1)"></button>
       <button id="header-flag-btn" onclick="location.href='../index.html'" data-trl-title="ui_tt_home" title="Home" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">🌐</button>
+      <button onclick="if(APP&&APP.reportBug)APP.reportBug();event.stopPropagation()" data-trl-title="ui_tt_help" title="Help / Report Bug" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">🛟</button>
     </div>
     <div id="building-list" style="max-height:400px;overflow-y:auto"></div>
   </div>
@@ -360,7 +362,7 @@
 <div id="disc-panel" style="position:fixed;bottom:50px;left:16px;z-index:10;
   background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 12px;
   border:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(8px);
-  font-size:12px;display:none;cursor:default">
+  font-size:12px;display:none;cursor:default;pointer-events:auto">
   <b style="display:block;width:100%;padding:8px 12px;color:#4fc3f7;font-size:12px;cursor:pointer" onclick="togglePanel('disc-body')" data-trl="ui_disciplines">Disciplines</b>
   <div id="disc-body" class="panel-body"></div>
 </div>
@@ -397,6 +399,12 @@
     <button id="issue-d-status-btn" style="margin-top:8px;padding:8px 16px;border:none;border-radius:6px;color:#fff;font-size:13px;cursor:pointer;width:100%">🔴 <span data-trl="ui_open">Open</span></button>
   </div>
 </div>
+<button id="panel-toggle-btn" onclick="toggleAllPanels()"
+        style="display:none;position:fixed;bottom:16px;left:16px;z-index:100;
+               background:rgba(40,40,40,0.85);color:#4fc3f7;border:1px solid #666;
+               border-radius:50%;width:36px;height:36px;font-size:20px;cursor:pointer">
+  −
+</button>
 <div id="status">v3 — <span data-trl="ui_initializing">Initializing...</span></div>
 <pre id="walk-log" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:200px;overflow:auto;background:#111;color:#0f0;font-size:10px;z-index:99;padding:4px;margin:0"></pre>
 <div id="section-slider-panel">
@@ -470,28 +478,29 @@
 </div>
 
 <!-- Floating bug report button — appears when canvas idle, hides on camera move -->
-<div id="bug-fab" onclick="if(window.APP&&APP.reportBug)APP.reportBug()" title="Send to GitHub Issues Tracker" style="display:none;position:fixed;bottom:20px;right:20px;z-index:100;cursor:pointer;background:rgba(40,40,40,0.85);border:1px solid #666;border-radius:10px;padding:6px 10px;backdrop-filter:blur(4px);transition:opacity 0.3s">
+<div id="bug-fab" style="display:none !important"
   <img src="help.png" alt="Help" style="height:22px;vertical-align:middle">
   <span style="color:#aaa;font-size:9px;margin-left:4px;vertical-align:middle">Report Bug</span>
 </div>
 
 <script src="loader.js?v=4"></script>
-<script src="config.js?v=3"></script>
-<script src="scene.js?v=4"></script>
-<script src="helpers.js?v=1"></script>
-<script src="streaming.js?v=16"></script>
-<script src="panels.js?v=5"></script>
-<script src="tools.js?v=5"></script>
-<script src="picking.js?v=12"></script>
-<script src="tour.js?v=3"></script>
-<script src="measure.js?v=32"></script>
-<script src="sitecam.js?v=6"></script>
-<script src="issues.js?v=4"></script>
-<script src="excel.js?v=4"></script>
-<script src="walk.js?v=7"></script>
+<script src="qrcode.min.js?v=1" onerror="console.warn('§LOAD_FAIL qrcode.min.js — QR sharing disabled')"></script>
+<script src="config.js?v=4" onerror="console.warn('§LOAD_FAIL config.js')"></script>
+<script src="scene.js?v=4" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
+<script src="helpers.js?v=3" onerror="console.warn('§LOAD_FAIL helpers.js')"></script>
+<script src="streaming.js?v=18" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
+<script src="panels.js?v=6" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
+<script src="tools.js?v=7" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
+<script src="picking.js?v=16" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
+<script src="tour.js?v=3" onerror="console.warn('§LOAD_FAIL tour.js')"></script>
+<script src="measure.js?v=38" onerror="console.warn('§LOAD_FAIL measure.js')"></script>
+<script src="sitecam.js?v=6" onerror="console.warn('§LOAD_FAIL sitecam.js')"></script>
+<script src="issues.js?v=4" onerror="console.warn('§LOAD_FAIL issues.js')"></script>
+<script src="excel.js?v=4" onerror="console.warn('§LOAD_FAIL excel.js')"></script>
+<script src="walk.js?v=7" onerror="console.warn('§LOAD_FAIL walk.js')"></script>
 <!-- navigate.js lazy-loaded on demand by main.js A.loadNavigate() -->
-<script src="city.js?v=5"></script>
-<script src="rates.js?v=1"></script>
+<script src="city.js?v=6"></script>
+<script src="rates.js?v=2"></script>
 <script src="locale_loader.js?v=7"></script>
 <script src="nlp.js?v=4"></script>
 <script src="semantic_enrichment.js?v=1"></script>
@@ -499,8 +508,22 @@
 <script src="import_db_builder.js?v=1"></script>
 <script src="diff.js?v=2"></script>
 <script src="variation_order.js?v=2"></script>
-<script src="import.js?v=2"></script>
-<script src="main.js?v=10"></script>
+<script src="import.js?v=3"></script>
+<script src="grid_dims.js?v=4"></script>
+<script src="grid_config.js?v=2" onerror="console.warn('[GridConfig] grid_config.js skipped')"></script>
+<script src="grid_views.js?v=8" onerror="console.warn('[GridViews] grid_views.js skipped')"></script>
+<script src="grid_door_arcs.js?v=1" onerror="console.warn('[DoorArcs] grid_door_arcs.js skipped')"></script>
+<script src="section_cut.js?v=5" onerror="console.warn('[SectionCut] section_cut.js skipped')"></script>
+<script src="elevation.js?v=1" onerror="console.warn('[Elevation] elevation.js skipped')"></script>
+<script src="grid_contours.js?v=4" onerror="console.warn('[GridContours] grid_contours.js skipped')"></script>
+<script src="grid_dim_chains.js?v=4" onerror="console.warn('[DimChains] grid_dim_chains.js skipped')"></script>
+<script src="grid_drag.js?v=2" onerror="console.warn('[GridDrag] grid_drag.js skipped')"></script>
+<script src="grid_scissors.js?v=1" onerror="console.warn('[GridScissors] grid_scissors.js skipped')"></script>
+<script src="grid_overlay.js?v=24" onerror="console.warn('[GridOverlay] grid_overlay.js skipped — file not found or error')"></script>
+<script src="grid_assembler.js?v=2" onerror="console.warn('[GridAssembler] grid_assembler.js skipped')"></script>
+<script src="print_sheet.js?v=2" onerror="console.warn('[PrintSheet] print_sheet.js skipped')"></script>
+<script src="ghostglass.js?v=2" onerror="console.warn('§LOAD_FAIL ghostglass.js')"></script>
+<script src="main.js?v=16"></script>
 <!-- Styled tooltip bubbles for [data-trl-title] buttons — appended to body, not clipped by overflow:hidden -->
 <style>#ootb-tip{display:none;position:fixed;z-index:9990;background:rgba(10,10,30,0.92);color:#4fc3f7;font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid rgba(79,195,247,0.35);pointer-events:none;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.4)}</style>
 <script>
@@ -540,7 +563,7 @@ if(new URLSearchParams(location.search).get('embedded')!=='true'){
 </script>
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js?v=250')
+  navigator.serviceWorker.register('sw.js?v=267')
     .then(function(r){console.log('§SW_REG scope='+r.scope)})
     .catch(function(e){console.warn('§SW_REG_FAIL',e)});
 }

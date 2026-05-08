@@ -1,3 +1,8 @@
+/**
+ * BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+ * SPDX-License-Identifier: MIT
+ */
 // variation_order.js — S222 Variation Order Excel with full cost engine
 // Uses ExcelJS (already loaded by excel.js in viewer)
 // Formulas: FIDIC Clause 12 valuation + AACE change order costing + EVM variance
@@ -11,62 +16,7 @@
 //
 // Schedule Impact = element count / productivity (elements/day from 4D template)
 
-// ── CIDB 2024 Material Rates (same as nlp.js, boq_charts.html, 5D_rates.json) ──
-var VO_RATES = {
-  IfcDuct:165, IfcDuctSegment:165, IfcDuctFitting:380,
-  IfcPipe:48.5, IfcPipeSegment:48.5, IfcPipeFitting:95,
-  IfcCableCarrier:78, IfcCableCarrierSegment:78,
-  IfcBeam:680, IfcColumn:1250, IfcSlab:285,
-  IfcWall:145, IfcWallStandardCase:145, IfcCurtainWall:750,
-  IfcCovering:185, IfcRoof:238, IfcLightFixture:485, IfcOutlet:125,
-  IfcDoor:2850, IfcWindow:1580, IfcBuildingElementProxy:850,
-  IfcFlowTerminal:3500, IfcFurnishingElement:1200, IfcFurniture:1500,
-  IfcPlate:350, IfcMember:680, IfcRailing:180,
-  IfcStair:5000, IfcStairFlight:2500,
-  IfcColumn:1250, IfcFooting:320, IfcPile:850,
-  IfcReinforcingBar:45, IfcFlowSegment:120, IfcFlowFitting:200,
-  IfcFlowController:450, IfcEnergyConversionDevice:8500,
-  IfcFlowTreatmentDevice:1200, IfcFlowMovingDevice:3500,
-  IfcFlowStorageDevice:5000, IfcElectricAppliance:485,
-  _default: 500
-};
-
-// ── 4D Phase + Productivity (from 4D_phases.json) ──
-var VO_PHASES = {
-  IfcFooting:'Substructure', IfcPile:'Substructure', IfcReinforcingBar:'Substructure',
-  IfcColumn:'Superstructure', IfcBeam:'Superstructure', IfcSlab:'Superstructure',
-  IfcMember:'Superstructure', IfcPlate:'Superstructure',
-  IfcDuct:'MEP Rough-in', IfcDuctSegment:'MEP Rough-in', IfcDuctFitting:'MEP Rough-in',
-  IfcPipe:'MEP Rough-in', IfcPipeSegment:'MEP Rough-in', IfcPipeFitting:'MEP Rough-in',
-  IfcCableCarrier:'MEP Rough-in', IfcCableCarrierSegment:'MEP Rough-in',
-  IfcFlowSegment:'MEP Rough-in', IfcFlowFitting:'MEP Rough-in',
-  IfcWall:'Architecture', IfcWallStandardCase:'Architecture', IfcCurtainWall:'Architecture',
-  IfcDoor:'Architecture', IfcWindow:'Architecture', IfcRoof:'Architecture',
-  IfcRailing:'Architecture', IfcStair:'Architecture', IfcStairFlight:'Architecture',
-  IfcLightFixture:'MEP Final', IfcOutlet:'MEP Final', IfcFlowTerminal:'MEP Final',
-  IfcFlowController:'MEP Final',
-  IfcCovering:'Finishes', IfcFurniture:'Finishes', IfcFurnishingElement:'Finishes',
-  _default:'Architecture'
-};
-
-// Productivity: elements/day (from 4D_phases.json)
-var VO_PRODUCTIVITY = {
-  IfcFooting:10, IfcPile:4, IfcReinforcingBar:20,
-  IfcColumn:6, IfcBeam:8, IfcSlab:35, IfcMember:8, IfcPlate:10,
-  IfcDuct:18, IfcDuctSegment:18, IfcDuctFitting:12,
-  IfcPipe:25, IfcPipeSegment:25, IfcPipeFitting:15,
-  IfcCableCarrier:30, IfcCableCarrierSegment:30,
-  IfcFlowSegment:18, IfcFlowFitting:15, IfcFlowController:10,
-  IfcEnergyConversionDevice:2, IfcFlowTreatmentDevice:8,
-  IfcFlowMovingDevice:4, IfcFlowStorageDevice:2,
-  IfcWall:12, IfcWallStandardCase:12, IfcCurtainWall:8,
-  IfcDoor:5, IfcWindow:5, IfcRoof:25, IfcRailing:6,
-  IfcStair:2, IfcStairFlight:2,
-  IfcLightFixture:20, IfcOutlet:25, IfcFlowTerminal:6,
-  IfcCovering:15, IfcFurniture:8, IfcFurnishingElement:8,
-  IfcBuildingElementProxy:10,
-  _default:10
-};
+// RATES, SEQUENCE_RULES, getRate(), getPhase(), getProductivity() — from rates.js
 
 // ── Change Order Cost Multipliers (FIDIC/AACE standard, configurable) ──
 var VO_CONFIG = {
@@ -82,16 +32,6 @@ var VO_CONFIG = {
   currency: 'MYR',
   usdRate: 0.21,        // MYR→USD conversion
 };
-
-function getRate(ifcClass) {
-  return VO_RATES[ifcClass] || VO_RATES._default;
-}
-function getPhase(ifcClass) {
-  return VO_PHASES[ifcClass] || VO_PHASES._default;
-}
-function getProductivity(ifcClass) {
-  return VO_PRODUCTIVITY[ifcClass] || VO_PRODUCTIVITY._default;
-}
 
 function exportVariationOrder() {
   var A = window.APP;
@@ -126,7 +66,7 @@ function exportVariationOrder() {
   wsConfig.addRow({ param: 'Disruption %', val: (C.disruptionPct * 100) + '%', desc: 'Productivity loss per change (AACE standard)' });
   wsConfig.addRow({ param: 'Currency', val: C.currency, desc: 'Base currency for all rates' });
   wsConfig.addRow({ param: 'USD Rate', val: C.usdRate, desc: C.currency + ' to USD conversion' });
-  wsConfig.addRow({ param: 'Rate Source', val: 'CIDB 2024', desc: 'Malaysian CIDB N3C / BCISM Cost Book 2022-2024' });
+  wsConfig.addRow({ param: 'Rate Source', val: typeof _TRL!=='undefined'&&_TRL.rate_source||'CIDB 2024', desc: typeof _TRL!=='undefined'&&_TRL.rate_mat_source||'Malaysian CIDB N3C / BCISM Cost Book 2022-2024' });
 
   // Get delivery lag
   var lag = '—';
@@ -140,22 +80,23 @@ function exportVariationOrder() {
       lag = lagDays + ' days';
       wsConfig.addRow({ param: 'BIM Delivery Lag', val: lag, desc: 'Time between base and variation import — cost of waiting for updated model' });
     }
-  } catch(e) {}
+  } catch(e) { console.warn('[S227] §VO_LAG_ERR ' + e.message); }
 
   // ── Sheet 2: Variation Order Detail ──
   var ws = wb.addWorksheet('Variation Order');
+  var _t = typeof _TRL!=='undefined' ? _TRL : {};
   ws.columns = [
-    { header: 'Status', key: 'status', width: 12 },
+    { header: _t.h_status||'Status', key: 'status', width: 12 },
     { header: 'GUID', key: 'guid', width: 38 },
-    { header: 'IFC Class', key: 'ifcClass', width: 22 },
-    { header: 'Name', key: 'name', width: 28 },
-    { header: 'Storey', key: 'storey', width: 18 },
-    { header: 'Discipline', key: 'disc', width: 10 },
-    { header: 'Phase (4D)', key: 'phase', width: 16 },
-    { header: 'Unit Rate (' + C.currency + ')', key: 'rate', width: 14 },
+    { header: _t.h_ifc_class||'IFC Class', key: 'ifcClass', width: 22 },
+    { header: _t.ui_name||'Name', key: 'name', width: 28 },
+    { header: _t.h_storey||'Storey', key: 'storey', width: 18 },
+    { header: _t.h_discipline||'Discipline', key: 'disc', width: 10 },
+    { header: (_t.h_phase||'Phase') + ' (4D)', key: 'phase', width: 16 },
+    { header: (_t.h_unit_rate||'Unit Rate') + ' (' + C.currency + ')', key: 'rate', width: 14 },
     { header: 'Cost Factor', key: 'factor', width: 12 },
     { header: 'Direct Cost', key: 'direct', width: 14 },
-    { header: 'Total Impact', key: 'total', width: 14 },
+    { header: (_t.h_total||'Total') + ' Impact', key: 'total', width: 14 },
     { header: 'Schedule (days)', key: 'days', width: 14 },
     { header: 'Old Value', key: 'oldVal', width: 26 },
     { header: 'New Value', key: 'newVal', width: 26 },
@@ -165,9 +106,9 @@ function exportVariationOrder() {
 
   function getElementInfo(db, guid) {
     try {
-      var r = db.exec("SELECT ifc_class, element_name, storey, discipline, material_rgba FROM elements_meta WHERE guid='" + guid.replace(/'/g, "''") + "'");
+      var r = db.exec("SELECT ifc_class, element_name, storey, discipline, material_rgba FROM elements_meta WHERE guid=?", [guid]);
       if (r.length > 0 && r[0].values.length > 0) return r[0].values[0];
-    } catch(e) {}
+    } catch(e) { console.warn('[S227] §VO_ELEM_ERR guid=' + guid + ' ' + e.message); }
     return [null, null, null, null, null];
   }
 
@@ -200,7 +141,7 @@ function exportVariationOrder() {
       phase: phase, rate: impact.rate, factor: C.addFactor,
       direct: Math.round(impact.direct), total: Math.round(impact.total),
       days: +impact.days.toFixed(2),
-      oldVal: '\u2014', newVal: 'New element'
+      oldVal: '\u2014', newVal: _t.ui_vo_new||'New element'
     });
   }
 
@@ -221,7 +162,7 @@ function exportVariationOrder() {
       phase: phase, rate: impact.rate, factor: '-' + C.removeFactor,
       direct: -Math.round(impact.direct), total: -Math.round(impact.total),
       days: +impact.days.toFixed(2),
-      oldVal: 'Existed', newVal: '\u2014 (demolished)'
+      oldVal: _t.ui_vo_existed||'Existed', newVal: _t.ui_vo_demolished||'\u2014 (demolished)'
     });
   }
 

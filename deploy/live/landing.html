@@ -1,16 +1,16 @@
-<!-- OCI: uploads as index.html to bim-ootb-dev bucket (DEV landing page) -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1a1a2e">
-<title>BIM OOTB</title>
+<meta name="theme-color" content="#ffffff">
+<title>BIM OOTB — DEV</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    background: #1a1a2e; color: #e0e0e0;
+    background: #f5f0e8; color: #1a1a2e;
     font-family: 'Segoe UI', system-ui, sans-serif;
     min-height: 100vh;
   }
@@ -18,7 +18,7 @@
     text-align: center; padding: 30px 20px 10px;
   }
   .header h1 {
-    font-size: 28px; color: #4fc3f7; margin-bottom: 4px;
+    font-size: 28px; color: #0277bd; margin-bottom: 4px;
     letter-spacing: 1px;
   }
   .header .tagline {
@@ -30,7 +30,7 @@
   }
   .loading .spinner {
     display: inline-block; width: 30px; height: 30px;
-    border: 3px solid #333; border-top-color: #4fc3f7;
+    border: 3px solid #ccc; border-top-color: #0277bd;
     border-radius: 50%; animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -44,13 +44,13 @@
     max-width: 1200px; margin: 0 auto;
   }
   .card {
-    background: rgba(255,255,255,0.04);
+    background: #1a1a2e;
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: 8px; padding: 14px 16px;
     cursor: pointer; transition: all 0.15s;
   }
   .card:hover {
-    background: rgba(79,195,247,0.08);
+    background: #1e2840;
     border-color: rgba(79,195,247,0.3);
     transform: translateY(-1px);
   }
@@ -58,7 +58,7 @@
   .card .meta { font-size: 12px; color: #888; line-height: 1.6; }
   .card .meta b { color: #ccc; }
   .card .instances {
-    display: inline-block; background: #4fc3f7; color: #000;
+    display: inline-block; background: #0277bd; color: #000;
     font-size: 11px; font-weight: 700; padding: 1px 6px;
     border-radius: 3px; margin-left: 6px;
   }
@@ -71,7 +71,7 @@
     display: block; width: 100%; margin-top: 10px;
     padding: 6px; background: rgba(79,195,247,0.15);
     border: 1px solid rgba(79,195,247,0.3);
-    border-radius: 4px; color: #4fc3f7;
+    border-radius: 4px; color: #0277bd;
     font-size: 12px; font-weight: 600; cursor: pointer;
     transition: background 0.15s;
   }
@@ -83,7 +83,7 @@
   .export-triangle {
     position: absolute; top: 0; right: 0;
     width: 0; height: 0;
-    border-top: 36px solid #4fc3f7;
+    border-top: 36px solid #0277bd;
     border-left: 36px solid transparent;
     cursor: pointer; opacity: 0.7;
     transition: opacity 0.15s;
@@ -102,7 +102,7 @@
     box-shadow: 0 4px 16px rgba(0,0,0,0.5);
   }
   .export-flyout label { display: block; color: #ccc; font-size: 12px; cursor: pointer; padding: 4px 0; }
-  .export-flyout label:hover { color: #4fc3f7; }
+  .export-flyout label:hover { color: #0277bd; }
   .export-flyout input[type=radio] { margin-right: 6px; }
   .export-flyout .ef-row { display: flex; gap: 6px; margin-top: 10px; }
   .export-flyout .ef-btn {
@@ -122,7 +122,7 @@
   .tabs-panel .tab-item {
     padding: 4px 12px; background: rgba(79,195,247,0.15);
     border: 1px solid rgba(79,195,247,0.3); border-radius: 4px;
-    color: #4fc3f7; font-size: 12px; cursor: pointer;
+    color: #0277bd; font-size: 12px; cursor: pointer;
     white-space: nowrap; flex-shrink: 0;
   }
   .tabs-panel .tab-item:hover { background: rgba(79,195,247,0.3); }
@@ -131,15 +131,15 @@
   .section-header {
     padding: 16px 20px 4px; max-width: 1200px; margin: 0 auto;
     font-size: 13px; color: #666; text-transform: uppercase;
-    letter-spacing: 1px; border-top: 1px solid rgba(255,255,255,0.04);
+    letter-spacing: 1px; border-top: 1px solid rgba(0,0,0,0.08);
   }
 
   /* Footer */
   .footer {
-    text-align: center; padding: 20px; font-size: 11px; color: #444;
+    text-align: center; padding: 20px; font-size: 11px; color: #555;
     padding-bottom: 60px; /* space for tabs panel */
   }
-  .footer a { color: #4fc3f7; text-decoration: none; }
+  .footer a { color: #0277bd; text-decoration: none; }
 
   @media (max-width: 600px) {
     .grid { grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
@@ -150,14 +150,16 @@
 </style>
 </head>
 <body>
-
+<div style="background:#ff8c00;color:#000;text-align:center;padding:8px;font-weight:bold;font-size:14px;font-family:Segoe UI,sans-serif;letter-spacing:1px">DEVELOPMENT SITE FOR BACK UP TESTING</div>
 
 <div class="header">
-  <h1 style="color:#cc6600;margin-bottom:0"><span style="font-size:64px;letter-spacing:42px;margin-left:42px;display:block;margin-bottom:-8px;line-height:0.8;font-family:'Arial Black',Impact,sans-serif;letter-spacing:16px;margin-left:16px">BIM</span><span data-trl="landing_ootb" style="font-size:16px;font-weight:400;font-family:'Arial Black',Impact,sans-serif;letter-spacing:6px;margin-left:6px;color:#cc6600cc;text-transform:lowercase">outofthebox</span></h1>
+  <a href="https://www.sysnova.co.uk/" target="_blank" style="display:block;margin:0 auto 16px;text-decoration:none"><img src="Sysnova.png" alt="Sysnova Information Systems Limited" style="display:block;margin:0 auto;height:80px;width:auto"></a>
+  <h1 style="color:#0277bd;margin-bottom:0"><span style="font-size:64px;display:block;margin-bottom:-8px;line-height:0.8;font-family:'Arial Black',Impact,sans-serif;letter-spacing:16px;margin-left:16px">BIM</span><span data-trl="landing_ootb" style="font-size:16px;font-weight:400;font-family:'Arial Black',Impact,sans-serif;letter-spacing:6px;margin-left:6px;color:#0277bdaa;text-transform:lowercase">outofthebox</span></h1>
   <div style="display:flex;justify-content:center;align-items:center;gap:14px;margin-top:10px">
-    <a href="https://youtu.be/bSyuLQ_c4rw" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:#4fc3f7;font-size:13px;text-decoration:none;padding:4px 8px"><img src="sandbox/YT.png" alt="YouTube" style="height:20px;vertical-align:middle"> <span data-trl="landing_watch_demo">Watch Demo</span></a>
-    <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.toggle('active')" style="display:inline-flex;align-items:center;gap:5px;color:#ccc;font-size:13px;text-decoration:none;padding:4px 8px">&#10067; <span data-trl="landing_about">About</span></a>
-    <a href="javascript:void(0)" id="header-flag-btn" onclick="if(window._TRL_LOADER)_TRL_LOADER.openFlagPicker()" style="display:inline-flex;align-items:center;gap:4px;color:#ccc;font-size:16px;text-decoration:none;padding:4px 8px;cursor:pointer" title="Language">&#127760;</a>
+    <a href="https://youtu.be/bSyuLQ_c4rw" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:#0277bd;font-size:13px;text-decoration:none;padding:4px 8px"><img src="sandbox/YT.png" alt="YouTube" style="height:20px;vertical-align:middle"> <span data-trl="landing_watch_demo">Watch Demo</span></a>
+    <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.toggle('active')" style="display:inline-flex;align-items:center;gap:5px;color:#444;font-size:13px;text-decoration:none;padding:4px 8px">&#10067; <span data-trl="landing_about">About</span></a>
+    <a href="javascript:void(0)" id="header-flag-btn" onclick="if(window._TRL_LOADER)_TRL_LOADER.openFlagPicker()" style="display:inline-flex;align-items:center;gap:4px;color:#444;font-size:16px;text-decoration:none;padding:4px 8px;cursor:pointer" title="Language">&#127760;</a>
+    <a href="javascript:void(0)" onclick="if(window.APP&&APP.reportBug)APP.reportBug();else window.open('https://github.com/red1oon/BIMCompiler/issues/new?labels=bug','_blank')" style="display:inline-flex;align-items:center;gap:4px;color:#444;font-size:13px;text-decoration:none;padding:4px 8px;cursor:pointer" title="Send to GitHub Issues Tracker"><img src="submit.png" alt="Submit" style="height:18px;vertical-align:middle"> <span style="font-size:10px">Send to GitHub Issues Tracker</span></a>
   </div>
 </div>
 
@@ -171,7 +173,7 @@
 <div id="content" style="display:none">
   <!-- S222: Hero Import Panel -->
   <div style="max-width:720px;margin:0 auto;padding:24px 20px 8px">
-    <div id="import-zone" style="border:1px solid rgba(79,195,247,0.12);border-radius:16px;padding:40px 32px 28px;text-align:center;cursor:pointer;transition:all 0.15s;background:linear-gradient(180deg,rgba(79,195,247,0.04) 0%,rgba(0,0,0,0) 100%)">
+    <div id="import-zone" style="border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:40px 32px 28px;text-align:center;cursor:pointer;transition:all 0.15s;background:#1a1a2e">
 
       <!-- Headline — Leo Burnett big -->
       <div onclick="event.stopPropagation()" style="pointer-events:auto;cursor:default">
@@ -180,32 +182,32 @@
         <!-- Steps — pure visual, no interaction -->
         <div style="display:flex;justify-content:center;align-items:center;gap:12px;margin:32px 0 28px;flex-wrap:wrap;opacity:0.7">
           <span data-trl="landing_step_import" style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Import</span>
-          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#888;font-size:9px">&mdash;</span>
           <span data-trl="landing_step_view" style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">View</span>
-          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#888;font-size:9px">&mdash;</span>
           <span data-trl="landing_step_compare" style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Compare</span>
-          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#888;font-size:9px">&mdash;</span>
           <span data-trl="landing_step_costed" style="color:#4fc3f7;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Costed</span>
-          <span style="color:#333;font-size:9px">&mdash;</span>
+          <span style="color:#888;font-size:9px">&mdash;</span>
           <span data-trl="landing_step_done" style="color:#44cc44;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase">Done</span>
         </div>
       </div>
 
       <!-- Drop target — this is the only clickable part -->
-      <div style="border:2px dashed rgba(79,195,247,0.2);border-radius:10px;padding:20px;margin:0 auto;max-width:380px;transition:border-color 0.15s">
+      <div style="border:2px dashed rgba(79,195,247,0.4);border-radius:10px;padding:20px;margin:0 auto;max-width:380px;transition:border-color 0.15s">
         <div style="color:#4fc3f7;font-size:14px;font-weight:600;letter-spacing:0.3px"><span data-trl="landing_drop_ifc">Drop IFC or 3D file here</span></div>
-        <div style="color:#444;font-size:11px;margin-top:4px">or tap to browse</div>
+        <div style="color:#888;font-size:11px;margin-top:4px">or tap to browse</div>
       </div>
-      <div id="import-status" style="color:#aaa;font-size:12px;margin-top:10px"></div>
+      <div id="import-status" style="color:#e0e0e0;font-size:12px;margin-top:10px"></div>
       <div style="display:none;margin-top:8px;height:4px;background:#222;border-radius:2px;overflow:hidden;max-width:400px;margin-left:auto;margin-right:auto">
-        <div id="import-progress-bar" style="height:100%;width:0%;background:#4fc3f7;border-radius:2px;transition:width 0.3s"></div>
+        <div id="import-progress-bar" style="height:100%;width:0%;background:#0277bd;border-radius:2px;transition:width 0.3s"></div>
       </div>
       <input type="file" id="import-file-input" accept=".ifc,.dae,.obj,.glb,.gltf,.3ds,.fbx,.stl" style="display:none">
 
       <!-- Footer — quiet -->
       <div style="margin-top:16px;color:#444;font-size:10px;letter-spacing:0.3px">
-        <a href="https://red1oon.github.io/BIMCompiler/StrategicIndustryPositioning/" target="_blank" onclick="event.stopPropagation()" style="color:#4fc3f7;text-decoration:none"><span data-trl="landing_theory">Theory</span> 👁️</a>
-        &middot; <a href="https://youtu.be/hv0kcc_TKvY" target="_blank" onclick="event.stopPropagation()" style="color:#4fc3f7;text-decoration:none"><span data-trl="landing_practical">Practical</span> 👌</a>
+        <a href="https://red1oon.github.io/BIMCompiler/StrategicIndustryPositioning/" target="_blank" onclick="event.stopPropagation()" style="color:#0277bd;text-decoration:none"><span data-trl="landing_theory">Theory</span> 👁️</a>
+        &middot; <a href="https://youtu.be/hv0kcc_TKvY" target="_blank" onclick="event.stopPropagation()" style="color:#0277bd;text-decoration:none"><span data-trl="landing_practical">Practical</span> 👌</a>
       </div>
     </div>
   </div>
@@ -219,11 +221,11 @@
   <!-- S224: Merge/New modal -->
   <div id="merge-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9000;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
     <div style="background:#1a1a2e;border:1px solid rgba(79,195,247,0.2);border-radius:12px;padding:28px 32px;max-width:400px;width:90%;text-align:center">
-      <div style="color:#4fc3f7;font-size:15px;font-weight:600;margin-bottom:12px">Add to existing project?</div>
+      <div style="color:#0277bd;font-size:15px;font-weight:600;margin-bottom:12px">Add to existing project?</div>
       <div id="merge-target" style="color:#ccc;font-size:13px;margin-bottom:16px"></div>
       <select id="merge-select" style="display:none;width:100%;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;margin-bottom:16px"></select>
       <div style="display:flex;gap:10px;justify-content:center">
-        <button id="merge-btn" style="flex:1;padding:12px 20px;background:#4fc3f7;color:#000;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;min-height:44px">Merge</button>
+        <button id="merge-btn" style="flex:1;padding:12px 20px;background:#0277bd;color:#000;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;min-height:44px">Merge</button>
         <button id="merge-new-btn" style="flex:1;padding:12px 20px;background:#333;color:#ccc;border:1px solid #555;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;min-height:44px">New</button>
       </div>
       <div style="color:#555;font-size:10px;margin-top:10px">Enter = Merge · Escape = New</div>
@@ -233,14 +235,14 @@
   <!-- S224: Compare version picker modal -->
   <div id="compare-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9000;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
     <div style="background:#1a1a2e;border:1px solid rgba(79,195,247,0.2);border-radius:12px;padding:28px 32px;max-width:400px;width:90%;text-align:center">
-      <div style="color:#4fc3f7;font-size:15px;font-weight:600;margin-bottom:12px">Compare Versions</div>
+      <div style="color:#0277bd;font-size:15px;font-weight:600;margin-bottom:12px">Compare Versions</div>
       <div style="display:flex;gap:10px;margin-bottom:16px;justify-content:center;align-items:center">
         <select id="compare-a" style="flex:1;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px"></select>
-        <span style="color:#4fc3f7;font-weight:700">vs</span>
+        <span style="color:#0277bd;font-weight:700">vs</span>
         <select id="compare-b" style="flex:1;padding:8px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px"></select>
       </div>
       <div style="display:flex;gap:10px;justify-content:center">
-        <button id="compare-go-btn" style="flex:1;padding:12px 20px;background:#4fc3f7;color:#000;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;min-height:44px">Compare</button>
+        <button id="compare-go-btn" style="flex:1;padding:12px 20px;background:#0277bd;color:#000;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;min-height:44px">Compare</button>
         <button id="compare-cancel-btn" style="flex:0;padding:12px 20px;background:#333;color:#ccc;border:1px solid #555;border-radius:8px;font-size:14px;cursor:pointer;min-height:44px">Cancel</button>
       </div>
     </div>
@@ -248,15 +250,15 @@
 
   <div id="city-progress" style="display:none; padding:12px 20px; max-width:1200px; margin:0 auto">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px">
-      <span data-trl="landing_complete_city" style="font-size:14px; font-weight:700; color:#4fc3f7; letter-spacing:1px">COMPLETE THE CITY</span>
+      <span data-trl="landing_complete_city" style="font-size:14px; font-weight:700; color:#0277bd; letter-spacing:1px">COMPLETE THE CITY</span>
       <span id="city-count" style="font-size:12px; color:#888">0 / 30 <span data-trl="landing_buildings_explored">buildings explored</span></span>
     </div>
     <div style="height:8px; background:#222; border-radius:4px; overflow:hidden">
-      <div id="city-bar" style="height:100%; width:0%; background:linear-gradient(90deg,#4fc3f7,#44cc44); border-radius:4px; transition:width 0.4s ease"></div>
+      <div id="city-bar" style="height:100%; width:0%; background:linear-gradient(90deg,#0277bd,#44cc44); border-radius:4px; transition:width 0.4s ease"></div>
     </div>
     <div id="city-complete" style="display:none; text-align:center; padding:10px; margin-top:8px; background:rgba(68,204,68,0.1); border:1px solid rgba(68,204,68,0.3); border-radius:6px">
       <span data-trl="landing_city_unlocked" style="color:#44cc44; font-weight:700; font-size:14px; letter-spacing:1px">CITY UNLOCKED</span>
-      <button id="city-launch-btn" onclick="launchCity()" style="margin-left:16px; padding:6px 20px; background:linear-gradient(90deg,#4fc3f7,#44cc44); border:none; border-radius:4px; color:#000; font-weight:700; font-size:13px; cursor:pointer; letter-spacing:1px" data-trl="landing_launch_city">LAUNCH CITY 1M</button>
+      <button id="city-launch-btn" onclick="launchCity()" style="margin-left:16px; padding:6px 20px; background:linear-gradient(90deg,#0277bd,#44cc44); border:none; border-radius:4px; color:#000; font-weight:700; font-size:13px; cursor:pointer; letter-spacing:1px" data-trl="landing_launch_city">LAUNCH CITY 1M</button>
     </div>
   </div>
 
@@ -277,7 +279,11 @@
   &nbsp;&middot;&nbsp;
   <a href="javascript:clearAllCache()" style="color:#ff8a65">Clear Cache</a>
   <div style="margin-top:20px;color:#555;font-size:11px">
-    <span data-trl="landing_created_by">Created by</span> <a href="mailto:red1org@gmail.com" style="color:#4fc3f7;text-decoration:none">Redhuan D. OON</a> (red1) — October 2025
+    <span data-trl="landing_created_by">Created by</span> <a href="mailto:red1org@gmail.com" style="color:#0277bd;text-decoration:none">Redhuan D. OON</a> (red1) — October 2025
+  </div>
+  <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(0,0,0,0.1);font-size:13px;color:#333;letter-spacing:0.5px">
+    <a href="https://www.sysnova.co.uk/" target="_blank" style="text-decoration:none"><strong style="color:#0277bd;font-size:14px;display:block;margin-bottom:3px">Sysnova Information Systems Limited</strong></a>
+    UNITED KINGDOM
   </div>
 </div>
 
@@ -338,42 +344,41 @@ function renderTabs() {
 // Poll for closed tabs
 setInterval(renderTabs, 3000);
 
-// All per-building DBs — direct download, no httpvfs
+// All per-building DBs — single DB per building (S242), no separate library
 const BUILDINGS = {
-  'SampleHouse': { db: 'SampleHouse_extracted.db', lib: 'SampleHouse_library.db' },
-  'BimWhale_Tall': { db: 'BimWhale_Tall_extracted.db', lib: 'BimWhale_Tall_library.db' },
-  'AC90_Jasmin': { db: 'AC90_Jasmin_extracted.db', lib: 'AC90_Jasmin_library.db' },
-  'FZKHaus': { db: 'FZKHaus_extracted.db', lib: 'FZKHaus_library.db' },
-  'Ifc4_FZKHaus': { db: 'FZKHaus_extracted.db', lib: 'FZKHaus_library.db' },
-  'AC90_Niedriha': { db: 'AC90_Niedriha_extracted.db', lib: 'AC90_Niedriha_library.db' },
-  'BimWhale_Basic': { db: 'BimWhale_Basic_extracted.db', lib: 'BimWhale_Basic_library.db' },
-  'VogelGesamt': { db: 'VogelGesamt_extracted.db', lib: 'VogelGesamt_library.db' },
-  'BimWhale_Large': { db: 'BimWhale_Large_extracted.db', lib: 'BimWhale_Large_library.db' },
-  'AC9_HausGH': { db: 'AC9_HausGH_extracted.db', lib: 'AC9_HausGH_library.db' },
-  'HospitalAuckland': { db: 'HospitalAuckland_extracted.db', lib: 'HospitalAuckland_library.db' },
-  'SmileyWest': { db: 'SmileyWest_extracted.db', lib: 'SmileyWest_library.db' },
-  'Jesse': { db: 'Jesse_extracted.db', lib: 'Jesse_library.db' },
-  'AC11Institute': { db: 'AC11Institute_extracted.db', lib: 'AC11Institute_library.db' },
-  'Ifc2x3_AC11Institute': { db: 'AC11Institute_extracted.db', lib: 'AC11Institute_library.db' },
-  'Duplex': { db: 'Duplex_extracted.db', lib: 'Duplex_library.db' },
-  'LTU_AHouse': { db: 'LTU_AHouse_extracted.db', lib: 'LTU_AHouse_library.db' },
-  'Hospital': { db: 'Hospital_extracted.db', lib: 'Hospital_library.db' },
-  'Hospital_3': { db: 'Hospital_3_extracted.db', lib: 'Hospital_3_library.db' },
-  'Terminal': { db: 'Terminal_extracted.db', lib: 'Terminal_library.db' },
-  'Clinic': { db: 'Clinic_extracted.db', lib: 'Clinic_library.db' },
-  'Ifc4_Revit': { db: 'Ifc4_Revit_extracted.db', lib: 'Ifc4_Revit_library.db' },
-  'WBDG_Office': { db: 'WBDG_Office_extracted.db', lib: 'WBDG_Office_library.db' },
-  'HHS_Office_Federated': { db: 'HHS_Office_Federated_extracted.db', lib: 'HHS_Office_Federated_library.db' },
-  'HITOS': { db: 'HITOS_extracted.db', lib: 'HITOS_library.db' },
-  'Esplanades': { db: 'Esplanades_extracted.db', lib: 'Esplanades_library.db' },
-  'HospitalGarage': { db: 'HospitalGarage_extracted.db', lib: 'HospitalGarage_library.db' },
-  'HospitalGarage_2': { db: 'HospitalGarage_2_extracted.db', lib: 'HospitalGarage_2_library.db' },
-  'Schependomlaan': { db: 'Schependomlaan_extracted.db', lib: 'Schependomlaan_library.db' },
-  'SampleCastle': { db: 'SampleCastle_extracted.db', lib: 'SampleCastle_library.db' },
-  'Molio': { db: 'Molio_extracted.db', lib: 'Molio_library.db' },
-  'BimWhale_Advanced': { db: 'BimWhale_Advanced_extracted.db', lib: 'BimWhale_Advanced_library.db' },
+  'SampleHouse': { db: 'SampleHouse_extracted.db' },
+  'BimWhale_Tall': { db: 'BimWhale_Tall_extracted.db' },
+  'AC90_Jasmin': { db: 'AC90_Jasmin_extracted.db' },
+  'FZKHaus': { db: 'FZKHaus_extracted.db' },
+  'Ifc4_FZKHaus': { db: 'FZKHaus_extracted.db' },
+  'AC90_Niedriha': { db: 'AC90_Niedriha_extracted.db' },
+  'BimWhale_Basic': { db: 'BimWhale_Basic_extracted.db' },
+  'VogelGesamt': { db: 'VogelGesamt_extracted.db' },
+  'BimWhale_Large': { db: 'BimWhale_Large_extracted.db' },
+  'AC9_HausGH': { db: 'AC9_HausGH_extracted.db' },
+  'HospitalAuckland': { db: 'HospitalAuckland_extracted.db' },
+  'SmileyWest': { db: 'SmileyWest_extracted.db' },
+  'Jesse': { db: 'Jesse_extracted.db' },
+  'AC11Institute': { db: 'AC11Institute_extracted.db' },
+  'Ifc2x3_AC11Institute': { db: 'AC11Institute_extracted.db' },
+  'Duplex': { db: 'Duplex_extracted.db' },
+  'LTU_AHouse': { db: 'LTU_AHouse_extracted.db' },
+  'Hospital': { db: 'hospital.db' },
+  'Hospital_3': { db: 'Hospital_3_extracted.db' },
+  'Terminal': { db: 'Terminal_extracted.db' },
+  'Clinic': { db: 'Clinic_extracted.db' },
+  'Ifc4_Revit': { db: 'Ifc4_Revit_extracted.db' },
+  'WBDG_Office': { db: 'WBDG_Office_extracted.db' },
+  'HHS_Office_Federated': { db: 'HHS_Office_Federated_extracted.db' },
+  'HITOS': { db: 'HITOS_extracted.db' },
+  'Esplanades': { db: 'Esplanades_extracted.db' },
+  'HospitalGarage': { db: 'HospitalGarage_extracted.db' },
+  'HospitalGarage_2': { db: 'HospitalGarage_2_extracted.db' },
+  'Schependomlaan': { db: 'Schependomlaan_extracted.db' },
+  'SampleCastle': { db: 'SampleCastle_extracted.db' },
+  'Molio': { db: 'Molio_extracted.db' },
+  'BimWhale_Advanced': { db: 'BimWhale_Advanced_extracted.db' },
 };
-const SMALL_BUILDINGS = BUILDINGS;  // backward compat
 
 // Track which buildings the user has viewed (persist in localStorage)
 const _stored = localStorage.getItem('bim_ootb_viewed');
@@ -384,14 +389,14 @@ function saveViewed() {
 }
 
 // DB files served from production bucket — dev only overrides viewer/JS
-const _prodBase = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/';
+const _prodBase = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/';
 
 function openViewer(archName, repBuilding) {
   const bld = BUILDINGS[archName];
   if (!bld) { alert(`No DB for ${archName}`); return; }
   const bldBase = _prodBase + 'buildings/';
   const viewerUrl = _base ? _base + 'sandbox/index.html' : 'sandbox/index.html';
-  const url = viewerUrl + `?db=${bldBase}${bld.db}&lib=${bldBase}${bld.lib}`;
+  const url = viewerUrl + `?db=${bldBase}${bld.db}`; // single DB — lib param retired (S242)
   const win = window.open(url, 'bim_' + archName);
   // window.open returns null if popup is blocked (some mobile browsers)
   if (!win) { location.href = url; return; }
@@ -543,13 +548,33 @@ async function loadManifest() {
       if (el && el.children.length === 0) {
         el.innerHTML = '<div style="padding:20px;color:#ff8844;font-size:13px">&#9888; ' +
           e.message + ' &nbsp;<a href="javascript:location.reload()" ' +
-          'style="color:#4fc3f7">Reload</a></div>';
+          'style="color:#0277bd">Reload</a></div>';
       }
     });
   }
 }
 
 loadManifest();
+
+// ── Discipline from filename (landing-side override for prod worker) ──
+var _VALID_DISCS = ['ARC','STR','MEP','PLB','ACMV','ELEC','FP','VENT','HEAT','SAN','COOL','VOID'];
+var _DISC_ALIAS = {
+  // Short forms from real-world IFC filenames
+  ELE:'ELEC', ELECTRICAL:'ELEC',
+  FIRE:'FP', SPR:'FP', SPRINKLER:'FP',
+  AIR:'ACMV', DUCT:'ACMV', HVAC:'ACMV', MECH:'ACMV', MECHANICAL:'ACMV',
+  ARCHITECTURAL:'ARC', STRUCTURAL:'STR', PLUMBING:'PLB',
+};
+function _discFromFilename(fname) {
+  var stem = fname.replace(/\.(ifc|obj|stl|dae|glb|gltf|3ds|fbx)$/i, '');
+  var parts = stem.split(/[_\-]/);
+  for (var i = parts.length - 1; i >= 0; i--) {
+    var p = parts[i].toUpperCase();
+    if (_VALID_DISCS.indexOf(p) >= 0) return p;
+    if (_DISC_ALIAS[p]) return _DISC_ALIAS[p];
+  }
+  return null;
+}
 
 // ── S224: IFC Import — Versioned IndexedDB, Merge/New, Compare ──
 const IMPORT_DB_NAME = 'bim_ootb_imports';
@@ -683,7 +708,7 @@ async function deleteProject(key) {
     } catch(e) {}
   }
   var bar = document.getElementById('import-progress-bar');
-  if (bar) { bar.style.width = '0%'; bar.style.background = '#4fc3f7'; bar.parentElement.style.display = 'none'; }
+  if (bar) { bar.style.width = '0%'; bar.style.background = '#0277bd'; bar.parentElement.style.display = 'none'; }
   var st = document.getElementById('import-status');
   if (st) st.textContent = '';
   console.log('[S224] §VERSION_DELETE key=' + key + ' versions=' + (record ? record.versions.length : 0));
@@ -700,13 +725,12 @@ async function openProject(key, btnEl, opts) {
     if (btnEl) { btnEl.textContent = 'Open'; btnEl.disabled = false; }
     return;
   }
-  // S225: Open always shows base building (v0). If multi-version, diff against latest.
-  const baseIdx = 0;
-  const base = record.versions[baseIdx];
+  // Always open v0 (combined DB with all merged disciplines)
+  const base = record.versions[0];
   const cacheDb = await openCacheDB();
   if (!cacheDb) { if (btnEl) { btnEl.textContent = 'Open'; btnEl.disabled = false; } return; }
 
-  const dbUrl = 'import://' + key + '/v' + baseIdx;
+  const dbUrl = 'import://' + key + '/v0';
   const libUrl = dbUrl;  // single DB — geometry + metadata in one
   await new Promise(resolve => {
     const tx = cacheDb.transaction(CACHE_STORE, 'readwrite');
@@ -715,20 +739,22 @@ async function openProject(key, btnEl, opts) {
     tx.oncomplete = resolve;
   });
 
-  // S225: Auto-diff — if multi-version AND latest is a revision, pass as diffdb
-  // Direction: base=v0 (original), diffdb=v_latest (revision) → added = new elements
+  // Variance: only if a 'revised' version exists — diff v0 (combined) against revision snapshot
   var diffParam = '';
-  var latestKey = record.versions[record.latestVersion] ? record.versions[record.latestVersion].key : '';
-  var latestIsRevision = /revised/i.test(latestKey);
-  if (record.versions.length > 1 && record.latestVersion > 0 && latestIsRevision) {
-    var latestUrl = 'import://' + key + '/v' + record.latestVersion;
-    await new Promise(resolve => {
-      const tx2 = cacheDb.transaction(CACHE_STORE, 'readwrite');
-      tx2.objectStore(CACHE_STORE).put(record.versions[record.latestVersion].db, latestUrl);
-      tx2.oncomplete = resolve;
-    });
-    diffParam = '&diffdb=' + encodeURIComponent(latestUrl);
-    console.log('[S225] §OPEN_DIFF key=' + key + ' base=v0 diff=v' + record.latestVersion);
+  if (record.versions.length > 1) {
+    for (var vi = 1; vi < record.versions.length; vi++) {
+      if (/revised/i.test(record.versions[vi].key || '')) {
+        var revUrl = 'import://' + key + '/v' + vi;
+        await new Promise(resolve => {
+          const tx2 = cacheDb.transaction(CACHE_STORE, 'readwrite');
+          tx2.objectStore(CACHE_STORE).put(record.versions[vi].db, revUrl);
+          tx2.oncomplete = resolve;
+        });
+        diffParam = '&diffdb=' + encodeURIComponent(revUrl);
+        console.log('[S225] §OPEN_DIFF key=' + key + ' base=v0(combined) diff=v' + vi + '(revised)');
+        break;
+      }
+    }
   }
 
   // S230: Add wizard param for mesh imports (S230b: skip if already completed)
@@ -898,7 +924,7 @@ async function renderImportCards() {
 
     // Build button row — S230b: Save opens export flyout (IFC or DB), triangle removed
     var buttons = '<button class="open-btn" style="flex:1" data-open="' + proj.key + '">Open</button>';
-    buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(68,204,68,0.1);border-color:rgba(68,204,68,0.2);color:#44cc44;font-size:10px" data-save="' + proj.key + '">Save</button>';
+    buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(76,175,80,0.15);border-color:rgba(76,175,80,0.3);color:#4caf50;font-size:10px" data-share="' + proj.key + '">Share</button>';
     buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + proj.key + '">x</button>';
 
     card.innerHTML =
@@ -908,7 +934,21 @@ async function renderImportCards() {
       '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">' + buttons + '</div>';
 
     card.querySelector('[data-open]').onclick = function() { openProject(this.dataset.open, this); };
-    card.querySelector('[data-save]').onclick = function(e) { e.stopPropagation(); showExportFlyout(this, this.dataset.save); };
+    card.querySelector('[data-share]').onclick = function(e) {
+      e.stopPropagation();
+      var shareKey = this.dataset.share;
+      window.A = window.A || {};
+      A._getImport = getProject;
+      A.CONTRIBUTE_PAR = A.CONTRIBUTE_PAR || '';
+      A.exportIFC = function(k) { exportProjectIFC(k); };
+      if (!document._shareLoaded) {
+        var script = document.createElement('script');
+        script.src = 'sandbox/share.js?v=1';
+        script.onload = function() { document._shareLoaded = true; A.openShareSheet(shareKey); };
+        script.onerror = function() { alert('Failed to load share module'); };
+        document.head.appendChild(script);
+      } else { A.openShareSheet(shareKey); }
+    };
     card.querySelector('[data-del]').onclick = function(e) {
       e.stopPropagation();
       var k = this.dataset.del;
@@ -941,7 +981,7 @@ async function handleImportFile(file) {
   status.textContent = 'Reading ' + file.name + ' (' + sizeMB + 'MB)...';
   progressBar.parentElement.style.display = 'block';
   progressBar.style.width = '0%';
-  progressBar.style.background = '#4fc3f7';
+  progressBar.style.background = '#0277bd';
 
   if (file.size > 200 * 1024 * 1024) status.textContent = 'Very large (' + sizeMB + 'MB) — may take a few minutes';
 
@@ -976,10 +1016,23 @@ async function handleImportFile(file) {
           });
         }
         const SQL = await initSqlJs({ locateFile: f => 'https://sql.js.org/dist/' + f });
+
+        // Implementing DropIFCMergeNoVarianceDISC.md §3 — discipline from filename override
+        var _fnDisc = _discFromFilename(file.name);
+        if (_fnDisc && msg.elements) {
+          var discBefore = Object.assign({}, msg.meta.disciplines || {});
+          msg.meta.disciplines = {};
+          for (var ei = 0; ei < msg.elements.length; ei++) {
+            msg.elements[ei].discipline = _fnDisc;
+          }
+          msg.meta.disciplines[_fnDisc] = msg.elements.length;
+          console.log('[S224] §DISC_OVERRIDE filename=' + file.name + ' disc=' + _fnDisc + ' elements=' + msg.elements.length);
+        }
+
         const dbs = buildImportDBs(SQL, msg);
         const dbBuf = dbs.extractedDb;
 
-        // S224: Check existing projects — always prompt Merge/New if any exist
+        // S224: Check existing projects — prompt Merge/New if any exist
         const existingProjects = await listProjects();
         var projectKey = file.name;  // default: new project keyed by filename
 
@@ -988,25 +1041,65 @@ async function handleImportFile(file) {
           const choice = await showMergeModal(existingProjects, file.name);
 
           if (choice.action === 'merge') {
-            // Merge: append version to existing project
             var targetKey = choice.target;
             var existing = await getProject(targetKey);
             if (existing) {
-              existing.versions.push({ key: file.name, importDate: new Date().toISOString(), db: dbBuf });
-              existing.latestVersion = existing.versions.length - 1;
-              // Aggregate meta: merge disciplines, update element count
+              // Always combine new elements into existing DB (multi-disc merge)
+              var baseIdx = existing.latestVersion || 0;
+              var existBuf = existing.versions[baseIdx].db;
+              var existDb = new SQL.Database(new Uint8Array(existBuf));
+              var newDb = new SQL.Database(new Uint8Array(dbBuf));
+
+              // Normalize building name: new file must match existing project's building
+              // Without this, viewer's WHERE building=? never finds merged elements
+              var existBldRows = existDb.exec("SELECT DISTINCT building FROM elements_meta LIMIT 1");
+              var existBldName = (existBldRows.length && existBldRows[0].values.length) ? existBldRows[0].values[0][0] : targetKey.replace(/\.ifc$/i,'');
+              newDb.run("UPDATE elements_meta SET building = ?", [existBldName]);
+              newDb.run("UPDATE component_geometries SET building = ?", [existBldName]);
+              console.log('[S224] §MERGE_NORMALIZE building=' + existBldName + ' file=' + file.name);
+
+              var _mergeTables = [
+                { name: 'elements_meta', cols: 'guid, ifc_class, element_name, storey, discipline, material_name, material_rgba, building' },
+                { name: 'element_transforms', cols: 'guid, center_x, center_y, center_z, rotation_x, rotation_y, rotation_z, bbox_x, bbox_y, bbox_z' },
+                { name: 'element_instances', cols: 'guid, geometry_hash' },
+                { name: 'component_geometries', cols: 'geometry_hash, vertices, faces, building' },
+              ];
+              for (var ti = 0; ti < _mergeTables.length; ti++) {
+                var tbl = _mergeTables[ti];
+                var placeholders = tbl.cols.split(', ').map(function() { return '?'; }).join(',');
+                try {
+                  var rows = newDb.exec('SELECT ' + tbl.cols + ' FROM ' + tbl.name);
+                  if (rows.length > 0) {
+                    var ins = existDb.prepare('INSERT OR IGNORE INTO ' + tbl.name + ' VALUES (' + placeholders + ')');
+                    for (var ri = 0; ri < rows[0].values.length; ri++) ins.run(rows[0].values[ri]);
+                    ins.free();
+                  }
+                } catch(mergeErr) { console.log('[S224] §MERGE_TABLE_SKIP ' + tbl.name + ': ' + mergeErr.message); }
+              }
+              newDb.close();
+              var combinedBuf = existDb.export().buffer;
+              existDb.close();
+              existing.versions[baseIdx].db = combinedBuf;
+
+              // If 'revised', also keep the new file's DB as a separate version for variance
+              var isRevised = /revised/i.test(file.name);
+              if (isRevised) {
+                existing.versions.push({ key: file.name, importDate: new Date().toISOString(), db: dbBuf });
+                existing.latestVersion = existing.versions.length - 1;
+                console.log('[S224] §MERGE_REVISION target=' + targetKey + ' version=v' + existing.versions.length);
+              }
+              console.log('[S224] §MERGE_COMBINE target=' + targetKey + ' added=' + msg.meta.elementCount + ' elements from ' + file.name);
+              // Aggregate meta
               var newDiscs = msg.meta.disciplines || {};
               var oldDiscs = existing.meta.disciplines || {};
               for (var d in newDiscs) { oldDiscs[d] = (oldDiscs[d] || 0) + newDiscs[d]; }
               existing.meta.disciplines = oldDiscs;
               existing.meta.elementCount = (existing.meta.elementCount || 0) + (msg.meta.elementCount || 0);
               await saveProject(targetKey, existing);
-              var vNum = existing.versions.length;
-              console.log('[S224] §MERGE_ACCEPT target=' + targetKey + ' version=v' + vNum + ' elements=' + msg.meta.elementCount);
-              status.textContent = 'Merged as v' + vNum + ' into ' + targetKey;
+              status.textContent = 'Merged ' + (msg.meta.elementCount || 0) + ' elements into ' + targetKey;
               progressBar.style.width = '100%';
               progressBar.style.background = '#44cc44';
-              setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#4fc3f7'; progressBar.parentElement.style.display = 'none'; }, 3000);
+              setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#0277bd'; progressBar.parentElement.style.display = 'none'; }, 3000);
               renderImportCards();
               worker.terminate();
               return;
@@ -1028,7 +1121,7 @@ async function handleImportFile(file) {
         status.textContent = 'Imported ' + msg.meta.elementCount + ' elements — see your building below \u2193';
         progressBar.style.width = '100%';
         progressBar.style.background = '#44cc44';
-        setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#4fc3f7'; progressBar.parentElement.style.display = 'none'; }, 3000);
+        setTimeout(function() { status.textContent = ''; progressBar.style.width = '0%'; progressBar.style.background = '#0277bd'; progressBar.parentElement.style.display = 'none'; }, 3000);
 
         renderImportCards();
       } catch(dbErr) {
@@ -1053,7 +1146,7 @@ async function handleImportFile(file) {
 const dropZone = document.getElementById('import-zone');
 const fileInput = document.getElementById('import-file-input');
 if (dropZone) {
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#4fc3f7'; });
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#0277bd'; });
   dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'rgba(79,195,247,0.3)'; });
   dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = 'rgba(79,195,247,0.3)'; handleImportFile(e.dataTransfer.files[0]); });
   dropZone.addEventListener('click', () => { if (fileInput) fileInput.click(); });
@@ -1073,11 +1166,11 @@ function showExportFlyout(triggerEl, projectKey) {
   var flyout = document.createElement('div');
   flyout.className = 'export-flyout';
   flyout.innerHTML =
-    '<div style="color:#4fc3f7;font-size:11px;font-weight:600;margin-bottom:8px">Export as:</div>' +
+    '<div style="color:#0277bd;font-size:11px;font-weight:600;margin-bottom:8px">Export as:</div>' +
     '<label><input type="radio" name="ef" value="ifc" checked> IFC (.ifc)</label>' +
     '<label><input type="radio" name="ef" value="db"> SQLite (.db)</label>' +
     '<div class="ef-row">' +
-      '<button class="ef-btn" style="background:rgba(79,195,247,0.15);border-color:rgba(79,195,247,0.3);color:#4fc3f7" data-go>Download</button>' +
+      '<button class="ef-btn" style="background:rgba(79,195,247,0.15);border-color:rgba(79,195,247,0.3);color:#0277bd" data-go>Download</button>' +
       '<button class="ef-btn" style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);color:#888" data-cancel>Cancel</button>' +
     '</div>' +
     '<div class="ef-status" style="color:#aaa;font-size:10px;margin-top:6px"></div>';
@@ -1177,23 +1270,39 @@ async function exportProjectIFC(projectKey, flyout) {
     }
   } catch(e) {}
 
-  // Read geometries (join instances → geometries)
+  // Read guid→hash map + geometries in batches (avoids OOM on large buildings)
+  var guidHashMap = {};
   try {
-    var geoRows = db.exec("SELECT ei.guid, cg.vertices, cg.faces FROM element_instances ei JOIN component_geometries cg ON ei.geometry_hash = cg.geometry_hash");
-    if (geoRows.length > 0) {
-      for (var r = 0; r < geoRows[0].values.length; r++) {
-        var row = geoRows[0].values[r];
-        geometries.push({ guid: row[0], vertices: row[1], faces: row[2] });
+    var instRows = db.exec("SELECT guid, geometry_hash FROM element_instances WHERE geometry_hash IS NOT NULL");
+    if (instRows.length > 0) {
+      for (var r = 0; r < instRows[0].values.length; r++) {
+        guidHashMap[instRows[0].values[r][0]] = instRows[0].values[r][1];
       }
     }
-  } catch(e) {}
+    // Load unique geometries in batches using exec (compatible with all sql.js versions)
+    var usedHashes = Object.values(guidHashMap).filter(function(v,i,a) { return a.indexOf(v) === i; });
+    statusEl.textContent = 'Loading ' + usedHashes.length + ' unique geometries...';
+    var BATCH = 200;
+    for (var bi = 0; bi < usedHashes.length; bi += BATCH) {
+      var chunk = usedHashes.slice(bi, bi + BATCH);
+      var ph = chunk.map(function(h) { return "'" + h + "'"; }).join(',');
+      var geoRows = db.exec("SELECT geometry_hash, vertices, faces FROM component_geometries WHERE geometry_hash IN (" + ph + ")");
+      if (geoRows.length > 0) {
+        for (var r = 0; r < geoRows[0].values.length; r++) {
+          var row = geoRows[0].values[r];
+          geometries.push({ hash: row[0], vertices: row[1], faces: row[2] });
+        }
+      }
+      if (bi % 2000 === 0 && bi > 0) statusEl.textContent = 'Loading geometries... ' + Math.round(bi/usedHashes.length*100) + '%';
+    }
+  } catch(e) { console.error('Geo load error:', e); }
 
   db.close();
 
   statusEl.textContent = 'Building IFC (' + elements.length + ' elements)...';
 
   // Send to export worker
-  var worker = new Worker('sandbox/ifc_export_worker.js?v=1');
+  var worker = new Worker('sandbox/ifc_export_worker.js?v=2');
   worker.onmessage = function(e) {
     var msg = e.data;
     if (msg.type === 'progress') {
@@ -1226,7 +1335,7 @@ async function exportProjectIFC(projectKey, flyout) {
     worker.terminate();
   };
 
-  worker.postMessage({ elements: elements, transforms: transforms, geometries: geometries, meta: meta });
+  worker.postMessage({ elements: elements, transforms: transforms, geometries: geometries, guidHashMap: guidHashMap, meta: meta });
 }
 </script>
 <script>if(new URLSearchParams(location.search).has('ignore-me'))localStorage.setItem('goatcounter-ignore','t')</script>
@@ -1235,7 +1344,7 @@ async function exportProjectIFC(projectKey, flyout) {
 <!-- About dialog -->
 <div id="about-dialog" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);justify-content:center;align-items:center" onclick="if(event.target===this)this.classList.remove('active')">
   <div style="background:rgba(10,10,30,0.97);border-radius:14px;padding:24px 28px;border:1px solid rgba(79,195,247,0.3);font-family:'Segoe UI',sans-serif;color:#e0e0e0;max-width:380px;width:90%;max-height:85vh;overflow-y:auto;text-align:center">
-    <div style="font-size:36px;margin-bottom:4px">&#127963;&#65039;</div>
+    <img src="Sysnova.png" alt="Sysnova" style="height:50px;margin-bottom:8px;background:#f5f0e0;border-radius:6px;padding:4px 10px">
     <div style="font-size:20px;font-weight:700;color:#e0e0e0">BIM</div>
     <div style="font-size:12px;letter-spacing:3px;color:#888;margin-bottom:6px">Out Of The Box</div>
     <div style="color:#888;font-size:11px;margin-bottom:8px">Version 0.6 alpha (October 2025 &#8211; April 2026)</div>
@@ -1264,13 +1373,13 @@ async function exportProjectIFC(projectKey, flyout) {
       <div style="color:#999;font-size:10px;line-height:1.5">Java BOM engine: 2.1M lines &#8226; Python: 2.7M lines<br>SQL rules: 644K lines. Same two-DB output format.</div>
     </div>
 
-    <div style="color:#666;font-size:10px;margin-bottom:8px">&#169; 2025 Redhuan D. Oon. GPL-3.0 / MIT.</div>
+    <div style="color:#888;font-size:10px;margin-bottom:4px">Copyright &#169; 2006 Redhuan D. Oon. MIT License.</div>
+    <div style="color:#666;font-size:9px;line-height:1.4;margin-bottom:10px;padding:4px 8px;background:rgba(255,255,255,0.03);border-radius:4px">Permission is hereby granted, free of charge, to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of this software, subject to the above copyright notice and this permission notice.</div>
     <div style="display:flex;justify-content:center;gap:12px;font-size:11px;margin-bottom:8px">
-      <a href="mailto:red1org@gmail.com" style="color:#4fc3f7;text-decoration:none">&#9993; Email</a>
-      <a href="https://github.com/red1oon/BIMCompiler" target="_blank" style="color:#4fc3f7;text-decoration:none">&#11088; GitHub</a>
-      <a href="https://github.com/red1oon/BIMCompiler/issues" target="_blank" style="color:#4fc3f7;text-decoration:none">&#128221; Issues</a>
+      <a href="mailto:red1org@gmail.com" style="color:#0277bd;text-decoration:none">&#9993; Email</a>
+      <a href="https://github.com/red1oon/BIMCompiler" target="_blank" style="color:#0277bd;text-decoration:none">&#11088; GitHub</a>
+      <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.remove('active');if(window.APP&&APP.reportBug)APP.reportBug();else window.open('https://github.com/red1oon/BIMCompiler/issues/new?labels=bug','_blank')" style="color:#ff8a65;text-decoration:none">&#128027; Report Bug</a>
     </div>
-    <a href="https://red1oon.github.io/BIMCompiler/AboutMore/" target="_blank" style="color:#4fc3f7;font-size:11px;text-decoration:none">&#128214; READ MORE &#8212; Technical Overview</a><br>
     <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.remove('active');document.getElementById('diy-dialog').classList.add('active')" style="color:#e8a735;font-size:11px;text-decoration:none;cursor:pointer">&#128736; DIY Downloader</a>
   </div>
 </div>
@@ -1286,7 +1395,7 @@ async function exportProjectIFC(projectKey, flyout) {
     <div style="text-align:left;margin-bottom:16px;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px">
       <div style="color:#e8a735;font-size:11px;font-weight:700;margin-bottom:8px">WHAT YOU GET:</div>
       <div style="color:#ccc;font-size:11px;line-height:1.8">
-        &#10003; Complete BIM viewer (~4MB download)<br>
+        &#10003; Complete BIM viewer (~49MB download, ~4MB viewer)<br>
         &#10003; Libraries loaded from CDN on first use, then cached<br>
         &#10003; Drop IFC / OBJ / DAE / GLB files to view<br>
         &#10003; BOQ, 2D Plans, Section Cut, Walk Mode<br>
@@ -1315,8 +1424,8 @@ async function exportProjectIFC(projectKey, flyout) {
 
     <div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)">
       <div style="color:#555;font-size:9px;margin-bottom:8px">
-        &#169; 2025-2026 <a href="mailto:red1org@gmail.com" style="color:#4fc3f7;text-decoration:none">Redhuan D. Oon</a> (red1). MIT Licensed.<br>
-        Supported by <a href="https://sysnova.co.uk" target="_blank" style="color:#4fc3f7;text-decoration:none">SYSNOVA UK</a>
+        &#169; 2025-2026 <a href="mailto:red1org@gmail.com" style="color:#0277bd;text-decoration:none">Redhuan D. Oon</a> (red1). MIT Licensed.<br>
+        Supported by <a href="https://www.sysnova.co.uk" target="_blank" style="color:#0277bd;text-decoration:none">Sysnova Information Systems Limited</a>
       </div>
       <a href="javascript:void(0)" onclick="document.getElementById('diy-dialog').classList.remove('active')" style="color:#888;font-size:11px;text-decoration:none;cursor:pointer">Close</a>
     </div>
@@ -1325,7 +1434,6 @@ async function exportProjectIFC(projectKey, flyout) {
 
 <script>
 function downloadDIYScript() {
-  // Detect platform and offer the right script
   var isWin = navigator.platform.indexOf('Win') > -1;
   var script, filename, mime;
 
@@ -1355,12 +1463,10 @@ function downloadDIYScript() {
       '  echo [OK] Python found.',
       ')',
       '',
-      'REM Create folder',
       'set DEST=%USERPROFILE%\\bim-ootb',
       'if not exist "%DEST%" mkdir "%DEST%"',
       'cd /d "%DEST%"',
       '',
-      'REM Download viewer',
       'echo Downloading BIM OOTB viewer...',
       'curl -sL -o bim-ootb.zip "https://github.com/red1oon/BIMCompiler/archive/refs/heads/full.zip"',
       'if errorlevel 1 (',
@@ -1369,17 +1475,15 @@ function downloadDIYScript() {
       '  exit /b 1',
       ')',
       '',
-      'REM Extract',
       'echo Extracting...',
-      'tar -xf bim-ootb.zip --strip-components=2 "BIMCompiler-full/deploy/dev"',
+      'powershell -Command "Expand-Archive -Path bim-ootb.zip -DestinationPath _tmp -Force"',
+      'xcopy /s /e /y _tmp\\BIMCompiler-full\\deploy\\dev\\* . >nul',
+      'rmdir /s /q _tmp',
       'del bim-ootb.zip',
       '',
       'echo.',
-      'echo ============================================',
       'echo   BIM OOTB installed to: %DEST%',
       'echo   Starting server on http://localhost:8080',
-      'echo   Drop any .ifc file onto the page to view!',
-      'echo ============================================',
       'echo.',
       'start http://localhost:8080',
       'python -m http.server 8080',
@@ -1399,57 +1503,34 @@ function downloadDIYScript() {
       'echo "============================================"',
       'echo ""',
       '',
-      '# Check Python 3',
       'if command -v python3 &>/dev/null; then',
       '  echo "[OK] Python 3 found: $(python3 --version)"',
       'else',
       '  echo "[!] Python 3 not found. Installing..."',
       '  if [[ "$OSTYPE" == "darwin"* ]]; then',
-      '    if command -v brew &>/dev/null; then',
-      '      brew install python3',
-      '    else',
-      '      echo "[!] Install Homebrew first: https://brew.sh"',
-      '      echo "    Then re-run this script."',
-      '      exit 1',
-      '    fi',
+      '    if command -v brew &>/dev/null; then brew install python3',
+      '    else echo "[!] Install Homebrew first: https://brew.sh"; exit 1; fi',
       '  else',
       '    sudo apt-get update && sudo apt-get install -y python3 || \\',
-      '    sudo dnf install -y python3 || \\',
-      '    sudo pacman -S --noconfirm python',
+      '    sudo dnf install -y python3 || sudo pacman -S --noconfirm python',
       '  fi',
       '  echo "[OK] Python 3 installed."',
       'fi',
       '',
-      '# Create folder',
       'DEST="$HOME/bim-ootb"',
-      'mkdir -p "$DEST"',
-      'cd "$DEST"',
-      '',
-      '# Download viewer',
+      'mkdir -p "$DEST" && cd "$DEST"',
       'echo "Downloading BIM OOTB viewer..."',
       'curl -sL -o bim-ootb.zip "https://github.com/red1oon/BIMCompiler/archive/refs/heads/full.zip"',
-      '',
-      '# Extract deploy/dev/ only',
       'echo "Extracting..."',
       'unzip -qo bim-ootb.zip "BIMCompiler-full/deploy/dev/*" -d _tmp',
-      'cp -r _tmp/BIMCompiler-full/deploy/dev/* .',
-      'rm -rf _tmp bim-ootb.zip',
+      'cp -r _tmp/BIMCompiler-full/deploy/dev/* . && rm -rf _tmp bim-ootb.zip',
       '',
       'echo ""',
-      'echo "============================================"',
       'echo "  BIM OOTB installed to: $DEST"',
       'echo "  Starting server on http://localhost:8080"',
-      'echo "  Drop any .ifc file onto the page to view!"',
-      'echo "============================================"',
       'echo ""',
-      '',
-      '# Open browser',
-      'if [[ "$OSTYPE" == "darwin"* ]]; then',
-      '  open http://localhost:8080 &',
-      'elif command -v xdg-open &>/dev/null; then',
-      '  xdg-open http://localhost:8080 &',
-      'fi',
-      '',
+      'if [[ "$OSTYPE" == "darwin"* ]]; then open http://localhost:8080 &',
+      'elif command -v xdg-open &>/dev/null; then xdg-open http://localhost:8080 &; fi',
       'python3 -m http.server 8080',
     ].join('\n');
   }
@@ -1460,7 +1541,6 @@ function downloadDIYScript() {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
-
   document.getElementById('diy-download-btn').textContent = '\u2705 Downloaded! Run the script to install.';
   document.getElementById('diy-download-btn').style.background = '#44cc44';
 }
@@ -1477,6 +1557,7 @@ window.addEventListener('trl-ready', function() {
   }
 });
 </script>
+
 
 </body>
 </html>
