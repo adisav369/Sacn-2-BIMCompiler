@@ -405,43 +405,73 @@ locales/{code}.js     = _TRL_LOCALE (full override: labels + rates + currency)
 3. Country locale — `locales/{code}.js`
 4. `_TRL_DEFAULTS` (en_MY base in `rates.js`)
 
-### Phase 1: Locale loader + flag selector
-1. Write `deploy/dev/locale_loader.js` — reads `localStorage bim_ootb_lang` or `?lang=`,
-   loads `locales/{code}.js`, deep-merges `_TRL_LOCALE` over `_TRL_DEFAULTS`,
-   applies `_TRL_LOCALE.rates` → overwrites global RATES/LABOR_RATES/etc.
-2. Flag selector in toolbar (ISO code → flag emoji via `String.fromCodePoint`)
-3. `localStorage` persistence, `&lang=xx` propagation to boq_charts
-4. All pages load: `rates.js` → `locale_loader.js` → page-specific JS
+### Phase 1: DONE (S226a session) — Locale loader + flag selector + rate JSONs
+**Completed:**
+- `locale_loader.js` — detects locale (URL param > localStorage > browser lang),
+  fetches ONE locale file (lazy load), deep-merges over `_TRL_DEFAULTS`,
+  overrides RATES/LABOR_RATES/EQUIPMENT_RATES, caches in localStorage 7 days
+- Flag picker popup — 18 locales, current flag highlighted, click=reload
+- `data-trl`, `data-trl-title`, `data-trl-placeholder` DOM binding
+- `_trl(key, {var})` template string helper
+- `bim_ootb_config` localStorage persistence
+- 16 country rate JSONs in `deploy/dev/rates/`:
+  cidb2024_my, bcis2024_uk, rsmeans2024_us, rawlinsons2024_au, bki2024_de,
+  untec2024_fr, cype2024_es, gb50500_cn, dpt2024_th, jbci2024_jp,
+  kict2024_kr, aramco2024_sa, sinapi2024_br, sni2024_id, asaqs2024_za, pwd2024_bd
+  (each: 50 IFC materials, 10 trades, 6 equipment, sequence, work_packages, provisions)
+- `LOCALE_RATE_MAP` in rates.js — maps locale code → rate JSON (auto-loads correct rates)
+- `initRateTemplate()` priority: ?rates= > locale mapping > cidb2024_my
+- `_syncCur()` — CUR/CUR2/CUR_RATE as `var` (not const) so locale overrides take effect
+- Test spec: `26-locale-currency.spec.js` — 6 tests, all PASS
+- 🏠 Home + 🌐 Flag buttons on all 4 standalone pages:
+  boq_charts.html, mep_report.html, clash_report.html, 2d.html
 
-### Phase 2: Viewer page (`index.html`)
-1. Replace all hardcoded strings (see File 1 audit above)
-2. Add flag selector to toolbar
-3. Wire `_TRL.*` for all panel titles, tooltips, buttons, status messages
+**Architecture (final):**
+```
+rates.js              = hardcoded CIDB fallback + LOCALE_RATE_MAP + initRateTemplate()
+rates/{region}.json   = full rate template per country (materials+labor+equipment+sequence)
+locales/{code}.js     = _TRL_LOCALE (labels + currency + rates + attribution)
+locale_loader.js      = detects locale, fetches ONE locale, deep-merges, fires trl-ready
+```
 
-### Phase 3: JS modules
-Apply `_TRL.*` to each file in order:
-1. `panels.js` (3 strings — quick win)
-2. `main.js` (1 string)
-3. `import.js` (5 strings)
-4. `city.js` (5 strings)
-5. `nlp.js` (6 strings + currency fix)
-6. `walk.js` (7 strings)
-7. `sitecam.js` (7 strings)
-8. `variation_order.js` (15+ strings)
+### Phase 2: DONE — boq_charts.html (4D/5D)
+**Completed:**
+- All chart titles, axis labels, legend labels → `_TRL.*`
+- BOQ table headers (Disc, IFC Class, Storey, Qty, etc.) → `_TRL.*`
+- Summary footer (Building, Elements, Material/Labour/Equipment, Grand Total, Duration) → `_TRL.*`
+- Info bar → `_TRL.*`
+- Gantt chart height dynamic (scales with task count)
+- Waits for `trl-ready` before `init()` — locale merged before render
+- MEP button → charts-first layout
+- Dual currency display retained in Excel (CUR2 column) for professional BOQ export
 
-Each JS file accesses `_TRL` as a global (loaded by index.html before modules).
+### Phase 3: DONE — mep_report.html
+**Completed:**
+- All labels translated via `_t(key, fallback)` helper
+- Chart titles, legend labels, stat cards, table headers, summary rows → `_TRL.*`
+- Charts moved above tables (first thing user sees)
+- Uses `initRateTemplate()` (locale-aware)
+- Waits for `trl-ready` before rendering
+- locale_loader.js loaded
 
-### Phase 4: boq_charts.html remaining
-1. Title and h1 → `_TRL.source_app`
-2. Status messages → `_TRL.ui_*`
-3. Move `_TRL_DEFAULTS` to shared locale loader (rates.js already extracted)
+### Phase 4: TODO — Viewer JS modules (~30 new _TRL keys needed)
+Priority files with remaining hardcoded English strings:
+1. **measure.js** — ~15 strings (clash matrix status, measure hints, report generation)
+2. **city.js** — ~7 strings (building loaded, unknown building, no DB, etc.)
+3. **import.js** — ~5 strings (alert messages: building not found, no DB data)
+4. **main.js** — ~4 strings (2D desktop-only, close measure, back online, offline mode)
+5. **tools.js** — ~3 strings (select building first, screenshot saved, analytics opened)
+6. **walk.js** — DONE (all use _TRL)
+7. **nlp.js** — DONE (all use _TRL)
+8. **sitecam.js** — mostly done
+9. **panels.js** — needs 3 strings
+10. **variation_order.js** — mostly done
 
-### Phase 5: Verify
-- Load each locale via `?lang=xx`
-- `§TRL_VERIFY` log: all PASS
-- `§MATHS_VERIFY` log: all PASS
-- `§TRL_NO_HARDCODE`: no RM/USD leaks when locale is non-default
-- Visual: charts readable, pie round, labels in target language
+### Phase 5: TODO — Verify end-to-end
+- Load each locale via flag picker on OCI dev
+- Verify: currency symbol correct, chart labels translated, rates match country
+- Run `26-locale-currency.spec.js` + existing test suite
+- No English leaks in non-English locale (leak detection test)
 - Rate override: `?lang=en_US` → USD rates in Excel, $ in charts
 
 ---

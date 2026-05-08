@@ -34,12 +34,15 @@
 <div class="toolbar">
   <button onclick="_shareReport()">Share Report</button>
   <button onclick="_copyUrl(this)" title="Copy shareable link">&#128203;</button>
+  <button id="header-flag-btn" onclick="window._TRL_LOADER&&_TRL_LOADER.openFlagPicker()" title="Change locale" style="font-size:18px">&#127760;</button>
+  <button onclick="location.href='/'" title="Home" style="font-size:18px">&#127968;</button>
 </div>
 
 <div id="report-content">Loading...</div>
 <div id="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.js"></script>
+<script src="locale_loader.js?v=6"></script>
 
 <script>
 var params = new URLSearchParams(location.search);

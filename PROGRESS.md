@@ -20,6 +20,19 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S226a DONE (2026-05-08): Localisation — rate JSONs + locale wiring + flag picker.**
+  - 16 country rate JSONs (`deploy/dev/rates/`): MY, UK, US, AU, DE, FR, ES, CN, TH, JP, KR, SA, BR, ID, ZA, BD.
+  - Each: 50 IFC materials, 10 trades, 6 equipment, full sequence/work_packages/provisions — all in native currency.
+  - `LOCALE_RATE_MAP` in rates.js — auto-loads correct rate JSON per locale.
+  - `_syncCur()` fix — CUR/CUR2/CUR_RATE as `var` so locale overrides work at render time.
+  - boq_charts.html: BOQ table headers, summary footer, chart axis/legend labels all `_TRL.*`.
+  - mep_report.html: all labels translated, charts-first layout, `initRateTemplate()` locale-aware, waits for `trl-ready`.
+  - 🏠 Home + 🌐 Flag buttons on boq_charts, mep_report, clash_report, 2d.
+  - `locale_loader.js` added to mep_report + clash_report.
+  - Gantt chart height dynamic (scales with bar count).
+  - Test: `26-locale-currency.spec.js` — 6/6 PASS.
+  - **Next:** Phase 4 — translate ~30 remaining hardcoded strings in viewer JS modules (measure.js, city.js, import.js, main.js, tools.js, panels.js). See `prompts/S226_localisation.md` §Phase 4.
+
 **S250b DONE (2026-05-07): Scissors-driven adaptive grids (2D_025 D1).**
   - `grid_scissors.js`: new module — 3-axis cut detection, debounced slider, dispose/restore lifecycle.
   - `grid_dims.js`: `detectGridsAtPlane(db, cutZ)` + hoisted filter/thin, sequential relabelling, IfcBeam/IfcMember.

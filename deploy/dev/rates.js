@@ -3,12 +3,19 @@
  * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
  * SPDX-License-Identifier: MIT
  */
-// rates.js — Single source of truth for CIDB 2024 cost data
+// rates.js — Rate template loader + fallback hardcoded CIDB 2024 data
+// Implementing MEP_5D_QTO.md §1.1–1.2 — Witness: W-QTO_RATES
 // Used by: boq_charts.html, variation_order.js, nlp.js
 // Do NOT duplicate these constants — import this file instead.
 
 // ============================================================================
-// CIDB 2024 MATERIAL RATES (from boq_export.py — exact match)
+// RATE TEMPLATE METADATA (populated after JSON load, null = hardcoded fallback)
+// ============================================================================
+var RATE_TEMPLATE_META = null;
+var RATE_TEMPLATE_NAME = null;  // e.g. 'cidb2024_my'
+
+// ============================================================================
+// CIDB 2024 MATERIAL RATES — hardcoded fallback (from boq_export.py)
 // ============================================================================
 var RATES = {
   IfcDuct:{rate:165,unit:'M',desc:'Galvanized Steel Ductwork (avg 400mm)'},
@@ -58,6 +65,7 @@ var RATES = {
   IfcValve:{rate:280,unit:'EA',desc:'Pipe Valve'},
   IfcAlarm:{rate:350,unit:'EA',desc:'Fire Alarm Device'},
   IfcController:{rate:1200,unit:'EA',desc:'Building Controller'},
+  IfcRamp:{rate:3200,unit:'EA',desc:'Ramp'},
   IfcRampFlight:{rate:3500,unit:'EA',desc:'Ramp Flight'},
   IfcBuildingElementPart:{rate:0,unit:'EA',desc:'Building Element Part'},
 };
@@ -69,8 +77,14 @@ function getRate(ifcClass) {
   return r ? r.rate : RATES_DEFAULT.rate;
 }
 
+// Helper: get SMM section for an IFC class (populated from JSON template)
+function getSMMSection(ifcClass) {
+  var r = RATES[ifcClass];
+  return r && r.smm_section ? r.smm_section : '';
+}
+
 // ============================================================================
-// LABOR RATES (from boq_export.py — full trade/crew/rate_per_day)
+// LABOR RATES — hardcoded fallback (from boq_export.py)
 // ============================================================================
 var LABOR_RATES = {
   HVAC_TECH: {
@@ -91,7 +105,7 @@ var LABOR_RATES = {
   },
   CONCRETE_GANG: {
     rate_per_day: 145, crew_size: 6, trade: 'Concrete Gang (Mixed)',
-    productivity: {IfcSlab:35,IfcFooting:6,IfcPile:4,IfcReinforcingBar:50,IfcRampFlight:3}
+    productivity: {IfcSlab:35,IfcFooting:6,IfcPile:4,IfcReinforcingBar:50,IfcRamp:3,IfcRampFlight:3}
   },
   MASON: {
     rate_per_day: 155, crew_size: 3, trade: 'Mason (Skilled) + Laborers',
@@ -116,7 +130,7 @@ var LABOR_RATES = {
 };
 
 // ============================================================================
-// EQUIPMENT RATES & ALLOCATION (from boq_export.py)
+// EQUIPMENT RATES & ALLOCATION — hardcoded fallback (from boq_export.py)
 // ============================================================================
 var EQUIPMENT_RATES = {
   MOBILE_CRANE_20T: {rate_per_day:1850, desc:'Mobile Crane 20 Tonne'},
@@ -135,7 +149,7 @@ var EQUIPMENT_ALLOCATION = {
 };
 
 // ============================================================================
-// SEQUENCE RULES (from schedule_generator.py — for 4D schedule)
+// SEQUENCE RULES — hardcoded fallback (from schedule_generator.py — for 4D)
 // ============================================================================
 var SEQUENCE_RULES = {
   // Substructure
@@ -180,6 +194,7 @@ var SEQUENCE_RULES = {
   IfcStair:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
   IfcStairFlight:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
   IfcRailing:{phase:'Architecture',sequence:7,resource:'CARPENTER'},
+  IfcRamp:{phase:'Architecture',sequence:7,resource:'CONCRETE_GANG'},
   IfcRampFlight:{phase:'Architecture',sequence:7,resource:'CONCRETE_GANG'},
   IfcRoof:{phase:'Architecture',sequence:8,resource:'ROOFER'},
   IfcBuildingElementProxy:{phase:'Architecture',sequence:6,resource:null},
@@ -225,7 +240,7 @@ var WORK_PACKAGES = [
   { id: 'PACKAGE 3', name: 'MEP ROUGH-IN', color: 'D35400',
     classes: ['IfcDuct','IfcDuctSegment','IfcDuctFitting','IfcPipe','IfcPipeSegment','IfcPipeFitting','IfcCableCarrier','IfcCableCarrierSegment','IfcFlowSegment','IfcFlowFitting','IfcFlowController','IfcFlowMovingDevice','IfcFlowStorageDevice','IfcFlowTreatmentDevice','IfcEnergyConversionDevice','IfcDistributionElement','IfcValve'] },
   { id: 'PACKAGE 4', name: 'ARCHITECTURE', color: 'ED7D31',
-    classes: ['IfcWall','IfcWallStandardCase','IfcCurtainWall','IfcDoor','IfcWindow','IfcStair','IfcStairFlight','IfcRailing','IfcRoof','IfcRampFlight'] },
+    classes: ['IfcWall','IfcWallStandardCase','IfcCurtainWall','IfcDoor','IfcWindow','IfcStair','IfcStairFlight','IfcRailing','IfcRoof','IfcRamp','IfcRampFlight'] },
   { id: 'PACKAGE 5', name: 'FINISHES', color: '27AE60',
     classes: ['IfcCovering','IfcFurniture','IfcFurnishingElement'] },
   { id: 'PACKAGE 6', name: 'MEP FINAL FIX', color: 'C0392B',
@@ -267,4 +282,113 @@ function calcEquipment(ifcClass, laborDays) {
   var er = EQUIPMENT_RATES[alloc.equipment];
   var days = laborDays * alloc.duration_factor;
   return {cost: Math.round(days * er.rate_per_day), desc: er.desc, days: days};
+}
+
+// ============================================================================
+// §1.2 JSON RATE TEMPLATE LOADER
+// URL param: ?rates=cidb2024_my → fetches rates/cidb2024_my.json
+// Default: cidb2024_my if no param
+// Backward compatible: if JSON fetch fails, hardcoded objects above remain
+// ============================================================================
+
+/**
+ * Load a rate template from JSON. Overwrites global RATES, LABOR_RATES, etc.
+ * @param {string} templateName - e.g. 'cidb2024_my'
+ * @returns {Promise<boolean>} true if loaded, false if fell back to hardcoded
+ */
+function loadRateTemplate(templateName) {
+  var url = 'rates/' + templateName + '.json';
+  return fetch(url).then(function(resp) {
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    return resp.json();
+  }).then(function(tpl) {
+    // Apply materials → RATES (merge: JSON wins, keep hardcoded keys not in JSON)
+    if (tpl.materials && Object.keys(tpl.materials).length > 0) {
+      for (var cls in tpl.materials) {
+        RATES[cls] = tpl.materials[cls];
+      }
+    }
+    // Apply labor → LABOR_RATES
+    if (tpl.labor && Object.keys(tpl.labor).length > 0) {
+      for (var lk in tpl.labor) {
+        LABOR_RATES[lk] = tpl.labor[lk];
+      }
+    }
+    // Apply equipment → EQUIPMENT_RATES
+    if (tpl.equipment && Object.keys(tpl.equipment).length > 0) {
+      for (var ek in tpl.equipment) {
+        EQUIPMENT_RATES[ek] = tpl.equipment[ek];
+      }
+    }
+    // Apply equipment_allocation → EQUIPMENT_ALLOCATION
+    if (tpl.equipment_allocation && Object.keys(tpl.equipment_allocation).length > 0) {
+      for (var ak in tpl.equipment_allocation) {
+        EQUIPMENT_ALLOCATION[ak] = tpl.equipment_allocation[ak];
+      }
+    }
+    // Apply sequence → SEQUENCE_RULES (only if non-empty — UK placeholder has empty)
+    if (tpl.sequence && Object.keys(tpl.sequence).length > 0) {
+      for (var sk in tpl.sequence) {
+        SEQUENCE_RULES[sk] = tpl.sequence[sk];
+      }
+    }
+    // Apply work_packages → WORK_PACKAGES (only if non-empty)
+    if (tpl.work_packages && tpl.work_packages.length > 0) {
+      WORK_PACKAGES = tpl.work_packages;
+    }
+    // Store metadata + provisions
+    RATE_TEMPLATE_META = tpl.meta || null;
+    if (RATE_TEMPLATE_META && tpl.provisions) {
+      RATE_TEMPLATE_META.provisions = tpl.provisions;
+    }
+    if (RATE_TEMPLATE_META && tpl.smm_sections) {
+      RATE_TEMPLATE_META.smm_sections = tpl.smm_sections;
+    }
+    RATE_TEMPLATE_NAME = templateName;
+
+    var classCount = Object.keys(RATES).length;
+    console.log('§QTO_RATES_LOADED template=' + templateName + ' classes=' + classCount
+      + ' source=' + (tpl.meta ? tpl.meta.source : 'unknown'));
+    return true;
+  }).catch(function(err) {
+    console.warn('§QTO_RATES_FALLBACK template=' + templateName + ' error=' + err.message
+      + ' — using hardcoded CIDB 2024 rates');
+    RATE_TEMPLATE_NAME = 'hardcoded_cidb2024';
+    return false;
+  });
+}
+
+// Locale → rate template mapping (locale code → JSON file name without .json)
+var LOCALE_RATE_MAP = {
+  'en_MY': 'cidb2024_my', 'ms_MY': 'cidb2024_my',
+  'en_GB': 'bcis2024_uk', 'en_US': 'rsmeans2024_us', 'en_AU': 'rawlinsons2024_au',
+  'de_DE': 'bki2024_de', 'fr_FR': 'untec2024_fr', 'es_ES': 'cype2024_es',
+  'zh_CN': 'gb50500_cn', 'th_TH': 'dpt2024_th', 'ja_JP': 'jbci2024_jp',
+  'ko_KR': 'kict2024_kr', 'ar_SA': 'aramco2024_sa', 'pt_BR': 'sinapi2024_br',
+  'id_ID': 'sni2024_id', 'af_ZA': 'asaqs2024_za', 'bn_BD': 'pwd2024_bd',
+  'bl_BD': 'pwd2024_bd'
+};
+
+/**
+ * Auto-load rate template from URL param or active locale.
+ * Priority: ?rates= param > locale-based mapping > cidb2024_my fallback
+ * @returns {Promise<boolean>}
+ */
+function initRateTemplate() {
+  var p = new URLSearchParams(window.location.search);
+  var name = p.get('rates');
+  if (!name) {
+    // Derive from active locale (same detection as locale_loader)
+    var locale = p.get('lang');
+    if (!locale) {
+      try { var cfg = JSON.parse(localStorage.getItem('bim_ootb_config')); if (cfg && cfg.locale) locale = cfg.locale; } catch(e) {}
+    }
+    if (locale && LOCALE_RATE_MAP[locale]) {
+      name = LOCALE_RATE_MAP[locale];
+    } else {
+      name = 'cidb2024_my';
+    }
+  }
+  console.log('§RATE_LOCALE_MAP locale=' + (locale||'default') + ' template=' + name);
+  return loadRateTemplate(name);
 }

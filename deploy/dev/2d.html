@@ -71,6 +71,8 @@ canvas { display: block; }
   <button id="export-btn" onclick="exportDxf()" data-trl-title="ui_tt_export" data-trl="ui_2d_export_dxf" title="Export DXF">Export DXF</button>
   <span style="flex:1"></span>
   <span id="status-text" style="font-size:11px;color:#888"></span>
+  <button id="header-flag-btn" onclick="window._TRL_LOADER&&_TRL_LOADER.openFlagPicker()" title="Change locale" style="font-size:16px;padding:2px 6px">&#127760;</button>
+  <button onclick="location.href='/'" title="Home" style="font-size:16px;padding:2px 6px">&#127968;</button>
 </div>
 
 <div id="layer-panel"><h3 data-trl="ui_2d_layers">Layers</h3><div id="layer-list"></div></div>

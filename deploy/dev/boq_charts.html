@@ -357,14 +357,13 @@ if (params.get('rate')) _TRL.cur_rate = parseFloat(params.get('rate'));
 // Allow overriding any _TRL key via URL: ?t_cost_by_disc=5D%20Cost
 for (const [k,v] of params.entries()) { if (k in _TRL_DEFAULTS && k !== 'cur' && k !== 'cur2' && k !== 'rate') _TRL[k] = v; }
 
-// Currency helpers — all code uses these, never hardcoded symbols
-const CUR = _TRL.cur;                                    // primary symbol
-const CUR2 = _TRL.cur2;                                  // secondary symbol
-const CUR_RATE = _TRL.cur_rate;                           // conversion: 1 CUR2 = CUR_RATE × CUR
-function fmtCur(val) { return CUR + ' ' + val.toLocaleString(); }   // format primary
-function fmtCur2(val) { return Math.round(val / CUR_RATE * 100) / 100; }  // convert to secondary
-// Legacy alias
-const USD_RATE = CUR_RATE;
+// Currency helpers — read from _TRL at call time so locale_loader overrides take effect
+// These were const but locale_loader merges AFTER parse, so they must be live.
+var CUR, CUR2, CUR_RATE, USD_RATE;
+function _syncCur() { CUR = _TRL.cur; CUR2 = _TRL.cur2; CUR_RATE = _TRL.cur_rate; USD_RATE = CUR_RATE; }
+_syncCur();
+function fmtCur(val) { return _TRL.cur + ' ' + val.toLocaleString(); }
+function fmtCur2(val) { return Math.round(val / _TRL.cur_rate * 100) / 100; }
 
 // WORK_PACKAGES — from rates.js
 
@@ -1000,7 +999,7 @@ async function init() {
   const unmapped = [...new Set(qtoData.map(r=>r.cls).filter(c=>!SEQUENCE_RULES[c]))];
   console.log(`§UNMAPPED: ${unmapped.length ? unmapped.join(', ') : 'NONE'}`);
   document.getElementById('info').textContent =
-    `${bldName} | ${totalQty.toLocaleString()} elements | ${CUR}${grandTotal.toLocaleString()} (Mat ${grandMaterial.toLocaleString()} + Lab ${grandLabor.toLocaleString()} + Equip ${grandEquip.toLocaleString()})`;
+    `${bldName} | ${totalQty.toLocaleString()} ${_TRL.ui_elements||'elements'} | ${CUR}${grandTotal.toLocaleString()} (${_TRL.h_material||'Mat'} ${grandMaterial.toLocaleString()} + ${_TRL.h_labour||'Lab'} ${grandLabor.toLocaleString()} + ${_TRL.h_equipment||'Equip'} ${grandEquip.toLocaleString()})`;
 
 
   // S224: Load diff DB if present — compute variance for VO sheets in Excel
@@ -1113,7 +1112,7 @@ function renderCharts() {
 
   chartInstances.push(new Chart(tdCanvas, {
     type:'bar',
-    data:{labels:tdDiscs, datasets:[{label:'Tasks',data:tdDiscs.map(d=>taskDiscCounts[d]),backgroundColor:tdDiscs.map(d=>DISC_COLORS[d]||'#888')}]},
+    data:{labels:tdDiscs, datasets:[{label:_TRL.h_task||'Tasks',data:tdDiscs.map(d=>taskDiscCounts[d]),backgroundColor:tdDiscs.map(d=>DISC_COLORS[d]||'#888')}]},
     options:{scales:{y:{title:{display:true,text:'Number of Tasks',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{title:{display:true,text:'Discipline',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(4,'Bar','Task Count by Discipline',tdDiscs.length);
@@ -1147,8 +1146,8 @@ function renderCharts() {
 
   chartInstances.push(new Chart(mdCanvas, {
     type:'bar',
-    data:{labels:mdPhases, datasets:[{label:'Man-Days',data:mdPhases.map(p=>Math.round(phaseMandays[p])),backgroundColor:mdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
-    options:{scales:{y:{title:{display:true,text:'Man-Days',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
+    data:{labels:mdPhases, datasets:[{label:_TRL.h_man_days||'Man-Days',data:mdPhases.map(p=>Math.round(phaseMandays[p])),backgroundColor:mdPhases.map(p=>PHASE_COLORS[p]||'#888')}]},
+    options:{scales:{y:{title:{display:true,text:_TRL.h_man_days||'Man-Days',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
   }));
   logChart(6,'Column','Resource Workload',mdPhases.length);
 
@@ -1215,7 +1214,7 @@ function renderCharts() {
       ]
     },
     options:{indexAxis:'y',scales:{
-      x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},
+      x:{stacked:true,title:{display:true,text:_TRL.h_day_offset||'Days from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},
       y:{stacked:true,ticks:{color:'#ccc',font:{size:11}},grid:{color:'rgba(255,255,255,0.1)'}}
     },plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
       if (ctx.datasetIndex===0) return null;
@@ -1232,7 +1231,7 @@ function renderCharts() {
   const ganttBox = el('div','chart-box full');
   ganttBox.innerHTML = '<h2>' + _TRL.t_gantt + '</h2>';
   const ganttCanvas = el('canvas');
-  ganttCanvas.height = 400;
+  ganttCanvas.height = Math.max(200, Math.min(800, ganttTasks.length * 22 + 60));
   ganttBox.appendChild(ganttCanvas); c.appendChild(ganttBox);
 
   chartInstances.push(new Chart(ganttCanvas, {
@@ -1249,7 +1248,7 @@ function renderCharts() {
       indexAxis:'y',
       aspectRatio: 1.0,
       scales:{
-        x:{stacked:true,title:{display:true,text:'Days from Project Start',color:'#fff',font:{size:14}},ticks:{color:'#ddd',font:{size:12}},grid:{color:'rgba(255,255,255,0.1)'}},
+        x:{stacked:true,title:{display:true,text:_TRL.h_day_offset||'Days from Project Start',color:'#fff',font:{size:14}},ticks:{color:'#ddd',font:{size:12}},grid:{color:'rgba(255,255,255,0.1)'}},
         y:{stacked:true,ticks:{color:'#ccc',font:{size:Math.max(7, Math.min(10, 180/ganttTasks.length))}},grid:{color:'rgba(255,255,255,0.05)'}}
       },
       plugins:{
@@ -1666,7 +1665,7 @@ function renderCharts() {
         datasets: [
           { label: 'Elements', data: [diffResult.added.length, diffResult.removed.length, diffResult.changed.length],
             backgroundColor: ['#44cc44', '#cc4444', '#cccc44'], yAxisID: 'y' },
-          { label: 'Cost Impact (' + CUR + ')', data: [Math.round(addCost), Math.round(remCost), Math.round(chgCost)],
+          { label: (_TRL.t_vo_impact||'Cost Impact') + ' (' + CUR + ')', data: [Math.round(addCost), Math.round(remCost), Math.round(chgCost)],
             backgroundColor: ['rgba(68,204,68,0.3)', 'rgba(204,68,68,0.3)', 'rgba(204,204,68,0.3)'],
             borderColor: ['#44cc44', '#cc4444', '#cccc44'], borderWidth: 2, yAxisID: 'y1' }
         ]
@@ -1674,7 +1673,7 @@ function renderCharts() {
       options: {
         scales: {
           y:  { position: 'left', title: { display: true, text: 'Element Count', color: '#fff', font:{size:15} }, ticks: { color: '#ddd', font:{size:13} }, grid: { color: 'rgba(255,255,255,0.1)' } },
-          y1: { position: 'right', title: { display: true, text: 'Cost (' + CUR + ')', color: '#fff', font:{size:15} }, ticks: { color: '#ddd', font:{size:13} }, grid: { drawOnChartArea: false } },
+          y1: { position: 'right', title: { display: true, text: (_TRL.h_total||'Cost') + ' (' + CUR + ')', color: '#fff', font:{size:15} }, ticks: { color: '#ddd', font:{size:13} }, grid: { drawOnChartArea: false } },
           x:  { ticks: { color: '#ddd', font:{size:13} }, grid: { color: 'rgba(255,255,255,0.1)' } }
         },
         plugins: { legend: { labels: { color: '#ddd', font:{size:13} } } }
@@ -1686,9 +1685,9 @@ function renderCharts() {
   // ── 10. BOQ Data Table (enhanced with Equipment column) ──
   const tableBox = el('div','chart-box full');
   tableBox.innerHTML = '<h2>5D — Bill of Quantities (' + _TRL.rate_source + ')</h2>';
-  let html = '<table><tr><th>Disc</th><th>IFC Class</th><th>Storey</th><th>Qty</th><th>Unit</th>' +
-    '<th>Description</th><th>Rate (' + CUR + ')</th><th>Material (' + CUR + ')</th><th>Labour Days</th><th>Labour (' + CUR + ')</th>' +
-    '<th>Equip (' + CUR + ')</th><th>Total (' + CUR + ')</th></tr>';
+  let html = '<table><tr><th>' + _TRL.h_discipline + '</th><th>' + _TRL.h_ifc_class + '</th><th>' + _TRL.h_storey + '</th><th>' + _TRL.h_quantity + '</th><th>' + _TRL.h_uom + '</th>' +
+    '<th>' + _TRL.h_description + '</th><th>' + _TRL.h_unit_rate + ' (' + CUR + ')</th><th>' + _TRL.h_material + ' (' + CUR + ')</th><th>' + _TRL.h_man_days + '</th><th>' + _TRL.h_labour + ' (' + CUR + ')</th>' +
+    '<th>' + _TRL.h_equipment + ' (' + CUR + ')</th><th>' + _TRL.h_total + ' (' + CUR + ')</th></tr>';
   for (const r of qtoData) {
     const rowTotal = r.matTotal + r.laborCost + r.equipCost;
     html += `<tr><td>${r.disc}</td><td>${r.cls}</td><td>${r.storey||''}</td><td>${r.qty.toLocaleString()}</td>` +
@@ -1697,7 +1696,7 @@ function renderCharts() {
       `<td>${r.equipCost.toLocaleString()}</td><td>${rowTotal.toLocaleString()}</td></tr>`;
   }
   const gt = grandMaterial + grandLabor + grandEquip;
-  html += `<tr class="total-row"><td colspan="7">GRAND TOTAL</td>` +
+  html += `<tr class="total-row"><td colspan="7">${_TRL.h_grand_total}</td>` +
     `<td>${CUR}${grandMaterial.toLocaleString()}</td><td></td><td>${CUR}${grandLabor.toLocaleString()}</td>` +
     `<td>${CUR}${grandEquip.toLocaleString()}</td><td>${CUR}${gt.toLocaleString()}</td></tr>`;
   html += '</table>';
@@ -1708,15 +1707,15 @@ function renderCharts() {
   const projDays = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
   const footBox = el('div','chart-box full');
   footBox.innerHTML = `<table>
-    <tr><td>Building</td><td><b>${bldName}</b></td></tr>
-    <tr><td>Total Elements</td><td><b>${totalQty.toLocaleString()}</b></td></tr>
-    <tr><td>Material Cost</td><td><b>${CUR} ${grandMaterial.toLocaleString()}</b></td></tr>
-    <tr><td>Labour Cost</td><td><b>${CUR} ${grandLabor.toLocaleString()}</b></td></tr>
-    <tr><td>Equipment Cost</td><td><b>${CUR} ${grandEquip.toLocaleString()}</b></td></tr>
-    <tr><td>Grand Total</td><td><b>${CUR} ${gt.toLocaleString()}</b></td></tr>
-    <tr><td>Project Duration</td><td><b>${projDays} days (${scheduleData.length} tasks)</b></td></tr>
-    <tr><td>Rates Source</td><td>${_TRL.rate_source}</td></tr>
-    <tr><td>Exported</td><td>${new Date().toISOString()}</td></tr>
+    <tr><td>${_TRL.ui_building||'Building'}</td><td><b>${bldName}</b></td></tr>
+    <tr><td>${_TRL.ui_elements||'Elements'}</td><td><b>${totalQty.toLocaleString()}</b></td></tr>
+    <tr><td>${_TRL.h_material} </td><td><b>${CUR} ${grandMaterial.toLocaleString()}</b></td></tr>
+    <tr><td>${_TRL.h_labour} </td><td><b>${CUR} ${grandLabor.toLocaleString()}</b></td></tr>
+    <tr><td>${_TRL.h_equipment} </td><td><b>${CUR} ${grandEquip.toLocaleString()}</b></td></tr>
+    <tr><td>${_TRL.h_grand_total}</td><td><b>${CUR} ${gt.toLocaleString()}</b></td></tr>
+    <tr><td>${_TRL.h_duration||'Duration'}</td><td><b>${projDays} ${_TRL.h_total_days||'days'} (${scheduleData.length} ${_TRL.h_task||'tasks'})</b></td></tr>
+    <tr><td>${_TRL.ui_rate_source_lbl||'Rates Source'}</td><td>${_TRL.rate_source}</td></tr>
+    <tr><td>${_TRL.h_date||'Date'}</td><td>${new Date().toISOString()}</td></tr>
     <tr><td>Source</td><td>BIM OOTB — Frictionless BIM</td></tr>
   </table>`;
   c.appendChild(footBox);
@@ -2569,7 +2568,7 @@ function toggleTheme() {
 <script>
 (function(){
   var done=false;
-  function go(){if(!done){done=true;init();}}
+  function go(){if(!done){done=true;_syncCur();init();}}
   window.addEventListener('trl-ready',go,{once:true});
   setTimeout(go,3000); // fallback: init anyway if locale fetch fails
 })();
