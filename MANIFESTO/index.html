@@ -4718,6 +4718,7 @@ downstream is reading receipts.</p>
 <li><strong>Git-like versioning</strong> — GUID-based diff between DBs, variation order export to Excel</li>
 <li><strong>Multi-format import</strong> — OBJ / STL / GLTF / FBX / 3DS → classify via wizard → IFC export</li>
 <li><strong>2D grid overlay as spatial BOM editor</strong> — scissors plane + bay spans = user edits parameters, compiler places geometry</li>
+<li><strong>Java → JS compiler migration</strong> — <code>RouteWalker.java</code> (MEP pipe routing, reads <code>ad_space_type</code> / <code>ad_mep_pattern</code> recipes from <code>mep_rw.db</code>, writes <code>RW2D-</code> prefixed elements into the building DB) has been ported to <code>routewalker.js</code>. The same routing logic that ran server-side in the Java compiler now runs in a browser Web Worker, reading from a sidecar SQLite DB with no server, no JVM, no build step. This is the pattern in action: the compiler is not a Java program — it is a data architecture. The language is incidental.</li>
 </ul>
 <h3 id="the-synthesis">The Synthesis<a class="headerlink" href="#the-synthesis" title="Permanent link">&para;</a></h3>
 <p>This manifesto was never about backend technology. It was about data architecture.</p>
