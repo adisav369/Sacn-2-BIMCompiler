@@ -850,6 +850,67 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#postscript-the-browser-corollary-added-2026-05-08" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Postscript: The Browser Corollary (Added 2026-05-08)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Postscript: The Browser Corollary (Added 2026-05-08)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-this-means-for-the-manifesto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What This Means for the Manifesto
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-this-does-not-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What This Does NOT Change
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-this-enables-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What This Enables (New)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-synthesis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Synthesis
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3653,6 +3714,67 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#postscript-the-browser-corollary-added-2026-05-08" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Postscript: The Browser Corollary (Added 2026-05-08)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Postscript: The Browser Corollary (Added 2026-05-08)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-this-means-for-the-manifesto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What This Means for the Manifesto
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-this-does-not-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What This Does NOT Change
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-this-enables-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What This Enables (New)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-synthesis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Synthesis
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4544,6 +4666,64 @@ downstream is reading receipts.</p>
 </ol>
 <p>For the full academic treatment: <strong><a href="../BIMERPPaper/">BIMERPPaper.md</a></strong></p>
 <p>For market positioning and competitive landscape: <strong><a href="../StrategicIndustryPositioning/">StrategicIndustryPositioning.md</a></strong></p>
+<hr />
+<h2 id="postscript-the-browser-corollary-added-2026-05-08">Postscript: The Browser Corollary <em>(Added 2026-05-08)</em><a class="headerlink" href="#postscript-the-browser-corollary-added-2026-05-08" title="Permanent link">&para;</a></h2>
+<p>Three weeks before this postscript was written, this manifesto assumed a backend. <code>M_Product</code> lived in PostgreSQL. <code>C_Order</code> required a server. The browser was a viewer — not a participant.</p>
+<p>Then a working proof-of-concept proved otherwise.</p>
+<p><strong>What changed:</strong> sql.js (WASM SQLite) + Three.js + IndexedDB = the entire ERP data model runs in a browser tab. The same <code>elements_meta</code>, <code>element_transforms</code>, and <code>component_geometries</code> tables that serve the compiler also serve the viewport. No server. No API. No translation layer.</p>
+<h3 id="what-this-means-for-the-manifesto">What This Means for the Manifesto<a class="headerlink" href="#what-this-means-for-the-manifesto" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Original assumption</th>
+<th>Browser reality</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ERP backend required</td>
+<td>SQLite in WASM is the backend</td>
+</tr>
+<tr>
+<td><code>AD_Val_Rule</code> executes server-side</td>
+<td>Same rules, same SQL, runs in a Web Worker thread</td>
+</tr>
+<tr>
+<td><code>C_Project</code> groups orders</td>
+<td>IndexedDB caches per-building DBs; <code>city_index.db</code> covers 786 buildings</td>
+</tr>
+<tr>
+<td><code>AD_ChangeLog</code> for audit</td>
+<td><code>bim_changelog</code> table survives page reload, syncs on DB export</td>
+</tr>
+<tr>
+<td><code>AD_PrintFormat</code> for output</td>
+<td>Print sheet + <code>corporate.json</code>, browser-native canvas capture</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-this-does-not-change">What This Does NOT Change<a class="headerlink" href="#what-this-does-not-change" title="Permanent link">&para;</a></h3>
+<p>The architectural invariants are untouched:</p>
+<ul>
+<li>The Three Concerns (WHAT / HOW / WHERE) remain the invariant</li>
+<li><code>M_Product</code> with <code>IsBOM=Y/N</code> remains the universal entity</li>
+<li>BOM cascade + exception-based ordering remains the pattern</li>
+<li><code>AD_Org</code> (discipline) cuts across the category tree — unchanged</li>
+<li>Deterministic compilation remains the goal — no probabilistic AI in the compiler</li>
+</ul>
+<h3 id="what-this-enables-new">What This Enables (New)<a class="headerlink" href="#what-this-enables-new" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Offline-first BIM</strong> — load once, use forever (Service Worker + IndexedDB)</li>
+<li><strong>Zero-install 4D/5D</strong> — schedule and cost run in browser, no license fees, no cloud account</li>
+<li><strong>Git-like versioning</strong> — GUID-based diff between DBs, variation order export to Excel</li>
+<li><strong>Multi-format import</strong> — OBJ / STL / GLTF / FBX / 3DS → classify via wizard → IFC export</li>
+<li><strong>2D grid overlay as spatial BOM editor</strong> — scissors plane + bay spans = user edits parameters, compiler places geometry</li>
+</ul>
+<h3 id="the-synthesis">The Synthesis<a class="headerlink" href="#the-synthesis" title="Permanent link">&para;</a></h3>
+<p>This manifesto was never about backend technology. It was about data architecture.</p>
+<p>The browser proved the architecture is technology-agnostic. The same patterns that work for manufacturing ERP work for browser-based BIM — because buildings are manufactured products, regardless of where the query runs.</p>
+<p>The next step is the spatial BOM editor: the <a href="../2D_LAYOUT/">2D Layout specification</a> rebuilds the editing layer using grid overlays, not backend services. The ERP patterns are still there — they are just running in your browser tab.</p>
+<hr />
 <p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
 
 
