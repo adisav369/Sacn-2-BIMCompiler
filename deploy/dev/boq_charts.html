@@ -1231,7 +1231,9 @@ function renderCharts() {
   const ganttBox = el('div','chart-box full');
   ganttBox.innerHTML = '<h2>' + _TRL.t_gantt + '</h2>';
   const ganttCanvas = el('canvas');
-  ganttCanvas.height = Math.max(200, Math.min(800, ganttTasks.length * 22 + 60));
+  const ganttH = Math.max(200, ganttTasks.length * 28 + 60);
+  ganttCanvas.style.height = ganttH + 'px';
+  ganttBox.style.height = (ganttH + 48) + 'px'; // +48 for h2 title
   ganttBox.appendChild(ganttCanvas); c.appendChild(ganttBox);
 
   chartInstances.push(new Chart(ganttCanvas, {
@@ -1246,7 +1248,7 @@ function renderCharts() {
     options:{
       animation: false,
       indexAxis:'y',
-      aspectRatio: 1.0,
+      maintainAspectRatio: false,
       scales:{
         x:{stacked:true,title:{display:true,text:_TRL.h_day_offset||'Days from Project Start',color:'#fff',font:{size:14}},ticks:{color:'#ddd',font:{size:12}},grid:{color:'rgba(255,255,255,0.1)'}},
         y:{stacked:true,ticks:{color:'#ccc',font:{size:Math.max(7, Math.min(10, 180/ganttTasks.length))}},grid:{color:'rgba(255,255,255,0.05)'}}
