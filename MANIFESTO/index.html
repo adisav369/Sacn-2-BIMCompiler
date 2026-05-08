@@ -851,6 +851,78 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-open-bim-question-where-the-community-got-stuck" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Open BIM Question — Where the Community Got Stuck
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Open BIM Question — Where the Community Got Stuck">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#two-incompatible-visions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two Incompatible Visions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-format-war" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Format War
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-browser-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Browser Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-nobody-has-answered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Nobody Has Answered
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-third-direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Third Direction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#postscript-the-browser-corollary-added-2026-05-08" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3715,6 +3787,78 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-open-bim-question-where-the-community-got-stuck" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Open BIM Question — Where the Community Got Stuck
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Open BIM Question — Where the Community Got Stuck">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#two-incompatible-visions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two Incompatible Visions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-format-war" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Format War
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-browser-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Browser Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-nobody-has-answered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Nobody Has Answered
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-third-direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Third Direction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#postscript-the-browser-corollary-added-2026-05-08" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4666,6 +4810,42 @@ downstream is reading receipts.</p>
 </ol>
 <p>For the full academic treatment: <strong><a href="../BIMERPPaper/">BIMERPPaper.md</a></strong></p>
 <p>For market positioning and competitive landscape: <strong><a href="../StrategicIndustryPositioning/">StrategicIndustryPositioning.md</a></strong></p>
+<hr />
+<h2 id="the-open-bim-question-where-the-community-got-stuck">The Open BIM Question — Where the Community Got Stuck<a class="headerlink" href="#the-open-bim-question-where-the-community-got-stuck" title="Permanent link">&para;</a></h2>
+<p>The open-source AEC community has been wrestling with a genuine identity crisis since at least 2023. Understanding it is important, because this project's approach was shaped in reaction to it — and now positions itself as a third direction.</p>
+<h3 id="two-incompatible-visions">Two Incompatible Visions<a class="headerlink" href="#two-incompatible-visions" title="Permanent link">&para;</a></h3>
+<p>The IfcOpenShell/Bonsai project holds two visions in tension that its community cannot resolve:</p>
+<p><strong>Vision A — The Complete Authoring Platform.</strong> Dion Moult and the Bonsai core team are building a professional-grade BIM authoring suite inside Blender. The 2024 rebrand from BlenderBIM to Bonsai was a deliberate signal: the project's ambition exceeds "a Blender plugin." Bonsai v0.8.0 shipped clash detection, 4D sequencing, cost schedules, and quantity takeoff. The thesis is that IFC is already a full project management data model — it contains <code>IfcCostSchedule</code>, <code>IfcTask</code>, <code>IfcWorkSchedule</code> — and the problem is that no tool actually writes those entities. Moult's 2024 talk was titled <em>"IFC as a database is the future of the Built Environment."</em></p>
+<p><strong>Vision B — The Neutral Library Ecosystem.</strong> Thomas Krijnen, who wrote most of the C++ core starting in 2011, and a significant part of the community want IfcOpenShell to remain a platform-agnostic library. A 2023 osArch thread explicitly argued for a repo split: the monorepo conflates library and application, leaving users "with other use cases out — ones which do not need BlenderBIM as a GUI." The Blender dependency is a structural barrier that the rebrand cannot dissolve.</p>
+<p>Neither vision is wrong. Together they are unsustainable. The Open Collective shows ~$26K annual budget, two principal maintainers, and an explicit funding target of a second sponsored developer at $50K/year that has not been reached. The community knows this. The thread "How can the community better support IfcOpenShell/Bonsai development?" is a symptom of structural fragility, not a funding campaign.</p>
+<h3 id="the-format-war">The Format War<a class="headerlink" href="#the-format-war" title="Permanent link">&para;</a></h3>
+<p>Underneath the identity tension is a deeper strategic fault line: <strong>IFC vs. USD as the future of AEC data.</strong></p>
+<p>Major firms — HOK, ARUP — are lobbying within buildingSMART for OpenUSD adoption. Autodesk has effectively replaced IFC internally with SVF/SVF2 (proprietary USD predecessors). In October 2024, buildingSMART signed a liaison agreement with the Alliance for OpenUSD (AOUSD — Nvidia, Apple, Hexagon, Trimble). IFC5 in JSON is buildingSMART's response: modular, component-based, explicitly incorporating USD concepts. Whether IFC5 ships in production form before USD wins the default position in major tools is an open question.</p>
+<p>The community's reaction ranges from principled resistance to anxious pragmatism. The structural argument for USD is not unreasonable: IFC's BREP-plus-semantics monolith conflates geometry and data. USD + triangulated mesh handles the geometry; JSON/SQL handles the data. The argument <em>against</em> USD is equally principled: it has no cost, schedule, or asset management entities — it is a geometry exchange format, not a building data model.</p>
+<p><strong>Neither side addresses the fundamental gap.</strong> The geometry-ERP disconnect — the fact that a construction budget is separated from a 3D model by a human with a spreadsheet — is not solved by IFC5, not solved by USD, and not addressed by any current open-source tool. The osArch thread "OpenConstructionERP — QTO, BOQ and AI estimating with IFC and Revit" appeared in May 2026, acknowledging the gap and attempting to bridge it. It is very early work.</p>
+<h3 id="the-browser-problem">The Browser Problem<a class="headerlink" href="#the-browser-problem" title="Permanent link">&para;</a></h3>
+<p>The community's desire for browser-native IFC is explicit. The AECO.DEV "BIM Jailbreak" framing states it directly: remove the server dependency, remove the desktop dependency, run IFC in the browser. The practical options in 2025–2026:</p>
+<ul>
+<li><strong>web-ifc (That Open Company):</strong> Fast geometry parsing in WASM, MIT licensed, but focused on visualization — not the full IFC semantic model. The company's commercial wrapper and "openwashing" accusations (documented in osArch discussions) created a values conflict with the community.</li>
+<li><strong>IfcOpenShell WASM via Pyodide:</strong> Theoretically possible, practically too heavy. The 2026 Google Summer of Code project is funded to replace Pyodide with a direct C++ to WASM build. This work is not yet available.</li>
+</ul>
+<p>The browser path is aspirational for the community, not yet production-ready for authoring.</p>
+<h3 id="what-nobody-has-answered">What Nobody Has Answered<a class="headerlink" href="#what-nobody-has-answered" title="Permanent link">&para;</a></h3>
+<p>After mapping the debates, three questions remain open in the osArch community as of 2026:</p>
+<ol>
+<li><strong>Where does the ERP data live?</strong> IFC has cost and schedule entities. Nobody authors them. The gap between geometry and construction management data is still a spreadsheet.</li>
+<li><strong>How does open BIM run without Blender, without a server, and without a heavy WASM bundle?</strong> The community wants this but does not have a production answer.</li>
+<li><strong>What is the data model?</strong> IFC provides a schema. USD provides a scene graph. Neither provides a <em>business logic layer</em> — the rules that govern what goes where, who orders what, what validates against which jurisdiction code.</li>
+</ol>
+<h3 id="the-third-direction">The Third Direction<a class="headerlink" href="#the-third-direction" title="Permanent link">&para;</a></h3>
+<p>This project's answer does not compete with IfcOpenShell or Bonsai. It occupies a different space, shaped by a question the community has not asked: <strong>what if the data model was ERP, and IFC was just the import format?</strong></p>
+<p>The consequences of that question, taken seriously:</p>
+<p><strong>IFC becomes an exchange format, not the model.</strong> <code>extractIFC2DB.js</code> runs web-ifc once, pre-compresses tessellation and placement into SQLite BLOBs, and the viewer never touches IFC again. IfcOpenShell handles the cases that exceed web-ifc's envelope (&gt; 200MB merged models). Both are inputs. Neither is the architecture.</p>
+<p><strong>The database is the model.</strong> Dion Moult argued that IFC should be a database. This project took him literally — except the database is SQLite (query-optimised, browser-native, zero-install) rather than IFC-SPF (unordered IDs, full-file parse, no lazy loading). The <code>elements_meta</code> + <code>element_transforms</code> + <code>component_geometries</code> schema is a projection of IFC into a form that a browser can query at 60fps.</p>
+<p><strong>The ERP layer fills the geometry-ERP gap.</strong> <code>M_Product</code>, <code>M_BOM</code>, <code>C_Order</code>, <code>AD_Val_Rule</code> — thirty years of manufacturing ERP patterns applied to spatial data. The cost of a building is <code>SUM(price × qty)</code> — a query, not a feature. 4D scheduling is a topological sort of the BOM tree. These are not features bolted onto a geometry viewer; they are the native output of the data model.</p>
+<p><strong>The browser proves the architecture is technology-agnostic.</strong> The 2026 RouteWalker migration is the concrete demonstration: <code>RouteWalker.java</code> ran MEP pipe routing on a JVM, reading from iDempiere tables, writing to output.db. <code>routewalker.js</code> runs the same routing logic in a Web Worker, reading from <code>mep_rw.db</code> (SQLite sidecar), writing <code>RW2D-</code> prefixed elements into the building DB. Same data contract. Different runtime. The compiler is not a Java program — it is a data architecture.</p>
+<p><strong>Sustainability through ERP heritage.</strong> The osArch community's sustainability crisis is partly a problem of contributor scope: C++/Python BIM specialists are rare. iDempiere developers are not. The ERP pattern means the data layer is legible to any developer who has administered an iDempiere instance — without understanding IFC schema, Blender Python, or OpenCascade geometry kernels.</p>
+<p>This is not a claim that this project is more capable than Bonsai or IfcOpenShell. It is a claim that it answers a different question — and in answering that question, it resolves several of the tensions the community has been unable to resolve: the browser deployment problem, the server dependency, the ERP gap, and the WASM weight. Not by building better BIM tools, but by recognising that the problem was never primarily a geometry problem.</p>
 <hr />
 <h2 id="postscript-the-browser-corollary-added-2026-05-08">Postscript: The Browser Corollary <em>(Added 2026-05-08)</em><a class="headerlink" href="#postscript-the-browser-corollary-added-2026-05-08" title="Permanent link">&para;</a></h2>
 <p>Three weeks before this postscript was written, this manifesto assumed a backend. <code>M_Product</code> lived in PostgreSQL. <code>C_Order</code> required a server. The browser was a viewer — not a participant.</p>
