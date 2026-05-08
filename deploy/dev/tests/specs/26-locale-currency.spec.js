@@ -118,7 +118,7 @@ test.describe('Locale Rate JSONs — Structure & Currency (§S226)', () => {
     for (const [locale, info] of Object.entries(LOCALE_RATE_MAP)) {
       const jsonPath = path.join(RATES_DIR, info.json + '.json');
       if (!fs.existsSync(jsonPath)) {
-        console.log('§LOC_SKIP ' + info.json + '.json not yet created');
+        console.log('§LOC_PENDING ' + info.json + '.json not yet created');
         continue;
       }
       const tpl = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));

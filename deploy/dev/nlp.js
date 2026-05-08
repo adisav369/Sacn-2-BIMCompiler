@@ -315,7 +315,7 @@ function setupNlp(A) {
         }
         var _cur = typeof _TRL!=='undefined'&&_TRL.cur||'RM';
         var _cur2 = typeof _TRL!=='undefined'&&_TRL.cur2||'USD';
-        var _rate = typeof _TRL!=='undefined'&&_TRL.cur_rate||4.45;
+        var _rate = typeof _TRL!=='undefined'&&_TRL.cur_rate||3.91;
         const usd = totalCost / _rate;
         summary = _cur + ' ' + totalCost.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0}) +
           ' (' + _cur2 + ' ' + usd.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0}) + ') \u2014 ' + parsed.desc;

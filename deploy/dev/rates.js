@@ -346,8 +346,17 @@ function loadRateTemplate(templateName) {
     }
     RATE_TEMPLATE_NAME = templateName;
 
+    // Sync _TRL currency from rate template — authoritative source for currency
+    // Covers the case where locale file didn't load but rate JSON did
+    if (typeof _TRL !== 'undefined' && tpl.meta) {
+      if (tpl.meta.currency) _TRL.cur = tpl.meta.currency;
+      if (tpl.meta.currency2) _TRL.cur2 = tpl.meta.currency2;
+      if (tpl.meta.exchange_rate) _TRL.cur_rate = tpl.meta.exchange_rate;
+    }
+
     var classCount = Object.keys(RATES).length;
     console.log('§QTO_RATES_LOADED template=' + templateName + ' classes=' + classCount
+      + ' cur=' + (tpl.meta ? tpl.meta.currency : '?')
       + ' source=' + (tpl.meta ? tpl.meta.source : 'unknown'));
     return true;
   }).catch(function(err) {
