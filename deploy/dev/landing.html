@@ -218,6 +218,12 @@
     <div class="grid" id="my-buildings-grid"></div>
   </div>
 
+  <!-- S250 §9: Community Projects (contributed buildings) -->
+  <div id="community-section" style="display:none">
+    <div class="section-header">Community Projects</div>
+    <div class="grid" id="community-grid"></div>
+  </div>
+
   <!-- S224: Merge/New modal -->
   <div id="merge-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9000;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
     <div style="background:#1a1a2e;border:1px solid rgba(79,195,247,0.2);border-radius:12px;padding:28px 32px;max-width:400px;width:90%;text-align:center">
@@ -1544,6 +1550,62 @@ function downloadDIYScript() {
   document.getElementById('diy-download-btn').textContent = '\u2705 Downloaded! Run the script to install.';
   document.getElementById('diy-download-btn').style.background = '#44cc44';
 }
+</script>
+<script>
+// ── S250 §9: Load Community Projects from contributed/index.json ──
+(async function() {
+  var section = document.getElementById('community-section');
+  var grid = document.getElementById('community-grid');
+  if (!section || !grid) return;
+  var indexUrl = (_base || '') + 'contributed/index.json';
+  try {
+    var resp = await fetch(indexUrl);
+    if (!resp.ok) { console.log('§COMMUNITY skip — index.json HTTP ' + resp.status); return; }
+    var entries = await resp.json();
+    if (!Array.isArray(entries) || entries.length === 0) { console.log('§COMMUNITY skip — empty'); return; }
+    console.log('§COMMUNITY loaded entries=' + entries.length);
+    section.style.display = 'block';
+    grid.innerHTML = '';
+    for (var i = 0; i < entries.length; i++) {
+      var entry = entries[i];
+      var card = document.createElement('div');
+      card.className = 'card';
+      var discs = entry.disciplines || [];
+      var discBars = discs.map(function(d) {
+        var color = DISC_COLORS[d] || '#888';
+        return '<span class="disc-bar" style="width:' + Math.max(20, 100 / discs.length) + '%;background:' + color + '" title="' + d + '"></span>';
+      }).join('');
+      var region = '';
+      if (entry.timezone) {
+        var parts = entry.timezone.split('/');
+        region = parts.length > 1 ? parts[0] : entry.timezone;
+      }
+      var dateStr = entry.date ? new Date(entry.date).toLocaleDateString() : '';
+      var displayName = (entry.filename || '').replace(/_extracted\.db$/i, '').replace(/\.[^.]+$/, '');
+      card.innerHTML =
+        '<div class="name">' + displayName + '</div>' +
+        '<div class="meta">' +
+          '<b>' + ((entry.elements || 0).toLocaleString()) + '</b> elements' +
+          (discs.length ? ' &middot; ' + discs.join(', ') : '') +
+          (region ? '<br>' + region : '') +
+          (dateStr ? ' &middot; ' + dateStr : '') +
+        '</div>' +
+        '<div class="disc-bars">' + discBars + '</div>' +
+        '<button class="open-btn" data-contributed="' + entry.filename + '">Open 3D Viewer &#9889;</button>';
+      card.querySelector('[data-contributed]').onclick = function() {
+        var fname = this.dataset.contributed;
+        var bldBase = _prodBase + 'contributed/';
+        var viewerUrl = (_base || '') + 'sandbox/index.html';
+        var url = viewerUrl + '?db=' + encodeURIComponent(bldBase + fname);
+        console.log('§COMMUNITY open file=' + fname);
+        window.open(url, '_blank');
+      };
+      grid.appendChild(card);
+    }
+  } catch(e) {
+    console.log('§COMMUNITY error ' + e.message);
+  }
+})();
 </script>
 <script src="sandbox/locale_loader.js?v=7"></script>
 <script>

@@ -526,7 +526,7 @@ function setupImport(A) {
         A.importMesh(file, fmt.ext);
       } else {
         document.getElementById('import-status').textContent =
-          'Unsupported: .' + fmt.ext + ' — Accepted: IFC, DAE, OBJ, GLB, 3DS, FBX, STL';
+          (typeof _TRL!=='undefined'&&_TRL.ui_unsupported||'Unsupported: .{ext} \u2014 Accepted: IFC, DAE, OBJ, GLB, 3DS, FBX, STL').replace('{ext}', fmt.ext);
       }
     });
 

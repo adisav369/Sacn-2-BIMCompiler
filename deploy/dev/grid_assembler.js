@@ -45,7 +45,10 @@ var GridAssembler = (function() {
     var loaded = [];
     var missing = [];
     for (var name in MODULES) {
-      if (typeof window[name] !== 'undefined') {
+      var present = (name === 'setupGridOverlay')
+        ? typeof setupGridOverlay === 'function'
+        : typeof window[name] !== 'undefined';
+      if (present) {
         loaded.push(name);
       } else {
         if (MODULES[name].required) {

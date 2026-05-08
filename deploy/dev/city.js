@@ -32,7 +32,7 @@ function setupCity(A) {
 
   A.initCity = async function(SQL) {
     A.citySQL = SQL;
-    A.status.textContent = `Fetching city index (${A.CITY_URL})...`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_fetching_city||'Fetching city index ({url})...').replace('{url}', A.CITY_URL);
     const buf = await A.cachedFetch(A.CITY_URL);
     A.cityDb = new SQL.Database(new Uint8Array(buf));
     console.log(`[S203] §CITY_INDEX size=${(buf.byteLength/1024).toFixed(0)}KB`);
@@ -165,7 +165,7 @@ function setupCity(A) {
     }
 
     if (A.buildingsRendered.has(buildingName)) {
-      A.status.textContent = `${buildingName} already loaded (${bc.count} elements)`;
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_already_loaded||'{name} already loaded ({n} elements)').replace('{name}', buildingName).replace('{n}', bc.count);
       return;
     }
     A.cityLoadBuilding(buildingName);
@@ -173,10 +173,10 @@ function setupCity(A) {
 
   A.cityLoadBuilding = async function(buildingName) {
     const archRow = A.cityDb.exec(`SELECT archetype FROM building_archetype WHERE building = ?`, [buildingName]);
-    if (!archRow.length) { A.status.textContent = `Unknown building: ${buildingName}`; return; }
+    if (!archRow.length) { A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_unknown_building||'Unknown building: {name}').replace('{name}', buildingName); return; }
     const archetype = archRow[0].values[0][0];
     const files = A.cityArchetypes[archetype];
-    if (!files) { A.status.textContent = `No DB for archetype: ${archetype}`; return; }
+    if (!files) { A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_no_db_arch||'No DB for archetype: {name}').replace('{name}', archetype); return; }
 
     if (!A.cityBuildingDbs[archetype]) {
       A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_downloading||'Downloading {name}...').replace('{name}', archetype);
@@ -227,7 +227,7 @@ function setupCity(A) {
     `);
 
     if (!rows.length) {
-      A.status.textContent = `No streamable elements for ${buildingName}`;
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_no_elements||'No streamable elements for {name}').replace('{name}', buildingName);
       A.db = saved.db; A.libDb = saved.libDb;
       return;
     }

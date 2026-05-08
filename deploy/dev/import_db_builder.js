@@ -24,13 +24,16 @@ function buildImportDBs(SQL, data) {
 
   // Project metadata
   db.run('CREATE TABLE IF NOT EXISTS project_metadata (key TEXT PRIMARY KEY, value TEXT)');
-  db.run('INSERT INTO project_metadata VALUES (?,?),(?,?),(?,?)',
-    ['project_name', data.meta.name, 'import_date', new Date().toISOString(), 'building_name', buildingName]);
+  db.run('INSERT INTO project_metadata VALUES (?,?),(?,?),(?,?),(?,?)',
+    ['project_name', data.meta.name, 'import_date', new Date().toISOString(), 'building_name', buildingName, 'source_uri', data.meta.source_uri || '']);
 
   // Elements
   db.run('CREATE TABLE IF NOT EXISTS elements_meta (guid TEXT PRIMARY KEY, ifc_class TEXT, element_name TEXT, storey TEXT, discipline TEXT, material_name TEXT, material_rgba TEXT, building TEXT)');
   db.run('CREATE TABLE IF NOT EXISTS element_transforms (guid TEXT PRIMARY KEY, center_x REAL, center_y REAL, center_z REAL, rotation_x REAL, rotation_y REAL, rotation_z REAL, bbox_x REAL, bbox_y REAL, bbox_z REAL)');
   db.run('CREATE TABLE IF NOT EXISTS element_instances (guid TEXT PRIMARY KEY, geometry_hash TEXT)');
+
+  // Transaction wrapping — 10x+ speedup for large IFC imports (thousands of rows)
+  db.run('BEGIN');
 
   var stmtEl = db.prepare('INSERT OR IGNORE INTO elements_meta VALUES (?,?,?,?,?,?,?,?)');
   for (var i = 0; i < data.elements.length; i++) {
@@ -60,6 +63,8 @@ function buildImportDBs(SQL, data) {
     stmtGeo.run([g.geomHash, new Uint8Array(g.vertices), new Uint8Array(g.indices), buildingName]);
   }
   stmtGeo.free();
+
+  db.run('COMMIT');
 
   console.log('[S220] §DB_BUILD single_db: elements=' + data.elements.length + ' transforms=' + data.transforms.length + ' instances=' + data.geometries.length + ' geometries=' + data.geometries.length);
 

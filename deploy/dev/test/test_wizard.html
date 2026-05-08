@@ -22,7 +22,11 @@
 
 <!-- Load sql.js for DB creation -->
 <script src="https://sql.js.org/dist/sql-wasm.js"></script>
-<!-- Load wizard.js (the module under test) -->
+<!-- Load wizard sub-modules first (must precede wizard.js orchestrator) -->
+<script src="../wizard_orientation.js"></script>
+<script src="../wizard_storeys.js"></script>
+<script src="../wizard_classify.js"></script>
+<!-- Load wizard.js (the orchestrator under test) -->
 <script src="../wizard.js"></script>
 
 <script>
