@@ -20,21 +20,36 @@ function initViewer() {
     if (APP._navigatePromise) return APP._navigatePromise;
     APP._navigatePromise = new Promise(function(resolve, reject) {
       if (typeof setupNavigate === 'function') {
+        // All sub-modules already cached — wire immediately
         setupNavigate(APP);
         APP._navigateLoaded = true;
         resolve();
         return;
       }
-      var s = document.createElement('script');
-      s.src = 'navigate.js?v=9';
-      s.onload = function() {
-        if (typeof setupNavigate === 'function') setupNavigate(APP);
-        APP._navigateLoaded = true;
-        console.log('[S239] §NAVIGATE_LAZY_LOADED');
-        resolve();
-      };
-      s.onerror = function() { reject(new Error('Failed to load navigate.js')); };
-      document.head.appendChild(s);
+      // Load sub-modules in dependency order, then the bootstrap
+      var modules = [
+        'navigate_find.js?v=1',
+        'navigate_grid.js?v=1',
+        'navigate_path.js?v=1',
+        'navigate_engine.js?v=1',
+        'navigate_controls.js?v=1',
+        'navigate.js?v=10'
+      ];
+      function loadNext(i) {
+        if (i >= modules.length) {
+          if (typeof setupNavigate === 'function') setupNavigate(APP);
+          APP._navigateLoaded = true;
+          console.log('[S239] §NAVIGATE_LAZY_LOADED');
+          resolve();
+          return;
+        }
+        var s = document.createElement('script');
+        s.src = modules[i];
+        s.onload = function() { loadNext(i + 1); };
+        s.onerror = function() { reject(new Error('Failed to load ' + modules[i])); };
+        document.head.appendChild(s);
+      }
+      loadNext(0);
     });
     return APP._navigatePromise;
   };
@@ -445,6 +460,27 @@ function initViewer() {
         }, 2000);
       } catch(e) {
         console.log('[S223] §DIFF_DB_ERROR ' + e.message);
+      }
+    }
+
+    // S230: Auto-start wizard if ?wizard=1 param present
+    var wizP = new URLSearchParams(location.search);
+    var wizardFlag = wizP.get('wizard');
+    var wizardKey = wizP.get('wizardKey');
+    var wizDbUrl = wizP.get('db');
+    if (wizardFlag === '1' && wizDbUrl) {
+      console.log('[S230] §WIZARD_VIEWER_START key=' + wizardKey + ' db=' + wizDbUrl);
+      try {
+        await APP.loadWizard();
+        // Fetch DB buffer from cache (IndexedDB)
+        var wizBuf = await APP.cachedFetch(wizDbUrl);
+        if (wizBuf) {
+          startWizard(wizardKey || wizDbUrl, wizBuf, {}, null);
+        } else {
+          console.warn('[S230] §WIZARD_NO_DB url=' + wizDbUrl);
+        }
+      } catch(wizErr) {
+        console.warn('[S230] §WIZARD_START_ERR ' + wizErr.message);
       }
     }
 
