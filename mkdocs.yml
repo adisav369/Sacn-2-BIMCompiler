@@ -89,6 +89,7 @@ nav:
 
   # ─── BIM Designer ─────────────────────────────────────
   - Designer:
+      - Browser as Modeller: BIM_Modeller_OOTB.md
       - BIM OOTB (Browser): BIM_Designer_Browser.md
       - Clash Detection: CLASH_DETECTION.md
       - SQLite3D Schema: SQLite3D_Schema.md
@@ -110,6 +111,7 @@ nav:
       - Reporting Engine: REPORTING_ENGINE_SRS.md
       - Infrastructure Designer: INFRA_DESIGNER_SRS.md
       - PDF Terrain: PDF_TERRAIN.md
+      - 2D Guide: BIM_2D_Guide.md
       - 2D Layout: 2D_LAYOUT.md
       - Disciplines: DISC_VALIDATE_SRS.md
       - ERP Database: DISC_VALIDATION_DB_SRS.md

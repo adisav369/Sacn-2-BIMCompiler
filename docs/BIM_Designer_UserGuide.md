@@ -1,4 +1,7 @@
-# BIM Designer — User Guide
+# BIM Designer — User Guide (DEPRECATED)
+
+> **This guide covers the Java/Blender desktop pipeline (sessions S1–S60). For the browser-based BIM OOTB viewer and 2D system, see the [Browser BIM 2D Guide](BIM_2D_Guide.md).**
+> The desktop pipeline remains valid for BOM compilation and IFC extraction. The browser viewer has superseded it for all 2D/3D viewing, grid overlay, cost panel, and interactive modelling.
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 <div class="bim-banner" markdown>
