@@ -553,7 +553,9 @@ function setupGridOverlay(APP) {
         }
       }
 
-      var results = SectionCut.sectionCut(A.db, A.libDb, cutZ, null);
+      // Implementing 2D_028 §2.3 — Witness: W-2D28
+      var rules = window._gridRules || {};
+      var results = SectionCut.sectionCut(A.db, A.libDb, cutZ, null, { rules: rules });
       GridContours.renderContours(A, results, mode, cutZ);
 
       // Door arcs + window openings
@@ -1101,8 +1103,10 @@ function setupGridOverlay(APP) {
       return;
     }
 
-    // Detect grids (column-based — structural grid, not internal walls)
-    gridData = GridDims.detectGrids(A.db);
+    // Implementing 2D_028 §5.1 — Witness: W-2D28
+    // Pass loaded rules to opportunity-vote algorithm
+    var rules = window._gridRules || {};
+    gridData = GridDims.detectGrids(A.db, null, rules);
     log('§GRID_DETECT xLines=' + (gridData.xLines || []).length + ' yLines=' + (gridData.yLines || []).length);
 
     if ((!gridData.xLines || !gridData.xLines.length) && (!gridData.yLines || !gridData.yLines.length)) {

@@ -616,6 +616,10 @@ var GridDrag = (function() {
         return resp.json();
       }).then(function(json) {
         loadRules(json);
+        // Implementing 2D_028 §5.1 — Witness: W-2D28
+        // Share loaded rules globally so grid_overlay + section_cut can consume them
+        window._gridRules = json;
+        log('§GRID_RULES loaded — shared to window._gridRules');
       }).catch(function(e) {
         log('§GRID_RULES WARN: could not load grid_rules.json — ' + e.message);
       });

@@ -145,145 +145,219 @@
     return kept;
   }
 
-  // ── detectGrids ─────────────────────────────────────────────────
+  // ── Opportunity-Vote Grid Detection (2D_028) ────────────────────
+  //
+  // Implementing 2D_028 §3 — Witness: W-2D28
+  //
+  // Grid lines are detected by querying element_transforms (design-intent bboxes)
+  // only — NO component_geometries blobs are loaded.
+  //
+  // The bbox IS the architect's stated sweep persistence:
+  //   (center_z - bbox_z/2) to (center_z + bbox_z/2)
+  // = the Z range an element would be detected across if you dragged a cut plane.
+  //
+  // Two vote sources per axis:
+  //   A) Structural wall faces (weight 1 each): bbox face positions of walls/columns
+  //      whose Z-span >= min_structural_span_m (they span the storey = structural).
+  //      Wall orientation determines which axis: runs-in-Y wall → X face votes.
+  //   B) Opening centres (weight = opening_vote_weight, default 2):
+  //      IfcDoor/IfcWindow whose bbox intersects cutZ — they sit precisely ON grid faces.
+  //
+  // A cluster reaching min_votes becomes a grid line. rawPosition = weighted mean.
 
   /**
-   * Detect grid lines from column positions in the database.
-   * @param {object} db - sql.js database instance
-   * @param {number} [tolerance=0.3] - clustering tolerance in meters
-   * @returns {{xLines: Array, yLines: Array}}
+   * Weighted-vote cluster. Returns lines with rawPosition + weight.
+   * @param {Array} votes — [{pos, weight}]
+   * @param {number} tol — clustering tolerance in meters
+   * @param {number} minVotes — minimum weight sum to keep cluster
    */
-  function detectGrids(db, tolerance) {
-    if (tolerance === undefined || tolerance === null) tolerance = DEFAULT_TOLERANCE;
+  function clusterVotes(votes, tol, minVotes) {
+    if (!votes.length) return [];
+    votes.sort(function(a, b) { return a.pos - b.pos; });
+    var clusters = [{ sum: votes[0].pos * votes[0].weight, weight: votes[0].weight }];
+    for (var i = 1; i < votes.length; i++) {
+      var last = clusters[clusters.length - 1];
+      var mean = last.sum / last.weight;
+      if (Math.abs(votes[i].pos - mean) < tol) {
+        last.sum    += votes[i].pos * votes[i].weight;
+        last.weight += votes[i].weight;
+      } else {
+        clusters.push({ sum: votes[i].pos * votes[i].weight, weight: votes[i].weight });
+      }
+    }
+    return clusters
+      .filter(function(c) { return c.weight >= minVotes; })
+      .map(function(c) { return { position: c.sum / c.weight, rawPosition: c.sum / c.weight, weight: c.weight }; });
+  }
+
+  /**
+   * Core opportunity-vote algorithm.
+   * One SQL query per source type — no geometry blobs.
+   *
+   * @param {object} db     — sql.js database
+   * @param {number} cutZ   — IFC Z of cut plane (null = no Z filter, use all elements)
+   * @param {object} rules  — parsed grid_rules.json (or null for defaults)
+   * @returns {{xLines, yLines}}
+   */
+  function detectOpportunityGrids(db, cutZ, rules) {
+    // Implementing 2D_028 §3.1 — Witness: W-2D28
+    var gd  = (rules && rules.grid_detection) || {};
+    var minSpan   = gd.min_structural_span_m  || 1.80;
+    var faceTol   = gd.face_cluster_tol_m     || DEFAULT_TOLERANCE;
+    var openTol   = gd.opening_cluster_tol_m  || 0.15;
+    var openWt    = gd.opening_vote_weight     || 2;
+    var minVotes  = gd.min_votes              || 2;
+    var structCls = gd.structural_classes  || ['IfcWall','IfcWallStandardCase','IfcColumn','IfcBeam','IfcMember'];
+    var openCls   = gd.opportunity_classes || ['IfcDoor','IfcWindow'];
 
     var empty = { xLines: [], yLines: [] };
+    var xVotes = [], yVotes = [];
 
-    // Query columns first; fall back to walls if no columns found
-    var sql =
-      "SELECT m.guid, t.center_x, t.center_y " +
-      "FROM elements_meta m " +
-      "JOIN element_transforms t ON m.guid = t.guid " +
-      "WHERE m.ifc_class IN ('IfcColumn')";
+    // ── Source A: structural elements — Z-span filter IS the sweep filter ──
+    // bbox_z = (center_z + bbox_z/2) - (center_z - bbox_z/2) = element height.
+    // Elements with span >= min_structural_span_m span the storey = structural.
+    // Wall orientation: runs-in-Y (bbox_y > 2*bbox_x) → X face votes.
+    //                   runs-in-X (bbox_x > 2*bbox_y) → Y face votes.
+    //                   square (column)               → both axes.
+    var structSet = "'" + structCls.join("','") + "'";
+    var zFilter = cutZ != null
+      ? " AND (t.center_z - t.bbox_z*0.5) <= " + Number(cutZ) +
+        " AND (t.center_z + t.bbox_z*0.5) >= " + Number(cutZ)
+      : "";
+    var structSql =
+      "SELECT m.ifc_class, t.center_x, t.center_y, t.bbox_x, t.bbox_y, t.bbox_z " +
+      "FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid " +
+      "WHERE m.ifc_class IN (" + structSet + ")" +
+      " AND t.bbox_z >= " + Number(minSpan) +
+      zFilter;
 
-    var result;
-    var source = 'column';
+    var structRows = [];
     try {
-      result = db.exec(sql);
-    } catch (e) {
-      log('§GD_COLUMNS query error: ' + e.message);
-    }
+      var sRes = db.exec(structSql);
+      if (sRes && sRes.length && sRes[0].values) structRows = sRes[0].values;
+    } catch (e) { log('§GD_OPP_STRUCT error: ' + e.message); }
 
-    // Fallback: if no columns, use wall face positions for grid alignment
-    // Implementing 2D_027 §1.2 — Witness: W-2D27
-    // Wall centroid is NOT a grid face — use bbox edges instead
-    var wallFaceRows = null;
-    if (!result || !result.length || !result[0].values.length || result[0].values.length < 2) {
-      log('§GD_COLUMNS found=' + (result && result.length && result[0].values ? result[0].values.length : 0) + ' — falling back to wall faces');
-      source = 'wall';
-      var wallSql =
-        "SELECT m.guid, t.center_x - t.bbox_x*0.5 AS x_lo, t.center_x + t.bbox_x*0.5 AS x_hi, " +
-        "       t.center_y - t.bbox_y*0.5 AS y_lo, t.center_y + t.bbox_y*0.5 AS y_hi " +
-        "FROM elements_meta m " +
-        "JOIN element_transforms t ON m.guid = t.guid " +
-        "WHERE m.ifc_class IN ('IfcWall', 'IfcWallStandardCase')";
-      try {
-        var wallResult = db.exec(wallSql);
-        if (wallResult && wallResult.length && wallResult[0].values.length) {
-          wallFaceRows = wallResult[0].values;
-        }
-      } catch (e2) {
-        log('§GD_WALLS query error: ' + e2.message);
-        return empty;
+    var spanSamples = 0;
+    for (var si = 0; si < structRows.length; si++) {
+      var cls  = structRows[si][0];
+      var cx   = Number(structRows[si][1]);
+      var cy   = Number(structRows[si][2]);
+      var bx   = Number(structRows[si][3]);
+      var by   = Number(structRows[si][4]);
+      var bz   = Number(structRows[si][5]);
+      if (spanSamples < 5) {
+        log('§GD_STRUCTURAL_SPAN class=' + cls + ' span=' + bz.toFixed(2) + ' bx=' + bx.toFixed(3) + ' by=' + by.toFixed(3));
+        spanSamples++;
       }
-      if (!wallFaceRows || wallFaceRows.length < 2) {
-        log('§GD_ELEMENTS found=0 source=wall');
-        console.warn('[GridDims] No columns or walls found — returning empty grids');
-        return empty;
-      }
-    }
-
-    // Build entries per axis
-    var xEntries = [];
-    var yEntries = [];
-
-    if (wallFaceRows) {
-      // Wall face positions: cluster both lo and hi edges for each axis
-      log('§GD_ELEMENTS found=' + wallFaceRows.length + ' source=wall-faces');
-      for (var i = 0; i < wallFaceRows.length; i++) {
-        var wguid = wallFaceRows[i][0];
-        var xLo = wallFaceRows[i][1];
-        var xHi = wallFaceRows[i][2];
-        var yLo = wallFaceRows[i][3];
-        var yHi = wallFaceRows[i][4];
-        xEntries.push({ pos: xLo, guid: wguid + '_lo' });
-        xEntries.push({ pos: xHi, guid: wguid + '_hi' });
-        yEntries.push({ pos: yLo, guid: wguid + '_lo' });
-        yEntries.push({ pos: yHi, guid: wguid + '_hi' });
-      }
-    } else {
-      var rows = result[0].values;
-      log('§GD_ELEMENTS found=' + rows.length + ' source=' + source);
-      if (rows.length < 2) {
-        console.warn('[GridDims] Fewer than 2 elements (' + rows.length + ') — returning empty grids');
-        return empty;
-      }
-      for (var i = 0; i < rows.length; i++) {
-        var guid = rows[i][0];
-        var cx = rows[i][1];
-        var cy = rows[i][2];
-        xEntries.push({ pos: cx, guid: guid });
-        yEntries.push({ pos: cy, guid: guid });
+      if (cls === 'IfcColumn' || (bx > 0 && Math.abs(bx - by) / Math.max(bx, by) < 0.5)) {
+        // Square-ish: column or near-square → both axes (centroid)
+        xVotes.push({ pos: cx, weight: 1 });
+        yVotes.push({ pos: cy, weight: 1 });
+      } else if (by > bx * 1.5) {
+        // Runs in Y — face votes on X axis
+        xVotes.push({ pos: cx - bx * 0.5, weight: 1 });
+        xVotes.push({ pos: cx + bx * 0.5, weight: 1 });
+      } else if (bx > by * 1.5) {
+        // Runs in X — face votes on Y axis
+        yVotes.push({ pos: cy - by * 0.5, weight: 1 });
+        yVotes.push({ pos: cy + by * 0.5, weight: 1 });
+      } else {
+        // Ambiguous — contribute centroid to both
+        xVotes.push({ pos: cx, weight: 1 });
+        yVotes.push({ pos: cy, weight: 1 });
       }
     }
+    log('§GD_OPP_STRUCT rows=' + structRows.length + ' xVotes=' + xVotes.length + ' yVotes=' + yVotes.length);
 
-    // Cluster
-    var xClusters = clusterEntries(xEntries, tolerance);
-    var yClusters = clusterEntries(yEntries, tolerance);
+    // ── Source B: openings — opportunity votes (weight = openWt) ──
+    // Openings sit precisely ON the grid face, never in the middle of a bay.
+    // Their centroid position directly votes for a grid line.
+    var openSet = "'" + openCls.join("','") + "'";
+    var openSql =
+      "SELECT t.center_x, t.center_y " +
+      "FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid " +
+      "WHERE m.ifc_class IN (" + openSet + ")" +
+      zFilter;
 
-    log('§GD_CLUSTER axis=X clusters=' + xClusters.length);
-    log('§GD_CLUSTER axis=Y clusters=' + yClusters.length);
+    var openRows = [];
+    try {
+      var oRes = db.exec(openSql);
+      if (oRes && oRes.length && oRes[0].values) openRows = oRes[0].values;
+    } catch (e) { log('§GD_OPP_OPEN error: ' + e.message); }
 
-    // Label: X-axis gets numeric (1,2,3...) left-to-right
-    // rawPosition = actual IFC cluster position; position = snapped display position
-    var xLines = xClusters.map(function (c, idx) {
-      return { label: String(idx + 1), position: c.position, rawPosition: c.position, guids: c.guids };
-    });
+    for (var oi = 0; oi < openRows.length; oi++) {
+      xVotes.push({ pos: Number(openRows[oi][0]), weight: openWt });
+      yVotes.push({ pos: Number(openRows[oi][1]), weight: openWt });
+    }
+    log('§GD_OPP_OPEN rows=' + openRows.length + ' weight=' + openWt);
 
-    // Label: Y-axis gets letters (A,B,C...) bottom-to-top, skip I
+    // ── Cluster votes ──────────────────────────────────────────────
+    var xClusters = clusterVotes(xVotes, faceTol, minVotes);
+    var yClusters = clusterVotes(yVotes, faceTol, minVotes);
+    log('§GD_OPP_CLUSTER axis=X candidates=' + xVotes.length + ' clusters=' + xClusters.length + ' minVotes=' + minVotes);
+    log('§GD_OPP_CLUSTER axis=Y candidates=' + yVotes.length + ' clusters=' + yClusters.length + ' minVotes=' + minVotes);
+
+    if (!xClusters.length && !yClusters.length) return empty;
+
+    // ── Label and pipeline ────────────────────────────────────────
     var letterSeq = 'A,B,C,D,E,F,G,H,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z'.split(',');
-    var yLines = yClusters.map(function (c, idx) {
+    var xLines = xClusters.map(function(c, idx) {
+      return { label: String(idx + 1), position: c.position, rawPosition: c.rawPosition, guids: [] };
+    });
+    var yLines = yClusters.map(function(c, idx) {
       var lbl = idx < letterSeq.length ? letterSeq[idx] : String.fromCharCode(65 + idx);
-      return { label: lbl, position: c.position, rawPosition: c.position, guids: c.guids };
+      return { label: lbl, position: c.position, rawPosition: c.rawPosition, guids: [] };
     });
 
-    // Snap to nearest SNAP_MODULE (display positions only; rawPosition preserved)
     xLines = snapGrids(xLines);
     yLines = snapGrids(yLines);
+    xLines = filterStructural(xLines);
+    yLines = filterStructural(yLines);
+    xLines = thinGrids(xLines);
+    yLines = thinGrids(yLines);
 
-    var xFiltered = filterStructural(xLines);
-    var yFiltered = filterStructural(yLines);
-    if (xFiltered.length !== xLines.length || yFiltered.length !== yLines.length) {
-      log('§GD_FILTER x:' + xLines.length + '→' + xFiltered.length +
-          ' y:' + yLines.length + '→' + yFiltered.length + ' (MIN_BAY=' + MIN_BAY_DISPLAY + 'm)');
-    }
-    xLines = xFiltered;
-    yLines = yFiltered;
-
-    var xThin = thinGrids(xLines);
-    var yThin = thinGrids(yLines);
-    if (xThin.length !== xLines.length || yThin.length !== yLines.length) {
-      log('§GD_THIN x:' + xLines.length + '→' + xThin.length +
-          ' y:' + yLines.length + '→' + yThin.length + ' (MAX_GRID_LINES=' + MAX_GRID_LINES + ')');
-    }
-    xLines = xThin;
-    yLines = yThin;
-
-    // Relabel sequentially after filtering — survivors get clean 1,2,3 / A,B,C
     for (var ri = 0; ri < xLines.length; ri++) xLines[ri].label = String(ri + 1);
     for (var rj = 0; rj < yLines.length; rj++) yLines[rj].label = rj < letterSeq.length ? letterSeq[rj] : String.fromCharCode(65 + rj);
 
-    log('§GD_GRIDS xLines=' + xLines.length + ' yLines=' + yLines.length);
+    log('§GD_GRIDS xLines=' + xLines.length + ' yLines=' + yLines.length + ' source=opportunity-vote');
+    return { xLines: xLines, yLines: yLines };
+  }
 
+  // ── detectGrids ─────────────────────────────────────────────────
+
+  /**
+   * Detect grid lines — opportunity-vote algorithm from grid_rules.json.
+   * Falls back to column centroids only if zero votes are produced.
+   * @param {object} db        — sql.js database
+   * @param {number} tolerance — (ignored; tolerance now comes from rules)
+   * @param {object} rules     — parsed grid_rules.json or null
+   * @returns {{xLines: Array, yLines: Array}}
+   */
+  function detectGrids(db, tolerance, rules) {
+    // Implementing 2D_028 §3.4 — Witness: W-2D28
+    // No cutZ — use all elements (detectGrids is for the building overview, not a specific cut)
+    var result = detectOpportunityGrids(db, null, rules);
+    if (result.xLines.length || result.yLines.length) return result;
+
+    // Hard fallback: column centroids (rare — only buildings with columns and no walls)
+    log('§GD_SOURCE opportunity=0 — falling back to column centroids');
+    var tol = tolerance || DEFAULT_TOLERANCE;
+    var empty = { xLines: [], yLines: [] };
+    var colRes;
+    try { colRes = db.exec("SELECT t.center_x, t.center_y FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid WHERE m.ifc_class = 'IfcColumn'"); }
+    catch(e) { return empty; }
+    if (!colRes || !colRes.length || !colRes[0].values.length) return empty;
+    var rows = colRes[0].values;
+    var xE = rows.map(function(r){ return { pos: Number(r[0]), weight: 1 }; });
+    var yE = rows.map(function(r){ return { pos: Number(r[1]), weight: 1 }; });
+    var xC = clusterVotes(xE, tol, 1);
+    var yC = clusterVotes(yE, tol, 1);
+    var letterSeq = 'A,B,C,D,E,F,G,H,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z'.split(',');
+    var xLines = xC.map(function(c,i){ return { label: String(i+1), position: c.position, rawPosition: c.rawPosition, guids:[] }; });
+    var yLines = yC.map(function(c,i){ var l=letterSeq[i]||String.fromCharCode(65+i); return { label:l, position:c.position, rawPosition:c.rawPosition, guids:[] }; });
+    xLines = snapGrids(filterStructural(thinGrids(xLines)));
+    yLines = snapGrids(filterStructural(thinGrids(yLines)));
+    log('§GD_GRIDS xLines=' + xLines.length + ' yLines=' + yLines.length + ' source=column-fallback');
     return { xLines: xLines, yLines: yLines };
   }
 
@@ -484,73 +558,28 @@
   // ── detectGridsAtPlane ───────────────────────────────────────────
 
   /**
-   * Detect grid lines from structural elements crossing a horizontal cut plane.
-   * Same clustering as detectGrids() but filtered to elements whose vertical
-   * extent includes cutZ (IFC metres).
-   * @param {object} db - sql.js database instance
-   * @param {number} cutZ - IFC Z height of the cut plane
-   * @param {number} [tolerance=0.3] - clustering tolerance in meters
+   * Detect grid lines at a section cut plane — opportunity-vote algorithm.
+   * Implementing 2D_028 §3.4 — Witness: W-2D28
+   *
+   * Uses detectOpportunityGrids with cutZ active:
+   *   Z-filter: (center_z - bbox_z/2) <= cutZ AND (center_z + bbox_z/2) >= cutZ
+   *   Span filter: bbox_z >= min_structural_span_m (the sweep-persistence filter)
+   *   Opening votes: IfcDoor/IfcWindow at cutZ get weight=opening_vote_weight
+   *
+   * No geometry blobs loaded — pure element_transforms query.
+   *
+   * @param {object} db        — sql.js database
+   * @param {number} cutZ      — IFC Z height of the section cut plane
+   * @param {number} tolerance — (ignored; tolerance comes from rules.grid_detection)
+   * @param {object} rules     — parsed grid_rules.json or null
    * @returns {{xLines: Array, yLines: Array}}
    */
-  function detectGridsAtPlane(db, cutZ, tolerance) {
-    if (tolerance === undefined || tolerance === null) tolerance = DEFAULT_TOLERANCE;
-    var empty = { xLines: [], yLines: [] };
-
-    var sql =
-      "SELECT m.guid, t.center_x, t.center_y " +
-      "FROM elements_meta m " +
-      "JOIN element_transforms t ON m.guid = t.guid " +
-      "WHERE m.ifc_class IN ('IfcColumn','IfcWall','IfcWallStandardCase','IfcBeam','IfcMember') " +
-      "  AND (t.center_z - COALESCE(t.bbox_z,3.0)/2) <= " + Number(cutZ) +
-      "  AND (t.center_z + COALESCE(t.bbox_z,3.0)/2) >= " + Number(cutZ);
-
-    var result;
-    try {
-      result = db.exec(sql);
-    } catch (e) {
-      log('§GD_PLANE query error: ' + e.message);
-      return empty;
-    }
-
-    if (!result || !result.length || !result[0].values.length) {
-      log('§GD_PLANE cutZ=' + cutZ.toFixed(2) + ' elements=0');
-      return empty;
-    }
-
-    var rows = result[0].values;
-    log('§GD_PLANE cutZ=' + cutZ.toFixed(2) + ' elements=' + rows.length);
-
-    var xEntries = [], yEntries = [];
-    for (var i = 0; i < rows.length; i++) {
-      xEntries.push({ pos: rows[i][1], guid: rows[i][0] });
-      yEntries.push({ pos: rows[i][2], guid: rows[i][0] });
-    }
-
-    var xClusters = clusterEntries(xEntries, tolerance);
-    var yClusters = clusterEntries(yEntries, tolerance);
-
-    var xLines = xClusters.map(function (c, idx) {
-      return { label: String(idx + 1), position: c.position, rawPosition: c.position, guids: c.guids };
-    });
-    var letterSeq = 'A,B,C,D,E,F,G,H,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z'.split(',');
-    var yLines = yClusters.map(function (c, idx) {
-      var lbl = idx < letterSeq.length ? letterSeq[idx] : String.fromCharCode(65 + idx);
-      return { label: lbl, position: c.position, rawPosition: c.position, guids: c.guids };
-    });
-
-    xLines = snapGrids(xLines);
-    yLines = snapGrids(yLines);
-    xLines = filterStructural(xLines);
-    yLines = filterStructural(yLines);
-    xLines = thinGrids(xLines);
-    yLines = thinGrids(yLines);
-
-    // Relabel sequentially after filtering — survivors keep position but get clean A,B,C / 1,2,3
-    for (var ri = 0; ri < xLines.length; ri++) xLines[ri].label = String(ri + 1);
-    for (var rj = 0; rj < yLines.length; rj++) yLines[rj].label = rj < letterSeq.length ? letterSeq[rj] : String.fromCharCode(65 + rj);
-
-    log('§GD_PLANE_GRIDS cutZ=' + cutZ.toFixed(2) + ' xLines=' + xLines.length + ' yLines=' + yLines.length);
-    return { xLines: xLines, yLines: yLines };
+  function detectGridsAtPlane(db, cutZ, tolerance, rules) {
+    var result = detectOpportunityGrids(db, cutZ, rules);
+    log('§GD_PLANE_GRIDS cutZ=' + Number(cutZ).toFixed(2) +
+        ' xLines=' + result.xLines.length + ' yLines=' + result.yLines.length +
+        ' source=opportunity-vote');
+    return result;
   }
 
   // ── Attach to window ────────────────────────────────────────────
@@ -559,6 +588,7 @@
     window.GridDims = {
       detectGrids: detectGrids,
       detectGridsAtPlane: detectGridsAtPlane,
+      detectOpportunityGrids: detectOpportunityGrids,
       generateDimensions: generateDimensions,
       renderGridEntities: renderGridEntities
     };

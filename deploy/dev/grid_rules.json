@@ -5,6 +5,32 @@
     "snap_m":       0.05,
     "max_step_m":   2.0
   },
+  "floor_plan": {
+    "cut_offset_m":          1.0,
+    "band_min_above_floor":  0.05,
+    "band_max_below_next":   0.10,
+    "band_fallback_height":  3.5,
+    "opening_z_range":       [0.50, 2.40],
+    "exclude_above_band": [
+      "IfcRoof", "IfcCovering", "IfcRoofing"
+    ],
+    "exclude_below_band": [
+      "IfcFoundation", "IfcPile", "IfcFooting"
+    ]
+  },
+  "grid_detection": {
+    "min_structural_span_m":  1.80,
+    "face_cluster_tol_m":     0.30,
+    "opening_cluster_tol_m":  0.15,
+    "opening_vote_weight":    2,
+    "min_votes":              2,
+    "structural_classes": [
+      "IfcWall", "IfcWallStandardCase", "IfcColumn", "IfcBeam", "IfcMember"
+    ],
+    "opportunity_classes": [
+      "IfcDoor", "IfcWindow"
+    ]
+  },
   "clearance": [
     {
       "class": "IfcFurnishingElement",

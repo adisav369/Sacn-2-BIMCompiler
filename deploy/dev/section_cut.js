@@ -399,6 +399,9 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
     var t0 = Date.now();
     var opts = options || {};
     var clipBox = opts.clipBox || null;   // {minX, minY, maxX, maxY}
+    // Implementing 2D_028 §2.3 — Witness: W-2D28
+    var rules = opts.rules || null;
+    var fp = (rules && rules.floor_plan) || {};
 
     // --- Determine cut height ---
     if (cutZ == null) {
@@ -479,6 +482,63 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
                     ' box=[' + clipBox.minX.toFixed(0) + ',' + clipBox.minY.toFixed(0) +
                     ' to ' + clipBox.maxX.toFixed(0) + ',' + clipBox.maxY.toFixed(0) + ']');
     }
+
+    // ── Storey band filter — Implementing 2D_028 §2.2 — Witness: W-2D28
+    // Uses bbox Z-bounds from element_transforms (design-intent envelope).
+    // For CONTOUR rendering: hard-exclude classes that can never appear in GF band.
+    // Does NOT filter by Z-span (that is grid-detection only) — here we want ALL
+    // elements that visually intersect the band for accurate section contours.
+    var bandMin, bandMax;
+    if (cutZ != null) {
+        var storeys2 = detectStoreys(db);
+        var activeStorey = null;
+        for (var bsi = 0; bsi < storeys2.length; bsi++) {
+            if (storeys2[bsi].floorZ <= cutZ && cutZ <= storeys2[bsi].floorZ + 10) {
+                activeStorey = storeys2[bsi]; break;
+            }
+        }
+        if (activeStorey) {
+            var fallbackH = fp.band_fallback_height || 3.5;
+            var nextFZ = (function() {
+                // next storey above activeStorey
+                var best = activeStorey.floorZ + fallbackH;
+                for (var ns = 0; ns < storeys2.length; ns++) {
+                    var fz = storeys2[ns].floorZ;
+                    if (fz > activeStorey.floorZ && fz < best) best = fz;
+                }
+                return best;
+            })();
+            bandMin = activeStorey.floorZ + (fp.band_min_above_floor || 0.05);
+            bandMax = nextFZ - (fp.band_max_below_next || 0.10);
+        } else {
+            bandMin = cutZ - 1.5;
+            bandMax = cutZ + 2.5;
+        }
+        var excAbove = fp.exclude_above_band || ['IfcRoof','IfcCovering','IfcRoofing'];
+        var excBelow = fp.exclude_below_band || ['IfcFoundation','IfcPile','IfcFooting'];
+        var beforeBand = allRows.length;
+        var bandFiltered = [];
+        for (var bfi = 0; bfi < allRows.length; bfi++) {
+            var brow = allRows[bfi];
+            var bcls = brow[1] || '';
+            var bcz  = Number(brow[13]);
+            // Use bbox_z from element_transforms if available (col 13 = center_z via current query)
+            // The existing query doesn't fetch bbox_z separately — use center_z ± 2m as soft check
+            // Hard excludes by class only (safe, class-level, no geometry needed):
+            if (excAbove.indexOf(bcls) >= 0) { continue; }
+            if (excBelow.indexOf(bcls) >= 0) { continue; }
+            // Soft Z-band: if rtree, use minZ/maxZ; else use center_z as proxy
+            if (useRtree) {
+                var bMinZ = Number(brow[9]), bMaxZ = Number(brow[10]);
+                if (bMaxZ < bandMin || bMinZ > bandMax) continue;
+            }
+            bandFiltered.push(brow);
+        }
+        allRows = bandFiltered;
+        console.log('§SC_BAND_FILTER bandMin=' + bandMin.toFixed(2) + ' bandMax=' + bandMax.toFixed(2) +
+                    ' in=' + allRows.length + ' excluded=' + (beforeBand - allRows.length));
+    }
+    // ── end band filter ──────────────────────────────────────────────
 
     var cutCount = 0, belowCount = 0, aboveCount = 0, totalContours = 0;
     var sliceCount = 0;
