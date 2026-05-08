@@ -570,6 +570,25 @@ function setupGridOverlay(APP) {
         var windowElements = results.filter(function(r) { return r.ifcClass === 'IfcWindow'; });
         DoorArcs.generateStairSymbol(stairElements, A, cutZ);
         DoorArcs.generateWindowOpenings(windowElements, A, cutZ);
+
+        // Implementing 2D_029 §1.3 — Witness: W-2D29
+        // Opening callout labels for doors and windows
+        if (DoorArcs.addOpeningLabel) {
+          var openings = doors.concat(windowElements);
+          for (var oi = 0; oi < openings.length; oi++) {
+            var el = openings[oi];
+            var b = el.bbox2d;
+            if (!b) continue;
+            var bw = b[2] - b[0], bd = b[3] - b[1];
+            var openW = Math.max(bw, bd);
+            var wallAxis = bw >= bd ? 'X' : 'Y';
+            var ocx = (b[0] + b[2]) / 2, ocy = (b[1] + b[3]) / 2;
+            var elName = el.element_name || el.elementName || '';
+            var tag = elName.split(':')[0] || (el.ifcClass || '').replace('Ifc', '').toUpperCase();
+            DoorArcs.addOpeningLabel(A.scene, A.ifc2three, ocx, ocy, cutZ, wallAxis, openW, tag, el.guid, rules);
+          }
+        }
+
         log('§DOOR_ARC_STOREY mode=' + mode + ' doors=' + doors.length + ' stairs=' + stairElements.length + ' windows=' + windowElements.length);
       }
       log('§GRID_VIEW contours=section mode=' + mode + ' cutZ=' + cutZ.toFixed(2));
@@ -1109,6 +1128,26 @@ function setupGridOverlay(APP) {
     gridData = GridDims.detectGrids(A.db, null, rules);
     log('§GRID_DETECT xLines=' + (gridData.xLines || []).length + ' yLines=' + (gridData.yLines || []).length);
 
+    // Implementing 2D_029 §2.4 — Witness: W-2D29
+    // Replay saved GRID_MOVE ops to restore positions from previous session
+    if (window.KernelOps && A.db) {
+      try {
+        var savedMoves = KernelOps.replayOps(A.db, 'GRID_MOVE');
+        savedMoves.forEach(function (op) {
+          var p = op.parameters;
+          var lines = p.axis === 'X' ? gridData.xLines : gridData.yLines;
+          if (!lines) return;
+          var line = lines.find(function (l) { return l.label === p.label; });
+          if (line) { line.position = p.to; line.rawPosition = p.to; }
+        });
+        log('§KERNEL_OP replay moves=' + savedMoves.length);
+      } catch (e) {
+        log('§KERNEL_OP replay ERROR: ' + e.message);
+      }
+    } else {
+      log('§KERNEL_OP skip — KernelOps=' + (!!window.KernelOps) + ' db=' + (!!A.db));
+    }
+
     if ((!gridData.xLines || !gridData.xLines.length) && (!gridData.yLines || !gridData.yLines.length)) {
       A.status.textContent = 'No grid lines detected (need ≥2 columns)';
       active = false;
@@ -1164,6 +1203,123 @@ function setupGridOverlay(APP) {
     A.markDirty();
   };
 
+  // ── §3 3D Grid Planes ────────────────────────────────────────────
+  // Implementing 2D_029 §3.1–§3.2 — Witness: W-2D29
+  var gridPlanes3DGroup = null;
+
+  function createGridPlane3D(axis, ifcPos, env, rules) {
+    var p3d = (rules && rules.plane_3d) || {};
+    var opacity = p3d.plane_opacity || 0.12;
+    var colorX  = p3d.plane_color_x || '#ff4444';
+    var colorY  = p3d.plane_color_y || '#4444ff';
+    var color = axis === 'X' ? colorX : colorY;
+
+    var height = env.zMax - env.zMin;
+    var width  = axis === 'X' ? (env.yMax - env.yMin) : (env.xMax - env.xMin);
+
+    var geo = new THREE.PlaneGeometry(width, height);
+    var mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(color),
+      transparent: true,
+      opacity: opacity,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    });
+    var mesh = new THREE.Mesh(geo, mat);
+
+    var midZ = (env.zMin + env.zMax) / 2;
+    if (axis === 'X') {
+      var p = A.ifc2three(ifcPos, (env.yMin + env.yMax) / 2, midZ);
+      mesh.position.set(p.x, p.y, p.z);
+      mesh.rotation.y = Math.PI / 2;
+    } else {
+      var p = A.ifc2three((env.xMin + env.xMax) / 2, ifcPos, midZ);
+      mesh.position.set(p.x, p.y, p.z);
+    }
+
+    mesh.userData = { gridAxis: axis, gridPos: ifcPos, isGridPlane: true };
+    mesh.renderOrder = -1;
+    return mesh;
+  }
+
+  function renderGridPlanesIn3D(grids, env, rules) {
+    removeGridPlanes3D();
+    var group = new THREE.Group();
+    group.name = 'gridPlanes3D';
+    var count = 0;
+    grids.xLines.forEach(function (line) {
+      group.add(createGridPlane3D('X', line.position, env, rules));
+      count++;
+    });
+    grids.yLines.forEach(function (line) {
+      group.add(createGridPlane3D('Y', line.position, env, rules));
+      count++;
+    });
+    A.scene.add(group);
+    gridPlanes3DGroup = group;
+    A.markDirty();
+    log('§GRID_3D_PLANES count=' + count + ' mode=adjust');
+    return group;
+  }
+
+  function removeGridPlanes3D() {
+    if (gridPlanes3DGroup) {
+      gridPlanes3DGroup.traverse(function (c) {
+        if (c.geometry) c.geometry.dispose();
+        if (c.material) c.material.dispose();
+      });
+      A.scene.remove(gridPlanes3DGroup);
+      gridPlanes3DGroup = null;
+    }
+  }
+
+  // ── §6 Storey Band Visibility Filter ────────────────────────────
+  // Implementing 2D_029 §6.1 — Witness: W-2D29
+  function applyStoreyBandVisibility(bandMin, bandMax) {
+    var shown = 0, hidden = 0;
+    A.scene.traverse(function (obj) {
+      if (!obj.isMesh || !obj.userData.guid) return;
+      var cz = obj.userData.center_z;
+      // Fallback: query DB if center_z not cached on userData
+      if (cz === undefined && A.db) {
+        try {
+          var r = A.db.exec('SELECT center_z FROM element_transforms WHERE guid = ?',
+                             [obj.userData.guid]);
+          if (r.length && r[0].values.length) {
+            cz = r[0].values[0][0];
+            obj.userData.center_z = cz;
+          }
+        } catch (e) { /* skip */ }
+      }
+      if (cz === undefined) return;
+      if (cz >= bandMin && cz <= bandMax) {
+        obj.visible = true;
+        shown++;
+      } else {
+        obj.visible = false;
+        hidden++;
+      }
+    });
+    A.markDirty();
+    log('§GRID_3D_BAND_VIS bandMin=' + bandMin.toFixed(2) +
+        ' bandMax=' + bandMax.toFixed(2) + ' shown=' + shown + ' hidden=' + hidden);
+
+    if (window.KernelOps && A.db) {
+      KernelOps.commitOp(A.db, 'VIEW_FILTER', {
+        mode: 'storey_band', bandMin: bandMin, bandMax: bandMax,
+        shown: shown, hidden: hidden
+      });
+    }
+  }
+
+  function clearStoreyBandVisibility() {
+    A.scene.traverse(function (obj) {
+      if (obj.isMesh && obj.userData.guid) obj.visible = true;
+    });
+    A.markDirty();
+    log('§GRID_3D_BAND_VIS cleared');
+  }
+
   // ── State accessor for GridDrag ──────────────────────────────────
   // Exposes closure variables as a live-read object so grid_drag.js
   // can access scene state without coupling to internals.
@@ -1180,7 +1336,11 @@ function setupGridOverlay(APP) {
     removeDimChains:  removeDimChains,
     buildDimChains:   function(grids, env) { buildDimChains(grids, env); },
     LINE_OVERSHOOT_MIN:   LINE_OVERSHOOT_MIN,
-    LINE_OVERSHOOT_RATIO: LINE_OVERSHOOT_RATIO
+    LINE_OVERSHOOT_RATIO: LINE_OVERSHOOT_RATIO,
+    renderGridPlanesIn3D:      renderGridPlanesIn3D,
+    removeGridPlanes3D:        removeGridPlanes3D,
+    applyStoreyBandVisibility: applyStoreyBandVisibility,
+    clearStoreyBandVisibility: clearStoreyBandVisibility
   };
 
   // Wire GridDrag if available

@@ -487,7 +487,7 @@
 <script src="loader.js?v=4"></script>
 <script src="qrcode.min.js?v=1" onerror="console.warn('§LOAD_FAIL qrcode.min.js — QR sharing disabled')"></script>
 <script src="config.js?v=4" onerror="console.warn('§LOAD_FAIL config.js')"></script>
-<script src="scene.js?v=4" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
+<script src="scene.js?v=5" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
 <script src="helpers.js?v=3" onerror="console.warn('§LOAD_FAIL helpers.js')"></script>
 <script src="streaming.js?v=18" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
 <script src="panels.js?v=6" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
@@ -516,16 +516,16 @@
 <script src="grid_dims.js?v=4"></script>
 <script src="grid_config.js?v=2" onerror="console.warn('[GridConfig] grid_config.js skipped')"></script>
 <script src="grid_views.js?v=8" onerror="console.warn('[GridViews] grid_views.js skipped')"></script>
-<script src="grid_door_arcs.js?v=2" onerror="console.warn('[DoorArcs] grid_door_arcs.js skipped')"></script>
+<script src="grid_door_arcs.js?v=3" onerror="console.warn('[DoorArcs] grid_door_arcs.js skipped')"></script>
 <script src="section_cut.js?v=5" onerror="console.warn('[SectionCut] section_cut.js skipped')"></script>
 <script src="elevation.js?v=1" onerror="console.warn('[Elevation] elevation.js skipped')"></script>
 <script src="grid_contours.js?v=4" onerror="console.warn('[GridContours] grid_contours.js skipped')"></script>
 <script src="grid_dim_chains.js?v=4" onerror="console.warn('[DimChains] grid_dim_chains.js skipped')"></script>
-<script src="kernel_ops.js?v=1" onerror="console.warn('[KernelOps] kernel_ops.js skipped')"></script>
-<script src="cost_panel.js?v=1" onerror="console.warn('[CostPanel] cost_panel.js skipped')"></script>
-<script src="grid_drag.js?v=3" onerror="console.warn('[GridDrag] grid_drag.js skipped')"></script>
+<script src="kernel_ops.js?v=3" onerror="console.warn('[KernelOps] kernel_ops.js skipped')"></script>
+<script src="cost_panel.js?v=3" onerror="console.warn('[CostPanel] cost_panel.js skipped')"></script>
+<script src="grid_drag.js?v=5" onerror="console.warn('[GridDrag] grid_drag.js skipped')"></script>
 <script src="grid_scissors.js?v=1" onerror="console.warn('[GridScissors] grid_scissors.js skipped')"></script>
-<script src="grid_overlay.js?v=26" onerror="console.warn('[GridOverlay] grid_overlay.js skipped — file not found or error')"></script>
+<script src="grid_overlay.js?v=28" onerror="console.warn('[GridOverlay] grid_overlay.js skipped — file not found or error')"></script>
 <script src="grid_assembler.js?v=2" onerror="console.warn('[GridAssembler] grid_assembler.js skipped')"></script>
 <script src="print_sheet.js?v=3" onerror="console.warn('[PrintSheet] print_sheet.js skipped')"></script>
 <script src="ghostglass.js?v=2" onerror="console.warn('§LOAD_FAIL ghostglass.js')"></script>
@@ -572,7 +572,7 @@ if(new URLSearchParams(location.search).get('embedded')!=='true'){
 </script>
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js?v=273')
+  navigator.serviceWorker.register('sw.js?v=280')
     .then(function(r){console.log('§SW_REG scope='+r.scope)})
     .catch(function(e){console.warn('§SW_REG_FAIL',e)});
 }

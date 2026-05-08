@@ -209,5 +209,10 @@ function setupScene(A) {
   window.addEventListener('keydown', (e) => {
     if (e.altKey && e.key === 'z') { e.preventDefault(); A.toggleXray(); }
     if (e.key === 'F11') { e.preventDefault(); A.toggleFullscreen(); }
+    // G key toggles grid overlay (2D Plans)
+    if (e.key === 'g' && !e.ctrlKey && !e.altKey && !e.metaKey && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      if (typeof window.open2DPlans === 'function') window.open2DPlans();
+    }
   });
 }

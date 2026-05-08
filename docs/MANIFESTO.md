@@ -658,4 +658,127 @@ For the full academic treatment: **[BIMERPPaper.md](BIMERPPaper.md)**
 
 For market positioning and competitive landscape: **[StrategicIndustryPositioning.md](StrategicIndustryPositioning.md)**
 
+---
+
+## The Open BIM Question — Where the Community Got Stuck
+
+The open-source AEC community has been wrestling with a genuine identity crisis since at least 2023. Understanding it is important, because this project's approach was shaped in reaction to it — and now positions itself as a third direction.
+
+### Two Incompatible Visions
+
+The IfcOpenShell/Bonsai project holds two visions in tension that its community cannot resolve:
+
+**Vision A — The Complete Authoring Platform.** Dion Moult and the Bonsai core team are building a professional-grade BIM authoring suite inside Blender. The 2024 rebrand from BlenderBIM to Bonsai was a deliberate signal: the project's ambition exceeds "a Blender plugin." Bonsai v0.8.0 shipped clash detection, 4D sequencing, cost schedules, and quantity takeoff. The thesis is that IFC is already a full project management data model — it contains `IfcCostSchedule`, `IfcTask`, `IfcWorkSchedule` — and the problem is that no tool actually writes those entities. Moult's 2024 talk was titled *"IFC as a database is the future of the Built Environment."*
+
+**Vision B — The Neutral Library Ecosystem.** Thomas Krijnen, who wrote most of the C++ core starting in 2011, and a significant part of the community want IfcOpenShell to remain a platform-agnostic library. A 2023 osArch thread explicitly argued for a repo split: the monorepo conflates library and application, leaving users "with other use cases out — ones which do not need BlenderBIM as a GUI." The Blender dependency is a structural barrier that the rebrand cannot dissolve.
+
+Neither vision is wrong. Together they are unsustainable. The Open Collective shows ~$26K annual budget, two principal maintainers, and an explicit funding target of a second sponsored developer at $50K/year that has not been reached. The community knows this. The thread "How can the community better support IfcOpenShell/Bonsai development?" is a symptom of structural fragility, not a funding campaign.
+
+### The Format War
+
+Underneath the identity tension is a deeper strategic fault line: **IFC vs. USD as the future of AEC data.**
+
+Major firms — HOK, ARUP — are lobbying within buildingSMART for OpenUSD adoption. Autodesk has effectively replaced IFC internally with SVF/SVF2 (proprietary USD predecessors). In October 2024, buildingSMART signed a liaison agreement with the Alliance for OpenUSD (AOUSD — Nvidia, Apple, Hexagon, Trimble). IFC5 in JSON is buildingSMART's response: modular, component-based, explicitly incorporating USD concepts. Whether IFC5 ships in production form before USD wins the default position in major tools is an open question.
+
+The community's reaction ranges from principled resistance to anxious pragmatism. The structural argument for USD is not unreasonable: IFC's BREP-plus-semantics monolith conflates geometry and data. USD + triangulated mesh handles the geometry; JSON/SQL handles the data. The argument *against* USD is equally principled: it has no cost, schedule, or asset management entities — it is a geometry exchange format, not a building data model.
+
+**Neither side addresses the fundamental gap.** The geometry-ERP disconnect — the fact that a construction budget is separated from a 3D model by a human with a spreadsheet — is not solved by IFC5, not solved by USD, and not addressed by any current open-source tool. The osArch thread "OpenConstructionERP — QTO, BOQ and AI estimating with IFC and Revit" appeared in May 2026, acknowledging the gap and attempting to bridge it. It is very early work.
+
+### The Browser Problem
+
+The community's desire for browser-native IFC is explicit. The AECO.DEV "BIM Jailbreak" framing states it directly: remove the server dependency, remove the desktop dependency, run IFC in the browser. The practical options in 2025–2026:
+
+- **web-ifc (That Open Company):** Fast geometry parsing in WASM, MIT licensed, but focused on visualization — not the full IFC semantic model. The company's commercial wrapper and "openwashing" accusations (documented in osArch discussions) created a values conflict with the community.
+- **IfcOpenShell WASM via Pyodide:** Theoretically possible, practically too heavy. The 2026 Google Summer of Code project is funded to replace Pyodide with a direct C++ to WASM build. This work is not yet available.
+
+The browser path is aspirational for the community, not yet production-ready for authoring.
+
+### What Nobody Has Answered
+
+After mapping the debates, three questions remain open in the osArch community as of 2026:
+
+1. **Where does the ERP data live?** IFC has cost and schedule entities. Nobody authors them. The gap between geometry and construction management data is still a spreadsheet.
+2. **How does open BIM run without Blender, without a server, and without a heavy WASM bundle?** The community wants this but does not have a production answer.
+3. **What is the data model?** IFC provides a schema. USD provides a scene graph. Neither provides a *business logic layer* — the rules that govern what goes where, who orders what, what validates against which jurisdiction code.
+
+### The Third Direction
+
+This project's answer does not compete with IfcOpenShell or Bonsai. It occupies a different space, shaped by a question the community has not asked: **what if the data model was ERP, and IFC was just the import format?**
+
+The consequences of that question, taken seriously:
+
+**IFC becomes an exchange format, not the model.** `extractIFC2DB.js` runs web-ifc once, pre-compresses tessellation and placement into SQLite BLOBs, and the viewer never touches IFC again. IfcOpenShell handles the cases that exceed web-ifc's envelope (> 200MB merged models). Both are inputs. Neither is the architecture.
+
+**The database is the model.** Dion Moult argued that IFC should be a database. This project took him literally — except the database is SQLite (query-optimised, browser-native, zero-install) rather than IFC-SPF (unordered IDs, full-file parse, no lazy loading). The `elements_meta` + `element_transforms` + `component_geometries` schema is a projection of IFC into a form that a browser can query at 60fps.
+
+**The ERP layer fills the geometry-ERP gap.** `M_Product`, `M_BOM`, `C_Order`, `AD_Val_Rule` — thirty years of manufacturing ERP patterns applied to spatial data. The cost of a building is `SUM(price × qty)` — a query, not a feature. 4D scheduling is a topological sort of the BOM tree. These are not features bolted onto a geometry viewer; they are the native output of the data model.
+
+**The browser proves the architecture is technology-agnostic.** The 2026 RouteWalker migration is the concrete demonstration: `RouteWalker.java` ran MEP pipe routing on a JVM, reading from iDempiere tables, writing to output.db. `routewalker.js` runs the same routing logic in a Web Worker, reading from `mep_rw.db` (SQLite sidecar), writing `RW2D-` prefixed elements into the building DB. Same data contract. Different runtime. The compiler is not a Java program — it is a data architecture.
+
+**The browser is a modelling computer, not a viewer.** The community's "BIM Jailbreak" aspiration treats the browser as a delivery mechanism for read-only geometry. This project treats it as the primary working environment. `measure.js` runs two-point distance measurement, area calculation, and full clash detection (R-tree spatial index, rule-driven from `clash_rules.json`) directly against the SQLite DB — no server, no plugin, no desktop app. The 2D grid overlay adds interactive section cuts, scissors-driven adaptive grids, and saved section planes. The compiler's rules — [BBC.md](BOMBasedCompilation.md) BOM placement verbs, [discipline validation](DISC_VALIDATION_DB_SRS.md) AD_Val_Rule sets — are not separate documents that an architect must consult separately. They are the logic the browser is executing against the same DB the user is editing. The modelling environment and the specification are the same thing.
+
+**Sustainability through ERP heritage.** The osArch community's sustainability crisis is partly a problem of contributor scope: C++/Python BIM specialists are rare. iDempiere developers are not. The ERP pattern means the data layer is legible to any developer who has administered an iDempiere instance — without understanding IFC schema, Blender Python, or OpenCascade geometry kernels.
+
+This is not a claim that this project is more capable than Bonsai or IfcOpenShell. It is a claim that it answers a different question — and in answering that question, it resolves several of the tensions the community has been unable to resolve: the browser deployment problem, the server dependency, the ERP gap, and the WASM weight. Not by building better BIM tools, but by recognising that the problem was never primarily a geometry problem.
+
+---
+
+## The Modelling Inversion
+
+> *"A modeller is not a program that writes files. It is an interactive log of operations applied to a database. The browser is the ideal runtime for this log because the database lives in the same memory space as the UI, the worker can evaluate geometry without blocking, and the network can sync deltas without a server. Exporting to IFC is rendering to a format, not saving your work. This is not incremental. This is inverting the modelling stack."*
+
+The browser is a better modelling environment than Revit, Bonsai, or ArchiCAD — for a structural reason, not a feature reason. The geometry kernel and the data model are the same runtime. A two-click length measurement in `measure.js` is the proof: six lines of code, a raycaster, and `p1.distanceTo(p2)` — because the GPU scene and the SQLite DB share the same IFC world-space coordinates from the moment of extraction. Place, constrain, clash, and undo are each a short SQL query away from that same coordinate.
+
+**Full theoretical framework and technical specification: [BIM Modeller OOTB](BIM_Modeller_OOTB.md)**
+
+---
+
+## Postscript: The Browser Corollary *(Added 2026-05-08)*
+
+Three weeks before this postscript was written, this manifesto assumed a backend. `M_Product` lived in PostgreSQL. `C_Order` required a server. The browser was a viewer — not a participant.
+
+Then a working proof-of-concept proved otherwise.
+
+**What changed:** sql.js (WASM SQLite) + Three.js + IndexedDB = the entire ERP data model runs in a browser tab. The same `elements_meta`, `element_transforms`, and `component_geometries` tables that serve the compiler also serve the viewport. No server. No API. No translation layer.
+
+### What This Means for the Manifesto
+
+| Original assumption | Browser reality |
+|---|---|
+| ERP backend required | SQLite in WASM is the backend |
+| `AD_Val_Rule` executes server-side | Same rules, same SQL, runs in a Web Worker thread |
+| `C_Project` groups orders | IndexedDB caches per-building DBs; `city_index.db` covers 786 buildings |
+| `AD_ChangeLog` for audit | `bim_changelog` table survives page reload, syncs on DB export |
+| `AD_ChangeLog` → transactional | [`kernel_ops` log](BIM_Modeller_OOTB.md#the-modelling-inversion) — every grid drag is a committed transaction, undo/redo/replay built in. [First proof: 2026-05-09](2D_LAYOUT.md#first-proof-of-kernel_ops-2026-05-09) |
+| `AD_PrintFormat` for output | Print sheet + `corporate.json`, browser-native canvas capture |
+
+### What This Does NOT Change
+
+The architectural invariants are untouched:
+
+- The Three Concerns (WHAT / HOW / WHERE) remain the invariant
+- `M_Product` with `IsBOM=Y/N` remains the universal entity
+- BOM cascade + exception-based ordering remains the pattern
+- `AD_Org` (discipline) cuts across the category tree — unchanged
+- Deterministic compilation remains the goal — no probabilistic AI in the compiler
+
+### What This Enables (New)
+
+- **Offline-first BIM** — load once, use forever (Service Worker + IndexedDB)
+- **Zero-install 4D/5D** — schedule and cost run in browser, no license fees, no cloud account
+- **Git-like versioning** — GUID-based diff between DBs, variation order export to Excel
+- **Multi-format import** — OBJ / STL / GLTF / FBX / 3DS → classify via wizard → IFC export
+- **2D grid overlay as spatial BOM editor** — scissors plane + bay spans = user edits parameters, compiler places geometry
+- **Java → JS compiler migration** — `RouteWalker.java` (MEP pipe routing, reads `ad_space_type` / `ad_mep_pattern` recipes from `mep_rw.db`, writes `RW2D-` prefixed elements into the building DB) has been ported to `routewalker.js`. The same routing logic that ran server-side in the Java compiler now runs in a browser Web Worker, reading from a sidecar SQLite DB with no server, no JVM, no build step. This is the pattern in action: the compiler is not a Java program — it is a data architecture. The language is incidental.
+
+### The Synthesis
+
+This manifesto was never about backend technology. It was about data architecture.
+
+The browser proved the architecture is technology-agnostic. The same patterns that work for manufacturing ERP work for browser-based BIM — because buildings are manufactured products, regardless of where the query runs.
+
+The next step is the spatial BOM editor: the [2D Layout specification](2D_LAYOUT.md) rebuilds the editing layer using grid overlays, not backend services. The ERP patterns are still there — they are just running in your browser tab.
+
+---
+
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

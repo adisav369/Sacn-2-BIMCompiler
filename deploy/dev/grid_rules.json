@@ -16,7 +16,9 @@
     ],
     "exclude_below_band": [
       "IfcFoundation", "IfcPile", "IfcFooting"
-    ]
+    ],
+    "opening_label_offset_m": 0.15,
+    "opening_label_font_px":  9
   },
   "grid_detection": {
     "min_structural_span_m":  1.80,
@@ -69,6 +71,12 @@
       "strategy":    "pin_to_wall"
     }
   ],
+  "plane_3d": {
+    "plane_opacity":  0.12,
+    "plane_color_x":  "#ff4444",
+    "plane_color_y":  "#4444ff",
+    "show_on_drag":   true
+  },
   "shadow": {
     "color":   "#ff6600",
     "opacity":  0.35,

@@ -465,8 +465,16 @@ var GridDrag = (function() {
     }
     if (A.controls) A.controls.enabled = false;
 
+    // Implementing 2D_029 §3.3 — Witness: W-2D29
+    // Show 3D grid planes on drag activation
+    if (st && st.renderGridPlanesIn3D && st.gridData && st.envCache) {
+      st.renderGridPlanesIn3D(st.gridData, st.envCache, R);
+    }
+
     evt.preventDefault();
     evt.stopPropagation();
+    log('§GRID_3D_DRAG axis=' + axis + ' label=' + label +
+        ' from=' + dragStartIFC.toFixed(3));
     log('§GRID_DRAG start (long-press) label=' + label + ' axis=' + axis + ' idx=' + idx +
         ' pos=' + dragStartIFC.toFixed(3) + ' max_step=' + R.grid_move.max_step_m);
   }
@@ -540,6 +548,25 @@ var GridDrag = (function() {
       };
       hist.push(record);
 
+      // Implementing 2D_029 §4.3 — Witness: W-2D29
+      // Commit grid move to kernel_ops log for persistence + undo
+      if (window.KernelOps && A.db) {
+        KernelOps.commitOp(A.db, 'GRID_MOVE', {
+          axis:  dragAxis,
+          label: dragLabel,
+          from:  dragStartIFC,
+          to:    newPos
+        });
+      }
+
+      // Implementing 2D_029 §5 — Witness: W-2D29
+      // Refresh cost panel with updated grid scope
+      if (window.CostPanel && st && st.gridData) {
+        CostPanel.refresh(A, st.gridData);
+      }
+
+      log('§GRID_3D_DRAG_END axis=' + dragAxis + ' label=' + dragLabel +
+          ' final=' + newPos.toFixed(3) + ' cascaded=' + cascadeMoves.length);
       log('§GRID_DRAG label=' + dragLabel + ' axis=' + dragAxis +
           ' oldPos=' + dragStartIFC.toFixed(3) + ' newPos=' + newPos.toFixed(3) +
           ' delta=' + (delta >= 0 ? '+' : '') + delta.toFixed(3) +
@@ -557,6 +584,10 @@ var GridDrag = (function() {
       st.lineMeshes[dragLabel].line.material.color.setHex(defColor);
       st.lineMeshes[dragLabel].line.material.linewidth = 1;
     }
+
+    // Implementing 2D_029 §3.3 — Witness: W-2D29
+    // Remove 3D planes on drag end
+    if (st && st.removeGridPlanes3D) st.removeGridPlanes3D();
 
     dragging = false;
     dragLabel = null;
@@ -625,7 +656,50 @@ var GridDrag = (function() {
       });
     }
 
+    // Implementing 2D_029 §4.4 — Witness: W-2D29
+    // Ctrl+Z = undo last kernel_op, Ctrl+Shift+Z = redo
+    document.addEventListener('keydown', function (e) {
+      if (!A || !A.db || !window.KernelOps) return;
+      if (!st || !st.active) return;
+      var key = (e.key || '').toLowerCase();
+      if (e.ctrlKey && key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        var op = KernelOps.undoOp(A.db);
+        log('§GRID_UNDO attempt op=' + (op ? op.op_type : 'none'));
+        if (op && op.op_type === 'GRID_MOVE') {
+          applyReplayedMove(op.parameters.axis, op.parameters.label, op.parameters.from);
+        }
+      }
+      if ((e.ctrlKey && key === 'z' && e.shiftKey) || (e.ctrlKey && key === 'y')) {
+        e.preventDefault();
+        var op = KernelOps.redoOp(A.db);
+        log('§GRID_REDO attempt op=' + (op ? op.op_type : 'none'));
+        if (op && op.op_type === 'GRID_MOVE') {
+          applyReplayedMove(op.parameters.axis, op.parameters.label, op.parameters.to);
+        }
+      }
+    });
+
     log('§GRID_DRAG init — pointer events wired');
+  }
+
+  /** Apply a replayed/undone/redone grid move: update grid data + rebuild scene */
+  function applyReplayedMove(axis, label, targetPos) {
+    if (!st || !st.gridData) return;
+    var lines = axis === 'X' ? st.gridData.xLines : st.gridData.yLines;
+    if (!lines) return;
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].label === label) {
+        var delta = targetPos - lines[i].position;
+        shiftLine(label, axis, delta);
+        updateGridData(axis, i, targetPos);
+        rebuildAnnotations();
+        if (window.CostPanel) CostPanel.refresh(A, st.gridData);
+        A.markDirty();
+        log('§GRID_DRAG replayed label=' + label + ' pos=' + targetPos.toFixed(3));
+        return;
+      }
+    }
   }
 
   return {

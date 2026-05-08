@@ -978,6 +978,33 @@ The Work Order path compiles end-to-end (W-WO-1). ERP alignment complete (S60–
 Federation addon: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`*
 
 ---
+---
+
+## 15. Browser Viewer — Keyboard & Interaction Cheat Sheet
+
+> See [2D Layout Architecture](2D_LAYOUT.md) for full module map and [BIM Modeller OOTB](BIM_Modeller_OOTB.md) for the kernel_ops architecture.
+
+| Key / Gesture | Action |
+|---------------|--------|
+| **G** | Toggle grid overlay on/off |
+| **GF / L1** buttons | Lock to floor plan (section cut + door arcs + opening labels) |
+| **Front / Back / Left / Right** | Elevation views |
+| **Roof** | Roof plan view |
+| **Unlock** (lock icon) | Return to free 3D orbit |
+| **Long-press** (~0.4s) on grid line | Start grid drag — 3D planes appear |
+| **Drag** after long-press | Move grid line — cost panel updates live |
+| **Release** after drag | Commit GRID_MOVE to `kernel_ops` log |
+| **Ctrl+Z** | Undo last grid move |
+| **Ctrl+Shift+Z** or **Ctrl+Y** | Redo undone grid move |
+| **Scissors slider** | Move cut plane — grids recompute at new elevation |
+| **Save cut** | Save current section as named view |
+| **Alt+Z** | Toggle X-ray mode |
+| **F11** | Toggle fullscreen |
+| **F5 / reload** | Grid positions restored from `kernel_ops` log — no save needed |
+
+---
+
 *v1.0 — 2026-03-23, session 60. Tabs aligned to §30.3, BOM tree fixed, Bonsai 10-item flow verified, federation gap analysis completed.*
+*v1.1 — 2026-05-09, session 2D_029. Browser keyboard cheat sheet added. kernel_ops first proof.*
 
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

@@ -430,6 +430,66 @@ var DoorArcs = (function() {
     return objects;
   }
 
+  // Implementing 2D_029 §1.1–§1.3 — Witness: W-2D29
+  /**
+   * Add opening callout label: width (mm) + type tag.
+   * Placed as a canvas-textured sprite offset perpendicular to wall face.
+   *
+   * @param {THREE.Group|THREE.Scene} group - parent to add sprite to
+   * @param {Function} ifc2three - coordinate transform
+   * @param {number} cx       - IFC X centre of opening
+   * @param {number} cy       - IFC Y centre of opening
+   * @param {number} cutZ     - IFC Z of section cut
+   * @param {string} wallAxis - 'X' or 'Y' (long axis of host wall)
+   * @param {number} widthM   - opening width in metres
+   * @param {string} tag      - type name (e.g. "Single-Flush" or "DOOR")
+   * @param {string} guid     - element GUID
+   * @param {Object} rules    - grid_rules.json (optional)
+   * @returns {THREE.Sprite|null}
+   */
+  function addOpeningLabel(group, ifc2three, cx, cy, cutZ, wallAxis, widthM, tag, guid, rules) {
+    if (typeof THREE === 'undefined' || !THREE.CanvasTexture) return null;
+    var fp = (rules && rules.floor_plan) || {};
+    var offset = fp.opening_label_offset_m || 0.15;
+    var fontSize = fp.opening_label_font_px || 9;
+
+    var widthMM = Math.round(widthM * 1000);
+    var line1 = widthMM + 'W';
+    var line2 = tag || '';
+
+    var canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 64;
+    var ctx = canvas.getContext('2d');
+    ctx.font = 'bold ' + (fontSize * 2) + 'px sans-serif';
+    ctx.fillStyle = '#666666';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(line1, 128, 2);
+    if (line2) {
+      ctx.font = (fontSize * 2 - 4) + 'px sans-serif';
+      ctx.fillStyle = '#999999';
+      ctx.fillText(line2, 128, fontSize * 2 + 4);
+    }
+
+    var tex = new THREE.CanvasTexture(canvas);
+    var spriteMat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+    var sprite = new THREE.Sprite(spriteMat);
+
+    // Offset perpendicular to wall axis
+    var ox = wallAxis === 'Y' ? offset : 0;
+    var oy = wallAxis === 'X' ? offset : 0;
+    var p = ifc2three(cx + ox, cy + oy, cutZ);
+    sprite.position.set(p.x, p.y, p.z);
+    var worldScale = widthM * 0.6;
+    sprite.scale.set(worldScale, worldScale * 0.25, 1);
+    sprite.renderOrder = 1060;
+    sprite.userData = { isDoorArc: true, isOpeningLabel: true, guid: guid };
+    group.add(sprite);
+
+    log('§DOOR_ARC_LABEL guid=' + guid + ' width=' + widthMM + 'mm tag=' + (tag || '(none)'));
+    return sprite;
+  }
+
   return {
     generateArcs:  generateArcs,
     createArcLine: createArcLine,
@@ -438,6 +498,7 @@ var DoorArcs = (function() {
     computeArcPoints: computeArcPoints,
     detectSwingDirection: detectSwingDirection,
     generateStairSymbol:    generateStairSymbol,
-    generateWindowOpenings: generateWindowOpenings
+    generateWindowOpenings: generateWindowOpenings,
+    addOpeningLabel: addOpeningLabel
   };
 })();
