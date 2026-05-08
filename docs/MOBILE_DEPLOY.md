@@ -126,6 +126,8 @@ These features are deployed to the **live OCI bucket** and work right now:
 | **Measure tool** | OK | OK | — | Point-to-point distance |
 | **Snag-to-BIM** | OK | OK | — | Tap element → camera snap → auto-tag with GUID, storey, GPS → issue log → Excel export |
 | **City mode** | OK | OK | — | Multi-building landing, click to stream |
+| **Help / Bug Report** | OK | OK | — | HELP button → pre-filled GitHub issue or email with screenshot, console log, browser/building context |
+| **Share sheet** | OK | OK | `21-share-sheet` | Save as IFC / Save as DB / Contribute to gallery / WhatsApp / Email / Copy Link |
 
 ### 3.2 Dev Only (Not Yet Promoted to Production)
 
@@ -150,6 +152,8 @@ These features work in `deploy/dev/` and pass Playwright tests, but are **not ye
 | **Cost Panel (Live BOQ)** | OK | OK | `29-3d-grid-kernel` | Spatial BOQ query scoped to grid positions, updates on drag. Dev only |
 | **3D Grid Planes** | OK | OK | `29-3d-grid-kernel` | Semi-transparent axis-coloured planes during grid drag. Dev only |
 | **Opening Labels** | OK | OK | `29-3d-grid-kernel` | Door/window width + type tag sprites on floor plans. Dev only |
+| **Contribute to Gallery** | OK | OK | — | Drop your IFC → view it → Share → Contribute uploads DB back to OCI gallery for others to view. Dev only |
+| **PWA / Offline** | OK | OK | — | `manifest.webmanifest` + `sw.js` + `offline.html` — installable, works without internet after first load. Dev only |
 
 ### 3.3 Under Construction — Known Issues
 
@@ -349,11 +353,87 @@ Latency: < 500ms from speech end to result. Speech recognition requires internet
 
 ---
 
-## 8. Deploy Your Own Instance
+## 8. Help, Share & Contribute
+
+### 8.1 Bug Report — One-Click to GitHub or Email
+
+Click the **HELP** button (or `APP.reportBug()` from console) → a dialog appears:
+
+1. Type a description (optional)
+2. Choose **Submit to GitHub** or **Send via Email**
+
+The report auto-includes:
+- Browser, OS, screen resolution
+- Building name, element count, current URL
+- Last 50 `§`-tagged console lines (the whitebox debug log)
+- Prompt to paste a screenshot (PrtScn → Ctrl+V in the GitHub issue)
+
+**GitHub mode:** Opens a pre-filled issue at `red1oon/BIMCompiler/issues` with markdown tables, collapsible console log, and `bug` label. URL is truncated to 8KB if logs are large.
+
+**Email mode:** Opens `mailto:` with plain text body — works even without a GitHub account.
+
+### 8.2 Share Sheet — Save, Export, Contribute
+
+The **Share** button on the landing page opens a unified sheet:
+
+| Action | What it does |
+|--------|-------------|
+| **Save as IFC** | Reconstructs a valid `.ifc` STEP file from the DB and downloads it — no server, no web-ifc at export time |
+| **Save as DB** | Downloads the SQLite DB file directly — portable, queryable by any SQL tool |
+| **Contribute to Gallery** | Uploads your building DB back to OCI Object Storage so others can view it in the public gallery |
+| **WhatsApp** | Shares the viewer URL with building pre-selected |
+| **Email** | Sends viewer link via `mailto:` |
+| **Copy Link** | Copies direct URL to clipboard |
+
+### 8.3 Drop IFC → Share Back to OCI
+
+The full round-trip:
+
+```
+Drop .ifc file onto landing page
+    → web-ifc WASM extracts to SQLite DB in browser
+    → Classification Wizard (orient, storeys, classify)
+    → View in 3D (cached in IndexedDB)
+    → Share → Contribute to Gallery
+    → DB uploaded to OCI gallery bucket
+    → Anyone can now view your building from the landing page
+```
+
+No server-side processing. The extraction, classification, viewing, and upload all happen in the browser. The OCI bucket is just static file storage with a Pre-Authenticated Request (PAR) URL for upload.
+
+### 8.4 DIY Self-Host Installer
+
+Click **DIY Downloader** in the About box → generates a platform-specific script:
+
+| Platform | Script | What it does |
+|----------|--------|-------------|
+| **Linux/Mac** | `install_bim_ootb.sh` | Checks Python 3 + git → clones repo → starts `python3 -m http.server 8080` |
+| **Windows** | `install_bim_ootb.bat` | Same flow with PowerShell fallbacks |
+
+Installs to `~/bim-ootb/` (~49 MB). Buildings load from OCI cloud or local `buildings/` folder. Runs entirely offline after first clone if you have the DB files locally.
+
+### 8.5 OCI Free Testing
+
+Oracle Cloud **Always Free** tier — no credit card, no expiry:
+
+| Resource | Free Allowance |
+|----------|---------------|
+| Object Storage | 10 GB |
+| Outbound transfer | 10 TB / month |
+| Compute (optional) | 2x AMD, 4x Arm A1 instances |
+| Autonomous DB (optional) | 2 instances, 20 GB each |
+
+This is more than enough for hosting 30+ buildings with full geometry. BIM OOTB uses only Object Storage — no compute, no database server. The viewer is static files served directly from the bucket.
+
+Sign up: [cloud.oracle.com/free](https://cloud.oracle.com/free) → create bucket → upload viewer + DBs → set public read. See §9.2 below for step-by-step.
+
+---
+
+## 9. Deploy Your Own Instance
 
 Want to host buildings on your own cloud? The viewer is just static files — any web host with Range headers works.
 
-### 8.1 Hosting Options
+### 9.1 Hosting Options
 
 | Host | Range Headers | Free Tier | Best For |
 |------|--------------|-----------|----------|
@@ -363,7 +443,7 @@ Want to host buildings on your own cloud? The viewer is just static files — an
 | **Netlify** | Yes | 100GB/mo bandwidth | Easy deploy |
 | **Self-hosted nginx** | Yes (default) | Your server | Full control |
 
-### 8.2 OCI Object Storage Setup (Free Forever)
+### 9.2 OCI Object Storage Setup (Free Forever)
 
 Oracle Cloud free tier: 10GB storage + 10TB outbound/month. Never expires.
 
@@ -403,13 +483,13 @@ oci os bucket update --name my-bim-viewer --cors-config file:///tmp/cors.json
 
 **Without CORS + Range headers, the viewer will fail to load DBs.** This is the most common setup mistake.
 
-### 8.3 Cache Busting
+### 9.3 Cache Busting
 
 After uploading changed JS files, users must hard-refresh (Ctrl+Shift+R). The `?v=N` query strings in `index.html` control browser caching — bump the version number when deploying updates.
 
 ---
 
-## 9. Roadmap
+## 10. Roadmap
 
 ### Phase A: Browser Viewer (DONE — production)
 
@@ -500,7 +580,7 @@ All leverage the existing stack: phone sensors + BIM DB + Walk/Site mode.
 
 ---
 
-## 10. Files
+## 11. Files
 
 ### Production (`deploy/live/` → live OCI bucket)
 
