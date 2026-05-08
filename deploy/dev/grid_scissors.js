@@ -17,8 +17,9 @@
  * Self-contained: if this file fails to load, grid_overlay.js works unchanged.
  *
  * API: GridScissors.init(APP, overlayState) — wires callbacks
+ *      GridScissors.consolidateUI(APP)       — section cut consolidation panel
  *
- * Log tags: §GRID_SCISSORS
+ * Log tags: §GRID_SCISSORS §SC_CONSOLIDATE §SC_PREVIEW
  */
 var GridScissors = (function() {
   'use strict';
@@ -330,8 +331,164 @@ var GridScissors = (function() {
     log('§GRID_SCISSORS init — all 3 axes ready');
   }
 
+  // ── Consolidation UI ─────────────────────────────────────────────
+  // Implementing 2D_027 §4.2 — Witness: W-2D27
+
+  function consolidateUI(APP) {
+    // Load current saved cuts
+    if (typeof SectionCut === 'undefined' || !SectionCut.savedCuts) {
+      alert('No saved section cuts yet. Save cuts using the section slider first.');
+      return;
+    }
+    SectionCut._loadCuts && SectionCut._loadCuts(APP.activeBuilding || 'bld');
+    var cuts = SectionCut.savedCuts.slice();
+
+    // Remove any existing panel
+    var old = document.getElementById('sc-consolidate-panel');
+    if (old) old.parentNode.removeChild(old);
+
+    var panel = document.createElement('div');
+    panel.id = 'sc-consolidate-panel';
+    panel.style.cssText = [
+      'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);',
+      'background:#1a2530;color:#ccc;border:1px solid #446;border-radius:6px;',
+      'padding:16px;min-width:340px;z-index:9999;font-family:monospace;font-size:13px;'
+    ].join('');
+
+    // Header
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'font-weight:bold;margin-bottom:10px;font-size:14px;';
+    hdr.textContent = 'Section Cut Consolidation';
+    panel.appendChild(hdr);
+
+    // Close button
+    var closeBtn = document.createElement('button');
+    closeBtn.textContent = '×';
+    closeBtn.style.cssText = 'position:absolute;top:8px;right:10px;background:none;border:none;color:#aaa;font-size:18px;cursor:pointer;';
+    closeBtn.onclick = function() { panel.parentNode.removeChild(panel); };
+    panel.appendChild(closeBtn);
+
+    // Cut list with checkboxes
+    var listDiv = document.createElement('div');
+    listDiv.style.cssText = 'margin-bottom:10px;max-height:200px;overflow-y:auto;';
+
+    if (!cuts.length) {
+      listDiv.textContent = 'No saved cuts.';
+    } else {
+      cuts.forEach(function(cut, idx) {
+        // Check adjacency: gap < 0.5m to next cut on same axis
+        var isAdjacent = false;
+        if (idx < cuts.length - 1 && cuts[idx + 1].axis === cut.axis) {
+          isAdjacent = Math.abs(cuts[idx + 1].constant - cut.constant) < 0.5;
+        }
+        var row = document.createElement('div');
+        row.style.cssText = 'margin:4px 0;display:flex;align-items:center;gap:8px;';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = cut.name;
+        cb.id = 'sc-cb-' + idx;
+        var lbl = document.createElement('label');
+        lbl.htmlFor = 'sc-cb-' + idx;
+        lbl.textContent = cut.name + '  ' + cut.label + (isAdjacent ? '  \u2190 adjacent' : '');
+        lbl.style.cursor = 'pointer';
+        row.appendChild(cb);
+        row.appendChild(lbl);
+        listDiv.appendChild(row);
+      });
+    }
+    panel.appendChild(listDiv);
+
+    // Info line
+    var info = document.createElement('div');
+    info.style.cssText = 'font-size:11px;color:#888;margin-bottom:10px;';
+    info.textContent = 'Adjacent cuts (gap < 0.5m) shown with \u2190. Select 2+ cuts from SAME axis to merge.';
+    panel.appendChild(info);
+
+    // Buttons
+    var btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;';
+
+    function getSelected() {
+      return cuts.filter(function(c, idx) {
+        var cb = document.getElementById('sc-cb-' + idx);
+        return cb && cb.checked;
+      });
+    }
+
+    var previewBtn = document.createElement('button');
+    previewBtn.textContent = 'Preview Merge';
+    previewBtn.style.cssText = 'padding:6px 12px;cursor:pointer;background:#2a4a6a;color:#fff;border:1px solid #446;border-radius:3px;';
+    previewBtn.onclick = function() {
+      var sel = getSelected();
+      if (sel.length < 2) { alert('Select 2 or more cuts to preview merge.'); return; }
+      var axes = sel.map(function(c) { return c.axis; });
+      if (axes.some(function(a) { return a !== axes[0]; })) { alert('All selected cuts must be on the same axis.'); return; }
+      var lo = Math.min.apply(null, sel.map(function(c) { return c.constant; }));
+      var hi = Math.max.apply(null, sel.map(function(c) { return c.constant; }));
+      console.log('[GridScissors] §SC_PREVIEW merged axis=' + axes[0] + ' range=[' + lo.toFixed(3) + ',' + hi.toFixed(3) + ']');
+      alert('Preview: merged cut on ' + axes[0] + ' axis from ' + lo.toFixed(2) + 'm to ' + hi.toFixed(2) + 'm');
+    };
+
+    var confirmBtn = document.createElement('button');
+    confirmBtn.textContent = 'Confirm Merge';
+    confirmBtn.style.cssText = 'padding:6px 12px;cursor:pointer;background:#2a6a3a;color:#fff;border:1px solid #464;border-radius:3px;';
+    confirmBtn.onclick = function() {
+      var sel = getSelected();
+      if (sel.length < 2) { alert('Select 2 or more cuts to merge.'); return; }
+      var axes = sel.map(function(c) { return c.axis; });
+      if (axes.some(function(a) { return a !== axes[0]; })) { alert('All selected cuts must be on the same axis.'); return; }
+      var lo = Math.min.apply(null, sel.map(function(c) { return c.constant; }));
+      var hi = Math.max.apply(null, sel.map(function(c) { return c.constant; }));
+      // Gap warning: if any pair of selected cuts has gap > 0.5m
+      var sortedConst = sel.map(function(c) { return c.constant; }).sort(function(a, b) { return a - b; });
+      var maxGap = 0;
+      for (var gi = 1; gi < sortedConst.length; gi++) {
+        maxGap = Math.max(maxGap, sortedConst[gi] - sortedConst[gi - 1]);
+      }
+      if (maxGap > 0.5) {
+        if (!confirm('Gap of ' + maxGap.toFixed(1) + 'm will be filled in merged view — confirm?')) return;
+      }
+      // Remove originals
+      var removedNames = sel.map(function(c) { return c.name; });
+      sel.forEach(function(c) { SectionCut.removeCut && SectionCut.removeCut(APP, c.name); });
+      // Add merged entry
+      var mergeN = (SectionCut.savedCuts.length + 1);
+      var mergedName = 'SectionCut_merged_' + mergeN;
+      SectionCut.savedCuts.push({
+        name: mergedName,
+        axis: axes[0],
+        constant: lo,
+        to: hi,
+        label: axes[0] + ' @ ' + lo.toFixed(2) + 'm\u2013' + hi.toFixed(2) + 'm'
+      });
+      SectionCut._saveCutsToStorage && SectionCut._saveCutsToStorage(APP.activeBuilding || 'bld');
+      console.log('[GridScissors] §SC_CONSOLIDATE merged=' + mergedName +
+        ' from=[' + removedNames.join(',') + ']' +
+        ' axis=' + axes[0] +
+        ' range=[' + lo.toFixed(3) + ',' + hi.toFixed(3) + ']');
+      // Offer snapshot
+      if (typeof PrintSheet !== 'undefined' && confirm('Save as Image Snap?')) {
+        PrintSheet.capture && PrintSheet.capture(APP, { preview: false, filename: mergedName + '_snap.png' });
+      }
+      panel.parentNode.removeChild(panel);
+    };
+
+    var cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = 'padding:6px 12px;cursor:pointer;background:#3a2a2a;color:#ccc;border:1px solid #644;border-radius:3px;';
+    cancelBtn.onclick = function() { panel.parentNode.removeChild(panel); };
+
+    btnRow.appendChild(previewBtn);
+    btnRow.appendChild(confirmBtn);
+    btnRow.appendChild(cancelBtn);
+    panel.appendChild(btnRow);
+
+    document.body.appendChild(panel);
+  }
+
   return {
-    init: init
+    init: init,
+    consolidateUI: consolidateUI
   };
 
 })();

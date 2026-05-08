@@ -62,12 +62,37 @@ function setupTools(A) {
     panel.style.display = A.sectionOn ? 'block' : 'none';
     if (A.sectionOn) {
       A.applySectionAxis();
+      // Implementing 2D_027 §2.3 — Witness: W-2D27
+      // Inject "Save cut" button into section panel when section is active
+      var existSaveBtn = document.getElementById('section-save-cut-btn');
+      if (!existSaveBtn && panel) {
+        var saveBtn = document.createElement('button');
+        saveBtn.id = 'section-save-cut-btn';
+        saveBtn.textContent = 'Save cut';
+        saveBtn.title = 'Save this section cut as a named view';
+        saveBtn.style.cssText = 'display:block;width:100%;margin-top:6px;padding:4px 8px;font-size:11px;cursor:pointer;background:#1a4a1a;color:#8f8;border:1px solid #3a7a3a;border-radius:3px;';
+        saveBtn.addEventListener('pointerup', function(e) {
+          e.stopPropagation();
+          if (typeof SectionCut === 'undefined') return;
+          var savedName = SectionCut.saveCut(A, A.sectionAxis, A.sectionPlane.constant);
+          // Toast notification
+          var toast = document.createElement('div');
+          toast.textContent = 'Saved as ' + savedName;
+          toast.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:#1a4a1a;color:#8f8;border:1px solid #3a7a3a;border-radius:4px;padding:6px 14px;font-size:12px;z-index:9999;pointer-events:none';
+          document.body.appendChild(toast);
+          setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 2500);
+        });
+        panel.appendChild(saveBtn);
+      }
     } else {
       A.renderer.localClippingEnabled = false;
       A.collectMeshes(o => o.isMesh).forEach(obj => {
         obj.material.clippingPlanes = [];
         obj.material.needsUpdate = true;
       });
+      // Remove "Save cut" button when section is off
+      var saveBtnOff = document.getElementById('section-save-cut-btn');
+      if (saveBtnOff && saveBtnOff.parentNode) saveBtnOff.parentNode.removeChild(saveBtnOff);
       console.log('[S205] §SECTION OFF');
       if (A.onSectionOff) A.onSectionOff();
     }
@@ -122,26 +147,19 @@ function setupTools(A) {
 
   // 4D/5D Export
   A.export4D5D = function() {
-    if (!A.db || !A.activeBuilding) { A.status.textContent = 'Select a building first.'; return; }
+    if (!A.db || !A.activeBuilding) { A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_select_building||'Select a building first.'; return; }
     const bld = A.activeBuilding;
     const dbParam = new URLSearchParams(location.search).get('db') || 'yourproject_extracted.db';
-    // S223: import:// URLs → boq_charts co-located (../boq_charts.html from sandbox/)
-    // OCI URLs → strip to /o/ base
     // S224: pass diffdb to boq_charts when viewer has diff data
+    // boq_charts.html is a sibling in the same directory (sandbox/ on OCI, deploy/dev/ locally)
     var diffParam = '';
     var diffDbUrl = new URLSearchParams(location.search).get('diffdb');
     if (diffDbUrl) diffParam = '&diffdb=' + encodeURIComponent(diffDbUrl);
 
-    var chartsUrl;
     var cacheBust = '&v=' + Date.now();
-    if (dbParam.startsWith('import://')) {
-      chartsUrl = '../boq_charts.html?db=' + encodeURIComponent(dbParam) + '&bld=' + bld + diffParam + cacheBust;
-    } else {
-      const base = location.href.split('?')[0].match(/(.*\/o\/)/)?.[1] || '../';
-      chartsUrl = base + 'boq_charts.html?db=' + encodeURIComponent(dbParam) + '&bld=' + bld + diffParam + cacheBust;
-    }
+    var chartsUrl = 'boq_charts.html?db=' + encodeURIComponent(dbParam) + '&bld=' + bld + diffParam + cacheBust;
     window.open(chartsUrl, '_blank');
-    A.status.textContent = `4D/5D analytics opened for ${bld} (Save 5D BOQ / Save 4D Schedule)`;
+    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_analytics_opened||'4D/5D analytics opened for {name}').replace('{name}', bld);
   };
 
   // Screenshot — in 2D grid mode, produces A3 print sheet with title block
@@ -163,7 +181,7 @@ function setupTools(A) {
     document.body.appendChild(flash);
     setTimeout(() => { flash.style.opacity = '0'; flash.style.transition = 'opacity 0.3s'; }, 50);
     setTimeout(() => document.body.removeChild(flash), 400);
-    A.status.textContent = 'Screenshot saved to Downloads/';
+    A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_screenshot_saved||'Screenshot saved to Downloads/';
   };
 
   // Fullscreen

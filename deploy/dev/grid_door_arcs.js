@@ -260,12 +260,184 @@ var DoorArcs = (function() {
     return line;
   }
 
+  // Implementing 2D_027 §5.2 — Witness: W-2D27
+  /**
+   * Generate stair tread-line symbol for IfcStair elements in a section cut.
+   *
+   * @param {Array} stairElements - section cut results filtered to IfcStair
+   * @param {Object} APP          - viewer app (for ifc2three, scene)
+   * @param {number} cutZ         - IFC Z of the section cut
+   * @returns {Array} THREE.Line objects added to APP.scene
+   */
+  function generateStairSymbol(stairElements, APP, cutZ) {
+    if (!stairElements || !stairElements.length) return [];
+    var objects = [];
+
+    stairElements.forEach(function(el) {
+      // bbox2d = [minX, minY, maxX, maxY] in IFC XY coords
+      var b = el.bbox2d;
+      if (!b) return;
+      var bw = b[2] - b[0]; // X extent
+      var bd = b[3] - b[1]; // Y extent
+      if (bw <= 0 || bd <= 0) return;
+
+      // Only draw if aspect ratio > 2:1 (stairs are elongated)
+      var aspect = Math.max(bw, bd) / Math.min(bw, bd);
+      if (aspect < 2) return;
+
+      var stairH = Math.max(bw, bd);
+      var stairW = Math.min(bw, bd);
+      var longInX = bw >= bd; // true if long axis runs along X
+
+      // Riser estimate: standard riser 0.15–0.21m
+      var riserDepth = stairH / Math.ceil(stairH / 0.18);
+      var numTreads = Math.min(8, Math.max(3, Math.round(stairH / riserDepth)));
+
+      var mat = new THREE.LineBasicMaterial({ color: 0x8899aa, transparent: true, opacity: 0.8 });
+
+      // Draw tread lines as short dashes across the stair width (perpendicular to long axis)
+      for (var t = 0; t < numTreads; t++) {
+        var frac = (t + 0.5) / numTreads;
+        var pts2d;
+        if (longInX) {
+          // Long axis = X: tread lines are perpendicular (Y direction) at intervals along X
+          var tx = b[0] + frac * bw;
+          pts2d = [[tx, b[1]], [tx, b[3]]];
+        } else {
+          // Long axis = Y: tread lines are perpendicular (X direction) at intervals along Y
+          var ty = b[1] + frac * bd;
+          pts2d = [[b[0], ty], [b[2], ty]];
+        }
+        var threePoints = pts2d.map(function(p) {
+          var tc = APP.ifc2three(p[0], p[1], cutZ);
+          return new THREE.Vector3(tc.x, tc.y, tc.z);
+        });
+        var geom = new THREE.BufferGeometry().setFromPoints(threePoints);
+        var line = new THREE.Line(geom, mat);
+        line.renderOrder = 1050;
+        line.userData = { isDoorArc: true, isStairSymbol: true, guid: el.guid };
+        APP.scene.add(line);
+        objects.push(line);
+      }
+
+      // Diagonal arrow: bottom-left to top-right (convention = direction of ascent)
+      var arrowPts2d = [[b[0], b[1]], [b[2], b[3]]];
+      var arrowThreePoints = arrowPts2d.map(function(p) {
+        var tc = APP.ifc2three(p[0], p[1], cutZ);
+        return new THREE.Vector3(tc.x, tc.y, tc.z);
+      });
+      var arrowGeom = new THREE.BufferGeometry().setFromPoints(arrowThreePoints);
+      var arrowMat = new THREE.LineBasicMaterial({ color: 0x88aacc, transparent: true, opacity: 0.9 });
+      var arrow = new THREE.Line(arrowGeom, arrowMat);
+      arrow.renderOrder = 1050;
+      arrow.userData = { isDoorArc: true, isStairSymbol: true, guid: el.guid };
+      APP.scene.add(arrow);
+      objects.push(arrow);
+
+      log('§DOOR_ARC_STAIR guid=' + (el.guid || '?') + ' treads=' + numTreads + ' riserEst=' + riserDepth.toFixed(3));
+    });
+    return objects;
+  }
+
+  // Implementing 2D_027 §5.3 — Witness: W-2D27
+  /**
+   * Generate window opening dashes + width label for IfcWindow elements in a section cut.
+   *
+   * @param {Array} windowElements - section cut results filtered to IfcWindow
+   * @param {Object} APP           - viewer app (for ifc2three, scene)
+   * @param {number} cutZ          - IFC Z of the section cut
+   * @returns {Array} THREE.Line + THREE.Sprite objects added to APP.scene
+   */
+  function generateWindowOpenings(windowElements, APP, cutZ) {
+    if (!windowElements || !windowElements.length) return [];
+    var objects = [];
+
+    windowElements.forEach(function(el) {
+      // bbox2d = [minX, minY, maxX, maxY] in IFC XY coords
+      var b = el.bbox2d;
+      if (!b) return;
+      var bw = b[2] - b[0]; // X extent
+      var bd = b[3] - b[1]; // Y extent
+      if (bw <= 0 && bd <= 0) return;
+
+      var openingW = Math.max(bw, bd);
+      var openingD = Math.min(bw, bd);
+      var dashLen = Math.max(openingD * 0.5, 0.05); // dash length perpendicular to opening
+      var cx = (b[0] + b[2]) / 2;
+      var cy = (b[1] + b[3]) / 2;
+      var longInX = bw >= bd;
+
+      var mat = new THREE.LineBasicMaterial({ color: 0x99bbdd, transparent: true, opacity: 0.7 });
+
+      if (longInX) {
+        // Opening runs in X — jamb dashes at left and right ends, dashes in Y direction
+        [[b[0], cy], [b[2], cy]].forEach(function(jPt) {
+          var p0 = APP.ifc2three(jPt[0], jPt[1] - dashLen, cutZ);
+          var p1 = APP.ifc2three(jPt[0], jPt[1] + dashLen, cutZ);
+          var geom = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(p0.x, p0.y, p0.z),
+            new THREE.Vector3(p1.x, p1.y, p1.z)
+          ]);
+          var line = new THREE.Line(geom, mat);
+          line.renderOrder = 1050;
+          line.userData = { isDoorArc: true, isWindowOpening: true, guid: el.guid };
+          APP.scene.add(line);
+          objects.push(line);
+        });
+      } else {
+        // Opening runs in Y — jamb dashes at top and bottom ends, dashes in X direction
+        [[cx, b[1]], [cx, b[3]]].forEach(function(jPt) {
+          var p0 = APP.ifc2three(jPt[0] - dashLen, jPt[1], cutZ);
+          var p1 = APP.ifc2three(jPt[0] + dashLen, jPt[1], cutZ);
+          var geom = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(p0.x, p0.y, p0.z),
+            new THREE.Vector3(p1.x, p1.y, p1.z)
+          ]);
+          var line = new THREE.Line(geom, mat);
+          line.renderOrder = 1050;
+          line.userData = { isDoorArc: true, isWindowOpening: true, guid: el.guid };
+          APP.scene.add(line);
+          objects.push(line);
+        });
+      }
+
+      // Width label: sprite centred above the opening
+      if (typeof THREE !== 'undefined' && THREE.CanvasTexture) {
+        var labelText = (openingW * 1000).toFixed(0) + ' W';
+        var canvas = document.createElement('canvas');
+        canvas.width = 128; canvas.height = 32;
+        var ctx = canvas.getContext('2d');
+        ctx.font = '18px sans-serif';
+        ctx.fillStyle = '#aaccdd';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(labelText, 64, 16);
+        var tex = new THREE.CanvasTexture(canvas);
+        var spriteMat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+        var sprite = new THREE.Sprite(spriteMat);
+        var center3 = APP.ifc2three(cx, cy, cutZ);
+        sprite.position.set(center3.x, center3.y, center3.z);
+        var worldScale = openingW * 0.5;
+        sprite.scale.set(worldScale, worldScale * 0.25, 1);
+        sprite.renderOrder = 1051;
+        sprite.userData = { isDoorArc: true, isWindowOpening: true, guid: el.guid };
+        APP.scene.add(sprite);
+        objects.push(sprite);
+      }
+
+      log('§DOOR_ARC_WINDOW guid=' + (el.guid || '?') + ' width=' + openingW.toFixed(3));
+    });
+    return objects;
+  }
+
   return {
     generateArcs:  generateArcs,
     createArcLine: createArcLine,
     extractLeafAxis: extractLeafAxis,
     findHinge:     findHinge,
     computeArcPoints: computeArcPoints,
-    detectSwingDirection: detectSwingDirection
+    detectSwingDirection: detectSwingDirection,
+    generateStairSymbol:    generateStairSymbol,
+    generateWindowOpenings: generateWindowOpenings
   };
 })();

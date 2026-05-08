@@ -117,6 +117,43 @@ function setupGridOverlay(APP) {
     }
   }
 
+  /**
+   * Implementing 2D_027 §10.2 — Witness: W-2D27-FLOORZ
+   * Detect floor level from IfcSlab top, fallback to lowest wall, fallback to zMin.
+   * Returns IFC Z of the floor surface (NOT including foundations/piles).
+   */
+  function _getFloorCutZ(db, envZMin) {
+    if (!db) return envZMin;
+    // Try lowest IfcSlab top surface (= floor level)
+    try {
+      var r = db.exec(
+        "SELECT MIN(t.center_z + t.bbox_z * 0.5) " +
+        "FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid " +
+        "WHERE m.ifc_class = 'IfcSlab'"
+      );
+      if (r.length && r[0].values[0][0] != null) {
+        var slabTop = Number(r[0].values[0][0]);
+        log('§GRID_FLOORCUTZ source=slab top=' + slabTop.toFixed(3));
+        return slabTop;
+      }
+    } catch (e) {}
+    // Fallback: lowest wall center_z (walls never extend below floor)
+    try {
+      var r2 = db.exec(
+        "SELECT MIN(t.center_z - t.bbox_z * 0.5) " +
+        "FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid " +
+        "WHERE m.ifc_class IN ('IfcWall','IfcWallStandardCase')"
+      );
+      if (r2.length && r2[0].values[0][0] != null) {
+        var wallBottom = Number(r2[0].values[0][0]);
+        log('§GRID_FLOORCUTZ source=wall bottom=' + wallBottom.toFixed(3));
+        return wallBottom;
+      }
+    } catch (e) {}
+    log('§GRID_FLOORCUTZ source=fallback zMin=' + envZMin.toFixed(3));
+    return envZMin;
+  }
+
   /** Create a circle sprite (billboard) for grid bubble */
   function createBubble(label, position, highlighted) {
     var canvas = document.createElement('canvas');
@@ -162,10 +199,19 @@ function setupGridOverlay(APP) {
       visH = 2 * dist * Math.tan(vFov / 2);
       visW = visH * cam.aspect;
     }
-    // Bubbles stay at natural world-unit size — Three.js sprites grow naturally with zoom.
-    // Density filter handles overlap. No scale modification = no reverse effect.
+    // Implementing 2D_027 §11.2 — Witness: W-2D27-BUBBLESCALE
+    // Constant screen-space: scale inversely with zoom so bubbles stay same pixel size.
     var visDim = Math.min(visW, visH);
-    var s = bubbleScale;
+    var s;
+    if (cam.isOrthographicCamera) {
+      // visH shrinks as zoom increases → s shrinks → constant screen size
+      s = visH * 0.03;
+      s = Math.max(bubbleScale * 0.2, Math.min(bubbleScale * 4.0, s));
+    } else {
+      var dist = cam.position.distanceTo(A.controls ? A.controls.target : new THREE.Vector3());
+      s = dist * 0.04;
+      s = Math.max(bubbleScale * 0.2, Math.min(bubbleScale * 4.0, s));
+    }
 
     // Collect bubble sprites grouped by label for density check
     var bubblesByLabel = {};
@@ -495,20 +541,34 @@ function setupGridOverlay(APP) {
       } else {
         var clipCfg = GridConfig.clipFor(mode);
         var bldH = envCache.zMax - envCache.zMin;
-        cutZ = (clipCfg && clipCfg.offset_ratio)
-          ? envCache.zMin + bldH * clipCfg.offset_ratio
-          : envCache.zMin + ((clipCfg && clipCfg.offset_m) || 1.0);
+        if (clipCfg && clipCfg.offset_ratio) {
+          // Ratio-based: relative to full building height (floor1, upper storeys)
+          cutZ = envCache.zMin + bldH * clipCfg.offset_ratio;
+        } else {
+          // Implementing 2D_027 §10.2 — Witness: W-2D27-FLOORZ
+          // Use floor slab top as reference — not raw zMin (which includes foundations)
+          var floorZ = _getFloorCutZ(A.db, envCache.zMin);
+          cutZ = floorZ + ((clipCfg && clipCfg.offset_m) || 1.0);
+          log('§GRID_CUTZ_RESOLVED cutZ=' + cutZ.toFixed(3) + ' floorZ=' + floorZ.toFixed(3) + ' mode=' + mode);
+        }
       }
 
       var results = SectionCut.sectionCut(A.db, A.libDb, cutZ, null);
       GridContours.renderContours(A, results, mode, cutZ);
 
-      // Door arcs
+      // Door arcs + window openings
       if (typeof DoorArcs !== 'undefined') {
-        var doors = results.filter(function(r) { return r.ifcClass === 'IfcDoor'; });
-        var walls = results.filter(function(r) { return r.ifcClass === 'IfcWall' || r.ifcClass === 'IfcWallStandardCase'; });
+        var doors   = results.filter(function(r) { return r.ifcClass === 'IfcDoor'; });
+        var walls   = results.filter(function(r) { return r.ifcClass === 'IfcWall' || r.ifcClass === 'IfcWallStandardCase'; });
         var arcs = DoorArcs.generateArcs(doors, walls);
         GridContours.addDoorArcs(A, arcs, mode, cutZ);
+
+        // Implementing 2D_027 §5.4 — Witness: W-2D27
+        var stairElements  = results.filter(function(r) { return r.ifcClass === 'IfcStair'; });
+        var windowElements = results.filter(function(r) { return r.ifcClass === 'IfcWindow'; });
+        DoorArcs.generateStairSymbol(stairElements, A, cutZ);
+        DoorArcs.generateWindowOpenings(windowElements, A, cutZ);
+        log('§DOOR_ARC_STOREY mode=' + mode + ' doors=' + doors.length + ' stairs=' + stairElements.length + ' windows=' + windowElements.length);
       }
       log('§GRID_VIEW contours=section mode=' + mode + ' cutZ=' + cutZ.toFixed(2));
 
@@ -678,6 +738,24 @@ function setupGridOverlay(APP) {
     }
     viewHtml += '</div>';
 
+    // Implementing 2D_027 §2.4 — Witness: W-2D27
+    // Saved Cuts group (SectionCut.savedCuts — localStorage-based named section views)
+    if (typeof SectionCut !== 'undefined' && SectionCut._loadCuts) {
+      SectionCut._loadCuts(A.activeBuilding || 'bld');
+      var scCuts = SectionCut.savedCuts || [];
+      if (scCuts.length > 0) {
+        viewHtml += '<div style="font-size:10px;color:#888;margin:4px 0 2px;padding:0 2px">Saved Cuts</div>';
+        viewHtml += '<div style="display:flex;gap:3px;margin:0 0 4px;flex-wrap:wrap;align-items:center">';
+        for (var sci = 0; sci < scCuts.length; sci++) {
+          var sc = scCuts[sci];
+          var scLabel = sc.name.length > 14 ? sc.name.slice(0, 12) + '\u2026' : sc.name;
+          viewHtml += '<button class="saved-cut-btn" data-cut-name="' + sc.name + '" style="' +
+            VIEW_BTN_STYLE + ';border-style:dotted" title="' + sc.label + '">' + scLabel + '</button>';
+        }
+        viewHtml += '</div>';
+      }
+    }
+
     // Saved section buttons (below view presets)
     if (savedSections.length > 0) {
       viewHtml += '<div style="display:flex;gap:3px;margin:0 0 4px;flex-wrap:wrap;align-items:center">';
@@ -741,6 +819,21 @@ function setupGridOverlay(APP) {
     var vBtns = body.querySelectorAll('.grid-view-btn');
     for (var vb = 0; vb < vBtns.length; vb++) {
       vBtns[vb].addEventListener('pointerup', onViewBtnClick);
+    }
+
+    // Implementing 2D_027 §2.4 — Witness: W-2D27
+    // Saved Cut restore buttons (SectionCut.savedCuts)
+    var scBtns = body.querySelectorAll('.saved-cut-btn');
+    for (var scb = 0; scb < scBtns.length; scb++) {
+      scBtns[scb].addEventListener('pointerup', function(e) {
+        e.stopPropagation();
+        if (typeof SectionCut === 'undefined') return;
+        var cutName = e.currentTarget.getAttribute('data-cut-name');
+        if (!A.sectionOn && A.toggleSection) A.toggleSection();
+        SectionCut.restoreCut(A, cutName);
+        if (A.updateSectionPlane && A.sectionPlane) A.updateSectionPlane(A.sectionPlane.constant);
+        A.markDirty();
+      });
     }
 
     // Saved section restore buttons

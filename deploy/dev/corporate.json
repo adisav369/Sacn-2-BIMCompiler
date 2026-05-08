@@ -1,11 +1,10 @@
 {
-  "company": "SYSNOVA UK",
-  "address": "71-75 Shelton Street, Covent Garden, London WC2H 9JQ",
-  "phone": "+44 20 7946 0958",
-  "email": "bim@sysnova.co.uk",
-  "website": "www.sysnova.co.uk",
-  "logo_text": "SYSNOVA",
-  "registration": "Company No. 12345678",
-  "drawn_by": "",
-  "checked_by": ""
+  "firmName": "BIM OOTB",
+  "tagline": "Frictionless BIM",
+  "logoText": "BIM OOTB",
+  "subtitle": "Two DBs. One browser. Zero install.",
+  "defaultProjectRef": "",
+  "defaultDrawingRef": "DR-001",
+  "defaultRevision": "P1",
+  "defaultPreparedBy": ""
 }

@@ -71,17 +71,27 @@
   /**
    * Snap grid positions so bay widths round to nearest SNAP_MODULE mm.
    * Anchor at first grid on each axis. Never collapse a bay to zero.
+   * Implementing 2D_027 §1.2 — Witness: W-2D27
+   * rawPosition is preserved (actual IFC position); position is snapped (display only).
    */
   function snapGrids(lines) {
     if (lines.length < 2) return lines;
 
-    var snapped = [lines[0]];
+    // Preserve rawPosition from input (set if already present, else use position)
+    var firstRaw = lines[0].rawPosition !== undefined ? lines[0].rawPosition : lines[0].position;
+    var snapped = [{ label: lines[0].label, position: lines[0].position, rawPosition: firstRaw, guids: lines[0].guids }];
     for (var i = 1; i < lines.length; i++) {
       var rawBayMm = (lines[i].position - lines[i - 1].position) * 1000;
       var snappedBayMm = Math.round(rawBayMm / SNAP_MODULE) * SNAP_MODULE;
       if (snappedBayMm < SNAP_MODULE) snappedBayMm = SNAP_MODULE;
       var newPos = snapped[snapped.length - 1].position + snappedBayMm / 1000;
-      snapped.push({ label: lines[i].label, position: newPos, guids: lines[i].guids });
+      var rawPos = lines[i].rawPosition !== undefined ? lines[i].rawPosition : lines[i].position;
+      var delta = Math.abs(newPos - rawPos);
+      if (delta > 0.001) {
+        // Only log when snap introduces > 1mm drift
+        console.log('[GridDims] §GD_SNAP_DELTA idx=' + i + ' raw=' + (rawPos * 1000).toFixed(0) + ' snapped=' + (newPos * 1000).toFixed(0) + ' delta=' + (delta * 1000).toFixed(0));
+      }
+      snapped.push({ label: lines[i].label, position: newPos, rawPosition: rawPos, guids: lines[i].guids });
     }
     return snapped;
   }
@@ -163,46 +173,67 @@
       log('§GD_COLUMNS query error: ' + e.message);
     }
 
-    // Fallback: if no columns, use wall endpoints for grid alignment
+    // Fallback: if no columns, use wall face positions for grid alignment
+    // Implementing 2D_027 §1.2 — Witness: W-2D27
+    // Wall centroid is NOT a grid face — use bbox edges instead
+    var wallFaceRows = null;
     if (!result || !result.length || !result[0].values.length || result[0].values.length < 2) {
-      log('§GD_COLUMNS found=' + (result && result.length && result[0].values ? result[0].values.length : 0) + ' — falling back to walls');
+      log('§GD_COLUMNS found=' + (result && result.length && result[0].values ? result[0].values.length : 0) + ' — falling back to wall faces');
       source = 'wall';
       var wallSql =
-        "SELECT m.guid, t.center_x, t.center_y " +
+        "SELECT m.guid, t.center_x - t.bbox_x*0.5 AS x_lo, t.center_x + t.bbox_x*0.5 AS x_hi, " +
+        "       t.center_y - t.bbox_y*0.5 AS y_lo, t.center_y + t.bbox_y*0.5 AS y_hi " +
         "FROM elements_meta m " +
         "JOIN element_transforms t ON m.guid = t.guid " +
         "WHERE m.ifc_class IN ('IfcWall', 'IfcWallStandardCase')";
       try {
-        result = db.exec(wallSql);
+        var wallResult = db.exec(wallSql);
+        if (wallResult && wallResult.length && wallResult[0].values.length) {
+          wallFaceRows = wallResult[0].values;
+        }
       } catch (e2) {
         log('§GD_WALLS query error: ' + e2.message);
         return empty;
       }
-    }
-
-    if (!result || !result.length || !result[0].values.length) {
-      log('§GD_ELEMENTS found=0 source=' + source);
-      console.warn('[GridDims] No columns or walls found — returning empty grids');
-      return empty;
-    }
-
-    var rows = result[0].values;
-    log('§GD_ELEMENTS found=' + rows.length + ' source=' + source);
-
-    if (rows.length < 2) {
-      console.warn('[GridDims] Fewer than 2 elements (' + rows.length + ') — returning empty grids');
-      return empty;
+      if (!wallFaceRows || wallFaceRows.length < 2) {
+        log('§GD_ELEMENTS found=0 source=wall');
+        console.warn('[GridDims] No columns or walls found — returning empty grids');
+        return empty;
+      }
     }
 
     // Build entries per axis
     var xEntries = [];
     var yEntries = [];
-    for (var i = 0; i < rows.length; i++) {
-      var guid = rows[i][0];
-      var cx = rows[i][1];
-      var cy = rows[i][2];
-      xEntries.push({ pos: cx, guid: guid });
-      yEntries.push({ pos: cy, guid: guid });
+
+    if (wallFaceRows) {
+      // Wall face positions: cluster both lo and hi edges for each axis
+      log('§GD_ELEMENTS found=' + wallFaceRows.length + ' source=wall-faces');
+      for (var i = 0; i < wallFaceRows.length; i++) {
+        var wguid = wallFaceRows[i][0];
+        var xLo = wallFaceRows[i][1];
+        var xHi = wallFaceRows[i][2];
+        var yLo = wallFaceRows[i][3];
+        var yHi = wallFaceRows[i][4];
+        xEntries.push({ pos: xLo, guid: wguid + '_lo' });
+        xEntries.push({ pos: xHi, guid: wguid + '_hi' });
+        yEntries.push({ pos: yLo, guid: wguid + '_lo' });
+        yEntries.push({ pos: yHi, guid: wguid + '_hi' });
+      }
+    } else {
+      var rows = result[0].values;
+      log('§GD_ELEMENTS found=' + rows.length + ' source=' + source);
+      if (rows.length < 2) {
+        console.warn('[GridDims] Fewer than 2 elements (' + rows.length + ') — returning empty grids');
+        return empty;
+      }
+      for (var i = 0; i < rows.length; i++) {
+        var guid = rows[i][0];
+        var cx = rows[i][1];
+        var cy = rows[i][2];
+        xEntries.push({ pos: cx, guid: guid });
+        yEntries.push({ pos: cy, guid: guid });
+      }
     }
 
     // Cluster
@@ -213,18 +244,19 @@
     log('§GD_CLUSTER axis=Y clusters=' + yClusters.length);
 
     // Label: X-axis gets numeric (1,2,3...) left-to-right
+    // rawPosition = actual IFC cluster position; position = snapped display position
     var xLines = xClusters.map(function (c, idx) {
-      return { label: String(idx + 1), position: c.position, guids: c.guids };
+      return { label: String(idx + 1), position: c.position, rawPosition: c.position, guids: c.guids };
     });
 
     // Label: Y-axis gets letters (A,B,C...) bottom-to-top, skip I
     var letterSeq = 'A,B,C,D,E,F,G,H,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z'.split(',');
     var yLines = yClusters.map(function (c, idx) {
       var lbl = idx < letterSeq.length ? letterSeq[idx] : String.fromCharCode(65 + idx);
-      return { label: lbl, position: c.position, guids: c.guids };
+      return { label: lbl, position: c.position, rawPosition: c.position, guids: c.guids };
     });
 
-    // Snap to nearest SNAP_MODULE
+    // Snap to nearest SNAP_MODULE (display positions only; rawPosition preserved)
     xLines = snapGrids(xLines);
     yLines = snapGrids(yLines);
 
@@ -498,12 +530,12 @@
     var yClusters = clusterEntries(yEntries, tolerance);
 
     var xLines = xClusters.map(function (c, idx) {
-      return { label: String(idx + 1), position: c.position, guids: c.guids };
+      return { label: String(idx + 1), position: c.position, rawPosition: c.position, guids: c.guids };
     });
     var letterSeq = 'A,B,C,D,E,F,G,H,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z'.split(',');
     var yLines = yClusters.map(function (c, idx) {
       var lbl = idx < letterSeq.length ? letterSeq[idx] : String.fromCharCode(65 + idx);
-      return { label: lbl, position: c.position, guids: c.guids };
+      return { label: lbl, position: c.position, rawPosition: c.position, guids: c.guids };
     });
 
     xLines = snapGrids(xLines);

@@ -704,6 +704,57 @@ var api = {
     CLIP_MARGIN: CLIP_MARGIN
 };
 
+// -------------------------------------------------------------------------
+// Saved Cuts API — 2D_027 §2.2
+// -------------------------------------------------------------------------
+// Implementing 2D_027 §2.2 — Witness: W-2D27
+
+api.savedCuts = []; // [{name, axis, constant, label}]
+
+api._loadCuts = function(buildingKey) {
+    try {
+        var raw = localStorage.getItem(buildingKey + ':sectionCuts');
+        api.savedCuts = raw ? JSON.parse(raw) : [];
+    } catch (e) { api.savedCuts = []; }
+};
+
+api._saveCutsToStorage = function(buildingKey) {
+    try {
+        localStorage.setItem(buildingKey + ':sectionCuts', JSON.stringify(api.savedCuts));
+    } catch (e) {}
+};
+
+api.saveCut = function(APP, axis, constant) {
+    var bldKey = (APP && APP.activeBuilding) ? APP.activeBuilding : 'bld';
+    api._loadCuts(bldKey);
+    var n = api.savedCuts.length + 1;
+    var name = 'SectionCut' + n;
+    api.savedCuts.push({ name: name, axis: axis, constant: constant, label: axis + ' @ ' + constant.toFixed(2) + 'm' });
+    api._saveCutsToStorage(bldKey);
+    console.log('§GRID_CUT_SAVE name=' + name + ' axis=' + axis + ' constant=' + constant.toFixed(3));
+    return name;
+};
+
+api.removeCut = function(APP, name) {
+    var bldKey = (APP && APP.activeBuilding) ? APP.activeBuilding : 'bld';
+    api._loadCuts(bldKey);
+    api.savedCuts = api.savedCuts.filter(function(c) { return c.name !== name; });
+    api._saveCutsToStorage(bldKey);
+};
+
+api.restoreCut = function(APP, name) {
+    var bldKey = (APP && APP.activeBuilding) ? APP.activeBuilding : 'bld';
+    api._loadCuts(bldKey);
+    var cut = null;
+    for (var i = 0; i < api.savedCuts.length; i++) {
+        if (api.savedCuts[i].name === name) { cut = api.savedCuts[i]; break; }
+    }
+    if (!cut) { console.warn('[SectionCut] restoreCut: not found: ' + name); return; }
+    if (APP && APP.sectionPlane) APP.sectionPlane.constant = cut.constant;
+    if (APP) { APP.sectionAxis = cut.axis; APP.sectionOn = true; }
+    console.log('§GRID_CUT_VIEW name=' + name + ' axis=' + cut.axis + ' constant=' + cut.constant.toFixed(3));
+};
+
 if (typeof window !== 'undefined') {
     window.SectionCut = api;
 }
