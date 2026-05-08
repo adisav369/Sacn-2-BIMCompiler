@@ -235,10 +235,10 @@ function initViewer() {
           donutRow.innerHTML =
             '<div style="text-align:center;">' +
             '<div id="donut-progress" style="width:90px;height:90px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"></div>' +
-            '<div style="font-size:10px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.5px;">Progress</div></div>' +
+            '<div style="font-size:10px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.5px;">Time</div></div>' +
             '<div style="text-align:center;">' +
             '<div id="donut-cost" style="width:90px;height:90px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"></div>' +
-            '<div style="font-size:10px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.5px;">Cost</div></div>';
+            '<div style="font-size:10px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.5px;">Progress</div></div>';
           panel.appendChild(donutRow);
           // Title bar
           var titleBar = document.createElement('div');
@@ -328,26 +328,30 @@ function initViewer() {
           statusEl.style.color = statusColor;
           statusEl.textContent = statusText;
         }
-        // Donut charts — CSS conic-gradient
+        // Donut charts — Time Elapsed vs Physical Progress
+        var timePct = msg.maxDay > 0 ? Math.round(msg.day / msg.maxDay * 100) : 0;
+        timePct = Math.min(timePct, 100);
         var progPct = msg.progressPct || 0;
         var cur = msg.cur || 'RM';
         var gt = msg.grandTotal || 0;
         var costToDate = Math.round(gt * progPct / 100);
+        // Left: Time elapsed (blue)
         var dp = document.getElementById('donut-progress');
         if (dp) {
-          dp.style.background = 'conic-gradient(#66bb6a 0% ' + progPct + '%, rgba(255,255,255,0.08) ' + progPct + '% 100%)';
+          dp.style.background = 'conic-gradient(#42a5f5 0% ' + timePct + '%, rgba(255,255,255,0.08) ' + timePct + '% 100%)';
           dp.innerHTML = '<div style="width:62px;height:62px;border-radius:50%;background:rgba(20,25,35,0.85);display:flex;align-items:center;justify-content:center;' +
-            'font-size:18px;font-weight:900;color:#66bb6a;">' + progPct + '%</div>';
+            'font-size:18px;font-weight:900;color:#42a5f5;">' + timePct + '%</div>';
         }
+        // Right: Physical progress (green)
         var dc = document.getElementById('donut-cost');
         if (dc) {
-          dc.style.background = 'conic-gradient(#ffb347 0% ' + progPct + '%, rgba(255,255,255,0.08) ' + progPct + '% 100%)';
+          dc.style.background = 'conic-gradient(#66bb6a 0% ' + progPct + '%, rgba(255,255,255,0.08) ' + progPct + '% 100%)';
           dc.innerHTML = '<div style="width:62px;height:62px;border-radius:50%;background:rgba(20,25,35,0.85);display:flex;align-items:center;justify-content:center;' +
-            'font-size:11px;font-weight:800;color:#ffb347;text-align:center;line-height:1.2;">' + cur + '<br>' + costToDate.toLocaleString() + '</div>';
+            'font-size:18px;font-weight:900;color:#66bb6a;">' + progPct + '%</div>';
         }
         // Grand total footer
         var grand = document.getElementById('res-grand');
-        grand.innerHTML = '<span style="color:rgba(255,255,255,0.4);">Budget ' + cur + ' ' + gt.toLocaleString() + '</span>';
+        grand.innerHTML = '<span style="color:rgba(255,255,255,0.4);">' + cur + ' ' + costToDate.toLocaleString() + ' / ' + cur + ' ' + gt.toLocaleString() + '</span>';
         panel.style.display = '';
         return;
       }
