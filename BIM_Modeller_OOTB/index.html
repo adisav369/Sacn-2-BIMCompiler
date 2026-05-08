@@ -1486,6 +1486,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#what-ifcopenshell-actually-is-stripped-to-its-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What IfcOpenShell Actually Is — Stripped to Its Core
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#where-autodesks-complexity-was-crushed" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3685,6 +3696,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#what-ifcopenshell-actually-is-stripped-to-its-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What IfcOpenShell Actually Is — Stripped to Its Core
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#where-autodesks-complexity-was-crushed" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4084,6 +4106,20 @@
 <li>The Geometry Nodes parametric system, while impressive, is a visual programming environment with no database integration. Its "parameters" live in the node graph, not in a schema anyone else can read.</li>
 </ul>
 <p>The browser approach does not compete with Blender on rendering fidelity or artistic capability. It eliminates the need for Blender's specific role in the BIM pipeline: the role of <em>geometry host</em> and <em>IFC intermediary</em>. That role is taken by the SQLite DB, the WASM runtime, and Three.js. What remains of Blender's value — physics simulation, rendering, animation — is orthogonal to BIM modelling and unaffected.</p>
+<h3 id="what-ifcopenshell-actually-is-stripped-to-its-core">What IfcOpenShell Actually Is — Stripped to Its Core<a class="headerlink" href="#what-ifcopenshell-actually-is-stripped-to-its-core" title="Permanent link">&para;</a></h3>
+<p>Once you trace the five components through every modeller, a question becomes unavoidable: what is IfcOpenShell's fundamental role?</p>
+<p>The answer, when stripped of its C++ machinery and Python API, is this: <strong>IfcOpenShell is a classification dictionary parser.</strong></p>
+<p>The IFC schema defines a vocabulary — <code>IfcWall</code>, <code>IfcColumn</code>, <code>IfcDoor</code>, <code>IfcBuildingStorey</code>, <code>IfcCostSchedule</code> — and a set of property schemas that describe what attributes each type can carry. This vocabulary could, in principle, be applied to <em>any</em> geometry representation. It is not intrinsically tied to BREP. It is not intrinsically tied to STEP serialisation. The classification is the valuable thing. The geometry carrier is incidental.</p>
+<p>IfcOpenShell's C++ core does three things:
+1. <strong>Parses</strong> the ISO-10303-21 STEP text file into memory
+2. <strong>Resolves</strong> the entity references and property set chains
+3. <strong>Tessellates</strong> the BREP geometry into triangle meshes</p>
+<p>Steps 1 and 2 are dictionary lookups — traversing a known schema to extract named types and their attribute values. Step 3 is geometry evaluation — expensive, OpenCascade-dependent, and the source of the WASM weight problem.</p>
+<p>In this architecture, steps 1 and 2 happen once at extraction time via web-ifc. The results are stored as plain text in <code>elements_meta.ifc_class</code> — a string like <code>"IfcWall"</code>. After that, the IFC dictionary is just a vocabulary the DB uses for filtering, discipline assignment, and constraint scoping. No IfcOpenShell required. The classification persists as data; the parser is no longer needed.</p>
+<p>This reframing matters for the category definition. IFC's enduring value is not its geometry representation (which competing standards — USD, glTF — handle better for visualisation). Its value is its <strong>domain-specific classification vocabulary for the built environment</strong> — 800+ named entity types covering architecture, structure, MEP, cost, schedule, and facility management. That vocabulary is freely available, jurisdiction-neutral, and understood by every BIM tool on the planet.</p>
+<p>The insight: <strong>IFC is a dictionary. IfcOpenShell is one way to read it.</strong> The dictionary can be loaded once, stored as strings in a SQLite table, and queried by any tool that can run SQL. The parser becomes a one-time import utility — exactly how web-ifc is used here.</p>
+<p>What this means for the geometry-ERP gap the community has not solved: the IFC classification vocabulary already contains <code>IfcCostSchedule</code>, <code>IfcTask</code>, <code>IfcConstructionResource</code>. These entities exist in the dictionary. What has always been missing is a data model — a business logic layer — that treats them as first-class objects rather than optional schema entries that no tool authors in practice. That is the ERP layer: <code>M_Product</code>, <code>C_Order</code>, <code>AD_Val_Rule</code>. The IFC dictionary provides the vocabulary. The ERP pattern provides the logic. The SQLite DB unifies them.</p>
+<p>IfcOpenShell, in this light, is not a competitor or a dependency. It is a reference implementation of the dictionary — the authoritative source for what the vocabulary means, useful for batch extraction and complex property set operations, but not the runtime. The runtime is SQL.</p>
 <h3 id="where-autodesks-complexity-was-crushed">Where Autodesk's Complexity Was Crushed<a class="headerlink" href="#where-autodesks-complexity-was-crushed" title="Permanent link">&para;</a></h3>
 <p>Revit's architecture is the industry standard for a reason: it solved the constraint and collaboration problems that every other tool struggled with in the 2000s. Its parametric family system is genuinely powerful. But the architecture reflects the constraints of 2002:</p>
 <ul>
