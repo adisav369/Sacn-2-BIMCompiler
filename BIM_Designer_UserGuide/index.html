@@ -87,7 +87,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#bim-designer-user-guide" class="md-skip">
+        <a href="#bim-designer-user-guide-deprecated" class="md-skip">
           Skip to content
         </a>
       
@@ -1638,6 +1638,8 @@
       
         
       
+        
+      
     
     
     
@@ -1866,6 +1868,34 @@
     
   
     PDF Terrain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_2D_Guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Guide
   
 
     
@@ -3682,6 +3712,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ---
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-browser-viewer-keyboard-interaction-cheat-sheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Browser Viewer — Keyboard &amp; Interaction Cheat Sheet
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4735,6 +4787,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ---
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-browser-viewer-keyboard-interaction-cheat-sheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Browser Viewer — Keyboard &amp; Interaction Cheat Sheet
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4755,9 +4829,11 @@
   
 
 
-<h1 id="bim-designer-user-guide">BIM Designer — User Guide<a class="headerlink" href="#bim-designer-user-guide" title="Permanent link">&para;</a></h1>
+<h1 id="bim-designer-user-guide-deprecated">BIM Designer — User Guide (DEPRECATED)<a class="headerlink" href="#bim-designer-user-guide-deprecated" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>This guide covers the Java/Blender desktop pipeline (sessions S1–S60). For the browser-based BIM OOTB viewer and 2D system, see the <a href="../BIM_2D_Guide/">Browser BIM 2D Guide</a>.</strong>
+The desktop pipeline remains valid for BOM compilation and IFC extraction. The browser viewer has superseded it for all 2D/3D viewing, grid overlay, cost panel, and interactive modelling.
+<strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <div class="bim-banner">
 <p><b>Set up and use the BIM Designer addon in Blender/Bonsai.</b> Covers the DesignerServer, validation engine, and two-tier architecture with <a href="../BackOfficeUserGuide/">Back Office</a>.</p>
@@ -6780,8 +6856,84 @@ The Work Order path compiles end-to-end (W-WO-1). ERP alignment complete (S60–
 <a href="../archive/S60_ERP_ALIGNMENT/">S60_ERP_ALIGNMENT.md</a> (ERP model alignment) |
 <a href="../archive/S60_UI_ALIGNMENT_SPEC/">S60_UI_ALIGNMENT_SPEC.md</a> (UI + federation gap analysis) |
 Federation addon: <code>/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/</code></em></p>
+<h2 id="-">---<a class="headerlink" href="#-" title="Permanent link">&para;</a></h2>
+<h2 id="15-browser-viewer-keyboard-interaction-cheat-sheet">15. Browser Viewer — Keyboard &amp; Interaction Cheat Sheet<a class="headerlink" href="#15-browser-viewer-keyboard-interaction-cheat-sheet" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>See <a href="../2D_LAYOUT/">2D Layout Architecture</a> for full module map and <a href="../BIM_Modeller_OOTB/">BIM Modeller OOTB</a> for the kernel_ops architecture.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Key / Gesture</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>G</strong></td>
+<td>Toggle grid overlay on/off</td>
+</tr>
+<tr>
+<td><strong>GF / L1</strong> buttons</td>
+<td>Lock to floor plan (section cut + door arcs + opening labels)</td>
+</tr>
+<tr>
+<td><strong>Front / Back / Left / Right</strong></td>
+<td>Elevation views</td>
+</tr>
+<tr>
+<td><strong>Roof</strong></td>
+<td>Roof plan view</td>
+</tr>
+<tr>
+<td><strong>Unlock</strong> (lock icon)</td>
+<td>Return to free 3D orbit</td>
+</tr>
+<tr>
+<td><strong>Long-press</strong> (~0.4s) on grid line</td>
+<td>Start grid drag — 3D planes appear</td>
+</tr>
+<tr>
+<td><strong>Drag</strong> after long-press</td>
+<td>Move grid line — cost panel updates live</td>
+</tr>
+<tr>
+<td><strong>Release</strong> after drag</td>
+<td>Commit GRID_MOVE to <code>kernel_ops</code> log</td>
+</tr>
+<tr>
+<td><strong>Ctrl+Z</strong></td>
+<td>Undo last grid move</td>
+</tr>
+<tr>
+<td><strong>Ctrl+Shift+Z</strong> or <strong>Ctrl+Y</strong></td>
+<td>Redo undone grid move</td>
+</tr>
+<tr>
+<td><strong>Scissors slider</strong></td>
+<td>Move cut plane — grids recompute at new elevation</td>
+</tr>
+<tr>
+<td><strong>Save cut</strong></td>
+<td>Save current section as named view</td>
+</tr>
+<tr>
+<td><strong>Alt+Z</strong></td>
+<td>Toggle X-ray mode</td>
+</tr>
+<tr>
+<td><strong>F11</strong></td>
+<td>Toggle fullscreen</td>
+</tr>
+<tr>
+<td><strong>F5 / reload</strong></td>
+<td>Grid positions restored from <code>kernel_ops</code> log — no save needed</td>
+</tr>
+</tbody>
+</table>
 <hr />
-<p><em>v1.0 — 2026-03-23, session 60. Tabs aligned to §30.3, BOM tree fixed, Bonsai 10-item flow verified, federation gap analysis completed.</em></p>
+<p><em>v1.0 — 2026-03-23, session 60. Tabs aligned to §30.3, BOM tree fixed, Bonsai 10-item flow verified, federation gap analysis completed.</em>
+<em>v1.1 — 2026-05-09, session 2D_029. Browser keyboard cheat sheet added. kernel_ops first proof.</em></p>
 <p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
 
 

@@ -2039,6 +2039,8 @@
       
         
       
+        
+      
     
     
     
@@ -2267,6 +2269,34 @@
     
   
     PDF Terrain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_2D_Guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Guide
   
 
     
@@ -4935,6 +4965,10 @@ downstream is reading receipts.</p>
 <tr>
 <td><code>AD_ChangeLog</code> for audit</td>
 <td><code>bim_changelog</code> table survives page reload, syncs on DB export</td>
+</tr>
+<tr>
+<td><code>AD_ChangeLog</code> → transactional</td>
+<td><a href="../BIM_Modeller_OOTB/#the-modelling-inversion"><code>kernel_ops</code> log</a> — every grid drag is a committed transaction, undo/redo/replay built in. <a href="../2D_LAYOUT/#first-proof-of-kernel_ops-2026-05-09">First proof: 2026-05-09</a></td>
 </tr>
 <tr>
 <td><code>AD_PrintFormat</code> for output</td>
