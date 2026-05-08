@@ -349,6 +349,60 @@ Three things happened in the same narrow window:
 2. **web-ifc v0.0.57–0.0.72** (Aug 2024 – Oct 2025) — a burst of 16 releases that hardened IFC4 tessellation. The parser we built on (v0.0.72) was released the same month we started the project.
 3. **rtree-sql.js v1.7.0** (Jun 2022) — existed for 3 years but was obscure. Nobody had combined it with Three.js for BIM clash detection. The discovery was ours.
 
+### The Discovery Chain — How AI Found What Google Could Not
+
+The turning point of this entire project was not a line of code. It was a **discovery**: that an obscure npm package called `rtree-sql.js` — a fork of sql.js with one Makefile flag changed (`-DSQLITE_ENABLE_RTREE=1`) — could turn a browser tab into a spatial database engine capable of O(n log N) clash detection on 48,000 building elements.
+
+Consider the chain of people who made this possible, none of whom knew each other or intended what we built:
+
+| Who | When | What they did | Why they did it |
+|-----|------|--------------|-----------------|
+| **Alon Zakai** (Mozilla, `kripken`) | 2010 | Created Emscripten — C/C++ → JavaScript compiler | Wanted to port his C++ game fork (Syntensity/Sauerbraten) to the browser |
+| **Zakai** | Feb 2012 | First commit to `sql.js` — SQLite compiled to JS | Side-project demo of Emscripten's power. Not a product — one `db.exec()` method, all data coerced to strings, no tests. |
+| **Ophir Lojkine** (Paris, `lovasoa`) | 2014 | Found sql.js stalled (last commit over a year old, author unresponsive). Rewrote the API: prepared statements, BLOB support, types, tests. | Needed to test SQL commands on a machine with no database software. [Wrote about it on LinuxFr.org](https://linuxfr.org/news/retour-d-experience-sur-sql-js), 15 June 2014. Kripken added him as contributor; he has maintained it ever since. |
+| **W3C / browser vendors** | Mar 2017 | WebAssembly MVP ships — Firefox 52 (Mar 7), Chrome 57 (Mar 9), Safari 11 (Sep), Edge 16 (Oct) | Cross-vendor binary format for compiled languages in the browser |
+| **Taylor Brown** (`Taytay`) | Apr 2019 | [PR #255](https://github.com/sql-js/sql.js/pull/255) — switched sql.js from asm.js to WASM output | WASM was faster and smaller. Opened Nov 2018, merged Apr 29, 2019. |
+| **Daniel Barela** (`danielbarela`) | Oct 2019 | Published [`rtree-sql.js`](https://www.npmjs.com/package/rtree-sql.js) — sql.js recompiled with one flag: `-DSQLITE_ENABLE_RTREE=1` | Needed spatial queries in the browser. Likely GIS background, not BIM. Three versions ever published (1.0.0, 1.0.1, 1.7.0). Minimal downloads. |
+| **Stephan Beal** (SQLite team) | Nov 2022 | SQLite 3.40.0 — [first official WASM build](https://sqlite.org/wasm/doc/trunk/about.md). Explicitly credits sql.js as "the first-ever published use of sqlite3 for the web." | Making WASM a "first-class member of the family of supported SQLite deliverables." |
+| **Lojkine + contributors** | Oct 2024 | sql.js v1.12.0 — WASM memory stability for large DBs | Bug fixes. No idea anyone would stream 48K building elements through it. |
+| **Redhuan D. Oon** | Oct 2025 | Connected SQLite BLOBs → Float32Array → Three.js GPU | Needed zero-install BIM viewer for site foremen on phones |
+
+A Mozilla game developer's side project → a French developer's maintenance rescue → a GIS engineer's one-flag fork → a Malaysian ERP architect who knew what a BOM was. **Four communities that never intersect** (compilers, databases, 3D graphics, construction) produced the ingredients. AI connected them.
+
+#### Without AI, what path leads here?
+
+An ERP architect who knows Java, iDempiere, and BIM would need to:
+
+1. **Know that SQLite can run in a browser.** This means knowing about Emscripten, knowing that C libraries can compile to WASM, and knowing that sql.js exists. None of this appears in BIM literature, ERP forums, or construction technology conferences. The search term "SQLite in browser" leads to sql.js — but only if you already know to ask.
+
+2. **Know that SQLite has a spatial index.** R-tree is a compile-time extension in SQLite, off by default. It is documented in SQLite's C API docs, not in any JavaScript context. The search term "spatial index JavaScript" leads to Turf.js, RBush, or PostGIS — not to SQLite R-tree.
+
+3. **Know that someone compiled sql.js with the R-tree flag.** Daniel Barela published `rtree-sql.js` in October 2019 — three versions ever, minimal downloads, no blog posts, no tutorials, no Stack Overflow answers. Searching "R-tree WASM" or "spatial query browser" does not surface it. You would need to read sql.js GitHub issue [#390](https://github.com/sql-js/sql.js/issues/390) ("How to turn on rtree?"), follow the thread, and find Barela's fork. This is a needle in a mass of unrelated search results.
+
+4. **Know that geometry BLOBs can go straight to WebGL.** The idea that `new Float32Array(blob)` produces a valid `BufferGeometry` for Three.js is not documented anywhere. It requires knowing both the SQLite BLOB storage format (just raw bytes) and the Three.js buffer attribute API (just typed arrays). These two facts live in different documentation universes.
+
+5. **Connect all four in the right order.** Even if you discovered each piece independently, the architectural insight — that the SQLite file IS the delivery format, no server, no conversion, no API — requires seeing across all four domains simultaneously.
+
+**No search engine connects these.** Google returns results within a domain. "SQLite spatial browser 3D BIM" returns nothing useful — the intersection has zero prior art. An AI trained across all four domains can hold the connection in a single context window: "You have geometry as BLOBs in SQLite. There is a WASM build of SQLite with R-tree. Three.js accepts Float32Array. The browser is the viewer." That sentence crosses four knowledge boundaries. It took one AI conversation to say it. It would have taken a human years of accidental discovery — or never.
+
+### Why R-tree Is Load-Bearing — Not Optional
+
+The R-tree spatial index is not an optimisation. It is the reason the product works on a phone. Without it, clash detection is a mathematical impossibility at building scale.
+
+**What it is:** SQLite's R-tree is a compile-time extension (off by default) that creates a virtual table indexing objects by their bounding boxes in N dimensions. A query like "which elements overlap this box?" completes in **O(log N)** instead of scanning every row. It was designed by [Antonin Guttman in 1984](https://en.wikipedia.org/wiki/R-tree) for spatial databases — and it sat inside SQLite for years, unused in the browser, because nobody compiled it into the WASM build. In October 2019, Daniel Barela (`danielbarela`) added one flag (`-DSQLITE_ENABLE_RTREE=1`) to the sql.js Makefile and published [`rtree-sql.js`](https://www.npmjs.com/package/rtree-sql.js) to npm — three versions ever, minimal downloads. That single flag is the difference between a product and a demo.
+
+**Where it runs in BIM OOTB** (three modules, 43 code references):
+
+| Module | What R-tree does | Without R-tree |
+|--------|-----------------|----------------|
+| `measure.js` (clash detection) | For each MEP element, probe R-tree for overlapping ARC/STR elements. 500 probes × O(log 48K) = **sub-second**. | O(n²) cross-join: 500 × 47,500 = **23.75 million** row comparisons. Browser tab freezes or crashes. |
+| `section_cut.js` (storey slicing) | Query elements within a Z-range slab. R-tree returns only elements in that band. | Full-table scan of all transforms, then filter by Z in JavaScript. Slow on large buildings. |
+| `elevation.js` (building extents) | Min/max of all bounding boxes along any axis — one R-tree aggregate. | Full scan of `element_transforms` — works but slower, no spatial pruning. |
+
+**The maths:** A 48,000-element airport terminal with 7 disciplines and 12 clash rules requires checking every discipline pair. Without R-tree, the naïve approach is a cross-join — `O(n²)` per pair. With 12 rules and ~7,000 elements per discipline on average, that's 12 × 7,000² = **588 million** comparisons. The browser has ~5 seconds before the user assumes it's broken. R-tree reduces this to 12 × 7,000 × O(log 48,000) ≈ **12 × 7,000 × 16 = 1.3 million** operations — a **450× speedup**. That's the difference between "instant" and "dead."
+
+**The irony:** R-tree has been part of SQLite since [version 3.6.10 (2009)](https://sqlite.org/changes.html). It has been available as a compile flag for 17 years. The browser WASM build of SQLite (sql.js) existed since 2012. But nobody compiled the two together until `rtree-sql.js` appeared in 2019 — and even then, almost nobody used it. Our clash detection, running live on phones in 2026, depends on a 1984 algorithm, compiled through a 2010 toolchain, into a 2019 package, discovered by an AI in 2025.
+
 **What actually runs in the viewer (verified from `loader.js`):**
 
 | Package | Version | Date | Role |

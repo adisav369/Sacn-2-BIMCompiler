@@ -10,6 +10,7 @@
 **Status:** LIVE — storey-scoped progressive queries, discipline matrix, in-viewer review workflow
 **Depends on:** `measure.js`, `clash_rules.json`, `rtree-sql.js` (WASM), Three.js
 
+
 ---
 
 ## 1. The Problem with Desktop Clash Detection
@@ -28,50 +29,11 @@ Every BIM coordination meeting plays the same scene: someone opens Navisworks, r
 
 ---
 
-## 2. The Technology: Why It Works in a Browser
+## 2. The Technology
 
-Three technologies make this possible. None is new individually — the combination at this scale is.
+The same stack that powers the [BIM OOTB browser viewer](BIM_Designer_Browser.md) — **sql.js** (WASM SQLite with [R-tree extension](https://www.npmjs.com/package/rtree-sql.js)), **Three.js** (WebGL GPU rendering), and the **BLOB-to-GPU pipeline** where geometry goes straight from SQLite columns to the GPU with no intermediate file format. Full schema: [SQLite3D_Schema.md](SQLite3D_Schema.md).
 
-### 2.1 sql.js (WASM SQLite) — The Query Engine
-
-[sql.js](https://github.com/sql-js/sql.js) compiles the entire SQLite C library to WebAssembly. The browser downloads a ~1MB `.wasm` file and gains a full SQL engine running at near-native speed — the same SQLite that powers every smartphone on earth.
-
-We use [rtree-sql.js](https://www.npmjs.com/package/rtree-sql.js), a build with `SQLITE_ENABLE_RTREE` compiled in, enabling R-tree spatial indexes for single-element lookups in O(log N).
-
-```sql
--- Envelope overlap check: one GROUP BY, instant on 48K elements
-SELECT discipline,
-       MIN(center_x - bbox_x/2), MAX(center_x + bbox_x/2),
-       MIN(center_y - bbox_y/2), MAX(center_y + bbox_y/2),
-       MIN(center_z - bbox_z/2), MAX(center_z + bbox_z/2)
-FROM element_transforms t
-JOIN elements_meta m ON t.guid = m.guid
-GROUP BY discipline
-```
-
-This single query computes the spatial envelope of every discipline — if two envelopes don't overlap, there are zero clashes between them. No geometry needed. Pure arithmetic.
-
-### 2.2 Three.js (WebGL) — The Renderer
-
-[Three.js](https://threejs.org/) wraps the browser's GPU API. When a clash is detected, we create clipped mesh geometry at the overlap zone — red for element A, blue for element B — rendered with `depthTest:false` so they're always visible through surrounding structure.
-
-### 2.3 BLOB-to-GPU Pipeline — No Intermediate Format
-
-```
-SQLite DB (WASM)              Three.js (WebGL/GPU)
-     |                              |
-     |  SELECT vertices, faces      |
-     |  FROM component_geometries   |
-     |  WHERE geometry_hash = ?     |
-     v                              |
-  Uint8Array (BLOB)                 |
-     |                              |
-     |  new Float32Array(blob)      |
-     v                              |
-  Float32Array  ──────────────────> BufferGeometry ──> GPU
-```
-
-No glTF. No OBJ. No server-side conversion. The BLOB in the database IS the mesh. The browser IS the renderer. Clash detection queries the same database that renders the 3D model — geometry and metadata share one query layer.
+Clash detection adds one query pattern: cross-join `element_transforms` scoped by storey and discipline, with bounding-box overlap arithmetic in the `WHERE` clause. The R-tree spatial index (built async at load time) enables future features like smart grouping and heatmap — constant-bounds lookups in O(log N).
 
 ---
 
@@ -85,7 +47,7 @@ Right-click any element to see its storey info card — element counts by IFC cl
 - **Orange** — envelopes overlap. Click to open the Clash Matrix.
 
 <figure style="margin: 20px 0;">
-<img src="assets/images/clash_storey_infocard.png" alt="Storey info card with clash sphere and element counts" style="width:100%; border:1px solid #333; border-radius:8px;"/>
+<img src="../assets/images/clash_storey_infocard.png" alt="Storey info card with clash sphere and element counts" style="width:100%; border:1px solid #333; border-radius:8px;"/>
 <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Right-click a storey: element counts, volume, and clash sphere. Orange = possible clashes — click to open the matrix.</figcaption>
 </figure>
 
@@ -100,10 +62,6 @@ The matrix shows every discipline pair. Each cell is a sphere:
 - **Red** = hard clashes found (>50mm penetration)
 - **Dash** = no rule defined for this pair
 
-<figure style="margin: 20px 0;">
-<img src="assets/images/clash_matrix_whole_building.png" alt="Clash Matrix showing 7 disciplines with colour-coded spheres" style="width:100%; border:1px solid #333; border-radius:8px;"/>
-<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">Whole-building clash matrix — 7 disciplines, 12 rules. Background check uses envelope overlap (instant). Click any orange/red cell to drill into individual clashes.</figcaption>
-</figure>
 
 ### 3.3 Cell Click: Storey-Scoped Queries
 
@@ -144,7 +102,7 @@ Click any clash row to fly the camera to the overlap zone. The viewer shows:
 - Camera distance based on overlap size, not element bbox — tight framing on the actual clash
 
 <figure style="margin: 20px 0;">
-<img src="assets/images/clash_matrix_flyto.png" alt="Clash fly-to showing red/blue overlap meshes between pipe and slab" style="width:100%; border:1px solid #333; border-radius:8px;"/>
+<img src="../assets/images/clash_matrix_flyto.png" alt="Clash fly-to showing red/blue overlap meshes between pipe and slab" style="width:100%; border:1px solid #333; border-radius:8px;"/>
 <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">MEP vs ARC clash: pipe penetrating slab. Red/blue mesh at overlap zone, tolerance slider (25mm), clash list with severity colours. All in the browser.</figcaption>
 </figure>
 
@@ -164,6 +122,29 @@ Right-click or long-press any clash row to cycle its status:
 | Accepted | White circle | Intentional — no action needed |
 
 Statuses persist in `localStorage` per building. No server, no login, no export/import cycle.
+
+### 3.7 Shareable Clash Deep-Link
+
+Click the share icon on any clash pair to copy a URL that encodes the full viewing state — building DB, clash pair GUIDs, camera position, target, tolerance, and storey filter. Anyone opening that link sees exactly the same clash, from the same angle, with the same settings. No login, no server, no app install.
+
+<figure style="margin: 20px 0;">
+<a href="https://youtu.be/8jSSQSv0SJg" target="_blank"><img src="https://img.youtube.com/vi/8jSSQSv0SJg/hqdefault.jpg" alt="15-second demo: clicking a shared clash analysis link" style="width:100%; border:1px solid #333; border-radius:8px;"/></a>
+<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">15-second demo: opening a shared clash link — the viewer loads the building, flies to the clash pair, and highlights the overlap. <a href="https://youtu.be/8jSSQSv0SJg">Watch on YouTube</a></figcaption>
+</figure>
+
+**Try it live:** [Open Clash Pair — Hospital Garage MEP vs ARC](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/sandbox/index.html?db=https%3A%2F%2Fobjectstorage.ap-kulai-2.oraclecloud.com%2Fn%2Fax3cp6tzwuy2%2Fb%2Fbim-ootb-live%2Fo%2Fbuildings%2FHospitalGarage_extracted.db#clash=0GjpF04mX1K8P$TdM8fU2_~3ltWc9XO98DfOXi0yjJr4p&st=&cam=-44.21,-8.22,-42.42&tgt=-52.01,-7.95,-35.39&tol=25)
+
+URL anatomy:
+```
+?db=...HospitalGarage_extracted.db     ← SQLite DB source
+#clash=GUID_A~GUID_B                   ← the two clashing elements
+&st=                                   ← storey filter (empty = whole building)
+&cam=-44.21,-8.22,-42.42               ← camera position (metres)
+&tgt=-52.01,-7.95,-35.39               ← camera target (look-at point)
+&tol=25                                ← tolerance in mm
+```
+
+This is collaboration via URL — one person finds a clash, shares the link, the recipient opens it and sees the exact same view. The URL *is* the coordination tool.
 
 ---
 
@@ -205,10 +186,6 @@ Currently 12 rules covering: ARC/STR, MEP/STR, MEP/ARC, ELEC/ARC, ELEC/STR, ELEC
 
 Click the clipboard icon on the matrix to generate a full analytics report in a new tab:
 
-<figure style="margin: 20px 0;">
-<img src="assets/images/clash_report_html.png" alt="HTML clash report with matrix snapshot, charts, and action sheet" style="width:100%; border:1px solid #333; border-radius:8px;"/>
-<figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">HTML clash report — matrix snapshot, severity/status/discipline charts, radar, top offenders, editable action sheet, CSV export. Standalone HTML, no server.</figcaption>
-</figure>
 
 The report includes:
 
@@ -237,33 +214,9 @@ The key insight: **never cross-join the whole building**. Scope every query to a
 
 ---
 
-## 7. Architecture — Why SQLite Beats a Server
+## 7. Architecture
 
-Traditional clash detection tools (Navisworks, Solibri, BIM Collab Zoom) require either a desktop install or a cloud server. We need neither.
-
-```
-Traditional:  IFC file ──> Server ──> Parse ──> Store ──> Query ──> Render
-BIM OOTB:     IFC file ──> Extract ──> SQLite DB ──> Browser (WASM + GPU)
-```
-
-The SQLite database IS the application state:
-
-- **Metadata** (`elements_meta`) — GUID, IFC class, discipline, storey, element name
-- **Transforms** (`element_transforms`) — center XYZ, bbox dimensions
-- **Geometry** (`component_geometries`) — pre-tessellated vertex/face BLOBs
-
-One `SELECT` gives you clash candidates. Another `SELECT` gives you the mesh to render. Same database, same query layer, same browser tab. The DB file is the deployment artifact — upload it to any static hosting (OCI Object Storage, S3, GitHub Pages, a USB stick) and it works.
-
-SQLite's advantages for this use case:
-
-| Property | Benefit |
-|----------|---------|
-| Zero-configuration | No server process, no connection string |
-| Single-file | One `.db` per building, trivial to distribute |
-| Read-only WASM | Browser can't corrupt the source DB |
-| SQL query optimizer | Indexes, joins, GROUP BY — decades of optimization |
-| R-tree extension | Spatial indexing compiled into the WASM build |
-| Portable | Same DB works in Node.js extraction, Blender bridge, or browser |
+Same architecture as the [BIM OOTB viewer](BIM_Designer_Browser.md) — one SQLite DB per building, WASM in the browser, BLOB geometry straight to GPU. Full schema: **[SQLite3D_Schema.md](SQLite3D_Schema.md)**. The DB file is the deployment artifact — upload it to any static hosting and it works. No server, no API, no conversion.
 
 ---
 

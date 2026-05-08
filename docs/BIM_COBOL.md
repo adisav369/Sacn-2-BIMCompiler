@@ -297,6 +297,8 @@ Validates element placement geometry in an extracted or compiled DB. Tier 1: per
 
 #### CHECK CLASH (W-COBOL-25..28)
 
+> **Browser implementation:** See **[Clash Detection](CLASH_DETECTION.md)** — 12 discipline-pair rules, live tolerance slider, progressive storey queries, HTML report. Zero install.
+
 ```bimcobol
 CHECK CLASH <db_path> [CLEARANCE <mm>]
 ```

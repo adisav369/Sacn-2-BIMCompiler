@@ -228,7 +228,7 @@ and editing values one by one.
 ```
 ✓ Large model viewing and navigation
 ✓ Mobile site verification
-✓ 4D/5D data overlay (after S240)
+✓ 4D/5D data overlay (S188-nD DONE)
 ✓ Property inspection and search
 ✓ BOQ generation
 ✓ Indoor wayfinding
@@ -267,8 +267,9 @@ BIM OOTB user:  Project manager, quantity surveyor, site engineer,
                 ERP user, contractor, facilities manager
 ```
 
-The moment BOM-based recomposition + fast rules + 4D/5D overlay
-is complete, BIM OOTB owns the construction delivery phase entirely.
+The moment BOM-based recomposition + fast rules are complete,
+BIM OOTB owns the construction delivery phase entirely.
+(4D/5D overlay is already done — S188-nD; 2D floor plans — S236.)
 Bonsai owns the design phase. They do not compete — they hand off.
 
 The handoff is the IFC file — the architect exports from Bonsai/Revit,
@@ -279,18 +280,36 @@ manages procurement, scheduling, cost, and handover in your system.
 
 ## 6. Timeline to Bonsai Parity for Construction Use Case
 
-| Milestone | Adds | Gap closed |
-|---|---|---|
-| S240 (now) | Psets, 4D tasks, 5D cost, IfcSpace | Property inspection parity |
-| S241 | Section planes (Three.js ClippingPlane) | Visualisation gap ↓ |
-| S242 | BCF export from issue log | Collaboration standard |
-| Designer stage | BOM recomposition + live recompile | Design authoring (different approach) |
-| Fast rules | SQL property transforms | Pset editing parity (better UX) |
-| iDempiere plugin | ERP linkage in ZK tab | Bonsai has nothing here |
+### 6.0 Development velocity — the Claude factor
 
-At Designer + Fast Rules completion, BIM OOTB surpasses Bonsai
-for every construction management workflow. Bonsai remains superior
-for architectural modelling — which is fine.
+The `docs/SQLite3D_Schema.md` origin note is instructive:
+
+> *This schema emerged across ~60 collaborative sessions between a BIM domain expert and Claude Code.*
+
+That is: schema, viewer, mobile GPS, IFC round-trip, 2D DXF plans, 4D/5D engine,
+indoor walk-through, site camera — all in ~60 sessions.
+Traditional timeline estimates assume solo-developer velocity.
+Claude-assisted development compresses each by 5–10×:
+a feature that once took a month is a focused session.
+
+This changes every timeline below from months to weeks.
+
+### 6.1 Milestone table
+
+| Milestone | Status | Adds | Gap closed |
+|---|---|---|---|
+| S188-nD | **DONE** | 4D-8D nD engine, 37+1M proven | 4D/5D scheduling/cost |
+| S236/S238 | **DONE** | 2D DXF browser viewer, Java pipeline | Professional 2D plans |
+| S240 (4D Gantt sync) | **Specced** | BroadcastChannel Gantt→Viewer, FUTURE/ACTIVE/BUILT states, camera fly-to | Live 4D construction playback |
+| S241 | ~1 session | Section planes (Three.js ClippingPlane — 3 lines) | Arbitrary section cuts |
+| S242 | ~1 session | BCF XML from existing issues table | BCF collaboration standard |
+| Fast rules | ~1 session | SQL rule parser (~100 lines) | Pset editing parity (better UX than Bonsai) |
+| iDempiere plugin | ~2 sessions | ZK iframe + C_OOTB table | ERP linkage (Bonsai has none) |
+| Designer / BOM recompose | ~3-5 sessions | REST trigger + incremental recompile | Design authoring (BOM-driven, Bonsai has no equivalent) |
+
+At **Fast Rules + Designer** completion, BIM OOTB surpasses Bonsai
+for every construction management workflow — measured in weeks, not years.
+Bonsai remains superior for architectural modelling. That is the intended handoff point.
 
 ---
 
@@ -322,25 +341,41 @@ the IFC round-trip) is already done.
 
 ---
 
-### Phase 1 — Complete Tier 3 Management (now → 6 months)
+### The Overlay Technique — why remaining features are all easy
+
+The viewer already has: element picker, storey/discipline filter, camera fly-to,
+element finder (GUID search), walk-to route (navigate.js S233), GPS blue dot,
+4D material state machine (S240 spec), and BroadcastChannel cross-tab messaging.
+
+Every remaining overlay follows the same proven pattern:
+
+```
+1. SQL query → GUID list (sql.js — already running)
+2. Map GUIDs → mesh objects (userData.guid — already tagged)
+3. Apply material state (opacity / emissive / wireframe — already in 4D spec)
+4. Camera fly-to centroid (already in streaming.js fly-to)
+5. Optional: BroadcastChannel for cross-tab sync (4D Gantt spec proven)
+```
+
+The 4D Gantt ↔ viewer sync (`prompts/S240_4d_viewer_sync.md`) is the canonical
+example — BroadcastChannel, FUTURE/ACTIVE/BUILT states, per-task GUID resolution,
+material cache, camera fly-to — all specced and implementation-ready.
+Clash detection, BCF, section planes, fast rules all reuse the identical spine.
+
+**The marginal cost of each new overlay is the SQL query + one panel.**
+The renderer, the communication layer, and the state machine are already there.
+
+---
+
+### Phase 1 — Complete Tier 3 Management (~weeks, not months)
 
 **Goal:** Make BIM OOTB the definitive construction management tool.
 Own everything that happens after the architect hands over the IFC.
 
-#### P1-A: Property + 4D/5D extraction (S240 — weeks)
+#### P1-A: Property + 4D/5D extraction — **DONE (S188-nD)**
 
-Already specced in `prompts/S240_property_extraction.md`.
-
-**Why easy:** `GetLineIDsWithType()` + `GetLine()` pattern already proven
-for storeys and spatial containment in `import_worker.js`. Same loop,
-different type constants. All constants confirmed present in web-ifc.
-
-```
-Reuse:    import_worker.js pattern (100% identical structure)
-New code: ~150 lines extraction + ~60 lines DB schema
-Zero:     no new architecture, no new dependencies
-Cost:     zero for IFCs without this data (empty list = skip)
-```
+Template-driven nD engine (4D-8D) implemented and proven at 37+1M elements.
+See `docs/4D5DAnalysis.md`. The `import_worker.js` extraction pattern is live.
 
 #### P1-B: Fast Rules Script (weeks)
 
@@ -367,14 +402,11 @@ New code: ~100 lines rule parser + simple UI text area
 Zero:     no geometry computation, no worker, no server
 ```
 
-#### P1-C: Professional 2D output (S238 ongoing)
+#### P1-C: Professional 2D output — **DONE (S236/S238)**
 
-Already in progress. Title block, dimension lines, annotation density
-config all proven. Gap to close: section views, elevation views.
-
-**Why easy:** The 2D pipeline reads from the same DB. Section view =
-filter elements by X-plane intersection — a bounding-box query already
-possible with current schema.
+Browser DXF viewer proven (`deploy/dev/2d.html`). Canvas2D, BIMSRC xdata,
+dxf-parser. Conformity 13/13 PASS. Java pipeline: 5/5 tests PASS.
+Remaining polish: section views, elevation views (incremental).
 
 #### P1-D: iDempiere ZK plugin (iDempiereOOTB prompt written)
 
@@ -395,7 +427,7 @@ Zero:     no new viewer features needed for P1
 
 ---
 
-### Phase 2 — Complete Tier 2 Coordination (6 → 18 months)
+### Phase 2 — Complete Tier 2 Coordination (~1-3 months, Claude-assisted)
 
 **Goal:** Make BIM OOTB the definitive coordination platform,
 replacing Navisworks for clash detection and BCF issue tracking.
@@ -488,28 +520,77 @@ New arch: incremental recompile trigger (bounded scope)
 
 ---
 
-### Phase 3 — Complete Tier 1 Authoring (18 → 36 months)
+### Phase 3 — Complete Tier 1 Authoring (~2-4 sessions each, Claude-assisted)
 
-**Goal:** Create new buildings in the browser from scratch.
-This closes the last gap vs Bonsai and Revit.
+**Goal:** Create new buildings from scratch through iDempiere order workflow.
+This closes the last gap vs Bonsai — without replicating Bonsai's approach.
 
-#### P3-A: Primitive Placement via BOM Insert (6-9 months)
+#### P3-A: C_OrderLine → BOM Promotion via DocAction 'AP' (~2-3 sessions)
 
-User clicks "Add Wall" → inserts a BOM line → incremental recompile
-places the wall at default position → user drags to position →
-BOM line updated with new coordinates → recompile confirms placement.
+The correct architecture for authoring — not drag-to-place in Three.js.
+The iDempiere order workflow already exists; the BOM → compiler path is proven.
+The promotion bridge is what is needed:
 
-**Why tractable:** The BOM already drives geometry. Adding a new
-BOM line is equivalent to adding a row to `M_BOM_Line`. The compiler
-already knows how to place a wall from a BOM line. The new work is:
-- A drag-to-position UI in Three.js (raycaster + drag events)
-- A BOM line insert REST call
-- An incremental recompile trigger
+```
+User opens a C_Order in iDempiere
+  → adds a C_OrderLine: product = 'IfcWall', qty = 1, verb = 'TILE'
+  → sets DocAction = 'AP'
+       ↓
+ModelValidator fires → creates M_BOM_Line → incremental DAGCompiler run
+       ↓
+Viewer (P1-D ZK plugin) refreshes those GUIDs
+```
 
-No new geometry engine. No parametric families. The compiler
-handles all geometry.
+**The 'Edit' tab — an ASI record, not a viewer embed.**
 
-#### P3-B: Structural Export (2-3 months)
+The Edit tab on the C_Order form is not a viewport. It is a structured
+**AttributeSetInstance** (ASI) record — the same pattern already proven by
+`M_Product → AttributeSet → C_OrderLine.ASI` in iDempiere.
+
+Each fine-tuning dimension (position nudge, rotation, material override,
+storey assignment, RouteWalker constraint) is an attribute in a BIM-specific
+`M_AttributeSet`. The `C_OrderLine.M_AttributeSetInstance_ID` holds the
+instance values for that element. The compiler reads ASI values as overrides
+on top of BOM-driven defaults.
+
+```
+M_AttributeSet: 'BIM_ElementEdit'
+  Attribute: bim_offset_x    (numeric, metres)
+  Attribute: bim_offset_y    (numeric, metres)
+  Attribute: bim_offset_z    (numeric, metres)
+  Attribute: bim_rotation_z  (numeric, degrees)
+  Attribute: bim_material    (list, surface_styles keys)
+  Attribute: bim_storey      (list, spatial_structure names)
+  Attribute: bim_route_rule  (text, MEP RouteWalker constraint ref)
+```
+
+The viewer is NOT in this tab. The viewer is the output — it replays from the
+compiled DB. The Edit tab is the DNA record.
+
+```
+Reuse:    M_AttributeSet / M_AttributeSetInstance (iDempiere native)
+          C_OrderLine.M_AttributeSetInstance_ID (existing FK column)
+          DAGCompiler (reads ASI as override layer — new reader, ~100 lines)
+New code: ~150 lines ModelValidator (OrderLine→BOMLine with ASI passthrough)
+          ~80 lines ZK Edit tab (ASI form, standard iDempiere pattern)
+Zero:     no viewer embed, no drag UI, no raycaster
+```
+
+**The key architectural principle:** C_Order IS the DNA. The IFC scene is
+a compiled output, not the source. The complete building composition lives in:
+
+```
+BOM.db      — reference constructs (walls, slabs, column families, etc.)
+ERP.db      — MEP RouteWalker validation rules, discipline constraints,
+              C_Order sets, ASI fine-edits, approval/audit trail
+library.db  — LOD mesh BLOBs (content-addressed, never re-generated)
+```
+
+A building can be fully replayed from these three DBs without the IFC file.
+The IFC is an exchange citizen — equal to C_Order but not superior to it.
+This was POC'd during the Bonsai era and is now the correct target architecture.
+
+#### P3-B: Structural Export (~1-2 sessions)
 
 IFC Structural Analysis model export from the DB. Reads
 `element_transforms` (geometry) + `element_properties` (material,
@@ -517,13 +598,15 @@ section properties) → writes `IfcStructuralAnalysisModel` STEP entities.
 
 **Why tractable:** The IFC export worker already writes STEP text.
 Structural entities follow the same pattern. Input data is already
-in the DB after S240.
+in the DB. ~200 lines following the identical export worker pattern.
 
-#### P3-C: Multi-user sync via iDempiere (already designed)
+#### P3-C: Multi-user sync via iDempiere (already designed, ~1 session)
 
 When the iDempiere plugin is active, the DB moves from IndexedDB
 to PostgreSQL. Multi-user is then iDempiere's standard role/access
 model — already battle-tested across 15+ years of community use.
+P3-A's ModelValidator already runs server-side, so multi-user
+consistency is free — iDempiere handles concurrency and audit.
 
 ```
 Reuse:    iDempiere AD_User, AD_Role, C_OOTB table
@@ -534,21 +617,92 @@ Zero:     no new sync protocol — iDempiere handles it
 
 ---
 
+### Phase 4 — The Elegant Editor Panel (design TBD)
+
+**Goal:** A spatial editing surface where an architect or designer interacts
+with the compiled model without touching iDempiere forms directly.
+This is where BIM OOTB approaches Bonsai-like authoring familiarity —
+but from the C_Order/ASI side, not the IFC entity side.
+
+#### The architectural constraint
+
+The editor must not own the data. The data lives in:
+```
+C_Order / C_OrderLine / ASI   → iDempiere (ERP.db)
+M_BOM / M_BOM_Line            → BOM.db
+LOD meshes                    → library.db
+```
+
+The editor is a **read-query-write surface** over these three DBs.
+It does not maintain its own scene graph or geometry state.
+Every interaction that changes geometry must go through the DAGCompiler.
+
+#### Design directions to think through
+
+**Option A — Panel-beside-viewer (Blender N-panel analogy)**
+The viewer stays as-is. A collapsible side panel shows the selected element's
+ASI attributes in editable fields. On commit, the panel writes ASI values via
+REST → ModelValidator → compiler → viewer patch. The viewer is the preview;
+the panel is the control surface. No drag. No handles. Precision editing only.
+
+```
+Analogy: Blender's N-panel Item tab — exact numeric input for location/rotation/scale.
+Familiar to architects who know Blender. Validates before committing.
+```
+
+**Option B — Order-form-as-canvas (iDempiere form UX)**
+The C_Order form gains a spatial preview thumbnail (rendered from DB, static image,
+not live Three.js). The thumbnail shows the current compiled state. The user
+edits ASI fields in the standard iDempiere grid below it, hits Save → compiler
+runs → thumbnail updates. Lower fidelity but zero new frontend code.
+
+**Option C — Detached browser editor (future, Phase 4 proper)**
+A dedicated `editor.html` page (separate from `index.html` viewer) built on the
+same sql.js + Three.js stack. It opens the same DBs but exposes edit handles:
+click an element → ASI panel opens in sidebar → edit → BroadcastChannel message
+to iDempiere ZK plugin to write the ASI record → compiler triggered.
+The viewer (`index.html`) is a read-only consumer. The editor is write-capable.
+
+This is the most Bonsai-like option and the most work — but it builds on all
+prior layers. By Phase 4 all three DBs are proven, the compiler is incremental,
+and the ZK plugin is live. The editor is the thin UI shell over a complete engine.
+
+#### What must be decided before implementation
+
+1. **Precision vs. spatial:** Is the target user an architect (needs drag handles,
+   snap to grid) or a BIM coordinator (needs numeric fields, rule validation)?
+   The answer determines Option A/B/C.
+2. **Undo model:** ASI records are immutable once AP'd in iDempiere.
+   Does the editor operate on a draft OrderLine (WIP status) with undo,
+   promoting to AP only on explicit confirmation?
+3. **Multi-element operations:** Does the editor support bulk ASI edits
+   (all Level 2 walls → rotate 90°) or is it single-element only?
+
+Phase 4 is the right answer to "can BIM OOTB replace Bonsai for authoring?"
+The answer is yes — but via C_Order DNA, not IFC entity manipulation.
+The elegance comes from the three-DB separation: geometry is a replay result,
+not a stored state. You never corrupt the model by editing — the worst case
+is a failed compile, which leaves the previous compiled state intact.
+
+---
+
 ### 8.2 Effort summary
 
 | Gap | Phase | Key reuse | New code estimate | Difficulty |
 |---|---|---|---|---|
-| Psets + 4D/5D extraction | P1-A | import_worker.js pattern | ~210 lines | Easy |
+| ~~Psets + 4D/5D extraction~~ | **DONE S188** | — | — | — |
 | Fast rules script | P1-B | sql.js + elements_meta | ~100 lines | Easy |
-| Professional 2D | P1-C | existing 2D pipeline | incremental | Easy |
+| ~~Professional 2D~~ | **DONE S236** | — | — | — |
 | iDempiere ZK plugin | P1-D | existing viewer + REST | ~450 lines | Easy |
 | Clash detection | P2-A | element_transforms SQL | ~80 lines | Easy |
 | BCF export | P2-B | issues table + camera | ~80 lines | Easy |
 | Section planes | P2-C | Three.js ClippingPlane | ~30 lines | Trivial |
 | BOM recomposition | P2-D | DAGCompiler unchanged | ~300 lines + REST | Medium |
-| Primitive placement | P3-A | BOM + recompile | drag UI + REST | Hard |
-| Structural export | P3-B | IFC export worker | ~200 lines | Medium |
-| Multi-user sync | P3-C | iDempiere + C_OOTB | ~100 lines switch | Medium |
+| OrderLine→BOM via ASI Edit tab | P3-A | M_AttributeSet/ASI, DAGCompiler, ModelValidator | ~330 lines | Medium |
+| Structural export | P3-B | IFC export worker | ~200 lines | Easy |
+| Multi-user sync | P3-C | iDempiere + C_OOTB | ~100 lines switch | Easy (P3-A gives it free) |
+| **Phase 4** | | | | |
+| Elegant editor panel | P4 | Three DBs + DAGCompiler + ZK plugin | TBD — design first | Complex (design-gated) |
 
 **The pattern across all gaps:** the hard work is done. What remains
 is wiring proven components together with thin layers of new code.
@@ -562,5 +716,16 @@ patch logic are new.
 
 > Every gap closes by querying the DB differently or rendering the
 > result differently — the pipeline that fills the DB is already proven.
+
+### 8.4 Velocity note
+
+Traditional timelines assume one developer, manual research, manual implementation.
+The actual development record (`docs/SQLite3D_Schema.md` origin story) shows
+viewer + pipeline + mobile + IFC round-trip + 2D + 4D done in ~60 Claude sessions.
+
+The compression ratio is roughly **5–10× per feature** compared to solo development.
+Phase 1 (weeks) and Phase 2 (1-3 months) are realistic under this model —
+not aspirational. The bottleneck is now integration testing and UX polish,
+not implementation time.
 
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

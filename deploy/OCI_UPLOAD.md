@@ -7,6 +7,14 @@
 3. **One file at a time. Verify after each.**
 4. **Landing = `SYSNOVA/index.html`. Viewer = `deploy/dev/index.html`. DO NOT MIX.**
 5. **Local `deploy/dev/` → bucket `sandbox/`. Local `SYSNOVA/` → bucket root `index.html`.**
+6. **ALWAYS specify `--content-type` on EVERY upload.** OCI does NOT infer MIME from extension.
+   - `.js` → `--content-type "application/javascript"` (without this, browser blocks the script with MIME mismatch)
+   - `.html` → `--content-type "text/html"`
+   - `.json` → `--content-type "application/json"`
+   - `.png` → `--content-type "image/png"`
+   - `.wasm` → `--content-type "application/wasm"`
+   - `.css` → `--content-type "text/css"`
+   **Omitting this breaks the viewer.** The browser's `X-Content-Type-Options: nosniff` header blocks scripts served as `application/octet-stream`.
 
 ## Strategy
 
@@ -49,8 +57,11 @@ https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/
 ```
 index.html                          ← landing page (SYSNOVA branded, manifest-driven)
 sandbox/index.html                  ← modular viewer (S209)
-sandbox/*.js                        ← 15 JS modules
-boq_charts.html                     ← 4D/5D analytics
+sandbox/*.js                        ← ~50 JS modules (viewer, grids, rates, etc.)
+sandbox/boq_charts.html             ← 4D/5D analytics (sibling of viewer)
+sandbox/mep_report.html             ← MEP Bill of Quantities
+sandbox/locales/*.js                ← 18 locale translations
+sandbox/rates/*.json                ← 17 country rate templates
 manifest.json                       ← 30 archetypes metadata
 buildings/
   {Name}_extracted.db               ← single DB: metadata + transforms + bbox + geometry BLOBs
@@ -136,7 +147,10 @@ https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o
 | `SYSNOVA/index.html` (+ sed banner for dev) | `index.html` | Landing page (root) |
 | `deploy/dev/*.js` | `sandbox/*.js` | Viewer JS modules (always `sandbox/` in bucket) |
 | `deploy/dev/index.html` | `sandbox/index.html` | Viewer HTML |
-| `deploy/dev/boq_charts.html` | `boq_charts.html` | Charts page (root, not sandbox/) |
+| `deploy/dev/boq_charts.html` | `sandbox/boq_charts.html` | Charts page (sandbox/, sibling of viewer) |
+| `deploy/dev/mep_report.html` | `sandbox/mep_report.html` | MEP report (sandbox/, sibling of viewer) |
+| `deploy/dev/locales/*.js` | `sandbox/locales/*.js` | Locale translations |
+| `deploy/dev/rates/*.json` | `sandbox/rates/*.json` | Country rate templates |
 
 **⚠ The bucket has NO `dev/` prefix.** Both dev and prod buckets use `sandbox/` for viewer files.
 `deploy/dev/` is the LOCAL working directory — it maps to `sandbox/` in the bucket.
@@ -149,7 +163,8 @@ oci os object put --bucket-name bim-ootb-dev --file deploy/dev/index.html --name
 
 # Deploy dev viewer JS
 oci os object put --bucket-name bim-ootb-dev --file deploy/dev/sitecam.js --name sandbox/sitecam.js --content-type application/javascript --force
-oci os object put --bucket-name bim-ootb-dev --file deploy/dev/boq_charts.html --name boq_charts.html --content-type text/html --force
+oci os object put --bucket-name bim-ootb-dev --file deploy/dev/boq_charts.html --name sandbox/boq_charts.html --content-type text/html --force
+oci os object put --bucket-name bim-ootb-dev --file deploy/dev/mep_report.html --name sandbox/mep_report.html --content-type text/html --force
 ```
 
 **⚠ OCI Cache Rule:** OCI has no `Cache-Control` header. Browsers heuristic-cache aggressively — `curl` sees new content but the browser shows stale, even incognito. **Every deploy must bump `?v=N` in `index.html`** for any changed JS module. For `boq_charts.html`, `tools.js` appends `?v=Date.now()` automatically — but `tools.js` itself needs a `?v=N` bump in `index.html` to take effect. Chain: `index.html` (bump) → `tools.js` (fresh) → downstream (fresh).
@@ -298,14 +313,16 @@ Spec: `prompts/S243_offline_pwa.md`. Branch: `full`. Bucket: `bim-ootb-live`.
 
 **Deploy PWA files:**
 ```bash
-for f in sw.js manifest.webmanifest offline.html; do
-  oci os object put --bucket-name bim-ootb-live \
-    --file "deploy/dev/$f" --name "sandbox/$f" --force
-done
 oci os object put --bucket-name bim-ootb-live \
-  --file deploy/dev/icons/icon-192.png --name sandbox/icons/icon-192.png --force
+  --file deploy/dev/sw.js --name sandbox/sw.js --content-type "application/javascript" --force
 oci os object put --bucket-name bim-ootb-live \
-  --file deploy/dev/icons/icon-512.png --name sandbox/icons/icon-512.png --force
+  --file deploy/dev/manifest.webmanifest --name sandbox/manifest.webmanifest --content-type "application/manifest+json" --force
+oci os object put --bucket-name bim-ootb-live \
+  --file deploy/dev/offline.html --name sandbox/offline.html --content-type "text/html" --force
+oci os object put --bucket-name bim-ootb-live \
+  --file deploy/dev/icons/icon-192.png --name sandbox/icons/icon-192.png --content-type "image/png" --force
+oci os object put --bucket-name bim-ootb-live \
+  --file deploy/dev/icons/icon-512.png --name sandbox/icons/icon-512.png --content-type "image/png" --force
 ```
 
 Bump `CACHE_VERSION` in `sw.js` on every deploy.

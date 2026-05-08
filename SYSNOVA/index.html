@@ -155,7 +155,7 @@
   <a href="https://www.sysnova.co.uk/" target="_blank" style="display:block;margin:0 auto 16px;text-decoration:none"><img src="Sysnova.png" alt="Sysnova Information Systems Limited" style="display:block;margin:0 auto;height:80px;width:auto"></a>
   <h1 style="color:#0277bd;margin-bottom:0"><span style="font-size:64px;display:block;margin-bottom:-8px;line-height:0.8;font-family:'Arial Black',Impact,sans-serif;letter-spacing:16px;margin-left:16px">BIM</span><span data-trl="landing_ootb" style="font-size:16px;font-weight:400;font-family:'Arial Black',Impact,sans-serif;letter-spacing:6px;margin-left:6px;color:#0277bdaa;text-transform:lowercase">outofthebox</span></h1>
   <div style="display:flex;justify-content:center;align-items:center;gap:14px;margin-top:10px">
-    <a href="https://youtu.be/bSyuLQ_c4rw" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:#0277bd;font-size:13px;text-decoration:none;padding:4px 8px"><img src="sandbox/YT.png" alt="YouTube" style="height:20px;vertical-align:middle"> <span data-trl="landing_watch_demo">Watch Demo</span></a>
+    <a href="https://youtu.be/iNn7Cl8wC8o" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:#0277bd;font-size:13px;text-decoration:none;padding:4px 8px"><img src="sandbox/YT.png" alt="YouTube" style="height:20px;vertical-align:middle"> <span data-trl="landing_watch_demo">Watch Demo</span></a>
     <a href="javascript:void(0)" onclick="document.getElementById('about-dialog').classList.toggle('active')" style="display:inline-flex;align-items:center;gap:5px;color:#444;font-size:13px;text-decoration:none;padding:4px 8px">&#10067; <span data-trl="landing_about">About</span></a>
     <a href="javascript:void(0)" id="header-flag-btn" onclick="if(window._TRL_LOADER)_TRL_LOADER.openFlagPicker()" style="display:inline-flex;align-items:center;gap:4px;color:#444;font-size:16px;text-decoration:none;padding:4px 8px;cursor:pointer" title="Language">&#127760;</a>
     <a href="javascript:void(0)" onclick="if(window.APP&&APP.reportBug)APP.reportBug();else window.open('https://github.com/red1oon/BIMCompiler/issues/new?labels=bug','_blank')" style="display:inline-flex;align-items:center;gap:4px;color:#444;font-size:13px;text-decoration:none;padding:4px 8px;cursor:pointer" title="Send to GitHub Issues Tracker"><img src="submit.png" alt="Submit" style="height:18px;vertical-align:middle"> <span style="font-size:10px">Send to GitHub Issues Tracker</span></a>
@@ -217,6 +217,12 @@
     <div class="grid" id="my-buildings-grid"></div>
   </div>
 
+  <!-- S250 §9: Community Projects (contributed buildings) -->
+  <div id="community-section" style="display:none">
+    <div class="section-header">Community Projects</div>
+    <div class="grid" id="community-grid"></div>
+  </div>
+
   <!-- S224: Merge/New modal -->
   <div id="merge-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9000;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
     <div style="background:#1a1a2e;border:1px solid rgba(79,195,247,0.2);border-radius:12px;padding:28px 32px;max-width:400px;width:90%;text-align:center">
@@ -268,9 +274,7 @@
 </div>
 
 <div class="footer">
-  <a href="https://red1oon.github.io/BIMCompiler/StrategicIndustryPositioning/" target="_blank">Documentation</a>
-  &nbsp;&middot;&nbsp;
-  <a href="https://github.com/red1oon/BIMCompiler" target="_blank">GitHub</a>
+  <a href="https://red1oon.github.io/BIMCompiler/MANIFESTO/" target="_blank">Manifesto</a>
   &nbsp;&middot;&nbsp;
   BIM OOTB &mdash; FOSS &middot; No account &middot; No vendor lock-in
   &nbsp;&middot;&nbsp;
@@ -923,7 +927,7 @@ async function renderImportCards() {
 
     // Build button row — S230b: Save opens export flyout (IFC or DB), triangle removed
     var buttons = '<button class="open-btn" style="flex:1" data-open="' + proj.key + '">Open</button>';
-    buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(68,204,68,0.1);border-color:rgba(68,204,68,0.2);color:#44cc44;font-size:10px" data-save="' + proj.key + '">Save</button>';
+    buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(76,175,80,0.15);border-color:rgba(76,175,80,0.3);color:#4caf50;font-size:10px" data-share="' + proj.key + '">Share</button>';
     buttons += '<button class="open-btn" style="flex:0;padding:6px 10px;background:rgba(204,68,68,0.15);border-color:rgba(204,68,68,0.3);color:#cc4444" data-del="' + proj.key + '">x</button>';
 
     card.innerHTML =
@@ -933,7 +937,21 @@ async function renderImportCards() {
       '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">' + buttons + '</div>';
 
     card.querySelector('[data-open]').onclick = function() { openProject(this.dataset.open, this); };
-    card.querySelector('[data-save]').onclick = function(e) { e.stopPropagation(); showExportFlyout(this, this.dataset.save); };
+    card.querySelector('[data-share]').onclick = function(e) {
+      e.stopPropagation();
+      var shareKey = this.dataset.share;
+      window.A = window.A || {};
+      A._getImport = getProject;
+      A.CONTRIBUTE_PAR = A.CONTRIBUTE_PAR || '';
+      A.exportIFC = function(k) { exportProjectIFC(k); };
+      if (!document._shareLoaded) {
+        var script = document.createElement('script');
+        script.src = 'sandbox/share.js?v=1';
+        script.onload = function() { document._shareLoaded = true; A.openShareSheet(shareKey); };
+        script.onerror = function() { alert('Failed to load share module'); };
+        document.head.appendChild(script);
+      } else { A.openShareSheet(shareKey); }
+    };
     card.querySelector('[data-del]').onclick = function(e) {
       e.stopPropagation();
       var k = this.dataset.del;
@@ -1529,6 +1547,62 @@ function downloadDIYScript() {
   document.getElementById('diy-download-btn').textContent = '\u2705 Downloaded! Run the script to install.';
   document.getElementById('diy-download-btn').style.background = '#44cc44';
 }
+</script>
+<script>
+// ── S250 §9: Load Community Projects from contributed/index.json ──
+(async function() {
+  var section = document.getElementById('community-section');
+  var grid = document.getElementById('community-grid');
+  if (!section || !grid) return;
+  var indexUrl = (_base || '') + 'contributed/index.json';
+  try {
+    var resp = await fetch(indexUrl);
+    if (!resp.ok) { console.log('§COMMUNITY skip — index.json HTTP ' + resp.status); return; }
+    var entries = await resp.json();
+    if (!Array.isArray(entries) || entries.length === 0) { console.log('§COMMUNITY skip — empty'); return; }
+    console.log('§COMMUNITY loaded entries=' + entries.length);
+    section.style.display = 'block';
+    grid.innerHTML = '';
+    for (var i = 0; i < entries.length; i++) {
+      var entry = entries[i];
+      var card = document.createElement('div');
+      card.className = 'card';
+      var discs = entry.disciplines || [];
+      var discBars = discs.map(function(d) {
+        var color = DISC_COLORS[d] || '#888';
+        return '<span class="disc-bar" style="width:' + Math.max(20, 100 / discs.length) + '%;background:' + color + '" title="' + d + '"></span>';
+      }).join('');
+      var region = '';
+      if (entry.timezone) {
+        var parts = entry.timezone.split('/');
+        region = parts.length > 1 ? parts[0] : entry.timezone;
+      }
+      var dateStr = entry.date ? new Date(entry.date).toLocaleDateString() : '';
+      var displayName = (entry.filename || '').replace(/_extracted\.db$/i, '').replace(/\.[^.]+$/, '');
+      card.innerHTML =
+        '<div class="name">' + displayName + '</div>' +
+        '<div class="meta">' +
+          '<b>' + ((entry.elements || 0).toLocaleString()) + '</b> elements' +
+          (discs.length ? ' &middot; ' + discs.join(', ') : '') +
+          (region ? '<br>' + region : '') +
+          (dateStr ? ' &middot; ' + dateStr : '') +
+        '</div>' +
+        '<div class="disc-bars">' + discBars + '</div>' +
+        '<button class="open-btn" data-contributed="' + entry.filename + '">Open 3D Viewer &#9889;</button>';
+      card.querySelector('[data-contributed]').onclick = function() {
+        var fname = this.dataset.contributed;
+        var bldBase = _prodBase + 'contributed/';
+        var viewerUrl = (_base || '') + 'sandbox/index.html';
+        var url = viewerUrl + '?db=' + encodeURIComponent(bldBase + fname);
+        console.log('§COMMUNITY open file=' + fname);
+        window.open(url, '_blank');
+      };
+      grid.appendChild(card);
+    }
+  } catch(e) {
+    console.log('§COMMUNITY error ' + e.message);
+  }
+})();
 </script>
 <script src="sandbox/locale_loader.js?v=7"></script>
 <script>

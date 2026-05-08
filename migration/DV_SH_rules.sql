@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- SH: Sample House (SampleHouse)
 -- Source: DAGCompiler/lib/output/samplehouse.db
--- Generated: 2026-04-27 03:18
+-- Generated: 2026-05-02 11:14
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

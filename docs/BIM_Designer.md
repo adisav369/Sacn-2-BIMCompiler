@@ -1,6 +1,9 @@
 # BIM Designer — GUI Architecture from Existing Infrastructure
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+!!! warning "Superseded"
+    This document describes a server-assisted GUI architecture that assumed a Java backend. The browser-native modelling approach has since proven this model unnecessary. **See [BIM Modeller OOTB](BIM_Modeller_OOTB.md)** for the current theoretical framework — the kernel-op log, coordinate unification, and constraint-as-query patterns that replace the server dependency described here. This document is retained as historical context for the compiler's GUI design intent.
+
 <div class="bim-banner" markdown>
 <b>The GUI is a parameter chooser that triggers compilation.</b> Every concept the Designer needs already exists — tack convention, BOM cascade, verbs, EntityType governance.
 </div>
