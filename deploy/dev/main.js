@@ -143,15 +143,26 @@ function initViewer() {
       var msg = evt.data;
       if (!msg || !msg.type) return;
 
-      // Reset previous highlights
-      _4dHighlights.forEach(function(obj) {
-        if (obj.material && obj._4dOrigEmissive !== undefined) {
-          obj.material.emissive.setHex(obj._4dOrigEmissive);
-          delete obj._4dOrigEmissive;
-          delete obj._4dColor;
-        }
-      });
-      _4dHighlights = [];
+      // Ping/pong for connectivity check
+      if (msg.type === '4D_PING') {
+        _bim4d.postMessage({ type: '4D_PONG', from: 'viewer', ts: Date.now() });
+        console.log('§4D_RECV type=4D_PING → sent PONG');
+        return;
+      }
+      // Resource messages — no highlight reset needed
+      if (msg.type === '4D_RESOURCES' || msg.type === '4D_RESOURCES_HIDE') {
+        // handled below, skip highlight reset
+      } else {
+        // Reset previous highlights (only for 4D scene messages)
+        _4dHighlights.forEach(function(obj) {
+          if (obj.material && obj._4dOrigEmissive !== undefined) {
+            obj.material.emissive.setHex(obj._4dOrigEmissive);
+            delete obj._4dOrigEmissive;
+            delete obj._4dColor;
+          }
+        });
+        _4dHighlights = [];
+      }
 
       if (msg.type === '4D_RESET') {
         if (APP._ghostGlass) APP._ghostGlass.reset();
@@ -161,8 +172,10 @@ function initViewer() {
       }
 
       // S240b: Ghost glass animation messages — delegate to ghostglass.js
-      if (msg.type === '4D_PLAY' && APP._ghostGlass) {
-        APP._ghostGlass.play(msg.tasks || [], msg.speed || 1.0);
+      if (msg.type === '4D_PLAY') {
+        console.log('§4D_RECV type=4D_PLAY tasks=' + (msg.tasks||[]).length + ' ghostGlass=' + !!APP._ghostGlass);
+        if (APP._ghostGlass) APP._ghostGlass.play(msg.tasks || [], msg.speed || 1.0);
+        else console.warn('§4D_RECV ghostglass NOT READY — setupGhostGlass not called');
         return;
       }
       if (msg.type === '4D_PAUSE' && APP._ghostGlass) {
@@ -173,8 +186,9 @@ function initViewer() {
         APP._ghostGlass.resume(msg.speed);
         return;
       }
-      if (msg.type === '4D_SEEK' && APP._ghostGlass) {
-        APP._ghostGlass.seek(msg.taskIndex);
+      if (msg.type === '4D_SEEK') {
+        if (APP._ghostGlass) APP._ghostGlass.seek(msg.taskIndex);
+        console.log('§4D_RECV type=4D_SEEK task=' + msg.taskIndex + ' ghostGlass=' + !!APP._ghostGlass);
         return;
       }
 
@@ -193,6 +207,154 @@ function initViewer() {
         });
         console.log('§4D_RECV type=4D_HIGHLIGHT task="' + msg.taskName + '" meshes=' + _4dHighlights.length + '/' + guidSet.size + ' color=' + msg.color);
         APP.markDirty();
+      }
+
+      // S240c §P5: Resource legend panel — rendered in viewer, data from charts
+      if (msg.type === '4D_RESOURCES') {
+        var panel = document.getElementById('res-legend');
+        if (!panel) {
+          panel = document.createElement('div');
+          panel.id = 'res-legend';
+          panel.style.cssText = 'position:fixed;bottom:60px;right:20px;min-width:280px;max-width:360px;' +
+            'background:rgba(20,25,35,0.55);color:#eee;border-radius:16px;' +
+            'box-shadow:0 8px 32px rgba(0,0,0,0.35),0 2px 8px rgba(0,0,0,0.2);' +
+            'padding:0;font-family:system-ui,-apple-system,sans-serif;font-size:13px;' +
+            'z-index:9999;cursor:grab;user-select:none;' +
+            'backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);' +
+            'border:1px solid rgba(255,255,255,0.08);overflow:hidden;';
+          // Title bar
+          // Status banner
+          var statusBar = document.createElement('div');
+          statusBar.id = 'res-status';
+          statusBar.style.cssText = 'padding:10px 16px;text-align:center;font-weight:900;font-size:16px;letter-spacing:1.5px;text-transform:uppercase;';
+          panel.appendChild(statusBar);
+          // Donut charts — progress + cost
+          var donutRow = document.createElement('div');
+          donutRow.id = 'res-donuts';
+          donutRow.style.cssText = 'display:flex;justify-content:center;gap:20px;padding:12px 16px 8px;border-bottom:1px solid rgba(255,255,255,0.06);';
+          donutRow.innerHTML =
+            '<div style="text-align:center;">' +
+            '<div id="donut-progress" style="width:90px;height:90px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"></div>' +
+            '<div style="font-size:10px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.5px;">Progress</div></div>' +
+            '<div style="text-align:center;">' +
+            '<div id="donut-cost" style="width:90px;height:90px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"></div>' +
+            '<div style="font-size:10px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.5px;">Cost</div></div>';
+          panel.appendChild(donutRow);
+          // Title bar
+          var titleBar = document.createElement('div');
+          titleBar.style.cssText = 'padding:8px 16px 8px;border-bottom:1px solid rgba(255,255,255,0.1);';
+          titleBar.innerHTML = '<div style="font-weight:700;font-size:13px;color:rgba(255,255,255,0.6);letter-spacing:0.5px;">' +
+            '\ud83d\udea7 Site Resources</div>';
+          panel.appendChild(titleBar);
+          // Body
+          var body = document.createElement('div');
+          body.id = 'res-body';
+          body.style.cssText = 'padding:8px 16px;';
+          panel.appendChild(body);
+          // Footer
+          var footer = document.createElement('div');
+          footer.id = 'res-footer';
+          footer.style.cssText = 'padding:8px 16px 10px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:rgba(255,255,255,0.5);';
+          panel.appendChild(footer);
+          // Grand total bar
+          var grandBar = document.createElement('div');
+          grandBar.id = 'res-grand';
+          grandBar.style.cssText = 'padding:10px 16px;background:rgba(0,0,0,0.2);' +
+            'border-top:1px solid rgba(255,255,255,0.06);text-align:center;';
+          panel.appendChild(grandBar);
+          document.body.appendChild(panel);
+          // Draggable
+          var _rdX=0,_rdY=0,_rDrag=false;
+          panel.addEventListener('pointerdown', function(e) {
+            _rDrag=true; _rdX=e.clientX-panel.offsetLeft; _rdY=e.clientY-panel.offsetTop;
+            panel.style.cursor='grabbing'; e.preventDefault();
+          });
+          document.addEventListener('pointermove', function(e) {
+            if(!_rDrag)return;
+            panel.style.left=(e.clientX-_rdX)+'px';
+            panel.style.top=(e.clientY-_rdY)+'px';
+            panel.style.right='auto'; panel.style.bottom='auto';
+          });
+          document.addEventListener('pointerup', function() { _rDrag=false; panel.style.cursor='grab'; });
+        }
+        // Render trades with bars
+        var body = document.getElementById('res-body');
+        var maxCrew = msg.maxCrew || 1;
+        var html = '';
+        var trades = msg.trades || [];
+        for (var ti = 0; ti < trades.length; ti++) {
+          var tr = trades[ti];
+          var barPct = maxCrew > 0 ? Math.round((tr.crew / maxCrew) * 100) : 0;
+          var opacity = '1';
+          html += '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;opacity:' + opacity + ';">' +
+            '<span style="font-size:18px;width:26px;text-align:center;flex-shrink:0;">' + tr.icon + '</span>' +
+            '<span style="width:80px;font-size:11px;color:' + tr.color + ';font-weight:600;flex-shrink:0;">' + tr.label + '</span>' +
+            '<div style="flex:1;height:20px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;position:relative;">' +
+            '<div style="height:100%;width:' + barPct + '%;background:' + tr.color + ';border-radius:4px;transition:width 0.3s;"></div>' +
+            '</div>' +
+            '<span style="width:36px;text-align:right;font-size:16px;font-weight:800;color:' + tr.color + ';flex-shrink:0;">' +
+            tr.crew + '</span></div>';
+        }
+        // Equipment
+        var machines = msg.machines || [];
+        if (machines.length) {
+          html += '<div style="margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.05);">';
+          for (var mi = 0; mi < machines.length; mi++) {
+            html += '<div style="display:flex;align-items:center;gap:6px;padding:1px 0;color:rgba(255,255,255,0.5);">' +
+              '<span style="font-size:14px;width:26px;text-align:center;">\ud83d\ude9c</span>' +
+              '<span style="font-size:11px;">' + machines[mi] + '</span></div>';
+          }
+          html += '</div>';
+        }
+        body.innerHTML = html;
+        // Footer
+        document.getElementById('res-footer').innerHTML =
+          '<strong style="color:rgba(255,255,255,0.8);">' + msg.totalCrew + '</strong> workers \u00b7 ' +
+          '<strong style="color:rgba(255,255,255,0.8);">' + machines.length + '</strong> machines \u00b7 Day ' + msg.day + '/' + msg.maxDay +
+          ' \u00b7 ' + msg.pct + '% complete';
+        // Project status banner — mock: first third=ahead, middle=delays, last=on time
+        var statusEl = document.getElementById('res-status');
+        if (statusEl) {
+          var dayRatio = msg.maxDay > 0 ? msg.day / msg.maxDay : 0;
+          var statusText, statusBg, statusColor;
+          if (dayRatio < 0.33) {
+            statusText = '\u25b2 AHEAD OF TIME'; statusBg = 'rgba(76,175,80,0.2)'; statusColor = '#66bb6a';
+          } else if (dayRatio < 0.66) {
+            statusText = '\u25bc DELAYS'; statusBg = 'rgba(244,67,54,0.2)'; statusColor = '#ef5350';
+          } else {
+            statusText = '\u25c6 ON TIME'; statusBg = 'rgba(66,165,245,0.2)'; statusColor = '#42a5f5';
+          }
+          statusEl.style.background = statusBg;
+          statusEl.style.color = statusColor;
+          statusEl.textContent = statusText;
+        }
+        // Donut charts — CSS conic-gradient
+        var progPct = msg.progressPct || 0;
+        var cur = msg.cur || 'RM';
+        var gt = msg.grandTotal || 0;
+        var costToDate = Math.round(gt * progPct / 100);
+        var dp = document.getElementById('donut-progress');
+        if (dp) {
+          dp.style.background = 'conic-gradient(#66bb6a 0% ' + progPct + '%, rgba(255,255,255,0.08) ' + progPct + '% 100%)';
+          dp.innerHTML = '<div style="width:62px;height:62px;border-radius:50%;background:rgba(20,25,35,0.85);display:flex;align-items:center;justify-content:center;' +
+            'font-size:18px;font-weight:900;color:#66bb6a;">' + progPct + '%</div>';
+        }
+        var dc = document.getElementById('donut-cost');
+        if (dc) {
+          dc.style.background = 'conic-gradient(#ffb347 0% ' + progPct + '%, rgba(255,255,255,0.08) ' + progPct + '% 100%)';
+          dc.innerHTML = '<div style="width:62px;height:62px;border-radius:50%;background:rgba(20,25,35,0.85);display:flex;align-items:center;justify-content:center;' +
+            'font-size:11px;font-weight:800;color:#ffb347;text-align:center;line-height:1.2;">' + cur + '<br>' + costToDate.toLocaleString() + '</div>';
+        }
+        // Grand total footer
+        var grand = document.getElementById('res-grand');
+        grand.innerHTML = '<span style="color:rgba(255,255,255,0.4);">Budget ' + cur + ' ' + gt.toLocaleString() + '</span>';
+        panel.style.display = '';
+        return;
+      }
+      if (msg.type === '4D_RESOURCES_HIDE') {
+        var p = document.getElementById('res-legend');
+        if (p) p.style.display = 'none';
+        return;
       }
 
       if (msg.type === '4D_HIGHLIGHT_ALL') {

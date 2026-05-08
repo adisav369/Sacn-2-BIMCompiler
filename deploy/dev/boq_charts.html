@@ -48,6 +48,8 @@
   <button onclick="openMepReport()" title="MEP Bill of Quantities">&#128295; MEP</button>
   <button onclick="toggleTheme()" data-trl-title="ui_tt_theme" title="Light/Dark">&#9788;</button>
   <button onclick="copyPageUrl(this)" title="Copy shareable link">&#128203;</button>
+  <button id="header-flag-btn" onclick="window._TRL_LOADER&&_TRL_LOADER.openFlagPicker()" title="Change locale / currency" style="font-size:20px">&#127760;</button>
+  <button onclick="location.href='/'" title="Home" style="font-size:20px">&#127968;</button>
 </div>
 <div class="charts" id="charts"></div>
 <div id="status"></div>
@@ -1040,8 +1042,8 @@ function renderCharts() {
   chartInstances.forEach(ci => ci.destroy());
   chartInstances = [];
   console.log('§RENDER_CHARTS: start');
-  // Disable Chart.js animations — 9+ charts animating simultaneously wastes GPU
-  Chart.defaults.animation = false;
+  // Light chart animations — quick, no infinite loops
+  Chart.defaults.animation = { duration: 800 };
   function logChart(n, type, title, dataLen) {
     console.log(`§CHART_${n} [${type}] "${title}": ${dataLen} data points — ${dataLen > 0 ? 'OK' : 'EMPTY'}`);
   }
@@ -1243,6 +1245,7 @@ function renderCharts() {
       ]
     },
     options:{
+      animation: false,
       indexAxis:'y',
       aspectRatio: 1.0,
       scales:{
@@ -1264,7 +1267,17 @@ function renderCharts() {
 
   // S240: BroadcastChannel for 4D Gantt→Viewer sync
   let _bim4d = null;
-  try { _bim4d = new BroadcastChannel('bim_4d'); } catch(e) { console.log('§4D_CHANNEL_FAIL ' + e.message); }
+  try {
+    _bim4d = new BroadcastChannel('bim_4d');
+    _bim4d.onmessage = function(evt) {
+      if (evt.data && evt.data.type === '4D_PONG') {
+        console.log('§4D_PONG from=' + evt.data.from + ' roundtrip=' + (Date.now() - (evt.data.ts||0)) + 'ms');
+      }
+    };
+    // Ping viewer on channel open
+    _bim4d.postMessage({ type: '4D_PING', from: 'charts', ts: Date.now() });
+    console.log('§4D_CHANNEL_READY sender=charts → sent PING');
+  } catch(e) { console.log('§4D_CHANNEL_FAIL ' + e.message); }
 
   // Click handler: click a Gantt bar → broadcast highlight to viewer
   if (_bim4d) {
@@ -1348,38 +1361,7 @@ function renderCharts() {
     controlBar.appendChild(taskLabel);
     ganttBox.appendChild(controlBar);
 
-    // S240c §P5: Floating resource legend panel — shows active trades, crew, equipment
-    const resPanel = document.createElement('div');
-    resPanel.id = 'res-legend';
-    resPanel.style.cssText = 'position:fixed;bottom:80px;right:24px;min-width:260px;max-width:340px;' +
-      'background:rgba(250,248,245,0.97);color:#2d2d2d;border-radius:14px;' +
-      'box-shadow:0 6px 24px rgba(0,0,0,0.18),0 2px 8px rgba(0,0,0,0.08);' +
-      'padding:14px 18px;font-family:system-ui,-apple-system,sans-serif;font-size:13px;' +
-      'z-index:9999;display:none;cursor:grab;user-select:none;border:1px solid rgba(0,0,0,0.06);' +
-      'backdrop-filter:blur(8px);transition:opacity 0.2s;';
-    resPanel.innerHTML = '<div style="font-weight:700;font-size:14px;margin-bottom:8px;color:#555;letter-spacing:0.3px;">' +
-      '\ud83d\udea7 Active Resources</div><div id="res-body"></div>' +
-      '<div id="res-footer" style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(0,0,0,0.08);font-size:11px;color:#888;"></div>';
-    document.body.appendChild(resPanel);
-
-    // Draggable
-    let _rdX=0, _rdY=0, _rDrag=false;
-    resPanel.addEventListener('pointerdown', function(e) {
-      _rDrag = true; _rdX = e.clientX - resPanel.offsetLeft; _rdY = e.clientY - resPanel.offsetTop;
-      resPanel.style.cursor = 'grabbing';
-      e.preventDefault();
-    });
-    document.addEventListener('pointermove', function(e) {
-      if (!_rDrag) return;
-      resPanel.style.left = (e.clientX - _rdX) + 'px';
-      resPanel.style.top = (e.clientY - _rdY) + 'px';
-      resPanel.style.right = 'auto'; resPanel.style.bottom = 'auto';
-    });
-    document.addEventListener('pointerup', function() {
-      _rDrag = false; resPanel.style.cursor = 'grab';
-    });
-
-    // Resource icon map — dark pastel colours
+    // S240c §P5: Resource legend — data sent to viewer via BroadcastChannel
     const RES_ICONS = {
       STEEL_ERECTOR:  {icon:'\ud83c\udfd7\ufe0f', label:'Steel Erector',    color:'#5b7fa5'},
       CONCRETE_GANG:  {icon:'\ud83d\udea7', label:'Concrete Gang',   color:'#7a8a8e'},
@@ -1392,58 +1374,69 @@ function renderCharts() {
       FINISHER:       {icon:'\ud83d\udd8c\ufe0f', label:'Finisher',        color:'#4a9a6a'},
       LABORER:        {icon:'\ud83d\udc77', label:'Laborer',         color:'#888888'},
     };
+    const RES_ORDER = ['STEEL_ERECTOR','CONCRETE_GANG','MASON','PLUMBER','HVAC_TECH','ELECTRICIAN','CARPENTER','ROOFER','FINISHER','LABORER'];
 
-    // Update resource panel for a given day
+    // Compute max crew across entire schedule for bar scaling
+    const _maxCrewByTrade = {};
+    for (const t of scheduleData) {
+      const resources = (t.resource || '').split(',').filter(Boolean);
+      for (const r of resources) {
+        _maxCrewByTrade[r] = Math.max(_maxCrewByTrade[r] || 0, t.crew || 0);
+      }
+    }
+    const _globalMaxCrew = Math.max(1, ...Object.values(_maxCrewByTrade));
+
     function updateResPanel(day) {
-      if (day <= 0) { resPanel.style.display = 'none'; return; }
-      const active = scheduleData.filter(t => t.startDay <= day && t.finishDay >= day);
-      if (!active.length) { resPanel.style.display = 'none'; return; }
-
-      // Aggregate resources
-      const trades = {};  // tradeKey → {crew, equipment[], tasks}
+      // Aggregate resources for this day
+      const trades = {};
       let totalCrew = 0, machines = new Set();
-      for (const t of active) {
-        const resources = (t.resource || '').split(',').filter(Boolean);
-        for (const r of resources) {
-          if (!trades[r]) trades[r] = {crew:0, equip:new Set(), tasks:0};
-          trades[r].crew += t.crew || 0;
-          trades[r].tasks++;
+      if (day > 0) {
+        const active = scheduleData.filter(t => t.startDay <= day && t.finishDay >= day);
+        for (const t of active) {
+          const resources = (t.resource || '').split(',').filter(Boolean);
+          for (const r of resources) {
+            if (!trades[r]) trades[r] = {crew:0, tasks:0};
+            trades[r].crew += t.crew || 0;
+            trades[r].tasks++;
+          }
+          totalCrew += t.crew || 0;
+          if (t.equipment) t.equipment.split(', ').forEach(e => { if (e) machines.add(e); });
         }
-        totalCrew += t.crew || 0;
-        if (t.equipment) t.equipment.split(', ').forEach(e => { if (e) machines.add(e); });
       }
 
-      // Build HTML rows
-      const body = document.getElementById('res-body');
-      let html = '';
-      for (const [key, data] of Object.entries(trades).sort((a,b) => b[1].crew - a[1].crew)) {
-        const info = RES_ICONS[key] || {icon:'\ud83d\udc77', label:key, color:'#888'};
-        html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">' +
-          '<span style="font-size:20px;width:28px;text-align:center;">' + info.icon + '</span>' +
-          '<span style="flex:1;color:' + info.color + ';font-weight:600;">' + info.label + '</span>' +
-          '<span style="background:' + info.color + '18;color:' + info.color + ';padding:2px 8px;border-radius:8px;font-weight:700;font-size:12px;">' +
-          '\u00d7' + data.crew + ' crew</span></div>';
-      }
-      // Equipment row if any
-      if (machines.size) {
-        html += '<div style="margin-top:4px;padding-top:4px;border-top:1px solid rgba(0,0,0,0.05);">';
-        machines.forEach(m => {
-          html += '<div style="display:flex;align-items:center;gap:8px;padding:2px 0;color:#777;">' +
-            '<span style="font-size:16px;width:28px;text-align:center;">\ud83d\ude9c</span>' +
-            '<span style="flex:1;font-size:12px;">' + m + '</span></div>';
-        });
-        html += '</div>';
-      }
-      body.innerHTML = html;
-
-      // Footer: totals + cumulative
+      // Build resource data for all trades (always show all)
+      const resData = RES_ORDER.map(key => {
+        const info = RES_ICONS[key];
+        const data = trades[key] || {crew:0, tasks:0};
+        return {key, icon:info.icon, label:info.label, color:info.color, crew:data.crew};
+      });
       const cumDays = scheduleData.filter(t => t.finishDay <= day).reduce((s,t) => s + t.duration * t.crew, 0);
       const totalDays = scheduleData.reduce((s,t) => s + t.duration * t.crew, 0);
       const pct = totalDays > 0 ? Math.round(cumDays / totalDays * 100) : 0;
-      document.getElementById('res-footer').innerHTML =
-        '<strong>' + totalCrew + '</strong> workers \u00b7 <strong>' + machines.size + '</strong> machines \u00b7 Day ' + day +
-        '<br>Cumulative: ' + cumDays.toLocaleString() + ' / ' + totalDays.toLocaleString() + ' labour-days (' + pct + '%)';
-      resPanel.style.display = '';
+
+      // Progress: elements built / total
+      const builtTasks = scheduleData.filter(t => t.finishDay <= day);
+      const builtQty = builtTasks.reduce((s,t) => s + t.qty, 0);
+      const totalQtyAll = scheduleData.reduce((s,t) => s + t.qty, 0);
+      const progressPct = totalQtyAll > 0 ? Math.round(builtQty / totalQtyAll * 100) : 0;
+
+      // Send to viewer via BroadcastChannel
+      if (_bim4d && day > 0) {
+        _bim4d.postMessage({
+          type: '4D_RESOURCES',
+          day: day, maxDay: maxDay,
+          trades: resData,
+          totalCrew: totalCrew,
+          machines: [...machines],
+          maxCrew: _globalMaxCrew,
+          cumDays: cumDays, totalDays: totalDays, pct: pct,
+          grandTotal: grandMaterial + grandLabor + grandEquip, cur: CUR,
+          builtQty: builtQty, totalQty: totalQtyAll, progressPct: progressPct
+        });
+      }
+      if (day <= 0 && _bim4d) {
+        _bim4d.postMessage({ type: '4D_RESOURCES_HIDE' });
+      }
       console.log('§4D_RESOURCE_LEGEND day=' + day + ' trades=' + Object.keys(trades).length + ' workers=' + totalCrew + ' machines=' + machines.size);
     }
 
@@ -1613,21 +1606,23 @@ function renderCharts() {
         _scrubActive = false;
         _bim4d.postMessage({ type: '4D_RESET' });
       }
-      resPanel.style.display = 'none';
+      if (_bim4d) _bim4d.postMessage({ type: '4D_RESOURCES_HIDE' });
       console.log('§4D_STOP');
     });
 
     function startPlayTimer() {
       if (_playTimer) clearInterval(_playTimer);
       const speed = parseInt(speedSel.value) || 1;
-      const step = Math.max(1, Math.round(maxDay / Math.max(scheduleData.length, 1)));
+      const step = Math.max(1, Math.round(maxDay / Math.max(scheduleData.length * 2, 1)));
       _playTimer = setInterval(function() {
         _currentDay += step * speed;
         if (_currentDay > maxDay) {
-          _currentDay = maxDay;
+          _currentDay = maxDay + 1;  // one day past end — all resources at rest
           clearInterval(_playTimer); _playTimer = null;
           _playing = false;
           playBtn.textContent = '\u25b6 Play';
+          applyScrub(_currentDay);
+          return;
         }
         applyScrub(_currentDay);
       }, 800);
