@@ -1571,6 +1571,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The Five Proofs Required">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-one-to-do-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The One to Do First
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3781,6 +3798,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The Five Proofs Required">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-one-to-do-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The One to Do First
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3974,11 +4008,13 @@
 </tr>
 <tr>
 <td><strong>Boolean</strong> — union / subtract / intersect</td>
-<td><code>kernel_ops</code> row; <code>input_guids</code> marks source elements</td>
+<td><code>kernel_ops</code> row; <code>input_guids</code> marks source elements; <strong>Manifold</strong> library handles the geometry</td>
 </tr>
 </tbody>
 </table>
 <p><code>component_geometries</code> becomes a <strong>cache</strong> of evaluated recipes, not the source of truth. When a wall height changes, the recipe is updated, the geometry hash is invalidated, and a Web Worker re-evaluates the BLOB. The scene repaints. No save. No export.</p>
+<p><strong>The profile is an <code>M_Product</code>.</strong> Common cross-sections — rectangular, circular, L-shape, C-shape, hollow box — are stored as <code>M_Product</code> rows with <code>IsBOM=N</code> and a <code>profile_vertices</code> BLOB (a 2D polyline in the product's local plane). This means a profile is not hardcoded geometry. It is a catalog entry: swappable by <code>M_Product_Category</code>, priced via <code>M_PriceList</code>, jurisdictionally constrained by <code>AD_Val_Rule</code>, and replaceable at the order level via <code>C_OrderLine</code> exception. The Extrude primitive becomes: look up the profile product, extrude its vertices by depth, write the resulting mesh to <code>component_geometries</code>. Changing the profile is a product swap — the same Configure-to-Order pattern the ERP layer uses everywhere.</p>
+<p><strong>Boolean operations use Manifold.</strong> <a href="https://github.com/elalish/manifold">Manifold</a> is a C++ geometry library (Apache 2.0, active maintainers, used in Blender 3.x+) with a pre-built WASM target. It handles union, subtraction, and intersection on triangle meshes robustly and fast — without OpenCascade, without CGAL, without the GPL. A Web Worker loads the Manifold WASM module, applies the Boolean to the two input geometry BLOBs, and writes the result as a new <code>component_geometries</code> row. The originals are not deleted — they are marked <code>hidden=1</code> in <code>elements_meta</code>, preserving the operation history for undo.</p>
 <h3 id="constraints-as-sql-queries">Constraints as SQL Queries<a class="headerlink" href="#constraints-as-sql-queries" title="Permanent link">&para;</a></h3>
 <p>The <a href="../DISC_VALIDATION_DB_SRS/">discipline validation rules</a> — sprinkler spacing ≥ 3 000 mm, emergency light within 6 m of exit — are already expressed as SQL predicates in <code>AD_Val_Rule</code>. Modelling constraints are the same thing:</p>
 <div class="highlight"><pre><span></span><code><span class="c1">-- Wall must align to grid</span>
@@ -4232,6 +4268,10 @@ Geometry is a materialized view of the operation log — a cache of evaluated re
 </tr>
 </tbody>
 </table>
+<h3 id="the-one-to-do-first">The One to Do First<a class="headerlink" href="#the-one-to-do-first" title="Permanent link">&para;</a></h3>
+<p>Five proofs is a roadmap. One proof is a commitment. The right one to build first:</p>
+<p><strong>Proof 1 — a reparametrizable wall height.</strong> Pick a wall in the Sample House. Add a height slider to the UI. When it moves: write a <code>kernel_op</code> with the new depth, invalidate the geometry hash, have a Web Worker re-extrude the profile, repaint the scene. Reload the page — the wall stays at the new height because the <code>kernel_ops</code> table survived.</p>
+<p>This single feature, working in browser, no server, no save button, crash-recoverable, simultaneously proves: the kernel-op log, geometry cache invalidation, Web Worker evaluation, and crash recovery. It is the minimum viable proof that the architecture is not theoretical. Everything else — constraints, collaboration, Boolean — is an extension of the same pattern. But this one, working, changes the conversation from <em>"could be a modeller"</em> to <em>"is a modeller."</em></p>
 <hr />
 <h2 id="the-performance-reality">The Performance Reality<a class="headerlink" href="#the-performance-reality" title="Permanent link">&para;</a></h2>
 <p>The risk in any kernel-op approach: evaluation in WASM may be slower than native C++. The mitigation: aggressive caching (materialized views in <code>component_geometries</code>) and progressive evaluation (only re-evaluate what changed).</p>
