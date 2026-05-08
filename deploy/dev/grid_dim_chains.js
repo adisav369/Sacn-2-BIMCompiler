@@ -125,15 +125,10 @@ var DimChains = (function() {
       var refZFar = APP.ifc2three(0, env.yMax, env.zMin);
       var t1Far = refZFar.z - bubbleScale - dimGap;
 
-      // Implementing 2D_027 §1.3 — Witness: W-2D27
-      // Use rawPosition for dim labels so they show actual survey distances,
-      // not the snapped display positions which accumulate 300mm-module error.
       for (var i = 0; i < xLines.length - 1; i++) {
         var paN = APP.ifc2three(xLines[i].position, env.yMin, env.zMin);
         var pbN = APP.ifc2three(xLines[i + 1].position, env.yMin, env.zMin);
-        var rawA = xLines[i].rawPosition !== undefined ? xLines[i].rawPosition : xLines[i].position;
-        var rawB = xLines[i + 1].rawPosition !== undefined ? xLines[i + 1].rawPosition : xLines[i + 1].position;
-        var distX = Math.abs(rawB - rawA);
+        var distX = Math.abs(xLines[i + 1].position - xLines[i].position);
         var label = (distX * 1000).toFixed(0);
         // Near
         addDimSegment(APP, new THREE.Vector3(paN.x, groundY, t1Near),
@@ -147,9 +142,7 @@ var DimChains = (function() {
       var t3Near = refZNear.z + bubbleScale + dimGap * 3;
       var pFirst = APP.ifc2three(xLines[0].position, env.yMin, env.zMin);
       var pLast = APP.ifc2three(xLines[xLines.length - 1].position, env.yMin, env.zMin);
-      var rawXFirst = xLines[0].rawPosition !== undefined ? xLines[0].rawPosition : xLines[0].position;
-      var rawXLast = xLines[xLines.length-1].rawPosition !== undefined ? xLines[xLines.length-1].rawPosition : xLines[xLines.length-1].position;
-      var totalX = Math.abs(rawXLast - rawXFirst);
+      var totalX = Math.abs(xLines[xLines.length - 1].position - xLines[0].position);
       addDimSegment(APP, new THREE.Vector3(pFirst.x, groundY, t3Near),
         new THREE.Vector3(pLast.x, groundY, t3Near), tickDirX, (totalX * 1000).toFixed(0), gridGroup, bubbleScale);
     }
@@ -168,9 +161,7 @@ var DimChains = (function() {
       for (var j = 0; j < yLines.length - 1; j++) {
         var raL = APP.ifc2three(env.xMin, yLines[j].position, env.zMin);
         var rbL = APP.ifc2three(env.xMin, yLines[j + 1].position, env.zMin);
-        var rawC = yLines[j].rawPosition !== undefined ? yLines[j].rawPosition : yLines[j].position;
-        var rawD = yLines[j + 1].rawPosition !== undefined ? yLines[j + 1].rawPosition : yLines[j + 1].position;
-        var distY = Math.abs(rawD - rawC);
+        var distY = Math.abs(yLines[j + 1].position - yLines[j].position);
         var labelY = (distY * 1000).toFixed(0);
         // Left
         addDimSegment(APP, new THREE.Vector3(t1Left, groundY, raL.z),
@@ -184,9 +175,7 @@ var DimChains = (function() {
       var t3Left = refXLeft.x - bubbleScale - dimGap * 3;
       var sFirst = APP.ifc2three(env.xMin, yLines[0].position, env.zMin);
       var sLast = APP.ifc2three(env.xMin, yLines[yLines.length - 1].position, env.zMin);
-      var rawYFirst = yLines[0].rawPosition !== undefined ? yLines[0].rawPosition : yLines[0].position;
-      var rawYLast = yLines[yLines.length-1].rawPosition !== undefined ? yLines[yLines.length-1].rawPosition : yLines[yLines.length-1].position;
-      var totalY = Math.abs(rawYLast - rawYFirst);
+      var totalY = Math.abs(yLines[yLines.length - 1].position - yLines[0].position);
       addDimSegment(APP, new THREE.Vector3(t3Left, groundY, sFirst.z),
         new THREE.Vector3(t3Left, groundY, sLast.z), tickDirY, (totalY * 1000).toFixed(0), gridGroup, bubbleScale);
     }

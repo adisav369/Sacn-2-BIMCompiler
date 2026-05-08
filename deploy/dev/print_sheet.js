@@ -18,10 +18,9 @@
 var PrintSheet = (function() {
   'use strict';
 
-  // Implementing 2D_027 §3.1 — Witness: W-2D27
-  // A3 at 150 DPI. Auto-detect orientation from frustum aspect ratio.
-  var A3_LONG  = Math.round(420 * 150 / 25.4); // ~2480 px (long edge)
-  var A3_SHORT = Math.round(297 * 150 / 25.4); // ~1754 px (short edge)
+  // A3 landscape at 150 DPI: 420mm x 297mm
+  var A3_W = Math.round(420 * 150 / 25.4); // ~2480 px
+  var A3_H = Math.round(297 * 150 / 25.4); // ~1754 px
   var MARGIN = 40; // px margin inside sheet
 
   function log(msg) { console.log('[PrintSheet] ' + msg); }
@@ -233,25 +232,13 @@ var PrintSheet = (function() {
     // 2. Query building info
     var info = queryBuildingInfo(A);
 
-    // 3. Auto-detect orientation from camera frustum (§3.1)
-    var useLandscape = true;
-    if (A.camera && A.camera.isOrthographicCamera) {
-      var visW = (A.camera.right - A.camera.left) / (A.camera.zoom || 1);
-      var visH = (A.camera.top - A.camera.bottom) / (A.camera.zoom || 1);
-      useLandscape = visW >= visH;
-      log('§PRINT_SHEET orient=' + (useLandscape ? 'landscape' : 'portrait') +
-          ' visW=' + visW.toFixed(1) + ' visH=' + visH.toFixed(1));
-    }
-    var A3_W = useLandscape ? A3_LONG : A3_SHORT;
-    var A3_H = useLandscape ? A3_SHORT : A3_LONG;
-
-    // 4. Create A3 canvas
+    // 3. Create A3 canvas
     var canvas = document.createElement('canvas');
     canvas.width = A3_W;
     canvas.height = A3_H;
     var ctx = canvas.getContext('2d');
 
-    // White background always (§3.4 — sunglasses reverse for print)
+    // White background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, A3_W, A3_H);
 
@@ -288,12 +275,7 @@ var PrintSheet = (function() {
         drawY = vpY;
       }
 
-      // Apply greyscale filter for B&W print. White bg behind scene (§3.4).
-      ctx.globalCompositeOperation = 'destination-over';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(drawX, drawY, drawW, drawH);
-      ctx.globalCompositeOperation = 'source-over';
-      log('§PRINT_SHEET bg=white forced');
+      // Apply greyscale filter for B&W print
       ctx.filter = 'grayscale(80%) contrast(120%)';
       ctx.drawImage(img, drawX, drawY, drawW, drawH);
       ctx.filter = 'none';
