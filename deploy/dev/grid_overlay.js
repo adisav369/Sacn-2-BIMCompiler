@@ -559,15 +559,32 @@ function setupGridOverlay(APP) {
       GridContours.renderContours(A, results, mode, cutZ);
 
       // Door arcs + window openings
+      // IFC2x3 uses IfcDoor/IfcWindow/IfcStair; IFC4 adds StandardCase variants.
+      // Both forms must be matched so SampleCastle and other IFC4 buildings get arcs.
       if (typeof DoorArcs !== 'undefined') {
-        var doors   = results.filter(function(r) { return r.ifcClass === 'IfcDoor'; });
-        var walls   = results.filter(function(r) { return r.ifcClass === 'IfcWall' || r.ifcClass === 'IfcWallStandardCase'; });
+        // Diagnostic: log all distinct IFC classes present in this section cut result.
+        // If doors=0 on a building that should have them, look here for the actual class names.
+        var classMap = {};
+        for (var ci = 0; ci < results.length; ci++) { classMap[results[ci].ifcClass] = (classMap[results[ci].ifcClass] || 0) + 1; }
+        log('§DOOR_ARC_CLASSES cutZ=' + cutZ.toFixed(2) + ' classes=' + JSON.stringify(classMap));
+
+        var doors   = results.filter(function(r) {
+          return r.ifcClass === 'IfcDoor' || r.ifcClass === 'IfcDoorStandardCase';
+        });
+        var walls   = results.filter(function(r) {
+          return r.ifcClass === 'IfcWall' || r.ifcClass === 'IfcWallStandardCase';
+        });
         var arcs = DoorArcs.generateArcs(doors, walls);
         GridContours.addDoorArcs(A, arcs, mode, cutZ);
 
         // Implementing 2D_027 §5.4 — Witness: W-2D27
-        var stairElements  = results.filter(function(r) { return r.ifcClass === 'IfcStair'; });
-        var windowElements = results.filter(function(r) { return r.ifcClass === 'IfcWindow'; });
+        // IfcStairFlight = IFC4 sub-element of IfcStair; both must be checked.
+        var stairElements  = results.filter(function(r) {
+          return r.ifcClass === 'IfcStair' || r.ifcClass === 'IfcStairFlight';
+        });
+        var windowElements = results.filter(function(r) {
+          return r.ifcClass === 'IfcWindow' || r.ifcClass === 'IfcWindowStandardCase';
+        });
         DoorArcs.generateStairSymbol(stairElements, A, cutZ);
         DoorArcs.generateWindowOpenings(windowElements, A, cutZ);
 
@@ -706,7 +723,7 @@ function setupGridOverlay(APP) {
     } catch (e) { log('§SAVE_SECTION delete error: ' + e.message); }
   }
 
-  /** Restore a saved section — turns scissors on and positions at saved cut */
+  /** Restore a saved section — turns scissors on, positions at saved cut, rebuilds 2D grids */
   function restoreSection(sec) {
     var cutVal = sec.cut_value;
     var normal = [0, -1, 0];
@@ -724,6 +741,23 @@ function setupGridOverlay(APP) {
     if (A.status) A.status.textContent = 'Restored: ' + sec.name;
     log('§SAVE_SECTION restored id=' + sec.id + ' name=' + sec.name +
         ' cutVal=' + cutVal.toFixed(2) + ' axis=' + axis);
+
+    // Implementing P1b §P1b.5 — rebuild grids + 2D treatment at restored cut — Witness: W-P1B
+    // cutVal is the THREE.js section plane constant (world Y).
+    // IFC Z = cutVal + modelOffset.z — this is what sectionCut and detectGridsAtPlane expect.
+    // GridScissors.rebuildAt handles the modelOffset internally (same as scissors slider path).
+    // renderContoursForView receives IFC Z directly.
+    if (axis === 'Y') {
+      if (typeof GridScissors !== 'undefined' && GridScissors.rebuildAt) {
+        try {
+          GridScissors.rebuildAt(axis, cutVal);
+          log('§SAVE_SECTION grids rebuilt at cutVal=' + cutVal.toFixed(2));
+        } catch (e) { log('§SAVE_SECTION rebuildAt error: ' + e.message); }
+      }
+      var ifcZ = cutVal + (A.modelOffset ? A.modelOffset.z : 0);
+      log('§SAVE_SECTION renderContours ifcZ=' + ifcZ.toFixed(2));
+      try { renderContoursForView('floor', ifcZ); } catch (e) { log('§SAVE_SECTION contour error: ' + e.message); }
+    }
   }
 
   function buildPanel(grids) {
@@ -857,9 +891,10 @@ function setupGridOverlay(APP) {
       });
     }
 
-    // Saved section restore buttons
+    // Saved section restore buttons — pointerdown stops panel drag capture
     var ssBtns = body.querySelectorAll('.saved-section-btn');
     for (var ssb = 0; ssb < ssBtns.length; ssb++) {
+      ssBtns[ssb].addEventListener('pointerdown', function(e) { e.stopPropagation(); });
       ssBtns[ssb].addEventListener('pointerup', function(e) {
         e.stopPropagation();
         var id = parseInt(e.currentTarget.getAttribute('data-id'), 10);
@@ -867,13 +902,20 @@ function setupGridOverlay(APP) {
         for (var si2 = 0; si2 < savedSections.length; si2++) {
           if (savedSections[si2].id === id) { sec = savedSections[si2]; break; }
         }
-        if (sec) restoreSection(sec);
+        if (sec) {
+          log('§SAVE_SECTION restore clicked id=' + id + ' name=' + (sec.name || '?'));
+          restoreSection(sec);
+        }
       });
     }
 
     // Saved section delete buttons
+    // pointerdown stopPropagation prevents _makeDraggable from calling setPointerCapture
+    // on the panel when the delete button is within the drag strip — without this,
+    // the pointer is captured by the panel and the button's pointerup never fires.
     var ssDels = body.querySelectorAll('.saved-section-del');
     for (var ssd = 0; ssd < ssDels.length; ssd++) {
+      ssDels[ssd].addEventListener('pointerdown', function(e) { e.stopPropagation(); });
       ssDels[ssd].addEventListener('pointerup', function(e) {
         e.stopPropagation();
         var id = parseInt(e.currentTarget.getAttribute('data-id'), 10);

@@ -641,7 +641,7 @@ var GridDrag = (function() {
 
     // Auto-load rules from grid_rules.json via fetch
     if (!R) {
-      var rulesUrl = 'grid_rules.json?v=1';
+      var rulesUrl = 'grid_rules.json?v=2';
       fetch(rulesUrl).then(function(resp) {
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         return resp.json();

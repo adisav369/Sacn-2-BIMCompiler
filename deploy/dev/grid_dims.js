@@ -190,6 +190,74 @@
       .map(function(c) { return { position: c.sum / c.weight, rawPosition: c.sum / c.weight, weight: c.weight }; });
   }
 
+  // ── filterByOpeningWidth (P1b Sub-Bay Minimum) ──────────────────
+  // Implementing P1b §P1b.3 — Witness: W-P1B
+  //
+  // After filterStructural, drop any bay narrower than minBayM (default 0.9m = standard door).
+  // A bay narrower than a door cannot contain any opening — it is structural noise.
+  // Same loop logic as filterStructural but with a configurable, semantically-named threshold.
+  /**
+   * @param {Array} lines   — grid lines [{label, position, ...}]
+   * @param {number} minBayM — minimum bay width in metres
+   * @returns {Array} filtered lines
+   */
+  function filterByOpeningWidth(lines, minBayM) {
+    if (lines.length <= 2 || !minBayM || minBayM <= 0) return lines;
+    var result = lines.slice();
+    var changed = true;
+    while (changed && result.length > 2) {
+      changed = false;
+      var next = [result[0]];
+      for (var i = 1; i < result.length - 1; i++) {
+        var prev = result[i].position - result[i - 1].position;
+        var nxt  = result[i + 1].position - result[i].position;
+        if (prev >= minBayM && nxt >= minBayM) {
+          next.push(result[i]);
+        } else {
+          changed = true;
+          log('§GD_MIN_BAY_OPENING dropped idx=' + i +
+              ' prev=' + (prev * 1000).toFixed(0) + 'mm nxt=' + (nxt * 1000).toFixed(0) +
+              'mm min=' + (minBayM * 1000).toFixed(0) + 'mm');
+        }
+      }
+      next.push(result[result.length - 1]);
+      result = next;
+    }
+    return result;
+  }
+
+  // ── Snap-to-Nearest-Face (P1 Grid Alignment) ────────────────────
+  // Implementing P1 Grid Alignment — Witness: W-P1-ALIGN
+  //
+  // After clusterVotes produces a weighted-mean position, the mean may
+  // land slightly off the nearest wall face due to averaging across two
+  // close walls. snapToNearestFace corrects this by pulling each cluster
+  // mean to the nearest raw structural face position within snapTol.
+  // Logs §GD_SNAP_TO_FACE only when an actual correction is made (>1mm).
+  /**
+   * @param {Array} clusters — [{position, rawPosition, weight}] from clusterVotes
+   * @param {Array} faces    — raw structural face positions (IFC metres)
+   * @param {number} tol     — maximum correction distance in metres
+   * @param {string} axis    — 'X' or 'Y' (for log)
+   * @returns {Array} clusters with corrected positions
+   */
+  function snapToNearestFace(clusters, faces, tol, axis) {
+    return clusters.map(function(c, idx) {
+      var best = null, bestDist = Infinity;
+      for (var fi = 0; fi < faces.length; fi++) {
+        var d = Math.abs(faces[fi] - c.position);
+        if (d < bestDist && d <= tol) { bestDist = d; best = faces[fi]; }
+      }
+      if (best !== null && bestDist > 0.001) {
+        log('§GD_SNAP_TO_FACE axis=' + axis + ' cluster=' + idx +
+            ' before=' + c.position.toFixed(3) + ' after=' + best.toFixed(3) +
+            ' delta=' + bestDist.toFixed(3));
+        return { position: best, rawPosition: best, weight: c.weight };
+      }
+      return c;
+    });
+  }
+
   /**
    * Core opportunity-vote algorithm.
    * One SQL query per source type — no geometry blobs.
@@ -201,6 +269,7 @@
    */
   function detectOpportunityGrids(db, cutZ, rules) {
     // Implementing 2D_028 §3.1 — Witness: W-2D28
+    // Implementing P1 Grid Alignment — Witness: W-P1-ALIGN
     var gd  = (rules && rules.grid_detection) || {};
     var minSpan   = gd.min_structural_span_m  || 1.80;
     var faceTol   = gd.face_cluster_tol_m     || DEFAULT_TOLERANCE;
@@ -209,9 +278,29 @@
     var minVotes  = gd.min_votes              || 2;
     var structCls = gd.structural_classes  || ['IfcWall','IfcWallStandardCase','IfcColumn','IfcBeam','IfcMember'];
     var openCls   = gd.opportunity_classes || ['IfcDoor','IfcWindow'];
+    // P1: wall-length weighting — longer walls get proportionally more vote weight.
+    // wall_length_ref_m: a wall of this length gets weight=1 (neutral baseline).
+    // wall_weight_min: floor — short partitions still vote but at reduced weight.
+    // wall_weight_max: ceiling — prevents single very-long wall from dominating.
+    // snap_face_tol_m: after clustering, snap mean to nearest raw face within this radius.
+    var wallLenRef  = gd.wall_length_ref_m || 3.0;
+    var wallWtMin   = gd.wall_weight_min   || 0.5;
+    var wallWtMax   = gd.wall_weight_max   || 8.0;
+    var snapFaceTol = gd.snap_face_tol_m   || faceTol;
+    // P1b: opening-density gate + sub-bay minimum
+    // min_openings_for_grid: at a cut plane, require at least this many openings for grid detection to proceed.
+    //   If below threshold, return empty — no noisy grids on uninformative sections.
+    // min_bay_opening_m: minimum bay width between adjacent grid lines (≈ standard door 0.9m).
+    //   Bays narrower than this are dropped — they cannot fit any opening.
+    var minOpeningsForGrid = gd.min_openings_for_grid || 2;
+    var minBayOpeningM     = gd.min_bay_opening_m     || 0.9;
 
     var empty = { xLines: [], yLines: [] };
     var xVotes = [], yVotes = [];
+    // Raw structural face positions — used for snap-to-face post-processing
+    var xFaces = [], yFaces = [];
+    // Raw opening positions — used for opening-supported cluster filter (P1b.2)
+    var openXPositions = [], openYPositions = [];
 
     // ── Source A: structural elements — Z-span filter IS the sweep filter ──
     // bbox_z = (center_z + bbox_z/2) - (center_z - bbox_z/2) = element height.
@@ -237,7 +326,11 @@
       if (sRes && sRes.length && sRes[0].values) structRows = sRes[0].values;
     } catch (e) { log('§GD_OPP_STRUCT error: ' + e.message); }
 
-    var spanSamples = 0;
+    // Implementing P1 §P1.1 — wall-length weighting — Witness: W-P1-ALIGN
+    // Weight = clamp(wallLen / wallLenRef, wallWtMin, wallWtMax).
+    // wallLen = bbox dimension along the wall's run direction.
+    // Columns and ambiguous square elements keep weight=1 (no directional length).
+    var spanSamples = 0, wtSamples = 0;
     for (var si = 0; si < structRows.length; si++) {
       var cls  = structRows[si][0];
       var cx   = Number(structRows[si][1]);
@@ -250,21 +343,39 @@
         spanSamples++;
       }
       if (cls === 'IfcColumn' || (bx > 0 && Math.abs(bx - by) / Math.max(bx, by) < 0.5)) {
-        // Square-ish: column or near-square → both axes (centroid)
+        // Square-ish: column or near-square → both axes (centroid), weight=1 (no length axis)
         xVotes.push({ pos: cx, weight: 1 });
         yVotes.push({ pos: cy, weight: 1 });
+        xFaces.push(cx);
+        yFaces.push(cy);
       } else if (by > bx * 1.5) {
-        // Runs in Y — face votes on X axis
-        xVotes.push({ pos: cx - bx * 0.5, weight: 1 });
-        xVotes.push({ pos: cx + bx * 0.5, weight: 1 });
+        // Runs in Y — face votes on X axis; wall length = by
+        var wt = Math.max(wallWtMin, Math.min(wallWtMax, by / wallLenRef));
+        xVotes.push({ pos: cx - bx * 0.5, weight: wt });
+        xVotes.push({ pos: cx + bx * 0.5, weight: wt });
+        xFaces.push(cx - bx * 0.5);
+        xFaces.push(cx + bx * 0.5);
+        if (wtSamples < 5) {
+          log('§GD_WALL_WEIGHT class=' + cls + ' len=' + by.toFixed(2) + ' weight=' + wt.toFixed(2));
+          wtSamples++;
+        }
       } else if (bx > by * 1.5) {
-        // Runs in X — face votes on Y axis
-        yVotes.push({ pos: cy - by * 0.5, weight: 1 });
-        yVotes.push({ pos: cy + by * 0.5, weight: 1 });
+        // Runs in X — face votes on Y axis; wall length = bx
+        var wt = Math.max(wallWtMin, Math.min(wallWtMax, bx / wallLenRef));
+        yVotes.push({ pos: cy - by * 0.5, weight: wt });
+        yVotes.push({ pos: cy + by * 0.5, weight: wt });
+        yFaces.push(cy - by * 0.5);
+        yFaces.push(cy + by * 0.5);
+        if (wtSamples < 5) {
+          log('§GD_WALL_WEIGHT class=' + cls + ' len=' + bx.toFixed(2) + ' weight=' + wt.toFixed(2));
+          wtSamples++;
+        }
       } else {
-        // Ambiguous — contribute centroid to both
+        // Ambiguous — contribute centroid to both, weight=1
         xVotes.push({ pos: cx, weight: 1 });
         yVotes.push({ pos: cy, weight: 1 });
+        xFaces.push(cx);
+        yFaces.push(cy);
       }
     }
     log('§GD_OPP_STRUCT rows=' + structRows.length + ' xVotes=' + xVotes.length + ' yVotes=' + yVotes.length);
@@ -285,9 +396,23 @@
       if (oRes && oRes.length && oRes[0].values) openRows = oRes[0].values;
     } catch (e) { log('§GD_OPP_OPEN error: ' + e.message); }
 
+    // Implementing P1b §P1b.1 — opening-density gate — Witness: W-P1B
+    // When at a section cut (cutZ provided), require at least minOpeningsForGrid openings.
+    // A cut with fewer openings hits no structural bay faces — grid would be noise.
+    if (cutZ != null && openRows.length < minOpeningsForGrid) {
+      log('§GD_OPENING_GATE cutZ=' + Number(cutZ).toFixed(2) +
+          ' openings=' + openRows.length + ' min=' + minOpeningsForGrid + ' — skip grid detection');
+      return empty;
+    }
+
     for (var oi = 0; oi < openRows.length; oi++) {
-      xVotes.push({ pos: Number(openRows[oi][0]), weight: openWt });
-      yVotes.push({ pos: Number(openRows[oi][1]), weight: openWt });
+      var ox = Number(openRows[oi][0]);
+      var oy = Number(openRows[oi][1]);
+      xVotes.push({ pos: ox, weight: openWt });
+      yVotes.push({ pos: oy, weight: openWt });
+      // Implementing P1b §P1b.2 — track opening positions for cluster support check
+      openXPositions.push(ox);
+      openYPositions.push(oy);
     }
     log('§GD_OPP_OPEN rows=' + openRows.length + ' weight=' + openWt);
 
@@ -296,6 +421,22 @@
     var yClusters = clusterVotes(yVotes, faceTol, minVotes);
     log('§GD_OPP_CLUSTER axis=X candidates=' + xVotes.length + ' clusters=' + xClusters.length + ' minVotes=' + minVotes);
     log('§GD_OPP_CLUSTER axis=Y candidates=' + yVotes.length + ' clusters=' + yClusters.length + ' minVotes=' + minVotes);
+
+    // Implementing P1 §P1.2 — snap cluster means to nearest structural face — Witness: W-P1-ALIGN
+    // Corrects weighted-mean drift so grid lines land exactly on wall faces.
+    xClusters = snapToNearestFace(xClusters, xFaces, snapFaceTol, 'X');
+    yClusters = snapToNearestFace(yClusters, yFaces, snapFaceTol, 'Y');
+
+    // P1b §P1b.2 — opening-supported cluster filter DISABLED by default.
+    // Analysis: opening center positions don't align with wall face positions on the same axis.
+    // A 43m X-running wall has openings with center_x spread across 0–43m; their center_x
+    // does NOT land near Y-running wall face X-positions that define X-clusters.
+    // Result: 41 legitimate X-clusters dropped (xLines=1 surviving — unusable).
+    // The opening gate (min_openings_for_grid) already prevents bad cuts. Per-cluster
+    // filtering needs axis-aware opening tracking which requires knowing which openings are
+    // in which walls — too expensive without a wall-opening join query.
+    // §GD_OPENING_ONLY is kept as observable evidence when filter was active.
+    log('§GD_OPENING_ONLY filter=disabled xClusters=' + xClusters.length + ' yClusters=' + yClusters.length);
 
     if (!xClusters.length && !yClusters.length) return empty;
 
@@ -309,12 +450,25 @@
       return { label: lbl, position: c.position, rawPosition: c.rawPosition, guids: [] };
     });
 
-    xLines = snapGrids(xLines);
-    yLines = snapGrids(yLines);
+    // Implementing P1 fix — snapGrids runs LAST, after all filtering — Witness: W-P1-ALIGN
+    // snapGrids rounds bay widths to 300mm module for display. If run before filterStructural,
+    // the cumulative positional drift (up to 600mm on 34 bays) causes genuine structural bays
+    // to appear sub-minimum and get dropped. Raw positions must be used throughout filtering.
     xLines = filterStructural(xLines);
     yLines = filterStructural(yLines);
+    // Implementing P1b §P1b.3 — sub-bay min opening width — Witness: W-P1B
+    // At a section cut: bays narrower than a standard door (minBayOpeningM) are dropped.
+    // Applied after filterStructural so it catches any residual sub-opening bays.
+    if (cutZ != null) {
+      xLines = filterByOpeningWidth(xLines, minBayOpeningM);
+      yLines = filterByOpeningWidth(yLines, minBayOpeningM);
+    }
     xLines = thinGrids(xLines);
     yLines = thinGrids(yLines);
+    // snapGrids: display-only — rounds bay widths for dim labels. Applied after all filtering
+    // so positional integrity is preserved throughout the detection + filter pipeline.
+    xLines = snapGrids(xLines);
+    yLines = snapGrids(yLines);
 
     for (var ri = 0; ri < xLines.length; ri++) xLines[ri].label = String(ri + 1);
     for (var rj = 0; rj < yLines.length; rj++) yLines[rj].label = rj < letterSeq.length ? letterSeq[rj] : String.fromCharCode(65 + rj);

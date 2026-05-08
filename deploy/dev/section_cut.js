@@ -36,9 +36,11 @@ var CLIP_MARGIN = 15.0;       // half-side of clip window in metres (30m × 30m 
 // IFC classes eligible for slicing (performance filter)
 var SLICE_CLASSES = {
     'IfcWall': 1, 'IfcWallStandardCase': 1, 'IfcColumn': 1,
-    'IfcDoor': 1, 'IfcWindow': 1, 'IfcSlab': 1, 'IfcPlate': 1,
+    'IfcDoor': 1, 'IfcDoorStandardCase': 1,
+    'IfcWindow': 1, 'IfcWindowStandardCase': 1,
+    'IfcSlab': 1, 'IfcPlate': 1,
     'IfcMember': 1, 'IfcBeam': 1, 'IfcCurtainWall': 1,
-    'IfcStair': 1, 'IfcRailing': 1
+    'IfcStair': 1, 'IfcStairFlight': 1, 'IfcRailing': 1
 };
 
 // -------------------------------------------------------------------------

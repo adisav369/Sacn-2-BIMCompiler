@@ -56,10 +56,29 @@ var GridScissors = (function() {
 
   function detectAtCut(db, axis, cutVal) {
     if (typeof GridDims === 'undefined' || !GridDims.detectGridsAtPlane) return null;
+    // Implementing P1b — pass rules so opening gate + min bay apply — Witness: W-P1B
+    var rules = window._gridRules || {};
 
     if (axis === 'Y') {
       // Horizontal cut — existing detectGridsAtPlane handles this (IFC Z)
-      return GridDims.detectGridsAtPlane(db, cutVal);
+      var grids = GridDims.detectGridsAtPlane(db, cutVal, 0, rules);
+      // Implementing P1b §P1b.4 — commit GRID_DETECT to kernel_ops — Witness: W-P1B
+      // Persists which cut produced grids so reload can replay. Not undoable (audit only).
+      if (window.KernelOps && db) {
+        try {
+          KernelOps.commitOp(db, 'GRID_DETECT', {
+            cutZ:   cutVal,
+            axis:   axis,
+            xCount: (grids.xLines || []).length,
+            yCount: (grids.yLines || []).length,
+            method: 'opportunity-vote'
+          });
+          log('§GD_DETECT_COMMIT cutZ=' + cutVal.toFixed(2) +
+              ' xLines=' + (grids.xLines || []).length +
+              ' yLines=' + (grids.yLines || []).length);
+        } catch (e) { log('§GD_DETECT_COMMIT error: ' + e.message); }
+      }
+      return grids;
     }
 
     // For X and Z axes, build a custom query
@@ -486,9 +505,23 @@ var GridScissors = (function() {
     document.body.appendChild(panel);
   }
 
+  /**
+   * Implementing P1b §P1b.5 — public rebuild trigger — Witness: W-P1B
+   * Called by grid_overlay.js restoreSection to detect grids at a restored cut Z
+   * without requiring the user to interact with the scissors slider.
+   * @param {string} axis   — 'X' | 'Y' | 'Z'
+   * @param {number} cutVal — IFC coordinate of the cut plane
+   */
+  function rebuildAt(axis, cutVal) {
+    if (!A || !A.db) { log('§GD_DETECT_COMMIT rebuildAt skipped — no APP or db'); return; }
+    log('§GD_DETECT_COMMIT rebuildAt axis=' + axis + ' cutVal=' + cutVal.toFixed(2));
+    buildScissorsGrids(axis, cutVal);
+  }
+
   return {
     init: init,
-    consolidateUI: consolidateUI
+    consolidateUI: consolidateUI,
+    rebuildAt: rebuildAt
   };
 
 })();

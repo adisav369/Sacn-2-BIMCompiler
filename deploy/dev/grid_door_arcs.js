@@ -209,8 +209,15 @@ var DoorArcs = (function() {
         }
       }
 
+      if (!bestLeaf) {
+        log('§DOOR_ARC_SKIP guid=' + door.guid + ' reason=no_leaf contours=' + dContours.length);
+        continue;
+      }
       var hingeResult = findHinge(bestLeaf, wallContours);
-      if (!hingeResult) continue;
+      if (!hingeResult) {
+        log('§DOOR_ARC_SKIP guid=' + door.guid + ' reason=no_hinge radius=' + bestLeaf.radius.toFixed(3));
+        continue;
+      }
 
       var swing = detectSwingDirection(hingeResult, wallContours);
       hingeResult.swing = swing;

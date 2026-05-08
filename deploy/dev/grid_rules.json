@@ -31,7 +31,13 @@
     ],
     "opportunity_classes": [
       "IfcDoor", "IfcWindow"
-    ]
+    ],
+    "wall_length_ref_m":      3.0,
+    "wall_weight_min":        0.5,
+    "wall_weight_max":        8.0,
+    "snap_face_tol_m":        0.30,
+    "min_openings_for_grid":  2,
+    "min_bay_opening_m":      0.90
   },
   "clearance": [
     {
