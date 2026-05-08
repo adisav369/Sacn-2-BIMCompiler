@@ -8,7 +8,7 @@
 // Cache-first for heavy assets (.wasm, images). DB files skip SW (IndexedDB handles them).
 //
 // DEPLOY: bump CACHE_VERSION on every OCI upload. Old caches are purged on activate.
-const CACHE_VERSION = 'v266';
+const CACHE_VERSION = 'v274';
 const CACHE_NAME = 'bim-ootb-' + CACHE_VERSION;
 
 // Local copies of vendor libs — single-origin, no CDN dependency
@@ -35,6 +35,7 @@ const PRECACHE_ASSETS = [
   // Entry points
   'index.html',
   'boq_charts.html',
+  'mep_report.html',
   '2d.html',
   'offline.html',
   'manifest.webmanifest',
@@ -63,6 +64,8 @@ const PRECACHE_ASSETS = [
   'diff.js',
   'variation_order.js',
   'import.js',
+  'routewalker.js',
+  'mep_rw.db',
   'main.js',
   // Workers (fetched on demand by import/export flows)
   'import_worker.js',
@@ -71,6 +74,9 @@ const PRECACHE_ASSETS = [
   // Lazy-loaded modules
   'navigate.js',
   'wizard.js',
+  'wizard_orientation.js',
+  'wizard_storeys.js',
+  'wizard_classify.js',
   'section_cut.js',
   'dxf-parser.js',
   'dxf_export.js',
@@ -79,6 +85,7 @@ const PRECACHE_ASSETS = [
   'title_block.js',
   // Config files
   'clash_rules.json',
+  'rates/cidb2024_my.json',
 ];
 
 self.addEventListener('install', (event) => {
