@@ -46,19 +46,18 @@
 <body>
 
 <div class="toolbar">
-  <button onclick="_shareReport()">Share Report</button>
+  <button onclick="_shareReport()" data-trl="mep_share">Share Report</button>
   <button onclick="_csvExport()">&#128196; CSV</button>
   <button onclick="_copyUrl(this)" title="Copy shareable link">&#128203;</button>
-  <button id="header-flag-btn" onclick="window._TRL_LOADER&&_TRL_LOADER.openFlagPicker()" title="Change locale / currency" style="font-size:18px">&#127760;</button>
-  <button onclick="location.href='/'" title="Home" style="font-size:18px">&#127968;</button>
+  <button onclick="window.close()" title="Back">&#8592; Back</button>
 </div>
 
 <div id="report-content">Loading...</div>
 <div id="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.js"></script>
-<script src="rates.js"></script>
-<script src="locale_loader.js?v=6"></script>
+<script src="rates.js?v=7"></script>
+<script src="locale_loader.js?v=7"></script>
 
 <script>
 var params = new URLSearchParams(location.search);
@@ -67,11 +66,12 @@ var BLD = params.get('bld') || '';
 var RATES_PARAM = params.get('rates') || 'cidb2024_my';
 
 // SMM MEP sections of interest
-var MEP_SECTIONS = {
+var _MEP_SECTIONS_EN = {
   R: 'Disposal Systems', S: 'Piped Supply Systems', T: 'Mechanical Heating / Cooling',
   U: 'Ventilation / Air Conditioning', V: 'Electrical Supply / Power / Lighting',
   W: 'Communications / Security / Controls', Y: 'Mechanical / Electrical Services (General)'
 };
+var MEP_SECTIONS = {}; // populated in init() after trl-ready
 var MEP_SECTION_ORDER = ['R','S','T','U','V','W','Y'];
 
 // Global report data
@@ -152,13 +152,15 @@ async function init() {
   if (typeof initRateTemplate === 'function') {
     await initRateTemplate();
   }
+  // Populate MEP section names from _TRL (locale merged by now)
+  for (var _k in _MEP_SECTIONS_EN) MEP_SECTIONS[_k] = _t('mep_sec_' + _k, _MEP_SECTIONS_EN[_k]);
 
   if (!DB_URL) {
-    document.getElementById('report-content').innerHTML = '<div class="empty-msg">No database specified. Open from 4D/5D Analytics page.</div>';
+    document.getElementById('report-content').innerHTML = '<div class="empty-msg">' + _t('ui_no_db_specified','No database specified. Open from 4D/5D Analytics page.') + '</div>';
     return;
   }
 
-  document.getElementById('report-content').innerHTML = 'Loading ' + DB_URL.split('/').pop() + '...';
+  document.getElementById('report-content').innerHTML = _t('ui_loading','Loading') + ' ' + DB_URL.split('/').pop() + '...';
 
   var SQL = await initSqlJs({
     locateFile: function(f) { return 'https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/' + f; }
@@ -184,7 +186,7 @@ async function init() {
   // Count query
   var countRows = db.exec("SELECT m.discipline, m.ifc_class, m.storey, COUNT(*) as cnt FROM elements_meta m WHERE m.building = '" + bldSafe + "' GROUP BY m.discipline, m.ifc_class, m.storey");
   if (!countRows.length || !countRows[0].values.length) {
-    document.getElementById('report-content').innerHTML = '<div class="empty-msg">No elements found for building: ' + bldName + '</div>';
+    document.getElementById('report-content').innerHTML = '<div class="empty-msg">' + _t('ui_no_elements_bld','No elements found for building:') + ' ' + bldName + '</div>';
     return;
   }
 
@@ -305,12 +307,17 @@ async function init() {
   // Header
   var meta = RATE_TEMPLATE_META || {};
   html += '<h1>BIM OOTB — MEP ' + _t('t_comp_boq', 'Bill of Quantities') + '</h1>';
-  html += '<div class="header-block"><h2>MEP ' + _t('t_comp_boq', 'BILL OF QUANTITIES') + '</h2>';
+  html += '<div class="header-block" style="display:flex;gap:24px;align-items:flex-start">';
+  html += '<div style="flex:1"><h2>MEP ' + _t('t_comp_boq', 'BILL OF QUANTITIES') + '</h2>';
   html += '<div class="row">' + _t('ui_building', 'Building') + ': <span>' + bldName + '</span></div>';
   html += '<div class="row">' + _t('h_date', 'Date') + ': <span>' + new Date().toISOString().slice(0, 10) + '</span></div>';
   html += '<div class="row">' + _t('ui_rate_source_lbl', 'Rate Source') + ': <span>' + (meta.source || 'CIDB 2024') + '</span></div>';
   html += '<div class="row">' + _t('ui_currency', 'Currency') + ': <span>' + cur + '</span></div>';
   html += '</div>';
+  html += '<div style="flex:0 0 340px;font-size:11px;color:#999;line-height:1.6;border-left:1px solid rgba(79,195,247,0.15);padding-left:16px">';
+  html += '<div style="color:#4fc3f7;font-weight:bold;font-size:12px;margin-bottom:4px">' + _t('mep_guide_title', 'MEP BOQ Guide') + '</div>';
+  html += _t('mep_guide_body', 'SMM2 \u00a7R\u2013V \u00b7 IFC\u2192classify by discipline (PLB\u00b7ELEC\u00b7ACMV\u00b7FP)<br>Pipes/ducts \u2192 length (m) \u00b7 slabs \u2192 area (m\u00b2) \u00b7 fittings \u2192 count<br>17 country rate templates from national publications<br>Section totals + labour trades + charts + reinstatement value<br>CSV (UTF-8 BOM) or shareable self-contained HTML');
+  html += '</div></div>';
 
   // Stat cards
   html += '<div class="stat-cards">';
@@ -344,7 +351,7 @@ async function init() {
     if (!sec) continue;
 
     html += '<div class="section-block">';
-    html += '<h3>Section ' + secKey + ' — ' + MEP_SECTIONS[secKey] + '</h3>';
+    html += '<h3>' + _t('mep_section_lbl','Section') + ' ' + secKey + ' \u2014 ' + MEP_SECTIONS[secKey] + '</h3>';
     html += '<table><tr><th>' + _t('h_item','Item') + '</th><th>' + _t('h_description','Description') + '</th><th>' + _t('h_quantity','Qty') + '</th><th>' + _t('h_uom','UOM') + '</th><th>' + _t('h_unit_rate','Rate') + ' (' + cur + ')</th><th>' + _t('h_total','Amount') + ' (' + cur + ')</th></tr>';
 
     // Sort items by smm_section then cls
@@ -390,7 +397,7 @@ async function init() {
       }
     }
 
-    html += '<tr><td colspan="5" class="section-total">Section ' + secKey + ' Total:</td><td class="num section-total">' + _fmt(sec.matTotal) + '</td></tr>';
+    html += '<tr><td colspan="5" class="section-total">' + _t('mep_section_lbl','Section') + ' ' + secKey + ' ' + _t('h_total','Total') + ':</td><td class="num section-total">' + _fmt(sec.matTotal) + '</td></tr>';
     html += '</table></div>';
   }
 
@@ -408,12 +415,12 @@ async function init() {
   html += '</div>';
 
   // Reinstatement block
-  html += '<div class="summary-block"><h3>REINSTATEMENT VALUE (MEP only)</h3>';
+  html += '<div class="summary-block"><h3>' + _t('mep_reinstatement','REINSTATEMENT VALUE') + ' (MEP)</h3>';
   html += '<div class="summary-row"><span>MEP ' + _t('h_subtotal','Subtotal') + '</span><span>' + cur + ' ' + _fmt(mepTotal) + '</span></div>';
   html += '<div class="summary-row"><span>+ ' + _t('t_prov_sums','Preliminaries') + ' (' + (prov.preliminaries_pct || 10) + '%)</span><span>' + cur + ' ' + _fmt(prelim) + '</span></div>';
   html += '<div class="summary-row"><span>+ ' + _t('s_prov','Professional Fees') + ' (' + (prov.professional_fees_pct || 8) + '%)</span><span>' + cur + ' ' + _fmt(profFees) + '</span></div>';
-  html += '<div class="summary-row"><span>+ Contingency (' + (prov.contingency_pct || 5) + '%)</span><span>' + cur + ' ' + _fmt(contingency) + '</span></div>';
-  html += '<div class="summary-row grand"><span>INSURED VALUE (MEP)</span><span>' + cur + ' ' + _fmt(insuredValue) + '</span></div>';
+  html += '<div class="summary-row"><span>+ ' + _t('mep_contingency','Contingency') + ' (' + (prov.contingency_pct || 5) + '%)</span><span>' + cur + ' ' + _fmt(contingency) + '</span></div>';
+  html += '<div class="summary-row grand"><span>' + _t('mep_insured','INSURED VALUE') + ' (MEP)</span><span>' + cur + ' ' + _fmt(insuredValue) + '</span></div>';
   html += '</div>';
 
   // Labour trade breakdown
@@ -427,7 +434,7 @@ async function init() {
       totalTradeCost += t.cost;
       html += '<tr><td>' + t.trade + '</td><td class="num">' + t.days.toFixed(1) + '</td><td class="num">' + t.crew + '</td><td class="num">' + _fmt(t.cost) + '</td></tr>';
     }
-    html += '<tr><td colspan="3" class="section-total">Total:</td><td class="num section-total">' + _fmt(totalTradeCost) + '</td></tr>';
+    html += '<tr><td colspan="3" class="section-total">' + _t('h_total','Total') + ':</td><td class="num section-total">' + _fmt(totalTradeCost) + '</td></tr>';
     html += '</table></div>';
   }
 
@@ -470,7 +477,7 @@ async function init() {
   var sectionCount = activeSections.length;
   console.log('§MEP_BOQ sections=' + sectionCount + ' items=' + mepItems.length + ' total=' + Math.round(mepTotal));
   console.log('§REINSTATEMENT mep=' + Math.round(insuredValue) + ' building=' + Math.round(buildingTotal));
-  document.getElementById('status').textContent = 'MEP BOQ complete — ' + sectionCount + ' sections, ' + mepItems.length + ' items';
+  document.getElementById('status').textContent = _t('mep_complete','MEP BOQ complete') + ' \u2014 ' + sectionCount + ' ' + _t('mep_sections_lbl','sections') + ', ' + mepItems.length + ' ' + _t('h_item','items');
 
   reportData = { mepTotal: mepTotal, buildingTotal: buildingTotal, insuredValue: insuredValue, sections: activeSections.length, items: mepItems.length };
 }

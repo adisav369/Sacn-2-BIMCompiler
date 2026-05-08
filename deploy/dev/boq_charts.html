@@ -49,7 +49,7 @@
   <button onclick="toggleTheme()" data-trl-title="ui_tt_theme" title="Light/Dark">&#9788;</button>
   <button onclick="copyPageUrl(this)" title="Copy shareable link">&#128203;</button>
   <button id="header-flag-btn" onclick="window._TRL_LOADER&&_TRL_LOADER.openFlagPicker()" title="Change locale / currency" style="font-size:20px">&#127760;</button>
-  <button onclick="location.href='/'" title="Home" style="font-size:20px">&#127968;</button>
+  <button onclick="window.close()" title="Back">&#8592; Back</button>
 </div>
 <div class="charts" id="charts"></div>
 <div id="status"></div>
@@ -59,7 +59,7 @@
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="rates.js"></script>
+<script src="rates.js?v=7"></script>
 
 <script>
 function copyPageUrl(btn) {
@@ -93,7 +93,7 @@ const _TRL_DEFAULTS = {
   // Currency
   cur:          'RM',           // primary currency symbol
   cur2:         'USD',          // secondary currency symbol
-  cur_rate:     4.45,           // 1 cur2 = cur_rate × cur  (e.g. 1 USD = 4.45 RM)
+  cur_rate:     3.91,           // 1 cur2 = cur_rate × cur  (e.g. 1 USD = 3.91 RM)
   cur_name:     'Malaysian Ringgit',
   cur2_name:    'US Dollar',
 
@@ -2564,7 +2564,7 @@ function toggleTheme() {
 
 </script>
 <!-- Locale: loads before init() so all _TRL keys are resolved when charts render -->
-<script src="locale_loader.js?v=6"></script>
+<script src="locale_loader.js?v=7"></script>
 <script>
 (function(){
   var done=false;
