@@ -71,15 +71,16 @@ function initViewer() {
   };
   if (typeof GridAssembler !== 'undefined') GridAssembler.init(APP);
   else if (typeof setupGridOverlay === 'function') setupGridOverlay(APP);
-  // §INIT_DIAG — expose whether each 2D module actually loaded and attached
+  // Fallback: GridAssembler.init() returns false when it can't find setupGridOverlay
+  // on window (it's a plain function, not window-attached). Call it directly.
+  if (typeof APP.toggleGridOverlay !== 'function' && typeof setupGridOverlay === 'function') {
+    console.log('§INIT_FALLBACK GridAssembler.init did not attach toggleGridOverlay — calling setupGridOverlay directly');
+    setupGridOverlay(APP);
+  }
+  // §INIT_DIAG — log final state
   console.log('§INIT_DIAG GridAssembler=' + (typeof GridAssembler !== 'undefined') +
     ' setupGridOverlay=' + (typeof setupGridOverlay === 'function') +
     ' toggleGridOverlay=' + (typeof APP.toggleGridOverlay === 'function'));
-  if (typeof APP.toggleGridOverlay !== 'function') {
-    console.warn('§INIT_WARN toggleGridOverlay NOT attached — 2D button will fall back to 2d.html.' +
-      ' Cause: GridAssembler loaded (' + (typeof GridAssembler !== 'undefined') + ')' +
-      ' blocks setupGridOverlay in else-if branch.');
-  }
   if (typeof setupImport === 'function') setupImport(APP);
   if (typeof setupDiff === 'function') setupDiff(APP);
 
