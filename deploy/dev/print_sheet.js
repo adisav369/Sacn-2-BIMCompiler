@@ -304,69 +304,271 @@ var PrintSheet = (function() {
     img.src = sceneDataURL;
   }
 
-  /** Full-screen preview overlay with Save / Close buttons */
-  function showPreview(A, dataURL, fileName, info) {
-    // Remove any existing preview
+  // ── D4: Corporate.json (lazy-loaded, cached) ─────────────────────
+  var _corpCache = null;
+  function loadCorporate(cb) {
+    if (_corpCache) { cb(_corpCache); return; }
+    fetch('corporate.json').then(function(r) { return r.json(); }).then(function(data) {
+      _corpCache = data;
+      cb(data);
+    }).catch(function() {
+      _corpCache = { company: 'BIM OOTB', address: '', phone: '', email: '', website: 'bim-ootb.com',
+                     logo_text: 'BIM OOTB', registration: '', drawn_by: '', checked_by: '' };
+      cb(_corpCache);
+    });
+  }
+
+  // ── D3: Title block with corporate details ────────────────────────
+  function drawTitleBlockCorp(ctx, info, corp, overrides, sheetW, sheetH) {
+    var tbH = 150;
+    var tbY = sheetH - MARGIN - tbH;
+    var tbX = MARGIN;
+    var tbW = sheetW - MARGIN * 2;
+
+    ctx.fillStyle = '#f8f8f8';
+    ctx.fillRect(tbX, tbY, tbW, tbH);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(tbX, tbY, tbW, tbH);
+
+    // Dividers
+    var divX = tbX + tbW * 0.55;
+    ctx.beginPath(); ctx.moveTo(divX, tbY); ctx.lineTo(divX, tbY + tbH); ctx.stroke();
+    var hDiv1 = tbY + 40;
+    ctx.beginPath(); ctx.moveTo(tbX, hDiv1); ctx.lineTo(divX, hDiv1); ctx.stroke();
+    var hDiv2 = tbY + 80;
+    ctx.beginPath(); ctx.moveTo(tbX, hDiv2); ctx.lineTo(divX, hDiv2); ctx.stroke();
+    var hDiv3 = tbY + 120;
+    ctx.beginPath(); ctx.moveTo(tbX, hDiv3); ctx.lineTo(tbX + tbW, hDiv3); ctx.stroke();
+
+    // Left panel
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText(overrides.title || info.name, tbX + 10, tbY + 26);
+    ctx.font = '12px sans-serif';
+    ctx.fillStyle = '#333';
+    ctx.fillText(overrides.subtitle || info.storey || 'Plan View', tbX + 10, tbY + 58);
+    ctx.fillText('Notes: ' + (overrides.notes || ''), tbX + 10, tbY + 76);
+    ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#555';
+    ctx.fillText('Drawn: ' + (overrides.drawnBy || corp.drawn_by || ''), tbX + 10, tbY + 100);
+    ctx.fillText('Checked: ' + (overrides.checkedBy || corp.checked_by || ''), tbX + 180, tbY + 100);
+    ctx.fillText('Date: ' + new Date().toISOString().slice(0, 10), tbX + 10, tbY + 116);
+    ctx.fillText('Scale: ' + (overrides.scale || 'Auto'), tbX + 180, tbY + 116);
+
+    // Right panel — corporate
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillStyle = '#000';
+    ctx.fillText(corp.logo_text || corp.company, divX + 10, tbY + 24);
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = '#444';
+    var corpLines = [corp.company, corp.address, corp.phone, corp.email, corp.website, corp.registration];
+    var cy = tbY + 42;
+    for (var ci = 0; ci < corpLines.length; ci++) {
+      if (corpLines[ci]) { ctx.fillText(corpLines[ci], divX + 10, cy); cy += 14; }
+    }
+
+    // Bottom strip — element counts
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#333';
+    var strip = 'Vol: ' + info.volume.toFixed(1) + 'm³  Floor: ' + info.floorArea.toFixed(1) + 'm²  Elements: ' + info.totalElements;
+    ctx.fillText(strip, tbX + 10, tbY + 138);
+    var ccX = tbX + 350;
+    for (var ci2 = 0; ci2 < Math.min(info.classCounts.length, 6); ci2++) {
+      var cc = info.classCounts[ci2];
+      ctx.fillText(cc.cls.replace('Ifc','') + ':' + cc.count, ccX, tbY + 138);
+      ccX += 80;
+    }
+
+    return tbY;
+  }
+
+  // ── D3: Full interactive preview panel ───────────────────────────
+  /** D3: Interactive preview — editable fields, contrast slider, draggable */
+  function showPreview(A, sceneDataURL, fileName, info) {
     var old = document.getElementById('print-preview-overlay');
     if (old) old.remove();
 
-    var overlay = document.createElement('div');
-    overlay.id = 'print-preview-overlay';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;' +
-      'background:rgba(0,0,0,0.85);z-index:9999;display:flex;flex-direction:column;' +
-      'align-items:center;justify-content:center;padding:20px;box-sizing:border-box';
+    loadCorporate(function(corp) {
+      // Editable field state
+      var fields = {
+        title: info.name,
+        subtitle: info.storey || 'Plan View',
+        notes: '',
+        drawnBy: corp.drawn_by || '',
+        checkedBy: corp.checked_by || '',
+        scale: 'Auto',
+        contrast: 80  // greyscale % (0=colour, 100=full B&W)
+      };
 
-    // Header bar
-    var header = document.createElement('div');
-    header.style.cssText = 'display:flex;gap:12px;margin-bottom:12px;align-items:center';
+      // Outer overlay (dark backdrop)
+      var overlay = document.createElement('div');
+      overlay.id = 'print-preview-overlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;' +
+        'background:rgba(0,0,0,0.80);z-index:9999;overflow:auto';
 
-    var title = document.createElement('span');
-    title.style.cssText = 'color:#fff;font-size:14px;font-weight:bold';
-    title.textContent = 'A3 Print Preview — ' + info.name + ' / ' + (info.storey || 'View');
-    header.appendChild(title);
+      // Draggable panel
+      var panel = document.createElement('div');
+      panel.style.cssText = 'position:absolute;top:20px;left:50%;transform:translateX(-50%);' +
+        'background:#1a1a2e;border:1px solid #4fc3f7;border-radius:8px;padding:0;' +
+        'display:flex;flex-direction:column;min-width:340px;max-width:98vw;box-shadow:0 8px 32px rgba(0,0,0,0.7)';
 
-    // Save button
-    var saveBtn = document.createElement('button');
-    saveBtn.textContent = 'Save PNG';
-    saveBtn.style.cssText = 'background:#4fc3f7;color:#000;border:none;border-radius:4px;' +
-      'padding:8px 20px;font-size:13px;font-weight:bold;cursor:pointer';
-    saveBtn.onclick = function() {
-      var link = document.createElement('a');
-      link.download = fileName;
-      link.href = dataURL;
-      link.click();
-      if (A.status) A.status.textContent = 'Print sheet saved — ' + fileName;
-    };
-    header.appendChild(saveBtn);
+      // Title bar (drag handle)
+      var titleBar = document.createElement('div');
+      titleBar.style.cssText = 'background:#0d3b5e;padding:8px 14px;border-radius:8px 8px 0 0;' +
+        'display:flex;justify-content:space-between;align-items:center;cursor:grab;user-select:none';
+      titleBar.innerHTML = '<span style="color:#4fc3f7;font-weight:bold;font-size:13px">A3 Print Preview — ' +
+        info.name + '</span>';
 
-    // Close button
-    var closeBtn = document.createElement('button');
-    closeBtn.textContent = 'Close';
-    closeBtn.style.cssText = 'background:#666;color:#fff;border:none;border-radius:4px;' +
-      'padding:8px 16px;font-size:13px;cursor:pointer';
-    closeBtn.onclick = function() { overlay.remove(); };
-    header.appendChild(closeBtn);
+      // Action buttons in title bar
+      var btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex;gap:8px';
 
-    overlay.appendChild(header);
+      var savePngBtn = document.createElement('button');
+      savePngBtn.textContent = 'Save PNG';
+      savePngBtn.style.cssText = 'background:#4fc3f7;color:#000;border:none;border-radius:4px;padding:5px 14px;font-size:12px;font-weight:bold;cursor:pointer';
 
-    // Preview image — fitted to screen
-    var img = document.createElement('img');
-    img.src = dataURL;
-    img.style.cssText = 'max-width:95vw;max-height:calc(100vh - 80px);border:2px solid #444;' +
-      'box-shadow:0 4px 24px rgba(0,0,0,0.5);object-fit:contain';
-    overlay.appendChild(img);
+      var closeBtn = document.createElement('button');
+      closeBtn.textContent = 'Close';
+      closeBtn.style.cssText = 'background:#666;color:#fff;border:none;border-radius:4px;padding:5px 12px;font-size:12px;cursor:pointer';
+      closeBtn.onclick = function() { overlay.remove(); };
 
-    // Click outside image or press Escape to close
-    overlay.addEventListener('pointerup', function(e) {
-      if (e.target === overlay) overlay.remove();
+      btnRow.appendChild(savePngBtn);
+      btnRow.appendChild(closeBtn);
+      titleBar.appendChild(btnRow);
+      panel.appendChild(titleBar);
+
+      // Body: preview image left, fields right
+      var body = document.createElement('div');
+      body.style.cssText = 'display:flex;gap:0;padding:12px;flex-wrap:wrap';
+
+      // Preview image container
+      var imgWrap = document.createElement('div');
+      imgWrap.style.cssText = 'flex:1 1 400px;min-width:300px;display:flex;align-items:flex-start;justify-content:center';
+      var previewImg = document.createElement('img');
+      previewImg.style.cssText = 'max-width:100%;max-height:70vh;border:1px solid #444;object-fit:contain';
+      imgWrap.appendChild(previewImg);
+      body.appendChild(imgWrap);
+
+      // Fields panel
+      var fieldsDiv = document.createElement('div');
+      fieldsDiv.style.cssText = 'flex:0 0 220px;padding:0 0 0 14px;display:flex;flex-direction:column;gap:6px';
+
+      function field(label, key, placeholder) {
+        var wrap = document.createElement('div');
+        var lbl = document.createElement('label');
+        lbl.style.cssText = 'color:#aaa;font-size:10px;display:block';
+        lbl.textContent = label;
+        var inp = document.createElement('input');
+        inp.type = 'text';
+        inp.value = fields[key];
+        inp.placeholder = placeholder || '';
+        inp.style.cssText = 'width:100%;background:#0d2137;color:#fff;border:1px solid #345;border-radius:3px;padding:4px 6px;font-size:11px;box-sizing:border-box';
+        inp.addEventListener('input', function() { fields[key] = inp.value; renderPreview(); });
+        wrap.appendChild(lbl);
+        wrap.appendChild(inp);
+        return wrap;
+      }
+
+      fieldsDiv.appendChild(field('Drawing Title', 'title'));
+      fieldsDiv.appendChild(field('Subtitle / View', 'subtitle'));
+      fieldsDiv.appendChild(field('Notes', 'notes', 'Construction notes...'));
+      fieldsDiv.appendChild(field('Drawn By', 'drawnBy'));
+      fieldsDiv.appendChild(field('Checked By', 'checkedBy'));
+
+      // Contrast slider
+      var sliderWrap = document.createElement('div');
+      var sliderLbl = document.createElement('label');
+      sliderLbl.style.cssText = 'color:#aaa;font-size:10px;display:block';
+      sliderLbl.textContent = 'B&W Contrast: ' + fields.contrast + '%';
+      var slider = document.createElement('input');
+      slider.type = 'range'; slider.min = 0; slider.max = 100; slider.value = fields.contrast;
+      slider.style.cssText = 'width:100%';
+      slider.addEventListener('input', function() {
+        fields.contrast = parseInt(slider.value);
+        sliderLbl.textContent = 'B&W Contrast: ' + fields.contrast + '%';
+        // CSS filter on preview for live feedback (no re-render)
+        previewImg.style.filter = 'grayscale(' + fields.contrast + '%) contrast(' + (100 + fields.contrast * 0.4) + '%)';
+      });
+      sliderWrap.appendChild(sliderLbl);
+      sliderWrap.appendChild(slider);
+      fieldsDiv.appendChild(sliderWrap);
+
+      body.appendChild(fieldsDiv);
+      panel.appendChild(body);
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+
+      // Make panel draggable
+      (function() {
+        var dragging = false, ox = 0, oy = 0;
+        titleBar.addEventListener('pointerdown', function(e) {
+          dragging = true; titleBar.style.cursor = 'grabbing';
+          var r = panel.getBoundingClientRect();
+          ox = e.clientX - r.left; oy = e.clientY - r.top;
+          panel.style.transform = 'none';
+          panel.style.left = r.left + 'px'; panel.style.top = r.top + 'px';
+        });
+        document.addEventListener('pointermove', function(e) {
+          if (!dragging) return;
+          panel.style.left = (e.clientX - ox) + 'px';
+          panel.style.top  = (e.clientY - oy) + 'px';
+        });
+        document.addEventListener('pointerup', function() { dragging = false; titleBar.style.cursor = 'grab'; });
+      })();
+
+      // Render the A3 canvas and update preview image
+      function renderPreview() {
+        var canvas = document.createElement('canvas');
+        canvas.width = A3_W; canvas.height = A3_H;
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, A3_W, A3_H);
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+        ctx.strokeRect(MARGIN/2, MARGIN/2, A3_W - MARGIN, A3_H - MARGIN);
+
+        var tbTop = drawTitleBlockCorp(ctx, info, corp, fields, A3_W, A3_H);
+
+        var img2 = new Image();
+        img2.onload = function() {
+          var vpX = MARGIN, vpY = MARGIN;
+          var vpW = A3_W - MARGIN * 2, vpH = tbTop - MARGIN - 15;
+          var srcA = img2.width / img2.height, dstA = vpW / vpH;
+          var dW, dH, dX, dY;
+          if (srcA > dstA) { dW = vpW; dH = vpW / srcA; dX = vpX; dY = vpY + (vpH - dH) / 2; }
+          else              { dH = vpH; dW = vpH * srcA; dX = vpX + (vpW - dW) / 2; dY = vpY; }
+
+          var gs = fields.contrast;
+          ctx.filter = 'grayscale(' + gs + '%) contrast(' + (100 + gs * 0.4) + '%)';
+          ctx.drawImage(img2, dX, dY, dW, dH);
+          ctx.filter = 'none';
+          ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+          ctx.strokeRect(dX, dY, dW, dH);
+
+          drawScaleBar(ctx, dW, A.camera, tbTop);
+          drawNorthArrow(ctx, A3_W);
+
+          var dataURL = canvas.toDataURL('image/png');
+          previewImg.src = dataURL;
+          previewImg.style.filter = ''; // reset CSS filter — baked into canvas
+          log('§PRINT_PREVIEW rendered contrast=' + gs + ' fields=6');
+
+          // Wire Save PNG to this render
+          savePngBtn.onclick = function() {
+            var link = document.createElement('a'); link.download = fileName; link.href = dataURL; link.click();
+            if (A.status) A.status.textContent = 'Saved: ' + fileName;
+          };
+        };
+        img2.src = sceneDataURL;
+      }
+
+      renderPreview();
+
+      // Escape to close
+      var esc = function(e) { if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', esc); } };
+      document.addEventListener('keydown', esc);
+
+      log('§PRINT_SHEET preview shown W-PRINT-1');
     });
-    var escHandler = function(e) {
-      if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', escHandler); }
-    };
-    document.addEventListener('keydown', escHandler);
-
-    document.body.appendChild(overlay);
-    log('§PRINT_SHEET preview shown');
   }
 
   return { capture: capture };
