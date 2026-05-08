@@ -5,9 +5,10 @@
 <b>BIM in your pocket.</b> One HTML viewer. Two SQLite DBs per building. Works on desktop and mobile — same URL, same code. No server, no install, no account.
 </div>
 
-**Version:** 0.2 (2026-04-27)
+**Version:** 0.3 (2026-05-09)
 **Status:** LIVE — 37 buildings streaming from OCI Object Storage
-**Depends on:** `deploy/dev/index.html` + 18 JS modules, per-building DBs
+**Depends on:** `deploy/dev/index.html` + 30+ JS modules, per-building DBs
+**New:** [2D Guide](BIM_2D_Guide.md) | [kernel_ops architecture](BIM_Modeller_OOTB.md#the-modelling-inversion) | [2D Layout](2D_LAYOUT.md)
 
 ---
 
@@ -56,9 +57,11 @@ That's it. The landing page lists all buildings. Click one — it loads from the
 
 | Folder | Contents | Size |
 |--------|----------|------|
-| `deploy/dev/` | HTML viewer + 18 JS modules | ~200 KB |
+| `deploy/dev/` | HTML viewer + 30+ JS modules | ~400 KB |
 | `deploy/buildings/` | 31 buildings × 2 DBs each (extracted + library) | ~2 GB total |
 | `deploy/dev/boq_charts.html` | 4D/5D analytics dashboard | ~50 KB |
+| `deploy/dev/mep_report.html` | MEP quantity takeoff report | ~30 KB |
+| `deploy/dev/clash_report.html` | Clash analysis matrix page | ~40 KB |
 
 **Smallest building to test with:** Duplex (~3 MB total). SampleHouse is even smaller (~500 KB).
 
@@ -139,6 +142,14 @@ These features work in `deploy/dev/` and pass Playwright tests, but are **not ye
 | **Rates + Locale** | OK | OK | — | `rates.js` — CIDB Malaysia rates, 15 locales. Dev only. See [Localization Guide](Localization.md) |
 | **Service Worker** | OK | OK | — | `sw.js` — offline cache for HTML/JS/WASM. Dev only |
 | **Find & Navigate** | OK | **issues** | `17-find-navigate` | Search elements, waypoint navigation. Dev only — needs `navigate.js` |
+| **4D Gantt → Scene** | OK | OK | — | BroadcastChannel sync: Gantt chart phases animate ghostglass overlays on 3D model. Dev only |
+| **Clash Analysis Matrix** | OK | OK | — | Rule-driven clash detection (R-tree spatial + class rules), matrix panel, deep-link to element pairs. Dev only |
+| **MEP QTO Report** | OK | OK | `25-mep-report` | MEP-specific quantity takeoff page — discipline counts, cable/pipe runs. Dev only |
+| **Grid Overlay + 2D Plans** | OK | OK | `28-storey-band`, `29-3d-grid-kernel` | G key toggle, GF/L1 floor plans, door arcs, dim chains, scissors. Dev only |
+| **kernel_ops Log** | OK | OK | `29-3d-grid-kernel` | Transactional operation log — grid drag persists across reload, undo/redo, crash recovery. Dev only |
+| **Cost Panel (Live BOQ)** | OK | OK | `29-3d-grid-kernel` | Spatial BOQ query scoped to grid positions, updates on drag. Dev only |
+| **3D Grid Planes** | OK | OK | `29-3d-grid-kernel` | Semi-transparent axis-coloured planes during grid drag. Dev only |
+| **Opening Labels** | OK | OK | `29-3d-grid-kernel` | Door/window width + type tag sprites on floor plans. Dev only |
 
 ### 3.3 Under Construction — Known Issues
 
@@ -450,13 +461,31 @@ After uploading changed JS files, users must hard-refresh (Ctrl+Shift+R). The `?
 | 8 | Wake lock during site walkthrough | 30 min |
 | 9 | Share intent (native share sheet) | 1 hour |
 
-### Phase E: AR Overlay (FUTURE)
+### Phase E: Interactive Modelling — kernel_ops (IN PROGRESS — 2D_029)
 
-| Step | Feature | Effort |
-|------|---------|--------|
-| 10 | WebXR session with camera feed | 4 hours |
-| 11 | GPS + compass alignment of Three.js scene over real building | 8 hours |
-| 12 | Tap-through-camera element picking | 4 hours |
+First transactional write path for the browser BIM modeller. See [BIM_Modeller_OOTB](BIM_Modeller_OOTB.md) for theory, [2D Guide](BIM_2D_Guide.md) for user guide.
+
+- [x] `kernel_ops` table — transactional log, every operation is a committed row
+- [x] Grid drag → `commitOp('GRID_MOVE')` — persists across reload, no save button
+- [x] Undo/redo (Ctrl+Z / Ctrl+Y) — soft delete with `undone` flag
+- [x] Cost panel — live spatial BOQ on grid drag
+- [x] 3D grid planes — semi-transparent axis-coloured planes during drag
+- [x] Opening callout labels — width + type tag on doors/windows
+- [x] G key shortcut — toggles grid overlay
+- [x] 20 wiring tests + audit pass
+- [ ] **P1: Grid alignment** — snap-to-wall post-processing for complex buildings
+- [ ] **P2: Saved section restore** — click saved section in panel → restore view
+- [ ] **P3: 2D convention parser** — arcs, line weights, noise filter for all section views
+- [ ] **P4: Drag-as-variant** — save dragged grid as new building fork (the killer feature)
+- [ ] **P5: Proof 2** — reparametrizable wall height (Extrude op, Manifold WASM Boolean)
+
+### Phase F: AR Overlay (FUTURE)
+
+| Step | Feature |
+|------|---------|
+| 10 | WebXR session with camera feed |
+| 11 | GPS + compass alignment of Three.js scene over real building |
+| 12 | Tap-through-camera element picking |
 
 ### Killer Features for Architects (FUTURE)
 
@@ -509,6 +538,22 @@ All leverage the existing stack: phone sensors + BIM DB + Walk/Site mode.
 | `scene_to_db.js` | Three.js scene → DB pipeline | S228a |
 | `mesh_import_worker.js` | OBJ/DAE/GLB/FBX/3DS loader worker | S228d |
 | `ifc_export_worker.js` | DB → IFC STEP text builder | S229b |
+| `kernel_ops.js` | Transactional op log — commitOp/undoOp/redoOp/replayOps | 2D_029 |
+| `cost_panel.js` | Live BOQ panel scoped to grid positions | 2D_029 |
+| `grid_overlay.js` | Grid overlay + 3D planes + storey band visibility | 2D_022–029 |
+| `grid_drag.js` | Grid line drag editing + cascade + kernel_ops commit | 2D_024–029 |
+| `grid_door_arcs.js` | Door arcs, window dashes, stair symbols, opening labels | 2D_023–029 |
+| `grid_dims.js` | Column/wall cluster detection, opportunity-vote algorithm | 2D_022–028 |
+| `grid_scissors.js` | Scissors-driven adaptive grids at cut plane | 2D_025 |
+| `section_cut.js` | Triangle mesh slicer — 2D contours from 3D geometry | 2D_023 |
+| `elevation.js` | Elevation edge projection + level markers | 2D_027 |
+| `grid_contours.js` | Contour line renderer (wall/column/door styles) | 2D_023 |
+| `grid_dim_chains.js` | Dimension chain annotation sprites | 2D_025 |
+| `print_sheet.js` | A3 print preview + title block + corporate.json | 2D_025 |
+| `clash_report.js` | Clash detection matrix panel — rule-driven, R-tree spatial | S245 |
+| `export_4d.js` | 4D Gantt export + BroadcastChannel scene sync | S240 |
+| `ghostglass.js` | Ghost glass overlays for 4D phase animation | S240b |
+| `mep_qto_populate.js` | MEP quantity takeoff populator | S248 |
 
 ### Data
 
