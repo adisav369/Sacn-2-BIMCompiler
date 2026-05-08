@@ -22,7 +22,8 @@ function waitForViewer(page) {
   return page.waitForFunction(() => {
     const s = document.getElementById('status');
     return s && (s.textContent.includes('ready') || s.textContent.includes('complete') ||
-                 s.textContent.includes('Grid') || s.textContent.includes('loaded'));
+                 s.textContent.includes('Grid') || s.textContent.includes('loaded') ||
+                 s.textContent.includes('rendered') || s.textContent.includes('DONE'));
   }, { timeout: 60000 });
 }
 
@@ -248,10 +249,14 @@ test.describe('2D_025 D3 — Interactive Print Preview', () => {
     const overlay = await page.$('#print-preview-overlay');
     if (!overlay) { console.log('§PW_D3_DRAG overlay not present — skip'); return; }
 
-    // Title bar: div with cursor:grab style
+    // Title bar: div with cursor:grab style (browsers normalize "cursor:grab" → "cursor: grab")
     const titleBar = await page.evaluate(() => {
-      const el = document.querySelector('#print-preview-overlay [style*="cursor:grab"]');
-      return el ? el.textContent.includes('Print Preview') || el.style.cursor === 'grab' : false;
+      const container = document.querySelector('#print-preview-overlay');
+      if (!container) return false;
+      for (const el of container.querySelectorAll('*')) {
+        if (el.style.cursor === 'grab' && el.textContent.includes('Print Preview')) return true;
+      }
+      return false;
     });
     console.log('§PW_D3_DRAG titlebar=' + titleBar);
     expect(titleBar).toBe(true);

@@ -15,7 +15,8 @@ function waitForViewer(page) {
   return page.waitForFunction(() => {
     const s = document.getElementById('status');
     return s && (s.textContent.includes('ready') || s.textContent.includes('complete') ||
-                 s.textContent.includes('Grid') || s.textContent.includes('loaded'));
+                 s.textContent.includes('Grid') || s.textContent.includes('loaded') ||
+                 s.textContent.includes('rendered') || s.textContent.includes('DONE'));
   }, { timeout: 60000 });
 }
 

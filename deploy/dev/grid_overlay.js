@@ -37,7 +37,8 @@ function setupGridOverlay(APP) {
   var bubbleScale = 1.0;       // computed from building size
   var envCache = null;         // cached building envelope
   var zoomAnim = null;         // current zoom animation ID (for cancellation)
-  var savedSections = [];      // D2: loaded from DB on grid open
+  var savedSections = [];      // rows from saved_sections table
+  var currentPanelGrids = null; // last grids passed to buildPanel (ground or scissors)
 
   // View state is managed by GridViews (grid_views.js)
 
@@ -540,104 +541,77 @@ function setupGridOverlay(APP) {
     }
   }
 
+  // ── Saved Sections (D2) ──────────────────────────────────────────
 
-  // ── D2: Save Section to DB ────────────────────────────────────────
+  /** localStorage key scoped to building name */
+  function lsKey() { return 'bim_saved_sections_' + (A.activeBuilding || 'default'); }
 
-  /** Ensure saved_sections table exists in the building DB */
-  function ensureSavedSectionsTable() {
-    if (!A.db) return;
+  /** Ensure saved_sections table exists in current building DB */
+  function ensureSavedSectionsTable(db) {
     try {
-      A.db.run(
+      db.run(
         'CREATE TABLE IF NOT EXISTS saved_sections (' +
-        '  id INTEGER PRIMARY KEY,' +
-        '  name TEXT,' +
-        '  cut_value REAL,' +
-        '  plane_normal TEXT,' +
-        '  crop_bbox TEXT,' +
-        '  detected_grids TEXT,' +
-        '  timestamp TEXT' +
-        ')'
+        '  id INTEGER PRIMARY KEY, name TEXT, cut_value REAL,' +
+        '  plane_normal TEXT, crop_bbox TEXT, detected_grids TEXT, timestamp TEXT)'
       );
-    } catch (e) { log('§GRID_SAVE table error: ' + e.message); }
+    } catch (e) { log('§SAVE_SECTION table error: ' + e.message); }
   }
 
-  /** Load all saved sections from DB into savedSections[] */
+  /** Load saved sections from DB into savedSections[]. Falls back to localStorage. */
   function loadSavedSections() {
     savedSections = [];
     if (!A.db) return;
+    ensureSavedSectionsTable(A.db);
     try {
-      ensureSavedSectionsTable();
-      var r = A.db.exec('SELECT id, name, cut_value, plane_normal, detected_grids FROM saved_sections ORDER BY id');
-      if (r.length && r[0].values) {
-        savedSections = r[0].values.map(function(v) {
-          return { id: v[0], name: v[1], cutValue: v[2], planeNormal: JSON.parse(v[3] || '[0,0,1]'), grids: JSON.parse(v[4] || 'null') };
-        });
+      var r = A.db.exec('SELECT id, name, cut_value, plane_normal FROM saved_sections ORDER BY id');
+      if (r.length && r[0].values.length) {
+        for (var i = 0; i < r[0].values.length; i++) {
+          var row = r[0].values[i];
+          savedSections.push({ id: row[0], name: row[1], cut_value: row[2], plane_normal: row[3] });
+        }
       }
-      log('§GRID_SAVE loaded=' + savedSections.length);
-    } catch (e) { log('§GRID_SAVE load error: ' + e.message); }
+    } catch (e) { log('§SAVE_SECTION load db error: ' + e.message); }
+
+    // Fall back to localStorage if DB has no rows (persists across reloads)
+    if (!savedSections.length) {
+      try {
+        var lsData = localStorage.getItem(lsKey());
+        if (lsData) {
+          var lsRows = JSON.parse(lsData);
+          for (var j = 0; j < lsRows.length; j++) {
+            var ss = lsRows[j];
+            try {
+              A.db.run(
+                'INSERT OR IGNORE INTO saved_sections (id,name,cut_value,plane_normal,detected_grids,timestamp) VALUES(?,?,?,?,?,?)',
+                [ss.id, ss.name, ss.cut_value, ss.plane_normal, null, ss.timestamp || '']
+              );
+            } catch (e2) { /* skip duplicate */ }
+          }
+          savedSections = lsRows;
+          log('§SAVE_SECTION restored ' + lsRows.length + ' from localStorage');
+        }
+      } catch (e) { log('§SAVE_SECTION localStorage read error: ' + e.message); }
+    }
+    log('§SAVE_SECTION loaded=' + savedSections.length);
   }
 
-  /** Save current scissors cut + detected grids to DB */
-  function saveCurrentSection() {
-    if (!A.db || !A.sectionOn) return;
-    ensureSavedSectionsTable();
-    var cutValue = A.sectionPlane ? A.sectionPlane.constant : 0;
+  /** Save current scissors cut to DB and localStorage */
+  function saveSectionToDb(name) {
+    if (!A.db) return;
+    ensureSavedSectionsTable(A.db);
+    var cutVal = A.sectionPlane ? A.sectionPlane.constant : 0;
     var axis = A.sectionAxis || 'Y';
-    var normal = axis === 'Y' ? [0,-1,0] : axis === 'X' ? [-1,0,0] : [0,0,-1];
-    var defaultName = 'Section @' + Math.abs(cutValue).toFixed(1) + 'm';
-    var name = window.prompt('Name this section view:', defaultName);
-    if (!name) return; // cancelled
-    var gridsJson = gridData ? JSON.stringify(gridData) : 'null';
+    var normal = axis === 'X' ? '[-1,0,0]' : axis === 'Z' ? '[0,0,-1]' : '[0,-1,0]';
+    var ts = new Date().toISOString().slice(0, 10);
     try {
       A.db.run(
-        'INSERT INTO saved_sections (name, cut_value, plane_normal, detected_grids, timestamp) VALUES (?,?,?,?,?)',
-        [name, cutValue, JSON.stringify(normal), gridsJson, new Date().toISOString()]
+        'INSERT INTO saved_sections (name,cut_value,plane_normal,detected_grids,timestamp) VALUES(?,?,?,?,?)',
+        [name, cutVal, normal, null, ts]
       );
-      log('§GRID_SAVE saved name="' + name + '" cutValue=' + cutValue.toFixed(2) + ' axis=' + axis);
-      if (A.status) A.status.textContent = 'Saved: ' + name;
       loadSavedSections();
-      buildPanel(gridData); // refresh panel to show new button
-    } catch (e) { log('§GRID_SAVE insert error: ' + e.message); }
-  }
-
-  /** Restore a saved section: re-apply clipping plane + grids */
-  function restoreSavedSection(sec) {
-    if (!A.db) return;
-    log('§GRID_SAVE restore id=' + sec.id + ' name="' + sec.name + '" cut=' + sec.cutValue.toFixed(2));
-
-    // Re-apply section plane
-    var n = sec.planeNormal;
-    if (A.sectionPlane) {
-      A.sectionPlane.normal.set(n[0], n[1], n[2]);
-      A.sectionPlane.constant = sec.cutValue;
-    }
-    A.sectionOn = true;
-    var btn = document.getElementById('section-btn');
-    if (btn) { btn.style.background = '#4fc3f7'; btn.style.color = '#000'; }
-    var panel = document.getElementById('section-slider-panel');
-    if (panel) panel.style.display = 'block';
-
-    // Apply clipping to all meshes
-    if (A.scene) {
-      A.scene.traverse(function(obj) {
-        if (obj.isMesh && obj.material) {
-          var mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-          mats.forEach(function(m) { m.clippingPlanes = [A.sectionPlane]; });
-        }
-      });
-    }
-
-    // Restore grids from saved JSON if available
-    if (sec.grids) {
-      gridData = sec.grids;
-      dimsData = GridDims.generateDimensions(gridData);
-      buildGridScene(gridData, envCache);
-      buildDimChains(gridData, envCache);
-      buildPanel(gridData);
-    }
-
-    if (A.status) A.status.textContent = 'Restored: ' + sec.name;
-    A.markDirty();
+      try { localStorage.setItem(lsKey(), JSON.stringify(savedSections)); } catch (e) { /* no-op */ }
+      log('§SAVE_SECTION saved name=' + name + ' cutVal=' + cutVal.toFixed(2) + ' axis=' + axis);
+    } catch (e) { log('§SAVE_SECTION save error: ' + e.message); }
   }
 
   /** Delete a saved section by id */
@@ -645,13 +619,34 @@ function setupGridOverlay(APP) {
     if (!A.db) return;
     try {
       A.db.run('DELETE FROM saved_sections WHERE id=?', [id]);
-      log('§GRID_SAVE deleted id=' + id);
       loadSavedSections();
-      buildPanel(gridData);
-    } catch (e) { log('§GRID_SAVE delete error: ' + e.message); }
+      try { localStorage.setItem(lsKey(), JSON.stringify(savedSections)); } catch (e) { /* no-op */ }
+      log('§SAVE_SECTION deleted id=' + id);
+    } catch (e) { log('§SAVE_SECTION delete error: ' + e.message); }
+  }
+
+  /** Restore a saved section — turns scissors on and positions at saved cut */
+  function restoreSection(sec) {
+    var cutVal = sec.cut_value;
+    var normal = [0, -1, 0];
+    try { normal = JSON.parse(sec.plane_normal || '[0,-1,0]'); } catch (e) { /* default */ }
+    var axis = (normal[0] !== 0) ? 'X' : (normal[2] !== 0) ? 'Z' : 'Y';
+
+    if (!A.sectionOn && A.toggleSection) A.toggleSection();
+    if (A.sectionAxis !== axis && A.setSectionAxis) A.setSectionAxis(axis);
+    if (A.updateSectionPlane) {
+      A.updateSectionPlane(cutVal);
+    } else if (A.sectionPlane) {
+      A.sectionPlane.constant = cutVal;
+      if (A.onSectionSliderChange) A.onSectionSliderChange(cutVal);
+    }
+    if (A.status) A.status.textContent = 'Restored: ' + sec.name;
+    log('§SAVE_SECTION restored id=' + sec.id + ' name=' + sec.name +
+        ' cutVal=' + cutVal.toFixed(2) + ' axis=' + axis);
   }
 
   function buildPanel(grids) {
+    currentPanelGrids = grids;
     if (gridPanel) gridPanel.remove();
 
     gridPanel = document.createElement('div');
@@ -681,23 +676,26 @@ function setupGridOverlay(APP) {
       var vStyle = (views[vi].key === GridViews.activeView()) ? VIEW_BTN_ACTIVE : VIEW_BTN_STYLE;
       viewHtml += '<button class="grid-view-btn" data-view="' + views[vi].key + '" style="' + vStyle + '">' + views[vi].label + '</button>';
     }
-
-    // D2: "Save ✚" button — only visible when scissors (section) is active
-    if (A.sectionOn) {
-      viewHtml += '<button id="grid-save-section-btn" style="background:#e65100;color:#fff;border:1px solid #ff6d00;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer" title="Save this section as a named view">Save ✚</button>';
-    }
     viewHtml += '</div>';
 
-    // D2: Saved section buttons (dashed border, below presets)
+    // Saved section buttons (below view presets)
     if (savedSections.length > 0) {
-      viewHtml += '<div style="display:flex;gap:3px;margin:2px 0 4px;flex-wrap:wrap">';
+      viewHtml += '<div style="display:flex;gap:3px;margin:0 0 4px;flex-wrap:wrap;align-items:center">';
       for (var si = 0; si < savedSections.length; si++) {
         var ss = savedSections[si];
-        viewHtml += '<button class="grid-saved-btn" data-saved-id="' + ss.id + '" ' +
-          'style="background:#333;color:#aaa;border:1px dashed #666;border-radius:4px;padding:3px 6px;font-size:10px;cursor:pointer" ' +
-          'title="Long-press to delete">' + ss.name + '</button>';
+        var sName = ss.name.length > 14 ? ss.name.slice(0, 12) + '\u2026' : ss.name;
+        viewHtml += '<button class="saved-section-btn" data-id="' + ss.id + '" style="' +
+          VIEW_BTN_STYLE + ';border-style:dashed" title="' + ss.name + '">' + sName + '</button>';
+        viewHtml += '<button class="saved-section-del" data-id="' + ss.id +
+          '" style="background:#a00;color:#fff;border:none;border-radius:3px;padding:1px 5px;font-size:10px;cursor:pointer;margin-left:-2px" title="Delete">&#x2715;</button>';
       }
       viewHtml += '</div>';
+    }
+    // Save ✚ — visible only when scissors is active
+    if (A.sectionOn) {
+      viewHtml += '<div style="margin:0 0 4px"><button id="grid-save-section-btn" style="' +
+        VIEW_BTN_STYLE + ';background:#1a4a1a;color:#8f8;border-color:#3a7a3a" ' +
+        'title="Save current scissors cut as named view">Save \u271A</button></div>';
     }
 
     var html = viewHtml;
@@ -745,34 +743,44 @@ function setupGridOverlay(APP) {
       vBtns[vb].addEventListener('pointerup', onViewBtnClick);
     }
 
-    // D2: Save ✚ button
-    var saveSecBtn = document.getElementById('grid-save-section-btn');
-    if (saveSecBtn) saveSecBtn.addEventListener('pointerup', function(e) { e.stopPropagation(); saveCurrentSection(); });
+    // Saved section restore buttons
+    var ssBtns = body.querySelectorAll('.saved-section-btn');
+    for (var ssb = 0; ssb < ssBtns.length; ssb++) {
+      ssBtns[ssb].addEventListener('pointerup', function(e) {
+        e.stopPropagation();
+        var id = parseInt(e.currentTarget.getAttribute('data-id'), 10);
+        var sec = null;
+        for (var si2 = 0; si2 < savedSections.length; si2++) {
+          if (savedSections[si2].id === id) { sec = savedSections[si2]; break; }
+        }
+        if (sec) restoreSection(sec);
+      });
+    }
 
-    // D2: Saved section buttons — click to restore, long-press to delete
-    var savedBtns = body.querySelectorAll('.grid-saved-btn');
-    for (var sb = 0; sb < savedBtns.length; sb++) {
-      (function(btn) {
-        var holdTimer = null;
-        btn.addEventListener('pointerdown', function() {
-          holdTimer = setTimeout(function() {
-            holdTimer = null;
-            var id = parseInt(btn.getAttribute('data-saved-id'));
-            if (window.confirm('Delete "' + btn.textContent + '"?')) deleteSavedSection(id);
-          }, 600);
-        });
-        btn.addEventListener('pointerup', function(e) {
-          if (holdTimer) {
-            clearTimeout(holdTimer);
-            holdTimer = null;
-            var id = parseInt(btn.getAttribute('data-saved-id'));
-            var sec = savedSections.filter(function(s) { return s.id === id; })[0];
-            if (sec) restoreSavedSection(sec);
-          }
-          e.stopPropagation();
-        });
-        btn.addEventListener('pointerleave', function() { if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; } });
-      })(savedBtns[sb]);
+    // Saved section delete buttons
+    var ssDels = body.querySelectorAll('.saved-section-del');
+    for (var ssd = 0; ssd < ssDels.length; ssd++) {
+      ssDels[ssd].addEventListener('pointerup', function(e) {
+        e.stopPropagation();
+        var id = parseInt(e.currentTarget.getAttribute('data-id'), 10);
+        deleteSavedSection(id);
+        buildPanel(currentPanelGrids || gridData);
+      });
+    }
+
+    // Save ✚ button
+    var saveSBtn = body.querySelector('#grid-save-section-btn');
+    if (saveSBtn) {
+      saveSBtn.addEventListener('pointerup', function(e) {
+        e.stopPropagation();
+        var cutVal = A.sectionPlane ? A.sectionPlane.constant : 0;
+        var defaultName = 'Section @' + cutVal.toFixed(1) + 'm';
+        var name = window.prompt('Section name:', defaultName);
+        if (!name) return;
+        saveSectionToDb(name);
+        buildPanel(currentPanelGrids || gridData);
+        log('§SAVE_SECTION panel rebuilt after save name=' + name);
+      });
     }
   }
 
@@ -1014,8 +1022,8 @@ function setupGridOverlay(APP) {
 
     // Get building envelope from DB — not from scene (scene has 50km ground plane)
     envCache = getBuildingEnvelopeIFC();
-    loadSavedSections(); // D2: load saved section views from DB
     buildGridScene(gridData, envCache);
+    loadSavedSections();           // fill savedSections[] before buildPanel renders them
     buildPanel(gridData);
     buildDimChains(gridData, envCache);
 
