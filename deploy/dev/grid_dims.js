@@ -73,15 +73,25 @@
    * Anchor at first grid on each axis. Never collapse a bay to zero.
    */
   function snapGrids(lines) {
+    // Implementing 2D_027 §1.2 — Witness: W-2D27
+    // rawPosition is preserved unchanged so dim labels use actual survey values,
+    // not the snapped display positions. Snapping is cosmetic only.
     if (lines.length < 2) return lines;
 
-    var snapped = [lines[0]];
+    var first = lines[0];
+    var snapped = [{ label: first.label, position: first.position,
+                     rawPosition: first.rawPosition !== undefined ? first.rawPosition : first.position,
+                     guids: first.guids }];
     for (var i = 1; i < lines.length; i++) {
       var rawBayMm = (lines[i].position - lines[i - 1].position) * 1000;
       var snappedBayMm = Math.round(rawBayMm / SNAP_MODULE) * SNAP_MODULE;
       if (snappedBayMm < SNAP_MODULE) snappedBayMm = SNAP_MODULE;
       var newPos = snapped[snapped.length - 1].position + snappedBayMm / 1000;
-      snapped.push({ label: lines[i].label, position: newPos, guids: lines[i].guids });
+      var rawPos = lines[i].rawPosition !== undefined ? lines[i].rawPosition : lines[i].position;
+      var delta = Math.abs(newPos - rawPos) * 1000; // mm
+      if (delta > 1) log('§GD_SNAP_DELTA idx=' + i + ' raw=' + (rawPos * 1000).toFixed(0) +
+                         ' snapped=' + (newPos * 1000).toFixed(0) + ' delta=' + delta.toFixed(0));
+      snapped.push({ label: lines[i].label, position: newPos, rawPosition: rawPos, guids: lines[i].guids });
     }
     return snapped;
   }
@@ -163,12 +173,15 @@
       log('§GD_COLUMNS query error: ' + e.message);
     }
 
-    // Fallback: if no columns, use wall endpoints for grid alignment
+    // Fallback: if no columns, use wall FACE positions for grid alignment
+    // Implementing 2D_027 §1.2 — Witness: W-2D27
+    // Uses bbox_x/2 and bbox_y/2 to get wall face coordinates rather than
+    // centroids, which cluster correctly even for non-modular wall layouts.
     if (!result || !result.length || !result[0].values.length || result[0].values.length < 2) {
-      log('§GD_COLUMNS found=' + (result && result.length && result[0].values ? result[0].values.length : 0) + ' — falling back to walls');
+      log('§GD_COLUMNS found=' + (result && result.length && result[0].values ? result[0].values.length : 0) + ' — falling back to wall faces');
       source = 'wall';
       var wallSql =
-        "SELECT m.guid, t.center_x, t.center_y " +
+        "SELECT m.guid, t.center_x, t.center_y, t.bbox_x, t.bbox_y " +
         "FROM elements_meta m " +
         "JOIN element_transforms t ON m.guid = t.guid " +
         "WHERE m.ifc_class IN ('IfcWall', 'IfcWallStandardCase')";
@@ -195,14 +208,26 @@
     }
 
     // Build entries per axis
+    // For walls: cluster both faces (center ± half-bbox) so grid lines land on
+    // actual wall faces regardless of wall thickness or centroid position.
     var xEntries = [];
     var yEntries = [];
     for (var i = 0; i < rows.length; i++) {
       var guid = rows[i][0];
       var cx = rows[i][1];
       var cy = rows[i][2];
-      xEntries.push({ pos: cx, guid: guid });
-      yEntries.push({ pos: cy, guid: guid });
+      if (source === 'wall') {
+        var hx = (rows[i][3] || 0) / 2;
+        var hy = (rows[i][4] || 0) / 2;
+        // Add both faces on each axis
+        xEntries.push({ pos: cx - hx, guid: guid });
+        xEntries.push({ pos: cx + hx, guid: guid });
+        yEntries.push({ pos: cy - hy, guid: guid });
+        yEntries.push({ pos: cy + hy, guid: guid });
+      } else {
+        xEntries.push({ pos: cx, guid: guid });
+        yEntries.push({ pos: cy, guid: guid });
+      }
     }
 
     // Cluster
@@ -213,15 +238,16 @@
     log('§GD_CLUSTER axis=Y clusters=' + yClusters.length);
 
     // Label: X-axis gets numeric (1,2,3...) left-to-right
+    // rawPosition = cluster mean before snap — preserved for accurate dim labels
     var xLines = xClusters.map(function (c, idx) {
-      return { label: String(idx + 1), position: c.position, guids: c.guids };
+      return { label: String(idx + 1), position: c.position, rawPosition: c.position, guids: c.guids };
     });
 
     // Label: Y-axis gets letters (A,B,C...) bottom-to-top, skip I
     var letterSeq = 'A,B,C,D,E,F,G,H,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z'.split(',');
     var yLines = yClusters.map(function (c, idx) {
       var lbl = idx < letterSeq.length ? letterSeq[idx] : String.fromCharCode(65 + idx);
-      return { label: lbl, position: c.position, guids: c.guids };
+      return { label: lbl, position: c.position, rawPosition: c.position, guids: c.guids };
     });
 
     // Snap to nearest SNAP_MODULE
@@ -268,10 +294,18 @@
     var xLines = gridResult.xLines || [];
     var yLines = gridResult.yLines || [];
 
+    // Implementing 2D_027 §1.3 — Witness: W-2D27
+    // Dimension labels use rawPosition (actual survey value) not snapped position.
+    // Dim lines are still drawn at snapped positions for visual alignment.
+
     // X-axis bay dimensions (between adjacent grids)
     if (xLines.length > 1) {
       for (var i = 0; i < xLines.length - 1; i++) {
-        var dist = xLines[i + 1].position - xLines[i].position;
+        var rawA = xLines[i].rawPosition !== undefined ? xLines[i].rawPosition : xLines[i].position;
+        var rawB = xLines[i + 1].rawPosition !== undefined ? xLines[i + 1].rawPosition : xLines[i + 1].position;
+        var dist = rawB - rawA;
+        log('§GD_DIM_RAW axis=x from=' + xLines[i].label + ' to=' + xLines[i+1].label +
+            ' raw=' + (dist*1000).toFixed(0) + ' snapped=' + ((xLines[i+1].position - xLines[i].position)*1000).toFixed(0));
         dims.push({
           startPos: xLines[i].position,
           endPos: xLines[i + 1].position,
@@ -287,7 +321,9 @@
 
     // X-axis overall dimension
     if (xLines.length >= 2) {
-      var distX = xLines[xLines.length - 1].position - xLines[0].position;
+      var rawFirst = xLines[0].rawPosition !== undefined ? xLines[0].rawPosition : xLines[0].position;
+      var rawLast = xLines[xLines.length-1].rawPosition !== undefined ? xLines[xLines.length-1].rawPosition : xLines[xLines.length-1].position;
+      var distX = rawLast - rawFirst;
       dims.push({
         startPos: xLines[0].position,
         endPos: xLines[xLines.length - 1].position,
@@ -303,7 +339,9 @@
     // Y-axis bay dimensions
     if (yLines.length > 1) {
       for (var j = 0; j < yLines.length - 1; j++) {
-        var distY = yLines[j + 1].position - yLines[j].position;
+        var rawC = yLines[j].rawPosition !== undefined ? yLines[j].rawPosition : yLines[j].position;
+        var rawD = yLines[j + 1].rawPosition !== undefined ? yLines[j + 1].rawPosition : yLines[j + 1].position;
+        var distY = rawD - rawC;
         dims.push({
           startPos: yLines[j].position,
           endPos: yLines[j + 1].position,
@@ -319,7 +357,9 @@
 
     // Y-axis overall dimension
     if (yLines.length >= 2) {
-      var distYAll = yLines[yLines.length - 1].position - yLines[0].position;
+      var rawYFirst = yLines[0].rawPosition !== undefined ? yLines[0].rawPosition : yLines[0].position;
+      var rawYLast = yLines[yLines.length-1].rawPosition !== undefined ? yLines[yLines.length-1].rawPosition : yLines[yLines.length-1].position;
+      var distYAll = rawYLast - rawYFirst;
       dims.push({
         startPos: yLines[0].position,
         endPos: yLines[yLines.length - 1].position,
