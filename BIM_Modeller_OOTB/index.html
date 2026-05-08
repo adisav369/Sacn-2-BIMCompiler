@@ -1612,6 +1612,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#postscript-how-this-was-discovered-2026-05-08" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Postscript — How This Was Discovered (2026-05-08)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Postscript — How This Was Discovered (2026-05-08)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-stages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Stages
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#who-else-knows-the-pieces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who Else Knows the Pieces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-synthesis-nobody-has-published" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Synthesis Nobody Has Published
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3839,6 +3889,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#postscript-how-this-was-discovered-2026-05-08" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Postscript — How This Was Discovered (2026-05-08)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Postscript — How This Was Discovered (2026-05-08)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-stages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Stages
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#who-else-knows-the-pieces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who Else Knows the Pieces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-synthesis-nobody-has-published" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Synthesis Nobody Has Published
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4282,6 +4382,34 @@ Geometry is a materialized view of the operation log — a cache of evaluated re
 <p>The <a href="../MANIFESTO/#the-open-bim-question--where-the-community-got-stuck">osArch community</a> debates which geometry kernel, which file format, which desktop application. The question this project asks is: <strong>what if the modelling session is the database transaction log?</strong></p>
 <p>IFC export becomes what glTF export is to a game engine — a delivery format for other tools, not the primary artefact. The primary artefact is the <code>kernel_ops</code> log in SQLite, offline, in the browser, owned by the architect without a server, a license, or a Blender install.</p>
 <p>That is the inversion.</p>
+<hr />
+<h2 id="postscript-how-this-was-discovered-2026-05-08">Postscript — How This Was Discovered <em>(2026-05-08)</em><a class="headerlink" href="#postscript-how-this-was-discovered-2026-05-08" title="Permanent link">&para;</a></h2>
+<p>This synthesis did not arrive fully formed. It emerged in stages within a single conversation, and the final formulation was forced by a question asked near the end of it.</p>
+<h3 id="the-stages">The Stages<a class="headerlink" href="#the-stages" title="Permanent link">&para;</a></h3>
+<p><strong>Stage 1 — a practical observation.</strong> The observation was that <code>measure.js</code> makes two-click length measurement feel trivial. The question asked was: what is actually underneath it? That forced the dissection: six lines of code, five primitives, and — crucially — a <em>shared coordinate space</em> between the GPU scene and the SQLite DB. The measurement was not the point. The coordinate unification was.</p>
+<p><strong>Stage 2 — the schema decision, recognised in retrospect.</strong> The coordinate unification only works because of a decision made much earlier in the project for an entirely different reason: extract IFC to SQLite in world-space metres, no recentring, geometry BLOBs as GPU-ready buffers. That was a streaming performance decision. It accidentally created the precondition for a modeller. The modeller emerged from the viewer's schema.</p>
+<p><strong>Stage 3 — an AI named the kernel-op log.</strong> A DeepSeek exchange gave the pattern a structure: <code>kernel_ops</code> table, three primitives (Place, Extrude, Boolean), constraints as SQL predicates. It assembled the implementation correctly. But it was describing an implementation, not an inversion.</p>
+<p><strong>Stage 4 — the question that forced the claim.</strong> <em>"No save?! And the log is it?"</em> — asked with genuine surprise. That question forced the explanation of why save exists at all: the RAM-to-disk bridge. Once stated plainly, everything followed. Save is the bridge. SQLite eliminates the bridge. Therefore save is made instantaneous and invisible. The geometry is the spreadsheet display. The log is the formulae. <strong>That formulation did not exist before the question was asked.</strong></p>
+<h3 id="who-else-knows-the-pieces">Who Else Knows the Pieces<a class="headerlink" href="#who-else-knows-the-pieces" title="Permanent link">&para;</a></h3>
+<p>The components of this idea are individually well known. The synthesis applied to BIM is not documented anywhere the author has found.</p>
+<p><strong>Event sourcing</strong> (Martin Fowler, 2005) — the log as source of truth, current state as deterministic replay. Standard in distributed systems and financial audit trails. Not applied to BIM geometry.</p>
+<p><strong>"The Log"</strong> (Jay Kreps, LinkedIn engineering blog, 2013) — arguably the most important essay in distributed systems of the last decade. Argues that an append-only ordered log is the universal primitive underlying databases, version control, and distributed consensus. Widely read by backend engineers. Unknown in AEC.</p>
+<p><strong>Datomic</strong> (Rich Hickey, 2012) — a database that stores facts as immutable assertions with timestamps, never deletes, queries any past state. The closest philosophical prior art to the <code>kernel_ops</code> log. Never applied to spatial data.</p>
+<p><strong>Git</strong> — the most widely deployed event-sourcing system in history, understood by millions as version control for code. Nobody applied the mental model to building geometry before this explicit analogy.</p>
+<p><strong>Revit's parametric engine / SolidWorks FeatureTree</strong> — they store the operation history but inside a proprietary binary. The log is the truth but it is locked. No external tool can query it. No browser can replay it. The insight was always there, imprisoned in the file format.</p>
+<p><strong>The IFC-as-dictionary insight</strong> — that IfcOpenShell is a classification dictionary parser and the IFC vocabulary is freely usable as plain strings in any SQL schema — has not been stated in the osArch literature in this form. Dion Moult has argued "IFC as database," meaning storing IFC natively. This is the inverse: the IFC vocabulary lives as SQL strings, the IFC parser is a one-time import utility. The dictionary outlives the parser.</p>
+<h3 id="the-synthesis-nobody-has-published">The Synthesis Nobody Has Published<a class="headerlink" href="#the-synthesis-nobody-has-published" title="Permanent link">&para;</a></h3>
+<p>The specific combination:</p>
+<div class="highlight"><pre><span></span><code>Event sourcing  (Fowler/Kreps)
+  + IFC classification as SQL vocabulary  (not IFC as file)
+  + ERP BOM patterns  (iDempiere — 30 years of manufacturing logic)
+  + Browser-native SQLite  (sql.js WASM)
+  + World-space coordinate unification  (the viewer&#39;s schema decision)
+  + Geometry as materialized view  (component_geometries as cache, not truth)
+= Compiled BIM
+</code></pre></div>
+<p>Each ingredient exists independently. The combination — applied to architectural modelling, running in a browser tab, with no server and no save command — does not appear in any paper, any osArch thread, any Autodesk research blog, or any academic BIM literature reviewed to date.</p>
+<p>The conversation is where it became a <em>claim</em> rather than an <em>observation</em>.</p>
 <hr />
 <p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
 
