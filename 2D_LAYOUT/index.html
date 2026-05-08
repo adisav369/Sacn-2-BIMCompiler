@@ -1966,6 +1966,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#how-grid-lines-are-derived-from-the-db" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Grid Lines Are Derived from the DB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#scissors-driven-adaptive-grids-d1" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2165,6 +2176,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#corporate-identity-schema-corporatejson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Corporate Identity Schema (corporate.json)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#print-sheet-and-corporate-identity-d3d4" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2183,6 +2205,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Phases and What Is Done">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-e-section-contours-expected-output-and-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase E — Section Contours: Expected Output and Targets
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3577,6 +3616,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#how-grid-lines-are-derived-from-the-db" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Grid Lines Are Derived from the DB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#scissors-driven-adaptive-grids-d1" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3776,6 +3826,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#corporate-identity-schema-corporatejson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Corporate Identity Schema (corporate.json)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#print-sheet-and-corporate-identity-d3d4" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3794,6 +3855,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Phases and What Is Done">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-e-section-contours-expected-output-and-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase E — Section Contours: Expected Output and Targets
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3947,11 +4025,31 @@
 <li><strong>Measurements panel</strong> — frosted-glass DOM panel listing all bay spans (<code>A–B: 6.000 m</code>, <code>B–C: 4.500 m</code>, total). Updates live when scissors move.</li>
 <li><strong>Section cut contours</strong> — <code>SectionCut.sectionCut()</code> slices every wall/column/door/window mesh at the scissors plane, producing 2D contours rendered as <code>THREE.LineSegments</code> in the scene.</li>
 </ol>
+<h3 id="how-grid-lines-are-derived-from-the-db">How Grid Lines Are Derived from the DB<a class="headerlink" href="#how-grid-lines-are-derived-from-the-db" title="Permanent link">&para;</a></h3>
+<p>Grid line detection is entirely DB-driven — no geometry parsing, no mesh traversal. The source is <code>element_transforms</code> joined with <code>elements_meta</code>.</p>
+<p><strong><code>GridDims.detectGrids(db, tolerance=0.3)</code></strong> — ground-floor grids on first open:</p>
+<ol>
+<li>Query <code>IfcColumn</code> centroids from <code>element_transforms</code>. If fewer than 2 columns, fall back to <code>IfcWall</code> / <code>IfcWallStandardCase</code> centroids.</li>
+<li><strong>Cluster</strong> — sort all X values, group positions within <code>tolerance</code> (default 300 mm) into one cluster. Repeat for Y. Each cluster's representative position is the mean of its member centroids.</li>
+<li><strong>Label</strong> — X-axis clusters get numeric labels (1, 2, 3…) left to right. Y-axis clusters get letter labels (A, B, C… skipping I) bottom to top.</li>
+<li><strong>Snap</strong> — bay widths are snapped to the nearest 300 mm module. A raw bay of 5 920 mm rounds to 6 000 mm. Minimum snapped bay: 300 mm.</li>
+<li><strong>Filter</strong> — drop any grid line whose both adjacent bay spans are under 1.0 m (sub-metre column pairs from structural details, not planning grids).</li>
+<li><strong>Thin</strong> — if more than 12 lines remain on either axis after filtering, stride-thin the interior ones so at most 12 survive (first and last always kept).</li>
+</ol>
+<p>Output: <code>{ xLines: [{label, position, guids}], yLines: [{label, position, guids}] }</code></p>
+<p>Each line carries the <code>guids</code> of the elements that voted for it — used for highlight-on-click and for <code>saved_sections</code> snap targets.</p>
+<p><strong><code>GridDims.detectGridsAtPlane(db, cutZ, tolerance=0.3)</code></strong> — scissors-adaptive grids:</p>
+<p>Same pipeline, but the SQL adds a vertical extent filter:</p>
+<div class="highlight"><pre><span></span><code><span class="k">WHERE</span><span class="w"> </span><span class="n">ifc_class</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;IfcColumn&#39;</span><span class="p">,</span><span class="s1">&#39;IfcWall&#39;</span><span class="p">,</span><span class="s1">&#39;IfcWallStandardCase&#39;</span><span class="p">,</span><span class="s1">&#39;IfcBeam&#39;</span><span class="p">,</span><span class="s1">&#39;IfcMember&#39;</span><span class="p">)</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="p">(</span><span class="n">center_z</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="k">COALESCE</span><span class="p">(</span><span class="n">bbox_z</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">.</span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">cutZ</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="p">(</span><span class="n">center_z</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="k">COALESCE</span><span class="p">(</span><span class="n">bbox_z</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">.</span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">cutZ</span>
+</code></pre></div>
+<p>Only elements whose IFC bounding box <strong>straddles</strong> the cut plane contribute to the grid. A wall that ends below the scissors plane is excluded. <code>bbox_z</code> defaults to 3.0 m if null (typical storey height) — a conservative fallback that avoids dropping structural elements with incomplete bbox data.</p>
+<p>After clustering, the same snap → filter → thin pipeline runs, then labels are re-assigned sequentially so survivors always start at 1 / A regardless of which lines were dropped.</p>
 <h3 id="scissors-driven-adaptive-grids-d1">Scissors-Driven Adaptive Grids (D1)<a class="headerlink" href="#scissors-driven-adaptive-grids-d1" title="Permanent link">&para;</a></h3>
 <p>When the scissors slider moves (<code>APP.onSectionSliderChange</code> fires), <code>GridScissors</code> debounces at 200ms then:</p>
 <ol>
-<li>Queries <code>element_transforms</code> for elements whose IFC bounding box straddles the cut plane</li>
-<li>Calls <code>GridDims.detectGridsAtPlane(db, cutVal, axis)</code> — clusters structural element centroids at the cut elevation</li>
+<li>Calls <code>GridDims.detectGridsAtPlane(db, cutVal, axis)</code> — clusters structural element centroids at the cut elevation using the extent filter above</li>
 <li>If ≥ 2 grid lines detected at the new plane, swaps <code>scissorsGroup</code> for the current <code>gridGroup</code></li>
 <li>Supports all three axes: Y (horizontal floor cut), X (vertical width cut), Z (vertical depth cut)</li>
 </ol>
@@ -4238,6 +4336,80 @@ element_instances + component_geometries → guid, vertices BLOB, faces BLOB
 <p>For the grid overlay and section-cut workflows, these gaps are immaterial. Grid detection reads centroids and bboxes from <code>element_transforms</code>. Section cut slices the tessellated geometry BLOBs in <code>component_geometries</code>. Neither needs property sets or the relationship tree.</p>
 <p>For IFC write-back (future), the gaps would matter: a round-trip that modifies element position must write back to the correct IfcLocalPlacement node in the original IFC tree, which requires either the original file or a reconstructed schema tree.</p>
 <hr />
+<h2 id="corporate-identity-schema-corporatejson">Corporate Identity Schema (<code>corporate.json</code>)<a class="headerlink" href="#corporate-identity-schema-corporatejson" title="Permanent link">&para;</a></h2>
+<p><code>corporate.json</code> is the one file a firm edits to brand every drawing output. It lives alongside the viewer scripts and is fetched once, then cached in module memory for the session.</p>
+<p><strong>Required fields:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>company</code></td>
+<td>string</td>
+<td>Company name — rendered in title block header</td>
+</tr>
+<tr>
+<td><code>address</code></td>
+<td>string</td>
+<td>Full postal address — rendered below company name</td>
+</tr>
+<tr>
+<td><code>phone</code></td>
+<td>string</td>
+<td>Contact phone</td>
+</tr>
+<tr>
+<td><code>email</code></td>
+<td>string</td>
+<td>Contact email</td>
+</tr>
+<tr>
+<td><code>website</code></td>
+<td>string</td>
+<td>Website URL</td>
+</tr>
+<tr>
+<td><code>logo_text</code></td>
+<td>string</td>
+<td>Short logo text (e.g. initials) rendered in the logo cell when no image is available</td>
+</tr>
+<tr>
+<td><code>registration</code></td>
+<td>string</td>
+<td>Company registration number or equivalent</td>
+</tr>
+<tr>
+<td><code>drawn_by</code></td>
+<td>string</td>
+<td>Default value for the Drawn By field (overridable per-print in the preview panel)</td>
+</tr>
+<tr>
+<td><code>checked_by</code></td>
+<td>string</td>
+<td>Default value for the Checked By field</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example (<code>deploy/dev/corporate.json</code>):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;company&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SYSNOVA UK&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;address&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;71-75 Shelton Street, Covent Garden, London WC2H 9JQ&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;phone&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;+44 20 7946 0958&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;email&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bim@sysnova.co.uk&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;website&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;www.sysnova.co.uk&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;logo_text&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SYSNOVA&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;registration&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Company No. 12345678&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;drawn_by&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;checked_by&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>If <code>corporate.json</code> is absent or the fetch fails, <code>PrintSheet</code> falls back to <code>"BIM OOTB"</code> as the company name and leaves the address cell blank. The file is intentionally simple — no logo image path, no colour codes. Those are deferred to a later phase; the title block currently renders text only.</p>
+<hr />
 <h2 id="print-sheet-and-corporate-identity-d3d4">Print Sheet and Corporate Identity (D3/D4)<a class="headerlink" href="#print-sheet-and-corporate-identity-d3d4" title="Permanent link">&para;</a></h2>
 <p><code>PrintSheet.capture(APP)</code> produces an A3 landscape sheet (2480 × 1754 px at 150 DPI) from the current Three.js view:</p>
 <ol>
@@ -4282,7 +4454,7 @@ element_instances + component_geometries → guid, vertices BLOB, faces BLOB
 </tr>
 <tr>
 <td><strong>E — Section contours</strong></td>
-<td><code>SectionCut</code> contours rendered in scene at scissors plane</td>
+<td><code>SectionCut</code> contours rendered in scene at scissors plane — see below</td>
 <td>In progress</td>
 </tr>
 <tr>
@@ -4297,6 +4469,50 @@ element_instances + component_geometries → guid, vertices BLOB, faces BLOB
 </tr>
 </tbody>
 </table>
+<h3 id="phase-e-section-contours-expected-output-and-targets">Phase E — Section Contours: Expected Output and Targets<a class="headerlink" href="#phase-e-section-contours-expected-output-and-targets" title="Permanent link">&para;</a></h3>
+<p><code>SectionCut.sectionCut(db, libDb, cutZ, storeyName)</code> already runs in <code>section_cut.js</code> and produces contours. Phase E wires those contours into the grid overlay scene as visible geometry at the scissors plane.</p>
+<p><strong>What <code>sectionCut()</code> returns per element:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nx">guid</span><span class="o">:</span><span class="w"> </span><span class="nx">string</span><span class="p">,</span><span class="w">           </span><span class="c1">// IFC GlobalId</span>
+<span class="w">  </span><span class="nx">ifcClass</span><span class="o">:</span><span class="w"> </span><span class="nx">string</span><span class="p">,</span><span class="w">       </span><span class="c1">// e.g. &#39;IfcWall&#39;</span>
+<span class="w">  </span><span class="nx">elementName</span><span class="o">:</span><span class="w"> </span><span class="nx">string</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">storey</span><span class="o">:</span><span class="w"> </span><span class="nx">string</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">category</span><span class="o">:</span><span class="w"> </span><span class="nx">string</span><span class="p">,</span><span class="w">       </span><span class="c1">// &#39;WALL_FULL&#39; | &#39;WALL_PRTN&#39; | &#39;COLUMN&#39; | &#39;DOOR&#39; | &#39;WINDOW&#39; | &#39;SLAB&#39; | …</span>
+<span class="w">  </span><span class="nx">contours</span><span class="o">:</span><span class="w"> </span><span class="p">[[[</span><span class="nx">x</span><span class="p">,</span><span class="nx">y</span><span class="p">],</span><span class="err">…</span><span class="p">]],</span><span class="w"> </span><span class="c1">// array of closed polylines in IFC XY coordinates (metres)</span>
+<span class="w">  </span><span class="nx">bbox2d</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="nx">minX</span><span class="p">,</span><span class="nx">minY</span><span class="p">,</span><span class="nx">maxX</span><span class="p">,</span><span class="nx">maxY</span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>sliceMesh()</code> intersects each triangle with the plane Z = cutZ using linear interpolation (5 mm endpoint-matching tolerance). <code>chainSegments()</code> connects the resulting edge segments into closed contours.</p>
+<p><strong>How Phase E will render them:</strong></p>
+<p>Each contour polyline → <code>THREE.BufferGeometry</code> line loop in a <code>contourGroup</code>, added to the scene at the scissors plane elevation. Colour follows AIA discipline convention: walls white, columns near-white, doors cyan, windows blue, slabs grey. The group is rebuilt on every scissors debounce alongside the adaptive grids.</p>
+<p><strong>Performance targets:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Building size</th>
+<th>Target</th>
+<th>Basis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sample House (~200 elements)</td>
+<td>&lt; 200 ms per scissors move</td>
+<td><code>sectionCut()</code> on SH runs in ~80 ms in current tests</td>
+</tr>
+<tr>
+<td>Mid-size (~2 000 elements)</td>
+<td>&lt; 500 ms</td>
+<td>Acceptable with 200 ms debounce — user perceives one update</td>
+</tr>
+<tr>
+<td>Large (&gt; 5 000 elements)</td>
+<td>Auto-clip to 30 m × 30 m centred window</td>
+<td>Same <code>CLIP_MARGIN = 15 m</code> already in <code>section_cut.js</code></td>
+</tr>
+</tbody>
+</table>
+<p>The 200 ms debounce on the scissors slider absorbs most of the cost — <code>sectionCut()</code> only runs once the user pauses, not on every pixel of drag. Contour rendering (Three.js line geometry) is negligible compared to the SQL + mesh slicing time.</p>
 <hr />
 <h2 id="visual-record-the-rosetta-stone-proofs">Visual Record — The Rosetta Stone Proofs<a class="headerlink" href="#visual-record-the-rosetta-stone-proofs" title="Permanent link">&para;</a></h2>
 <p>These remain the evidence base for the original round-trip claim: the compiler, given only the BOM recipe, produces drawings that match the architect's originals.</p>
