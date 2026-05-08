@@ -1191,6 +1191,100 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#4d-ghost-glass-live-construction-animation-s240b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4D Ghost Glass — Live Construction Animation (S240b)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4D Ghost Glass — Live Construction Animation (S240b)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#visual-states" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visual States
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctfl-audit-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CTFL Audit Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-this-replaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What This Replaces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#files_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4099,6 +4193,100 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#4d-ghost-glass-live-construction-animation-s240b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4D Ghost Glass — Live Construction Animation (S240b)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4D Ghost Glass — Live Construction Animation (S240b)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#visual-states" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visual States
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctfl-audit-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CTFL Audit Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-this-replaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What This Replaces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#files_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4891,6 +5079,196 @@ schedule qto carbon asset safety  smooth nav
    hazard_register) now include <code>building</code> column. Single-building DBs unaffected.</li>
 <li><strong>28/28 unit tests PASS</strong> — backwards compatible, no regression.</li>
 </ol>
+<h2 id="4d-ghost-glass-live-construction-animation-s240b">4D Ghost Glass — Live Construction Animation (S240b)<a class="headerlink" href="#4d-ghost-glass-live-construction-animation-s240b" title="Permanent link">&para;</a></h2>
+<p><strong>"Watch your building get built."</strong></p>
+<p>The Gantt chart (boq_charts.html) now drives a live construction animation in the
+3D viewer via BroadcastChannel. Two browser tabs, side by side — drag a timeline
+scrubber on the Gantt and the building constructs itself in real time.</p>
+<h3 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h3>
+<ol>
+<li>User opens the <strong>viewer</strong> (Tab 1) and <strong>BOQ charts</strong> (Tab 2) for the same building</li>
+<li>The Gantt chart shows <strong>all construction tasks</strong> as horizontal bars, colour-coded by phase</li>
+<li>An <strong>orange vertical scrub line</strong> overlays the Gantt — drag it left/right to scrub time</li>
+<li>On first touch (Day 1+), the building turns into a <strong>glass shell</strong> (0.03 opacity)</li>
+<li>As the scrubber crosses each task's start day, those elements <strong>snap to solid</strong> with a bright glow</li>
+<li>Elements already built restore to <strong>normal solid material</strong> — the building fills in progressively</li>
+<li>Drag back to Day 0 → building fully restores to normal</li>
+</ol>
+<h3 id="visual-states">Visual States<a class="headerlink" href="#visual-states" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Appearance</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>GLASS</strong></td>
+<td>Near-invisible shell (0.03 opacity, pale blue)</td>
+<td>Future — not yet constructed</td>
+</tr>
+<tr>
+<td><strong>ACTIVE</strong></td>
+<td>Bright glow, shines through all geometry (<code>depthTest:false</code>)</td>
+<td>Currently being constructed</td>
+</tr>
+<tr>
+<td><strong>BUILT</strong></td>
+<td>Solid original material (full opacity)</td>
+<td>Already constructed</td>
+</tr>
+</tbody>
+</table>
+<p>Active elements use <strong>rotating highlight colours</strong> (orange → green → red → yellow → cyan)
+cycling per task, so MEP rough-in is visually distinct from structural steel. The glow
+uses <code>depthTest:false</code> (the same technique as clash detection) so pipes and ducts behind
+walls are visible through the structure.</p>
+<h3 id="controls">Controls<a class="headerlink" href="#controls" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>[ ▶ Play ] [ ⏸ Pause ]   Speed: [1×] [2×] [4×] [8×]   Day 42 / 312   Superstructure: Beam (STR)
+</code></pre></div>
+<ul>
+<li><strong>Drag on Gantt</strong> — scrub the orange line across the timeline</li>
+<li><strong>Play button</strong> — auto-advance through all tasks at selected speed</li>
+<li><strong>Day 0</strong> — building fully restores (no glass, normal materials)</li>
+<li><strong>Click a Gantt bar</strong> — highlights just that task's elements in the viewer</li>
+<li><strong>Copy URL</strong> — share the exact chart view with anyone</li>
+</ul>
+<h3 id="ctfl-audit-gate">CTFL Audit Gate<a class="headerlink" href="#ctfl-audit-gate" title="Permanent link">&para;</a></h3>
+<p>Before animation starts, an 8-check audit validates the schedule quality:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>COVERAGE</td>
+<td>Every IFC class maps to a SEQUENCE_RULE (no defaults)</td>
+</tr>
+<tr>
+<td>PHASE_ORDER</td>
+<td>No phase inversions per storey</td>
+</tr>
+<tr>
+<td>STOREY_ORDER</td>
+<td>Bottom-up within each phase</td>
+</tr>
+<tr>
+<td>DURATION</td>
+<td>All tasks 1–120 days</td>
+</tr>
+<tr>
+<td>OVERLAP</td>
+<td>No same-trade + same-class overlap on same storey</td>
+</tr>
+<tr>
+<td>TOTAL</td>
+<td>Project duration ≤ 3× serial sum</td>
+</tr>
+<tr>
+<td>LABELS</td>
+<td>No truncated or undefined labels</td>
+</tr>
+<tr>
+<td>GUIDS</td>
+<td>Every task resolves to ≥1 element GUID</td>
+</tr>
+</tbody>
+</table>
+<p>Failed checks show a yellow warning banner. Console <code>§4D_AUDIT_*</code> tags show details.</p>
+<h3 id="architecture_1">Architecture<a class="headerlink" href="#architecture_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>boq_charts.html                         index.html (viewer)
+┌──────────────────┐                    ┌──────────────────┐
+│ generateSchedule │                    │ ghostglass.js    │
+│ audit4DSchedule  │   BroadcastChannel │ setupGhostGlass  │
+│ GUID resolution  │──── bim_4d ──────►│ makeGlass/Active │
+│ scrubber + Play  │  4D_PLAY/SEEK/RESET│ makeBuilt/restore│
+│ Copy URL button  │                    │ material cache   │
+└──────────────────┘                    └──────────────────┘
+     rates.js                                main.js
+  SEQUENCE_RULES                         BroadcastChannel
+  LABOR_RATES                              listener +
+  PHASE_COLORS                             delegation
+</code></pre></div>
+<p>No server. No WebSocket. Pure <code>BroadcastChannel</code> between same-origin tabs.
+<code>ghostglass.js</code> is a pure renderer — no internal timer. The Gantt controls all pacing.</p>
+<h3 id="what-this-replaces">What This Replaces<a class="headerlink" href="#what-this-replaces" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Commercial tool</th>
+<th>Cost/yr</th>
+<th>Our approach</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4D playback</td>
+<td>Synchro Pro</td>
+<td>$25K</td>
+<td>Ghost glass animation</td>
+</tr>
+<tr>
+<td>Construction sim</td>
+<td>Navisworks TimeLiner</td>
+<td>$8K</td>
+<td>Drag scrubber on Gantt</td>
+</tr>
+<tr>
+<td>Phase visualization</td>
+<td>Custom Gantt tools</td>
+<td>$5-15K</td>
+<td>BroadcastChannel sync</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td></td>
+<td><strong>$38-48K</strong></td>
+<td><strong>Free, browser-native</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="files_1">Files<a class="headerlink" href="#files_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>deploy/dev/ghostglass.js</code></td>
+<td>Glass-to-solid animation engine</td>
+</tr>
+<tr>
+<td><code>deploy/dev/boq_charts.html</code></td>
+<td>Audit, GUID resolution, scrubber, Play/Pause</td>
+</tr>
+<tr>
+<td><code>deploy/dev/main.js</code></td>
+<td>BroadcastChannel listener, ghostglass delegation</td>
+</tr>
+<tr>
+<td><code>deploy/dev/rates.js</code></td>
+<td>SEQUENCE_RULES, LABOR_RATES, PHASE_COLORS (50+ IFC classes)</td>
+</tr>
+<tr>
+<td><code>deploy/dev/tools.js</code></td>
+<td>Hover preserves 4D phase colours</td>
+</tr>
+<tr>
+<td><code>deploy/dev/tests/specs/22-4d-audit.spec.js</code></td>
+<td>8 Playwright tests for audit gate</td>
+</tr>
+</tbody>
+</table>
+<hr />
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ol>
 <li><strong>Browser nD engine</strong> — port to JavaScript for <a href="../BIM_Designer_Browser/">BIM OOTB</a> Phase 3.
