@@ -913,6 +913,33 @@ function setupGridOverlay(APP) {
       '<span id="grid-panel-close" style="color:#888;font-size:16px;cursor:pointer;padding:0 4px;line-height:1" title="Close grid panel">&times;</span></div>' +
       '<div id="grid-panel-body" class="panel-body" style="max-height:300px;overflow-y:auto;padding:4px 10px"></div>';
     document.body.appendChild(gridPanel);
+
+    // Global delete handler for old saved cuts — called via inline onclick
+    window.deleteOldSavedCut = function(cutName) {
+      // 1. Remove from SectionCut in-memory
+      if (typeof SectionCut !== 'undefined' && SectionCut.savedCuts) {
+        SectionCut.savedCuts = SectionCut.savedCuts.filter(function(c) { return c.name !== cutName; });
+        // 2. Write cleaned array back to localStorage under the correct key
+        var bldKey = (A.activeBuilding || 'bld');
+        SectionCut._saveCutsToStorage && SectionCut._saveCutsToStorage(bldKey);
+      }
+      // 3. Also scan all localStorage keys for strays
+      try {
+        var allKeys = Object.keys(localStorage);
+        for (var ki = 0; ki < allKeys.length; ki++) {
+          if (allKeys[ki].indexOf('ectionCut') < 0) continue;
+          try {
+            var arr = JSON.parse(localStorage.getItem(allKeys[ki]));
+            if (!Array.isArray(arr)) continue;
+            var filtered = arr.filter(function(c) { return c.name !== cutName; });
+            if (filtered.length < arr.length) localStorage.setItem(allKeys[ki], JSON.stringify(filtered));
+          } catch (ex) { /* skip */ }
+        }
+      } catch (ex2) { /* skip */ }
+      log('§SAVE_CUT deleted (inline) name=' + cutName);
+      buildPanel(currentPanelGrids || gridData);
+    };
+
     // Close button
     var closeBtn = document.getElementById('grid-panel-close');
     if (closeBtn) {
@@ -957,8 +984,8 @@ function setupGridOverlay(APP) {
           var scLabel = sc.name.length > 14 ? sc.name.slice(0, 12) + '\u2026' : sc.name;
           viewHtml += '<button class="saved-cut-btn" data-cut-name="' + sc.name + '" style="' +
             VIEW_BTN_SAVED + ';border-style:dotted" title="' + sc.label + '">' + scLabel + '</button>';
-          viewHtml += '<button class="saved-cut-del" data-cut-name="' + sc.name +
-            '" style="background:#a00;color:#fff;border:none;border-radius:3px;padding:1px 5px;font-size:10px;cursor:pointer;margin-left:-2px" title="Delete">&#x2715;</button>';
+          viewHtml += '<button onclick="deleteOldSavedCut(\'' + sc.name.replace(/'/g, "\\'") + '\');event.stopPropagation()" ' +
+            'style="background:#a00;color:#fff;border:none;border-radius:3px;padding:1px 5px;font-size:10px;cursor:pointer;margin-left:-2px" title="Delete">&#x2715;</button>';
         }
         viewHtml += '</div>';
       }
