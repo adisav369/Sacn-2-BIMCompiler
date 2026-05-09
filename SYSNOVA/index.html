@@ -466,10 +466,21 @@ function updateCityProgress() {
 // ── Clear all cached data ──
 function clearAllCache() {
   indexedDB.deleteDatabase('bim_ootb_cache');
-  localStorage.removeItem('bim_ootb_viewed');
+  // Clear ALL viewer localStorage — saved cuts, sections, bookmarks, etc.
+  var keysToRemove = [];
+  for (var i = 0; i < localStorage.length; i++) {
+    var key = localStorage.key(i);
+    if (key.indexOf('sectionCut') >= 0 || key.indexOf('SectionCut') >= 0 ||
+        key.indexOf('bim_saved') >= 0 || key.indexOf('bim_ootb') >= 0) {
+      keysToRemove.push(key);
+    }
+  }
+  for (var j = 0; j < keysToRemove.length; j++) {
+    localStorage.removeItem(keysToRemove[j]);
+  }
   viewedBuildings.clear();
   updateCityProgress();
-  alert('Cache cleared. Page will reload.');
+  alert('Cache cleared — IndexedDB + saved cuts + viewer data. Page will reload.');
   location.reload();
 }
 

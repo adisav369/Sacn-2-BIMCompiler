@@ -1056,29 +1056,33 @@ function setupGridOverlay(APP) {
       });
     }
     // Delete buttons for old saved cuts (localStorage)
+    // Use onclick (not pointerup) — _makeDraggable's setPointerCapture steals pointerup
     var scDels = body.querySelectorAll('.saved-cut-del');
     for (var scd = 0; scd < scDels.length; scd++) {
       scDels[scd].addEventListener('pointerdown', function(e) { e.stopPropagation(); });
-      scDels[scd].addEventListener('pointerup', function(e) {
+      scDels[scd].addEventListener('click', function(e) {
         e.stopPropagation();
         var cutName = e.currentTarget.getAttribute('data-cut-name');
         if (typeof SectionCut !== 'undefined') {
-          // Remove from all possible localStorage keys (building-specific + default 'bld')
-          var keys = [
-            (A.activeBuilding || 'bld') + ':sectionCuts',
-            'bld:sectionCuts'
-          ];
-          for (var ki = 0; ki < keys.length; ki++) {
-            try {
-              var raw = localStorage.getItem(keys[ki]);
-              if (raw) {
+          // Nuclear delete: scan ALL localStorage keys containing 'sectionCut'
+          // Old cards can be under any key variant — building name, 'bld', etc.
+          try {
+            var allKeys = Object.keys(localStorage);
+            for (var ki = 0; ki < allKeys.length; ki++) {
+              if (allKeys[ki].indexOf('sectionCut') < 0 && allKeys[ki].indexOf('SectionCut') < 0) continue;
+              try {
+                var raw = localStorage.getItem(allKeys[ki]);
+                if (!raw) continue;
                 var arr = JSON.parse(raw);
+                if (!Array.isArray(arr)) continue;
                 var filtered = arr.filter(function(c) { return c.name !== cutName; });
-                localStorage.setItem(keys[ki], JSON.stringify(filtered));
-                log('§SAVE_CUT delete key=' + keys[ki] + ' before=' + arr.length + ' after=' + filtered.length);
-              }
-            } catch (ex) { /* ignore */ }
-          }
+                if (filtered.length < arr.length) {
+                  localStorage.setItem(allKeys[ki], JSON.stringify(filtered));
+                  log('§SAVE_CUT delete key=' + allKeys[ki] + ' before=' + arr.length + ' after=' + filtered.length);
+                }
+              } catch (ex) { /* not JSON array, skip */ }
+            }
+          } catch (ex2) { log('§SAVE_CUT localStorage scan error: ' + ex2.message); }
           // Also clear the in-memory array
           if (SectionCut.savedCuts) {
             SectionCut.savedCuts = SectionCut.savedCuts.filter(function(c) { return c.name !== cutName; });
