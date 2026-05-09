@@ -251,14 +251,98 @@ function setupScene(A) {
             };
             _registerPanel('clash', A._clashMatrixDiv, matNav, matClose);
             _focusPanel('clash');
-            // Watch for clash list popup (appears when a matrix cell is clicked)
+            // Watch for clash list popup — re-arms when list changes (new cell clicked)
+            var _lastClashList = null;
             var _clashListWatcher = setInterval(function() {
               if (!A._clashMatrixDiv) { clearInterval(_clashListWatcher); return; }
-              if (A._clashListDiv && !A._clashListDiv._kbdWired) {
+              if (A._clashListDiv && A._clashListDiv !== _lastClashList) {
+                _lastClashList = A._clashListDiv;
                 A._clashListDiv._kbdWired = true;
+                // Unregister old clashlist if exists
+                for (var pi = _panels.length - 1; pi >= 0; pi--) {
+                  if (_panels[pi].id === 'clashlist') { _panels.splice(pi, 1); break; }
+                }
                 var clashListNav = window.makeListKeyNav(
                   function() { return Array.from(A._clashListDiv.querySelectorAll('[data-clash-idx]')); },
-                  function() {},
+                  function(indices) {
+                    // Multi-select: highlight all selected, zoom to frame them all
+                    if (indices.length > 1 && A._currentClashes && A.dbQuery && A.ifc2three) {
+                      var cc = A._currentClashes;
+                      // Map ListKeyNav cursor indices → actual data-clash-idx values
+                      var rows = Array.from(A._clashListDiv.querySelectorAll('[data-clash-idx]'));
+                      var clashIndices = [];
+                      rows.forEach(function(r) { r.style.background = ''; });
+                      indices.forEach(function(i) {
+                        if (rows[i]) {
+                          rows[i].style.background = 'rgba(79,195,247,0.25)';
+                          var ci = parseInt(rows[i].getAttribute('data-clash-idx'));
+                          if (!isNaN(ci)) clashIndices.push(ci);
+                        }
+                      });
+                      if (!clashIndices.length) return;
+                      // Clear previous highlights
+                      if (A._clashHighlights) {
+                        A._clashHighlights.forEach(function(h) { A.measureGroup.remove(h); });
+                      }
+                      A._clashHighlights = [];
+                      // Query positions per clash pair for midpoint spheres
+                      var minV = { x: Infinity, y: Infinity, z: Infinity };
+                      var maxV = { x: -Infinity, y: -Infinity, z: -Infinity };
+                      clashIndices.forEach(function(ci) {
+                        if (!cc[ci]) return;
+                        var pr = A.dbQuery(
+                          'SELECT center_x, center_y, center_z FROM element_transforms WHERE guid IN (?, ?)',
+                          [cc[ci][0], cc[ci][1]]
+                        );
+                        if (pr.length < 2) return;
+                        var pA = A.ifc2three(pr[0][0], pr[0][1], pr[0][2]);
+                        var pB = A.ifc2three(pr[1][0], pr[1][1], pr[1][2]);
+                        var clashMid = new THREE.Vector3(
+                          (pA.x + pB.x) / 2, (pA.y + pB.y) / 2, (pA.z + pB.z) / 2
+                        );
+                        // Highlight sphere at clash midpoint
+                        var sGeo = new THREE.SphereGeometry(0.3, 8, 8);
+                        var sMat = new THREE.MeshBasicMaterial({ color: 0xff4444, transparent: true, opacity: 0.7, depthTest: false });
+                        var sphere = new THREE.Mesh(sGeo, sMat);
+                        sphere.position.copy(clashMid);
+                        A.measureGroup.add(sphere);
+                        A._clashHighlights.push(sphere);
+                        // Expand bounding box
+                        if (clashMid.x < minV.x) minV.x = clashMid.x; if (clashMid.x > maxV.x) maxV.x = clashMid.x;
+                        if (clashMid.y < minV.y) minV.y = clashMid.y; if (clashMid.y > maxV.y) maxV.y = clashMid.y;
+                        if (clashMid.z < minV.z) minV.z = clashMid.z; if (clashMid.z > maxV.z) maxV.z = clashMid.z;
+                      });
+                      if (!A._clashHighlights.length) return;
+                      // Fly camera to frame the bounding box
+                      var mid = new THREE.Vector3(
+                        (minV.x + maxV.x) / 2, (minV.y + maxV.y) / 2, (minV.z + maxV.z) / 2
+                      );
+                      var span = Math.max(maxV.x - minV.x, maxV.y - minV.y, maxV.z - minV.z, 2);
+                      var camDir = A.camera.position.clone().sub(A.controls.target).normalize();
+                      var dist = span * 1.5;
+                      var targetPos = mid.clone().add(camDir.multiplyScalar(dist));
+                      // Animate (20 frames)
+                      var startPos = A.camera.position.clone();
+                      var startTarget = A.controls.target.clone();
+                      var frame = 0;
+                      function step() {
+                        frame++;
+                        var t = frame / 20;
+                        t = t * (2 - t); // ease-out
+                        A.camera.position.lerpVectors(startPos, targetPos, t);
+                        A.controls.target.lerpVectors(startTarget, mid, t);
+                        A.controls.update();
+                        A.markDirty();
+                        if (frame < 20) requestAnimationFrame(step);
+                      }
+                      requestAnimationFrame(step);
+                      console.log('§CLASH_MULTI count=' + indices.length + ' span=' + span.toFixed(1));
+                    } else if (indices.length === 1 && A._flyToClash) {
+                      var sRows = Array.from(A._clashListDiv.querySelectorAll('[data-clash-idx]'));
+                      var sIdx = sRows[indices[0]] ? parseInt(sRows[indices[0]].getAttribute('data-clash-idx')) : indices[0];
+                      A._flyToClash(sIdx);
+                    }
+                  },
                   function(idx) {
                     var rows = Array.from(A._clashListDiv.querySelectorAll('[data-clash-idx]'));
                     if (rows[idx]) rows[idx].click();
@@ -269,7 +353,6 @@ function setupScene(A) {
                 };
                 _registerPanel('clashlist', A._clashListDiv, clashListNav, clashListClose);
                 _focusPanel('clashlist');
-                clearInterval(_clashListWatcher);
               }
             }, 300);
           }
@@ -282,7 +365,8 @@ function setupScene(A) {
       }
       if (typeof A.toggleMeasure === 'function') A.toggleMeasure();
     },
-    's':  function() { A.toggleXray(); },
+    's':  function() { if (typeof window.toggleSunglass === 'function') window.toggleSunglass(); },
+    'p':  function() { if (typeof window.toggleFlyAround === 'function') window.toggleFlyAround(); },
     'sc': function() { if (typeof A.screenshot === 'function') A.screenshot(); },
     '-':  function() { if (typeof window.toggleAllPanels === 'function') window.toggleAllPanels(); },
     '+':  function() { if (typeof window.toggleAllPanels === 'function') window.toggleAllPanels(); },
@@ -331,6 +415,7 @@ function setupScene(A) {
     { seq: 'SC', name: 'Screenshot' },
     { seq: 'S',  name: 'Sunglasses (X-ray)' },
     { seq: '4',  name: '4D / 5D Analytics' },
+    { seq: 'P',  name: 'Fly Around (Plane)' },
     { seq: '-',  name: 'Toggle Panels (hide/show)' }
   ];
 
@@ -347,7 +432,6 @@ function setupScene(A) {
       'font-family:\'Segoe UI\',sans-serif;overflow:hidden';
 
     var html = '<div style="padding:6px 14px;color:#888;font-size:10px;border-bottom:1px solid #222;text-align:center">' +
-      'Tab \u2192 cycle panels \u2003 \u2190\u2191\u2193\u2192 \u2192 navigate \u2003 Space \u2192 select</div>' +
       '<div style="padding:10px 14px;border-bottom:1px solid #333">' +
       '<input id="cmd-search" type="text" placeholder="Type a command..." ' +
       'style="width:100%;background:#222;color:#eee;border:1px solid #555;border-radius:6px;' +
@@ -356,7 +440,11 @@ function setupScene(A) {
       '<div id="cmd-list" style="max-height:260px;overflow-y:auto;padding:4px 0"></div>' +
       '<div style="padding:8px 14px;border-top:1px solid #333;text-align:center">' +
       '<span id="cmd-report" style="color:#ff8a65;font-size:12px;cursor:pointer;font-weight:600">' +
-      '\uD83D\uDEDF Report Bug / Get Help</span></div>';
+      '\uD83D\uDEDF Report Bug</span>' +
+      '<span style="color:#555;margin:0 8px">|</span>' +
+      '<a id="cmd-docs" href="https://red1oon.github.io/BIMCompiler/MOBILE_DEPLOY/" target="_blank" ' +
+      'style="color:#4fc3f7;font-size:12px;text-decoration:none;font-weight:600">' +
+      '\uD83D\uDCDA Documentation</a></div>';
     pal.innerHTML = html;
     document.body.appendChild(pal);
 
