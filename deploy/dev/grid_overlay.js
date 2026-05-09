@@ -552,15 +552,11 @@ function setupGridOverlay(APP) {
     if (mode === 'unlock') {
       GridViews.unlockView(A);
     } else {
-      // Bug #2 fix: turn off scissors before entering floor plan mode.
-      // A floor plan view uses its own ortho clip plane (GridViews.applyFloorClip).
-      // If the scissors section plane is still active, the user sees both clips at once —
-      // the section plane cuts the model vertically while the ortho clip cuts horizontally,
-      // leaving a confusing partial view. Turn scissors off first so the floor plan is clean.
-      var def = GridViews.VIEW_DEFS[mode];
-      if (def && def.clip && A.sectionOn && A.toggleSection) {
-        log('§GRID_STOREY scissors off — entering floor plan mode=' + mode);
-        A.toggleSection(); // calls A.onSectionOff → GridScissors.onOff → restores ground grids
+      // Turn off scissors for ALL static views — scissors is only for free 3D mode.
+      // Floor plans use ortho clip, elevations use projected edges — scissors conflicts with both.
+      if (A.sectionOn && A.toggleSection) {
+        log('§GRID_STOREY scissors off — entering view mode=' + mode);
+        A.toggleSection();
       }
       var cutZ = computeStoreyAwareCutZ(mode);
       GridViews.lockView(A, mode, envCache, cutZ);
@@ -949,6 +945,8 @@ function setupGridOverlay(APP) {
           var scLabel = sc.name.length > 14 ? sc.name.slice(0, 12) + '\u2026' : sc.name;
           viewHtml += '<button class="saved-cut-btn" data-cut-name="' + sc.name + '" style="' +
             VIEW_BTN_STYLE + ';border-style:dotted" title="' + sc.label + '">' + scLabel + '</button>';
+          viewHtml += '<button class="saved-cut-del" data-cut-name="' + sc.name +
+            '" style="background:#a00;color:#fff;border:none;border-radius:3px;padding:1px 5px;font-size:10px;cursor:pointer;margin-left:-2px" title="Delete">&#x2715;</button>';
         }
         viewHtml += '</div>';
       }
@@ -1035,8 +1033,7 @@ function setupGridOverlay(APP) {
       vBtns[vb].addEventListener('pointerup', onViewBtnClick);
     }
 
-    // Implementing 2D_027 §2.4 — Witness: W-2D27
-    // Saved Cut restore buttons (SectionCut.savedCuts)
+    // Saved Cut restore buttons (SectionCut.savedCuts — localStorage)
     var scBtns = body.querySelectorAll('.saved-cut-btn');
     for (var scb = 0; scb < scBtns.length; scb++) {
       scBtns[scb].addEventListener('pointerup', function(e) {
@@ -1047,6 +1044,20 @@ function setupGridOverlay(APP) {
         SectionCut.restoreCut(A, cutName);
         if (A.updateSectionPlane && A.sectionPlane) A.updateSectionPlane(A.sectionPlane.constant);
         A.markDirty();
+      });
+    }
+    // Delete buttons for old saved cuts (localStorage)
+    var scDels = body.querySelectorAll('.saved-cut-del');
+    for (var scd = 0; scd < scDels.length; scd++) {
+      scDels[scd].addEventListener('pointerdown', function(e) { e.stopPropagation(); });
+      scDels[scd].addEventListener('pointerup', function(e) {
+        e.stopPropagation();
+        var cutName = e.currentTarget.getAttribute('data-cut-name');
+        if (typeof SectionCut !== 'undefined' && SectionCut.removeCut) {
+          SectionCut.removeCut(A, cutName);
+          log('§SAVE_CUT deleted name=' + cutName);
+        }
+        buildPanel(currentPanelGrids || gridData);
       });
     }
 
