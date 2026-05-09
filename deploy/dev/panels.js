@@ -61,14 +61,32 @@ function setupPanels(A) {
     return {
       onKey: function(e) {
         var items = getItems();
-        if (e.key === 'ArrowUp')   { moveCursor(-1); return; }
-        if (e.key === 'ArrowDown') { moveCursor(+1); return; }
+        // If cursor is on a slider, ←→ steps the slider value
+        var curItem = items[cursor];
+        if (curItem && curItem.tagName === 'INPUT' && curItem.type === 'range') {
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            var step = parseFloat(curItem.step) || 1;
+            var val = parseFloat(curItem.value) + (e.key === 'ArrowRight' ? step : -step);
+            val = Math.max(parseFloat(curItem.min), Math.min(parseFloat(curItem.max), val));
+            curItem.value = val;
+            // Fire oninput handler
+            curItem.dispatchEvent(new Event('input'));
+            console.log('§LISTNAV_SLIDER val=' + val.toFixed(2));
+            return;
+          }
+          // ↑↓ moves cursor off the slider to next/prev item
+          if (e.key === 'ArrowUp') { moveCursor(-1); return; }
+          if (e.key === 'ArrowDown') { moveCursor(+1); return; }
+        }
+        // Shift+Arrow must be checked BEFORE plain Arrow
+        if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowLeft'))   { extendRange(-1); return; }
+        if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowRight')) { extendRange(+1); return; }
+        if (e.key === 'ArrowUp' || e.key === 'ArrowLeft')   { moveCursor(-1); return; }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { moveCursor(+1); return; }
         if (e.key === 'PageUp')    { moveCursor(-5); return; }
         if (e.key === 'PageDown')  { moveCursor(+5); return; }
         if (e.key === 'Home')      { cursor = 0; scrollTo(0); return; }
         if (e.key === 'End')       { cursor = items.length - 1; scrollTo(cursor); return; }
-        if (e.shiftKey && e.key === 'ArrowUp')   { extendRange(-1); return; }
-        if (e.shiftKey && e.key === 'ArrowDown') { extendRange(+1); return; }
         if (e.ctrlKey && e.key === 'a') {
           selected = new Set();
           items.forEach(function(_, i) { selected.add(i); });
@@ -130,6 +148,9 @@ function setupPanels(A) {
     };
   }
 
+  // Expose for dynamic panel registration (clash matrix, etc.)
+  window.makeListKeyNav = makeListKeyNav;
+
   // Wire ListKeyNav to storey + DISC panels after populate
   var _storeyNav = null, _discNav = null;
   A._wireListKeyNav = function() {
@@ -140,9 +161,39 @@ function setupPanels(A) {
       _storeyNav = makeListKeyNav(
         function() { return Array.from(document.querySelectorAll('#storey-body button')); },
         function(indices) {
-          // Single-select: activate the storey at cursor
           var btns = Array.from(document.querySelectorAll('#storey-body button'));
-          if (indices.length === 1 && btns[indices[0]]) btns[indices[0]].click();
+          // Multi-select: show all selected storeys, hide the rest
+          if (indices.length >= 1) {
+            // Extract storey names from button onclick
+            var selectedStoreys = [];
+            indices.forEach(function(i) {
+              if (!btns[i]) return;
+              var m = btns[i].onclick ? btns[i].onclick.toString().match(/filterStorey\('(.+?)'\)/) : null;
+              if (m) selectedStoreys.push(m[1]);
+              else selectedStoreys.push(null); // "All Storeys" button
+            });
+            // If "All Storeys" is in selection, show all
+            if (selectedStoreys.indexOf(null) >= 0) {
+              A.filterStorey(null);
+            } else if (selectedStoreys.length === 1) {
+              A.filterStorey(selectedStoreys[0]);
+            } else {
+              // Multi-storey: show meshes matching any selected storey
+              A.activeStoreyFilter = selectedStoreys;
+              A.collectMeshes(function(o) { return o.isMesh && o.userData.storey !== undefined; }).forEach(function(obj) {
+                obj.visible = selectedStoreys.indexOf(obj.userData.storey) >= 0;
+              });
+              A.collectMeshes(function(o) { return o.isInstancedMesh; }).forEach(function(mesh) {
+                A.filterInstancedMesh(mesh, function(meta) {
+                  return selectedStoreys.indexOf(meta.storey) >= 0;
+                });
+              });
+              // Highlight selected buttons
+              btns.forEach(function(btn, j) { btn.className = indices.indexOf(j) >= 0 ? 'active' : ''; });
+              console.log('§STOREY_MULTI storeys=' + selectedStoreys.join(','));
+              if (A.markDirty) A.markDirty();
+            }
+          }
         },
         function(idx) {
           var btns = Array.from(document.querySelectorAll('#storey-body button'));
@@ -158,7 +209,42 @@ function setupPanels(A) {
         function() { return Array.from(document.querySelectorAll('#disc-body button')); },
         function(indices) {
           var btns = Array.from(document.querySelectorAll('#disc-body button'));
-          if (indices.length === 1 && btns[indices[0]]) btns[indices[0]].click();
+          // Multi-select: toggle each selected disc
+          if (indices.length >= 1) {
+            // Get all disc names
+            var allDiscs = [];
+            btns.forEach(function(btn) {
+              var m = btn.onclick ? btn.onclick.toString().match(/toggleDisc\('(.+?)'\)/) : null;
+              if (m) allDiscs.push(m[1]);
+            });
+            // Show only selected, hide rest
+            var selectedDiscs = [];
+            indices.forEach(function(i) {
+              if (allDiscs[i]) selectedDiscs.push(allDiscs[i]);
+            });
+            // Reset all hidden, then hide non-selected
+            A.hiddenDiscs = new Set();
+            allDiscs.forEach(function(d) {
+              if (selectedDiscs.indexOf(d) < 0) A.hiddenDiscs.add(d);
+            });
+            // Apply visibility
+            A.collectMeshes(function(o) { return o.isMesh && o.userData.disc; }).forEach(function(obj) {
+              var discVisible = !A.hiddenDiscs.has(obj.userData.disc);
+              var storeyVisible = A.activeStoreyFilter === null ||
+                (Array.isArray(A.activeStoreyFilter) ? A.activeStoreyFilter.indexOf(obj.userData.storey) >= 0 : obj.userData.storey === A.activeStoreyFilter);
+              obj.visible = discVisible && storeyVisible;
+            });
+            A.collectMeshes(function(o) { return o.isInstancedMesh; }).forEach(function(mesh) {
+              A.filterInstancedMesh(mesh, function(meta) {
+                return !A.hiddenDiscs.has(meta.disc) &&
+                  (A.activeStoreyFilter === null ||
+                   (Array.isArray(A.activeStoreyFilter) ? A.activeStoreyFilter.indexOf(meta.storey) >= 0 : meta.storey === A.activeStoreyFilter));
+              });
+            });
+            btns.forEach(function(btn, j) { btn.className = indices.indexOf(j) >= 0 ? 'active' : ''; });
+            console.log('§DISC_MULTI selected=' + selectedDiscs.join(',') + ' hidden=' + A.hiddenDiscs.size);
+            if (A.markDirty) A.markDirty();
+          }
         },
         function(idx) {
           var btns = Array.from(document.querySelectorAll('#disc-body button'));
@@ -167,6 +253,53 @@ function setupPanels(A) {
       );
       if (typeof _registerPanel === 'function') _registerPanel('disc', discPanel, _discNav);
       console.log('§LISTNAV_WIRE panel=disc');
+    }
+
+    // Toolbar — horizontal, ←→ traversal, Space/Enter clicks
+    var toolbox = document.getElementById('search-box');
+    if (toolbox && !A._toolbarNav) {
+      A._toolbarNav = makeListKeyNav(
+        function() { return Array.from(document.querySelectorAll('#search-body button')); },
+        function() { /* no multi-select for toolbar */ },
+        function(idx) {
+          var btns = Array.from(document.querySelectorAll('#search-body button'));
+          if (btns[idx]) btns[idx].click();
+        }
+      );
+      if (typeof _registerPanel === 'function') _registerPanel('toolbar', toolbox, A._toolbarNav);
+      console.log('§LISTNAV_WIRE panel=toolbar');
+    }
+
+    // Section slider panel — buttons, sliders, AND close toggle
+    var secPanel = document.getElementById('section-slider-panel');
+    if (secPanel && !A._sectionNav) {
+      A._sectionNav = makeListKeyNav(
+        function() { return Array.from(secPanel.querySelectorAll('button, input[type="range"], .panel-toggle')); },
+        function() {},
+        function(idx) {
+          var items = Array.from(secPanel.querySelectorAll('button, input[type="range"], .panel-toggle'));
+          if (items[idx]) items[idx].click();
+        }
+      );
+      var secClose = function() { if (typeof window.toggleSection === 'function') window.toggleSection(); };
+      if (typeof _registerPanel === 'function') _registerPanel('section', secPanel, A._sectionNav, secClose);
+      console.log('§LISTNAV_WIRE panel=section');
+    }
+
+    // Sunglasses slider panel — register with close
+    var sunPanel = document.getElementById('sunglass-slider-panel');
+    if (sunPanel && !A._sunglassNav) {
+      A._sunglassNav = makeListKeyNav(
+        function() { return Array.from(sunPanel.querySelectorAll('button, input[type="range"], .panel-toggle')); },
+        function() {},
+        function(idx) {
+          var items = Array.from(sunPanel.querySelectorAll('button, input[type="range"], .panel-toggle'));
+          if (items[idx]) items[idx].click();
+        }
+      );
+      var sunClose = function() { if (typeof window.toggleSunglass === 'function') window.toggleSunglass(); };
+      if (typeof _registerPanel === 'function') _registerPanel('sunglass', sunPanel, A._sunglassNav, sunClose);
+      console.log('§LISTNAV_WIRE panel=sunglass');
     }
   };
 
@@ -328,9 +461,12 @@ function setupPanels(A) {
       var el = document.getElementById(pid);
       if (el) el.classList.toggle('swipe-hidden', panelsHidden);
     });
-    // Also catch dynamically created panels (grid, issues, clash)
-    var extras = document.querySelectorAll('.glass-panel, #issues-panel, #clash-matrix-panel');
+    // Also catch dynamically created panels (grid, issues, clash, find, nlp, etc.)
+    // Abstract: hide everything with position:fixed that is NOT the canvas or the toggle button itself
+    var extras = document.querySelectorAll('.glass-panel, #issues-panel, #find-panel, #nlp-bar, #nlp-chips, #nav-hud');
     extras.forEach(function(el) { el.classList.toggle('swipe-hidden', panelsHidden); });
+    // Clash matrix has no id — find it via APP reference
+    if (A._clashMatrixDiv) A._clashMatrixDiv.classList.toggle('swipe-hidden', panelsHidden);
     var btn = document.getElementById('panel-toggle-btn');
     if (btn) btn.textContent = panelsHidden ? '+' : '−';
     console.log('§PANEL_TOGGLE panelsHidden=' + panelsHidden);

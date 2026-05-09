@@ -216,14 +216,77 @@ function setupScene(A) {
   var _SEQ_MS = 600;
 
   var _shortcuts = {
-    'g':  function() { if (typeof window.open2DPlans === 'function') window.open2DPlans(); },
+    'g':  function() {
+      if (A.measureActive || A._clashMatrixDiv) {
+        A.status.textContent = 'Close Measure/Clash first'; return;
+      }
+      if (typeof window.open2DPlans === 'function') window.open2DPlans();
+    },
     'x':  function() { var b = document.getElementById('section-btn'); if (b) b.click(); },
     '4':  function() { if (typeof A.export4D5D === 'function') A.export4D5D(); },
     'f':  function() { if (typeof A.openFindPanel === 'function') A.openFindPanel(''); },
-    'c':  function() { if (A._loadClashRules) A._loadClashRules(function(r) { A._showClashMatrix(r, document.body); }); },
-    'm':  function() { if (typeof A.toggleMeasure === 'function') A.toggleMeasure(); },
+    'c':  function() {
+      // Block in 2D mode — Measure (parent of Clash) is greyed out
+      if (A._gridOverlayState && A._gridOverlayState.active) {
+        A.status.textContent = 'Exit 2D first'; return;
+      }
+      if (A._clashMatrixDiv) { A._clashMatrixDiv.remove(); A._clashMatrixDiv = null; return; }
+      if (A._loadClashRules) A._loadClashRules(function(r) {
+        A._showClashMatrix(r, document.body);
+        // Register matrix for Tab/arrow navigation after DOM is created
+        setTimeout(function() {
+          if (A._clashMatrixDiv && typeof window.makeListKeyNav === 'function') {
+            var matNav = window.makeListKeyNav(
+              function() { return Array.from(A._clashMatrixDiv.querySelectorAll('[data-pair]')); },
+              function() {},
+              function(idx) {
+                var cells = Array.from(A._clashMatrixDiv.querySelectorAll('[data-pair]'));
+                if (cells[idx]) cells[idx].click();
+              }
+            );
+            var matClose = function() {
+              if (A._clashRevealActive && A._dismissClashes) A._dismissClashes();
+              if (A._clashMatrixDiv) { A._clashMatrixDiv.remove(); A._clashMatrixDiv = null; }
+              if (A._clashModeActive && A._exitClashMode) A._exitClashMode();
+            };
+            _registerPanel('clash', A._clashMatrixDiv, matNav, matClose);
+            _focusPanel('clash');
+            // Watch for clash list popup (appears when a matrix cell is clicked)
+            var _clashListWatcher = setInterval(function() {
+              if (!A._clashMatrixDiv) { clearInterval(_clashListWatcher); return; }
+              if (A._clashListDiv && !A._clashListDiv._kbdWired) {
+                A._clashListDiv._kbdWired = true;
+                var clashListNav = window.makeListKeyNav(
+                  function() { return Array.from(A._clashListDiv.querySelectorAll('[data-clash-idx]')); },
+                  function() {},
+                  function(idx) {
+                    var rows = Array.from(A._clashListDiv.querySelectorAll('[data-clash-idx]'));
+                    if (rows[idx]) rows[idx].click();
+                  }
+                );
+                var clashListClose = function() {
+                  if (A._clashListDiv) { A._clashListDiv.remove(); A._clashListDiv = null; }
+                };
+                _registerPanel('clashlist', A._clashListDiv, clashListNav, clashListClose);
+                _focusPanel('clashlist');
+                clearInterval(_clashListWatcher);
+              }
+            }, 300);
+          }
+        }, 200);
+      });
+    },
+    'm':  function() {
+      if (A._gridOverlayState && A._gridOverlayState.active) {
+        A.status.textContent = 'Exit 2D first'; return;
+      }
+      if (typeof A.toggleMeasure === 'function') A.toggleMeasure();
+    },
+    's':  function() { A.toggleXray(); },
     'sc': function() { if (typeof A.screenshot === 'function') A.screenshot(); },
-    'su': function() { A.toggleXray(); }
+    '-':  function() { if (typeof window.toggleAllPanels === 'function') window.toggleAllPanels(); },
+    '+':  function() { if (typeof window.toggleAllPanels === 'function') window.toggleAllPanels(); },
+    '=':  function() { if (typeof window.toggleAllPanels === 'function') window.toggleAllPanels(); }
   };
 
   function _dispatchSeq(seq) {
@@ -266,8 +329,9 @@ function setupScene(A) {
     { seq: 'C',  name: 'Clash Matrix' },
     { seq: 'M',  name: 'Measure' },
     { seq: 'SC', name: 'Screenshot' },
-    { seq: 'SU', name: 'Sunglasses (X-ray)' },
-    { seq: '4',  name: '4D / 5D Analytics' }
+    { seq: 'S',  name: 'Sunglasses (X-ray)' },
+    { seq: '4',  name: '4D / 5D Analytics' },
+    { seq: '-',  name: 'Toggle Panels (hide/show)' }
   ];
 
   function showCommandPalette() {
@@ -282,7 +346,9 @@ function setupScene(A) {
       'border-radius:12px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.6);' +
       'font-family:\'Segoe UI\',sans-serif;overflow:hidden';
 
-    var html = '<div style="padding:10px 14px;border-bottom:1px solid #333">' +
+    var html = '<div style="padding:6px 14px;color:#888;font-size:10px;border-bottom:1px solid #222;text-align:center">' +
+      'Tab \u2192 cycle panels \u2003 \u2190\u2191\u2193\u2192 \u2192 navigate \u2003 Space \u2192 select</div>' +
+      '<div style="padding:10px 14px;border-bottom:1px solid #333">' +
       '<input id="cmd-search" type="text" placeholder="Type a command..." ' +
       'style="width:100%;background:#222;color:#eee;border:1px solid #555;border-radius:6px;' +
       'padding:8px 10px;font-size:13px;outline:none;box-sizing:border-box">' +
@@ -383,22 +449,36 @@ function setupScene(A) {
   // §2 — Panel Focus Model (Tab to cycle, arrows within, mouse steals focus)
   var _panels = [];
   var _focusedPanel = null;
+  var _focusStack = [];  // Esc pops back to previous panel
 
-  function _registerPanel(id, el, nav) {
-    _panels.push({ id: id, el: el, nav: nav });
-    el.addEventListener('pointerdown', function() { _focusPanel(id); });
+  function _registerPanel(id, el, nav, closeFn) {
+    _panels.push({ id: id, el: el, nav: nav, close: closeFn || null });
+    // Desktop only — no focus glow on mobile touch
+    if (!window._isMobile) {
+      el.addEventListener('pointerdown', function() { _focusPanel(id); });
+    }
   }
   function _focusPanel(id) {
-    if (_focusedPanel) _blurPanel();
+    // Push current to stack before switching
+    if (_focusedPanel) {
+      _focusStack.push(_focusedPanel.id);
+      if (_focusStack.length > 10) _focusStack.shift(); // cap stack
+      _focusedPanel.el.style.boxShadow = '';
+    }
     _focusedPanel = null;
     for (var i = 0; i < _panels.length; i++) {
-      if (_panels[i].id === id && _panels[i].el.offsetParent !== null) {
+      if (_panels[i].id === id && _panels[i].el.style.display !== 'none' && _panels[i].el.offsetWidth > 0) {
         _focusedPanel = _panels[i];
         break;
       }
     }
     if (_focusedPanel) {
       _focusedPanel.el.style.boxShadow = 'inset 3px 0 0 #4fc3f7';
+      // Auto-expand collapsed panel body
+      var body = _focusedPanel.el.querySelector('.panel-body');
+      if (body && body.classList.contains('collapsed')) {
+        body.classList.remove('collapsed');
+      }
       console.log('§PANEL_FOCUS id=' + id);
     }
   }
@@ -407,10 +487,17 @@ function setupScene(A) {
     _focusedPanel.el.style.boxShadow = '';
     console.log('§PANEL_BLUR id=' + _focusedPanel.id);
     _focusedPanel = null;
+    // Pop stack — return to previous panel
+    if (_focusStack.length) {
+      var prevId = _focusStack.pop();
+      _focusPanel(prevId);
+    }
   }
   function _cyclePanel(dir) {
     // Only cycle visible panels
-    var visible = _panels.filter(function(p) { return p.el.offsetParent !== null; });
+    var visible = _panels.filter(function(p) {
+      return p.el.style.display !== 'none' && p.el.offsetWidth > 0;
+    });
     if (!visible.length) return;
     var idx = _focusedPanel ? visible.indexOf(_focusedPanel) : -1;
     var next = (idx + dir + visible.length) % visible.length;
@@ -445,7 +532,7 @@ function setupScene(A) {
 
     // Panel-focused keys: arrows, space, ctrl+space, escape, typeahead
     if (_focusedPanel && _focusedPanel.nav) {
-      if (['ArrowUp', 'ArrowDown'].indexOf(e.key) >= 0 ||
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) >= 0 ||
           (e.key === ' ' && noMod) ||
           (e.ctrlKey && e.key === ' ') ||
           (e.key === 'PageUp') || (e.key === 'PageDown') ||
@@ -457,7 +544,12 @@ function setupScene(A) {
         _focusedPanel.nav.onKey(e);
         return;
       }
-      if (e.key === 'Escape') { e.preventDefault(); _blurPanel(); return; }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (_focusedPanel.close) { _focusedPanel.close(); console.log('§PANEL_CLOSE id=' + _focusedPanel.id); }
+        _blurPanel();
+        return;
+      }
       // Typeahead within focused panel (single printable char, no modifier)
       if (noMod && notInput && e.key.length === 1 && e.key !== '?' && _focusedPanel.nav.onTypeahead) {
         _focusedPanel.nav.onTypeahead(e.key);
@@ -466,6 +558,22 @@ function setupScene(A) {
     }
 
     if (!noMod || !notInput) return;
+
+    // Arrow ←→ — step section slider when section panel is visible
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !_focusedPanel) {
+      var secPanel = document.getElementById('section-slider-panel');
+      var slider = document.getElementById('section-slider');
+      if (secPanel && secPanel.style.display !== 'none' && slider) {
+        e.preventDefault();
+        var step = parseFloat(slider.step) || 0.1;
+        var val = parseFloat(slider.value) + (e.key === 'ArrowRight' ? step : -step);
+        val = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), val));
+        slider.value = val;
+        if (typeof A.updateSectionPlane === 'function') A.updateSectionPlane(val);
+        console.log('§KBD_SLIDER key=' + e.key + ' val=' + val.toFixed(2));
+        return;
+      }
+    }
 
     // ? — command palette
     if (e.key === '?') { e.preventDefault(); showCommandPalette(); return; }
@@ -477,18 +585,30 @@ function setupScene(A) {
     clearTimeout(_seqTimer);
     _seq += e.key.toLowerCase();
 
-    // Exact match?
-    if (_dispatchSeq(_seq)) {
+    // Exact match AND prefix of something longer? Wait — fire on timeout.
+    // e.g. 's' matches sunglasses, but 'sc' matches screenshot. Wait for second key.
+    var hasExact = !!_shortcuts[_seq];
+    var hasLonger = _isPrefix(_seq);
+
+    if (hasExact && !hasLonger) {
+      // Unique exact match — fire now
+      _dispatchSeq(_seq);
       _seq = '';
       _showSeqHint('');
       return;
     }
-    // Prefix of a longer sequence? Wait for next key.
-    if (_isPrefix(_seq)) {
+    if (hasLonger) {
+      // Could be prefix of longer sequence — wait for next key
       e.preventDefault();
       _showSeqHint(_seq);
       _seqTimer = setTimeout(function() {
-        console.log('§KBD_SEQ_TIMEOUT seq=' + _seq);
+        // Timeout: fire exact match if exists, else discard
+        if (_shortcuts[_seq]) {
+          _shortcuts[_seq]();
+          console.log('§KBD_SEQ seq=' + _seq + ' (timeout)');
+        } else {
+          console.log('§KBD_SEQ_TIMEOUT seq=' + _seq);
+        }
         _seq = '';
         _showSeqHint('');
       }, _SEQ_MS);
