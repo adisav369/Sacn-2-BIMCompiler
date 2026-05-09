@@ -206,13 +206,28 @@ function setupScene(A) {
   window.addEventListener('resize', A._onResize);
 
   // Keyboard shortcuts
+  // G = 2D Plans, X = Section cut, 4 = 4D/5D analytics, F = Find/Navigate
+  // Alt+Z = X-ray, F11 = Fullscreen
   window.addEventListener('keydown', (e) => {
     if (e.altKey && e.key === 'z') { e.preventDefault(); A.toggleXray(); }
     if (e.key === 'F11') { e.preventDefault(); A.toggleFullscreen(); }
-    // G key toggles grid overlay (2D Plans)
-    if (e.key === 'g' && !e.ctrlKey && !e.altKey && !e.metaKey && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-      e.preventDefault();
-      if (typeof window.open2DPlans === 'function') window.open2DPlans();
+    var noMod = !e.ctrlKey && !e.altKey && !e.metaKey;
+    var notInput = e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA';
+    if (noMod && notInput) {
+      if (e.key === 'g') {
+        e.preventDefault();
+        if (typeof window.open2DPlans === 'function') window.open2DPlans();
+      } else if (e.key === 'x') {
+        e.preventDefault();
+        var sBtn = document.getElementById('section-btn');
+        if (sBtn) sBtn.click();
+      } else if (e.key === '4') {
+        e.preventDefault();
+        if (typeof A.export4D5D === 'function') A.export4D5D();
+      } else if (e.key === 'f') {
+        e.preventDefault();
+        if (typeof A.openFindPanel === 'function') A.openFindPanel('');
+      }
     }
   });
 }
