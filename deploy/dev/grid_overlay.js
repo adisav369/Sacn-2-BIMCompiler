@@ -66,7 +66,6 @@ function setupGridOverlay(APP) {
     // §GRID_STOREY door-aware ranking — Bug #1 fix.
     // Sub-grade element clusters (foundations, piles) pass elementCount≥5 but have no doors.
     // Habitable storeys always have doors. Rank by door count (desc) then by floorZ (asc).
-    // This prevents DX-style buildings where the lowest significant cluster is below grade.
     var storeyDoorCounts = {};
     try {
       var dr = A.db.exec(
@@ -698,7 +697,32 @@ function setupGridOverlay(APP) {
         '  id INTEGER PRIMARY KEY, name TEXT, cut_value REAL,' +
         '  plane_normal TEXT, crop_bbox TEXT, detected_grids TEXT, timestamp TEXT)'
       );
+      // P1: Add view_state column (backward-compatible — NULL for legacy cards)
+      try { db.run('ALTER TABLE saved_sections ADD COLUMN view_state TEXT'); } catch (e2) { /* already exists */ }
     } catch (e) { log('§SAVE_SECTION table error: ' + e.message); }
+  }
+
+  // Implementing 2D_031 §P1 — Witness: W-CARD-VIEW
+  /** Capture current view state as JSON for card persistence */
+  function captureViewState() {
+    var mode = GridViews.activeView() || 'floor';
+    var hidden = Object.keys(GridViews.HIDE_IN_FLOOR || {});
+    var cam = GridViews.getCameraState(A);
+    var storey = '';
+    // Try to read current storey name from status bar
+    if (A.status && A.status.textContent) {
+      var m = A.status.textContent.match(/storey[=:]\s*"?([^"]+)"?/i);
+      if (m) storey = m[1];
+    }
+    var state = {
+      hidden_classes: hidden,
+      camera: cam,
+      storey: storey,
+      mode: mode
+    };
+    log('§VIEW_CARD capture mode=' + mode + ' hidden=' + hidden.length +
+        ' cam=' + (cam ? 'zoom=' + cam.zoom.toFixed(2) : 'null'));
+    return state;
   }
 
   /** Load saved sections from DB into savedSections[]. Falls back to localStorage. */
@@ -707,13 +731,15 @@ function setupGridOverlay(APP) {
     if (!A.db) return;
     ensureSavedSectionsTable(A.db);
     try {
-      var r = A.db.exec('SELECT id, name, cut_value, plane_normal, detected_grids FROM saved_sections ORDER BY id');
+      var r = A.db.exec('SELECT id, name, cut_value, plane_normal, detected_grids, view_state FROM saved_sections ORDER BY id');
       if (r.length && r[0].values.length) {
         for (var i = 0; i < r[0].values.length; i++) {
           var row = r[0].values[i];
           var dwells = null;
           try { if (row[4]) dwells = JSON.parse(row[4]); } catch (e) { /* not JSON */ }
-          savedSections.push({ id: row[0], name: row[1], cut_value: row[2], plane_normal: row[3], dwells: dwells });
+          var vs = null;
+          try { if (row[5]) vs = JSON.parse(row[5]); } catch (e) { /* not JSON */ }
+          savedSections.push({ id: row[0], name: row[1], cut_value: row[2], plane_normal: row[3], dwells: dwells, view_state: vs });
         }
       }
     } catch (e) { log('§SAVE_SECTION load db error: ' + e.message); }
@@ -745,7 +771,7 @@ function setupGridOverlay(APP) {
    *  @param {string} name
    *  @param {Array}  [dwells] — dwell_points from smart save (optional)
    */
-  function saveSectionToDb(name, dwells) {
+  function saveSectionToDb(name, dwells, viewStateOverride) {
     if (!A.db) return;
     ensureSavedSectionsTable(A.db);
     var cutVal = A.sectionPlane ? A.sectionPlane.constant : 0;
@@ -754,10 +780,13 @@ function setupGridOverlay(APP) {
     var ts = new Date().toISOString().slice(0, 10);
     // Store dwell points in detected_grids column (reused — was always null)
     var dwellJson = (dwells && dwells.length > 0) ? JSON.stringify(dwells) : null;
+    // P1: capture view state (card-first persistence)
+    var vs = viewStateOverride || captureViewState();
+    var vsJson = JSON.stringify(vs);
     try {
       A.db.run(
-        'INSERT INTO saved_sections (name,cut_value,plane_normal,detected_grids,timestamp) VALUES(?,?,?,?,?)',
-        [name, cutVal, normal, dwellJson, ts]
+        'INSERT INTO saved_sections (name,cut_value,plane_normal,detected_grids,timestamp,view_state) VALUES(?,?,?,?,?,?)',
+        [name, cutVal, normal, dwellJson, ts, vsJson]
       );
       // Get the ID of what we just inserted
       try {
@@ -807,10 +836,19 @@ function setupGridOverlay(APP) {
     // Flatten to 2D: switch to ortho top-down.
     if (axis === 'Y') {
 
+      // P2: Build card-specific hideSet from view_state
+      var vs = sec.view_state || null;
+      var hideSet = null;
+      if (vs && vs.hidden_classes && vs.hidden_classes.length) {
+        hideSet = {};
+        for (var hi = 0; hi < vs.hidden_classes.length; hi++) hideSet[vs.hidden_classes[hi]] = 1;
+      }
+
       var dwells = sec.dwells || null;
       var ifcZ = cutVal + (A.modelOffset ? A.modelOffset.z : 0);
       log('§SAVE_SECTION restore dwells=' + (dwells ? dwells.length : 'null') +
           ' ifcZ=' + ifcZ.toFixed(2) + ' cutVal=' + cutVal.toFixed(2) +
+          ' hideSet=' + (hideSet ? Object.keys(hideSet).length : 'default') +
           ' dwellData=' + JSON.stringify(dwells));
 
       // For composite smart saves: clip must encompass ALL dwell levels.
@@ -826,8 +864,10 @@ function setupGridOverlay(APP) {
       }
 
       // Lock to ortho 2D floor plan view — clip at highest dwell Z
+      // P2: pass card hideSet so card-specific classes are hidden
+      var cardMode = (vs && vs.mode) ? vs.mode : 'floor';
       if (envCache) {
-        GridViews.lockView(A, 'floor', envCache, clipZ);
+        GridViews.lockView(A, cardMode, envCache, clipZ, hideSet);
       }
 
       // Clear previous contours
@@ -899,9 +939,72 @@ function setupGridOverlay(APP) {
       }
       clampBubbleScales();
       updateViewButtons();
+
+      // P4: Restore saved camera position + zoom from card
+      if (vs && vs.camera) {
+        GridViews.applyCameraState(A, vs.camera);
+      }
+
       log('§SAVE_SECTION 2D layout ifcZ=' + ifcZ.toFixed(2) +
-          ' dwells=' + (dwells ? dwells.length : 0));
+          ' dwells=' + (dwells ? dwells.length : 0) +
+          ' camRestored=' + !!(vs && vs.camera));
     }
+  }
+
+  // Implementing 2D_031 §P3 — Witness: W-CARD-AUTO
+  /** Auto-create GF + L1 cards on first grid mode entry if no cards exist */
+  function autoCreateCards() {
+    if (!A.db || savedSections.length > 0) return;
+    if (typeof SectionCut === 'undefined' || !SectionCut.detectStoreys) return;
+    var storeys = SectionCut.detectStoreys(A.db);
+    if (!storeys.length) return;
+    var CUT_ABOVE = 1.2;
+    // Filter significant storeys (≥5 elements)
+    var significant = storeys.filter(function(s) { return s.elementCount >= 5; });
+    if (!significant.length) return;
+
+    // Sort by floorZ ascending for GF/L1
+    significant.sort(function(a, b) { return a.floorZ - b.floorZ; });
+
+    // GF card
+    var gfZ = significant[0].floorZ + CUT_ABOVE;
+    var gfState = {
+      hidden_classes: Object.keys(GridViews.HIDE_IN_FLOOR || {}),
+      camera: null,
+      storey: significant[0].name || 'Ground Floor',
+      mode: 'floor'
+    };
+    ensureSavedSectionsTable(A.db);
+    var ts = new Date().toISOString().slice(0, 10);
+    var gfCutVal = gfZ - (A.modelOffset ? A.modelOffset.z : 0);
+    try {
+      A.db.run(
+        'INSERT INTO saved_sections (name,cut_value,plane_normal,timestamp,view_state) VALUES(?,?,?,?,?)',
+        ['GF', gfCutVal, '[0,-1,0]', ts, JSON.stringify(gfState)]
+      );
+    } catch (e) { log('§VIEW_CARD auto GF error: ' + e.message); }
+
+    // L1 card — only if building has >1 significant storey
+    if (significant.length > 1) {
+      var l1Z = significant[1].floorZ + CUT_ABOVE;
+      var l1State = {
+        hidden_classes: Object.keys(GridViews.HIDE_IN_FLOOR || {}),
+        camera: null,
+        storey: significant[1].name || 'Level 1',
+        mode: 'floor1'
+      };
+      var l1CutVal = l1Z - (A.modelOffset ? A.modelOffset.z : 0);
+      try {
+        A.db.run(
+          'INSERT INTO saved_sections (name,cut_value,plane_normal,timestamp,view_state) VALUES(?,?,?,?,?)',
+          ['L1', l1CutVal, '[0,-1,0]', ts, JSON.stringify(l1State)]
+        );
+      } catch (e) { log('§VIEW_CARD auto L1 error: ' + e.message); }
+    }
+
+    loadSavedSections();
+    log('§VIEW_CARD auto-created cards=' + savedSections.length +
+        ' storeys=' + significant.length);
   }
 
   function buildPanel(grids) {
@@ -912,36 +1015,10 @@ function setupGridOverlay(APP) {
     gridPanel.id = PANEL_ID;
     gridPanel.style.cssText = 'position:fixed;top:56px;left:16px;z-index:25;background:' + panelBg() + ';border-radius:8px;padding:0;border:1px solid ' + panelBorder() + ';backdrop-filter:blur(8px);min-width:180px;max-width:260px';
     gridPanel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px">' +
-      '<b style="color:' + panelText() + ';font-size:12px;font-weight:bold;cursor:grab" onclick="togglePanel(\'grid-panel-body\')">Grid Dimensions</b>' +
+      '<b style="color:' + panelText() + ';font-size:12px;font-weight:bold;cursor:grab" onclick="togglePanel(\'grid-panel-body\')">Plan Grid</b>' +
       '<span id="grid-panel-close" style="color:#888;font-size:16px;cursor:pointer;padding:0 4px;line-height:1" title="Close grid panel">&times;</span></div>' +
       '<div id="grid-panel-body" class="panel-body" style="max-height:300px;overflow-y:auto;padding:4px 10px"></div>';
     document.body.appendChild(gridPanel);
-
-    // Global delete handler for old saved cuts — called via inline onclick
-    window.deleteOldSavedCut = function(cutName) {
-      // 1. Remove from SectionCut in-memory
-      if (typeof SectionCut !== 'undefined' && SectionCut.savedCuts) {
-        SectionCut.savedCuts = SectionCut.savedCuts.filter(function(c) { return c.name !== cutName; });
-        // 2. Write cleaned array back to localStorage under the correct key
-        var bldKey = (A.activeBuilding || 'bld');
-        SectionCut._saveCutsToStorage && SectionCut._saveCutsToStorage(bldKey);
-      }
-      // 3. Also scan all localStorage keys for strays
-      try {
-        var allKeys = Object.keys(localStorage);
-        for (var ki = 0; ki < allKeys.length; ki++) {
-          if (allKeys[ki].indexOf('ectionCut') < 0) continue;
-          try {
-            var arr = JSON.parse(localStorage.getItem(allKeys[ki]));
-            if (!Array.isArray(arr)) continue;
-            var filtered = arr.filter(function(c) { return c.name !== cutName; });
-            if (filtered.length < arr.length) localStorage.setItem(allKeys[ki], JSON.stringify(filtered));
-          } catch (ex) { /* skip */ }
-        }
-      } catch (ex2) { /* skip */ }
-      log('§SAVE_CUT deleted (inline) name=' + cutName);
-      buildPanel(currentPanelGrids || gridData);
-    };
 
     // Close button
     var closeBtn = document.getElementById('grid-panel-close');
@@ -974,26 +1051,7 @@ function setupGridOverlay(APP) {
     }
     viewHtml += '</div>';
 
-    // Implementing 2D_027 §2.4 — Witness: W-2D27
-    // Saved Cuts group (SectionCut.savedCuts — localStorage-based named section views)
-    if (typeof SectionCut !== 'undefined' && SectionCut._loadCuts) {
-      SectionCut._loadCuts(A.activeBuilding || 'bld');
-      var scCuts = SectionCut.savedCuts || [];
-      if (scCuts.length > 0) {
-        viewHtml += '<div style="font-size:10px;color:#888;margin:4px 0 2px;padding:0 2px">Saved Cuts</div>';
-        viewHtml += '<div style="display:flex;gap:3px;margin:0 0 4px;flex-wrap:wrap;align-items:center">';
-        for (var sci = 0; sci < scCuts.length; sci++) {
-          var sc = scCuts[sci];
-          var scLabel = sc.name.length > 14 ? sc.name.slice(0, 12) + '\u2026' : sc.name;
-          viewHtml += '<button class="saved-cut-btn" data-cut-name="' + sc.name + '" style="' +
-            VIEW_BTN_SAVED + ';border-style:dotted" title="' + sc.label + '">' + scLabel + '</button>';
-          viewHtml += '<button onclick="console.log(\'§SAVE_CUT_CLICK name=' + sc.name.replace(/'/g, '') + '\');deleteOldSavedCut(\'' + sc.name.replace(/'/g, '') + '\');event.stopPropagation()" ' +
-            'onpointerdown="event.stopPropagation()" ' +
-            'style="background:#a00;color:#fff;border:none;border-radius:3px;padding:2px 6px;font-size:12px;cursor:pointer;margin-left:-2px;position:relative;z-index:100" title="Delete this saved cut">&#x2715;</button>';
-        }
-        viewHtml += '</div>';
-      }
-    }
+    // Saved Cuts removed — scissors is for grid detection only.
 
     // Saved section buttons (below view presets)
     if (savedSections.length > 0) {
@@ -1009,15 +1067,7 @@ function setupGridOverlay(APP) {
       }
       viewHtml += '</div>';
     }
-    // No Save button here — bookmarks are on the scissors slider panel (⊕).
-    // Smart save dwell badge shown only as subtle text when dwells captured.
-    if (A.sectionOn && typeof GridScissors !== 'undefined' && GridScissors.dwellPoints) {
-      var dwellCount = GridScissors.dwellPoints().length;
-      if (dwellCount > 0) {
-        viewHtml += '<div style="margin:0 0 2px"><span id="smart-save-badge" style="color:#8cf;font-size:10px">' +
-          dwellCount + ' dwell pt captured</span></div>';
-      }
-    }
+    // No save/dwell UI — scissors is for grid detection only.
 
     var html = viewHtml;
 
@@ -1064,56 +1114,7 @@ function setupGridOverlay(APP) {
       vBtns[vb].addEventListener('pointerup', onViewBtnClick);
     }
 
-    // Saved Cut restore buttons (SectionCut.savedCuts — localStorage)
-    var scBtns = body.querySelectorAll('.saved-cut-btn');
-    for (var scb = 0; scb < scBtns.length; scb++) {
-      scBtns[scb].addEventListener('pointerup', function(e) {
-        e.stopPropagation();
-        if (typeof SectionCut === 'undefined') return;
-        var cutName = e.currentTarget.getAttribute('data-cut-name');
-        if (!A.sectionOn && A.toggleSection) A.toggleSection();
-        SectionCut.restoreCut(A, cutName);
-        if (A.updateSectionPlane && A.sectionPlane) A.updateSectionPlane(A.sectionPlane.constant);
-        A.markDirty();
-      });
-    }
-    // Delete buttons for old saved cuts (localStorage)
-    // Use onclick (not pointerup) — _makeDraggable's setPointerCapture steals pointerup
-    var scDels = body.querySelectorAll('.saved-cut-del');
-    for (var scd = 0; scd < scDels.length; scd++) {
-      scDels[scd].addEventListener('pointerdown', function(e) { e.stopPropagation(); });
-      scDels[scd].addEventListener('click', function(e) {
-        e.stopPropagation();
-        var cutName = e.currentTarget.getAttribute('data-cut-name');
-        if (typeof SectionCut !== 'undefined') {
-          // Nuclear delete: scan ALL localStorage keys containing 'sectionCut'
-          // Old cards can be under any key variant — building name, 'bld', etc.
-          try {
-            var allKeys = Object.keys(localStorage);
-            for (var ki = 0; ki < allKeys.length; ki++) {
-              if (allKeys[ki].indexOf('sectionCut') < 0 && allKeys[ki].indexOf('SectionCut') < 0) continue;
-              try {
-                var raw = localStorage.getItem(allKeys[ki]);
-                if (!raw) continue;
-                var arr = JSON.parse(raw);
-                if (!Array.isArray(arr)) continue;
-                var filtered = arr.filter(function(c) { return c.name !== cutName; });
-                if (filtered.length < arr.length) {
-                  localStorage.setItem(allKeys[ki], JSON.stringify(filtered));
-                  log('§SAVE_CUT delete key=' + allKeys[ki] + ' before=' + arr.length + ' after=' + filtered.length);
-                }
-              } catch (ex) { /* not JSON array, skip */ }
-            }
-          } catch (ex2) { log('§SAVE_CUT localStorage scan error: ' + ex2.message); }
-          // Also clear the in-memory array
-          if (SectionCut.savedCuts) {
-            SectionCut.savedCuts = SectionCut.savedCuts.filter(function(c) { return c.name !== cutName; });
-          }
-          log('§SAVE_CUT deleted name=' + cutName);
-        }
-        buildPanel(currentPanelGrids || gridData);
-      });
-    }
+    // Saved Cut buttons removed — scissors is for grid detection only.
 
     // Saved section restore buttons — pointerdown stops panel drag capture
     var ssBtns = body.querySelectorAll('.saved-section-btn');
@@ -1148,49 +1149,19 @@ function setupGridOverlay(APP) {
       });
     }
 
-    // Save ✚ button — smart save with dwell points
+    // Save ✚ button — saves current section cut (no dwell tracking)
     var saveSBtn = body.querySelector('#grid-save-section-btn');
     if (saveSBtn) {
       saveSBtn.addEventListener('pointerup', function(e) {
         e.stopPropagation();
         var cutVal = A.sectionPlane ? A.sectionPlane.constant : 0;
-
-        // Collect dwell points from smart save tracker
-        var dwells = [];
-        if (typeof GridScissors !== 'undefined' && GridScissors.dwellPoints) {
-          dwells = GridScissors.dwellPoints();
-        }
-
-        var defaultName;
-        if (dwells.length > 0) {
-          defaultName = 'SmartCut ' + dwells.length + 'pt @' + dwells.map(function(d) { return d.z.toFixed(1); }).join(',') + 'm';
-        } else {
-          defaultName = 'Section @' + cutVal.toFixed(1) + 'm';
-        }
+        var defaultName = 'Section @' + cutVal.toFixed(1) + 'm';
         var name = window.prompt('Section name:', defaultName);
         if (!name) return;
 
-        // Save with dwell points metadata
-        saveSectionToDb(name, dwells);
-
-        // If dwell points captured, also commit to kernel_ops for replay
-        if (dwells.length > 0 && window.KernelOps && A.db) {
-          try {
-            KernelOps.commitOp(A.db, 'SMART_SAVE', {
-              name: name,
-              dwell_points: dwells,
-              cutVal: cutVal,
-              axis: A.sectionAxis || 'Y'
-            });
-            log('§SMART_SAVE committed name=' + name + ' dwells=' + dwells.length);
-          } catch (err) { log('§SMART_SAVE commit error: ' + err.message); }
-          // Reset tracker after successful save
-          GridScissors.dwellReset();
-        }
-
+        saveSectionToDb(name, null);
         buildPanel(currentPanelGrids || gridData);
-        log('§SAVE_SECTION panel rebuilt after save name=' + name +
-            ' dwells=' + dwells.length);
+        log('§SAVE_SECTION panel rebuilt after save name=' + name);
       });
     }
   }
@@ -1552,6 +1523,7 @@ function setupGridOverlay(APP) {
     envCache = getBuildingEnvelopeIFC();
     buildGridScene(gridData, envCache);
     loadSavedSections();           // fill savedSections[] before buildPanel renders them
+    autoCreateCards();             // P3: auto GF + L1 cards on first entry
     buildPanel(gridData);
     buildDimChains(gridData, envCache);
     showUndoRedo();
@@ -1560,6 +1532,23 @@ function setupGridOverlay(APP) {
   };
 
   window.toggleGridOverlay = A.toggleGridOverlay;
+
+  /** Public: save current scissors cut as a section card, rebuild panel.
+   *  Called by tools.js Save Cut button when in 2D + scissors mode. */
+  A.saveSectionFromScissors = function() {
+    if (!A.db || !A.sectionOn) return;
+    var cutVal = A.sectionPlane ? A.sectionPlane.constant : 0;
+    var name = 'Section @' + cutVal.toFixed(1) + 'm';
+    saveSectionToDb(name, null);
+    buildPanel(currentPanelGrids || gridData);
+    log('§SAVE_SECTION from scissors cutVal=' + cutVal.toFixed(2));
+  };
+
+  /** Public: is a 2D floor view currently active? */
+  A.isIn2DView = function() {
+    var v = GridViews.activeView();
+    return v === 'floor' || v === 'floor1';
+  };
 
   // React to theme changes (sunglasses toggle) — update line/bubble/panel colors
   var _origToggleTheme = A.toggleTheme;

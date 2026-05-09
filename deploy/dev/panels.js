@@ -17,6 +17,159 @@ function setupPanels(A) {
     body.classList.toggle('collapsed');
   };
 
+  // ══════════════════════════════════════════════════════════════
+  // S251 §8: ListKeyNav — universal keyboard navigator for list panels
+  // Implementing S251_keyboard_modes.md — Witness: W-KBD
+  // ══════════════════════════════════════════════════════════════
+  function makeListKeyNav(getItems, onToggle, onActivate) {
+    var cursor = -1;
+    var anchor = -1;
+    var selected = new Set();
+    var _taBuffer = '';
+    var _taTimer = null;
+
+    function scrollTo(i) {
+      var items = getItems();
+      if (items[i]) items[i].scrollIntoView({ block: 'nearest' });
+    }
+
+    function moveCursor(delta) {
+      var items = getItems();
+      if (!items.length) return;
+      cursor = Math.max(0, Math.min(items.length - 1, cursor + delta));
+      scrollTo(cursor);
+      // Visual highlight
+      items.forEach(function(el, j) {
+        el.style.outline = (j === cursor) ? '2px solid #4fc3f7' : '';
+      });
+    }
+
+    function extendRange(delta) {
+      if (anchor < 0) anchor = cursor >= 0 ? cursor : 0;
+      moveCursor(delta);
+      var lo = Math.min(anchor, cursor), hi = Math.max(anchor, cursor);
+      selected = new Set();
+      for (var i = lo; i <= hi; i++) selected.add(i);
+      _emit();
+    }
+
+    function _emit() {
+      onToggle(Array.from(selected));
+      console.log('§LISTNAV_SELECT count=' + selected.size);
+    }
+
+    return {
+      onKey: function(e) {
+        var items = getItems();
+        if (e.key === 'ArrowUp')   { moveCursor(-1); return; }
+        if (e.key === 'ArrowDown') { moveCursor(+1); return; }
+        if (e.key === 'PageUp')    { moveCursor(-5); return; }
+        if (e.key === 'PageDown')  { moveCursor(+5); return; }
+        if (e.key === 'Home')      { cursor = 0; scrollTo(0); return; }
+        if (e.key === 'End')       { cursor = items.length - 1; scrollTo(cursor); return; }
+        if (e.shiftKey && e.key === 'ArrowUp')   { extendRange(-1); return; }
+        if (e.shiftKey && e.key === 'ArrowDown') { extendRange(+1); return; }
+        if (e.ctrlKey && e.key === 'a') {
+          selected = new Set();
+          items.forEach(function(_, i) { selected.add(i); });
+          _emit();
+          return;
+        }
+        if (e.key === ' ' && !e.ctrlKey) {
+          selected = new Set([cursor]); anchor = cursor;
+          _emit();
+          if (onActivate) onActivate(cursor);
+          return;
+        }
+        if (e.ctrlKey && e.key === ' ') {
+          if (selected.has(cursor)) selected.delete(cursor); else selected.add(cursor);
+          anchor = cursor;
+          _emit();
+          return;
+        }
+        if (e.key === 'Enter' && onActivate) { onActivate(cursor); return; }
+      },
+      onTypeahead: function(ch) {
+        clearTimeout(_taTimer);
+        _taBuffer += ch.toLowerCase();
+        var items = getItems();
+        var labels = [];
+        items.forEach(function(el) { labels.push((el.textContent || '').trim().toLowerCase()); });
+        var matches = [];
+        labels.forEach(function(l, i) { if (l.indexOf(_taBuffer) === 0) matches.push(i); });
+        if (matches.length) {
+          var next = matches[0];
+          // Same single char pressed again → cycle to next match
+          if (_taBuffer.length === 1 && matches.indexOf(cursor) >= 0) {
+            next = matches[(matches.indexOf(cursor) + 1) % matches.length];
+          }
+          cursor = next;
+          scrollTo(cursor);
+          var items2 = getItems();
+          items2.forEach(function(el, j) {
+            el.style.outline = (j === cursor) ? '2px solid #4fc3f7' : '';
+          });
+          console.log('§LISTNAV_TYPEAHEAD buf=' + _taBuffer + ' match=' + cursor);
+        }
+        _taTimer = setTimeout(function() { _taBuffer = ''; }, 600);
+      },
+      onClick: function(index, e) {
+        if (e.ctrlKey || e.metaKey) {
+          if (selected.has(index)) selected.delete(index); else selected.add(index);
+          anchor = index;
+        } else if (e.shiftKey && anchor >= 0) {
+          var lo = Math.min(anchor, index), hi = Math.max(anchor, index);
+          selected = new Set();
+          for (var i = lo; i <= hi; i++) selected.add(i);
+        } else {
+          selected = new Set([index]); anchor = index; cursor = index;
+        }
+        _emit();
+      },
+      getSelected: function() { return Array.from(selected); }
+    };
+  }
+
+  // Wire ListKeyNav to storey + DISC panels after populate
+  var _storeyNav = null, _discNav = null;
+  A._wireListKeyNav = function() {
+    var storeyPanel = document.getElementById('storey-panel');
+    var discPanel = document.getElementById('disc-panel');
+
+    if (storeyPanel && !_storeyNav) {
+      _storeyNav = makeListKeyNav(
+        function() { return Array.from(document.querySelectorAll('#storey-body button')); },
+        function(indices) {
+          // Single-select: activate the storey at cursor
+          var btns = Array.from(document.querySelectorAll('#storey-body button'));
+          if (indices.length === 1 && btns[indices[0]]) btns[indices[0]].click();
+        },
+        function(idx) {
+          var btns = Array.from(document.querySelectorAll('#storey-body button'));
+          if (btns[idx]) btns[idx].click();
+        }
+      );
+      if (typeof _registerPanel === 'function') _registerPanel('storey', storeyPanel, _storeyNav);
+      console.log('§LISTNAV_WIRE panel=storey');
+    }
+
+    if (discPanel && !_discNav) {
+      _discNav = makeListKeyNav(
+        function() { return Array.from(document.querySelectorAll('#disc-body button')); },
+        function(indices) {
+          var btns = Array.from(document.querySelectorAll('#disc-body button'));
+          if (indices.length === 1 && btns[indices[0]]) btns[indices[0]].click();
+        },
+        function(idx) {
+          var btns = Array.from(document.querySelectorAll('#disc-body button'));
+          if (btns[idx]) btns[idx].click();
+        }
+      );
+      if (typeof _registerPanel === 'function') _registerPanel('disc', discPanel, _discNav);
+      console.log('§LISTNAV_WIRE panel=disc');
+    }
+  };
+
   // Storey isolator
   A.activeStoreyFilter = null;
   A.storeyMeshGroups = {};
@@ -40,7 +193,8 @@ function setupPanels(A) {
     panel.style.display = 'block';
 
     setTimeout(() => { const b = document.getElementById('storey-body'); if (b) b.classList.add('collapsed'); }, 5000);
-
+    // S251: Wire ListKeyNav after buttons are populated
+    if (A._wireListKeyNav) A._wireListKeyNav();
   };
 
   A.filterStorey = function(storey) {
@@ -85,7 +239,8 @@ function setupPanels(A) {
     panel.style.display = 'block';
 
     setTimeout(() => { const b = document.getElementById('disc-body'); if (b) b.classList.add('collapsed'); }, 4000);
-
+    // S251: Wire ListKeyNav after buttons are populated
+    if (A._wireListKeyNav) A._wireListKeyNav();
   };
 
   A.toggleDisc = function(disc) {
@@ -162,8 +317,10 @@ function setupPanels(A) {
       Object.entries(A.discCounts).slice(0, 6).map(([d, c]) => `${d}:${c.toLocaleString()}`).join(' ') + '</small>';
   };
 
-  // Panel toggle (S250 §5 — replaces swipe-to-dismiss)
-  var panelIds = ['hud','search-box','storey-panel','disc-panel','info-panel'];
+  // Panel toggle (S250 §5 — hides ALL UI chrome for clean screenshots)
+  var panelIds = ['hud','search-box','storey-panel','disc-panel','info-panel',
+                  'status','grid-overlay-panel','dev-banner',
+                  'section-slider-panel','undo-redo-btns'];
   var panelsHidden = false;
   window.toggleAllPanels = function() {
     panelsHidden = !panelsHidden;
@@ -171,6 +328,9 @@ function setupPanels(A) {
       var el = document.getElementById(pid);
       if (el) el.classList.toggle('swipe-hidden', panelsHidden);
     });
+    // Also catch dynamically created panels (grid, issues, clash)
+    var extras = document.querySelectorAll('.glass-panel, #issues-panel, #clash-matrix-panel');
+    extras.forEach(function(el) { el.classList.toggle('swipe-hidden', panelsHidden); });
     var btn = document.getElementById('panel-toggle-btn');
     if (btn) btn.textContent = panelsHidden ? '+' : '−';
     console.log('§PANEL_TOGGLE panelsHidden=' + panelsHidden);

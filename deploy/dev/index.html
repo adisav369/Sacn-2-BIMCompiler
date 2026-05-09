@@ -57,6 +57,7 @@
   .panel-toggle:hover { color: #4fc3f7; }
   .panel-body { transition: max-height 0.2s ease, opacity 0.2s ease; overflow: hidden; }
   .panel-body.collapsed { max-height: 0 !important; opacity: 0; padding: 0; }
+  .swipe-hidden { display: none !important; }
   #storey-panel:has(.panel-body.collapsed) { max-height: fit-content !important; }
   #info-panel {
     position: fixed; bottom: 50px; right: 16px; z-index: 10;
@@ -340,7 +341,7 @@
       <button id="section-btn" onclick="toggleSection();event.stopPropagation()" data-trl-title="ui_tt_section" title="Section Cut" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">✂</button>
       <button id="grid-2d-btn" onclick="open2DPlans();event.stopPropagation()" data-trl-title="ui_tt_2d" title="2D Grid Views" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;padding:2px;line-height:1"><img src="icons/2Dicon.png" alt="2D" style="width:22px;height:22px;vertical-align:middle;filter:invert(1)"></button>
       <button id="header-flag-btn" onclick="location.href='../index.html'" data-trl-title="ui_tt_home" title="Home" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">🌐</button>
-      <button onclick="if(APP&&APP.reportBug)APP.reportBug();event.stopPropagation()" data-trl-title="ui_tt_help" title="Help / Report Bug" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">🛟</button>
+      <button onclick="if(typeof showCommandPalette==='function')showCommandPalette();else if(APP&&APP.reportBug)APP.reportBug();event.stopPropagation()" data-trl-title="ui_tt_help" title="Help / Commands (?)" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">🛟</button>
     </div>
     <div id="building-list" style="max-height:400px;overflow-y:auto"></div>
   </div>
@@ -401,7 +402,7 @@
   </div>
 </div>
 <button id="panel-toggle-btn" onclick="toggleAllPanels()"
-        style="display:none;position:fixed;bottom:16px;left:16px;z-index:100;
+        style="position:fixed;bottom:16px;left:16px;z-index:100;
                background:rgba(40,40,40,0.85);color:#4fc3f7;border:1px solid #666;
                border-radius:50%;width:36px;height:36px;font-size:20px;cursor:pointer">
   −
@@ -413,7 +414,7 @@
   <div style="margin:4px 0">
     <button id="sec-axis-y" onclick="setSectionAxis('Y')" style="padding:2px 8px;background:#4fc3f7;color:#000;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">Y ↕</button>
     <button id="sec-axis-x" onclick="setSectionAxis('X')" style="padding:2px 8px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">X ↔</button>
-    <button id="sec-axis-z" onclick="setSectionAxis('Z')" style="padding:2px 8px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">Z ↗</button>
+    <button id="sec-axis-z" onclick="setSectionAxis('Z')" style="padding:2px 8px;background:#444;color:#fff;border:1px solid #666;border-radius:3px;cursor:pointer;font-size:11px">Z ⊥</button>
   </div>
   <div style="position:relative">
     <input type="range" id="section-slider" min="0" max="100" value="100" step="0.1" oninput="updateSectionPlane(this.value)">
@@ -635,10 +636,10 @@
 <script src="loader.js?v=4"></script>
 <script src="qrcode.min.js?v=1" onerror="console.warn('§LOAD_FAIL qrcode.min.js — QR sharing disabled')"></script>
 <script src="config.js?v=4" onerror="console.warn('§LOAD_FAIL config.js')"></script>
-<script src="scene.js?v=6" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
+<script src="scene.js?v=7" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
 <script src="helpers.js?v=3" onerror="console.warn('§LOAD_FAIL helpers.js')"></script>
 <script src="streaming.js?v=18" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
-<script src="panels.js?v=6" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
+<script src="panels.js?v=7" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
 <script src="tools.js?v=8" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
 <script src="picking.js?v=16" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
 <script src="tour.js?v=3" onerror="console.warn('§LOAD_FAIL tour.js')"></script>
@@ -673,7 +674,7 @@
 <script src="cost_panel.js?v=3" onerror="console.warn('[CostPanel] cost_panel.js skipped')"></script>
 <script src="grid_drag.js?v=5" onerror="console.warn('[GridDrag] grid_drag.js skipped')"></script>
 <script src="grid_scissors.js?v=2" onerror="console.warn('[GridScissors] grid_scissors.js skipped')"></script>
-<script src="grid_overlay.js?v=30" onerror="console.warn('[GridOverlay] grid_overlay.js skipped — file not found or error')"></script>
+<script src="grid_overlay.js?v=31" onerror="console.warn('[GridOverlay] grid_overlay.js skipped — file not found or error')"></script>
 <script src="grid_assembler.js?v=2" onerror="console.warn('[GridAssembler] grid_assembler.js skipped')"></script>
 <script src="print_sheet.js?v=3" onerror="console.warn('[PrintSheet] print_sheet.js skipped')"></script>
 <script src="ghostglass.js?v=2" onerror="console.warn('§LOAD_FAIL ghostglass.js')"></script>
