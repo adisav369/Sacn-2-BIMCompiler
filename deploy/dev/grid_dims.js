@@ -74,26 +74,35 @@
    * Implementing 2D_027 §1.2 — Witness: W-2D27
    * rawPosition is preserved (actual IFC position); position is snapped (display only).
    */
+  /**
+   * Snap DISPLAY bay widths to nearest SNAP_MODULE mm — for dimension labels only.
+   * The grid line POSITION stays at the raw wall centerline (no drift).
+   * Only the `displayBay` property is set for label rendering.
+   *
+   * Previous version moved the position, causing cumulative drift up to 200mm+
+   * on large buildings — grid lines visibly off from walls.
+   */
   function snapGrids(lines) {
     if (lines.length < 2) return lines;
 
-    // Preserve rawPosition from input (set if already present, else use position)
-    var firstRaw = lines[0].rawPosition !== undefined ? lines[0].rawPosition : lines[0].position;
-    var snapped = [{ label: lines[0].label, position: lines[0].position, rawPosition: firstRaw, guids: lines[0].guids }];
-    for (var i = 1; i < lines.length; i++) {
-      var rawBayMm = (lines[i].position - lines[i - 1].position) * 1000;
+    for (var i = 0; i < lines.length; i++) {
+      // Preserve rawPosition — position stays at actual wall centerline
+      if (lines[i].rawPosition === undefined) lines[i].rawPosition = lines[i].position;
+    }
+    // Compute snapped display bays for dimension labels
+    for (var j = 1; j < lines.length; j++) {
+      var rawBayMm = (lines[j].position - lines[j - 1].position) * 1000;
       var snappedBayMm = Math.round(rawBayMm / SNAP_MODULE) * SNAP_MODULE;
       if (snappedBayMm < SNAP_MODULE) snappedBayMm = SNAP_MODULE;
-      var newPos = snapped[snapped.length - 1].position + snappedBayMm / 1000;
-      var rawPos = lines[i].rawPosition !== undefined ? lines[i].rawPosition : lines[i].position;
-      var delta = Math.abs(newPos - rawPos);
-      if (delta > 0.001) {
-        // Only log when snap introduces > 1mm drift
-        console.log('[GridDims] §GD_SNAP_DELTA idx=' + i + ' raw=' + (rawPos * 1000).toFixed(0) + ' snapped=' + (newPos * 1000).toFixed(0) + ' delta=' + (delta * 1000).toFixed(0));
+      lines[j].displayBay = snappedBayMm;
+      var delta = Math.abs(snappedBayMm - rawBayMm);
+      if (delta > 1) {
+        console.log('[GridDims] §GD_SNAP_DELTA idx=' + j +
+          ' rawBay=' + rawBayMm.toFixed(0) + ' display=' + snappedBayMm.toFixed(0) +
+          ' delta=' + delta.toFixed(0) + 'mm (label only, position unchanged)');
       }
-      snapped.push({ label: lines[i].label, position: newPos, rawPosition: rawPos, guids: lines[i].guids });
     }
-    return snapped;
+    return lines;
   }
 
   /**
@@ -521,15 +530,17 @@
     var yLines = gridResult.yLines || [];
 
     // X-axis bay dimensions (between adjacent grids)
+    // Use displayBay (snapped to 300mm module) for label text, raw position for line placement.
     if (xLines.length > 1) {
       for (var i = 0; i < xLines.length - 1; i++) {
         var dist = xLines[i + 1].position - xLines[i].position;
+        var dispLabel = xLines[i + 1].displayBay ? String(Math.round(xLines[i + 1].displayBay)) : formatDim(dist);
         dims.push({
           startPos: xLines[i].position,
           endPos: xLines[i + 1].position,
           axis: 'x',
           distance: dist,
-          label: formatDim(dist),
+          label: dispLabel,
           tier: 1,
           fromLabel: xLines[i].label,
           toLabel: xLines[i + 1].label
@@ -556,12 +567,13 @@
     if (yLines.length > 1) {
       for (var j = 0; j < yLines.length - 1; j++) {
         var distY = yLines[j + 1].position - yLines[j].position;
+        var dispLabelY = yLines[j + 1].displayBay ? String(Math.round(yLines[j + 1].displayBay)) : formatDim(distY);
         dims.push({
           startPos: yLines[j].position,
           endPos: yLines[j + 1].position,
           axis: 'y',
           distance: distY,
-          label: formatDim(distY),
+          label: dispLabelY,
           tier: 1,
           fromLabel: yLines[j].label,
           toLabel: yLines[j + 1].label
