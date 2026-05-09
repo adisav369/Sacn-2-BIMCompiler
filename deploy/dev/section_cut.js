@@ -406,8 +406,9 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
     var fp = (rules && rules.floor_plan) || {};
 
     // --- Determine cut height ---
+    // Detect storeys once — reused by both cutZ resolution and band filter
+    var storeys = detectStoreys(db);
     if (cutZ == null) {
-        var storeys = detectStoreys(db);
         if (storeys.length === 0) {
             console.warn('§SC_CUT_PLANE no storeys found');
             return [];
@@ -442,7 +443,8 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
                 "SELECT m.guid, m.ifc_class, m.element_name, m.storey, " +
                 "  ei.geometry_hash, " +
                 "  r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ, " +
-                "  COALESCE(et.center_x, 0.0), COALESCE(et.center_y, 0.0), COALESCE(et.center_z, 0.0) " +
+                "  COALESCE(et.center_x, 0.0), COALESCE(et.center_y, 0.0), COALESCE(et.center_z, 0.0), " +
+                "  COALESCE(et.bbox_z, 0.0) " +
                 "FROM elements_meta m " +
                 "JOIN element_instances ei ON m.guid = ei.guid " +
                 "JOIN elements_rtree r ON m.id = r.id " +
@@ -458,7 +460,8 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
             "SELECT m.guid, m.ifc_class, m.element_name, m.storey, " +
             "  ei.geometry_hash, " +
             "  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, " +
-            "  COALESCE(et.center_x, 0.0), COALESCE(et.center_y, 0.0), COALESCE(et.center_z, 0.0) " +
+            "  COALESCE(et.center_x, 0.0), COALESCE(et.center_y, 0.0), COALESCE(et.center_z, 0.0), " +
+            "  COALESCE(et.bbox_z, 0.0) " +
             "FROM elements_meta m " +
             "JOIN element_instances ei ON m.guid = ei.guid " +
             "LEFT JOIN element_transforms et ON m.guid = et.guid"
@@ -492,20 +495,19 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
     // elements that visually intersect the band for accurate section contours.
     var bandMin, bandMax;
     if (cutZ != null) {
-        var storeys2 = detectStoreys(db);
+        // Reuse storeys from above — no second detectStoreys call
         var activeStorey = null;
-        for (var bsi = 0; bsi < storeys2.length; bsi++) {
-            if (storeys2[bsi].floorZ <= cutZ && cutZ <= storeys2[bsi].floorZ + 10) {
-                activeStorey = storeys2[bsi]; break;
+        for (var bsi = 0; bsi < storeys.length; bsi++) {
+            if (storeys[bsi].floorZ <= cutZ && cutZ <= storeys[bsi].floorZ + 10) {
+                activeStorey = storeys[bsi]; break;
             }
         }
         if (activeStorey) {
             var fallbackH = fp.band_fallback_height || 3.5;
             var nextFZ = (function() {
-                // next storey above activeStorey
                 var best = activeStorey.floorZ + fallbackH;
-                for (var ns = 0; ns < storeys2.length; ns++) {
-                    var fz = storeys2[ns].floorZ;
+                for (var ns = 0; ns < storeys.length; ns++) {
+                    var fz = storeys[ns].floorZ;
                     if (fz > activeStorey.floorZ && fz < best) best = fz;
                 }
                 return best;
@@ -524,16 +526,26 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
             var brow = allRows[bfi];
             var bcls = brow[1] || '';
             var bcz  = Number(brow[13]);
-            // Use bbox_z from element_transforms if available (col 13 = center_z via current query)
-            // The existing query doesn't fetch bbox_z separately — use center_z ± 2m as soft check
-            // Hard excludes by class only (safe, class-level, no geometry needed):
+            var bbz  = Number(brow[14] || 0);
+            // Determine element Z-range for band check
+            var bElemMinZ, bElemMaxZ;
+            if (useRtree) {
+                bElemMinZ = Number(brow[9]);
+                bElemMaxZ = Number(brow[10]);
+            } else if (bbz > 0) {
+                bElemMinZ = bcz - bbz * 0.5;
+                bElemMaxZ = bcz + bbz * 0.5;
+            } else {
+                bElemMinZ = bcz - 1.5;
+                bElemMaxZ = bcz + 1.5;
+            }
+            // Class excludes: roof/covering/foundation classes are unconditionally removed
+            // from floor plan sections — they never produce useful contours in plan view.
+            // Position check is secondary — a roof that overlaps GF band Z-wise is still a roof.
             if (excAbove.indexOf(bcls) >= 0) { continue; }
             if (excBelow.indexOf(bcls) >= 0) { continue; }
-            // Soft Z-band: if rtree, use minZ/maxZ; else use center_z as proxy
-            if (useRtree) {
-                var bMinZ = Number(brow[9]), bMaxZ = Number(brow[10]);
-                if (bMaxZ < bandMin || bMinZ > bandMax) continue;
-            }
+            // Z-band filter: element must overlap [bandMin, bandMax]
+            if (bElemMaxZ < bandMin || bElemMinZ > bandMax) continue;
             bandFiltered.push(brow);
         }
         allRows = bandFiltered;
@@ -556,53 +568,25 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
         var minY = Number(row[7]), maxY = Number(row[8]);
         var rMinZ = Number(row[9]), rMaxZ = Number(row[10]);
         var cx = Number(row[11]), cy = Number(row[12]), cz = Number(row[13]);
+        var bboxZ = Number(row[14] || 0);  // §SC_PERF — bbox_z for early Z-range estimate
 
-        // Without rtree, we need geometry to determine Z-range
-        // Load geometry for all sliceable classes, classify others by center_z
-        var geo = null;
-        var verts = null, faces = null;
-
-        if (SLICE_CLASSES[ifcClass] && geoHash) {
-            geo = lookupGeometry(db, libDb, geoHash);
-        }
-
-        // Determine element Z-range
+        // Determine element Z-range WITHOUT loading geometry blobs.
+        // §SC_PERF: geometry is expensive — only load it for confirmed CUT elements.
+        // Priority: rtree bounds > bbox_z estimate > ±1.5m guess.
         var elemMinZ, elemMaxZ;
         if (useRtree) {
             elemMinZ = rMinZ;
             elemMaxZ = rMaxZ;
-        } else if (geo && geo[0] && geo[1]) {
-            // Compute Z-range from mesh vertices + element center
-            var vertBlob = geo[0];
-            var vertCount = Number(geo[2]);
-            verts = parseVerticesBlob(vertBlob, vertCount);
-            var localMinZ = Infinity, localMaxZ = -Infinity;
-            for (var vi = 0; vi < verts.length; vi += 3) {
-                var z = verts[vi + 2];
-                if (z < localMinZ) localMinZ = z;
-                if (z > localMaxZ) localMaxZ = z;
-            }
-            elemMinZ = localMinZ + cz;
-            elemMaxZ = localMaxZ + cz;
-            // Also compute XY bbox from vertices
-            var localMinX = Infinity, localMaxX = -Infinity;
-            var localMinY = Infinity, localMaxY = -Infinity;
-            for (var vj = 0; vj < verts.length; vj += 3) {
-                var vx = verts[vj], vy = verts[vj + 1];
-                if (vx < localMinX) localMinX = vx;
-                if (vx > localMaxX) localMaxX = vx;
-                if (vy < localMinY) localMinY = vy;
-                if (vy > localMaxY) localMaxY = vy;
-            }
-            minX = localMinX + cx; maxX = localMaxX + cx;
-            minY = localMinY + cy; maxY = localMaxY + cy;
+        } else if (bboxZ > 0) {
+            elemMinZ = cz - bboxZ * 0.5;
+            elemMaxZ = cz + bboxZ * 0.5;
         } else {
-            // No geometry and no rtree — use center_z with a ±1.5m guess
+            // No bbox_z in schema — use a ±1.5m guess (rare, old deployments)
             elemMinZ = cz - 1.5;
             elemMaxZ = cz + 1.5;
         }
 
-        // Classify: CUT / BELOW / ABOVE
+        // Classify: CUT / BELOW / ABOVE — before any geometry load
         var category;
         if (elemMinZ < cutZ && elemMaxZ > cutZ) {
             category = 'CUT';
@@ -636,6 +620,14 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
             });
             continue;
         }
+
+        // §SC_PERF: load geometry now — element is CUT + sliceable, blob load is justified
+        var geo = null;
+        var verts = null, faces = null;
+        if (geoHash) {
+            geo = lookupGeometry(db, libDb, geoHash);
+        }
+
         if (!geo || !geo[0] || !geo[1]) {
             console.log('§SC_NOGEOM guid=' + guid.substring(0, 8) +
                         ' class=' + ifcClass + ' hash=' + (geoHash ? geoHash.substring(0, 8) : 'NULL') +
@@ -649,9 +641,20 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
             continue;
         }
 
-        // Parse geometry (verts may already be parsed above for Z-range)
-        if (!verts) {
-            verts = parseVerticesBlob(geo[0], Number(geo[2]));
+        // Parse vertices; refine XY bbox from actual mesh (useful for doors/windows)
+        verts = parseVerticesBlob(geo[0], Number(geo[2]));
+        if (!useRtree && verts.length > 0) {
+            var localMinX = Infinity, localMaxX = -Infinity;
+            var localMinY = Infinity, localMaxY = -Infinity;
+            for (var vj = 0; vj < verts.length; vj += 3) {
+                var vx = verts[vj], vy = verts[vj + 1];
+                if (vx < localMinX) localMinX = vx;
+                if (vx > localMaxX) localMaxX = vx;
+                if (vy < localMinY) localMinY = vy;
+                if (vy > localMaxY) localMaxY = vy;
+            }
+            minX = localMinX + cx; maxX = localMaxX + cx;
+            minY = localMinY + cy; maxY = localMaxY + cy;
         }
         faces = parseFacesBlob(geo[1], Number(geo[3]));
 

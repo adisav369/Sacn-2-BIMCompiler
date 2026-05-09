@@ -310,6 +310,80 @@ var GridDrag = (function() {
     shadowGroup = null;
   }
 
+  // ── Drag visual feedback — red=origin, blue=proposed ────────────
+  //
+  // Red (ghost): where the grid line WAS — stays at the original position
+  //   throughout the drag so the user always sees "where I came from."
+  // Blue (proposed): where the grid line IS NOW — follows the pointer,
+  //   shows "where it would land if I release."
+  // Both are thin slabs spanning the building width, half-transparent.
+
+  var dragGhostMesh = null;   // red — original position
+  var dragProposedMesh = null; // blue — current proposed position
+
+  /** Create a thin slab line at a single grid position */
+  function makeDragSlab(axis, pos, color, opacity) {
+    if (!st || !st.envCache || !A || !A.scene || !A.ifc2three) return null;
+    var env = st.envCache;
+    var halfW = 0.05; // 50mm wide slab — thin line, not a band
+
+    var p0, p1, p2, p3;
+    if (axis === 'X') {
+      p0 = A.ifc2three(pos - halfW, env.yMin, env.zMin);
+      p1 = A.ifc2three(pos + halfW, env.yMin, env.zMin);
+      p2 = A.ifc2three(pos + halfW, env.yMax, env.zMin);
+      p3 = A.ifc2three(pos - halfW, env.yMax, env.zMin);
+    } else {
+      p0 = A.ifc2three(env.xMin, pos - halfW, env.zMin);
+      p1 = A.ifc2three(env.xMax, pos - halfW, env.zMin);
+      p2 = A.ifc2three(env.xMax, pos + halfW, env.zMin);
+      p3 = A.ifc2three(env.xMin, pos + halfW, env.zMin);
+    }
+    var groundY = p0.y - 0.02;
+    var positions = new Float32Array([
+      p0.x, groundY, p0.z,  p1.x, groundY, p1.z,  p2.x, groundY, p2.z,
+      p0.x, groundY, p0.z,  p2.x, groundY, p2.z,  p3.x, groundY, p3.z
+    ]);
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    var mat = new THREE.MeshBasicMaterial({
+      color: color, transparent: true, opacity: opacity,
+      side: THREE.DoubleSide, depthTest: false
+    });
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.renderOrder = 998;
+    A.scene.add(mesh);
+    return mesh;
+  }
+
+  /** Dispose a drag slab mesh */
+  function disposeSlab(mesh) {
+    if (mesh && A && A.scene) {
+      if (mesh.geometry) mesh.geometry.dispose();
+      if (mesh.material) mesh.material.dispose();
+      A.scene.remove(mesh);
+    }
+    return null;
+  }
+
+  /** Show red ghost at origin (called once on drag start) */
+  function showDragGhost(axis, originPos) {
+    dragGhostMesh = disposeSlab(dragGhostMesh);
+    dragGhostMesh = makeDragSlab(axis, originPos, 0xcc2222, 0.18);
+  }
+
+  /** Update blue proposed position (called on every pointer move) */
+  function showDragBand(axis, fromPos, toPos) {
+    dragProposedMesh = disposeSlab(dragProposedMesh);
+    dragProposedMesh = makeDragSlab(axis, toPos, 0x2266cc, 0.22);
+  }
+
+  /** Clear both ghost and proposed */
+  function clearDragBand() {
+    dragGhostMesh = disposeSlab(dragGhostMesh);
+    dragProposedMesh = disposeSlab(dragProposedMesh);
+  }
+
   /** Get element bounding box from DB */
   function getElementBBox(guid) {
     if (!A || !A.db) return null;
@@ -465,6 +539,16 @@ var GridDrag = (function() {
     }
     if (A.controls) A.controls.enabled = false;
 
+    // Red ghost at original position — "this is what you're holding"
+    showDragGhost(dragAxis, dragStartIFC);
+
+    // Status hint — tell the user what they can do
+    if (A.status) {
+      var bayInfo = '';
+      if (idx > 0) bayInfo = ' | bay ' + lines[idx - 1].label + '-' + label + ': ' + ((lines[idx].position - lines[idx - 1].position) * 1000).toFixed(0) + 'mm';
+      A.status.textContent = 'Dragging grid ' + label + ' (' + axis + ' @ ' + (dragStartIFC * 1000).toFixed(0) + 'mm)' + bayInfo;
+    }
+
     // Implementing 2D_029 §3.3 — Witness: W-2D29
     // Show 3D grid planes on drag activation
     if (st && st.renderGridPlanesIn3D && st.gridData && st.envCache) {
@@ -505,6 +589,19 @@ var GridDrag = (function() {
     shiftLine(dragLabel, dragAxis, delta);
     updateGridData(dragAxis, dragIdx, snapped);
     rebuildAnnotations();
+
+    // Live status: show from→to delta and current bay widths
+    if (A.status) {
+      var totalDelta = snapped - dragStartIFC;
+      var sign = totalDelta >= 0 ? '+' : '';
+      var bayStr = '';
+      if (dragIdx > 0) bayStr = ' | bay: ' + ((snapped - lines[dragIdx - 1].position) * 1000).toFixed(0) + 'mm';
+      if (dragIdx < lines.length - 1) bayStr += ' | ' + ((lines[dragIdx + 1].position - snapped) * 1000).toFixed(0) + 'mm';
+      A.status.textContent = 'Grid ' + dragLabel + ': ' + sign + (totalDelta * 1000).toFixed(0) + 'mm' + bayStr;
+    }
+
+    // Orange band: highlight the drag range (from→to) on the grid overlay
+    showDragBand(dragAxis, dragStartIFC, snapped);
 
     // Show shadow outlines for cascaded elements during drag
     var cascadeMoves = cascadeElements(
@@ -575,14 +672,24 @@ var GridDrag = (function() {
       log('§GRID_DRAG cancel label=' + dragLabel + ' (no movement)');
     }
 
-    // Clear shadows (they persist until commit or undo)
+    // Clear shadows and drag band
     clearShadows();
+    clearDragBand();
 
     // Reset visual
     if (st.lineMeshes[dragLabel]) {
       var defColor = A.lightTheme ? 0x444444 : 0xcccccc;
       st.lineMeshes[dragLabel].line.material.color.setHex(defColor);
       st.lineMeshes[dragLabel].line.material.linewidth = 1;
+    }
+
+    // Status: confirm the move or cancellation
+    if (A.status) {
+      if (Math.abs(delta) > 0.001) {
+        A.status.textContent = 'Grid ' + dragLabel + ' moved ' + (delta >= 0 ? '+' : '') + (delta * 1000).toFixed(0) + 'mm — ' + cascadeMoves.length + ' elements cascaded';
+      } else {
+        A.status.textContent = 'Grid mode — ' + ((st.gridData.xLines || []).length + (st.gridData.yLines || []).length) + ' grid lines';
+      }
     }
 
     // Implementing 2D_029 §3.3 — Witness: W-2D29
@@ -703,16 +810,17 @@ var GridDrag = (function() {
   }
 
   return {
-    init:             init,
-    loadRules:        loadRules,
-    rules:            rules,
-    enabled:          function() { return dragging; },
-    history:          function() { return hist.slice(); },
-    undo:             undo,
-    clamp:            clamp,
-    snap:             snap,
-    cascadeElements:  cascadeElements,
-    applyStrategy:    applyStrategy,
-    clearShadows:     clearShadows
+    init:              init,
+    loadRules:         loadRules,
+    rules:             rules,
+    enabled:           function() { return dragging; },
+    history:           function() { return hist.slice(); },
+    undo:              undo,
+    clamp:             clamp,
+    snap:              snap,
+    cascadeElements:   cascadeElements,
+    applyStrategy:     applyStrategy,
+    clearShadows:      clearShadows,
+    applyReplayedMove: applyReplayedMove
   };
 })();

@@ -87,5 +87,12 @@
     "color":   "#ff6600",
     "opacity":  0.35,
     "dash_m":   0.3
+  },
+  "smart_save": {
+    "dwell_threshold_s":  1.0,
+    "gesture_timeout_s":  5.0,
+    "proximity_tol_m":    0.3,
+    "max_dwells":         3,
+    "lock_after_hits":    3
   }
 }

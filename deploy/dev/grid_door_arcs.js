@@ -376,8 +376,11 @@ var DoorArcs = (function() {
 
       var mat = new THREE.LineBasicMaterial({ color: 0x99bbdd, transparent: true, opacity: 0.7 });
 
+      // Dimension line offset perpendicular to wall face
+      var dimOffset = dashLen + 0.05;
+
       if (longInX) {
-        // Opening runs in X — jamb dashes at left and right ends, dashes in Y direction
+        // Opening runs in X — jamb ticks at left and right ends, dashes in Y direction
         [[b[0], cy], [b[2], cy]].forEach(function(jPt) {
           var p0 = APP.ifc2three(jPt[0], jPt[1] - dashLen, cutZ);
           var p1 = APP.ifc2three(jPt[0], jPt[1] + dashLen, cutZ);
@@ -391,8 +394,20 @@ var DoorArcs = (function() {
           APP.scene.add(line);
           objects.push(line);
         });
+        // Connecting dimension line between the two jamb ticks
+        var dp0 = APP.ifc2three(b[0], cy + dimOffset, cutZ);
+        var dp1 = APP.ifc2three(b[2], cy + dimOffset, cutZ);
+        var dimGeom = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(dp0.x, dp0.y, dp0.z),
+          new THREE.Vector3(dp1.x, dp1.y, dp1.z)
+        ]);
+        var dimLine = new THREE.Line(dimGeom, mat);
+        dimLine.renderOrder = 1050;
+        dimLine.userData = { isDoorArc: true, isWindowOpening: true, isDimLine: true, guid: el.guid };
+        APP.scene.add(dimLine);
+        objects.push(dimLine);
       } else {
-        // Opening runs in Y — jamb dashes at top and bottom ends, dashes in X direction
+        // Opening runs in Y — jamb ticks at top and bottom ends, dashes in X direction
         [[cx, b[1]], [cx, b[3]]].forEach(function(jPt) {
           var p0 = APP.ifc2three(jPt[0] - dashLen, jPt[1], cutZ);
           var p1 = APP.ifc2three(jPt[0] + dashLen, jPt[1], cutZ);
@@ -406,6 +421,18 @@ var DoorArcs = (function() {
           APP.scene.add(line);
           objects.push(line);
         });
+        // Connecting dimension line between the two jamb ticks
+        var dp0 = APP.ifc2three(cx + dimOffset, b[1], cutZ);
+        var dp1 = APP.ifc2three(cx + dimOffset, b[3], cutZ);
+        var dimGeom = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(dp0.x, dp0.y, dp0.z),
+          new THREE.Vector3(dp1.x, dp1.y, dp1.z)
+        ]);
+        var dimLine = new THREE.Line(dimGeom, mat);
+        dimLine.renderOrder = 1050;
+        dimLine.userData = { isDoorArc: true, isWindowOpening: true, isDimLine: true, guid: el.guid };
+        APP.scene.add(dimLine);
+        objects.push(dimLine);
       }
 
       // Width label: sprite centred above the opening

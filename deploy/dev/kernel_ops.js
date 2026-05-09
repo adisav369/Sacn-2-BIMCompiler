@@ -112,13 +112,91 @@
     return ops;
   }
 
+  /**
+   * Compact the kernel_ops log:
+   *  1. Collapse consecutive GRID_MOVE ops on the same label → keep last position only.
+   *  2. Delete all undone ops (undone=1) — they'll never be redone after page reload.
+   *  3. Keep only ops from the two most recent SESSION_START boundaries.
+   *
+   * Safe to call on every page load or before download/export.
+   * @param {Object} db — sql.js database
+   * @returns {{ collapsed: number, pruned: number, total: number }}
+   */
+  function compact(db) {
+    ensureTable(db);
+    var collapsed = 0, pruned = 0;
+
+    // 1. Prune undone ops
+    try {
+      var undoneRes = db.exec('SELECT COUNT(*) FROM kernel_ops WHERE undone = 1');
+      pruned = (undoneRes.length && undoneRes[0].values.length) ? Number(undoneRes[0].values[0][0]) : 0;
+      if (pruned > 0) db.run('DELETE FROM kernel_ops WHERE undone = 1');
+    } catch (e) { console.log('§KERNEL_OP compact prune error: ' + e.message); }
+
+    // 2. Collapse consecutive GRID_MOVE on same label — keep the latest only.
+    //    "Consecutive" = same label with no other op type between them.
+    try {
+      var moves = db.exec(
+        "SELECT id, parameters FROM kernel_ops WHERE op_type = 'GRID_MOVE' ORDER BY id"
+      );
+      if (moves.length && moves[0].values.length > 1) {
+        var rows = moves[0].values;
+        var deleteIds = [];
+        for (var i = 0; i < rows.length - 1; i++) {
+          var pCurr = JSON.parse(rows[i][1]);
+          var pNext = JSON.parse(rows[i + 1][1]);
+          // Same label + same axis → intermediate drag, drop it
+          if (pCurr.label === pNext.label && pCurr.axis === pNext.axis) {
+            deleteIds.push(rows[i][0]);
+          }
+        }
+        for (var di = 0; di < deleteIds.length; di++) {
+          db.run('DELETE FROM kernel_ops WHERE id = ?', [deleteIds[di]]);
+        }
+        collapsed = deleteIds.length;
+      }
+    } catch (e) { console.log('§KERNEL_OP compact collapse error: ' + e.message); }
+
+    // 3. Keep only ops after the second-to-last SESSION_START (two sessions of history).
+    try {
+      var sessions = db.exec(
+        "SELECT id FROM kernel_ops WHERE op_type = 'SESSION_START' ORDER BY id DESC LIMIT 2"
+      );
+      if (sessions.length && sessions[0].values.length >= 2) {
+        var cutoffId = Number(sessions[0].values[1][0]);
+        var oldRes = db.exec('SELECT COUNT(*) FROM kernel_ops WHERE id < ' + cutoffId);
+        var oldCount = (oldRes.length && oldRes[0].values.length) ? Number(oldRes[0].values[0][0]) : 0;
+        if (oldCount > 0) {
+          db.run('DELETE FROM kernel_ops WHERE id < ' + cutoffId);
+          pruned += oldCount;
+        }
+      }
+    } catch (e) { console.log('§KERNEL_OP compact session error: ' + e.message); }
+
+    var totalRes = db.exec('SELECT COUNT(*) FROM kernel_ops');
+    var total = (totalRes.length && totalRes[0].values.length) ? Number(totalRes[0].values[0][0]) : 0;
+
+    console.log('§KERNEL_OP compact collapsed=' + collapsed + ' pruned=' + pruned + ' remaining=' + total);
+    return { collapsed: collapsed, pruned: pruned, total: total };
+  }
+
+  /**
+   * Mark a session boundary. Call on page load before any other ops.
+   * compact() uses these markers to prune old sessions.
+   */
+  function sessionStart(db) {
+    return commitOp(db, 'SESSION_START', { ts: new Date().toISOString() });
+  }
+
   window.KernelOps = {
-    ensureTable: ensureTable,
-    commitOp:    commitOp,
-    undoOp:      undoOp,
-    redoOp:      redoOp,
-    replayOps:   replayOps
+    ensureTable:  ensureTable,
+    commitOp:     commitOp,
+    undoOp:       undoOp,
+    redoOp:       redoOp,
+    replayOps:    replayOps,
+    compact:      compact,
+    sessionStart: sessionStart
   };
 
-  console.log('§KERNEL_OPS_LOADED v3');
+  console.log('§KERNEL_OPS_LOADED v4');
 })();

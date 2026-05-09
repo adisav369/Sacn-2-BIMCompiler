@@ -1971,16 +1971,27 @@ test('T103: grid_scissors.js has scissors adaptive grid support', function() {
 
 test('T104: detectGridsAtPlane produces same label/snap/filter behaviour as detectGrids', function() {
   // 6 columns at x=0,0.1,3,3.1,6,6.1 — after clustering + snap, should get 3 xLines
+  // Stub returns schema-correct rows for both structural and opening queries.
+  // Issue: stub must match the SQL column order that detectOpportunityGrids expects.
   var stubDb = {
-    exec: function() {
-      return [{
-        columns: ['guid', 'center_x', 'center_y'],
-        values: [
-          ['a', 0.0, 0.0], ['b', 0.1, 0.0],
-          ['c', 3.0, 0.0], ['d', 3.1, 0.0],
-          ['e', 6.0, 0.0], ['f', 6.1, 0.0]
-        ]
-      }];
+    exec: function(sql) {
+      if (sql.indexOf('IfcDoor') >= 0 || sql.indexOf('IfcWindow') >= 0) {
+        // Opening query: 6 doors at same X positions, portrait bbox → X-axis votes
+        return [{ values: [
+          [0.0, 0.0, 0.9, 2.1], [0.1, 0.0, 0.9, 2.1],
+          [3.0, 0.0, 0.9, 2.1], [3.1, 0.0, 0.9, 2.1],
+          [6.0, 0.0, 0.9, 2.1], [6.1, 0.0, 0.9, 2.1]
+        ] }];
+      }
+      // Structural query: 6 columns, bbox_z=3.0 (spans cutZ=1.5), center_z=1.5
+      return [{ values: [
+        ['IfcColumn', 0.0, 0.0, 0.3, 0.3, 3.0],
+        ['IfcColumn', 0.1, 0.0, 0.3, 0.3, 3.0],
+        ['IfcColumn', 3.0, 0.0, 0.3, 0.3, 3.0],
+        ['IfcColumn', 3.1, 0.0, 0.3, 0.3, 3.0],
+        ['IfcColumn', 6.0, 0.0, 0.3, 0.3, 3.0],
+        ['IfcColumn', 6.1, 0.0, 0.3, 0.3, 3.0]
+      ] }];
     }
   };
   var result = GridDims.detectGridsAtPlane(stubDb, 1.5);

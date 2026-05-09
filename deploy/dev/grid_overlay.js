@@ -62,15 +62,49 @@ function setupGridOverlay(APP) {
     // Filter out storeys with very few elements (e.g. "Ground Floor" with 1 element)
     var significant = storeys.filter(function(s) { return s.elementCount >= 5; });
     if (!significant.length) significant = storeys;
+
+    // §GRID_STOREY door-aware ranking — Bug #1 fix.
+    // Sub-grade element clusters (foundations, piles) pass elementCount≥5 but have no doors.
+    // Habitable storeys always have doors. Rank by door count (desc) then by floorZ (asc).
+    // This prevents DX-style buildings where the lowest significant cluster is below grade.
+    var storeyDoorCounts = {};
+    try {
+      var dr = A.db.exec(
+        "SELECT m.storey, COUNT(*) FROM elements_meta m " +
+        "WHERE m.ifc_class IN ('IfcDoor','IfcDoorStandardCase') " +
+        "AND m.storey IS NOT NULL GROUP BY m.storey"
+      );
+      if (dr.length && dr[0].values.length) {
+        for (var di = 0; di < dr[0].values.length; di++) {
+          storeyDoorCounts[dr[0].values[di][0]] = Number(dr[0].values[di][1]);
+        }
+      }
+    } catch (e) { /* no door metadata — fall back to floorZ order */ }
+
+    var hasDoorData = Object.keys(storeyDoorCounts).length > 0;
+    if (hasDoorData) {
+      significant = significant.slice().sort(function(a, b) {
+        var da = storeyDoorCounts[a.name] || 0;
+        var db2 = storeyDoorCounts[b.name] || 0;
+        if (da !== db2) return db2 - da; // more doors first
+        return a.floorZ - b.floorZ;      // then lower floor first
+      });
+      log('§GRID_STOREY door-aware sort storeyDoors=' + JSON.stringify(storeyDoorCounts));
+    }
+
     if (mode === 'floor') {
       var cutZ = significant[0].floorZ + CUT_ABOVE;
       log('§GRID_STOREY GF cutZ=' + cutZ.toFixed(2) + ' storey="' + significant[0].name +
-          '" floorZ=' + significant[0].floorZ.toFixed(2) + ' (n=' + significant[0].elementCount + ')');
+          '" floorZ=' + significant[0].floorZ.toFixed(2) +
+          ' doors=' + (storeyDoorCounts[significant[0].name] || 0) +
+          ' (n=' + significant[0].elementCount + ')');
       return cutZ;
     } else if (mode === 'floor1' && significant.length > 1) {
       var cutZ = significant[1].floorZ + CUT_ABOVE;
       log('§GRID_STOREY L1 cutZ=' + cutZ.toFixed(2) + ' storey="' + significant[1].name +
-          '" floorZ=' + significant[1].floorZ.toFixed(2) + ' (n=' + significant[1].elementCount + ')');
+          '" floorZ=' + significant[1].floorZ.toFixed(2) +
+          ' doors=' + (storeyDoorCounts[significant[1].name] || 0) +
+          ' (n=' + significant[1].elementCount + ')');
       return cutZ;
     }
     return null;
@@ -518,6 +552,16 @@ function setupGridOverlay(APP) {
     if (mode === 'unlock') {
       GridViews.unlockView(A);
     } else {
+      // Bug #2 fix: turn off scissors before entering floor plan mode.
+      // A floor plan view uses its own ortho clip plane (GridViews.applyFloorClip).
+      // If the scissors section plane is still active, the user sees both clips at once —
+      // the section plane cuts the model vertically while the ortho clip cuts horizontally,
+      // leaving a confusing partial view. Turn scissors off first so the floor plan is clean.
+      var def = GridViews.VIEW_DEFS[mode];
+      if (def && def.clip && A.sectionOn && A.toggleSection) {
+        log('§GRID_STOREY scissors off — entering floor plan mode=' + mode);
+        A.toggleSection(); // calls A.onSectionOff → GridScissors.onOff → restores ground grids
+      }
       var cutZ = computeStoreyAwareCutZ(mode);
       GridViews.lockView(A, mode, envCache, cutZ);
       renderContoursForView(mode, cutZ);
@@ -661,11 +705,13 @@ function setupGridOverlay(APP) {
     if (!A.db) return;
     ensureSavedSectionsTable(A.db);
     try {
-      var r = A.db.exec('SELECT id, name, cut_value, plane_normal FROM saved_sections ORDER BY id');
+      var r = A.db.exec('SELECT id, name, cut_value, plane_normal, detected_grids FROM saved_sections ORDER BY id');
       if (r.length && r[0].values.length) {
         for (var i = 0; i < r[0].values.length; i++) {
           var row = r[0].values[i];
-          savedSections.push({ id: row[0], name: row[1], cut_value: row[2], plane_normal: row[3] });
+          var dwells = null;
+          try { if (row[4]) dwells = JSON.parse(row[4]); } catch (e) { /* not JSON */ }
+          savedSections.push({ id: row[0], name: row[1], cut_value: row[2], plane_normal: row[3], dwells: dwells });
         }
       }
     } catch (e) { log('§SAVE_SECTION load db error: ' + e.message); }
@@ -693,22 +739,28 @@ function setupGridOverlay(APP) {
     log('§SAVE_SECTION loaded=' + savedSections.length);
   }
 
-  /** Save current scissors cut to DB and localStorage */
-  function saveSectionToDb(name) {
+  /** Save current scissors cut to DB and localStorage.
+   *  @param {string} name
+   *  @param {Array}  [dwells] — dwell_points from smart save (optional)
+   */
+  function saveSectionToDb(name, dwells) {
     if (!A.db) return;
     ensureSavedSectionsTable(A.db);
     var cutVal = A.sectionPlane ? A.sectionPlane.constant : 0;
     var axis = A.sectionAxis || 'Y';
     var normal = axis === 'X' ? '[-1,0,0]' : axis === 'Z' ? '[0,0,-1]' : '[0,-1,0]';
     var ts = new Date().toISOString().slice(0, 10);
+    // Store dwell points in detected_grids column (reused — was always null)
+    var dwellJson = (dwells && dwells.length > 0) ? JSON.stringify(dwells) : null;
     try {
       A.db.run(
         'INSERT INTO saved_sections (name,cut_value,plane_normal,detected_grids,timestamp) VALUES(?,?,?,?,?)',
-        [name, cutVal, normal, null, ts]
+        [name, cutVal, normal, dwellJson, ts]
       );
       loadSavedSections();
       try { localStorage.setItem(lsKey(), JSON.stringify(savedSections)); } catch (e) { /* no-op */ }
-      log('§SAVE_SECTION saved name=' + name + ' cutVal=' + cutVal.toFixed(2) + ' axis=' + axis);
+      log('§SAVE_SECTION saved name=' + name + ' cutVal=' + cutVal.toFixed(2) +
+          ' axis=' + axis + ' dwells=' + (dwells ? dwells.length : 0));
     } catch (e) { log('§SAVE_SECTION save error: ' + e.message); }
   }
 
@@ -723,40 +775,121 @@ function setupGridOverlay(APP) {
     } catch (e) { log('§SAVE_SECTION delete error: ' + e.message); }
   }
 
-  /** Restore a saved section — turns scissors on, positions at saved cut, rebuilds 2D grids */
+  /** Restore a saved section — goes straight to 2D ortho, no scissors toggle.
+   *  Scissors on/off was causing onOff() to rebuild panel with ground grids = GF trap. */
   function restoreSection(sec) {
     var cutVal = sec.cut_value;
     var normal = [0, -1, 0];
     try { normal = JSON.parse(sec.plane_normal || '[0,-1,0]'); } catch (e) { /* default */ }
     var axis = (normal[0] !== 0) ? 'X' : (normal[2] !== 0) ? 'Z' : 'Y';
 
-    if (!A.sectionOn && A.toggleSection) A.toggleSection();
-    if (A.sectionAxis !== axis && A.setSectionAxis) A.setSectionAxis(axis);
-    if (A.updateSectionPlane) {
-      A.updateSectionPlane(cutVal);
-    } else if (A.sectionPlane) {
-      A.sectionPlane.constant = cutVal;
-      if (A.onSectionSliderChange) A.onSectionSliderChange(cutVal);
+    // Turn scissors OFF if active — don't toggle ON first, just ensure it's off.
+    // This avoids the onOff() → rebuildPanel → GF trap.
+    if (A.sectionOn && A.toggleSection) {
+      A.toggleSection();
     }
+
     if (A.status) A.status.textContent = 'Restored: ' + sec.name;
     log('§SAVE_SECTION restored id=' + sec.id + ' name=' + sec.name +
         ' cutVal=' + cutVal.toFixed(2) + ' axis=' + axis);
 
-    // Implementing P1b §P1b.5 — rebuild grids + 2D treatment at restored cut — Witness: W-P1B
-    // cutVal is the THREE.js section plane constant (world Y).
-    // IFC Z = cutVal + modelOffset.z — this is what sectionCut and detectGridsAtPlane expect.
-    // GridScissors.rebuildAt handles the modelOffset internally (same as scissors slider path).
-    // renderContoursForView receives IFC Z directly.
+    // Flatten to 2D: switch to ortho top-down.
     if (axis === 'Y') {
+
+      var dwells = sec.dwells || null;
+      var ifcZ = cutVal + (A.modelOffset ? A.modelOffset.z : 0);
+      log('§SAVE_SECTION restore dwells=' + (dwells ? dwells.length : 'null') +
+          ' ifcZ=' + ifcZ.toFixed(2) + ' cutVal=' + cutVal.toFixed(2) +
+          ' dwellData=' + JSON.stringify(dwells));
+
+      // For composite smart saves: clip must encompass ALL dwell levels.
+      // Use highest dwell Z + margin for the floor clip so all layers are visible.
+      var clipZ = ifcZ;
+      if (dwells && dwells.length > 0) {
+        var hiZ = -Infinity;
+        for (var dci = 0; dci < dwells.length; dci++) {
+          if (dwells[dci].z > hiZ) hiZ = dwells[dci].z;
+        }
+        clipZ = hiZ + 1.0; // 1m above highest dwell = safe clip
+        log('§SAVE_SECTION clip raised to ' + clipZ.toFixed(2) + ' (highest dwell=' + hiZ.toFixed(2) + ')');
+      }
+
+      // Lock to ortho 2D floor plan view — clip at highest dwell Z
+      if (envCache) {
+        GridViews.lockView(A, 'floor', envCache, clipZ);
+      }
+
+      // Clear previous contours
+      if (typeof GridContours !== 'undefined') GridContours.clear(A);
+
+      if (dwells && dwells.length > 0 && typeof SectionCut !== 'undefined' && typeof GridContours !== 'undefined') {
+        // ── Composite render — painter's algorithm by dwell order ──
+        // Each dwell point's contours overwrite the previous layer.
+        // Dwell order = capture order = paint order (temporal, not Z-sorted).
+        var rules = window._gridRules || {};
+        var bandLo = Infinity, bandHi = -Infinity;
+        for (var di = 0; di < dwells.length; di++) {
+          var dz = dwells[di].z;
+          if (dz < bandLo) bandLo = dz;
+          if (dz > bandHi) bandHi = dz;
+
+          try {
+            var results = SectionCut.sectionCut(A.db, A.libDb, dz, null, { rules: rules });
+            // Additive: no clear between layers — later layers' contours overwrite earlier
+            GridContours.renderContours(A, results, 'floor', dz);
+
+            // Door arcs + window openings for each layer
+            if (typeof DoorArcs !== 'undefined') {
+              var doors = results.filter(function(r) {
+                return r.ifcClass === 'IfcDoor' || r.ifcClass === 'IfcDoorStandardCase';
+              });
+              var walls = results.filter(function(r) {
+                return r.ifcClass === 'IfcWall' || r.ifcClass === 'IfcWallStandardCase';
+              });
+              var arcs = DoorArcs.generateArcs(doors, walls);
+              GridContours.addDoorArcs(A, arcs, 'floor', dz);
+
+              // Window openings + stair symbols
+              var windowEls = results.filter(function(r) {
+                return r.ifcClass === 'IfcWindow' || r.ifcClass === 'IfcWindowStandardCase';
+              });
+              var stairEls = results.filter(function(r) {
+                return r.ifcClass === 'IfcStair' || r.ifcClass === 'IfcStairFlight';
+              });
+              DoorArcs.generateWindowOpenings(windowEls, A, dz);
+              DoorArcs.generateStairSymbol(stairEls, A, dz);
+            }
+
+            log('§SAVE_SECTION composite layer=' + (di + 1) + '/' + dwells.length +
+                ' z=' + dz.toFixed(2) + ' elements=' + results.length +
+                ' doors=' + (doors ? doors.length : 0));
+          } catch (e) {
+            log('§SAVE_SECTION composite layer error z=' + dz.toFixed(2) + ': ' + e.message);
+          }
+        }
+
+        // Apply storey band visibility — only composite Z range elements are pickable.
+        // Elements outside the band are hidden so clicking picks the right floor.
+        var bandMargin = 1.0;
+        applyStoreyBandVisibility(bandLo - bandMargin, bandHi + bandMargin);
+        log('§SAVE_SECTION band visibility [' + (bandLo - bandMargin).toFixed(2) +
+            ',' + (bandHi + bandMargin).toFixed(2) + ']');
+      } else {
+        // Single cut — legacy path: use standard renderContoursForView (includes door arcs)
+        try { renderContoursForView('floor', ifcZ); } catch (e) { log('§SAVE_SECTION contour error: ' + e.message); }
+      }
+
+      // Rebuild grids at the primary cut height
       if (typeof GridScissors !== 'undefined' && GridScissors.rebuildAt) {
         try {
           GridScissors.rebuildAt(axis, cutVal);
           log('§SAVE_SECTION grids rebuilt at cutVal=' + cutVal.toFixed(2));
         } catch (e) { log('§SAVE_SECTION rebuildAt error: ' + e.message); }
       }
-      var ifcZ = cutVal + (A.modelOffset ? A.modelOffset.z : 0);
-      log('§SAVE_SECTION renderContours ifcZ=' + ifcZ.toFixed(2));
-      try { renderContoursForView('floor', ifcZ); } catch (e) { log('§SAVE_SECTION contour error: ' + e.message); }
+      clampBubbleScales();
+      updateViewButtons();
+      log('§SAVE_SECTION 2D layout ifcZ=' + ifcZ.toFixed(2) +
+          ' dwells=' + (dwells ? dwells.length : 0));
     }
   }
 
@@ -767,9 +900,19 @@ function setupGridOverlay(APP) {
     gridPanel = document.createElement('div');
     gridPanel.id = PANEL_ID;
     gridPanel.style.cssText = 'position:fixed;top:56px;left:16px;z-index:25;background:' + panelBg() + ';border-radius:8px;padding:0;border:1px solid ' + panelBorder() + ';backdrop-filter:blur(8px);min-width:180px;max-width:260px';
-    gridPanel.innerHTML = '<b style="display:block;padding:6px 10px;color:' + panelText() + ';font-size:12px;font-weight:bold;cursor:grab" onclick="togglePanel(\'grid-panel-body\')">Grid Dimensions</b>' +
+    gridPanel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px">' +
+      '<b style="color:' + panelText() + ';font-size:12px;font-weight:bold;cursor:grab" onclick="togglePanel(\'grid-panel-body\')">Grid Dimensions</b>' +
+      '<span id="grid-panel-close" style="color:#888;font-size:16px;cursor:pointer;padding:0 4px;line-height:1" title="Close grid panel">&times;</span></div>' +
       '<div id="grid-panel-body" class="panel-body" style="max-height:300px;overflow-y:auto;padding:4px 10px"></div>';
     document.body.appendChild(gridPanel);
+    // Close button
+    var closeBtn = document.getElementById('grid-panel-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('pointerup', function(e) {
+        e.stopPropagation();
+        if (gridPanel) gridPanel.style.display = 'none';
+      });
+    }
     if (A._makeDraggable) A._makeDraggable(gridPanel);
 
     var body = document.getElementById('grid-panel-body');
@@ -824,11 +967,27 @@ function setupGridOverlay(APP) {
       }
       viewHtml += '</div>';
     }
-    // Save ✚ — visible only when scissors is active
+    // Save ✚ + [#] dwell preset — visible only when scissors is active
     if (A.sectionOn) {
-      viewHtml += '<div style="margin:0 0 4px"><button id="grid-save-section-btn" style="' +
+      var dwellMax = 3;
+      if (typeof GridScissors !== 'undefined' && GridScissors.getDwellConfig) {
+        dwellMax = GridScissors.getDwellConfig().maxDwells;
+      }
+      var dwellCount = 0;
+      if (typeof GridScissors !== 'undefined' && GridScissors.dwellPoints) {
+        dwellCount = GridScissors.dwellPoints().length;
+      }
+      viewHtml += '<div style="margin:0 0 4px;display:flex;gap:3px;align-items:center">' +
+        '<button id="grid-save-section-btn" style="' +
         VIEW_BTN_STYLE + ';background:#1a4a1a;color:#8f8;border-color:#3a7a3a" ' +
-        'title="Save current scissors cut as named view">Save \u271A</button></div>';
+        'title="Save section — captures ' + dwellMax + ' dwell points max">Save \u271A</button>' +
+        '<span id="smart-save-badge" style="background:#334;color:#8cf;border:1px solid #446;' +
+        'border-radius:4px;padding:2px 6px;font-size:11px;min-width:16px;text-align:center;' +
+        'cursor:default" title="Dwell points captured (max ' + dwellMax + ')">' +
+        (dwellCount || '') + '</span>' +
+        '<span style="color:#666;font-size:9px">/</span>' +
+        '<span style="color:#666;font-size:10px">' + dwellMax + '</span>' +
+        '</div>';
     }
 
     var html = viewHtml;
@@ -924,18 +1083,49 @@ function setupGridOverlay(APP) {
       });
     }
 
-    // Save ✚ button
+    // Save ✚ button — smart save with dwell points
     var saveSBtn = body.querySelector('#grid-save-section-btn');
     if (saveSBtn) {
       saveSBtn.addEventListener('pointerup', function(e) {
         e.stopPropagation();
         var cutVal = A.sectionPlane ? A.sectionPlane.constant : 0;
-        var defaultName = 'Section @' + cutVal.toFixed(1) + 'm';
+
+        // Collect dwell points from smart save tracker
+        var dwells = [];
+        if (typeof GridScissors !== 'undefined' && GridScissors.dwellPoints) {
+          dwells = GridScissors.dwellPoints();
+        }
+
+        var defaultName;
+        if (dwells.length > 0) {
+          defaultName = 'SmartCut ' + dwells.length + 'pt @' + dwells.map(function(d) { return d.z.toFixed(1); }).join(',') + 'm';
+        } else {
+          defaultName = 'Section @' + cutVal.toFixed(1) + 'm';
+        }
         var name = window.prompt('Section name:', defaultName);
         if (!name) return;
-        saveSectionToDb(name);
+
+        // Save with dwell points metadata
+        saveSectionToDb(name, dwells);
+
+        // If dwell points captured, also commit to kernel_ops for replay
+        if (dwells.length > 0 && window.KernelOps && A.db) {
+          try {
+            KernelOps.commitOp(A.db, 'SMART_SAVE', {
+              name: name,
+              dwell_points: dwells,
+              cutVal: cutVal,
+              axis: A.sectionAxis || 'Y'
+            });
+            log('§SMART_SAVE committed name=' + name + ' dwells=' + dwells.length);
+          } catch (err) { log('§SMART_SAVE commit error: ' + err.message); }
+          // Reset tracker after successful save
+          GridScissors.dwellReset();
+        }
+
         buildPanel(currentPanelGrids || gridData);
-        log('§SAVE_SECTION panel rebuilt after save name=' + name);
+        log('§SAVE_SECTION panel rebuilt after save name=' + name +
+            ' dwells=' + dwells.length);
       });
     }
   }
@@ -1097,6 +1287,91 @@ function setupGridOverlay(APP) {
     zoomAnim = requestAnimationFrame(step);
   }
 
+  // ── Undo/Redo Buttons (bottom-right) ───────────────────────────────
+  var undoRedoDiv = null;
+
+  function showUndoRedo() {
+    if (undoRedoDiv) { undoRedoDiv.style.display = 'flex'; return; }
+    undoRedoDiv = document.createElement('div');
+    undoRedoDiv.id = 'undo-redo-btns';
+    undoRedoDiv.style.cssText = 'position:fixed;bottom:32px;right:16px;z-index:25;display:flex;gap:4px';
+
+    var btnStyle = 'background:rgba(30,50,80,0.7);color:#4fc3f7;border:1px solid rgba(255,255,255,0.15);' +
+      'border-radius:6px;padding:6px 10px;font-size:16px;cursor:pointer;backdrop-filter:blur(6px);' +
+      'min-width:36px;text-align:center';
+
+    var undoBtn = document.createElement('button');
+    undoBtn.id = 'kernel-undo-btn';
+    undoBtn.title = 'Undo (Ctrl+Z)';
+    undoBtn.style.cssText = btnStyle;
+    undoBtn.textContent = '\u21A9';
+    undoBtn.addEventListener('pointerup', function(e) {
+      e.stopPropagation();
+      doUndo();
+    });
+
+    var redoBtn = document.createElement('button');
+    redoBtn.id = 'kernel-redo-btn';
+    redoBtn.title = 'Redo (Ctrl+Shift+Z)';
+    redoBtn.style.cssText = btnStyle;
+    redoBtn.textContent = '\u21AA';
+    redoBtn.addEventListener('pointerup', function(e) {
+      e.stopPropagation();
+      doRedo();
+    });
+
+    undoRedoDiv.appendChild(undoBtn);
+    undoRedoDiv.appendChild(redoBtn);
+    document.body.appendChild(undoRedoDiv);
+    log('§UNDO_REDO buttons added');
+  }
+
+  function hideUndoRedo() {
+    if (undoRedoDiv) undoRedoDiv.style.display = 'none';
+  }
+
+  // Op types that are undoable (user actions). Others are audit-only.
+  var UNDOABLE_OPS = { 'GRID_MOVE': true };
+
+  /** Dispatch undo — skip audit-only ops (GRID_DETECT, SESSION_START, etc.) */
+  function doUndo() {
+    if (!A.db || !window.KernelOps) return;
+    // Keep undoing until we find an undoable op or run out
+    var op = null;
+    for (var attempt = 0; attempt < 10; attempt++) {
+      op = KernelOps.undoOp(A.db);
+      if (!op) { log('§UNDO nothing to undo'); return; }
+      if (UNDOABLE_OPS[op.op_type]) break;
+      log('§UNDO skip audit op=' + op.op_type + ' id=' + op.id);
+      op = null;
+    }
+    if (!op) { log('§UNDO no undoable ops found'); return; }
+    log('§UNDO op=' + op.op_type + ' id=' + op.id);
+    if (op.op_type === 'GRID_MOVE' && typeof GridDrag !== 'undefined' && GridDrag.applyReplayedMove) {
+      GridDrag.applyReplayedMove(op.parameters.axis, op.parameters.label, op.parameters.from);
+    }
+    A.markDirty();
+  }
+
+  /** Dispatch redo — skip audit-only ops */
+  function doRedo() {
+    if (!A.db || !window.KernelOps) return;
+    var op = null;
+    for (var attempt = 0; attempt < 10; attempt++) {
+      op = KernelOps.redoOp(A.db);
+      if (!op) { log('§REDO nothing to redo'); return; }
+      if (UNDOABLE_OPS[op.op_type]) break;
+      log('§REDO skip audit op=' + op.op_type + ' id=' + op.id);
+      op = null;
+    }
+    if (!op) { log('§REDO no undoable ops found'); return; }
+    log('§REDO op=' + op.op_type + ' id=' + op.id);
+    if (op.op_type === 'GRID_MOVE' && typeof GridDrag !== 'undefined' && GridDrag.applyReplayedMove) {
+      GridDrag.applyReplayedMove(op.parameters.axis, op.parameters.label, op.parameters.to);
+    }
+    A.markDirty();
+  }
+
   // ── Toggle ────────────────────────────────────────────────────────
 
   A.toggleGridOverlay = function() {
@@ -1124,6 +1399,9 @@ function setupGridOverlay(APP) {
         lineMeshes = {};
       }
       if (gridPanel) { gridPanel.style.display = 'none'; }
+      hideUndoRedo();
+      // Restore all mesh visibility — CRITICAL: band filter hides meshes, must undo on exit
+      clearStoreyBandVisibility();
       // Un-highlight 2D button, un-grey Measure button
       var btn2d = document.getElementById('grid-2d-btn');
       if (btn2d) { btn2d.style.background = '#444'; btn2d.style.borderColor = '#666'; }
@@ -1171,9 +1449,16 @@ function setupGridOverlay(APP) {
     log('§GRID_DETECT xLines=' + (gridData.xLines || []).length + ' yLines=' + (gridData.yLines || []).length);
 
     // Implementing 2D_029 §2.4 — Witness: W-2D29
-    // Replay saved GRID_MOVE ops to restore positions from previous session
+    // Session boundary + compact + replay saved ops
     if (window.KernelOps && A.db) {
       try {
+        // Mark session start — compact uses these to prune old sessions
+        KernelOps.sessionStart(A.db);
+        // Compact: collapse duplicate GRID_MOVEs, prune undone ops, trim old sessions
+        var compactResult = KernelOps.compact(A.db);
+        log('§KERNEL_OP compact collapsed=' + compactResult.collapsed +
+            ' pruned=' + compactResult.pruned + ' remaining=' + compactResult.total);
+        // Replay saved GRID_MOVE ops to restore positions from previous session
         var savedMoves = KernelOps.replayOps(A.db, 'GRID_MOVE');
         savedMoves.forEach(function (op) {
           var p = op.parameters;
@@ -1204,6 +1489,7 @@ function setupGridOverlay(APP) {
     loadSavedSections();           // fill savedSections[] before buildPanel renders them
     buildPanel(gridData);
     buildDimChains(gridData, envCache);
+    showUndoRedo();
 
     A.status.textContent = 'Grid mode — ' + ((gridData.xLines || []).length + (gridData.yLines || []).length) + ' grid lines';
   };
@@ -1319,19 +1605,24 @@ function setupGridOverlay(APP) {
   // Implementing 2D_029 §6.1 — Witness: W-2D29
   function applyStoreyBandVisibility(bandMin, bandMax) {
     var shown = 0, hidden = 0;
+    // Batch-load center_z for all elements — one query, not per-mesh
+    var czMap = {};
+    if (A.db) {
+      try {
+        var r = A.db.exec('SELECT guid, center_z FROM element_transforms');
+        if (r.length && r[0].values.length) {
+          for (var qi = 0; qi < r[0].values.length; qi++) {
+            czMap[r[0].values[qi][0]] = Number(r[0].values[qi][1]);
+          }
+        }
+      } catch (e) { log('§GRID_3D_BAND_VIS batch query error: ' + e.message); }
+    }
     A.scene.traverse(function (obj) {
       if (!obj.isMesh || !obj.userData.guid) return;
       var cz = obj.userData.center_z;
-      // Fallback: query DB if center_z not cached on userData
-      if (cz === undefined && A.db) {
-        try {
-          var r = A.db.exec('SELECT center_z FROM element_transforms WHERE guid = ?',
-                             [obj.userData.guid]);
-          if (r.length && r[0].values.length) {
-            cz = r[0].values[0][0];
-            obj.userData.center_z = cz;
-          }
-        } catch (e) { /* skip */ }
+      if (cz === undefined) {
+        cz = czMap[obj.userData.guid];
+        if (cz !== undefined) obj.userData.center_z = cz;
       }
       if (cz === undefined) return;
       if (cz >= bandMin && cz <= bandMax) {

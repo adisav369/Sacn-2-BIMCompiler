@@ -31,6 +31,183 @@ var GridScissors = (function() {
   var scissorsTimer = null;    // debounce handle
   var lastCutVal = null;       // last processed cut value (skip < 0.1m delta)
 
+  // ── Smart Save: dwell point tracker ──────────────────────────────
+  // Detects pauses during slider gesture. Each pause ≥ dwell_threshold_s
+  // becomes a capture point. Proximity dedup + three-strike lock.
+  var dwellPoints = [];        // [{ z: IFC_Z, hits: N, locked: bool, ts: Date.now() }]
+  var dwellLastZ = null;       // last slider Z value
+  var dwellLastTime = 0;       // timestamp of last significant move
+  var dwellCheckTimer = null;  // periodic checker
+
+  function getDwellConfig() {
+    var rules = window._gridRules || {};
+    var ss = rules.smart_save || {};
+    return {
+      threshold:  (ss.dwell_threshold_s || 1.0) * 1000,  // ms
+      timeout:    (ss.gesture_timeout_s || 5.0) * 1000,   // ms
+      proxTol:    ss.proximity_tol_m   || 0.3,
+      maxDwells:  ss.max_dwells        || 3,
+      lockHits:   ss.lock_after_hits   || 3
+    };
+  }
+
+  /** Called on every slider tick — tracks velocity for dwell detection */
+  function dwellTrack(ifcVal) {
+    var now = Date.now();
+    var cfg = getDwellConfig();
+
+    // If moved significantly, update last-move time
+    if (dwellLastZ === null || Math.abs(ifcVal - dwellLastZ) > 0.05) {
+      dwellLastZ = ifcVal;
+      dwellLastTime = now;
+    }
+
+    // Clear previous check timer, start new one
+    if (dwellCheckTimer) clearTimeout(dwellCheckTimer);
+    dwellCheckTimer = setTimeout(function() {
+      checkDwell(ifcVal, cfg);
+    }, cfg.threshold);
+  }
+
+  /** Check if slider has been stationary long enough to register a dwell */
+  function checkDwell(ifcVal, cfg) {
+    var now = Date.now();
+    var elapsed = now - dwellLastTime;
+    if (elapsed < cfg.threshold) return;
+    // FIFO: if at max, evict the oldest (first) dwell to make room
+    if (dwellPoints.length >= cfg.maxDwells) {
+      var evicted = dwellPoints.shift();
+      log('§SMART_SAVE evict oldest z=' + evicted.z.toFixed(2) +
+          ' — making room (FIFO, max=' + cfg.maxDwells + ')');
+    }
+
+    // Proximity dedup: check if near an existing dwell point
+    for (var i = 0; i < dwellPoints.length; i++) {
+      if (Math.abs(dwellPoints[i].z - ifcVal) < cfg.proxTol) {
+        // Same band — increment hit count
+        dwellPoints[i].hits++;
+        dwellPoints[i].z = ifcVal; // update to latest position
+        dwellPoints[i].ts = now;
+        if (dwellPoints[i].hits >= cfg.lockHits && !dwellPoints[i].locked) {
+          dwellPoints[i].locked = true;
+          log('§SMART_SAVE locked dwell z=' + ifcVal.toFixed(2) +
+              ' hits=' + dwellPoints[i].hits + ' — convergence');
+        } else {
+          log('§SMART_SAVE dedup dwell z=' + ifcVal.toFixed(2) +
+              ' hits=' + dwellPoints[i].hits);
+        }
+        flashDwellCapture();
+        rebuildDwellMarkers();
+        updateDwellBadge();
+        return;
+      }
+    }
+
+    // New dwell point
+    dwellPoints.push({ z: ifcVal, hits: 1, locked: false, ts: now });
+    log('§SMART_SAVE dwell captured z=' + ifcVal.toFixed(2) +
+        ' total=' + dwellPoints.length + '/' + cfg.maxDwells);
+    flashDwellCapture();
+    rebuildDwellMarkers();
+    updateDwellBadge();
+  }
+
+  /** Reset dwell tracker (on scissors off or gesture timeout) */
+  function dwellReset() {
+    dwellPoints = [];
+    dwellLastZ = null;
+    dwellLastTime = 0;
+    if (dwellCheckTimer) { clearTimeout(dwellCheckTimer); dwellCheckTimer = null; }
+    clearDwellMarkers();
+    updateDwellBadge();
+    log('§SMART_SAVE reset');
+  }
+
+  /** Update the [#] badge next to Save button */
+  function updateDwellBadge() {
+    var badge = document.getElementById('smart-save-badge');
+    if (badge) badge.textContent = dwellPoints.length || '';
+  }
+
+  // ── Dwell markers — red outlines at captured Z levels ──────────
+  // Persist on screen so user always sees where previous dwells landed.
+  // Cleared on dwellReset (scissors off or save).
+  var dwellMarkers = [];  // THREE.Line objects
+
+  /** Rebuild all dwell markers from current dwellPoints */
+  function rebuildDwellMarkers() {
+    clearDwellMarkers();
+    if (!A || !A.scene || !st || !st.envCache || typeof THREE === 'undefined') return;
+    var env = st.envCache;
+    var axis = A.sectionAxis || 'Y';
+
+    for (var i = 0; i < dwellPoints.length; i++) {
+      var z = dwellPoints[i].z;
+      var locked = dwellPoints[i].locked;
+      // Build a rectangle outline at this Z spanning the building footprint
+      var corners;
+      if (axis === 'Y') {
+        corners = [
+          A.ifc2three(env.xMin, env.yMin, z),
+          A.ifc2three(env.xMax, env.yMin, z),
+          A.ifc2three(env.xMax, env.yMax, z),
+          A.ifc2three(env.xMin, env.yMax, z)
+        ];
+      } else if (axis === 'X') {
+        corners = [
+          A.ifc2three(z, env.yMin, env.zMin),
+          A.ifc2three(z, env.yMax, env.zMin),
+          A.ifc2three(z, env.yMax, env.zMax),
+          A.ifc2three(z, env.yMin, env.zMax)
+        ];
+      } else {
+        corners = [
+          A.ifc2three(env.xMin, z, env.zMin),
+          A.ifc2three(env.xMax, z, env.zMin),
+          A.ifc2three(env.xMax, z, env.zMax),
+          A.ifc2three(env.xMin, z, env.zMax)
+        ];
+      }
+      var pts = corners.map(function(c) { return new THREE.Vector3(c.x, c.y, c.z); });
+      pts.push(pts[0].clone()); // close the loop
+      var geo = new THREE.BufferGeometry().setFromPoints(pts);
+      var color = locked ? 0xff4444 : 0xcc3333;
+      var mat = new THREE.LineBasicMaterial({
+        color: color, transparent: true, opacity: locked ? 0.7 : 0.45,
+        linewidth: 2
+      });
+      var line = new THREE.Line(geo, mat);
+      line.renderOrder = 1500;
+      line.userData.isDwellMarker = true;
+      A.scene.add(line);
+      dwellMarkers.push(line);
+    }
+    A.markDirty();
+  }
+
+  /** Remove all dwell markers from scene */
+  function clearDwellMarkers() {
+    for (var i = 0; i < dwellMarkers.length; i++) {
+      if (dwellMarkers[i].geometry) dwellMarkers[i].geometry.dispose();
+      if (dwellMarkers[i].material) dwellMarkers[i].material.dispose();
+      if (A && A.scene) A.scene.remove(dwellMarkers[i]);
+    }
+    dwellMarkers = [];
+  }
+
+  /** Flash the whole screen white — camera flash bulb effect when dwell captured */
+  function flashDwellCapture() {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;' +
+      'background:white;opacity:0.6;z-index:9999;pointer-events:none;' +
+      'transition:opacity 0.3s ease-out';
+    document.body.appendChild(overlay);
+    // Force reflow then fade
+    overlay.offsetHeight;
+    overlay.style.opacity = '0';
+    setTimeout(function() { overlay.remove(); }, 350);
+  }
+
   function log(msg) { console.log('[GridScissors] ' + msg); }
 
   // ── Dispose ──────────────────────────────────────────────────────
@@ -60,24 +237,8 @@ var GridScissors = (function() {
     var rules = window._gridRules || {};
 
     if (axis === 'Y') {
-      // Horizontal cut — existing detectGridsAtPlane handles this (IFC Z)
+      // Horizontal cut — detectGridsAtPlane → detectOpportunityGrids commits GRID_DETECT
       var grids = GridDims.detectGridsAtPlane(db, cutVal, 0, rules);
-      // Implementing P1b §P1b.4 — commit GRID_DETECT to kernel_ops — Witness: W-P1B
-      // Persists which cut produced grids so reload can replay. Not undoable (audit only).
-      if (window.KernelOps && db) {
-        try {
-          KernelOps.commitOp(db, 'GRID_DETECT', {
-            cutZ:   cutVal,
-            axis:   axis,
-            xCount: (grids.xLines || []).length,
-            yCount: (grids.yLines || []).length,
-            method: 'opportunity-vote'
-          });
-          log('§GD_DETECT_COMMIT cutZ=' + cutVal.toFixed(2) +
-              ' xLines=' + (grids.xLines || []).length +
-              ' yLines=' + (grids.yLines || []).length);
-        } catch (e) { log('§GD_DETECT_COMMIT error: ' + e.message); }
-      }
       return grids;
     }
 
@@ -306,6 +467,14 @@ var GridScissors = (function() {
   function onSliderChange(val) {
     if (!st.active) return;
     var axis = A.sectionAxis || 'Y';
+
+    // Smart save: track dwell points during slider gesture
+    var ifcVal;
+    if (axis === 'Y') ifcVal = val + (A.modelOffset ? A.modelOffset.z : 0);
+    else if (axis === 'X') ifcVal = val + (A.modelOffset ? A.modelOffset.x : 0);
+    else ifcVal = -(val) + (A.modelOffset ? A.modelOffset.y : 0);
+    dwellTrack(ifcVal);
+
     // Skip if moved < 0.1m
     if (lastCutVal !== null && Math.abs(val - lastCutVal) < 0.1) return;
     if (scissorsTimer) clearTimeout(scissorsTimer);
@@ -325,6 +494,7 @@ var GridScissors = (function() {
   function onOff() {
     if (scissorsTimer) { clearTimeout(scissorsTimer); scissorsTimer = null; }
     lastCutVal = null;
+    dwellReset();
     disposeScissorsGroup();
     if (st.active && st.gridGroup) {
       st.gridGroup.visible = true;
@@ -519,9 +689,12 @@ var GridScissors = (function() {
   }
 
   return {
-    init: init,
-    consolidateUI: consolidateUI,
-    rebuildAt: rebuildAt
+    init:           init,
+    consolidateUI:  consolidateUI,
+    rebuildAt:      rebuildAt,
+    dwellPoints:    function() { return dwellPoints.slice(); },
+    dwellReset:     dwellReset,
+    getDwellConfig: getDwellConfig
   };
 
 })();

@@ -2,20 +2,51 @@
 
 # ⚠ DO NOT REMOVE — Read the log after every run. Scope: deploy/dev/ ONLY.
 
-## Status: IMPLEMENTED (2026-05-08) — next session continues §9 and §10
+## Status: REFACTORED (2026-05-09) — grid alignment fixed, §9/§10 remain
 
 **What is done:**
 - `grid_rules.json` extended with `floor_plan` + `grid_detection` blocks
 - `grid_dims.js`: `detectOpportunityGrids()` — two SQL queries, no blobs, weighted votes
 - `section_cut.js`: storey band filter at `§SC_BAND_FILTER`, class exclusion + rtree Z-bounds
 - `grid_overlay.js` + `grid_drag.js`: `window._gridRules` shared; rules passed to both consumers
-- `28-storey-band.spec.js`: 15 wiring tests, audit passes (32 specs, 296 tests)
+- `28-storey-band.spec.js`: 15 wiring tests, audit passes
 - Committed: `53c0cffa`
 
-**What to verify in browser next session:**
-- `§GD_OPP_CLUSTER axis=X candidates=N clusters=M` in console → grids appearing in residential buildings
-- `§SC_BAND_FILTER ... excluded=N` → roof/foundation noise gone from GF contours
-- `§GD_STRUCTURAL_SPAN` samples confirm bbox_z filter is firing
+**REFACTOR (2026-05-09) — §3.1 face-vote spec was WRONG — fixed:**
+- §3.1 said "face votes at center_x ± bbox_x/2". This caused two grid lines per wall when
+  wall thickness > faceTol (0.3m). A 0.35m wall → two clusters 0.35m apart → two lines.
+- `snapToNearestFace` compounded the problem: pulled merged face-pair means back to raw faces.
+- Opening votes on BOTH axes: 10 doors along one wall → 10 spurious lines on wrong axis.
+
+**Actual correct algorithm (now in code):**
+1. Walls vote CENTER, not faces. Weight×2 compensates for collapsing two face votes into one.
+   One cluster per wall → one grid line per wall.
+2. Openings vote ONE axis only, determined by bbox aspect ratio:
+   - bbox_y > bbox_x×1.2 → portrait (in Y-running wall) → vote X only
+   - bbox_x > bbox_y×1.2 → landscape (in X-running wall) → vote Y only
+   SQL updated to fetch bbox_x, bbox_y for openings.
+3. snapToNearestFace calls removed — centers are already correct positions.
+
+**§3.1 spec below is superseded. The implementation is the spec.**
+
+**performance fix (same session):**
+- `sectionCut` was loading geometry BLOBs for ALL sliceable elements to estimate Z-range.
+  Now uses `bbox_z` from element_transforms first; geometry loaded only for confirmed CUT.
+  Both SQL queries now include `bbox_z` as column 14.
+
+**GF storey fix:**
+- `computeStoreyAwareCutZ` now queries door counts per storey; ranks by doors-desc, floorZ-asc.
+  Prevents DX sub-grade cluster (elementCount≥5 but no doors) from being picked as GF.
+
+**scissors fix:**
+- `onViewBtnClick` now turns off scissors before entering floor plan mode (def.clip=true).
+
+**What to verify in browser:**
+- `§GD_WALL_WEIGHT axis=X center=N.NNN` — walls voting center, not face pair
+- `§GD_OPP_OPEN rows=N xVotes=A yVotes=B` — A ≠ B (axis-aware split)
+- `§GD_OPP_CLUSTER axis=X clusters=M` — M ≈ expected structural bay count
+- `§GRID_STOREY GF ... doors=N` — GF storey has N > 0 doors
+- `§SC_PERF` in logs absent (no spurious geo loads)
 
 ---
 

@@ -226,38 +226,6 @@
     return result;
   }
 
-  // ── Snap-to-Nearest-Face (P1 Grid Alignment) ────────────────────
-  // Implementing P1 Grid Alignment — Witness: W-P1-ALIGN
-  //
-  // After clusterVotes produces a weighted-mean position, the mean may
-  // land slightly off the nearest wall face due to averaging across two
-  // close walls. snapToNearestFace corrects this by pulling each cluster
-  // mean to the nearest raw structural face position within snapTol.
-  // Logs §GD_SNAP_TO_FACE only when an actual correction is made (>1mm).
-  /**
-   * @param {Array} clusters — [{position, rawPosition, weight}] from clusterVotes
-   * @param {Array} faces    — raw structural face positions (IFC metres)
-   * @param {number} tol     — maximum correction distance in metres
-   * @param {string} axis    — 'X' or 'Y' (for log)
-   * @returns {Array} clusters with corrected positions
-   */
-  function snapToNearestFace(clusters, faces, tol, axis) {
-    return clusters.map(function(c, idx) {
-      var best = null, bestDist = Infinity;
-      for (var fi = 0; fi < faces.length; fi++) {
-        var d = Math.abs(faces[fi] - c.position);
-        if (d < bestDist && d <= tol) { bestDist = d; best = faces[fi]; }
-      }
-      if (best !== null && bestDist > 0.001) {
-        log('§GD_SNAP_TO_FACE axis=' + axis + ' cluster=' + idx +
-            ' before=' + c.position.toFixed(3) + ' after=' + best.toFixed(3) +
-            ' delta=' + bestDist.toFixed(3));
-        return { position: best, rawPosition: best, weight: c.weight };
-      }
-      return c;
-    });
-  }
-
   /**
    * Core opportunity-vote algorithm.
    * One SQL query per source type — no geometry blobs.
@@ -286,7 +254,6 @@
     var wallLenRef  = gd.wall_length_ref_m || 3.0;
     var wallWtMin   = gd.wall_weight_min   || 0.5;
     var wallWtMax   = gd.wall_weight_max   || 8.0;
-    var snapFaceTol = gd.snap_face_tol_m   || faceTol;
     // P1b: opening-density gate + sub-bay minimum
     // min_openings_for_grid: at a cut plane, require at least this many openings for grid detection to proceed.
     //   If below threshold, return empty — no noisy grids on uninformative sections.
@@ -295,24 +262,42 @@
     var minOpeningsForGrid = gd.min_openings_for_grid || 2;
     var minBayOpeningM     = gd.min_bay_opening_m     || 0.9;
 
+    var fp = (rules && rules.floor_plan) || {};
+
     var empty = { xLines: [], yLines: [] };
     var xVotes = [], yVotes = [];
-    // Raw structural face positions — used for snap-to-face post-processing
-    var xFaces = [], yFaces = [];
-    // Raw opening positions — used for opening-supported cluster filter (P1b.2)
-    var openXPositions = [], openYPositions = [];
 
-    // ── Source A: structural elements — Z-span filter IS the sweep filter ──
-    // bbox_z = (center_z + bbox_z/2) - (center_z - bbox_z/2) = element height.
-    // Elements with span >= min_structural_span_m span the storey = structural.
-    // Wall orientation: runs-in-Y (bbox_y > 2*bbox_x) → X face votes.
-    //                   runs-in-X (bbox_x > 2*bbox_y) → Y face votes.
-    //                   square (column)               → both axes.
+    // ── Source A: structural elements — center-line votes ───────────
+    // §GD_REFACTOR: walls now vote for their CENTERLINE, not both faces.
+    //
+    // Previous face-vote approach caused two bugs:
+    //   1. Double lines per wall: faces 0.35m apart exceed faceTol=0.3m → two separate
+    //      clusters → two grid lines per wall where one is expected.
+    //   2. snapToNearestFace: pulled merged face-pair centers back to a raw face,
+    //      introducing drift exactly opposite to the intended correction.
+    //
+    // Center-vote fixes both: one vote per wall at its centerline (cx or cy), weight
+    // doubled to preserve the same total vote mass as two face votes. Columns already
+    // vote centroid — unchanged. Ambiguous elements also vote centroid — unchanged.
+    //
+    // Wall orientation: runs-in-Y (bbox_y > bbox_x*1.5) → center_x votes for X-axis.
+    //                   runs-in-X (bbox_x > bbox_y*1.5) → center_y votes for Y-axis.
+    //                   column / square                  → both axes (centroid).
     var structSet = "'" + structCls.join("','") + "'";
+    var bandH = (fp && fp.band_fallback_height) || 3.5;
     var zFilter = cutZ != null
       ? " AND (t.center_z - t.bbox_z*0.5) <= " + Number(cutZ) +
-        " AND (t.center_z + t.bbox_z*0.5) >= " + Number(cutZ)
+        " AND (t.center_z + t.bbox_z*0.5) >= " + Number(cutZ) +
+        // Storey band proximity: only structural elements whose center_z is within
+        // one storey height of cutZ. Prevents walls from distant storeys voting.
+        " AND t.center_z >= " + (Number(cutZ) - bandH) +
+        " AND t.center_z <= " + (Number(cutZ) + bandH)
       : "";
+    if (cutZ != null) {
+      log('§GD_BAND_PROXIMITY cutZ=' + Number(cutZ).toFixed(2) +
+          ' band=[' + (Number(cutZ) - bandH).toFixed(2) + ',' + (Number(cutZ) + bandH).toFixed(2) + ']' +
+          ' minSpan=' + minSpan);
+    }
     var structSql =
       "SELECT m.ifc_class, t.center_x, t.center_y, t.bbox_x, t.bbox_y, t.bbox_z " +
       "FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid " +
@@ -326,10 +311,6 @@
       if (sRes && sRes.length && sRes[0].values) structRows = sRes[0].values;
     } catch (e) { log('§GD_OPP_STRUCT error: ' + e.message); }
 
-    // Implementing P1 §P1.1 — wall-length weighting — Witness: W-P1-ALIGN
-    // Weight = clamp(wallLen / wallLenRef, wallWtMin, wallWtMax).
-    // wallLen = bbox dimension along the wall's run direction.
-    // Columns and ambiguous square elements keep weight=1 (no directional length).
     var spanSamples = 0, wtSamples = 0;
     for (var si = 0; si < structRows.length; si++) {
       var cls  = structRows[si][0];
@@ -343,49 +324,46 @@
         spanSamples++;
       }
       if (cls === 'IfcColumn' || (bx > 0 && Math.abs(bx - by) / Math.max(bx, by) < 0.5)) {
-        // Square-ish: column or near-square → both axes (centroid), weight=1 (no length axis)
+        // Column or near-square element → centroid votes for both axes, weight=1
         xVotes.push({ pos: cx, weight: 1 });
         yVotes.push({ pos: cy, weight: 1 });
-        xFaces.push(cx);
-        yFaces.push(cy);
       } else if (by > bx * 1.5) {
-        // Runs in Y — face votes on X axis; wall length = by
+        // Runs in Y → center_x votes for X-axis. Weight×2: replaces two face votes.
         var wt = Math.max(wallWtMin, Math.min(wallWtMax, by / wallLenRef));
-        xVotes.push({ pos: cx - bx * 0.5, weight: wt });
-        xVotes.push({ pos: cx + bx * 0.5, weight: wt });
-        xFaces.push(cx - bx * 0.5);
-        xFaces.push(cx + bx * 0.5);
+        xVotes.push({ pos: cx, weight: wt * 2 });
         if (wtSamples < 5) {
-          log('§GD_WALL_WEIGHT class=' + cls + ' len=' + by.toFixed(2) + ' weight=' + wt.toFixed(2));
+          log('§GD_WALL_WEIGHT class=' + cls + ' len=' + by.toFixed(2) + ' wt=' + wt.toFixed(2) + ' axis=X center=' + cx.toFixed(3));
           wtSamples++;
         }
       } else if (bx > by * 1.5) {
-        // Runs in X — face votes on Y axis; wall length = bx
+        // Runs in X → center_y votes for Y-axis. Weight×2: replaces two face votes.
         var wt = Math.max(wallWtMin, Math.min(wallWtMax, bx / wallLenRef));
-        yVotes.push({ pos: cy - by * 0.5, weight: wt });
-        yVotes.push({ pos: cy + by * 0.5, weight: wt });
-        yFaces.push(cy - by * 0.5);
-        yFaces.push(cy + by * 0.5);
+        yVotes.push({ pos: cy, weight: wt * 2 });
         if (wtSamples < 5) {
-          log('§GD_WALL_WEIGHT class=' + cls + ' len=' + bx.toFixed(2) + ' weight=' + wt.toFixed(2));
+          log('§GD_WALL_WEIGHT class=' + cls + ' len=' + bx.toFixed(2) + ' wt=' + wt.toFixed(2) + ' axis=Y center=' + cy.toFixed(3));
           wtSamples++;
         }
       } else {
-        // Ambiguous — contribute centroid to both, weight=1
+        // Ambiguous orientation — centroid votes for both axes, weight=1
         xVotes.push({ pos: cx, weight: 1 });
         yVotes.push({ pos: cy, weight: 1 });
-        xFaces.push(cx);
-        yFaces.push(cy);
       }
     }
     log('§GD_OPP_STRUCT rows=' + structRows.length + ' xVotes=' + xVotes.length + ' yVotes=' + yVotes.length);
 
-    // ── Source B: openings — opportunity votes (weight = openWt) ──
-    // Openings sit precisely ON the grid face, never in the middle of a bay.
-    // Their centroid position directly votes for a grid line.
+    // ── Source B: openings — axis-aware votes ────────────────────────
+    // §GD_REFACTOR: openings now vote on ONE axis only, determined by their
+    // bbox orientation. Voting both axes was creating spurious grid lines:
+    // 10 doors spread along one wall → 10 phantom grid lines on the wrong axis.
+    //
+    // bbox_y > bbox_x → opening is "tall" (portrait) → sits in a Y-running wall
+    //                    → center_x votes for X-axis only
+    // bbox_x > bbox_y → opening is "wide" (landscape) → sits in an X-running wall
+    //                    → center_y votes for Y-axis only
+    // square / unknown → vote both axes (safe fallback)
     var openSet = "'" + openCls.join("','") + "'";
     var openSql =
-      "SELECT t.center_x, t.center_y " +
+      "SELECT t.center_x, t.center_y, COALESCE(t.bbox_x, 0), COALESCE(t.bbox_y, 0) " +
       "FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid " +
       "WHERE m.ifc_class IN (" + openSet + ")" +
       zFilter;
@@ -397,24 +375,32 @@
     } catch (e) { log('§GD_OPP_OPEN error: ' + e.message); }
 
     // Implementing P1b §P1b.1 — opening-density gate — Witness: W-P1B
-    // When at a section cut (cutZ provided), require at least minOpeningsForGrid openings.
-    // A cut with fewer openings hits no structural bay faces — grid would be noise.
     if (cutZ != null && openRows.length < minOpeningsForGrid) {
       log('§GD_OPENING_GATE cutZ=' + Number(cutZ).toFixed(2) +
           ' openings=' + openRows.length + ' min=' + minOpeningsForGrid + ' — skip grid detection');
       return empty;
     }
 
+    var openXCount = 0, openYCount = 0;
     for (var oi = 0; oi < openRows.length; oi++) {
-      var ox = Number(openRows[oi][0]);
-      var oy = Number(openRows[oi][1]);
-      xVotes.push({ pos: ox, weight: openWt });
-      yVotes.push({ pos: oy, weight: openWt });
-      // Implementing P1b §P1b.2 — track opening positions for cluster support check
-      openXPositions.push(ox);
-      openYPositions.push(oy);
+      var ox  = Number(openRows[oi][0]);
+      var oy  = Number(openRows[oi][1]);
+      var obx = Number(openRows[oi][2]);
+      var oby = Number(openRows[oi][3]);
+
+      // Determine which axis this opening belongs to from its bbox aspect ratio.
+      // Threshold 1.2× — looser than walls (1.5×) since opening bboxes can be noisy.
+      var voteX = true, voteY = true;
+      if (obx > 0 && oby > 0) {
+        if (oby > obx * 1.2)      { voteY = false; } // tall → Y-running wall → X only
+        else if (obx > oby * 1.2) { voteX = false; } // wide → X-running wall → Y only
+      }
+      if (voteX) xVotes.push({ pos: ox, weight: openWt });
+      if (voteY) yVotes.push({ pos: oy, weight: openWt });
+      if (voteX) openXCount++;
+      if (voteY) openYCount++;
     }
-    log('§GD_OPP_OPEN rows=' + openRows.length + ' weight=' + openWt);
+    log('§GD_OPP_OPEN rows=' + openRows.length + ' xVotes=' + openXCount + ' yVotes=' + openYCount + ' weight=' + openWt);
 
     // ── Cluster votes ──────────────────────────────────────────────
     var xClusters = clusterVotes(xVotes, faceTol, minVotes);
@@ -422,21 +408,8 @@
     log('§GD_OPP_CLUSTER axis=X candidates=' + xVotes.length + ' clusters=' + xClusters.length + ' minVotes=' + minVotes);
     log('§GD_OPP_CLUSTER axis=Y candidates=' + yVotes.length + ' clusters=' + yClusters.length + ' minVotes=' + minVotes);
 
-    // Implementing P1 §P1.2 — snap cluster means to nearest structural face — Witness: W-P1-ALIGN
-    // Corrects weighted-mean drift so grid lines land exactly on wall faces.
-    xClusters = snapToNearestFace(xClusters, xFaces, snapFaceTol, 'X');
-    yClusters = snapToNearestFace(yClusters, yFaces, snapFaceTol, 'Y');
-
-    // P1b §P1b.2 — opening-supported cluster filter DISABLED by default.
-    // Analysis: opening center positions don't align with wall face positions on the same axis.
-    // A 43m X-running wall has openings with center_x spread across 0–43m; their center_x
-    // does NOT land near Y-running wall face X-positions that define X-clusters.
-    // Result: 41 legitimate X-clusters dropped (xLines=1 surviving — unusable).
-    // The opening gate (min_openings_for_grid) already prevents bad cuts. Per-cluster
-    // filtering needs axis-aware opening tracking which requires knowing which openings are
-    // in which walls — too expensive without a wall-opening join query.
-    // §GD_OPENING_ONLY is kept as observable evidence when filter was active.
-    log('§GD_OPENING_ONLY filter=disabled xClusters=' + xClusters.length + ' yClusters=' + yClusters.length);
+    // snapToNearestFace removed: center-line votes land on the correct position
+    // already. Snapping to raw face positions was pulling centers off-centerline.
 
     if (!xClusters.length && !yClusters.length) return empty;
 
@@ -474,6 +447,25 @@
     for (var rj = 0; rj < yLines.length; rj++) yLines[rj].label = rj < letterSeq.length ? letterSeq[rj] : String.fromCharCode(65 + rj);
 
     log('§GD_GRIDS xLines=' + xLines.length + ' yLines=' + yLines.length + ' source=opportunity-vote');
+
+    // Commit Z-occurrence detection to kernel_ops — traceable, replayable audit trail.
+    // Records which cutZ produced which grid lines, structural + opening confirmation counts.
+    if (typeof window !== 'undefined' && window.KernelOps && db) {
+      try {
+        window.KernelOps.commitOp(db, 'GRID_DETECT', {
+          cutZ:        cutZ,
+          structural:  structRows.length,
+          openings:    openRows.length,
+          xClusters:   xClusters.length,
+          yClusters:   yClusters.length,
+          xLines:      xLines.length,
+          yLines:      yLines.length,
+          minSpan:     minSpan,
+          method:      'opportunity-vote'
+        });
+      } catch (e) { log('§GD_DETECT_COMMIT error: ' + e.message); }
+    }
+
     return { xLines: xLines, yLines: yLines };
   }
 

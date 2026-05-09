@@ -58,6 +58,49 @@ var GridContours = (function() {
    * @param {number} cutZ — IFC Z of section cut
    * @returns {THREE.Group}
    */
+  // Minimum wall outline width in metres — ensures walls remain visible on large buildings.
+  // Computed from camera frustum: at least MIN_WALL_SCREEN_PX pixels wide.
+  var MIN_WALL_SCREEN_PX = 3;
+
+  /** Build a ribbon mesh along a polyline path — flat quad strip, width in metres.
+   *  Used for structural outlines that must remain visible at any zoom. */
+  function buildRibbon(threePoints, halfW, yPos, color) {
+    if (threePoints.length < 2) return null;
+    var positions = [];
+    for (var i = 0; i < threePoints.length; i++) {
+      // Compute perpendicular in XZ plane
+      var dx, dz;
+      if (i < threePoints.length - 1) {
+        dx = threePoints[i + 1].x - threePoints[i].x;
+        dz = threePoints[i + 1].z - threePoints[i].z;
+      } else {
+        dx = threePoints[i].x - threePoints[i - 1].x;
+        dz = threePoints[i].z - threePoints[i - 1].z;
+      }
+      var len = Math.sqrt(dx * dx + dz * dz) || 1;
+      var nx = -dz / len * halfW;
+      var nz = dx / len * halfW;
+      // Two vertices per point — left and right of centerline
+      positions.push(threePoints[i].x + nx, yPos, threePoints[i].z + nz);
+      positions.push(threePoints[i].x - nx, yPos, threePoints[i].z - nz);
+    }
+    // Build triangle strip as indexed triangles
+    var indices = [];
+    for (var j = 0; j < threePoints.length - 1; j++) {
+      var a = j * 2, b = a + 1, c = a + 2, d = a + 3;
+      indices.push(a, b, c, b, d, c);
+    }
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+    geo.setIndex(indices);
+    var mat = new THREE.MeshBasicMaterial({
+      color: color, side: THREE.DoubleSide, depthTest: false
+    });
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.renderOrder = 1101; // above fill (1099) and line (1100)
+    return mesh;
+  }
+
   function renderContours(APP, contourData, viewMode, cutZ) {
     var group = ensureGroup(APP);
     var lineCount = 0;
@@ -65,6 +108,17 @@ var GridContours = (function() {
     // Structural classes: render as filled polygons (solid black = wall thickness visible)
     // IfcSlab excluded — slab contour covers entire floor area, obscures walls
     var FILL_CLASSES = { 'IfcWall': 1, 'IfcWallStandardCase': 1, 'IfcColumn': 1 };
+
+    // Compute minimum wall outline width from camera frustum
+    // On large buildings (terminal/hospital), walls become hairlines at overview zoom.
+    // Ensure structural outlines are at least MIN_WALL_SCREEN_PX pixels wide.
+    var minOutlineW = 0;
+    var cam = APP.camera;
+    if (cam && cam.isOrthographicCamera) {
+      var frustumW = (cam.right - cam.left) / (cam.zoom || 1);
+      var screenW = APP.renderer ? APP.renderer.domElement.width : window.innerWidth;
+      minOutlineW = (frustumW / screenW) * MIN_WALL_SCREEN_PX;
+    }
 
     for (var i = 0; i < contourData.length; i++) {
       var el = contourData[i];
@@ -94,13 +148,22 @@ var GridContours = (function() {
           // ShapeGeometry creates in XY — rotate to XZ (floor plan)
           shapeGeom.rotateX(-Math.PI / 2);
           var fillMat = new THREE.MeshBasicMaterial({
-            color: style.color, side: THREE.DoubleSide, depthTest: false
+            color: '#000000', side: THREE.DoubleSide, depthTest: false
           });
           var fillMesh = new THREE.Mesh(shapeGeom, fillMat);
           fillMesh.position.y = threePoints[0].y;
           fillMesh.renderOrder = 1099;
           fillMesh.userData = { isContour: true, guid: el.guid, ifcClass: el.ifcClass };
           group.add(fillMesh);
+
+          // Bold outline ribbon for structural elements on large buildings
+          if (minOutlineW > 0.01) {
+            var ribbon = buildRibbon(threePoints, minOutlineW * 0.5, threePoints[0].y, '#000000');
+            if (ribbon) {
+              ribbon.userData = { isContour: true, guid: el.guid, ifcClass: el.ifcClass };
+              group.add(ribbon);
+            }
+          }
         }
 
         // Outline stroke (all elements)
