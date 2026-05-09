@@ -1053,8 +1053,27 @@ function setupGridOverlay(APP) {
       scDels[scd].addEventListener('pointerup', function(e) {
         e.stopPropagation();
         var cutName = e.currentTarget.getAttribute('data-cut-name');
-        if (typeof SectionCut !== 'undefined' && SectionCut.removeCut) {
-          SectionCut.removeCut(A, cutName);
+        if (typeof SectionCut !== 'undefined') {
+          // Remove from all possible localStorage keys (building-specific + default 'bld')
+          var keys = [
+            (A.activeBuilding || 'bld') + ':sectionCuts',
+            'bld:sectionCuts'
+          ];
+          for (var ki = 0; ki < keys.length; ki++) {
+            try {
+              var raw = localStorage.getItem(keys[ki]);
+              if (raw) {
+                var arr = JSON.parse(raw);
+                var filtered = arr.filter(function(c) { return c.name !== cutName; });
+                localStorage.setItem(keys[ki], JSON.stringify(filtered));
+                log('§SAVE_CUT delete key=' + keys[ki] + ' before=' + arr.length + ' after=' + filtered.length);
+              }
+            } catch (ex) { /* ignore */ }
+          }
+          // Also clear the in-memory array
+          if (SectionCut.savedCuts) {
+            SectionCut.savedCuts = SectionCut.savedCuts.filter(function(c) { return c.name !== cutName; });
+          }
           log('§SAVE_CUT deleted name=' + cutName);
         }
         buildPanel(currentPanelGrids || gridData);
