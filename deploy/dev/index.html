@@ -421,8 +421,8 @@
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center">
     <span class="section-val" id="section-val">—</span>
-    <button id="bookmark-add-btn" onclick="addScissorsBookmark()" style="background:#2a4a2a;color:#8f8;border:1px solid #3a7a3a;border-radius:4px;padding:2px 8px;font-size:14px;cursor:pointer;line-height:1" title="Bookmark this position">⊕</button>
-    <button id="bookmark-del-btn" onclick="deleteScissorsBookmark()" style="background:#4a2a2a;color:#f88;border:1px solid #7a3a3a;border-radius:4px;padding:2px 8px;font-size:14px;cursor:pointer;line-height:1;display:none" title="Delete this bookmark">&times;</button>
+    <button id="bookmark-add-btn" onclick="addScissorsBookmark()" style="background:#2a4a2a;color:#8f8;border:1px solid #3a7a3a;border-radius:4px;padding:2px 8px;font-size:14px;cursor:pointer;line-height:1" title="Bookmark this cut position">&#x1F516;</button>
+    <button id="bookmark-del-btn" onclick="deleteScissorsBookmark()" style="background:#4a2a2a;color:#f88;border:1px solid #7a3a3a;border-radius:4px;padding:2px 8px;font-size:14px;cursor:pointer;line-height:1;display:none" title="Remove bookmark">&times;</button>
   </div>
 </div>
 <script>
@@ -439,20 +439,15 @@
     var val = parseFloat(slider.value);
     var axis = APP.sectionAxis || 'Y';
 
-    // If 2D grid overlay is active, save to the 2D panel (named card) instead
+    // If 2D grid overlay is active, ⊕ does nothing — 2D panel has its own Save ✚
     if (APP._gridOverlayState && APP._gridOverlayState.active) {
-      var saveBtn = document.getElementById('grid-save-section-btn');
-      if (saveBtn) { saveBtn.click(); return; }
+      console.log('§BOOKMARK skip — 2D grid active, use panel Save instead');
+      return;
     }
 
     // Standalone scissors: bookmark as tick on slider rail
-    var opId = null;
-    if (window.KernelOps && APP.db) {
-      try {
-        opId = KernelOps.commitOp(APP.db, 'SCISSORS_BOOKMARK', { axis: axis, cutVal: val });
-      } catch (e) { console.log('§BOOKMARK error: ' + e.message); }
-    }
-    bookmarks.push({ id: opId, val: val, axis: axis });
+    bookmarks.push({ val: val, axis: axis });
+    saveBookmarksToLS();
     renderBookmarkTicks();
     console.log('§BOOKMARK added val=' + val.toFixed(1) + ' axis=' + axis + ' total=' + bookmarks.length);
   };
@@ -470,12 +465,7 @@
     }
 
     var removed = bookmarks.splice(bestIdx, 1)[0];
-    // Mark as undone in kernel_ops
-    if (removed.id && window.KernelOps && APP.db) {
-      try {
-        APP.db.run('UPDATE kernel_ops SET undone = 1 WHERE id = ?', [removed.id]);
-      } catch (e) { /* ignore */ }
-    }
+    saveBookmarksToLS();
     renderBookmarkTicks();
     console.log('§BOOKMARK deleted val=' + removed.val.toFixed(1) + ' remaining=' + bookmarks.length);
   };
@@ -539,24 +529,33 @@
     }
   }
 
-  // Replay bookmarks from kernel_ops on scissors open
+  function bmKey() {
+    var bld = (window.APP && APP.activeBuilding) ? APP.activeBuilding : 'default';
+    return bld + ':scissors_bookmarks';
+  }
+
+  function saveBookmarksToLS() {
+    try { localStorage.setItem(bmKey(), JSON.stringify(bookmarks)); } catch (e) { /* full */ }
+  }
+
+  function loadBookmarksFromLS() {
+    try {
+      var raw = localStorage.getItem(bmKey());
+      bookmarks = raw ? JSON.parse(raw) : [];
+    } catch (e) { bookmarks = []; }
+  }
+
+  // Load bookmarks on scissors open, clear ticks on scissors close
   var origToggle = window.toggleSection;
   window.toggleSection = function() {
     if (origToggle) origToggle();
-    // After toggle, if scissors is now ON, replay bookmarks
-    if (window.APP && APP.sectionOn && window.KernelOps && APP.db) {
-      try {
-        var ops = KernelOps.replayOps(APP.db, 'SCISSORS_BOOKMARK');
-        bookmarks = ops.map(function(op) {
-          return { id: op.id, val: op.parameters.cutVal, axis: op.parameters.axis };
-        });
-        renderBookmarkTicks();
-        console.log('§BOOKMARK replay count=' + bookmarks.length);
-      } catch (e) { console.log('§BOOKMARK replay error: ' + e.message); }
+    if (window.APP && APP.sectionOn) {
+      loadBookmarksFromLS();
+      renderBookmarkTicks();
+      console.log('§BOOKMARK loaded count=' + bookmarks.length);
     }
     if (window.APP && !APP.sectionOn) {
-      bookmarks = [];
-      renderBookmarkTicks();
+      renderBookmarkTicks(); // clear ticks from DOM (bookmarks stay in localStorage)
     }
   };
 

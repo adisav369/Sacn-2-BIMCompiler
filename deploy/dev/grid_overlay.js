@@ -777,7 +777,10 @@ function setupGridOverlay(APP) {
     if (!A.db) return;
     try {
       A.db.run('DELETE FROM saved_sections WHERE id=?', [id]);
+      // Clear localStorage backup so zombie re-import doesn't bring it back
+      try { localStorage.removeItem(lsKey()); } catch (e) { /* no-op */ }
       loadSavedSections();
+      // Update localStorage with whatever remains (may be empty)
       try { localStorage.setItem(lsKey(), JSON.stringify(savedSections)); } catch (e) { /* no-op */ }
       log('§SAVE_SECTION deleted id=' + id);
     } catch (e) { log('§SAVE_SECTION delete error: ' + e.message); }
@@ -984,8 +987,9 @@ function setupGridOverlay(APP) {
           var scLabel = sc.name.length > 14 ? sc.name.slice(0, 12) + '\u2026' : sc.name;
           viewHtml += '<button class="saved-cut-btn" data-cut-name="' + sc.name + '" style="' +
             VIEW_BTN_SAVED + ';border-style:dotted" title="' + sc.label + '">' + scLabel + '</button>';
-          viewHtml += '<button onclick="deleteOldSavedCut(\'' + sc.name.replace(/'/g, "\\'") + '\');event.stopPropagation()" ' +
-            'style="background:#a00;color:#fff;border:none;border-radius:3px;padding:1px 5px;font-size:10px;cursor:pointer;margin-left:-2px" title="Delete">&#x2715;</button>';
+          viewHtml += '<button onclick="console.log(\'§SAVE_CUT_CLICK name=' + sc.name.replace(/'/g, '') + '\');deleteOldSavedCut(\'' + sc.name.replace(/'/g, '') + '\');event.stopPropagation()" ' +
+            'onpointerdown="event.stopPropagation()" ' +
+            'style="background:#a00;color:#fff;border:none;border-radius:3px;padding:2px 6px;font-size:12px;cursor:pointer;margin-left:-2px;position:relative;z-index:100" title="Delete this saved cut">&#x2715;</button>';
         }
         viewHtml += '</div>';
       }
@@ -1005,23 +1009,14 @@ function setupGridOverlay(APP) {
       }
       viewHtml += '</div>';
     }
-    // Save ✚ + [#] dwell preset — visible only when scissors is active
-    if (A.sectionOn) {
-      var dwellMax = 3;
-      if (typeof GridScissors !== 'undefined' && GridScissors.getDwellConfig) {
-        dwellMax = GridScissors.getDwellConfig().maxDwells;
+    // No Save button here — bookmarks are on the scissors slider panel (⊕).
+    // Smart save dwell badge shown only as subtle text when dwells captured.
+    if (A.sectionOn && typeof GridScissors !== 'undefined' && GridScissors.dwellPoints) {
+      var dwellCount = GridScissors.dwellPoints().length;
+      if (dwellCount > 0) {
+        viewHtml += '<div style="margin:0 0 2px"><span id="smart-save-badge" style="color:#8cf;font-size:10px">' +
+          dwellCount + ' dwell pt captured</span></div>';
       }
-      var dwellCount = 0;
-      if (typeof GridScissors !== 'undefined' && GridScissors.dwellPoints) {
-        dwellCount = GridScissors.dwellPoints().length;
-      }
-      viewHtml += '<div style="margin:0 0 4px;display:flex;gap:3px;align-items:center">' +
-        '<button id="grid-save-section-btn" style="' +
-        VIEW_BTN_STYLE + ';background:#1a4a1a;color:#8f8;border-color:#3a7a3a" ' +
-        'title="Save section">Save \u271A</button>' +
-        '<span id="smart-save-badge" style="color:#8cf;font-size:10px;min-width:12px">' +
-        (dwellCount ? dwellCount + ' pt' : '') + '</span>' +
-        '</div>';
     }
 
     var html = viewHtml;
