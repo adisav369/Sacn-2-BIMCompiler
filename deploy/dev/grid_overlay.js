@@ -528,8 +528,14 @@ function setupGridOverlay(APP) {
 
   // ── View Presets (delegated to GridViews) ───────────────────────────
 
-  var VIEW_BTN_STYLE = 'background:#444;color:#ccc;border:1px solid #666;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer';
-  var VIEW_BTN_ACTIVE = 'background:#4fc3f7;color:#000;border:1px solid #666;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer';
+  var VIEW_BTN_BASE = 'border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer';
+  var VIEW_BTN_STYLE = 'background:#444;color:#ccc;border:1px solid #666;' + VIEW_BTN_BASE;
+  var VIEW_BTN_ACTIVE = 'background:#4fc3f7;color:#000;border:1px solid #666;' + VIEW_BTN_BASE;
+  // Color-coded button styles — citizen classes
+  var VIEW_BTN_DEFAULT = 'background:#2a3a2a;color:#8c8;border:1px solid #4a6a4a;' + VIEW_BTN_BASE;  // light green — built-in views
+  var VIEW_BTN_SAVED   = 'background:#3a3a1a;color:#cc8;border:1px solid #6a6a3a;' + VIEW_BTN_BASE;  // light yellow — previously saved
+  var VIEW_BTN_LATEST  = 'background:#4a3010;color:#fc6;border:1px solid #8a6a2a;' + VIEW_BTN_BASE;  // orange — saved this session
+  var latestSavedId = null; // track the most recently saved section ID this session
 
   /** Update active state on all view buttons */
   function updateViewButtons() {
@@ -537,7 +543,7 @@ function setupGridOverlay(APP) {
     var btns = document.querySelectorAll('.grid-view-btn');
     for (var i = 0; i < btns.length; i++) {
       var v = btns[i].getAttribute('data-view');
-      btns[i].style.cssText = (v === av) ? VIEW_BTN_ACTIVE : VIEW_BTN_STYLE;
+      btns[i].style.cssText = (v === av) ? VIEW_BTN_ACTIVE : VIEW_BTN_DEFAULT;
     }
   }
 
@@ -753,10 +759,16 @@ function setupGridOverlay(APP) {
         'INSERT INTO saved_sections (name,cut_value,plane_normal,detected_grids,timestamp) VALUES(?,?,?,?,?)',
         [name, cutVal, normal, dwellJson, ts]
       );
+      // Get the ID of what we just inserted
+      try {
+        var lastId = A.db.exec('SELECT last_insert_rowid()');
+        if (lastId.length && lastId[0].values.length) latestSavedId = lastId[0].values[0][0];
+      } catch (e2) { /* ignore */ }
       loadSavedSections();
       try { localStorage.setItem(lsKey(), JSON.stringify(savedSections)); } catch (e) { /* no-op */ }
       log('§SAVE_SECTION saved name=' + name + ' cutVal=' + cutVal.toFixed(2) +
-          ' axis=' + axis + ' dwells=' + (dwells ? dwells.length : 0));
+          ' axis=' + axis + ' dwells=' + (dwells ? dwells.length : 0) +
+          ' latestId=' + latestSavedId);
     } catch (e) { log('§SAVE_SECTION save error: ' + e.message); }
   }
 
@@ -927,7 +939,7 @@ function setupGridOverlay(APP) {
       { key: 'unlock', label: '\uD83D\uDD13' }
     ];
     for (var vi = 0; vi < views.length; vi++) {
-      var vStyle = (views[vi].key === GridViews.activeView()) ? VIEW_BTN_ACTIVE : VIEW_BTN_STYLE;
+      var vStyle = (views[vi].key === GridViews.activeView()) ? VIEW_BTN_ACTIVE : VIEW_BTN_DEFAULT;
       viewHtml += '<button class="grid-view-btn" data-view="' + views[vi].key + '" style="' + vStyle + '">' + views[vi].label + '</button>';
     }
     viewHtml += '</div>';
@@ -944,7 +956,7 @@ function setupGridOverlay(APP) {
           var sc = scCuts[sci];
           var scLabel = sc.name.length > 14 ? sc.name.slice(0, 12) + '\u2026' : sc.name;
           viewHtml += '<button class="saved-cut-btn" data-cut-name="' + sc.name + '" style="' +
-            VIEW_BTN_STYLE + ';border-style:dotted" title="' + sc.label + '">' + scLabel + '</button>';
+            VIEW_BTN_SAVED + ';border-style:dotted" title="' + sc.label + '">' + scLabel + '</button>';
           viewHtml += '<button class="saved-cut-del" data-cut-name="' + sc.name +
             '" style="background:#a00;color:#fff;border:none;border-radius:3px;padding:1px 5px;font-size:10px;cursor:pointer;margin-left:-2px" title="Delete">&#x2715;</button>';
         }
@@ -958,8 +970,9 @@ function setupGridOverlay(APP) {
       for (var si = 0; si < savedSections.length; si++) {
         var ss = savedSections[si];
         var sName = ss.name.length > 14 ? ss.name.slice(0, 12) + '\u2026' : ss.name;
+        var ssStyle = (ss.id === latestSavedId) ? VIEW_BTN_LATEST : VIEW_BTN_SAVED;
         viewHtml += '<button class="saved-section-btn" data-id="' + ss.id + '" style="' +
-          VIEW_BTN_STYLE + ';border-style:dashed" title="' + ss.name + '">' + sName + '</button>';
+          ssStyle + ';border-style:dashed" title="' + ss.name + '">' + sName + '</button>';
         viewHtml += '<button class="saved-section-del" data-id="' + ss.id +
           '" style="background:#a00;color:#fff;border:none;border-radius:3px;padding:1px 5px;font-size:10px;cursor:pointer;margin-left:-2px" title="Delete">&#x2715;</button>';
       }
@@ -978,13 +991,9 @@ function setupGridOverlay(APP) {
       viewHtml += '<div style="margin:0 0 4px;display:flex;gap:3px;align-items:center">' +
         '<button id="grid-save-section-btn" style="' +
         VIEW_BTN_STYLE + ';background:#1a4a1a;color:#8f8;border-color:#3a7a3a" ' +
-        'title="Save section — captures ' + dwellMax + ' dwell points max">Save \u271A</button>' +
-        '<span id="smart-save-badge" style="background:#334;color:#8cf;border:1px solid #446;' +
-        'border-radius:4px;padding:2px 6px;font-size:11px;min-width:16px;text-align:center;' +
-        'cursor:default" title="Dwell points captured (max ' + dwellMax + ')">' +
-        (dwellCount || '') + '</span>' +
-        '<span style="color:#666;font-size:9px">/</span>' +
-        '<span style="color:#666;font-size:10px">' + dwellMax + '</span>' +
+        'title="Save section">Save \u271A</button>' +
+        '<span id="smart-save-badge" style="color:#8cf;font-size:10px;min-width:12px">' +
+        (dwellCount ? dwellCount + ' pt' : '') + '</span>' +
         '</div>';
     }
 
