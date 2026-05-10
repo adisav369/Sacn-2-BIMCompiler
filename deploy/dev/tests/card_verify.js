@@ -216,22 +216,51 @@ check('IfcBeam query', gd.includes('IfcBeam'));
 check('Wall weight/vote', gd.includes('weight') || gd.includes('vote'));
 check('Grid dims logs §GD_', gd.includes('§GD_'));
 
-// Grid alignment REAL DATA — SampleHouse wall X positions must cluster
-console.log('\n  ── Grid Alignment: SampleHouse wall positions ──');
-const shDb = findDb('SampleHouse');
-if (shDb) {
-  const wallXs = sql(shDb, "SELECT ROUND(center_x, 1) as rx, COUNT(*) FROM element_transforms et JOIN elements_meta m ON et.guid=m.guid WHERE m.ifc_class IN ('IfcWall','IfcWallStandardCase') AND m.storey='Ground Floor' GROUP BY rx ORDER BY rx").split('\n').filter(r => r);
-  const xPositions = wallXs.map(r => parseFloat(r.split('|')[0]));
-  console.log('    §GRID_ALIGN SH wall X positions: ' + xPositions.join(', '));
-  check('SH: walls have distinct X positions (grid lines)', xPositions.length >= 2, 'unique_x=' + xPositions.length);
-  // Check clustering — positions should not all be same
-  const spread = xPositions.length > 1 ? Math.abs(xPositions[xPositions.length-1] - xPositions[0]) : 0;
-  check('SH: wall X spread > 1m (not all same position)', spread > 1, 'spread=' + spread.toFixed(2) + 'm');
+// Grid alignment REAL DATA — wall positions must cluster for ALL buildings
+// Grid detection input: wall center_x and center_y clusters → grid lines
+// If walls don't cluster, grid detection will fail or produce wrong lines.
+const GRID_BUILDINGS = {
+  'SampleHouse':  { gf: 'Ground Floor', minWalls: 3 },
+  'Duplex':       { gf: null, minWalls: 10 },   // null = auto-detect
+  'SampleCastle': { gf: null, minWalls: 50 },
+  'Terminal':     { gf: null, minWalls: 30 }
+};
+for (const [bn, cfg] of Object.entries(GRID_BUILDINGS)) {
+  console.log('\n  ── Grid Alignment: ' + bn + ' ──');
+  const bDb = findDb(bn);
+  if (!bDb) { check(bn + ': grid DB found', false, 'NOT FOUND'); continue; }
+  const gfSt = cfg.gf || detectGF(bDb);
+  if (!gfSt) { check(bn + ': grid GF storey', false, 'undetectable'); continue; }
+  const esc2 = gfSt.replace(/'/g, "''");
 
-  const wallYs = sql(shDb, "SELECT ROUND(center_y, 1) as ry, COUNT(*) FROM element_transforms et JOIN elements_meta m ON et.guid=m.guid WHERE m.ifc_class IN ('IfcWall','IfcWallStandardCase') AND m.storey='Ground Floor' GROUP BY ry ORDER BY ry").split('\n').filter(r => r);
-  const yPositions = wallYs.map(r => parseFloat(r.split('|')[0]));
-  console.log('    §GRID_ALIGN SH wall Y positions: ' + yPositions.join(', '));
-  check('SH: walls have distinct Y positions', yPositions.length >= 2, 'unique_y=' + yPositions.length);
+  // Wall count on GF — must be >= minWalls for grid detection to work
+  const wallN = parseInt(sql(bDb, "SELECT COUNT(*) FROM elements_meta WHERE ifc_class IN ('IfcWall','IfcWallStandardCase') AND storey='" + esc2 + "'")) || 0;
+  check(bn + ': GF wall count >= ' + cfg.minWalls, wallN >= cfg.minWalls, 'walls=' + wallN);
+
+  // Structural elements (columns/beams) for snap-to-structural
+  const structN = parseInt(sql(bDb, "SELECT COUNT(*) FROM elements_meta WHERE ifc_class IN ('IfcColumn','IfcBeam') AND storey='" + esc2 + "'")) || 0;
+  console.log('    §GRID_STRUCT ' + bn + ' structural=' + structN + ' (columns+beams for snap)');
+
+  // Wall X positions — grid_dims uses face_cluster_tol_m=0.30 to merge nearby positions.
+  // We query distinct positions (ROUND to 0.5m = tol-compatible buckets).
+  const wallXs = sql(bDb, "SELECT ROUND(center_x * 2, 0) / 2.0 as rx, COUNT(*) as n FROM element_transforms et JOIN elements_meta m ON et.guid=m.guid WHERE m.ifc_class IN ('IfcWall','IfcWallStandardCase') AND m.storey='" + esc2 + "' GROUP BY rx ORDER BY rx").split('\n').filter(r => r);
+  const xPositions = wallXs.map(r => { var p = r.split('|'); return { pos: parseFloat(p[0]), n: parseInt(p[1]) }; });
+  console.log('    §GRID_ALIGN ' + bn + ' X positions: ' + xPositions.map(c => c.pos + '(' + c.n + ')').join(', '));
+  check(bn + ': X distinct positions >= 2 (need grid lines)', xPositions.length >= 2, 'positions=' + xPositions.length);
+  const xSpread = xPositions.length > 1 ? Math.abs(xPositions[xPositions.length-1].pos - xPositions[0].pos) : 0;
+  check(bn + ': X spread > 1m', xSpread > 1, 'spread=' + xSpread.toFixed(2) + 'm');
+
+  // Wall Y positions
+  const wallYs = sql(bDb, "SELECT ROUND(center_y * 2, 0) / 2.0 as ry, COUNT(*) as n FROM element_transforms et JOIN elements_meta m ON et.guid=m.guid WHERE m.ifc_class IN ('IfcWall','IfcWallStandardCase') AND m.storey='" + esc2 + "' GROUP BY ry ORDER BY ry").split('\n').filter(r => r);
+  const yPositions = wallYs.map(r => { var p = r.split('|'); return { pos: parseFloat(p[0]), n: parseInt(p[1]) }; });
+  console.log('    §GRID_ALIGN ' + bn + ' Y positions: ' + yPositions.map(c => c.pos + '(' + c.n + ')').join(', '));
+  check(bn + ': Y distinct positions >= 2', yPositions.length >= 2, 'positions=' + yPositions.length);
+
+  // Floor Z — GF should be near z=0 (within ±5m). Wild Z = wrong storey detected.
+  const floorZ = sql(bDb, "SELECT ROUND(MIN(center_z), 2) FROM element_transforms et JOIN elements_meta m ON et.guid=m.guid WHERE m.storey='" + esc2 + "'");
+  console.log('    §GRID_FLOOR_Z ' + bn + ' min_z=' + floorZ);
+  const fz = parseFloat(floorZ) || 0;
+  check(bn + ': GF floor Z within ±10m of ground', Math.abs(fz) < 10, 'z=' + fz.toFixed(2));
 }
 
 // ═══ 15. GRID DRAG — highlight, path, cascade, variance, undo ══════
@@ -264,6 +293,7 @@ check('Cascade uses clearance from rules', drag.includes('clearance'));
 check('Drag commits to KernelOps', drag.includes('KernelOps.commitOp'));
 check('Drag op type is GRID_MOVE', drag.includes("'GRID_MOVE'") || drag.includes('"GRID_MOVE"'));
 check('Drag stores from/to positions', drag.includes('from:') && drag.includes('to:'));
+check('Drag stores cascade in KernelOps', drag.includes('cascade: cascadeMoves'));
 check('CostPanel.refresh after drag', drag.includes('CostPanel.refresh'));
 check('CostPanel.refresh after undo/redo', drag.lastIndexOf('CostPanel.refresh') > drag.indexOf('Replayed'));
 
@@ -275,14 +305,32 @@ check('applyReplayedMove function', drag.includes('applyReplayedMove'));
 check('Replay: shiftLine + updateGridData + rebuildAnnotations',
   drag.includes('shiftLine') && drag.includes('updateGridData') && drag.includes('rebuildAnnotations'));
 
-// POTENTIAL BUG: cascaded element meshes NOT moved in scene after drag
+// Replay path must persist cascade to DB + move scene meshes
+const replayFn = drag.slice(drag.indexOf('function applyReplayedMove'));
+const replayBody = replayFn.slice(0, replayFn.indexOf('\n  return {') > 0 ? replayFn.indexOf('\n  return {') : 800);
+check('Replay: UPDATE element_transforms for cascade', replayBody.includes('UPDATE element_transforms'));
+check('Replay: moveSceneMeshes for cascade', replayBody.includes('moveSceneMeshes'));
+check('Replay: logs §GRID_REPLAY_CASCADE', replayBody.includes('§GRID_REPLAY_CASCADE'));
+// Ctrl+Z passes cascade and direction=-1
+check('Ctrl+Z passes cascade to applyReplayedMove', drag.includes('op.parameters.cascade, -1'));
+// Ctrl+Y/Ctrl+Shift+Z passes cascade and direction=+1
+check('Ctrl+Y passes cascade to applyReplayedMove', drag.includes('op.parameters.cascade, +1'));
+
+// Scene mesh sync: drag and undo must visually reposition cascade elements
+check('moveSceneMeshes function exists', drag.includes('function moveSceneMeshes'));
+check('moveSceneMeshes: traverses scene', drag.includes('A.scene.traverse'));
+check('moveSceneMeshes: shifts position.x', drag.includes('position.x += d.dx'));
+check('moveSceneMeshes: shifts position.z', drag.includes('position.z +='));
+check('moveSceneMeshes: logs §DRAG_SCENE_MOVE', drag.includes('§DRAG_SCENE_MOVE'));
+
+// Drag completion calls moveSceneMeshes(+1)
+const dragCompletionBlock = drag.slice(drag.indexOf('§DRAG_PERSIST'), drag.indexOf('commitOp'));
+check('Drag: moveSceneMeshes(+1) after persist', dragCompletionBlock.includes('moveSceneMeshes(cascadeMoves, +1)'));
+
+// Undo calls moveSceneMeshes(-1)
 const undoSection = drag.slice(drag.indexOf('function undo'));
-const cascadeInUndo = undoSection.slice(0, undoSection.indexOf('function') > 0 ? undoSection.indexOf('function', 10) : 500);
-const cascadeMovesScene = cascadeInUndo.includes('position') || cascadeInUndo.includes('translate');
-console.log('    §DRAG_BUG cascade_elements_moved_in_scene=' + cascadeMovesScene);
-if (!cascadeMovesScene) {
-  console.log('    §DRAG_BUG WARNING: undo reverts grid line but cascaded element meshes stay at moved positions');
-}
+const undoBody = undoSection.slice(0, undoSection.indexOf('\n  function') > 0 ? undoSection.indexOf('\n  function') : 800);
+check('Undo: moveSceneMeshes(-1) to revert meshes', undoBody.includes('moveSceneMeshes(rec.elements, -1)'));
 
 // COST PANEL VARIANCE
 const cp = src('cost_panel.js');
@@ -311,6 +359,14 @@ const hasCostCol = cp.includes('Cost') || cp.includes('cost') || cp.includes('Ra
 const hasDeltaCost = cp.includes('\\u0394 Cost') || cp.includes('Δ Cost') || cp.includes('deltaCost');
 console.log('    §COST_RATE has_cost_column=' + hasCostCol + ' has_delta_cost=' + hasDeltaCost);
 check('Cost: Δ Cost column (rate × Δ Vol)', hasDeltaCost, 'need unit rates for real cost impact');
+
+// §REPLAY_PERSIST: replayOps on reload must re-apply cascade element positions
+// Item 8: replayOps only updated gridData numbers — never applied cascade to DB
+const replayBlock = go.slice(go.indexOf('replayOps(A.db'));
+const replayLoop = replayBlock.slice(0, replayBlock.indexOf('§KERNEL_OP replay moves') + 30);
+check('Replay on reload: UPDATE element_transforms for cascade', replayLoop.includes('UPDATE element_transforms'));
+check('Replay on reload: reads p.cascade from op parameters', replayLoop.includes('p.cascade'));
+check('Replay on reload: logs §KERNEL_REPLAY_CASCADE', replayLoop.includes('§KERNEL_REPLAY_CASCADE'));
 
 // ═══ 15b. KERNEL_OPS — persistent undo log ═══════════════════════
 console.log('\n═══ 15b. KERNEL_OPS ═══');
@@ -776,6 +832,116 @@ if (deployMismatches.length > 0) {
   for (const m of deployMismatches) check('Deploy mismatch', false, m);
 } else {
   check('Deploy: all files match local', true);
+}
+
+// ═══ 28. 2D CUT + CONTOUR + GRID + PICK INTEGRITY ══════════════
+console.log('\n═══ 28. 2D CUT + CONTOUR + GRID + PICK INTEGRITY ═══');
+
+// Section cut during 2D: contours must coexist with grid lines.
+// renderContoursForView is called from restoreSection — contours paint AFTER card view setup.
+check('restoreSection calls renderContoursForView', rBody.includes('renderContoursForView'));
+// Contours must be painted AFTER mesh visibility is set (otherwise contours show wrong set)
+const meshPassEnd = rBody.lastIndexOf('needsUpdate = true');
+const contourCall = rBody.indexOf('renderContoursForView');
+check('Contours rendered AFTER mesh visibility pass', contourCall > meshPassEnd,
+  'meshEnd@' + meshPassEnd + ' contourCall@' + contourCall);
+
+// Contour contrast: dark theme = white lines, light theme = black lines.
+// Must switch based on isDark (sunglasses mode).
+check('Contour contrast: isDark check', gc.includes('isDark'));
+check('Contour contrast: white lines for dark bg', gc.includes('ffffff'));
+check('Contour contrast: black lines for light bg', gc.includes('000000'));
+
+// Contour clear BEFORE re-render: switching cards must not accumulate old contours
+check('Contours cleared before re-render (GridContours.clear)',
+  go.includes('GridContours.clear') && go.indexOf('GridContours.clear') < go.indexOf('renderContoursForView'));
+
+// PICK IN 2D: clicking must show IFC data for the visible element, NOT roof.
+// Card sets roof visible=false → raycaster skips invisible meshes → pick hits correct wall/door.
+// Verify: restoreSection hides roof class AND non-storey elements.
+check('Pick: roof hidden (IfcRoof in hideSet)', rBody.includes('hideSet') && rBody.includes('visible = false'));
+check('Pick: non-storey hidden (!guidSet → visible=false)', rBody.includes('!guidSet') && rBody.includes('visible = false'));
+// Verify: scene.js raycaster only tests visible meshes (Three.js default, but confirm no override)
+check('Pick: raycaster uses default visibility filter (no recursive:false override)',
+  !scene.includes('recursive: false') && !scene.includes('recursive:false'));
+
+// Grid lines must NOT obscure contours — grid has lower renderOrder or contours have higher
+check('Grid lines renderOrder set', go.includes('renderOrder'));
+check('Contour meshes renderOrder set', gc.includes('renderOrder'));
+
+// ═══ 28b. DOOR ARC + WINDOW OPENING FEASIBILITY per building ════
+console.log('\n═══ 28b. DOOR ARC + WINDOW OPENING FEASIBILITY ═══');
+
+// For each building: verify doors/windows exist on GF with geometry → arcs possible.
+// The code chain: section_cut filters IfcDoor → extractLeafAxis → arc.
+// If doors have no geometry, extractLeafAxis returns null → no arc → §DOOR_ARC_SKIP.
+for (const [bn3] of Object.entries(GRID_BUILDINGS)) {
+  const bDb3 = findDb(bn3);
+  if (!bDb3) continue;
+  const gf3 = GRID_BUILDINGS[bn3].gf || detectGF(bDb3);
+  if (!gf3) continue;
+  const esc4 = gf3.replace(/'/g, "''");
+
+  // Doors on GF
+  const doorN = parseInt(sql(bDb3, "SELECT COUNT(*) FROM elements_meta WHERE ifc_class IN ('IfcDoor','IfcDoorStandardCase') AND storey='" + esc4 + "'")) || 0;
+  // Windows on GF
+  const winN = parseInt(sql(bDb3, "SELECT COUNT(*) FROM elements_meta WHERE ifc_class IN ('IfcWindow','IfcWindowStandardCase') AND storey='" + esc4 + "'")) || 0;
+  console.log('    §ARC_INPUT ' + bn3 + ' storey="' + gf3 + '" doors=' + doorN + ' windows=' + winN);
+  check(bn3 + ': has doors on GF for arcs', doorN > 0, 'doors=' + doorN);
+  check(bn3 + ': has windows on GF for openings', winN > 0, 'windows=' + winN);
+
+  // Verify doors have transforms (position data) — needed for bbox2d
+  const doorTransN = parseInt(sql(bDb3, "SELECT COUNT(*) FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class IN ('IfcDoor','IfcDoorStandardCase') AND m.storey='" + esc4 + "'")) || 0;
+  check(bn3 + ': all doors have transforms', doorTransN === doorN,
+    doorTransN + ' of ' + doorN + ' doors have transforms');
+
+  // Verify windows have transforms
+  const winTransN = parseInt(sql(bDb3, "SELECT COUNT(*) FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class IN ('IfcWindow','IfcWindowStandardCase') AND m.storey='" + esc4 + "'")) || 0;
+  check(bn3 + ': all windows have transforms', winTransN === winN,
+    winTransN + ' of ' + winN + ' windows have transforms');
+}
+
+// Code chain: all 2D-only objects route through contour group, not A.scene
+check('Door arcs: generateArcs called from grid_overlay', go.includes('DoorArcs.generateArcs'));
+check('Window openings: generateWindowOpenings called', go.includes('DoorArcs.generateWindowOpenings'));
+check('Opening labels: addOpeningLabel called', go.includes('DoorArcs.addOpeningLabel'));
+
+// ARCHITECTURAL CONTRACT: stair/window/label objects go to contour group, NOT A.scene
+check('Stair+window+label route through contour group (activeGroup)',
+  go.includes('GridContours.activeGroup') && go.includes('cGroup'));
+check('generateStairSymbol gets group param', go.includes('DoorArcs.generateStairSymbol(stairElements, A, cutZ, cGroup)'));
+check('generateWindowOpenings gets group param', go.includes('DoorArcs.generateWindowOpenings(windowElements, A, cutZ, cGroup)'));
+check('addOpeningLabel gets group param (NOT A.scene)', go.includes('DoorArcs.addOpeningLabel(cGroup,'));
+// Verify door_arcs.js has NO A.scene.add / APP.scene.add (all go to parent/group)
+check('door_arcs: NO APP.scene.add (2D objects belong to contour group)',
+  !da.includes('APP.scene.add'), 'scene leak = 2D objects visible in 3D');
+// Verify all door arc objects are marked isContour for GridContours.clear()
+check('door_arcs: stair objects marked isContour', da.includes("isContour: true, isStairSymbol"));
+check('door_arcs: window objects marked isContour', da.includes("isContour: true, isWindowOpening"));
+check('door_arcs: opening labels marked isContour', da.includes("isContour: true, isOpeningLabel"));
+
+// ═══ 29. ANTI-INVENTION — wall counts match DB ═════════════════
+console.log('\n═══ 29. ANTI-INVENTION — wall counts ═══');
+
+// Verify the test's own wall counts match what the DB returns.
+// If any code creates phantom walls, this diverges.
+for (const [bn2] of Object.entries(GRID_BUILDINGS)) {
+  const bDb2 = findDb(bn2);
+  if (!bDb2) continue;
+  const gf2 = GRID_BUILDINGS[bn2].gf || detectGF(bDb2);
+  if (!gf2) continue;
+  const esc3 = gf2.replace(/'/g, "''");
+
+  // Count walls two ways: elements_meta only vs element_transforms join
+  const metaWalls = parseInt(sql(bDb2, "SELECT COUNT(*) FROM elements_meta WHERE ifc_class IN ('IfcWall','IfcWallStandardCase') AND storey='" + esc3 + "'")) || 0;
+  const joinWalls = parseInt(sql(bDb2, "SELECT COUNT(*) FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class IN ('IfcWall','IfcWallStandardCase') AND m.storey='" + esc3 + "'")) || 0;
+  console.log('    §WALL_COUNT ' + bn2 + ' meta=' + metaWalls + ' joined=' + joinWalls);
+  check(bn2 + ': wall meta count = joined count (no phantom walls)',
+    metaWalls === joinWalls, 'meta=' + metaWalls + ' joined=' + joinWalls);
+
+  // Every wall in elements_meta must have a transform row — orphan walls can't be positioned
+  check(bn2 + ': no orphan walls (all have transforms)', joinWalls >= metaWalls,
+    joinWalls + ' of ' + metaWalls + ' have transforms');
 }
 
 // ═══ SUMMARY ════════════════════════════════════════════════════

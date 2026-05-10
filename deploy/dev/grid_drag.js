@@ -398,6 +398,34 @@ var GridDrag = (function() {
     } catch (e) { return null; }
   }
 
+  /** Move scene meshes matching cascade moves (visual sync with DB).
+   *  direction: +1 = apply (forward), -1 = revert (undo) */
+  function moveSceneMeshes(moves, direction) {
+    if (!A || !A.scene || !moves.length) return;
+    // Build guid→delta map in IFC coords
+    var deltas = {};
+    for (var i = 0; i < moves.length; i++) {
+      var m = moves[i];
+      deltas[m.guid] = {
+        dx: (m.newX - m.oldX) * direction,
+        dy: (m.newY - m.oldY) * direction
+      };
+    }
+    // Traverse scene, shift matching meshes
+    // ifc2three: dx_ifc → dx_three, dy_ifc → -dz_three
+    var moved = 0;
+    A.scene.traverse(function(obj) {
+      if (!obj.isMesh || !obj.userData || !obj.userData.guid) return;
+      var d = deltas[obj.userData.guid];
+      if (!d) return;
+      obj.position.x += d.dx;
+      obj.position.z += -d.dy;
+      moved++;
+    });
+    log('§DRAG_SCENE_MOVE meshes_moved=' + moved + ' elements=' + moves.length +
+        ' direction=' + (direction > 0 ? 'forward' : 'revert'));
+  }
+
   // ── Coordinate helpers ─────────────────────────────────────────
 
   /** Convert pointer event to IFC position on drag axis via ground-plane raycast */
@@ -645,6 +673,22 @@ var GridDrag = (function() {
       };
       hist.push(record);
 
+      // Implementing 2D_031 §1 — Witness: W-2D31
+      // Persist cascade element positions to element_transforms DB
+      if (A.db && cascadeMoves.length) {
+        for (var ci = 0; ci < cascadeMoves.length; ci++) {
+          var cm = cascadeMoves[ci];
+          try {
+            A.db.run('UPDATE element_transforms SET center_x = ?, center_y = ? WHERE guid = ?',
+                     [cm.newX, cm.newY, cm.guid]);
+          } catch (e) { log('§DRAG_PERSIST_ERR guid=' + cm.guid + ' ' + e.message); }
+        }
+        log('§DRAG_PERSIST updated ' + cascadeMoves.length + ' element_transforms rows');
+      }
+
+      // Move scene meshes to match DB (visual sync)
+      moveSceneMeshes(cascadeMoves, +1);
+
       // Implementing 2D_029 §4.3 — Witness: W-2D29
       // Commit grid move to kernel_ops log for persistence + undo
       if (window.KernelOps && A.db) {
@@ -652,7 +696,8 @@ var GridDrag = (function() {
           axis:  dragAxis,
           label: dragLabel,
           from:  dragStartIFC,
-          to:    newPos
+          to:    newPos,
+          cascade: cascadeMoves
         });
       }
 
@@ -720,12 +765,22 @@ var GridDrag = (function() {
 
     log('§GRID_DRAG undo grid label=' + g.label + ' restored=' + g.oldPos.toFixed(3));
 
-    // Revert cascaded elements (log each for debug)
+    // Revert cascaded elements in DB (restore oldPos)
     for (var i = 0; i < rec.elements.length; i++) {
       var el = rec.elements[i];
+      if (A.db) {
+        try {
+          A.db.run('UPDATE element_transforms SET center_x = ?, center_y = ? WHERE guid = ?',
+                   [el.oldX, el.oldY, el.guid]);
+        } catch (e) { log('§DRAG_UNDO_PERSIST_ERR guid=' + el.guid + ' ' + e.message); }
+      }
       log('§GRID_CASCADE undo guid=' + el.guid + ' class=' + el.ifcClass +
           ' restored=(' + el.oldX.toFixed(3) + ',' + el.oldY.toFixed(3) + ')');
     }
+    log('§DRAG_UNDO_PERSIST reverted ' + rec.elements.length + ' element_transforms rows');
+
+    // Revert scene meshes to old positions (visual sync)
+    moveSceneMeshes(rec.elements, -1);
 
     clearShadows();
     A.markDirty();
@@ -774,7 +829,8 @@ var GridDrag = (function() {
         var op = KernelOps.undoOp(A.db);
         log('§GRID_UNDO attempt op=' + (op ? op.op_type : 'none'));
         if (op && op.op_type === 'GRID_MOVE') {
-          applyReplayedMove(op.parameters.axis, op.parameters.label, op.parameters.from);
+          applyReplayedMove(op.parameters.axis, op.parameters.label, op.parameters.from,
+                            op.parameters.cascade, -1);
         }
       }
       if ((e.ctrlKey && key === 'z' && e.shiftKey) || (e.ctrlKey && key === 'y')) {
@@ -782,7 +838,8 @@ var GridDrag = (function() {
         var op = KernelOps.redoOp(A.db);
         log('§GRID_REDO attempt op=' + (op ? op.op_type : 'none'));
         if (op && op.op_type === 'GRID_MOVE') {
-          applyReplayedMove(op.parameters.axis, op.parameters.label, op.parameters.to);
+          applyReplayedMove(op.parameters.axis, op.parameters.label, op.parameters.to,
+                            op.parameters.cascade, +1);
         }
       }
     });
@@ -790,8 +847,10 @@ var GridDrag = (function() {
     log('§GRID_DRAG init — pointer events wired');
   }
 
-  /** Apply a replayed/undone/redone grid move: update grid data + rebuild scene */
-  function applyReplayedMove(axis, label, targetPos) {
+  /** Apply a replayed/undone/redone grid move: update grid data + rebuild scene.
+   *  cascade: array of {guid, oldX, oldY, newX, newY} from KernelOps parameters.
+   *  direction: +1 = apply forward (redo), -1 = revert (undo). */
+  function applyReplayedMove(axis, label, targetPos, cascade, direction) {
     if (!st || !st.gridData) return;
     var lines = axis === 'X' ? st.gridData.xLines : st.gridData.yLines;
     if (!lines) return;
@@ -801,6 +860,22 @@ var GridDrag = (function() {
         shiftLine(label, axis, delta);
         updateGridData(axis, i, targetPos);
         rebuildAnnotations();
+
+        // Replay cascade element positions in DB + scene
+        if (cascade && cascade.length && A.db) {
+          for (var ci = 0; ci < cascade.length; ci++) {
+            var cm = cascade[ci];
+            var tx = direction > 0 ? cm.newX : cm.oldX;
+            var ty = direction > 0 ? cm.newY : cm.oldY;
+            try {
+              A.db.run('UPDATE element_transforms SET center_x = ?, center_y = ? WHERE guid = ?',
+                       [tx, ty, cm.guid]);
+            } catch (e) { log('§REPLAY_PERSIST_ERR guid=' + cm.guid + ' ' + e.message); }
+          }
+          moveSceneMeshes(cascade, direction || 1);
+          log('§GRID_REPLAY_CASCADE elements=' + cascade.length + ' direction=' + direction);
+        }
+
         if (window.CostPanel) CostPanel.refresh(A, st.gridData);
         A.markDirty();
         log('§GRID_DRAG replayed label=' + label + ' pos=' + targetPos.toFixed(3));

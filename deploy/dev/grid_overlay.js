@@ -551,8 +551,9 @@ function setupGridOverlay(APP) {
     var mode = e.currentTarget.getAttribute('data-view');
     if (!mode) return;
 
-    // Clear previous contours
+    // Clear previous contours + door arcs/window openings/labels
     if (typeof GridContours !== 'undefined') GridContours.clear(A);
+    if (typeof DoorArcs !== 'undefined' && DoorArcs.clearSceneObjects) DoorArcs.clearSceneObjects(A);
 
     if (mode === 'unlock') {
       GridViews.unlockView(A);
@@ -639,12 +640,15 @@ function setupGridOverlay(APP) {
         var windowElements = results.filter(function(r) {
           return r.ifcClass === 'IfcWindow' || r.ifcClass === 'IfcWindowStandardCase';
         });
-        DoorArcs.generateStairSymbol(stairElements, A, cutZ);
-        DoorArcs.generateWindowOpenings(windowElements, A, cutZ);
+        // All 2D-only objects (stairs, windows, labels) go into the contour group
+        // so GridContours.clear() disposes them on card switch or grid exit.
+        var cGroup = GridContours.activeGroup ? GridContours.activeGroup() : null;
+        DoorArcs.generateStairSymbol(stairElements, A, cutZ, cGroup);
+        DoorArcs.generateWindowOpenings(windowElements, A, cutZ, cGroup);
 
         // Implementing 2D_029 §1.3 — Witness: W-2D29
         // Opening callout labels for doors and windows
-        if (DoorArcs.addOpeningLabel) {
+        if (DoorArcs.addOpeningLabel && cGroup) {
           var openings = doors.concat(windowElements);
           for (var oi = 0; oi < openings.length; oi++) {
             var el = openings[oi];
@@ -656,7 +660,7 @@ function setupGridOverlay(APP) {
             var ocx = (b[0] + b[2]) / 2, ocy = (b[1] + b[3]) / 2;
             var elName = el.element_name || el.elementName || '';
             var tag = elName.split(':')[0] || (el.ifcClass || '').replace('Ifc', '').toUpperCase();
-            DoorArcs.addOpeningLabel(A.scene, A.ifc2three, ocx, ocy, cutZ, wallAxis, openW, tag, el.guid, rules);
+            DoorArcs.addOpeningLabel(cGroup, A.ifc2three, ocx, ocy, cutZ, wallAxis, openW, tag, el.guid, rules);
           }
         }
 
@@ -994,7 +998,7 @@ function setupGridOverlay(APP) {
         ' hidden=' + counts.hidden + ' clipped=' + counts.clipped +
         ' faded=' + counts.faded + ' retained=' + counts.retained);
 
-    // 4. Contours
+    // 4. Contours (clear disposes all: fills, strokes, arcs, stairs, windows, labels)
     if (typeof GridContours !== 'undefined') GridContours.clear(A);
     try { renderContoursForView('floor', ifcZ); } catch (e) {
       log('§CARD_RESTORE contour error: ' + e.message);
@@ -1668,10 +1672,22 @@ function setupGridOverlay(APP) {
         var savedMoves = KernelOps.replayOps(A.db, 'GRID_MOVE');
         savedMoves.forEach(function (op) {
           var p = op.parameters;
+          // Update gridData positions first (needed before shiftLine)
           var lines = p.axis === 'X' ? gridData.xLines : gridData.yLines;
           if (!lines) return;
           var line = lines.find(function (l) { return l.label === p.label; });
           if (line) { line.position = p.to; line.rawPosition = p.to; }
+          // Apply cascade element DB positions (meshes re-created from DB on load, so positions correct)
+          if (p.cascade && p.cascade.length) {
+            for (var ci = 0; ci < p.cascade.length; ci++) {
+              var cm = p.cascade[ci];
+              try {
+                A.db.run('UPDATE element_transforms SET center_x = ?, center_y = ? WHERE guid = ?',
+                         [cm.newX, cm.newY, cm.guid]);
+              } catch (e) { /* element may not exist after re-extract */ }
+            }
+            log('§KERNEL_REPLAY_CASCADE op=' + op.id + ' elements=' + p.cascade.length);
+          }
         });
         log('§KERNEL_OP replay moves=' + savedMoves.length);
       } catch (e) {

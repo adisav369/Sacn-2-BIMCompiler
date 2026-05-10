@@ -274,9 +274,11 @@ var DoorArcs = (function() {
    * @param {Array} stairElements - section cut results filtered to IfcStair
    * @param {Object} APP          - viewer app (for ifc2three, scene)
    * @param {number} cutZ         - IFC Z of the section cut
-   * @returns {Array} THREE.Line objects added to APP.scene
+   * @param {THREE.Group} [group] - contour group to add to (default: APP.scene)
+   * @returns {Array} THREE.Line objects added to group
    */
-  function generateStairSymbol(stairElements, APP, cutZ) {
+  function generateStairSymbol(stairElements, APP, cutZ, group) {
+    var parent = group || APP.scene;
     if (!stairElements || !stairElements.length) return [];
     var objects = [];
 
@@ -322,8 +324,8 @@ var DoorArcs = (function() {
         var geom = new THREE.BufferGeometry().setFromPoints(threePoints);
         var line = new THREE.Line(geom, mat);
         line.renderOrder = 1050;
-        line.userData = { isDoorArc: true, isStairSymbol: true, guid: el.guid };
-        APP.scene.add(line);
+        line.userData = { isDoorArc: true, isContour: true, isStairSymbol: true, guid: el.guid };
+        parent.add(line);
         objects.push(line);
       }
 
@@ -337,8 +339,8 @@ var DoorArcs = (function() {
       var arrowMat = new THREE.LineBasicMaterial({ color: 0x88aacc, transparent: true, opacity: 0.9 });
       var arrow = new THREE.Line(arrowGeom, arrowMat);
       arrow.renderOrder = 1050;
-      arrow.userData = { isDoorArc: true, isStairSymbol: true, guid: el.guid };
-      APP.scene.add(arrow);
+      arrow.userData = { isDoorArc: true, isContour: true, isStairSymbol: true, guid: el.guid };
+      parent.add(arrow);
       objects.push(arrow);
 
       log('§DOOR_ARC_STAIR guid=' + (el.guid || '?') + ' treads=' + numTreads + ' riserEst=' + riserDepth.toFixed(3));
@@ -353,9 +355,11 @@ var DoorArcs = (function() {
    * @param {Array} windowElements - section cut results filtered to IfcWindow
    * @param {Object} APP           - viewer app (for ifc2three, scene)
    * @param {number} cutZ          - IFC Z of the section cut
-   * @returns {Array} THREE.Line + THREE.Sprite objects added to APP.scene
+   * @param {THREE.Group} [group] - contour group to add to (default: APP.scene)
+   * @returns {Array} THREE.Line + THREE.Sprite objects added to group
    */
-  function generateWindowOpenings(windowElements, APP, cutZ) {
+  function generateWindowOpenings(windowElements, APP, cutZ, group) {
+    var parent = group || APP.scene;
     if (!windowElements || !windowElements.length) return [];
     var objects = [];
 
@@ -390,8 +394,8 @@ var DoorArcs = (function() {
           ]);
           var line = new THREE.Line(geom, mat);
           line.renderOrder = 1050;
-          line.userData = { isDoorArc: true, isWindowOpening: true, guid: el.guid };
-          APP.scene.add(line);
+          line.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, guid: el.guid };
+          parent.add(line);
           objects.push(line);
         });
         // Connecting dimension line between the two jamb ticks
@@ -403,8 +407,8 @@ var DoorArcs = (function() {
         ]);
         var dimLine = new THREE.Line(dimGeom, mat);
         dimLine.renderOrder = 1050;
-        dimLine.userData = { isDoorArc: true, isWindowOpening: true, isDimLine: true, guid: el.guid };
-        APP.scene.add(dimLine);
+        dimLine.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, isDimLine: true, guid: el.guid };
+        parent.add(dimLine);
         objects.push(dimLine);
       } else {
         // Opening runs in Y — jamb ticks at top and bottom ends, dashes in X direction
@@ -417,8 +421,8 @@ var DoorArcs = (function() {
           ]);
           var line = new THREE.Line(geom, mat);
           line.renderOrder = 1050;
-          line.userData = { isDoorArc: true, isWindowOpening: true, guid: el.guid };
-          APP.scene.add(line);
+          line.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, guid: el.guid };
+          parent.add(line);
           objects.push(line);
         });
         // Connecting dimension line between the two jamb ticks
@@ -430,8 +434,8 @@ var DoorArcs = (function() {
         ]);
         var dimLine = new THREE.Line(dimGeom, mat);
         dimLine.renderOrder = 1050;
-        dimLine.userData = { isDoorArc: true, isWindowOpening: true, isDimLine: true, guid: el.guid };
-        APP.scene.add(dimLine);
+        dimLine.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, isDimLine: true, guid: el.guid };
+        parent.add(dimLine);
         objects.push(dimLine);
       }
 
@@ -454,8 +458,8 @@ var DoorArcs = (function() {
         var worldScale = openingW * 0.5;
         sprite.scale.set(worldScale, worldScale * 0.25, 1);
         sprite.renderOrder = 1051;
-        sprite.userData = { isDoorArc: true, isWindowOpening: true, guid: el.guid };
-        APP.scene.add(sprite);
+        sprite.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, guid: el.guid };
+        parent.add(sprite);
         objects.push(sprite);
       }
 
@@ -517,7 +521,7 @@ var DoorArcs = (function() {
     var worldScale = widthM * 0.6;
     sprite.scale.set(worldScale, worldScale * 0.25, 1);
     sprite.renderOrder = 1060;
-    sprite.userData = { isDoorArc: true, isOpeningLabel: true, guid: guid };
+    sprite.userData = { isDoorArc: true, isContour: true, isOpeningLabel: true, guid: guid };
     group.add(sprite);
 
     log('§DOOR_ARC_LABEL guid=' + guid + ' width=' + widthMM + 'mm tag=' + (tag || '(none)'));
