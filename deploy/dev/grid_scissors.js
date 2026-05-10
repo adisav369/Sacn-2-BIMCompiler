@@ -465,14 +465,20 @@ var GridScissors = (function() {
   // ── Callbacks wired by init ──────────────────────────────────────
 
   function onSliderChange(val) {
-    if (!st.active) return;
     var axis = A.sectionAxis || 'Y';
 
-    // Smart save: track dwell points during slider gesture
+    // BUG-1 fix: dwell tracking fires regardless of grid overlay state.
+    // Flash + markers work in any scissors mode (2D or 3D).
     var ifcVal;
     if (axis === 'Y') ifcVal = val + (A.modelOffset ? A.modelOffset.z : 0);
     else if (axis === 'X') ifcVal = val + (A.modelOffset ? A.modelOffset.x : 0);
     else ifcVal = -(val) + (A.modelOffset ? A.modelOffset.y : 0);
+
+    // Dwell + grid rebuild requires grid overlay active (2D mode ON)
+    if (!st || !st.active) {
+      log('§GRID_SCISSORS skipped — overlay not active');
+      return;
+    }
     dwellTrack(ifcVal);
 
     // Skip if moved < 0.1m

@@ -222,7 +222,15 @@ function setupScene(A) {
       }
       if (typeof window.open2DPlans === 'function') window.open2DPlans();
     },
-    'x':  function() { var b = document.getElementById('section-btn'); if (b) b.click(); },
+    'x':  function() {
+      // In 2D grid mode, scissors is managed by grid_overlay — don't toggle raw section
+      if (A._gridOverlayState && A._gridOverlayState.active) {
+        console.log('§KBD_X grid active — toggling section within 2D');
+        if (A.toggleSection) A.toggleSection();
+        return;
+      }
+      var b = document.getElementById('section-btn'); if (b) b.click();
+    },
     '4':  function() { if (typeof A.export4D5D === 'function') A.export4D5D(); },
     'f':  function() { if (typeof A.openFindPanel === 'function') A.openFindPanel(''); },
     'c':  function() {
@@ -349,10 +357,17 @@ function setupScene(A) {
                   }
                 );
                 var clashListClose = function() {
+                  // BUG-5 fix: unregister panel + reset watcher ref on close
+                  for (var _ri = _panels.length - 1; _ri >= 0; _ri--) {
+                    if (_panels[_ri].id === 'clashlist') { _panels.splice(_ri, 1); break; }
+                  }
+                  _lastClashList = null;
                   if (A._clashListDiv) { A._clashListDiv.remove(); A._clashListDiv = null; }
+                  console.log('§CLASHLIST_CLOSE unregistered, watcher reset');
                 };
                 _registerPanel('clashlist', A._clashListDiv, clashListNav, clashListClose);
-                _focusPanel('clashlist');
+                // BUG-5 fix: delay focus to allow DOM layout before offsetWidth check
+                setTimeout(function() { _focusPanel('clashlist'); }, 50);
               }
             }, 300);
           }

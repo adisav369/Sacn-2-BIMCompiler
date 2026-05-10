@@ -557,13 +557,22 @@ function setupGridOverlay(APP) {
     if (mode === 'unlock') {
       GridViews.unlockView(A);
     } else {
-      // Turn off scissors for ALL static views — scissors is only for free 3D mode.
-      // Floor plans use ortho clip, elevations use projected edges — scissors conflicts with both.
-      if (A.sectionOn && A.toggleSection) {
-        log('§GRID_STOREY scissors off — entering view mode=' + mode);
+      // Floor plans (GF, L1): keep scissors alive — slider controls cut height.
+      // Elevation views (front, rear, left, right, roof): turn scissors off.
+      var isFloor = (mode === 'floor' || mode === 'floor1');
+      if (!isFloor && A.sectionOn && A.toggleSection) {
+        log('§GRID_STOREY scissors off — elevation view mode=' + mode);
         A.toggleSection();
       }
-      var cutZ = computeStoreyAwareCutZ(mode);
+      // If scissors is ON, use its current cut height for the floor plan.
+      // Otherwise use storey-aware detection.
+      var cutZ;
+      if (isFloor && A.sectionOn && A.sectionPlane) {
+        cutZ = A.sectionPlane.constant + (A.modelOffset ? A.modelOffset.z : 0);
+        log('§GRID_STOREY using scissors cutZ=' + cutZ.toFixed(2) + ' for mode=' + mode);
+      } else {
+        cutZ = computeStoreyAwareCutZ(mode);
+      }
       GridViews.lockView(A, mode, envCache, cutZ);
       renderContoursForView(mode, cutZ);
       clampBubbleScales();
@@ -950,7 +959,7 @@ function setupGridOverlay(APP) {
       if (fadeSet[cls]) {
         obj.visible = true;
         obj.material.clippingPlanes = [clipPlane];
-        obj.material.clipShadows = false;
+        obj.material.clipShadows = true;
         if (obj.userData._origOpacity == null) {
           obj.userData._origOpacity = obj.material.opacity;
           obj.userData._origTransparent = obj.material.transparent;
@@ -1150,7 +1159,14 @@ function setupGridOverlay(APP) {
       var _gridNav = window.makeListKeyNav(
         _gridGetItems,
         function() {},
-        function(idx) { var items = _gridGetItems(); if (items[idx]) items[idx].click(); }
+        function(idx) {
+          var items = _gridGetItems();
+          if (items[idx]) {
+            // BUG-4 fix: view buttons listen on pointerup, not click
+            items[idx].dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+            console.log('§GRID_ACTIVATE idx=' + idx + ' label="' + (items[idx].textContent || '').trim() + '"');
+          }
+        }
       );
       // Esc exits 2D overlay entirely (back to 3D)
       var _gridClose = function() { A.toggleGridOverlay(); };
@@ -1205,7 +1221,10 @@ function setupGridOverlay(APP) {
       }
       viewHtml += '</div>';
     }
-    // No save/dwell UI — scissors is for grid detection only.
+    // BUG-2 fix: Save ✚ button — lets user save current view as a card from 2D mode
+    // (section-slider-panel is hidden in 2D, so this is the only save path)
+    viewHtml += '<button id="grid-save-section-btn" style="' + VIEW_BTN_DEFAULT +
+      ';width:100%;margin:2px 0" title="Save current view as a card">Save ✚</button>';
 
     var html = viewHtml;
 
@@ -1289,19 +1308,29 @@ function setupGridOverlay(APP) {
       });
     }
 
-    // Save ✚ button — saves current section cut (no dwell tracking)
+    // Save ✚ button — saves current 2D view as a card
     var saveSBtn = body.querySelector('#grid-save-section-btn');
     if (saveSBtn) {
       saveSBtn.addEventListener('pointerup', function(e) {
         e.stopPropagation();
-        var cutVal = A.sectionPlane ? A.sectionPlane.constant : 0;
-        var defaultName = 'Section @' + cutVal.toFixed(1) + 'm';
+        // In 2D mode scissors is OFF, so use storey-aware cutZ instead of sectionPlane
+        var mode = GridViews.activeView();
+        var cutZ = computeStoreyAwareCutZ(mode);
+        var cutVal;
+        if (cutZ != null) {
+          cutVal = cutZ - (A.modelOffset ? A.modelOffset.z : 0);
+        } else {
+          cutVal = A.sectionPlane ? A.sectionPlane.constant : 0;
+        }
+        var defaultName = (mode || 'Section') + ' @' + cutVal.toFixed(1) + 'm';
         var name = window.prompt('Section name:', defaultName);
         if (!name) return;
 
+        // Set sectionPlane so saveSectionToDb captures the right value
+        if (A.sectionPlane) A.sectionPlane.constant = cutVal;
         saveSectionToDb(name, null);
         buildPanel(currentPanelGrids || gridData);
-        log('§SAVE_SECTION panel rebuilt after save name=' + name);
+        log('§SAVE_SECTION from grid panel mode=' + mode + ' cutVal=' + cutVal.toFixed(2) + ' name=' + name);
       });
     }
   }
