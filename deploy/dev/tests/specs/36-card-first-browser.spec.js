@@ -1,6 +1,18 @@
 // 36-card-first-browser.spec.js — Card-First View Model complete test suite (2D_031)
 // All card logic + fleet DB verification in one file.
 // Tests real DB data via sqlite3 CLI — no browser needed, runs in < 5s.
+//
+// Verified issues (data characteristics, not code bugs):
+//   ⚠BASEMENT (2): AC9_HausGH + VogelGesamt — basement genuinely has more doors than GF
+//   ⚠ROOF_ON_GF (1): Esplanades — IFC assigns IfcRoof to ground storey. Card hides them.
+//   ⚠ORPHANS (5): container elements (IfcCurtainWall, IfcStair, IfcRoof) with metadata
+//     but no geometry/transform. Children have the geometry. Card's guidSet includes them
+//     but they don't match any mesh — harmless.
+//
+// Fixed bugs found by this suite:
+//   - IfcCovering was wrongly hidden (wall tiles, not roof) — removed from HIDE_IN_FLOOR
+//   - GF detection used lowest-z (picked foundations) — changed to door-count ranking
+//   - Door-count tiebreaker used lowest-z — changed to ABS(z) closest to ground
 
 const { test, expect } = require('@playwright/test');
 const { execSync } = require('child_process');
@@ -230,7 +242,7 @@ test.describe('Card-First Complete Suite', () => {
         "SUM(CASE WHEN m.ifc_class IN ('IfcDoor','IfcDoorStandardCase') THEN 1 ELSE 0 END) as doors " +
         "FROM elements_meta m JOIN element_transforms et ON m.guid=et.guid " +
         "WHERE m.storey IS NOT NULL AND m.storey NOT IN ('Unknown','Roof','unknown') " +
-        "GROUP BY m.storey HAVING n >= 5 ORDER BY doors DESC, MIN(et.center_z) ASC LIMIT 1");
+        "GROUP BY m.storey HAVING n >= 5 ORDER BY doors DESC, ABS(MIN(et.center_z)) ASC LIMIT 1");
       if (!gf) {
         results.push(bld + ': no_storey');
         continue;
@@ -321,7 +333,7 @@ test.describe('Card-First Complete Suite', () => {
       if (hasMeta === '0') continue;
 
       const lowestZ = sql(dbPath, "SELECT m.storey FROM elements_meta m JOIN element_transforms et ON m.guid=et.guid WHERE m.storey IS NOT NULL AND m.storey NOT IN ('Unknown','Roof','unknown') GROUP BY m.storey HAVING COUNT(*)>=5 ORDER BY MIN(et.center_z) LIMIT 1");
-      const doorRanked = sql(dbPath, "SELECT m.storey FROM elements_meta m JOIN element_transforms et ON m.guid=et.guid WHERE m.storey IS NOT NULL AND m.storey NOT IN ('Unknown','Roof','unknown') GROUP BY m.storey HAVING COUNT(*)>=5 ORDER BY SUM(CASE WHEN m.ifc_class IN ('IfcDoor','IfcDoorStandardCase') THEN 1 ELSE 0 END) DESC, MIN(et.center_z) LIMIT 1");
+      const doorRanked = sql(dbPath, "SELECT m.storey FROM elements_meta m JOIN element_transforms et ON m.guid=et.guid WHERE m.storey IS NOT NULL AND m.storey NOT IN ('Unknown','Roof','unknown') GROUP BY m.storey HAVING COUNT(*)>=5 ORDER BY SUM(CASE WHEN m.ifc_class IN ('IfcDoor','IfcDoorStandardCase') THEN 1 ELSE 0 END) DESC, ABS(MIN(et.center_z)) LIMIT 1");
       if (!lowestZ || !doorRanked) continue;
       const lz = lowestZ.split('|')[0];
       const dr = doorRanked.split('|')[0];

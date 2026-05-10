@@ -1014,8 +1014,8 @@ function setupGridOverlay(APP) {
     significant.sort(function(a, b) {
       var da = storeyDoorCounts[a.name] || 0;
       var db2 = storeyDoorCounts[b.name] || 0;
-      if (da !== db2) return db2 - da; // more doors first
-      return a.floorZ - b.floorZ;      // then lower floor first
+      if (da !== db2) return db2 - da;                         // more doors first
+      return Math.abs(a.floorZ) - Math.abs(b.floorZ);         // then closest to z=0
     });
     log('§VIEW_CARD storey ranking: ' + significant.map(function(s) {
       return s.name + '(doors=' + (storeyDoorCounts[s.name] || 0) + ',z=' + s.floorZ.toFixed(1) + ')';
