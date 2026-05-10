@@ -487,4 +487,11 @@ function setupPanels(A) {
     if (btn) btn.textContent = panelsHidden ? '+' : '−';
     console.log('§PANEL_TOGGLE panelsHidden=' + panelsHidden);
   };
+
+  // Register static panels immediately (don't wait for building to load)
+  // These exist in HTML from page load — section, sunglasses, toolbar
+  setTimeout(function() {
+    if (A._wireListKeyNav) A._wireListKeyNav();
+    console.log('§PANELS_INIT static panels registered');
+  }, 500);
 }

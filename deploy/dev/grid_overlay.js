@@ -801,6 +801,8 @@ function setupGridOverlay(APP) {
       } catch (e2) { /* ignore */ }
       loadSavedSections();
       try { localStorage.setItem(lsKey(), JSON.stringify(savedSections)); } catch (e) { /* no-op */ }
+      // User saved a card manually — re-enable auto-create for future
+      try { localStorage.removeItem(lsKey() + '_noauto'); } catch (e) { /* no-op */ }
       log('§SAVE_SECTION saved name=' + name + ' cutVal=' + cutVal.toFixed(2) +
           ' axis=' + axis + ' dwells=' + (dwells ? dwells.length : 0) +
           ' latestId=' + latestSavedId);
@@ -817,7 +819,12 @@ function setupGridOverlay(APP) {
       loadSavedSections();
       // Update localStorage with whatever remains (may be empty)
       try { localStorage.setItem(lsKey(), JSON.stringify(savedSections)); } catch (e) { /* no-op */ }
-      log('§SAVE_SECTION deleted id=' + id);
+      // If all cards deleted, suppress auto-create on next entry
+      if (!savedSections.length) {
+        try { localStorage.setItem(lsKey() + '_noauto', '1'); } catch (e) { /* no-op */ }
+        log('§SAVE_SECTION all deleted — auto-create suppressed');
+      }
+      log('§SAVE_SECTION deleted id=' + id + ' remaining=' + savedSections.length);
     } catch (e) { log('§SAVE_SECTION delete error: ' + e.message); }
   }
 
@@ -1025,6 +1032,13 @@ function setupGridOverlay(APP) {
   /** Auto-create GF + L1 cards on first grid mode entry if no cards exist */
   function autoCreateCards() {
     if (!A.db || savedSections.length > 0) return;
+    // If user manually deleted all cards, don't re-create (flag in localStorage)
+    try {
+      if (localStorage.getItem(lsKey() + '_noauto') === '1') {
+        log('§VIEW_CARD auto-create suppressed (user cleared all)');
+        return;
+      }
+    } catch(e) {}
     if (typeof SectionCut === 'undefined' || !SectionCut.detectStoreys) return;
     var storeys = SectionCut.detectStoreys(A.db);
     if (!storeys.length) return;
