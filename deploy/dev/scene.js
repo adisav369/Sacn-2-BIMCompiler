@@ -254,6 +254,7 @@ function setupScene(A) {
       }
       if (A._clashMatrixDiv) { A._clashMatrixDiv.remove(); A._clashMatrixDiv = null; return; }
       if (A._loadClashRules) A._loadClashRules(function(r) {
+        A._currentClashRules = r;
         A._showClashMatrix(r, document.body);
         // Register matrix for Tab/arrow navigation after DOM is created
         setTimeout(function() {
