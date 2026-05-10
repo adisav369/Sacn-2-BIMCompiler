@@ -979,11 +979,12 @@ check('door_arcs: stair objects marked isContour', da.includes("isContour: true,
 check('door_arcs: window objects marked isContour', da.includes("isContour: true, isWindowOpening"));
 check('door_arcs: opening labels marked isContour', da.includes("isContour: true, isOpeningLabel"));
 
-// ═══ 29. ANTI-INVENTION — wall counts match DB ═════════════════
-console.log('\n═══ 29. ANTI-INVENTION — wall counts ═══');
+// ═══ 29. ANTI-INVENTION — EVERY GF element must be real (has transform + renderable) ═══
+console.log('\n═══ 29. ANTI-INVENTION — element integrity ═══');
 
-// Verify the test's own wall counts match what the DB returns.
-// If any code creates phantom walls, this diverges.
+// Card starts blank. Only elements with transforms are renderable.
+// An element in elements_meta but NOT in element_transforms is a ghost —
+// it inflates counts but can't be clicked, can't produce contours, can't be seen.
 for (const [bn2] of Object.entries(GRID_BUILDINGS)) {
   const bDb2 = findDb(bn2);
   if (!bDb2) continue;
@@ -991,16 +992,30 @@ for (const [bn2] of Object.entries(GRID_BUILDINGS)) {
   if (!gf2) continue;
   const esc3 = gf2.replace(/'/g, "''");
 
-  // Count walls two ways: elements_meta only vs element_transforms join
-  const metaWalls = parseInt(sql(bDb2, "SELECT COUNT(*) FROM elements_meta WHERE ifc_class IN ('IfcWall','IfcWallStandardCase') AND storey='" + esc3 + "'")) || 0;
-  const joinWalls = parseInt(sql(bDb2, "SELECT COUNT(*) FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class IN ('IfcWall','IfcWallStandardCase') AND m.storey='" + esc3 + "'")) || 0;
-  console.log('    §WALL_COUNT ' + bn2 + ' meta=' + metaWalls + ' joined=' + joinWalls);
-  check(bn2 + ': wall meta count = joined count (no phantom walls)',
-    metaWalls === joinWalls, 'meta=' + metaWalls + ' joined=' + joinWalls);
+  // Total elements on GF: meta vs with transforms
+  const metaTotal = parseInt(sql(bDb2, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + esc3 + "'")) || 0;
+  const joinTotal = parseInt(sql(bDb2, "SELECT COUNT(*) FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.storey='" + esc3 + "'")) || 0;
+  const ghosts = metaTotal - joinTotal;
+  console.log('    §ELEMENT_INTEGRITY ' + bn2 + ' meta=' + metaTotal + ' renderable=' + joinTotal + ' ghosts=' + ghosts);
 
-  // Every wall in elements_meta must have a transform row — orphan walls can't be positioned
-  check(bn2 + ': no orphan walls (all have transforms)', joinWalls >= metaWalls,
-    joinWalls + ' of ' + metaWalls + ' have transforms');
+  // Find ghost classes — elements without transforms
+  if (ghosts > 0) {
+    const ghostClasses = sql(bDb2, "SELECT m.ifc_class, COUNT(*), GROUP_CONCAT(m.element_name, '; ') FROM elements_meta m LEFT JOIN element_transforms t ON m.guid=t.guid WHERE m.storey='" + esc3 + "' AND t.guid IS NULL GROUP BY m.ifc_class").split('\n').filter(r => r);
+    ghostClasses.forEach(r => {
+      const parts = r.split('|');
+      console.log('    §GHOST ' + bn2 + ' class=' + parts[0] + ' n=' + parts[1] + ' names=[' + (parts[2] || '') + ']');
+    });
+  }
+  check(bn2 + ': ALL GF elements have transforms (no ghosts)', ghosts === 0,
+    ghosts > 0 ? ghosts + ' ghost elements without position data' : 'all ' + metaTotal + ' renderable');
+
+  // Card element manifest: what the user can actually click
+  const manifest = sql(bDb2, "SELECT m.ifc_class, COUNT(*), GROUP_CONCAT(SUBSTR(m.element_name, 1, 40), ' | ') FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.storey='" + esc3 + "' GROUP BY m.ifc_class ORDER BY COUNT(*) DESC").split('\n').filter(r => r);
+  console.log('    §CARD_MANIFEST ' + bn2 + ' clickable_elements:');
+  manifest.forEach(r => {
+    const parts = r.split('|');
+    console.log('      ' + parts[0] + ' n=' + parts[1] + ' [' + (parts.slice(2).join('|').trim() || '?') + ']');
+  });
 }
 
 // ═══ 30. ROOF LEAK — per building, does GF card hide ALL non-GF elements? ═══
