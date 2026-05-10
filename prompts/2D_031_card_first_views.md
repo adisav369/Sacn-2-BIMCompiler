@@ -260,6 +260,16 @@ The Playwright tests are TOO SLOW and test string presence, not behavior.
 - § logs must prove the chain at runtime: click → raycaster hit → guid resolved → DB lookup → name displayed
 - **Furniture as 2D truth:** IfcFurniture/IfcFurnishingElement should be flattened to top-down view (bbox footprint or top-projection) and rendered as 2D items in the contour group — NOT shown as clipped 3D meshes. A chair from the top = a rectangle. A desk = a rectangle. Each carries guid + ifcClass + element_name for click identity. This makes furniture a first-class 2D card citizen alongside walls, doors, windows.
 
+### KNOWN GAP: whitebox tests ≠ runtime proof (2026-05-11)
+`card_verify.js` checks source code strings. 356 pass. But user's hard-reset browser test shows:
+- SH/DX GF still has invented ghost pieces — **DBs on OCI not updated** (only local copies cleaned)
+- No door arcs on SH/DX — whitebox checks `generateArcs` exists, doesn't prove runtime produces arcs at cutZ
+- No opening grid lengths — whitebox checks wall spans in DB, doesn't prove `GridDims.detectGrids` runs and draws
+- Whitebox logs are NOT relatable to what the user sees in the browser
+- **Root cause:** whitebox tests grep source files. They do NOT execute the viewer. They cannot prove runtime behavior.
+- **Fix needed:** Playwright browser tests that load each building, enter 2D, and capture § console logs. The § logs fire at runtime — they ARE the truth. But `card_verify.js` reads them from source, not from a running browser.
+- **Immediate action next session:** upload cleaned DBs to OCI, then Playwright test that loads SH in browser, enters 2D, checks console for `§DOOR_ARC_CLASSES`, `§CARD_RESTORE`, `§GD_GRIDS`. If those § lines don't appear, the code path isn't firing.
+
 **Whitebox testing cycle (MANDATORY for next session):**
 1. Run `node deploy/dev/tests/card_verify.js` — read the log
 2. Every § diagnostic must either be a `check()` or removed
