@@ -87,8 +87,8 @@ function setupPanels(A) {
         if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { moveCursor(+1); return; }
         if (e.key === 'PageUp')    { moveCursor(-5); return; }
         if (e.key === 'PageDown')  { moveCursor(+5); return; }
-        if (e.key === 'Home')      { cursor = 0; scrollTo(0); return; }
-        if (e.key === 'End')       { cursor = items.length - 1; scrollTo(cursor); return; }
+        if (e.key === 'Home')      { cursor = -1; moveCursor(1); return; }
+        if (e.key === 'End')       { cursor = items.length; moveCursor(-1); return; }
         if (e.ctrlKey && e.key === 'a') {
           selected = new Set();
           items.forEach(function(_, i) { selected.add(i); });
