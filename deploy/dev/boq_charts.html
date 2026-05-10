@@ -717,6 +717,7 @@ function audit4DSchedule(scheduleData, db, qtoData) {
 // S238: Fetch DB buffer — checks bim_ootb_cache IDB first (same cache as scene.js), falls back to fetch
 // import:// URLs: IDB only (no network). OCI URLs: IDB first (scene.js wrote it), then network.
 async function fetchDbBuffer(url) {
+  const _tFetch = performance.now();
   const cacheDb = await new Promise(resolve => {
     const req = indexedDB.open('bim_ootb_cache', 1);
     req.onupgradeneeded = () => req.result.createObjectStore('dbs');
@@ -733,7 +734,7 @@ async function fetchDbBuffer(url) {
     });
     if (cached) {
       const src = url.startsWith('import://') ? 'import' : 'idb';
-      _dbSourceLine = '§CHARTS_DB_SOURCE source=' + src + ' url=' + url.split('/').pop() + ' size=' + (cached.byteLength / 1024).toFixed(0) + 'KB';
+      _dbSourceLine = '§CHARTS_DB_SOURCE source=' + src + ' url=' + url.split('/').pop() + ' size=' + (cached.byteLength / 1024).toFixed(0) + 'KB fetchMs=' + Math.round(performance.now() - _tFetch);
       _log(_dbSourceLine);
       return cached;
     }
@@ -746,6 +747,25 @@ async function fetchDbBuffer(url) {
   return fetch(url).then(r => r.arrayBuffer());
 }
 
+// S253: Try BroadcastChannel relay from viewer (instant) before loading DB (slow)
+async function _tryChannelRelay(timeoutMs) {
+  return new Promise(function(resolve) {
+    try {
+      var ch = new BroadcastChannel('bim_4d');
+      var timer = setTimeout(function() { ch.close(); resolve(null); }, timeoutMs);
+      ch.onmessage = function(evt) {
+        if (evt.data && evt.data.type === '4D_QTO_RESPONSE') {
+          clearTimeout(timer);
+          ch.close();
+          resolve(evt.data);
+        }
+      };
+      ch.postMessage({ type: '4D_QTO_REQUEST' });
+      console.log('§QTO_RELAY_REQUEST sent — waiting ' + timeoutMs + 'ms');
+    } catch(e) { resolve(null); }
+  });
+}
+
 async function init() {
   // §1.2: Load rate template from JSON before any cost calculation
   if (typeof initRateTemplate === 'function') {
@@ -753,24 +773,6 @@ async function init() {
   } else {
     console.warn('§QTO_RATES_FALLBACK initRateTemplate not available — using hardcoded rates');
   }
-
-  const SQL = await initSqlJs({
-    locateFile: f => `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/${f}`
-  });
-  document.getElementById('info').textContent = `Loading ${DB_URL}...`;
-  const buf = await fetchDbBuffer(DB_URL);
-  db = new SQL.Database(new Uint8Array(buf));
-
-  // Determine building
-  bldName = BLD;
-  if (!bldName) {
-    const r = db.exec("SELECT building, COUNT(*) c FROM elements_meta GROUP BY building ORDER BY c DESC LIMIT 1");
-    bldName = r.length ? r[0].values[0][0] : 'Unknown';
-  }
-
-  // §2.1: Unit-aware QTO — linear elements use bbox length (M), area use bbox area (M2), rest use COUNT (EA)
-  // Implementing MEP_5D_QTO.md §2.1–2.3, §6.3 — Witness: W-QTO_UNIT
-  const _bldSafe = bldName.replace(/'/g,"''");
 
   // Build unit lookup from RATES: which IFC classes are M, M2, EA, KG
   const LINEAR_CLASSES = new Set();   // unit = M
@@ -780,85 +782,91 @@ async function init() {
     if (RATES[cls].unit === 'M2') AREA_CLASSES.add(cls);
   }
 
-  // §6.3: Create qto_cache table if not exists (write-back for fast repeat access)
-  try {
-    db.run(`CREATE TABLE IF NOT EXISTS qto_cache (
-      ifc_class TEXT NOT NULL, storey TEXT NOT NULL, discipline TEXT NOT NULL,
-      qty REAL NOT NULL, uom TEXT NOT NULL, element_count INTEGER NOT NULL,
-      material_cost REAL, labour_cost REAL, equipment_cost REAL,
-      rate_template TEXT, computed_at TEXT,
-      PRIMARY KEY (ifc_class, storey, discipline, rate_template)
-    )`);
-  } catch(e) { /* read-only DB — cache write will be skipped */ }
+  const _t0 = performance.now();
+  let countRows, linearQty = {}, areaQty = {};
 
-  // §6.3: Check qto_cache for fast path
-  let cacheHit = false;
-  const tplName = RATE_TEMPLATE_NAME || 'hardcoded_cidb2024';
-  try {
-    const cached = db.exec("SELECT ifc_class, storey, discipline, qty, uom, element_count, material_cost, labour_cost, equipment_cost FROM qto_cache WHERE rate_template = '" + tplName.replace(/'/g,"''") + "'");
-    if (cached.length && cached[0].values.length > 0) {
-      cacheHit = true;
-      console.log('§QTO_CACHE_HIT template=' + tplName + ' rows=' + cached[0].values.length);
-    }
-  } catch(e) { /* no cache table or read error — compute fresh */ }
+  // S253: Fast path — ask viewer for data via BroadcastChannel (no DB load)
+  document.getElementById('info').textContent = 'Requesting data from viewer...';
+  const relay = await _tryChannelRelay(500);
 
-  // Query 1: Element counts + mesh counts (always needed for schedule/display)
-  const countRows = db.exec(`
-    SELECT m.discipline, m.ifc_class, m.storey, COUNT(*) as cnt,
-           COUNT(DISTINCT i.geometry_hash) as meshes
-    FROM elements_meta m LEFT JOIN element_instances i ON m.guid = i.guid
-    WHERE m.building = '${_bldSafe}'
-    GROUP BY m.discipline, m.ifc_class, m.storey
-    ORDER BY m.discipline, m.storey, cnt DESC
-  `);
-
-  if (!countRows.length) { document.getElementById('info').textContent = 'No data.'; return; }
-
-  // Query 2: Linear elements (M) — SUM of longest bbox axis per element
-  const linearQty = {};  // key: disc|cls|storey → sum of lengths
-  try {
-    const linRows = db.exec(`
-      SELECT m.discipline, m.ifc_class, m.storey,
-             SUM(MAX(t.bbox_x, t.bbox_y, t.bbox_z)) as total_length
-      FROM elements_meta m
-      JOIN element_transforms t ON m.guid = t.guid
-      WHERE m.building = '${_bldSafe}'
-        AND t.bbox_x IS NOT NULL AND t.bbox_x > 0
-      GROUP BY m.discipline, m.ifc_class, m.storey
-    `);
-    if (linRows.length) {
-      for (const r of linRows[0].values) {
-        linearQty[r[0] + '|' + r[1] + '|' + r[2]] = r[3];
+  if (relay && !relay.error && relay.countRows && relay.countRows.length) {
+    // Viewer answered — use relayed data directly
+    bldName = relay.building || BLD || 'Unknown';
+    countRows = [{ values: relay.countRows }];
+    if (relay.dimRows) {
+      for (const r of relay.dimRows) {
+        const key = r[0] + '|' + r[1] + '|' + r[2];
+        linearQty[key] = r[3];
+        areaQty[key] = r[4];
       }
     }
-  } catch(e) { console.warn('§QTO_WARN linear query error: ' + e.message); }
+    console.log('§QTO_RELAY_HIT building=' + bldName + ' rows=' + relay.countRows.length +
+      ' dims=' + (relay.dimRows ? relay.dimRows.length : 0) +
+      ' relayMs=' + Math.round(performance.now() - _t0));
+  } else {
+    // Fallback — load DB the slow way (viewer not open or no response)
+    console.log('§QTO_RELAY_MISS reason=' + (relay ? relay.error || 'empty' : 'timeout') +
+      ' — loading DB from ' + (DB_URL.startsWith('import://') ? 'IndexedDB' : 'OCI'));
+    const SQL = await initSqlJs({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/${f}`
+    });
+    document.getElementById('info').textContent = 'Loading ' + DB_URL + '...';
+    const buf = await fetchDbBuffer(DB_URL);
+    db = new SQL.Database(new Uint8Array(buf));
+    console.log('§DB_INIT loadMs=' + Math.round(performance.now() - _t0) + ' size=' + Math.round(buf.byteLength / 1024 / 1024) + 'MB');
 
-  // Query 3: Area elements (M2) — SUM of (largest_axis × second_largest_axis)
-  const areaQty = {};  // key: disc|cls|storey → sum of areas
-  try {
-    const areaRows = db.exec(`
-      SELECT m.discipline, m.ifc_class, m.storey,
-             SUM(
-               MAX(t.bbox_x, t.bbox_y, t.bbox_z) *
-               CASE WHEN t.bbox_x >= t.bbox_y AND t.bbox_x >= t.bbox_z
-                    THEN MAX(t.bbox_y, t.bbox_z)
-                    WHEN t.bbox_y >= t.bbox_x AND t.bbox_y >= t.bbox_z
-                    THEN MAX(t.bbox_x, t.bbox_z)
-                    ELSE MAX(t.bbox_x, t.bbox_y)
-               END
-             ) as total_area
-      FROM elements_meta m
-      JOIN element_transforms t ON m.guid = t.guid
-      WHERE m.building = '${_bldSafe}'
-        AND t.bbox_x IS NOT NULL AND t.bbox_x > 0
-      GROUP BY m.discipline, m.ifc_class, m.storey
-    `);
-    if (areaRows.length) {
-      for (const r of areaRows[0].values) {
-        areaQty[r[0] + '|' + r[1] + '|' + r[2]] = r[3];
-      }
+    // Determine building
+    bldName = BLD;
+    if (!bldName) {
+      const r = db.exec("SELECT building, COUNT(*) c FROM elements_meta GROUP BY building ORDER BY c DESC LIMIT 1");
+      bldName = r.length ? r[0].values[0][0] : 'Unknown';
     }
-  } catch(e) { console.warn('§QTO_WARN area query error: ' + e.message); }
+    const _bldSafe = bldName.replace(/'/g,"''");
+
+    // §6.3: Create qto_cache table if not exists (write-back for fast repeat access)
+    try {
+      db.run('CREATE TABLE IF NOT EXISTS qto_cache (' +
+        'ifc_class TEXT NOT NULL, storey TEXT NOT NULL, discipline TEXT NOT NULL,' +
+        'qty REAL NOT NULL, uom TEXT NOT NULL, element_count INTEGER NOT NULL,' +
+        'material_cost REAL, labour_cost REAL, equipment_cost REAL,' +
+        'rate_template TEXT, computed_at TEXT,' +
+        'PRIMARY KEY (ifc_class, storey, discipline, rate_template))');
+    } catch(e) {}
+
+    countRows = db.exec(
+      "SELECT m.discipline, m.ifc_class, m.storey, COUNT(*) as cnt," +
+      " COUNT(DISTINCT i.geometry_hash) as meshes" +
+      " FROM elements_meta m LEFT JOIN element_instances i ON m.guid = i.guid" +
+      " WHERE m.building = '" + _bldSafe + "'" +
+      " GROUP BY m.discipline, m.ifc_class, m.storey" +
+      " ORDER BY m.discipline, m.storey, cnt DESC"
+    );
+
+    try {
+      const dimRows = db.exec(
+        "SELECT m.discipline, m.ifc_class, m.storey," +
+        " SUM(MAX(t.bbox_x, t.bbox_y, t.bbox_z)) as total_length," +
+        " SUM(MAX(t.bbox_x, t.bbox_y, t.bbox_z) *" +
+        " CASE WHEN t.bbox_x >= t.bbox_y AND t.bbox_x >= t.bbox_z THEN MAX(t.bbox_y, t.bbox_z)" +
+        " WHEN t.bbox_y >= t.bbox_x AND t.bbox_y >= t.bbox_z THEN MAX(t.bbox_x, t.bbox_z)" +
+        " ELSE MAX(t.bbox_x, t.bbox_y) END) as total_area" +
+        " FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid" +
+        " WHERE m.building = '" + _bldSafe + "' AND t.bbox_x IS NOT NULL AND t.bbox_x > 0" +
+        " GROUP BY m.discipline, m.ifc_class, m.storey"
+      );
+      if (dimRows.length) {
+        for (const r of dimRows[0].values) {
+          const key = r[0] + '|' + r[1] + '|' + r[2];
+          linearQty[key] = r[3];
+          areaQty[key] = r[4];
+        }
+      }
+    } catch(e) { console.warn('§QTO_WARN dimension query error: ' + e.message); }
+  }
+
+  if (!countRows || !countRows.length || !countRows[0].values.length) {
+    document.getElementById('info').textContent = 'No data.'; return;
+  }
 
   // Process data with unit-aware quantities
   qtoData = []; discSummary = {};
@@ -918,12 +926,11 @@ async function init() {
     discSummary[disc].laborCost += labor.cost;
     discSummary[disc].equipCost += equip.cost;
 
-    // §QTO_UNIT witness per class+storey
-    console.log('§QTO_UNIT cls=' + cls + ' unit=' + unit + ' qty=' + (Math.round(qty * 100) / 100) + ' cnt=' + cnt + ' storey=' + storey);
   }
 
-  // §6.3: Write to qto_cache (if DB is writable)
-  try {
+  // §6.3: Write to qto_cache (if DB is writable — skip in relay mode)
+  const tplName = RATE_TEMPLATE_NAME || 'hardcoded_cidb2024';
+  if (db) try {
     db.run("DELETE FROM qto_cache WHERE rate_template = '" + tplName.replace(/'/g,"''") + "'");
     const now = new Date().toISOString();
     const stmt = db.prepare("INSERT INTO qto_cache (ifc_class, storey, discipline, qty, uom, element_count, material_cost, labour_cost, equipment_cost, rate_template, computed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
@@ -934,7 +941,8 @@ async function init() {
     console.log('§QTO_CACHE_WRITE template=' + tplName + ' rows=' + qtoData.length);
   } catch(e) { /* read-only DB or no table — skip silently */ }
 
-  console.log('§QTO_SUMMARY classes=' + qtoData.length + ' material=' + Math.round(grandMaterial) + ' labor=' + Math.round(grandLabor) + ' equip=' + Math.round(grandEquip) + ' warnings=' + qtoWarnCount);
+  const _t1 = performance.now();
+  console.log('§QTO_SUMMARY classes=' + qtoData.length + ' material=' + Math.round(grandMaterial) + ' labor=' + Math.round(grandLabor) + ' equip=' + Math.round(grandEquip) + ' warnings=' + qtoWarnCount + ' queryMs=' + Math.round(_t1 - _t0));
 
   // Generate 4D schedule
   scheduleData = generateSchedule(qtoData, '2025-01-06');
@@ -1042,11 +1050,27 @@ function renderCharts() {
   c.innerHTML = '';
   chartInstances.forEach(ci => ci.destroy());
   chartInstances = [];
+  const _tCharts = performance.now();
   console.log('§RENDER_CHARTS: start');
   // Light chart animations — quick, no infinite loops
   Chart.defaults.animation = { duration: 800 };
   function logChart(n, type, title, dataLen) {
-    console.log(`§CHART_${n} [${type}] "${title}": ${dataLen} data points — ${dataLen > 0 ? 'OK' : 'EMPTY'}`);
+    console.log(`§CHART_${n} [${type}] "${title}": ${dataLen} data points — ${dataLen > 0 ? 'OK' : 'EMPTY'} +${Math.round(performance.now() - _tCharts)}ms`);
+  }
+
+  // Deferred chart rendering: only render when scrolled into view
+  function _deferChart(box, renderFn) {
+    if ('IntersectionObserver' in window) {
+      var rendered = false;
+      var obs = new IntersectionObserver(function(entries) {
+        if (!rendered && entries[0].isIntersecting) {
+          rendered = true; obs.disconnect(); renderFn();
+        }
+      }, { rootMargin: '200px' });
+      obs.observe(box);
+    } else {
+      renderFn(); // fallback: render immediately
+    }
   }
 
   const discs = Object.keys(discSummary);
@@ -1153,38 +1177,33 @@ function renderCharts() {
   }));
   logChart(6,'Column','Resource Workload',mdPhases.length);
 
-  // ── 7. S-Curve Progress (line — from schedule_export.py) ──
+  // ── 7. S-Curve Progress (line — deferred render on scroll) ──
   if (scheduleData.length) {
     const scBox = el('div','chart-box');
     scBox.innerHTML = '<h2>' + _TRL.t_s_curve + '</h2>';
     const scCanvas = el('canvas');
     scBox.appendChild(scCanvas); c.appendChild(scBox);
-
-    const allFinish = scheduleData.map(t => t.finishDay);
-    const maxDay = Math.max(...allFinish);
-    const totalTasks = scheduleData.length;
-    const weekLabels = [], weekPcts = [];
-    const totalWeeks = Math.max(1, Math.ceil(maxDay / 7));
-    const sampleInterval = Math.max(1, Math.floor(totalWeeks / 20));
-
-    for (let w = 0; w <= totalWeeks; w += sampleInterval) {
-      const dayEnd = w * 7;
-      const completed = scheduleData.filter(t => t.finishDay <= dayEnd).length;
-      weekLabels.push(`W${w}`);
-      weekPcts.push(Math.round(completed / totalTasks * 1000) / 10);
-    }
-    // Ensure final point
-    if (weekPcts[weekPcts.length-1] < 100) {
-      weekLabels.push(`W${totalWeeks}`);
-      weekPcts.push(100);
-    }
-
-    chartInstances.push(new Chart(scCanvas, {
-      type:'line',
-      data:{labels:weekLabels, datasets:[{label:'% Complete',data:weekPcts,borderColor:'#4fc3f7',backgroundColor:'rgba(79,195,247,0.1)',fill:true,tension:0.3}]},
-      options:{scales:{y:{min:0,max:100,title:{display:true,text:'% Complete',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{title:{display:true,text:'Project Week',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
-    }));
-    logChart(7,'Line','S-Curve Progress',weekLabels.length);
+    _deferChart(scBox, function() {
+      const allFinish = scheduleData.map(t => t.finishDay);
+      const maxDay = Math.max(...allFinish);
+      const totalTasks = scheduleData.length;
+      const weekLabels = [], weekPcts = [];
+      const totalWeeks = Math.max(1, Math.ceil(maxDay / 7));
+      const sampleInterval = Math.max(1, Math.floor(totalWeeks / 20));
+      for (let w = 0; w <= totalWeeks; w += sampleInterval) {
+        const dayEnd = w * 7;
+        const completed = scheduleData.filter(t => t.finishDay <= dayEnd).length;
+        weekLabels.push(`W${w}`);
+        weekPcts.push(Math.round(completed / totalTasks * 1000) / 10);
+      }
+      if (weekPcts[weekPcts.length-1] < 100) { weekLabels.push(`W${totalWeeks}`); weekPcts.push(100); }
+      chartInstances.push(new Chart(scCanvas, {
+        type:'line',
+        data:{labels:weekLabels, datasets:[{label:'% Complete',data:weekPcts,borderColor:'#4fc3f7',backgroundColor:'rgba(79,195,247,0.1)',fill:true,tension:0.3}]},
+        options:{scales:{y:{min:0,max:100,title:{display:true,text:'% Complete',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},x:{title:{display:true,text:'Project Week',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}}},plugins:{legend:{display:false}}}
+      }));
+      logChart(7,'Line','S-Curve Progress',weekLabels.length);
+    });
   }
 
   // ── 8. Milestone Timeline (horizontal bar — from schedule_export.py) ──
@@ -1205,27 +1224,28 @@ function renderCharts() {
   msBox.innerHTML = '<h2>' + _TRL.t_milestone + '</h2>';
   const msCanvas = el('canvas');
   msBox.appendChild(msCanvas); c.appendChild(msBox);
-
-  chartInstances.push(new Chart(msCanvas, {
-    type:'bar',
-    data:{
-      labels:phaseList,
-      datasets:[
-        {label:'Offset',data:phaseList.map(p=>phaseDates[p].start),backgroundColor:'rgba(0,0,0,0)'},
-        {label:'Duration',data:phaseList.map(p=>phaseDates[p].end - phaseDates[p].start),backgroundColor:phaseList.map(p=>PHASE_COLORS[p]||'#4fc3f7')},
-      ]
-    },
-    options:{indexAxis:'y',scales:{
-      x:{stacked:true,title:{display:true,text:_TRL.h_day_offset||'Days from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},
-      y:{stacked:true,ticks:{color:'#ccc',font:{size:11}},grid:{color:'rgba(255,255,255,0.1)'}}
-    },plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
-      if (ctx.datasetIndex===0) return null;
-      const p = phaseList[ctx.dataIndex];
-      return `${p}: Day ${phaseDates[p].start}–${phaseDates[p].end} (${phaseDates[p].end - phaseDates[p].start} days)`;
-    }}},
-    barThickness:12}}
-  }));
-  logChart(8,'Gantt','Milestone Timeline',phaseList.length);
+  _deferChart(msBox, function() {
+    chartInstances.push(new Chart(msCanvas, {
+      type:'bar',
+      data:{
+        labels:phaseList,
+        datasets:[
+          {label:'Offset',data:phaseList.map(p=>phaseDates[p].start),backgroundColor:'rgba(0,0,0,0)'},
+          {label:'Duration',data:phaseList.map(p=>phaseDates[p].end - phaseDates[p].start),backgroundColor:phaseList.map(p=>PHASE_COLORS[p]||'#4fc3f7')},
+        ]
+      },
+      options:{indexAxis:'y',scales:{
+        x:{stacked:true,title:{display:true,text:_TRL.h_day_offset||'Days from Project Start',color:'#fff',font:{size:15}},ticks:{color:'#ddd',font:{size:13}},grid:{color:'rgba(255,255,255,0.1)'}},
+        y:{stacked:true,ticks:{color:'#ccc',font:{size:11}},grid:{color:'rgba(255,255,255,0.1)'}}
+      },plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
+        if (ctx.datasetIndex===0) return null;
+        const p = phaseList[ctx.dataIndex];
+        return `${p}: Day ${phaseDates[p].start}–${phaseDates[p].end} (${phaseDates[p].end - phaseDates[p].start} days)`;
+      }}},
+      barThickness:12}}
+    }));
+    logChart(8,'Gantt','Milestone Timeline',phaseList.length);
+  });
 
   // ── 9. Full Gantt — ALL tasks sorted by start day (for 4D sync) ──
   const ganttTasks = [...scheduleData].sort((a,b) => a.startDay - b.startDay);
@@ -1237,36 +1257,37 @@ function renderCharts() {
   ganttCanvas.style.height = ganttH + 'px';
   ganttBox.style.height = (ganttH + 48) + 'px'; // +48 for h2 title
   ganttBox.appendChild(ganttCanvas); c.appendChild(ganttBox);
-
-  chartInstances.push(new Chart(ganttCanvas, {
-    type:'bar',
-    data:{
-      labels:ganttTasks.map(t => t.name.slice(0,50)),
-      datasets:[
-        {label:'Offset',data:ganttTasks.map(t=>t.startDay),backgroundColor:'rgba(0,0,0,0)'},
-        {label:'Duration',data:ganttTasks.map(t=>Math.round(t.duration)),backgroundColor:ganttTasks.map(t=>PHASE_COLORS[t.phase]||'#888')},
-      ]
-    },
-    options:{
-      animation: false,
-      indexAxis:'y',
-      maintainAspectRatio: false,
-      scales:{
-        x:{stacked:true,title:{display:true,text:_TRL.h_day_offset||'Days from Project Start',color:'#fff',font:{size:14}},ticks:{color:'#ddd',font:{size:12}},grid:{color:'rgba(255,255,255,0.1)'}},
-        y:{stacked:true,ticks:{color:'#ccc',font:{size:Math.max(7, Math.min(10, 180/ganttTasks.length))}},grid:{color:'rgba(255,255,255,0.05)'}}
+  _deferChart(ganttBox, function() {
+    chartInstances.push(new Chart(ganttCanvas, {
+      type:'bar',
+      data:{
+        labels:ganttTasks.map(t => t.name.slice(0,50)),
+        datasets:[
+          {label:'Offset',data:ganttTasks.map(t=>t.startDay),backgroundColor:'rgba(0,0,0,0)'},
+          {label:'Duration',data:ganttTasks.map(t=>Math.round(t.duration)),backgroundColor:ganttTasks.map(t=>PHASE_COLORS[t.phase]||'#888')},
+        ]
       },
-      plugins:{
-        legend:{display:false},
-        tooltip:{callbacks:{label:ctx=>{
-          if (ctx.datasetIndex===0) return null;
-          const t = ganttTasks[ctx.dataIndex];
-          return `${t.phase}: Day ${t.startDay}–${t.finishDay} (${Math.round(t.duration)} days, ${Math.round(t.qty*100)/100} ${t.uom||'EA'})`;
-        }}}
-      },
-      barThickness: 6
-    }
-  }));
-  logChart(9,'Stacked','Gantt Timeline',ganttTasks.length);
+      options:{
+        animation: false,
+        indexAxis:'y',
+        maintainAspectRatio: false,
+        scales:{
+          x:{stacked:true,title:{display:true,text:_TRL.h_day_offset||'Days from Project Start',color:'#fff',font:{size:14}},ticks:{color:'#ddd',font:{size:12}},grid:{color:'rgba(255,255,255,0.1)'}},
+          y:{stacked:true,ticks:{color:'#ccc',font:{size:Math.max(7, Math.min(10, 180/ganttTasks.length))}},grid:{color:'rgba(255,255,255,0.05)'}}
+        },
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:ctx=>{
+            if (ctx.datasetIndex===0) return null;
+            const t = ganttTasks[ctx.dataIndex];
+            return `${t.phase}: Day ${t.startDay}–${t.finishDay} (${Math.round(t.duration)} days, ${Math.round(t.qty*100)/100} ${t.uom||'EA'})`;
+          }}}
+        },
+        barThickness: 6
+      }
+    }));
+    logChart(9,'Stacked','Gantt Timeline',ganttTasks.length);
+  });
 
   // S240: BroadcastChannel for 4D Gantt→Viewer sync
   let _bim4d = null;

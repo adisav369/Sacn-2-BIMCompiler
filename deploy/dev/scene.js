@@ -171,8 +171,8 @@ function setupScene(A) {
     return buf;
   };
 
-  // BLOB → Three.js BufferGeometry
-  A.blobToGeometry = function(vBlob, fBlob) {
+  // BLOB → Three.js BufferGeometry (optional precomputed normals BLOB)
+  A.blobToGeometry = function(vBlob, fBlob, nBlob) {
     try {
       const vArr = new Float32Array(vBlob.buffer, vBlob.byteOffset, vBlob.byteLength / 4);
       const fArr = new Uint32Array(fBlob.buffer, fBlob.byteOffset, fBlob.byteLength / 4);
@@ -189,7 +189,21 @@ function setupScene(A) {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
       geo.setIndex(new THREE.BufferAttribute(fArr, 1));
-      geo.computeVertexNormals();
+      if (nBlob && nBlob.byteLength >= 12) {
+        // Precomputed normals — apply same Y↔Z swap as positions
+        const nArr = new Float32Array(nBlob.buffer, nBlob.byteOffset, nBlob.byteLength / 4);
+        const normals = new Float32Array(nArr.length);
+        for (let i = 0; i < nArr.length; i += 3) {
+          normals[i]     = nArr[i];
+          normals[i + 1] = nArr[i + 2];
+          normals[i + 2] = -nArr[i + 1];
+        }
+        geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+        if (A) { A._normalsPrecomputed = (A._normalsPrecomputed || 0) + 1; }
+      } else {
+        geo.computeVertexNormals();
+        if (A) { A._normalsComputed = (A._normalsComputed || 0) + 1; }
+      }
       geo.computeBoundingSphere();
       return geo;
     } catch (e) {

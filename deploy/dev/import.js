@@ -123,7 +123,7 @@ function setupImport(A) {
     console.log('[S220] §IMPORT_START file=' + file.name + ' size=' + sizeMB + 'MB');
 
     return new Promise((resolve, reject) => {
-      const workerUrl = new URL('import_worker.js?v=5', location.href).href;
+      const workerUrl = new URL('import_worker.js?v=8', location.href).href;
       const worker = new Worker(workerUrl);
 
       worker.onmessage = async function(e) {
@@ -197,6 +197,149 @@ function setupImport(A) {
       worker.postMessage({ arrayBuffer, filename: file.name }, [arrayBuffer]);
     });
   };
+
+  // ── Multi-IFC merge: process N files sequentially, merge into one building DB ──
+  A.importMultiIFC = async function(files) {
+    const status = document.getElementById('import-status');
+    const progressBar = document.getElementById('import-progress-bar');
+    if (progressBar) { progressBar.style.width = '0%'; progressBar.parentElement.style.display = 'block'; }
+
+    // Derive building name from common prefix: LTU_AHouse_ARC.ifc + LTU_AHouse_STR.ifc → LTU_AHouse
+    var stems = [];
+    for (var i = 0; i < files.length; i++) {
+      stems.push(files[i].name.replace(/\.(ifc|IFC)$/, ''));
+    }
+    var buildingName = _commonPrefix(stems).replace(/[_\-]+$/, '') || stems[0];
+
+    console.log('[S220] §MULTI_IMPORT_START files=' + files.length + ' building=' + buildingName +
+      ' names=' + Array.from(files).map(function(f) { return f.name; }).join(','));
+    if (status) status.textContent = 'Merging ' + files.length + ' IFC files → ' + buildingName + '...';
+
+    // Process each file sequentially — accumulate results
+    var allElements = [], allGeometries = [], allTransforms = [];
+    var allDiscs = {}, allStoreys = new Set();
+    var totalElements = 0;
+
+    for (var fi = 0; fi < files.length; fi++) {
+      var file = files[fi];
+      var fileLabel = (fi + 1) + '/' + files.length + ': ' + file.name;
+      if (status) status.textContent = 'Parsing ' + fileLabel;
+      console.log('[S220] §MULTI_FILE_START ' + fileLabel);
+
+      try {
+        var result = await _parseOneIFC(file, function(pct, phase) {
+          // Scale progress: each file gets an equal slice
+          var filePct = (fi / files.length + pct / 100 / files.length) * 90;
+          if (progressBar) progressBar.style.width = filePct.toFixed(1) + '%';
+          if (status) status.textContent = fileLabel + ' — ' + phase;
+        });
+
+        allElements = allElements.concat(result.elements);
+        allGeometries = allGeometries.concat(result.geometries);
+        allTransforms = allTransforms.concat(result.transforms);
+        totalElements += result.meta.elementCount;
+        for (var d in result.meta.disciplines) {
+          allDiscs[d] = (allDiscs[d] || 0) + result.meta.disciplines[d];
+        }
+        result.meta.storeys.forEach(function(s) { allStoreys.add(s); });
+
+        console.log('[S220] §MULTI_FILE_DONE ' + fileLabel +
+          ' elements=' + result.meta.elementCount + ' geom=' + result.meta.geomCount);
+      } catch (err) {
+        console.log('[S220] §MULTI_FILE_ERROR ' + fileLabel + ' err=' + err.message);
+        if (status) status.textContent = 'Failed: ' + fileLabel + ' — ' + err.message;
+        if (progressBar) progressBar.style.background = '#cc4444';
+        return;
+      }
+    }
+
+    // Merge: build single DB from accumulated data
+    if (status) status.textContent = 'Building merged database (' + totalElements + ' elements)...';
+    if (progressBar) progressBar.style.width = '92%';
+
+    try {
+      var SQL = await initSqlJs({ locateFile: function(f) { return 'lib/' + f; } });
+      var mergedData = {
+        meta: {
+          name: buildingName,
+          filename: buildingName,
+          elementCount: totalElements,
+          geomCount: allGeometries.length,
+          disciplines: allDiscs,
+          storeys: Array.from(allStoreys).sort(),
+        },
+        elements: allElements,
+        geometries: allGeometries,
+        transforms: allTransforms,
+      };
+      var dbs = buildImportDBs(SQL, mergedData);
+
+      var record = {
+        meta: mergedData.meta,
+        extractedDb: dbs.extractedDb,
+        libraryDb: dbs.extractedDb,
+      };
+      var key = buildingName + '.ifc';
+      await saveImport(key, record);
+
+      console.log('[S220] §MULTI_IMPORT_DONE building=' + buildingName +
+        ' elements=' + totalElements + ' files=' + files.length +
+        ' discs=' + Object.keys(allDiscs).join(',') +
+        ' db=' + (dbs.extractedDb.byteLength / 1024).toFixed(0) + 'KB');
+
+      if (status) status.textContent = 'Merged ' + files.length + ' files → ' + totalElements + ' elements';
+      if (progressBar) { progressBar.style.width = '100%'; progressBar.style.background = '#44cc44'; }
+
+      if (A.renderImportCards) A.renderImportCards();
+    } catch (dbErr) {
+      console.log('[S220] §MULTI_DB_ERROR ' + dbErr.message);
+      if (status) status.textContent = 'DB merge failed: ' + dbErr.message;
+      if (progressBar) progressBar.style.background = '#cc4444';
+    }
+  };
+
+  // Parse one IFC file via worker — returns promise with raw data
+  function _parseOneIFC(file, onProgress) {
+    return new Promise(function(resolve, reject) {
+      file.arrayBuffer().then(function(arrayBuffer) {
+        var worker = new Worker(new URL('import_worker.js?v=8', location.href).href);
+        worker.onmessage = function(e) {
+          var msg = e.data;
+          if (msg.type === 'progress') {
+            if (onProgress) onProgress(msg.pct, msg.phase);
+            return;
+          }
+          if (msg.type === 'error') {
+            worker.terminate();
+            reject(new Error(msg.message));
+            return;
+          }
+          if (msg.type === 'done') {
+            worker.terminate();
+            resolve(msg);
+          }
+        };
+        worker.onerror = function(err) {
+          worker.terminate();
+          reject(err);
+        };
+        worker.postMessage({ arrayBuffer: arrayBuffer, filename: file.name }, [arrayBuffer]);
+      });
+    });
+  }
+
+  // Find common prefix of an array of strings
+  function _commonPrefix(strs) {
+    if (!strs.length) return '';
+    var prefix = strs[0];
+    for (var i = 1; i < strs.length; i++) {
+      while (strs[i].indexOf(prefix) !== 0) {
+        prefix = prefix.substring(0, prefix.length - 1);
+        if (!prefix) return '';
+      }
+    }
+    return prefix;
+  }
 
   // ── Process mesh file (DAE/OBJ/GLB/3DS/FBX/STL) — S228 ──
   A.importMesh = async function(file, ext) {
@@ -517,16 +660,27 @@ function setupImport(A) {
       e.preventDefault();
       dropZone.style.borderColor = 'rgba(79,195,247,0.3)';
       dropZone.style.background = 'rgba(79,195,247,0.04)';
-      var file = e.dataTransfer.files[0];
-      if (!file) return;
-      var fmt = detectFormat(file.name);
-      if (fmt.route === 'ifc') {
-        A.importIFC(file);
-      } else if (fmt.route === 'mesh') {
-        A.importMesh(file, fmt.ext);
+      var files = e.dataTransfer.files;
+      if (!files.length) return;
+      // Multi-IFC merge: if 2+ IFC files dropped, merge into one building
+      var ifcFiles = [];
+      for (var fi = 0; fi < files.length; fi++) {
+        if (detectFormat(files[fi].name).route === 'ifc') ifcFiles.push(files[fi]);
+      }
+      if (ifcFiles.length > 1) {
+        A.importMultiIFC(ifcFiles);
+      } else if (ifcFiles.length === 1) {
+        A.importIFC(ifcFiles[0]);
       } else {
-        document.getElementById('import-status').textContent =
-          (typeof _TRL!=='undefined'&&_TRL.ui_unsupported||'Unsupported: .{ext} \u2014 Accepted: IFC, DAE, OBJ, GLB, 3DS, FBX, STL').replace('{ext}', fmt.ext);
+        // Single non-IFC file
+        var file = files[0];
+        var fmt = detectFormat(file.name);
+        if (fmt.route === 'mesh') {
+          A.importMesh(file, fmt.ext);
+        } else {
+          document.getElementById('import-status').textContent =
+            (typeof _TRL!=='undefined'&&_TRL.ui_unsupported||'Unsupported: .{ext} \u2014 Accepted: IFC, DAE, OBJ, GLB, 3DS, FBX, STL').replace('{ext}', fmt.ext);
+        }
       }
     });
 
@@ -537,10 +691,22 @@ function setupImport(A) {
   }
 
   if (fileInput) {
-    // S228: accept multi-format
+    // S228: accept multi-format. multiple=true for multi-discipline merge.
     fileInput.accept = '.ifc,.dae,.obj,.glb,.gltf,.3ds,.fbx,.stl';
+    fileInput.multiple = true;
     fileInput.addEventListener('change', function() {
-      var file = fileInput.files[0];
+      var files = fileInput.files;
+      if (!files.length) return;
+      // Multi-IFC merge
+      var ifcFiles = [];
+      for (var fi = 0; fi < files.length; fi++) {
+        if (detectFormat(files[fi].name).route === 'ifc') ifcFiles.push(files[fi]);
+      }
+      if (ifcFiles.length > 1) {
+        A.importMultiIFC(ifcFiles);
+        return;
+      }
+      var file = files[0];
       if (file) {
         var fmt = detectFormat(file.name);
         if (fmt.route === 'ifc') {

@@ -15,6 +15,7 @@ function setupStreaming(A) {
   A.streamIdx = 0;
   A.streaming = false;
   A.savedStreams = {};
+  A._libHasNormals = null; // cached: does libDb have normals column?
 
   // drawBuildingBoxes() retired — replaced by per-element _drawBboxPlaceholders()
   A.drawBuildingBoxes = function() {};
@@ -222,6 +223,19 @@ function setupStreaming(A) {
     if (hashesNeeded.size > 0) {
       const hashList = [...hashesNeeded];
       let fetched = 0;
+      // Probe once: does libDb have normals column?
+      if (A._libHasNormals === null) {
+        try {
+          A.libDb.exec("SELECT normals FROM component_geometries LIMIT 0");
+          A._libHasNormals = true;
+        } catch (e) {
+          A._libHasNormals = false;
+        }
+        console.log(`[S231] §NORMALS_PROBE libHasNormals=${A._libHasNormals}`);
+      }
+      const cols = A._libHasNormals
+        ? 'geometry_hash, vertices, faces, normals'
+        : 'geometry_hash, vertices, faces';
       // Fetch in chunks of 200 to avoid sql.js bind limit
       for (let ci = 0; ci < hashList.length; ci += 200) {
         const chunk = hashList.slice(ci, ci + 200);
@@ -229,13 +243,15 @@ function setupStreaming(A) {
         for (const table of ['component_geometries', 'base_geometries']) {
           try {
             const stmt = A.libDb.prepare(
-              `SELECT geometry_hash, vertices, faces FROM ${table} WHERE geometry_hash IN (${ph})`
+              `SELECT ${cols} FROM ${table} WHERE geometry_hash IN (${ph})`
             );
             stmt.bind(chunk);
             while (stmt.step()) {
-              const [ghash, vBlob, fBlob] = stmt.get();
+              const row = stmt.get();
+              const ghash = row[0], vBlob = row[1], fBlob = row[2];
+              const nBlob = A._libHasNormals ? (row[3] || null) : null;
               if (vBlob && fBlob) {
-                const geo = A.blobToGeometry(vBlob, fBlob);
+                const geo = A.blobToGeometry(vBlob, fBlob, nBlob);
                 if (geo) { A.meshCache[ghash] = geo; fetched++; }
               }
             }
@@ -246,7 +262,9 @@ function setupStreaming(A) {
         }
       }
       if (fetched > 0) {
-        console.log(`[S231] §BLOB_FETCH new=${fetched} total_cached=${Object.keys(A.meshCache).length}`);
+        if (!A._normalsPrecomputed) A._normalsPrecomputed = 0;
+        if (!A._normalsComputed) A._normalsComputed = 0;
+        console.log(`[S231] §BLOB_FETCH new=${fetched} total_cached=${Object.keys(A.meshCache).length} normals_pre=${A._normalsPrecomputed} normals_cpu=${A._normalsComputed}`);
       }
       if (fetched === 0 && hashesNeeded.size > 0) {
         console.warn(`[S231] §BLOB_MISS hashes=${hashesNeeded.size} — no geometry found in library`);

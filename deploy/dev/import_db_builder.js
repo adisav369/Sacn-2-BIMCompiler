@@ -56,11 +56,12 @@ function buildImportDBs(SQL, data) {
   stmtInst.free();
 
   // Geometry BLOBs — same DB, keyed by geometry_hash (instanced, deduped)
-  db.run('CREATE TABLE IF NOT EXISTS component_geometries (geometry_hash TEXT PRIMARY KEY, vertices BLOB, faces BLOB, building TEXT)');
-  var stmtGeo = db.prepare('INSERT OR IGNORE INTO component_geometries VALUES (?,?,?,?)');
+  db.run('CREATE TABLE IF NOT EXISTS component_geometries (geometry_hash TEXT PRIMARY KEY, vertices BLOB, faces BLOB, normals BLOB, building TEXT)');
+  var stmtGeo = db.prepare('INSERT OR IGNORE INTO component_geometries VALUES (?,?,?,?,?)');
   for (var i = 0; i < data.geometries.length; i++) {
     var g = data.geometries[i];
-    stmtGeo.run([g.geomHash, new Uint8Array(g.vertices), new Uint8Array(g.indices), buildingName]);
+    stmtGeo.run([g.geomHash, new Uint8Array(g.vertices), new Uint8Array(g.indices),
+      g.normals ? new Uint8Array(g.normals) : null, buildingName]);
   }
   stmtGeo.free();
 

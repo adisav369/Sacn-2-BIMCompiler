@@ -407,11 +407,31 @@ self.onmessage = async function(e) {
             h2 ^= hashSrc[hi]; h2 = Math.imul(h2, 0x01000193);
           }
           var geomHash = (h >>> 0).toString(16).padStart(8,'0') + (h2 >>> 0).toString(16).padStart(8,'0');
+          // Compute vertex normals (area-weighted, same algorithm as Three.js)
+          var normals = new Float32Array(positions.length);
+          var idxArr = new Int32Array(idxBuf);
+          for (var fi = 0; fi < idxArr.length; fi += 3) {
+            var ia = idxArr[fi], ib = idxArr[fi+1], ic = idxArr[fi+2];
+            if (ia >= vertCount || ib >= vertCount || ic >= vertCount) continue;
+            var e1x = positions[ib*3] - positions[ia*3],     e1y = positions[ib*3+1] - positions[ia*3+1], e1z = positions[ib*3+2] - positions[ia*3+2];
+            var e2x = positions[ic*3] - positions[ia*3],     e2y = positions[ic*3+1] - positions[ia*3+1], e2z = positions[ic*3+2] - positions[ia*3+2];
+            var nx = e1y*e2z - e1z*e2y, ny = e1z*e2x - e1x*e2z, nz = e1x*e2y - e1y*e2x;
+            for (var ni = 0; ni < 3; ni++) {
+              var idx2 = idxArr[fi+ni];
+              normals[idx2*3] += nx; normals[idx2*3+1] += ny; normals[idx2*3+2] += nz;
+            }
+          }
+          for (var ni2 = 0; ni2 < vertCount; ni2++) {
+            var nnx = normals[ni2*3], nny = normals[ni2*3+1], nnz = normals[ni2*3+2];
+            var len = Math.sqrt(nnx*nnx + nny*nny + nnz*nnz);
+            if (len > 0) { normals[ni2*3] /= len; normals[ni2*3+1] /= len; normals[ni2*3+2] /= len; }
+          }
           geometries.push({
             guid: el.guid,
             geomHash: geomHash,
             vertices: positions.buffer,
             indices: idxBuf,
+            normals: normals.buffer,
           });
           // If no IFC bbox was extracted, compute from vertices
           if (!el._bboxX) {
@@ -517,6 +537,7 @@ self.onmessage = async function(e) {
     const transferables = [];
     for (const g of geometries) {
       transferables.push(g.vertices, g.indices);
+      if (g.normals) transferables.push(g.normals);
     }
 
     post('progress', 100, 'Done');

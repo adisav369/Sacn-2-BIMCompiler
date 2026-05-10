@@ -5,6 +5,7 @@
  */
 // main.js — initViewer() orchestrator: creates APP, calls each module's setup, starts render loop
 // DEV version — adds setupNlp (S211 voice command / NLP query)
+console.log('§MAIN_JS v20 loaded — 4D_QTO_REQUEST relay enabled');
 function initViewer() {
   const APP = window.APP = {};
 
@@ -204,6 +205,46 @@ function initViewer() {
       if (msg.type === '4D_SEEK') {
         if (APP._ghostGlass) APP._ghostGlass.seek(msg.taskIndex);
         console.log('§4D_RECV type=4D_SEEK task=' + msg.taskIndex + ' ghostGlass=' + !!APP._ghostGlass);
+        return;
+      }
+
+      // S253: QTO data relay — boq_charts asks viewer to run queries on its already-loaded DB
+      if (msg.type === '4D_QTO_REQUEST') {
+        if (!APP.db || !APP.activeBuilding) {
+          _bim4d.postMessage({ type: '4D_QTO_RESPONSE', error: 'no_db' });
+          return;
+        }
+        var bld = APP.activeBuilding.replace(/'/g, "''");
+        try {
+          var countRows = APP.db.exec(
+            "SELECT m.discipline, m.ifc_class, m.storey, COUNT(*) as cnt, COUNT(DISTINCT i.geometry_hash) as meshes " +
+            "FROM elements_meta m LEFT JOIN element_instances i ON m.guid = i.guid " +
+            "WHERE m.building = '" + bld + "' GROUP BY m.discipline, m.ifc_class, m.storey " +
+            "ORDER BY m.discipline, m.storey, cnt DESC"
+          );
+          var dimRows = APP.db.exec(
+            "SELECT m.discipline, m.ifc_class, m.storey, " +
+            "SUM(MAX(t.bbox_x, t.bbox_y, t.bbox_z)) as total_length, " +
+            "SUM(MAX(t.bbox_x, t.bbox_y, t.bbox_z) * " +
+            "CASE WHEN t.bbox_x >= t.bbox_y AND t.bbox_x >= t.bbox_z THEN MAX(t.bbox_y, t.bbox_z) " +
+            "WHEN t.bbox_y >= t.bbox_x AND t.bbox_y >= t.bbox_z THEN MAX(t.bbox_x, t.bbox_z) " +
+            "ELSE MAX(t.bbox_x, t.bbox_y) END) as total_area " +
+            "FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid " +
+            "WHERE m.building = '" + bld + "' AND t.bbox_x IS NOT NULL AND t.bbox_x > 0 " +
+            "GROUP BY m.discipline, m.ifc_class, m.storey"
+          );
+          _bim4d.postMessage({
+            type: '4D_QTO_RESPONSE',
+            building: APP.activeBuilding,
+            countRows: countRows.length ? countRows[0].values : [],
+            dimRows: dimRows.length ? dimRows[0].values : []
+          });
+          console.log('§4D_QTO_RELAY sent count=' + (countRows.length ? countRows[0].values.length : 0) +
+            ' dims=' + (dimRows.length ? dimRows[0].values.length : 0));
+        } catch (e) {
+          _bim4d.postMessage({ type: '4D_QTO_RESPONSE', error: e.message });
+          console.log('§4D_QTO_RELAY error: ' + e.message);
+        }
         return;
       }
 
