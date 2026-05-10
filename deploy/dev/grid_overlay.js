@@ -885,6 +885,18 @@ function setupGridOverlay(APP) {
     var clipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), cutY);
     A.renderer.localClippingEnabled = true;
 
+    // Restore previous card's faded meshes before starting fresh
+    for (var pf = 0; pf < _cardFadedMeshes.length; pf++) {
+      var pfm = _cardFadedMeshes[pf];
+      if (pfm.userData._origOpacity != null) {
+        pfm.material.opacity = pfm.userData._origOpacity;
+        pfm.material.transparent = pfm.userData._origTransparent;
+        pfm.material.needsUpdate = true;
+        delete pfm.userData._origOpacity;
+        delete pfm.userData._origTransparent;
+      }
+    }
+
     var counts = { shown: 0, hidden: 0, clipped: 0, faded: 0, retained: 0 };
     _cardHiddenMeshes = [];
     _cardFadedMeshes = [];
