@@ -499,7 +499,10 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
         var activeStorey = null;
         for (var bsi = 0; bsi < storeys.length; bsi++) {
             if (storeys[bsi].floorZ <= cutZ && cutZ <= storeys[bsi].floorZ + 10) {
-                activeStorey = storeys[bsi]; break;
+                // Pick the storey closest to cutZ from below (not just first match)
+                if (!activeStorey || storeys[bsi].floorZ > activeStorey.floorZ) {
+                    activeStorey = storeys[bsi];
+                }
             }
         }
         if (activeStorey) {
@@ -630,7 +633,6 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
         if (geoHash) {
             geo = lookupGeometry(db, libDb, geoHash);
         }
-
         if (!geo || !geo[0] || !geo[1]) {
             console.log('§SC_NOGEOM guid=' + guid.substring(0, 8) +
                         ' class=' + ifcClass + ' hash=' + (geoHash ? geoHash.substring(0, 8) : 'NULL') +

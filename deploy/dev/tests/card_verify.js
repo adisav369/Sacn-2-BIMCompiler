@@ -937,9 +937,32 @@ check('Pick: raycaster uses default visibility filter (no recursive:false overri
 const pick = src('picking.js');
 check('Pick: contour userData.guid fallback (2D items clickable)',
   pick.includes('hit.object.userData.guid'), '2D contours carry guid in userData');
-check('Pick: logs §PICK contour→guid', pick.includes('§PICK contour'));
+check('Pick: logs §PICK_2D identity', pick.includes('§PICK_2D'));
+// 2D pick: raycaster includes Lines in floor view
+check('Pick: Line threshold in 2D mode', pick.includes('raycaster.params.Line'));
+check('Pick: collects isLine for contour', pick.includes('o.isLine') && pick.includes('isContour'));
 // Contour meshes carry ifcClass for display
 check('Contour meshes carry ifcClass', gc.includes("ifcClass: el.ifcClass"));
+// Door arcs carry ifcClass
+check('Door arc carries ifcClass', da.includes("ifcClass: 'IfcDoor'"));
+check('Stair symbol carries ifcClass', da.includes("ifcClass: el.ifcClass || 'IfcStairFlight'"));
+check('Window opening carries ifcClass', da.includes("ifcClass: el.ifcClass || 'IfcWindow'"));
+// Furniture footprints
+check('GridContours.renderFurniture exposed', gc.includes('renderFurniture'));
+check('Furniture footprint carries guid+ifcClass', gc.includes("guid: el.guid, ifcClass: el.ifcClass"));
+check('Furniture query in renderContoursForView', go.includes('§FURNITURE_QUERY'));
+check('Furniture Z-band query', go.includes("IfcFurniture") && go.includes("IfcFurnishingElement"));
+// 2D→3D ISOLATION: furniture footprints live in contour group, cleared on exit
+check('Furniture uses ensureGroup (routed to _group)', gc.includes('ensureGroup(APP)') && gc.indexOf('renderFurniture') < gc.lastIndexOf('ensureGroup'));
+check('Furniture: NO scene.add (belongs to contour group only)',
+  !gc.slice(gc.indexOf('renderFurniture')).includes('APP.scene.add'), 'scene leak = furniture visible in 3D');
+check('GridContours.clear disposes all children (incl furniture)', gc.includes('_group.traverse') && gc.includes('disposeObj'));
+// Exit path: toggleGridOverlay calls GridContours.clear BEFORE clearCardView
+check('Exit: GridContours.clear called on toggleGridOverlay off', go.includes("GridContours.clear(A)"));
+check('Exit: contour group removed from scene on clear', gc.includes('_group.parent.remove(_group)'));
+check('Exit: _group nulled after clear', gc.includes('_group = null'));
+// Picking threshold is scoped to 2D mode only (no 3D leak)
+check('Pick: Line threshold only in isFloor2D block', pick.includes('if (isFloor2D)') && pick.includes('raycaster.params.Line'));
 
 // Grid lines must NOT obscure contours — grid has lower renderOrder or contours have higher
 check('Grid lines renderOrder set', go.includes('renderOrder'));
@@ -975,6 +998,22 @@ for (const [bn3] of Object.entries(GRID_BUILDINGS)) {
   const winTransN = parseInt(sql(bDb3, "SELECT COUNT(*) FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class IN ('IfcWindow','IfcWindowStandardCase') AND m.storey='" + esc4 + "'")) || 0;
   check(bn3 + ': all windows have transforms', winTransN === winN,
     winTransN + ' of ' + winN + ' windows have transforms');
+
+  // DEEP CHECK: doors have geometry blobs AND geometry crosses cutZ
+  const floorZ3 = parseFloat(sql(bDb3, "SELECT MIN(t.center_z) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE m.storey='" + esc4 + "'")) || 0;
+  const cutZ3 = floorZ3 + 1.2;
+  const doorGeo = sql(bDb3, "SELECT m.element_name, t.center_z, t.bbox_z, LENGTH(cg.vertices) FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid JOIN element_instances ei ON m.guid=ei.guid JOIN component_geometries cg ON ei.geometry_hash=cg.geometry_hash WHERE m.ifc_class IN ('IfcDoor','IfcDoorStandardCase') AND m.storey='" + esc4 + "'").split('\n').filter(r => r);
+  const doorsWithGeo = doorGeo.length;
+  const doorsCrossingCutZ = doorGeo.filter(r => {
+    const parts = r.split('|');
+    const cz = parseFloat(parts[1]), bz = parseFloat(parts[2]);
+    const doorMin = cz - bz/2, doorMax = cz + bz/2;
+    return doorMin <= cutZ3 && doorMax >= cutZ3;
+  }).length;
+  check(bn3 + ': doors have geometry blobs', doorsWithGeo === doorN, doorsWithGeo + '/' + doorN + ' doors have geometry');
+  check(bn3 + ': door geometry crosses cutZ=' + cutZ3.toFixed(2), doorsCrossingCutZ === doorN,
+    doorsCrossingCutZ + '/' + doorN + ' cross cutZ (arcs possible)');
+  console.log('    §ARC_PROOF ' + bn3 + ' cutZ=' + cutZ3.toFixed(2) + ' doorsWithGeo=' + doorsWithGeo + ' crossing=' + doorsCrossingCutZ + '/' + doorN);
 }
 
 // Code chain: all 2D-only objects route through contour group, not A.scene
@@ -1135,6 +1174,35 @@ check('restoreSection: infers storey from cutZ when view_state.storey missing',
   go.includes('storey inferred from cutZ'));
 check('restoreSection: uses detectStoreys for inference',
   go.slice(go.indexOf('function restoreSection')).includes('SectionCut.detectStoreys'));
+
+// ═══ 31. FURNITURE FOOTPRINT — Z-BAND INDEPENDENCE (fixes §PICK_GAP) ═══
+console.log('\n═══ 31. FURNITURE FOOTPRINT INDEPENDENCE ═══');
+// The furniture query must NOT filter by storey — only by Z range.
+// This is the fix for furniture on "Unknown" storey being invisible in cards.
+const furnQuery = go.slice(go.indexOf('IfcFurniture'), go.indexOf('IfcFurniture') + 200);
+check('Furniture query: no storey filter', !furnQuery.includes("m.storey"), 'Z-band only = storey-agnostic');
+check('Furniture query: uses center_z range', furnQuery.includes('center_z >= ?') && furnQuery.includes('center_z <= ?'));
+// Furniture footprints are in contour group (not affected by card visibility pass)
+// restoreSection calls renderContoursForView which does the furniture query — correct runtime order
+check('Furniture footprint: restoreSection calls renderContoursForView',
+  go.slice(go.indexOf('function restoreSection')).includes('renderContoursForView'), 'card → contours → furniture');
+// Furniture items on "Unknown" storey: card hides 3D mesh, but 2D footprint still visible
+// This is correct: the footprint is independent, gives pick identity to hidden 3D furniture
+for (const [bn6] of Object.entries(GRID_BUILDINGS)) {
+  const bDb6 = findDb(bn6);
+  if (!bDb6) continue;
+  const gf6 = GRID_BUILDINGS[bn6].gf || detectGF(bDb6);
+  if (!gf6) continue;
+  const esc7 = gf6.replace(/'/g, "''");
+  const cutZ6 = parseFloat(sql(bDb6, "SELECT MIN(t.center_z) + 1.2 FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE m.storey='" + esc7 + "'")) || 1.2;
+  const furnInBand = parseInt(sql(bDb6, "SELECT COUNT(*) FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class IN ('IfcFurniture','IfcFurnishingElement') AND t.center_z >= " + (cutZ6 - 0.5) + " AND t.center_z <= " + (cutZ6 + 1.5))) || 0;
+  const furnOnStorey = parseInt(sql(bDb6, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + esc7 + "' AND ifc_class IN ('IfcFurniture','IfcFurnishingElement')")) || 0;
+  const rescued = furnInBand - furnOnStorey;
+  if (rescued > 0) {
+    console.log('    §FURN_RESCUE ' + bn6 + ': ' + rescued + ' furniture items rescued by Z-band (invisible in card, visible as 2D footprint)');
+  }
+  console.log('    §FURN_FOOTPRINT ' + bn6 + ' cutZ=' + cutZ6.toFixed(2) + ' inBand=' + furnInBand + ' onStorey=' + furnOnStorey + ' rescued=' + rescued);
+}
 
 // ═══ SUMMARY ════════════════════════════════════════════════════
 console.log('\n═══ RESULT: ' + pass + ' pass, ' + fail + ' fail ═══');

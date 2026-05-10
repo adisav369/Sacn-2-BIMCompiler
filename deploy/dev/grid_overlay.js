@@ -666,6 +666,33 @@ function setupGridOverlay(APP) {
 
         log('§DOOR_ARC_STOREY mode=' + mode + ' doors=' + doors.length + ' stairs=' + stairElements.length + ' windows=' + windowElements.length);
       }
+
+      // Implementing 2D_031 §Next — Witness: W-2D31-FURNITURE
+      // Furniture footprints: query furniture elements within Z-band, render as 2D rectangles
+      if (typeof GridContours !== 'undefined' && GridContours.renderFurniture) {
+        var furnBand = 1.5; // same band as section cut
+        try {
+          var furnRows = A.dbQuery(
+            "SELECT m.guid, m.ifc_class, m.element_name, t.center_x, t.center_y, t.bbox_x, t.bbox_y " +
+            "FROM elements_meta m JOIN element_transforms t ON m.guid = t.guid " +
+            "WHERE m.ifc_class IN ('IfcFurniture','IfcFurnishingElement') " +
+            "AND t.center_z >= ? AND t.center_z <= ?",
+            [cutZ - 0.5, cutZ + furnBand]
+          );
+          if (furnRows.length > 0) {
+            var furnData = furnRows.map(function(r) {
+              return { guid: r[0], ifcClass: r[1], elementName: r[2], cx: r[3], cy: r[4], bx: r[5], by: r[6] };
+            });
+            GridContours.renderFurniture(A, furnData, cutZ);
+            log('§FURNITURE_QUERY cutZ=' + cutZ.toFixed(2) + ' found=' + furnRows.length);
+          } else {
+            log('§FURNITURE_QUERY cutZ=' + cutZ.toFixed(2) + ' found=0');
+          }
+        } catch (e) {
+          log('§FURNITURE_QUERY_ERR ' + e.message);
+        }
+      }
+
       log('§GRID_VIEW contours=section mode=' + mode + ' cutZ=' + cutZ.toFixed(2));
 
     } else if (contourMode === 'elevation' && typeof Elevation !== 'undefined' && typeof GridContours !== 'undefined') {

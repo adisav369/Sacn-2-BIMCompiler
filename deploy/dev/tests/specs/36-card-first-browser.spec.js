@@ -498,6 +498,187 @@ test.describe('Card-First Complete Suite', () => {
     console.log('§T_3615W ' + log.join(' | '));
   });
 
+  // ══════════════════════════════════════════════════════════════════
+  // P1-P8 from prompts/2D_030_grid_ux_tshoot.md — EVERY issue tested
+  // ══════════════════════════════════════════════════════════════════
+
+  // ── P1: Grid Y-axis alignment — wall orientation detection ────
+  test('P1: grid_dims.js Y-axis wall detection — orientation threshold + clustering', () => {
+    const dims = src('grid_dims.js');
+    const log = [];
+    const has = (tag, str) => { const ok = dims.includes(str); log.push(tag + (ok ? ' ✓' : ' ✗')); return ok; };
+
+    // Must detect wall orientation (long axis vs short axis)
+    expect(has('orientation', 'orient') || has('axis_detect', 'axis')).toBe(true);
+    // Must cluster Y positions
+    expect(has('cluster', 'cluster')).toBe(true);
+    // Must have wall weight voting
+    expect(has('wall_weight', 'weight') || has('vote', 'vote')).toBe(true);
+
+    // Verify on fleet: Y-axis walls exist per building
+    if (DB_PATH) {
+      const yWalls = sql(DB_PATH, "SELECT COUNT(*) FROM element_transforms et JOIN elements_meta m ON et.guid=m.guid WHERE m.ifc_class IN ('IfcWall','IfcWallStandardCase') AND m.storey='Ground Floor'");
+      log.push('GF_walls=' + yWalls);
+    }
+    console.log('§P1 ' + log.join(' | '));
+  });
+
+  // ── P2: GF floor plan — roof excluded, door arcs present ──────
+  test('P2: section_cut excludes roof from GF + door_arcs generates arcs', () => {
+    const sc = src('section_cut.js');
+    const arcs = src('grid_door_arcs.js');
+    const log = [];
+
+    // Band filter excludes IfcRoof
+    const excl = sc.match(/exclude_above_band.*?\[([^\]]+)\]/);
+    const hasRoofExcl = excl && excl[1].includes('IfcRoof');
+    log.push('roof_excluded' + (hasRoofExcl ? ' ✓' : ' ✗'));
+    expect(hasRoofExcl).toBe(true);
+
+    // IfcCovering NOT excluded (wall tiles)
+    const hasCoveringExcl = excl && excl[1].includes('IfcCovering');
+    log.push('covering_NOT_excluded' + (!hasCoveringExcl ? ' ✓' : ' ✗'));
+    expect(hasCoveringExcl).toBe(false);
+
+    // Door arcs module exists and generates arcs
+    const hasGenerate = arcs.includes('generateArcs');
+    log.push('generateArcs' + (hasGenerate ? ' ✓' : ' ✗'));
+    expect(hasGenerate).toBe(true);
+
+    // Door arcs need leaf geometry (extractLeafAxis)
+    const hasLeaf = arcs.includes('extractLeafAxis') || arcs.includes('leafAxis');
+    log.push('leafAxis' + (hasLeaf ? ' ✓' : ' ✗'));
+    expect(hasLeaf).toBe(true);
+
+    // Fleet: count doors per GF across buildings
+    if (DB_PATH) {
+      const doors = sql(DB_PATH, "SELECT COUNT(*) FROM elements_meta WHERE storey='Ground Floor' AND ifc_class IN ('IfcDoor','IfcDoorStandardCase')");
+      log.push('GF_doors=' + doors);
+      expect(parseInt(doors)).toBeGreaterThan(0);
+    }
+    console.log('§P2 ' + log.join(' | '));
+  });
+
+  // ── P3: Window opening dimension lines ────────────────────────
+  test('P3: grid_door_arcs.js has window opening lines — jamb ticks + connecting line', () => {
+    const arcs = src('grid_door_arcs.js');
+    const log = [];
+    const has = (tag, str) => { const ok = arcs.includes(str); log.push(tag + (ok ? ' ✓' : ' ✗')); return ok; };
+
+    expect(has('windowOpenings', 'generateWindowOpenings') || has('window', 'Window')).toBe(true);
+    expect(has('stairSymbol', 'generateStairSymbol') || has('stair', 'Stair')).toBe(true);
+
+    // Fleet: windows on GF
+    if (DB_PATH) {
+      const wins = sql(DB_PATH, "SELECT COUNT(*) FROM elements_meta WHERE storey='Ground Floor' AND ifc_class IN ('IfcWindow','IfcWindowStandardCase')");
+      log.push('GF_windows=' + wins);
+    }
+    console.log('§P3 ' + log.join(' | '));
+  });
+
+  // ── P4: Saved section restore — view_state + contours ─────────
+  test('P4: restoreSection reads view_state + renders contours — card restore works', () => {
+    const s = src('grid_overlay.js');
+    const start = s.indexOf('function restoreSection');
+    const end = s.indexOf('\n  // Card cleanup', start);
+    const body = s.slice(start, end);
+    const log = [];
+
+    const has = (tag, str) => { const ok = body.includes(str); log.push(tag + (ok ? ' ✓' : ' ✗')); return ok; };
+    expect(has('view_state', 'sec.view_state')).toBe(true);
+    expect(has('storey_query', 'queryStoreyGuids')).toBe(true);
+    expect(has('contours', 'renderContoursForView')).toBe(true);
+    expect(has('camera', 'applyCameraState')).toBe(true);
+    expect(has('card_log', '§CARD_RESTORE')).toBe(true);
+    console.log('§P4 ' + log.join(' | '));
+  });
+
+  // ── P5: Delete saved section — DB + localStorage cleanup ──────
+  test('P5: deleteSavedSection clears DB + localStorage — no zombie cards', () => {
+    const s = src('grid_overlay.js');
+    const delFn = s.slice(s.indexOf('function deleteSavedSection'), s.indexOf('\n  function', s.indexOf('function deleteSavedSection') + 10));
+    const log = [];
+
+    const has = (tag, str) => { const ok = delFn.includes(str); log.push(tag + (ok ? ' ✓' : ' ✗')); return ok; };
+    expect(has('db_delete', 'DELETE FROM saved_sections')).toBe(true);
+    expect(has('ls_remove', 'localStorage.removeItem')).toBe(true);
+    expect(has('reload', 'loadSavedSections')).toBe(true);
+    expect(has('ls_update', 'localStorage.setItem')).toBe(true);
+    expect(has('log', '§SAVE_SECTION deleted')).toBe(true);
+    console.log('§P5 ' + log.join(' | '));
+  });
+
+  // ── P6: Panel close button ────────────────────────────────────
+  test('P6: grid panel has close button — ✕ handler registered', () => {
+    const s = src('grid_overlay.js');
+    const log = [];
+
+    const hasClose = s.includes('grid-panel-close') || s.includes('Close grid panel');
+    log.push('close_btn' + (hasClose ? ' ✓' : ' ✗'));
+    expect(hasClose).toBe(true);
+
+    console.log('§P6 ' + log.join(' | '));
+  });
+
+  // ── P7: Panel dimensions update on drag ───────────────────────
+  test('P7: grid_drag.js rebuilds panel on drag — bay widths update', () => {
+    const drag = src('grid_drag.js');
+    const log = [];
+    const has = (tag, str) => { const ok = drag.includes(str); log.push(tag + (ok ? ' ✓' : ' ✗')); return ok; };
+
+    expect(has('rebuildPanel', 'rebuildPanel')).toBe(true);
+    expect(has('rebuildAnnotations', 'rebuildAnnotations') || has('rebuild', 'rebuild')).toBe(true);
+    // Must update grid positions during drag
+    expect(has('position_update', 'position') && has('delta', 'delta')).toBe(true);
+    console.log('§P7 ' + log.join(' | '));
+  });
+
+  // ── P8: Wall outline on large buildings ───────────────────────
+  test('P8: grid_contours.js has adaptive wall outline — minOutlineW for large buildings', () => {
+    const gc = src('grid_contours.js');
+    const log = [];
+    const has = (tag, str) => { const ok = gc.includes(str); log.push(tag + (ok ? ' ✓' : ' ✗')); return ok; };
+
+    expect(has('buildRibbon', 'buildRibbon')).toBe(true);
+    expect(has('minOutlineW', 'minOutlineW') || has('MIN_WALL', 'MIN_WALL')).toBe(true);
+    // FILL_CLASSES must NOT include IfcSlab (slab fill covers floor)
+    const fillMatch = gc.match(/FILL_CLASSES\s*=\s*\{([^}]+)\}/);
+    const hasSlab = fillMatch && fillMatch[1].includes('IfcSlab');
+    log.push('slab_NOT_filled' + (!hasSlab ? ' ✓' : ' ✗'));
+    expect(hasSlab).toBeFalsy();
+
+    // Terminal: 143 walls on GF — verify contour engine handles it
+    const terminalDb = path.join(BLDG_DIR, 'Terminal_extracted.db');
+    if (fs.existsSync(terminalDb)) {
+      const tw = sql(terminalDb, "SELECT COUNT(*) FROM elements_meta m WHERE m.storey='Aras Tanah' AND m.ifc_class IN ('IfcWall','IfcWallStandardCase')");
+      log.push('Terminal_GF_walls=' + tw);
+    }
+    console.log('§P8 ' + log.join(' | '));
+  });
+
+  // ── Save button on scissors — tools.js ────────────────────────
+  test('P_SAVE: Save button NOT gated — available when scissors ON', () => {
+    const s = src('tools.js');
+    const log = [];
+
+    // section-save-cut-btn must exist
+    const hasBtn = s.includes('section-save-cut-btn');
+    log.push('btn_exists' + (hasBtn ? ' ✓' : ' ✗'));
+
+    // Must NOT be gated by isIn2DView
+    const hasGate = s.includes('isIn2DView');
+    log.push('not_gated' + (!hasGate ? ' ✓' : ' ✗ GATED'));
+
+    // Wired to saveSectionFromScissors or similar
+    const hasSave = s.includes('saveSectionFromScissors') || s.includes('Save cut');
+    log.push('save_wired' + (hasSave ? ' ✓' : ' ✗'));
+
+    expect(hasBtn).toBe(true);
+    expect(hasGate).toBe(false);
+    expect(hasSave).toBe(true);
+    console.log('§P_SAVE ' + log.join(' | '));
+  });
+
   // ── 16. Grid alignment — detect grid lines from structural walls ──
   test('T_3613: grid detection uses wall clustering — lines align with structure', () => {
     const dims = src('grid_dims.js');
@@ -584,5 +765,59 @@ test.describe('Card-First Complete Suite', () => {
     }
 
     console.log('§T_3612 ' + log.join(' | '));
+  });
+
+  test('T_3613: 2D pick identity — raycaster includes Lines, arcs carry ifcClass, furniture footprints', () => {
+    const pick = src('picking.js');
+    const da = src('grid_door_arcs.js');
+    const gc = src('grid_contours.js');
+    const go = src('grid_overlay.js');
+    const log = [];
+
+    // picking.js extends raycaster for Lines in 2D
+    const hasLineThreshold = pick.includes('raycaster.params.Line');
+    log.push('Line.threshold=' + (hasLineThreshold ? '✓' : '✗'));
+    expect(hasLineThreshold).toBe(true);
+
+    const picksLines = pick.includes('o.isLine') && pick.includes('isContour');
+    log.push('collectLines=' + (picksLines ? '✓' : '✗'));
+    expect(picksLines).toBe(true);
+
+    // §PICK_2D log tag for 2D picks
+    const has2DLog = pick.includes('§PICK_2D');
+    log.push('§PICK_2D=' + (has2DLog ? '✓' : '✗'));
+    expect(has2DLog).toBe(true);
+
+    // Door arcs carry ifcClass
+    const arcClass = da.includes("ifcClass: 'IfcDoor'");
+    log.push('arc.ifcClass=' + (arcClass ? '✓' : '✗'));
+    expect(arcClass).toBe(true);
+
+    // Stair symbols carry ifcClass
+    const stairClass = da.includes("ifcClass: el.ifcClass || 'IfcStairFlight'");
+    log.push('stair.ifcClass=' + (stairClass ? '✓' : '✗'));
+    expect(stairClass).toBe(true);
+
+    // Window openings carry ifcClass
+    const winClass = da.includes("ifcClass: el.ifcClass || 'IfcWindow'");
+    log.push('window.ifcClass=' + (winClass ? '✓' : '✗'));
+    expect(winClass).toBe(true);
+
+    // Furniture footprint renderer exists
+    const hasFurnRender = gc.includes('renderFurniture');
+    log.push('renderFurniture=' + (hasFurnRender ? '✓' : '✗'));
+    expect(hasFurnRender).toBe(true);
+
+    // Furniture carries full identity
+    const furnIdentity = gc.includes('guid: el.guid, ifcClass: el.ifcClass');
+    log.push('furn.identity=' + (furnIdentity ? '✓' : '✗'));
+    expect(furnIdentity).toBe(true);
+
+    // Furniture query wired in grid_overlay
+    const furnQuery = go.includes('IfcFurniture') && go.includes('IfcFurnishingElement');
+    log.push('furn.query=' + (furnQuery ? '✓' : '✗'));
+    expect(furnQuery).toBe(true);
+
+    console.log('§T_3613 ' + log.join(' | '));
   });
 });

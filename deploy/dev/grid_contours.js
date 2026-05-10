@@ -104,21 +104,14 @@ var GridContours = (function() {
   function renderContours(APP, contourData, viewMode, cutZ) {
     var group = ensureGroup(APP);
     var lineCount = 0;
+    var isDark = !APP.lightTheme;
 
-    // Structural classes: render as filled polygons (solid black = wall thickness visible)
-    // IfcSlab excluded — slab contour covers entire floor area, obscures walls
+    // Structural classes: filled polygons at true geometry — no artificial thickening.
+    // White fill on dark bg → reverses to black on white (sunglasses toggle).
     var FILL_CLASSES = { 'IfcWall': 1, 'IfcWallStandardCase': 1, 'IfcColumn': 1 };
-
-    // Compute minimum wall outline width from camera frustum
-    // On large buildings (terminal/hospital), walls become hairlines at overview zoom.
-    // Ensure structural outlines are at least MIN_WALL_SCREEN_PX pixels wide.
-    var minOutlineW = 0;
-    var cam = APP.camera;
-    if (cam && cam.isOrthographicCamera) {
-      var frustumW = (cam.right - cam.left) / (cam.zoom || 1);
-      var screenW = APP.renderer ? APP.renderer.domElement.width : window.innerWidth;
-      minOutlineW = (frustumW / screenW) * MIN_WALL_SCREEN_PX;
-    }
+    var fillColor   = isDark ? '#ffffff' : '#000000';
+    var strokeColor = isDark ? '#ffffff' : '#000000';
+    var otherStroke = isDark ? '#aaaaaa' : '#666666';
 
     for (var i = 0; i < contourData.length; i++) {
       var el = contourData[i];
@@ -136,39 +129,30 @@ var GridContours = (function() {
           threePoints.push(new THREE.Vector3(t.x, t.y, t.z));
         }
 
-        // Filled polygon for structural elements (shows wall thickness)
+        // Filled polygon for structural elements — true geometry, no ribbon
         if (doFill && threePoints.length >= 3) {
           var shape = new THREE.Shape();
-          shape.moveTo(threePoints[0].x, threePoints[0].z); // XZ plane (Y is up)
+          shape.moveTo(threePoints[0].x, threePoints[0].z);
           for (var sp = 1; sp < threePoints.length; sp++) {
             shape.lineTo(threePoints[sp].x, threePoints[sp].z);
           }
           shape.closePath();
           var shapeGeom = new THREE.ShapeGeometry(shape);
-          // ShapeGeometry creates in XY — rotate to XZ (floor plan)
           shapeGeom.rotateX(-Math.PI / 2);
           var fillMat = new THREE.MeshBasicMaterial({
-            color: '#000000', side: THREE.DoubleSide, depthTest: false
+            color: fillColor, side: THREE.DoubleSide, depthTest: false
           });
           var fillMesh = new THREE.Mesh(shapeGeom, fillMat);
           fillMesh.position.y = threePoints[0].y;
           fillMesh.renderOrder = 1099;
           fillMesh.userData = { isContour: true, guid: el.guid, ifcClass: el.ifcClass };
           group.add(fillMesh);
-
-          // Bold outline ribbon for structural elements on large buildings
-          if (minOutlineW > 0.01) {
-            var ribbon = buildRibbon(threePoints, minOutlineW * 0.5, threePoints[0].y, '#000000');
-            if (ribbon) {
-              ribbon.userData = { isContour: true, guid: el.guid, ifcClass: el.ifcClass };
-              group.add(ribbon);
-            }
-          }
         }
 
-        // Outline stroke (all elements)
+        // Outline stroke — white on dark, black on light. No invented colors.
+        var lineColor = FILL_CLASSES[el.ifcClass] ? strokeColor : otherStroke;
         var geom = new THREE.BufferGeometry().setFromPoints(threePoints);
-        var mat = new THREE.LineBasicMaterial({ color: style.color, linewidth: style.weight || 1 });
+        var mat = new THREE.LineBasicMaterial({ color: lineColor, linewidth: style.weight || 1 });
         var line = new THREE.Line(geom, mat);
         line.renderOrder = 1100;
         line.userData = { isContour: true, guid: el.guid, ifcClass: el.ifcClass };
@@ -330,6 +314,74 @@ var GridContours = (function() {
     log('§CONTOUR_RENDER door_arcs=' + arcs.length);
   }
 
+  // ── Furniture Footprints (2D Pick Identity) ────────────────────────
+
+  /**
+   * Render furniture elements as 2D top-down bbox footprints.
+   * Each rectangle carries userData.guid + userData.ifcClass for picking.
+   * @param {Object} APP
+   * @param {Array} furnitureData — [{guid, ifcClass, elementName, cx, cy, bx, by}] in IFC coords
+   * @param {number} cutZ — IFC Z of section cut (for Y position in Three.js)
+   */
+  function renderFurniture(APP, furnitureData, cutZ) {
+    if (!furnitureData || furnitureData.length === 0) return;
+    var group = ensureGroup(APP);
+    var isDark = !APP.lightTheme;
+    var fillColor = isDark ? '#888888' : '#999999';
+    var strokeColor = isDark ? '#aaaaaa' : '#666666';
+
+    for (var i = 0; i < furnitureData.length; i++) {
+      var el = furnitureData[i];
+      var hw = (el.bx || 0.3) / 2;  // half-width in IFC X
+      var hd = (el.by || 0.3) / 2;  // half-depth in IFC Y
+
+      // Four corners of bbox footprint in IFC coords
+      var corners = [
+        [el.cx - hw, el.cy - hd],
+        [el.cx + hw, el.cy - hd],
+        [el.cx + hw, el.cy + hd],
+        [el.cx - hw, el.cy + hd]
+      ];
+
+      // Convert to Three.js
+      var threeCorners = corners.map(function(c) {
+        var t = APP.ifc2three(c[0], c[1], cutZ);
+        return new THREE.Vector3(t.x, t.y, t.z);
+      });
+
+      // Filled rectangle (subtle fill)
+      var shape = new THREE.Shape();
+      shape.moveTo(threeCorners[0].x, threeCorners[0].z);
+      for (var s = 1; s < threeCorners.length; s++) {
+        shape.lineTo(threeCorners[s].x, threeCorners[s].z);
+      }
+      shape.closePath();
+      var shapeGeom = new THREE.ShapeGeometry(shape);
+      shapeGeom.rotateX(-Math.PI / 2);
+      var fillMat = new THREE.MeshBasicMaterial({
+        color: fillColor, side: THREE.DoubleSide, depthTest: false,
+        transparent: true, opacity: 0.4
+      });
+      var fillMesh = new THREE.Mesh(shapeGeom, fillMat);
+      fillMesh.position.y = threeCorners[0].y;
+      fillMesh.renderOrder = 1095;
+      fillMesh.userData = { isContour: true, isFurniture: true, guid: el.guid, ifcClass: el.ifcClass, elementName: el.elementName };
+      group.add(fillMesh);
+
+      // Outline stroke
+      threeCorners.push(threeCorners[0].clone()); // close the loop
+      var geom = new THREE.BufferGeometry().setFromPoints(threeCorners);
+      var mat = new THREE.LineBasicMaterial({ color: strokeColor, linewidth: 1 });
+      var line = new THREE.Line(geom, mat);
+      line.renderOrder = 1096;
+      line.userData = { isContour: true, isFurniture: true, guid: el.guid, ifcClass: el.ifcClass, elementName: el.elementName };
+      group.add(line);
+    }
+
+    APP.markDirty();
+    log('§FURNITURE_RENDER count=' + furnitureData.length);
+  }
+
   // ── Cleanup ───────────────────────────────────────────────────────
 
   function clear(APP) {
@@ -351,6 +403,7 @@ var GridContours = (function() {
     renderEdges:        renderEdges,
     renderLevelMarkers: renderLevelMarkers,
     addDoorArcs:        addDoorArcs,
+    renderFurniture:    renderFurniture,
     clear:              clear,
     activeGroup:        function() { return _group; }
   };

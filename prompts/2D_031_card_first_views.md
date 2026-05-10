@@ -2,7 +2,7 @@
 
 # ⚠ DO NOT REMOVE — Read the log after every run. Scope: deploy/dev/ ONLY.
 
-## Status: CARD LOGIC DONE — outstanding 2D UX debt below (2026-05-10)
+## Status: 2D PICK IDENTITY coded — deploy + runtime proof needed (2026-05-11)
 
 ## Concept
 
@@ -162,15 +162,16 @@ When a card is active, element picking should skip hidden classes:
 - `grid_scissors.js` restored: dwell/snap code was accidentally removed, put back
 - Fleet test: 42 tests across all deployed buildings, all pass in 3.7s
 
-### Outstanding 2D UX debt (from 2D_022–2D_030, never fully resolved)
-1. **Grid line alignment** — center-vote snap-to-structural deployed but not verified on all buildings. Check `§GD_WALL_WEIGHT` logs. See `2D_024_editable_grid_lines.md`.
-2. **Grid drag highlight** — no hover effect on draggable lines, user can't tell which are draggable. See `2D_024 §Click grid line`.
-3. **IFC popup on element click** — clicking furniture/doors in card view should show IFC info. Raycaster hits visible meshes (card sets correct visible set), but verify info card popup works.
-4. **Cost panel + variance** — cost_panel.js has Δ Qty/Δ Vol columns, verify they show on card restore.
-5. **Terminal walls** — 3 walls on GF vs 420 slabs. Slab fade helps but contours may still be missing for curtain walls.
-6. **DX door arcs** — `§DOOR_ARC_SKIP reason=no_leaf`, geometry BLOBs lack door panels.
-7. **HITOS GF verification** — confirm wall visibility with floorZ+1.2 after band clamp fix.
-8. **Grid lines per card storey** — grid detection runs once at entry, not per-card. Future: re-detect at card's cutZ.
+### Outstanding 2D Panel Issues
+1. **Grid line alignment** — center-vote snap-to-structural deployed but not verified on all buildings. Check `§GD_WALL_WEIGHT` logs.
+2. **IFC popup on element click** — DONE (2D pick identity, this session). Verify in browser.
+3. **Terminal walls** — 3 walls on GF vs 420 slabs. Slab fade helps but contours may still be missing for curtain walls.
+4. **DX door arcs** — FIXED (band filter storey selection, this session). 8/8 arcs now render.
+5. **HITOS GF verification** — confirm wall visibility with floorZ+1.2 after band clamp fix.
+6. **Grid lines per card storey** — grid detection runs once at entry, not per-card. Future: re-detect at card's cutZ.
+7. **SampleCastle doors** — IFC4 model, doors have no geometry blobs (data characteristic, not code bug).
+
+**Drag-related items moved to `prompts/KERNEL_OPS_ROADMAP.md` §4 (BuildWalker + drag highlight).**
 
 ### Bugs found and fixed by CTFL analysis (11 total)
 | Bug | Technique | Fix |
@@ -300,3 +301,33 @@ The Playwright tests are TOO SLOW and test string presence, not behavior.
 - Benefit: cards survive DB re-import, history is traceable, single persistence mechanism
 - Current: cards in `saved_sections` table + localStorage — works but separate from kernel_ops
 - Question for next session: migrate card persistence to kernel_ops or keep separate?
+
+### Session 2026-05-11b — 2D PICK IDENTITY (code complete, UNPROVEN)
+
+**Implemented:**
+1. **picking.js** — In 2D floor view, raycaster now collects `isLine`/`isLineSegments` with `isContour` userData. `Line.threshold=0.3` for hit detection. New `§PICK_2D` log tag distinguishes furniture/arc/contour picks.
+2. **grid_door_arcs.js** — All userData now carries `ifcClass`: door arcs='IfcDoor', stair symbols='IfcStairFlight', window openings='IfcWindow'.
+3. **grid_contours.js** — New `renderFurniture(APP, furnitureData, cutZ)` renders bbox top-projection rectangles with full identity (`guid`, `ifcClass`, `elementName`). Semi-transparent fill + outline stroke. Exposed in public API.
+4. **grid_overlay.js** — `renderContoursForView` queries furniture in Z-band (`cutZ-0.5` to `cutZ+1.5`) regardless of storey assignment. Logs `§FURNITURE_QUERY`.
+
+**Pick chain in 2D (code paths, UNPROVEN at runtime):**
+- Click → raycaster hits visible Mesh (fill) or Line (stroke/arc) → `userData.guid` resolved → DB lookup → info panel
+- `§PICK_2D furniture→guid=...` / `§PICK_2D arc→guid=...` / `§PICK_2D contour→guid=...`
+- Furniture Z-band query bypasses IFC storey assignment (fixes `§PICK_GAP`)
+
+**Tests:**
+- `card_verify.js`: 364 pass, 1 fail (deploy mismatch only)
+- Playwright `T_3613`: 9 checks — Line.threshold, collectLines, §PICK_2D, arc/stair/window ifcClass, renderFurniture, furn.identity, furn.query — all pass
+- Pre-existing 3 failures (Save button) unchanged
+
+**Still UNPROVEN (needs browser runtime § logs):**
+- No runtime proof that clicking a door arc fires `§PICK_2D arc→guid`
+- No runtime proof that clicking a furniture footprint fires `§PICK_2D furniture→guid`
+- No runtime proof that clicking a wall contour line fires `§PICK_2D contour→guid`
+- **Must deploy → open browser → click items → check console for § logs**
+
+**Deploy needed:**
+- `picking.js` — 2D line picking
+- `grid_door_arcs.js` — ifcClass on all objects
+- `grid_contours.js` — furniture footprint renderer
+- `grid_overlay.js` — furniture Z-band query

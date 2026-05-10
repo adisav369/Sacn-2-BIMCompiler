@@ -198,7 +198,19 @@ function setupPicking(A) {
 
     if (!A.db) return;
 
-    const meshes = A.collectMeshes(o => (o.isMesh || o.isInstancedMesh) && o.visible);
+    // 2D mode: also pick contour Lines/LineSegments (door arcs, wall outlines, furniture)
+    const isFloor2D = typeof GridViews !== 'undefined' &&
+      (GridViews.activeView() === 'floor' || GridViews.activeView() === 'floor1');
+    if (isFloor2D) {
+      A.raycaster.params.Line = { threshold: 0.3 };
+    }
+
+    const meshes = A.collectMeshes(o => {
+      if ((o.isMesh || o.isInstancedMesh) && o.visible) return true;
+      // In 2D mode, include contour lines for picking
+      if (isFloor2D && (o.isLine || o.isLineSegments) && o.userData && o.userData.isContour && o.visible) return true;
+      return false;
+    });
     const hits = A.raycaster.intersectObjects(meshes, false);
 
     if (!hits.length) {
@@ -260,10 +272,12 @@ function setupPicking(A) {
       console.log(`§PICK merged→resolved guid=${guid}`);
     }
     if (!guid) guid = A.guidMap[hit.object.id];
-    // 2D contour/arc/label meshes carry guid directly in userData (not in guidMap)
+    // 2D contour/arc/label/furniture meshes carry guid directly in userData (not in guidMap)
     if (!guid && hit.object.userData && hit.object.userData.guid) {
       guid = hit.object.userData.guid;
-      console.log(`§PICK contour→guid=${guid} class=${hit.object.userData.ifcClass || '?'}`);
+      var pickType = hit.object.userData.isFurniture ? 'furniture' :
+                     hit.object.userData.isDoorArc ? 'arc' : 'contour';
+      console.log(`§PICK_2D ${pickType}→guid=${guid} class=${hit.object.userData.ifcClass || '?'} name=${hit.object.userData.elementName || '—'}`);
     }
     if (!guid) {
       console.log(`§PICK no guid for mesh.id=${hit.object.id}`);

@@ -262,7 +262,7 @@ var DoorArcs = (function() {
     var mat = new THREE.LineBasicMaterial({ color: color, linewidth: weight });
     var line = new THREE.Line(geom, mat);
     line.renderOrder = 1000;
-    line.userData = { isDoorArc: true, guid: arc.guid };
+    line.userData = { isDoorArc: true, isContour: true, guid: arc.guid, ifcClass: 'IfcDoor' };
     log('§DOOR_ARC_RENDER guid=' + arc.guid + ' segments=' + threePoints.length);
     return line;
   }
@@ -324,7 +324,7 @@ var DoorArcs = (function() {
         var geom = new THREE.BufferGeometry().setFromPoints(threePoints);
         var line = new THREE.Line(geom, mat);
         line.renderOrder = 1050;
-        line.userData = { isDoorArc: true, isContour: true, isStairSymbol: true, guid: el.guid };
+        line.userData = { isDoorArc: true, isContour: true, isStairSymbol: true, guid: el.guid, ifcClass: el.ifcClass || 'IfcStairFlight' };
         parent.add(line);
         objects.push(line);
       }
@@ -339,7 +339,7 @@ var DoorArcs = (function() {
       var arrowMat = new THREE.LineBasicMaterial({ color: 0x88aacc, transparent: true, opacity: 0.9 });
       var arrow = new THREE.Line(arrowGeom, arrowMat);
       arrow.renderOrder = 1050;
-      arrow.userData = { isDoorArc: true, isContour: true, isStairSymbol: true, guid: el.guid };
+      arrow.userData = { isDoorArc: true, isContour: true, isStairSymbol: true, guid: el.guid, ifcClass: el.ifcClass || 'IfcStairFlight' };
       parent.add(arrow);
       objects.push(arrow);
 
@@ -394,7 +394,7 @@ var DoorArcs = (function() {
           ]);
           var line = new THREE.Line(geom, mat);
           line.renderOrder = 1050;
-          line.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, guid: el.guid };
+          line.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, guid: el.guid, ifcClass: el.ifcClass || 'IfcWindow' };
           parent.add(line);
           objects.push(line);
         });
@@ -407,7 +407,7 @@ var DoorArcs = (function() {
         ]);
         var dimLine = new THREE.Line(dimGeom, mat);
         dimLine.renderOrder = 1050;
-        dimLine.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, isDimLine: true, guid: el.guid };
+        dimLine.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, isDimLine: true, guid: el.guid, ifcClass: el.ifcClass || 'IfcWindow' };
         parent.add(dimLine);
         objects.push(dimLine);
       } else {
@@ -421,7 +421,7 @@ var DoorArcs = (function() {
           ]);
           var line = new THREE.Line(geom, mat);
           line.renderOrder = 1050;
-          line.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, guid: el.guid };
+          line.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, guid: el.guid, ifcClass: el.ifcClass || 'IfcWindow' };
           parent.add(line);
           objects.push(line);
         });
@@ -434,7 +434,7 @@ var DoorArcs = (function() {
         ]);
         var dimLine = new THREE.Line(dimGeom, mat);
         dimLine.renderOrder = 1050;
-        dimLine.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, isDimLine: true, guid: el.guid };
+        dimLine.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, isDimLine: true, guid: el.guid, ifcClass: el.ifcClass || 'IfcWindow' };
         parent.add(dimLine);
         objects.push(dimLine);
       }
@@ -458,7 +458,7 @@ var DoorArcs = (function() {
         var worldScale = openingW * 0.5;
         sprite.scale.set(worldScale, worldScale * 0.25, 1);
         sprite.renderOrder = 1051;
-        sprite.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, guid: el.guid };
+        sprite.userData = { isDoorArc: true, isContour: true, isWindowOpening: true, guid: el.guid, ifcClass: el.ifcClass || 'IfcWindow' };
         parent.add(sprite);
         objects.push(sprite);
       }
@@ -521,7 +521,7 @@ var DoorArcs = (function() {
     var worldScale = widthM * 0.6;
     sprite.scale.set(worldScale, worldScale * 0.25, 1);
     sprite.renderOrder = 1060;
-    sprite.userData = { isDoorArc: true, isContour: true, isOpeningLabel: true, guid: guid };
+    sprite.userData = { isDoorArc: true, isContour: true, isOpeningLabel: true, guid: guid, ifcClass: tag && tag.match(/^WIN|WINDOW/i) ? 'IfcWindow' : 'IfcDoor' };
     group.add(sprite);
 
     log('§DOOR_ARC_LABEL guid=' + guid + ' width=' + widthMM + 'mm tag=' + (tag || '(none)'));
