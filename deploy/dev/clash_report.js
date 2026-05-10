@@ -12,8 +12,10 @@ function setupClashReporter(A) {
   // Export clash report — opens HTML analytics tab from loaded clashes
   // S246b: async with progress bar, caches envelopes + pair counts
   A._exportClashReport = function() {
+    console.log('§EXPORT_ENTRY rules=' + !!A._currentClashRules + ' inProgress=' + !!A._exportInProgress);
+    A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_gen_report_start||'Preparing clash report\u2026';
     var rules = A._currentClashRules;
-    if (!rules) return;
+    if (!rules) { A.status.textContent = 'No clash rules loaded'; console.log('§EXPORT_ABORT no rules'); return; }
     if (A._exportInProgress) { A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_report_busy||'Report already generating...'; return; }
     A._exportInProgress = true;
     var building = A.activeBuilding || 'Building';

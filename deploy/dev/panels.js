@@ -474,6 +474,8 @@ function setupPanels(A) {
   window.toggleAllPanels = function() {
     panelsHidden = !panelsHidden;
     panelIds.forEach(function(pid) {
+      // S251: keep status bar visible when matrix is open (for report progress)
+      if (pid === 'status' && panelsHidden && A._clashMatrixDiv) return;
       var el = document.getElementById(pid);
       if (el) el.classList.toggle('swipe-hidden', panelsHidden);
     });
@@ -481,8 +483,13 @@ function setupPanels(A) {
     // Abstract: hide everything with position:fixed that is NOT the canvas or the toggle button itself
     var extras = document.querySelectorAll('.glass-panel, #issues-panel, #find-panel, #nlp-bar, #nlp-chips, #nav-hud');
     extras.forEach(function(el) { el.classList.toggle('swipe-hidden', panelsHidden); });
-    // Clash matrix has no id — find it via APP reference
-    if (A._clashMatrixDiv) A._clashMatrixDiv.classList.toggle('swipe-hidden', panelsHidden);
+    // S251: (-) closes info card + clash list, but matrix survives
+    if (panelsHidden) {
+      if (A._infoCardDiv) { A._infoCardDiv.remove(); A._infoCardDiv = null; }
+      if (A._clashListDiv) { A._clashListDiv.remove(); A._clashListDiv = null; }
+      // Remove from measureLabels too
+      if (A.measureLabels) A.measureLabels = A.measureLabels.filter(function(m) { return m.div === A._clashMatrixDiv; });
+    }
     var btn = document.getElementById('panel-toggle-btn');
     if (btn) btn.textContent = panelsHidden ? '+' : '−';
     console.log('§PANEL_TOGGLE panelsHidden=' + panelsHidden);

@@ -155,16 +155,11 @@ function setupMeasure(A) {
   };
 
   // Eager start: kick off index+R-tree building as soon as DB is loaded
-  // (streaming.js sets A.db, then streamTick processes meshes — we piggyback)
-  // S250 §6: On mobile, defer R-tree build to first clash request (saves RAM + CPU on load)
-  if (_isMobile) {
-    console.log('§RTREE_DEFER mobile — deferred to first clash request');
-  } else {
-    setTimeout(function _waitForDb() {
-      if (A.db) { A._ensureClashIndexes(); }
-      else { setTimeout(_waitForDb, 500); }
-    }, 1000);
-  }
+  // S251: build eagerly on mobile too — R-tree rules out 95% of bbox pairs
+  setTimeout(function _waitForDb() {
+    if (A.db) { A._ensureClashIndexes(); }
+    else { setTimeout(_waitForDb, 500); }
+  }, 1000);
 
   // Build the shared WHERE clause parts (also ensures indexes)
   A._clashWhereParts = function(rules) {
@@ -324,10 +319,9 @@ function setupMeasure(A) {
       " AND t.bbox_x IS NOT NULL"
     );
     for (var bi = 0; bi < rowsB.length; bi++) {
-      bMap[rowsB[bi][0]] = rowsB[bi]; // keyed by rowid
+      bMap[rowsB[bi][0]] = rowsB[bi];
     }
 
-    // Get all elements of discA (with bbox)
     var rowsA = A.dbQuery(
       "SELECT t.rowid, m.guid, m.ifc_class, m.element_name, m.storey," +
       " t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z" +
@@ -347,24 +341,21 @@ function setupMeasure(A) {
       var minY = ra[6] - ra[9]/2, maxY = ra[6] + ra[9]/2;
       var minZ = ra[7] - ra[10]/2, maxZ = ra[7] + ra[10]/2;
 
-      // R-tree query: rowids overlapping this bbox
-      var rtSql = "SELECT r.id FROM elements_rtree r WHERE " +
+      var candidates;
+      try { candidates = A.dbQuery("SELECT r.id FROM elements_rtree r WHERE " +
         "r.maxX >= " + minX + " AND r.minX <= " + maxX + " AND " +
         "r.maxY >= " + minY + " AND r.minY <= " + maxY + " AND " +
-        "r.maxZ >= " + minZ + " AND r.minZ <= " + maxZ;
-      var candidates;
-      try { candidates = A.dbQuery(rtSql); } catch(e) { continue; }
+        "r.maxZ >= " + minZ + " AND r.minZ <= " + maxZ);
+      } catch(e) { continue; }
 
-      // Filter via pre-loaded JS map — zero SQL
       for (var ci = 0; ci < candidates.length && results.length < limit; ci++) {
         var rb = bMap[candidates[ci][0]];
-        if (!rb) continue; // not discB, or ignored class
-        if (rb[1] === ra[1]) continue; // same element
+        if (!rb) continue;
+        if (rb[1] === ra[1]) continue;
         var key = ra[1] < rb[1] ? ra[1] + '|' + rb[1] : rb[1] + '|' + ra[1];
         if (seen[key]) continue;
         seen[key] = 1;
 
-        // Verify actual bbox overlap (R-tree is approximate)
         var bMinX = rb[4] - rb[7]/2, bMaxX = rb[4] + rb[7]/2;
         var bMinY = rb[5] - rb[8]/2, bMaxY = rb[5] + rb[8]/2;
         var bMinZ = rb[6] - rb[9]/2, bMaxZ = rb[6] + rb[9]/2;
@@ -386,11 +377,10 @@ function setupMeasure(A) {
     console.log('§CLASH_QUERY_RTREE ' + discA + ' vs ' + discB +
       (storey ? ' storey=' + storey : ' whole') +
       ' A=' + rowsA.length + ' B=' + rowsB.length + ' hits=' + results.length +
-      ' sql=' + (rowsA.length + 2) + ' time=' + ms + 'ms');
+      ' time=' + ms + 'ms');
     return results;
   };
 
-  // S246perf: Lean R-tree counter — hybrid: pre-load discB map, N R-tree queries, JS filter
   A._countClashesRtree = function(storey, rules, discA, discB) {
     var ignoreSet = {};
     rules.clash_rules.forEach(function(r) {
@@ -400,7 +390,6 @@ function setupMeasure(A) {
     var ignoreFilter = Object.keys(ignoreSet).length ?
       " AND m.ifc_class NOT IN (" + Object.keys(ignoreSet).map(function(c) { return "'" + c + "'"; }).join(',') + ")" : "";
 
-    // Hybrid: pre-load discB into JS map, N R-tree queries, JS bbox verify — same as query path
     var bMap = {};
     A.dbQuery(
       "SELECT t.rowid, t.center_x, t.center_y, t.center_z, t.bbox_x, t.bbox_y, t.bbox_z, m.guid" +
@@ -838,8 +827,8 @@ function setupMeasure(A) {
     var shown = Math.min(A._currentClashes.length, maxVisible);
     var listDiv = document.createElement('div');
     listDiv.style.cssText = 'position:fixed;z-index:400;' + _panelBg + 'color:#fff;font-size:11px;padding:0;border-radius:8px;border:1px solid rgba(255,140,0,0.6);font-family:Segoe UI,sans-serif;line-height:1.5;min-width:180px;max-width:240px;max-height:40vh;display:flex;flex-direction:column;pointer-events:auto';
-    // Position: right side, above the matrix if it exists
-    listDiv.style.right = '10px';
+    // Position: right-aligned, above matrix corner on both mobile and desktop
+    listDiv.style.right = _isMobile ? '6px' : '10px';
     if (A._clashMatrixDiv) {
       var matRect = A._clashMatrixDiv.getBoundingClientRect();
       listDiv.style.bottom = (window.innerHeight - matRect.top + 6) + 'px';
@@ -1081,7 +1070,6 @@ function setupMeasure(A) {
   A._clashMatrixDiv = null;
 
   A._showClashMatrix = function(rules, anchorDiv) {
-    if (_isMobile) { console.log('§CLASH_MATRIX skip — mobile'); return; }
     // Already showing — do nothing
     if (A._clashMatrixDiv) return;
     // Full scene stays — S232 InstancedMesh batching keeps it light
@@ -1130,69 +1118,131 @@ function setupMeasure(A) {
     dcRows.forEach(function(r) { discCounts[r[0]] = r[1]; });
 
     // Build table — pulsing sphere = pending check, green = clear
-    var cellSz = 36;
+    // S251: mobile → true triangle: X top-right, export bottom-right, collapse green rows
+    var cellSz = _isMobile ? 28 : 36;
+    var triMode = _isMobile;
     var activePairs = [];
-    var html = '<table style="border-collapse:collapse">';
-    html += '<tr><td></td>';
-    discs.forEach(function(d) {
-      html += '<td style="padding:2px 4px;font-size:10px;font-weight:bold;text-align:center;color:#fff">' + d + '</td>';
-    });
-    html += '</tr>';
-    discs.forEach(function(rowDisc) {
-      html += '<tr>';
-      html += '<td style="padding:2px 4px;font-size:10px;font-weight:bold;color:#fff;text-align:right">' + rowDisc + '</td>';
-      discs.forEach(function(colDisc) {
-        if (rowDisc === colDisc) {
-          html += '<td style="width:' + cellSz + 'px;height:' + cellSz + 'px;text-align:center;background:rgba(0,0,0,0.15)"></td>';
-          return;
+    var _buildCellHtml = function(rowDisc, colDisc, sz) {
+      var key = rowDisc + '|' + colDisc;
+      var rule = ruleLookup[key];
+      var cellContent = '';
+      if (!rule) {
+        cellContent = '<span style="color:rgba(255,255,255,0.15);font-size:9px">—</span>';
+      } else if (!discCounts[rowDisc] || !discCounts[colDisc]) {
+        cellContent = _msphere('#4caf50');
+      } else {
+        cellContent = _msphere('#ccc', true);
+        activePairs.push({ discA: rowDisc, discB: colDisc, key: key });
+      }
+      return '<div data-pair="' + key + '" style="display:inline-flex;align-items:center;justify-content:center;width:' + sz + 'px;height:' + sz + 'px;cursor:pointer;border:1px solid rgba(255,255,255,0.08)">' + cellContent + '</div>';
+    };
+    var html = '';
+    if (triMode) {
+      // S251: true triangle — X top-right, row labels RIGHT, col labels BOTTOM
+      // X and 📊 share the same rightmost column (28px wide)
+      var rCol = 28;
+      html = '<div id="clash-tri-wrap" style="display:flex;flex-direction:column;align-items:flex-end">';
+      // X alone at top-right, same width as right column
+      html += '<div style="width:' + rCol + 'px;text-align:center;pointer-events:auto"><span id="clash-matrix-close" style="cursor:pointer;color:#aaa;font-size:16px;line-height:1">\u2715</span></div>';
+      for (var ri = 1; ri < discs.length; ri++) {
+        html += '<div data-tri-row="' + discs[ri] + '" style="display:flex;align-items:center;pointer-events:auto">';
+        for (var ci = 0; ci < ri; ci++) {
+          html += _buildCellHtml(discs[ri], discs[ci], cellSz);
         }
-        var key = rowDisc + '|' + colDisc;
-        var rule = ruleLookup[key];
-        var cellContent = '';
-        if (!rule) {
-          cellContent = '<span style="color:rgba(255,255,255,0.15);font-size:9px">—</span>';
-        } else if (!discCounts[rowDisc] || !discCounts[colDisc]) {
-          cellContent = _msphere('#4caf50');
-        } else {
-          // Both disciplines present — pulsing, will be checked async
-          cellContent = _msphere('#ccc', true);
-          activePairs.push({ discA: rowDisc, discB: colDisc, key: key });
-        }
-        html += '<td data-pair="' + key + '" style="width:' + cellSz + 'px;height:' + cellSz + 'px;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,0.08)">' + cellContent + '</td>';
+        html += '<span style="width:' + rCol + 'px;font-size:8px;font-weight:bold;color:#fff;text-align:center;white-space:nowrap;writing-mode:vertical-rl">' + discs[ri] + '</span>';
+        html += '</div>';
+      }
+      // Bottom row: col labels + 📊 in same right column
+      html += '<div style="display:flex;align-items:center;pointer-events:auto">';
+      for (var ci = 0; ci < discs.length - 1; ci++) {
+        html += '<div style="width:' + cellSz + 'px;font-size:8px;font-weight:bold;color:#888;text-align:center">' + discs[ci] + '</div>';
+      }
+      html += '<span id="clash-matrix-export" style="width:' + rCol + 'px;text-align:center;cursor:pointer;font-size:14px;opacity:0.8" title="Clash Report">📊</span>';
+      html += '</div></div>';
+    } else {
+      // Desktop: full square matrix as table
+      html = '<table style="border-collapse:collapse">';
+      html += '<tr><td></td>';
+      discs.forEach(function(d) {
+        html += '<td style="padding:2px 4px;font-size:10px;font-weight:bold;text-align:center;color:#fff">' + d + '</td>';
       });
       html += '</tr>';
-    });
-    html += '</table>';
+      discs.forEach(function(rowDisc, ri) {
+        html += '<tr>';
+        html += '<td style="padding:2px 4px;font-size:10px;font-weight:bold;color:#fff;text-align:right">' + rowDisc + '</td>';
+        discs.forEach(function(colDisc, ci) {
+          if (rowDisc === colDisc) {
+            html += '<td style="width:' + cellSz + 'px;height:' + cellSz + 'px;text-align:center;background:rgba(0,0,0,0.15)"></td>';
+            return;
+          }
+          var key = rowDisc + '|' + colDisc;
+          var rule = ruleLookup[key];
+          var cellContent = '';
+          if (!rule) {
+            cellContent = '<span style="color:rgba(255,255,255,0.15);font-size:9px">—</span>';
+          } else if (!discCounts[rowDisc] || !discCounts[colDisc]) {
+            cellContent = _msphere('#4caf50');
+          } else {
+            cellContent = _msphere('#ccc', true);
+            activePairs.push({ discA: rowDisc, discB: colDisc, key: key });
+          }
+          html += '<td data-pair="' + key + '" style="width:' + cellSz + 'px;height:' + cellSz + 'px;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,0.08)">' + cellContent + '</td>';
+        });
+        html += '</tr>';
+      });
+      html += '</table>';
+    }
 
     var matDiv = document.createElement('div');
-    matDiv.style.cssText = 'position:fixed;z-index:350;' + _panelBgStrong + 'color:#fff;padding:10px;border-radius:8px;border:1px solid rgba(79,195,247,0.5);font-family:Segoe UI,sans-serif;pointer-events:auto';
+    matDiv.style.cssText = 'position:fixed;z-index:350;' + (_isMobile ? '' : _panelBgStrong) + 'color:#fff;padding:' + (_isMobile ? '0' : '10px') + ';border-radius:8px;' + (_isMobile ? 'background:transparent;border:none;pointer-events:none;' : 'border:1px solid rgba(79,195,247,0.5);pointer-events:auto;') + 'font-family:Segoe UI,sans-serif';
 
-    // Position: below the info card, aligned right
+    // Position: mobile → left-side bottom corner (triangle layout, not draggable);
+    //           desktop → below info card, draggable
     var anchorRect = anchorDiv.getBoundingClientRect();
-    matDiv.style.right = '10px';
+    if (_isMobile) {
+      matDiv.style.right = '4px';
+      matDiv.style.bottom = '4px';
+      matDiv.style.maxHeight = '60vh';
+      matDiv.style.overflowY = 'auto';
+    } else {
+      matDiv.style.right = '10px';
+    }
     var scopeLabel = storey ? storey : 'Whole Building';
-    matDiv.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center">' +
-      '<b style="color:#4fc3f7;font-size:12px">Clash Matrix — ' + scopeLabel + '</b>' +
-      '<span style="display:flex;gap:8px;align-items:center">' +
-      '<span id="clash-matrix-export" style="cursor:pointer;font-size:16px" title="Clash Report">📊</span>' +
-      '<span id="clash-matrix-close" style="cursor:pointer;color:#aaa;font-size:22px;line-height:1;padding:6px">\u2715</span></span></div>' +
-      '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.15);margin:4px 0">' + html;
+    if (_isMobile) {
+      // Mobile: X and export are inside the triangle layout itself
+      matDiv.innerHTML = html;
+    } else {
+      matDiv.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center">' +
+        '<b style="color:#4fc3f7;font-size:12px">Clash Matrix — ' + scopeLabel + '</b>' +
+        '<span style="display:flex;gap:8px;align-items:center">' +
+        '<span id="clash-matrix-export" style="cursor:pointer;font-size:16px" title="Clash Report">📊</span>' +
+        '<span id="clash-matrix-close" style="cursor:pointer;color:#aaa;font-size:22px;line-height:1;padding:6px">\u2715</span></span></div>' +
+        '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.15);margin:4px 0">' + html;
+    }
     document.body.appendChild(matDiv);
-    // Adjust vertical to fit
-    var matH = matDiv.offsetHeight;
-    var topPos = anchorRect.bottom + 6;
-    if (topPos + matH > window.innerHeight - 10) topPos = window.innerHeight - matH - 10;
-    if (topPos < 10) topPos = 10;
-    matDiv.style.top = topPos + 'px';
+    // Adjust vertical to fit (desktop only — mobile uses bottom:6px)
+    if (!_isMobile) {
+      var matH = matDiv.offsetHeight;
+      var topPos = anchorRect.bottom + 6;
+      if (topPos + matH > window.innerHeight - 10) topPos = window.innerHeight - matH - 10;
+      if (topPos < 10) topPos = 10;
+      matDiv.style.top = topPos + 'px';
+    }
 
     A._clashMatrixDiv = matDiv;
     A._makeDraggable(matDiv);
     A.measureLabels.push({ div: matDiv, mid: null });
 
     // Export from matrix
-    var _matExport = function(ev) { ev.stopPropagation(); A._exportClashReport(); };
-    matDiv.querySelector('#clash-matrix-export').addEventListener('pointerup', _matExport);
-    matDiv.querySelector('#clash-matrix-export').addEventListener('click', _matExport);
+    var _matExport = function(ev) { ev.stopPropagation(); ev.preventDefault(); console.log('§MATRIX_EXPORT_TAP'); A._exportClashReport(); };
+    var expBtn = matDiv.querySelector('#clash-matrix-export');
+    if (expBtn) {
+      expBtn.addEventListener('pointerup', _matExport);
+      expBtn.addEventListener('click', _matExport);
+      console.log('§MATRIX_EXPORT_WIRED');
+    } else {
+      console.warn('§MATRIX_EXPORT_BTN not found');
+    }
 
     // Close X for matrix
     var _matClose = function(ev) {
@@ -1276,7 +1326,21 @@ function setupMeasure(A) {
 
     function _bgCheck() {
       if (_qi >= activePairs.length) {
-        // All envelope checks done — start async count pass for orange pairs
+        // All envelope checks done — collapse all-green rows on mobile triangle
+        if (triMode && matDiv) {
+          var triRows = matDiv.querySelectorAll('[data-tri-row]');
+          for (var ti = 0; ti < triRows.length; ti++) {
+            var cells = triRows[ti].querySelectorAll('[data-pair]');
+            var allGreen = true;
+            for (var ci = 0; ci < cells.length; ci++) {
+              // Green sphere = no clashes; check if sphere has #4caf50
+              if (cells[ci].innerHTML.indexOf('#4caf50') < 0) { allGreen = false; break; }
+            }
+            if (allGreen && cells.length) triRows[ti].style.display = 'none';
+          }
+          console.log('§CLASH_TRI_COLLAPSE done');
+        }
+        // Start async count pass for orange pairs
         if (overlapPairs.length && A._clashRtreeReady) setTimeout(_countPass, 50);
         return;
       }
@@ -1338,24 +1402,23 @@ function setupMeasure(A) {
     A._clashBackups.forEach(function(b) { b.mesh.material = b.origMat; });
     A._clashBackups = [];
     A._clashRevealActive = false;
-    // Remove list div
+    // Always remove list + highlights
     if (A._clashListDiv) {
       A._clashListDiv.remove();
       A._clashListDiv = null;
     }
-    // Remove clash highlight meshes
     if (A._clashHighlights) {
       A._clashHighlights.forEach(function(h) { A.measureGroup.remove(h); });
       A._clashHighlights = [];
     }
+    // Only remove matrix when not keeping it
     if (!keepMatrix && A._clashMatrixDiv) {
       A._clashMatrixDiv.remove();
       A._clashMatrixDiv = null;
-      // S245e: Exit clash DLOD mode when matrix fully dismissed
       if (A._clashModeActive && A._exitClashMode) A._exitClashMode();
     }
     if (A.markDirty) A.markDirty();
-    console.log('§CLASH_DISMISS' + (keepMatrix ? ' (list only)' : ''));
+    console.log('§CLASH_DISMISS' + (keepMatrix ? ' (kept matrix+list)' : ''));
   };
 
   A.toggleMeasure = function() {
@@ -1387,35 +1450,45 @@ function setupMeasure(A) {
       if (A._measureClickTimer) { clearTimeout(A._measureClickTimer); A._measureClickTimer = null; }
       if (A._longPressTimer) { clearTimeout(A._longPressTimer); A._longPressTimer = null; }
       A._longPressFired = false;
-      A.clearMeasures();
+      A.clearMeasures(true);
     }
     console.log(`§MEASURE mode ${A.measureActive ? 'ON' : 'OFF'}`);
   };
 
-  A.clearMeasures = function() {
+  // S251: exitMode=true (measure OFF) closes everything including matrix
+  //       exitMode=false (right-click clear) preserves matrix
+  A.clearMeasures = function(exitMode) {
     try {
       while (A.measureGroup.children.length) {
         A.measureGroup.remove(A.measureGroup.children[0]);
       }
-      A.measureLabels.forEach(m => { try { m.div.remove(); } catch(e) {} });
-      A.measureLabels = [];
+      A.measureLabels.forEach(m => {
+        if (!exitMode && m.div === A._clashMatrixDiv) return;
+        try { m.div.remove(); } catch(e) {}
+      });
+      A.measureLabels = exitMode ? [] : A.measureLabels.filter(m => m.div === A._clashMatrixDiv);
       A.measureFirstPoint = null;
       A.measureFirstMarker = null;
-      // Restore any orange-highlighted meshes
       if (A._areaBackups) {
         A._areaBackups.forEach(b => { try { b.mesh.material = b.origMat; } catch(e) {} });
         A._areaBackups = [];
       }
-      // Dismiss clash reveal if active
-      A._dismissClashes();
+      if (exitMode) {
+        // Force-remove clash list + matrix even if _clashRevealActive is already false
+        if (A._clashListDiv) { try { A._clashListDiv.remove(); } catch(e2) {} }
+        if (A._clashMatrixDiv) { try { A._clashMatrixDiv.remove(); } catch(e2) {} }
+        A._dismissClashes();
+      }
     } catch(e) {
       console.warn('§MEASURE_CLEAR_ERR', e.message);
     }
-    // Always reset state — even if cleanup above threw
     A._guidToMesh = null;
     A._infoCardDiv = null;
-    A._clashMatrixDiv = null;
-    A._clashListDiv = null;
+    if (exitMode) {
+      A._clashMatrixDiv = null;
+      A._clashListDiv = null;
+      A._clashRevealActive = false;
+    }
     // Ensure toolbox is visible (issues.js hides it, clash flow may not restore it)
     var tb = document.getElementById('search-box');
     if (tb) tb.style.display = '';
@@ -1735,11 +1808,8 @@ function setupMeasure(A) {
     console.log('§MEASURE_VOLUME ' + storeyLabel + ' vol=' + volume.toFixed(1) + 'm\u00B3 elements=' + totalFromDb + ' counts=' + JSON.stringify(counts));
 
     // Clash indicator — lazy LIMIT 1 per pair, async, stops at first hit
-    if (_isMobile) {
-      var clashEl2 = cardDiv.querySelector('#clash-count-line');
-      if (clashEl2) clashEl2.innerHTML = '<span style="color:#888;font-size:10px">' + (typeof _TRL!=='undefined'&&_TRL.ui_clash_desktop||'Check Clash at Desktop..') + '</span>';
-      console.log('§CLASH_INDICATOR skip — mobile');
-    } else A._loadClashRules(function(rules) {
+    // S251: enabled on both mobile and desktop (R-tree EXISTS is fast enough)
+    A._loadClashRules(function(rules) {
       var clashEl = cardDiv.querySelector('#clash-count-line');
       if (!clashEl) return;
       A._currentClashRules = rules;
@@ -1756,13 +1826,15 @@ function setupMeasure(A) {
       };
 
       // Show placeholder sphere while checking
+      var _openMatrix = function() { A._showClashMatrix(rules, cardDiv); };
       var _updateSphere = function(color) {
-        clashEl.innerHTML = '<span id="clash-tap-trigger" style="cursor:pointer">' +
-          'CLASHES ' + _sphere(color, 18) + '</span>';
+        clashEl.innerHTML = '<span id="clash-tap-trigger" style="cursor:pointer;padding:6px 0">' +
+          'CLASHES ' + _sphere(color, _isMobile ? 22 : 18) + '</span>';
         var trigger = cardDiv.querySelector('#clash-tap-trigger');
-        if (trigger) trigger.addEventListener('click', function() {
-          A._showClashMatrix(rules, cardDiv);
-        });
+        if (trigger) {
+          trigger.addEventListener('pointerup', _openMatrix);
+          trigger.addEventListener('click', _openMatrix);
+        }
       };
       _updateSphere('#aaa'); // grey while checking
 
