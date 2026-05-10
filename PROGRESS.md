@@ -32,7 +32,21 @@
   - `saveSectionFromScissors` exposed for card save from scissors slider
   - Snap-to-structural post-cluster alignment (§GD_SNAP_ALIGN)
   - 38 specs / 391 tests / 927 expects pass
-  - **Next:** Browser smoke test Card-First views, then deploy
+  - **Next:** S251b polish (dwell flash, Save button in 2D, grid Enter)
+
+**S251 Keyboard Modes DONE (2026-05-10): SW v295**
+  - Key sequence engine: S=Sunglasses, SC=Screenshot, G/X/F/C/M/P/4/-/+/?
+  - Command palette: ? key or 🛟 button, search filter, Report Bug + Documentation links
+  - Panel focus: Tab/Shift+Tab cycles, blue glow, auto-expand collapsed, focus stack (Esc pops)
+  - ListKeyNav: arrows, Shift+range, Ctrl+Space toggle, Ctrl+A, typeahead, slider step, PageUp/Down
+  - Multi-select: storeys (show multiple), disciplines (hide unselected), clash list (red spheres + bbox frame)
+  - Mutual exclusion: 2D↔Clash/Measure blocked in each other's mode
+  - Static panel init: section/sunglasses/toolbar registered at page load
+  - Zombie card fix: _noauto flag prevents autoCreateCards after user clears all
+  - Title fixes: "Grid Dimensions"→"Plan Grid", Z ↗→Z ⊥, sunglasses × button
+  - Mobile: zero impact (all keyboard paths guarded by _isMobile)
+  - 197 tests (90 logic + 107 wiring), 40 specs / 407 tests / 1007 expects
+  - **Open:** BUG-1 dwell flash, BUG-2 Save button in 2D, BUG-4 grid Enter → see `prompts/S251b_keyboard_polish.md`
 
 **S2D31 Card-First View Model (2026-05-10):**
   - `view_state` column on saved_sections (hidden_classes, camera, storey, mode JSON)
