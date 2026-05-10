@@ -604,11 +604,11 @@ function setupScene(A) {
     if (window._isMobile) return; // §5 mobile guard
 
     // Command palette open? Let it handle its own keys
-    if (document.getElementById('cmd-palette')) return;
+    if (document.getElementById('cmd-palette')) { console.log('§KBD_ROUTE palette active, pass-through key=' + e.key); return; }
 
     // Always-on modifier shortcuts (unchanged from original)
-    if (e.altKey && e.key === 'z') { e.preventDefault(); A.toggleXray(); return; }
-    if (e.key === 'F11') { e.preventDefault(); A.toggleFullscreen(); return; }
+    if (e.altKey && e.key === 'z') { e.preventDefault(); console.log('§KBD_ROUTE alt+z → xray'); A.toggleXray(); return; }
+    if (e.key === 'F11') { e.preventDefault(); console.log('§KBD_ROUTE F11 → fullscreen'); A.toggleFullscreen(); return; }
 
     var noMod = !e.ctrlKey && !e.altKey && !e.metaKey;
     var notInput = e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA';
@@ -616,6 +616,7 @@ function setupScene(A) {
     // Tab — cycle panel focus (§2)
     if (e.key === 'Tab' && notInput) {
       e.preventDefault();
+      console.log('§KBD_ROUTE tab shift=' + e.shiftKey + ' panels=' + _panels.length + ' focused=' + (_focusedPanel ? _focusedPanel.id : 'none'));
       _cyclePanel(e.shiftKey ? -1 : 1);
       return;
     }
@@ -631,17 +632,20 @@ function setupScene(A) {
           (e.ctrlKey && e.key === 'a') ||
           (e.key === 'Enter')) {
         e.preventDefault();
+        console.log('§KBD_ROUTE panel=' + _focusedPanel.id + ' key=' + e.key + ' shift=' + e.shiftKey + ' ctrl=' + e.ctrlKey);
         _focusedPanel.nav.onKey(e);
         return;
       }
       if (e.key === 'Escape') {
         e.preventDefault();
+        console.log('§KBD_ROUTE esc panel=' + _focusedPanel.id + ' hasClose=' + !!_focusedPanel.close);
         if (_focusedPanel.close) { _focusedPanel.close(); console.log('§PANEL_CLOSE id=' + _focusedPanel.id); }
         _blurPanel();
         return;
       }
       // Typeahead within focused panel (single printable char, no modifier)
       if (noMod && notInput && e.key.length === 1 && e.key !== '?' && _focusedPanel.nav.onTypeahead) {
+        console.log('§KBD_ROUTE typeahead panel=' + _focusedPanel.id + ' char=' + e.key);
         _focusedPanel.nav.onTypeahead(e.key);
         return;
       }

@@ -35,14 +35,16 @@ function setupPanels(A) {
 
     function moveCursor(delta) {
       var items = getItems();
-      if (!items.length) return;
+      if (!items.length) { console.log('§LISTNAV_MOVE empty list, no-op'); return; }
+      var prev = cursor;
       cursor = Math.max(0, Math.min(items.length - 1, cursor + delta));
       scrollTo(cursor);
       // Visual highlight
       items.forEach(function(el, j) {
         el.style.outline = (j === cursor) ? '2px solid #4fc3f7' : '';
       });
-      // Optional auto-activate on cursor move (e.g. grid view presets)
+      var label = items[cursor] ? (items[cursor].textContent || '').trim().slice(0, 20) : '?';
+      console.log('§LISTNAV_MOVE prev=' + prev + ' now=' + cursor + ' label="' + label + '" total=' + items.length);
       if (onCursorMove) onCursorMove(cursor);
     }
 
@@ -52,12 +54,13 @@ function setupPanels(A) {
       var lo = Math.min(anchor, cursor), hi = Math.max(anchor, cursor);
       selected = new Set();
       for (var i = lo; i <= hi; i++) selected.add(i);
+      console.log('§LISTNAV_RANGE anchor=' + anchor + ' cursor=' + cursor + ' lo=' + lo + ' hi=' + hi);
       _emit();
     }
 
     function _emit() {
       onToggle(Array.from(selected));
-      console.log('§LISTNAV_SELECT count=' + selected.size);
+      console.log('§LISTNAV_SELECT count=' + selected.size + ' indices=[' + Array.from(selected).join(',') + ']');
     }
 
     return {
@@ -81,33 +84,37 @@ function setupPanels(A) {
           if (e.key === 'ArrowDown') { moveCursor(+1); return; }
         }
         // Shift+Arrow must be checked BEFORE plain Arrow
-        if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowLeft'))   { extendRange(-1); return; }
-        if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowRight')) { extendRange(+1); return; }
+        if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowLeft'))   { console.log('§LISTNAV_KEY shift+up'); extendRange(-1); return; }
+        if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowRight')) { console.log('§LISTNAV_KEY shift+down'); extendRange(+1); return; }
         if (e.key === 'ArrowUp' || e.key === 'ArrowLeft')   { moveCursor(-1); return; }
         if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { moveCursor(+1); return; }
-        if (e.key === 'PageUp')    { moveCursor(-5); return; }
-        if (e.key === 'PageDown')  { moveCursor(+5); return; }
-        if (e.key === 'Home')      { cursor = -1; moveCursor(1); return; }
-        if (e.key === 'End')       { cursor = items.length; moveCursor(-1); return; }
+        if (e.key === 'PageUp')    { console.log('§LISTNAV_KEY pageup'); moveCursor(-5); return; }
+        if (e.key === 'PageDown')  { console.log('§LISTNAV_KEY pagedown'); moveCursor(+5); return; }
+        if (e.key === 'Home')      { console.log('§LISTNAV_KEY home'); cursor = -1; moveCursor(1); return; }
+        if (e.key === 'End')       { console.log('§LISTNAV_KEY end'); cursor = items.length; moveCursor(-1); return; }
         if (e.ctrlKey && e.key === 'a') {
           selected = new Set();
           items.forEach(function(_, i) { selected.add(i); });
+          console.log('§LISTNAV_KEY ctrl+a selectAll=' + selected.size);
           _emit();
           return;
         }
         if (e.key === ' ' && !e.ctrlKey) {
           selected = new Set([cursor]); anchor = cursor;
+          console.log('§LISTNAV_KEY space activate cursor=' + cursor);
           _emit();
           if (onActivate) onActivate(cursor);
           return;
         }
         if (e.ctrlKey && e.key === ' ') {
+          var action = selected.has(cursor) ? 'remove' : 'add';
           if (selected.has(cursor)) selected.delete(cursor); else selected.add(cursor);
           anchor = cursor;
+          console.log('§LISTNAV_KEY ctrl+space ' + action + ' cursor=' + cursor);
           _emit();
           return;
         }
-        if (e.key === 'Enter' && onActivate) { onActivate(cursor); return; }
+        if (e.key === 'Enter' && onActivate) { console.log('§LISTNAV_KEY enter cursor=' + cursor); onActivate(cursor); return; }
       },
       onTypeahead: function(ch) {
         clearTimeout(_taTimer);
@@ -169,15 +176,18 @@ function setupPanels(A) {
             // Extract storey names from button onclick
             var selectedStoreys = [];
             indices.forEach(function(i) {
-              if (!btns[i]) return;
+              if (!btns[i]) { console.log('§STOREY_TOGGLE btn[' + i + '] missing, total=' + btns.length); return; }
               var m = btns[i].onclick ? btns[i].onclick.toString().match(/filterStorey\('(.+?)'\)/) : null;
               if (m) selectedStoreys.push(m[1]);
               else selectedStoreys.push(null); // "All Storeys" button
             });
+            console.log('§STOREY_TOGGLE indices=[' + indices.join(',') + '] storeys=[' + selectedStoreys.join(',') + ']');
             // If "All Storeys" is in selection, show all
             if (selectedStoreys.indexOf(null) >= 0) {
+              console.log('§STOREY_TOGGLE → all (null in selection)');
               A.filterStorey(null);
             } else if (selectedStoreys.length === 1) {
+              console.log('§STOREY_TOGGLE → single: ' + selectedStoreys[0]);
               A.filterStorey(selectedStoreys[0]);
             } else {
               // Multi-storey: show meshes matching any selected storey
