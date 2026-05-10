@@ -460,7 +460,25 @@ test.describe('Card-First Complete Suite', () => {
     expect(clean).toBe(true);
   });
 
-  // ── 14. Grid alignment — detect grid lines from structural walls ──
+  // ── 14. BUG U — deleting active card clears mesh state ──────────
+  test('T_3614U: delete card button calls clearCardView — no stale mesh state', () => {
+    const s = src('grid_overlay.js');
+    // Find the delete button handler
+    const delHandler = s.slice(s.indexOf('saved-section-del'), s.indexOf('grid-save-section-btn'));
+    const log = [];
+
+    const hasClear = delHandler.includes('clearCardView()');
+    log.push('clearCardView_on_delete' + (hasClear ? ' ✓' : ' ✗'));
+    expect(hasClear).toBe(true);
+
+    const hasClearClip = delHandler.includes('clearFloorClip');
+    log.push('clearFloorClip_on_delete' + (hasClearClip ? ' ✓' : ' ✗'));
+    expect(hasClearClip).toBe(true);
+
+    console.log('§T_3614U ' + log.join(' | '));
+  });
+
+  // ── 15. Grid alignment — detect grid lines from structural walls ──
   test('T_3613: grid detection uses wall clustering — lines align with structure', () => {
     const dims = src('grid_dims.js');
     const log = [];

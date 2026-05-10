@@ -1266,6 +1266,8 @@ function setupGridOverlay(APP) {
         e.stopPropagation();
         var id = parseInt(e.currentTarget.getAttribute('data-id'), 10);
         deleteSavedSection(id);
+        clearCardView();  // undo card mesh state if the active card was deleted
+        if (GridViews.activeView()) GridViews.clearFloorClip(A);
         buildPanel(currentPanelGrids || gridData);
       });
     }
