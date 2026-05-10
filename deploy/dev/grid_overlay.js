@@ -815,140 +815,172 @@ function setupGridOverlay(APP) {
     } catch (e) { log('§SAVE_SECTION delete error: ' + e.message); }
   }
 
-  /** Restore a saved section — goes straight to 2D ortho, no scissors toggle.
-   *  Scissors on/off was causing onOff() to rebuild panel with ground grids = GF trap. */
+  // Implementing 2D_031 §Card-First — Witness: W-CARD-COMPOSE
+  /** Query DB for GUIDs belonging to a storey. One SQL, returns a lookup object.
+   *  Uses storey name if available (exact), falls back to Z-band (spatial). */
+  function queryStoreyGuids(ifcZ, storeyName) {
+    var set = {};
+    if (!A.db) return set;
+    var t0 = performance.now();
+    try {
+      var r;
+      if (storeyName) {
+        r = A.db.exec(
+          "SELECT m.guid FROM elements_meta m WHERE m.storey = '" +
+          storeyName.replace(/'/g, "''") + "'"
+        );
+      } else {
+        var lo = ifcZ - 2.0, hi = ifcZ + 3.5;
+        r = A.db.exec(
+          'SELECT guid FROM element_transforms WHERE center_z BETWEEN ' + lo + ' AND ' + hi
+        );
+      }
+      if (r.length && r[0].values.length) {
+        for (var i = 0; i < r[0].values.length; i++) set[r[0].values[i][0]] = 1;
+      }
+    } catch (e) { log('§CARD_QUERY error: ' + e.message); }
+    var ms = (performance.now() - t0).toFixed(1);
+    log('§CARD_QUERY storey=' + (storeyName || 'z-band') +
+        ' guids=' + Object.keys(set).length + ' ms=' + ms);
+    return set;
+  }
+
+  /** Card-first restore. One DB query → one scene pass → contours.
+   *  The card is a self-contained lens: it decides what is visible. */
   function restoreSection(sec) {
     var cutVal = sec.cut_value;
-    var normal = [0, -1, 0];
-    try { normal = JSON.parse(sec.plane_normal || '[0,-1,0]'); } catch (e) { /* default */ }
-    var axis = (normal[0] !== 0) ? 'X' : (normal[2] !== 0) ? 'Z' : 'Y';
+    var vs = sec.view_state || null;
+    var cardMode = (vs && vs.mode) ? vs.mode : 'floor';
+    var ifcZ = cutVal + (A.modelOffset ? A.modelOffset.z : 0);
 
-    // Turn scissors OFF if active — don't toggle ON first, just ensure it's off.
-    // This avoids the onOff() → rebuildPanel → GF trap.
-    if (A.sectionOn && A.toggleSection) {
-      A.toggleSection();
+    if (A.sectionOn && A.toggleSection) A.toggleSection();
+    if (A.status) A.status.textContent = 'Card: ' + sec.name;
+    log('§CARD_RESTORE id=' + sec.id + ' name=' + sec.name +
+        ' cutVal=' + cutVal.toFixed(2) + ' mode=' + cardMode);
+
+    // 1. Camera — ortho top-down, no clip (card handles visibility itself)
+    if (envCache) GridViews.lockView(A, cardMode, envCache, ifcZ, null, true);
+
+    // 2. Query DB — one SQL gets all GUIDs for this storey
+    var storeyName = (vs && vs.storey) ? vs.storey : null;
+    var guidSet = queryStoreyGuids(ifcZ, storeyName);
+
+    // 3. One pass — card decides each mesh's fate
+    //    Not in storey → hide. In storey → classify by IFC class.
+    var hideClasses = (vs && vs.hidden_classes) || ['IfcRoof', 'IfcRoofing', 'IfcCovering'];
+    var hideSet = {};
+    for (var hi = 0; hi < hideClasses.length; hi++) hideSet[hideClasses[hi]] = 1;
+    var fadeSet = { 'IfcSlab': 1, 'IfcPlate': 1 };
+    var retainSet = (typeof GridConfig !== 'undefined')
+      ? GridConfig.retainSet(cardMode)
+      : { 'IfcFurnishingElement': 1, 'IfcFurniture': 1 };
+
+    var cutY = ifcZ - A.modelOffset.z;
+    var clipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), cutY);
+    A.renderer.localClippingEnabled = true;
+
+    var counts = { shown: 0, hidden: 0, clipped: 0, faded: 0, retained: 0 };
+    _cardHiddenMeshes = [];
+    _cardFadedMeshes = [];
+
+    A.collectMeshes(function(o) { return o.isMesh; }).forEach(function(obj) {
+      var guid = (obj.userData && obj.userData.guid) || '';
+      var cls  = (obj.userData && obj.userData.ifcClass) || '';
+
+      // Not in this storey → hide
+      if (guid && !guidSet[guid]) {
+        obj.visible = false;
+        counts.hidden++;
+        return;
+      }
+
+      // In storey but class-excluded (roof) → hide
+      if (hideSet[cls]) {
+        obj.visible = false;
+        _cardHiddenMeshes.push(obj);
+        counts.hidden++;
+        return;
+      }
+
+      // Slab → clip + near-transparent
+      if (fadeSet[cls]) {
+        obj.visible = true;
+        obj.material.clippingPlanes = [clipPlane];
+        if (!obj.userData._origOpacity) {
+          obj.userData._origOpacity = obj.material.opacity;
+          obj.userData._origTransparent = obj.material.transparent;
+        }
+        obj.material.opacity = 0.08;
+        obj.material.transparent = true;
+        obj.material.needsUpdate = true;
+        _cardFadedMeshes.push(obj);
+        counts.faded++;
+        return;
+      }
+
+      // Furniture/equipment → show as-is, no clip
+      if (retainSet[cls]) {
+        obj.visible = true;
+        counts.retained++;
+        return;
+      }
+
+      // Everything else (walls, columns, beams) → clip at cutZ
+      obj.visible = true;
+      obj.material.clippingPlanes = [clipPlane];
+      obj.material.clipShadows = true;
+      obj.material.needsUpdate = true;
+      counts.clipped++;
+    });
+
+    log('§CARD_RESTORE mesh pass: shown=' + (counts.clipped + counts.retained + counts.faded) +
+        ' hidden=' + counts.hidden + ' clipped=' + counts.clipped +
+        ' faded=' + counts.faded + ' retained=' + counts.retained);
+
+    // 4. Contours
+    if (typeof GridContours !== 'undefined') GridContours.clear(A);
+    try { renderContoursForView('floor', ifcZ); } catch (e) {
+      log('§CARD_RESTORE contour error: ' + e.message);
     }
 
-    if (A.status) A.status.textContent = 'Restored: ' + sec.name;
-    log('§SAVE_SECTION restored id=' + sec.id + ' name=' + sec.name +
-        ' cutVal=' + cutVal.toFixed(2) + ' axis=' + axis);
+    // 5. Camera restore
+    if (vs && vs.camera) GridViews.applyCameraState(A, vs.camera);
 
-    // Flatten to 2D: switch to ortho top-down.
-    if (axis === 'Y') {
+    clampBubbleScales();
+    updateViewButtons();
+    log('§CARD_RESTORE done guids=' + Object.keys(guidSet).length);
+  }
 
-      // P2: Build card-specific hideSet from view_state
-      var vs = sec.view_state || null;
-      var hideSet = null;
-      if (vs && vs.hidden_classes && vs.hidden_classes.length) {
-        hideSet = {};
-        for (var hi = 0; hi < vs.hidden_classes.length; hi++) hideSet[vs.hidden_classes[hi]] = 1;
-      }
+  // Card cleanup state — restored by clearStoreyBandVisibility (all visible=true)
+  // and by toggleGridOverlay exit path
+  var _cardHiddenMeshes = [];
+  var _cardFadedMeshes = [];
 
-      var dwells = sec.dwells || null;
-      var ifcZ = cutVal + (A.modelOffset ? A.modelOffset.z : 0);
-      log('§SAVE_SECTION restore dwells=' + (dwells ? dwells.length : 'null') +
-          ' ifcZ=' + ifcZ.toFixed(2) + ' cutVal=' + cutVal.toFixed(2) +
-          ' hideSet=' + (hideSet ? Object.keys(hideSet).length : 'default') +
-          ' dwellData=' + JSON.stringify(dwells));
-
-      // For composite smart saves: clip must encompass ALL dwell levels.
-      // Use highest dwell Z + margin for the floor clip so all layers are visible.
-      var clipZ = ifcZ;
-      if (dwells && dwells.length > 0) {
-        var hiZ = -Infinity;
-        for (var dci = 0; dci < dwells.length; dci++) {
-          if (dwells[dci].z > hiZ) hiZ = dwells[dci].z;
-        }
-        clipZ = hiZ + 1.0; // 1m above highest dwell = safe clip
-        log('§SAVE_SECTION clip raised to ' + clipZ.toFixed(2) + ' (highest dwell=' + hiZ.toFixed(2) + ')');
-      }
-
-      // Lock to ortho 2D floor plan view — clip at highest dwell Z
-      // P2: pass card hideSet so card-specific classes are hidden
-      var cardMode = (vs && vs.mode) ? vs.mode : 'floor';
-      if (envCache) {
-        GridViews.lockView(A, cardMode, envCache, clipZ, hideSet);
-      }
-
-      // Clear previous contours
-      if (typeof GridContours !== 'undefined') GridContours.clear(A);
-
-      if (dwells && dwells.length > 0 && typeof SectionCut !== 'undefined' && typeof GridContours !== 'undefined') {
-        // ── Composite render — painter's algorithm by dwell order ──
-        // Each dwell point's contours overwrite the previous layer.
-        // Dwell order = capture order = paint order (temporal, not Z-sorted).
-        var rules = window._gridRules || {};
-        var bandLo = Infinity, bandHi = -Infinity;
-        for (var di = 0; di < dwells.length; di++) {
-          var dz = dwells[di].z;
-          if (dz < bandLo) bandLo = dz;
-          if (dz > bandHi) bandHi = dz;
-
-          try {
-            var results = SectionCut.sectionCut(A.db, A.libDb, dz, null, { rules: rules });
-            // Additive: no clear between layers — later layers' contours overwrite earlier
-            GridContours.renderContours(A, results, 'floor', dz);
-
-            // Door arcs + window openings for each layer
-            if (typeof DoorArcs !== 'undefined') {
-              var doors = results.filter(function(r) {
-                return r.ifcClass === 'IfcDoor' || r.ifcClass === 'IfcDoorStandardCase';
-              });
-              var walls = results.filter(function(r) {
-                return r.ifcClass === 'IfcWall' || r.ifcClass === 'IfcWallStandardCase';
-              });
-              var arcs = DoorArcs.generateArcs(doors, walls);
-              GridContours.addDoorArcs(A, arcs, 'floor', dz);
-
-              // Window openings + stair symbols
-              var windowEls = results.filter(function(r) {
-                return r.ifcClass === 'IfcWindow' || r.ifcClass === 'IfcWindowStandardCase';
-              });
-              var stairEls = results.filter(function(r) {
-                return r.ifcClass === 'IfcStair' || r.ifcClass === 'IfcStairFlight';
-              });
-              DoorArcs.generateWindowOpenings(windowEls, A, dz);
-              DoorArcs.generateStairSymbol(stairEls, A, dz);
-            }
-
-            log('§SAVE_SECTION composite layer=' + (di + 1) + '/' + dwells.length +
-                ' z=' + dz.toFixed(2) + ' elements=' + results.length +
-                ' doors=' + (doors ? doors.length : 0));
-          } catch (e) {
-            log('§SAVE_SECTION composite layer error z=' + dz.toFixed(2) + ': ' + e.message);
-          }
-        }
-
-        // Apply storey band visibility — only composite Z range elements are pickable.
-        // Elements outside the band are hidden so clicking picks the right floor.
-        var bandMargin = 1.0;
-        applyStoreyBandVisibility(bandLo - bandMargin, bandHi + bandMargin);
-        log('§SAVE_SECTION band visibility [' + (bandLo - bandMargin).toFixed(2) +
-            ',' + (bandHi + bandMargin).toFixed(2) + ']');
-      } else {
-        // Single cut — legacy path: use standard renderContoursForView (includes door arcs)
-        try { renderContoursForView('floor', ifcZ); } catch (e) { log('§SAVE_SECTION contour error: ' + e.message); }
-      }
-
-      // Rebuild grids at the primary cut height
-      if (typeof GridScissors !== 'undefined' && GridScissors.rebuildAt) {
-        try {
-          GridScissors.rebuildAt(axis, cutVal);
-          log('§SAVE_SECTION grids rebuilt at cutVal=' + cutVal.toFixed(2));
-        } catch (e) { log('§SAVE_SECTION rebuildAt error: ' + e.message); }
-      }
-      clampBubbleScales();
-      updateViewButtons();
-
-      // P4: Restore saved camera position + zoom from card
-      if (vs && vs.camera) {
-        GridViews.applyCameraState(A, vs.camera);
-      }
-
-      log('§SAVE_SECTION 2D layout ifcZ=' + ifcZ.toFixed(2) +
-          ' dwells=' + (dwells ? dwells.length : 0) +
-          ' camRestored=' + !!(vs && vs.camera));
+  /** Undo card mesh treatment (called on grid mode exit) */
+  function clearCardView() {
+    for (var i = 0; i < _cardHiddenMeshes.length; i++) {
+      _cardHiddenMeshes[i].visible = true;
     }
+    for (var f = 0; f < _cardFadedMeshes.length; f++) {
+      var fm = _cardFadedMeshes[f];
+      if (fm.userData._origOpacity != null) {
+        fm.material.opacity = fm.userData._origOpacity;
+        fm.material.transparent = fm.userData._origTransparent;
+        fm.material.needsUpdate = true;
+        delete fm.userData._origOpacity;
+        delete fm.userData._origTransparent;
+      }
+    }
+    // Clear clip planes on all meshes
+    A.collectMeshes(function(o) { return o.isMesh; }).forEach(function(obj) {
+      obj.visible = true;
+      obj.material.clippingPlanes = null;
+      obj.material.clipShadows = false;
+      obj.material.needsUpdate = true;
+    });
+    A.renderer.localClippingEnabled = false;
+    _cardHiddenMeshes = [];
+    _cardFadedMeshes = [];
   }
 
   // Implementing 2D_031 §P3 — Witness: W-CARD-AUTO
@@ -1013,7 +1045,10 @@ function setupGridOverlay(APP) {
 
     gridPanel = document.createElement('div');
     gridPanel.id = PANEL_ID;
-    gridPanel.style.cssText = 'position:fixed;top:56px;left:16px;z-index:25;background:' + panelBg() + ';border-radius:8px;padding:0;border:1px solid ' + panelBorder() + ';backdrop-filter:blur(8px);min-width:180px;max-width:260px';
+    // Position below HUD so it doesn't cover building list/tools
+    var _hudEl = document.getElementById('hud');
+    var _gridTop = _hudEl ? (Math.round(_hudEl.getBoundingClientRect().bottom) + 8) : 56;
+    gridPanel.style.cssText = 'position:fixed;top:' + _gridTop + 'px;left:16px;z-index:25;background:' + panelBg() + ';border-radius:8px;padding:0;border:1px solid ' + panelBorder() + ';backdrop-filter:blur(8px);min-width:180px;max-width:260px';
     gridPanel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px">' +
       '<b style="color:' + panelText() + ';font-size:12px;font-weight:bold;cursor:grab" onclick="togglePanel(\'grid-panel-body\')">Plan Grid</b>' +
       '<span id="grid-panel-close" style="color:#888;font-size:16px;cursor:pointer;padding:0 4px;line-height:1" title="Close grid panel">&times;</span></div>' +
@@ -1029,6 +1064,25 @@ function setupGridOverlay(APP) {
       });
     }
     if (A._makeDraggable) A._makeDraggable(gridPanel);
+
+    // S251: Register grid panel for Tab/arrow navigation
+    // View preset buttons auto-activate on cursor move (no Space needed)
+    if (typeof window._registerPanel === 'function' && typeof window.makeListKeyNav === 'function') {
+      var _gridGetItems = function() { return Array.from(gridPanel.querySelectorAll('button, .panel-toggle, input[type="range"]')); };
+      var _gridNav = window.makeListKeyNav(
+        _gridGetItems,
+        function() {},
+        function(idx) { var items = _gridGetItems(); if (items[idx]) items[idx].click(); }
+      );
+      // Esc exits 2D overlay entirely (back to 3D)
+      var _gridClose = function() { A.toggleGridOverlay(); };
+      window._registerPanel('grid', gridPanel, _gridNav, _gridClose);
+      // Auto-focus grid panel when it opens
+      if (typeof window._focusPanel === 'function') {
+        setTimeout(function() { window._focusPanel('grid'); }, 100);
+      }
+      log('§LISTNAV_WIRE panel=grid');
+    }
 
     var body = document.getElementById('grid-panel-body');
     if (!body) return;
@@ -1436,7 +1490,8 @@ function setupGridOverlay(APP) {
       }
       if (gridPanel) { gridPanel.style.display = 'none'; }
       hideUndoRedo();
-      // Restore all mesh visibility — CRITICAL: band filter hides meshes, must undo on exit
+      // Restore all mesh visibility — card view + band filter hide meshes, must undo on exit
+      clearCardView();
       clearStoreyBandVisibility();
       // Un-highlight 2D button, un-grey Measure button
       var btn2d = document.getElementById('grid-2d-btn');

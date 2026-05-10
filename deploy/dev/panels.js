@@ -21,7 +21,7 @@ function setupPanels(A) {
   // S251 §8: ListKeyNav — universal keyboard navigator for list panels
   // Implementing S251_keyboard_modes.md — Witness: W-KBD
   // ══════════════════════════════════════════════════════════════
-  function makeListKeyNav(getItems, onToggle, onActivate) {
+  function makeListKeyNav(getItems, onToggle, onActivate, onCursorMove) {
     var cursor = -1;
     var anchor = -1;
     var selected = new Set();
@@ -42,6 +42,8 @@ function setupPanels(A) {
       items.forEach(function(el, j) {
         el.style.outline = (j === cursor) ? '2px solid #4fc3f7' : '';
       });
+      // Optional auto-activate on cursor move (e.g. grid view presets)
+      if (onCursorMove) onCursorMove(cursor);
     }
 
     function extendRange(delta) {
