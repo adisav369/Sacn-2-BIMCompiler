@@ -909,6 +909,9 @@ function setupGridOverlay(APP) {
     _cardFadedMeshes = [];
 
     A.collectMeshes(function(o) { return o.isMesh; }).forEach(function(obj) {
+      // Skip contour overlay meshes — 2D lines rendered after this pass
+      if (obj.userData && obj.userData.isContour) return;
+
       var guid = (obj.userData && obj.userData.guid) || '';
       var cls  = (obj.userData && obj.userData.ifcClass) || '';
 

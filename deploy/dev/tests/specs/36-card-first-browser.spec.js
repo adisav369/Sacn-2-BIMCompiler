@@ -478,7 +478,27 @@ test.describe('Card-First Complete Suite', () => {
     console.log('§T_3614U ' + log.join(' | '));
   });
 
-  // ── 15. Grid alignment — detect grid lines from structural walls ──
+  // ── 15. BUG W — contour meshes skipped in card pass ─────────────
+  test('T_3615W: restoreSection skips isContour meshes — 2D lines not clipped', () => {
+    const s = src('grid_overlay.js');
+    const start = s.indexOf('A.collectMeshes', s.indexOf('function restoreSection'));
+    const body = s.slice(start, s.indexOf('§CARD_RESTORE mesh pass', start));
+    const log = [];
+
+    const skips = body.includes('isContour') && body.includes('return');
+    log.push('skip_contour' + (skips ? ' ✓' : ' ✗'));
+    expect(skips).toBe(true);
+
+    // Verify contour meshes DO have isContour flag
+    const contours = src('grid_contours.js');
+    const hasFlag = contours.includes('isContour: true');
+    log.push('contour_flag_set' + (hasFlag ? ' ✓' : ' ✗'));
+    expect(hasFlag).toBe(true);
+
+    console.log('§T_3615W ' + log.join(' | '));
+  });
+
+  // ── 16. Grid alignment — detect grid lines from structural walls ──
   test('T_3613: grid detection uses wall clustering — lines align with structure', () => {
     const dims = src('grid_dims.js');
     const log = [];
