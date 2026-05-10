@@ -126,9 +126,10 @@ function setupPanels(A) {
         labels.forEach(function(l, i) { if (l.indexOf(_taBuffer) === 0) matches.push(i); });
         if (matches.length) {
           var next = matches[0];
-          // Same single char pressed again → cycle to next match
+          var cycled = false;
           if (_taBuffer.length === 1 && matches.indexOf(cursor) >= 0) {
             next = matches[(matches.indexOf(cursor) + 1) % matches.length];
+            cycled = true;
           }
           cursor = next;
           scrollTo(cursor);
@@ -136,9 +137,12 @@ function setupPanels(A) {
           items2.forEach(function(el, j) {
             el.style.outline = (j === cursor) ? '2px solid #4fc3f7' : '';
           });
-          console.log('§LISTNAV_TYPEAHEAD buf=' + _taBuffer + ' match=' + cursor);
+          var label = items2[cursor] ? (items2[cursor].textContent || '').trim().slice(0, 20) : '?';
+          console.log('§LISTNAV_TYPEAHEAD buf="' + _taBuffer + '" matches=[' + matches.join(',') + '] cursor=' + cursor + ' label="' + label + '" cycled=' + cycled);
+        } else {
+          console.log('§LISTNAV_TYPEAHEAD buf="' + _taBuffer + '" NO MATCH items=' + items.length);
         }
-        _taTimer = setTimeout(function() { _taBuffer = ''; }, 600);
+        _taTimer = setTimeout(function() { console.log('§LISTNAV_TYPEAHEAD_RESET'); _taBuffer = ''; }, 600);
       },
       onClick: function(index, e) {
         if (e.ctrlKey || e.metaKey) {

@@ -541,6 +541,7 @@ function setupScene(A) {
 
   function _registerPanel(id, el, nav, closeFn) {
     _panels.push({ id: id, el: el, nav: nav, close: closeFn || null });
+    console.log('§PANEL_REGISTER id=' + id + ' hasNav=' + !!nav + ' hasClose=' + !!closeFn + ' totalPanels=' + _panels.length + ' allIds=[' + _panels.map(function(p){return p.id;}).join(',') + ']');
     // Desktop only — no focus glow on mobile touch
     if (!window._isMobile) {
       el.addEventListener('pointerdown', function() { _focusPanel(id); });
@@ -548,49 +549,59 @@ function setupScene(A) {
   }
   function _focusPanel(id) {
     // Push current to stack before switching
+    var prevId = _focusedPanel ? _focusedPanel.id : 'none';
     if (_focusedPanel) {
       _focusStack.push(_focusedPanel.id);
-      if (_focusStack.length > 10) _focusStack.shift(); // cap stack
+      if (_focusStack.length > 10) _focusStack.shift();
       _focusedPanel.el.style.boxShadow = '';
     }
     _focusedPanel = null;
+    var found = false, checkedIds = [];
     for (var i = 0; i < _panels.length; i++) {
-      if (_panels[i].id === id && _panels[i].el.style.display !== 'none' && _panels[i].el.offsetWidth > 0) {
-        _focusedPanel = _panels[i];
-        break;
+      var p = _panels[i];
+      if (p.id === id) {
+        var vis = p.el.style.display !== 'none' && p.el.offsetWidth > 0;
+        checkedIds.push(p.id + '(vis=' + vis + ',w=' + p.el.offsetWidth + ')');
+        if (vis) { _focusedPanel = p; found = true; break; }
       }
     }
     if (_focusedPanel) {
       _focusedPanel.el.style.boxShadow = 'inset 3px 0 0 #4fc3f7';
-      // Auto-expand collapsed panel body
       var body = _focusedPanel.el.querySelector('.panel-body');
+      var expanded = false;
       if (body && body.classList.contains('collapsed')) {
         body.classList.remove('collapsed');
+        expanded = true;
       }
-      console.log('§PANEL_FOCUS id=' + id);
+      var hasNav = !!_focusedPanel.nav;
+      var hasClose = !!_focusedPanel.close;
+      console.log('§PANEL_FOCUS id=' + id + ' prev=' + prevId + ' hasNav=' + hasNav + ' hasClose=' + hasClose + ' expanded=' + expanded + ' stack=[' + _focusStack.join(',') + ']');
+    } else {
+      console.log('§PANEL_FOCUS_FAIL id=' + id + ' checked=[' + checkedIds.join(',') + '] totalPanels=' + _panels.length + ' allIds=[' + _panels.map(function(p){return p.id;}).join(',') + ']');
     }
   }
   function _blurPanel() {
-    if (!_focusedPanel) return;
+    if (!_focusedPanel) { console.log('§PANEL_BLUR no-op (none focused)'); return; }
+    var id = _focusedPanel.id;
     _focusedPanel.el.style.boxShadow = '';
-    console.log('§PANEL_BLUR id=' + _focusedPanel.id);
     _focusedPanel = null;
-    // Pop stack — return to previous panel
     if (_focusStack.length) {
       var prevId = _focusStack.pop();
+      console.log('§PANEL_BLUR id=' + id + ' → pop stack → ' + prevId + ' remaining=[' + _focusStack.join(',') + ']');
       _focusPanel(prevId);
+    } else {
+      console.log('§PANEL_BLUR id=' + id + ' → stack empty → unfocused');
     }
   }
   function _cyclePanel(dir) {
-    // Only cycle visible panels
     var visible = _panels.filter(function(p) {
       return p.el.style.display !== 'none' && p.el.offsetWidth > 0;
     });
-    if (!visible.length) return;
+    if (!visible.length) { console.log('§PANEL_TAB no visible panels (total=' + _panels.length + ')'); return; }
     var idx = _focusedPanel ? visible.indexOf(_focusedPanel) : -1;
     var next = (idx + dir + visible.length) % visible.length;
+    console.log('§PANEL_TAB dir=' + dir + ' from=' + (_focusedPanel ? _focusedPanel.id : 'none') + ' idx=' + idx + ' next=' + next + ' visible=[' + visible.map(function(p){return p.id;}).join(',') + ']');
     _focusPanel(visible[next].id);
-    console.log('§PANEL_TAB id=' + visible[next].id);
   }
 
   A._registerPanel = _registerPanel;
@@ -651,7 +662,7 @@ function setupScene(A) {
       }
     }
 
-    if (!noMod || !notInput) return;
+    if (!noMod || !notInput) { console.log('§KBD_ROUTE drop key=' + e.key + ' noMod=' + noMod + ' notInput=' + notInput); return; }
 
     // Arrow ←→ — step section slider when section panel is visible
     if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !_focusedPanel) {
@@ -664,44 +675,43 @@ function setupScene(A) {
         val = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), val));
         slider.value = val;
         if (typeof A.updateSectionPlane === 'function') A.updateSectionPlane(val);
-        console.log('§KBD_SLIDER key=' + e.key + ' val=' + val.toFixed(2));
+        console.log('§KBD_SLIDER key=' + e.key + ' val=' + val.toFixed(2) + ' min=' + slider.min + ' max=' + slider.max + ' step=' + slider.step);
         return;
       }
     }
 
     // ? — command palette
-    if (e.key === '?') { e.preventDefault(); showCommandPalette(); return; }
+    if (e.key === '?') { e.preventDefault(); console.log('§KBD_ROUTE ? → palette'); showCommandPalette(); return; }
 
     // Esc with no panel focused — no-op
-    if (e.key === 'Escape') return;
+    if (e.key === 'Escape') { console.log('§KBD_ROUTE esc no panel → no-op'); return; }
 
     // Key sequence engine
     clearTimeout(_seqTimer);
+    var prevSeq = _seq;
     _seq += e.key.toLowerCase();
 
-    // Exact match AND prefix of something longer? Wait — fire on timeout.
-    // e.g. 's' matches sunglasses, but 'sc' matches screenshot. Wait for second key.
     var hasExact = !!_shortcuts[_seq];
     var hasLonger = _isPrefix(_seq);
+    console.log('§KBD_SEQ_ENGINE input=' + e.key + ' prevSeq="' + prevSeq + '" seq="' + _seq + '" exact=' + hasExact + ' prefix=' + hasLonger);
 
     if (hasExact && !hasLonger) {
-      // Unique exact match — fire now
+      console.log('§KBD_SEQ_FIRE seq=' + _seq + ' (immediate, no longer prefix)');
       _dispatchSeq(_seq);
       _seq = '';
       _showSeqHint('');
       return;
     }
     if (hasLonger) {
-      // Could be prefix of longer sequence — wait for next key
       e.preventDefault();
+      console.log('§KBD_SEQ_WAIT seq=' + _seq + ' (prefix of longer, waiting ' + _SEQ_MS + 'ms)');
       _showSeqHint(_seq);
       _seqTimer = setTimeout(function() {
-        // Timeout: fire exact match if exists, else discard
         if (_shortcuts[_seq]) {
+          console.log('§KBD_SEQ_FIRE seq=' + _seq + ' (timeout, exact match)');
           _shortcuts[_seq]();
-          console.log('§KBD_SEQ seq=' + _seq + ' (timeout)');
         } else {
-          console.log('§KBD_SEQ_TIMEOUT seq=' + _seq);
+          console.log('§KBD_SEQ_TIMEOUT seq=' + _seq + ' (no match, discarded)');
         }
         _seq = '';
         _showSeqHint('');
@@ -709,6 +719,7 @@ function setupScene(A) {
       return;
     }
     // No match, no prefix — reset
+    console.log('§KBD_SEQ_DISCARD seq=' + _seq + ' (no match, no prefix)');
     _seq = '';
     _showSeqHint('');
   });
