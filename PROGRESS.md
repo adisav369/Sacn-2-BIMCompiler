@@ -48,16 +48,18 @@
   - 197 tests (90 logic + 107 wiring), 40 specs / 407 tests / 1007 expects
   - **Open:** BUG-1 dwell flash, BUG-2 Save button in 2D, BUG-4 grid Enter → see `prompts/S251b_keyboard_polish.md`
 
-**S2D31 Card-First View Model (2026-05-10):**
-  - `view_state` column on saved_sections (hidden_classes, camera, storey, mode JSON)
-  - `captureViewState()` + `saveSectionToDb` includes view_state
-  - `restoreSection` rewritten as card-first composition: ortho → storey band → class treatment → contours → camera
-  - Storey band always applied on card restore — isolates storey elements for picking
-  - `FADE_IN_FLOOR`: IfcSlab/IfcPlate → opacity 0.08 (was full solid, fought wall contrast)
-  - `classifyMesh` returns hide/retain/fade/clip (was hide/retain/clip)
-  - `autoCreateCards()`: auto GF + L1 cards on first grid mode entry if no cards exist
-  - Camera persistence: getCameraState/applyCameraState round-trip zoom + pan
-  - 39 specs / 405 tests / 968 expects pass (3 pre-existing Terminal timeout failures)
+**S2D31 Card-First View Model DONE (2026-05-10): SW v296**
+  - Card = one SQL (queryStoreyGuids) → one scene pass (hide/fade/retain/clip) → contours
+  - IfcCovering = wall/floor tiles, NOT roof — removed from HIDE_IN_FLOOR
+  - `FADE_IN_FLOOR`: IfcSlab/IfcPlate → opacity 0.08
+  - `autoCreateCards()`: door-count ranking (was lowest-z → picked basements, improved 19 buildings)
+  - Save button always on when scissors ON (was wrongly gated)
+  - 11 bugs found + fixed by CTFL analysis (state completeness, boundary, data flow)
+  - Contour overlay meshes skipped in card pass (BUG W — was clipping 2D lines)
+  - 41 specs / 417 tests / 1035 expects — all pass. Fleet: 30 buildings in 5s.
+  - Deployed to ootb-dev. Tests: `specs/35-card-first-views.spec.js` + `specs/36-card-first-browser.spec.js`
+  - **Next:** Browser smoke test, then `2D_024_editable_grid_lines.md` (drag highlight, hover, alignment)
+  - **Unresolved 2D UX debt:** grid alignment, drag highlight, IFC popup, Terminal curtain walls, DX door arcs — see `prompts/2D_031_card_first_views.md` §Outstanding
   - **Known issues:**
     1. Terminal outer envelope walls: contour geometry may not cover curtain walls at cutZ=1.2m
     2. DX door arcs: `§DOOR_ARC_SKIP reason=no_leaf` — geometry BLOBs don't have door panels

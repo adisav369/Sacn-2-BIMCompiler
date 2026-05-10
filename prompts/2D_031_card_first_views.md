@@ -172,7 +172,29 @@ When a card is active, element picking should skip hidden classes:
 7. **HITOS GF verification** — confirm wall visibility with floorZ+1.2 after band clamp fix.
 8. **Grid lines per card storey** — grid detection runs once at entry, not per-card. Future: re-detect at card's cutZ.
 
-### Test suite
-- 40 specs, 407+ tests, 990+ expects — all pass
-- Key specs: 35-card-first-views (7 logic tests), 36-card-first-browser (9 logic + fleet across all DBs)
-- Fleet test proves GF card composition on every deployed building
+### Bugs found and fixed by CTFL analysis (11 total)
+| Bug | Technique | Fix |
+|-----|-----------|-----|
+| IfcCovering | Equivalence | Wall tiles wrongly hidden — removed from HIDE_IN_FLOOR |
+| A | Boundary: no-guid | Ground plane/InstancedMesh visible in card → hide first |
+| C | Boundary: falsy zero | opacity=0 never saved → `== null` check |
+| F | Data flow | captureViewState parsed status bar (never matched) → query DB |
+| G | Data flow | localStorage INSERT missing view_state column |
+| J | State transition | Stale clip planes leaked across card→card switches |
+| K | State transition | Faded opacity stuck at 0.08 across card switches |
+| N | State completeness | clipShadows never reset on hide/fade/retain paths |
+| O | State completeness | needsUpdate not set on hide/retain paths |
+| U | UX flow | Deleting active card left meshes in card state |
+| W | Scope analysis | Contour overlay meshes got clip planes from card pass |
+
+### Test suite — `deploy/dev/tests/specs/`
+- `35-card-first-views.spec.js` — 7 logic tests: classifyMesh, restoreSection architecture, cleanup, auto-create, view_state, slab fade
+- `36-card-first-browser.spec.js` — 18 tests: classifyMesh (14 classes + custom hideSet), restoreSection (11 checks), clearCardView (5 checks), autoCreateCards, view_state round-trip, lockView cameraOnly, Save button not gated, SampleHouse composition (hide+fade+retain+clip=total), fleet DB (30 buildings), door-count ranking (improved 19), classifyMesh on all 49 IFC classes, BUG K (unfade before reset), state completeness (6 paths × 4 properties), BUG U (delete clears card), grid alignment, stale lines, section_cut SLICE_CLASSES, BUG W (contour skip)
+- **Fleet test: 30 buildings in 5 seconds, every composition verified**
+- 41 specs / 417 tests / 1035 expects — all pass
+
+### Next session
+- Browser smoke test on ootb-dev (SW v296) — verify GF card visually
+- Outstanding 2D UX debt items 1-8 above
+- Grid drag highlight (2D_024)
+- Grid lines per card storey
