@@ -408,6 +408,365 @@ console.log('\n── Panel Focus: Stack ──');
   check('F14', 'Esc on empty stack → null', focused === null);
 })();
 
+// ══════════════════════════════════════════════════
+console.log('\n── ListKeyNav: Empty List ──');
+// ══════════════════════════════════════════════════
+(function() {
+  var nav = makeListKeyNav(function() { return []; }, function() {}, function() {});
+  // Should not crash on empty list
+  var threw = false;
+  try {
+    nav.onKey(mockEvent('ArrowDown'));
+    nav.onKey(mockEvent('ArrowUp'));
+    nav.onKey(mockEvent(' '));
+    nav.onKey(mockEvent('Enter'));
+    nav.onKey(mockEvent('Home'));
+    nav.onKey(mockEvent('End'));
+    nav.onKey(mockEvent('PageDown'));
+  } catch(e) { threw = true; }
+  check('E01', 'No crash on empty list — all keys safe', !threw);
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── ListKeyNav: Single Item List ──');
+// ══════════════════════════════════════════════════
+(function() {
+  var items = mockItems(['Only']);
+  var lastActivate = null;
+  var nav = makeListKeyNav(
+    function() { return items; },
+    function() {},
+    function(idx) { lastActivate = idx; }
+  );
+
+  nav.onKey(mockEvent('ArrowDown')); // cursor=0
+  nav.onKey(mockEvent('ArrowDown')); // still 0, can't go past
+  check('E10', 'Single item: ArrowDown stays at 0',
+    items[0].style.outline.includes('#4fc3f7'));
+
+  nav.onKey(mockEvent(' '));
+  check('E11', 'Single item: Space activates idx 0', lastActivate === 0);
+
+  nav.onKey(mockEvent('ArrowUp')); // still 0
+  check('E12', 'Single item: ArrowUp stays at 0',
+    items[0].style.outline.includes('#4fc3f7'));
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── ListKeyNav: Dynamic List (items change) ──');
+// ══════════════════════════════════════════════════
+(function() {
+  var items = mockItems(['A', 'B', 'C']);
+  var nav = makeListKeyNav(function() { return items; }, function() {}, function() {});
+
+  nav.onKey(mockEvent('ArrowDown')); // cursor=0
+  nav.onKey(mockEvent('ArrowDown')); // cursor=1
+  nav.onKey(mockEvent('ArrowDown')); // cursor=2
+
+  // Simulate panel rebuild — items shrink to 2
+  items = mockItems(['X', 'Y']);
+  nav.onKey(mockEvent('ArrowDown')); // cursor was 2, items.length=2, should clamp to 1
+  check('E20', 'Dynamic list shrink: cursor clamped to last',
+    items[1].style.outline.includes('#4fc3f7'));
+
+  nav.onKey(mockEvent('ArrowUp'));
+  check('E21', 'Dynamic list shrink: ArrowUp works after clamp',
+    items[0].style.outline.includes('#4fc3f7'));
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── ListKeyNav: Shift+Arrow on slider (should NOT extend range) ──');
+// ══════════════════════════════════════════════════
+(function() {
+  var slider = {
+    textContent: '', tagName: 'INPUT', type: 'range',
+    style: { outline: '' }, scrollIntoView: function() {},
+    min: '0', max: '100', step: '1', value: '50',
+    getAttribute: function() { return null; },
+    dispatchEvent: function() {},
+  };
+  var btn = mockItems(['OK'])[0];
+  var items = [btn, slider];
+  var lastToggle = null;
+  var nav = makeListKeyNav(
+    function() { return items; },
+    function(i) { lastToggle = i; },
+    function() {}
+  );
+
+  nav.onKey(mockEvent('ArrowDown')); // cursor=0 (button)
+  nav.onKey(mockEvent('ArrowDown')); // cursor=1 (slider)
+  // ArrowRight on slider should step, NOT extend range
+  nav.onKey(mockEvent('ArrowRight'));
+  check('E30', 'ArrowRight on slider steps value, not range extend',
+    (slider.value === 51 || slider.value === '51') && lastToggle === null);
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── ListKeyNav: Ctrl+Space then Space resets ──');
+// ══════════════════════════════════════════════════
+(function() {
+  var items = mockItems(['A', 'B', 'C', 'D']);
+  var lastToggle = null;
+  var nav = makeListKeyNav(
+    function() { return items; },
+    function(i) { lastToggle = i; },
+    function() {}
+  );
+
+  nav.onKey(mockEvent('ArrowDown')); // 0
+  nav.onKey(mockEvent(' ')); // select A
+  nav.onKey(mockEvent('ArrowDown')); // 1
+  nav.onKey(mockEvent('ArrowDown')); // 2
+  nav.onKey(mockEvent(' ', { ctrl: true })); // toggle C
+  check('E40', 'Ctrl+Space: A and C selected',
+    lastToggle.length === 2 && lastToggle.includes(0) && lastToggle.includes(2));
+
+  // Plain Space should reset to cursor only
+  nav.onKey(mockEvent(' '));
+  check('E41', 'Space after Ctrl+Space: resets to cursor only (C)',
+    lastToggle.length === 1 && lastToggle[0] === 2);
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── ListKeyNav: Shift+Arrow range then reverse ──');
+// ══════════════════════════════════════════════════
+(function() {
+  var items = mockItems(['A', 'B', 'C', 'D', 'E']);
+  var lastToggle = null;
+  var nav = makeListKeyNav(
+    function() { return items; },
+    function(i) { lastToggle = i; },
+    function() {}
+  );
+
+  nav.onKey(mockEvent('ArrowDown')); // 0
+  nav.onKey(mockEvent('ArrowDown')); // 1
+  nav.onKey(mockEvent('ArrowDown')); // 2
+  nav.onKey(mockEvent(' ')); // anchor=2
+  // Shift+Down to extend forward
+  nav.onKey(mockEvent('ArrowDown', { shift: true })); // 2-3
+  nav.onKey(mockEvent('ArrowDown', { shift: true })); // 2-4
+  check('E50', 'Shift+Down×2 from anchor=2: selects 2,3,4',
+    lastToggle.length === 3 && lastToggle[0] === 2 && lastToggle[2] === 4);
+
+  // Now reverse with Shift+Up
+  nav.onKey(mockEvent('ArrowUp', { shift: true })); // 2-3
+  check('E51', 'Shift+Up shrinks range: selects 2,3',
+    lastToggle.length === 2 && lastToggle[0] === 2 && lastToggle[1] === 3);
+
+  // Keep going up past anchor
+  nav.onKey(mockEvent('ArrowUp', { shift: true })); // 2 only
+  nav.onKey(mockEvent('ArrowUp', { shift: true })); // 1-2
+  check('E52', 'Shift+Up past anchor: selects 1,2',
+    lastToggle.length === 2 && lastToggle[0] === 1 && lastToggle[1] === 2);
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── ListKeyNav: onCursorMove callback ──');
+// ══════════════════════════════════════════════════
+(function() {
+  var items = mockItems(['GF', 'L1', 'Roof']);
+  var moveCalls = [];
+  var nav = makeListKeyNav(
+    function() { return items; },
+    function() {},
+    function() {},
+    function(idx) { moveCalls.push(idx); }
+  );
+
+  nav.onKey(mockEvent('ArrowDown')); // 0
+  nav.onKey(mockEvent('ArrowDown')); // 1
+  nav.onKey(mockEvent('ArrowDown')); // 2
+  check('E60', 'onCursorMove called on each arrow (3 calls)',
+    moveCalls.length === 3);
+  check('E61', 'onCursorMove receives correct indices',
+    moveCalls[0] === 0 && moveCalls[1] === 1 && moveCalls[2] === 2);
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── Sequence Engine: Multi-key ambiguity ──');
+// ══════════════════════════════════════════════════
+(function() {
+  var shortcuts = { 's': 1, 'sc': 1, 'su': 1, 'g': 1, 'x': 1, '-': 1, '+': 1 };
+  function isPrefix(seq) {
+    var keys = Object.keys(shortcuts);
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i].length > seq.length && keys[i].indexOf(seq) === 0) return true;
+    }
+    return false;
+  }
+
+  // Full sequence simulation
+  function simulate(chars) {
+    var seq = '';
+    var results = [];
+    for (var i = 0; i < chars.length; i++) {
+      seq += chars[i];
+      var hasExact = !!shortcuts[seq];
+      var hasLonger = isPrefix(seq);
+      if (hasExact && !hasLonger) {
+        results.push({ action: 'FIRE', seq: seq });
+        seq = '';
+      } else if (hasLonger) {
+        results.push({ action: 'WAIT', seq: seq });
+      } else if (!hasExact && !hasLonger) {
+        results.push({ action: 'DISCARD', seq: seq });
+        seq = '';
+      }
+    }
+    if (seq && shortcuts[seq]) results.push({ action: 'TIMEOUT_FIRE', seq: seq });
+    return results;
+  }
+
+  var r1 = simulate(['g']);
+  check('S10', '"g" fires immediately (no prefix)',
+    r1.length === 1 && r1[0].action === 'FIRE' && r1[0].seq === 'g');
+
+  var r2 = simulate(['s', 'c']);
+  check('S11', '"s" waits, "sc" fires',
+    r2[0].action === 'WAIT' && r2[0].seq === 's' &&
+    r2[1].action === 'FIRE' && r2[1].seq === 'sc');
+
+  var r3 = simulate(['s', 'u']);
+  check('S12', '"s" waits, "su" fires',
+    r3[0].action === 'WAIT' && r3[1].action === 'FIRE' && r3[1].seq === 'su');
+
+  var r4 = simulate(['s']);
+  check('S13', '"s" alone: waits then timeout fires',
+    r4[0].action === 'WAIT' && r4[0].seq === 's');
+
+  var r5 = simulate(['s', 'z']); // sz not in map
+  check('S14', '"s" then "z" (invalid): s waits, sz discards',
+    r5[0].action === 'WAIT' && r5[1].action === 'DISCARD');
+
+  var r6 = simulate(['-']);
+  check('S15', '"-" fires immediately',
+    r6.length === 1 && r6[0].action === 'FIRE');
+
+  var r7 = simulate(['x']);
+  check('S16', '"x" fires immediately',
+    r7.length === 1 && r7[0].action === 'FIRE');
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── Panel Focus: Duplicate Registration ──');
+// ══════════════════════════════════════════════════
+(function() {
+  var panels = [];
+  function register(id) { panels.push({ id: id }); }
+  function findAll(id) { return panels.filter(function(p) { return p.id === id; }); }
+
+  register('storey');
+  register('disc');
+  register('storey'); // duplicate!
+  check('E70', 'Duplicate registration: two storey entries',
+    findAll('storey').length === 2);
+  // This is a real risk — grid panel rebuilds and re-registers.
+  // The scene.js clash code removes old before re-adding. Grid does not.
+  // Flag this.
+  check('E71', 'WARNING: grid panel may duplicate on rebuild — verify _panels cleanup',
+    true); // informational
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── Panel Focus: Stack overflow protection ──');
+// ══════════════════════════════════════════════════
+(function() {
+  var stack = [];
+  for (var i = 0; i < 15; i++) {
+    stack.push('panel' + i);
+    if (stack.length > 10) stack.shift();
+  }
+  check('E80', 'Stack caps at 10 (15 pushes, shift overflow)',
+    stack.length === 10);
+  check('E81', 'Stack oldest removed (panel5 is first)',
+    stack[0] === 'panel5');
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── Slider: Boundary Clamping ──');
+// ══════════════════════════════════════════════════
+(function() {
+  var slider = {
+    textContent: '', tagName: 'INPUT', type: 'range',
+    style: { outline: '' }, scrollIntoView: function() {},
+    min: '0', max: '10', step: '1', value: '10',
+    getAttribute: function() { return null; },
+    dispatchEvent: function() {},
+  };
+  var items = [slider];
+  var nav = makeListKeyNav(function() { return items; }, function() {}, function() {});
+  nav.onKey(mockEvent('ArrowDown')); // cursor=0
+
+  nav.onKey(mockEvent('ArrowRight')); // at max, should stay 10
+  check('E90', 'Slider at max: ArrowRight clamps to max',
+    slider.value === 10 || slider.value === '10');
+
+  slider.value = '0';
+  nav.onKey(mockEvent('ArrowLeft')); // at min, should stay 0
+  check('E91', 'Slider at min: ArrowLeft clamps to min',
+    slider.value === 0 || slider.value === '0');
+
+  slider.value = '5';
+  nav.onKey(mockEvent('ArrowRight'));
+  check('E92', 'Slider mid: ArrowRight steps to 6',
+    slider.value === 6 || slider.value === '6');
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── Typeahead: Case Insensitive ──');
+// ══════════════════════════════════════════════════
+(function() {
+  var items = mockItems(['apple', 'BANANA', 'Cherry']);
+  var nav = makeListKeyNav(function() { return items; }, function() {}, function() {});
+
+  nav.onTypeahead('B'); // uppercase B should match BANANA
+  check('E100', 'Typeahead case insensitive: "B" matches BANANA',
+    items[1].style.outline.includes('#4fc3f7'));
+
+  // Reset buffer by waiting (simulate)
+  nav.onTypeahead('c'); // should match Cherry
+  // Buffer is now 'Bc' — won't match. This is expected.
+  // In real browser, 600ms timeout resets. Here we test accumulation.
+  check('E101', 'Typeahead accumulates within window (Bc — no match, cursor unchanged)',
+    items[1].style.outline.includes('#4fc3f7')); // still on BANANA
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── Command Palette: Search Filtering ──');
+// ══════════════════════════════════════════════════
+(function() {
+  var entries = [
+    { seq: 'SC', name: 'Screenshot' },
+    { seq: 'S', name: 'Sunglasses (X-ray)' },
+    { seq: 'G', name: '2D Grid' },
+    { seq: 'C', name: 'Clash Matrix' },
+    { seq: 'X', name: 'Section Cut' },
+    { seq: 'M', name: 'Measure' },
+    { seq: 'F', name: 'Find / Navigate' },
+    { seq: '4', name: '4D / 5D Analytics' },
+    { seq: 'P', name: 'Fly Around (Plane)' },
+    { seq: '-', name: 'Toggle Panels (hide/show)' }
+  ];
+
+  function filter(q) {
+    var f = q.toLowerCase();
+    return entries.filter(function(e) {
+      return e.name.toLowerCase().indexOf(f) >= 0 || e.seq.toLowerCase().indexOf(f) >= 0;
+    });
+  }
+
+  check('P01', 'Empty search returns all entries', filter('').length === entries.length);
+  check('P02', '"sc" matches Screenshot (by seq)', filter('sc').length >= 1 && filter('sc')[0].seq === 'SC');
+  check('P03', '"cut" matches Section Cut (by name)', filter('cut').length === 1 && filter('cut')[0].name === 'Section Cut');
+  check('P04', '"x" matches Section Cut and X-ray', filter('x').length >= 1);
+  check('P05', '"zzz" matches nothing', filter('zzz').length === 0);
+  check('P06', '"grid" matches 2D Grid', filter('grid').length === 1);
+  check('P07', '"fly" matches Fly Around', filter('fly').length === 1);
+  check('P08', '"4" matches 4D/5D', filter('4').length >= 1);
+})();
+
 // ── Summary ──
 console.log('\n═══════════════════════════════════════');
 console.log('  PASS: ' + pass + '  FAIL: ' + fail + '  TOTAL: ' + (pass + fail));

@@ -995,8 +995,31 @@ function setupGridOverlay(APP) {
     var significant = storeys.filter(function(s) { return s.elementCount >= 5; });
     if (!significant.length) return;
 
-    // Sort by floorZ ascending for GF/L1
-    significant.sort(function(a, b) { return a.floorZ - b.floorZ; });
+    // Door-count ranking — same as computeStoreyAwareCutZ.
+    // Habitable storeys have doors. Foundation/basement usually has zero.
+    var storeyDoorCounts = {};
+    try {
+      var dr = A.db.exec(
+        "SELECT m.storey, COUNT(*) FROM elements_meta m " +
+        "WHERE m.ifc_class IN ('IfcDoor','IfcDoorStandardCase') AND m.storey IS NOT NULL " +
+        "GROUP BY m.storey"
+      );
+      if (dr.length && dr[0].values.length) {
+        for (var di = 0; di < dr[0].values.length; di++) {
+          storeyDoorCounts[dr[0].values[di][0]] = Number(dr[0].values[di][1]);
+        }
+      }
+    } catch (e) { /* no door metadata — fall back to floorZ order */ }
+
+    significant.sort(function(a, b) {
+      var da = storeyDoorCounts[a.name] || 0;
+      var db2 = storeyDoorCounts[b.name] || 0;
+      if (da !== db2) return db2 - da; // more doors first
+      return a.floorZ - b.floorZ;      // then lower floor first
+    });
+    log('§VIEW_CARD storey ranking: ' + significant.map(function(s) {
+      return s.name + '(doors=' + (storeyDoorCounts[s.name] || 0) + ',z=' + s.floorZ.toFixed(1) + ')';
+    }).join(', '));
 
     // GF card
     var gfZ = significant[0].floorZ + CUT_ABOVE;
@@ -1076,6 +1099,12 @@ function setupGridOverlay(APP) {
       );
       // Esc exits 2D overlay entirely (back to 3D)
       var _gridClose = function() { A.toggleGridOverlay(); };
+      // Remove old grid registration before re-adding (buildPanel is called multiple times)
+      if (window._panels) {
+        for (var _pi = window._panels.length - 1; _pi >= 0; _pi--) {
+          if (window._panels[_pi].id === 'grid') { window._panels.splice(_pi, 1); break; }
+        }
+      }
       window._registerPanel('grid', gridPanel, _gridNav, _gridClose);
       // Auto-focus grid panel when it opens
       if (typeof window._focusPanel === 'function') {

@@ -596,6 +596,7 @@ function setupScene(A) {
   A._registerPanel = _registerPanel;
   window._registerPanel = _registerPanel;
   window._focusPanel = _focusPanel;
+  window._panels = _panels;
 
   // ── Keyboard handler ──────────────────────────────────────────
   // ORIGINAL shortcuts preserved. Sequence engine + panel focus added on top.
