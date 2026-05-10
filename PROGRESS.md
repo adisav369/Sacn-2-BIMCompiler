@@ -20,6 +20,35 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S2D30 Grid UX Troubleshoot DONE (2026-05-10): SW v293**
+  - `grid_views.js` refactored — atomic single-responsibility: `classifyMesh`, `computeCutZ`, `applyFloorClip`, `clearFloorClip`, `boostLighting`, `restoreLighting`
+  - IfcRoof/IfcCovering meshes fully hidden (`visible=false`) in floor plan — roof no longer bleeds through clip plane
+  - Contours: white fill/stroke on dark bg, black on light — true reverse for print. No invented colors, no artificial ribbon.
+  - Band filter: original next-storey lookup + 1.5m minimum clamp (fixes SampleHouse crushed band)
+  - Cost panel: variance columns (Δ Qty, Δ Vol), ✕ close button fixed (innerHTML was overwriting it)
+  - Panel toggle −/+ always visible (was mobile-only). Hides all UI chrome for screenshots.
+  - Dwell/bookmark/flash removed from scissors — not requested.
+  - Save Cut button on scissors — only in 2D mode (gated by `isIn2DView`)
+  - `saveSectionFromScissors` exposed for card save from scissors slider
+  - Snap-to-structural post-cluster alignment (§GD_SNAP_ALIGN)
+  - 38 specs / 391 tests / 927 expects pass
+  - **Next:** Browser smoke test Card-First views, then deploy
+
+**S2D31 Card-First View Model (2026-05-10):**
+  - `view_state` column on saved_sections (hidden_classes, camera, storey, mode JSON)
+  - `captureViewState()` + `saveSectionToDb` includes view_state
+  - `restoreSection` rewritten as card-first composition: ortho → storey band → class treatment → contours → camera
+  - Storey band always applied on card restore — isolates storey elements for picking
+  - `FADE_IN_FLOOR`: IfcSlab/IfcPlate → opacity 0.08 (was full solid, fought wall contrast)
+  - `classifyMesh` returns hide/retain/fade/clip (was hide/retain/clip)
+  - `autoCreateCards()`: auto GF + L1 cards on first grid mode entry if no cards exist
+  - Camera persistence: getCameraState/applyCameraState round-trip zoom + pan
+  - 39 specs / 405 tests / 968 expects pass (3 pre-existing Terminal timeout failures)
+  - **Known issues:**
+    1. Terminal outer envelope walls: contour geometry may not cover curtain walls at cutZ=1.2m
+    2. DX door arcs: `§DOOR_ARC_SKIP reason=no_leaf` — geometry BLOBs don't have door panels
+    3. HITOS: verify GF wall visibility with current settings
+
 **S226a DONE (2026-05-08): Localisation — rate JSONs + locale wiring + flag picker.**
   - 16 country rate JSONs (`deploy/dev/rates/`): MY, UK, US, AU, DE, FR, ES, CN, TH, JP, KR, SA, BR, ID, ZA, BD.
   - Each: 50 IFC materials, 10 trades, 6 equipment, full sequence/work_packages/provisions — all in native currency.

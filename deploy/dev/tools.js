@@ -62,22 +62,20 @@ function setupTools(A) {
     panel.style.display = A.sectionOn ? 'block' : 'none';
     if (A.sectionOn) {
       A.applySectionAxis();
-      // Implementing 2D_027 §2.3 — Witness: W-2D27
-      // Inject "Save cut" button into section panel when section is active
+      // Save cut button — always available when scissors is ON
       var existSaveBtn = document.getElementById('section-save-cut-btn');
       if (!existSaveBtn && panel) {
         var saveBtn = document.createElement('button');
         saveBtn.id = 'section-save-cut-btn';
         saveBtn.textContent = 'Save cut';
-        saveBtn.title = 'Save this section cut as a named view';
+        saveBtn.title = 'Save this section cut as a card';
         saveBtn.style.cssText = 'display:block;width:100%;margin-top:6px;padding:4px 8px;font-size:11px;cursor:pointer;background:#1a4a1a;color:#8f8;border:1px solid #3a7a3a;border-radius:3px;';
         saveBtn.addEventListener('pointerup', function(e) {
           e.stopPropagation();
-          if (typeof SectionCut === 'undefined') return;
-          var savedName = SectionCut.saveCut(A, A.sectionAxis, A.sectionPlane.constant);
-          // Toast notification
+          if (A.saveSectionFromScissors) A.saveSectionFromScissors();
+          // Toast
           var toast = document.createElement('div');
-          toast.textContent = 'Saved as ' + savedName;
+          toast.textContent = 'Section saved';
           toast.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:#1a4a1a;color:#8f8;border:1px solid #3a7a3a;border-radius:4px;padding:6px 14px;font-size:12px;z-index:9999;pointer-events:none';
           document.body.appendChild(toast);
           setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 2500);
@@ -90,7 +88,7 @@ function setupTools(A) {
         obj.material.clippingPlanes = [];
         obj.material.needsUpdate = true;
       });
-      // Remove "Save cut" button when section is off
+      // Remove Save cut button when scissors turns off
       var saveBtnOff = document.getElementById('section-save-cut-btn');
       if (saveBtnOff && saveBtnOff.parentNode) saveBtnOff.parentNode.removeChild(saveBtnOff);
       console.log('[S205] §SECTION OFF');

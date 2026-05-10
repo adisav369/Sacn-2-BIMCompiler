@@ -8,26 +8,18 @@
  *
  * Implementing BBC.md §2D_022/§2D_023 — Witness: W-GRID-VIEWS
  *
- * Separated concern: camera positioning, section clipping, theme management.
- * No grid lines, no panels, no DOM — pure Three.js camera + material ops.
+ * Single-responsibility functions:
+ *   Camera:    saveCameraState, positionOrthoCamera, swapCamera
+ *   Clipping:  computeCutZ, classifyMesh, applyFloorClip, clearFloorClip
+ *   Lighting:  boostLighting, restoreLighting
+ *   Orchestration: lockView, unlockView
  *
- * API: GridViews.lockView(APP, mode, env)
- *      GridViews.unlockView(APP)
- *      GridViews.clearFloorClip(APP)
- *      GridViews.activeView()
- *      GridViews.VIEW_DEFS
- *
- * Log tags:
- *   §VIEW_LOCK    — view locked to preset
- *   §VIEW_UNLOCK  — view restored to perspective
- *   §VIEW_CLIP    — floor plan clip applied/cleared
+ * Log tags: §VIEW_LOCK §VIEW_UNLOCK §VIEW_CLIP §VIEW_LIGHT
  */
 var GridViews = (function() {
   'use strict';
 
-  // ── View Definitions ──────────────────────────────────────────────
-  // Pure data: camera offset direction, frustum axes, up vector.
-  // clip: 'gf'|'l1' means this view applies a horizontal section cut.
+  // ── View Definitions (pure data) ─────────────────────────────────
   var VIEW_DEFS = {
     front:  { dx: 0, dy: 0, dz:+1, fw:'W', fh:'H', up:[0,1,0] },
     rear:   { dx: 0, dy: 0, dz:-1, fw:'W', fh:'H', up:[0,1,0] },
@@ -38,21 +30,21 @@ var GridViews = (function() {
     floor1: { dx: 0, dy:+1, dz: 0, fw:'W', fh:'D', up:[0,0,-1], clip: true }
   };
 
-  // ── State (per-session) ───────────────────────────────────────────
-  var _savedCamera = null;      // { pos, target, up, fov } before first lock
-  var _orthoCamera = null;      // shared OrthographicCamera for locked views
-  var _origCamera = null;       // reference to the original PerspectiveCamera
-  var _activeView = null;       // current mode key or null
-  var _floorClipPlane = null;   // THREE.Plane for floor plan section cut
-  var _savedLighting = null;    // saved ambient/sun intensity before 2D boost
-  // No forced theme state — user controls theme
-  var _resizeHandler = null;    // resize event handler ref
+  // ── State ────────────────────────────────────────────────────────
+  var _savedCamera = null;
+  var _orthoCamera = null;
+  var _origCamera = null;
+  var _activeView = null;
+  var _floorClipPlane = null;
+  var _hiddenMeshes = [];
+  var _fadedMeshes = [];
+  var _savedLighting = null;
+  var _resizeHandler = null;
 
   function log(msg) { console.log('[GridViews] ' + msg); }
 
-  // ── Camera ────────────────────────────────────────────────────────
+  // ── 1. Camera (pure geometry) ────────────────────────────────────
 
-  /** Compute building centre in Three.js coords */
   function buildingCentre3(A, env) {
     var cx = (env.xMin + env.xMax) / 2;
     var cy = (env.yMin + env.yMax) / 2;
@@ -61,7 +53,6 @@ var GridViews = (function() {
     return new THREE.Vector3(t.x, t.y, t.z);
   }
 
-  /** Save the original perspective camera state (once) */
   function saveCameraState(A) {
     if (_savedCamera) return;
     _origCamera = A.camera;
@@ -73,7 +64,6 @@ var GridViews = (function() {
     };
   }
 
-  /** Create or update the shared orthographic camera */
   function getOrthoCamera(halfW, halfH, near, far) {
     if (!_orthoCamera) {
       _orthoCamera = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, near, far);
@@ -89,7 +79,6 @@ var GridViews = (function() {
     return _orthoCamera;
   }
 
-  /** Switch the renderer to use a given camera and rebind controls */
   function swapCamera(A, cam) {
     A.camera = cam;
     A.controls.object = cam;
@@ -103,22 +92,18 @@ var GridViews = (function() {
     if (cam.isOrthographicCamera) {
       _resizeHandler = function() {
         A.renderer.setSize(window.innerWidth, window.innerHeight);
-        // §7 — Recompute ortho frustum with new viewport aspect ratio
         var newAspect = window.innerWidth / window.innerHeight;
-        var curHalfH = cam.top; // current half-height (positive)
+        var curHalfH = cam.top;
         var curHalfW = curHalfH * newAspect;
         cam.left = -curHalfW;
         cam.right = curHalfW;
         cam.updateProjectionMatrix();
-        console.log('§GRID_VIEW resize aspect=' + newAspect.toFixed(3) +
-            ' halfW=' + curHalfW.toFixed(2) + ' halfH=' + curHalfH.toFixed(2));
       };
       window.addEventListener('resize', _resizeHandler);
     }
     A.markDirty();
   }
 
-  /** Position the ortho camera — pure geometry, no side effects */
   function positionOrthoCamera(A, mode, env, centre) {
     var def = VIEW_DEFS[mode];
     if (!def) return null;
@@ -126,14 +111,13 @@ var GridViews = (function() {
     var bldW = env.xMax - env.xMin;
     var bldD = env.yMax - env.yMin;
     var bldH = env.zMax - env.zMin;
-    var margin = 1.5; // includes grid overshoot + bubbles + dim chains
+    var margin = 1.5;
     var dist = Math.max(bldW, bldD, bldH) * 2;
 
     var dims = { W: bldW, D: bldD, H: bldH };
     var halfW = (dims[def.fw] / 2) * margin;
     var halfH = (dims[def.fh] / 2) * margin;
 
-    // §7 — Viewport aspect ratio correction to prevent bubble skewing
     var viewportAspect = window.innerWidth / window.innerHeight;
     var buildingAspect = halfW / halfH;
     if (viewportAspect > buildingAspect) {
@@ -142,12 +126,9 @@ var GridViews = (function() {
       halfH = halfW / viewportAspect;
     }
 
-    // §7 — Pre-render guard: abort if frustum aspect still mismatches viewport
     var frustumAspect = halfW / halfH;
-    var vpAspect = window.innerWidth / window.innerHeight;
-    if (Math.abs(frustumAspect - vpAspect) > 0.01) {
-      console.log('§GRID_VIEW ABORT — frustum aspect ' + frustumAspect.toFixed(3) +
-          ' ≠ viewport ' + vpAspect.toFixed(3) + ' — would skew');
+    if (Math.abs(frustumAspect - viewportAspect) > 0.01) {
+      log('§VIEW_LOCK ABORT — aspect mismatch');
       return null;
     }
 
@@ -165,80 +146,158 @@ var GridViews = (function() {
     return cam;
   }
 
-  // ── Clipping (floor plan only) ────────────────────────────────────
+  // ── 2. Mesh Classification (pure function — no side effects) ─────
 
-  /** Apply horizontal section cut — uses storey-aware cutZ if provided, else falls back to config */
-  function applyFloorClip(A, env, viewMode, cutZOverride) {
-    var cutZ;
-    if (cutZOverride != null) {
-      cutZ = cutZOverride;
-    } else {
-      var clipCfg = (typeof GridConfig !== 'undefined') ? GridConfig.clipFor(viewMode) : null;
-      var bldH = env.zMax - env.zMin;
-      if (clipCfg && clipCfg.offset_ratio) {
-        cutZ = env.zMin + bldH * clipCfg.offset_ratio;
-      } else {
-        cutZ = env.zMin + ((clipCfg && clipCfg.offset_m) || 1.0);
-      }
-    }
+  // Classes fully hidden in floor plan — roof geometry spans below clip plane
+  var HIDE_IN_FLOOR = {
+    'IfcRoof': 1, 'IfcRoofing': 1, 'IfcCovering': 1
+  };
+
+  // Classes rendered as faint outline in floor plan — slab fights wall contrast
+  var FADE_IN_FLOOR = {
+    'IfcSlab': 1, 'IfcPlate': 1
+  };
+
+  /** Classify a mesh for floor plan treatment.
+   *  @param {Object} [hideSet] — card-specific hide set (overrides HIDE_IN_FLOOR)
+   *  @returns 'hide' | 'retain' | 'fade' | 'clip' */
+  function classifyMesh(ifcClass, retainSet, hideSet) {
+    var hs = hideSet || HIDE_IN_FLOOR;
+    if (hs[ifcClass]) return 'hide';
+    if (retainSet[ifcClass]) return 'retain';
+    if (FADE_IN_FLOOR[ifcClass]) return 'fade';
+    return 'clip';
+  }
+
+  // ── 3. Clipping (floor plan only) ────────────────────────────────
+
+  /** Compute the IFC Z for the clip plane.
+   *  Priority: explicit override > ratio-based > offset-based. */
+  function computeCutZ(env, viewMode, cutZOverride) {
+    if (cutZOverride != null) return cutZOverride;
+    var clipCfg = (typeof GridConfig !== 'undefined') ? GridConfig.clipFor(viewMode) : null;
+    var bldH = env.zMax - env.zMin;
+    if (clipCfg && clipCfg.offset_ratio) return env.zMin + bldH * clipCfg.offset_ratio;
+    return env.zMin + ((clipCfg && clipCfg.offset_m) || 1.0);
+  }
+
+  /** Apply horizontal clip plane + hide roof meshes.
+   *  Each mesh gets exactly ONE treatment: hide, retain, or clip.
+   *  @param {Object} [hideSet] — card-specific hide set (overrides HIDE_IN_FLOOR) */
+  function applyFloorClip(A, env, viewMode, cutZOverride, hideSet) {
+    var cutZ = computeCutZ(env, viewMode, cutZOverride);
     var cutY = cutZ - A.modelOffset.z;
 
     _floorClipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), cutY);
     A.renderer.localClippingEnabled = true;
+    _hiddenMeshes = [];
 
-    // Retain set from GridConfig — classes to skip clipping
     var retainSet = (typeof GridConfig !== 'undefined')
       ? GridConfig.retainSet(viewMode)
-      : { 'IfcFurnishingElement': 1, 'IfcFurniture': 1 }; // fallback
-    var clipped = 0, skipped = 0;
+      : { 'IfcFurnishingElement': 1, 'IfcFurniture': 1 };
+
+    var clipped = 0, retained = 0, hidden = 0, faded = 0;
+    _fadedMeshes = [];
     A.collectMeshes(function(o) { return o.isMesh; }).forEach(function(obj) {
       var cls = (obj.userData && obj.userData.ifcClass) || '';
-      if (retainSet[cls]) { skipped++; return; }
-      obj.material.clippingPlanes = [_floorClipPlane];
-      obj.material.clipShadows = true;
-      obj.material.needsUpdate = true;
-      clipped++;
+      var action = classifyMesh(cls, retainSet, hideSet);
+
+      if (action === 'hide') {
+        obj.visible = false;
+        _hiddenMeshes.push(obj);
+        hidden++;
+      } else if (action === 'retain') {
+        retained++;
+      } else if (action === 'fade') {
+        // Slab: clip + make near-transparent so it doesn't fight wall contrast
+        obj.material.clippingPlanes = [_floorClipPlane];
+        obj.material.clipShadows = true;
+        if (!obj.userData._origOpacity) {
+          obj.userData._origOpacity = obj.material.opacity;
+          obj.userData._origTransparent = obj.material.transparent;
+        }
+        obj.material.opacity = 0.08;
+        obj.material.transparent = true;
+        obj.material.needsUpdate = true;
+        _fadedMeshes.push(obj);
+        faded++;
+      } else {
+        obj.material.clippingPlanes = [_floorClipPlane];
+        obj.material.clipShadows = true;
+        obj.material.needsUpdate = true;
+        clipped++;
+      }
     });
-    log('§VIEW_CLIP apply cutZ_ifc=' + cutZ.toFixed(2) + ' cutY_three=' + cutY.toFixed(2) +
-        ' clipped=' + clipped + ' furniture_skipped=' + skipped);
+
+    log('§VIEW_CLIP apply cutZ=' + cutZ.toFixed(2) + ' cutY=' + cutY.toFixed(2) +
+        ' clipped=' + clipped + ' retained=' + retained + ' hidden=' + hidden + ' faded=' + faded);
   }
 
-  /** Clear floor plan section clipping — wipe ALL meshes */
+  /** Clear clip planes and restore hidden + faded meshes. */
   function clearFloorClip(A) {
-    if (!_floorClipPlane) return;
+    if (!_floorClipPlane && !_hiddenMeshes.length && !_fadedMeshes.length) return;
+
     A.collectMeshes(function(o) { return o.isMesh; }).forEach(function(obj) {
       obj.material.clippingPlanes = null;
       obj.material.clipShadows = false;
       obj.material.needsUpdate = true;
     });
+
+    for (var i = 0; i < _hiddenMeshes.length; i++) {
+      _hiddenMeshes[i].visible = true;
+    }
+
+    // Restore faded meshes (slabs) to original opacity
+    for (var f = 0; f < _fadedMeshes.length; f++) {
+      var fm = _fadedMeshes[f];
+      if (fm.userData._origOpacity != null) {
+        fm.material.opacity = fm.userData._origOpacity;
+        fm.material.transparent = fm.userData._origTransparent;
+        fm.material.needsUpdate = true;
+        delete fm.userData._origOpacity;
+        delete fm.userData._origTransparent;
+      }
+    }
+
+    log('§VIEW_CLIP cleared restored=' + _hiddenMeshes.length + ' unfaded=' + _fadedMeshes.length);
+    _hiddenMeshes = [];
+    _fadedMeshes = [];
     _floorClipPlane = null;
     A.renderer.localClippingEnabled = false;
-    log('§VIEW_CLIP cleared');
   }
 
-  // ── Theme ──────────────────────────────────────────────────────────
-  // No forced theme toggle. User controls theme via sunglasses button.
-  // Removed: applyFloorTheme / restoreFloorTheme — was inverting background
-  // without user request (invention, not extraction).
+  // ── 4. Lighting ──────────────────────────────────────────────────
 
-  // ── Public API ────────────────────────────────────────────────────
+  function boostLighting(A) {
+    if (_savedLighting || !A.ambient || !A.sun) return;
+    _savedLighting = { ambInt: A.ambient.intensity, sunInt: A.sun.intensity };
+    A.ambient.intensity = 1.2;
+    A.sun.intensity = 0.6;
+    log('§VIEW_LIGHT boost (was ' + _savedLighting.ambInt.toFixed(1) + '/' + _savedLighting.sunInt.toFixed(1) + ')');
+  }
 
-  /** Lock camera to a named view preset. cutZ = storey-aware cut height (optional). */
-  function lockView(A, mode, env, cutZ) {
+  function restoreLighting(A) {
+    if (!_savedLighting || !A.ambient || !A.sun) return;
+    A.ambient.intensity = _savedLighting.ambInt;
+    A.sun.intensity = _savedLighting.sunInt;
+    log('§VIEW_LIGHT restored');
+    _savedLighting = null;
+  }
+
+  // ── 5. Orchestration (composes atomic functions) ─────────────────
+
+  /** Lock to ortho 2D view.
+   *  @param {boolean} [cameraOnly] — true = camera + lighting only, skip clip.
+   *    Card-first restore uses this: camera → band → clip (avoids band un-hiding roofs). */
+  function lockView(A, mode, env, cutZ, hideSet, cameraOnly) {
     if (!env || !VIEW_DEFS[mode]) return;
     saveCameraState(A);
-
-    var centre = buildingCentre3(A, env);
-
-    // Always clear previous clip first — non-negotiable
     clearFloorClip(A);
 
-    // Concern 1: Camera — §7: null means aspect mismatch, do not enter 2D mode
+    var centre = buildingCentre3(A, env);
     var cam = positionOrthoCamera(A, mode, env, centre);
-    if (!cam) {
-      console.log('§GRID_VIEW lockView aborted — setupCamera returned null for mode=' + mode);
-      return;
-    }
+    if (!cam) return;
+
     A.controls.target.copy(centre);
     swapCamera(A, cam);
     A.controls.enableRotate = false;
@@ -246,32 +305,19 @@ var GridViews = (function() {
     A.controls.enableZoom = true;
     A.controls.update();
 
-    // Concern 2: Clip + theme — only if view definition says so
-    var def = VIEW_DEFS[mode];
-    if (def.clip) {
-      applyFloorClip(A, env, mode, cutZ);
+    if (!cameraOnly && VIEW_DEFS[mode].clip) {
+      applyFloorClip(A, env, mode, cutZ, hideSet);
     }
 
-    // Concern 3: Boost lighting for ortho views — flat angle makes sides grey
-    if (!_savedLighting && A.ambient && A.sun) {
-      _savedLighting = { ambInt: A.ambient.intensity, sunInt: A.sun.intensity };
-      A.ambient.intensity = 1.2;
-      A.sun.intensity = 0.6;
-      log('§VIEW_LIGHT boost ambient=1.2 sun=0.6 (was ' +
-          _savedLighting.ambInt.toFixed(1) + '/' + _savedLighting.sunInt.toFixed(1) + ')');
-    }
-
+    boostLighting(A);
     _activeView = mode;
     A.markDirty();
-    log('§VIEW_LOCK mode=' + mode + ' centre=(' + centre.x.toFixed(1) + ',' +
-        centre.y.toFixed(1) + ',' + centre.z.toFixed(1) + ')');
+    log('§VIEW_LOCK mode=' + mode + (cameraOnly ? ' (cameraOnly)' : ''));
   }
 
-  /** Unlock: restore the original perspective camera */
   function unlockView(A) {
     if (!_savedCamera || !_origCamera) {
       _activeView = null;
-      log('§VIEW_UNLOCK (no saved state)');
       return;
     }
 
@@ -295,17 +341,8 @@ var GridViews = (function() {
 
     if (A._onResize) A._onResize();
 
-    var wasFloor = (_activeView === 'floor' || _activeView === 'floor1');
     clearFloorClip(A);
-
-    // Restore lighting
-    if (_savedLighting && A.ambient && A.sun) {
-      A.ambient.intensity = _savedLighting.ambInt;
-      A.sun.intensity = _savedLighting.sunInt;
-      log('§VIEW_LIGHT restored ambient=' + _savedLighting.ambInt.toFixed(1) +
-          ' sun=' + _savedLighting.sunInt.toFixed(1));
-      _savedLighting = null;
-    }
+    restoreLighting(A);
 
     _savedCamera = null;
     _activeView = null;
@@ -313,11 +350,42 @@ var GridViews = (function() {
     log('§VIEW_UNLOCK restored');
   }
 
+  // ── Public API ───────────────────────────────────────────────────
+
   return {
     VIEW_DEFS:      VIEW_DEFS,
+    HIDE_IN_FLOOR:  HIDE_IN_FLOOR,
     lockView:       lockView,
     unlockView:     unlockView,
+    applyFloorClip: applyFloorClip,
     clearFloorClip: clearFloorClip,
-    activeView:     function() { return _activeView; }
+    activeView:     function() { return _activeView; },
+    /** Read current ortho camera state for card persistence */
+    getCameraState: function(A) {
+      if (!_orthoCamera) return null;
+      var tgt = A.controls ? A.controls.target : null;
+      return {
+        x: _orthoCamera.position.x,
+        y: _orthoCamera.position.y,
+        z: _orthoCamera.position.z,
+        zoom: _orthoCamera.zoom,
+        targetX: tgt ? tgt.x : null,
+        targetY: tgt ? tgt.y : null,
+        targetZ: tgt ? tgt.z : null
+      };
+    },
+    /** Apply saved camera state from a card */
+    applyCameraState: function(A, camState) {
+      if (!_orthoCamera || !camState) return;
+      _orthoCamera.position.set(camState.x, camState.y, camState.z);
+      _orthoCamera.zoom = camState.zoom || 1;
+      _orthoCamera.updateProjectionMatrix();
+      if (camState.targetX != null) {
+        A.controls.target.set(camState.targetX, camState.targetY, camState.targetZ);
+      }
+      A.controls.update();
+      A.markDirty();
+      log('§VIEW_CAM restored zoom=' + _orthoCamera.zoom.toFixed(2));
+    }
   };
 })();

@@ -66,56 +66,58 @@ test.describe('Smart Save + Undo/Redo + Band Filter + Wall Outline + Drag UX', (
     expect(s).toContain('§KERNEL_OPS_LOADED v4');
   });
 
-  // ── grid_scissors.js — smart save dwell tracker ─────────────────
+  // ── grid_scissors.js — core detection (dwell tracker removed per user request) ──
 
-  test('T_3204: grid_scissors.js has dwell tracker — smart save detection present', () => {
+  test('T_3204: grid_scissors.js has detectAtCut — scissors grid detection present', () => {
     const s = src('grid_scissors.js');
-    expect(s).toContain('dwellPoints');
-    expect(s).toContain('function dwellTrack');
-    expect(s).toContain('function checkDwell');
+    expect(s).toContain('function detectAtCut');
+    expect(s).toContain('function buildScissorsGrids');
   });
 
-  test('T_3205: grid_scissors.js exports dwellPoints function — dwell data accessible', () => {
+  test('T_3205: grid_scissors.js exports rebuildAt function — restore trigger accessible', () => {
     const s = src('grid_scissors.js');
-    expect(s).toContain('dwellPoints:');
-    expect(s).toMatch(/dwellPoints:\s*function/);
+    expect(s).toContain('rebuildAt:');
   });
 
-  test('T_3206: grid_scissors.js exports dwellReset function — cleanup accessible', () => {
-    const s = src('grid_scissors.js');
-    expect(s).toContain('dwellReset:');
+  test('T_3206: grid_contours.js has theme-aware fill — white on dark, black on light', () => {
+    const s = src('grid_contours.js');
+    expect(s).toContain('isDark');
+    expect(s).toContain("'#ffffff'");
+    expect(s).toContain("'#000000'");
   });
 
-  test('T_3207: grid_scissors.js has flashDwellCapture — visual feedback on dwell', () => {
-    const s = src('grid_scissors.js');
-    expect(s).toContain('function flashDwellCapture');
-    expect(s).toContain('background:white'); // screen flash
+  test('T_3207: grid_contours.js fills structural classes — FILL_CLASSES has wall + column', () => {
+    const s = src('grid_contours.js');
+    expect(s).toContain("'IfcWall': 1");
+    expect(s).toContain("'IfcColumn': 1");
+    expect(s).toContain('fillColor');
   });
 
-  test('T_3208: grid_scissors.js has FIFO eviction — oldest dwell removed when max reached', () => {
-    const s = src('grid_scissors.js');
-    expect(s).toContain('dwellPoints.shift()');
-    expect(s).toContain('FIFO');
+  test('T_3208: grid_contours.js stroke color follows theme — no invented colors', () => {
+    const s = src('grid_contours.js');
+    expect(s).toContain('strokeColor');
+    expect(s).toContain('otherStroke');
+    // No artificial color maps
+    expect(s).not.toContain('FILL_COLORS_DARK');
+    expect(s).not.toContain('OUTLINE_COLORS_DARK');
   });
 
-  test('T_3209: grid_scissors.js has dwell markers — red outlines at captured Z levels', () => {
-    const s = src('grid_scissors.js');
-    expect(s).toContain('function rebuildDwellMarkers');
-    expect(s).toContain('function clearDwellMarkers');
-    expect(s).toContain('isDwellMarker');
+  test('T_3209: tools.js Save cut button available when scissors ON — wired to card save', () => {
+    const s = src('tools.js');
+    expect(s).toContain('section-save-cut-btn');
+    expect(s).toContain('saveSectionFromScissors');
   });
 
-  test('T_3210: grid_scissors.js has proximity dedup — same-band dwells consolidated', () => {
-    const s = src('grid_scissors.js');
-    expect(s).toContain('§SMART_SAVE dedup');
-    expect(s).toContain('proxTol');
+  test('T_3210: grid_overlay.js exposes saveSectionFromScissors — scissors save wired', () => {
+    const s = src('grid_overlay.js');
+    expect(s).toContain('saveSectionFromScissors');
+    expect(s).toContain('isIn2DView');
   });
 
-  test('T_3211: grid_scissors.js has three-strike lock — convergence detection', () => {
-    const s = src('grid_scissors.js');
-    expect(s).toContain('locked = true');
-    expect(s).toContain('lockHits');
-    expect(s).toContain('convergence');
+  test('T_3211: grid_overlay.js exposes isIn2DView — 2D mode check accessible', () => {
+    const s = src('grid_overlay.js');
+    expect(s).toContain("A.isIn2DView = function");
+    expect(s).toMatch(/floor.*floor1/);
   });
 
   // ── grid_rules.json — smart_save config ─────────────────────────
@@ -155,24 +157,27 @@ test.describe('Smart Save + Undo/Redo + Band Filter + Wall Outline + Drag UX', (
     expect(body).not.toMatch(/!A\.sectionOn.*toggleSection/);
   });
 
-  test('T_3216: grid_overlay.js restoreSection raises clip for dwells — all layers visible', () => {
+  test('T_3216: grid_overlay.js restoreSection uses DB query — card isolates storey by GUID', () => {
     const s = src('grid_overlay.js');
     const restoreBlock = s.slice(s.indexOf('function restoreSection'));
-    expect(restoreBlock).toContain('clip raised');
-    expect(restoreBlock).toContain('highest dwell');
+    expect(restoreBlock).toContain('§CARD_RESTORE');
+    expect(restoreBlock).toContain('queryStoreyGuids');
   });
 
-  test('T_3217: grid_overlay.js restoreSection renders composite layers — painters algorithm', () => {
+  test('T_3217: grid_overlay.js restoreSection renders contours — card recomposes view', () => {
     const s = src('grid_overlay.js');
     const restoreBlock = s.slice(s.indexOf('function restoreSection'));
-    expect(restoreBlock).toContain('composite layer=');
-    expect(restoreBlock).toContain('GridContours.renderContours');
+    expect(restoreBlock).toContain('renderContoursForView');
+    expect(restoreBlock).toContain('§CARD_RESTORE');
   });
 
-  test('T_3218: grid_overlay.js restoreSection calls applyStoreyBandVisibility — element picking fixed', () => {
+  test('T_3218: grid_overlay.js restoreSection does one scene pass — card owns visibility via guidSet', () => {
     const s = src('grid_overlay.js');
-    const restoreBlock = s.slice(s.indexOf('function restoreSection'));
-    expect(restoreBlock).toContain('applyStoreyBandVisibility');
+    const start = s.indexOf('function restoreSection');
+    const restoreBlock = s.slice(start, s.indexOf('\n  function', start + 10));
+    // Card uses guidSet from DB query, not band filter
+    expect(restoreBlock).toContain('guidSet');
+    expect(restoreBlock).toContain('queryStoreyGuids');
   });
 
   test('T_3219: grid_overlay.js toggle-off calls clearStoreyBandVisibility — no mesh corruption', () => {
@@ -183,22 +188,26 @@ test.describe('Smart Save + Undo/Redo + Band Filter + Wall Outline + Drag UX', (
     expect(exitBlock).toContain('clearStoreyBandVisibility');
   });
 
-  test('T_3220: grid_overlay.js saves dwells via saveSectionToDb — dwell points persisted in DB', () => {
+  test('T_3220: grid_overlay.js saves dwells + view_state via saveSectionToDb — card state persisted in DB', () => {
     const s = src('grid_overlay.js');
-    expect(s).toContain('function saveSectionToDb(name, dwells)');
+    expect(s).toContain('function saveSectionToDb(name, dwells');
     expect(s).toContain('dwellJson');
+    expect(s).toContain('view_state');
   });
 
-  test('T_3221: grid_overlay.js loadSavedSections reads detected_grids column — dwells loaded from DB', () => {
+  test('T_3221: grid_overlay.js loadSavedSections reads detected_grids + view_state columns — card state loaded from DB', () => {
     const s = src('grid_overlay.js');
-    expect(s).toContain('detected_grids FROM saved_sections');
+    expect(s).toContain('detected_grids, view_state FROM saved_sections');
     expect(s).toContain('dwells: dwells');
+    expect(s).toContain('view_state: vs');
   });
 
-  test('T_3234: grid_overlay.js smart save badge shows dwell count — UI indicator present', () => {
-    const s = src('grid_overlay.js');
-    expect(s).toContain('smart-save-badge');
-    expect(s).toContain('Dwell points captured');
+  test('T_3234: grid_contours.js fill uses true reverse — white/black only, no invented colors', () => {
+    const s = src('grid_contours.js');
+    // Must NOT have artificial color inventions
+    expect(s).not.toContain('ribbonColor');
+    expect(s).not.toContain('#5588bb');
+    expect(s).not.toContain('#cc8844');
   });
 
   // ── section_cut.js — band filter fixes ──────────────────────────
@@ -279,10 +288,13 @@ test.describe('Smart Save + Undo/Redo + Band Filter + Wall Outline + Drag UX', (
     expect(s).toContain('function buildRibbon');
   });
 
-  test('T_3233: grid_contours.js computes minOutlineW from camera — wall thickness scales with zoom', () => {
+  test('T_3233: grid_contours.js FILL_CLASSES excludes IfcSlab — slab fill would cover floor', () => {
     const s = src('grid_contours.js');
-    expect(s).toContain('MIN_WALL_SCREEN_PX');
-    expect(s).toContain('minOutlineW');
-    expect(s).toContain('frustumW');
+    expect(s).toContain('FILL_CLASSES');
+    // IfcSlab must NOT be in fill classes
+    expect(s).not.toMatch(/FILL_CLASSES.*IfcSlab/);
+    // IfcWall and IfcColumn must be in fill classes
+    expect(s).toMatch(/FILL_CLASSES.*IfcWall/);
+    expect(s).toMatch(/FILL_CLASSES.*IfcColumn/);
   });
 });
