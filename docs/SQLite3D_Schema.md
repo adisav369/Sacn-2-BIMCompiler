@@ -83,6 +83,7 @@ CREATE TABLE component_geometries (
     geometry_hash TEXT PRIMARY KEY,
     vertices BLOB,              -- Float32Array, centred at origin, Z-up
     faces BLOB,                 -- Int32Array (triangle indices)
+    normals BLOB,               -- Float32Array, precomputed vertex normals (Z-up)
     building TEXT
 );
 ```
@@ -164,13 +165,16 @@ All three produce the same schema. Viewer doesn't distinguish source.
 SQLite DB → sql.js WASM → query elements_meta + element_transforms
   → stream geometry BLOBs from component_geometries
   → Float32Array → THREE.BufferGeometry → GPU
+  → precomputed normals BLOB skips computeVertexNormals() (zero CPU at load)
 
 Pick: click → raycast → guid → SELECT bbox_x,y,z → yellow highlight box
 Filter: storey/discipline → hide/show InstancedMesh instances
-4D: scrub timeline → SELECT tasks by date → colour elements by phase
+4D: BroadcastChannel relay — viewer runs GROUP BY queries, sends results
+    to boq_charts.html (no DB re-load, sub-second render)
 ```
 
 No intermediate format. No conversion. DB BLOBs ARE the GPU buffers.
+Normals precomputed at IFC extraction time — viewer just copies and applies Y↔Z swap.
 
 ---
 
@@ -192,8 +196,8 @@ None of these libraries are modified. They are called via their public APIs.
 
 | Script | What it does | Novelty |
 |---|---|---|
-| `import_worker.js` | Calls web-ifc API → extracts entities → 4×4 transform, Y→Z-up, centroid re-centre, discipline classify, storey map, material extract, geometry dedup (FNV-1a hash), auto-scale mm→m | The extraction pipeline — turns raw web-ifc output into structured DB records |
-| `import_db_builder.js` | Takes extracted data → creates 10-table SQLite schema via sql.js | The schema design — BOM-based, instanced, 4D-ready |
+| `import_worker.js` | Calls web-ifc API → extracts entities → 4×4 transform, Y→Z-up, centroid re-centre, discipline classify, storey map, material extract, geometry dedup (FNV-1a hash), auto-scale mm→m, **precompute vertex normals**, multi-file merge | The extraction pipeline — turns raw web-ifc output into structured DB records |
+| `import_db_builder.js` | Takes extracted data → creates 10-table SQLite schema via sql.js, stores normals BLOB | The schema design — BOM-based, instanced, 4D-ready |
 | `streaming.js` | Queries DB → streams BLOBs → Float32Array → Three.js BufferGeometry → GPU | **The core innovation** — DB BLOBs are GPU buffers, no intermediate format |
 | `picking.js` | Raycast → GUID → SQL query → highlight box from bbox | Click-to-identify from DB, not scene graph |
 | `navigate.js` | Storey/discipline filter, search, tree panel | SQL-driven navigation, not IFC hierarchy |
