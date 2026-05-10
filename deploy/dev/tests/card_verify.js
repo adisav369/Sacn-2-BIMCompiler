@@ -563,7 +563,15 @@ for (const [bldName, expected] of Object.entries(TARGET_BUILDINGS)) {
   const esc = gfStorey.replace(/'/g, "''");
 
   // 2. Get ALL elements on GF storey with their classes
+  // Count ALL elements in meta — ghosts included. Ghosts are GIGO: log them, don't hide them.
   const rows = sql(dbPath, "SELECT m.ifc_class, COUNT(*) FROM elements_meta m WHERE m.storey='" + esc + "' GROUP BY m.ifc_class ORDER BY COUNT(*) DESC").split('\n').filter(r => r);
+  // Ghost admission check: elements in meta but not in transforms
+  const metaN = parseInt(sql(dbPath, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + esc + "'")) || 0;
+  const realN = parseInt(sql(dbPath, "SELECT COUNT(*) FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.storey='" + esc + "'")) || 0;
+  if (metaN !== realN) {
+    const ghostList = sql(dbPath, "SELECT m.ifc_class, m.element_name FROM elements_meta m LEFT JOIN element_transforms t ON m.guid=t.guid WHERE m.storey='" + esc + "' AND t.guid IS NULL").split('\n').filter(r => r);
+    console.log('    §GHOST_ADMISSION ' + bldName + ' ghosts=' + (metaN - realN) + ': ' + ghostList.join(', '));
+  }
 
   // 3. Run classifyMesh on each class — log the RESULT
   let hideCount = 0, fadeCount = 0, retainCount = 0, clipCount = 0, totalCount = 0;
@@ -923,6 +931,15 @@ check('Pick: non-storey hidden (!guidSet → visible=false)', rBody.includes('!g
 // Verify: scene.js raycaster only tests visible meshes (Three.js default, but confirm no override)
 check('Pick: raycaster uses default visibility filter (no recursive:false override)',
   !scene.includes('recursive: false') && !scene.includes('recursive:false'));
+
+// 2D contour pick: clicking a contour/arc/label must resolve its IFC identity.
+// Contour meshes carry userData.guid + userData.ifcClass — pick handler must read them.
+const pick = src('picking.js');
+check('Pick: contour userData.guid fallback (2D items clickable)',
+  pick.includes('hit.object.userData.guid'), '2D contours carry guid in userData');
+check('Pick: logs §PICK contour→guid', pick.includes('§PICK contour'));
+// Contour meshes carry ifcClass for display
+check('Contour meshes carry ifcClass', gc.includes("ifcClass: el.ifcClass"));
 
 // Grid lines must NOT obscure contours — grid has lower renderOrder or contours have higher
 check('Grid lines renderOrder set', go.includes('renderOrder'));

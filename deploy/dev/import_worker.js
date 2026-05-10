@@ -124,6 +124,84 @@ self.onmessage = async function(e) {
       return;
     }
     // Unit scaling applied AFTER tessellation via heuristic (web-ifc is inconsistent)
+
+    // ── S252: Build expressID → {r,g,b,a} colour map ──────────────────────
+    // web-ifc 0.0.77 returns white for IFC4 Revit files that use IFCINDEXEDCOLOURMAP.
+    // Fix: walk IFCINDEXEDCOLOURMAP → face set → shape rep → product def → element.
+    const _colorMap = {}; // element expressID → {x,y,z,w}
+    try {
+      if (WebIFC.IFCINDEXEDCOLOURMAP) {
+        // Step 1: IFCINDEXEDCOLOURMAP → faceSetId → colour
+        var faceSetColour = {};
+        var icmIds = ifcApi.GetLineIDsWithType(modelID, WebIFC.IFCINDEXEDCOLOURMAP);
+        for (var i = 0; i < icmIds.size(); i++) {
+          try {
+            var icm = ifcApi.GetLine(modelID, icmIds.get(i));
+            var fsId = icm.MappedTo.value;
+            var colId = icm.Colours.value;
+            var opacity = 1.0;
+            if (icm.Opacity && typeof icm.Opacity === 'object' && icm.Opacity.value !== undefined)
+              opacity = icm.Opacity.value;
+            else if (typeof icm.Opacity === 'number') opacity = icm.Opacity;
+            var crl = ifcApi.GetLine(modelID, colId);
+            if (crl && crl.ColourList && crl.ColourList.length > 0) {
+              var rgb = crl.ColourList[0];
+              var r = typeof rgb[0] === 'object' ? rgb[0]._representationValue : rgb[0];
+              var g = typeof rgb[1] === 'object' ? rgb[1]._representationValue : rgb[1];
+              var b = typeof rgb[2] === 'object' ? rgb[2]._representationValue : rgb[2];
+              faceSetColour[fsId] = { x: r, y: g, z: b, w: opacity };
+            }
+          } catch(e) {}
+        }
+        console.log('[S252] §ICM faceSet_colours=' + Object.keys(faceSetColour).length);
+
+        if (Object.keys(faceSetColour).length > 0) {
+          // Step 2: IFCSHAPEREPRESENTATION → items contain face sets
+          var shapeRepColour = {};
+          var srIds = ifcApi.GetLineIDsWithType(modelID, WebIFC.IFCSHAPEREPRESENTATION);
+          for (var si = 0; si < srIds.size(); si++) {
+            try {
+              var sr = ifcApi.GetLine(modelID, srIds.get(si));
+              if (!sr.Items) continue;
+              for (var ji = 0; ji < sr.Items.length; ji++) {
+                var itemId = sr.Items[ji].value;
+                if (faceSetColour[itemId]) {
+                  shapeRepColour[sr.expressID] = faceSetColour[itemId];
+                  break;
+                }
+              }
+            } catch(e) {}
+          }
+
+          // Step 3: IFCPRODUCTDEFINITIONSHAPE → representations
+          var prodDefColour = {};
+          var pdsIds = ifcApi.GetLineIDsWithType(modelID, WebIFC.IFCPRODUCTDEFINITIONSHAPE);
+          for (var pi = 0; pi < pdsIds.size(); pi++) {
+            try {
+              var pds = ifcApi.GetLine(modelID, pdsIds.get(pi));
+              if (!pds.Representations) continue;
+              for (var ri = 0; ri < pds.Representations.length; ri++) {
+                var repId = pds.Representations[ri].value;
+                if (shapeRepColour[repId]) {
+                  prodDefColour[pds.expressID] = shapeRepColour[repId];
+                  break;
+                }
+              }
+            } catch(e) {}
+          }
+
+          // Step 4 deferred: element lookup happens in Phase 3 element loop below
+          // Store prodDefColour for use there
+          console.log('[S252] §CHAIN shapeReps=' + Object.keys(shapeRepColour).length +
+            ' prodDefs=' + Object.keys(prodDefColour).length);
+        }
+      }
+    } catch(colErr) {
+      console.log('[S252] §ICM_ERR ' + (colErr.message || colErr));
+    }
+    // Make prodDefColour available to element loop
+    var _prodDefColour = (typeof prodDefColour !== 'undefined') ? prodDefColour : {};
+
     post('progress', 30, 'Extracting elements...');
 
     // Phase 3: Extract spatial structure + elements (30-70%)
@@ -220,6 +298,10 @@ self.onmessage = async function(e) {
           const el = ifcApi.GetLine(modelID, id);
           const typeName = ifcApi.GetNameFromTypeCode(typeId) || 'IFCBUILDINGELEMENT';
           const ifcClass = properClassName(typeName);
+          // S252: Look up colour from IFCINDEXEDCOLOURMAP chain
+          var _repId = el.Representation ? (el.Representation.value || el.Representation) : null;
+          var _icmCol = _repId && _prodDefColour[_repId] ? _prodDefColour[_repId] : null;
+          if (_icmCol) _colorMap[id] = _icmCol;
           elements.push({
             expressID: id,
             guid: el.GlobalId ? el.GlobalId.value : 'GUID_' + id,
@@ -234,6 +316,7 @@ self.onmessage = async function(e) {
     }
 
     console.log('[S220] §ELEMENTS_FOUND count=' + elements.length + ' storeys=' + Object.keys(storeyMap).length);
+    console.log('[S252] §ELEM_COLORS icm_mapped=' + Object.keys(_colorMap).length + '/' + elements.length);
     post('progress', 50, 'Tessellating ' + elements.length + ' elements...');
 
     // Phase 4: Tessellate geometry (50-90%)
@@ -289,6 +372,10 @@ self.onmessage = async function(e) {
           vertOffset += vc;
           if (!bestColor && geo.color && geo.color.x !== undefined) bestColor = geo.color;
         }
+        // S252: If geo.color was white/missing, use material association colour map
+        if ((!bestColor || (bestColor.x > 0.95 && bestColor.y > 0.95 && bestColor.z > 0.95)) && _colorMap[el.expressID]) {
+          bestColor = _colorMap[el.expressID];
+        }
         if (allVerts.length >= 9) {  // at least 3 vertices (1 triangle)
           var vertCount = allVerts.length / 3;
           // Compute centroid
@@ -339,8 +426,12 @@ self.onmessage = async function(e) {
           transforms.push({ guid: el.guid, cx: cx, cy: cy, cz: cz, rx: 0, ry: 0, rz: 0,
             bx: el._bboxX, by: el._bboxY, bz: el._bboxZ });
           if (bestColor) {
-            el.material = bestColor.x.toFixed(3) + ',' + bestColor.y.toFixed(3) + ',' + bestColor.z.toFixed(3) + ',' + bestColor.w.toFixed(3);
-            matCount++;
+            // S252: Don't store pure white — it means web-ifc couldn't resolve the style
+            var _isWhite = bestColor.x > 0.99 && bestColor.y > 0.99 && bestColor.z > 0.99;
+            if (!_isWhite) {
+              el.material = bestColor.x.toFixed(3) + ',' + bestColor.y.toFixed(3) + ',' + bestColor.z.toFixed(3) + ',' + bestColor.w.toFixed(3);
+              matCount++;
+            }
           }
         }
       } catch(e) {
@@ -354,8 +445,20 @@ self.onmessage = async function(e) {
       }
     }
 
+    // Ghost admission: elements without geometry are BOM containers (IfcCurtainWall, IfcStair).
+    // They have no spatial representation — don't write them to elements_meta.
+    const geomGuids = new Set(geometries.map(g => g.guid));
+    const ghosts = elements.filter(el => !geomGuids.has(el.guid));
+    const renderableElements = elements.filter(el => geomGuids.has(el.guid));
+    if (ghosts.length) {
+      const ghostSummary = {};
+      ghosts.forEach(g => { ghostSummary[g.ifcClass] = (ghostSummary[g.ifcClass] || 0) + 1; });
+      console.log('[S220] §GHOST_ADMISSION skipped=' + ghosts.length +
+        ' classes=' + JSON.stringify(ghostSummary) +
+        ' (no geometry → not a spatial element)');
+    }
     const skipped = elements.length - geometries.length;
-    console.log('[S220] §GEOM_SUMMARY elements=' + elements.length + ' geometries=' + geometries.length + ' skipped=' + skipped + ' materials=' + matCount);
+    console.log('[S220] §GEOM_SUMMARY elements=' + elements.length + ' renderable=' + renderableElements.length + ' ghosts=' + ghosts.length + ' materials=' + matCount);
 
     post('progress', 92, 'Building databases...');
 
@@ -363,11 +466,11 @@ self.onmessage = async function(e) {
     // We send raw data back to main thread — it builds sql.js DBs there
     // (sql.js WASM can't run in all workers easily)
     const discCounts = {};
-    for (const el of elements) {
+    for (const el of renderableElements) {
       discCounts[el.discipline] = (discCounts[el.discipline] || 0) + 1;
     }
 
-    const storeys = [...new Set(elements.map(e => e.storey))].sort();
+    const storeys = [...new Set(renderableElements.map(e => e.storey))].sort();
 
     // Post-hoc unit heuristic: if bounding box > 500m in any axis, assume mm → divide by 1000
     var autoScale = 1.0;
@@ -405,7 +508,7 @@ self.onmessage = async function(e) {
         disciplines: discCounts,
         storeys: storeys,
       },
-      elements: elements,
+      elements: renderableElements,
       geometries: geometries,
       transforms: transforms,
     };

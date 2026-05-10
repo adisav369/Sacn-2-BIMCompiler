@@ -260,6 +260,11 @@ function setupPicking(A) {
       console.log(`§PICK merged→resolved guid=${guid}`);
     }
     if (!guid) guid = A.guidMap[hit.object.id];
+    // 2D contour/arc/label meshes carry guid directly in userData (not in guidMap)
+    if (!guid && hit.object.userData && hit.object.userData.guid) {
+      guid = hit.object.userData.guid;
+      console.log(`§PICK contour→guid=${guid} class=${hit.object.userData.ifcClass || '?'}`);
+    }
     if (!guid) {
       console.log(`§PICK no guid for mesh.id=${hit.object.id}`);
       return;
