@@ -225,8 +225,34 @@ The Playwright tests are TOO SLOW and test string presence, not behavior.
 9. **Contour skip** — isContour meshes not processed by card pass
 10. **Opacity restore** — unfade previous card before new card, clearCardView restores all
 
-### Next session
-1. Redeploy ALL `deploy/dev/*.js` to ootb-dev — curl verify each
-2. Run `node deploy/dev/tests/card_verify.js` — fix any ✗
-3. Extend card_verify.js with deployed-vs-local check
-4. Then `prompts/2D_024_editable_grid_lines.md` — grid drag highlight, hover, alignment
+### Session 2026-05-10/11 — DONE
+- Deployed ALL JS to ootb-dev (byte-verified via curl)
+- card_verify.js: 236 checks, 0 fail (26 sections)
+- Fixed: clipShadows fade path, scissors dwell without 2D, X-key context
+- Keyboard: G+X combo works (sequence engine fires single-char immediately)
+- §DRAG_BUG FOUND: cascade elements not persisted to DB, undo leaves meshes stale
+
+### Next session — GRID DRAG RECOMPOSITION
+**Problem (from §DRAG_BUG logs):**
+- Drag moves meshes visually (position.x += dx) but does NOT update element_transforms in DB
+- Cost panel queries DB (stale) → Δ Qty only reflects bbox inclusion, not moved elements
+- Undo reverts grid line but cascaded elements stay at moved 3D positions
+- No unit prices → no real cost impact (only raw qty/vol)
+- On reload, meshes reset to original DB positions (visual-only move lost)
+
+**Fix plan:**
+1. `grid_drag.js` onPointerUp: after cascade, `UPDATE element_transforms SET center_x=?, center_y=? WHERE guid=?` for each moved element
+2. `grid_drag.js` undo: revert element_transforms too (store old positions in record)
+3. `cost_panel.js`: add unit rate column (from qto_cache.unit_cost or grid_rules.json rates)
+4. `cost_panel.js`: show Δ Cost = Δ Vol × rate
+5. `kernel_ops.js` replayOps on reload: re-apply element position changes from log
+
+**Whitebox proof (card_verify.js must show):**
+```
+§DRAG_PERSIST: UPDATE element_transforms for cascade GUIDs
+§DRAG_UNDO_PERSIST: element_transforms reverted on undo
+§COST_RATE: unit_rate present, Δ Cost column in table
+§DRAG_RELOAD: replayOps re-applies positions from kernel_ops log
+```
+
+**Then:** `prompts/2D_024_editable_grid_lines.md` — grid drag highlight (line-only confirmed correct), hover cursor, alignment snap

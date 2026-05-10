@@ -296,6 +296,22 @@ check('Cost: queries grid bounding box (BETWEEN)', cp.includes('BETWEEN'));
 check('Cost: SUM area (bbox_x * bbox_y)', cp.includes('bbox_x') && cp.includes('bbox_y'));
 check('Cost: SUM volume (bbox_x * bbox_y * bbox_z)', cp.includes('bbox_z'));
 
+// §DRAG_PERSIST: drag must UPDATE element_transforms in DB for cascaded elements
+const dragPersists = drag.includes('UPDATE element_transforms') || drag.includes("UPDATE element_transforms");
+console.log('    §DRAG_PERSIST updates_element_transforms=' + dragPersists);
+check('Drag: persists cascade to element_transforms DB', dragPersists, 'elements stay at moved positions after reload');
+
+// §DRAG_UNDO_PERSIST: undo must revert element_transforms too
+const undoRevertDB = drag.includes('oldPos') && (drag.includes('UPDATE element_transforms') || drag.includes('revertTransforms'));
+console.log('    §DRAG_UNDO_PERSIST reverts_db_on_undo=' + undoRevertDB);
+check('Undo: reverts element_transforms in DB', undoRevertDB, 'meshes must return to original DB positions');
+
+// §COST_RATE: cost panel should show unit rate × volume = Δ Cost
+const hasCostCol = cp.includes('Cost') || cp.includes('cost') || cp.includes('Rate') || cp.includes('rate');
+const hasDeltaCost = cp.includes('\\u0394 Cost') || cp.includes('Δ Cost') || cp.includes('deltaCost');
+console.log('    §COST_RATE has_cost_column=' + hasCostCol + ' has_delta_cost=' + hasDeltaCost);
+check('Cost: Δ Cost column (rate × Δ Vol)', hasDeltaCost, 'need unit rates for real cost impact');
+
 // ═══ 15b. KERNEL_OPS — persistent undo log ═══════════════════════
 console.log('\n═══ 15b. KERNEL_OPS ═══');
 
@@ -661,8 +677,51 @@ check('Exit: scene.remove(gridGroup)', exitBlock.includes('scene.remove'));
 // Debt 6: Esc key routes through toggleGridOverlay (single exit path)
 check('Esc: routes through toggleGridOverlay', go.includes('_gridClose') && go.includes('toggleGridOverlay'));
 
-// ═══ 25. SCENE CORRUPTION — complete exit state audit ═══════════
-console.log('\n═══ 25. SCENE CORRUPTION EXIT AUDIT ═══');
+// ═══ 25. REPEATED 2D ISSUES (user-reported, must not recur) ═════
+console.log('\n═══ 25. REPEATED 2D ISSUES ═══');
+
+// ISSUE: Roofs visible in GF view
+// Root cause: either hideSet not applied, or restoreSection not called, or stale deploy
+check('Roof hide: HIDE_IN_FLOOR has IfcRoof', hideM.includes('IfcRoof'));
+check('Roof hide: restoreSection applies hideSet', rBody.includes('hideSet[cls]') && rBody.includes('obj.visible = false'));
+check('Roof hide: band filter excludes IfcRoof from section_cut', excMatch && excMatch[1].includes('IfcRoof'));
+// Terminal has 0 roofs on GF storey (Aras Tanah) — if visible, they're from ANOTHER storey leaking
+check('Roof hide: non-storey elements hidden (!guidSet[guid])', rBody.includes('!guidSet[guid]') || rBody.includes('!guidSet'));
+
+// ISSUE: No door arcs showing
+// Root cause chain: section_cut must produce door contours → extractLeafAxis → generateArcs
+check('Door arcs: section_cut includes IfcDoor in SLICE_CLASSES', sc.includes("'IfcDoor'"));
+check('Door arcs: section_cut includes IfcDoorStandardCase', sc.includes("'IfcDoorStandardCase'") || sc.includes('IfcDoorStandardCase'));
+check('Door arcs: renderContoursForView calls DoorArcs.generateArcs', go.includes('DoorArcs.generateArcs'));
+check('Door arcs: §DOOR_ARC_CLASSES log (diagnostic)', go.includes('§DOOR_ARC_CLASSES'));
+check('Door arcs: §DOOR_ARC_SKIP log (tells why arc failed)', da.includes('§DOOR_ARC_SKIP'));
+// If arcs don't show, §DOOR_ARC_CLASSES will reveal if doors are in section_cut output at all
+
+// ISSUE: Scene corruption after 2D activity (whole scene broken)
+// Root causes: clippingPlanes leaked, opacity stuck, visible=false not restored, localClippingEnabled=true
+check('Scene fix: clearCardView sets visible=true on ALL', cvBody.includes('obj.visible = true'));
+check('Scene fix: clearCardView nulls ALL clippingPlanes', cvBody.includes('obj.material.clippingPlanes = null'));
+check('Scene fix: clearCardView disables localClipping', cvBody.includes('localClippingEnabled = false'));
+check('Scene fix: clearFloorClip also disables localClipping', cfBody.includes('localClippingEnabled = false'));
+check('Scene fix: unlockView called on grid exit', go.slice(go.indexOf('active = false')).includes('unlockView'));
+// Scissors scene pollution without 2D (dwell markers + flash)
+check('Scene fix: dwellTrack gated by st.active', guardPos < dwellPos);
+
+// ISSUE: Scissors snap/flash when 2D not on
+check('Scissors guard: return before dwellTrack', earlyReturn.includes('return'));
+
+// ISSUE: Stale cards returning after delete (zombie)
+check('Zombie fix: DELETE FROM saved_sections', delFnBody.includes('DELETE FROM saved_sections'));
+check('Zombie fix: localStorage.removeItem', delFnBody.includes('localStorage.removeItem'));
+check('Zombie fix: localStorage.setItem (overwrite remaining)', delFnBody.includes('localStorage.setItem'));
+
+// ISSUE: Contours look artificial/invented
+check('Contour truth: no hardcoded coordinates', !hardcodedCoords);
+check('Contour truth: geometry from DB (lookupGeometry)', sc.includes('lookupGeometry'));
+check('Contour truth: sliceMesh from real vertices', sc.includes('sliceMesh'));
+
+// ═══ 26. SCENE CORRUPTION — complete exit state audit ═══════════
+console.log('\n═══ 26. SCENE CORRUPTION EXIT AUDIT ═══');
 
 // After grid mode exit, these properties MUST be restored on ALL meshes:
 // visible=true, clippingPlanes=null, clipShadows=false, opacity=original, transparent=original
@@ -686,8 +745,8 @@ check('unlockView: restores lighting', uvBody.includes('restoreLighting'));
 check('Scissors: onOff disposes geometry', scissors.includes('disposeScissorsGroup'));
 check('Scissors: onOff resets dwell', scissors.includes('dwellReset'));
 
-// ═══ 26. DEPLOYED vs LOCAL — curl check ═════════════════════════
-console.log('\n═══ 26. DEPLOYED vs LOCAL (curl) ═══');
+// ═══ 27. DEPLOYED vs LOCAL — curl check ═════════════════════════
+console.log('\n═══ 27. DEPLOYED vs LOCAL (curl) ═══');
 
 const DEPLOY_BASE = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/sandbox/';
 const filesToCheck = ['grid_overlay.js', 'grid_views.js', 'section_cut.js', 'grid_contours.js',
