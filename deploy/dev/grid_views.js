@@ -213,7 +213,7 @@ var GridViews = (function() {
         // Slab: clip + make near-transparent so it doesn't fight wall contrast
         obj.material.clippingPlanes = [_floorClipPlane];
         obj.material.clipShadows = true;
-        if (!obj.userData._origOpacity) {
+        if (obj.userData._origOpacity == null) {
           obj.userData._origOpacity = obj.material.opacity;
           obj.userData._origTransparent = obj.material.transparent;
         }

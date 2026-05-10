@@ -887,8 +887,15 @@ function setupGridOverlay(APP) {
       var guid = (obj.userData && obj.userData.guid) || '';
       var cls  = (obj.userData && obj.userData.ifcClass) || '';
 
+      // No guid (ground plane, helpers, InstancedMesh batches) → hide
+      if (!guid) {
+        obj.visible = false;
+        counts.hidden++;
+        return;
+      }
+
       // Not in this storey → hide
-      if (guid && !guidSet[guid]) {
+      if (!guidSet[guid]) {
         obj.visible = false;
         counts.hidden++;
         return;
@@ -906,7 +913,7 @@ function setupGridOverlay(APP) {
       if (fadeSet[cls]) {
         obj.visible = true;
         obj.material.clippingPlanes = [clipPlane];
-        if (!obj.userData._origOpacity) {
+        if (obj.userData._origOpacity == null) {
           obj.userData._origOpacity = obj.material.opacity;
           obj.userData._origTransparent = obj.material.transparent;
         }

@@ -76,7 +76,7 @@ test.describe('Card-First Complete Suite', () => {
   });
 
   // ── 2. restoreSection architecture ─────────────────────────────
-  test('T_3602: restoreSection — DB query, one pass, no band, no applyFloorClip', () => {
+  test('T_3602: restoreSection — DB query, one pass, no band, hides no-guid meshes', () => {
     const s = src('grid_overlay.js');
     const start = s.indexOf('function restoreSection');
     const end = s.indexOf('\n  // Card cleanup', start);
@@ -89,6 +89,7 @@ test.describe('Card-First Complete Suite', () => {
     expect(has('queryStoreyGuids', 'queryStoreyGuids')).toBe(true);
     expect(has('lockView_cameraOnly', 'null, true)')).toBe(true);
     expect(has('own_clipPlane', 'THREE.Plane')).toBe(true);
+    expect(has('no_guid_hide', '!guid')).toBe(true);         // ground plane/InstancedMesh hidden
     expect(has('guidSet_check', 'guidSet[guid]')).toBe(true);
     expect(has('hideSet_check', 'hideSet[cls]')).toBe(true);
     expect(has('fadeSet_check', 'fadeSet[cls]')).toBe(true);
