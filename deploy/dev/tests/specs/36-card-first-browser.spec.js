@@ -90,6 +90,10 @@ test.describe('Card-First Complete Suite', () => {
     expect(has('lockView_cameraOnly', 'null, true)')).toBe(true);
     expect(has('own_clipPlane', 'THREE.Plane')).toBe(true);
     expect(has('no_guid_hide', '!guid')).toBe(true);         // ground plane/InstancedMesh hidden
+    // Stale clip cleanup: hidden + retained meshes clear clippingPlanes from previous card
+    const hiddenClipClear = (body.match(/obj\.visible = false[\s\S]{0,50}clippingPlanes = null/g) || []).length;
+    log.push('stale_clip_clear=' + hiddenClipClear + (hiddenClipClear >= 3 ? ' ✓' : ' ✗'));
+    expect(hiddenClipClear).toBeGreaterThanOrEqual(3);  // no-guid + not-in-storey + class-excluded
     expect(has('guidSet_check', 'guidSet[guid]')).toBe(true);
     expect(has('hideSet_check', 'hideSet[cls]')).toBe(true);
     expect(has('fadeSet_check', 'fadeSet[cls]')).toBe(true);

@@ -708,11 +708,17 @@ function setupGridOverlay(APP) {
     var mode = GridViews.activeView() || 'floor';
     var hidden = Object.keys(GridViews.HIDE_IN_FLOOR || {});
     var cam = GridViews.getCameraState(A);
+    // Look up storey name from DB using current cut height
     var storey = '';
-    // Try to read current storey name from status bar
-    if (A.status && A.status.textContent) {
-      var m = A.status.textContent.match(/storey[=:]\s*"?([^"]+)"?/i);
-      if (m) storey = m[1];
+    if (A.db && A.sectionPlane && typeof SectionCut !== 'undefined' && SectionCut.detectStoreys) {
+      var cutZ = A.sectionPlane.constant + (A.modelOffset ? A.modelOffset.z : 0);
+      var storeys = SectionCut.detectStoreys(A.db);
+      for (var si = 0; si < storeys.length; si++) {
+        if (storeys[si].floorZ <= cutZ && cutZ <= storeys[si].floorZ + 10) {
+          storey = storeys[si].name;
+          break;
+        }
+      }
     }
     var state = {
       hidden_classes: hidden,
@@ -754,8 +760,8 @@ function setupGridOverlay(APP) {
             var ss = lsRows[j];
             try {
               A.db.run(
-                'INSERT OR IGNORE INTO saved_sections (id,name,cut_value,plane_normal,detected_grids,timestamp) VALUES(?,?,?,?,?,?)',
-                [ss.id, ss.name, ss.cut_value, ss.plane_normal, null, ss.timestamp || '']
+                'INSERT OR IGNORE INTO saved_sections (id,name,cut_value,plane_normal,detected_grids,timestamp,view_state) VALUES(?,?,?,?,?,?,?)',
+                [ss.id, ss.name, ss.cut_value, ss.plane_normal, null, ss.timestamp || '', ss.view_state ? JSON.stringify(ss.view_state) : null]
               );
             } catch (e2) { /* skip duplicate */ }
           }
@@ -890,13 +896,15 @@ function setupGridOverlay(APP) {
       // No guid (ground plane, helpers, InstancedMesh batches) → hide
       if (!guid) {
         obj.visible = false;
+        obj.material.clippingPlanes = null;
         counts.hidden++;
         return;
       }
 
-      // Not in this storey → hide
+      // Not in this storey → hide + clear stale clips from previous card
       if (!guidSet[guid]) {
         obj.visible = false;
+        obj.material.clippingPlanes = null;
         counts.hidden++;
         return;
       }
@@ -904,6 +912,7 @@ function setupGridOverlay(APP) {
       // In storey but class-excluded (roof) → hide
       if (hideSet[cls]) {
         obj.visible = false;
+        obj.material.clippingPlanes = null;
         _cardHiddenMeshes.push(obj);
         counts.hidden++;
         return;
@@ -925,9 +934,10 @@ function setupGridOverlay(APP) {
         return;
       }
 
-      // Furniture/equipment → show as-is, no clip
+      // Furniture/equipment → show as-is, clear any stale clip from previous card
       if (retainSet[cls]) {
         obj.visible = true;
+        obj.material.clippingPlanes = null;
         counts.retained++;
         return;
       }
