@@ -193,8 +193,40 @@ When a card is active, element picking should skip hidden classes:
 - **Fleet test: 30 buildings in 5 seconds, every composition verified**
 - 41 specs / 417 tests / 1035 expects — all pass
 
+### Critical: Deployed vs Local MISMATCH (found 2026-05-10 end of session)
+Another session modified grid_overlay.js, tools.js, grid_scissors.js AFTER our deploy.
+Deployed ootb-dev has STALE code:
+- `tools.js` deployed has old Save button on scissors (removed by S251 session)
+- `grid_overlay.js` deployed missing Save ✚ in grid panel (added by S251 session)
+- `grid_scissors.js` deployed missing BUG-1 dwell fix (added by S251 session)
+**FIRST ACTION next session: redeploy ALL `deploy/dev/*.js` to ootb-dev, then verify with curl.**
+
+### Verification script: `deploy/dev/tests/card_verify.js`
+Run: `node deploy/dev/tests/card_verify.js` — 3 seconds, checks:
+- HIDE_IN_FLOOR (IfcRoof ✓, NOT IfcCovering ✓), FADE_IN_FLOOR (IfcSlab ✓)
+- Card: queryStoreyGuids, cameraOnly, own clipPlane, skip isContour, hide !guid
+- Card: no band, no applyFloorClip, unfade before reset, stale clip clear
+- Save button location, section_cut band filter, FILL_CLASSES, door arcs
+- Grid detection: clustering, snap, wall weight
+- Fleet: 30 buildings GF composition from real DB
+**If any check ✗ — the code is wrong, fix before deploying.**
+
+### Test mandate — what the test suite MUST verify (not done yet)
+The Playwright tests are TOO SLOW and test string presence, not behavior.
+`card_verify.js` tests CODE TRUTH. Extend it to cover:
+1. **Deployed match** — curl each JS file, grep for key functions, compare to local
+2. **GF storey correctness** — door-count ranking across fleet (30 buildings)
+3. **Card composition math** — hide+fade+retain+clip = total for every building
+4. **Section cut contour output** — SLICE_CLASSES covers walls/doors/windows
+5. **Door arc generation** — extractLeafAxis, generateArcs present
+6. **Grid alignment** — wall X/Y positions clustered, snap to structural
+7. **Save button** — in grid panel (grid-save-section-btn), NOT in tools.js scissors
+8. **State completeness** — every mesh path sets visible+clip+clipShadows+needsUpdate
+9. **Contour skip** — isContour meshes not processed by card pass
+10. **Opacity restore** — unfade previous card before new card, clearCardView restores all
+
 ### Next session
-- Browser smoke test on ootb-dev (SW v296) — verify GF card visually
-- Outstanding 2D UX debt items 1-8 above
-- Grid drag highlight (2D_024)
-- Grid lines per card storey
+1. Redeploy ALL `deploy/dev/*.js` to ootb-dev — curl verify each
+2. Run `node deploy/dev/tests/card_verify.js` — fix any ✗
+3. Extend card_verify.js with deployed-vs-local check
+4. Then `prompts/2D_024_editable_grid_lines.md` — grid drag highlight, hover, alignment
