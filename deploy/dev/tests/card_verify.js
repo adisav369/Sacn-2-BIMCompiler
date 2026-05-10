@@ -621,7 +621,7 @@ check('Scissors: onOff resets dwell', scissors.includes('dwellReset'));
 // ═══ 26. DEPLOYED vs LOCAL — curl check ═════════════════════════
 console.log('\n═══ 26. DEPLOYED vs LOCAL (curl) ═══');
 
-const DEPLOY_BASE = 'https://objectstorage.ap-sydney-1.oraclecloud.com/n/sdavtmjntjhq/b/ootb-dev/o/sandbox/';
+const DEPLOY_BASE = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/sandbox/';
 const filesToCheck = ['grid_overlay.js', 'grid_views.js', 'section_cut.js', 'grid_contours.js',
                       'grid_scissors.js', 'grid_dims.js', 'grid_door_arcs.js', 'grid_drag.js',
                       'tools.js', 'scene.js', 'cost_panel.js'];
