@@ -419,7 +419,48 @@ test.describe('Card-First Complete Suite', () => {
     console.log('§T_3612K ' + log.join(' | '));
   });
 
-  // ── 13. Grid alignment — detect grid lines from structural walls ──
+  // ── 13. State completeness — every mesh path sets ALL required properties ──
+  test('T_3613S: every restoreSection path sets visible+clippingPlanes+clipShadows+needsUpdate', () => {
+    const s = src('grid_overlay.js');
+    const start = s.indexOf('A.collectMeshes(function(o) { return o.isMesh; }).forEach', s.indexOf('function restoreSection'));
+    const end = s.indexOf('log(\'§CARD_RESTORE mesh pass', start);
+    const loop = s.slice(start, end);
+
+    // Split into code blocks by return statements
+    const blocks = loop.split(/return;\s*\}/);
+    const log = [];
+    let clean = true;
+
+    for (let i = 0; i < blocks.length - 1; i++) {
+      const b = blocks[i];
+      // Find what path this is
+      const pathMatch = b.match(/\/\/\s*(.+?)$/m);
+      const pathName = pathMatch ? pathMatch[1].trim().slice(0, 40) : 'path' + i;
+
+      const hasVisible = b.includes('.visible =');
+      const hasClip = b.includes('clippingPlanes');
+      const hasClipShadows = b.includes('clipShadows');
+      const hasUpdate = b.includes('needsUpdate');
+
+      const missing = [];
+      if (!hasVisible) missing.push('visible');
+      if (!hasClip) missing.push('clippingPlanes');
+      if (!hasClipShadows) missing.push('clipShadows');
+      if (!hasUpdate) missing.push('needsUpdate');
+
+      if (missing.length) {
+        log.push(pathName + ' MISSING:' + missing.join(','));
+        clean = false;
+      } else {
+        log.push(pathName + ' ✓');
+      }
+    }
+
+    console.log('§T_3613S ' + log.join(' | '));
+    expect(clean).toBe(true);
+  });
+
+  // ── 14. Grid alignment — detect grid lines from structural walls ──
   test('T_3613: grid detection uses wall clustering — lines align with structure', () => {
     const dims = src('grid_dims.js');
     const log = [];

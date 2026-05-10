@@ -909,14 +909,18 @@ function setupGridOverlay(APP) {
       if (!guid) {
         obj.visible = false;
         obj.material.clippingPlanes = null;
+        obj.material.clipShadows = false;
+        obj.material.needsUpdate = true;
         counts.hidden++;
         return;
       }
 
-      // Not in this storey → hide + clear stale clips from previous card
+      // Not in this storey → hide + clear all stale state from previous card
       if (!guidSet[guid]) {
         obj.visible = false;
         obj.material.clippingPlanes = null;
+        obj.material.clipShadows = false;
+        obj.material.needsUpdate = true;
         counts.hidden++;
         return;
       }
@@ -925,6 +929,8 @@ function setupGridOverlay(APP) {
       if (hideSet[cls]) {
         obj.visible = false;
         obj.material.clippingPlanes = null;
+        obj.material.clipShadows = false;
+        obj.material.needsUpdate = true;
         _cardHiddenMeshes.push(obj);
         counts.hidden++;
         return;
@@ -934,6 +940,7 @@ function setupGridOverlay(APP) {
       if (fadeSet[cls]) {
         obj.visible = true;
         obj.material.clippingPlanes = [clipPlane];
+        obj.material.clipShadows = false;
         if (obj.userData._origOpacity == null) {
           obj.userData._origOpacity = obj.material.opacity;
           obj.userData._origTransparent = obj.material.transparent;
@@ -946,10 +953,12 @@ function setupGridOverlay(APP) {
         return;
       }
 
-      // Furniture/equipment → show as-is, clear any stale clip from previous card
+      // Furniture/equipment → show as-is, clear all stale state
       if (retainSet[cls]) {
         obj.visible = true;
         obj.material.clippingPlanes = null;
+        obj.material.clipShadows = false;
+        obj.material.needsUpdate = true;
         counts.retained++;
         return;
       }
