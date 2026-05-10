@@ -27,6 +27,7 @@ const da = src('grid_door_arcs.js');
 const drag = src('grid_drag.js');
 const scissors = src('grid_scissors.js');
 const scene = src('scene.js');
+const kops = src('kernel_ops.js');
 
 // ═══ 1. HIDE/FADE CLASSIFICATION ══════════════════════════════════
 console.log('\n═══ 1. HIDE/FADE CLASSIFICATION ═══');
@@ -233,13 +234,81 @@ if (shDb) {
   check('SH: walls have distinct Y positions', yPositions.length >= 2, 'unique_y=' + yPositions.length);
 }
 
-// ═══ 15. GRID DRAG ══════════════════════════════════════════════
+// ═══ 15. GRID DRAG — highlight, path, cascade, variance, undo ══════
 console.log('\n═══ 15. GRID DRAG ═══');
 
 check('rebuildPanel on drag', drag.includes('rebuildPanel'));
-check('Position delta', drag.includes('delta'));
+check('Position delta computed', drag.includes('delta'));
 check('grid_rules.json reference', drag.includes('grid_rules') || drag.includes('_gridRules'));
-check('Undo/redo support', drag.includes('undo') || drag.includes('_undoStack'));
+
+// HIGHLIGHT: must highlight ONLY the dragged line, not the whole block
+check('Highlight: orange color on drag start (0xff6600)', drag.includes('0xff6600'));
+check('Highlight: linewidth=3 on drag start', drag.includes('linewidth') && drag.includes('3'));
+check('Highlight: reset to default color on drag end', drag.includes('defColor') || drag.includes('0xcccccc'));
+check('Highlight: reset linewidth=1 on drag end', drag.includes('linewidth = 1') || drag.includes('linewidth=1'));
+// Should NOT highlight block/bay — only the line mesh
+check('Highlight: targets lineMeshes[label] (single line)', drag.includes('lineMeshes[') && drag.includes('.line.material'));
+
+// VISUAL FEEDBACK DURING DRAG: ghost + proposed + shadows
+check('Drag ghost (red origin slab)', drag.includes('dragGhostMesh') || drag.includes('Ghost'));
+check('Drag proposed (blue destination slab)', drag.includes('dragProposedMesh') || drag.includes('Proposed'));
+check('Cascade shadows (orange wireframe outlines)', drag.includes('shadowGroup') || drag.includes('showShadows'));
+check('Shadows cleared on drag end', drag.includes('clearShadows'));
+check('Status text shows mm delta', drag.includes('mm') && drag.includes('status'));
+
+// CASCADE: elements affected by grid move
+check('Cascade elements computed', drag.includes('cascadeElements') || drag.includes('cascade'));
+check('Cascade uses clearance from rules', drag.includes('clearance'));
+
+// AFTER DRAG: kernel_ops + cost panel
+check('Drag commits to KernelOps', drag.includes('KernelOps.commitOp'));
+check('Drag op type is GRID_MOVE', drag.includes("'GRID_MOVE'") || drag.includes('"GRID_MOVE"'));
+check('Drag stores from/to positions', drag.includes('from:') && drag.includes('to:'));
+check('CostPanel.refresh after drag', drag.includes('CostPanel.refresh'));
+check('CostPanel.refresh after undo/redo', drag.lastIndexOf('CostPanel.refresh') > drag.indexOf('Replayed'));
+
+// UNDO/REDO: kernel_ops based
+check('Undo: KernelOps.undoOp', drag.includes('KernelOps.undoOp') || drag.includes('undoOp'));
+check('Redo: KernelOps.redoOp', drag.includes('KernelOps.redoOp') || drag.includes('redoOp'));
+check('Ctrl+Z handler', drag.includes("'z'") && drag.includes('ctrlKey'));
+check('applyReplayedMove function', drag.includes('applyReplayedMove'));
+check('Replay: shiftLine + updateGridData + rebuildAnnotations',
+  drag.includes('shiftLine') && drag.includes('updateGridData') && drag.includes('rebuildAnnotations'));
+
+// POTENTIAL BUG: cascaded element meshes NOT moved in scene after drag
+const undoSection = drag.slice(drag.indexOf('function undo'));
+const cascadeInUndo = undoSection.slice(0, undoSection.indexOf('function') > 0 ? undoSection.indexOf('function', 10) : 500);
+const cascadeMovesScene = cascadeInUndo.includes('position') || cascadeInUndo.includes('translate');
+console.log('    §DRAG_BUG cascade_elements_moved_in_scene=' + cascadeMovesScene);
+if (!cascadeMovesScene) {
+  console.log('    §DRAG_BUG WARNING: undo reverts grid line but cascaded element meshes stay at moved positions');
+}
+
+// COST PANEL VARIANCE
+const cp = src('cost_panel.js');
+check('Cost: Δ Qty column header', cp.includes('\\u0394 Qty') || cp.includes('Δ Qty') || cp.includes('\u0394'));
+check('Cost: Δ Vol column header', cp.includes('\\u0394 Vol') || cp.includes('Δ Vol'));
+check('Cost: green for increase', cp.includes('#4caf50') || cp.includes('green'));
+check('Cost: red for decrease', cp.includes('#ff5252') || cp.includes('red'));
+check('Cost: tracks disappeared classes', cp.includes('prev[') && cp.includes('!curr['));
+check('Cost: close button (✕)', cp.includes('close') || cp.includes('\\u2715') || cp.includes('×'));
+check('Cost: queries grid bounding box (BETWEEN)', cp.includes('BETWEEN'));
+check('Cost: SUM area (bbox_x * bbox_y)', cp.includes('bbox_x') && cp.includes('bbox_y'));
+check('Cost: SUM volume (bbox_x * bbox_y * bbox_z)', cp.includes('bbox_z'));
+
+// ═══ 15b. KERNEL_OPS — persistent undo log ═══════════════════════
+console.log('\n═══ 15b. KERNEL_OPS ═══');
+
+check('kernel_ops: creates table', kops.includes('CREATE TABLE') && kops.includes('kernel_ops'));
+check('kernel_ops: commitOp function', kops.includes('commitOp'));
+check('kernel_ops: undoOp function', kops.includes('undoOp'));
+check('kernel_ops: redoOp function', kops.includes('redoOp'));
+check('kernel_ops: replayOps function', kops.includes('replayOps'));
+check('kernel_ops: undone flag (not delete)', kops.includes('undone'));
+check('kernel_ops: stores op_type', kops.includes('op_type'));
+check('kernel_ops: stores parameters as JSON', kops.includes('JSON.stringify') || kops.includes('parameters'));
+check('kernel_ops: compact function (collapse same-label)', kops.includes('compact') || kops.includes('Compact'));
+check('kernel_ops: §KRN log tag', kops.includes('§KRN') || kops.includes('§KERNEL'));
 
 // ═══ 16. GRID SCISSORS — state init ═════════════════════════════
 console.log('\n═══ 16. GRID SCISSORS ═══');
@@ -563,8 +632,7 @@ const hasPick = scene.includes('Raycaster') || scene.includes('raycaster');
 check('Global element pick (scene.js has Raycaster)', hasPick);
 check('Pick respects visibility (card hides non-storey → raycaster skips)', hasPick, 'Three.js raycaster skips visible=false');
 
-// Debt 3: Cost panel variance — Δ Qty / Δ Vol columns
-const cp = src('cost_panel.js');
+// Debt 3: Cost panel variance — Δ Qty / Δ Vol columns (cp already loaded above)
 check('Cost panel: Δ Qty column', cp.includes('Qty') || cp.includes('qty') || cp.includes('delta'));
 check('Cost panel: Δ Vol column', cp.includes('Vol') || cp.includes('vol') || cp.includes('volume'));
 check('Cost panel: ✕ close button', cp.includes('close') || cp.includes('✕') || cp.includes('×'));
