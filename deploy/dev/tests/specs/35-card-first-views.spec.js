@@ -37,7 +37,7 @@ test.describe('Card-First View Model — Logic Tests', () => {
 
     const retain = { 'IfcFurniture': 1 };
     expect(classify('IfcRoof', retain, null)).toBe('hide');
-    expect(classify('IfcCovering', retain, null)).toBe('hide');
+    expect(classify('IfcCovering', retain, null)).toBe('clip');  // wall/floor tiles, not roof
     expect(classify('IfcSlab', retain, null)).toBe('fade');
     expect(classify('IfcPlate', retain, null)).toBe('fade');
     expect(classify('IfcFurniture', retain, null)).toBe('retain');

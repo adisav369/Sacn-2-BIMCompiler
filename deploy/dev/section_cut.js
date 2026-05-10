@@ -514,11 +514,14 @@ function sectionCut(db, libDb, cutZ, storeyName, options) {
             })();
             bandMin = activeStorey.floorZ + (fp.band_min_above_floor || 0.05);
             bandMax = nextFZ - (fp.band_max_below_next || 0.10);
+            // Clamp: band must be at least 1.5m tall — prevents crushed bands
+            // when metadata storeys (e.g. "Roof" at Z=0) sit very close to GF.
+            if (bandMax - bandMin < 1.5) bandMax = bandMin + 1.5;
         } else {
             bandMin = cutZ - 1.5;
             bandMax = cutZ + 2.5;
         }
-        var excAbove = fp.exclude_above_band || ['IfcRoof','IfcCovering','IfcRoofing'];
+        var excAbove = fp.exclude_above_band || ['IfcRoof','IfcRoofing'];
         var excBelow = fp.exclude_below_band || ['IfcFoundation','IfcPile','IfcFooting'];
         var beforeBand = allRows.length;
         var bandFiltered = [];

@@ -43,7 +43,8 @@ test.describe('Card-First Complete Suite', () => {
     const log = [];
 
     const checks = [
-      ['IfcRoof',       'hide'],  ['IfcCovering',    'hide'],  ['IfcRoofing',  'hide'],
+      ['IfcRoof',       'hide'],  ['IfcRoofing',     'hide'],
+      ['IfcCovering',   'clip'],  // IfcCovering = wall/floor tiles, NOT roof — must be visible
       ['IfcSlab',       'fade'],  ['IfcPlate',       'fade'],
       ['IfcFurniture',  'retain'],['IfcFurnishingElement','retain'],
       ['IfcWall',       'clip'],  ['IfcWallStandardCase','clip'],['IfcColumn','clip'],
@@ -167,7 +168,7 @@ test.describe('Card-First Complete Suite', () => {
     if (!DB_PATH) return;
     const gf = 'Ground Floor';
     const total = parseInt(sql(DB_PATH, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + gf + "'"));
-    const hidden = parseInt(sql(DB_PATH, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + gf + "' AND ifc_class IN ('IfcRoof','IfcRoofing','IfcCovering')"));
+    const hidden = parseInt(sql(DB_PATH, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + gf + "' AND ifc_class IN ('IfcRoof','IfcRoofing')"));
     const faded = parseInt(sql(DB_PATH, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + gf + "' AND ifc_class IN ('IfcSlab','IfcPlate')"));
     const retained = parseInt(sql(DB_PATH, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + gf + "' AND ifc_class IN ('IfcFurniture','IfcFurnishingElement','IfcFlowTerminal','IfcSanitaryTerminal','IfcElectricalAppliance')"));
     const clipped = total - hidden - faded - retained;
@@ -240,7 +241,7 @@ test.describe('Card-First Complete Suite', () => {
       const total = parseInt(sql(dbPath, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + esc + "'")) || 0;
       const walls = parseInt(sql(dbPath, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + esc + "' AND ifc_class IN ('IfcWall','IfcWallStandardCase')")) || 0;
       const doors = parseInt(sql(dbPath, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + esc + "' AND ifc_class IN ('IfcDoor','IfcDoorStandardCase')")) || 0;
-      const roofs = parseInt(sql(dbPath, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + esc + "' AND ifc_class IN ('IfcRoof','IfcRoofing','IfcCovering')")) || 0;
+      const roofs = parseInt(sql(dbPath, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + esc + "' AND ifc_class IN ('IfcRoof','IfcRoofing')")) || 0;
       const slabs = parseInt(sql(dbPath, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + esc + "' AND ifc_class IN ('IfcSlab','IfcPlate')")) || 0;
       const furn = parseInt(sql(dbPath, "SELECT COUNT(*) FROM elements_meta WHERE storey='" + esc + "' AND ifc_class IN ('IfcFurniture','IfcFurnishingElement')")) || 0;
       const totalAll = parseInt(sql(dbPath, "SELECT COUNT(*) FROM elements_meta")) || 0;
@@ -398,10 +399,10 @@ test.describe('Card-First Complete Suite', () => {
     const excMatch = s.match(/exclude_above_band.*?\[([^\]]+)\]/);
     expect(excMatch).not.toBeNull();
     const excBody = excMatch[1];
-    const mustExclude = ['IfcRoof', 'IfcCovering'];
+    const mustExclude = ['IfcRoof', 'IfcRoofing'];
     for (const cls of mustExclude) {
       const has = excBody.includes(cls);
-      log.push('excl_' + cls + (has ? ' ✓' : ' ✗'));
+      log.push('band_excl_' + cls + (has ? ' ✓' : ' ✗'));
       expect(has).toBe(true);
     }
 

@@ -149,8 +149,9 @@ var GridViews = (function() {
   // ── 2. Mesh Classification (pure function — no side effects) ─────
 
   // Classes fully hidden in floor plan — roof geometry spans below clip plane
+  // IfcCovering REMOVED: it includes wall tiles, floor tiles, insulation — not just roof.
   var HIDE_IN_FLOOR = {
-    'IfcRoof': 1, 'IfcRoofing': 1, 'IfcCovering': 1
+    'IfcRoof': 1, 'IfcRoofing': 1
   };
 
   // Classes rendered as faint outline in floor plan — slab fights wall contrast

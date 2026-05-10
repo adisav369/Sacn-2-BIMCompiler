@@ -867,7 +867,7 @@ function setupGridOverlay(APP) {
 
     // 3. One pass — card decides each mesh's fate
     //    Not in storey → hide. In storey → classify by IFC class.
-    var hideClasses = (vs && vs.hidden_classes) || ['IfcRoof', 'IfcRoofing', 'IfcCovering'];
+    var hideClasses = (vs && vs.hidden_classes) || ['IfcRoof', 'IfcRoofing'];
     var hideSet = {};
     for (var hi = 0; hi < hideClasses.length; hi++) hideSet[hideClasses[hi]] = 1;
     var fadeSet = { 'IfcSlab': 1, 'IfcPlate': 1 };
