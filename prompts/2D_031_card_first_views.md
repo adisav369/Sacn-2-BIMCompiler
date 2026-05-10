@@ -226,33 +226,67 @@ The Playwright tests are TOO SLOW and test string presence, not behavior.
 10. **Opacity restore** — unfade previous card before new card, clearCardView restores all
 
 ### Session 2026-05-10/11 — DONE
-- Deployed ALL JS to ootb-dev (byte-verified via curl)
-- card_verify.js: 236 checks, 0 fail (26 sections)
-- Fixed: clipShadows fade path, scissors dwell without 2D, X-key context
-- Keyboard: G+X combo works (sequence engine fires single-char immediately)
-- §DRAG_BUG FOUND: cascade elements not persisted to DB, undo leaves meshes stale
+- card_verify.js: 258→356 checks, 0 fail (30 sections)
+- Fixed: clipShadows fade, scissors dwell, X-key context, keyboard G+X
 
-### Next session — GRID DRAG RECOMPOSITION
-**Problem (from §DRAG_BUG logs):**
-- Drag moves meshes visually (position.x += dx) but does NOT update element_transforms in DB
-- Cost panel queries DB (stale) → Δ Qty only reflects bbox inclusion, not moved elements
-- Undo reverts grid line but cascaded elements stay at moved 3D positions
-- No unit prices → no real cost impact (only raw qty/vol)
-- On reload, meshes reset to original DB positions (visual-only move lost)
+### Session 2026-05-11 — DONE (grid drag recomposition + 2D isolation)
+**Fixed:**
+1. §DRAG_PERSIST — `UPDATE element_transforms` for cascade elements after drag
+2. §DRAG_UNDO_PERSIST — undo reverts DB positions using stored oldX/oldY
+3. §COST_RATE — Δ Cost column = unit rate × Δ Vol per IFC class
+4. moveSceneMeshes() — Three.js meshes visually repositioned after drag/undo
+5. KernelOps stores cascade; applyReplayedMove replays on Ctrl+Z/Y and reload
+6. replayOps on reload applies cascade to DB
+7. 2D objects (stairs/windows/labels) routed through contour `_group` — GridContours.clear() disposes all on exit. No scene leak to 3D.
+8. Legacy card storey inference from cutZ (prevents Z-band fallback leak)
+9. Unknown-storey furniture included in Z-range guidSet
+10. Ghost elements (no transforms) prevented at import, cleaned from existing DBs
+11. picking.js reads `userData.guid` from contour meshes — **CODE EXISTS but UNPROVEN by runtime log**
 
-**Fix plan:**
-1. `grid_drag.js` onPointerUp: after cascade, `UPDATE element_transforms SET center_x=?, center_y=? WHERE guid=?` for each moved element
-2. `grid_drag.js` undo: revert element_transforms too (store old positions in record)
-3. `cost_panel.js`: add unit rate column (from qto_cache.unit_cost or grid_rules.json rates)
-4. `cost_panel.js`: show Δ Cost = Δ Vol × rate
-5. `kernel_ops.js` replayOps on reload: re-apply element position changes from log
+**Deployed to ootb-dev:** grid_drag.js?v=6, cost_panel.js?v=4, grid_door_arcs.js?v=5, grid_overlay.js?v=32, picking.js, import_worker.js, index.html
 
-**Whitebox proof (card_verify.js must show):**
-```
-§DRAG_PERSIST: UPDATE element_transforms for cascade GUIDs
-§DRAG_UNDO_PERSIST: element_transforms reverted on undo
-§COST_RATE: unit_rate present, Δ Cost column in table
-§DRAG_RELOAD: replayOps re-applies positions from kernel_ops log
-```
+### Next session — 2D PICK IDENTITY (separate responsibility)
 
-**Then:** `prompts/2D_024_editable_grid_lines.md` — grid drag highlight (line-only confirmed correct), hover cursor, alignment snap
+**Problem (UNPROVEN — logs must prove, not source code):**
+- Clicking a door arc in 2D should show "Doors_IntSgl:810x2110mm" — NOT proven
+- Clicking a seat/furniture in 2D should show "Chair - Dining" — NOT possible yet (furniture is 3D mesh in retainSet, not a contour; pick hits 3D mesh but guidMap may fail for instanced/merged)
+- Clicking a wall contour should show "Basic Wall:Wall-Ext..." — code path exists, no § log proves it fires
+- There is NO separate responsibility that assigns IFC identity to 2D items. The guid is set inline during contour rendering. Need a distinct pass.
+
+**Approach (user's proposal):**
+- Separate responsibility: after 2D card draws contours/arcs/labels, a distinct pass assigns IFC identity (guid, ifcClass, element_name) to every drawn item
+- This is NOT the same as the current inline `userData.guid` — it should be an explicit identity layer
+- Each 2D item must be clickable and show its true IFC name from the DB
+- § logs must prove the chain at runtime: click → raycaster hit → guid resolved → DB lookup → name displayed
+- **Furniture as 2D truth:** IfcFurniture/IfcFurnishingElement should be flattened to top-down view (bbox footprint or top-projection) and rendered as 2D items in the contour group — NOT shown as clipped 3D meshes. A chair from the top = a rectangle. A desk = a rectangle. Each carries guid + ifcClass + element_name for click identity. This makes furniture a first-class 2D card citizen alongside walls, doors, windows.
+
+**Whitebox testing cycle (MANDATORY for next session):**
+1. Run `node deploy/dev/tests/card_verify.js` — read the log
+2. Every § diagnostic must either be a `check()` or removed
+3. No claim without a § log line proving it
+4. No invented data — every value from DB query
+5. No hardcoded building-specific values in tests
+6. Ghost admission: log elements-without-transforms at import time
+7. Grid opportunity logs: wall spans, orientations, opening positions, expected grid lines — per building, all from DB
+8. Anti-invention: wall meta=joined count, no orphan elements
+9. Deploy → curl-verify → test must show 0 deploy mismatches
+
+**User's insistent best practice (NEVER violate):**
+- Code is suspect. Only § logs are truth.
+- Do NOT declare fixed without the log showing ✓.
+- Do NOT guess from source what happens at runtime.
+- The test suite is the product. If it passes, the code works. If it fails, the code is broken.
+- Keep finding bugs — CTFL way is to not stop until finding a new one.
+- 2D cards are first-class citizens — extracted views, not overlays.
+- No invented walls, no invented data, no hardcoded expectations.
+- Let the logs speak, not us.
+- Card starts blank — elements are extracted onto it, clickable and true.
+
+**kernel_ops as card + view persistence:**
+- kernel_ops table already persists in DB, replays on reload, never lost
+- Cards could be stored as `CARD_CREATE` / `CARD_RESTORE` ops — instant on reload
+- Grid drag changes (GRID_MOVE) are undo/redo scoped — cards are NOT undoable
+- On reload: `replayOps('GRID_MOVE')` restores element positions, `replayOps('CARD_CREATE')` restores saved views
+- Benefit: cards survive DB re-import, history is traceable, single persistence mechanism
+- Current: cards in `saved_sections` table + localStorage — works but separate from kernel_ops
+- Question for next session: migrate card persistence to kernel_ops or keep separate?
