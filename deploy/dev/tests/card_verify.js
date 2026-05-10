@@ -293,6 +293,35 @@ for (const [bn, cfg] of Object.entries(GRID_BUILDINGS)) {
   if (totalFail > 0) {
     console.log('    §GRID_OPP_LOST ' + bn + ': ' + totalFail + ' walls too short to vote — grid opportunities lost');
   }
+
+  // ── EXPECTED GRID LINES: cluster wall center votes with tol=0.3m ──
+  // Simulates clusterVotes from grid_dims.js — walls that pass span vote their centerline.
+  const TOL = 0.3;
+  const xVotes = sql(bDb, "SELECT t.center_x FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class IN ('IfcWall','IfcWallStandardCase') AND m.storey='" + esc2 + "' AND t.bbox_z >= 1.8 AND t.bbox_y > t.bbox_x * 1.5").split('\n').filter(r => r).map(Number);
+  const yVotes = sql(bDb, "SELECT t.center_y FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class IN ('IfcWall','IfcWallStandardCase') AND m.storey='" + esc2 + "' AND t.bbox_z >= 1.8 AND t.bbox_x > t.bbox_y * 1.5").split('\n').filter(r => r).map(Number);
+
+  function simplecluster(vals, tol) {
+    if (!vals.length) return [];
+    var sorted = vals.slice().sort((a,b) => a - b);
+    var clusters = [], cur = [sorted[0]];
+    for (var ci2 = 1; ci2 < sorted.length; ci2++) {
+      if (sorted[ci2] - sorted[ci2-1] <= tol) cur.push(sorted[ci2]);
+      else { clusters.push(cur); cur = [sorted[ci2]]; }
+    }
+    clusters.push(cur);
+    return clusters.map(c => ({ pos: +(c.reduce((a,b) => a+b, 0) / c.length).toFixed(2), n: c.length }));
+  }
+
+  const xGrids = simplecluster(xVotes, TOL);
+  const yGrids = simplecluster(yVotes, TOL);
+  console.log('    §GRID_LINES ' + bn + ' X grids: ' + xGrids.map(g => g.pos + '(' + g.n + ' votes)').join(', '));
+  console.log('    §GRID_LINES ' + bn + ' Y grids: ' + yGrids.map(g => g.pos + '(' + g.n + ' votes)').join(', '));
+
+  // Opening counts within grid bays
+  const dN = doorPos.length;
+  const wN = winPos.length;
+  console.log('    §GRID_OPENINGS ' + bn + ' doors=' + dN + ' windows=' + wN + ' total_openings=' + (dN + wN));
+  check(bn + ': has openings for grid detection', (dN + wN) >= 2, 'openings=' + (dN + wN));
 }
 
 // ═══ 15. GRID DRAG — highlight, path, cascade, variance, undo ══════
