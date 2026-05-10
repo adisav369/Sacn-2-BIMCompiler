@@ -864,6 +864,20 @@ function setupGridOverlay(APP) {
       if (r.length && r[0].values.length) {
         for (var i = 0; i < r[0].values.length; i++) set[r[0].values[i][0]] = 1;
       }
+      // Include "Unknown" storey elements at same height — IFC often misassigns furniture storey.
+      // Without this, IfcFurniture on storey "Unknown" is invisible in 2D cards.
+      if (storeyName) {
+        var lo2 = ifcZ - 2.0, hi2 = ifcZ + 3.5;
+        var r2 = A.db.exec(
+          "SELECT m.guid FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid " +
+          "WHERE m.storey IN ('Unknown','unknown','') AND t.center_z BETWEEN " + lo2 + " AND " + hi2
+        );
+        var unknownCount = 0;
+        if (r2.length && r2[0].values.length) {
+          for (var j = 0; j < r2[0].values.length; j++) { set[r2[0].values[j][0]] = 1; unknownCount++; }
+        }
+        if (unknownCount) log('§CARD_QUERY +unknown=' + unknownCount + ' (storey=Unknown in Z range)');
+      }
     } catch (e) { log('§CARD_QUERY error: ' + e.message); }
     var ms = (performance.now() - t0).toFixed(1);
     log('§CARD_QUERY storey=' + (storeyName || 'z-band') +
@@ -887,8 +901,22 @@ function setupGridOverlay(APP) {
     // 1. Camera — ortho top-down, no clip (card handles visibility itself)
     if (envCache) GridViews.lockView(A, cardMode, envCache, ifcZ, null, true);
 
-    // 2. Query DB — one SQL gets all GUIDs for this storey
+    // 2. Query DB — one SQL gets all GUIDs for this storey.
+    //    If view_state has no storey (legacy card), detect it from cutZ to avoid
+    //    Z-band fallback which leaks elements from adjacent storeys.
     var storeyName = (vs && vs.storey) ? vs.storey : null;
+    if (!storeyName && A.db && typeof SectionCut !== 'undefined' && SectionCut.detectStoreys) {
+      var allStoreys = SectionCut.detectStoreys(A.db);
+      var closest = null, closestDist = Infinity;
+      for (var si = 0; si < allStoreys.length; si++) {
+        var dist = Math.abs(allStoreys[si].floorZ - (ifcZ - 1.2));
+        if (dist < closestDist) { closestDist = dist; closest = allStoreys[si].name; }
+      }
+      if (closest) {
+        storeyName = closest;
+        log('§CARD_RESTORE storey inferred from cutZ=' + ifcZ.toFixed(2) + ' → "' + closest + '"');
+      }
+    }
     var guidSet = queryStoreyGuids(ifcZ, storeyName);
 
     // 3. One pass — card decides each mesh's fate
