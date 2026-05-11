@@ -802,6 +802,7 @@ api.saveCut = function(APP, axis, constant) {
     api.savedCuts.push({ name: name, axis: axis, constant: constant, label: axis + ' @ ' + constant.toFixed(2) + 'm' });
     api._saveCutsToStorage(bldKey);
     console.log('§GRID_CUT_SAVE name=' + name + ' axis=' + axis + ' constant=' + constant.toFixed(3));
+    if (window.KernelOps && window.APP && APP.db) KernelOps.commitOp(APP.db, 'SECTION_CUT', {name:name,axis:axis,constant:constant});
     return name;
 };
 

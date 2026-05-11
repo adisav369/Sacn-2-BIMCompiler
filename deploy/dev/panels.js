@@ -193,6 +193,7 @@ function setupPanels(A) {
             } else if (selectedStoreys.length === 1) {
               console.log('§STOREY_TOGGLE → single: ' + selectedStoreys[0]);
               A.filterStorey(selectedStoreys[0]);
+              if (window.KernelOps && A.db) KernelOps.commitOp(A.db, 'VIEW_FILTER', {type:'storey',storeys:selectedStoreys});
             } else {
               // Multi-storey: show meshes matching any selected storey
               A.activeStoreyFilter = selectedStoreys;
@@ -207,6 +208,7 @@ function setupPanels(A) {
               // Highlight selected buttons
               btns.forEach(function(btn, j) { btn.className = indices.indexOf(j) >= 0 ? 'active' : ''; });
               console.log('§STOREY_MULTI storeys=' + selectedStoreys.join(','));
+              if (window.KernelOps && A.db) KernelOps.commitOp(A.db, 'VIEW_FILTER', {type:'storey',storeys:selectedStoreys});
               if (A.markDirty) A.markDirty();
             }
           }
@@ -259,6 +261,7 @@ function setupPanels(A) {
             });
             btns.forEach(function(btn, j) { btn.className = indices.indexOf(j) >= 0 ? 'active' : ''; });
             console.log('§DISC_MULTI selected=' + selectedDiscs.join(',') + ' hidden=' + A.hiddenDiscs.size);
+            if (window.KernelOps && A.db) KernelOps.commitOp(A.db, 'VIEW_FILTER', {type:'disc',discs:selectedDiscs});
             if (A.markDirty) A.markDirty();
           }
         },

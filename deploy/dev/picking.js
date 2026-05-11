@@ -407,6 +407,7 @@ function setupPicking(A) {
       A.populateStoreys(bld);
       A.populateDiscs(bld);
       console.log(`§PICK ${cls} "${name}" ${disc} ${storey}`);
+      if (window.KernelOps && A.db) KernelOps.commitOp(A.db, 'ELEMENT_PICK', {cls:cls,name:name,disc:disc,storey:storey}, [g]);
     } catch (err) {
       console.log(`§PICK_ERR ${err.message}`);
     }
