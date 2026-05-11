@@ -1363,6 +1363,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#shareable-4d-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shareable 4D Links
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#architecture_2" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4530,6 +4541,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#shareable-4d-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shareable 4D Links
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#architecture_2" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5669,6 +5691,30 @@ and real user interaction — queryable, replayable, exportable.</p>
 Each frame toggles <code>mesh.visible</code> and swaps a cloned material for the frontier highlight.
 InstancedMesh elements use the zero-scale matrix technique (same as ghostglass).
 Cost: one <code>scene.traverse()</code> per frame. GPU load identical to a static scene.</p>
+<h3 id="shareable-4d-links">Shareable 4D Links<a class="headerlink" href="#shareable-4d-links" title="Permanent link">&para;</a></h3>
+<p>The Time Machine supports URL parameters for shareable construction playback:</p>
+<table>
+<thead>
+<tr>
+<th>URL Parameter</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>?tm=1</code></td>
+<td>Open viewer with Time Machine panel active</td>
+</tr>
+<tr>
+<td><code>?tm=play</code></td>
+<td>Open and auto-play construction from empty site</td>
+</tr>
+</tbody>
+</table>
+<p>The <strong>🔗 Share</strong> button (top-left of panel) copies the current viewer URL with <code>?tm=play</code> appended — recipient opens the link, the building loads, and construction plays automatically. Zero setup, one click.</p>
+<p>Example:
+<div class="highlight"><pre><span></span><code>.../sandbox/index.html?db=buildings/Duplex_extracted.db&amp;tm=play
+</code></pre></div></p>
 <h3 id="architecture_2">Architecture<a class="headerlink" href="#architecture_2" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>⏳ press
   │
