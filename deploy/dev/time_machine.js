@@ -139,6 +139,7 @@
       'min-width:280px;user-select:none;';
 
     _panel.innerHTML =
+      '<div id="tm-status" style="width:100%;text-align:center;font-size:10px;color:#888;padding:2px 0">4D Construction — use DAY→HR→MIN to zoom in</div>' +
       '<div style="display:flex;gap:4px;align-items:center;width:100%">' +
         '<span id="tm-label" style="color:#4fc3f7;font-weight:bold;min-width:80px">—</span>' +
         '<div style="flex:1;display:flex;gap:3px">' +
@@ -148,6 +149,9 @@
         '</div>' +
       '</div>' +
       '<input id="tm-slider" type="range" min="0" max="1" value="0" style="width:100%;accent-color:#4fc3f7">' +
+      '<div id="tm-progress" style="width:100%;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden">' +
+        '<div id="tm-progress-bar" style="height:100%;width:0%;background:#4fc3f7;transition:width 0.3s"></div>' +
+      '</div>' +
       '<div style="display:flex;gap:4px;width:100%">' +
         '<button id="tm-play-btn" style="width:36px;font-size:14px" title="Play backwards">◀</button>' +
         '<button id="tm-stop-btn" style="width:36px;font-size:14px" title="Stop">⏹</button>' +
@@ -301,10 +305,22 @@
     if (!_playing || _playIdx < 0) { stopPlayback(); showAll(); return; }
 
     var op = _ops[_playIdx];
-    // Show timestamp
+    // Show timestamp + phase info
     var label = document.getElementById('tm-label');
     var d = new Date(op.timestamp);
-    label.textContent = d.toLocaleTimeString() + ' — ' + op.op_type;
+    var phase = (op.parameters && op.parameters.phase) || op.op_type;
+    label.textContent = d.toLocaleTimeString() + ' — ' + phase;
+
+    // Status bar
+    var status = document.getElementById('tm-status');
+    if (status) {
+      var name = (op.parameters && op.parameters.name) || '';
+      status.textContent = phase + (name ? ': ' + name : '') + ' (' + (_ops.length - _playIdx) + '/' + _ops.length + ')';
+    }
+
+    // Progress bar
+    var pbar = document.getElementById('tm-progress-bar');
+    if (pbar) pbar.style.width = Math.round((_ops.length - _playIdx) / _ops.length * 100) + '%';
 
     // Isolate this op's elements
     var guids = [];
@@ -341,7 +357,16 @@
       '  input_guids TEXT, output_guid TEXT, undone INTEGER DEFAULT 0)'
     );
 
-    var r = db.exec('SELECT guid, ifc_class, element_name, storey, discipline FROM elements ORDER BY storey, ifc_class');
+    var r;
+    try {
+      // Sort by storey rank (bottom-up) then height (Z) then position (X,Y) for spatial sequence
+      r = db.exec(
+        'SELECT m.guid, m.ifc_class, m.element_name, m.storey, m.discipline ' +
+        'FROM elements_meta m ' +
+        'LEFT JOIN element_transforms t ON t.guid = m.guid ' +
+        'ORDER BY COALESCE(t.center_z, 0), COALESCE(t.center_x, 0), COALESCE(t.center_y, 0)'
+      );
+    } catch(e) { console.log('§TIME_MACHINE_GANTT table error: ' + e.message); return false; }
     if (!r.length || !r[0].values.length) return false;
 
     var phases = [
