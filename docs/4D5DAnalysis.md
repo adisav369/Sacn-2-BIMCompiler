@@ -544,6 +544,127 @@ No server. No WebSocket. Pure `BroadcastChannel` between same-origin tabs.
 
 ---
 
+## 4D Time Machine — Interactive Construction Playback
+
+The **Time Machine** (`time_machine.js`) brings 4D simulation directly into the 3D viewer.
+No separate app, no schedule file import, no Blender rendering. One button, any IFC model.
+
+### How It Works
+
+1. User drops any IFC file into the viewer
+2. Presses **⏳** in the toolbar
+3. `kernel_ops` table is auto-populated with a weighted construction sequence derived from:
+   - `SEQUENCE_RULES` — phase assignment per IFC class (Substructure → Superstructure → MEP → Architecture → Finishes)
+   - `LABOR_RATES` — productivity per trade (units/day → seconds per element)
+   - Spatial sort — `element_transforms.center_z` (bottom-up), then X/Y
+   - Storey rank — basements first, ground floor, upper levels, roof last
+4. The building constructs itself from an empty site — element by element
+
+### Playback Controls
+
+| Button | Action |
+|--------|--------|
+| ◀◀ | Jump to empty site (hour 0, day 1) |
+| ◀ | Deconstruct backwards at mode speed |
+| ■ | Stop — slider becomes active for scrubbing |
+| ▶ | Build forward from current position |
+| ▶▶ | Jump to fully built |
+
+**DAY / HR / MIN** — controls both playback speed and slider scope:
+
+- **DAY** mode: playback advances 1 hour per tick (24 ticks = 1 day). Slider scrubs across project days.
+- **HR** mode: playback advances 1 minute per tick. Slider = 24 hours within the stopped day.
+- **MIN** mode: finest grain. Slider = 60 seconds within the stopped minute.
+
+### Visual States
+
+Each element exists in one of three visual states:
+
+- **Future** (not yet placed) — invisible
+- **Frontier** (being installed) — orange glow, see-through, `depthTest: false`, `renderOrder: 999`
+- **Recently placed** (within 3 ticks) — faded yellow linger, then snaps to solid
+- **Built** — solid, original material restored
+
+### Weighted Durations & Parallel Trades
+
+Element install time is derived from `LABOR_RATES.productivity`:
+
+| Trade | Example Class | Productivity | Install Time |
+|-------|--------------|-------------|-------------|
+| STEEL_ERECTOR | IfcColumn | 6/day | ~80 min |
+| CONCRETE_GANG | IfcSlab | 35/day | ~14 min |
+| MASON | IfcWall | 12/day | ~40 min |
+| ELECTRICIAN | IfcOutlet | 25/day | ~19 min |
+| CARPENTER | IfcDoor | 6/day | ~80 min |
+
+**Parallel trades**: different phases on the same storey overlap when the predecessor
+phase finishes. MEP rough-in starts on ground floor while superstructure continues on
+upper floors. This matches the Gantt chart bar layout in `boq_charts.html`.
+
+### Kernel Ops — The Fossil Record
+
+Every construction event is logged in the `kernel_ops` SQLite table:
+
+```sql
+CREATE TABLE kernel_ops (
+  id INTEGER PRIMARY KEY,
+  timestamp INTEGER NOT NULL,      -- start time (ms)
+  op_type TEXT NOT NULL,            -- 'ELEMENT_PLACE', 'VIEW_FILTER', 'ELEMENT_PICK', ...
+  parameters TEXT NOT NULL,         -- JSON: {phase, cls, name, storey, _end_ts}
+  input_guids TEXT,                 -- JSON array of affected GUIDs
+  output_guid TEXT,                 -- primary element GUID
+  undone INTEGER DEFAULT 0
+);
+```
+
+The same table also captures live user activity:
+- `ELEMENT_PICK` — element clicked in viewer
+- `VIEW_FILTER` — storey or discipline filter toggled
+- `SECTION_CUT` — section plane saved
+- `GRID_MOVE` — grid line dragged in 2D editor
+
+This makes `kernel_ops` a complete **audit trail** of both synthetic construction
+and real user interaction — queryable, replayable, exportable.
+
+### Performance
+
+The time machine is pure data playback — no geometry upload, no shader recompilation.
+Each frame toggles `mesh.visible` and swaps a cloned material for the frontier highlight.
+InstancedMesh elements use the zero-scale matrix technique (same as ghostglass).
+Cost: one `scene.traverse()` per frame. GPU load identical to a static scene.
+
+### Architecture
+
+```
+⏳ press
+  │
+  ├─ kernel_ops empty? → injectGantt()
+  │    ├─ reads elements_meta + element_transforms
+  │    ├─ sorts: SEQUENCE_RULES.sequence → storeyRank → center_z
+  │    ├─ applies LABOR_RATES productivity → weighted duration per element
+  │    ├─ schedules: sequential within (phase, storey), parallel across phases
+  │    └─ writes ELEMENT_PLACE ops with start_ts + _end_ts
+  │
+  └─ kernel_ops populated → loadOps() → playback ready
+       ├─ renderAtTime(cursor) — traverse scene, set visibility + highlights
+       ├─ playTick() — advance cursor by tickMs(), loop
+       └─ slider scrub — maps DAY/HR/MIN to cursor position
+```
+
+### Files
+
+| File | Role |
+|------|------|
+| `deploy/dev/time_machine.js` | Time machine panel, injection, playback, highlighting |
+| `deploy/dev/kernel_ops.js` | `commitOp()`, undo/redo, replay infrastructure |
+| `deploy/dev/precision_cam.js` | Precision camera (fine move + zoom reset) for detail inspection |
+| `deploy/dev/picking.js` | Logs `ELEMENT_PICK` to kernel_ops |
+| `deploy/dev/panels.js` | Logs `VIEW_FILTER` to kernel_ops |
+| `deploy/dev/section_cut.js` | Logs `SECTION_CUT` to kernel_ops |
+| `deploy/dev/rates.js` | `SEQUENCE_RULES`, `LABOR_RATES` — drives injection weighting |
+
+---
+
 ## Next Steps
 
 1. **Browser nD engine** — port to JavaScript for [BIM OOTB](BIM_Designer_Browser.md) Phase 3.
