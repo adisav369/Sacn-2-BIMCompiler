@@ -182,6 +182,8 @@
     });
 
     if (app.markDirty) app.markDirty();
+    // Force immediate render — mobile browsers defer rAF until touch
+    if (app.renderer && app.scene && app.camera) app.renderer.render(app.scene, app.camera);
     updateStatus();
   }
 
@@ -263,39 +265,49 @@
   }
 
   // ── Scene state save/restore ──
+  var _savedInstanceState = {}; // meshId → { vis, matrices: { idx → Matrix4 } }
+
   function saveVisibility() {
     _savedVisibility = [];
+    _savedInstanceState = {};
     var app = A();
     if (!app || !app.scene) return;
     app.scene.traverse(function(obj) {
       if (obj.userData && obj.userData.guid) {
         _savedVisibility.push({ obj: obj, vis: obj.visible });
       }
+      // Save InstancedMesh state (visibility + all matrices)
+      if (obj.isInstancedMesh && app._instanceMeta && app._instanceMeta[obj.id]) {
+        var metas = app._instanceMeta[obj.id];
+        var matrices = {};
+        var tmpM = new THREE.Matrix4();
+        for (var i = 0; i < metas.length; i++) {
+          obj.getMatrixAt(i, tmpM);
+          matrices[i] = tmpM.clone();
+        }
+        _savedInstanceState[obj.id] = { vis: obj.visible, matrices: matrices, obj: obj };
+      }
     });
   }
 
   function restoreVisibility() {
     clearHighlight();
-    // Restore instance matrices
-    var app = A();
-    if (app && app.scene && app._instanceMeta) {
-      for (var meshId in _savedInstanceMatrices) {
-        var matrices = _savedInstanceMatrices[meshId];
-        // Find the mesh in scene
-        app.scene.traverse(function(obj) {
-          if (obj.isInstancedMesh && obj.id == meshId) {
-            for (var idx in matrices) {
-              obj.setMatrixAt(parseInt(idx), matrices[idx]);
-            }
-            obj.instanceMatrix.needsUpdate = true;
-            obj.visible = true;
-          }
-        });
+    // Restore InstancedMesh matrices and visibility from saved state
+    for (var meshId in _savedInstanceState) {
+      var state = _savedInstanceState[meshId];
+      var obj = state.obj;
+      for (var idx in state.matrices) {
+        obj.setMatrixAt(parseInt(idx), state.matrices[idx]);
       }
+      obj.instanceMatrix.needsUpdate = true;
+      obj.visible = state.vis;
     }
+    _savedInstanceState = {};
     _savedInstanceMatrices = {};
+    // Restore single mesh visibility
     _savedVisibility.forEach(function(s) { s.obj.visible = s.vis; });
     _savedVisibility = [];
+    var app = A();
     if (app && app.markDirty) app.markDirty();
   }
 
@@ -768,6 +780,22 @@
 
   function activate() {
     if (_active) return;
+    // Mobile merged meshes have no guid — re-stream as individual meshes
+    var app = A();
+    if (app && app._isMobile) {
+      app._isMobile = false;
+      var bld = app.activeBuilding;
+      app.clearStreamed();
+      if (bld) { app.streamBuilding(bld); }
+      // Wait for re-stream to finish, then activate
+      var _reWait = setInterval(function() {
+        if (app.buildingsRendered && app.buildingsRendered.size > 0 && !app.streaming) {
+          clearInterval(_reWait);
+          activate();
+        }
+      }, 500);
+      return;
+    }
     setToolbarHighlight(true);
     _ops = loadOps();
     // Auto-clear stale ELEMENT_PLACE ops missing weighted _end_ts
@@ -863,7 +891,7 @@
       // Wait for DB to load before activating
       var _tmWait = setInterval(function() {
         var app = A();
-        if (app && app.db && app.scene && app.scene.children.length > 2) {
+        if (app && app.db && app.scene && app.buildingsRendered && app.buildingsRendered.size > 0 && !app.streaming) {
           clearInterval(_tmWait);
           activate();
           if (tmParam === 'play') {

@@ -99,7 +99,8 @@ function setupStreaming(A) {
   A._matCache = {};
   A._instanceMeta = {};  // instancedMesh.id → [{guid,storey,disc,instanceIndex}, ...]
   A._instanceGuids = {}; // guid → {meshId, instanceIndex} for reverse lookup
-  A._isMobile = (navigator.maxTouchPoints > 0 && window.screen.width < 1024);
+  A._isMobile = (navigator.maxTouchPoints > 0 && window.screen.width < 1024)
+    && !new URLSearchParams(location.search).has('tm');
   A._bboxPlaceholder = null;
 
   // Per-element wireframe cubes, one InstancedMesh per discipline for disc-based coloring
