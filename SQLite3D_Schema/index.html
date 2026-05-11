@@ -4144,6 +4144,7 @@
 <span class="w">    </span><span class="n">geometry_hash</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
 <span class="w">    </span><span class="n">vertices</span><span class="w"> </span><span class="nb">BLOB</span><span class="p">,</span><span class="w">              </span><span class="c1">-- Float32Array, centred at origin, Z-up</span>
 <span class="w">    </span><span class="n">faces</span><span class="w"> </span><span class="nb">BLOB</span><span class="p">,</span><span class="w">                 </span><span class="c1">-- Int32Array (triangle indices)</span>
+<span class="w">    </span><span class="n">normals</span><span class="w"> </span><span class="nb">BLOB</span><span class="p">,</span><span class="w">               </span><span class="c1">-- Float32Array, precomputed vertex normals (Z-up)</span>
 <span class="w">    </span><span class="n">building</span><span class="w"> </span><span class="nb">TEXT</span>
 <span class="p">);</span>
 </code></pre></div>
@@ -4228,12 +4229,15 @@
 <div class="highlight"><pre><span></span><code>SQLite DB → sql.js WASM → query elements_meta + element_transforms
   → stream geometry BLOBs from component_geometries
   → Float32Array → THREE.BufferGeometry → GPU
+  → precomputed normals BLOB skips computeVertexNormals() (zero CPU at load)
 
 Pick: click → raycast → guid → SELECT bbox_x,y,z → yellow highlight box
 Filter: storey/discipline → hide/show InstancedMesh instances
-4D: scrub timeline → SELECT tasks by date → colour elements by phase
+4D: BroadcastChannel relay — viewer runs GROUP BY queries, sends results
+    to boq_charts.html (no DB re-load, sub-second render)
 </code></pre></div>
-<p>No intermediate format. No conversion. DB BLOBs ARE the GPU buffers.</p>
+<p>No intermediate format. No conversion. DB BLOBs ARE the GPU buffers.
+Normals precomputed at IFC extraction time — viewer just copies and applies Y↔Z swap.</p>
 <hr />
 <h2 id="authorship-map-whats-ours-vs-third-party">Authorship Map — What's Ours vs Third-Party<a class="headerlink" href="#authorship-map-whats-ours-vs-third-party" title="Permanent link">&para;</a></h2>
 <h3 id="third-party-libraries-loaded-from-cdn-not-modified">Third-party libraries (loaded from CDN, not modified)<a class="headerlink" href="#third-party-libraries-loaded-from-cdn-not-modified" title="Permanent link">&para;</a></h3>
@@ -4292,12 +4296,12 @@ Filter: storey/discipline → hide/show InstancedMesh instances
 <tbody>
 <tr>
 <td><code>import_worker.js</code></td>
-<td>Calls web-ifc API → extracts entities → 4×4 transform, Y→Z-up, centroid re-centre, discipline classify, storey map, material extract, geometry dedup (FNV-1a hash), auto-scale mm→m</td>
+<td>Calls web-ifc API → extracts entities → 4×4 transform, Y→Z-up, centroid re-centre, discipline classify, storey map, material extract, geometry dedup (FNV-1a hash), auto-scale mm→m, <strong>precompute vertex normals</strong>, multi-file merge</td>
 <td>The extraction pipeline — turns raw web-ifc output into structured DB records</td>
 </tr>
 <tr>
 <td><code>import_db_builder.js</code></td>
-<td>Takes extracted data → creates 10-table SQLite schema via sql.js</td>
+<td>Takes extracted data → creates 10-table SQLite schema via sql.js, stores normals BLOB</td>
 <td>The schema design — BOM-based, instanced, 4D-ready</td>
 </tr>
 <tr>
