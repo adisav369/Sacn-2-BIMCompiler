@@ -633,6 +633,22 @@ Each frame toggles `mesh.visible` and swaps a cloned material for the frontier h
 InstancedMesh elements use the zero-scale matrix technique (same as ghostglass).
 Cost: one `scene.traverse()` per frame. GPU load identical to a static scene.
 
+### Shareable 4D Links
+
+The Time Machine supports URL parameters for shareable construction playback:
+
+| URL Parameter | Behaviour |
+|--------------|-----------|
+| `?tm=1` | Open viewer with Time Machine panel active |
+| `?tm=play` | Open and auto-play construction from empty site |
+
+The **🔗 Share** button (top-left of panel) copies the current viewer URL with `?tm=play` appended — recipient opens the link, the building loads, and construction plays automatically. Zero setup, one click.
+
+Example:
+```
+.../sandbox/index.html?db=buildings/Duplex_extracted.db&tm=play
+```
+
 ### Architecture
 
 ```

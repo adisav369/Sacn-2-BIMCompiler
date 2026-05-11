@@ -312,7 +312,11 @@
       'width:340px;user-select:none;touch-action:none;';
 
     _panel.innerHTML =
-      '<div class="tm-drag" style="width:100%;text-align:center;font-size:9px;color:#555;padding:2px 0;cursor:grab">· · ·</div>' +
+      '<div style="display:flex;align-items:center;width:100%;cursor:grab" class="tm-drag">' +
+        '<button id="tm-share" style="font-size:9px;padding:2px 6px" title="Copy shareable link">&#x1F517; Share</button>' +
+        '<span style="flex:1;font-size:9px;color:#555;text-align:center">· · ·</span>' +
+        '<button id="tm-close" style="width:22px;height:22px;font-size:12px;padding:0;line-height:1" title="Close">&#x2715;</button>' +
+      '</div>' +
       '<div id="tm-status" style="width:100%;text-align:center;font-size:10px;color:#888;padding:2px 0;height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
         '4D Construction — weighted parallel playback</div>' +
       '<div style="display:flex;gap:4px;align-items:center;width:100%">' +
@@ -335,7 +339,6 @@
         '<button id="tm-end-btn" style="width:30px;font-size:14px" title="Jump to end">&#x25B6;&#x25B6;</button>' +
         '<button id="tm-touched" style="flex:1;font-size:9px">Copy Touched</button>' +
         '<button id="tm-new" style="flex:1;font-size:9px">Copy New</button>' +
-        '<button id="tm-close" style="width:26px">✕</button>' +
       '</div>';
     document.body.appendChild(_panel);
 
@@ -381,6 +384,18 @@
     });
     document.getElementById('tm-new').addEventListener('pointerup', function(e) {
       e.stopPropagation(); copyGuids(true);
+    });
+    document.getElementById('tm-share').addEventListener('pointerup', function(e) {
+      e.stopPropagation();
+      var url = new URL(location.href);
+      url.searchParams.set('tm', 'play');
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url.toString());
+        var sb = document.getElementById('tm-share');
+        if (sb) { sb.textContent = 'Copied!'; setTimeout(function(){ sb.innerHTML = '&#x1F517; Share'; }, 1500); }
+      }
+      viewerStatus('4D playback link copied to clipboard');
+      console.log('§TIME_MACHINE share URL: ' + url.toString());
     });
     document.getElementById('tm-close').addEventListener('pointerup', function(e) {
       e.stopPropagation(); deactivate();
@@ -741,8 +756,19 @@
   }
 
   // ── Activate / Deactivate ──
+  function setToolbarHighlight(on) {
+    var btn = document.getElementById('time-machine-btn');
+    if (btn) btn.style.background = on ? '#1a6b8a' : '#444';
+  }
+
+  function viewerStatus(msg) {
+    var app = A();
+    if (app && app.status) app.status.textContent = msg;
+  }
+
   function activate() {
     if (_active) return;
+    setToolbarHighlight(true);
     _ops = loadOps();
     // Auto-clear stale ELEMENT_PLACE ops missing weighted _end_ts
     if (_ops.length && _ops[0].op_type === 'ELEMENT_PLACE' && !_ops[0].parameters._end_ts) {
@@ -751,18 +777,22 @@
       console.log('§TIME_MACHINE cleared stale unweighted ops — will re-inject');
     }
     if (!_ops.length) {
-      // Show setup progress in status bar
+      // Show setup progress
+      _panel.style.display = 'flex';
       var st = document.getElementById('tm-status');
       if (st) st.textContent = 'Setting up 4D construction timeline...';
-      _panel.style.display = 'flex';
+      viewerStatus('Time Machine: generating construction schedule...');
       if (!injectGantt()) {
         if (st) st.textContent = 'No elements found in database';
+        viewerStatus('Time Machine: no elements found');
+        setToolbarHighlight(false);
         console.log('§TIME_MACHINE no ops and no elements — nothing to show');
         return;
       }
       if (st) st.textContent = 'Loading timeline...';
       _ops = loadOps();
-      if (!_ops.length) return;
+      if (!_ops.length) { setToolbarHighlight(false); return; }
+      viewerStatus('Time Machine: ' + _ops.length + ' elements scheduled');
     }
     _active = true;
     computeDays();
@@ -783,7 +813,9 @@
     stopPlayback();
     _active = false;
     _panel.style.display = 'none';
+    setToolbarHighlight(false);
     restoreVisibility();
+    viewerStatus('');
     console.log('§TIME_MACHINE OFF — restored');
   }
 
@@ -824,6 +856,25 @@
     else toolbar.appendChild(btn);
 
     setTimeout(hookCommitOp, 2000);
+
+    // URL param: ?tm=1 (open time machine) or ?tm=play (open + auto-play forward)
+    var tmParam = new URLSearchParams(location.search).get('tm');
+    if (tmParam) {
+      // Wait for DB to load before activating
+      var _tmWait = setInterval(function() {
+        var app = A();
+        if (app && app.db && app.scene && app.scene.children.length > 2) {
+          clearInterval(_tmWait);
+          activate();
+          if (tmParam === 'play') {
+            // Jump to start then play forward
+            _cursor = _projectStart;
+            renderAtTime(_cursor);
+            startPlayback(+1);
+          }
+        }
+      }, 500);
+    }
   }
 
   if (document.readyState === 'loading') {
