@@ -516,6 +516,7 @@ function generateSchedule(activities, startDateStr) {
       }
 
       const taskFinish = addWorkDays(storeyStart, maxDuration);
+      const calendarDays = Math.round((taskFinish - storeyStart) / 86400000);
       const discLabel = [...disciplines].join('/');
       taskId++;
       tasks.push({
@@ -529,7 +530,7 @@ function generateSchedule(activities, startDateStr) {
         qty: totalQtyGroup,
         uom: 'MIX',
         productivity: totalQtyGroup > 0 ? Math.round(totalQtyGroup / maxDuration) : 0,
-        duration: maxDuration,
+        duration: calendarDays,
         crews: 1,
         startDate: storeyStart.toISOString().slice(0,10),
         finishDate: taskFinish.toISOString().slice(0,10),
@@ -766,6 +767,114 @@ async function _tryChannelRelay(timeoutMs) {
   });
 }
 
+// S253d: Ask viewer for kernel_ops — Gantt uses same schedule as hourglass
+async function _tryScheduleRelay(timeoutMs) {
+  return new Promise(function(resolve) {
+    try {
+      var ch = new BroadcastChannel('bim_4d');
+      var timer = setTimeout(function() { ch.close(); resolve(null); }, timeoutMs);
+      ch.onmessage = function(evt) {
+        if (evt.data && evt.data.type === '4D_SCHEDULE_RESPONSE') {
+          clearTimeout(timer);
+          ch.close();
+          resolve(evt.data);
+        }
+      };
+      ch.postMessage({ type: '4D_SCHEDULE_REQUEST' });
+      console.log('§4D_SCHEDULE_REQUEST sent — waiting ' + timeoutMs + 'ms');
+    } catch(e) { resolve(null); }
+  });
+}
+
+// S253d: Build scheduleData from kernel_ops — single source of truth with hourglass
+function buildScheduleFromOps(ops) {
+  const PHASE_ORDER = ['Substructure','Superstructure','MEP Rough-in','Architecture','MEP Final','Finishes'];
+
+  // Group ops by phase+storey (same grouping as generateSchedule)
+  var groups = {};  // "phase|||storey" → { ops[], minTs, maxTs, ... }
+  for (var i = 0; i < ops.length; i++) {
+    var op = ops[i];
+    if (op.op_type !== 'ELEMENT_PLACE') continue;
+    var phase = op.phase || 'Architecture';
+    var storey = op.storey || 'Unknown';
+    var key = phase + '|||' + storey;
+    if (!groups[key]) {
+      groups[key] = {
+        phase: phase, storey: storey,
+        minTs: op.start_ts, maxTs: op.end_ts,
+        qty: 0, guids: [], classes: new Set(), disciplines: new Set(), resources: new Set()
+      };
+    }
+    var g = groups[key];
+    if (op.start_ts < g.minTs) g.minTs = op.start_ts;
+    if (op.end_ts > g.maxTs) g.maxTs = op.end_ts;
+    g.qty++;
+    if (op.guid) g.guids.push(op.guid);
+    if (op.cls) g.classes.add(op.cls);
+    if (op.resource) g.resources.add(op.resource);
+    // Derive discipline from SEQUENCE_RULES
+    var rule = SEQUENCE_RULES[op.cls];
+    if (rule && rule.resource) {
+      var res = rule.resource;
+      if (res === 'HVAC_TECH' || res === 'PLUMBER' || res === 'ELECTRICIAN') g.disciplines.add('MEP');
+      else if (res === 'STEEL_ERECTOR' || res === 'CONCRETE_GANG') g.disciplines.add('STR');
+      else g.disciplines.add('ARC');
+    }
+  }
+
+  // Find project start from ops
+  var projectStartMs = Infinity;
+  for (var k in groups) {
+    if (groups[k].minTs < projectStartMs) projectStartMs = groups[k].minTs;
+  }
+  if (!isFinite(projectStartMs)) projectStartMs = Date.now();
+  var msPerDay = 86400000;
+
+  // Sort groups by phase order then minTs
+  var sorted = Object.values(groups).sort(function(a, b) {
+    var pa = PHASE_ORDER.indexOf(a.phase), pb = PHASE_ORDER.indexOf(b.phase);
+    if (pa < 0) pa = 99; if (pb < 0) pb = 99;
+    if (pa !== pb) return pa - pb;
+    return a.minTs - b.minTs;
+  });
+
+  var tasks = [];
+  for (var si = 0; si < sorted.length; si++) {
+    var grp = sorted[si];
+    var startDay = Math.max(0, Math.round((grp.minTs - projectStartMs) / msPerDay));
+    var finishDay = Math.max(startDay + 1, Math.round((grp.maxTs - projectStartMs) / msPerDay));
+    var duration = finishDay - startDay;
+    var discLabel = [...grp.disciplines].join('/') || 'GEN';
+    var crewSize = 0;
+    grp.resources.forEach(function(r) { crewSize += (LABOR_RATES[r] && LABOR_RATES[r].crew_size) || 2; });
+
+    tasks.push({
+      id: si + 1,
+      wbs: '1.' + (PHASE_ORDER.indexOf(grp.phase) + 1) + '.' + (si + 1),
+      name: grp.storey + ' - ' + grp.phase + ' (' + discLabel + ')',
+      ifcClasses: [...grp.classes],
+      phase: grp.phase,
+      discipline: discLabel,
+      storey: grp.storey,
+      qty: grp.qty,
+      uom: 'EA',
+      productivity: grp.qty > 0 && duration > 0 ? Math.round(grp.qty / duration) : 0,
+      duration: duration,
+      crews: 1,
+      startDate: new Date(grp.minTs).toISOString().slice(0, 10),
+      finishDate: new Date(grp.maxTs).toISOString().slice(0, 10),
+      resource: [...grp.resources].join(','),
+      crew: Math.max(1, crewSize),
+      equipment: '',
+      startDay: startDay,
+      finishDay: finishDay,
+      guids: grp.guids
+    });
+  }
+  console.log('§4D_SCHEDULE built ' + tasks.length + ' tasks from ' + ops.length + ' kernel_ops');
+  return tasks;
+}
+
 async function init() {
   // §1.2: Load rate template from JSON before any cost calculation
   if (typeof initRateTemplate === 'function') {
@@ -784,6 +893,7 @@ async function init() {
 
   const _t0 = performance.now();
   let countRows, linearQty = {}, areaQty = {};
+  var _relayGuids = null;  // S253d: relayed GUIDs from viewer (populated in relay path)
 
   // S253: Fast path — ask viewer for data via BroadcastChannel (no DB load)
   document.getElementById('info').textContent = 'Requesting data from viewer...';
@@ -802,7 +912,18 @@ async function init() {
     }
     console.log('§QTO_RELAY_HIT building=' + bldName + ' rows=' + relay.countRows.length +
       ' dims=' + (relay.dimRows ? relay.dimRows.length : 0) +
+      ' guids=' + (relay.guidRows ? relay.guidRows.length : 0) +
       ' relayMs=' + Math.round(performance.now() - _t0));
+    // S253d: Store relayed GUIDs for task resolution (no DB load needed)
+    var _relayGuids = {};  // "ifc_class|storey" → [guid, ...]
+    if (relay.guidRows) {
+      for (var gi = 0; gi < relay.guidRows.length; gi++) {
+        var gr = relay.guidRows[gi]; // [guid, ifc_class, storey]
+        var gk = gr[1] + '|' + gr[2];
+        if (!_relayGuids[gk]) _relayGuids[gk] = [];
+        _relayGuids[gk].push(gr[0]);
+      }
+    }
   } else {
     // Fallback — load DB the slow way (viewer not open or no response)
     console.log('§QTO_RELAY_MISS reason=' + (relay ? relay.error || 'empty' : 'timeout') +
@@ -944,57 +1065,95 @@ async function init() {
   const _t1 = performance.now();
   console.log('§QTO_SUMMARY classes=' + qtoData.length + ' material=' + Math.round(grandMaterial) + ' labor=' + Math.round(grandLabor) + ' equip=' + Math.round(grandEquip) + ' warnings=' + qtoWarnCount + ' queryMs=' + Math.round(_t1 - _t0));
 
-  // Generate 4D schedule
-  scheduleData = generateSchedule(qtoData, '2025-01-06');
+  // S253d: Try kernel_ops from viewer — single source of truth with hourglass
+  let _scheduleSource = 'generateSchedule';
+  const schedRelay = await _tryScheduleRelay(500);
+  if (schedRelay && !schedRelay.error && schedRelay.ops && schedRelay.ops.length) {
+    // kernel_ops available — build scheduleData from hourglass schedule
+    scheduleData = buildScheduleFromOps(schedRelay.ops);
+    _scheduleSource = 'kernel_ops';
+    console.log('§4D_SCHEDULE_SOURCE kernel_ops tasks=' + scheduleData.length +
+      ' ops=' + schedRelay.ops.length);
+  } else {
+    // Fallback — generate schedule independently (viewer not open or no hourglass session)
+    console.log('§4D_SCHEDULE_SOURCE generateSchedule reason=' +
+      (schedRelay ? schedRelay.error || 'empty' : 'timeout'));
+    scheduleData = generateSchedule(qtoData, '2025-01-06');
+  }
 
   // S240 §0.1: Run 8-check audit before any 4D sync
   const auditResult = audit4DSchedule(scheduleData, db, qtoData);
 
-  // S240c §P1a: Resolve GUIDs per grouped task — union all ifcClasses, storey-match first, building-wide fallback
-  const _bld = bldName.replace(/'/g,"''");
-  for (const t of scheduleData) {
-    const classes = t.ifcClasses || (t.ifcClass ? [t.ifcClass] : []);
-    if (!classes.length) { t.guids = []; continue; }
-    t.guids = [];
-    const st = (t.storey||'').replace(/'/g,"''");
-    for (const ifcClass of classes) {
-      try {
-        const cls = ifcClass.replace(/'/g,"''");
-        const sql = "SELECT guid FROM elements_meta WHERE ifc_class = '" + cls +
-          "' AND storey = '" + st + "' AND building = '" + _bld + "'";
-        const res = db.exec(sql);
-        let guids = res[0] ? res[0].values.map(r => r[0]) : [];
-        // BUG-1 fallback: if storey match yields 0, query building-wide
-        if (guids.length === 0) {
-          const fallback = db.exec("SELECT guid FROM elements_meta WHERE ifc_class = '" +
-            cls + "' AND building = '" + _bld + "'");
-          guids = fallback[0] ? fallback[0].values.map(r => r[0]) : [];
-          if (guids.length > 0) {
-            console.log('§4D_GUID_FALLBACK class=' + ifcClass + ' storey=' + t.storey + ' fallbackCount=' + guids.length);
-          }
-        }
-        t.guids = t.guids.concat(guids);
-      } catch(e) {}
+  // Resolve GUIDs — kernel_ops path already has them, generateSchedule path needs DB lookup
+  let _guidsAfter = 0;
+  if (_scheduleSource === 'kernel_ops') {
+    // GUIDs already populated from kernel_ops output_guid — just dedup
+    const _assignedGuids = new Set();
+    let _guidsBefore = 0;
+    for (const t of scheduleData) {
+      _guidsBefore += t.guids.length;
+      t.guids = t.guids.filter(g => !_assignedGuids.has(g));
+      t.guids.forEach(g => _assignedGuids.add(g));
+      _guidsAfter += t.guids.length;
     }
+    console.log('§4D_GUID_DEDUP before=' + _guidsBefore + ' after=' + _guidsAfter + ' stripped=' + (_guidsBefore - _guidsAfter) + ' source=kernel_ops');
+  } else {
+    // S240c §P1a: Resolve GUIDs per grouped task
+    // Use relayed GUIDs if available (relay path), otherwise DB query (fallback path)
+    const _bld = bldName.replace(/'/g,"''");
+    for (const t of scheduleData) {
+      const classes = t.ifcClasses || (t.ifcClass ? [t.ifcClass] : []);
+      if (!classes.length) { t.guids = []; continue; }
+      t.guids = [];
+      const st = t.storey || '';
+      for (const ifcClass of classes) {
+        if (_relayGuids && Object.keys(_relayGuids).length > 0) {
+          // S253d: Use relayed GUIDs from viewer (no DB needed)
+          var rk = ifcClass + '|' + st;
+          var guids = _relayGuids[rk] || [];
+          t.guids = t.guids.concat(guids);
+        } else if (db) {
+          // DB path (viewer not open, loaded from OCI)
+          try {
+            const cls = ifcClass.replace(/'/g,"''");
+            const stSafe = st.replace(/'/g,"''");
+            const sql = "SELECT guid FROM elements_meta WHERE ifc_class = '" + cls +
+              "' AND storey = '" + stSafe + "' AND building = '" + _bld + "'";
+            const res = db.exec(sql);
+            var guids = res[0] ? res[0].values.map(r => r[0]) : [];
+            if (guids.length === 0) {
+              const fallback = db.exec("SELECT guid FROM elements_meta WHERE ifc_class = '" +
+                cls + "' AND building = '" + _bld + "'");
+              guids = fallback[0] ? fallback[0].values.map(r => r[0]) : [];
+              if (guids.length > 0) {
+                console.log('§4D_GUID_FALLBACK class=' + ifcClass + ' storey=' + t.storey + ' fallbackCount=' + guids.length);
+              }
+            }
+            t.guids = t.guids.concat(guids);
+          } catch(e) {}
+        }
+      }
+    }
+    console.log('§4D_GUID_SOURCE ' + (_relayGuids && Object.keys(_relayGuids).length > 0 ? 'relay' : (db ? 'db' : 'NONE — guids will be empty')));
+    // S240c §P1b: Deduplicate — each GUID belongs to exactly one task (first in phase order wins)
+    const _assignedGuids = new Set();
+    let _guidsBefore = 0;
+    for (const t of scheduleData) {
+      _guidsBefore += t.guids.length;
+      t.guids = t.guids.filter(g => !_assignedGuids.has(g));
+      t.guids.forEach(g => _assignedGuids.add(g));
+      _guidsAfter += t.guids.length;
+    }
+    console.log('§4D_GUID_DEDUP before=' + _guidsBefore + ' after=' + _guidsAfter + ' stripped=' + (_guidsBefore - _guidsAfter));
+    // S240c §P1d: Coverage witness — every element must be in exactly one task
+    let _totalElements = 0;
+    try {
+      const r = db.exec("SELECT COUNT(*) FROM elements_meta WHERE building = '" + _bld + "'");
+      _totalElements = r[0] ? r[0].values[0][0] : 0;
+    } catch(e) {}
+    const _orphanCount = _totalElements - _assignedGuids.size;
+    console.log('§4D_COVERAGE total=' + _totalElements + ' assigned=' + _assignedGuids.size + ' orphan=' + _orphanCount);
   }
-  // S240c §P1b: Deduplicate — each GUID belongs to exactly one task (first in phase order wins)
-  const _assignedGuids = new Set();
-  let _guidsBefore = 0, _guidsAfter = 0;
-  for (const t of scheduleData) {
-    _guidsBefore += t.guids.length;
-    t.guids = t.guids.filter(g => !_assignedGuids.has(g));
-    t.guids.forEach(g => _assignedGuids.add(g));
-    _guidsAfter += t.guids.length;
-  }
-  console.log('§4D_GUID_DEDUP before=' + _guidsBefore + ' after=' + _guidsAfter + ' stripped=' + (_guidsBefore - _guidsAfter));
-  // S240c §P1d: Coverage witness — every element must be in exactly one task
-  let _totalElements = 0;
-  try {
-    const r = db.exec("SELECT COUNT(*) FROM elements_meta WHERE building = '" + _bld + "'");
-    _totalElements = r[0] ? r[0].values[0][0] : 0;
-  } catch(e) {}
-  const _orphanCount = _totalElements - _assignedGuids.size;
-  console.log('§4D_COVERAGE total=' + _totalElements + ' assigned=' + _assignedGuids.size + ' orphan=' + _orphanCount);
 
   const totalGuids = _guidsAfter;
   const zeroGuidTasks = scheduleData.filter(t => t.guids.length === 0);
@@ -1005,7 +1164,13 @@ async function init() {
   const projDaysInit = scheduleData.length ? Math.max(...scheduleData.map(t=>t.finishDay)) : 0;
   console.log(`§QTO: ${qtoData.length} rows | ${totalQty} elements`);
   console.log(`§TOTALS: Mat ${CUR}${grandMaterial.toLocaleString()} | Lab ${CUR}${grandLabor.toLocaleString()} | Eq ${CUR}${grandEquip.toLocaleString()} | Grand ${CUR}${grandTotal.toLocaleString()}`);
-  console.log(`§SCHEDULE: ${scheduleData.length} tasks | ${projDaysInit} calendar days`);
+  console.log(`§SCHEDULE: ${scheduleData.length} tasks | ${projDaysInit} calendar days | source=${_scheduleSource} | db=${db ? 'loaded' : 'NULL'}`);
+  // Dump each task for debugging
+  for (const t of scheduleData) {
+    console.log('§SCHED_TASK "' + t.name + '" day=' + t.startDay + '-' + t.finishDay +
+      ' dur=' + t.duration + ' bar_end=' + (t.startDay + t.duration) +
+      ' guids=' + (t.guids ? t.guids.length : 0) + ' phase=' + t.phase);
+  }
   const unmapped = [...new Set(qtoData.map(r=>r.cls).filter(c=>!SEQUENCE_RULES[c]))];
   console.log(`§UNMAPPED: ${unmapped.length ? unmapped.join(', ') : 'NONE'}`);
   document.getElementById('info').textContent =
@@ -1186,6 +1351,7 @@ function renderCharts() {
     _deferChart(scBox, function() {
       const allFinish = scheduleData.map(t => t.finishDay);
       const maxDay = Math.max(...allFinish);
+      console.log('§SCURVE_DATA maxDay=' + maxDay + ' tasks=' + scheduleData.length + ' finishDays=' + allFinish.slice(0,5).join(','));
       const totalTasks = scheduleData.length;
       const weekLabels = [], weekPcts = [];
       const totalWeeks = Math.max(1, Math.ceil(maxDay / 7));
@@ -1219,6 +1385,8 @@ function renderCharts() {
   }
   const maxFinishDay = Math.max(...scheduleData.map(t=>t.finishDay));
   const phaseList = Object.keys(phaseDates).sort((a,b) => phaseDates[a].start - phaseDates[b].start);
+  console.log('§MILESTONE_DATA phases=' + phaseList.length + ' maxFinish=' + maxFinishDay +
+    ' spans=' + phaseList.map(p => p + ':' + phaseDates[p].start + '-' + phaseDates[p].end).join(', '));
 
   const msBox = el('div','chart-box');
   msBox.innerHTML = '<h2>' + _TRL.t_milestone + '</h2>';
@@ -1251,12 +1419,26 @@ function renderCharts() {
   const ganttTasks = [...scheduleData].sort((a,b) => a.startDay - b.startDay);
 
   const ganttBox = el('div','chart-box full');
-  ganttBox.innerHTML = '<h2>' + _TRL.t_gantt + '</h2>';
+  const ganttHeader = document.createElement('div');
+  ganttHeader.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:8px;';
+  var _syncColor = _scheduleSource === 'kernel_ops' ? '#44cc44' : '#ff8c00';
+  var _syncText = _scheduleSource === 'kernel_ops' ? 'Hourglass OK' : 'Run Hourglass first';
+  ganttHeader.innerHTML = '<h2 style="margin:0">' + (_TRL && _TRL.t_gantt || '4D — Gantt Timeline') + '</h2>' +
+    '<span style="font-size:11px;color:' + _syncColor + '">&#9203; ' + _syncText + '</span>';
+  ganttBox.appendChild(ganttHeader);
   const ganttCanvas = el('canvas');
-  const ganttH = Math.max(200, ganttTasks.length * 28 + 60);
-  ganttCanvas.style.height = ganttH + 'px';
-  ganttBox.style.height = (ganttH + 48) + 'px'; // +48 for h2 title
-  ganttBox.appendChild(ganttCanvas); c.appendChild(ganttBox);
+  const barPx = ganttTasks.length > 40 ? 14 : ganttTasks.length > 20 ? 20 : 28;
+  const ganttH = Math.max(200, ganttTasks.length * barPx + 60);
+  const ganttWrap = document.createElement('div');
+  var maxWrapH = Math.min(ganttH, 700);
+  ganttWrap.style.cssText = 'position:relative;height:' + maxWrapH + 'px;' +
+    (ganttH > 700 ? 'overflow-y:auto;' : '');
+  // Inner div holds the canvas at full height — scrollable if needed
+  const ganttInner = document.createElement('div');
+  ganttInner.style.cssText = 'position:relative;height:' + ganttH + 'px;';
+  ganttInner.appendChild(ganttCanvas);
+  ganttWrap.appendChild(ganttInner);
+  ganttBox.appendChild(ganttWrap); c.appendChild(ganttBox);
   _deferChart(ganttBox, function() {
     chartInstances.push(new Chart(ganttCanvas, {
       type:'bar',
@@ -1331,29 +1513,35 @@ function renderCharts() {
 
     // S240b: Timeline scrub — orange vertical line overlaid ON the Gantt chart
     const ganttChart = chartInstances[chartInstances.length - 1];
-    const maxDay = Math.max(...scheduleData.map(t => t.finishDay), 1);
+    const maxDay = Math.ceil(ganttChart.scales.x.max) || Math.max(...scheduleData.map(t => t.finishDay), 1);
+    const maxStacked = Math.max(...scheduleData.map(t => t.startDay + t.duration));
+    const maxFinish2 = Math.max(...scheduleData.map(t => t.finishDay));
+    console.log('§GANTT_SCRUB_INIT maxDay=' + maxDay + ' xScale.max=' + ganttChart.scales.x.max +
+      ' xScale.min=' + ganttChart.scales.x.min + ' xScale.left=' + ganttChart.scales.x.left +
+      ' xScale.right=' + ganttChart.scales.x.right +
+      ' maxStacked=' + maxStacked + ' maxFinish=' + maxFinish2 +
+      ' tasks=' + scheduleData.length);
 
-    // Make ganttBox position:relative so we can overlay absolutely
-    ganttBox.style.position = 'relative';
+    // Scrub overlays go inside ganttWrap (position:relative container for the chart)
 
     // Orange vertical scrub line — overlaid on the Gantt canvas
     const scrubLine = document.createElement('div');
     scrubLine.style.cssText = 'position:absolute;top:0;width:4px;height:100%;background:rgba(255,140,0,0.9);pointer-events:none;z-index:10;box-shadow:0 0 12px rgba(255,140,0,0.7),0 0 24px rgba(255,140,0,0.3);transition:left 0.06s ease-out;display:none;border-radius:2px;';
-    ganttBox.appendChild(scrubLine);
+    ganttInner.appendChild(scrubLine);
 
     // Wide invisible drag handle — 30px wide, easy to grab
     const scrubHandle = document.createElement('div');
     scrubHandle.style.cssText = 'position:absolute;top:0;width:30px;height:100%;background:transparent;z-index:12;cursor:ew-resize;display:none;margin-left:-13px;';
-    ganttBox.appendChild(scrubHandle);
+    ganttInner.appendChild(scrubHandle);
 
     // Activity tooltip — floats next to the scrub line
     const scrubTip = document.createElement('div');
     scrubTip.style.cssText = 'position:absolute;top:8px;background:rgba(20,20,40,0.92);color:#ff8c00;font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid rgba(255,140,0,0.4);pointer-events:none;z-index:11;white-space:nowrap;display:none;max-width:300px;overflow:hidden;text-overflow:ellipsis;';
-    ganttBox.appendChild(scrubTip);
+    ganttInner.appendChild(scrubTip);
 
-    // Control bar below chart
+    // Control bar — inline with title
     const controlBar = document.createElement('div');
-    controlBar.style.cssText = 'display:flex;align-items:center;margin:6px 0;gap:8px;';
+    controlBar.style.cssText = 'display:flex;align-items:center;gap:8px;';
 
     const playBtn = document.createElement('button');
     playBtn.textContent = '\u25b6 Play';
@@ -1383,7 +1571,7 @@ function renderCharts() {
     controlBar.appendChild(speedSel);
     controlBar.appendChild(dayLabel);
     controlBar.appendChild(taskLabel);
-    ganttBox.appendChild(controlBar);
+    ganttHeader.appendChild(controlBar);
 
     // S240c §P5: Resource legend — data sent to viewer via BroadcastChannel
     const RES_ICONS = {
@@ -1469,6 +1657,7 @@ function renderCharts() {
     let _playTimer = null;
     let _playing = false;
     let _currentDay = 0;
+    let _lastSeekIdx = -1;  // track last seek to advance through same-day tasks
 
     // Get Gantt chart plot area pixel bounds (x-axis area only)
     function getPlotArea() {
@@ -1476,24 +1665,31 @@ function renderCharts() {
       return { left: xScale.left, right: xScale.right, top: ganttChart.chartArea.top, bottom: ganttChart.chartArea.bottom };
     }
 
-    // Map pixel X → day number
+    // Map pixel X → day number (linear over plot area)
     function pixelToDay(px) {
-      const area = getPlotArea();
-      const ratio = Math.max(0, Math.min(1, (px - area.left) / (area.right - area.left)));
+      const xScale = ganttChart.scales.x;
+      const ratio = Math.max(0, Math.min(1, (px - xScale.left) / (xScale.right - xScale.left)));
       return Math.round(ratio * maxDay);
     }
 
-    // Map day → pixel X
+    // Map day → pixel X (linear over plot area)
     function dayToPixel(day) {
-      const area = getPlotArea();
-      return area.left + (day / maxDay) * (area.right - area.left);
+      const xScale = ganttChart.scales.x;
+      return xScale.left + (day / maxDay) * (xScale.right - xScale.left);
     }
 
-    // Find task index for a given day
+    // Find task index for a given day — advances sequentially through same-day tasks
     function dayToTaskIndex(day) {
+      // If next task after _lastSeekIdx has started, advance to it
+      if (_lastSeekIdx >= 0 && _lastSeekIdx + 1 < scheduleData.length &&
+          scheduleData[_lastSeekIdx + 1].startDay <= day) {
+        return _lastSeekIdx + 1;
+      }
+      // Otherwise find the first task whose range covers this day
       let best = -1;
       for (let i = 0; i < scheduleData.length; i++) {
         if (scheduleData[i].startDay <= day) best = i;
+        else break;
       }
       return best;
     }
@@ -1511,7 +1707,7 @@ function renderCharts() {
       scrubLine.style.display = 'block';
       scrubHandle.style.left = px + 'px';
       scrubHandle.style.display = 'block';
-      scrubTip.style.left = Math.min(px + 8, ganttBox.offsetWidth - 310) + 'px';
+      scrubTip.style.left = Math.min(px + 8, ganttInner.offsetWidth - 310) + 'px';
 
       dayLabel.textContent = 'Day ' + day + ' / ' + maxDay;
       updateResPanel(day);
@@ -1555,6 +1751,7 @@ function renderCharts() {
       }
 
       if (tidx >= 0) {
+        _lastSeekIdx = tidx;
         _bim4d.postMessage({ type: '4D_SEEK', taskIndex: tidx });
       }
     }
@@ -1608,7 +1805,10 @@ function renderCharts() {
       ganttCanvas.style.cursor = 'ew-resize';
       playBtn.textContent = '\u23f8 Pause';
       stopBtn.style.display = '';
-      if (!_scrubActive && _currentDay <= 0) _currentDay = 0;
+      if (!_scrubActive && _currentDay <= 0) {
+        _currentDay = 1;
+        applyScrub(1); // show day 1 immediately — enters glass mode
+      }
       startPlayTimer();
     });
 
@@ -1618,6 +1818,7 @@ function renderCharts() {
       _playing = false;
       _playActivated = false;
       _currentDay = 0;
+      _lastSeekIdx = -1;
       playBtn.textContent = '\u25b6 Play';
       stopBtn.style.display = 'none';
       ganttCanvas.style.cursor = '';
@@ -1641,7 +1842,7 @@ function renderCharts() {
       _playTimer = setInterval(function() {
         _currentDay += step * speed;
         if (_currentDay > maxDay) {
-          _currentDay = maxDay + 1;  // one day past end — all resources at rest
+          _currentDay = maxDay + 1;
           clearInterval(_playTimer); _playTimer = null;
           _playing = false;
           playBtn.textContent = '\u25b6 Play';
@@ -1650,7 +1851,7 @@ function renderCharts() {
         }
         applyScrub(_currentDay);
       }, 800);
-      console.log('§4D_PLAY_TIMER speed=' + speed + 'x step=' + step + ' interval=800ms');
+      console.log('§4D_PLAY_TIMER speed=' + speed + 'x step=' + step + ' maxDay=' + maxDay + ' interval=800ms');
     }
 
     // Speed change during playback restarts timer

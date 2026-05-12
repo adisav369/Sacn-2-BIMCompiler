@@ -233,17 +233,55 @@ function initViewer() {
             "WHERE m.building = '" + bld + "' AND t.bbox_x IS NOT NULL AND t.bbox_x > 0 " +
             "GROUP BY m.discipline, m.ifc_class, m.storey"
           );
+          // S253d: Also relay per-element GUIDs for ghostglass GUID resolution
+          var guidRows = APP.db.exec(
+            "SELECT guid, ifc_class, storey FROM elements_meta WHERE building = '" + bld + "'"
+          );
           _bim4d.postMessage({
             type: '4D_QTO_RESPONSE',
             building: APP.activeBuilding,
             countRows: countRows.length ? countRows[0].values : [],
-            dimRows: dimRows.length ? dimRows[0].values : []
+            dimRows: dimRows.length ? dimRows[0].values : [],
+            guidRows: guidRows.length ? guidRows[0].values : []
           });
           console.log('§4D_QTO_RELAY sent count=' + (countRows.length ? countRows[0].values.length : 0) +
-            ' dims=' + (dimRows.length ? dimRows[0].values.length : 0));
+            ' dims=' + (dimRows.length ? dimRows[0].values.length : 0) +
+            ' guids=' + (guidRows.length ? guidRows[0].values.length : 0));
         } catch (e) {
           _bim4d.postMessage({ type: '4D_QTO_RESPONSE', error: e.message });
           console.log('§4D_QTO_RELAY error: ' + e.message);
+        }
+        return;
+      }
+
+      // S253d: Schedule relay — boq_charts asks for kernel_ops so Gantt uses same schedule as hourglass
+      if (msg.type === '4D_SCHEDULE_REQUEST') {
+        if (!APP.db) {
+          _bim4d.postMessage({ type: '4D_SCHEDULE_RESPONSE', error: 'no_db' });
+          return;
+        }
+        try {
+          var opsResult = APP.db.exec(
+            'SELECT timestamp, op_type, parameters, output_guid ' +
+            'FROM kernel_ops WHERE undone = 0 ORDER BY timestamp'
+          );
+          var ops = [];
+          if (opsResult.length && opsResult[0].values.length) {
+            ops = opsResult[0].values.map(function(row) {
+              var p = row[2] ? JSON.parse(row[2]) : {};
+              return {
+                start_ts: row[0], op_type: row[1], guid: row[3],
+                phase: p.phase || '', cls: p.cls || '', name: p.name || '',
+                storey: p.storey || '', resource: p.resource || '',
+                end_ts: p._end_ts || (row[0] + 60000)
+              };
+            });
+          }
+          _bim4d.postMessage({ type: '4D_SCHEDULE_RESPONSE', ops: ops });
+          console.log('§4D_SCHEDULE_RELAY sent ops=' + ops.length);
+        } catch (e) {
+          _bim4d.postMessage({ type: '4D_SCHEDULE_RESPONSE', error: e.message });
+          console.log('§4D_SCHEDULE_RELAY error: ' + e.message);
         }
         return;
       }
