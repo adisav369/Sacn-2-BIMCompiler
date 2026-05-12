@@ -2273,6 +2273,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#1b-the-runtime-why-it-feels-native" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1b. The Runtime — Why It Feels Native
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1b. The Runtime — Why It Feels Native">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sqlite-wasm-sqljs-the-instant-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SQLite WASM (sql.js) — The Instant Database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#threejs-the-instant-scene" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three.js — The Instant Scene
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-combination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The combination
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#2-the-three-experiences" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4015,6 +4065,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#1b-the-runtime-why-it-feels-native" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1b. The Runtime — Why It Feels Native
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1b. The Runtime — Why It Feels Native">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sqlite-wasm-sqljs-the-instant-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SQLite WASM (sql.js) — The Instant Database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#threejs-the-instant-scene" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three.js — The Instant Scene
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-combination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The combination
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#2-the-three-experiences" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4661,6 +4761,61 @@ runs clash detection, tracks changes, computes costs — all with zero install.<
 The renderer doesn't know it's drawing a cabinet instead of a wall.
 The document engine doesn't know it's processing a pick order instead of
 a construction order. Same five tables. Same state machine. Same journal.</p>
+<hr />
+<h2 id="1b-the-runtime-why-it-feels-native">1b. The Runtime — Why It Feels Native<a class="headerlink" href="#1b-the-runtime-why-it-feels-native" title="Permanent link">&para;</a></h2>
+<p>Two technologies make this possible. Both run <strong>inside the browser</strong>,
+with zero server dependency, zero install, and zero latency.</p>
+<h3 id="sqlite-wasm-sqljs-the-instant-database">SQLite WASM (sql.js) — The Instant Database<a class="headerlink" href="#sqlite-wasm-sqljs-the-instant-database" title="Permanent link">&para;</a></h3>
+<p>The entire database — containers, items, documents, journal, kernel_ops —
+lives in memory as a SQLite file loaded via WebAssembly. Queries execute
+in <strong>microseconds</strong>, not milliseconds. There is no HTTP round-trip. No
+spinner. No "loading..." The waiter taps a table card and the order
+appears <em>before their finger lifts off the glass</em>.</p>
+<p>Traditional POS/ERP hits a server: network hop (50-200ms) + query (10-50ms)
++ render (50ms) = <strong>the user waits</strong>. SQLite WASM: query (0.1ms) + render
+(16ms at 60fps) = <strong>the user doesn't notice</strong>. That's the difference between
+software that feels like a tool and software that feels like part of your hand.</p>
+<p><strong>What this enables:</strong>
+- Swipe between 100 cards with zero stutter — each card is a SQL query
+- Heatmap recalculates on every op commit — no batch refresh
+- Offline works perfectly — the <code>.db</code> is already local
+- Phone with 2GB RAM handles a restaurant, warehouse, or factory floor
+- The $100 Android and the $1500 iPhone feel the same</p>
+<h3 id="threejs-the-instant-scene">Three.js — The Instant Scene<a class="headerlink" href="#threejs-the-instant-scene" title="Permanent link">&para;</a></h3>
+<p>Three.js turns the phone GPU into a spatial renderer. The 3D floor plan,
+the heatmap colours, the red/green/amber glows, the card thumbnails — all
+rendered at <strong>60 frames per second</strong> on commodity hardware. Already proven
+with 126,000 BIM elements on a mid-range laptop.</p>
+<p><strong>What this enables:</strong>
+- Heatmap is not a static chart — it's a live scene. Colours shift as
+  kernel_ops commit. Cook marks "ready" → waiter's card glows green
+  in the same frame.
+- Spatial navigation is real: orbit a warehouse, walk through a restaurant,
+  zoom into a rack. Not a flat diagram — a space.
+- Transitions between roles feel cinematic: camera moves from owner's
+  bird-eye to waiter's table-level to customer's single-table view
+- The mini 3D thumbnail on each swipe card is a live Three.js viewport,
+  not a screenshot — it updates in real time</p>
+<h3 id="the-combination">The combination<a class="headerlink" href="#the-combination" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>┌──────────────────────────────────────────────┐
+│  SQLite WASM          Three.js               │
+│  (the brain)          (the eyes)             │
+│                                              │
+│  Queries in µs        Renders at 60fps       │
+│  kernel_ops log       Heatmap overlay        │
+│  State machine        Spatial navigation     │
+│  Journal posting      Role-perspective camera │
+│  Offline-first        GPU-accelerated        │
+│                                              │
+│  ──────────── Browser (the runtime) ──────── │
+│  No server. No install. No app store.        │
+│  Same code on phone, tablet, desktop.        │
+└──────────────────────────────────────────────┘
+</code></pre></div>
+<p>This is why the POC can be built as <strong>one HTML file + one <code>.db</code> file</strong>.
+The browser IS the application server, the database server, and the
+rendering engine. The phone in the waiter's pocket is a more capable
+ERP terminal than the $5,000 POS system bolted to the counter.</p>
 <hr />
 <h2 id="2-the-three-experiences">2. The Three Experiences<a class="headerlink" href="#2-the-three-experiences" title="Permanent link">&para;</a></h2>
 <h3 id="21-desktop-the-god-view">2.1 Desktop — The God View<a class="headerlink" href="#21-desktop-the-god-view" title="Permanent link">&para;</a></h3>
