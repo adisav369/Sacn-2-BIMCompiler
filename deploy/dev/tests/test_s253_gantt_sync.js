@@ -796,6 +796,24 @@ for (var ci = 0; ci < cases.length; ci++) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// TEST 13: Deploy version sync — sw.js CACHE_VERSION matches index.html registration
+// ══════════════════════════════════════════════════════════════
+console.log('\n── T13: Deploy version sync ──');
+
+const swSrc = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
+const indexSrc = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+
+const swVersionMatch = swSrc.match(/CACHE_VERSION\s*=\s*'(v\d+)'/);
+const regVersionMatch = indexSrc.match(/sw\.js\?v=(\d+)/);
+
+const swVersion = swVersionMatch ? swVersionMatch[1] : 'NOT_FOUND';
+const regVersion = regVersionMatch ? 'v' + regVersionMatch[1] : 'NOT_FOUND';
+
+console.log('§DEPLOY_VERSION sw.js CACHE_VERSION=' + swVersion + ' index.html register=' + regVersion);
+assert(swVersion === regVersion, 'sw.js ' + swVersion + ' === index.html ' + regVersion +
+  (swVersion !== regVersion ? ' — STALE CACHE: browser will serve old files!' : ''));
+
+// ══════════════════════════════════════════════════════════════
 // SUMMARY
 // ══════════════════════════════════════════════════════════════
 console.log('\n════════════════════════════════');
