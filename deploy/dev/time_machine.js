@@ -77,6 +77,8 @@
 
   var _prevCursor = 0; // track previous cursor for frontier detection
   var _sunCycle = false;  // day/night toggle
+  var _camFollow = false; // camera follow toggle
+  var _camTarget = null;  // smoothed follow target (persists across ticks)
 
   var _zeroMatrix = null; // lazy init
   var _savedInstanceMatrices = {}; // meshId → { idx → Matrix4 }
@@ -274,21 +276,71 @@
       }
     });
 
-    // Metal sparks for steel frontier elements (desktop only)
+    // Metal sparks + collect frontier positions for camera follow
+    var _frontierPositions = [];
     if (!_isMobileTM && _playing) {
       updateSparks();
-      app.scene.traverse(function(obj) {
-        if (!obj.isMesh || !obj.visible || !obj.userData || !obj.userData.guid) return;
-        var fg = frontier[obj.userData.guid];
-        if (fg && fg.isSteel && fg.t < 0.5 && Math.random() < 0.3) {
-          // Spawn sparks at mesh world position
-          var wp = new THREE.Vector3();
-          obj.getWorldPosition(wp);
-          spawnSparks(wp, app.scene);
-        }
-      });
     } else if (!_playing) {
       clearSparks();
+    }
+    app.scene.traverse(function(obj) {
+      if (!obj.isMesh || !obj.visible || !obj.userData || !obj.userData.guid) return;
+      var fg = frontier[obj.userData.guid];
+      if (!fg) return;
+      var wp = new THREE.Vector3();
+      obj.getWorldPosition(wp);
+      _frontierPositions.push(wp);
+      // Sparks for steel
+      if (!_isMobileTM && _playing && fg.isSteel && fg.t < 0.5 && Math.random() < 0.3) {
+        spawnSparks(wp, app.scene);
+      }
+    });
+
+    // Camera follow — smoothed target that drifts toward densest action
+    if (_camFollow && _frontierPositions.length && app.controls && app.camera) {
+      var fp = _frontierPositions;
+
+      // Weighted centroid — elements close together pull harder
+      var cx = 0, cy = 0, cz = 0, wt = 0;
+      for (var fi = 0; fi < fp.length; fi++) {
+        // Weight = how many neighbours within 10 units (density)
+        var w = 0;
+        for (var fj = 0; fj < fp.length; fj++) {
+          var ddx = fp[fi].x-fp[fj].x, ddy = fp[fi].y-fp[fj].y, ddz = fp[fi].z-fp[fj].z;
+          if (ddx*ddx+ddy*ddy+ddz*ddz < 100) w++;
+        }
+        cx += fp[fi].x * w; cy += fp[fi].y * w; cz += fp[fi].z * w;
+        wt += w;
+      }
+      if (wt > 0) { cx /= wt; cy /= wt; cz /= wt; }
+
+      // Smooth the target — never jump, always drift
+      if (!_camTarget) _camTarget = new THREE.Vector3(cx, cy, cz);
+      _camTarget.x += (cx - _camTarget.x) * 0.04;
+      _camTarget.y += (cy - _camTarget.y) * 0.04;
+      _camTarget.z += (cz - _camTarget.z) * 0.04;
+
+      // Orbit target drifts toward smoothed point
+      var target = app.controls.target;
+      target.x += (_camTarget.x - target.x) * 0.03;
+      target.y += (_camTarget.y - target.y) * 0.03;
+      target.z += (_camTarget.z - target.z) * 0.03;
+
+      // Dolly in — spread of frontier determines desired distance
+      var spread = 0;
+      for (var fi = 0; fi < fp.length; fi++) {
+        var ddx = fp[fi].x-_camTarget.x, ddy = fp[fi].y-_camTarget.y, ddz = fp[fi].z-_camTarget.z;
+        var d = Math.sqrt(ddx*ddx+ddy*ddy+ddz*ddz);
+        if (d > spread) spread = d;
+      }
+      var desiredDist = Math.max(8, spread * 1.2); // get really close
+      var camDist = app.camera.position.distanceTo(target);
+      if (camDist > desiredDist) {
+        var dir = new THREE.Vector3().subVectors(target, app.camera.position).normalize();
+        app.camera.position.addScaledVector(dir, (camDist - desiredDist) * 0.06);
+      }
+
+      app.controls.update();
     }
 
     applySunCycle(cursorMs);
@@ -532,6 +584,7 @@
       '<div style="display:flex;align-items:center;width:100%;cursor:grab" class="tm-drag">' +
         '<button id="tm-share" style="font-size:9px;padding:2px 6px" title="Copy shareable link">&#x1F517; Share</button>' +
         '<button id="tm-sun" style="font-size:12px;padding:2px 6px" title="Day/night cycle">&#x2600;</button>' +
+        '<button id="tm-eye" style="font-size:12px;padding:2px 6px" title="Camera follow action">&#x1F441;</button>' +
         '<span id="tm-big-counter" style="flex:1;font-size:18px;font-weight:bold;color:#4fc3f7;text-align:center;letter-spacing:1px">DAY 0 | HR 0</span>' +
         '<button id="tm-close" style="width:22px;height:22px;font-size:12px;padding:0;line-height:1" title="Close">&#x2715;</button>' +
       '</div>' +
@@ -624,6 +677,12 @@
       else restoreSky();
       var app = A();
       if (app && app.renderer && app.scene && app.camera) app.renderer.render(app.scene, app.camera);
+    });
+    document.getElementById('tm-eye').addEventListener('pointerup', function(e) {
+      e.stopPropagation();
+      _camFollow = !_camFollow;
+      var btn = document.getElementById('tm-eye');
+      if (btn) btn.classList.toggle('tm-active', _camFollow);
     });
     document.getElementById('tm-close').addEventListener('pointerup', function(e) {
       e.stopPropagation(); deactivate();
