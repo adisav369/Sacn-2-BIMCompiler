@@ -809,9 +809,35 @@ const regVersionMatch = indexSrc.match(/sw\.js\?v=(\d+)/);
 const swVersion = swVersionMatch ? swVersionMatch[1] : 'NOT_FOUND';
 const regVersion = regVersionMatch ? 'v' + regVersionMatch[1] : 'NOT_FOUND';
 
-console.log('§DEPLOY_VERSION sw.js CACHE_VERSION=' + swVersion + ' index.html register=' + regVersion);
-assert(swVersion === regVersion, 'sw.js ' + swVersion + ' === index.html ' + regVersion +
+console.log('§DEPLOY_VERSION_LOCAL sw.js=' + swVersion + ' index.html=' + regVersion);
+assert(swVersion === regVersion, 'local: sw.js ' + swVersion + ' === index.html ' + regVersion +
   (swVersion !== regVersion ? ' — STALE CACHE: browser will serve old files!' : ''));
+
+// Check deployed OCI files match local
+const { execSync } = require('child_process');
+const buckets = ['bim-ootb-full'];
+for (const bucket of buckets) {
+  try {
+    const baseUrl = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/' + bucket + '/o/sandbox/';
+    const ociSw = execSync('curl -sf "' + baseUrl + 'sw.js" 2>/dev/null | head -15', { encoding: 'utf8', timeout: 10000 });
+    const ociIndex = execSync('curl -sf "' + baseUrl + 'index.html" 2>/dev/null | grep "sw.js"', { encoding: 'utf8', timeout: 10000 });
+    const ociCharts = execSync('curl -sf "' + baseUrl + 'boq_charts.html" 2>/dev/null | grep -c "_relayGuids\\|buildScheduleFromOps\\|_scheduleSource"', { encoding: 'utf8', timeout: 10000 });
+
+    const ociSwMatch = ociSw.match(/CACHE_VERSION\s*=\s*'(v\d+)'/);
+    const ociRegMatch = ociIndex.match(/sw\.js\?v=(\d+)/);
+    const ociSwVer = ociSwMatch ? ociSwMatch[1] : 'NOT_FOUND';
+    const ociRegVer = ociRegMatch ? 'v' + ociRegMatch[1] : 'NOT_FOUND';
+    const ociChartsHit = parseInt(ociCharts.trim()) || 0;
+
+    console.log('§DEPLOY_OCI_' + bucket + ' sw.js=' + ociSwVer + ' index.html=' + ociRegVer + ' charts_markers=' + ociChartsHit);
+    assert(ociSwVer === swVersion, bucket + ' OCI sw.js ' + ociSwVer + ' === local ' + swVersion);
+    assert(ociRegVer === regVersion, bucket + ' OCI index.html ' + ociRegVer + ' === local ' + regVersion);
+    assert(ociSwVer === ociRegVer, bucket + ' OCI sw.js ' + ociSwVer + ' === OCI index.html ' + ociRegVer);
+    assert(ociChartsHit >= 5, bucket + ' OCI boq_charts.html has ' + ociChartsHit + ' change markers (expect >=5)');
+  } catch(e) {
+    console.log('§DEPLOY_OCI_' + bucket + ' SKIP: ' + e.message.split('\n')[0]);
+  }
+}
 
 // ══════════════════════════════════════════════════════════════
 // SUMMARY
