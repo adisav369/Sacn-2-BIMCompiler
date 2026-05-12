@@ -245,9 +245,16 @@
 
     var status = document.getElementById('tm-status');
     var label = document.getElementById('tm-label');
+    var bigCounter = document.getElementById('tm-big-counter');
     var d = new Date(_cursor);
     if (label) label.textContent = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + ' — ' + (lastPhase || '—');
     if (status) status.textContent = (lastName || '—') + ' | ' + placed + '/' + _ops.length + ' placed | ' + active + ' active';
+    if (bigCounter) {
+      var elapsedMs = _cursor - _projectStart;
+      var totalDays = Math.floor(elapsedMs / 86400000);
+      var remainHrs = Math.floor((elapsedMs % 86400000) / 3600000);
+      bigCounter.textContent = 'DAY ' + totalDays + ' \u2502 HR ' + remainHrs;
+    }
   }
 
   // ── Anchor from cursor ──
@@ -326,7 +333,7 @@
     _panel.innerHTML =
       '<div style="display:flex;align-items:center;width:100%;cursor:grab" class="tm-drag">' +
         '<button id="tm-share" style="font-size:9px;padding:2px 6px" title="Copy shareable link">&#x1F517; Share</button>' +
-        '<span style="flex:1;font-size:9px;color:#555;text-align:center">· · ·</span>' +
+        '<span id="tm-big-counter" style="flex:1;font-size:18px;font-weight:bold;color:#4fc3f7;text-align:center;letter-spacing:1px">DAY 0 | HR 0</span>' +
         '<button id="tm-close" style="width:22px;height:22px;font-size:12px;padding:0;line-height:1" title="Close">&#x2715;</button>' +
       '</div>' +
       '<div id="tm-status" style="width:100%;text-align:center;font-size:10px;color:#888;padding:2px 0;height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
