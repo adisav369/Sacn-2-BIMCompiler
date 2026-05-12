@@ -2317,6 +2317,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#the-but-what-about-the-data-myth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The "but what about the data?" myth
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4109,6 +4120,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#the-but-what-about-the-data-myth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The "but what about the data?" myth
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4812,6 +4834,63 @@ with 126,000 BIM elements on a mid-range laptop.</p>
 │  Same code on phone, tablet, desktop.        │
 └──────────────────────────────────────────────┘
 </code></pre></div>
+<h3 id="the-but-what-about-the-data-myth">The "but what about the data?" myth<a class="headerlink" href="#the-but-what-about-the-data-myth" title="Permanent link">&para;</a></h3>
+<p>Traditional ERP assumes data is huge and must live on a server. Reality:</p>
+<table>
+<thead>
+<tr>
+<th>Domain</th>
+<th>What's in the <code>.db</code></th>
+<th>Size</th>
+<th>Equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Restaurant (30 tables, 200 menu items, week of ops)</td>
+<td>containers + items + docs + kernel_ops</td>
+<td>~500 KB</td>
+<td>One photo</td>
+</tr>
+<tr>
+<td>Warehouse (5,000 bins, 50,000 SKUs, month of movements)</td>
+<td>Full WMS state</td>
+<td>~5 MB</td>
+<td>Half a selfie</td>
+</tr>
+<tr>
+<td>Retail store (10,000 SKUs, planogram, year of sales)</td>
+<td>Full POS state</td>
+<td>~8 MB</td>
+<td>A voice memo</td>
+</tr>
+<tr>
+<td>iDempiere's Application Dictionary (entire AD)</td>
+<td>All products, categories, BOMs, rules</td>
+<td>~80 MB</td>
+<td>A podcast episode</td>
+</tr>
+<tr>
+<td>Full BIM building (126K elements — proven largest)</td>
+<td>Complete extracted model</td>
+<td>~230 MB</td>
+<td>A short video</td>
+</tr>
+</tbody>
+</table>
+<p>A modern phone has 64-128 GB storage and 4-8 GB RAM. The restaurant <code>.db</code>
+would struggle to hit 1 MB. You could load <strong>every restaurant in a franchise
+chain</strong> into memory simultaneously and still have room for TikTok.</p>
+<p>The 10 MB chunk budget is generous. Even with 3D geometry for every shelf,
+rack, and table in a warehouse, the file stays smaller than a single
+product photo on a traditional e-commerce platform. The data that
+iDempiere needs PostgreSQL + 8 GB heap + a Linux server for fits in a
+file smaller than the app icon on the user's home screen.</p>
+<p><strong>Scale path when it actually matters:</strong>
+For extreme cases (million-SKU catalogue, multi-year history), chunk the <code>.db</code>:
+- <strong>Hot DB</strong> (&lt; 10 MB): current state — this month's containers, items, active docs
+- <strong>Archive DB</strong> (any size): history — completed docs, old kernel_ops, closed periods
+- Hot DB loads instantly. Archive loads on demand ("Show me last quarter" = lazy-load)</p>
 <p>This is why the POC can be built as <strong>one HTML file + one <code>.db</code> file</strong>.
 The browser IS the application server, the database server, and the
 rendering engine. The phone in the waiter's pocket is a more capable
