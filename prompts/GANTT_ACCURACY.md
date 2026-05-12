@@ -19,22 +19,12 @@ Make the Time Machine's auto-generated construction sequence **truthful** — ma
 
 ### What Must Happen
 
-#### A. Fix Sequence Accuracy
+#### A. Fix Sequence Accuracy — **DONE (S253e)**
 
-1. **Storey-aware class mapping**: In `injectGantt()`, after matching `SEQUENCE_RULES`, override sequence if storey name suggests roof/basement:
-   - Any IFC class on a "Roof" storey → sequence ≥ 8
-   - `IfcFooting` on non-basement storey → still substructure (pad footings)
-   - Add `§GANTT_OVERRIDE` log when storey overrides sequence
-
-2. **Robust storeyRank**: Use Z-coordinate from `element_transforms.center_z` as primary rank, storey name as secondary. Elements are already queried with `ORDER BY center_z`.
-
-3. **True parallel trades**: Multiple resources on same storey should overlap:
-   - Track per-resource cursors, not just per-group cursors
-   - HVAC_TECH, PLUMBER, ELECTRICIAN can run concurrently on same storey
-   - Same resource on same storey = sequential
-   - Different resource on same storey = parallel (start at same time as storey becomes available)
-
-4. **Phase dependencies**: MEP rough-in (seq 5) starts after superstructure (seq 4) is done on that storey, NOT after all seq 4 everywhere. Architecture (seq 6) can start on lower storeys while superstructure continues above.
+1. **Storey-aware class mapping** ✓: Roof slab override — `IfcSlab` on "Roof" storey → seq=8 with `§GANTT_OVERRIDE` log.
+2. **Robust storeyRank** ✓: Replaced Z-gap banding with storey-name bands ranked by min center_z. Terminal: 2 Z-bands → 23 storey-bands.
+3. **True parallel trades** ✓ (was already implemented): `resourceCursor[resource|band]` gives per-resource-per-band cursors. Different trades overlap on same band.
+4. **Phase dependencies** ✓ (was already implemented): `bandSeqDone[band|seq]` ensures higher seq waits for lower seq within same band (not globally). Structural Z-dependency propagates band-to-band.
 
 #### B. User-Editable Schedule JSON
 
@@ -82,7 +72,7 @@ Make the Time Machine's auto-generated construction sequence **truthful** — ma
 - Tests: `test_s253_gantt_sync.js` (111 assertions), `test_s253_real_db.js` (Terminal 48k elements)
 
 **Known issues from S253d session:**
-1. `§KO_BUG phase order: Architecture day=1117 AFTER MEP Final day=2` — MEP Final elements placed before walls because Z-band grouping is too coarse (only 2 bands for Terminal). This is section A (Sequence Accuracy), not D.
+1. ~~`§KO_BUG phase order: Architecture day=1117 AFTER MEP Final day=2`~~ **FIXED (S253e)**: Replaced Z-gap banding (1.5m threshold → only 2 bands for Terminal) with storey-based banding from `elements_meta.storey` ranked by min center_z. Terminal now has 23 storey-bands. Phase order correct: Superstructure → MEP Rough-in → Architecture → MEP Final → Finishes. Also added roof slab override: `IfcSlab` on "Roof" storeys → seq=8 with `§GANTT_OVERRIDE` log.
 2. Gantt chart disappeared after deploy — `_TRL.t_gantt` threw when `_TRL` undefined. Fixed with fallback `(_TRL && _TRL.t_gantt || '4D — Gantt Timeline')`. T12 test catches this.
 3. Stale browser cache — sw.js CACHE_VERSION not bumped, index.html sw.js?v=N not bumped. User saw old code for hours. T13 test now verifies local + OCI versions match. **Always bump sw.js + index.html + run T13 before deploy.**
 
@@ -101,7 +91,7 @@ Make the Time Machine's auto-generated construction sequence **truthful** — ma
 - Phase 3: Viewer receives timestamp → calls `renderAtTime(timestamp)` directly. No ghostglass needed.
 
 ### Key Files
-- `deploy/dev/time_machine.js` — `injectGantt()` (lines 571-770), `storeyRank()` (line 648), scheduling loop (line 711)
+- `deploy/dev/time_machine.js` — `injectGantt()` (line 853), storey-based banding (line 903), scheduling loop (line 984)
 - `deploy/dev/rates.js` — `SEQUENCE_RULES` (line 154), `LABOR_RATES` (in template loader), `SEQUENCE_DEFAULT` (line 212)
 - `deploy/dev/boq_charts.html` — existing Gantt chart (independent `generateSchedule()`, not wired to kernel_ops)
 - `deploy/dev/ghostglass.js` — glass-to-solid animation, BroadcastChannel driven, to be retired

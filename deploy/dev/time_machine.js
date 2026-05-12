@@ -29,6 +29,8 @@
   var _anchorHr = null;
   var _savedVisibility = [];
   var _highlightMeshes = [];
+  var _ganttVisible = false;
+  var _ganttTasks = [];  // computed task groups for click detection
 
   // ── Query ops from DB ──
   function loadOps() {
@@ -326,24 +328,28 @@
       target.y += (_camTarget.y - target.y) * 0.03;
       target.z += (_camTarget.z - target.z) * 0.03;
 
-      // Dolly in — spread of frontier determines desired distance
+      // Dolly — spread of frontier determines desired distance
       var spread = 0;
       for (var fi = 0; fi < fp.length; fi++) {
         var ddx = fp[fi].x-_camTarget.x, ddy = fp[fi].y-_camTarget.y, ddz = fp[fi].z-_camTarget.z;
         var d = Math.sqrt(ddx*ddx+ddy*ddy+ddz*ddz);
         if (d > spread) spread = d;
       }
-      var desiredDist = Math.max(8, spread * 1.2); // get really close
+      var desiredDist = Math.max(8, spread * 2.0); // wider framing to catch surrounding action
       var camDist = app.camera.position.distanceTo(target);
-      if (camDist > desiredDist) {
+      var diff = camDist - desiredDist;
+      if (Math.abs(diff) > 1) {
+        // Zoom in fast (0.06), zoom out gentle (0.03) — breathes with the action
+        var speed = diff > 0 ? 0.06 : 0.03;
         var dir = new THREE.Vector3().subVectors(target, app.camera.position).normalize();
-        app.camera.position.addScaledVector(dir, (camDist - desiredDist) * 0.06);
+        app.camera.position.addScaledVector(dir, diff * speed);
       }
 
       app.controls.update();
     }
 
     applySunCycle(cursorMs);
+    if (_ganttVisible) drawGanttMini();
 
     if (app.markDirty) app.markDirty();
     // Force immediate render — mobile browsers defer rAF until touch
@@ -585,6 +591,7 @@
         '<button id="tm-share" style="font-size:9px;padding:2px 6px" title="Copy shareable link">&#x1F517; Share</button>' +
         '<button id="tm-sun" style="font-size:12px;padding:2px 6px" title="Day/night cycle">&#x2600;</button>' +
         '<button id="tm-eye" style="font-size:12px;padding:2px 6px" title="Camera follow action">&#x1F441;</button>' +
+        '<button id="tm-gantt" style="font-size:12px;padding:2px 6px" title="Gantt chart">&#x1F4CA;</button>' +
         '<span id="tm-big-counter" style="flex:1;font-size:18px;font-weight:bold;color:#4fc3f7;text-align:center;letter-spacing:1px">DAY 0 | HR 0</span>' +
         '<button id="tm-close" style="width:22px;height:22px;font-size:12px;padding:0;line-height:1" title="Close">&#x2715;</button>' +
       '</div>' +
@@ -610,6 +617,10 @@
         '<button id="tm-end-btn" style="width:30px;font-size:14px" title="Jump to end">&#x25B6;&#x25B6;</button>' +
         '<button id="tm-touched" style="flex:1;font-size:9px">Copy Touched</button>' +
         '<button id="tm-new" style="flex:1;font-size:9px">Copy New</button>' +
+      '</div>' +
+      '<div id="tm-gantt-box" style="display:none;position:relative;width:100%;max-height:200px;overflow-y:auto;margin-top:4px;border-top:1px solid rgba(79,195,247,0.2)">' +
+        '<canvas id="tm-gantt-canvas" style="width:100%;cursor:pointer"></canvas>' +
+        '<div id="tm-gantt-hair" style="position:absolute;top:0;width:2px;height:100%;background:#ff8c00;pointer-events:none;z-index:1;display:none"></div>' +
       '</div>';
     document.body.appendChild(_panel);
 
@@ -683,6 +694,26 @@
       _camFollow = !_camFollow;
       var btn = document.getElementById('tm-eye');
       if (btn) btn.classList.toggle('tm-active', _camFollow);
+    });
+    document.getElementById('tm-gantt').addEventListener('pointerup', function(e) {
+      e.stopPropagation();
+      _ganttVisible = !_ganttVisible;
+      var btn = document.getElementById('tm-gantt');
+      if (btn) btn.classList.toggle('tm-active', _ganttVisible);
+      var box = document.getElementById('tm-gantt-box');
+      if (box) box.style.display = _ganttVisible ? 'block' : 'none';
+      if (_ganttVisible) drawGanttMini();
+    });
+    document.getElementById('tm-gantt-canvas').addEventListener('pointerup', function(e) {
+      if (!_active || !_ops.length) return;
+      var rect = e.target.getBoundingClientRect();
+      var x = e.clientX - rect.left;
+      var pct = x / rect.width;
+      var ts = _projectStart + pct * (_projectEnd - _projectStart);
+      _cursor = ts;
+      renderAtTime(_cursor);
+      anchorFromCursor();
+      configSlider();
     });
     document.getElementById('tm-close').addEventListener('pointerup', function(e) {
       e.stopPropagation(); deactivate();
@@ -897,42 +928,48 @@
 
     var totalDbElements = r[0].values.length;
 
-    // ── Z-bands: group elements into Z-bands (storeys inferred from Z gaps) ──
-    // Collect all Z values, find natural breaks, assign band index
-    var allZ = r[0].values.map(function(row) { return row[5] || 0; });
-    allZ.sort(function(a,b){ return a - b; });
+    // ── Storey bands: group by storey name, rank by min Z (bottom-up) ──
+    // Primary: storey from elements_meta (IFC extraction). Fallback: '_UNKNOWN'.
+    var storeyMinZ = {};  // storey name → min center_z
+    r[0].values.forEach(function(row) {
+      var storey = row[3] || '_UNKNOWN';
+      var cz = row[5] || 0;
+      if (storeyMinZ[storey] === undefined || cz < storeyMinZ[storey]) storeyMinZ[storey] = cz;
+    });
+    // Sort storeys by min Z → assign band index
+    var storeyNames = Object.keys(storeyMinZ).sort(function(a, b) {
+      return storeyMinZ[a] - storeyMinZ[b];
+    });
+    var storeyBand = {};
+    for (var si = 0; si < storeyNames.length; si++) storeyBand[storeyNames[si]] = si;
 
-    // Find Z-band boundaries: a gap > 1.5m between consecutive elements = new band
-    var GAP_THRESHOLD = 1.5;
-    var bandBounds = [allZ[0]]; // start of first band
-    for (var zi = 1; zi < allZ.length; zi++) {
-      if (allZ[zi] - allZ[zi-1] > GAP_THRESHOLD) bandBounds.push(allZ[zi]);
-    }
+    console.log('§GANTT storey-bands: ' + storeyNames.length + ' bands from storey names: ' +
+      storeyNames.map(function(s, i) { return i + '="' + s + '" z=' + storeyMinZ[s].toFixed(1); }).join(', '));
 
-    function zBand(z) {
-      for (var bi = bandBounds.length - 1; bi >= 0; bi--) {
-        if (z >= bandBounds[bi]) return bi;
-      }
-      return 0;
-    }
-
-    console.log('§GANTT Z-bands: ' + bandBounds.length + ' bands, boundaries at z=' +
-      bandBounds.map(function(b){ return b.toFixed(1); }).join(', '));
-
-    // ── Build elements ──
+    // ── Build elements with storey-aware overrides ──
+    var roofOverrides = 0;
     var elements = r[0].values.map(function(row) {
-      var cls = row[1], storey = row[3] || '', cz = row[5] || 0;
+      var cls = row[1], storey = row[3] || '_UNKNOWN', cz = row[5] || 0;
       var rule = matchRule(cls);
+      var seq = rule.sequence, phase = rule.phase;
+
+      // §A.1 Storey-aware override: slabs on "Roof" storey → Architecture/Roof seq 8
+      if (/roof/i.test(storey) && cls === 'IfcSlab' && seq < 8) {
+        seq = 8; phase = 'Architecture';
+        roofOverrides++;
+      }
+
       return {
         guid: row[0], cls: cls, name: row[2] || '', storey: storey,
-        cz: cz, band: zBand(cz),
-        seq: rule.sequence, phase: rule.phase,
+        cz: cz, band: storeyBand[storey],
+        seq: seq, phase: phase,
         resource: rule.resource || '_DEFAULT',
         installSecs: getInstallSecs(cls)
       };
     });
+    if (roofOverrides) console.log('§GANTT_OVERRIDE ' + roofOverrides + ' roof slabs overridden to seq=8');
 
-    // ── Sort: Z-band (bottom-up) → seq (phase order) → center_z (fine) ──
+    // ── Sort: storey band (bottom-up) → seq (phase order) → center_z (fine) ──
     elements.sort(function(a, b) {
       if (a.band !== b.band) return a.band - b.band;
       if (a.seq !== b.seq) return a.seq - b.seq;
@@ -1034,6 +1071,119 @@
     return count > 0;
   }
 
+  // ── Mini Gantt chart ──
+  var _ganttTasksComputed = false; // log once flag
+
+  var PHASE_COLORS = {
+    'Substructure': '#7a8a8e',
+    'Superstructure': '#5b7fa5',
+    'MEP Rough-in': '#8bc34a',
+    'Architecture': '#c07a4a',
+    'MEP Final': '#ab47bc',
+    'Finishes': '#26a69a'
+  };
+
+  function drawGanttMini() {
+    if (!_ops.length) return;
+    var canvas = document.getElementById('tm-gantt-canvas');
+    var box = document.getElementById('tm-gantt-box');
+    if (!canvas || !box) return;
+
+    // Group ops by storey|phase
+    var groups = {};
+    for (var i = 0; i < _ops.length; i++) {
+      var op = _ops[i];
+      var p = op.parameters || {};
+      var storey = p.storey || '_UNKNOWN';
+      var phase = p.phase || 'Architecture';
+      var key = storey + '|' + phase;
+      if (!groups[key]) groups[key] = { storey: storey, phase: phase, startTs: op.start_ts, endTs: op.end_ts, count: 0 };
+      var g = groups[key];
+      if (op.start_ts < g.startTs) g.startTs = op.start_ts;
+      if (op.end_ts > g.endTs) g.endTs = op.end_ts;
+      g.count++;
+    }
+
+    // Convert to array and sort by start time
+    _ganttTasks = [];
+    for (var k in groups) _ganttTasks.push(groups[k]);
+    _ganttTasks.sort(function(a, b) { return a.startTs - b.startTs; });
+
+    if (!_ganttTasksComputed) {
+      console.log('§GANTT_MINI tasks=' + _ganttTasks.length);
+      _ganttTasksComputed = true;
+    }
+
+    // Canvas sizing
+    var barH = 12, gapH = 2, rowH = barH + gapH;
+    var numTasks = _ganttTasks.length;
+    var cW = box.clientWidth;
+    var cH = numTasks * rowH + 4;
+
+    canvas.width = cW * (window.devicePixelRatio || 1);
+    canvas.height = cH * (window.devicePixelRatio || 1);
+    canvas.style.height = cH + 'px';
+    var ctx = canvas.getContext('2d');
+    ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+
+    ctx.clearRect(0, 0, cW, cH);
+
+    var range = Math.max(1, _projectEnd - _projectStart);
+
+    // Draw bars
+    for (var ti = 0; ti < numTasks; ti++) {
+      var task = _ganttTasks[ti];
+      var x = (task.startTs - _projectStart) / range * cW;
+      var w = (task.endTs - task.startTs) / range * cW;
+      if (w < 2) w = 2;
+      var y = ti * rowH + 2;
+      var color = PHASE_COLORS[task.phase] || '#888';
+
+      // Active highlight: cursor is within this task's time range
+      var isActive = (_cursor >= task.startTs && _cursor <= task.endTs);
+
+      ctx.globalAlpha = 0.8;
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, w, barH);
+
+      if (isActive) {
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = '#ff8c00';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x, y, w, barH);
+      }
+
+      // Label: first 3 chars of phase, only if bar wide enough
+      if (w > 40) {
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#fff';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(task.phase.substring(0, 3), x + w - 3, y + barH / 2);
+      }
+    }
+
+    // Hairline cursor
+    ctx.globalAlpha = 1;
+    var hx = (_cursor - _projectStart) / range * cW;
+    ctx.strokeStyle = '#ff8c00';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(hx, 0);
+    ctx.lineTo(hx, cH);
+    ctx.stroke();
+
+    ctx.globalAlpha = 1;
+
+    // Update div hairline too
+    var hair = document.getElementById('tm-gantt-hair');
+    if (hair) {
+      hair.style.left = hx + 'px';
+      hair.style.display = 'block';
+    }
+  }
+
   // ── Activate / Deactivate ──
   function setToolbarHighlight(on) {
     var btn = document.getElementById('time-machine-btn');
@@ -1109,6 +1259,13 @@
     clearSparks();
     restoreSky();
     _sunCycle = false;
+    _ganttVisible = false;
+    _ganttTasks = [];
+    _ganttTasksComputed = false;
+    var ganttBtn = document.getElementById('tm-gantt');
+    if (ganttBtn) ganttBtn.classList.remove('tm-active');
+    var ganttBox = document.getElementById('tm-gantt-box');
+    if (ganttBox) ganttBox.style.display = 'none';
     _active = false;
     _panel.style.display = 'none';
     setToolbarHighlight(false);

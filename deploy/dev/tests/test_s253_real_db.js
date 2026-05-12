@@ -321,33 +321,38 @@ function getInstallSecs(cls) {
   return prod > 0 ? Math.round(28800 / prod) : 120;
 }
 
-// Z-bands
-var allZ = elemRows.map(r => r.cz || 0).sort((a,b) => a - b);
-var GAP_THRESHOLD = 1.5;
-var bandBounds = [allZ[0]];
-for (var zi = 1; zi < allZ.length; zi++) {
-  if (allZ[zi] - allZ[zi-1] > GAP_THRESHOLD) bandBounds.push(allZ[zi]);
-}
-function zBand(z) {
-  for (var bi = bandBounds.length - 1; bi >= 0; bi--) {
-    if (z >= bandBounds[bi]) return bi;
-  }
-  return 0;
-}
-console.log('§INJECT_ZBANDS ' + bandBounds.length);
+// Storey bands: group by storey name, rank by min Z (mirrors time_machine.js)
+var storeyMinZ = {};
+elemRows.forEach(function(row) {
+  var storey = row.storey || '_UNKNOWN';
+  var cz = row.cz || 0;
+  if (storeyMinZ[storey] === undefined || cz < storeyMinZ[storey]) storeyMinZ[storey] = cz;
+});
+var storeyNames = Object.keys(storeyMinZ).sort((a, b) => storeyMinZ[a] - storeyMinZ[b]);
+var storeyBand = {};
+storeyNames.forEach((s, i) => storeyBand[s] = i);
+console.log('§INJECT_BANDS ' + storeyNames.length + ' storey-bands: ' +
+  storeyNames.map((s, i) => i + '="' + s + '" z=' + storeyMinZ[s].toFixed(1)).join(', '));
 
-// Build elements + sort
+// Build elements + sort (with roof slab override)
+var roofOverrides = 0;
 var elements = elemRows.map(function(row) {
-  var cls = row.ifc_class, storey = row.storey || '', cz = row.cz || 0;
+  var cls = row.ifc_class, storey = row.storey || '_UNKNOWN', cz = row.cz || 0;
   var rule = matchRule(cls);
+  var seq = rule.sequence, phase = rule.phase;
+  if (/roof/i.test(storey) && cls === 'IfcSlab' && seq < 8) {
+    seq = 8; phase = 'Architecture';
+    roofOverrides++;
+  }
   return {
     guid: row.guid, cls: cls, name: row.element_name || '', storey: storey,
-    cz: cz, band: zBand(cz),
-    seq: rule.sequence, phase: rule.phase,
+    cz: cz, band: storeyBand[storey],
+    seq: seq, phase: phase,
     resource: rule.resource || '_DEFAULT',
     installSecs: getInstallSecs(cls)
   };
 });
+if (roofOverrides) console.log('§GANTT_OVERRIDE ' + roofOverrides + ' roof slabs overridden to seq=8');
 elements.sort(function(a, b) {
   if (a.band !== b.band) return a.band - b.band;
   if (a.seq !== b.seq) return a.seq - b.seq;

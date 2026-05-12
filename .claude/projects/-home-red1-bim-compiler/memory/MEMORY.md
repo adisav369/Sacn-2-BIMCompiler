@@ -32,6 +32,8 @@ Details belong in `docs/` specs and `prompts/`. Memory files are pointers. Do NO
 - [OCI DEV frozen](feedback_oci_dev_frozen.md) — NEVER upload to bim-ootb-dev, community is viewing. Deploy to bim-ootb-full only.
 - [Commit scope](feedback_commit_scope.md) — never commit files with mixed changes from other work streams
 - [No regress keyboard](feedback_no_regress_keyboard.md) — add on top, never delete existing code without discussing
+- [Same JS context](feedback_same_context.md) — 4D features sharing cursor/scene must be same context, not cross-tab sync
+- [Use extracted metadata](feedback_use_extracted_metadata.md) — use elements_meta.storey, don't re-infer from Z-gaps
 
 ## Feedback (in specs, not memory files)
 - No parametric mesh → BBC.md §2.2.3
@@ -41,9 +43,11 @@ Details belong in `docs/` specs and `prompts/`. Memory files are pointers. Do NO
 - Schema not geometry → SourceCodeGuide.md §Critical Traps
 
 ## Active prompts
-- **2D_031 Card-First Views** → `prompts/2D_031_card_first_views.md` — NEXT. Persistent view cards, one schema column.
+- **S254 Hourglass Drawers** → `prompts/S254_HOURGLASS_DRAWERS.md` — NEXT. Mini Gantt + dashboard drawers on hourglass panel.
+- **GANTT_ACCURACY** → `prompts/GANTT_ACCURACY.md` — §A DONE (storey-based banding). §B/§C/§D future.
+- **2D_031 Card-First Views** → `prompts/2D_031_card_first_views.md` — Persistent view cards, one schema column.
 - **2D_029 kernel_ops** → DONE. Undo/redo works, grid drag with cost panel variance.
-- **S240/S240b 4D Ghost Glass** → Phase 0-2 DONE.
+- **S240/S240b 4D Ghost Glass** → Phase 0-2 DONE. ghostglass.js to be retired (S254 replaces its role).
 - S226 localisation → `prompts/S226_localisation.md`
 
 ## Project
