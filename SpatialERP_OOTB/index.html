@@ -2600,6 +2600,78 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#5c-component-architecture-what-gets-built" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5c. Component Architecture — What Gets Built
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5c. Component Architecture — What Gets Built">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-built-once-never-changes-per-domain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core (built once, never changes per domain)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#handlers-stateless-plugins-read-state-write-ops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handlers (stateless plugins — read state, write ops)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adapters-ui-skin-swappable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adapters (UI skin — swappable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-is-not-a-separate-component" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is NOT a separate component
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-invariant-that-makes-it-survive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The invariant that makes it survive
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#6-the-swipe-ux-spec" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4702,6 +4774,78 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#5c-component-architecture-what-gets-built" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5c. Component Architecture — What Gets Built
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5c. Component Architecture — What Gets Built">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-built-once-never-changes-per-domain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core (built once, never changes per domain)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#handlers-stateless-plugins-read-state-write-ops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handlers (stateless plugins — read state, write ops)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adapters-ui-skin-swappable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adapters (UI skin — swappable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-is-not-a-separate-component" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is NOT a separate component
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-invariant-that-makes-it-survive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The invariant that makes it survive
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#6-the-swipe-ux-spec" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5998,10 +6142,31 @@ widgets try to do — show what needs attention, where it is, how big it is.</p>
 <span class="w">    </span><span class="k">timestamp</span><span class="w">   </span><span class="nb">TEXT</span>
 <span class="p">);</span>
 </code></pre></div>
+<p><strong>Plus one registry table — the Application Dictionary for Spatial ERP:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Schema Registry — what each container category looks like and does</span>
+<span class="c1">-- Adding a new domain = inserting rows here, not writing code</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">category_registry</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">category</span><span class="w">        </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span><span class="w">  </span><span class="c1">-- BIN, TABLE, CABINET, STATION, DOCK, SHELF...</span>
+<span class="w">    </span><span class="k">domain</span><span class="w">          </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">              </span><span class="c1">-- WMS, F&amp;B, MFG, BIM, BACK_OFFICE</span>
+<span class="w">    </span><span class="n">json_schema</span><span class="w">     </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">              </span><span class="c1">-- validates metadata for this category</span>
+<span class="w">    </span><span class="n">default_geometry</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">             </span><span class="c1">-- which 3D model to render</span>
+<span class="w">    </span><span class="n">actions</span><span class="w">         </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">              </span><span class="c1">-- JSON list: [&quot;Pick&quot;,&quot;Count&quot;,&quot;Order&quot;] or [&quot;TakeOrder&quot;,&quot;MarkServed&quot;]</span>
+<span class="w">    </span><span class="n">heatmap_rule</span><span class="w">    </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">              </span><span class="c1">-- JSON: {&quot;field&quot;:&quot;qty&quot;,&quot;red_below&quot;:100,&quot;green_above&quot;:500}</span>
+<span class="w">    </span><span class="n">label_template</span><span class="w">  </span><span class="nb">TEXT</span><span class="w">               </span><span class="c1">-- how to render the card title: &quot;{name} — {parent.name}&quot;</span>
+<span class="p">);</span>
+</code></pre></div>
+<p><strong>This is the equivalent of iDempiere's Application Dictionary (AD_Table,
+AD_Column, AD_Field) — but in one table.</strong> When the viewer renders a
+container, it looks up <code>category_registry</code> to know: which 3D model to draw,
+which action buttons to show, how to colour the heatmap, and how to format
+the card. Adding a new container type (e.g., <code>DOCK_DOOR</code> for WMS) is an
+INSERT, not a code change.</p>
 <p><strong>Plus the existing tables that carry over unchanged:</strong>
 - <code>kernel_ops</code> — change log, undo/redo, replay (add <code>user_tag</code> column)
 - <code>component_geometries</code> — 3D shapes for any domain
 - <code>project_metadata</code> — key/value store for project-level config</p>
+<p><strong>Total: 5 data tables + 1 registry + kernel_ops + geometries + metadata = 9 tables.</strong>
+Compare to iDempiere's 900+ tables or SAP's 80,000+ tables.</p>
 <hr />
 <h2 id="5-state-machine-one-for-all-documents">5. State Machine — One for All Documents<a class="headerlink" href="#5-state-machine-one-for-all-documents" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>     ┌─────────┐
@@ -6123,6 +6288,175 @@ band switch IS a replay query. The architecture IS the UX.</p>
 <p>When two phones share the same <code>.db</code> via cloud relay, the same <code>replayOps</code>
 call now picks up ops from the <em>other person</em>. No code change. The
 single-user POC and the multi-user deployment use the same read path.</p>
+<hr />
+<h2 id="5c-component-architecture-what-gets-built">5c. Component Architecture — What Gets Built<a class="headerlink" href="#5c-component-architecture-what-gets-built" title="Permanent link">&para;</a></h2>
+<p>Three layers. The core is immutable — built once, never rewritten per domain.
+Handlers are stateless plugins. Adapters are the UI skin.</p>
+<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────────────────────┐
+│                     BROWSER (same for all roles)                │
+├─────────────────┬──────────────────────────┬────────────────────┤
+│   Adapters      │     Handlers             │   Core             │
+│   (UI skin)     │  (domain logic plugins)  │  (immutable)       │
+├─────────────────┼──────────────────────────┼────────────────────┤
+│ ThreeScene      │ MatchEngine (P2P)        │ kernel_ops (OpLog) │
+│ SwipeCardStack  │ ReorderDetector (WMS)    │ StateMachine       │
+│ RoleBand        │ KitchenDisplay (F&amp;B)     │ JournalEngine      │
+│ RoleFilter      │ PlanogramSolver (POS)    │ SpatialIndex       │
+│ QRGateway       │ ... add per scenario     │ CategoryRegistry   │
+└─────────────────┴──────────────────────────┴────────────────────┘
+                              │
+                              ▼
+                    SQLite WASM (.db file)
+</code></pre></div>
+<h3 id="core-built-once-never-changes-per-domain">Core (built once, never changes per domain)<a class="headerlink" href="#core-built-once-never-changes-per-domain" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>What it does</th>
+<th>Already exists?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>kernel_ops (OpLog)</strong></td>
+<td>Append-only log. <code>commitOp</code>, <code>undoOp</code>, <code>redoOp</code>, <code>replayOps</code>. Every mutation enters here. No second path.</td>
+<td><strong>Yes</strong> — <code>kernel_ops.js</code>, proven</td>
+</tr>
+<tr>
+<td><strong>StateMachine</strong></td>
+<td>Pure function: <code>transition(doc_type, status, event) → {new_status, side_effects}</code>. Five states, same for all doc types. Domain-specific rules live in transition guards, not in the machine.</td>
+<td>New — ~50 lines JS</td>
+</tr>
+<tr>
+<td><strong>JournalEngine</strong></td>
+<td>Listens for COMPLETED transitions → auto-generates debit/credit from <code>document_lines</code> metadata. Rule-based: doc_type determines which accounts.</td>
+<td>New — ~30 lines JS</td>
+</tr>
+<tr>
+<td><strong>SpatialIndex</strong></td>
+<td>R-tree of container bounds + item positions. Powers heatmap and "what's near me?" queries.</td>
+<td><strong>Yes</strong> — R-tree in BIM viewer</td>
+</tr>
+<tr>
+<td><strong>CategoryRegistry</strong></td>
+<td>Reads <code>category_registry</code> table → tells the UI which 3D model, which actions, which heatmap rule for each container type.</td>
+<td>New — ~20 lines JS (just a lookup)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="handlers-stateless-plugins-read-state-write-ops">Handlers (stateless plugins — read state, write ops)<a class="headerlink" href="#handlers-stateless-plugins-read-state-write-ops" title="Permanent link">&para;</a></h3>
+<p>Handlers follow one invariant pattern:</p>
+<div class="highlight"><pre><span></span><code>1. Read current state (query tables)
+2. Compute changes (pure logic)
+3. commitOp() for each change
+4. Done — no hidden state, no stored procedures
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Handler</th>
+<th>Domain</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>MatchEngine</strong></td>
+<td>P2P</td>
+<td>Runs 3-way match query. Returns MATCH or VARIANCE. On approve, commits DOC_STATUS op.</td>
+</tr>
+<tr>
+<td><strong>ReorderDetector</strong></td>
+<td>WMS</td>
+<td>Queries items where qty &lt; reorder point. Creates PURCHASE_ORDER documents.</td>
+</tr>
+<tr>
+<td><strong>KitchenDisplay</strong></td>
+<td>F&amp;B</td>
+<td><code>replayOps(db, 'ORDER_SEND')</code> filtered by station. Read-only — notification IS the query.</td>
+</tr>
+<tr>
+<td><strong>PlanogramSolver</strong></td>
+<td>POS</td>
+<td>Drag shelf item → commits ITEM_MOVE op. Each move is reversible via undoOp.</td>
+</tr>
+<tr>
+<td><strong>VarianceApprover</strong></td>
+<td>P2P</td>
+<td>Commits VARIANCE_APPROVE op with reason, then DOC_STATUS to COMPLETED.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Adding a new scenario = writing a new handler function.</strong> The handler
+reads state, computes, calls commitOp. It never touches the core.</p>
+<h3 id="adapters-ui-skin-swappable">Adapters (UI skin — swappable)<a class="headerlink" href="#adapters-ui-skin-swappable" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Adapter</th>
+<th>What it does</th>
+<th>Already exists?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ThreeScene</strong></td>
+<td>Renders containers + items as 3D objects. Heatmap colours from category_registry rules.</td>
+<td><strong>Yes</strong> — BIM viewer Three.js scene</td>
+</tr>
+<tr>
+<td><strong>SwipeCardStack</strong></td>
+<td>Maps container hierarchy to swipe gestures + cards.</td>
+<td>New — mobile UI component</td>
+</tr>
+<tr>
+<td><strong>RoleBand</strong></td>
+<td>Top bar: role label + colour + [QR] + [&lt;&gt;] switch.</td>
+<td>New — but simple DOM</td>
+</tr>
+<tr>
+<td><strong>RoleFilter</strong></td>
+<td>Reads <code>?scope=</code> + <code>?mode=</code> → builds WHERE clause on all queries.</td>
+<td>New — ~15 lines JS</td>
+</tr>
+<tr>
+<td><strong>QRGateway</strong></td>
+<td>Generates share URL with scope + mode. Uses existing share.js pattern.</td>
+<td>Extends existing <code>share.js</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-is-not-a-separate-component">What is NOT a separate component<a class="headerlink" href="#what-is-not-a-separate-component" title="Permanent link">&para;</a></h3>
+<p><strong>StateMaterializer</strong> — DeepSeek proposed turning the five tables into
+materialised views derived from kernel_ops replay. That's theoretically
+pure (event sourcing) but premature. For the POC and early phases:</p>
+<ul>
+<li><strong>Tables hold current state</strong> (direct writes on commitOp)</li>
+<li><strong>kernel_ops holds the audit log</strong> (every mutation logged)</li>
+<li><strong>Replay is for undo/redo and sync</strong>, not for state reconstruction</li>
+</ul>
+<p>This is the pragmatic middle ground. Full event sourcing (where you replay
+all ops to reconstruct state on every query) can come later — the ops are
+already there. When it does, it's a change to <em>how</em> tables are populated,
+not to the schema or the handlers.</p>
+<h3 id="the-invariant-that-makes-it-survive">The invariant that makes it survive<a class="headerlink" href="#the-invariant-that-makes-it-survive" title="Permanent link">&para;</a></h3>
+<p><strong>Every user gesture follows the same path:</strong></p>
+<div class="highlight"><pre><span></span><code>User taps [action]
+  → Adapter calls Handler function
+    → Handler queries current state (SELECT from tables)
+      → Handler computes changes (pure logic)
+        → Handler calls commitOp() for each change
+          → kernel_ops logs the op
+          → Table updated (current state)
+          → JournalEngine auto-posts if COMPLETED
+            → Adapter refreshes from new state
+              → User sees the change (colour shift, card update, status change)
+</code></pre></div>
+<p><strong>No exceptions.</strong> A waiter adding a menu item, a picker confirming a bin,
+an AP clerk approving an invoice, a customer tapping Pay — all follow this
+exact path. That's why undo works everywhere, why audit is automatic, and
+why adding a domain never touches the core.</p>
 <hr />
 <h2 id="6-the-swipe-ux-spec">6. The Swipe UX Spec<a class="headerlink" href="#6-the-swipe-ux-spec" title="Permanent link">&para;</a></h2>
 <h3 id="61-navigation-model">6.1 Navigation Model<a class="headerlink" href="#61-navigation-model" title="Permanent link">&para;</a></h3>
