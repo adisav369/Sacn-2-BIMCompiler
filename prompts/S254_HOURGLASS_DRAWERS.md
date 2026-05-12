@@ -112,13 +112,22 @@ When user activates hourglass AND hits (-) to hide all other UI:
 - `deploy/dev/boq_charts.html:218` — TRL key `ui_tt_export: '4D/5D Export'` → `'5D BOQ/Cost'`
 - `deploy/dev/mep_report.html:159` — reference text mentioning "4D/5D Analytics page"
 
-**Strip 4D playback/sync code:**
-- Remove: `4D_PLAY`, `4D_SEEK`, `4D_PAUSE`, `4D_RESET` message handling
-- Remove: `startPlayTimer()`, `applyScrub()`, Play/Stop/Scrub controls, scrub line/handle/tooltip
-- Remove: ghostglass dependency
-- Keep: `4D_QTO_REQUEST`/`4D_SCHEDULE_REQUEST` for populating cost/BOQ charts
-- Keep: all 9 chart panels (cost pie, S-curve, milestones, etc.) as read-only analytics
+**Strip 4D playback/sync code** (lines 1474-1863):
+- Remove: `4D_PLAY`, `4D_SEEK`, `4D_PAUSE`, `4D_RESET`, `4D_RESOURCES` BroadcastChannel messages
+- Remove: `startPlayTimer()`, `applyScrub()`, `pixelToDay()`, `dayToPixel()`, `dayToTaskIndex()`
+- Remove: Play button, Stop button, Speed selector, scrub line/handle/tooltip DOM elements
+- Remove: `updateResPanel()`, `RES_ICONS`, `_scrubActive`, `_playing`, `_playTimer` state
+- Remove: Canvas drag handlers for scrub (pointerdown/move/up on ganttCanvas)
+- Remove: ghostglass dependency (all `4D_PLAY`/`4D_SEEK` → ghostglass path in main.js)
+- Keep: `_bim4d` channel + `4D_QTO_REQUEST`/`4D_SCHEDULE_REQUEST` relay (feeds chart data)
+- Keep: `4D_HIGHLIGHT` on Gantt bar click (lines 1488-1512) — click bar → highlight in viewer. Read-only, useful.
+- Keep: `4D_PING`/`4D_PONG` connectivity check
+- Keep: Chart 9 Gantt rendering (lines 1418-1472) — the Chart.js horizontal bar chart. This is the "paper value" Gantt.
 - Keep: `buildScheduleFromOps()` for chart data (not scene control)
+- Keep: all 9 chart panels (cost pie, S-curve, milestones, Gantt, etc.) as read-only analytics
+- Keep: `ganttHeader` but remove the `controlBar` (Play/Stop/Speed/Day label) from it. The sync badge (Hourglass OK) stays.
+
+**Net result**: boq_charts.html becomes a clean 5D analytics page. Gantt chart is still there as a read-only visualization — you see the bars, you can click to highlight in the viewer, but playback lives in the hourglass panel only.
 
 ### Key Files
 - `deploy/dev/time_machine.js` — all drawer code lives here (same IIFE)
