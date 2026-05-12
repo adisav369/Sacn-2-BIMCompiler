@@ -2328,6 +2328,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#one-viewer-to-rule-them-all" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One viewer to rule them all
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4131,6 +4142,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#one-viewer-to-rule-them-all" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One viewer to rule them all
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4891,6 +4913,48 @@ For extreme cases (million-SKU catalogue, multi-year history), chunk the <code>.
 - <strong>Hot DB</strong> (&lt; 10 MB): current state — this month's containers, items, active docs
 - <strong>Archive DB</strong> (any size): history — completed docs, old kernel_ops, closed periods
 - Hot DB loads instantly. Archive loads on demand ("Show me last quarter" = lazy-load)</p>
+<h3 id="one-viewer-to-rule-them-all">One viewer to rule them all<a class="headerlink" href="#one-viewer-to-rule-them-all" title="Permanent link">&para;</a></h3>
+<p>The BIM OOTB viewer is already this pattern, deployed and proven:</p>
+<ol>
+<li>One <code>index.html</code> on OCI bucket</li>
+<li>URL points to a <code>.db</code> file</li>
+<li>Browser loads it, sql.js opens it, Three.js renders it</li>
+<li>User interacts — all client-side</li>
+</ol>
+<p><strong>That same viewer — the same HTML file — serves every domain and every role.</strong>
+The <code>.db</code> content determines what kind of space it is (restaurant, warehouse,
+factory). The URL parameters determine who you are in that space.</p>
+<div class="highlight"><pre><span></span><code>One viewer. One OCI bucket. Every scenario is a link.
+
+BIM — client walkthrough:
+  index.html?db=hospital.db&amp;mode=readonly
+
+Restaurant — waiter on shift:
+  index.html?db=mykopitiam.db&amp;scope=zone_patio&amp;mode=operator
+
+Restaurant — customer at table:
+  index.html?db=mykopitiam.db&amp;scope=table_7&amp;mode=readonly
+
+Warehouse — picker in zone A:
+  index.html?db=gudang.db&amp;scope=zone_A&amp;mode=operator
+
+Back office — AP clerk:
+  index.html?db=accounting.db&amp;scope=payables&amp;mode=full
+
+Factory — line supervisor:
+  index.html?db=kilang.db&amp;scope=line_2&amp;mode=operator
+</code></pre></div>
+<p>No separate app for waiters. No separate app for pickers. No separate
+app for customers. No app store submission. No build per platform.
+<strong>One HTML file serves every human in the value chain.</strong></p>
+<p>The viewer adapts because:
+- <code>containers</code> table defines the spatial layout → Three.js renders it
+- <code>?scope=</code> filters which containers are visible → role perspective
+- <code>?mode=</code> controls which action buttons appear → permission level
+- <code>doc_type</code> in the documents table → domain-appropriate labels
+- The swipe UX, heatmap, role band, and card layout work identically
+  regardless of what's in the <code>.db</code></p>
+<p><strong>What changes per domain is the data, not the code.</strong></p>
 <p>This is why the POC can be built as <strong>one HTML file + one <code>.db</code> file</strong>.
 The browser IS the application server, the database server, and the
 rendering engine. The phone in the waiter's pocket is a more capable
