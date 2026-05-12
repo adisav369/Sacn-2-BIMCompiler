@@ -76,9 +76,80 @@
   // At cursor >= projectEnd: fully built, all solid, no glow
 
   var _prevCursor = 0; // track previous cursor for frontier detection
+  var _sunCycle = false;  // day/night toggle
 
   var _zeroMatrix = null; // lazy init
   var _savedInstanceMatrices = {}; // meshId → { idx → Matrix4 }
+
+  // ── Metal sparks (desktop only) ──
+  var _sparkSystems = [];   // active spark point clouds
+  var _sparkMaterial = null; // shared Points material
+
+  function initSparkMaterial() {
+    if (_sparkMaterial) return;
+    _sparkMaterial = new THREE.PointsMaterial({
+      size: 3, sizeAttenuation: true,
+      color: 0xffcc44, transparent: true, opacity: 1,
+      depthTest: false, blending: THREE.AdditiveBlending
+    });
+  }
+
+  function spawnSparks(position, scene) {
+    initSparkMaterial();
+    var count = 5 + Math.floor(Math.random() * 6); // 5-10 points
+    var geom = new THREE.BufferGeometry();
+    var pos = new Float32Array(count * 3);
+    var vel = new Float32Array(count * 3); // velocities
+    for (var i = 0; i < count; i++) {
+      pos[i*3]   = position.x + (Math.random()-0.5)*0.3;
+      pos[i*3+1] = position.y + (Math.random()-0.5)*0.3;
+      pos[i*3+2] = position.z + (Math.random()-0.5)*0.3;
+      vel[i*3]   = (Math.random()-0.5)*2;
+      vel[i*3+1] = Math.random()*3 + 1;       // upward burst
+      vel[i*3+2] = (Math.random()-0.5)*2;
+    }
+    geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    var points = new THREE.Points(geom, _sparkMaterial.clone());
+    points.renderOrder = 1000;
+    scene.add(points);
+    _sparkSystems.push({ points: points, vel: vel, born: performance.now(), life: 500 });
+  }
+
+  function updateSparks() {
+    var now = performance.now();
+    for (var i = _sparkSystems.length - 1; i >= 0; i--) {
+      var s = _sparkSystems[i];
+      var age = now - s.born;
+      if (age > s.life) {
+        s.points.parent.remove(s.points);
+        s.points.geometry.dispose();
+        s.points.material.dispose();
+        _sparkSystems.splice(i, 1);
+        continue;
+      }
+      // Animate: gravity + fade
+      var dt = 0.016; // ~60fps step
+      var posArr = s.points.geometry.attributes.position.array;
+      for (var j = 0; j < posArr.length; j += 3) {
+        posArr[j]   += s.vel[j]   * dt;
+        posArr[j+1] += s.vel[j+1] * dt;
+        posArr[j+2] += s.vel[j+2] * dt;
+        s.vel[j+1] -= 9.8 * dt; // gravity
+      }
+      s.points.geometry.attributes.position.needsUpdate = true;
+      s.points.material.opacity = 1 - (age / s.life);
+    }
+  }
+
+  function clearSparks() {
+    for (var i = 0; i < _sparkSystems.length; i++) {
+      var s = _sparkSystems[i];
+      if (s.points.parent) s.points.parent.remove(s.points);
+      s.points.geometry.dispose();
+      s.points.material.dispose();
+    }
+    _sparkSystems = [];
+  }
 
   function renderAtTime(cursorMs) {
     var app = A();
@@ -92,9 +163,11 @@
 
     // Determine which elements to show and their state
     var placed = {};    // guid → true (fully built: end_ts <= cursor)
-    var frontier = {};  // guid → true (being installed: start_ts <= cursor < end_ts)
-    var recent = {};    // guid → true (just finished: end_ts within last linger window)
+    var frontier = {};  // guid → {t: 0-1 progress, isSteel: bool}
+    var recent = {};    // guid → fade 0-1 (1 = just finished)
+    var arrival = {};   // guid → true (just appeared this tick — white flash)
     var lingerMs = tickMs() * 3; // linger for 3 ticks after completion
+    var _isMobileTM = !!(window._isMobile || window._isMobileTM);
 
     for (var i = 0; i < _ops.length; i++) {
       var op = _ops[i];
@@ -105,10 +178,18 @@
 
       if (op.end_ts <= cursorMs) {
         placed[guid] = true;
-        // Recently finished — yellow linger
-        if (cursorMs - op.end_ts < lingerMs) recent[guid] = true;
+        // Recently finished — amber linger with fade
+        var age = cursorMs - op.end_ts;
+        if (age < lingerMs) recent[guid] = 1 - (age / lingerMs);
       } else {
-        frontier[guid] = true;
+        var progress = (cursorMs - op.start_ts) / Math.max(1, op.end_ts - op.start_ts);
+        var p = op.parameters || {};
+        var cls = p.cls || '';
+        var isSteel = /^Ifc(Beam|Column|Member|Plate)$/.test(cls) ||
+                      (p.resource === 'STEEL_ERECTOR');
+        frontier[guid] = { t: progress, isSteel: isSteel };
+        // Arrival = first 15% of install time (white flash)
+        if (progress < 0.15) arrival[guid] = true;
       }
     }
 
@@ -119,13 +200,25 @@
       if (obj.userData.guid) {
         var g = obj.userData.guid;
         if (frontier[g]) {
-          // Being installed — orange glow
           obj.visible = true;
-          if (obj.isMesh) applyHighlight(obj, 0xff8c00, 0.75);
-        } else if (recent[g]) {
-          // Just finished — faded yellow linger
+          if (obj.isMesh) {
+            var ft = frontier[g].t;
+            if (ft < 0.1) {
+              // Flash: bright solid yellow — fully opaque, depth ON
+              applyFlash(obj, 0xffee00);
+            } else if (ft < 0.25) {
+              applyFlash(obj, 0xffaa33);
+            } else {
+              applyHighlight(obj, 0xff8c00, 0.75);
+            }
+          }
+        } else if (recent[g] !== undefined) {
           obj.visible = true;
-          if (obj.isMesh) applyHighlight(obj, 0xffdd44, 0.5);
+          if (obj.isMesh) {
+            var fade = recent[g];
+            // Yellow linger fading to solid
+            applyHighlight(obj, 0xffdd44, 0.4 + 0.4 * fade);
+          }
         } else if (placed[g]) {
           // Fully built — solid original
           obj.visible = true;
@@ -157,7 +250,7 @@
 
         for (var mi = 0; mi < metas.length; mi++) {
           var ig = metas[mi].guid;
-          if (placed[ig] || frontier[ig]) {
+          if (placed[ig] || frontier[ig] || recent[ig] !== undefined) {
             // Restore original matrix (make visible)
             if (_savedInstanceMatrices[meshId][mi]) {
               obj.setMatrixAt(mi, _savedInstanceMatrices[meshId][mi]);
@@ -180,6 +273,25 @@
         }
       }
     });
+
+    // Metal sparks for steel frontier elements (desktop only)
+    if (!_isMobileTM && _playing) {
+      updateSparks();
+      app.scene.traverse(function(obj) {
+        if (!obj.isMesh || !obj.visible || !obj.userData || !obj.userData.guid) return;
+        var fg = frontier[obj.userData.guid];
+        if (fg && fg.isSteel && fg.t < 0.5 && Math.random() < 0.3) {
+          // Spawn sparks at mesh world position
+          var wp = new THREE.Vector3();
+          obj.getWorldPosition(wp);
+          spawnSparks(wp, app.scene);
+        }
+      });
+    } else if (!_playing) {
+      clearSparks();
+    }
+
+    applySunCycle(cursorMs);
 
     if (app.markDirty) app.markDirty();
     // Force immediate render — mobile browsers defer rAF until touch
@@ -206,6 +318,23 @@
     obj.renderOrder = 999;
   }
 
+  // Flash: solid bright element, depthTest ON so it looks physical
+  function applyFlash(obj, color) {
+    if (!obj._tm_highlighted) {
+      obj._tm_origMaterial = obj.material;
+      obj.material = obj.material.clone();
+      obj._tm_highlighted = true;
+      _highlightMeshes.push(obj);
+    }
+    var mat = obj.material;
+    mat.color.setHex(color);
+    if (mat.emissive) { mat.emissive.setHex(color); mat.emissiveIntensity = 1.5; }
+    mat.transparent = false;
+    mat.opacity = 1.0;
+    mat.depthTest = true;
+    mat.needsUpdate = true;
+  }
+
   function restoreMaterial(obj) {
     if (!obj._tm_highlighted) return;
     // Restore original material reference — no leftover color contamination
@@ -225,21 +354,90 @@
     _highlightMeshes = [];
   }
 
+  // ── Day/night — smooth sky + lighting, no shadow plumbing ──
+  var _savedClearColor = null;
+
+  // Smooth color lerp between two hex colors
+  function lerpColor(a, b, t) {
+    var ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
+    var br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
+    var r = Math.round(ar + (br - ar) * t);
+    var g = Math.round(ag + (bg - ag) * t);
+    var bl = Math.round(ab + (bb - ab) * t);
+    return (r << 16) | (g << 8) | bl;
+  }
+
+  function applySunCycle(cursorMs) {
+    if (!_sunCycle) return;
+    var app = A();
+    if (!app || !app.sun) return;
+
+    // Save original sky color once
+    if (_savedClearColor === null && app.renderer) {
+      _savedClearColor = app.renderer.getClearColor(new THREE.Color()).getHex();
+    }
+
+    var h = new Date(cursorMs).getHours();
+    var m = new Date(cursorMs).getMinutes();
+    var t = h + m / 60; // 0-24 fractional hour
+
+    // Sun arc: smooth sine curve
+    var angle = (t / 24) * Math.PI * 2 - Math.PI / 2;
+    var elevation = Math.sin(angle); // -1 midnight, +1 noon
+    var azimuth = Math.cos(angle);
+    var dayFactor = Math.max(0, elevation); // 0 at night, 1 at noon
+
+    // Sun position — orbit around scene center
+    var cx = 0, cy = 0, cz = 0;
+    if (app.controls && app.controls.target) {
+      cx = app.controls.target.x; cy = app.controls.target.y; cz = app.controls.target.z;
+    }
+    app.sun.position.set(cx + azimuth * 400, Math.max(elevation * 400, 5), cz + 200);
+
+    // Smooth lighting
+    app.sun.intensity = 0.05 + dayFactor * 1.2;
+    if (app.ambient) app.ambient.intensity = 0.15 + dayFactor * 0.5;
+    if (app.hemi) app.hemi.intensity = 0.1 + dayFactor * 0.3;
+
+    // Smooth sky: interpolate through 4 key colors based on dayFactor
+    // 0.0 = night (dark blue), 0.3 = dawn/dusk (warm), 0.6 = day (pale blue), 1.0 = noon (bright)
+    var NIGHT = 0x0a0a2e, DAWN = 0x664433, DAY = 0x88aacc, NOON = 0xaaccee;
+    var skyColor;
+    if (dayFactor < 0.3) {
+      skyColor = lerpColor(NIGHT, DAWN, dayFactor / 0.3);
+    } else if (dayFactor < 0.6) {
+      skyColor = lerpColor(DAWN, DAY, (dayFactor - 0.3) / 0.3);
+    } else {
+      skyColor = lerpColor(DAY, NOON, (dayFactor - 0.6) / 0.4);
+    }
+    if (app.renderer) app.renderer.setClearColor(skyColor);
+  }
+
+  function restoreSky() {
+    var app = A();
+    if (app && app.renderer && _savedClearColor !== null) {
+      app.renderer.setClearColor(_savedClearColor);
+      _savedClearColor = null;
+    }
+  }
+
   function updateStatus() {
     var pbar = document.getElementById('tm-progress-bar');
     var range = _projectEnd - _projectStart;
     if (pbar && range > 0) pbar.style.width = Math.round((_cursor - _projectStart) / range * 100) + '%';
 
-    // Count placed and find latest active element
-    var placed = 0, active = 0, lastName = '', lastPhase = '';
+    // Count placed, collect readable active element names
+    var placed = 0;
+    var activeNames = [];
     for (var i = 0; i < _ops.length; i++) {
       if (_ops[i].start_ts > _cursor) break;
       placed++;
       if (_cursor < _ops[i].end_ts) {
-        active++;
         var p = _ops[i].parameters;
-        lastPhase = (p && p.phase) || '';
-        lastName = (p && p.name) || (p && p.cls) || '';
+        // Prefer element name, fall back to IFC class stripped of "Ifc" prefix
+        var nm = (p && p.name) || '';
+        if (!nm && p && p.cls) nm = p.cls.replace(/^Ifc/, '');
+        if (nm && activeNames.length < 3) activeNames.push(nm);
       }
     }
 
@@ -247,8 +445,8 @@
     var label = document.getElementById('tm-label');
     var bigCounter = document.getElementById('tm-big-counter');
     var d = new Date(_cursor);
-    if (label) label.textContent = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + ' — ' + (lastPhase || '—');
-    if (status) status.textContent = (lastName || '—') + ' | ' + placed + '/' + _ops.length + ' placed | ' + active + ' active';
+    if (label) label.textContent = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    if (status) status.textContent = placed + ' placed | ' + (activeNames.join(', ') || 'idle');
     if (bigCounter) {
       var elapsedMs = _cursor - _projectStart;
       var totalDays = Math.floor(elapsedMs / 86400000);
@@ -333,13 +531,14 @@
     _panel.innerHTML =
       '<div style="display:flex;align-items:center;width:100%;cursor:grab" class="tm-drag">' +
         '<button id="tm-share" style="font-size:9px;padding:2px 6px" title="Copy shareable link">&#x1F517; Share</button>' +
+        '<button id="tm-sun" style="font-size:12px;padding:2px 6px" title="Day/night cycle">&#x2600;</button>' +
         '<span id="tm-big-counter" style="flex:1;font-size:18px;font-weight:bold;color:#4fc3f7;text-align:center;letter-spacing:1px">DAY 0 | HR 0</span>' +
         '<button id="tm-close" style="width:22px;height:22px;font-size:12px;padding:0;line-height:1" title="Close">&#x2715;</button>' +
       '</div>' +
-      '<div id="tm-status" style="width:100%;text-align:center;font-size:10px;color:#888;padding:2px 0;height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
-        '4D Construction — weighted parallel playback</div>' +
+      '<div id="tm-status" style="width:100%;text-align:center;font-size:13px;color:#ccc;padding:2px 0;min-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
+        '4D Construction Playback</div>' +
       '<div style="display:flex;gap:4px;align-items:center;width:100%">' +
-        '<span id="tm-label" style="color:#4fc3f7;font-weight:bold;font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>' +
+        '<span id="tm-label" style="color:#4fc3f7;font-weight:bold;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>' +
         '<div style="display:flex;gap:3px">' +
           '<button class="tm-mode" data-mode="DAY">DAY</button>' +
           '<button class="tm-mode" data-mode="HR">HR</button>' +
@@ -415,6 +614,16 @@
       }
       viewerStatus('4D playback link copied to clipboard');
       console.log('§TIME_MACHINE share URL: ' + url.toString());
+    });
+    document.getElementById('tm-sun').addEventListener('pointerup', function(e) {
+      e.stopPropagation();
+      _sunCycle = !_sunCycle;
+      var btn = document.getElementById('tm-sun');
+      if (btn) btn.classList.toggle('tm-active', _sunCycle);
+      if (_sunCycle) applySunCycle(_cursor);
+      else restoreSky();
+      var app = A();
+      if (app && app.renderer && app.scene && app.camera) app.renderer.render(app.scene, app.camera);
     });
     document.getElementById('tm-close').addEventListener('pointerup', function(e) {
       e.stopPropagation(); deactivate();
@@ -570,208 +779,200 @@
     _playTimer = setTimeout(playTick, TICK_MS);
   }
 
-  // ── Weighted Gantt injection using SEQUENCE_RULES + LABOR_RATES ──
+  // ══════════════════════════════════════════════════════════════════
+  // Z-DRIVEN CONSTRUCTION SCHEDULE
+  // ══════════════════════════════════════════════════════════════════
+  //
+  // One abstract rule: lower Z finishes before higher Z starts.
+  // Within same Z-band (storey): seq from SEQUENCE_RULES for phase order.
+  // Same resource on same storey = sequential. Different resource = parallel.
+  // Always re-inject on activate — never use stale cached ops.
+
   function injectGantt() {
     var app = A();
     if (!app || !app.db) return false;
     var db = app.db;
 
-    // Ensure kernel_ops table with end timestamp support
-    db.run(
-      'CREATE TABLE IF NOT EXISTS kernel_ops (' +
-      '  id INTEGER PRIMARY KEY, timestamp INTEGER NOT NULL,' +
-      '  op_type TEXT NOT NULL, parameters TEXT NOT NULL,' +
-      '  input_guids TEXT, output_guid TEXT, undone INTEGER DEFAULT 0)'
-    );
+    db.run('CREATE TABLE IF NOT EXISTS kernel_ops (' +
+      'id INTEGER PRIMARY KEY, timestamp INTEGER NOT NULL,' +
+      'op_type TEXT NOT NULL, parameters TEXT NOT NULL,' +
+      'input_guids TEXT, output_guid TEXT, undone INTEGER DEFAULT 0)');
 
-    var r;
-    try {
-      // Exclude IfcOpeningElement (no mesh) — matches streaming.js filter
-      r = db.exec(
-        'SELECT m.guid, m.ifc_class, m.element_name, m.storey, m.discipline ' +
-        'FROM elements_meta m ' +
-        'LEFT JOIN element_transforms t ON t.guid = m.guid ' +
-        "WHERE m.ifc_class != 'IfcOpeningElement' " +
-        'ORDER BY COALESCE(t.center_z, 0), COALESCE(t.center_x, 0), COALESCE(t.center_y, 0)'
-      );
-    } catch(e) { console.log('§TIME_MACHINE_GANTT table error: ' + e.message); return false; }
-    if (!r.length || !r[0].values.length) return false;
-
-    // Witness: total elements being scheduled
-    var totalDbElements = r[0].values.length;
-    console.log('§TIME_MACHINE_GANTT scheduling ' + totalDbElements + ' elements (excl. IfcOpeningElement)');
-
-    // Get productivity: how many of this class can 1 crew install per 8-hour day?
-    // Returns seconds per element
     var SR = window.SEQUENCE_RULES || {};
     var LR = window.LABOR_RATES || {};
     var SD = window.SEQUENCE_DEFAULT || {phase:'Architecture',sequence:6,resource:null};
 
-    // Match IFC class to SEQUENCE_RULES — longest key match wins
     function matchRule(cls) {
       if (!cls) return SD;
       var bestKey = null, bestLen = 0;
       for (var key in SR) {
-        if (cls.indexOf(key) >= 0 && key.length > bestLen) {
-          bestKey = key; bestLen = key.length;
-        }
+        if (cls.indexOf(key) >= 0 && key.length > bestLen) { bestKey = key; bestLen = key.length; }
       }
       return bestKey ? SR[bestKey] : SD;
     }
-
-    function matchProductivity(cls, resource) {
-      if (!cls || !resource || !LR[resource]) return 0;
-      var labor = LR[resource];
-      var bestPk = null, bestLen = 0;
-      for (var pk in labor.productivity) {
-        if (cls.indexOf(pk) >= 0 && pk.length > bestLen) {
-          bestPk = pk; bestLen = pk.length;
-        }
-      }
-      return bestPk ? labor.productivity[bestPk] : 0;
-    }
-
-    function getSecondsPerElement(cls) {
+    function getInstallSecs(cls) {
       var rule = matchRule(cls);
       var resource = rule.resource;
-      if (!resource || !LR[resource]) return 120; // default 2 min
-      var prod = matchProductivity(cls, resource);
-      if (prod <= 0) return 120;
-      // prod = units per day. 1 day = 8 hours = 28800 seconds
-      return Math.round(28800 / prod);
+      if (!resource || !LR[resource]) return 120;
+      var labor = LR[resource], bestPk = null, bestLen = 0;
+      for (var pk in labor.productivity) {
+        if (cls.indexOf(pk) >= 0 && pk.length > bestLen) { bestPk = pk; bestLen = pk.length; }
+      }
+      var prod = bestPk ? labor.productivity[bestPk] : 0;
+      return prod > 0 ? Math.round(28800 / prod) : 120;
     }
 
-    function getPhase(cls) { return matchRule(cls).phase; }
-    function getSequence(cls) { return matchRule(cls).sequence; }
+    // Query elements with spatial Z
+    var r;
+    try {
+      r = db.exec(
+        'SELECT m.guid, m.ifc_class, m.element_name, m.storey, m.discipline, ' +
+        'COALESCE(t.center_z, 0) as cz ' +
+        'FROM elements_meta m ' +
+        'LEFT JOIN element_transforms t ON t.guid = m.guid ' +
+        "WHERE m.ifc_class != 'IfcOpeningElement' " +
+        'ORDER BY cz, COALESCE(t.center_x, 0), COALESCE(t.center_y, 0)'
+      );
+    } catch(e) { console.log('§GANTT table error: ' + e.message); return false; }
+    if (!r.length || !r[0].values.length) return false;
 
-    // Storey rank
-    function storeyRank(s) {
-      if (!s) return 999;
-      var u = s.toUpperCase();
-      if (u.includes('BASEMENT') || u.startsWith('B')) return -10 + (parseInt(u.replace(/\D/g,'')) || 0);
-      if (u === 'GROUND' || u === 'G' || u === 'GF' || u.includes('GROUND')) return 0;
-      if (u.includes('ROOF')) return 900;
-      var n = parseInt(u.replace(/\D/g,''));
-      return isNaN(n) ? 50 : n;
+    var totalDbElements = r[0].values.length;
+
+    // ── Z-bands: group elements into Z-bands (storeys inferred from Z gaps) ──
+    // Collect all Z values, find natural breaks, assign band index
+    var allZ = r[0].values.map(function(row) { return row[5] || 0; });
+    allZ.sort(function(a,b){ return a - b; });
+
+    // Find Z-band boundaries: a gap > 1.5m between consecutive elements = new band
+    var GAP_THRESHOLD = 1.5;
+    var bandBounds = [allZ[0]]; // start of first band
+    for (var zi = 1; zi < allZ.length; zi++) {
+      if (allZ[zi] - allZ[zi-1] > GAP_THRESHOLD) bandBounds.push(allZ[zi]);
     }
 
-    // Build element list
+    function zBand(z) {
+      for (var bi = bandBounds.length - 1; bi >= 0; bi--) {
+        if (z >= bandBounds[bi]) return bi;
+      }
+      return 0;
+    }
+
+    console.log('§GANTT Z-bands: ' + bandBounds.length + ' bands, boundaries at z=' +
+      bandBounds.map(function(b){ return b.toFixed(1); }).join(', '));
+
+    // ── Build elements ──
     var elements = r[0].values.map(function(row) {
+      var cls = row[1], storey = row[3] || '', cz = row[5] || 0;
+      var rule = matchRule(cls);
       return {
-        guid: row[0], cls: row[1], name: row[2], storey: row[3], disc: row[4],
-        seq: getSequence(row[1]), sRank: storeyRank(row[3]),
-        phase: getPhase(row[1]),
-        installSecs: getSecondsPerElement(row[1])
+        guid: row[0], cls: cls, name: row[2] || '', storey: storey,
+        cz: cz, band: zBand(cz),
+        seq: rule.sequence, phase: rule.phase,
+        resource: rule.resource || '_DEFAULT',
+        installSecs: getInstallSecs(cls)
       };
     });
 
-    // Sort: sequence (phase order) → storey (bottom-up) → Z (from SQL)
+    // ── Sort: Z-band (bottom-up) → seq (phase order) → center_z (fine) ──
     elements.sort(function(a, b) {
+      if (a.band !== b.band) return a.band - b.band;
       if (a.seq !== b.seq) return a.seq - b.seq;
-      if (a.sRank !== b.sRank) return a.sRank - b.sRank;
-      return 0;
+      return a.cz - b.cz;
     });
 
-    // Schedule: elements start sequentially within same sequence+storey group.
-    // Different sequence groups start after previous finishes on same storey.
-    // Parallel: different resources on same storey can overlap.
-    //
-    // Simplified: walk elements in sorted order.
-    // Within same (sequence, storey), elements start one after another.
-    // New (sequence, storey) group starts after prev group on same storey finishes.
-    // Minimum project = 10 days.
+    // Log band contents
+    var bandCounts = {};
+    elements.forEach(function(el) {
+      if (!bandCounts[el.band]) bandCounts[el.band] = {n:0, minZ:el.cz, maxZ:el.cz, phases:{}};
+      var bc = bandCounts[el.band];
+      bc.n++;
+      if (el.cz < bc.minZ) bc.minZ = el.cz;
+      if (el.cz > bc.maxZ) bc.maxZ = el.cz;
+      bc.phases[el.phase] = (bc.phases[el.phase] || 0) + 1;
+    });
+    for (var bk in bandCounts) {
+      var bc = bandCounts[bk];
+      var pp = [];
+      for (var ph in bc.phases) pp.push(ph + ':' + bc.phases[ph]);
+      console.log('§GANTT band ' + bk + ' z=[' + bc.minZ.toFixed(1) + ',' + bc.maxZ.toFixed(1) + '] ' +
+        bc.n + ' elements: ' + pp.join(', '));
+    }
 
-    var totalElements = elements.length;
-    var minProjectMs = 10 * 86400000; // 10 days minimum
+    // ── Scale factor ──
+    var totalSecs = 0;
+    elements.forEach(function(el) { totalSecs += el.installSecs; });
+    var rawMs = totalSecs * 1000;
+    // Round the clock — 24/7, no weekends
+    var fullDayMs = 24 * 3600000;
+    var rawDays = rawMs / fullDayMs;
+    var scaleFactor = rawDays < 10 ? (10 * fullDayMs) / rawMs : 1;
 
-    // Calculate raw total install seconds
-    var totalInstallSecs = 0;
-    elements.forEach(function(el) { totalInstallSecs += el.installSecs; });
-
-    // Scale factor: if raw time < 10 days of work hours, stretch to fill
-    var rawMs = totalInstallSecs * 1000;
-    var scaleFactor = 1;
-    var workDayMs = 8 * 3600000;
-    var rawDays = rawMs / workDayMs;
-    if (rawDays < 10) scaleFactor = (10 * workDayMs) / rawMs;
-
-    // Project start: calculated backwards
     var projectDays = Math.max(10, Math.ceil(rawDays * scaleFactor));
     var startDate = new Date();
     startDate.setDate(startDate.getDate() - projectDays);
-    startDate.setHours(7, 0, 0, 0);
+    startDate.setHours(0, 0, 0, 0);
     var baseMs = startDate.getTime();
 
-    // Track cursor per (seq, storey) for sequential placement within groups
-    // and per storey for phase sequencing
-    var groupCursor = {}; // "seq|storey" → next available ms
-    var storeyPhaseDone = {}; // "storey|seq" → end ms (for phase dependencies)
+    // ── Schedule ──
+    var resourceCursor = {};  // "resource|band" → next ms
+    var bandSeqDone    = {};  // "band|seq"      → end ms
+    var bandDone       = {};  // band (int)      → end ms (structural seq 1-4)
     var count = 0;
 
     elements.forEach(function(el) {
-      var groupKey = el.seq + '|' + el.sRank;
-      var storeySRank = el.sRank;
+      var rcKey = el.resource + '|' + el.band;
 
-      // Find earliest start: after previous element in same group
-      var earliest = groupCursor[groupKey] || baseMs;
+      // 1. Same resource in same band = sequential
+      var earliest = resourceCursor[rcKey] || baseMs;
 
-      // Also after previous phase on same storey finished
-      for (var prevSeq = 1; prevSeq < el.seq; prevSeq++) {
-        var prevKey = storeySRank + '|' + prevSeq;
-        if (storeyPhaseDone[prevKey] && storeyPhaseDone[prevKey] > earliest) {
-          earliest = storeyPhaseDone[prevKey];
-        }
+      // 2. Phase dependency: higher seq waits for lower seq in same band
+      for (var ps = 1; ps < el.seq; ps++) {
+        var pk = el.band + '|' + ps;
+        if (bandSeqDone[pk] && bandSeqDone[pk] > earliest) earliest = bandSeqDone[pk];
       }
 
-      // Ensure within working hours (7am-3pm)
-      var d = new Date(earliest);
-      if (d.getHours() >= 15) {
-        d.setDate(d.getDate() + 1); d.setHours(7, 0, 0, 0);
-        earliest = d.getTime();
-      } else if (d.getHours() < 7) {
-        d.setHours(7, 0, 0, 0);
-        earliest = d.getTime();
+      // 3. Z dependency: structural (seq 1-4) on band N waits for structural on band N-1
+      //    Non-structural work can proceed concurrently on lower bands
+      if (el.band > 0 && el.seq <= 4) {
+        var belowDone = bandDone[el.band - 1];
+        if (belowDone && belowDone > earliest) earliest = belowDone;
       }
 
-      var durationMs = Math.round(el.installSecs * scaleFactor * 1000);
-      var endMs = earliest + durationMs;
+      var durMs = Math.round(el.installSecs * scaleFactor * 1000);
+      var endMs = earliest + durMs;
 
       db.run(
         'INSERT INTO kernel_ops (timestamp,op_type,parameters,input_guids,output_guid,undone) VALUES(?,?,?,?,?,0)',
         [earliest, 'ELEMENT_PLACE',
-         JSON.stringify({phase: el.phase, cls: el.cls, name: el.name, storey: el.storey, _end_ts: endMs}),
+         JSON.stringify({phase:el.phase, cls:el.cls, name:el.name, storey:el.storey,
+           resource:el.resource, _end_ts:endMs}),
          JSON.stringify([el.guid]), el.guid]
       );
       count++;
 
-      // Advance group cursor
-      groupCursor[groupKey] = endMs;
-      // Track phase completion for storey
-      var phaseKey = storeySRank + '|' + el.seq;
-      if (!storeyPhaseDone[phaseKey] || endMs > storeyPhaseDone[phaseKey]) {
-        storeyPhaseDone[phaseKey] = endMs;
+      resourceCursor[rcKey] = endMs;
+      var seqKey = el.band + '|' + el.seq;
+      if (!bandSeqDone[seqKey] || endMs > bandSeqDone[seqKey]) bandSeqDone[seqKey] = endMs;
+      if (el.seq <= 4) {
+        if (!bandDone[el.band] || endMs > bandDone[el.band]) bandDone[el.band] = endMs;
       }
     });
 
-    var endDate = new Date(Math.max.apply(null, Object.values(groupCursor)));
-    // Verify full coverage: DB elements vs injected ops vs scene meshes
-    var missing = totalDbElements - count;
+    var endDate = new Date(Math.max.apply(null, Object.values(resourceCursor)));
     var sceneGuids = 0;
-    var a = A();
-    if (a && a.scene) {
+    if (app.scene) {
       var seen = {};
-      a.scene.traverse(function(obj) {
+      app.scene.traverse(function(obj) {
         if (obj.userData && obj.userData.guid && !seen[obj.userData.guid]) {
           seen[obj.userData.guid] = true; sceneGuids++;
         }
       });
     }
-    console.log('§TIME_MACHINE_GANTT injected=' + count + ' dbElements=' + totalDbElements +
+    console.log('§GANTT injected=' + count + ' dbElements=' + totalDbElements +
       ' sceneMeshGUIDs=' + sceneGuids +
-      (missing > 0 ? ' — WARNING: ' + missing + ' DB elements NOT scheduled' : ' — ALL DB elements scheduled') +
-      ', ' + projectDays + ' days, scale=' + scaleFactor.toFixed(2) +
+      ', bands=' + bandBounds.length + ', ' + projectDays + ' days, scale=' + scaleFactor.toFixed(2) +
       ', start=' + startDate.toLocaleDateString() + ' end=' + endDate.toLocaleDateString());
-    return true;
+    return count > 0;
   }
 
   // ── Activate / Deactivate ──
@@ -846,6 +1047,9 @@
   function deactivate() {
     if (!_active) return;
     stopPlayback();
+    clearSparks();
+    restoreSky();
+    _sunCycle = false;
     _active = false;
     _panel.style.display = 'none';
     setToolbarHighlight(false);
