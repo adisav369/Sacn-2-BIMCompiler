@@ -54,11 +54,11 @@
 <div class="charts" id="charts"></div>
 <div id="status"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.js"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="lib/sql-wasm.js"></script>
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/exceljs.min.js"></script>
+<script src="lib/FileSaver.min.js"></script>
+<script src="lib/chart.umd.min.js"></script>
 <script src="rates.js?v=7"></script>
 <script src="export_5d.js?v=1"></script>
 <script src="export_4d.js?v=1"></script>
@@ -929,7 +929,7 @@ async function init() {
     console.log('§QTO_RELAY_MISS reason=' + (relay ? relay.error || 'empty' : 'timeout') +
       ' — loading DB from ' + (DB_URL.startsWith('import://') ? 'IndexedDB' : 'OCI'));
     const SQL = await initSqlJs({
-      locateFile: f => `https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/${f}`
+      locateFile: f => 'lib/' + f
     });
     document.getElementById('info').textContent = 'Loading ' + DB_URL + '...';
     const buf = await fetchDbBuffer(DB_URL);

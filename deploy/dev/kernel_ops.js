@@ -55,7 +55,29 @@
     var opId = r[0].values[0][0];
     console.log('§KERNEL_OP committed id=' + opId + ' type=' + opType +
                 ' params=' + JSON.stringify(params));
+    // S243 §3.7: persist modified DB back to IndexedDB so refresh survives
+    _persistToIdb(db);
     return opId;
+  }
+
+  // Debounced IDB write — avoids hammering IndexedDB on rapid ops (e.g. drag)
+  var _persistTimer = null;
+  function _persistToIdb(db) {
+    clearTimeout(_persistTimer);
+    _persistTimer = setTimeout(function() {
+      try {
+        var dbUrl = window.APP && APP.DB_URL;
+        if (!dbUrl) return;
+        var buf = db.export().buffer;
+        var req = indexedDB.open('bim_ootb_cache', 1);
+        req.onupgradeneeded = function() { req.result.createObjectStore('dbs'); };
+        req.onsuccess = function() {
+          var tx = req.result.transaction('dbs', 'readwrite');
+          tx.objectStore('dbs').put(buf, dbUrl);
+          console.log('§KRN_PERSIST url=' + dbUrl + ' size=' + (buf.byteLength/1024).toFixed(0) + 'KB');
+        };
+      } catch(e) { console.warn('§KRN_PERSIST_ERR', e); }
+    }, 2000);
   }
 
   /**

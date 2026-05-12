@@ -642,7 +642,30 @@ function initViewer() {
     setTimeout(function() { div.style.opacity = '0'; }, online ? 3000 : 5000);
     setTimeout(function() { if (div.parentNode) div.remove(); }, online ? 3500 : 5500);
   }
-  window.addEventListener('offline', function() { showNetStatus(false); });
-  window.addEventListener('online', function() { showNetStatus(true); });
-  if (!navigator.onLine) showNetStatus(false);
+  // Persistent OFFLINE badge — sits right of the mic button, stays until online
+  function _offlineBadge(show) {
+    var id = 'offline-badge';
+    var old = document.getElementById(id);
+    if (!show) { if (old) old.remove(); return; }
+    if (old) return; // already showing
+    var mic = document.getElementById('nlp-btn');
+    var badge = document.createElement('span');
+    badge.id = id;
+    badge.textContent = 'OFFLINE';
+    badge.style.cssText = 'position:fixed;top:10px;z-index:21;padding:2px 7px;' +
+      'background:rgba(200,30,30,0.85);color:#fff;font-size:10px;font-family:Segoe UI,sans-serif;' +
+      'border-radius:4px;letter-spacing:0.5px;pointer-events:none;opacity:0.9;';
+    // Place just right of mic
+    if (mic) {
+      var r = mic.getBoundingClientRect();
+      badge.style.left = Math.round(r.right + 6) + 'px';
+    } else {
+      badge.style.left = 'calc(50% + 30px)';
+    }
+    document.body.appendChild(badge);
+  }
+
+  window.addEventListener('offline', function() { showNetStatus(false); _offlineBadge(true); });
+  window.addEventListener('online', function() { showNetStatus(true); _offlineBadge(false); });
+  if (!navigator.onLine) { showNetStatus(false); _offlineBadge(true); }
 }

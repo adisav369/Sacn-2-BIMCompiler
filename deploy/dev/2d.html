@@ -47732,28 +47732,53 @@ async function loadDatabases() {
     if (typeof initSqlJs === 'undefined') {
       await new Promise((resolve, reject) => {
         const s = document.createElement('script');
-        s.src = 'https://sql.js.org/dist/sql-wasm.js';
+        s.src = 'lib/sql-wasm.js';
         s.onload = resolve;
         s.onerror = () => reject(new Error('Failed to load sql-wasm.js'));
         document.head.appendChild(s);
       });
       console.log('§2D_DB sql-wasm.js loaded dynamically');
     }
-    const SQL = await initSqlJs({ locateFile: f => 'https://sql.js.org/dist/' + f });
+    const SQL = await initSqlJs({ locateFile: f => 'lib/' + f });
 
-    const dbBuf = await fetch(dbParam).then(r => {
-      if (!r.ok) throw new Error('DB fetch ' + r.status);
-      return r.arrayBuffer();
-    });
+    // S243 §3.8: IndexedDB cache for offline support
+    async function _2d_fetchDbBuffer(url) {
+      var cacheDb = await new Promise(function(resolve) {
+        var req = indexedDB.open('bim_ootb_cache', 1);
+        req.onupgradeneeded = function() { req.result.createObjectStore('dbs'); };
+        req.onsuccess = function() { resolve(req.result); };
+        req.onerror = function() { resolve(null); };
+      });
+      if (cacheDb) {
+        try {
+          var cached = await new Promise(function(ok, fail) {
+            var tx = cacheDb.transaction('dbs', 'readonly');
+            var req = tx.objectStore('dbs').get(url);
+            req.onsuccess = function() { ok(req.result); };
+            req.onerror = function() { fail(); };
+          });
+          if (cached) { console.log('§2D_CACHE_HIT ' + url); return cached; }
+        } catch(e) {}
+      }
+      var resp = await fetch(url);
+      if (!resp.ok) throw new Error('DB fetch ' + resp.status);
+      var buf = await resp.arrayBuffer();
+      if (cacheDb) {
+        try {
+          var tx = cacheDb.transaction('dbs', 'readwrite');
+          tx.objectStore('dbs').put(buf, url);
+        } catch(e) {}
+      }
+      return buf;
+    }
+
+    const dbBuf = await _2d_fetchDbBuffer(dbParam);
     dbMain = new SQL.Database(new Uint8Array(dbBuf));
     console.log('§2D_DB main loaded from ' + dbParam);
 
     const libParam = params.get('lib');
     if (libParam) {
-      const libBuf = await fetch(libParam).then(r => {
-        if (!r.ok) throw new Error('LibDB fetch ' + r.status);
-        return r.arrayBuffer();
-      });
+      const libBuf = await _2d_fetchDbBuffer(libParam);
       dbLib = new SQL.Database(new Uint8Array(libBuf));
       console.log('§2D_DB lib loaded from ' + libParam);
     } else {

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>BIM OOTB — MEP Bill of Quantities</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="lib/chart.umd.min.js"></script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#1a1a2e; color:#e0e0e0; font-family:Segoe UI,sans-serif; padding:20px; }
@@ -55,7 +55,7 @@
 <div id="report-content">Loading...</div>
 <div id="status"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.js"></script>
+<script src="lib/sql-wasm.js"></script>
 <script src="rates.js?v=7"></script>
 <script src="locale_loader.js?v=7"></script>
 
@@ -163,7 +163,7 @@ async function init() {
   document.getElementById('report-content').innerHTML = _t('ui_loading','Loading') + ' ' + DB_URL.split('/').pop() + '...';
 
   var SQL = await initSqlJs({
-    locateFile: function(f) { return 'https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/' + f; }
+    locateFile: function(f) { return 'lib/' + f; }
   });
   var buf = await fetchDbBuffer(DB_URL);
   var db = new SQL.Database(new Uint8Array(buf));

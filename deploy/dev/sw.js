@@ -18,6 +18,9 @@ const LOCAL_LIBS = [
   'lib/sql-wasm.js',
   'lib/sql-wasm.wasm',
   'lib/xlsx.full.min.js',
+  'lib/chart.umd.min.js',
+  'lib/exceljs.min.js',
+  'lib/FileSaver.min.js',
 ];
 
 // CDN fallback URLs — cached opportunistically if loader falls back to them
@@ -71,6 +74,27 @@ const PRECACHE_ASSETS = [
   'import_worker.js',
   'ifc_export_worker.js',
   'mesh_import_worker.js',
+  // Grid + 2D modules
+  'grid_config.js',
+  'grid_views.js',
+  'grid_door_arcs.js',
+  'grid_contours.js',
+  'grid_dim_chains.js',
+  'grid_dims.js',
+  'grid_drag.js',
+  'grid_scissors.js',
+  'grid_overlay.js',
+  'grid_assembler.js',
+  // Feature modules loaded by index.html
+  'kernel_ops.js',
+  'cost_panel.js',
+  'clash_report.js',
+  'clash_snag.js',
+  'precision_cam.js',
+  'time_machine.js',
+  'print_sheet.js',
+  'ghostglass.js',
+  'qrcode.min.js',
   // Lazy-loaded modules
   'navigate.js',
   'wizard.js',
@@ -81,17 +105,21 @@ const PRECACHE_ASSETS = [
   'dxf-parser.js',
   'dxf_export.js',
   'elevation.js',
-  'grid_dims.js',
   'title_block.js',
   // Config files
   'clash_rules.json',
+  'grid_rules.json',
   'rates/cidb2024_my.json',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
-      cache.addAll([...PRECACHE_ASSETS, ...LOCAL_LIBS])
+      Promise.all(
+        [...PRECACHE_ASSETS, ...LOCAL_LIBS].map(url =>
+          cache.add(url).catch(err => console.warn('§SW_PRECACHE_SKIP', url, err.message))
+        )
+      )
     )
   );
   self.skipWaiting();
@@ -106,21 +134,24 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Returns true for URLs that should use network-first strategy
+// Build a Set of precache basenames for O(1) lookup in isNetworkFirst()
+const _PRECACHE_SET = new Set(PRECACHE_ASSETS);
+
+// Returns true for URLs that should use network-first strategy.
+// Precached files use cache-first — freshness guaranteed by CACHE_VERSION bump on deploy.
 function isNetworkFirst(url) {
-  // Strip ?v=N query string before checking extension — HTML uses ?v= cache busters
   var base = url.split('?')[0];
-  // Local .html and .js files change on every deploy — always try network first
-  if (base.endsWith('.html') || base.endsWith('.js')) {
-    // lib/ files are versioned and immutable — keep them cache-first
-    if (base.includes('/lib/')) return false;
-    // CDN fallback assets are also immutable — keep them cache-first
-    for (const cdn of CDN_ASSETS) {
-      if (url === cdn || base === cdn) return false;
-    }
-    return true;
+  // lib/ files are versioned and immutable — always cache-first
+  if (base.includes('/lib/')) return false;
+  // CDN fallback assets are also immutable — cache-first
+  for (const cdn of CDN_ASSETS) {
+    if (url === cdn || base === cdn) return false;
   }
-  // Navigation requests (e.g. bare URL without extension)
+  // Precached local files — cache-first (CACHE_VERSION bump purges + refreshes)
+  var filename = base.split('/').pop();
+  if (_PRECACHE_SET.has(filename)) return false;
+  // Unknown JS/HTML not in precache list — network-first (safe default)
+  if (base.endsWith('.html') || base.endsWith('.js')) return true;
   return false;
 }
 
@@ -164,21 +195,32 @@ function networkFirst(request) {
     })
     .catch(() => caches.match(cacheUrl).then(r => {
       if (r) return r;
-      // Only return offline.html for navigation/HTML requests — not for .js
-      if (request.url.endsWith('.js')) return new Response('', { status: 503 });
-      return caches.match('offline.html');
+      // JS files: return empty 503 (script onerror handlers deal with it)
+      if (cacheUrl.endsWith('.js')) return new Response('', { status: 503 });
+      // Navigation: return offline page (resolve URL relative to SW scope)
+      var offlineUrl = new URL('offline.html', self.registration.scope).href;
+      return caches.match(offlineUrl).then(page =>
+        page || new Response('<h1>Offline</h1><p>Open a building you viewed before.</p>',
+          { headers: { 'Content-Type': 'text/html' } })
+      );
     }));
 }
 
-// Try cache, fall back to network (for heavy/immutable assets)
+// Try cache, fall back to network (for heavy/immutable assets + precached files)
 function cacheFirst(request) {
-  return caches.match(request).then(cached => {
+  // Strip ?v=N for cache lookup — precache stores bare filenames
+  var cacheUrl = request.url.split('?')[0];
+  return caches.match(cacheUrl).then(cached => {
+    if (cached) return cached;
+    // Also try with the full URL (CDN assets are stored with full URL)
+    return caches.match(request);
+  }).then(cached => {
     if (cached) return cached;
     return fetch(request).then(resp => {
       if (!resp || resp.status !== 200) return resp;
       const clone = resp.clone();
-      caches.open(CACHE_NAME).then(c => c.put(request, clone));
+      caches.open(CACHE_NAME).then(c => c.put(cacheUrl, clone));
       return resp;
-    });
+    }).catch(() => new Response('', { status: 503, statusText: 'Offline' }));
   });
 }
