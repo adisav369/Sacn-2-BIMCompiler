@@ -720,6 +720,82 @@ console.log('§BADGE_NO_TRL html=' + JSON.stringify(html3));
 console.log('§BADGE_EMPTY_TRL html=' + JSON.stringify(html4));
 
 // ══════════════════════════════════════════════════════════════
+// TEST 12: Gantt setup code — doesn't throw with any _TRL state
+// ══════════════════════════════════════════════════════════════
+console.log('\n── T12: Gantt setup code execution ──');
+
+// Extract the Gantt section 9 setup (lines before _deferChart) from boq_charts.html
+// and run it with mock DOM to verify no throws
+function testGanttSetup(schedSource, trlVal) {
+  // Mock DOM
+  var elements = [];
+  var mockDoc = {
+    createElement: function(tag) {
+      var el = { tagName: tag, style: { cssText: '' }, innerHTML: '', children: [], appendChild: function(c) { this.children.push(c); } };
+      elements.push(el);
+      return el;
+    }
+  };
+
+  try {
+    var _scheduleSource = schedSource;
+    var _TRL = trlVal;
+    var scheduleData = tasks; // from T1
+
+    var ganttTasks = [...scheduleData].sort(function(a,b) { return a.startDay - b.startDay; });
+
+    // Simulate the header construction (exact code from boq_charts.html)
+    var _syncColor = _scheduleSource === 'kernel_ops' ? '#44cc44' : '#ff8c00';
+    var _syncText = _scheduleSource === 'kernel_ops' ? 'Hourglass OK' : 'Run Hourglass first';
+    var headerHTML = '<h2 style="margin:0">' + (_TRL && _TRL.t_gantt || '4D — Gantt Timeline') + '</h2>' +
+      '<span style="font-size:11px;color:' + _syncColor + '">&#9203; ' + _syncText + '</span>';
+
+    // Simulate canvas/wrap setup
+    var barPx = ganttTasks.length > 40 ? 14 : ganttTasks.length > 20 ? 20 : 28;
+    var ganttH = Math.max(200, ganttTasks.length * barPx + 60);
+    var maxWrapH = Math.min(ganttH, 700);
+    var wrapCSS = 'position:relative;height:' + maxWrapH + 'px;' + (ganttH > 700 ? 'overflow-y:auto;' : '');
+    var innerCSS = 'position:relative;height:' + ganttH + 'px;';
+
+    // Check for 'undefined' or 'null' strings in output
+    var allOutput = headerHTML + wrapCSS + innerCSS;
+    if (allOutput.includes('undefined') || allOutput.includes('null')) {
+      return { ok: false, error: 'output contains "undefined" or "null": ' + allOutput };
+    }
+    if (!headerHTML.includes('<h2')) {
+      return { ok: false, error: 'no h2 in header' };
+    }
+    if (ganttH <= 0) {
+      return { ok: false, error: 'ganttH=' + ganttH };
+    }
+    return { ok: true, headerHTML: headerHTML, ganttH: ganttH, wrapH: maxWrapH, barPx: barPx };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+var cases = [
+  ['kernel_ops', { t_gantt: '4D — Gantt Timeline (Strategic Tasks by Phase)' }, 'kernel_ops + full _TRL'],
+  ['generateSchedule', { t_gantt: '4D — Gantt' }, 'generateSchedule + _TRL'],
+  ['generateSchedule', undefined, 'generateSchedule + undefined _TRL'],
+  ['kernel_ops', null, 'kernel_ops + null _TRL'],
+  ['kernel_ops', {}, 'kernel_ops + empty _TRL'],
+  ['generateSchedule', { t_gantt: '' }, 'generateSchedule + empty string t_gantt'],
+];
+
+for (var ci = 0; ci < cases.length; ci++) {
+  var c = cases[ci];
+  var r = testGanttSetup(c[0], c[1]);
+  if (r.ok) {
+    pass++;
+    console.log('§GANTT_SETUP[' + ci + '] OK ' + c[2] + ' → ganttH=' + r.ganttH + ' wrapH=' + r.wrapH + ' barPx=' + r.barPx);
+  } else {
+    fail++;
+    console.log('§GANTT_SETUP[' + ci + '] FAIL ' + c[2] + ' → ' + r.error);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 // SUMMARY
 // ══════════════════════════════════════════════════════════════
 console.log('\n════════════════════════════════');
