@@ -3098,6 +3098,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#the-boundary-multi-entity-p2p" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The boundary — multi-entity P2P
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5189,6 +5200,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#the-boundary-multi-entity-p2p" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The boundary — multi-entity P2P
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -6902,6 +6924,59 @@ The back office spatial desktop tells the same story for invoices and payments.
 </tr>
 </tbody>
 </table>
+<h3 id="the-boundary-multi-entity-p2p">The boundary — multi-entity P2P<a class="headerlink" href="#the-boundary-multi-entity-p2p" title="Permanent link">&para;</a></h3>
+<p>The flow above assumes a single <code>.db</code> / single legal entity. The vendor
+(ACE Hardware) is a string in <code>metadata</code>. In reality, P2P crosses trust
+boundaries — the vendor has their own books, their own system, their own
+truth.</p>
+<p><strong>The observation:</strong> When ACE Hardware sends an invoice, they created it
+in <em>their</em> system. In the OOTB model, the AP clerk creates it in <em>ours</em>.
+The question is: how do two kernel_ops logs talk to each other?</p>
+<p><strong>The answer is already in the pattern:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Vendor&#39;s system (their .db, their kernel_ops):</span>
+<span class="n">commitOp</span><span class="p">(</span><span class="n">vendor_db</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DOC_CREATE&#39;</span><span class="p">,</span><span class="w"> </span><span class="err">{</span><span class="n">doc_id</span><span class="p">:</span><span class="s1">&#39;VINV-4401&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">amount</span><span class="p">:</span><span class="mi">35</span><span class="p">.</span><span class="mi">00</span><span class="p">,</span><span class="w"> </span><span class="n">po_ref</span><span class="p">:</span><span class="s1">&#39;PO-001&#39;</span><span class="err">}</span><span class="p">)</span>
+
+<span class="c1">-- Our system receives vendor&#39;s document (email, EDI, QR scan, .db import):</span>
+<span class="n">commitOp</span><span class="p">(</span><span class="n">my_db</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;EXT_RECEIVE&#39;</span><span class="p">,</span><span class="w"> </span><span class="err">{</span>
+<span class="w">    </span><span class="k">source</span><span class="p">:</span><span class="w">       </span><span class="s1">&#39;ACE_Hardware&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">external_ref</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;VINV-4401&#39;</span><span class="p">,</span><span class="w">       </span><span class="c1">-- their doc ID</span>
+<span class="w">    </span><span class="n">my_doc_id</span><span class="p">:</span><span class="w">    </span><span class="s1">&#39;INV-001&#39;</span><span class="p">,</span><span class="w">         </span><span class="c1">-- our mapped doc ID</span>
+<span class="w">    </span><span class="n">channel</span><span class="p">:</span><span class="w">      </span><span class="s1">&#39;email_pdf&#39;</span><span class="w">        </span><span class="c1">-- how it arrived</span>
+<span class="err">}</span><span class="p">)</span>
+</code></pre></div>
+<p>Each entity's kernel_ops log is <strong>append-only</strong>. Receipts and issuances
+between logs are themselves ops. The <code>EXT_RECEIVE</code> op type bridges the
+trust boundary without merging databases.</p>
+<p><strong>What this enables (Phase 4+):</strong></p>
+<ul>
+<li>
+<p><strong>"Show me all ops from ACE Hardware since last Tuesday"</strong> →
+  <code>SELECT * FROM kernel_ops WHERE op_type = 'EXT_RECEIVE' AND json_extract(parameters, '$.source') = 'ACE_Hardware' AND timestamp &gt; ?</code></p>
+</li>
+<li>
+<p><strong>Vendor portal via QR</strong> — ACE Hardware scans a QR code pointing to a
+  filtered view: <code>?scope=vendor_ACE&amp;mode=readonly</code>. They see their POs,
+  delivery status, payment status. Same viewer, same five tables, filtered.
+  The vendor never logs into your system — they view their own data through
+  your spatial lens.</p>
+</li>
+<li>
+<p><strong>Vendor sends structured data</strong> — instead of PDF invoices, ACE Hardware
+  exports a tiny <code>.db</code> with their <code>documents</code> + <code>document_lines</code>. Your system
+  imports it, runs the 3-way match, logs <code>EXT_RECEIVE</code>. The match is
+  automatic because the schema is the same on both sides.</p>
+</li>
+<li>
+<p><strong>Supply chain as nested spatial views</strong> — your warehouse is a container.
+  ACE Hardware's warehouse is a container. The logistics network that
+  connects them is a container. Same viewer, zoomed out. The shipment
+  animating between hubs is a <code>MOVEMENT</code> document with GPS coordinates.</p>
+</li>
+</ul>
+<p>This is Phase 4-5 work. The POC proves the P2P logic within one entity.
+The inter-entity extension uses the same <code>commitOp</code> / <code>replayOps</code> pattern
+— it just adds <code>EXT_RECEIVE</code> and <code>EXT_SEND</code> op types. No new tables.
+No new infrastructure. Just two more strings in the <code>op_type</code> column.</p>
 <hr />
 <h2 id="11-technology-landscape-who-else-is-trying-this">11. Technology Landscape — Who Else Is Trying This?<a class="headerlink" href="#11-technology-landscape-who-else-is-trying-this" title="Permanent link">&para;</a></h2>
 <h3 id="111-the-competitive-map">11.1 The Competitive Map<a class="headerlink" href="#111-the-competitive-map" title="Permanent link">&para;</a></h3>
