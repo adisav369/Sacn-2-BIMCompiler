@@ -2501,10 +2501,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#62-card-layout" class="md-nav__link">
+  <a href="#62-role-band-the-top-bar" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6.2 Card Layout
+        6.2 Role Band — The Top Bar
       
     </span>
   </a>
@@ -2512,10 +2512,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#63-heatmap-overlay" class="md-nav__link">
+  <a href="#63-card-layout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6.3 Heatmap Overlay
+        6.3 Card Layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-heatmap-overlay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Heatmap Overlay
       
     </span>
   </a>
@@ -4182,10 +4193,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#62-card-layout" class="md-nav__link">
+  <a href="#62-role-band-the-top-bar" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6.2 Card Layout
+        6.2 Role Band — The Top Bar
       
     </span>
   </a>
@@ -4193,10 +4204,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#63-heatmap-overlay" class="md-nav__link">
+  <a href="#63-card-layout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6.3 Heatmap Overlay
+        6.3 Card Layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-heatmap-overlay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Heatmap Overlay
       
     </span>
   </a>
@@ -5042,8 +5064,118 @@ Swipe DOWN   →  back out       (Bin → Rack → Aisle)
 TAP          →  act            (open document, confirm pick, approve)
 LONG PRESS   →  inspect        (full detail card, 3D preview, history)
 </code></pre></div>
-<h3 id="62-card-layout">6.2 Card Layout<a class="headerlink" href="#62-card-layout" title="Permanent link">&para;</a></h3>
-<p>Each swipe-card:</p>
+<h3 id="62-role-band-the-top-bar">6.2 Role Band — The Top Bar<a class="headerlink" href="#62-role-band-the-top-bar" title="Permanent link">&para;</a></h3>
+<p>The role band is the most important UI element. It sits at the top of the phone,
+always visible, and does three things at once:</p>
+<ol>
+<li><strong>Shows who you are</strong> — big label, colour-coded, unmistakable</li>
+<li><strong>Lets you switch</strong> — tap to cycle roles (POC mode)</li>
+<li><strong>Shares the opposing role</strong> — QR icon generates a shareable link</li>
+</ol>
+<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────┐
+│  ┌──────────┐  WAITER        [QR] [&lt;&gt;]  │  Role band (colour = role)
+│  │  WAIT    │  Zone: Patio              │  [QR] = share this role
+│  └──────────┘                 [&lt;&gt;] = switch role
+└─────────────────────────────────────────┘
+</code></pre></div>
+<p><strong>Role colours and labels:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Label</th>
+<th>Role</th>
+<th>Band colour</th>
+<th>QR shares...</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OWNER</td>
+<td>Owner / manager</td>
+<td>Dark blue</td>
+<td>Operator link (waiter/picker view)</td>
+</tr>
+<tr>
+<td>SUPE</td>
+<td>Supervisor</td>
+<td>Purple</td>
+<td>Operator link for their section</td>
+</tr>
+<tr>
+<td>WAIT</td>
+<td>Waiter / operator</td>
+<td>Green</td>
+<td>Customer link for current table</td>
+</tr>
+<tr>
+<td>COOK</td>
+<td>Kitchen / station</td>
+<td>Orange</td>
+<td>— (internal only)</td>
+</tr>
+<tr>
+<td>CUST</td>
+<td>Customer</td>
+<td>Teal</td>
+<td>— (end of chain)</td>
+</tr>
+<tr>
+<td>PICK</td>
+<td>Picker (WMS)</td>
+<td>Yellow</td>
+<td>Driver link (dock door view)</td>
+</tr>
+<tr>
+<td>DRIVE</td>
+<td>Driver</td>
+<td>Grey</td>
+<td>— (end of chain)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The [QR] button</strong> generates a link for the <em>opposing</em> role — the person
+on the other side of the transaction:</p>
+<ul>
+<li>Waiter taps [QR] while viewing Table 7 → generates customer link:
+  <code>?scope=table_7&amp;mode=readonly</code> → QR code on screen, or copy-to-clipboard
+  share sheet (WhatsApp, email — same as BIM OOTB share)</li>
+<li>Owner taps [QR] → generates operator link:
+  <code>?mode=operator</code> → waiter scans QR, gets the swipe view for their section</li>
+<li>Picker taps [QR] at dock → generates driver link:
+  <code>?scope=dock_3&amp;mode=readonly</code> → driver sees inbound shipment status</li>
+</ul>
+<p><strong>The [&lt;&gt;] switch button</strong> (POC mode only): cycles through all roles on the
+same device. The screen transitions: band colour changes, action buttons
+reconfigure, scope filters adjust. The data doesn't change — only the
+<em>perspective</em> changes. One tap = "now I'm the customer seeing what my
+waiter just did."</p>
+<p><strong>In shared/deployed mode:</strong> the [&lt;&gt;] switch is hidden. The role is
+determined by the URL parameters. The [QR] button remains — it's always
+useful to share the other side of the transaction.</p>
+<div class="highlight"><pre><span></span><code>POC mode — role switcher visible:
+
+┌─────────────────────────────────────────┐
+│ [OWNER] [SUPE] [WAIT] [COOK] [CUST]    │  Tap any role
+│         ════════                        │  Underline = active
+└─────────────────────────────────────────┘
+
+  ↓ tap CUST
+
+┌─────────────────────────────────────────┐
+│ [OWNER] [SUPE] [WAIT] [COOK] [CUST]    │  Teal band
+│                               ════      │  Actions → readonly + pay
+└─────────────────────────────────────────┘
+</code></pre></div>
+<p><strong>The demo script becomes:</strong>
+1. Open restaurant. Band says OWNER (blue). See all tables, P&amp;L, heat map.
+2. Tap WAIT. Band turns green. See only your tables. Swipe. Tap order.
+3. Tap COOK. Band turns orange. See kitchen queue. Mark "plating."
+4. Tap CUST. Band turns teal. See your table only. Meal status. Tap "Pay."
+5. Tap OWNER. Band turns blue. See the journal entry. Table released.
+6. Tap [QR] on any role → hand phone to friend → they experience the other side.</p>
+<p><strong>60 seconds. All roles. One phone. Then hand it to a friend.</strong></p>
+<h3 id="63-card-layout">6.3 Card Layout<a class="headerlink" href="#63-card-layout" title="Permanent link">&para;</a></h3>
+<p>Each swipe-card (below the role band):</p>
 <div class="highlight"><pre><span></span><code>┌─────────────────────────────────┐
 │  ┌───────────────────────────┐  │
 │  │                           │  │
@@ -5058,10 +5190,10 @@ LONG PRESS   →  inspect        (full detail card, 3D preview, history)
 │  🔴 3 picks pending            │  Alert / action summary
 │  🟢 12 items in stock          │  (colour = urgency)
 │                                 │
-│  [ Pick ]  [ Count ]  [ Move ] │  Context actions
+│  [ Pick ]  [ Count ]  [ Move ] │  Context actions (role-dependent)
 └─────────────────────────────────┘
 </code></pre></div>
-<h3 id="63-heatmap-overlay">6.3 Heatmap Overlay<a class="headerlink" href="#63-heatmap-overlay" title="Permanent link">&para;</a></h3>
+<h3 id="64-heatmap-overlay">6.4 Heatmap Overlay<a class="headerlink" href="#64-heatmap-overlay" title="Permanent link">&para;</a></h3>
 <p>In 3D view (desktop) or card thumbnails (mobile), objects colour by status:</p>
 <table>
 <thead>
