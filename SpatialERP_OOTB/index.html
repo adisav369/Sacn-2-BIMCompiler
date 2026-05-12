@@ -2666,6 +2666,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#why-this-is-more-powerful-than-idempieres-application-dictionary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this is more powerful than iDempiere's Application Dictionary
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4840,6 +4851,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#why-this-is-more-powerful-than-idempieres-application-dictionary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this is more powerful than iDempiere's Application Dictionary
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -6457,6 +6479,53 @@ not to the schema or the handlers.</p>
 an AP clerk approving an invoice, a customer tapping Pay — all follow this
 exact path. That's why undo works everywhere, why audit is automatic, and
 why adding a domain never touches the core.</p>
+<h3 id="why-this-is-more-powerful-than-idempieres-application-dictionary">Why this is more powerful than iDempiere's Application Dictionary<a class="headerlink" href="#why-this-is-more-powerful-than-idempieres-application-dictionary" title="Permanent link">&para;</a></h3>
+<p>iDempiere's AD is brilliant — you define tables, windows, fields, and
+validation rules in metadata. The Java code stays unchanged. You add a
+domain by inserting AD rows, not writing Java. But it has three limits:</p>
+<ol>
+<li>
+<p><strong>Schema changes are still needed.</strong> New domain → new tables (or reuse
+   generic columns). That's a data-driven schema change, but it's still
+   a schema change. In Spatial ERP OOTB, the five tables never change.
+   New domain = new rows in <code>containers</code>, <code>items</code>, and <code>category_registry</code>.
+   No <code>CREATE TABLE</code>. Ever.</p>
+</li>
+<li>
+<p><strong>Process variation requires Java.</strong> A Pick Order vs Invoice Approval
+   need different DocAction classes. You write Java for non-trivial logic.
+   In Spatial ERP OOTB, handlers are JS functions — 20-50 lines each,
+   stateless, hot-swappable, same pattern for every domain.</p>
+</li>
+<li>
+<p><strong>No event sourcing.</strong> iDempiere's AD_ChangeLog is a secondary audit
+   artifact. Undo doesn't exist (or is a permission). Offline is impossible.
+   kernel_ops is the primary infrastructure — undo, redo, replay, sync,
+   and audit are the same mechanism.</p>
+</li>
+</ol>
+<p><strong>The layering compared:</strong></p>
+<div class="highlight"><pre><span></span><code>iDempiere AD                          Spatial ERP OOTB
+──────────────────                    ──────────────────
+AD_Table, AD_Column, AD_Field         category_registry (1 table)
+AD_Val_Rule, AD_Process               Handlers (JS functions)
+AD_Window, AD_Tab, AD_Form            Adapters (ThreeScene, SwipeCard)
+AD_ChangeLog (secondary)              kernel_ops (primary)
+900+ tables                           9 tables
+DocAction.java (2000+ lines/type)     StateMachine (~50 lines, all types)
+PostgreSQL + JVM + server             SQLite WASM + browser
+</code></pre></div>
+<p><strong>The design principle: simulate Git, not Eclipse.</strong></p>
+<p>Git's core is tiny — content-addressable objects + a commit log. Everything
+else (branches, tags, remotes, merge strategies) is scripts and conventions
+on top. Git survives because the core is so small that it cannot break.</p>
+<p>Eclipse's plugin architecture (OSGi) is the opposite — you write Java classes
+that extend extension points. That's code per feature. Plugins conflict,
+versions drift, the registry becomes a maintenance burden.</p>
+<p>Spatial ERP OOTB follows Git:
+- <strong>Core</strong> = kernel_ops (commit log) + five tables (working tree) + StateMachine (transition rules). ~200 lines.
+- <strong>Everything else</strong> = handlers that read and write ops + adapters that render state. Replaceable. Domain-specific. Never touch the core.</p>
+<p>The core survives any roadmap because there is almost nothing in it to break.</p>
 <hr />
 <h2 id="6-the-swipe-ux-spec">6. The Swipe UX Spec<a class="headerlink" href="#6-the-swipe-ux-spec" title="Permanent link">&para;</a></h2>
 <h3 id="61-navigation-model">6.1 Navigation Model<a class="headerlink" href="#61-navigation-model" title="Permanent link">&para;</a></h3>
