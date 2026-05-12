@@ -2478,6 +2478,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#5b-kernel_ops-the-only-infrastructure-you-need" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5b. kernel_ops — The Only Infrastructure You Need
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5b. kernel_ops — The Only Infrastructure You Need">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-kernel_ops-kills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What kernel_ops kills
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works-in-fb-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works in F&amp;B (example)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-matters-for-the-poc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this matters for the POC
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#6-the-swipe-ux-spec" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4170,6 +4220,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#5b-kernel_ops-the-only-infrastructure-you-need" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5b. kernel_ops — The Only Infrastructure You Need
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5b. kernel_ops — The Only Infrastructure You Need">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-kernel_ops-kills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What kernel_ops kills
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works-in-fb-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works in F&amp;B (example)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-matters-for-the-poc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this matters for the POC
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#6-the-swipe-ux-spec" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5053,6 +5153,102 @@ widgets try to do — show what needs attention, where it is, how big it is.</p>
      └──────────────┘
 </code></pre></div>
 <p>Every transition is a <code>kernel_op</code>. Full audit trail. Undo = reverse the transition.</p>
+<hr />
+<h2 id="5b-kernel_ops-the-only-infrastructure-you-need">5b. kernel_ops — The Only Infrastructure You Need<a class="headerlink" href="#5b-kernel_ops-the-only-infrastructure-you-need" title="Permanent link">&para;</a></h2>
+<p>Traditional ERP systems require a dozen auxiliary tables and services to
+handle audit, notifications, workflow, undo, events, and conflict resolution.
+<code>kernel_ops</code> — already built, already proven in the BIM viewer — replaces
+all of them with one table and four functions: <code>commitOp</code>, <code>undoOp</code>,
+<code>redoOp</code>, <code>replayOps</code>.</p>
+<h3 id="what-kernel_ops-kills">What kernel_ops kills<a class="headerlink" href="#what-kernel_ops-kills" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Traditional ERP component</th>
+<th>Lines of code / infra</th>
+<th>kernel_ops equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Audit trail table (AD_ChangeLog)</td>
+<td>Schema + triggers + UI</td>
+<td><code>commitOp()</code> — every mutation logged with timestamp</td>
+</tr>
+<tr>
+<td>Notification service (AD_Note)</td>
+<td>Table + poller + email/push</td>
+<td><code>replayOps()</code> since last check — new ops ARE notifications</td>
+</tr>
+<tr>
+<td>Workflow queue (AD_WF_Activity)</td>
+<td>Engine + state + assignment</td>
+<td>Filter <code>WHERE op_type='ORDER_SEND' AND undone=0</code></td>
+</tr>
+<tr>
+<td>Approval history</td>
+<td>Separate table + FK chain</td>
+<td><code>op_type='APPROVE'</code> with <code>user_tag</code> in parameters</td>
+</tr>
+<tr>
+<td>Undo / redo stack</td>
+<td>Custom per-module</td>
+<td><code>undoOp()</code> / <code>redoOp()</code> — generic, works for any domain</td>
+</tr>
+<tr>
+<td>Event bus / message broker</td>
+<td>Kafka / RabbitMQ / WebSocket</td>
+<td><code>replayOps(db, 'ORDER_SEND')</code> — poll the table</td>
+</tr>
+<tr>
+<td>Conflict resolution log</td>
+<td>Merge tables + resolution UI</td>
+<td>Timestamps + <code>user_tag</code> — ops from two devices sort naturally</td>
+</tr>
+<tr>
+<td>Session history</td>
+<td>Separate tracking</td>
+<td><code>SESSION_START</code> op type already exists</td>
+</tr>
+<tr>
+<td>Debug / support trace</td>
+<td>Logging infra + retention</td>
+<td>The ops table IS the trace — <code>SELECT * FROM kernel_ops ORDER BY id</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>That's 9 systems replaced by 1 table with 7 columns.</strong></p>
+<h3 id="how-it-works-in-fb-example">How it works in F&amp;B (example)<a class="headerlink" href="#how-it-works-in-fb-example" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Waiter takes order at Table 7:
+  commitOp(db, &#39;ORDER_SEND&#39;, {table: 7, items: [&#39;Nasi Lemak&#39;, &#39;2x Teh Tarik&#39;]})
+
+Cook checks for work:
+  replayOps(db, &#39;ORDER_SEND&#39;)  →  sees the order  →  starts cooking
+
+Cook marks item ready:
+  commitOp(db, &#39;ITEM_READY&#39;, {item: &#39;Nasi Lemak&#39;, table: 7})
+
+Waiter&#39;s next swipe:
+  replayOps(db, &#39;ITEM_READY&#39;)  →  card for Table 7 shows green on Nasi Lemak
+
+Customer taps Pay:
+  commitOp(db, &#39;DOC_COMPLETE&#39;, {doc_id: &#39;ORD-047&#39;, payment: &#39;card&#39;})
+  → journal auto-posts (debit CASH_BANK, credit REVENUE)
+
+Owner checks end of day:
+  replayOps(db)  →  full timeline of every order, every item, every payment
+</code></pre></div>
+<p>No message broker. No event bus. No notification service. No WebSocket server.
+No approval queue. The ops table is the bus — every role queries it from
+their perspective using <code>replayOps</code> with a type filter.</p>
+<h3 id="why-this-matters-for-the-poc">Why this matters for the POC<a class="headerlink" href="#why-this-matters-for-the-poc" title="Permanent link">&para;</a></h3>
+<p>The POC user cycling through roles on one phone is literally doing
+<code>replayOps</code> each time they switch. "What happened since I was last the cook?"
+= query kernel_ops for recent ops of types the cook cares about. The role
+band switch IS a replay query. The architecture IS the UX.</p>
+<p>When two phones share the same <code>.db</code> via cloud relay, the same <code>replayOps</code>
+call now picks up ops from the <em>other person</em>. No code change. The
+single-user POC and the multi-user deployment use the same read path.</p>
 <hr />
 <h2 id="6-the-swipe-ux-spec">6. The Swipe UX Spec<a class="headerlink" href="#6-the-swipe-ux-spec" title="Permanent link">&para;</a></h2>
 <h3 id="61-navigation-model">6.1 Navigation Model<a class="headerlink" href="#61-navigation-model" title="Permanent link">&para;</a></h3>
