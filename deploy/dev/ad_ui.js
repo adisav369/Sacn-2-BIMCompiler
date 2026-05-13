@@ -21,6 +21,7 @@
   var _helpPanel = null;          // right-side help panel element
   var _helpVisible = false;
   var _heatmapHitRegions = [];    // for tap-to-drill on treemap
+  var _graphAutoMaxed = false;    // auto-maximize globe on first load
   var _currentClient = 'system';  // 'system' | 'gardenworld'
   var GW_WINDOW_SET = null; // built on init from tables that actually have rows
 
@@ -362,6 +363,12 @@
     // Init graph
     ADGraph.init(canvas, _db, _currentClient,
       _graphDrillCallback, _graphLongPressCallback);
+
+    // Auto-maximize globe on first load
+    if (!_graphAutoMaxed) {
+      _graphAutoMaxed = true;
+      setTimeout(function () { _resizeGraph(true); }, 100);
+    }
 
     console.log('§AD_UI graphView rendered client=' + _currentClient);
   }
@@ -1521,45 +1528,6 @@
     }, 3000);
   }
 
-  // ── Minimize / Maximize ─────────────────────────────────────────
-
-  var _minimized = false;
-  var _minimizeBtn = null;
-
-  function _renderMinimizeBtn() {
-    if (_minimizeBtn) return; // already created
-    _minimizeBtn = document.createElement('button');
-    _minimizeBtn.textContent = '\u2212'; // minus sign
-    _minimizeBtn.title = 'Minimize';
-    _minimizeBtn.style.cssText = 'position:fixed;top:8px;right:12px;z-index:30;' +
-      'width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);' +
-      'background:rgba(30,30,40,0.9);color:#aaa;font-size:20px;cursor:pointer;' +
-      'display:flex;align-items:center;justify-content:center;line-height:1;' +
-      'backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);';
-    _minimizeBtn.addEventListener('pointerup', function (e) {
-      e.preventDefault();
-      _toggleMinimize();
-    });
-    document.body.appendChild(_minimizeBtn);
-  }
-
-  function _toggleMinimize() {
-    _minimized = !_minimized;
-    if (_minimized) {
-      // Collapse: hide content + nav, show only breadcrumb + [+] button
-      _contentEl.style.display = 'none';
-      if (_navEl) _navEl.style.display = 'none';
-      _minimizeBtn.textContent = '+';
-      _minimizeBtn.title = 'Maximize';
-    } else {
-      _contentEl.style.display = '';
-      if (_navEl) _navEl.style.display = '';
-      _minimizeBtn.textContent = '\u2212';
-      _minimizeBtn.title = 'Minimize';
-    }
-    console.log('§AD_UI minimize=' + _minimized);
-  }
-
   // ── Floating Search Overlay (Alt+S) ────────────────────────────────
 
   var _searchOverlay = null;
@@ -1807,7 +1775,6 @@
       console.log('§AD_UI fts5 indexed rows=' + idx.rows + ' ms=' + idx.ms);
     }
 
-    _renderMinimizeBtn();
     showMenu();
 
     console.log('§AD_UI init done');
@@ -1831,5 +1798,5 @@
   if (typeof window !== 'undefined') window.ADUI = ADUI;
   if (typeof module !== 'undefined' && module.exports) module.exports = ADUI;
 
-  console.log('§AD_UI_LOADED v7');
+  console.log('§AD_UI_LOADED v8');
 })();
