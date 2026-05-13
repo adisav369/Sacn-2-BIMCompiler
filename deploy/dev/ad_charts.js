@@ -266,14 +266,163 @@
     drawBarChart(canvas, labels, values, label);
   }
 
+  // ── §16. Treemap / heatmap ─────────────────────────────────────────
+
+  /**
+   * Draw a treemap on a canvas. Items sized by value, coloured by group.
+   * @param {HTMLCanvasElement} canvas
+   * @param {Array}  items  [{label, value, colour}] sorted by value desc
+   * @param {string} title
+   * @returns {Array} hit regions [{x,y,w,h,item}] for tap handling
+   */
+  function drawTreemap(canvas, items, title) {
+    var ctx = canvas.getContext('2d');
+    // DPR handling — same as drawBarChart
+    var dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+    var cssW = canvas.width, cssH = canvas.height;
+    if (canvas.dataset.scaled !== '1' && dpr > 1) {
+      canvas.width = cssW * dpr;
+      canvas.height = cssH * dpr;
+      canvas.style.width = cssW + 'px';
+      canvas.style.height = cssH + 'px';
+      ctx.scale(dpr, dpr);
+      canvas.dataset.scaled = '1';
+    }
+    var W = cssW, H = cssH;
+    ctx.clearRect(0, 0, W, H);
+
+    if (!items.length) {
+      ctx.fillStyle = '#555';
+      ctx.font = '13px system-ui';
+      ctx.fillText('No data', 10, 30);
+      return [];
+    }
+
+    // Title
+    var titleH = title ? 26 : 0;
+    if (title) {
+      ctx.fillStyle = '#e8e8ed';
+      ctx.font = 'bold 13px system-ui';
+      ctx.fillText(title, 8, 18);
+    }
+
+    // Simple grid layout — guaranteed visible cells, no slivers
+    var gap = 4;
+    var padX = 4, padY = titleH + 4;
+    var areaW = W - padX * 2, areaH = H - padY - 4;
+    var n = items.length;
+    var cols = Math.ceil(Math.sqrt(n * (areaW / areaH)));
+    var rows = Math.ceil(n / cols);
+    var cellW = Math.floor((areaW - gap * (cols - 1)) / cols);
+    var cellH = Math.floor((areaH - gap * (rows - 1)) / rows);
+
+    var hitRegions = [];
+    for (var i = 0; i < n; i++) {
+      var col = i % cols;
+      var row = Math.floor(i / cols);
+      var cx = padX + col * (cellW + gap);
+      var cy = padY + row * (cellH + gap);
+      var item = items[i];
+
+      // Filled cell — full opacity, vivid colour
+      ctx.fillStyle = item.colour || PALETTE[i % PALETTE.length];
+      _roundRect(ctx, cx, cy, cellW, cellH, 6);
+
+      // Inner shadow for depth
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      _roundRect(ctx, cx, cy + cellH * 0.7, cellW, cellH * 0.3, 3);
+
+      // Label — centered
+      var label = String(item.label || '').substring(0, Math.floor(cellW / 7));
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold ' + Math.max(10, Math.min(14, Math.floor(cellW / 8))) + 'px system-ui';
+      ctx.fillText(label, cx + cellW / 2, cy + cellH / 2 - 2);
+
+      // Value below label
+      if (item.value !== undefined) {
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.font = Math.max(9, Math.min(12, Math.floor(cellW / 10))) + 'px system-ui';
+        ctx.fillText(String(item.value), cx + cellW / 2, cy + cellH / 2 + 14);
+      }
+      ctx.textAlign = 'left';
+
+      hitRegions.push({ x: cx, y: cy, w: cellW, h: cellH, item: item });
+    }
+
+    console.log('§AD_CHARTS drawTreemap title=' + title + ' cells=' + n + ' grid=' + cols + 'x' + rows);
+    return hitRegions;
+  }
+
+  /**
+   * Draw a field completeness heatmap (horizontal bars, red-to-green).
+   * @param {HTMLCanvasElement} canvas
+   * @param {Array} items [{fieldName, pct}]
+   * @param {string} title
+   */
+  function drawCompleteness(canvas, items, title) {
+    var ctx = canvas.getContext('2d');
+    var dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+    var W = canvas.width, H = canvas.height;
+    if (canvas.dataset.scaled !== '1' && dpr > 1) {
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.scale(dpr, dpr);
+      canvas.dataset.scaled = '1';
+    }
+    ctx.clearRect(0, 0, W, H);
+
+    if (title) {
+      ctx.fillStyle = '#e8e8ed';
+      ctx.font = 'bold 12px system-ui';
+      ctx.fillText(title, 8, 16);
+    }
+
+    var n = Math.min(items.length, 20);
+    var barH = Math.max(Math.floor((H - 28) / Math.max(n, 1)) - 3, 12);
+    var labelW = Math.min(W * 0.35, 120);
+    var chartW = W - labelW - 50;
+
+    for (var i = 0; i < n; i++) {
+      var y = 26 + i * (barH + 3);
+      var pct = items[i].pct;
+
+      // Label
+      ctx.fillStyle = '#999';
+      ctx.font = '10px system-ui';
+      ctx.textAlign = 'right';
+      ctx.fillText(String(items[i].fieldName || '').substring(0, 16), labelW - 6, y + barH * 0.75);
+
+      // Bar — colour gradient red→yellow→green
+      var r = pct < 50 ? 255 : Math.round(255 * (100 - pct) / 50);
+      var g = pct > 50 ? 200 : Math.round(200 * pct / 50);
+      ctx.fillStyle = 'rgb(' + r + ',' + g + ',60)';
+      var barW = Math.round((pct / 100) * chartW);
+      _roundRect(ctx, labelW, y, Math.max(barW, 2), barH, 2);
+
+      // Percentage
+      ctx.fillStyle = '#ccc';
+      ctx.font = '10px system-ui';
+      ctx.textAlign = 'left';
+      ctx.fillText(pct + '%', labelW + barW + 4, y + barH * 0.75);
+    }
+    ctx.textAlign = 'left';
+
+    console.log('§AD_CHARTS drawCompleteness fields=' + n);
+  }
+
   // ── Public API ─────────────────────────────────────────────────────
 
   var ADCharts = {
-    runQuery:      runQuery,
-    drawBarChart:  drawBarChart,
-    drawPieChart:  drawPieChart,
-    getPrebuilt:   getPrebuilt,
-    renderOverlay: renderOverlay
+    runQuery:        runQuery,
+    drawBarChart:    drawBarChart,
+    drawPieChart:    drawPieChart,
+    drawTreemap:     drawTreemap,
+    drawCompleteness: drawCompleteness,
+    getPrebuilt:     getPrebuilt,
+    renderOverlay:   renderOverlay
   };
 
   if (typeof window !== 'undefined') window.ADCharts = ADCharts;

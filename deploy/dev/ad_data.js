@@ -144,15 +144,132 @@
     }
   }
 
+  // ── §14. FK resolution — show Name not integer ─────────────────────
+
+  var _fkCache = {};  // { 'C_BPartner:117': 'Seed Farm', ... }
+
+  /**
+   * Resolve an FK integer to its display name.
+   * Convention: columnName 'C_BPartner_ID' → table 'C_BPartner', key 'C_BPartner_ID'.
+   * Looks for Name or identifier column in the target table.
+   * @param {Object} db
+   * @param {string} columnName  e.g. 'C_BPartner_ID'
+   * @param {*}      value       the FK integer
+   * @returns {string|null} resolved display name or null
+   */
+  function resolveFK(db, columnName, value) {
+    if (value === null || value === undefined || value === '') return null;
+    var intVal = Number(value);
+    if (isNaN(intVal) || intVal <= 0) return null;
+
+    // Derive table name: strip trailing _ID
+    if (columnName.indexOf('_ID') < 0) return null;
+    var tableName = columnName.replace(/_ID$/, '');
+
+    var cacheKey = tableName + ':' + intVal;
+    if (_fkCache[cacheKey] !== undefined) return _fkCache[cacheKey];
+
+    // Try Name column first, then Value, then first text column
+    var candidates = ['Name', 'Value', 'DocumentNo'];
+    for (var i = 0; i < candidates.length; i++) {
+      try {
+        var r = db.exec('SELECT ' + candidates[i] + ' FROM [' + tableName +
+                        '] WHERE ' + columnName + ' = ' + intVal + ' LIMIT 1');
+        if (r.length && r[0].values.length && r[0].values[0][0]) {
+          var name = String(r[0].values[0][0]);
+          _fkCache[cacheKey] = name;
+          console.log('§AD_DATA resolveFK col=' + columnName + ' id=' + intVal + ' name=' + name);
+          return name;
+        }
+      } catch (e) { /* column doesn't exist, try next */ }
+    }
+
+    _fkCache[cacheKey] = null;
+    return null;
+  }
+
+  /**
+   * Clear FK cache (for testing / client switch).
+   */
+  function clearFKCache() {
+    _fkCache = {};
+  }
+
+  /**
+   * Get all tables with row counts (for heatmap).
+   * @param {Object} db
+   * @returns {Array} [{tableName, count, type}] sorted by count desc
+   */
+  function getTableStats(db) {
+    var stats = [];
+    try {
+      var r = db.exec('SELECT TableName FROM AD_Table WHERE IsActive = \'Y\' ORDER BY TableName');
+      if (!r.length) return stats;
+      for (var i = 0; i < r[0].values.length; i++) {
+        var tbl = r[0].values[i][0];
+        try {
+          var cnt = db.exec('SELECT COUNT(*) FROM [' + tbl + ']');
+          var count = (cnt.length && cnt[0].values.length) ? Number(cnt[0].values[0][0]) : 0;
+          if (count > 0) {
+            var type = tbl.indexOf('AD_') === 0 ? 'system'
+                     : tbl.indexOf('C_') === 0 ? 'commercial'
+                     : tbl.indexOf('M_') === 0 ? 'material'
+                     : 'other';
+            stats.push({ tableName: tbl, count: count, type: type });
+          }
+        } catch (e) { /* table doesn't exist in DB */ }
+      }
+    } catch (e) {
+      console.log('§AD_DATA getTableStats error: ' + e.message);
+    }
+    stats.sort(function (a, b) { return b.count - a.count; });
+    console.log('§AD_DATA getTableStats tables=' + stats.length);
+    return stats;
+  }
+
+  /**
+   * Get field completeness for current records (for window heatmap).
+   * @param {Array} records  array of record objects
+   * @param {Array} fields   AD_Field metadata array
+   * @returns {Array} [{fieldName, filled, total, pct}]
+   */
+  function getFieldCompleteness(records, fields) {
+    if (!records.length || !fields.length) return [];
+    var result = [];
+    for (var i = 0; i < fields.length; i++) {
+      var f = fields[i];
+      if (f.isKey || !f.isDisplayed) continue;
+      var filled = 0;
+      for (var j = 0; j < records.length; j++) {
+        var val = records[j][f.columnName];
+        if (val !== null && val !== undefined && val !== '') filled++;
+      }
+      result.push({
+        fieldName: f.name,
+        columnName: f.columnName,
+        filled: filled,
+        total: records.length,
+        pct: Math.round((filled / records.length) * 100)
+      });
+    }
+    result.sort(function (a, b) { return a.pct - b.pct; });
+    console.log('§AD_DATA fieldCompleteness fields=' + result.length + ' records=' + records.length);
+    return result;
+  }
+
   // ── Public API ─────────────────────────────────────────────────────
 
   var ADData = {
-    readRecords:  readRecords,
-    saveRecord:   saveRecord,
-    deleteRecord: deleteRecord,
-    getNextId:    getNextId,
-    countRecords: countRecords,
-    keyColumn:    keyColumn
+    readRecords:        readRecords,
+    saveRecord:         saveRecord,
+    deleteRecord:       deleteRecord,
+    getNextId:          getNextId,
+    countRecords:       countRecords,
+    keyColumn:          keyColumn,
+    resolveFK:          resolveFK,
+    clearFKCache:       clearFKCache,
+    getTableStats:      getTableStats,
+    getFieldCompleteness: getFieldCompleteness
   };
 
   if (typeof window !== 'undefined') window.ADData = ADData;

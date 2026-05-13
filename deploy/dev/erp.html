@@ -100,12 +100,14 @@
   }
 
   // ── 2. Module list — §8 step 3 ────────────────────────────────────
+  var V = '?v=6';
   var MODULES = [
-    'kernel_ops.js',
-    'ad_parser.js',
-    'ad_data.js',
-    'ad_charts.js',
-    'ad_ui.js'
+    'kernel_ops.js' + V,
+    'ad_parser.js' + V,
+    'ad_data.js' + V,
+    'ad_charts.js' + V,
+    'ad_graph.js' + V,
+    'ad_ui.js' + V
   ];
 
   async function boot() {

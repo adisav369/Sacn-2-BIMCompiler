@@ -1263,6 +1263,114 @@ a claim without evidence. Every gap is a future work item. Close the gap
 
 ---
 
+## §17. Spatial UI — Data Globe (S257)
+
+### Vision
+
+Traditional ERP presents data as grids and forms. Spatial ERP presents data
+as a **living constellation** — records are stars on a rotating globe, coloured
+by status, sized by activity, connected by relationships. The user navigates
+data the way a pilot navigates space: drag to orbit, zoom to focus, tap to drill.
+
+This is not decoration. It is **information density without information overload**.
+A traditional table view of 60 Business Partners shows 60 identical rows.
+The globe shows — at a glance — which partners are active (bright cyan, front),
+which are incomplete (amber, mid-sphere), which are archived (grey, behind).
+The spatial layout *is* the dashboard.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  ad_graph.js (Canvas 2D, 60fps)                        │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │  Globe: Fibonacci sphere, perspective projection  │   │
+│  │  Nodes: icon + label + glow, z-sorted             │   │
+│  │  Edges: relationship lines, depth-faded            │   │
+│  │  Input: drag=orbit, scroll=zoom, tap=fly+drill     │   │
+│  │  Colour: status/freshness/completeness → spectrum  │   │
+│  └──────────────────────────────────────────────────┘   │
+│  Data source: any AD_Table via SQLite WASM              │
+│  No Three.js dependency (Canvas 2D + math only)         │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Rendering pipeline
+
+1. **Build**: Query table, classify each record by status (DocStatus,
+   IsActive) + date freshness (Updated/Created) + field completeness.
+   Score → 0..1 activity. Place on Fibonacci sphere — active at front.
+2. **Project**: Each frame, apply globe rotation (rotX, rotY) to each
+   node's sphere coords (sx, sy, sz). Perspective divide (focal=600).
+   Produces screenX, screenY, screenScale, screenZ.
+3. **Sort**: Painter's algorithm — draw far nodes first.
+4. **Draw**: Per node — outer glow (radius proportional to activity),
+   main disc (colour from classification), white core (for hot nodes),
+   icon, label. Alpha fades with depth: front=1.0, back=0.04.
+5. **Edges**: Lines between related nodes. Alpha fades with average
+   depth. Full mesh for entity view (6-8 nodes), ring for records.
+
+### Interaction model
+
+| Input | Action |
+|---|---|
+| Drag | Orbit globe (rotY, rotX) |
+| Release after drag | Momentum spin, friction decay 0.96 |
+| Scroll / pinch | Zoom (adjust sphere radius) |
+| Tap node | Fly-to-front (ease-in-out ~0.7s), then drill |
+| Tap entity node | Drill → records globe for that table |
+| Tap record node | Open window at that specific record |
+| Tap empty space | Go back (entity → home) |
+| ESC key | Go back |
+| Long press | Open info panel (future) |
+
+### Colour classification
+
+| Colour | Meaning | Source |
+|---|---|---|
+| `#4fc3f7` cyan | Complete / approved / recently updated | DocStatus=CO/CL/AP or activity>0.75 |
+| `#7bed9f` green | Active, well-filled | activity 0.55-0.75 |
+| `#ffd93d` amber | Partial, older | activity 0.35-0.55 |
+| `#ff7043` red | Draft / sparse / stale | DocStatus=DR or activity<0.35 |
+| `#555` grey | Archived / inactive | IsActive=N |
+
+Activity score = freshness(Updated date) × 0.4 + field_completeness × 0.6
+
+### Entity icons (Canvas drawn, no images)
+
+| Entity | Icon | Shape |
+|---|---|---|
+| C_BPartner | person | Head circle + shoulder arc |
+| M_Product | product | Box with lid line |
+| C_BPartner_Location | location | Map pin |
+| M_ProductPrice | price | Circle with $ |
+| M_Product_Category | category | Tag pentagon |
+| AD_User | contact | Card + head |
+| AD_* (system) | table | Grid rows |
+
+### Proven by tests (S257)
+
+- `GRAPH-1..9`: Node creation for both clients, entity drill, system view
+- Nodes: 6 GardenWorld entities, 7 system entities, 18-55 records per entity
+- Fly-to-front animation, ESC back, view stack
+
+### What this enables (future)
+
+- **3D upgrade**: Replace Canvas 2D with Three.js sprites + OrbitControls
+  for true WebGL depth-of-field, bloom, particle trails
+- **Live pulse**: kernel_ops commit log drives real-time node brightness —
+  a record just edited glows brighter for 30 seconds then fades
+- **Relationship edges from AD_Column FK metadata**: auto-detect which
+  tables link to which, draw edges accordingly (not just ring/mesh)
+- **Record images**: when Product or BPartner has an image URL, render
+  it as a textured sprite instead of the icon
+- **Mind map mode**: switch from globe to force-directed flat graph,
+  drag nodes freely, pin them, group by category
+- **Minority Report mode**: gesture-driven (webcam hand tracking) —
+  grab a node, flick it to the side to archive, pull it forward to edit
+
+---
+
 ## §15. Reference
 
 - `docs/SpatialERP_OOTB.md` — full spec (schema, UX, architecture, P2P, market, **§12 Odoo strategic playbook**)

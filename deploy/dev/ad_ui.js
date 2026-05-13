@@ -1,4 +1,4 @@
-// ad_ui.js — Implementing ERP_AD_UI.md §2–§5, §10, §12 — Witness: W-ERP-ADUI
+// ad_ui.js — Implementing ERP_AD_UI.md §2–§5, §10, §12, §14, §16 — Witness: W-ERP-ADUI
 // AD-driven UI renderer: bottom nav, menu screen, window/tab/field cards.
 // Depends on: ad_parser.js, ad_data.js, ad_charts.js, kernel_ops.js
 // Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
@@ -20,11 +20,8 @@
   var _recentWindows = [];       // [{id, name}] from localStorage
   var _helpPanel = null;          // right-side help panel element
   var _helpVisible = false;
+  var _heatmapHitRegions = [];    // for tap-to-drill on treemap
   var _currentClient = 'system';  // 'system' | 'gardenworld'
-
-  // Windows with actual data in each client
-  var SYSTEM_WINDOWS = [102, 100, 101, 105, 151, 108]; // AD self-browse
-  var GW_WINDOWS = [123, 140, 144, 108, 176, 291];     // Business data
   var GW_WINDOW_SET = null; // built on init from tables that actually have rows
 
   // ── §2. Bottom navigation bar ──────────────────────────────────────
@@ -80,7 +77,11 @@
     _renderBottomNav();
     _contentEl.innerHTML = '';
 
-    // Breadcrumb
+    // Breadcrumb — reset style from window view
+    _breadcrumbEl.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:10;' +
+      'background:rgba(18,18,24,0.92);backdrop-filter:blur(12px);' +
+      '-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06);' +
+      'padding:12px 16px;min-height:48px;display:flex;align-items:center;gap:8px;';
     _breadcrumbEl.innerHTML = '<span style="font-size:16px;font-weight:bold;color:#eee">' +
       '\u2630 ERP OOTB</span>';
 
@@ -110,8 +111,8 @@
     }
     _contentEl.appendChild(switcher);
 
-    // KPI hero cards — dynamic from AD metadata
-    _renderKPICards();
+    // Data constellation — interactive graph replaces KPI cards
+    _renderHomeGraph();
 
     // Search box
     var search = document.createElement('input');
@@ -171,26 +172,25 @@
       }
     });
 
-    // Auto-charts dashboard on home screen
-    _renderHomeCharts();
-
     console.log('§AD_UI showMenu roots=' + tree.length + ' client=' + _currentClient +
                 ' recent=' + _recentWindows.length);
   }
+
+  // ── KPI cards ──────────────────────────────────────────────────────
 
   function _renderKPICards() {
     var kpis;
     if (_currentClient === 'system') {
       kpis = [
-        { label: 'Windows', sql: 'SELECT COUNT(*) FROM AD_Window', icon: '\u25A3', colour: '#6c9fff' },
-        { label: 'Tables', sql: 'SELECT COUNT(*) FROM AD_Table', icon: '\u2637', colour: '#a78bfa' },
+        { label: 'Windows', sql: 'SELECT COUNT(*) FROM AD_Window', icon: '\u25A3', colour: '#6c9fff', windowId: 102 },
+        { label: 'Tables', sql: 'SELECT COUNT(*) FROM AD_Table', icon: '\u2637', colour: '#a78bfa', windowId: 100 },
         { label: 'Fields', sql: 'SELECT COUNT(*) FROM AD_Field', icon: '\u2630', colour: '#54d9a8' },
-        { label: 'Menus', sql: 'SELECT COUNT(*) FROM AD_Menu', icon: '\u2261', colour: '#ff9f43' }
+        { label: 'Menus', sql: 'SELECT COUNT(*) FROM AD_Menu', icon: '\u2261', colour: '#ff9f43', windowId: 105 }
       ];
     } else {
       kpis = [
-        { label: 'Partners', sql: 'SELECT COUNT(*) FROM C_BPartner', icon: '\u263A', colour: '#6c9fff' },
-        { label: 'Products', sql: 'SELECT COUNT(*) FROM M_Product', icon: '\u2B22', colour: '#54d9a8' },
+        { label: 'Partners', sql: 'SELECT COUNT(*) FROM C_BPartner', icon: '\u263A', colour: '#6c9fff', windowId: 123 },
+        { label: 'Products', sql: 'SELECT COUNT(*) FROM M_Product', icon: '\u2B22', colour: '#54d9a8', windowId: 140 },
         { label: 'Prices', sql: 'SELECT COUNT(*) FROM M_ProductPrice', icon: '\u2696', colour: '#ff9f43' },
         { label: 'Categories', sql: 'SELECT COUNT(*) FROM M_Product_Category', icon: '\u2606', colour: '#a78bfa' }
       ];
@@ -208,9 +208,19 @@
       } catch (e) { /* table missing */ }
 
       var card = document.createElement('div');
+      card.dataset.kpiWindow = kpis[k].windowId || '';
       card.style.cssText = 'background:linear-gradient(135deg,#1e1e2a,#252535);' +
         'border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:14px;' +
-        'text-align:center;cursor:default;';
+        'text-align:center;cursor:' + (kpis[k].windowId ? 'pointer' : 'default') + ';' +
+        'transition:transform 0.15s;';
+      if (kpis[k].windowId) {
+        card.addEventListener('pointerup', function () {
+          var wid = Number(this.dataset.kpiWindow);
+          if (wid) openWindow(wid);
+        });
+        card.onpointerenter = function() { this.style.transform = 'scale(1.04)'; };
+        card.onpointerleave = function() { this.style.transform = ''; };
+      }
       card.innerHTML = '<div style="font-size:22px;margin-bottom:4px">' + kpis[k].icon + '</div>' +
         '<div style="font-size:24px;font-weight:700;color:' + kpis[k].colour + '">' +
         val.toLocaleString() + '</div>' +
@@ -223,52 +233,219 @@
     console.log('§AD_UI KPI rendered client=' + _currentClient);
   }
 
-  function _renderHomeCharts() {
-    var chartSection = document.createElement('div');
-    chartSection.style.cssText = 'margin-top:12px;display:grid;' +
-      'grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;' +
-      'animation:fadeIn 0.4s ease 0.1s both;';
+  // ── Data constellation (graph view on home) ────────────────────────
 
-    var queries;
-    if (_currentClient === 'system') {
-      queries = [
-        { label: 'Tables by Row Count (Top 10)', sql: "SELECT name, (SELECT COUNT(*) FROM [AD_Column] WHERE AD_Table_ID = t.AD_Table_ID) as cols FROM AD_Table t ORDER BY cols DESC LIMIT 10" },
-        { label: 'Windows by Tab Count', sql: "SELECT w.Name, COUNT(t.AD_Tab_ID) as cnt FROM AD_Window w JOIN AD_Tab t ON w.AD_Window_ID = t.AD_Window_ID WHERE w.IsActive='Y' GROUP BY w.AD_Window_ID ORDER BY cnt DESC LIMIT 10" },
-        { label: 'Field Types', sql: "SELECT CASE AD_Reference_ID WHEN 10 THEN 'String' WHEN 13 THEN 'ID' WHEN 19 THEN 'TableDirect' WHEN 20 THEN 'Table' WHEN 30 THEN 'Search' WHEN 38 THEN 'YesNo' WHEN 17 THEN 'List' WHEN 15 THEN 'Date' WHEN 11 THEN 'Integer' WHEN 12 THEN 'Amount' ELSE 'Other' END as type, COUNT(*) as cnt FROM AD_Column GROUP BY type ORDER BY cnt DESC LIMIT 10" }
-      ];
-    } else {
-      queries = [
-        { label: 'Products by Category', sql: "SELECT pc.Name, COUNT(p.M_Product_ID) as cnt FROM M_Product p LEFT JOIN M_Product_Category pc ON p.M_Product_Category_ID = pc.M_Product_Category_ID GROUP BY pc.Name ORDER BY cnt DESC" },
-        { label: 'Partners (Customer vs Vendor)', sql: "SELECT CASE WHEN IsCustomer='Y' THEN 'Customer' WHEN IsVendor='Y' THEN 'Vendor' ELSE 'Other' END as type, COUNT(*) as cnt FROM C_BPartner GROUP BY type" },
-        { label: 'Product Prices', sql: "SELECT p.Name, pp.PriceStd FROM M_Product p JOIN M_ProductPrice pp ON p.M_Product_ID = pp.M_Product_ID WHERE pp.PriceStd > 0 ORDER BY pp.PriceStd DESC LIMIT 10" }
-      ];
+  var _graphCanvas = null;
+
+  function _renderHomeGraph() {
+    if (typeof ADGraph === 'undefined') {
+      // Fallback to heatmap if ad_graph.js not loaded
+      _renderHeatmap('home');
+      return;
     }
 
-    for (var q = 0; q < queries.length; q++) {
-      var result = ADCharts.runQuery(_db, queries[q].sql);
-      if (!result.rows || !result.rows.length || result.error) continue;
+    var container = document.createElement('div');
+    container.style.cssText = 'background:linear-gradient(135deg,#0e0e14,#1a1a28);' +
+      'border:1px solid rgba(255,255,255,0.06);border-radius:14px;' +
+      'margin-bottom:16px;overflow:hidden;position:relative;';
 
-      var chartCard = document.createElement('div');
-      chartCard.style.cssText = 'background:linear-gradient(135deg,#1e1e2a,#252535);' +
-        'border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:12px;overflow:hidden;';
-      var canvas = document.createElement('canvas');
-      canvas.width = 440;
-      canvas.height = 200;
-      canvas.style.cssText = 'display:block;width:100%;height:auto;';
-      chartCard.appendChild(canvas);
-      chartSection.appendChild(chartCard);
+    var canvas = document.createElement('canvas');
+    canvas.width = 480;
+    canvas.height = 320;
+    canvas.style.cssText = 'display:block;width:100%;height:auto;cursor:grab;' +
+      'touch-action:none;';
+    container.appendChild(canvas);
+    _graphCanvas = canvas;
 
-      var labels = result.rows.map(function (r) { return r[0]; });
-      var values = result.rows.map(function (r) { return Number(r[1]) || 0; });
-      // Use pie for type distributions (<=6 slices), bar for ranked lists
-      if (values.length <= 6 && queries[q].label.indexOf('vs') >= 0 || queries[q].label.indexOf('Type') >= 0) {
-        ADCharts.drawPieChart(canvas, labels, values, queries[q].label);
-      } else {
-        ADCharts.drawBarChart(canvas, labels, values, queries[q].label);
+    _contentEl.appendChild(container);
+
+    // Init graph — drill callback opens window, long-press opens record card
+    ADGraph.init(canvas, _db, _currentClient,
+      function onDrill(tableName, windowId, record) {
+        // Try direct windowId first, then lookup by table name
+        var wid = windowId;
+        if (!wid) {
+          try {
+            var wr = _db.exec(
+              'SELECT w.AD_Window_ID FROM AD_Window w ' +
+              'JOIN AD_Tab t ON w.AD_Window_ID = t.AD_Window_ID ' +
+              'JOIN AD_Table tbl ON t.AD_Table_ID = tbl.AD_Table_ID ' +
+              "WHERE tbl.TableName = ? AND w.IsActive = 'Y' LIMIT 1", [tableName]);
+            if (wr.length && wr[0].values.length) wid = Number(wr[0].values[0][0]);
+          } catch (e) { /* no window */ }
+        }
+        if (wid) {
+          openWindow(wid);
+          // Navigate to the specific tapped record
+          if (record) {
+            var keyCol = tableName + '_ID';
+            var keyVal = record[keyCol];
+            if (keyVal !== undefined) {
+              for (var ri = 0; ri < _currentRecords.length; ri++) {
+                if (_currentRecords[ri][keyCol] === keyVal) {
+                  _currentRecordIdx = ri;
+                  _renderWindow();
+                  console.log('§AD_UI drillToRecord key=' + keyCol + ' val=' + keyVal + ' idx=' + ri);
+                  break;
+                }
+              }
+            }
+          }
+        }
+        // No window found — stay in globe, no crash, no toast
+      },
+      function onLongPress(node) {
+        if (node.windowId) {
+          openWindow(node.windowId);
+        } else if (node.record) {
+          _showToast(node.label + ' — long press: open info');
+        }
       }
+    );
+
+    console.log('§AD_UI graphView rendered client=' + _currentClient);
+  }
+
+  // ── §16. Context-aware heatmap panel ────────────────────────────────
+
+  var TYPE_COLOURS = {
+    system:     '#6c9fff',  // AD_ tables — blue
+    commercial: '#ff9f43',  // C_ tables — amber
+    material:   '#54d9a8',  // M_ tables — green
+    other:      '#a78bfa'   // everything else — purple
+  };
+
+  function _renderHeatmap(context) {
+    // context = 'home' | 'window'
+    var container = document.createElement('div');
+    container.style.cssText = 'background:linear-gradient(135deg,#1e1e2a,#252535);' +
+      'border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:12px;' +
+      'margin-bottom:16px;animation:fadeIn 0.3s ease;';
+
+    var canvas = document.createElement('canvas');
+    canvas.width = 480;
+    canvas.height = 260;
+    canvas.style.cssText = 'display:block;width:100%;height:auto;cursor:pointer;';
+    container.appendChild(canvas);
+
+    if (context === 'home') {
+      _drawHomeHeatmap(canvas);
+    } else if (context === 'window') {
+      _drawWindowHeatmap(canvas);
     }
 
-    _contentEl.appendChild(chartSection);
+    _contentEl.appendChild(container);
+  }
+
+  function _drawHomeHeatmap(canvas) {
+    var items = [];
+
+    if (_currentClient === 'system') {
+      // System: AD metadata volumes
+      var sysQueries = [
+        { label: 'Columns', table: 'AD_Column', colour: '#6c9fff' },
+        { label: 'Fields', table: 'AD_Field', colour: '#54d9a8' },
+        { label: 'Tables', table: 'AD_Table', colour: '#a78bfa' },
+        { label: 'Tabs', table: 'AD_Tab', colour: '#ff9f43' },
+        { label: 'Windows', table: 'AD_Window', colour: '#38d9d9' },
+        { label: 'Menus', table: 'AD_Menu', colour: '#ffd93d' },
+        { label: 'References', table: 'AD_Reference', colour: '#ff85a2' },
+        { label: 'Ref Lists', table: 'AD_Ref_List', colour: '#7bed9f' }
+      ];
+      for (var si = 0; si < sysQueries.length; si++) {
+        var cnt = ADData.countRecords(_db, sysQueries[si].table);
+        if (cnt > 0) items.push({
+          label: sysQueries[si].label + ' (' + cnt + ')',
+          value: cnt, colour: sysQueries[si].colour,
+          tableName: sysQueries[si].table, windowId: null
+        });
+      }
+    } else {
+      // GardenWorld: semantic business categories
+      var custCnt = 0, vendCnt = 0;
+      try {
+        var cr = _db.exec("SELECT COUNT(*) FROM C_BPartner WHERE IsCustomer='Y'");
+        custCnt = cr.length ? Number(cr[0].values[0][0]) : 0;
+      } catch (e) {}
+      try {
+        var vr = _db.exec("SELECT COUNT(*) FROM C_BPartner WHERE IsVendor='Y'");
+        vendCnt = vr.length ? Number(vr[0].values[0][0]) : 0;
+      } catch (e) {}
+      var prodCnt = ADData.countRecords(_db, 'M_Product');
+      var catCnt = ADData.countRecords(_db, 'M_Product_Category');
+      var priceCnt = ADData.countRecords(_db, 'M_ProductPrice');
+      var contactCnt = ADData.countRecords(_db, 'AD_User');
+
+      if (custCnt > 0) items.push({ label: 'Customers (' + custCnt + ')', value: custCnt,
+        colour: '#6c9fff', tableName: 'C_BPartner', windowId: 123 });
+      if (vendCnt > 0) items.push({ label: 'Vendors (' + vendCnt + ')', value: vendCnt,
+        colour: '#ff9f43', tableName: 'C_BPartner', windowId: 123 });
+      if (prodCnt > 0) items.push({ label: 'Products (' + prodCnt + ')', value: prodCnt,
+        colour: '#54d9a8', tableName: 'M_Product', windowId: 140 });
+      if (catCnt > 0) items.push({ label: 'Categories (' + catCnt + ')', value: catCnt,
+        colour: '#a78bfa', tableName: 'M_Product_Category', windowId: null });
+      if (priceCnt > 0) items.push({ label: 'Prices (' + priceCnt + ')', value: priceCnt,
+        colour: '#ffd93d', tableName: 'M_ProductPrice', windowId: null });
+      if (contactCnt > 0) items.push({ label: 'Contacts (' + contactCnt + ')', value: contactCnt,
+        colour: '#38d9d9', tableName: 'AD_User', windowId: null });
+    }
+
+    var title = (_currentClient === 'system' ? 'System' : 'GardenWorld') + ' — Data Landscape';
+    _heatmapHitRegions = ADCharts.drawTreemap(canvas, items, title);
+
+    // Tap to drill
+    canvas.addEventListener('pointerup', function (e) {
+      var rect = canvas.getBoundingClientRect();
+      var scaleX = canvas.width / rect.width;
+      var scaleY = canvas.height / rect.height;
+      var cx = (e.clientX - rect.left) * scaleX;
+      var cy = (e.clientY - rect.top) * scaleY;
+      for (var i = 0; i < _heatmapHitRegions.length; i++) {
+        var r = _heatmapHitRegions[i];
+        if (cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h) {
+          console.log('§AD_UI heatmapTap label=' + r.item.label);
+          if (r.item.windowId) {
+            openWindow(r.item.windowId);
+          } else {
+            _drillToTable(r.item.tableName);
+          }
+          break;
+        }
+      }
+    });
+
+    console.log('§AD_UI heatmap home items=' + items.length + ' client=' + _currentClient);
+  }
+
+  function _drawWindowHeatmap(canvas) {
+    if (!_currentWindow || !_currentRecords.length) return;
+    var tab = _currentWindow.tabs[_currentTabIdx];
+    var completeness = ADData.getFieldCompleteness(_currentRecords, tab.fields);
+    if (!completeness.length) return;
+
+    ADCharts.drawCompleteness(canvas, completeness,
+      _currentWindow.name + ' — Field Completeness (' + _currentRecords.length + ' records)');
+
+    console.log('§AD_UI heatmap window=' + _currentWindow.name + ' fields=' + completeness.length);
+  }
+
+  function _drillToTable(tableName) {
+    // Find a window whose header tab uses this table
+    try {
+      var r = _db.exec(
+        'SELECT w.AD_Window_ID FROM AD_Window w ' +
+        'JOIN AD_Tab t ON w.AD_Window_ID = t.AD_Window_ID ' +
+        'JOIN AD_Table tbl ON t.AD_Table_ID = tbl.AD_Table_ID ' +
+        'WHERE tbl.TableName = ? AND t.TabLevel = 0 AND w.IsActive = \'Y\' LIMIT 1',
+        [tableName]);
+      if (r.length && r[0].values.length) {
+        openWindow(Number(r[0].values[0][0]));
+      } else {
+        _showToast(tableName + ': no window found');
+      }
+    } catch (e) {
+      _showToast('Drill failed: ' + e.message);
+    }
   }
 
   var _systemWindowSet = {};
@@ -384,6 +561,10 @@
   // ── §4. Window screen (List + Card) ────────────────────────────────
 
   function openWindow(windowId) {
+    // Destroy graph animation when leaving home
+    if (typeof ADGraph !== 'undefined' && _currentScreen === 'home') {
+      ADGraph.destroy();
+    }
     console.log('§AD_UI openWindow id=' + windowId);
     var win = ADParser.getWindow(_db, windowId);
     if (!win) {
@@ -437,26 +618,44 @@
     var win = _currentWindow;
     var tab = win.tabs[_currentTabIdx];
 
-    // Breadcrumb
-    var bc = win.name;
+    // §15 App bar: back + title + help
+    var recName = '';
     if (_currentRecords.length > 0) {
       var rec = _currentRecords[_currentRecordIdx];
       var identField = _findIdentifier(tab);
-      if (identField && rec[identField]) bc += ' \u25B8 ' + rec[identField];
+      if (identField && rec[identField]) recName = rec[identField];
     }
-    _breadcrumbEl.innerHTML = '<span style="cursor:pointer;color:#888" data-action="home">\u2630</span> ' +
-      '<span style="color:#eee;font-size:15px;font-weight:bold;flex:1">' + _esc(bc) + '</span>' +
-      '<span data-action="help" style="cursor:pointer;color:#4fc3f7;font-size:14px;' +
-      'padding:4px 10px;border:1px solid #4fc3f7;border-radius:6px;min-height:32px;' +
-      'display:inline-flex;align-items:center">?</span>';
-    _breadcrumbEl.style.display = 'flex';
-    _breadcrumbEl.style.alignItems = 'center';
-    _breadcrumbEl.querySelector('[data-action="home"]').addEventListener('pointerup', function () {
-      showMenu();
-    });
-    _breadcrumbEl.querySelector('[data-action="help"]').addEventListener('pointerup', function () {
-      _toggleHelp();
-    });
+    _breadcrumbEl.innerHTML = '';
+    _breadcrumbEl.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:10;' +
+      'background:rgba(18,18,24,0.92);backdrop-filter:blur(12px);' +
+      '-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06);' +
+      'padding:0 8px;min-height:48px;display:flex;align-items:center;gap:4px;';
+
+    // Back arrow
+    var backBtn = document.createElement('button');
+    backBtn.innerHTML = '\u2190';
+    backBtn.style.cssText = 'background:none;border:none;color:#6c9fff;font-size:20px;' +
+      'cursor:pointer;padding:8px;min-width:44px;min-height:44px;';
+    backBtn.addEventListener('pointerup', function () { showMenu(); });
+    _breadcrumbEl.appendChild(backBtn);
+
+    // Title: window name + record name
+    var titleEl = document.createElement('div');
+    titleEl.style.cssText = 'flex:1;overflow:hidden;';
+    titleEl.innerHTML = '<div style="color:#eee;font-size:14px;font-weight:600;' +
+      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _esc(win.name) + '</div>' +
+      (recName ? '<div style="color:#888;font-size:11px;white-space:nowrap;overflow:hidden;' +
+      'text-overflow:ellipsis">' + _esc(recName) + '</div>' : '');
+    _breadcrumbEl.appendChild(titleEl);
+
+    // Help button
+    var helpBtn = document.createElement('button');
+    helpBtn.textContent = '?';
+    helpBtn.style.cssText = 'background:none;border:1px solid #4fc3f7;color:#4fc3f7;' +
+      'font-size:13px;cursor:pointer;padding:4px 10px;border-radius:6px;' +
+      'min-width:32px;min-height:32px;';
+    helpBtn.addEventListener('pointerup', function () { _toggleHelp(); });
+    _breadcrumbEl.appendChild(helpBtn);
 
     // Tab rail (§4 step 2)
     var rail = document.createElement('div');
@@ -482,28 +681,159 @@
     }
     _contentEl.appendChild(rail);
 
-    // Record card
+    // §18 CRUD toolbar — compact navigation + actions
+    var toolbar = document.createElement('div');
+    toolbar.style.cssText = 'display:flex;align-items:center;gap:4px;margin-bottom:12px;' +
+      'padding:4px;background:#1a1a24;border-radius:10px;';
+
+    var tbPrev = document.createElement('button');
+    tbPrev.innerHTML = '\u25C0';
+    tbPrev.title = 'Previous (Arrow Left)';
+    tbPrev.disabled = _currentRecordIdx <= 0;
+    tbPrev.style.cssText = _crudBtnStyle(tbPrev.disabled);
+    tbPrev.addEventListener('pointerup', function () { _navRecord(-1); });
+
+    var tbCounter = document.createElement('span');
+    tbCounter.style.cssText = 'flex:1;text-align:center;color:#888;font-size:12px;' +
+      'font-variant-numeric:tabular-nums;';
+    tbCounter.textContent = _currentRecords.length > 0
+      ? (_currentRecordIdx + 1) + ' / ' + _currentRecords.length : '0';
+
+    var tbNext = document.createElement('button');
+    tbNext.innerHTML = '\u25B6';
+    tbNext.title = 'Next (Arrow Right)';
+    tbNext.disabled = _currentRecordIdx >= _currentRecords.length - 1;
+    tbNext.style.cssText = _crudBtnStyle(tbNext.disabled);
+    tbNext.addEventListener('pointerup', function () { _navRecord(1); });
+
+    var tbNew = document.createElement('button');
+    tbNew.innerHTML = '+';
+    tbNew.title = 'New record';
+    tbNew.style.cssText = _crudBtnStyle(false, '#54d9a8');
+    tbNew.addEventListener('pointerup', function () { _createNewRecord(); });
+
+    var tbDel = document.createElement('button');
+    tbDel.innerHTML = '\u2715';
+    tbDel.title = 'Delete record';
+    tbDel.disabled = _currentRecords.length === 0;
+    tbDel.style.cssText = _crudBtnStyle(tbDel.disabled, '#f44336');
+    tbDel.addEventListener('pointerup', function () { _deleteCurrentRecord(); });
+
+    toolbar.appendChild(tbPrev);
+    toolbar.appendChild(tbCounter);
+    toolbar.appendChild(tbNext);
+    toolbar.appendChild(tbNew);
+    toolbar.appendChild(tbDel);
+    _contentEl.appendChild(toolbar);
+
+    // Multi-panel layout: master top, detail panels below side-by-side
+    var panelContainer = document.createElement('div');
+    panelContainer.style.cssText = 'display:flex;flex-direction:column;gap:12px;';
+
+    // Main record card (top — full width)
+    var mainPanel = document.createElement('div');
+
     if (_currentRecords.length === 0) {
       var empty = document.createElement('div');
       empty.style.cssText = 'text-align:center;color:#888;padding:40px;font-size:14px;';
       empty.textContent = 'No records in ' + tab.tableName;
-      _contentEl.appendChild(empty);
+      mainPanel.appendChild(empty);
     } else {
-      _renderRecordCard(tab);
+      _renderRecordCard(tab, mainPanel);
+    }
+    panelContainer.appendChild(mainPanel);
+
+    // Detail sub-tab panels — only tabs with data, side by side
+    if (_currentRecords.length > 0 && win.tabs.length > 1 && tab.tabLevel === 0) {
+      var parentKey = tab.tableName + '_ID';
+      var parentId = _currentRecords[_currentRecordIdx][parentKey];
+      var detailContainer = document.createElement('div');
+      detailContainer.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;';
+      var detailCount = 0;
+
+      for (var dt = 1; dt < win.tabs.length; dt++) {
+        var detailTab = win.tabs[dt];
+        if (detailTab.tabLevel !== 1) continue; // only direct children
+        var detailWhere = parentKey + ' = ' + parentId;
+        var detailRecords = ADData.readRecords(_db, detailTab.tableName, detailWhere);
+        if (detailRecords.length === 0) continue; // skip empty tabs
+
+        detailCount++;
+        var detailPanel = document.createElement('div');
+        detailPanel.dataset.detailTab = dt;
+        detailPanel.style.cssText = 'flex:1;min-width:220px;max-height:40vh;overflow-y:auto;' +
+          'background:linear-gradient(135deg,#1a1a24,#222230);border:1px solid rgba(255,255,255,0.06);' +
+          'border-radius:14px;padding:12px;';
+
+        var detailHeader = document.createElement('div');
+        detailHeader.style.cssText = 'color:#ff9f43;font-size:13px;font-weight:600;' +
+          'margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06);' +
+          'display:flex;justify-content:space-between;align-items:center;';
+        detailHeader.innerHTML = _esc(detailTab.name) +
+          '<span style="color:#666;font-size:11px;font-weight:400">' + detailRecords.length + '</span>';
+        detailPanel.appendChild(detailHeader);
+
+        var detailIdent = _findIdentifier(detailTab);
+        for (var di = 0; di < detailRecords.length && di < 10; di++) {
+          var dRec = detailRecords[di];
+          var dCard = document.createElement('div');
+          dCard.style.cssText = 'padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.04);' +
+            'font-size:13px;cursor:pointer;transition:background 0.15s;min-height:36px;';
+          dCard.onpointerenter = function() { this.style.background = 'rgba(255,255,255,0.04)'; };
+          dCard.onpointerleave = function() { this.style.background = ''; };
+
+          var dName = detailIdent ? (dRec[detailIdent] || '(unnamed)') : ('Record ' + (di + 1));
+          var dFields = [];
+          for (var dfi = 0; dfi < detailTab.fields.length && dFields.length < 2; dfi++) {
+            var df = detailTab.fields[dfi];
+            if (df.isKey || !df.isDisplayed || df.columnName === detailIdent) continue;
+            var dv = dRec[df.columnName];
+            if (dv !== null && dv !== undefined && dv !== '') {
+              if ((df.referenceType === 'tableDirect' || df.referenceType === 'table') && dv) {
+                var fkN = ADData.resolveFK(_db, df.columnName, dv);
+                if (fkN) dv = fkN;
+              }
+              dFields.push(df.name + ': ' + String(dv).substring(0, 20));
+            }
+          }
+
+          dCard.innerHTML = '<div style="color:#eee;font-weight:500">' + _esc(dName) + '</div>' +
+            (dFields.length ? '<div style="color:#666;font-size:11px;margin-top:2px">' +
+            _esc(dFields.join(' \u00b7 ')) + '</div>' : '');
+          dCard.dataset.tabIdx = dt;
+          dCard.addEventListener('pointerup', function () {
+            _switchTab(Number(this.dataset.tabIdx));
+          });
+          detailPanel.appendChild(dCard);
+        }
+        if (detailRecords.length > 10) {
+          var moreLink = document.createElement('div');
+          moreLink.style.cssText = 'color:#4fc3f7;font-size:12px;padding:6px;text-align:center;cursor:pointer;';
+          moreLink.textContent = '+ ' + (detailRecords.length - 10) + ' more\u2026';
+          moreLink.dataset.tabIdx = dt;
+          moreLink.addEventListener('pointerup', function () {
+            _switchTab(Number(this.dataset.tabIdx));
+          });
+          detailPanel.appendChild(moreLink);
+        }
+
+        detailContainer.appendChild(detailPanel);
+        console.log('§AD_UI detailPanel tab=' + detailTab.name + ' records=' + detailRecords.length);
+      }
+
+      if (detailCount > 0) panelContainer.appendChild(detailContainer);
     }
 
-    // Record counter
-    var counter = document.createElement('div');
-    counter.style.cssText = 'text-align:center;color:#555;font-size:11px;padding:8px;';
-    counter.textContent = _currentRecords.length > 0
-      ? (_currentRecordIdx + 1) + ' / ' + _currentRecords.length + ' \u2190 swipe \u2192'
-      : '';
-    _contentEl.appendChild(counter);
+    _contentEl.appendChild(panelContainer);
+
+    // Help panel auto-refresh on record change
+    if (_helpVisible) _updateHelpContent();
   }
 
-  function _renderRecordCard(tab) {
+  function _renderRecordCard(tab, parentEl) {
     var rec = _currentRecords[_currentRecordIdx];
     if (!rec) return;
+    var target = parentEl || _contentEl;
 
     var card = document.createElement('div');
     card.style.cssText = 'background:linear-gradient(135deg,#1e1e2a,#252535);' +
@@ -521,9 +851,12 @@
       if (f.displayLogic && !ADParser.evaluateDisplayLogic(f.displayLogic, rec)) continue;
 
       var val = rec[f.columnName];
+      var isEmpty = (val === null || val === undefined || val === '');
       var row = document.createElement('div');
       row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;' +
-        'padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);min-height:48px;';
+        'padding:' + (isEmpty ? '4px' : '10px') + ' 0;border-bottom:1px solid rgba(255,255,255,0.04);' +
+        'min-height:' + (isEmpty ? '28px' : '48px') + ';' +
+        (isEmpty ? 'opacity:0.5;' : '');
 
       // Label (tap for help)
       var label = document.createElement('span');
@@ -552,7 +885,7 @@
 
     // Swipe gesture on card
     _attachSwipe(card);
-    _contentEl.appendChild(card);
+    target.appendChild(card);
   }
 
   function _renderFieldValue(field, value, record) {
@@ -634,7 +967,25 @@
       return el;
     }
 
-    // Default: text input (string, text, search, tableDirect, table)
+    // §14: FK resolution for tableDirect / table fields
+    if ((type === 'tableDirect' || type === 'table' || type === 'search') && displayVal) {
+      var fkName = ADData.resolveFK(_db, field.columnName, value);
+      if (fkName) {
+        el = document.createElement('span');
+        el.style.cssText = 'color:#4fc3f7;font-size:14px;text-align:right;cursor:pointer;';
+        el.textContent = fkName;
+        el.title = field.columnName + ' = ' + displayVal;
+        el.dataset.col = field.columnName;
+        el.dataset.fkId = displayVal;
+        el.addEventListener('pointerup', function () {
+          // Tap FK → drill to that record's window
+          _drillToTable(this.dataset.col.replace(/_ID$/, ''));
+        });
+        return el;
+      }
+    }
+
+    // Default: text input (string, text)
     el = document.createElement('input');
     el.type = 'text';
     el.value = displayVal;
@@ -663,6 +1014,75 @@
       console.log('§AD_UI saveField ERROR col=' + colName + ' err=' + e.message);
       _showToast('Save failed: ' + e.message);
     }
+  }
+
+  // ── CRUD toolbar helpers ────────────────────────────────────────────
+
+  function _crudBtnStyle(disabled, colour) {
+    var c = colour || '#6c9fff';
+    return 'background:none;border:1px solid ' + (disabled ? '#333' : c) +
+      ';color:' + (disabled ? '#444' : c) + ';font-size:14px;cursor:' +
+      (disabled ? 'default' : 'pointer') + ';padding:6px 12px;border-radius:8px;' +
+      'min-width:44px;min-height:36px;font-weight:bold;transition:all 0.15s;' +
+      'opacity:' + (disabled ? '0.4' : '1') + ';';
+  }
+
+  function _navRecord(dir) {
+    var newIdx = _currentRecordIdx + dir;
+    if (newIdx < 0 || newIdx >= _currentRecords.length) return;
+    _currentRecordIdx = newIdx;
+    console.log('§AD_UI navRecord idx=' + _currentRecordIdx + ' total=' + _currentRecords.length);
+    _renderWindow();
+  }
+
+  function _deleteCurrentRecord() {
+    if (!_currentWindow || !_currentRecords.length) return;
+    var tab = _currentWindow.tabs[_currentTabIdx];
+    var rec = _currentRecords[_currentRecordIdx];
+    var keyCol = tab.tableName + '_ID';
+    var keyVal = rec[keyCol];
+
+    if (!confirm('Delete this record? (' + keyCol + '=' + keyVal + ')')) return;
+
+    try {
+      ADData.deleteRecord(_db, tab.tableName, keyCol, keyVal);
+      console.log('§AD_UI deleteRecord table=' + tab.tableName + ' id=' + keyVal);
+      _loadTabRecords();
+      if (_currentRecordIdx >= _currentRecords.length) {
+        _currentRecordIdx = Math.max(0, _currentRecords.length - 1);
+      }
+      _renderWindow();
+    } catch (e) {
+      _showToast('Delete failed: ' + e.message);
+    }
+  }
+
+  // ── §18. Arrow key navigation ─────────────────────────────────────
+
+  function _initKeyboard() {
+    if (typeof document === 'undefined') return;
+    document.addEventListener('keydown', function (e) {
+      if (_currentScreen !== 'window') return;
+      // Don't capture if user is typing in an input
+      var tag = e.target.tagName;
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        _navRecord(-1);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        _navRecord(1);
+      } else if (e.key === 'ArrowUp' && _currentTabIdx > 0) {
+        e.preventDefault();
+        _switchTab(_currentTabIdx - 1);
+      } else if (e.key === 'ArrowDown' && _currentWindow &&
+                 _currentTabIdx < _currentWindow.tabs.length - 1) {
+        e.preventDefault();
+        _switchTab(_currentTabIdx + 1);
+      }
+    });
+    console.log('§AD_UI keyboard init');
   }
 
   // ── §5. Master-detail navigation ──────────────────────────────────
@@ -720,8 +1140,17 @@
     _contentEl.innerHTML = '';
     var tab = _currentWindow.tabs[_currentTabIdx];
 
-    _breadcrumbEl.innerHTML = '<span style="color:#eee;font-size:15px;font-weight:bold">' +
-      _esc(_currentWindow.name) + ' \u2014 List</span>';
+    _breadcrumbEl.innerHTML = '';
+    var listBack = document.createElement('button');
+    listBack.innerHTML = '\u2190';
+    listBack.style.cssText = 'background:none;border:none;color:#6c9fff;font-size:20px;' +
+      'cursor:pointer;padding:8px;min-width:44px;min-height:44px;';
+    listBack.addEventListener('pointerup', function () { _renderWindow(); });
+    _breadcrumbEl.appendChild(listBack);
+    var listTitle = document.createElement('span');
+    listTitle.style.cssText = 'color:#eee;font-size:15px;font-weight:bold';
+    listTitle.textContent = _currentWindow.name + ' \u2014 List';
+    _breadcrumbEl.appendChild(listTitle);
 
     for (var i = 0; i < _currentRecords.length; i++) {
       var rec = _currentRecords[i];
@@ -775,23 +1204,69 @@
   }
 
   function _showCharts() {
-    if (!_currentWindow || !_currentWindow.tabs.length) {
-      console.log('§AD_UI charts: no window open');
-      return;
-    }
-    var tab = _currentWindow.tabs[_currentTabIdx];
     if (!_chartOverlay) {
       _chartOverlay = document.createElement('div');
       _chartOverlay.id = 'chart-overlay';
       document.body.appendChild(_chartOverlay);
     }
-    ADCharts.renderOverlay(_chartOverlay, _db, tab.tableName);
+
+    if (_currentWindow && _currentWindow.tabs.length) {
+      // Window open → show prebuilt charts + field completeness heatmap
+      var tab = _currentWindow.tabs[_currentTabIdx];
+      ADCharts.renderOverlay(_chartOverlay, _db, tab.tableName);
+
+      // Append field completeness heatmap
+      if (_currentRecords.length > 0) {
+        var heatCanvas = document.createElement('canvas');
+        heatCanvas.width = 480;
+        heatCanvas.height = 260;
+        heatCanvas.style.cssText = 'display:block;width:100%;height:auto;margin-top:12px;';
+        _chartOverlay.appendChild(heatCanvas);
+        var completeness = ADData.getFieldCompleteness(_currentRecords, tab.fields);
+        ADCharts.drawCompleteness(heatCanvas, completeness,
+          _currentWindow.name + ' — Field Completeness (' + _currentRecords.length + ' records)');
+      }
+    } else {
+      // Home → show table treemap
+      _chartOverlay.innerHTML = '';
+      _chartOverlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:48px;' +
+        'background:rgba(20,20,20,0.97);z-index:50;overflow-y:auto;padding:16px;';
+      var closeBtn = document.createElement('button');
+      closeBtn.textContent = '\u2715 Close';
+      closeBtn.style.cssText = 'position:absolute;top:8px;right:12px;background:none;' +
+        'border:1px solid #555;color:#ccc;padding:6px 14px;border-radius:6px;' +
+        'font-size:13px;cursor:pointer;min-height:44px;';
+      closeBtn.addEventListener('pointerup', function () {
+        _chartOverlay.style.display = 'none';
+      });
+      _chartOverlay.appendChild(closeBtn);
+
+      var heatCanvas = document.createElement('canvas');
+      heatCanvas.width = 480;
+      heatCanvas.height = 320;
+      heatCanvas.style.cssText = 'display:block;width:100%;height:auto;margin-top:40px;';
+      _chartOverlay.appendChild(heatCanvas);
+      _drawHomeHeatmap(heatCanvas);
+      _chartOverlay.style.display = 'block';
+    }
+    console.log('§AD_UI showCharts window=' + (_currentWindow ? _currentWindow.name : 'home'));
   }
 
   function _showMore() {
     _contentEl.innerHTML = '';
-    _breadcrumbEl.innerHTML = '<span style="color:#eee;font-size:15px;font-weight:bold">' +
-      '\u2699 Settings</span>';
+    _breadcrumbEl.innerHTML = '';
+    var moreBack = document.createElement('button');
+    moreBack.innerHTML = '\u2190';
+    moreBack.style.cssText = 'background:none;border:none;color:#6c9fff;font-size:20px;' +
+      'cursor:pointer;padding:8px;min-width:44px;min-height:44px;';
+    moreBack.addEventListener('pointerup', function () {
+      if (_currentWindow) _renderWindow(); else showMenu();
+    });
+    _breadcrumbEl.appendChild(moreBack);
+    var moreTitle = document.createElement('span');
+    moreTitle.style.cssText = 'color:#eee;font-size:15px;font-weight:bold';
+    moreTitle.textContent = '\u2699 Settings';
+    _breadcrumbEl.appendChild(moreTitle);
 
     var items = [
       { label: 'Share Link', action: function () {
@@ -997,6 +1472,7 @@
 
     ADParser.init(db);
     _initBroadcast();
+    _initKeyboard();
     showMenu();
 
     console.log('§AD_UI init done');
@@ -1007,11 +1483,18 @@
   var ADUI = {
     init:       init,
     showMenu:   showMenu,
-    openWindow: openWindow
+    openWindow: openWindow,
+    // Exposed for testing — CRUD toolbar / arrow keys
+    navRecord:  _navRecord,
+    getRecordIdx: function () { return _currentRecordIdx; },
+    getRecordCount: function () { return _currentRecords.length; },
+    getCurrentScreen: function () { return _currentScreen; },
+    switchTab:  _switchTab,
+    getTabIdx:  function () { return _currentTabIdx; }
   };
 
   if (typeof window !== 'undefined') window.ADUI = ADUI;
   if (typeof module !== 'undefined' && module.exports) module.exports = ADUI;
 
-  console.log('§AD_UI_LOADED v1');
+  console.log('§AD_UI_LOADED v6');
 })();

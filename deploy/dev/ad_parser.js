@@ -310,7 +310,8 @@
 
   function _evalCondition(cond) {
     // Handle: left='value', left!='value', left='', left!''
-    var m = cond.match(/^(.+?)\s*(!=|=|!|<>)\s*'?([^']*)'?\s*$/);
+    // Left side may be empty (when @Column@ resolved to '')
+    var m = cond.match(/^(.*?)\s*(!=|=|!|<>)\s*'?([^']*)'?\s*$/);
     if (!m) return true;
     var left = m[1].trim().replace(/^'|'$/g, '');
     var op = m[2];
