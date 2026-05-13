@@ -22,6 +22,7 @@
   var _helpVisible = false;
   var _heatmapHitRegions = [];    // for tap-to-drill on treemap
   var _graphAutoMaxed = false;    // auto-maximize globe on first load
+  var _graphIsMaxed = false;      // track current maximized state
   var _currentClient = 'system';  // 'system' | 'gardenworld'
   var GW_WINDOW_SET = null; // built on init from tables that actually have rows
 
@@ -293,6 +294,7 @@
       'display:flex;align-items:center;justify-content:center;line-height:1;';
 
     function _resizeGraph(fullscreen) {
+      _graphIsMaxed = fullscreen;
       if (fullscreen) {
         container.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;' +
           'background:#0a0a12;border:none;border-radius:0;margin:0;overflow:hidden;';
@@ -366,9 +368,10 @@
     ADGraph.init(canvas, _db, _currentClient,
       _graphDrillCallback, _graphLongPressCallback);
 
-    // Auto-maximize globe on first load
-    if (!_graphAutoMaxed) {
+    // Auto-maximize globe — first load or if was maximized before client switch
+    if (!_graphAutoMaxed || _graphIsMaxed) {
       _graphAutoMaxed = true;
+      _graphIsMaxed = true;
       setTimeout(function () { _resizeGraph(true); }, 100);
     }
 
