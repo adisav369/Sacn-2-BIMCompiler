@@ -362,6 +362,20 @@
 
     container.appendChild(fsBtn);
 
+    // Search button — mobile access (no Alt+S on touch devices)
+    var searchBtn = document.createElement('button');
+    searchBtn.textContent = '\uD83D\uDD0D'; // 🔍
+    searchBtn.title = 'Search (Alt+S)';
+    searchBtn.style.cssText = 'position:absolute;top:6px;right:40px;background:rgba(0,0,0,0.5);' +
+      'border:1px solid rgba(255,255,255,0.15);color:#aaa;font-size:14px;' +
+      'cursor:pointer;width:28px;height:28px;border-radius:6px;z-index:5;' +
+      'display:flex;align-items:center;justify-content:center;line-height:1;';
+    searchBtn.addEventListener('pointerup', function (e) {
+      e.stopPropagation();
+      _toggleSearchOverlay();
+    });
+    container.appendChild(searchBtn);
+
     _contentEl.appendChild(container);
 
     // Init graph
@@ -1856,19 +1870,31 @@
     resultsEl.style.display = 'block';
     _selectedIdx = -1;
 
-    // Click handlers
+    // Click handlers — §1.3 focus bubble + open card simultaneously
     var items = resultsEl.querySelectorAll('[data-search-hit]');
     for (var j = 0; j < items.length; j++) {
       items[j].addEventListener('pointerup', function () {
         var wid = Number(this.dataset.windowId);
+        var table = this.dataset.table;
+        var rid = this.dataset.recordId;
         _hideSearchResults();
+        // §1.3 Focus bubble on globe
+        if (table && typeof ADGraph !== 'undefined' && ADGraph.focusNode) {
+          ADGraph.focusNode(table, rid ? Number(rid) : null);
+        }
         if (wid) {
-          console.log('§AD_UI search click window=' + wid + ' record=' + this.dataset.recordId);
+          console.log('§AD_UI search click window=' + wid + ' record=' + rid);
           openWindow(wid);
         }
       });
       items[j].addEventListener('pointerenter', function () {
         this.style.background = 'rgba(255,255,255,0.06)';
+        // §1.1 Hover correlation — pulse bubble on globe
+        var table = this.dataset.table;
+        var rid = this.dataset.recordId;
+        if (table && typeof ADGraph !== 'undefined' && ADGraph.focusNode) {
+          ADGraph.focusNode(table, rid ? Number(rid) : null);
+        }
       });
       items[j].addEventListener('pointerleave', function () {
         this.style.background = 'none';
@@ -1890,7 +1916,16 @@
     for (var i = 0; i < items.length; i++) {
       items[i].style.background = (i === idx) ? 'rgba(108,159,255,0.15)' : 'none';
     }
-    if (items[idx]) items[idx].scrollIntoView({ block: 'nearest' });
+    if (items[idx]) {
+      items[idx].scrollIntoView({ block: 'nearest' });
+      // §1.1 Search↔Globe correlation — pulse bubble on arrow key focus
+      var table = items[idx].dataset.table;
+      var rid = items[idx].dataset.recordId;
+      if (table && typeof ADGraph !== 'undefined' && ADGraph.focusNode) {
+        var found = ADGraph.focusNode(table, rid ? Number(rid) : null);
+        if (!found) _showToast('Record not on current view');
+      }
+    }
   }
 
   // ── Init ──────────────────────────────────────────────────────────

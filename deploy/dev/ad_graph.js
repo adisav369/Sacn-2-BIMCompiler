@@ -32,6 +32,9 @@
   var _momentumY = 0;      // spin momentum after drag release
   var _momentumX = 0;
   var _lastDragX = 0, _lastDragY = 0;
+  var _focusedNode = null;  // search correlation highlight
+  var _focusPulseT = 0;     // 0..1 pulse decay over 2s
+  var _maxBubbles = 500;    // §3.4 memory limit
 
   // Fly-to-front animation
   var _flyTarget = null;   // node being pulled to front
@@ -196,7 +199,10 @@
         screenX: 0, screenY: 0, screenScale: 1, screenZ: 0,
         tableName: c.table,
         windowId: WIN_MAP[c.table] || null,
-        type: 'entity'
+        type: 'TABLE',
+        children: [],
+        parent: null,
+        expanded: false
       });
     }
 
@@ -354,7 +360,11 @@
         record: rec,
         activity: cls.activity,
         tier: cls.tier,
-        type: 'record'
+        type: 'RECORD',
+        children: [],
+        parent: null,
+        expanded: false,
+        recordId: rec[keyCol]
       });
     }
 
@@ -381,6 +391,317 @@
     if (rec.DocumentNo !== undefined) return 'DocumentNo';
     for (var k in rec) { if (k.indexOf('_ID') < 0 && typeof rec[k] === 'string') return k; }
     return null;
+  }
+
+  // ── Orbit positioning ─────────────────────────────────────────────
+
+  function _orbitPosition(parent, index, total, orbitRadius) {
+    var len = Math.sqrt(parent.sx * parent.sx + parent.sy * parent.sy + parent.sz * parent.sz);
+    if (len < 1) len = 1;
+    var nx = parent.sx / len, ny = parent.sy / len, nz = parent.sz / len;
+
+    // Tangent vectors via cross product with up
+    var upX = 0, upY = 1, upZ = 0;
+    if (Math.abs(ny) > 0.9) { upX = 1; upY = 0; }
+    var t1x = upY * nz - upZ * ny, t1y = upZ * nx - upX * nz, t1z = upX * ny - upY * nx;
+    var t1len = Math.sqrt(t1x * t1x + t1y * t1y + t1z * t1z);
+    if (t1len < 0.001) t1len = 1;
+    t1x /= t1len; t1y /= t1len; t1z /= t1len;
+    var t2x = ny * t1z - nz * t1y, t2y = nz * t1x - nx * t1z, t2z = nx * t1y - ny * t1x;
+
+    var angle;
+    if (total <= 12) {
+      angle = 2 * Math.PI * index / Math.max(total, 1);
+    } else {
+      // §3.1 Spiral for >12
+      angle = 2 * Math.PI * index / ((1 + Math.sqrt(5)) / 2);
+      var t = index / total;
+      orbitRadius = orbitRadius * (0.6 + t * 0.4);
+    }
+    return {
+      x: parent.sx + orbitRadius * (Math.cos(angle) * t1x + Math.sin(angle) * t2x),
+      y: parent.sy + orbitRadius * (Math.cos(angle) * t1y + Math.sin(angle) * t2y),
+      z: parent.sz + orbitRadius * (Math.cos(angle) * t1z + Math.sin(angle) * t2z)
+    };
+  }
+
+  // ── §3.1 TABLE → RECORD expansion ────────────────────────────────
+
+  function _expandTable(node) {
+    if (node.type !== 'TABLE' || node.expanded) return;
+    if (_nodes.length >= _maxBubbles) return;
+
+    var tableName = node.tableName;
+    var records;
+    try {
+      var r = _db.exec("SELECT * FROM [" + tableName + "] WHERE IsActive = 'Y' LIMIT 30");
+      if (!r.length) return;
+      var cols = r[0].columns;
+      records = r[0].values.map(function (row) {
+        var obj = {};
+        for (var i = 0; i < cols.length; i++) obj[cols[i]] = row[i];
+        return obj;
+      });
+    } catch (e) { return; }
+
+    var nameCol = _findNameCol(records[0]);
+    var keyCol = tableName + '_ID';
+    var cfg = ENTITY_CFG[tableName] || SYS_CFG[tableName] || { icon: 'table', colour: '#888', label: tableName };
+    var orbitR = _radius * 0.2;
+    var allDates = _scanDates(records);
+
+    // §3.1 TABLE shrinks slightly
+    node._origSize = node.size;
+    node.size *= 0.8;
+
+    for (var j = 0; j < records.length; j++) {
+      if (_nodes.length >= _maxBubbles) break;
+      var rec = records[j];
+      var cls = _classifyRecord(rec, allDates);
+      var name = rec[nameCol] || rec[keyCol] || ('Record ' + (j + 1));
+      var pos = _orbitPosition(node, j, records.length, orbitR);
+
+      var child = {
+        id: tableName + '_' + rec[keyCol],
+        label: String(name).substring(0, 16),
+        count: null,
+        icon: cfg.icon,
+        colour: cls.colour,
+        homeSx: pos.x, homeSy: pos.y, homeSz: pos.z,
+        sx: pos.x, sy: pos.y, sz: pos.z,
+        _startSx: node.sx, _startSy: node.sy, _startSz: node.sz,
+        _targetSx: pos.x, _targetSy: pos.y, _targetSz: pos.z,
+        _animT: 0,
+        size: 8 + cls.activity * 10,
+        activity: cls.activity,
+        pulse: Math.random() * Math.PI * 2,
+        pulseSpeed: 0.002 + cls.activity * 0.003,
+        screenX: 0, screenY: 0, screenScale: 1, screenZ: 0,
+        tableName: tableName,
+        windowId: WIN_MAP[tableName] || null,
+        record: rec,
+        recordId: rec[keyCol],
+        docStatus: rec.DocStatus || '',
+        tier: cls.tier,
+        type: 'RECORD',
+        children: [],
+        parent: node,
+        expanded: false
+      };
+      node.children.push(child);
+      _nodes.push(child);
+    }
+
+    node.expanded = true;
+    _rebuildEdges();
+    console.log('§AD_GRAPH expandTable table=' + tableName + ' records=' +
+                records.length + ' total=' + _nodes.length);
+  }
+
+  // ── §3.2 RECORD → CHILD expansion (FK traversal) ─────────────────
+
+  function _expandRecord(node) {
+    if (node.type !== 'RECORD' || node.expanded || !node.record) return;
+    if (_nodes.length >= _maxBubbles) return;
+
+    var tableName = node.tableName;
+    var keyCol = tableName + '_ID';
+    var keyVal = node.record[keyCol];
+    if (keyVal === undefined || keyVal === null) return;
+
+    // §3.3 FK discovery
+    var fkTables = _discoverChildren(tableName);
+    if (!fkTables.length) {
+      console.log('§AD_GRAPH expandRecord no FK for ' + tableName);
+      return;
+    }
+
+    var orbitR = _radius * 0.12;
+    var allChildren = [];
+    var childLimit = 20;
+
+    for (var fi = 0; fi < fkTables.length; fi++) {
+      var fkTable = fkTables[fi];
+      try {
+        var r = _db.exec('SELECT * FROM [' + fkTable + '] WHERE [' + keyCol +
+                         '] = ? LIMIT ' + (childLimit + 1), [keyVal]);
+        if (!r.length || !r[0].values.length) continue;
+        var cols = r[0].columns;
+        var rows = r[0].values;
+        var hasMore = rows.length > childLimit;
+        if (hasMore) rows = rows.slice(0, childLimit);
+
+        var fkCfg = ENTITY_CFG[fkTable] || SYS_CFG[fkTable] || { icon: 'table', colour: '#888' };
+        // §3.2 colour by table type
+        var childColour = fkCfg.colour;
+        if (fkTable.indexOf('C_') === 0) childColour = '#ffd93d';
+        else if (fkTable.indexOf('M_') === 0) childColour = '#7bed9f';
+
+        for (var ri = 0; ri < rows.length; ri++) {
+          var rec = {};
+          for (var ci = 0; ci < cols.length; ci++) rec[cols[ci]] = rows[ri][ci];
+          var nameC = _findNameCol(rec);
+          var fkKeyCol = fkTable + '_ID';
+          allChildren.push({
+            tableName: fkTable, record: rec, recordId: rec[fkKeyCol],
+            label: String(rec[nameC] || rec.DocumentNo || rec[fkKeyCol] || '').substring(0, 14),
+            colour: childColour, icon: fkCfg.icon || 'table'
+          });
+        }
+        if (hasMore) {
+          allChildren.push({
+            tableName: fkTable, record: null, recordId: null,
+            label: '+more', colour: '#666', icon: 'table'
+          });
+        }
+      } catch (e) { /* table may not exist in this DB */ }
+    }
+
+    if (!allChildren.length) {
+      console.log('§AD_GRAPH expandRecord no children for ' + tableName + '_ID=' + keyVal);
+      return;
+    }
+
+    for (var j = 0; j < allChildren.length; j++) {
+      if (_nodes.length >= _maxBubbles) break;
+      var ch = allChildren[j];
+      var pos = _orbitPosition(node, j, allChildren.length, orbitR);
+
+      var child = {
+        id: ch.tableName + '_' + ch.recordId,
+        label: ch.label, count: null, icon: ch.icon, colour: ch.colour,
+        homeSx: pos.x, homeSy: pos.y, homeSz: pos.z,
+        sx: pos.x, sy: pos.y, sz: pos.z,
+        _startSx: node.sx, _startSy: node.sy, _startSz: node.sz,
+        _targetSx: pos.x, _targetSy: pos.y, _targetSz: pos.z,
+        _animT: 0,
+        size: 6, activity: 0.5,
+        pulse: Math.random() * Math.PI * 2, pulseSpeed: 0.003,
+        screenX: 0, screenY: 0, screenScale: 1, screenZ: 0,
+        tableName: ch.tableName, windowId: WIN_MAP[ch.tableName] || null,
+        record: ch.record, recordId: ch.recordId,
+        tier: 'child', type: 'CHILD',
+        children: [], parent: node, expanded: false
+      };
+      node.children.push(child);
+      _nodes.push(child);
+    }
+
+    node.expanded = true;
+    _rebuildEdges();
+    console.log('§AD_GRAPH expandRecord table=' + tableName + ' id=' + keyVal +
+                ' fkTables=' + fkTables.length + ' children=' + allChildren.length);
+  }
+
+  // ── §3.3 FK Discovery from AD_Column ──────────────────────────────
+
+  function _discoverChildren(tableName) {
+    var fkCol = tableName + '_ID';
+    try {
+      var r = _db.exec(
+        "SELECT DISTINCT t.TableName FROM AD_Column c " +
+        "JOIN AD_Table t ON c.AD_Table_ID = t.AD_Table_ID " +
+        "WHERE c.ColumnName = '" + fkCol + "' " +
+        "AND t.TableName != '" + tableName + "' " +
+        "AND t.IsActive = 'Y'"
+      );
+      if (!r.length) return [];
+      return r[0].values.map(function (row) { return row[0]; });
+    } catch (e) { return []; }
+  }
+
+  // ── §3.5 Collapse ─────────────────────────────────────────────────
+
+  function _collapseNode(node) {
+    if (!node.expanded) return;
+    for (var i = 0; i < node.children.length; i++) {
+      _collapseNode(node.children[i]);
+      var idx = _nodes.indexOf(node.children[i]);
+      if (idx >= 0) _nodes.splice(idx, 1);
+    }
+    node.children = [];
+    node.expanded = false;
+    if (node._origSize) { node.size = node._origSize; node._origSize = null; }
+    _rebuildEdges();
+    console.log('§AD_GRAPH collapse node=' + node.id);
+  }
+
+  function _collapseAll() {
+    for (var i = _nodes.length - 1; i >= 0; i--) {
+      if (_nodes[i].type !== 'TABLE') _nodes.splice(i, 1);
+    }
+    for (var j = 0; j < _nodes.length; j++) {
+      _nodes[j].children = [];
+      _nodes[j].expanded = false;
+      if (_nodes[j]._origSize) { _nodes[j].size = _nodes[j]._origSize; _nodes[j]._origSize = null; }
+    }
+    _rebuildEdges();
+    console.log('§AD_GRAPH collapseAll nodes=' + _nodes.length);
+  }
+
+  function _rebuildEdges() {
+    _edges = [];
+    // TABLE–TABLE mesh
+    for (var a = 0; a < _nodes.length; a++) {
+      if (_nodes[a].type !== 'TABLE') continue;
+      for (var b = a + 1; b < _nodes.length; b++) {
+        if (_nodes[b].type !== 'TABLE') continue;
+        _edges.push({ from: a, to: b });
+      }
+    }
+    // Parent–child edges
+    for (var c = 0; c < _nodes.length; c++) {
+      if (_nodes[c].parent) {
+        var pi = _nodes.indexOf(_nodes[c].parent);
+        if (pi >= 0) _edges.push({ from: pi, to: c });
+      }
+    }
+  }
+
+  // ── §4 Bubble weight formula ──────────────────────────────────────
+
+  function _getBubbleWeight(node) {
+    var w = 1;
+    if (node.type === 'TABLE') {
+      w = 3 + Math.min(Math.log10((node.count || 1) + 1) * 2, 7);
+    } else if (node.type === 'RECORD') {
+      w = 2;
+      w += Math.min((node.children ? node.children.length : 0) / 5, 3);
+      if (node.docStatus === 'CO') w += 1;
+    } else {
+      w = 1;
+    }
+    return w;
+  }
+
+  // ── §1.2 focusNode — search↔globe correlation ────────────────────
+
+  function _findNode(tableName, recordId) {
+    for (var i = 0; i < _nodes.length; i++) {
+      var n = _nodes[i];
+      if (n.tableName === tableName) {
+        if (recordId === undefined || recordId === null) {
+          if (n.type === 'TABLE') return n;
+        } else {
+          if (n.recordId == recordId) return n; // == for type coercion
+        }
+      }
+    }
+    return null;
+  }
+
+  function focusNode(tableName, recordId) {
+    var node = _findNode(tableName, recordId);
+    if (!node) {
+      console.log('§AD_GRAPH focusNode NOT_FOUND table=' + tableName + ' id=' + recordId);
+      return false;
+    }
+    _focusedNode = node;
+    _focusPulseT = 1.0;
+    _flyToFront(node);
+    console.log('§AD_GRAPH focusNode FOUND table=' + tableName + ' id=' + recordId +
+                ' node=' + node.id);
+    return true;
   }
 
   // ── Animation loop ─────────────────────────────────────────────────
@@ -433,10 +754,22 @@
     _ctx.ellipse(_cx, _cy, _radius, _radius * Math.abs(Math.cos(_rotX)), 0, 0, Math.PI * 2);
     _ctx.stroke();
 
-    // Project all nodes
+    // Focus pulse decay (§1.1 — 2 second highlight)
+    if (_focusPulseT > 0) _focusPulseT = Math.max(0, _focusPulseT - 0.008);
+
+    // Project all nodes + animate child fly-out
     for (var i = 0; i < _nodes.length; i++) {
-      _nodes[i].pulse += _nodes[i].pulseSpeed;
-      _project(_nodes[i]);
+      var an = _nodes[i];
+      // §3.1 Child fly-out animation (300ms ease-out)
+      if (an._animT !== undefined && an._animT < 1) {
+        an._animT = Math.min(1, an._animT + 0.05);
+        var ease = 1 - Math.pow(1 - an._animT, 3);
+        an.sx = an._startSx + (an._targetSx - an._startSx) * ease;
+        an.sy = an._startSy + (an._targetSy - an._startSy) * ease;
+        an.sz = an._startSz + (an._targetSz - an._startSz) * ease;
+      }
+      an.pulse += an.pulseSpeed;
+      _project(an);
     }
 
     // Sort by Z (far first = painter's algorithm)
@@ -473,6 +806,11 @@
     var pulse = 1 + Math.sin(node.pulse) * 0.03;
     s *= pulse;
 
+    // §1.1 Focus highlight — scale up 1.5x when search-correlated
+    if (node === _focusedNode && _focusPulseT > 0) {
+      s *= 1 + _focusPulseT * 0.5;
+    }
+
     // Depth-based alpha: front = bright, back = very dim
     var depthRatio = (node.screenZ + _radius) / (_radius * 2); // 0=front, 1=back
     var alpha = Math.max(0.04, 1 - depthRatio * 0.92);
@@ -506,6 +844,18 @@
     _ctx.beginPath();
     _ctx.arc(node.screenX, node.screenY, s * 0.55, 0, Math.PI * 2);
     _ctx.fill();
+
+    // §1.1 Focus glow ring (search correlation)
+    if (node === _focusedNode && _focusPulseT > 0) {
+      _ctx.save();
+      _ctx.globalAlpha = _focusPulseT * 0.5;
+      _ctx.strokeStyle = '#fff';
+      _ctx.lineWidth = 2 * sc;
+      _ctx.beginPath();
+      _ctx.arc(node.screenX, node.screenY, s * 0.7, 0, Math.PI * 2);
+      _ctx.stroke();
+      _ctx.restore();
+    }
 
     // Bright core for active nodes
     if (act > 0.6 && alpha > 0.3) {
@@ -632,25 +982,36 @@
 
       if (hit && !_flyTarget) {
         if (elapsed > 500) {
-          console.log('§AD_GRAPH longPress node=' + hit.id);
-          if (_onLongPress) _onLongPress(hit);
+          // §3.5 Long press → collapse all expansions
+          _collapseAll();
         } else {
           console.log('§AD_GRAPH tap node=' + hit.id + ' type=' + hit.type);
-          // Fly the node to front, THEN drill
-          _flyToFront(hit, function () {
-            if (hit.type === 'entity') {
-              _viewStack.push(_currentView);
-              _currentView = 'entity';
-              _rotY = 0; _rotX = -0.3; // reset orientation for new view
-              _buildEntityNodes(hit.tableName);
-            } else if (hit.type === 'record' && _onDrill) {
+          if (hit.type === 'TABLE') {
+            // §3.1 / §3.5 Toggle TABLE expansion
+            _flyToFront(hit, function () {
+              if (hit.expanded) _collapseNode(hit);
+              else _expandTable(hit);
+            });
+          } else if (hit.type === 'RECORD') {
+            // §3.2 / §3.5 Toggle RECORD FK expansion
+            _flyToFront(hit, function () {
+              if (hit.expanded) _collapseNode(hit);
+              else _expandRecord(hit);
+            });
+          } else if (hit.type === 'CHILD' && _onDrill) {
+            // CHILD click → open record card
+            _flyToFront(hit, function () {
               _onDrill(hit.tableName, hit.windowId, hit.record);
-            }
-          });
+            });
+          }
         }
-      } else if (!hit && _currentView !== 'home') {
-        // Tap empty space = back
-        _goBack();
+      } else if (!hit) {
+        if (elapsed > 500) {
+          // §3.5 Long press empty → collapse all
+          _collapseAll();
+        } else if (_currentView !== 'home') {
+          _goBack();
+        }
       }
     }
   }
@@ -711,6 +1072,8 @@
   }
 
   function _rebuildSpherePositions() {
+    // Collapse expansions — zoom resets to TABLE view
+    _collapseAll();
     var golden = (1 + Math.sqrt(5)) / 2;
     for (var i = 0; i < _nodes.length; i++) {
       var theta = 2 * Math.PI * i / golden;
@@ -782,12 +1145,16 @@
     init: init,
     destroy: destroy,
     showEntity: showEntity,
+    focusNode: focusNode,
+    discoverChildren: _discoverChildren,
+    collapseAll: _collapseAll,
     getNodeCount: function () { return _nodes.length; },
-    getCurrentView: function () { return _currentView; }
+    getCurrentView: function () { return _currentView; },
+    getBubbleWeight: _getBubbleWeight
   };
 
   if (typeof window !== 'undefined') window.ADGraph = ADGraph;
   if (typeof module !== 'undefined' && module.exports) module.exports = ADGraph;
 
-  console.log('§AD_GRAPH_LOADED v5');
+  console.log('§AD_GRAPH_LOADED v6');
 })();
