@@ -2738,6 +2738,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#r9-self-healing-kernel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R9. Self-Healing Kernel
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="R9. Self-Healing Kernel">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#r91-pattern-detection-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R9.1 Pattern Detection Engine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#r92-detectable-patterns-and-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R9.2 Detectable Patterns and Actions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#r93-learning-not-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R9.3 Learning, Not Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#r94-crash-recovery-self-healing-in-the-literal-sense" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R9.4 Crash Recovery (Self-Healing in the Literal Sense)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#implementation-priority" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4331,6 +4392,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#r9-self-healing-kernel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R9. Self-Healing Kernel
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="R9. Self-Healing Kernel">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#r91-pattern-detection-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R9.1 Pattern Detection Engine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#r92-detectable-patterns-and-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R9.2 Detectable Patterns and Actions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#r93-learning-not-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R9.3 Learning, Not Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#r94-crash-recovery-self-healing-in-the-literal-sense" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R9.4 Crash Recovery (Self-Healing in the Literal Sense)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#implementation-priority" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4936,6 +5058,81 @@ archive_{year}.db      -- read-only past data, compressed
 </table>
 <p><strong>No core code changes.</strong> Each domain = new seed data + optional handler JS + optional role_band colours.</p>
 <hr />
+<h2 id="r9-self-healing-kernel">R9. Self-Healing Kernel<a class="headerlink" href="#r9-self-healing-kernel" title="Permanent link">&para;</a></h2>
+<p><strong>Goal:</strong> The <code>kernel_ops</code> log is not just an audit trail — it is a behavioural observation engine. By analysing op patterns, the kernel detects user habits, system stress, and data anomalies, then acts pre-emptively without user intervention.</p>
+<h3 id="r91-pattern-detection-engine">R9.1 Pattern Detection Engine<a class="headerlink" href="#r91-pattern-detection-engine" title="Permanent link">&para;</a></h3>
+<p>A background worker (<code>requestIdleCallback</code>) periodically scans recent <code>kernel_ops</code> entries and maintains a small <code>kernel_patterns</code> table:</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">kernel_patterns</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="n">pattern_id</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">  </span><span class="n">pattern_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;FREQUENCY&#39;, &#39;TIMING&#39;, &#39;ANOMALY&#39;, &#39;PRESSURE&#39;</span>
+<span class="w">  </span><span class="n">entity_key</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">         </span><span class="c1">-- what the pattern is about (table, record, query)</span>
+<span class="w">  </span><span class="n">frequency</span><span class="w"> </span><span class="nb">INTEGER</span><span class="p">,</span><span class="w">       </span><span class="c1">-- times observed</span>
+<span class="w">  </span><span class="n">last_seen</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">          </span><span class="c1">-- ISO timestamp</span>
+<span class="w">  </span><span class="n">action</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">             </span><span class="c1">-- what to do when pattern fires</span>
+<span class="w">  </span><span class="n">metadata</span><span class="w"> </span><span class="n">JSON</span><span class="w">            </span><span class="c1">-- thresholds, parameters</span>
+<span class="p">);</span>
+</code></pre></div>
+<h3 id="r92-detectable-patterns-and-actions">R9.2 Detectable Patterns and Actions<a class="headerlink" href="#r92-detectable-patterns-and-actions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Detection method</th>
+<th>Automatic action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Daily search</strong> — user searches "pending invoices" every morning</td>
+<td><code>GROUP BY op_type, DATE(timestamp)</code> frequency &gt; 5 consecutive days</td>
+<td>Pre-fetch that query result into FTS5 cache before 9am (or at app open)</td>
+</tr>
+<tr>
+<td><strong>Hot record</strong> — same BPartner opened 10+ times in a week</td>
+<td><code>COUNT(*) WHERE entity_id = X AND op_type = 'VIEW'</code></td>
+<td>Pin to Recent Changes constellation, keep in memory</td>
+</tr>
+<tr>
+<td><strong>Concurrent edit</strong> — two user_tags writing same entity within 5 minutes</td>
+<td><code>WHERE entity_id = X AND timestamp &gt; (now - 5min) GROUP BY user_tag HAVING COUNT(DISTINCT user_tag) &gt; 1</code></td>
+<td>Visual indicator on bubble ("also edited by Desk-2"), queue merge</td>
+</tr>
+<tr>
+<td><strong>Stale data</strong> — a document untouched for 90+ days</td>
+<td><code>MAX(timestamp) WHERE entity_id = X &lt; (now - 90d)</code></td>
+<td>Dim bubble on globe, suggest archival</td>
+</tr>
+<tr>
+<td><strong>Memory pressure</strong> — total loaded records &gt; device threshold</td>
+<td><code>navigator.deviceMemory</code> + row count monitoring</td>
+<td>Unload cold shards, reduce bubble count, defer non-critical queries</td>
+</tr>
+<tr>
+<td><strong>Error spike</strong> — 3+ failed ops in 1 minute</td>
+<td><code>WHERE op_type LIKE '%ERROR%' AND timestamp &gt; (now - 1min)</code></td>
+<td>Surface warning toast, log diagnostic snapshot</td>
+</tr>
+<tr>
+<td><strong>Workflow bottleneck</strong> — documents stuck in "In Progress" &gt; 7 days</td>
+<td><code>WHERE metadata-&gt;&gt;'docStatus' = 'IP' AND timestamp &lt; (now - 7d)</code></td>
+<td>Highlight as red bubbles, suggest escalation</td>
+</tr>
+</tbody>
+</table>
+<h3 id="r93-learning-not-rules">R9.3 Learning, Not Rules<a class="headerlink" href="#r93-learning-not-rules" title="Permanent link">&para;</a></h3>
+<p>The kernel does not use hardcoded rules. It observes, counts, and applies thresholds:
+- <strong>Frequency threshold</strong> (default 5 in 7 days) → pattern qualifies as "habit"
+- <strong>Recency decay</strong> — patterns not observed for 30 days are demoted
+- <strong>User override</strong> — user can dismiss a pre-emptive action, kernel stops suggesting it</p>
+<p>This is not AI/ML — it is simple SQL aggregation over an append-only log. The intelligence is in what you count, not how you count it.</p>
+<h3 id="r94-crash-recovery-self-healing-in-the-literal-sense">R9.4 Crash Recovery (Self-Healing in the Literal Sense)<a class="headerlink" href="#r94-crash-recovery-self-healing-in-the-literal-sense" title="Permanent link">&para;</a></h3>
+<p>The kernel log is the system's journal in the database sense:
+1. Every mutation writes to <code>kernel_ops</code> <strong>before</strong> updating materialized views (FTS5, globe positions, journal)
+2. On crash/reload: replay <code>kernel_ops WHERE replayed = 0</code>
+3. Materialized views are reconstructed from the log — no data loss
+4. Checkpoint every 1000 ops to a snapshot file (keep last 2)</p>
+<p><strong>Recovery benchmark target (R4/B7):</strong> 10K ops replayed in &lt; 2 seconds.</p>
+<hr />
 <h2 id="implementation-priority">Implementation Priority<a class="headerlink" href="#implementation-priority" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -4994,6 +5191,12 @@ archive_{year}.db      -- read-only past data, compressed
 <td>R8 — Domain packs (F&amp;B, WMS)</td>
 <td>R1 + R2 (search + data model proven)</td>
 <td>1-2 per domain</td>
+</tr>
+<tr>
+<td><strong>P8</strong></td>
+<td>R9 — Self-Healing Kernel</td>
+<td>R1 + R4 (needs search + benchmarks to measure)</td>
+<td>2</td>
 </tr>
 </tbody>
 </table>
