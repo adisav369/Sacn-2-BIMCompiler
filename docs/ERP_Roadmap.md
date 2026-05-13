@@ -398,19 +398,128 @@ The kernel log is the system's journal in the database sense:
 
 ---
 
+## R10. Dynamic Bubble Traversal — Graph Explorer
+
+**Goal:** Transform the Data Globe from a static InfoWindow viewer into a **traversable relationship graph**. Click a bubble → its children orbit into view. Click a child → drill deeper. The globe becomes a graph database explorer with zero latency.
+
+### R10.1 FK Relationship Discovery (No New Tables)
+
+The AD already encodes all foreign key relationships. `AD_Column` where `AD_Reference_ID = 19` (Table Direct) or `AD_Reference_ID = 30` (Search) points from one table to another. At init time, build an in-memory relationship map:
+
+```javascript
+// Derived from AD_Column metadata — no relationships table needed
+// AD_Column.ColumnName = 'C_BPartner_ID' in AD_Table 'C_Order'
+// → C_Order has FK to C_BPartner → BPartner is parent, Orders are children
+function buildRelationshipMap(db) {
+  // SELECT c.ColumnName, t.TableName, c.AD_Reference_ID
+  // FROM AD_Column c JOIN AD_Table t ON c.AD_Table_ID = t.AD_Table_ID
+  // WHERE c.ColumnName LIKE '%_ID' AND c.AD_Reference_ID IN (19, 30)
+  // → { 'C_BPartner': ['C_Order', 'C_Invoice', 'C_Payment', 'M_InOut', ...] }
+}
+```
+
+**Key relationships discovered automatically from AD:**
+- `C_BPartner` → `C_Order`, `C_Invoice`, `C_Payment`, `M_InOut`, `C_Project`
+- `C_Order` → `C_OrderLine` → `M_Product`
+- `C_Invoice` → `C_InvoiceLine` → `M_Product`
+- `M_Product` → `M_ProductPrice`, `M_Storage`, `C_OrderLine`, `C_InvoiceLine`
+- `M_PriceList` → `M_PriceList_Version` → `M_ProductPrice`
+- `M_Warehouse` → `M_Locator` → `M_Storage`
+- `C_Project` → `C_ProjectPhase` → `C_ProjectTask`
+
+### R10.2 Child Spawning on Focus
+
+When a bubble receives focus (click or search jump):
+
+1. Query relationship map for child tables
+2. For each child table, `SELECT` records where FK = parent record ID
+3. Spawn child bubbles orbiting parent (radial for <10, spiral for 10+)
+4. Animate: grow from parent center → orbit position (300ms, ease-out)
+5. Limit to 20 children; show "+N more" bubble if exceeded
+
+```javascript
+function onBubbleFocus(bubble) {
+  var children = relationshipMap[bubble.table] || [];
+  children.forEach(function (childTable) {
+    var fkCol = bubble.table + '_ID';
+    var records = ADData.readRecords(db, childTable,
+      fkCol + ' = ' + bubble.record_id, null);
+    // Spawn up to 20 child bubbles
+  });
+}
+```
+
+### R10.3 Bubble Weight and Visual Prominence
+
+Composite weight determines bubble size:
+
+| Factor | Source | Weight contribution |
+|---|---|---|
+| Base importance | Table type (document > line > lookup) | 1-5 |
+| Child count | `COUNT` of FK references to this record | +1 per 10 children, max +5 |
+| Document status | `CO` = +2, `DR` = -1, `VO` = -2 | -2 to +2 |
+| Recency | `kernel_ops` last access within 7 days | +1 |
+
+Visual mapping:
+- Weight 1-3: small (radius 0.4)
+- Weight 4-7: medium (radius 0.7)
+- Weight 8-12: large (radius 1.0)
+- Weight 13+: hero (radius 1.4, pulsing glow)
+
+### R10.4 Bidirectional Navigation
+
+- **Down:** Click bubble → children spawn
+- **Up:** Left arrow key or "Parent" button → camera jumps to parent bubble
+- **Breadcrumb trail:** `PriceList 2025 > Version Mar > Oak Table > Storage`
+- **Connection lines:** Curved QuadraticBezier lines from parent to focused children
+
+### R10.5 Memory Management
+
+- Children persist 30 seconds after focus moves away, then unload
+- Maximum 500 active bubbles — oldest children evicted first
+- `navigator.deviceMemory < 4` → reduce to 200 active bubbles
+- Focus events logged to `kernel_ops` as `BUBBLE_FOCUS` for R9 pattern detection
+
+### R10.6 Integration Points
+
+| Feature | Integration |
+|---|---|
+| **R1 Smart Search** | Search hit → auto-focus bubble → children spawn automatically |
+| **Role filtering** | Children filtered by role (SALE cannot see supplier children) |
+| **R9 Self-Healing** | Frequently focused bubbles pre-spawn children on app load |
+| **Offline** | All FK queries are local SQLite — zero latency traversal |
+
+### R10.7 Performance Targets
+
+| Scenario | Target |
+|---|---|
+| Spawn first 20 children | < 50ms (query + render) |
+| Focus switch | < 30ms |
+| Weight recalculation | < 1ms per bubble |
+| 500 active bubbles | < 200MB |
+
+### R10.8 Implementation
+
+New file: `bubble_graph.js` — relationship map builder, child spawner, weight calculator, orbit animator. Extends `ad_graph.js` globe renderer.
+
+New tests: `tests/test_bubble_graph.js` — FK discovery, child spawning, weight calculation, pagination, parent navigation, memory limits. Target 30+ tests.
+
+---
+
 ## Implementation Priority
 
-| Priority | Item | Depends on | Est. sessions |
-|---|---|---|---|
-| **P0** | R2 — Full iDempiere data export | `export_ad.sh` extension | 1-2 |
-| **P1** | R1 — FTS5 Smart Search | R2 (needs data to search) | 2-3 |
-| **P2** | R4 — Benchmark suite | R2 + R1 (needs data + queries to measure) | 1 |
-| **P3** | R5 — Offline OPFS persistence | SW already done, OPFS is incremental | 1-2 |
-| **P4** | R3 — Database sharding | R4 (benchmarks prove when sharding is needed) | 2 |
-| **P5** | R6 — CRDT sync | R5 (offline must work first) | 3-4 |
-| **P6** | R7 — Migration scripts (Odoo, SAP) | R2 (iDempiere migration proves the pattern) | 2 per source |
-| **P7** | R8 — Domain packs (F&B, WMS) | R1 + R2 (search + data model proven) | 1-2 per domain |
-| **P8** | R9 — Self-Healing Kernel | R1 + R4 (needs search + benchmarks to measure) | 2 |
+| Priority | Item | Depends on | Est. sessions | Status |
+|---|---|---|---|---|
+| **P0** | R2 — Full iDempiere data export | `export_ad.sh` extension | 1-2 | **DONE** (S258) |
+| **P1** | R1 — FTS5 Smart Search | R2 (needs data to search) | 2-3 | **DONE** (S258) |
+| **P2** | R10 — Dynamic Bubble Traversal | R1 + R2 (needs search + data) | 2-3 | Next |
+| **P3** | R4 — Benchmark suite | R2 + R1 (needs data + queries to measure) | 1 | |
+| **P4** | R5 — Offline OPFS persistence | SW already done, OPFS is incremental | 1-2 | |
+| **P5** | R3 — Database sharding | R4 (benchmarks prove when sharding is needed) | 2 | |
+| **P6** | R6 — CRDT sync | R5 (offline must work first) | 3-4 | |
+| **P7** | R7 — Migration scripts (Odoo, SAP) | R2 (iDempiere migration proves the pattern) | 2 per source | |
+| **P8** | R8 — Domain packs (F&B, WMS) | R1 + R2 (search + data model proven) | 1-2 per domain | |
+| **P9** | R9 — Self-Healing Kernel | R1 + R4 (needs search + benchmarks to measure) | 2 | |
 
 ---
 
@@ -428,4 +537,4 @@ The kernel log is the system's journal in the database sense:
 
 ---
 
-*Last updated: 2026-05-14. For architecture and design rationale, see [SpatialERP_OOTB.md](SpatialERP_OOTB.md).*
+*Last updated: 2026-05-14 (R1+R2 done, R10 spec'd). For architecture and design rationale, see [SpatialERP_OOTB.md](SpatialERP_OOTB.md).*
