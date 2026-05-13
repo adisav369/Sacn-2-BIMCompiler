@@ -799,6 +799,171 @@ In 3D view (desktop) or card thumbnails (mobile), objects colour by status:
 
 The user's eye is drawn to red. No dashboard needed.
 
+### 6.5 Data Globe — Spatial Navigation (S257, `ad_graph.js`)
+
+Traditional ERP presents data as a tree: menu → window → tab → grid → form.
+But ERP data is a **graph**: partners link to products, products link to
+prices, prices link to orders, orders link to invoices. The tree UI forces
+a linear path through a non-linear structure. Users compensate by opening
+8 tabs, alt-tabbing, and running reports.
+
+The Data Globe renders the graph directly. Every AD_Table with data becomes
+a node on a 3D sphere. The user sees the entire data landscape in one glance.
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    DATA GLOBE                             │
+│                                                           │
+│          ◉ Partners (18)                                  │
+│         ╱ ╲                                               │
+│   ◉ Contacts  ◉───◉ Products (55)                        │
+│        │       Prices   │                                 │
+│   ◉ Locations    (131)  ◉ Categories (13)                 │
+│                                                           │
+│   Position = importance    Colour = status                │
+│   Size = data volume       Lines = FK relationships       │
+│   Front = active           Back = archived                │
+│   Drag = orbit             Tap = drill                    │
+└──────────────────────────────────────────────────────────┘
+```
+
+**One glance replaces:** a dashboard, a status report, a navigation menu,
+and a search query. The spatial layout *is* the analysis.
+
+#### How it works
+
+1. **Build**: Query each AD_Table for row count and classify records by
+   status (DocStatus, IsActive) + date freshness (Updated/Created) + field
+   completeness. Fibonacci sphere distributes nodes evenly — active records
+   placed at front, inactive behind.
+
+2. **Render**: Canvas 2D at 60fps. Each node projected from 3D sphere
+   coordinates to 2D screen via perspective divide. Painter's algorithm
+   (far-first) gives depth. Front nodes are large and bright; back nodes
+   are small, dim dots.
+
+3. **Interact**: Drag to orbit the globe. Momentum on release — flick it
+   and it coasts to a stop. Scroll to zoom. Tap a node — it flies to front
+   centre (ease-in-out, ~0.7s) then drills into its records. ESC or tap
+   empty space to go back.
+
+#### Star colouring — status at a glance
+
+Records are coloured by a blended score of status + freshness + completeness:
+
+| Colour | Meaning | Source |
+|---|---|---|
+| Cyan `#4fc3f7` | Complete / approved / hot | DocStatus=CO/CL/AP or activity > 0.75 |
+| Green `#7bed9f` | Active, recently updated | Activity 0.55–0.75 |
+| Amber `#ffd93d` | Partial, ageing | Activity 0.35–0.55 |
+| Red `#ff7043` | Draft / sparse / stale | DocStatus=DR or activity < 0.35 |
+| Grey `#555` | Archived / inactive | IsActive=N |
+
+Activity score = `freshness(Updated) × 0.4 + field_completeness × 0.6`
+
+Active records glow — double glow rings, bright white core. Archived
+records are faint dots. The CFO sees dataset health instantly.
+
+#### Entity icons
+
+Each table type has a distinctive Canvas-drawn icon:
+
+| Entity | Icon | Drawn shape |
+|---|---|---|
+| C_BPartner | Person | Head circle + shoulder arc |
+| M_Product | Product | Box with lid line |
+| C_BPartner_Location | Location | Map pin with dot |
+| M_ProductPrice | Price | Circle with $ |
+| M_Product_Category | Category | Tag pentagon |
+| AD_User | Contact | Card rectangle + head |
+| AD_* (system) | Table | Grid rows |
+
+#### Drill flow
+
+```
+HOME GLOBE              ENTITY GLOBE            CARD VIEW
+┌───────────────┐      ┌───────────────┐      ┌───────────────┐
+│ ◉ Partners    │ tap  │ ◉ Acme Corp   │ tap  │ Name: Acme    │
+│   ╲           │ ───→ │ ◉ Seed Farm   │ ───→ │ Status: [CO]  │
+│ ◉ Products    │      │ ● old vendor  │      │ Partner: FK   │
+│   ╱           │      │ ● archived    │      │ [< 3/18 >]    │
+│ ◉ Prices      │      │               │      ├───────────────┤
+│               │      │ drag=orbit    │      │ Contacts (2)  │
+│ drag=orbit    │      │ tap=open card │      │ Locations (1) │
+│ tap=drill     │      │ ESC=back      │      │ (detail tabs) │
+└───────────────┘      └───────────────┘      └───────────────┘
+```
+
+#### Why this works on mobile
+
+| Desktop | Mobile | Why natural |
+|---|---|---|
+| Mouse drag | Finger drag | Same gesture, more intuitive on touch |
+| Scroll wheel | Pinch zoom | Native phone gesture |
+| Click | Tap | Identical |
+| Hover tooltip | Long press | Standard mobile pattern |
+| Arrow keys | Swipe on cards | Already implemented in card view |
+| ESC | Back gesture | OS-native |
+
+The globe is **better** on mobile than desktop:
+- No hover dependency — everything is tap/drag
+- Orbit gesture = same muscle memory as Google Earth / Apple Maps
+- Fly-to-front animation gives spatial feedback that flat lists lack
+- Star colouring replaces column sorting (awkward on phones)
+
+#### The governance layer
+
+The globe doesn't know about Business Partners or Products. It knows about
+AD_Tables with rows. Any new table in the Application Dictionary automatically
+appears as a node. Add fields → they render in card view. Add DisplayLogic →
+fields show/hide by context. The metadata *is* the UI definition.
+
+This makes the globe a **governance layer**: it shows the health of the
+entire dataset at a glance. Which entities have activity? Which are stale?
+Which have sparse data? No report needed — the spatial layout tells you.
+
+```
+Stack:
+
+  Layer 4: SPATIAL UI  (ad_graph.js)    ← globe / constellation
+  Layer 3: CARD UI     (ad_ui.js)       ← forms / panels / CRUD
+  Layer 2: DATA ENGINE (ad_data.js)     ← generic CRUD + AD parser
+  Layer 1: STORAGE     (SQLite WASM)    ← 7.7MB AD + data
+  Layer 0: SPEC        (AD metadata)    ← self-describing schema
+```
+
+#### Future: Three.js upgrade
+
+When erp.html loads Three.js, the globe upgrades to true WebGL:
+- Depth-of-field blur (bokeh) for back-hemisphere nodes
+- Bloom post-processing for active star glow
+- Sprite textures for product images / BP photos
+- OrbitControls with inertia (proven in BIM viewer)
+- Particle trails connecting recently-edited records
+
+#### Future: kernel_ops live pulse
+
+Every `commitOp()` writes to the op log. The globe subscribes:
+- Record just saved → node brightens for 10 seconds, then fades
+- Record edited by another tab (BroadcastChannel) → node pulses
+- Undo → node flickers briefly
+- The globe becomes a **live operations monitor**
+
+#### Future: mind map mode
+
+Toggle from globe to flat force-directed graph:
+- Drag nodes freely, pin them in place
+- Group by category (auto-cluster products, separate from partners)
+- Draw custom relationship edges
+- Export as PNG for presentations
+- Miro board — but populated from live ERP data
+
+#### Proven by tests (S257)
+
+`GRAPH-1..9` in `test_ad_ui.js`: node creation for both clients, entity
+drill, system view, 6 GardenWorld entities, 7 system entities, 18–55
+records per entity view. 153/153 total tests passing.
+
 ---
 
 ## 7. [POC](SpatialERP_POC.md) First — All-in-One Device
