@@ -635,6 +635,63 @@ function run() {
     'P6: Issue: GardenWorld broad search has no AD_ leaks (except AD_User which is GW)',
     'leaks=' + gwBadClient.length + ' total=' + gwAll.length);
 
+  // ── Section Q: Perspective overshoot ────────────────────────────────
+
+  results.push('\n--- Section Q: Perspective overshoot ---');
+
+  // Q1: Front bubble scale must not exceed 2x (would overshoot viewport)
+  ADGraph.destroy();
+  ADGraph.init(mockCanvas, db, 'gardenworld', mockDrill);
+  // Let grow animation complete by snapping nodes to target
+  var radius = ADGraph.getRadius();
+  // Perspective=450, front node at z=-radius: scale = 450/(450-radius)
+  var maxScale = 450 / (450 - radius);
+  assert(maxScale < 2.5,
+    'Q1: Issue: Front bubble perspective scale < 2.5x',
+    'maxScale=' + maxScale.toFixed(2) + ' radius=' + Math.round(radius) +
+    ' (perspective=450, front z=-' + Math.round(radius) + ')');
+
+  // Q2: Back bubble scale should be > 0.4 (still visible)
+  var minScale = 450 / (450 + radius);
+  assert(minScale > 0.4,
+    'Q2: Issue: Back bubble perspective scale > 0.4x (visible)',
+    'minScale=' + minScale.toFixed(2));
+
+  // Q3: Front/back ratio should be < 5x (not too extreme)
+  var ratio = maxScale / minScale;
+  assert(ratio < 5,
+    'Q3: Issue: Front/back scale ratio < 5x',
+    'ratio=' + ratio.toFixed(2));
+
+  // ── Section R: Fly shortest path (no multi-revolution) ────────────
+
+  results.push('\n--- Section R: Fly shortest path ---');
+
+  // R1: Navigate to entity, then goBack — fly delta should be < PI (shortest path)
+  _scenarioLogs = [];
+  ADGraph.navigateToRecord('C_BPartner', 120);
+  // Now cross-table focus triggers returnHome + fly
+  ADGraph.focusNode('M_Product', null);
+  var flyDelta = ADGraph.getFlyDelta();
+  assert(flyDelta <= Math.PI + 0.01,
+    'R1: Issue: Return fly uses shortest path (delta <= PI)',
+    'flyDelta=' + flyDelta.toFixed(3) + ' PI=' + Math.PI.toFixed(3));
+
+  // R2: Multiple cross-table returns — each should be shortest path
+  ADGraph.navigateToRecord('M_Product', 128);
+  ADGraph.focusNode('C_BPartner', null);
+  var flyDelta2 = ADGraph.getFlyDelta();
+  assert(flyDelta2 <= Math.PI + 0.01,
+    'R2: Issue: Second return also uses shortest path',
+    'flyDelta=' + flyDelta2.toFixed(3));
+
+  // R3: Focus same table on home — fly within PI
+  ADGraph.focusNode('C_Order', null);
+  var flyDelta3 = ADGraph.getFlyDelta();
+  assert(flyDelta3 <= Math.PI + 0.01,
+    'R3: Issue: Same-view focus uses shortest path',
+    'flyDelta=' + flyDelta3.toFixed(3));
+
   // Restore console.log
   console.log = _origLog;
 

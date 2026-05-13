@@ -23,7 +23,7 @@
   var _heatmapHitRegions = [];    // for tap-to-drill on treemap
   var _graphAutoMaxed = false;    // auto-maximize globe on first load
   var _graphIsMaxed = false;      // track current maximized state
-  var _currentClient = 'system';  // 'system' | 'gardenworld'
+  var _currentClient = 'gardenworld';  // 'system' | 'gardenworld'
   var GW_WINDOW_SET = null; // built on init from tables that actually have rows
 
   // ── §2. Bottom navigation bar ──────────────────────────────────────
@@ -1771,6 +1771,17 @@
       }
     });
 
+    // Tap outside search → close it
+    document.addEventListener('pointerdown', function (e) {
+      if (!_searchOverlay || _searchOverlay.style.display === 'none') return;
+      if (_searchOverlay.contains(e.target)) return;
+      // Don't close if tapping the search button itself
+      if (e.target.title === 'Search (Alt+S)') return;
+      _searchOverlay.style.display = 'none';
+      _glassChime(false);
+      console.log('§AD_UI search dismiss tap-outside');
+    });
+
     // Append to graph container if available (visible during fullscreen), else body
     var host = _graphContainer || document.body;
     host.appendChild(_searchOverlay);
@@ -1872,17 +1883,17 @@
 
     // Click handlers — §1.3 deep navigate then open card after globe animation
     var items = resultsEl.querySelectorAll('[data-search-hit]');
+    var _hitFired = false;
     function _searchHitAction(el) {
+      if (_hitFired) return; // guard double-fire (pointerup + click)
+      _hitFired = true;
+      setTimeout(function () { _hitFired = false; }, 300);
       var wid = Number(el.dataset.windowId);
       var table = el.dataset.table;
       var rid = el.dataset.recordId;
       _hideSearchResults();
-      // §1.3 Soft focus TABLE bubble, then open card immediately
-      if (table && typeof ADGraph !== 'undefined' && ADGraph.focusNode) {
-        ADGraph.focusNode(table, rid ? Number(rid) : null);
-      }
       if (wid) {
-        console.log('§AD_UI search activate window=' + wid + ' record=' + rid);
+        console.log('§AD_UI search activate window=' + wid + ' record=' + rid + ' table=' + table);
         openWindow(wid);
       }
     }

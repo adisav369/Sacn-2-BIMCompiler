@@ -151,8 +151,8 @@
     rz = y3 * sinX + z3 * cosX;
     y3 = ry; z3 = rz;
 
-    // Perspective projection — short focal = strong 3D depth
-    var perspective = 300;
+    // Perspective projection — moderate focal for 3D depth without overshoot
+    var perspective = 450;
     var scale = perspective / (perspective + z3);
 
     node.screenX = _cx + x3 * scale;
@@ -1003,12 +1003,14 @@
   // ── Fly-to-front: rotate globe to bring node to dead centre ────────
 
   function _flyToFront(node, callback) {
-    // Find the rotation that puts this node's sphere position at z = -radius (front)
-    // node.sx, sy, sz are its sphere coords before rotation
-    // We need rotY such that the node's x,z rotates to (0, -radius)
-    // and rotX such that y comes to 0
-    var targetRotY = -Math.atan2(node.sx, -node.sz);
-    var targetRotX = -Math.asin(Math.max(-1, Math.min(1, node.sy / _radius)));
+    // Use target position (not animated position which may be 0,0,0 during grow)
+    var fx = (node._targetSx !== undefined) ? node._targetSx : node.sx;
+    var fy = (node._targetSy !== undefined) ? node._targetSy : node.sy;
+    var fz = (node._targetSz !== undefined) ? node._targetSz : node.sz;
+    var fLen = Math.sqrt(fx * fx + fy * fy + fz * fz);
+    if (fLen < 1) { fLen = _radius; fx = 0; fy = 0; fz = -fLen; } // safety
+    var targetRotY = -Math.atan2(fx, -fz);
+    var targetRotX = -Math.asin(Math.max(-1, Math.min(1, fy / fLen)));
 
     // Normalise angles to avoid spinning the long way around
     while (targetRotY - _rotY > Math.PI) targetRotY -= Math.PI * 2;
@@ -1205,9 +1207,13 @@
 
   function _onTouchEnd(e) {
     if (e.touches.length < 2) {
-      // Pinch-close → go back if zoomed below 60% of start
-      if (_pinchStartDist > 0 && _currentView !== 'home') {
-        if (_radius < _pinchStartRadius * 0.6) {
+      // Kill momentum after pinch — prevent spin-out when fingers lift
+      if (_pinchStartDist > 0) {
+        _momentumY = 0;
+        _momentumX = 0;
+        _dragging = false;
+        // Pinch-close → go back if zoomed below 60% of start
+        if (_currentView !== 'home' && _radius < _pinchStartRadius * 0.6) {
           console.log('§PINCH_CLOSE → goBack radius=' + Math.round(_radius) +
                       ' start=' + Math.round(_pinchStartRadius));
           _goBack();
@@ -1303,6 +1309,8 @@
     collapseAll: _collapseAll,
     zoom: function (delta) { _radius = Math.max(40, _radius + delta); _rebuildSpherePositions(); },
     getRadius: function () { return _radius; },
+    getFlyDelta: function () { return Math.abs(_flyRotYEnd - _flyRotYStart); },
+    getScreenScale: function (idx) { return _nodes[idx] ? _nodes[idx].screenScale : 0; },
     getNodeCount: function () { return _nodes.length; },
     getCurrentView: function () { return _currentView; },
     getBubbleWeight: _getBubbleWeight
