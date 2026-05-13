@@ -315,3 +315,189 @@ Every screen generates a shareable URL:
 - `?window=123&record=117` → opens specific partner
 - `?client=gardenworld` → auto-switches client
 - QR code canvas rendered in More menu, scannable
+
+## S257 delivered
+
+**3,249 lines across 11 files. 153/153 tests.**
+
+| File | Lines | What |
+|---|---|---|
+| `deploy/dev/ad_graph.js` | 757 | Data Globe: Fibonacci sphere, perspective projection, drag-orbit, fly-to-front, status colouring |
+| `deploy/dev/ad_ui.js` | 1,450 | App bar, CRUD toolbar, multi-panel, FK resolution, graph integration |
+| `deploy/dev/ad_data.js` | 278 | +resolveFK, clearFKCache, getTableStats, getFieldCompleteness |
+| `deploy/dev/ad_charts.js` | 450 | +drawTreemap (grid, DPR), +drawCompleteness |
+| `deploy/dev/tests/test_ad_ui.js` | 870 | 153 tests: CRUD lifecycle, FK chain, navigation, DisplayLogic, graph |
+
+---
+
+## §20. Spatial UI — The ERP Governance Layer
+
+### The problem with traditional ERP UI
+
+ERP was born in the 1970s as character-mode terminals. SAP's GUI in the 1990s
+was the same terminal with a skin. Web ERP (Odoo, iDempiere ZK) is the same
+terminal in a browser. Four decades, same paradigm:
+
+```
+┌──────────────────────────────────────┐
+│ Menu → Window → Tab → Grid → Form   │  ← linear, sequential
+│ User sees: ONE record at a time      │  ← no context
+│ To compare: open another tab/window  │  ← lost context
+│ To assess: run a report              │  ← delayed insight
+└──────────────────────────────────────┘
+```
+
+The user navigates a **tree** (menu → window → tab → record) but the data
+is a **graph** (partners ↔ products ↔ prices ↔ orders ↔ invoices). The tree
+UI hides the graph structure. Users compensate by opening 8 tabs, alt-tabbing,
+and running reports. This is the entire ERP UX crisis.
+
+### The Spatial UI answer
+
+Replace the tree with the graph. Literally.
+
+```
+┌──────────────────────────────────────────────────┐
+│           DATA GLOBE (ad_graph.js)                │
+│                                                    │
+│    Partners ●───────● Products                     │
+│       │    ╲       ╱     │                         │
+│       │     ╲     ╱      │                         │
+│    Contacts  ●───●  Categories                     │
+│              Prices                                │
+│                                                    │
+│  Position = importance (front = active)             │
+│  Colour = status (cyan/green/amber/red/grey)        │
+│  Size = data volume or activity                     │
+│  Connections = FK relationships                     │
+│  Drag = orbit   Zoom = focus   Tap = drill          │
+└──────────────────────────────────────────────────┘
+```
+
+One glance replaces: a dashboard, a status report, a navigation menu,
+and a search query. The spatial layout *is* the analysis.
+
+### How Spatial UI governs the ERP stack
+
+```
+Layer 4: SPATIAL UI (ad_graph.js)
+  │  Globe / mind map / constellation
+  │  Renders ANY AD_Table as nodes on a sphere
+  │  Colour from: DocStatus + Updated date + field completeness
+  │  Drill: entity → records → card view → inline edit
+  │
+Layer 3: CARD UI (ad_ui.js)
+  │  Master-detail panels, CRUD toolbar, arrow keys
+  │  Renders AD_Field metadata as form fields
+  │  FK resolution shows Name not integer
+  │  Multi-panel: master top, detail tabs below side-by-side
+  │
+Layer 2: DATA ENGINE (ad_data.js + ad_parser.js)
+  │  Generic CRUD for any AD_Table
+  │  AD metadata parser: menu tree, windows, tabs, fields
+  │  DisplayLogic evaluator, reference resolver
+  │  kernel_ops integration for undo/redo/audit
+  │
+Layer 1: STORAGE (SQLite WASM + ad_seed.db)
+  │  7.7MB iDempiere Application Dictionary
+  │  587 menus, 370 windows, 1130 tabs, 20911 fields
+  │  GardenWorld demo data: 18 partners, 55 products
+  │  Runs in browser, no server, no network
+  │
+Layer 0: SPEC (AD metadata is the spec)
+     AD_Window defines windows. AD_Tab defines tabs.
+     AD_Field defines fields. AD_Column defines types.
+     AD_Reference defines dropdowns. DisplayLogic defines visibility.
+     The UI renders from metadata — zero hardcoded forms.
+```
+
+**Key insight:** Layer 4 (Spatial UI) doesn't know about Business Partners
+or Products. It knows about AD_Tables with rows. Any new table added to the
+AD automatically appears as a node on the globe. The metadata *is* the UI
+definition. Add a table → it appears. Add fields → they render. Add status
+logic → the globe colours change. No code change needed.
+
+This is what makes it a governance layer: it shows the health of the entire
+ERP dataset at a glance. The CFO sees which entities have activity (bright
+front stars) and which are stale (grey dust behind). The data analyst sees
+field completeness without running a report. The developer sees which AD
+tables have data and which are empty schema.
+
+### Mobile UX — why the globe works on phones
+
+| Desktop metaphor | Mobile equivalent | Why it works |
+|---|---|---|
+| Mouse drag | Finger drag | Same gesture, more natural on touch |
+| Scroll wheel zoom | Pinch zoom | Native phone gesture |
+| Click to drill | Tap to drill | Identical |
+| Hover for tooltip | Long press for info | Standard mobile pattern |
+| Arrow keys | Swipe left/right on cards | Already implemented |
+| ESC to go back | Swipe down / back gesture | OS-native |
+| Multi-panel side-by-side | Stack vertically (flex-wrap) | Already responsive |
+
+The globe is actually **better** on mobile because:
+1. No hover state needed — everything is tap/drag
+2. The orbit gesture (drag to spin) is the same muscle memory as Google Earth
+3. The fly-to-front animation gives spatial feedback that flat lists lack
+4. Status colouring replaces column sorting (which is awkward on mobile)
+
+### Mobile navigation flow
+
+```
+HOME GLOBE          TAP ENTITY         TAP RECORD
+┌─────────┐        ┌─────────┐        ┌─────────┐
+│  ◉ Partners       │  ◉ Acme  │        │ Name    │
+│     ╲              │  ◉ Farm  │        │ Status  │
+│  ◉ Products       │  ● old   │        │ Partner │
+│     ╱              │  ● arch  │        │ Amount  │
+│  ◉ Prices          │          │        │ [< 3 >] │
+│                    │          │        ├─────────┤
+│ drag=orbit         │ drag=orbit        │ Contact │
+│ tap=drill          │ tap=open │        │ Location│
+│                    │ ESC=back │        │ (panels)│
+└─────────┘        └─────────┘        └─────────┘
+   swipe ↓             swipe ↓            swipe ↓
+ (menu list)         (back)              (back)
+```
+
+### What this replaces in competing ERPs
+
+| SAP / Odoo / iDempiere | Spatial ERP OOTB |
+|---|---|
+| Dashboard: 6 KPI widgets, each a separate SQL | Globe: all entities visible, sized by data volume |
+| Navigation: 3-level menu → window → tab | Tap entity node → fly to records |
+| Status overview: run a report, wait, read table | Star colour = status. Instant. |
+| Cross-entity view: open 3 tabs, alt-tab | Globe shows all entities + connections simultaneously |
+| Mobile: responsive grid, still flat | 3D globe, touch-native, spatial memory |
+| Onboarding: 2-week training course | Tap the bright star. Edit. Done. |
+
+### §20.1 Future: Three.js upgrade
+
+When erp.html loads Three.js (it doesn't today — deliberately lightweight),
+the globe can upgrade to true WebGL:
+- Depth-of-field blur (bokeh) for back-hemisphere nodes
+- Bloom post-processing for active star glow
+- Particle trails connecting recently-edited records
+- Sprite textures for product images / BP logos
+- OrbitControls with inertia (already proven in BIM viewer)
+
+### §20.2 Future: kernel_ops live pulse
+
+```
+kernel_ops.commitOp(db, 'AD_SAVE', { table: 'C_BPartner', id: 117 });
+```
+
+Every commit writes to the op log. The globe can subscribe:
+- Record just saved → node brightens for 10 seconds
+- Record saved by another user (via BroadcastChannel) → node pulses
+- Undo → node flickers red briefly
+- This turns the globe into a **live operations monitor**
+
+### §20.3 Future: mind map mode
+
+Toggle from globe to flat force-directed graph:
+- Drag nodes freely, pin them in place
+- Group by category (auto-cluster products, separate from partners)
+- Draw custom edges (user connects "this partner supplies this product")
+- Export as PNG / SVG for presentations
+- Think: Miro board, but populated from live ERP data
