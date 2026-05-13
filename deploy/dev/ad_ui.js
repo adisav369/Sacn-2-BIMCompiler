@@ -114,32 +114,6 @@
     // Data constellation — interactive graph replaces KPI cards
     _renderHomeGraph();
 
-    // Search box — FTS5 smart search (R1) + menu filter fallback
-    var searchWrap = document.createElement('div');
-    searchWrap.style.cssText = 'position:relative;margin-bottom:12px;';
-    var search = document.createElement('input');
-    search.type = 'search';
-    search.placeholder = 'Search everything\u2026  partners, orders, invoices, products';
-    search.style.cssText = 'width:100%;padding:12px 14px;background:#1a1a24;color:#e8e8ed;' +
-      'border:1px solid rgba(255,255,255,0.08);border-radius:12px;font-size:14px;' +
-      'outline:none;min-height:48px;transition:border-color 0.2s;';
-    search.onfocus = function() { this.style.borderColor = 'rgba(108,159,255,0.4)'; };
-    search.onblur = function() {
-      this.style.borderColor = 'rgba(255,255,255,0.08)';
-      // Delay hide so click on result registers
-      setTimeout(function () { _hideSearchResults(); }, 200);
-    };
-    searchWrap.appendChild(search);
-
-    // Search results dropdown
-    var searchResults = document.createElement('div');
-    searchResults.id = 'search-results';
-    searchResults.style.cssText = 'display:none;position:absolute;left:0;right:0;top:52px;' +
-      'max-height:400px;overflow-y:auto;background:#1a1a24;border:1px solid rgba(108,159,255,0.3);' +
-      'border-radius:12px;z-index:20;box-shadow:0 8px 32px rgba(0,0,0,0.5);';
-    searchWrap.appendChild(searchResults);
-    _contentEl.appendChild(searchWrap);
-
     // Recent windows
     _loadRecent();
     if (_recentWindows.length) {
@@ -172,52 +146,7 @@
     _renderMenuNodes(treeEl, tree, windowSet);
     _contentEl.appendChild(treeEl);
 
-    // Search handler — FTS5 smart search with debounce + menu filter
-    var _searchTimer = null;
-    var _selectedIdx = -1;
-    search.addEventListener('input', function () {
-      var q = this.value.trim();
-      clearTimeout(_searchTimer);
-
-      // Always filter menus immediately
-      var qLower = q.toLowerCase();
-      var items = treeEl.querySelectorAll('[data-menu-item]');
-      for (var i = 0; i < items.length; i++) {
-        var name = (items[i].dataset.menuName || '').toLowerCase();
-        items[i].style.display = (!qLower || name.indexOf(qLower) >= 0) ? '' : 'none';
-      }
-      var folders = treeEl.querySelectorAll('[data-folder]');
-      for (var j = 0; j < folders.length; j++) {
-        folders[j].querySelector('.folder-children').style.display = qLower ? 'block' : '';
-      }
-
-      // FTS5 search with 300ms debounce
-      if (!q || q.length < 2) { _hideSearchResults(); return; }
-      _searchTimer = setTimeout(function () {
-        _doFTSSearch(q, searchResults);
-      }, 300);
-    });
-
-    // Keyboard navigation in search results
-    search.addEventListener('keydown', function (e) {
-      var items = searchResults.querySelectorAll('[data-search-hit]');
-      if (!items.length) return;
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        _selectedIdx = Math.min(_selectedIdx + 1, items.length - 1);
-        _highlightSearchItem(items, _selectedIdx);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        _selectedIdx = Math.max(_selectedIdx - 1, 0);
-        _highlightSearchItem(items, _selectedIdx);
-      } else if (e.key === 'Enter' && _selectedIdx >= 0 && _selectedIdx < items.length) {
-        e.preventDefault();
-        items[_selectedIdx].click();
-      } else if (e.key === 'Escape') {
-        _hideSearchResults();
-        this.blur();
-      }
-    });
+    // (Search is now a floating overlay — see _toggleSearchOverlay / Alt+S)
 
     console.log('§AD_UI showMenu roots=' + tree.length + ' client=' + _currentClient +
                 ' recent=' + _recentWindows.length);
@@ -1193,8 +1122,14 @@
   function _initKeyboard() {
     if (typeof document === 'undefined') return;
     document.addEventListener('keydown', function (e) {
+      // Alt+S — toggle search overlay (works on any screen, even in inputs)
+      if (e.altKey && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        _toggleSearchOverlay();
+        return;
+      }
+
       if (_currentScreen !== 'window') return;
-      // Don't capture if user is typing in an input
       var tag = e.target.tagName;
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
 
@@ -1586,6 +1521,179 @@
     }, 3000);
   }
 
+  // ── Minimize / Maximize ─────────────────────────────────────────
+
+  var _minimized = false;
+  var _minimizeBtn = null;
+
+  function _renderMinimizeBtn() {
+    if (_minimizeBtn) return; // already created
+    _minimizeBtn = document.createElement('button');
+    _minimizeBtn.textContent = '\u2212'; // minus sign
+    _minimizeBtn.title = 'Minimize';
+    _minimizeBtn.style.cssText = 'position:fixed;top:8px;right:12px;z-index:30;' +
+      'width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);' +
+      'background:rgba(30,30,40,0.9);color:#aaa;font-size:20px;cursor:pointer;' +
+      'display:flex;align-items:center;justify-content:center;line-height:1;' +
+      'backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);';
+    _minimizeBtn.addEventListener('pointerup', function (e) {
+      e.preventDefault();
+      _toggleMinimize();
+    });
+    document.body.appendChild(_minimizeBtn);
+  }
+
+  function _toggleMinimize() {
+    _minimized = !_minimized;
+    if (_minimized) {
+      // Collapse: hide content + nav, show only breadcrumb + [+] button
+      _contentEl.style.display = 'none';
+      if (_navEl) _navEl.style.display = 'none';
+      _minimizeBtn.textContent = '+';
+      _minimizeBtn.title = 'Maximize';
+    } else {
+      _contentEl.style.display = '';
+      if (_navEl) _navEl.style.display = '';
+      _minimizeBtn.textContent = '\u2212';
+      _minimizeBtn.title = 'Minimize';
+    }
+    console.log('§AD_UI minimize=' + _minimized);
+  }
+
+  // ── Floating Search Overlay (Alt+S) ────────────────────────────────
+
+  var _searchOverlay = null;
+  var _searchInput = null;
+  var _searchResultsEl = null;
+  var _searchTimer = null;
+  var _dragState = null;
+
+  function _ensureSearchOverlay() {
+    if (_searchOverlay) return;
+
+    _searchOverlay = document.createElement('div');
+    _searchOverlay.id = 'search-overlay';
+    _searchOverlay.style.cssText = 'display:none;position:fixed;top:60px;right:16px;z-index:50;' +
+      'width:360px;max-width:calc(100vw - 32px);' +
+      'background:linear-gradient(145deg,rgba(30,32,48,0.92),rgba(18,18,28,0.96));' +
+      'border:1px solid rgba(108,159,255,0.25);border-radius:16px;' +
+      'box-shadow:0 2px 0 rgba(255,255,255,0.07) inset,' +
+      '0 -1px 0 rgba(0,0,0,0.3) inset,' +
+      '0 12px 48px rgba(0,0,0,0.6),' +
+      '0 0 0 1px rgba(255,255,255,0.04);' +
+      'backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);overflow:hidden;';
+
+    // Drag handle / header
+    var header = document.createElement('div');
+    header.style.cssText = 'padding:10px 14px;cursor:grab;display:flex;align-items:center;' +
+      'gap:8px;border-bottom:1px solid rgba(255,255,255,0.08);user-select:none;' +
+      'background:linear-gradient(180deg,rgba(255,255,255,0.06) 0%,transparent 100%);';
+    header.innerHTML = '<span style="color:#6c9fff;font-size:12px;font-weight:600;flex:1">' +
+      '\u2315 Search (Alt+S)</span>';
+
+    // Close button in header
+    var closeBtn = document.createElement('button');
+    closeBtn.textContent = '\u2715';
+    closeBtn.style.cssText = 'background:none;border:none;color:#666;font-size:14px;' +
+      'cursor:pointer;padding:4px 6px;min-height:auto;';
+    closeBtn.addEventListener('pointerup', function () { _toggleSearchOverlay(); });
+    header.appendChild(closeBtn);
+    _searchOverlay.appendChild(header);
+
+    // Drag logic
+    header.addEventListener('pointerdown', function (e) {
+      if (e.target === closeBtn) return;
+      e.preventDefault();
+      header.style.cursor = 'grabbing';
+      var rect = _searchOverlay.getBoundingClientRect();
+      _dragState = { startX: e.clientX, startY: e.clientY, origLeft: rect.left, origTop: rect.top };
+      _searchOverlay.style.right = 'auto';
+      _searchOverlay.style.left = rect.left + 'px';
+      _searchOverlay.style.top = rect.top + 'px';
+    });
+    document.addEventListener('pointermove', function (e) {
+      if (!_dragState) return;
+      var dx = e.clientX - _dragState.startX;
+      var dy = e.clientY - _dragState.startY;
+      _searchOverlay.style.left = (_dragState.origLeft + dx) + 'px';
+      _searchOverlay.style.top = (_dragState.origTop + dy) + 'px';
+    });
+    document.addEventListener('pointerup', function () {
+      if (_dragState) {
+        _dragState = null;
+        var h = _searchOverlay.querySelector('div');
+        if (h) h.style.cursor = 'grab';
+      }
+    });
+
+    // Search input
+    _searchInput = document.createElement('input');
+    _searchInput.type = 'search';
+    _searchInput.placeholder = 'Partners, orders, invoices, products\u2026';
+    _searchInput.style.cssText = 'width:100%;padding:12px 14px;background:transparent;color:#e8e8ed;' +
+      'border:none;border-bottom:1px solid rgba(255,255,255,0.06);font-size:14px;' +
+      'outline:none;min-height:44px;';
+    _searchOverlay.appendChild(_searchInput);
+
+    // Results
+    _searchResultsEl = document.createElement('div');
+    _searchResultsEl.style.cssText = 'max-height:350px;overflow-y:auto;';
+    _searchOverlay.appendChild(_searchResultsEl);
+
+    // Input handler — FTS5 debounced
+    _searchInput.addEventListener('input', function () {
+      var q = this.value.trim();
+      clearTimeout(_searchTimer);
+      if (!q || q.length < 2) {
+        _searchResultsEl.innerHTML = '';
+        return;
+      }
+      _searchTimer = setTimeout(function () {
+        _doFTSSearch(q, _searchResultsEl);
+      }, 300);
+    });
+
+    // Keyboard nav in results
+    _searchInput.addEventListener('keydown', function (e) {
+      var items = _searchResultsEl.querySelectorAll('[data-search-hit]');
+      if (e.key === 'Escape') {
+        _toggleSearchOverlay();
+        return;
+      }
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        _selectedIdx = Math.min(_selectedIdx + 1, items.length - 1);
+        _highlightSearchItem(items, _selectedIdx);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        _selectedIdx = Math.max(_selectedIdx - 1, 0);
+        _highlightSearchItem(items, _selectedIdx);
+      } else if (e.key === 'Enter' && _selectedIdx >= 0 && _selectedIdx < items.length) {
+        e.preventDefault();
+        items[_selectedIdx].click();
+      }
+    });
+
+    document.body.appendChild(_searchOverlay);
+    console.log('§AD_UI searchOverlay created');
+  }
+
+  function _toggleSearchOverlay() {
+    _ensureSearchOverlay();
+    var visible = _searchOverlay.style.display !== 'none';
+    if (visible) {
+      _searchOverlay.style.display = 'none';
+      console.log('§AD_UI search hide');
+    } else {
+      _searchOverlay.style.display = 'block';
+      _searchInput.value = '';
+      _searchResultsEl.innerHTML = '';
+      _searchInput.focus();
+      console.log('§AD_UI search show');
+    }
+  }
+
   // ── FTS5 Smart Search (R1) ──────────────────────────────────────
 
   function _doFTSSearch(query, resultsEl) {
@@ -1699,6 +1807,7 @@
       console.log('§AD_UI fts5 indexed rows=' + idx.rows + ' ms=' + idx.ms);
     }
 
+    _renderMinimizeBtn();
     showMenu();
 
     console.log('§AD_UI init done');
@@ -1722,5 +1831,5 @@
   if (typeof window !== 'undefined') window.ADUI = ADUI;
   if (typeof module !== 'undefined' && module.exports) module.exports = ADUI;
 
-  console.log('§AD_UI_LOADED v6');
+  console.log('§AD_UI_LOADED v7');
 })();
