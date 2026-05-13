@@ -114,16 +114,31 @@
     // Data constellation — interactive graph replaces KPI cards
     _renderHomeGraph();
 
-    // Search box
+    // Search box — FTS5 smart search (R1) + menu filter fallback
+    var searchWrap = document.createElement('div');
+    searchWrap.style.cssText = 'position:relative;margin-bottom:12px;';
     var search = document.createElement('input');
     search.type = 'search';
-    search.placeholder = 'Search menus\u2026';
+    search.placeholder = 'Search everything\u2026  partners, orders, invoices, products';
     search.style.cssText = 'width:100%;padding:12px 14px;background:#1a1a24;color:#e8e8ed;' +
       'border:1px solid rgba(255,255,255,0.08);border-radius:12px;font-size:14px;' +
-      'margin-bottom:12px;outline:none;min-height:48px;transition:border-color 0.2s;';
+      'outline:none;min-height:48px;transition:border-color 0.2s;';
     search.onfocus = function() { this.style.borderColor = 'rgba(108,159,255,0.4)'; };
-    search.onblur = function() { this.style.borderColor = 'rgba(255,255,255,0.08)'; };
-    _contentEl.appendChild(search);
+    search.onblur = function() {
+      this.style.borderColor = 'rgba(255,255,255,0.08)';
+      // Delay hide so click on result registers
+      setTimeout(function () { _hideSearchResults(); }, 200);
+    };
+    searchWrap.appendChild(search);
+
+    // Search results dropdown
+    var searchResults = document.createElement('div');
+    searchResults.id = 'search-results';
+    searchResults.style.cssText = 'display:none;position:absolute;left:0;right:0;top:52px;' +
+      'max-height:400px;overflow-y:auto;background:#1a1a24;border:1px solid rgba(108,159,255,0.3);' +
+      'border-radius:12px;z-index:20;box-shadow:0 8px 32px rgba(0,0,0,0.5);';
+    searchWrap.appendChild(searchResults);
+    _contentEl.appendChild(searchWrap);
 
     // Recent windows
     _loadRecent();
@@ -157,18 +172,50 @@
     _renderMenuNodes(treeEl, tree, windowSet);
     _contentEl.appendChild(treeEl);
 
-    // Search filter
+    // Search handler — FTS5 smart search with debounce + menu filter
+    var _searchTimer = null;
+    var _selectedIdx = -1;
     search.addEventListener('input', function () {
-      var q = this.value.toLowerCase();
+      var q = this.value.trim();
+      clearTimeout(_searchTimer);
+
+      // Always filter menus immediately
+      var qLower = q.toLowerCase();
       var items = treeEl.querySelectorAll('[data-menu-item]');
       for (var i = 0; i < items.length; i++) {
         var name = (items[i].dataset.menuName || '').toLowerCase();
-        items[i].style.display = (!q || name.indexOf(q) >= 0) ? '' : 'none';
+        items[i].style.display = (!qLower || name.indexOf(qLower) >= 0) ? '' : 'none';
       }
-      // Show all folders if searching
       var folders = treeEl.querySelectorAll('[data-folder]');
       for (var j = 0; j < folders.length; j++) {
-        folders[j].querySelector('.folder-children').style.display = q ? 'block' : '';
+        folders[j].querySelector('.folder-children').style.display = qLower ? 'block' : '';
+      }
+
+      // FTS5 search with 300ms debounce
+      if (!q || q.length < 2) { _hideSearchResults(); return; }
+      _searchTimer = setTimeout(function () {
+        _doFTSSearch(q, searchResults);
+      }, 300);
+    });
+
+    // Keyboard navigation in search results
+    search.addEventListener('keydown', function (e) {
+      var items = searchResults.querySelectorAll('[data-search-hit]');
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        _selectedIdx = Math.min(_selectedIdx + 1, items.length - 1);
+        _highlightSearchItem(items, _selectedIdx);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        _selectedIdx = Math.max(_selectedIdx - 1, 0);
+        _highlightSearchItem(items, _selectedIdx);
+      } else if (e.key === 'Enter' && _selectedIdx >= 0 && _selectedIdx < items.length) {
+        e.preventDefault();
+        items[_selectedIdx].click();
+      } else if (e.key === 'Escape') {
+        _hideSearchResults();
+        this.blur();
       }
     });
 
@@ -1539,6 +1586,94 @@
     }, 3000);
   }
 
+  // ── FTS5 Smart Search (R1) ──────────────────────────────────────
+
+  function _doFTSSearch(query, resultsEl) {
+    if (typeof ERPSearch === 'undefined' || !ERPSearch.isIndexed()) {
+      _hideSearchResults();
+      return;
+    }
+
+    var hits = ERPSearch.search(query, 15);
+    if (!hits.length) {
+      resultsEl.innerHTML = '<div style="padding:16px;color:#666;font-size:13px;text-align:center">' +
+        'No results for "' + _esc(query) + '"</div>';
+      resultsEl.style.display = 'block';
+      console.log('§AD_UI search query="' + query + '" hits=0');
+      return;
+    }
+
+    // Single exact match → auto-jump to window
+    if (hits.length === 1 && hits[0].window_id) {
+      _hideSearchResults();
+      console.log('§AD_UI search auto-jump window=' + hits[0].window_id +
+                  ' record=' + hits[0].record_id);
+      openWindow(Number(hits[0].window_id));
+      return;
+    }
+
+    // Render results dropdown
+    var html = '';
+    for (var i = 0; i < hits.length; i++) {
+      var h = hits[i];
+      var dotColour = ERPSearch.statusColour(h.doc_status);
+      var label = ERPSearch.tableLabel(h.table_name);
+      var snippet = h.snippet ? '<div style="color:#777;font-size:11px;margin-top:2px">' +
+                    h.snippet + '</div>' : '';
+      html += '<div data-search-hit="1" data-window-id="' + (h.window_id || 0) +
+        '" data-table="' + _esc(h.table_name) + '" data-record-id="' + h.record_id + '"' +
+        ' style="padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);' +
+        'transition:background 0.1s;display:flex;align-items:flex-start;gap:10px">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:' + dotColour +
+        ';flex-shrink:0;margin-top:6px"></span>' +
+        '<div style="flex:1;min-width:0">' +
+        '<div style="color:#eee;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
+        _esc(h.display_text) + '</div>' +
+        '<div style="color:#888;font-size:11px">' + _esc(label) +
+        (h.doc_status ? ' <span style="color:' + dotColour + '">[' + h.doc_status + ']</span>' : '') +
+        '</div>' + snippet + '</div></div>';
+    }
+    resultsEl.innerHTML = html;
+    resultsEl.style.display = 'block';
+    _selectedIdx = -1;
+
+    // Click handlers
+    var items = resultsEl.querySelectorAll('[data-search-hit]');
+    for (var j = 0; j < items.length; j++) {
+      items[j].addEventListener('pointerup', function () {
+        var wid = Number(this.dataset.windowId);
+        _hideSearchResults();
+        if (wid) {
+          console.log('§AD_UI search click window=' + wid + ' record=' + this.dataset.recordId);
+          openWindow(wid);
+        }
+      });
+      items[j].addEventListener('pointerenter', function () {
+        this.style.background = 'rgba(255,255,255,0.06)';
+      });
+      items[j].addEventListener('pointerleave', function () {
+        this.style.background = 'none';
+      });
+    }
+
+    console.log('§AD_UI search query="' + query + '" hits=' + hits.length);
+  }
+
+  function _hideSearchResults() {
+    var el = document.getElementById('search-results');
+    if (el) el.style.display = 'none';
+    _selectedIdx = -1;
+  }
+
+  var _selectedIdx = -1;
+
+  function _highlightSearchItem(items, idx) {
+    for (var i = 0; i < items.length; i++) {
+      items[i].style.background = (i === idx) ? 'rgba(108,159,255,0.15)' : 'none';
+    }
+    if (items[idx]) items[idx].scrollIntoView({ block: 'nearest' });
+  }
+
   // ── Init ──────────────────────────────────────────────────────────
 
   /**
@@ -1557,6 +1692,13 @@
     ADParser.init(db);
     _initBroadcast();
     _initKeyboard();
+
+    // Build FTS5 search index (R1)
+    if (typeof ERPSearch !== 'undefined') {
+      var idx = ERPSearch.buildIndex(db);
+      console.log('§AD_UI fts5 indexed rows=' + idx.rows + ' ms=' + idx.ms);
+    }
+
     showMenu();
 
     console.log('§AD_UI init done');

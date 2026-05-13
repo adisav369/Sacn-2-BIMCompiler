@@ -100,20 +100,21 @@
   }
 
   // ── 2. Module list — §8 step 3 ────────────────────────────────────
-  var V = '?v=6';
+  var V = '?v=7';
   var MODULES = [
     'kernel_ops.js' + V,
     'ad_parser.js' + V,
     'ad_data.js' + V,
     'ad_charts.js' + V,
     'ad_graph.js' + V,
+    'erp_search.js' + V,
     'ad_ui.js' + V
   ];
 
   async function boot() {
-    log('Loading sql.js...');
-    await loadScript('lib/sql-wasm.js',
-      'https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.js');
+    log('Loading sql.js (FTS5)...');
+    await loadScript('lib/sql-wasm-fts5.js',
+      'https://cdn.jsdelivr.net/npm/sql.js-fts5@1.4.0/dist/sql-wasm.js');
 
     log('Loading ERP modules...');
     for (var i = 0; i < MODULES.length; i++) {
@@ -123,11 +124,11 @@
     log('Initialising database...');
     var SQL;
     try {
-      SQL = await initSqlJs({ locateFile: function (f) { return 'lib/' + f; } });
+      SQL = await initSqlJs({ locateFile: function (f) { return 'lib/sql-wasm-fts5.wasm'; } });
     } catch (e) {
       SQL = await initSqlJs({
         locateFile: function () {
-          return 'https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.wasm';
+          return 'https://cdn.jsdelivr.net/npm/sql.js-fts5@1.4.0/dist/sql-wasm.wasm';
         }
       });
     }
