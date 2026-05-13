@@ -1920,3 +1920,9 @@ For the ERP practitioner evaluating alternatives. Drawn from published documenta
 | Customer/vendor-facing portal with zero onboarding friction | **OOTB** | QR code → browser → see your data. No app, no login, no account |
 
 **The honest assessment:** OOTB does not replace iDempiere or Odoo for enterprises needing multi-entity consolidation, statutory reporting, or 500-user RBAC. It replaces them for the **long tail** — the businesses that have never had ERP because ERP costs too much, takes too long, and requires a server they don't have. When those businesses outgrow OOTB, the data model maps 1:1 to iDempiere (§10).
+
+---
+
+## 15. Forward Roadmap
+
+For planned features — FTS5 Smart Search, full iDempiere data migration, database sharding, CRDT multi-device sync, benchmark suite, offline OPFS persistence, and domain packs — see **[ERP_Roadmap.md](ERP_Roadmap.md)**.

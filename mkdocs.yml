@@ -124,6 +124,7 @@ nav:
   - Spatial ERP:
       - "Every Record Has a Place": SpatialERP_OOTB.md
       - "Construction ERP POC": SpatialERP_POC.md
+      - "ERP Forward Roadmap": ERP_Roadmap.md
 
   # ─── Roadmap & Papers ─────────────────────────────────
   - Roadmap:
