@@ -23,6 +23,12 @@ DB = model. Template = view. Browser = runtime. Three concerns, never merged.
 
 ## Next
 
+### Spatial ERP OOTB — Every Record Has a Place
+The engine is domain-agnostic. WMS (warehouse pick/putaway), POS (store planogram),
+MFG (shop floor work orders), logistics (hub network), and back-office (documents
+as spatial cabinets with TikTok-style swipe UX). Five tables, one state machine,
+zero install. See [SpatialERP_OOTB.md](SpatialERP_OOTB.md).
+
 ### S211 — NLP Query DSL (harden + browser port + voice)
 Port the Python NLP DSL (`federation/dataintelligence/nlp/`) to browser JS running against sql.js.
 No LLM, no API — pure keyword intent classification + pattern-matched SQL generation.

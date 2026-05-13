@@ -120,6 +120,11 @@ nav:
       - Forge Suite: FORGE_SUITE_SRS.md
       - Prefab Architecture: PREFAB_ARCHITECTURE.md
 
+  # ─── Spatial ERP ──────────────────────────────────────
+  - Spatial ERP:
+      - "Every Record Has a Place": SpatialERP_OOTB.md
+      - "Construction ERP POC": SpatialERP_POC.md
+
   # ─── Roadmap & Papers ─────────────────────────────────
   - Roadmap:
       - BIM OOTB Roadmap: ROADMAP.md

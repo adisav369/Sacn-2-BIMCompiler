@@ -88,6 +88,16 @@
   - 114/114 grid module tests pass.
   - **Next:** D1 fine-tuning (stair symbols, roof removal, opening dims), then D2 (save section), D3 (print sheet).
 
+**Spatial ERP P0-P2 DONE (2026-05-13): Core engine + registry + handlers — 79/79 tests.**
+  - `deploy/dev/doc_engine.js` (253 lines): 6 tables (§3.1), StateMachine (5 states, 4 events), JournalEngine (rule-based auto-post on COMPLETED).
+  - `deploy/dev/category_loader.js` (100 lines): getCategory, listCategories, renderLabel.
+  - `deploy/dev/construction_seed.sql`: 8 containers, 2 docs, 2 lines, 4 categories, 8 metadata keys.
+  - `deploy/dev/handlers/construction.js` (200 lines): 7 handlers — screenLead, planFAR, submitApproval, approve, reject, generateBOQ, closeLead.
+  - `deploy/dev/kernel_ops.js`: +user_tag column (§2.3).
+  - `SYSNOVA/index.html`: "ERP — GOD MODE" link in footer → `sandbox/erp.html`.
+  - `deploy/dev/tests/test_doc_engine.js`: 79/79 tests — P0 core + P1 seed/registry + P2 full lead lifecycle.
+  - **Next:** P3 — erp.html + swipe.js + role_band.js (UI layer). Keep offline-first (sw.js precache).
+
 **S246b IN PROGRESS (2026-05-06): WASM/SW/panel hardening + local-first libs.**
   - Vendor libs (Three.js, OrbitControls, sql-wasm, SheetJS) localised to `lib/` in ootb-dev — single origin, CDN fallback. ootb-live stays CDN-only for A/B comparison.
   - SW v254: cache key strips `?v=N` (was causing cache miss → offline.html served as JS → initViewer undefined). `.js` fallback returns 503 not offline.html.

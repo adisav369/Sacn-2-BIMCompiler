@@ -82,6 +82,13 @@ Single-page entry point. All active docs by tier.
 | [SYSTEMS_INSTALLER_GUIDE.md](SYSTEMS_INSTALLER_GUIDE.md) | Full platform setup for sysadmins and developers |
 | [Localization.md](Localization.md) | **Localization:** iDempiere-style `_TRL` locale system — 15 country locales, project-level rate book override, developer guide for new locales |
 
+## Spatial ERP — Beyond Buildings
+
+| Doc | What |
+|-----|------|
+| [SpatialERP_OOTB.md](SpatialERP_OOTB.md) | **Spatial ERP OOTB:** Every record has a place. WMS, POS, MFG, logistics, back-office — same engine, same five tables, swipe UX, zero install |
+| [SpatialERP_POC.md](SpatialERP_POC.md) | **Construction ERP POC:** First build. Land lead → FAR → BOQ → Approval. Real requirement (Sysnova/Kazi Farms). IFC = spatial view. 6 roles. erp.html standalone. |
+
 ## Standalone — Market / Academic
 
 | Doc | What |

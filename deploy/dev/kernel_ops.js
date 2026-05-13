@@ -27,6 +27,9 @@
       db.run(TABLE_SQL);
       db.run(IDX_TYPE_SQL);
       db.run(IDX_UNDONE_SQL);
+      // §2.3: add user_tag column (idempotent — ALTER fails silently if exists)
+      try { db.run("ALTER TABLE kernel_ops ADD COLUMN user_tag TEXT DEFAULT 'local'"); }
+      catch (ignore) { /* column already exists */ }
       _tableCreated = true;
     } catch (e) {
       console.log('§KERNEL_OP ensureTable ERROR: ' + e.message);
