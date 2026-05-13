@@ -213,6 +213,7 @@
   // ── Data constellation (graph view on home) ────────────────────────
 
   var _graphCanvas = null;
+  var _graphContainer = null;  // the div that goes fullscreen
 
   function _graphDrillCallback(tableName, windowId, record) {
     var wid = windowId;
@@ -281,6 +282,7 @@
       'cursor:grab;touch-action:none;';
     container.appendChild(canvas);
     _graphCanvas = canvas;
+    _graphContainer = container;
 
     // Fullscreen toggle — uses browser Fullscreen API (hides URL bar)
     var fsBtn = document.createElement('button');
@@ -1529,6 +1531,8 @@
   }
 
   // ── Floating Search Overlay (Alt+S) ────────────────────────────────
+  // Glass panel with orange-bordered inner search box.
+  // Lives inside _graphContainer so it's visible during fullscreen.
 
   var _searchOverlay = null;
   var _searchInput = null;
@@ -1541,43 +1545,41 @@
 
     _searchOverlay = document.createElement('div');
     _searchOverlay.id = 'search-overlay';
-    _searchOverlay.style.cssText = 'display:none;position:fixed;top:60px;right:16px;z-index:50;' +
-      'width:360px;max-width:calc(100vw - 32px);' +
-      'background:linear-gradient(145deg,rgba(30,32,48,0.92),rgba(18,18,28,0.96));' +
-      'border:1px solid rgba(108,159,255,0.25);border-radius:16px;' +
-      'box-shadow:0 2px 0 rgba(255,255,255,0.07) inset,' +
-      '0 -1px 0 rgba(0,0,0,0.3) inset,' +
-      '0 12px 48px rgba(0,0,0,0.6),' +
-      '0 0 0 1px rgba(255,255,255,0.04);' +
-      'backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);overflow:hidden;';
+    // Outer glass panel
+    _searchOverlay.style.cssText = 'display:none;position:absolute;top:48px;right:12px;z-index:70;' +
+      'width:340px;max-width:calc(100vw - 24px);padding:10px;' +
+      'background:rgba(12,12,18,0.45);' +
+      'border:1px solid rgba(255,255,255,0.08);border-radius:18px;' +
+      'box-shadow:0 1px 0 rgba(255,255,255,0.05) inset,' +
+      '0 20px 60px rgba(0,0,0,0.5);' +
+      'backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);';
 
-    // Drag handle / header
-    var header = document.createElement('div');
-    header.style.cssText = 'padding:10px 14px;cursor:grab;display:flex;align-items:center;' +
-      'gap:8px;border-bottom:1px solid rgba(255,255,255,0.08);user-select:none;' +
-      'background:linear-gradient(180deg,rgba(255,255,255,0.06) 0%,transparent 100%);';
-    header.innerHTML = '<span style="color:#6c9fff;font-size:12px;font-weight:600;flex:1">' +
-      '\u2315 Search (Alt+S)</span>';
+    // Inner orange-bordered frame (glass gap = the 10px padding above)
+    var inner = document.createElement('div');
+    inner.style.cssText = 'border:1px solid rgba(232,167,53,0.5);border-radius:12px;' +
+      'overflow:hidden;background:rgba(12,12,18,0.3);';
 
-    // Close button in header
-    var closeBtn = document.createElement('button');
-    closeBtn.textContent = '\u2715';
-    closeBtn.style.cssText = 'background:none;border:none;color:#666;font-size:14px;' +
-      'cursor:pointer;padding:4px 6px;min-height:auto;';
-    closeBtn.addEventListener('pointerup', function () { _toggleSearchOverlay(); });
-    header.appendChild(closeBtn);
-    _searchOverlay.appendChild(header);
+    // Drag handle — minimal, just a thin grip line
+    var grip = document.createElement('div');
+    grip.style.cssText = 'height:20px;cursor:grab;display:flex;align-items:center;' +
+      'justify-content:center;user-select:none;';
+    grip.innerHTML = '<div style="width:32px;height:3px;border-radius:2px;' +
+      'background:rgba(255,255,255,0.12)"></div>';
 
-    // Drag logic
-    header.addEventListener('pointerdown', function (e) {
-      if (e.target === closeBtn) return;
+    // Drag logic — uses absolute positioning within container
+    grip.addEventListener('pointerdown', function (e) {
       e.preventDefault();
-      header.style.cursor = 'grabbing';
+      grip.style.cursor = 'grabbing';
       var rect = _searchOverlay.getBoundingClientRect();
-      _dragState = { startX: e.clientX, startY: e.clientY, origLeft: rect.left, origTop: rect.top };
+      var parentRect = _searchOverlay.parentElement.getBoundingClientRect();
+      _dragState = {
+        startX: e.clientX, startY: e.clientY,
+        origLeft: rect.left - parentRect.left,
+        origTop: rect.top - parentRect.top
+      };
       _searchOverlay.style.right = 'auto';
-      _searchOverlay.style.left = rect.left + 'px';
-      _searchOverlay.style.top = rect.top + 'px';
+      _searchOverlay.style.left = _dragState.origLeft + 'px';
+      _searchOverlay.style.top = _dragState.origTop + 'px';
     });
     document.addEventListener('pointermove', function (e) {
       if (!_dragState) return;
@@ -1589,24 +1591,31 @@
     document.addEventListener('pointerup', function () {
       if (_dragState) {
         _dragState = null;
-        var h = _searchOverlay.querySelector('div');
-        if (h) h.style.cursor = 'grab';
+        grip.style.cursor = 'grab';
       }
     });
 
-    // Search input
+    inner.appendChild(grip);
+
+    // Search input — glass, no background, orange caret
     _searchInput = document.createElement('input');
     _searchInput.type = 'search';
-    _searchInput.placeholder = 'Partners, orders, invoices, products\u2026';
-    _searchInput.style.cssText = 'width:100%;padding:12px 14px;background:transparent;color:#e8e8ed;' +
-      'border:none;border-bottom:1px solid rgba(255,255,255,0.06);font-size:14px;' +
-      'outline:none;min-height:44px;';
-    _searchOverlay.appendChild(_searchInput);
+    _searchInput.placeholder = 'Search\u2026';
+    _searchInput.style.cssText = 'width:100%;padding:12px 14px;background:transparent;' +
+      'color:#fff;border:none;font-size:17px;font-weight:500;outline:none;min-height:44px;' +
+      'caret-color:#e8a735;letter-spacing:0.3px;' +
+      'border-bottom:1px solid rgba(232,167,53,0.12);';
+    inner.appendChild(_searchInput);
 
-    // Results
+    // Results container
     _searchResultsEl = document.createElement('div');
-    _searchResultsEl.style.cssText = 'max-height:350px;overflow-y:auto;';
-    _searchOverlay.appendChild(_searchResultsEl);
+    _searchResultsEl.style.cssText = 'max-height:240px;overflow-y:auto;';
+    // Thin scrollbar
+    _searchResultsEl.innerHTML = '<style>#search-overlay ::-webkit-scrollbar{width:3px}' +
+      '#search-overlay ::-webkit-scrollbar-thumb{background:rgba(232,167,53,0.3);border-radius:2px}</style>';
+    inner.appendChild(_searchResultsEl);
+
+    _searchOverlay.appendChild(inner);
 
     // Input handler — FTS5 debounced
     _searchInput.addEventListener('input', function () {
@@ -1621,7 +1630,7 @@
       }, 300);
     });
 
-    // Keyboard nav in results
+    // Keyboard nav
     _searchInput.addEventListener('keydown', function (e) {
       var items = _searchResultsEl.querySelectorAll('[data-search-hit]');
       if (e.key === 'Escape') {
@@ -1643,21 +1652,51 @@
       }
     });
 
-    document.body.appendChild(_searchOverlay);
-    console.log('§AD_UI searchOverlay created');
+    // Append to graph container if available (visible during fullscreen), else body
+    var host = _graphContainer || document.body;
+    host.appendChild(_searchOverlay);
+    console.log('§AD_UI searchOverlay created host=' + (host === document.body ? 'body' : 'graphContainer'));
+  }
+
+  // Glass chime — synthesised with Web Audio API (no file needed)
+  function _glassChime(opening) {
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(opening ? 1800 : 1200, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(opening ? 2800 : 800, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.15);
+      setTimeout(function () { ctx.close(); }, 300);
+    } catch (e) { /* no audio context — silent */ }
   }
 
   function _toggleSearchOverlay() {
     _ensureSearchOverlay();
+    // Re-parent to graph container if it changed
+    if (_graphContainer && _searchOverlay.parentElement !== _graphContainer) {
+      _graphContainer.appendChild(_searchOverlay);
+    }
     var visible = _searchOverlay.style.display !== 'none';
     if (visible) {
       _searchOverlay.style.display = 'none';
+      _glassChime(false);
       console.log('§AD_UI search hide');
     } else {
+      _searchOverlay.style.right = '12px';
+      _searchOverlay.style.left = 'auto';
+      _searchOverlay.style.top = '48px';
       _searchOverlay.style.display = 'block';
       _searchInput.value = '';
       _searchResultsEl.innerHTML = '';
       _searchInput.focus();
+      _glassChime(true);
       console.log('§AD_UI search show');
     }
   }
@@ -1688,26 +1727,25 @@
       return;
     }
 
-    // Render results dropdown
+    // Render results — white bold names, thin glass drawer, no borders
     var html = '';
     for (var i = 0; i < hits.length; i++) {
       var h = hits[i];
       var dotColour = ERPSearch.statusColour(h.doc_status);
       var label = ERPSearch.tableLabel(h.table_name);
-      var snippet = h.snippet ? '<div style="color:#777;font-size:11px;margin-top:2px">' +
-                    h.snippet + '</div>' : '';
       html += '<div data-search-hit="1" data-window-id="' + (h.window_id || 0) +
         '" data-table="' + _esc(h.table_name) + '" data-record-id="' + h.record_id + '"' +
-        ' style="padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);' +
-        'transition:background 0.1s;display:flex;align-items:flex-start;gap:10px">' +
-        '<span style="width:8px;height:8px;border-radius:50%;background:' + dotColour +
-        ';flex-shrink:0;margin-top:6px"></span>' +
+        ' style="padding:8px 14px;cursor:pointer;transition:background 0.12s;' +
+        'display:flex;align-items:center;gap:8px">' +
+        '<span style="width:6px;height:6px;border-radius:50%;background:' + dotColour +
+        ';flex-shrink:0"></span>' +
         '<div style="flex:1;min-width:0">' +
-        '<div style="color:#eee;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
+        '<div style="color:#fff;font-weight:600;font-size:13px;white-space:nowrap;' +
+        'overflow:hidden;text-overflow:ellipsis">' +
         _esc(h.display_text) + '</div>' +
-        '<div style="color:#888;font-size:11px">' + _esc(label) +
-        (h.doc_status ? ' <span style="color:' + dotColour + '">[' + h.doc_status + ']</span>' : '') +
-        '</div>' + snippet + '</div></div>';
+        '<div style="color:#666;font-size:10px;font-weight:400">' + _esc(label) +
+        (h.doc_status ? ' \u00b7 ' + h.doc_status : '') +
+        '</div></div></div>';
     }
     resultsEl.innerHTML = html;
     resultsEl.style.display = 'block';
@@ -1798,5 +1836,5 @@
   if (typeof window !== 'undefined') window.ADUI = ADUI;
   if (typeof module !== 'undefined' && module.exports) module.exports = ADUI;
 
-  console.log('§AD_UI_LOADED v8');
+  console.log('§AD_UI_LOADED v9');
 })();
