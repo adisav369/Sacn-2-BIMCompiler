@@ -1731,7 +1731,7 @@
         return;
       }
       _searchTimer = setTimeout(function () {
-        _doFTSSearch(q, _searchResultsEl);
+        _doFTSSearch(q, _searchResultsEl, _currentClient);
       }, 300);
     });
 
@@ -1808,13 +1808,13 @@
 
   // ── FTS5 Smart Search (R1) ──────────────────────────────────────
 
-  function _doFTSSearch(query, resultsEl) {
+  function _doFTSSearch(query, resultsEl, client) {
     if (typeof ERPSearch === 'undefined' || !ERPSearch.isIndexed()) {
       _hideSearchResults();
       return;
     }
 
-    var hits = ERPSearch.search(query, 15);
+    var hits = ERPSearch.search(query, 15, client);
     if (!hits.length) {
       resultsEl.innerHTML = '<div style="padding:16px;color:#666;font-size:13px;text-align:center">' +
         'No results for "' + _esc(query) + '"</div>';

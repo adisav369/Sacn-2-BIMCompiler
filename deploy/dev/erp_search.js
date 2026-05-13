@@ -12,23 +12,31 @@
   // ── Tables to index (with display columns) ─────────────────────────
 
   var SEARCHABLE = [
-    { table: 'C_BPartner',    cols: ['Name','Value','Description'],  display: 'Name',   windowId: 123 },
-    { table: 'M_Product',     cols: ['Name','Value','Description'],  display: 'Name',   windowId: 140 },
-    { table: 'C_Order',       cols: ['DocumentNo','Description'],    display: 'DocumentNo', windowId: 143 },
-    { table: 'C_Invoice',     cols: ['DocumentNo','Description'],    display: 'DocumentNo', windowId: 167 },
-    { table: 'C_Payment',     cols: ['DocumentNo','Description'],    display: 'DocumentNo', windowId: 195 },
-    { table: 'M_InOut',       cols: ['DocumentNo','Description'],    display: 'DocumentNo', windowId: 169 },
-    { table: 'C_Project',     cols: ['Name','Value','Description'],  display: 'Name',   windowId: 130 },
-    { table: 'C_ElementValue',cols: ['Name','Value','Description'],  display: 'Name',   windowId: 158 },
-    { table: 'M_Product_Category', cols: ['Name','Description'],     display: 'Name',   windowId: 401 },
-    { table: 'M_Warehouse',   cols: ['Name','Value','Description'],  display: 'Name',   windowId: 139 },
-    { table: 'C_BPartner_Location', cols: ['Name','Phone'],          display: 'Name',   windowId: 123 },
-    { table: 'AD_User',       cols: ['Name','EMail','Description'],  display: 'Name',   windowId: 123 },
-    { table: 'C_DocType',     cols: ['Name','PrintName','Description'], display: 'Name', windowId: null },
-    { table: 'C_Country',     cols: ['Name','CountryCode','Description'], display: 'Name', windowId: null },
-    { table: 'C_Tax',         cols: ['Name','Description'],          display: 'Name',   windowId: null },
-    { table: 'C_Charge',      cols: ['Name','Description'],          display: 'Name',   windowId: null },
-    { table: 'C_BP_Group',    cols: ['Name','Value','Description'],  display: 'Name',   windowId: null }
+    // GardenWorld (C_/M_ tables)
+    { table: 'C_BPartner',    cols: ['Name','Value','Description'],  display: 'Name',   windowId: 123, client: 'gardenworld' },
+    { table: 'M_Product',     cols: ['Name','Value','Description'],  display: 'Name',   windowId: 140, client: 'gardenworld' },
+    { table: 'C_Order',       cols: ['DocumentNo','Description'],    display: 'DocumentNo', windowId: 143, client: 'gardenworld' },
+    { table: 'C_Invoice',     cols: ['DocumentNo','Description'],    display: 'DocumentNo', windowId: 167, client: 'gardenworld' },
+    { table: 'C_Payment',     cols: ['DocumentNo','Description'],    display: 'DocumentNo', windowId: 195, client: 'gardenworld' },
+    { table: 'M_InOut',       cols: ['DocumentNo','Description'],    display: 'DocumentNo', windowId: 169, client: 'gardenworld' },
+    { table: 'C_Project',     cols: ['Name','Value','Description'],  display: 'Name',   windowId: 130, client: 'gardenworld' },
+    { table: 'C_ElementValue',cols: ['Name','Value','Description'],  display: 'Name',   windowId: 158, client: 'gardenworld' },
+    { table: 'M_Product_Category', cols: ['Name','Description'],     display: 'Name',   windowId: 401, client: 'gardenworld' },
+    { table: 'M_Warehouse',   cols: ['Name','Value','Description'],  display: 'Name',   windowId: 139, client: 'gardenworld' },
+    { table: 'C_BPartner_Location', cols: ['Name','Phone'],          display: 'Name',   windowId: 123, client: 'gardenworld' },
+    { table: 'AD_User',       cols: ['Name','EMail','Description'],  display: 'Name',   windowId: 123, client: 'gardenworld' },
+    { table: 'C_DocType',     cols: ['Name','PrintName','Description'], display: 'Name', windowId: null, client: 'gardenworld' },
+    { table: 'C_Country',     cols: ['Name','CountryCode','Description'], display: 'Name', windowId: null, client: 'gardenworld' },
+    { table: 'C_Tax',         cols: ['Name','Description'],          display: 'Name',   windowId: null, client: 'gardenworld' },
+    { table: 'C_Charge',      cols: ['Name','Description'],          display: 'Name',   windowId: null, client: 'gardenworld' },
+    { table: 'C_BP_Group',    cols: ['Name','Value','Description'],  display: 'Name',   windowId: null, client: 'gardenworld' },
+    // System (AD_ tables)
+    { table: 'AD_Window',     cols: ['Name','Description'],          display: 'Name',   windowId: 102, client: 'system' },
+    { table: 'AD_Table',      cols: ['TableName','Name','Description'], display: 'Name', windowId: 100, client: 'system' },
+    { table: 'AD_Menu',       cols: ['Name','Description'],          display: 'Name',   windowId: 105, client: 'system' },
+    { table: 'AD_Tab',        cols: ['Name','Description'],          display: 'Name',   windowId: null, client: 'system' },
+    { table: 'AD_Reference',  cols: ['Name','Description'],          display: 'Name',   windowId: null, client: 'system' },
+    { table: 'AD_Element',    cols: ['ColumnName','Name','Description'], display: 'Name', windowId: null, client: 'system' }
   ];
 
   // ── Document number patterns ───────────────────────────────────────
@@ -60,6 +68,7 @@
       '  display_text UNINDEXED,' +
       '  window_id UNINDEXED,' +
       '  doc_status UNINDEXED,' +
+      '  client UNINDEXED,' +
       '  tokenize = "porter unicode61"' +
       ')'
     );
@@ -110,9 +119,9 @@
           var display = String(row[2] || '');
           var status = docStatusCol ? String(row[3] || '') : '';
           db.run(
-            'INSERT INTO erp_search (search_text, table_name, record_id, display_text, window_id, doc_status) ' +
-            'VALUES (?, ?, ?, ?, ?, ?)',
-            [text, spec.table, rid, display, spec.windowId || 0, status]
+            'INSERT INTO erp_search (search_text, table_name, record_id, display_text, window_id, doc_status, client) ' +
+            'VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [text, spec.table, rid, display, spec.windowId || 0, status, spec.client || 'gardenworld']
           );
           count++;
         }
@@ -135,7 +144,14 @@
    * @param {number} [limit=20]
    * @returns {Array} [{table_name, record_id, display_text, window_id, doc_status, rank, snippet}]
    */
-  function search(query, limit) {
+  /**
+   * Search across all indexed data.
+   * @param {string} query  user input
+   * @param {number} [limit=20]
+   * @param {string} [client]  'system' or 'gardenworld' — filter results
+   * @returns {Array} [{table_name, record_id, display_text, window_id, doc_status, rank, snippet}]
+   */
+  function search(query, limit, client) {
     if (!_db || !_indexed) return [];
     if (!query || !query.trim()) return [];
     limit = limit || 20;
@@ -157,13 +173,17 @@
     var ftsQuery = _buildFTSQuery(q);
     var results = [];
     try {
-      var r = _db.exec(
-        'SELECT table_name, record_id, display_text, window_id, doc_status, ' +
+      var sql = 'SELECT table_name, record_id, display_text, window_id, doc_status, ' +
         'rank, snippet(erp_search, 0, \'<b>\', \'</b>\', \'...\', 32) ' +
-        'FROM erp_search WHERE search_text MATCH ? ' +
-        'ORDER BY rank LIMIT ?',
-        [ftsQuery, limit]
-      );
+        'FROM erp_search WHERE search_text MATCH ?';
+      var params = [ftsQuery];
+      if (client) {
+        sql += ' AND client = ?';
+        params.push(client);
+      }
+      sql += ' ORDER BY rank LIMIT ?';
+      params.push(limit);
+      var r = _db.exec(sql, params);
       if (r.length) {
         for (var i = 0; i < r[0].values.length; i++) {
           var row = r[0].values[i];
@@ -181,7 +201,7 @@
     } catch (e) {
       console.log('§ERP_SEARCH fts5 error: ' + e.message + ' query="' + ftsQuery + '"');
       // Fallback: LIKE search
-      results = _likeSearch(q, limit);
+      results = _likeSearch(q, limit, client);
     }
 
     var elapsed = Math.round(performance.now() - t0);
@@ -253,15 +273,15 @@
     return tokens.join(' ');
   }
 
-  function _likeSearch(q, limit) {
-    // Fallback for when FTS5 query syntax fails
+  function _likeSearch(q, limit, client) {
     var results = [];
     try {
-      var r = _db.exec(
-        'SELECT table_name, record_id, display_text, window_id, doc_status ' +
-        'FROM erp_search WHERE search_text LIKE ? LIMIT ?',
-        ['%' + q.replace(/%/g, '') + '%', limit]
-      );
+      var sql = 'SELECT table_name, record_id, display_text, window_id, doc_status ' +
+        'FROM erp_search WHERE search_text LIKE ?';
+      var params = ['%' + q.replace(/%/g, '') + '%'];
+      if (client) { sql += ' AND client = ?'; params.push(client); }
+      sql += ' LIMIT ?'; params.push(limit);
+      var r = _db.exec(sql, params);
       if (r.length) {
         for (var i = 0; i < r[0].values.length; i++) {
           var row = r[0].values[i];
@@ -331,7 +351,13 @@
     'C_Country': 'Country',
     'C_Tax': 'Tax',
     'C_Charge': 'Charge',
-    'C_BP_Group': 'BP Group'
+    'C_BP_Group': 'BP Group',
+    'AD_Window': 'Window',
+    'AD_Table': 'Table',
+    'AD_Menu': 'Menu',
+    'AD_Tab': 'Tab',
+    'AD_Reference': 'Reference',
+    'AD_Element': 'Element'
   };
 
   function tableLabel(tableName) {
@@ -385,9 +411,9 @@
         var text = String(r[0].values[0][0] || '');
         var display = String(r[0].values[0][1] || '');
         db.run(
-          'INSERT INTO erp_search (search_text, table_name, record_id, display_text, window_id, doc_status) ' +
-          'VALUES (?, ?, ?, ?, ?, ?)',
-          [text, tableName, recordId, display, spec.windowId || 0, '']
+          'INSERT INTO erp_search (search_text, table_name, record_id, display_text, window_id, doc_status, client) ' +
+          'VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [text, tableName, recordId, display, spec.windowId || 0, '', spec.client || 'gardenworld']
         );
       }
     } catch (e) {

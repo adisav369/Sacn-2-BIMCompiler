@@ -296,11 +296,18 @@ function run() {
 
   results.push('\n--- Section G: Chart of Accounts ---');
 
-  var acctHits = ERPSearch.search('Cash');
+  var acctHits = ERPSearch.search('Cash', 20, 'gardenworld');
   var acctOnly = acctHits.filter(function (h) { return h.table_name === 'C_ElementValue'; });
   assert(acctOnly.length > 0,
-    'T17: Issue: "Cash" finds chart of accounts entries',
+    'T17: Issue: "Cash" finds chart of accounts entries (gardenworld client)',
     'hits=' + acctOnly.length);
+
+  // System client should find AD tables with "Cash"
+  var sysHits = ERPSearch.search('Cash', 20, 'system');
+  var adOnly = sysHits.filter(function (h) { return h.table_name.indexOf('AD_') === 0; });
+  assert(adOnly.length > 0,
+    'T17a: Issue: "Cash" finds AD tables in system client',
+    'hits=' + adOnly.length);
 
   // ── Section H: Warehouse Search ───────────────────────────────────
 
