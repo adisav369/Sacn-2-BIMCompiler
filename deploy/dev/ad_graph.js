@@ -35,6 +35,8 @@
   var _focusedNode = null;  // search correlation highlight
   var _focusPulseT = 0;     // 0..1 pulse decay over 2s
   var _maxBubbles = 500;    // §3.4 memory limit
+  var _lastEntityTable = null; // remember which TABLE we dived into (for back animation)
+  var _onLongPressEmpty = null; // callback for long-press on empty space (mobile search)
 
   // Fly-to-front animation
   var _flyTarget = null;   // node being pulled to front
@@ -94,7 +96,16 @@
     'M_Product_Category':  { icon: 'category', colour: '#a78bfa', label: 'Categories' },
     'M_ProductPrice':      { icon: 'price',    colour: '#ffd93d', label: 'Prices' },
     'AD_User':             { icon: 'contact',  colour: '#38d9d9', label: 'Contacts' },
-    'C_BPartner_Location': { icon: 'location', colour: '#ff85a2', label: 'Locations' }
+    'C_BPartner_Location': { icon: 'location', colour: '#ff85a2', label: 'Locations' },
+    'C_Order':             { icon: 'table',    colour: '#ff9f43', label: 'Orders' },
+    'C_Invoice':           { icon: 'table',    colour: '#ff7043', label: 'Invoices' },
+    'C_Payment':           { icon: 'price',    colour: '#ffd93d', label: 'Payments' },
+    'M_InOut':             { icon: 'product',  colour: '#7bed9f', label: 'Shipments' },
+    'C_Project':           { icon: 'table',    colour: '#a78bfa', label: 'Projects' },
+    'C_ElementValue':      { icon: 'table',    colour: '#38d9d9', label: 'Accounts' },
+    'M_Warehouse':         { icon: 'location', colour: '#ff85a2', label: 'Warehouses' },
+    'C_DocType':           { icon: 'table',    colour: '#888',    label: 'Doc Types' },
+    'C_Country':           { icon: 'location', colour: '#6c9fff', label: 'Countries' }
   };
   var SYS_CFG = {
     'AD_Window':    { icon: 'table', colour: '#6c9fff', label: 'Windows' },
@@ -103,9 +114,15 @@
     'AD_Tab':       { icon: 'table', colour: '#ff9f43', label: 'Tabs' },
     'AD_Field':     { icon: 'table', colour: '#38d9d9', label: 'Fields' },
     'AD_Menu':      { icon: 'table', colour: '#ffd93d', label: 'Menus' },
-    'AD_Reference': { icon: 'table', colour: '#ff85a2', label: 'References' }
+    'AD_Reference': { icon: 'table', colour: '#ff85a2', label: 'References' },
+    'AD_Element':   { icon: 'table', colour: '#888',    label: 'Elements' }
   };
-  var WIN_MAP = { 'C_BPartner': 123, 'M_Product': 140, 'AD_Window': 102, 'AD_Table': 100 };
+  var WIN_MAP = {
+    'C_BPartner': 123, 'M_Product': 140, 'C_Order': 143, 'C_Invoice': 167,
+    'C_Payment': 195, 'M_InOut': 169, 'C_Project': 130, 'C_ElementValue': 158,
+    'M_Product_Category': 401, 'M_Warehouse': 139,
+    'AD_Window': 102, 'AD_Table': 100, 'AD_Menu': 105
+  };
 
   // ── Sphere math ────────────────────────────────────────────────────
 
@@ -134,8 +151,8 @@
     rz = y3 * sinX + z3 * cosX;
     y3 = ry; z3 = rz;
 
-    // Perspective projection
-    var perspective = 600;
+    // Perspective projection — short focal = strong 3D depth
+    var perspective = 300;
     var scale = perspective / (perspective + z3);
 
     node.screenX = _cx + x3 * scale;
@@ -180,18 +197,20 @@
       // Bias active nodes forward
       phi = phi * (1 - ratio * 0.4);
 
+      var tSx = _radius * Math.sin(phi) * Math.cos(theta);
+      var tSy = _radius * Math.cos(phi) * 0.85;
+      var tSz = _radius * Math.sin(phi) * Math.sin(theta);
       _nodes.push({
         id: c.table,
         label: c.cfg.label,
         count: c.count,
         icon: c.cfg.icon,
         colour: c.cfg.colour,
-        homeSx: _radius * Math.sin(phi) * Math.cos(theta),
-        homeSy: _radius * Math.cos(phi) * 0.85,
-        homeSz: _radius * Math.sin(phi) * Math.sin(theta),
-        sx: _radius * Math.sin(phi) * Math.cos(theta),
-        sy: _radius * Math.cos(phi) * 0.85,
-        sz: _radius * Math.sin(phi) * Math.sin(theta),
+        homeSx: tSx, homeSy: tSy, homeSz: tSz,
+        sx: 0, sy: 0, sz: 0,               // start at centre
+        _startSx: 0, _startSy: 0, _startSz: 0,
+        _targetSx: tSx, _targetSy: tSy, _targetSz: tSz,
+        _animT: 0,                          // grow-from-centre
         size: 18 + ratio * 36,
         activity: ratio,
         pulse: Math.random() * Math.PI * 2,
@@ -213,7 +232,9 @@
       }
     }
 
-    console.log('§AD_GRAPH buildHome nodes=' + _nodes.length + ' edges=' + _edges.length + ' client=' + client);
+    console.log('§BUILD_HOME nodes=' + _nodes.length + ' edges=' + _edges.length +
+                ' client=' + client +
+                ' tables=[' + _nodes.map(function(n){return n.tableName+'('+n.count+')';}).join(', ') + ']');
   }
 
   // ── Build entity records globe ────────────────────────────────────
@@ -338,19 +359,20 @@
       // Active nodes get larger radius spread (less crowding in front)
       var rFactor = (j < n * 0.3) ? 1.0 : 0.95;  // front 30% slightly further out
 
+      var eSx = _radius * rFactor * Math.sin(phi) * Math.cos(theta);
+      var eSy = _radius * rFactor * Math.cos(phi) * 0.85;
+      var eSz = _radius * rFactor * Math.sin(phi) * Math.sin(theta);
       _nodes.push({
         id: keyCol + ':' + rec[keyCol],
         label: String(name).substring(0, 16),
         count: null,
         icon: cfg.icon,
         colour: cls.colour,
-        // Home sphere position — active ones drift back here when idle
-        homeSx: _radius * rFactor * Math.sin(phi) * Math.cos(theta),
-        homeSy: _radius * rFactor * Math.cos(phi) * 0.85,
-        homeSz: _radius * rFactor * Math.sin(phi) * Math.sin(theta),
-        sx: _radius * rFactor * Math.sin(phi) * Math.cos(theta),
-        sy: _radius * rFactor * Math.cos(phi) * 0.85,
-        sz: _radius * rFactor * Math.sin(phi) * Math.sin(theta),
+        homeSx: eSx, homeSy: eSy, homeSz: eSz,
+        sx: 0, sy: 0, sz: 0,               // start at centre
+        _startSx: 0, _startSy: 0, _startSz: 0,
+        _targetSx: eSx, _targetSy: eSy, _targetSz: eSz,
+        _animT: 0,                          // grow-from-centre
         size: 10 + cls.activity * 20,     // active=30, archived=12
         pulse: Math.random() * Math.PI * 2,
         pulseSpeed: 0.001 + cls.activity * 0.004,
@@ -382,7 +404,10 @@
       _rotX = Math.max(-1.2, Math.min(1.2, _rotX));
     }
 
-    console.log('§AD_GRAPH buildEntity table=' + tableName + ' records=' + _nodes.length);
+    console.log('§BUILD_ENTITY table=' + tableName + ' records=' + _nodes.length +
+                ' ids=[' + _nodes.slice(0,5).map(function(n){return n.recordId;}).join(',') +
+                (_nodes.length > 5 ? '...' : '') + ']' +
+                ' types=' + _nodes.map(function(n){return n.type;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join('/'));
   }
 
   function _findNameCol(rec) {
@@ -516,7 +541,7 @@
       return;
     }
 
-    var orbitR = _radius * 0.12;
+    var orbitR = _radius * 0.25;
     var allChildren = [];
     var childLimit = 20;
 
@@ -575,7 +600,7 @@
         _startSx: node.sx, _startSy: node.sy, _startSz: node.sz,
         _targetSx: pos.x, _targetSy: pos.y, _targetSz: pos.z,
         _animT: 0,
-        size: 6, activity: 0.5,
+        size: 12, activity: 0.5,
         pulse: Math.random() * Math.PI * 2, pulseSpeed: 0.003,
         screenX: 0, screenY: 0, screenScale: 1, screenZ: 0,
         tableName: ch.tableName, windowId: WIN_MAP[ch.tableName] || null,
@@ -677,9 +702,11 @@
   // ── §1.2 focusNode — search↔globe correlation ────────────────────
 
   function _findNode(tableName, recordId) {
+    var candidates = 0;
     for (var i = 0; i < _nodes.length; i++) {
       var n = _nodes[i];
       if (n.tableName === tableName) {
+        candidates++;
         if (recordId === undefined || recordId === null) {
           if (n.type === 'TABLE') return n;
         } else {
@@ -687,21 +714,101 @@
         }
       }
     }
+    console.log('§FIND_NODE miss table=' + tableName + ' rid=' + recordId +
+                ' view=' + _currentView + ' candidates=' + candidates +
+                ' totalNodes=' + _nodes.length +
+                ' nodeTypes=' + _nodes.map(function(n){return n.type;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join('/'));
     return null;
   }
 
+  // Soft focus — highlight what's visible. If not found, return to home and find TABLE.
   function focusNode(tableName, recordId) {
+    console.log('§FOCUS_NODE START table=' + tableName + ' rid=' + recordId +
+                ' view=' + _currentView + ' nodeCount=' + _nodes.length +
+                ' viewStack=[' + _viewStack.join(',') + ']');
+
+    // Try exact match first (record on current entity globe)
     var node = _findNode(tableName, recordId);
-    if (!node) {
-      console.log('§AD_GRAPH focusNode NOT_FOUND table=' + tableName + ' id=' + recordId);
-      return false;
+    if (node) {
+      console.log('§FOCUS_NODE exactMatch node=' + node.id + ' type=' + node.type);
     }
-    _focusedNode = node;
-    _focusPulseT = 1.0;
-    _flyToFront(node);
-    console.log('§AD_GRAPH focusNode FOUND table=' + tableName + ' id=' + recordId +
-                ' node=' + node.id);
-    return true;
+
+    // Fall back to TABLE bubble
+    if (!node) {
+      node = _findNode(tableName, null);
+      if (node) {
+        console.log('§FOCUS_NODE fallbackTABLE node=' + node.id);
+      }
+    }
+
+    if (!node && _currentView !== 'home') {
+      // In entity view for a different table — go home first, then find TABLE
+      console.log('§FOCUS_NODE returnHome from=' + _currentView + ' rebuilding home');
+      _currentView = 'home';
+      _viewStack = [];
+      _rotY = 0; _rotX = -0.3;
+      _momentumY = 0; _momentumX = 0;
+      _flyTarget = null;
+      _buildHomeNodes(_lastClient);
+      node = _findNode(tableName, null);
+      if (node) {
+        console.log('§FOCUS_NODE afterHome node=' + node.id);
+      }
+    }
+
+    if (node) {
+      _focusedNode = node;
+      _focusPulseT = 1.0;
+      _flyToFront(node);
+      console.log('§FOCUS_NODE DONE table=' + tableName + ' rid=' + recordId +
+                  ' → node=' + node.id + ' type=' + node.type +
+                  ' view=' + _currentView +
+                  ' pos=(' + node.sx.toFixed(0) + ',' + node.sy.toFixed(0) + ',' + node.sz.toFixed(0) + ')' +
+                  ' radius=' + Math.round(_radius));
+      return true;
+    }
+    console.log('§FOCUS_NODE FAIL table=' + tableName + ' rid=' + recordId +
+                ' view=' + _currentView + ' nodes=' + _nodes.length);
+    return false;
+  }
+
+  // Deep navigate — dive into entity globe to find a specific record. For Enter/click.
+  function navigateToRecord(tableName, recordId) {
+    console.log('§NAVIGATE START table=' + tableName + ' rid=' + recordId +
+                ' view=' + _currentView);
+
+    // Already visible? just focus
+    var node = _findNode(tableName, recordId);
+    if (node) {
+      _focusedNode = node;
+      _focusPulseT = 1.0;
+      _flyToFront(node);
+      console.log('§NAVIGATE inPlace node=' + node.id);
+      return true;
+    }
+
+    // Navigate into entity globe
+    _lastEntityTable = tableName;
+    _viewStack.push(_currentView);
+    _currentView = 'entity';
+    _rotY = 0; _rotX = -0.3;
+    _buildEntityNodes(tableName);
+    console.log('§NAVIGATE builtEntity table=' + tableName + ' nodes=' + _nodes.length);
+
+    var rec = _findNode(tableName, recordId);
+    if (rec) {
+      _focusedNode = rec;
+      _focusPulseT = 1.0;
+      _flyToFront(rec);
+      console.log('§NAVIGATE DONE table=' + tableName + ' rid=' + recordId +
+                  ' node=' + rec.id +
+                  ' pos=(' + rec.sx.toFixed(0) + ',' + rec.sy.toFixed(0) + ',' + rec.sz.toFixed(0) + ')');
+      return true;
+    }
+    console.log('§NAVIGATE FAIL table=' + tableName + ' rid=' + recordId +
+                ' nodes=' + _nodes.length +
+                ' ids=' + _nodes.slice(0,5).map(function(n){return n.recordId;}).join(','));
+    return false;
   }
 
   // ── Animation loop ─────────────────────────────────────────────────
@@ -760,9 +867,9 @@
     // Project all nodes + animate child fly-out
     for (var i = 0; i < _nodes.length; i++) {
       var an = _nodes[i];
-      // §3.1 Child fly-out animation (300ms ease-out)
+      // Constellation grow animation (~800ms ease-out)
       if (an._animT !== undefined && an._animT < 1) {
-        an._animT = Math.min(1, an._animT + 0.05);
+        an._animT = Math.min(1, an._animT + 0.02);
         var ease = 1 - Math.pow(1 - an._animT, 3);
         an.sx = an._startSx + (an._targetSx - an._startSx) * ease;
         an.sy = an._startSy + (an._targetSy - an._startSy) * ease;
@@ -917,7 +1024,10 @@
     _momentumY = 0;
     _momentumX = 0;
 
-    console.log('§AD_GRAPH flyToFront node=' + node.id);
+    console.log('§FLY node=' + node.id + ' type=' + node.type +
+                ' from=(' + _rotY.toFixed(2) + ',' + _rotX.toFixed(2) + ')' +
+                ' to=(' + targetRotY.toFixed(2) + ',' + targetRotX.toFixed(2) + ')' +
+                ' spherePos=(' + node.sx.toFixed(0) + ',' + node.sy.toFixed(0) + ',' + node.sz.toFixed(0) + ')');
   }
 
   // ── Interaction ────────────────────────────────────────────────────
@@ -955,11 +1065,12 @@
     if (!_dragging) return;
     var dx = e.clientX - _dragStartX;
     var dy = e.clientY - _dragStartY;
-    _rotY = _dragStartRotY + dx * 0.005;
-    _rotX = Math.max(-1.2, Math.min(1.2, _dragStartRotX + dy * 0.005));
-    // Track velocity for momentum
-    _momentumY = (e.clientX - _lastDragX) * 0.003;
-    _momentumX = (e.clientY - _lastDragY) * 0.003;
+    // Finer control when zoomed in (large radius = slower rotation)
+    var sens = 0.005 * Math.min(1, 200 / Math.max(_radius, 1));
+    _rotY = _dragStartRotY + dx * sens;
+    _rotX = Math.max(-1.2, Math.min(1.2, _dragStartRotX + dy * sens));
+    _momentumY = (e.clientX - _lastDragX) * sens * 0.6;
+    _momentumX = (e.clientY - _lastDragY) * sens * 0.6;
     _lastDragX = e.clientX;
     _lastDragY = e.clientY;
   }
@@ -980,26 +1091,34 @@
 
       var hit = _hitTest(sx, sy);
 
+      console.log('§TAP hit=' + (hit ? hit.id : 'EMPTY') + ' type=' + (hit ? hit.type : '-') +
+                  ' elapsed=' + elapsed + ' view=' + _currentView +
+                  ' flying=' + !!_flyTarget + ' nodes=' + _nodes.length);
+
       if (hit && !_flyTarget) {
         if (elapsed > 500) {
-          // §3.5 Long press → collapse all expansions
+          console.log('§TAP longPress → collapseAll');
           _collapseAll();
         } else {
-          console.log('§AD_GRAPH tap node=' + hit.id + ' type=' + hit.type);
           if (hit.type === 'TABLE') {
-            // §3.1 / §3.5 Toggle TABLE expansion
+            console.log('§TAP TABLE→dive table=' + hit.tableName + ' expanded=' + hit.expanded);
             _flyToFront(hit, function () {
-              if (hit.expanded) _collapseNode(hit);
-              else _expandTable(hit);
+              _lastEntityTable = hit.tableName;
+              _viewStack.push(_currentView);
+              _currentView = 'entity';
+              _rotY = 0; _rotX = -0.3;
+              _buildEntityNodes(hit.tableName);
+              console.log('§TAP TABLE→entity DONE nodes=' + _nodes.length + ' view=' + _currentView);
             });
           } else if (hit.type === 'RECORD') {
-            // §3.2 / §3.5 Toggle RECORD FK expansion
+            console.log('§TAP RECORD table=' + hit.tableName + ' id=' + hit.recordId +
+                        ' expanded=' + hit.expanded + ' children=' + hit.children.length);
             _flyToFront(hit, function () {
               if (hit.expanded) _collapseNode(hit);
               else _expandRecord(hit);
             });
           } else if (hit.type === 'CHILD' && _onDrill) {
-            // CHILD click → open record card
+            console.log('§TAP CHILD→drill table=' + hit.tableName + ' id=' + hit.recordId);
             _flyToFront(hit, function () {
               _onDrill(hit.tableName, hit.windowId, hit.record);
             });
@@ -1007,9 +1126,10 @@
         }
       } else if (!hit) {
         if (elapsed > 500) {
-          // §3.5 Long press empty → collapse all
-          _collapseAll();
+          console.log('§TAP longPressEmpty → search');
+          if (_onLongPressEmpty) _onLongPressEmpty();
         } else if (_currentView !== 'home') {
+          console.log('§TAP empty → goBack from=' + _currentView);
           _goBack();
         }
       }
@@ -1017,12 +1137,28 @@
   }
 
   function _goBack() {
+    var prev = _currentView;
+    var returnTable = _lastEntityTable;
     _currentView = _viewStack.pop() || 'home';
     _rotY = 0; _rotX = -0.3;
     _momentumY = 0; _momentumX = 0;
     _flyTarget = null;
-    if (_currentView === 'home') _buildHomeNodes(_lastClient);
-    console.log('§AD_GRAPH back view=' + _currentView);
+    if (_currentView === 'home') {
+      _buildHomeNodes(_lastClient);
+      // Fly back to the TABLE we came from
+      if (returnTable) {
+        var origin = _findNode(returnTable, null);
+        if (origin) {
+          _flyToFront(origin);
+          _focusedNode = origin;
+          _focusPulseT = 1.0;
+          console.log('§BACK flyTo=' + returnTable);
+        }
+      }
+    }
+    console.log('§BACK from=' + prev + ' to=' + _currentView +
+                ' returnTable=' + returnTable +
+                ' stack=[' + _viewStack.join(',') + '] nodes=' + _nodes.length);
   }
 
   function _onKeyDown(e) {
@@ -1068,25 +1204,40 @@
   }
 
   function _onTouchEnd(e) {
-    if (e.touches.length < 2) _pinchStartDist = 0;
+    if (e.touches.length < 2) {
+      // Pinch-close → go back if zoomed below 60% of start
+      if (_pinchStartDist > 0 && _currentView !== 'home') {
+        if (_radius < _pinchStartRadius * 0.6) {
+          console.log('§PINCH_CLOSE → goBack radius=' + Math.round(_radius) +
+                      ' start=' + Math.round(_pinchStartRadius));
+          _goBack();
+        }
+      }
+      _pinchStartDist = 0;
+    }
   }
 
   function _rebuildSpherePositions() {
-    // Collapse expansions — zoom resets to TABLE view
-    _collapseAll();
-    var golden = (1 + Math.sqrt(5)) / 2;
+    // Rescale all node positions proportionally to new radius
     for (var i = 0; i < _nodes.length; i++) {
-      var theta = 2 * Math.PI * i / golden;
-      var phi = Math.acos(1 - 2 * (i + 0.5) / _nodes.length);
-      _nodes[i].sx = _radius * Math.sin(phi) * Math.cos(theta);
-      _nodes[i].sy = _radius * Math.cos(phi) * 0.85;
-      _nodes[i].sz = _radius * Math.sin(phi) * Math.sin(theta);
+      var n = _nodes[i];
+      var len = Math.sqrt(n.sx * n.sx + n.sy * n.sy + n.sz * n.sz);
+      if (len > 0.1) {
+        var scale = _radius / len;
+        n.sx *= scale; n.sy *= scale; n.sz *= scale;
+        n.homeSx = n.sx; n.homeSy = n.sy; n.homeSz = n.sz;
+        if (n._targetSx !== undefined) {
+          n._targetSx = n.sx; n._targetSy = n.sy; n._targetSz = n.sz;
+        }
+      }
     }
+    console.log('§ZOOM radius=' + Math.round(_radius) + ' nodes=' + _nodes.length +
+                ' view=' + _currentView);
   }
 
   // ── Public API ─────────────────────────────────────────────────────
 
-  function init(canvas, db, client, onDrill, onLongPress) {
+  function init(canvas, db, client, onDrill, onLongPress, onLongPressEmpty) {
     _canvas = canvas;
     _ctx = canvas.getContext('2d');
     _db = db;
@@ -1097,6 +1248,7 @@
     _radius = Math.min(_W, _H) * 0.38;
     _onDrill = onDrill;
     _onLongPress = onLongPress;
+    _onLongPressEmpty = onLongPressEmpty;
     _lastClient = client;
     _currentView = 'home';
     _viewStack = [];
@@ -1146,8 +1298,11 @@
     destroy: destroy,
     showEntity: showEntity,
     focusNode: focusNode,
+    navigateToRecord: navigateToRecord,
     discoverChildren: _discoverChildren,
     collapseAll: _collapseAll,
+    zoom: function (delta) { _radius = Math.max(40, _radius + delta); _rebuildSpherePositions(); },
+    getRadius: function () { return _radius; },
     getNodeCount: function () { return _nodes.length; },
     getCurrentView: function () { return _currentView; },
     getBubbleWeight: _getBubbleWeight

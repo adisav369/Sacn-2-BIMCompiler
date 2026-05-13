@@ -331,7 +331,7 @@
       }
       ADGraph.destroy();
       ADGraph.init(canvas, _db, _currentClient,
-        _graphDrillCallback, _graphLongPressCallback);
+        _graphDrillCallback, _graphLongPressCallback, _toggleSearchOverlay);
       console.log('§AD_UI graphFullscreen=' + fullscreen +
         ' w=' + canvas.width + ' h=' + canvas.height);
     }
@@ -1870,23 +1870,26 @@
     resultsEl.style.display = 'block';
     _selectedIdx = -1;
 
-    // Click handlers — §1.3 focus bubble + open card simultaneously
+    // Click handlers — §1.3 deep navigate then open card after globe animation
     var items = resultsEl.querySelectorAll('[data-search-hit]');
+    function _searchHitAction(el) {
+      var wid = Number(el.dataset.windowId);
+      var table = el.dataset.table;
+      var rid = el.dataset.recordId;
+      _hideSearchResults();
+      // §1.3 Soft focus TABLE bubble, then open card immediately
+      if (table && typeof ADGraph !== 'undefined' && ADGraph.focusNode) {
+        ADGraph.focusNode(table, rid ? Number(rid) : null);
+      }
+      if (wid) {
+        console.log('§AD_UI search activate window=' + wid + ' record=' + rid);
+        openWindow(wid);
+      }
+    }
     for (var j = 0; j < items.length; j++) {
-      items[j].addEventListener('pointerup', function () {
-        var wid = Number(this.dataset.windowId);
-        var table = this.dataset.table;
-        var rid = this.dataset.recordId;
-        _hideSearchResults();
-        // §1.3 Focus bubble on globe
-        if (table && typeof ADGraph !== 'undefined' && ADGraph.focusNode) {
-          ADGraph.focusNode(table, rid ? Number(rid) : null);
-        }
-        if (wid) {
-          console.log('§AD_UI search click window=' + wid + ' record=' + rid);
-          openWindow(wid);
-        }
-      });
+      // pointerup for mobile, click for keyboard Enter (.click() doesn't fire pointerup)
+      items[j].addEventListener('pointerup', function () { _searchHitAction(this); });
+      items[j].addEventListener('click', function () { _searchHitAction(this); });
       items[j].addEventListener('pointerenter', function () {
         this.style.background = 'rgba(255,255,255,0.06)';
         // §1.1 Hover correlation — pulse bubble on globe
@@ -1918,12 +1921,11 @@
     }
     if (items[idx]) {
       items[idx].scrollIntoView({ block: 'nearest' });
-      // §1.1 Search↔Globe correlation — pulse bubble on arrow key focus
+      // §1.1 Search↔Globe correlation — pulse bubble, auto-navigate if needed
       var table = items[idx].dataset.table;
       var rid = items[idx].dataset.recordId;
       if (table && typeof ADGraph !== 'undefined' && ADGraph.focusNode) {
-        var found = ADGraph.focusNode(table, rid ? Number(rid) : null);
-        if (!found) _showToast('Record not on current view');
+        ADGraph.focusNode(table, rid ? Number(rid) : null);
       }
     }
   }
