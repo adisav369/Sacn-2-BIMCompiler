@@ -1128,6 +1128,94 @@
 
   // ── §18. Arrow key navigation ─────────────────────────────────────
 
+  // ── Client switching ────────────────────────────────────────────
+
+  var _clients = ['system', 'gardenworld'];
+
+  function _switchClient(direction) {
+    var idx = _clients.indexOf(_currentClient);
+    var next = (idx + direction + _clients.length) % _clients.length;
+    if (_clients[next] === _currentClient) return;
+    _currentClient = _clients[next];
+    // Toast showing new client name
+    _showClientToast(_currentClient);
+    showMenu();
+    console.log('§AD_UI switchClient client=' + _currentClient + ' dir=' + direction);
+  }
+
+  function _showClientToast(client) {
+    var label = client === 'system' ? 'System' : 'GardenWorld';
+    var colour = client === 'system' ? '#6c9fff' : '#ff9f43';
+    var toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);' +
+      'z-index:80;padding:16px 32px;border-radius:14px;font-size:18px;font-weight:700;' +
+      'color:#fff;letter-spacing:1px;pointer-events:none;' +
+      'background:rgba(12,12,18,0.6);backdrop-filter:blur(16px);' +
+      '-webkit-backdrop-filter:blur(16px);' +
+      'border:1px solid ' + colour + ';' +
+      'box-shadow:0 0 24px ' + colour + '33;' +
+      'animation:fadeInOut 1s ease forwards;';
+    toast.textContent = label;
+    // Inject animation if not already present
+    if (!document.getElementById('client-toast-style')) {
+      var s = document.createElement('style');
+      s.id = 'client-toast-style';
+      s.textContent = '@keyframes fadeInOut{0%{opacity:0;transform:translate(-50%,-50%) scale(0.9)}' +
+        '20%{opacity:1;transform:translate(-50%,-50%) scale(1)}' +
+        '80%{opacity:1;transform:translate(-50%,-50%) scale(1)}' +
+        '100%{opacity:0;transform:translate(-50%,-50%) scale(0.95)}}';
+      document.head.appendChild(s);
+    }
+    document.body.appendChild(toast);
+    setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 1000);
+  }
+
+  // ── Edge swipe for mobile client switching ─────────────────────
+
+  function _initEdgeSwipe() {
+    if (typeof document === 'undefined') return;
+    var EDGE = 30;    // px from screen edge to trigger
+    var MIN_DRAG = 80; // px minimum horizontal drag
+    var _swipeState = null;
+
+    document.addEventListener('pointerdown', function (e) {
+      var x = e.clientX;
+      var w = window.innerWidth;
+      if (x < EDGE || x > w - EDGE) {
+        _swipeState = { startX: x, startY: e.clientY, edge: x < EDGE ? 'left' : 'right' };
+      }
+    });
+
+    document.addEventListener('pointermove', function (e) {
+      if (!_swipeState) return;
+      // Cancel if vertical movement is dominant (scroll)
+      var dy = Math.abs(e.clientY - _swipeState.startY);
+      var dx = Math.abs(e.clientX - _swipeState.startX);
+      if (dy > dx * 1.5) { _swipeState = null; }
+    });
+
+    document.addEventListener('pointerup', function (e) {
+      if (!_swipeState) return;
+      var dx = e.clientX - _swipeState.startX;
+      var absDx = Math.abs(dx);
+      var absDy = Math.abs(e.clientY - _swipeState.startY);
+
+      if (absDx > MIN_DRAG && absDx > absDy * 1.5) {
+        // Valid horizontal swipe from edge
+        if (_swipeState.edge === 'left' && dx > 0) {
+          // Left edge, swiped right → next client
+          _switchClient(1);
+        } else if (_swipeState.edge === 'right' && dx < 0) {
+          // Right edge, swiped left → previous client
+          _switchClient(-1);
+        }
+      }
+      _swipeState = null;
+    });
+
+    console.log('§AD_UI edgeSwipe init edge=' + EDGE + 'px min=' + MIN_DRAG + 'px');
+  }
+
   function _initKeyboard() {
     if (typeof document === 'undefined') return;
     document.addEventListener('keydown', function (e) {
@@ -1138,9 +1226,23 @@
         return;
       }
 
-      if (_currentScreen !== 'window') return;
+      // Don't capture if user is typing
       var tag = e.target.tagName;
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+
+      // Arrow keys on home screen → switch client
+      if (_currentScreen === 'home') {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          _switchClient(-1);
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          _switchClient(1);
+        }
+        return;
+      }
+
+      if (_currentScreen !== 'window') return;
 
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -1806,6 +1908,7 @@
     ADParser.init(db);
     _initBroadcast();
     _initKeyboard();
+    _initEdgeSwipe();
 
     // Build FTS5 search index (R1)
     if (typeof ERPSearch !== 'undefined') {
@@ -1836,5 +1939,5 @@
   if (typeof window !== 'undefined') window.ADUI = ADUI;
   if (typeof module !== 'undefined' && module.exports) module.exports = ADUI;
 
-  console.log('§AD_UI_LOADED v9');
+  console.log('§AD_UI_LOADED v10');
 })();
