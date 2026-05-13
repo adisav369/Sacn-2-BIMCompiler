@@ -237,6 +237,45 @@
 
   var _graphCanvas = null;
 
+  function _graphDrillCallback(tableName, windowId, record) {
+    var wid = windowId;
+    if (!wid) {
+      try {
+        var wr = _db.exec(
+          'SELECT w.AD_Window_ID FROM AD_Window w ' +
+          'JOIN AD_Tab t ON w.AD_Window_ID = t.AD_Window_ID ' +
+          'JOIN AD_Table tbl ON t.AD_Table_ID = tbl.AD_Table_ID ' +
+          "WHERE tbl.TableName = ? AND w.IsActive = 'Y' LIMIT 1", [tableName]);
+        if (wr.length && wr[0].values.length) wid = Number(wr[0].values[0][0]);
+      } catch (e) { /* no window */ }
+    }
+    if (wid) {
+      openWindow(wid);
+      if (record) {
+        var keyCol = tableName + '_ID';
+        var keyVal = record[keyCol];
+        if (keyVal !== undefined) {
+          for (var ri = 0; ri < _currentRecords.length; ri++) {
+            if (_currentRecords[ri][keyCol] === keyVal) {
+              _currentRecordIdx = ri;
+              _renderWindow();
+              console.log('§AD_UI drillToRecord key=' + keyCol + ' val=' + keyVal + ' idx=' + ri);
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  function _graphLongPressCallback(node) {
+    if (node.windowId) {
+      openWindow(node.windowId);
+    } else if (node.record) {
+      _showToast(node.label);
+    }
+  }
+
   function _renderHomeGraph() {
     if (typeof ADGraph === 'undefined') {
       // Fallback to heatmap if ad_graph.js not loaded
@@ -245,63 +284,108 @@
     }
 
     var container = document.createElement('div');
+    container.dataset.graphContainer = '1';
     container.style.cssText = 'background:linear-gradient(135deg,#0e0e14,#1a1a28);' +
       'border:1px solid rgba(255,255,255,0.06);border-radius:14px;' +
       'margin-bottom:16px;overflow:hidden;position:relative;';
 
     var canvas = document.createElement('canvas');
-    canvas.width = 480;
-    canvas.height = 320;
-    canvas.style.cssText = 'display:block;width:100%;height:auto;cursor:grab;' +
-      'touch-action:none;';
+    // Use viewport dimensions — always available, never 0
+    var vw = (typeof window !== 'undefined' && window.innerWidth > 100) ? window.innerWidth : 480;
+    var vh = (typeof window !== 'undefined' && window.innerHeight > 100) ? window.innerHeight : 600;
+    // In landscape (vw > vh), make canvas square-ish using vh as reference
+    // In portrait, use full width, 70% height
+    var cw = Math.min(vw, 960);  // cap at 960 for desktop
+    var ch = (vw > vh) ? Math.round(vh * 0.6) : Math.round(cw * 0.7);
+    ch = Math.max(ch, 280);
+    canvas.width = cw;
+    canvas.height = ch;
+    canvas.style.cssText = 'display:block;width:100%;height:' + ch + 'px;' +
+      'cursor:grab;touch-action:none;';
     container.appendChild(canvas);
     _graphCanvas = canvas;
 
+    // Fullscreen toggle — uses browser Fullscreen API (hides URL bar)
+    var fsBtn = document.createElement('button');
+    fsBtn.textContent = '\u26F6';  // ⛶
+    fsBtn.style.cssText = 'position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.5);' +
+      'border:1px solid rgba(255,255,255,0.15);color:#aaa;font-size:16px;' +
+      'cursor:pointer;width:28px;height:28px;border-radius:6px;z-index:5;' +
+      'display:flex;align-items:center;justify-content:center;line-height:1;';
+
+    function _resizeGraph(fullscreen) {
+      if (fullscreen) {
+        container.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;' +
+          'background:#0a0a12;border:none;border-radius:0;margin:0;overflow:hidden;';
+        // Match actual viewport — no distortion in landscape
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+        canvas.width = vw;
+        canvas.height = vh;
+        canvas.style.cssText = 'display:block;width:100%;height:100%;cursor:grab;touch-action:none;';
+        fsBtn.textContent = '\u2212';
+        fsBtn.style.top = '10px';
+        fsBtn.style.right = '10px';
+        fsBtn.style.width = '36px';
+        fsBtn.style.height = '36px';
+        fsBtn.style.fontSize = '20px';
+      } else {
+        container.style.cssText = 'background:linear-gradient(135deg,#0e0e14,#1a1a28);' +
+          'border:1px solid rgba(255,255,255,0.06);border-radius:14px;' +
+          'margin-bottom:16px;overflow:hidden;position:relative;';
+        var rvw = window.innerWidth || 480;
+        var rvh = window.innerHeight || 600;
+        var rw = Math.min(rvw, 960);
+        var rh = (rvw > rvh) ? Math.round(rvh * 0.6) : Math.round(rw * 0.7);
+        rh = Math.max(rh, 280);
+        canvas.width = rw;
+        canvas.height = rh;
+        canvas.style.cssText = 'display:block;width:100%;height:' + rh + 'px;cursor:grab;touch-action:none;';
+        fsBtn.textContent = '\u26F6';
+        fsBtn.style.top = '6px';
+        fsBtn.style.right = '6px';
+        fsBtn.style.width = '28px';
+        fsBtn.style.height = '28px';
+        fsBtn.style.fontSize = '16px';
+      }
+      ADGraph.destroy();
+      ADGraph.init(canvas, _db, _currentClient,
+        _graphDrillCallback, _graphLongPressCallback);
+      console.log('§AD_UI graphFullscreen=' + fullscreen +
+        ' w=' + canvas.width + ' h=' + canvas.height);
+    }
+
+    fsBtn.addEventListener('pointerup', function (e) {
+      e.stopPropagation();
+      if (!document.fullscreenElement) {
+        // Enter true fullscreen (hides URL bar)
+        var target = container;
+        var rfs = target.requestFullscreen || target.webkitRequestFullscreen;
+        if (rfs) {
+          rfs.call(target).then(function () { _resizeGraph(true); })
+            .catch(function () { _resizeGraph(true); }); // fallback if promise rejected
+        } else {
+          _resizeGraph(true); // fallback: no Fullscreen API
+        }
+      } else {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      }
+    });
+
+    // Listen for fullscreen exit (ESC or browser back)
+    document.addEventListener('fullscreenchange', function () {
+      if (!document.fullscreenElement && container.dataset.graphContainer) {
+        _resizeGraph(false);
+      }
+    });
+
+    container.appendChild(fsBtn);
+
     _contentEl.appendChild(container);
 
-    // Init graph — drill callback opens window, long-press opens record card
+    // Init graph
     ADGraph.init(canvas, _db, _currentClient,
-      function onDrill(tableName, windowId, record) {
-        // Try direct windowId first, then lookup by table name
-        var wid = windowId;
-        if (!wid) {
-          try {
-            var wr = _db.exec(
-              'SELECT w.AD_Window_ID FROM AD_Window w ' +
-              'JOIN AD_Tab t ON w.AD_Window_ID = t.AD_Window_ID ' +
-              'JOIN AD_Table tbl ON t.AD_Table_ID = tbl.AD_Table_ID ' +
-              "WHERE tbl.TableName = ? AND w.IsActive = 'Y' LIMIT 1", [tableName]);
-            if (wr.length && wr[0].values.length) wid = Number(wr[0].values[0][0]);
-          } catch (e) { /* no window */ }
-        }
-        if (wid) {
-          openWindow(wid);
-          // Navigate to the specific tapped record
-          if (record) {
-            var keyCol = tableName + '_ID';
-            var keyVal = record[keyCol];
-            if (keyVal !== undefined) {
-              for (var ri = 0; ri < _currentRecords.length; ri++) {
-                if (_currentRecords[ri][keyCol] === keyVal) {
-                  _currentRecordIdx = ri;
-                  _renderWindow();
-                  console.log('§AD_UI drillToRecord key=' + keyCol + ' val=' + keyVal + ' idx=' + ri);
-                  break;
-                }
-              }
-            }
-          }
-        }
-        // No window found — stay in globe, no crash, no toast
-      },
-      function onLongPress(node) {
-        if (node.windowId) {
-          openWindow(node.windowId);
-        } else if (node.record) {
-          _showToast(node.label + ' — long press: open info');
-        }
-      }
-    );
+      _graphDrillCallback, _graphLongPressCallback);
 
     console.log('§AD_UI graphView rendered client=' + _currentClient);
   }

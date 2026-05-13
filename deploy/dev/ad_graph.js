@@ -673,11 +673,41 @@
 
   function _onWheel(e) {
     e.preventDefault();
-    // Zoom: adjust radius
     var delta = e.deltaY > 0 ? -8 : 8;
-    _radius = Math.max(60, Math.min(Math.min(_W, _H) * 0.6, _radius + delta));
-    // Rebuild sphere positions
+    _radius = Math.max(40, Math.min(Math.max(_W, _H) * 1.2, _radius + delta));
     _rebuildSpherePositions();
+  }
+
+  // ── Pinch-to-zoom (mobile) ────────────────────────────────────────
+
+  var _pinchStartDist = 0;
+  var _pinchStartRadius = 0;
+
+  function _onTouchStart(e) {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      var dx = e.touches[0].clientX - e.touches[1].clientX;
+      var dy = e.touches[0].clientY - e.touches[1].clientY;
+      _pinchStartDist = Math.sqrt(dx * dx + dy * dy);
+      _pinchStartRadius = _radius;
+    }
+  }
+
+  function _onTouchMove(e) {
+    if (e.touches.length === 2 && _pinchStartDist > 0) {
+      e.preventDefault();
+      var dx = e.touches[0].clientX - e.touches[1].clientX;
+      var dy = e.touches[0].clientY - e.touches[1].clientY;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      var scale = dist / _pinchStartDist;
+      _radius = Math.max(40, Math.min(Math.max(_W, _H) * 1.2,
+        _pinchStartRadius * scale));
+      _rebuildSpherePositions();
+    }
+  }
+
+  function _onTouchEnd(e) {
+    if (e.touches.length < 2) _pinchStartDist = 0;
   }
 
   function _rebuildSpherePositions() {
@@ -716,6 +746,9 @@
     canvas.addEventListener('pointermove', _onPointerMove);
     canvas.addEventListener('pointerup', _onPointerUp);
     canvas.addEventListener('wheel', _onWheel, { passive: false });
+    canvas.addEventListener('touchstart', _onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', _onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', _onTouchEnd);
     if (typeof document !== 'undefined') document.addEventListener('keydown', _onKeyDown);
 
     if (_animId) cancelAnimationFrame(_animId);
@@ -730,6 +763,9 @@
       _canvas.removeEventListener('pointerdown', _onPointerDown);
       _canvas.removeEventListener('pointermove', _onPointerMove);
       _canvas.removeEventListener('pointerup', _onPointerUp);
+      _canvas.removeEventListener('touchstart', _onTouchStart);
+      _canvas.removeEventListener('touchmove', _onTouchMove);
+      _canvas.removeEventListener('touchend', _onTouchEnd);
     }
     if (typeof document !== 'undefined') document.removeEventListener('keydown', _onKeyDown);
     _nodes = []; _edges = []; _ctx = null;
