@@ -2264,10 +2264,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-the-thesis" class="md-nav__link">
+  <a href="#the-problem" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. The Thesis
+        The Problem
       
     </span>
   </a>
@@ -2275,22 +2275,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#1b-the-runtime-why-it-feels-native" class="md-nav__link">
+  <a href="#the-solution-how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1b. The Runtime — Why It Feels Native
+        The Solution — How It Works
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="1b. The Runtime — Why It Feels Native">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. The Architecture">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#sqlite-wasm-sqljs-the-instant-database" class="md-nav__link">
+  <a href="#sqlite-wasm-sqljs-the-database" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SQLite WASM (sql.js) — The Instant Database
+        SQLite WASM (sql.js) — The Database
       
     </span>
   </a>
@@ -2298,10 +2309,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#threejs-the-instant-scene" class="md-nav__link">
+  <a href="#threejs-the-spatial-layer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Three.js — The Instant Scene
+        Three.js — The Spatial Layer
       
     </span>
   </a>
@@ -4632,10 +4643,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-the-thesis" class="md-nav__link">
+  <a href="#the-problem" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. The Thesis
+        The Problem
       
     </span>
   </a>
@@ -4643,22 +4654,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#1b-the-runtime-why-it-feels-native" class="md-nav__link">
+  <a href="#the-solution-how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1b. The Runtime — Why It Feels Native
+        The Solution — How It Works
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="1b. The Runtime — Why It Feels Native">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. The Architecture">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#sqlite-wasm-sqljs-the-instant-database" class="md-nav__link">
+  <a href="#sqlite-wasm-sqljs-the-database" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SQLite WASM (sql.js) — The Instant Database
+        SQLite WASM (sql.js) — The Database
       
     </span>
   </a>
@@ -4666,10 +4688,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#threejs-the-instant-scene" class="md-nav__link">
+  <a href="#threejs-the-spatial-layer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Three.js — The Instant Scene
+        Three.js — The Spatial Layer
       
     </span>
   </a>
@@ -5842,66 +5864,82 @@
  * SPDX-License-Identifier: MIT
  </em>/</p>
 <h1 id="spatial-erp-ootb-every-record-has-a-place">Spatial ERP OOTB — Every Record Has a Place<a class="headerlink" href="#spatial-erp-ootb-every-record-has-a-place" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>The leap:</strong> ERP is not forms and menus. ERP is <em>space</em>.
-A warehouse has aisles. An office has cabinets. A factory has stations.
-A phone has a swipe. Put them together: swipe through your business
-like swiping through a building.</p>
-</blockquote>
-<p><strong>POC implementation (ongoing):</strong> <a href="../SpatialERP_POC/">Construction ERP POC</a> — the first
-build, grounded in a real Construction ERP requirement (Sysnova / Kazi Farms Group).
-Land lead management → FAR → BOQ → Approval, with the architect's IFC as
-the spatial view. Six stakeholder roles. One <code>.db</code>. One browser.</p>
-<p><strong>Status (2026-05-13):</strong> Engine complete (P0-P2, 79/79 tests). UI layer next (P3).
-- <code>doc_engine.js</code> — 6 tables, StateMachine (5 states), JournalEngine (rule-based)
-- <code>category_loader.js</code> — registry reader + label renderer
-- <code>handlers/construction.js</code> — 7 stateless handlers, full Sysnova lead lifecycle
-- <code>kernel_ops.js</code> — audit trail + undo, <code>user_tag</code> column for multi-user
-- <code>construction_seed.sql</code> — 8 containers, 2 docs, 4 categories, 6 roles</p>
-<hr />
-<h2 id="1-the-thesis">1. The Thesis<a class="headerlink" href="#1-the-thesis" title="Permanent link">&para;</a></h2>
-<p>Three.js + SQLite + one browser already renders buildings with 10,000 elements,
-runs clash detection, tracks changes, computes costs — all with zero install.</p>
-<p>The same engine renders <em>anything with coordinates</em>:</p>
+<h2 id="the-problem">The Problem<a class="headerlink" href="#the-problem" title="Permanent link">&para;</a></h2>
+<p><strong>$83 billion</strong> is spent annually on ERP software across warehousing, retail, manufacturing, construction, agriculture, and food service. Yet the majority of small and mid-sized operations in these sectors — estimated at 70-80% globally — still run on spreadsheets, WhatsApp groups, and paper forms. Why?</p>
+<p><strong>Three barriers prevent ERP adoption at the field level:</strong></p>
+<ol>
+<li>
+<p><strong>Infrastructure cost.</strong> Traditional ERP (SAP, Odoo, iDempiere) requires a server, a database administrator, and months of implementation. Minimum viable deployment: $5,000-50,000 and 3-6 months. A 50-seat restaurant, a 5,000-bin warehouse, or a construction site in rural Bangladesh cannot justify this.</p>
+</li>
+<li>
+<p><strong>Connectivity dependence.</strong> Server-based ERP fails where it is needed most — the warehouse floor, the construction site, the farm in a region with intermittent mobile data. Field workers cannot wait for a server round-trip to record a goods receipt or mark a phase complete.</p>
+</li>
+<li>
+<p><strong>Training overhead.</strong> ERP interfaces are designed for back-office clerks at desks. A foreman on a construction site, a warehouse picker in an aisle, or a farm supervisor in a shed needs to record data in under 5 seconds with one hand. Forms, menus, and dropdown lists are hostile to this context.</p>
+</li>
+</ol>
+<p><strong>The market opportunity is the long tail:</strong> businesses that have never had ERP because ERP costs too much, takes too long, requires a server they don't have, and presents an interface their field workers cannot use.</p>
 <table>
 <thead>
 <tr>
-<th>What users see</th>
-<th>What the engine sees</th>
+<th>Segment</th>
+<th>Global market (2025)</th>
+<th>% still on spreadsheets/paper</th>
+<th>Opportunity</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>A warehouse with racks</td>
-<td>Products in a BOM hierarchy with xyz</td>
+<td>Construction project management</td>
+<td>$9.8B</td>
+<td>~60% of sub-$50M contractors</td>
+<td>Lead-to-close lifecycle, BOQ, approvals</td>
 </tr>
 <tr>
-<td>A store with shelves</td>
-<td>Products in a BOM hierarchy with xyz</td>
+<td>Warehouse management (WMS)</td>
+<td>$4.1B</td>
+<td>~70% of &lt;500-bin operations</td>
+<td>Pick/putaway, inventory count, reorder</td>
 </tr>
 <tr>
-<td>A factory with machines</td>
-<td>Products in a BOM hierarchy with xyz</td>
+<td>Restaurant / F&amp;B POS</td>
+<td>$18.6B</td>
+<td>~50% of independent restaurants</td>
+<td>Order, kitchen, payment, customer view</td>
 </tr>
 <tr>
-<td>An office with filing cabinets</td>
-<td>Products in a BOM hierarchy with xyz</td>
+<td>Agriculture / Farm ERP</td>
+<td>$4.2B</td>
+<td>~80% in developing markets</td>
+<td>Flock/crop tracking, feed, IoT sensors</td>
 </tr>
 <tr>
-<td>A logistics network with hubs</td>
-<td>Products in a BOM hierarchy with xyz</td>
+<td>Manufacturing (MES)</td>
+<td>$15.4B</td>
+<td>~65% of small job shops</td>
+<td>Work orders, station tracking, QC</td>
+</tr>
+<tr>
+<td>Retail POS</td>
+<td>$29.7B</td>
+<td>~40% of independent retailers</td>
+<td>Planogram, sales, restock</td>
 </tr>
 </tbody>
 </table>
-<p><strong>The BOM is universal.</strong> Container → sub-container → item, recursively.
-The renderer doesn't know it's drawing a cabinet instead of a wall.
-The document engine doesn't know it's processing a pick order instead of
-a <a href="../SpatialERP_POC/">construction order</a>. Same five tables. Same state machine. Same journal.</p>
+<p><strong>What if the ERP ran entirely in the browser?</strong> No server. No install. No connectivity requirement. The entire database — documents, journal, audit trail — in a single file smaller than a photo, loaded via WebAssembly in microseconds. The field worker swipes through their workspace on a $100 phone. The accountant sees balanced double-entry journals. The manager sees approval queues. Same data, same file, different views.</p>
+<p>This is not a whitepaper. It is built and tested. The BIM OOTB viewer already renders 126,000 building elements in a browser, runs clash detection, and tracks changes — all with zero install, proven across 30+ real buildings with 155 automated tests. <strong>Spatial ERP extends the same engine from buildings to businesses.</strong></p>
 <hr />
-<h2 id="1b-the-runtime-why-it-feels-native">1b. The Runtime — Why It Feels Native<a class="headerlink" href="#1b-the-runtime-why-it-feels-native" title="Permanent link">&para;</a></h2>
-<p>Two technologies make this possible. Both run <strong>inside the browser</strong>,
-with zero server dependency, zero install, and zero latency.</p>
-<h3 id="sqlite-wasm-sqljs-the-instant-database">SQLite WASM (sql.js) — The Instant Database<a class="headerlink" href="#sqlite-wasm-sqljs-the-instant-database" title="Permanent link">&para;</a></h3>
+<h2 id="the-solution-how-it-works">The Solution — How It Works<a class="headerlink" href="#the-solution-how-it-works" title="Permanent link">&para;</a></h2>
+<p><strong><a href="../SpatialERP_POC/">Construction ERP POC</a></strong> — the first implementation (engine complete, <a href="../SpatialERP_POC/">79/79 tests passing</a>):</p>
+<p>A land acquisition agent in Dhaka opens <code>erp.html</code> on their phone. Creates a lead for Plot 60, Gulshan-1. Adds landowner details (confidential). Shares a link to the architect — owner data automatically stripped. The architect drops an IFC file, the building renders on the plot, FAR is computed. The BOQ engineer receives a link, generates cost lines from the IFC geometry. Management approves. Legal closes. Journal auto-posts: debit LAND_ACQUISITION, credit CASH. Every step logged in an append-only operation log — full audit trail, undo capability, time-travel queries.</p>
+<p>Six roles. One <code>.db</code> file. One browser. No server. No app download. No training beyond "swipe and tap."</p>
+<p>The same engine — same five database tables, same state machine, same journal — handles any domain where things have coordinates and belong to documents: warehouses, restaurants, farms, factories, offices.</p>
+<hr />
+<h2 id="1-the-architecture">1. The Architecture<a class="headerlink" href="#1-the-architecture" title="Permanent link">&para;</a></h2>
+<p>The system runs on two browser technologies, both mature and proven:</p>
+<hr />
+<h3 id="sqlite-wasm-sqljs-the-database">SQLite WASM (sql.js) — The Database<a class="headerlink" href="#sqlite-wasm-sqljs-the-database" title="Permanent link">&para;</a></h3>
 <p>The entire database — containers, items, documents, journal, kernel_ops —
 lives in memory as a SQLite file loaded via WebAssembly. Queries execute
 in <strong>microseconds</strong>, not milliseconds. There is no HTTP round-trip. No
@@ -5917,7 +5955,7 @@ software that feels like a tool and software that feels like part of your hand.<
 - Offline works perfectly — the <code>.db</code> is already local
 - Phone with 2GB RAM handles a restaurant, warehouse, or factory floor
 - The $100 Android and the $1500 iPhone feel the same</p>
-<h3 id="threejs-the-instant-scene">Three.js — The Instant Scene<a class="headerlink" href="#threejs-the-instant-scene" title="Permanent link">&para;</a></h3>
+<h3 id="threejs-the-spatial-layer">Three.js — The Spatial Layer<a class="headerlink" href="#threejs-the-spatial-layer" title="Permanent link">&para;</a></h3>
 <p>Three.js turns the phone GPU into a spatial renderer. The 3D floor plan,
 the heatmap colours, the red/green/amber glows, the card thumbnails — all
 rendered at <strong>60 frames per second</strong> on commodity hardware. Already proven
