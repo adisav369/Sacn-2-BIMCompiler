@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <!--
-  erp.html — Spatial ERP OOTB — Standalone document swipe UI
-  Implementing SpatialERP_POC.md §12b File 4 — Witness: W-SERP-P3
-  No Three.js. No WebGL. Pure document handling with TikTok swipe UX.
+  erp.html — ERP OOTB — AD-driven UI from SQLite WASM
+  Implementing ERP_AD_UI.md §8 — Witness: W-ERP-ADUI
+  Renders iDempiere Application Dictionary as card-first mobile UI.
+  No Three.js. No WebGL. No server. No iDempiere runtime.
   Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
   SPDX-License-Identifier: MIT
 -->
@@ -10,63 +11,63 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Spatial ERP — Construction</title>
+<title>ERP OOTB — Application Dictionary</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    background: #1e1e1e; color: #eee;
-    font-family: system-ui, -apple-system, sans-serif;
-    overflow: hidden; height: 100vh;
-    display: flex; flex-direction: column;
+    background: #121218; color: #e8e8ed;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow-y: auto; min-height: 100vh;
+    font-size: 14px; line-height: 1.5;
   }
-  #role-band {
+  #breadcrumb {
     position: fixed; top: 0; left: 0; right: 0; z-index: 10;
-    background: #1e1e1e;
+    background: rgba(18,18,24,0.92); backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 12px 16px; min-height: 48px;
+    display: flex; align-items: center; gap: 8px;
   }
-  #swipe-container {
-    flex: 1; margin-top: 56px; margin-bottom: 40px;
-    overflow: hidden;
+  #content {
+    margin-top: 52px; margin-bottom: 56px;
+    padding: 12px 16px; overflow-y: auto;
+    max-width: 960px; margin-left: auto; margin-right: auto;
   }
-  #status-bar {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    background: rgba(30,30,30,0.95); border-top: 1px solid #333;
-    padding: 8px 16px; font-size: 12px; color: #888;
-    text-align: center; z-index: 10;
-  }
+  #bottom-nav { /* rendered by ad_ui.js */ }
   #loading {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: #1e1e1e; z-index: 100;
+    background: #121218; z-index: 100;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     color: #888; font-size: 14px;
   }
   #loading .spinner {
-    width: 32px; height: 32px; border: 3px solid #333;
-    border-top-color: #4fc3f7; border-radius: 50%;
-    animation: spin 0.8s linear infinite; margin-bottom: 12px;
+    width: 36px; height: 36px; border: 3px solid #222;
+    border-top-color: #6c9fff; border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin-bottom: 16px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  /* Swipe hint animation */
-  .swipe-hint {
-    position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
-    color: #555; font-size: 11px; text-align: center;
-    animation: fadeHint 4s ease-in-out;
-    pointer-events: none;
-  }
-  @keyframes fadeHint { 0%,80% { opacity:1; } 100% { opacity:0; } }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  /* Touch targets */
+  button, select, input { min-height: 44px; }
+  a { -webkit-tap-highlight-color: transparent; }
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 </style>
 </head>
 <body>
 
 <div id="loading">
   <div class="spinner"></div>
-  <div>Loading Spatial ERP&hellip;</div>
+  <div>Loading ERP OOTB&hellip;</div>
   <div id="load-status" style="margin-top:8px;font-size:11px;color:#555;"></div>
 </div>
 
-<div id="role-band"></div>
-<div id="swipe-container"></div>
-<div id="status-bar"></div>
+<div id="breadcrumb"></div>
+<div id="content"></div>
+<div id="bottom-nav"></div>
 
 <!-- sql.js WASM — local first, CDN fallback -->
 <script>
@@ -78,7 +79,7 @@
     if (statusEl) statusEl.textContent = msg;
   }
 
-  // ── 1. Load sql.js ─────────────────────────────────────────────
+  // ── 1. Script loader ───────────────────────────────────────────────
   function loadScript(url, cdn) {
     return new Promise(function (resolve) {
       var s = document.createElement('script');
@@ -98,15 +99,13 @@
     });
   }
 
-  // ── 2. Load ERP modules ────────────────────────────────────────
+  // ── 2. Module list — §8 step 3 ────────────────────────────────────
   var MODULES = [
     'kernel_ops.js',
-    'doc_engine.js',
-    'category_loader.js',
-    'handlers/construction.js',
-    'role_band.js',
-    'swipe.js',
-    'erp_panel.js'
+    'ad_parser.js',
+    'ad_data.js',
+    'ad_charts.js',
+    'ad_ui.js'
   ];
 
   async function boot() {
@@ -124,7 +123,6 @@
     try {
       SQL = await initSqlJs({ locateFile: function (f) { return 'lib/' + f; } });
     } catch (e) {
-      // CDN WASM fallback
       SQL = await initSqlJs({
         locateFile: function () {
           return 'https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.wasm';
@@ -132,7 +130,7 @@
       });
     }
 
-    // ── 3. Load .db — URL param or default seed ──────────────────
+    // ── 3. Load database — §8 step 7: ?db= or ad_seed.db ───────────
     var params = new URLSearchParams(window.location.search);
     var dbUrl = params.get('db');
     var db;
@@ -143,7 +141,7 @@
         var resp = await fetch(dbUrl);
         var buf = await resp.arrayBuffer();
         db = new SQL.Database(new Uint8Array(buf));
-        log('Database loaded from URL');
+        log('Database loaded from ' + dbUrl);
       } catch (e) {
         log('Fetch failed: ' + e.message + ' — using seed');
         db = new SQL.Database();
@@ -152,63 +150,67 @@
       db = new SQL.Database();
     }
 
-    // ── 4. Ensure tables + seed data ─────────────────────────────
-    if (typeof DocEngine !== 'undefined') DocEngine.ensureTables(db);
-
-    // Ensure project_metadata table exists (needed for seed)
+    // ── 4. Load AD seed data ────────────────────────────────────────
+    // Check if AD tables exist
+    var hasAD = false;
     try {
-      db.run('CREATE TABLE IF NOT EXISTS project_metadata (key TEXT PRIMARY KEY, value TEXT)');
-    } catch (ignore) {}
+      var chk = db.exec("SELECT COUNT(*) FROM AD_Menu");
+      hasAD = chk.length && Number(chk[0].values[0][0]) > 0;
+    } catch (e) { /* table doesn't exist */ }
 
-    // Check if seed data exists
-    var hasContainers = db.exec('SELECT COUNT(*) FROM containers');
-    var containerCount = (hasContainers.length && hasContainers[0].values.length)
-      ? Number(hasContainers[0].values[0][0]) : 0;
-
-    if (containerCount === 0) {
-      log('Applying construction seed...');
+    if (!hasAD) {
+      log('Loading AD seed (7.7MB)...');
       try {
-        var seedResp = await fetch('construction_seed.sql');
-        var seedSql = await seedResp.text();
-        db.run(seedSql);
-        log('Seed data applied');
+        var seedResp = await fetch('ad_seed.db');
+        var seedBuf = await seedResp.arrayBuffer();
+        db.close();
+        db = new SQL.Database(new Uint8Array(seedBuf));
+        log('AD seed loaded (' + (seedBuf.byteLength / 1024 / 1024).toFixed(1) + 'MB)');
       } catch (e) {
-        log('Seed fetch failed: ' + e.message);
+        log('AD seed failed: ' + e.message);
       }
     }
 
-    console.log('§ERP_HTML db ready containers=' + containerCount);
+    // ── 5. Verify AD loaded — §8 step 4 ─────────────────────────────
+    var counts = {};
+    ['AD_Menu', 'AD_Window', 'AD_Tab', 'AD_Field'].forEach(function (t) {
+      try {
+        var r = db.exec('SELECT COUNT(*) FROM ' + t);
+        counts[t] = r.length ? Number(r[0].values[0][0]) : 0;
+      } catch (e) { counts[t] = -1; }
+    });
+    console.log('§ERP_HTML ad_counts menu=' + counts.AD_Menu +
+                ' windows=' + counts.AD_Window +
+                ' tabs=' + counts.AD_Tab +
+                ' fields=' + counts.AD_Field);
 
-    // ── 5. Init ERP Panel ────────────────────────────────────────
-    if (typeof ERPPanel !== 'undefined') {
-      ERPPanel.init(db);
+    // ── 6. Init AD UI — §8 step 5 ──────────────────────────────────
+    if (typeof ADUI !== 'undefined') {
+      ADUI.init(db,
+        document.getElementById('content'),
+        document.getElementById('bottom-nav'),
+        document.getElementById('breadcrumb')
+      );
     }
 
-    // ── 6. Apply URL params: ?doc= focus, ?role= override ───────
-    var docParam = params.get('doc');
-    if (docParam) {
-      console.log('§ERP_HTML url doc=' + docParam);
-      // Role is handled by RoleBand.init reading ?role=
+    // ── 7. Auto-open window from URL — §8 step 6 ────────────────────
+    var windowParam = params.get('window');
+    if (windowParam && typeof ADUI !== 'undefined') {
+      console.log('§ERP_HTML auto-open window=' + windowParam);
+      ADUI.openWindow(Number(windowParam));
     }
 
     // Hide loading screen
     var loadingEl = document.getElementById('loading');
     if (loadingEl) loadingEl.style.display = 'none';
 
-    // Show swipe hint (fades after 4s)
-    var hint = document.createElement('div');
-    hint.className = 'swipe-hint';
-    hint.textContent = '\u2190 swipe \u2192 next doc \u00b7 \u2191 drill in \u00b7 \u2193 back';
-    document.body.appendChild(hint);
-    setTimeout(function () { if (hint.parentNode) hint.parentNode.removeChild(hint); }, 4500);
-
     console.log('§ERP_HTML boot complete');
   }
 
   boot().catch(function (e) {
     console.error('§ERP_HTML boot error: ' + e.message);
-    var statusEl2 = document.getElementById('load-status');
-    if (statusEl2) statusEl2.textContent = 'Error: ' + e.message;
+    var s = document.getElementById('load-status');
+    if (s) s.textContent = 'Error: ' + e.message;
   });
 })();
 </script>

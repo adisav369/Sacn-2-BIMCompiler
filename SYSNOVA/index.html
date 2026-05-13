@@ -287,7 +287,7 @@
     <span data-trl="landing_created_by">Created by</span> <a href="mailto:red1org@gmail.com" style="color:#0277bd;text-decoration:none">Redhuan D. OON</a> (red1) — October 2025
   </div>
   <div style="margin-top:16px">
-    <a href="sandbox/erp.html" style="color:#e8a735;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:2px">ERP &mdash; GOD MODE</a>
+    <a href="sandbox/erp.html" style="color:#e8a735;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:2px">ERP OOTB</a>
   </div>
   <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(0,0,0,0.1);font-size:13px;color:#333;letter-spacing:0.5px">
     <a href="https://www.sysnova.co.uk/" target="_blank" style="text-decoration:none"><strong style="color:#0277bd;font-size:14px;display:block;margin-bottom:3px">Sysnova Information Systems Limited</strong></a>
@@ -447,6 +447,7 @@ function buildCard(arch, container) {
     </div>
     <div class="disc-bars">${discBars}</div>
     <button class="open-btn" onclick="event.stopPropagation(); openViewer('${arch.name}', '${arch.representative}')">${_TRL.landing_open_viewer||'Open 3D Viewer'} &#9889;</button>
+    <button class="open-btn" style="background:#e8a735;color:#1a1a2e;margin-top:4px" onclick="event.stopPropagation(); window.open('sandbox/erp.html?db=' + (_base||'') + 'buildings/${BUILDINGS[arch.name] ? BUILDINGS[arch.name].db : (arch.name+'_extracted.db')}', '_blank')">ERP</button>
   `;
   card.addEventListener('click', () => openViewer(arch.name, arch.representative));
   container.appendChild(card);
