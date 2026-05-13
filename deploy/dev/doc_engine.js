@@ -137,6 +137,8 @@
     var sideEffects = [];
     if (newStatus === 'COMPLETED') {
       sideEffects = journalPost(db, docId);
+    } else if (newStatus === 'REVERSED') {
+      sideEffects = journalReverse(db, docId);
     }
 
     console.log('§DOC_TRANSITION result doc=' + docId + ' from=' + current +
@@ -211,6 +213,56 @@
     return [debitId, creditId];
   }
 
+  // ── JournalEngine — auto-reverse on REVERSED ────────────────────────
+  //
+  // Posts counter-entries for every existing journal entry on the document.
+  // Swaps debit↔credit. Linked via REV- prefix. Auditors see both the
+  // original posting AND the reversal — no data is deleted.
+  // This is what SAP does with reversal documents (FB08/MBST) but in one function.
+
+  /**
+   * Reverse all journal entries for a document.
+   * @param {Object} db     sql.js database
+   * @param {string} docId  document id
+   * @returns {Array} reversal journal entry ids created
+   */
+  function journalReverse(db, docId) {
+    console.log('§JOURNAL_REVERSE enter doc=' + docId);
+
+    var existing = db.exec(
+      'SELECT id, account, debit, credit FROM journal WHERE doc_id = ? AND id NOT LIKE \'REV-%\'',
+      [docId]
+    );
+    if (!existing.length || !existing[0].values.length) {
+      console.log('§JOURNAL_REVERSE no entries to reverse doc=' + docId);
+      return [];
+    }
+
+    var ts = new Date().toISOString();
+    var reversalIds = [];
+
+    for (var i = 0; i < existing[0].values.length; i++) {
+      var row = existing[0].values[i];
+      var origId = row[0];
+      var account = row[1];
+      var origDebit = Number(row[2]);
+      var origCredit = Number(row[3]);
+      var revId = 'REV-' + origId;
+
+      // Counter-entry: swap debit and credit
+      db.run(
+        'INSERT INTO journal (id, doc_id, line_id, account, debit, credit, timestamp) ' +
+        'VALUES (?, ?, NULL, ?, ?, ?, ?)',
+        [revId, docId, account, origCredit, origDebit, ts]
+      );
+      reversalIds.push(revId);
+    }
+
+    console.log('§JOURNAL_REVERSE done doc=' + docId +
+                ' reversed=' + reversalIds.length + ' entries');
+    return reversalIds;
+  }
+
   /**
    * Query journal balance for an account.
    * @returns {{ debit: number, credit: number, net: number }}
@@ -233,13 +285,14 @@
   // ── Public API ──────────────────────────────────────────────────────
 
   var DocEngine = {
-    createTables:   createTables,
-    ensureTables:   ensureTables,
-    transition:     transition,
-    journalPost:    journalPost,
-    accountBalance: accountBalance,
-    TRANSITIONS:    TRANSITIONS,
-    JOURNAL_RULES:  JOURNAL_RULES
+    createTables:    createTables,
+    ensureTables:    ensureTables,
+    transition:      transition,
+    journalPost:     journalPost,
+    journalReverse:  journalReverse,
+    accountBalance:  accountBalance,
+    TRANSITIONS:     TRANSITIONS,
+    JOURNAL_RULES:   JOURNAL_RULES
   };
 
   if (typeof window !== 'undefined') {

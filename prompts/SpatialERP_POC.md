@@ -824,7 +824,8 @@ same role band — two ways in.
 | 4 | §7.2 | BOQ handler — reads IFC elements, creates document_lines | §-log: BOQ lines match boq_charts |
 | 5 | §7.3 | FAR handler — computes from IFC geometry or manual input | §-log: FAR value computed |
 | 6 | §6 | Role-based field filtering (confidential_fields hidden for SALE) | §-log: owner info hidden per role |
-| 7 | §12b | SwipeCardStack + RoleBand + ERPPanel + erp.html (P3 UI) | §-log: role switch, card render, offline |
+| 7 | §12b | SwipeCardStack + RoleBand + ERPPanel + erp.html (P3 UI) | **DONE 2026-05-13** 155 tests (T0-T19), role switch, card render, reversal, XSS, §-log audit |
+| 7b | §16 | Journal reversal (`journalReverse`) + stress test (100K docs, 1M ops) + gap tracker | **DONE 2026-05-13** 21 stress tests, 255 total. G1-G9 closed, G10-G18 open. |
 | 8 | §8 | End-to-end demo flow | All 9 steps complete on one device |
 | 9 | — | Upload construction.db to OCI dev bucket | Accessible via viewer URL |
 
@@ -1215,6 +1216,50 @@ Standalone shell. Loads sql.js + ERP modules. No Three.js.
 | Cloud relay | Upload .db to OCI. Role-based QR links. | Yes — no code change |
 | Full P2P | Lead → approve → PO → GR → Invoice → Payment | Yes — P2P handlers (§10b in spec) |
 | iDempiere graduation | Export to C_Project, C_ProjectLine, M_Product | Data migration, not rewrite |
+
+---
+
+## §16. Gap Tracker — Honest Claims vs Open Problems
+
+**Purpose:** This section tracks what is proven by tests and what remains
+a claim without evidence. Every gap is a future work item. Close the gap
+= write the test. No claim is valid until a test proves it.
+
+### CLOSED gaps (proven by tests)
+
+| # | Claim | Evidence | Closed |
+|---|---|---|---|
+| G1 | 5-table schema handles all doc_types | 100K docs, 3 doc_types, one `documents` table. `test_stress.js` S2a | 2026-05-13 |
+| G2 | kernel_ops = event sourcing + undo | 1M ops inserted, GROUP BY in 0.4s. `test_stress.js` S4a/S5d | 2026-05-13 |
+| G3 | Offline-first, no server | `erp.html` loads sql.js WASM, no fetch required. `test_erp_ui.js` T9 | 2026-05-13 |
+| G4 | Journal auto-posts on COMPLETED | 1000 lifecycles, 2000 journal entries. `test_stress.js` S6a/S6b | 2026-05-13 |
+| G5 | Journal reversal (vs SAP FB08) | `journalReverse()` posts counter-entries, net=0. `test_erp_ui.js` T19a-T19j | 2026-05-13 |
+| G6 | Role-based field filtering | SALE hides owner, ARCH hides owner, MGMT sees all. `test_erp_ui.js` T8a-T8g | 2026-05-13 |
+| G7 | Scale: 100K docs + 500K lines + 1M ops | 1.6M rows, 179MB, all queries < 1s. `test_stress.js` S1-S9 | 2026-05-13 |
+| G8 | XSS safety | HTML-escaped `<script>` and `<img onerror>`. `test_erp_ui.js` T17 | 2026-05-13 |
+| G9 | Recursive container hierarchy | 10K containers, 5 levels, CTE in 0.010s. `test_stress.js` S8b | 2026-05-13 |
+
+### OPEN gaps (claims without evidence)
+
+| # | Claim | What's missing | Effort | Priority |
+|---|---|---|---|---|
+| G10 | P2P lifecycle (PO→GR→Invoice→Payment) | No handlers, no seed data, no tests. SAP's 900 tables exist because P2P has 900 edge cases. | 2-3 sessions | HIGH — must prove `documents.doc_type` handles non-lead doc_types end-to-end |
+| G11 | Multi-device sync | `.db` is a single file. Two offline edits = merge conflict. OCI is last-write-wins. Need: CRDT or op-merge strategy on `kernel_ops`. | Research + 2 sessions | HIGH — the offline demo is dishonest without this |
+| G12 | Manufacturing BOM explosion | `containers` hierarchy handles spatial BOM (site→building→phase). Not proven for manufacturing BOM (product→assembly→component with qty per). | 1 session | MEDIUM — needs a manufacturing seed + handler |
+| G13 | Multi-currency | `journal.debit`/`credit` are bare numbers. No currency column. No exchange rate table. SAP handles 200+ currencies. | 1 session | MEDIUM — add `currency` column + `exchange_rates` table |
+| G14 | Audit compliance (SOX/IFRS) | Journal entries are immutable (no UPDATE/DELETE in code). But no constraint enforces it. No period close. No audit report. | 1 session | MEDIUM — add DB trigger or CHECK, period close handler |
+| G15 | Browser memory at scale | Stress test runs in Node.js. 179MB DB in a phone browser may hit memory limits. Need: actual phone test with Chrome DevTools. | 1 hour | HIGH — film the phone test |
+| G16 | AI agent integration | kernel_ops is a commit log an agent could read/write. But no agent exists. The "AI-native" claim is architecture, not product. | 2 sessions | LOW — nice to have, not core |
+| G17 | Second domain (F&B/WMS) | Only construction domain proven. Same engine, but no restaurant.db or warehouse.db. One more domain closes "truly universal" claim. | 1 session | HIGH — the fastest way to prove universality |
+| G18 | Real IFC ↔ ERP link | BOQ handler accepts manual `elements` array. Not yet tested with real IFC-extracted element data from `boq_charts.html`. | 1 session | MEDIUM — wire existing BOQ engine |
+
+### How to close a gap
+
+1. Write the spec section (§ number)
+2. Write the handler/seed/module
+3. Write the test (must name the gap: "Issue: G10 — PO→GR lifecycle")
+4. Run the test, read the log
+5. Move from OPEN to CLOSED in this table with date
 
 ---
 

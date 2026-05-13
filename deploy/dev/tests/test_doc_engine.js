@@ -169,10 +169,14 @@ async function main() {
     creditAcct === 'CASH');
 
   // ── T7: accountBalance query ────────────────────────────────────
-  // LAND_ACQUISITION has DOC-001 (5000) + DOC-005 (11000) = 16000
+  // LAND_ACQUISITION: DOC-001 debit 5000 + DOC-005 debit 11000 = 16000 debit
+  // BUT DOC-001 was reversed (T2c) → reversal credit 5000
+  // Net = 16000 - 5000 = 11000
   var bal = DocEngine.accountBalance(db, 'LAND_ACQUISITION');
-  check('T7', 'Issue: accountBalance returns cumulative totals (5000+11000=16000)',
-    bal.debit === 16000 && bal.credit === 0 && bal.net === 16000);
+  console.log('§TEST accountBalance LAND_ACQUISITION debit=' + bal.debit +
+              ' credit=' + bal.credit + ' net=' + bal.net);
+  check('T7', 'Issue: accountBalance reflects reversal (16000 debit - 5000 reversal credit = 11000 net)',
+    bal.debit === 16000 && bal.credit === 5000 && bal.net === 11000);
 
   // ── T8: Different doc_type journal rules ────────────────────────
   db.run("INSERT INTO documents (id, doc_type, doc_status, created) " +

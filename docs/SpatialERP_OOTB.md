@@ -905,8 +905,8 @@ The BIM viewer already proves the 3D engine. The POC proves the *ERP layer*.
 - [x] Construction seed data (`construction_seed.sql`) — **DONE** 8 containers, 6 roles
 - [x] 7 lead lifecycle handlers (`handlers/construction.js`) — **DONE** 79/79 tests
 - [x] kernel_ops `user_tag` column — **DONE**
-- [ ] Swipe card component (`swipe.js`) — gesture + card stack
-- [ ] Role band + ERP panel + erp.html (P3 UI layer)
+- [x] Swipe card component (`swipe.js`) — **DONE** gesture + card stack, drill-in/back
+- [x] Role band + ERP panel + erp.html (P3 UI layer) — **DONE** 143/143 tests, 6 roles, confidential filtering, XSS-safe
 - [ ] F&B seed data (`restaurant.db`) — second domain, same engine
 
 ### Phase 2 — BIM Domain Migration
