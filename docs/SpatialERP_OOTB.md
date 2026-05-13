@@ -6,6 +6,12 @@
 
 # Spatial ERP OOTB — Every Record Has a Place
 
+![Data Globe — Spatial UI for ERP](assets/images/SpatialERP.png)
+
+*The Data Globe: ERP entities as stars on a rotating sphere. Size = data volume. Colour = status. Position = activity. Drag to orbit, tap to drill. One glance replaces a dashboard, a status report, and a navigation menu.*
+
+---
+
 ## The Problem
 
 **$83 billion** is spent annually on ERP software across warehousing, retail, manufacturing, construction, agriculture, and food service. Yet the majority of small and mid-sized operations in these sectors — estimated at 70-80% globally — still run on spreadsheets, WhatsApp groups, and paper forms. Why?
