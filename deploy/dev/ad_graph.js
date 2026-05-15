@@ -791,6 +791,7 @@
     _lastEntityTable = tableName;
     _viewStack.push(_currentView);
     _currentView = 'entity';
+    if (typeof history !== 'undefined' && history.pushState) history.pushState({ globe: true }, '');
     _rotY = 0; _rotX = -0.3;
     _buildEntityNodes(tableName);
     console.log('§NAVIGATE builtEntity table=' + tableName + ' nodes=' + _nodes.length);
@@ -1108,6 +1109,7 @@
               _lastEntityTable = hit.tableName;
               _viewStack.push(_currentView);
               _currentView = 'entity';
+              if (typeof history !== 'undefined' && history.pushState) history.pushState({ globe: true }, '');
               _rotY = 0; _rotX = -0.3;
               _buildEntityNodes(hit.tableName);
               console.log('§TAP TABLE→entity DONE nodes=' + _nodes.length + ' view=' + _currentView);
@@ -1163,11 +1165,46 @@
                 ' stack=[' + _viewStack.join(',') + '] nodes=' + _nodes.length);
   }
 
+  var _exitWarned = false;
+  var _exitTimer = null;
+
   function _onKeyDown(e) {
-    if (e.key === 'Escape' && _currentView !== 'home') {
+    if (e.key === 'Escape') {
       e.preventDefault();
-      _goBack();
+      if (_currentView !== 'home') {
+        _goBack();
+      }
     }
+  }
+
+  // Browser back button → go back within globe, not exit page
+  function _onPopState() {
+    if (_currentView !== 'home') {
+      // Push state again to keep trapping back
+      if (typeof history !== 'undefined' && history.pushState) history.pushState({ globe: true }, '');
+      _goBack();
+    } else if (!_exitWarned) {
+      // First back on home → warn
+      _exitWarned = true;
+      if (typeof history !== 'undefined' && history.pushState) history.pushState({ globe: true }, '');
+      _showExitToast();
+      _exitTimer = setTimeout(function () { _exitWarned = false; }, 3000);
+      console.log('§BACK exitWarn');
+    }
+    // Second back within 3s → let browser handle (exit)
+  }
+
+  function _showExitToast() {
+    if (typeof document === 'undefined') return;
+    var t = document.createElement('div');
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);' +
+      'z-index:90;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:600;' +
+      'color:#fff;background:rgba(12,12,18,0.8);backdrop-filter:blur(12px);' +
+      '-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);' +
+      'pointer-events:none;animation:fadeInOut 2.5s ease forwards;';
+    t.textContent = 'Back again to exit';
+    document.body.appendChild(t);
+    setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 2500);
   }
 
   function _onWheel(e) {
@@ -1271,6 +1308,10 @@
     canvas.addEventListener('touchmove', _onTouchMove, { passive: false });
     canvas.addEventListener('touchend', _onTouchEnd);
     if (typeof document !== 'undefined') document.addEventListener('keydown', _onKeyDown);
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      window.addEventListener('popstate', _onPopState);
+      if (typeof history !== 'undefined' && history.pushState) history.pushState({ globe: true }, '');
+    }
 
     if (_animId) cancelAnimationFrame(_animId);
     _animate();
@@ -1289,6 +1330,7 @@
       _canvas.removeEventListener('touchend', _onTouchEnd);
     }
     if (typeof document !== 'undefined') document.removeEventListener('keydown', _onKeyDown);
+    if (typeof window !== 'undefined' && window.removeEventListener) window.removeEventListener('popstate', _onPopState);
     _nodes = []; _edges = []; _ctx = null;
     console.log('§AD_GRAPH destroy');
   }

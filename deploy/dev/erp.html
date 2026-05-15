@@ -100,7 +100,7 @@
   }
 
   // ── 2. Module list — §8 step 3 ────────────────────────────────────
-  var V = '?v=12';
+  var V = '?v=13';
   var MODULES = [
     'kernel_ops.js' + V,
     'ad_parser.js' + V,
@@ -133,6 +133,33 @@
       });
     }
 
+    // ── IndexedDB cache for ad_seed.db ────────────────────────────────
+    function idbGet(key) {
+      return new Promise(function (resolve) {
+        try {
+          var req = indexedDB.open('erp_cache', 1);
+          req.onupgradeneeded = function () { req.result.createObjectStore('blobs'); };
+          req.onsuccess = function () {
+            var tx = req.result.transaction('blobs', 'readonly');
+            var get = tx.objectStore('blobs').get(key);
+            get.onsuccess = function () { resolve(get.result || null); };
+            get.onerror = function () { resolve(null); };
+          };
+          req.onerror = function () { resolve(null); };
+        } catch (e) { resolve(null); }
+      });
+    }
+    function idbPut(key, value) {
+      try {
+        var req = indexedDB.open('erp_cache', 1);
+        req.onupgradeneeded = function () { req.result.createObjectStore('blobs'); };
+        req.onsuccess = function () {
+          var tx = req.result.transaction('blobs', 'readwrite');
+          tx.objectStore('blobs').put(value, key);
+        };
+      } catch (e) { /* silent */ }
+    }
+
     // ── 3. Load database — §8 step 7: ?db= or ad_seed.db ───────────
     var params = new URLSearchParams(window.location.search);
     var dbUrl = params.get('db');
@@ -153,8 +180,7 @@
       db = new SQL.Database();
     }
 
-    // ── 4. Load AD seed data ────────────────────────────────────────
-    // Check if AD tables exist
+    // ── 4. Load AD seed data (cached in IndexedDB) ─────────────────
     var hasAD = false;
     try {
       var chk = db.exec("SELECT COUNT(*) FROM AD_Menu");
@@ -162,15 +188,26 @@
     } catch (e) { /* table doesn't exist */ }
 
     if (!hasAD) {
-      log('Loading AD seed (7.7MB)...');
-      try {
-        var seedResp = await fetch('ad_seed.db');
-        var seedBuf = await seedResp.arrayBuffer();
+      // Try IndexedDB cache first
+      var cached = await idbGet('ad_seed_v12');
+      if (cached) {
+        log('Loading AD seed from cache...');
         db.close();
-        db = new SQL.Database(new Uint8Array(seedBuf));
-        log('AD seed loaded (' + (seedBuf.byteLength / 1024 / 1024).toFixed(1) + 'MB)');
-      } catch (e) {
-        log('AD seed failed: ' + e.message);
+        db = new SQL.Database(new Uint8Array(cached));
+        log('AD seed loaded from cache (' + (cached.byteLength / 1024 / 1024).toFixed(1) + 'MB)');
+      } else {
+        log('Downloading AD seed (7.7MB)...');
+        try {
+          var seedResp = await fetch('ad_seed.db');
+          var seedBuf = await seedResp.arrayBuffer();
+          db.close();
+          db = new SQL.Database(new Uint8Array(seedBuf));
+          // Cache for next visit
+          idbPut('ad_seed_v12', seedBuf);
+          log('AD seed loaded + cached (' + (seedBuf.byteLength / 1024 / 1024).toFixed(1) + 'MB)');
+        } catch (e) {
+          log('AD seed failed: ' + e.message);
+        }
       }
     }
 
