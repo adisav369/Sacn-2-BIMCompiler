@@ -1505,18 +1505,26 @@
     var timePct = Math.round(curDay / totalDays * 100);
     drawDonut('tm-dash-time-pie', timePct, 'Day ' + curDay, timePct + '% elapsed', '#4fc3f7');
 
-    // Cost donut — cost of completed ops vs total
+    // Cost donut — weighted by rate_per_day × install duration per op
     var LR = window.LABOR_RATES || {};
     var totalCost = 0, doneCost = 0;
     for (var ci2 = 0; ci2 < _ops.length; ci2++) {
-      var opCls = (_ops[ci2].parameters || {}).cls || '';
-      var opRes = (_ops[ci2].parameters || {}).resource || '';
-      var rate = LR[opRes] && LR[opRes].hourly_rate ? LR[opRes].hourly_rate / 3600 * 120 : 50;
-      totalCost += rate;
-      if (_ops[ci2].end_ts <= _cursor) doneCost += rate;
+      var op2 = _ops[ci2];
+      var opRes = (op2.parameters || {}).resource || '';
+      var lr = LR[opRes];
+      // Cost = daily rate × install duration in days. Heavier trades cost more per element.
+      var dailyRate = lr ? lr.rate_per_day * (lr.crew_size || 1) : 95;
+      var durMs = Math.max(1, (op2.end_ts || 0) - (op2.start_ts || 0));
+      var durDays = durMs / 86400000;
+      var cost = dailyRate * durDays;
+      totalCost += cost;
+      if (op2.end_ts <= _cursor) doneCost += cost;
     }
     var costPct = totalCost > 0 ? Math.round(doneCost / totalCost * 100) : 0;
-    drawDonut('tm-dash-cost-pie', costPct, '$' + Math.round(doneCost).toLocaleString(), costPct + '% spent', '#44cc44');
+    var costLabel = doneCost >= 1000000 ? '$' + (doneCost/1000000).toFixed(1) + 'M'
+                  : doneCost >= 1000 ? '$' + Math.round(doneCost/1000) + 'K'
+                  : '$' + Math.round(doneCost);
+    drawDonut('tm-dash-cost-pie', costPct, costLabel, costPct + '% spent', '#44cc44');
     console.log('§DASH_DONUTS time=' + timePct + '% cost=' + costPct + '%');
 
     // Phase progress
