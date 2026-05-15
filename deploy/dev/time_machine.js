@@ -30,7 +30,9 @@
   var _savedVisibility = [];
   var _highlightMeshes = [];
   var _ganttVisible = false;
+  var _dashVisible = false;
   var _ganttTasks = [];  // computed task groups for click detection
+  var _sCurveData = null;  // cached S-curve points (computed once)
 
   // ── Query ops from DB ──
   function loadOps() {
@@ -81,6 +83,11 @@
   var _sunCycle = false;  // day/night toggle
   var _camFollow = false; // camera follow toggle
   var _camTarget = null;  // smoothed follow target (persists across ticks)
+  var _camAngle = 0;      // slow orbit azimuth (radians), cinematic drift
+  var _camUserInteracted = 0; // timestamp of last manual orbit interaction
+  var _camLogTick = 0;    // throttle §CAM_FOLLOW logging
+  var _shadowLogTick = 0; // throttle §SHADOW_FRONTIER logging
+  var _shadowSetup = false; // one-time shadow camera config
 
   var _zeroMatrix = null; // lazy init
   var _savedInstanceMatrices = {}; // meshId → { idx → Matrix4 }
@@ -197,18 +204,50 @@
       }
     }
 
+    // ── Single unified traverse: visibility + shadow + sparks + guidPosMap ──
+    // Merged from 4 separate traversals → 1 for 100K+ element performance.
+    var _shadowCasters = 0, _shadowReceivers = 0;
+    var _frontierCentroids = [];  // for shadow proximity promotion (2nd pass)
+    var _frontierPositions = [];  // for camera follow
+    var _guidPosMap = {};         // guid → Vector3 for look-ahead (O(1) per guid)
+    var _placedMeshes = [];       // for shadow promotion pass
+
+    // Pre-compute which GUIDs the look-ahead needs — avoids getWorldPosition on ALL 100K meshes
+    var _previewGuids = null;
+    if (_camFollow) {
+      _previewGuids = {};
+      var _preMs = tickMs() * 2;
+      for (var _pi = 0; _pi < _ops.length; _pi++) {
+        if (_ops[_pi].start_ts > _cursor + _preMs) break;
+        if (_ops[_pi].start_ts <= _cursor) continue;
+        var _pg = _ops[_pi].output_guid;
+        if (!_pg && _ops[_pi].input_guids && _ops[_pi].input_guids.length) _pg = _ops[_pi].input_guids[0];
+        if (_pg) _previewGuids[_pg] = true;
+      }
+    }
+
+    if (!_isMobileTM && _playing) {
+      updateSparks();
+    } else if (!_playing) {
+      clearSparks();
+    }
+
     app.scene.traverse(function(obj) {
       if (!obj.userData) return;
 
       // ── Single mesh (has userData.guid) ──
       if (obj.userData.guid) {
         var g = obj.userData.guid;
-        if (frontier[g]) {
+        var isFrontier = !!frontier[g];
+        var isPlaced = !!placed[g];
+        var isRecent = recent[g] !== undefined;
+
+        // Visibility + highlighting
+        if (isFrontier) {
           obj.visible = true;
           if (obj.isMesh) {
             var ft = frontier[g].t;
             if (ft < 0.1) {
-              // Flash: bright solid yellow — fully opaque, depth ON
               applyFlash(obj, 0xffee00);
             } else if (ft < 0.25) {
               applyFlash(obj, 0xffaa33);
@@ -216,21 +255,57 @@
               applyHighlight(obj, 0xff8c00, 0.75);
             }
           }
-        } else if (recent[g] !== undefined) {
+        } else if (isRecent) {
           obj.visible = true;
           if (obj.isMesh) {
             var fade = recent[g];
-            // Yellow linger fading to solid
             applyHighlight(obj, 0xffdd44, 0.4 + 0.4 * fade);
           }
-        } else if (placed[g]) {
-          // Fully built — solid original
+        } else if (isPlaced) {
           obj.visible = true;
           if (obj._tm_highlighted) restoreMaterial(obj);
         } else {
-          // Future — invisible
           obj.visible = false;
           if (obj._tm_highlighted) restoreMaterial(obj);
+        }
+
+        // Shadow + camera (merged — was 3 separate traversals)
+        if (obj.isMesh) {
+          if (isFrontier) {
+            obj.castShadow = true;
+            obj.receiveShadow = true;
+            _shadowCasters++;
+            _shadowReceivers++;
+            var swp = new THREE.Vector3();
+            obj.getWorldPosition(swp);
+            _frontierCentroids.push(swp);
+            _frontierPositions.push(swp);
+            if (_camFollow) _guidPosMap[g] = swp;
+            // Sparks for steel
+            if (!_isMobileTM && _playing && frontier[g].isSteel && frontier[g].t < 0.5 && Math.random() < 0.3) {
+              spawnSparks(swp, app.scene);
+            }
+          } else if (isPlaced || isRecent) {
+            obj.receiveShadow = true;
+            _shadowReceivers++;
+            obj.castShadow = false;
+            _placedMeshes.push(obj);
+            // Only getWorldPosition for preview GUIDs (not all 100K meshes)
+            if (_previewGuids && _previewGuids[g]) {
+              var pmp = new THREE.Vector3();
+              obj.getWorldPosition(pmp);
+              _guidPosMap[g] = pmp;
+            }
+          } else {
+            obj.castShadow = false;
+            obj.receiveShadow = false;
+            // Only getWorldPosition for preview GUIDs (future elements in look-ahead window)
+            if (_previewGuids && _previewGuids[g]) {
+              var fmp = new THREE.Vector3();
+              obj.getWorldPosition(fmp);
+              _guidPosMap[g] = fmp;
+            }
+          }
         }
         return;
       }
@@ -242,7 +317,6 @@
         var anyVisible = false;
         var anyFrontier = false;
 
-        // Save original matrices on first encounter
         if (!_savedInstanceMatrices[meshId]) {
           _savedInstanceMatrices[meshId] = {};
           var tmpM = new THREE.Matrix4();
@@ -255,21 +329,18 @@
         for (var mi = 0; mi < metas.length; mi++) {
           var ig = metas[mi].guid;
           if (placed[ig] || frontier[ig] || recent[ig] !== undefined) {
-            // Restore original matrix (make visible)
             if (_savedInstanceMatrices[meshId][mi]) {
               obj.setMatrixAt(mi, _savedInstanceMatrices[meshId][mi]);
             }
             anyVisible = true;
             if (frontier[ig]) anyFrontier = true;
           } else {
-            // Zero-scale = hidden
             obj.setMatrixAt(mi, _zeroMatrix);
           }
         }
         obj.instanceMatrix.needsUpdate = true;
         obj.visible = anyVisible;
 
-        // Highlight entire instanced mesh if any instance is frontier
         if (anyFrontier) {
           applyHighlight(obj, 0xff8c00, 0.75);
         } else if (obj._tm_highlighted) {
@@ -278,25 +349,32 @@
       }
     });
 
-    // Metal sparks + collect frontier positions for camera follow
-    var _frontierPositions = [];
-    if (!_isMobileTM && _playing) {
-      updateSparks();
-    } else if (!_playing) {
-      clearSparks();
-    }
-    app.scene.traverse(function(obj) {
-      if (!obj.isMesh || !obj.visible || !obj.userData || !obj.userData.guid) return;
-      var fg = frontier[obj.userData.guid];
-      if (!fg) return;
-      var wp = new THREE.Vector3();
-      obj.getWorldPosition(wp);
-      _frontierPositions.push(wp);
-      // Sparks for steel
-      if (!_isMobileTM && _playing && fg.isSteel && fg.t < 0.5 && Math.random() < 0.3) {
-        spawnSparks(wp, app.scene);
+    // ── Shadow promotion pass: nearby placed meshes → castShadow (cap 500) ──
+    // Uses _placedMeshes collected above — no extra traverse needed.
+    // Stride sampling: at 48K+ placed meshes, scan every Nth mesh (max ~1000 scanned).
+    if (_frontierCentroids.length && _shadowCasters < 500) {
+      var maxExtra = 500 - _shadowCasters;
+      var stride = Math.max(1, Math.floor(_placedMeshes.length / 1000));
+      for (var spi = 0; spi < _placedMeshes.length && maxExtra > 0; spi += stride) {
+        var sobj = _placedMeshes[spi];
+        var sowp = new THREE.Vector3();
+        sobj.getWorldPosition(sowp);
+        for (var si = 0; si < _frontierCentroids.length; si++) {
+          if (sowp.distanceToSquared(_frontierCentroids[si]) < 400) {
+            sobj.castShadow = true;
+            _shadowCasters++;
+            maxExtra--;
+            break;
+          }
+        }
       }
-    });
+    }
+    // §SHADOW_FRONTIER — log every 60 ticks
+    _shadowLogTick++;
+    if (_shadowLogTick >= 60) {
+      _shadowLogTick = 0;
+      console.log('§SHADOW_FRONTIER casters=' + _shadowCasters + ' receivers=' + _shadowReceivers);
+    }
 
     // Camera follow — smoothed target that drifts toward densest action
     if (_camFollow && _frontierPositions.length && app.controls && app.camera) {
@@ -316,11 +394,37 @@
       }
       if (wt > 0) { cx /= wt; cy /= wt; cz /= wt; }
 
+      // ── Look-ahead: peek 2 ticks ahead for upcoming ops ──
+      // Uses _guidPosMap built in the single traverse above (O(1) per guid)
+      var previewMs = tickMs() * 2;
+      var px = 0, py = 0, pz = 0, pw = 0;
+      for (var pi = 0; pi < _ops.length; pi++) {
+        var pop = _ops[pi];
+        if (pop.start_ts > _cursor + previewMs) break; // ops sorted by start_ts
+        if (pop.start_ts <= _cursor) continue; // already current or past
+        var pguid = pop.output_guid;
+        if (!pguid && pop.input_guids && pop.input_guids.length) pguid = pop.input_guids[0];
+        if (!pguid) continue;
+        var ppos = _guidPosMap[pguid];
+        if (ppos) {
+          px += ppos.x; py += ppos.y; pz += ppos.z; pw++;
+        }
+      }
+
+      // Blend current centroid with preview centroid (70/30)
+      var finalX = cx, finalY = cy, finalZ = cz;
+      if (pw > 0) {
+        px /= pw; py /= pw; pz /= pw;
+        finalX = cx * 0.7 + px * 0.3;
+        finalY = cy * 0.7 + py * 0.3;
+        finalZ = cz * 0.7 + pz * 0.3;
+      }
+
       // Smooth the target — never jump, always drift
-      if (!_camTarget) _camTarget = new THREE.Vector3(cx, cy, cz);
-      _camTarget.x += (cx - _camTarget.x) * 0.04;
-      _camTarget.y += (cy - _camTarget.y) * 0.04;
-      _camTarget.z += (cz - _camTarget.z) * 0.04;
+      if (!_camTarget) _camTarget = new THREE.Vector3(finalX, finalY, finalZ);
+      _camTarget.x += (finalX - _camTarget.x) * 0.04;
+      _camTarget.y += (finalY - _camTarget.y) * 0.04;
+      _camTarget.z += (finalZ - _camTarget.z) * 0.04;
 
       // Orbit target drifts toward smoothed point
       var target = app.controls.target;
@@ -345,11 +449,35 @@
         app.camera.position.addScaledVector(dir, diff * speed);
       }
 
+      // ── Gentle orbit rotation — cinematic parallax ──
+      // ~0.003 rad/tick (~0.17 deg), paused 2s after user manual orbit
+      var nowPerf = performance.now();
+      if (_playing && (nowPerf - _camUserInteracted > 2000)) {
+        _camAngle += 0.003;
+        var camOff = new THREE.Vector3().subVectors(app.camera.position, target);
+        var dist2D = Math.sqrt(camOff.x * camOff.x + camOff.z * camOff.z);
+        var curAz = Math.atan2(camOff.z, camOff.x);
+        var newAz = curAz + 0.003;
+        camOff.x = Math.cos(newAz) * dist2D;
+        camOff.z = Math.sin(newAz) * dist2D;
+        app.camera.position.copy(target).add(camOff);
+      }
+
       app.controls.update();
+
+      // §CAM_FOLLOW — log every 60 ticks
+      _camLogTick++;
+      if (_camLogTick >= 60) {
+        _camLogTick = 0;
+        console.log('§CAM_FOLLOW target=(' + _camTarget.x.toFixed(1) + ',' +
+          _camTarget.y.toFixed(1) + ',' + _camTarget.z.toFixed(1) +
+          ') preview=' + pw + ' dist=' + camDist.toFixed(1) + ' angle=' + _camAngle.toFixed(3));
+      }
     }
 
     applySunCycle(cursorMs);
     if (_ganttVisible) drawGanttMini();
+    if (_dashVisible) drawDashboard();
 
     if (app.markDirty) app.markDirty();
     // Force immediate render — mobile browsers defer rAF until touch
@@ -567,10 +695,20 @@
     }
     _savedInstanceState = {};
     _savedInstanceMatrices = {};
-    // Restore single mesh visibility
-    _savedVisibility.forEach(function(s) { s.obj.visible = s.vis; });
+    // Restore single mesh visibility + clear shadow flags
+    _savedVisibility.forEach(function(s) {
+      s.obj.visible = s.vis;
+      s.obj.castShadow = false;
+      s.obj.receiveShadow = false;
+    });
     _savedVisibility = [];
+    // Clear shadows on all scene meshes (including instanced)
     var app = A();
+    if (app && app.scene) {
+      app.scene.traverse(function(obj) {
+        if (obj.isMesh) { obj.castShadow = false; obj.receiveShadow = false; }
+      });
+    }
     if (app && app.markDirty) app.markDirty();
   }
 
@@ -592,6 +730,7 @@
         '<button id="tm-sun" style="font-size:12px;padding:2px 6px" title="Day/night cycle">&#x2600;</button>' +
         '<button id="tm-eye" style="font-size:12px;padding:2px 6px" title="Camera follow action">&#x1F441;</button>' +
         '<button id="tm-gantt" style="font-size:12px;padding:2px 6px" title="Gantt chart">&#x1F4CA;</button>' +
+        '<button id="tm-dash" style="font-size:12px;padding:2px 6px" title="Dashboard">&#x1F4CB;</button>' +
         '<span id="tm-big-counter" style="flex:1;font-size:18px;font-weight:bold;color:#4fc3f7;text-align:center;letter-spacing:1px">DAY 0 | HR 0</span>' +
         '<button id="tm-close" style="width:22px;height:22px;font-size:12px;padding:0;line-height:1" title="Close">&#x2715;</button>' +
       '</div>' +
@@ -618,19 +757,48 @@
         '<button id="tm-touched" style="flex:1;font-size:9px">Copy Touched</button>' +
         '<button id="tm-new" style="flex:1;font-size:9px">Copy New</button>' +
       '</div>' +
-      '<div id="tm-gantt-box" style="display:none;position:relative;width:100%;max-height:200px;overflow-y:auto;margin-top:4px;border-top:1px solid rgba(79,195,247,0.2)">' +
-        '<canvas id="tm-gantt-canvas" style="width:100%;cursor:pointer"></canvas>' +
-        '<div id="tm-gantt-hair" style="position:absolute;top:0;width:2px;height:100%;background:#ff8c00;pointer-events:none;z-index:1;display:none"></div>' +
+      '<div id="tm-gantt-box" class="tm-drawer-bottom">' +
+        '<div id="tm-gantt-legend" style="display:flex;flex-wrap:wrap;gap:2px 8px;padding:2px 4px 2px 64px;font-size:10px;color:#ccc;min-height:14px"></div>' +
+        '<div style="position:relative">' +
+          '<canvas id="tm-gantt-canvas" style="width:100%;cursor:pointer"></canvas>' +
+          '<div id="tm-gantt-hair" style="position:absolute;top:0;width:2px;height:100%;background:#ff8c00;pointer-events:none;z-index:1;display:none"></div>' +
+          '<div id="tm-gantt-tip" style="position:absolute;top:4px;left:0;background:rgba(20,20,40,0.92);color:#ff8c00;font-size:10px;padding:3px 8px;border-radius:3px;border:1px solid rgba(255,140,0,0.3);pointer-events:none;z-index:2;display:none;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div id="tm-dash-col" class="tm-drawer-right">' +
+        '<div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px">' +
+          '<canvas id="tm-dash-time-pie" width="120" height="120" style="width:110px;height:110px"></canvas>' +
+          '<canvas id="tm-dash-cost-pie" width="120" height="120" style="width:110px;height:110px"></canvas>' +
+        '</div>' +
+        '<div style="font-size:11px;color:#4fc3f7;font-weight:bold;margin-bottom:4px">Phase Progress</div>' +
+        '<div id="tm-dash-phases"></div>' +
+        '<div style="font-size:11px;color:#4fc3f7;font-weight:bold;margin:8px 0 4px">Site Resources</div>' +
+        '<div id="tm-dash-crews"></div>' +
+        '<div style="font-size:11px;color:#4fc3f7;font-weight:bold;margin:8px 0 4px">S-Curve</div>' +
+        '<canvas id="tm-dash-scurve" width="200" height="60" style="width:100%;height:60px"></canvas>' +
+        '<div id="tm-dash-daycnt" style="font-size:10px;color:#999;margin-top:2px;text-align:center"></div>' +
       '</div>';
     document.body.appendChild(_panel);
 
     var style = document.createElement('style');
     style.textContent =
+      '#time-machine-panel{transition:width 200ms ease-out}' +
       '#time-machine-panel button{background:rgba(255,255,255,0.1);color:#e0e0e0;border:1px solid rgba(79,195,247,0.3);' +
       'border-radius:4px;padding:4px 4px;cursor:pointer;font-size:10px}' +
       '#time-machine-panel button:hover{background:rgba(79,195,247,0.2)}' +
       '#time-machine-panel button.tm-active{background:#1a6b8a;color:#fff}' +
-      '@media(max-width:600px){#time-machine-panel{width:92vw;bottom:60px}}';
+      '.tm-drawer-bottom{max-height:0;overflow:hidden;transition:max-height 200ms ease-out;' +
+      'width:100%;margin-top:4px;border-top:1px solid rgba(79,195,247,0.2)}' +
+      '.tm-drawer-bottom.open{max-height:220px;overflow-y:auto}' +
+      '.tm-drawer-right{width:0;overflow:hidden;transition:width 200ms ease-out,opacity 150ms;opacity:0;' +
+      'position:absolute;left:100%;top:0;padding:0;pointer-events:none;' +
+      'background:rgba(20,20,40,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);' +
+      'border:1px solid rgba(79,195,247,0.3);border-left:none;border-radius:0 12px 12px 0;' +
+      'max-height:80vh;overflow-y:auto}' +
+      '.tm-drawer-right.open{width:260px;opacity:1;padding:10px;pointer-events:auto}' +
+      '@media(max-width:600px){#time-machine-panel{width:92vw;bottom:60px}' +
+      '.tm-drawer-right{left:auto;top:100%;border-radius:0 0 12px 12px;border-left:1px solid rgba(79,195,247,0.3);border-top:none}' +
+      '.tm-drawer-right.open{width:100%;max-height:200px}}';
     document.head.appendChild(style);
 
     makeDraggable(_panel);
@@ -692,28 +860,77 @@
     document.getElementById('tm-eye').addEventListener('pointerup', function(e) {
       e.stopPropagation();
       _camFollow = !_camFollow;
+      _camAngle = 0;
       var btn = document.getElementById('tm-eye');
       if (btn) btn.classList.toggle('tm-active', _camFollow);
+      // Hook orbit controls — detect manual interaction to pause auto-rotation
+      var app = A();
+      if (app && app.renderer && app.renderer.domElement) {
+        app.renderer.domElement.addEventListener('pointerdown', function() {
+          _camUserInteracted = performance.now();
+        });
+      }
     });
     document.getElementById('tm-gantt').addEventListener('pointerup', function(e) {
       e.stopPropagation();
       _ganttVisible = !_ganttVisible;
+      // Mobile: only one drawer at a time
+      if (_ganttVisible && window.innerWidth < 600 && _dashVisible) {
+        _dashVisible = false;
+        toggleDashDOM(false);
+      }
       var btn = document.getElementById('tm-gantt');
       if (btn) btn.classList.toggle('tm-active', _ganttVisible);
       var box = document.getElementById('tm-gantt-box');
-      if (box) box.style.display = _ganttVisible ? 'block' : 'none';
+      if (box) box.classList.toggle('open', _ganttVisible);
       if (_ganttVisible) drawGanttMini();
+    });
+    document.getElementById('tm-dash').addEventListener('pointerup', function(e) {
+      e.stopPropagation();
+      _dashVisible = !_dashVisible;
+      // Mobile: only one drawer at a time
+      if (_dashVisible && window.innerWidth < 600 && _ganttVisible) {
+        _ganttVisible = false;
+        var gb = document.getElementById('tm-gantt-box');
+        if (gb) gb.classList.remove('open');
+        var gbtn = document.getElementById('tm-gantt');
+        if (gbtn) gbtn.classList.remove('tm-active');
+      }
+      toggleDashDOM(_dashVisible);
+      if (_dashVisible) drawDashboard();
     });
     document.getElementById('tm-gantt-canvas').addEventListener('pointerup', function(e) {
       if (!_active || !_ops.length) return;
       var rect = e.target.getBoundingClientRect();
-      var x = e.clientX - rect.left;
-      var pct = x / rect.width;
+      var x = (e.clientX - rect.left - 60) / (rect.width - 60);  // account for storey label margin
+      if (x < 0) x = 0;
+      var pct = Math.min(1, Math.max(0, x));
       var ts = _projectStart + pct * (_projectEnd - _projectStart);
+      var bar = findBarAtClick(e);
       _cursor = ts;
       renderAtTime(_cursor);
       anchorFromCursor();
       configSlider();
+      if (bar) console.log('§GANTT_MINI_SEEK ts=' + Math.round(ts) + ' bar="' + bar.storey + '|' + bar.phase + '"');
+    });
+    // Hover tooltip for gantt bars
+    document.getElementById('tm-gantt-canvas').addEventListener('pointermove', function(e) {
+      var tip = document.getElementById('tm-gantt-tip');
+      if (!tip || !_ganttTasks.length) return;
+      var bar = findBarAtClick(e);
+      if (bar) {
+        var dayStart = Math.round((bar.startTs - _projectStart) / 86400000);
+        var dayEnd = Math.round((bar.endTs - _projectStart) / 86400000);
+        tip.textContent = bar.storey + ' \u2014 ' + bar.phase + ' (' + bar.count + ' elements, Day ' + dayStart + '\u2013' + dayEnd + ')';
+        tip.style.left = Math.min(e.offsetX + 8, e.target.clientWidth - 200) + 'px';
+        tip.style.display = 'block';
+      } else {
+        tip.style.display = 'none';
+      }
+    });
+    document.getElementById('tm-gantt-canvas').addEventListener('pointerleave', function() {
+      var tip = document.getElementById('tm-gantt-tip');
+      if (tip) tip.style.display = 'none';
     });
     document.getElementById('tm-close').addEventListener('pointerup', function(e) {
       e.stopPropagation(); deactivate();
@@ -1066,7 +1283,7 @@
     }
     console.log('§GANTT injected=' + count + ' dbElements=' + totalDbElements +
       ' sceneMeshGUIDs=' + sceneGuids +
-      ', bands=' + bandBounds.length + ', ' + projectDays + ' days, scale=' + scaleFactor.toFixed(2) +
+      ', bands=' + storeyNames.length + ', ' + projectDays + ' days, scale=' + scaleFactor.toFixed(2) +
       ', start=' + startDate.toLocaleDateString() + ' end=' + endDate.toLocaleDateString());
     return count > 0;
   }
@@ -1114,11 +1331,30 @@
       _ganttTasksComputed = true;
     }
 
+    // Phase legend strip
+    var legend = document.getElementById('tm-gantt-legend');
+    if (legend && !legend.childElementCount) {
+      var seenPhases = {};
+      for (var li = 0; li < _ganttTasks.length; li++) {
+        var lp = _ganttTasks[li].phase;
+        if (!seenPhases[lp]) {
+          seenPhases[lp] = true;
+          var sp = document.createElement('span');
+          sp.style.cssText = 'display:inline-flex;align-items:center;gap:2px';
+          sp.innerHTML = '<span style="width:8px;height:8px;border-radius:1px;background:' +
+            (PHASE_COLORS[lp] || '#888') + ';display:inline-block"></span>' + lp;
+          legend.appendChild(sp);
+        }
+      }
+    }
+
     // Canvas sizing
     var barH = 12, gapH = 2, rowH = barH + gapH;
+    var marginL = 60; // storey labels
     var numTasks = _ganttTasks.length;
     var cW = box.clientWidth;
     var cH = numTasks * rowH + 4;
+    var barW = cW - marginL;
 
     canvas.width = cW * (window.devicePixelRatio || 1);
     canvas.height = cH * (window.devicePixelRatio || 1);
@@ -1129,15 +1365,27 @@
     ctx.clearRect(0, 0, cW, cH);
 
     var range = Math.max(1, _projectEnd - _projectStart);
+    var prevStorey = '';
 
     // Draw bars
     for (var ti = 0; ti < numTasks; ti++) {
       var task = _ganttTasks[ti];
-      var x = (task.startTs - _projectStart) / range * cW;
-      var w = (task.endTs - task.startTs) / range * cW;
+      var x = marginL + (task.startTs - _projectStart) / range * barW;
+      var w = (task.endTs - task.startTs) / range * barW;
       if (w < 2) w = 2;
       var y = ti * rowH + 2;
       var color = PHASE_COLORS[task.phase] || '#888';
+
+      // Storey label (only if different from previous row)
+      if (task.storey !== prevStorey) {
+        prevStorey = task.storey;
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#999';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(task.storey.substring(0, 8), marginL - 4, y + barH / 2);
+      }
 
       // Active highlight: cursor is within this task's time range
       var isActive = (_cursor >= task.startTs && _cursor <= task.endTs);
@@ -1166,7 +1414,7 @@
 
     // Hairline cursor
     ctx.globalAlpha = 1;
-    var hx = (_cursor - _projectStart) / range * cW;
+    var hx = marginL + (_cursor - _projectStart) / range * barW;
     ctx.strokeStyle = '#ff8c00';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -1182,6 +1430,258 @@
       hair.style.left = hx + 'px';
       hair.style.display = 'block';
     }
+  }
+
+  // ── Dashboard DOM toggle ──
+  function toggleDashDOM(on) {
+    var col = document.getElementById('tm-dash-col');
+    if (col) col.classList.toggle('open', on);
+    var btn = document.getElementById('tm-dash');
+    if (btn) btn.classList.toggle('tm-active', on);
+  }
+
+  // ── Find bar at click/hover ──
+  function findBarAtClick(e) {
+    if (!_ganttTasks.length) return null;
+    var rect = e.target.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var y = e.clientY - rect.top;
+    var barH = 12, gapH = 2, rowH = barH + gapH;
+    var cW = rect.width;
+    var range = Math.max(1, _projectEnd - _projectStart);
+    var marginL = 60;
+    var barW = cW - marginL;
+    for (var i = 0; i < _ganttTasks.length; i++) {
+      var task = _ganttTasks[i];
+      var bx = marginL + (task.startTs - _projectStart) / range * barW;
+      var bw = (task.endTs - task.startTs) / range * barW;
+      if (bw < 2) bw = 2;
+      var by = i * rowH + 2;
+      if (x >= bx && x <= bx + bw && y >= by && y <= by + barH) return task;
+    }
+    return null;
+  }
+
+  // ── RES_ICONS (reused from boq_charts) ──
+  var RES_ICONS = {
+    STEEL_ERECTOR:  '\uD83C\uDFD7\uFE0F',
+    CONCRETE_GANG:  '\uD83D\uDEA7',
+    MASON:          '\uD83E\uDDF1',
+    PLUMBER:        '\uD83D\uDEB0',
+    HVAC_TECH:      '\u2699\uFE0F',
+    ELECTRICIAN:    '\u26A1',
+    CARPENTER:      '\uD83E\uDEB5',
+    ROOFER:         '\uD83C\uDFE0',
+    FINISHER:       '\uD83D\uDD8C\uFE0F',
+    LABORER:        '\uD83D\uDC77'
+  };
+
+  // ── Donut pie chart ──
+  function drawDonut(canvasId, pct, label, sublabel, color) {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width, h = canvas.height, cx = w/2, cy = h/2, r = Math.min(cx,cy) - 8;
+    ctx.clearRect(0, 0, w, h);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.lineWidth = 12; ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.stroke();
+    if (pct > 0) {
+      ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI/2, -Math.PI/2 + Math.PI*2*(pct/100));
+      ctx.lineWidth = 12; ctx.strokeStyle = color; ctx.lineCap = 'round'; ctx.stroke();
+    }
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, cx, cy - 6);
+    ctx.fillStyle = '#999'; ctx.font = '10px sans-serif';
+    ctx.fillText(sublabel, cx, cy + 12);
+  }
+
+  // ── Dashboard drawer ──
+  function drawDashboard() {
+    if (!_ops.length) return;
+
+    // Time donut — elapsed vs total days
+    var totalDays = Math.max(1, Math.round((_projectEnd - _projectStart) / 86400000));
+    var curDay = Math.max(0, Math.round((_cursor - _projectStart) / 86400000));
+    var timePct = Math.round(curDay / totalDays * 100);
+    drawDonut('tm-dash-time-pie', timePct, 'Day ' + curDay, timePct + '% elapsed', '#4fc3f7');
+
+    // Cost donut — cost of completed ops vs total
+    var LR = window.LABOR_RATES || {};
+    var totalCost = 0, doneCost = 0;
+    for (var ci2 = 0; ci2 < _ops.length; ci2++) {
+      var opCls = (_ops[ci2].parameters || {}).cls || '';
+      var opRes = (_ops[ci2].parameters || {}).resource || '';
+      var rate = LR[opRes] && LR[opRes].hourly_rate ? LR[opRes].hourly_rate / 3600 * 120 : 50;
+      totalCost += rate;
+      if (_ops[ci2].end_ts <= _cursor) doneCost += rate;
+    }
+    var costPct = totalCost > 0 ? Math.round(doneCost / totalCost * 100) : 0;
+    drawDonut('tm-dash-cost-pie', costPct, '$' + Math.round(doneCost).toLocaleString(), costPct + '% spent', '#44cc44');
+    console.log('§DASH_DONUTS time=' + timePct + '% cost=' + costPct + '%');
+
+    // Phase progress
+    var phaseTotals = {};
+    var phaseDone = {};
+    var PHASE_ORDER = ['Substructure','Superstructure','MEP Rough-in','Architecture','MEP Final','Finishes'];
+    for (var i = 0; i < _ops.length; i++) {
+      var p = (_ops[i].parameters || {}).phase || 'Architecture';
+      if (!phaseTotals[p]) { phaseTotals[p] = 0; phaseDone[p] = 0; }
+      phaseTotals[p]++;
+      if (_ops[i].end_ts <= _cursor) phaseDone[p]++;
+    }
+
+    var phDiv = document.getElementById('tm-dash-phases');
+    if (phDiv) {
+      var html = '';
+      var phaseCount = 0;
+      for (var pi = 0; pi < PHASE_ORDER.length; pi++) {
+        var ph = PHASE_ORDER[pi];
+        if (!phaseTotals[ph]) continue;
+        phaseCount++;
+        var pct = Math.round(phaseDone[ph] / phaseTotals[ph] * 100);
+        var col = PHASE_COLORS[ph] || '#888';
+        html += '<div style="margin:2px 0;font-size:10px">' +
+          '<div style="display:flex;justify-content:space-between;color:#ccc"><span>' + ph + '</span><span>' + pct + '%</span></div>' +
+          '<div style="height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden">' +
+          '<div style="width:' + pct + '%;height:100%;background:' + col + ';transition:width 0.2s"></div></div></div>';
+        console.log('§DASH_PHASE ' + ph + ' ' + pct + '%');
+      }
+      phDiv.innerHTML = html;
+    }
+
+    // Site resources — frontier ops with progress bars (old GanttChart player style)
+    var crews = {};
+    var crewTotal = 0;
+    var maxCrew = 0;
+    var machines = {};
+    var EA = window.EQUIPMENT_ALLOCATION || {};
+    for (var ci = 0; ci < _ops.length; ci++) {
+      var op = _ops[ci];
+      if (op.start_ts <= _cursor && op.end_ts > _cursor) {
+        var res = (op.parameters || {}).resource || '';
+        if (res) {
+          if (!crews[res]) crews[res] = 0;
+          crews[res]++;
+          crewTotal++;
+          if (crews[res] > maxCrew) maxCrew = crews[res];
+        }
+        // Equipment from EQUIPMENT_ALLOCATION
+        var opCls = (op.parameters || {}).cls || '';
+        var eqAlloc = EA[opCls];
+        if (eqAlloc && eqAlloc.equipment) machines[eqAlloc.equipment] = true;
+      }
+    }
+    var RES_COLORS = {
+      STEEL_ERECTOR: '#e57373', CONCRETE_GANG: '#ffb74d', MASON: '#a1887f',
+      PLUMBER: '#4fc3f7', HVAC_TECH: '#81c784', ELECTRICIAN: '#fff176',
+      CARPENTER: '#ce93d8', ROOFER: '#90a4ae', FINISHER: '#f48fb1', LABORER: '#b0bec5'
+    };
+    var crDiv = document.getElementById('tm-dash-crews');
+    if (crDiv) {
+      var ch = '';
+      for (var r in crews) {
+        var icon = RES_ICONS[r] || '\uD83D\uDC77';
+        var color = RES_COLORS[r] || '#888';
+        var LR = window.LABOR_RATES || {};
+        var tradeLabel = LR[r] && LR[r].trade ? LR[r].trade.split(' (')[0] : r.replace(/_/g, ' ');
+        var barPct = maxCrew > 0 ? Math.round(crews[r] / maxCrew * 100) : 0;
+        ch += '<div style="display:flex;align-items:center;gap:4px;padding:2px 0">' +
+          '<span style="font-size:16px;width:22px;text-align:center;flex-shrink:0">' + icon + '</span>' +
+          '<span style="width:60px;font-size:9px;color:' + color + ';font-weight:600;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + tradeLabel + '</span>' +
+          '<div style="flex:1;height:14px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">' +
+          '<div style="height:100%;width:' + barPct + '%;background:' + color + ';border-radius:3px;transition:width 0.3s"></div></div>' +
+          '<span style="width:24px;text-align:right;font-size:13px;font-weight:800;color:' + color + ';flex-shrink:0">' + crews[r] + '</span></div>';
+      }
+      // Equipment row
+      var machList = Object.keys(machines);
+      var ER = window.EQUIPMENT_RATES || {};
+      if (machList.length) {
+        ch += '<div style="margin-top:3px;padding-top:3px;border-top:1px solid rgba(255,255,255,0.05)">';
+        for (var mi2 = 0; mi2 < machList.length; mi2++) {
+          var eqDesc = ER[machList[mi2]] ? ER[machList[mi2]].desc : machList[mi2].replace(/_/g, ' ');
+          ch += '<div style="display:flex;align-items:center;gap:4px;padding:1px 0;color:rgba(255,255,255,0.5)">' +
+            '<span style="font-size:13px;width:22px;text-align:center">\uD83D\uDE9C</span>' +
+            '<span style="font-size:9px">' + eqDesc + '</span></div>';
+        }
+        ch += '</div>';
+      }
+      // Footer
+      ch += '<div style="font-size:9px;color:rgba(255,255,255,0.4);margin-top:4px;padding-top:3px;border-top:1px solid rgba(255,255,255,0.05)">' +
+        '<strong style="color:rgba(255,255,255,0.7)">' + crewTotal + '</strong> workers \u00B7 ' +
+        '<strong style="color:rgba(255,255,255,0.7)">' + machList.length + '</strong> machines</div>';
+      if (!crewTotal) ch = '<div style="color:#666;font-size:10px">No active crews</div>';
+      crDiv.innerHTML = ch;
+    }
+
+    // S-Curve sparkline
+    if (!_sCurveData) computeSCurve();
+    drawSCurve();
+
+    // Day counter
+    var totalDays = Math.max(1, Math.round((_projectEnd - _projectStart) / 86400000));
+    var curDay = Math.max(0, Math.round((_cursor - _projectStart) / 86400000));
+    var totalDone = 0;
+    for (var di = 0; di < _ops.length; di++) { if (_ops[di].end_ts <= _cursor) totalDone++; }
+    var donePct = Math.round(totalDone / _ops.length * 100);
+    var dc = document.getElementById('tm-dash-daycnt');
+    if (dc) dc.textContent = 'Day ' + curDay + ' / ' + totalDays + ' \u2014 ' + donePct + '% complete';
+
+    console.log('§DASH_OPEN phases=' + phaseCount + ' crews=' + crewTotal);
+  }
+
+  function computeSCurve() {
+    if (!_ops.length) { _sCurveData = []; return; }
+    var totalDays = Math.max(1, Math.round((_projectEnd - _projectStart) / 86400000));
+    var points = [];
+    var step = Math.max(1, Math.floor(totalDays / 50));
+    for (var d = 0; d <= totalDays; d += step) {
+      var ts = _projectStart + d * 86400000;
+      var done = 0;
+      for (var i = 0; i < _ops.length; i++) { if (_ops[i].end_ts <= ts) done++; }
+      points.push({ day: d, pct: done / _ops.length * 100 });
+    }
+    _sCurveData = points;
+  }
+
+  function drawSCurve() {
+    var canvas = document.getElementById('tm-dash-scurve');
+    if (!canvas || !_sCurveData || !_sCurveData.length) return;
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    var totalDays = Math.max(1, _sCurveData[_sCurveData.length - 1].day);
+
+    // Draw curve
+    ctx.beginPath();
+    ctx.strokeStyle = '#4fc3f7';
+    ctx.lineWidth = 2;
+    for (var i = 0; i < _sCurveData.length; i++) {
+      var pt = _sCurveData[i];
+      var x = pt.day / totalDays * w;
+      var y = h - (pt.pct / 100 * h);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Fill under curve
+    ctx.lineTo(w, h);
+    ctx.lineTo(0, h);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(79,195,247,0.1)';
+    ctx.fill();
+
+    // Current position dot
+    var curDay = Math.max(0, (_cursor - _projectStart) / 86400000);
+    var curDone = 0;
+    for (var ci = 0; ci < _ops.length; ci++) { if (_ops[ci].end_ts <= _cursor) curDone++; }
+    var curPct = curDone / _ops.length * 100;
+    var dx = curDay / totalDays * w;
+    var dy = h - (curPct / 100 * h);
+    ctx.beginPath();
+    ctx.arc(dx, dy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff8c00';
+    ctx.fill();
   }
 
   // ── Activate / Deactivate ──
@@ -1240,6 +1740,35 @@
       viewerStatus('Time Machine: ' + _ops.length + ' elements scheduled');
     }
     _active = true;
+    // ── One-time shadow camera setup ──
+    if (!_shadowSetup && app.sun && app.sun.shadow) {
+      app.sun.shadow.mapSize.width = 2048;
+      app.sun.shadow.mapSize.height = 2048;
+      app.sun.shadow.camera.near = 1;
+      app.sun.shadow.camera.far = 1000;
+      app.sun.shadow.camera.left = -200;
+      app.sun.shadow.camera.right = 200;
+      app.sun.shadow.camera.top = 200;
+      app.sun.shadow.camera.bottom = -200;
+      app.sun.shadow.camera.updateProjectionMatrix();
+      _shadowSetup = true;
+      console.log('§SHADOW_SETUP mapSize=2048 frustum=400x400 near=1 far=1000');
+    }
+    // ── Ground plane for shadow receiving ──
+    // scene.js creates ground (visible:false). Position at building base and show.
+    if (app.ground) {
+      var minY = 0;
+      if (app.controls && app.controls.target) minY = app.controls.target.y;
+      // Query lowest element Z from DB for accurate placement
+      try {
+        var zr = app.db.exec('SELECT MIN(center_z) FROM element_transforms');
+        if (zr.length && zr[0].values[0][0] != null) minY = zr[0].values[0][0] - 0.5;
+      } catch(e) {}
+      app.ground.position.y = minY;
+      app.ground.visible = true;
+      app.ground.receiveShadow = true;
+      console.log('§GROUND_PLANE y=' + minY.toFixed(2) + ' visible=true');
+    }
     computeDays();
     saveVisibility();
     // Start fully built — press ⏪ or ◀ to deconstruct
@@ -1259,13 +1788,23 @@
     clearSparks();
     restoreSky();
     _sunCycle = false;
+    _camFollow = false;
+    _camAngle = 0;
+    _camTarget = null;
+    _shadowSetup = false;
+    // Hide ground plane
+    var app = A();
+    if (app && app.ground) app.ground.visible = false;
     _ganttVisible = false;
+    _dashVisible = false;
+    _sCurveData = null;
     _ganttTasks = [];
     _ganttTasksComputed = false;
     var ganttBtn = document.getElementById('tm-gantt');
     if (ganttBtn) ganttBtn.classList.remove('tm-active');
     var ganttBox = document.getElementById('tm-gantt-box');
-    if (ganttBox) ganttBox.style.display = 'none';
+    if (ganttBox) ganttBox.classList.remove('open');
+    toggleDashDOM(false);
     _active = false;
     _panel.style.display = 'none';
     setToolbarHighlight(false);

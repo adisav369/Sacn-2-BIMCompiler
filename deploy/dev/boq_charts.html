@@ -1065,20 +1065,55 @@ async function init() {
   const _t1 = performance.now();
   console.log('§QTO_SUMMARY classes=' + qtoData.length + ' material=' + Math.round(grandMaterial) + ' labor=' + Math.round(grandLabor) + ' equip=' + Math.round(grandEquip) + ' warnings=' + qtoWarnCount + ' queryMs=' + Math.round(_t1 - _t0));
 
-  // S253d: Try kernel_ops from viewer — single source of truth with hourglass
+  // S254: kernel_ops is the single source of truth. Read directly from DB first,
+  // fall back to BroadcastChannel relay, then generateSchedule as last resort.
   let _scheduleSource = 'generateSchedule';
-  const schedRelay = await _tryScheduleRelay(500);
-  if (schedRelay && !schedRelay.error && schedRelay.ops && schedRelay.ops.length) {
-    // kernel_ops available — build scheduleData from hourglass schedule
-    scheduleData = buildScheduleFromOps(schedRelay.ops);
+
+  // Path 1: Read kernel_ops directly from the DB (no viewer needed)
+  var _dbOps = [];
+  try {
+    var _koRes = db.exec(
+      "SELECT timestamp, op_type, parameters, input_guids, output_guid " +
+      "FROM kernel_ops WHERE undone = 0 AND op_type = 'ELEMENT_PLACE' ORDER BY timestamp"
+    );
+    if (_koRes.length && _koRes[0].values.length) {
+      _dbOps = _koRes[0].values.map(function(row) {
+        var params = {};
+        try { params = JSON.parse(row[2]); } catch(e) {}
+        var inGuids = [];
+        try { inGuids = JSON.parse(row[3]); } catch(e) {}
+        return {
+          start_ts: row[0], end_ts: params._end_ts || (row[0] + 120000),
+          op_type: row[1], parameters: params,
+          input_guids: inGuids, output_guid: row[4],
+          guid: row[4], cls: params.cls || '', storey: params.storey || '',
+          phase: params.phase || 'Architecture', resource: params.resource || ''
+        };
+      });
+    }
+  } catch(e) { console.log('§KERNEL_OPS_DB_READ error: ' + e.message); }
+
+  if (_dbOps.length) {
+    // kernel_ops found in DB — use directly
+    scheduleData = buildScheduleFromOps(_dbOps);
     _scheduleSource = 'kernel_ops';
-    console.log('§4D_SCHEDULE_SOURCE kernel_ops tasks=' + scheduleData.length +
-      ' ops=' + schedRelay.ops.length);
+    console.log('§4D_SCHEDULE_SOURCE kernel_ops_db tasks=' + scheduleData.length +
+      ' ops=' + _dbOps.length);
   } else {
-    // Fallback — generate schedule independently (viewer not open or no hourglass session)
-    console.log('§4D_SCHEDULE_SOURCE generateSchedule reason=' +
-      (schedRelay ? schedRelay.error || 'empty' : 'timeout'));
-    scheduleData = generateSchedule(qtoData, '2025-01-06');
+    // Path 2: Try BroadcastChannel relay from viewer (hourglass may have injected ops)
+    const schedRelay = await _tryScheduleRelay(500);
+    if (schedRelay && !schedRelay.error && schedRelay.ops && schedRelay.ops.length) {
+      scheduleData = buildScheduleFromOps(schedRelay.ops);
+      _scheduleSource = 'kernel_ops';
+      console.log('§4D_SCHEDULE_SOURCE kernel_ops_relay tasks=' + scheduleData.length +
+        ' ops=' + schedRelay.ops.length);
+    } else {
+      // Path 3: Generate independently (no hourglass has ever run on this DB)
+      console.log('§4D_SCHEDULE_SOURCE generateSchedule reason=' +
+        (_dbOps.length === 0 ? 'no kernel_ops in DB' : 'relay timeout') +
+        ' — Run Hourglass in the viewer to generate a construction schedule, or edit rates.js');
+      scheduleData = generateSchedule(qtoData, '2025-01-06');
+    }
   }
 
   // S240 §0.1: Run 8-check audit before any 4D sync
@@ -1511,356 +1546,92 @@ function renderCharts() {
       console.log('§4D_BROADCAST type=4D_HIGHLIGHT task="' + task.name + '" guids=' + (task.guids||[]).length + ' phase=' + task.phase + ' color=' + phaseColor);
     });
 
-    // S240b: Timeline scrub — orange vertical line overlaid ON the Gantt chart
-    const ganttChart = chartInstances[chartInstances.length - 1];
-    const maxDay = Math.ceil(ganttChart.scales.x.max) || Math.max(...scheduleData.map(t => t.finishDay), 1);
-    const maxStacked = Math.max(...scheduleData.map(t => t.startDay + t.duration));
-    const maxFinish2 = Math.max(...scheduleData.map(t => t.finishDay));
-    console.log('§GANTT_SCRUB_INIT maxDay=' + maxDay + ' xScale.max=' + ganttChart.scales.x.max +
-      ' xScale.min=' + ganttChart.scales.x.min + ' xScale.left=' + ganttChart.scales.x.left +
-      ' xScale.right=' + ganttChart.scales.x.right +
-      ' maxStacked=' + maxStacked + ' maxFinish=' + maxFinish2 +
-      ' tasks=' + scheduleData.length);
-
-    // Scrub overlays go inside ganttWrap (position:relative container for the chart)
-
-    // Orange vertical scrub line — overlaid on the Gantt canvas
-    const scrubLine = document.createElement('div');
-    scrubLine.style.cssText = 'position:absolute;top:0;width:4px;height:100%;background:rgba(255,140,0,0.9);pointer-events:none;z-index:10;box-shadow:0 0 12px rgba(255,140,0,0.7),0 0 24px rgba(255,140,0,0.3);transition:left 0.06s ease-out;display:none;border-radius:2px;';
-    ganttInner.appendChild(scrubLine);
-
-    // Wide invisible drag handle — 30px wide, easy to grab
-    const scrubHandle = document.createElement('div');
-    scrubHandle.style.cssText = 'position:absolute;top:0;width:30px;height:100%;background:transparent;z-index:12;cursor:ew-resize;display:none;margin-left:-13px;';
-    ganttInner.appendChild(scrubHandle);
-
-    // Activity tooltip — floats next to the scrub line
-    const scrubTip = document.createElement('div');
-    scrubTip.style.cssText = 'position:absolute;top:8px;background:rgba(20,20,40,0.92);color:#ff8c00;font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid rgba(255,140,0,0.4);pointer-events:none;z-index:11;white-space:nowrap;display:none;max-width:300px;overflow:hidden;text-overflow:ellipsis;';
-    ganttInner.appendChild(scrubTip);
-
-    // Control bar — inline with title
-    const controlBar = document.createElement('div');
-    controlBar.style.cssText = 'display:flex;align-items:center;gap:8px;';
-
-    const playBtn = document.createElement('button');
-    playBtn.textContent = '\u25b6 Play';
-    playBtn.style.cssText = 'padding:5px 16px;background:#ff8c00;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;';
-
-    const speedSel = document.createElement('select');
-    speedSel.style.cssText = 'padding:3px 8px;background:#333;color:#ff8c00;border:1px solid #ff8c00;border-radius:4px;font-size:12px;';
-    [1, 2, 4, 8].forEach(function(s) {
-      var opt = document.createElement('option');
-      opt.value = s; opt.textContent = s + '\u00d7';
-      speedSel.appendChild(opt);
-    });
-
-    const dayLabel = document.createElement('span');
-    dayLabel.style.cssText = 'color:#ff8c00;font-size:13px;font-weight:bold;';
-    dayLabel.textContent = 'Day 0 / ' + maxDay;
-
-    const taskLabel = document.createElement('span');
-    taskLabel.style.cssText = 'color:#ccc;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-
-    const stopBtn = document.createElement('button');
-    stopBtn.textContent = '\u25a0 Stop';
-    stopBtn.style.cssText = 'padding:5px 16px;background:#cc3333;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;display:none;';
-
-    controlBar.appendChild(playBtn);
-    controlBar.appendChild(stopBtn);
-    controlBar.appendChild(speedSel);
-    controlBar.appendChild(dayLabel);
-    controlBar.appendChild(taskLabel);
-    ganttHeader.appendChild(controlBar);
-
-    // S240c §P5: Resource legend — data sent to viewer via BroadcastChannel
-    const RES_ICONS = {
-      STEEL_ERECTOR:  {icon:'\ud83c\udfd7\ufe0f', label:'Steel Erector',    color:'#5b7fa5'},
-      CONCRETE_GANG:  {icon:'\ud83d\udea7', label:'Concrete Gang',   color:'#7a8a8e'},
-      MASON:          {icon:'\ud83e\uddf1', label:'Mason',           color:'#c07a4a'},
-      PLUMBER:        {icon:'\ud83d\udeb0', label:'Plumber',         color:'#5a9a6a'},
-      HVAC_TECH:      {icon:'\u2699\ufe0f',  label:'HVAC Tech',       color:'#5a8aaa'},
-      ELECTRICIAN:    {icon:'\u26a1',  label:'Electrician',     color:'#c9a840'},
-      CARPENTER:      {icon:'\ud83e\udeb5', label:'Carpenter',       color:'#a06830'},
-      ROOFER:         {icon:'\ud83c\udfe0', label:'Roofer',          color:'#7a5aaa'},
-      FINISHER:       {icon:'\ud83d\udd8c\ufe0f', label:'Finisher',        color:'#4a9a6a'},
-      LABORER:        {icon:'\ud83d\udc77', label:'Laborer',         color:'#888888'},
-    };
-    const RES_ORDER = ['STEEL_ERECTOR','CONCRETE_GANG','MASON','PLUMBER','HVAC_TECH','ELECTRICIAN','CARPENTER','ROOFER','FINISHER','LABORER'];
-
-    // Compute max crew across entire schedule for bar scaling
-    const _maxCrewByTrade = {};
-    for (const t of scheduleData) {
-      const resources = (t.resource || '').split(',').filter(Boolean);
-      for (const r of resources) {
-        _maxCrewByTrade[r] = Math.max(_maxCrewByTrade[r] || 0, t.crew || 0);
-      }
-    }
-    const _globalMaxCrew = Math.max(1, ...Object.values(_maxCrewByTrade));
-
-    function updateResPanel(day) {
-      // Aggregate resources for this day
-      const trades = {};
-      let totalCrew = 0, machines = new Set();
-      if (day > 0) {
-        const active = scheduleData.filter(t => t.startDay <= day && t.finishDay >= day);
-        for (const t of active) {
-          const resources = (t.resource || '').split(',').filter(Boolean);
-          for (const r of resources) {
-            if (!trades[r]) trades[r] = {crew:0, tasks:0};
-            trades[r].crew += t.crew || 0;
-            trades[r].tasks++;
-          }
-          totalCrew += t.crew || 0;
-          if (t.equipment) t.equipment.split(', ').forEach(e => { if (e) machines.add(e); });
-        }
-      }
-
-      // Build resource data for all trades (always show all)
-      const resData = RES_ORDER.map(key => {
-        const info = RES_ICONS[key];
-        const data = trades[key] || {crew:0, tasks:0};
-        return {key, icon:info.icon, label:info.label, color:info.color, crew:data.crew};
-      });
-      const cumDays = scheduleData.filter(t => t.finishDay <= day).reduce((s,t) => s + t.duration * t.crew, 0);
-      const totalDays = scheduleData.reduce((s,t) => s + t.duration * t.crew, 0);
-      const pct = totalDays > 0 ? Math.round(cumDays / totalDays * 100) : 0;
-
-      // Progress: elements built / total
-      const builtTasks = scheduleData.filter(t => t.finishDay <= day);
-      const builtQty = builtTasks.reduce((s,t) => s + t.qty, 0);
-      const totalQtyAll = scheduleData.reduce((s,t) => s + t.qty, 0);
-      const progressPct = totalQtyAll > 0 ? Math.round(builtQty / totalQtyAll * 100) : 0;
-
-      // Send to viewer via BroadcastChannel
-      if (_bim4d && day > 0) {
-        _bim4d.postMessage({
-          type: '4D_RESOURCES',
-          day: day, maxDay: maxDay,
-          trades: resData,
-          totalCrew: totalCrew,
-          machines: [...machines],
-          maxCrew: _globalMaxCrew,
-          cumDays: cumDays, totalDays: totalDays, pct: pct,
-          grandTotal: grandMaterial + grandLabor + grandEquip, cur: CUR,
-          builtQty: builtQty, totalQty: totalQtyAll, progressPct: progressPct
-        });
-      }
-      if (day <= 0 && _bim4d) {
-        _bim4d.postMessage({ type: '4D_RESOURCES_HIDE' });
-      }
-      console.log('§4D_RESOURCE_LEGEND day=' + day + ' trades=' + Object.keys(trades).length + ' workers=' + totalCrew + ' machines=' + machines.size);
-    }
-
-    // State
-    let _scrubActive = false;
-    let _playTimer = null;
-    let _playing = false;
-    let _currentDay = 0;
-    let _lastSeekIdx = -1;  // track last seek to advance through same-day tasks
-
-    // Get Gantt chart plot area pixel bounds (x-axis area only)
-    function getPlotArea() {
-      const xScale = ganttChart.scales.x;
-      return { left: xScale.left, right: xScale.right, top: ganttChart.chartArea.top, bottom: ganttChart.chartArea.bottom };
-    }
-
-    // Map pixel X → day number (linear over plot area)
-    function pixelToDay(px) {
-      const xScale = ganttChart.scales.x;
-      const ratio = Math.max(0, Math.min(1, (px - xScale.left) / (xScale.right - xScale.left)));
-      return Math.round(ratio * maxDay);
-    }
-
-    // Map day → pixel X (linear over plot area)
-    function dayToPixel(day) {
-      const xScale = ganttChart.scales.x;
-      return xScale.left + (day / maxDay) * (xScale.right - xScale.left);
-    }
-
-    // Find task index for a given day — advances sequentially through same-day tasks
-    function dayToTaskIndex(day) {
-      // If next task after _lastSeekIdx has started, advance to it
-      if (_lastSeekIdx >= 0 && _lastSeekIdx + 1 < scheduleData.length &&
-          scheduleData[_lastSeekIdx + 1].startDay <= day) {
-        return _lastSeekIdx + 1;
-      }
-      // Otherwise find the first task whose range covers this day
-      let best = -1;
-      for (let i = 0; i < scheduleData.length; i++) {
-        if (scheduleData[i].startDay <= day) best = i;
-        else break;
-      }
-      return best;
-    }
-
-    // Find ALL active tasks at a given day (for tooltip)
-    function tasksAtDay(day) {
-      return scheduleData.filter(t => t.startDay <= day && t.finishDay >= day);
-    }
-
-    // Apply scrub state
-    function applyScrub(day) {
-      _currentDay = day;
-      const px = dayToPixel(day);
-      scrubLine.style.left = px + 'px';
-      scrubLine.style.display = 'block';
-      scrubHandle.style.left = px + 'px';
-      scrubHandle.style.display = 'block';
-      scrubTip.style.left = Math.min(px + 8, ganttInner.offsetWidth - 310) + 'px';
-
-      dayLabel.textContent = 'Day ' + day + ' / ' + maxDay;
-      updateResPanel(day);
-
-      if (day <= 0) {
-        // Day 0 = normal building, no glass
-        scrubTip.style.display = 'none';
-        taskLabel.textContent = '';
-        if (_scrubActive) {
-          _scrubActive = false;
-          _bim4d.postMessage({ type: '4D_RESET' });
-          console.log('§4D_SCRUB day=0 RESET');
-        }
-        return;
-      }
-
-      // Day 1+ = ghost glass mode
-      const active = tasksAtDay(day);
-      const tidx = dayToTaskIndex(day);
-
-      // Show tooltip with active tasks
-      if (active.length > 0) {
-        scrubTip.textContent = active.map(t => t.name).join(' | ');
-        scrubTip.style.display = 'block';
-        taskLabel.textContent = active[0].name + (active.length > 1 ? ' (+' + (active.length-1) + ')' : '');
-      } else {
-        scrubTip.style.display = 'none';
-        taskLabel.textContent = tidx >= 0 ? scheduleData[tidx].name : '';
-      }
-
-      if (!_scrubActive) {
-        _scrubActive = true;
-        // Send 4D_PLAY with full task list — viewer enters glass mode
-        _bim4d.postMessage({ type: '4D_PLAY', tasks: scheduleData, speed: 1.0 });
-        console.log('§4D_SCRUB_START tasks=' + scheduleData.length);
-        // Small delay to let glass apply before first seek
-        setTimeout(function() {
-          if (tidx >= 0) _bim4d.postMessage({ type: '4D_SEEK', taskIndex: tidx });
-        }, 100);
-        return;
-      }
-
-      if (tidx >= 0) {
-        _lastSeekIdx = tidx;
-        _bim4d.postMessage({ type: '4D_SEEK', taskIndex: tidx });
-      }
-    }
-
-    // Mouse/touch drag — works on both the canvas and the wide drag handle
-    // Only active after Play has been clicked at least once (avoids GPU waste on idle page)
-    let _dragging = false;
-    let _playActivated = false;  // true after first Play click
-
-    function startDrag(evt) {
-      if (!_playActivated) return;  // scrub line off until Play clicked
-      _dragging = true;
-      const rect = ganttCanvas.getBoundingClientRect();
-      const px = (evt.clientX || (evt.touches && evt.touches[0].clientX) || 0) - rect.left;
-      applyScrub(pixelToDay(px));
-    }
-    function moveDrag(evt) {
-      if (!_dragging) return;
-      evt.preventDefault();
-      const rect = ganttCanvas.getBoundingClientRect();
-      const px = (evt.clientX || (evt.touches && evt.touches[0].clientX) || 0) - rect.left;
-      applyScrub(pixelToDay(px));
-    }
-    function endDrag() { _dragging = false; }
-
-    // Canvas drag
-    ganttCanvas.addEventListener('pointerdown', startDrag);
-    ganttCanvas.addEventListener('pointermove', moveDrag);
-    ganttCanvas.addEventListener('pointerup', endDrag);
-    ganttCanvas.addEventListener('pointerleave', endDrag);
-    // Handle drag (the wide invisible bar)
-    scrubHandle.addEventListener('pointerdown', function(evt) {
-      evt.stopPropagation();
-      _dragging = true;
-    });
-    document.addEventListener('pointermove', moveDrag);
-    document.addEventListener('pointerup', endDrag);
-
-    // Play button
-    playBtn.addEventListener('pointerup', function() {
-      if (_playing) {
-        clearInterval(_playTimer); _playTimer = null;
-        _playing = false;
-        playBtn.textContent = '\u25b6 Play';
-        _bim4d.postMessage({ type: '4D_PAUSE' });
-        return;
-      }
-
-      _playing = true;
-      _playActivated = true;
-      ganttCanvas.style.cursor = 'ew-resize';
-      playBtn.textContent = '\u23f8 Pause';
-      stopBtn.style.display = '';
-      if (!_scrubActive && _currentDay <= 0) {
-        _currentDay = 1;
-        applyScrub(1); // show day 1 immediately — enters glass mode
-      }
-      startPlayTimer();
-    });
-
-    // Stop button — resets scrub line, hides overlay, returns to normal
-    stopBtn.addEventListener('pointerup', function() {
-      if (_playTimer) { clearInterval(_playTimer); _playTimer = null; }
-      _playing = false;
-      _playActivated = false;
-      _currentDay = 0;
-      _lastSeekIdx = -1;
-      playBtn.textContent = '\u25b6 Play';
-      stopBtn.style.display = 'none';
-      ganttCanvas.style.cursor = '';
-      scrubLine.style.display = 'none';
-      scrubHandle.style.display = 'none';
-      scrubTip.style.display = 'none';
-      dayLabel.textContent = 'Day 0 / ' + maxDay;
-      taskLabel.textContent = '';
-      if (_scrubActive) {
-        _scrubActive = false;
-        _bim4d.postMessage({ type: '4D_RESET' });
-      }
-      if (_bim4d) _bim4d.postMessage({ type: '4D_RESOURCES_HIDE' });
-      console.log('§4D_STOP');
-    });
-
-    function startPlayTimer() {
-      if (_playTimer) clearInterval(_playTimer);
-      const speed = parseInt(speedSel.value) || 1;
-      const step = Math.max(1, Math.round(maxDay / Math.max(scheduleData.length * 2, 1)));
-      _playTimer = setInterval(function() {
-        _currentDay += step * speed;
-        if (_currentDay > maxDay) {
-          _currentDay = maxDay + 1;
-          clearInterval(_playTimer); _playTimer = null;
-          _playing = false;
-          playBtn.textContent = '\u25b6 Play';
-          applyScrub(_currentDay);
-          return;
-        }
-        applyScrub(_currentDay);
-      }, 800);
-      console.log('§4D_PLAY_TIMER speed=' + speed + 'x step=' + step + ' maxDay=' + maxDay + ' interval=800ms');
-    }
-
-    // Speed change during playback restarts timer
-    speedSel.addEventListener('change', function() {
-      if (_playing) startPlayTimer();
-    });
-
-    console.log('§4D_CHANNEL_READY sender=boq_charts scrubber=true');
+    // S254: Playback controls stripped — 4D playback lives in hourglass panel now.
+    // This page is read-only 5D analytics. Gantt bar click → highlight still works above.
+    console.log('§S254_STRIP_DONE playback_removed=true highlight_kept=true tasks=' + ganttTasks.length);
   }
+
+  // ── 10. Site Resources — trades with flaticon bars + machines (restored from old 4D player) ──
+  const RES_ICONS = {
+    STEEL_ERECTOR:'\ud83c\udfd7\ufe0f', CONCRETE_GANG:'\ud83d\udea7', MASON:'\ud83e\uddf1',
+    PLUMBER:'\ud83d\udeb0', HVAC_TECH:'\u2699\ufe0f', ELECTRICIAN:'\u26a1',
+    CARPENTER:'\ud83e\udeb5', ROOFER:'\ud83c\udfe0', FINISHER:'\ud83d\udd8c\ufe0f', LABORER:'\ud83d\udc77'
+  };
+  const RES_COLORS = {
+    STEEL_ERECTOR:'#e57373', CONCRETE_GANG:'#ffb74d', MASON:'#a1887f',
+    PLUMBER:'#4fc3f7', HVAC_TECH:'#81c784', ELECTRICIAN:'#fff176',
+    CARPENTER:'#ce93d8', ROOFER:'#90a4ae', FINISHER:'#f48fb1', LABORER:'#b0bec5'
+  };
+  // Aggregate resources across all tasks
+  const resCounts = {}; // resource → total crew-days
+  let maxResCrew = 0;
+  const machineSet = {};
+  for (const t of scheduleData) {
+    // Resource from schedule task
+    var resKey = '';
+    if (t.ifcClasses && t.ifcClasses.length) {
+      for (const cls of t.ifcClasses) {
+        var sr = SEQUENCE_RULES[cls];
+        if (sr && sr.resource) { resKey = sr.resource; break; }
+      }
+    }
+    if (!resKey && t.ifcClass) {
+      var sr2 = SEQUENCE_RULES[t.ifcClass];
+      if (sr2) resKey = sr2.resource;
+    }
+    if (!resKey) resKey = 'LABORER';
+    if (!resCounts[resKey]) resCounts[resKey] = 0;
+    resCounts[resKey] += t.qty || 1;
+    if (resCounts[resKey] > maxResCrew) maxResCrew = resCounts[resKey];
+    // Equipment
+    if (t.ifcClasses) {
+      for (const cls of t.ifcClasses) {
+        var ea = EQUIPMENT_ALLOCATION[cls];
+        if (ea) machineSet[ea.equipment] = true;
+      }
+    }
+    if (t.ifcClass && EQUIPMENT_ALLOCATION[t.ifcClass]) {
+      machineSet[EQUIPMENT_ALLOCATION[t.ifcClass].equipment] = true;
+    }
+  }
+  const resBox = el('div','chart-box full');
+  resBox.innerHTML = '<h2>\ud83d\udea7 Site Resources</h2>';
+  var resHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;padding:8px 0">';
+  for (var rk in resCounts) {
+    var rIcon = RES_ICONS[rk] || '\ud83d\udc77';
+    var rColor = RES_COLORS[rk] || '#888';
+    var rLabel = LABOR_RATES[rk] ? LABOR_RATES[rk].trade.split(' (')[0] : rk.replace(/_/g,' ');
+    var rBarPct = maxResCrew > 0 ? Math.round(resCounts[rk] / maxResCrew * 100) : 0;
+    resHtml += '<div style="display:flex;align-items:center;gap:6px">' +
+      '<span style="font-size:20px;width:28px;text-align:center">' + rIcon + '</span>' +
+      '<span style="width:90px;font-size:12px;color:' + rColor + ';font-weight:600">' + rLabel + '</span>' +
+      '<div style="flex:1;height:18px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden">' +
+      '<div style="height:100%;width:' + rBarPct + '%;background:' + rColor + ';border-radius:4px"></div></div>' +
+      '<span style="width:40px;text-align:right;font-size:15px;font-weight:800;color:' + rColor + '">' + resCounts[rk] + '</span></div>';
+  }
+  resHtml += '</div>';
+  // Machines
+  var machKeys = Object.keys(machineSet);
+  if (machKeys.length) {
+    resHtml += '<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.08);display:flex;flex-wrap:wrap;gap:4px 16px">';
+    for (var mk = 0; mk < machKeys.length; mk++) {
+      var eqDesc = EQUIPMENT_RATES[machKeys[mk]] ? EQUIPMENT_RATES[machKeys[mk]].desc : machKeys[mk].replace(/_/g,' ');
+      resHtml += '<span style="font-size:12px;color:rgba(255,255,255,0.6)">\ud83d\ude9c ' + eqDesc + '</span>';
+    }
+    resHtml += '</div>';
+  }
+  // Summary footer
+  var totalWorkers = 0;
+  for (var rwk in resCounts) totalWorkers += resCounts[rwk];
+  resHtml += '<div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.08);font-size:12px;color:rgba(255,255,255,0.5)">' +
+    '<strong style="color:#fff">' + totalWorkers + '</strong> total element-installs \u00b7 ' +
+    '<strong style="color:#fff">' + Object.keys(resCounts).length + '</strong> trades \u00b7 ' +
+    '<strong style="color:#fff">' + machKeys.length + '</strong> machines \u00b7 ' +
+    '<strong style="color:#fff">' + scheduleData.length + '</strong> tasks \u00b7 ' +
+    'Source: ' + (_scheduleSource === 'kernel_ops' ? '\u2705 kernel_ops' : '\u26a0\ufe0f generated') + '</div>';
+  resBox.innerHTML += resHtml;
+  c.appendChild(resBox);
+  logChart(10,'Panel','Site Resources',Object.keys(resCounts).length);
 
   // ── S225: Variance Chart (when diff data present) ──
   if (diffResult) {

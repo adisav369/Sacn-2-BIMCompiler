@@ -5,7 +5,7 @@
 ### Scope
 Extend the time machine (hourglass) panel with two animated drawers:
 - **Bottom drawer** (📊): mini Gantt bars tracking the playback cursor
-- **Right drawer** (📋): dashboard overview — phase legend, resource crews, S-curve sparkline
+- **Right drawer** (📋): dashboard overview — time/cost donuts, phase legend, resource crews, S-curve sparkline
 
 Both drawers share the same `_ops[]` and `_cursor` — same JS context, zero sync.
 
@@ -51,48 +51,108 @@ The 4D experience lives in the viewer window. The separate `boq_charts.html` tab
 
 **Trigger**: new 📋 button after 📊 in panel header row. `id="tm-dash"`.
 
-**Animate**: slide right from panel right edge, 200ms ease-out. Panel widens from 340px to 600px (or viewport-aware: `min(600px, 90vw)`). Close = shrink back to 340px. Use `width` transition on the panel itself.
+**Animate**: slide out from the panel's right edge **outward** (not inward). The drawer hangs off the right edge of the panel as a sibling column. Close = retract back.
 
-**Content** — a compact vertical stack inside a new right-side column:
+**BUG FIX (from S254d):** The current CSS uses `position:absolute; right:0; top:0; bottom:0` which places the drawer **inside** the panel's bounding box, eating the 340px space. Fix: change `.tm-drawer-right` to `left:100%; top:0` so it extends outward to the right. The panel itself stays 340px — it does NOT need to widen with `dash-open`. Remove the `#time-machine-panel.dash-open{width:min(600px,90vw)}` rule entirely. The drawer is visually attached but positionally outside. On mobile (<600px), the drawer switches to bottom position below the panel content (stacking, not overlapping).
+
+**CSS fix:**
+```css
+/* BEFORE (broken — grows inward) */
+.tm-drawer-right{max-width:0;overflow:hidden;transition:max-width 200ms ease-out;opacity:0;
+  position:absolute;top:0;right:0;bottom:0;padding:0;pointer-events:none;...}
+#time-machine-panel.dash-open{width:min(600px,90vw)}
+
+/* AFTER (correct — grows outward) */
+.tm-drawer-right{width:0;overflow:hidden;transition:width 200ms ease-out,opacity 150ms;opacity:0;
+  position:absolute;left:100%;top:0;padding:0;pointer-events:none;
+  background:rgba(20,20,40,0.92);backdrop-filter:blur(12px);
+  border:1px solid rgba(79,195,247,0.3);border-left:none;border-radius:0 12px 12px 0;
+  max-height:80vh;overflow-y:auto}
+.tm-drawer-right.open{width:260px;opacity:1;padding:10px;pointer-events:auto}
+/* No dash-open width change on the panel itself */
+@media(max-width:600px){
+  .tm-drawer-right{left:auto;top:100%;width:100%!important;max-width:none;
+    border-radius:0 0 12px 12px;border-left:1px solid rgba(79,195,247,0.3);border-top:none}
+  .tm-drawer-right.open{width:100%!important;max-height:200px}
+}
+```
+
+Also update `toggleDashDOM()` — remove `_panel.classList.toggle('dash-open', on)` since the panel no longer changes width.
+
+**Content** — a compact vertical stack inside the outward drawer column:
 
 ```
-┌── existing 340px ──┬── 260px dashboard ──────────┐
-│ [ 🔗 ☀ 👁 📊 📋 ] │  Phase Progress              │
-│ DAY 47 | HR 14  [✕]│  ██████░░ Superstructure 68% │
-│ Phase: Architecture │  ████████ MEP Rough-in  42%  │
-│ [====slider======]  │  ███░░░░░ Architecture  31%  │
-│ [⏪][◀][⏹][▶][⏩]  │                              │
-│ ┌─ Gantt drawer ──┐ │  Crews Today                 │
-│ │ bars + hairline  │ │  🏗️ Steel ×4  🧱 Mason ×3   │
-│ └─────────────────┘ │  ⚡ Elec ×2   🔧 Plumb ×2   │
-│                     │                              │
-│                     │  ┌─ S-Curve sparkline ──┐    │
-│                     │  │  ╱‾‾‾                │    │
-│                     │  │ ╱     47% complete    │    │
-│                     │  └──────────────────────┘    │
-└─────────────────────┴──────────────────────────────┘
+┌── existing 340px ──┐┌── 260px dashboard (outside) ─┐
+│ [ 🔗 ☀ 👁 📊 📋 ] ││  ┌─ Time Pie ─┐┌─ Cost Pie ─┐│
+│ DAY 47 | HR 14  [✕] ││  │  ◔ 47%    ││  ◔ 38%    ││
+│ Phase: Architecture ││  │  elapsed   ││  spent     ││
+│ [====slider======]  ││  └───────────┘└───────────┘│
+│ [⏪][◀][⏹][▶][⏩]  ││  Phase Progress             │
+│ ┌─ Gantt drawer ──┐ ││  ██████░░ Superstructure 68%│
+│ │ bars + hairline  │ ││  ████████ MEP Rough-in  42% │
+│ └─────────────────┘ ││  ███░░░░░ Architecture  31% │
+│                     ││  Crews Today                │
+│                     ││  🏗️ Steel ×4  🧱 Mason ×3   │
+│                     ││  S-Curve sparkline + Day cnt│
+└─────────────────────┘└─────────────────────────────┘
 ```
 
 **Data source** — all from `_ops[]` and `_cursor`, computed in a `drawDashboard()` function:
 
-1. **Phase progress bars**: for each phase, count ops where `end_ts <= _cursor` vs total. Show colored bar + percentage. Phases in standard order.
+1. **Time donut** (restored): 120×120 canvas `id="tm-dash-time-pie"`, two arcs — elapsed days (blue `#4fc3f7`) vs remaining (dark). Center text: "Day 47" and "47%". Redrawn each `renderAtTime()` tick. These donuts existed in the old BroadcastChannel-based GanttChart player and were lost when 4D playback moved to the hourglass. Restore them here — same cursor, same data, no sync needed.
 
-2. **Crews today**: from `_ops` currently in frontier (`start_ts <= _cursor < end_ts`), extract `resource` from parameters. Count distinct resources, show icon + crew name + count. Icon map reuse from `boq_charts.html` RES_ICONS.
+2. **Cost donut** (restored): 120×120 canvas `id="tm-dash-cost-pie"`, two arcs — cost of completed ops (green `#44cc44`) vs remaining budget (dark). Cost = sum of `getRate(cls)` for ops where `end_ts <= _cursor`. Center text: cost amount + "%". Uses `LABOR_RATES` from `rates.js` for consistent costing with boq_charts.html.
 
-3. **S-Curve sparkline**: tiny 100×40px canvas. X = project timeline, Y = cumulative % complete. A dot marks current position. Computed once (on first open), redraw dot position each tick.
+   Both donuts sit side-by-side in a flex row at the top of the dashboard drawer.
 
-4. **Day counter**: "Day 47 / 1235 — 3.8% complete" below the sparkline.
+3. **Phase progress bars**: for each phase, count ops where `end_ts <= _cursor` vs total. Show colored bar + percentage. Phases in standard order.
 
-**Refresh**: `drawDashboard()` called from `renderAtTime()` when `_dashVisible`, same pattern as `drawGanttMini()`. Phase/crew/S-curve calculations are lightweight — just counting ops vs cursor.
+4. **Crews today**: from `_ops` currently in frontier (`start_ts <= _cursor < end_ts`), extract `resource` from parameters. Count distinct resources, show icon + crew name + count. Icon map reuse from `boq_charts.html` RES_ICONS.
 
-**§-tags**: `§DASH_OPEN phases=N crews=N`, `§DASH_PHASE name pct%`
+5. **S-Curve sparkline**: tiny 100×40px canvas. X = project timeline, Y = cumulative % complete. A dot marks current position. Computed once (on first open), redraw dot position each tick.
+
+6. **Day counter**: "Day 47 / 1235 — 3.8% complete" below the sparkline.
+
+**Donut drawing helper** (shared by both pies):
+```javascript
+function drawDonut(canvasId, pct, label, sublabel, color) {
+  var canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var w = canvas.width, h = canvas.height, cx = w/2, cy = h/2, r = Math.min(cx,cy) - 4;
+  ctx.clearRect(0, 0, w, h);
+  // Background ring
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.lineWidth = 10; ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.stroke();
+  // Progress arc
+  ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI/2, -Math.PI/2 + Math.PI*2*(pct/100));
+  ctx.lineWidth = 10; ctx.strokeStyle = color; ctx.lineCap = 'round'; ctx.stroke();
+  // Center text
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(label, cx, cy - 2);
+  ctx.fillStyle = '#999'; ctx.font = '9px sans-serif';
+  ctx.fillText(sublabel, cx, cy + 12);
+}
+```
+
+**DOM additions** — add to the `tm-dash-col` HTML (before Phase Progress):
+```html
+<div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px">
+  <canvas id="tm-dash-time-pie" width="120" height="120" style="width:110px;height:110px"></canvas>
+  <canvas id="tm-dash-cost-pie" width="120" height="120" style="width:110px;height:110px"></canvas>
+</div>
+```
+
+**Refresh**: `drawDashboard()` called from `renderAtTime()` when `_dashVisible`, same pattern as `drawGanttMini()`. Phase/crew/S-curve/donut calculations are lightweight — just counting ops vs cursor.
+
+**§-tags**: `§DASH_OPEN phases=N crews=N`, `§DASH_PHASE name pct%`, `§DASH_DONUTS time=N% cost=CUR+N`
 
 #### §3 Drawer Interactions
 
-- **Both open simultaneously**: panel goes 600px wide + Gantt drops below. The panel becomes an L-shape. On mobile (<600px viewport), only one drawer at a time — toggling one closes the other.
+- **Both open simultaneously**: Gantt drops below, dashboard extends to the right. No panel width change needed (dashboard is positionally outside). On mobile (<600px viewport), only one drawer at a time — toggling one closes the other.
 - **(-) panel toggle**: drawers respect it — if user hits (-) to hide all chrome, drawers close with the panel. On (+) restore, drawers return to their previous open/closed state.
 - **Deactivate cleanup**: both `_ganttVisible` and `_dashVisible` reset to false, classes removed, widths restored.
-- **Panel drag**: drag handle (the header row) works the same whether drawers are open or closed. The panel moves as a unit.
+- **Panel drag**: drag handle (the header row) works the same whether drawers are open or closed. The panel moves as a unit (dashboard drawer follows via absolute positioning relative to panel).
 
 #### §4 Immersive Mode
 
@@ -103,9 +163,9 @@ When user activates hourglass AND hits (-) to hide all other UI:
 - ☀ sun cycle + 👁 camera follow + ▶ play = fully immersive 4D construction walkthrough
 - This is the "presentation mode" experience — no code changes needed, emerges from existing (-) toggle + drawer design
 
-#### §5 Rename 4D/5D → 5D and strip 4D playback from boq_charts.html
+#### §5 Rename 4D/5D → 5D and ensure Gantt Chart shows in boq_charts.html
 
-**Rename** — all 4D lives in the hourglass now. Three locations to update:
+**Rename** — all 4D playback lives in the hourglass now. The 5D page is read-only analytics:
 - `deploy/dev/index.html:337` — toolbar button title `"4D/5D Export"` → `"5D BOQ/Cost"`
 - `deploy/dev/boq_charts.html:5` — `<title>BIM OOTB — 4D/5D Analytics</title>` → `5D Analytics`
 - `deploy/dev/boq_charts.html:43` — `<h1>BIM OOTB — 4D/5D Analytics</h1>` → `5D Analytics`
@@ -127,33 +187,49 @@ When user activates hourglass AND hits (-) to hide all other UI:
 - Keep: all 9 chart panels (cost pie, S-curve, milestones, Gantt, etc.) as read-only analytics
 - Keep: `ganttHeader` but remove the `controlBar` (Play/Stop/Speed/Day label) from it. The sync badge (Hourglass OK) stays.
 
+**Gantt Chart data dependency** — the Chart 9 Gantt in boq_charts.html gets its data via:
+1. **Primary**: `_tryScheduleRelay()` → BroadcastChannel `4D_SCHEDULE_REQUEST` → viewer responds with `kernel_ops` (ELEMENT_PLACE ops). Built by `buildScheduleFromOps()`. Sync badge shows "Hourglass OK" (green).
+2. **Fallback**: `generateSchedule()` builds a schedule independently from QTO data + `SEQUENCE_RULES` in `rates.js`. Sync badge shows "Run Hourglass first" (orange).
+
+Both paths produce `scheduleData[]` that feeds Chart 9. The Gantt will always show — it does NOT require the hourglass to have been run. The difference is data quality: kernel_ops path uses the actual construction schedule with storey-aware sequencing; fallback path uses simpler phase-only grouping.
+
+**Note for the user**: The construction schedule is ultimately driven by `SEQUENCE_RULES` and `LABOR_RATES` in `rates.js` — these are editable JS objects that control phase ordering, resource assignment, and installation durations per IFC class. The hourglass `injectGantt()` writes ELEMENT_PLACE ops to the `kernel_ops` table in the SQLite DB. The user can:
+- Edit `rates.js` to change sequencing rules → re-run hourglass to regenerate
+- Directly edit kernel_ops in the DB (advanced) via the ERP panel
+- The 5D page always reflects whatever schedule data is available
+
 **Net result**: boq_charts.html becomes a clean 5D analytics page. Gantt chart is still there as a read-only visualization — you see the bars, you can click to highlight in the viewer, but playback lives in the hourglass panel only.
 
 ### Key Files
 - `deploy/dev/time_machine.js` — all drawer code lives here (same IIFE)
 - `deploy/dev/panels.js` — (-) toggle, `toggleAllPanels()` (no changes needed)
-- `deploy/dev/boq_charts.html` — future strip of 4D controls (separate session)
+- `deploy/dev/rates.js` — `SEQUENCE_RULES`, `LABOR_RATES`, `SEQUENCE_DEFAULT` (user-editable schedule config)
+- `deploy/dev/boq_charts.html` — 5D analytics, Chart 9 Gantt, `buildScheduleFromOps()`
 
 ### Implementation Order
-1. §1 bottom drawer animation (refine existing `drawGanttMini`)
-2. §1 storey labels + legend + hover tooltip
-3. §2 right drawer — panel width transition + dashboard div
-4. §2 phase progress + crews + sparkline
-5. §3 drawer interaction rules
-6. Tests: §-tag logs prove drawer data matches kernel_ops
+1. §2 BUG FIX: right drawer CSS — `left:100%` outward positioning, remove `dash-open` width
+2. §2 time donut + cost donut canvases, `drawDonut()` helper
+3. §2 wire donuts into `drawDashboard()` refresh cycle
+4. §1 bottom drawer animation (refine existing `drawGanttMini`)
+5. §1 storey labels + legend + hover tooltip
+6. §3 drawer interaction rules
+7. Tests: §-tag logs prove drawer data matches kernel_ops
 
 ### Acceptance Criteria
 - `§GANTT_MINI tasks=N` shows task count on first open
 - `§GANTT_MINI_SEEK` confirms click-to-seek works
 - `§DASH_OPEN` confirms dashboard data loaded
+- `§DASH_DONUTS time=N% cost=CUR+N` confirms both pies render and sync with cursor
 - Slider drag ↔ hairline movement is smooth (no flicker)
 - Click Gantt bar → scene jumps to correct timestamp
 - Dashboard phase percentages increase monotonically during forward play
 - Crew count matches frontier ops at any cursor position
+- Right drawer extends **outward** to the right (not inward consuming panel space)
 - Mobile: only one drawer at a time, no overflow
 - (-) toggle hides everything; (+) restores drawer state
 - Deactivate cleans up all drawer state
 - `?tm=play` share link still works with drawers closed (default)
+- boq_charts.html Chart 9 Gantt renders with or without hourglass session
 
 ### Testing
 - Verify with Terminal (48k elements, 23 storey-bands, 61 tasks)
@@ -180,3 +256,242 @@ The Gantt chart was in a separate HTML page, the scene control in the viewer, th
 
 #### L6: Worktree for safety on structural changes
 The mini Gantt drawer was built in a git worktree (`dev/scene-timeline` branch). If it broke, `full` branch was untouched. **Lesson: use worktrees for any change that touches panel HTML structure or adds new rendering functions. The fallback cost is zero.**
+
+---
+
+### §6 Future Rendering Upgrades (separate implementation — do NOT mix with §1-§5)
+
+This section documents browser-native 3D rendering improvements that enhance the 4D cinema experience. **Implement independently** — each item is a standalone enhancement that does not depend on or modify the hourglass drawer code.
+
+Research-verified 2026-05-15. Corrections from original study notes marked.
+
+#### §6.1 WebGPU Renderer — VIABLE but NOT drop-in ⚠
+
+`WebGPURenderer` is production-ready in Three.js r171+ (Sep 2025). Auto-fallback to WebGL2 is real.
+
+**NOT a drop-in replacement.** Migration requires:
+- Import from `three/webgpu` (not `three`). Never mix both imports.
+- `await renderer.init()` or use `setAnimationLoop()` — init is async, blank canvas if you forget.
+- All `ShaderMaterial` / `RawShaderMaterial` (GLSL) must be rewritten in TSL (Three Shading Language).
+- `EffectComposer` is dead on WebGPU — must use node-based `RenderPipeline`.
+- `onBeforeCompile()` hooks not supported.
+
+**Browser support:** Chrome/Edge full. Firefox still flag-only (`dom.webgpu.enabled`). Safari 26+ (macOS Tahoe). Mobile Chrome Android 147+, Safari iOS 26+. All gaps covered by WebGL2 fallback.
+
+**For this project:** Check if any custom ShaderMaterial exists in the viewer. If not, migration is feasible. The main value is enabling §6.5 BatchedMesh perf gains and §6.7 GPU particles. Do §6.2-§6.4 first (WebGL-compatible), then §6.1 as a gate to §6.7.
+
+```javascript
+import * as THREE from 'three/webgpu';
+const renderer = new THREE.WebGPURenderer({ antialias: true });
+await renderer.init(); // REQUIRED — async
+renderer.setAnimationLoop(render);
+```
+
+#### §6.2 Procedural Sky + Environment Lighting — VIABLE, highest ROI ✓
+
+**CORRECTED:** Original study cited `RGBELoader` — renamed to `HDRLoader` in recent Three.js. But for this project, skip the HDR file entirely.
+
+**Best approach: built-in `Sky` addon** — zero file download, procedural, pairs perfectly with ☀ sun cycle.
+```javascript
+import { Sky } from 'three/addons/objects/Sky.js';
+const sky = new Sky();
+sky.scale.setScalar(450000);
+scene.add(sky);
+// Feed to PMREMGenerator for PBR environment lighting
+const envMap = pmremGenerator.fromScene(sky).texture;
+scene.environment = envMap;
+```
+Advantages over HDR file:
+- No download (critical for no-server single-HTML architecture)
+- Sun position adjustable in real-time → syncs with hourglass ☀ cycle
+- Turbidity, Rayleigh, Mie scattering all configurable
+- PMREMGenerator converts it to cubemap for PBR reflections
+
+If HDR file is ever needed (e.g. interior scenes), use `HDRLoader` (not `RGBELoader`):
+```javascript
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
+```
+Free HDR skies: Poly Haven (CC0, 1K = 1-2MB download, sufficient for PMREMGenerator).
+
+#### §6.3 Atmosphere — REPLACED by §6.2 ✗
+
+**CORRECTED:** `@takram/three-atmosphere` is real (npm v0.16.0) but **wrong for this project**:
+- Requires React Three Fiber as peer dependency (we use vanilla Three.js)
+- Designed for planetary/GIS scale, not building-scale BIM
+- Forces Lambertian BRDF (conflicts with PBR materials)
+
+**The built-in `Sky` addon in §6.2 covers this use case.** It provides Preetham atmospheric scattering model with sun position, turbidity, and Rayleigh controls — exactly what the hourglass ☀ cycle needs. No separate library required.
+
+#### §6.4 Post-Processing — VIABLE on current WebGLRenderer ✓
+
+**CORRECTED:** `RenderPipeline` (r183+) requires WebGPURenderer. On our current WebGLRenderer, use `EffectComposer`:
+
+**Ambient Occlusion** (biggest visual win after sky):
+- Built-in: `HBAOPass` (Horizon-Based AO) — best quality/perf ratio, official example `webgl_postprocessing_hbao`
+- Third-party: `N8AOPass` (`n8ao` npm) — drop-in, quality presets, community recommended
+- Avoid: `SSAOPass` (too slow for 48K elements)
+- Note: hardware MSAA incompatible with screen-space AO — use SMAAPass alongside
+
+**Bloom**:
+- `UnrealBloomPass` — still the standard. Mip-chain approach, good quality.
+- Reduce bloom resolution to 0.5x for perf on large scenes.
+
+**Performance estimate at 48K elements:**
+- AO requires depth/normal pre-pass = 1 extra scene render (the expensive part)
+- AO computation: ~2-4ms at 1080p
+- Bloom: ~1-3ms at 1080p
+- Total: ~1 extra render + 3-7ms screen-space work per frame
+- **Do §6.5 instancing BEFORE AO** — the pre-pass benefits from reduced draw calls
+
+```javascript
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+// HBAOPass or N8AOPass for AO
+```
+
+#### §6.5 100K+ Element Performance — VIABLE, critical for Terminal ✓
+
+**CORRECTED:** InstancedMesh has NO `setVisibleAt()`. BatchedMesh does.
+
+**BatchedMesh** (r156+, stable) — best fit for BIM + 4D playback:
+- Many different geometries, one material, one draw call via WebGL multi-draw
+- **Native `setVisibleAt(index, bool)`** — perfect for 4D show/hide during construction
+- Group by material: one BatchedMesh per material type (concrete, glass, steel, etc.)
+- 48K elements → ~5-20 draw calls (vs 48,000 naive). **300-5000x reduction.**
+
+**InstancedMesh** — for truly repeated elements only (500 identical light fixtures):
+- No `setVisibleAt()` — workaround: swap matrix with last active instance + decrement `count`
+- Need index mapping table for 4D playback
+
+**three-mesh-bvh** (npm `three-mesh-bvh`, github `gkjohnson/three-mesh-bvh`) — standard BVH:
+- 3-line monkey-patch integration
+- 80K polygon model at 60fps raycasting (vs unusable without)
+- `raycaster.firstHitOnly = true` for additional speedup
+- BVH build is one-time cost (can offload to Web Worker)
+
+**Implementation order within §6.5:**
+1. BatchedMesh grouping by material (biggest draw call reduction)
+2. three-mesh-bvh for picking (sub-ms raycasting)
+3. InstancedMesh for repeated elements (secondary optimization)
+
+#### §6.6 Positional Audio (immersive mode) — VIABLE ✓
+
+`THREE.PositionalAudio` uses HRTF by default (`panner.panningModel = 'HRTF'`). Web Audio API universally supported.
+
+**Critical gotcha: autoplay policy.** All browsers require user gesture before AudioContext plays.
+- Context starts `'suspended'` — must call `context.resume()` inside click/tap handler
+- Mobile Safari strictest
+- Pattern: check `audioContext.state === 'suspended'`, resume on first user gesture
+- Natural fit: user taps ▶ play on hourglass = gesture that resumes audio
+
+HRTF is more CPU-expensive than equalpower — fine for a handful of sources, avoid 50+ simultaneous.
+
+#### §6.7 GPU Particle Effects — VIABLE (two-tier) ✓
+
+**Tier 1 (WebGL, now):** `THREE.Points` + `BufferGeometry`
+- CPU-updated: ~100K-500K particles before frame drops
+- Shader-animated (velocity as attribute, animate in vertex shader): millions, no CPU upload
+- Good enough for construction dust/sparks at small scale
+
+**Tier 2 (WebGPU, after §6.1):** TSL compute shaders
+- Official example `webgpu_tsl_compute_attractors_particles`: 262K particles GPU-computed
+- Real-world: 1M particles at 4K demonstrated (Expo 2025 Osaka)
+- ~150x faster than CPU particle update
+- No separate library needed — built into Three.js via TSL
+
+#### §6.8 Storey-Based DLOD (Dynamic Level of Detail) — PRACTICAL, highest perf ROI ✓
+
+**The problem:** LTU_AHouse has 125,698 elements. At 1 mesh per element (desktop), that's 125K draw calls and a 125K-node `scene.traverse` per frame. Fly mode (`flyTick`) orbits the camera at 0.012 rad/tick — the camera logic costs nothing, but Three.js rendering 125K meshes drops to ~10fps. The `renderAtTime` traverse for 4D playback is also 125K iterations → ~30ms, over 16.67ms budget.
+
+**The existing infrastructure already solves this — just not dynamically:**
+
+| Layer | What exists today | Draw calls (125K scene) | Picking |
+|-------|-------------------|------------------------|---------|
+| Individual mesh (desktop) | `streaming.js` default | ~125,000 | Direct guid |
+| InstancedMesh | 2+ identical geometries | ~200-500 | `_instanceMeta[meshId][instanceId]` |
+| Merged mesh (mobile only) | `storey\|disc\|rgba` buckets | ~200 | DB nearest-neighbor query |
+
+**DLOD = make the merge strategy camera-distance-aware at runtime, not static desktop vs mobile.**
+
+**Three LOD tiers per storey:**
+
+| Tier | When | Representation | Draw calls per storey | Picking |
+|------|------|---------------|----------------------|---------|
+| **NEAR** | Camera target storey ± 1 | Individual mesh + InstancedMesh | ~2K-8K | Full guid |
+| **MID** | Storeys 2-4 away | InstancedMesh only (singles merged to instances) | ~50-200 | `_instanceMeta` |
+| **FAR** | Storeys 5+ away | Merged mesh (storey\|disc\|rgba) | ~5-20 | DB fallback |
+
+**For LTU_AHouse (125K elements, ~25 storeys):**
+- Camera looking at Level 5: storeys 4-6 = NEAR (~24K meshes), storeys 2-3+7-8 = MID (~40K→200 instanced), storeys 0-1+9-24 = FAR (~60K→100 merged)
+- Total scene nodes: ~24,300 (vs 125,000 naive)
+- Total draw calls: ~24,300 (vs 125,000)
+- `scene.traverse` cost: ~24K × 0.0004ms = ~10ms (vs 50ms)
+- Fly mode: camera orbits → storey selection shifts smoothly → meshes promote/demote per frame
+
+**Storey distance calculation:**
+```javascript
+// In render loop or on controls.change:
+var camStorey = findNearestStorey(camera.position.y); // from storeyMinZ map
+for (var si = 0; si < storeys.length; si++) {
+  var dist = Math.abs(si - camStorey);
+  var tier = dist <= 1 ? 'NEAR' : dist <= 4 ? 'MID' : 'FAR';
+  if (tier !== storeys[si].currentTier) promoteStorey(si, tier);
+}
+```
+
+**`promoteStorey(storeyIdx, newTier)` — the key function:**
+1. **NEAR→MID**: Dispose individual meshes for that storey, rebuild as InstancedMesh (reuse `_flushInstanced` with `forceInstance=true`)
+2. **MID→FAR**: Dispose InstancedMesh, rebuild as merged mesh (reuse mobile merge path from `streaming.js` line 387-459)
+3. **FAR→MID→NEAR**: Reverse — re-stream from `meshCache[hash]` (geometry already cached, no DB re-fetch)
+4. Transition budget: max 1 storey promotion per frame (spread cost over ~200ms)
+
+**Why this works without new Three.js features:**
+- Merged mesh path already exists in `streaming.js` (S232, mobile-only today)
+- InstancedMesh path already exists in `streaming.js` (2+ instances)
+- `meshCache[hash]` persists geometry blobs — re-streaming a storey doesn't hit the DB
+- Picking fallback (DB nearest-neighbor) already exists in `picking.js` for merged meshes
+- The only new code is the storey-distance evaluator + `promoteStorey` orchestrator
+
+**Time machine compatibility:**
+- `activate()` already forces re-stream on mobile → extend to force NEAR on frontier storeys
+- The `renderAtTime` traverse only touches meshes with `userData.guid` or `_instanceMeta` — MID tier has both
+- FAR tier storeys during 4D playback: skip (no guid tracking needed for distant storeys, they're backdrop)
+- Frontier storey auto-promotes to NEAR (2-3 storeys at most during any tick)
+
+**Fly mode impact:**
+- `flyTick()` does camera orbit (6 trig ops, ~0ms)
+- Rendering: GPU draws ~24K meshes instead of 125K → 5x fewer draw calls → **60fps on mid-range GPU**
+- Storey transitions during orbit: camera tilts → target storey shifts → 1 storey promotes per frame
+- Transition visible as LOD pop: mitigated by the 200ms spread + the fact that MID tier still looks good (same geometry, just instanced)
+
+**§-tags:** `§DLOD_PROMOTE storey=N from=FAR to=NEAR meshes=M`, `§DLOD_STATE near=N mid=M far=F drawCalls=D`
+
+**Test targets:**
+- LTU_AHouse (125K elements, 25 storeys) — the proving ground
+- Terminal (48K elements, 9 storeys) — must not regress
+- SampleHouse (58 elements) — trivial, all NEAR always
+- Fly mode: full 360° orbit at LTU must stay >45fps
+- Time machine: frontier storey NEAR, rest FAR, traverse <10ms
+
+**Key files to modify:**
+- `deploy/dev/streaming.js` — extract merge/instance logic into reusable `buildStoreyTier(storey, tier)` function
+- `deploy/dev/tour.js` — trigger DLOD evaluation from `flyTick()` and `walkTick()`
+- `deploy/dev/time_machine.js` — auto-promote frontier storeys to NEAR on activation
+- `deploy/dev/picking.js` — already handles all three tiers (no changes needed)
+
+**Recommended implementation priority (updated):**
+
+| Priority | Item | Why | Depends on |
+|----------|------|-----|------------|
+| **P1** | §6.8 Storey DLOD | Biggest perf ROI, uses existing code, unblocks 125K scenes | Nothing |
+| **P2** | §6.2 Sky + PBR env | Highest visual ROI, zero download, pairs with ☀ | Nothing |
+| **P3** | §6.5 BatchedMesh + BVH | Further perf for NEAR tier (replaces individual meshes) | §6.8 |
+| **P4** | §6.4 AO (HBAOPass) | Depth/realism after sky | §6.8 (pre-pass perf) |
+| **P5** | §6.4 Bloom | Polish, orange glow on active elements | §6.4 AO (same pipeline) |
+| **P6** | §6.6 Audio | Immersive mode enhancement | Nothing |
+| **P7** | §6.7 Tier 1 particles | CPU particles for construction effects | Nothing |
+| **P8** | §6.1 WebGPU migration | Gate to Tier 2 particles + RenderPipeline | All GLSL audit |
+| **P9** | §6.7 Tier 2 particles | GPU 100K+ particles | §6.1 |
+
+**Implementation rule**: Each §6.x is a separate session/PR. Test against LTU_AHouse (125K elements) AND Terminal (48K elements) for performance. Never regress the existing hourglass playback or drawer functionality. Each upgrade should be behind a feature toggle (`?dlod=on`, `?fx=sky`, `?fx=ao`, `?fx=bloom`, `?fx=audio`) until proven stable.
