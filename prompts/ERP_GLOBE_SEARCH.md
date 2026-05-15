@@ -15,20 +15,20 @@
 
 # ERP Globe Search — Live Bubble Correlation + Child Traversal
 
-## Previous session delivered (S258)
+## Delivered this session (S258)
 
 | File | What | Tests |
 |---|---|---|
-| `erp_search.js` | FTS5 full-text index over 17 tables, 843 records, 0.1ms/query, BM25 ranking, pattern detection, incremental update | 52/52 |
-| `ad_ui.js` | Floating glass search overlay (Alt+S), draggable, keyboard nav (arrows+Enter+Esc), globe auto-maximizes on load | 155/155 |
-| `ad_seed.db` | Full GardenWorld: 45 tables, 60,790 rows, 7.9MB | — |
-| `ad_graph.js` | Data Globe: canvas 2D renderer, nodes as bubbles, edges, orbit/pinch/drag, fullscreen toggle (⛶/−) | via ad_ui |
-| `export_ad.sh` | Extended to export all GardenWorld transactional + master data | — |
-| `docs/ERP_Roadmap.md` | R1-R10 roadmap, R1+R2 done | — |
+| `erp_search.js` | FTS5 full-text index over 23 tables, 10561 records, client-filtered (system/gardenworld), BM25 ranking, pattern detection, incremental update | 53 |
+| `ad_graph.js` v6 | Globe: TABLE/RECORD/CHILD node types, focusNode (soft), navigateToRecord (deep), FK discovery via AD_Column, hub-and-spoke child spawning, collapse toggle, weight formula, grow-from-centre animation (800ms), perspective=450, shortest-path fly, pinch-close→goBack, momentum kill on pinch release, browser back interception ("Back again to exit"), 🔍 mobile search button | 82 |
+| `ad_ui.js` v10 | Search↔Globe: arrow/hover→soft focus TABLE bubble, Enter/click→openWindow (double-fire guard), tap-outside dismisses search, GardenWorld default client | 155 |
+| `erp.html` | SW registration, IndexedDB cache for ad_seed.db (7.9MB → instant second visit), ?v=13 | — |
+| `sw.js` v302 | Precaches all ERP modules (ad_graph, ad_ui, erp_search, ad_parser, ad_data, ad_charts, kernel_ops) | — |
+| `test_globe_search.js` | 82 tests: FK discovery, weight, focusNode, navigateToRecord, zoom stability, view transitions, perspective overshoot, fly shortest path, search filtering, mobile, full §7 scenario | 82 |
 
-**Current state:** Globe opens maximized. Alt+S opens search. Search finds records.
-Arrow keys navigate results, Enter opens the window card view.
-**But:** search and globe are disconnected — no visual correlation, no child bubbles.
+**Current state:** Globe opens maximized with GardenWorld (15 TABLE bubbles). Search (Alt+S or 🔍 or long-press empty) finds records, arrow keys pulse TABLE bubbles, Enter opens card. Tap TABLE → dive into entity globe (records as full navigable sphere). Tap RECORD → FK children orbit out. Esc/tap-empty → fly back to originating TABLE. Pinch-close → go back. Browser back on home → "Back again to exit" toast. ad_seed.db cached in IndexedDB for instant mobile revisits.
+
+**R1 + R2 + R10 DONE.** See `docs/ERP_Roadmap.md` for next priorities (R4 Benchmarks).
 
 ---
 

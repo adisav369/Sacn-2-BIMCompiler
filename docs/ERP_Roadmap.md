@@ -17,37 +17,40 @@
 |---|---|---|---|
 | `doc_engine.js` — 9-table schema, StateMachine, JournalEngine | Done (S255) | 79/79 | [SpatialERP_POC.md](../prompts/SpatialERP_POC.md) |
 | `ad_parser.js` — AD metadata reader (menus, windows, tabs, fields) | Done (S255) | 48/48 | [ERP.md](ERP.md) |
-| `ad_ui.js` + `ad_data.js` + `ad_charts.js` — AD renderer | Done (S256) | 132 | [ERP_AD_UI.md](../prompts/ERP_AD_UI.md) |
+| `ad_ui.js` + `ad_data.js` + `ad_charts.js` — AD renderer | Done (S256) | 155 | [ERP_AD_UI.md](../prompts/ERP_AD_UI.md) |
 | `kernel_ops` — append-only op log with user_tag | Done (S255) | via doc_engine | [SpatialERP_POC.md](../prompts/SpatialERP_POC.md) |
 | Data Globe — spatial bubble navigation | Done (S257) | 153 | [SpatialERP_OOTB.md §6.5](SpatialERP_OOTB.md) |
-| Service Worker + offline mode | Done (BIM OOTB) | T13 | `deploy/dev/sw.js` |
+| `erp_search.js` — FTS5 full-text search, 23 tables, BM25 ranking, pattern detection | Done (S258) | 53 | [ERP_GLOBE_SEARCH.md](../prompts/ERP_GLOBE_SEARCH.md) |
+| Globe↔Search correlation + FK hub-and-spoke traversal | Done (S258) | 82 | [ERP_GLOBE_SEARCH.md](../prompts/ERP_GLOBE_SEARCH.md) |
+| Service Worker + offline mode + IndexedDB seed cache | Done (S258) | T13 | `deploy/dev/sw.js` |
 | `erp.html` — standalone card-swipe ERP shell | Done (S256) | via test_ad_ui | [ERP_AD_UI.md](../prompts/ERP_AD_UI.md) |
 | AD seed: 370 windows, 1130 tabs, 20911 fields, 1003 AD tables | Done (S255) | — | `deploy/dev/ad_seed.db` |
-| GardenWorld data: 18 BPartners, 55 Products | Done (S255) | — | `scripts/export_ad.sh` |
+| GardenWorld data: 18 BPartners, 55 Products, 8 Orders, 8 Invoices | Done (S258) | — | `scripts/export_ad.sh` |
 
 ---
 
-## R1. Smart Search (FTS5 + Pattern Detection)
+## R1. Smart Search (FTS5 + Pattern Detection) — DONE (S258)
 
-**Goal:** Single search box that replaces menu navigation entirely. Type anything — document number, partner name, product, amount, date phrase — and land on the right record instantly.
+**Status:** Implemented and deployed. 53 tests in `test_erp_search.js`.
 
-### R1.1 FTS5 Virtual Table
+### R1.1 FTS5 Virtual Table — DONE
 
-Create an FTS5 virtual table over all searchable master and transaction data:
+`erp_search.js` creates an FTS5 virtual table over 23 searchable tables (17 GardenWorld + 6 System AD). Porter stemming + unicode61 tokeniser. Client-filtered (`system` vs `gardenworld`) so searches never cross client boundaries.
 
 ```sql
 CREATE VIRTUAL TABLE erp_search USING fts5(
-  doc_no,             -- INV-001, PO-2024-003, SO-123
-  bpartner_name,      -- "Joe Block", "Patio Furniture Ltd"
-  product_name,       -- "Oak Table", "Standard Chair"
-  description,        -- free-text from metadata JSON
-  table_name,         -- source table for result routing
-  record_id,          -- PK in source table
-  tokenize = 'porter unicode61'
+  search_text,                    -- composite of all searchable columns
+  table_name UNINDEXED,           -- source table
+  record_id UNINDEXED,            -- PK
+  display_text UNINDEXED,         -- human-readable name
+  window_id UNINDEXED,            -- AD_Window_ID for card open
+  doc_status UNINDEXED,           -- DR/IP/CO/CL/VO
+  client UNINDEXED,               -- 'system' | 'gardenworld'
+  tokenize = "porter unicode61"
 );
 ```
 
-Rebuild on seed load. Incremental update on every `ad_data.js` save/delete.
+10,561 rows indexed. Rebuild on seed load. `updateRecord()` / `removeRecord()` for incremental updates.
 
 ### R1.2 Search UX
 
@@ -398,13 +401,13 @@ The kernel log is the system's journal in the database sense:
 
 ---
 
-## R10. Dynamic Bubble Traversal — Graph Explorer
+## R10. Dynamic Bubble Traversal — Graph Explorer — DONE (S258)
 
-**Goal:** Transform the Data Globe from a static InfoWindow viewer into a **traversable relationship graph**. Click a bubble → its children orbit into view. Click a child → drill deeper. The globe becomes a graph database explorer with zero latency.
+**Status:** Implemented in `ad_graph.js` v6. 82 tests in `test_globe_search.js`. Deployed to `bim-ootb-full`.
 
-### R10.1 FK Relationship Discovery (No New Tables)
+### R10.1 FK Relationship Discovery — DONE
 
-The AD already encodes all foreign key relationships. `AD_Column` where `AD_Reference_ID = 19` (Table Direct) or `AD_Reference_ID = 30` (Search) points from one table to another. At init time, build an in-memory relationship map:
+`_discoverChildren(tableName)` queries AD_Column for all tables referencing `tableName_ID`. No relationship table needed — the AD IS the schema. Example: `C_BPartner` discovers 150+ FK references (C_Order, C_Invoice, C_Payment, M_InOut, etc.).
 
 ```javascript
 // Derived from AD_Column metadata — no relationships table needed
@@ -498,11 +501,22 @@ Visual mapping:
 | Weight recalculation | < 1ms per bubble |
 | 500 active bubbles | < 200MB |
 
-### R10.8 Implementation
+### R10.8 Implementation — DONE
 
-New file: `bubble_graph.js` — relationship map builder, child spawner, weight calculator, orbit animator. Extends `ad_graph.js` globe renderer.
+All features implemented directly in `ad_graph.js` (no separate `bubble_graph.js` needed). Key functions:
 
-New tests: `tests/test_bubble_graph.js` — FK discovery, child spawning, weight calculation, pagination, parent navigation, memory limits. Target 30+ tests.
+| Function | What |
+|---|---|
+| `_discoverChildren(tableName)` | FK discovery from AD_Column — returns table names that reference this one |
+| `_expandRecord(node)` | RECORD click → query FK tables → spawn CHILD bubbles orbiting parent |
+| `_collapseNode(node)` / `_collapseAll()` | Toggle collapse, long-press reset |
+| `_getBubbleWeight(node)` | Weight formula: TABLE=3-10 (log10 count), RECORD=2+children+status, CHILD=1 |
+| `focusNode(table, id)` | Soft focus for search browsing — pulses TABLE, auto-returns home from entity view |
+| `navigateToRecord(table, id)` | Deep navigate for Enter/click — dives into entity globe, flies to record |
+| `_flyToFront(node)` | Uses target position (not animated), shortest-path normalisation (delta <= PI) |
+| `_onPopState()` | Browser back → go back within globe, "Back again to exit" warning on home |
+
+Tests: `test_globe_search.js` — 82 tests covering FK discovery (A), weight formula (F), focusNode (G), search correlation (H/L), zoom stability (M), view transitions (N), perspective overshoot (Q), fly shortest path (R), search filtering (P), mobile interactions (O).
 
 ---
 
@@ -512,8 +526,8 @@ New tests: `tests/test_bubble_graph.js` — FK discovery, child spawning, weight
 |---|---|---|---|---|
 | **P0** | R2 — Full iDempiere data export | `export_ad.sh` extension | 1-2 | **DONE** (S258) |
 | **P1** | R1 — FTS5 Smart Search | R2 (needs data to search) | 2-3 | **DONE** (S258) |
-| **P2** | R10 — Dynamic Bubble Traversal | R1 + R2 (needs search + data) | 2-3 | Next |
-| **P3** | R4 — Benchmark suite | R2 + R1 (needs data + queries to measure) | 1 | |
+| **P2** | R10 — Dynamic Bubble Traversal | R1 + R2 (needs search + data) | 2-3 | **DONE** (S258) |
+| **P3** | R4 — Benchmark suite | R2 + R1 (needs data + queries to measure) | 1 | Next |
 | **P4** | R5 — Offline OPFS persistence | SW already done, OPFS is incremental | 1-2 | |
 | **P5** | R3 — Database sharding | R4 (benchmarks prove when sharding is needed) | 2 | |
 | **P6** | R6 — CRDT sync | R5 (offline must work first) | 3-4 | |
