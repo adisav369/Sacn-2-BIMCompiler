@@ -30,6 +30,14 @@
 
 **R1 + R2 + R10 DONE.** See `docs/ERP_Roadmap.md` for next priorities (R4 Benchmarks).
 
+## Session startup — read these before coding:
+1. `docs/ERP_Roadmap.md` — full roadmap with R1-R10 status + **Addendum 1** (R11-R15: Kitchen Setup, Deterministic AI, Legacy Migration, Entanglement-Free Architecture, Operational Excellence) + **Addendum 2** + **Addendum 3**
+2. This file — delivered features + remaining §1-§7 specs
+3. `deploy/dev/ad_graph.js` — globe renderer (v6, ~1350 lines)
+4. `deploy/dev/ad_ui.js` — UI orchestrator (~1950 lines)
+5. `deploy/dev/erp_search.js` — FTS5 search (474 lines)
+6. `deploy/dev/tests/test_globe_search.js` — 82 whitebox tests
+
 ---
 
 ## §1. Search ↔ Globe Live Correlation
