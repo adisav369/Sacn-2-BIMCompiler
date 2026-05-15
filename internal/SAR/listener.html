@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SAR Listener</title>
+    <script src="codes.js"></script>
+    <script>if(typeof SAR_CODES==='undefined'){const s=document.createElement('script');s.src='https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/sar/codes.js';document.head.appendChild(s);}</script>
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #000; color: #0f0; font-family: monospace; padding: 0; margin: 0;
+               min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+
+        #startScreen { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 15px; padding: 20px; }
+        .mode-btn { padding: 20px; font-size: 15px; font-weight: bold; font-family: monospace;
+                    border: 2px solid; border-radius: 10px; cursor: pointer; width: 80%; max-width: 280px; text-align: center; }
+        .mode-btn:active { transform: scale(0.95); }
+        .air-btn { background: #1a1a00; color: #ff0; border-color: #ff0; }
+        .water-btn { background: #001a2a; color: #0af; border-color: #0af; }
+
+        #display { display: none; flex: 1; flex-direction: column; }
+
+        #signalStrip { height: 4px; background: #222; }
+        #signalFill { height: 100%; width: 0%; background: #0f0; transition: width 0.1s; }
+
+        /* Full-screen beacon result */
+        #beaconFull { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 15px; }
+        #beaconFull.waiting .bdata { opacity: 0.15; }
+        #bHex { font-size: 48px; font-weight: bold; letter-spacing: 6px; margin-bottom: 8px; }
+        #bShort { font-size: 28px; font-weight: bold; margin-bottom: 6px; }
+        #bDetail { font-size: 14px; color: #aaa; margin-bottom: 10px; text-align: center; }
+        #bSevBadge { display: inline-block; padding: 4px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 10px; }
+        #bGPS { font-size: 13px; color: #48f; margin-bottom: 6px; }
+        #bGPS a { color: #48f; font-size: 14px; text-decoration: underline; }
+        #bMeta { font-size: 10px; color: #555; margin-bottom: 6px; }
+        #bCount { font-size: 11px; color: #444; }
+
+        #ackBtn { background: #040; color: #0f0; border: 3px solid #0f0; padding: 16px 50px;
+                  font-size: 18px; font-weight: bold; font-family: monospace; border-radius: 10px;
+                  cursor: pointer; margin-top: 12px; display: none; }
+        #ackBtn:active { background: #0f0; color: #000; }
+
+        #historyStrip { display: flex; gap: 4px; overflow-x: auto; padding: 4px 6px; background: #0a0a0a;
+                        border-top: 1px solid #222; min-height: 28px; }
+        .hist-chip { padding: 3px 8px; border-radius: 4px; font-size: 9px; font-weight: bold; white-space: nowrap;
+                     cursor: pointer; border: 1px solid; }
+
+        .bottom-bar { background: #111; border-top: 1px solid #333; padding: 5px 8px; display: flex; align-items: center; gap: 6px; }
+        #stopBtn { background: #400; color: #f44; border: 1px solid #f44; padding: 5px 10px;
+                   font-size: 10px; font-family: monospace; cursor: pointer; border-radius: 3px; }
+        #statusText { font-size: 9px; color: #888; flex: 1; }
+        #debug { font-size: 8px; color: #333; text-align: center; padding: 1px; }
+    </style>
+</head>
+<body>
+    <div id="startScreen">
+        <a href="https://bim-ootb.com" target="_blank" style="position:absolute; top:10px; right:14px; font-size:18px; color:#555; text-decoration:none;">&#x22EE;</a>
+        <div style="font-size: 18px; color: #0f0; font-weight: bold;">SAR LISTENER</div>
+        <div style="font-size: 11px; color: #888;">Select channel to match beacon</div>
+        <button class="mode-btn air-btn" onclick="startListening('air')">
+            <div style="font-size: 24px;">&#x1F3D7;</div> AIR / RUBBLE
+            <div style="font-size: 10px; opacity: 0.6;">3kHz — 4.5kHz</div>
+        </button>
+        <button class="mode-btn water-btn" onclick="startListening('water')">
+            <div style="font-size: 24px;">&#x1F30A;</div> UNDERWATER
+            <div style="font-size: 10px; opacity: 0.6;">800Hz — 1.2kHz</div>
+        </button>
+    </div>
+
+    <div id="display">
+        <div id="signalStrip"><div id="signalFill"></div></div>
+        <div id="beaconFull" class="waiting">
+            <div class="bdata">
+                <div id="bHex" style="color:#333;">----</div>
+                <div id="bShort" style="color:#333;">LISTENING</div>
+                <div id="bDetail"></div>
+                <div id="bSevBadge"></div>
+                <div id="bGPS"></div>
+                <div id="bMeta"></div>
+                <div id="bCount"></div>
+            </div>
+            <button id="ackBtn" onclick="sendACK()">SEND ACK</button>
+        </div>
+        <div id="historyStrip"></div>
+        <div id="debug"></div>
+        <div class="bottom-bar">
+            <button id="stopBtn" onclick="stopListening()">STOP</button>
+            <div id="statusText">...</div>
+        </div>
+    </div>
+
+    <script>
+        const MODES = {
+            air:   { sync: 2000, syncHi: 3000, freq0: 3000, freq1: 4500, ackFreq: [2500, 3500, 5000], label: 'AIR', bitMs: 60, pollMs: 30 },
+            water: { sync: 500,  syncHi: 750,  freq0: 800,  freq1: 1200, ackFreq: [600, 900, 1100],   label: 'WATER', bitMs: 100, pollMs: 50 },
+        };
+
+        let mode = null, audioCtx = null, analyser = null, freqData = null, micStream = null;
+        let pollTimer = null, listening = false;
+        let syncDetected = false, syncCount = 0, dataBits = [], silenceFrames = 0;
+        let voteFor0 = 0, voteFor1 = 0, voteSilence = 0;
+        const VOTE_WINDOW = 2, SILENCE_RESET = 10;
+        let beacons = [], activeIdx = -1;
+        // Energy-saving: slow poll in standby, fast when signal detected
+        const IDLE_POLL_MS = 100;   // 10 Hz standby — must catch 360ms air preamble (need ≥3 hits)
+        let currentPollMs = 0;
+
+        async function startListening(m) {
+            mode = MODES[m];
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('display').style.display = 'flex';
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, video: false });
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const src = audioCtx.createMediaStreamSource(micStream);
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 8192; analyser.smoothingTimeConstant = 0.2;
+                src.connect(analyser);
+                freqData = new Uint8Array(analyser.frequencyBinCount);
+                listening = true;
+                currentPollMs = IDLE_POLL_MS;
+                document.getElementById('statusText').textContent = `Listening — ${mode.label} (standby)`;
+                pollTimer = setInterval(processFFT, IDLE_POLL_MS);
+                console.log(`§RX-START ch=${mode.label} poll=${IDLE_POLL_MS}ms(idle) fft=${analyser.fftSize} state=${audioCtx.state}`);
+            } catch (err) {
+                console.error('§RX-FAIL', err.message);
+                document.getElementById('statusText').textContent = `Mic: ${err.message}`;
+            }
+            acquireWakeLock();
+        }
+
+        // ========== STANDBY RESILIENCE ==========
+        // Kill old mic/audioCtx without hiding UI (unlike stopListening)
+        function cleanupRX() {
+            console.log(`§RX-CLEANUP poll=${!!pollTimer} mic=${!!micStream} ctx=${audioCtx ? audioCtx.state : 'null'}`);
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+            if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+            if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; }
+        }
+
+        let wakeLockSentinel = null;
+        async function acquireWakeLock() {
+            if (!navigator.wakeLock) return;
+            try { wakeLockSentinel = await navigator.wakeLock.request('screen');
+                  wakeLockSentinel.addEventListener('release', () => { wakeLockSentinel = null; });
+            } catch (e) {}
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            console.log(`§VISIBILITY state=${document.visibilityState} audioCtx=${audioCtx ? audioCtx.state : 'null'} poll=${!!pollTimer}`);
+            if (document.visibilityState === 'visible' && listening) {
+                acquireWakeLock();
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    console.log('§VISIBILITY resume suspended audioCtx');
+                    audioCtx.resume();
+                }
+                if (!audioCtx || audioCtx.state === 'closed') {
+                    console.log('§VISIBILITY audioCtx dead — restarting');
+                    cleanupRX();
+                    startListening(mode === MODES.air ? 'air' : 'water');
+                }
+            }
+        });
+
+        // Periodic heartbeat — catch silent AudioContext death
+        setInterval(() => {
+            if (!listening || !mode) return;
+            if (!audioCtx || audioCtx.state === 'closed') {
+                console.log(`§HEARTBEAT revive — audioCtx=${audioCtx ? audioCtx.state : 'null'}`);
+                cleanupRX();
+                startListening(mode === MODES.air ? 'air' : 'water');
+            } else if (audioCtx.state === 'suspended') {
+                console.log('§HEARTBEAT resume suspended');
+                audioCtx.resume();
+            }
+        }, 10000);
+
+        function stopListening() {
+            listening = false;
+            if (pollTimer) clearInterval(pollTimer);
+            if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+            if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; }
+            document.getElementById('display').style.display = 'none';
+            document.getElementById('startScreen').style.display = 'flex';
+        }
+
+        function processFFT() {
+            if (!listening) return;
+            analyser.getByteFrequencyData(freqData);
+            const binHz = audioCtx.sampleRate / analyser.fftSize;
+            const eSync   = pk(Math.round(mode.sync / binHz), 4);
+            const eSyncHi = pk(Math.round(mode.syncHi / binHz), 4);
+            const e0 = pk(Math.round(mode.freq0 / binHz), 4);
+            const e1 = pk(Math.round(mode.freq1 / binHz), 4);
+            const quietBin = Math.round(6000 / binHz);
+            let ns = 0, nc = 0;
+            for (let b = quietBin; b < quietBin + 20 && b < freqData.length; b++) { ns += freqData[b]; nc++; }
+            const noise = nc > 0 ? ns / nc : 0;
+            const thr = Math.max(noise + 15, 20);
+
+            const sig = Math.max(eSync, eSyncHi, e0, e1);
+            document.getElementById('signalFill').style.width = Math.min(100, sig / 200 * 100) + '%';
+            document.getElementById('signalFill').style.background = sig > thr ? '#0f0' : '#333';
+            document.getElementById('debug').textContent = `s:${eSync}/${eSyncHi} d0:${e0} d1:${e1} n:${noise.toFixed(0)} bits:${dataBits.length}`;
+
+            if (!syncDetected) {
+                if (eSync > thr || eSyncHi > thr) { syncCount++; silenceFrames = 0;
+                    if (syncCount >= 3) { syncDetected = true; dataBits = [];
+                        // Ramp up to fast polling for data capture
+                        if (currentPollMs !== mode.pollMs) {
+                            clearInterval(pollTimer);
+                            currentPollMs = mode.pollMs;
+                            pollTimer = setInterval(processFFT, mode.pollMs);
+                            console.log(`§POLL-FAST ${mode.pollMs}ms`);
+                        }
+                        console.log('§SYNC-LOCK syncCount=3+');
+                        document.getElementById('statusText').textContent = 'BEACON DETECTED';
+                        document.getElementById('statusText').style.color = '#f44'; }
+                } else { silenceFrames++; if (silenceFrames > 10) syncCount = 0; }
+                return;
+            }
+
+            const maxE = Math.max(e0, e1);
+            if (maxE > thr) {
+                if (e0 > e1 * 1.4) voteFor0++;
+                else if (e1 > e0 * 1.4) voteFor1++;
+            } else { voteSilence++; }
+
+            if (voteFor0 + voteFor1 + voteSilence >= VOTE_WINDOW) {
+                if (voteFor0 > voteFor1 && voteFor0 > 0) dataBits.push(0);
+                else if (voteFor1 > voteFor0 && voteFor1 > 0) dataBits.push(1);
+                else if (voteSilence >= VOTE_WINDOW) silenceFrames += VOTE_WINDOW;
+                voteFor0 = 0; voteFor1 = 0; voteSilence = 0;
+            }
+
+            if (silenceFrames > SILENCE_RESET && dataBits.length >= 16) {
+                decodePacket();
+                syncDetected = false; syncCount = 0; dataBits = []; silenceFrames = 0;
+                voteFor0 = 0; voteFor1 = 0; voteSilence = 0;
+                // Ramp back to idle polling — save battery
+                if (currentPollMs !== IDLE_POLL_MS) {
+                    clearInterval(pollTimer);
+                    currentPollMs = IDLE_POLL_MS;
+                    pollTimer = setInterval(processFFT, IDLE_POLL_MS);
+                    console.log(`§POLL-IDLE ${IDLE_POLL_MS}ms`);
+                }
+                document.getElementById('statusText').textContent = `Listening — ${mode.label} (standby)`;
+                document.getElementById('statusText').style.color = '#888';
+            }
+        }
+
+        function pk(bin, r) {
+            let m = 0;
+            for (let i = bin - r; i <= bin + r; i++) if (i >= 0 && i < freqData.length && freqData[i] > m) m = freqData[i];
+            return m;
+        }
+
+        function decodePacket() {
+            // First 16 bits = 4 hex digits (code + checksum)
+            if (dataBits.length < 16) return;
+            let val = 0;
+            for (let i = 0; i < 16; i++) val = (val << 1) | dataBits[i];
+            const code4 = val.toString(16).toUpperCase().padStart(4, '0');
+
+            const result = sarDecode(code4);
+            console.log(`§RX-DECODE code4=${code4} valid=${result.valid} bits=${dataBits.length} entry=${result.entry ? result.entry.short : 'null'}`);
+            if (!result.valid) {
+                document.getElementById('statusText').textContent = `Checksum fail: ${code4}`;
+                return;
+            }
+
+            // Extract GPS from remaining bits (ASCII after the 16-bit code)
+            let gps = '';
+            const gpsBits = dataBits.slice(16);
+            for (let i = 0; i + 7 < gpsBits.length; i += 8) {
+                let byte = 0;
+                for (let b = 0; b < 8; b++) byte = (byte << 1) | gpsBits[i + b];
+                if (byte === 4) break; // EOT
+                if (byte >= 32 && byte < 127) gps += String.fromCharCode(byte);
+            }
+
+            registerBeacon(result.code, result.entry, gps);
+        }
+
+        function registerBeacon(code, entry, gps) {
+            let idx = beacons.findIndex(b => b.code === code);
+            if (idx < 0) {
+                beacons.push({ code, entry, gps, firstSeen: new Date(), lastSeen: new Date(), count: 0 });
+                idx = beacons.length - 1;
+                playAlert(entry ? entry.severity : 2);
+            }
+            beacons[idx].count++;
+            beacons[idx].lastSeen = new Date();
+            if (gps) beacons[idx].gps = gps;
+            activeIdx = idx;
+            renderBeacon(idx);
+            renderHistory();
+        }
+
+        function renderBeacon(idx) {
+            const b = beacons[idx];
+            const sev = b.entry ? SEV_COLOURS[b.entry.severity] : SEV_COLOURS[2];
+            const panel = document.getElementById('beaconFull');
+            panel.classList.remove('waiting');
+
+            document.getElementById('bHex').textContent = b.code;
+            document.getElementById('bHex').style.color = sev.fg;
+            document.getElementById('bShort').textContent = b.entry ? b.entry.short : b.code;
+            document.getElementById('bShort').style.color = sev.fg;
+            document.getElementById('bDetail').textContent = b.entry ? b.entry.detail : '';
+            document.getElementById('bSevBadge').textContent = sev.label;
+            document.getElementById('bSevBadge').style.background = sev.bg;
+            document.getElementById('bSevBadge').style.color = sev.fg;
+            document.getElementById('bSevBadge').style.border = `1px solid ${sev.border}`;
+
+            if (b.gps && b.gps.includes(',')) {
+                const [lat, lon] = b.gps.split(',');
+                document.getElementById('bGPS').innerHTML = `<a href="https://maps.google.com/?q=${lat},${lon}" target="_blank">&#x1F4CD; ${b.gps}</a>`;
+            } else {
+                document.getElementById('bGPS').innerHTML = '';
+            }
+
+            const ago = Math.round((Date.now() - b.lastSeen.getTime()) / 1000);
+            document.getElementById('bMeta').textContent = `${ago}s ago | First: ${b.firstSeen.toLocaleTimeString()}`;
+            document.getElementById('bCount').textContent = `Received x${b.count}`;
+            document.getElementById('ackBtn').style.display = 'block';
+        }
+
+        function renderHistory() {
+            document.getElementById('historyStrip').innerHTML = beacons.map((b, i) => {
+                const sev = b.entry ? SEV_COLOURS[b.entry.severity] : SEV_COLOURS[2];
+                return `<div class="hist-chip" style="background:${sev.bg}; color:${sev.fg}; border-color:${sev.border};"
+                    onclick="activeIdx=${i}; renderBeacon(${i});">${b.code} x${b.count}</div>`;
+            }).join('');
+        }
+
+        function playAlert(severity) {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const t = ctx.currentTime;
+            const urgent = severity >= 4;
+            const beeps = urgent ? 5 : 3;
+            const freq = urgent ? 1200 : 880;
+            for (let i = 0; i < beeps; i++) {
+                const o = ctx.createOscillator(), g = ctx.createGain();
+                o.frequency.value = freq; o.type = 'square'; g.gain.value = 0.3;
+                o.connect(g); g.connect(ctx.destination);
+                o.start(t + i * 0.15); o.stop(t + i * 0.15 + 0.08);
+            }
+            setTimeout(() => ctx.close(), 2000);
+            if (navigator.vibrate) navigator.vibrate(urgent ? [300, 100, 300, 100, 300] : [200, 100, 200]);
+        }
+
+        // ========== SEND ACK ==========
+        function sendACK() {
+            const btn = document.getElementById('ackBtn');
+            btn.textContent = 'SENDING ACK...';
+            btn.style.background = '#0f0'; btn.style.color = '#000';
+
+            // Pause listening briefly so our ACK doesn't feed back
+            const wasPollTimer = pollTimer;
+            if (pollTimer) clearInterval(pollTimer);
+
+            // ACK = 3 ascending tones, repeated 4 times
+            const ackCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const t = ackCtx.currentTime + 0.1;
+            const freqs = mode.ackFreq;
+            for (let rep = 0; rep < 4; rep++) {
+                for (let i = 0; i < 3; i++) {
+                    const offset = rep * 0.8 + i * 0.2;
+                    const o = ackCtx.createOscillator(), g = ackCtx.createGain();
+                    o.frequency.value = freqs[i]; o.type = 'sine';
+                    g.gain.setValueAtTime(0, t + offset);
+                    g.gain.linearRampToValueAtTime(0.9, t + offset + 0.01);
+                    g.gain.setValueAtTime(0.9, t + offset + 0.15);
+                    g.gain.linearRampToValueAtTime(0, t + offset + 0.18);
+                    o.connect(g); g.connect(ackCtx.destination);
+                    o.start(t + offset); o.stop(t + offset + 0.2);
+                }
+            }
+            setTimeout(() => {
+                ackCtx.close();
+                btn.textContent = 'ACK SENT';
+                setTimeout(() => {
+                    btn.textContent = 'SEND ACK';
+                    btn.style.background = '#040'; btn.style.color = '#0f0';
+                    // Resume listening
+                    if (listening) pollTimer = setInterval(processFFT, mode.pollMs);
+                }, 1500);
+            }, 3500);
+        }
+
+        // Refresh timestamps
+        setInterval(() => { if (activeIdx >= 0) renderBeacon(activeIdx); }, 1000);
+
+        // Service Worker — offline cache
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+    </script>
+</body>
+</html>
