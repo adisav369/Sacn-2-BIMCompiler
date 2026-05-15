@@ -400,11 +400,15 @@ HRTF is more CPU-expensive than equalpower — fine for a handful of sources, av
 - ~150x faster than CPU particle update
 - No separate library needed — built into Three.js via TSL
 
-#### §6.8 Storey-Based DLOD (Dynamic Level of Detail) — PRACTICAL, highest perf ROI ✓
+#### §6.8 Ray-Blast DLOD (Dynamic Level of Detail) — PRACTICAL, highest perf ROI ✓
 
-**The problem:** LTU_AHouse has 125,698 elements. At 1 mesh per element (desktop), that's 125K draw calls and a 125K-node `scene.traverse` per frame. Fly mode (`flyTick`) orbits the camera at 0.012 rad/tick — the camera logic costs nothing, but Three.js rendering 125K meshes drops to ~10fps. The `renderAtTime` traverse for 4D playback is also 125K iterations → ~30ms, over 16.67ms budget.
+**The problem:** LTU_AHouse has 125,698 elements. At 1 mesh per element (desktop), that's 125K draw calls and a 125K-node `scene.traverse` per frame. Fly mode (`flyTick`) orbits the camera — the camera logic costs nothing, but rendering 125K meshes drops to ~10fps.
 
-**The existing infrastructure already solves this — just not dynamically:**
+**Why storey-based DLOD alone is insufficient:** Looking head-on at one storey of LTU, that storey has ~5,000 elements stretching 100m deep. The front facade wall occludes ~80% of them. Storey distance doesn't know what's behind a wall. You'd still render 5,000 meshes when only ~300 are visible.
+
+**Solution: ray-blast occlusion culling.** Cast a grid of rays from the camera into the scene. Elements that rays hit are VISIBLE (NEAR tier). Everything else demotes to cheap representations.
+
+**The existing infrastructure:**
 
 | Layer | What exists today | Draw calls (125K scene) | Picking |
 |-------|-------------------|------------------------|---------|
@@ -412,82 +416,156 @@ HRTF is more CPU-expensive than equalpower — fine for a handful of sources, av
 | InstancedMesh | 2+ identical geometries | ~200-500 | `_instanceMeta[meshId][instanceId]` |
 | Merged mesh (mobile only) | `storey\|disc\|rgba` buckets | ~200 | DB nearest-neighbor query |
 
-**DLOD = make the merge strategy camera-distance-aware at runtime, not static desktop vs mobile.**
+**Three LOD tiers — driven by ray visibility, not storey distance:**
 
-**Three LOD tiers per storey:**
+| Tier | Criteria | Representation | Picking |
+|------|----------|---------------|---------|
+| **NEAR** | Ray-hit + 1-ring spatial neighbours | Individual mesh (full detail) | Direct guid |
+| **MID** | Same storey as NEAR but not ray-hit | InstancedMesh (same geometry, instanced) | `_instanceMeta` |
+| **FAR** | All other storeys | Merged mesh (storey\|disc\|rgba blob) | DB fallback |
 
-| Tier | When | Representation | Draw calls per storey | Picking |
-|------|------|---------------|----------------------|---------|
-| **NEAR** | Camera target storey ± 1 | Individual mesh + InstancedMesh | ~2K-8K | Full guid |
-| **MID** | Storeys 2-4 away | InstancedMesh only (singles merged to instances) | ~50-200 | `_instanceMeta` |
-| **FAR** | Storeys 5+ away | Merged mesh (storey\|disc\|rgba) | ~5-20 | DB fallback |
+**Ray-blast algorithm (runs every N frames, throttled):**
 
-**For LTU_AHouse (125K elements, ~25 storeys):**
-- Camera looking at Level 5: storeys 4-6 = NEAR (~24K meshes), storeys 2-3+7-8 = MID (~40K→200 instanced), storeys 0-1+9-24 = FAR (~60K→100 merged)
-- Total scene nodes: ~24,300 (vs 125,000 naive)
-- Total draw calls: ~24,300 (vs 125,000)
-- `scene.traverse` cost: ~24K × 0.0004ms = ~10ms (vs 50ms)
-- Fly mode: camera orbits → storey selection shifts smoothly → meshes promote/demote per frame
-
-**Storey distance calculation:**
 ```javascript
-// In render loop or on controls.change:
-var camStorey = findNearestStorey(camera.position.y); // from storeyMinZ map
-for (var si = 0; si < storeys.length; si++) {
-  var dist = Math.abs(si - camStorey);
-  var tier = dist <= 1 ? 'NEAR' : dist <= 4 ? 'MID' : 'FAR';
-  if (tier !== storeys[si].currentTier) promoteStorey(si, tier);
+// §6.8 — Ray-blast DLOD evaluator
+// Runs every 6 frames (~100ms at 60fps) or on controls.change
+var DLOD_RAYS_X = 20, DLOD_RAYS_Y = 20; // 400 rays = sub-ms with BVH
+var _nearSet = {};  // guid → true (ray-hit + neighbours)
+
+function rayBlastDLOD() {
+  var raycaster = new THREE.Raycaster();
+  raycaster.firstHitOnly = true;  // BVH early termination — crucial
+  var hitGuids = {};
+  var cam = APP.camera;
+
+  // Cast grid of rays through viewport
+  for (var rx = 0; rx < DLOD_RAYS_X; rx++) {
+    for (var ry = 0; ry < DLOD_RAYS_Y; ry++) {
+      var nx = (rx / (DLOD_RAYS_X - 1)) * 2 - 1;  // -1 to +1
+      var ny = (ry / (DLOD_RAYS_Y - 1)) * 2 - 1;
+      raycaster.setFromCamera({ x: nx, y: ny }, cam);
+      var hits = raycaster.intersectObjects(APP.scene.children, true);
+      if (hits.length && hits[0].object.userData.guid) {
+        hitGuids[hits[0].object.userData.guid] = true;
+      }
+    }
+  }
+
+  // Expand hit set with spatial neighbours (within 5m radius)
+  // Uses element_transforms bbox proximity from DB — one query
+  _nearSet = expandNeighbours(hitGuids, 5.0);
+
+  // Promote/demote meshes
+  APP.scene.traverse(function(obj) {
+    if (!obj.isMesh || !obj.userData.guid) return;
+    var isNear = _nearSet[obj.userData.guid];
+    // NEAR: full individual mesh, visible, shadow-capable
+    // MID/FAR: hide individual mesh (InstancedMesh/merged blob covers it)
+    obj.visible = !!isNear;
+  });
 }
 ```
 
-**`promoteStorey(storeyIdx, newTier)` — the key function:**
-1. **NEAR→MID**: Dispose individual meshes for that storey, rebuild as InstancedMesh (reuse `_flushInstanced` with `forceInstance=true`)
-2. **MID→FAR**: Dispose InstancedMesh, rebuild as merged mesh (reuse mobile merge path from `streaming.js` line 387-459)
-3. **FAR→MID→NEAR**: Reverse — re-stream from `meshCache[hash]` (geometry already cached, no DB re-fetch)
-4. Transition budget: max 1 storey promotion per frame (spread cost over ~200ms)
+**Neighbour expansion — why 1-ring matters:**
+Rays hit surfaces facing the camera. But an element 1m behind a hit wall (e.g. a pipe inside a wall cavity, furniture against a wall) is contextually relevant — the user expects to see it if they click nearby. The 1-ring expansion uses the DB `element_transforms` bbox to find elements within 5m of any ray-hit element. One SQL query:
+```sql
+SELECT a.guid FROM element_transforms a
+WHERE EXISTS (
+  SELECT 1 FROM element_transforms b
+  WHERE b.guid IN (?) -- hit guids
+  AND ABS(a.center_x - b.center_x) < 5
+  AND ABS(a.center_y - b.center_y) < 5
+  AND ABS(a.center_z - b.center_z) < 5
+)
+```
+
+**For LTU_AHouse head-on at Level 5 (the hard case):**
+- 400 rays cast → ~250 unique element hits (front facade, visible furniture, columns)
+- 1-ring expansion → ~500 NEAR meshes (includes elements just behind hit surfaces)
+- Same storey not hit → ~4,500 elements → MID (one InstancedMesh group, ~50 draw calls)
+- Other 24 storeys → ~120K elements → FAR (~100 merged blobs)
+- **Total draw calls: ~650** (vs 125,000)
+- **scene.traverse: ~650 visible nodes** (vs 125,000)
+
+**Performance budget:**
+
+| Component | Cost | When |
+|-----------|------|------|
+| 400 raycasts with BVH (`firstHitOnly`) | ~0.5ms | Every 6 frames |
+| Neighbour SQL query | ~2ms | Every 6 frames |
+| Promote/demote traverse | ~1ms | Every 6 frames |
+| Normal frame render (650 draw calls) | ~3ms | Every frame |
+| **Total per frame** | **~3.5ms average** | **60fps** |
+
+**Prerequisites:**
+- **§6.5 BVH (three-mesh-bvh)** — without BVH, 400 raycasts against 125K meshes = 2000ms. With BVH = 0.5ms. BVH is mandatory.
+- Storey grouping metadata (already exists in `elements_meta.storey`)
+- Merged mesh path (already exists in `streaming.js` S232)
+
+**Implementation phases:**
+
+1. **Phase A: BVH setup** — install three-mesh-bvh, compute bounds trees on streamed geometries. 3-line monkey-patch. Test: raycaster pick at 125K must be <1ms.
+
+2. **Phase B: Ray-blast evaluator** — 20×20 grid, throttled to every 6 frames. Outputs `_nearSet` guid map. Test: §-tag logs show ~300-500 NEAR elements for head-on LTU view.
+
+3. **Phase C: Tier management** — `promoteStorey(storeyIdx, newTier)` reuses existing merge/instance paths from `streaming.js`:
+   - **NEAR→MID**: Dispose individual meshes, rebuild as InstancedMesh (`_flushInstanced` with `forceInstance=true`)
+   - **MID→FAR**: Dispose InstancedMesh, rebuild as merged mesh (mobile merge path, `streaming.js` line 387-459)
+   - **FAR→MID→NEAR**: Reverse — re-stream from `meshCache[hash]` (geometry cached, no DB re-fetch)
+   - Transition budget: max 1 storey promotion per frame (spread cost over ~200ms)
+
+4. **Phase D: Time machine integration** — frontier storey auto-promotes to NEAR. `renderAtTime` traverse only visits NEAR meshes (the ~500 visible ones, not 125K). Hourglass eye mode ray-blasts along the camera direction to keep the construction zone in NEAR.
 
 **Why this works without new Three.js features:**
-- Merged mesh path already exists in `streaming.js` (S232, mobile-only today)
-- InstancedMesh path already exists in `streaming.js` (2+ instances)
-- `meshCache[hash]` persists geometry blobs — re-streaming a storey doesn't hit the DB
-- Picking fallback (DB nearest-neighbor) already exists in `picking.js` for merged meshes
-- The only new code is the storey-distance evaluator + `promoteStorey` orchestrator
+- `THREE.Raycaster` already exists + three-mesh-bvh accelerates it
+- Merged mesh path already exists in `streaming.js` (S232)
+- InstancedMesh path already exists in `streaming.js`
+- `meshCache[hash]` persists geometry — re-streaming costs zero DB access
+- Picking fallback (DB nearest-neighbor) already exists in `picking.js`
+- The only new code: ray-blast evaluator + tier orchestrator
 
-**Time machine compatibility:**
-- `activate()` already forces re-stream on mobile → extend to force NEAR on frontier storeys
-- The `renderAtTime` traverse only touches meshes with `userData.guid` or `_instanceMeta` — MID tier has both
-- FAR tier storeys during 4D playback: skip (no guid tracking needed for distant storeys, they're backdrop)
-- Frontier storey auto-promotes to NEAR (2-3 storeys at most during any tick)
+**Fly mode at LTU (125K):**
+- Camera orbits → every 6 frames, 400 rays re-evaluate visibility
+- Approaching a facade: elements "pop in" as rays start hitting them (~100ms ahead of camera)
+- Orbiting around: rear elements demote as front elements promote — smooth ~650 draw calls throughout
+- **Result: 60fps on mid-range GPU** (vs 10fps currently)
 
-**Fly mode impact:**
-- `flyTick()` does camera orbit (6 trig ops, ~0ms)
-- Rendering: GPU draws ~24K meshes instead of 125K → 5x fewer draw calls → **60fps on mid-range GPU**
-- Storey transitions during orbit: camera tilts → target storey shifts → 1 storey promotes per frame
-- Transition visible as LOD pop: mitigated by the 200ms spread + the fact that MID tier still looks good (same geometry, just instanced)
+**Time machine at LTU:**
+- Frontier storey = NEAR (full guid tracking for show/hide/highlight)
+- Adjacent storeys = MID (visible backdrop, instanced)
+- Distant = FAR (merged blob backdrop)
+- `renderAtTime` traverse: ~500 NEAR meshes → ~0.2ms (vs 50ms for 125K)
 
-**§-tags:** `§DLOD_PROMOTE storey=N from=FAR to=NEAR meshes=M`, `§DLOD_STATE near=N mid=M far=F drawCalls=D`
+**§-tags:**
+- `§DLOD_RAYBLAST rays=400 hits=N near=N mid=N far=N ms=T` — every evaluation
+- `§DLOD_PROMOTE storey=N from=FAR to=NEAR meshes=M` — tier transitions
+- `§DLOD_STATE near=N mid=M far=F drawCalls=D traverse_ms=T` — frame stats
 
 **Test targets:**
 - LTU_AHouse (125K elements, 25 storeys) — the proving ground
 - Terminal (48K elements, 9 storeys) — must not regress
 - SampleHouse (58 elements) — trivial, all NEAR always
 - Fly mode: full 360° orbit at LTU must stay >45fps
-- Time machine: frontier storey NEAR, rest FAR, traverse <10ms
+- Head-on view: NEAR set must be <1000 elements (not full storey)
+- Time machine: frontier storey NEAR, traverse <2ms
+- BVH: 400 raycasts < 1ms
 
 **Key files to modify:**
-- `deploy/dev/streaming.js` — extract merge/instance logic into reusable `buildStoreyTier(storey, tier)` function
+- `deploy/dev/streaming.js` — extract merge/instance logic into `buildStoreyTier(storey, tier)`, add BVH computation on flush
+- `deploy/dev/scene.js` or new `dlod.js` — ray-blast evaluator, tier orchestrator
 - `deploy/dev/tour.js` — trigger DLOD evaluation from `flyTick()` and `walkTick()`
-- `deploy/dev/time_machine.js` — auto-promote frontier storeys to NEAR on activation
+- `deploy/dev/time_machine.js` — auto-promote frontier storeys to NEAR
 - `deploy/dev/picking.js` — already handles all three tiers (no changes needed)
 
 **Recommended implementation priority (updated):**
 
 | Priority | Item | Why | Depends on |
 |----------|------|-----|------------|
-| **P1** | §6.8 Storey DLOD | Biggest perf ROI, uses existing code, unblocks 125K scenes | Nothing |
+| **P1a** | §6.5 BVH (three-mesh-bvh) | Prerequisite for ray-blast. 3-line patch. | Nothing |
+| **P1b** | §6.8 Ray-Blast DLOD | Biggest perf ROI, 125K→650 draw calls | §6.5 BVH |
 | **P2** | §6.2 Sky + PBR env | Highest visual ROI, zero download, pairs with ☀ | Nothing |
-| **P3** | §6.5 BatchedMesh + BVH | Further perf for NEAR tier (replaces individual meshes) | §6.8 |
-| **P4** | §6.4 AO (HBAOPass) | Depth/realism after sky | §6.8 (pre-pass perf) |
+| **P3** | §6.5 BatchedMesh | Further perf for NEAR tier (replaces individual meshes) | §6.8 |
+| **P4** | §6.4 AO (HBAOPass) | Depth/realism after sky | §6.8 (NEAR-only pre-pass) |
 | **P5** | §6.4 Bloom | Polish, orange glow on active elements | §6.4 AO (same pipeline) |
 | **P6** | §6.6 Audio | Immersive mode enhancement | Nothing |
 | **P7** | §6.7 Tier 1 particles | CPU particles for construction effects | Nothing |
