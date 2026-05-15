@@ -561,15 +561,105 @@ WHERE EXISTS (
 
 | Priority | Item | Why | Depends on |
 |----------|------|-----|------------|
+#### §6.9 Lazy Blob Fetch — Tiered DB Loading for 1GB+ Databases ✓
+
+**The problem:** Current pipeline does `fetch(whole.db)` → 1GB ArrayBuffer → `new SQL.Database(1GB)`. That means:
+- **Network**: 1GB download before anything renders (~2min on 50Mbps)
+- **Memory**: 1GB ArrayBuffer + 1GB WASM heap = **2GB peak**. Mobile OOM.
+- **IndexedDB cache**: 1GB write on first visit, 1GB read on return visits
+
+**The insight:** With DLOD (§6.8), the camera only sees ~500 elements at a time. You never need all 300K geometries at once. Fetch them on demand, in tiers.
+
+**Architecture: split the single DB into two fetch tiers.**
+
+The extracted DB already has natural separation:
+- **Metadata tier** (~5-20MB): `elements_meta`, `element_transforms`, `kernel_ops`, `element_instances` — lightweight rows, no blobs
+- **Geometry tier** (~200MB-1GB): `component_geometries`, `base_geometries` — heavy BLOB columns (vertices, faces, normals)
+
+**Three loading strategies (choose per DB size):**
+
+| DB size | Strategy | First paint | Memory |
+|---------|----------|-------------|--------|
+| <100MB | **Current** (whole fetch) | 2-5s | ~200MB |
+| 100-500MB | **Header-first** | <3s | ~50MB + on-demand |
+| 500MB-2GB | **Range-request** | <1s | ~20MB + on-demand |
+
+**Strategy A: Header-first (100-500MB)**
+1. At extraction time, produce two files: `{name}_meta.db` (metadata only) and `{name}_geo.db` (geometry only)
+2. Fetch `_meta.db` first (~5-20MB, instant). Open as sql.js, render bbox placeholders for all elements.
+3. Fetch `_geo.db` in background. As chunks arrive, parse blob batches and stream meshes.
+4. DLOD integration: fetch geometry blobs in NEAR-first order (camera-visible elements first).
+
+**Strategy B: Range-request (500MB-2GB) — zero-server, OCI-compatible**
+OCI Object Storage supports HTTP `Range` headers. SQLite page size = 4096 bytes. sql.js supports `oo1.OpfsDb` (OPFS) and custom VFS.
+
+```
+1. Fetch first 100 pages (400KB) — get SQLite schema + page directory
+2. Query elements_meta (metadata pages only) — bbox placeholders appear
+3. On demand: fetch geometry blob pages via Range request
+   Range: bytes=start-end for the specific SQLite pages containing the blob
+4. Cache fetched pages in OPFS (Origin Private File System) — persistent, fast
+```
+
+This is how `sql.js-httpvfs` works — a proven SQLite-over-HTTP-Range library. Each query only fetches the pages it needs. A 1GB DB on disk, but only 20-50MB actually downloaded for any single view.
+
+**Practical implementation path (for next session):**
+
+**Phase 1 — Split DB at extraction time (simplest, highest ROI):**
+- Modify Java extractor: output `{name}_meta.db` + `{name}_geo.db` alongside `{name}_extracted.db`
+- `_meta.db`: elements_meta, element_transforms, element_instances, kernel_ops (~5-20MB)
+- `_geo.db`: component_geometries, base_geometries (rest of the size)
+- Viewer: `cachedFetch(_meta.db)` → instant metadata. Background-fetch `_geo.db`.
+- Fallback: if only `_extracted.db` exists (old format), load whole DB as today.
+
+**Phase 2 — DLOD-aware blob batching:**
+- DLOD ray-blast produces `_nearSet` (500 guids)
+- Query geometry hashes for NEAR guids only → fetch those blobs first
+- MID/FAR elements use bbox placeholders until their blobs arrive
+- On camera move: new NEAR elements trigger on-demand blob fetch
+
+**Phase 3 — HTTP Range (future, for 1GB+ without DB split):**
+- Adopt `sql.js-httpvfs` or custom range-fetch VFS
+- Zero extraction change — works with existing single-file DBs on OCI
+- Each SQL query fetches only the SQLite pages it touches
+
+**Memory budget at 300K elements:**
+
+| Component | Current (whole DB) | Phase 1 (split) | Phase 2 (DLOD lazy) |
+|-----------|--------------------|------------------|---------------------|
+| Network download | 1GB | 20MB meta + background | 20MB meta + ~50MB geo |
+| WASM heap | 1GB | 20MB + streaming | 20MB + 50MB |
+| Peak RAM | 2GB | ~200MB | ~100MB |
+| First paint | ~60s | ~3s (bboxes) | ~3s (bboxes) |
+| Full mesh | ~120s | ~60s (background) | never (lazy) |
+
+**Key files to modify:**
+- `BuildingCompiler.java` (or extraction script) — output split DBs
+- `deploy/dev/streaming.js` — two-phase fetch: meta.db first, geo.db on demand
+- `deploy/dev/scene.js` `cachedFetch()` — support split DB pattern
+- `deploy/dev/loader.js` — detect split vs single DB from manifest
+
+**§-tags:**
+- `§DB_SPLIT meta=NMB geo=NMB total=NMB` — at extraction
+- `§LAZY_FETCH tier=NEAR hashes=N blobs=N bytes=NKB ms=T` — on-demand blob batch
+- `§LAZY_STATE fetched=N% resident=NMB peak=NMB` — memory tracking
+
+**Recommended implementation priority (updated):**
+
+| Priority | Item | Why | Depends on |
+|----------|------|-----|------------|
 | **P1a** | §6.5 BVH (three-mesh-bvh) | Prerequisite for ray-blast. 3-line patch. | Nothing |
-| **P1b** | §6.8 Ray-Blast DLOD | Biggest perf ROI, 125K→650 draw calls | §6.5 BVH |
-| **P2** | §6.2 Sky + PBR env | Highest visual ROI, zero download, pairs with ☀ | Nothing |
-| **P3** | §6.5 BatchedMesh | Further perf for NEAR tier (replaces individual meshes) | §6.8 |
-| **P4** | §6.4 AO (HBAOPass) | Depth/realism after sky | §6.8 (NEAR-only pre-pass) |
-| **P5** | §6.4 Bloom | Polish, orange glow on active elements | §6.4 AO (same pipeline) |
-| **P6** | §6.6 Audio | Immersive mode enhancement | Nothing |
-| **P7** | §6.7 Tier 1 particles | CPU particles for construction effects | Nothing |
-| **P8** | §6.1 WebGPU migration | Gate to Tier 2 particles + RenderPipeline | All GLSL audit |
-| **P9** | §6.7 Tier 2 particles | GPU 100K+ particles | §6.1 |
+| **P1b** | §6.8 Ray-Blast DLOD | 125K→650 draw calls | §6.5 BVH |
+| **P1c** | §6.9 Phase 1 (split DB) | 1GB→20MB first paint, unblocks huge buildings | Nothing (parallel with P1a/b) |
+| **P2** | §6.9 Phase 2 (DLOD lazy blobs) | Only fetch visible geometry | §6.8 + §6.9 Phase 1 |
+| **P3** | §6.2 Sky + PBR env | Highest visual ROI, zero download, pairs with ☀ | Nothing |
+| **P4** | §6.5 BatchedMesh | Further perf for NEAR tier | §6.8 |
+| **P5** | §6.4 AO (HBAOPass) | Depth/realism after sky | §6.8 (NEAR-only pre-pass) |
+| **P6** | §6.4 Bloom | Polish, orange glow on active elements | §6.4 AO |
+| **P7** | §6.6 Audio | Immersive mode enhancement | Nothing |
+| **P8** | §6.7 Tier 1 particles | CPU particles for construction effects | Nothing |
+| **P9** | §6.1 WebGPU migration | Gate to Tier 2 particles + RenderPipeline | All GLSL audit |
+| **P10** | §6.9 Phase 3 (Range VFS) | Zero-split 1GB+ over HTTP | Research sql.js-httpvfs |
+| **P11** | §6.7 Tier 2 particles | GPU 100K+ particles | §6.1 |
 
 **Implementation rule**: Each §6.x is a separate session/PR. Test against LTU_AHouse (125K elements) AND Terminal (48K elements) for performance. Never regress the existing hourglass playback or drawer functionality. Each upgrade should be behind a feature toggle (`?dlod=on`, `?fx=sky`, `?fx=ao`, `?fx=bloom`, `?fx=audio`) until proven stable.
