@@ -5,37 +5,8 @@
  */
 // picking.js — Click-to-identify (raycaster), walk/wall state, pointer handlers
 
-// S233: Polyfill InstancedMesh.raycast for Three.js r128 (native in r132+)
-// Without this, raycaster silently skips all InstancedMesh objects — no pick on shared geometry.
-// Cost: zero per frame. Only runs on click — loops instances, tests ray against each.
-(function() {
-  if (typeof THREE === 'undefined' || !THREE.InstancedMesh) return;
-  var proto = THREE.InstancedMesh.prototype;
-  if (proto._hasRaycastPoly) return;
-
-  var _m = new THREE.Mesh();
-  var _im = new THREE.Matrix4();
-
-  proto.raycast = function(raycaster, intersects) {
-    _m.geometry = this.geometry;
-    _m.material = this.material;
-    var before = intersects.length;
-
-    for (var i = 0; i < this.count; i++) {
-      this.getMatrixAt(i, _im);
-      _m.matrixWorld.multiplyMatrices(this.matrixWorld, _im);
-      _m.raycast(raycaster, intersects);
-
-      // Tag new hits with instanceId and correct object ref
-      for (var j = intersects.length - 1; j >= before; j--) {
-        intersects[j].instanceId = i;
-        intersects[j].object = this;
-      }
-      before = intersects.length;
-    }
-  };
-  proto._hasRaycastPoly = true;
-})();
+// S258: InstancedMesh.raycast polyfill REMOVED — native since r132, using r156+
+// §INSTANCED_RAYCAST native=true
 
 function setupPicking(A) {
   // Walk/Wall state (hoisted before first use in pointerdown/animate)
@@ -184,6 +155,7 @@ function setupPicking(A) {
     A.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     A.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     A.raycaster.setFromCamera(A.mouse, A.camera);
+    A.raycaster.firstHitOnly = !!window._bvhReady;  // §6.5 BVH early termination
 
     // City mode: check bbox wireframes first
     if (A.CITY_URL) {

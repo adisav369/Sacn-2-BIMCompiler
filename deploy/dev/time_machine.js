@@ -1506,6 +1506,7 @@
     drawDonut('tm-dash-time-pie', timePct, 'Day ' + curDay, timePct + '% elapsed', '#4fc3f7');
 
     // Cost donut — weighted by rate_per_day × install duration per op
+    // Ops missing _end_ts fall back to _projectEnd so they only complete at timeline end.
     var LR = window.LABOR_RATES || {};
     var totalCost = 0, doneCost = 0;
     for (var ci2 = 0; ci2 < _ops.length; ci2++) {
@@ -1514,11 +1515,12 @@
       var lr = LR[opRes];
       // Cost = daily rate × install duration in days. Heavier trades cost more per element.
       var dailyRate = lr ? lr.rate_per_day * (lr.crew_size || 1) : 95;
-      var durMs = Math.max(1, (op2.end_ts || 0) - (op2.start_ts || 0));
+      var realEnd = (op2.parameters || {})._end_ts || _projectEnd;
+      var durMs = Math.max(1, realEnd - (op2.start_ts || 0));
       var durDays = durMs / 86400000;
       var cost = dailyRate * durDays;
       totalCost += cost;
-      if (op2.end_ts <= _cursor) doneCost += cost;
+      if (realEnd <= _cursor) doneCost += cost;
     }
     var costPct = totalCost > 0 ? Math.round(doneCost / totalCost * 100) : 0;
     var costLabel = doneCost >= 1000000 ? '$' + (doneCost/1000000).toFixed(1) + 'M'
@@ -1779,6 +1781,8 @@
     }
     computeDays();
     saveVisibility();
+    // §S258: Pause DLOD so time machine controls visibility exclusively
+    if (app._dlodPaused !== undefined) app._dlodPaused = true;
     // Start fully built — press ⏪ or ◀ to deconstruct
     _cursor = _projectEnd;
     _anchorDay = _days.length ? _days[_days.length - 1] : null;
@@ -1817,6 +1821,8 @@
     _panel.style.display = 'none';
     setToolbarHighlight(false);
     restoreVisibility();
+    // §S258: Resume DLOD after time machine releases visibility control
+    if (app && app._dlodPaused !== undefined) app._dlodPaused = false;
     viewerStatus('');
     console.log('§TIME_MACHINE OFF — restored');
   }

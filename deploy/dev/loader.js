@@ -16,10 +16,10 @@ const _timerIv = setInterval(() => {
 const LIBS = [
   { name: 'Three.js',
     url: 'lib/three.min.js',
-    cdn: 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js' },
+    cdn: 'https://cdn.jsdelivr.net/npm/three@0.156.0/build/three.min.js' },
   { name: 'OrbitControls',
     url: 'lib/OrbitControls.js',
-    cdn: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js' },
+    cdn: 'lib/OrbitControls.js' },  // r156 ESM→IIFE converted, local only (no CDN UMD)
   { name: 'SQLite (WASM+RTree)',
     url: 'lib/sql-wasm.js',
     cdn: 'https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.js' },
@@ -110,7 +110,49 @@ async function loadLib(index) {
 async function loadAllLibs() {
   // Three.js must load before OrbitControls (dependency)
   await loadLib(0);  // Three.js
+
+  // §S258: Disable color management IMMEDIATELY after Three.js loads, before ANY Color/Material
+  // r156 defaults to ColorManagement.enabled=true which reinterprets all color values as linear.
+  // Must be set before OrbitControls or any other code touches THREE.Color.
+  THREE.ColorManagement.enabled = false;
+
   await loadLib(1);  // OrbitControls (needs THREE global)
+
+  // §6.5 BVH acceleration — three-mesh-bvh monkey-patch (non-blocking)
+  console.log('§THREE_VERSION r=' + (THREE.REVISION || '?'));
+  console.log('§COLOR_MGMT enabled=' + THREE.ColorManagement.enabled);
+  console.log('§BVH_LOADING importing three-mesh-bvh@0.7.8 from CDN...');
+  var _bvhT0 = performance.now();
+  try {
+    const bvh = await import('https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.7.8/+esm');
+    var _bvhMs = (performance.now() - _bvhT0).toFixed(0);
+    console.log('§BVH_FETCHED ms=' + _bvhMs + ' exports=' + Object.keys(bvh).join(','));
+    if (!bvh.computeBoundsTree) throw new Error('computeBoundsTree not exported');
+    if (!bvh.acceleratedRaycast) throw new Error('acceleratedRaycast not exported');
+    THREE.BufferGeometry.prototype.computeBoundsTree = bvh.computeBoundsTree;
+    THREE.BufferGeometry.prototype.disposeBoundsTree = bvh.disposeBoundsTree;
+    THREE.Mesh.prototype.raycast = bvh.acceleratedRaycast;
+    window._bvhReady = true;
+    console.log('§BVH_INIT three-mesh-bvh v0.7.8 (r156-compat) monkey-patch applied in ' + _bvhMs + 'ms');
+    // Verify: test raycast on a dummy geometry
+    try {
+      var _testGeo = new THREE.BufferGeometry();
+      _testGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0,0,0, 1,0,0, 0,1,0]), 3));
+      _testGeo.setIndex(new THREE.BufferAttribute(new Uint16Array([0,1,2]), 1));
+      _testGeo.computeBoundsTree();
+      var _hasBT = !!_testGeo.boundsTree;
+      _testGeo.dispose();
+      console.log('§BVH_SELFTEST boundsTree=' + _hasBT);
+      if (!_hasBT) { window._bvhReady = false; console.warn('§BVH_SELFTEST_FAIL boundsTree not created'); }
+    } catch(e2) {
+      window._bvhReady = false;
+      console.warn('§BVH_SELFTEST_FAIL ' + e2.message);
+    }
+  } catch(e) {
+    window._bvhReady = false;
+    console.warn('§BVH_INIT_FAIL ' + e.message + ' — raycasting at normal speed');
+  }
+
   // sql.js is needed for DB; load it before starting viewer
   await loadLib(2);
 

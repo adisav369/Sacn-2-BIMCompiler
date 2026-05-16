@@ -8,12 +8,17 @@ function setupScene(A) {
   const canvas = document.getElementById('canvas');
   A.canvas = canvas;
 
+  // §S258: ColorManagement.enabled=false set in loader.js (before any THREE.Color created)
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setClearColor(0x1a1a2e);
   renderer.shadowMap.enabled = true;
   renderer.localClippingEnabled = true;
+  renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+  // §S258: r156 defaults to physically-correct lights (lux/candela) — intensity 1.0 is near-dark.
+  // r128 used legacy multiplier mode. Restore it.
+  renderer.useLegacyLights = true;
   A.renderer = renderer;
 
   const scene = new THREE.Scene();
@@ -57,17 +62,18 @@ function setupScene(A) {
   });
 
   // Lighting
-  const ambient = new THREE.AmbientLight(0x606080, 0.6);
+  // §S258: Light intensities bumped to compensate for r156 Phong shader differences
+  const ambient = new THREE.AmbientLight(0x606080, 0.8);
   scene.add(ambient);
   A.ambient = ambient;
 
-  const sun = new THREE.DirectionalLight(0xfff0dd, 1.0);
+  const sun = new THREE.DirectionalLight(0xfff0dd, 1.2);
   sun.position.set(200, 400, 300);
   sun.castShadow = true;
   scene.add(sun);
   A.sun = sun;
 
-  const hemi = new THREE.HemisphereLight(0x8888cc, 0x444422, 0.4);
+  const hemi = new THREE.HemisphereLight(0x8888cc, 0x444422, 0.5);
   scene.add(hemi);
   A.hemi = hemi;
 
@@ -205,6 +211,9 @@ function setupScene(A) {
         if (A) { A._normalsComputed = (A._normalsComputed || 0) + 1; }
       }
       geo.computeBoundingSphere();
+      // §S258: BVH deferred — don't build during streaming (86K builds = ~9s lag).
+      // acceleratedRaycast falls back to normal raycast when boundsTree is absent.
+      // BVH built lazily in background after streaming completes (see streaming.js).
       return geo;
     } catch (e) {
       return null;

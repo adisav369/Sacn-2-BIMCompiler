@@ -197,6 +197,31 @@ function setupStreaming(A) {
           A.populateStoreys(A.activeBuilding);
           A.populateDiscs(A.activeBuilding);
         }
+        // §S258: DLOD disabled — causes wrong-angle onset + hourglass issues on large buildings.
+        // Frustum culling deferred to future session with ObjectBVH scene-level approach.
+        // if (A.dlodEnable) { A.dlodEnable(); if (A.dlodTick) A.dlodTick(); }
+        // §S258: Deferred BVH build — batch in background so streaming isn't blocked
+        if (window._bvhReady) {
+          var _bvhHashes = Object.keys(A.meshCache);
+          var _bvhIdx = 0;
+          var _bvhT0 = performance.now();
+          (function _bvhBatch() {
+            var end = Math.min(_bvhIdx + 500, _bvhHashes.length);
+            for (var bi = _bvhIdx; bi < end; bi++) {
+              var geo = A.meshCache[_bvhHashes[bi]];
+              if (geo && geo.computeBoundsTree && !geo.boundsTree) {
+                try { geo.computeBoundsTree(); } catch(e) {}
+              }
+            }
+            _bvhIdx = end;
+            if (_bvhIdx < _bvhHashes.length) {
+              setTimeout(_bvhBatch, 0);
+            } else {
+              console.log('[S258] §BVH_DEFERRED built=' + _bvhHashes.length +
+                ' ms=' + (performance.now() - _bvhT0).toFixed(0));
+            }
+          })();
+        }
         document.getElementById('s-buildings-done').textContent = A.buildingsRendered.size;
         document.getElementById('s-active').textContent = (typeof _TRL!=='undefined'&&_TRL.ui_active_done||'{name} — DONE').replace('{name}',A.activeBuilding);
         document.getElementById('s-active').style.color = '#44cc44';
@@ -265,7 +290,8 @@ function setupStreaming(A) {
       if (fetched > 0) {
         if (!A._normalsPrecomputed) A._normalsPrecomputed = 0;
         if (!A._normalsComputed) A._normalsComputed = 0;
-        console.log(`[S231] §BLOB_FETCH new=${fetched} total_cached=${Object.keys(A.meshCache).length} normals_pre=${A._normalsPrecomputed} normals_cpu=${A._normalsComputed}`);
+        const bvhCount = window._bvhReady ? Object.values(A.meshCache).filter(g => g && g.boundsTree).length : 0;
+        console.log(`[S231] §BLOB_FETCH new=${fetched} total_cached=${Object.keys(A.meshCache).length} normals_pre=${A._normalsPrecomputed} normals_cpu=${A._normalsComputed} bvh=${bvhCount}`);
       }
       if (fetched === 0 && hashesNeeded.size > 0) {
         console.warn(`[S231] §BLOB_MISS hashes=${hashesNeeded.size} — no geometry found in library`);
@@ -504,11 +530,43 @@ function setupStreaming(A) {
       return;
     }
 
-    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_fetching||'Fetching {url}...').replace('{url}',A.DB_URL);
-    const dbBuf = await A.cachedFetch(A.DB_URL);
-    A.db = new SQL.Database(new Uint8Array(dbBuf));
-    console.log(`[S192] §DB_LOADED size=${(dbBuf.byteLength/1024/1024).toFixed(0)}MB`);
-    A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_db_loaded||'DB loaded ({size}MB). Querying...').replace('{size}',(dbBuf.byteLength/1024/1024).toFixed(0));
+    // §6.9 Split DB detection: try _meta.db + _geo.db, fall back to single DB
+    var _splitMode = false;
+    var metaUrl = A.DB_URL.replace('_extracted.db', '_meta.db');
+    if (metaUrl !== A.DB_URL) {
+      try {
+        var headResp = await fetch(metaUrl, { method: 'HEAD' });
+        _splitMode = headResp.ok;
+      } catch(e) { _splitMode = false; }
+    }
+    console.log(`[S192] §DB_SPLIT_DETECT meta=${metaUrl} found=${_splitMode}`);
+
+    if (_splitMode) {
+      // ── Two-phase: meta.db first (small, instant bboxes), geo.db background ──
+      A.status.textContent = 'Fetching metadata...';
+      var metaBuf = await A.cachedFetch(metaUrl);
+      A.db = new SQL.Database(new Uint8Array(metaBuf));
+      console.log(`[S192] §DB_META_LOADED size=${(metaBuf.byteLength/1024/1024).toFixed(1)}MB`);
+      A.status.textContent = `Metadata loaded (${(metaBuf.byteLength/1024/1024).toFixed(0)}MB). Showing placeholders...`;
+      // A.libDb stays null — streamTick will pause at geometry phase
+      // Background-fetch geo.db → A.libDb (streaming resumes automatically)
+      var geoUrl = A.DB_URL.replace('_extracted.db', '_geo.db');
+      A.cachedFetch(geoUrl).then(function(geoBuf) {
+        A.libDb = new SQL.Database(new Uint8Array(geoBuf));
+        console.log(`[S192] §DB_GEO_LOADED size=${(geoBuf.byteLength/1024/1024).toFixed(1)}MB`);
+        A.status.textContent = `Geometry loaded (${(geoBuf.byteLength/1024/1024).toFixed(0)}MB). Streaming meshes...`;
+      }).catch(function(e) {
+        console.error(`[S192] §DB_GEO_FAIL ${e.message} — falling back to single DB`);
+        A.libDb = A.db;
+      });
+    } else {
+      // ── Single DB (current path) ──
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_fetching||'Fetching {url}...').replace('{url}',A.DB_URL);
+      var dbBuf = await A.cachedFetch(A.DB_URL);
+      A.db = new SQL.Database(new Uint8Array(dbBuf));
+      console.log(`[S192] §DB_LOADED size=${(dbBuf.byteLength/1024/1024).toFixed(0)}MB`);
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_db_loaded||'DB loaded ({size}MB). Querying...').replace('{size}',(dbBuf.byteLength/1024/1024).toFixed(0));
+    }
 
     const rows = A.dbQuery(`
       SELECT m.building, COUNT(*),
@@ -625,8 +683,8 @@ function setupStreaming(A) {
     }
     console.log(`[S241] §BBOX_EARLY placeholders drawn before library fetch`);
 
-    // Single DB — geometry is in the same DB
-    A.libDb = A.db;
+    // Single DB — geometry is in the same DB (split mode sets libDb asynchronously)
+    if (!_splitMode) A.libDb = A.db;
   };
 
   // URL deep-link
@@ -649,6 +707,8 @@ function setupStreaming(A) {
 
   // Clear — handles both Mesh and InstancedMesh
   A.clearStreamed = function() {
+    // §6.8 DLOD — disable before clearing scene
+    if (A.dlodDisable) A.dlodDisable('clear');
     // Dispose active pick highlight
     if (window._pickHighlight) {
       const prev = window._pickHighlight;
