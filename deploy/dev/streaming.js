@@ -186,7 +186,10 @@ function setupStreaming(A) {
   };
 
   A.streamTick = function() {
-    if (!A.streaming || !A.libDb || A.streamIdx >= A.streamQueue.length) {
+    // §S260: Range mode uses async _rangeDb — libDb may be null, that's OK
+    // _streamPaused = async geometry fetch in progress, skip this tick
+    if (A._streamPaused) return;
+    if (!A.streaming || (!A.libDb && !A._useRangeStream) || A.streamIdx >= A.streamQueue.length) {
       if (A.streaming && A.streamIdx >= A.streamQueue.length) {
         // ── Flush: build InstancedMesh for hashes with 2+ elements ──
         A._flushInstanced();
@@ -249,6 +252,61 @@ function setupStreaming(A) {
     if (hashesNeeded.size > 0) {
       const hashList = [...hashesNeeded];
       let fetched = 0;
+
+      if (A._useRangeStream && A._rangeDb) {
+        // ── §S260: Async geometry fetch via range-request httpvfs ──
+        // Pause sync tick, fetch async, then resume
+        A._streamPaused = true;
+        (async function() {
+          var _t0 = performance.now();
+          // Probe normals once
+          if (A._libHasNormals === null) {
+            try {
+              await A._rangeDb.exec("SELECT normals FROM component_geometries LIMIT 0");
+              A._libHasNormals = true;
+            } catch(e) { A._libHasNormals = false; }
+            console.log(`[S260] §RANGE_NORMALS_PROBE libHasNormals=${A._libHasNormals}`);
+          }
+          var cols = A._libHasNormals
+            ? 'geometry_hash, vertices, faces, normals'
+            : 'geometry_hash, vertices, faces';
+          // Fetch in chunks of 50 (range requests are slower, smaller chunks = faster first paint)
+          for (var ci = 0; ci < hashList.length; ci += 50) {
+            var chunk = hashList.slice(ci, ci + 50);
+            var ph = chunk.map(function(h) { return "'" + h.replace(/'/g,"''") + "'"; }).join(',');
+            for (var table of ['component_geometries', 'base_geometries']) {
+              try {
+                var result = await A._rangeDb.exec(
+                  `SELECT ${cols} FROM ${table} WHERE geometry_hash IN (${ph})`
+                );
+                if (result && result.length > 0) {
+                  for (var ri = 0; ri < result[0].values.length; ri++) {
+                    var row = result[0].values[ri];
+                    var ghash = row[0], vBlob = row[1], fBlob = row[2];
+                    var nBlob = A._libHasNormals ? (row[3] || null) : null;
+                    if (vBlob && fBlob) {
+                      var geo = A.blobToGeometry(vBlob, fBlob, nBlob);
+                      if (geo) { A.meshCache[ghash] = geo; fetched++; }
+                    }
+                  }
+                }
+              } catch(e) { /* table doesn't exist — try next */ }
+            }
+          }
+          var _ms = (performance.now() - _t0).toFixed(0);
+          if (fetched > 0) {
+            console.log(`[S260] §RANGE_BLOB_FETCH new=${fetched} total_cached=${Object.keys(A.meshCache).length} ms=${_ms} pages=${hashList.length}`);
+          }
+          if (fetched === 0 && hashesNeeded.size > 0) {
+            console.warn(`[S260] §RANGE_BLOB_MISS hashes=${hashesNeeded.size}`);
+          }
+          // Resume streaming
+          A._streamPaused = false;
+        })();
+        return; // Exit streamTick — will be re-entered via requestAnimationFrame
+      }
+
+      // ── Sync geometry fetch (original path for small DBs) ──
       // Probe once: does libDb have normals column?
       if (A._libHasNormals === null) {
         try {
@@ -668,23 +726,117 @@ function setupStreaming(A) {
         A.libDb = A.db;
       });
     } else {
-      // ── Single DB (current path) ──
-      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_fetching||'Fetching {url}...').replace('{url}',A.DB_URL);
-      var dbBuf = await A.cachedFetch(A.DB_URL);
-      A.db = new SQL.Database(new Uint8Array(dbBuf));
-      console.log(`[S192] §DB_LOADED size=${(dbBuf.byteLength/1024/1024).toFixed(0)}MB`);
-      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_db_loaded||'DB loaded ({size}MB). Querying...').replace('{size}',(dbBuf.byteLength/1024/1024).toFixed(0));
+      // ── Single DB — check size to decide: full download OR range-request streaming ──
+      var _dbSize = 0;
+      var _useRange = false;
+      try {
+        var headR = await fetch(A.DB_URL, { method: 'HEAD' });
+        _dbSize = parseInt(headR.headers.get('Content-Length') || '0', 10);
+        // §S260: Use range-request streaming for DBs > 50MB
+        _useRange = _dbSize > 50 * 1024 * 1024 && typeof createDbWorker === 'function';
+      } catch(e) { /* HEAD failed — fall through to full download */ }
+      console.log(`[S260] §DB_SIZE_CHECK size=${(_dbSize/1024/1024).toFixed(0)}MB useRange=${_useRange}`);
+
+      if (_useRange) {
+        // ── §S260: Range-request streaming via sql.js-httpvfs ──────────────────
+        A.status.textContent = `Opening ${(_dbSize/1024/1024).toFixed(0)}MB database via streaming...`;
+        var _rangeT0 = performance.now();
+        try {
+          var _workerUrl = new URL('lib/sqlite.worker.js', location.href).href;
+          var _wasmUrl = new URL('lib/httpvfs-sql-wasm.wasm', location.href).href;
+          var _dbAbsUrl = new URL(A.DB_URL, location.href).href;
+          var _httpvfs = await createDbWorker(
+            [{ from: 'inline', config: { serverMode: 'full', url: _dbAbsUrl, requestChunkSize: 65536 } }],
+            _workerUrl, _wasmUrl
+          );
+          A._rangeDb = _httpvfs.db;
+          A._rangeWorker = _httpvfs.worker;
+          var _rangeMs = (performance.now() - _rangeT0).toFixed(0);
+          console.log(`§RANGE_DB_OPEN ms=${_rangeMs} size=${(_dbSize/1024/1024).toFixed(0)}MB url=${_dbAbsUrl}`);
+
+          // Metadata queries via range-request (async — few page reads)
+          A.status.textContent = 'Querying metadata via streaming...';
+          var _metaRows = await A._rangeDb.exec(
+            `SELECT m.building, COUNT(*),
+              AVG(t.center_x), AVG(t.center_y), AVG(t.center_z)
+            FROM elements_meta m
+            JOIN element_transforms t ON t.guid = m.guid
+            GROUP BY m.building`
+          );
+          // Parse httpvfs exec result → same shape as dbQuery
+          if (_metaRows && _metaRows.length > 0) {
+            for (var ri = 0; ri < _metaRows[0].values.length; ri++) {
+              var row = _metaRows[0].values[ri];
+              A.buildingCentres[row[0]] = { ix: row[2], iy: row[3], iz: row[4], count: row[1] };
+            }
+          }
+          console.log(`§RANGE_META_DONE centres=${Object.keys(A.buildingCentres).length} ms=${(performance.now() - _rangeT0).toFixed(0)}`);
+
+          // We need a sync A.db for dbQuery calls throughout the app.
+          // Solution: create an in-memory sql.js DB and replicate the metadata tables.
+          A.db = new SQL.Database();
+          A.db.run('CREATE TABLE IF NOT EXISTS elements_meta (guid TEXT, building TEXT, storey TEXT, discipline TEXT, ifc_class TEXT)');
+          A.db.run('CREATE TABLE IF NOT EXISTS element_transforms (guid TEXT, center_x REAL, center_y REAL, center_z REAL, bbox_x REAL, bbox_y REAL, bbox_z REAL)');
+
+          // Fetch core metadata into local sync DB
+          A.status.textContent = 'Caching metadata locally...';
+          var _elemRows = await A._rangeDb.exec(
+            'SELECT guid, building, storey, discipline, ifc_class FROM elements_meta'
+          );
+          if (_elemRows && _elemRows.length > 0) {
+            var _insertMeta = A.db.prepare('INSERT INTO elements_meta VALUES (?,?,?,?,?)');
+            for (var ei = 0; ei < _elemRows[0].values.length; ei++) {
+              _insertMeta.run(_elemRows[0].values[ei]);
+            }
+            _insertMeta.free();
+          }
+          var _txRows = await A._rangeDb.exec(
+            'SELECT guid, center_x, center_y, center_z, bbox_x, bbox_y, bbox_z FROM element_transforms'
+          );
+          if (_txRows && _txRows.length > 0) {
+            var _insertTx = A.db.prepare('INSERT INTO element_transforms VALUES (?,?,?,?,?,?,?)');
+            for (var ti = 0; ti < _txRows[0].values.length; ti++) {
+              _insertTx.run(_txRows[0].values[ti]);
+            }
+            _insertTx.free();
+          }
+
+          var _metaSize = (_elemRows && _elemRows.length > 0 ? _elemRows[0].values.length : 0);
+          console.log(`§RANGE_LOCAL_CACHE elements=${_metaSize} transforms=${_txRows && _txRows.length > 0 ? _txRows[0].values.length : 0} ms=${(performance.now() - _rangeT0).toFixed(0)}`);
+          A.status.textContent = `Metadata cached (${_metaSize} elements). Streaming geometry on demand...`;
+
+          // Mark range mode — streamTick will use A._rangeDb for geometry
+          A._useRangeStream = true;
+        } catch(e) {
+          console.error(`§RANGE_DB_FAIL ${e.message} — falling back to full download`);
+          console.warn('§RANGE_HINT Range requests require HTTP/1.1 206 Partial Content. python3 -m http.server does NOT support Range. OCI Object Storage does.');
+          A.status.textContent = 'Range streaming failed — downloading full database...';
+          _useRange = false;  // fall through to full download below
+        }
+      }
+
+      if (!_useRange) {
+        // ── Full download (current path, for small DBs or range fallback) ──
+        A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_fetching||'Fetching {url}...').replace('{url}',A.DB_URL);
+        var dbBuf = await A.cachedFetch(A.DB_URL);
+        A.db = new SQL.Database(new Uint8Array(dbBuf));
+        console.log(`[S192] §DB_LOADED size=${(dbBuf.byteLength/1024/1024).toFixed(0)}MB`);
+        A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_db_loaded||'DB loaded ({size}MB). Querying...').replace('{size}',(dbBuf.byteLength/1024/1024).toFixed(0));
+      }
     }
 
-    const rows = A.dbQuery(`
-      SELECT m.building, COUNT(*),
-        AVG(t.center_x), AVG(t.center_y), AVG(t.center_z)
-      FROM elements_meta m
-      JOIN element_transforms t ON t.guid = m.guid
-      GROUP BY m.building
-    `);
-    for (const row of rows) {
-      A.buildingCentres[row[0]] = { ix: row[2], iy: row[3], iz: row[4], count: row[1] };
+    // §S260: Range mode already populated buildingCentres above
+    if (!A._useRangeStream) {
+      const rows = A.dbQuery(`
+        SELECT m.building, COUNT(*),
+          AVG(t.center_x), AVG(t.center_y), AVG(t.center_z)
+        FROM elements_meta m
+        JOIN element_transforms t ON t.guid = m.guid
+        GROUP BY m.building
+      `);
+      for (const row of rows) {
+        A.buildingCentres[row[0]] = { ix: row[2], iy: row[3], iz: row[4], count: row[1] };
+      }
     }
     console.log(`[S192] §BOOTSTRAP centres=${Object.keys(A.buildingCentres).length}`);
 
@@ -792,7 +944,9 @@ function setupStreaming(A) {
     console.log(`[S241] §BBOX_EARLY placeholders drawn before library fetch`);
 
     // Single DB — geometry is in the same DB (split mode sets libDb asynchronously)
-    if (!_splitMode) A.libDb = A.db;
+    // §S260: Range mode uses async _rangeDb for geometry; sync A.db for metadata
+    // Non-range, non-split: libDb = same sync DB
+    if (!_splitMode && !A._useRangeStream) A.libDb = A.db;
   };
 
   // URL deep-link
