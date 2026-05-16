@@ -505,7 +505,7 @@ function initViewer() {
     APP.walkModeGpsTick();
     // Device orientation LAST — nothing may overwrite the quaternion after this
     if (APP.walkModeActive) APP.walkOrientTick();
-    const streaming = APP.streamedCount < APP.totalElements && APP.totalElements > 0;
+    const streaming = APP.streaming;
     if (_needsRender || streaming || APP.walkModeActive || APP.walkMode) {
       APP.updateMeasureLabels();
       if (APP.ground && APP.ground.visible) {

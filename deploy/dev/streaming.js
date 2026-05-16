@@ -274,8 +274,9 @@ function setupStreaming(A) {
           A.populateStoreys(A.activeBuilding);
           A.populateDiscs(A.activeBuilding);
         }
-        // §S260b: DLOD re-enabled — BatchedMesh support added, storey+frustum culling
-        if (A.dlodEnable) { A.dlodEnable(); if (A.dlodTick) A.dlodTick(); }
+        // §S260b: DLOD kept disabled — BatchedMesh already gives ~200 draw calls.
+        // Storey culling causes visible pop-in artifacts. Re-enable only for >500K elements.
+        // if (A.dlodEnable) { A.dlodEnable(); if (A.dlodTick) A.dlodTick(); }
         // §S258: Deferred BVH build — batch in background so streaming isn't blocked
         if (window._bvhReady) {
           var _bvhHashes = Object.keys(A.meshCache);
@@ -888,6 +889,7 @@ function setupStreaming(A) {
       var _geoOk = false;
       try {
         var _geoCached = await A._checkCache(geoUrl);
+        console.log(`[S260b] §GEO_CACHE_CHECK url=${geoUrl.split('/').pop()} hit=${!!_geoCached}`);
         A.status.textContent = _geoCached
           ? `Loading geometry from cache...`
           : `First visit — downloading geometry (${_posLoaded ? 'bboxes visible' : 'please wait'})...`;

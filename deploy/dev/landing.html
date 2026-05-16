@@ -301,7 +301,7 @@
   <div class="tab-list" id="tab-list"></div>
 </div>
 
-<script src="sandbox/import_db_builder.js?v=2"></script>
+<script src="sandbox/import_db_builder.js?v=3"></script>
 <!-- wizard.js now loads in viewer via ?wizard=1 param (S230) -->
 <script>
 // ── Config ──
@@ -1236,8 +1236,10 @@ async function handleImportMultiIFC(files) {
     var SQL = await initSqlJs({ locateFile: function(f) { return 'https://sql.js.org/dist/' + f; } });
     var mergedData = {
       meta: { name: buildingName, filename: buildingName, elementCount: allElements.length, geomCount: allGeometries.length, disciplines: allDiscs, storeys: allStoreys.sort() },
-      elements: allElements, geometries: allGeometries, transforms: allTransforms,
+      elements: allElements, geometries: allGeometries, transforms: allTransforms
     };
+    // §S260b: Yield to UI before heavy DB build (16K+ geometries = seconds of blocking)
+    await new Promise(function(r) { setTimeout(r, 50); });
     var dbs = buildImportDBs(SQL, mergedData);
 
     var projectKey = buildingName + '.ifc';
@@ -1246,6 +1248,8 @@ async function handleImportMultiIFC(files) {
       versions: [{ key: projectKey, importDate: new Date().toISOString(), db: dbs.extractedDb }],
       latestVersion: 0
     };
+    if (dbs.metaDb) newRecord.metaDb = dbs.metaDb;
+    if (dbs.geoDb) newRecord.geoDb = dbs.geoDb;
     await saveProject(projectKey, newRecord);
 
     console.log('[S224] §MULTI_IMPORT_DONE building=' + buildingName + ' elements=' + allElements.length +

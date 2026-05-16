@@ -314,12 +314,21 @@
       if (obj.isBatchedMesh && app._batchMeta && app._batchMeta[obj.id]) {
         var bmetas = app._batchMeta[obj.id];
         var anyVis = false;
+        var _bmM4 = new THREE.Matrix4();
+        var _bmPos = new THREE.Vector3();
         for (var bi = 0; bi < bmetas.length; bi++) {
           var bg = bmetas[bi].guid;
           var sid = bmetas[bi].slotId;
           if (placed[bg] || frontier[bg] || recent[bg] !== undefined) {
             obj.setVisibleAt(sid, true);
             anyVis = true;
+            // §S260b: Eye follow — extract position from BatchedMesh slot matrix
+            if (_camFollow && frontier[bg]) {
+              obj.getMatrixAt(sid, _bmM4);
+              _bmPos.setFromMatrixPosition(_bmM4);
+              _frontierPositions.push(_bmPos.clone());
+              _guidPosMap[bg] = _bmPos.clone();
+            }
           } else {
             obj.setVisibleAt(sid, false);
           }

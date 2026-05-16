@@ -189,8 +189,32 @@ function setupScene(A) {
 
     if (cacheDb) {
       try {
-        const tx = cacheDb.transaction(A.CACHE_STORE, 'readwrite');
-        tx.objectStore(A.CACHE_STORE).put(buf, url);
+        await new Promise(function(resolve) {
+          const tx = cacheDb.transaction(A.CACHE_STORE, 'readwrite');
+          const req = tx.objectStore(A.CACHE_STORE).put(buf, url);
+          req.onsuccess = function() { console.log(`[S203] §CACHE_WRITE_OK url=${url.split('/').pop()} size=${(buf.byteLength/1024/1024).toFixed(1)}MB`); };
+          req.onerror = function(e) {
+            // §S260b: Quota exceeded — evict all cached DBs and retry
+            console.warn(`[S203] §CACHE_WRITE_ERR url=${url.split('/').pop()} err=${req.error} — evicting old cache`);
+            e.preventDefault(); // prevent tx abort
+          };
+          tx.oncomplete = resolve;
+          tx.onabort = function() {
+            // Evict all entries then retry write
+            console.log(`[S203] §CACHE_EVICT clearing all cached DBs for space`);
+            var tx2 = cacheDb.transaction(A.CACHE_STORE, 'readwrite');
+            tx2.objectStore(A.CACHE_STORE).clear();
+            tx2.oncomplete = function() {
+              var tx3 = cacheDb.transaction(A.CACHE_STORE, 'readwrite');
+              var req3 = tx3.objectStore(A.CACHE_STORE).put(buf, url);
+              req3.onsuccess = function() { console.log(`[S203] §CACHE_EVICT_WRITE_OK url=${url.split('/').pop()}`); };
+              req3.onerror = function() { console.warn(`[S203] §CACHE_EVICT_WRITE_FAIL — quota too small`); };
+              tx3.oncomplete = resolve;
+              tx3.onerror = function() { resolve(); };
+            };
+            tx2.onerror = function() { resolve(); };
+          };
+        });
       } catch(e) { console.log(`[S203] §CACHE_WRITE_ERR ${e.message}`); }
     }
 

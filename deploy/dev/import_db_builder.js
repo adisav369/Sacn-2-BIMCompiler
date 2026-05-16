@@ -68,12 +68,15 @@ function buildImportDBs(SQL, data) {
   db.run('COMMIT');
 
   console.log('[S220] §DB_BUILD single_db: elements=' + data.elements.length + ' transforms=' + data.transforms.length + ' instances=' + data.geometries.length + ' geometries=' + data.geometries.length);
+  console.log('[S220] §DB_EXPORT_START — serializing DB (may take a few seconds for large buildings)...');
 
   var buf = db.export().buffer;
+  console.log('[S220] §DB_EXPORT_DONE size=' + (buf.byteLength / 1024 / 1024).toFixed(1) + 'MB');
 
-  // S260b: Split DB for large buildings (>20K elements) — deployment optimization
+  // S260b: Split DB for large buildings (>20K elements) — produces meta + geo for OCI deployment
+  // 20K threshold: below this, db.export() + split takes <2s. Above = multi-second block.
   var metaDb = null, geoDb = null;
-  if (data.elements.length > 15000) {
+  if (data.elements.length > 20000) {
     // ── metaDb: everything EXCEPT geometry BLOBs ──
     var mDb = new SQL.Database();
     // Copy schema + data for non-geometry tables
