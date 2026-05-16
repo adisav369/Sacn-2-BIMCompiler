@@ -1940,9 +1940,9 @@ function setupMeasure(A) {
       console.log('§CLASH_DLOD R-tree not ready yet — building...');
     }
 
-    // Hide all streamed geometry (meshes + instanced meshes + merged)
+    // Hide all streamed geometry (meshes + instanced meshes + batched + merged)
     A.collectMeshes(function(o) {
-      return (o.isMesh || o.isInstancedMesh || o.isLineSegments) &&
+      return (o.isMesh || o.isInstancedMesh || o.isBatchedMesh || o.isLineSegments) &&
              !o.userData.isBboxPlaceholder && o !== A.ground;
     }).forEach(function(o) {
       o.userData._clashHidden = true;

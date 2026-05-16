@@ -1,4 +1,5 @@
 // loader.js — Progressive script loader: local-first, CDN fallback
+// §S260: Three.js r160 ESM upgrade — import map + window.THREE shim
 // WASM binary fetch starts immediately — downloads in parallel with JS libs
 const _wasmBinaryPromise = fetch('lib/sql-wasm.wasm')
   .then(r => r.ok ? r.arrayBuffer().then(b => new Uint8Array(b)) : null)
@@ -12,14 +13,8 @@ const _timerIv = setInterval(() => {
   _elapsedEl.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 }, 1000);
 
-// Local-first, CDN fallback
+// Local-first, CDN fallback (SQLite + SheetJS remain UMD <script> inject)
 const LIBS = [
-  { name: 'Three.js',
-    url: 'lib/three.min.js',
-    cdn: 'https://cdn.jsdelivr.net/npm/three@0.156.0/build/three.min.js' },
-  { name: 'OrbitControls',
-    url: 'lib/OrbitControls.js',
-    cdn: 'lib/OrbitControls.js' },  // r156 ESM→IIFE converted, local only (no CDN UMD)
   { name: 'SQLite (WASM+RTree)',
     url: 'lib/sql-wasm.js',
     cdn: 'https://cdn.jsdelivr.net/npm/rtree-sql.js@1.7.0/dist/sql-wasm.js' },
@@ -28,15 +23,16 @@ const LIBS = [
     cdn: 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js' },
 ];
 
-// Create progress rows
+// Create progress rows — 4 items: Three.js(0), OrbitControls(1), SQLite(2), SheetJS(3)
+const _PROGRESS_NAMES = ['Three.js r160', 'OrbitControls', 'SQLite (WASM+RTree)', 'SheetJS (Excel)'];
 const loadItems = document.getElementById('load-items');
-LIBS.forEach((lib, i) => {
+_PROGRESS_NAMES.forEach((name, i) => {
   const row = document.createElement('div');
   row.id = `lib-${i}`;
   row.style.cssText = 'margin:4px 0;font-size:12px;color:#aaa';
   row.innerHTML = `
     <div style="display:flex;justify-content:space-between">
-      <span>${lib.name}</span>
+      <span>${name}</span>
       <span id="lib-${i}-status" style="color:#666">waiting...</span>
     </div>
     <div style="height:3px;background:#333;border-radius:2px;margin-top:2px">
@@ -92,35 +88,102 @@ async function fetchWithProgress(url, index) {
 }
 
 // Local-first, CDN fallback loader
-async function loadLib(index) {
-  var lib = LIBS[index];
+// libIdx = index into LIBS[], progressIdx = index of progress bar row (lib-N-status/bar)
+async function loadLibAt(libIdx, progressIdx) {
+  var lib = LIBS[libIdx];
   try {
-    await fetchWithProgress(lib.url, index);
+    await fetchWithProgress(lib.url, progressIdx);
     return;
   } catch(e) {
     console.warn('[loader] §LOCAL_FAIL ' + lib.name + ' — falling back to CDN');
-    var statusEl = document.getElementById('lib-' + index + '-status');
+    var statusEl = document.getElementById('lib-' + progressIdx + '-status');
     if (statusEl) { statusEl.textContent = 'CDN fallback...'; statusEl.style.color = '#ff8c00'; }
-    var barEl = document.getElementById('lib-' + index + '-bar');
+    var barEl = document.getElementById('lib-' + progressIdx + '-bar');
     if (barEl) { barEl.style.width = '0%'; barEl.style.background = '#4fc3f7'; }
   }
-  await fetchWithProgress(lib.cdn, index);
+  await fetchWithProgress(lib.cdn, progressIdx);
 }
 
 async function loadAllLibs() {
-  // Three.js must load before OrbitControls (dependency)
-  await loadLib(0);  // Three.js
+  // ── §S260: Three.js r160 ESM bootstrap ──────────────────────────────────────
+  // Load Three.js as ESM module, expose as window.THREE for all existing scripts.
+  // Local-first, CDN fallback (same principle as before).
+  var _threeT0 = performance.now();
+  var _threeStatusEl = document.getElementById('lib-0-status');
+  var _threeBarEl = document.getElementById('lib-0-bar');
+  if (_threeStatusEl) { _threeStatusEl.textContent = 'importing ESM...'; _threeStatusEl.style.color = '#4fc3f7'; }
 
-  // §S258: Disable color management IMMEDIATELY after Three.js loads, before ANY Color/Material
-  // r156 defaults to ColorManagement.enabled=true which reinterprets all color values as linear.
-  // Must be set before OrbitControls or any other code touches THREE.Color.
-  THREE.ColorManagement.enabled = false;  // §S259: kept false — enabling breaks HSL color slider palettes
+  try {
+    const _esm = await import('./lib/three.module.min.js');
+    // §S260: ESM namespace is frozen — copy all exports into mutable object
+    // so we can attach OrbitControls, monkey-patch prototypes, etc.
+    const _three = {};
+    for (const k of Object.keys(_esm)) _three[k] = _esm[k];
+    window.THREE = _three;
+    console.log('§UPGRADE_THREE local ESM loaded r=' + THREE.REVISION);
+  } catch(e) {
+    console.warn('§UPGRADE_THREE_LOCAL_FAIL ' + e.message + ' — trying CDN');
+    try {
+      const _esm = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js');
+      const _three = {};
+      for (const k of Object.keys(_esm)) _three[k] = _esm[k];
+      window.THREE = _three;
+      console.log('§UPGRADE_THREE CDN ESM loaded r=' + THREE.REVISION);
+    } catch(e2) {
+      // §S260: Ultimate fallback — try legacy r156 UMD if ESM completely fails
+      console.error('§UPGRADE_THREE_FAIL ESM unavailable, falling back to r156 UMD: ' + e2.message);
+      await fetchWithProgress('lib/three.min.js', 0);
+      console.log('§UPGRADE_THREE_FALLBACK r156 UMD loaded r=' + (window.THREE && THREE.REVISION));
+    }
+  }
+  var _threeMs = (performance.now() - _threeT0).toFixed(0);
+  if (_threeBarEl) { _threeBarEl.style.width = '100%'; _threeBarEl.style.background = '#44cc44'; }
+  if (_threeStatusEl) { _threeStatusEl.textContent = 'r' + (THREE.REVISION || '?') + ' in ' + _threeMs + 'ms'; _threeStatusEl.style.color = '#44cc44'; }
+  console.log('§UPGRADE_THREE_DONE r=' + THREE.REVISION + ' ms=' + _threeMs + ' BatchedMesh=' + (typeof THREE.BatchedMesh));
 
-  await loadLib(1);  // OrbitControls (needs THREE global)
-
-  // §6.5 BVH acceleration — three-mesh-bvh monkey-patch (non-blocking)
-  console.log('§THREE_VERSION r=' + (THREE.REVISION || '?'));
+  // §S258/S259: Disable color management IMMEDIATELY — before ANY Color/Material created
+  THREE.ColorManagement.enabled = false;  // enabling breaks HSL color slider palettes
   console.log('§COLOR_MGMT enabled=' + THREE.ColorManagement.enabled);
+
+  // ── §S260: OrbitControls ESM ────────────────────────────────────────────────
+  var _ocT0 = performance.now();
+  if (document.getElementById('lib-1-status')) {
+    document.getElementById('lib-1-status').textContent = 'importing ESM...';
+    document.getElementById('lib-1-status').style.color = '#4fc3f7';
+  }
+  try {
+    const OC = await import('./lib/OrbitControls.module.js');
+    THREE.OrbitControls = OC.OrbitControls;
+    window.OrbitControls = OC.OrbitControls;
+    console.log('§UPGRADE_ORBIT local ESM loaded');
+  } catch(e) {
+    console.warn('§UPGRADE_ORBIT_LOCAL_FAIL ' + e.message + ' — trying CDN');
+    try {
+      const OC = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js');
+      THREE.OrbitControls = OC.OrbitControls;
+      window.OrbitControls = OC.OrbitControls;
+      console.log('§UPGRADE_ORBIT CDN ESM loaded');
+    } catch(e2) {
+      // Fallback to legacy IIFE OrbitControls
+      console.warn('§UPGRADE_ORBIT_FAIL falling back to legacy: ' + e2.message);
+      await fetchWithProgress('lib/OrbitControls.js', 1);
+      console.log('§UPGRADE_ORBIT_FALLBACK legacy IIFE loaded');
+    }
+  }
+  var _ocMs = (performance.now() - _ocT0).toFixed(0);
+  if (document.getElementById('lib-1-bar')) { document.getElementById('lib-1-bar').style.width = '100%'; document.getElementById('lib-1-bar').style.background = '#44cc44'; }
+  if (document.getElementById('lib-1-status')) { document.getElementById('lib-1-status').textContent = 'done in ' + _ocMs + 'ms'; document.getElementById('lib-1-status').style.color = '#44cc44'; }
+  console.log('§UPGRADE_ORBIT_DONE ms=' + _ocMs + ' OrbitControls=' + (typeof window.OrbitControls));
+
+  // §S260: Verify key APIs exist (whitebox checkpoint)
+  console.log('§UPGRADE_API_CHECK BatchedMesh=' + (typeof THREE.BatchedMesh) +
+    ' InstancedMesh=' + (typeof THREE.InstancedMesh) +
+    ' BufferGeometry=' + (typeof THREE.BufferGeometry) +
+    ' WebGLRenderer=' + (typeof THREE.WebGLRenderer) +
+    ' NeutralToneMapping=' + THREE.NeutralToneMapping +
+    ' SRGBColorSpace=' + THREE.SRGBColorSpace);
+
+  // §6.5 BVH acceleration — three-mesh-bvh monkey-patch
   console.log('§BVH_LOADING importing three-mesh-bvh@0.7.8 from CDN...');
   var _bvhT0 = performance.now();
   try {
@@ -133,7 +196,7 @@ async function loadAllLibs() {
     THREE.BufferGeometry.prototype.disposeBoundsTree = bvh.disposeBoundsTree;
     THREE.Mesh.prototype.raycast = bvh.acceleratedRaycast;
     window._bvhReady = true;
-    console.log('§BVH_INIT three-mesh-bvh v0.7.8 (r156-compat) monkey-patch applied in ' + _bvhMs + 'ms');
+    console.log('§BVH_INIT three-mesh-bvh v0.7.8 monkey-patch applied in ' + _bvhMs + 'ms');
     // Verify: test raycast on a dummy geometry
     try {
       var _testGeo = new THREE.BufferGeometry();
@@ -154,7 +217,8 @@ async function loadAllLibs() {
   }
 
   // sql.js is needed for DB; load it before starting viewer
-  await loadLib(2);
+  // LIBS[0]=SQLite, but progress bar = lib-2
+  await loadLibAt(0, 2);  // SQLite → progress row 2
 
   // Critical path done — wait for main.js to define initViewer (may still be loading on mobile)
   clearInterval(_timerIv);
@@ -186,7 +250,7 @@ async function loadAllLibs() {
   }
 
   // SheetJS loads in background — excel.js handles typeof XLSX === 'undefined' gracefully
-  loadLib(3).catch(e => {
+  loadLibAt(1, 3).catch(e => {  // LIBS[1]=SheetJS → progress row 3
     console.warn('[loader] §SHEETJS_LOAD_FAIL (Excel export unavailable):', e.message);
   });
 }

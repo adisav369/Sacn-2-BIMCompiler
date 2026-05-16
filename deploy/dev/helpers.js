@@ -55,6 +55,23 @@ function setupHelpers(A) {
     mesh.visible = anyVisible;
   };
 
+  // ── A.filterBatchedMesh(mesh, filterFn) ─────────────────────────────────
+  // §S260: Show/hide individual elements within a BatchedMesh via setVisibleAt().
+  // filterFn(meta) → true = visible, false = hidden
+  // meta = { storey, disc, guid, slotId, ... } from A._batchMeta[mesh.id][i]
+  A.filterBatchedMesh = function(mesh, filterFn) {
+    if (!mesh.isBatchedMesh) return;
+    const meta = A._batchMeta && A._batchMeta[mesh.id];
+    if (!meta) return;
+    let anyVisible = false;
+    for (let i = 0; i < meta.length; i++) {
+      const vis = filterFn(meta[i]);
+      mesh.setVisibleAt(meta[i].slotId, vis);
+      if (vis) anyVisible = true;
+    }
+    mesh.visible = anyVisible;
+  };
+
   // ── A.dbQuery(sql, params) ────────────────────────────────────────────────
   // Safe db.exec wrapper. Returns [] if db not ready or no results.
   // Each item in the returned array is a row-values array (same shape as db.exec rows[0].values).

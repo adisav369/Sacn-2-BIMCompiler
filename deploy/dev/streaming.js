@@ -330,7 +330,13 @@ function setupStreaming(A) {
     }
   };
 
-  // ── S231+S232: Flush pending → InstancedMesh (2+) or Mesh (1) or MergedMesh (mobile) ──
+  // ── S231+S232+S260: Flush pending → BatchedMesh (desktop single) or InstancedMesh (2+) or MergedMesh (mobile) ──
+  // §S260: _batchMeta[meshId] = [{guid, storey, disc, ifcClass, slotId}, ...]
+  // §S260: _batchStoreyMap[storey] = [{mesh, slotId}, ...] — reverse index for filter
+  if (!A._batchMeta) A._batchMeta = {};
+  if (!A._batchStoreyMap) A._batchStoreyMap = {};
+  if (!A._batchDiscMap) A._batchDiscMap = {};
+
   A._flushInstanced = function() {
     if (!A._pendingInstances) return;
     const _m4 = new THREE.Matrix4();
@@ -338,10 +344,13 @@ function setupStreaming(A) {
     const _quat = new THREE.Quaternion();
     const _pos = new THREE.Vector3();
     const _scale = new THREE.Vector3(1, 1, 1);
-    let instancedCount = 0, singleCount = 0, mergedCount = 0, drawCalls = 0;
+    let instancedCount = 0, batchedCount = 0, mergedCount = 0, drawCalls = 0;
+    var _prevDrawCalls = 0;
 
     // ── S232: On mobile, bucket single-instance elements for merge ──
     const mergeBuckets = {};  // key: "storey|disc|rgba" → [{el, geo}, ...]
+    // ── S260: On desktop, bucket single-instance elements for BatchedMesh ──
+    const batchBuckets = {};  // key: "storey|disc|rgba" → [{el, geo}, ...]
 
     for (const [hash, elements] of Object.entries(A._pendingInstances)) {
       const geo = A.meshCache[hash];
@@ -354,25 +363,11 @@ function setupStreaming(A) {
         if (!mergeBuckets[key]) mergeBuckets[key] = [];
         mergeBuckets[key].push({ el, geo });
       } else if (elements.length === 1) {
-        // Desktop: individual Mesh for full pick/filter compat
+        // §S260: Desktop — bucket for BatchedMesh
         const el = elements[0];
-        const mat = A._getMaterial(el.rgba);
-        const mesh = new THREE.Mesh(geo, mat);
-        const pos = A.ifc2three(el.cx, el.cy, el.cz);
-        mesh.position.set(pos.x, pos.y, pos.z);
-        if (el.rotX || el.rotY || el.rotZ) {
-          mesh.rotation.set(el.rotX, el.rotZ, -el.rotY);
-        }
-        mesh.userData.storey = el.storey;
-        mesh.userData.disc = el.disc;
-        mesh.userData.guid = el.guid;
-        mesh.userData.ifcClass = el.ifcClass || '';
-        A.guidMap[mesh.id] = el.guid;
-        if (A.activeStoreyFilter !== null && el.storey !== A.activeStoreyFilter) mesh.visible = false;
-        if (A.hiddenDiscs.size > 0 && A.hiddenDiscs.has(el.disc)) mesh.visible = false;
-        A.scene.add(mesh);
-        singleCount++;
-        drawCalls++;
+        const key = (el.storey || '_') + '|' + (el.disc || '_') + '|' + (el.rgba || '_default');
+        if (!batchBuckets[key]) batchBuckets[key] = [];
+        batchBuckets[key].push({ el, geo });
       } else {
         // 2+ instances — InstancedMesh (both desktop and mobile)
         const mat = A._getMaterial(elements[0].rgba);
@@ -402,6 +397,116 @@ function setupStreaming(A) {
         instancedCount += elements.length;
         drawCalls++;
       }
+    }
+
+    // ── S260: Build BatchedMesh per desktop bucket ──────────────────────────────
+    if (!A._isMobile && THREE.BatchedMesh) {
+      for (const [key, items] of Object.entries(batchBuckets)) {
+        if (items.length === 0) continue;
+        const [storey, disc, rgba] = key.split('|');
+
+        // Sum verts + indices for capacity
+        let totalVerts = 0, totalIdx = 0;
+        for (const item of items) {
+          const p = item.geo.attributes.position;
+          totalVerts += p ? p.count : 0;
+          totalIdx += item.geo.index ? item.geo.index.count : (p ? p.count : 0);
+        }
+
+        const mat = A._getMaterial(rgba === '_default' ? null : rgba);
+        var bm;
+        try {
+          bm = new THREE.BatchedMesh(items.length, totalVerts, totalIdx, mat);
+        } catch(e) {
+          // §S260: If BatchedMesh creation fails, fall back to individual meshes
+          console.warn('§BATCHED_FAIL bucket=' + key + ' count=' + items.length + ' err=' + e.message);
+          for (const item of items) {
+            const el = item.el;
+            const m = new THREE.Mesh(item.geo, mat);
+            const p = A.ifc2three(el.cx, el.cy, el.cz);
+            m.position.set(p.x, p.y, p.z);
+            if (el.rotX || el.rotY || el.rotZ) m.rotation.set(el.rotX, el.rotZ, -el.rotY);
+            m.userData.storey = el.storey; m.userData.disc = el.disc;
+            m.userData.guid = el.guid; m.userData.ifcClass = el.ifcClass || '';
+            A.guidMap[m.id] = el.guid;
+            A.scene.add(m);
+            drawCalls++;
+          }
+          batchedCount += items.length;
+          continue;
+        }
+
+        bm.frustumCulled = false;
+        bm.userData.isBatched = true;
+        bm.userData.storey = storey === '_' ? '' : storey;
+        bm.userData.disc = disc === '_' ? '' : disc;
+        const meta = [];
+
+        for (let i = 0; i < items.length; i++) {
+          const el = items[i].el;
+          const geo = items[i].geo;
+          var slotId;
+          try {
+            slotId = bm.addGeometry(geo);
+          } catch(e) {
+            console.warn('§BATCHED_ADDGEO_FAIL bucket=' + key + ' i=' + i + ' err=' + e.message);
+            continue;
+          }
+
+          // Position via matrix
+          const pos = A.ifc2three(el.cx, el.cy, el.cz);
+          _pos.set(pos.x, pos.y, pos.z);
+          _euler.set(el.rotX || 0, el.rotZ || 0, -(el.rotY || 0));
+          _quat.setFromEuler(_euler);
+          _m4.compose(_pos, _quat, _scale);
+          bm.setMatrixAt(slotId, _m4);
+
+          // Storey/disc visibility filter
+          var vis = true;
+          if (A.activeStoreyFilter !== null && el.storey !== A.activeStoreyFilter) vis = false;
+          if (A.hiddenDiscs.size > 0 && A.hiddenDiscs.has(el.disc)) vis = false;
+          if (!vis) bm.setVisibleAt(slotId, false);
+
+          // Metadata for pick + filter
+          meta.push({ guid: el.guid, storey: el.storey, disc: el.disc, ifcClass: el.ifcClass || '', slotId: slotId });
+          A.guidMap[bm.id + '_' + slotId] = el.guid;
+
+          // Reverse maps for filter
+          var sk = el.storey || '';
+          if (!A._batchStoreyMap[sk]) A._batchStoreyMap[sk] = [];
+          A._batchStoreyMap[sk].push({ mesh: bm, slotId: slotId });
+          var dk = el.disc || '';
+          if (!A._batchDiscMap[dk]) A._batchDiscMap[dk] = [];
+          A._batchDiscMap[dk].push({ mesh: bm, slotId: slotId });
+        }
+
+        A._batchMeta[bm.id] = meta;
+        A.scene.add(bm);
+        batchedCount += items.length;
+        drawCalls++;
+      }
+      _prevDrawCalls = batchedCount;
+    } else if (!A._isMobile) {
+      // §S260: Fallback if BatchedMesh unavailable — individual meshes
+      for (const [key, items] of Object.entries(batchBuckets)) {
+        for (const item of items) {
+          const el = item.el;
+          const mat = A._getMaterial(el.rgba);
+          const mesh = new THREE.Mesh(item.geo, mat);
+          const pos = A.ifc2three(el.cx, el.cy, el.cz);
+          mesh.position.set(pos.x, pos.y, pos.z);
+          if (el.rotX || el.rotY || el.rotZ) mesh.rotation.set(el.rotX, el.rotZ, -el.rotY);
+          mesh.userData.storey = el.storey; mesh.userData.disc = el.disc;
+          mesh.userData.guid = el.guid; mesh.userData.ifcClass = el.ifcClass || '';
+          A.guidMap[mesh.id] = el.guid;
+          if (A.activeStoreyFilter !== null && el.storey !== A.activeStoreyFilter) mesh.visible = false;
+          if (A.hiddenDiscs.size > 0 && A.hiddenDiscs.has(el.disc)) mesh.visible = false;
+          A.scene.add(mesh);
+          batchedCount++;
+          drawCalls++;
+        }
+      }
+      _prevDrawCalls = batchedCount;
     }
 
     // ── S232: Merge single-instance buckets on mobile ──
@@ -501,8 +606,11 @@ function setupStreaming(A) {
     A._pendingInstances = {};
     const label = A._isMobile
       ? `[S232] §FLUSH instanced=${instancedCount} merged=${mergedCount} drawCalls=${drawCalls} (was ${instancedCount + mergedCount})`
-      : `[S231] §FLUSH instanced=${instancedCount} single=${singleCount} drawCalls=${drawCalls} (was ${instancedCount + singleCount})`;
+      : `[S260] §BATCHED_FLUSH instanced=${instancedCount} batched=${batchedCount} drawCalls=${drawCalls} (was ${instancedCount + batchedCount})`;
     console.log(label);
+    if (!A._isMobile && batchedCount > 0) {
+      console.log(`§BATCHED_DETAIL buckets=${Object.keys(batchBuckets).length} elements=${batchedCount} saved=${_prevDrawCalls - Object.keys(batchBuckets).length} drawCalls`);
+    }
     document.getElementById('s-meshes').textContent = drawCalls.toLocaleString() + ' draw calls';
   };
 
@@ -717,7 +825,7 @@ function setupStreaming(A) {
       if (prev.material) prev.material.dispose();
       window._pickHighlight = null;
     }
-    const toRemove = A.collectMeshes(o => o.isMesh || o.isInstancedMesh);
+    const toRemove = A.collectMeshes(o => o.isMesh || o.isInstancedMesh || o.isBatchedMesh);
     toRemove.forEach(obj => {
       A.scene.remove(obj);
       if (obj.geometry) obj.geometry.dispose();

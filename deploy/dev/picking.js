@@ -178,7 +178,7 @@ function setupPicking(A) {
     }
 
     const meshes = A.collectMeshes(o => {
-      if ((o.isMesh || o.isInstancedMesh) && o.visible) return true;
+      if ((o.isMesh || o.isInstancedMesh || o.isBatchedMesh) && o.visible) return true;
       // In 2D mode, include contour lines for picking
       if (isFloor2D && (o.isLine || o.isLineSegments) && o.userData && o.userData.isContour && o.visible) return true;
       return false;
@@ -191,9 +191,19 @@ function setupPicking(A) {
     }
 
     const hit = hits[0];
-    // S232: InstancedMesh — use instanceId to look up guid from metadata
     let guid = null;
-    if (hit.object.isInstancedMesh && hit.instanceId !== undefined && A._instanceMeta[hit.object.id]) {
+    // §S260: BatchedMesh — use batchId to look up guid from _batchMeta
+    if (!guid && hit.object.isBatchedMesh && hit.batchId !== undefined && A._batchMeta && A._batchMeta[hit.object.id]) {
+      const bmeta = A._batchMeta[hit.object.id];
+      // batchId = slot index from addGeometry
+      const entry = bmeta.find(m => m.slotId === hit.batchId);
+      if (entry) {
+        guid = entry.guid;
+        console.log('§BATCHED_PICK guid=' + guid + ' batchId=' + hit.batchId + ' storey=' + entry.storey + ' disc=' + entry.disc);
+      }
+    }
+    // S232: InstancedMesh — use instanceId to look up guid from metadata
+    if (!guid && hit.object.isInstancedMesh && hit.instanceId !== undefined && A._instanceMeta[hit.object.id]) {
       const meta = A._instanceMeta[hit.object.id][hit.instanceId];
       if (meta) guid = meta.guid;
     }

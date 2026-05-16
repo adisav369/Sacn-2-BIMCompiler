@@ -14,8 +14,10 @@ function setupScene(A) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));  // §S259: cap at 2x — 3x Retina = 9x fill
   renderer.setClearColor(0x1a1a2e);
   renderer.shadowMap.enabled = false;  // §S259: disabled — shadow pass doubles draw calls on large buildings
-  renderer.toneMapping = THREE.NeutralToneMapping;  // §S259: Khronos PBR Neutral — preserves true material colors
+  // §S260: NeutralToneMapping only exists r164+. AgXToneMapping (r160) is closest — filmic, preserves hues.
+  renderer.toneMapping = THREE.AgXToneMapping || THREE.NeutralToneMapping || THREE.NoToneMapping;
   renderer.toneMappingExposure = 1.0;  // §S259: tune up/down if too dark/bright
+  console.log('§UPGRADE_TONEMAPPING type=' + renderer.toneMapping + ' (AgX=' + THREE.AgXToneMapping + ' Neutral=' + THREE.NeutralToneMapping + ')');
   renderer.localClippingEnabled = true;
   renderer.outputColorSpace = THREE.SRGBColorSpace;  // §S259: proper gamma curve for web display
   // §S258: r156 defaults to physically-correct lights (lux/candela) — intensity 1.0 is near-dark.

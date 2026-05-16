@@ -205,6 +205,12 @@ function setupPanels(A) {
                   return selectedStoreys.indexOf(meta.storey) >= 0;
                 });
               });
+              // §S260: BatchedMesh multi-storey filter
+              A.collectMeshes(function(o) { return o.isBatchedMesh; }).forEach(function(mesh) {
+                A.filterBatchedMesh(mesh, function(meta) {
+                  return selectedStoreys.indexOf(meta.storey) >= 0;
+                });
+              });
               // Highlight selected buttons
               btns.forEach(function(btn, j) { btn.className = indices.indexOf(j) >= 0 ? 'active' : ''; });
               console.log('§STOREY_MULTI storeys=' + selectedStoreys.join(','));
@@ -254,6 +260,14 @@ function setupPanels(A) {
             });
             A.collectMeshes(function(o) { return o.isInstancedMesh; }).forEach(function(mesh) {
               A.filterInstancedMesh(mesh, function(meta) {
+                return !A.hiddenDiscs.has(meta.disc) &&
+                  (A.activeStoreyFilter === null ||
+                   (Array.isArray(A.activeStoreyFilter) ? A.activeStoreyFilter.indexOf(meta.storey) >= 0 : meta.storey === A.activeStoreyFilter));
+              });
+            });
+            // §S260: BatchedMesh multi-disc filter
+            A.collectMeshes(function(o) { return o.isBatchedMesh; }).forEach(function(mesh) {
+              A.filterBatchedMesh(mesh, function(meta) {
                 return !A.hiddenDiscs.has(meta.disc) &&
                   (A.activeStoreyFilter === null ||
                    (Array.isArray(A.activeStoreyFilter) ? A.activeStoreyFilter.indexOf(meta.storey) >= 0 : meta.storey === A.activeStoreyFilter));
@@ -359,6 +373,10 @@ function setupPanels(A) {
     A.collectMeshes(o => o.isInstancedMesh).forEach(mesh => {
       A.filterInstancedMesh(mesh, meta => storey === null || meta.storey === storey);
     });
+    // §S260: BatchedMesh — per-element storey filter via setVisibleAt
+    A.collectMeshes(o => o.isBatchedMesh).forEach(mesh => {
+      A.filterBatchedMesh(mesh, meta => storey === null || meta.storey === storey);
+    });
     document.querySelectorAll('#storey-body button').forEach(btn => {
       const btnStorey = btn.onclick.toString().match(/filterStorey\('(.+?)'\)/)?.[1] || null;
       btn.className = (btnStorey === storey || (storey === null && !btn.onclick.toString().includes("'"))) ? 'active' : '';
@@ -410,6 +428,13 @@ function setupPanels(A) {
     // S232/S239: InstancedMesh — per-instance disc+storey filter
     A.collectMeshes(o => o.isInstancedMesh).forEach(mesh => {
       A.filterInstancedMesh(mesh, meta => {
+        return !A.hiddenDiscs.has(meta.disc) &&
+          (A.activeStoreyFilter === null || meta.storey === A.activeStoreyFilter);
+      });
+    });
+    // §S260: BatchedMesh — per-element disc+storey filter
+    A.collectMeshes(o => o.isBatchedMesh).forEach(mesh => {
+      A.filterBatchedMesh(mesh, meta => {
         return !A.hiddenDiscs.has(meta.disc) &&
           (A.activeStoreyFilter === null || meta.storey === A.activeStoreyFilter);
       });

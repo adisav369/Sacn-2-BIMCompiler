@@ -649,20 +649,24 @@
   <span style="color:#aaa;font-size:9px;margin-left:4px;vertical-align:middle">Report Bug</span>
 </div>
 
-<script src="loader.js?v=9"></script>
+<!-- §S260: Import map for Three.js r160 ESM — resolves bare 'three' specifier -->
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.min.js" } }
+</script>
+<script src="loader.js?v=10"></script>
 <script src="qrcode.min.js?v=1" onerror="console.warn('§LOAD_FAIL qrcode.min.js — QR sharing disabled')"></script>
 <script src="config.js?v=4" onerror="console.warn('§LOAD_FAIL config.js')"></script>
-<script src="scene.js?v=12" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
-<script src="helpers.js?v=3" onerror="console.warn('§LOAD_FAIL helpers.js')"></script>
-<script src="streaming.js?v=20" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
+<script src="scene.js?v=13" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
+<script src="helpers.js?v=4" onerror="console.warn('§LOAD_FAIL helpers.js')"></script>
+<script src="streaming.js?v=21" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
 <script src="dlod.js?v=3" onerror="console.warn('§LOAD_FAIL dlod.js')"></script>
-<script src="panels.js?v=8" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
+<script src="panels.js?v=9" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
 <script src="tools.js?v=9" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
-<script src="picking.js?v=19" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
+<script src="picking.js?v=20" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
 <script src="tour.js?v=3" onerror="console.warn('§LOAD_FAIL tour.js')"></script>
 <script src="clash_report.js?v=1" onerror="console.warn('§LOAD_FAIL clash_report.js')"></script>
 <script src="clash_snag.js?v=1" onerror="console.warn('§LOAD_FAIL clash_snag.js')"></script>
-<script src="measure.js?v=40" onerror="console.warn('§LOAD_FAIL measure.js')"></script>
+<script src="measure.js?v=41" onerror="console.warn('§LOAD_FAIL measure.js')"></script>
 <script src="sitecam.js?v=6" onerror="console.warn('§LOAD_FAIL sitecam.js')"></script>
 <script src="issues.js?v=4" onerror="console.warn('§LOAD_FAIL issues.js')"></script>
 <script src="excel.js?v=4" onerror="console.warn('§LOAD_FAIL excel.js')"></script>
@@ -681,7 +685,7 @@
 <script src="routewalker.js?v=1" onerror="console.warn('§LOAD_FAIL routewalker.js — MEP generation disabled')"></script>
 <script src="grid_dims.js?v=6"></script>
 <script src="grid_config.js?v=2" onerror="console.warn('[GridConfig] grid_config.js skipped')"></script>
-<script src="grid_views.js?v=8" onerror="console.warn('[GridViews] grid_views.js skipped')"></script>
+<script src="grid_views.js?v=9" onerror="console.warn('[GridViews] grid_views.js skipped')"></script>
 <script src="grid_door_arcs.js?v=6" onerror="console.warn('[DoorArcs] grid_door_arcs.js skipped')"></script>
 <script src="section_cut.js?v=7" onerror="console.warn('[SectionCut] section_cut.js skipped')"></script>
 <script src="elevation.js?v=1" onerror="console.warn('[Elevation] elevation.js skipped')"></script>
@@ -740,7 +744,7 @@ if(new URLSearchParams(location.search).get('embedded')!=='true'){
 </script>
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js?v=331')
+  navigator.serviceWorker.register('sw.js?v=333')
     .then(function(r){console.log('§SW_REG scope='+r.scope)})
     .catch(function(e){console.warn('§SW_REG_FAIL',e)});
 }

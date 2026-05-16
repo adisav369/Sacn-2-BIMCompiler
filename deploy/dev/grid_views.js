@@ -229,6 +229,25 @@ var GridViews = (function() {
         clipped++;
       }
     });
+    // §S260: BatchedMesh — apply clip plane and per-element hide via setVisibleAt
+    A.collectMeshes(function(o) { return o.isBatchedMesh; }).forEach(function(bm) {
+      bm.material.clippingPlanes = [_floorClipPlane];
+      bm.material.clipShadows = true;
+      bm.material.needsUpdate = true;
+      var meta = A._batchMeta && A._batchMeta[bm.id];
+      if (meta) {
+        for (var i = 0; i < meta.length; i++) {
+          var action = classifyMesh(meta[i].ifcClass || '', retainSet, hideSet);
+          if (action === 'hide') {
+            bm.setVisibleAt(meta[i].slotId, false);
+            _hiddenMeshes.push({ _batchRef: bm, _slotId: meta[i].slotId });
+            hidden++;
+          } else {
+            clipped++;
+          }
+        }
+      }
+    });
 
     log('§VIEW_CLIP apply cutZ=' + cutZ.toFixed(2) + ' cutY=' + cutY.toFixed(2) +
         ' clipped=' + clipped + ' retained=' + retained + ' hidden=' + hidden + ' faded=' + faded);
@@ -238,14 +257,21 @@ var GridViews = (function() {
   function clearFloorClip(A) {
     if (!_floorClipPlane && !_hiddenMeshes.length && !_fadedMeshes.length) return;
 
-    A.collectMeshes(function(o) { return o.isMesh; }).forEach(function(obj) {
+    A.collectMeshes(function(o) { return o.isMesh || o.isBatchedMesh; }).forEach(function(obj) {
       obj.material.clippingPlanes = null;
       obj.material.clipShadows = false;
       obj.material.needsUpdate = true;
     });
 
     for (var i = 0; i < _hiddenMeshes.length; i++) {
-      _hiddenMeshes[i].visible = true;
+      var hm = _hiddenMeshes[i];
+      // §S260: Restore BatchedMesh hidden elements
+      if (hm._batchRef) {
+        hm._batchRef.setVisibleAt(hm._slotId, true);
+        hm._batchRef.visible = true;
+      } else {
+        hm.visible = true;
+      }
     }
 
     // Restore faded meshes (slabs) to original opacity
