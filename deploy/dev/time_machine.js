@@ -88,6 +88,8 @@
   var _camLogTick = 0;    // throttle §CAM_FOLLOW logging
   var _shadowLogTick = 0; // throttle §SHADOW_FRONTIER logging
   var _shadowSetup = false; // one-time shadow camera config
+  var LARGE_BUILDING = 50000; // §S259: threshold for disabling expensive TM effects
+  var _isLargeBuilding = false;
 
   var _zeroMatrix = null; // lazy init
   var _savedInstanceMatrices = {}; // meshId → { idx → Matrix4 }
@@ -282,12 +284,11 @@
             _frontierPositions.push(swp);
             if (_camFollow) _guidPosMap[g] = swp;
             // Sparks for steel
-            if (!_isMobileTM && _playing && frontier[g].isSteel && frontier[g].t < 0.5 && Math.random() < 0.3) {
+            if (!_isMobileTM && !_isLargeBuilding && _playing && frontier[g].isSteel && frontier[g].t < 0.5 && Math.random() < 0.3) {
               spawnSparks(swp, app.scene);
             }
           } else if (isPlaced || isRecent) {
-            obj.receiveShadow = true;
-            _shadowReceivers++;
+            obj.receiveShadow = false;  // §S259: shadows globally disabled
             obj.castShadow = false;
             _placedMeshes.push(obj);
             // Only getWorldPosition for preview GUIDs (not all 100K meshes)
@@ -475,7 +476,7 @@
       }
     }
 
-    applySunCycle(cursorMs);
+    if (!_isLargeBuilding) applySunCycle(cursorMs);
     if (_ganttVisible) drawGanttMini();
     if (_dashVisible) drawDashboard();
 
@@ -1750,8 +1751,10 @@
       viewerStatus('Time Machine: ' + _ops.length + ' elements scheduled');
     }
     _active = true;
-    // ── One-time shadow camera setup ──
-    if (!_shadowSetup && app.sun && app.sun.shadow) {
+    _isLargeBuilding = (app.activeBuildingTotal || 0) > LARGE_BUILDING;
+    if (_isLargeBuilding) console.log('§S259_TM_LITE elements=' + app.activeBuildingTotal + ' — sparks/sunCycle disabled (>50K)');
+    // ── One-time shadow camera setup — §S259: skipped, shadows globally disabled ──
+    if (false && !_shadowSetup && app.sun && app.sun.shadow) {
       app.sun.shadow.mapSize.width = 2048;
       app.sun.shadow.mapSize.height = 2048;
       app.sun.shadow.camera.near = 1;
