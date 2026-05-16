@@ -49,6 +49,67 @@ function setupStreaming(A) {
       A.activeBuilding = nearest;
       A.activeBuildingTotal = A.streamQueue.length;
       console.log(`[S192] §DS_RESUME bld=${nearest} at=${A.streamIdx}/${A.streamQueue.length}`);
+    } else if (A._useRangeStream && A._rangeDb) {
+      // §S260: Async stream queue from range DB — no full download needed
+      A.streamQueue = [];
+      A.streamIdx = 0;
+      A.activeBuilding = nearest;
+      A.status.textContent = 'Querying elements via streaming...';
+      var _sqT0 = performance.now();
+      (async function() {
+        try {
+          // Probe bbox columns
+          if (A._hasBbox === undefined) {
+            try { await A._rangeDb.exec("SELECT bbox_x FROM element_transforms LIMIT 1"); A._hasBbox = true; }
+            catch(e) { A._hasBbox = false; }
+          }
+          var bboxCols = A._hasBbox ? ', t.bbox_x, t.bbox_y, t.bbox_z' : '';
+          var result = await A._rangeDb.exec(`
+            SELECT m.guid, i.geometry_hash, m.material_rgba, m.discipline,
+                   t.center_x, t.center_y, t.center_z,
+                   t.rotation_x, t.rotation_y, t.rotation_z,
+                   m.storey, m.ifc_class${bboxCols}
+            FROM elements_meta m
+            JOIN element_instances i ON m.guid = i.guid
+            JOIN element_transforms t ON t.guid = m.guid
+            WHERE m.building = '${nearest.replace(/'/g,"''")}'
+              AND i.geometry_hash IS NOT NULL
+              AND m.ifc_class != 'IfcOpeningElement'
+          `);
+          var rows = (result && result.length > 0) ? result[0].values : [];
+          console.log(`§RANGE_STREAM_QUEUE bld=${nearest} elements=${rows.length} ms=${(performance.now() - _sqT0).toFixed(0)}`);
+          if (!rows.length) {
+            console.log(`[S192] §DS_EMPTY bld=${nearest} — no streamable elements`);
+            return;
+          }
+
+          // §S260: Also replicate metadata for this building into sync DB for panels etc.
+          var _repT0 = performance.now();
+          var _insertMeta = A.db.prepare('INSERT OR IGNORE INTO elements_meta VALUES (?,?,?,?,?)');
+          var _insertTx = A.db.prepare('INSERT OR IGNORE INTO element_transforms VALUES (?,?,?,?,?,?,?)');
+          var _insertInst = A.db.prepare('INSERT OR IGNORE INTO element_instances VALUES (?,?)');
+          for (var ri = 0; ri < rows.length; ri++) {
+            var r = rows[ri];
+            // r: [guid, hash, rgba, disc, cx, cy, cz, rx, ry, rz, storey, ifcClass, bx?, by?, bz?]
+            _insertMeta.run([r[0], nearest, r[10], r[3], r[11]]);
+            _insertTx.run([r[0], r[4], r[5], r[6], A._hasBbox ? r[12] : null, A._hasBbox ? r[13] : null, A._hasBbox ? r[14] : null]);
+            _insertInst.run([r[0], r[1]]);
+          }
+          _insertMeta.free(); _insertTx.free(); _insertInst.free();
+          console.log(`§RANGE_LOCAL_REPLICATE bld=${nearest} rows=${rows.length} ms=${(performance.now() - _repT0).toFixed(0)}`);
+
+          A.streamQueue = rows;
+          A.streamIdx = 0;
+          A.activeBuildingTotal = rows.length;
+          A._drawBboxPlaceholders(rows);
+          A.streaming = true;
+          A.status.textContent = `Streaming ${rows.length.toLocaleString()} elements...`;
+          console.log(`[S192] §DS_QUEUED bld=${nearest} elements=${rows.length}`);
+        } catch(e) {
+          console.error(`§RANGE_STREAM_QUEUE_FAIL bld=${nearest} err=${e.message}`);
+          A.status.textContent = 'Stream query failed: ' + e.message;
+        }
+      })();
     } else {
       A.streamQueue = [];
       A.streamIdx = 0;
@@ -708,23 +769,53 @@ function setupStreaming(A) {
     console.log(`[S192] §DB_SPLIT_DETECT meta=${metaUrl} found=${_splitMode}`);
 
     if (_splitMode) {
-      // ── Two-phase: meta.db first (small, instant bboxes), geo.db background ──
+      // ── §S260: Two-phase — meta.db full download (small), geo.db via range requests ──
       A.status.textContent = 'Fetching metadata...';
       var metaBuf = await A.cachedFetch(metaUrl);
       A.db = new SQL.Database(new Uint8Array(metaBuf));
+      A.libDb = A.db;  // metadata queries work immediately on sync DB
       console.log(`[S192] §DB_META_LOADED size=${(metaBuf.byteLength/1024/1024).toFixed(1)}MB`);
-      A.status.textContent = `Metadata loaded (${(metaBuf.byteLength/1024/1024).toFixed(0)}MB). Showing placeholders...`;
-      // A.libDb stays null — streamTick will pause at geometry phase
-      // Background-fetch geo.db → A.libDb (streaming resumes automatically)
+
+      // Open geo.db via range requests if httpvfs available, else full download
       var geoUrl = A.DB_URL.replace('_extracted.db', '_geo.db');
-      A.cachedFetch(geoUrl).then(function(geoBuf) {
-        A.libDb = new SQL.Database(new Uint8Array(geoBuf));
-        console.log(`[S192] §DB_GEO_LOADED size=${(geoBuf.byteLength/1024/1024).toFixed(1)}MB`);
-        A.status.textContent = `Geometry loaded (${(geoBuf.byteLength/1024/1024).toFixed(0)}MB). Streaming meshes...`;
-      }).catch(function(e) {
-        console.error(`[S192] §DB_GEO_FAIL ${e.message} — falling back to single DB`);
-        A.libDb = A.db;
-      });
+      var _geoAbsUrl = new URL(geoUrl, location.href).href;
+      if (typeof createDbWorker === 'function') {
+        A.status.textContent = `Metadata loaded (${(metaBuf.byteLength/1024/1024).toFixed(0)}MB). Opening geometry via streaming...`;
+        try {
+          var _geoT0 = performance.now();
+          var _workerUrl = new URL('lib/sqlite.worker.js', location.href).href;
+          var _wasmUrl = new URL('lib/httpvfs-sql-wasm.wasm', location.href).href;
+          var _httpvfs = await createDbWorker(
+            [{ from: 'inline', config: { serverMode: 'full', url: _geoAbsUrl, requestChunkSize: 65536 } }],
+            _workerUrl, _wasmUrl
+          );
+          A._rangeDb = _httpvfs.db;
+          A._useRangeStream = true;
+          // libDb stays as sync meta DB — streamTick geometry path uses _rangeDb
+          console.log(`§SPLIT_GEO_RANGE_OPEN ms=${(performance.now() - _geoT0).toFixed(0)} url=${_geoAbsUrl}`);
+          A.status.textContent = `Geometry streaming ready. Loading elements...`;
+        } catch(e) {
+          console.warn(`§SPLIT_GEO_RANGE_FAIL ${e.message} — downloading full geo DB`);
+          A._useRangeStream = false;
+          A.cachedFetch(geoUrl).then(function(geoBuf) {
+            A.libDb = new SQL.Database(new Uint8Array(geoBuf));
+            console.log(`[S192] §DB_GEO_LOADED size=${(geoBuf.byteLength/1024/1024).toFixed(1)}MB`);
+          }).catch(function(e2) {
+            console.error(`[S192] §DB_GEO_FAIL ${e2.message}`);
+          });
+        }
+      } else {
+        // No httpvfs — full download of geo.db
+        A.status.textContent = `Metadata loaded. Downloading geometry...`;
+        A.cachedFetch(geoUrl).then(function(geoBuf) {
+          A.libDb = new SQL.Database(new Uint8Array(geoBuf));
+          console.log(`[S192] §DB_GEO_LOADED size=${(geoBuf.byteLength/1024/1024).toFixed(1)}MB`);
+          A.status.textContent = `Geometry loaded (${(geoBuf.byteLength/1024/1024).toFixed(0)}MB). Streaming meshes...`;
+        }).catch(function(e) {
+          console.error(`[S192] §DB_GEO_FAIL ${e.message} — falling back to single DB`);
+          A.libDb = A.db;
+        });
+      }
     } else {
       // ── Single DB — check size to decide: full download OR range-request streaming ──
       var _dbSize = 0;
@@ -772,38 +863,13 @@ function setupStreaming(A) {
           }
           console.log(`§RANGE_META_DONE centres=${Object.keys(A.buildingCentres).length} ms=${(performance.now() - _rangeT0).toFixed(0)}`);
 
-          // We need a sync A.db for dbQuery calls throughout the app.
-          // Solution: create an in-memory sql.js DB and replicate the metadata tables.
-          A.db = new SQL.Database();
+          // §S260: NO full replication — fetch only what's needed for camera + stream queue.
+          // dbQuery calls elsewhere will use A.dbQueryAsync() fallback.
+          A.db = new SQL.Database();  // empty sync DB — panels etc. will use async fallback
           A.db.run('CREATE TABLE IF NOT EXISTS elements_meta (guid TEXT, building TEXT, storey TEXT, discipline TEXT, ifc_class TEXT)');
           A.db.run('CREATE TABLE IF NOT EXISTS element_transforms (guid TEXT, center_x REAL, center_y REAL, center_z REAL, bbox_x REAL, bbox_y REAL, bbox_z REAL)');
-
-          // Fetch core metadata into local sync DB
-          A.status.textContent = 'Caching metadata locally...';
-          var _elemRows = await A._rangeDb.exec(
-            'SELECT guid, building, storey, discipline, ifc_class FROM elements_meta'
-          );
-          if (_elemRows && _elemRows.length > 0) {
-            var _insertMeta = A.db.prepare('INSERT INTO elements_meta VALUES (?,?,?,?,?)');
-            for (var ei = 0; ei < _elemRows[0].values.length; ei++) {
-              _insertMeta.run(_elemRows[0].values[ei]);
-            }
-            _insertMeta.free();
-          }
-          var _txRows = await A._rangeDb.exec(
-            'SELECT guid, center_x, center_y, center_z, bbox_x, bbox_y, bbox_z FROM element_transforms'
-          );
-          if (_txRows && _txRows.length > 0) {
-            var _insertTx = A.db.prepare('INSERT INTO element_transforms VALUES (?,?,?,?,?,?,?)');
-            for (var ti = 0; ti < _txRows[0].values.length; ti++) {
-              _insertTx.run(_txRows[0].values[ti]);
-            }
-            _insertTx.free();
-          }
-
-          var _metaSize = (_elemRows && _elemRows.length > 0 ? _elemRows[0].values.length : 0);
-          console.log(`§RANGE_LOCAL_CACHE elements=${_metaSize} transforms=${_txRows && _txRows.length > 0 ? _txRows[0].values.length : 0} ms=${(performance.now() - _rangeT0).toFixed(0)}`);
-          A.status.textContent = `Metadata cached (${_metaSize} elements). Streaming geometry on demand...`;
+          A.db.run('CREATE TABLE IF NOT EXISTS element_instances (guid TEXT, geometry_hash TEXT)');
+          console.log(`§RANGE_SKIP_REPLICATION — using async queries instead, ms=${(performance.now() - _rangeT0).toFixed(0)}`);
 
           // Mark range mode — streamTick will use A._rangeDb for geometry
           A._useRangeStream = true;
