@@ -182,7 +182,7 @@ function setupTools(A) {
     document.body.style.background = '#' + bg.toString(16).padStart(6, '0');
     document.body.style.color = textColor;
     A.renderer.setClearColor(bg);
-    A.ground.material.color.setHex(A.lightTheme ? 0xdddddd : 0x222233);
+    if (!A._whiteBg) A.ground.material.color.setHex(A.lightTheme ? 0xdddddd : 0x222233);
     document.querySelectorAll('#hud,#search-box,#info-panel,#storey-panel,#disc-panel,#status').forEach(el => {
       el.style.background = panelBg;
       el.style.borderColor = A.lightTheme ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.08)';
@@ -466,11 +466,24 @@ function setupTools(A) {
         A.ground.receiveShadow = true;
         if (A.db) {
           try {
-            var zr = A.db.exec('SELECT MIN(center_z) FROM element_transforms');
-            if (zr.length && zr[0].values[0][0] != null) {
-              var p = A.ifc2three(0, 0, zr[0].values[0][0] - 0.5);
-              A.ground.position.y = p.y;
+            // §S260b: Ground = AVG of thin floor slabs near z≈0 (robust against outliers)
+            var _gLvl = 0, _gSrc = '?';
+            // 1. AVG of thin slabs near ground (z -0.5..1m) — most robust
+            var zr = A.db.exec("SELECT AVG(t.center_z - t.bbox_z/2) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE m.ifc_class='IfcSlab' AND t.center_z >= -0.5 AND t.center_z <= 1.0 AND t.bbox_z IS NOT NULL AND t.bbox_z < 0.5");
+            if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'avg-slab'; }
+            // 2. Any Ground Floor element center
+            if (_gSrc === '?') {
+              zr = A.db.exec("SELECT AVG(t.center_z - COALESCE(t.bbox_z/2, 0)) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE m.storey='Ground Floor'");
+              if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'GF-avg'; }
             }
+            // 3. Absolute fallback — lowest element center
+            if (_gSrc === '?') {
+              zr = A.db.exec('SELECT MIN(center_z) FROM element_transforms');
+              if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'min-z'; }
+            }
+            var p = A.ifc2three(0, 0, _gLvl);
+            A.ground.position.y = p.y;
+            console.log('§GROUND_Y src=' + _gSrc + ' z=' + _gLvl.toFixed(2) + ' y=' + p.y.toFixed(2));
           } catch(e) {}
         }
       }
@@ -504,8 +517,16 @@ function setupTools(A) {
     if (A._whiteBg) {
       A._savedClearColor = A.renderer.getClearColor(new THREE.Color()).getHex();
       A.renderer.setClearColor(0xffffff);
+      // §S260b: Ground also white for seamless print look, shadow still visible
+      if (A.ground) {
+        A._savedGroundColor = A.ground.material.color.getHex();
+        A.ground.material.color.setHex(0xffffff);
+      }
     } else {
       A.renderer.setClearColor(A._savedClearColor != null ? A._savedClearColor : 0x1a1a2e);
+      if (A.ground) {
+        A.ground.material.color.setHex(A._savedGroundColor != null ? A._savedGroundColor : 0x222233);
+      }
     }
     var btn = document.getElementById('bg-btn');
     btn.style.background = A._whiteBg ? '#fff' : '#333';
@@ -548,14 +569,23 @@ function setupTools(A) {
       // Show ground plane for night scene
       if (A.ground) {
         A.ground.visible = true;
-        A.ground.material.color.setHex(0x0a0a15);
+        if (!A._whiteBg) A.ground.material.color.setHex(0x0a0a15);
         if (A.db) {
           try {
-            var zr = A.db.exec('SELECT MIN(center_z) FROM element_transforms');
-            if (zr.length && zr[0].values[0][0] != null) {
-              var p = A.ifc2three(0, 0, zr[0].values[0][0] - 0.5);
-              A.ground.position.y = p.y;
+            // §S260b: Ground = AVG of thin floor slabs near z≈0 (same logic as shadow toggle)
+            var _gLvl = 0, _gSrc = '?';
+            var zr = A.db.exec("SELECT AVG(t.center_z - t.bbox_z/2) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE m.ifc_class='IfcSlab' AND t.center_z >= -0.5 AND t.center_z <= 1.0 AND t.bbox_z IS NOT NULL AND t.bbox_z < 0.5");
+            if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'avg-slab'; }
+            if (_gSrc === '?') {
+              zr = A.db.exec("SELECT AVG(t.center_z - COALESCE(t.bbox_z/2, 0)) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE m.storey='Ground Floor'");
+              if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'GF-avg'; }
             }
+            if (_gSrc === '?') {
+              zr = A.db.exec('SELECT MIN(center_z) FROM element_transforms');
+              if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'min-z'; }
+            }
+            var p = A.ifc2three(0, 0, _gLvl);
+            A.ground.position.y = p.y;
           } catch(e) {}
         }
       }
@@ -656,7 +686,7 @@ function setupTools(A) {
       // Restore ground
       if (A.ground && !A._shadowOn) {
         A.ground.visible = false;
-        A.ground.material.color.setHex(0x222233);
+        A.ground.material.color.setHex(A._whiteBg ? 0xffffff : 0x222233);
       }
       console.log('§NIGHT_MODE off');
       btn.style.background = '#1a1a3e';

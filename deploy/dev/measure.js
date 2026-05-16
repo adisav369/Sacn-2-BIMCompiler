@@ -154,8 +154,8 @@ function setupMeasure(A) {
     setTimeout(_nextIndex, 5);
   };
 
-  // Eager start: kick off index+R-tree building as soon as DB is loaded
-  // S251: build eagerly on mobile too — R-tree rules out 95% of bbox pairs
+  // §S260b: Build R-tree eagerly once A.db has element_transforms (meta.db loaded)
+  // Uses setTimeout batches so it yields to geo.db download in parallel
   setTimeout(function _waitForDb() {
     if (A.db) { A._ensureClashIndexes(); }
     else { setTimeout(_waitForDb, 500); }

@@ -132,6 +132,21 @@ function setupScene(A) {
     });
   };
 
+  // §S260b: Check if URL is in cache (returns buffer or null, no network)
+  A._checkCache = async function(url) {
+    try {
+      const cacheDb = await A.openCacheDB();
+      if (!cacheDb) return null;
+      const cached = await new Promise((resolve) => {
+        const tx = cacheDb.transaction(A.CACHE_STORE, 'readonly');
+        const req = tx.objectStore(A.CACHE_STORE).get(url);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      });
+      return cached;
+    } catch(e) { return null; }
+  };
+
   A.cachedFetch = async function(url) {
     const cacheDb = await A.openCacheDB();
     if (cacheDb) {

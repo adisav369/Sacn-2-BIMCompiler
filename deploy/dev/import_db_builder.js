@@ -70,7 +70,74 @@ function buildImportDBs(SQL, data) {
   console.log('[S220] §DB_BUILD single_db: elements=' + data.elements.length + ' transforms=' + data.transforms.length + ' instances=' + data.geometries.length + ' geometries=' + data.geometries.length);
 
   var buf = db.export().buffer;
+
+  // S260b: Split DB for large buildings (>20K elements) — deployment optimization
+  var metaDb = null, geoDb = null;
+  if (data.elements.length > 15000) {
+    // ── metaDb: everything EXCEPT geometry BLOBs ──
+    var mDb = new SQL.Database();
+    // Copy schema + data for non-geometry tables
+    var allTables = db.exec("SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT IN ('component_geometries','base_geometries')");
+    if (allTables.length > 0) {
+      for (var ti = 0; ti < allTables[0].values.length; ti++) {
+        var tName = allTables[0].values[ti][0];
+        var tSql = allTables[0].values[ti][1];
+        mDb.run(tSql);
+        // Copy rows
+        var rows = db.exec('SELECT * FROM ' + tName);
+        if (rows.length > 0 && rows[0].values.length > 0) {
+          var cols = rows[0].columns;
+          var placeholders = cols.map(function() { return '?'; }).join(',');
+          var insertSql = 'INSERT INTO ' + tName + ' VALUES (' + placeholders + ')';
+          mDb.run('BEGIN');
+          var mStmt = mDb.prepare(insertSql);
+          for (var ri = 0; ri < rows[0].values.length; ri++) {
+            mStmt.run(rows[0].values[ri]);
+          }
+          mStmt.free();
+          mDb.run('COMMIT');
+        }
+      }
+    }
+    // Note: ifc_properties (if exists) is already included via the allTables query above
+    // since it is NOT in the exclusion list (component_geometries, base_geometries)
+    metaDb = mDb.export().buffer;
+    mDb.close();
+
+    // ── geoDb: ONLY geometry tables ──
+    var gDb = new SQL.Database();
+    var geoTables = db.exec("SELECT name, sql FROM sqlite_master WHERE type='table' AND name IN ('component_geometries','base_geometries')");
+    if (geoTables.length > 0) {
+      for (var gi = 0; gi < geoTables[0].values.length; gi++) {
+        var gName = geoTables[0].values[gi][0];
+        var gSql = geoTables[0].values[gi][1];
+        gDb.run(gSql);
+        var gRows = db.exec('SELECT * FROM ' + gName);
+        if (gRows.length > 0 && gRows[0].values.length > 0) {
+          var gCols = gRows[0].columns;
+          var gPh = gCols.map(function() { return '?'; }).join(',');
+          gDb.run('BEGIN');
+          var gStmt = gDb.prepare('INSERT INTO ' + gName + ' VALUES (' + gPh + ')');
+          for (var ri = 0; ri < gRows[0].values.length; ri++) {
+            gStmt.run(gRows[0].values[ri]);
+          }
+          gStmt.free();
+          gDb.run('COMMIT');
+        }
+      }
+    }
+    geoDb = gDb.export().buffer;
+    gDb.close();
+
+    var metaSize = (metaDb.byteLength / 1024 / 1024).toFixed(1);
+    var geoSize = (geoDb.byteLength / 1024 / 1024).toFixed(1);
+    console.log('[S260b] §DB_SPLIT elements=' + data.elements.length + ' meta=' + metaSize + 'MB geo=' + geoSize + 'MB');
+  }
+
   db.close();
 
-  return { extractedDb: buf, libraryDb: buf };
+  var result = { extractedDb: buf, libraryDb: buf };
+  if (metaDb) result.metaDb = metaDb;
+  if (geoDb) result.geoDb = geoDb;
+  return result;
 }

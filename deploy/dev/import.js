@@ -104,6 +104,29 @@ function setupImport(A) {
     });
   }
 
+  // ── S260b: Download split DBs when present ──
+  function _downloadSplitDBs(dbs, buildingName) {
+    if (!dbs.metaDb || !dbs.geoDb) return;
+    var baseName = buildingName.replace(/\.(ifc|dae|obj|glb|gltf|3ds|fbx|stl)$/i, '');
+    // meta DB download
+    var metaBlob = new Blob([dbs.metaDb], { type: 'application/octet-stream' });
+    var metaLink = document.createElement('a');
+    metaLink.href = URL.createObjectURL(metaBlob);
+    metaLink.download = baseName + '_meta.db';
+    metaLink.click();
+    URL.revokeObjectURL(metaLink.href);
+    // geo DB download
+    var geoBlob = new Blob([dbs.geoDb], { type: 'application/octet-stream' });
+    var geoLink = document.createElement('a');
+    geoLink.href = URL.createObjectURL(geoBlob);
+    geoLink.download = baseName + '_geo.db';
+    geoLink.click();
+    URL.revokeObjectURL(geoLink.href);
+    console.log('[S260b] §SPLIT_DOWNLOAD meta=' + baseName + '_meta.db (' +
+      (dbs.metaDb.byteLength / 1024).toFixed(0) + 'KB) geo=' + baseName + '_geo.db (' +
+      (dbs.geoDb.byteLength / 1024).toFixed(0) + 'KB)');
+  }
+
   // ── Process IFC file ──
   A.importIFC = async function(file) {
     const status = document.getElementById('import-status');
@@ -156,7 +179,12 @@ function setupImport(A) {
               extractedDb: dbs.extractedDb,
               libraryDb: dbs.extractedDb,  // same buffer — viewer reads libDb from here
             };
+            if (dbs.metaDb) record.metaDb = dbs.metaDb;
+            if (dbs.geoDb) record.geoDb = dbs.geoDb;
             await saveImport(file.name, record);
+
+            // S260b: Download split DBs for large buildings
+            _downloadSplitDBs(dbs, file.name);
 
             console.log('[S220] §IMPORT_SAVED key=' + file.name +
               ' db=' + (dbs.extractedDb.byteLength / 1024).toFixed(0) + 'KB');
@@ -279,8 +307,13 @@ function setupImport(A) {
         extractedDb: dbs.extractedDb,
         libraryDb: dbs.extractedDb,
       };
+      if (dbs.metaDb) record.metaDb = dbs.metaDb;
+      if (dbs.geoDb) record.geoDb = dbs.geoDb;
       var key = buildingName + '.ifc';
       await saveImport(key, record);
+
+      // S260b: Download split DBs for large merged buildings
+      _downloadSplitDBs(dbs, buildingName);
 
       console.log('[S220] §MULTI_IMPORT_DONE building=' + buildingName +
         ' elements=' + totalElements + ' files=' + files.length +
@@ -386,7 +419,12 @@ function setupImport(A) {
               extractedDb: dbs.extractedDb,
               libraryDb: dbs.extractedDb,
             };
+            if (dbs.metaDb) record.metaDb = dbs.metaDb;
+            if (dbs.geoDb) record.geoDb = dbs.geoDb;
             await saveImport(file.name, record);
+
+            // S260b: Download split DBs for large mesh imports
+            _downloadSplitDBs(dbs, file.name);
 
             console.log('[S228] §MESH_SAVED key=' + file.name +
               ' db=' + (dbs.extractedDb.byteLength / 1024).toFixed(0) + 'KB');

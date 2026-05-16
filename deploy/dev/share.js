@@ -98,6 +98,23 @@
     URL.revokeObjectURL(link.href);
     statusEl.textContent = 'Saved: ' + filename;
     console.log('§SHARE saveAsDB file=' + filename + ' size=' + (dbBuf.byteLength / 1024).toFixed(0) + 'KB');
+    // S260b: Also download split DBs if present in record
+    if (record.metaDb && record.geoDb) {
+      var baseName = filename.replace('_extracted.db', '');
+      var metaBlob = new Blob([record.metaDb], { type: 'application/octet-stream' });
+      var ml = document.createElement('a');
+      ml.href = URL.createObjectURL(metaBlob);
+      ml.download = baseName + '_meta.db';
+      ml.click();
+      URL.revokeObjectURL(ml.href);
+      var geoBlob = new Blob([record.geoDb], { type: 'application/octet-stream' });
+      var gl = document.createElement('a');
+      gl.href = URL.createObjectURL(geoBlob);
+      gl.download = baseName + '_geo.db';
+      gl.click();
+      URL.revokeObjectURL(gl.href);
+      console.log('§SHARE saveAsDB split: ' + baseName + '_meta.db + ' + baseName + '_geo.db');
+    }
   }
 
   // ── Save as IFC (delegates to existing exportIFC) ──

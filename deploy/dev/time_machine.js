@@ -87,7 +87,6 @@
   var _camUserInteracted = 0; // timestamp of last manual orbit interaction
   var _camLogTick = 0;    // throttle §CAM_FOLLOW logging
   var _shadowLogTick = 0; // throttle §SHADOW_FRONTIER logging
-  var _shadowSetup = false; // one-time shadow camera config
   var LARGE_BUILDING = 50000; // §S259: threshold for disabling expensive TM effects
   var _isLargeBuilding = false;
 
@@ -272,12 +271,12 @@
         }
 
         // Shadow + camera (merged — was 3 separate traversals)
+        // §S260b: Only set shadow flags if Sunglass shadow is ON
         if (obj.isMesh) {
           if (isFrontier) {
-            obj.castShadow = true;
-            obj.receiveShadow = true;
-            _shadowCasters++;
-            _shadowReceivers++;
+            obj.castShadow = !!app._shadowOn;
+            obj.receiveShadow = !!app._shadowOn;
+            if (app._shadowOn) { _shadowCasters++; _shadowReceivers++; }
             var swp = new THREE.Vector3();
             obj.getWorldPosition(swp);
             _frontierCentroids.push(swp);
@@ -309,6 +308,27 @@
           }
         }
         return;
+      }
+
+      // ── BatchedMesh (per-slot GUIDs in _batchMeta) — S260 ──
+      if (obj.isBatchedMesh && app._batchMeta && app._batchMeta[obj.id]) {
+        var bmetas = app._batchMeta[obj.id];
+        var anyVis = false;
+        for (var bi = 0; bi < bmetas.length; bi++) {
+          var bg = bmetas[bi].guid;
+          var sid = bmetas[bi].slotId;
+          if (placed[bg] || frontier[bg] || recent[bg] !== undefined) {
+            obj.setVisibleAt(sid, true);
+            anyVis = true;
+          } else {
+            obj.setVisibleAt(sid, false);
+          }
+        }
+        obj.visible = anyVis;
+        if (app._shadowOn) {
+          obj.castShadow = anyVis;
+          obj.receiveShadow = anyVis;
+        }
       }
 
       // ── InstancedMesh (per-instance GUIDs in _instanceMeta) ──
@@ -351,9 +371,8 @@
     });
 
     // ── Shadow promotion pass: nearby placed meshes → castShadow (cap 500) ──
-    // Uses _placedMeshes collected above — no extra traverse needed.
-    // Stride sampling: at 48K+ placed meshes, scan every Nth mesh (max ~1000 scanned).
-    if (_frontierCentroids.length && _shadowCasters < 500) {
+    // §S260b: Only when Sunglass shadow is ON
+    if (app._shadowOn && _frontierCentroids.length && _shadowCasters < 500) {
       var maxExtra = 500 - _shadowCasters;
       var stride = Math.max(1, Math.floor(_placedMeshes.length / 1000));
       for (var spi = 0; spi < _placedMeshes.length && maxExtra > 0; spi += stride) {
@@ -658,10 +677,12 @@
 
   // ── Scene state save/restore ──
   var _savedInstanceState = {}; // meshId → { vis, matrices: { idx → Matrix4 } }
+  var _savedBatchState = {};    // §S260b: meshId → { vis, slots: [bool, ...] }
 
   function saveVisibility() {
     _savedVisibility = [];
     _savedInstanceState = {};
+    _savedBatchState = {};
     var app = A();
     if (!app || !app.scene) return;
     app.scene.traverse(function(obj) {
@@ -678,6 +699,15 @@
           matrices[i] = tmpM.clone();
         }
         _savedInstanceState[obj.id] = { vis: obj.visible, matrices: matrices, obj: obj };
+      }
+      // §S260b: Save BatchedMesh slot visibility
+      if (obj.isBatchedMesh && app._batchMeta && app._batchMeta[obj.id]) {
+        var bmetas = app._batchMeta[obj.id];
+        var slots = [];
+        for (var si = 0; si < bmetas.length; si++) {
+          slots.push(obj.getVisibleAt ? obj.getVisibleAt(bmetas[si].slotId) : true);
+        }
+        _savedBatchState[obj.id] = { vis: obj.visible, slots: slots, obj: obj };
       }
     });
   }
@@ -696,19 +726,33 @@
     }
     _savedInstanceState = {};
     _savedInstanceMatrices = {};
-    // Restore single mesh visibility + clear shadow flags
+    // §S260b: Restore BatchedMesh slot visibility
+    for (var bmId in _savedBatchState) {
+      var bs = _savedBatchState[bmId];
+      var bmetas = app._batchMeta && app._batchMeta[bmId];
+      if (bmetas) {
+        for (var si = 0; si < bmetas.length; si++) {
+          bs.obj.setVisibleAt(bmetas[si].slotId, bs.slots[si] !== false);
+        }
+      }
+      bs.obj.visible = bs.vis;
+    }
+    _savedBatchState = {};
+    // Restore single mesh visibility — shadow flags return to Sunglass state
     _savedVisibility.forEach(function(s) {
       s.obj.visible = s.vis;
-      s.obj.castShadow = false;
-      s.obj.receiveShadow = false;
     });
     _savedVisibility = [];
-    // Clear shadows on all scene meshes (including instanced)
+    // §S260b: Restore shadow flags to Sunglass state (not blindly clear)
     var app = A();
     if (app && app.scene) {
+      var shOn = !!app._shadowOn;
       app.scene.traverse(function(obj) {
-        if (obj.isMesh) { obj.castShadow = false; obj.receiveShadow = false; }
+        if (obj.isMesh || obj.isInstancedMesh || obj.isBatchedMesh) {
+          obj.castShadow = shOn; obj.receiveShadow = shOn;
+        }
       });
+      if (app.renderer) app.renderer.shadowMap.needsUpdate = true;
     }
     if (app && app.markDirty) app.markDirty();
   }
@@ -850,6 +894,11 @@
     });
     document.getElementById('tm-sun').addEventListener('pointerup', function(e) {
       e.stopPropagation();
+      var app = A();
+      if (!app || !app._shadowOn) {
+        viewerStatus('Enable Shadow in Sunglass panel first');
+        return;
+      }
       _sunCycle = !_sunCycle;
       var btn = document.getElementById('tm-sun');
       if (btn) btn.classList.toggle('tm-active', _sunCycle);
@@ -1753,35 +1802,10 @@
     _active = true;
     _isLargeBuilding = (app.activeBuildingTotal || 0) > LARGE_BUILDING;
     if (_isLargeBuilding) console.log('§S259_TM_LITE elements=' + app.activeBuildingTotal + ' — sparks/sunCycle disabled (>50K)');
-    // ── One-time shadow camera setup — §S259: skipped, shadows globally disabled ──
-    if (false && !_shadowSetup && app.sun && app.sun.shadow) {
-      app.sun.shadow.mapSize.width = 2048;
-      app.sun.shadow.mapSize.height = 2048;
-      app.sun.shadow.camera.near = 1;
-      app.sun.shadow.camera.far = 1000;
-      app.sun.shadow.camera.left = -200;
-      app.sun.shadow.camera.right = 200;
-      app.sun.shadow.camera.top = 200;
-      app.sun.shadow.camera.bottom = -200;
-      app.sun.shadow.camera.updateProjectionMatrix();
-      _shadowSetup = true;
-      console.log('§SHADOW_SETUP mapSize=2048 frustum=400x400 near=1 far=1000');
-    }
-    // ── Ground plane for shadow receiving ──
-    // scene.js creates ground (visible:false). Position at building base and show.
-    if (app.ground) {
-      var minY = 0;
-      if (app.controls && app.controls.target) minY = app.controls.target.y;
-      // Query lowest element Z from DB for accurate placement
-      try {
-        var zr = app.db.exec('SELECT MIN(center_z) FROM element_transforms');
-        if (zr.length && zr[0].values[0][0] != null) minY = zr[0].values[0][0] - 0.5;
-      } catch(e) {}
-      app.ground.position.y = minY;
-      app.ground.visible = true;
-      app.ground.receiveShadow = true;
-      console.log('§GROUND_PLANE y=' + minY.toFixed(2) + ' visible=true');
-    }
+    // §S260b: Inherit shadow/ground from Sunglass panel — Time Machine doesn't own these
+    // If shadow was ON before TM started, ground is already positioned and visible.
+    // If shadow was OFF, no ground plane or shadow flags.
+    console.log('§TM_SHADOW_INHERIT shadowOn=' + !!app._shadowOn + ' groundVisible=' + (app.ground ? app.ground.visible : 'n/a'));
     computeDays();
     saveVisibility();
     // §S258: Pause DLOD so time machine controls visibility exclusively
@@ -1806,10 +1830,9 @@
     _camFollow = false;
     _camAngle = 0;
     _camTarget = null;
-    _shadowSetup = false;
-    // Hide ground plane
+    // §S260b: Only hide ground if Sunglass shadow was OFF
     var app = A();
-    if (app && app.ground) app.ground.visible = false;
+    if (app && app.ground && !app._shadowOn) app.ground.visible = false;
     _ganttVisible = false;
     _dashVisible = false;
     _sCurveData = null;

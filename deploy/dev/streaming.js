@@ -142,7 +142,6 @@ function setupStreaming(A) {
       var _camPos = A.camera.position;
       var _ox = A.modelOffset.x, _oy = A.modelOffset.y, _oz = A.modelOffset.z;
       rows.sort(function(a, b) {
-        // ifc2three: x = cx - ox, y = cz - oz, z = -(cy - oy)
         var ax = a[4] - _ox - _camPos.x, ay = a[6] - _oz - _camPos.y, az = -(a[5] - _oy) - _camPos.z;
         var bx = b[4] - _ox - _camPos.x, by = b[6] - _oz - _camPos.y, bz = -(b[5] - _oy) - _camPos.z;
         return (ax*ax + ay*ay + az*az) - (bx*bx + by*by + bz*bz);
@@ -313,9 +312,10 @@ function setupStreaming(A) {
       return;
     }
 
-    // ── Phase 1: collect ALL elements, fetch ALL geometry (no scene.add yet) ──
-    // Process large batches since we're not creating Three.js objects yet
-    const batch = Math.min(2000, A.streamQueue.length - A.streamIdx);
+    // ── Phase 1: collect elements, fetch geometry ──
+    // §S260b: First batch smaller (500) for fast first paint, then ramp up to 2000
+    var _batchSize = A._bboxCleared ? 2000 : 500;
+    const batch = Math.min(_batchSize, A.streamQueue.length - A.streamIdx);
     const hashesNeeded = new Set();
 
     for (let i = 0; i < batch; i++) {
@@ -332,6 +332,7 @@ function setupStreaming(A) {
         // ── §S260: Async geometry fetch via range-request httpvfs ──
         // Pause sync tick, fetch async, then resume
         A._streamPaused = true;
+        A.status.textContent = 'Streaming geometry... ' + A.streamIdx + '/' + A.streamQueue.length + ' (' + hashesNeeded.size + ' shapes)';
         (async function() {
           var _t0 = performance.now();
           // Probe normals once
@@ -345,9 +346,9 @@ function setupStreaming(A) {
           var cols = A._libHasNormals
             ? 'geometry_hash, vertices, faces, normals'
             : 'geometry_hash, vertices, faces';
-          // Fetch in chunks of 50 (range requests are slower, smaller chunks = faster first paint)
-          for (var ci = 0; ci < hashList.length; ci += 50) {
-            var chunk = hashList.slice(ci, ci + 50);
+          // §S260b: Fetch in chunks of 150 (balance between HTTP round-trips and first paint)
+          for (var ci = 0; ci < hashList.length; ci += 150) {
+            var chunk = hashList.slice(ci, ci + 150);
             var ph = chunk.map(function(h) { return "'" + h.replace(/'/g,"''") + "'"; }).join(',');
             for (var table of ['component_geometries', 'base_geometries']) {
               try {
@@ -452,15 +453,19 @@ function setupStreaming(A) {
 
     A.streamIdx += batch;
 
-    // §S260: Progressive flush — build meshes every 5000 elements instead of waiting for all
+    // §S260b: Progressive flush — first batch at 500, then every 5000
     if (A._lastFlushIdx === undefined) A._lastFlushIdx = 0;
-    if (A.streamIdx - A._lastFlushIdx >= 5000 && A.streamIdx < A.streamQueue.length) {
+    var _flushAt = A._bboxCleared ? 5000 : 500;
+    if (A.streamIdx - A._lastFlushIdx >= _flushAt && A.streamIdx < A.streamQueue.length) {
       A._flushInstanced();
-      // §S260: Clear bbox placeholders on first flush — real geometry is now visible
+      // §S260b: Keep bboxes until 20% rendered or 10000 elements — facade needs coverage
       if (!A._bboxCleared) {
-        A._clearBboxPlaceholders();
-        A._bboxCleared = true;
-        console.log('[S260] §BBOX_CLEARED_ON_FIRST_FLUSH');
+        var _pct = A.streamIdx / A.streamQueue.length;
+        if (_pct >= 0.2 || A.streamIdx >= 10000) {
+          A._clearBboxPlaceholders();
+          A._bboxCleared = true;
+          console.log(`[S260b] §BBOX_CLEARED at=${A.streamIdx} pct=${(_pct*100).toFixed(1)}%`);
+        }
       }
       A._lastFlushIdx = A.streamIdx;
       console.log(`[S260] §PROGRESSIVE_FLUSH at=${A.streamIdx}/${A.streamQueue.length} drawCalls=${A.scene.children.length}`);
@@ -797,54 +802,102 @@ function setupStreaming(A) {
     console.log(`[S192] §DB_SPLIT_DETECT meta=${metaUrl} found=${_splitMode}`);
 
     if (_splitMode) {
-      // ── §S260: Two-phase — meta.db full download (small), geo.db via range requests ──
-      A.status.textContent = 'Fetching metadata...';
-      var metaBuf = await A.cachedFetch(metaUrl);
-      A.db = new SQL.Database(new Uint8Array(metaBuf));
-      A.libDb = A.db;  // metadata queries work immediately on sync DB
-      console.log(`[S192] §DB_META_LOADED size=${(metaBuf.byteLength/1024/1024).toFixed(1)}MB`);
-
-      // Open geo.db via range requests if httpvfs available, else full download
+      // ── §S260b: Three-phase — positions.bin (instant bboxes) → meta.db (panels) → geo.db (meshes) ──
       var geoUrl = A.DB_URL.replace('_extracted.db', '_geo.db');
       var _geoAbsUrl = new URL(geoUrl, location.href).href;
-      if (typeof createDbWorker === 'function') {
-        A.status.textContent = `Metadata loaded (${(metaBuf.byteLength/1024/1024).toFixed(0)}MB). Opening geometry via streaming...`;
-        try {
-          var _geoT0 = performance.now();
-          var _workerUrl = new URL('lib/sqlite.worker.js', location.href).href;
-          var _wasmUrl = new URL('lib/httpvfs-sql-wasm.wasm', location.href).href;
-          var _httpvfs = await createDbWorker(
-            [{ from: 'inline', config: { serverMode: 'full', url: _geoAbsUrl, requestChunkSize: 65536 } }],
-            _workerUrl, _wasmUrl
-          );
-          A._rangeDb = _httpvfs.db;
-          A._useRangeStream = true;
-          A._splitHasMeta = true;  // sync A.db has full metadata — streamBuilding uses sync path
-          // libDb stays as sync meta DB — streamTick geometry path uses _rangeDb
-          console.log(`§SPLIT_GEO_RANGE_OPEN ms=${(performance.now() - _geoT0).toFixed(0)} url=${_geoAbsUrl}`);
-          A.status.textContent = `Geometry streaming ready. Loading elements...`;
-        } catch(e) {
-          console.warn(`§SPLIT_GEO_RANGE_FAIL ${e.message} — downloading full geo DB`);
-          A._useRangeStream = false;
-          A.cachedFetch(geoUrl).then(function(geoBuf) {
-            A.libDb = new SQL.Database(new Uint8Array(geoBuf));
-            console.log(`[S192] §DB_GEO_LOADED size=${(geoBuf.byteLength/1024/1024).toFixed(1)}MB`);
-          }).catch(function(e2) {
-            console.error(`[S192] §DB_GEO_FAIL ${e2.message}`);
-          });
+      var posUrl = A.DB_URL.replace('_extracted.db', '_positions.bin');
+
+      // Phase 0: Try positions.bin for instant bboxes (< 3MB, loads in <1s)
+      var _posLoaded = false;
+      try {
+        A.status.textContent = 'Loading positions...';
+        var posBuf = await A.cachedFetch(posUrl);
+        var posView = new DataView(posBuf);
+        var posCount = posView.getUint32(0, true);
+        var posRows = [];
+        for (var pi = 0; pi < posCount; pi++) {
+          var off = 4 + pi * 24;
+          posRows.push([
+            null, null, null, null,  // guid, hash, rgba, disc (not needed for bboxes)
+            posView.getFloat32(off, true),      // center_x
+            posView.getFloat32(off + 4, true),  // center_y
+            posView.getFloat32(off + 8, true),  // center_z
+            null, null, null, null, null,        // rotation, storey, class
+            posView.getFloat32(off + 12, true), // bbox_x
+            posView.getFloat32(off + 16, true), // bbox_y
+            posView.getFloat32(off + 20, true)  // bbox_z
+          ]);
         }
-      } else {
-        // No httpvfs — full download of geo.db
-        A.status.textContent = `Metadata loaded. Downloading geometry...`;
-        A.cachedFetch(geoUrl).then(function(geoBuf) {
-          A.libDb = new SQL.Database(new Uint8Array(geoBuf));
-          console.log(`[S192] §DB_GEO_LOADED size=${(geoBuf.byteLength/1024/1024).toFixed(1)}MB`);
-          A.status.textContent = `Geometry loaded (${(geoBuf.byteLength/1024/1024).toFixed(0)}MB). Streaming meshes...`;
-        }).catch(function(e) {
-          console.error(`[S192] §DB_GEO_FAIL ${e.message} — falling back to single DB`);
-          A.libDb = A.db;
-        });
+        _posLoaded = true;
+        A._positionRows = posRows;
+        console.log(`[S260b] §POSITIONS_LOADED count=${posCount} size=${(posBuf.byteLength/1024).toFixed(0)}KB`);
+        A.status.textContent = posCount.toLocaleString() + ' elements positioned. Loading metadata...';
+      } catch(e) {
+        console.log(`[S260b] §POSITIONS_MISS — falling back to meta.db for bboxes`);
       }
+
+      // §S260b: If positions loaded, compute modelOffset + draw bboxes before meta.db
+      if (_posLoaded && A._drawBboxPlaceholders) {
+        // Compute modelOffset from positions (same as buildingCentres logic)
+        var _sumX = 0, _sumY = 0, _sumZ = 0, _n = A._positionRows.length;
+        for (var _pi = 0; _pi < _n; _pi++) {
+          _sumX += A._positionRows[_pi][4];
+          _sumY += A._positionRows[_pi][5];
+          _sumZ += A._positionRows[_pi][6];
+        }
+        var _avgX = _sumX / _n, _avgY = _sumY / _n, _avgZ = _sumZ / _n;
+        A.modelOffset.x = _avgX; A.modelOffset.y = _avgY; A.modelOffset.z = _avgZ;
+        A._drawBboxPlaceholders(A._positionRows);
+        // Don't set A.streaming = true yet — streamBuilding() does that after meta loads
+        // Otherwise streamTick sees empty queue and declares done
+        A.activeBuildingTotal = _n;
+        // Set camera
+        var _env = Math.max(80, _n > 50000 ? 300 : 150);
+        A.camera.position.set(_env * 0.6, _env * 0.8, _env * 0.6);
+        A.camera.far = Math.max(10000, _env * 5);
+        A.camera.updateProjectionMatrix();
+        A.controls.target.set(0, 0, 0);
+        A.controls.update();
+        A.markDirty();
+        console.log(`[S260b] §BBOX_FROM_POSITIONS count=${_n} offset=[${_avgX.toFixed(0)},${_avgY.toFixed(0)},${_avgZ.toFixed(0)}]`);
+      }
+
+      // Phase 1: Download meta.db (sync DB for panels + queries)
+      A.status.textContent = _posLoaded ? 'Bboxes drawn. Loading metadata...' : 'Fetching metadata...';
+      var metaBuf = await A.cachedFetch(metaUrl);
+      A.db = new SQL.Database(new Uint8Array(metaBuf));
+      A.libDb = A.db;
+      A._splitHasMeta = true;
+      console.log(`[S192] §DB_META_LOADED size=${(metaBuf.byteLength/1024/1024).toFixed(1)}MB`);
+
+      // §S260b: Set activeBuilding + _hasBbox early so 4D5D relay + clash work during geo download
+      try {
+        var _bldRows = A.db.exec("SELECT building, COUNT(*) c FROM elements_meta GROUP BY building ORDER BY c DESC LIMIT 1");
+        if (_bldRows.length && _bldRows[0].values[0][0]) {
+          A.activeBuilding = _bldRows[0].values[0][0];
+          console.log(`[S260b] §ACTIVE_BUILDING_EARLY name=${A.activeBuilding}`);
+        }
+      } catch(e) {}
+      if (A._hasBbox === undefined) {
+        try { A.db.exec("SELECT bbox_x FROM element_transforms LIMIT 1"); A._hasBbox = true; }
+        catch(e) { A._hasBbox = false; }
+      }
+
+      // §S260b: Phase 2 ��� Download geo.db fully (with progress). Sync streaming = fast.
+      // Bboxes keep user engaged during download. Cached on second visit = instant.
+      var _geoT0 = performance.now();
+      var _geoCached = await A._checkCache(geoUrl);
+      A.status.textContent = _geoCached
+        ? `Loading geometry from cache...`
+        : `First visit — downloading geometry (${_posLoaded ? 'bboxes visible' : 'please wait'})...`;
+      var geoBuf = _geoCached || await A.cachedFetch(geoUrl);
+      A.libDb = new SQL.Database(new Uint8Array(geoBuf));
+      A._splitHasMeta = false;  // use sync streaming path (libDb has geometry)
+      var _geoMs = (performance.now() - _geoT0).toFixed(0);
+      var _geoMB = (geoBuf.byteLength / 1024 / 1024).toFixed(0);
+      var _src = _geoCached ? 'cache' : 'download';
+      console.log(`§SPLIT_GEO_LOADED src=${_src} size=${_geoMB}MB ms=${_geoMs}`);
+      A.status.textContent = `Geometry ready (${_geoMB}MB, ${(_geoMs/1000).toFixed(1)}s). Streaming meshes...`;
     } else {
       // ── Single DB — always full download. Range streaming only works with split DBs
       // (split = meta instant + geo range). Without split, metadata scanning via range is too chatty.
