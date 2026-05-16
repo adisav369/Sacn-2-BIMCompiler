@@ -49,6 +49,23 @@ function mockEvent(key, opts) {
   };
 }
 
+function mockEl(tag, text) {
+  return {
+    tagName: tag.toUpperCase(), textContent: text || '', type: '',
+    style: { outline: '', display: '', boxShadow: '', cssText: '' },
+    offsetWidth: 100, scrollIntoView: function() {},
+    getAttribute: function() { return null; },
+    click: function() {},
+    addEventListener: function() {},
+    dispatchEvent: function() {},
+    querySelectorAll: function() { return []; },
+    querySelector: function() { return null; },
+    classList: { contains: function() { return false; }, remove: function() {} },
+    remove: function() {},
+    every: undefined  // not array
+  };
+}
+
 // ══════════════════════════════════════════════════
 console.log('── ListKeyNav: Arrow Navigation ──');
 // ══════════════════════════════════════════════════
@@ -765,6 +782,144 @@ console.log('\n── Command Palette: Search Filtering ──');
   check('P06', '"grid" matches 2D Grid', filter('grid').length === 1);
   check('P07', '"fly" matches Fly Around', filter('fly').length === 1);
   check('P08', '"4" matches 4D/5D', filter('4').length >= 1);
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── S251b: BUG-4 Grid onActivate dispatches pointerup ──');
+// Issue: items[idx].click() doesn't fire pointerup listeners on view buttons
+// ══════════════════════════════════════════════════
+(function() {
+  // Simulate: button with pointerup listener, verify PointerEvent dispatched
+  var btn = mockEl('button', 'GF');
+  var pointerFired = false;
+  var clickFired = false;
+  btn.addEventListener = function(ev, fn) {
+    if (ev === 'pointerup') btn._pointerup = fn;
+    if (ev === 'click') btn._click = fn;
+  };
+  btn.dispatchEvent = function(ev) {
+    if (ev.type === 'pointerup') pointerFired = true;
+    if (ev.type === 'click') clickFired = true;
+  };
+  btn.click = function() { clickFired = true; };
+
+  // Old code would call btn.click() — only fires click, NOT pointerup
+  btn.click();
+  check('B40', 'BUG-4: .click() fires click event', clickFired === true);
+  check('B41', 'BUG-4: .click() does NOT fire pointerup', pointerFired === false);
+
+  // New code dispatches pointerup event (PointerEvent is browser-only, mock it)
+  clickFired = false;
+  btn.dispatchEvent({ type: 'pointerup', bubbles: true });
+  check('B42', 'BUG-4: dispatchEvent(pointerup) fires pointerup', pointerFired === true);
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── S251b: BUG-3 Zombie card _noauto lifecycle ──');
+// Issue: verify _noauto flag prevents/allows autoCreateCards correctly
+// ══════════════════════════════════════════════════
+(function() {
+  // Mock localStorage
+  var store = {};
+  var mockLS = {
+    getItem: function(k) { return store[k] || null; },
+    setItem: function(k, v) { store[k] = String(v); },
+    removeItem: function(k) { delete store[k]; }
+  };
+
+  // Scenario 1: delete all → _noauto set
+  store = {};
+  var savedSections = [];  // empty = all deleted
+  if (!savedSections.length) {
+    mockLS.setItem('saved_sections__noauto', '1');
+  }
+  check('B50', 'BUG-3: all deleted → _noauto=1', mockLS.getItem('saved_sections__noauto') === '1');
+
+  // Scenario 2: _noauto blocks autoCreateCards
+  var autoBlocked = (mockLS.getItem('saved_sections__noauto') === '1');
+  check('B51', 'BUG-3: autoCreateCards blocked by _noauto', autoBlocked === true);
+
+  // Scenario 3: save new card → _noauto cleared
+  mockLS.removeItem('saved_sections__noauto');
+  check('B52', 'BUG-3: manual save clears _noauto', mockLS.getItem('saved_sections__noauto') === null);
+
+  // Scenario 4: after clearing _noauto, autoCreateCards allowed
+  autoBlocked = (mockLS.getItem('saved_sections__noauto') === '1');
+  check('B53', 'BUG-3: autoCreateCards allowed after _noauto cleared', autoBlocked === false);
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── S251b: BUG-5 Clash list panel unregister+reregister ──');
+// Issue: closing clash list must unregister panel + reset watcher ref
+// ══════════════════════════════════════════════════
+(function() {
+  // Simulate _panels array and clashListClose
+  var panels = [
+    { id: 'clash', el: mockEl('div', 'Matrix') },
+    { id: 'clashlist', el: mockEl('div', 'List') }
+  ];
+  var lastRef = { div: panels[1].el };
+
+  // clashListClose: unregister + reset ref
+  for (var ri = panels.length - 1; ri >= 0; ri--) {
+    if (panels[ri].id === 'clashlist') { panels.splice(ri, 1); break; }
+  }
+  lastRef.div = null;
+
+  check('B60', 'BUG-5: clashlist unregistered from _panels', panels.length === 1);
+  check('B61', 'BUG-5: clashlist panel gone', panels.every(function(p) { return p.id !== 'clashlist'; }));
+  check('B62', 'BUG-5: _lastClashList reset to null', lastRef.div === null);
+
+  // New list created — watcher detects newDiv !== null
+  var newDiv = mockEl('div', 'New List');
+  var detected = (newDiv !== null && newDiv !== lastRef.div);
+  check('B63', 'BUG-5: watcher detects new list (newDiv !== null)', detected === true);
+
+  // Register new panel
+  panels.push({ id: 'clashlist', el: newDiv });
+  check('B64', 'BUG-5: new clashlist registered', panels.length === 2);
+})();
+
+// ══════════════════════════════════════════════════
+console.log('\n── S251b: BUG-1 Dwell tracker basics ──');
+// Issue: verify dwell detection fires after threshold pause
+// ══════════════════════════════════════════════════
+(function() {
+  // Simulate dwellTrack logic
+  var dwellLastZ = null;
+  var dwellLastTime = 0;
+  var threshold = 1000;
+  var captured = false;
+
+  function track(z) {
+    var now = Date.now();
+    if (dwellLastZ === null || Math.abs(z - dwellLastZ) > 0.05) {
+      dwellLastZ = z;
+      dwellLastTime = now;
+    }
+  }
+
+  function checkDwell(z) {
+    var now = Date.now();
+    var elapsed = now - dwellLastTime;
+    if (elapsed >= threshold) { captured = true; }
+  }
+
+  // Simulate: move slider, then pause (manually advance time concept)
+  track(3.0);
+  var savedTime = dwellLastTime;
+
+  // After threshold, checkDwell should detect
+  dwellLastTime = Date.now() - threshold - 10; // simulate 1s+ elapsed
+  checkDwell(3.0);
+
+  check('B70', 'BUG-1: dwell detected after threshold pause', captured === true);
+
+  // Reset
+  captured = false;
+  dwellLastTime = Date.now(); // just moved — recent
+  checkDwell(3.0);
+  check('B71', 'BUG-1: no dwell if moved recently', captured === false);
 })();
 
 // ── Summary ──

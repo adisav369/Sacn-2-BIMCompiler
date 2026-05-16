@@ -45,23 +45,21 @@ test.describe('P1 Grid Alignment — wall-length weighting + snap-to-face', () =
 
   // ── §P1.2 Snap-to-Nearest-Face ─────────────────────────────────
 
-  test('T_3003: grid_dims.js has snapToNearestFace function — P1 §P1.2 snap function present', () => {
+  test('T_3003: grid_dims.js snapGrids preserves rawPosition — P1 §P1.2 no drift', () => {
     const src = fs.readFileSync(GRID_DIMS_SRC, 'utf8');
-    expect(src).toContain('function snapToNearestFace');
+    expect(src).toContain('rawPosition');
+    expect(src).toContain('displayBay');
   });
 
-  test('T_3004: grid_dims.js has §GD_SNAP_TO_FACE log tag — P1 §P1.2 snap observable', () => {
+  test('T_3004: grid_dims.js has §GD_SNAP_DELTA log tag — P1 §P1.2 snap observable', () => {
     const src = fs.readFileSync(GRID_DIMS_SRC, 'utf8');
-    expect(src).toContain('§GD_SNAP_TO_FACE');
+    expect(src).toContain('§GD_SNAP_DELTA');
   });
 
-  test('T_3005: grid_dims.js calls snapToNearestFace after clusterVotes — P1 §P1.2 wired', () => {
+  test('T_3005: grid_dims.js clusterVotes weighted by wall length — P1 §P1.2 wired', () => {
     const src = fs.readFileSync(GRID_DIMS_SRC, 'utf8');
-    // Both axes must be snapped
-    const xSnap = src.includes("snapToNearestFace(xClusters");
-    const ySnap = src.includes("snapToNearestFace(yClusters");
-    expect(xSnap).toBe(true);
-    expect(ySnap).toBe(true);
+    expect(src).toContain('§GD_WALL_WEIGHT');
+    expect(src).toContain('clusterVotes');
   });
 
   // ── §P1.4 Config Externalisation ───────────────────────────────

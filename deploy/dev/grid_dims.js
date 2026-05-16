@@ -417,8 +417,30 @@
     log('§GD_OPP_CLUSTER axis=X candidates=' + xVotes.length + ' clusters=' + xClusters.length + ' minVotes=' + minVotes);
     log('§GD_OPP_CLUSTER axis=Y candidates=' + yVotes.length + ' clusters=' + yClusters.length + ' minVotes=' + minVotes);
 
-    // snapToNearestFace removed: center-line votes land on the correct position
-    // already. Snapping to raw face positions was pulling centers off-centerline.
+    // Post-cluster snap: align each cluster to the nearest actual wall/column center.
+    // Cluster mean drifts when openings (doors/windows) have slightly different centers
+    // than their host walls. Snapping to the nearest structural center corrects this.
+    function snapToNearestStructural(clusters, structVotes) {
+      if (!structVotes.length) return;
+      for (var ci = 0; ci < clusters.length; ci++) {
+        var bestDist = Infinity, bestPos = clusters[ci].position;
+        for (var vi = 0; vi < structVotes.length; vi++) {
+          var d = Math.abs(structVotes[vi].pos - clusters[ci].position);
+          if (d < bestDist) { bestDist = d; bestPos = structVotes[vi].pos; }
+        }
+        // Only snap if drift < tolerance (don't pull to a distant wall)
+        if (bestDist < faceTol) {
+          clusters[ci].position = bestPos;
+          clusters[ci].rawPosition = bestPos;
+        }
+      }
+    }
+    // xVotes from structural walls have center_x for X-axis; yVotes have center_y for Y-axis
+    var structXVotes = xVotes.filter(function(v) { return v.weight >= wallWtMin; });
+    var structYVotes = yVotes.filter(function(v) { return v.weight >= wallWtMin; });
+    snapToNearestStructural(xClusters, structXVotes);
+    snapToNearestStructural(yClusters, structYVotes);
+    log('§GD_SNAP_ALIGN xSnapped=' + structXVotes.length + ' ySnapped=' + structYVotes.length);
 
     if (!xClusters.length && !yClusters.length) return empty;
 

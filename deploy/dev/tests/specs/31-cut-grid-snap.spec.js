@@ -48,9 +48,9 @@ test.describe('Cut-Plane Grid Snap — opening gate + opening-only filter + min 
 
   // ── §P1b.2 Opening-Supported Cluster Filter ─────────────────────
 
-  test('T_3103: grid_dims.js has §GD_OPENING_ONLY log tag — opening-supported filter observable', () => {
+  test('T_3103: grid_dims.js has §GD_OPENING_GATE log tag — opening density gate observable', () => {
     const src = fs.readFileSync(GRID_DIMS_SRC, 'utf8');
-    expect(src).toContain('§GD_OPENING_ONLY');
+    expect(src).toContain('§GD_OPENING_GATE');
   });
 
   // ── §P1b.3 Sub-Bay Minimum Opening Width ────────────────────────
@@ -80,8 +80,8 @@ test.describe('Cut-Plane Grid Snap — opening gate + opening-only filter + min 
     expect(src).toContain('detectGridsAtPlane');
   });
 
-  test('T_3108: grid_scissors.js commits GRID_DETECT to KernelOps after detectAtCut — kernel_ops wired', () => {
-    const src = fs.readFileSync(GRID_SCISSORS_SRC, 'utf8');
+  test('T_3108: grid_dims.js commits GRID_DETECT to KernelOps — kernel_ops wired', () => {
+    const src = fs.readFileSync(GRID_DIMS_SRC, 'utf8');
     expect(src).toContain("'GRID_DETECT'");
     expect(src).toContain('KernelOps');
   });

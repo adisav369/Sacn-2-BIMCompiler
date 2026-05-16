@@ -166,6 +166,7 @@
   function _buildHomeNodes(client) {
     _nodes = [];
     _edges = [];
+    _activeExpandedNode = null;  // §1 — clear dim on any view rebuild
     var config = (client === 'system') ? SYS_CFG : ENTITY_CFG;
     var keys = Object.keys(config);
 
@@ -315,11 +316,13 @@
   function _buildEntityNodes(tableName) {
     _nodes = [];
     _edges = [];
+    _activeExpandedNode = null;  // §1 — clear dim on view rebuild
     var cfg = ENTITY_CFG[tableName] || SYS_CFG[tableName] || { icon: 'table', colour: '#888', label: tableName };
 
     var records;
     try {
-      var r = _db.exec('SELECT * FROM [' + tableName + '] LIMIT 60');
+      // §BUG2 — no arbitrary LIMIT; cap at _maxBubbles for memory safety
+      var r = _db.exec('SELECT * FROM [' + tableName + '] LIMIT ' + _maxBubbles);
       if (!r.length) return;
       var cols = r[0].columns;
       records = r[0].values.map(function (row) {
@@ -411,10 +414,32 @@
   }
 
   function _findNameCol(rec) {
-    if (rec.Name !== undefined) return 'Name';
-    if (rec.Value !== undefined) return 'Value';
-    if (rec.DocumentNo !== undefined) return 'DocumentNo';
-    for (var k in rec) { if (k.indexOf('_ID') < 0 && typeof rec[k] === 'string') return k; }
+    // §BUG4 — prefer human-readable Name over internal Value (SearchKey)
+    // Case-insensitive: SQLite may return lowercase column names
+    var keys = Object.keys(rec);
+    var keyMap = {};  // lowercase → actual key
+    for (var ki = 0; ki < keys.length; ki++) keyMap[keys[ki].toLowerCase()] = keys[ki];
+
+    var nameKey = keyMap['name'];
+    if (nameKey && rec[nameKey] !== null && rec[nameKey] !== undefined && rec[nameKey] !== '') return nameKey;
+    var docKey = keyMap['documentno'];
+    if (docKey && rec[docKey] !== null && rec[docKey] !== undefined) return docKey;
+    var descKey = keyMap['description'];
+    if (descKey && rec[descKey] !== null && rec[descKey] !== undefined && rec[descKey] !== '') return descKey;
+    var valKey = keyMap['value'];
+    if (valKey && rec[valKey] !== null && rec[valKey] !== undefined) return valKey;
+
+    // Fallback: find a meaningful string column (skip booleans, dates, short values)
+    for (var fi = 0; fi < keys.length; fi++) {
+      var k = keys[fi];
+      var kl = k.toLowerCase();
+      if (kl.indexOf('_id') >= 0) continue;
+      if (kl.indexOf('is') === 0) continue;  // isactive, ismandatory = booleans
+      if (kl === 'created' || kl === 'updated' || kl.indexOf('date') >= 0) continue;
+      if (kl === 'createdby' || kl === 'updatedby') continue;
+      var v = rec[k];
+      if (typeof v === 'string' && v.length > 1) return k;  // skip single-char "Y"/"N"
+    }
     return null;
   }
 
@@ -518,15 +543,170 @@
     }
 
     node.expanded = true;
+    _activeExpandedNode = node;  // §2b dim siblings
     _rebuildEdges();
     console.log('§AD_GRAPH expandTable table=' + tableName + ' records=' +
                 records.length + ' total=' + _nodes.length);
   }
 
+  // ── §9 Gateway bubbles: Properties + Data ─────────────────────────
+  // First tap on a RECORD spawns 2 meaningful gateway bubbles.
+  // Properties = non-null fields (what's interesting about this record)
+  // Data = FK relationships (standard sub-constellation)
+
+  function _spawnGateways(node) {
+    var orbitR = _radius * 0.18;
+    var rec = node.record;
+
+    // Count non-null properties for visual weight
+    var nonNull = 0, total = 0;
+    for (var k in rec) {
+      if (k.indexOf('_ID') >= 0 || k === 'IsActive' || k === 'AD_Client_ID' || k === 'AD_Org_ID') continue;
+      total++;
+      if (rec[k] !== null && rec[k] !== undefined && rec[k] !== '') nonNull++;
+    }
+    var hasProperties = nonNull > 0;
+
+    // Count FK children for Data bubble
+    var fkRefs = _discoverChildren(node.tableName);
+    var hasData = fkRefs.length > 0;
+
+    // Position: Properties left, Data right of parent
+    var pos1 = _orbitPosition(node, 0, 2, orbitR);
+    var pos2 = _orbitPosition(node, 1, 2, orbitR);
+
+    // Properties gateway — red outer / yellow blend when content exists, grey if empty
+    var propColour = hasProperties ? '#ff6b35' : '#555';
+    var propGateway = {
+      id: node.id + '_PROP',
+      label: 'Properties',
+      count: nonNull,
+      icon: 'category',
+      colour: propColour,
+      homeSx: pos1.x, homeSy: pos1.y, homeSz: pos1.z,
+      sx: pos1.x, sy: pos1.y, sz: pos1.z,
+      _startSx: node.sx, _startSy: node.sy, _startSz: node.sz,
+      _targetSx: pos1.x, _targetSy: pos1.y, _targetSz: pos1.z,
+      _animT: 0,
+      size: hasProperties ? 16 : 10,
+      activity: hasProperties ? 0.9 : 0.2,
+      pulse: Math.random() * Math.PI * 2, pulseSpeed: 0.003,
+      screenX: 0, screenY: 0, screenScale: 1, screenZ: 0,
+      tableName: node.tableName, windowId: node.windowId,
+      record: rec, recordId: node.recordId,
+      tier: 'gateway', type: 'CHILD',
+      children: [], parent: node, expanded: false,
+      _isGateway: 'properties', _parentNode: node
+    };
+
+    // Data gateway — blue when FK children exist, grey if empty
+    var dataColour = hasData ? '#4fc3f7' : '#555';
+    var dataGateway = {
+      id: node.id + '_DATA',
+      label: 'Data (' + fkRefs.length + ')',
+      count: fkRefs.length,
+      icon: 'table',
+      colour: dataColour,
+      homeSx: pos2.x, homeSy: pos2.y, homeSz: pos2.z,
+      sx: pos2.x, sy: pos2.y, sz: pos2.z,
+      _startSx: node.sx, _startSy: node.sy, _startSz: node.sz,
+      _targetSx: pos2.x, _targetSy: pos2.y, _targetSz: pos2.z,
+      _animT: 0,
+      size: hasData ? 16 : 10,
+      activity: hasData ? 0.8 : 0.2,
+      pulse: Math.random() * Math.PI * 2, pulseSpeed: 0.003,
+      screenX: 0, screenY: 0, screenScale: 1, screenZ: 0,
+      tableName: node.tableName, windowId: node.windowId,
+      record: rec, recordId: node.recordId,
+      tier: 'gateway', type: 'CHILD',
+      children: [], parent: node, expanded: false,
+      _isGateway: 'data', _parentNode: node,
+      _gatewaysSpawned: true  // allow Data to expand FK children directly
+    };
+
+    node.children.push(propGateway);
+    node.children.push(dataGateway);
+    _nodes.push(propGateway);
+    _nodes.push(dataGateway);
+    node.expanded = true;
+    node._gatewaysSpawned = true;
+    _activeExpandedNode = node;
+    _rebuildEdges();
+    console.log('§GATEWAY spawned for ' + node.tableName + '_ID=' + node.recordId +
+                ' properties=' + nonNull + '/' + total + ' fkTables=' + fkRefs.length);
+  }
+
+  // ── §9.1 Properties gateway → property-name bubbles ────────────────
+  // Each non-null field becomes a bubble. Tapping one opens the panel
+  // filtered by that column (IS NOT NULL, ORDER BY column).
+  // This is a visual query builder — user picks the filter criterion.
+
+  function _expandProperties(propGateway) {
+    if (propGateway.expanded) return;
+    var rec = propGateway.record;
+    var orbitR = _radius * 0.15;
+
+    // Collect non-null properties (skip system fields)
+    var props = [];
+    for (var k in rec) {
+      if (k.indexOf('_ID') >= 0) continue;
+      if (k === 'AD_Client_ID' || k === 'AD_Org_ID') continue;
+      if (rec[k] === null || rec[k] === undefined || rec[k] === '') continue;
+      props.push({ col: k, val: rec[k] });
+    }
+
+    // Colour coding by value type
+    for (var pi = 0; pi < props.length; pi++) {
+      var p = props[pi];
+      var pos = _orbitPosition(propGateway, pi, props.length, orbitR);
+      // Boolean props (IsActive, IsMandatory) = teal, dates = amber, strings = green
+      var pColour = '#7bed9f';  // default green
+      if (p.col.indexOf('Is') === 0) pColour = '#38d9d9';       // boolean → teal
+      else if (p.col.indexOf('Date') >= 0 || p.col === 'Created' || p.col === 'Updated') pColour = '#ffd93d'; // date → amber
+
+      var pLabel = p.col.replace(/([A-Z])/g, ' $1').trim();  // CamelCase → spaced
+      if (pLabel.length > 14) pLabel = pLabel.substring(0, 12) + '..';
+
+      var child = {
+        id: propGateway.id + '_' + p.col,
+        label: pLabel,
+        count: null,
+        icon: 'category',
+        colour: pColour,
+        homeSx: pos.x, homeSy: pos.y, homeSz: pos.z,
+        sx: pos.x, sy: pos.y, sz: pos.z,
+        _startSx: propGateway.sx, _startSy: propGateway.sy, _startSz: propGateway.sz,
+        _targetSx: pos.x, _targetSy: pos.y, _targetSz: pos.z,
+        _animT: 0,
+        size: 12,
+        activity: 0.7,
+        pulse: Math.random() * Math.PI * 2, pulseSpeed: 0.003,
+        screenX: 0, screenY: 0, screenScale: 1, screenZ: 0,
+        tableName: propGateway.tableName, windowId: propGateway.windowId,
+        record: rec, recordId: propGateway.recordId,
+        tier: 'property', type: 'CHILD',
+        children: [], parent: propGateway, expanded: false,
+        _noExpand: true,
+        _isPropertyBubble: true,
+        _propertyColumn: p.col,
+        _propertyValue: p.val
+      };
+      propGateway.children.push(child);
+      _nodes.push(child);
+    }
+
+    propGateway.expanded = true;
+    _activeExpandedNode = propGateway;
+    _rebuildEdges();
+    console.log('§PROP_EXPAND gateway=' + propGateway.id + ' props=' + props.length +
+                ' columns=[' + props.slice(0, 8).map(function(p){return p.col;}).join(',') +
+                (props.length > 8 ? '...' : '') + ']');
+  }
+
   // ── §3.2 RECORD → CHILD expansion (FK traversal) ─────────────────
 
   function _expandRecord(node) {
-    if (node.type !== 'RECORD' || node.expanded || !node.record) return;
+    if ((node.type !== 'RECORD' && node.type !== 'CHILD') || node.expanded || !node.record) return;
     if (_nodes.length >= _maxBubbles) return;
 
     var tableName = node.tableName;
@@ -534,9 +714,16 @@
     var keyVal = node.record[keyCol];
     if (keyVal === undefined || keyVal === null) return;
 
-    // §3.3 FK discovery
-    var fkTables = _discoverChildren(tableName);
-    if (!fkTables.length) {
+    // §9 Gateway bubbles — if this is a first-tap RECORD, spawn Properties + Data gateways
+    // If this is a gateway node itself (_isGateway), do the actual expansion
+    if (!node._isGateway && !node._gatewaysSpawned) {
+      _spawnGateways(node);
+      return;
+    }
+
+    // §3.3 Dynamic FK discovery from AD_Column — returns [{table, column}]
+    var fkRefs = _discoverChildren(tableName);
+    if (!fkRefs.length) {
       console.log('§AD_GRAPH expandRecord no FK for ' + tableName);
       return;
     }
@@ -545,10 +732,12 @@
     var allChildren = [];
     var childLimit = 20;
 
-    for (var fi = 0; fi < fkTables.length; fi++) {
-      var fkTable = fkTables[fi];
+    for (var fi = 0; fi < fkRefs.length; fi++) {
+      var fkRef = fkRefs[fi];
+      var fkTable = fkRef.table;
+      var fkColumn = fkRef.column;  // §BUG3 — use actual FK column name from AD
       try {
-        var r = _db.exec('SELECT * FROM [' + fkTable + '] WHERE [' + keyCol +
+        var r = _db.exec('SELECT * FROM [' + fkTable + '] WHERE [' + fkColumn +
                          '] = ? LIMIT ' + (childLimit + 1), [keyVal]);
         if (!r.length || !r[0].values.length) continue;
         var cols = r[0].columns;
@@ -567,16 +756,25 @@
           for (var ci = 0; ci < cols.length; ci++) rec[cols[ci]] = rows[ri][ci];
           var nameC = _findNameCol(rec);
           var fkKeyCol = fkTable + '_ID';
+          // §BUG-LABEL: build meaningful label — never show bare Y/N or PK number
+          var rawLabel = (nameC && rec[nameC]) ? String(rec[nameC]) : '';
+          // If label is too short, a bare number, or single char → use table name + index
+          if (rawLabel.length <= 1 || /^\d+$/.test(rawLabel)) {
+            var shortTable = fkTable.replace(/^[A-Z]_/, '').replace(/_/g, ' ');
+            rawLabel = shortTable + ' ' + (ri + 1);
+          }
           allChildren.push({
             tableName: fkTable, record: rec, recordId: rec[fkKeyCol],
-            label: String(rec[nameC] || rec.DocumentNo || rec[fkKeyCol] || '').substring(0, 14),
-            colour: childColour, icon: fkCfg.icon || 'table'
+            label: String(rawLabel).substring(0, 14),
+            colour: childColour, icon: fkCfg.icon || 'table',
+            fkColumn: fkColumn  // track which FK linked this child
           });
         }
         if (hasMore) {
           allChildren.push({
             tableName: fkTable, record: null, recordId: null,
-            label: '+more', colour: '#666', icon: 'table'
+            label: '+more', colour: '#666', icon: 'table',
+            fkColumn: fkColumn
           });
         }
       } catch (e) { /* table may not exist in this DB */ }
@@ -606,46 +804,105 @@
         tableName: ch.tableName, windowId: WIN_MAP[ch.tableName] || null,
         record: ch.record, recordId: ch.recordId,
         tier: 'child', type: 'CHILD',
-        children: [], parent: node, expanded: false
+        children: [], parent: node, expanded: false,
+        _noExpand: true  // §2b.2 — Data children don't drill further (avoid mess)
       };
       node.children.push(child);
       _nodes.push(child);
     }
 
     node.expanded = true;
+    _activeExpandedNode = node;  // §2b dim siblings
     _rebuildEdges();
     console.log('§AD_GRAPH expandRecord table=' + tableName + ' id=' + keyVal +
-                ' fkTables=' + fkTables.length + ' children=' + allChildren.length);
+                ' fkTables=' + fkRefs.length + ' children=' + allChildren.length +
+                ' fkNames=' + fkRefs.map(function(r){return r.table;}).join(','));
   }
 
-  // ── §3.3 FK Discovery from AD_Column ──────────────────────────────
+  // ── §3.3 FK Discovery from AD_Column — dynamic, long-tail ────────
+  // §BUG3 — use AD_Reference_ID (19=TableDirect, 30=Table) for real FK semantics.
+  // No hardcoded naming conventions. The AD IS the schema.
+
+  var _fkCache = {};  // cache per table to avoid repeated queries
 
   function _discoverChildren(tableName) {
-    var fkCol = tableName + '_ID';
+    if (_fkCache[tableName]) return _fkCache[tableName];
     try {
+      // Find all columns in OTHER tables that reference this table via FK
+      // AD_Reference_ID 19 = TableDirect (column named TableName_ID)
+      // AD_Reference_ID 30 = Table (column references via AD_Ref_Table)
       var r = _db.exec(
-        "SELECT DISTINCT t.TableName FROM AD_Column c " +
+        "SELECT DISTINCT t.TableName, c.ColumnName " +
+        "FROM AD_Column c " +
         "JOIN AD_Table t ON c.AD_Table_ID = t.AD_Table_ID " +
-        "WHERE c.ColumnName = '" + fkCol + "' " +
+        "WHERE c.AD_Reference_ID IN (19, 30) " +
+        "AND c.ColumnName LIKE '%" + tableName + "_ID%' " +
         "AND t.TableName != '" + tableName + "' " +
-        "AND t.IsActive = 'Y'"
+        "AND t.IsActive = 'Y' " +
+        "AND t.TableName NOT LIKE 'AD_%' " +  // skip AD system tables for data traversal
+        "ORDER BY t.TableName"
       );
-      if (!r.length) return [];
-      return r[0].values.map(function (row) { return row[0]; });
-    } catch (e) { return []; }
+      if (!r.length) {
+        // Fallback: try the simple name-match for tables not fully described in AD
+        var r2 = _db.exec(
+          "SELECT DISTINCT t.TableName, '" + tableName + "_ID' " +
+          "FROM AD_Column c " +
+          "JOIN AD_Table t ON c.AD_Table_ID = t.AD_Table_ID " +
+          "WHERE c.ColumnName = '" + tableName + "_ID' " +
+          "AND t.TableName != '" + tableName + "' " +
+          "AND t.IsActive = 'Y'"
+        );
+        var result = r2.length ? r2[0].values.map(function (row) {
+          return { table: row[0], column: row[1] };
+        }) : [];
+        _fkCache[tableName] = result;
+        console.log('§FK_DISCOVER table=' + tableName + ' fallback children=' +
+                    result.map(function(r){return r.table;}).join(','));
+        return result;
+      }
+      var result = r[0].values.map(function (row) {
+        return { table: row[0], column: row[1] };
+      });
+      // Filter: only keep tables that actually exist in DB with data
+      var verified = [];
+      for (var i = 0; i < result.length; i++) {
+        try {
+          var chk = _db.exec('SELECT 1 FROM [' + result[i].table + '] LIMIT 1');
+          if (chk.length && chk[0].values.length) verified.push(result[i]);
+        } catch (e) { /* table doesn't exist in this DB — skip */ }
+      }
+      _fkCache[tableName] = verified;
+      console.log('§FK_DISCOVER table=' + tableName + ' adRef=19/30 children=' +
+                  verified.map(function(r){return r.table+'('+r.column+')';}).join(','));
+      return verified;
+    } catch (e) {
+      console.log('§FK_DISCOVER ERROR table=' + tableName + ' err=' + e.message);
+      return [];
+    }
   }
 
   // ── §3.5 Collapse ─────────────────────────────────────────────────
 
   function _collapseNode(node) {
     if (!node.expanded) return;
+    // §2b.2 — animate children shrinking back to parent, then remove
     for (var i = 0; i < node.children.length; i++) {
-      _collapseNode(node.children[i]);
-      var idx = _nodes.indexOf(node.children[i]);
-      if (idx >= 0) _nodes.splice(idx, 1);
+      var child = node.children[i];
+      _collapseNode(child);  // collapse grandchildren first (instant for nested)
+      // Set up reverse animation: current position → parent centre
+      child._collapsing = true;
+      child._collapseT = 0;
+      child._startSx = child.sx;
+      child._startSy = child.sy;
+      child._startSz = child.sz;
+      child._targetSx = node.sx;
+      child._targetSy = node.sy;
+      child._targetSz = node.sz;
     }
-    node.children = [];
+    // Don't clear children array yet — _animate will remove them after animation
     node.expanded = false;
+    node._collapsingChildren = true;
+    _activeExpandedNode = null;  // §2b — always restore brightness on any collapse
     if (node._origSize) { node.size = node._origSize; node._origSize = null; }
     _rebuildEdges();
     console.log('§AD_GRAPH collapse node=' + node.id);
@@ -658,8 +915,10 @@
     for (var j = 0; j < _nodes.length; j++) {
       _nodes[j].children = [];
       _nodes[j].expanded = false;
+      _nodes[j]._collapsingChildren = false;
       if (_nodes[j]._origSize) { _nodes[j].size = _nodes[j]._origSize; _nodes[j]._origSize = null; }
     }
+    _activeExpandedNode = null;  // §2b restore full brightness
     _rebuildEdges();
     console.log('§AD_GRAPH collapseAll nodes=' + _nodes.length);
   }
@@ -702,15 +961,17 @@
   // ── §1.2 focusNode — search↔globe correlation ────────────────────
 
   function _findNode(tableName, recordId) {
+    // §BUG1 — strict matching: coerce both to Number for reliable comparison
     var candidates = 0;
+    var rid = (recordId !== undefined && recordId !== null) ? Number(recordId) : null;
     for (var i = 0; i < _nodes.length; i++) {
       var n = _nodes[i];
       if (n.tableName === tableName) {
         candidates++;
-        if (recordId === undefined || recordId === null) {
+        if (rid === null) {
           if (n.type === 'TABLE') return n;
         } else {
-          if (n.recordId == recordId) return n; // == for type coercion
+          if (Number(n.recordId) === rid) return n;
         }
       }
     }
@@ -800,7 +1061,14 @@
     if (rec) {
       _focusedNode = rec;
       _focusPulseT = 1.0;
-      _flyToFront(rec);
+      // §BUG2 — auto-expand children after fly completes
+      _flyToFront(rec, function () {
+        if (rec.type === 'RECORD' && !rec.expanded) {
+          _expandRecord(rec);
+          console.log('§NAVIGATE autoExpand table=' + tableName + ' rid=' + recordId +
+                      ' children=' + rec.children.length);
+        }
+      });
       console.log('§NAVIGATE DONE table=' + tableName + ' rid=' + recordId +
                   ' node=' + rec.id +
                   ' pos=(' + rec.sx.toFixed(0) + ',' + rec.sy.toFixed(0) + ',' + rec.sz.toFixed(0) + ')');
@@ -865,11 +1133,22 @@
     // Focus pulse decay (§1.1 — 2 second highlight)
     if (_focusPulseT > 0) _focusPulseT = Math.max(0, _focusPulseT - 0.008);
 
-    // Project all nodes + animate child fly-out
+    // Project all nodes + animate child fly-out + collapse shrink
+    var _removeList = [];
     for (var i = 0; i < _nodes.length; i++) {
       var an = _nodes[i];
+      // §2b.2 Collapse animation — shrink back to parent
+      if (an._collapsing) {
+        an._collapseT = Math.min(1, an._collapseT + 0.04);  // ~25 frames = ~400ms
+        var cEase = an._collapseT * an._collapseT;  // ease-in (accelerate into parent)
+        an.sx = an._startSx + (an._targetSx - an._startSx) * cEase;
+        an.sy = an._startSy + (an._targetSy - an._startSy) * cEase;
+        an.sz = an._startSz + (an._targetSz - an._startSz) * cEase;
+        an.size *= 0.97;  // shrink while collapsing
+        if (an._collapseT >= 1) _removeList.push(i);
+      }
       // Constellation grow animation (~800ms ease-out)
-      if (an._animT !== undefined && an._animT < 1) {
+      else if (an._animT !== undefined && an._animT < 1) {
         an._animT = Math.min(1, an._animT + 0.02);
         var ease = 1 - Math.pow(1 - an._animT, 3);
         an.sx = an._startSx + (an._targetSx - an._startSx) * ease;
@@ -878,6 +1157,26 @@
       }
       an.pulse += an.pulseSpeed;
       _project(an);
+    }
+    // Remove fully collapsed nodes (reverse order to preserve indices)
+    if (_removeList.length) {
+      for (var ri = _removeList.length - 1; ri >= 0; ri--) {
+        var rn = _nodes[_removeList[ri]];
+        if (rn.parent) {
+          var ci = rn.parent.children.indexOf(rn);
+          if (ci >= 0) rn.parent.children.splice(ci, 1);
+          if (rn.parent.children.length === 0) {
+            rn.parent._collapsingChildren = false;
+            rn.parent._gatewaysSpawned = false;  // allow re-expand
+          }
+        }
+        _nodes.splice(_removeList[ri], 1);
+      }
+      // §2b — clear dim when all children removed
+      if (_activeExpandedNode && _activeExpandedNode.children.length === 0) {
+        _activeExpandedNode = null;
+      }
+      _rebuildEdges();
     }
 
     // Sort by Z (far first = painter's algorithm)
@@ -908,6 +1207,9 @@
     _animId = requestAnimationFrame(_animate);
   }
 
+  // §2b — Track which node is actively expanded (for dimming siblings)
+  var _activeExpandedNode = null;
+
   function _drawNode(node) {
     var sc = node.screenScale;
     var s = node.size * sc;
@@ -919,9 +1221,28 @@
       s *= 1 + _focusPulseT * 0.5;
     }
 
+    // §2b — Dim siblings when a sub-constellation is expanded
+    // Active children + their parent stay bright (100%), others dim to 40%
+    var dimFactor = 1.0;
+    if (_activeExpandedNode && _activeExpandedNode !== node) {
+      var isChild = node.parent === _activeExpandedNode;
+      var isParent = node === _activeExpandedNode;
+      if (!isChild && !isParent) {
+        dimFactor = 0.4;  // dim non-related nodes
+      } else if (isChild) {
+        s *= 1.15;  // §2b — children slightly larger for readability
+      }
+    }
+
+    // §1.3 Collapse fade: alpha 1→0 during collapse animation
+    var collapseFade = 1.0;
+    if (node._collapsing) {
+      collapseFade = 1.0 - (node._collapseT || 0);
+    }
+
     // Depth-based alpha: front = bright, back = very dim
     var depthRatio = (node.screenZ + _radius) / (_radius * 2); // 0=front, 1=back
-    var alpha = Math.max(0.04, 1 - depthRatio * 0.92);
+    var alpha = Math.max(0.04, (1 - depthRatio * 0.92) * dimFactor * collapseFade);
 
     // Skip invisible
     if (s < 2) return;
@@ -1121,10 +1442,35 @@
               if (hit.expanded) _collapseNode(hit);
               else _expandRecord(hit);
             });
-          } else if (hit.type === 'CHILD' && _onDrill) {
-            console.log('§TAP CHILD→drill table=' + hit.tableName + ' id=' + hit.recordId);
+          } else if (hit.type === 'CHILD') {
+            console.log('§TAP CHILD table=' + hit.tableName + ' id=' + hit.recordId +
+                        ' hasRecord=' + !!hit.record + ' expanded=' + hit.expanded +
+                        ' gateway=' + (hit._isGateway || 'none'));
             _flyToFront(hit, function () {
-              _onDrill(hit.tableName, hit.windowId, hit.record);
+              // §9 Gateway handling
+              if (hit._isGateway === 'properties') {
+                // Properties gateway → expand property-name bubbles (query picker)
+                if (hit.expanded) _collapseNode(hit);
+                else _expandProperties(hit);
+              } else if (hit._isGateway === 'data') {
+                // Data gateway → expand FK children from this node
+                if (hit.expanded) _collapseNode(hit);
+                else { hit._gatewaysSpawned = true; _expandRecord(hit); }
+              } else if (hit._isPropertyBubble && _onDrill) {
+                // §9.1 Property bubble tap → open panel filtered+sorted by this column
+                _onDrill(hit.tableName, hit.windowId, hit.record, hit._propertyColumn);
+              } else if (hit._noExpand && _onDrill) {
+                // §2b.2 — Data children: no further drilling, open card
+                _onDrill(hit.tableName, hit.windowId, hit.record, 'data');
+              } else if (hit.record && !hit.expanded) {
+                // §2a — Regular CHILD: try expanding its own FK relationships
+                _expandRecord(hit);
+                if (hit.children.length === 0 && _onDrill) {
+                  _onDrill(hit.tableName, hit.windowId, hit.record);
+                }
+              } else if (_onDrill) {
+                _onDrill(hit.tableName, hit.windowId, hit.record);
+              }
             });
           }
         }
@@ -1132,6 +1478,13 @@
         if (elapsed > 500) {
           console.log('§TAP longPressEmpty → search');
           if (_onLongPressEmpty) _onLongPressEmpty();
+        } else if (_activeExpandedNode) {
+          // §3 step 6 — tap empty collapses entire expansion tree, restores brightness
+          // Walk up to find top-level expanded parent
+          var colTarget = _activeExpandedNode;
+          while (colTarget.parent && colTarget.parent.expanded) colTarget = colTarget.parent;
+          console.log('§TAP empty → collapseActive node=' + colTarget.id);
+          _collapseNode(colTarget);
         } else if (_currentView !== 'home') {
           console.log('§TAP empty → goBack from=' + _currentView);
           _goBack();
@@ -1147,6 +1500,7 @@
     _rotY = 0; _rotX = -0.3;
     _momentumY = 0; _momentumX = 0;
     _flyTarget = null;
+    _activeExpandedNode = null;  // §1 — clear dim immediately on back
     if (_currentView === 'home') {
       _buildHomeNodes(_lastClient);
       // Fly back to the TABLE we came from
@@ -1298,6 +1652,7 @@
     _rotY = 0;
     _rotX = -0.3;
 
+    _fkCache = {};  // clear FK cache on init
     _buildHomeNodes(client);
 
     canvas.addEventListener('pointerdown', _onPointerDown);
@@ -1316,6 +1671,14 @@
     if (_animId) cancelAnimationFrame(_animId);
     _animate();
 
+    var _tInit = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    // Benchmark: FTS5 trigger if available
+    if (typeof ERPSearch !== 'undefined' && ERPSearch.buildIndex && !ERPSearch.isIndexed()) {
+      var _tFts = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      ERPSearch.buildIndex(_db);
+      console.log('§BENCH fts5_build=' + Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - _tFts) + 'ms');
+    }
+    console.log('§BENCH globe_init=' + Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - _tInit) + 'ms nodes=' + _nodes.length);
     console.log('§AD_GRAPH init client=' + client + ' nodes=' + _nodes.length + ' radius=' + Math.round(_radius));
   }
 
@@ -1355,11 +1718,21 @@
     getScreenScale: function (idx) { return _nodes[idx] ? _nodes[idx].screenScale : 0; },
     getNodeCount: function () { return _nodes.length; },
     getCurrentView: function () { return _currentView; },
-    getBubbleWeight: _getBubbleWeight
+    getBubbleWeight: _getBubbleWeight,
+    // §DEBUG — whitebox accessors for testing collapse/dim/gateway state
+    _debug: {
+      getActiveExpanded: function () { return _activeExpandedNode; },
+      getNodes: function () { return _nodes; },
+      findNode: _findNode,
+      expandRecord: _expandRecord,
+      collapseNode: _collapseNode,
+      spawnGateways: _spawnGateways,
+      expandProperties: _expandProperties
+    }
   };
 
   if (typeof window !== 'undefined') window.ADGraph = ADGraph;
   if (typeof module !== 'undefined' && module.exports) module.exports = ADGraph;
 
-  console.log('§AD_GRAPH_LOADED v6');
+  console.log('§AD_GRAPH_LOADED v7');
 })();
