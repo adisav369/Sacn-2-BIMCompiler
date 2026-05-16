@@ -49,8 +49,9 @@ function setupStreaming(A) {
       A.activeBuilding = nearest;
       A.activeBuildingTotal = A.streamQueue.length;
       console.log(`[S192] §DS_RESUME bld=${nearest} at=${A.streamIdx}/${A.streamQueue.length}`);
-    } else if (A._useRangeStream && A._rangeDb) {
-      // §S260: Async stream queue from range DB — no full download needed
+    } else if (A._useRangeStream && A._rangeDb && !A._splitHasMeta) {
+      // §S260: Async stream queue from range DB — only for single-DB range mode
+      // Split mode has full metadata in sync A.db — falls through to sync path below
       A.streamQueue = [];
       A.streamIdx = 0;
       A.activeBuilding = nearest;
@@ -170,7 +171,7 @@ function setupStreaming(A) {
   A._drawBboxPlaceholders = function(rows) {
     A._clearBboxPlaceholders();
     if (!rows.length) return;
-    const MAX_PLACEHOLDERS = 5000;
+    const MAX_PLACEHOLDERS = 200000;  // §S260: InstancedMesh handles 122K+ easily (1 draw call per disc)
     // Sample evenly if building has more elements than cap
     const step = rows.length > MAX_PLACEHOLDERS ? Math.ceil(rows.length / MAX_PLACEHOLDERS) : 1;
     // row: [guid, hash, rgba, disc, cx, cy, cz, rotX, rotY, rotZ, storey, ifc_class, bbox_x, bbox_y, bbox_z]
@@ -791,6 +792,7 @@ function setupStreaming(A) {
           );
           A._rangeDb = _httpvfs.db;
           A._useRangeStream = true;
+          A._splitHasMeta = true;  // sync A.db has full metadata — streamBuilding uses sync path
           // libDb stays as sync meta DB — streamTick geometry path uses _rangeDb
           console.log(`§SPLIT_GEO_RANGE_OPEN ms=${(performance.now() - _geoT0).toFixed(0)} url=${_geoAbsUrl}`);
           A.status.textContent = `Geometry streaming ready. Loading elements...`;
@@ -891,17 +893,23 @@ function setupStreaming(A) {
       }
     }
 
-    // §S260: Range mode already populated buildingCentres above
-    if (!A._useRangeStream) {
-      const rows = A.dbQuery(`
-        SELECT m.building, COUNT(*),
-          AVG(t.center_x), AVG(t.center_y), AVG(t.center_z)
-        FROM elements_meta m
-        JOIN element_transforms t ON t.guid = m.guid
-        GROUP BY m.building
-      `);
-      for (const row of rows) {
-        A.buildingCentres[row[0]] = { ix: row[2], iy: row[3], iz: row[4], count: row[1] };
+    // §S260: Skip only if already populated (single-DB range mode does it above).
+    if (Object.keys(A.buildingCentres).length === 0) {
+      console.log('§CENTRES_QUERY A.db=' + (!!A.db) + ' tables=' + (A.db ? JSON.stringify(A.db.exec("SELECT name FROM sqlite_master WHERE type='table'")) : 'none'));
+      try {
+        const rows = A.dbQuery(`
+          SELECT m.building, COUNT(*),
+            AVG(t.center_x), AVG(t.center_y), AVG(t.center_z)
+          FROM elements_meta m
+          JOIN element_transforms t ON t.guid = m.guid
+          GROUP BY m.building
+        `);
+        console.log('§CENTRES_RESULT rows=' + rows.length + (rows.length > 0 ? ' first=' + JSON.stringify(rows[0]) : ''));
+        for (const row of rows) {
+          A.buildingCentres[row[0]] = { ix: row[2], iy: row[3], iz: row[4], count: row[1] };
+        }
+      } catch(e) {
+        console.error('§CENTRES_QUERY_ERROR ' + e.message);
       }
     }
     console.log(`[S192] §BOOTSTRAP centres=${Object.keys(A.buildingCentres).length}`);
