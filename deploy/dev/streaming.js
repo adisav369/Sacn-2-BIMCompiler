@@ -101,7 +101,8 @@ function setupStreaming(A) {
 
           A.streamQueue = rows;
           A.streamIdx = 0;
-          A._lastFlushIdx = 0;  // §S260: reset progressive flush counter
+          A._lastFlushIdx = 0;
+          A._bboxCleared = false;
           A.activeBuildingTotal = rows.length;
           A._drawBboxPlaceholders(rows);
           A.streaming = true;
@@ -137,15 +138,25 @@ function setupStreaming(A) {
         console.log(`[S192] §DS_EMPTY bld=${nearest} — no streamable elements`);
         return;
       }
+      // §S260: Sort by distance to camera — nearest elements render first
+      var _camPos = A.camera.position;
+      var _ox = A.modelOffset.x, _oy = A.modelOffset.y, _oz = A.modelOffset.z;
+      rows.sort(function(a, b) {
+        // ifc2three: x = cx - ox, y = cz - oz, z = -(cy - oy)
+        var ax = a[4] - _ox - _camPos.x, ay = a[6] - _oz - _camPos.y, az = -(a[5] - _oy) - _camPos.z;
+        var bx = b[4] - _ox - _camPos.x, by = b[6] - _oz - _camPos.y, bz = -(b[5] - _oy) - _camPos.z;
+        return (ax*ax + ay*ay + az*az) - (bx*bx + by*by + bz*bz);
+      });
       A.streamQueue = rows;
       A.streamIdx = 0;
-      A._lastFlushIdx = 0;  // §S260: reset progressive flush counter
+      A._lastFlushIdx = 0;
+      A._bboxCleared = false;
       A.activeBuilding = nearest;
       A.activeBuildingTotal = A.streamQueue.length;
       // Draw one wireframe cube per element instantly — disappear when real meshes arrive
       A._drawBboxPlaceholders(rows);
       A.streaming = true;
-      console.log(`[S192] §DS_QUEUED bld=${nearest} elements=${A.streamQueue.length}`);
+      console.log(`[S192] §DS_QUEUED bld=${nearest} elements=${A.streamQueue.length} (sorted by camera distance)`);
     }
     document.getElementById('s-active').textContent = `${nearest}`;
     document.getElementById('s-building-total').textContent = A.activeBuildingTotal.toLocaleString();
@@ -442,11 +453,15 @@ function setupStreaming(A) {
     A.streamIdx += batch;
 
     // §S260: Progressive flush — build meshes every 5000 elements instead of waiting for all
-    if (!A._lastFlushIdx) A._lastFlushIdx = 0;
+    if (A._lastFlushIdx === undefined) A._lastFlushIdx = 0;
     if (A.streamIdx - A._lastFlushIdx >= 5000 && A.streamIdx < A.streamQueue.length) {
       A._flushInstanced();
       // §S260: Clear bbox placeholders on first flush — real geometry is now visible
-      if (A._lastFlushIdx === 0) A._clearBboxPlaceholders();
+      if (!A._bboxCleared) {
+        A._clearBboxPlaceholders();
+        A._bboxCleared = true;
+        console.log('[S260] §BBOX_CLEARED_ON_FIRST_FLUSH');
+      }
       A._lastFlushIdx = A.streamIdx;
       console.log(`[S260] §PROGRESSIVE_FLUSH at=${A.streamIdx}/${A.streamQueue.length} drawCalls=${A.scene.children.length}`);
     }
