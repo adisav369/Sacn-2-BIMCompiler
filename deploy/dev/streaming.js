@@ -442,10 +442,11 @@ function setupStreaming(A) {
     A.streamIdx += batch;
 
     // §S260: Progressive flush — build meshes every 5000 elements instead of waiting for all
-    // Gives user visible geometry while rest is still streaming
     if (!A._lastFlushIdx) A._lastFlushIdx = 0;
     if (A.streamIdx - A._lastFlushIdx >= 5000 && A.streamIdx < A.streamQueue.length) {
       A._flushInstanced();
+      // §S260: Clear bbox placeholders on first flush — real geometry is now visible
+      if (A._lastFlushIdx === 0) A._clearBboxPlaceholders();
       A._lastFlushIdx = A.streamIdx;
       console.log(`[S260] §PROGRESSIVE_FLUSH at=${A.streamIdx}/${A.streamQueue.length} drawCalls=${A.scene.children.length}`);
     }
