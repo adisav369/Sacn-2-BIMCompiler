@@ -571,6 +571,23 @@
   <label><span data-trl="ui_sunglass">Sunglasses</span> <span class="panel-toggle" onclick="toggleSunglass()" style="float:right;cursor:pointer">&times;</span></label>
   <input type="range" id="sunglass-slider" min="0" max="100" value="0" step="1" oninput="updateAmbience(this.value)">
   <span class="section-val" id="sunglass-val">Off</span>
+  <hr style="border-color:rgba(255,255,255,0.1);margin:6px 0">
+  <label>Exposure</label>
+  <input type="range" id="sl-exposure" min="0.2" max="3.0" value="1.0" step="0.1" oninput="updateLighting('exposure',this.value)">
+  <span class="section-val" id="sl-exposure-val">1.0</span>
+  <label>Sun</label>
+  <input type="range" id="sl-sun" min="0" max="5.0" value="1.2" step="0.1" oninput="updateLighting('sun',this.value)">
+  <span class="section-val" id="sl-sun-val">1.2</span>
+  <label>Ambient</label>
+  <input type="range" id="sl-ambient" min="0" max="2.0" value="0.8" step="0.1" oninput="updateLighting('ambient',this.value)">
+  <span class="section-val" id="sl-ambient-val">0.8</span>
+  <label>Hemisphere</label>
+  <input type="range" id="sl-hemi" min="0" max="2.0" value="0.5" step="0.1" oninput="updateLighting('hemi',this.value)">
+  <span class="section-val" id="sl-hemi-val">0.5</span>
+  <hr style="border-color:rgba(255,255,255,0.1);margin:6px 0">
+  <button id="shadow-btn" onclick="toggleShadow()" style="width:48%;background:#333;color:#aaa;border:1px solid #555;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px">Shadow</button>
+  <button id="night-btn" onclick="toggleNightMode()" style="width:48%;background:#1a1a3e;color:#aac;border:1px solid #446;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px;float:right">Night</button>
+  <span class="section-val" id="night-val">Off</span>
 </div>
 
 <!-- Site Camera Overlay (mobile only) -->
@@ -632,15 +649,15 @@
   <span style="color:#aaa;font-size:9px;margin-left:4px;vertical-align:middle">Report Bug</span>
 </div>
 
-<script src="loader.js?v=8"></script>
+<script src="loader.js?v=9"></script>
 <script src="qrcode.min.js?v=1" onerror="console.warn('§LOAD_FAIL qrcode.min.js — QR sharing disabled')"></script>
 <script src="config.js?v=4" onerror="console.warn('§LOAD_FAIL config.js')"></script>
-<script src="scene.js?v=11" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
+<script src="scene.js?v=12" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
 <script src="helpers.js?v=3" onerror="console.warn('§LOAD_FAIL helpers.js')"></script>
 <script src="streaming.js?v=20" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
 <script src="dlod.js?v=3" onerror="console.warn('§LOAD_FAIL dlod.js')"></script>
 <script src="panels.js?v=8" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
-<script src="tools.js?v=8" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
+<script src="tools.js?v=9" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
 <script src="picking.js?v=19" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
 <script src="tour.js?v=3" onerror="console.warn('§LOAD_FAIL tour.js')"></script>
 <script src="clash_report.js?v=1" onerror="console.warn('§LOAD_FAIL clash_report.js')"></script>
@@ -682,8 +699,8 @@
 <script src="wizard_storeys.js?v=1" onerror="console.warn('§LOAD_FAIL wizard_storeys.js')"></script>
 <script src="wizard_classify.js?v=1" onerror="console.warn('§LOAD_FAIL wizard_classify.js')"></script>
 <script src="precision_cam.js?v=1" onerror="console.warn('§LOAD_FAIL precision_cam.js')"></script>
-<script src="time_machine.js?v=5" onerror="console.warn('§LOAD_FAIL time_machine.js')"></script>
-<script src="main.js?v=21"></script>
+<script src="time_machine.js?v=6" onerror="console.warn('§LOAD_FAIL time_machine.js')"></script>
+<script src="main.js?v=22"></script>
 <!-- Styled tooltip bubbles for [data-trl-title] buttons — appended to body, not clipped by overflow:hidden -->
 <style>#ootb-tip{display:none;position:fixed;z-index:9990;background:rgba(10,10,30,0.92);color:#4fc3f7;font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid rgba(79,195,247,0.35);pointer-events:none;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.4)}</style>
 <script>
@@ -723,7 +740,7 @@ if(new URLSearchParams(location.search).get('embedded')!=='true'){
 </script>
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js?v=312')
+  navigator.serviceWorker.register('sw.js?v=323')
     .then(function(r){console.log('§SW_REG scope='+r.scope)})
     .catch(function(e){console.warn('§SW_REG_FAIL',e)});
 }

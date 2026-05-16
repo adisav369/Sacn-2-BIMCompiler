@@ -114,7 +114,7 @@ async function loadAllLibs() {
   // §S258: Disable color management IMMEDIATELY after Three.js loads, before ANY Color/Material
   // r156 defaults to ColorManagement.enabled=true which reinterprets all color values as linear.
   // Must be set before OrbitControls or any other code touches THREE.Color.
-  THREE.ColorManagement.enabled = false;
+  THREE.ColorManagement.enabled = false;  // §S259: kept false — enabling breaks HSL color slider palettes
 
   await loadLib(1);  // OrbitControls (needs THREE global)
 

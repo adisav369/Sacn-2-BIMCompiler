@@ -62,35 +62,14 @@ function setupTools(A) {
     panel.style.display = A.sectionOn ? 'block' : 'none';
     if (A.sectionOn) {
       A.applySectionAxis();
-      // Save cut button — always available when scissors is ON
-      var existSaveBtn = document.getElementById('section-save-cut-btn');
-      if (!existSaveBtn && panel) {
-        var saveBtn = document.createElement('button');
-        saveBtn.id = 'section-save-cut-btn';
-        saveBtn.textContent = 'Save cut';
-        saveBtn.title = 'Save this section cut as a card';
-        saveBtn.style.cssText = 'display:block;width:100%;margin-top:6px;padding:4px 8px;font-size:11px;cursor:pointer;background:#1a4a1a;color:#8f8;border:1px solid #3a7a3a;border-radius:3px;';
-        saveBtn.addEventListener('pointerup', function(e) {
-          e.stopPropagation();
-          if (A.saveSectionFromScissors) A.saveSectionFromScissors();
-          // Toast
-          var toast = document.createElement('div');
-          toast.textContent = 'Section saved';
-          toast.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:#1a4a1a;color:#8f8;border:1px solid #3a7a3a;border-radius:4px;padding:6px 14px;font-size:12px;z-index:9999;pointer-events:none';
-          document.body.appendChild(toast);
-          setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 2500);
-        });
-        panel.appendChild(saveBtn);
-      }
+      // No Save button on section slider — scissors in 3D is just cut + Esc.
+      // Save lives in the 2D grid panel (grid-save-section-btn) only.
     } else {
       A.renderer.localClippingEnabled = false;
       A.collectMeshes(o => o.isMesh).forEach(obj => {
         obj.material.clippingPlanes = [];
         obj.material.needsUpdate = true;
       });
-      // Remove Save cut button when scissors turns off
-      var saveBtnOff = document.getElementById('section-save-cut-btn');
-      if (saveBtnOff && saveBtnOff.parentNode) saveBtnOff.parentNode.removeChild(saveBtnOff);
       console.log('[S205] §SECTION OFF');
       if (A.onSectionOff) A.onSectionOff();
     }
@@ -224,19 +203,14 @@ function setupTools(A) {
   A._sunglassBackups = [];  // [{mesh, origMat}]
 
   A.toggleSunglass = function() {
-    A.sunglassOn = !A.sunglassOn;
-    // Reverse background
-    A.toggleTheme();
-    // Button highlight
-    const btn = document.getElementById('sunglass-btn');
-    btn.style.background = A.sunglassOn ? '#ff8c00' : '#444';
-    btn.style.color = A.sunglassOn ? '#000' : '#fff';
-    // Slider panel
-    document.getElementById('sunglass-slider-panel').style.display = A.sunglassOn ? 'block' : 'none';
-    if (!A.sunglassOn) {
-      document.getElementById('sunglass-slider').value = 0;
-      A._restoreSunglass();
-    }
+    // §S259: toggle just shows/hides panel — settings persist
+    var panel = document.getElementById('sunglass-slider-panel');
+    var visible = panel.style.display !== 'none';
+    panel.style.display = visible ? 'none' : 'block';
+    var btn = document.getElementById('sunglass-btn');
+    btn.style.background = visible ? '#444' : '#ff8c00';
+    btn.style.color = visible ? '#fff' : '#000';
+    A.sunglassOn = !visible;
   };
 
   A._sunglassBackups = [];
@@ -424,6 +398,270 @@ function setupTools(A) {
 
     label.textContent = phase + ' — ' + strategy;
     console.log('[S200] §SUNGLASS tick=' + tick + ' phase=' + phase + ' ' + strategy);
+  };
+
+  // §S259: Lighting sliders in Sunglass panel
+  A.updateLighting = function(which, val) {
+    val = parseFloat(val);
+    if (!A.renderer || !A.sun || !A.ambient || !A.hemi) return;
+    if (which === 'exposure') {
+      A.renderer.toneMappingExposure = val;
+      document.getElementById('sl-exposure-val').textContent = val.toFixed(1);
+    } else if (which === 'sun') {
+      A.sun.intensity = val;
+      document.getElementById('sl-sun-val').textContent = val.toFixed(1);
+    } else if (which === 'ambient') {
+      A.ambient.intensity = val;
+      document.getElementById('sl-ambient-val').textContent = val.toFixed(1);
+    } else if (which === 'hemi') {
+      A.hemi.intensity = val;
+      document.getElementById('sl-hemi-val').textContent = val.toFixed(1);
+    }
+    if (A.markDirty) A.markDirty();
+    console.log('§LIGHTING ' + which + '=' + val.toFixed(1));
+  };
+
+  // §S259: Shadow toggle — user-controlled in Sunglass panel
+  A._shadowOn = false;
+  A.toggleShadow = function() {
+    A._shadowOn = !A._shadowOn;
+    A.renderer.shadowMap.enabled = A._shadowOn;
+    A.sun.castShadow = A._shadowOn;
+    if (A._shadowOn) {
+      // Configure shadow camera for building scale
+      A.sun.shadow.mapSize.width = 2048;
+      A.sun.shadow.mapSize.height = 2048;
+      A.sun.shadow.camera.near = 1;
+      A.sun.shadow.camera.far = 2000;
+      A.sun.shadow.camera.left = -300;
+      A.sun.shadow.camera.right = 300;
+      A.sun.shadow.camera.top = 300;
+      A.sun.shadow.camera.bottom = -300;
+      A.sun.shadow.camera.updateProjectionMatrix();
+      // Show ground plane at building base
+      if (A.ground) {
+        A.ground.visible = true;
+        A.ground.receiveShadow = true;
+        if (A.db) {
+          try {
+            var zr = A.db.exec('SELECT MIN(center_z) FROM element_transforms');
+            if (zr.length && zr[0].values[0][0] != null) {
+              var p = A.ifc2three(0, 0, zr[0].values[0][0] - 0.5);
+              A.ground.position.y = p.y;
+            }
+          } catch(e) {}
+        }
+      }
+      // Enable castShadow on visible meshes (batched — not all at once)
+      A.scene.traverse(function(o) {
+        if (o.isMesh && o.visible) { o.castShadow = true; o.receiveShadow = true; }
+      });
+      A.renderer.shadowMap.needsUpdate = true;
+    } else {
+      A.scene.traverse(function(o) {
+        if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; }
+      });
+      if (A.ground) A.ground.visible = false;
+    }
+    var btn = document.getElementById('shadow-btn');
+    btn.style.background = A._shadowOn ? '#ff8c00' : '#333';
+    btn.style.color = A._shadowOn ? '#000' : '#aaa';
+    if (A.markDirty) A.markDirty();
+    console.log('§SHADOW toggle=' + A._shadowOn);
+  };
+
+  // §S259: Night Mode — moonlight outside, IFC light fixtures inside
+  A._nightMode = false;
+  A._nightLights = [];       // active THREE.PointLight objects
+  A._nightFixtures = [];     // [{x,y,z}] from DB — IFC coordinates
+  A._nightSaved = null;      // saved day settings
+  var NIGHT_MAX_LIGHTS = 24; // proximity-culled limit
+  var NIGHT_LIGHT_RANGE = 50; // metres — deep reach across halls
+  var NIGHT_LIGHT_INTENSITY = 2.5; // point lights are primary indoor source
+
+  A.toggleNightMode = function() {
+    A._nightMode = !A._nightMode;
+    var btn = document.getElementById('night-btn');
+    var label = document.getElementById('night-val');
+
+    if (A._nightMode) {
+      // Save current lighting
+      A._nightSaved = {
+        sunI: A.sun.intensity, ambI: A.ambient.intensity, hemiI: A.hemi.intensity,
+        exposure: A.renderer.toneMappingExposure,
+        clearColor: A.renderer.getClearColor(new THREE.Color()).getHex(),
+        sunColor: A.sun.color.getHex(), hemiSky: A.hemi.color.getHex(),
+        ambColor: A.ambient.color.getHex()
+      };
+      // Moonlight: dim blue sun, soft ambient — point lights carry the indoor glow
+      A.sun.intensity = 0.1;
+      A.sun.color.setHex(0x8899cc);
+      A.ambient.intensity = 0.12;
+      A.ambient.color.setHex(0x887766);  // warm tint
+      A.hemi.intensity = 0.06;
+      A.hemi.color.setHex(0x222233);
+      A.renderer.toneMappingExposure = 1.0;
+      A.renderer.setClearColor(0x080818);
+      // Show ground plane for night scene
+      if (A.ground) {
+        A.ground.visible = true;
+        A.ground.material.color.setHex(0x0a0a15);
+        if (A.db) {
+          try {
+            var zr = A.db.exec('SELECT MIN(center_z) FROM element_transforms');
+            if (zr.length && zr[0].values[0][0] != null) {
+              var p = A.ifc2three(0, 0, zr[0].values[0][0] - 0.5);
+              A.ground.position.y = p.y;
+            }
+          } catch(e) {}
+        }
+      }
+      // Update sliders to reflect
+      document.getElementById('sl-sun').value = 0.15;
+      document.getElementById('sl-sun-val').textContent = '0.2';
+      document.getElementById('sl-ambient').value = 0.1;
+      document.getElementById('sl-ambient-val').textContent = '0.1';
+      document.getElementById('sl-hemi').value = 0.08;
+      document.getElementById('sl-hemi-val').textContent = '0.1';
+      document.getElementById('sl-exposure').value = 0.8;
+      document.getElementById('sl-exposure-val').textContent = '0.8';
+      // Load IFC light fixtures from DB — fallback to storey centroids if none
+      A._nightFixtures = [];
+      var source = 'none';
+      if (A.db) {
+        try {
+          var r = A.db.exec("SELECT t.center_x, t.center_y, t.center_z FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class='IfcLightFixture'");
+          if (r.length && r[0].values.length > 0) {
+            r[0].values.forEach(function(row) {
+              A._nightFixtures.push({ x: row[0], y: row[1], z: row[2] });
+            });
+            source = 'IFC';
+          }
+        } catch(e) {}
+        // §S259: Fallback — generate synthetic lights from storey centroids
+        if (A._nightFixtures.length === 0) {
+          try {
+            var sr = A.db.exec("SELECT m.storey, AVG(t.center_x), AVG(t.center_y), AVG(t.center_z), MIN(t.center_x), MAX(t.center_x), MIN(t.center_y), MAX(t.center_y) FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid GROUP BY m.storey");
+            if (sr.length) {
+              sr[0].values.forEach(function(row) {
+                var cx = row[1], cy = row[2], cz = row[3];
+                var xMin = row[4], xMax = row[5], yMin = row[6], yMax = row[7];
+                var dx = (xMax - xMin) || 10, dy = (yMax - yMin) || 10;
+                // Place a grid of lights per storey — one every ~15m
+                var nx = Math.max(1, Math.ceil(dx / 15));
+                var ny = Math.max(1, Math.ceil(dy / 15));
+                for (var ix = 0; ix < nx; ix++) {
+                  for (var iy = 0; iy < ny; iy++) {
+                    var fx = xMin + (ix + 0.5) * (dx / nx);
+                    var fy = yMin + (iy + 0.5) * (dy / ny);
+                    A._nightFixtures.push({ x: fx, y: fy, z: cz + 1.5 });
+                  }
+                }
+              });
+              source = 'synthetic (' + sr[0].values.length + ' storeys)';
+            }
+          } catch(e) { console.warn('§NIGHT fallback query failed', e); }
+        }
+      }
+      console.log('§NIGHT_MODE on fixtures=' + A._nightFixtures.length + ' source=' + source);
+      // Place initial proximity lights
+      A._nightUpdateLights();
+      // Hook camera change to update proximity lights
+      if (A.controls && !A._nightControlsListener) {
+        var _nightLastCamPos = A.camera.position.clone();
+        A._nightControlsListener = function() {
+          var d2 = A.camera.position.distanceToSquared(_nightLastCamPos);
+          if (d2 < 25) return;  // only update when camera moves >5m
+          _nightLastCamPos.copy(A.camera.position);
+          A._nightUpdateLights();
+        };
+        A.controls.addEventListener('change', A._nightControlsListener);
+      }
+      btn.style.background = '#ff8c00';
+      btn.style.color = '#000';
+      label.textContent = 'On — ' + A._nightFixtures.length + ' fixtures';
+    } else {
+      // Restore day
+      if (A._nightSaved) {
+        A.sun.intensity = A._nightSaved.sunI;
+        A.sun.color.setHex(A._nightSaved.sunColor);
+        A.ambient.intensity = A._nightSaved.ambI;
+        A.ambient.color.setHex(A._nightSaved.ambColor);
+        A.hemi.intensity = A._nightSaved.hemiI;
+        A.hemi.color.setHex(A._nightSaved.hemiSky);
+        A.renderer.toneMappingExposure = A._nightSaved.exposure;
+        A.renderer.setClearColor(A._nightSaved.clearColor);
+        // Restore sliders
+        document.getElementById('sl-sun').value = A._nightSaved.sunI;
+        document.getElementById('sl-sun-val').textContent = A._nightSaved.sunI.toFixed(1);
+        document.getElementById('sl-ambient').value = A._nightSaved.ambI;
+        document.getElementById('sl-ambient-val').textContent = A._nightSaved.ambI.toFixed(1);
+        document.getElementById('sl-hemi').value = A._nightSaved.hemiI;
+        document.getElementById('sl-hemi-val').textContent = A._nightSaved.hemiI.toFixed(1);
+        document.getElementById('sl-exposure').value = A._nightSaved.exposure;
+        document.getElementById('sl-exposure-val').textContent = A._nightSaved.exposure.toFixed(1);
+      }
+      // Remove point lights
+      A._nightLights.forEach(function(l) { A.scene.remove(l); l.dispose(); });
+      A._nightLights = [];
+      A._nightFixturePositions = null;
+      // Unhook
+      if (A.controls && A._nightControlsListener) {
+        A.controls.removeEventListener('change', A._nightControlsListener);
+        A._nightControlsListener = null;
+      }
+      // Restore ground
+      if (A.ground && !A._shadowOn) {
+        A.ground.visible = false;
+        A.ground.material.color.setHex(0x222233);
+      }
+      console.log('§NIGHT_MODE off');
+      btn.style.background = '#1a1a3e';
+      btn.style.color = '#aac';
+      label.textContent = 'Off';
+    }
+    if (A.markDirty) A.markDirty();
+  };
+
+  A._nightUpdateLights = function() {
+    if (!A._nightMode || !A._nightFixtures.length) return;
+    // Convert all fixture positions to Three.js coords (cached after first call)
+    if (!A._nightFixturePositions) {
+      A._nightFixturePositions = A._nightFixtures.map(function(f) {
+        return A.ifc2three(f.x, f.y, f.z);
+      });
+    }
+    var allPos = A._nightFixturePositions;
+    var needed;
+    if (allPos.length <= NIGHT_MAX_LIGHTS) {
+      // Small building — place ALL fixtures, no culling
+      needed = allPos.map(function(p) { return { pos: p }; });
+    } else {
+      // Large building — camera-facing priority culling
+      var camPos = A.camera.position;
+      var camDir = new THREE.Vector3();
+      A.camera.getWorldDirection(camDir);
+      var scored = allPos.map(function(p) {
+        var dx = p.x - camPos.x, dy = p.y - camPos.y, dz = p.z - camPos.z;
+        var dist2 = dx*dx + dy*dy + dz*dz;
+        var dist = Math.sqrt(dist2) || 1;
+        var dot = (dx * camDir.x + dy * camDir.y + dz * camDir.z) / dist;
+        var score = (dot > 0) ? dist2 : dist2 * 4;
+        return { pos: p, score: score };
+      }).sort(function(a, b) { return a.score - b.score; });
+      needed = scored.slice(0, NIGHT_MAX_LIGHTS);
+    }
+    // Remove old lights
+    A._nightLights.forEach(function(l) { A.scene.remove(l); l.dispose(); });
+    A._nightLights = [];
+    // Add new
+    needed.forEach(function(f) {
+      var light = new THREE.PointLight(0xffe4b5, NIGHT_LIGHT_INTENSITY, NIGHT_LIGHT_RANGE);
+      light.position.copy(f.pos);
+      A.scene.add(light);
+      A._nightLights.push(light);
+    });
+    if (A.markDirty) A.markDirty();
   };
 
   // Hover highlight

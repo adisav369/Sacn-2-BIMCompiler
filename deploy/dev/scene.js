@@ -11,11 +11,13 @@ function setupScene(A) {
   // §S258: ColorManagement.enabled=false set in loader.js (before any THREE.Color created)
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));  // §S259: cap at 2x — 3x Retina = 9x fill
   renderer.setClearColor(0x1a1a2e);
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = false;  // §S259: disabled — shadow pass doubles draw calls on large buildings
+  renderer.toneMapping = THREE.NeutralToneMapping;  // §S259: Khronos PBR Neutral — preserves true material colors
+  renderer.toneMappingExposure = 1.0;  // §S259: tune up/down if too dark/bright
   renderer.localClippingEnabled = true;
-  renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;  // §S259: proper gamma curve for web display
   // §S258: r156 defaults to physically-correct lights (lux/candela) — intensity 1.0 is near-dark.
   // r128 used legacy multiplier mode. Restore it.
   renderer.useLegacyLights = true;
@@ -69,7 +71,7 @@ function setupScene(A) {
 
   const sun = new THREE.DirectionalLight(0xfff0dd, 1.2);
   sun.position.set(200, 400, 300);
-  sun.castShadow = true;
+  sun.castShadow = false;  // §S259: disabled with shadowMap
   scene.add(sun);
   A.sun = sun;
 

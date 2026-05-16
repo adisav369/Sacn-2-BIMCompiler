@@ -13,6 +13,7 @@ function initViewer() {
   var _mods = [setupConfig, setupScene, setupHelpers, setupStreaming, setupPanels, setupTools,
     setupPicking, setupTour, setupMeasure, setupSitecam, setupIssues, setupExcel, setupWalk, setupCity];
   _mods.forEach(function(fn) { if (typeof fn === 'function') fn(APP); });
+  if (typeof setupDLOD === 'function') setupDLOD(APP);
   if (typeof setupNlp === 'function') setupNlp(APP);
   if (typeof setupGhostGlass === 'function') setupGhostGlass(APP);
   // navigate.js lazy-loaded on demand (78KB saved on first paint)
@@ -120,6 +121,9 @@ function initViewer() {
   window.toggleSunglass = APP.toggleSunglass;
   window.closeSunglass = APP.closeSunglass;
   window.updateAmbience = APP.updateAmbience;
+  window.updateLighting = APP.updateLighting;
+  window.toggleNightMode = APP.toggleNightMode;
+  window.toggleShadow = APP.toggleShadow;
   window.toggleIssues = APP.toggleIssues;
   window.exportIssuesExcel = APP.exportIssuesExcel;
   window.clearAllIssues = APP.clearAllIssues;
@@ -493,6 +497,8 @@ function initViewer() {
       if (APP.walkMode) { APP.walkTick(); } else { APP.flyTick(); }
     }
     APP.streamTick();
+    // §6.8 Ray-blast DLOD — visibility culling for large buildings
+    if (APP.dlodTick) APP.dlodTick();
     // S245e: Clash DLOD proximity LOD update (throttled internally to 100ms)
     if (APP._clashModeActive && APP._updateClashLOD) APP._updateClashLOD();
     APP.walkModeGpsTick();
