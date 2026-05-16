@@ -406,19 +406,19 @@ function setupTools(A) {
     if (!A.renderer || !A.sun || !A.ambient || !A.hemi) return;
     if (which === 'exposure') {
       A.renderer.toneMappingExposure = val;
-      document.getElementById('sl-exposure-val').textContent = val.toFixed(1);
+      document.getElementById('sl-exposure-val').textContent = val.toFixed(2);
     } else if (which === 'sun') {
       A.sun.intensity = val;
-      document.getElementById('sl-sun-val').textContent = val.toFixed(1);
+      document.getElementById('sl-sun-val').textContent = val.toFixed(2);
     } else if (which === 'ambient') {
       A.ambient.intensity = val;
-      document.getElementById('sl-ambient-val').textContent = val.toFixed(1);
+      document.getElementById('sl-ambient-val').textContent = val.toFixed(2);
     } else if (which === 'hemi') {
       A.hemi.intensity = val;
-      document.getElementById('sl-hemi-val').textContent = val.toFixed(1);
+      document.getElementById('sl-hemi-val').textContent = val.toFixed(2);
     }
     if (A.markDirty) A.markDirty();
-    console.log('§LIGHTING ' + which + '=' + val.toFixed(1));
+    console.log('§LIGHTING ' + which + '=' + val.toFixed(2));
   };
 
   // §S259: Shadow toggle — user-controlled in Sunglass panel
@@ -475,9 +475,9 @@ function setupTools(A) {
   A._nightLights = [];       // active THREE.PointLight objects
   A._nightFixtures = [];     // [{x,y,z}] from DB — IFC coordinates
   A._nightSaved = null;      // saved day settings
-  var NIGHT_MAX_LIGHTS = 24; // proximity-culled limit
-  var NIGHT_LIGHT_RANGE = 50; // metres — deep reach across halls
-  var NIGHT_LIGHT_INTENSITY = 2.5; // point lights are primary indoor source
+  var NIGHT_MAX_LIGHTS = 12; // proximity-culled limit
+  var NIGHT_LIGHT_RANGE = 15; // metres radius per fixture
+  var NIGHT_LIGHT_INTENSITY = 2.0;
 
   A.toggleNightMode = function() {
     A._nightMode = !A._nightMode;
@@ -493,14 +493,13 @@ function setupTools(A) {
         sunColor: A.sun.color.getHex(), hemiSky: A.hemi.color.getHex(),
         ambColor: A.ambient.color.getHex()
       };
-      // Moonlight: dim blue sun, soft ambient — point lights carry the indoor glow
-      A.sun.intensity = 0.1;
+      // Moonlight: original values — worked well for SH
+      A.sun.intensity = 0.15;
       A.sun.color.setHex(0x8899cc);
-      A.ambient.intensity = 0.12;
-      A.ambient.color.setHex(0x887766);  // warm tint
-      A.hemi.intensity = 0.06;
-      A.hemi.color.setHex(0x222233);
-      A.renderer.toneMappingExposure = 1.0;
+      A.ambient.intensity = 0.1;
+      A.hemi.intensity = 0.08;
+      A.hemi.color.setHex(0x222244);
+      A.renderer.toneMappingExposure = 0.8;
       A.renderer.setClearColor(0x080818);
       // Show ground plane for night scene
       if (A.ground) {
@@ -632,13 +631,13 @@ function setupTools(A) {
       });
     }
     var allPos = A._nightFixturePositions;
+    var camPos = A.camera.position;
     var needed;
     if (allPos.length <= NIGHT_MAX_LIGHTS) {
       // Small building — place ALL fixtures, no culling
       needed = allPos.map(function(p) { return { pos: p }; });
     } else {
       // Large building — camera-facing priority culling
-      var camPos = A.camera.position;
       var camDir = new THREE.Vector3();
       A.camera.getWorldDirection(camDir);
       var scored = allPos.map(function(p) {
@@ -654,9 +653,12 @@ function setupTools(A) {
     // Remove old lights
     A._nightLights.forEach(function(l) { A.scene.remove(l); l.dispose(); });
     A._nightLights = [];
-    // Add new
+    // Add new — intensity fades when camera is close (avoid blowout inside rooms)
     needed.forEach(function(f) {
-      var light = new THREE.PointLight(0xffe4b5, NIGHT_LIGHT_INTENSITY, NIGHT_LIGHT_RANGE);
+      var dist = camPos.distanceTo(f.pos);
+      var fade = Math.min(1.0, dist / 15);  // ramp from 0 at point to full at 15m
+      var intensity = NIGHT_LIGHT_INTENSITY * (0.3 + 0.7 * fade);  // never below 30%
+      var light = new THREE.PointLight(0xffe4b5, intensity, NIGHT_LIGHT_RANGE);
       light.position.copy(f.pos);
       A.scene.add(light);
       A._nightLights.push(light);

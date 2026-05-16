@@ -573,16 +573,16 @@
   <span class="section-val" id="sunglass-val">Off</span>
   <hr style="border-color:rgba(255,255,255,0.1);margin:6px 0">
   <label>Exposure</label>
-  <input type="range" id="sl-exposure" min="0.2" max="3.0" value="1.0" step="0.1" oninput="updateLighting('exposure',this.value)">
+  <input type="range" id="sl-exposure" min="0.1" max="3.0" value="1.0" step="0.05" oninput="updateLighting('exposure',this.value)">
   <span class="section-val" id="sl-exposure-val">1.0</span>
   <label>Sun</label>
-  <input type="range" id="sl-sun" min="0" max="5.0" value="1.2" step="0.1" oninput="updateLighting('sun',this.value)">
+  <input type="range" id="sl-sun" min="0" max="5.0" value="1.2" step="0.05" oninput="updateLighting('sun',this.value)">
   <span class="section-val" id="sl-sun-val">1.2</span>
   <label>Ambient</label>
-  <input type="range" id="sl-ambient" min="0" max="2.0" value="0.8" step="0.1" oninput="updateLighting('ambient',this.value)">
+  <input type="range" id="sl-ambient" min="0" max="2.0" value="0.8" step="0.01" oninput="updateLighting('ambient',this.value)">
   <span class="section-val" id="sl-ambient-val">0.8</span>
   <label>Hemisphere</label>
-  <input type="range" id="sl-hemi" min="0" max="2.0" value="0.5" step="0.1" oninput="updateLighting('hemi',this.value)">
+  <input type="range" id="sl-hemi" min="0" max="2.0" value="0.5" step="0.01" oninput="updateLighting('hemi',this.value)">
   <span class="section-val" id="sl-hemi-val">0.5</span>
   <hr style="border-color:rgba(255,255,255,0.1);margin:6px 0">
   <button id="shadow-btn" onclick="toggleShadow()" style="width:48%;background:#333;color:#aaa;border:1px solid #555;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px">Shadow</button>
@@ -740,7 +740,7 @@ if(new URLSearchParams(location.search).get('embedded')!=='true'){
 </script>
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js?v=323')
+  navigator.serviceWorker.register('sw.js?v=331')
     .then(function(r){console.log('§SW_REG scope='+r.scope)})
     .catch(function(e){console.warn('§SW_REG_FAIL',e)});
 }
