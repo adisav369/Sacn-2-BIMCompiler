@@ -1,5 +1,26 @@
 // tools.js — X-Ray, wireframe, section cut, screenshot, fullscreen, theme, 4D/5D export
 function setupTools(A) {
+  // §S260b: Ground Y calculation — shared by shadow + night mode
+  A._calcGroundY = function() {
+    if (!A.db || !A.ground) return;
+    var _gLvl = 0, _gSrc = '?';
+    try {
+      var zr = A.db.exec("SELECT AVG(t.center_z - t.bbox_z/2) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE m.ifc_class='IfcSlab' AND t.center_z >= -0.5 AND t.center_z <= 1.0 AND t.bbox_z IS NOT NULL AND t.bbox_z < 0.5");
+      if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'avg-slab'; }
+      if (_gSrc === '?') {
+        zr = A.db.exec("SELECT AVG(t.center_z - COALESCE(t.bbox_z/2, 0)) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE m.storey='Ground Floor'");
+        if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'GF-avg'; }
+      }
+      if (_gSrc === '?') {
+        zr = A.db.exec('SELECT MIN(center_z) FROM element_transforms');
+        if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'min-z'; }
+      }
+      var p = A.ifc2three(0, 0, _gLvl);
+      A.ground.position.y = p.y;
+      console.log('§GROUND_Y src=' + _gSrc + ' z=' + _gLvl.toFixed(2) + ' y=' + p.y.toFixed(2));
+    } catch(e) {}
+  };
+
   // Wireframe
   A.wireOn = false;
   A.toggleWireframe = function() {
@@ -464,28 +485,7 @@ function setupTools(A) {
       if (A.ground) {
         A.ground.visible = true;
         A.ground.receiveShadow = true;
-        if (A.db) {
-          try {
-            // §S260b: Ground = AVG of thin floor slabs near z≈0 (robust against outliers)
-            var _gLvl = 0, _gSrc = '?';
-            // 1. AVG of thin slabs near ground (z -0.5..1m) — most robust
-            var zr = A.db.exec("SELECT AVG(t.center_z - t.bbox_z/2) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE m.ifc_class='IfcSlab' AND t.center_z >= -0.5 AND t.center_z <= 1.0 AND t.bbox_z IS NOT NULL AND t.bbox_z < 0.5");
-            if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'avg-slab'; }
-            // 2. Any Ground Floor element center
-            if (_gSrc === '?') {
-              zr = A.db.exec("SELECT AVG(t.center_z - COALESCE(t.bbox_z/2, 0)) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE m.storey='Ground Floor'");
-              if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'GF-avg'; }
-            }
-            // 3. Absolute fallback — lowest element center
-            if (_gSrc === '?') {
-              zr = A.db.exec('SELECT MIN(center_z) FROM element_transforms');
-              if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'min-z'; }
-            }
-            var p = A.ifc2three(0, 0, _gLvl);
-            A.ground.position.y = p.y;
-            console.log('§GROUND_Y src=' + _gSrc + ' z=' + _gLvl.toFixed(2) + ' y=' + p.y.toFixed(2));
-          } catch(e) {}
-        }
+        A._calcGroundY();
       }
       // §S260: Enable castShadow on ALL mesh types (Mesh, InstancedMesh, BatchedMesh)
       A.scene.traverse(function(o) {
@@ -570,24 +570,7 @@ function setupTools(A) {
       if (A.ground) {
         A.ground.visible = true;
         if (!A._whiteBg) A.ground.material.color.setHex(0x0a0a15);
-        if (A.db) {
-          try {
-            // §S260b: Ground = AVG of thin floor slabs near z≈0 (same logic as shadow toggle)
-            var _gLvl = 0, _gSrc = '?';
-            var zr = A.db.exec("SELECT AVG(t.center_z - t.bbox_z/2) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE m.ifc_class='IfcSlab' AND t.center_z >= -0.5 AND t.center_z <= 1.0 AND t.bbox_z IS NOT NULL AND t.bbox_z < 0.5");
-            if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'avg-slab'; }
-            if (_gSrc === '?') {
-              zr = A.db.exec("SELECT AVG(t.center_z - COALESCE(t.bbox_z/2, 0)) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE m.storey='Ground Floor'");
-              if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'GF-avg'; }
-            }
-            if (_gSrc === '?') {
-              zr = A.db.exec('SELECT MIN(center_z) FROM element_transforms');
-              if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'min-z'; }
-            }
-            var p = A.ifc2three(0, 0, _gLvl);
-            A.ground.position.y = p.y;
-          } catch(e) {}
-        }
+        A._calcGroundY();
       }
       // Update sliders to reflect
       document.getElementById('sl-sun').value = 0.15;

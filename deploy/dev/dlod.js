@@ -21,6 +21,8 @@ function setupDLOD(A) {
   var _projScreenMatrix = new THREE.Matrix4();
   var _sphere = new THREE.Sphere();
   var _zeroScale = new THREE.Matrix4().makeScale(0, 0, 0);
+  var _lastCamX = 0, _lastCamY = 0, _lastCamZ = 0;  // §S260b: skip tick when camera idle
+  var _lastTargX = 0, _lastTargY = 0, _lastTargZ = 0;
 
   // Storey Y-positions cache (built once after streaming)
   var _storeyLevels = [];  // [{name, y}, ...] sorted by y ascending
@@ -30,12 +32,32 @@ function setupDLOD(A) {
     if (_storeyBuilt) return;
     _storeyBuilt = true;
     var storeyY = {};
-    A.scene.traverse(function(obj) {
-      if (obj.isMesh && obj.userData.storey && obj.userData.guid) {
-        var s = obj.userData.storey;
-        if (storeyY[s] === undefined) storeyY[s] = obj.position.y;
-      }
-    });
+    // §S260b: Build from _batchStoreyMap (BatchedMesh) + individual meshes
+    // BatchedMesh doesn't have per-element positions, so query A.db for storey→avg Z
+    if (A.db && A._batchStoreyMap && Object.keys(A._batchStoreyMap).length > 0) {
+      try {
+        var rows = A.db.exec("SELECT storey, AVG(center_z) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE storey != '' GROUP BY storey");
+        if (rows.length && rows[0].values) {
+          for (var ri = 0; ri < rows[0].values.length; ri++) {
+            var s = rows[0].values[ri][0];
+            var z = rows[0].values[ri][1];
+            if (s) {
+              var p = A.ifc2three(0, 0, z);
+              storeyY[s] = p.y;
+            }
+          }
+        }
+      } catch(e) {}
+    }
+    // Fallback: individual meshes (non-BatchedMesh path or mixed)
+    if (Object.keys(storeyY).length === 0) {
+      A.scene.traverse(function(obj) {
+        if (obj.isMesh && obj.userData.storey && obj.userData.guid) {
+          var s = obj.userData.storey;
+          if (storeyY[s] === undefined) storeyY[s] = obj.position.y;
+        }
+      });
+    }
     _storeyLevels = Object.entries(storeyY)
       .map(function(e) { return { name: e[0], y: e[1] }; })
       .sort(function(a, b) { return a.y - b.y; });
@@ -96,6 +118,16 @@ function setupDLOD(A) {
     if (!A._dlodEnabled) return;
     A._dlodFrame++;
     if (A._dlodFrame % EVAL_EVERY !== 0) return;
+
+    // §S260b: Skip when camera hasn't moved — no work needed, prevents micro-stutter
+    var cp = A.camera.position, ct = A.controls ? A.controls.target : cp;
+    if (Math.abs(cp.x - _lastCamX) < 0.01 && Math.abs(cp.y - _lastCamY) < 0.01 &&
+        Math.abs(cp.z - _lastCamZ) < 0.01 && Math.abs(ct.x - _lastTargX) < 0.01 &&
+        Math.abs(ct.y - _lastTargY) < 0.01 && Math.abs(ct.z - _lastTargZ) < 0.01) {
+      return;
+    }
+    _lastCamX = cp.x; _lastCamY = cp.y; _lastCamZ = cp.z;
+    _lastTargX = ct.x; _lastTargY = ct.y; _lastTargZ = ct.z;
 
     _buildStoreyLevels();
     var t0 = performance.now();
@@ -176,9 +208,33 @@ function setupDLOD(A) {
         }
         if (changed) obj.instanceMatrix.needsUpdate = true;
       }
+
+      // ── BatchedMesh: storey-based culling per slot ──
+      if (obj.isBatchedMesh && A._batchMeta[obj.id] && visStoreys) {
+        var meta = A._batchMeta[obj.id];
+        var anyVis = false;
+        for (var i = 0; i < meta.length; i++) {
+          var m = meta[i];
+          if (storeyFilter !== null && storeyFilter !== undefined &&
+              m.storey !== storeyFilter) continue;
+          if (hiddenDiscs && hiddenDiscs.size > 0 &&
+              hiddenDiscs.has(m.disc)) continue;
+
+          if (!visStoreys[m.storey]) {
+            obj.setVisibleAt(m.slotId, false);
+            hidCount++;
+          } else {
+            obj.setVisibleAt(m.slotId, true);
+            anyVis = true;
+            visCount++;
+          }
+        }
+        obj.visible = anyVis;
+      }
     });
 
     var ms = (performance.now() - t0).toFixed(1);
+    if (hidCount > 0 && A.markDirty) A.markDirty();  // §S260b: trigger render after visibility change
     // Log every 10th evaluation (once per second at 60fps)
     if (A._dlodFrame % (EVAL_EVERY * 10) === 0) {
       var camStorey = visStoreys ? Object.keys(visStoreys).join('+') : 'all';
@@ -206,6 +262,13 @@ function setupDLOD(A) {
           }
         }
         if (changed) obj.instanceMatrix.needsUpdate = true;
+      }
+      if (obj.isBatchedMesh && A._batchMeta[obj.id]) {
+        var meta = A._batchMeta[obj.id];
+        for (var i = 0; i < meta.length; i++) {
+          obj.setVisibleAt(meta[i].slotId, true);
+        }
+        obj.visible = true;
       }
     });
     console.log('[DLOD] §DLOD_RESTORE all meshes visible');

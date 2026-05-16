@@ -274,9 +274,8 @@ function setupStreaming(A) {
           A.populateStoreys(A.activeBuilding);
           A.populateDiscs(A.activeBuilding);
         }
-        // §S258: DLOD disabled — causes wrong-angle onset + hourglass issues on large buildings.
-        // Frustum culling deferred to future session with ObjectBVH scene-level approach.
-        // if (A.dlodEnable) { A.dlodEnable(); if (A.dlodTick) A.dlodTick(); }
+        // §S260b: DLOD re-enabled — BatchedMesh support added, storey+frustum culling
+        if (A.dlodEnable) { A.dlodEnable(); if (A.dlodTick) A.dlodTick(); }
         // §S258: Deferred BVH build — batch in background so streaming isn't blocked
         if (window._bvhReady) {
           var _bvhHashes = Object.keys(A.meshCache);
@@ -886,18 +885,39 @@ function setupStreaming(A) {
       // §S260b: Phase 2 ��� Download geo.db fully (with progress). Sync streaming = fast.
       // Bboxes keep user engaged during download. Cached on second visit = instant.
       var _geoT0 = performance.now();
-      var _geoCached = await A._checkCache(geoUrl);
-      A.status.textContent = _geoCached
-        ? `Loading geometry from cache...`
-        : `First visit — downloading geometry (${_posLoaded ? 'bboxes visible' : 'please wait'})...`;
-      var geoBuf = _geoCached || await A.cachedFetch(geoUrl);
-      A.libDb = new SQL.Database(new Uint8Array(geoBuf));
-      A._splitHasMeta = false;  // use sync streaming path (libDb has geometry)
-      var _geoMs = (performance.now() - _geoT0).toFixed(0);
-      var _geoMB = (geoBuf.byteLength / 1024 / 1024).toFixed(0);
-      var _src = _geoCached ? 'cache' : 'download';
-      console.log(`§SPLIT_GEO_LOADED src=${_src} size=${_geoMB}MB ms=${_geoMs}`);
-      A.status.textContent = `Geometry ready (${_geoMB}MB, ${(_geoMs/1000).toFixed(1)}s). Streaming meshes...`;
+      var _geoOk = false;
+      try {
+        var _geoCached = await A._checkCache(geoUrl);
+        A.status.textContent = _geoCached
+          ? `Loading geometry from cache...`
+          : `First visit — downloading geometry (${_posLoaded ? 'bboxes visible' : 'please wait'})...`;
+        var geoBuf = _geoCached || await A.cachedFetch(geoUrl);
+        A.libDb = new SQL.Database(new Uint8Array(geoBuf));
+        A._splitHasMeta = false;  // use sync streaming path (libDb has geometry)
+        var _geoMs = (performance.now() - _geoT0).toFixed(0);
+        var _geoMB = (geoBuf.byteLength / 1024 / 1024).toFixed(0);
+        var _src = _geoCached ? 'cache' : 'download';
+        console.log(`§SPLIT_GEO_LOADED src=${_src} size=${_geoMB}MB ms=${_geoMs}`);
+        A.status.textContent = `Geometry ready (${_geoMB}MB, ${(_geoMs/1000).toFixed(1)}s). Streaming meshes...`;
+        _geoOk = true;
+      } catch(_geoErr) {
+        console.log(`§SPLIT_GEO_FAIL url=${geoUrl} err=${_geoErr.message}`);
+        // Fallback: try loading _extracted.db as libDb (library pattern — geometry lives there)
+        try {
+          A.status.textContent = 'geo.db not found — loading extracted DB as geometry source...';
+          var _extBuf = await A.cachedFetch(A.DB_URL);
+          A.libDb = new SQL.Database(new Uint8Array(_extBuf));
+          A._splitHasMeta = false;
+          console.log(`§SPLIT_GEO_FALLBACK_EXTRACTED url=${A.DB_URL} size=${(_extBuf.byteLength/1024/1024).toFixed(1)}MB`);
+          A.status.textContent = 'Geometry loaded from extracted DB (fallback). Streaming meshes...';
+          _geoOk = true;
+        } catch(_extErr) {
+          console.log(`§SPLIT_GEO_FALLBACK_META err=${_extErr.message} — using meta.db (bboxes only)`);
+          A.libDb = A.db;
+          A._splitHasMeta = true;
+          A.status.textContent = 'Geometry unavailable — showing bounding boxes only.';
+        }
+      }
     } else {
       // ── Single DB — always full download. Range streaming only works with split DBs
       // (split = meta instant + geo range). Without split, metadata scanning via range is too chatty.
