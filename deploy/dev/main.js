@@ -124,6 +124,7 @@ function initViewer() {
   window.updateLighting = APP.updateLighting;
   window.toggleNightMode = APP.toggleNightMode;
   window.toggleShadow = APP.toggleShadow;
+  window.toggleBackground = APP.toggleBackground;
   window.toggleIssues = APP.toggleIssues;
   window.exportIssuesExcel = APP.exportIssuesExcel;
   window.clearAllIssues = APP.clearAllIssues;

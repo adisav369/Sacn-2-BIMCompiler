@@ -958,8 +958,9 @@ function setupStreaming(A) {
       } else {
         const groundY = (minZ - A.modelOffset.z) - 2;
         A.ground.position.y = groundY;
-        A.ground.visible = true;
-        console.log(`[S200] §GROUND minZ_ifc=${minZ.toFixed(1)} groundY=${groundY.toFixed(1)}`);
+        // §S260: Ground hidden by default — shown only when shadow or night toggled on
+        A.ground.visible = !!(A._shadowOn || A._nightMode);
+        console.log(`[S200] §GROUND minZ_ifc=${minZ.toFixed(1)} groundY=${groundY.toFixed(1)} visible=${A.ground.visible}`);
       }
     }
 

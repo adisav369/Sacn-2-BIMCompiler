@@ -425,23 +425,41 @@ function setupTools(A) {
   A._shadowOn = false;
   A.toggleShadow = function() {
     A._shadowOn = !A._shadowOn;
-    A.renderer.shadowMap.enabled = A._shadowOn;
-    A.sun.castShadow = A._shadowOn;
     if (A._shadowOn) {
-      // §S260: Scale shadow frustum to building envelope
+      // §S260: Full shadow setup on first enable — r160 needs this before any shadow render
+      if (!A._shadowInited) {
+        A.renderer.shadowMap.enabled = true;
+        A.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        A._shadowInited = true;
+        console.log('§SHADOW_INIT shadowMap enabled + PCFSoft');
+      }
+      A.sun.castShadow = true;
+    } else {
+      A.sun.castShadow = false;
+    }
+    if (A._shadowOn) {
+      // §S260: Scale shadow frustum to building envelope + sun distance
       var _env = 300;
       var _bc = Object.values(A.buildingCentres)[0];
       if (_bc && _bc.envelope) _env = Math.ceil(_bc.envelope * 0.7);
-      A.sun.shadow.mapSize.width = 4096;   // §S260: 4K shadow map for large buildings
+      _env = Math.max(_env, 50);  // minimum 50m frustum
+      // Position sun relative to building centre for tighter shadow
+      var _ctr = A.controls.target;
+      A.sun.position.set(_ctr.x + _env * 1.5, _ctr.y + _env * 3, _ctr.z + _env * 2);
+      A.sun.target.position.copy(_ctr);
+      A.sun.target.updateMatrixWorld();
+      var _sunDist = A.sun.position.distanceTo(_ctr);
+      A.sun.shadow.mapSize.width = 4096;
       A.sun.shadow.mapSize.height = 4096;
-      A.sun.shadow.camera.near = 1;
-      A.sun.shadow.camera.far = _env * 5;
+      A.sun.shadow.camera.near = _sunDist * 0.1;
+      A.sun.shadow.camera.far = _sunDist * 3;
       A.sun.shadow.camera.left = -_env;
       A.sun.shadow.camera.right = _env;
       A.sun.shadow.camera.top = _env;
       A.sun.shadow.camera.bottom = -_env;
+      A.sun.shadow.bias = -0.001;
       A.sun.shadow.camera.updateProjectionMatrix();
-      console.log('§SHADOW_FRUSTUM env=' + _env + ' mapSize=4096 far=' + (_env * 5));
+      console.log('§SHADOW_FRUSTUM env=' + _env + ' sunDist=' + _sunDist.toFixed(0) + ' near=' + (A.sun.shadow.camera.near).toFixed(0) + ' far=' + (A.sun.shadow.camera.far).toFixed(0));
       // Show ground plane at building base
       if (A.ground) {
         A.ground.visible = true;
@@ -476,6 +494,24 @@ function setupTools(A) {
     btn.style.color = A._shadowOn ? '#000' : '#aaa';
     if (A.markDirty) A.markDirty();
     console.log('§SHADOW toggle=' + A._shadowOn);
+  };
+
+  // §S260: Background toggle — white background for print/presentation
+  A._whiteBg = false;
+  A._savedClearColor = null;
+  A.toggleBackground = function() {
+    A._whiteBg = !A._whiteBg;
+    if (A._whiteBg) {
+      A._savedClearColor = A.renderer.getClearColor(new THREE.Color()).getHex();
+      A.renderer.setClearColor(0xffffff);
+    } else {
+      A.renderer.setClearColor(A._savedClearColor != null ? A._savedClearColor : 0x1a1a2e);
+    }
+    var btn = document.getElementById('bg-btn');
+    btn.style.background = A._whiteBg ? '#fff' : '#333';
+    btn.style.color = A._whiteBg ? '#000' : '#aaa';
+    if (A.markDirty) A.markDirty();
+    console.log('§BACKGROUND toggle=' + A._whiteBg);
   };
 
   // §S259: Night Mode — moonlight outside, IFC light fixtures inside

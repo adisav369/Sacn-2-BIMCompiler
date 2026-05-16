@@ -331,7 +331,7 @@
       <button id="xray-btn" onclick="toggleXray();event.stopPropagation()" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1" data-trl-title="ui_tt_xray" title="X-Ray">☢</button>
       <button onclick="screenshot();event.stopPropagation()" data-trl-title="ui_tt_screenshot" title="Screenshot" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📷</button>
       <button onclick="toggleFullscreen();event.stopPropagation()" data-trl-title="ui_tt_fullscreen" title="Fullscreen" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">⛶</button>
-      <button id="sunglass-btn" onclick="toggleSunglass();event.stopPropagation()" data-trl-title="ui_tt_sunglass" title="Sunglasses" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;padding:2px;line-height:1"><img src="sunglass.png" alt="Sunglass" style="width:18px;height:18px;vertical-align:middle"></button>
+      <button id="sunglass-btn" onclick="toggleSunglass();event.stopPropagation()" data-trl-title="ui_tt_sunglass" title="Color Studio" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;padding:2px;line-height:1"><img src="sunglass.png" alt="Sunglass" style="width:18px;height:18px;vertical-align:middle"></button>
       <button id="fly-btn" onclick="toggleFlyAround();event.stopPropagation()" data-trl-title="ui_tt_fly" title="Fly Around" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">✈</button>
       <button id="walk-speed-btn" onclick="cycleWalkSpeed();event.stopPropagation()" data-trl-title="ui_tt_walk_speed" title="Walk Speed" style="width:40px;height:40px;background:#444;color:#fff;border:1px solid #666;border-radius:5px;cursor:pointer;font-size:14px;display:none;align-items:center;justify-content:center">1x</button>
       <button onclick="export4D5D();event.stopPropagation()" data-trl-title="ui_tt_export" title="4D/5D Export" style="background:#444;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;font-size:22px;padding:2px;line-height:1">📊</button>
@@ -568,7 +568,7 @@
 </script>
 
 <div id="sunglass-slider-panel">
-  <label><span data-trl="ui_sunglass">Sunglasses</span> <span class="panel-toggle" onclick="toggleSunglass()" style="float:right;cursor:pointer">&times;</span></label>
+  <label><span data-trl="ui_sunglass">Color Studio</span> <span class="panel-toggle" onclick="toggleSunglass()" style="float:right;cursor:pointer">&times;</span></label>
   <input type="range" id="sunglass-slider" min="0" max="100" value="0" step="1" oninput="updateAmbience(this.value)">
   <span class="section-val" id="sunglass-val">Off</span>
   <hr style="border-color:rgba(255,255,255,0.1);margin:6px 0">
@@ -585,8 +585,9 @@
   <input type="range" id="sl-hemi" min="0" max="2.0" value="0.5" step="0.01" oninput="updateLighting('hemi',this.value)">
   <span class="section-val" id="sl-hemi-val">0.5</span>
   <hr style="border-color:rgba(255,255,255,0.1);margin:6px 0">
-  <button id="shadow-btn" onclick="toggleShadow()" style="width:48%;background:#333;color:#aaa;border:1px solid #555;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px">Shadow</button>
-  <button id="night-btn" onclick="toggleNightMode()" style="width:48%;background:#1a1a3e;color:#aac;border:1px solid #446;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px;float:right">Night</button>
+  <button id="bg-btn" onclick="toggleBackground()" style="width:31%;background:#333;color:#aaa;border:1px solid #555;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px">Background</button>
+  <button id="shadow-btn" onclick="toggleShadow()" style="width:31%;background:#333;color:#aaa;border:1px solid #555;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px">Shadow</button>
+  <button id="night-btn" onclick="toggleNightMode()" style="width:31%;background:#1a1a3e;color:#aac;border:1px solid #446;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px;float:right">Night</button>
   <span class="section-val" id="night-val">Off</span>
 </div>
 
@@ -657,12 +658,12 @@
 <script src="lib/httpvfs.js?v=1" onerror="console.warn('§LOAD_FAIL httpvfs.js — range-request streaming disabled')"></script>
 <script src="qrcode.min.js?v=1" onerror="console.warn('§LOAD_FAIL qrcode.min.js — QR sharing disabled')"></script>
 <script src="config.js?v=4" onerror="console.warn('§LOAD_FAIL config.js')"></script>
-<script src="scene.js?v=13" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
+<script src="scene.js?v=15" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
 <script src="helpers.js?v=4" onerror="console.warn('§LOAD_FAIL helpers.js')"></script>
-<script src="streaming.js?v=21" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
+<script src="streaming.js?v=24" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
 <script src="dlod.js?v=3" onerror="console.warn('§LOAD_FAIL dlod.js')"></script>
 <script src="panels.js?v=9" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
-<script src="tools.js?v=9" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
+<script src="tools.js?v=12" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
 <script src="picking.js?v=20" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
 <script src="tour.js?v=3" onerror="console.warn('§LOAD_FAIL tour.js')"></script>
 <script src="clash_report.js?v=1" onerror="console.warn('§LOAD_FAIL clash_report.js')"></script>
@@ -705,7 +706,7 @@
 <script src="wizard_classify.js?v=1" onerror="console.warn('§LOAD_FAIL wizard_classify.js')"></script>
 <script src="precision_cam.js?v=1" onerror="console.warn('§LOAD_FAIL precision_cam.js')"></script>
 <script src="time_machine.js?v=6" onerror="console.warn('§LOAD_FAIL time_machine.js')"></script>
-<script src="main.js?v=22"></script>
+<script src="main.js?v=23"></script>
 <!-- Styled tooltip bubbles for [data-trl-title] buttons — appended to body, not clipped by overflow:hidden -->
 <style>#ootb-tip{display:none;position:fixed;z-index:9990;background:rgba(10,10,30,0.92);color:#4fc3f7;font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid rgba(79,195,247,0.35);pointer-events:none;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.4)}</style>
 <script>
@@ -745,7 +746,7 @@ if(new URLSearchParams(location.search).get('embedded')!=='true'){
 </script>
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js?v=333')
+  navigator.serviceWorker.register('sw.js?v=338')
     .then(function(r){console.log('§SW_REG scope='+r.scope)})
     .catch(function(e){console.warn('§SW_REG_FAIL',e)});
 }

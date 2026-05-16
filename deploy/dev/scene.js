@@ -13,11 +13,13 @@ function setupScene(A) {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));  // §S259: cap at 2x — 3x Retina = 9x fill
   renderer.setClearColor(0x1a1a2e);
-  renderer.shadowMap.enabled = false;  // §S260: off by default, toggle via Sunglass panel (BatchedMesh makes it feasible)
-  // §S260: NeutralToneMapping only exists r164+. AgXToneMapping (r160) is closest — filmic, preserves hues.
-  renderer.toneMapping = THREE.AgXToneMapping || THREE.NeutralToneMapping || THREE.NoToneMapping;
-  renderer.toneMappingExposure = 1.0;  // §S259: tune up/down if too dark/bright
-  console.log('§UPGRADE_TONEMAPPING type=' + renderer.toneMapping + ' (AgX=' + THREE.AgXToneMapping + ' Neutral=' + THREE.NeutralToneMapping + ')');
+  renderer.shadowMap.enabled = false;
+  // §S260: shadow setup deferred entirely to toggleShadow() in tools.js
+  // §S260: r156 had NeutralToneMapping=undefined → NoToneMapping (value 0). Keep same behaviour.
+  // AgXToneMapping was too bright. NoToneMapping = raw material colours, matches r156 look.
+  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  console.log('§UPGRADE_TONEMAPPING type=' + renderer.toneMapping + ' (NoToneMapping=0)');
   renderer.localClippingEnabled = true;
   renderer.outputColorSpace = THREE.SRGBColorSpace;  // §S259: proper gamma curve for web display
   // §S258: r156 defaults to physically-correct lights (lux/candela) — intensity 1.0 is near-dark.
@@ -73,7 +75,7 @@ function setupScene(A) {
 
   const sun = new THREE.DirectionalLight(0xfff0dd, 1.2);
   sun.position.set(200, 400, 300);
-  sun.castShadow = false;  // §S259: disabled with shadowMap
+  sun.castShadow = false;
   scene.add(sun);
   A.sun = sun;
 
