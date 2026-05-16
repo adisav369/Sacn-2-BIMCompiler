@@ -428,16 +428,20 @@ function setupTools(A) {
     A.renderer.shadowMap.enabled = A._shadowOn;
     A.sun.castShadow = A._shadowOn;
     if (A._shadowOn) {
-      // Configure shadow camera for building scale
-      A.sun.shadow.mapSize.width = 2048;
-      A.sun.shadow.mapSize.height = 2048;
+      // §S260: Scale shadow frustum to building envelope
+      var _env = 300;
+      var _bc = Object.values(A.buildingCentres)[0];
+      if (_bc && _bc.envelope) _env = Math.ceil(_bc.envelope * 0.7);
+      A.sun.shadow.mapSize.width = 4096;   // §S260: 4K shadow map for large buildings
+      A.sun.shadow.mapSize.height = 4096;
       A.sun.shadow.camera.near = 1;
-      A.sun.shadow.camera.far = 2000;
-      A.sun.shadow.camera.left = -300;
-      A.sun.shadow.camera.right = 300;
-      A.sun.shadow.camera.top = 300;
-      A.sun.shadow.camera.bottom = -300;
+      A.sun.shadow.camera.far = _env * 5;
+      A.sun.shadow.camera.left = -_env;
+      A.sun.shadow.camera.right = _env;
+      A.sun.shadow.camera.top = _env;
+      A.sun.shadow.camera.bottom = -_env;
       A.sun.shadow.camera.updateProjectionMatrix();
+      console.log('§SHADOW_FRUSTUM env=' + _env + ' mapSize=4096 far=' + (_env * 5));
       // Show ground plane at building base
       if (A.ground) {
         A.ground.visible = true;
@@ -452,14 +456,18 @@ function setupTools(A) {
           } catch(e) {}
         }
       }
-      // Enable castShadow on visible meshes (batched — not all at once)
+      // §S260: Enable castShadow on ALL mesh types (Mesh, InstancedMesh, BatchedMesh)
       A.scene.traverse(function(o) {
-        if (o.isMesh && o.visible) { o.castShadow = true; o.receiveShadow = true; }
+        if ((o.isMesh || o.isInstancedMesh || o.isBatchedMesh) && o.visible) {
+          o.castShadow = true; o.receiveShadow = true;
+        }
       });
       A.renderer.shadowMap.needsUpdate = true;
     } else {
       A.scene.traverse(function(o) {
-        if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; }
+        if (o.isMesh || o.isInstancedMesh || o.isBatchedMesh) {
+          o.castShadow = false; o.receiveShadow = false;
+        }
       });
       if (A.ground) A.ground.visible = false;
     }

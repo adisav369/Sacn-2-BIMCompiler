@@ -101,6 +101,7 @@ function setupStreaming(A) {
 
           A.streamQueue = rows;
           A.streamIdx = 0;
+          A._lastFlushIdx = 0;  // §S260: reset progressive flush counter
           A.activeBuildingTotal = rows.length;
           A._drawBboxPlaceholders(rows);
           A.streaming = true;
@@ -138,6 +139,7 @@ function setupStreaming(A) {
       }
       A.streamQueue = rows;
       A.streamIdx = 0;
+      A._lastFlushIdx = 0;  // §S260: reset progressive flush counter
       A.activeBuilding = nearest;
       A.activeBuildingTotal = A.streamQueue.length;
       // Draw one wireframe cube per element instantly — disappear when real meshes arrive
@@ -438,6 +440,15 @@ function setupStreaming(A) {
     }
 
     A.streamIdx += batch;
+
+    // §S260: Progressive flush — build meshes every 5000 elements instead of waiting for all
+    // Gives user visible geometry while rest is still streaming
+    if (!A._lastFlushIdx) A._lastFlushIdx = 0;
+    if (A.streamIdx - A._lastFlushIdx >= 5000 && A.streamIdx < A.streamQueue.length) {
+      A._flushInstanced();
+      A._lastFlushIdx = A.streamIdx;
+      console.log(`[S260] §PROGRESSIVE_FLUSH at=${A.streamIdx}/${A.streamQueue.length} drawCalls=${A.scene.children.length}`);
+    }
 
     document.getElementById('s-streamed').textContent = A.streamedCount.toLocaleString();
     document.getElementById('s-meshes').textContent = Object.keys(A.meshCache).length.toLocaleString();
@@ -819,16 +830,15 @@ function setupStreaming(A) {
         });
       }
     } else {
-      // ── Single DB — check size to decide: full download OR range-request streaming ──
+      // ── Single DB — always full download. Range streaming only works with split DBs
+      // (split = meta instant + geo range). Without split, metadata scanning via range is too chatty.
       var _dbSize = 0;
-      var _useRange = false;
+      var _useRange = false;  // §S260: disabled for single-DB — use split_db.sh for large buildings
       try {
         var headR = await fetch(A.DB_URL, { method: 'HEAD' });
         _dbSize = parseInt(headR.headers.get('Content-Length') || '0', 10);
-        // §S260: Use range-request streaming for DBs > 50MB
-        _useRange = _dbSize > 50 * 1024 * 1024 && typeof createDbWorker === 'function';
-      } catch(e) { /* HEAD failed — fall through to full download */ }
-      console.log(`[S260] §DB_SIZE_CHECK size=${(_dbSize/1024/1024).toFixed(0)}MB useRange=${_useRange}`);
+      } catch(e) {}
+      console.log(`[S260] §DB_SIZE_CHECK size=${(_dbSize/1024/1024).toFixed(0)}MB useRange=false (split-only)`);
 
       if (_useRange) {
         // ── §S260: Range-request streaming via sql.js-httpvfs ──────────────────

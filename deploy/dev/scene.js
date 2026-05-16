@@ -13,7 +13,7 @@ function setupScene(A) {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));  // §S259: cap at 2x — 3x Retina = 9x fill
   renderer.setClearColor(0x1a1a2e);
-  renderer.shadowMap.enabled = false;  // §S259: disabled — shadow pass doubles draw calls on large buildings
+  renderer.shadowMap.enabled = false;  // §S260: off by default, toggle via Sunglass panel (BatchedMesh makes it feasible)
   // §S260: NeutralToneMapping only exists r164+. AgXToneMapping (r160) is closest — filmic, preserves hues.
   renderer.toneMapping = THREE.AgXToneMapping || THREE.NeutralToneMapping || THREE.NoToneMapping;
   renderer.toneMappingExposure = 1.0;  // §S259: tune up/down if too dark/bright
@@ -84,7 +84,7 @@ function setupScene(A) {
   // Ground plane — positioned after DB load to sit below the lowest building
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(50000, 50000),
-    new THREE.MeshLambertMaterial({ color: 0x222233, side: THREE.DoubleSide })
+    new THREE.MeshLambertMaterial({ color: 0x1a1208, side: THREE.DoubleSide })  // §S260: dark earth brown — contrasts light buildings
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
