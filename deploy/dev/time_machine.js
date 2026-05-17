@@ -805,21 +805,25 @@
             var chainPt = sc.center; // fallback
             if (sc.chain && sc.chain.length >= 2) {
               // Progress through the chain over the beat duration
-              var chainT = Math.min(1, _cineTick / beatLen);
+              // §S260c v2: Progress through chain based on timeline (startTs→endTs)
+              var sceneDur = (sc.endTs && sc.startTs) ? (sc.endTs - sc.startTs) : 1;
+              var chainT = Math.min(1, Math.max(0, (_cursor - (sc.startTs || 0)) / Math.max(1, sceneDur)));
               var chainIdx = chainT * (sc.chain.length - 1);
               var ci = Math.floor(chainIdx);
               var cf = chainIdx - ci;
-              if (ci >= sc.chain.length - 1) {
-                chainPt = sc.chain[sc.chain.length - 1];
+              ci = Math.min(ci, sc.chain.length - 2); // guard: never exceed bounds
+              if (ci < 0) ci = 0;
+              if (ci >= sc.chain.length - 1 || !sc.chain[ci] || !sc.chain[ci + 1]) {
+                chainPt = sc.chain[sc.chain.length - 1] || sc.center;
               } else {
                 chainPt = new THREE.Vector3().lerpVectors(sc.chain[ci], sc.chain[ci + 1], cf);
               }
             }
-            // §S260c BUG6: Lead the action — look slightly ahead on the chain
+            // §S260c: Lead the action — look slightly ahead on the chain
             var leadPt = chainPt;
-            if (sc.chain && sc.chain.length >= 2) {
+            if (sc.chain && sc.chain.length >= 2 && chainPt) {
               var leadIdx = Math.min(sc.chain.length - 1, Math.ceil(chainIdx) + 1);
-              if (leadIdx < sc.chain.length) {
+              if (leadIdx >= 0 && leadIdx < sc.chain.length && sc.chain[leadIdx]) {
                 leadPt = new THREE.Vector3().lerpVectors(chainPt, sc.chain[leadIdx], 0.3);
               }
             }
@@ -1523,25 +1527,20 @@
           if (_cineStoryboard.length) {
             _cineNextTarget = _cineStoryboard[0].center;
             _camTarget = _cineStoryboard[0].center.clone();
-            // §S260c: Keep "Drone Movie In Progress" visible for 2s so user sees it
-            setTimeout(function() { viewerStatus(''); }, 2000);
-            _cursor = _projectStart;
-            renderAtTime(_cursor);
-            startPlayback(+1);
+            // §S260c v2: Don't auto-play — let user press ▶ when ready
+            viewerStatus('🚁 ' + _cineStoryboard.length + ' scenes ready — press ▶ to play');
+            console.log('§CINE_READY scenes=' + _cineStoryboard.length + ' — awaiting user Play');
           } else {
-            viewerStatus('🚁 No scenes found — try playing first');
+            viewerStatus('🚁 No scenes found — load a building first');
           }
-        }).catch(function() {
-          // Fallback: compute without cache
+        }).catch(function(e) {
+          console.warn('§MOVIE_CACHE_ERR ' + (e && e.message));
           var posMap = buildGuidPosMap();
           _cineStoryboard = computeStoryboard(_ops, posMap);
           if (_cineStoryboard.length) {
             _cineNextTarget = _cineStoryboard[0].center;
             _camTarget = _cineStoryboard[0].center.clone();
-            setTimeout(function() { viewerStatus(''); }, 2000);
-            _cursor = _projectStart;
-            renderAtTime(_cursor);
-            startPlayback(+1);
+            viewerStatus('🚁 ' + _cineStoryboard.length + ' scenes ready — press ▶ to play');
           }
         });
       } else {
