@@ -1906,6 +1906,10 @@
     var bandDone       = {};  // band (int)      → end ms (structural seq 1-4)
     var count = 0;
 
+    // §S260c: Track global structural completion — non-structural must wait for
+    // structural frame on their band (or below) before starting. Fixes "MEP before columns" bug.
+    var globalStructDone = 0; // timestamp when ALL structural on band 0 is done (foundations)
+
     elements.forEach(function(el) {
       var rcKey = el.resource + '|' + el.band;
 
@@ -1919,10 +1923,18 @@
       }
 
       // 3. Z dependency: structural (seq 1-4) on band N waits for structural on band N-1
-      //    Non-structural work can proceed concurrently on lower bands
       if (el.band > 0 && el.seq <= 4) {
         var belowDone = bandDone[el.band - 1];
         if (belowDone && belowDone > earliest) earliest = belowDone;
+      }
+
+      // 4. §S260c: Non-structural (seq > 4) must wait for structural on SAME band to complete.
+      //    If same band has no structural, wait for the nearest lower band that does.
+      //    This ensures columns/slabs are erected before MEP/finishes install on any level.
+      if (el.seq > 4) {
+        for (var wb = el.band; wb >= 0; wb--) {
+          if (bandDone[wb] && bandDone[wb] > earliest) { earliest = bandDone[wb]; break; }
+        }
       }
 
       var durMs = Math.round(el.installSecs * scaleFactor * 1000);
@@ -2116,6 +2128,20 @@
     if (hair) {
       hair.style.left = hx + 'px';
       hair.style.display = 'block';
+    }
+
+    // §S260c: Auto-scroll Gantt drawer to keep active bar visible during playback
+    if (_playing && box.scrollHeight > box.clientHeight) {
+      for (var ai = 0; ai < numTasks; ai++) {
+        if (_cursor >= _ganttTasks[ai].startTs && _cursor <= _ganttTasks[ai].endTs) {
+          var activeY = ai * rowH;
+          var scrollTarget = activeY - box.clientHeight / 2;
+          if (Math.abs(box.scrollTop - scrollTarget) > rowH * 2) {
+            box.scrollTop += (scrollTarget - box.scrollTop) * 0.15; // smooth scroll
+          }
+          break;
+        }
+      }
     }
   }
 
