@@ -341,14 +341,29 @@
         if (tmpV.x !== 0 || tmpV.y !== 0 || tmpV.z !== 0) {
           map[obj.userData.guid] = tmpV.clone();
         }
-      } else if (obj.isBatchedMesh && obj.userData.guids) {
+      } else if (obj.isBatchedMesh && app._batchMeta && app._batchMeta[obj.id]) {
+        // §S260c: BatchedMesh GUIDs are in app._batchMeta, not obj.userData.guids
+        var bmetas = app._batchMeta[obj.id];
         var m4 = new THREE.Matrix4();
-        for (var idx = 0; idx < obj.userData.guids.length; idx++) {
+        for (var idx = 0; idx < bmetas.length; idx++) {
+          try {
+            obj.getMatrixAt(bmetas[idx].slotId, m4);
+            tmpV.setFromMatrixPosition(m4);
+            if (tmpV.x !== 0 || tmpV.y !== 0 || tmpV.z !== 0) {
+              map[bmetas[idx].guid] = tmpV.clone();
+            }
+          } catch(e) {}
+        }
+      } else if (obj.isInstancedMesh && app._instanceMeta && app._instanceMeta[obj.id]) {
+        // §S260c: InstancedMesh GUIDs in app._instanceMeta
+        var imetas = app._instanceMeta[obj.id];
+        var m4 = new THREE.Matrix4();
+        for (var idx = 0; idx < imetas.length; idx++) {
           try {
             obj.getMatrixAt(idx, m4);
             tmpV.setFromMatrixPosition(m4);
             if (tmpV.x !== 0 || tmpV.y !== 0 || tmpV.z !== 0) {
-              map[obj.userData.guids[idx]] = tmpV.clone();
+              map[imetas[idx].guid] = tmpV.clone();
             }
           } catch(e) {}
         }
@@ -1453,23 +1468,55 @@
         _cineSceneIdx = 0;
         _cineCloseupCount = 0;
         _cineSeenZones = {};
-        // Build position map + storyboard in next frame (non-blocking feel)
-        setTimeout(function() {
-          var posMap = buildGuidPosMap();
-          _cineStoryboard = computeStoryboard(_ops, posMap);
+
+        // §S260c: Check IDB for cached Movie Script, else compute fresh
+        cacheGet('movie').then(function(cachedScript) {
+          if (cachedScript && cachedScript.length > 0) {
+            // Reconstruct Vector3 objects from plain {x,y,z}
+            for (var si = 0; si < cachedScript.length; si++) {
+              var s = cachedScript[si];
+              s.center = new THREE.Vector3(s.center.x, s.center.y, s.center.z);
+              if (s.chain) {
+                for (var ci = 0; ci < s.chain.length; ci++) {
+                  s.chain[ci] = new THREE.Vector3(s.chain[ci].x, s.chain[ci].y, s.chain[ci].z);
+                }
+              }
+            }
+            _cineStoryboard = cachedScript;
+            console.log('§MOVIE_CACHE_HIT scenes=' + _cineStoryboard.length);
+          } else {
+            var posMap = buildGuidPosMap();
+            _cineStoryboard = computeStoryboard(_ops, posMap);
+            if (_cineStoryboard.length) {
+              // Cache for next session
+              cachePut('movie', _cineStoryboard);
+              console.log('§MOVIE_CACHE_SAVE scenes=' + _cineStoryboard.length);
+            }
+          }
+
           if (_cineStoryboard.length) {
             _cineNextTarget = _cineStoryboard[0].center;
             _camTarget = _cineStoryboard[0].center.clone();
             viewerStatus('');
-            // §S260c BUG6: Auto-start playback from beginning when Eye is pressed
-            // The camera only moves during playback — without this, it stands still.
             _cursor = _projectStart;
             renderAtTime(_cursor);
             startPlayback(+1);
           } else {
             viewerStatus('🚁 No scenes found — try playing first');
           }
-        }, 50);
+        }).catch(function() {
+          // Fallback: compute without cache
+          var posMap = buildGuidPosMap();
+          _cineStoryboard = computeStoryboard(_ops, posMap);
+          if (_cineStoryboard.length) {
+            _cineNextTarget = _cineStoryboard[0].center;
+            _camTarget = _cineStoryboard[0].center.clone();
+            viewerStatus('');
+            _cursor = _projectStart;
+            renderAtTime(_cursor);
+            startPlayback(+1);
+          }
+        });
       } else {
         _cineStoryboard = [];
         restorePeeled();
@@ -2339,6 +2386,55 @@
     ctx.fill();
   }
 
+  // ══════════════════════════════════════════════════════════════════
+  // §S260c: JSON CACHE — persist Gantt schedule + Movie Script in IDB
+  // Keys: "gantt:{building}" and "movie:{building}"
+  // Same IDB store as DB file cache. Tiny (100-500KB) vs DB files (10-170MB).
+  // Clear Cache on landing deletes entire IDB → next session recomputes.
+  // ══════════════════════════════════════════════════════════════════
+
+  function _cacheKey(prefix) {
+    var app = A();
+    var bld = (app && app.activeBuilding) || 'unknown';
+    return prefix + ':' + bld;
+  }
+
+  // Read JSON from IDB cache. Returns parsed object or null.
+  function cacheGet(prefix) {
+    return new Promise(function(resolve) {
+      var app = A();
+      if (!app || !app.openCacheDB) { resolve(null); return; }
+      app.openCacheDB().then(function(cacheDb) {
+        if (!cacheDb) { resolve(null); return; }
+        var key = _cacheKey(prefix);
+        var tx = cacheDb.transaction(app.CACHE_STORE, 'readonly');
+        var req = tx.objectStore(app.CACHE_STORE).get(key);
+        req.onsuccess = function() {
+          var val = req.result;
+          if (val && typeof val === 'string') {
+            try { resolve(JSON.parse(val)); } catch(e) { resolve(null); }
+          } else { resolve(null); }
+        };
+        req.onerror = function() { resolve(null); };
+      }).catch(function() { resolve(null); });
+    });
+  }
+
+  // Write JSON to IDB cache.
+  function cachePut(prefix, data) {
+    var app = A();
+    if (!app || !app.openCacheDB) return;
+    app.openCacheDB().then(function(cacheDb) {
+      if (!cacheDb) return;
+      var key = _cacheKey(prefix);
+      var json = JSON.stringify(data);
+      var tx = cacheDb.transaction([app.CACHE_STORE, 'timestamps'], 'readwrite');
+      tx.objectStore(app.CACHE_STORE).put(json, key);
+      tx.objectStore('timestamps').put(Date.now(), key);
+      console.log('§CACHE_PUT key=' + key + ' size=' + (json.length / 1024).toFixed(0) + 'KB');
+    }).catch(function(e) { console.warn('§CACHE_PUT_ERR ' + e.message); });
+  }
+
   // ── Activate / Deactivate ──
   function setToolbarHighlight(on) {
     var btn = document.getElementById('time-machine-btn');
@@ -2369,43 +2465,95 @@
       return;
     }
     setToolbarHighlight(true);
-    _ops = loadOps();
-    // Auto-clear stale ELEMENT_PLACE ops missing weighted _end_ts
-    if (_ops.length && _ops[0].op_type === 'ELEMENT_PLACE' && !_ops[0].parameters._end_ts) {
-      try { A().db.run("DELETE FROM kernel_ops WHERE op_type = 'ELEMENT_PLACE'"); } catch(e) {}
-      _ops = [];
-      console.log('§TIME_MACHINE cleared stale unweighted ops — will re-inject');
-    }
-    if (!_ops.length) {
-      // Show setup progress
-      _panel.style.display = 'flex';
-      var st = document.getElementById('tm-status');
-      if (st) st.textContent = 'Setting up 4D construction timeline...';
-      viewerStatus('Time Machine: generating construction schedule...');
-      if (!injectGantt()) {
-        if (st) st.textContent = 'No elements found in database';
-        viewerStatus('Time Machine: no elements found');
-        setToolbarHighlight(false);
-        console.log('§TIME_MACHINE no ops and no elements — nothing to show');
+    _panel.style.display = 'flex';
+    var st = document.getElementById('tm-status');
+    if (st) st.textContent = 'Loading timeline...';
+
+    // §S260c: Try IDB cache first, then kernel_ops table, then full recompute
+    _activateAsync(st).then(function(ok) {
+      if (!ok) { setToolbarHighlight(false); _panel.style.display = 'none'; return; }
+    });
+    return; // async continuation below
+  }
+
+  function _activateAsync(st) {
+    return new Promise(function(resolve) {
+    var app = A();
+
+    // §S260c: Check IDB for cached Gantt JSON
+    cacheGet('gantt').then(function(cachedOps) {
+      if (cachedOps && cachedOps.length > 0) {
+        // Fast path: inject cached JSON into kernel_ops table
+        console.log('§GANTT_CACHE_HIT ops=' + cachedOps.length);
+        var db = app.db;
+        db.run('CREATE TABLE IF NOT EXISTS kernel_ops (' +
+          'id INTEGER PRIMARY KEY, timestamp INTEGER NOT NULL,' +
+          'op_type TEXT NOT NULL, parameters TEXT NOT NULL,' +
+          'input_guids TEXT, output_guid TEXT, undone INTEGER DEFAULT 0)');
+        db.run("DELETE FROM kernel_ops WHERE op_type = 'ELEMENT_PLACE'");
+        db.run('BEGIN');
+        var stmt = db.prepare('INSERT INTO kernel_ops (timestamp,op_type,parameters,input_guids,output_guid,undone) VALUES(?,?,?,?,?,0)');
+        for (var i = 0; i < cachedOps.length; i++) {
+          var op = cachedOps[i];
+          stmt.run([op.start_ts, op.op_type, JSON.stringify(op.parameters), JSON.stringify(op.input_guids), op.output_guid]);
+        }
+        stmt.free();
+        db.run('COMMIT');
+        _ops = loadOps();
+        if (st) st.textContent = '';
+        viewerStatus('Time Machine: ' + _ops.length + ' elements (cached)');
+        _finishActivate(app);
+        resolve(true);
         return;
       }
-      if (st) st.textContent = 'Loading timeline...';
+
+      // No cache — try loading existing kernel_ops
       _ops = loadOps();
-      if (!_ops.length) { setToolbarHighlight(false); return; }
-      viewerStatus('Time Machine: ' + _ops.length + ' elements scheduled');
-    }
+      if (_ops.length && _ops[0].op_type === 'ELEMENT_PLACE' && !_ops[0].parameters._end_ts) {
+        try { app.db.run("DELETE FROM kernel_ops WHERE op_type = 'ELEMENT_PLACE'"); } catch(e) {}
+        _ops = [];
+        console.log('§TIME_MACHINE cleared stale unweighted ops — will re-inject');
+      }
+
+      if (!_ops.length) {
+        if (st) st.textContent = 'Setting up 4D construction timeline...';
+        viewerStatus('Time Machine: generating construction schedule...');
+        if (!injectGantt()) {
+          if (st) st.textContent = 'No elements found in database';
+          viewerStatus('Time Machine: no elements found');
+          console.log('§TIME_MACHINE no ops and no elements — nothing to show');
+          resolve(false);
+          return;
+        }
+        _ops = loadOps();
+        if (!_ops.length) { resolve(false); return; }
+        // §S260c: Cache the newly computed schedule to IDB
+        cachePut('gantt', _ops);
+        console.log('§GANTT_CACHE_SAVE ops=' + _ops.length);
+        viewerStatus('Time Machine: ' + _ops.length + ' elements scheduled');
+      }
+
+      _finishActivate(app);
+      resolve(true);
+    }).catch(function(e) {
+      console.warn('§GANTT_CACHE_ERR ' + e.message);
+      // Fallback: compute without cache
+      _ops = loadOps();
+      if (!_ops.length) { injectGantt(); _ops = loadOps(); }
+      if (_ops.length) { _finishActivate(app); resolve(true); }
+      else resolve(false);
+    });
+    });
+  }
+
+  function _finishActivate(app) {
     _active = true;
     _isLargeBuilding = (app.activeBuildingTotal || 0) > LARGE_BUILDING;
     if (_isLargeBuilding) console.log('§S259_TM_LITE elements=' + app.activeBuildingTotal + ' — sparks/sunCycle disabled (>50K)');
-    // §S260b: Inherit shadow/ground from Sunglass panel — Time Machine doesn't own these
-    // If shadow was ON before TM started, ground is already positioned and visible.
-    // If shadow was OFF, no ground plane or shadow flags.
     console.log('§TM_SHADOW_INHERIT shadowOn=' + !!app._shadowOn + ' groundVisible=' + (app.ground ? app.ground.visible : 'n/a'));
     computeDays();
     saveVisibility();
-    // §S258: Pause DLOD so time machine controls visibility exclusively
     if (app._dlodPaused !== undefined) app._dlodPaused = true;
-    // Start fully built — press ⏪ or ◀ to deconstruct
     _cursor = _projectEnd;
     _anchorDay = _days.length ? _days[_days.length - 1] : null;
     _anchorHr = 15;

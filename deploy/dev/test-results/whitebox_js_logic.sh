@@ -61,6 +61,12 @@ grep "Drone Movie" deploy/dev/time_machine.js
 echo ""
 echo "§TRACE Camera distances:"
 grep "_FLYTHROUGH_DIST\|_PANORAMIC_DIST\|_HERO_DIST" deploy/dev/time_machine.js | head -3
+echo ""
+echo "§TRACE buildGuidPosMap — mesh types handled:"
+grep "isMesh\|isBatchedMesh\|isInstancedMesh" deploy/dev/time_machine.js | grep -A0 "buildGuidPosMap\|_batchMeta\|_instanceMeta" | head -6
+echo ""
+echo "§TRACE buildGuidPosMap full function:"
+sed -n '/function buildGuidPosMap/,/^  }/p' deploy/dev/time_machine.js
 
 # ══════════════════════════════════════════
 # 4. STOREY SHIFT+CLICK — trace event path
@@ -131,3 +137,23 @@ echo ""
 echo "════════════════════════════════════════"
 echo "§WHITEBOX_JS_LOGIC DONE — READ ABOVE TRACES TO VERIFY"
 echo "════════════════════════════════════════"
+
+# ══════════════════════════════════════════
+# 9. JSON CACHE — Gantt + Movie Script persistence
+# ══════════════════════════════════════════
+echo ""
+echo "── 9. JSON Cache — IDB persistence ──"
+echo "§TRACE cacheGet/cachePut helper functions:"
+grep "function cacheGet\|function cachePut\|function _cacheKey" deploy/dev/time_machine.js
+echo ""
+echo "§TRACE Gantt cache hit path:"
+grep "§GANTT_CACHE" deploy/dev/time_machine.js
+echo ""
+echo "§TRACE Movie script cache hit path:"
+grep "§MOVIE_CACHE" deploy/dev/time_machine.js
+echo ""
+echo "§TRACE Clear Cache deletes IDB:"
+grep "deleteDatabase" deploy/dev/landing.html
+echo ""
+echo "§TRACE activate() uses cache:"
+grep "cacheGet\|cachePut" deploy/dev/time_machine.js | head -8
