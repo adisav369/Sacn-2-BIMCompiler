@@ -16,19 +16,26 @@ function setupDiff(A) {
   // Called after base DB loaded, if variation DB exists
   // A.db = base, A.diffDb = variation (both sql.js instances)
   A.computeDiff = function() {
-    if (!A.db || !A.diffDb) return null;
+    if (!A.db || !A.diffDb) { console.log('[S225] §DIFF_SKIP db=' + !!A.db + ' diffDb=' + !!A.diffDb); return null; }
 
+    console.log('[S225] §DIFF_COMPUTE_START');
     const guids1 = new Set(A.dbQuery("SELECT guid FROM elements_meta").map(r => r[0]));
     const g2raw = A.diffDb.exec("SELECT guid FROM elements_meta");
     const guids2 = new Set(g2raw.length ? g2raw[0].values.map(r => r[0]) : []);
+    console.log('[S225] §DIFF_GUIDS base=' + guids1.size + ' variation=' + guids2.size);
 
     const added = [...guids2].filter(g => !guids1.has(g));
     const common = [...guids2].filter(g => guids1.has(g));
+    var changedDetails = []; // §S260c: track first 5 changed fields for log
     const changed = common.filter(g => {
       const r1 = A.dbQueryFirst("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid=?", [g]);
       const r2raw = A.diffDb.exec("SELECT element_name, material_rgba, storey FROM elements_meta WHERE guid=?", [g]);
       const r2 = r2raw.length ? r2raw[0].values[0] : null;
-      return JSON.stringify(r1) !== JSON.stringify(r2);
+      var isDiff = JSON.stringify(r1) !== JSON.stringify(r2);
+      if (isDiff && changedDetails.length < 5) {
+        changedDetails.push(g.substring(0,12) + ': base=' + JSON.stringify(r1) + ' var=' + JSON.stringify(r2));
+      }
+      return isDiff;
     });
 
     // S225: Detect merge vs revision — if <10% GUID overlap, this is a merge
@@ -38,19 +45,25 @@ function setupDiff(A) {
     const removed = isMerge ? [] : [...guids1].filter(g => !guids2.has(g));
 
     A.diffResult = { added, removed, changed, isMerge };
-    console.log('[S225] §DIFF added=' + added.length + ' removed=' + removed.length + ' changed=' + changed.length + ' overlap=' + (overlap * 100).toFixed(1) + '% mode=' + (isMerge ? 'MERGE' : 'REVISION'));
+    console.log('[S225] §DIFF added=' + added.length + ' removed=' + removed.length + ' changed=' + changed.length + ' common=' + common.length + ' overlap=' + (overlap * 100).toFixed(1) + '% mode=' + (isMerge ? 'MERGE' : 'REVISION'));
+    if (changedDetails.length) console.log('[S225] §DIFF_CHANGED_SAMPLE ' + changedDetails.join(' | '));
+    if (added.length) console.log('[S225] §DIFF_ADDED_SAMPLE ' + added.slice(0,5).map(function(g) { return g.substring(0,12); }).join(', '));
+    if (removed.length) console.log('[S225] §DIFF_REMOVED_SAMPLE ' + removed.slice(0,5).map(function(g) { return g.substring(0,12); }).join(', '));
     return A.diffResult;
   };
 
   // Apply diff colours to already-streamed meshes + stream added elements from diffDb
   A.applyDiffOverlay = function() {
-    if (!A.diffResult) return;
+    if (!A.diffResult) { console.log('[S225] §DIFF_OVERLAY_SKIP no diffResult'); return; }
+    console.log('[S225] §DIFF_OVERLAY_START added=' + A.diffResult.added.length + ' removed=' + A.diffResult.removed.length + ' changed=' + A.diffResult.changed.length);
 
     const removedSet = new Set(A.diffResult.removed);
     const changedSet = new Set(A.diffResult.changed);
 
     // S239: Colour existing meshes (removed = red ghost, changed = yellow)
+    var coloredRemoved = 0, coloredChanged = 0, totalMeshesScanned = 0;
     A.collectMeshes(o => o.isMesh && o.userData.guid).forEach(function(obj) {
+      totalMeshesScanned++;
       const guid = obj.userData.guid;
       if (removedSet.has(guid)) {
         obj.material = new THREE.MeshPhongMaterial({
@@ -60,6 +73,7 @@ function setupDiff(A) {
           side: THREE.DoubleSide,
           flatShading: true,
         });
+        coloredRemoved++;
       } else if (changedSet.has(guid)) {
         obj.material = new THREE.MeshPhongMaterial({
           color: DIFF_COLORS.changed.color,
@@ -67,14 +81,17 @@ function setupDiff(A) {
           opacity: DIFF_COLORS.changed.opacity,
           flatShading: true,
         });
+        coloredChanged++;
       }
     });
+    console.log('[S225] §DIFF_OVERLAY_COLORS meshesScanned=' + totalMeshesScanned + ' coloredRemoved=' + coloredRemoved + '/' + removedSet.size + ' coloredChanged=' + coloredChanged + '/' + changedSet.size);
 
     // S225: Stream added elements from diffDb into scene (green solid)
     var addedRendered = 0;
+    var addedNoGeo = 0;  // §S260c: count elements with no geometry (missing hash)
     if (A.diffResult.added.length > 0 && A.diffDb) {
+      console.log('[S225] §DIFF_ADDED_STREAM_START count=' + A.diffResult.added.length);
       try {
-        var ph = A.diffResult.added.map(function() { return '?'; }).join(',');
         var rows = A.diffDb.exec(
           'SELECT m.guid, i.geometry_hash, m.material_rgba, ' +
           't.center_x, t.center_y, t.center_z, ' +
@@ -84,10 +101,13 @@ function setupDiff(A) {
           'JOIN element_transforms t ON t.guid = m.guid ' +
           "WHERE m.guid IN (" + A.diffResult.added.map(function(g) { return "'" + g.replace(/'/g, "''") + "'"; }).join(',') + ")"
         );
+        var joinedRows = rows.length ? rows[0].values.length : 0;
+        console.log('[S225] §DIFF_ADDED_QUERY rows=' + joinedRows + ' (of ' + A.diffResult.added.length + ' added GUIDs — missing rows = no transform or no instance)');
         if (rows.length > 0) {
           // Fetch geometry BLOBs from diffDb
           var hashes = new Set();
           rows[0].values.forEach(function(r) { if (r[1]) hashes.add(r[1]); });
+          console.log('[S225] §DIFF_ADDED_HASHES unique=' + hashes.size);
           var diffGeoCache = {};
           if (hashes.size > 0) {
             var hashList = Array.from(hashes);
@@ -98,13 +118,16 @@ function setupDiff(A) {
                   ' WHERE geometry_hash IN (' + hashList.map(function(h) { return "'" + h.replace(/'/g, "''") + "'"; }).join(',') + ')'
                 );
                 if (geoRows.length > 0) {
+                  var geoOk = 0, geoFail = 0;
                   geoRows[0].values.forEach(function(gr) {
                     var geo = A.blobToGeometry(gr[1], gr[2]);
-                    if (geo) diffGeoCache[gr[0]] = geo;
+                    if (geo) { diffGeoCache[gr[0]] = geo; geoOk++; }
+                    else geoFail++;
                   });
+                  console.log('[S225] §DIFF_ADDED_GEO table=' + table + ' ok=' + geoOk + ' fail=' + geoFail);
                   if (Object.keys(diffGeoCache).length > 0) break;
                 }
-              } catch(e) { /* table may not exist */ }
+              } catch(e) { console.log('[S225] §DIFF_ADDED_GEO_TABLE_MISS table=' + table + ' err=' + e.message); }
             }
           }
           // Create green meshes for added elements
@@ -119,13 +142,15 @@ function setupDiff(A) {
             var cx = r[3], cy = r[4], cz = r[5];
             var rx = r[6] || 0, ry = r[7] || 0, rz = r[8] || 0;
             var geo = diffGeoCache[hash];
-            if (!geo) return;
+            if (!geo) { addedNoGeo++; return; }
             var mesh = new THREE.Mesh(geo, addedMat.clone());
             var pos = A.ifc2three(cx, cy, cz);
             mesh.position.set(pos.x, pos.y, pos.z);
             if (rx || ry || rz) mesh.rotation.set(rx, rz, -ry);
             mesh.userData.guid = guid;
             mesh.userData.diffStatus = 'ADDED';
+            mesh.userData.ifcClass = r[10] || '';
+            mesh.userData.storey = r[9] || '';
             A.scene.add(mesh);
             addedRendered++;
           });
@@ -136,7 +161,7 @@ function setupDiff(A) {
       }
     }
 
-    console.log('[S225] §DIFF_OVERLAY applied — added_rendered=' + addedRendered + ' removed=' + removedSet.size + ' changed=' + changedSet.size);
+    console.log('[S225] §DIFF_OVERLAY_DONE added_rendered=' + addedRendered + ' added_noGeo=' + addedNoGeo + ' removed_colored=' + coloredRemoved + '/' + removedSet.size + ' changed_colored=' + coloredChanged + '/' + changedSet.size);
   };
 
   // Get diff details for a specific GUID (for info panel)

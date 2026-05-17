@@ -86,6 +86,277 @@
   var _camAngle = 0;      // slow orbit azimuth (radians), cinematic drift
   var _camUserInteracted = 0; // timestamp of last manual orbit interaction
   var _camLogTick = 0;    // throttle §CAM_FOLLOW logging
+
+  // ══════════���═══════════════════════════════════════════════════════
+  // §S260c: CINEMATIC DIRECTOR — Film Studio storyboard approach
+  // Pre-plans entire camera path when Eye is pressed. Each "scene" is
+  // a dense construction event. Between scenes: continuous crane shots.
+  // Every 3-4 scenes: establishing orbit with sun sweep.
+  // ══════���═══════════════════════════��═══════════════════════════════
+  var _cineStoryboard = [];   // [{center:V3, guids:[], startIdx, endIdx, angle, count}]
+  var _cineSceneIdx = 0;      // current scene in storyboard
+  var _cineBeat = 'closeup';  // 'closeup' | 'establishing' | 'transit'
+  var _cineTick = 0;          // ticks in current beat
+  var _cineNextTarget = null; // current scene center (V3)
+  var _cineTransitFrom = null;
+  var _cineTransitTo = null;
+  var _cineEstabAngle = 0;
+  var _cineSeenZones = {};    // spatial zone keys already featured
+  var _cineCloseupCount = 0;  // scenes since last establishing
+  var _BEAT_CLOSEUP = 30;     // ticks per scene (~3-6s at 80ms/tick)
+  var _BEAT_TRANSIT = 15;     // ticks smooth crane travel
+  var _BEAT_ESTAB = 25;       // ticks wide establishing orbit
+  var _cinePeeled = [];       // meshes temporarily hidden for clear line-of-sight
+  var _cineHeroSlowdown = false; // true during hero beats → slow tick to hourly
+
+  // ── Restore peeled meshes (called every beat transition + every tick before re-peel) ──
+  function restorePeeled() {
+    for (var i = 0; i < _cinePeeled.length; i++) {
+      var obj = _cinePeeled[i];
+      if (obj._cinePeeled) {
+        obj.material.transparent = obj._cinePeelTransparent;
+        obj.material.opacity = obj._cinePeelOpacity;
+        obj.material.needsUpdate = true;
+        delete obj._cinePeeled;
+        delete obj._cinePeelOpacity;
+        delete obj._cinePeelTransparent;
+      }
+    }
+    _cinePeeled = [];
+  }
+
+  // ── Storyboard computation (called once on Drone press) ──
+  // Three scene types:
+  //   'flythrough' — tight on devices appearing in series (cam tracks along chain)
+  //   'panoramic'  — wide orbit over dense construction area with shadow sweep
+  //   'hero'       — tight 360° orbit around a single significant element (column, equipment)
+  var _PANORAMIC_THRESHOLD = 12; // clusters with ≥12 elements → panoramic
+  var _HERO_INTERVAL = 5;        // insert a hero shot every N scenes
+  var _FLYTHROUGH_DIST = 5;      // §S260c: metres from device for flythrough (closer = more dramatic)
+  var _PANORAMIC_DIST = 25;      // §S260c: metres back for panoramic orbit (was 40, tighter)
+  var _HERO_DIST = 3;            // §S260c: metres from element for hero orbit (tight 360°)
+
+  // ── Nearest-neighbour spatial chain: orders GUIDs into a walk path ──
+  // Produces an array of Vector3 positions forming a smooth installation sequence.
+  // e.g., sprinklers appearing left→right along a corridor.
+  function buildSpatialChain(guids, guidPosMap) {
+    var pts = [];
+    for (var i = 0; i < guids.length; i++) {
+      var p = guidPosMap[guids[i]];
+      if (p) pts.push(p.clone());
+    }
+    if (pts.length < 2) return pts;
+    // Start from the leftmost point (min x) — gives predictable direction
+    var startIdx = 0;
+    for (var i = 1; i < pts.length; i++) {
+      if (pts[i].x < pts[startIdx].x) startIdx = i;
+    }
+    var chain = [pts[startIdx]];
+    var used = {}; used[startIdx] = true;
+    var cur = startIdx;
+    for (var step = 1; step < pts.length; step++) {
+      var bestDist = Infinity, bestJ = -1;
+      for (var j = 0; j < pts.length; j++) {
+        if (used[j]) continue;
+        var d = pts[cur].distanceToSquared(pts[j]);
+        if (d < bestDist) { bestDist = d; bestJ = j; }
+      }
+      if (bestJ >= 0) { chain.push(pts[bestJ]); used[bestJ] = true; cur = bestJ; }
+    }
+    return chain;
+  }
+
+  function computeStoryboard(ops, guidPosMap) {
+    var scenes = [];
+    var CLUSTER_RADIUS = 15;
+    var i = 0;
+    while (i < ops.length) {
+      var op = ops[i];
+      var guid = op.output_guid || (op.input_guids && op.input_guids[0]);
+      var pos = guid ? guidPosMap[guid] : null;
+      if (!pos) { i++; continue; }
+
+      var cx = pos.x, cy = pos.y, cz = pos.z, count = 1;
+      var guids = [guid];
+      var startIdx = i, endIdx = i;
+      var firstTs = op.start_ts;  // earliest op timestamp — cam arrives before this
+
+      for (var j = i + 1; j < ops.length && j < i + 200; j++) {
+        var g2 = ops[j].output_guid || (ops[j].input_guids && ops[j].input_guids[0]);
+        var p2 = g2 ? guidPosMap[g2] : null;
+        if (!p2) continue;
+        var dx = p2.x - cx/count, dy = p2.y - cy/count, dz = p2.z - cz/count;
+        if (Math.sqrt(dx*dx + dy*dy + dz*dz) < CLUSTER_RADIUS) {
+          cx += p2.x; cy += p2.y; cz += p2.z; count++;
+          guids.push(g2);
+          endIdx = j;
+        } else if (count > 2) break;
+      }
+
+      if (count >= 2) {
+        var center = new THREE.Vector3(cx/count, cy/count, cz/count);
+        var zoneKey = Math.round(center.x/20) + ',' + Math.round(center.z/20);
+        var type = count >= _PANORAMIC_THRESHOLD ? 'panoramic' : 'flythrough';
+
+        // §S260c: For flythrough scenes, sort GUIDs into a spatial chain
+        // (nearest-neighbour walk) so camera tracks along the installation row
+        var chain = null;
+        if (type === 'flythrough' && guids.length >= 2) {
+          chain = buildSpatialChain(guids, guidPosMap);
+        }
+
+        scenes.push({
+          center: center, guids: guids, startIdx: startIdx, endIdx: endIdx,
+          count: count, zoneKey: zoneKey, type: type, firstTs: firstTs,
+          chain: chain,  // ordered V3[] path for camera tracking
+          angle: 0
+        });
+        i = endIdx + 1;
+      } else {
+        i++;
+      }
+    }
+
+    // Deduplicate zones
+    var seen = {};
+    var filtered = [];
+    for (var s = 0; s < scenes.length; s++) {
+      if (seen[scenes[s].zoneKey]) continue;
+      seen[scenes[s].zoneKey] = true;
+      filtered.push(scenes[s]);
+    }
+
+    // §S260c: Mobile throttle — cap scenes, skip heroes + raycasting
+    var _isMob = !!(window._isMobile || window._isMobileTM);
+    var MAX_SCENES_MOBILE = 10; // mobile: only first 10 scenes, panoramic+flythrough only
+
+    if (_isMob) {
+      // Mobile: cap scenes, no heroes, no raycasting angles
+      if (filtered.length > MAX_SCENES_MOBILE) filtered.length = MAX_SCENES_MOBILE;
+      for (var k = 0; k < filtered.length; k++) {
+        filtered[k].angle = Math.random() * Math.PI * 2; // random angle (no raycast)
+      }
+      console.log('§CINE_STORYBOARD_MOBILE scenes=' + filtered.length + ' (capped, no heroes)');
+      return filtered;
+    }
+
+    // Desktop: insert hero shots — every N scenes, pick a single element for 360° orbit
+    var withHeroes = [];
+    for (var h = 0; h < filtered.length; h++) {
+      withHeroes.push(filtered[h]);
+      if ((h + 1) % _HERO_INTERVAL === 0 && filtered[h].guids.length > 0) {
+        var heroGuid = filtered[h].guids[filtered[h].guids.length - 1];
+        var heroPos = guidPosMap[heroGuid];
+        if (heroPos) {
+          withHeroes.push({
+            center: heroPos.clone(), guids: [heroGuid], startIdx: filtered[h].startIdx,
+            endIdx: filtered[h].endIdx, count: 1, zoneKey: 'hero',
+            type: 'hero', firstTs: filtered[h].firstTs, chain: null, angle: 0
+          });
+        }
+      }
+    }
+
+    // Desktop: pick occlusion-free camera angles via raycasting
+    for (var k = 0; k < withHeroes.length; k++) {
+      var sDist = withHeroes[k].type === 'panoramic' ? _PANORAMIC_DIST :
+                  withHeroes[k].type === 'hero' ? _HERO_DIST : _FLYTHROUGH_DIST;
+      withHeroes[k].angle = pickClearAngle(withHeroes[k].center, sDist);
+    }
+
+    // Log stats
+    var nFly = 0, nPan = 0, nHero = 0;
+    for (var m = 0; m < withHeroes.length; m++) {
+      if (withHeroes[m].type === 'flythrough') nFly++;
+      else if (withHeroes[m].type === 'panoramic') nPan++;
+      else nHero++;
+    }
+    console.log('§CINE_STORYBOARD scenes=' + withHeroes.length +
+      ' (flythrough=' + nFly + ' panoramic=' + nPan + ' hero=' + nHero +
+      ') from ' + ops.length + ' ops');
+    return withHeroes;
+  }
+
+  // ── Occlusion-aware angle selection ──
+  // Tries 8 angles around the target at the given distance + 3/4 above elevation.
+  // Raycasts from each candidate camera position to the target center.
+  // Returns the first angle with a clear line of sight; falls back to random if all blocked.
+  function pickClearAngle(center, dist) {
+    var app = A();
+    if (!app || !app.scene) return Math.random() * Math.PI * 2;
+    var ray = new THREE.Raycaster();
+    ray.far = dist + 5;
+    var meshes = [];
+    app.scene.traverse(function(o) {
+      if (o.isMesh && o.visible) meshes.push(o);
+    });
+    if (!meshes.length) return Math.random() * Math.PI * 2;
+
+    var elevation = dist * 0.5; // 3/4 above angle — half dist up
+    for (var trial = 0; trial < 8; trial++) {
+      var az = (trial / 8) * Math.PI * 2;
+      var camPos = new THREE.Vector3(
+        center.x + Math.cos(az) * dist,
+        center.y + elevation,
+        center.z + Math.sin(az) * dist
+      );
+      var dir = new THREE.Vector3().subVectors(center, camPos).normalize();
+      ray.set(camPos, dir);
+      var hits = ray.intersectObjects(meshes, false);
+      // Clear if no hit, or first hit is beyond 80% of the distance (close to target = OK)
+      if (!hits.length || hits[0].distance > dist * 0.8) {
+        return az;
+      }
+    }
+    // All blocked — pick the one with the farthest first hit (least obstructed)
+    var bestAz = 0, bestDist = 0;
+    for (var trial = 0; trial < 8; trial++) {
+      var az = (trial / 8) * Math.PI * 2;
+      var camPos = new THREE.Vector3(
+        center.x + Math.cos(az) * dist,
+        center.y + elevation,
+        center.z + Math.sin(az) * dist
+      );
+      var dir = new THREE.Vector3().subVectors(center, camPos).normalize();
+      ray.set(camPos, dir);
+      var hits = ray.intersectObjects(meshes, false);
+      var d = hits.length ? hits[0].distance : dist + 10;
+      if (d > bestDist) { bestDist = d; bestAz = az; }
+    }
+    console.log('§CINE_ANGLE_FALLBACK center=' + center.x.toFixed(1) + ',' + center.z.toFixed(1) +
+      ' bestDist=' + bestDist.toFixed(1));
+    return bestAz;
+  }
+
+  // Build guidPosMap from current scene graph (call once when storyboard is computed)
+  function buildGuidPosMap() {
+    var app = A();
+    var map = {};
+    if (!app || !app.scene) return map;
+    var tmpV = new THREE.Vector3();
+    app.scene.traverse(function(obj) {
+      if (!obj.userData) return;
+      if (obj.userData.guid && obj.isMesh) {
+        obj.getWorldPosition(tmpV);
+        if (tmpV.x !== 0 || tmpV.y !== 0 || tmpV.z !== 0) {
+          map[obj.userData.guid] = tmpV.clone();
+        }
+      } else if (obj.isBatchedMesh && obj.userData.guids) {
+        var m4 = new THREE.Matrix4();
+        for (var idx = 0; idx < obj.userData.guids.length; idx++) {
+          try {
+            obj.getMatrixAt(idx, m4);
+            tmpV.setFromMatrixPosition(m4);
+            if (tmpV.x !== 0 || tmpV.y !== 0 || tmpV.z !== 0) {
+              map[obj.userData.guids[idx]] = tmpV.clone();
+            }
+          } catch(e) {}
+        }
+      }
+    });
+    console.log('§CINE_GUIDMAP entries=' + Object.keys(map).length);
+    return map;
+  }
   var _shadowLogTick = 0; // throttle §SHADOW_FRONTIER logging
   var LARGE_BUILDING = 50000; // §S259: threshold for disabling expensive TM effects
   var _isLargeBuilding = false;
@@ -405,106 +676,358 @@
       console.log('§SHADOW_FRONTIER casters=' + _shadowCasters + ' receivers=' + _shadowReceivers);
     }
 
-    // Camera follow — smoothed target that drifts toward densest action
-    if (_camFollow && _frontierPositions.length && app.controls && app.camera) {
-      var fp = _frontierPositions;
-
-      // Weighted centroid — elements close together pull harder
-      var cx = 0, cy = 0, cz = 0, wt = 0;
-      for (var fi = 0; fi < fp.length; fi++) {
-        // Weight = how many neighbours within 10 units (density)
-        var w = 0;
-        for (var fj = 0; fj < fp.length; fj++) {
-          var ddx = fp[fi].x-fp[fj].x, ddy = fp[fi].y-fp[fj].y, ddz = fp[fi].z-fp[fj].z;
-          if (ddx*ddx+ddy*ddy+ddz*ddz < 100) w++;
-        }
-        cx += fp[fi].x * w; cy += fp[fi].y * w; cz += fp[fi].z * w;
-        wt += w;
-      }
-      if (wt > 0) { cx /= wt; cy /= wt; cz /= wt; }
-
-      // ── Look-ahead: peek 2 ticks ahead for upcoming ops ──
-      // Uses _guidPosMap built in the single traverse above (O(1) per guid)
-      var previewMs = tickMs() * 2;
-      var px = 0, py = 0, pz = 0, pw = 0;
-      for (var pi = 0; pi < _ops.length; pi++) {
-        var pop = _ops[pi];
-        if (pop.start_ts > _cursor + previewMs) break; // ops sorted by start_ts
-        if (pop.start_ts <= _cursor) continue; // already current or past
-        var pguid = pop.output_guid;
-        if (!pguid && pop.input_guids && pop.input_guids.length) pguid = pop.input_guids[0];
-        if (!pguid) continue;
-        var ppos = _guidPosMap[pguid];
-        if (ppos) {
-          px += ppos.x; py += ppos.y; pz += ppos.z; pw++;
-        }
-      }
-
-      // Blend current centroid with preview centroid (70/30)
-      var finalX = cx, finalY = cy, finalZ = cz;
-      if (pw > 0) {
-        px /= pw; py /= pw; pz /= pw;
-        finalX = cx * 0.7 + px * 0.3;
-        finalY = cy * 0.7 + py * 0.3;
-        finalZ = cz * 0.7 + pz * 0.3;
-      }
-
-      // Smooth the target — never jump, always drift
-      if (!_camTarget) _camTarget = new THREE.Vector3(finalX, finalY, finalZ);
-      _camTarget.x += (finalX - _camTarget.x) * 0.04;
-      _camTarget.y += (finalY - _camTarget.y) * 0.04;
-      _camTarget.z += (finalZ - _camTarget.z) * 0.04;
-
-      // Orbit target drifts toward smoothed point
-      var target = app.controls.target;
-      target.x += (_camTarget.x - target.x) * 0.03;
-      target.y += (_camTarget.y - target.y) * 0.03;
-      target.z += (_camTarget.z - target.z) * 0.03;
-
-      // Dolly — spread of frontier determines desired distance
-      var spread = 0;
-      for (var fi = 0; fi < fp.length; fi++) {
-        var ddx = fp[fi].x-_camTarget.x, ddy = fp[fi].y-_camTarget.y, ddz = fp[fi].z-_camTarget.z;
-        var d = Math.sqrt(ddx*ddx+ddy*ddy+ddz*ddz);
-        if (d > spread) spread = d;
-      }
-      var desiredDist = Math.max(8, spread * 2.0); // wider framing to catch surrounding action
-      var camDist = app.camera.position.distanceTo(target);
-      var diff = camDist - desiredDist;
-      if (Math.abs(diff) > 1) {
-        // Zoom in fast (0.06), zoom out gentle (0.03) — breathes with the action
-        var speed = diff > 0 ? 0.06 : 0.03;
-        var dir = new THREE.Vector3().subVectors(target, app.camera.position).normalize();
-        app.camera.position.addScaledVector(dir, diff * speed);
-      }
-
-      // ── Gentle orbit rotation — cinematic parallax ──
-      // ~0.003 rad/tick (~0.17 deg), paused 2s after user manual orbit
+    // §S260c: Cinematic Director — storyboard-driven camera (Film Studio mode)
+    // Scene types: 'flythrough' (tight on devices) vs 'panoramic' (wide orbit over dense area)
+    // §S260c BUG6: Run camera when storyboard exists, not just when frontier elements are present.
+    // The storyboard is pre-planned — camera must move even between frontier bursts.
+    if (_camFollow && _cineStoryboard.length && app.controls && app.camera) {
       var nowPerf = performance.now();
-      if (_playing && (nowPerf - _camUserInteracted > 2000)) {
-        _camAngle += 0.003;
-        var camOff = new THREE.Vector3().subVectors(app.camera.position, target);
-        var dist2D = Math.sqrt(camOff.x * camOff.x + camOff.z * camOff.z);
-        var curAz = Math.atan2(camOff.z, camOff.x);
-        var newAz = curAz + 0.003;
-        camOff.x = Math.cos(newAz) * dist2D;
-        camOff.z = Math.sin(newAz) * dist2D;
-        app.camera.position.copy(target).add(camOff);
+      _cineTick++;
+      var target = app.controls.target;
+
+      function easeInOut(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; }
+
+      // ── Line-of-sight peel: temporarily hide meshes blocking camera → target ──
+      // Restores them next tick. Essential for MEP in constrained ceiling/shaft spaces.
+      // §S260c: SKIP on mobile — material clones consume memory
+      var _isMobileCine = !!(window._isMobile || window._isMobileTM);
+      function peelObstructions(camPos, tgtPos) {
+        if (_isMobileCine) return; // no peel on mobile
+        // Restore anything peeled last tick
+        restorePeeled();
+        var ray = new THREE.Raycaster();
+        var dir = new THREE.Vector3().subVectors(tgtPos, camPos).normalize();
+        var dist = camPos.distanceTo(tgtPos);
+        ray.set(camPos, dir);
+        ray.far = dist * 0.9; // only hide things between cam and 90% of target
+        var meshes = [];
+        app.scene.traverse(function(o) { if (o.isMesh && o.visible) meshes.push(o); });
+        var hits = ray.intersectObjects(meshes, false);
+        // Hide up to 5 obstructing meshes (walls, slabs blocking the view)
+        for (var hi = 0; hi < Math.min(hits.length, 5); hi++) {
+          var obj = hits[hi].object;
+          if (obj.userData && obj.userData.guid) {
+            obj._cinePeeled = true;
+            obj._cinePeelOpacity = obj.material.opacity;
+            obj._cinePeelTransparent = obj.material.transparent;
+            obj.material = obj.material.clone();
+            obj.material.transparent = true;
+            obj.material.opacity = 0.08;
+            obj.material.needsUpdate = true;
+            _cinePeeled.push(obj);
+          }
+        }
+      }
+
+      // Advance storyboard: decide next beat when current one ends
+      var scene = _cineStoryboard[_cineSceneIdx];
+      var beatLen = scene && scene.type === 'panoramic' ? _BEAT_ESTAB : _BEAT_CLOSEUP;
+
+      if (scene && _cineBeat === 'closeup' && _cineTick > beatLen) {
+        restorePeeled(); // clean up before transition
+        _cineHeroSlowdown = false; // restore normal tick speed
+        _cineCloseupCount++;
+        _cineTick = 0;
+        _cineSceneIdx++;
+
+        // Decide: panoramic establishing OR transit to next scene
+        if (_cineCloseupCount >= 3 || _cineSceneIdx >= _cineStoryboard.length) {
+          _cineBeat = 'establishing';
+          _cineCloseupCount = 0;
+          _cineEstabAngle = _camAngle;
+          _sunCycle = true; // shadows sweep during establishing
+          console.log('§CINE_BEAT establishing after scene ' + _cineSceneIdx);
+        } else {
+          _cineBeat = 'transit';
+          _cineTransitFrom = app.camera.position.clone();
+          var ns = _cineStoryboard[_cineSceneIdx];
+          if (ns) {
+            var nDist = ns.type === 'panoramic' ? _PANORAMIC_DIST : ns.type === 'hero' ? _HERO_DIST : _FLYTHROUGH_DIST;
+            _cineTransitTo = new THREE.Vector3(
+              ns.center.x + Math.cos(ns.angle) * nDist,
+              ns.center.y + nDist * 0.5,
+              ns.center.z + Math.sin(ns.angle) * nDist
+            );
+            _cineNextTarget = ns.center;
+          } else {
+            _cineTransitTo = app.camera.position.clone();
+          }
+          console.log('§CINE_BEAT transit → scene ' + _cineSceneIdx + '/' + _cineStoryboard.length);
+        }
+      }
+
+      // ── CLOSEUP (flythrough or panoramic scene) ──
+      if (_cineBeat === 'closeup') {
+        var sc = _cineStoryboard[_cineSceneIdx];
+        if (sc) {
+          if (sc.type === 'flythrough') {
+            // ── FLYTHROUGH: track along spatial chain as items appear in series ──
+            // Camera follows the installation row: sprinkler 1→2→3→...
+            var chainPt = sc.center; // fallback
+            if (sc.chain && sc.chain.length >= 2) {
+              // Progress through the chain over the beat duration
+              var chainT = Math.min(1, _cineTick / beatLen);
+              var chainIdx = chainT * (sc.chain.length - 1);
+              var ci = Math.floor(chainIdx);
+              var cf = chainIdx - ci;
+              if (ci >= sc.chain.length - 1) {
+                chainPt = sc.chain[sc.chain.length - 1];
+              } else {
+                chainPt = new THREE.Vector3().lerpVectors(sc.chain[ci], sc.chain[ci + 1], cf);
+              }
+            }
+            // §S260c BUG6: Lead the action — look slightly ahead on the chain
+            var leadPt = chainPt;
+            if (sc.chain && sc.chain.length >= 2) {
+              var leadIdx = Math.min(sc.chain.length - 1, Math.ceil(chainIdx) + 1);
+              if (leadIdx < sc.chain.length) {
+                leadPt = new THREE.Vector3().lerpVectors(chainPt, sc.chain[leadIdx], 0.3);
+              }
+            }
+            _cineNextTarget = leadPt;
+            if (!_camTarget) _camTarget = leadPt.clone();
+            // §S260c: Faster tracking — snappy camera, not sluggish
+            _camTarget.x += (leadPt.x - _camTarget.x) * 0.18;
+            _camTarget.y += (leadPt.y - _camTarget.y) * 0.18;
+            _camTarget.z += (leadPt.z - _camTarget.z) * 0.18;
+
+            target.x += (_camTarget.x - target.x) * 0.15;
+            target.y += (_camTarget.y - target.y) * 0.15;
+            target.z += (_camTarget.z - target.z) * 0.15;
+
+            var desiredDist = _FLYTHROUGH_DIST + Math.min(sc.count * 0.2, 2);
+            var camDist = app.camera.position.distanceTo(target);
+            var diff = camDist - desiredDist;
+            if (Math.abs(diff) > 0.3) {
+              var spd = diff > 0 ? 0.14 : 0.08;
+              var dir = new THREE.Vector3().subVectors(target, app.camera.position).normalize();
+              app.camera.position.addScaledVector(dir, diff * spd);
+            }
+            // Peel walls/slabs blocking the view (MEP in constrained spaces)
+            peelObstructions(app.camera.position, target);
+
+            // Gentle orbit while tracking — camera drifts alongside the chain
+            if (_playing && (nowPerf - _camUserInteracted > 2000)) {
+              _camAngle += 0.004;
+              var camOff = new THREE.Vector3().subVectors(app.camera.position, target);
+              var dist2D = Math.sqrt(camOff.x * camOff.x + camOff.z * camOff.z);
+              var curAz = Math.atan2(camOff.z, camOff.x);
+              camOff.x = Math.cos(curAz + 0.004) * dist2D;
+              camOff.z = Math.sin(curAz + 0.004) * dist2D;
+              camOff.y += Math.sin(_cineTick * 0.05) * 0.1; // elevation bob
+              app.camera.position.copy(target).add(camOff);
+            }
+
+          } else if (sc.type === 'panoramic') {
+            // ── PANORAMIC: wide orbit over dense area, sun sweep visible ──
+            _sunCycle = true;
+            _cineNextTarget = sc.center;
+            if (!_camTarget) _camTarget = sc.center.clone();
+            // §S260c: Faster convergence for panoramic
+            _camTarget.x += (sc.center.x - _camTarget.x) * 0.10;
+            _camTarget.y += (sc.center.y - _camTarget.y) * 0.10;
+            _camTarget.z += (sc.center.z - _camTarget.z) * 0.10;
+
+            target.x += (_camTarget.x - target.x) * 0.08;
+            target.y += (_camTarget.y - target.y) * 0.08;
+            target.z += (_camTarget.z - target.z) * 0.08;
+
+            var desiredDist = _PANORAMIC_DIST;
+            var camDist = app.camera.position.distanceTo(target);
+            var diff = camDist - desiredDist;
+            if (Math.abs(diff) > 1) {
+              var spd = diff > 0 ? 0.06 : 0.04;
+              var dir = new THREE.Vector3().subVectors(app.camera.position, target).normalize();
+              app.camera.position.addScaledVector(dir, diff * spd);
+            }
+            // Slow panoramic orbit — capturing shadow movement across dense area
+            if (_playing && (nowPerf - _camUserInteracted > 2000)) {
+              _camAngle += 0.008;
+              var camOff = new THREE.Vector3().subVectors(app.camera.position, target);
+              var dist2D = Math.sqrt(camOff.x * camOff.x + camOff.z * camOff.z);
+              var curAz = Math.atan2(camOff.z, camOff.x);
+              camOff.x = Math.cos(curAz + 0.008) * dist2D;
+              camOff.z = Math.sin(curAz + 0.008) * dist2D;
+              app.camera.position.copy(target).add(camOff);
+            }
+
+          } else if (sc.type === 'hero') {
+            // ── HERO: tight 360° orbit + painting effect + sparks + timer slowdown ──
+            // Slow down time during hero — construction advances by hours not days
+            _cineHeroSlowdown = true;
+
+            _cineNextTarget = sc.center;
+            if (!_camTarget) _camTarget = sc.center.clone();
+            _camTarget.x += (sc.center.x - _camTarget.x) * 0.12;
+            _camTarget.y += (sc.center.y - _camTarget.y) * 0.12;
+            _camTarget.z += (sc.center.z - _camTarget.z) * 0.12;
+
+            target.x += (_camTarget.x - target.x) * 0.10;
+            target.y += (_camTarget.y - target.y) * 0.10;
+            target.z += (_camTarget.z - target.z) * 0.10;
+
+            // Very tight — 3-5m from element
+            var desiredDist = _HERO_DIST;
+            var camDist = app.camera.position.distanceTo(target);
+            var diff = camDist - desiredDist;
+            if (Math.abs(diff) > 0.3) {
+              var spd = diff > 0 ? 0.10 : 0.05;
+              var dir = new THREE.Vector3().subVectors(target, app.camera.position).normalize();
+              app.camera.position.addScaledVector(dir, diff * spd);
+            }
+            peelObstructions(app.camera.position, target);
+
+            // Full 360° orbit — complete revolution during beat
+            if (_playing && (nowPerf - _camUserInteracted > 2000)) {
+              var orbitSpeed = (Math.PI * 2) / _BEAT_CLOSEUP;
+              _camAngle += orbitSpeed;
+              var camOff = new THREE.Vector3().subVectors(app.camera.position, target);
+              var dist2D = Math.sqrt(camOff.x * camOff.x + camOff.z * camOff.z);
+              var curAz = Math.atan2(camOff.z, camOff.x);
+              camOff.x = Math.cos(curAz + orbitSpeed) * dist2D;
+              camOff.z = Math.sin(curAz + orbitSpeed) * dist2D;
+              // Dramatic elevation sweep — start low, rise to 3/4 view
+              var elevT = Math.min(1, _cineTick / _BEAT_CLOSEUP);
+              camOff.y = desiredDist * (0.2 + 0.6 * elevT);
+              app.camera.position.copy(target).add(camOff);
+            }
+
+            // §S260c: Hero effects — sparks + paint sweep (desktop only)
+            if (!_isMobileCine) {
+              // Sparks burst at regular intervals
+              if (_cineTick % 3 === 0 && app.scene) {
+                spawnSparks(sc.center, app.scene);
+              }
+
+              // Painting effect — emissive sweep simulates finish/coating
+              // Progress 0→1 over the beat: material "paints on" with warm glow
+              var paintT = Math.min(1, _cineTick / _BEAT_CLOSEUP);
+              app.scene.traverse(function(obj) {
+                if (obj.userData && obj.userData.guid === sc.guids[0] && obj.isMesh) {
+                  if (!obj._tm_highlighted) {
+                    obj._tm_origMaterial = obj.material;
+                    obj.material = obj.material.clone();
+                    obj._tm_highlighted = true;
+                    _highlightMeshes.push(obj);
+                  }
+                  var mat = obj.material;
+                  var warmR = 1.0, warmG = 0.5 + 0.3 * paintT, warmB = 0.1 + 0.4 * paintT;
+                  if (mat.emissive) {
+                    mat.emissive.setRGB(warmR * (1 - paintT * 0.7), warmG * (1 - paintT * 0.5), warmB);
+                    mat.emissiveIntensity = 1.5 * (1 - paintT * 0.6);
+                  }
+                  mat.transparent = true;
+                  mat.opacity = 0.6 + 0.4 * paintT;
+                  mat.needsUpdate = true;
+                }
+              });
+            } else {
+              // Mobile: simple orange highlight only (no material clones, no sparks)
+              app.scene.traverse(function(obj) {
+                if (obj.userData && obj.userData.guid === sc.guids[0] && obj.isMesh) {
+                  applyHighlight(obj, 0xff6600, 0.85);
+                }
+              });
+            }
+          }
+        }
+
+      // ── ESTABLISHING: wide pull-back, full building orbit, shadow sweep ──
+      } else if (_cineBeat === 'establishing') {
+        _sunCycle = true;
+        var bldCenter = new THREE.Vector3(0, 10, 0);
+        if (app.buildingCentres && app.activeBuilding && app.buildingCentres[app.activeBuilding]) {
+          var bc = app.buildingCentres[app.activeBuilding];
+          var p = app.ifc2three(bc.ix, bc.iy, bc.iz);
+          bldCenter.set(p.x, p.y, p.z);
+        }
+
+        target.x += (bldCenter.x - target.x) * 0.04;
+        target.y += (bldCenter.y - target.y) * 0.04;
+        target.z += (bldCenter.z - target.z) * 0.04;
+
+        var wideDesired = 80; // §S260c: tighter establishing shot (was 120)
+        var camDist = app.camera.position.distanceTo(target);
+        if (camDist < wideDesired) {
+          var dir = new THREE.Vector3().subVectors(app.camera.position, target).normalize();
+          app.camera.position.addScaledVector(dir, (wideDesired - camDist) * 0.04);
+        }
+
+        if (_playing && (nowPerf - _camUserInteracted > 2000)) {
+          _camAngle += 0.012;
+          var camOff = new THREE.Vector3().subVectors(app.camera.position, target);
+          var dist2D = Math.sqrt(camOff.x * camOff.x + camOff.z * camOff.z);
+          var curAz = Math.atan2(camOff.z, camOff.x);
+          camOff.x = Math.cos(curAz + 0.012) * dist2D;
+          camOff.z = Math.sin(curAz + 0.012) * dist2D;
+          app.camera.position.copy(target).add(camOff);
+        }
+
+        if (_cineTick > _BEAT_ESTAB) {
+          _cineBeat = 'transit';
+          _cineTick = 0;
+          _cineTransitFrom = app.camera.position.clone();
+          // Wrap storyboard if exhausted
+          if (_cineSceneIdx >= _cineStoryboard.length) _cineSceneIdx = 0;
+          var ns = _cineStoryboard[_cineSceneIdx];
+          if (ns) {
+            var nDist = ns.type === 'panoramic' ? _PANORAMIC_DIST : ns.type === 'hero' ? _HERO_DIST : _FLYTHROUGH_DIST;
+            _cineTransitTo = new THREE.Vector3(
+              ns.center.x + Math.cos(ns.angle) * nDist,
+              ns.center.y + nDist * 0.5,
+              ns.center.z + Math.sin(ns.angle) * nDist
+            );
+            _cineNextTarget = ns.center;
+          } else {
+            _cineTransitTo = app.camera.position.clone();
+            _cineNextTarget = null;
+          }
+          console.log('§CINE_BEAT transit from establishing → scene ' + _cineSceneIdx);
+        }
+
+      // ── TRANSIT: continuous crane shot — arc lift, never a jump cut ──
+      } else if (_cineBeat === 'transit') {
+        restorePeeled(); // clear peeled meshes during travel
+        var t = Math.min(1, _cineTick / _BEAT_TRANSIT);
+        var et = easeInOut(t);
+
+        var midLift = Math.sin(t * Math.PI) * 5;
+        app.camera.position.lerpVectors(_cineTransitFrom, _cineTransitTo, et);
+        app.camera.position.y += midLift;
+
+        if (_cineNextTarget) {
+          target.x += (_cineNextTarget.x - target.x) * (et * 0.12 + 0.03);
+          target.y += (_cineNextTarget.y - target.y) * (et * 0.12 + 0.03);
+          target.z += (_cineNextTarget.z - target.z) * (et * 0.12 + 0.03);
+        }
+
+        if (_playing && (nowPerf - _camUserInteracted > 2000)) {
+          _camAngle += 0.003;
+        }
+
+        if (t >= 1) {
+          _cineBeat = 'closeup';
+          _cineTick = 0;
+          _camTarget = _cineNextTarget ? _cineNextTarget.clone() : null;
+          console.log('§CINE_BEAT closeup — arrived at scene ' + _cineSceneIdx +
+            ' type=' + (_cineStoryboard[_cineSceneIdx] ? _cineStoryboard[_cineSceneIdx].type : '?'));
+        }
       }
 
       app.controls.update();
 
-      // §CAM_FOLLOW — log every 60 ticks
+      // §CINE_DIRECTOR — log every 40 ticks
       _camLogTick++;
-      if (_camLogTick >= 60) {
+      if (_camLogTick >= 40) {
         _camLogTick = 0;
-        console.log('§CAM_FOLLOW target=(' + _camTarget.x.toFixed(1) + ',' +
-          _camTarget.y.toFixed(1) + ',' + _camTarget.z.toFixed(1) +
-          ') preview=' + pw + ' dist=' + camDist.toFixed(1) + ' angle=' + _camAngle.toFixed(3));
+        var scInfo = _cineStoryboard[_cineSceneIdx];
+        console.log('§CINE_DIRECTOR beat=' + _cineBeat + ' scene=' + _cineSceneIdx + '/' +
+          _cineStoryboard.length + ' type=' + (scInfo ? scInfo.type : '?') +
+          ' tick=' + _cineTick + ' peeled=' + _cinePeeled.length);
       }
     }
 
-    if (!_isLargeBuilding) applySunCycle(cursorMs);
+    applySunCycle(cursorMs);
     if (_ganttVisible) drawGanttMini();
     if (_dashVisible) drawDashboard();
 
@@ -679,6 +1202,8 @@
 
   // ── Tick size in ms based on mode ──
   function tickMs() {
+    // §S260c: Hero slowdown — during hero beats, advance by minutes not hours
+    if (_cineHeroSlowdown) return 60000; // 1 minute per tick during hero (slow-mo)
     if (_mode === 'DAY') return 3600000;  // advance 1 hour per tick (24 ticks = 1 day)
     if (_mode === 'HR') return 60000;     // advance 1 minute per tick (60 ticks = 1 hour)
     return 10000;                         // advance 10 seconds per tick (fine grain)
@@ -781,8 +1306,8 @@
     _panel.innerHTML =
       '<div style="display:flex;align-items:center;width:100%;cursor:grab" class="tm-drag">' +
         '<button id="tm-share" style="font-size:9px;padding:2px 6px" title="Copy shareable link">&#x1F517; Share</button>' +
-        '<button id="tm-sun" style="font-size:12px;padding:2px 6px" title="Day/night cycle">&#x2600;</button>' +
-        '<button id="tm-eye" style="font-size:12px;padding:2px 6px" title="Camera follow action">&#x1F441;</button>' +
+        '<button id="tm-sun" style="font-size:14px;padding:4px 8px;min-width:32px;min-height:32px" title="Day/night cycle"><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:linear-gradient(90deg,#fff 50%,#222 50%);vertical-align:middle"></span></button>' +
+        '<button id="tm-eye" style="font-size:18px;padding:4px 8px;min-width:36px;min-height:36px" title="Drone Pilot — cinematic camera">&#x1F681;</button>' +
         '<button id="tm-gantt" style="font-size:12px;padding:2px 6px" title="Gantt chart">&#x1F4CA;</button>' +
         '<button id="tm-dash" style="font-size:12px;padding:2px 6px" title="Dashboard">&#x1F4CB;</button>' +
         '<span id="tm-big-counter" style="flex:1;font-size:18px;font-weight:bold;color:#4fc3f7;text-align:center;letter-spacing:1px">DAY 0 | HR 0</span>' +
@@ -904,10 +1429,7 @@
     document.getElementById('tm-sun').addEventListener('pointerup', function(e) {
       e.stopPropagation();
       var app = A();
-      if (!app || !app._shadowOn) {
-        viewerStatus('Enable Shadow in Sunglass panel first');
-        return;
-      }
+      if (!app) return;
       _sunCycle = !_sunCycle;
       var btn = document.getElementById('tm-sun');
       if (btn) btn.classList.toggle('tm-active', _sunCycle);
@@ -922,6 +1444,40 @@
       _camAngle = 0;
       var btn = document.getElementById('tm-eye');
       if (btn) btn.classList.toggle('tm-active', _camFollow);
+
+      if (_camFollow) {
+        // §S260c: Compute storyboard — show status while preparing
+        viewerStatus('🚁 Drone Movie In Progress..');
+        _cineBeat = 'closeup';
+        _cineTick = 0;
+        _cineSceneIdx = 0;
+        _cineCloseupCount = 0;
+        _cineSeenZones = {};
+        // Build position map + storyboard in next frame (non-blocking feel)
+        setTimeout(function() {
+          var posMap = buildGuidPosMap();
+          _cineStoryboard = computeStoryboard(_ops, posMap);
+          if (_cineStoryboard.length) {
+            _cineNextTarget = _cineStoryboard[0].center;
+            _camTarget = _cineStoryboard[0].center.clone();
+            viewerStatus('');
+            // §S260c BUG6: Auto-start playback from beginning when Eye is pressed
+            // The camera only moves during playback — without this, it stands still.
+            _cursor = _projectStart;
+            renderAtTime(_cursor);
+            startPlayback(+1);
+          } else {
+            viewerStatus('🚁 No scenes found — try playing first');
+          }
+        }, 50);
+      } else {
+        _cineStoryboard = [];
+        restorePeeled();
+        _cineHeroSlowdown = false;
+        stopPlayback(); // §S260c: stop auto-play when Drone is toggled off
+        viewerStatus('');
+      }
+
       // Hook orbit controls — detect manual interaction to pause auto-rotation
       var app = A();
       if (app && app.renderer && app.renderer.domElement) {
@@ -1100,7 +1656,7 @@
   var _playing = false;
   var _playDir = 0;
   var _playTimer = null;
-  var TICK_MS = 80;
+  function TICK_MS() { return _isLargeBuilding ? 200 : 80; }  // §S260b: slower TM ticks on large scenes
 
   function startPlayback(dir) {
     if (_playing && _playDir === dir) { stopPlayback(); return; }
@@ -1142,7 +1698,7 @@
       return;
     }
 
-    _playTimer = setTimeout(playTick, TICK_MS);
+    _playTimer = setTimeout(playTick, TICK_MS());
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -1204,23 +1760,34 @@
 
     var totalDbElements = r[0].values.length;
 
-    // ── Storey bands: group by storey name, rank by min Z (bottom-up) ──
-    // Primary: storey from elements_meta (IFC extraction). Fallback: '_UNKNOWN'.
-    var storeyMinZ = {};  // storey name → min center_z
+    // ── Storey bands: group by storey name, rank by MEDIAN Z (bottom-up) ──
+    // §S260c BUG5: Use median center_z per storey instead of min.
+    // Min Z is unreliable — a column extending down from an upper storey gives it a low minZ,
+    // causing upper elements to appear before lower storeys finish.
+    // Median Z represents the typical floor level of that storey.
+    var storeyZvals = {};  // storey name → [cz, cz, ...]
     r[0].values.forEach(function(row) {
       var storey = row[3] || '_UNKNOWN';
       var cz = row[5] || 0;
-      if (storeyMinZ[storey] === undefined || cz < storeyMinZ[storey]) storeyMinZ[storey] = cz;
+      if (!storeyZvals[storey]) storeyZvals[storey] = [];
+      storeyZvals[storey].push(cz);
     });
-    // Sort storeys by min Z → assign band index
-    var storeyNames = Object.keys(storeyMinZ).sort(function(a, b) {
-      return storeyMinZ[a] - storeyMinZ[b];
+    // Compute median Z per storey
+    var storeyMedianZ = {};
+    for (var sk in storeyZvals) {
+      var vals = storeyZvals[sk].sort(function(a, b) { return a - b; });
+      var mid = Math.floor(vals.length / 2);
+      storeyMedianZ[sk] = vals.length % 2 !== 0 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+    }
+    // Sort storeys by median Z → assign band index
+    var storeyNames = Object.keys(storeyMedianZ).sort(function(a, b) {
+      return storeyMedianZ[a] - storeyMedianZ[b];
     });
     var storeyBand = {};
     for (var si = 0; si < storeyNames.length; si++) storeyBand[storeyNames[si]] = si;
 
-    console.log('§GANTT storey-bands: ' + storeyNames.length + ' bands from storey names: ' +
-      storeyNames.map(function(s, i) { return i + '="' + s + '" z=' + storeyMinZ[s].toFixed(1); }).join(', '));
+    console.log('§GANTT storey-bands: ' + storeyNames.length + ' bands from storey names (median Z): ' +
+      storeyNames.map(function(s, i) { return i + '="' + s + '" medZ=' + storeyMedianZ[s].toFixed(1); }).join(', '));
 
     // ── Build elements with storey-aware overrides ──
     var roofOverrides = 0;
@@ -1329,6 +1896,19 @@
         if (!bandDone[el.band] || endMs > bandDone[el.band]) bandDone[el.band] = endMs;
       }
     });
+
+    // §S260c BUG5: Log first 20 ops to verify bottom-up storey ordering
+    var _first20 = [];
+    try {
+      var f20r = db.exec('SELECT timestamp, parameters FROM kernel_ops WHERE undone=0 ORDER BY timestamp LIMIT 20');
+      if (f20r.length) {
+        f20r[0].values.forEach(function(row) {
+          var p = JSON.parse(row[1]);
+          _first20.push(p.storey + '|band=' + storeyBand[p.storey || '_UNKNOWN'] + '|seq=' + (matchRule(p.cls).sequence) + '|' + p.cls);
+        });
+      }
+    } catch(e) {}
+    console.log('§GANTT_OPS_FIRST20: ' + _first20.join(', '));
 
     var endDate = new Date(Math.max.apply(null, Object.values(resourceCursor)));
     var sceneGuids = 0;
@@ -1565,22 +2145,28 @@
     drawDonut('tm-dash-time-pie', timePct, 'Day ' + curDay, timePct + '% elapsed', '#4fc3f7');
 
     // Cost donut — weighted by rate_per_day × install duration per op
-    // Ops missing _end_ts fall back to _projectEnd so they only complete at timeline end.
+    // Each op accrues cost proportionally between start and end (not binary done/not-done).
     var LR = window.LABOR_RATES || {};
     var totalCost = 0, doneCost = 0;
     for (var ci2 = 0; ci2 < _ops.length; ci2++) {
       var op2 = _ops[ci2];
       var opRes = (op2.parameters || {}).resource || '';
       var lr = LR[opRes];
-      // Cost = daily rate × install duration in days. Heavier trades cost more per element.
       var dailyRate = lr ? lr.rate_per_day * (lr.crew_size || 1) : 95;
-      var realEnd = (op2.parameters || {})._end_ts || _projectEnd;
-      var durMs = Math.max(1, realEnd - (op2.start_ts || 0));
+      var opStart = op2.start_ts || _projectStart;
+      var realEnd = op2.end_ts || _projectEnd;
+      var durMs = Math.max(1, realEnd - opStart);
       var durDays = durMs / 86400000;
       var cost = dailyRate * durDays;
       totalCost += cost;
-      if (realEnd <= _cursor) doneCost += cost;
+      // Proportional: how much of this op's duration has elapsed at cursor
+      if (_cursor >= realEnd) {
+        doneCost += cost;
+      } else if (_cursor > opStart) {
+        doneCost += cost * ((_cursor - opStart) / durMs);
+      }
     }
+    console.log('§COST_DEBUG ops=' + _ops.length + ' totalCost=' + Math.round(totalCost) + ' doneCost=' + Math.round(doneCost) + ' cursor=' + Math.round((_cursor-_projectStart)/86400000) + 'd/' + Math.round((_projectEnd-_projectStart)/86400000) + 'd');
     var costPct = totalCost > 0 ? Math.round(doneCost / totalCost * 100) : 0;
     var costLabel = doneCost >= 1000000 ? '$' + (doneCost/1000000).toFixed(1) + 'M'
                   : doneCost >= 1000 ? '$' + Math.round(doneCost/1000) + 'K'
@@ -1839,6 +2425,10 @@
     _camFollow = false;
     _camAngle = 0;
     _camTarget = null;
+    _cineStoryboard = [];
+    _cineSceneIdx = 0;
+    _cineHeroSlowdown = false;
+    restorePeeled();
     // §S260b: Only hide ground if Sunglass shadow was OFF
     var app = A();
     if (app && app.ground && !app._shadowOn) app.ground.visible = false;

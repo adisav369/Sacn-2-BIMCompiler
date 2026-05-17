@@ -491,6 +491,24 @@ function initViewer() {
   APP.controls.addEventListener('change', () => { _needsRender = true; });
   APP.markDirty = () => { _needsRender = true; };
 
+  // §S260b: Reduce pixel ratio during orbit for smoother interaction on heavy scenes
+  var _fullDPR = Math.min(window.devicePixelRatio || 1, 2);
+  var _orbitDPR = Math.min(_fullDPR, 1);  // render at 1x during drag
+  var _orbiting = false;
+  APP.controls.addEventListener('start', function() {
+    if (!_orbiting && APP.streamedCount > 5000) {
+      _orbiting = true;
+      APP.renderer.setPixelRatio(_orbitDPR);
+    }
+  });
+  APP.controls.addEventListener('end', function() {
+    if (_orbiting) {
+      _orbiting = false;
+      APP.renderer.setPixelRatio(_fullDPR);
+      _needsRender = true;
+    }
+  });
+
   function animate() {
     requestAnimationFrame(animate);
     if (!APP.walkModeActive) {
@@ -521,13 +539,23 @@ function initViewer() {
   APP.init().then(async function() {
     // S223: Load diff DB if ?diffdb= param present (variation comparison)
     const diffDbUrl = new URLSearchParams(location.search).get('diffdb');
+    console.log('[S223] §DIFF_PARAM diffdb=' + (diffDbUrl || 'none') + ' db_ready=' + !!APP.db + ' computeDiff=' + (typeof APP.computeDiff));
     if (diffDbUrl && APP.db && typeof APP.computeDiff === 'function') {
       try {
+        console.log('[S223] §DIFF_FETCH_START url=' + diffDbUrl);
         const buf = await APP.cachedFetch(diffDbUrl);
+        console.log('[S223] §DIFF_FETCH_DONE bytes=' + buf.byteLength);
         // Reuse SQL instance from A.init() — avoids re-downloading WASM
         var SQL = APP._SQL || await initSqlJs({ locateFile: f => 'lib/' + f });
         APP.diffDb = new SQL.Database(new Uint8Array(buf));
-        console.log('[S223] §DIFF_DB_LOADED url=' + diffDbUrl);
+        // §S260c: Validate diff DB has elements_meta
+        try {
+          var diffCheck = APP.diffDb.exec("SELECT COUNT(*) FROM elements_meta");
+          var diffCount = (diffCheck.length && diffCheck[0].values.length) ? diffCheck[0].values[0][0] : 0;
+          console.log('[S223] §DIFF_DB_LOADED url=' + diffDbUrl + ' elements=' + diffCount);
+        } catch(ve) {
+          console.log('[S223] §DIFF_DB_INVALID url=' + diffDbUrl + ' err=' + ve.message);
+        }
         APP.computeDiff();
         // Delay overlay until meshes are streamed (check every 2s, up to 30s)
         var checks = 0;
@@ -535,6 +563,7 @@ function initViewer() {
           checks++;
           var meshCount = 0;
           APP.scene.traverse(function(o) { if (o.isMesh && o.userData.guid) meshCount++; });
+          console.log('[S225] §DIFF_OVERLAY_WAIT check=' + checks + ' meshes=' + meshCount);
           if (meshCount > 10 || checks > 15) {
             clearInterval(diffTimer);
             APP.applyDiffOverlay();

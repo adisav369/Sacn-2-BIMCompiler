@@ -1,16 +1,56 @@
 // tools.js — X-Ray, wireframe, section cut, screenshot, fullscreen, theme, 4D/5D export
 function setupTools(A) {
-  // §S260b: Ground Y calculation — shared by shadow + night mode
+  // §S260c: Ground Y calculation — shared by shadow + night mode
+  // Strategy: find the ground-floor slab by storey name, fall back to lowest-storey largest slab.
+  // Never picks roof/upper slabs. Ground = bottom face of the GF slab.
   A._calcGroundY = function() {
     if (!A.db || !A.ground) return;
     var _gLvl = 0, _gSrc = '?';
     try {
-      var zr = A.db.exec("SELECT AVG(t.center_z - t.bbox_z/2) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE m.ifc_class='IfcSlab' AND t.center_z >= -0.5 AND t.center_z <= 1.0 AND t.bbox_z IS NOT NULL AND t.bbox_z < 0.5");
-      if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'avg-slab'; }
+      // Step 1: Try storey name matching for ground floor slabs
+      var gfNames = "('Ground Floor','Ground','First Floor','1st Floor','Level 0','Level 00','Level 1','GF','L0','L00','L1','00','0','1F','EG','Erdgeschoss','Storey 1','Plan 1','VÅN 1','VÅNING 1','1. OG','Rez-de-chaussée','RC','Planta Baja','PB','Piso 0','Begane grond','BG','GROUND FLOOR LEVEL','Ground Lev','Aras Tanah','u.etg')";
+      var zr = A.db.exec(
+        "SELECT t.center_z - t.bbox_z/2 AS bottom, t.bbox_x * t.bbox_y AS area, m.storey " +
+        "FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid " +
+        "WHERE m.ifc_class='IfcSlab' AND t.bbox_z IS NOT NULL AND t.bbox_z < 1.0 " +
+        "AND t.bbox_x IS NOT NULL AND t.bbox_y IS NOT NULL " +
+        "AND m.storey IN " + gfNames + " ORDER BY area DESC LIMIT 3"
+      );
+      if (zr.length && zr[0].values.length > 0) {
+        _gLvl = zr[0].values[0][0]; _gSrc = 'gf-storey-slab(' + zr[0].values[0][2] + ')';
+      }
+
+      // Step 2: If no storey match, find ground-level slab.
+      // §S260c: Strategy — get the top 5 largest slabs (floor plates), then pick the one
+      // with the lowest center_z. Large slabs exist at every level; the lowest is most
+      // likely ground. This avoids false positives from upper-floor slabs that happen
+      // to be slightly larger than the GF slab.
+      if (_gSrc === '?') {
+        zr = A.db.exec(
+          "SELECT t.center_z - t.bbox_z/2 AS bottom, t.bbox_x * t.bbox_y AS area, t.center_z, m.storey " +
+          "FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid " +
+          "WHERE m.ifc_class='IfcSlab' AND t.bbox_z IS NOT NULL AND t.bbox_z < 1.0 " +
+          "AND t.bbox_x IS NOT NULL AND t.bbox_y IS NOT NULL " +
+          "ORDER BY area DESC LIMIT 5"
+        );
+        if (zr.length && zr[0].values.length > 0) {
+          // Among the top 5 largest slabs, pick the one with lowest center_z
+          var bestBottom = null, bestCz = Infinity;
+          for (var si = 0; si < zr[0].values.length; si++) {
+            var row = zr[0].values[si];
+            if (row[2] < bestCz) { bestCz = row[2]; bestBottom = row[0]; _gSrc = 'lowest-of-top5(' + row[3] + ')'; }
+          }
+          if (bestBottom !== null) _gLvl = bestBottom;
+        }
+      }
+
+      // Step 3: Fallback — average bottom of all elements on named ground floor
       if (_gSrc === '?') {
         zr = A.db.exec("SELECT AVG(t.center_z - COALESCE(t.bbox_z/2, 0)) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE m.storey='Ground Floor'");
         if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'GF-avg'; }
       }
+
+      // Step 4: Last resort — minimum z
       if (_gSrc === '?') {
         zr = A.db.exec('SELECT MIN(center_z) FROM element_transforms');
         if (zr.length && zr[0].values[0][0] != null) { _gLvl = zr[0].values[0][0]; _gSrc = 'min-z'; }
@@ -18,7 +58,7 @@ function setupTools(A) {
       var p = A.ifc2three(0, 0, _gLvl);
       A.ground.position.y = p.y;
       console.log('§GROUND_Y src=' + _gSrc + ' z=' + _gLvl.toFixed(2) + ' y=' + p.y.toFixed(2));
-    } catch(e) {}
+    } catch(e) { console.warn('§GROUND_Y error', e); }
   };
 
   // Wireframe

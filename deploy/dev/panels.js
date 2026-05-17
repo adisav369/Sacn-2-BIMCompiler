@@ -225,6 +225,26 @@ function setupPanels(A) {
         }
       );
       if (typeof _registerPanel === 'function') _registerPanel('storey', storeyPanel, _storeyNav);
+      // §S260c: Intercept Shift+click on storey buttons for accumulating multi-select.
+      // Shift+click = toggle individual storeys (accumulate). Without this, inline
+      // onclick="filterStorey('...')" fires directly, replacing the selection.
+      var stBody = document.getElementById('storey-body');
+      if (stBody && !stBody._s260cWired) {
+        stBody._s260cWired = true;
+        stBody.addEventListener('click', function(e) {
+          var btn = e.target.closest('button');
+          if (!btn) return;
+          if (!e.shiftKey && !e.ctrlKey && !e.metaKey) return;
+          e.preventDefault();
+          e.stopPropagation();
+          var btns = Array.from(stBody.querySelectorAll('button'));
+          var idx = btns.indexOf(btn);
+          if (idx < 0) return;
+          // Accumulate: treat Shift as Ctrl (toggle individual item)
+          _storeyNav.onClick(idx, { shiftKey: false, ctrlKey: true, metaKey: false });
+          console.log('§STOREY_SHIFT_CLICK idx=' + idx + ' accumulate selected=' + _storeyNav.getSelected().join(','));
+        }, true);
+      }
       console.log('§LISTNAV_WIRE panel=storey');
     }
 

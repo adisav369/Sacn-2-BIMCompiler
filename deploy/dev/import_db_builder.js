@@ -73,10 +73,25 @@ function buildImportDBs(SQL, data) {
   var buf = db.export().buffer;
   console.log('[S220] §DB_EXPORT_DONE size=' + (buf.byteLength / 1024 / 1024).toFixed(1) + 'MB');
 
-  // S260b: Split DB for large buildings (>20K elements) — produces meta + geo for OCI deployment
-  // 20K threshold: below this, db.export() + split takes <2s. Above = multi-second block.
+  // §S260c: Post-export validation — verify DB is usable before handing off
+  try {
+    var checkDb = new SQL.Database(new Uint8Array(buf));
+    var check = checkDb.exec("SELECT COUNT(*) FROM elements_meta");
+    var checkCount = (check.length && check[0].values.length) ? check[0].values[0][0] : 0;
+    checkDb.close();
+    if (checkCount === 0) {
+      console.error('[S220] §DB_EXPORT_FAIL — exported DB has 0 elements_meta rows');
+    } else {
+      console.log('[S220] §DB_EXPORT_VALID rows=' + checkCount);
+    }
+  } catch(e) {
+    console.error('[S220] §DB_EXPORT_CORRUPT — exported DB failed validation: ' + e.message);
+  }
+
+  // S260c: Split DB for large buildings (>15K elements) — produces meta + geo for OCI deployment
+  // 15K threshold: ensures split files are generated for buildings that benefit from streaming.
   var metaDb = null, geoDb = null;
-  if (data.elements.length > 20000) {
+  if (data.elements.length > 15000) {
     // ── metaDb: everything EXCEPT geometry BLOBs ──
     var mDb = new SQL.Database();
     // Copy schema + data for non-geometry tables
