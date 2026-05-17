@@ -15,11 +15,11 @@ function setupScene(A) {
   renderer.setClearColor(0x1a1a2e);
   renderer.shadowMap.enabled = false;
   // §S260: shadow setup deferred entirely to toggleShadow() in tools.js
-  // §S260: r156 had NeutralToneMapping=undefined → NoToneMapping (value 0). Keep same behaviour.
-  // AgXToneMapping was too bright. NoToneMapping = raw material colours, matches r156 look.
-  renderer.toneMapping = THREE.NoToneMapping;
-  renderer.toneMappingExposure = 1.0;
-  console.log('§UPGRADE_TONEMAPPING type=' + renderer.toneMapping + ' (NoToneMapping=0)');
+  // §S260c: ACESFilmic tone mapping — preserves color saturation, adds cinematic contrast.
+  // NoToneMapping was flat/grey. ACES gives "crisp vibrant" look like Bonsai/Autodesk.
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  console.log('§TONEMAPPING type=ACESFilmic exposure=1.15');
   renderer.localClippingEnabled = true;
   renderer.outputColorSpace = THREE.SRGBColorSpace;  // §S259: proper gamma curve for web display
   // §S258: r156 defaults to physically-correct lights (lux/candela) — intensity 1.0 is near-dark.
@@ -83,6 +83,44 @@ function setupScene(A) {
   scene.add(hemi);
   A.hemi = hemi;
 
+  // §S260c: Procedural environment map — gives all materials subtle reflections.
+  // Creates a gradient sky cubemap (no external .hdr file needed). Even MeshPhongMaterial
+  // benefits via envMap+reflectivity. Makes steel look metallic, glass look glassy.
+  try {
+    var pmrem = new THREE.PMREMGenerator(renderer);
+    pmrem.compileEquirectangularShader();
+    var envScene = new THREE.Scene();
+    // Gradient: warm ground → blue sky (mimics outdoor IBL)
+    var envMat = new THREE.MeshBasicMaterial({ side: THREE.BackSide });
+    envMat.onBeforeCompile = function(shader) {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        'void main() {',
+        'varying vec3 vWorldPosition;\nvoid main() {'
+      ).replace(
+        '#include <output_fragment>',
+        'float h = normalize(vWorldPosition).y;\n' +
+        'vec3 sky = mix(vec3(0.8,0.75,0.65), vec3(0.4,0.6,0.9), clamp(h*2.0,0.0,1.0));\n' +
+        'gl_FragColor = vec4(sky, 1.0);\n'
+      );
+      shader.vertexShader = shader.vertexShader.replace(
+        'void main() {',
+        'varying vec3 vWorldPosition;\nvoid main() {'
+      ).replace(
+        '#include <worldpos_vertex>',
+        '#include <worldpos_vertex>\nvWorldPosition = worldPosition.xyz;\n'
+      );
+    };
+    var envGeo = new THREE.SphereGeometry(500, 16, 16);
+    envScene.add(new THREE.Mesh(envGeo, envMat));
+    var envRT = pmrem.fromScene(envScene, 0.02);
+    scene.environment = envRT.texture;
+    A._envMap = envRT.texture;
+    pmrem.dispose();
+    console.log('§ENV_MAP procedural gradient sky — applied to scene.environment');
+  } catch(e) {
+    console.warn('§ENV_MAP_FAIL ' + e.message);
+  }
+
   // Ground plane — positioned after DB load to sit below the lowest building
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(50000, 50000),
@@ -123,13 +161,82 @@ function setupScene(A) {
   A.CACHE_DB_NAME = 'bim_ootb_cache';
   A.CACHE_STORE = 'dbs';
 
+  // §S260b: Log storage quota at init — diagnoses private browsing / low-quota environments
+  if (navigator.storage && navigator.storage.estimate) {
+    navigator.storage.estimate().then(function(e) {
+      var qMB = (e.quota / 1024 / 1024).toFixed(0);
+      var uMB = (e.usage / 1024 / 1024).toFixed(0);
+      console.log('[S203] §QUOTA available=' + qMB + 'MB used=' + uMB + 'MB');
+      if (e.quota < 100 * 1024 * 1024) {
+        console.warn('[S203] §QUOTA_LOW — possible private/incognito mode. IDB cache disabled.');
+        A._cacheDisabled = true;
+      }
+      // §S260b: If storage is full (>95%), nuke our IDB cache to reclaim space
+      if (e.usage > 0 && e.usage >= e.quota * 0.95) {
+        console.warn('[S203] §QUOTA_FULL usage=' + uMB + '/' + qMB + 'MB — deleting IDB cache to reclaim space');
+        try { indexedDB.deleteDatabase(A.CACHE_DB_NAME); } catch(x) {}
+      }
+    }).catch(function() {});
+  }
+
   A.openCacheDB = function() {
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open(A.CACHE_DB_NAME, 1);
-      req.onupgradeneeded = () => req.result.createObjectStore(A.CACHE_STORE);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => resolve(null);
+      try {
+        const req = indexedDB.open(A.CACHE_DB_NAME, 2);
+        req.onupgradeneeded = function(e) {
+          var db = req.result;
+          if (!db.objectStoreNames.contains(A.CACHE_STORE)) db.createObjectStore(A.CACHE_STORE);
+          // v2: timestamps store for LRU eviction
+          if (!db.objectStoreNames.contains('timestamps')) db.createObjectStore('timestamps');
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = function() {
+          console.warn('[S203] §IDB_OPEN_ERR name=' + A.CACHE_DB_NAME + ' err=' + (req.error || 'unknown'));
+          resolve(null);
+        };
+        req.onblocked = function() {
+          console.warn('[S203] §IDB_BLOCKED — another tab has this DB open');
+          resolve(null);
+        };
+      } catch(e) {
+        console.warn('[S203] §IDB_EXCEPTION ' + e.name + ': ' + e.message);
+        resolve(null);
+      }
     });
+  };
+
+  // §S260b: LRU eviction — keep max 80 entries (~25 buildings × 3 files). Evict oldest on write.
+  A._MAX_CACHE_ENTRIES = 80;
+  A._evictOldest = async function(cacheDb) {
+    try {
+      var tx = cacheDb.transaction('timestamps', 'readonly');
+      var store = tx.objectStore('timestamps');
+      var allKeys = await new Promise(function(r) {
+        var req = store.getAllKeys(); req.onsuccess = function() { r(req.result || []); }; req.onerror = function() { r([]); };
+      });
+      if (allKeys.length < A._MAX_CACHE_ENTRIES) return;
+      // Get all timestamps, sort by oldest
+      var entries = [];
+      var tx2 = cacheDb.transaction('timestamps', 'readonly');
+      var store2 = tx2.objectStore('timestamps');
+      for (var i = 0; i < allKeys.length; i++) {
+        var ts = await new Promise(function(r) {
+          var req = store2.get(allKeys[i]); req.onsuccess = function() { r(req.result || 0); }; req.onerror = function() { r(0); };
+        });
+        entries.push({ key: allKeys[i], ts: ts });
+      }
+      entries.sort(function(a, b) { return a.ts - b.ts; });
+      // Remove oldest until we're under limit
+      var toRemove = entries.slice(0, entries.length - A._MAX_CACHE_ENTRIES + 1);
+      if (toRemove.length > 0) {
+        var tx3 = cacheDb.transaction([A.CACHE_STORE, 'timestamps'], 'readwrite');
+        for (var j = 0; j < toRemove.length; j++) {
+          tx3.objectStore(A.CACHE_STORE).delete(toRemove[j].key);
+          tx3.objectStore('timestamps').delete(toRemove[j].key);
+        }
+        console.log('[S203] §CACHE_EVICT_LRU removed=' + toRemove.length + ' keys=' + toRemove.map(function(e){return e.key.split('/').pop();}).join(','));
+      }
+    } catch(e) { /* eviction is best-effort */ }
   };
 
   // §S260b: Check if URL is in cache (returns buffer or null, no network)
@@ -158,10 +265,15 @@ function setupScene(A) {
           req.onerror = () => resolve(null);
         });
         if (cached) {
-          console.log(`[S203] §CACHE_HIT ${url} size=${(cached.byteLength/1024/1024).toFixed(1)}MB`);
+          console.log(`[S203] §CACHE_HIT ${url.split('/').pop()} size=${(cached.byteLength/1024/1024).toFixed(1)}MB`);
+          // Update LRU timestamp on hit
+          try { var tx2 = cacheDb.transaction('timestamps', 'readwrite'); tx2.objectStore('timestamps').put(Date.now(), url); } catch(e2) {}
           return cached;
         }
-      } catch(e) { /* cache miss */ }
+        console.log(`[S203] §CACHE_MISS_READ url=${url.split('/').pop()} — not in IDB, will fetch`);
+      } catch(e) { console.log(`[S203] §CACHE_READ_ERR ${e.message}`); }
+    } else {
+      console.warn('[S203] §CACHE_DB_OPEN_FAIL — IDB unavailable');
     }
 
     const resp = await fetch(url);
@@ -187,18 +299,24 @@ function setupScene(A) {
       buf = await resp.arrayBuffer();
     }
 
-    if (cacheDb) {
+    if (cacheDb && !A._cacheDisabled) {
       try {
+        // §S260b: LRU evict before write to keep under max entries
+        await A._evictOldest(cacheDb);
         await new Promise(function(resolve) {
-          const tx = cacheDb.transaction(A.CACHE_STORE, 'readwrite');
+          var _writeOk = false;
+          const tx = cacheDb.transaction([A.CACHE_STORE, 'timestamps'], 'readwrite');
+          tx.objectStore('timestamps').put(Date.now(), url);
           const req = tx.objectStore(A.CACHE_STORE).put(buf, url);
-          req.onsuccess = function() { console.log(`[S203] §CACHE_WRITE_OK url=${url.split('/').pop()} size=${(buf.byteLength/1024/1024).toFixed(1)}MB`); };
+          req.onsuccess = function() { _writeOk = true; console.log(`[S203] §CACHE_WRITE_OK url=${url.split('/').pop()} size=${(buf.byteLength/1024/1024).toFixed(1)}MB`); };
           req.onerror = function(e) {
-            // §S260b: Quota exceeded — evict all cached DBs and retry
-            console.warn(`[S203] §CACHE_WRITE_ERR url=${url.split('/').pop()} err=${req.error} — evicting old cache`);
-            e.preventDefault(); // prevent tx abort
+            // §S260b: Quota exceeded — let tx abort so onabort evicts+retries
+            console.warn(`[S203] §CACHE_WRITE_ERR url=${url.split('/').pop()} err=${req.error}`);
           };
-          tx.oncomplete = resolve;
+          tx.oncomplete = function() {
+            if (!_writeOk) console.warn('[S203] §CACHE_TX_COMPLETE_BUT_NO_WRITE — data NOT persisted');
+            resolve();
+          };
           tx.onabort = function() {
             // Evict all entries then retry write
             console.log(`[S203] §CACHE_EVICT clearing all cached DBs for space`);
@@ -218,7 +336,9 @@ function setupScene(A) {
       } catch(e) { console.log(`[S203] §CACHE_WRITE_ERR ${e.message}`); }
     }
 
-    console.log(`[S203] §CACHE_MISS ${url} size=${(buf.byteLength/1024/1024).toFixed(1)}MB — cached for next time`);
+    if (!cacheDb || A._cacheDisabled) {
+      console.log(`[S203] §CACHE_SKIP url=${url.split('/').pop()} reason=${!cacheDb ? 'IDB_unavailable' : 'quota_low'}`);
+    }
     return buf;
   };
 
@@ -307,6 +427,7 @@ function setupScene(A) {
         A.status.textContent = 'Exit 2D first'; return;
       }
       if (A._clashMatrixDiv) { A._clashMatrixDiv.remove(); A._clashMatrixDiv = null; return; }
+      console.log('§CLASH_KEY_C loadClashRules=' + !!A._loadClashRules);
       if (A._loadClashRules) A._loadClashRules(function(r) {
         A._currentClashRules = r;
         A._showClashMatrix(r, document.body);

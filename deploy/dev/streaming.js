@@ -236,9 +236,26 @@ function setupStreaming(A) {
   };
 
 
-  A._getMaterial = function(rgbaStr) {
+  A._getMaterial = function(rgbaStr, ifcClass) {
+    // §S260c: Per-IFC-class shininess — differentiates steel, concrete, glass, wood
+    var SHININESS_MAP = {
+      IfcBeam: 70, IfcColumn: 70, IfcMember: 70, IfcPlate: 80,  // steel
+      IfcSlab: 15, IfcFooting: 10, IfcPile: 8, IfcWall: 20,     // concrete
+      IfcWallStandardCase: 20, IfcCurtainWall: 95,                // glass facade
+      IfcWindow: 100, IfcDoor: 40,                                 // glass/wood
+      IfcRailing: 60, IfcStair: 30, IfcRoof: 25,                  // metal/tile
+      IfcDuct: 50, IfcPipe: 65, IfcCableCarrier: 55,              // MEP metal
+      IfcLightFixture: 80, IfcFlowTerminal: 60                    // fixtures
+    };
+    var REFLECTIVITY_MAP = {
+      IfcBeam: 0.25, IfcColumn: 0.25, IfcMember: 0.25, IfcPlate: 0.3,
+      IfcCurtainWall: 0.5, IfcWindow: 0.5,
+      IfcDuct: 0.2, IfcPipe: 0.25, IfcLightFixture: 0.3
+    };
+
     const key = rgbaStr || '_default';
-    if (A._matCache[key]) return A._matCache[key];
+    var cacheKey = key + '|' + (ifcClass || '');
+    if (A._matCache[cacheKey]) return A._matCache[cacheKey];
     let r = 0.7, g = 0.7, b = 0.7, a = 1.0;
     if (rgbaStr && rgbaStr.includes(',')) {
       const parts = rgbaStr.split(',').map(Number);
@@ -249,13 +266,17 @@ function setupStreaming(A) {
     if (r > 0.85 && g > 0.85 && b > 0.85) { r *= 0.82; g *= 0.82; b *= 0.82; }
     const opts = { color: new THREE.Color(r, g, b), flatShading: true };
     if (a < 1.0) { opts.transparent = true; opts.opacity = a; opts.side = THREE.DoubleSide; }
+    // §S260c: Per-class shininess + reflectivity for material realism
+    opts.shininess = SHININESS_MAP[ifcClass] || 30;
+    opts.reflectivity = REFLECTIVITY_MAP[ifcClass] || 0.1;
+    if (A._envMap) opts.envMap = A._envMap;
     const mat = new THREE.MeshPhongMaterial(opts);
     mat.userData.origOpacity = a;
     mat.userData.origSide = a < 1.0 ? THREE.DoubleSide : THREE.FrontSide;
     if (A.xrayOn) { mat.transparent = true; mat.opacity = 0.15; mat.side = THREE.DoubleSide; }
     if (A.wireOn) { mat.wireframe = true; }
     if (A.sectionOn) { mat.clippingPlanes = [A.sectionPlane]; mat.clipShadows = true; }
-    A._matCache[key] = mat;
+    A._matCache[cacheKey] = mat;
     return mat;
   };
 
@@ -532,7 +553,7 @@ function setupStreaming(A) {
         batchBuckets[key].push({ el, geo });
       } else {
         // 2+ instances — InstancedMesh (both desktop and mobile)
-        const mat = A._getMaterial(elements[0].rgba);
+        const mat = A._getMaterial(elements[0].rgba, elements[0].ifcClass);
         const iMesh = new THREE.InstancedMesh(geo, mat, elements.length);
         iMesh.frustumCulled = false;
         const meta = [];
@@ -575,7 +596,8 @@ function setupStreaming(A) {
           totalIdx += item.geo.index ? item.geo.index.count : (p ? p.count : 0);
         }
 
-        const mat = A._getMaterial(rgba === '_default' ? null : rgba);
+        var batchCls = items.length ? (items[0].el.ifcClass || '') : '';
+        const mat = A._getMaterial(rgba === '_default' ? null : rgba, batchCls);
         var bm;
         try {
           bm = new THREE.BatchedMesh(items.length, totalVerts, totalIdx, mat);
@@ -655,7 +677,7 @@ function setupStreaming(A) {
       for (const [key, items] of Object.entries(batchBuckets)) {
         for (const item of items) {
           const el = item.el;
-          const mat = A._getMaterial(el.rgba);
+          const mat = A._getMaterial(el.rgba, el.ifcClass);
           const mesh = new THREE.Mesh(item.geo, mat);
           const pos = A.ifc2three(el.cx, el.cy, el.cz);
           mesh.position.set(pos.x, pos.y, pos.z);
@@ -753,7 +775,7 @@ function setupStreaming(A) {
         if (mergedNorm) mergedGeo.setAttribute('normal', new THREE.BufferAttribute(mergedNorm, 3));
         mergedGeo.setIndex(new THREE.BufferAttribute(mergedIdx, 1));
 
-        const mat = A._getMaterial(rgba === '_default' ? null : rgba);
+        const mat = A._getMaterial(rgba === '_default' ? null : rgba, null);
         const mesh = new THREE.Mesh(mergedGeo, mat);
         mesh.userData.storey = storey === '_' ? '' : storey;
         mesh.userData.disc = disc === '_' ? '' : disc;

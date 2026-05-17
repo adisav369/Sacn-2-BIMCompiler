@@ -788,6 +788,14 @@
       }
 
       // ── CLOSEUP (flythrough or panoramic scene) ──
+      // §S260c v2: Boost exposure during close-up for vivid materials
+      if (app.renderer) {
+        var targetExp = (_cineBeat === 'closeup') ? 1.3 : 1.15;
+        var curExp = app.renderer.toneMappingExposure;
+        if (Math.abs(curExp - targetExp) > 0.01) {
+          app.renderer.toneMappingExposure += (targetExp - curExp) * 0.08;
+        }
+      }
       if (_cineBeat === 'closeup') {
         var sc = _cineStoryboard[_cineSceneIdx];
         if (sc) {
