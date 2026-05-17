@@ -1322,7 +1322,7 @@
       '<div style="display:flex;align-items:center;width:100%;cursor:grab" class="tm-drag">' +
         '<button id="tm-share" style="font-size:9px;padding:2px 6px" title="Copy shareable link">&#x1F517; Share</button>' +
         '<button id="tm-sun" style="font-size:14px;padding:4px 8px;min-width:32px;min-height:32px" title="Day/night cycle"><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:linear-gradient(90deg,#fff 50%,#222 50%);vertical-align:middle"></span></button>' +
-        '<button id="tm-eye" style="font-size:18px;padding:4px 8px;min-width:36px;min-height:36px" title="Drone Pilot — cinematic camera">&#x1F681;</button>' +
+        '<button id="tm-eye" style="padding:2px 6px;min-width:36px;min-height:36px" title="Drone Pilot — cinematic camera"><img src="icons/drone_32.png" style="width:28px;height:28px;vertical-align:middle" alt="Drone"></button>' +
         '<button id="tm-gantt" style="font-size:12px;padding:2px 6px" title="Gantt chart">&#x1F4CA;</button>' +
         '<button id="tm-dash" style="font-size:12px;padding:2px 6px" title="Dashboard">&#x1F4CB;</button>' +
         '<span id="tm-big-counter" style="flex:1;font-size:18px;font-weight:bold;color:#4fc3f7;text-align:center;letter-spacing:1px">DAY 0 | HR 0</span>' +
@@ -1497,7 +1497,8 @@
           if (_cineStoryboard.length) {
             _cineNextTarget = _cineStoryboard[0].center;
             _camTarget = _cineStoryboard[0].center.clone();
-            viewerStatus('');
+            // §S260c: Keep "Drone Movie In Progress" visible for 2s so user sees it
+            setTimeout(function() { viewerStatus(''); }, 2000);
             _cursor = _projectStart;
             renderAtTime(_cursor);
             startPlayback(+1);
@@ -1511,7 +1512,7 @@
           if (_cineStoryboard.length) {
             _cineNextTarget = _cineStoryboard[0].center;
             _camTarget = _cineStoryboard[0].center.clone();
-            viewerStatus('');
+            setTimeout(function() { viewerStatus(''); }, 2000);
             _cursor = _projectStart;
             renderAtTime(_cursor);
             startPlayback(+1);
@@ -2559,7 +2560,10 @@
     _anchorHr = 15;
     _panel.style.display = 'flex';
     switchMode('DAY');
+    renderAtTime(_cursor); // §S260c: initial render so Gantt + status populate immediately
     updateStatus();
+    if (_ganttVisible) drawGanttMini();
+    if (_dashVisible) drawDashboard();
     console.log('§TIME_MACHINE ON — ' + _ops.length + ' ops, ' + _days.length + ' days, ' +
       'project: ' + new Date(_projectStart).toLocaleDateString() + ' → ' + new Date(_projectEnd).toLocaleDateString());
   }
