@@ -1740,27 +1740,41 @@
     if (dir > 0 && _cursor >= _projectEnd) _cursor = _projectStart;
 
     // §S260c v2: When Drone is active and playing forward from start,
-    // position camera at scene 0 (lowest Z — foundations/piling) looking down
+    // find the absolute lowest-Y point (deepest underground) and position camera
+    // above it looking DOWN to reveal piling/foundations being placed first.
     if (_camFollow && dir > 0 && _cineStoryboard.length && _cursor <= _projectStart + 1) {
       var app = A();
-      var sc0 = _cineStoryboard[0];
-      if (sc0 && sc0.center && app && app.camera && app.controls) {
-        // Camera above first scene looking down at 45° to reveal underground
-        var camPos = new THREE.Vector3(
-          sc0.center.x + 8,
-          sc0.center.y + 15,  // above, looking down
-          sc0.center.z + 8
-        );
-        app.camera.position.copy(camPos);
-        app.controls.target.copy(sc0.center);
-        app.controls.update();
-        _camTarget = sc0.center.clone();
-        _cineSceneIdx = 0;
-        _cineTick = 0;
-        _cineBeat = 'closeup';
-        console.log('§CINE_START_POS at scene 0 center=' +
-          sc0.center.x.toFixed(1) + ',' + sc0.center.y.toFixed(1) + ',' + sc0.center.z.toFixed(1) +
-          ' cls=' + (sc0.cls || '?'));
+      if (app && app.camera && app.controls) {
+        // Find the lowest Y across ALL storyboard scene centers
+        var lowestY = Infinity, lowestCenter = null;
+        for (var si = 0; si < _cineStoryboard.length; si++) {
+          var sc = _cineStoryboard[si];
+          if (sc.center && sc.center.y < lowestY) {
+            lowestY = sc.center.y;
+            lowestCenter = sc.center;
+          }
+        }
+        // If no scene center is low, scan first 200 ops for absolute min Y
+        if (!lowestCenter && _ops.length) {
+          lowestCenter = _cineStoryboard[0].center;
+        }
+        if (lowestCenter) {
+          // Camera above the deepest point, angled down to reveal underground
+          var camPos = new THREE.Vector3(
+            lowestCenter.x + 12,
+            lowestCenter.y + 25,  // well above, looking down into the pit
+            lowestCenter.z + 12
+          );
+          app.camera.position.copy(camPos);
+          app.controls.target.set(lowestCenter.x, lowestCenter.y, lowestCenter.z);
+          app.controls.update();
+          _camTarget = lowestCenter.clone();
+          _cineSceneIdx = 0;
+          _cineTick = 0;
+          _cineBeat = 'closeup';
+          console.log('§CINE_START_POS lowestY=' + lowestY.toFixed(1) +
+            ' center=' + lowestCenter.x.toFixed(1) + ',' + lowestCenter.y.toFixed(1) + ',' + lowestCenter.z.toFixed(1));
+        }
       }
     }
 

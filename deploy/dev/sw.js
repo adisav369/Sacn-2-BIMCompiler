@@ -8,7 +8,7 @@
 // Cache-first for heavy assets (.wasm, images). DB files skip SW (IndexedDB handles them).
 //
 // DEPLOY: bump CACHE_VERSION on every OCI upload. Old caches are purged on activate.
-const CACHE_VERSION = 'v358';
+const CACHE_VERSION = 'v359';
 const CACHE_NAME = 'bim-ootb-' + CACHE_VERSION;
 
 // Local copies of vendor libs — single-origin, no CDN dependency
@@ -115,6 +115,9 @@ const PRECACHE_ASSETS = [
   'dxf_export.js',
   'elevation.js',
   'title_block.js',
+  'dlod.js',
+  // Vendor libs not in LOCAL_LIBS (loaded by index.html)
+  'lib/httpvfs.js',
   // Config files
   'clash_rules.json',
   'grid_rules.json',
