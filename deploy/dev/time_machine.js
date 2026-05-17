@@ -387,9 +387,61 @@
   var _zeroMatrix = null; // lazy init
   var _savedInstanceMatrices = {}; // meshId → { idx → Matrix4 }
 
-  // ── Metal sparks (desktop only) ──
-  var _sparkSystems = [];   // active spark point clouds
+  // ── §S260c: Construction sound effects (Web Audio API — no files needed) ──
+  var _audioCtx = null;
+  var _soundThrottle = 0; // prevent overlapping sounds
+
+  function _getAudio() {
+    if (!_audioCtx) {
+      try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; }
+    }
+    return _audioCtx;
+  }
+
+  function playKnock() {
+    var ctx = _getAudio(); if (!ctx) return;
+    var now = performance.now();
+    if (now - _soundThrottle < 300) return; // max ~3/sec
+    _soundThrottle = now;
+    // Short noise burst → fast decay = hammer/knock
+    var buf = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate);
+    var data = buf.getChannelData(0);
+    for (var i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    var src = ctx.createBufferSource();
+    src.buffer = buf;
+    var gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+    src.connect(gain).connect(ctx.destination);
+    src.start();
+  }
+
+  function playWeld() {
+    var ctx = _getAudio(); if (!ctx) return;
+    var now = performance.now();
+    if (now - _soundThrottle < 400) return;
+    _soundThrottle = now;
+    // Higher noise + oscillator = welding crackle
+    var dur = 0.15 + Math.random() * 0.1;
+    var buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+    var data = buf.getChannelData(0);
+    for (var i = 0; i < data.length; i++) {
+      var t = i / ctx.sampleRate;
+      data[i] = (Math.random() * 2 - 1) * 0.3 * Math.sin(t * 4000) * (1 - i / data.length);
+    }
+    var src = ctx.createBufferSource();
+    src.buffer = buf;
+    var gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    src.connect(gain).connect(ctx.destination);
+    src.start();
+  }
+
+  // ── Metal sparks + construction smoke (desktop only) ──
+  var _sparkSystems = [];   // active spark/smoke point clouds
   var _sparkMaterial = null; // shared Points material
+  var _smokeMaterial = null; // shared smoke material
 
   function initSparkMaterial() {
     if (_sparkMaterial) return;
@@ -418,7 +470,35 @@
     var points = new THREE.Points(geom, _sparkMaterial.clone());
     points.renderOrder = 1000;
     scene.add(points);
-    _sparkSystems.push({ points: points, vel: vel, born: performance.now(), life: 500 });
+    _sparkSystems.push({ points: points, vel: vel, born: performance.now(), life: 500, type: 'spark' });
+  }
+
+  // §S260c: Dust puff — slow-rising, larger, softer particles for non-metal elements
+  function spawnDust(position, scene) {
+    if (!_smokeMaterial) {
+      _smokeMaterial = new THREE.PointsMaterial({
+        size: 6, sizeAttenuation: true,
+        color: 0xccbbaa, transparent: true, opacity: 0.5,
+        depthTest: false, blending: THREE.NormalBlending
+      });
+    }
+    var count = 4 + Math.floor(Math.random() * 4); // 4-7 particles
+    var geom = new THREE.BufferGeometry();
+    var pos = new Float32Array(count * 3);
+    var vel = new Float32Array(count * 3);
+    for (var i = 0; i < count; i++) {
+      pos[i*3]   = position.x + (Math.random()-0.5)*0.8;
+      pos[i*3+1] = position.y + Math.random()*0.3;
+      pos[i*3+2] = position.z + (Math.random()-0.5)*0.8;
+      vel[i*3]   = (Math.random()-0.5)*0.5;   // slow lateral drift
+      vel[i*3+1] = 0.5 + Math.random()*1.0;   // gentle rise
+      vel[i*3+2] = (Math.random()-0.5)*0.5;
+    }
+    geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    var points = new THREE.Points(geom, _smokeMaterial.clone());
+    points.renderOrder = 1000;
+    scene.add(points);
+    _sparkSystems.push({ points: points, vel: vel, born: performance.now(), life: 1200, type: 'dust' });
   }
 
   function updateSparks() {
@@ -542,12 +622,24 @@
           obj.visible = true;
           if (obj.isMesh) {
             var ft = frontier[g].t;
-            if (ft < 0.1) {
-              applyFlash(obj, 0xffee00);
-            } else if (ft < 0.25) {
-              applyFlash(obj, 0xffaa33);
+            // §S260c v2: Close-up = wireframe outline (preserves material).
+            // Far away = subtle emissive glow (visible at distance).
+            if (_camFollow && _cineBeat === 'closeup') {
+              applyOutline(obj, ft < 0.15 ? 0x44ffff : 0xff8c00); // cyan arrival → orange installing
+              // Effects on arrival (first 15%): sparks+weld for steel, dust+knock for others
+              if (!_isMobileTM && !_isLargeBuilding && _playing && ft < 0.15 && Math.random() < 0.3) {
+                var effectPos = new THREE.Vector3();
+                obj.getWorldPosition(effectPos);
+                if (frontier[g].isSteel) {
+                  spawnSparks(effectPos, app.scene);
+                  playWeld();
+                } else {
+                  spawnDust(effectPos, app.scene);
+                  playKnock();
+                }
+              }
             } else {
-              applyHighlight(obj, 0xff8c00, 0.75);
+              applyHighlight(obj, 0xff8c00, 0.9);
             }
           }
         } else if (isRecent) {
@@ -1081,6 +1173,42 @@
     updateStatus();
   }
 
+  // ── §S260c: Outline effect — wireframe edge overlay on mesh ──
+  // Adds EdgesGeometry LineSegments as a child. Preserves original material.
+  // Reusable by TM frontier, picking, clash, etc.
+  var _outlineMeshes = []; // tracked for bulk cleanup
+
+  function applyOutline(obj, color) {
+    if (!obj.isMesh || !obj.geometry) return;
+    if (obj._tm_outline) return; // already has outline
+    try {
+      var edges = new THREE.EdgesGeometry(obj.geometry, 30); // 30° threshold
+      var line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({
+        color: color || 0xff8c00, linewidth: 2, depthTest: true
+      }));
+      line.renderOrder = 1;
+      line.userData._isOutline = true;
+      obj.add(line);
+      obj._tm_outline = line;
+      _outlineMeshes.push(obj);
+    } catch(e) {} // EdgesGeometry can fail on degenerate geometry
+  }
+
+  function removeOutline(obj) {
+    if (!obj._tm_outline) return;
+    obj.remove(obj._tm_outline);
+    obj._tm_outline.geometry.dispose();
+    obj._tm_outline.material.dispose();
+    delete obj._tm_outline;
+  }
+
+  function clearAllOutlines() {
+    for (var i = _outlineMeshes.length - 1; i >= 0; i--) {
+      removeOutline(_outlineMeshes[i]);
+    }
+    _outlineMeshes = [];
+  }
+
   function applyHighlight(obj, color, opacity) {
     color = color || 0xff8c00;
     opacity = opacity || 0.9;
@@ -1135,6 +1263,7 @@
       restoreMaterial(_highlightMeshes[i]);
     }
     _highlightMeshes = [];
+    clearAllOutlines(); // §S260c: also remove wireframe outlines
   }
 
   // ── Day/night — smooth sky + lighting, no shadow plumbing ──
@@ -1247,8 +1376,11 @@
 
   // ── Tick size in ms based on mode ──
   function tickMs() {
-    // §S260c: Hero slowdown — during hero beats, advance by minutes not hours
+    // §S260c v2: Cinematic slowdown during close-up — each element gets visible screen time
+    // Outline forms, dust/sparks play out (~1.2s per element at 80ms/tick = 15 ticks)
+    if (_camFollow && _cineBeat === 'closeup') return 120000; // 2 minutes per tick — slow reveal
     if (_cineHeroSlowdown) return 60000; // 1 minute per tick during hero (slow-mo)
+    if (_camFollow && _cineBeat === 'establishing') return 7200000; // 2 hours per tick — fast forward during wide shot
     if (_mode === 'DAY') return 3600000;  // advance 1 hour per tick (24 ticks = 1 day)
     if (_mode === 'HR') return 60000;     // advance 1 minute per tick (60 ticks = 1 hour)
     return 10000;                         // advance 10 seconds per tick (fine grain)
