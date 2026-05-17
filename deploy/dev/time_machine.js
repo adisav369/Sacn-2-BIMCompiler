@@ -1163,6 +1163,23 @@
       }
     }
 
+    // §S260c: Distant construction activity — light dust/sparks at other frontier positions
+    // While camera is zoomed close on one scene, other parts of the site show life
+    if (_camFollow && _cineBeat === 'closeup' && !_isMobileTM && !_isLargeBuilding && _playing && _frontierPositions.length > 1) {
+      // Pick 1-2 random frontier positions away from camera target
+      for (var di = 0; di < 2; di++) {
+        if (Math.random() > 0.15) continue; // ~15% chance per tick per slot
+        var dIdx = Math.floor(Math.random() * _frontierPositions.length);
+        var dPos = _frontierPositions[dIdx];
+        if (dPos && app.camera) {
+          var dDist = app.camera.position.distanceTo(dPos);
+          if (dDist > 15 && dDist < 200) { // only if visible but not too close/far
+            spawnDust(dPos, app.scene);
+          }
+        }
+      }
+    }
+
     applySunCycle(cursorMs);
     if (_ganttVisible) drawGanttMini();
     if (_dashVisible) drawDashboard();
