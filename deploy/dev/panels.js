@@ -236,7 +236,7 @@ function setupPanels(A) {
           if (!btn) return;
           if (!e.shiftKey && !e.ctrlKey && !e.metaKey) return;
           e.preventDefault();
-          e.stopPropagation();
+          e.stopImmediatePropagation();
           var btns = Array.from(stBody.querySelectorAll('button'));
           var idx = btns.indexOf(btn);
           if (idx < 0) return;

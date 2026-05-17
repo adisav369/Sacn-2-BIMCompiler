@@ -268,6 +268,7 @@ function setupStreaming(A) {
         // ── Flush: build InstancedMesh for hashes with 2+ elements ──
         A._flushInstanced();
         A._clearBboxPlaceholders();
+        A._bboxCleared = true;
         A.streaming = false;
         if (A.activeBuilding) {
           A.buildingsRendered.add(A.activeBuilding);
@@ -296,9 +297,25 @@ function setupStreaming(A) {
             } else {
               console.log('[S258] §BVH_DEFERRED built=' + _bvhHashes.length +
                 ' ms=' + (performance.now() - _bvhT0).toFixed(0));
+              // §S260b: BVH for BatchedMesh — per-slot frustum culling
+              if (typeof window.computeBatchedBoundsTree === 'function') {
+                var _bmT0 = performance.now();
+                A.scene.traverse(function(obj) {
+                  if (obj.isBatchedMesh) {
+                    try { window.computeBatchedBoundsTree(obj); } catch(e) {}
+                  }
+                });
+                console.log('[S260b] §BATCHED_BVH ms=' + (performance.now() - _bmT0).toFixed(0));
+              }
             }
           })();
         }
+        // §S260b: Disable matrixAutoUpdate on all static meshes (only camera moves)
+        A.scene.traverse(function(obj) {
+          if (obj.isMesh || obj.isInstancedMesh) {
+            obj.matrixAutoUpdate = false;
+          }
+        });
         document.getElementById('s-buildings-done').textContent = A.buildingsRendered.size;
         document.getElementById('s-active').textContent = (typeof _TRL!=='undefined'&&_TRL.ui_active_done||'{name} — DONE').replace('{name}',A.activeBuilding);
         document.getElementById('s-active').style.color = '#44cc44';
@@ -458,15 +475,8 @@ function setupStreaming(A) {
     var _flushAt = A._bboxCleared ? 5000 : 500;
     if (A.streamIdx - A._lastFlushIdx >= _flushAt && A.streamIdx < A.streamQueue.length) {
       A._flushInstanced();
-      // §S260b: Keep bboxes until 20% rendered or 10000 elements — facade needs coverage
-      if (!A._bboxCleared) {
-        var _pct = A.streamIdx / A.streamQueue.length;
-        if (_pct >= 0.2 || A.streamIdx >= 10000) {
-          A._clearBboxPlaceholders();
-          A._bboxCleared = true;
-          console.log(`[S260b] §BBOX_CLEARED at=${A.streamIdx} pct=${(_pct*100).toFixed(1)}%`);
-        }
-      }
+      // §S260b: Keep bboxes until streaming fully complete — dramatic reveal effect
+      // Bboxes are cleared in _flushInstanced final call (streaming=false path above)
       A._lastFlushIdx = A.streamIdx;
       console.log(`[S260] §PROGRESSIVE_FLUSH at=${A.streamIdx}/${A.streamQueue.length} drawCalls=${A.scene.children.length}`);
     }
@@ -588,7 +598,7 @@ function setupStreaming(A) {
           continue;
         }
 
-        bm.frustumCulled = false;
+        bm.frustumCulled = true;  // §S260b: let Three.js skip off-screen batches
         bm.userData.isBatched = true;
         bm.userData.storey = storey === '_' ? '' : storey;
         bm.userData.disc = disc === '_' ? '' : disc;
@@ -633,6 +643,8 @@ function setupStreaming(A) {
         }
 
         A._batchMeta[bm.id] = meta;
+        bm.matrixAutoUpdate = false;  // §S260b: static scene — skip per-frame matrix recalc
+        bm.updateMatrix();
         A.scene.add(bm);
         batchedCount += items.length;
         drawCalls++;
@@ -790,9 +802,11 @@ function setupStreaming(A) {
       return;
     }
 
-    // §6.9 Split DB detection: try _meta.db + _geo.db, fall back to single DB
+    // §6.9 Split DB detection: try _meta.db alongside any .db URL
     var _splitMode = false;
     var metaUrl = A.DB_URL.replace('_extracted.db', '_meta.db');
+    // §S260b: Also handle plain names like "hospital.db" → "hospital_meta.db"
+    if (metaUrl === A.DB_URL) metaUrl = A.DB_URL.replace(/\.db$/, '_meta.db');
     if (metaUrl !== A.DB_URL) {
       try {
         var headResp = await fetch(metaUrl, { method: 'HEAD' });
@@ -876,6 +890,19 @@ function setupStreaming(A) {
         if (_bldRows.length && _bldRows[0].values[0][0]) {
           A.activeBuilding = _bldRows[0].values[0][0];
           console.log(`[S260b] §ACTIVE_BUILDING_EARLY name=${A.activeBuilding}`);
+          // §S260b: Redraw bboxes with discipline colors now that meta.db is loaded
+          if (_posLoaded && A._drawBboxPlaceholders) {
+            var _colorRows = A.dbQuery(`SELECT m.guid, i.geometry_hash, m.material_rgba, m.discipline,
+              t.center_x, t.center_y, t.center_z, t.rotation_x, t.rotation_y, t.rotation_z,
+              m.storey, m.ifc_class, t.bbox_x, t.bbox_y, t.bbox_z
+              FROM elements_meta m JOIN element_instances i ON m.guid=i.guid
+              JOIN element_transforms t ON t.guid=m.guid
+              WHERE m.building=? AND i.geometry_hash IS NOT NULL AND m.ifc_class!='IfcOpeningElement'`, [A.activeBuilding]);
+            if (_colorRows.length) {
+              A._drawBboxPlaceholders(_colorRows);
+              console.log('[S260b] §BBOX_RECOLOR discs=' + new Set(_colorRows.map(function(r){return r[3]})).size);
+            }
+          }
         }
       } catch(e) {}
       if (A._hasBbox === undefined) {
@@ -924,74 +951,18 @@ function setupStreaming(A) {
       // ── Single DB — always full download. Range streaming only works with split DBs
       // (split = meta instant + geo range). Without split, metadata scanning via range is too chatty.
       var _dbSize = 0;
-      var _useRange = false;  // §S260: disabled for single-DB — use split_db.sh for large buildings
       try {
         var headR = await fetch(A.DB_URL, { method: 'HEAD' });
         _dbSize = parseInt(headR.headers.get('Content-Length') || '0', 10);
       } catch(e) {}
-      console.log(`[S260] §DB_SIZE_CHECK size=${(_dbSize/1024/1024).toFixed(0)}MB useRange=false (split-only)`);
+      console.log(`[S260] §DB_SIZE_CHECK size=${(_dbSize/1024/1024).toFixed(0)}MB`);
 
-      if (_useRange) {
-        // ── §S260: Range-request streaming via sql.js-httpvfs ──────────────────
-        A.status.textContent = `Opening ${(_dbSize/1024/1024).toFixed(0)}MB database via streaming...`;
-        var _rangeT0 = performance.now();
-        try {
-          var _workerUrl = new URL('lib/sqlite.worker.js', location.href).href;
-          var _wasmUrl = new URL('lib/httpvfs-sql-wasm.wasm', location.href).href;
-          var _dbAbsUrl = new URL(A.DB_URL, location.href).href;
-          var _httpvfs = await createDbWorker(
-            [{ from: 'inline', config: { serverMode: 'full', url: _dbAbsUrl, requestChunkSize: 65536 } }],
-            _workerUrl, _wasmUrl
-          );
-          A._rangeDb = _httpvfs.db;
-          A._rangeWorker = _httpvfs.worker;
-          var _rangeMs = (performance.now() - _rangeT0).toFixed(0);
-          console.log(`§RANGE_DB_OPEN ms=${_rangeMs} size=${(_dbSize/1024/1024).toFixed(0)}MB url=${_dbAbsUrl}`);
-
-          // Metadata queries via range-request (async — few page reads)
-          A.status.textContent = 'Querying metadata via streaming...';
-          var _metaRows = await A._rangeDb.exec(
-            `SELECT m.building, COUNT(*),
-              AVG(t.center_x), AVG(t.center_y), AVG(t.center_z)
-            FROM elements_meta m
-            JOIN element_transforms t ON t.guid = m.guid
-            GROUP BY m.building`
-          );
-          // Parse httpvfs exec result → same shape as dbQuery
-          if (_metaRows && _metaRows.length > 0) {
-            for (var ri = 0; ri < _metaRows[0].values.length; ri++) {
-              var row = _metaRows[0].values[ri];
-              A.buildingCentres[row[0]] = { ix: row[2], iy: row[3], iz: row[4], count: row[1] };
-            }
-          }
-          console.log(`§RANGE_META_DONE centres=${Object.keys(A.buildingCentres).length} ms=${(performance.now() - _rangeT0).toFixed(0)}`);
-
-          // §S260: NO full replication — fetch only what's needed for camera + stream queue.
-          // dbQuery calls elsewhere will use A.dbQueryAsync() fallback.
-          A.db = new SQL.Database();  // empty sync DB — panels etc. will use async fallback
-          A.db.run('CREATE TABLE IF NOT EXISTS elements_meta (guid TEXT, building TEXT, storey TEXT, discipline TEXT, ifc_class TEXT)');
-          A.db.run('CREATE TABLE IF NOT EXISTS element_transforms (guid TEXT, center_x REAL, center_y REAL, center_z REAL, bbox_x REAL, bbox_y REAL, bbox_z REAL)');
-          A.db.run('CREATE TABLE IF NOT EXISTS element_instances (guid TEXT, geometry_hash TEXT)');
-          console.log(`§RANGE_SKIP_REPLICATION — using async queries instead, ms=${(performance.now() - _rangeT0).toFixed(0)}`);
-
-          // Mark range mode — streamTick will use A._rangeDb for geometry
-          A._useRangeStream = true;
-        } catch(e) {
-          console.error(`§RANGE_DB_FAIL ${e.message} — falling back to full download`);
-          console.warn('§RANGE_HINT Range requests require HTTP/1.1 206 Partial Content. python3 -m http.server does NOT support Range. OCI Object Storage does.');
-          A.status.textContent = 'Range streaming failed — downloading full database...';
-          _useRange = false;  // fall through to full download below
-        }
-      }
-
-      if (!_useRange) {
-        // ── Full download (current path, for small DBs or range fallback) ──
-        A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_fetching||'Fetching {url}...').replace('{url}',A.DB_URL);
-        var dbBuf = await A.cachedFetch(A.DB_URL);
-        A.db = new SQL.Database(new Uint8Array(dbBuf));
-        console.log(`[S192] §DB_LOADED size=${(dbBuf.byteLength/1024/1024).toFixed(0)}MB`);
-        A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_db_loaded||'DB loaded ({size}MB). Querying...').replace('{size}',(dbBuf.byteLength/1024/1024).toFixed(0));
-      }
+      // ── Full download (single-DB path — use split_db.sh for large buildings) ──
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_fetching||'Fetching {url}...').replace('{url}',A.DB_URL);
+      var dbBuf = await A.cachedFetch(A.DB_URL);
+      A.db = new SQL.Database(new Uint8Array(dbBuf));
+      console.log(`[S192] §DB_LOADED size=${(dbBuf.byteLength/1024/1024).toFixed(0)}MB`);
+      A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_db_loaded||'DB loaded ({size}MB). Querying...').replace('{size}',(dbBuf.byteLength/1024/1024).toFixed(0));
     }
 
     // §S260: Skip only if already populated (single-DB range mode does it above).
@@ -1025,19 +996,22 @@ function setupStreaming(A) {
     }
     console.log(`[S192] §OFFSET ifc=(${A.modelOffset.x.toFixed(0)}, ${A.modelOffset.y.toFixed(0)}, ${A.modelOffset.z.toFixed(0)})`);
 
-    const zRange = A.dbQuery(`SELECT MIN(center_z), MAX(center_z) FROM element_transforms`);
-    if (zRange.length > 0) {
-      const minZ = zRange[0][0];
-      if (minZ == null) {
-        console.log('[S220] §GROUND_SKIP element_transforms has no rows — no viewable geometry');
-      } else {
-        const groundY = (minZ - A.modelOffset.z) - 2;
-        A.ground.position.y = groundY;
-        // §S260: Ground hidden by default — shown only when shadow or night toggled on
-        A.ground.visible = !!(A._shadowOn || A._nightMode);
-        console.log(`[S200] §GROUND minZ_ifc=${minZ.toFixed(1)} groundY=${groundY.toFixed(1)} visible=${A.ground.visible}`);
+    // §S260c: Use _calcGroundY (slab-based) instead of raw MIN(center_z) which is wrong
+    // for buildings with underground piling/basement. _calcGroundY sets A.ground.position.y.
+    if (A._calcGroundY) {
+      A._calcGroundY();
+    } else {
+      // Fallback if tools.js hasn't loaded yet
+      const zRange = A.dbQuery(`SELECT MIN(center_z), MAX(center_z) FROM element_transforms`);
+      if (zRange.length > 0 && zRange[0][0] != null) {
+        var p = A.ifc2three(0, 0, zRange[0][0]);
+        A.ground.position.y = p.y;
+        console.log('[S200] §GROUND_FALLBACK minZ_y=' + p.y.toFixed(1));
       }
     }
+    // §S260: Ground hidden by default — shown only when shadow or night toggled on
+    A.ground.visible = !!(A._shadowOn || A._nightMode);
+    console.log('[S200] §GROUND_INIT y=' + A.ground.position.y.toFixed(1) + ' visible=' + A.ground.visible);
 
     const elemRows = A.dbQuery(`SELECT COUNT(*) FROM elements_meta`);
     A.totalElements = elemRows.length ? elemRows[0][0] : 0;
