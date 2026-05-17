@@ -1738,6 +1738,32 @@
     _playDir = dir;
     if (dir < 0 && _cursor <= _projectStart) _cursor = _projectEnd;
     if (dir > 0 && _cursor >= _projectEnd) _cursor = _projectStart;
+
+    // §S260c v2: When Drone is active and playing forward from start,
+    // position camera at scene 0 (lowest Z — foundations/piling) looking down
+    if (_camFollow && dir > 0 && _cineStoryboard.length && _cursor <= _projectStart + 1) {
+      var app = A();
+      var sc0 = _cineStoryboard[0];
+      if (sc0 && sc0.center && app && app.camera && app.controls) {
+        // Camera above first scene looking down at 45° to reveal underground
+        var camPos = new THREE.Vector3(
+          sc0.center.x + 8,
+          sc0.center.y + 15,  // above, looking down
+          sc0.center.z + 8
+        );
+        app.camera.position.copy(camPos);
+        app.controls.target.copy(sc0.center);
+        app.controls.update();
+        _camTarget = sc0.center.clone();
+        _cineSceneIdx = 0;
+        _cineTick = 0;
+        _cineBeat = 'closeup';
+        console.log('§CINE_START_POS at scene 0 center=' +
+          sc0.center.x.toFixed(1) + ',' + sc0.center.y.toFixed(1) + ',' + sc0.center.z.toFixed(1) +
+          ' cls=' + (sc0.cls || '?'));
+      }
+    }
+
     var btn = document.getElementById(dir < 0 ? 'tm-rev-btn' : 'tm-fwd-btn');
     if (btn) { btn.textContent = '\u25AE\u25AE'; btn.classList.add('tm-active'); }
     playTick();
@@ -1931,35 +1957,28 @@
     var bandDone       = {};  // band (int)      → end ms (structural seq 1-4)
     var count = 0;
 
-    // §S260c: Track global structural completion — non-structural must wait for
-    // structural frame on their band (or below) before starting. Fixes "MEP before columns" bug.
-    var globalStructDone = 0; // timestamp when ALL structural on band 0 is done (foundations)
+    // §S260c v2: TWO-PASS scheduling — structural first (all bands), then non-structural.
+    // This ensures bandDone[] is fully populated before any MEP/finishes are scheduled.
+    // Pass 1: structural (seq 1-4) = foundations, columns, beams, slabs
+    // Pass 2: non-structural (seq > 4) = MEP, architecture, finishes
+    var structuralElements = elements.filter(function(el) { return el.seq <= 4; });
+    var nonStructuralElements = elements.filter(function(el) { return el.seq > 4; });
 
-    elements.forEach(function(el) {
+    // Pass 1: Schedule all structural
+    structuralElements.forEach(function(el) {
       var rcKey = el.resource + '|' + el.band;
-
-      // 1. Same resource in same band = sequential
       var earliest = resourceCursor[rcKey] || baseMs;
 
-      // 2. Phase dependency: higher seq waits for lower seq in same band
+      // Phase dependency within band
       for (var ps = 1; ps < el.seq; ps++) {
         var pk = el.band + '|' + ps;
         if (bandSeqDone[pk] && bandSeqDone[pk] > earliest) earliest = bandSeqDone[pk];
       }
 
-      // 3. Z dependency: structural (seq 1-4) on band N waits for structural on band N-1
-      if (el.band > 0 && el.seq <= 4) {
+      // Z dependency: structural on band N waits for structural on band N-1
+      if (el.band > 0) {
         var belowDone = bandDone[el.band - 1];
         if (belowDone && belowDone > earliest) earliest = belowDone;
-      }
-
-      // 4. §S260c: Non-structural (seq > 4) must wait for structural on SAME band to complete.
-      //    If same band has no structural, wait for the nearest lower band that does.
-      //    This ensures columns/slabs are erected before MEP/finishes install on any level.
-      if (el.seq > 4) {
-        for (var wb = el.band; wb >= 0; wb--) {
-          if (bandDone[wb] && bandDone[wb] > earliest) { earliest = bandDone[wb]; break; }
-        }
       }
 
       var durMs = Math.round(el.installSecs * scaleFactor * 1000);
@@ -1977,9 +1996,43 @@
       resourceCursor[rcKey] = endMs;
       var seqKey = el.band + '|' + el.seq;
       if (!bandSeqDone[seqKey] || endMs > bandSeqDone[seqKey]) bandSeqDone[seqKey] = endMs;
-      if (el.seq <= 4) {
-        if (!bandDone[el.band] || endMs > bandDone[el.band]) bandDone[el.band] = endMs;
+      if (!bandDone[el.band] || endMs > bandDone[el.band]) bandDone[el.band] = endMs;
+    });
+
+    console.log('§GANTT_PASS1 structural=' + structuralElements.length + ' bandDone_keys=' + Object.keys(bandDone).length);
+
+    // Pass 2: Schedule non-structural (MEP, Architecture, Finishes)
+    // Now bandDone[] is fully populated — non-structural waits for its band's structural.
+    nonStructuralElements.forEach(function(el) {
+      var rcKey = el.resource + '|' + el.band;
+      var earliest = resourceCursor[rcKey] || baseMs;
+
+      // Phase dependency within band
+      for (var ps = 1; ps < el.seq; ps++) {
+        var pk = el.band + '|' + ps;
+        if (bandSeqDone[pk] && bandSeqDone[pk] > earliest) earliest = bandSeqDone[pk];
       }
+
+      // Must wait for structural on same band or nearest lower band
+      for (var wb = el.band; wb >= 0; wb--) {
+        if (bandDone[wb] && bandDone[wb] > earliest) { earliest = bandDone[wb]; break; }
+      }
+
+      var durMs = Math.round(el.installSecs * scaleFactor * 1000);
+      var endMs = earliest + durMs;
+
+      db.run(
+        'INSERT INTO kernel_ops (timestamp,op_type,parameters,input_guids,output_guid,undone) VALUES(?,?,?,?,?,0)',
+        [earliest, 'ELEMENT_PLACE',
+         JSON.stringify({phase:el.phase, cls:el.cls, name:el.name, storey:el.storey,
+           resource:el.resource, _end_ts:endMs}),
+         JSON.stringify([el.guid]), el.guid]
+      );
+      count++;
+
+      resourceCursor[rcKey] = endMs;
+      var seqKey = el.band + '|' + el.seq;
+      if (!bandSeqDone[seqKey] || endMs > bandSeqDone[seqKey]) bandSeqDone[seqKey] = endMs;
     });
 
     // §S260c BUG5: Log first 20 ops to verify bottom-up storey ordering
