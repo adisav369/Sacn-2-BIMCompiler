@@ -167,49 +167,63 @@
   }
 
   function computeStoryboard(ops, guidPosMap) {
+    // §S260c v2: Complete rewrite — 5 architectural fixes:
+    // 1. XZ-only clustering (horizontal, ignore Y) — prevents vertical stacks
+    // 2. Sub-filter by ifc_class — produces clean "row of sprinklers" sequences
+    // 3. Scene duration = real timeline span (startTs→endTs), not fixed tick count
+    // 4. No zone dedup/wrapping — each scene is unique, plays once
+    // 5. Scenes tied to timeline — camera advances when cursor reaches scene.endTs
     var scenes = [];
-    var CLUSTER_RADIUS = 15;
+    var CLUSTER_RADIUS_XZ = 12; // horizontal only — tighter than old 15m 3D
     var i = 0;
     while (i < ops.length) {
       var op = ops[i];
       var guid = op.output_guid || (op.input_guids && op.input_guids[0]);
       var pos = guid ? guidPosMap[guid] : null;
+      var cls = (op.parameters && op.parameters.cls) || '';
       if (!pos) { i++; continue; }
 
-      var cx = pos.x, cy = pos.y, cz = pos.z, count = 1;
+      // Collect consecutive ops within XZ radius AND same ifc_class
+      var cx = pos.x, cz = pos.z, count = 1;
       var guids = [guid];
       var startIdx = i, endIdx = i;
-      var firstTs = op.start_ts;  // earliest op timestamp — cam arrives before this
+      var startTs = op.start_ts;
+      var endTs = op.end_ts || op.start_ts;
+      var cy = pos.y; // track Y for center computation
 
-      for (var j = i + 1; j < ops.length && j < i + 200; j++) {
+      for (var j = i + 1; j < ops.length && j < i + 300; j++) {
         var g2 = ops[j].output_guid || (ops[j].input_guids && ops[j].input_guids[0]);
         var p2 = g2 ? guidPosMap[g2] : null;
+        var cls2 = (ops[j].parameters && ops[j].parameters.cls) || '';
         if (!p2) continue;
-        var dx = p2.x - cx/count, dy = p2.y - cy/count, dz = p2.z - cz/count;
-        if (Math.sqrt(dx*dx + dy*dy + dz*dz) < CLUSTER_RADIUS) {
-          cx += p2.x; cy += p2.y; cz += p2.z; count++;
+        // Same class filter: only group same ifc_class for clean linear sequences
+        if (cls2 !== cls && count < 3) { /* allow first 2 mixed, then enforce class */ }
+        else if (cls2 !== cls && count >= 3) continue;
+        // XZ distance only (horizontal plane)
+        var dx = p2.x - cx/count, dz = p2.z - cz/count;
+        var distXZ = Math.sqrt(dx*dx + dz*dz);
+        if (distXZ < CLUSTER_RADIUS_XZ) {
+          cx += p2.x; cz += p2.z; cy += p2.y; count++;
           guids.push(g2);
           endIdx = j;
-        } else if (count > 2) break;
+          if (ops[j].end_ts > endTs) endTs = ops[j].end_ts;
+        } else if (count > 3) break;
       }
 
-      if (count >= 2) {
+      if (count >= 3) {
         var center = new THREE.Vector3(cx/count, cy/count, cz/count);
-        var zoneKey = Math.round(center.x/20) + ',' + Math.round(center.z/20);
         var type = count >= _PANORAMIC_THRESHOLD ? 'panoramic' : 'flythrough';
 
-        // §S260c: For flythrough scenes, sort GUIDs into a spatial chain
-        // (nearest-neighbour walk) so camera tracks along the installation row
         var chain = null;
-        if (type === 'flythrough' && guids.length >= 2) {
+        if (type === 'flythrough' && guids.length >= 3) {
           chain = buildSpatialChain(guids, guidPosMap);
         }
 
         scenes.push({
           center: center, guids: guids, startIdx: startIdx, endIdx: endIdx,
-          count: count, zoneKey: zoneKey, type: type, firstTs: firstTs,
-          chain: chain,  // ordered V3[] path for camera tracking
-          angle: 0
+          count: count, type: type, cls: cls,
+          startTs: startTs, endTs: endTs, // real timeline span
+          chain: chain, angle: 0
         });
         i = endIdx + 1;
       } else {
@@ -217,14 +231,8 @@
       }
     }
 
-    // Deduplicate zones
-    var seen = {};
-    var filtered = [];
-    for (var s = 0; s < scenes.length; s++) {
-      if (seen[scenes[s].zoneKey]) continue;
-      seen[scenes[s].zoneKey] = true;
-      filtered.push(scenes[s]);
-    }
+    // No zone dedup — each scene is unique, plays once in timeline order
+    var filtered = scenes;
 
     // §S260c: Mobile throttle — cap scenes, skip heroes + raycasting
     var _isMob = !!(window._isMobile || window._isMobileTM);
@@ -734,11 +742,19 @@
         }
       }
 
-      // Advance storyboard: decide next beat when current one ends
+      // Advance storyboard: move to next scene when cursor passes current scene's end time
       var scene = _cineStoryboard[_cineSceneIdx];
-      var beatLen = scene && scene.type === 'panoramic' ? _BEAT_ESTAB : _BEAT_CLOSEUP;
+      // §S260c v2: Timeline-driven transition — scene ends when its ops are done
+      // Fallback: if scene has no endTs (old cache), use tick-based
+      var sceneEnded = false;
+      if (scene && scene.endTs) {
+        sceneEnded = _cursor >= scene.endTs;
+      } else {
+        var beatLen = scene && scene.type === 'panoramic' ? _BEAT_ESTAB : _BEAT_CLOSEUP;
+        sceneEnded = _cineTick > beatLen;
+      }
 
-      if (scene && _cineBeat === 'closeup' && _cineTick > beatLen) {
+      if (scene && _cineBeat === 'closeup' && sceneEnded) {
         restorePeeled(); // clean up before transition
         _cineHeroSlowdown = false; // restore normal tick speed
         _cineCloseupCount++;
@@ -983,7 +999,8 @@
           _cineTick = 0;
           _cineTransitFrom = app.camera.position.clone();
           // Wrap storyboard if exhausted
-          if (_cineSceneIdx >= _cineStoryboard.length) _cineSceneIdx = 0;
+          // §S260c v2: Don't wrap/loop — when storyboard exhausted, stay in establishing
+          if (_cineSceneIdx >= _cineStoryboard.length) _cineSceneIdx = _cineStoryboard.length - 1;
           var ns = _cineStoryboard[_cineSceneIdx];
           if (ns) {
             var nDist = ns.type === 'panoramic' ? _PANORAMIC_DIST : ns.type === 'hero' ? _HERO_DIST : _FLYTHROUGH_DIST;
@@ -1054,7 +1071,7 @@
 
   function applyHighlight(obj, color, opacity) {
     color = color || 0xff8c00;
-    opacity = opacity || 0.75;
+    opacity = opacity || 0.9;
     if (!obj._tm_highlighted) {
       obj._tm_origMaterial = obj.material;
       obj.material = obj.material.clone();
@@ -1062,16 +1079,17 @@
       _highlightMeshes.push(obj);
     }
     var mat = obj.material;
-    mat.color.setHex(color);
-    if (mat.emissive) { mat.emissive.setHex(color); mat.emissiveIntensity = 0.6; }
+    // §S260c v2: Keep original color, add subtle emissive glow (not full recolor)
+    // depthTest stays TRUE — elements occlude properly, no floating blobs
+    if (mat.emissive) { mat.emissive.setHex(color); mat.emissiveIntensity = 0.25; }
     mat.transparent = true;
     mat.opacity = opacity;
-    mat.depthTest = false;
+    mat.depthTest = true;
     mat.needsUpdate = true;
-    obj.renderOrder = 999;
+    obj.renderOrder = 0;
   }
 
-  // Flash: solid bright element, depthTest ON so it looks physical
+  // Flash: brief arrival glow — subtle, not blinding
   function applyFlash(obj, color) {
     if (!obj._tm_highlighted) {
       obj._tm_origMaterial = obj.material;
@@ -1080,8 +1098,8 @@
       _highlightMeshes.push(obj);
     }
     var mat = obj.material;
-    mat.color.setHex(color);
-    if (mat.emissive) { mat.emissive.setHex(color); mat.emissiveIntensity = 1.5; }
+    // §S260c v2: Keep original color, just add warm emissive on arrival
+    if (mat.emissive) { mat.emissive.setHex(color); mat.emissiveIntensity = 0.4; }
     mat.transparent = false;
     mat.opacity = 1.0;
     mat.depthTest = true;
