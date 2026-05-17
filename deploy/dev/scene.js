@@ -84,39 +84,33 @@ function setupScene(A) {
   A.hemi = hemi;
 
   // §S260c: Procedural environment map — gives all materials subtle reflections.
-  // Creates a gradient sky cubemap (no external .hdr file needed). Even MeshPhongMaterial
-  // benefits via envMap+reflectivity. Makes steel look metallic, glass look glassy.
+  // Uses vertex-colored sphere (no shader hacking) for r160 compatibility.
   try {
     var pmrem = new THREE.PMREMGenerator(renderer);
-    pmrem.compileEquirectangularShader();
     var envScene = new THREE.Scene();
-    // Gradient: warm ground → blue sky (mimics outdoor IBL)
-    var envMat = new THREE.MeshBasicMaterial({ side: THREE.BackSide });
-    envMat.onBeforeCompile = function(shader) {
-      shader.fragmentShader = shader.fragmentShader.replace(
-        'void main() {',
-        'varying vec3 vWorldPosition;\nvoid main() {'
-      ).replace(
-        '#include <output_fragment>',
-        'float h = normalize(vWorldPosition).y;\n' +
-        'vec3 sky = mix(vec3(0.8,0.75,0.65), vec3(0.4,0.6,0.9), clamp(h*2.0,0.0,1.0));\n' +
-        'gl_FragColor = vec4(sky, 1.0);\n'
-      );
-      shader.vertexShader = shader.vertexShader.replace(
-        'void main() {',
-        'varying vec3 vWorldPosition;\nvoid main() {'
-      ).replace(
-        '#include <worldpos_vertex>',
-        '#include <worldpos_vertex>\nvWorldPosition = worldPosition.xyz;\n'
-      );
-    };
-    var envGeo = new THREE.SphereGeometry(500, 16, 16);
+    var envGeo = new THREE.SphereGeometry(500, 32, 16);
+    // Paint vertices: brown at bottom → blue at top (outdoor IBL gradient)
+    var posAttr = envGeo.attributes.position;
+    var colors = new Float32Array(posAttr.count * 3);
+    for (var vi = 0; vi < posAttr.count; vi++) {
+      var ny = posAttr.getY(vi) / 500; // -1 (bottom) to +1 (top)
+      var t = ny * 0.5 + 0.5; // 0 (bottom) to 1 (top)
+      // Ground brown → horizon warm → sky blue
+      colors[vi * 3]     = 0.7 - t * 0.3;  // R: brown→blue
+      colors[vi * 3 + 1] = 0.65 + t * 0.1; // G: warm→cool
+      colors[vi * 3 + 2] = 0.55 + t * 0.35; // B: tan→sky
+    }
+    envGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    var envMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide });
     envScene.add(new THREE.Mesh(envGeo, envMat));
-    var envRT = pmrem.fromScene(envScene, 0.02);
+    // Add a dim light so PMREMGenerator produces usable irradiance
+    envScene.add(new THREE.AmbientLight(0xffffff, 1));
+    var envRT = pmrem.fromScene(envScene, 0.04);
     scene.environment = envRT.texture;
     A._envMap = envRT.texture;
     pmrem.dispose();
-    console.log('§ENV_MAP procedural gradient sky — applied to scene.environment');
+    envGeo.dispose(); envMat.dispose();
+    console.log('§ENV_MAP vertex-color gradient sky — applied to scene.environment');
   } catch(e) {
     console.warn('§ENV_MAP_FAIL ' + e.message);
   }
