@@ -69,17 +69,18 @@ function setupScene(A) {
 
   // Lighting
   // §S258: Light intensities bumped to compensate for r156 Phong shader differences
-  const ambient = new THREE.AmbientLight(0x606080, 0.8);
+  // §S260d: PBR lighting — neutral ambient, warm earth hemisphere, warm sun
+  const ambient = new THREE.AmbientLight(0xffffff, 0.35);
   scene.add(ambient);
   A.ambient = ambient;
 
-  const sun = new THREE.DirectionalLight(0xfff0dd, 1.2);
+  const sun = new THREE.DirectionalLight(0xfff0dd, 1.4);
   sun.position.set(200, 400, 300);
   sun.castShadow = false;
   scene.add(sun);
   A.sun = sun;
 
-  const hemi = new THREE.HemisphereLight(0x8888cc, 0x444422, 0.5);
+  const hemi = new THREE.HemisphereLight(0xb0c4de, 0x8b7355, 0.6);
   scene.add(hemi);
   A.hemi = hemi;
 
@@ -132,6 +133,7 @@ function setupScene(A) {
   A.buildingCentres = {};
   A.discCounts = {};
   A.meshCache = {};
+  A._dlodBboxGeo = new THREE.BoxGeometry(1, 1, 1);  // §S261: shared bbox for DLOD slots (24 verts, 36 idx)
   A.streamedCount = 0;
   A.totalElements = 0;
   A.modelOffset = { x: 0, y: 0, z: 0 };

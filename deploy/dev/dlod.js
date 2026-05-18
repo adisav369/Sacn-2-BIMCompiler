@@ -242,7 +242,85 @@ function setupDLOD(A) {
         ' hid=' + hidCount + ' skip=' + skipCount +
         ' storeys=' + camStorey + ' ms=' + ms);
     }
+
+    // §S261: Geometry swap — promote near bbox→real, demote far real→bbox
+    if (!A._dlodPaused && A._dlodSlots && Object.keys(A._dlodSlots).length > 0) {
+      _promotePass();
+    }
   };
+
+  // ── §S261: Geometry-swap promote/demote ──
+  var PROMOTE_BUDGET = 20;    // max slots to promote per tick
+  var DEMOTE_BUDGET = 40;     // max slots to demote per tick (cheaper)
+  var PROMOTE_DIST = 50;      // metres — swap bbox→real when closer
+  var DEMOTE_DIST = 80;       // metres — swap real→bbox when farther (hysteresis)
+  var _totalPromoted = 0;
+  var _promoteLogThrottle = 0;
+
+  function _promotePass() {
+    var camX = A.camera.position.x;
+    var camY = A.camera.position.y;
+    var camZ = A.camera.position.z;
+    var promoted = 0, demoted = 0;
+    var bboxGeo = A._dlodBboxGeo;
+    if (!bboxGeo) return;
+
+    for (var bmId in A._dlodSlots) {
+      var slots = A._dlodSlots[bmId];
+      var bm = slots._bmRef;
+      if (!bm || !bm.parent) continue;  // mesh removed from scene
+
+      var changed = false;
+      for (var i = 0; i < slots.length; i++) {
+        if (promoted >= PROMOTE_BUDGET && demoted >= DEMOTE_BUDGET) break;
+        var s = slots[i];
+
+        // Distance from camera to element world position
+        var dx = s.wx - camX, dy = s.wy - camY, dz = s.wz - camZ;
+        var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        if (!s.promoted && dist < PROMOTE_DIST && promoted < PROMOTE_BUDGET) {
+          // PROMOTE: bbox → real geometry
+          var realGeo = A.meshCache[s.hash];
+          if (!realGeo) continue;  // geometry not in cache yet
+          var vc = realGeo.attributes.position ? realGeo.attributes.position.count : 0;
+          var ic = realGeo.index ? realGeo.index.count : vc;
+          if (vc > s.reservedVerts || ic > s.reservedIdx) continue;  // doesn't fit
+
+          try {
+            bm.setGeometryAt(s.slotId, realGeo);
+            bm.setMatrixAt(s.slotId, s.realMatrix);
+            s.promoted = true;
+            promoted++;
+            _totalPromoted++;
+            changed = true;
+          } catch(e) { /* skip on error */ }
+        }
+        else if (s.promoted && dist > DEMOTE_DIST && demoted < DEMOTE_BUDGET) {
+          // DEMOTE: real → bbox (free GPU detail for far elements)
+          try {
+            bm.setGeometryAt(s.slotId, bboxGeo);
+            bm.setMatrixAt(s.slotId, s.bboxMatrix);
+            s.promoted = false;
+            demoted++;
+            _totalPromoted--;
+            changed = true;
+          } catch(e) { /* skip on error */ }
+        }
+      }
+      // No needsUpdate needed for BatchedMesh — setGeometryAt/setMatrixAt handle it
+    }
+
+    if ((promoted > 0 || demoted > 0) && A.markDirty) A.markDirty();
+
+    // Throttled logging — every 10th tick with activity
+    _promoteLogThrottle++;
+    if ((promoted > 0 || demoted > 0) && _promoteLogThrottle % 10 === 0) {
+      console.log('[DLOD] §DLOD_SWAP promote=' + promoted + ' demote=' + demoted +
+        ' total_promoted=' + _totalPromoted +
+        ' cached=' + Object.keys(A.meshCache).length);
+    }
+  }
 
   // ── Restore all DLOD-hidden meshes ──
   function _restoreAll() {

@@ -16,6 +16,8 @@ function setupStreaming(A) {
   A.streaming = false;
   A.savedStreams = {};
   A._libHasNormals = null; // cached: does libDb have normals column?
+  A._useDlodPath = false;  // §S261: true for buildings >= 5K elements on desktop
+  A._dlodSlots = {};       // §S261: bmId → [{slotId, hash, promoted, reservedVerts, reservedIdx, bboxMatrix, realMatrix, wx, wy, wz}]
 
   // drawBuildingBoxes() retired — replaced by per-element _drawBboxPlaceholders()
   A.drawBuildingBoxes = function() {};
@@ -104,6 +106,7 @@ function setupStreaming(A) {
           A._lastFlushIdx = 0;
           A._bboxCleared = false;
           A.activeBuildingTotal = rows.length;
+          A._useDlodPath = false; // §S260d: DISABLED — bbox-only breaks pick until S261 promotion done
           A._drawBboxPlaceholders(rows);
           A.streaming = true;
           A.status.textContent = `Streaming ${rows.length.toLocaleString()} elements...`;
@@ -152,10 +155,11 @@ function setupStreaming(A) {
       A._bboxCleared = false;
       A.activeBuilding = nearest;
       A.activeBuildingTotal = A.streamQueue.length;
+      A._useDlodPath = false; // §S260d: DISABLED — bbox-only breaks pick until S261 promotion done
       // Draw one wireframe cube per element instantly — disappear when real meshes arrive
       A._drawBboxPlaceholders(rows);
       A.streaming = true;
-      console.log(`[S192] §DS_QUEUED bld=${nearest} elements=${A.streamQueue.length} (sorted by camera distance)`);
+      console.log(`[S192] §DS_QUEUED bld=${nearest} elements=${A.streamQueue.length} dlod=${A._useDlodPath} (sorted by camera distance)`);
     }
     document.getElementById('s-active').textContent = `${nearest}`;
     document.getElementById('s-building-total').textContent = A.activeBuildingTotal.toLocaleString();
@@ -167,7 +171,7 @@ function setupStreaming(A) {
   // ── S231: InstancedMesh batching ─────────────────────────────────────
   // Hashes with 2+ instances get ONE InstancedMesh (1 draw call).
   // Hashes with 1 instance stay as individual Mesh (pick/filter compatible).
-  // Material dedup: one MeshPhongMaterial per unique RGBA string.
+  // Material dedup: one MeshStandardMaterial per unique RGBA + ifcClass.
   // ── S232: Mobile merge — single-instance meshes grouped by storey|disc|rgba ──
   // Bakes transform into vertices, concatenates buffers → ~200 draw calls on mobile.
   A._matCache = {};
@@ -237,20 +241,32 @@ function setupStreaming(A) {
 
 
   A._getMaterial = function(rgbaStr, ifcClass) {
-    // §S260c: Per-IFC-class shininess — differentiates steel, concrete, glass, wood
-    var SHININESS_MAP = {
-      IfcBeam: 70, IfcColumn: 70, IfcMember: 70, IfcPlate: 80,  // steel
-      IfcSlab: 15, IfcFooting: 10, IfcPile: 8, IfcWall: 20,     // concrete
-      IfcWallStandardCase: 20, IfcCurtainWall: 95,                // glass facade
-      IfcWindow: 100, IfcDoor: 40,                                 // glass/wood
-      IfcRailing: 60, IfcStair: 30, IfcRoof: 25,                  // metal/tile
-      IfcDuct: 50, IfcPipe: 65, IfcCableCarrier: 55,              // MEP metal
-      IfcLightFixture: 80, IfcFlowTerminal: 60                    // fixtures
+    // §S260d: PBR roughness/metalness per IFC class — replaces Phong shininess
+    var ROUGHNESS_MAP = {
+      IfcBeam: 0.4, IfcColumn: 0.4, IfcMember: 0.4, IfcPlate: 0.3,   // steel — smooth
+      IfcSlab: 0.85, IfcFooting: 0.9, IfcPile: 0.9, IfcWall: 0.8,    // concrete — rough
+      IfcWallStandardCase: 0.75, IfcCurtainWall: 0.1,                   // glass — very smooth
+      IfcWindow: 0.05, IfcDoor: 0.6,                                    // glass/wood
+      IfcRailing: 0.35, IfcStair: 0.7, IfcRoof: 0.75,                   // metal/tile
+      IfcDuct: 0.45, IfcPipe: 0.35, IfcCableCarrier: 0.5,               // MEP metal
+      IfcFurniture: 0.6, IfcFlowTerminal: 0.4, IfcLightFixture: 0.25    // fixtures
     };
-    var REFLECTIVITY_MAP = {
-      IfcBeam: 0.25, IfcColumn: 0.25, IfcMember: 0.25, IfcPlate: 0.3,
-      IfcCurtainWall: 0.5, IfcWindow: 0.5,
-      IfcDuct: 0.2, IfcPipe: 0.25, IfcLightFixture: 0.3
+    var METALNESS_MAP = {
+      IfcBeam: 0.6, IfcColumn: 0.5, IfcMember: 0.6, IfcPlate: 0.7,
+      IfcCurtainWall: 0.1, IfcWindow: 0.0, IfcRailing: 0.5,
+      IfcDuct: 0.4, IfcPipe: 0.5, IfcLightFixture: 0.3, IfcFlowTerminal: 0.3
+    };
+    // §S260d: Class-based color fallback for buildings with no IFC colors (LTU etc)
+    var CLASS_COLOR_FALLBACK = {
+      IfcSlab: '0.78,0.76,0.72', IfcWall: '0.88,0.85,0.80',
+      IfcWallStandardCase: '0.88,0.85,0.80', IfcColumn: '0.65,0.67,0.70',
+      IfcBeam: '0.60,0.62,0.65', IfcDoor: '0.55,0.40,0.25',
+      IfcWindow: '0.75,0.85,0.90', IfcPipe: '0.50,0.55,0.60',
+      IfcDuct: '0.60,0.62,0.58', IfcFurniture: '0.70,0.55,0.40',
+      IfcRoof: '0.50,0.45,0.40', IfcFooting: '0.72,0.70,0.68',
+      IfcMember: '0.58,0.60,0.63', IfcPlate: '0.55,0.57,0.60',
+      IfcRailing: '0.50,0.52,0.55', IfcStair: '0.75,0.73,0.70',
+      IfcCurtainWall: '0.70,0.82,0.88', IfcCovering: '0.85,0.83,0.78'
     };
 
     const key = rgbaStr || '_default';
@@ -262,15 +278,22 @@ function setupStreaming(A) {
       r = parts[0]; g = parts[1]; b = parts[2];
       if (parts.length >= 4 && parts[3] < 1.0) a = parts[3];
     }
-    // Tame near-white materials — pull down to light grey for contrast
-    if (r > 0.85 && g > 0.85 && b > 0.85) { r *= 0.82; g *= 0.82; b *= 0.82; }
-    const opts = { color: new THREE.Color(r, g, b), flatShading: true };
+    // §S260d: If color is default/near-default grey and we have a class fallback, use it
+    var isDefaultGrey = (Math.abs(r - 0.7) < 0.02 && Math.abs(g - 0.7) < 0.02 && Math.abs(b - 0.7) < 0.02);
+    if (isDefaultGrey && ifcClass && CLASS_COLOR_FALLBACK[ifcClass]) {
+      var fb = CLASS_COLOR_FALLBACK[ifcClass].split(',').map(Number);
+      r = fb[0]; g = fb[1]; b = fb[2];
+    }
+    // §S260d: Gentler near-white taming — let ACES tone mapping handle the rest
+    if (r > 0.85 && g > 0.85 && b > 0.85) { r *= 0.92; g *= 0.92; b *= 0.92; }
+    const opts = { color: new THREE.Color(r, g, b), flatShading: false };
     if (a < 1.0) { opts.transparent = true; opts.opacity = a; opts.side = THREE.DoubleSide; }
-    // §S260c: Per-class shininess + reflectivity for material realism
-    opts.shininess = SHININESS_MAP[ifcClass] || 30;
-    opts.reflectivity = REFLECTIVITY_MAP[ifcClass] || 0.1;
-    if (A._envMap) opts.envMap = A._envMap;
-    const mat = new THREE.MeshPhongMaterial(opts);
+    // §S260d: PBR roughness + metalness per IFC class
+    opts.roughness = ROUGHNESS_MAP[ifcClass] || 0.7;
+    opts.metalness = METALNESS_MAP[ifcClass] || 0.05;
+    opts.side = THREE.DoubleSide; // §S260d: IFC geometry has inconsistent normals — DoubleSide ensures pick works
+    if (A._envMap) { opts.envMap = A._envMap; opts.envMapIntensity = 0.3; }
+    const mat = new THREE.MeshStandardMaterial(opts);
     mat.userData.origOpacity = a;
     mat.userData.origSide = a < 1.0 ? THREE.DoubleSide : THREE.FrontSide;
     if (A.xrayOn) { mat.transparent = true; mat.opacity = 0.15; mat.side = THREE.DoubleSide; }
@@ -287,10 +310,13 @@ function setupStreaming(A) {
     if (!A.streaming || (!A.libDb && !A._useRangeStream) || A.streamIdx >= A.streamQueue.length) {
       if (A.streaming && A.streamIdx >= A.streamQueue.length) {
         // ── Flush: build InstancedMesh for hashes with 2+ elements ──
+        // §S261: _flushInstanced defers single-instance buckets when _useDlodPath
         A._flushInstanced();
-        // §S260c: Consolidation disabled — too expensive for 100K+ elements synchronously.
-        // Fix is in the flush interval: 500→5000 after first flush reduces fragmentation.
-        // if (A._consolidateBatched) A._consolidateBatched();
+        // §S261: Bbox DLOD flush — one BatchedMesh per bucket, all bbox, reserved ranges
+        if (A._useDlodPath && A._pendingBboxBuckets) {
+          A._flushBboxBatched(A._pendingBboxBuckets);
+          A._pendingBboxBuckets = null;
+        }
         A._clearBboxPlaceholders();
         A._bboxCleared = true;
         A.streaming = false;
@@ -299,9 +325,11 @@ function setupStreaming(A) {
           A.populateStoreys(A.activeBuilding);
           A.populateDiscs(A.activeBuilding);
         }
-        // §S260b: DLOD kept disabled — BatchedMesh already gives ~200 draw calls.
-        // Storey culling causes visible pop-in artifacts. Re-enable only for >500K elements.
-        // if (A.dlodEnable) { A.dlodEnable(); if (A.dlodTick) A.dlodTick(); }
+        // §S261: Enable DLOD for geometry-swap promote/demote
+        if (A._useDlodPath && A.dlodEnable) {
+          A.dlodEnable();
+          if (A.dlodTick) A.dlodTick();
+        }
         // §S258: Deferred BVH build — batch in background so streaming isn't blocked
         if (window._bvhReady) {
           var _bvhHashes = Object.keys(A.meshCache);
@@ -482,9 +510,10 @@ function setupStreaming(A) {
       const [guid, hash, rgba, disc, cx, cy, cz, rotX, rotY, rotZ, storey, ifcClass] = row;
       if (!hash || !A.meshCache[hash]) continue;
       if (!A._pendingInstances[hash]) A._pendingInstances[hash] = [];
-      A._pendingInstances[hash].push({ guid, rgba, disc, cx, cy, cz,
+      A._pendingInstances[hash].push({ guid, hash, rgba, disc, cx, cy, cz,
         rotX: rotX || 0, rotY: rotY || 0, rotZ: rotZ || 0,
-        storey: storey || '', ifcClass });
+        storey: storey || '', ifcClass,
+        bx: row[12] || 0.3, by: row[13] || 0.3, bz: row[14] || 0.3 });
       A.streamedCount++;
     }
 
@@ -495,14 +524,17 @@ function setupStreaming(A) {
     A.streamIdx += batch;
 
     // §S260c: Progressive flush — first at 500 (quick first paint), then every 5000.
-    // _bboxCleared is set after first flush so subsequent flushes use the larger interval.
-    if (A._lastFlushIdx === undefined) A._lastFlushIdx = 0;
-    var _flushAt = A._bboxCleared ? 5000 : 500;
-    if (A.streamIdx - A._lastFlushIdx >= _flushAt && A.streamIdx < A.streamQueue.length) {
-      A._flushInstanced();
-      if (!A._bboxCleared) A._bboxCleared = true;  // §S260c: switch to 5000 after first flush
-      A._lastFlushIdx = A.streamIdx;
-      console.log(`[S260] §PROGRESSIVE_FLUSH at=${A.streamIdx}/${A.streamQueue.length} drawCalls=${A.scene.children.length}`);
+    // §S261: Skip progressive flush on DLOD path — bbox placeholders stay visible,
+    // single bbox flush at end replaces them all at once.
+    if (!A._useDlodPath) {
+      if (A._lastFlushIdx === undefined) A._lastFlushIdx = 0;
+      var _flushAt = A._bboxCleared ? 5000 : 500;
+      if (A.streamIdx - A._lastFlushIdx >= _flushAt && A.streamIdx < A.streamQueue.length) {
+        A._flushInstanced();
+        if (!A._bboxCleared) A._bboxCleared = true;  // §S260c: switch to 5000 after first flush
+        A._lastFlushIdx = A.streamIdx;
+        console.log(`[S260] §PROGRESSIVE_FLUSH at=${A.streamIdx}/${A.streamQueue.length} drawCalls=${A.scene.children.length}`);
+      }
     }
 
     document.getElementById('s-streamed').textContent = A.streamedCount.toLocaleString();
@@ -536,6 +568,7 @@ function setupStreaming(A) {
     // ── S232: On mobile, bucket single-instance elements for merge ──
     const mergeBuckets = {};  // key: "storey|disc|rgba" → [{el, geo}, ...]
     // ── S260: On desktop, bucket single-instance elements for BatchedMesh ──
+    // §S261: When _useDlodPath, these buckets are passed to _flushBboxBatched instead
     const batchBuckets = {};  // key: "storey|disc|rgba" → [{el, geo}, ...]
 
     for (const [hash, elements] of Object.entries(A._pendingInstances)) {
@@ -585,8 +618,14 @@ function setupStreaming(A) {
       }
     }
 
-    // ── S260: Build BatchedMesh per desktop bucket ──────────────────────────────
-    if (!A._isMobile && THREE.BatchedMesh) {
+    // ── S261: DLOD path — defer single-instance buckets to _flushBboxBatched ──
+    if (A._useDlodPath && !A._isMobile) {
+      A._pendingBboxBuckets = batchBuckets;
+      // Skip normal BatchedMesh build — _flushBboxBatched handles it with reserved ranges
+      console.log('§S261_DEFER_BBOX buckets=' + Object.keys(batchBuckets).length);
+    }
+    // ── S260: Build BatchedMesh per desktop bucket (non-DLOD path) ──────────────
+    else if (!A._isMobile && THREE.BatchedMesh) {
       for (const [key, items] of Object.entries(batchBuckets)) {
         if (items.length === 0) continue;
         const [storey, disc, rgba] = key.split('|');
@@ -801,6 +840,191 @@ function setupStreaming(A) {
       console.log(`§BATCHED_DETAIL buckets=${Object.keys(batchBuckets).length} elements=${batchedCount} saved=${_prevDrawCalls - Object.keys(batchBuckets).length} drawCalls`);
     }
     document.getElementById('s-meshes').textContent = drawCalls.toLocaleString() + ' draw calls';
+  };
+
+  // §S261: Bbox-only BatchedMesh flush — ONE flush, all elements start as bbox cubes.
+  // Each slot reserves vertex/index space for future setGeometryAt() promotion.
+  // Used for buildings >= 5K elements on desktop. Replaces progressive flush + consolidation.
+  A._flushBboxBatched = function(batchBuckets) {
+    if (!batchBuckets || !THREE.BatchedMesh) return;
+    var _m4 = new THREE.Matrix4();
+    var _m4real = new THREE.Matrix4();
+    var _euler = new THREE.Euler();
+    var _quat = new THREE.Quaternion();
+    var _pos = new THREE.Vector3();
+    var _bboxScale = new THREE.Vector3();
+    var _realScale = new THREE.Vector3(1, 1, 1);
+    var GPU_VERT_BUDGET = 8000000;  // 8M verts = ~96MB
+    var MAX_RESERVED_VERTS = 512;
+    var MAX_RESERVED_IDX = 2048;
+    var BBOX_VERTS = 24;  // BoxGeometry(1,1,1)
+    var BBOX_IDX = 36;
+    var bboxGeo = A._dlodBboxGeo;
+    var totalReservedVerts = 0;
+    var bboxCount = 0, skipCount = 0, drawCalls = 0;
+
+    for (var key in batchBuckets) {
+      var items = batchBuckets[key];
+      if (!items.length) continue;
+      var parts = key.split('|');
+      var storey = parts[0], disc = parts[1], rgba = parts[2];
+
+      // First pass: compute per-slot reservations and totals
+      var slotReservations = [];
+      var bucketVerts = 0, bucketIdx = 0;
+      var fallbackItems = [];  // elements too large for DLOD reservation
+
+      for (var i = 0; i < items.length; i++) {
+        var el = items[i].el;
+        var geo = items[i].geo;
+        var vc = geo && geo.attributes.position ? geo.attributes.position.count : 0;
+        var ic = geo && geo.index ? geo.index.count : (vc || 0);
+
+        if (vc > MAX_RESERVED_VERTS || ic > MAX_RESERVED_IDX) {
+          // Too large for DLOD — will render as individual Mesh
+          fallbackItems.push(items[i]);
+          continue;
+        }
+
+        // Tiered reservation
+        var rv, ri;
+        if (vc <= 64) { rv = 64; ri = 192; }
+        else if (vc <= 128) { rv = 128; ri = 384; }
+        else if (vc <= 256) { rv = 256; ri = 768; }
+        else { rv = MAX_RESERVED_VERTS; ri = MAX_RESERVED_IDX; }
+        // Ensure reservation >= actual
+        if (rv < vc) rv = vc;
+        if (ri < ic) ri = ic;
+        // Ensure reservation >= bbox
+        if (rv < BBOX_VERTS) rv = BBOX_VERTS;
+        if (ri < BBOX_IDX) ri = BBOX_IDX;
+
+        slotReservations.push({ item: items[i], rv: rv, ri: ri });
+        bucketVerts += rv;
+        bucketIdx += ri;
+      }
+
+      // GPU budget guard
+      if (totalReservedVerts + bucketVerts > GPU_VERT_BUDGET) {
+        console.warn('§S261_BUDGET_EXCEEDED budget=' + GPU_VERT_BUDGET +
+          ' required=' + (totalReservedVerts + bucketVerts) + ' bucket=' + key);
+        // Demote entire bucket to fallback
+        for (var fi = 0; fi < slotReservations.length; fi++) fallbackItems.push(slotReservations[fi].item);
+        slotReservations = [];
+        bucketVerts = 0;
+        bucketIdx = 0;
+      }
+      totalReservedVerts += bucketVerts;
+
+      // Fallback: individual meshes for oversized/over-budget elements
+      if (fallbackItems.length > 0) {
+        var batchCls = fallbackItems[0].el.ifcClass || '';
+        var mat = A._getMaterial(rgba === '_default' ? null : rgba, batchCls);
+        for (var fi = 0; fi < fallbackItems.length; fi++) {
+          var el = fallbackItems[fi].el;
+          var m = new THREE.Mesh(fallbackItems[fi].geo, mat);
+          var p = A.ifc2three(el.cx, el.cy, el.cz);
+          m.position.set(p.x, p.y, p.z);
+          if (el.rotX || el.rotY || el.rotZ) m.rotation.set(el.rotX, el.rotZ, -el.rotY);
+          m.userData.storey = el.storey; m.userData.disc = el.disc;
+          m.userData.guid = el.guid; m.userData.ifcClass = el.ifcClass || '';
+          A.guidMap[m.id] = el.guid;
+          if (A.activeStoreyFilter !== null && el.storey !== A.activeStoreyFilter) m.visible = false;
+          if (A.hiddenDiscs.size > 0 && A.hiddenDiscs.has(el.disc)) m.visible = false;
+          A.scene.add(m);
+          drawCalls++;
+          skipCount++;
+        }
+      }
+
+      if (!slotReservations.length) continue;
+
+      // Create BatchedMesh with reserved capacity
+      var batchCls = slotReservations[0].item.el.ifcClass || '';
+      var mat = A._getMaterial(rgba === '_default' ? null : rgba, batchCls);
+      var bm;
+      try {
+        bm = new THREE.BatchedMesh(slotReservations.length, bucketVerts, bucketIdx, mat);
+      } catch(e) {
+        console.warn('§S261_BM_FAIL bucket=' + key + ' count=' + slotReservations.length + ' err=' + e.message);
+        continue;
+      }
+      bm.frustumCulled = true;
+      bm.userData.isBatched = true;
+      bm.userData.storey = storey === '_' ? '' : storey;
+      bm.userData.disc = disc === '_' ? '' : disc;
+      var meta = [];
+      var dlodSlots = [];
+
+      for (var si = 0; si < slotReservations.length; si++) {
+        var sr = slotReservations[si];
+        var el = sr.item.el;
+        var slotId;
+        try {
+          slotId = bm.addGeometry(bboxGeo, sr.rv, sr.ri);
+        } catch(e) {
+          console.warn('§S261_ADDGEO_FAIL bucket=' + key + ' i=' + si + ' err=' + e.message);
+          continue;
+        }
+
+        // Bbox-scaled matrix (bbox cubes are unit cubes scaled to element bbox)
+        var pos = A.ifc2three(el.cx, el.cy, el.cz);
+        _pos.set(pos.x, pos.y, pos.z);
+        var bx = el.bx || 0.3, by = el.bz || 0.3, bz = el.by || 0.3;  // IFC→Three: swap Y↔Z
+        _bboxScale.set(bx, by, bz);
+        _euler.set(el.rotX || 0, el.rotZ || 0, -(el.rotY || 0));
+        _quat.setFromEuler(_euler);
+        _m4.compose(_pos, _quat, _bboxScale);
+        bm.setMatrixAt(slotId, _m4);
+
+        // Real-geometry matrix (scale=1,1,1) — cached for promote
+        _m4real.compose(_pos, _quat, _realScale);
+
+        // Storey/disc visibility filter
+        var vis = true;
+        if (A.activeStoreyFilter !== null && el.storey !== A.activeStoreyFilter) vis = false;
+        if (A.hiddenDiscs.size > 0 && A.hiddenDiscs.has(el.disc)) vis = false;
+        if (!vis) bm.setVisibleAt(slotId, false);
+
+        // Metadata (same as _flushInstanced)
+        meta.push({ guid: el.guid, storey: el.storey, disc: el.disc, ifcClass: el.ifcClass || '', slotId: slotId });
+        A.guidMap[bm.id + '_' + slotId] = el.guid;
+        var sk = el.storey || '';
+        if (!A._batchStoreyMap[sk]) A._batchStoreyMap[sk] = [];
+        A._batchStoreyMap[sk].push({ mesh: bm, slotId: slotId });
+        var dk = el.disc || '';
+        if (!A._batchDiscMap[dk]) A._batchDiscMap[dk] = [];
+        A._batchDiscMap[dk].push({ mesh: bm, slotId: slotId });
+
+        // DLOD slot data for promote/demote
+        dlodSlots.push({
+          slotId: slotId,
+          hash: el.hash,
+          promoted: false,
+          reservedVerts: sr.rv,
+          reservedIdx: sr.ri,
+          bboxMatrix: _m4.clone(),
+          realMatrix: _m4real.clone(),
+          wx: pos.x, wy: pos.y, wz: pos.z  // world position for distance calc
+        });
+
+        bboxCount++;
+      }
+
+      A._batchMeta[bm.id] = meta;
+      A._dlodSlots[bm.id] = dlodSlots;
+      dlodSlots._bmRef = bm;  // direct reference for fast lookup in dlodTick
+      bm.matrixAutoUpdate = false;
+      bm.updateMatrix();
+      A.scene.add(bm);
+      drawCalls++;
+    }
+
+    var reservedMB = (totalReservedVerts * 12 / 1048576).toFixed(1);
+    console.log('§DLOD_FLUSH buckets=' + drawCalls + ' elements=' + bboxCount +
+      ' draw_calls=' + drawCalls + ' skip=' + skipCount +
+      ' all_bbox=true reserved_mb=' + reservedMB);
+    document.getElementById('s-meshes').textContent = drawCalls.toLocaleString() + ' draw calls (DLOD)';
   };
 
   // §S260c: Consolidate fragmented BatchedMesh from progressive flushes into one set.

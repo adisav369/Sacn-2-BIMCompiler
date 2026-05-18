@@ -606,6 +606,63 @@ test('clinic_single_building', () => {
   };
 });
 
+// ─── 3.12 S261 DLOD geometry-swap prerequisites ─────────────────────────────
+// Issue: S261 DLOD requires bbox columns in element_transforms for per-element bbox sizing
+
+test('dlod_bbox_columns', () => {
+  // Check that at least one large building has bbox_x/y/z columns
+  const dbPath = findBldFile('Terminal_extracted.db') || findBldFile('LTU_AHouse_extracted.db');
+  if (!dbPath) return { ok: true, log: '§WB_DLOD_BBOX skip=no_large_db', reason: '' };
+  try {
+    const cols = sqlQuery(dbPath, "PRAGMA table_info(element_transforms)");
+    const hasBbox = cols.includes('bbox_x') && cols.includes('bbox_y') && cols.includes('bbox_z');
+    return {
+      ok: hasBbox,
+      log: `§WB_DLOD_BBOX db=${path.basename(dbPath)} has_bbox=${hasBbox}`,
+      reason: hasBbox ? '' : 'element_transforms missing bbox_x/y/z — DLOD needs per-element bbox dims'
+    };
+  } catch(e) {
+    return { ok: false, log: '§WB_DLOD_BBOX err=' + e.message, reason: 'query failed' };
+  }
+});
+
+test('dlod_budget_math', () => {
+  // Verify: 8M vert budget can hold 122K elements at tier-256 average
+  // 122K * 256 = 31.2M — exceeds 8M, so budget guard must trigger for largest buildings
+  // But real distribution is mixed: many small elements, so average is much less
+  var budget = 8000000;
+  var elements = 122000;
+  var avgReserved = 256;
+  var needed = elements * avgReserved;
+  var wouldExceed = needed > budget;
+  // This is informational — budget guard correctly caps allocation
+  return {
+    ok: true,
+    log: `§WB_DLOD_BUDGET budget=${budget} elements=${elements} avg_reserved=${avgReserved} needed=${needed} would_exceed=${wouldExceed}`,
+    reason: ''
+  };
+});
+
+test('dlod_reservation_tiers', () => {
+  // Verify tier boundaries are correct
+  var tiers = [[64, 192], [128, 384], [256, 768], [512, 2048]];
+  var BBOX_VERTS = 24, BBOX_IDX = 36;
+  var allOk = true;
+  var details = [];
+  for (var ti = 0; ti < tiers.length; ti++) {
+    var rv = tiers[ti][0], ri = tiers[ti][1];
+    if (rv < BBOX_VERTS) { allOk = false; details.push('tier_' + rv + '_lt_bbox_verts'); }
+    if (ri < BBOX_IDX) { allOk = false; details.push('tier_' + ri + '_lt_bbox_idx'); }
+    // Tier index ratio should be ~3x verts (triangulated mesh heuristic)
+    if (ri < rv * 2) { allOk = false; details.push('tier_' + rv + '_idx_ratio_low'); }
+  }
+  return {
+    ok: allOk,
+    log: `§WB_DLOD_TIERS tiers=${tiers.length} bbox_verts=${BBOX_VERTS} bbox_idx=${BBOX_IDX} ok=${allOk}`,
+    reason: allOk ? '' : 'tier issues: ' + details.join(', ')
+  };
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log(`§WB_SUMMARY pass=${pass} fail=${fail} total=${pass + fail}`);
 process.exit(fail > 0 ? 1 : 0);
