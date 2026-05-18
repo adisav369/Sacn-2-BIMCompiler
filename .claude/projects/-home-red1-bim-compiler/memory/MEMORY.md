@@ -44,9 +44,8 @@ Details belong in `docs/` specs and `prompts/`. Memory files are pointers. Do NO
 
 ## Spatial ERP
 - [ERP search (S258)](project_erp_search.md) — FTS5, glass overlay, edge swipe, 23 tables indexed, deployed ootb-full
-- S259: 4 bug fixes (FK dynamic, Name>Value, auto-expand, strict find), offline badge, full 378-table export (13MB/84K rows), §BENCH instrumentation, Properties/Data gateways, collapse anim, dim siblings. 93 tests.
-- Next prompts: `prompts/S259_GLOBE_UX_TRIAGE.md` (fix gateways/collapse/dim) → then `prompts/S259_ACCORDION_PANEL.md` (accordion grid panel). One session, sequential.
-- Roadmap: `docs/ERP_Roadmap.md` — R1+R2+R10 done, R4 benchmarks prep done, next: UX polish + panel
+- [S259c Accordion (S259c)](project_s259c_accordion.md) — Properties/Data gateways, cascading drill accordion, colourful cards, new-tab multi-screen, 138 tests
+- Roadmap: `docs/ERP_Roadmap.md` — R1+R2+R10+R16 done. Next: table-level faceted filter, child tab field dedup
 
 ## Active prompts
 - **S254 Hourglass Drawers** → `prompts/S254_HOURGLASS_DRAWERS.md` — NEXT. Mini Gantt + dashboard drawers on hourglass panel.

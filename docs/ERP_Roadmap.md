@@ -26,6 +26,8 @@
 | `erp.html` — standalone card-swipe ERP shell | Done (S256) | via test_ad_ui | [ERP_AD_UI.md](../prompts/ERP_AD_UI.md) |
 | AD seed: 370 windows, 1130 tabs, 20911 fields, 1003 AD tables | Done (S255) | — | `deploy/dev/ad_seed.db` |
 | GardenWorld data: 18 BPartners, 55 Products, 8 Orders, 8 Invoices | Done (S258) | — | `scripts/export_ad.sh` |
+| Globe UX triage — Properties/Data gateways, collapse/dim fix | Done (S259c) | 32 | [S259_GLOBE_UX_TRIAGE.md](../prompts/S259_GLOBE_UX_TRIAGE.md) |
+| Cascading Drill Accordion — new-tab panel, colourful cards, FK resolved | Done (S259c) | 13 | [S259_ACCORDION_PANEL.md](../prompts/S259_ACCORDION_PANEL.md) |
 
 ---
 
@@ -520,6 +522,41 @@ Tests: `test_globe_search.js` — 82 tests covering FK discovery (A), weight for
 
 ---
 
+## R16. Cascading Drill Accordion Panel — DONE (S259c)
+
+**Status:** Implemented in `ad_ui.js` + `ad_graph.js`. 32+13 tests. Deployed ootb-dev + ootb-full.
+
+### R16.1 Globe UX — Properties & Data Gateways
+
+Tapping a RECORD bubble spawns two gateways:
+- **Properties** (orange) → expands sub-bubbles, one per non-null field column. Tap a column bubble → opens accordion filtered & sorted by that column. Visual SQL query picker.
+- **Data** (blue) → opens accordion panel directly with all fields + child tabs.
+
+Double-tap RECORD → opens all records of that table. Long-press any bubble → same (all records).
+
+### R16.2 Cascading Drill — New Browser Tab
+
+Each panel opens in a **new browser tab** (multi-screen, drag/arrange). Design:
+- **Title bar** (sticky) — record name. Tap → reset to Header.
+- **Accordion cards** — colourful rounded panels with chevron, left colour bars (blue/green/gold/pink/purple/teal by position), slide animation.
+- **ONE tab open at a time.** Tap row in grid → current closes, next tab opens filtered to that row's FK children.
+- **Fields ACROSS** as column headers (horizontal swipe). FK values resolved to Names. No system columns.
+- **Child tabs** lazy-load via `window.opener._accordionLoadTab()` bridge.
+- No scrollbars — natural touch drag.
+
+### R16.3 Prompts
+
+- Globe UX: `prompts/S259_GLOBE_UX_TRIAGE.md`
+- Accordion: `prompts/S259_ACCORDION_PANEL.md` (§1 updated with cascading drill spec)
+
+### R16.4 Next Steps
+
+- Table-level faceted filter (Properties on TABLE bubble → column fill-rate → tap to filter all records)
+- Child tab field dedup for tables with multiple AD_Tab definitions
+- OPFS persistence for accordion state (reopen where you left off)
+
+---
+
 ## Implementation Priority
 
 | Priority | Item | Depends on | Est. sessions | Status |
@@ -527,6 +564,7 @@ Tests: `test_globe_search.js` — 82 tests covering FK discovery (A), weight for
 | **P0** | R2 — Full iDempiere data export | `export_ad.sh` extension | 1-2 | **DONE** (S258) |
 | **P1** | R1 — FTS5 Smart Search | R2 (needs data to search) | 2-3 | **DONE** (S258) |
 | **P2** | R10 — Dynamic Bubble Traversal | R1 + R2 (needs search + data) | 2-3 | **DONE** (S258) |
+| **P2.5** | R16 — Cascading Drill Accordion | R10 (needs globe + traversal) | 1 | **DONE** (S259c) |
 | **P3** | R4 — Benchmark suite | R2 + R1 (needs data + queries to measure) | 1 | Next |
 | **P4** | R5 — Offline OPFS persistence | SW already done, OPFS is incremental | 1-2 | |
 | **P5** | R3 — Database sharding | R4 (benchmarks prove when sharding is needed) | 2 | |
@@ -552,3 +590,584 @@ Tests: `test_globe_search.js` — 82 tests covering FK discovery (A), weight for
 ---
 
 *Last updated: 2026-05-14 (R1+R2 done, R10 spec'd). For architecture and design rationale, see [SpatialERP_OOTB.md](SpatialERP_OOTB.md).*
+
+
+ADDENDUM 1
+Based on our extensive discussion about the **killer front-end experience**, **landed deterministic AI**, **legacy logic migration**, and **entanglement-free architecture**, here are the **appendices** I would add to your Spatial ERP OOTB Roadmap.
+
+These are not rewrites — they are **additions** that preserve your existing priorities while extending the vision.
+
+---
+
+## Proposed Additions to the Roadmap
+
+### New Section: R11. Kitchen-to-Warehouse Fast Setup (Zero-Config Store Creation)
+
+**Goal:** Turn any physical environment (kitchen, office, warehouse corner) into a fully functional store with 3D visualization in under 60 seconds, no configuration required.
+
+**Status:** Planned — New for S259
+
+#### R11.1 One-Click Environment Scan
+
+| Component | Implementation | Time |
+|-----------|----------------|------|
+| Camera activation | MediaDevices API with environment facing preference | <2s |
+| Barcode scanning | ZXing library, continuous scan mode | Real-time |
+| Product discovery | Scan 5+ items OR take photos (OCR fallback) | 30s |
+| Mock quantity | User sets default (10) or per-product override | 5s |
+| Store finalization | Auto-generate warehouse, shelves, inventory | 10s |
+
+**Success metric:** User goes from blank browser to working store in <60 seconds.
+
+#### R11.2 Automatic 3D Store Layout Generation
+
+```sql
+-- Layout algorithm: grid placement based on scan order
+-- Products arranged 3 columns × N rows, spaced 2 units apart
+-- Each product gets a locator bin with 3D coordinates
+-- Shelves generated automatically with wood texture
+```
+
+**Visual output:** Three.js scene with clickable product cubes, orbital controls, ambient + directional lighting.
+
+#### R11.3 Integration with Existing Modules
+
+| Existing Module | Integration Point |
+|----------------|-------------------|
+| R1 Smart Search | Store products indexed immediately via FTS5 rebuild |
+| R10 Graph Explorer | Product bubbles spawn order/price children on click |
+| kernel_ops | All create/update/delete operations logged |
+| Service Worker | Full offline capability from first scan |
+
+**Why this belongs in the roadmap:** This is the **ultimate onboarding demo** — proves the entire system works in 5 minutes with zero configuration. No other ERP can do this.
+
+---
+
+### New Section: R12. Landed Deterministic AI (Your Own Code, No Black Box)
+
+**Goal:** Provide AI assistance that is 100% auditable, runs locally, has no external API calls, and cannot have backdoors — using only SQL aggregations, statistics, and pattern matching.
+
+**Status:** Planned — Foundation exists in R9 (Self-Healing Kernel), extends to proactive assistance.
+
+#### R12.1 Pattern Detection (Extension of R9)
+
+| Pattern | Detection Method | Proactive Action |
+|---------|-----------------|------------------|
+| Daily habit | `GROUP BY op_type, DATE(timestamp)` frequency >5 | Pre-fetch query results before user asks |
+| Hot record | Same entity opened 10+ times/week | Pin to Recent Changes, keep in memory |
+| Anomaly detection | 3-sigma from historical mean | Alert before save, explain deviation |
+| Next action prediction | Most common action at current hour | Pre-load that UI component |
+
+**Implementation:** Pure SQL + JavaScript — no external models, no training data, no API calls.
+
+#### R12.2 Natural Language Query Translation (Deterministic)
+
+```
+User types: "show me orders over 5000"
+
+→ Regex patterns detect intent
+→ Map to SERE condition: {"field": "GrandTotal", "operator": ">", "value": 5000}
+→ Execute FTS5 search with filter
+→ Return results as bubble constellation
+```
+
+| Pattern | Intent | SERE Translation |
+|---------|--------|------------------|
+| `>(\\d+)` | Amount filter | `{"field":"GrandTotal","operator":">","value":$1}` |
+| `INV-\\d+` | Specific document | Direct lookup by doc_no |
+| `pending|draft` | Status filter | `{"field":"DocStatus","operator":"IN","value":["DR","IP"]}` |
+| `last (\\d+) days` | Time filter | `{"field":"DateDoc","operator":">","value":"now - $1 days"}` |
+
+**Confidence scoring:** Based on number of matched patterns, show "AI confidence: 94%" before executing.
+
+#### R12.3 Rule Generation from Natural Language
+
+User types: *"When stock is below 10, notify warehouse and create a purchase order"*
+
+AI (deterministic pattern matching) generates:
+
+```json
+{
+  "rule_id": "AUTO_GEN_001",
+  "condition": {"type": "comparison", "field": "QtyOnHand", "operator": "<", "value": 10},
+  "actions": [
+    {"type": "notify", "role": "warehouse", "message": "Low stock alert"},
+    {"type": "create_document", "table": "C_Order", "doc_type": "PURCHASE_ORDER"}
+  ]
+}
+```
+
+**User confirms** → rule saved to `biz_rules` table.
+
+**Why this is not a black box:** Every "AI" function is a deterministic mapping from patterns to SERE JSON. User sees the generated rule before saving. No hidden weights. No model updates.
+
+#### R12.4 Integration with R9 (Self-Healing Kernel)
+
+- R9 observes patterns → R12.1 acts on them
+- R12.2/R12.3 user commands → logged to `kernel_ops` → R9 learns new patterns
+- Closed loop, fully deterministic, fully auditable
+
+**Security guarantee:** *"Our AI never calls home. Your data never leaves your browser. Every decision is explainable and can be traced to a line of code you can read."*
+
+---
+
+### New Section: R13. Universal Legacy Logic Translation Framework
+
+**Goal:** Migrate business rules from iDempiere, Odoo, and SAP into SERE (Spatial ERP Rules Engine) format — preserving intent, not code.
+
+**Status:** Planned — After R2 (Full iDempiere data export) proves the pattern.
+
+#### R13.1 iDempiere → SERE Translator (Priority)
+
+| iDempiere Artifact | SERE Target | Translation Method |
+|--------------------|-------------|--------------------|
+| AD Callout (Java) | SERE condition + action | Parse Java AST → map to JSON |
+| AD Workflow (XML) | SERE sequence | Direct XML → JSON transformation |
+| Model Validator | SERE constraint | Extract condition and error message |
+| Document Engine | `kernel_ops` + journal | Already compatible |
+
+**CLI command:** `./migrate-legacy --source idempiere --db postgres://localhost/idempiere --output rules.json`
+
+**Success metric:** 80% of rules translate automatically, 20% require 5 minutes of manual adjustment via rule builder.
+
+#### R13.2 Odoo → SERE Translator
+
+| Odoo Artifact | SERE Target | Translation Method |
+|---------------|-------------|--------------------|
+| `@api.constrains` | SERE condition | Parse Python AST → map |
+| `@api.depends` (compute) | SQL view or trigger | Rewrite as materialized view |
+| XML workflow | SERE sequence | Direct mapping (similar structure) |
+| `ir.model.constraint` | SERE constraint | Extract SQL condition |
+
+**CLI command:** `./migrate-legacy --source odoo --db postgres://localhost/odoo --output rules.json`
+
+#### R13.3 SAP → SERE Translator (via IDoc)
+
+| SAP Artifact | SERE Target | Translation Method |
+|--------------|-------------|--------------------|
+| ABAP validation | SERE condition | Pattern-match common patterns (credit check, quantity limit) |
+| Pricing procedure | SERE calculation chain | Map access sequences to formula steps |
+| Workflow (WF) | SERE sequence | Step-by-step translation |
+
+**CLI command:** `./migrate-legacy --source sap --idoc-file sap_export_idoc.xml --output rules.json`
+
+#### R13.4 Universal Rule Testing Framework
+
+After translation, automatically:
+1. Run original test cases (if available) against SERE rules
+2. Generate "diff report" showing logic preserved
+3. Flag uncertain translations for human review
+
+**Why this belongs in the roadmap:** Answers the #1 enterprise concern: *"Can we keep our 20 years of business logic?"* Answer: *"Yes — but expressed cleanly, not entanglely."*
+
+---
+
+### New Section: R14. Killer Demo Suite (60-Second Sales Tool)
+
+**Goal:** Provide a self-contained, one-click demo that proves the entire ERP cycle in under 5 minutes — designed for sales calls, trade shows, and self-guided evaluation.
+
+**Status:** Planned — Uses R11 as foundation.
+
+#### R14.1 The Kitchen Demo (5-Minute Cycle)
+
+| Step | Action | Time | Proof Point |
+|------|--------|------|-------------|
+| 1 | Click "Kitchen Demo" → scan 5 products | 60s | Zero-config setup |
+| 2 | Tap products in 3D store → add to cart | 60s | Spatial POS |
+| 3 | Checkout → QR receipt appears | 30s | e-Invoice with inventory summary |
+| 4 | Low stock alert → click "Replenish" | 30s | Auto PO creation |
+| 5 | Simulated delivery → stock restored | 30s | Complete supply chain |
+| 6 | Sell same item again → verify stock | 60s | Full cycle proven |
+
+**Total:** 5 minutes from blank browser to proven ERP cycle.
+
+#### R14.2 Embedded Demo Script (In-UI)
+
+When user clicks "Start Demo Tour":
+- Highlight each UI element as steps progress
+- Show tooltips explaining what's happening
+- Display timer: "You've completed in 3:42 — 78% faster than traditional ERP setup"
+- End with: "Ready to use your own products? Click here."
+
+#### R14.3 Benchmark Dashboard
+
+Display real-time metrics during demo:
+
+| Metric | Current | vs. Industry Average |
+|--------|---------|---------------------|
+| Time to first product | 12s | 94% faster |
+| Setup steps | 1 click | vs. 47 steps |
+| Lines of code written | 0 | vs. "customization required" |
+| Offline capable | Yes | vs. "requires internet" |
+
+**Why this belongs in the roadmap:** Sales tool that proves value before the customer asks "but can it do X?"
+
+---
+
+### New Section: R15. Developer & Partner Ecosystem
+
+**Goal:** Make it as easy to extend Spatial ERP as it is to use it — with MIT-licensed templates, rule marketplace, and AI-assisted customization.
+
+**Status:** Planned — Post R8 (Domain packs).
+
+#### R15.1 Rule Marketplace (JSON Exchange)
+
+```json
+{
+  "rule_id": "RETAIL_PROMO_BOGO",
+  "name": "Buy One Get One Free",
+  "industry": "retail",
+  "downloads": 234,
+  "rating": 4.8,
+  "sere": { ... }  // Full rule JSON
+}
+```
+
+- Users import with one click
+- Submit rules back to marketplace (optional)
+- Enterprise version can have private marketplace
+
+#### R15.2 Custom Handler Templates
+
+```javascript
+// handlers/my_industry.js — template with TODO markers
+class MyIndustryHandler extends BaseHandler {
+  async onOrderCreate(order) {
+    // TODO: Add your logic here
+    // Access: this.db, this.globe, this.kernelOps
+  }
+}
+```
+
+**Generator:** `./generate-handler --industry "pharmaceutical" --rules compliance,serial_tracking`
+
+#### R15.3 Vibe Coding Assistant (For Developers)
+
+Developer types: *"Add a handler that validates serial numbers against a local CSV"*
+
+AI generates (deterministic pattern matching):
+
+```javascript
+class SerialValidator extends BaseHandler {
+  async validate(orderLine) {
+    const serials = await this.loadCSV('/data/serials.csv');
+    if (!serials.includes(orderLine.serial_no)) {
+      throw new Error(`Serial ${orderLine.serial_no} not found`);
+    }
+  }
+}
+```
+
+**Not magic:** Pattern matches "validate", "serial number", "CSV" → template instantiation.
+
+---
+
+## Updated Implementation Priority Table
+
+| Priority | Item | Status | Est. Sessions | Notes |
+|----------|------|--------|---------------|-------|
+| **P0** | R2 — Full iDempiere data export | ✅ DONE (S258) | 1-2 | Foundation |
+| **P1** | R1 — FTS5 Smart Search | ✅ DONE (S258) | 2-3 | Core UX |
+| **P2** | R10 — Dynamic Bubble Traversal | ✅ DONE (S258) | 2-3 | Spatial nav |
+| **P3** | R4 — Benchmark suite | Next | 1 | Validation |
+| **P4** | R11 — Kitchen-to-Warehouse Fast Setup | **NEW** | 2-3 | **Killer demo** |
+| **P5** | R5 — Offline OPFS persistence | Planned | 1-2 | Offline core |
+| **P6** | R12 — Landed Deterministic AI | **NEW** | 2-3 | No black box |
+| **P7** | R3 — Database sharding | Planned | 2 | Scale |
+| **P8** | R13 — Legacy Logic Translation | **NEW** | 2-3 per source | Enterprise adoption |
+| **P9** | R6 — CRDT sync | Planned | 3-4 | Multi-user |
+| **P10** | R14 — Killer Demo Suite | **NEW** | 2 | Sales tool |
+| **P11** | R7 — Migration scripts (Odoo, SAP) | Planned | 2 per source | Via R13 |
+| **P12** | R8 — Domain packs | Planned | 1-2 per domain | Expansion |
+| **P13** | R9 — Self-Healing Kernel | Planned | 2 | Advanced |
+| **P14** | R15 — Developer Ecosystem | **NEW** | 2-3 | Community |
+
+---
+
+## Revised Roadmap Summary (End of Document)
+
+### What Makes This Different (Updated)
+
+| Dimension | Conventional ERP | Spatial ERP OOTB |
+|-----------|-----------------|------------------|
+| **Setup time** | Days to weeks | **60 seconds (kitchen demo)** |
+| **AI** | Black box API calls | **Landed deterministic (auditable)** |
+| **Legacy migration** | Rip and replace | **Logic translation to SERE** |
+| **Demo cycle** | Hours of slides | **5 minutes, self-guided** |
+| **Extension** | Custom code (entangled) | **Templates + marketplace** |
+| **License** | $$$ per user | **MIT (even enterprise add-on)** |
+
+### The One-Line Pitch (Updated)
+
+> *"Scan your kitchen. Sell in 3D. Restock with one click. Migrate your legacy rules. No black boxes. No entanglement. MIT licensed."*
+
+### Call to Action (Updated)
+
+```bash
+# Clone the revolution
+git clone https://github.com/red1oon/BIMCompiler
+
+# Open your first store in 60 seconds
+cd BIMCompiler
+open kitchen_demo.html
+
+# Migrate your legacy rules
+./migrate-legacy --source idempiere --db your_db
+
+# Extend with templates
+./generate-handler --industry "your_industry"
+
+# Join the ecosystem
+# Submit rules. Share demos. Fork freely.
+```
+
+---
+
+**The roadmap is not a promise. It's an invitation.**
+
+*Last updated: 2026-05-18 — R16 (Cascading Drill Accordion) DONE (S259c). Added R11-R15 previously.*
+
+Based on the roadmap document you shared and our extensive discussion about validation layers, legacy migration, and spatial purity, here is my recommendation for **ADDENDUM 2** – a section that bridges the existing roadmap with the pragmatic, legacy-friendly, validation-aware approach we've been exploring.
+
+---
+
+## ADDENDUM 2: Pragmatic Validation & Legacy Migration Layer
+
+### Preamble
+
+The core roadmap (R1–R10) establishes a powerful spatial ERP engine with search, globe traversal, offline sync, and self‑healing capabilities. However, enterprise adoption – especially from legacy ERP users (iDempiere, SAP, Odoo, Navision) – requires one additional layer: **a generic, metadata‑driven validation and migration framework** that respects the 5‑table core while accommodating the declarative rules and foreign key expectations of legacy systems.
+
+This addendum does **not** replace any existing roadmap item. It adds a **parallel track** (P‑series) that can be implemented incrementally, starting immediately after R2 (full iDempiere data export).
+
+---
+
+### P1. Generic Validation Layer (ERP‑agnostic)
+
+**Goal**: Store and evaluate validation rules (range checks, existence constraints, cross‑field logic, dynamic lookups) as data, not code – supporting any legacy ERP's rule semantics without bloating the core schema.
+
+**Implementation** (adds 1 table, 1 generic handler):
+
+```sql
+CREATE TABLE validation_rules (
+    id          TEXT PRIMARY KEY,
+    rule_name   TEXT NOT NULL,
+    applies_to  TEXT NOT NULL,      -- e.g., 'documents.doc_type=SALES_ORDER'
+    rule_type   TEXT NOT NULL,      -- 'sql_check', 'js_condition', 'lookup_filter', 'range'
+    priority    INTEGER DEFAULT 0,
+    is_active   BOOLEAN DEFAULT 1,
+    definition  TEXT NOT NULL,      -- JSON (see examples below)
+    error_message TEXT,
+    legacy_source TEXT,             -- 'iDempiere', 'SAP', 'Odoo', etc.
+    legacy_rule_id TEXT,
+    created     TEXT,
+    modified    TEXT
+);
+```
+
+**Rule definition examples** (JSON, human‑readable, mappable from any ERP):
+
+| Legacy Concept | Example Rule | Stored `definition` |
+| :------------- | :----------- | :------------------ |
+| iDempiere `AD_Val_Rule` | Only active products in current warehouse | `{"type":"sql","query":"SELECT 1 FROM items WHERE product_ref=? AND metadata->>'$.is_active'='Y'","bind_params":["$.product_id"],"expect":"exists"}` |
+| SAP ABAP validation | Quantity > 0 | `{"type":"range","field":"$.qty","min":0}` |
+| Odoo `@api.constrains` | Start date ≤ end date | `{"type":"js_condition","script":"params.start_date <= params.end_date"}` |
+| FK existence | Container must exist | `{"type":"exists","table":"containers","where":"id = ?","bind_params":["$.container_id"]}` |
+
+**Integration with `commitOp`**:
+
+```javascript
+function commitOp(db, opType, params) {
+    // Before writing to kernel_ops, evaluate all applicable rules
+    const rules = db.exec(
+        `SELECT * FROM validation_rules 
+         WHERE applies_to = ? OR applies_to = ?
+         AND is_active = 1 ORDER BY priority`,
+        [opType, `${opType}.${params.field}`]
+    );
+    for (const rule of rules) {
+        if (!evaluateValidationRule(rule, params, db)) {
+            throw new Error(rule.error_message);
+        }
+    }
+    // ... existing kernel_ops write logic ...
+}
+```
+
+**Why this belongs in the roadmap**:
+
+- **Unlocks enterprise trust** – rules are explicit, auditable, and migratable.
+- **No core bloat** – one small table, one generic handler. No 900‑table explosion.
+- **Gradual adoption** – legacy rules can be imported as‑is (via `legacy_source`) and later refined.
+- **Supports R9 (Self‑Healing Kernel)** – rule violations become pattern triggers.
+
+**Priority**: **P1.5** (after R2, before R4). Estimated effort: 1–2 sessions.
+
+---
+
+### P2. One‑Command Legacy Import (Migrate, Don't Rewrite)
+
+**Goal**: Extend the existing `export_ad.sh` (iDempiere) and create analogous scripts for SAP, Odoo, Navision – each producing a fully queryable `.db` file that works immediately with the globe, search (R1), and bubble traversal (R10).
+
+**Unified command pattern**:
+
+```bash
+# iDempiere (PostgreSQL)
+./migrate-from-idempiere.sh --dburl "postgresql://..." --output idempiere_seed.db
+
+# Odoo (PostgreSQL or JSON‑RPC)
+./migrate-from-odoo.sh --dburl "postgresql://..." --output odoo_seed.db
+
+# SAP (IDoc export or RFC)
+./migrate-from-sap.sh --idoc-dir ./exports/ --output sap_seed.db
+
+# Navision (C/AL backup or Excel)
+./migrate-from-navision.sh --backup ./Navision.backup --output navision_seed.db
+```
+
+**What each script produces**:
+
+- Full iDempiere AD tables (370 windows, 1130 tabs, 20911 fields) – already done in R2.
+- Master data mapped to the same 9‑table schema (or to iDempiere AD tables – because the globe already renders them).
+- `validation_rules` populated from legacy rule tables (e.g., iDempiere `AD_Val_Rule`, Odoo `ir.rule`).
+- `kernel_ops` seeded with `LEGACY_IMPORT` ops for auditability.
+- FTS5 index rebuilt automatically (R1).
+
+**Key insight**: Because the globe and search already render **any** table that follows the AD pattern (iDempiere schema), a legacy script only needs to produce a SQLite database with the same table names and columns. The existing UI (R1, R10) works without modification.
+
+**Priority**: **P2** (parallel to R3). Estimated effort: 1–2 sessions per legacy system, starting with iDempiere (already partially done in R2).
+
+---
+
+### P3. Declarative Lookup & Drill‑Through Metadata
+
+**Goal**: Restore iDempiere‑style dynamic lookups (FK filters) and zoom‑across drilling without hard‑coding – using the same generic metadata table pattern.
+
+**Add two small tables** (or extend `validation_rules` with a `rule_type` = `lookup` or `drill`):
+
+```sql
+CREATE TABLE lookup_definitions (
+    id             TEXT PRIMARY KEY,
+    lookup_for     TEXT NOT NULL,   -- e.g., 'document_lines.item_id'
+    query_template TEXT NOT NULL,   -- SQL with ? placeholders
+    display_field  TEXT DEFAULT 'name',
+    value_field    TEXT DEFAULT 'id'
+);
+
+CREATE TABLE drill_mappings (
+    id             TEXT PRIMARY KEY,
+    from_doc_type  TEXT,            -- e.g., 'SALES_ORDER'
+    from_field     TEXT,            -- metadata field, e.g., 'source_doc'
+    to_doc_type    TEXT,            -- e.g., 'SHIPMENT'
+    to_condition   TEXT             -- SQL WHERE clause with ? for record ID
+);
+```
+
+**Integration with UI**:
+
+- When the user taps a lookup field, the generic `getLookup()` function executes the stored `query_template` and displays results as a filtered card stack (spatial, not dropdown).
+- When the user taps a "Drill" button, the UI queries `drill_mappings` and offers to open the related document card.
+
+**Why this is lightweight**: The swipe card stack already handles dynamic filtering (`?scope=...`). Lookup definitions just parameterise that filtering.
+
+**Priority**: **P3** (after P1, before R6). Estimated effort: 1 session.
+
+---
+
+### P4. Legacy Rule Conversion Tool (iDempiere → Generic Format)
+
+**Goal**: Provide a one‑click utility that reads an iDempiere `AD_Val_Rule` (or any legacy rule table) and outputs a corresponding JSON `definition` for the generic validation layer (P1).
+
+**Implementation**: A small JS function or separate script that:
+
+1. Connects to the legacy database (or reads an exported dump).
+2. For each rule in `AD_Val_Rule`:
+   - Parses the `Code` (SQL WHERE clause).
+   - Converts iDempiere column names to OOTB JSON paths (e.g., `M_Product.IsActive` → `metadata->>'$.is_active'`).
+   - Wraps in `{"type":"sql","query":"...","expect":"exists"}` format.
+3. Inserts the converted rule into `validation_rules`, preserving `legacy_source='iDempiere'` and `legacy_rule_id`.
+
+**Why this matters**: It proves the generic layer can **absorb** legacy complexity without losing information. The converted rules work immediately; no manual re‑coding.
+
+**Priority**: **P4** (after P1, before P7). Estimated effort: 1 session.
+
+---
+
+### Integration with Existing Roadmap
+
+| Existing Item | How Addendum Complements |
+| :------------ | :----------------------- |
+| **R1 (Smart Search)** | Search results can include validation rule violations (P1) as "issues to fix". |
+| **R2 (Full iDempiere Data Export)** | Extend to export `AD_Val_Rule` into `validation_rules` table. |
+| **R4 (Benchmark Suite)** | Add benchmarks for rule evaluation (e.g., 1000 rules applied to 10K ops). |
+| **R6 (CRDT Sync)** | Validation rules become part of the sync payload – rules are data, not code. |
+| **R7 (Migration Scripts)** | Directly produce `validation_rules` and `lookup_definitions` from legacy sources. |
+| **R9 (Self‑Healing Kernel)** | Rule violations feed the pattern detection engine (e.g., frequent `QTY_RANGE` violation → suggest inventory audit). |
+| **R10 (Bubble Traversal)** | Show validation rule status as bubble colour (red = rule violation, green = passes). |
+
+---
+
+### Summary of Addendum 2 Items (P‑series)
+
+| Priority | Item | Description | Est. Sessions |
+| :------- | :--- | :---------- | :------------ |
+| **P1** | Generic Validation Layer | `validation_rules` table + generic evaluator | 1–2 |
+| **P1.5** | Integration with `commitOp` | Hook rule evaluation into existing op flow | 0.5 |
+| **P2** | One‑Command Legacy Import | Scripts for iDempiere (extend R2), Odoo, SAP, Navision | 1–2 each |
+| **P3** | Lookup & Drill Metadata | `lookup_definitions`, `drill_mappings` tables + UI integration | 1 |
+| **P4** | Legacy Rule Conversion Tool | iDempiere `AD_Val_Rule` → generic JSON | 1 |
+| **P5** | Benchmark for Rules | Add to R4 benchmark suite | 0.5 |
+
+---
+
+### Conclusion
+
+This addendum does **not** add 900 tables. It adds **at most 3 small metadata tables** and a handful of generic handlers. It enables:
+
+- **Enterprise trust** – rules are explicit, auditable, and migratable.
+- **Legacy friendliness** – existing SAP/Odoo/iDempiere customers see a clear path.
+- **Spatial purity preserved** – the core 5‑table + `kernel_ops` architecture remains untouched.
+
+**Recommendation**: Insert **ADDENDUM 2** after R2 (since R2 already proves iDempiere data export) and before R4 (so benchmarks can include rule evaluation). Implement P1 and P2 first – they deliver the most value for legacy users. P3 and P4 are optional refinements.
+
+Would you like me to draft a **sample `validation_rules` import script** for iDempiere’s `AD_Val_Rule` as a concrete starting point?
+
+Based on your existing roadmap and our deep discussion about the cutting-edge sensory and performance layers, my strong recommendation is to add these as **ADDENDUM 3: Immersive Experience & Extreme Performance Layer**. This directly builds on your existing P-series addendum without conflicting with any planned core work.
+
+### 🎯 ADDENDUM 3: Immersive Experience & Extreme Performance Layer
+
+This addendum adds the sensory and performance capabilities we discussed, and directly leverages your existing `kernel_ops` architecture to drive them. The implementation is designed to be phased, with quick wins immediately available and GPU-compute features maturing rapidly.
+
+#### **X1. Photorealistic Environmental Rendering**
+*   **What**: Replace flat lighting with physically accurate sun, sky, and atmospheric scattering.
+*   **Implementation**: Integrate `@takram/three-atmosphere` library (Three.js r184+). Add `RGBELoader` + `PMREMGenerator` for HDR environment maps.
+*   **Ties to Your Roadmap**: Directly enhances **R10 (Bubble Traversal)** and your 4D schedule viewer. The sky state can be driven by the 4D timeline in `kernel_ops`.
+
+#### **X2. Construction-Grade Particle Effects**
+*   **What**: Welding sparks, concrete dust, and heavy-machinery exhaust using GPU-compute particles.
+*   **Implementation**: Use `THREE.Points` for CPU-based particles (up to 100K) immediately. Start experimenting with WebGPU compute shaders for GPU-driven particles (the `@newkrok/three-particles` library is emerging as a standard).
+*   **Ties to Your Roadmap**: These can be triggered by activity phases from your 4D schedule, managed by the **R9 Self-Healing Kernel** as part of the project state.
+
+#### **X3. Spatial Audio Soundscapes**
+*   **What**: 3D positional audio for construction, spatial UI feedback, and immersive data sonification.
+*   **Implementation**: Attach `THREE.PositionalAudio` sources to your 3D objects and camera. The Web Audio API's HRTF panning creates realistic 3D sound on standard headphones.
+*   **Ties to Your Roadmap**: Complements **R10 (Bubble Traversal)** with spatial audio cues. Audio events are logged in `kernel_ops` for the pattern engine in **R9**. The `AudioContext` requires a user gesture to start, which fits your existing interaction model.
+
+#### **X4. Extreme Performance for 100K+ Elements**
+*   **What**: A multi-phase strategy for handling massive BIM and data globe scenes at 60fps.
+*   **Implementation**:
+    *   **Phase 1 (Instancing)**: Convert repeated elements to `THREE.InstancedMesh`.
+    *   **Phase 2 (Batching)**: Group unique geometries by material into `THREE.BatchedMesh`.
+    *   **Phase 3 (GPU-Driven)**: Use WebGPU compute shaders for GPU-driven culling when browser support solidifies (the experimental `WEBGPU_RENDERER` flag is already in Three.js).
+*   **Ties to Your Roadmap**: This directly supports **R3 (Database Sharding)** by optimizing the visual side of massive data loads. The benchmarks in **R4** should include render-loop metrics (draw calls, frame time).
+
+### 💡 Why This Fits Your Roadmap Now
+
+*   **No Core Bloat**: Like your P-series, these are sensory and render-loop enhancements. They do not touch your 5-table schema, `doc_engine`, or `kernel_ops` logic.
+*   **Leverages Existing Kernel**: Your `kernel_ops` log and 4D schedule state machine are the perfect drivers for these effects. The "orchestration" layer you've already built is exactly what's needed to manage particle emitters and audio sources.
+*   **Emerging but Practical**: The tools are crossing from experimental to stable *right now*. Starting with the CPU-based phases gives you immediate wins, while the GPU-compute path is becoming a standard feature of the modern web.
+
+### 📝 Proposed Insertion & Priority
+
+I recommend placing this **ADDENDUM 3 after R10 (Dynamic Bubble Traversal)** , as it directly enhances the spatial experience you've built. The implementation can begin immediately with the CPU-based phases, putting you perfectly on track to adopt the GPU-driven features as they become mainstream in the coming months.
+
+This would make your roadmap not just about what an ERP *does*, but how it *feels*—a true next-generation experience.
