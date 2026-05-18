@@ -14,6 +14,24 @@ sparks, Web Audio sounds), and ground Y improvements. Deployed to ootb-dev sw v3
 - Whitebox: add §-log to every `applyHighlight`/`applyOutline`/`applyFlash` call with the
   element's GUID, color, opacity. Read log to find which elements flash white.
 
+### OPEN: Movie script one-time processing may hang
+- `computeStoryboard()` runs synchronously: 48K ops × `pickClearAngle()` raycasts per scene.
+- On Terminal (48K elements, 507-823 scenes), each scene raycasts 8 angles against ALL visible
+  meshes — this is O(scenes × 8 × meshCount). Can block the main thread for 5-15 seconds.
+- User sees "Drone Movie In Progress.." then UI freezes until computation finishes.
+- Fix options:
+  1. **Chunked async**: process N scenes per `requestAnimationFrame`, yield between chunks.
+     Show progress: "Processing scene 50/507..."
+  2. **Skip raycasting on first pass**: use random angles, refine with raycasts only for
+     the current scene when camera arrives (lazy angle computation).
+  3. **Web Worker**: move `computeStoryboard` + `buildGuidPosMap` to a Worker thread.
+     Requires serializing the scene graph positions (guidPosMap) to the worker.
+- Recommendation: Option 2 (lazy angles) — simplest, no worker complexity. Compute the
+  storyboard clusters in <100ms (no raycasts), cache it. When camera arrives at each scene,
+  do ONE 8-angle raycast for just that scene (amortised cost, never blocks).
+- Also: if IDB cache hit (`§MOVIE_CACHE_HIT`), skip all computation — instant. The hang
+  only happens on first visit per building.
+
 ### OPEN: Camera not zooming into construction close enough
 - Storyboard scenes advance (§CINE_BEAT logs confirm) but camera stays distant.
 - FLYTHROUGH_DIST=5m, PANORAMIC_DIST=25m — check if these are being applied.
