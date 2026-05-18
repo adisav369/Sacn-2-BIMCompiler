@@ -1501,7 +1501,7 @@
       '<div style="display:flex;align-items:center;width:100%;cursor:grab" class="tm-drag">' +
         '<button id="tm-share" style="font-size:9px;padding:2px 6px" title="Copy shareable link">&#x1F517; Share</button>' +
         '<button id="tm-sun" style="font-size:14px;padding:4px 8px;min-width:32px;min-height:32px" title="Day/night cycle"><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:linear-gradient(90deg,#fff 50%,#222 50%);vertical-align:middle"></span></button>' +
-        '<button id="tm-eye" style="padding:2px 6px;min-width:36px;min-height:36px" title="Drone Pilot — cinematic camera"><img src="icons/drone_32.png" style="width:28px;height:28px;vertical-align:middle" alt="Drone"></button>' +
+        '<button id="tm-eye" style="padding:2px 6px;min-width:36px;min-height:36px;background:#fff" title="Drone Pilot — cinematic camera"><img src="icons/drone_32.png" style="width:28px;height:28px;vertical-align:middle" alt="Drone"></button>' +
         '<button id="tm-gantt" style="font-size:12px;padding:2px 6px" title="Gantt chart">&#x1F4CA;</button>' +
         '<button id="tm-dash" style="font-size:12px;padding:2px 6px" title="Dashboard">&#x1F4CB;</button>' +
         '<span id="tm-big-counter" style="flex:1;font-size:18px;font-weight:bold;color:#4fc3f7;text-align:center;letter-spacing:1px">DAY 0 | HR 0</span>' +
@@ -2162,7 +2162,17 @@
       if (!bandDone[el.band] || endMs > bandDone[el.band]) bandDone[el.band] = endMs;
     });
 
-    console.log('§GANTT_PASS1 structural=' + structuralElements.length + ' bandDone_keys=' + Object.keys(bandDone).length);
+    // §S260c: Compute earliest structural completion across ANY band.
+    // Non-structural on bands with no structural must still wait for at least ONE
+    // storey's frame to be erected before MEP can start anywhere.
+    var earliestStructDone = Infinity;
+    for (var bdk in bandDone) {
+      if (bandDone[bdk] < earliestStructDone) earliestStructDone = bandDone[bdk];
+    }
+    if (earliestStructDone === Infinity) earliestStructDone = baseMs; // no structural at all
+    console.log('§GANTT_PASS1 structural=' + structuralElements.length +
+      ' bandDone_keys=' + Object.keys(bandDone).length +
+      ' earliestStructDone=day' + Math.round((earliestStructDone - baseMs) / 86400000));
 
     // Pass 2: Schedule non-structural (MEP, Architecture, Finishes)
     // Now bandDone[] is fully populated — non-structural waits for its band's structural.
@@ -2176,9 +2186,18 @@
         if (bandSeqDone[pk] && bandSeqDone[pk] > earliest) earliest = bandSeqDone[pk];
       }
 
-      // Must wait for structural on same band or nearest lower band
+      // Must wait for structural on same band or nearest lower band.
+      // If no bandDone found walking down, use earliestStructDone (any band).
+      var foundStruct = false;
       for (var wb = el.band; wb >= 0; wb--) {
-        if (bandDone[wb] && bandDone[wb] > earliest) { earliest = bandDone[wb]; break; }
+        if (bandDone[wb]) {
+          if (bandDone[wb] > earliest) earliest = bandDone[wb];
+          foundStruct = true;
+          break;
+        }
+      }
+      if (!foundStruct && earliestStructDone > earliest) {
+        earliest = earliestStructDone; // wait for at least ONE band's structural
       }
 
       var durMs = Math.round(el.installSecs * scaleFactor * 1000);
