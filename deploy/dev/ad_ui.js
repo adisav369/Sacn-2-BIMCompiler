@@ -295,7 +295,7 @@
     }
   }
 
-  // §1 Double-tap TABLE → all records in a modern scrollable grid
+  // §1 Double-tap/long-press TABLE → all records in accordion-style grid
   function _openTableView(tableName) {
     var fields = _getFieldsForTable(tableName);
     var colCount = Math.min(fields.length, 12);
@@ -322,7 +322,7 @@
       bodyRows += '<tr>';
       for (var fi = 0; fi < colCount; fi++) {
         var val = _resolveDisplay(records[ri], fields[fi].columnName);
-        bodyRows += '<td>' + (val ? _escHtml(val.substring(0, 35)) : '<span class="null">\u2014</span>') + '</td>';
+        bodyRows += '<td>' + (val ? _escHtml(val.substring(0, 35)) : '<span class="n">\u2014</span>') + '</td>';
       }
       bodyRows += '</tr>';
     }
@@ -330,22 +330,29 @@
     console.log('§TABLE_VIEW table=' + tableName + ' records=' + records.length +
                 ' fields=' + colCount + ' headers=[' + fields.slice(0,6).map(function(f){return f.name||f.columnName;}).join(',') + ']');
 
-    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    // Same L&F as _buildAccordionHTML — gradient title, colourful card, same CSS
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">' +
       '<title>' + _escHtml(shortTable) + ' (' + records.length + ')</title><style>' +
-      '*{box-sizing:border-box;}' +
-      'body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#0e0e14;color:#eee;}' +
-      '.header{padding:16px 20px;font-size:18px;font-weight:700;border-bottom:1px solid rgba(108,159,255,0.15);position:sticky;top:0;background:#0e0e14;z-index:10;display:flex;align-items:center;justify-content:space-between;}' +
-      '.header .count{font-size:13px;color:#6c9fff;font-weight:400;}' +
-      '.grid{overflow-x:auto;padding:0 8px 80px;}' +
-      'table{border-collapse:collapse;width:100%;font-size:13px;}' +
-      'thead{position:sticky;top:60px;z-index:5;}' +
-      'th{padding:10px 12px;font-weight:600;color:#6c9fff;background:#12121a;white-space:nowrap;text-align:left;border-bottom:2px solid rgba(108,159,255,0.2);}' +
-      'td{padding:10px 12px;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.03);}' +
-      'tr:hover td{background:rgba(108,159,255,0.04);}' +
-      '.null{color:#444;}' +
+      '*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}' +
+      'body{margin:0;font:14px/1.4 system-ui,-apple-system,sans-serif;background:#0f0f1a;color:#eee;-webkit-overflow-scrolling:touch;padding:16px;}' +
+      '.ti{padding:16px 20px;font-size:17px;font-weight:700;margin-bottom:14px;background:linear-gradient(135deg,#1e3a5f,#2d1b69);border-radius:14px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);}' +
+      '.cnt{font-size:11px;color:#6c9fff;background:rgba(108,159,255,0.1);padding:3px 10px;border-radius:10px;font-weight:500;}' +
+      '.acc{margin-bottom:10px;border-radius:12px;overflow:hidden;background:#1a1a2a;border:1px solid rgba(255,255,255,0.06);border-left:3px solid #6c9fff;box-shadow:0 2px 12px rgba(0,0,0,0.2);}' +
+      '.acc .hd{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;min-height:52px;background:rgba(108,159,255,0.04);}' +
+      '.acc .hd .lbl{font-size:14px;color:#fff;font-weight:600;display:flex;align-items:center;gap:10px;}' +
+      '.acc .hd .lbl .chv{display:inline-block;transform:rotate(90deg);font-size:11px;color:#6c9fff;}' +
+      '.acc .bd{overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 0;max-height:80vh;}' +
+      'table{border-collapse:collapse;font-size:13px;min-width:100%;}' +
+      'th{padding:10px 14px;font-weight:600;color:#8ab4ff;background:rgba(20,20,30,0.8);white-space:nowrap;text-align:left;border-bottom:1px solid rgba(108,159,255,0.08);}' +
+      'td{padding:11px 14px;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.025);}' +
+      'tr:active td{background:rgba(108,159,255,0.06);}' +
+      '.n{color:#444;}' +
       '</style></head><body>' +
-      '<div class="header"><span>' + _escHtml(shortTable) + '</span><span class="count">' + records.length + ' records</span></div>' +
-      '<div class="grid"><table><thead><tr>' + headerRow + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div>' +
+      '<div class="ti"><span>' + _escHtml(shortTable) + '</span><span class="cnt">' + records.length + ' records</span></div>' +
+      '<div class="acc"><div class="hd"><span class="lbl"><span class="chv">\u25B6</span> All Records</span>' +
+      '<span class="cnt">' + records.length + '</span></div>' +
+      '<div class="bd"><table><tr>' + headerRow + '</tr>' + bodyRows + '</table></div></div>' +
       '</body></html>';
 
     var win = window.open('', '_blank');
