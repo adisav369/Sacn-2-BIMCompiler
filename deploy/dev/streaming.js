@@ -317,8 +317,14 @@ function setupStreaming(A) {
           A._flushBboxBatched(A._pendingBboxBuckets);
           A._pendingBboxBuckets = null;
         }
-        A._clearBboxPlaceholders();
-        A._bboxCleared = true;
+        // §S261: Keep bbox placeholders if no real geometry was rendered (all BLOB_MISS)
+        if (A.streamedCount > 0) {
+          A._clearBboxPlaceholders();
+          A._bboxCleared = true;
+        } else {
+          console.warn('§BBOX_KEEP placeholders=' + A._bboxPlaceholders.length + ' — no real geometry, keeping bboxes visible');
+          A._bboxCleared = false;
+        }
         A.streaming = false;
         if (A.activeBuilding) {
           A.buildingsRendered.add(A.activeBuilding);
