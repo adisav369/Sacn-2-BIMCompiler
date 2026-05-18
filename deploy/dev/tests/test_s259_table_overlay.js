@@ -149,7 +149,9 @@ function run() {
   assert(adUiSrc.indexOf("e.key === 'ArrowUp'") > 0,
     'T4b: ArrowUp handler exists', 'found');
   assert(adUiSrc.indexOf("e.key === 'Tab'") > 0,
-    'T4c: Tab key cycles tabs', 'found');
+    'T4c: Tab key cycles tabs forward', 'found');
+  assert(adUiSrc.indexOf('e.shiftKey') > 0 && adUiSrc.indexOf('_curAcc - 1') > 0,
+    'T4c2: Shift+Tab cycles tabs backward', 'found e.shiftKey + _curAcc - 1');
   assert(adUiSrc.indexOf("e.key === 'Enter'") > 0,
     'T4d: Enter key drills record', 'found');
   assert(adUiSrc.indexOf("e.key === 'Escape'") > 0,
@@ -229,6 +231,24 @@ function run() {
 
   assert(adUiSrc.indexOf('_resolveDisplay') > 0,
     'T7c: Child tab uses FK resolution for display values',
+    'found');
+
+  // ════════════════════════════════════════════════════════════════════════
+  // §T7b: Scroll vs Tap distinction
+  // ════════════════════════════════════════════════════════════════════════
+
+  results.push('\n--- §T7b: Scroll vs Tap ---');
+
+  assert(adUiSrc.indexOf('_ovDownX') > 0 && adUiSrc.indexOf('_ovDownY') > 0,
+    'T7b1: Tracks pointerdown position for drag detection',
+    'found _ovDownX/_ovDownY');
+
+  assert(adUiSrc.indexOf('Math.sqrt(dx * dx + dy * dy) > 10') > 0,
+    'T7b2: Ignores pointer moves > 10px (scroll drag, not tap)',
+    'found distance check');
+
+  assert(adUiSrc.indexOf("ov.addEventListener('pointerdown'") > 0,
+    'T7b3: Overlay has pointerdown listener for drag start',
     'found');
 
   // ════════════════════════════════════════════════════════════════════════

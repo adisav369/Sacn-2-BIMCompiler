@@ -553,8 +553,17 @@
     });
 
     // ── §OV.8 Pointer events — tab header tap + row tap ─────────────────
+    // Track pointer start to distinguish tap from scroll drag
+    var _ovDownX = 0, _ovDownY = 0;
+    ov.addEventListener('pointerdown', function(e) {
+      _ovDownX = e.clientX; _ovDownY = e.clientY;
+    });
     ov.addEventListener('pointerup', function(e) {
       if (e.target.closest('.ti')) return;
+
+      // Ignore scroll drags — only act on taps (< 10px movement)
+      var dx = e.clientX - _ovDownX, dy = e.clientY - _ovDownY;
+      if (Math.sqrt(dx * dx + dy * dy) > 10) return;
 
       // Tab header tap → open that tab
       var hd = e.target.closest('.hd');
@@ -599,7 +608,13 @@
         _highlightRow(Math.max(_curRow - 1, 0));
       } else if (e.key === 'Tab') {
         e.preventDefault();
-        var nextAcc = (_curAcc + 1) % accs.length;
+        var nextAcc;
+        if (e.shiftKey) {
+          // Shift+Tab → previous tab (wrap to last)
+          nextAcc = (_curAcc - 1 + accs.length) % accs.length;
+        } else {
+          nextAcc = (_curAcc + 1) % accs.length;
+        }
         openAcc(nextAcc);
       } else if (e.key === 'Enter' && _curRow >= 0 && rows[_curRow]) {
         e.preventDefault();
