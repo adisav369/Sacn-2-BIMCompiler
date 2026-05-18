@@ -266,7 +266,9 @@ function setupStreaming(A) {
       IfcRoof: '0.50,0.45,0.40', IfcFooting: '0.72,0.70,0.68',
       IfcMember: '0.58,0.60,0.63', IfcPlate: '0.55,0.57,0.60',
       IfcRailing: '0.50,0.52,0.55', IfcStair: '0.75,0.73,0.70',
-      IfcCurtainWall: '0.70,0.82,0.88', IfcCovering: '0.85,0.83,0.78'
+      IfcCurtainWall: '0.70,0.82,0.88', IfcCovering: '0.85,0.83,0.78',
+      IfcPipeFitting: '0.50,0.55,0.60', IfcPipeSegment: '0.50,0.55,0.60',
+      IfcDuctFitting: '0.60,0.62,0.58', IfcDuctSegment: '0.60,0.62,0.58'
     };
 
     const key = rgbaStr || '_default';
@@ -1204,6 +1206,48 @@ function setupStreaming(A) {
       return;
     }
 
+    // §S261: Try positions.bin for instant bboxes BEFORE full DB load (all buildings, not just split)
+    var posUrl = A.DB_URL.replace('_extracted.db', '_positions.bin');
+    if (posUrl === A.DB_URL) posUrl = A.DB_URL.replace(/\.db$/, '_positions.bin');
+    var _earlyBboxDone = false;
+    if (posUrl !== A.DB_URL) {
+      try {
+        var _posResp = await fetch(posUrl);
+        if (_posResp.ok) {
+          var _posBuf = await _posResp.arrayBuffer();
+          var _posView = new DataView(_posBuf);
+          var _posCount = _posView.getUint32(0, true);
+          var _posRows = [];
+          for (var _pi = 0; _pi < _posCount; _pi++) {
+            var _off = 4 + _pi * 24;
+            _posRows.push([
+              null, null, null, null,
+              _posView.getFloat32(_off, true),
+              _posView.getFloat32(_off + 4, true),
+              _posView.getFloat32(_off + 8, true),
+              null, null, null, null, null,
+              _posView.getFloat32(_off + 12, true),
+              _posView.getFloat32(_off + 16, true),
+              _posView.getFloat32(_off + 20, true)
+            ]);
+          }
+          // Compute modelOffset from positions
+          if (_posCount > 0 && (!A.modelOffset || (A.modelOffset.x === 0 && A.modelOffset.y === 0))) {
+            var _sx = 0, _sy = 0, _sz = 0;
+            for (var _qi = 0; _qi < _posCount; _qi++) {
+              _sx += _posRows[_qi][4]; _sy += _posRows[_qi][5]; _sz += _posRows[_qi][6];
+            }
+            A.modelOffset = { x: _sx / _posCount, y: _sy / _posCount, z: _sz / _posCount };
+            console.log('[S261] §EARLY_OFFSET ifc=(' + (_sx/_posCount).toFixed(0) + ',' + (_sy/_posCount).toFixed(0) + ',' + (_sz/_posCount).toFixed(0) + ')');
+          }
+          A._drawBboxPlaceholders(_posRows);
+          _earlyBboxDone = true;
+          A.status.textContent = _posCount.toLocaleString() + ' elements — loading database...';
+          console.log('[S261] §EARLY_BBOX count=' + _posCount + ' size=' + (_posBuf.byteLength / 1024).toFixed(0) + 'KB');
+        }
+      } catch(e) { /* no positions.bin — normal for some buildings */ }
+    }
+
     // §6.9 Split DB detection: try _meta.db alongside any .db URL
     var _splitMode = false;
     var metaUrl = A.DB_URL.replace('_extracted.db', '_meta.db');
@@ -1224,8 +1268,9 @@ function setupStreaming(A) {
       var posUrl = A.DB_URL.replace('_extracted.db', '_positions.bin');
 
       // Phase 0: Try positions.bin for instant bboxes (< 3MB, loads in <1s)
-      var _posLoaded = false;
-      try {
+      // §S261: Skip if early bbox already drawn above
+      var _posLoaded = _earlyBboxDone;
+      if (!_posLoaded) try {
         A.status.textContent = 'Loading positions...';
         var posBuf = await A.cachedFetch(posUrl);
         var posView = new DataView(posBuf);
@@ -1292,6 +1337,24 @@ function setupStreaming(A) {
         if (_bldRows.length && _bldRows[0].values[0][0]) {
           A.activeBuilding = _bldRows[0].values[0][0];
           console.log(`[S260b] §ACTIVE_BUILDING_EARLY name=${A.activeBuilding}`);
+          // §S260e: Populate HUD panels immediately on meta.db (before geo.db download)
+          if (A.populateStoreys) A.populateStoreys(A.activeBuilding);
+          if (A.populateDiscs) A.populateDiscs(A.activeBuilding);
+          // §S260e: Building label — singular + name in single-building mode
+          var _sBld = document.getElementById('s-buildings');
+          if (_sBld) _sBld.textContent = A.activeBuilding;
+          var _sBldLabel = _sBld && _sBld.previousElementSibling;
+          if (_sBldLabel && _sBldLabel.getAttribute('data-trl') === 'ui_buildings') _sBldLabel.textContent = 'Building';
+          // §S260e: Element count from meta.db
+          try {
+            var _elCnt = A.db.exec("SELECT COUNT(*) FROM elements_meta WHERE building=?", [A.activeBuilding]);
+            if (_elCnt.length) {
+              var _n = _elCnt[0].values[0][0];
+              var _sEl = document.getElementById('s-elements');
+              if (_sEl) _sEl.textContent = Number(_n).toLocaleString();
+              document.getElementById('s-building-total').textContent = Number(_n).toLocaleString();
+            }
+          } catch(e) {}
           // §S260b: Redraw bboxes with discipline colors now that meta.db is loaded
           if (_posLoaded && A._drawBboxPlaceholders) {
             var _colorRows = A.dbQuery(`SELECT m.guid, i.geometry_hash, m.material_rgba, m.discipline,
