@@ -677,12 +677,17 @@
         e.preventDefault();
         var nextAcc;
         if (e.shiftKey) {
-          // Shift+Tab → previous tab (wrap to last)
           nextAcc = (_curAcc - 1 + accs.length) % accs.length;
         } else {
           nextAcc = (_curAcc + 1) % accs.length;
         }
-        openAcc(nextAcc);
+        // §OV.15 Tab wrapping back to 0 in drilled state → reset to full listing
+        if (nextAcc === 0 && _selectedPk !== null) {
+          resetToHeader();
+          console.log('§TABLE_TAB_RESET wrap→header from drilled pk=' + _selectedPk);
+        } else {
+          openAcc(nextAcc);
+        }
       } else if (e.key === 'Enter' && _curRow >= 0 && rows[_curRow]) {
         e.preventDefault();
         if (_curAcc === 0 && rows[_curRow].dataset.pk !== undefined) {

@@ -158,10 +158,18 @@ function run() {
     'T4e: Escape key handler exists', 'found');
 
   // Escape from drilled state → reset (not close)
-  // Check that Escape checks _selectedPk before closing
   assert(adUiSrc.indexOf('_selectedPk !== null') > 0 && adUiSrc.indexOf('resetToHeader()') > 0,
     'T4f: Escape from drill → resetToHeader (not close)',
     'found _selectedPk check + resetToHeader call');
+
+  // §OV.15 Tab wrap in drilled state → reset (prevents stuck loop)
+  assert(adUiSrc.indexOf('§TABLE_TAB_RESET') > 0,
+    'T4g: Tab wrapping to 0 in drilled state resets to header (no stuck loop)',
+    'found §OV.15 + §TABLE_TAB_RESET');
+
+  assert(adUiSrc.indexOf('nextAcc === 0 && _selectedPk !== null') > 0,
+    'T4h: Tab wrap guard checks both nextAcc=0 and drilled state',
+    'found compound guard');
 
   // ════════════════════════════════════════════════════════════════════════
   // §T5: Visual L&F matches accordion
