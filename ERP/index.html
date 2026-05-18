@@ -13,6 +13,10 @@
       
       
       
+        <link rel="prev" href="../SpatialERP_POC/">
+      
+      
+        <link rel="next" href="../ERP_Roadmap/">
       
       
         
@@ -23,7 +27,7 @@
     
     
       
-        <title>ERP - BIM Intent Compiler</title>
+        <title>AD-in-Browser (iDempiere) - BIM Intent Compiler</title>
       
     
     
@@ -117,7 +121,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              ERP
+              AD-in-Browser (iDempiere)
             
           </span>
         </div>
@@ -360,10 +364,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../SpatialERP_OOTB/" class="md-tabs__link">
           
   
@@ -2132,8 +2138,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -2143,23 +2151,28 @@
       
         
       
+        
+      
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
             
   
   
@@ -2177,7 +2190,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2239,6 +2252,476 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AD-in-Browser (iDempiere)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AD-in-Browser (iDempiere)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-big-show" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Big Show
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-idempiere-ad-sqlite-table-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §1. iDempiere AD → SQLite Table Mapping
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§1. iDempiere AD → SQLite Table Mapping">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#source-live-postgresql-docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source: live PostgreSQL (docker)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ad-metadata-tables-to-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AD metadata tables to export
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#column-subset-strip-unused" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Column subset (strip unused)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-postgresql-export-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §2. PostgreSQL Export Strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§2. PostgreSQL Export Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#script-scriptsexport_adsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Script: scripts/export_ad.sh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-sanitization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data sanitization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expected-output-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected output size
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-ad-parser-design-ad_parserjs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3. AD Parser Design — ad_parser.js
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§3. AD Parser Design — ad_parser.js">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#idempiere-reference-types-ad_reference_id-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        iDempiere Reference Types (AD_Reference_ID values)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-card-first-ad-renderer-ad_uijs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4. Card-First AD Renderer — ad_ui.js
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§4. Card-First AD Renderer — ad_ui.js">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#menu-hamburger-sidebar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Menu — hamburger sidebar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#window-tab-cards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Window → tab cards
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#field-rendering-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field rendering rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#displaylogic-parser" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DisplayLogic parser
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-c_project-construction-poc-bridge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5. C_Project = Construction POC Bridge
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§5. C_Project = Construction POC Bridge">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bim-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BIM integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-cross-table-analytics-surpassing-odoo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §6. Cross-Table Analytics — Surpassing Odoo
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§6. Cross-Table Analytics — Surpassing Odoo">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#built-in-chart-views" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in chart views
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-broadcastchannel-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §7. BroadcastChannel Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§7. BroadcastChannel Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#channel-bim_erp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Channel: bim_erp
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-landing-page-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §8. Landing Page Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§8. Landing Page Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sysnovaindexhtml-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SYSNOVA/index.html changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standalone-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standalone mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-implementation-phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §9. Implementation Phases
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§9. Implementation Phases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-this-session-spec-export-parser" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1 — This session (spec + export + parser)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-next-session-renderer-crud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2 — Next session (renderer + CRUD)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-showcase-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3 — Showcase session
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-the-seismic-claim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §10. The Seismic Claim
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 

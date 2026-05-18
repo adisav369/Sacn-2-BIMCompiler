@@ -1868,6 +1868,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#extended-domain-erp-in-the-same-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extended Domain: ERP in the Same Browser
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#proven-scale" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2644,6 +2655,8 @@
       
         
       
+        
+      
     
     
     
@@ -2732,6 +2745,34 @@
     
   
     Construction ERP POC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AD-in-Browser (iDempiere)
   
 
     
@@ -4352,6 +4393,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#extended-domain-erp-in-the-same-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extended Domain: ERP in the Same Browser
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#proven-scale" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5052,6 +5104,9 @@ Browser DB (sql.js in memory) ←→ IndexedDB (bim_ootb_cache, ArrayBuffer)
 IFC Export → kernel_ops table included in exported .db file
 </code></pre></div>
 <p>The same SQLite DB that holds geometry also holds the operation log. Export the DB → you export the full design history. Import it back → history replays automatically.</p>
+<hr />
+<h2 id="extended-domain-erp-in-the-same-browser">Extended Domain: ERP in the Same Browser<a class="headerlink" href="#extended-domain-erp-in-the-same-browser" title="Permanent link">&para;</a></h2>
+<p>The SQLite-in-browser pattern extends beyond BIM. The full iDempiere Application Dictionary (500+ windows, 15K+ fields) runs in the same stack: PostgreSQL AD → SQLite export → sql.js WASM → browser UI. Same DB engine, same WASM runtime, same zero-install principle. See <a href="../ERP/"><strong>AD-in-Browser (iDempiere)</strong></a> for the full spec.</p>
 <hr />
 <h2 id="proven-scale">Proven Scale<a class="headerlink" href="#proven-scale" title="Permanent link">&para;</a></h2>
 <table>
