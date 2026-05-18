@@ -1423,8 +1423,9 @@
 
       if (hit && !_flyTarget) {
         if (elapsed > 500) {
-          console.log('§TAP longPress → collapseAll');
-          _collapseAll();
+          // Long press → open all records of this table in accordion
+          console.log('§TAP longPress table=' + hit.tableName + ' type=' + hit.type);
+          if (_onDrill) _onDrill(hit.tableName, hit.windowId, null, 'table');
         } else {
           // Double-tap detection: RECORD only — skip gateways, open panel directly
           var now = Date.now();
