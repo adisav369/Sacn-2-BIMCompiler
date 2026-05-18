@@ -221,7 +221,8 @@
                 ' filterMode=' + (filterMode || 'none') + ' hasRecord=' + !!record);
 
     // §S259b — Open accordion panel instead of full window navigation
-    if (record) {
+    // Long-press / double-tap sends record=null + filterMode='table' → route to _openTableView
+    if (record || filterMode === 'table') {
       _openAccordionPanel(tableName, windowId, record, filterMode);
       return;
     }
