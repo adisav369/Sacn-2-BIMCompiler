@@ -2658,22 +2658,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#9-implementation-phases" class="md-nav__link">
+  <a href="#9-implementation-status" class="md-nav__link">
     <span class="md-ellipsis">
       
-        §9. Implementation Phases
+        §9. Implementation Status
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="§9. Implementation Phases">
+    <nav class="md-nav" aria-label="§9. Implementation Status">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#phase-1-this-session-spec-export-parser" class="md-nav__link">
+  <a href="#phase-1-parser-export-s255" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 1 — This session (spec + export + parser)
+        Phase 1 — Parser + Export (S255) ✅
       
     </span>
   </a>
@@ -2681,10 +2681,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#phase-2-next-session-renderer-crud" class="md-nav__link">
+  <a href="#phase-2-ad-renderer-crud-s256" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 2 — Next session (renderer + CRUD)
+        Phase 2 — AD Renderer + CRUD (S256) ✅
       
     </span>
   </a>
@@ -2692,10 +2692,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#phase-3-showcase-session" class="md-nav__link">
+  <a href="#phase-3-data-globe-fk-resolution-s257" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 3 — Showcase session
+        Phase 3 — Data Globe + FK Resolution (S257) ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-numbers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Numbers
       
     </span>
   </a>
@@ -4236,22 +4258,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#9-implementation-phases" class="md-nav__link">
+  <a href="#9-implementation-status" class="md-nav__link">
     <span class="md-ellipsis">
       
-        §9. Implementation Phases
+        §9. Implementation Status
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="§9. Implementation Phases">
+    <nav class="md-nav" aria-label="§9. Implementation Status">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#phase-1-this-session-spec-export-parser" class="md-nav__link">
+  <a href="#phase-1-parser-export-s255" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 1 — This session (spec + export + parser)
+        Phase 1 — Parser + Export (S255) ✅
       
     </span>
   </a>
@@ -4259,10 +4281,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#phase-2-next-session-renderer-crud" class="md-nav__link">
+  <a href="#phase-2-ad-renderer-crud-s256" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 2 — Next session (renderer + CRUD)
+        Phase 2 — AD Renderer + CRUD (S256) ✅
       
     </span>
   </a>
@@ -4270,10 +4292,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#phase-3-showcase-session" class="md-nav__link">
+  <a href="#phase-3-data-globe-fk-resolution-s257" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 3 — Showcase session
+        Phase 3 — Data Globe + FK Resolution (S257) ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-numbers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Numbers
       
     </span>
   </a>
@@ -4920,110 +4964,170 @@ any SQL query across any tables renders as a chart instantly. No server.</p>
 <p><code>erp.html?db=Hospital.db</code> → loads building DB, adds AD tables on top,
 bootstraps containers from BIM elements_meta storeys.</p>
 <hr />
-<h2 id="9-implementation-phases">§9. Implementation Phases<a class="headerlink" href="#9-implementation-phases" title="Permanent link">&para;</a></h2>
-<h3 id="phase-1-this-session-spec-export-parser">Phase 1 — This session (spec + export + parser)<a class="headerlink" href="#phase-1-this-session-spec-export-parser" title="Permanent link">&para;</a></h3>
+<h2 id="9-implementation-status">§9. Implementation Status<a class="headerlink" href="#9-implementation-status" title="Permanent link">&para;</a></h2>
+<p><strong>Updated:</strong> 2026-05-19. All phases delivered.</p>
+<h3 id="phase-1-parser-export-s255">Phase 1 — Parser + Export (S255) ✅<a class="headerlink" href="#phase-1-parser-export-s255" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>Step</th>
 <th>Deliverable</th>
-<th>Verify</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>1</td>
 <td><code>docs/ERP.md</code> (this file)</td>
 <td>Spec complete</td>
 </tr>
 <tr>
-<td>2</td>
 <td><code>scripts/export_ad.sh</code></td>
-<td>Exports 10 AD tables from PostgreSQL</td>
+<td>Exports 10 AD tables from live PostgreSQL</td>
 </tr>
 <tr>
-<td>3</td>
-<td><code>deploy/dev/ad_seed.sql</code></td>
-<td>~60K rows of real iDempiere AD metadata</td>
+<td><code>library/component_library.db</code></td>
+<td>AD metadata embedded alongside BIM data</td>
 </tr>
 <tr>
-<td>4</td>
 <td><code>deploy/dev/ad_parser.js</code></td>
-<td>getMenuTree, getWindow, getTabs, getFields</td>
+<td>getMenuTree, getWindow, getTabs, getFields, resolveReference</td>
 </tr>
 <tr>
-<td>5</td>
-<td><code>tests/test_ad_parser.js</code></td>
-<td>§-log verified: menu=826, windows=458, tabs=1167</td>
+<td>48 tests passing</td>
+<td>Menu=826, windows=458, tabs=1167, fields=21,432</td>
 </tr>
 </tbody>
 </table>
-<h3 id="phase-2-next-session-renderer-crud">Phase 2 — Next session (renderer + CRUD)<a class="headerlink" href="#phase-2-next-session-renderer-crud" title="Permanent link">&para;</a></h3>
+<h3 id="phase-2-ad-renderer-crud-s256">Phase 2 — AD Renderer + CRUD (S256) ✅<a class="headerlink" href="#phase-2-ad-renderer-crud-s256" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>Step</th>
 <th>Deliverable</th>
-<th>Verify</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>6</td>
 <td><code>deploy/dev/ad_ui.js</code></td>
-<td>Menu sidebar, window cards, tab swipe, field inputs</td>
+<td>Full AD-driven UI: menu sidebar, window cards, tab navigation, field rendering</td>
 </tr>
 <tr>
-<td>7</td>
 <td><code>deploy/dev/ad_data.js</code></td>
-<td>Generic CRUD for any AD_Table</td>
+<td>Generic CRUD: resolveFK (name not ID), getTableStats, getFieldCompleteness</td>
 </tr>
 <tr>
-<td>8</td>
-<td><code>deploy/dev/erp.html</code> rewrite</td>
-<td>Full AD-driven UI</td>
-</tr>
-<tr>
-<td>9</td>
 <td><code>deploy/dev/ad_charts.js</code></td>
-<td>Cross-table analytics charts</td>
+<td>Cross-table analytics: treemap, bar charts, field completeness heatmap, DPR-aware</td>
 </tr>
 <tr>
-<td>10</td>
-<td>Landing page integration</td>
-<td>ERP buttons on building cards</td>
+<td><code>deploy/dev/erp_panel.js</code></td>
+<td>Integration panel in BIM viewer</td>
+</tr>
+<tr>
+<td>132 tests passing</td>
+<td>Full AD lifecycle verified</td>
 </tr>
 </tbody>
 </table>
-<h3 id="phase-3-showcase-session">Phase 3 — Showcase session<a class="headerlink" href="#phase-3-showcase-session" title="Permanent link">&para;</a></h3>
+<h3 id="phase-3-data-globe-fk-resolution-s257">Phase 3 — Data Globe + FK Resolution (S257) ✅<a class="headerlink" href="#phase-3-data-globe-fk-resolution-s257" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>Step</th>
 <th>Deliverable</th>
-<th>Verify</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>11</td>
-<td>Sample data for 3 windows</td>
-<td>C_Project, C_BPartner, M_Product with real records</td>
+<td><code>deploy/dev/ad_graph.js</code></td>
+<td>Canvas 2D data globe: Fibonacci sphere, perspective projection, drag-to-orbit with momentum, fly-to-front, pinch-to-zoom, browser Fullscreen API</td>
 </tr>
 <tr>
-<td>12</td>
-<td>BroadcastChannel wiring</td>
-<td>ERP ↔ BIM viewer cross-tab</td>
+<td>Star colouring</td>
+<td>cyan=complete, green=active, amber=partial, red=draft, grey=archived</td>
 </tr>
 <tr>
-<td>13</td>
-<td>Deploy to OCI dev bucket</td>
-<td>Live at sandbox/erp.html</td>
+<td>FK resolution</td>
+<td>TableDirect/Table fields show Name not integer, cached</td>
 </tr>
 <tr>
-<td>14</td>
-<td>Video demo</td>
-<td>Full AD menu → C_Project → BIM link → chart</td>
+<td>CRUD toolbar</td>
+<td><code>&lt; N/M &gt; [+] [x]</code>, arrow keys Left/Right/Up/Down</td>
+</tr>
+<tr>
+<td>Multi-panel windows</td>
+<td>Master top, detail sub-tabs below side-by-side, empty tabs hidden</td>
+</tr>
+<tr>
+<td>DisplayLogic fix</td>
+<td>Empty column evaluations</td>
+</tr>
+<tr>
+<td>153 tests passing</td>
+<td>Globe, FK, CRUD, multi-panel verified</td>
+</tr>
+</tbody>
+</table>
+<h3 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>ad_parser.js     — Pure data reader: menu tree, windows, tabs, fields, references
+     ↓
+ad_data.js       — CRUD engine: read/write any AD_Table, FK resolution, stats
+     ↓
+ad_ui.js         — Card-first renderer: menu sidebar, window cards, field widgets
+     ↓
+ad_charts.js     — Analytics: treemap, bar, heatmap, DPR-aware canvas
+     ↓
+ad_graph.js      — Data globe: records as stars on 3D sphere, status-based colour
+     ↓
+erp_panel.js     — Integration: ERP panel in BIM viewer, BroadcastChannel relay
+</code></pre></div>
+<h3 id="key-numbers">Key Numbers<a class="headerlink" href="#key-numbers" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AD tables exported</td>
+<td>10 (Menu, Window, Tab, Field, Column, Table, Reference, Ref_List, Element, TreeNodeMM)</td>
+</tr>
+<tr>
+<td>Menu nodes</td>
+<td>826 (15 root folders)</td>
+</tr>
+<tr>
+<td>Windows</td>
+<td>458</td>
+</tr>
+<tr>
+<td>Tabs</td>
+<td>1,167</td>
+</tr>
+<tr>
+<td>Fields</td>
+<td>21,432</td>
+</tr>
+<tr>
+<td>Columns</td>
+<td>26,519</td>
+</tr>
+<tr>
+<td>SQLite AD size</td>
+<td>~12 MB</td>
+</tr>
+<tr>
+<td>Load time</td>
+<td>&lt; 2s (sql.js WASM)</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>153</td>
+</tr>
+<tr>
+<td>Files</td>
+<td>6 JS modules + erp.html</td>
 </tr>
 </tbody>
 </table>
@@ -5037,8 +5141,9 @@ Not even iDempiere itself.</p>
 <p>The AD is iDempiere's crown jewel — 20 years of metadata accumulated by a
 global community. We're not replacing it. We're <strong>liberating it</strong> from the
 JVM/PostgreSQL/OSGi stack and putting it in every browser on every phone.</p>
-<p>The construction POC (C_Project) is the proof. The 3 live windows are the
-demo. The full 826-node menu tree is the mic drop.</p>
+<p>The construction POC (C_Project) is the proof. The 153-test AD renderer is
+the engine. The data globe is the visualisation. The full 826-node menu tree
+is the mic drop.</p>
 <hr />
 <p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
 
