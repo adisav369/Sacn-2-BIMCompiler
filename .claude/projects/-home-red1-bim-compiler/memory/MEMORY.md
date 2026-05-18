@@ -42,6 +42,12 @@ Details belong in `docs/` specs and `prompts/`. Memory files are pointers. Do NO
 - Three concerns (WHAT/HOW/WHERE) → BBC.md BOM PRINCIPLE
 - Schema not geometry → SourceCodeGuide.md §Critical Traps
 
+## Spatial ERP
+- [ERP search (S258)](project_erp_search.md) — FTS5, glass overlay, edge swipe, 23 tables indexed, deployed ootb-full
+- S259: 4 bug fixes (FK dynamic, Name>Value, auto-expand, strict find), offline badge, full 378-table export (13MB/84K rows), §BENCH instrumentation, Properties/Data gateways, collapse anim, dim siblings. 93 tests.
+- Next prompts: `prompts/S259_GLOBE_UX_TRIAGE.md` (fix gateways/collapse/dim) → then `prompts/S259_ACCORDION_PANEL.md` (accordion grid panel). One session, sequential.
+- Roadmap: `docs/ERP_Roadmap.md` — R1+R2+R10 done, R4 benchmarks prep done, next: UX polish + panel
+
 ## Active prompts
 - **S254 Hourglass Drawers** → `prompts/S254_HOURGLASS_DRAWERS.md` — NEXT. Mini Gantt + dashboard drawers on hourglass panel.
 - **GANTT_ACCURACY** → `prompts/GANTT_ACCURACY.md` — §A DONE (storey-based banding). §B/§C/§D future.
@@ -51,6 +57,7 @@ Details belong in `docs/` specs and `prompts/`. Memory files are pointers. Do NO
 - S226 localisation → `prompts/S226_localisation.md`
 
 ## Project
+- [S260c Cinematic Drone](project_s260c_cinematic.md) — two-pass Gantt, IDB JSON cache, PBR-lite, outline+dust+sound, sw v359
 - [Card-first views](project_card_first_views.md) — next priority, persistent named view cards
 - [2D pick identity](project_2d_pick_identity.md) — UNPROVEN: click 2D items → show IFC name. Need separate responsibility + flatten furniture
 - [No artificial geometry](feedback_no_artificial_geometry.md) — no ribbon, no invented colors
