@@ -390,17 +390,22 @@ function setupPicking(A) {
       }
     }
 
+    // §S260e: EdgesGeometry + linewidth=1 (works on all WebGL2) + depthTest:false
     const hlGeo = new THREE.BoxGeometry(
       Math.max(hlSizeX, 0.01), Math.max(hlSizeY, 0.01), Math.max(hlSizeZ, 0.01));
     const hlEdges = new THREE.EdgesGeometry(hlGeo);
     hlGeo.dispose();
-    const hlLine = new THREE.LineSegments(hlEdges,
+    const hlMesh = new THREE.LineSegments(hlEdges,
       new THREE.LineBasicMaterial({ color: 0xffff00, depthTest: false }));
-    hlLine.renderOrder = 999;
-    hlLine.position.copy(hlPos);
-    hlLine.quaternion.copy(hlQuat);
-    A.scene.add(hlLine);
-    window._pickHighlight = hlLine;
+    hlMesh.renderOrder = 999;
+    hlMesh.position.copy(hlPos);
+    hlMesh.quaternion.copy(hlQuat);
+    A.scene.add(hlMesh);
+    window._pickHighlight = hlMesh;
+    if (A.markDirty) A.markDirty();
+    console.log('§PICK_BBOX pos=' + hlPos.x.toFixed(1) + ',' + hlPos.y.toFixed(1) + ',' + hlPos.z.toFixed(1) +
+      ' size=' + (hlSizeX||0).toFixed(2) + '×' + (hlSizeY||0).toFixed(2) + '×' + (hlSizeZ||0).toFixed(2) +
+      ' guid=' + (guid || '?').substring(0, 12));
 
     try {
       // S239: parameterized query (was string interpolation — SQL injection risk)

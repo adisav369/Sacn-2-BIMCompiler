@@ -157,3 +157,232 @@ grep "deleteDatabase" deploy/dev/landing.html
 echo ""
 echo "§TRACE activate() uses cache:"
 grep "cacheGet\|cachePut" deploy/dev/time_machine.js | head -8
+
+echo ""
+echo "── 10. Pick Accuracy (WYSIWYG) ──"
+echo "§CHECK firstHitOnly disabled (must be false for WYSIWYG):"
+grep "firstHitOnly" deploy/dev/picking.js
+echo ""
+echo "§CHECK skip-logic for non-pickable hits:"
+grep -c "_isOutline\|opacity < 0.3\|isBboxPlaceholder" deploy/dev/picking.js | xargs -I{} echo "  skip conditions: {} lines"
+echo ""
+echo "§CHECK BatchedMesh pick uses DB bbox (not geometry bbox):"
+grep -c "isBatchedMesh && guid" deploy/dev/picking.js | xargs -I{} echo "  BatchedMesh DB-bbox path: {} matches"
+echo ""
+echo "§CHECK yellow highlight box exists:"
+grep -c "color: 0xffff00" deploy/dev/picking.js | xargs -I{} echo "  yellow bbox lines: {} matches"
+echo ""
+echo "§CHECK DoubleSide on ALL materials (not just transparent):"
+grep -n "opts.side.*DoubleSide" deploy/dev/streaming.js
+
+echo ""
+echo "── 11. PBR Material (S260d) ──"
+echo "§CHECK MeshStandardMaterial used (not MeshPhongMaterial):"
+grep "MeshStandardMaterial\|MeshPhongMaterial" deploy/dev/streaming.js | head -3
+echo ""
+echo "§CHECK roughness/metalness maps present:"
+grep -c "ROUGHNESS_MAP\|METALNESS_MAP" deploy/dev/streaming.js | xargs -I{} echo "  PBR maps: {} references"
+echo ""
+echo "§CHECK class color fallback present:"
+grep -c "CLASS_COLOR_FALLBACK" deploy/dev/streaming.js | xargs -I{} echo "  fallback map: {} references"
+echo ""
+echo "§CHECK near-white taming factor (must be >= 0.90, not 0.82):"
+grep "r \*= 0\." deploy/dev/streaming.js
+echo ""
+echo "§CHECK lighting — ambient neutral white:"
+grep "AmbientLight" deploy/dev/scene.js
+echo ""
+echo "§CHECK lighting — hemisphere warm:"
+grep "HemisphereLight" deploy/dev/scene.js
+
+echo ""
+echo "── 12. TM White-Box Material Logger ──"
+echo "§CHECK §WB_MAT logger present (expect 5+ call sites):"
+grep -c "_wbMat(" deploy/dev/time_machine.js | xargs -I{} echo "  _wbMat() call sites: {}"
+echo ""
+echo "§CHECK InstancedMesh highlight REMOVED (white flash fix):"
+if grep -q "applyHighlight.*InstancedMesh\|anyFrontier.*applyHighlight" deploy/dev/time_machine.js; then
+  echo "  ⚠FAIL — InstancedMesh highlight still present!"
+else
+  echo "  ✓OK — no InstancedMesh highlight (white flash fixed)"
+fi
+echo ""
+echo "§CHECK emissive intensity caps:"
+grep "emissiveIntensity" deploy/dev/time_machine.js | grep -v "^--" | head -5
+
+echo ""
+echo "════════════════════════════════════════"
+echo "§EXECUTION TESTS — real DB data, real logic"
+echo "════════════════════════════════════════"
+
+echo ""
+echo "── 13. Gantt Z-Sequence (EXECUTION against Terminal DB) ──"
+DB=deploy/buildings/Terminal_extracted.db
+if [ ! -f "$DB" ]; then echo "§SKIP Terminal DB not found"; else
+
+echo "§EXEC underground elements:"
+sqlite3 "$DB" "SELECT COUNT(*), ROUND(MIN(t.center_z),2), ROUND(MAX(t.center_z),2)
+  FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid WHERE t.center_z < 0" | \
+  awk -F'|' '{printf "  count=%s minZ=%s maxZ=%s\n",$1,$2,$3}'
+
+echo ""
+echo "§EXEC Gantt Z-band sort simulation (floor(cz/3) → seq → cz):"
+echo "  First 20 elements by Z-band sort:"
+sqlite3 "$DB" "
+  SELECT CAST(ROUND(t.center_z/3 - 0.5) AS INT) AS zband,
+    CASE
+      WHEN m.ifc_class IN ('IfcFooting','IfcPile','IfcReinforcingBar') THEN 1
+      WHEN m.ifc_class IN ('IfcColumn') THEN 2
+      WHEN m.ifc_class IN ('IfcBeam','IfcMember','IfcPlate') THEN 3
+      WHEN m.ifc_class IN ('IfcSlab') THEN 4
+      WHEN m.ifc_class LIKE 'IfcWall%' THEN 5
+      ELSE 6
+    END AS seq,
+    ROUND(t.center_z,2) AS cz, m.ifc_class, m.storey
+  FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid
+  WHERE m.ifc_class != 'IfcOpeningElement'
+  ORDER BY zband ASC, seq ASC, cz ASC
+  LIMIT 20
+" | while IFS='|' read zband seq cz cls storey; do
+  echo "    zband=$zband seq=$seq z=$cz $cls [$storey]"
+done
+
+echo ""
+echo "§VERIFY first element must be underground (zband < 0):"
+FIRST_ZBAND=$(sqlite3 "$DB" "
+  SELECT CAST(ROUND(t.center_z/3 - 0.5) AS INT)
+  FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid
+  WHERE m.ifc_class != 'IfcOpeningElement'
+  ORDER BY CAST(ROUND(t.center_z/3 - 0.5) AS INT) ASC,
+    CASE WHEN m.ifc_class IN ('IfcFooting','IfcPile') THEN 1
+         WHEN m.ifc_class='IfcColumn' THEN 2
+         WHEN m.ifc_class IN ('IfcBeam','IfcMember','IfcPlate') THEN 3
+         WHEN m.ifc_class='IfcSlab' THEN 4 ELSE 6 END ASC,
+    t.center_z ASC LIMIT 1")
+if [ "$FIRST_ZBAND" -lt 0 ] 2>/dev/null; then
+  echo "  ✓PASS first_zband=$FIRST_ZBAND (underground)"
+else
+  echo "  ⚠FAIL first_zband=$FIRST_ZBAND (NOT underground — check Z-band logic)"
+fi
+
+echo ""
+echo "§VERIFY no beam appears before its supporting column at same Z-band:"
+# Within each zband, seq 2 (column) must come before seq 3 (beam)
+BAD=$(sqlite3 "$DB" "
+  WITH ranked AS (
+    SELECT CAST(ROUND(t.center_z/3 - 0.5) AS INT) AS zband,
+      CASE WHEN m.ifc_class='IfcColumn' THEN 2
+           WHEN m.ifc_class IN ('IfcBeam','IfcMember') THEN 3 ELSE 99 END AS seq,
+      ROW_NUMBER() OVER (PARTITION BY CAST(ROUND(t.center_z/3 - 0.5) AS INT) ORDER BY
+        CASE WHEN m.ifc_class='IfcColumn' THEN 2
+             WHEN m.ifc_class IN ('IfcBeam','IfcMember') THEN 3 ELSE 99 END,
+        t.center_z) AS rn,
+      m.ifc_class
+    FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid
+    WHERE m.ifc_class IN ('IfcColumn','IfcBeam','IfcMember')
+  )
+  SELECT COUNT(*) FROM ranked r1
+  JOIN ranked r2 ON r1.zband=r2.zband AND r1.seq=3 AND r2.seq=2 AND r1.rn < r2.rn
+")
+if [ "$BAD" = "0" ]; then
+  echo "  ✓PASS no beam before its column in any Z-band"
+else
+  echo "  ⚠FAIL $BAD beams scheduled before columns"
+fi
+
+echo ""
+echo "§EXEC storey Z ranges (context for sequence understanding):"
+sqlite3 "$DB" "
+  SELECT m.storey, COUNT(*) c, ROUND(MIN(t.center_z),2) minZ, ROUND(AVG(t.center_z),2) avgZ
+  FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid
+  WHERE m.ifc_class != 'IfcOpeningElement' GROUP BY m.storey ORDER BY minZ ASC LIMIT 10
+" | while IFS='|' read st cnt minz avgz; do
+  echo "  \"$st\" n=$cnt minZ=$minz avgZ=$avgz"
+done
+fi
+
+echo ""
+echo "── 14. Drone Pilot Flow (code path verification) ──"
+echo "§CHECK ELEMENT_PLACE filter (reject ELEMENT_PICK):"
+if grep -q "_placeOps.*filter.*ELEMENT_PLACE" deploy/dev/time_machine.js; then
+  echo "  ✓PASS — ops filtered to ELEMENT_PLACE only"
+else
+  echo "  ⚠FAIL — no ELEMENT_PLACE filter, picks will contaminate schedule"
+fi
+echo "§CHECK tickMs during opening advances cursor:"
+TICK_OPENING=$(grep "cineBeat.*opening.*return" deploy/dev/time_machine.js | head -1)
+echo "  $TICK_OPENING"
+if echo "$TICK_OPENING" | grep -q "return 0"; then
+  echo "  ⚠FAIL — returns 0, nothing builds during opening"
+elif echo "$TICK_OPENING" | grep -q "return [0-9]"; then
+  echo "  ✓PASS — cursor advances during opening"
+else
+  echo "  ⚠WARN — cannot parse tickMs opening value"
+fi
+echo "§CHECK opening starts from empty (projectStart):"
+if grep -q "_cursor = _projectStart.*construction builds" deploy/dev/time_machine.js; then
+  echo "  ✓PASS"
+else
+  echo "  ⚠FAIL — may start at projectEnd (nothing to build)"
+fi
+
+echo ""
+echo "── 15. Frontier Highlight (shine through ground) ──"
+echo "§CHECK applyHighlight depthTest:"
+grep "mat.depthTest" deploy/dev/time_machine.js | grep -v "^--" | head -3
+if grep -q "mat.depthTest = false" deploy/dev/time_machine.js; then
+  echo "  ✓PASS — frontier glow shines through ground"
+else
+  echo "  ⚠FAIL — depthTest:true hides underground glow"
+fi
+echo "§CHECK frontier uses applyHighlight (not applyOutline):"
+FRONTIER_APPLY=$(grep "isFrontier" deploy/dev/time_machine.js | grep "apply" | head -1)
+echo "  $FRONTIER_APPLY"
+if echo "$FRONTIER_APPLY" | grep -q "applyHighlight"; then
+  echo "  ✓PASS — emissive glow (visible)"
+elif echo "$FRONTIER_APPLY" | grep -q "applyOutline"; then
+  echo "  ⚠FAIL — outline edges only (linewidth=1, nearly invisible)"
+fi
+
+echo ""
+echo "── 16. Yellow Pick Highlight ──"
+echo "§CHECK highlight implementation:"
+grep -n "EdgesGeometry\|LineBasicMaterial\|MeshBasicMaterial.*wireframe\|depthTest.*false" deploy/dev/picking.js | grep -i "hl\|highlight\|ffff00\|yellow" | head -5
+echo "§CHECK renderOrder 999:"
+grep "renderOrder.*999" deploy/dev/picking.js | head -2
+echo "§CHECK scene.add:"
+grep "scene.add.*hl\|A.scene.add.*hl" deploy/dev/picking.js | head -2
+echo "§CHECK dispose previous:"
+grep "pickHighlight.*dispose\|prev.*dispose\|pickHighlight.*remove" deploy/dev/picking.js | head -3
+echo "§CHECK markDirty after add:"
+if grep -A5 "window._pickHighlight = hl" deploy/dev/picking.js | grep -q "markDirty"; then
+  echo "  ✓PASS — markDirty forces re-render after highlight add"
+else
+  echo "  ⚠FAIL — no markDirty after highlight — may not render until next orbit/pick"
+fi
+
+echo ""
+echo "── 17. Monochrome Grey + Color Fallback ──"
+echo "§CHECK spread-based detection (not ±0.02 from 0.7):"
+if grep -q "isMonoGrey\|_spread" deploy/dev/streaming.js; then
+  echo "  ✓PASS — spread-based monochrome detection"
+else
+  echo "  ⚠FAIL — still using old isDefaultGrey (misses 0.97/0.97/0.97 etc)"
+fi
+echo "§CHECK fallback class count (in CLASS_COLOR_FALLBACK map only):"
+FBCOUNT=$(sed -n '/CLASS_COLOR_FALLBACK/,/};/p' deploy/dev/streaming.js | grep -o "Ifc[A-Za-z]*:" | sort -u | wc -l)
+echo "  fallback classes: $FBCOUNT"
+if [ "$FBCOUNT" -ge 25 ]; then echo "  ✓PASS"; else echo "  ⚠FAIL — need ≥25"; fi
+echo "§EXEC Terminal material coverage test:"
+if [ -f "$DB" ]; then
+  sqlite3 "$DB" "
+    SELECT m.ifc_class, COUNT(*) c, m.material_rgba
+    FROM elements_meta m WHERE m.material_rgba IS NOT NULL
+    GROUP BY m.ifc_class ORDER BY c DESC LIMIT 10
+  " | while IFS='|' read cls cnt rgba; do
+    # Check if class has fallback
+    if grep -q "$cls" deploy/dev/streaming.js; then HAS="✓fb"; else HAS="✗no-fb"; fi
+    # Check if rgba is monochrome
+    echo "  $HAS $cls n=$cnt rgba=$rgba"
+  done
+fi

@@ -268,7 +268,15 @@ function setupStreaming(A) {
       IfcRailing: '0.50,0.52,0.55', IfcStair: '0.75,0.73,0.70',
       IfcCurtainWall: '0.70,0.82,0.88', IfcCovering: '0.85,0.83,0.78',
       IfcPipeFitting: '0.50,0.55,0.60', IfcPipeSegment: '0.50,0.55,0.60',
-      IfcDuctFitting: '0.60,0.62,0.58', IfcDuctSegment: '0.60,0.62,0.58'
+      IfcDuctFitting: '0.60,0.62,0.58', IfcDuctSegment: '0.60,0.62,0.58',
+      IfcFlowTerminal: '0.45,0.50,0.55', IfcFlowSegment: '0.48,0.52,0.58',
+      IfcFlowFitting: '0.50,0.53,0.57', IfcFlowController: '0.80,0.30,0.25',
+      IfcLightFixture: '0.80,0.75,0.50', IfcSanitaryTerminal: '0.85,0.85,0.80',
+      IfcBuildingElementProxy: '0.00,0.78,0.78', IfcAirTerminal: '0.55,0.65,0.70',
+      IfcFireSuppressionTerminal: '0.80,0.30,0.25', IfcValve: '0.55,0.50,0.45',
+      IfcAlarm: '0.75,0.25,0.25', IfcElectricAppliance: '0.60,0.65,0.55',
+      IfcEnergyConversionDevice: '0.45,0.55,0.50', IfcFlowTreatmentDevice: '0.50,0.58,0.55',
+      IfcFurnishingElement: '0.70,0.55,0.40', IfcFlowMovingDevice: '0.50,0.60,0.55'
     };
 
     const key = rgbaStr || '_default';
@@ -280,9 +288,11 @@ function setupStreaming(A) {
       r = parts[0]; g = parts[1]; b = parts[2];
       if (parts.length >= 4 && parts[3] < 1.0) a = parts[3];
     }
-    // §S260d: If color is default/near-default grey and we have a class fallback, use it
-    var isDefaultGrey = (Math.abs(r - 0.7) < 0.02 && Math.abs(g - 0.7) < 0.02 && Math.abs(b - 0.7) < 0.02);
-    if (isDefaultGrey && ifcClass && CLASS_COLOR_FALLBACK[ifcClass]) {
+    // §S260e: Detect monochrome grey — any neutral color (R≈G≈B) with no real hue
+    // Catches 0.7/0.7/0.7, 0.97/0.97/0.97, 1.0/1.0/1.0, 0.47/0.47/0.47 etc.
+    var _spread = Math.max(r, g, b) - Math.min(r, g, b);
+    var isMonoGrey = _spread < 0.08; // channels within 8% of each other = no hue
+    if (isMonoGrey && ifcClass && CLASS_COLOR_FALLBACK[ifcClass]) {
       var fb = CLASS_COLOR_FALLBACK[ifcClass].split(',').map(Number);
       r = fb[0]; g = fb[1]; b = fb[2];
     }
@@ -298,7 +308,7 @@ function setupStreaming(A) {
     const mat = new THREE.MeshStandardMaterial(opts);
     mat.userData.origOpacity = a;
     mat.userData.origSide = a < 1.0 ? THREE.DoubleSide : THREE.FrontSide;
-    if (A.xrayOn) { mat.transparent = true; mat.opacity = 0.15; mat.side = THREE.DoubleSide; }
+    if (A.xrayOn) { mat.transparent = true; mat.opacity = 0.3; mat.side = THREE.DoubleSide; }
     if (A.wireOn) { mat.wireframe = true; }
     if (A.sectionOn) { mat.clippingPlanes = [A.sectionPlane]; mat.clipShadows = true; }
     A._matCache[cacheKey] = mat;
@@ -1206,48 +1216,6 @@ function setupStreaming(A) {
       return;
     }
 
-    // §S261: Try positions.bin for instant bboxes BEFORE full DB load (all buildings, not just split)
-    var posUrl = A.DB_URL.replace('_extracted.db', '_positions.bin');
-    if (posUrl === A.DB_URL) posUrl = A.DB_URL.replace(/\.db$/, '_positions.bin');
-    var _earlyBboxDone = false;
-    if (posUrl !== A.DB_URL) {
-      try {
-        var _posResp = await fetch(posUrl);
-        if (_posResp.ok) {
-          var _posBuf = await _posResp.arrayBuffer();
-          var _posView = new DataView(_posBuf);
-          var _posCount = _posView.getUint32(0, true);
-          var _posRows = [];
-          for (var _pi = 0; _pi < _posCount; _pi++) {
-            var _off = 4 + _pi * 24;
-            _posRows.push([
-              null, null, null, null,
-              _posView.getFloat32(_off, true),
-              _posView.getFloat32(_off + 4, true),
-              _posView.getFloat32(_off + 8, true),
-              null, null, null, null, null,
-              _posView.getFloat32(_off + 12, true),
-              _posView.getFloat32(_off + 16, true),
-              _posView.getFloat32(_off + 20, true)
-            ]);
-          }
-          // Compute modelOffset from positions
-          if (_posCount > 0 && (!A.modelOffset || (A.modelOffset.x === 0 && A.modelOffset.y === 0))) {
-            var _sx = 0, _sy = 0, _sz = 0;
-            for (var _qi = 0; _qi < _posCount; _qi++) {
-              _sx += _posRows[_qi][4]; _sy += _posRows[_qi][5]; _sz += _posRows[_qi][6];
-            }
-            A.modelOffset = { x: _sx / _posCount, y: _sy / _posCount, z: _sz / _posCount };
-            console.log('[S261] §EARLY_OFFSET ifc=(' + (_sx/_posCount).toFixed(0) + ',' + (_sy/_posCount).toFixed(0) + ',' + (_sz/_posCount).toFixed(0) + ')');
-          }
-          A._drawBboxPlaceholders(_posRows);
-          _earlyBboxDone = true;
-          A.status.textContent = _posCount.toLocaleString() + ' elements — loading database...';
-          console.log('[S261] §EARLY_BBOX count=' + _posCount + ' size=' + (_posBuf.byteLength / 1024).toFixed(0) + 'KB');
-        }
-      } catch(e) { /* no positions.bin — normal for some buildings */ }
-    }
-
     // §6.9 Split DB detection: try _meta.db alongside any .db URL
     var _splitMode = false;
     var metaUrl = A.DB_URL.replace('_extracted.db', '_meta.db');
@@ -1269,7 +1237,7 @@ function setupStreaming(A) {
 
       // Phase 0: Try positions.bin for instant bboxes (< 3MB, loads in <1s)
       // §S261: Skip if early bbox already drawn above
-      var _posLoaded = _earlyBboxDone;
+      var _posLoaded = false;
       if (!_posLoaded) try {
         A.status.textContent = 'Loading positions...';
         var posBuf = await A.cachedFetch(posUrl);
@@ -1298,7 +1266,8 @@ function setupStreaming(A) {
       }
 
       // §S260b: If positions loaded, compute modelOffset + draw bboxes before meta.db
-      if (_posLoaded && A._drawBboxPlaceholders) {
+      // §S260e: Guard — _positionRows only exists when positions.bin loaded (not S261 early bbox)
+      if (_posLoaded && A._drawBboxPlaceholders && A._positionRows) {
         // Compute modelOffset from positions (same as buildingCentres logic)
         var _sumX = 0, _sumY = 0, _sumZ = 0, _n = A._positionRows.length;
         for (var _pi = 0; _pi < _n; _pi++) {
@@ -1450,6 +1419,28 @@ function setupStreaming(A) {
       }
     }
     console.log(`[S192] §BOOTSTRAP centres=${Object.keys(A.buildingCentres).length}`);
+
+    // §S261b: Populate building name + element count for all paths (single-DB was missing this)
+    if (!A.activeBuilding && Object.keys(A.buildingCentres).length > 0) {
+      var _firstBld = Object.keys(A.buildingCentres)[0];
+      A.activeBuilding = _firstBld;
+      var _sBld = document.getElementById('s-buildings');
+      if (_sBld) _sBld.textContent = _firstBld;
+      var _sBldLabel = _sBld && _sBld.previousElementSibling;
+      if (_sBldLabel && _sBldLabel.getAttribute('data-trl') === 'ui_buildings') _sBldLabel.textContent = 'Building';
+      try {
+        var _elCnt = A.db.exec("SELECT COUNT(*) FROM elements_meta WHERE building=?", [_firstBld]);
+        if (_elCnt.length) {
+          var _n = _elCnt[0].values[0][0];
+          var _sEl = document.getElementById('s-elements');
+          if (_sEl) _sEl.textContent = Number(_n).toLocaleString();
+          document.getElementById('s-building-total').textContent = Number(_n).toLocaleString();
+        }
+      } catch(e) {}
+      if (A.populateStoreys) A.populateStoreys(_firstBld);
+      if (A.populateDiscs) A.populateDiscs(_firstBld);
+      console.log('[S261b] §SINGLE_DB_HUD building=' + _firstBld);
+    }
 
     const allIX = Object.values(A.buildingCentres).map(b => b.ix);
     const allIY = Object.values(A.buildingCentres).map(b => b.iy);

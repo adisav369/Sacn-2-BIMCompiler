@@ -18,8 +18,8 @@ function setupScene(A) {
   // §S260c: ACESFilmic tone mapping — preserves color saturation, adds cinematic contrast.
   // NoToneMapping was flat/grey. ACES gives "crisp vibrant" look like Bonsai/Autodesk.
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
-  console.log('§TONEMAPPING type=ACESFilmic exposure=1.15');
+  renderer.toneMappingExposure = 0.45;
+  console.log('§TONEMAPPING type=ACESFilmic exposure=0.45');
   renderer.localClippingEnabled = true;
   renderer.outputColorSpace = THREE.SRGBColorSpace;  // §S259: proper gamma curve for web display
   // §S258: r156 defaults to physically-correct lights (lux/candela) — intensity 1.0 is near-dark.
@@ -119,7 +119,7 @@ function setupScene(A) {
   // Ground plane — positioned after DB load to sit below the lowest building
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(50000, 50000),
-    new THREE.MeshLambertMaterial({ color: 0x1a1208, side: THREE.DoubleSide })  // §S260: dark earth brown — contrasts light buildings
+    new THREE.MeshLambertMaterial({ color: 0x5C4033, side: THREE.DoubleSide })  // §S260e: earth brown — not too bright for shadows, not too dark
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
