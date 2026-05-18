@@ -155,7 +155,7 @@ function setupPicking(A) {
     A.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     A.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     A.raycaster.setFromCamera(A.mouse, A.camera);
-    A.raycaster.firstHitOnly = !!window._bvhReady;  // §6.5 BVH early termination
+    A.raycaster.firstHitOnly = false;  // §S260d: WYSIWYG — check all hits, pick best match (was BVH early termination)
 
     // City mode: check bbox wireframes first
     if (A.CITY_URL) {
@@ -190,7 +190,25 @@ function setupPicking(A) {
       return;
     }
 
-    const hit = hits[0];
+    // §S260d: WYSIWYG — skip non-pickable hits (outlines, low-opacity, invisible)
+    var hit = null;
+    for (var hi = 0; hi < hits.length; hi++) {
+      var h = hits[hi];
+      if (h.object.userData && h.object.userData._isOutline) continue; // TM outline wireframe
+      if (h.object.material && h.object.material.opacity < 0.3) continue; // nearly invisible
+      if (h.object.userData && h.object.userData.isBboxPlaceholder) continue; // bbox placeholder
+      hit = h;
+      break;
+    }
+    if (!hit) { document.getElementById('info-panel').style.display = 'none'; return; }
+    // §S260d: WYSIWYG pick diagnostic — log first 3 hits to trace accuracy
+    var pickInfo = hits.slice(0, 3).map(function(h, i) {
+      var t = h.object.isBatchedMesh ? 'BM' : h.object.isInstancedMesh ? 'IM' : 'M';
+      var g = h.object.userData && h.object.userData.guid || (h.batchId !== undefined ? 'slot:' + h.batchId : '?');
+      var op = h.object.material ? h.object.material.opacity.toFixed(1) : '?';
+      return i + ':' + t + ' d=' + h.distance.toFixed(2) + ' op=' + op + ' g=' + String(g).substring(0, 12);
+    });
+    console.log('§PICK hits=' + hits.length + ' chosen=' + hits.indexOf(hit) + ' ' + pickInfo.join(' | '));
     let guid = null;
     // §S260: BatchedMesh — use batchId to look up guid from _batchMeta
     if (!guid && hit.object.isBatchedMesh && hit.batchId !== undefined && A._batchMeta && A._batchMeta[hit.object.id]) {
@@ -312,6 +330,27 @@ function setupPicking(A) {
         hlPos.copy(hit.point);
         hlSizeX = hlSizeY = hlSizeZ = 0.3;
         console.log('§BBOX_DEBUG MERGED err=' + e.message);
+      }
+    } else if (hit.object.isBatchedMesh && guid) {
+      // §S260d: BatchedMesh geometry bbox covers ALL slots — use DB per-element bbox
+      try {
+        const bboxRows = A.dbQuery(
+          'SELECT center_x, center_y, center_z, bbox_x, bbox_y, bbox_z FROM element_transforms WHERE guid = ?',
+          [guid]
+        );
+        if (bboxRows.length && bboxRows[0][0] != null) {
+          const dbC = A.ifc2three(bboxRows[0][0], bboxRows[0][1], bboxRows[0][2]);
+          hlPos.set(dbC.x, dbC.y, dbC.z);
+          hlSizeX = bboxRows[0][3] || 0.3;
+          hlSizeY = bboxRows[0][5] || 0.3;
+          hlSizeZ = bboxRows[0][4] || 0.3;
+        } else {
+          hlPos.copy(hit.point);
+          hlSizeX = hlSizeY = hlSizeZ = 0.5;
+        }
+      } catch(e) {
+        hlPos.copy(hit.point);
+        hlSizeX = hlSizeY = hlSizeZ = 0.5;
       }
     } else {
       // Individual Mesh or InstancedMesh: geometry bbox is per-element — correct
