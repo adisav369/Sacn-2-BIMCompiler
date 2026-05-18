@@ -406,8 +406,10 @@
       '#table-overlay th{padding:10px 14px;font-weight:600;color:#8ab4ff;background:rgba(20,20,30,0.8);' +
         'white-space:nowrap;text-align:left;border-bottom:1px solid rgba(108,159,255,0.08);position:sticky;top:0;z-index:1;}' +
       '#table-overlay td{padding:11px 14px;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.025);}' +
-      '#table-overlay tr:active td{background:rgba(108,159,255,0.06);}' +
-      '#table-overlay tr.sel td{background:rgba(108,159,255,0.12);color:#fff;}' +
+      '#table-overlay tr:nth-child(even) td{background:rgba(255,255,255,0.02);}' +
+      '#table-overlay tr:nth-child(odd) td{background:rgba(108,159,255,0.03);}' +
+      '#table-overlay tr:active td{background:rgba(108,159,255,0.08);}' +
+      '#table-overlay tr.sel td{background:rgba(108,159,255,0.15);color:#fff;border-left:2px solid #6c9fff;}' +
       '#table-overlay .n{color:#444;}' +
       '</style>' +
       // Title bar with close button
@@ -427,9 +429,12 @@
 
     // Wire up cascading drill interactions
     var accs = ov.querySelectorAll('.acc');
-    var allRecords = records;
     var _selectedPk = null;
+    var _curRow = 0;   // auto-focus first row
+    var _curAcc = 0;
+    var _allHeaderRows = headerRows; // keep full set for reset
 
+    // ── §OV.1 Open a tab (one at a time) ───────────────────────────────
     function openAcc(idx) {
       for (var i = 0; i < accs.length; i++) {
         accs[i].querySelector('.hd').classList.remove('open');
@@ -440,9 +445,12 @@
       var b = a.querySelector('.bd');
       h.classList.add('open');
       b.classList.add('open');
+      _curAcc = idx;
+      _curRow = -1;
 
-      // Lazy-load child tab data filtered by selected PK
-      if (idx > 0 && _selectedPk !== null && a.dataset.table && !b.dataset.ld) {
+      // §OV.2 Lazy-load child tab data filtered by selected PK
+      if (idx > 0 && _selectedPk !== null && a.dataset.table) {
+        // Always reload for current PK (user may have drilled a different record)
         b.dataset.ld = '1';
         var ftName = a.dataset.table;
         var ftFk = a.dataset.fk;
@@ -456,8 +464,8 @@
             for (var ci = 0; ci < cc; ci++) cht += '<th>' + _escHtml(cFields[ci].name || cFields[ci].columnName) + '</th>';
             cht += '</tr>';
             var cRecs = cr[0].values;
-            for (var ri = 0; ri < cRecs.length; ri++) {
-              var obj = {}; for (var k = 0; k < cCols.length; k++) obj[cCols[k]] = cRecs[ri][k];
+            for (var cri = 0; cri < cRecs.length; cri++) {
+              var obj = {}; for (var k = 0; k < cCols.length; k++) obj[cCols[k]] = cRecs[cri][k];
               cht += '<tr>';
               for (var cfi = 0; cfi < cc; cfi++) {
                 var cv = _resolveDisplay(obj, cFields[cfi].columnName);
@@ -467,37 +475,88 @@
             }
             cht += '</table>';
             b.innerHTML = cht;
-            // Update count badge
             a.querySelector('.cnt').textContent = String(cRecs.length);
             console.log('§TABLE_CHILD tab=' + ftName + ' fk=' + ftFk + '=' + _selectedPk + ' rows=' + cRecs.length);
           } else {
             b.innerHTML = '<div style="padding:20px;color:#555;">No records</div>';
             a.querySelector('.cnt').textContent = '0';
+            console.log('§TABLE_CHILD tab=' + ftName + ' fk=' + ftFk + '=' + _selectedPk + ' rows=0');
           }
         } catch(e) {
           b.innerHTML = '<div style="padding:20px;color:#555;">No records</div>';
+          console.log('§TABLE_CHILD tab=' + ftName + ' error=' + e.message);
         }
       }
-      h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // §OV.3 Auto-highlight first data row
+      setTimeout(function() {
+        _highlightRow(0);
+        h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+
+      console.log('§TABLE_OPEN acc=' + idx + '/' + accs.length + ' pk=' + _selectedPk);
     }
 
-    // Title tap → reset to header
+    // ── §OV.4 Drill into a record — reduce header to 1 row, open child ─
+    function drillRecord(pk) {
+      _selectedPk = pk;
+      console.log('§TABLE_DRILL pk=' + pk + ' childTabs=' + (accs.length - 1));
+
+      // Reduce header tab to show only the selected record (1 row, making room)
+      var headerBd = accs[0].querySelector('.bd');
+      var selRow = headerBd.querySelector('tr[data-pk="' + pk + '"]');
+      if (selRow) {
+        var headerTable = headerBd.querySelector('table');
+        var thRow = headerTable.querySelector('tr');
+        headerTable.innerHTML = '';
+        headerTable.appendChild(thRow);
+        headerTable.appendChild(selRow.cloneNode(true));
+        console.log('§TABLE_DRILL header reduced to 1 row for pk=' + pk);
+      }
+
+      // Open first child tab if available, otherwise stay on header
+      if (accs.length > 1) {
+        openAcc(1);
+      } else {
+        console.log('§TABLE_DRILL no child tabs — staying on header');
+      }
+    }
+
+    // ── §OV.5 Reset header to full listing ──────────────────────────────
+    function resetToHeader() {
+      _selectedPk = null;
+      // Restore full header rows
+      var headerBd = accs[0].querySelector('.bd');
+      headerBd.innerHTML = '<table><tr>' + headerTh + '</tr>' + _allHeaderRows + '</table>';
+      openAcc(0);
+      console.log('§TABLE_RESET header restored, records=' + records.length);
+    }
+
+    // ── §OV.6 Highlight a row (cursor) ──────────────────────────────────
+    function _highlightRow(idx) {
+      var openBd = accs[_curAcc].querySelector('.bd');
+      if (!openBd) return;
+      var rows = openBd.querySelectorAll('tr:not(:first-child)');
+      for (var i = 0; i < rows.length; i++) rows[i].classList.remove('sel');
+      if (idx >= 0 && idx < rows.length) {
+        _curRow = idx;
+        rows[idx].classList.add('sel');
+        rows[idx].scrollIntoView({ block: 'nearest' });
+        console.log('§TABLE_FOCUS acc=' + _curAcc + ' row=' + idx + '/' + rows.length);
+      }
+    }
+
+    // ── §OV.7 Title tap → reset to header; X → close ───────────────────
     ov.querySelector('.ti').addEventListener('pointerup', function(e) {
       if (e.target.closest('.cls')) { _closeTableOverlay(); return; }
-      // Reset child tabs (force reload on next drill)
-      for (var i = 1; i < accs.length; i++) {
-        var b = accs[i].querySelector('.bd');
-        b.dataset.ld = '';
-        b.innerHTML = '';
-      }
-      _selectedPk = null;
-      openAcc(0);
+      resetToHeader();
     });
 
-    // Accordion header tap → open that tab
-    // Row tap in header → select record, cascade to next tab
+    // ── §OV.8 Pointer events — tab header tap + row tap ─────────────────
     ov.addEventListener('pointerup', function(e) {
-      if (e.target.closest('.ti')) return; // handled above
+      if (e.target.closest('.ti')) return;
+
+      // Tab header tap → open that tab
       var hd = e.target.closest('.hd');
       if (hd) {
         var a = hd.parentElement;
@@ -505,44 +564,33 @@
         if (idx >= 0) openAcc(idx);
         return;
       }
+
+      // Row tap → drill or navigate
       var row = e.target.closest('tr');
-      if (row && !row.querySelector('th') && row.dataset.pk !== undefined) {
-        // Header row tapped → cascade drill
-        _selectedPk = row.dataset.pk;
-        // Reset child tabs for new PK
-        for (var i = 1; i < accs.length; i++) {
-          var b = accs[i].querySelector('.bd');
-          b.dataset.ld = '';
-          b.innerHTML = '';
-        }
-        if (accs.length > 1) {
-          openAcc(1);
-          console.log('§TABLE_DRILL pk=' + _selectedPk + ' → tab=' + accs[1].dataset.table);
-        }
+      if (!row || row.querySelector('th')) return;
+
+      // Which accordion is this row in?
+      var parentAcc = row.closest('.acc');
+      var accIdx = Array.prototype.indexOf.call(accs, parentAcc);
+
+      if (accIdx === 0 && row.dataset.pk !== undefined) {
+        // §OV.8a Header row tap → drill into this record
+        drillRecord(row.dataset.pk);
+      } else if (accIdx > 0 && accIdx < accs.length - 1) {
+        // §OV.8b Child tab row tap → cascade to next tab
+        openAcc(accIdx + 1);
+        console.log('§TABLE_CASCADE from=' + accIdx + ' to=' + (accIdx + 1));
       }
     });
 
-    // Keyboard navigation: arrows move cursor, Tab = next tab, Enter = drill, Escape = close
-    var _curRow = -1;
-    var _curAcc = 0;
-
-    function _highlightRow(idx) {
-      var openBd = accs[_curAcc].querySelector('.bd');
-      var rows = openBd.querySelectorAll('tr[data-pk], tr:not(:first-child)');
-      // Remove old highlight
-      for (var i = 0; i < rows.length; i++) rows[i].classList.remove('sel');
-      if (idx >= 0 && idx < rows.length) {
-        _curRow = idx;
-        rows[idx].classList.add('sel');
-        rows[idx].scrollIntoView({ block: 'nearest' });
-      }
-    }
-
+    // ── §OV.9 Keyboard navigation ──────────────────────────────────────
     function _onKeyDown(e) {
       if (!_tableOverlay) return;
       var openBd = accs[_curAcc].querySelector('.bd');
-      var rows = openBd.querySelectorAll('tr[data-pk], tr:not(:first-child)');
+      if (!openBd) return;
+      var rows = openBd.querySelectorAll('tr:not(:first-child)');
       var rowCount = rows.length;
+
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         _highlightRow(Math.min(_curRow + 1, rowCount - 1));
@@ -551,37 +599,30 @@
         _highlightRow(Math.max(_curRow - 1, 0));
       } else if (e.key === 'Tab') {
         e.preventDefault();
-        // Next tab (or wrap to header)
         var nextAcc = (_curAcc + 1) % accs.length;
-        _curAcc = nextAcc;
-        _curRow = -1;
         openAcc(nextAcc);
       } else if (e.key === 'Enter' && _curRow >= 0 && rows[_curRow]) {
         e.preventDefault();
-        var row = rows[_curRow];
-        if (row.dataset.pk !== undefined) {
-          _selectedPk = row.dataset.pk;
-          for (var i = 1; i < accs.length; i++) {
-            var b = accs[i].querySelector('.bd');
-            b.dataset.ld = '';
-            b.innerHTML = '';
-          }
-          if (accs.length > 1) {
-            _curAcc = 1;
-            _curRow = -1;
-            openAcc(1);
-          }
+        if (_curAcc === 0 && rows[_curRow].dataset.pk !== undefined) {
+          drillRecord(rows[_curRow].dataset.pk);
+        } else if (_curAcc > 0 && _curAcc < accs.length - 1) {
+          openAcc(_curAcc + 1);
         }
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        _closeTableOverlay();
+        if (_selectedPk !== null) {
+          resetToHeader();  // Escape from drilled → back to full header
+        } else {
+          _closeTableOverlay();
+        }
       }
     }
 
     document.addEventListener('keydown', _onKeyDown);
-    // Store cleanup ref
     ov._keyHandler = _onKeyDown;
 
+    // §OV.10 Auto-open header with first row focused
+    openAcc(0);
     console.log('§TABLE_OVERLAY opened table=' + tableName + ' records=' + records.length + ' fkTabs=' + fkTables.length);
   }
 
@@ -2682,7 +2723,13 @@
     getRecordCount: function () { return _currentRecords.length; },
     getCurrentScreen: function () { return _currentScreen; },
     switchTab:  _switchTab,
-    getTabIdx:  function () { return _currentTabIdx; }
+    getTabIdx:  function () { return _currentTabIdx; },
+    // §DEBUG — whitebox accessors for table overlay testing
+    _test: {
+      drillCallback: _graphDrillCallback,
+      closeTableOverlay: _closeTableOverlay,
+      getTableOverlay: function () { return _tableOverlay; }
+    }
   };
 
   if (typeof window !== 'undefined') window.ADUI = ADUI;
