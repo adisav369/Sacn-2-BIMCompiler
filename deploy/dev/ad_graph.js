@@ -1423,9 +1423,15 @@
 
       if (hit && !_flyTarget) {
         if (elapsed > 500) {
-          // Long press → open all records of this table in accordion
-          console.log('§TAP longPress table=' + hit.tableName + ' type=' + hit.type);
-          if (_onDrill) _onDrill(hit.tableName, hit.windowId, null, 'table');
+          // Long press — TABLE bubble → all records; RECORD/CHILD → that record's accordion
+          console.log('§TAP longPress table=' + hit.tableName + ' type=' + hit.type + ' hasRecord=' + !!hit.record);
+          if (_onDrill) {
+            if (hit.record) {
+              _onDrill(hit.tableName, hit.windowId, hit.record, 'data');
+            } else {
+              _onDrill(hit.tableName, hit.windowId, null, 'table');
+            }
+          }
         } else {
           // Double-tap detection: RECORD only — skip gateways, open panel directly
           var now = Date.now();

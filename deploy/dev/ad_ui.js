@@ -295,8 +295,9 @@
     }
   }
 
-  // §1 Double-tap/long-press TABLE → all records as inline accordion overlay
-  // Renders in-page (not window.open) to avoid mobile popup blocker
+  // §1 Double-tap/long-press TABLE → cascading drill accordion (inline overlay)
+  // Same L&F as _buildAccordionHTML. Header tab shows 3-4 records (scroll for more).
+  // Row tap → current closes, next FK tab opens filtered. Title tap → back to header.
   var _tableOverlay = null;
 
   function _openTableView(tableName) {
@@ -314,29 +315,58 @@
     } catch(e) {}
 
     var shortTable = tableName.replace(/^[A-Z]_/, '').replace(/_/g, ' ');
+    var keyCol = tableName + '_ID';
 
-    // Build rows HTML with FK resolution
-    var headerRow = '';
-    for (var ci = 0; ci < colCount; ci++) {
-      headerRow += '<th>' + _escHtml(fields[ci].name || fields[ci].columnName) + '</th>';
-    }
-    var bodyRows = '';
-    for (var ri = 0; ri < records.length; ri++) {
-      bodyRows += '<tr>';
-      for (var fi = 0; fi < colCount; fi++) {
-        var val = _resolveDisplay(records[ri], fields[fi].columnName);
-        bodyRows += '<td>' + (val ? _escHtml(val.substring(0, 35)) : '<span class="n">\u2014</span>') + '</td>';
+    // Discover FK child tables for this table
+    var fkTables = [];
+    try {
+      var fkr = _db.exec(
+        "SELECT DISTINCT t.TableName, c.ColumnName " +
+        "FROM AD_Column c JOIN AD_Table t ON c.AD_Table_ID = t.AD_Table_ID " +
+        "WHERE c.AD_Reference_ID IN (19, 30) " +
+        "AND c.ColumnName LIKE '%" + tableName + "_ID%' " +
+        "AND t.TableName != '" + tableName + "' AND t.IsActive = 'Y' ORDER BY t.TableName");
+      if (fkr.length) {
+        for (var fi = 0; fi < fkr[0].values.length; fi++) {
+          fkTables.push({ tableName: fkr[0].values[fi][0], fkColumn: fkr[0].values[fi][1] });
+        }
       }
-      bodyRows += '</tr>';
+    } catch(e) {}
+
+    // Build header grid rows
+    var headerTh = '';
+    for (var ci = 0; ci < colCount; ci++) {
+      headerTh += '<th>' + _escHtml(fields[ci].name || fields[ci].columnName) + '</th>';
+    }
+    var headerRows = '';
+    for (var ri = 0; ri < records.length; ri++) {
+      var pk = _caseGet(records[ri], keyCol);
+      headerRows += '<tr data-pk="' + (pk || ri) + '">';
+      for (var hi = 0; hi < colCount; hi++) {
+        var val = _resolveDisplay(records[ri], fields[hi].columnName);
+        headerRows += '<td>' + (val ? _escHtml(val.substring(0, 35)) : '<span class="n">\u2014</span>') + '</td>';
+      }
+      headerRows += '</tr>';
+    }
+
+    // Build child tab headers (closed)
+    var childTabsHtml = '';
+    for (var ti = 0; ti < fkTables.length; ti++) {
+      var ft = fkTables[ti];
+      var ftLabel = ft.tableName.replace(/^[A-Z]_/, '').replace(/_/g, ' ');
+      childTabsHtml += '<div class="acc" data-table="' + _escHtml(ft.tableName) +
+        '" data-fk="' + _escHtml(ft.fkColumn) + '">' +
+        '<div class="hd"><span class="lbl"><span class="chv">\u25B6</span> ' +
+        _escHtml(ftLabel) + '</span><span class="cnt">\u2014</span></div>' +
+        '<div class="bd"></div></div>';
     }
 
     console.log('§TABLE_VIEW table=' + tableName + ' records=' + records.length +
-                ' fields=' + colCount + ' headers=[' + fields.slice(0,6).map(function(f){return f.name||f.columnName;}).join(',') + ']');
+                ' fields=' + colCount + ' fkTabs=' + fkTables.length +
+                ' headers=[' + fields.slice(0,6).map(function(f){return f.name||f.columnName;}).join(',') + ']');
 
-    // Close existing overlay if any
     _closeTableOverlay();
 
-    // Inline overlay — same accordion L&F, slides up from bottom
     var ov = document.createElement('div');
     ov.id = 'table-overlay';
     ov.style.cssText = 'position:fixed;left:0;right:0;bottom:0;top:0;z-index:9000;' +
@@ -345,48 +375,220 @@
     ov.innerHTML =
       '<style>' +
       '@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}' +
+      '#table-overlay *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}' +
       '#table-overlay .ti{padding:16px 20px;font-size:17px;font-weight:700;margin-bottom:14px;' +
         'background:linear-gradient(135deg,#1e3a5f,#2d1b69);border-radius:14px;display:flex;' +
         'justify-content:space-between;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);cursor:pointer;}' +
       '#table-overlay .cnt{font-size:11px;color:#6c9fff;background:rgba(108,159,255,0.1);' +
         'padding:3px 10px;border-radius:10px;font-weight:500;}' +
       '#table-overlay .cls{font-size:22px;color:#6c9fff;padding:0 4px;cursor:pointer;}' +
+      // Accordion cards — colourful left borders per nth-child
       '#table-overlay .acc{margin-bottom:10px;border-radius:12px;overflow:hidden;background:#1a1a2a;' +
-        'border:1px solid rgba(255,255,255,0.06);border-left:3px solid #6c9fff;box-shadow:0 2px 12px rgba(0,0,0,0.2);}' +
+        'border:1px solid rgba(255,255,255,0.06);box-shadow:0 2px 12px rgba(0,0,0,0.2);transition:box-shadow 200ms;}' +
+      '#table-overlay .acc:nth-child(2){border-left:3px solid #6c9fff;}' +
+      '#table-overlay .acc:nth-child(3){border-left:3px solid #7bed9f;}' +
+      '#table-overlay .acc:nth-child(4){border-left:3px solid #ffd93d;}' +
+      '#table-overlay .acc:nth-child(5){border-left:3px solid #ff85a2;}' +
+      '#table-overlay .acc:nth-child(6){border-left:3px solid #a78bfa;}' +
+      '#table-overlay .acc:nth-child(n+7){border-left:3px solid #38d9d9;}' +
       '#table-overlay .acc .hd{padding:14px 18px;display:flex;justify-content:space-between;' +
-        'align-items:center;min-height:52px;background:rgba(108,159,255,0.04);}' +
-      '#table-overlay .acc .hd .lbl{font-size:14px;color:#fff;font-weight:600;display:flex;align-items:center;gap:10px;}' +
-      '#table-overlay .acc .hd .lbl .chv{display:inline-block;transform:rotate(90deg);font-size:11px;color:#6c9fff;}' +
-      '#table-overlay .acc .bd{overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 0;max-height:80vh;}' +
+        'align-items:center;min-height:52px;cursor:pointer;transition:background 150ms;}' +
+      '#table-overlay .acc .hd:active{background:rgba(255,255,255,0.03);}' +
+      '#table-overlay .acc .hd .lbl{font-size:14px;color:#999;display:flex;align-items:center;gap:10px;}' +
+      '#table-overlay .acc .hd .lbl .chv{display:inline-block;transition:transform 250ms ease;font-size:11px;color:#6c9fff;}' +
+      '#table-overlay .acc .hd.open{background:rgba(108,159,255,0.04);}' +
+      '#table-overlay .acc .hd.open .lbl{color:#fff;font-weight:600;}' +
+      '#table-overlay .acc .hd.open .chv{transform:rotate(90deg);}' +
+      '#table-overlay .acc .bd{max-height:0;overflow:hidden;transition:max-height 300ms ease;}' +
+      '#table-overlay .acc .bd.open{max-height:40vh;overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 0;}' +
+      // Grid
       '#table-overlay table{border-collapse:collapse;font-size:13px;min-width:100%;}' +
       '#table-overlay th{padding:10px 14px;font-weight:600;color:#8ab4ff;background:rgba(20,20,30,0.8);' +
-        'white-space:nowrap;text-align:left;border-bottom:1px solid rgba(108,159,255,0.08);}' +
+        'white-space:nowrap;text-align:left;border-bottom:1px solid rgba(108,159,255,0.08);position:sticky;top:0;z-index:1;}' +
       '#table-overlay td{padding:11px 14px;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.025);}' +
       '#table-overlay tr:active td{background:rgba(108,159,255,0.06);}' +
+      '#table-overlay tr.sel td{background:rgba(108,159,255,0.12);color:#fff;}' +
       '#table-overlay .n{color:#444;}' +
       '</style>' +
+      // Title bar with close button
       '<div class="ti"><span>' + _escHtml(shortTable) + '</span>' +
         '<span style="display:flex;align-items:center;gap:12px;">' +
           '<span class="cnt">' + records.length + ' records</span>' +
           '<span class="cls">\u2715</span></span></div>' +
-      '<div class="acc"><div class="hd"><span class="lbl"><span class="chv">\u25B6</span> All Records</span>' +
-        '<span class="cnt">' + records.length + '</span></div>' +
-        '<div class="bd"><table><tr>' + headerRow + '</tr>' + bodyRows + '</table></div></div>';
-
-    // Close on title tap or X button
-    ov.querySelector('.ti').addEventListener('pointerup', function(e) {
-      e.stopPropagation();
-      _closeTableOverlay();
-    });
+      // Header accordion (open) — all records, 3-4 visible via max-height
+      '<div class="acc"><div class="hd open"><span class="lbl"><span class="chv">\u25B6</span> ' +
+        _escHtml(shortTable) + '</span><span class="cnt">' + records.length + '</span></div>' +
+        '<div class="bd open"><table><tr>' + headerTh + '</tr>' + headerRows + '</table></div></div>' +
+      // Child FK tabs (closed)
+      childTabsHtml;
 
     document.body.appendChild(ov);
     _tableOverlay = ov;
-    console.log('§TABLE_OVERLAY opened table=' + tableName + ' records=' + records.length);
+
+    // Wire up cascading drill interactions
+    var accs = ov.querySelectorAll('.acc');
+    var allRecords = records;
+    var _selectedPk = null;
+
+    function openAcc(idx) {
+      for (var i = 0; i < accs.length; i++) {
+        accs[i].querySelector('.hd').classList.remove('open');
+        accs[i].querySelector('.bd').classList.remove('open');
+      }
+      var a = accs[idx];
+      var h = a.querySelector('.hd');
+      var b = a.querySelector('.bd');
+      h.classList.add('open');
+      b.classList.add('open');
+
+      // Lazy-load child tab data filtered by selected PK
+      if (idx > 0 && _selectedPk !== null && a.dataset.table && !b.dataset.ld) {
+        b.dataset.ld = '1';
+        var ftName = a.dataset.table;
+        var ftFk = a.dataset.fk;
+        try {
+          var cr = _db.exec("SELECT * FROM [" + ftName + "] WHERE [" + ftFk + "] = ? LIMIT 50", [_selectedPk]);
+          if (cr.length && cr[0].values.length) {
+            var cCols = cr[0].columns;
+            var cFields = _getFieldsForTable(ftName);
+            var cc = Math.min(cFields.length, 12);
+            var cht = '<table><tr>';
+            for (var ci = 0; ci < cc; ci++) cht += '<th>' + _escHtml(cFields[ci].name || cFields[ci].columnName) + '</th>';
+            cht += '</tr>';
+            var cRecs = cr[0].values;
+            for (var ri = 0; ri < cRecs.length; ri++) {
+              var obj = {}; for (var k = 0; k < cCols.length; k++) obj[cCols[k]] = cRecs[ri][k];
+              cht += '<tr>';
+              for (var cfi = 0; cfi < cc; cfi++) {
+                var cv = _resolveDisplay(obj, cFields[cfi].columnName);
+                cht += '<td>' + (cv ? _escHtml(cv.substring(0, 35)) : '<span class="n">\u2014</span>') + '</td>';
+              }
+              cht += '</tr>';
+            }
+            cht += '</table>';
+            b.innerHTML = cht;
+            // Update count badge
+            a.querySelector('.cnt').textContent = String(cRecs.length);
+            console.log('§TABLE_CHILD tab=' + ftName + ' fk=' + ftFk + '=' + _selectedPk + ' rows=' + cRecs.length);
+          } else {
+            b.innerHTML = '<div style="padding:20px;color:#555;">No records</div>';
+            a.querySelector('.cnt').textContent = '0';
+          }
+        } catch(e) {
+          b.innerHTML = '<div style="padding:20px;color:#555;">No records</div>';
+        }
+      }
+      h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Title tap → reset to header
+    ov.querySelector('.ti').addEventListener('pointerup', function(e) {
+      if (e.target.closest('.cls')) { _closeTableOverlay(); return; }
+      // Reset child tabs (force reload on next drill)
+      for (var i = 1; i < accs.length; i++) {
+        var b = accs[i].querySelector('.bd');
+        b.dataset.ld = '';
+        b.innerHTML = '';
+      }
+      _selectedPk = null;
+      openAcc(0);
+    });
+
+    // Accordion header tap → open that tab
+    // Row tap in header → select record, cascade to next tab
+    ov.addEventListener('pointerup', function(e) {
+      if (e.target.closest('.ti')) return; // handled above
+      var hd = e.target.closest('.hd');
+      if (hd) {
+        var a = hd.parentElement;
+        var idx = Array.prototype.indexOf.call(accs, a);
+        if (idx >= 0) openAcc(idx);
+        return;
+      }
+      var row = e.target.closest('tr');
+      if (row && !row.querySelector('th') && row.dataset.pk !== undefined) {
+        // Header row tapped → cascade drill
+        _selectedPk = row.dataset.pk;
+        // Reset child tabs for new PK
+        for (var i = 1; i < accs.length; i++) {
+          var b = accs[i].querySelector('.bd');
+          b.dataset.ld = '';
+          b.innerHTML = '';
+        }
+        if (accs.length > 1) {
+          openAcc(1);
+          console.log('§TABLE_DRILL pk=' + _selectedPk + ' → tab=' + accs[1].dataset.table);
+        }
+      }
+    });
+
+    // Keyboard navigation: arrows move cursor, Tab = next tab, Enter = drill, Escape = close
+    var _curRow = -1;
+    var _curAcc = 0;
+
+    function _highlightRow(idx) {
+      var openBd = accs[_curAcc].querySelector('.bd');
+      var rows = openBd.querySelectorAll('tr[data-pk], tr:not(:first-child)');
+      // Remove old highlight
+      for (var i = 0; i < rows.length; i++) rows[i].classList.remove('sel');
+      if (idx >= 0 && idx < rows.length) {
+        _curRow = idx;
+        rows[idx].classList.add('sel');
+        rows[idx].scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    function _onKeyDown(e) {
+      if (!_tableOverlay) return;
+      var openBd = accs[_curAcc].querySelector('.bd');
+      var rows = openBd.querySelectorAll('tr[data-pk], tr:not(:first-child)');
+      var rowCount = rows.length;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        _highlightRow(Math.min(_curRow + 1, rowCount - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        _highlightRow(Math.max(_curRow - 1, 0));
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        // Next tab (or wrap to header)
+        var nextAcc = (_curAcc + 1) % accs.length;
+        _curAcc = nextAcc;
+        _curRow = -1;
+        openAcc(nextAcc);
+      } else if (e.key === 'Enter' && _curRow >= 0 && rows[_curRow]) {
+        e.preventDefault();
+        var row = rows[_curRow];
+        if (row.dataset.pk !== undefined) {
+          _selectedPk = row.dataset.pk;
+          for (var i = 1; i < accs.length; i++) {
+            var b = accs[i].querySelector('.bd');
+            b.dataset.ld = '';
+            b.innerHTML = '';
+          }
+          if (accs.length > 1) {
+            _curAcc = 1;
+            _curRow = -1;
+            openAcc(1);
+          }
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        _closeTableOverlay();
+      }
+    }
+
+    document.addEventListener('keydown', _onKeyDown);
+    // Store cleanup ref
+    ov._keyHandler = _onKeyDown;
+
+    console.log('§TABLE_OVERLAY opened table=' + tableName + ' records=' + records.length + ' fkTabs=' + fkTables.length);
   }
 
   function _closeTableOverlay() {
-    if (_tableOverlay && _tableOverlay.parentNode) {
-      _tableOverlay.parentNode.removeChild(_tableOverlay);
+    if (_tableOverlay) {
+      if (_tableOverlay._keyHandler) document.removeEventListener('keydown', _tableOverlay._keyHandler);
+      if (_tableOverlay.parentNode) _tableOverlay.parentNode.removeChild(_tableOverlay);
       _tableOverlay = null;
     }
   }
