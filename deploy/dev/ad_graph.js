@@ -32,6 +32,8 @@
   var _momentumY = 0;      // spin momentum after drag release
   var _momentumX = 0;
   var _lastDragX = 0, _lastDragY = 0;
+  var _lastTapTime = 0;    // double-tap detection
+  var _lastTapNode = null;
   var _focusedNode = null;  // search correlation highlight
   var _focusPulseT = 0;     // 0..1 pulse decay over 2s
   var _maxBubbles = 500;    // §3.4 memory limit
@@ -1424,7 +1426,17 @@
           console.log('§TAP longPress → collapseAll');
           _collapseAll();
         } else {
-          if (hit.type === 'TABLE') {
+          // Double-tap detection: RECORD only — skip gateways, open panel directly
+          var now = Date.now();
+          var isDoubleTap = (_lastTapNode === hit && now - _lastTapTime < 400);
+          _lastTapTime = now;
+          _lastTapNode = hit;
+
+          if (isDoubleTap && _onDrill) {
+            // Double-tap anything → open ALL records of that table
+            console.log('§TAP DOUBLE type=' + hit.type + ' table=' + hit.tableName);
+            _onDrill(hit.tableName, hit.windowId, null, 'table');
+          } else if (hit.type === 'TABLE') {
             console.log('§TAP TABLE→dive table=' + hit.tableName + ' expanded=' + hit.expanded);
             _flyToFront(hit, function () {
               _lastEntityTable = hit.tableName;
@@ -1439,8 +1451,12 @@
             console.log('§TAP RECORD table=' + hit.tableName + ' id=' + hit.recordId +
                         ' expanded=' + hit.expanded + ' children=' + hit.children.length);
             _flyToFront(hit, function () {
-              if (hit.expanded) _collapseNode(hit);
-              else _expandRecord(hit);
+              if (hit.expanded && _onDrill) {
+                // §S259: tapping expanded record → open full data panel (all fields + child tabs)
+                _onDrill(hit.tableName, hit.windowId, hit.record, 'data');
+              } else {
+                _expandRecord(hit);
+              }
             });
           } else if (hit.type === 'CHILD') {
             console.log('§TAP CHILD table=' + hit.tableName + ' id=' + hit.recordId +
@@ -1452,10 +1468,9 @@
                 // Properties gateway → expand property-name bubbles (query picker)
                 if (hit.expanded) _collapseNode(hit);
                 else _expandProperties(hit);
-              } else if (hit._isGateway === 'data') {
-                // Data gateway → expand FK children from this node
-                if (hit.expanded) _collapseNode(hit);
-                else { hit._gatewaysSpawned = true; _expandRecord(hit); }
+              } else if (hit._isGateway === 'data' && _onDrill) {
+                // Data gateway → straight to record panel (no sub-bubbles)
+                _onDrill(hit.tableName, hit.windowId, hit.record, 'data');
               } else if (hit._isPropertyBubble && _onDrill) {
                 // §9.1 Property bubble tap → open panel filtered+sorted by this column
                 _onDrill(hit.tableName, hit.windowId, hit.record, hit._propertyColumn);
@@ -1671,15 +1686,16 @@
     if (_animId) cancelAnimationFrame(_animId);
     _animate();
 
-    var _tInit = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    // Benchmark: FTS5 trigger if available
-    if (typeof ERPSearch !== 'undefined' && ERPSearch.buildIndex && !ERPSearch.isIndexed()) {
-      var _tFts = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      ERPSearch.buildIndex(_db);
-      console.log('§BENCH fts5_build=' + Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - _tFts) + 'ms');
-    }
-    console.log('§BENCH globe_init=' + Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - _tInit) + 'ms nodes=' + _nodes.length);
     console.log('§AD_GRAPH init client=' + client + ' nodes=' + _nodes.length + ' radius=' + Math.round(_radius));
+
+    // Defer FTS5 index build — don't block first paint
+    if (typeof ERPSearch !== 'undefined' && ERPSearch.buildIndex && !ERPSearch.isIndexed()) {
+      setTimeout(function () {
+        var _tFts = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        ERPSearch.buildIndex(_db);
+        console.log('§BENCH fts5_build=' + Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - _tFts) + 'ms (deferred)');
+      }, 100);
+    }
   }
 
   function destroy() {

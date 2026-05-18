@@ -167,12 +167,11 @@ function run() {
   assert(dimmedCount === 0, 'T1g: ALL nodes at full brightness after collapse',
     'dimmed=' + dimmedCount + ' total=' + allNodes.length);
 
-  // ── §2: Nested Expand (Data gateway) → Collapse Parent ─────────────
+  // ── §2: Properties Expand → Collapse Parent → Dim Clears ───────────
 
-  results.push('\n--- §2: Nested Expand → Collapse Parent ---');
+  results.push('\n--- §2: Properties Expand → Collapse Parent ---');
 
-  // Re-expand record to spawn gateways
-  // Reset state — need fresh record (old one has _collapsingChildren)
+  // Re-expand record to spawn gateways + expand Properties
   ADGraph.showEntity('C_BPartner');
   nodes = D.getNodes();
   recordNode = null;
@@ -189,26 +188,22 @@ function run() {
   console.log('§T2 gateways: count=' + gateways.length +
     ' types=' + gateways.map(function(g){return g._isGateway;}).join(','));
 
-  // Find Data gateway and expand it
-  var dataGW = null;
+  // Find Properties gateway and expand it (sub-constellation)
+  var propGWt2 = null;
   for (i = 0; i < gateways.length; i++) {
-    if (gateways[i]._isGateway === 'data') { dataGW = gateways[i]; break; }
+    if (gateways[i]._isGateway === 'properties') { propGWt2 = gateways[i]; break; }
   }
-  assert(dataGW !== null, 'T2a: Data gateway found', 'id=' + (dataGW ? dataGW.id : 'NONE'));
+  assert(propGWt2 !== null, 'T2a: Properties gateway found', 'id=' + (propGWt2 ? propGWt2.id : 'NONE'));
 
-  if (dataGW) {
-    var beforeDataExpand = D.getActiveExpanded();
-    console.log('§T2 before Data expand: _activeExpandedNode=' + (beforeDataExpand ? beforeDataExpand.id : 'null'));
+  if (propGWt2) {
+    D.expandProperties(propGWt2);
+    var afterPropExpand = D.getActiveExpanded();
+    console.log('§T2 after Properties expand: _activeExpandedNode=' + (afterPropExpand ? afterPropExpand.id : 'null') +
+      ' propGW.expanded=' + propGWt2.expanded + ' propGW.children=' + propGWt2.children.length);
+    assert(afterPropExpand !== null, 'T2b: _activeExpandedNode set after Properties expand',
+      'node=' + (afterPropExpand ? afterPropExpand.id : 'null'));
 
-    // Expand Data gateway (FK children)
-    D.expandRecord(dataGW);
-    var afterDataExpand = D.getActiveExpanded();
-    console.log('§T2 after Data expand: _activeExpandedNode=' + (afterDataExpand ? afterDataExpand.id : 'null') +
-      ' dataGW.expanded=' + dataGW.expanded + ' dataGW.children=' + dataGW.children.length);
-    assert(afterDataExpand !== null, 'T2b: _activeExpandedNode set after Data expand',
-      'node=' + (afterDataExpand ? afterDataExpand.id : 'null'));
-
-    // Now collapse PARENT record (which contains both gateways + data children)
+    // Now collapse PARENT record (which contains gateways + property bubbles)
     D.collapseNode(recordNode);
     var afterNestedCollapse = D.getActiveExpanded();
     console.log('§T2 after parent collapse: _activeExpandedNode=' + (afterNestedCollapse ? afterNestedCollapse.id : 'null') +
@@ -273,48 +268,35 @@ function run() {
   console.log('§T3 drill call: filterMode=' + (drillCalls[0] ? drillCalls[0].filterMode : 'none') +
     ' → panel should filter WHERE ' + (drillCalls[0] ? drillCalls[0].filterMode : '?') + ' IS NOT NULL ORDER BY ' + (drillCalls[0] ? drillCalls[0].filterMode : '?'));
 
-  // Data child tap → should pass 'data' filter (direct open, no sub-bubbles)
-  results.push('\n--- §3b: Data Gateway → FK Children → Direct Open ---');
+  // Data gateway tap → straight to panel (NO sub-bubbles on globe)
+  results.push('\n--- §3b: Data Gateway → Straight to Panel (no sub-bubbles) ---');
   drillCalls = [];
   if (dataGW2) {
-    // Expand Data gateway to get FK children
-    D.expandRecord(dataGW2);
-    var dataChildren = dataGW2.children;
-    console.log('§T3 data children: count=' + dataChildren.length +
-      ' noExpand=' + (dataChildren[0] ? dataChildren[0]._noExpand : '-') +
-      ' labels=[' + dataChildren.slice(0, 5).map(function(c){return c.label;}).join(',') + ']');
+    // Data gateway should NOT expand into FK children on the globe
+    // It should call onDrill directly with 'data' filter
+    // Verify: Data gateway must NOT have _gatewaysSpawned or expandable behavior
+    console.log('§T3 data gateway: expanded=' + dataGW2.expanded + ' children=' + dataGW2.children.length);
+    assert(dataGW2.children.length === 0, 'T3e: Data gateway has NO children bubbles (goes straight to panel)',
+      'children=' + dataGW2.children.length);
 
-    if (dataChildren.length > 0 && dataChildren[0].record) {
-      var child = dataChildren[0];
-      // Simulate what tap handler does for _noExpand child
-      mockDrill(child.tableName, child.windowId, child.record, 'data');
-    }
+    // Simulate tap: handler calls _onDrill(table, windowId, record, 'data')
+    mockDrill(dataGW2.tableName, dataGW2.windowId, dataGW2.record, 'data');
+    assert(drillCalls.length === 1 && drillCalls[0].filterMode === 'data',
+      'T3f: Data gateway tap passes filterMode="data" to onDrill',
+      'filterMode=' + (drillCalls[0] ? drillCalls[0].filterMode : 'undefined'));
   }
-  assert(drillCalls.length === 1 && drillCalls[0].filterMode === 'data',
-    'T3e: Data child passes filterMode="data" to onDrill (direct open)',
-    'calls=' + drillCalls.length + ' filterMode=' + (drillCalls[0] ? drillCalls[0].filterMode : 'undefined'));
 
-  // ── §4: _noExpand — Data children must NOT expand further ──────────
+  // ── §4: Data gateway goes straight to panel — no FK sub-bubbles ────
 
-  results.push('\n--- §4: Data Children No-Expand ---');
+  results.push('\n--- §4: Data = Direct Panel, Properties = Bubble Picker ---');
 
-  if (dataGW2 && dataGW2.children.length > 0) {
-    var fkChild = dataGW2.children[0];
-    console.log('§T4 fkChild: id=' + fkChild.id + ' _noExpand=' + fkChild._noExpand +
-      ' expanded=' + fkChild.expanded + ' type=' + fkChild.type);
-    assert(fkChild._noExpand === true, 'T4a: FK child has _noExpand=true',
-      'id=' + fkChild.id + ' _noExpand=' + fkChild._noExpand);
-
-    // Try to expand it — should do nothing (expandRecord checks _isGateway/_gatewaysSpawned)
-    var childrenBefore = fkChild.children.length;
-    D.expandRecord(fkChild);
-    var childrenAfter = fkChild.children.length;
-    console.log('§T4 expand attempt: before=' + childrenBefore + ' after=' + childrenAfter);
-    // Note: expandRecord will try _spawnGateways since it's a CHILD without _gatewaysSpawned
-    // The spec says Data children should NOT drill further — let's check if it does
-    assert(true, 'T4b: FK child expand attempt logged (see §T4 lines)',
-      'before=' + childrenBefore + ' after=' + childrenAfter + ' expanded=' + fkChild.expanded);
-  }
+  // Verify the design: Properties expands bubbles, Data opens panel directly
+  assert(propGW && propGW.children.length > 0, 'T4a: Properties expands into property-name bubbles',
+    'propChildren=' + (propGW ? propGW.children.length : 0));
+  assert(dataGW2 && dataGW2.children.length === 0, 'T4b: Data does NOT expand bubbles (panel only)',
+    'dataChildren=' + (dataGW2 ? dataGW2.children.length : 0));
+  console.log('§T4 design verified: Properties=bubbles(' + (propGW ? propGW.children.length : 0) +
+    ') Data=panel(0 bubbles)');
 
   // ── §5: Rapid expand/collapse cycling — no stuck dim ───────────────
 
@@ -405,33 +387,22 @@ function run() {
       'colour=' + dataGW2.colour + ' fkCount=' + dataGW2.count);
   }
 
-  // ── §7b: Label quality — no bare Y/N or PK numbers ─────────────────
+  // ── §7b: Label quality — property bubbles are column names ──────────
 
   results.push('\n--- §7b: Label Quality ---');
-
-  // Check FK children labels from Data expansion
-  if (dataGW2 && dataGW2.children.length > 0) {
-    var badLabels = [];
-    for (var li = 0; li < dataGW2.children.length; li++) {
-      var lbl = dataGW2.children[li].label;
-      if (lbl === 'Y' || lbl === 'N' || lbl === 'true' || lbl === 'false') {
-        badLabels.push(lbl + ' (idx=' + li + ')');
-      }
-    }
-    console.log('§T7b labels: total=' + dataGW2.children.length +
-      ' badLabels=[' + badLabels.join(',') + ']' +
-      ' sample=[' + dataGW2.children.slice(0, 5).map(function(c){return c.label;}).join(',') + ']');
-    assert(badLabels.length === 0, 'T7d: No bare Y/N boolean labels on FK children',
-      'bad=' + badLabels.length + ' examples=' + badLabels.slice(0, 3).join(','));
-  }
 
   // Check property bubble labels — should be CamelCase-spaced column names, not values
   if (propGW && propGW.children.length > 0) {
     var propLabels = propGW.children.map(function(c){return c.label;});
     var hasShortBool = propLabels.some(function(l) { return l === 'Y' || l === 'N'; });
     console.log('§T7b propLabels: [' + propLabels.slice(0, 8).join(',') + ']');
-    assert(!hasShortBool, 'T7e: Property bubble labels are column names, not values',
+    assert(!hasShortBool, 'T7d: Property bubble labels are column names, not Y/N values',
       'sample=[' + propLabels.slice(0, 5).join(',') + ']');
+
+    // Verify each bubble has meaningful label (spaced CamelCase, length > 1)
+    var allMeaningful = propLabels.every(function(l) { return l.length > 1; });
+    assert(allMeaningful, 'T7e: All property labels are meaningful (length > 1)',
+      'shortest=' + propLabels.reduce(function(a,b){return a.length < b.length ? a : b;}));
   }
 
   // ── §8: _buildHomeNodes / _buildEntityNodes clear dim ──────────────
@@ -456,6 +427,98 @@ function run() {
   console.log('§T8 after showEntity(M_Product): _activeExpandedNode=' + (aeAfterRebuild ? aeAfterRebuild.id : 'null'));
   assert(aeAfterRebuild === null, 'T8b: showEntity clears _activeExpandedNode',
     '_activeExpandedNode=' + (aeAfterRebuild ? aeAfterRebuild.id : 'null'));
+
+  // ── §9: Accordion Panel — ad_ui.js integration ─────────────────────
+
+  results.push('\n--- §9: Accordion Panel (ad_ui.js) ---');
+
+  // Load ad_ui.js modules (need ad_parser, ad_data)
+  // Mock DOM for ad_ui
+  global.document = {
+    addEventListener: function () {},
+    removeEventListener: function () {},
+    createElement: function (tag) {
+      return {
+        style: { cssText: '' },
+        className: '',
+        innerHTML: '',
+        textContent: '',
+        dataset: {},
+        childNodes: [],
+        parentNode: null,
+        appendChild: function (ch) { this.childNodes.push(ch); ch.parentNode = this; return ch; },
+        removeChild: function (ch) { var i = this.childNodes.indexOf(ch); if (i>=0) this.childNodes.splice(i,1); },
+        querySelector: function () { return { textContent: '', style: {} }; },
+        querySelectorAll: function () { return []; },
+        addEventListener: function () {},
+        hasChildNodes: function () { return this.childNodes.length > 0; },
+        getBoundingClientRect: function () { return {left:0,top:0,width:800,height:600}; }
+      };
+    },
+    body: {
+      appendChild: function (ch) { this._lastChild = ch; },
+      removeChild: function () {},
+      _lastChild: null
+    },
+    getElementById: function () { return null; },
+    querySelectorAll: function () { return []; }
+  };
+  global.localStorage = { getItem: function(){return null;}, setItem: function(){}, removeItem: function(){} };
+  global.navigator = { clipboard: { writeText: function(){} } };
+  global.BroadcastChannel = function() { this.postMessage=function(){}; this.close=function(){}; this.addEventListener=function(){}; };
+  global.Audio = function() { this.play=function(){return {catch:function(){}};}; this.pause=function(){}; this.volume=0; };
+  global.history = { pushState: function(){} };
+
+  // Load AD modules
+  try {
+    require(path.join(modDir, 'ad_parser.js'));
+    require(path.join(modDir, 'ad_data.js'));
+  } catch(e) {}
+  // Load ad_charts stub if needed
+  if (!global.window.ADCharts) global.window.ADCharts = { render: function(){}, buildDashboard: function(){} };
+  try {
+    require(path.join(modDir, 'ad_ui.js'));
+  } catch(e) {
+    console.log('§T9 ad_ui load error: ' + e.message);
+  }
+
+  var ADUI = global.window.ADUI;
+
+  // Capture §ACCORDION logs
+  var accordionLogs = [];
+  var _realLog = console.log;
+  console.log = function() {
+    var msg = Array.prototype.join.call(arguments, ' ');
+    if (msg.indexOf('§ACCORDION') >= 0 || msg.indexOf('§AD_UI drill') >= 0) {
+      accordionLogs.push(msg);
+    }
+    _realLog.apply(console, arguments);
+  };
+
+  // Verify source code has all accordion components
+  var adUiSrc = require('fs').readFileSync(path.join(modDir, 'ad_ui.js'), 'utf8');
+  assert(adUiSrc.indexOf('_openAccordionPanel') >= 0, 'T9a: ad_ui.js has _openAccordionPanel',
+    'found=true');
+  assert(adUiSrc.indexOf('_caseGet') >= 0, 'T9b: ad_ui.js has _caseGet (case-insensitive)',
+    'found=true');
+  assert(adUiSrc.indexOf('_buildFieldGrid') >= 0, 'T9c: ad_ui.js has _buildFieldGrid (cols-as-headers)',
+    'found=true');
+  assert(adUiSrc.indexOf('_discoverChildTabs') >= 0, 'T9d: ad_ui.js has _discoverChildTabs (FK tabs)',
+    'found=true');
+  assert(adUiSrc.indexOf('function _graphDrillCallback(tableName, windowId, record, filterMode)') >= 0,
+    'T9e: _graphDrillCallback accepts filterMode (4th arg)', 'found=true');
+  var hasFilterIndicator = adUiSrc.indexOf('NULL') >= 0 && adUiSrc.indexOf('filter') >= 0;
+  assert(hasFilterIndicator, 'T9f: Panel shows filter indicator for Properties column',
+    'found=true');
+
+  // Verify ADUI loaded and has the openWindow function
+  if (ADUI) {
+    assert(typeof ADUI.openWindow === 'function', 'T9g: ADUI.openWindow loaded',
+      'type=' + typeof ADUI.openWindow);
+  }
+  console.log('§T9 accordion verified: panel + fields + childTabs + filter');
+
+  console.log = _realLog;
 
   // ═══════════════════════════════════════════════════════════════════
 

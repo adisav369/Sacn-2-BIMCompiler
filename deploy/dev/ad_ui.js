@@ -216,7 +216,17 @@
   var _graphCanvas = null;
   var _graphContainer = null;  // the div that goes fullscreen
 
-  function _graphDrillCallback(tableName, windowId, record) {
+  function _graphDrillCallback(tableName, windowId, record, filterMode) {
+    console.log('§AD_UI drill table=' + tableName + ' windowId=' + windowId +
+                ' filterMode=' + (filterMode || 'none') + ' hasRecord=' + !!record);
+
+    // §S259b — Open accordion panel instead of full window navigation
+    if (record) {
+      _openAccordionPanel(tableName, windowId, record, filterMode);
+      return;
+    }
+
+    // Fallback: no record → open window listing
     var wid = windowId;
     if (!wid) {
       try {
@@ -230,21 +240,467 @@
     }
     if (wid) {
       openWindow(wid);
-      if (record) {
-        var keyCol = tableName + '_ID';
-        var keyVal = record[keyCol];
-        if (keyVal !== undefined) {
-          for (var ri = 0; ri < _currentRecords.length; ri++) {
-            if (_currentRecords[ri][keyCol] === keyVal) {
-              _currentRecordIdx = ri;
-              _renderWindow();
-              console.log('§AD_UI drillToRecord key=' + keyCol + ' val=' + keyVal + ' idx=' + ri);
-              break;
-            }
+    }
+  }
+
+  // ── §S259b Accordion Grid Record Panel ────────────────────────────────
+  // Slides up from bottom. Fields as columns. Tabs as accordion rows.
+  // filterMode = column name (Properties) | 'data' (all fields) | null (full window)
+
+  var _accordionPanel = null;
+  var _accordionExpandedTab = 0;
+
+  function _openAccordionPanel(tableName, windowId, record, filterMode) {
+    // §S259b — Open as NEW TAB (full page, multi-screen)
+
+    // Double-tap → all records listing
+    if (filterMode === 'table' || !record) {
+      _openTableView(tableName);
+      return;
+    }
+
+    var title = _resolveTitle(tableName, record);
+    var fields = _getFieldsForTable(tableName);
+    var fkTabs = _discoverChildTabs(tableName, record);
+
+    // Apply filter: Properties → only non-null columns, sorted by picked column
+    var displayFields = fields;
+    if (filterMode && filterMode !== 'data') {
+      displayFields = fields.filter(function(f) {
+        var val = _caseGet(record, f.columnName);
+        return val !== null && val !== undefined && val !== '';
+      });
+      displayFields.sort(function(a, b) {
+        if (a.columnName === filterMode) return -1;
+        if (b.columnName === filterMode) return 1;
+        return (a.seqNo || 0) - (b.seqNo || 0);
+      });
+    }
+    // Always include child tabs — user expects master-detail accordion
+    // (fkTabs already discovered above)
+
+    // Build full HTML for new tab
+    var html = _buildAccordionHTML(title, tableName, displayFields, record, fkTabs, filterMode);
+
+    // Open in new tab
+    var win = window.open('', '_blank');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+      console.log('§ACCORDION newTab table=' + tableName + ' filter=' + (filterMode || 'all') +
+                  ' fields=' + displayFields.length + ' childTabs=' + fkTabs.length + ' title=' + title);
+    } else {
+      console.log('§ACCORDION blocked (popup blocker?) table=' + tableName);
+    }
+  }
+
+  // §1 Double-tap TABLE → all records in a modern scrollable grid
+  function _openTableView(tableName) {
+    var fields = _getFieldsForTable(tableName);
+    var colCount = Math.min(fields.length, 12);
+    var records = [];
+    try {
+      var r = _db.exec("SELECT * FROM [" + tableName + "] WHERE IsActive = 'Y' ORDER BY 1 DESC LIMIT 100");
+      if (r.length) {
+        var cols = r[0].columns;
+        records = r[0].values.map(function(row) {
+          var obj = {}; for (var i = 0; i < cols.length; i++) obj[cols[i]] = row[i]; return obj;
+        });
+      }
+    } catch(e) {}
+
+    var shortTable = tableName.replace(/^[A-Z]_/, '').replace(/_/g, ' ');
+
+    // Build rows HTML with FK resolution
+    var headerRow = '';
+    for (var ci = 0; ci < colCount; ci++) {
+      headerRow += '<th>' + _escHtml(fields[ci].name || fields[ci].columnName) + '</th>';
+    }
+    var bodyRows = '';
+    for (var ri = 0; ri < records.length; ri++) {
+      bodyRows += '<tr>';
+      for (var fi = 0; fi < colCount; fi++) {
+        var val = _resolveDisplay(records[ri], fields[fi].columnName);
+        bodyRows += '<td>' + (val ? _escHtml(val.substring(0, 35)) : '<span class="null">\u2014</span>') + '</td>';
+      }
+      bodyRows += '</tr>';
+    }
+
+    console.log('§TABLE_VIEW table=' + tableName + ' records=' + records.length +
+                ' fields=' + colCount + ' headers=[' + fields.slice(0,6).map(function(f){return f.name||f.columnName;}).join(',') + ']');
+
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<title>' + _escHtml(shortTable) + ' (' + records.length + ')</title><style>' +
+      '*{box-sizing:border-box;}' +
+      'body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#0e0e14;color:#eee;}' +
+      '.header{padding:16px 20px;font-size:18px;font-weight:700;border-bottom:1px solid rgba(108,159,255,0.15);position:sticky;top:0;background:#0e0e14;z-index:10;display:flex;align-items:center;justify-content:space-between;}' +
+      '.header .count{font-size:13px;color:#6c9fff;font-weight:400;}' +
+      '.grid{overflow-x:auto;padding:0 8px 80px;}' +
+      'table{border-collapse:collapse;width:100%;font-size:13px;}' +
+      'thead{position:sticky;top:60px;z-index:5;}' +
+      'th{padding:10px 12px;font-weight:600;color:#6c9fff;background:#12121a;white-space:nowrap;text-align:left;border-bottom:2px solid rgba(108,159,255,0.2);}' +
+      'td{padding:10px 12px;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.03);}' +
+      'tr:hover td{background:rgba(108,159,255,0.04);}' +
+      '.null{color:#444;}' +
+      '</style></head><body>' +
+      '<div class="header"><span>' + _escHtml(shortTable) + '</span><span class="count">' + records.length + ' records</span></div>' +
+      '<div class="grid"><table><thead><tr>' + headerRow + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div>' +
+      '</body></html>';
+
+    var win = window.open('', '_blank');
+    if (win) { win.document.write(html); win.document.close(); }
+  }
+
+  // §1 Cascading Drill — one tab open at a time, fields ACROSS, row tap = next opens
+  function _buildAccordionHTML(title, tableName, fields, record, fkTabs, filterMode) {
+    var colCount = Math.min(fields.length, 20);
+
+    // §1.3 Header grid: fields as columns, data row
+    var headerTh = '', headerTd = '';
+    for (var ci = 0; ci < colCount; ci++) {
+      var colLabel = fields[ci].name || fields[ci].columnName;
+      var isFilter = filterMode && fields[ci].columnName === filterMode;
+      headerTh += '<th' + (isFilter ? ' class="hl"' : '') + '>' + _escHtml(colLabel) + '</th>';
+      var display = _resolveDisplay(record, fields[ci].columnName);
+      headerTd += '<td>' + (display ? _escHtml(display.substring(0, 40)) : '<span class="n">\u2014</span>') + '</td>';
+    }
+
+    // §1.5 Child tabs (closed accordions)
+    var tabRows = '';
+    for (var ti = 0; ti < fkTabs.length; ti++) {
+      var t = fkTabs[ti];
+      tabRows += '<div class="acc" data-table="' + _escHtml(t.tableName) + '" data-fk="' + _escHtml(t.fkColumn) + '" data-key="' + t.parentKey + '">' +
+        '<div class="hd"><span class="lbl"><span class="chv">\u25B6</span> ' + _escHtml(t.label) + '</span><span class="cnt">' + t.count + '</span></div>' +
+        '<div class="bd"></div></div>';
+    }
+
+    var filterBadge = (filterMode && filterMode !== 'data')
+      ? '<span class="fb">' + _escHtml(filterMode) + ' \u2260 NULL</span>' : '';
+
+    console.log('§GRID cols=' + colCount + ' rows=1 headers=[' +
+      fields.slice(0, 8).map(function(f){return f.name || f.columnName;}).join(',') + ']' +
+      ' row0=[' + fields.slice(0, 8).map(function(f){
+        var v = _resolveDisplay(record, f.columnName);
+        return v ? v.substring(0,15) : '\u2014';
+      }).join(',') + ']' + (filterMode ? ' filter=' + filterMode : ''));
+
+    return '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">' +
+      '<title>' + _escHtml(title) + '</title><style>' +
+      '*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}' +
+      'body{margin:0;font:14px/1.4 system-ui,-apple-system,sans-serif;background:#0f0f1a;color:#eee;-webkit-overflow-scrolling:touch;padding:16px;}' +
+      // Title — gradient card
+      '.ti{padding:16px 20px;font-size:17px;font-weight:700;margin-bottom:14px;background:linear-gradient(135deg,#1e3a5f,#2d1b69);border-radius:14px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);}' +
+      '.fb{font-size:11px;color:#ff6b35;font-weight:500;background:rgba(255,107,53,0.1);padding:3px 10px;border-radius:8px;}' +
+      // Accordion panels — colourful cards
+      '.acc{margin-bottom:10px;border-radius:12px;overflow:hidden;background:#1a1a2a;border:1px solid rgba(255,255,255,0.06);box-shadow:0 2px 12px rgba(0,0,0,0.2);transition:box-shadow 200ms;}' +
+      '.acc:nth-child(2){border-left:3px solid #6c9fff;}' +  // Header = blue
+      '.acc:nth-child(3){border-left:3px solid #7bed9f;}' +  // 1st child = green
+      '.acc:nth-child(4){border-left:3px solid #ffd93d;}' +  // 2nd = gold
+      '.acc:nth-child(5){border-left:3px solid #ff85a2;}' +  // 3rd = pink
+      '.acc:nth-child(6){border-left:3px solid #a78bfa;}' +  // 4th = purple
+      '.acc:nth-child(n+7){border-left:3px solid #38d9d9;}' + // rest = teal
+      '.acc .hd{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;min-height:52px;cursor:pointer;transition:background 150ms;}' +
+      '.acc .hd:active{background:rgba(255,255,255,0.03);}' +
+      '.acc .hd .lbl{font-size:14px;color:#999;display:flex;align-items:center;gap:10px;}' +
+      '.acc .hd .lbl .chv{display:inline-block;transition:transform 250ms ease;font-size:11px;color:#6c9fff;}' +
+      '.acc .hd.open{background:rgba(108,159,255,0.04);}' +
+      '.acc .hd.open .lbl{color:#fff;font-weight:600;}' +
+      '.acc .hd.open .chv{transform:rotate(90deg);}' +
+      '.acc .hd .cnt{font-size:11px;color:#6c9fff;background:rgba(108,159,255,0.1);padding:3px 10px;border-radius:10px;font-weight:500;}' +
+      '.acc .bd{max-height:0;overflow:hidden;transition:max-height 300ms ease;}' +
+      '.acc .bd.open{max-height:70vh;overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 0;}' +
+      // Grid — clean, readable
+      'table{border-collapse:collapse;font-size:13px;min-width:100%;margin:0;}' +
+      'th{padding:10px 14px;font-weight:600;color:#8ab4ff;background:rgba(20,20,30,0.8);white-space:nowrap;text-align:left;border-bottom:1px solid rgba(108,159,255,0.08);}' +
+      'th.hl{color:#ff6b35;}' +
+      'td{padding:11px 14px;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.025);}' +
+      'tr:active td{background:rgba(108,159,255,0.06);}' +
+      '.n{color:#444;}' +
+      '</style></head><body>' +
+      '<div class="ti" id="ti">' + _escHtml(title) + ' ' + filterBadge + '</div>' +
+      // Header accordion (open)
+      '<div class="acc" data-idx="0"><div class="hd open"><span class="lbl"><span class="chv">\u25B6</span> Header</span></div>' +
+      '<div class="bd open"><table><tr>' + headerTh + '</tr><tr>' + headerTd + '</tr></table></div></div>' +
+      // Child tab accordions (closed)
+      tabRows +
+      '<script>' +
+      'var accs=document.querySelectorAll(".acc");' +
+      'document.getElementById("ti").addEventListener("pointerup",function(){openAcc(0);});' +
+      'document.addEventListener("pointerup",function(e){' +
+        'var hd=e.target.closest(".hd");' +
+        'if(hd){var a=hd.parentElement;var i=Array.prototype.indexOf.call(accs,a);if(i>=0)openAcc(i);return;}' +
+        'var row=e.target.closest("tr");' +
+        'if(row&&!row.querySelector("th")){' +
+          'var cur=row.closest(".acc");var ci=Array.prototype.indexOf.call(accs,cur);' +
+          'if(ci>=0&&ci<accs.length-1){openAcc(ci+1);}' +
+        '}' +
+      '});' +
+      'function openAcc(idx){' +
+        'for(var i=0;i<accs.length;i++){accs[i].querySelector(".hd").classList.remove("open");accs[i].querySelector(".bd").classList.remove("open");}' +
+        'var a=accs[idx];var h=a.querySelector(".hd");var b=a.querySelector(".bd");' +
+        'h.classList.add("open");b.classList.add("open");' +
+        'if(!b.dataset.ld&&a.dataset.table){b.dataset.ld="1";' +
+          'b.innerHTML="<div style=\\"padding:20px;color:#555\\">Loading...</div>";' +
+          'if(window.opener&&window.opener._accordionLoadTab){' +
+            'var r=window.opener._accordionLoadTab(a.dataset.table,a.dataset.fk,a.dataset.key);' +
+            'b.innerHTML=r||"<div style=\\"padding:20px;color:#555\\">No records</div>";}' +
+          'else{b.innerHTML="<div style=\\"padding:20px;color:#555\\">Reopen from globe</div>";}' +
+        '}' +
+        'h.scrollIntoView({behavior:"smooth",block:"start"});' +
+      '}' +
+      '<\/script></body></html>';
+  }
+
+  // Expose tab loader for child tab lazy-loading from new tab
+  if (typeof window !== 'undefined') {
+    window._accordionLoadTab = function(tableName, fkColumn, keyVal) {
+      console.log('§LOAD_TAB table=' + tableName + ' fk=' + fkColumn + ' key=' + keyVal + ' hasDb=' + !!_db);
+      if (!_db) return null;
+      try {
+        var r = _db.exec("SELECT * FROM [" + tableName + "] WHERE [" + fkColumn + "] = ? LIMIT 50", [keyVal]);
+        if (!r.length || !r[0].values.length) return null;
+        var cols = r[0].columns;
+        var records = r[0].values.map(function(row) {
+          var obj = {}; for (var i = 0; i < cols.length; i++) obj[cols[i]] = row[i]; return obj;
+        });
+        var fields = _getFieldsForTable(tableName);
+        var colCount = Math.min(fields.length, 15);
+        var html = '<div class="grid-wrap"><table><tr>';
+        for (var ci = 0; ci < colCount; ci++) {
+          html += '<th>' + _escHtml(fields[ci].name || fields[ci].columnName) + '</th>';
+        }
+        html += '</tr>';
+        var maxRows = Math.min(records.length, 20);
+        for (var ri = 0; ri < maxRows; ri++) {
+          html += '<tr>';
+          for (var fi = 0; fi < colCount; fi++) {
+            var val = _resolveDisplay(records[ri], fields[fi].columnName);
+            html += '<td>' + (val ? _escHtml(val.substring(0, 40)) : '<span class="null">\u2014</span>') + '</td>';
           }
+          html += '</tr>';
+        }
+        html += '</table></div>';
+        if (records.length > 20) html += '<div style="padding:8px 12px;color:#666;font-size:11px;">\u2193 ' + (records.length - 20) + ' more rows</div>';
+        console.log('§GRID_CHILD tab=' + tableName + '(' + records.length + ') fields=' + colCount +
+                    ' rows=' + maxRows + ' headers=[' + fields.slice(0, 6).map(function(f){return f.name||f.columnName;}).join(',') + ']');
+        return html;
+      } catch (e) {
+        console.log('§GRID_CHILD error tab=' + tableName + ' err=' + e.message);
+        return null;
+      }
+    };
+  }
+
+  // §1.3–1.4 Fields as columns, data as rows (CSS Grid)
+  function _buildFieldGrid(fields, records, filterMode) {
+    var container = document.createElement('div');
+    var colCount = Math.min(fields.length, 20);  // cap visible columns
+    container.style.cssText = 'display:grid;grid-template-columns:repeat(' + colCount + ',minmax(80px,200px));' +
+      'gap:1px;font-size:12px;background:rgba(255,255,255,0.02);border-radius:6px;overflow:hidden;';
+
+    // Column headers
+    var colHeaders = [];
+    for (var ci = 0; ci < colCount; ci++) {
+      var th = document.createElement('div');
+      th.style.cssText = 'padding:8px 10px;font-weight:600;color:#6c9fff;background:rgba(18,18,28,0.8);' +
+        'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;';
+      var colLabel = fields[ci].name || fields[ci].columnName;
+      colHeaders.push(colLabel);
+      // Highlight the filter column
+      if (filterMode && fields[ci].columnName === filterMode) {
+        th.style.color = '#ff6b35';
+        th.style.fontWeight = '700';
+      }
+      th.textContent = colLabel;
+      container.appendChild(th);
+    }
+
+    // Data rows (max 5 visible)
+    var maxRows = Math.min(records.length, 5);
+    var rowSamples = [];
+    for (var ri = 0; ri < maxRows; ri++) {
+      var rowVals = [];
+      for (var fi = 0; fi < colCount; fi++) {
+        var td = document.createElement('div');
+        td.style.cssText = 'padding:6px 10px;color:#ddd;background:rgba(18,18,28,0.6);' +
+          'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+        var val = _caseGet(records[ri], fields[fi].columnName);
+        if (val === null || val === undefined || val === '') {
+          td.textContent = '\u2014';
+          td.style.color = '#555';
+          rowVals.push('\u2014');
+        } else {
+          td.textContent = String(val).substring(0, 30);
+          rowVals.push(String(val).substring(0, 20));
+        }
+        container.appendChild(td);
+      }
+      if (ri === 0) rowSamples = rowVals;
+    }
+    console.log('§GRID cols=' + colCount + ' rows=' + maxRows +
+                ' headers=[' + colHeaders.slice(0, 8).join(',') + ']' +
+                ' row0=[' + rowSamples.slice(0, 8).join(',') + ']' +
+                (filterMode ? ' filter=' + filterMode : ''));
+
+    if (records.length > 5) {
+      var more = document.createElement('div');
+      more.style.cssText = 'grid-column:1/-1;padding:6px 10px;color:#666;font-size:11px;text-align:center;';
+      more.textContent = '↓ ' + (records.length - 5) + ' more rows';
+      container.appendChild(more);
+    }
+
+    return container;
+  }
+
+  // Case-insensitive record field getter (SQLite may return lowercase columns)
+  function _caseGet(rec, colName) {
+    if (rec[colName] !== undefined) return rec[colName];
+    var lower = colName.toLowerCase();
+    for (var k in rec) {
+      if (k.toLowerCase() === lower) return rec[k];
+    }
+    return undefined;
+  }
+
+  // §4.3 Resolve FK value → Name/DocumentNo. Returns display string.
+  function _resolveDisplay(rec, colName) {
+    var val = _caseGet(rec, colName);
+    if (val === null || val === undefined || val === '') return null;
+    // If column ends with _ID, try FK resolution
+    if (colName.indexOf('_ID') >= 0 && typeof ADData !== 'undefined' && ADData.resolveFK) {
+      var resolved = ADData.resolveFK(_db, colName, val);
+      if (resolved) return resolved;
+    }
+    return String(val);
+  }
+
+  // Get AD_Field metadata for a table (header tab only — TabLevel=0, deduplicated)
+  function _getFieldsForTable(tableName) {
+    try {
+      var r = _db.exec(
+        "SELECT DISTINCT f.Name, c.ColumnName, f.SeqNo " +
+        "FROM AD_Field f " +
+        "JOIN AD_Column c ON f.AD_Column_ID = c.AD_Column_ID " +
+        "JOIN AD_Tab t ON f.AD_Tab_ID = t.AD_Tab_ID " +
+        "JOIN AD_Table tbl ON t.AD_Table_ID = tbl.AD_Table_ID " +
+        "WHERE tbl.TableName = ? AND f.IsDisplayed = 'Y' AND t.TabLevel = 0 " +
+        "ORDER BY f.SeqNo", [tableName]);
+      if (!r.length) {
+        // Fallback: try without TabLevel filter
+        r = _db.exec(
+          "SELECT DISTINCT f.Name, c.ColumnName, f.SeqNo " +
+          "FROM AD_Field f " +
+          "JOIN AD_Column c ON f.AD_Column_ID = c.AD_Column_ID " +
+          "JOIN AD_Tab t ON f.AD_Tab_ID = t.AD_Tab_ID " +
+          "JOIN AD_Table tbl ON t.AD_Table_ID = tbl.AD_Table_ID " +
+          "WHERE tbl.TableName = ? AND f.IsDisplayed = 'Y' " +
+          "ORDER BY f.SeqNo", [tableName]);
+      }
+      if (!r.length) {
+        console.log('§FIELDS fallback table=' + tableName + ' (no AD_Field rows)');
+        return _fallbackFields(tableName);
+      }
+      // Deduplicate by ColumnName, skip system columns
+      var seen = {};
+      var SKIP_COLS = {ad_client_id:1, ad_org_id:1, created:1, createdby:1, updated:1, updatedby:1, isactive:1};
+      var fields = [];
+      for (var i = 0; i < r[0].values.length; i++) {
+        var col = r[0].values[i][1];
+        if (SKIP_COLS[col.toLowerCase()]) continue;
+        if (!seen[col]) {
+          seen[col] = true;
+          fields.push({ name: r[0].values[i][0], columnName: col, seqNo: r[0].values[i][2] });
         }
       }
+      console.log('§FIELDS table=' + tableName + ' count=' + fields.length +
+                  ' cols=[' + fields.slice(0, 8).map(function(f){return f.columnName;}).join(',') + ']');
+      return fields;
+    } catch (e) {
+      console.log('§FIELDS error table=' + tableName + ' err=' + e.message);
+      return _fallbackFields(tableName);
     }
+  }
+
+  // Fallback: use record keys as field list (skip system + _ID PKs)
+  function _fallbackFields(tableName) {
+    var SKIP = {ad_client_id:1, ad_org_id:1, created:1, createdby:1, updated:1, updatedby:1, isactive:1};
+    try {
+      var r = _db.exec("SELECT * FROM [" + tableName + "] LIMIT 1");
+      if (r.length) {
+        return r[0].columns.map(function(col, i) {
+          return { name: col, columnName: col, seqNo: i * 10 };
+        }).filter(function(f) {
+          return !SKIP[f.columnName.toLowerCase()];
+        });
+      }
+    } catch (e) {}
+    return [];
+  }
+
+  // Resolve title from record
+  function _resolveTitle(tableName, record) {
+    var name = _caseGet(record, 'Name') || _caseGet(record, 'DocumentNo') ||
+               _caseGet(record, 'Value') || _caseGet(record, 'Description') || '';
+    var shortTable = tableName.replace(/^[A-Z]_/, '').replace(/_/g, ' ');
+    return shortTable + (name ? ': ' + name : '');
+  }
+
+  // Discover FK child tabs for a record
+  function _discoverChildTabs(tableName, record) {
+    var tabs = [];
+    var keyCol = tableName + '_ID';
+    var keyVal = _caseGet(record, keyCol);
+    if (!keyVal) return tabs;
+
+    try {
+      var r = _db.exec(
+        "SELECT DISTINCT t.TableName, c.ColumnName " +
+        "FROM AD_Column c " +
+        "JOIN AD_Table t ON c.AD_Table_ID = t.AD_Table_ID " +
+        "WHERE c.AD_Reference_ID IN (19, 30) " +
+        "AND c.ColumnName LIKE '%" + tableName + "_ID%' " +
+        "AND t.TableName != '" + tableName + "' " +
+        "AND t.IsActive = 'Y' " +
+        "ORDER BY t.TableName");
+      if (!r.length) return tabs;
+
+      for (var i = 0; i < r[0].values.length; i++) {
+        var fkTable = r[0].values[i][0];
+        var fkCol = r[0].values[i][1];
+        try {
+          var cnt = _db.exec("SELECT COUNT(*) FROM [" + fkTable + "] WHERE [" + fkCol + "] = ?", [keyVal]);
+          var count = (cnt.length && cnt[0].values.length) ? Number(cnt[0].values[0][0]) : 0;
+          if (count > 0) {
+            var label = fkTable.replace(/^[A-Z]_/, '').replace(/_/g, ' ');
+            tabs.push({ tableName: fkTable, fkColumn: fkCol, parentKey: keyVal, label: label, count: count });
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
+
+    console.log('§ACCORDION childTabs table=' + tableName + ' id=' + keyVal +
+                ' tabs=' + tabs.map(function(t){return t.tableName+'('+t.count+')';}).join(','));
+    return tabs;
+  }
+
+  // Load child records for a child tab
+  function _loadChildRecords(tabInfo) {
+    try {
+      var r = _db.exec("SELECT * FROM [" + tabInfo.tableName + "] WHERE [" + tabInfo.fkColumn + "] = ? LIMIT 50",
+                       [tabInfo.parentKey]);
+      if (!r.length) return [];
+      var cols = r[0].columns;
+      return r[0].values.map(function(row) {
+        var obj = {};
+        for (var i = 0; i < cols.length; i++) obj[cols[i]] = row[i];
+        return obj;
+      });
+    } catch (e) { return []; }
+  }
+
+  function _escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
   function _graphLongPressCallback(node) {

@@ -100,7 +100,7 @@
   }
 
   // ── 2. Module list — §8 step 3 ────────────────────────────────────
-  var V = '?v=15';
+  var V = '?v=17';
   var MODULES = [
     'kernel_ops.js' + V,
     'ad_parser.js' + V,
@@ -124,11 +124,9 @@
 
     log('Loading ERP modules...');
     _t0 = performance.now();
-    for (var i = 0; i < MODULES.length; i++) {
-      await loadScript(MODULES[i]);
-    }
+    await Promise.all(MODULES.map(function(m) { return loadScript(m); }));
     _bench.modules_load = Math.round(performance.now() - _t0);
-    console.log('§BENCH modules_load=' + _bench.modules_load + 'ms');
+    console.log('§BENCH modules_load=' + _bench.modules_load + 'ms (parallel)');
 
     log('Initialising database...');
     _t0 = performance.now();
@@ -207,15 +205,27 @@
       _t0 = performance.now();
       // Try IndexedDB cache first (v13 = full 378-table GW export, S259)
       var cached = await idbGet('ad_seed_v13');
-      if (cached) {
-        log('Loading from cache...');
-        db.close();
-        db = new SQL.Database(new Uint8Array(cached));
-        _bench.db_fetch = Math.round(performance.now() - _t0);
-        _bench.db_size = Math.round(cached.byteLength / 1024);
-        _bench.db_source = 'idb_cache';
-        log('Cached (' + (cached.byteLength / 1024 / 1024).toFixed(1) + 'MB, 378 tables)');
-      } else {
+      var cacheValid = false;
+      if (cached && cached.byteLength > 1000) {
+        // Validate: must be a real SQLite DB (header = "SQLite format 3")
+        var header = new Uint8Array(cached, 0, 16);
+        var sig = String.fromCharCode.apply(null, header.slice(0, 6));
+        if (sig === 'SQLite') {
+          log('Loading from cache...');
+          db.close();
+          db = new SQL.Database(new Uint8Array(cached));
+          _bench.db_fetch = Math.round(performance.now() - _t0);
+          _bench.db_size = Math.round(cached.byteLength / 1024);
+          _bench.db_source = 'idb_cache';
+          cacheValid = true;
+          log('Cached (' + (cached.byteLength / 1024 / 1024).toFixed(1) + 'MB)');
+        } else {
+          console.log('§ERP_HTML cache corrupt (bad header), re-fetching');
+        }
+      } else if (cached) {
+        console.log('§ERP_HTML cache empty (' + (cached ? cached.byteLength : 0) + 'B), re-fetching');
+      }
+      if (!cacheValid) {
         // Network fetch with progress — progressive first-time experience
         log('Downloading AD seed (13MB, 378 tables)...');
         try {
