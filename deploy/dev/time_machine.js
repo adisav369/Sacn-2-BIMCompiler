@@ -101,11 +101,16 @@
   var _cineTransitFrom = null;
   var _cineTransitTo = null;
   var _cineEstabAngle = 0;
+  var _cineEstabStart = null; // §S260d: predetermined establishing arc start
+  var _cineEstabEnd = null;   // §S260d: predetermined establishing arc end
+  var _cineOpenStart = null;  // §S260d: opening shot camera position
+  var _cineOpenTarget = null; // §S260d: opening shot look-at target
+  var _BEAT_OPENING = 80;     // §S260d: opening shot ticks (~6.4s) — full day/night cycle, let user sink in
   var _cineSeenZones = {};    // spatial zone keys already featured
   var _cineCloseupCount = 0;  // scenes since last establishing
-  var _BEAT_CLOSEUP = 30;     // ticks per scene (~3-6s at 80ms/tick)
-  var _BEAT_TRANSIT = 15;     // ticks smooth crane travel
-  var _BEAT_ESTAB = 25;       // ticks wide establishing orbit
+  var _BEAT_CLOSEUP = 50;     // §S260d: ticks per scene (~4s at 80ms/tick) — slow enough to appreciate
+  var _BEAT_TRANSIT = 25;     // §S260d: ticks smooth crane travel (~2s)
+  var _BEAT_ESTAB = 40;       // §S260d: ticks wide establishing orbit (~3.2s)
   var _cinePeeled = [];       // meshes temporarily hidden for clear line-of-sight
   var _cineHeroSlowdown = false; // true during hero beats → slow tick to hourly
 
@@ -130,8 +135,8 @@
   //   'flythrough' — tight on devices appearing in series (cam tracks along chain)
   //   'panoramic'  — wide orbit over dense construction area with shadow sweep
   //   'hero'       — tight 360° orbit around a single significant element (column, equipment)
-  var _PANORAMIC_THRESHOLD = 12; // clusters with ≥12 elements → panoramic
-  var _HERO_INTERVAL = 5;        // insert a hero shot every N scenes
+  var _PANORAMIC_THRESHOLD = 30; // §S260d: clusters with ≥30 elements → panoramic (was 12 — fewer, better scenes)
+  var _HERO_INTERVAL = 8;        // §S260d: insert a hero shot every 8 scenes (was 5 — too frequent)
   var _FLYTHROUGH_DIST = 5;      // §S260c: metres from device for flythrough (closer = more dramatic)
   var _PANORAMIC_DIST = 25;      // §S260c: metres back for panoramic orbit (was 40, tighter)
   var _HERO_DIST = 3;            // §S260c: metres from element for hero orbit (tight 360°)
@@ -166,40 +171,33 @@
     return chain;
   }
 
-  function computeStoryboard(ops, guidPosMap) {
-    // §S260c v2: Complete rewrite — 5 architectural fixes:
-    // 1. XZ-only clustering (horizontal, ignore Y) — prevents vertical stacks
-    // 2. Sub-filter by ifc_class — produces clean "row of sprinklers" sequences
-    // 3. Scene duration = real timeline span (startTs→endTs), not fixed tick count
-    // 4. No zone dedup/wrapping — each scene is unique, plays once
-    // 5. Scenes tied to timeline — camera advances when cursor reaches scene.endTs
+  // §S260d: Progressive storyboard — cluster ops into scenes
+  // fromIdx/toIdx allow chunked processing: first call does ops[0..500], rest done in background.
+  function _clusterOps(ops, guidPosMap, fromIdx, toIdx) {
     var scenes = [];
-    var CLUSTER_RADIUS_XZ = 12; // horizontal only — tighter than old 15m 3D
-    var i = 0;
-    while (i < ops.length) {
+    var CLUSTER_RADIUS_XZ = 20; // §S260d: wider clusters = fewer, denser scenes (was 12)
+    var i = fromIdx;
+    while (i < toIdx) {
       var op = ops[i];
       var guid = op.output_guid || (op.input_guids && op.input_guids[0]);
       var pos = guid ? guidPosMap[guid] : null;
       var cls = (op.parameters && op.parameters.cls) || '';
       if (!pos) { i++; continue; }
 
-      // Collect consecutive ops within XZ radius AND same ifc_class
       var cx = pos.x, cz = pos.z, count = 1;
       var guids = [guid];
       var startIdx = i, endIdx = i;
       var startTs = op.start_ts;
       var endTs = op.end_ts || op.start_ts;
-      var cy = pos.y; // track Y for center computation
+      var cy = pos.y;
 
       for (var j = i + 1; j < ops.length && j < i + 300; j++) {
         var g2 = ops[j].output_guid || (ops[j].input_guids && ops[j].input_guids[0]);
         var p2 = g2 ? guidPosMap[g2] : null;
         var cls2 = (ops[j].parameters && ops[j].parameters.cls) || '';
         if (!p2) continue;
-        // Same class filter: only group same ifc_class for clean linear sequences
-        if (cls2 !== cls && count < 3) { /* allow first 2 mixed, then enforce class */ }
+        if (cls2 !== cls && count < 3) { /* allow first 2 mixed */ }
         else if (cls2 !== cls && count >= 3) continue;
-        // XZ distance only (horizontal plane)
         var dx = p2.x - cx/count, dz = p2.z - cz/count;
         var distXZ = Math.sqrt(dx*dx + dz*dz);
         if (distXZ < CLUSTER_RADIUS_XZ) {
@@ -210,79 +208,125 @@
         } else if (count > 3) break;
       }
 
-      if (count >= 3) {
+      // §S260d: Minimum 8 elements per scene — fewer, better quality scenes
+      if (count >= 8) {
         var center = new THREE.Vector3(cx/count, cy/count, cz/count);
         var type = count >= _PANORAMIC_THRESHOLD ? 'panoramic' : 'flythrough';
-
         var chain = null;
         if (type === 'flythrough' && guids.length >= 3) {
           chain = buildSpatialChain(guids, guidPosMap);
         }
-
         scenes.push({
           center: center, guids: guids, startIdx: startIdx, endIdx: endIdx,
           count: count, type: type, cls: cls,
-          startTs: startTs, endTs: endTs, // real timeline span
-          chain: chain, angle: 0
+          startTs: startTs, endTs: endTs,
+          chain: chain, angle: Math.random() * Math.PI * 2, _angleLazy: true,
+          _arcV: 2 // §S260d: cache version marker
         });
         i = endIdx + 1;
       } else {
         i++;
       }
     }
+    return { scenes: scenes, nextIdx: i >= toIdx ? toIdx : i };
+  }
 
-    // No zone dedup — each scene is unique, plays once in timeline order
-    var filtered = scenes;
-
-    // §S260c: Mobile throttle — cap scenes, skip heroes + raycasting
-    var _isMob = !!(window._isMobile || window._isMobileTM);
-    var MAX_SCENES_MOBILE = 10; // mobile: only first 10 scenes, panoramic+flythrough only
-
-    if (_isMob) {
-      // Mobile: cap scenes, no heroes, no raycasting angles
-      if (filtered.length > MAX_SCENES_MOBILE) filtered.length = MAX_SCENES_MOBILE;
-      for (var k = 0; k < filtered.length; k++) {
-        filtered[k].angle = Math.random() * Math.PI * 2; // random angle (no raycast)
-      }
-      console.log('§CINE_STORYBOARD_MOBILE scenes=' + filtered.length + ' (capped, no heroes)');
-      return filtered;
+  // §S260d: Finalize scenes — add heroes (desktop), assign lazy angles
+  function _finalizeScenes(scenes, guidPosMap, isMobile) {
+    if (isMobile) {
+      var MAX_SCENES_MOBILE = 10;
+      if (scenes.length > MAX_SCENES_MOBILE) scenes.length = MAX_SCENES_MOBILE;
+      return scenes;
     }
-
-    // Desktop: insert hero shots — every N scenes, pick a single element for 360° orbit
+    // Desktop: insert hero shots every N scenes
     var withHeroes = [];
-    for (var h = 0; h < filtered.length; h++) {
-      withHeroes.push(filtered[h]);
-      if ((h + 1) % _HERO_INTERVAL === 0 && filtered[h].guids.length > 0) {
-        var heroGuid = filtered[h].guids[filtered[h].guids.length - 1];
+    for (var h = 0; h < scenes.length; h++) {
+      withHeroes.push(scenes[h]);
+      if ((h + 1) % _HERO_INTERVAL === 0 && scenes[h].guids.length > 0) {
+        var heroGuid = scenes[h].guids[scenes[h].guids.length - 1];
         var heroPos = guidPosMap[heroGuid];
         if (heroPos) {
           withHeroes.push({
-            center: heroPos.clone(), guids: [heroGuid], startIdx: filtered[h].startIdx,
-            endIdx: filtered[h].endIdx, count: 1, zoneKey: 'hero',
-            type: 'hero', firstTs: filtered[h].firstTs, chain: null, angle: 0
+            center: heroPos.clone(), guids: [heroGuid], startIdx: scenes[h].startIdx,
+            endIdx: scenes[h].endIdx, count: 1, zoneKey: 'hero',
+            type: 'hero', firstTs: scenes[h].firstTs, chain: null,
+            angle: Math.random() * Math.PI * 2, _angleLazy: true
           });
         }
       }
     }
+    return withHeroes;
+  }
 
-    // Desktop: pick occlusion-free camera angles via raycasting
-    for (var k = 0; k < withHeroes.length; k++) {
-      var sDist = withHeroes[k].type === 'panoramic' ? _PANORAMIC_DIST :
-                  withHeroes[k].type === 'hero' ? _HERO_DIST : _FLYTHROUGH_DIST;
-      withHeroes[k].angle = pickClearAngle(withHeroes[k].center, sDist);
-    }
+  var _bgBuildRaf = 0; // rAF handle for background storyboard building
 
-    // Log stats
+  // §S260d: Progressive storyboard — compute first chunk immediately, build rest in background.
+  // Returns the initial scenes (enough for first ~3 scenes). Appends more via rAF chunks.
+  function computeStoryboard(ops, guidPosMap) {
+    var _isMob = !!(window._isMobile || window._isMobileTM);
+    var FIRST_CHUNK = Math.min(500, ops.length); // first 500 ops = instant (<5ms)
+
+    // Phase 1: immediate — first chunk
+    var result = _clusterOps(ops, guidPosMap, 0, FIRST_CHUNK);
+    var allRawScenes = result.scenes;
+    var cursor = result.nextIdx;
+
+    // Finalize what we have so far
+    var initial = _finalizeScenes(allRawScenes.slice(), guidPosMap, _isMob);
+
     var nFly = 0, nPan = 0, nHero = 0;
-    for (var m = 0; m < withHeroes.length; m++) {
-      if (withHeroes[m].type === 'flythrough') nFly++;
-      else if (withHeroes[m].type === 'panoramic') nPan++;
+    for (var m = 0; m < initial.length; m++) {
+      if (initial[m].type === 'flythrough') nFly++;
+      else if (initial[m].type === 'panoramic') nPan++;
       else nHero++;
     }
-    console.log('§CINE_STORYBOARD scenes=' + withHeroes.length +
-      ' (flythrough=' + nFly + ' panoramic=' + nPan + ' hero=' + nHero +
-      ') from ' + ops.length + ' ops');
-    return withHeroes;
+    console.log('§CINE_STORYBOARD_INIT scenes=' + initial.length +
+      ' (fly=' + nFly + ' pan=' + nPan + ' hero=' + nHero +
+      ') from first ' + FIRST_CHUNK + '/' + ops.length + ' ops');
+
+    if (cursor >= ops.length || _isMob) {
+      // Small building or mobile — done
+      return initial;
+    }
+
+    // Phase 2: background — process remaining ops in rAF chunks while playing
+    // We mutate _cineStoryboard directly (it's the live array)
+    if (_bgBuildRaf) { cancelAnimationFrame(_bgBuildRaf); _bgBuildRaf = 0; }
+    var CHUNK_SIZE = 1000; // ops per frame (~2-5ms each)
+    function buildChunk() {
+      if (cursor >= ops.length) {
+        // All done — re-finalize with full scene list
+        var final = _finalizeScenes(allRawScenes, guidPosMap, false);
+        // Replace storyboard from current scene onwards (keep already-played scenes)
+        var keepN = _cineSceneIdx;
+        for (var ri = 0; ri < final.length; ri++) {
+          _cineStoryboard[keepN + ri] = final[ri];
+        }
+        _cineStoryboard.length = keepN + final.length;
+        var nf2=0, np2=0, nh2=0;
+        for (var mm = 0; mm < _cineStoryboard.length; mm++) {
+          if (_cineStoryboard[mm].type === 'flythrough') nf2++;
+          else if (_cineStoryboard[mm].type === 'panoramic') np2++;
+          else nh2++;
+        }
+        console.log('§CINE_STORYBOARD_DONE scenes=' + _cineStoryboard.length +
+          ' (fly=' + nf2 + ' pan=' + np2 + ' hero=' + nh2 + ') from ' + ops.length + ' ops');
+        viewerStatus('🚁 ' + _cineStoryboard.length + ' scenes — playing');
+        _bgBuildRaf = 0;
+        // Cache full storyboard
+        cachePut('movie', _cineStoryboard);
+        return;
+      }
+      var end = Math.min(cursor + CHUNK_SIZE, ops.length);
+      var chunk = _clusterOps(ops, guidPosMap, cursor, end);
+      for (var ci = 0; ci < chunk.scenes.length; ci++) allRawScenes.push(chunk.scenes[ci]);
+      cursor = end;
+      console.log('§CINE_BG_CHUNK ops=' + cursor + '/' + ops.length + ' rawScenes=' + allRawScenes.length);
+      _bgBuildRaf = requestAnimationFrame(buildChunk);
+    }
+    _bgBuildRaf = requestAnimationFrame(buildChunk);
+
+    return initial;
   }
 
   // ── Occlusion-aware angle selection ──
@@ -387,63 +431,7 @@
   var _zeroMatrix = null; // lazy init
   var _savedInstanceMatrices = {}; // meshId → { idx → Matrix4 }
 
-  // ── §S260c: Construction sound effects (Web Audio API — no files needed) ──
-  var _audioCtx = null;
-  var _soundThrottle = 0; // prevent overlapping sounds
-
-  function _getAudio() {
-    if (!_audioCtx) {
-      try {
-        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        console.log('§AUDIO_INIT state=' + _audioCtx.state);
-      } catch(e) { return null; }
-    }
-    // Browser blocks AudioContext until user gesture — resume if suspended
-    if (_audioCtx.state === 'suspended') {
-      _audioCtx.resume().catch(function() {});
-    }
-    return _audioCtx.state === 'running' ? _audioCtx : null;
-  }
-
-  function playKnock() {
-    var ctx = _getAudio(); if (!ctx) return;
-    var now = performance.now();
-    if (now - _soundThrottle < 300) return; // max ~3/sec
-    _soundThrottle = now;
-    // Short noise burst → fast decay = hammer/knock
-    var buf = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate);
-    var data = buf.getChannelData(0);
-    for (var i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
-    var src = ctx.createBufferSource();
-    src.buffer = buf;
-    var gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
-    src.connect(gain).connect(ctx.destination);
-    src.start();
-  }
-
-  function playWeld() {
-    var ctx = _getAudio(); if (!ctx) return;
-    var now = performance.now();
-    if (now - _soundThrottle < 400) return;
-    _soundThrottle = now;
-    // Higher noise + oscillator = welding crackle
-    var dur = 0.15 + Math.random() * 0.1;
-    var buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
-    var data = buf.getChannelData(0);
-    for (var i = 0; i < data.length; i++) {
-      var t = i / ctx.sampleRate;
-      data[i] = (Math.random() * 2 - 1) * 0.3 * Math.sin(t * 4000) * (1 - i / data.length);
-    }
-    var src = ctx.createBufferSource();
-    src.buffer = buf;
-    var gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.1, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-    src.connect(gain).connect(ctx.destination);
-    src.start();
-  }
+  // §S260d: Audio removed — can't hear on most browsers anyway
 
   // ── Metal sparks + construction smoke (desktop only) ──
   var _sparkSystems = [];   // active spark/smoke point clouds
@@ -586,6 +574,26 @@
       }
     }
 
+    // §S260d: Whitebox material state logger — module-level counter persists across ticks
+    function _wbMat(tag, obj) {
+      _wbLogCount++;
+      if (_wbLogCount > 10 && _wbLogCount % 500 !== 0) return;
+      var m = obj.material;
+      if (!m) return;
+      var rgb = m.color ? ('rgb=' + m.color.r.toFixed(2) + ',' + m.color.g.toFixed(2) + ',' + m.color.b.toFixed(2)) : 'no-color';
+      var em = m.emissive ? ('em=' + m.emissive.r.toFixed(2) + ',' + m.emissive.g.toFixed(2) + ',' + m.emissive.b.toFixed(2) + ' eI=' + (m.emissiveIntensity || 0).toFixed(2)) : 'no-em';
+      var pbr = (m.roughness !== undefined) ? (' rough=' + m.roughness.toFixed(2) + ' metal=' + (m.metalness || 0).toFixed(2)) : '';
+      var bright = m.color && (m.color.r > 0.9 && m.color.g > 0.9 && m.color.b > 0.9);
+      var emBright = m.emissive && m.emissiveIntensity > 0.3;
+      var flag = (bright ? ' ⚠WHITE' : '') + (emBright ? ' ⚠EMISSIVE' : '');
+      console.log('§WB_MAT ' + tag + ' guid=' + (obj.userData && obj.userData.guid || '?').substring(0,12) +
+        ' cls=' + (obj.userData && obj.userData.ifcClass || '?') +
+        ' type=' + (m.type || '?') +
+        ' ' + rgb + ' ' + em + pbr + ' op=' + (m.opacity || 1).toFixed(2) +
+        ' transp=' + !!m.transparent + ' hi=' + !!obj._tm_highlighted +
+        ' mesh=' + (obj.isBatchedMesh ? 'BM' : obj.isInstancedMesh ? 'IM' : 'M') + flag);
+    }
+
     // ── Single unified traverse: visibility + shadow + sparks + guidPosMap ──
     // Merged from 4 separate traversals → 1 for 100K+ element performance.
     var _shadowCasters = 0, _shadowReceivers = 0;
@@ -628,31 +636,30 @@
         if (isFrontier) {
           obj.visible = true;
           if (obj.isMesh) {
+            _wbMat('FRONTIER', obj);
             var ft = frontier[g].t;
             // §S260c v2: Close-up = wireframe outline (preserves material).
             // Far away = subtle emissive glow (visible at distance).
             if (_camFollow && _cineBeat === 'closeup') {
               applyOutline(obj, ft < 0.15 ? 0x44ffff : 0xff8c00);
-              // Effects on arrival (first 15%): sparks+weld for steel, dust+knock for others
+              // Effects on arrival (first 15%): sparks for steel, dust for others
               if (!_isMobileTM && !_isLargeBuilding && _playing && ft < 0.15) {
                 var effectPos = new THREE.Vector3();
                 obj.getWorldPosition(effectPos);
                 if (frontier[g].isSteel) {
                   spawnSparks(effectPos, app.scene);
-                  playWeld();
                 } else {
                   spawnDust(effectPos, app.scene);
-                  playKnock();
                 }
               }
             } else {
-              applyHighlight(obj, 0xff8c00, 0.9);
+              // §S260d: Stronger glow for distant view — visible from afar
+              applyHighlight(obj, 0xff8c00, 0.85, 0.6);
             }
           }
         } else if (isRecent || isPlaced) {
-          // §S260c v2: No special highlight on recently placed — just show clean material
           obj.visible = true;
-          if (obj._tm_highlighted) restoreMaterial(obj);
+          if (obj._tm_highlighted) { _wbMat('RESTORE', obj); restoreMaterial(obj); }
         } else {
           obj.visible = false;
           if (obj._tm_highlighted) restoreMaterial(obj);
@@ -722,6 +729,7 @@
           }
         }
         obj.visible = anyVis;
+        if (anyVis) _wbMat('BATCHED', obj);
         if (app._shadowOn) {
           obj.castShadow = anyVis;
           obj.receiveShadow = anyVis;
@@ -758,11 +766,13 @@
         }
         obj.instanceMatrix.needsUpdate = true;
         obj.visible = anyVisible;
+        if (anyVisible) _wbMat('INSTANCED' + (anyFrontier ? '_FRONTIER' : ''), obj);
 
-        if (anyFrontier) {
-          applyHighlight(obj, 0xff8c00, 0.75);
-        } else if (obj._tm_highlighted) {
-          restoreMaterial(obj);
+        // §S260d: DO NOT highlight InstancedMesh — shared material affects ALL instances,
+        // not just frontier ones. This was the white box flash (entire mesh turned orange).
+        // Frontier instances are visible via matrix restore; non-frontier via zero matrix.
+        if (obj._tm_highlighted) {
+          restoreMaterial(obj); // clean up any leftover highlight from previous code
         }
       }
     });
@@ -838,19 +848,27 @@
 
       // Advance storyboard: move to next scene when cursor passes current scene's end time
       var scene = _cineStoryboard[_cineSceneIdx];
-      // §S260c v2: Timeline-driven transition — scene ends when its ops are done
-      // Fallback: if scene has no endTs (old cache), use tick-based
+      // §S260d: Scene ends when BOTH conditions met:
+      // 1. Cursor past scene's timeline end (ops are done)
+      // 2. Minimum beat ticks elapsed (ensures enough real screen time for camera arc)
       var sceneEnded = false;
-      if (scene && scene.endTs) {
-        sceneEnded = _cursor >= scene.endTs;
-      } else {
-        var beatLen = scene && scene.type === 'panoramic' ? _BEAT_ESTAB : _BEAT_CLOSEUP;
-        sceneEnded = _cineTick > beatLen;
-      }
+      var beatLen = scene && scene.type === 'panoramic' ? _BEAT_ESTAB : _BEAT_CLOSEUP;
+      var timelineEnded = scene && scene.endTs ? (_cursor >= scene.endTs) : true;
+      var beatDone = _cineTick > beatLen;
+      sceneEnded = timelineEnded && beatDone;
 
       if (scene && _cineBeat === 'closeup' && sceneEnded) {
-        restorePeeled(); // clean up before transition
-        _cineHeroSlowdown = false; // restore normal tick speed
+        // §S260d: If background builder still running and we're at the end, hold here
+        if (_bgBuildRaf && _cineSceneIdx >= _cineStoryboard.length - 1) {
+          // Stay on current scene — more scenes arriving from background builder
+          _cineTick = 0; // restart this scene's beat
+          viewerStatus('🚁 Building movie... ' + _cineStoryboard.length + ' scenes so far');
+          // Don't advance — check again next beat
+        } else {
+        restorePeeled();
+        _cineHeroSlowdown = false;
+        // §S260d: Clean up arc data (not cacheable, recomputed per visit)
+        if (scene) { delete scene._arcStart; delete scene._arcEnd; }
         _cineCloseupCount++;
         _cineTick = 0;
         _cineSceneIdx++;
@@ -879,7 +897,8 @@
           }
           console.log('§CINE_BEAT transit → scene ' + _cineSceneIdx + '/' + _cineStoryboard.length);
         }
-      }
+      } // else (not waiting for bg build)
+      } // sceneEnded
 
       // ── CLOSEUP (flythrough or panoramic scene) ──
       // §S260c v2: Boost exposure during close-up for vivid materials
@@ -890,145 +909,100 @@
           app.renderer.toneMappingExposure += (targetExp - curExp) * 0.08;
         }
       }
-      if (_cineBeat === 'closeup') {
+      // §S260d: OPENING — full building visible, day/night cycle, slow orbit, then construction
+      if (_cineBeat === 'opening') {
+        _sunCycle = true; // day/night sweep during opening
+        var openT = Math.min(1, _cineTick / _BEAT_OPENING);
+        // Slow orbit around current position — show the full building
+        if (_cineOpenStart && _cineOpenTarget) {
+          var openAz = openT * Math.PI * 0.35; // ~63° orbit over the opening — sweeping view
+          var openOff = new THREE.Vector3().subVectors(_cineOpenStart, _cineOpenTarget);
+          var openR = Math.sqrt(openOff.x * openOff.x + openOff.z * openOff.z);
+          var openBaseAz = Math.atan2(openOff.z, openOff.x);
+          app.camera.position.set(
+            _cineOpenTarget.x + Math.cos(openBaseAz + openAz) * openR,
+            _cineOpenStart.y,
+            _cineOpenTarget.z + Math.sin(openBaseAz + openAz) * openR
+          );
+          target.copy(_cineOpenTarget);
+        }
+        if (_cineTick >= _BEAT_OPENING) {
+          // Transition to construction: set cursor to start (empty scene)
+          _cursor = _projectStart;
+          _cineBeat = 'transit';
+          _cineTick = 0;
+          _cineSceneIdx = 0;
+          _cineTransitFrom = app.camera.position.clone();
+          var firstSc = _cineStoryboard[0];
+          if (firstSc) {
+            var fDist = firstSc.type === 'panoramic' ? _PANORAMIC_DIST : _FLYTHROUGH_DIST;
+            _cineTransitTo = new THREE.Vector3(
+              firstSc.center.x + Math.cos(firstSc.angle || 0) * fDist * 2,
+              firstSc.center.y + fDist * 0.7,
+              firstSc.center.z + Math.sin(firstSc.angle || 0) * fDist * 2
+            );
+            _cineNextTarget = firstSc.center;
+          } else {
+            _cineTransitTo = app.camera.position.clone();
+          }
+          console.log('§CINE_OPENING_END → transit to scene 0');
+        }
+      } else if (_cineBeat === 'closeup') {
         var sc = _cineStoryboard[_cineSceneIdx];
         if (sc) {
-          if (sc.type === 'flythrough') {
-            // ── FLYTHROUGH: track along spatial chain as items appear in series ──
-            // Camera follows the installation row: sprinkler 1→2→3→...
-            var chainPt = sc.center; // fallback
-            if (sc.chain && sc.chain.length >= 2) {
-              // Progress through the chain over the beat duration
-              // §S260c v2: Progress through chain based on timeline (startTs→endTs)
-              var sceneDur = (sc.endTs && sc.startTs) ? (sc.endTs - sc.startTs) : 1;
-              var chainT = Math.min(1, Math.max(0, (_cursor - (sc.startTs || 0)) / Math.max(1, sceneDur)));
-              var chainIdx = chainT * (sc.chain.length - 1);
-              var ci = Math.floor(chainIdx);
-              var cf = chainIdx - ci;
-              ci = Math.min(ci, sc.chain.length - 2); // guard: never exceed bounds
-              if (ci < 0) ci = 0;
-              if (ci >= sc.chain.length - 1 || !sc.chain[ci] || !sc.chain[ci + 1]) {
-                chainPt = sc.chain[sc.chain.length - 1] || sc.center;
-              } else {
-                chainPt = new THREE.Vector3().lerpVectors(sc.chain[ci], sc.chain[ci + 1], cf);
-              }
-            }
-            // §S260c: Lead the action — look slightly ahead on the chain
-            var leadPt = chainPt;
-            if (sc.chain && sc.chain.length >= 2 && chainPt) {
-              var leadIdx = Math.min(sc.chain.length - 1, Math.ceil(chainIdx) + 1);
-              if (leadIdx >= 0 && leadIdx < sc.chain.length && sc.chain[leadIdx]) {
-                leadPt = new THREE.Vector3().lerpVectors(chainPt, sc.chain[leadIdx], 0.3);
-              }
-            }
-            _cineNextTarget = leadPt;
-            if (!_camTarget) _camTarget = leadPt.clone();
-            // §S260c: Faster tracking — snappy camera, not sluggish
-            _camTarget.x += (leadPt.x - _camTarget.x) * 0.18;
-            _camTarget.y += (leadPt.y - _camTarget.y) * 0.18;
-            _camTarget.z += (leadPt.z - _camTarget.z) * 0.18;
+          // ═══════════════════════════════════════════════════════════
+          // §S260d: PREDETERMINED ARC — one smooth camera path per scene.
+          // No competing forces. Compute arc endpoints on arrival (tick=0),
+          // then easeInOut interpolate over the beat duration.
+          // ═══════════════════════════════════════════════════════════
 
-            target.x += (_camTarget.x - target.x) * 0.15;
-            target.y += (_camTarget.y - target.y) * 0.15;
-            target.z += (_camTarget.z - target.z) * 0.15;
+          // Compute arc endpoints once per scene (on first tick)
+          if (!sc._arcStart) {
+            var dist = sc.type === 'panoramic' ? _PANORAMIC_DIST :
+                       sc.type === 'hero' ? _HERO_DIST : _FLYTHROUGH_DIST;
+            var az0 = sc.angle || 0;
+            var az1 = az0 + (sc.type === 'hero' ? Math.PI * 2 : Math.PI * 0.4); // hero=full 360°, others=72° arc
+            var elev0 = dist * 0.7;  // start higher
+            var elev1 = dist * 0.35; // end lower — dolly down
+            var dist0 = dist * 1.8;  // start far
+            var dist1 = dist;        // end close
+            sc._arcStart = new THREE.Vector3(
+              sc.center.x + Math.cos(az0) * dist0,
+              sc.center.y + elev0,
+              sc.center.z + Math.sin(az0) * dist0
+            );
+            sc._arcEnd = new THREE.Vector3(
+              sc.center.x + Math.cos(az1) * dist1,
+              sc.center.y + elev1,
+              sc.center.z + Math.sin(az1) * dist1
+            );
+            console.log('§CINE_ARC scene=' + _cineSceneIdx + ' type=' + sc.type +
+              ' dist=' + dist0.toFixed(1) + '→' + dist1.toFixed(1) +
+              ' arc=' + (az1 - az0).toFixed(2) + 'rad');
+          }
 
-            var desiredDist = _FLYTHROUGH_DIST + Math.min(sc.count * 0.2, 2);
-            var camDist = app.camera.position.distanceTo(target);
-            var diff = camDist - desiredDist;
-            if (Math.abs(diff) > 0.3) {
-              var spd = diff > 0 ? 0.14 : 0.08;
-              var dir = new THREE.Vector3().subVectors(target, app.camera.position).normalize();
-              app.camera.position.addScaledVector(dir, diff * spd);
-            }
-            // Peel walls/slabs blocking the view (MEP in constrained spaces)
-            peelObstructions(app.camera.position, target);
+          // Smooth easeInOut interpolation over the beat
+          var beatLen = sc.type === 'panoramic' ? _BEAT_ESTAB : _BEAT_CLOSEUP;
+          var t = Math.min(1, _cineTick / beatLen);
+          // easeInOutCubic — smooth start and end
+          var et = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
-            // Gentle orbit while tracking — camera drifts alongside the chain
-            if (_playing && (nowPerf - _camUserInteracted > 2000)) {
-              _camAngle += 0.004;
-              var camOff = new THREE.Vector3().subVectors(app.camera.position, target);
-              var dist2D = Math.sqrt(camOff.x * camOff.x + camOff.z * camOff.z);
-              var curAz = Math.atan2(camOff.z, camOff.x);
-              camOff.x = Math.cos(curAz + 0.004) * dist2D;
-              camOff.z = Math.sin(curAz + 0.004) * dist2D;
-              camOff.y += Math.sin(_cineTick * 0.05) * 0.1; // elevation bob
-              app.camera.position.copy(target).add(camOff);
-            }
+          // Camera position: interpolate along the arc
+          app.camera.position.lerpVectors(sc._arcStart, sc._arcEnd, et);
 
-          } else if (sc.type === 'panoramic') {
-            // ── PANORAMIC: wide orbit over dense area, sun sweep visible ──
+          // Look-at: always the scene center (rock solid, no wobble)
+          target.copy(sc.center);
+          _cineNextTarget = sc.center;
+
+          // Peel obstructions between camera and target
+          peelObstructions(app.camera.position, target);
+
+          // Scene-type specific extras
+          if (sc.type === 'panoramic') {
             _sunCycle = true;
-            _cineNextTarget = sc.center;
-            if (!_camTarget) _camTarget = sc.center.clone();
-            // §S260c: Faster convergence for panoramic
-            _camTarget.x += (sc.center.x - _camTarget.x) * 0.10;
-            _camTarget.y += (sc.center.y - _camTarget.y) * 0.10;
-            _camTarget.z += (sc.center.z - _camTarget.z) * 0.10;
-
-            target.x += (_camTarget.x - target.x) * 0.08;
-            target.y += (_camTarget.y - target.y) * 0.08;
-            target.z += (_camTarget.z - target.z) * 0.08;
-
-            var desiredDist = _PANORAMIC_DIST;
-            var camDist = app.camera.position.distanceTo(target);
-            var diff = camDist - desiredDist;
-            if (Math.abs(diff) > 1) {
-              var spd = diff > 0 ? 0.06 : 0.04;
-              var dir = new THREE.Vector3().subVectors(app.camera.position, target).normalize();
-              app.camera.position.addScaledVector(dir, diff * spd);
-            }
-            // Slow panoramic orbit — capturing shadow movement across dense area
-            if (_playing && (nowPerf - _camUserInteracted > 2000)) {
-              _camAngle += 0.008;
-              var camOff = new THREE.Vector3().subVectors(app.camera.position, target);
-              var dist2D = Math.sqrt(camOff.x * camOff.x + camOff.z * camOff.z);
-              var curAz = Math.atan2(camOff.z, camOff.x);
-              camOff.x = Math.cos(curAz + 0.008) * dist2D;
-              camOff.z = Math.sin(curAz + 0.008) * dist2D;
-              app.camera.position.copy(target).add(camOff);
-            }
-
           } else if (sc.type === 'hero') {
-            // ── HERO: tight 360° orbit + painting effect + sparks + timer slowdown ──
-            // Slow down time during hero — construction advances by hours not days
             _cineHeroSlowdown = true;
-
-            _cineNextTarget = sc.center;
-            if (!_camTarget) _camTarget = sc.center.clone();
-            _camTarget.x += (sc.center.x - _camTarget.x) * 0.12;
-            _camTarget.y += (sc.center.y - _camTarget.y) * 0.12;
-            _camTarget.z += (sc.center.z - _camTarget.z) * 0.12;
-
-            target.x += (_camTarget.x - target.x) * 0.10;
-            target.y += (_camTarget.y - target.y) * 0.10;
-            target.z += (_camTarget.z - target.z) * 0.10;
-
-            // Very tight — 3-5m from element
-            var desiredDist = _HERO_DIST;
-            var camDist = app.camera.position.distanceTo(target);
-            var diff = camDist - desiredDist;
-            if (Math.abs(diff) > 0.3) {
-              var spd = diff > 0 ? 0.10 : 0.05;
-              var dir = new THREE.Vector3().subVectors(target, app.camera.position).normalize();
-              app.camera.position.addScaledVector(dir, diff * spd);
-            }
-            peelObstructions(app.camera.position, target);
-
-            // Full 360° orbit — complete revolution during beat
-            if (_playing && (nowPerf - _camUserInteracted > 2000)) {
-              var orbitSpeed = (Math.PI * 2) / _BEAT_CLOSEUP;
-              _camAngle += orbitSpeed;
-              var camOff = new THREE.Vector3().subVectors(app.camera.position, target);
-              var dist2D = Math.sqrt(camOff.x * camOff.x + camOff.z * camOff.z);
-              var curAz = Math.atan2(camOff.z, camOff.x);
-              camOff.x = Math.cos(curAz + orbitSpeed) * dist2D;
-              camOff.z = Math.sin(curAz + orbitSpeed) * dist2D;
-              // Dramatic elevation sweep — start low, rise to 3/4 view
-              var elevT = Math.min(1, _cineTick / _BEAT_CLOSEUP);
-              camOff.y = desiredDist * (0.2 + 0.6 * elevT);
-              app.camera.position.copy(target).add(camOff);
-            }
-
+            // §S260d: Camera arc handles orbit — just add effects
             // §S260c: Hero effects — sparks + paint sweep (desktop only)
             if (!_isMobileCine) {
               // Sparks burst at regular intervals
@@ -1039,6 +1013,7 @@
               // Painting effect — emissive sweep simulates finish/coating
               // Progress 0→1 over the beat: material "paints on" with warm glow
               var paintT = Math.min(1, _cineTick / _BEAT_CLOSEUP);
+              if (_cineTick % 10 === 0) console.log('§HERO_PAINT guid=' + sc.guids[0] + ' paintT=' + paintT.toFixed(2) + ' emissiveI=' + (0.3 * (1 - paintT * 0.6)).toFixed(2));
               app.scene.traverse(function(obj) {
                 if (obj.userData && obj.userData.guid === sc.guids[0] && obj.isMesh) {
                   if (!obj._tm_highlighted) {
@@ -1050,8 +1025,9 @@
                   var mat = obj.material;
                   var warmR = 1.0, warmG = 0.5 + 0.3 * paintT, warmB = 0.1 + 0.4 * paintT;
                   if (mat.emissive) {
+                    // §S260d: Capped paint emissive — 0.3 max prevents white flash on light materials
                     mat.emissive.setRGB(warmR * (1 - paintT * 0.7), warmG * (1 - paintT * 0.5), warmB);
-                    mat.emissiveIntensity = 1.5 * (1 - paintT * 0.6);
+                    mat.emissiveIntensity = 0.3 * (1 - paintT * 0.6);
                   }
                   mat.transparent = true;
                   mat.opacity = 0.6 + 0.4 * paintT;
@@ -1079,30 +1055,30 @@
           bldCenter.set(p.x, p.y, p.z);
         }
 
-        target.x += (bldCenter.x - target.x) * 0.04;
-        target.y += (bldCenter.y - target.y) * 0.04;
-        target.z += (bldCenter.z - target.z) * 0.04;
-
-        var wideDesired = 80; // §S260c: tighter establishing shot (was 120)
-        var camDist = app.camera.position.distanceTo(target);
-        if (camDist < wideDesired) {
-          var dir = new THREE.Vector3().subVectors(app.camera.position, target).normalize();
-          app.camera.position.addScaledVector(dir, (wideDesired - camDist) * 0.04);
+        // §S260d: Predetermined establishing arc — smooth orbit at wide distance
+        if (!_cineEstabStart) {
+          var wideR = 80;
+          var estAz0 = _camAngle || 0;
+          _cineEstabStart = new THREE.Vector3(
+            bldCenter.x + Math.cos(estAz0) * wideR,
+            bldCenter.y + wideR * 0.4,
+            bldCenter.z + Math.sin(estAz0) * wideR
+          );
+          _cineEstabEnd = new THREE.Vector3(
+            bldCenter.x + Math.cos(estAz0 + Math.PI * 0.5) * wideR,
+            bldCenter.y + wideR * 0.3,
+            bldCenter.z + Math.sin(estAz0 + Math.PI * 0.5) * wideR
+          );
         }
-
-        if (_playing && (nowPerf - _camUserInteracted > 2000)) {
-          _camAngle += 0.012;
-          var camOff = new THREE.Vector3().subVectors(app.camera.position, target);
-          var dist2D = Math.sqrt(camOff.x * camOff.x + camOff.z * camOff.z);
-          var curAz = Math.atan2(camOff.z, camOff.x);
-          camOff.x = Math.cos(curAz + 0.012) * dist2D;
-          camOff.z = Math.sin(curAz + 0.012) * dist2D;
-          app.camera.position.copy(target).add(camOff);
-        }
+        var estT = Math.min(1, _cineTick / _BEAT_ESTAB);
+        var estEt = estT < 0.5 ? 4 * estT * estT * estT : 1 - Math.pow(-2 * estT + 2, 3) / 2;
+        app.camera.position.lerpVectors(_cineEstabStart, _cineEstabEnd, estEt);
+        target.copy(bldCenter);
 
         if (_cineTick > _BEAT_ESTAB) {
           _cineBeat = 'transit';
           _cineTick = 0;
+          _cineEstabStart = null; _cineEstabEnd = null; // reset for next establishing
           _cineTransitFrom = app.camera.position.clone();
           // Wrap storyboard if exhausted
           // §S260c v2: Don't wrap/loop — when storyboard exhausted, stay in establishing
@@ -1133,22 +1109,29 @@
         app.camera.position.lerpVectors(_cineTransitFrom, _cineTransitTo, et);
         app.camera.position.y += midLift;
 
+        // §S260d: Predetermined target — lerp from previous scene center to next
         if (_cineNextTarget) {
-          target.x += (_cineNextTarget.x - target.x) * (et * 0.12 + 0.03);
-          target.y += (_cineNextTarget.y - target.y) * (et * 0.12 + 0.03);
-          target.z += (_cineNextTarget.z - target.z) * (et * 0.12 + 0.03);
-        }
-
-        if (_playing && (nowPerf - _camUserInteracted > 2000)) {
-          _camAngle += 0.003;
+          var prevCenter = _cineSceneIdx > 0 && _cineStoryboard[_cineSceneIdx - 1]
+            ? _cineStoryboard[_cineSceneIdx - 1].center : target;
+          target.lerpVectors(prevCenter, _cineNextTarget, et);
         }
 
         if (t >= 1) {
           _cineBeat = 'closeup';
           _cineTick = 0;
           _camTarget = _cineNextTarget ? _cineNextTarget.clone() : null;
+          // §S260d: Lazy angle — raycast once on arrival (not during storyboard build)
+          var arrScene = _cineStoryboard[_cineSceneIdx];
+          if (arrScene && arrScene._angleLazy) {
+            var lDist = arrScene.type === 'panoramic' ? _PANORAMIC_DIST :
+                        arrScene.type === 'hero' ? _HERO_DIST : _FLYTHROUGH_DIST;
+            arrScene.angle = pickClearAngle(arrScene.center, lDist);
+            delete arrScene._angleLazy;
+            console.log('§LAZY_ANGLE scene=' + _cineSceneIdx + ' angle=' + arrScene.angle.toFixed(2));
+          }
+          // §S260d: Arc system computes start/end on first closeup tick — no snap needed here
           console.log('§CINE_BEAT closeup — arrived at scene ' + _cineSceneIdx +
-            ' type=' + (_cineStoryboard[_cineSceneIdx] ? _cineStoryboard[_cineSceneIdx].type : '?'));
+            ' type=' + (arrScene ? arrScene.type : '?'));
         }
       }
 
@@ -1197,9 +1180,12 @@
   // Reusable by TM frontier, picking, clash, etc.
   var _outlineMeshes = []; // tracked for bulk cleanup
 
+  var _highlightLogTick = 0; // throttle §HIGHLIGHT_APPLY logging
+  var _wbLogCount = 0;       // §S260d: whitebox material log counter (persists across ticks)
   function applyOutline(obj, color) {
     if (!obj.isMesh || !obj.geometry) return;
     if (obj._tm_outline) return; // already has outline
+    if (_highlightLogTick++ % 50 === 0) console.log('§HIGHLIGHT_APPLY type=outline guid=' + (obj.userData && obj.userData.guid) + ' color=0x' + (color || 0xff8c00).toString(16));
     try {
       var edges = new THREE.EdgesGeometry(obj.geometry, 30); // 30° threshold
       var line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({
@@ -1228,9 +1214,11 @@
     _outlineMeshes = [];
   }
 
-  function applyHighlight(obj, color, opacity) {
+  function applyHighlight(obj, color, opacity, emissiveI) {
     color = color || 0xff8c00;
     opacity = opacity || 0.9;
+    emissiveI = emissiveI || 0.25;
+    if (!obj._tm_highlighted && _highlightLogTick++ % 50 === 0) console.log('§HIGHLIGHT_APPLY type=highlight guid=' + (obj.userData && obj.userData.guid) + ' color=0x' + color.toString(16) + ' opacity=' + opacity);
     if (!obj._tm_highlighted) {
       obj._tm_origMaterial = obj.material;
       obj.material = obj.material.clone();
@@ -1238,18 +1226,31 @@
       _highlightMeshes.push(obj);
     }
     var mat = obj.material;
-    // §S260c v2: Keep original color, add subtle emissive glow (not full recolor)
+    // §S260c v2: Keep original color, add emissive glow (not full recolor)
     // depthTest stays TRUE — elements occlude properly, no floating blobs
-    if (mat.emissive) { mat.emissive.setHex(color); mat.emissiveIntensity = 0.25; }
+    if (mat.emissive) { mat.emissive.setHex(color); mat.emissiveIntensity = emissiveI; }
     mat.transparent = true;
     mat.opacity = opacity;
     mat.depthTest = true;
     mat.needsUpdate = true;
     obj.renderOrder = 0;
+    // §S260d: whitebox — log AFTER material modification to catch over-bright
+    if (_highlightLogTick % 100 === 0) {
+      var _hC = mat.color; var _hE = mat.emissive;
+      var _hBright = _hC && (_hC.r > 0.9 && _hC.g > 0.9 && _hC.b > 0.9);
+      var _hEmB = _hE && mat.emissiveIntensity > 0.3;
+      console.log('§WB_HIGHLIGHT_AFTER guid=' + (obj.userData && obj.userData.guid || '?').substring(0,12) +
+        ' type=' + (mat.type || '?') +
+        ' rgb=' + (_hC ? _hC.r.toFixed(2)+','+_hC.g.toFixed(2)+','+_hC.b.toFixed(2) : '?') +
+        ' em=' + (_hE ? _hE.r.toFixed(2)+','+_hE.g.toFixed(2)+','+_hE.b.toFixed(2) : '?') +
+        ' eI=' + (mat.emissiveIntensity||0).toFixed(2) + ' op=' + mat.opacity.toFixed(2) +
+        (_hBright ? ' ⚠WHITE' : '') + (_hEmB ? ' ⚠EMISSIVE' : ''));
+    }
   }
 
   // Flash: brief arrival glow — subtle, not blinding
   function applyFlash(obj, color) {
+    if (!obj._tm_highlighted && _highlightLogTick++ % 50 === 0) console.log('§HIGHLIGHT_APPLY type=flash guid=' + (obj.userData && obj.userData.guid) + ' color=0x' + (color || 0).toString(16));
     if (!obj._tm_highlighted) {
       obj._tm_origMaterial = obj.material;
       obj.material = obj.material.clone();
@@ -1257,8 +1258,8 @@
       _highlightMeshes.push(obj);
     }
     var mat = obj.material;
-    // §S260c v2: Keep original color, just add warm emissive on arrival
-    if (mat.emissive) { mat.emissive.setHex(color); mat.emissiveIntensity = 0.4; }
+    // §S260d: Capped emissive — 0.15 prevents white flash on light materials
+    if (mat.emissive) { mat.emissive.setHex(color); mat.emissiveIntensity = 0.15; }
     mat.transparent = false;
     mat.opacity = 1.0;
     mat.depthTest = true;
@@ -1397,6 +1398,7 @@
   function tickMs() {
     // §S260c v2: Cinematic slowdown during close-up — each element gets visible screen time
     // Outline forms, dust/sparks play out (~1.2s per element at 80ms/tick = 15 ticks)
+    if (_camFollow && _cineBeat === 'opening') return 0; // opening shot: no time advance, just camera
     if (_camFollow && _cineBeat === 'closeup') return 120000; // 2 minutes per tick — slow reveal
     if (_cineHeroSlowdown) return 60000; // 1 minute per tick during hero (slow-mo)
     if (_camFollow && _cineBeat === 'establishing') return 7200000; // 2 hours per tick — fast forward during wide shot
@@ -1503,7 +1505,7 @@
       '<div style="display:flex;align-items:center;width:100%;cursor:grab" class="tm-drag">' +
         '<button id="tm-share" style="font-size:9px;padding:2px 6px" title="Copy shareable link">&#x1F517; Share</button>' +
         '<button id="tm-sun" style="font-size:14px;padding:4px 8px;min-width:32px;min-height:32px" title="Day/night cycle"><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:linear-gradient(90deg,#fff 50%,#222 50%);vertical-align:middle"></span></button>' +
-        '<button id="tm-eye" style="padding:2px 6px;min-width:36px;min-height:36px;background:#fff" title="Drone Pilot — cinematic camera"><img src="icons/drone_32.png" style="width:28px;height:28px;vertical-align:middle" alt="Drone"></button>' +
+        '<button id="tm-eye" style="padding:2px 6px;min-width:36px;min-height:36px;background:#888" title="Drone Pilot — cinematic camera"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFMUlEQVR4nLWXa4hVVRTHf3ufe+51HEfRdHyNGmqoZZJaWdpUYxGCmiClEYGFFRRFYCT1NaLoU0SF9sQg7EmEYi8oCYSU3ob2MEtNB7Ww1HQe95y9+7DWnrvnzrmGQgsusx9nr/Vf//XYewwDxQIOmAqsBcYDp4Fm4DDwCHAEMIAvOF+v52JgDdAKnAJagH3Aw8DxokMAs4GngOuAkq4NBlYBm4A2BWDOYBxggepZEK21APcCbwIj40NB4TDgTiCt2wsyC2HGREqL9LQCqwv2gswHHipCfTkwWccl+nsaQN0AjCtQGutpB8bqOKn7JuhZXuTBYCRWBsiROIdY52rgINBUcDaWQUBXdM5EQIKe/UUAepA4BaMVnQdPHZKQJ/8DQBUYQo1Br4aDOKA5BhAM7gVmRGt3AFt17BTQcOBPiishzH8FZkbzSUjogvEhwOB6AAY4CnTqYYOU4xgk+UpIbHepkiIJeg4AfwPTde1m4AMkNIOAK4Fv4oMhRqHsxiNUtwHvAAt1Pir6/kwS9icgrG0Gnld9w5Fq65OiXEDBtOnhF6P1tPjzM8omoKMeZCgzp6jakezeB+wAMoSuHOkNY4C7kI5oo7NFHdGoA1VgBDAR6Q0pUXVZHSwFnkDiPQRYCbyK0F0GJhljsiRJlgA7gdvUcFAUQhd+QW8VyYFP9O9xXSMGfa0qDLGP1x8HnkOSLk+S5FC5XN5ujOkFvgZuUoBFMhlYmyRJJ7UKek1Z7GtuRr3frIdK+rFVpPN0/DnwHTDLGPNbmqZbnHPj8jxf6L3vVjA/ASeAZmPM6CRJhllrx2VZNsc59x7wPnIxrQd+Ur3OAJcBX1HrfEEs0hVnAtuBDcAqY0wOOGPMR5VKZQtQybKsDWlWzlp7GkjyPJ+ZZVk78IfaOFxEUwkpLUetEko6d0gCVhXcX7pfTdN0R7VaXdDV1bXEGNNpjNmNXNlplmWTvPdTkNI7DFwRGU+RxO6LfwkYimR+6NtZBHAqsF8PtAJ479NqtTqrXC4/65xLsixb5L2/0Bhz3Fo7Isuy0Xr2S+BBYC7SQ3Yr0/0kXJsTgG8V0DLgYwV2HhJ7C+wBzleAJQBr7bulUmkbkDrn5uV53uG9Hw6sA95Q6g8iHXE+8A/yPggM90mz0hPaZocCCLfXfdQuk5DRvsFvnepaxMAGtxS4Rsd9e3FLvR7p189EayuRGzJX7w+ooZNAt457dW+vgp6N9JNYgjPzY5uh7EJdbkVureXAYuB2pNYz9boXKaGxwKMK6hLgVjWwQb9r0rlRg2OR+8Qgb40BEp5XLcD9NKbXI4l0EnhLGVgPHFIwa1TfNGCOjl9HOmCKNKGLIpsDuh9I6Z0CfgB+UeVHde00EqbZ6mEF6fEj1YG7gReUlenAFKSSXlLjzUiYBrwjAgOjgI1KVyO5Sj3fqECMsrBTle4Dro6c2YY8cMLl1U8CAxahcDFC0du6XqHWHUOezEAuqpeR++Ie9dwi+bBaHdgDfIZUU5uyEvQ0/H+i0bsg3tsAfAqsSJLklTRN1wE31n07GnhaDR1ESq+QgXqDjZ5ZATnAz0CHMeaWpqamL8rl8i5r7TTdTxFWjwAPIPfIUOBShM2GXp2NHACOGWPm9vT0dPf29h5DHjKhUWWqN0Gu8Q+RBjSR2k3bJ0VV0EhC3L4HTnjvh1prLzDGdGVZFppM/HRHja2o09OP5bNhwKmBXUCn936Qc67FOdfqvf+9DkB8pjD25yrB02UII90I7e11+/+rBCOPIY3pSZ2fSz7xL5BFfyfdke8FAAAAAElFTkSuQmCC" style="width:28px;height:28px;vertical-align:middle" alt="Drone"></button>' +
         '<button id="tm-gantt" style="font-size:12px;padding:2px 6px" title="Gantt chart">&#x1F4CA;</button>' +
         '<button id="tm-dash" style="font-size:12px;padding:2px 6px" title="Dashboard">&#x1F4CB;</button>' +
         '<span id="tm-big-counter" style="flex:1;font-size:18px;font-weight:bold;color:#4fc3f7;text-align:center;letter-spacing:1px">DAY 0 | HR 0</span>' +
@@ -1562,6 +1564,7 @@
       'border-radius:4px;padding:4px 4px;cursor:pointer;font-size:10px}' +
       '#time-machine-panel button:hover{background:rgba(79,195,247,0.2)}' +
       '#time-machine-panel button.tm-active{background:#1a6b8a;color:#fff}' +
+      '#tm-eye.tm-active{background:#fff !important}' +
       '.tm-drawer-bottom{max-height:0;overflow:hidden;transition:max-height 200ms ease-out;' +
       'width:100%;margin-top:4px;border-top:1px solid rgba(79,195,247,0.2)}' +
       '.tm-drawer-bottom.open{max-height:220px;overflow-y:auto}' +
@@ -1652,7 +1655,9 @@
 
         // §S260c: Check IDB for cached Movie Script, else compute fresh
         cacheGet('movie').then(function(cachedScript) {
-          if (cachedScript && cachedScript.length > 0) {
+          // §S260d: Invalidate old cache — check for _arcV marker (S260d storyboard format)
+          var cacheValid = cachedScript && cachedScript.length > 0 && cachedScript[0]._arcV === 2;
+          if (cacheValid) {
             // Reconstruct Vector3 objects from plain {x,y,z}
             for (var si = 0; si < cachedScript.length; si++) {
               var s = cachedScript[si];
@@ -1668,8 +1673,8 @@
           } else {
             var posMap = buildGuidPosMap();
             _cineStoryboard = computeStoryboard(_ops, posMap);
-            if (_cineStoryboard.length) {
-              // Cache for next session
+            // §S260d: Don't cache here — background builder caches full storyboard when done
+            if (_cineStoryboard.length && !_bgBuildRaf) {
               cachePut('movie', _cineStoryboard);
               console.log('§MOVIE_CACHE_SAVE scenes=' + _cineStoryboard.length);
             }
@@ -1696,9 +1701,11 @@
         });
       } else {
         _cineStoryboard = [];
+        if (_bgBuildRaf) { cancelAnimationFrame(_bgBuildRaf); _bgBuildRaf = 0; }
         restorePeeled();
         _cineHeroSlowdown = false;
-        stopPlayback(); // §S260c: stop auto-play when Drone is toggled off
+        _cineEstabStart = null; _cineEstabEnd = null;
+        stopPlayback();
         viewerStatus('');
       }
 
@@ -1890,42 +1897,25 @@
     if (dir < 0 && _cursor <= _projectStart) _cursor = _projectEnd;
     if (dir > 0 && _cursor >= _projectEnd) _cursor = _projectStart;
 
-    // §S260c v2: When Drone is active and playing forward from start,
-    // find the absolute lowest-Y point (deepest underground) and position camera
-    // above it looking DOWN to reveal piling/foundations being placed first.
+    // §S260d: Opening establishing shot — show full building fit-to-frame
+    // before deconstructing to empty and building brick by brick.
     if (_camFollow && dir > 0 && _cineStoryboard.length && _cursor <= _projectStart + 1) {
       var app = A();
       if (app && app.camera && app.controls) {
-        // Find the lowest Y across ALL storyboard scene centers
-        var lowestY = Infinity, lowestCenter = null;
-        for (var si = 0; si < _cineStoryboard.length; si++) {
-          var sc = _cineStoryboard[si];
-          if (sc.center && sc.center.y < lowestY) {
-            lowestY = sc.center.y;
-            lowestCenter = sc.center;
-          }
+        // Keep current camera (already fits the building), start with 'opening' beat
+        _cineBeat = 'opening';
+        _cineTick = 0;
+        _cineSceneIdx = 0;
+        // Save the current camera as opening shot start position
+        _cineOpenStart = app.camera.position.clone();
+        _cineOpenTarget = app.controls.target.clone();
+        // Find the first scene center for the transition out
+        var firstSc = _cineStoryboard[0];
+        if (firstSc) {
+          _cineNextTarget = firstSc.center;
+          _camTarget = firstSc.center.clone();
         }
-        // If no scene center is low, scan first 200 ops for absolute min Y
-        if (!lowestCenter && _ops.length) {
-          lowestCenter = _cineStoryboard[0].center;
-        }
-        if (lowestCenter) {
-          // Camera above the deepest point, angled down to reveal underground
-          var camPos = new THREE.Vector3(
-            lowestCenter.x + 12,
-            lowestCenter.y + 25,  // well above, looking down into the pit
-            lowestCenter.z + 12
-          );
-          app.camera.position.copy(camPos);
-          app.controls.target.set(lowestCenter.x, lowestCenter.y, lowestCenter.z);
-          app.controls.update();
-          _camTarget = lowestCenter.clone();
-          _cineSceneIdx = 0;
-          _cineTick = 0;
-          _cineBeat = 'closeup';
-          console.log('§CINE_START_POS lowestY=' + lowestY.toFixed(1) +
-            ' center=' + lowestCenter.x.toFixed(1) + ',' + lowestCenter.y.toFixed(1) + ',' + lowestCenter.z.toFixed(1));
-        }
+        console.log('§CINE_OPENING building fit-to-frame, scenes=' + _cineStoryboard.length);
       }
     }
 
@@ -2471,8 +2461,10 @@
   }
 
   // ── Dashboard drawer ──
+  var _dashLogTick = 0; // §S260d: throttle dashboard logs
   function drawDashboard() {
     if (!_ops.length) return;
+    _dashLogTick++;
 
     // Time donut — elapsed vs total days
     var totalDays = Math.max(1, Math.round((_projectEnd - _projectStart) / 86400000));
@@ -2502,13 +2494,13 @@
         doneCost += cost * ((_cursor - opStart) / durMs);
       }
     }
-    console.log('§COST_DEBUG ops=' + _ops.length + ' totalCost=' + Math.round(totalCost) + ' doneCost=' + Math.round(doneCost) + ' cursor=' + Math.round((_cursor-_projectStart)/86400000) + 'd/' + Math.round((_projectEnd-_projectStart)/86400000) + 'd');
+    if (_dashLogTick % 20 === 0) console.log('§COST_DEBUG ops=' + _ops.length + ' totalCost=' + Math.round(totalCost) + ' doneCost=' + Math.round(doneCost) + ' cursor=' + Math.round((_cursor-_projectStart)/86400000) + 'd/' + Math.round((_projectEnd-_projectStart)/86400000) + 'd');
     var costPct = totalCost > 0 ? Math.round(doneCost / totalCost * 100) : 0;
     var costLabel = doneCost >= 1000000 ? '$' + (doneCost/1000000).toFixed(1) + 'M'
                   : doneCost >= 1000 ? '$' + Math.round(doneCost/1000) + 'K'
                   : '$' + Math.round(doneCost);
     drawDonut('tm-dash-cost-pie', costPct, costLabel, costPct + '% spent', '#44cc44');
-    console.log('§DASH_DONUTS time=' + timePct + '% cost=' + costPct + '%');
+    if (_dashLogTick % 20 === 0) console.log('§DASH_DONUTS time=' + timePct + '% cost=' + costPct + '%');
 
     // Phase progress
     var phaseTotals = {};
@@ -2535,7 +2527,7 @@
           '<div style="display:flex;justify-content:space-between;color:#ccc"><span>' + ph + '</span><span>' + pct + '%</span></div>' +
           '<div style="height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden">' +
           '<div style="width:' + pct + '%;height:100%;background:' + col + ';transition:width 0.2s"></div></div></div>';
-        console.log('§DASH_PHASE ' + ph + ' ' + pct + '%');
+        if (_dashLogTick % 20 === 0) console.log('§DASH_PHASE ' + ph + ' ' + pct + '%');
       }
       phDiv.innerHTML = html;
     }
@@ -2843,6 +2835,7 @@
     computeDays();
     saveVisibility();
     if (app._dlodPaused !== undefined) app._dlodPaused = true;
+    if (app.dlodDemoteAll) app.dlodDemoteAll();  // §S261: reset geometry to bbox before TM takes over visibility
     _cursor = _projectEnd;
     _anchorDay = _days.length ? _days[_days.length - 1] : null;
     _anchorHr = 15;
@@ -2866,8 +2859,10 @@
     _camAngle = 0;
     _camTarget = null;
     _cineStoryboard = [];
+    if (_bgBuildRaf) { cancelAnimationFrame(_bgBuildRaf); _bgBuildRaf = 0; }
     _cineSceneIdx = 0;
     _cineHeroSlowdown = false;
+    _cineEstabStart = null; _cineEstabEnd = null;
     restorePeeled();
     // §S260b: Only hide ground if Sunglass shadow was OFF
     var app = A();

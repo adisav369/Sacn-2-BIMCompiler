@@ -113,6 +113,36 @@ function setupDLOD(A) {
     console.log('[DLOD] §DLOD_DISABLE reason=' + (reason || 'unknown'));
   };
 
+  // §S261: Demote ALL promoted slots back to bbox — called by Time Machine on activate
+  // Ensures clean baseline: TM controls visibility, DLOD geometry state is reset.
+  A.dlodDemoteAll = function() {
+    if (!A._dlodSlots) return;
+    var bboxGeo = A._dlodBboxGeo;
+    if (!bboxGeo) return;
+    var count = 0;
+    for (var bmId in A._dlodSlots) {
+      var slots = A._dlodSlots[bmId];
+      var bm = slots._bmRef;
+      if (!bm || !bm.parent) continue;
+      for (var i = 0; i < slots.length; i++) {
+        var s = slots[i];
+        if (s.promoted) {
+          try {
+            bm.setGeometryAt(s.slotId, bboxGeo);
+            bm.setMatrixAt(s.slotId, s.bboxMatrix);
+          } catch(e) { /* skip */ }
+          s.promoted = false;
+          count++;
+        }
+      }
+    }
+    _totalPromoted = 0;
+    if (count > 0) {
+      console.log('[DLOD] §DLOD_DEMOTE_ALL count=' + count + ' reason=time_machine');
+      if (A.markDirty) A.markDirty();
+    }
+  };
+
   // ── Main tick — called from animate loop ──
   A.dlodTick = function() {
     if (!A._dlodEnabled) return;
