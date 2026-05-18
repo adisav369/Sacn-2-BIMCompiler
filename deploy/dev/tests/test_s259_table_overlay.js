@@ -119,8 +119,8 @@ function run() {
     'T3a: drillRecord logs §TABLE_DRILL with pk',
     'found');
 
-  assert(adUiSrc.indexOf('header reduced to 1 row') > 0,
-    'T3b: drillRecord reduces header to 1 row (making room)',
+  assert(adUiSrc.indexOf('appendChild(selRow.cloneNode(true))') > 0,
+    'T3b: drillRecord reduces header to 1 row (clones selected row)',
     'found');
 
   // Verify header row tapped → drillRecord called
@@ -235,7 +235,7 @@ function run() {
     'found');
 
   assert(adUiSrc.indexOf('skip empty tables') > 0,
-    'T7d: Empty FK tables filtered out (not shown)',
+    'T7d: Empty FK tables filtered out on initial open',
     'found §OV.11 comment');
 
   assert(adUiSrc.indexOf("if (total === 0) continue") > 0,
@@ -244,6 +244,22 @@ function run() {
 
   assert(adUiSrc.indexOf("fkTabs=' + liveTabCount + '/' + fkTables.length") > 0,
     'T7f: Log shows live/total tab counts',
+    'found');
+
+  assert(adUiSrc.indexOf('§OV.12') > 0 && adUiSrc.indexOf('§OV.13') > 0,
+    'T7g: drillRecord rebuilds child tabs dynamically per PK',
+    'found §OV.12 remove + §OV.13 rebuild');
+
+  assert(adUiSrc.indexOf("liveTabs=' + liveCount + '/' + fkTables.length") > 0,
+    'T7h: Drill log shows live/total per-PK tab counts',
+    'found');
+
+  assert(adUiSrc.indexOf('§OV.14') > 0,
+    'T7i: resetToHeader rebuilds initial tabs (globally non-empty)',
+    'found §OV.14');
+
+  assert(adUiSrc.indexOf("accs = ov.querySelectorAll('.acc')") > 0,
+    'T7j: accs list refreshed after tab rebuild',
     'found');
 
   // ════════════════════════════════════════════════════════════════════════

@@ -502,12 +502,11 @@
       console.log('§TABLE_OPEN acc=' + idx + '/' + accs.length + ' pk=' + _selectedPk);
     }
 
-    // ── §OV.4 Drill into a record — reduce header to 1 row, open child ─
+    // ── §OV.4 Drill into a record — rebuild child tabs for this PK ────
     function drillRecord(pk) {
       _selectedPk = pk;
-      console.log('§TABLE_DRILL pk=' + pk + ' childTabs=' + (accs.length - 1));
 
-      // Reduce header tab to show only the selected record (1 row, making room)
+      // Reduce header tab to show only the selected record (1 row)
       var headerBd = accs[0].querySelector('.bd');
       var selRow = headerBd.querySelector('tr[data-pk="' + pk + '"]');
       if (selRow) {
@@ -516,25 +515,88 @@
         headerTable.innerHTML = '';
         headerTable.appendChild(thRow);
         headerTable.appendChild(selRow.cloneNode(true));
-        console.log('§TABLE_DRILL header reduced to 1 row for pk=' + pk);
       }
 
-      // Open first child tab if available, otherwise stay on header
+      // §OV.12 Remove old child tabs from DOM
+      var oldAccs = ov.querySelectorAll('.acc');
+      for (var oi = oldAccs.length - 1; oi >= 1; oi--) {
+        ov.removeChild(oldAccs[oi]);
+      }
+
+      // §OV.13 Rebuild child tabs — only those with data for THIS pk
+      var liveCount = 0;
+      for (var dti = 0; dti < fkTables.length; dti++) {
+        var dft = fkTables[dti];
+        try {
+          var dcnt = _db.exec("SELECT COUNT(*) FROM [" + dft.tableName + "] WHERE [" + dft.fkColumn + "] = ?", [pk]);
+          var dTotal = (dcnt.length && dcnt[0].values.length) ? Number(dcnt[0].values[0][0]) : 0;
+          if (dTotal === 0) continue;
+        } catch(e) { continue; }
+
+        var dLabel = dft.tableName.replace(/^[A-Z]_/, '').replace(/_/g, ' ');
+        var tabDiv = document.createElement('div');
+        tabDiv.className = 'acc';
+        tabDiv.dataset.table = dft.tableName;
+        tabDiv.dataset.fk = dft.fkColumn;
+        tabDiv.innerHTML =
+          '<div class="hd"><span class="lbl"><span class="chv">\u25B6</span> ' +
+          _escHtml(dLabel) + '</span><span class="cnt">' + dTotal + '</span></div>' +
+          '<div class="bd"></div>';
+        ov.appendChild(tabDiv);
+        liveCount++;
+      }
+
+      // Refresh accs list and open first child tab
+      accs = ov.querySelectorAll('.acc');
+      console.log('§TABLE_DRILL pk=' + pk + ' liveTabs=' + liveCount + '/' + fkTables.length);
+
       if (accs.length > 1) {
         openAcc(1);
       } else {
-        console.log('§TABLE_DRILL no child tabs — staying on header');
+        // No child tabs for this record — stay on header
+        openAcc(0);
+        console.log('§TABLE_DRILL no child tabs for pk=' + pk + ' — staying on header');
       }
     }
 
-    // ── §OV.5 Reset header to full listing ──────────────────────────────
+    // ── §OV.5 Reset header to full listing + restore initial tabs ──────
     function resetToHeader() {
       _selectedPk = null;
+
+      // Remove drilled child tabs
+      var oldAccs = ov.querySelectorAll('.acc');
+      for (var ri = oldAccs.length - 1; ri >= 1; ri--) {
+        ov.removeChild(oldAccs[ri]);
+      }
+
       // Restore full header rows
       var headerBd = accs[0].querySelector('.bd');
       headerBd.innerHTML = '<table><tr>' + headerTh + '</tr>' + _allHeaderRows + '</table>';
+
+      // §OV.14 Rebuild initial child tabs (globally non-empty tables)
+      for (var rti = 0; rti < fkTables.length; rti++) {
+        var rft = fkTables[rti];
+        try {
+          var rc = _db.exec("SELECT COUNT(*) FROM [" + rft.tableName + "] LIMIT 1");
+          var rTotal = (rc.length && rc[0].values.length) ? Number(rc[0].values[0][0]) : 0;
+          if (rTotal === 0) continue;
+        } catch(e) { continue; }
+        var rLabel = rft.tableName.replace(/^[A-Z]_/, '').replace(/_/g, ' ');
+        var rtDiv = document.createElement('div');
+        rtDiv.className = 'acc';
+        rtDiv.dataset.table = rft.tableName;
+        rtDiv.dataset.fk = rft.fkColumn;
+        rtDiv.innerHTML =
+          '<div class="hd"><span class="lbl"><span class="chv">\u25B6</span> ' +
+          _escHtml(rLabel) + '</span><span class="cnt">\u2014</span></div>' +
+          '<div class="bd"></div>';
+        ov.appendChild(rtDiv);
+      }
+
+      // Refresh accs list
+      accs = ov.querySelectorAll('.acc');
       openAcc(0);
-      console.log('§TABLE_RESET header restored, records=' + records.length);
+      console.log('§TABLE_RESET header restored, records=' + records.length + ' tabs=' + (accs.length - 1));
     }
 
     // ── §OV.6 Highlight a row (cursor) ──────────────────────────────────
