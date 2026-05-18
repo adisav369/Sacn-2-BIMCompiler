@@ -2904,6 +2904,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#r16-cascading-drill-accordion-panel-done-s259c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R16. Cascading Drill Accordion Panel — DONE (S259c)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="R16. Cascading Drill Accordion Panel — DONE (S259c)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#r161-globe-ux-properties-data-gateways" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R16.1 Globe UX — Properties &amp; Data Gateways
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#r162-cascading-drill-new-browser-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R16.2 Cascading Drill — New Browser Tab
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#r163-prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R16.3 Prompts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#r164-next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R16.4 Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#implementation-priority" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5201,6 +5262,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#r16-cascading-drill-accordion-panel-done-s259c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R16. Cascading Drill Accordion Panel — DONE (S259c)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="R16. Cascading Drill Accordion Panel — DONE (S259c)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#r161-globe-ux-properties-data-gateways" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R16.1 Globe UX — Properties &amp; Data Gateways
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#r162-cascading-drill-new-browser-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R16.2 Cascading Drill — New Browser Tab
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#r163-prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R16.3 Prompts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#r164-next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R16.4 Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#implementation-priority" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5867,6 +5989,18 @@ This document covers <strong>what comes next</strong> — features planned but n
 <td>Done (S258)</td>
 <td>—</td>
 <td><code>scripts/export_ad.sh</code></td>
+</tr>
+<tr>
+<td>Globe UX triage — Properties/Data gateways, collapse/dim fix</td>
+<td>Done (S259c)</td>
+<td>32</td>
+<td><a href="../prompts/S259_GLOBE_UX_TRIAGE.md">S259_GLOBE_UX_TRIAGE.md</a></td>
+</tr>
+<tr>
+<td>Cascading Drill Accordion — new-tab panel, colourful cards, FK resolved</td>
+<td>Done (S259c)</td>
+<td>13</td>
+<td><a href="../prompts/S259_ACCORDION_PANEL.md">S259_ACCORDION_PANEL.md</a></td>
 </tr>
 </tbody>
 </table>
@@ -6625,6 +6759,33 @@ archive_{year}.db      -- read-only past data, compressed
 </table>
 <p>Tests: <code>test_globe_search.js</code> — 82 tests covering FK discovery (A), weight formula (F), focusNode (G), search correlation (H/L), zoom stability (M), view transitions (N), perspective overshoot (Q), fly shortest path (R), search filtering (P), mobile interactions (O).</p>
 <hr />
+<h2 id="r16-cascading-drill-accordion-panel-done-s259c">R16. Cascading Drill Accordion Panel — DONE (S259c)<a class="headerlink" href="#r16-cascading-drill-accordion-panel-done-s259c" title="Permanent link">&para;</a></h2>
+<p><strong>Status:</strong> Implemented in <code>ad_ui.js</code> + <code>ad_graph.js</code>. 32+13 tests. Deployed ootb-dev + ootb-full.</p>
+<h3 id="r161-globe-ux-properties-data-gateways">R16.1 Globe UX — Properties &amp; Data Gateways<a class="headerlink" href="#r161-globe-ux-properties-data-gateways" title="Permanent link">&para;</a></h3>
+<p>Tapping a RECORD bubble spawns two gateways:
+- <strong>Properties</strong> (orange) → expands sub-bubbles, one per non-null field column. Tap a column bubble → opens accordion filtered &amp; sorted by that column. Visual SQL query picker.
+- <strong>Data</strong> (blue) → opens accordion panel directly with all fields + child tabs.</p>
+<p>Double-tap RECORD → opens all records of that table. Long-press any bubble → same (all records).</p>
+<h3 id="r162-cascading-drill-new-browser-tab">R16.2 Cascading Drill — New Browser Tab<a class="headerlink" href="#r162-cascading-drill-new-browser-tab" title="Permanent link">&para;</a></h3>
+<p>Each panel opens in a <strong>new browser tab</strong> (multi-screen, drag/arrange). Design:
+- <strong>Title bar</strong> (sticky) — record name. Tap → reset to Header.
+- <strong>Accordion cards</strong> — colourful rounded panels with chevron, left colour bars (blue/green/gold/pink/purple/teal by position), slide animation.
+- <strong>ONE tab open at a time.</strong> Tap row in grid → current closes, next tab opens filtered to that row's FK children.
+- <strong>Fields ACROSS</strong> as column headers (horizontal swipe). FK values resolved to Names. No system columns.
+- <strong>Child tabs</strong> lazy-load via <code>window.opener._accordionLoadTab()</code> bridge.
+- No scrollbars — natural touch drag.</p>
+<h3 id="r163-prompts">R16.3 Prompts<a class="headerlink" href="#r163-prompts" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Globe UX: <code>prompts/S259_GLOBE_UX_TRIAGE.md</code></li>
+<li>Accordion: <code>prompts/S259_ACCORDION_PANEL.md</code> (§1 updated with cascading drill spec)</li>
+</ul>
+<h3 id="r164-next-steps">R16.4 Next Steps<a class="headerlink" href="#r164-next-steps" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Table-level faceted filter (Properties on TABLE bubble → column fill-rate → tap to filter all records)</li>
+<li>Child tab field dedup for tables with multiple AD_Tab definitions</li>
+<li>OPFS persistence for accordion state (reopen where you left off)</li>
+</ul>
+<hr />
 <h2 id="implementation-priority">Implementation Priority<a class="headerlink" href="#implementation-priority" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -6657,6 +6818,13 @@ archive_{year}.db      -- read-only past data, compressed
 <td>R1 + R2 (needs search + data)</td>
 <td>2-3</td>
 <td><strong>DONE</strong> (S258)</td>
+</tr>
+<tr>
+<td><strong>P2.5</strong></td>
+<td>R16 — Cascading Drill Accordion</td>
+<td>R10 (needs globe + traversal)</td>
+<td>1</td>
+<td><strong>DONE</strong> (S259c)</td>
 </tr>
 <tr>
 <td><strong>P3</strong></td>
@@ -7358,7 +7526,7 @@ open<span class="w"> </span>kitchen_demo.html
 </code></pre></div>
 <hr />
 <p><strong>The roadmap is not a promise. It's an invitation.</strong></p>
-<p><em>Last updated: 2026-05-15 — Added R11 (Fast Setup), R12 (Landed AI), R13 (Legacy Translation), R14 (Demo Suite), R15 (Ecosystem).</em></p>
+<p><em>Last updated: 2026-05-18 — R16 (Cascading Drill Accordion) DONE (S259c). Added R11-R15 previously.</em></p>
 <p>Based on the roadmap document you shared and our extensive discussion about validation layers, legacy migration, and spatial purity, here is my recommendation for <strong>ADDENDUM 2</strong> – a section that bridges the existing roadmap with the pragmatic, legacy-friendly, validation-aware approach we've been exploring.</p>
 <hr />
 <h2 id="addendum-2-pragmatic-validation-legacy-migration-layer">ADDENDUM 2: Pragmatic Validation &amp; Legacy Migration Layer<a class="headerlink" href="#addendum-2-pragmatic-validation-legacy-migration-layer" title="Permanent link">&para;</a></h2>
