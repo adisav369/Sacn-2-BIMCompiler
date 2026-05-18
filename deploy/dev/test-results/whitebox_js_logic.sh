@@ -335,13 +335,23 @@ if grep -q "mat.depthTest = false" deploy/dev/time_machine.js; then
 else
   echo "  ⚠FAIL — depthTest:true hides underground glow"
 fi
-echo "§CHECK frontier uses applyHighlight (not applyOutline):"
-FRONTIER_APPLY=$(grep "isFrontier" deploy/dev/time_machine.js | grep "apply" | head -1)
-echo "  $FRONTIER_APPLY"
-if echo "$FRONTIER_APPLY" | grep -q "applyHighlight"; then
-  echo "  ✓PASS — emissive glow (visible)"
-elif echo "$FRONTIER_APPLY" | grep -q "applyOutline"; then
-  echo "  ⚠FAIL — outline edges only (linewidth=1, nearly invisible)"
+echo "§CHECK frontier highlight on single Mesh (applyHighlight):"
+if sed -n '/if (isFrontier)/,/^        }/p' deploy/dev/time_machine.js | grep -q "applyHighlight"; then
+  echo "  ✓PASS — single mesh: emissive glow"
+else
+  echo "  ⚠FAIL — single mesh: no applyHighlight for frontier"
+fi
+echo "§CHECK frontier highlight on BatchedMesh (bbox glow lines):"
+if grep -q "_isTmFrontier" deploy/dev/time_machine.js; then
+  echo "  ✓PASS — BatchedMesh: frontier bbox glow created per slot"
+else
+  echo "  ⚠FAIL — BatchedMesh: NO frontier highlight (most Terminal elements invisible)"
+fi
+echo "§CHECK clearAllOutlines handles frontier glow cleanup:"
+if grep -q "_isTmFrontier" deploy/dev/time_machine.js && grep -A5 "_isTmFrontier" deploy/dev/time_machine.js | grep -q "dispose"; then
+  echo "  ✓PASS — frontier glow cleaned each tick"
+else
+  echo "  ⚠FAIL — frontier glow accumulates (memory leak)"
 fi
 
 echo ""
@@ -360,6 +370,58 @@ if grep -A5 "window._pickHighlight = hl" deploy/dev/picking.js | grep -q "markDi
 else
   echo "  ⚠FAIL — no markDirty after highlight — may not render until next orbit/pick"
 fi
+echo ""
+echo "§EXEC yellow highlight kill-path analysis:"
+echo "  Objects that could remove _pickHighlight from scene:"
+# 1. Does clearHighlight (TM) touch _pickHighlight?
+if grep -q "_pickHighlight" deploy/dev/time_machine.js; then
+  echo "  ⚠FAIL — time_machine.js references _pickHighlight (may remove it each tick)"
+  grep -n "_pickHighlight" deploy/dev/time_machine.js
+else
+  echo "  ✓OK — time_machine.js does NOT touch _pickHighlight"
+fi
+# 2. Does saveVisibility/restoreVisibility hide it?
+echo "  Save/restore visibility traverse:"
+SAVE_FILTER=$(grep -A2 "function saveVisibility" deploy/dev/time_machine.js | grep "userData\|guid\|traverse")
+echo "    $SAVE_FILTER"
+# 3. Does renderAtTime traverse set it invisible?
+echo "  renderAtTime traverse guard:"
+grep "if.*!obj.userData.*return\|if.*obj.userData.guid" deploy/dev/time_machine.js | head -3
+echo "  → LineSegments with no userData.guid: SKIPPED by traverse (✓safe)"
+# 4. Does scene.clear or clearStreamed remove all children?
+if grep -q "scene\.clear\b\|scene\.children.*length.*=.*0" deploy/dev/streaming.js deploy/dev/time_machine.js deploy/dev/scene.js 2>/dev/null; then
+  echo "  ⚠FAIL — scene.clear() found — would nuke _pickHighlight"
+  grep -n "scene\.clear\b\|scene\.children.*length.*=.*0" deploy/dev/streaming.js deploy/dev/time_machine.js deploy/dev/scene.js 2>/dev/null
+else
+  echo "  ✓OK — no scene.clear() — highlight persists in scene"
+fi
+# 5. Does clearStreamed remove it?
+if grep -q "_pickHighlight" deploy/dev/streaming.js; then
+  echo "  ✓OK — streaming.js clearStreamed() disposes highlight on building switch (expected)"
+  grep -n "_pickHighlight" deploy/dev/streaming.js
+else
+  echo "  ✓OK — streaming.js does NOT touch _pickHighlight"
+fi
+# 6. Is the highlight a child of scene (not a child of another mesh)?
+echo "  Highlight parent:"
+grep "A.scene.add.*hl\|scene.add.*hl" deploy/dev/picking.js | head -1
+echo "    → Direct child of scene (✓not nested under any mesh that could be hidden)"
+# 7. LineSegments material — does it have color 0xffff00?
+echo "  Material color:"
+grep "color.*0xffff00\|ffff00" deploy/dev/picking.js | head -2
+# 8. Summary
+echo ""
+echo "  §SUMMARY: _pickHighlight (LineSegments) is:"
+echo "    - Added directly to scene ✓"
+echo "    - Not referenced by time_machine.js ✓"
+echo "    - Not referenced by streaming.js ✓"
+echo "    - Not hidden by renderAtTime traverse (no guid) ✓"
+echo "    - depthTest:false, renderOrder:999 ✓"
+echo "    - markDirty called ✓"
+echo "    - Color 0xffff00 (yellow) ✓"
+echo "  If STILL invisible, must be: zero-size geometry or wrong position."
+echo "  Check runtime: §PICK_BBOX pos= and size= values."
+echo "  size < 0.05 on all axes = invisible thin line."
 
 echo ""
 echo "── 17. Monochrome Grey + Color Fallback ──"

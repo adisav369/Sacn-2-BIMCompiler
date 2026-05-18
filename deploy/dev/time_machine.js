@@ -710,11 +710,31 @@
           if (placed[bg] || frontier[bg] || recent[bg] !== undefined) {
             obj.setVisibleAt(sid, true);
             anyVis = true;
-            // §S260b: Eye follow — extract position from BatchedMesh slot matrix
-            if (_camFollow && frontier[bg]) {
+            if (frontier[bg]) {
+              // §S260e: BatchedMesh frontier — add orange/cyan bbox glow at slot position
               obj.getMatrixAt(sid, _bmM4);
               _bmPos.setFromMatrixPosition(_bmM4);
-              _frontierPositions.push(_bmPos.clone());
+              if (_camFollow) {
+                _frontierPositions.push(_bmPos.clone());
+                _guidPosMap[bg] = _bmPos.clone();
+              }
+              // Create glow box at frontier position (depthTest:false = shines through)
+              var ft = frontier[bg].t;
+              var fCol = ft < 0.15 ? 0x44ffff : 0xff8c00;
+              var bboxSize = bmetas[bi].bboxSize || 1.0;
+              var fGeo = new THREE.BoxGeometry(bboxSize, bboxSize, bboxSize);
+              var fEdges = new THREE.EdgesGeometry(fGeo);
+              fGeo.dispose();
+              var fLine = new THREE.LineSegments(fEdges,
+                new THREE.LineBasicMaterial({ color: fCol, depthTest: false }));
+              fLine.position.copy(_bmPos);
+              fLine.renderOrder = 10;
+              fLine.userData._isTmFrontier = true;
+              app.scene.add(fLine);
+              _outlineMeshes.push(fLine); // cleaned up by clearAllOutlines each tick
+            } else if (_camFollow && _previewGuids && _previewGuids[bg]) {
+              obj.getMatrixAt(sid, _bmM4);
+              _bmPos.setFromMatrixPosition(_bmM4);
               _guidPosMap[bg] = _bmPos.clone();
             }
           } else {
@@ -1165,7 +1185,15 @@
 
   function clearAllOutlines() {
     for (var i = _outlineMeshes.length - 1; i >= 0; i--) {
-      removeOutline(_outlineMeshes[i]);
+      var om = _outlineMeshes[i];
+      // §S260e: Frontier bbox glow lines are standalone scene children (not mesh children)
+      if (om.userData && om.userData._isTmFrontier) {
+        if (om.parent) om.parent.remove(om);
+        om.geometry.dispose();
+        om.material.dispose();
+        continue;
+      }
+      removeOutline(om);
     }
     _outlineMeshes = [];
   }
