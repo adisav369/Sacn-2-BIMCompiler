@@ -295,7 +295,10 @@
     }
   }
 
-  // §1 Double-tap/long-press TABLE → all records in accordion-style grid
+  // §1 Double-tap/long-press TABLE → all records as inline accordion overlay
+  // Renders in-page (not window.open) to avoid mobile popup blocker
+  var _tableOverlay = null;
+
   function _openTableView(tableName) {
     var fields = _getFieldsForTable(tableName);
     var colCount = Math.min(fields.length, 12);
@@ -330,33 +333,62 @@
     console.log('§TABLE_VIEW table=' + tableName + ' records=' + records.length +
                 ' fields=' + colCount + ' headers=[' + fields.slice(0,6).map(function(f){return f.name||f.columnName;}).join(',') + ']');
 
-    // Same L&F as _buildAccordionHTML — gradient title, colourful card, same CSS
-    var html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
-      '<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">' +
-      '<title>' + _escHtml(shortTable) + ' (' + records.length + ')</title><style>' +
-      '*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}' +
-      'body{margin:0;font:14px/1.4 system-ui,-apple-system,sans-serif;background:#0f0f1a;color:#eee;-webkit-overflow-scrolling:touch;padding:16px;}' +
-      '.ti{padding:16px 20px;font-size:17px;font-weight:700;margin-bottom:14px;background:linear-gradient(135deg,#1e3a5f,#2d1b69);border-radius:14px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);}' +
-      '.cnt{font-size:11px;color:#6c9fff;background:rgba(108,159,255,0.1);padding:3px 10px;border-radius:10px;font-weight:500;}' +
-      '.acc{margin-bottom:10px;border-radius:12px;overflow:hidden;background:#1a1a2a;border:1px solid rgba(255,255,255,0.06);border-left:3px solid #6c9fff;box-shadow:0 2px 12px rgba(0,0,0,0.2);}' +
-      '.acc .hd{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;min-height:52px;background:rgba(108,159,255,0.04);}' +
-      '.acc .hd .lbl{font-size:14px;color:#fff;font-weight:600;display:flex;align-items:center;gap:10px;}' +
-      '.acc .hd .lbl .chv{display:inline-block;transform:rotate(90deg);font-size:11px;color:#6c9fff;}' +
-      '.acc .bd{overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 0;max-height:80vh;}' +
-      'table{border-collapse:collapse;font-size:13px;min-width:100%;}' +
-      'th{padding:10px 14px;font-weight:600;color:#8ab4ff;background:rgba(20,20,30,0.8);white-space:nowrap;text-align:left;border-bottom:1px solid rgba(108,159,255,0.08);}' +
-      'td{padding:11px 14px;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.025);}' +
-      'tr:active td{background:rgba(108,159,255,0.06);}' +
-      '.n{color:#444;}' +
-      '</style></head><body>' +
-      '<div class="ti"><span>' + _escHtml(shortTable) + '</span><span class="cnt">' + records.length + ' records</span></div>' +
-      '<div class="acc"><div class="hd"><span class="lbl"><span class="chv">\u25B6</span> All Records</span>' +
-      '<span class="cnt">' + records.length + '</span></div>' +
-      '<div class="bd"><table><tr>' + headerRow + '</tr>' + bodyRows + '</table></div></div>' +
-      '</body></html>';
+    // Close existing overlay if any
+    _closeTableOverlay();
 
-    var win = window.open('', '_blank');
-    if (win) { win.document.write(html); win.document.close(); }
+    // Inline overlay — same accordion L&F, slides up from bottom
+    var ov = document.createElement('div');
+    ov.id = 'table-overlay';
+    ov.style.cssText = 'position:fixed;left:0;right:0;bottom:0;top:0;z-index:9000;' +
+      'background:#0f0f1a;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;' +
+      'animation:slideUp 300ms ease-out;';
+    ov.innerHTML =
+      '<style>' +
+      '@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}' +
+      '#table-overlay .ti{padding:16px 20px;font-size:17px;font-weight:700;margin-bottom:14px;' +
+        'background:linear-gradient(135deg,#1e3a5f,#2d1b69);border-radius:14px;display:flex;' +
+        'justify-content:space-between;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);cursor:pointer;}' +
+      '#table-overlay .cnt{font-size:11px;color:#6c9fff;background:rgba(108,159,255,0.1);' +
+        'padding:3px 10px;border-radius:10px;font-weight:500;}' +
+      '#table-overlay .cls{font-size:22px;color:#6c9fff;padding:0 4px;cursor:pointer;}' +
+      '#table-overlay .acc{margin-bottom:10px;border-radius:12px;overflow:hidden;background:#1a1a2a;' +
+        'border:1px solid rgba(255,255,255,0.06);border-left:3px solid #6c9fff;box-shadow:0 2px 12px rgba(0,0,0,0.2);}' +
+      '#table-overlay .acc .hd{padding:14px 18px;display:flex;justify-content:space-between;' +
+        'align-items:center;min-height:52px;background:rgba(108,159,255,0.04);}' +
+      '#table-overlay .acc .hd .lbl{font-size:14px;color:#fff;font-weight:600;display:flex;align-items:center;gap:10px;}' +
+      '#table-overlay .acc .hd .lbl .chv{display:inline-block;transform:rotate(90deg);font-size:11px;color:#6c9fff;}' +
+      '#table-overlay .acc .bd{overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 0;max-height:80vh;}' +
+      '#table-overlay table{border-collapse:collapse;font-size:13px;min-width:100%;}' +
+      '#table-overlay th{padding:10px 14px;font-weight:600;color:#8ab4ff;background:rgba(20,20,30,0.8);' +
+        'white-space:nowrap;text-align:left;border-bottom:1px solid rgba(108,159,255,0.08);}' +
+      '#table-overlay td{padding:11px 14px;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.025);}' +
+      '#table-overlay tr:active td{background:rgba(108,159,255,0.06);}' +
+      '#table-overlay .n{color:#444;}' +
+      '</style>' +
+      '<div class="ti"><span>' + _escHtml(shortTable) + '</span>' +
+        '<span style="display:flex;align-items:center;gap:12px;">' +
+          '<span class="cnt">' + records.length + ' records</span>' +
+          '<span class="cls">\u2715</span></span></div>' +
+      '<div class="acc"><div class="hd"><span class="lbl"><span class="chv">\u25B6</span> All Records</span>' +
+        '<span class="cnt">' + records.length + '</span></div>' +
+        '<div class="bd"><table><tr>' + headerRow + '</tr>' + bodyRows + '</table></div></div>';
+
+    // Close on title tap or X button
+    ov.querySelector('.ti').addEventListener('pointerup', function(e) {
+      e.stopPropagation();
+      _closeTableOverlay();
+    });
+
+    document.body.appendChild(ov);
+    _tableOverlay = ov;
+    console.log('§TABLE_OVERLAY opened table=' + tableName + ' records=' + records.length);
+  }
+
+  function _closeTableOverlay() {
+    if (_tableOverlay && _tableOverlay.parentNode) {
+      _tableOverlay.parentNode.removeChild(_tableOverlay);
+      _tableOverlay = null;
+    }
   }
 
   // §1 Cascading Drill — one tab open at a time, fields ACROSS, row tap = next opens
