@@ -288,8 +288,9 @@ function setupStreaming(A) {
       if (A.streaming && A.streamIdx >= A.streamQueue.length) {
         // ── Flush: build InstancedMesh for hashes with 2+ elements ──
         A._flushInstanced();
-        // §S260c: Consolidate fragmented BatchedMesh from progressive flushes
-        A._consolidateBatched();
+        // §S260c: Consolidation disabled — too expensive for 100K+ elements synchronously.
+        // Fix is in the flush interval: 500→5000 after first flush reduces fragmentation.
+        // if (A._consolidateBatched) A._consolidateBatched();
         A._clearBboxPlaceholders();
         A._bboxCleared = true;
         A.streaming = false;
@@ -493,13 +494,13 @@ function setupStreaming(A) {
 
     A.streamIdx += batch;
 
-    // §S260b: Progressive flush — first batch at 500, then every 5000
+    // §S260c: Progressive flush — first at 500 (quick first paint), then every 5000.
+    // _bboxCleared is set after first flush so subsequent flushes use the larger interval.
     if (A._lastFlushIdx === undefined) A._lastFlushIdx = 0;
     var _flushAt = A._bboxCleared ? 5000 : 500;
     if (A.streamIdx - A._lastFlushIdx >= _flushAt && A.streamIdx < A.streamQueue.length) {
       A._flushInstanced();
-      // §S260b: Keep bboxes until streaming fully complete — dramatic reveal effect
-      // Bboxes are cleared in _flushInstanced final call (streaming=false path above)
+      if (!A._bboxCleared) A._bboxCleared = true;  // §S260c: switch to 5000 after first flush
       A._lastFlushIdx = A.streamIdx;
       console.log(`[S260] §PROGRESSIVE_FLUSH at=${A.streamIdx}/${A.streamQueue.length} drawCalls=${A.scene.children.length}`);
     }
@@ -548,7 +549,7 @@ function setupStreaming(A) {
         if (!mergeBuckets[key]) mergeBuckets[key] = [];
         mergeBuckets[key].push({ el, geo });
       } else if (elements.length === 1) {
-        // §S260: Desktop — bucket for BatchedMesh
+        // §S260: Desktop — bucket for BatchedMesh (single-instance hashes only)
         const el = elements[0];
         const key = (el.storey || '_') + '|' + (el.disc || '_') + '|' + (el.rgba || '_default');
         if (!batchBuckets[key]) batchBuckets[key] = [];
@@ -804,82 +805,96 @@ function setupStreaming(A) {
 
   // §S260c: Consolidate fragmented BatchedMesh from progressive flushes into one set.
   // Progressive flush creates N sets of BatchedMesh (one per 5000-element chunk).
-  // After streaming ends, this merges them into ONE BatchedMesh per storey|disc bucket.
+  // After streaming ends, this removes them and rebuilds ONE BatchedMesh per bucket
+  // from streamQueue + meshCache. r160 has no getGeometryIdAt, so we rebuild from source.
   // LTU 122K: 26 flushes × 40 buckets = 1040 draw calls → consolidated to ~40.
   A._consolidateBatched = function() {
     if (A._isMobile || !THREE.BatchedMesh) return;
     var t0 = performance.now();
 
-    // Collect all BatchedMesh objects + their metadata
+    // Count existing BatchedMesh — if already compact, skip
     var oldBMs = [];
     A.scene.traverse(function(obj) { if (obj.isBatchedMesh) oldBMs.push(obj); });
     if (oldBMs.length <= 40) {
       console.log('§CONSOLIDATE_SKIP batched=' + oldBMs.length + ' — already compact');
-      return;  // already compact, no fragmentation
+      return;
     }
 
-    // Gather all elements: {geo, matrix, storey, disc, guid, ifcClass, rgba} per bucket key
-    var buckets = {};  // key → [{geo, m4, meta}, ...]
-    var _m4 = new THREE.Matrix4();
-
+    // Remove all old BatchedMesh + their metadata
+    var oldBMIds = new Set();
     for (var bi = 0; bi < oldBMs.length; bi++) {
-      var bm = oldBMs[bi];
-      var meta = A._batchMeta[bm.id];
-      if (!meta) continue;
-      for (var si = 0; si < meta.length; si++) {
-        var slot = meta[si];
-        var geoId;
-        try { geoId = bm.getGeometryIdAt(slot.slotId); } catch(e) { continue; }
-        var geo;
-        try { geo = bm.getGeometryAt(geoId); } catch(e) {
-          // Fallback: look up geometry from meshCache via guid
-          continue;
-        }
-        bm.getMatrixAt(slot.slotId, _m4);
-        var key = (slot.storey || '_') + '|' + (slot.disc || '_') + '|' + (bm.material && bm.material.uuid || '_');
-        if (!buckets[key]) buckets[key] = { items: [], material: bm.material };
-        buckets[key].items.push({
-          geo: geo, m4: _m4.clone(),
-          guid: slot.guid, storey: slot.storey, disc: slot.disc, ifcClass: slot.ifcClass
-        });
-      }
-      // Remove old fragmented BM
-      delete A._batchMeta[bm.id];
-      A.scene.remove(bm);
-      if (bm.dispose) bm.dispose();
+      oldBMIds.add(oldBMs[bi].id);
+      delete A._batchMeta[oldBMs[bi].id];
+      A.scene.remove(oldBMs[bi]);
+      if (oldBMs[bi].dispose) oldBMs[bi].dispose();
     }
-
-    // Clear old reverse maps — will rebuild
     A._batchStoreyMap = {};
     A._batchDiscMap = {};
-    // Remove old guidMap entries for batched meshes (keep instanced/single mesh entries)
+    // Clean guidMap entries from old BMs
     for (var gk in A.guidMap) {
       if (gk.indexOf('_') > 0) {
-        var prefix = gk.split('_')[0];
-        // If this was from an old BM (now removed), delete
-        if (oldBMs.some(function(ob) { return String(ob.id) === prefix; })) {
-          delete A.guidMap[gk];
-        }
+        var prefix = parseInt(gk.split('_')[0], 10);
+        if (oldBMIds.has(prefix)) delete A.guidMap[gk];
       }
+    }
+
+    // Build set of guids in InstancedMesh (6+ instances, stay untouched)
+    var instancedGuids = new Set();
+    for (var imId in A._instanceMeta) {
+      var imMeta = A._instanceMeta[imId];
+      for (var imi = 0; imi < imMeta.length; imi++) {
+        instancedGuids.add(imMeta[imi].guid);
+      }
+    }
+
+    // Rebuild buckets from streamQueue (the original source of truth)
+    var buckets = {};  // "storey|disc|rgba" → [{el, geo}, ...]
+    var _m4 = new THREE.Matrix4();
+    var _euler = new THREE.Euler();
+    var _quat = new THREE.Quaternion();
+    var _pos = new THREE.Vector3();
+    var _scale = new THREE.Vector3(1, 1, 1);
+
+    for (var qi = 0; qi < A.streamQueue.length; qi++) {
+      var row = A.streamQueue[qi];
+      var guid = row[0], hash = row[1], rgba = row[2], disc = row[3];
+      var cx = row[4], cy = row[5], cz = row[6];
+      var rotX = row[7] || 0, rotY = row[8] || 0, rotZ = row[9] || 0;
+      var storey = row[10] || '', ifcClass = row[11] || '';
+      if (!hash || !A.meshCache[hash]) continue;
+      // Skip elements already in InstancedMesh
+      if (instancedGuids.has(guid)) continue;
+
+      var key = (storey || '_') + '|' + (disc || '_') + '|' + (rgba || '_default');
+      if (!buckets[key]) buckets[key] = [];
+      buckets[key].push({ guid: guid, hash: hash, rgba: rgba, disc: disc,
+        cx: cx, cy: cy, cz: cz, rotX: rotX, rotY: rotY, rotZ: rotZ,
+        storey: storey, ifcClass: ifcClass });
     }
 
     // Build consolidated BatchedMesh per bucket
     var newDrawCalls = 0, totalElements = 0;
     for (var key in buckets) {
-      var bucket = buckets[key];
-      var items = bucket.items;
+      var items = buckets[key];
+      if (items.length === 0) continue;
+
       if (items.length === 0) continue;
 
       var totalVerts = 0, totalIdx = 0;
-      for (var ii = 0; ii < items.length; ii++) {
-        var p = items[ii].geo.attributes.position;
+      for (var vi = 0; vi < items.length; vi++) {
+        var geo = A.meshCache[items[vi].hash];
+        var p = geo.attributes.position;
         totalVerts += p ? p.count : 0;
-        totalIdx += items[ii].geo.index ? items[ii].geo.index.count : (p ? p.count : 0);
+        totalIdx += geo.index ? geo.index.count : (p ? p.count : 0);
       }
 
+      var parts = key.split('|');
+      var rgbaKey = parts[2];
+      var batchCls = items[0].ifcClass;
+      var mat = A._getMaterial(rgbaKey === '_default' ? null : rgbaKey, batchCls);
       var newBM;
       try {
-        newBM = new THREE.BatchedMesh(items.length, totalVerts, totalIdx, bucket.material);
+        newBM = new THREE.BatchedMesh(items.length, totalVerts, totalIdx, mat);
       } catch(e) {
         console.warn('§CONSOLIDATE_FAIL bucket=' + key + ' count=' + items.length + ' err=' + e.message);
         continue;
@@ -887,31 +902,36 @@ function setupStreaming(A) {
 
       newBM.frustumCulled = true;
       newBM.userData.isBatched = true;
-      var parts = key.split('|');
       newBM.userData.storey = parts[0] === '_' ? '' : parts[0];
       newBM.userData.disc = parts[1] === '_' ? '' : parts[1];
       newBM.matrixAutoUpdate = false;
       var newMeta = [];
 
       for (var ji = 0; ji < items.length; ji++) {
-        var item = items[ji];
+        var el = items[ji];
+        var geo = A.meshCache[el.hash];
         var slotId;
-        try { slotId = newBM.addGeometry(item.geo); } catch(e) { continue; }
-        newBM.setMatrixAt(slotId, item.m4);
+        try { slotId = newBM.addGeometry(geo); } catch(e) { continue; }
 
-        // Visibility filter
+        var pos = A.ifc2three(el.cx, el.cy, el.cz);
+        _pos.set(pos.x, pos.y, pos.z);
+        _euler.set(el.rotX, el.rotZ, -el.rotY);
+        _quat.setFromEuler(_euler);
+        _m4.compose(_pos, _quat, _scale);
+        newBM.setMatrixAt(slotId, _m4);
+
         var vis = true;
-        if (A.activeStoreyFilter !== null && item.storey !== A.activeStoreyFilter) vis = false;
-        if (A.hiddenDiscs.size > 0 && A.hiddenDiscs.has(item.disc)) vis = false;
+        if (A.activeStoreyFilter !== null && el.storey !== A.activeStoreyFilter) vis = false;
+        if (A.hiddenDiscs.size > 0 && A.hiddenDiscs.has(el.disc)) vis = false;
         if (!vis) newBM.setVisibleAt(slotId, false);
 
-        newMeta.push({ guid: item.guid, storey: item.storey, disc: item.disc, ifcClass: item.ifcClass, slotId: slotId });
-        A.guidMap[newBM.id + '_' + slotId] = item.guid;
+        newMeta.push({ guid: el.guid, storey: el.storey, disc: el.disc, ifcClass: el.ifcClass, slotId: slotId });
+        A.guidMap[newBM.id + '_' + slotId] = el.guid;
 
-        var sk = item.storey || '';
+        var sk = el.storey || '';
         if (!A._batchStoreyMap[sk]) A._batchStoreyMap[sk] = [];
         A._batchStoreyMap[sk].push({ mesh: newBM, slotId: slotId });
-        var dk = item.disc || '';
+        var dk = el.disc || '';
         if (!A._batchDiscMap[dk]) A._batchDiscMap[dk] = [];
         A._batchDiscMap[dk].push({ mesh: newBM, slotId: slotId });
       }
