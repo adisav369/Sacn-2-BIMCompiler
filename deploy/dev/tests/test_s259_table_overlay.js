@@ -172,16 +172,17 @@ function run() {
   assert(adUiSrc.indexOf('#table-overlay .ti{') > 0 && adUiSrc.indexOf('linear-gradient(135deg,#1e3a5f,#2d1b69)') > 0,
     'T5a: Gradient title card', 'same as accordion');
 
-  assert(adUiSrc.indexOf("nth-child(2){border-left:3px solid #6c9fff") > 0,
-    'T5b: Blue border for header tab', 'found');
-  assert(adUiSrc.indexOf("nth-child(3){border-left:3px solid #7bed9f") > 0,
-    'T5c: Green border for 1st child', 'found');
-  assert(adUiSrc.indexOf("nth-child(4){border-left:3px solid #ffd93d") > 0,
-    'T5d: Gold border for 2nd child', 'found');
-  assert(adUiSrc.indexOf("nth-child(5){border-left:3px solid #ff85a2") > 0,
-    'T5e: Pink border for 3rd child', 'found');
-  assert(adUiSrc.indexOf("nth-child(6){border-left:3px solid #a78bfa") > 0,
-    'T5f: Purple border for 4th child', 'found');
+  assert(adUiSrc.indexOf("acc:nth-child(odd){background:#1a1a2a") > 0,
+    'T5b: Odd tab bars have darker tone', 'found');
+  assert(adUiSrc.indexOf("acc:nth-child(even){background:#1e1e30") > 0,
+    'T5c: Even tab bars have lighter tone', 'found');
+  assert(adUiSrc.indexOf("nth-child(odd) .hd{background:rgba(108,159,255,0.02)") > 0,
+    'T5d: Odd tab header subtle blue tint', 'found');
+  assert(adUiSrc.indexOf("nth-child(even) .hd{background:rgba(108,159,255,0.05)") > 0,
+    'T5e: Even tab header stronger blue tint', 'found');
+  assert(adUiSrc.indexOf('border-left:3px solid') < 0 ||
+         adUiSrc.indexOf('#table-overlay .acc:nth-child(2){border-left') < 0,
+    'T5f: No coloured left borders (removed — meaningless)', 'clean');
 
   assert(adUiSrc.indexOf('nth-child(even)') > 0 && adUiSrc.indexOf('nth-child(odd)') > 0,
     'T5g: Alternating row colors (even/odd)', 'found');
@@ -231,6 +232,18 @@ function run() {
 
   assert(adUiSrc.indexOf('_resolveDisplay') > 0,
     'T7c: Child tab uses FK resolution for display values',
+    'found');
+
+  assert(adUiSrc.indexOf('skip empty tables') > 0,
+    'T7d: Empty FK tables filtered out (not shown)',
+    'found §OV.11 comment');
+
+  assert(adUiSrc.indexOf("if (total === 0) continue") > 0,
+    'T7e: Zero-count tables skipped with continue',
+    'found');
+
+  assert(adUiSrc.indexOf("fkTabs=' + liveTabCount + '/' + fkTables.length") > 0,
+    'T7f: Log shows live/total tab counts',
     'found');
 
   // ════════════════════════════════════════════════════════════════════════

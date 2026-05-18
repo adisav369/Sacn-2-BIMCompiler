@@ -349,20 +349,27 @@
       headerRows += '</tr>';
     }
 
-    // Build child tab headers (closed)
+    // Build child tab headers — skip empty tables (no records for any PK)
     var childTabsHtml = '';
+    var liveTabCount = 0;
     for (var ti = 0; ti < fkTables.length; ti++) {
       var ft = fkTables[ti];
+      try {
+        var cntR = _db.exec("SELECT COUNT(*) FROM [" + ft.tableName + "] LIMIT 1");
+        var total = (cntR.length && cntR[0].values.length) ? Number(cntR[0].values[0][0]) : 0;
+        if (total === 0) continue;  // §OV.11 skip empty tables
+      } catch(e) { continue; }
       var ftLabel = ft.tableName.replace(/^[A-Z]_/, '').replace(/_/g, ' ');
       childTabsHtml += '<div class="acc" data-table="' + _escHtml(ft.tableName) +
         '" data-fk="' + _escHtml(ft.fkColumn) + '">' +
         '<div class="hd"><span class="lbl"><span class="chv">\u25B6</span> ' +
         _escHtml(ftLabel) + '</span><span class="cnt">\u2014</span></div>' +
         '<div class="bd"></div></div>';
+      liveTabCount++;
     }
 
     console.log('§TABLE_VIEW table=' + tableName + ' records=' + records.length +
-                ' fields=' + colCount + ' fkTabs=' + fkTables.length +
+                ' fields=' + colCount + ' fkTabs=' + liveTabCount + '/' + fkTables.length +
                 ' headers=[' + fields.slice(0,6).map(function(f){return f.name||f.columnName;}).join(',') + ']');
 
     _closeTableOverlay();
@@ -382,18 +389,16 @@
       '#table-overlay .cnt{font-size:11px;color:#6c9fff;background:rgba(108,159,255,0.1);' +
         'padding:3px 10px;border-radius:10px;font-weight:500;}' +
       '#table-overlay .cls{font-size:22px;color:#6c9fff;padding:0 4px;cursor:pointer;}' +
-      // Accordion cards — colourful left borders per nth-child
-      '#table-overlay .acc{margin-bottom:10px;border-radius:12px;overflow:hidden;background:#1a1a2a;' +
+      // Accordion cards — clean, alternating tone bars
+      '#table-overlay .acc{margin-bottom:8px;border-radius:12px;overflow:hidden;' +
         'border:1px solid rgba(255,255,255,0.06);box-shadow:0 2px 12px rgba(0,0,0,0.2);transition:box-shadow 200ms;}' +
-      '#table-overlay .acc:nth-child(2){border-left:3px solid #6c9fff;}' +
-      '#table-overlay .acc:nth-child(3){border-left:3px solid #7bed9f;}' +
-      '#table-overlay .acc:nth-child(4){border-left:3px solid #ffd93d;}' +
-      '#table-overlay .acc:nth-child(5){border-left:3px solid #ff85a2;}' +
-      '#table-overlay .acc:nth-child(6){border-left:3px solid #a78bfa;}' +
-      '#table-overlay .acc:nth-child(n+7){border-left:3px solid #38d9d9;}' +
+      '#table-overlay .acc:nth-child(odd){background:#1a1a2a;}' +
+      '#table-overlay .acc:nth-child(even){background:#1e1e30;}' +
       '#table-overlay .acc .hd{padding:14px 18px;display:flex;justify-content:space-between;' +
         'align-items:center;min-height:52px;cursor:pointer;transition:background 150ms;}' +
-      '#table-overlay .acc .hd:active{background:rgba(255,255,255,0.03);}' +
+      '#table-overlay .acc:nth-child(odd) .hd{background:rgba(108,159,255,0.02);}' +
+      '#table-overlay .acc:nth-child(even) .hd{background:rgba(108,159,255,0.05);}' +
+      '#table-overlay .acc .hd:active{background:rgba(255,255,255,0.05);}' +
       '#table-overlay .acc .hd .lbl{font-size:14px;color:#999;display:flex;align-items:center;gap:10px;}' +
       '#table-overlay .acc .hd .lbl .chv{display:inline-block;transition:transform 250ms ease;font-size:11px;color:#6c9fff;}' +
       '#table-overlay .acc .hd.open{background:rgba(108,159,255,0.04);}' +
