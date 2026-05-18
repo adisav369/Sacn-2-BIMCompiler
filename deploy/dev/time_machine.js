@@ -393,9 +393,16 @@
 
   function _getAudio() {
     if (!_audioCtx) {
-      try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; }
+      try {
+        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('§AUDIO_INIT state=' + _audioCtx.state);
+      } catch(e) { return null; }
     }
-    return _audioCtx;
+    // Browser blocks AudioContext until user gesture — resume if suspended
+    if (_audioCtx.state === 'suspended') {
+      _audioCtx.resume().catch(function() {});
+    }
+    return _audioCtx.state === 'running' ? _audioCtx : null;
   }
 
   function playKnock() {
@@ -625,9 +632,9 @@
             // §S260c v2: Close-up = wireframe outline (preserves material).
             // Far away = subtle emissive glow (visible at distance).
             if (_camFollow && _cineBeat === 'closeup') {
-              applyOutline(obj, ft < 0.15 ? 0x44ffff : 0xff8c00); // cyan arrival → orange installing
+              applyOutline(obj, ft < 0.15 ? 0x44ffff : 0xff8c00);
               // Effects on arrival (first 15%): sparks+weld for steel, dust+knock for others
-              if (!_isMobileTM && !_isLargeBuilding && _playing && ft < 0.15 && Math.random() < 0.3) {
+              if (!_isMobileTM && !_isLargeBuilding && _playing && ft < 0.15) {
                 var effectPos = new THREE.Vector3();
                 obj.getWorldPosition(effectPos);
                 if (frontier[g].isSteel) {
@@ -642,13 +649,8 @@
               applyHighlight(obj, 0xff8c00, 0.9);
             }
           }
-        } else if (isRecent) {
-          obj.visible = true;
-          if (obj.isMesh) {
-            var fade = recent[g];
-            applyHighlight(obj, 0xffdd44, 0.4 + 0.4 * fade);
-          }
-        } else if (isPlaced) {
+        } else if (isRecent || isPlaced) {
+          // §S260c v2: No special highlight on recently placed — just show clean material
           obj.visible = true;
           if (obj._tm_highlighted) restoreMaterial(obj);
         } else {
