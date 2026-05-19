@@ -660,6 +660,99 @@ test('dlod_visibility_only', () => {
   };
 });
 
+// ─── S265: Mobile mesh parity ────────────────────────────────────────────────
+// Issue: Mobile was excluded from BatchedMesh, DLOD, and consolidation.
+test('mobile_batched_mesh_parity', () => {
+  var src = fs.readFileSync(path.join(__dirname, '..', 'streaming.js'), 'utf8');
+  // Single-instance elements must NOT be routed to mergeBuckets on mobile
+  var noMobileMerge = !src.includes('elements.length === 1 && A._isMobile');
+  // BatchedMesh flush must not gate on _isMobile
+  var batchNoGate = !src.includes('!A._isMobile && THREE.BatchedMesh');
+  // Consolidation must not gate on _isMobile
+  var consolidateNoGate = !src.includes('A._isMobile || !THREE.BatchedMesh');
+  // markDirty after stream-complete (scene refresh fix)
+  var markDirtyAfterDone = src.includes('markDirty') && src.includes('Force render after stream-complete');
+  // ESM loader exposes BatchedMesh check in log
+  var loaderSrc = fs.readFileSync(path.join(__dirname, '..', 'loader.js'), 'utf8');
+  var batchedLog = loaderSrc.includes('BatchedMesh=');
+  var allOk = noMobileMerge && batchNoGate && consolidateNoGate && markDirtyAfterDone && batchedLog;
+  return {
+    ok: allOk,
+    log: '§WB_MOBILE_MESH noMobileMerge=' + noMobileMerge + ' batchNoGate=' + batchNoGate +
+         ' consolidateNoGate=' + consolidateNoGate + ' markDirty=' + markDirtyAfterDone +
+         ' loaderBatchedLog=' + batchedLog,
+    reason: allOk ? '' : 'mobile still excluded from BatchedMesh/DLOD/consolidation'
+  };
+});
+
+// ─── S265: Material color audit — compare current vs colorful baseline (pre-S260c) ─────
+// Issue: SampleCastle lost its colors somewhere between sessions.
+test('material_color_audit', () => {
+  var streamSrc = fs.readFileSync(path.join(DEV_DIR, 'streaming.js'), 'utf8');
+  var sceneSrc = fs.readFileSync(path.join(DEV_DIR, 'scene.js'), 'utf8');
+
+  // Material type: MeshPhongMaterial (colorful) vs MeshStandardMaterial (PBR)
+  var hasPhong = streamSrc.includes('MeshPhongMaterial');
+  var hasStandard = streamSrc.includes('MeshStandardMaterial');
+  var matType = hasPhong ? 'Phong' : hasStandard ? 'Standard' : 'unknown';
+
+  // Flat shading
+  var flatShading = streamSrc.includes('flatShading: true');
+
+  // Tone mapping
+  var acesTone = sceneSrc.includes('ACESFilmicToneMapping');
+  var neutralTone = sceneSrc.includes('NeutralToneMapping');
+  var noTone = sceneSrc.includes('NoToneMapping') && !sceneSrc.includes('// NoToneMapping');
+  var toneType = acesTone ? 'ACES' : neutralTone ? 'Neutral' : noTone ? 'None' : 'unknown';
+  var exposureMatch = sceneSrc.match(/toneMappingExposure\s*=\s*([\d.]+)/);
+  var exposure = exposureMatch ? exposureMatch[1] : '?';
+
+  // Grey detection: original (0.7±0.02) vs wide spread
+  var hasSpread = streamSrc.includes('_spread <');
+  var hasDefaultGrey = streamSrc.includes('Math.abs(r - 0.7)');
+  var greyDetect = hasDefaultGrey ? '0.7±0.02' : hasSpread ? 'spread' : 'none';
+
+  // Near-white taming factor
+  var tameMatch = streamSrc.match(/r > 0\.85.*r \*= ([\d.]+)/);
+  var tameFactor = tameMatch ? tameMatch[1] : 'none';
+
+  // Env map
+  var hasEnvMap = streamSrc.includes('envMap');
+
+  // Roughness/metalness — STD_MAT (S265) or legacy separate maps
+  var hasRoughness = streamSrc.includes('ROUGHNESS_MAP') || streamSrc.includes('rough:');
+  var hasMetalness = streamSrc.includes('METALNESS_MAP') || streamSrc.includes('metal:');
+
+  // Ambient light intensity
+  var ambientMatch = sceneSrc.match(/AmbientLight\(0x[0-9a-f]+,\s*([\d.]+)/);
+  var ambientInt = ambientMatch ? ambientMatch[1] : '?';
+
+  // Sun intensity
+  var sunMatch = sceneSrc.match(/DirectionalLight\(0x[0-9a-f]+,\s*([\d.]+)/);
+  var sunInt = sunMatch ? sunMatch[1] : '?';
+
+  // CLASS_COLOR_FALLBACK count
+  var fallbackCount = (streamSrc.match(/Ifc\w+:/g) || []).length;
+
+  // Colorful baseline: Phong, flatShading, NoToneMapping, exposure=1.0, no envMap, 0.7±0.02 grey, tame=0.82
+  var log = '§WB_MATERIAL_AUDIT' +
+    ' mat=' + matType +
+    ' flat=' + flatShading +
+    ' tone=' + toneType +
+    ' exposure=' + exposure +
+    ' grey=' + greyDetect +
+    ' tame=' + tameFactor +
+    ' envMap=' + hasEnvMap +
+    ' roughness=' + hasRoughness +
+    ' metalness=' + hasMetalness +
+    ' ambient=' + ambientInt +
+    ' sun=' + sunInt +
+    ' fallbacks=' + fallbackCount;
+
+  // Not a pass/fail — diagnostic only. Always passes.
+  return { ok: true, log: log, reason: '' };
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log(`§WB_SUMMARY pass=${pass} fail=${fail} total=${pass + fail}`);
 process.exit(fail > 0 ? 1 : 0);

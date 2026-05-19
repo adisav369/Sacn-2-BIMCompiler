@@ -187,6 +187,14 @@ function setupPicking(A) {
 
     if (!hits.length) {
       document.getElementById('info-panel').style.display = 'none';
+      // §S265: Clear highlight bbox on empty-spot tap (deselect)
+      if (window._pickHighlight) {
+        if (window._pickHighlight.parent) window._pickHighlight.parent.remove(window._pickHighlight);
+        window._pickHighlight.geometry.dispose();
+        window._pickHighlight.material.dispose();
+        window._pickHighlight = null;
+        if (A.markDirty) A.markDirty();
+      }
       return;
     }
 
@@ -200,7 +208,17 @@ function setupPicking(A) {
       hit = h;
       break;
     }
-    if (!hit) { document.getElementById('info-panel').style.display = 'none'; return; }
+    if (!hit) {
+      document.getElementById('info-panel').style.display = 'none';
+      if (window._pickHighlight) {
+        if (window._pickHighlight.parent) window._pickHighlight.parent.remove(window._pickHighlight);
+        window._pickHighlight.geometry.dispose();
+        window._pickHighlight.material.dispose();
+        window._pickHighlight = null;
+        if (A.markDirty) A.markDirty();
+      }
+      return;
+    }
     // §S260d: WYSIWYG pick diagnostic — log first 3 hits to trace accuracy
     var pickInfo = hits.slice(0, 3).map(function(h, i) {
       var t = h.object.isBatchedMesh ? 'BM' : h.object.isInstancedMesh ? 'IM' : 'M';

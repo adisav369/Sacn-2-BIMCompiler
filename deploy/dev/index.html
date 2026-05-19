@@ -48,9 +48,22 @@
   .panel-body { transition: max-height 0.2s ease, opacity 0.2s ease; overflow: hidden; }
   .panel-body.collapsed { max-height: 0 !important; opacity: 0; padding: 0; }
   .swipe-hidden { display: none !important; }
-  #storey-panel:has(.panel-body.collapsed) { max-height: fit-content !important; }
+  /* S265 Phase 4: HUD accordion sections (storey + disc inside HUD) */
+  .hud-accordion { margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 4px; }
+  .hud-accordion-header { display: block; width: 100%; padding: 4px 0; color: #4fc3f7; font-size: 11px; cursor: pointer; user-select: none; }
+  .hud-accordion-header::before { content: '▸ '; font-size: 10px; }
+  .hud-accordion:has(.panel-body:not(.collapsed)) .hud-accordion-header::before { content: '▾ '; }
+  #hud #storey-body button, #hud #disc-body button {
+    display: block; width: 100%; text-align: left;
+    padding: 3px 8px; margin: 2px 0; background: #333; color: #ccc;
+    border: 1px solid #555; border-radius: 3px; cursor: pointer; font-size: 11px;
+  }
+  #hud #storey-body button:hover, #hud #disc-body button:hover { background: #444; color: #4fc3f7; }
+  #hud #storey-body button.active, #hud #disc-body button.active { background: #4fc3f7; color: #000; border-color: #4fc3f7; }
+  #hud #disc-body button { opacity: 0.3; text-decoration: line-through; }
+  #hud #disc-body button.active { opacity: 1.0; text-decoration: none; }
   #info-panel {
-    position: fixed; bottom: 50px; right: 16px; z-index: 10;
+    position: fixed; bottom: 50px; right: 70px; z-index: 10;
     background: rgba(0,0,0,0.3); border-radius: 8px; padding: 12px 16px;
     border: 1px solid rgba(255,255,255,0.08);
     backdrop-filter: blur(8px);
@@ -59,26 +72,11 @@
   }
   #info-panel .label { color: #888; }
   #info-panel .value { color: #fff; }
-  #storey-panel {
-    position: fixed; bottom: 90px; left: 16px; z-index: 10;
-    background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 12px;
-    border: 1px solid rgba(255,255,255,0.08);
-    backdrop-filter: blur(8px);
-    font-size: 12px; display: none; pointer-events: auto;
-  }
-  #storey-panel button {
-    display: block; width: 100%; text-align: left;
-    padding: 3px 8px; margin: 2px 0; background: #333; color: #ccc;
-    border: 1px solid #555; border-radius: 3px; cursor: pointer; font-size: 11px;
-  }
-  #storey-panel button:hover { background: #444; color: #4fc3f7; }
-  #storey-panel button.active { background: #4fc3f7; color: #000; border-color: #4fc3f7; }
-  #disc-body button { opacity: 0.3; text-decoration: line-through; }
-  #disc-body button.active { opacity: 1.0; text-decoration: none; }
+  /* S265: standalone #storey-panel and #disc-panel CSS removed — now inside #hud accordion */
 
   /* ── Icon Pill: vertical right edge, always visible ── */
   #icon-pill {
-    position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 20;
+    position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 500;
     display: flex; flex-direction: column; gap: 4px;
     background: rgba(10,10,30,0.65); border-radius: 24px; padding: 8px 6px;
     border: 1px solid rgba(255,255,255,0.08);
@@ -95,7 +93,7 @@
 
   /* ── Overflow menu: dropdown from pill, hidden by default ── */
   #search-box {
-    position: fixed; top: 50%; right: 62px; transform: translateY(-50%); z-index: 19;
+    position: fixed; top: 50%; right: 62px; transform: translateY(-50%); z-index: 490;
     background: rgba(10,10,30,0.85); border-radius: 12px; padding: 8px;
     border: 1px solid rgba(255,255,255,0.08);
     display: none; max-width: 280px;
@@ -110,7 +108,7 @@
   /* ── Overflow scrim ── */
   #overflow-scrim {
     display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    z-index: 18; background: transparent;
+    z-index: 480; background: transparent;
   }
   #overflow-scrim.active { display: block; }
 
@@ -147,8 +145,8 @@
 
   /* ── Sunglass / Ambience slider ── */
   #sunglass-slider-panel {
-    position: fixed; top: 90px; right: 16px; z-index: 10;
-    background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 14px;
+    position: fixed; top: 90px; right: 70px; z-index: 200;
+    background: rgba(0,0,0,0.75); border-radius: 8px; padding: 8px 14px;
     border: 1px solid rgba(255,255,255,0.08);
     backdrop-filter: blur(8px);
     display: none; min-width: 200px;
@@ -205,7 +203,7 @@
 
   /* ── Issues Panel ── */
   #issues-panel {
-    position: fixed; top: 60px; right: 16px; z-index: 50;
+    position: fixed; top: 60px; right: 70px; z-index: 50;
     background: #1a1a2e; border-radius: 8px; padding: 12px 16px;
     border: 1px solid rgba(255,255,255,0.08);
     pointer-events: auto;
@@ -272,7 +270,7 @@
     /* Overflow: bottom drawer instead of dropdown */
     #search-box { top: auto !important; bottom: 0 !important; left: 0 !important; right: 0 !important;
       transform: none !important; max-width: none; border-radius: 16px 16px 0 0;
-      padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 21 !important; }
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 490 !important; }
     #search-box input { display: none !important; }
     #search-box button { padding: 6px 8px !important; font-size: 12px !important; min-height: 44px; }
     #overflow-scrim.active { background: rgba(0,0,0,0.4); }
@@ -280,20 +278,17 @@
     /* Ask + Walk: top-right, icons only, z20. Site hidden (enter via Walk). */
     #site-cam-btn { display: none !important; }
     #walk-mode-btn { display: inline-block !important; position: fixed !important; top: 8px !important; right: 8px !important; z-index: 20 !important; padding: 8px 12px; font-size: 18px; }
-    #nlp-btn { display: inline-block !important; position: fixed !important; top: 8px !important; right: 60px !important; z-index: 20 !important; padding: 6px 10px !important; font-size: 14px !important; min-height: 32px !important; min-width: 32px !important; }
+    #nlp-btn { display: inline-block !important; position: fixed !important; top: 8px !important; right: 60px !important; left: auto !important; transform: none !important; z-index: 20 !important; padding: 6px 10px !important; font-size: 14px !important; min-height: 32px !important; min-width: 32px !important; }
+    /* §S265: NLP bar — fit beside HUD, don't span full width */
+    #nlp-bar { left: auto !important; right: 0 !important; max-width: 55vw !important; border-radius: 0 0 0 8px !important; }
+    #nlp-chips { left: auto !important; right: 0 !important; max-width: 55vw !important; }
 
-    /* Storeys: left side, just below Disc */
-    #storey-panel { display: block !important; position: fixed !important; top: 60px !important; left: 8px !important; right: auto !important; bottom: auto !important; width: 45vw; max-height: 30vh; overflow-y: auto; z-index: 19 !important; padding: 6px 8px; }
-    #storey-panel button { padding: 4px 8px; font-size: 12px; min-height: 28px; }
-
-    /* Disc panel: left half, top */
-    #disc-panel { display: block !important; position: fixed !important; top: 8px !important; left: 8px !important; right: auto !important; bottom: auto !important; z-index: 20 !important; width: 45vw; }
-    #disc-panel button, #disc-body button { padding: 4px 8px !important; font-size: 12px !important; min-height: 28px; }
-
-    /* HUD: bottom-left, z9 */
-    #hud { top: auto !important; bottom: 40px; left: 8px; right: 8px; max-width: none; font-size: 12px; z-index: 9 !important; }
-    #hud h2 { font-size: 14px; }
-    #hud .stat { font-size: 12px; }
+    /* S265 Phase 4: HUD is the single left panel — storey + disc inside as accordions */
+    #hud { top: 8px !important; bottom: auto !important; left: 8px; right: auto; max-width: 50vw; font-size: 12px; z-index: 19 !important; max-height: 70vh; overflow-y: auto; }
+    #hud h2 { font-size: 13px; }
+    #hud .stat { font-size: 11px; }
+    #hud #storey-body button, #hud #disc-body button { padding: 4px 8px; font-size: 12px; min-height: 32px; }
+    #hud .hud-accordion-header { font-size: 12px; padding: 6px 0; }
 
     /* Info panel: right side — z15 */
     #info-panel { bottom: 50px !important; left: auto !important; right: 8px !important; max-width: 180px; min-width: auto; font-size: 11px; z-index: 15 !important; }
@@ -312,7 +307,7 @@
     .panel-body.collapsed { max-height: 0 !important; padding: 0 !important; margin: 0 !important; pointer-events: none !important; overflow: hidden !important; opacity: 0 !important; }
 
     /* Swipe-hidden: overrides everything */
-    .swipe-hidden, #storey-panel.swipe-hidden, #disc-panel.swipe-hidden, #hud.swipe-hidden, #search-box.swipe-hidden, #info-panel.swipe-hidden { display: none !important; }
+    .swipe-hidden, #hud.swipe-hidden, #search-box.swipe-hidden, #info-panel.swipe-hidden { display: none !important; }
 
     /* Hide building list + search on mobile */
     #building-list { display: none !important; }
@@ -332,29 +327,29 @@
     /* Ask + Walk: persist, tight, top-right. Site hidden. */
     #site-cam-btn { display: none !important; }
     #walk-mode-btn { display: inline-block !important; top: 4px !important; right: 4px !important; padding: 4px 6px !important; font-size: 14px !important; min-height: 28px !important; }
-    #nlp-btn { display: inline-block !important; top: 4px !important; right: 44px !important; padding: 4px 6px !important; font-size: 14px !important; min-height: 28px !important; }
-    /* Left panels: Disc + Storeys */
-    #disc-panel { display: block !important; top: 4px !important; left: 4px !important; bottom: auto !important; width: 35vw; padding: 4px 6px !important; }
-    #disc-panel button, #disc-body button { padding: 3px 6px !important; font-size: 11px !important; min-height: 24px !important; }
-    #storey-panel { display: block !important; top: 32px !important; left: 4px !important; right: auto !important; width: 20vw; max-height: 25vh; padding: 4px 6px !important; font-size: 11px !important; }
-    #storey-panel button { padding: 3px 6px !important; font-size: 11px !important; min-height: 24px !important; }
-    /* HUD: bottom-right */
-    #hud { bottom: 4px !important; left: auto !important; right: 4px !important; top: auto !important; max-width: 45vw; font-size: 10px !important; padding: 4px 8px !important; cursor: pointer; }
+    #nlp-btn { display: inline-block !important; top: 4px !important; right: 44px !important; left: auto !important; transform: none !important; padding: 4px 6px !important; font-size: 14px !important; min-height: 28px !important; }
+    /* §S265: NLP bar — fit beside HUD in landscape */
+    #nlp-bar { left: auto !important; right: 0 !important; max-width: 55vw !important; border-radius: 0 0 0 8px !important; }
+    #nlp-chips { left: auto !important; right: 0 !important; max-width: 55vw !important; }
+    /* S265 Phase 4: HUD unified — landscape compact */
+    #hud { top: 4px !important; left: 4px !important; right: auto !important; bottom: auto !important; max-width: 40vw; font-size: 10px !important; padding: 4px 8px !important; max-height: 60vh; overflow-y: auto; }
     #hud h2 { font-size: 11px !important; }
     #hud .stat { font-size: 10px !important; }
-    #hud:has(.panel-body.collapsed) { padding: 2px 6px !important; max-width: 80px !important; }
+    #hud:has(> .panel-body.collapsed) { padding: 2px 6px !important; max-width: 80px !important; }
+    #hud #storey-body button, #hud #disc-body button { padding: 3px 6px !important; font-size: 11px !important; min-height: 24px !important; }
+    #hud .hud-accordion-header { font-size: 10px !important; padding: 3px 0 !important; }
     #status { bottom: 2px; font-size: 9px !important; padding: 2px 6px !important; }
     #info-panel { max-width: 120px !important; font-size: 9px !important; padding: 4px 6px !important; }
     /* Collapsed = truly gone, no blocking */
     .panel-body.collapsed { max-height: 0 !important; padding: 0 !important; margin: 0 !important; opacity: 0 !important; overflow: hidden !important; }
-    #storey-panel:has(.panel-body.collapsed), #disc-panel:has(.panel-body.collapsed), #search-box:has(.panel-body.collapsed), #hud:has(.panel-body.collapsed) { padding: 1px 3px !important; min-height: 0 !important; overflow: hidden !important; }
-    .swipe-hidden, #storey-panel.swipe-hidden, #disc-panel.swipe-hidden, #hud.swipe-hidden, #search-box.swipe-hidden, #info-panel.swipe-hidden { display: none !important; }
+    #search-box:has(.panel-body.collapsed), #hud:has(> .panel-body.collapsed) { padding: 1px 3px !important; min-height: 0 !important; overflow: hidden !important; }
+    .swipe-hidden, #hud.swipe-hidden, #search-box.swipe-hidden, #info-panel.swipe-hidden { display: none !important; }
   }
 </style>
 </head>
 <body>
 <div id="hud">
-  <h2 onclick="togglePanel('hud-body')" style="cursor:pointer" data-trl="source_app">BIM OOTB v3</h2>
+  <h2 onclick="togglePanel('hud-body');resetHudAutoCollapse()" style="cursor:pointer" data-trl="source_app">BIM OOTB v3</h2>
   <div id="hud-body" class="panel-body">
     <div class="stat"><span data-trl="ui_buildings">Buildings</span>: <b id="s-buildings">—</b></div>
     <div class="stat"><span data-trl="ui_elements">Elements</span>: <b id="s-elements">—</b></div>
@@ -365,6 +360,16 @@
     </div>
     <div class="stat"><span data-trl="ui_done">Done</span>: <b id="s-buildings-done">0</b></div>
     <div id="disc-bars" style="margin-top:4px"></div>
+    <!-- S265 Phase 4: Storey accordion inside HUD -->
+    <div id="hud-storey-section" class="hud-accordion" style="display:none">
+      <b class="hud-accordion-header" onclick="togglePanel('storey-body');resetHudAutoCollapse()" data-trl="ui_storeys">Storeys</b>
+      <div id="storey-body" class="panel-body"></div>
+    </div>
+    <!-- S265 Phase 4: Discipline accordion inside HUD -->
+    <div id="hud-disc-section" class="hud-accordion" style="display:none">
+      <b class="hud-accordion-header" onclick="togglePanel('disc-body');resetHudAutoCollapse()" data-trl="ui_disciplines">Disciplines</b>
+      <div id="disc-body" class="panel-body"></div>
+    </div>
     <button id="variance-btn" onclick="toggleVariance();event.stopPropagation()" style="display:none;margin-top:6px;width:100%;padding:6px;background:rgba(204,204,68,0.15);color:#cccc44;border:1px solid rgba(204,204,68,0.4);border-radius:4px;cursor:pointer;font-size:12px;font-weight:600">&#916; <span data-trl="ui_variance">Variance</span></button>
   </div>
 </div>
@@ -390,7 +395,7 @@
       <button onclick="toggleOverflow();setTimeout(function(){if(APP&&APP._loadClashRules)APP._loadClashRules(function(r){APP._currentClashRules=r;APP._showClashMatrix(r,document.body)})},100);event.stopPropagation()" title="Clash Matrix" data-trl-title="ui_tt_clash" style="background:transparent;color:#ddd;border:none;border-radius:8px;cursor:pointer;padding:10px;display:flex;align-items:center;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></button>
       <button id="fly-btn" onclick="toggleFlyAround();toggleOverflow();event.stopPropagation()" title="Fly Tour" data-trl-title="ui_tt_fly" style="background:transparent;color:#ddd;border:none;border-radius:8px;cursor:pointer;padding:10px;display:flex;align-items:center;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></button>
       <button id="grid-2d-btn" onclick="if(window._isMobile){APP.status.textContent='2D Plans — Desktop only';toggleOverflow();return}open2DPlans();toggleOverflow();event.stopPropagation()" title="2D Plans" data-trl-title="ui_tt_2d" style="background:transparent;color:#ddd;border:none;border-radius:8px;cursor:pointer;padding:10px;display:flex;align-items:center;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/></svg></button>
-      <button id="sunglass-btn" onclick="toggleOverflow();setTimeout(function(){toggleSunglass()},150);event.stopPropagation()" title="Palette" data-trl-title="ui_tt_sunglass" style="background:transparent;color:#ddd;border:none;border-radius:8px;cursor:pointer;padding:10px;display:flex;align-items:center;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/></svg></button>
+      <button id="sunglass-btn" onclick="toggleOverflow();toggleSunglass();event.stopPropagation()" title="Palette" data-trl-title="ui_tt_sunglass" style="background:transparent;color:#ddd;border:none;border-radius:8px;cursor:pointer;padding:10px;display:flex;align-items:center;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/></svg></button>
       <button onclick="toggleNightMode();toggleOverflow();event.stopPropagation()" title="Night" data-trl-title="ui_tt_night" style="background:transparent;color:#ddd;border:none;border-radius:8px;cursor:pointer;padding:10px;display:flex;align-items:center;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
       <button id="shadow-overflow-btn" onclick="toggleShadow();toggleOverflow();event.stopPropagation()" title="Shadow" data-trl-title="ui_tt_shadow" style="background:transparent;color:#ddd;border:none;border-radius:8px;cursor:pointer;padding:10px;display:flex;align-items:center;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg></button>
       <button id="bg-overflow-btn" onclick="toggleBackground();toggleOverflow();event.stopPropagation()" title="Background" data-trl-title="ui_tt_bg" style="background:transparent;color:#ddd;border:none;border-radius:8px;cursor:pointer;padding:10px;display:flex;align-items:center;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/></svg></button>
@@ -415,17 +420,7 @@
   <div><span class="label" data-trl="h_material">Material</span>: <span class="value" id="info-material">—</span></div>
   <div id="snag-btn-row" style="margin-top:6px;display:none"><button onclick="openSiteCamera()" style="background:#f44336;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">📸 <span data-trl="ui_snag">Snag</span></button></div>
 </div>
-<div id="storey-panel" style="cursor:default">
-  <b style="display:block;width:100%;padding:8px 12px;color:#4fc3f7;font-size:12px;cursor:pointer" onclick="togglePanel('storey-body')" data-trl="ui_storeys">Storeys</b>
-  <div id="storey-body" class="panel-body"></div>
-</div>
-<div id="disc-panel" style="position:fixed;bottom:50px;left:16px;z-index:10;
-  background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 12px;
-  border:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(8px);
-  font-size:12px;display:none;cursor:default;pointer-events:auto">
-  <b style="display:block;width:100%;padding:8px 12px;color:#4fc3f7;font-size:12px;cursor:pointer" onclick="togglePanel('disc-body')" data-trl="ui_disciplines">Disciplines</b>
-  <div id="disc-body" class="panel-body"></div>
-</div>
+<!-- S265 Phase 4: storey-panel and disc-panel moved inside #hud as accordion sections -->
 <button id="site-cam-btn" onclick="openSiteCamera()" data-trl-title="ui_tt_sitecam" title="Site Camera" style="display:none">&#128247;</button>
 <button id="walk-mode-btn" onclick="toggleWalkMode()" data-trl-title="ui_tt_walk" title="Walk Mode">&#128694;</button>
 <button id="nlp-btn" onclick="toggleNlp()" data-trl-title="ui_tt_voice" title="Voice Search" style="display:inline-block;position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:15;padding:6px 10px;background:#9c27b0;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;min-height:0;box-shadow:0 2px 8px rgba(156,39,176,0.4)">&#127908;</button>
@@ -635,14 +630,14 @@
   <input type="range" id="sl-exposure" min="0.1" max="3.0" value="0.45" step="0.05" oninput="updateLighting('exposure',this.value)">
   <span class="section-val" id="sl-exposure-val">0.45</span>
   <label>Sun</label>
-  <input type="range" id="sl-sun" min="0" max="5.0" value="1.2" step="0.05" oninput="updateLighting('sun',this.value)">
-  <span class="section-val" id="sl-sun-val">1.2</span>
+  <input type="range" id="sl-sun" min="0" max="5.0" value="1.4" step="0.05" oninput="updateLighting('sun',this.value)">
+  <span class="section-val" id="sl-sun-val">1.40</span>
   <label>Ambient</label>
-  <input type="range" id="sl-ambient" min="0" max="2.0" value="0.8" step="0.01" oninput="updateLighting('ambient',this.value)">
-  <span class="section-val" id="sl-ambient-val">0.8</span>
+  <input type="range" id="sl-ambient" min="0" max="2.0" value="0.25" step="0.01" oninput="updateLighting('ambient',this.value)">
+  <span class="section-val" id="sl-ambient-val">0.25</span>
   <label>Hemisphere</label>
-  <input type="range" id="sl-hemi" min="0" max="2.0" value="0.5" step="0.01" oninput="updateLighting('hemi',this.value)">
-  <span class="section-val" id="sl-hemi-val">0.5</span>
+  <input type="range" id="sl-hemi" min="0" max="2.0" value="0.40" step="0.01" oninput="updateLighting('hemi',this.value)">
+  <span class="section-val" id="sl-hemi-val">0.40</span>
   <!-- Shadow, Night, Background moved to overflow menu (S265) -->
   <button id="bg-btn" style="display:none"></button>
   <button id="shadow-btn" style="display:none"></button>
@@ -717,19 +712,19 @@
 <script src="lib/httpvfs.js?v=1" onerror="console.warn('§LOAD_FAIL httpvfs.js — range-request streaming disabled')"></script>
 <script src="qrcode.min.js?v=1" onerror="console.warn('§LOAD_FAIL qrcode.min.js — QR sharing disabled')"></script>
 <script src="config.js?v=4" onerror="console.warn('§LOAD_FAIL config.js')"></script>
-<script src="scene.js?v=23" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
+<script src="scene.js?v=24" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
 <script src="helpers.js?v=4" onerror="console.warn('§LOAD_FAIL helpers.js')"></script>
-<script src="streaming.js?v=40" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
+<script src="streaming.js?v=41" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
 <script src="dlod.js?v=5" onerror="console.warn('§LOAD_FAIL dlod.js')"></script>
-<script src="panels.js?v=11" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
-<script src="tools.js?v=19" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
-<script src="picking.js?v=23" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
+<script src="panels.js?v=12" onerror="console.warn('§LOAD_FAIL panels.js')"></script>
+<script src="tools.js?v=21" onerror="console.warn('§LOAD_FAIL tools.js')"></script>
+<script src="picking.js?v=24" onerror="console.warn('§LOAD_FAIL picking.js')"></script>
 <script src="tour.js?v=3" onerror="console.warn('§LOAD_FAIL tour.js')"></script>
 <script src="clash_report.js?v=1" onerror="console.warn('§LOAD_FAIL clash_report.js')"></script>
 <script src="clash_snag.js?v=1" onerror="console.warn('§LOAD_FAIL clash_snag.js')"></script>
 <script src="measure.js?v=42" onerror="console.warn('§LOAD_FAIL measure.js')"></script>
-<script src="sitecam.js?v=6" onerror="console.warn('§LOAD_FAIL sitecam.js')"></script>
-<script src="issues.js?v=4" onerror="console.warn('§LOAD_FAIL issues.js')"></script>
+<script src="sitecam.js?v=7" onerror="console.warn('§LOAD_FAIL sitecam.js')"></script>
+<script src="issues.js?v=5" onerror="console.warn('§LOAD_FAIL issues.js')"></script>
 <script src="excel.js?v=4" onerror="console.warn('§LOAD_FAIL excel.js')"></script>
 <script src="walk.js?v=7" onerror="console.warn('§LOAD_FAIL walk.js')"></script>
 <!-- navigate.js lazy-loaded on demand by main.js A.loadNavigate() -->
@@ -763,7 +758,7 @@
 <script src="wizard_orientation.js?v=1" onerror="console.warn('§LOAD_FAIL wizard_orientation.js')"></script>
 <script src="wizard_storeys.js?v=1" onerror="console.warn('§LOAD_FAIL wizard_storeys.js')"></script>
 <script src="wizard_classify.js?v=1" onerror="console.warn('§LOAD_FAIL wizard_classify.js')"></script>
-<script src="precision_cam.js?v=1" onerror="console.warn('§LOAD_FAIL precision_cam.js')"></script>
+<script src="precision_cam.js?v=2" onerror="console.warn('§LOAD_FAIL precision_cam.js')"></script>
 <script src="time_machine.js?v=43" onerror="console.warn('§LOAD_FAIL time_machine.js')"></script>
 <script src="main.js?v=27"></script>
 <!-- Styled tooltip bubbles for [data-trl-title] buttons — appended to body, not clipped by overflow:hidden -->

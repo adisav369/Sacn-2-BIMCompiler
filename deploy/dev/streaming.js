@@ -241,42 +241,60 @@ function setupStreaming(A) {
 
 
   A._getMaterial = function(rgbaStr, ifcClass) {
-    // §S260d: PBR roughness/metalness per IFC class — replaces Phong shininess
-    var ROUGHNESS_MAP = {
-      IfcBeam: 0.4, IfcColumn: 0.4, IfcMember: 0.4, IfcPlate: 0.3,   // steel — smooth
-      IfcSlab: 0.85, IfcFooting: 0.9, IfcPile: 0.9, IfcWall: 0.8,    // concrete — rough
-      IfcWallStandardCase: 0.75, IfcCurtainWall: 0.1,                   // glass — very smooth
-      IfcWindow: 0.05, IfcDoor: 0.6,                                    // glass/wood
-      IfcRailing: 0.35, IfcStair: 0.7, IfcRoof: 0.75,                   // metal/tile
-      IfcDuct: 0.45, IfcPipe: 0.35, IfcCableCarrier: 0.5,               // MEP metal
-      IfcFurniture: 0.6, IfcFlowTerminal: 0.4, IfcLightFixture: 0.25    // fixtures
-    };
-    var METALNESS_MAP = {
-      IfcBeam: 0.6, IfcColumn: 0.5, IfcMember: 0.6, IfcPlate: 0.7,
-      IfcCurtainWall: 0.1, IfcWindow: 0.0, IfcRailing: 0.5,
-      IfcDuct: 0.4, IfcPipe: 0.5, IfcLightFixture: 0.3, IfcFlowTerminal: 0.3
-    };
-    // §S260d: Class-based color fallback for buildings with no IFC colors (LTU etc)
-    var CLASS_COLOR_FALLBACK = {
-      IfcSlab: '0.78,0.76,0.72', IfcWall: '0.88,0.85,0.80',
-      IfcWallStandardCase: '0.88,0.85,0.80', IfcColumn: '0.65,0.67,0.70',
-      IfcBeam: '0.60,0.62,0.65', IfcDoor: '0.55,0.40,0.25',
-      IfcWindow: '0.75,0.85,0.90', IfcPipe: '0.50,0.55,0.60',
-      IfcDuct: '0.60,0.62,0.58', IfcFurniture: '0.70,0.55,0.40',
-      IfcRoof: '0.50,0.45,0.40', IfcFooting: '0.72,0.70,0.68',
-      IfcMember: '0.58,0.60,0.63', IfcPlate: '0.55,0.57,0.60',
-      IfcRailing: '0.50,0.52,0.55', IfcStair: '0.75,0.73,0.70',
-      IfcCurtainWall: '0.70,0.82,0.88', IfcCovering: '0.85,0.83,0.78',
-      IfcPipeFitting: '0.50,0.55,0.60', IfcPipeSegment: '0.50,0.55,0.60',
-      IfcDuctFitting: '0.60,0.62,0.58', IfcDuctSegment: '0.60,0.62,0.58',
-      IfcFlowTerminal: '0.45,0.50,0.55', IfcFlowSegment: '0.48,0.52,0.58',
-      IfcFlowFitting: '0.50,0.53,0.57', IfcFlowController: '0.80,0.30,0.25',
-      IfcLightFixture: '0.80,0.75,0.50', IfcSanitaryTerminal: '0.85,0.85,0.80',
-      IfcBuildingElementProxy: '0.00,0.78,0.78', IfcAirTerminal: '0.55,0.65,0.70',
-      IfcFireSuppressionTerminal: '0.80,0.30,0.25', IfcValve: '0.55,0.50,0.45',
-      IfcAlarm: '0.75,0.25,0.25', IfcElectricAppliance: '0.60,0.65,0.55',
-      IfcEnergyConversionDevice: '0.45,0.55,0.50', IfcFlowTreatmentDevice: '0.50,0.58,0.55',
-      IfcFurnishingElement: '0.70,0.55,0.40', IfcFlowMovingDevice: '0.50,0.60,0.55'
+    // §S265: Standard reference materials — real-world color + roughness + metalness per IFC class.
+    // Applied when IFC author assigned no material (NULL or monochrome grey).
+    // Does NOT modify the DB — runtime only.
+    var STD_MAT = {
+      // ── Structure: concrete + steel ──
+      IfcWall:                { r: 0.85, g: 0.82, b: 0.78, rough: 0.85, metal: 0.00 },  // concrete/plaster
+      IfcWallStandardCase:    { r: 0.92, g: 0.91, b: 0.88, rough: 0.75, metal: 0.00 },  // painted plaster
+      IfcSlab:                { r: 0.72, g: 0.70, b: 0.68, rough: 0.90, metal: 0.00 },  // cast concrete
+      IfcColumn:              { r: 0.65, g: 0.64, b: 0.62, rough: 0.80, metal: 0.05 },  // reinforced concrete
+      IfcBeam:                { r: 0.55, g: 0.57, b: 0.60, rough: 0.35, metal: 0.65 },  // steel I-beam
+      IfcMember:              { r: 0.50, g: 0.52, b: 0.55, rough: 0.40, metal: 0.60 },  // steel section
+      IfcPlate:               { r: 0.48, g: 0.50, b: 0.53, rough: 0.30, metal: 0.70 },  // steel plate
+      IfcFooting:             { r: 0.60, g: 0.58, b: 0.56, rough: 0.95, metal: 0.00 },  // foundation
+      IfcPile:                { r: 0.58, g: 0.56, b: 0.54, rough: 0.95, metal: 0.00 },  // deep foundation
+      // ── Envelope ──
+      IfcRoof:                { r: 0.62, g: 0.38, b: 0.28, rough: 0.75, metal: 0.00 },  // clay tile
+      IfcCovering:            { r: 0.90, g: 0.88, b: 0.84, rough: 0.70, metal: 0.00 },  // plasterboard
+      IfcCurtainWall:         { r: 0.60, g: 0.75, b: 0.82, rough: 0.08, metal: 0.10 },  // glass facade
+      // ── Openings ──
+      IfcDoor:                { r: 0.55, g: 0.35, b: 0.18, rough: 0.65, metal: 0.00 },  // timber
+      IfcWindow:              { r: 0.70, g: 0.82, b: 0.88, rough: 0.05, metal: 0.00 },  // glass
+      // ── Circulation ──
+      IfcStair:               { r: 0.68, g: 0.66, b: 0.63, rough: 0.80, metal: 0.00 },  // concrete/stone
+      IfcRailing:             { r: 0.40, g: 0.42, b: 0.45, rough: 0.35, metal: 0.55 },  // metal railing
+      IfcRamp:                { r: 0.70, g: 0.68, b: 0.65, rough: 0.85, metal: 0.00 },  // concrete ramp
+      // ── Furniture/fittings ──
+      IfcFurniture:           { r: 0.65, g: 0.48, b: 0.32, rough: 0.60, metal: 0.00 },  // wood/fabric
+      IfcFurnishingElement:   { r: 0.65, g: 0.48, b: 0.32, rough: 0.60, metal: 0.00 },  // wood/fabric
+      // ── MEP: pipes + ducts ──
+      IfcPipe:                { r: 0.60, g: 0.62, b: 0.65, rough: 0.40, metal: 0.45 },  // galvanized
+      IfcPipeFitting:         { r: 0.58, g: 0.60, b: 0.63, rough: 0.40, metal: 0.45 },
+      IfcPipeSegment:         { r: 0.58, g: 0.60, b: 0.63, rough: 0.40, metal: 0.45 },
+      IfcDuct:                { r: 0.55, g: 0.58, b: 0.55, rough: 0.45, metal: 0.40 },  // sheet metal
+      IfcDuctFitting:         { r: 0.53, g: 0.56, b: 0.53, rough: 0.45, metal: 0.40 },
+      IfcDuctSegment:         { r: 0.53, g: 0.56, b: 0.53, rough: 0.45, metal: 0.40 },
+      IfcCableCarrier:        { r: 0.50, g: 0.52, b: 0.48, rough: 0.50, metal: 0.35 },
+      // ── MEP: terminals + devices ──
+      IfcFlowTerminal:        { r: 0.45, g: 0.50, b: 0.55, rough: 0.40, metal: 0.30 },
+      IfcFlowSegment:         { r: 0.48, g: 0.52, b: 0.58, rough: 0.40, metal: 0.30 },
+      IfcFlowFitting:         { r: 0.50, g: 0.53, b: 0.57, rough: 0.40, metal: 0.30 },
+      IfcFlowController:      { r: 0.80, g: 0.30, b: 0.25, rough: 0.50, metal: 0.20 },  // red valve
+      IfcFlowMovingDevice:    { r: 0.50, g: 0.60, b: 0.55, rough: 0.45, metal: 0.30 },
+      IfcFlowTreatmentDevice: { r: 0.50, g: 0.58, b: 0.55, rough: 0.50, metal: 0.20 },
+      IfcEnergyConversionDevice: { r: 0.45, g: 0.55, b: 0.50, rough: 0.50, metal: 0.25 },
+      IfcLightFixture:        { r: 0.80, g: 0.75, b: 0.50, rough: 0.25, metal: 0.30 },  // brass/chrome
+      IfcSanitaryTerminal:    { r: 0.88, g: 0.88, b: 0.85, rough: 0.15, metal: 0.05 },  // ceramic
+      IfcAirTerminal:         { r: 0.55, g: 0.65, b: 0.70, rough: 0.40, metal: 0.30 },
+      IfcFireSuppressionTerminal: { r: 0.80, g: 0.30, b: 0.25, rough: 0.50, metal: 0.30 }, // red
+      IfcValve:               { r: 0.55, g: 0.50, b: 0.45, rough: 0.40, metal: 0.45 },
+      IfcAlarm:               { r: 0.75, g: 0.25, b: 0.25, rough: 0.50, metal: 0.20 },  // red
+      IfcElectricAppliance:   { r: 0.60, g: 0.65, b: 0.55, rough: 0.50, metal: 0.15 },
+      // ── Proxy/other ──
+      IfcBuildingElementProxy:{ r: 0.00, g: 0.78, b: 0.78, rough: 0.50, metal: 0.10 },  // teal
+      IfcTransportElement:    { r: 0.50, g: 0.50, b: 0.55, rough: 0.40, metal: 0.50 },  // elevator
     };
 
     const key = rgbaStr || '_default';
@@ -288,21 +306,21 @@ function setupStreaming(A) {
       r = parts[0]; g = parts[1]; b = parts[2];
       if (parts.length >= 4 && parts[3] < 1.0) a = parts[3];
     }
-    // §S260e: Detect monochrome grey — any neutral color (R≈G≈B) with no real hue
-    // Catches 0.7/0.7/0.7, 0.97/0.97/0.97, 1.0/1.0/1.0, 0.47/0.47/0.47 etc.
+    // §S265: Detect unassigned material — NULL (default 0.7 grey) or monochrome (R≈G≈B).
+    // Replace with standard reference material for that IFC class.
     var _spread = Math.max(r, g, b) - Math.min(r, g, b);
-    var isMonoGrey = _spread < 0.08; // channels within 8% of each other = no hue
-    if (isMonoGrey && ifcClass && CLASS_COLOR_FALLBACK[ifcClass]) {
-      var fb = CLASS_COLOR_FALLBACK[ifcClass].split(',').map(Number);
-      r = fb[0]; g = fb[1]; b = fb[2];
+    var isUnassigned = _spread < 0.08;
+    var stdMat = (ifcClass && STD_MAT[ifcClass]) ? STD_MAT[ifcClass] : null;
+    if (isUnassigned && stdMat) {
+      r = stdMat.r; g = stdMat.g; b = stdMat.b;
     }
     // §S260d: Gentler near-white taming — let ACES tone mapping handle the rest
     if (r > 0.85 && g > 0.85 && b > 0.85) { r *= 0.92; g *= 0.92; b *= 0.92; }
     const opts = { color: new THREE.Color(r, g, b), flatShading: false };
     if (a < 1.0) { opts.transparent = true; opts.opacity = a; opts.side = THREE.DoubleSide; }
-    // §S260d: PBR roughness + metalness per IFC class
-    opts.roughness = ROUGHNESS_MAP[ifcClass] || 0.7;
-    opts.metalness = METALNESS_MAP[ifcClass] || 0.05;
+    // §S265: PBR roughness + metalness from standard material (or defaults)
+    opts.roughness = stdMat ? stdMat.rough : 0.7;
+    opts.metalness = stdMat ? stdMat.metal : 0.05;
     opts.side = THREE.DoubleSide; // §S260d: IFC geometry has inconsistent normals — DoubleSide ensures pick works
     if (A._envMap) { opts.envMap = A._envMap; opts.envMapIntensity = 0.3; }
     const mat = new THREE.MeshStandardMaterial(opts);
