@@ -644,18 +644,19 @@ test('dlod_budget_math', () => {
 });
 
 test('dlod_visibility_only', () => {
-  // §S262: DLOD = visibility culling only, no geometry swap, no invented cubes.
-  // Verify: _useDlodPath always false, dlodEnable gated on !isMobile, no _promotePass call.
+  // §S262+S265: DLOD = visibility culling only, no geometry swap, no invented cubes.
+  // S265: DLOD enabled on all devices (mobile parity) — no _isMobile guard on dlodEnable.
   var streamSrc = fs.readFileSync(path.join(__dirname, '..', 'streaming.js'), 'utf8');
   var dlodSrc = fs.readFileSync(path.join(__dirname, '..', 'dlod.js'), 'utf8');
   var noSwapPath = !streamSrc.includes('_useDlodPath = !A._isMobile');
-  var visOnly = streamSrc.includes('!A._isMobile && A.dlodEnable');
+  var hasDlodEnable = streamSrc.includes('A.dlodEnable');
+  var noMobileGate = !streamSrc.includes('!A._isMobile && A.dlodEnable');
   var noPromote = !dlodSrc.includes('_promotePass();');
-  var allOk = noSwapPath && visOnly && noPromote;
+  var allOk = noSwapPath && hasDlodEnable && noMobileGate && noPromote;
   return {
     ok: allOk,
-    log: '§WB_DLOD_VIS noSwapPath=' + noSwapPath + ' visOnly=' + visOnly + ' noPromote=' + noPromote,
-    reason: allOk ? '' : 'DLOD still has geometry swap path'
+    log: '§WB_DLOD_VIS noSwapPath=' + noSwapPath + ' hasDlodEnable=' + hasDlodEnable + ' noMobileGate=' + noMobileGate + ' noPromote=' + noPromote,
+    reason: allOk ? '' : 'DLOD gate mismatch'
   };
 });
 
