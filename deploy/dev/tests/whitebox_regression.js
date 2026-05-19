@@ -643,23 +643,19 @@ test('dlod_budget_math', () => {
   };
 });
 
-test('dlod_reservation_tiers', () => {
-  // Verify tier boundaries are correct
-  var tiers = [[64, 192], [128, 384], [256, 768], [512, 2048]];
-  var BBOX_VERTS = 24, BBOX_IDX = 36;
-  var allOk = true;
-  var details = [];
-  for (var ti = 0; ti < tiers.length; ti++) {
-    var rv = tiers[ti][0], ri = tiers[ti][1];
-    if (rv < BBOX_VERTS) { allOk = false; details.push('tier_' + rv + '_lt_bbox_verts'); }
-    if (ri < BBOX_IDX) { allOk = false; details.push('tier_' + ri + '_lt_bbox_idx'); }
-    // Tier index ratio should be ~3x verts (triangulated mesh heuristic)
-    if (ri < rv * 2) { allOk = false; details.push('tier_' + rv + '_idx_ratio_low'); }
-  }
+test('dlod_visibility_only', () => {
+  // §S262: DLOD = visibility culling only, no geometry swap, no invented cubes.
+  // Verify: _useDlodPath always false, dlodEnable gated on !isMobile, no _promotePass call.
+  var streamSrc = fs.readFileSync(path.join(__dirname, '..', 'streaming.js'), 'utf8');
+  var dlodSrc = fs.readFileSync(path.join(__dirname, '..', 'dlod.js'), 'utf8');
+  var noSwapPath = !streamSrc.includes('_useDlodPath = !A._isMobile');
+  var visOnly = streamSrc.includes('!A._isMobile && A.dlodEnable');
+  var noPromote = !dlodSrc.includes('_promotePass();');
+  var allOk = noSwapPath && visOnly && noPromote;
   return {
     ok: allOk,
-    log: `§WB_DLOD_TIERS tiers=${tiers.length} bbox_verts=${BBOX_VERTS} bbox_idx=${BBOX_IDX} ok=${allOk}`,
-    reason: allOk ? '' : 'tier issues: ' + details.join(', ')
+    log: '§WB_DLOD_VIS noSwapPath=' + noSwapPath + ' visOnly=' + visOnly + ' noPromote=' + noPromote,
+    reason: allOk ? '' : 'DLOD still has geometry swap path'
   };
 });
 

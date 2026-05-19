@@ -15,7 +15,7 @@ function setupDLOD(A) {
   A._dlodPaused = false;     // true = cooperate with time machine (skip TM-hidden meshes)
 
   var EVAL_EVERY = 6;             // frames between evaluations
-  var MIN_ELEMENTS = 5000;        // don't enable for small buildings
+  var MIN_ELEMENTS = 100000;      // §S262: LTU (122K) onwards — visibility culling for very large buildings
   var STOREY_RANGE = 3;           // show N storeys above/below look target
   var _frustum = new THREE.Frustum();
   var _projScreenMatrix = new THREE.Matrix4();
@@ -65,34 +65,9 @@ function setupDLOD(A) {
       ' levels=' + _storeyLevels.map(function(s) { return s.name; }).join(','));
   }
 
-  // Visible storeys based on orbit target + camera distance
-  // Close-up: show 7 storeys. Far away: show all (whole building visible).
-  function _visibleStoreys() {
-    if (!_storeyLevels.length) return null; // show all
-
-    // Camera distance to target — when far, show more storeys
-    var camDist = A.controls
-      ? A.camera.position.distanceTo(A.controls.target)
-      : 100;
-    // Building height from storey data
-    var bldHeight = _storeyLevels[_storeyLevels.length - 1].y - _storeyLevels[0].y;
-    // If camera is far enough to see the whole building, show all storeys
-    if (bldHeight > 0 && camDist > bldHeight * 2) return null;
-
-    var camY = A.controls ? A.controls.target.y : A.camera.position.y;
-    var bestIdx = 0, bestDist = Infinity;
-    for (var i = 0; i < _storeyLevels.length; i++) {
-      var d = Math.abs(_storeyLevels[i].y - camY);
-      if (d < bestDist) { bestDist = d; bestIdx = i; }
-    }
-    var visible = {};
-    var lo = Math.max(0, bestIdx - STOREY_RANGE);
-    var hi = Math.min(_storeyLevels.length - 1, bestIdx + STOREY_RANGE);
-    for (var j = lo; j <= hi; j++) {
-      visible[_storeyLevels[j].name] = true;
-    }
-    return visible;
-  }
+  // §S262: Storey culling disabled — too aggressive, hides visible floors on head-on views.
+  // DLOD = frustum culling only (individual meshes). Safe: never hides what you're looking at.
+  function _visibleStoreys() { return null; }
 
   // ── Enable/disable ──
   A.dlodEnable = function() {
@@ -103,7 +78,7 @@ function setupDLOD(A) {
     A._dlodEnabled = true;
     A._dlodFrame = EVAL_EVERY - 1;  // next dlodTick fires immediately (no 6-frame delay)
     _storeyBuilt = false;
-    console.log('[DLOD] §DLOD_ENABLE count=' + A.streamedCount);
+    console.log('[DLOD] §DLOD_ENABLE count=' + A.streamedCount + ' mode=visibility_only');
   };
 
   A.dlodDisable = function(reason) {
@@ -211,7 +186,7 @@ function setupDLOD(A) {
       }
 
       // ── InstancedMesh: storey-based culling per instance ──
-      if (obj.isInstancedMesh && A._instanceMeta[obj.id] && visStoreys) {
+      if (obj.isInstancedMesh && A._instanceMeta[obj.id]) {
         var meta = A._instanceMeta[obj.id];
         var changed = false;
         for (var i = 0; i < meta.length; i++) {
@@ -221,7 +196,7 @@ function setupDLOD(A) {
           if (hiddenDiscs && hiddenDiscs.size > 0 &&
               hiddenDiscs.has(m.disc)) continue;
 
-          if (!visStoreys[m.storey]) {
+          if (visStoreys && !visStoreys[m.storey]) {
             if (!m._origMatrix) {
               m._origMatrix = new THREE.Matrix4();
               obj.getMatrixAt(i, m._origMatrix);
@@ -230,6 +205,7 @@ function setupDLOD(A) {
             changed = true;
             hidCount++;
           } else if (m._origMatrix) {
+            // §S262: Restore when visStoreys=null (show all) or storey now visible
             obj.setMatrixAt(i, m._origMatrix);
             m._origMatrix = null;
             changed = true;
@@ -240,7 +216,7 @@ function setupDLOD(A) {
       }
 
       // ── BatchedMesh: storey-based culling per slot ──
-      if (obj.isBatchedMesh && A._batchMeta[obj.id] && visStoreys) {
+      if (obj.isBatchedMesh && A._batchMeta[obj.id]) {
         var meta = A._batchMeta[obj.id];
         var anyVis = false;
         for (var i = 0; i < meta.length; i++) {
@@ -250,11 +226,13 @@ function setupDLOD(A) {
           if (hiddenDiscs && hiddenDiscs.size > 0 &&
               hiddenDiscs.has(m.disc)) continue;
 
-          if (!visStoreys[m.storey]) {
+          if (visStoreys && !visStoreys[m.storey]) {
             obj.setVisibleAt(m.slotId, false);
+            m._dlodHid = true;
             hidCount++;
           } else {
-            obj.setVisibleAt(m.slotId, true);
+            // §S262: Restore when visStoreys=null (show all) or storey now visible
+            if (m._dlodHid) { obj.setVisibleAt(m.slotId, true); m._dlodHid = false; }
             anyVis = true;
             visCount++;
           }
@@ -264,7 +242,7 @@ function setupDLOD(A) {
     });
 
     var ms = (performance.now() - t0).toFixed(1);
-    if (hidCount > 0 && A.markDirty) A.markDirty();  // §S260b: trigger render after visibility change
+    if ((hidCount > 0 || visCount > 0) && A.markDirty) A.markDirty();  // §S262: trigger render on any visibility change
     // Log every 10th evaluation (once per second at 60fps)
     if (A._dlodFrame % (EVAL_EVERY * 10) === 0) {
       var camStorey = visStoreys ? Object.keys(visStoreys).join('+') : 'all';
@@ -273,10 +251,7 @@ function setupDLOD(A) {
         ' storeys=' + camStorey + ' ms=' + ms);
     }
 
-    // §S261: Geometry swap — promote near bbox→real, demote far real→bbox
-    if (!A._dlodPaused && A._dlodSlots && Object.keys(A._dlodSlots).length > 0) {
-      _promotePass();
-    }
+    // §S262: No geometry swap — real geometry always. DLOD = visibility culling only.
   };
 
   // ── §S261: Geometry-swap promote/demote ──

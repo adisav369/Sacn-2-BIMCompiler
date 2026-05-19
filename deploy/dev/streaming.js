@@ -106,7 +106,7 @@ function setupStreaming(A) {
           A._lastFlushIdx = 0;
           A._bboxCleared = false;
           A.activeBuildingTotal = rows.length;
-          A._useDlodPath = false; // §S260d: DISABLED — bbox-only breaks pick until S261 promotion done
+          A._useDlodPath = false; // §S262: no bbox swap path — real geometry only, DLOD = visibility culling
           A._drawBboxPlaceholders(rows);
           A.streaming = true;
           A.status.textContent = `Streaming ${rows.length.toLocaleString()} elements...`;
@@ -155,7 +155,7 @@ function setupStreaming(A) {
       A._bboxCleared = false;
       A.activeBuilding = nearest;
       A.activeBuildingTotal = A.streamQueue.length;
-      A._useDlodPath = false; // §S260d: DISABLED — bbox-only breaks pick until S261 promotion done
+      A._useDlodPath = false; // §S262: no bbox swap path — real geometry only, DLOD = visibility culling
       // Draw one wireframe cube per element instantly — disappear when real meshes arrive
       A._drawBboxPlaceholders(rows);
       A.streaming = true;
@@ -343,8 +343,8 @@ function setupStreaming(A) {
           A.populateStoreys(A.activeBuilding);
           A.populateDiscs(A.activeBuilding);
         }
-        // §S261: Enable DLOD for geometry-swap promote/demote
-        if (A._useDlodPath && A.dlodEnable) {
+        // §S262: Enable DLOD frustum + storey visibility culling (no geometry swap)
+        if (!A._isMobile && A.dlodEnable) {
           A.dlodEnable();
           if (A.dlodTick) A.dlodTick();
         }
@@ -542,17 +542,15 @@ function setupStreaming(A) {
     A.streamIdx += batch;
 
     // §S260c: Progressive flush — first at 500 (quick first paint), then every 5000.
-    // §S261: Skip progressive flush on DLOD path — bbox placeholders stay visible,
-    // single bbox flush at end replaces them all at once.
-    if (!A._useDlodPath) {
-      if (A._lastFlushIdx === undefined) A._lastFlushIdx = 0;
-      var _flushAt = A._bboxCleared ? 5000 : 500;
-      if (A.streamIdx - A._lastFlushIdx >= _flushAt && A.streamIdx < A.streamQueue.length) {
-        A._flushInstanced();
-        if (!A._bboxCleared) A._bboxCleared = true;  // §S260c: switch to 5000 after first flush
-        A._lastFlushIdx = A.streamIdx;
-        console.log(`[S260] §PROGRESSIVE_FLUSH at=${A.streamIdx}/${A.streamQueue.length} drawCalls=${A.scene.children.length}`);
-      }
+    // §S262: Progressive flush runs on ALL paths (incl. DLOD) — instanced meshes appear
+    // while streaming. DLOD bbox BatchedMesh is still flushed once at end.
+    if (A._lastFlushIdx === undefined) A._lastFlushIdx = 0;
+    var _flushAt = A._bboxCleared ? 5000 : 500;
+    if (A.streamIdx - A._lastFlushIdx >= _flushAt && A.streamIdx < A.streamQueue.length) {
+      A._flushInstanced();
+      if (!A._bboxCleared) A._bboxCleared = true;  // §S260c: switch to 5000 after first flush
+      A._lastFlushIdx = A.streamIdx;
+      console.log(`[S260] §PROGRESSIVE_FLUSH at=${A.streamIdx}/${A.streamQueue.length} drawCalls=${A.scene.children.length}`);
     }
 
     document.getElementById('s-streamed').textContent = A.streamedCount.toLocaleString();
@@ -636,11 +634,16 @@ function setupStreaming(A) {
       }
     }
 
-    // ── S261: DLOD path — defer single-instance buckets to _flushBboxBatched ──
+    // ── S261: DLOD path — accumulate single-instance buckets for _flushBboxBatched ──
     if (A._useDlodPath && !A._isMobile) {
-      A._pendingBboxBuckets = batchBuckets;
-      // Skip normal BatchedMesh build — _flushBboxBatched handles it with reserved ranges
-      console.log('§S261_DEFER_BBOX buckets=' + Object.keys(batchBuckets).length);
+      if (!A._pendingBboxBuckets) A._pendingBboxBuckets = {};
+      for (var _bk in batchBuckets) {
+        if (!A._pendingBboxBuckets[_bk]) A._pendingBboxBuckets[_bk] = [];
+        for (var _bi = 0; _bi < batchBuckets[_bk].length; _bi++) {
+          A._pendingBboxBuckets[_bk].push(batchBuckets[_bk][_bi]);
+        }
+      }
+      console.log('§S261_DEFER_BBOX buckets=' + Object.keys(A._pendingBboxBuckets).length);
     }
     // ── S260: Build BatchedMesh per desktop bucket (non-DLOD path) ──────────────
     else if (!A._isMobile && THREE.BatchedMesh) {
@@ -873,8 +876,6 @@ function setupStreaming(A) {
     var _bboxScale = new THREE.Vector3();
     var _realScale = new THREE.Vector3(1, 1, 1);
     var GPU_VERT_BUDGET = 8000000;  // 8M verts = ~96MB
-    var MAX_RESERVED_VERTS = 512;
-    var MAX_RESERVED_IDX = 2048;
     var BBOX_VERTS = 24;  // BoxGeometry(1,1,1)
     var BBOX_IDX = 36;
     var bboxGeo = A._dlodBboxGeo;
@@ -898,24 +899,10 @@ function setupStreaming(A) {
         var vc = geo && geo.attributes.position ? geo.attributes.position.count : 0;
         var ic = geo && geo.index ? geo.index.count : (vc || 0);
 
-        if (vc > MAX_RESERVED_VERTS || ic > MAX_RESERVED_IDX) {
-          // Too large for DLOD — will render as individual Mesh
-          fallbackItems.push(items[i]);
-          continue;
-        }
-
-        // Tiered reservation
-        var rv, ri;
-        if (vc <= 64) { rv = 64; ri = 192; }
-        else if (vc <= 128) { rv = 128; ri = 384; }
-        else if (vc <= 256) { rv = 256; ri = 768; }
-        else { rv = MAX_RESERVED_VERTS; ri = MAX_RESERVED_IDX; }
-        // Ensure reservation >= actual
-        if (rv < vc) rv = vc;
-        if (ri < ic) ri = ic;
-        // Ensure reservation >= bbox
-        if (rv < BBOX_VERTS) rv = BBOX_VERTS;
-        if (ri < BBOX_IDX) ri = BBOX_IDX;
+        // §S262: Reserve exact real-geometry size (no tiered cap).
+        // Geometry is in meshCache at flush time — use actual size so promote always fits.
+        var rv = Math.max(vc, BBOX_VERTS);
+        var ri = Math.max(ic, BBOX_IDX);
 
         slotReservations.push({ item: items[i], rv: rv, ri: ri });
         bucketVerts += rv;
@@ -977,26 +964,30 @@ function setupStreaming(A) {
       for (var si = 0; si < slotReservations.length; si++) {
         var sr = slotReservations[si];
         var el = sr.item.el;
+        var realGeo = sr.item.geo;
         var slotId;
+
+        // §S262: Start with REAL geometry — looks correct immediately.
+        // DLOD demotes far elements to bbox later as an optimization.
         try {
-          slotId = bm.addGeometry(bboxGeo, sr.rv, sr.ri);
+          slotId = bm.addGeometry(realGeo, sr.rv, sr.ri);
         } catch(e) {
           console.warn('§S261_ADDGEO_FAIL bucket=' + key + ' i=' + si + ' err=' + e.message);
           continue;
         }
 
-        // Bbox-scaled matrix (bbox cubes are unit cubes scaled to element bbox)
+        // Real-geometry matrix (scale=1,1,1)
         var pos = A.ifc2three(el.cx, el.cy, el.cz);
         _pos.set(pos.x, pos.y, pos.z);
-        var bx = el.bx || 0.3, by = el.bz || 0.3, bz = el.by || 0.3;  // IFC→Three: swap Y↔Z
-        _bboxScale.set(bx, by, bz);
         _euler.set(el.rotX || 0, el.rotZ || 0, -(el.rotY || 0));
         _quat.setFromEuler(_euler);
-        _m4.compose(_pos, _quat, _bboxScale);
-        bm.setMatrixAt(slotId, _m4);
-
-        // Real-geometry matrix (scale=1,1,1) — cached for promote
         _m4real.compose(_pos, _quat, _realScale);
+        bm.setMatrixAt(slotId, _m4real);
+
+        // Bbox-scaled matrix — cached for demote
+        var bx = el.bx || 0.3, by = el.bz || 0.3, bz = el.by || 0.3;  // IFC→Three: swap Y↔Z
+        _bboxScale.set(bx, by, bz);
+        _m4.compose(_pos, _quat, _bboxScale);
 
         // Storey/disc visibility filter
         var vis = true;
@@ -1014,11 +1005,11 @@ function setupStreaming(A) {
         if (!A._batchDiscMap[dk]) A._batchDiscMap[dk] = [];
         A._batchDiscMap[dk].push({ mesh: bm, slotId: slotId });
 
-        // DLOD slot data for promote/demote
+        // DLOD slot data — starts promoted (real geometry), demotes to bbox when far
         dlodSlots.push({
           slotId: slotId,
           hash: el.hash,
-          promoted: false,
+          promoted: true,
           reservedVerts: sr.rv,
           reservedIdx: sr.ri,
           bboxMatrix: _m4.clone(),
@@ -1041,7 +1032,7 @@ function setupStreaming(A) {
     var reservedMB = (totalReservedVerts * 12 / 1048576).toFixed(1);
     console.log('§DLOD_FLUSH buckets=' + drawCalls + ' elements=' + bboxCount +
       ' draw_calls=' + drawCalls + ' skip=' + skipCount +
-      ' all_bbox=true reserved_mb=' + reservedMB);
+      ' start=real reserved_mb=' + reservedMB);
     document.getElementById('s-meshes').textContent = drawCalls.toLocaleString() + ' draw calls (DLOD)';
   };
 

@@ -443,6 +443,7 @@
   var _isLargeBuilding = false;
 
   var _zeroMatrix = null; // lazy init
+  var _whiteColor = null; // §S260f: reusable white for BatchedMesh slot reset
   var _savedInstanceMatrices = {}; // meshId → { idx → Matrix4 }
 
   // §S260d: Audio removed — can't hear on most browsers anyway
@@ -550,6 +551,7 @@
     var app = A();
     if (!app || !app.scene) return;
     if (!_zeroMatrix) _zeroMatrix = new THREE.Matrix4().makeScale(0, 0, 0);
+    if (!_whiteColor) _whiteColor = new THREE.Color(1, 1, 1);
     _prevCursor = _cursor;
     _cursor = cursorMs;
 
@@ -702,6 +704,7 @@
       if (obj.isBatchedMesh && app._batchMeta && app._batchMeta[obj.id]) {
         var bmetas = app._batchMeta[obj.id];
         var anyVis = false;
+        var _bmHasFrontier = false;
         var _bmM4 = new THREE.Matrix4();
         var _bmPos = new THREE.Vector3();
         for (var bi = 0; bi < bmetas.length; bi++) {
@@ -711,27 +714,13 @@
             obj.setVisibleAt(sid, true);
             anyVis = true;
             if (frontier[bg]) {
-              // §S260e: BatchedMesh frontier — add orange/cyan bbox glow at slot position
+              _bmHasFrontier = true;
               obj.getMatrixAt(sid, _bmM4);
               _bmPos.setFromMatrixPosition(_bmM4);
               if (_camFollow) {
                 _frontierPositions.push(_bmPos.clone());
                 _guidPosMap[bg] = _bmPos.clone();
               }
-              // Create glow box at frontier position (depthTest:false = shines through)
-              var ft = frontier[bg].t;
-              var fCol = ft < 0.15 ? 0x44ffff : 0xff8c00;
-              var bboxSize = bmetas[bi].bboxSize || 1.0;
-              var fGeo = new THREE.BoxGeometry(bboxSize, bboxSize, bboxSize);
-              var fEdges = new THREE.EdgesGeometry(fGeo);
-              fGeo.dispose();
-              var fLine = new THREE.LineSegments(fEdges,
-                new THREE.LineBasicMaterial({ color: fCol, depthTest: false }));
-              fLine.position.copy(_bmPos);
-              fLine.renderOrder = 10;
-              fLine.userData._isTmFrontier = true;
-              app.scene.add(fLine);
-              _outlineMeshes.push(fLine); // cleaned up by clearAllOutlines each tick
             } else if (_camFollow && _previewGuids && _previewGuids[bg]) {
               obj.getMatrixAt(sid, _bmM4);
               _bmPos.setFromMatrixPosition(_bmM4);
@@ -742,6 +731,23 @@
           }
         }
         obj.visible = anyVis;
+        // §S260f: Glow the real BatchedMesh material when frontier elements present
+        if (_bmHasFrontier && anyVis) {
+          if (!obj._tm_origMat) obj._tm_origMat = obj.material;
+          if (!obj._tm_glowMat) {
+            obj._tm_glowMat = obj.material.clone();
+            obj._tm_glowMat.emissive = new THREE.Color(1.0, 0.55, 0.0);
+            obj._tm_glowMat.emissiveIntensity = 0.5;
+            obj._tm_glowMat.transparent = true;
+            obj._tm_glowMat.opacity = 0.85;
+            obj._tm_glowMat.depthTest = false;
+          }
+          obj.material = obj._tm_glowMat;
+          obj.renderOrder = 10;
+        } else if (obj._tm_origMat) {
+          obj.material = obj._tm_origMat;
+          obj.renderOrder = 0;
+        }
         if (anyVis) _wbMat('BATCHED', obj);
         if (app._shadowOn) {
           obj.castShadow = anyVis;
@@ -975,7 +981,7 @@
       } else if (_cineBeat === 'closeup') {
         var sc = _cineStoryboard[_cineSceneIdx];
         if (sc) {
-          // §S260d: Reverted to S260c working camera — chain tracking + orbit + distance spring
+          // §S260f: Scripted camera — follows pre-planned storyboard (knows entire sequence ahead)
           _cineNextTarget = sc.center;
           if (!_camTarget) _camTarget = sc.center.clone();
           _camTarget.x += (sc.center.x - _camTarget.x) * 0.12;
@@ -2845,8 +2851,8 @@
     console.log('§TM_SHADOW_INHERIT shadowOn=' + !!app._shadowOn + ' groundVisible=' + (app.ground ? app.ground.visible : 'n/a'));
     computeDays();
     saveVisibility();
-    if (app._dlodPaused !== undefined) app._dlodPaused = true;
-    if (app.dlodDemoteAll) app.dlodDemoteAll();  // §S261: reset geometry to bbox before TM takes over visibility
+    // §S262: DLOD runs independently — camera distance drives promote/demote, TM drives visibility. No pause needed.
+    console.log('§MOBILE_TM_TOGGLE method=setVisibleAt|setMatrixAt mobile=' + !!app._isMobile + ' dlod=' + !!app._useDlodPath);
     _cursor = _projectEnd;
     _anchorDay = _days.length ? _days[_days.length - 1] : null;
     _anchorHr = 15;
@@ -2892,8 +2898,7 @@
     _panel.style.display = 'none';
     setToolbarHighlight(false);
     restoreVisibility();
-    // §S258: Resume DLOD after time machine releases visibility control
-    if (app && app._dlodPaused !== undefined) app._dlodPaused = false;
+    // §S262: DLOD runs independently — no pause/resume needed
     viewerStatus('');
     console.log('§TIME_MACHINE OFF — restored');
   }
