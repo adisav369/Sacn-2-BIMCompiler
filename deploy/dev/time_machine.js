@@ -108,9 +108,9 @@
   var _BEAT_OPENING = 50;     // §S260e: 4s establishing orbit (50 ticks × 80ms) — full building visible, then deconstruct
   var _cineSeenZones = {};    // spatial zone keys already featured
   var _cineCloseupCount = 0;  // scenes since last establishing
-  var _BEAT_CLOSEUP = 50;     // §S260d: ticks per scene (~4s at 80ms/tick) — slow enough to appreciate
-  var _BEAT_TRANSIT = 25;     // §S260d: ticks smooth crane travel (~2s)
-  var _BEAT_ESTAB = 40;       // §S260d: ticks wide establishing orbit (~3.2s)
+  var _BEAT_CLOSEUP = 20;     // §S260f: ticks per scene (~1.6s) — brisk pace, no lingering
+  var _BEAT_TRANSIT = 12;     // §S260f: ticks crane travel (~1s)
+  var _BEAT_ESTAB = 20;       // §S260f: ticks establishing orbit (~1.6s)
   var _cinePeeled = [];       // meshes temporarily hidden for clear line-of-sight
   var _cineHeroSlowdown = false; // true during hero beats → slow tick to hourly
 
@@ -731,23 +731,7 @@
           }
         }
         obj.visible = anyVis;
-        // §S260f: Glow the real BatchedMesh material when frontier elements present
-        if (_bmHasFrontier && anyVis) {
-          if (!obj._tm_origMat) obj._tm_origMat = obj.material;
-          if (!obj._tm_glowMat) {
-            obj._tm_glowMat = obj.material.clone();
-            obj._tm_glowMat.emissive = new THREE.Color(1.0, 0.55, 0.0);
-            obj._tm_glowMat.emissiveIntensity = 0.5;
-            obj._tm_glowMat.transparent = true;
-            obj._tm_glowMat.opacity = 0.85;
-            obj._tm_glowMat.depthTest = false;
-          }
-          obj.material = obj._tm_glowMat;
-          obj.renderOrder = 10;
-        } else if (obj._tm_origMat) {
-          obj.material = obj._tm_origMat;
-          obj.renderOrder = 0;
-        }
+        // §S260f: No material swap on BatchedMesh — elements visible by setVisibleAt is enough
         if (anyVis) _wbMat('BATCHED', obj);
         if (app._shadowOn) {
           obj.castShadow = anyVis;
@@ -879,18 +863,24 @@
       if (scene && _cineBeat === 'closeup' && sceneEnded) {
         // §S260d: If background builder still running and we're at the end, hold here
         if (_bgBuildRaf && _cineSceneIdx >= _cineStoryboard.length - 1) {
-          // Stay on current scene — more scenes arriving from background builder
-          _cineTick = 0; // restart this scene's beat
+          _cineTick = 0;
           viewerStatus('🚁 Composing flight path... ' + _cineStoryboard.length + ' scenes');
-          // Don't advance — check again next beat
         } else {
         restorePeeled();
         _cineHeroSlowdown = false;
-        // §S260d: Clean up arc data (not cacheable, recomputed per visit)
         if (scene) { delete scene._arcStart; delete scene._arcEnd; }
         _cineCloseupCount++;
         _cineTick = 0;
         _cineSceneIdx++;
+        // §S260f: Skip scenes whose construction is already done — jump to where action is
+        while (_cineSceneIdx < _cineStoryboard.length - 1) {
+          var _peek = _cineStoryboard[_cineSceneIdx];
+          if (_peek.endTs && _cursor >= _peek.endTs) {
+            _cineSceneIdx++;
+          } else {
+            break;
+          }
+        }
 
         // Decide: panoramic establishing OR transit to next scene
         if (_cineCloseupCount >= 3 || _cineSceneIdx >= _cineStoryboard.length) {
@@ -984,17 +974,19 @@
           // §S260f: Scripted camera — follows pre-planned storyboard (knows entire sequence ahead)
           _cineNextTarget = sc.center;
           if (!_camTarget) _camTarget = sc.center.clone();
-          _camTarget.x += (sc.center.x - _camTarget.x) * 0.12;
-          _camTarget.y += (sc.center.y - _camTarget.y) * 0.12;
-          _camTarget.z += (sc.center.z - _camTarget.z) * 0.12;
+          // §S260f: Faster convergence for shorter beats (20 ticks vs old 50)
+          _camTarget.x += (sc.center.x - _camTarget.x) * 0.25;
+          _camTarget.y += (sc.center.y - _camTarget.y) * 0.25;
+          _camTarget.z += (sc.center.z - _camTarget.z) * 0.25;
 
-          target.x += (_camTarget.x - target.x) * 0.10;
-          target.y += (_camTarget.y - target.y) * 0.10;
-          target.z += (_camTarget.z - target.z) * 0.10;
+          target.x += (_camTarget.x - target.x) * 0.20;
+          target.y += (_camTarget.y - target.y) * 0.20;
+          target.z += (_camTarget.z - target.z) * 0.20;
 
-          // Distance spring — converge to desired distance
-          var desiredDist = sc.type === 'panoramic' ? _PANORAMIC_DIST :
-                           sc.type === 'hero' ? _HERO_DIST : _FLYTHROUGH_DIST;
+          // §S260f: Distance scales with scene size — small cluster = close, large = pull back
+          var baseDist = sc.type === 'panoramic' ? _PANORAMIC_DIST :
+                         sc.type === 'hero' ? _HERO_DIST : _FLYTHROUGH_DIST;
+          var desiredDist = baseDist + Math.min(20, (sc.count || 8) * 0.3);
           var camDist = app.camera.position.distanceTo(target);
           // §S260e: Min-distance guard — prevent camera going inside geometry
           var minDist = desiredDist * 0.5;
