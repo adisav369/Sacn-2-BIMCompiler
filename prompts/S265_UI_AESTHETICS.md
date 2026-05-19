@@ -164,7 +164,9 @@ Overflow icons should glow cyan when their feature is active. `toggleOverflow()`
 3. Add hash parser on load to restore shared state (`pick`, `storey`, `xray`, `tm`, `tour`, `clash`)
 4. Share pill button: if building is on OCI (`?db=http...`), share the current URL directly. If imported (IndexedDB), open the existing share sheet for Contribute flow.
 
-**Snag/Clash share stays separate** — `measure.js` snag QR and `clash_snag.js` deep-links are their own flows at their own levels. Don't touch them.
+**Old share methods (WhatsApp/Email buttons, contribute flow) are REMOVED.** The permanent Share icon in the pill IS the only share entry point. It works in context — camera view, element pick, clash pair, whatever is active gets encoded in the URL. Snag/clash panels must NOT obscure the pill so the Share icon is always one tap away.
+
+**Snag/Clash panels** — their existing deep-link QR codes stay (they encode element GUIDs). But the "Share to WhatsApp" buttons inside those panels are removed — user taps the pill Share icon instead, which captures the full context.
 
 **Files to modify:**
 | File | Change |
@@ -173,11 +175,12 @@ Overflow icons should glow cyan when their feature is active. `toggleOverflow()`
 | `main.js` or `streaming.js` | Parse `pick`, `storey`, `xray`, `tm`, `tour`, `clash` from URL hash on load |
 | `index.html` | Share pill `onclick` already has fallback — refine after `share.js` rewrite |
 
-### TODO — Phase 4: HUD polish (future session)
+### TODO — Phase 4: HUD polish (next session, after Phase 3)
 
 - Auto-collapse on mobile after 5s
 - Storeys + disciplines inside HUD on mobile (no separate panels)
 - Tap-to-peek
+- Ensure all panels/popups do NOT obscure the icon pill — pill must always be reachable
 
 ## DO NOT touch
 
