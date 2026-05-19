@@ -285,6 +285,8 @@
   function updateHeaderFlag() {
     var btn = document.getElementById('header-flag-btn');
     if (!btn) return;
+    // S265: don't overwrite if button has SVG icon (home icon in overflow)
+    if (btn.querySelector('svg')) return;
     var currentIso = 'US';
     var currentLocale = detectLocale();
     AVAILABLE_LOCALES.forEach(function(loc) {

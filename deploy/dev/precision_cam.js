@@ -124,20 +124,19 @@
     // If fine is active, reflect in panel button
     if (_fine) document.getElementById('prec-fine-btn').style.background = '#1a6b8a';
 
-    // Toolbar 👁 button
+    // S265: Precision Camera button — Lucide focus icon, matches overflow grid style
     var toolbar = document.querySelector('#search-body > div');
     if (!toolbar) return;
     var btn = document.createElement('button');
     btn.id = 'precision-btn';
     btn.title = 'Precision Camera';
-    btn.textContent = '👁';
+    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg>';
     btn.style.cssText =
-      'background:#444;color:#fff;border:1px solid #666;border-radius:4px;' +
-      'cursor:pointer;font-size:22px;padding:2px;line-height:1';
+      'background:transparent;color:#ddd;border:none;border-radius:8px;' +
+      'cursor:pointer;padding:10px;display:flex;align-items:center;justify-content:center';
     btn.addEventListener('pointerup', function(e) {
       e.stopPropagation(); togglePanel();
     });
-
     var homeBtn = document.getElementById('header-flag-btn');
     if (homeBtn) toolbar.insertBefore(btn, homeBtn);
     else toolbar.appendChild(btn);

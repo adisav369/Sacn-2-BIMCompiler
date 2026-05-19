@@ -2936,21 +2936,8 @@
   function init() {
     buildPanel();
 
-    var toolbar = document.querySelector('#search-body > div');
-    if (!toolbar) return;
-    var btn = document.createElement('button');
-    btn.id = 'time-machine-btn';
-    btn.title = 'Time Machine';
-    btn.textContent = '⏳';
-    btn.style.cssText =
-      'background:#444;color:#fff;border:1px solid #666;border-radius:4px;' +
-      'cursor:pointer;font-size:22px;padding:2px;line-height:1';
-    btn.addEventListener('pointerup', function(e) {
-      e.stopPropagation(); toggle();
-    });
-    var homeBtn = document.getElementById('header-flag-btn');
-    if (homeBtn) toolbar.insertBefore(btn, homeBtn);
-    else toolbar.appendChild(btn);
+    // S265: TM button is now in icon pill — no longer injected into overflow
+    // var toolbar = document.querySelector('#search-body > div');
 
     setTimeout(hookCommitOp, 2000);
 

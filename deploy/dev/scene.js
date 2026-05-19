@@ -607,17 +607,27 @@ function setupScene(A) {
   }
 
   // §5 — Command Palette (? key or 🛟 button)
+  // S265: inline SVG icons for command palette (16x16, stroke=currentColor)
+  var _ic = function(d) { return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>'; };
   var _paletteEntries = [
-    { seq: 'G',  name: '2D Grid' },
-    { seq: 'X',  name: 'Section Cut' },
-    { seq: 'F',  name: 'Find / Navigate' },
-    { seq: 'C',  name: 'Clash Matrix' },
-    { seq: 'M',  name: 'Measure' },
-    { seq: 'SC', name: 'Screenshot' },
-    { seq: 'S',  name: 'Sunglasses (X-ray)' },
-    { seq: '4',  name: '4D / 5D Analytics' },
-    { seq: 'P',  name: 'Fly Around (Plane)' },
-    { seq: '-',  name: 'Toggle Panels (hide/show)' }
+    { seq: 'M',  name: 'Measure',        icon: _ic('<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/>') },
+    { seq: 'F',  name: 'Find / Navigate', icon: _ic('<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>') },
+    { seq: 'X',  name: 'Section Cut',     icon: _ic('<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>') },
+    { seq: 'C',  name: 'Clash Matrix',    icon: _ic('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>') },
+    { seq: 'S',  name: 'Palette',         icon: _ic('<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>') },
+    { seq: 'G',  name: '2D Grid',         icon: _ic('<rect width="18" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/>') },
+    { seq: 'P',  name: 'Fly Tour',        icon: _ic('<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>') },
+    { seq: 'SC', name: 'Screenshot',      icon: _ic('<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>') },
+    { seq: '4',  name: '4D / 5D',         icon: _ic('<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>') },
+    { seq: 'Alt+Z', name: 'X-Ray',       icon: _ic('<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="1"/><path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0"/>') },
+    { seq: '',   name: 'Issues',          icon: _ic('<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>'), action: function() { if (typeof toggleIssues === 'function') toggleIssues(); } },
+    { seq: '',   name: 'Night',           icon: _ic('<path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/>'), action: function() { if (typeof toggleNightMode === 'function') toggleNightMode(); } },
+    { seq: '',   name: 'Shadow',          icon: _ic('<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>'), action: function() { if (typeof toggleShadow === 'function') toggleShadow(); } },
+    { seq: '',   name: 'Background',      icon: _ic('<circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/>'), action: function() { if (typeof toggleBackground === 'function') toggleBackground(); } },
+    { seq: 'F11', name: 'Fullscreen',     icon: _ic('<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>') },
+    { seq: '',   name: 'Time Machine',    icon: _ic('<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>'), action: function() { if (typeof toggleTimeMachine === 'function') toggleTimeMachine(); } },
+    { seq: '',   name: 'Share',           icon: _ic('<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>'), action: function() { var k=A.activeBuilding||A.RECORD_ID||''; if (A.openShareSheet) A.openShareSheet(k); } },
+    { seq: '',   name: 'Home',            icon: _ic('<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'), action: function() { location.href='../index.html'; } }
   ];
 
   function showCommandPalette() {
@@ -666,14 +676,14 @@ function setupScene(A) {
         row.style.cssText = 'padding:8px 14px;cursor:pointer;display:flex;align-items:center;' +
           'justify-content:space-between;font-size:13px;color:#e0e0e0;' +
           (i === cursor ? 'background:rgba(79,195,247,0.15)' : '');
-        row.innerHTML = '<span>' + entry.name + '</span>' +
-          '<kbd style="background:#333;color:#4fc3f7;padding:2px 8px;border-radius:4px;' +
-          'font-family:monospace;font-size:12px;border:1px solid #555">' + entry.seq + '</kbd>';
+        row.innerHTML = '<span style="display:flex;align-items:center;gap:8px">' +
+          (entry.icon || '') + entry.name + '</span>' +
+          (entry.seq ? '<kbd style="background:#333;color:#4fc3f7;padding:2px 8px;border-radius:4px;font-family:monospace;font-size:12px;border:1px solid #555">' + entry.seq + '</kbd>' : '');
         row.addEventListener('click', function() {
           pal.remove();
-          var seq = entry.seq.toLowerCase();
-          if (_shortcuts[seq]) _shortcuts[seq]();
-          console.log('§KBD_PALETTE_RUN seq=' + entry.seq);
+          if (entry.action) { entry.action(); }
+          else { var seq = entry.seq.toLowerCase(); if (_shortcuts[seq]) _shortcuts[seq](); }
+          console.log('§KBD_PALETTE_RUN name=' + entry.name + ' seq=' + entry.seq);
         });
         row.addEventListener('mouseenter', function() {
           cursor = i;
@@ -705,11 +715,12 @@ function setupScene(A) {
       if (e.key === 'ArrowUp')   { e.preventDefault(); cursor = Math.max(cursor - 1, 0); highlightRows(); }
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (currentMatches[cursor]) {
+        var entry = currentMatches[cursor];
+        if (entry) {
           pal.remove();
-          var seq = currentMatches[cursor].seq.toLowerCase();
-          if (_shortcuts[seq]) _shortcuts[seq]();
-          console.log('§KBD_PALETTE_RUN seq=' + currentMatches[cursor].seq);
+          if (entry.action) { entry.action(); }
+          else { var seq = entry.seq.toLowerCase(); if (_shortcuts[seq]) _shortcuts[seq](); }
+          console.log('§KBD_PALETTE_RUN name=' + entry.name + ' seq=' + entry.seq);
         }
       }
     });
