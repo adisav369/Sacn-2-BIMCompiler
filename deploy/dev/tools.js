@@ -244,7 +244,7 @@ function setupTools(A) {
     document.body.style.color = textColor;
     A.renderer.setClearColor(bg);
     if (!A._whiteBg) A.ground.material.color.setHex(A.lightTheme ? 0xdddddd : 0x222233);
-    document.querySelectorAll('#hud,#search-box,#info-panel,#storey-panel,#disc-panel,#status').forEach(el => {
+    document.querySelectorAll('#hud,#search-box,#icon-pill,#info-panel,#storey-panel,#disc-panel,#status').forEach(el => {
       el.style.background = panelBg;
       el.style.borderColor = A.lightTheme ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.08)';
     });

@@ -1,7 +1,7 @@
-# ⚠ DO NOT REMOVE — Scope: S264 Share Sheet Fix
-# Read the log after every run. No inventions.
+# ⚠ SUPERSEDED — Absorbed into S265_UI_AESTHETICS.md Phase 3 (Share refactor section)
+# All S264 tasks are now in S265. This file kept for reference only.
 
-# S264: Fix Share — System Sheet + Camera/Element/Clash State
+# S264: Fix Share — System Sheet + Camera/Element/Clash State (SUPERSEDED)
 
 ## Problem
 

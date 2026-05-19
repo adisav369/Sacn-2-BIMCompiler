@@ -514,8 +514,41 @@ function setupPanels(A) {
       Object.entries(A.discCounts).slice(0, 6).map(([d, c]) => `${d}:${c.toLocaleString()}`).join(' ') + '</small>';
   };
 
+  // ── S265: Icon Pill overflow toggle + §-tags ──
+  window.toggleOverflow = function() {
+    var box = document.getElementById('search-box');
+    var scrim = document.getElementById('overflow-scrim');
+    var moreBtn = document.getElementById('more-btn');
+    if (!box) return;
+    var opening = !box.classList.contains('overflow-open');
+    box.classList.toggle('overflow-open', opening);
+    if (scrim) scrim.classList.toggle('active', opening);
+    if (moreBtn) moreBtn.classList.toggle('active', opening);
+    console.log('§UI_OVERFLOW ' + (opening ? 'open' : 'close'));
+  };
+  // §-tag: pill rendered
+  var pill = document.getElementById('icon-pill');
+  if (pill) {
+    var pillBtns = pill.querySelectorAll('button');
+    var visCount = 0;
+    pillBtns.forEach(function(b) { if (b.offsetParent !== null) visCount++; });
+    console.log('§UI_PILL rendered=true icons=' + visCount + ' total=' + pillBtns.length);
+  }
+  // Sync pill-measure active state with overflow measure-btn
+  var pillMeasure = document.getElementById('pill-measure');
+  if (pillMeasure) {
+    var origToggleMeasure = window.toggleMeasure;
+    if (origToggleMeasure) {
+      window.toggleMeasure = function() {
+        origToggleMeasure();
+        var active = A.measureActive;
+        pillMeasure.classList.toggle('active', !!active);
+      };
+    }
+  }
+
   // Panel toggle (S250 §5 — hides ALL UI chrome for clean screenshots)
-  var panelIds = ['hud','search-box','storey-panel','disc-panel','info-panel',
+  var panelIds = ['hud','search-box','icon-pill','storey-panel','disc-panel','info-panel',
                   'status','grid-overlay-panel','dev-banner',
                   'section-slider-panel','undo-redo-btns'];
   var panelsHidden = false;
