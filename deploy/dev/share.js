@@ -269,7 +269,19 @@ function setupShare(A) {
     var shareUrl = base + hash;
 
     var state = parts.length > 0 ? parts.map(function(p) { return p.split('=')[0]; }).join(',') : 'none';
-    console.log('§SHARE_URL state=' + state + ' url=' + shareUrl);
+    // §-tagged diagnostic: show what was checked and why each context was included/skipped
+    var diag = [];
+    diag.push('cam=' + !!(A.camera && A.controls));
+    var ip = document.getElementById('info-panel');
+    diag.push('pick=' + (ip ? ip.style.display : 'null'));
+    diag.push('storey=' + (A.activeStoreyFilter !== null && A.activeStoreyFilter !== undefined ? A.activeStoreyFilter : 'null'));
+    diag.push('xray=' + !!A.xrayOn);
+    diag.push('clash=' + (A._currentClashes ? A._currentClashes.length : 0));
+    diag.push('tm=' + (typeof window.tmGetState === 'function' ? window.tmGetState().active : 'no_fn'));
+    diag.push('fly=' + !!A.flyActive);
+    diag.push('measure=' + !!A.measureActive);
+    diag.push('walk=' + !!A.walkModeActive);
+    console.log('§SHARE_URL state=' + state + ' ctx=[' + diag.join(',') + '] url=' + shareUrl);
     return shareUrl;
   };
 

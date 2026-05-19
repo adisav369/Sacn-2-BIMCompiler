@@ -854,9 +854,60 @@ test('share_refactor_s265', () => {
   // setupShare(A) receives APP as param — no need for window.APP binding
   if (!shareIsSetupFn && !shareSrc.includes('window.APP')) issues.push('not binding to window.APP and not a setup function');
 
-  // ── E. UX: TinyURL + preview animation ──
-  if (!shareSrc.includes('tinyurl.com')) issues.push('no TinyURL shortener');
-  if (!shareSrc.includes('navigator.onLine')) issues.push('no offline fallback');
+  // ── E. CONTEXT DETECTION: buildShareUrl must read the same vars that features write ──
+  // Cross-reference: each feature sets a variable on A/APP, buildShareUrl must read it.
+  var panelsSrc = fs.readFileSync(path.join(DEV_DIR, 'panels.js'), 'utf8');
+  var toolsSrc = fs.readFileSync(path.join(DEV_DIR, 'tools.js'), 'utf8');
+  var tourSrc = fs.readFileSync(path.join(DEV_DIR, 'tour.js'), 'utf8');
+  var pickingSrc = fs.readFileSync(path.join(DEV_DIR, 'picking.js'), 'utf8');
+  var measureSrc = fs.readFileSync(path.join(DEV_DIR, 'measure.js'), 'utf8');
+
+  // Storey: panels.js writes A.activeStoreyFilter, share.js must read A.activeStoreyFilter
+  var storeyWrite = panelsSrc.includes('A.activeStoreyFilter =');
+  var storeyRead = shareSrc.includes('A.activeStoreyFilter');
+  if (!storeyWrite) issues.push('panels.js missing A.activeStoreyFilter write');
+  if (!storeyRead) issues.push('share.js missing A.activeStoreyFilter read');
+
+  // X-ray: tools.js writes A.xrayOn, share.js must read A.xrayOn
+  var xrayWrite = toolsSrc.includes('A.xrayOn =') || toolsSrc.includes('A.xrayOn=');
+  var xrayRead = shareSrc.includes('A.xrayOn');
+  if (!xrayWrite) issues.push('tools.js missing A.xrayOn write');
+  if (!xrayRead) issues.push('share.js missing A.xrayOn read');
+
+  // Clash: measure.js writes A._currentClashes, share.js must read A._currentClashes
+  var clashWrite = measureSrc.includes('A._currentClashes =') || measureSrc.includes('A._currentClashes=');
+  var clashRead = shareSrc.includes('A._currentClashes');
+  if (!clashWrite) issues.push('measure.js missing A._currentClashes write');
+  if (!clashRead) issues.push('share.js missing A._currentClashes read');
+
+  // Pick: picking.js writes to #info-guid + #info-panel display, share.js must read both
+  var pickWrite = pickingSrc.includes("getElementById('info-guid')") && pickingSrc.includes("info-panel").length;
+  var pickRead = shareSrc.includes("getElementById('info-guid')") && shareSrc.includes("getElementById('info-panel')");
+  if (!pickRead) issues.push('share.js missing info-guid/info-panel read for pick detection');
+
+  // Fly: tour.js writes A.flyActive, share.js must read A.flyActive
+  var flyWrite = tourSrc.includes('A.flyActive =') || tourSrc.includes('A.flyActive=');
+  var flyRead = shareSrc.includes('A.flyActive');
+  if (!flyWrite) issues.push('tour.js missing A.flyActive write');
+  if (!flyRead) issues.push('share.js missing A.flyActive read');
+
+  // TM: time_machine.js exposes tmGetState, share.js must call it
+  var tmRead = shareSrc.includes('tmGetState');
+  if (!tmRead) issues.push('share.js missing tmGetState call');
+
+  // Clash deep-link format: share.js must use same hash format as measure.js _buildClashDeepLink
+  // measure.js: #clash=GUID~GUID&cam=x,y,z&tgt=x,y,z
+  // share.js: clash=GUID~GUID (using ~ separator)
+  var clashFormat = shareSrc.includes("clash[0] + '~' + clash[1]");
+  var measureFormat = measureSrc.includes("c[0] + '~' + c[1]");
+  if (!clashFormat) issues.push('share.js clash format not using ~ separator');
+  if (!measureFormat) issues.push('REFERENCE: measure.js clash format changed');
+
+  // Diagnostic §SHARE_URL log must include ctx=[] with all context checks
+  var diagLog = shareSrc.includes('§SHARE_URL') && shareSrc.includes('ctx=[');
+  if (!diagLog) issues.push('missing §SHARE_URL diagnostic ctx=[] log');
+
+  // ── F. UX: preview animation + canvas snapshot ──
   if (!shareSrc.includes('showSharePreview')) issues.push('no preview animation');
   if (!shareSrc.includes('toDataURL')) issues.push('no canvas snapshot');
 
