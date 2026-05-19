@@ -144,9 +144,27 @@ The viewer already parses `cx/cy/cz/tx/ty/tz` from hash. Adding `pick`, `storey`
 | Old `#search-box` duplicate CSS removed | Done | 2dad218f |
 | SW bumped v398→v404 | Done | 95e5b6ad |
 
-### BUG — Active state cyan highlight incomplete
+### DONE — Phase 4: HUD + Keyboard + z-index polish
 
-Overflow icons should glow cyan when their feature is active. `toggleOverflow()` in `panels.js` syncs state on open, but not all toggles update the overflow button when triggered from the pill or keyboard shortcut (e.g. Measure activated from pill doesn't highlight the Measure overflow icon until next overflow open). Each toggle function in `tools.js`/`measure.js`/`tour.js` needs to also set `.active` on its overflow button when the state changes — not just on overflow open.
+| What | Status | SW |
+|------|--------|----|
+| Storey + Disc panels merged into HUD as accordion sections (▸/▾) | Done | v405 |
+| Mobile: single HUD panel top-left, 50vw, auto-collapse 5s idle | Done | v405 |
+| Landscape: HUD compact top-left, 40vw | Done | v405 |
+| Icon pill z-index 500 (above clash matrix 350 / clash list 400) | Done | v405 |
+| Overflow menu z-index 490, scrim 480 | Done | v405 |
+| Find panel shifted right:70px + draggable | Done | v406 |
+| Issues panel shifted right:70px + draggable | Done | v406 |
+| Info panel shifted right:70px + draggable | Done | v406 |
+| Keyboard shortcuts reorganised: P=Palette, 2=2D, T=TM, L=Fly, S=Screenshot, N=Night, B=Background, H=Shadow, I=Issues, F1=Help | Done | v408 |
+| Removed legacy aliases (G for 2D, SC for screenshot) | Done | v408 |
+| BUG FIX: Section/Palette overflow buttons falsely "active" (style.display vs CSS) — now uses JS boolean | Done | v409 |
+| BUG FIX: markDirty() added to toggleWireframe, toggleXray, toggleSection, updateSectionPlane — instant render on toggle | Done | v411 |
+| SW bumped v404→v411 | Done | v411 |
+
+### BUG — Active state cyan highlight incomplete (from Phase 2)
+
+Overflow icons should glow cyan when their feature is active. `toggleOverflow()` in `panels.js` syncs state on open using JS booleans (fixed: was using `style.display` check). But not all toggles update the overflow button when triggered from pill or keyboard. Each toggle in `tools.js`/`measure.js`/`tour.js` should also set `.active` on its overflow button when the state changes — not just on overflow open.
 
 ### TODO — Phase 3: Share refactor (next session)
 
@@ -168,19 +186,19 @@ Overflow icons should glow cyan when their feature is active. `toggleOverflow()`
 
 **Snag/Clash panels** — their existing deep-link QR codes stay (they encode element GUIDs). But the "Share to WhatsApp" buttons inside those panels are removed — user taps the pill Share icon instead, which captures the full context.
 
+**Existing hash parser (main.js:603):** Already parses `#clash=guidA~guidB&cam=x,y,z&tgt=tx,ty,tz&st=storey&tol=mm`. Extend this to also handle `pick`, `xray`, `tm`, `tour`.
+
 **Files to modify:**
 | File | Change |
 |------|--------|
-| `share.js` | Remove WhatsApp/Email, add `navigator.share()`, add `buildShareUrl()` |
-| `main.js` or `streaming.js` | Parse `pick`, `storey`, `xray`, `tm`, `tour`, `clash` from URL hash on load |
-| `index.html` | Share pill `onclick` already has fallback — refine after `share.js` rewrite |
+| `share.js` | Remove WhatsApp/Email, add `navigator.share()`, add `buildShareUrl()` that reads camera/controls/pick/clash/storey/TM state |
+| `main.js` | Extend hash parser at line ~603 to restore `pick`, `xray`, `tm`, `tour` from URL |
+| `index.html` | Pill Share onclick: call `buildShareUrl()` → `navigator.share()` or clipboard. Only open share sheet for IndexedDB imports. |
 
-### TODO — Phase 4: HUD polish (next session, after Phase 3)
+### TODO — Phase 5: remaining polish
 
-- Auto-collapse on mobile after 5s
-- Storeys + disciplines inside HUD on mobile (no separate panels)
-- Tap-to-peek
-- Ensure all panels/popups do NOT obscure the icon pill — pill must always be reachable
+- Active state cyan on overflow buttons when toggled from pill/keyboard (not just on overflow open)
+- Ensure all panels/popups do NOT obscure the icon pill on all viewports
 
 ## DO NOT touch
 

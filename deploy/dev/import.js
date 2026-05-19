@@ -511,7 +511,7 @@ function setupImport(A) {
   A.openShareSheet = async function(key) {
     if (!A._shareLoaded) {
       var script = document.createElement('script');
-      script.src = 'share.js?v=1';
+      script.src = 'share.js?v=2';
       script.onload = function() { A._shareLoaded = true; A.openShareSheet(key); };
       script.onerror = function() { alert('Failed to load share module'); };
       document.head.appendChild(script);

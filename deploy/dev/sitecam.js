@@ -142,7 +142,7 @@ function setupSitecam(A) {
       video.srcObject = A._camStream;
       overlay.classList.add('active');
       // Hide toolbar that bleeds through on mobile
-      const _camHideIds = ['walk-mode-btn','search-box','disc-panel','storey-panel','info-panel','hud','status'];
+      const _camHideIds = ['walk-mode-btn','search-box','info-panel','hud','status'];
       for (const hid of _camHideIds) {
         const hel = document.getElementById(hid);
         if (hel) { hel.dataset.camHid = hel.style.cssText; hel.style.setProperty('display', 'none', 'important'); }
@@ -186,7 +186,7 @@ function setupSitecam(A) {
     document.getElementById('site-cam-overlay').classList.remove('active');
     document.getElementById('site-cam-video').srcObject = null;
     // Restore hidden toolbar
-    const _camRestoreIds = ['walk-mode-btn','search-box','disc-panel','storey-panel','info-panel','hud','status'];
+    const _camRestoreIds = ['walk-mode-btn','search-box','info-panel','hud','status'];
     let _restored = 0;
     for (const rid of _camRestoreIds) {
       const rel = document.getElementById(rid);

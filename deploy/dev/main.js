@@ -11,7 +11,7 @@ function initViewer() {
 
   // Initialize modules in order — guarded so a single script load failure doesn't kill the viewer
   var _mods = [setupConfig, setupScene, setupHelpers, setupStreaming, setupPanels, setupTools,
-    setupPicking, setupTour, setupMeasure, setupSitecam, setupIssues, setupExcel, setupWalk, setupCity];
+    setupPicking, setupTour, setupMeasure, setupSitecam, setupShare, setupIssues, setupExcel, setupWalk, setupCity];
   _mods.forEach(function(fn) { if (typeof fn === 'function') fn(APP); });
   if (typeof setupDLOD === 'function') setupDLOD(APP);
   if (typeof setupNlp === 'function') setupNlp(APP);
@@ -647,6 +647,93 @@ function initViewer() {
           }
         }, 1500);
       }
+    }
+
+    // S265 Phase 3: Restore shared state from hash — pick, storey, xray, tour, camera
+    // Runs after clash handler (clash has its own cam restore). Non-clash params handled here.
+    if (!clashParam && Object.keys(hashParams).length > 0) {
+      var shareRestoreChecks = 0;
+      var shareRestoreTimer = setInterval(function() {
+        shareRestoreChecks++;
+        if (APP.streamedCount > 10 || shareRestoreChecks > 20) {
+          clearInterval(shareRestoreTimer);
+          var restored = [];
+
+          // Camera position
+          var camStr = hashParams.cam;
+          var tgtStr = hashParams.tgt;
+          if (camStr && tgtStr) {
+            var cam = camStr.split(',').map(Number);
+            var tgt = tgtStr.split(',').map(Number);
+            if (cam.length === 3 && tgt.length === 3) {
+              APP.camera.position.set(cam[0], cam[1], cam[2]);
+              APP.controls.target.set(tgt[0], tgt[1], tgt[2]);
+              APP.controls.update();
+              restored.push('camera');
+            }
+          }
+
+          // Storey filter
+          var storeyParam = hashParams.storey;
+          if (storeyParam) {
+            var storeys = decodeURIComponent(storeyParam).split(',');
+            APP.activeStoreyFilter = storeys.length === 1 ? storeys[0] : storeys;
+            // Re-apply visibility
+            APP.scene.traverse(function(obj) {
+              if (obj.isMesh && obj.userData && obj.userData.storey) {
+                var vis = Array.isArray(APP.activeStoreyFilter)
+                  ? APP.activeStoreyFilter.indexOf(obj.userData.storey) >= 0
+                  : obj.userData.storey === APP.activeStoreyFilter;
+                obj.visible = vis;
+              }
+            });
+            restored.push('storey=' + storeyParam);
+          }
+
+          // X-ray
+          if (hashParams.xray === '1' && typeof APP.toggleXray === 'function') {
+            if (!APP.xrayOn) APP.toggleXray();
+            restored.push('xray');
+          }
+
+          // Pick element — highlight + show info
+          var pickGuid = hashParams.pick;
+          if (pickGuid && APP.db) {
+            try {
+              var rows = APP.dbQuery(
+                "SELECT m.ifc_class, m.element_name, m.guid, m.building, m.storey, m.discipline, m.material_rgba FROM elements_meta m WHERE m.guid = ?",
+                [pickGuid]
+              );
+              if (rows.length) {
+                var r = rows[0];
+                document.getElementById('info-class').textContent = r[0] || '—';
+                document.getElementById('info-name').textContent = r[1] || '—';
+                document.getElementById('info-guid').textContent = r[2] || '—';
+                document.getElementById('info-building').textContent = r[3] || '—';
+                document.getElementById('info-storey').textContent = r[4] || '—';
+                document.getElementById('info-disc').textContent = r[5] || '—';
+                document.getElementById('info-material').textContent = r[6] || '—';
+                document.getElementById('info-panel').style.display = 'block';
+                restored.push('pick=' + pickGuid);
+              }
+            } catch(e) { console.log('§SHARE_PARSE pick_err=' + e.message); }
+          }
+
+          // Tour auto-play
+          if (hashParams.tour === 'play' && typeof APP.startFlyTour === 'function') {
+            APP.startFlyTour();
+            restored.push('tour');
+          }
+
+          // Time Machine cursor
+          if (hashParams.tm && typeof window.toggleTimeMachine === 'function') {
+            window.toggleTimeMachine();
+            restored.push('tm=' + hashParams.tm);
+          }
+
+          console.log('§SHARE_PARSE ' + (restored.length > 0 ? restored.join(' ') : 'none'));
+        }
+      }, 1500);
     }
   }).catch(e => {
     APP.status.textContent = `Error: ${e.message}`;

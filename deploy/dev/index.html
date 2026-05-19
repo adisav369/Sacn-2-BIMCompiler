@@ -303,6 +303,9 @@
     #section-slider-panel { top: auto !important; bottom: 80px; left: 8px; right: 8px; min-width: auto; z-index: 12 !important; }
     #sunglass-slider-panel { top: auto !important; bottom: 80px; left: 8px; right: 8px; min-width: auto; z-index: 12 !important; }
 
+    /* §S265: Larger close/× targets on mobile for all panels */
+    .panel-toggle { font-size: 22px !important; padding: 8px 12px !important; min-width: 44px; min-height: 44px; display: inline-flex !important; align-items: center; justify-content: center; }
+
     /* Collapsed: tight, no blocking */
     .panel-body.collapsed { max-height: 0 !important; padding: 0 !important; margin: 0 !important; pointer-events: none !important; overflow: hidden !important; opacity: 0 !important; }
 
@@ -378,7 +381,7 @@
   <button onclick="if(window._isMobile){APP.status.textContent='Time Machine — Desktop only';return}if(typeof toggleTimeMachine==='function')toggleTimeMachine();event.stopPropagation()" data-trl-title="ui_tt_tm" title="Time Machine"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></button>
   <button id="pill-measure" onclick="toggleMeasure();event.stopPropagation()" data-trl-title="ui_tt_measure" title="Measure"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg></button>
   <button onclick="if(typeof APP!=='undefined'&&APP.openFindPanel)APP.openFindPanel();event.stopPropagation()" data-trl-title="ui_tt_find" title="Find"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></button>
-  <button onclick="if(typeof APP!=='undefined'){var k=APP.RECORD_ID||APP.activeBuilding||'';if(k&&APP.openShareSheet){APP.openShareSheet(k)}else{var u=location.href;if(navigator.share){navigator.share({title:document.title,url:u})}else{navigator.clipboard.writeText(u);APP.status.textContent='Link copied!'}}}event.stopPropagation()" data-trl-title="ui_tt_share" title="Share"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg></button>
+  <button onclick="if(typeof APP!=='undefined'&&APP.quickShare)APP.quickShare();event.stopPropagation()" data-trl-title="ui_tt_share" title="Share"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg></button>
   <button onclick="if(typeof showCommandPalette==='function')showCommandPalette();event.stopPropagation()" data-trl-title="ui_tt_help" title="Help"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/></svg></button>
   <button id="more-btn" onclick="toggleOverflow();event.stopPropagation()" title="More"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
 </div>
@@ -681,7 +684,7 @@
   <canvas id="site-cam-markup" style="max-width:100%;max-height:60vh;border:1px solid #333;touch-action:none"></canvas>
   <div id="site-cam-preview-controls" style="margin-bottom:calc(env(safe-area-inset-bottom, 20px))">
     <button onclick="closeSitePreview()" style="background:#444;color:#fff" data-trl="ui_retake">Retake</button>
-    <button onclick="shareSitePhoto()" style="background:#25D366;color:#fff" data-trl="ui_share_whatsapp">Share &#8594; WhatsApp</button>
+    <button onclick="shareSitePhoto()" style="background:#4fc3f7;color:#000" data-trl="ui_share">Share</button>
     <button onclick="downloadSitePhoto()" style="background:#4fc3f7;color:#000" data-trl="ui_save">Save</button>
   </div>
 </div>
@@ -712,7 +715,7 @@
 <script src="lib/httpvfs.js?v=1" onerror="console.warn('§LOAD_FAIL httpvfs.js — range-request streaming disabled')"></script>
 <script src="qrcode.min.js?v=1" onerror="console.warn('§LOAD_FAIL qrcode.min.js — QR sharing disabled')"></script>
 <script src="config.js?v=4" onerror="console.warn('§LOAD_FAIL config.js')"></script>
-<script src="scene.js?v=24" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
+<script src="scene.js?v=25" onerror="console.warn('§LOAD_FAIL scene.js')"></script>
 <script src="helpers.js?v=4" onerror="console.warn('§LOAD_FAIL helpers.js')"></script>
 <script src="streaming.js?v=41" onerror="console.warn('§LOAD_FAIL streaming.js')"></script>
 <script src="dlod.js?v=5" onerror="console.warn('§LOAD_FAIL dlod.js')"></script>
@@ -724,6 +727,7 @@
 <script src="clash_snag.js?v=1" onerror="console.warn('§LOAD_FAIL clash_snag.js')"></script>
 <script src="measure.js?v=42" onerror="console.warn('§LOAD_FAIL measure.js')"></script>
 <script src="sitecam.js?v=7" onerror="console.warn('§LOAD_FAIL sitecam.js')"></script>
+<script src="share.js?v=2" onerror="console.warn('§LOAD_FAIL share.js')"></script>
 <script src="issues.js?v=5" onerror="console.warn('§LOAD_FAIL issues.js')"></script>
 <script src="excel.js?v=4" onerror="console.warn('§LOAD_FAIL excel.js')"></script>
 <script src="walk.js?v=7" onerror="console.warn('§LOAD_FAIL walk.js')"></script>
@@ -759,8 +763,8 @@
 <script src="wizard_storeys.js?v=1" onerror="console.warn('§LOAD_FAIL wizard_storeys.js')"></script>
 <script src="wizard_classify.js?v=1" onerror="console.warn('§LOAD_FAIL wizard_classify.js')"></script>
 <script src="precision_cam.js?v=2" onerror="console.warn('§LOAD_FAIL precision_cam.js')"></script>
-<script src="time_machine.js?v=43" onerror="console.warn('§LOAD_FAIL time_machine.js')"></script>
-<script src="main.js?v=27"></script>
+<script src="time_machine.js?v=44" onerror="console.warn('§LOAD_FAIL time_machine.js')"></script>
+<script src="main.js?v=28"></script>
 <!-- Styled tooltip bubbles for [data-trl-title] buttons — appended to body, not clipped by overflow:hidden -->
 <style>#ootb-tip{display:none;position:fixed;z-index:9990;background:rgba(10,10,30,0.92);color:#4fc3f7;font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid rgba(79,195,247,0.35);pointer-events:none;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.4)}</style>
 <script>
@@ -800,7 +804,7 @@ if(new URLSearchParams(location.search).get('embedded')!=='true'){
 </script>
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js?v=398')
+  navigator.serviceWorker.register('sw.js?v=412')
     .then(function(r){console.log('§SW_REG scope='+r.scope)})
     .catch(function(e){console.warn('§SW_REG_FAIL',e)});
 }

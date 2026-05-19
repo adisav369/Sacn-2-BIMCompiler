@@ -753,6 +753,131 @@ test('material_color_audit', () => {
   return { ok: true, log: log, reason: '' };
 });
 
+// ─── 3.16 S265 Phase 3: Share refactor — must replicate sitecam.js share pattern ─────
+// Issue: Share was WhatsApp-only hardcode, no scene state in URL, no system share sheet.
+// Proven pattern: sitecam.js uses navigator.share+canShare guard → wa.me fallback.
+// share.js MUST use the same guard sequence and fallback.
+test('share_refactor_s265', () => {
+  var shareSrc = fs.readFileSync(path.join(DEV_DIR, 'share.js'), 'utf8');
+  var sitecamSrc = fs.readFileSync(path.join(DEV_DIR, 'sitecam.js'), 'utf8');
+  var mainSrc = fs.readFileSync(path.join(DEV_DIR, 'main.js'), 'utf8');
+  var indexSrc = fs.readFileSync(path.join(DEV_DIR, 'index.html'), 'utf8');
+  var tmSrc = fs.readFileSync(path.join(DEV_DIR, 'time_machine.js'), 'utf8');
+
+  var issues = [];
+
+  // ── A. SHARE PATTERN: quickShare must match sitecam.js shareSitePhoto exactly ──
+  // sitecam: async function → navigator.share+canShare guard → await navigator.share → wa.me fallback
+  // CRITICAL: navigator.share MUST be in quickShare itself (same user gesture),
+  // NOT behind an overlay button click or async callback.
+  var sitecamGuard = sitecamSrc.includes('navigator.share && navigator.canShare');
+  var sitecamCanShare = sitecamSrc.includes('navigator.canShare(data)');
+  var sitecamAwait = sitecamSrc.includes('await navigator.share(data)');
+  var sitecamWaFallback = sitecamSrc.includes('wa.me');
+
+  // Extract quickShare function body to verify navigator.share is called IN IT (not delegated)
+  var qsMatch = shareSrc.match(/A\.quickShare\s*=\s*async\s+function[\s\S]*?(?=\n  [A-Z]|\n  \/\/\s*──)/);
+  var qsBody = qsMatch ? qsMatch[0] : '';
+  var qsHasGuard = qsBody.includes('navigator.share && navigator.canShare');
+  var qsHasCanShare = qsBody.includes('navigator.canShare(data)');
+  var qsHasAwait = qsBody.includes('await navigator.share(data)');
+  var qsHasDesktopFallback = qsBody.includes('showSharePreview');
+  var qsNoWaJump = !qsBody.includes('wa.me');
+  var qsIsAsync = qsBody.includes('async function');
+  var qsHasPhoto = qsBody.includes('new File') && qsBody.includes('image/jpeg');
+  var qsHasToBlob = qsBody.includes('toBlob');
+
+  if (!sitecamGuard) issues.push('REFERENCE: sitecam.js missing share guard');
+  if (!qsHasGuard) issues.push('quickShare missing navigator.share && canShare guard');
+  if (!qsHasCanShare) issues.push('quickShare missing canShare(data) check');
+  if (!qsHasAwait) issues.push('quickShare missing await navigator.share(data)');
+  if (!qsIsAsync) issues.push('quickShare not async — cannot await navigator.share');
+  if (!qsHasPhoto) issues.push('quickShare missing photo File creation (sitecam shares with image)');
+  if (!qsHasToBlob) issues.push('quickShare missing canvas.toBlob (sitecam captures canvas)');
+  if (!qsHasDesktopFallback) issues.push('quickShare missing showSharePreview desktop fallback');
+  if (!qsNoWaJump) issues.push('quickShare still jumps to wa.me on desktop');
+
+  // share.js must be a setup function (like sitecam.js), called via main.js _mods
+  var shareIsSetupFn = shareSrc.includes('function setupShare(A)');
+  var sitecamIsSetupFn = sitecamSrc.includes('function setupSitecam(A)');
+  if (!shareIsSetupFn) issues.push('share.js must be function setupShare(A) — like sitecam.js');
+
+  // main.js must call setupShare in the _mods array
+  var mainSrcLocal = mainSrc;
+  var mainCallsSetupShare = mainSrcLocal.includes('setupShare');
+  if (!mainCallsSetupShare) issues.push('main.js does not call setupShare');
+
+  // share.js must be eagerly loaded via <script src=> tag
+  var shareScriptTag = indexSrc.includes('<script src="share.js');
+  if (!shareScriptTag) issues.push('share.js not eagerly loaded');
+
+  // Pill button must be a direct call (no lazy-load script injection)
+  var pillDirect = indexSrc.includes('APP.quickShare()') && !indexSrc.includes("s.src='share.js");
+  if (!pillDirect) issues.push('pill button still has lazy-load injection');
+
+  // share.js must NOT have old sendWhatsApp/sendEmail functions
+  var noSendWhatsApp = !shareSrc.includes('function sendWhatsApp');
+  var noSendEmail = !shareSrc.includes('function sendEmail');
+  if (!noSendWhatsApp) issues.push('old sendWhatsApp function still present');
+  if (!noSendEmail) issues.push('old sendEmail function still present');
+
+  // ── B. URL STATE: buildShareUrl captures scene state in hash ──
+  var hasBuildShareUrl = shareSrc.includes('A.buildShareUrl');
+  var capturesCam = shareSrc.includes("cam=");
+  var capturesTgt = shareSrc.includes("tgt=");
+  var capturesPick = shareSrc.includes("pick=");
+  var capturesStorey = shareSrc.includes("storey=");
+  var capturesXray = shareSrc.includes("xray=1");
+  var capturesClash = shareSrc.includes("clash=");
+  var capturesTm = shareSrc.includes("tm=");
+  var capturesTour = shareSrc.includes("tour=play");
+  if (!hasBuildShareUrl) issues.push('no buildShareUrl()');
+  if (!capturesCam || !capturesTgt) issues.push('cam/tgt not captured');
+  if (!capturesPick) issues.push('pick not captured');
+  if (!capturesStorey) issues.push('storey not captured');
+  if (!capturesXray) issues.push('xray not captured');
+  if (!capturesClash) issues.push('clash not captured');
+  if (!capturesTm) issues.push('tm not captured');
+  if (!capturesTour) issues.push('tour not captured');
+
+  // ── C. HASH RESTORE: main.js parses shared state on load ──
+  if (!mainSrc.includes('hashParams.storey')) issues.push('main.js missing storey restore');
+  if (!mainSrc.includes('hashParams.xray')) issues.push('main.js missing xray restore');
+  if (!mainSrc.includes('hashParams.pick')) issues.push('main.js missing pick restore');
+  if (!mainSrc.includes('hashParams.tour')) issues.push('main.js missing tour restore');
+  if (!mainSrc.includes('hashParams.tm')) issues.push('main.js missing tm restore');
+
+  // ── D. WIRING: quickShare + pill + TM + APP binding ──
+  if (!shareSrc.includes('A.quickShare')) issues.push('no quickShare()');
+  if (!indexSrc.includes('quickShare')) issues.push('pill not wired');
+  if (!tmSrc.includes('window.tmGetState')) issues.push('tmGetState not exposed');
+  // setupShare(A) receives APP as param — no need for window.APP binding
+  if (!shareIsSetupFn && !shareSrc.includes('window.APP')) issues.push('not binding to window.APP and not a setup function');
+
+  // ── E. UX: TinyURL + preview animation ──
+  if (!shareSrc.includes('tinyurl.com')) issues.push('no TinyURL shortener');
+  if (!shareSrc.includes('navigator.onLine')) issues.push('no offline fallback');
+  if (!shareSrc.includes('showSharePreview')) issues.push('no preview animation');
+  if (!shareSrc.includes('toDataURL')) issues.push('no canvas snapshot');
+
+  // ── F. §-tagged logs ──
+  if (!shareSrc.includes('§SHARE_URL')) issues.push('missing §SHARE_URL log');
+  if (!shareSrc.includes('§SHARE_METHOD')) issues.push('missing §SHARE_METHOD log');
+  if (!shareSrc.includes('§SHARE_ATTEMPT')) issues.push('missing §SHARE_ATTEMPT log');
+  if (!mainSrc.includes('§SHARE_PARSE')) issues.push('missing §SHARE_PARSE log');
+
+  var allOk = issues.length === 0;
+  return {
+    ok: allOk,
+    log: '§WB_SHARE_REFACTOR' +
+      ' sitecam=[guard=' + sitecamGuard + ',canShare=' + sitecamCanShare + ',await=' + sitecamAwait + ',wa=' + sitecamWaFallback + ']' +
+      ' quickShare=[guard=' + qsHasGuard + ',canShare=' + qsHasCanShare + ',await=' + qsHasAwait + ',photo=' + qsHasPhoto + ',toBlob=' + qsHasToBlob + ',async=' + qsIsAsync + ',desktopFB=' + qsHasDesktopFallback + ',noWaJump=' + qsNoWaJump + ']' +
+      ' setupFn=' + shareIsSetupFn + ' mainCalls=' + mainCallsSetupShare + ' eager=' + shareScriptTag + ' pillDirect=' + pillDirect +
+      ' state=[cam=' + capturesCam + ',pick=' + capturesPick + ',storey=' + capturesStorey + ',xray=' + capturesXray + ',clash=' + capturesClash + ',tm=' + capturesTm + ',tour=' + capturesTour + ']',
+    reason: issues.join('; ')
+  };
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log(`§WB_SUMMARY pass=${pass} fail=${fail} total=${pass + fail}`);
 process.exit(fail > 0 ? 1 : 0);

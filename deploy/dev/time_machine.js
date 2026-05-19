@@ -2968,4 +2968,9 @@
   }
 
   window.toggleTimeMachine = toggle;
+
+  // S265 Phase 3: Expose TM state for share URL
+  window.tmGetState = function() {
+    return { active: _active, cursor: _cursor };
+  };
 })();
