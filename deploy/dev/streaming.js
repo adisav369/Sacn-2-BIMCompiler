@@ -344,7 +344,7 @@ function setupStreaming(A) {
           A.populateDiscs(A.activeBuilding);
         }
         // §S262: Enable DLOD frustum + storey visibility culling (no geometry swap)
-        if (!A._isMobile && A.dlodEnable) {
+        if (A.dlodEnable) {  // §S265: DLOD visibility culling on all devices
           A.dlodEnable();
           if (A.dlodTick) A.dlodTick();
         }
@@ -395,6 +395,8 @@ function setupStreaming(A) {
         A.updateHash();
         const iCount = Object.keys(A._instanceMeta).length;
         A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_done||'DONE — {name} {n} elements ({g} instanced groups). {b} building(s) rendered.').replace('{name}',A.activeBuilding).replace('{n}',A.streamedCount.toLocaleString()).replace('{g}',iCount).replace('{b}',A.buildingsRendered.size);
+        // §S265: Force render after stream-complete — DLOD/consolidation/bbox-clear happen after streaming=false
+        if (A.markDirty) A.markDirty();
       }
       return;
     }
@@ -591,13 +593,7 @@ function setupStreaming(A) {
       const geo = A.meshCache[hash];
       if (!geo) continue;
 
-      if (elements.length === 1 && A._isMobile) {
-        // Mobile: bucket for merge instead of individual Mesh
-        const el = elements[0];
-        const key = (el.storey || '_') + '|' + (el.disc || '_') + '|' + (el.rgba || '_default');
-        if (!mergeBuckets[key]) mergeBuckets[key] = [];
-        mergeBuckets[key].push({ el, geo });
-      } else if (elements.length === 1) {
+      if (elements.length === 1) {
         // §S260: Desktop — bucket for BatchedMesh (single-instance hashes only)
         const el = elements[0];
         const key = (el.storey || '_') + '|' + (el.disc || '_') + '|' + (el.rgba || '_default');
@@ -646,7 +642,7 @@ function setupStreaming(A) {
       console.log('§S261_DEFER_BBOX buckets=' + Object.keys(A._pendingBboxBuckets).length);
     }
     // ── S260: Build BatchedMesh per desktop bucket (non-DLOD path) ──────────────
-    else if (!A._isMobile && THREE.BatchedMesh) {
+    else if (THREE.BatchedMesh) {  // §S265: BatchedMesh on all devices
       for (const [key, items] of Object.entries(batchBuckets)) {
         if (items.length === 0) continue;
         const [storey, disc, rgba] = key.split('|');
@@ -735,7 +731,7 @@ function setupStreaming(A) {
         drawCalls++;
       }
       _prevDrawCalls = batchedCount;
-    } else if (!A._isMobile) {
+    } else {
       // §S260: Fallback if BatchedMesh unavailable — individual meshes
       for (const [key, items] of Object.entries(batchBuckets)) {
         for (const item of items) {
@@ -853,11 +849,8 @@ function setupStreaming(A) {
     }
 
     A._pendingInstances = {};
-    const label = A._isMobile
-      ? `[S232] §FLUSH instanced=${instancedCount} merged=${mergedCount} drawCalls=${drawCalls} (was ${instancedCount + mergedCount})`
-      : `[S260] §BATCHED_FLUSH instanced=${instancedCount} batched=${batchedCount} drawCalls=${drawCalls} (was ${instancedCount + batchedCount})`;
-    console.log(label);
-    if (!A._isMobile && batchedCount > 0) {
+    console.log(`[S260] §BATCHED_FLUSH instanced=${instancedCount} batched=${batchedCount} drawCalls=${drawCalls} (was ${instancedCount + batchedCount}) mobile=${A._isMobile}`);
+    if (batchedCount > 0) {
       console.log(`§BATCHED_DETAIL buckets=${Object.keys(batchBuckets).length} elements=${batchedCount} saved=${_prevDrawCalls - Object.keys(batchBuckets).length} drawCalls`);
     }
     document.getElementById('s-meshes').textContent = drawCalls.toLocaleString() + ' draw calls';
@@ -1042,7 +1035,7 @@ function setupStreaming(A) {
   // from streamQueue + meshCache. r160 has no getGeometryIdAt, so we rebuild from source.
   // LTU 122K: 26 flushes × 40 buckets = 1040 draw calls → consolidated to ~40.
   A._consolidateBatched = function() {
-    if (A._isMobile || !THREE.BatchedMesh) return;
+    if (!THREE.BatchedMesh) return;  // §S265: consolidation on all devices
     var t0 = performance.now();
 
     // Count existing BatchedMesh — if already compact, skip
