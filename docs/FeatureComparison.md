@@ -159,7 +159,7 @@ All open-source dependencies. No proprietary components.
 ## Contact
 
 Open source. MIT licence.
-GitHub: [github.com/nicholaslimck/bim-compiler](https://github.com/nicholaslimck/bim-compiler)
+GitHub: [github.com/red1oon/BIMCompiler](https://github.com/red1oon/BIMCompiler)
 
 ---
 

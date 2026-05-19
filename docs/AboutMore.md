@@ -9,7 +9,7 @@ Creator: Redhuan D. Oon <red1org@gmail.com>
 Tickets: github.com/red1oon/BIMCompiler/issues
 License: MIT
 
-**Probably the lightest BIM app ever made.**
+**Probably the lightest BIM app ever made.** See [Feature Comparison](FeatureComparison.md) for a technical breakdown and industry comparison.
 
 Browser-native BIM viewer. Drop an IFC file or pick a building — geometry streams
 from SQLite databases directly to the GPU via Three.js. No server, no plugins,

@@ -2,9 +2,11 @@
 
 > **The innovation:** IFC → web-ifc WASM → SQLite BLOBs → Three.js GPU. No server. No format conversion. No proprietary viewer. Two DBs (or one), straight from the IFC standard to the browser.
 
-**Updated:** 2026-05-02
+**Updated:** 2026-05-19
 
 ---
+
+*For a full feature comparison against Autodesk APS, IFC.js, and Trimble, see [Feature Comparison](FeatureComparison.md).*
 
 ## Architecture: Why SQLite Beats Autodesk/Bonsai
 
@@ -186,7 +188,7 @@ Normals precomputed at IFC extraction time — viewer just copies and applies Y�
 |---|---|---|---|
 | [web-ifc](https://github.com/ThatOpenCompany/engine_web-ifc) @0.0.77 | MPL-2.0 | C++/WASM IFC parser + tessellator | CDN `unpkg.com` in `import_worker.js` |
 | [sql.js](https://github.com/sql-js/sql.js) @1.10.3 | MIT | SQLite compiled to WASM — runs SQL in browser | Local `lib/` (CDN fallback) |
-| [Three.js](https://github.com/mrdoob/three.js) r128 | MIT | WebGL 3D renderer | Local `lib/` (CDN fallback) |
+| [Three.js](https://github.com/mrdoob/three.js) r160 ESM | MIT | WebGL 3D renderer + BatchedMesh | Local `lib/` (CDN fallback) |
 | [dxf-parser](https://github.com/gdsestimating/dxf-parser) | MIT | DXF file parsing for 2D plans | Vendored minified `dxf-parser.js` |
 | [ExcelJS](https://github.com/exceljs/exceljs) | MIT | Excel export for BOQ charts | CDN `cdnjs.cloudflare.com` |
 
@@ -344,6 +346,89 @@ Areas where our production experience gives us unique credibility to contribute 
 | Publish `@bimootb/sql-rtree` (or similar) | Our most critical dependency is a 3-year-old package from an inactive author. One npm unpublish and our CDN breaks. Own your supply chain. |
 | Include: R-tree + FTS5 (future full-text search) | FTS5 enables "search by element name" across 48K elements — future feature with zero cost to add at compile time. |
 | Pin SQLite version, test against our DBs | Regression testing with real buildings, not toy data. |
+
+---
+
+## Kernel Ops — Transactional Operation Log
+
+Every user action in the viewer (pick, filter, grid move, section cut) is recorded in an append-only `kernel_ops` table inside the same SQLite DB. This is the **fossil record** of the design session — enabling undo/redo, state replay on reload, and 4D Time Machine playback.
+
+### Schema
+
+```sql
+CREATE TABLE kernel_ops (
+    id INTEGER PRIMARY KEY,        -- Auto-increment, total ordering
+    timestamp INTEGER NOT NULL,    -- Date.now() epoch ms
+    op_type TEXT NOT NULL,         -- GRID_MOVE, VIEW_FILTER, ELEMENT_PICK, SESSION_START, ...
+    parameters TEXT NOT NULL,      -- JSON blob — op-specific data
+    input_guids TEXT,              -- JSON array of affected element GUIDs (nullable)
+    output_guid TEXT,              -- Created/modified entity ID (nullable)
+    undone INTEGER DEFAULT 0,      -- 0=active, 1=undone (soft delete)
+    user_tag TEXT DEFAULT 'local'  -- Multi-user tag (future: collaborative sessions)
+);
+CREATE INDEX idx_kernel_ops_type ON kernel_ops(op_type);
+CREATE INDEX idx_kernel_ops_undone ON kernel_ops(undone, id);
+```
+
+### Operations
+
+| Operation | What it records | Undo behaviour |
+|---|---|---|
+| `SESSION_START` | Page load timestamp | — (boundary marker) |
+| `ELEMENT_PICK` | IFC class, name, discipline, storey, GUID | — (read-only) |
+| `GRID_MOVE` | Label, axis, old/new position | Restore previous position |
+| `GRID_DETECT` | Detected grid lines from slab geometry | Remove detected grids |
+| `VIEW_FILTER` | Storey/discipline visibility toggle | Restore previous filter |
+| `SECTION_CUT` | Clipping plane axis + position | Remove section |
+
+### Undo / Redo
+
+Linear undo stack — most recent non-undone op is undone first:
+
+```
+commitOp(db, 'GRID_MOVE', {label:'A', axis:'x', from:0, to:5}, [guid1])
+undoOp(db)   → marks op as undone=1, returns {op_type:'GRID_MOVE', parameters:{...}}
+redoOp(db)   → clears undone flag on earliest undone op
+```
+
+The caller is responsible for applying the reverse transform (e.g., moving the grid back). The log records intent, not geometry — keeping it small and queryable.
+
+### Replay on Reload
+
+On page load, `replayOps(db, 'GRID_MOVE')` returns all non-undone ops in order. The grid system re-applies each move to restore the exact state from the previous session. This survives browser refresh because `kernel_ops` is persisted to IndexedDB via debounced write (2s after last op).
+
+### Compaction
+
+`compact(db)` runs on page load to prevent unbounded log growth:
+
+1. **Delete undone ops** — they'll never be redone after reload
+2. **Collapse consecutive GRID_MOVE** — drag produces 100s of intermediate positions; keep only the final position per label+axis
+3. **Prune old sessions** — keep only the last 2 `SESSION_START` boundaries
+
+### Time Machine Integration
+
+The Time Machine (4D playback) reads `kernel_ops` as a fossil record of construction phases. Each op's timestamp maps to a construction timeline position. The TM can:
+- Replay the sequence visually (show/hide elements by op timestamp)
+- Scrub backwards/forwards through the design history
+- Export the sequence as a 4D schedule
+
+### Persistence Flow
+
+```
+User action → commitOp() → INSERT into kernel_ops → debounced IDB write
+             ↓
+Browser DB (sql.js in memory) ←→ IndexedDB (bim_ootb_cache, ArrayBuffer)
+             ↓
+IFC Export → kernel_ops table included in exported .db file
+```
+
+The same SQLite DB that holds geometry also holds the operation log. Export the DB → you export the full design history. Import it back → history replays automatically.
+
+---
+
+## Extended Domain: ERP in the Same Browser
+
+The SQLite-in-browser pattern extends beyond BIM. The full iDempiere Application Dictionary (500+ windows, 15K+ fields) runs in the same stack: PostgreSQL AD → SQLite export → sql.js WASM → browser UI. Same DB engine, same WASM runtime, same zero-install principle. See [**AD-in-Browser (iDempiere)**](ERP.md) for the full spec.
 
 ---
 

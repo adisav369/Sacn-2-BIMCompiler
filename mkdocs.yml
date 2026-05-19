@@ -62,6 +62,7 @@ nav:
   # ─── "I just found this project" ────────────────────────
   - Start Here:
       - Home: index.md
+      - Feature Comparison: FeatureComparison.md
       - About BIM OOTB: AboutMore.md
       - The ERP World View: MANIFESTO.md
       - Beyond Buildings: ShipYard.md
@@ -124,6 +125,7 @@ nav:
   - Spatial ERP:
       - "Every Record Has a Place": SpatialERP_OOTB.md
       - "Construction ERP POC": SpatialERP_POC.md
+      - "AD-in-Browser (iDempiere)": ERP.md
       - "ERP Forward Roadmap": ERP_Roadmap.md
 
   # ─── Roadmap & Papers ─────────────────────────────────
