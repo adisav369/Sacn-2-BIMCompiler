@@ -300,6 +300,126 @@
   // Row tap → current closes, next FK tab opens filtered. Title tap → back to header.
   var _tableOverlay = null;
 
+  // §S262 Toast overlay
+  function _ovToast(msg, color) {
+    if (!_tableOverlay) return;
+    var t = document.createElement('div');
+    t.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;' +
+      'padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;color:#fff;' +
+      'background:' + (color || '#2e7d32') + ';box-shadow:0 4px 16px rgba(0,0,0,0.4);' +
+      'pointer-events:none;opacity:1;transition:opacity 500ms;';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function() { t.style.opacity = '0'; }, 1200);
+    setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 1800);
+  }
+
+  // §S262 §1.1 Render editable cell for table overlay
+  function _renderEditableCell(field, value, record, tableName) {
+    var td = document.createElement('td');
+    var displayVal = (value !== null && value !== undefined) ? String(value) : '';
+    var isRO = field.isReadOnly || field.isKey || field.referenceType === 'id';
+    var isFk = (field.referenceType === 'tableDirect' || field.referenceType === 'table' || field.referenceType === 'search');
+    if (isRO || isFk) {
+      var span = document.createElement('span');
+      if (isFk && displayVal) {
+        var resolved = _resolveDisplay(record, field.columnName);
+        span.textContent = resolved ? resolved.substring(0, 35) : displayVal;
+        span.style.cssText = 'color:#4fc3f7;cursor:default;';
+        span.dataset.col = field.columnName; span.dataset.fkVal = displayVal;
+        span.className = 'fk-cell';
+      } else {
+        span.textContent = displayVal ? displayVal.substring(0, 35) : '\u2014';
+        span.style.color = displayVal ? '#eee' : '#444';
+      }
+      td.appendChild(span); return td;
+    }
+    var type = field.referenceType; var el;
+    if (type === 'yesno') {
+      el = document.createElement('button');
+      var isY = displayVal === 'Y';
+      el.textContent = isY ? 'Y' : 'N';
+      el.style.cssText = 'background:' + (isY ? '#2e7d32' : '#555') + ';color:#eee;border:none;border-radius:4px;padding:2px 10px;font-size:12px;cursor:pointer;';
+      el.dataset.col = field.columnName; el.dataset.val = displayVal; el.dataset.table = tableName;
+      el.addEventListener('pointerup', function(ev) {
+        ev.stopPropagation();
+        var nv = this.dataset.val === 'Y' ? 'N' : 'Y';
+        this.dataset.val = nv; this.textContent = nv === 'Y' ? 'Y' : 'N';
+        this.style.background = nv === 'Y' ? '#2e7d32' : '#555';
+        _saveOverlayCell(this.dataset.table, this.closest('tr'), field.columnName, nv);
+      });
+      td.appendChild(el); return td;
+    }
+    if (type === 'list') {
+      el = document.createElement('select'); el.className = 'ov-edit';
+      el.dataset.col = field.columnName; el.dataset.table = tableName;
+      try {
+        var ref = ADParser.resolveReference(_db, field.referenceId);
+        if (ref && ref.type === 'list') {
+          var opt0 = document.createElement('option'); opt0.value = ''; opt0.textContent = '\u2014'; el.appendChild(opt0);
+          for (var o = 0; o < ref.options.length; o++) {
+            var opt = document.createElement('option'); opt.value = ref.options[o].value;
+            opt.textContent = ref.options[o].name;
+            if (ref.options[o].value === displayVal) opt.selected = true;
+            el.appendChild(opt);
+          }
+        }
+      } catch(e) {}
+      el.addEventListener('change', function(ev) { ev.stopPropagation(); _saveOverlayCell(this.dataset.table, this.closest('tr'), field.columnName, this.value); });
+      td.appendChild(el); return td;
+    }
+    if (type === 'date' || type === 'datetime') {
+      el = document.createElement('input'); el.type = 'date'; el.className = 'ov-edit';
+      el.value = displayVal ? displayVal.substring(0, 10) : '';
+      el.dataset.col = field.columnName; el.dataset.table = tableName;
+      el.addEventListener('blur', function() { _saveOverlayCell(this.dataset.table, this.closest('tr'), field.columnName, this.value); });
+      td.appendChild(el); return td;
+    }
+    if (type === 'integer' || type === 'amount' || type === 'number' || type === 'quantity') {
+      el = document.createElement('input'); el.type = 'number'; el.className = 'ov-edit';
+      el.value = displayVal; el.step = (type === 'integer' || type === 'quantity') ? '1' : '0.01';
+      el.style.textAlign = 'right';
+      el.dataset.col = field.columnName; el.dataset.table = tableName;
+      el.addEventListener('blur', function() { _saveOverlayCell(this.dataset.table, this.closest('tr'), field.columnName, this.value); });
+      td.appendChild(el); return td;
+    }
+    el = document.createElement('input'); el.type = 'text'; el.className = 'ov-edit';
+    el.value = displayVal;
+    el.dataset.col = field.columnName; el.dataset.table = tableName;
+    el.addEventListener('blur', function() { _saveOverlayCell(this.dataset.table, this.closest('tr'), field.columnName, this.value); });
+    td.appendChild(el); return td;
+  }
+
+  // §S262 §1.2 Save-on-blur for overlay cells
+  function _saveOverlayCell(tableName, tr, colName, newValue) {
+    if (!tr || !tr.dataset.pk) return;
+    var keyCol = tableName + '_ID'; var pk = tr.dataset.pk;
+    try {
+      var r = _db.exec("SELECT * FROM [" + tableName + "] WHERE [" + keyCol + "] = ?", [pk]);
+      if (!r.length || !r[0].values.length) return;
+      var cols = r[0].columns;
+      var rec = {}; for (var i = 0; i < cols.length; i++) rec[cols[i]] = r[0].values[0][i];
+      var oldVal = rec[colName]; rec[colName] = newValue;
+      var fields = _getFieldsForTable(tableName);
+      var fld = null;
+      for (var fi = 0; fi < fields.length; fi++) { if (fields[fi].columnName === colName) { fld = fields[fi]; break; } }
+      if (fld && fld.isMandatory && (newValue === '' || newValue === null || newValue === undefined)) {
+        var cell = tr.querySelector('[data-col="' + colName + '"]');
+        if (cell) cell.parentElement.style.borderLeft = '3px solid #ff4444';
+        _ovToast('Required: ' + (fld.name || colName), '#d32f2f'); return;
+      }
+      ADData.saveRecord(_db, tableName, rec, fields);
+      if (typeof KernelOps !== 'undefined') {
+        KernelOps.commitOp(_db, 'AD_SAVE', {table: tableName, id: pk, col: colName, old: oldVal, 'new': newValue});
+      }
+      _ovToast('Saved', '#2e7d32');
+      console.log('§AD_SAVE table=' + tableName + ' id=' + pk + ' col=' + colName + ' old=' + oldVal + ' new=' + newValue);
+    } catch(e) {
+      _ovToast('Save failed: ' + e.message, '#d32f2f');
+      console.log('§AD_SAVE_ERR table=' + tableName + ' col=' + colName + ' err=' + e.message);
+    }
+  }
+
   function _openTableView(tableName) {
     var fields = _getFieldsForTable(tableName);
     var colCount = Math.min(fields.length, 12);
@@ -333,20 +453,25 @@
       }
     } catch(e) {}
 
-    // Build header grid rows
+    // §S262 Build header grid — editable cells via DOM
     var headerTh = '';
     for (var ci = 0; ci < colCount; ci++) {
       headerTh += '<th>' + _escHtml(fields[ci].name || fields[ci].columnName) + '</th>';
     }
-    var headerRows = '';
-    for (var ri = 0; ri < records.length; ri++) {
-      var pk = _caseGet(records[ri], keyCol);
-      headerRows += '<tr data-pk="' + (pk || ri) + '">';
-      for (var hi = 0; hi < colCount; hi++) {
-        var val = _resolveDisplay(records[ri], fields[hi].columnName);
-        headerRows += '<td>' + (val ? _escHtml(val.substring(0, 35)) : '<span class="n">\u2014</span>') + '</td>';
+    function _buildEditableRows(container, recs, flds, cc, tblName) {
+      var table = document.createElement('table');
+      var thRow = document.createElement('tr'); thRow.innerHTML = headerTh; table.appendChild(thRow);
+      var kc = tblName + '_ID';
+      for (var ri = 0; ri < recs.length; ri++) {
+        var tr = document.createElement('tr');
+        var rpk = _caseGet(recs[ri], kc); tr.dataset.pk = rpk || ri;
+        for (var hi = 0; hi < cc; hi++) {
+          var val = _caseGet(recs[ri], flds[hi].columnName);
+          tr.appendChild(_renderEditableCell(flds[hi], val, recs[ri], tblName));
+        }
+        table.appendChild(tr);
       }
-      headerRows += '</tr>';
+      container.innerHTML = ''; container.appendChild(table);
     }
 
     // Build child tab headers — skip empty tables (no records for any PK)
@@ -416,28 +541,48 @@
       '#table-overlay tr:active td{background:rgba(108,159,255,0.08);}' +
       '#table-overlay tr.sel td{background:rgba(108,159,255,0.15);color:#fff;border-left:2px solid #6c9fff;}' +
       '#table-overlay .n{color:#444;}' +
+      '#table-overlay td input.ov-edit,#table-overlay td select.ov-edit{' +
+        'background:transparent;border:none;color:#eee;font-size:13px;padding:0;width:100%;' +
+        'border-bottom:1px dashed rgba(108,159,255,0.2);outline:none;}' +
+      '#table-overlay td input.ov-edit:focus,#table-overlay td select.ov-edit:focus{border-bottom:1px solid #6c9fff;}' +
+      '#table-overlay .crud-btn{background:rgba(108,159,255,0.15);border:none;color:#6c9fff;' +
+        'padding:4px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;}' +
+      '#table-overlay .crud-btn:active{background:rgba(108,159,255,0.3);}' +
+      '#table-overlay .bc{font-size:12px;color:#777;padding:0 20px 8px;display:none;}' +
+      '#table-overlay .bc span{cursor:pointer;color:#6c9fff;}#table-overlay .bc .sep{color:#444;margin:0 6px;cursor:default;}' +
+      '#table-overlay .zoom-card{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9500;' +
+        'background:#1a1a2e;border:1px solid #333;border-radius:14px;padding:20px;min-width:300px;box-shadow:0 8px 32px rgba(0,0,0,0.6);}' +
+      '#table-overlay .zoom-card .zf-name{font-size:15px;font-weight:700;color:#8ab4ff;margin-bottom:4px;}' +
+      '#table-overlay .zoom-card .zf-help{font-size:11px;color:#666;margin-bottom:12px;}' +
+      '#table-overlay .zoom-card input,#table-overlay .zoom-card select{background:#222;color:#eee;border:1px solid #444;border-radius:8px;padding:10px;font-size:15px;width:100%;min-height:44px;}' +
+      '#table-overlay .fk-peek{position:absolute;z-index:9600;background:#1e2a3a;border:1px solid #345;border-radius:10px;padding:10px 14px;font-size:12px;color:#ccc;box-shadow:0 4px 20px rgba(0,0,0,0.5);pointer-events:none;max-width:280px;}' +
       '</style>' +
-      // Title bar with close button
       '<div class="ti"><span>' + _escHtml(shortTable) + '</span>' +
-        '<span style="display:flex;align-items:center;gap:12px;">' +
+        '<span style="display:flex;align-items:center;gap:8px;">' +
           '<span class="cnt">' + records.length + ' records</span>' +
+          '<button class="crud-btn crud-new">+ New</button>' +
+          '<button class="crud-btn crud-del">\u00D7 Del</button>' +
+          '<button class="crud-btn crud-undo">\u21BA Undo</button>' +
           '<span class="cls">\u2715</span></span></div>' +
-      // Header accordion (open) — all records, 3-4 visible via max-height
+      '<div class="bc"></div>' +
       '<div class="acc"><div class="hd open"><span class="lbl"><span class="chv">\u25B6</span> ' +
         _escHtml(shortTable) + '</span><span class="cnt">' + records.length + '</span></div>' +
-        '<div class="bd open"><table><tr>' + headerTh + '</tr>' + headerRows + '</table></div></div>' +
-      // Child FK tabs (closed)
+        '<div class="bd open"></div></div>' +
       childTabsHtml;
 
     document.body.appendChild(ov);
     _tableOverlay = ov;
 
-    // Wire up cascading drill interactions
+    // §S262 Build editable header rows via DOM
+    var headerBdInit = ov.querySelector('.acc .bd');
+    _buildEditableRows(headerBdInit, records, fields, colCount, tableName);
+
     var accs = ov.querySelectorAll('.acc');
     var _selectedPk = null;
-    var _curRow = 0;   // auto-focus first row
+    var _curRow = 0;
     var _curAcc = 0;
-    var _allHeaderRows = headerRows; // keep full set for reset
+    var _dismissedTabs = [];
+    var _breadcrumbs = [{ label: shortTable, pk: null }];
 
     // ── §OV.1 Open a tab (one at a time) ───────────────────────────────
     function openAcc(idx) {
@@ -453,9 +598,8 @@
       _curAcc = idx;
       _curRow = -1;
 
-      // §OV.2 Lazy-load child tab data filtered by selected PK
+      // §OV.2 + §S262 §2: Lazy-load child tab data with editable cells
       if (idx > 0 && _selectedPk !== null && a.dataset.table) {
-        // Always reload for current PK (user may have drilled a different record)
         b.dataset.ld = '1';
         var ftName = a.dataset.table;
         var ftFk = a.dataset.fk;
@@ -465,21 +609,12 @@
             var cCols = cr[0].columns;
             var cFields = _getFieldsForTable(ftName);
             var cc = Math.min(cFields.length, 12);
-            var cht = '<table><tr>';
-            for (var ci = 0; ci < cc; ci++) cht += '<th>' + _escHtml(cFields[ci].name || cFields[ci].columnName) + '</th>';
-            cht += '</tr>';
-            var cRecs = cr[0].values;
-            for (var cri = 0; cri < cRecs.length; cri++) {
-              var obj = {}; for (var k = 0; k < cCols.length; k++) obj[cCols[k]] = cRecs[cri][k];
-              cht += '<tr>';
-              for (var cfi = 0; cfi < cc; cfi++) {
-                var cv = _resolveDisplay(obj, cFields[cfi].columnName);
-                cht += '<td>' + (cv ? _escHtml(cv.substring(0, 35)) : '<span class="n">\u2014</span>') + '</td>';
-              }
-              cht += '</tr>';
+            var cRecs = [];
+            for (var cri = 0; cri < cr[0].values.length; cri++) {
+              var obj = {}; for (var k = 0; k < cCols.length; k++) obj[cCols[k]] = cr[0].values[cri][k];
+              cRecs.push(obj);
             }
-            cht += '</table>';
-            b.innerHTML = cht;
+            _buildEditableRows(b, cRecs, cFields, cc, ftName);
             a.querySelector('.cnt').textContent = String(cRecs.length);
             console.log('§TABLE_CHILD tab=' + ftName + ' fk=' + ftFk + '=' + _selectedPk + ' rows=' + cRecs.length);
           } else {
@@ -502,9 +637,34 @@
       console.log('§TABLE_OPEN acc=' + idx + '/' + accs.length + ' pk=' + _selectedPk);
     }
 
+    // §S262 §5 Update breadcrumb trail
+    function _updateBreadcrumb() {
+      var bc = ov.querySelector('.bc');
+      if (!bc) return;
+      if (_breadcrumbs.length <= 1) { bc.style.display = 'none'; return; }
+      bc.style.display = 'block'; bc.innerHTML = '';
+      var start = Math.max(0, _breadcrumbs.length - 3);
+      if (start > 0) { var dots = document.createElement('span'); dots.textContent = '\u2026'; dots.style.color = '#444'; bc.appendChild(dots); var s0 = document.createElement('span'); s0.className = 'sep'; s0.textContent = '\u203A'; bc.appendChild(s0); }
+      for (var bi = start; bi < _breadcrumbs.length; bi++) {
+        if (bi > start) { var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '\u203A'; bc.appendChild(sep); }
+        var seg = document.createElement('span'); seg.textContent = _breadcrumbs[bi].label;
+        if (bi < _breadcrumbs.length - 1) { seg.dataset.idx = String(bi); seg.addEventListener('pointerup', function() { var j = Number(this.dataset.idx); _breadcrumbs = _breadcrumbs.slice(0, j + 1); if (j === 0) resetToHeader(); else _updateBreadcrumb(); }); }
+        else { seg.style.color = '#eee'; seg.style.cursor = 'default'; }
+        bc.appendChild(seg);
+      }
+    }
+
     // ── §OV.4 Drill into a record — rebuild child tabs for this PK ────
     function drillRecord(pk) {
       _selectedPk = pk;
+      // §S262 §5 breadcrumb
+      var recLabel = '';
+      for (var bri = 0; bri < records.length; bri++) {
+        if (String(_caseGet(records[bri], keyCol)) === String(pk)) {
+          recLabel = _caseGet(records[bri], 'Name') || _caseGet(records[bri], 'Value') || _caseGet(records[bri], 'DocumentNo') || String(pk); break;
+        }
+      }
+      _breadcrumbs.push({ label: recLabel, pk: pk }); _updateBreadcrumb();
 
       // Reduce header tab to show only the selected record (1 row)
       var headerBd = accs[0].querySelector('.bd');
@@ -569,9 +729,10 @@
         ov.removeChild(oldAccs[ri]);
       }
 
-      // Restore full header rows
+      // §S262 Restore full editable header rows
       var headerBd = accs[0].querySelector('.bd');
-      headerBd.innerHTML = '<table><tr>' + headerTh + '</tr>' + _allHeaderRows + '</table>';
+      _buildEditableRows(headerBd, records, fields, colCount, tableName);
+      _breadcrumbs = [{ label: shortTable, pk: null }]; _dismissedTabs = []; _updateBreadcrumb();
 
       // §OV.14 Rebuild initial child tabs (globally non-empty tables)
       for (var rti = 0; rti < fkTables.length; rti++) {
@@ -613,51 +774,170 @@
       }
     }
 
-    // ── §OV.7 Title tap → reset to header; X → close ───────────────────
+    // §S262 §3.1 +New
+    function _crudNew() {
+      var curTable = tableName, curFields = fields;
+      if (_curAcc > 0 && accs[_curAcc] && accs[_curAcc].dataset.table) { curTable = accs[_curAcc].dataset.table; curFields = _getFieldsForTable(curTable); }
+      try {
+        var newRec = {};
+        for (var di = 0; di < curFields.length; di++) { if (curFields[di].defaultValue) newRec[curFields[di].columnName] = curFields[di].defaultValue; }
+        if (_selectedPk && _curAcc > 0 && accs[_curAcc].dataset.fk) newRec[accs[_curAcc].dataset.fk] = _selectedPk;
+        var result = ADData.saveRecord(_db, curTable, newRec, curFields);
+        if (typeof KernelOps !== 'undefined') KernelOps.commitOp(_db, 'AD_NEW', {table: curTable, id: result.id});
+        if (_curAcc === 0) {
+          try { var nr = _db.exec("SELECT * FROM [" + tableName + "] WHERE IsActive = 'Y' ORDER BY 1 DESC LIMIT 100"); if (nr.length) { var nc = nr[0].columns; records = nr[0].values.map(function(row) { var obj = {}; for (var i = 0; i < nc.length; i++) obj[nc[i]] = row[i]; return obj; }); } } catch(e2) {}
+          _buildEditableRows(accs[0].querySelector('.bd'), records, fields, colCount, tableName);
+          ov.querySelector('.cnt').textContent = records.length + ' records';
+        } else { openAcc(_curAcc); }
+        _ovToast('New record created', '#2e7d32'); console.log('§AD_NEW table=' + curTable + ' id=' + result.id);
+        setTimeout(function() { var bd = accs[_curAcc].querySelector('.bd'); var rows = bd ? bd.querySelectorAll('tr:not(:first-child)') : []; if (rows.length) _highlightRow(rows.length - 1); }, 100);
+      } catch(e) { _ovToast('Create failed: ' + e.message, '#d32f2f'); console.log('§AD_NEW_ERR table=' + curTable + ' err=' + e.message); }
+    }
+    // §S262 §3.2 ×Delete
+    function _crudDelete() {
+      var openBd = accs[_curAcc].querySelector('.bd'); if (!openBd) return;
+      var rows = openBd.querySelectorAll('tr:not(:first-child)');
+      if (_curRow < 0 || _curRow >= rows.length) { _ovToast('Select a row first', '#d32f2f'); return; }
+      var tr = rows[_curRow]; var pk = tr.dataset.pk;
+      var curTable = tableName; if (_curAcc > 0 && accs[_curAcc].dataset.table) curTable = accs[_curAcc].dataset.table;
+      var curKeyCol = curTable + '_ID';
+      tr.style.background = 'rgba(244,67,54,0.3)';
+      setTimeout(function() {
+        try {
+          ADData.deleteRecord(_db, curTable, curKeyCol, pk);
+          if (typeof KernelOps !== 'undefined') KernelOps.commitOp(_db, 'AD_DELETE', {table: curTable, key: curKeyCol, value: pk});
+          tr.parentNode.removeChild(tr);
+          var remaining = openBd.querySelectorAll('tr:not(:first-child)'); if (remaining.length) _highlightRow(Math.min(_curRow, remaining.length - 1));
+          if (_curAcc === 0) { records = records.filter(function(r) { return String(_caseGet(r, keyCol)) !== String(pk); }); ov.querySelector('.cnt').textContent = records.length + ' records'; }
+          _ovToast('Deleted', '#2e7d32'); console.log('§AD_DELETE table=' + curTable + ' pk=' + pk);
+        } catch(e) { _ovToast('Delete failed: ' + e.message, '#d32f2f'); }
+      }, 200);
+    }
+    // §S262 §3.3 ↺Undo
+    function _crudUndo() {
+      if (typeof KernelOps === 'undefined') return;
+      var undone = KernelOps.undoOp(_db); if (!undone) { _ovToast('Nothing to undo', '#555'); return; }
+      var params = undone.parameters || {};
+      if (undone.op_type === 'TAB_DISMISS') { _restoreLastTab(); _ovToast('Tab restored', '#2e7d32'); return; }
+      if (undone.op_type === 'AD_SAVE' && params.col) {
+        var tbl = params.table || tableName;
+        try { if (params.old !== undefined) { var kc = tbl + '_ID'; _db.run("UPDATE [" + tbl + "] SET [" + params.col + "] = ? WHERE [" + kc + "] = ?", [params.old, params.id]); } } catch(e) {}
+        openAcc(_curAcc); _ovToast('Undo: ' + (params.col || undone.op_type), '#2e7d32'); console.log('§UNDO type=' + undone.op_type + ' table=' + params.table + ' id=' + params.id); return;
+      }
+      if (undone.op_type === 'AD_DELETE') { openAcc(_curAcc); _ovToast('Undo delete (reload needed)', '#ff9800'); return; }
+      if (undone.op_type === 'AD_NEW' && params.id) { try { _db.run("DELETE FROM [" + params.table + "] WHERE [" + (params.table + '_ID') + "] = ?", [params.id]); } catch(e2) {} openAcc(_curAcc); _ovToast('Undo create', '#2e7d32'); return; }
+      _ovToast('Undone: ' + undone.op_type, '#2e7d32');
+    }
+    // §S262 §4.2 Restore dismissed tabs
+    function _restoreLastTab() {
+      if (!_dismissedTabs.length) return; var last = _dismissedTabs.pop();
+      var inserted = false;
+      for (var ri = 1; ri < accs.length; ri++) { if (accs[ri].dataset.table && accs[ri].dataset.table > last.tableName) { ov.insertBefore(last.el, accs[ri]); inserted = true; break; } }
+      if (!inserted) ov.appendChild(last.el);
+      last.el.style.transition = 'transform 200ms ease, opacity 200ms ease'; last.el.style.transform = 'translateX(-100%)'; last.el.style.opacity = '0';
+      setTimeout(function() { last.el.style.transform = ''; last.el.style.opacity = ''; }, 10);
+      accs = ov.querySelectorAll('.acc'); console.log('§TAB_RESTORE table=' + last.tableName);
+    }
+    function _restoreAllTabs() { while (_dismissedTabs.length) _restoreLastTab(); _ovToast('All tabs restored', '#2e7d32'); }
+    // Long-press undo = restore all
+    var _undoBtn = ov.querySelector('.crud-undo'); if (_undoBtn) { var _undoLpTimer = null;
+      _undoBtn.addEventListener('pointerdown', function() { _undoLpTimer = setTimeout(function() { _undoLpTimer = null; _restoreAllTabs(); }, 600); });
+      _undoBtn.addEventListener('pointerup', function() { if (_undoLpTimer) { clearTimeout(_undoLpTimer); _undoLpTimer = null; } });
+    }
+
+    // ── §OV.7 Title tap → reset; X/CRUD → actions ──────────────────────
     ov.querySelector('.ti').addEventListener('pointerup', function(e) {
       if (e.target.closest('.cls')) { _closeTableOverlay(); return; }
+      if (e.target.closest('.crud-new')) { _crudNew(); return; }
+      if (e.target.closest('.crud-del')) { _crudDelete(); return; }
+      if (e.target.closest('.crud-undo')) { _crudUndo(); return; }
       resetToHeader();
     });
 
     // ── §OV.8 Pointer events — tab header tap + row tap ─────────────────
-    // Track pointer start to distinguish tap from scroll drag
     var _ovDownX = 0, _ovDownY = 0;
-    ov.addEventListener('pointerdown', function(e) {
-      _ovDownX = e.clientX; _ovDownY = e.clientY;
-    });
+    ov.addEventListener('pointerdown', function(e) { _ovDownX = e.clientX; _ovDownY = e.clientY; });
     ov.addEventListener('pointerup', function(e) {
       if (e.target.closest('.ti')) return;
-
-      // Ignore scroll drags — only act on taps (< 10px movement)
       var dx = e.clientX - _ovDownX, dy = e.clientY - _ovDownY;
       if (Math.sqrt(dx * dx + dy * dy) > 10) return;
-
-      // Tab header tap → open that tab
       var hd = e.target.closest('.hd');
       if (hd) {
-        var a = hd.parentElement;
-        var idx = Array.prototype.indexOf.call(accs, a);
-        if (idx >= 0) openAcc(idx);
-        return;
+        var a = hd.parentElement; var idx = Array.prototype.indexOf.call(accs, a); if (idx < 0) return;
+        // §S262 §4.1 Tap closed child tab → dismiss
+        if (idx > 0 && !hd.classList.contains('open') && _selectedPk !== null) {
+          var ftN = a.dataset.table || '';
+          a.style.transition = 'transform 200ms ease, opacity 200ms ease'; a.style.transform = 'translateX(-100%)'; a.style.opacity = '0';
+          setTimeout(function() { if (a.parentNode) a.parentNode.removeChild(a); accs = ov.querySelectorAll('.acc'); }, 200);
+          _dismissedTabs.push({ tableName: ftN, fkColumn: a.dataset.fk || '', el: a });
+          if (typeof KernelOps !== 'undefined') KernelOps.commitOp(_db, 'TAB_DISMISS', {table: ftN, fk: a.dataset.fk, pk: _selectedPk});
+          console.log('§TAB_DISMISS table=' + ftN + ' pk=' + _selectedPk); return;
+        }
+        openAcc(idx); return;
       }
-
-      // Row tap → drill or navigate
       var row = e.target.closest('tr');
       if (!row || row.querySelector('th')) return;
-
-      // Which accordion is this row in?
       var parentAcc = row.closest('.acc');
       var accIdx = Array.prototype.indexOf.call(accs, parentAcc);
-
-      if (accIdx === 0 && row.dataset.pk !== undefined) {
-        // §OV.8a Header row tap → drill into this record
-        drillRecord(row.dataset.pk);
-      } else if (accIdx > 0 && accIdx < accs.length - 1) {
-        // §OV.8b Child tab row tap → cascade to next tab
-        openAcc(accIdx + 1);
-        console.log('§TABLE_CASCADE from=' + accIdx + ' to=' + (accIdx + 1));
-      }
+      if (accIdx === 0 && row.dataset.pk !== undefined) { drillRecord(row.dataset.pk); }
+      else if (accIdx > 0 && accIdx < accs.length - 1) { openAcc(accIdx + 1); console.log('§TABLE_CASCADE from=' + accIdx + ' to=' + (accIdx + 1)); }
     });
+
+    // §S262 §6 Double-tap → zoom edit
+    var _lastTapTime = 0, _lastTapTarget = null;
+    ov.addEventListener('pointerup', function(e) {
+      var cell = e.target.closest('td'); if (!cell) return;
+      var input = cell.querySelector('.ov-edit'); if (!input) return;
+      var now = Date.now();
+      if (_lastTapTarget === cell && now - _lastTapTime < 400) { _lastTapTime = 0; _openZoomEdit(cell, input); }
+      else { _lastTapTime = now; _lastTapTarget = cell; }
+    });
+    function _openZoomEdit(cell, input) {
+      var existing = ov.querySelector('.zoom-card'); if (existing) existing.parentNode.removeChild(existing);
+      var colName = input.dataset.col || '';
+      var curTable = tableName; var parentAcc = cell.closest('.acc');
+      if (parentAcc && parentAcc.dataset.table) curTable = parentAcc.dataset.table;
+      var curFields = _getFieldsForTable(curTable); var fld = null;
+      for (var i = 0; i < curFields.length; i++) { if (curFields[i].columnName === colName) { fld = curFields[i]; break; } }
+      var card = document.createElement('div'); card.className = 'zoom-card';
+      card.innerHTML = '<div class="zf-name">' + _escHtml(fld ? (fld.name || colName) : colName) + '</div>' +
+        '<div class="zf-help">' + (fld && fld.description ? _escHtml(fld.description) : '') + '</div>';
+      var bigInput;
+      if (input.tagName === 'SELECT') { bigInput = input.cloneNode(true); bigInput.value = input.value; }
+      else { bigInput = document.createElement('input'); bigInput.type = input.type || 'text'; bigInput.value = input.value; if (input.step) bigInput.step = input.step; }
+      card.appendChild(bigInput);
+      function dismiss() { input.value = bigInput.value; input.dispatchEvent(new Event('blur')); if (card.parentNode) card.parentNode.removeChild(card); document.removeEventListener('keydown', escH); }
+      function escH(ev) { if (ev.key === 'Escape') { ev.preventDefault(); dismiss(); } }
+      document.addEventListener('keydown', escH);
+      card.addEventListener('pointerup', function(ev) { ev.stopPropagation(); });
+      setTimeout(function() { ov.addEventListener('pointerup', function oc(ev) { if (!card.contains(ev.target)) { dismiss(); ov.removeEventListener('pointerup', oc); } }); }, 50);
+      ov.appendChild(card); bigInput.focus(); console.log('§ZOOM_EDIT col=' + colName);
+    }
+
+    // §S262 §7 Hold-and-peek FK
+    var _fkPeekTimer = null, _fkPeek = null;
+    ov.addEventListener('pointerdown', function(e) {
+      var fkSpan = e.target.closest('.fk-cell'); if (!fkSpan) return;
+      _fkPeekTimer = setTimeout(function() {
+        _fkPeekTimer = null;
+        var colName = fkSpan.dataset.col, fkVal = fkSpan.dataset.fkVal; if (!colName || !fkVal) return;
+        var fkTable = colName.replace(/_ID$/, '');
+        try {
+          var r = _db.exec("SELECT * FROM [" + fkTable + "] WHERE [" + fkTable + "_ID] = ? LIMIT 1", [fkVal]);
+          if (r.length && r[0].values.length) {
+            var cols = r[0].columns, vals = r[0].values[0], lines = [];
+            var SHOW = ['Name','Value','DocumentNo','Description','Phone','Email','City'];
+            for (var ci = 0; ci < cols.length; ci++) { for (var si = 0; si < SHOW.length; si++) { if (cols[ci].toLowerCase().indexOf(SHOW[si].toLowerCase()) >= 0 && vals[ci]) { lines.push(cols[ci] + ': ' + String(vals[ci]).substring(0, 50)); } } }
+            if (!lines.length) { for (var fi = 0; fi < Math.min(cols.length, 4); fi++) { if (vals[fi] !== null) lines.push(cols[fi] + ': ' + String(vals[fi]).substring(0, 50)); } }
+            var tooltip = document.createElement('div'); tooltip.className = 'fk-peek';
+            tooltip.innerHTML = '<div style="font-weight:700;color:#8ab4ff;margin-bottom:4px;">' + _escHtml(fkTable) + '</div>' + lines.map(function(l){return '<div>'+_escHtml(l)+'</div>';}).join('');
+            var rect = fkSpan.getBoundingClientRect(); tooltip.style.left = rect.left + 'px'; tooltip.style.top = (rect.bottom + 4) + 'px';
+            ov.appendChild(tooltip); _fkPeek = tooltip; console.log('§FK_PEEK table=' + fkTable + ' id=' + fkVal + ' fields=' + lines.length);
+          }
+        } catch(e2) {}
+      }, 500);
+    });
+    ov.addEventListener('pointerup', function() { if (_fkPeekTimer) { clearTimeout(_fkPeekTimer); _fkPeekTimer = null; } if (_fkPeek) { if (_fkPeek.parentNode) _fkPeek.parentNode.removeChild(_fkPeek); _fkPeek = null; } });
 
     // ── §OV.9 Keyboard navigation ──────────────────────────────────────
     function _onKeyDown(e) {
@@ -698,10 +978,12 @@
       } else if (e.key === 'Escape') {
         e.preventDefault();
         if (_selectedPk !== null) {
-          resetToHeader();  // Escape from drilled → back to full header
+          resetToHeader();
         } else {
           _closeTableOverlay();
         }
+      } else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault(); _crudUndo();
       }
     }
 
@@ -946,10 +1228,16 @@
   }
 
   // Get AD_Field metadata for a table (header tab only — TabLevel=0, deduplicated)
+  // §S262: enriched with referenceType, isReadOnly, isMandatory, isKey, referenceId, defaultValue
+  var _REF_TYPES = {10:'string',11:'integer',12:'amount',13:'id',14:'text',15:'date',
+    16:'datetime',17:'list',19:'tableDirect',20:'table',22:'number',28:'button',
+    29:'quantity',30:'search',38:'yesno'};
   function _getFieldsForTable(tableName) {
     try {
       var r = _db.exec(
-        "SELECT DISTINCT f.Name, c.ColumnName, f.SeqNo " +
+        "SELECT DISTINCT f.Name, c.ColumnName, f.SeqNo, " +
+        "c.AD_Reference_ID, c.IsKey, c.IsMandatory AS ColMandatory, " +
+        "f.IsMandatory, f.IsReadOnly, f.DefaultValue, c.DefaultValue AS ColDefault " +
         "FROM AD_Field f " +
         "JOIN AD_Column c ON f.AD_Column_ID = c.AD_Column_ID " +
         "JOIN AD_Tab t ON f.AD_Tab_ID = t.AD_Tab_ID " +
@@ -957,9 +1245,10 @@
         "WHERE tbl.TableName = ? AND f.IsDisplayed = 'Y' AND t.TabLevel = 0 " +
         "ORDER BY f.SeqNo", [tableName]);
       if (!r.length) {
-        // Fallback: try without TabLevel filter
         r = _db.exec(
-          "SELECT DISTINCT f.Name, c.ColumnName, f.SeqNo " +
+          "SELECT DISTINCT f.Name, c.ColumnName, f.SeqNo, " +
+          "c.AD_Reference_ID, c.IsKey, c.IsMandatory AS ColMandatory, " +
+          "f.IsMandatory, f.IsReadOnly, f.DefaultValue, c.DefaultValue AS ColDefault " +
           "FROM AD_Field f " +
           "JOIN AD_Column c ON f.AD_Column_ID = c.AD_Column_ID " +
           "JOIN AD_Tab t ON f.AD_Tab_ID = t.AD_Tab_ID " +
@@ -971,16 +1260,25 @@
         console.log('§FIELDS fallback table=' + tableName + ' (no AD_Field rows)');
         return _fallbackFields(tableName);
       }
-      // Deduplicate by ColumnName, skip system columns
       var seen = {};
       var SKIP_COLS = {ad_client_id:1, ad_org_id:1, created:1, createdby:1, updated:1, updatedby:1, isactive:1};
       var fields = [];
       for (var i = 0; i < r[0].values.length; i++) {
-        var col = r[0].values[i][1];
+        var row = r[0].values[i];
+        var col = row[1];
         if (SKIP_COLS[col.toLowerCase()]) continue;
         if (!seen[col]) {
           seen[col] = true;
-          fields.push({ name: r[0].values[i][0], columnName: col, seqNo: r[0].values[i][2] });
+          var refId = Number(row[3]) || 10;
+          fields.push({
+            name: row[0], columnName: col, seqNo: row[2],
+            referenceId: refId,
+            referenceType: _REF_TYPES[refId] || 'string',
+            isKey: row[4] === 'Y',
+            isMandatory: (row[5] === 'Y' || row[6] === 'Y'),
+            isReadOnly: row[7] === 'Y',
+            defaultValue: row[8] || row[9] || null
+          });
         }
       }
       console.log('§FIELDS table=' + tableName + ' count=' + fields.length +

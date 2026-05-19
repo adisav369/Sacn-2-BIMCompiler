@@ -100,7 +100,7 @@
   }
 
   // ── 2. Module list — §8 step 3 ────────────────────────────────────
-  var V = '?v=19';
+  var V = '?v=20';
   var MODULES = [
     'kernel_ops.js' + V,
     'ad_parser.js' + V,
@@ -332,7 +332,7 @@
 </script>
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js?v=384')
+  navigator.serviceWorker.register('sw.js?v=398')
     .then(function(r){console.log('§SW_REG scope='+r.scope)})
     .catch(function(e){console.warn('§SW_REG_FAIL',e)});
 }
