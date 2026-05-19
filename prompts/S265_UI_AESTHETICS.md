@@ -144,6 +144,10 @@ The viewer already parses `cx/cy/cz/tx/ty/tz` from hash. Adding `pick`, `storey`
 | Old `#search-box` duplicate CSS removed | Done | 2dad218f |
 | SW bumped v398→v404 | Done | 95e5b6ad |
 
+### BUG — Active state cyan highlight incomplete
+
+Overflow icons should glow cyan when their feature is active. `toggleOverflow()` in `panels.js` syncs state on open, but not all toggles update the overflow button when triggered from the pill or keyboard shortcut (e.g. Measure activated from pill doesn't highlight the Measure overflow icon until next overflow open). Each toggle function in `tools.js`/`measure.js`/`tour.js` needs to also set `.active` on its overflow button when the state changes — not just on overflow open.
+
 ### TODO — Phase 3: Share refactor (next session)
 
 **Goal:** One Share icon in the pill. One `share.js`. Context-aware URL. Remove WhatsApp/Email hardcodes.
