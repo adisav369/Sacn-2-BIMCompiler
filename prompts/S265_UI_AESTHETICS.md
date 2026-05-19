@@ -118,35 +118,67 @@ The viewer already parses `cx/cy/cz/tx/ty/tz` from hash. Adding `pick`, `storey`
 
 **Files:** `share.js` (rewrite send section), `main.js`/`streaming.js` (hash parser), `time_machine.js` (export `_tmActive`/`_tmCursor`)
 
-## Files to modify
+## Progress
 
-| File | Changes |
-|------|---------|
-| `index.html` | New icon column HTML + CSS, remove old toolbar |
-| `tools.js` | Overflow menu toggle, icon click handlers |
-| `share.js` | Unified share with state capture (absorb S264) |
-| `panels.js` | HUD auto-collapse behavior |
-| `measure.js` | Clash share → delegate to share.js |
-| `clash_snag.js` | Snag share → delegate to share.js |
-| `walk.js` | Walk share → delegate to share.js |
+### DONE — Phase 1+2 (merged into one pass)
+
+| What | Status | Commit |
+|------|--------|--------|
+| Vertical icon pill (6 icons: TM, Measure, Find, Share, Help, More) | Done | 2dad218f |
+| Overflow grid (icons-only 4×4, no text labels) | Done | 2e7945cc |
+| 31 Lucide SVG icons fetched and saved to `icons/lucide/` | Done | 2dad218f |
+| All emoji replaced with inline Lucide SVGs | Done | 2e7945cc |
+| Overflow grouped: Analysis, Navigation, Display, Export | Done | 2dad218f |
+| Shadow, Background, Night moved from Palette panel to overflow | Done | 2e7945cc |
+| Palette panel cleaned (sliders only) | Done | 2e7945cc |
+| Help (lifebelt) in pill → opens command palette with icons + shortcuts | Done | 2e7945cc |
+| Clash Matrix in overflow (direct `_loadClashRules` call) | Done | 2e7945cc |
+| TM hourglass removed from overflow (`time_machine.js` no longer injects) | Done | 2e7945cc |
+| Precision Cam: 👁 → feather icon | Done | 2e7945cc |
+| Home: flag override blocked in `locale_loader.js`, house icon preserved | Done | 2e7945cc |
+| Active state highlight on overflow open (cyan glow) | Done | 95e5b6ad |
+| TM + 2D visible on mobile with "Desktop only" status message | Done | 2e7945cc |
+| Mobile: 44px tap targets, bottom drawer overflow | Done | 2dad218f |
+| Palette double-click fix (150ms delay) | Done | 2e7945cc |
+| `backdrop-filter` removed from pill (CPU fix) | Done | 2dad218f |
+| Old `#search-box` duplicate CSS removed | Done | 2dad218f |
+| SW bumped v398→v404 | Done | 95e5b6ad |
+
+### TODO — Phase 3: Share refactor (next session)
+
+**Goal:** One Share icon in the pill. One `share.js`. Context-aware URL. Remove WhatsApp/Email hardcodes.
+
+**Current state of share.js:**
+- Still has `sendWhatsApp()` and `sendEmail()` hardcodes — REMOVE
+- Still requires IndexedDB key (only works for imported buildings) — FIX
+- No camera state in URL — ADD
+- No `navigator.share()` — ADD
+
+**What to do:**
+1. Replace `sendWhatsApp()`/`sendEmail()` with `navigator.share()` + clipboard fallback
+2. Add `buildShareUrl()` that captures camera + element + clash + TM + storey state in URL hash
+3. Add hash parser on load to restore shared state (`pick`, `storey`, `xray`, `tm`, `tour`, `clash`)
+4. Share pill button: if building is on OCI (`?db=http...`), share the current URL directly. If imported (IndexedDB), open the existing share sheet for Contribute flow.
+
+**Snag/Clash share stays separate** — `measure.js` snag QR and `clash_snag.js` deep-links are their own flows at their own levels. Don't touch them.
+
+**Files to modify:**
+| File | Change |
+|------|--------|
+| `share.js` | Remove WhatsApp/Email, add `navigator.share()`, add `buildShareUrl()` |
+| `main.js` or `streaming.js` | Parse `pick`, `storey`, `xray`, `tm`, `tour`, `clash` from URL hash on load |
+| `index.html` | Share pill `onclick` already has fallback — refine after `share.js` rewrite |
+
+### TODO — Phase 4: HUD polish (future session)
+
+- Auto-collapse on mobile after 5s
+- Storeys + disciplines inside HUD on mobile (no separate panels)
+- Tap-to-peek
 
 ## DO NOT touch
 
-- `time_machine.js` — cinematic just tuned (S260e/f), don't modify
+- `measure.js` snag share — lives in clash flow, separate concern
+- `clash_snag.js` deep-links — separate concern
 - `streaming.js` — material pipeline stable
 - `deploy/live/*` — production
 - Storyboard/drone camera system — working well
-
-## Implementation order
-
-1. **Phase 1: Icon column** — HTML/CSS only, move existing buttons to vertical layout
-2. **Phase 2: Three-dot overflow** — JS for menu open/close, move secondary items in
-3. **Phase 3: Share refactor** — absorb S264, unified `shareState()` function
-4. **Phase 4: HUD polish** — auto-collapse, tap-to-peek, minimal default state
-
-## Whitebox
-
-Add to `whitebox_js_logic.sh`:
-- `§CHECK icon column: max 6 visible icons` (count `.icon-primary` elements)
-- `§CHECK overflow menu: three-dot opens/closes` (menu toggle function exists)
-- `§CHECK share uses navigator.share` (not hardcoded WhatsApp)
