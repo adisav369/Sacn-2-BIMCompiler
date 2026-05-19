@@ -524,6 +524,17 @@ function setupPanels(A) {
     box.classList.toggle('overflow-open', opening);
     if (scrim) scrim.classList.toggle('active', opening);
     if (moreBtn) moreBtn.classList.toggle('active', opening);
+    // S265: sync active state on open
+    if (opening) {
+      var _s = function(id, on) { var b = document.getElementById(id); if (b) b.classList.toggle('active', !!on); };
+      _s('xray-btn', A.xrayOn);
+      _s('section-btn', document.getElementById('section-slider-panel') && document.getElementById('section-slider-panel').style.display !== 'none');
+      _s('sunglass-btn', document.getElementById('sunglass-slider-panel') && document.getElementById('sunglass-slider-panel').style.display !== 'none');
+      _s('fly-btn', A.flyActive);
+      _s('shadow-overflow-btn', A._shadowOn);
+      _s('bg-overflow-btn', A._whiteBg);
+      _s('grid-2d-btn', A._gridOverlayState && A._gridOverlayState.active);
+    }
     console.log('§UI_OVERFLOW ' + (opening ? 'open' : 'close'));
   };
   // §-tag: pill rendered
