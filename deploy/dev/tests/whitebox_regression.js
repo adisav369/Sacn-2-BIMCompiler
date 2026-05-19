@@ -895,13 +895,11 @@ test('share_refactor_s265', () => {
   var tmRead = shareSrc.includes('tmGetState');
   if (!tmRead) issues.push('share.js missing tmGetState call');
 
-  // Clash deep-link format: share.js must use same hash format as measure.js _buildClashDeepLink
-  // measure.js: #clash=GUID~GUID&cam=x,y,z&tgt=x,y,z
-  // share.js: clash=GUID~GUID (using ~ separator)
-  var clashFormat = shareSrc.includes("clash[0] + '~' + clash[1]");
-  var measureFormat = measureSrc.includes("c[0] + '~' + c[1]");
-  if (!clashFormat) issues.push('share.js clash format not using ~ separator');
-  if (!measureFormat) issues.push('REFERENCE: measure.js clash format changed');
+  // Clash: share.js must delegate to _buildClashDeepLink (proven working, S246)
+  var clashDelegates = shareSrc.includes('_buildClashDeepLink');
+  var measureHasDeepLink = measureSrc.includes("A._buildClashDeepLink");
+  if (!clashDelegates) issues.push('share.js must delegate clash URL to _buildClashDeepLink');
+  if (!measureHasDeepLink) issues.push('REFERENCE: measure.js _buildClashDeepLink missing');
 
   // Diagnostic §SHARE_URL log must include ctx=[] with all context checks
   var diagLog = shareSrc.includes('§SHARE_URL') && shareSrc.includes('ctx=[');
@@ -957,9 +955,10 @@ test('share_refactor_s265', () => {
       }
     }
     if (A.xrayOn) parts.push('xray=1');
-    if (A._currentClashes && A._currentClashes.length > 0) {
-      var clash = A._currentClashes[0];
-      if (clash[0] && clash[1]) parts.push('clash=' + clash[0] + '~' + clash[1]);
+    // Delegate to _buildClashDeepLink when clash active (same as real share.js)
+    if (A._currentClashes && A._currentClashes.length > 0 && A._buildClashDeepLink) {
+      var clashUrl = A._buildClashDeepLink(A._currentClashes[0]);
+      if (clashUrl) return clashUrl;
     }
     if (A._tmState && A._tmState.active) parts.push('tm=' + A._tmState.cursor);
     if (A.flyActive) parts.push('tour=play');
@@ -1034,20 +1033,21 @@ test('share_refactor_s265', () => {
       reason: hasXray ? '' : 'xray=1 missing — xrayOn=true but not captured' };
   });
 
-  // Scenario 6: Clash pair viewing — must have clash=GUID~GUID
-  // This is the KEY scenario: _currentClashes must be non-empty
+  // Scenario 6: Clash pair viewing — must produce same URL as _buildClashDeepLink
+  // share.js delegates to _buildClashDeepLink when clash is active — verify identical output
   test('share_ctx_clash_pair', () => {
     var clashEntry = ['guidA-1234-abcd', 'guidB-5678-efgh', 'IfcWall', 'IfcPipe', 'ARC', 'PLB', 'Wall 01', 'Pipe 01', 0.025];
-    var url = buildShareUrl(mkState({ _currentClashes: [clashEntry] }), emptyDom);
-    var hasClash = url.includes('clash=guidA-1234-abcd~guidB-5678-efgh');
-    // Compare format with _buildClashDeepLink
     var clashDeepLink = buildClashDeepLink(mkState({}), clashEntry);
-    var sameFormat = clashDeepLink.includes('clash=guidA-1234-abcd~guidB-5678-efgh');
-    return { ok: hasClash && sameFormat,
-      log: '§WB_SHARE_CTX scenario=clash_pair clash=' + hasClash + ' matchesDeepLink=' + sameFormat +
+    // In real code, buildShareUrl returns _buildClashDeepLink output directly when clash active.
+    // Simulate: buildShareUrl with _buildClashDeepLink mock
+    var stateWithClash = mkState({ _currentClashes: [clashEntry] });
+    stateWithClash._buildClashDeepLink = function(c) { return buildClashDeepLink(stateWithClash, c); };
+    var url = buildShareUrl(stateWithClash, emptyDom);
+    var identical = url === clashDeepLink;
+    return { ok: identical,
+      log: '§WB_SHARE_CTX scenario=clash_pair identical=' + identical +
         ' shareUrl=' + url + ' deepLink=' + clashDeepLink,
-      reason: !hasClash ? 'clash=GUID~GUID missing — _currentClashes has entry but not captured' :
-        !sameFormat ? 'clash format differs from _buildClashDeepLink' : '' };
+      reason: identical ? '' : 'share URL differs from _buildClashDeepLink output' };
   });
 
   // Scenario 7: Time Machine active — must have tm=cursor
@@ -1069,24 +1069,22 @@ test('share_refactor_s265', () => {
   });
 
   // Scenario 9: Combined — clash + storey + xray + pick (all at once)
-  test('share_ctx_combined', () => {
-    var clashEntry = ['gA', 'gB', 'IfcWall', 'IfcPipe', 'ARC', 'PLB', 'W', 'P', 0.01];
+  // When clash is active, _buildClashDeepLink takes over (returns clash URL directly).
+  // So combined = clash URL (proven format). Other contexts don't stack with clash.
+  test('share_ctx_combined_noclash', () => {
     var dom = { infoGuid: 'someGUID-1234-5678-abcd', infoPanelVisible: true };
     var url = buildShareUrl(mkState({
-      activeStoreyFilter: 'Ground Floor', xrayOn: true,
-      _currentClashes: [clashEntry], flyActive: false
+      activeStoreyFilter: 'Ground Floor', xrayOn: true, flyActive: false
     }), dom);
     var hasCam = url.includes('cam=');
     var hasPick = url.includes('pick=someGUID');
     var hasStorey = url.includes('storey=Ground');
     var hasXray = url.includes('xray=1');
-    var hasClash = url.includes('clash=gA~gB');
-    var allOk = hasCam && hasPick && hasStorey && hasXray && hasClash;
+    var allOk = hasCam && hasPick && hasStorey && hasXray;
     return { ok: allOk,
-      log: '§WB_SHARE_CTX scenario=combined cam=' + hasCam + ' pick=' + hasPick +
-        ' storey=' + hasStorey + ' xray=' + hasXray + ' clash=' + hasClash + ' url=' + url,
-      reason: allOk ? '' : 'combined context incomplete: cam=' + hasCam + ' pick=' + hasPick +
-        ' storey=' + hasStorey + ' xray=' + hasXray + ' clash=' + hasClash };
+      log: '§WB_SHARE_CTX scenario=combined_noclash cam=' + hasCam + ' pick=' + hasPick +
+        ' storey=' + hasStorey + ' xray=' + hasXray + ' url=' + url,
+      reason: allOk ? '' : 'combined context incomplete' };
   });
 
   // Scenario 10: Empty clashes array — must NOT have clash= (regression guard)
@@ -1098,6 +1096,74 @@ test('share_refactor_s265', () => {
       reason: noClash ? '' : 'clash= present with empty array' };
   });
 })();
+
+// ─── 3.18 S265 Share deep-link restore — parse real URLs from working + new share ──
+// Issue: User reports new share URL "still cannot" restore clash. Test the RECEIVER side.
+// Simulate main.js hash parser with real URLs to verify extraction.
+test('share_restore_parse', () => {
+  // Working URL (old clash snag method)
+  var workingHash = '#clash=01WyKs2cnByA_VPsbZDzFL~0GjpF04mX1K8P$TdM8fU2_&st=Existing%20Garage%20-%201st%20Level&cam=-49.82,-5.49,-33.29&tgt=-51.52,-6.91,-34.99&tol=25';
+  // New URL (buildShareUrl → _buildClashDeepLink)
+  var newHash = '#clash=0IajW5Y89BRxvKnf5AfDkQ~1itcVTZhD87QA6mzuiLzD3&st=Existing%20Garage%20-%201st%20Level&cam=-52.29,-8.31,-32.71&tgt=-51.52,-6.91,-34.99&tol=25';
+
+  // Replicate main.js hash parser (line 603-604)
+  function parseHash(hash) {
+    var params = {};
+    hash.slice(1).split('&').forEach(function(p) {
+      var kv = p.split('=');
+      if (kv[0]) params[kv[0]] = decodeURIComponent(kv[1] || '');
+    });
+    return params;
+  }
+
+  var wParsed = parseHash(workingHash);
+  var nParsed = parseHash(newHash);
+
+  var issues = [];
+
+  // Both must have clash param with ~ separator
+  if (!wParsed.clash || !wParsed.clash.includes('~')) issues.push('working URL clash param broken');
+  if (!nParsed.clash || !nParsed.clash.includes('~')) issues.push('new URL clash param broken');
+
+  // Both must split into exactly 2 GUIDs
+  var wGuids = (wParsed.clash || '').split('~');
+  var nGuids = (nParsed.clash || '').split('~');
+  if (wGuids.length !== 2) issues.push('working: clash split != 2 guids, got ' + wGuids.length);
+  if (nGuids.length !== 2) issues.push('new: clash split != 2 guids, got ' + nGuids.length);
+
+  // Both must have cam with 3 numbers
+  var wCam = (wParsed.cam || '').split(',').map(Number);
+  var nCam = (nParsed.cam || '').split(',').map(Number);
+  if (wCam.length !== 3 || wCam.some(isNaN)) issues.push('working: cam parse fail');
+  if (nCam.length !== 3 || nCam.some(isNaN)) issues.push('new: cam parse fail');
+
+  // Both must have tgt with 3 numbers
+  var wTgt = (wParsed.tgt || '').split(',').map(Number);
+  var nTgt = (nParsed.tgt || '').split(',').map(Number);
+  if (wTgt.length !== 3 || wTgt.some(isNaN)) issues.push('working: tgt parse fail');
+  if (nTgt.length !== 3 || nTgt.some(isNaN)) issues.push('new: tgt parse fail');
+
+  // Both must have st (storey) and tol
+  if (!wParsed.st) issues.push('working: missing st');
+  if (!nParsed.st) issues.push('new: missing st');
+  if (!wParsed.tol) issues.push('working: missing tol');
+  if (!nParsed.tol) issues.push('new: missing tol');
+
+  // Verify same key set
+  var wKeys = Object.keys(wParsed).sort().join(',');
+  var nKeys = Object.keys(nParsed).sort().join(',');
+  if (wKeys !== nKeys) issues.push('key mismatch: working=[' + wKeys + '] new=[' + nKeys + ']');
+
+  var ok = issues.length === 0;
+  return {
+    ok: ok,
+    log: '§WB_SHARE_RESTORE' +
+      ' working={clash:' + wGuids.join('~') + ',cam:[' + wCam + '],tgt:[' + wTgt + '],st:' + wParsed.st + ',tol:' + wParsed.tol + '}' +
+      ' new={clash:' + nGuids.join('~') + ',cam:[' + nCam + '],tgt:[' + nTgt + '],st:' + nParsed.st + ',tol:' + nParsed.tol + '}' +
+      ' keys_match=' + (wKeys === nKeys) + ' keys=' + nKeys,
+    reason: issues.join('; ')
+  };
+});
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log(`§WB_SUMMARY pass=${pass} fail=${fail} total=${pass + fail}`);

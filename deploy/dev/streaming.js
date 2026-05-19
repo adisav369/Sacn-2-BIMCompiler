@@ -306,7 +306,7 @@ function setupStreaming(A) {
       r = parts[0]; g = parts[1]; b = parts[2];
       if (parts.length >= 4 && parts[3] < 1.0) a = parts[3];
     }
-    // §S265: Detect unassigned material — NULL (default 0.7 grey) or monochrome (R≈G≈B).
+    // §S265: Detect unassigned material — monochrome (R≈G≈B, spread < 8%).
     // Replace with standard reference material for that IFC class.
     var _spread = Math.max(r, g, b) - Math.min(r, g, b);
     var isUnassigned = _spread < 0.08;

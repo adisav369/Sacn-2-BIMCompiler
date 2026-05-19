@@ -20,8 +20,8 @@
     var style = document.createElement('style');
     style.textContent = [
       '#find-panel {',
-      '  position: fixed; top: 50%; right: 16px; transform: translateY(-50%);',
-      '  z-index: 50; width: 320px; max-width: 40vw;',
+      '  position: fixed; top: 50%; right: 70px; transform: translateY(-50%);',
+      '  z-index: 50; width: 320px; max-width: 40vw; cursor: grab;',
       '  background: rgba(30, 25, 8, 0.92); backdrop-filter: blur(20px);',
       '  -webkit-backdrop-filter: blur(20px);',
       '  border: 1px solid rgba(255, 191, 0, 0.15); border-radius: 12px;',
@@ -65,7 +65,7 @@
       '#find-actions button { flex: 1; padding: 8px 0; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }',
       '.find-nav-btn { background: rgba(255,191,0,0.25); color: #ffd54f; }',
       '.find-nav-btn:hover { background: rgba(255,191,0,0.4); }',
-      '.find-close-btn { background: none; border: none !important; color: rgba(255,224,160,0.3); font-size: 16px; position: absolute; top: 10px; right: 12px; cursor: pointer; padding: 4px 8px; }',
+      '.find-close-btn { background: none; border: none !important; color: rgba(255,224,160,0.3); font-size: 22px; position: absolute; top: 6px; right: 8px; cursor: pointer; padding: 8px 12px; min-width: 44px; min-height: 44px; }',
       '.find-close-btn:hover { color: #ffe0a0; }',
       '#find-count { font-size: 11px; color: rgba(255,224,160,0.35); padding: 4px 14px 2px; }',
       // Nav HUD
@@ -116,6 +116,8 @@
       '</div>',
     ].join('');
     document.body.appendChild(panel);
+    // S265 Phase 4: make Find panel draggable so it doesn't obscure pill
+    if (A._makeDraggable) A._makeDraggable(panel);
 
     // Nav HUD elements
     var navHud = document.createElement('div');
@@ -172,6 +174,14 @@
     }
     A.closeFindPanel = closeFindPanel; // exposed for nlp.js bar close
     elClose.onclick = closeFindPanel;
+    // §S265: Tap outside find panel to close (mobile UX)
+    document.addEventListener('pointerup', function(e) {
+      if (panel.style.display === 'none') return;
+      if (panel.contains(e.target)) return;
+      // Don't close if tapping the Find pill button itself (it toggles)
+      if (e.target.closest && e.target.closest('[title="Find"]')) return;
+      closeFindPanel();
+    });
 
     // ── Populate dropdowns — show all types/storeys, with match counts when searching ──
     function populateDropdowns() {
