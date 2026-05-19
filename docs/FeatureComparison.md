@@ -90,6 +90,53 @@ Measured on a standard laptop (Intel i7, integrated GPU, Chrome):
 
 All measurements with geometry cached in IndexedDB. First load depends on network speed for the initial database download.
 
+## Spatial ERP — Construction Project Management in the Browser
+
+BIM OOTB includes a browser-based ERP engine built on the same zero-infrastructure principle. The system renders iDempiere's Application Dictionary (AD) — the metadata-driven UI framework behind one of the most mature open-source ERPs — entirely in a browser using SQLite WASM.
+
+### What This Means
+
+iDempiere is a full enterprise ERP (accounting, procurement, manufacturing, HR) with a unique architecture: the entire UI is defined as database rows, not code. Change a row in `AD_Field` and the UI changes. No recompile. This Application Dictionary (60,000+ metadata rows across 10 tables) has been exported from PostgreSQL, loaded into SQLite, and parsed by a JavaScript renderer.
+
+The result: the same menu tree, windows, tabs, fields, validation rules, and display logic that run on a JVM + PostgreSQL + OSGi stack — running in a browser tab with no server.
+
+### Current State
+
+| Capability | Status |
+|---|---|
+| AD menu tree (826 nodes) | Working |
+| Window/Tab/Field rendering | Working |
+| FK resolution (Name lookup) | Working |
+| DisplayLogic (conditional fields) | Working |
+| CRUD (Create/Read/Update/Delete) | Working |
+| Multi-panel master-detail | Working |
+| Data Globe (3D record visualisation) | Working |
+| Role-based access | In progress |
+| DocAction state machine | In progress |
+| Construction POC (Land → BOQ → Approval) | In progress |
+
+### Roadmap: Construction ERP vs Primavera / Procore
+
+The construction ERP roadmap targets the workflow that Primavera P6, Procore, and SAP PS serve today — project scheduling, cost control, procurement, and progress tracking — but delivered as a browser-first application that lives alongside the 3D BIM model.
+
+| Capability | BIM OOTB (Roadmap) | Primavera P6 | Procore | SAP PS |
+|---|---|---|---|---|
+| 4D Schedule + 3D Model | **Same browser tab** | Separate tools | Separate | Separate |
+| 5D Cost + BOQ | **Extracted from IFC** | Manual input | Manual | Manual |
+| Offline | **Yes** | No | No | No |
+| Server required | **No** | Oracle DB | Cloud | SAP HANA |
+| Licence cost | **Free (MIT)** | $3-8K/user/yr | $375+/mo | Enterprise contract |
+| IFC integration | **Native** | None | Limited (viewer) | None |
+| BOM from model | **Automatic** | N/A | N/A | Manual |
+| Install | **URL** | Desktop | Cloud | On-premise/cloud |
+| ERP foundation | **iDempiere AD (open)** | Proprietary | Proprietary | Proprietary |
+
+The key differentiator: in Primavera, the schedule is disconnected from the model. An architect updates a wall in Revit, exports IFC, and someone manually reconciles the schedule. In BIM OOTB, the 4D schedule is derived from the IFC elements — change the model, the schedule updates. The 3D viewer, the Gantt chart, and the cost dashboard are the same application.
+
+### iDempiere Graduation Path
+
+BIM OOTB is not a replacement for enterprise ERP. It is a **browser-first entry point** that graduates to iDempiere when an organisation needs multi-user, multi-tenant, accounting, and audit. The same Application Dictionary runs in both environments. Data migrates up. Users don't retrain.
+
 ## Comparison
 
 | Capability | BIM OOTB | Autodesk APS (Forge) | IFC.js / ThatOpen | Trimble Connect |
@@ -106,6 +153,8 @@ All measurements with geometry cached in IndexedDB. First load depends on networ
 | Clash detection | **Integrated** | Separate (Navisworks) | No | Limited |
 | Cost | **Free** | Metered API | Free (library) | Licensed |
 | Vendor lock-in | **None (IFC standard)** | SVF/SVF2 proprietary | IFC standard | Proprietary |
+| ERP integration | **Built-in (AD engine)** | None | None | None |
+| Construction scheduling | **4D in same viewer** | None | None | None |
 
 ### Key Differences
 
