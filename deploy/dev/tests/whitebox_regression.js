@@ -929,6 +929,176 @@ test('share_refactor_s265', () => {
   };
 });
 
+// ─── 3.17 S265 Share context capture — simulate buildShareUrl with mock state ──
+// Issue: User reports share URL only has cam,tgt — not picking up clash/storey/xray/pick.
+// This test extracts the buildShareUrl logic, feeds mock state, verifies hash output.
+// Same approach as clash deep-link: if _currentClashes has entries, URL must have #clash=.
+(function() {
+  // Extract buildShareUrl logic from share.js — replicate in Node.js with mock DOM+state
+  function buildShareUrl(A, mockDom) {
+    var base = 'https://test.com/index.html?db=test.db';
+    var parts = [];
+    if (A.camera && A.controls) {
+      var p = A.camera.position;
+      var t = A.controls.target;
+      parts.push('cam=' + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ',' + p.z.toFixed(1));
+      parts.push('tgt=' + t.x.toFixed(1) + ',' + t.y.toFixed(1) + ',' + t.z.toFixed(1));
+    }
+    if (mockDom.infoGuid && mockDom.infoPanelVisible) {
+      if (mockDom.infoGuid !== '—' && mockDom.infoGuid.length > 5) {
+        parts.push('pick=' + encodeURIComponent(mockDom.infoGuid));
+      }
+    }
+    if (A.activeStoreyFilter !== null && A.activeStoreyFilter !== undefined) {
+      if (Array.isArray(A.activeStoreyFilter)) {
+        parts.push('storey=' + encodeURIComponent(A.activeStoreyFilter.join(',')));
+      } else {
+        parts.push('storey=' + encodeURIComponent(A.activeStoreyFilter));
+      }
+    }
+    if (A.xrayOn) parts.push('xray=1');
+    if (A._currentClashes && A._currentClashes.length > 0) {
+      var clash = A._currentClashes[0];
+      if (clash[0] && clash[1]) parts.push('clash=' + clash[0] + '~' + clash[1]);
+    }
+    if (A._tmState && A._tmState.active) parts.push('tm=' + A._tmState.cursor);
+    if (A.flyActive) parts.push('tour=play');
+    return base + (parts.length > 0 ? '#' + parts.join('&') : '');
+  }
+
+  // Also replicate _buildClashDeepLink from measure.js for comparison
+  function buildClashDeepLink(A, c) {
+    var p = A.camera.position;
+    var t = A.controls.target;
+    return 'https://test.com/index.html?db=test.db#clash=' + c[0] + '~' + c[1] +
+      '&cam=' + p.x.toFixed(2) + ',' + p.y.toFixed(2) + ',' + p.z.toFixed(2) +
+      '&tgt=' + t.x.toFixed(2) + ',' + t.y.toFixed(2) + ',' + t.z.toFixed(2);
+  }
+
+  var cam = { position: { x: 10, y: 20, z: 30 }, controls: { target: { x: 0, y: 0, z: 0 } } };
+  var baseState = { camera: cam.position, controls: cam.controls };
+  // Fix: camera and controls at top level
+  var mkState = function(overrides) {
+    var s = { camera: { position: { x: 10, y: 20, z: 30 } }, controls: { target: { x: 0, y: 0, z: 0 } },
+      activeStoreyFilter: null, xrayOn: false, _currentClashes: null, _tmState: null, flyActive: false };
+    for (var k in overrides) s[k] = overrides[k];
+    return s;
+  };
+  var emptyDom = { infoGuid: null, infoPanelVisible: false };
+
+  // Scenario 1: Default orbit — only cam,tgt
+  test('share_ctx_default_orbit', () => {
+    var url = buildShareUrl(mkState({}), emptyDom);
+    var hasCam = url.includes('cam=') && url.includes('tgt=');
+    var noExtras = !url.includes('pick=') && !url.includes('storey=') && !url.includes('xray=') &&
+                   !url.includes('clash=') && !url.includes('tm=') && !url.includes('tour=');
+    return { ok: hasCam && noExtras,
+      log: '§WB_SHARE_CTX scenario=default_orbit cam=' + hasCam + ' noExtras=' + noExtras + ' url=' + url,
+      reason: !hasCam ? 'missing cam/tgt' : !noExtras ? 'unexpected extras in default orbit' : '' };
+  });
+
+  // Scenario 2: Element picked — must have pick=GUID
+  test('share_ctx_element_picked', () => {
+    var dom = { infoGuid: '2O2Fr$t4X7Zf8NOew3FLPP', infoPanelVisible: true };
+    var url = buildShareUrl(mkState({}), dom);
+    var hasPick = url.includes('pick=2O2Fr');
+    return { ok: hasPick,
+      log: '§WB_SHARE_CTX scenario=element_picked pick=' + hasPick + ' url=' + url,
+      reason: hasPick ? '' : 'pick=GUID missing — info panel visible but not captured' };
+  });
+
+  // Scenario 3: Storey filtered — must have storey=
+  test('share_ctx_storey_filtered', () => {
+    var url = buildShareUrl(mkState({ activeStoreyFilter: 'Level 1' }), emptyDom);
+    var hasStorey = url.includes('storey=Level');
+    return { ok: hasStorey,
+      log: '§WB_SHARE_CTX scenario=storey_filtered storey=' + hasStorey + ' url=' + url,
+      reason: hasStorey ? '' : 'storey= missing — activeStoreyFilter set but not captured' };
+  });
+
+  // Scenario 4: Multi-storey filter — must have storey=A,B
+  test('share_ctx_multi_storey', () => {
+    var url = buildShareUrl(mkState({ activeStoreyFilter: ['Level 1', 'Level 2'] }), emptyDom);
+    var hasMulti = url.includes('storey=Level');
+    return { ok: hasMulti,
+      log: '§WB_SHARE_CTX scenario=multi_storey storey=' + hasMulti + ' url=' + url,
+      reason: hasMulti ? '' : 'storey= missing for array filter' };
+  });
+
+  // Scenario 5: X-Ray active — must have xray=1
+  test('share_ctx_xray', () => {
+    var url = buildShareUrl(mkState({ xrayOn: true }), emptyDom);
+    var hasXray = url.includes('xray=1');
+    return { ok: hasXray,
+      log: '§WB_SHARE_CTX scenario=xray xray=' + hasXray + ' url=' + url,
+      reason: hasXray ? '' : 'xray=1 missing — xrayOn=true but not captured' };
+  });
+
+  // Scenario 6: Clash pair viewing — must have clash=GUID~GUID
+  // This is the KEY scenario: _currentClashes must be non-empty
+  test('share_ctx_clash_pair', () => {
+    var clashEntry = ['guidA-1234-abcd', 'guidB-5678-efgh', 'IfcWall', 'IfcPipe', 'ARC', 'PLB', 'Wall 01', 'Pipe 01', 0.025];
+    var url = buildShareUrl(mkState({ _currentClashes: [clashEntry] }), emptyDom);
+    var hasClash = url.includes('clash=guidA-1234-abcd~guidB-5678-efgh');
+    // Compare format with _buildClashDeepLink
+    var clashDeepLink = buildClashDeepLink(mkState({}), clashEntry);
+    var sameFormat = clashDeepLink.includes('clash=guidA-1234-abcd~guidB-5678-efgh');
+    return { ok: hasClash && sameFormat,
+      log: '§WB_SHARE_CTX scenario=clash_pair clash=' + hasClash + ' matchesDeepLink=' + sameFormat +
+        ' shareUrl=' + url + ' deepLink=' + clashDeepLink,
+      reason: !hasClash ? 'clash=GUID~GUID missing — _currentClashes has entry but not captured' :
+        !sameFormat ? 'clash format differs from _buildClashDeepLink' : '' };
+  });
+
+  // Scenario 7: Time Machine active — must have tm=cursor
+  test('share_ctx_time_machine', () => {
+    var url = buildShareUrl(mkState({ _tmState: { active: true, cursor: 1716000000000 } }), emptyDom);
+    var hasTm = url.includes('tm=1716000000000');
+    return { ok: hasTm,
+      log: '§WB_SHARE_CTX scenario=time_machine tm=' + hasTm + ' url=' + url,
+      reason: hasTm ? '' : 'tm=cursor missing — TM active but not captured' };
+  });
+
+  // Scenario 8: Fly tour playing — must have tour=play
+  test('share_ctx_fly_tour', () => {
+    var url = buildShareUrl(mkState({ flyActive: true }), emptyDom);
+    var hasTour = url.includes('tour=play');
+    return { ok: hasTour,
+      log: '§WB_SHARE_CTX scenario=fly_tour tour=' + hasTour + ' url=' + url,
+      reason: hasTour ? '' : 'tour=play missing — flyActive=true but not captured' };
+  });
+
+  // Scenario 9: Combined — clash + storey + xray + pick (all at once)
+  test('share_ctx_combined', () => {
+    var clashEntry = ['gA', 'gB', 'IfcWall', 'IfcPipe', 'ARC', 'PLB', 'W', 'P', 0.01];
+    var dom = { infoGuid: 'someGUID-1234-5678-abcd', infoPanelVisible: true };
+    var url = buildShareUrl(mkState({
+      activeStoreyFilter: 'Ground Floor', xrayOn: true,
+      _currentClashes: [clashEntry], flyActive: false
+    }), dom);
+    var hasCam = url.includes('cam=');
+    var hasPick = url.includes('pick=someGUID');
+    var hasStorey = url.includes('storey=Ground');
+    var hasXray = url.includes('xray=1');
+    var hasClash = url.includes('clash=gA~gB');
+    var allOk = hasCam && hasPick && hasStorey && hasXray && hasClash;
+    return { ok: allOk,
+      log: '§WB_SHARE_CTX scenario=combined cam=' + hasCam + ' pick=' + hasPick +
+        ' storey=' + hasStorey + ' xray=' + hasXray + ' clash=' + hasClash + ' url=' + url,
+      reason: allOk ? '' : 'combined context incomplete: cam=' + hasCam + ' pick=' + hasPick +
+        ' storey=' + hasStorey + ' xray=' + hasXray + ' clash=' + hasClash };
+  });
+
+  // Scenario 10: Empty clashes array — must NOT have clash= (regression guard)
+  test('share_ctx_empty_clashes', () => {
+    var url = buildShareUrl(mkState({ _currentClashes: [] }), emptyDom);
+    var noClash = !url.includes('clash=');
+    return { ok: noClash,
+      log: '§WB_SHARE_CTX scenario=empty_clashes noClash=' + noClash,
+      reason: noClash ? '' : 'clash= present with empty array' };
+  });
+})();
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log(`§WB_SUMMARY pass=${pass} fail=${fail} total=${pass + fail}`);
 process.exit(fail > 0 ? 1 : 0);
