@@ -444,6 +444,9 @@
 
   var _zeroMatrix = null; // lazy init
   var _whiteColor = null; // §S260f: reusable white for BatchedMesh slot reset
+  var _tmEdgeGeo = null;  // §S260f: shared 3m EdgesGeometry for frontier boxes
+  var _tmEdgeCyan = null; // §S260f: shared cyan material
+  var _tmEdgeOrange = null; // §S260f: shared orange material
   var _savedInstanceMatrices = {}; // meshId → { idx → Matrix4 }
 
   // §S260d: Audio removed — can't hear on most browsers anyway
@@ -721,6 +724,20 @@
                 _frontierPositions.push(_bmPos.clone());
                 _guidPosMap[bg] = _bmPos.clone();
               }
+              // §S260f: Edge box at frontier position — 3m, cyan/orange, depthTest:false
+              // §S260f: Shared geometry + shared materials — no allocation per tick
+              if (!_isMobileTM) {
+                if (!_tmEdgeGeo) _tmEdgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(3, 3, 3));
+                if (!_tmEdgeCyan) _tmEdgeCyan = new THREE.LineBasicMaterial({ color: 0x44ffff, depthTest: false });
+                if (!_tmEdgeOrange) _tmEdgeOrange = new THREE.LineBasicMaterial({ color: 0xff8c00, depthTest: false });
+                var _ft = frontier[bg].t;
+                var _el = new THREE.LineSegments(_tmEdgeGeo, _ft < 0.15 ? _tmEdgeCyan : _tmEdgeOrange);
+                _el.position.copy(_bmPos);
+                _el.renderOrder = 10;
+                _el.userData._isTmFrontier = true;
+                app.scene.add(_el);
+                _outlineMeshes.push(_el);
+              }
             } else if (_camFollow && _previewGuids && _previewGuids[bg]) {
               obj.getMatrixAt(sid, _bmM4);
               _bmPos.setFromMatrixPosition(_bmM4);
@@ -882,14 +899,8 @@
           }
         }
 
-        // Decide: panoramic establishing OR transit to next scene
-        if (_cineCloseupCount >= 3 || _cineSceneIdx >= _cineStoryboard.length) {
-          _cineBeat = 'establishing';
-          _cineCloseupCount = 0;
-          _cineEstabAngle = _camAngle;
-          _sunCycle = true; // shadows sweep during establishing
-          console.log('§CINE_BEAT establishing after scene ' + _cineSceneIdx);
-        } else {
+        // §S260f: No establishing beat — transit directly to next scene (no lingering)
+        {
           _cineBeat = 'transit';
           _cineTransitFrom = app.camera.position.clone();
           var ns = _cineStoryboard[_cineSceneIdx];
@@ -971,39 +982,53 @@
       } else if (_cineBeat === 'closeup') {
         var sc = _cineStoryboard[_cineSceneIdx];
         if (sc) {
-          // §S260f: Scripted camera — follows pre-planned storyboard (knows entire sequence ahead)
-          _cineNextTarget = sc.center;
-          if (!_camTarget) _camTarget = sc.center.clone();
-          // §S260f: Faster convergence for shorter beats (20 ticks vs old 50)
-          _camTarget.x += (sc.center.x - _camTarget.x) * 0.25;
-          _camTarget.y += (sc.center.y - _camTarget.y) * 0.25;
-          _camTarget.z += (sc.center.z - _camTarget.z) * 0.25;
-
-          target.x += (_camTarget.x - target.x) * 0.20;
-          target.y += (_camTarget.y - target.y) * 0.20;
-          target.z += (_camTarget.z - target.z) * 0.20;
-
-          // §S260f: Distance scales with scene size — small cluster = close, large = pull back
-          var baseDist = sc.type === 'panoramic' ? _PANORAMIC_DIST :
-                         sc.type === 'hero' ? _HERO_DIST : _FLYTHROUGH_DIST;
-          var desiredDist = baseDist + Math.min(20, (sc.count || 8) * 0.3);
-          var camDist = app.camera.position.distanceTo(target);
-          // §S260e: Min-distance guard — prevent camera going inside geometry
-          var minDist = desiredDist * 0.5;
-          if (camDist < minDist) {
-            var pushDir = new THREE.Vector3().subVectors(app.camera.position, target).normalize();
-            app.camera.position.copy(target).addScaledVector(pushDir, minDist);
-            camDist = minDist;
+          // §S260f: Blend scene center (stable) with frontier centroid (where action is)
+          // 70% scene center + 30% frontier = smooth path biased toward action
+          var _lookAt = sc.center;
+          if (_frontierPositions.length > 0) {
+            var _fx = 0, _fy = 0, _fz = 0;
+            for (var fi = 0; fi < _frontierPositions.length; fi++) {
+              _fx += _frontierPositions[fi].x; _fy += _frontierPositions[fi].y; _fz += _frontierPositions[fi].z;
+            }
+            var _fc = new THREE.Vector3(_fx / _frontierPositions.length, _fy / _frontierPositions.length, _fz / _frontierPositions.length);
+            _lookAt = new THREE.Vector3(
+              sc.center.x * 0.7 + _fc.x * 0.3,
+              sc.center.y * 0.7 + _fc.y * 0.3,
+              sc.center.z * 0.7 + _fc.z * 0.3);
           }
-          var diff = camDist - desiredDist;
-          if (Math.abs(diff) > 0.5) {
-            var spd = diff > 0 ? 0.08 : 0.04;
-            var dir = new THREE.Vector3().subVectors(target, app.camera.position).normalize();
-            app.camera.position.addScaledVector(dir, diff * spd);
+          _cineNextTarget = _lookAt;
+          var _userIdle = (nowPerf - _camUserInteracted > 3000);
+          if (!_camTarget) _camTarget = _lookAt.clone();
+          if (_userIdle) {
+            // §S260f: Slow lerp for smooth glide (0.08), not chasing (0.25)
+            _camTarget.x += (_lookAt.x - _camTarget.x) * 0.08;
+            _camTarget.y += (_lookAt.y - _camTarget.y) * 0.08;
+            _camTarget.z += (_lookAt.z - _camTarget.z) * 0.08;
+
+            target.x += (_camTarget.x - target.x) * 0.06;
+            target.y += (_camTarget.y - target.y) * 0.06;
+            target.z += (_camTarget.z - target.z) * 0.06;
+
+            var baseDist = sc.type === 'panoramic' ? _PANORAMIC_DIST :
+                           sc.type === 'hero' ? _HERO_DIST : _FLYTHROUGH_DIST;
+            var desiredDist = baseDist + Math.min(20, (sc.count || 8) * 0.3);
+            var camDist = app.camera.position.distanceTo(target);
+            var minDist = desiredDist * 0.5;
+            if (camDist < minDist) {
+              var pushDir = new THREE.Vector3().subVectors(app.camera.position, target).normalize();
+              app.camera.position.copy(target).addScaledVector(pushDir, minDist);
+              camDist = minDist;
+            }
+            var diff = camDist - desiredDist;
+            if (Math.abs(diff) > 0.5) {
+              var spd = diff > 0 ? 0.08 : 0.04;
+              var dir = new THREE.Vector3().subVectors(target, app.camera.position).normalize();
+              app.camera.position.addScaledVector(dir, diff * spd);
+            }
           }
 
           // Slow orbit
-          if (_playing && (nowPerf - _camUserInteracted > 2000)) {
+          if (_playing && _userIdle) {
             var orbitSpd = sc.type === 'hero' ? (Math.PI * 2 / _BEAT_CLOSEUP) : 0.006;
             _camAngle += orbitSpd;
             var camOff = new THREE.Vector3().subVectors(app.camera.position, target);
@@ -1187,8 +1212,7 @@
       // §S260e: Frontier bbox glow lines are standalone scene children (not mesh children)
       if (om.userData && om.userData._isTmFrontier) {
         if (om.parent) om.parent.remove(om);
-        om.geometry.dispose();
-        om.material.dispose();
+        // geometry + material are shared — just remove from scene, don't dispose
         continue;
       }
       removeOutline(om);
@@ -1380,13 +1404,10 @@
     // §S260c v2: Cinematic slowdown during close-up — each element gets visible screen time
     // Outline forms, dust/sparks play out (~1.2s per element at 80ms/tick = 15 ticks)
     // §S260e: Opening = construction plays while camera orbits wide for context
-    if (_camFollow && _cineBeat === 'opening') return 3600000; // 1 hour/tick — same as DAY mode
-    if (_camFollow && _cineBeat === 'closeup') return 120000; // 2 minutes per tick — slow reveal
-    if (_cineHeroSlowdown) return 60000; // 1 minute per tick during hero (slow-mo)
-    if (_camFollow && _cineBeat === 'establishing') return 7200000; // 2 hours per tick — fast forward during wide shot
-    if (_mode === 'DAY') return 3600000;  // advance 1 hour per tick (24 ticks = 1 day)
-    if (_mode === 'HR') return 60000;     // advance 1 minute per tick (60 ticks = 1 hour)
-    return 10000;                         // advance 10 seconds per tick (fine grain)
+    // §S260f: DAY/HR/MIN mode always respected — drone uses same speed as manual playback
+    if (_mode === 'DAY') return 3600000;  // 1 hour per tick (24 ticks = 1 day)
+    if (_mode === 'HR') return 60000;     // 1 minute per tick (60 ticks = 1 hour)
+    return 10000;                         // 10 seconds per tick (fine grain)
   }
 
   // ── Scene state save/restore ──
