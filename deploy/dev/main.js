@@ -523,15 +523,13 @@ function initViewer() {
     APP.walkModeGpsTick();
     // Device orientation LAST — nothing may overwrite the quaternion after this
     if (APP.walkModeActive) APP.walkOrientTick();
-    const streaming = APP.streaming;
-    if (_needsRender || streaming || APP.walkModeActive || APP.walkMode) {
-      APP.updateMeasureLabels();
-      if (APP.ground && APP.ground.visible) {
-        APP.ground.material.visible = APP.camera.position.y > APP.ground.position.y;
-      }
-      APP.renderer.render(APP.scene, APP.camera);
-      _needsRender = false;
+    // §S265c: Unconditional render — on-demand gate broke sliders, palette, bbox loading.
+    // markDirty() calls remain harmless throughout codebase.
+    APP.updateMeasureLabels();
+    if (APP.ground && APP.ground.visible) {
+      APP.ground.material.visible = APP.camera.position.y > APP.ground.position.y;
     }
+    APP.renderer.render(APP.scene, APP.camera);
   }
 
   // Go
@@ -602,6 +600,7 @@ function initViewer() {
     // S246: Deep-link clash auto-fly — #clash=guidA~guidB&cam=x,y,z&tgt=tx,ty,tz&tol=mm
     const hashParams = {};
     location.hash.slice(1).split('&').forEach(function(p) { const kv = p.split('='); if (kv[0]) hashParams[kv[0]] = decodeURIComponent(kv[1] || ''); });
+    console.log('§HASH_PARSE keys=' + Object.keys(hashParams).join(',') + ' clash=' + (hashParams.clash || 'none') + ' db=' + !!APP.db);
     const clashParam = hashParams.clash;
     if (clashParam && APP.db) {
       const [guidA, guidB] = clashParam.split('~');

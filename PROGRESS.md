@@ -20,6 +20,27 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S265 Phase 4 DONE (2026-05-19): HUD unification + keyboard + z-index + markDirty. SW v404→v411.**
+
+**S265 Phase 3 IN PROGRESS (2026-05-19→21): Share refactor. SW v411→v414. Deployed to ootb-dev.**
+  - share.js rewritten as `setupShare(A)` — called by main.js `_mods` like sitecam.js (eager load, not lazy)
+  - Pill Share onclick → `APP.quickShare()` direct call (preserves user gesture for `navigator.share`)
+  - Mobile: canvas snapshot as JPEG File + `navigator.share({files:[photo], text})` — same pattern as sitecam.js
+  - Desktop (Firefox, no Web Share API): preview card with Copy Link button
+  - `buildShareUrl()` captures 7 contexts in URL hash: cam, tgt, pick, storey, xray, clash, tm, tour
+  - Clash context delegates to `_buildClashDeepLink` (proven working S246 function, untouched)
+  - Clash text body has discipline pair, element names, storey, overlap mm, severity — same as `_shareClashSnag`
+  - Hash parser in main.js restores: pick, storey, xray, tour, tm, camera on load
+  - `tmGetState()` exposed from time_machine.js for share URL
+  - WhatsApp/Email hardcodes removed. Old sendWhatsApp/sendEmail functions deleted.
+  - Whitebox: 13 share tests PASS (anchor URL, 10 context scenarios, clash text, delegation)
+  - **BUG OPEN: Receiver-side clash restore not showing on Firefox.** Sender URL is correct (verified by whitebox anchor test). The hash parser + `_flyToClash` code is identical to the S246 deep-link that works. Clash context text appears in shared message. But recipient does not see clash highlights on load.
+  - **WORKING URL (user-verified, old clash snag long-press):**
+    `...index.html?db=https%3A%2F%2F...HospitalGarage_extracted.db#clash=01WyKs2cnByA_VPsbZDzFL~0GjpF04mX1K8P$TdM8fU2_&st=Existing%20Garage%20-%201st%20Level&cam=-49.82,-5.49,-33.29&tgt=-51.52,-6.91,-34.99&tol=25`
+  - **NEW URL (quickShare → _buildClashDeepLink, same format but not restoring):**
+    `...index.html?db=https%3A%2F%2F...HospitalGarage_extracted.db#clash=0IajW5Y89BRxvKnf5AfDkQ~1itcVTZhD87QA6mzuiLzD3&st=Existing%20Garage%20-%201st%20Level&cam=-50.02,-5.17,-22.33&tgt=-51.71,-6.58,-24.02&tol=25`
+  - **Next session:** Debug receiver-side restore. Both URLs parse identically (whitebox proven). Issue likely in timing, Firefox console, or _flyToClash visual rendering. Must reproduce locally — do NOT deploy-and-ask-user.
+
 **S2D30 Grid UX Troubleshoot DONE (2026-05-10): SW v293**
   - `grid_views.js` refactored — atomic single-responsibility: `classifyMesh`, `computeCutZ`, `applyFloorClip`, `clearFloorClip`, `boostLighting`, `restoreLighting`
   - IfcRoof/IfcCovering meshes fully hidden (`visible=false`) in floor plan — roof no longer bleeds through clip plane

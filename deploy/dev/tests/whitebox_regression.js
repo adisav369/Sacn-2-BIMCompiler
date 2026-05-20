@@ -1165,6 +1165,55 @@ test('share_restore_parse', () => {
   };
 });
 
+// ─── 3.19 S265 Share clash — quickShare must produce same text as _shareClashSnag ──
+// Issue: quickShare was calling _snagClash which opens site camera markup UI (wrong for pill).
+// Fix: quickShare builds same text format directly from _currentClashes[0] + _buildClashDeepLink.
+// Legacy clash_snag.js UNTOUCHED — it's the reference baseline.
+test('share_clash_text_format', () => {
+  var shareSrc = fs.readFileSync(path.join(DEV_DIR, 'share.js'), 'utf8');
+  var clashSnagSrc = fs.readFileSync(path.join(DEV_DIR, 'clash_snag.js'), 'utf8');
+
+  var qsMatch = shareSrc.match(/A\.quickShare\s*=\s*async\s+function[\s\S]*?(?=\n  [A-Z]|\n  \/\/\s*──)/);
+  var qsBody = qsMatch ? qsMatch[0] : '';
+
+  var issues = [];
+
+  // quickShare must NOT call _snagClash (opens site camera UI)
+  if (qsBody.includes('_snagClash(')) issues.push('quickShare calls _snagClash — opens camera UI');
+
+  // quickShare must use _buildClashDeepLink for the URL (proven format)
+  if (!qsBody.includes('_buildClashDeepLink')) issues.push('quickShare not using _buildClashDeepLink');
+
+  // quickShare clash text must have same fields as _shareClashSnag:
+  // discipline (c[4] vs c[5]), element names (c[6] / c[7]), storey, overlap mm, severity, deep_link
+  if (!qsBody.includes("c[4]") || !qsBody.includes("c[5]")) issues.push('missing discipline fields c[4]/c[5]');
+  if (!qsBody.includes("c[6]") || !qsBody.includes("c[7]")) issues.push('missing element name fields c[6]/c[7]');
+  if (!qsBody.includes('storey')) issues.push('missing storey in clash text');
+  if (!qsBody.includes('overlap')) issues.push('missing overlap in clash text');
+  if (!qsBody.includes('sev.label')) issues.push('missing severity label');
+  if (!qsBody.includes('deepLink')) issues.push('missing deepLink in text');
+
+  // Reference: _shareClashSnag has same fields (verify baseline unchanged)
+  if (!clashSnagSrc.includes('cs.discipline_a')) issues.push('BASELINE CHANGED: cs.discipline_a missing');
+  if (!clashSnagSrc.includes('cs.element_a_name')) issues.push('BASELINE CHANGED: cs.element_a_name missing');
+  if (!clashSnagSrc.includes('cs.deep_link')) issues.push('BASELINE CHANGED: cs.deep_link missing');
+
+  var ok = issues.length === 0;
+  return {
+    ok: ok,
+    log: '§WB_SHARE_CLASH noSnagCall=' + !qsBody.includes('_snagClash(') +
+      ' usesDeepLink=' + qsBody.includes('_buildClashDeepLink') +
+      ' disc=' + (qsBody.includes("c[4]") && qsBody.includes("c[5]")) +
+      ' names=' + (qsBody.includes("c[6]") && qsBody.includes("c[7]")) +
+      ' storey=' + qsBody.includes('storey') +
+      ' overlap=' + qsBody.includes('overlap') +
+      ' severity=' + qsBody.includes('sev.label') +
+      ' deepLink=' + qsBody.includes('deepLink') +
+      ' baseline_ok=' + (clashSnagSrc.includes('cs.discipline_a') && clashSnagSrc.includes('cs.deep_link')),
+    reason: issues.join('; ')
+  };
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log(`§WB_SUMMARY pass=${pass} fail=${fail} total=${pass + fail}`);
 process.exit(fail > 0 ? 1 : 0);

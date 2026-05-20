@@ -209,7 +209,9 @@ function setupShare(A) {
   // ── Build share URL with current scene state ──
   // Implementing S265_UI_AESTHETICS.md §Task 3b — camera + element + clash + TM + storey in URL hash
   A.buildShareUrl = function() {
-    var base = location.href.split('#')[0];
+    // Build base URL same way as _buildClashDeepLink — encodeURIComponent for ?db=
+    var dbParam = new URLSearchParams(location.search).get('db') || '';
+    var base = location.origin + location.pathname + (dbParam ? '?db=' + encodeURIComponent(dbParam) : '');
     var parts = [];
 
     // Camera position + target
@@ -244,11 +246,12 @@ function setupShare(A) {
       parts.push('xray=1');
     }
 
-    // Clash pair — if viewing a clash
-    if (A._currentClashes && A._currentClashes.length > 0) {
-      var clash = A._currentClashes[0];
-      if (clash[0] && clash[1]) {
-        parts.push('clash=' + clash[0] + '~' + clash[1]);
+    // Clash pair — use _buildClashDeepLink (proven working, S246)
+    if (A._currentClashes && A._currentClashes.length > 0 && A._buildClashDeepLink) {
+      var clashUrl = A._buildClashDeepLink(A._currentClashes[0]);
+      if (clashUrl) {
+        console.log('§SHARE_URL clash_deeplink=' + clashUrl);
+        return clashUrl; // Use the proven clash URL format directly
       }
     }
 
@@ -483,6 +486,43 @@ function setupShare(A) {
   // Mobile: canvas snapshot as file + URL in text → native share picker (with image attached)
   // Desktop (no Web Share API): show preview card with short URL + copy/share buttons
   A.quickShare = async function() {
+    // Clash context: build same text + deep_link as _shareClashSnag (clash_snag.js:120-127)
+    // WITHOUT opening the site camera markup UI (_snagClash opens it — wrong for pill share).
+    // Data fields match _pendingClashSnag (clash_snag.js:36-52).
+    if (A._currentClashes && A._currentClashes.length > 0 && A._buildClashDeepLink) {
+      var c = A._currentClashes[0];
+      var overlap = (typeof c[8] === 'number') ? c[8] : 0;
+      var sev = A._clashSeverity ? A._clashSeverity(overlap, A._currentClashRules) : { label: 'clash' };
+      var storeyRows = A.db ? A.dbQuery("SELECT storey FROM elements_meta WHERE guid = ?", [c[0]]) : [];
+      var storey = storeyRows.length ? storeyRows[0][0] : '?';
+      var deepLink = A._buildClashDeepLink(c);
+      // Same text format as _shareClashSnag (clash_snag.js:123-127)
+      var discA = c[4] || '?', discB = c[5] || '?';
+      var title = 'Clash: ' + discA + ' vs ' + discB + ' \u2014 ' + (sev.label || 'clash');
+      var text = 'Clash: ' + discA + ' vs ' + discB +
+        '\n' + (c[6] || c[0]) + ' / ' + (c[7] || c[1]) +
+        '\nStorey ' + storey + ' \u2014 ' + Math.round(overlap * 1000) + 'mm (' + (sev.label || 'clash') + ')' +
+        '\n\n' + deepLink;
+      console.log('§SHARE_CLASH title=' + title);
+
+      // Capture canvas as JPEG (no markup UI) + share with photo like sitecam
+      if (navigator.share && navigator.canShare) {
+        A.renderer.render(A.scene, A.camera);
+        var blob = await new Promise(function(r) { A.canvas.toBlob(function(b) { r(b); }, 'image/jpeg', 0.8); });
+        if (blob) {
+          var photoFile = new File([blob], 'Clash_' + discA + '_' + discB + '.jpg', { type: 'image/jpeg' });
+          var data = { files: [photoFile], title: title, text: text };
+          if (navigator.canShare(data)) {
+            try { await navigator.share(data); console.log('§SHARE_METHOD native_clash'); return; }
+            catch (err) { if (err.name === 'AbortError') { console.log('§SHARE_METHOD clash_abort'); return; } }
+          }
+        }
+      }
+      // Desktop fallback: preview card with clash deep-link
+      showSharePreview(deepLink, title);
+      return;
+    }
+
     var longUrl = A.buildShareUrl();
     var title = (A.activeBuilding || 'BIM Model') + ' — BIM OOTB';
     var text = title + '\n\nView in browser (no install):\n' + longUrl;
