@@ -248,7 +248,8 @@ function setupShare(A) {
 
     // Clash pair — use _buildClashDeepLink (proven working, S246)
     if (A._currentClashes && A._currentClashes.length > 0 && A._buildClashDeepLink) {
-      var clashUrl = A._buildClashDeepLink(A._currentClashes[0]);
+      var viewIdx = A._currentClashViewIdx || 0;
+      var clashUrl = A._buildClashDeepLink(A._currentClashes[viewIdx] || A._currentClashes[0]);
       if (clashUrl) {
         console.log('§SHARE_URL clash_deeplink=' + clashUrl);
         return clashUrl; // Use the proven clash URL format directly
@@ -490,7 +491,8 @@ function setupShare(A) {
     // WITHOUT opening the site camera markup UI (_snagClash opens it — wrong for pill share).
     // Data fields match _pendingClashSnag (clash_snag.js:36-52).
     if (A._currentClashes && A._currentClashes.length > 0 && A._buildClashDeepLink) {
-      var c = A._currentClashes[0];
+      var c = A._currentClashes[A._currentClashViewIdx || 0];
+      if (!c) c = A._currentClashes[0];
       var overlap = (typeof c[8] === 'number') ? c[8] : 0;
       var sev = A._clashSeverity ? A._clashSeverity(overlap, A._currentClashRules) : { label: 'clash' };
       var storeyRows = A.db ? A.dbQuery("SELECT storey FROM elements_meta WHERE guid = ?", [c[0]]) : [];

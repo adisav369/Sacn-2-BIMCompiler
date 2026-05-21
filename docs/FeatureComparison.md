@@ -46,6 +46,14 @@ For buildings above 100,000 elements, a frustum-based visibility system hides ge
 - Section cut at any angle
 - Night mode with adjustable ambient lighting
 - Storey filter and discipline filter (Architecture, Structure, MEP, Electrical, Plumbing, ACMV)
+- Colour Palette panel — 5 sliders for exposure, sun intensity, ambient, hemisphere, and tone mapping
+- Walk mode with GPS blue-dot tracking, device orientation (accelerometer/gyroscope), wall X-ray on approach
+
+### IFC Import and Export
+- Drop any IFC file into the browser — parsed into SQLite, cached locally, no upload
+- **IFC export**: reconstruct a valid IFC STEP file from the SQLite database, download directly from the browser. No server, no web-ifc dependency — pure STEP/ISO-10303-21 text generation
+- 4D Excel export: 3-sheet workbook (schedule, project summary, discipline/phase breakdown)
+- 5D BOQ Excel export: 7-sheet workbook (cover, executive summary, material/labour/equipment, BOQ, work packages, discipline breakdown, provisions)
 
 ### 2D
 - Section cut views
@@ -53,27 +61,45 @@ For buildings above 100,000 elements, a frustum-based visibility system hides ge
 - Grid overlay with drag-to-recompile
 - Door arc generation from IFC openings
 - Dimension chains
+- Doc Canvas: AABBCC lettered/numbered grid derived from column cadence, with circle bubbles and dimension labels
 
 ### 4D Construction Scheduling
 - Time Machine: scrub through construction phases on a timeline
 - Elements appear in construction sequence with frontier highlighting
 - Cinematic drone tour auto-generated from building storeys
 - Gantt chart overlay with phase progress
+- Gantt Phase Stepper: step through construction phases one at a time, meshes materialise per phase
 
 ### 5D Cost
-- Bill of Quantities extracted from IFC element dimensions
+- Bill of Quantities extracted from IFC element dimensions — browser-side JavaScript BOM extractor groups elements by storey, discipline, and IFC class
 - Cost dashboard with phase-by-phase breakdown
 - 17 country-specific rate templates
+- Building envelope, storey heights, floor-to-floor deltas, column cadence and bay proportions computed automatically
 
 ### Clash Detection
 - R-tree spatial index built from element bounding boxes
 - Configurable clash rules (tolerances per discipline pair)
+- Two-point distance measurement tool
 - Snag reporting with QR codes that deep-link back to the clashing elements
 
 ### Sharing
-- Share a URL — recipient sees the exact camera angle and building state
+- Share a URL — recipient sees the exact camera angle, picked element, storey filter, x-ray state, clash pair, Time Machine cursor, and tour state
+- Native OS share sheet on mobile (Web Share API)
+- Share preview card on desktop with canvas snapshot
 - QR code generation for on-site access
 - No account required to view
+
+### Doc Pill (Design Interface)
+- Red Pill icon toggles a 9-icon document design interface
+- Contains: Home, Grid, Time Machine, Phase Stepper, Open, Save, MEP Routes, UBBL Compliance Checklist, Rosetta Stone Calibration
+- Automatic BOM extraction on entry
+- Rosetta Stone calibration mode: drag grid to align with real building geometry for verification
+
+### Search and Navigation
+- Find panel with inline voice search (microphone in search bar)
+- NLP natural-language queries ("show me all walls on level 2")
+- Context-aware filter chips auto-generated from loaded building's top IFC classes
+- Help Tree: 6 expandable entries (Time Machine, Find, Section, Clash, Palette, Issues) with blue/red bar toggle
 
 ## Performance
 
@@ -146,11 +172,16 @@ BIM OOTB is not a replacement for enterprise ERP. It is a **browser-first entry 
 | Works offline | **Yes** | No | No | No |
 | Install required | **None** | None | npm build | Desktop or web |
 | IFC colour fidelity | **IfcSurfaceStyle extracted** | Proprietary conversion | WASM parse | Proprietary |
-| Max elements (smooth) | **122K** | ~50K (server tiles) | ~20K | Server-rendered |
+| IFC export from browser | **Yes (STEP format)** | No | No | No |
+| Max elements (smooth) | **125K** | ~50K (server tiles) | ~20K | Server-rendered |
 | Load from cache | **<1 second** | N/A (cloud) | N/A | N/A |
 | 4D scheduling | **Integrated** | Separate product | No | Separate |
 | 5D cost | **Integrated** | Separate product | No | Separate |
 | Clash detection | **Integrated** | Separate (Navisworks) | No | Limited |
+| BOM extraction | **Automatic from IFC** | Manual | No | No |
+| Design interface (2D grids) | **Doc Pill + AABBCC grid** | Separate tools | No | No |
+| Voice search | **Integrated (NLP + mic)** | No | No | No |
+| Walk mode + GPS | **Integrated** | No | No | No |
 | Cost | **Free** | Metered API | Free (library) | Licensed |
 | Vendor lock-in | **None (IFC standard)** | SVF/SVF2 proprietary | IFC standard | Proprietary |
 | ERP integration | **Built-in (AD engine)** | None | None | None |
@@ -191,19 +222,24 @@ No server in the loop. No WebSocket. No REST API. The browser is the entire appl
 
 | Layer | Technology | Role |
 |-------|-----------|------|
-| Rendering | Three.js r160 ESM | WebGL, BatchedMesh, InstancedMesh |
+| Rendering | Three.js r160 ESM | WebGL, BatchedMesh, InstancedMesh, PBR |
 | Database | sql.js (SQLite WASM) | Query engine in browser |
 | Spatial index | rtree-sql.js 1.7.0 | R-tree for clash detection |
 | Caching | Service Worker + IndexedDB | Offline-first, cache-first |
 | BVH | three-mesh-bvh 0.7.8 | Accelerated raycasting for pick |
 | Tone mapping | ACESFilmic | Cinematic colour grading |
-| Export | SheetJS | Excel BOQ export |
+| Export (Excel) | SheetJS | 4D schedule + 5D BOQ multi-sheet workbooks |
+| Export (IFC) | Custom STEP writer | IFC STEP/ISO-10303-21 generation from SQLite |
+| Voice | Web Speech API | NLP voice commands + Find search |
+| Location | Geolocation + DeviceOrientation | Walk mode GPS + accelerometer |
+| Share | Web Share API + Canvas | Native share sheet + preview snapshot |
+| ERP | iDempiere AD + sql.js | Application Dictionary renderer in browser |
 
 All open-source dependencies. No proprietary components.
 
 ## Catalogue
 
-20 buildings from public IFC test files, ranging from a 218-element sample house to a 122,330-element university campus (LTU A-House, Sweden). Includes residential, commercial, hospital, airport terminal, and federated MEP models.
+30 buildings from public IFC test files, ranging from a 65-element sample house to a 125,698-element university campus (LTU A-House, Sweden). Includes residential, commercial, hospital, airport terminal, and federated MEP models.
 
 ## Contact
 

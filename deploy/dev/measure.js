@@ -637,6 +637,7 @@ function setupMeasure(A) {
   A._flyToClash = function(idx) {
     var c = (A._currentClashes || [])[idx];
     if (!c) return;
+    A._currentClashViewIdx = idx;
     var rules = A._currentClashRules;
     if (!rules) return;
     // Full scene stays — S232 InstancedMesh batching, no DLOD needed
@@ -723,6 +724,7 @@ function setupMeasure(A) {
         if (tRow[0][3] || tRow[0][4] || tRow[0][5]) {
           fullMesh.rotation.set(tRow[0][3] || 0, tRow[0][5] || 0, -(tRow[0][4] || 0));
         }
+        fullMesh.frustumCulled = false;
         fullMesh.renderOrder = 996 + hi;
         A.measureGroup.add(fullMesh);
         A._clashHighlights.push(fullMesh);
@@ -738,6 +740,7 @@ function setupMeasure(A) {
         if (tRow[0][3] || tRow[0][4] || tRow[0][5]) {
           mesh.rotation.set(tRow[0][3] || 0, tRow[0][5] || 0, -(tRow[0][4] || 0));
         }
+        mesh.frustumCulled = false;
         mesh.renderOrder = 998 + hi; // A=998, B=999 — both draw, B on top
         A.measureGroup.add(mesh);
         A._clashHighlights.push(mesh);
