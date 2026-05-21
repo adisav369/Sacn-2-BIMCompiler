@@ -1,6 +1,20 @@
 # New From Reference — Deterministic Design From Grammar Extraction
 
-> **Related:** [BIM Modeller OOTB](BIM_Modeller_OOTB.md) (kernel-op theory) · [2D Layout](2D_LAYOUT.md) (grid overlay) · [Kernel Ops Roadmap](../prompts/KERNEL_OPS_ROADMAP.md) (op log) · [Spatial Compilation Paper](SPATIAL_COMPILATION_PAPER.md) (round-trip proof) · [BOM Compilation](BOMBasedCompilation.md) (recipe model)
+> **Prerequisite Reading — the Java concepts this feature ports to JS:**
+>
+> | Doc | What It Provides | How It Applies Here |
+> |-----|-----------------|-------------------|
+> | [BOMBasedCompilation.md](BOMBasedCompilation.md) (BBC) | The recipe model — BUILDING→STOREY→DISCIPLINE→ELEMENT hierarchy, tack offsets (dx/dy/dz), verb formulas (TILE/ROUTE/FRAME), factorization. **§4 tack convention** is critical. | The JS BOM extractor produces the same hierarchy from `elements_meta`. The BOM tree IS the constraint graph for grid drag. Parent-child spatial offsets drive constrained editing. |
+> | [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) | Discipline validation — how the Java compiler verifies element placement per discipline (ARC/STR/MEP). Gate checks that every element lands in the correct spatial container. | The Gantt stepper (Next button) reveals elements discipline-by-discipline in the same order: STR first (columns, beams), then ARC (walls, slabs), then MEP. Grid refinement follows the same discipline sequence. |
+> | [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md) | DB-level validation — schema contracts, integrity hashes, element count reconciliation. The gates that prove round-trip fidelity. | The Rosetta Stone calibration mode records corrections the same way gates record pass/fail — verified facts about spatial positions that can be replayed and checked. |
+> | [SPATIAL_COMPILATION_PAPER.md](SPATIAL_COMPILATION_PAPER.md) | The theoretical proof — BOM decomposition ↔ protein folding analogy, round-trip verification across 21 buildings. | The "grammar extraction" concept comes directly from this paper. A reference building's grammar = a protein template's fold topology. Grid drags = amino acid substitutions. |
+> | [WorkOrderGuide.md](WorkOrderGuide.md) §5-6 | Pipeline flow — how IFC extraction feeds into BOM compilation, what the classification YAML provides, how output.db is generated. **§Invention Boundary** defines what can be computed vs. what must be extracted. | The JS BOM extractor must respect the same invention boundary: extract from elements_meta, never invent. Grid lines come from element positions, not algorithms. |
+> | [CLASH_DETECTION.md](CLASH_DETECTION.md) | Clash rules, proximity checks, spatial indexing (R-tree). | UBBL compliance reuses the same clash engine. Clearance rules are clash rules with minimum distance thresholds. |
+> | [TestArchitecture.md](TestArchitecture.md) §Traceability | The traceability matrix — every feature links to a test, every test names the issue it proves. | Rosetta Stone calibrations ARE the traceability entries for the grid. Each user correction is a witnessed fact linked to a specific grid line. |
+> | [SQLite3D_Schema.md](SQLite3D_Schema.md) | The DB schema — `elements_meta`, `element_transforms`, `component_geometries`. The tables the JS BOM extractor reads. | Save produces a NewBuilding.db with this exact schema. The existing viewer loads it without modification. |
+> | [DATA_MODEL.md](DATA_MODEL.md) §6.3 | The 4-DB architecture — extraction DB, BOM.db, component_library, output.db. | The browser collapses this to 1 DB per building + cached JSON BOM in IndexedDB. Same data, simpler packaging. |
+>
+> **Also:** [BIM Modeller OOTB](BIM_Modeller_OOTB.md) (kernel-op theory) · [2D Layout](2D_LAYOUT.md) (grid overlay) · [Kernel Ops Roadmap](../prompts/KERNEL_OPS_ROADMAP.md) (op log) · [ERP.md](ERP.md) (AD-in-browser)
 
 <div class="bim-banner" markdown>
 <b>You never start from a blank canvas.</b> You start from a building you trust, extract its grammar, and design by interrupting its replay.
