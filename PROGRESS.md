@@ -20,14 +20,20 @@
 
 ## Active Work — Browser BIM OOTB
 
-**S266 IN PROGRESS (2026-05-21): New From Reference — Doc Pill + JS BOM + Design Canvas. SW v431→v432. See `docs/NEW_FROM_REFERENCE.md`.**
-  - Red Pill icon replaces TM in main pill → swaps to 8-icon red glass Doc pill (Home/Grid/TM/Next/MEP/Open/Save/UBBL)
-  - `bom_extract.js`: JS BOM extractor from elements_meta (replaces Java IFCtoBOMPipeline). Groups storey→discipline→ifc_class, computes envelope, storey heights, column cadence. STD_MEP fallback for small buildings. Cached in IndexedDB.
-  - `doc_canvas.js`: Envelope wireframe + fresh AABBCC 2D grid (separate from main grid_overlay). Lettered X lines from cadence, numbered Z lines, circle bubbles, cyan span dims. Gantt phase stepper (Next button materializes elements per construction order).
-  - **POC target:** drag grid line → wall moves + slab stretches → UBBL validates → IFC values update → Save exports NewBuilding.db
-  - **Grid verification:** user freeform-drags grid lines to correct positions, snap+record in Rosetta Stone manner
-  - **Next:** wire grid drag→geometry response, UBBL compliance checker, Save/Open file I/O
-  - Spec: `docs/NEW_FROM_REFERENCE.md` §4-6
+**S266 IN PROGRESS (2026-05-22): New From Reference — Doc Pill + JS BOM + Design Canvas + RouteWalker. See `docs/NEW_FROM_REFERENCE.md`.**
+  - Red Pill icon replaces TM in main pill → swaps to 9-icon red glass Doc pill (Home/Grid/TM/Next/Disc/Open/Save/UBBL/Rosetta)
+  - `bom_extract.js`: JS BOM extractor from elements_meta. Groups storey→discipline→ifc_class, envelope, storey heights, cadence. STD_MEP fallback. Cached in IndexedDB.
+  - `doc_canvas.js` HARDENED: §6.4 BUG fixed (envelope-only step zero: 2+2 lines, no cadence). GRID_STRATEGY table (23 IFC classes → grid behavior). `_ifcToThree()` DRY coord transform. Discipline-scoped Next. Rosetta Stone template lines (gold/grey, drag-to-place instances). kernel_ops wired: GRID_ADD, GRID_CALIBRATE, DISC_SWITCH.
+  - **S266b (2026-05-22):** BatchedMesh+InstancedMesh materialize fix. HUD grid bays accordion. Wall dedup + 30-line cap. Grid lines dashed, depthTest off, extend 8m. Rosetta templates 14m out.
+  - **S266c (2026-05-22):** Grid rethink — AUTO-GRID REMOVED. User-initiated grid lines via double-click (add/remove toggle). Envelope tightened to structural-only AABB (excludes proxy/site). Design Gantt ordering: CLASS_PRIORITY (walls→openings→proxy, not alphabetical). Timeline slider (◀ scrubber ▶) with prevPhase/scrubToPhase. Grid select-then-drag (click→highlight→constrained drag). Both-end bubbles on grid lines.
+  - `route_walker.js` NEW: JS port of Java RouteWalker (395→250 lines). Pattern applier for MEP.
+  - `panels.js`: 8 discipline icons + discipline selector popup.
+  - **Tests:** 54/54 PASS — `test_doc_canvas.js` updated for handleElementPick (user-pick, not auto-grid).
+  - **Spec updated:** §17.7 Rotation. §17.9 Grid Rethink + BOM Completion Triage (A–I). §17.9H Print-Ready Mode.
+  - **DECISION: 100% browser.** Java verb expanders are pure math (~200 lines) — port to JS like route_walker.js. BOM.db already exists for fleet (504KB–8MB), lazy-fetch on Red Pill. IFC Drop: web-ifc extracts IfcRel* (3 queries, ~30 lines in import_worker.js). No Java install needed for end users.
+  - **Next session (S267):** Port BOMWalker + expandVerb to JS. Load BOM.db via sql.js. Grid drag → verb re-expansion → elements at new positions. Prompt: `prompts/S267_BOM_TREE_EXTRACTION.md`.
+  - **Deferred (S268+):** Max+Photo icons (white bg print). NEW geometry generation (Java Bridge, Desktop Pro). IFC export (Java Bridge). Validation gates. Z-axis grids. GPU throttle. Save/recall sessions.
+  - Spec: `docs/NEW_FROM_REFERENCE.md` §4-6, §9, §17
 
 **S265 Phase 5 DONE (2026-05-21): UI Aesthetics Overhaul. SW v416→v431. See `prompts/S265_UI_AESTHETICS.md`.**
   - Foundation: `A.createPanel()` factory + `.bim-panel` CSS + `ICONS` registry (24 icons) + `A.icon()` factory

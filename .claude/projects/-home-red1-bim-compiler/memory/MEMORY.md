@@ -56,6 +56,8 @@ Details belong in `docs/` specs and `prompts/`. Memory files are pointers. Do NO
 - S226 localisation → `prompts/S226_localisation.md`
 
 ## Project
+- [S266 New From Ref](project_s266_new_from_ref.md) — Red Pill Doc pill, JS BOM extractor, design canvas, Gantt stepper. POC: drag grid→mesh→UBBL
+- [S267 BOM Walker](project_s267_bom_walker.md) — 100% browser: port Java BOMWalker+expandVerb to JS, load BOM.db via sql.js, verb re-expansion on grid drag
 - [S260c Cinematic Drone](project_s260c_cinematic.md) — two-pass Gantt, IDB JSON cache, PBR-lite, outline+dust+sound, sw v359
 - [Card-first views](project_card_first_views.md) — next priority, persistent named view cards
 - [2D pick identity](project_2d_pick_identity.md) — UNPROVEN: click 2D items → show IFC name. Need separate responsibility + flatten furniture
@@ -68,7 +70,7 @@ Details belong in `docs/` specs and `prompts/`. Memory files are pointers. Do NO
 
 ## Reference
 - [OCI deployment](reference_oci_deploy.md) — buckets, upload commands, live URLs
-- BIM OOTB Browser → `docs/BIM_Designer_Browser.md`
+- BIM OOTB Browser → `docs/BIM_Designer_Browser.md` — DEPRECATED, replaced by `docs/NEW_FROM_REFERENCE.md`
 - RTree spec → `docs/RTree.md`
 - Mobile → `docs/MOBILE_DEPLOY.md`
 

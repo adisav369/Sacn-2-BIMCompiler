@@ -67,9 +67,19 @@ function extractBOM(A) {
 
   // ── 2. Build grouped tree ──
   var storeyMap = {};  // storey_name → { disciplines: { disc → { classes: { class → {elements} } } } }
+  // Envelope from structural classes only — outliers (proxy, site, furniture) stretch AABB.
+  // Fallback to all elements if no structural classes found.
+  var ENV_CLASSES = {
+    IfcColumn: 1, IfcPile: 1, IfcWall: 1, IfcWallStandardCase: 1,
+    IfcSlab: 1, IfcBeam: 1, IfcFooting: 1, IfcCurtainWall: 1, IfcRoof: 1
+  };
   var envMinX = Infinity, envMaxX = -Infinity;
   var envMinY = Infinity, envMaxY = -Infinity;
   var envMinZ = Infinity, envMaxZ = -Infinity;
+  var allMinX = Infinity, allMaxX = -Infinity;
+  var allMinY = Infinity, allMaxY = -Infinity;
+  var allMinZ = Infinity, allMaxZ = -Infinity;
+  var hasStructural = false;
 
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
@@ -83,13 +93,24 @@ function extractBOM(A) {
     var eMinY = cy - by, eMaxY = cy + by;
     var eMinZ = cz - bz, eMaxZ = cz + bz;
 
-    // update building envelope
-    if (eMinX < envMinX) envMinX = eMinX;
-    if (eMaxX > envMaxX) envMaxX = eMaxX;
-    if (eMinY < envMinY) envMinY = eMinY;
-    if (eMaxY > envMaxY) envMaxY = eMaxY;
-    if (eMinZ < envMinZ) envMinZ = eMinZ;
-    if (eMaxZ > envMaxZ) envMaxZ = eMaxZ;
+    // All-elements envelope (fallback)
+    if (eMinX < allMinX) allMinX = eMinX;
+    if (eMaxX > allMaxX) allMaxX = eMaxX;
+    if (eMinY < allMinY) allMinY = eMinY;
+    if (eMaxY > allMaxY) allMaxY = eMaxY;
+    if (eMinZ < allMinZ) allMinZ = eMinZ;
+    if (eMaxZ > allMaxZ) allMaxZ = eMaxZ;
+
+    // Structural-only envelope
+    if (ENV_CLASSES[ifcClass]) {
+      hasStructural = true;
+      if (eMinX < envMinX) envMinX = eMinX;
+      if (eMaxX > envMaxX) envMaxX = eMaxX;
+      if (eMinY < envMinY) envMinY = eMinY;
+      if (eMaxY > envMaxY) envMaxY = eMaxY;
+      if (eMinZ < envMinZ) envMinZ = eMinZ;
+      if (eMaxZ > envMaxZ) envMaxZ = eMaxZ;
+    }
 
     // group: storey → discipline → ifc_class
     if (!storeyMap[storey]) storeyMap[storey] = { minZ: Infinity, maxZ: -Infinity, disciplines: {} };
@@ -215,6 +236,17 @@ function extractBOM(A) {
   }
 
   // ── 6. Assemble BOM tree ──
+  // Fallback: if no structural classes, use all-elements envelope
+  if (!hasStructural) {
+    envMinX = allMinX; envMaxX = allMaxX;
+    envMinY = allMinY; envMaxY = allMaxY;
+    envMinZ = allMinZ; envMaxZ = allMaxZ;
+    console.log('§BOM_ENVELOPE fallback to all elements (no structural classes)');
+  } else {
+    console.log('§BOM_ENVELOPE structural-only' +
+      ' all=' + Math.round((allMaxX-allMinX)*1000)/1000 + 'x' + Math.round((allMaxY-allMinY)*1000)/1000 +
+      ' struct=' + Math.round((envMaxX-envMinX)*1000)/1000 + 'x' + Math.round((envMaxY-envMinY)*1000)/1000);
+  }
   var bom = {
     building: building,
     envelope: {

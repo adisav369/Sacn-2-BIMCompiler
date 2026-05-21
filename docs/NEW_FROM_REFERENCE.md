@@ -16,6 +16,8 @@
 >
 > **Also:** [BIM Modeller OOTB](BIM_Modeller_OOTB.md) (kernel-op theory) · [2D Layout](2D_LAYOUT.md) (grid overlay) · [Kernel Ops Roadmap](../prompts/KERNEL_OPS_ROADMAP.md) (op log) · [ERP.md](ERP.md) (AD-in-browser)
 
+> **Supersedes:** [BIM_Designer_Browser.md](BIM_Designer_Browser.md) (viewer layer — still valid, now the foundation this builds on)
+
 <div class="bim-banner" markdown>
 <b>You never start from a blank canvas.</b> You start from a building you trust, extract its grammar, and design by interrupting its replay.
 </div>
@@ -158,13 +160,27 @@ When the user taps the Red Pill:
 
 There is no separate "New doc" button. Entering Doc mode IS "New doc" when no saved work exists.
 
-### 4.4 Edit-Time vs UBBL-Time
+### 4.4 HUD in Doc Mode — Grid Bays, Element Count, Discipline
+
+When the Red Pill activates Doc mode, the HUD (top-left overlay) adapts to reflect design state:
+
+| HUD Element | Step Zero | After Next Presses |
+|---|---|---|
+| **Grid Bays** (`#hud-gridbays-section`) | `A–B 42600 mm`, `1–2 41780 mm` (envelope spans) | Bays subdivide as grid lines appear: `A–B 6400 mm`, `B–C 7200 mm`, ... |
+| **Element Count** (`#s-buildings-done`) | `0` | Running total of revealed elements |
+| **Status Bar** | `Step 0 — envelope` | `Phase 3 — ARC | 186 elements` |
+
+Grid bay rows are color-coded: **blue** (`#4fc3f7`) for X-axis (A–B, B–C), **green** (`#81c784`) for Z-axis (1–2, 2–3). Values in millimetres, updated on each Next press, Rosetta drag, or discipline switch.
+
+The Grid Bays accordion appears only in Doc mode and hides on Home (deactivate). All values derive from `getGridState()` — no extra queries.
+
+### 4.5 Edit-Time vs UBBL-Time
 
 **During editing:** lightweight checks only. Door drags along its wall axis, stays on floor, avoids windows. Items can be deleted. No heavy rule evaluation — the constraint is purely parent-child axis binding + sibling collision (1D interval overlap).
 
 **When UBBL is pressed:** all UBBL/compliance rules run against recently moved items. Violations marked as clashes with option to auto-correct (snap to compliant position). UBBL rules are standard constants (`ubbl_rules.json`), not learned per building — clearance is clearance.
 
-### 4.5 The "Save" Gate
+### 4.6 The "Save" Gate
 
 Dragging grid lines adjusts bay proportions. Each drag is a `GRID_MOVE` command logged to `kernel_ops`. The user sees the result live — lengths update, envelope reshapes.
 
@@ -392,9 +408,14 @@ The modeler needs a small, fixed set of commands. Each is a `kernel_ops` op type
 | `MEP_DENSITY` | Adjust MEP density | discipline, storey, old, new | Restore old |
 | `ELEMENT_PLACE` | Place element at coordinate | guid, x, y, z | Remove element |
 | `ELEMENT_REMOVE` | Remove element | guid | Restore element |
+| `ELEMENT_DUPLICATE` | Clone element at offset | source_guid, dx, dy, dz | Remove clone |
+| `BOM_ROTATE` | Rotate parent + children | parent_guid, angle_deg, pivot | Restore angle |
+| `GRID_ROTATE` | Rotate grid line | axis, label, old_deg, new_deg, pivot_m | Restore old_deg |
+| `ELEMENT_MIRROR` | Mirror element across axis | guid, axis, pivot_m | Mirror back |
+| `BOOKMARK` | Mark timeline position | name, phaseIndex, disc, cam, tgt, gridState | Remove bookmark |
 | `MATERIALIZE` | Generate NewIFC.db | timestamp | (not undoable — regenerate) |
 
-This is not extensible by design. A fixed vocabulary prevents feature creep and keeps the event log machine-readable. New element types are expressed as `ELEMENT_PLACE` with different `ifc_class` parameters, not as new command types.
+The vocabulary is deliberately small. Rotation, mirroring, and duplication are the only additions to the original set — they complete the spatial operations without introducing parametric complexity. Each op is reversible and composable. The event log remains human-readable and machine-diffable.
 
 ---
 
@@ -535,3 +556,319 @@ The "New From Reference" feature is done when:
 5. **Materialization round-trips** — `NewIFC.db` loads in the existing viewer without modification
 6. **Share works** — event log encodes in URL hash, receiver sees the same design
 7. **Original untouched** — `IFC.db` is byte-identical before and after a New session
+
+---
+
+## 17. Addendum — Enhancements from Collaborative Review (2026-05-21)
+
+The following refinements emerged from deep technical review after the initial specification. They do not alter the core architecture but significantly improve usability, exploration, and version control.
+
+### 17.1 Timeline Scrubber (TM Icon Role)
+
+**Problem:** The single Next button forces linear stepping through potentially hundreds of construction phases. Users need fluid navigation.
+
+**Solution:** The Time Machine icon in the Doc pill gains a new role — it opens a **permanent timeline widget** at the bottom of the canvas (collapsible, so the user can keep the view clean):
+
+- Horizontal track with labelled markers for each phase (slab, columns, walls, openings, MEP, etc.)
+- Click any marker to seek directly to that phase — materialization updates instantly
+- Play/Pause button for automatic replay
+- Current position indicator (draggable scrubber)
+- Discipline-aware: when STR is active, timeline shows STR phases only; switch to ARC, it relabels
+- Completed phases marked **blue** on the track
+- Branch timelines shade below the main track like Git branch visualization
+
+**Long-press Next:** Pressing and holding the Next button accelerates replay (1 phase/s → 5/s → 20/s). Release stops. An **Undo button** appears below Next during replay to reverse overshoot.
+
+**Implementation:** The timeline is a visual binding to the existing `_phases[]` array and `_phaseIndex` cursor. Seek = set `_phaseIndex = N`, re-hide all meshes, replay phases 0..N. The full 4D TM panel remains available for detailed Gantt editing — the timeline widget handles navigation only.
+
+### 17.2 Bookmarks & Compare — Blue Ocean Feature
+
+**Bookmarks:** Users can mark any timeline position (phase + camera view + grid state) with a named note. Bookmarks persist in the design event log as `BOOKMARK` kernel ops:
+
+```json
+{ "op_type": "BOOKMARK", "parameters": {
+    "name": "Option A - wider lobby",
+    "phaseIndex": 12, "disc": "ARC",
+    "cam": [x,y,z], "tgt": [x,y,z],
+    "gridState": { "xPositions": [...], "zPositions": [...] }
+}}
+```
+
+**Compare:** A dedicated Compare icon opens **toggle mode** — tap left bookmark to see state A, tap right to see state B. Differences render directly in the 3D viewer scene using the same visual language as Drop IFC merge diff variance:
+
+- **Blue** — elements added (present in B, absent in A)
+- **Red** — elements removed (present in A, absent in B)
+- **Yellow** — elements shifted (same GUID, different position)
+
+No geometry comparison needed — the op log provides deltas directly. Two designs from the same grammar differ only in their mutations. The mutations ARE the ops. Diffing two bookmarks is trivial: compare two `gridState` arrays of numbers.
+
+### 17.3 Branching — Parallel Universe Timelines (Git for Buildings)
+
+**Insight:** `kernel_ops` is already a linear commit log. Branching is a natural extension.
+
+- Each event log gains a `branch_id` and `parent_branch_id` column.
+- Timeline widget displays branches as parallel horizontal tracks (like `git log --graph`).
+- **Fork** button at any timeline position creates a new variant branch from that point.
+- **Switch** between branches — materialization rebuilds from the reference DB + that branch's op sequence.
+- **Diff** between branches via the Compare tool (§17.2), rendered as spatial heatmap in the viewer.
+
+**Visual:** Coloured horizontal lines that diverge at fork points, with bookmark stars along each track. This looks like nothing else in BIM software. Users familiar with Git will immediately grasp the ingenuity.
+
+**Merge (post-MVP):** Replay all ops from branch A onto branch B's state. Because ops are high-level (`GRID_MOVE`, `FACADE_RATIO`), conflicts only occur if two ops modify the same grid line or storey height. Spatial conflict resolution requires clash detection during merge — this is hard and deferred. Fork + switch + diff covers 90% of the design exploration use case without merge.
+
+### 17.4 Default Gold Calibration — Confirm Before Design
+
+**Principle:** The algorithm proposes; the user confirms. No designing on uncalibrated skeletons.
+
+**Flow:**
+1. Enter Doc mode → **envelope grid (red)** — 2+2 lines at AABB edges are mathematically exact, no calibration needed
+2. Press Next → elements + auto-detected grid lines appear → **auto-switch to gold** (calibration mode) — "confirm or drag these lines"
+3. User taps "Accept All" or drags individual lines to correct positions → commits calibration
+4. After confirmation → **switch to red** (design mode) — grid is now trusted
+5. Subsequent loads of same building type → remembered calibrations apply via cached `GRID_CALIBRATE` ops, skip directly to red
+
+**Why envelope starts red:** At step zero there are only 2+2 envelope lines — the AABB edges. These are exact (min/max of all elements). Calibration is irrelevant for exact bounds. Gold calibration activates when Next adds lines from element positions, where column detection might be off by a wall thickness.
+
+### 17.5 Diff Heatmap for Design Variants
+
+Building on §17.2, a **heatmap intensity overlay** shows magnitude of change between two bookmarked states:
+
+- Light red/yellow → grid line moved <= 10 cm
+- Deep red/yellow → moved > 50 cm
+- Blue → new element cluster
+- Red → removed element cluster
+
+Generated from the op log deltas — no geometry comparison. A `GRID_MOVE` from 6.0m to 7.5m is a 1.5m delta. Colour intensity maps to delta magnitude. Same visual language as the Drop IFC merge diff, applied to design variants.
+
+### 17.6 Implementation Priority
+
+| Feature | Complexity | Phase | Reason |
+|---|---|---|---|
+| Gold-first calibration (§17.4) | Low | Phase 2 (revised) | Prevents garbage-in, highest safety impact |
+| Timeline scrubber (§17.1) | Low | Immediate | Pure UI binding to existing `_phases[]` |
+| Long-press Next + Undo | Low | Immediate | setInterval + clearInterval, 20 lines |
+| Right-click context menu (§17.7C) | Low | Immediate | Raycast + popup, ~150 lines |
+| BOM_ROTATE / element rotation (§17.7A) | Low | Phase 3 | Matrix4 already in pipeline, just expose to user |
+| GRID_ROTATE / diagonal grids (§17.7B) | Medium | Phase 4 | Grid line model gains angle_deg, cascade is matrix multiply |
+| Bookmarks storage | Low | Phase 5 | Just a kernel_op type |
+| Compare toggle (§17.2) | Medium | Phase 5 | Reuses Drop IFC diff visuals (blue/red/yellow) |
+| Branching fork + switch (§17.3) | Medium | Phase 6 | `branch_id` column + branch selector |
+| Diff heatmap (§17.5) | Medium | Phase 6 | Op log deltas → colour overlay |
+| Merge | High | Post-MVP | Spatial conflict resolution is hard |
+
+### 17.7 Rotation & Diagonal Grids — Right-Click Context Design (2026-05-22)
+
+**Observation (during S266 POC):** The rendering pipeline already carries full rotation data. `element_transforms` stores `rotation_x/y/z`. `streaming.js` composes full `Matrix4` via `Euler → Quaternion → compose()` for both BatchedMesh and InstancedMesh. Every element in the viewer already renders at its correct orientation. The gap is only in the *design layer* — grid lines are axis-locked, kernel_ops has no rotation op.
+
+**What this enables with minimal new code:**
+
+#### A. BOM Set Rotation (furniture groups, wall assemblies)
+
+A BOM parent owns its children. A wall owns its doors and windows. A room owns its furniture. Rotating the parent rotates all children — the BOM tree IS the transform hierarchy. The Three.js scene already does this for grouped objects.
+
+New kernel op:
+```json
+{ "op_type": "BOM_ROTATE", "parameters": {
+    "parent_guid": "wall_17", "angle_deg": 45,
+    "pivot": { "x": 12.5, "z": -8.0 }
+}}
+```
+
+**UX:** Right-click an element → context menu → **Rotate** → drag arc shows angle (15° snap by default, free with Shift). All children follow. The BOM tree already knows who the children are — no discovery needed.
+
+**Why this is hard in Revit:** Revit's constraint solver must re-evaluate every parametric relationship when an element rotates. Wall joins break, windows lose their host, dimensional constraints conflict. Here, there is no constraint solver — the BOM parent-child hierarchy IS the constraint. Rotation is a matrix multiply, not a constraint re-solve.
+
+#### B. Diagonal Grid Lines (angled wings, non-orthogonal plans)
+
+Current grid: `_xPositions[]` and `_zPositions[]` — strictly axis-aligned.
+
+Extension: a grid line becomes `{ axis, position, angle_deg }`. At `angle_deg = 0`, it behaves exactly as today. At `angle_deg = 30`, the line rotates around its midpoint. Elements bound to that grid line rotate with it.
+
+New kernel op:
+```json
+{ "op_type": "GRID_ROTATE", "parameters": {
+    "axis": "X", "label": "C",
+    "old_deg": 0, "new_deg": 30,
+    "pivot_m": 15.0
+}}
+```
+
+**Rendering:** A rotated grid line is still a `THREE.Line` between two points — the endpoints are computed from `position + angle` instead of `position + axis`. The `_addGridLine()` function already takes `(x0,y0,z0, x1,y1,z1)` — it just needs non-axis-aligned endpoints.
+
+**Cascade:** When a grid line rotates, all elements attached to it receive the same rotation delta around the same pivot. This is one matrix multiply per element — the same operation `streaming.js` already does at load time.
+
+**What this produces:** Hospital wings at 30°. L-shaped floor plans. Chevron facades. All from the same grid-drag paradigm, just with an angular degree of freedom added. The reference building's grammar provides the *proportions*; rotation provides the *configuration*.
+
+#### C. Right-Click Context Menu (unified interaction)
+
+The right-click (long-press on mobile) opens a context menu on any element or grid line:
+
+| Target | Actions |
+|---|---|
+| **Grid line** | Rotate (drag arc), Delete, Properties (bay widths) |
+| **Element** | Rotate (15° snap), Mirror, Duplicate, Remove, Properties (IFC data) |
+| **BOM group** | Rotate group, Duplicate storey, Swap discipline template |
+| **Empty space** | Add grid line, Add element from reference, Paste |
+
+**Implementation:** One `contextmenu` / `pointerdown` handler on the canvas. Raycast to identify target (same as existing pick handler). Render a small radial menu or list popup. Each action emits a kernel_op. ~150 lines of code.
+
+#### D. What This Does NOT Require
+
+- No constraint solver. Rotation is a matrix operation, not a constraint re-evaluation.
+- No new geometry generation. Existing meshes rotate in place.
+- No new extraction. The BOM tree and element transforms already contain all needed data.
+- No server. Same browser-only, event-log-based architecture.
+
+#### E. Competitive Significance
+
+No browser-based BIM tool supports diagonal grid manipulation with BOM-aware cascading. Desktop tools (Revit, ArchiCAD) support angled grids but require manual reconnection of constraints. This approach is unique: **the BOM tree propagates rotation automatically because parent-child is a spatial, not parametric, relationship.**
+
+### 17.8 Why This Matters
+
+Every other BIM tool treats the design as an opaque blob. Revit's `.rvt` is a black box — you cannot diff it, branch it, replay it, or verify it. This system treats the design as a **transparent, replayable event log** on top of a verified grammar. That is not just version control for buildings — it is **deterministic reproducibility**. Same grammar + same ops = same building. Always.
+
+The branching feature is not "Git for buildings" as a metaphor — it is literally the same data structure (a DAG of commits) applied to spatial events instead of text patches. The `kernel_ops` table IS the `.git/objects` directory.
+
+These enhancements transform the "New From Reference" designer from a clever replay tool into a **complete design environment**:
+- Fluid timeline navigation replaces blind stepping
+- Bookmarks and compare enable professional design reviews
+- Branching introduces Git-like version control for buildings — a category first
+- Default calibration mode eliminates the "garbage in, garbage out" risk
+
+Together, they make the BIM Compiler not just a technical breakthrough but a tool that designers will actively choose over any incumbent.
+
+### 17.9 Design Session Triage — Grid Rethink + BOM Completion (2026-05-22)
+
+**Problem observed (S266b live testing):** Auto-generated grid lines flood the canvas.
+215 walls in HospitalGarage produced 215 `GRID_ADD` kernel ops. The 4m wall filter and 2m
+dedup help but cannot distinguish structural grid bays from corridor partition walls.
+The heuristic approach (`CLASS_PRIORITY`, length filter, dedup) fails because:
+
+- A hospital has ~8 structural bays but ~200 long (>4m) interior walls
+- Without BOM parent-child relationships, every wall looks structural
+- The `elements_meta` table has no parent/child — it's flat
+
+**Root cause:** The JS BOM extractor groups by `storey × discipline × ifc_class` but
+does NOT carry the Java BOM tree (`X_M_BOM` → `X_M_BOMLine` → leaf product). The
+generation ordering (parent before child) and structural vs. partition classification
+exist in the Java pipeline but are lost during extraction.
+
+#### A. BOM Completion Jump — `bom_tree` Table in Extracted DB
+
+The Java `BuildingCompiler` already produces the BOM tree. Include it in the extracted DB:
+
+```sql
+CREATE TABLE bom_tree (
+  parent_guid TEXT NOT NULL,
+  child_guid  TEXT NOT NULL,
+  bom_level   INTEGER NOT NULL,  -- 0=building, 1=storey, 2=discipline, 3=element
+  product_id  TEXT,               -- M_Product reference from ERP
+  is_structural INTEGER DEFAULT 0 -- 1 for columns/load-bearing walls
+);
+```
+
+**What this enables:**
+1. Design Gantt follows BOM generations — parent before child, not alphabetical
+2. Structural classification from Java (columns, load-bearing walls) → only these create grid lines
+3. Opening-to-host relationship → doors know their parent wall
+4. BOM cascade on edit: move parent → children follow via tack offsets (dx/dy/dz)
+
+#### B. User-Initiated Grid Lines (replaces auto-grid flood)
+
+**Rethink (per user feedback):** Grid lines should NOT auto-generate from walls.
+Instead:
+
+1. **Step zero:** Envelope AABB only (2+2 lines, as now — correct)
+2. **Next (walls):** Show walls but do NOT auto-add grid lines
+3. **User picks grid lines:** Tap/click a wall → "Add grid here?" confirmation →
+   one grid line appears at the wall's structural axis
+4. **Rosetta templates:** Remain as drag-to-place alternatives
+5. **Result:** User controls how many grid lines exist. 8 bays, not 200.
+
+The `GRID_ADD` kernel op still fires — but triggered by user intent, not autoGrid.
+
+#### C. Multi-Axis Selection for Opening Drag
+
+Problem: dragging a door opening may elongate it (stretch one axis) instead of
+moving the whole piece. Doors have TWO governing axes (width + position along wall).
+
+Fix: when an opening is selected, BOTH its X and Z grid lines highlight. Dragging
+moves the entire bounding group — the opening plus its governing grid lines — as a
+rigid body. This requires:
+
+1. Opening → parent wall lookup (from `bom_tree`)
+2. Parent wall axis → perpendicular axis = opening's offset axis
+3. Multi-select: both axes constrained, drag moves whole set
+
+#### D. Grid Edit Cascading — Later Phases Recompute from Changed Grid
+
+When an outer wall's grid line is moved at phase N, subsequent Next presses must
+place inner walls relative to the NEW grid position, not the original extraction.
+
+Implementation: each grid line stores `{ position, original_position, delta }`.
+When `nextPhase()` places elements, their positions are adjusted by the grid delta
+of their nearest governing grid line. This is the BOM tack offset recalculation
+in browser form: `new_position = original_position + grid_delta`.
+
+**Requires `bom_tree`:** only children of the moved grid's parent should cascade.
+Without BOM relationships, we don't know which elements depend on which grid line.
+
+#### E. Z-Axis Grid Lines (Height / Storey)
+
+Current grid: X (lettered) and Z (numbered) — horizontal plan only.
+Missing: Y-axis grid lines for storey heights and vertical positioning.
+
+Add: storey-height grid lines on the Y axis, labeled by storey name.
+These appear at `storey.minZ` (converted to Three.js Y). Dragging a Y-grid line
+changes `STOREY_HEIGHT`. Children of that storey cascade vertically.
+
+#### F. GPU Performance — Render Throttle in Doc Mode
+
+Problem: `THREE.WebGLRenderer: WEBGL_multi_draw extension not supported. 33845`
+call count for 215 walls in one Next press. GPU heats up.
+
+Mitigations:
+1. **BatchedMesh merge:** walls per storey should be one BatchedMesh, not 215 draw calls
+2. **Visibility-only reveal:** `setVisibleAt()` on existing BatchedMesh slots
+   (already coded in S260) — but only if walls are pre-batched
+3. **Throttled reveal:** instead of materializing all 215 at once, reveal in
+   chunks of 20 per frame via `requestAnimationFrame`. Smooth visual build-up
+   AND keeps frame rate stable
+4. **Doc mode render budget:** cap at 30fps in Doc mode (vs 60fps normal). Less
+   GPU heat for what is essentially a 2D layout task
+
+#### G. Save and Recall
+
+Save in Doc mode should:
+1. Serialize `kernel_ops` log + grid state + phase index to IndexedDB
+2. Offer "Open Previous Design Session" from Doc pill
+3. Restore: replay kernel_ops log → exact same grid + element state
+
+This is already spec'd in §9 (`MATERIALIZE` op) but needs the IndexedDB session
+store and a recall UI. The kernel_ops log IS the save format — no new data model.
+
+#### H. Print-Ready Mode — Max + Photo Icons (2026-05-22)
+
+User request: Add **Maximize** and **Photo/Screenshot** icons to the main pill when in
+Doc mode. The photo icon captures the canvas with a **white/reverse background** for
+print-ready output. User controls grid density via double-click (add) / double-click
+(remove), then takes a clean screenshot for documentation.
+
+- Max icon: hides all UI chrome (pill, HUD, status, timeline) → full-screen canvas
+- Photo icon: temporarily switches to white background, captures canvas as PNG, reverts
+- White background: `renderer.setClearColor(0xffffff)`, grid lines become dark,
+  bubbles become dark, dim labels become dark — automatic reverse for print
+
+#### I. Next Session Priority Order
+
+1. **BOM completion jump** — add `bom_tree` table to Java extraction pipeline,
+   carry to extracted DB. JS BOM extractor reads it for generation ordering and
+   structural classification. THIS IS THE FOUNDATION FOR EVERYTHING ELSE.
+2. **User-initiated grid lines** — remove auto-grid, add tap-to-place from walls.
+   Rosetta templates remain for manual placement.
+3. **Multi-axis opening drag** — requires `bom_tree` for parent lookup
+4. **Grid edit cascade** — requires `bom_tree` for child dependency
+5. **Z-axis grid lines** — storey heights
+6. **GPU throttle** — chunked reveal, 30fps cap
+7. **Save/recall** — IndexedDB session store
+8. **Bubble rotation** — already coded, needs visual testing
