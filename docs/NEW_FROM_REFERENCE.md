@@ -232,24 +232,37 @@ When the UBBL icon is pressed, all rules run against recently moved items:
 
 UBBL rules are **standard constants** stored in `ubbl_rules.json` (or embedded in existing `clash_rules.json`). Clearance is clearance — not learned per building.
 
-### 6.4 Grid Progression — Envelope First, Detail Later
+### 6.4 Grid Progression — BOM Hierarchy Drives Grid Detail
 
-The 2D grid starts from the **highest BOM parent only** — the building envelope AABB. At step zero:
+**Principle: the grid follows the BOM tree, top-down. Extract, not invent.**
 
+The BOM tree is hierarchical: BUILDING → STOREY → DISCIPLINE → IFC_CLASS → ELEMENT. The grid mirrors this hierarchy exactly. At each level, the grid shows only what that BOM level justifies — never more.
+
+**Step zero — BUILDING level (highest BOM parent):**
+
+- The grid shows the **envelope AABB only** — the root BOM node's bounding box
 - **2 X-lines** (A, B) at envelope minX and maxX → one span = total width
 - **2 Z-lines** (1, 2) at envelope minZ and maxZ → one span = total depth
 - **Bubbles** A, B and 1, 2 at line ends
 - **Span dimensions** showing full width and full depth
+- No column cadence. No subdivision. No internal structure. Nothing is invented.
+- The only data source is `BOM.envelope.{minX, maxX, minY, maxY}` — extracted, not computed
 
-This is the simplest possible grid — just the bounding rectangle of the whole building. No column cadence, no subdivision, no internal structure.
+**Why envelope only:** We have not started the building design. Step zero is just the bounding rectangle. The grid cannot show detail that doesn't yet exist in the construction sequence. Showing column-derived subdivisions at step zero would be **inventing** structure that hasn't been placed — violating the extract-not-invent principle.
 
-As **Next** is pressed and elements appear, the grid **refines itself**:
-- Floor slab appears → storey height added to grid
-- Structural columns appear → grid lines split at column positions (A subdivides into A, A', A'' etc.)
-- Walls appear → grid lines align to wall centerlines
-- Each refinement is a new grid state recorded in kernel_ops
+**As Next advances through BOM children, the grid refines:**
 
-The user sees the grid grow from simple to detailed, matching the construction sequence. The grid is never more detailed than the elements that justify it.
+| Next Press | BOM Level Revealed | Grid Refinement |
+|---|---|---|
+| 1 | STOREY: floor slab | Horizontal line added at storey Z height |
+| 2 | DISCIPLINE/STR: columns, beams | X-lines split at column positions (A → A, A', A'') |
+| 3 | DISCIPLINE/ARC: walls | Grid lines align to wall centerlines |
+| 4 | IFC_CLASS: openings | No grid change — openings live on parent walls |
+| 5 | DISCIPLINE/MEP: pipes, ducts | No grid change — MEP follows routes, not grid |
+
+Each refinement is extracted from the elements that just appeared — never guessed in advance. The grid is never more detailed than the elements that justify it.
+
+**Implementation note (BUG, 2026-05-21):** `doc_canvas.js _buildGrid()` currently subdivides by column cadence at step zero. This violates §6.4. Fix: at step zero, use only `e.x0, e.x1` and `e.z0, e.z1` — 4 lines, 4 bubbles, 2 span dimensions. Cadence subdivision moves to the Next handler when columns appear.
 
 ### 6.5 Rosetta Stone — The User IS the Verification Gate
 
