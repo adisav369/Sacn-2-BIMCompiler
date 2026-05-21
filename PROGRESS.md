@@ -20,6 +20,22 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S265 Phase 5 IN PROGRESS (2026-05-21): UI Aesthetics Overhaul. SW v416→v431. See `prompts/S265_UI_AESTHETICS.md`.**
+  - Foundation: `A.createPanel()` factory + `.bim-panel` CSS + `ICONS` registry (24 icons) + `A.icon()` factory
+  - P1 DONE: Color Palette rebuilt — 5 icon-only slider rows (palette/sun/sunDim/lightbulb/sunrise), value fades on drag
+  - P6 DONE: Standalone NLP 🎤 button removed — mic merged into Find panel search bar
+  - P10 DONE: Help palette — 6 entries with expandable sub-items (blue/red bar toggle), G5 mobile focus guard
+  - Find panel restyled to `.bim-panel` glass — dual-purpose input (NLP + element search), context-aware chips
+  - All panels + pill + HUD at 50% opacity with blur(16px)
+  - G1 partially fixed (overflow init reset), G2 DONE (focus stack dedup)
+  - **Next:** Find panel mic not showing (debug), P2 Section slider, P3-P4 Info+Issues restyle
+
+**S265c DONE (2026-05-20): Material color fix + unconditional render. SW v414→v416.**
+  - Removed `_spread < 0.08` threshold — IFC colors as-is, NULL-only STD_MAT fallback
+  - Sunglasses slider handles grey buildings (Terminal/LTU) on demand
+  - Removed `_needsRender` gate — render every frame, sliders/palette/bbox instant
+  - Overflow init reset (partially fixes double-click glitch)
+
 **S265 Phase 4 DONE (2026-05-19): HUD unification + keyboard + z-index + markDirty. SW v404→v411.**
 
 **S265 Phase 3 IN PROGRESS (2026-05-19→21): Share refactor. SW v411→v414. Deployed to ootb-dev.**

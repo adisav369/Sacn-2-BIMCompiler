@@ -4,9 +4,190 @@
  * SPDX-License-Identifier: MIT
  */
 // panels.js — Panel collapse, storey/disc filters, building list, HUD, swipe
+// ── S265 Phase 5: ICONS registry — single source of truth for all Lucide icons ──
+// Implementing S265_UI_AESTHETICS.md §Implementation — Witness: W-PANEL
+var ICONS = {
+  clock:     { svg: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>', trl: 'ui_tt_tm', key: 'T', desc: 'Time Machine' },
+  ruler:     { svg: '<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/>', trl: 'ui_tt_measure', key: null, desc: 'Measure' },
+  search:    { svg: '<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>', trl: 'ui_tt_find', key: null, desc: 'Find' },
+  share:     { svg: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>', trl: 'ui_tt_share', key: null, desc: 'Share' },
+  lifeBuoy:  { svg: '<circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/>', trl: 'ui_tt_help', key: 'F1', desc: 'Help' },
+  moreVert:  { svg: '<circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>', trl: null, key: null, desc: 'More' },
+  scissors:  { svg: '<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>', trl: 'ui_tt_section', key: null, desc: 'Section Cut' },
+  eye:       { svg: '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="1"/><path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0"/>', trl: 'ui_tt_xray', key: 'X', desc: 'X-Ray' },
+  clipboard: { svg: '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>', trl: 'ui_tt_issues', key: 'I', desc: 'Issues' },
+  triangle:  { svg: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>', trl: 'ui_tt_clash', key: null, desc: 'Clash Matrix' },
+  plane:     { svg: '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>', trl: 'ui_tt_fly', key: 'L', desc: 'Fly Tour' },
+  layout:    { svg: '<rect width="18" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/>', trl: 'ui_tt_2d', key: '2', desc: '2D Plans' },
+  palette:   { svg: '<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>', trl: 'ui_tt_sunglass', key: 'P', desc: 'Color Studio' },
+  moon:      { svg: '<path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/>', trl: 'ui_tt_night', key: 'N', desc: 'Night' },
+  cloud:     { svg: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>', trl: 'ui_tt_shadow', key: 'H', desc: 'Shadow' },
+  contrast:  { svg: '<circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/>', trl: 'ui_tt_bg', key: 'B', desc: 'Background' },
+  maximize:  { svg: '<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>', trl: 'ui_tt_fullscreen', key: null, desc: 'Fullscreen' },
+  camera:    { svg: '<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>', trl: 'ui_tt_screenshot', key: 'S', desc: 'Screenshot' },
+  barChart:  { svg: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>', trl: 'ui_tt_export', key: null, desc: '4D/5D Export' },
+  home:      { svg: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>', trl: 'ui_tt_home', key: null, desc: 'Home' },
+  // P1 sunglass slider icons
+  sun:       { svg: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>', trl: 'ui_sun', key: null, desc: 'Sun intensity' },
+  sunDim:    { svg: '<circle cx="12" cy="12" r="4"/><path d="M12 4h.01"/><path d="M20 12h.01"/><path d="M12 20h.01"/><path d="M4 12h.01"/><path d="M17.66 6.34h.01"/><path d="M17.66 17.66h.01"/><path d="M6.34 17.66h.01"/><path d="M6.34 6.34h.01"/>', trl: 'ui_exposure', key: null, desc: 'Exposure' },
+  lightbulb: { svg: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>', trl: 'ui_ambient', key: null, desc: 'Ambient' },
+  sunrise:   { svg: '<path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="M16 18a4 4 0 0 0-8 0"/>', trl: 'ui_hemisphere', key: null, desc: 'Hemisphere' }
+};
+
 function setupPanels(A) {
+  // ── S265 Phase 5: A.icon() — standard icon button factory ──
+  A.icon = function(name, opts) {
+    opts = opts || {};
+    var ic = ICONS[name];
+    if (!ic) { console.warn('§ICON_MISS name=' + name); return document.createElement('button'); }
+    var btn = document.createElement('button');
+    var size = opts.size || 20;
+    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ic.svg + '</svg>';
+    btn.title = (typeof _TRL !== 'undefined' && ic.trl && _TRL[ic.trl]) || opts.title || ic.desc || '';
+    if (ic.trl) btn.setAttribute('data-trl-title', ic.trl);
+    if (opts.active) btn.classList.add('active');
+    if (opts.id) btn.id = opts.id;
+    if (opts.onClick) btn.addEventListener('pointerup', function(e) { e.stopPropagation(); opts.onClick(e); });
+    return btn;
+  };
+
+  // ── S265 Phase 5: A.createPanel() — reusable panel factory ──
+  A.createPanel = function(id, opts) {
+    opts = opts || {};
+    var el = document.createElement('div');
+    el.id = id;
+    el.className = 'bim-panel';
+    if (opts.style) Object.assign(el.style, opts.style);
+    // Close button
+    if (opts.closable !== false) {
+      var closeBtn = document.createElement('span');
+      closeBtn.className = 'bim-panel-close';
+      closeBtn.innerHTML = '&times;';
+      closeBtn.addEventListener('pointerup', function(e) {
+        e.stopPropagation();
+        el.style.display = 'none';
+        if (opts.onClose) opts.onClose();
+      });
+      el.appendChild(closeBtn);
+    }
+    // Content
+    if (opts.content) {
+      if (typeof opts.content === 'string') { el.insertAdjacentHTML('beforeend', opts.content); }
+      else { el.appendChild(opts.content); }
+    }
+    // Draggable
+    if (opts.draggable !== false && A._makeDraggable) {
+      A._makeDraggable(el);
+    }
+    // Pointer isolation (prevent canvas pick-through)
+    el.addEventListener('pointerdown', function(e) { e.stopPropagation(); });
+    // Register with focus system
+    if (typeof _registerPanel === 'function') {
+      var closeFn = opts.onClose || function() { el.style.display = 'none'; };
+      _registerPanel(id.replace(/-/g, ''), el, null, closeFn);
+    }
+    el.style.display = 'none';
+    document.body.appendChild(el);
+    console.log('§PANEL_CREATE id=' + id);
+    return el;
+  };
+
+  // ── S265 Phase 5 P1: Build Color Palette slider panel ──
+  A._buildSunglassPanel = function() {
+    var existing = document.getElementById('sunglass-slider-panel');
+    if (!existing) return;
+    // Replace the placeholder with a proper bim-panel
+    existing.className = 'bim-panel';
+    existing.style.cssText = 'display:none; top:90px; right:70px; min-width:220px; max-width:280px;';
+
+    // Close button
+    var closeBtn = document.createElement('span');
+    closeBtn.className = 'bim-panel-close';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.addEventListener('pointerup', function(e) {
+      e.stopPropagation();
+      if (typeof window.toggleSunglass === 'function') toggleSunglass();
+    });
+    existing.appendChild(closeBtn);
+
+    // Slider row helper — icon + range + fade-value
+    function sliderRow(iconName, sliderId, valId, min, max, val, step, onInput) {
+      var row = document.createElement('div');
+      row.className = 'bim-slider-row';
+      // Icon button
+      var btn = A.icon(iconName, { size: 18 });
+      row.appendChild(btn);
+      // Slider
+      var inp = document.createElement('input');
+      inp.type = 'range'; inp.id = sliderId;
+      inp.min = String(min); inp.max = String(max); inp.step = String(step);
+      inp.value = String(val);
+      row.appendChild(inp);
+      // Value label (hidden until drag)
+      var valSpan = document.createElement('span');
+      valSpan.className = 'bim-slider-val';
+      valSpan.id = valId;
+      valSpan.textContent = Number(val).toFixed(step < 1 ? 2 : 0);
+      row.appendChild(valSpan);
+
+      var fadeTimer = null;
+      inp.addEventListener('input', function() {
+        valSpan.classList.add('visible');
+        if (fadeTimer) clearTimeout(fadeTimer);
+        fadeTimer = setTimeout(function() { valSpan.classList.remove('visible'); }, 1000);
+        if (onInput) onInput(inp.value);
+      });
+      // Show value on pointerdown too
+      inp.addEventListener('pointerdown', function() { valSpan.classList.add('visible'); });
+      return row;
+    }
+
+    // Row 1: Palette / Color Studio (ambience 0-100)
+    existing.appendChild(sliderRow('palette', 'sunglass-slider', 'sunglass-val', 0, 100, 0, 1, function(v) {
+      if (typeof updateAmbience === 'function') updateAmbience(v);
+    }));
+
+    // Separator
+    var sep = document.createElement('hr');
+    sep.style.cssText = 'border:none;border-top:1px solid rgba(255,255,255,0.1);margin:4px 0';
+    existing.appendChild(sep);
+
+    // Row 2: Sun (0-5.0)
+    existing.appendChild(sliderRow('sun', 'sl-sun', 'sl-sun-val', 0, 5.0, 1.4, 0.05, function(v) {
+      if (typeof updateLighting === 'function') updateLighting('sun', v);
+    }));
+    // Row 3: Aperture / Exposure (0.1-3.0)
+    existing.appendChild(sliderRow('sunDim', 'sl-exposure', 'sl-exposure-val', 0.1, 3.0, 0.45, 0.05, function(v) {
+      if (typeof updateLighting === 'function') updateLighting('exposure', v);
+    }));
+    // Row 4: Ambient (0-2.0)
+    existing.appendChild(sliderRow('lightbulb', 'sl-ambient', 'sl-ambient-val', 0, 2.0, 0.25, 0.01, function(v) {
+      if (typeof updateLighting === 'function') updateLighting('ambient', v);
+    }));
+    // Row 5: Hemisphere (0-2.0)
+    existing.appendChild(sliderRow('sunrise', 'sl-hemi', 'sl-hemi-val', 0, 2.0, 0.40, 0.01, function(v) {
+      if (typeof updateLighting === 'function') updateLighting('hemi', v);
+    }));
+
+    // Draggable + pointer isolation
+    if (A._makeDraggable) A._makeDraggable(existing);
+    existing.addEventListener('pointerdown', function(e) { e.stopPropagation(); });
+
+    console.log('§COLOR_PALETTE built with bim-panel + icon slider rows');
+  };
+
+  // Build the sunglass panel immediately
+  A._buildSunglassPanel();
+
+  // §S265c: Reset overflow state — bfcache/SW can restore stale class from previous session
+  var _sb = document.getElementById('search-box');
+  if (_sb) _sb.classList.remove('overflow-open');
+  var _sc = document.getElementById('overflow-scrim');
+  if (_sc) _sc.classList.remove('active');
+
   // Prevent touch/click on floating panels from reaching canvas underneath
-  ['hud','search-box','storey-panel','disc-panel','info-panel','issues-panel','status'].forEach(function(pid) {
+  // S265 Phase 4: storey-panel/disc-panel removed (inside HUD now)
+  ['hud','search-box','info-panel','issues-panel','status'].forEach(function(pid) {
     var el = document.getElementById(pid);
     if (el) el.addEventListener('pointerdown', function(e) { e.stopPropagation(); });
   });
@@ -167,8 +348,9 @@ function setupPanels(A) {
   // Wire ListKeyNav to storey + DISC panels after populate
   var _storeyNav = null, _discNav = null;
   A._wireListKeyNav = function() {
-    var storeyPanel = document.getElementById('storey-panel');
-    var discPanel = document.getElementById('disc-panel');
+    // S265 Phase 4: storey/disc now inside HUD accordion sections
+    var storeyPanel = document.getElementById('hud-storey-section');
+    var discPanel = document.getElementById('hud-disc-section');
 
     if (storeyPanel && !_storeyNav) {
       _storeyNav = makeListKeyNav(
@@ -367,20 +549,22 @@ function setupPanels(A) {
       WHERE building = ? AND storey IS NOT NULL
       ORDER BY storey
     `, [building]);
-    const panel = document.getElementById('storey-panel');
+    const section = document.getElementById('hud-storey-section');
     const body = document.getElementById('storey-body');
-    if (!rows.length) { panel.style.display = 'none'; return; }
+    if (!rows.length) { if (section) section.style.display = 'none'; return; }
 
     const storeys = rows.map(r => r[0]);
     body.innerHTML = `<button class="${A.activeStoreyFilter === null ? 'active' : ''}"
-      onclick="filterStorey(null)" style="margin-top:4px">${typeof _TRL!=='undefined'&&_TRL.ui_all_storeys||'All Storeys'}</button>` +
+      onclick="filterStorey(null);resetHudAutoCollapse()" style="margin-top:4px">${typeof _TRL!=='undefined'&&_TRL.ui_all_storeys||'All Storeys'}</button>` +
       storeys.map(s => `<button class="${A.activeStoreyFilter === s ? 'active' : ''}"
-        onclick="filterStorey('${s}')">${s}</button>`).join('');
-    panel.style.display = 'block';
+        onclick="filterStorey('${s}');resetHudAutoCollapse()">${s}</button>`).join('');
+    if (section) section.style.display = 'block';
 
-    setTimeout(() => { const b = document.getElementById('storey-body'); if (b) b.classList.add('collapsed'); }, 5000);
+    // Start with storey body collapsed inside HUD accordion
+    setTimeout(() => { if (body) body.classList.add('collapsed'); }, 100);
     // S251: Wire ListKeyNav after buttons are populated
     if (A._wireListKeyNav) A._wireListKeyNav();
+    console.log('§HUD_STOREY populated storeys=' + storeys.length);
   };
 
   A.filterStorey = function(storey) {
@@ -415,22 +599,24 @@ function setupPanels(A) {
       WHERE building = ? AND discipline IS NOT NULL
       GROUP BY discipline ORDER BY COUNT(*) DESC
     `, [building]);
-    const panel = document.getElementById('disc-panel');
+    const section = document.getElementById('hud-disc-section');
     const body = document.getElementById('disc-body');
-    if (!rows.length) { panel.style.display = 'none'; return; }
+    if (!rows.length) { if (section) section.style.display = 'none'; return; }
 
     body.innerHTML = rows.map(([d, cnt]) => {
       const hex = '#' + (A.DISC_COLORS[d] || A.DEFAULT_COLOR).toString(16).padStart(6, '0');
       const on = !A.hiddenDiscs.has(d);
-      return `<button class="${on ? 'active' : ''}" onclick="toggleDisc('${d}')" style="margin-top:2px">
+      return `<button class="${on ? 'active' : ''}" onclick="toggleDisc('${d}');resetHudAutoCollapse()" style="margin-top:2px">
         <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${hex};margin-right:4px"></span>
         ${d} <span style="color:#888;font-size:10px">${cnt.toLocaleString()}</span></button>`;
     }).join('');
-    panel.style.display = 'block';
+    if (section) section.style.display = 'block';
 
-    setTimeout(() => { const b = document.getElementById('disc-body'); if (b) b.classList.add('collapsed'); }, 4000);
+    // Start with disc body collapsed inside HUD accordion
+    setTimeout(() => { if (body) body.classList.add('collapsed'); }, 100);
     // S251: Wire ListKeyNav after buttons are populated
     if (A._wireListKeyNav) A._wireListKeyNav();
+    console.log('§HUD_DISC populated disciplines=' + rows.length);
   };
 
   A.toggleDisc = function(disc) {
@@ -528,8 +714,8 @@ function setupPanels(A) {
     if (opening) {
       var _s = function(id, on) { var b = document.getElementById(id); if (b) b.classList.toggle('active', !!on); };
       _s('xray-btn', A.xrayOn);
-      _s('section-btn', document.getElementById('section-slider-panel') && document.getElementById('section-slider-panel').style.display !== 'none');
-      _s('sunglass-btn', document.getElementById('sunglass-slider-panel') && document.getElementById('sunglass-slider-panel').style.display !== 'none');
+      _s('section-btn', A.sectionOn);
+      _s('sunglass-btn', A.sunglassOn);
       _s('fly-btn', A.flyActive);
       _s('shadow-overflow-btn', A._shadowOn);
       _s('bg-overflow-btn', A._whiteBg);
@@ -559,7 +745,22 @@ function setupPanels(A) {
   }
 
   // Panel toggle (S250 §5 — hides ALL UI chrome for clean screenshots)
-  var panelIds = ['hud','search-box','icon-pill','storey-panel','disc-panel','info-panel',
+  // S265 Phase 4: HUD auto-collapse on mobile (5s after last interaction)
+  var _hudAutoCollapseTimer = null;
+  window.resetHudAutoCollapse = function() {
+    if (_hudAutoCollapseTimer) clearTimeout(_hudAutoCollapseTimer);
+    if (!window._isMobile) return; // desktop: no auto-collapse
+    _hudAutoCollapseTimer = setTimeout(function() {
+      var hudBody = document.getElementById('hud-body');
+      if (hudBody && !hudBody.classList.contains('collapsed')) {
+        hudBody.classList.add('collapsed');
+        console.log('§HUD_AUTOCOLLAPSE 5s idle');
+      }
+    }, 5000);
+  };
+
+  // S265 Phase 4: storey-panel/disc-panel removed (now inside HUD accordion)
+  var panelIds = ['hud','search-box','icon-pill','info-panel',
                   'status','grid-overlay-panel','dev-banner',
                   'section-slider-panel','undo-redo-btns'];
   var panelsHidden = false;
@@ -591,6 +792,9 @@ function setupPanels(A) {
   // These exist in HTML from page load — section, sunglasses, toolbar
   setTimeout(function() {
     if (A._wireListKeyNav) A._wireListKeyNav();
+    // S265 Phase 4: make info-panel draggable so it doesn't obscure pill
+    var infoP = document.getElementById('info-panel');
+    if (infoP && A._makeDraggable && !infoP._draggableWired) { A._makeDraggable(infoP); infoP._draggableWired = true; }
     console.log('§PANELS_INIT static panels registered');
   }, 500);
 }

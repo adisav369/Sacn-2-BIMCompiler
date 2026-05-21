@@ -1,209 +1,271 @@
-# ⚠ DO NOT REMOVE — Scope: S265 UI Aesthetics — Social-style minimal icons
+# ⚠ DO NOT REMOVE — Scope: S265 UI Aesthetics — Sleek unified design
 # Read the log after every run. No inventions.
 
-# S265: UI Aesthetics — TikTok/Facebook-style Minimal Controls
+# S265: UI Aesthetics — Sleek Unified Design
 
 ## Vision
 
-Replace the current toolbar-heavy UI with a social-media-inspired minimal layout.
-Study TikTok (vertical icon column, right side) and Facebook/Instagram (bottom bar + three-dot overflow).
-BIM OOTB is a viewer first — controls should be invisible until needed.
+All panels, popups, sliders, sub-panels, and buttons aligned to ONE design language. The icon pill (Phase 1-2) set the standard — everything else must match. Clean, minimal, icon-driven.
 
-## Design Principles
+## Design Language
 
-1. **Icons by the side** — vertical column, right edge, small recognizable icons (no text labels)
-2. **Three-dot overflow** — corner menu opens secondary items (clash, 2D, export, settings)
-3. **Share as first-class** — prominent share icon (refactors snag/clash/walk/site share into one `share.js`)
-4. **Swipe/tap patterns** — mobile-first gestures, desktop gets hover tooltips
-5. **HUD collapses** — building info panel auto-hides, tap to peek
-6. **Dark glass** — consistent `backdrop-filter: blur(8px)` with `rgba(0,0,0,0.3)` background
+- **Container**: `border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; background: rgba(10,10,30,0.85); backdrop-filter: blur(16px)`
+- **Icons only**: No visible text labels. Lucide SVG 20×20, stroke-width 2, `currentColor`. Label as `title` attr (shows on hover/long-press).
+- **Values**: Numeric value appears only while dragging slider, fades after 1s.
+- **Active state**: `color: #4fc3f7` (cyan). Inactive: `color: #ddd`.
+- **Close button**: × top-right, consistent across all panels.
+- **No emoji**: Replace ALL emoji icons (🕶📸🏠🎤👤🔴📸) with Lucide SVG equivalents.
+- **Draggable**: All panels via `_makeDraggable`.
+- **Mobile**: 44px min tap targets, panels auto-size to viewport.
 
-## Reference: Social Media Icon Layouts
+## Phase 5: Priority Order
 
-### TikTok (vertical right column)
-- Profile pic (top)
-- Heart (like)
-- Comment bubble
-- Share arrow
-- Bookmark
-- Three dots (more)
-- All: 40px round icons, white on dark, slight shadow, no text
+### P1: Sunglass/Lighting Panel → Sleek Slider Panel
 
-### Facebook/Instagram (bottom bar)
-- Home, Search, Create(+), Reels, Profile
-- Top-right: Messenger, Notifications (badge count)
-- Three-dot / gear for settings
+**Current** (`#sunglass-slider-panel`):
+- Old labels: "Color Studio", "Exposure", "Sun", "Ambient", "Hemisphere"
+- No glass effect, inconsistent styling, no icon-only
 
-### What to learn
-- Maximum 5-6 visible icons at any time
-- Everything else behind a menu/drawer
-- Icons are universally recognizable (no custom symbols)
-- Active state = filled icon or accent color highlight
+**Target**:
+- White outline curved box, glass background
+- 5 icon-only slider rows, compact vertical stack:
+  | Icon | Slider | What | Current label |
+  |------|--------|------|---------------|
+  | Palette (Lucide) | 0-100 | Ambience/Color Studio | "Color Studio" |
+  | Sun (Lucide) | 0-5.0 | Sun intensity | "Sun" |
+  | Aperture (Lucide) | 0.1-3.0 | Exposure | "Exposure" |
+  | Circle (Lucide) | 0-2.0 | Ambient | "Ambient" |
+  | Sunset (Lucide) | 0-2.0 | Hemisphere | "Hemisphere" |
+- Each row: `[icon 20px] [range input flex-grow] [value 32px]`
+- Value text visible only while dragging, fades 1s after release
+- × close button top-right
 
-## Current State
+### P2: Section/Scissors Panel → Sleek
 
-Toolbar is horizontal top-right with 12+ buttons:
-`Sunglasses | Measure | Clash | Scissors | 2D | Walk | Fly | Find | ⏳ | Screenshot | ? | Share`
+**Current** (`#section-slider-panel`):
+- Labels, bookmark buttons with emoji, inconsistent styling
 
-Too many. Mobile is cluttered. Some overlap (Walk + Fly are both navigation).
+**Target**:
+- Same curved box design
+- Compact: `[scissors icon] [slider] [value]`
+- Bookmark: small icon buttons (bookmark-plus, bookmark-x), no emoji
 
-## Proposed Layout
+### P3: Info Panel → Sleek Card
 
-### Primary icons (always visible, vertical right column)
-| Position | Icon | Action | Notes |
-|----------|------|--------|-------|
-| 1 | ⏳ | Time Machine | Most unique feature — top |
-| 2 | 📐 | Measure | Tap for measure mode |
-| 3 | 🔍 | Find/Search | Indoor wayfinding |
-| 4 | 📤 | Share | System share sheet (S264 fix) — camera + element + clash state |
-| 5 | ⋮ | More | Three-dot overflow menu |
+**Current** (`#info-panel`):
+- Old styling, emoji Snag button (📸), fixed position
+- Labels: Class, Name, GUID, Building, Storey, Discipline, Material
 
-### Overflow menu (three-dot opens)
-| Item | Icon | Notes |
-|------|------|-------|
-| Clash Matrix | ⚠ | Opens clash detection panel |
-| 2D Plans | 🏗 | Desktop only (S250 §1) |
-| Sunglasses | 🕶 | Color studio / lighting |
-| Walk Mode | 🚶 | Site walk + wall X-ray |
-| Fly Tour | ✈ | Cinematic tour |
-| Screenshot | 📷 | Capture current view |
-| Night Mode | 🌙 | Toggle (currently in sunglasses) |
-| Help | ? | Command palette |
+**Target**:
+- White outline curved box, glass background
+- Compact key:value pairs, monospace values, truncated with ellipsis
+- Snag button: camera Lucide icon, no emoji
 
-### HUD (building info)
-- Top-left, collapsed by default (just building name + element count)
-- Tap to expand: storeys, disciplines, streaming progress
-- Auto-collapse after 5s of no interaction
+### P4: Issues Panel → Sleek
 
-### Share refactor (absorbs S264 — S264_SHARE_FIX.md is superseded by this section)
+**Current** (`#issues-panel`):
+- Old button styling, emoji status 🔴
 
-**Problem (S264):** Share is broken in three ways:
-1. WhatsApp-only — hardcoded `wa.me` instead of `navigator.share()`. User sees WhatsApp instead of system share sheet.
-2. No scene state in URL — share URL is just `?db=filename.db`. Camera position, picked element, clash state NOT captured.
-3. Tour not shareable — cinematic walkthrough state not in URL.
+**Target**:
+- White outline curved box, glass background
+- Status: CSS colored dots, not emoji
+- Consistent button styling matching overflow grid
 
-**Task 3a: navigator.share() with fallback**
-- Replace `sendWhatsApp()` and `sendEmail()` with system share sheet
-- `navigator.share({ title, url })` on mobile → shows all apps (WhatsApp, Telegram, FB, SMS, Email)
-- Desktop fallback: `navigator.clipboard.writeText(url)` + toast
-- Precedent: `excel.js` (S209, commit 30f6804c) already uses `navigator.share()` with `navigator.canShare()` guard
+### P5: HUD → Sleek
 
-**Task 3b: Camera + element + clash state in share URL**
-Build share URL with current scene state via hash params:
+**Current** (`#hud`):
+- Fixed top-left, accordion sections
+
+**Target**:
+- White outline curved box, glass background
+- Icon-driven accordion headers (storey icon, disc icon)
+- Disc bars match new color scheme
+
+### P6: Find + Walk → Merge into Overflow
+
+**Current**:
+- `#walk-mode-btn`: standalone emoji button 🚶, top-right, CSS 162
+- `#nlp-btn`: standalone emoji button 🎤, center-top, purple background
+
+**Target**:
+- Remove standalone Walk and Voice buttons from HTML
+- Walk + Voice already in overflow grid — ensure they work without standalone buttons
+- OR: merge into Search panel when Find icon tapped
+
+### P7: Sub-panels (clash matrix, clash list, cost panel, command palette)
+
+**Current**: Each has its own styling, inconsistent borders, backgrounds, font sizes.
+
+**Target**: All sub-panels use the same curved box design. Consistent font: system-ui, 12px body, 11px secondary.
+
+### P8: Status Bar
+
+**Current** (`#status`): Fixed bottom-center, basic styling.
+
+**Target**: Subtle, same glass background, compact.
+
+### P9: Walk Anchor Prompt + Site Camera Overlay
+
+**Current**: Old modal styling with emoji.
+
+**Target**: Same glass card design, Lucide icons.
+
+### P10: Command Palette (Help/F1) — Complete Panel Directory
+
+**Current**: `showCommandPalette()` in `scene.js` — lists main shortcuts only.
+
+**Target**: Reorganised as a full directory of ALL panels and features:
+- **Primary** (pill icons): Time Machine, Measure, Find, Share, Help
+- **Display** (overflow): Section Cut, X-Ray, Wireframe, Palette, Shadow, Background, Night
+- **Navigation** (overflow): Fly Tour, Walk Mode, Voice Search, Precision Cam
+- **Analysis** (overflow): Clash Matrix, 2D Plans, Issues, Export
+- **Sub-panels**: Sunglass sliders, Section slider, Scissors bookmarks, Grid panel, Cost panel
+- Each row: `[Lucide icon] [Name] [Shortcut key if any, right-aligned, muted]`
+- Grouped with section headers (same categories as overflow grid)
+- Search/filter input at top — but NO auto-focus on mobile (G5 fix)
+- Links at bottom: Report Bug, Documentation
+
+## Trivial Glitches (fix during redesign)
+
+### G1: Overflow menu needs two clicks on first open
+- `toggleOverflow()` in `panels.js:524` — class state stale on first click
+- First click: `§UI_OVERFLOW open` then immediately `§UI_OVERFLOW close`
+- Fix during redesign: ensure clean init or switch to explicit show/hide
+
+### G2: Focus stack grows unbounded
+- `stack=[sunglass,sunglass,sunglass,toolbar,grid,grid,toolbar,grid,grid,grid]`
+- `_focusPanel` / `_blurPanel` in `scene.js:780+` — push without pop
+- Fix: deduplicate stack entries or cap length
+
+### G3: Stale saved 2D cuts persist after deletion
+- `§SAVE_SECTION deleted id=1 remaining=0` but reappears on reload
+- Saved sections in localStorage — deletion not persisting
+- Investigate storage key and deletion path in grid_views.js / grid_scissors.js
+
+### G4: Chrome disk cache serves stale icons
+- SW version bump not clearing Chrome's disk cache
+- Icons revert to old versions on browser restart
+- Fix: ensure strong cache-bust on index.html
+
+### G5: Help/Lifebelt triggers keyboard on mobile
+- Command palette opens with search input focused
+- On mobile this triggers the soft keyboard immediately
+- Fix: don't `focus()` the search input on mobile until user taps it
+- `showCommandPalette()` in `scene.js` — guard `input.focus()` with `!A._isMobile`
+
+## Files to modify
+- `deploy/dev/index.html` — all panel HTML + CSS (this is where most work is)
+- `deploy/dev/tools.js` — sunglass panel logic, toggleSunglass, updateAmbience, updateLighting
+- `deploy/dev/panels.js` — overflow toggle, panel init, focus stack
+- `deploy/dev/scene.js` — panel registration, focus/blur, command palette
+- `deploy/dev/issues.js` — issues panel toggle + render
+
+### P11: Panel Toggle (−) — Focus Mode
+
+**Current** (`#panel-toggle-btn`): Hides all UI chrome for screenshots.
+
+**Target**: Smarter — when pressed, hides ALL panels/tools EXCEPT the currently active one. User gets a clutter-free view focused on one task (e.g. only the sunglass sliders visible, everything else gone). Press again to restore. This replaces the blunt "hide everything" behaviour.
+
+- Track which panel is currently focused (`_focusedPanel` in scene.js)
+- (−) hides pill, HUD, status, info, issues, overflow — keeps only `_focusedPanel` visible
+- If no panel focused, hides everything (current behaviour)
+- (+) restores all to previous visibility state
+
+## Implementation: Reusable Panel Template
+
+All panels share the same design. Instead of duplicating CSS/HTML per panel, use ONE factory function:
+
+```javascript
+// panels.js
+A.createPanel = function(id, opts) {
+  // opts: { title, icon, closable, draggable, content }
+  // Returns a DOM element with standard styling:
+  //   white outline curved box, glass bg, × close, drag handle
+  //   All CSS from one class: .bim-panel
+};
 ```
-index.html?db=...#bld=X&cx=75&cy=79&cz=52&tx=0&ty=0&tz=0
+
+**One CSS class `.bim-panel`** in index.html covers all shared styling (border, radius, background, blur, font, close button, drag cursor). Individual panels only add their specific content.
+
+**Benefits:**
+- New panels = one `createPanel()` call + content
+- Style change = one place
+- Fixes (drag, close, z-index, mobile sizing) apply to all panels
+- Glitch fixes (G1, G2) happen once in the template, not per-panel
+
+**Icon registry** — same pattern for icons:
+
+```javascript
+// Standard icon button — used by pill, overflow grid, panel headers, command palette
+A.icon = function(name, opts) {
+  // name: Lucide icon name ('sun', 'scissors', 'palette', etc.)
+  // opts: { size, title, active, onClick }
+  // Returns a <button> with standard sizing, hover, active state, tooltip
+  // SVG paths from a ICONS lookup table (inline, no fetch)
+};
 ```
-- `pick=GUID` — highlighted element
-- `storey=Level%201` — active storey filter
-- `xray=1` — X-ray state
-- `tm=N` — Time Machine cursor
-- `clash=GUID1,GUID2` — clash pair
-- `tour=play` — auto-start cinematic tour on load
 
-The viewer already parses `cx/cy/cz/tx/ty/tz` from hash. Adding `pick`, `storey`, `xray`, `tm`, `tour`, `clash` requires small additions to hash parser in `main.js` or `streaming.js`.
+One `ICONS` registry holds everything about each icon in one place:
 
-**Task 3c: Context-aware share variants**
-| Context | What's Shared | Hash |
-|---|---|---|
-| Default (orbiting) | Camera angle + building | `#bld=X&cx=...` |
-| Element picked | Camera + highlighted element | `#bld=X&cx=...&pick=GUID` |
-| Clash selected | Camera + clash pair | `#bld=X&cx=...&clash=GUID1,GUID2` |
-| Tour playing | Building + auto-play tour | `#bld=X&tour=play` |
-| Storey filtered | Camera + active filter | `#bld=X&cx=...&storey=Level%201` |
+```javascript
+var ICONS = {
+  sun:      { svg: '<path d="M12 2v2"/>...', trl: 'ui_sun',      key: null,  desc: 'Sun intensity' },
+  palette:  { svg: '<path d="M12 22a1..."/>',trl: 'ui_palette',  key: 'P',   desc: 'Color studio' },
+  scissors: { svg: '<circle cx="6".../>',    trl: 'ui_section',  key: null,  desc: 'Section cut' },
+  walk:     { svg: '<path .../>',            trl: 'ui_walk',     key: null,  desc: 'Walk mode' },
+  // ... every icon in the app
+};
+```
 
-**§-tagged verification logs:**
-- `§SHARE_URL state=camera|pick|clash|tour url=...` — what state was captured
-- `§SHARE_METHOD native|clipboard` — which share path used (no more whatsapp|email)
-- `§SHARE_PARSE pick=GUID storey=X tour=Y` — on load, what state was restored from hash
+- `svg`: inline Lucide SVG path (no fetch)
+- `trl`: translation key — `locale_loader.js` uses this for i18n
+- `key`: keyboard shortcut (shown in command palette, right-aligned muted)
+- `desc`: English fallback description (tooltip, command palette, Help listing)
 
-**Files:** `share.js` (rewrite send section), `main.js`/`streaming.js` (hash parser), `time_machine.js` (export `_tmActive`/`_tmCursor`)
+Every icon in the app — pill, overflow, panels, command palette, sliders — calls `A.icon()`. The command palette (P10) just iterates `ICONS` to build its listing. Localisation translates `trl` keys. Change anything once, applies everywhere.
 
-## Progress
-
-### DONE — Phase 1+2 (merged into one pass)
-
-| What | Status | Commit |
-|------|--------|--------|
-| Vertical icon pill (6 icons: TM, Measure, Find, Share, Help, More) | Done | 2dad218f |
-| Overflow grid (icons-only 4×4, no text labels) | Done | 2e7945cc |
-| 31 Lucide SVG icons fetched and saved to `icons/lucide/` | Done | 2dad218f |
-| All emoji replaced with inline Lucide SVGs | Done | 2e7945cc |
-| Overflow grouped: Analysis, Navigation, Display, Export | Done | 2dad218f |
-| Shadow, Background, Night moved from Palette panel to overflow | Done | 2e7945cc |
-| Palette panel cleaned (sliders only) | Done | 2e7945cc |
-| Help (lifebelt) in pill → opens command palette with icons + shortcuts | Done | 2e7945cc |
-| Clash Matrix in overflow (direct `_loadClashRules` call) | Done | 2e7945cc |
-| TM hourglass removed from overflow (`time_machine.js` no longer injects) | Done | 2e7945cc |
-| Precision Cam: 👁 → feather icon | Done | 2e7945cc |
-| Home: flag override blocked in `locale_loader.js`, house icon preserved | Done | 2e7945cc |
-| Active state highlight on overflow open (cyan glow) | Done | 95e5b6ad |
-| TM + 2D visible on mobile with "Desktop only" status message | Done | 2e7945cc |
-| Mobile: 44px tap targets, bottom drawer overflow | Done | 2dad218f |
-| Palette double-click fix (150ms delay) | Done | 2e7945cc |
-| `backdrop-filter` removed from pill (CPU fix) | Done | 2dad218f |
-| Old `#search-box` duplicate CSS removed | Done | 2dad218f |
-| SW bumped v398→v404 | Done | 95e5b6ad |
-
-### DONE — Phase 4: HUD + Keyboard + z-index polish
-
-| What | Status | SW |
-|------|--------|----|
-| Storey + Disc panels merged into HUD as accordion sections (▸/▾) | Done | v405 |
-| Mobile: single HUD panel top-left, 50vw, auto-collapse 5s idle | Done | v405 |
-| Landscape: HUD compact top-left, 40vw | Done | v405 |
-| Icon pill z-index 500 (above clash matrix 350 / clash list 400) | Done | v405 |
-| Overflow menu z-index 490, scrim 480 | Done | v405 |
-| Find panel shifted right:70px + draggable | Done | v406 |
-| Issues panel shifted right:70px + draggable | Done | v406 |
-| Info panel shifted right:70px + draggable | Done | v406 |
-| Keyboard shortcuts reorganised: P=Palette, 2=2D, T=TM, L=Fly, S=Screenshot, N=Night, B=Background, H=Shadow, I=Issues, F1=Help | Done | v408 |
-| Removed legacy aliases (G for 2D, SC for screenshot) | Done | v408 |
-| BUG FIX: Section/Palette overflow buttons falsely "active" (style.display vs CSS) — now uses JS boolean | Done | v409 |
-| BUG FIX: markDirty() added to toggleWireframe, toggleXray, toggleSection, updateSectionPlane — instant render on toggle | Done | v411 |
-| SW bumped v404→v411 | Done | v411 |
-
-### BUG — Active state cyan highlight incomplete (from Phase 2)
-
-Overflow icons should glow cyan when their feature is active. `toggleOverflow()` in `panels.js` syncs state on open using JS booleans (fixed: was using `style.display` check). But not all toggles update the overflow button when triggered from pill or keyboard. Each toggle in `tools.js`/`measure.js`/`tour.js` should also set `.active` on its overflow button when the state changes — not just on overflow open.
-
-### TODO — Phase 3: Share refactor (next session)
-
-**Goal:** One Share icon in the pill. One `share.js`. Context-aware URL. Remove WhatsApp/Email hardcodes.
-
-**Current state of share.js:**
-- Still has `sendWhatsApp()` and `sendEmail()` hardcodes — REMOVE
-- Still requires IndexedDB key (only works for imported buildings) — FIX
-- No camera state in URL — ADD
-- No `navigator.share()` — ADD
-
-**What to do:**
-1. Replace `sendWhatsApp()`/`sendEmail()` with `navigator.share()` + clipboard fallback
-2. Add `buildShareUrl()` that captures camera + element + clash + TM + storey state in URL hash
-3. Add hash parser on load to restore shared state (`pick`, `storey`, `xray`, `tm`, `tour`, `clash`)
-4. Share pill button: if building is on OCI (`?db=http...`), share the current URL directly. If imported (IndexedDB), open the existing share sheet for Contribute flow.
-
-**Old share methods (WhatsApp/Email buttons, contribute flow) are REMOVED.** The permanent Share icon in the pill IS the only share entry point. It works in context — camera view, element pick, clash pair, whatever is active gets encoded in the URL. Snag/clash panels must NOT obscure the pill so the Share icon is always one tap away.
-
-**Snag/Clash panels** — their existing deep-link QR codes stay (they encode element GUIDs). But the "Share to WhatsApp" buttons inside those panels are removed — user taps the pill Share icon instead, which captures the full context.
-
-**Existing hash parser (main.js:603):** Already parses `#clash=guidA~guidB&cam=x,y,z&tgt=tx,ty,tz&st=storey&tol=mm`. Extend this to also handle `pick`, `xray`, `tm`, `tour`.
-
-**Files to modify:**
-| File | Change |
-|------|--------|
-| `share.js` | Remove WhatsApp/Email, add `navigator.share()`, add `buildShareUrl()` that reads camera/controls/pick/clash/storey/TM state |
-| `main.js` | Extend hash parser at line ~603 to restore `pick`, `xray`, `tm`, `tour` from URL |
-| `index.html` | Pill Share onclick: call `buildShareUrl()` → `navigator.share()` or clipboard. Only open share sheet for IndexedDB imports. |
-
-### TODO — Phase 5: remaining polish
-
-- Active state cyan on overflow buttons when toggled from pill/keyboard (not just on overflow open)
-- Ensure all panels/popups do NOT obscure the icon pill on all viewports
+**Migration:** Existing panels (`sunglass-slider-panel`, `section-slider-panel`, `info-panel`, `issues-panel`, `hud`) get wrapped or rebuilt with `createPanel()` one at a time. Keep existing IDs so all JS references still work. Inline SVGs in index.html get replaced with `A.icon()` calls during panel migration.
 
 ## DO NOT touch
-
-- `measure.js` snag share — lives in clash flow, separate concern
-- `clash_snag.js` deep-links — separate concern
-- `streaming.js` — material pipeline stable
+- `deploy/dev/streaming.js` — material pipeline stable (§S265c, trust IFC data)
+- `deploy/dev/main.js` — render loop stable (§S265c, unconditional render)
 - `deploy/live/*` — production
-- Storyboard/drone camera system — working well
+- `measure.js` snag share — separate concern
+- `clash_snag.js` deep-links — separate concern
+- Icon pill (`#icon-pill`) — it's the design reference, do not change
+
+## Done (previous phases)
+
+### Phase 1+2: Icon Pill + Overflow (2026-05-19)
+- TikTok-style vertical pill, 6 icons: TM, Measure, Find, Share, Help, More
+- Overflow: 4×4 icon grid, Lucide SVGs, grouped by category
+- All emoji replaced. Shadow/BG/Night moved to overflow. SW v398→v404.
+
+### Phase 3: Share refactor (2026-05-19)
+- `navigator.share()` with clipboard fallback. `buildShareUrl()` captures 7 contexts.
+- Receiver side BUG OPEN: clash pair doesn't visually restore from new share URL.
+
+### Phase 4: HUD + Keyboard (2026-05-19)
+- Storey/Disc merged into HUD accordion. z-index layering fixed.
+- Keyboard: P=Palette, 2=2D, T=TM, L=Fly, S=Screenshot, N=Night, B=Bg, H=Shadow, I=Issues, F1=Help.
+- markDirty on Wireframe/X-Ray/Section. SW v404→v411.
+
+### Material color fix (2026-05-20)
+- Removed `_spread < 0.08` threshold. IFC colors as-is. NULL-only STD_MAT fallback.
+- Sunglasses slider for grey buildings. §S265c. SW v414.
+
+### Unconditional render (2026-05-20)
+- Removed `_needsRender` gate in main.js. Every frame renders. §S265c. SW v415.
+
+### Overflow init reset (2026-05-20)
+- `overflow-open` class stripped on setupPanels init. Partially fixes G1. SW v416.
+
+### Phase 5: Panel factory + Color Palette + Help tree + Find revamp (2026-05-21)
+- Foundation: `.bim-panel` CSS, `ICONS` registry (24 icons), `A.icon()`, `A.createPanel()` factories
+- P1: Color Palette — 5 icon-only slider rows (palette/sun/sunDim/lightbulb/sunrise), value fades 1s after drag
+- P6: Standalone NLP 🎤 removed — mic merged into Find panel search bar
+- P10: Help palette — 6 entries with expandable children (TM, Find, Section, Clash, Palette, Issues). Blue/red bar toggle, split click zones (left=expand, right=launch). G5: no mobile auto-focus.
+- Find panel restyled `.bim-panel` glass — dual-purpose input (NLP queries + element search), context-aware chips from building
+- All panels + pill + HUD at 50% opacity, blur(16px), unified borders
+- G2 fixed: focus stack dedup. SW v416→v431.
+- **BUG OPEN: Find panel mic button not rendering.** Next session: debug navigate_find.js mic wiring.

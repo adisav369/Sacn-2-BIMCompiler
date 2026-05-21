@@ -616,21 +616,52 @@ function setupScene(A) {
   var _ic = function(d) { return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>'; };
   var _paletteEntries = [
     { seq: 'M',  name: 'Measure',        icon: _ic('<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/>') },
-    { seq: 'F',  name: 'Find / Navigate', icon: _ic('<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>') },
-    { seq: 'X',  name: 'Section Cut',     icon: _ic('<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>') },
-    { seq: 'C',  name: 'Clash Matrix',    icon: _ic('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>') },
-    { seq: 'P',  name: 'Palette',         icon: _ic('<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>') },
+    { seq: 'F',  name: 'Find / Navigate', icon: _ic('<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>'), children: [
+      { name: 'Search by name/class', icon: '<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>' },
+      { name: 'Filter by storey/type', icon: '<path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/>' },
+      { name: 'Voice search (mic)', icon: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>' },
+      { name: 'Navigate to element', icon: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>' }
+    ] },
+    { seq: 'X',  name: 'Section Cut',     icon: _ic('<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>'), children: [
+      { name: 'Y axis (vertical)', icon: '<path d="M12 2v20"/><path d="m8 6 4-4 4 4"/>' },
+      { name: 'X axis (lateral)', icon: '<path d="M2 12h20"/><path d="m6 8-4 4 4 4"/>' },
+      { name: 'Z axis (depth)', icon: '<circle cx="12" cy="12" r="1"/><path d="M12 2v4"/><path d="M12 18v4"/>' },
+      { name: 'Slider 0\u2013100%', icon: '<path d="M2 12h20"/><circle cx="12" cy="12" r="2"/>' },
+      { name: 'Bookmarks', icon: '<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>' }
+    ] },
+    { seq: 'C',  name: 'Clash Matrix',    icon: _ic('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>'), children: [
+      { name: 'Discipline pair grid', icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18"/><path d="M12 3v18"/>' },
+      { name: 'Tolerance 1\u2013100mm', icon: '<path d="M2 12h20"/><circle cx="12" cy="12" r="2"/>' },
+      { name: 'Status: Review/Resolve/Accept', icon: '<circle cx="12" cy="12" r="4"/>' },
+      { name: 'HTML Report + CSV export', icon: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>' }
+    ] },
+    { seq: 'P',  name: 'Palette',         icon: _ic('<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>'), children: [
+      { name: 'Ambience 0\u2013100', icon: '<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/>' },
+      { name: 'Sun 0\u20135', icon: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>' },
+      { name: 'Exposure 0.1\u20133', icon: '<circle cx="12" cy="12" r="4"/><path d="M12 4h.01"/><path d="M20 12h.01"/><path d="M12 20h.01"/><path d="M4 12h.01"/><path d="M17.66 6.34h.01"/><path d="M17.66 17.66h.01"/><path d="M6.34 17.66h.01"/><path d="M6.34 6.34h.01"/>' },
+      { name: 'Ambient 0\u20132', icon: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>' },
+      { name: 'Hemisphere 0\u20132', icon: '<path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="M16 18a4 4 0 0 0-8 0"/>' }
+    ] },
     { seq: '2',  name: '2D Grid',         icon: _ic('<rect width="18" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/>') },
     { seq: 'L',  name: 'Fly Tour',        icon: _ic('<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>') },
     { seq: 'S',  name: 'Screenshot',      icon: _ic('<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>') },
     { seq: '4',  name: '4D / 5D',         icon: _ic('<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>') },
     { seq: 'Alt+Z', name: 'X-Ray',       icon: _ic('<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="1"/><path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0"/>') },
-    { seq: 'I',  name: 'Issues',          icon: _ic('<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>') },
+    { seq: 'I',  name: 'Issues',          icon: _ic('<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>'), children: [
+      { name: 'Snag photo + annotation', icon: '<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>' },
+      { name: 'Fly to clash deep-link', icon: '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>' },
+      { name: 'Export Excel', icon: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>' }
+    ] },
     { seq: 'N',  name: 'Night',           icon: _ic('<path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/>') },
     { seq: 'H',  name: 'Shadow',          icon: _ic('<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>') },
     { seq: 'B',  name: 'Background',      icon: _ic('<circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/>') },
     { seq: 'F11', name: 'Fullscreen',     icon: _ic('<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>') },
-    { seq: 'T',  name: 'Time Machine',    icon: _ic('<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>') },
+    { seq: 'T',  name: 'Time Machine',    icon: _ic('<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>'), children: [
+      { name: 'Gantt timeline', icon: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 16h8"/><path d="M7 11h12"/><path d="M7 6h4"/>' },
+      { name: 'Play / Pause sequence', icon: '<polygon points="6 3 20 12 6 21 6 3"/>' },
+      { name: 'Phase slider', icon: '<path d="M2 12h20"/><circle cx="12" cy="12" r="2"/>' },
+      { name: 'Share ?tm=play link', icon: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>' }
+    ] },
     { seq: '',   name: 'Share',           icon: _ic('<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>'), action: function() { if (A.quickShare) A.quickShare(); } },
     { seq: '',   name: 'Home',            icon: _ic('<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'), action: function() { location.href='../index.html'; } },
     { seq: 'F1', name: 'Help',            icon: _ic('<circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/>') }
@@ -685,7 +716,17 @@ function setupScene(A) {
         row.innerHTML = '<span style="display:flex;align-items:center;gap:8px">' +
           (entry.icon || '') + entry.name + '</span>' +
           (entry.seq ? '<kbd style="background:#333;color:#4fc3f7;padding:2px 8px;border-radius:4px;font-family:monospace;font-size:12px;border:1px solid #555">' + entry.seq + '</kbd>' : '');
-        row.addEventListener('click', function() {
+        row.addEventListener('click', function(e) {
+          // S265 P10: left zone (bar+icon, <36px) toggles children; right zone launches action
+          if (entry._childDiv) {
+            var rect = row.getBoundingClientRect();
+            if (e.clientX - rect.left < 36) {
+              var open = entry._childDiv.style.display !== 'none';
+              entry._childDiv.style.display = open ? 'none' : 'block';
+              if (entry._bar) entry._bar.style.background = open ? '#4fc3f7' : '#f44336';
+              return;
+            }
+          }
           pal.remove();
           if (entry.action) { entry.action(); }
           else { var seq = entry.seq.toLowerCase(); if (_shortcuts[seq]) _shortcuts[seq](); }
@@ -696,6 +737,25 @@ function setupScene(A) {
           highlightRows();
         });
         listEl.appendChild(row);
+        // S265 P10: expandable children (+/−) inline tree
+        if (entry.children && entry.children.length) {
+          var childDiv = document.createElement('div');
+          childDiv.style.cssText = 'display:none;padding:2px 14px 4px 28px;background:rgba(255,255,255,0.03);border-left:2px solid rgba(79,195,247,0.15);margin-left:14px';
+          entry.children.forEach(function(c) {
+            var ch = document.createElement('div');
+            ch.style.cssText = 'font-size:12px;color:#aaa;padding:3px 0;display:flex;align-items:center;gap:6px';
+            ch.innerHTML = _ic(c.icon) + '<span>' + c.name + '</span>';
+            childDiv.appendChild(ch);
+          });
+          // Red bar in left margin — whole row toggles children
+          row.style.position = 'relative';
+          var bar = document.createElement('span');
+          bar.style.cssText = 'position:absolute;left:4px;top:50%;transform:translateY(-50%);width:3px;height:16px;background:#4fc3f7;border-radius:1px';
+          row.appendChild(bar);
+          entry._childDiv = childDiv;
+          entry._bar = bar;
+          listEl.appendChild(childDiv);
+        }
       });
       return matches;
     }
@@ -708,7 +768,8 @@ function setupScene(A) {
     }
 
     var currentMatches = renderList('');
-    searchInput.focus();
+    // §G5: no auto-focus on mobile — soft keyboard is premature
+    if (!window._isMobile) searchInput.focus();
 
     searchInput.addEventListener('input', function() {
       cursor = 0;
@@ -766,11 +827,13 @@ function setupScene(A) {
     }
   }
   function _focusPanel(id) {
-    // Push current to stack before switching
+    // Push current to stack before switching — §G2 fix: deduplicate
     var prevId = _focusedPanel ? _focusedPanel.id : 'none';
     if (_focusedPanel) {
+      var _di = _focusStack.indexOf(_focusedPanel.id);
+      if (_di >= 0) _focusStack.splice(_di, 1);
       _focusStack.push(_focusedPanel.id);
-      if (_focusStack.length > 10) _focusStack.shift();
+      if (_focusStack.length > 8) _focusStack.shift();
       _focusedPanel.el.style.boxShadow = '';
     }
     _focusedPanel = null;
