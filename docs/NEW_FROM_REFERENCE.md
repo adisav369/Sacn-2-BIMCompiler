@@ -182,6 +182,27 @@ When the UBBL icon is pressed, all rules run against recently moved items:
 
 UBBL rules are **standard constants** stored in `ubbl_rules.json` (or embedded in existing `clash_rules.json`). Clearance is clearance — not learned per building.
 
+### 6.4 Grid Verification — User-Corrected, Rosetta-Recorded
+
+The auto-detected grid lines (from column cadence) may not be perfectly placed. The user can **freeform drag grid lines to correct positions** — a temporal override that says "the line should be here, not where the algorithm put it."
+
+When the user confirms the line is at the right spot:
+1. The grid **snaps** and locks at the user-verified position
+2. The correction is recorded in **Rosetta Stone manner** — the delta between auto-detected and user-verified position is logged as a calibration fact
+3. Future grid detections on the same building type can reference this calibration
+4. The verified grid becomes the authoritative structural skeleton for all subsequent operations
+
+This matters because the Java BOM compiler's Rosetta Stone gates verified that placement replayed correctly — the same verification principle applies here. The grid IS the placement skeleton. Getting it right is the foundation. The user is the final authority on where structural lines actually fall.
+
+### 6.5 Grid Drag → Geometry Response → UBBL Validate
+
+The core POC cycle:
+1. **Next** → elements appear phase by phase (slab first, then walls, then openings)
+2. **Drag grid line A** → wall attached to line A moves with it, floor/slab stretches to fill new span
+3. **Press UBBL** → compliance check confirms the wall can sit at new position
+4. **Mesh reapplied** — wall geometry extends/shrinks, floor slab adjusts. IFC values (center_x, bbox_x, width_mm) update in the DB
+5. **Save** → NewBuilding.db with updated element_transforms and elements_meta — a valid, self-contained DB
+
 ---
 
 ## 7. 4D Replay — Construction as Design Preview

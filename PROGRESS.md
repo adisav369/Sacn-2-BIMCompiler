@@ -20,7 +20,16 @@
 
 ## Active Work — Browser BIM OOTB
 
-**S265 Phase 5 IN PROGRESS (2026-05-21): UI Aesthetics Overhaul. SW v416→v431. See `prompts/S265_UI_AESTHETICS.md`.**
+**S266 IN PROGRESS (2026-05-21): New From Reference — Doc Pill + JS BOM + Design Canvas. SW v431→v432. See `docs/NEW_FROM_REFERENCE.md`.**
+  - Red Pill icon replaces TM in main pill → swaps to 8-icon red glass Doc pill (Home/Grid/TM/Next/MEP/Open/Save/UBBL)
+  - `bom_extract.js`: JS BOM extractor from elements_meta (replaces Java IFCtoBOMPipeline). Groups storey→discipline→ifc_class, computes envelope, storey heights, column cadence. STD_MEP fallback for small buildings. Cached in IndexedDB.
+  - `doc_canvas.js`: Envelope wireframe + fresh AABBCC 2D grid (separate from main grid_overlay). Lettered X lines from cadence, numbered Z lines, circle bubbles, cyan span dims. Gantt phase stepper (Next button materializes elements per construction order).
+  - **POC target:** drag grid line → wall moves + slab stretches → UBBL validates → IFC values update → Save exports NewBuilding.db
+  - **Grid verification:** user freeform-drags grid lines to correct positions, snap+record in Rosetta Stone manner
+  - **Next:** wire grid drag→geometry response, UBBL compliance checker, Save/Open file I/O
+  - Spec: `docs/NEW_FROM_REFERENCE.md` §4-6
+
+**S265 Phase 5 DONE (2026-05-21): UI Aesthetics Overhaul. SW v416→v431. See `prompts/S265_UI_AESTHETICS.md`.**
   - Foundation: `A.createPanel()` factory + `.bim-panel` CSS + `ICONS` registry (24 icons) + `A.icon()` factory
   - P1 DONE: Color Palette rebuilt — 5 icon-only slider rows (palette/sun/sunDim/lightbulb/sunrise), value fades on drag
   - P6 DONE: Standalone NLP 🎤 button removed — mic merged into Find panel search bar
