@@ -326,7 +326,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../BIM_Modeller_OOTB/" class="md-tabs__link">
+        <a href="../NEW_FROM_REFERENCE/" class="md-tabs__link">
           
   
   
@@ -737,6 +737,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ifc-import-and-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IFC Import and Export
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#2d" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -785,6 +796,28 @@
     <span class="md-ellipsis">
       
         Sharing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#doc-pill-design-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Doc Pill (Design Interface)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#search-and-navigation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search and Navigation
       
     </span>
   </a>
@@ -1616,6 +1649,8 @@
       
         
       
+        
+      
     
     
     
@@ -1660,6 +1695,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../NEW_FROM_REFERENCE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    New From Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3931,6 +3994,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ifc-import-and-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IFC Import and Export
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#2d" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3979,6 +4053,28 @@
     <span class="md-ellipsis">
       
         Sharing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#doc-pill-design-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Doc Pill (Design Interface)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#search-and-navigation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search and Navigation
       
     </span>
   </a>
@@ -4209,6 +4305,15 @@
 <li>Section cut at any angle</li>
 <li>Night mode with adjustable ambient lighting</li>
 <li>Storey filter and discipline filter (Architecture, Structure, MEP, Electrical, Plumbing, ACMV)</li>
+<li>Colour Palette panel — 5 sliders for exposure, sun intensity, ambient, hemisphere, and tone mapping</li>
+<li>Walk mode with GPS blue-dot tracking, device orientation (accelerometer/gyroscope), wall X-ray on approach</li>
+</ul>
+<h3 id="ifc-import-and-export">IFC Import and Export<a class="headerlink" href="#ifc-import-and-export" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Drop any IFC file into the browser — parsed into SQLite, cached locally, no upload</li>
+<li><strong>IFC export</strong>: reconstruct a valid IFC STEP file from the SQLite database, download directly from the browser. No server, no web-ifc dependency — pure STEP/ISO-10303-21 text generation</li>
+<li>4D Excel export: 3-sheet workbook (schedule, project summary, discipline/phase breakdown)</li>
+<li>5D BOQ Excel export: 7-sheet workbook (cover, executive summary, material/labour/equipment, BOQ, work packages, discipline breakdown, provisions)</li>
 </ul>
 <h3 id="2d">2D<a class="headerlink" href="#2d" title="Permanent link">&para;</a></h3>
 <ul>
@@ -4217,6 +4322,7 @@
 <li>Grid overlay with drag-to-recompile</li>
 <li>Door arc generation from IFC openings</li>
 <li>Dimension chains</li>
+<li>Doc Canvas: AABBCC lettered/numbered grid derived from column cadence, with circle bubbles and dimension labels</li>
 </ul>
 <h3 id="4d-construction-scheduling">4D Construction Scheduling<a class="headerlink" href="#4d-construction-scheduling" title="Permanent link">&para;</a></h3>
 <ul>
@@ -4224,24 +4330,43 @@
 <li>Elements appear in construction sequence with frontier highlighting</li>
 <li>Cinematic drone tour auto-generated from building storeys</li>
 <li>Gantt chart overlay with phase progress</li>
+<li>Gantt Phase Stepper: step through construction phases one at a time, meshes materialise per phase</li>
 </ul>
 <h3 id="5d-cost">5D Cost<a class="headerlink" href="#5d-cost" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Bill of Quantities extracted from IFC element dimensions</li>
+<li>Bill of Quantities extracted from IFC element dimensions — browser-side JavaScript BOM extractor groups elements by storey, discipline, and IFC class</li>
 <li>Cost dashboard with phase-by-phase breakdown</li>
 <li>17 country-specific rate templates</li>
+<li>Building envelope, storey heights, floor-to-floor deltas, column cadence and bay proportions computed automatically</li>
 </ul>
 <h3 id="clash-detection">Clash Detection<a class="headerlink" href="#clash-detection" title="Permanent link">&para;</a></h3>
 <ul>
 <li>R-tree spatial index built from element bounding boxes</li>
 <li>Configurable clash rules (tolerances per discipline pair)</li>
+<li>Two-point distance measurement tool</li>
 <li>Snag reporting with QR codes that deep-link back to the clashing elements</li>
 </ul>
 <h3 id="sharing">Sharing<a class="headerlink" href="#sharing" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Share a URL — recipient sees the exact camera angle and building state</li>
+<li>Share a URL — recipient sees the exact camera angle, picked element, storey filter, x-ray state, clash pair, Time Machine cursor, and tour state</li>
+<li>Native OS share sheet on mobile (Web Share API)</li>
+<li>Share preview card on desktop with canvas snapshot</li>
 <li>QR code generation for on-site access</li>
 <li>No account required to view</li>
+</ul>
+<h3 id="doc-pill-design-interface">Doc Pill (Design Interface)<a class="headerlink" href="#doc-pill-design-interface" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Red Pill icon toggles a 9-icon document design interface</li>
+<li>Contains: Home, Grid, Time Machine, Phase Stepper, Open, Save, MEP Routes, UBBL Compliance Checklist, Rosetta Stone Calibration</li>
+<li>Automatic BOM extraction on entry</li>
+<li>Rosetta Stone calibration mode: drag grid to align with real building geometry for verification</li>
+</ul>
+<h3 id="search-and-navigation">Search and Navigation<a class="headerlink" href="#search-and-navigation" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Find panel with inline voice search (microphone in search bar)</li>
+<li>NLP natural-language queries ("show me all walls on level 2")</li>
+<li>Context-aware filter chips auto-generated from loaded building's top IFC classes</li>
+<li>Help Tree: 6 expandable entries (Time Machine, Find, Section, Clash, Palette, Issues) with blue/red bar toggle</li>
 </ul>
 <h2 id="performance">Performance<a class="headerlink" href="#performance" title="Permanent link">&para;</a></h2>
 <p>Measured on a standard laptop (Intel i7, integrated GPU, Chrome):</p>
@@ -4493,8 +4618,15 @@
 <td>Proprietary</td>
 </tr>
 <tr>
+<td>IFC export from browser</td>
+<td><strong>Yes (STEP format)</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
 <td>Max elements (smooth)</td>
-<td><strong>122K</strong></td>
+<td><strong>125K</strong></td>
 <td>~50K (server tiles)</td>
 <td>~20K</td>
 <td>Server-rendered</td>
@@ -4526,6 +4658,34 @@
 <td>Separate (Navisworks)</td>
 <td>No</td>
 <td>Limited</td>
+</tr>
+<tr>
+<td>BOM extraction</td>
+<td><strong>Automatic from IFC</strong></td>
+<td>Manual</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Design interface (2D grids)</td>
+<td><strong>Doc Pill + AABBCC grid</strong></td>
+<td>Separate tools</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Voice search</td>
+<td><strong>Integrated (NLP + mic)</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Walk mode + GPS</td>
+<td><strong>Integrated</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
 </tr>
 <tr>
 <td>Cost</td>
@@ -4593,7 +4753,7 @@ WebGL → Screen
 <tr>
 <td>Rendering</td>
 <td>Three.js r160 ESM</td>
-<td>WebGL, BatchedMesh, InstancedMesh</td>
+<td>WebGL, BatchedMesh, InstancedMesh, PBR</td>
 </tr>
 <tr>
 <td>Database</td>
@@ -4621,15 +4781,40 @@ WebGL → Screen
 <td>Cinematic colour grading</td>
 </tr>
 <tr>
-<td>Export</td>
+<td>Export (Excel)</td>
 <td>SheetJS</td>
-<td>Excel BOQ export</td>
+<td>4D schedule + 5D BOQ multi-sheet workbooks</td>
+</tr>
+<tr>
+<td>Export (IFC)</td>
+<td>Custom STEP writer</td>
+<td>IFC STEP/ISO-10303-21 generation from SQLite</td>
+</tr>
+<tr>
+<td>Voice</td>
+<td>Web Speech API</td>
+<td>NLP voice commands + Find search</td>
+</tr>
+<tr>
+<td>Location</td>
+<td>Geolocation + DeviceOrientation</td>
+<td>Walk mode GPS + accelerometer</td>
+</tr>
+<tr>
+<td>Share</td>
+<td>Web Share API + Canvas</td>
+<td>Native share sheet + preview snapshot</td>
+</tr>
+<tr>
+<td>ERP</td>
+<td>iDempiere AD + sql.js</td>
+<td>Application Dictionary renderer in browser</td>
 </tr>
 </tbody>
 </table>
 <p>All open-source dependencies. No proprietary components.</p>
 <h2 id="catalogue">Catalogue<a class="headerlink" href="#catalogue" title="Permanent link">&para;</a></h2>
-<p>20 buildings from public IFC test files, ranging from a 218-element sample house to a 122,330-element university campus (LTU A-House, Sweden). Includes residential, commercial, hospital, airport terminal, and federated MEP models.</p>
+<p>30 buildings from public IFC test files, ranging from a 65-element sample house to a 125,698-element university campus (LTU A-House, Sweden). Includes residential, commercial, hospital, airport terminal, and federated MEP models.</p>
 <h2 id="contact">Contact<a class="headerlink" href="#contact" title="Permanent link">&para;</a></h2>
 <p>Open source. MIT licence.
 GitHub: <a href="https://github.com/red1oon/BIMCompiler">github.com/red1oon/BIMCompiler</a></p>
