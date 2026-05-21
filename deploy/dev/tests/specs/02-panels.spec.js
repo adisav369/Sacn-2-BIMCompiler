@@ -94,15 +94,15 @@ test.describe('Panels — Storey & Discipline', () => {
     await page.evaluate(() => window.togglePanel('storey-body'));
   });
 
-  test('2.7 HUD panel positions correct @fast', async ({ page }) => {
-    // Disc panel should be visible
-    const discVisible = await visible(page, '#disc-panel');
-    const storeyVisible = await visible(page, '#storey-panel');
+  test('2.7 HUD accordion sections visible @fast', async ({ page }) => {
+    // S265 Phase 4: storey + disc are now accordion sections inside HUD
+    const storeySection = await visible(page, '#hud-storey-section');
+    const discSection = await visible(page, '#hud-disc-section');
 
-    console.log(`§PW_PANEL_POSITION disc=${discVisible} storey=${storeyVisible}`);
-    // Both panels should be visible after streaming
-    expect(discVisible).toBe(true);
-    expect(storeyVisible).toBe(true);
+    console.log(`§PW_HUD_ACCORDION storey=${storeySection} disc=${discSection}`);
+    // Both accordion sections should be visible inside HUD after streaming
+    expect(storeySection).toBe(true);
+    expect(discSection).toBe(true);
   });
 
 });

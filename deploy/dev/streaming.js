@@ -306,12 +306,10 @@ function setupStreaming(A) {
       r = parts[0]; g = parts[1]; b = parts[2];
       if (parts.length >= 4 && parts[3] < 1.0) a = parts[3];
     }
-    // §S265: Detect unassigned material — monochrome (R≈G≈B, spread < 8%).
-    // Replace with standard reference material for that IFC class.
-    var _spread = Math.max(r, g, b) - Math.min(r, g, b);
-    var isUnassigned = _spread < 0.08;
+    // §S265c: Trust IFC data. Only NULL (no color assigned) gets class fallback.
+    // For grey buildings (Terminal/LTU), user applies Sunglasses slider on demand.
     var stdMat = (ifcClass && STD_MAT[ifcClass]) ? STD_MAT[ifcClass] : null;
-    if (isUnassigned && stdMat) {
+    if (!rgbaStr && stdMat) {
       r = stdMat.r; g = stdMat.g; b = stdMat.b;
     }
     // §S260d: Gentler near-white taming — let ACES tone mapping handle the rest

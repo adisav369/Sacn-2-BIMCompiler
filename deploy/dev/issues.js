@@ -249,6 +249,8 @@ function setupIssues(A) {
     } else {
       panel.classList.add('active');
       if (toolbar) toolbar.style.display = 'none';
+      // S265 Phase 4: make issues panel draggable (once)
+      if (!panel._draggableWired && A._makeDraggable) { A._makeDraggable(panel); panel._draggableWired = true; }
       A._renderIssueList();
       if (A._cacheIssuesForExport) A._cacheIssuesForExport();
     }

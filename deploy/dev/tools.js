@@ -72,6 +72,7 @@ function setupTools(A) {
       obj.material.wireframe = A.wireOn;
       obj.material.needsUpdate = true;
     });
+    if (A.markDirty) A.markDirty();
   };
 
   // X-Ray
@@ -105,6 +106,7 @@ function setupTools(A) {
       mat.needsUpdate = true;
     });
     console.log(`[S200] §XRAY ${A.xrayOn ? 'ON' : 'OFF'}`);
+    if (A.markDirty) A.markDirty();
   };
 
   // Section Cut
@@ -134,6 +136,7 @@ function setupTools(A) {
       console.log('[S205] §SECTION OFF');
       if (A.onSectionOff) A.onSectionOff();
     }
+    if (A.markDirty) A.markDirty();
   };
 
   A.setSectionAxis = function(axis) {
@@ -181,6 +184,7 @@ function setupTools(A) {
     A.sectionPlane.constant = v;
     document.getElementById('section-val').textContent = v.toFixed(1) + ' m';
     if (A.onSectionSliderChange) A.onSectionSliderChange(v);
+    if (A.markDirty) A.markDirty();
   };
 
   // 4D/5D Export
@@ -244,7 +248,7 @@ function setupTools(A) {
     document.body.style.color = textColor;
     A.renderer.setClearColor(bg);
     if (!A._whiteBg) A.ground.material.color.setHex(A.lightTheme ? 0xdddddd : 0x222233);
-    document.querySelectorAll('#hud,#search-box,#icon-pill,#info-panel,#storey-panel,#disc-panel,#status').forEach(el => {
+    document.querySelectorAll('#hud,#search-box,#icon-pill,#info-panel,#status').forEach(el => {
       el.style.background = panelBg;
       el.style.borderColor = A.lightTheme ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.08)';
     });

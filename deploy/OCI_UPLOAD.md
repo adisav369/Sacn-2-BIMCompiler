@@ -326,3 +326,48 @@ oci os object put --bucket-name bim-ootb-live \
 ```
 
 Bump `CACHE_VERSION` in `sw.js` on every deploy.
+
+## GitHub Pages Mirror (`ootb-dev`)
+
+**URL:** `https://red1oon.github.io/ootb-dev/`
+
+Short-URL alternative to OCI dev bucket. Serves viewer HTML/JS only — building DBs
+remain on OCI `bim-ootb` bucket (fetched via absolute OCI URLs in `_prodBase`).
+
+**Repo:** `github.com/red1oon/ootb-dev` (public, MIT)
+
+**Structure:**
+```
+index.html              ← landing page (copy of deploy/dev/landing.html)
+sandbox/index.html      ← viewer
+sandbox/*.js            ← all viewer JS modules
+sandbox/lib/            ← Three.js, sql-wasm, etc.
+sandbox/locales/        ← 18 locale translations
+sandbox/rates/          ← 17 country rate templates
+```
+
+**No `.db` files.** Buildings load from OCI `bim-ootb` bucket via `_prodBase` URL.
+
+**Deploy:**
+```bash
+# From /tmp/ootb-dev (or wherever the repo is cloned):
+rsync -av --exclude='*.db' --exclude='*.bin' --exclude='*.log' \
+  --exclude='test-results/' --exclude='buildings/' --exclude='tests/' \
+  deploy/dev/ /tmp/ootb-dev/
+cp deploy/dev/landing.html /tmp/ootb-dev/index.html
+rsync -av --exclude='*.db' --exclude='*.bin' --exclude='*.log' \
+  --exclude='buildings/' deploy/dev/ /tmp/ootb-dev/sandbox/
+cd /tmp/ootb-dev && git add -A && git commit -m "[SXXX] sync" && git push
+```
+
+**Advantages over OCI dev bucket:**
+- Short URL (no `objectstorage.ap-kulai-2...` path)
+- Global Fastly CDN (vs single OCI region)
+- No MIME type flags needed (GitHub infers correctly)
+- No idle-reclaim risk
+- Deploys via `git push`
+
+**Limitations:**
+- 1GB repo size soft limit (currently ~50MB, no DBs)
+- No server-side headers control (but not needed for static viewer)
+- GitHub Pages rate-limits at ~100GB/month bandwidth
