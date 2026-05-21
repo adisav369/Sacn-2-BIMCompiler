@@ -57,6 +57,32 @@ A new building can be designed by:
 
 ---
 
+## 2b. How Others Do It — And Why This Is Different
+
+| Platform | Approach | Starting Point | Constraint System | Server Dependency | File Size | Round-Trip Fidelity |
+|---|---|---|---|---|---|---|
+| **Revit** (Autodesk) | Parametric families. Each element is a constraint-bound parametric object. Design by placing families and setting parameters. | Blank template or company template | Full constraint solver — dimensional, geometric, relational. Edits propagate through constraint graph. | Standalone desktop (60GB install). Cloud for collaboration (BIM 360/ACC). | `.rvt` binary, typically 50–500MB | One-way: Revit → IFC export. IFC → Revit import loses parametric data. No verified round-trip. |
+| **ArchiCAD** (Graphisoft) | Object-based with GDL scripting. Elements are parametric GDL objects placed in a virtual building model. | Template with pre-configured GDL libraries | GDL parameter constraints + hotlinked modules. Less rigid than Revit — more manual coordination. | Desktop (15GB install). BIMcloud for teamwork. | `.pln` binary, 20–200MB | IFC export/import with known data loss on complex geometry. |
+| **Grasshopper/Rhino** (McNeel) | Visual scripting. Design as a node graph of parametric operations. Every dimension is a slider or formula. | Empty canvas. User builds from zero. | No built-in constraints — the script IS the constraint. User must encode all rules as nodes. Powerful but requires programmer-designer. | Desktop (2GB install). No server needed. | `.gh` + `.3dm`, typically 1–50MB | No IFC native. Plugin-based export. No round-trip. |
+| **IFC.js / That Open Company** | IFC fragment viewer + editor. Loads IFC geometry, allows selection/modification in browser. | Existing IFC file loaded via fragments | No constraint system. Manual element placement. Geometry editing is direct mesh manipulation. | Server recommended for large files. WASM for geometry parsing. | Streams IFC fragments, variable size | Reads IFC. Writes modified IFC. No BOM or grammar concept. |
+| **Speckle** | Data transport layer. Moves geometry between apps. Not a modeller itself. | Data from another tool (Revit, Rhino, etc.) | None — passes through whatever constraints the source app had | Cloud server required (speckle.xyz or self-hosted) | JSON stream, variable | Converts between formats. Schema translation, not verification. |
+| **BlenderBIM** (IfcOpenShell) | IFC-native modelling in Blender. Elements are IFC entities from the start. | Blank IFC project or imported IFC | Blender's general 3D constraints. IFC-aware but not parametric-BIM-aware. | Desktop (Blender, 300MB + add-on) | `.ifc` directly, 1–100MB | Best IFC fidelity of any open tool. But no BOM concept, no grammar extraction. |
+| **BIM OOTB (this)** | Grammar extraction from reference building. Design by grid drag, not element placement. Construction replay as design preview. | **An existing building you trust** — its grammar IS your starting point | Parent-child axis binding. 1D interval collision. UBBL constants. No constraint solver — the BOM tree IS the constraint graph. | **None. Browser tab. Zero install.** | SQLite DB, 5–50MB. Event log < 50KB. | **Rosetta Stone verified.** The grammar was proven by round-trip compilation of 21 buildings through 9 gates. The user verifies the grid. The system records the verification. |
+
+**Key differences:**
+
+1. **No blank canvas.** Every other tool starts from nothing or a template. This starts from a real building's extracted grammar. The reference building has already been verified — its proportions, storey heights, structural cadence, and MEP densities are proven facts, not assumptions.
+
+2. **No constraint solver.** Revit and ArchiCAD spend enormous engineering effort on parametric constraint propagation. This approach doesn't need it because the BOM tree already encodes the spatial relationships. A wall belongs to a grid line. An opening belongs to a wall. The parent-child relationship IS the constraint. No solver required — just axis binding and interval collision.
+
+3. **No server.** Every commercial BIM tool requires either a desktop install (gigabytes) or a cloud server. This runs in a browser tab with sql.js (SQLite in WASM) and Three.js. The entire design session is a 50KB event log. The building database is cached in IndexedDB.
+
+4. **Verified round-trip.** No other tool can prove that its output matches its input through systematic gates. The Rosetta Stone verification — 21 buildings, 9 gates, 77 verbs — is unique to this approach. The grammar extraction is not a guess; it's a proven decomposition.
+
+5. **Human-in-the-loop calibration.** Other tools trust their constraint solvers. This trusts the user's eyes. The Rosetta Stone icon puts the grid in calibration mode — the user drags lines to where they actually belong, and the system records the correction as verified truth. The algorithm proposes; the human confirms.
+
+---
+
 ## 3. Architecture — Layered, Not Merged
 
 ```
@@ -225,17 +251,29 @@ As **Next** is pressed and elements appear, the grid **refines itself**:
 
 The user sees the grid grow from simple to detailed, matching the construction sequence. The grid is never more detailed than the elements that justify it.
 
-### 6.5 Grid Verification — User-Corrected, Rosetta-Recorded (applies after elements appear)
+### 6.5 Rosetta Stone — The User IS the Verification Gate
 
-The auto-detected grid lines (from column cadence) may not be perfectly placed. The user can **freeform drag grid lines to correct positions** — a temporal override that says "the line should be here, not where the algorithm put it."
+The Rosetta Stone icon (bottom of Doc pill) toggles **calibration mode**. This is distinct from normal grid drag:
 
-When the user confirms the line is at the right spot:
-1. The grid **snaps** and locks at the user-verified position
-2. The correction is recorded in **Rosetta Stone manner** — the delta between auto-detected and user-verified position is logged as a calibration fact
-3. Future grid detections on the same building type can reference this calibration
-4. The verified grid becomes the authoritative structural skeleton for all subsequent operations
+| Mode | Purpose | Visual | Log entry | Geometry moves? |
+|---|---|---|---|---|
+| **Normal drag** | Design — change proportions | Red grid lines | `GRID_MOVE` kernel_op | Yes — walls, slabs follow |
+| **Rosetta drag** | Calibration — teach correct positions | **Gold grid lines** | `GRID_CALIBRATE` kernel_op | No — only the grid line moves |
 
-This matters because the Java BOM compiler's Rosetta Stone gates verified that placement replayed correctly — the same verification principle applies here. The grid IS the placement skeleton. Getting it right is the foundation. The user is the final authority on where structural lines actually fall.
+**Why this matters:** The algorithm detects grid lines from column positions, but only human eyes can confirm where the structural grid actually falls. The Java BOM compiler's Rosetta Stone gates verified that compiled placement matched the original IFC. Here, the same principle inverts:
+
+- **Old (Java):** machine compiles → machine verifies against original
+- **New (browser):** machine detects grid → **human verifies by dragging** → machine records the correction
+
+When the user drags a grid line in Rosetta mode:
+1. The line turns gold — signaling "you're teaching, not designing"
+2. The user drags it to the correct position
+3. Release = **snap** — the line locks at the user-verified position
+4. The correction is recorded: `{axis, label, detected: 4.50, corrected: 4.72, delta: 0.22}`
+5. The corrected grid becomes the authoritative skeleton for all subsequent design work
+6. Future buildings of the same type can reference these calibrations as hints
+
+The user's drag IS the gate pass. The snap IS the witness. The Rosetta Stone icon activates the mode where human eyes replace algorithmic verification.
 
 ### 6.6 Grid Drag → Geometry Response → UBBL Validate (applies after elements appear)
 
