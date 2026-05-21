@@ -65,69 +65,126 @@ No other coupling. The modeler lives in a single new module (`new_from_ref.js`) 
 
 ---
 
-## 4. The "New" Pill — UX Flow
+## 4. The Doc Pill (Red Pill) — UX Flow
 
 ### 4.1 Entry
 
-User selects a catalog item (reference building) and taps **New**. A new **context pill** appears in the toolbar — the "New" pill — joining the existing pills (Storey, Discipline, etc.).
+The **Red Pill** icon (capsule image) replaces the Time Machine clock in the main icon-pill (position 1, right edge). Tapping it swaps the entire pill to **Doc mode** — a red-glass background with white icons.
 
-### 4.2 Initial State
+### 4.2 Doc Pill Icons (implemented)
 
-The New pill activates with the **2D grid visible by default**:
+| # | Icon | ID | Role |
+|---|------|----|------|
+| 1 | Home | `doc-home-btn` | Return to main pill (viewer mode) |
+| 2 | Grid (`#`) | `doc-grid-btn` | 2D grid + lengths + AABBCC bubbles (single toggle, all-or-nothing) |
+| 3 | Clock (TM) | `doc-tm-btn` | Time Machine replay — full TM panel |
+| 4 | Next (`›`) | `doc-next-btn` | Advance one construction phase (separate from TM) |
+| 5 | Folder (Open) | `doc-open-btn` | Load saved design event log from IndexedDB |
+| 6 | Disk (Save) | `doc-save-btn` | Materialize — write event log to building's IndexedDB entry |
+| 7 | UBBL (TBD) | `doc-ubbl-btn` | Compliance check — run all UBBL rules on moved items, mark clashes |
 
-- **XYZ grid lines** derived from the reference building's structural grid (`GridDims.detectGrids()`)
-- **Bay lengths displayed** on each span (e.g., `A–B: 6.000 m`, `B–C: 4.500 m`) — same format as the existing grid overlay measurements panel
-- **AABBCC grid markings** — lettered/numbered bubble labels at grid intersections, identifying each grid line for drag adjustment
-- **Ghost envelope** — a translucent wireframe showing the reference building's bounding volume
+**Lengths and Envelope are NOT separate toggles.** Grid ON shows everything (lines, bubbles, lengths, envelope). Grid OFF shows only materialized meshes. One toggle, no clutter.
 
-This is the design canvas. The user sees the reference building's proportional skeleton, not its full geometry.
+### 4.3 Default State — Auto "New Doc"
 
-### 4.3 Toggle States (New Pill Toolbar)
+When the user taps the Red Pill:
+1. Check IndexedDB — does the current building have a saved design event log?
+2. **No saved design** → canvas clears, shows only the **building envelope** (ghost wireframe from the BOM root's AABB). This is "New doc" state — a blank canvas with the proportional skeleton.
+3. **Has saved design** → auto-resume from the event log. Canvas shows envelope + materialized elements.
 
-The New pill toolbar provides three visibility toggles:
+There is no separate "New doc" button. Entering Doc mode IS "New doc" when no saved work exists.
 
-| Toggle | ON | OFF |
-|---|---|---|
-| **2D Grid** | Grid lines + AABBCC bubbles + bay lengths visible. Drag-to-adjust enabled. | Grid hidden. Only envelope or materialized meshes visible. |
-| **Lengths** | Bay span dimensions shown on each grid interval | Dimensions hidden — cleaner view for spatial judgement |
-| **Envelope** | Ghost wireframe of reference building's bounding volume | Envelope hidden — user sees only the grid or materialized elements |
+### 4.4 Edit-Time vs UBBL-Time
 
-**Key rule:** AABBCC grid markings and drag handles are ONLY visible when the 2D Grid toggle is ON. Turning the grid off leaves only the envelope and/or materialized (done) meshes — a clean visualization for presentation or review. Turning the grid back on restores the AABBCC markings and re-enables drag adjustment.
+**During editing:** lightweight checks only. Door drags along its wall axis, stays on floor, avoids windows. Items can be deleted. No heavy rule evaluation — the constraint is purely parent-child axis binding + sibling collision (1D interval overlap).
 
-### 4.4 The "Save" Gate
+**When UBBL is pressed:** all UBBL/compliance rules run against recently moved items. Violations marked as clashes with option to auto-correct (snap to compliant position). UBBL rules are standard constants (`ubbl_rules.json`), not learned per building — clearance is clearance.
+
+### 4.5 The "Save" Gate
 
 Dragging grid lines adjusts bay proportions. Each drag is a `GRID_MOVE` command logged to `kernel_ops`. The user sees the result live — lengths update, envelope reshapes.
 
-**Save** materializes the current grid state + all logged commands into `NewIFC.db`. Before Save, the design is an event log. After Save, it is a queryable database with geometry BLOBs, element_transforms, and elements_meta — identical schema to any extracted IFC.db.
+**Save** writes the event log into the current building's IndexedDB entry. The materialized geometry is regenerable from grammar + event log — only the event log is persisted. No separate `NewIFC.db` file.
 
 ---
 
-## 5. Grammar Extraction — What "New" Learns From the Reference
+## 5. JS BOM Extraction — Browser-Side, Not Java
 
-### 5.1 BOM Abstract Sets
+### 5.1 Why JS, Not Java
 
-The reference building's BOM is not copied — it is **abstracted** into ratios and rules:
+The Java BIM Compiler's BOM pipeline (BOMWalker, verb expansion, factorization, component_library.db, output.db) was built for multi-building ERP compilation. The browser needs none of that. One building in context, one BOM, extracted on the fly from `elements_meta`.
 
-| Abstract Set | What It Captures | Example |
+| Java BOM | JS BOM (new) |
+|---|---|
+| Multi-building library | Single building in context |
+| component_library.db + BOM.db + output.db | One building.db, BOM cached as JSON in IndexedDB |
+| BOMWalker + verb expansion + factorization | Group-by tree from elements_meta |
+| Recipe lines with tack offsets | Element positions already world-space |
+| Compile step required | Extract on Red Pill entry, instant |
+
+### 5.2 What JS Extracts From elements_meta
+
+The building.db already has `elements_meta` with: `ifc_class`, `storey`, `guid`, `width_mm`, `depth_mm`, `height_mm`, centroid XYZ, `discipline`, `material_name`. That's enough to derive:
+
+| Abstract Set | Source | Example |
 |---|---|---|
-| **Bay proportions** | Ratio of structural bay widths along each axis | `[1.0, 0.75, 1.0, 0.75]` (alternating wide/narrow) |
-| **Storey heights** | Floor-to-floor heights for each level | `[3.6, 3.2, 3.2, 3.0]` (taller ground floor) |
-| **Wall/window ratio** | Percentage of external wall area occupied by openings per facade orientation | `N: 0.25, S: 0.40, E: 0.15, W: 0.15` |
-| **MEP density** | Service elements per square metre per discipline per storey | `HVAC: 0.3/m², Elec: 0.5/m², Plumb: 0.1/m²` |
-| **Structural cadence** | Column/wall placement rule relative to grid intersections | `column_at_every_intersection` or `wall_on_perimeter_only` |
-| **BOM depth** | Number of hierarchical levels in the reference BOM | `building → storey → zone → element → leaf` |
+| **BOM tree** | Group-by: building → storey → discipline → ifc_class → elements | Hierarchy, not recipe |
+| **Bay proportions** | Column/wall positions per storey (`GridDims.detectGrids()`) | `[1.0, 0.75, 1.0, 0.75]` |
+| **Storey heights** | Z deltas between storeys (already in storey filter data) | `[3.6, 3.2, 3.2, 3.0]` |
+| **Envelope** | Min/max AABB of all elements | 60×72×22m |
+| **Structural cadence** | Column placement pattern relative to grid intersections | `column_at_every_intersection` |
+| **Element counts** | Count per ifc_class per storey per discipline | Density numbers |
 
-These abstract sets are **cached** after first extraction. They are JSON — bytes, not megabytes.
+No verb expansion, no factorization, no TILE/ROUTE/FRAME. The browser extractor reads what's there and groups it.
 
-### 5.2 Grammar, Not Clone
+### 5.3 STD_MEP — Default MEP for Small Buildings
 
-The grammar is the proportional skeleton of the building — not the building itself. Two buildings with the same grammar but different grid drags produce different designs. The grammar provides intelligent defaults; the user provides the variation.
+Small buildings (houses, small commercial) often have no extracted MEP discipline data. A default template provides standard services:
 
-This is analogous to how a protein template provides the fold topology while the specific amino acid substitutions determine binding affinity. The fold is the grammar. The substitutions are the grid drags.
+- Standard bathroom plumbing per room type
+- Standard electrical points per room area
+- Standard fire points per floor area
+
+Stored as `STD_MEP` JSON lookup (same pattern as `STD_MAT` for materials). The building's own extracted MEP overrides the template only when it exists.
+
+### 5.4 Grammar, Not Clone
+
+The grammar is the proportional skeleton — not the building itself. Two buildings with the same grammar but different grid drags produce different designs. The grammar provides intelligent defaults; the user provides the variation.
 
 ---
 
-## 6. 4D Replay — Construction as Design Preview
+## 6. Constrained Drag + UBBL Compliance
+
+### 6.1 Parent-Child Axis Binding
+
+Every draggable child knows its parent and locked axis. The BOM tree IS the constraint graph:
+
+- **Wall owns Opening** → Opening slides along wall's length axis only
+- **Opening cannot exceed wall width** → clamped to `[0, wall_length - opening_width]`
+- **Siblings don't overlap** → 1D interval collision check among children of same parent
+
+Same pattern for MEP runs along corridors — pipe slides along its route axis.
+
+### 6.2 Edit-Time Checks (Lightweight)
+
+During editing, only parent-child constraints are enforced:
+- Door drags along wall, stays on floor, avoids windows
+- Items can be deleted freely
+- No heavy rule evaluation — just axis lock + sibling collision
+
+### 6.3 UBBL Button (Full Compliance)
+
+When the UBBL icon is pressed, all rules run against recently moved items:
+- Door min width (900mm), corridor min width, fire escape distances
+- Stairwell clearances, accessibility compliance
+- Violations marked as clashes (same red highlight as existing clash detection)
+- **Auto-correct option** — snap violating elements to nearest compliant position
+
+UBBL rules are **standard constants** stored in `ubbl_rules.json` (or embedded in existing `clash_rules.json`). Clearance is clearance — not learned per building.
+
+---
+
+## 7. 4D Replay — Construction as Design Preview
 
 ### 6.1 The Replay Loop
 
@@ -143,7 +200,7 @@ for each constructionStep in ganttTimeline:
 
 The replay uses the **current grid state** (after any drags) — not the original positions. This means dragging grid line B from 6.0m to 7.5m and then resuming replay shows walls, windows, and MEP at the adjusted proportions.
 
-### 6.2 Replay as Validation
+### 7.2 Replay as Validation
 
 The replay is not decoration. It is the user's primary validation tool:
 
@@ -153,13 +210,13 @@ The replay is not decoration. It is the user's primary validation tool:
 
 ---
 
-## 7. The No-Clone Data Architecture
+## 8. The No-Clone Data Architecture
 
-### 7.1 Immutable Reference
+### 8.1 Immutable Reference
 
 `IFC.db` (the reference building) is read-only. It lives in IndexedDB exactly as extracted. The modeler never writes to it.
 
-### 7.2 Event Log as Primary Storage
+### 8.2 Event Log as Primary Storage
 
 Every user action is a JSON command in `kernel_ops`:
 
@@ -171,13 +228,13 @@ Every user action is a JSON command in `kernel_ops`:
 
 The event log is tiny — kilobytes for a full design session. Undo is replay-to-previous. Redo is replay-to-next. The infrastructure for this already exists in `kernel_ops.js`.
 
-### 7.3 Materialized View = NewIFC.db
+### 8.3 Materialized View = NewIFC.db
 
 `NewIFC.db` is generated from: `grammar(IFC.db) + event_log → NewIFC.db`
 
 It can be deleted and regenerated at any time. It is a cache, not a source. The schema is identical to any extracted IFC.db — meaning the existing streaming viewer, clash detection, cost panel, and ERP layer all work on `NewIFC.db` without modification.
 
-### 7.4 No Duplication
+### 8.4 No Duplication
 
 | What | Stored Where | Size |
 |---|---|---|
@@ -190,7 +247,7 @@ The design itself — the user's creative contribution — is the event log. Und
 
 ---
 
-## 8. Command Vocabulary
+## 9. Command Vocabulary
 
 The modeler needs a small, fixed set of commands. Each is a `kernel_ops` op type:
 
@@ -212,7 +269,7 @@ This is not extensible by design. A fixed vocabulary prevents feature creep and 
 
 ---
 
-## 9. What Changes vs. What Is Reused
+## 10. What Changes vs. What Is Reused
 
 ### Reused (zero changes)
 
@@ -242,7 +299,7 @@ This is not extensible by design. A fixed vocabulary prevents feature creep and 
 
 ---
 
-## 10. Share Integration
+## 11. Share Integration
 
 The event log is small enough to encode in a URL hash. A shared "New" design is:
 
@@ -254,7 +311,7 @@ The receiver loads the reference building from the catalog, applies the event lo
 
 ---
 
-## 11. Sequence — What to Build When
+## 12. Sequence — What to Build When
 
 ### Phase 1: Grid Seeding (the "New" produces a 2D grid)
 
@@ -294,7 +351,7 @@ The receiver loads the reference building from the catalog, applies the event lo
 
 ---
 
-## 12. What This Is Not
+## 13. What This Is Not
 
 - **Not a parametric modeller.** There is no constraint solver, no parametric family system. The grammar provides defaults; the user overrides them by dragging grid lines. The commands are explicit, not computed.
 
@@ -306,7 +363,7 @@ The receiver loads the reference building from the catalog, applies the event lo
 
 ---
 
-## 13. The Protein Analogy (Revisited)
+## 14. The Protein Analogy (Revisited)
 
 The Spatial Compilation Paper draws a structural analogy between BOM compilation and protein folding. The "New From Reference" workflow extends that analogy:
 
@@ -322,9 +379,25 @@ The difference: AlphaFold is stochastic. This is deterministic. Same event log �
 
 ---
 
-## 14. Success Criteria
+## 15. Deferred: Save/Open + Drop DB
 
-The "New" feature is done when:
+### 15.1 Save/Open — IndexedDB, Not Separate Files
+
+Design event logs are stored in the same IndexedDB entry as the building they derive from. No separate `NewIFC.db` file — the event log lives alongside the extracted data. Save writes the `kernel_ops` event log into the building's DB. Open resumes from it. Multiple named designs per building = multiple named event logs in the same DB.
+
+**Save As** (from the New card) creates a named snapshot of the current event log within the building's DB entry. The materialized geometry is regenerable — only the event log is persisted.
+
+**Save button** in the Doc pill also writes the current session's event log to IndexedDB, giving users who access buildings online a way to secure work on their own machine without requiring explicit file export.
+
+### 15.2 Drop DB — Accept .db Files Alongside IFC
+
+The existing Drop IFC zone must also accept `.db` files. A dropped `.db` is loaded directly into IndexedDB and opened in the viewer — same as if it had been extracted from IFC. This allows users to share materialized designs as `.db` files, or to reload previously exported databases without re-extraction.
+
+---
+
+## 16. Success Criteria
+
+The "New From Reference" feature is done when:
 
 1. **Grid seeding works** — New pill loads reference, displays AABBCC grid with correct bay lengths
 2. **Grid drag works in New context** — drags log to `kernel_ops`, lengths update live
