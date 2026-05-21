@@ -8,6 +8,30 @@
 
 ---
 
+## 0. How We Got Here
+
+The BIM Compiler began as a Java pipeline: IFC files in, SQLite databases out. Over 21 buildings and 9 verification gates, it proved that any IFC building can be decomposed into a BOM recipe (Bill of Materials — parent/child assemblies with quantities and spatial offsets), compiled back into placed elements, and verified to match the original via Rosetta Stone gates.
+
+That was the inverse path: **real building → grammar → verified reconstruction**.
+
+The forward path — **grammar → new design** — was always the goal but required several layers to be built first:
+
+- **BOM-Based Compilation** (Java) — the recipe model. Buildings as hierarchical assemblies: building → storey → discipline → element. Each level carries spatial offsets (dx/dy/dz) relative to its parent. The BOMWalker traverses, verb formulas (TILE, ROUTE, FRAME) expand type lines into placed instances. Rosetta Stone gates verify the round-trip.
+
+- **Browser Viewer** (S200+) — the delivery platform. Single HTML + SQLite + sql.js WASM + Three.js. No server. 30 buildings streaming from OCI object storage into IndexedDB. BatchedMesh rendering, DLOD culling, 4D Time Machine playback.
+
+- **2D Grid Overlay** (S240+) — structural grid detection from element positions. AABBCC grid lines, bubble labels, bay dimensions, drag-to-adjust with kernel_ops logging. This proved that grid manipulation works in the browser.
+
+- **Kernel Ops** (S250+) — the event log. Every user action recorded as a JSON command. Undo/redo by replay. The infrastructure for deterministic, reproducible design sessions.
+
+- **Clash Detection + UBBL** — rule-based spatial validation. Proximity checks, clearance rules, clash highlighting. The validation layer that confirms a design change is compliant.
+
+Each layer was built independently and verified in isolation. "New From Reference" wires them together into a single workflow.
+
+**Technology stack:** Plain JavaScript (no frameworks, no build tools), sql.js (SQLite in WASM), Three.js r160 (ESM, BatchedMesh), IndexedDB for persistence, Service Worker for offline. The entire designer runs in a browser tab with zero server dependency. The Java compiler's BOM extraction is now ported to JS — one function, one query, one pass — producing the same grammar that took 13 Java classes to build, because the browser only needs one building at a time.
+
+---
+
 ## 1. The Problem
 
 Every BIM modeller starts from either a blank canvas (Revit template) or a parametric script (Grasshopper definition). Both require the designer to specify every dimension from scratch. Neither reuses the spatial intelligence already embedded in real buildings.
