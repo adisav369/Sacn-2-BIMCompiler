@@ -182,7 +182,26 @@ When the UBBL icon is pressed, all rules run against recently moved items:
 
 UBBL rules are **standard constants** stored in `ubbl_rules.json` (or embedded in existing `clash_rules.json`). Clearance is clearance — not learned per building.
 
-### 6.4 Grid Verification — User-Corrected, Rosetta-Recorded
+### 6.4 Grid Progression — Envelope First, Detail Later
+
+The 2D grid starts from the **highest BOM parent only** — the building envelope AABB. At step zero:
+
+- **2 X-lines** (A, B) at envelope minX and maxX → one span = total width
+- **2 Z-lines** (1, 2) at envelope minZ and maxZ → one span = total depth
+- **Bubbles** A, B and 1, 2 at line ends
+- **Span dimensions** showing full width and full depth
+
+This is the simplest possible grid — just the bounding rectangle of the whole building. No column cadence, no subdivision, no internal structure.
+
+As **Next** is pressed and elements appear, the grid **refines itself**:
+- Floor slab appears → storey height added to grid
+- Structural columns appear → grid lines split at column positions (A subdivides into A, A', A'' etc.)
+- Walls appear → grid lines align to wall centerlines
+- Each refinement is a new grid state recorded in kernel_ops
+
+The user sees the grid grow from simple to detailed, matching the construction sequence. The grid is never more detailed than the elements that justify it.
+
+### 6.5 Grid Verification — User-Corrected, Rosetta-Recorded (applies after elements appear)
 
 The auto-detected grid lines (from column cadence) may not be perfectly placed. The user can **freeform drag grid lines to correct positions** — a temporal override that says "the line should be here, not where the algorithm put it."
 
@@ -194,7 +213,7 @@ When the user confirms the line is at the right spot:
 
 This matters because the Java BOM compiler's Rosetta Stone gates verified that placement replayed correctly — the same verification principle applies here. The grid IS the placement skeleton. Getting it right is the foundation. The user is the final authority on where structural lines actually fall.
 
-### 6.5 Grid Drag → Geometry Response → UBBL Validate
+### 6.6 Grid Drag → Geometry Response → UBBL Validate (applies after elements appear)
 
 The core POC cycle:
 1. **Next** → elements appear phase by phase (slab first, then walls, then openings)
