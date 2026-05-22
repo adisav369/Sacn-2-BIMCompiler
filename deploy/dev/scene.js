@@ -9,9 +9,15 @@ function setupScene(A) {
   A.canvas = canvas;
 
   // §S258: ColorManagement.enabled=false set in loader.js (before any THREE.Color created)
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+  // §S271: Mobile — disable antialias (4x MSAA fill cost), cap DPR at 1
+  var _isMobileRenderer = (navigator.maxTouchPoints > 0 && window.screen.width < 1024);
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: !_isMobileRenderer,
+    preserveDrawingBuffer: true
+  });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));  // §S259: cap at 2x — 3x Retina = 9x fill
+  renderer.setPixelRatio(_isMobileRenderer ? 1 : Math.min(window.devicePixelRatio, 2));  // §S271: mobile=1x, desktop=cap 2x
   renderer.setClearColor(0x1a1a2e);
   renderer.shadowMap.enabled = false;
   // §S260: shadow setup deferred entirely to toggleShadow() in tools.js
@@ -144,6 +150,27 @@ function setupScene(A) {
   A.guidMap = {};
   A.pointerDownPos = { x: 0, y: 0 };
 
+  // §S266: Recover from Chrome background-tab WebGL context kill (idle throttling)
+  // Don't auto-reload — user loses Red Pill / Doc context. Just show a banner to tap.
+  canvas.addEventListener('webglcontextlost', function(e) {
+    e.preventDefault();
+    console.log('§WEBGL_CONTEXT_LOST — tap banner to reload');
+    var banner = document.createElement('div');
+    banner.id = 'webgl-lost-banner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#cc0000;color:#fff;text-align:center;padding:14px;font-size:15px;font-weight:bold;cursor:pointer';
+    banner.textContent = '3D view lost (Chrome idle throttle) — tap here to reload';
+    banner.onclick = function() { location.reload(); };
+    document.body.appendChild(banner);
+  });
+  canvas.addEventListener('webglcontextrestored', function() {
+    var banner = document.getElementById('webgl-lost-banner');
+    if (banner) banner.remove();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.render(scene, camera);
+    if (A.markDirty) A.markDirty();
+    console.log('§WEBGL_CONTEXT_RESTORED');
+  });
+
   // Raycaster
   A.raycaster = new THREE.Raycaster();
   A.mouse = new THREE.Vector2();
@@ -271,6 +298,9 @@ function setupScene(A) {
     } else {
       console.warn('[S203] §CACHE_DB_OPEN_FAIL — IDB unavailable');
     }
+
+    // import:// URLs live only in IndexedDB — no network fallback
+    if (url.startsWith('import://')) throw new Error('DB not found in cache: ' + url);
 
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`Failed to fetch ${url}: ${resp.status}`);

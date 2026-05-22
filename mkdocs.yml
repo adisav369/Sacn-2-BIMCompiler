@@ -1,7 +1,7 @@
 site_name: BIM Intent Compiler
 site_description: Construction is manufacturing. A building IS its Bill of Materials.
 site_author: Redhuan D. Oon
-repo_url: https://github.com/red1oon/BIMCompiler
+repo_url: https://github.com/red1oon/bim-ootb
 
 theme:
   name: material
@@ -54,7 +54,7 @@ extra:
     # Dashboard: https://red1oon.goatcounter.com
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/red1oon/BIMCompiler
+      link: https://github.com/red1oon/bim-ootb
     - icon: fontawesome/brands/linkedin
       link: https://www.linkedin.com/in/red1oon/
 
@@ -90,6 +90,7 @@ nav:
 
   # ─── BIM Designer ─────────────────────────────────────
   - Designer:
+      - New From Reference: NEW_FROM_REFERENCE.md
       - Browser as Modeller: BIM_Modeller_OOTB.md
       - BIM OOTB (Browser): BIM_Designer_Browser.md
       - Clash Detection: CLASH_DETECTION.md

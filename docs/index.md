@@ -8,7 +8,7 @@ hide:
 
 **Construction = BOM + (x, y, z).** One formula that unifies geometry, procurement, scheduling, compliance, and cost — the way E=mc² unified mass and energy. Five domains that the industry treats as separate tools, separate vendors, separate budgets — unified in a formula an inch long.
 
-It reads a [BOM](BOMBasedCompilation.md) and produces verified 3D coordinates — the same way an [ERP system](MANIFESTO.md) explodes a manufacturing BOM into work orders. The output renders live in the [BIM OOTB browser viewer](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/index.html) — no install, no server, two DBs, one browser. [Domain-agnostic](ShipYard.md) — buildings, bridges, [ships](ShipYard.md), tunnels. Nothing invented. No AI inside. Pure arithmetic. Deterministic.
+It reads a [BOM](BOMBasedCompilation.md) and produces verified 3D coordinates — the same way an [ERP system](MANIFESTO.md) explodes a manufacturing BOM into work orders. The output renders live in the [BIM OOTB browser viewer](https://red1oon.github.io/bim-ootb/) — no install, no server, two DBs, one browser. [Domain-agnostic](ShipYard.md) — buildings, bridges, [ships](ShipYard.md), tunnels. Nothing invented. No AI inside. Pure arithmetic. Deterministic.
 
 <div style="max-width: 620px; margin: 32px auto; padding: 24px 40px; background: #263238; border-left: 4px solid #ff9800; text-align: center; border-radius: 4px;">
 <span style="font-size: 1.3em; line-height: 1.7; color: #eceff1; letter-spacing: 0.3px;">"What <b style="color: #ff9800;">AUTODESK</b>, <b style="color: #ff9800;">PRIMAVERA</b> and <b style="color: #ff9800;">SAP</b> should have done<br>together long ago — <i>but I couldn't wait.</i>"</span>

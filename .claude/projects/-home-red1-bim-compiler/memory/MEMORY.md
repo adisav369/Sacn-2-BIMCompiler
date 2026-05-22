@@ -58,10 +58,13 @@ Details belong in `docs/` specs and `prompts/`. Memory files are pointers. Do NO
 ## Project
 - [S266 New From Ref](project_s266_new_from_ref.md) — Red Pill Doc pill, JS BOM extractor, design canvas, Gantt stepper. POC: drag grid→mesh→UBBL
 - [S267 BOM Walker](project_s267_bom_walker.md) — 100% browser: port Java BOMWalker+expandVerb to JS, load BOM.db via sql.js, verb re-expansion on grid drag
+- [Grid Kinematics](project_grid_kinematics.md) — S270 DONE: engine 98/98 tests, ceiling grid, cascade model, 5 commits on `full`
+- [Repo migration](project_repo_migration.md) — sandbox/→viewer/ rename, S270 files must move with correct script order
 - [S260c Cinematic Drone](project_s260c_cinematic.md) — two-pass Gantt, IDB JSON cache, PBR-lite, outline+dust+sound, sw v359
 - [Card-first views](project_card_first_views.md) — next priority, persistent named view cards
 - [2D pick identity](project_2d_pick_identity.md) — UNPROVEN: click 2D items → show IFC name. Need separate responsibility + flatten furniture
 - [No artificial geometry](feedback_no_artificial_geometry.md) — no ribbon, no invented colors
+- [DB source of truth](feedback_db_source_of_truth.md) — deploy/buildings/ is canonical, OCI is copy, NEVER upload from backup
 - [Proven cutZ](feedback_proven_cutz.md) — floorZ+1.2 only, opening-avg and footprint-area regressed
 
 ## Community
