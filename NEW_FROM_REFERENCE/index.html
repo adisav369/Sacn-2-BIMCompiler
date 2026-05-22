@@ -2698,6 +2698,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#design-invariants-explicit-non-negotiable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Invariants (explicit, non-negotiable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-the-engine-does-not-do" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6270,6 +6281,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#design-invariants-explicit-non-negotiable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Invariants (explicit, non-negotiable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-the-engine-does-not-do" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -8102,6 +8124,11 @@ of the moved grid line's original position. If yes, this eave vertex is governed
 - Compute <code>t = (vertex.y - yMin) / yRange</code> (0 at eave, 1 at ridge)
 - <code>vertex.x += delta * (1 - t)</code> — linear interpolation: full delta at eave, zero at ridge</p>
 <p>Ridge vertices: <strong>unchanged</strong> (Y stays fixed, X stays fixed).</p>
+<p><strong>Invariant (must be stated explicitly):</strong> For any roof on a horizontal drag:
+all points on the eave line move with the grid. All points on the ridge line
+remain fixed in space. All points between (the roof plane) are interpolated
+linearly between the moved eave and the fixed ridge. This is the single rule
+that keeps the mesh watertight and changes only the slope angle.</p>
 <p>This naturally changes the slope angle:
 <div class="highlight"><pre><span></span><code>Before: rise = 1.73m, run = 7.42m → angle = 13.1°
 After (+2m): rise = 1.73m, run = 9.42m → angle = 10.4°
@@ -8291,6 +8318,36 @@ ridge at exactly the same height.</p>
 <p><strong>Mixed roof handling:</strong> Flat vertices (within 0.05m of the flat plateau Y)
 get full delta regardless of t, because their "slope" is zero. The plateau
 Y is detected as the mode (most frequent Y value) of the vertex set.</p>
+<h6 id="design-invariants-explicit-non-negotiable">Design Invariants (explicit, non-negotiable)<a class="headerlink" href="#design-invariants-explicit-non-negotiable" title="Permanent link">&para;</a></h6>
+<p><strong>1. Interpolation rule:</strong> For any roof on a horizontal drag: all points on
+the eave line move with the grid. All points on the ridge line remain fixed
+in space. All points between are interpolated linearly by height ratio
+<code>t = (y - yMin) / yRange</code>. This is the single rule that keeps the mesh
+watertight. No exceptions, no heuristics.</p>
+<p><strong>2. Persistence / kernel_ops:</strong> The engine is <strong>stateless</strong> regarding the
+kernel_ops log. It applies a given delta to the current element positions —
+nothing more. The parent module (<code>doc_canvas.js</code>) is responsible for
+replaying <code>GRID_MOVE</code> entries from the kernel_ops log on load to rebuild
+model state. The engine never reads or writes the log.</p>
+<p><strong>3. Unattached elements are ignored:</strong> Only elements in the attach map are
+modified by <code>dragGrid()</code>. Any element not attached to any grid line (interior
+furniture, MEP terminals, etc.) receives <strong>no command</strong>. These elements are
+either handled by the caller's bay-proportional pass (S269, which the engine
+does compute as TRANSLATE commands for interior elements within bay bounds)
+or deferred to the UBBL validation stage. The engine never moves an element
+it doesn't have a classified relationship for.</p>
+<p><strong>4. Return contract:</strong> <code>dragGrid(gridId, delta)</code> returns an array of
+command objects. Each command is a plain object with <code>guid</code>, <code>action</code>, and
+action-specific params. The caller applies these to Three.js. The engine
+never mutates external state — it is a pure function from
+<code>(currentPositions, delta) → commands</code>.</p>
+<p><strong>5. Performance:</strong> The attach map is pre-indexed by grid line ID.
+<code>dragGrid()</code> iterates only the elements attached to the moved grid line —
+<strong>O(K)</strong> where K is the attached count, not O(N) total elements. For
+bay-proportional interior elements, the engine scans unattached elements
+once per drag — O(M) where M is the interior count. Both K and M are
+typically &lt; 300 even on 48K-element buildings (Terminal). No spatial index
+beyond the attach map is needed at this scale.</p>
 <h6 id="what-the-engine-does-not-do">What the Engine Does NOT Do<a class="headerlink" href="#what-the-engine-does-not-do" title="Permanent link">&para;</a></h6>
 <ul>
 <li>Touch Three.js (<code>BufferGeometry</code>, <code>Matrix4</code>, <code>scene.traverse</code>)</li>
@@ -8298,8 +8355,6 @@ Y is detected as the mode (most frequent Y value) of the vertex set.</p>
 <li>Manage grid rendering (lines, bubbles, labels)</li>
 <li>Handle user interaction (drag events, click, keyboard)</li>
 <li>Tile recount, beam addition, route re-walk, UBBL validation</li>
-<li>Interior furniture proportional placement (S269 — stays in engine, but
-  as TRANSLATE commands, not a separate concern)</li>
 </ul>
 <h5 id="caller-contract-doc_canvasjs-changes">Caller Contract: <code>doc_canvas.js</code> Changes<a class="headerlink" href="#caller-contract-doc_canvasjs-changes" title="Permanent link">&para;</a></h5>
 <p><code>doc_canvas.js</code> shrinks. The recompose section becomes:</p>
