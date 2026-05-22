@@ -1,144 +1,129 @@
 # ⚠ DO NOT REMOVE — S270 Grid Kinematics Engine
-# Scope: Extract pure-math engine from doc_canvas.js, add roof vertex recomposition. Read the log after every run.
+# Scope: Pure-math grid recomposition engine. Read the log after every run.
 
 ## Activity Category
 geometry/BOM — read feedback files: deployment, pipeline, tack point, geometry extraction
 
-## Goal
-Implement `grid_kinematics.js` as a standalone pure-math module that owns ALL grid-drag recomposition.
-Then refactor `doc_canvas.js` to be a thin caller. Spec: `docs/NEW_FROM_REFERENCE.md` §17.10.2–§17.10.4.
+## What's DONE (commits 87a096b7 → 7ae0add9 on branch `full`)
 
-## Context — What Already Exists
+### Engine — `deploy/dev/grid_kinematics.js` (672 lines)
+- GridKinematicEngine class, IIFE dual-export (Node + browser)
+- 3-question attachment model: WHAT attached, HOW may it move, WHAT cascades
+- 8 relation types: ATTACH, SPAN, EDGE_RIGHT, EDGE_LEFT, ROOF_EAVE, ROOF_FLAT, ROOF_LIFT, INTERIOR
+- 4 command types: TRANSLATE, SCALE, ROOF_VERTICES, ROOF_LIFT
+- Cascade: WALL_HEIGHT_SCALE (walls grow when roof lifts via Y-axis grid)
+- Bay-proportional interior repositioning
+- 98/98 tests in `deploy/dev/tests/test_grid_kinematics.js`
 
-### S267 (done): BOM Walker + Verb Expansion
-- `verb_expand.js`: 7 verb expanders (TILE/ROUTE/FRAME/CLUSTER/SPRAY/LINE/LINE_MULTI)
-- `bom_walker.js`: BOM tree traversal via sql.js
-- `doc_canvas.js`: phases from BOM tree walk, grid envelope from BOM AABB
+### Caller — `doc_canvas.js` refactored
+- Thin caller: `_rebuildEngine` → `engine.dragGrid()` → `_applyCommand()`
+- `_collectElementData(A)` reads Three.js → plain objects for engine
+- `_collectGridLines()` includes CEIL Y-axis grid
+- `_applyCommand()` dispatches TRANSLATE/SCALE/ROOF_VERTICES/ROOF_LIFT
+- BatchedMesh `instanceMatrix` guard (r160 has no `.instanceMatrix`)
+- `_findRootBom` guarded with try/catch
+- Ceiling grid auto-placement at eave Y on Phase 3 (IfcRoof)
+- Grid/Rosetta status messages in status bar
+- `sw.js` precache includes `grid_kinematics.js`, CACHE_VERSION v438
 
-### S268+S269 (done): Attach-Map Recompose + Bay-Proportional
-- `doc_canvas.js` has `_buildAttachMap`, `_applyAxisDeltas`, `_applyBayProportional`
-- 5 relation types: ATTACH, SPAN, EDGE_RIGHT, EDGE_LEFT + INTERIOR (bay-proportional)
-- 63 tests in `test_s268_recompose.js` (Node.js, pure logic, duplicated from doc_canvas.js)
-- Edge-attach walls: direction-aware (grid moves away → stretch, into → translate)
-- **Problem: algorithm is duplicated** between doc_canvas.js (browser IIFE) and test file
+### Tests passing
+- `test_grid_kinematics.js`: 98/98
+- `test_doc_canvas.js`: 54/54
+- `test_s268_recompose.js`: 63/63
+- `test_grid_modules.js`: 114/114
+- `whitebox_regression.js`: 34/36 (2 pre-existing)
 
-### Sandbox verification
-- `/tmp/ootb-dev/sandbox/sandbox_recompose.js` — proven on SC_BOM.db (2990 entries)
-- `/tmp/ootb-dev/sandbox/sandbox_grid_attach.js` — realistic user-placed grid lines
+## KNOWN BUGS — Fix in next session
 
-## What This Session Must Deliver
-
-### 1. `deploy/dev/grid_kinematics.js` — The Engine
-
+### BUG-1: Incremental delta double-counting (CRITICAL)
+**Symptom:** Drag grid -6m, drag again -7m → elements move -13m instead of -7m total.
+Pullback (+3m) still moves further negative.
+**Root cause:** `recomposeAfterGridDrag()` computes **absolute delta from original**
+(`currentPos - originalPos = -8.0`) but `_translateMesh()` **adds incrementally** to
+the current mesh position. Second drag applies -8.0 on top of already-moved mesh.
+**Fix:** Track `_lastAppliedDeltas` per grid line. Pass only the **incremental** change
+`(newAbsoluteDelta - lastAppliedDelta)` to the engine. Reset on engine rebuild.
+**Log evidence:**
 ```
-Class: GridKinematicEngine
-
-Constructor(elementData, gridLines)
-  elementData: [{guid, x, z, bboxX, bboxZ, ifcClass, vertices?, scaleX?, scaleZ?}]
-  gridLines:   [{id, axis:'x'|'z', pos}]
-
-Methods:
-  attachGridToElements()  → builds internal attachMap (called once)
-  dragGrid(gridId, delta) → [{guid, action, axis, delta, ...}] (called per drag)
-  getAttachMap()          → returns attachMap for test inspection
+§RECOMPOSE_GRID id=1 delta=-4.401 commands=1085   ← drag 1: correct
+§RECOMPOSE_GRID id=1 delta=-11.344 commands=1085  ← drag 2: should be -6.9 incremental
+§RECOMPOSE_GRID id=1 delta=-8.033 commands=1085   ← pullback: should be +3.3 incremental
 ```
+**Test to add:** Drag +3, then drag +5 total → mesh at +5 not +8.
 
-#### Relations (from S268, proven)
-- ATTACH: centerline within 0.5m → TRANSLATE
-- EDGE_RIGHT: right edge within 0.1m → +delta=stretch, -delta=translate
-- EDGE_LEFT: left edge within 0.1m → +delta=translate, -delta=stretch
-- SPAN: grid inside body → SCALE (near/far edge)
-- INTERIOR: not attached, inside bay → proportional TRANSLATE
+### BUG-2: Grid should validate edge alignment before allowing transform
+**Symptom:** Grid line not at building edge still allows drag and transforms.
+**Expected:** Grid must be near actual element edges to have meaningful attachments.
+If attach map is empty for a grid line, status should say "no attached elements —
+place grid at wall/column first" and optionally block the drag.
+**Fix:** In `_deselectGrid` after drag, if engine returned 0 commands, warn user.
+Or: at grid select time, show attach count (already done via `_getGridAttachInfo`).
 
-#### Roof vertex computation (NEW, from §17.10.2)
-For IfcRoof elements with `vertices` (Float32Array):
-- Classify: yRange < 0.05 → flat, else sloped
-- Flat: edge vertices translate by delta (same as SCALE)
-- Sloped: `t = (vertex.y - yMin) / yRange`. Eave verts (t≈0) get full delta. Ridge (t≈1) gets zero.
-- Returns `{ action: 'ROOF_VERTICES', vertexDeltas: Float32Array }` — caller applies to BufferGeometry
+### BUG-3: Next button not aware of post-drag state
+**Symptom:** After dragging grid and transforming walls, pressing Next materializes
+new phase elements at their ORIGINAL positions (from DB), not accounting for grid moves.
+**Expected:** New elements should appear at positions consistent with the moved grid.
+**Fix:** On `_materializePhase`, if engine exists, run the new elements through
+`attachGridToElements` and apply any pending deltas. This is a Stage 2 concern
+(UBBL cascade adjusts newly-revealed elements) but a basic version could snap new
+elements to their bay-proportional positions immediately.
+**Scope:** Triage — could be deferred to UBBL Stage 2.
 
-#### Commands returned by dragGrid()
-```javascript
-{ guid, action: 'TRANSLATE', axis: 'x'|'z', delta: number }
-{ guid, action: 'SCALE', axis, newScale, translateDelta }
-{ guid, action: 'EDGE_STRETCH', axis, delta, edge: 'right'|'left' }
-{ guid, action: 'ROOF_VERTICES', axis, delta, vertexDeltas: Float32Array }
-{ guid, action: 'ROOF_LIFT', deltaY: number }
-```
+### BUG-4: SCALE commands not firing (all TRANSLATE)
+**Symptom:** Log shows `translated=1085 scaled=0` — every element translates, none scale.
+**Expected:** Walls spanning a grid line should SCALE (stretch), not translate.
+**Root cause:** `_collectElementData` reads `bbox_x/bbox_y/bbox_z` from DB, but the
+SC DB now has 3504 elements while `_getShownGuids()` returns phase GUIDs from BOM walk.
+Need to verify that bbox lookup matches the shown GUIDs. Possibly the bbox query
+returns rows keyed by a different GUID format.
+**Fix:** Add §-tagged log in `_collectElementData` showing element count, bbox match
+count, and sample bbox values. Then trace why no SPAN/EDGE relations form.
 
-#### Design Invariants (from DeepSeek review, non-negotiable)
-1. Eave moves with grid. Ridge fixed in space. Linear interpolation by height ratio.
-2. Engine is stateless re kernel_ops. Parent replays log on load.
-3. Only attach-map elements get commands. Others ignored (except INTERIOR bay-proportional).
-4. `dragGrid()` is pure: `(positions, delta) → commands`. Never mutates external state.
-5. O(K) per drag where K = attached count. Pre-indexed by grid ID.
+## What's Next — S270b (next session)
 
-### 2. `deploy/dev/tests/test_grid_kinematics.js` — Test Harness
+### Priority 1: Fix BUG-1 (incremental delta)
+This is a one-variable fix: track `_lastAppliedDeltas[gridId]` in `doc_canvas.js`.
+Compute `incrementalDelta = absoluteDelta - lastApplied`. Pass incremental to engine.
+Add test: drag +3, drag +5 total, verify mesh at +5.
 
-Port all 63 tests from `test_s268_recompose.js` to use the engine class. Add:
-- Sloped roof: 942-vertex SampleHouse roof, drag eave +2m, verify ridge Y unchanged
-- Flat roof: all vertices at same Y, drag edge, verify horizontal stretch
-- Mixed: flat center + sloped edges (synthetic), verify both handled
-- Adjacent walls share grid → no gap, no overlap (already proven, re-verify via engine)
-- Engine returns commands, never mutates input data (purity check)
+### Priority 2: Fix BUG-4 (all TRANSLATE, no SCALE)
+Debug with §-tagged logs. If bbox data is missing or zero for all elements,
+SPAN/EDGE can never trigger. The engine classification is correct (98/98 tests)
+so the issue is in `_collectElementData`.
 
-### 3. Refactor `doc_canvas.js` — Thin Caller
+### Priority 3: Y-axis drag UI
+The ceiling grid auto-places at eave Y (translucent disc visible). But the current
+drag UI only handles X/Z axis lines. Need to wire Y-axis grid interaction:
+- Click on ceiling disc → select CEIL grid
+- Drag up/down → engine produces ROOF_LIFT + WALL_HEIGHT_SCALE cascade
+- Status shows "Ceiling grid selected (1 ROOF_LIFT, 2 cascades)"
 
-Replace the inline `_buildAttachMap`, `_attachToAxis`, `_applyAxisDeltas`,
-`_scaleMesh`, `_applyBayProportional`, `_bayProportionalDelta`, `_getMeshPosition`
-with:
+### Priority 4: BUG-2 and BUG-3 (triage)
+- BUG-2: Warning on empty attach map — small UX fix
+- BUG-3: Phase-aware recompose — may defer to UBBL Stage 2
 
-```javascript
-// On first drag after phase change:
-var elementData = _collectElementData(A);
-var gridLines = _collectGridLines();
-_kinEngine = new GridKinematicEngine(elementData, gridLines);
-_kinEngine.attachGridToElements();
+## Repo Migration Note (2026-05-23)
+Repo migrating from `red1oon/ootb-dev` (sandbox/) to `red1oon/bim-ootb` (viewer/).
+Files move: `sandbox/grid_kinematics.js` → `viewer/grid_kinematics.js`, etc.
+**Critical:** `grid_kinematics.js` must load before `doc_canvas.js` in HTML.
+Check paths after migration before starting work.
 
-// On each drag:
-var commands = _kinEngine.dragGrid(movedGridId, delta);
-_applyCommands(A, commands);
-```
-
-`_collectElementData` reads `_guidToSlot`, `_guidToInstance`, and `A.db` to build
-the element array. `_applyCommands` translates/scales meshes and updates vertex
-buffers. These are the ONLY Two functions that touch Three.js.
-
-### 4. Ceiling Grid Auto-Placement
-
-When Phase 3 (Finishes) reveals IfcRoof elements:
-- Scan roof mesh vertices, find `eaveY = min(vertex.y)` in Three.js coords
-- Auto-place a grid line at that Y on the "floor" axis
-- This gives the user a handle to lift the ceiling
-
-## Verification
-- All existing tests pass (149/149 from S267+S268+S269)
-- New engine tests pass (target: ~80 tests including roof)
-- `doc_canvas.js` shrinks by ~200 lines (algorithm extracted)
-- `node -c deploy/dev/grid_kinematics.js` — syntax OK
-- `node -c deploy/dev/doc_canvas.js` — syntax OK
-- §-tagged logs prove roof vertex recomposition:
-  `§ROOF_CLASSIFY guid=xxx type=PITCHED verts=942 eave=241 ridge=413`
-  `§ROOF_RECOMPOSE guid=xxx axis=x delta=+2.0 eave_moved=38`
+## DB Schema Note
+OCI `bim-ootb` bucket DBs were repaired on 2026-05-23. Five buildings (SC, HITOS, SH,
+Duplex, Terminal) had been overwritten with old-schema copies (no `bbox_x`). Merged
+correct DBs from `deploy/buildings/` + BOM from `*_BOM.db` and re-uploaded.
+All 5 now have both `bbox_x` columns AND `m_bom` tables.
 
 ## Session Startup
-1. Read this prompt
-2. Read `docs/NEW_FROM_REFERENCE.md` §17.10.2 (roof), §17.10.3 (engine), §17.10.4 (UBBL)
-3. Read `deploy/dev/doc_canvas.js` — the recompose section (lines ~1580-1980)
-4. Read `deploy/dev/tests/test_s268_recompose.js` — the algorithm to extract
-5. Read PROGRESS.md §Current State
+1. Read this prompt — note DONE section and KNOWN BUGS
+2. Read `docs/NEW_FROM_REFERENCE.md` §17.10.2 (roof), §17.10.3 (engine)
+3. Read `deploy/dev/doc_canvas.js` — the `recomposeAfterGridDrag` function
+4. Read `deploy/dev/grid_kinematics.js` — the engine
+5. Check repo paths (migration may have moved files to `viewer/`)
+6. Fix BUG-1 first — it's blocking all other drag testing
 
 ## Out of Scope
-- UBBL Validator (Stage 2) — separate session after engine is stable
+- UBBL Validator (Stage 2) — separate session after drag bugs fixed
 - Tile recount / FRAME coord replacement at runtime (Stage 2)
 - MEP rerouting (Stage 2)
 - IFC export, save/recall, GPU throttle
-- Deploy to OCI (engine is internal, not a deployed file change)
-
-## Sequence: Safe Migration Path
-1. Create `grid_kinematics.js` with pure algorithm (NEW file, no risk)
-2. Write `test_grid_kinematics.js`, port S268/S269 tests + add roof tests (NEW file)
-3. Add roof vertex computation to engine
-4. Refactor `doc_canvas.js` to call engine ← the only risky step, full test suite as safety net
-5. Delete duplicated algorithm from doc_canvas.js
-6. Verify all 149+ existing tests still pass
