@@ -1685,6 +1685,42 @@ This is the same heuristic used in `bom_extract.js`.
   (they're warnings, not errors).
 - Kernel ops appended to log for undo/replay.
 
+##### Low-Effort Enhancements (build alongside Stage 2)
+
+**A. Colour-coded validation feedback.**
+After validation, briefly highlight modified elements in the 3D view:
+- **Green emissive flash** for cascade-adjusted elements (opening repositioned,
+  interior furniture shifted) — confirms deterministic consequence applied.
+- **Orange outline** for elements with violations (door too narrow, corridor
+  too tight) — requires manual review.
+Implementation: temporary `mesh.material.emissive` set via `setTimeout` clear
+(~3 lines JS + existing Three.js material). No new CSS needed.
+
+**B. Validation report as HTML/CSV.**
+After validation, generate a human-readable report listing:
+- Which grid line moved, by how much (from kernel ops log).
+- Which elements were adjusted (cascade type, old/new position).
+- Any UBBL rule triggered (pass/warning/fail with element GUID).
+Implementation: stream kernel ops into a simple HTML template or CSV
+`Blob` download. Architects attach to permit applications — saves hours
+of manual documentation. Reuses existing kernel ops log format.
+
+**C. IFC export of the validated model.**
+"Export IFC" button that writes a minimal IFC file from the current
+`NewBuilding.db`. Uses open-source IFC.js to generate walls, slabs,
+openings, roofs. Result opens in Revit, ArchiCAD, or any BIM viewer —
+makes the tool part of a professional workflow. Slightly more work than
+A/B but doable in an afternoon with existing IFC.js examples.
+
+**D. Accept/Reject per validator change.**
+Not all cascade adjustments are desired. Small UI panel (toast or side list)
+shows each validator change with Accept (keep) / Reject (revert) buttons.
+Implementation: before applying validator commands, clone affected element
+transforms; after validation, allow per-element revert. Gives user control
+without losing automation — critical for trust in a cascade system.
+Note: this does NOT apply to violations (which are report-only). It applies
+to cascade adjustments (openings, interior reposition, tile recount).
+
 ##### Out of Scope (for Stage 2)
 
 - Real-time kinematics (Stage 1)

@@ -270,7 +270,7 @@ function nextPhase(A) {
   }
   var phase = filtered[_phaseIndex];
   _materializePhase(A, phase);
-  _attachMapDirty = true; // §S268: new elements revealed, rebuild attach map on next drag
+  _kinEngineDirty = true; // §S270: new elements revealed, rebuild engine on next drag
 
   // §17.9B: No auto-grid. User taps wall/element → grid line appears.
   // Auto-grid removed: was flooding canvas with 200+ lines from hospital walls.
@@ -1554,7 +1554,7 @@ function _scrubToPhase(A, targetIdx) {
   _renderGrid(A);
   _updateHud();
   _updateTimeline();
-  _attachMapDirty = true; // §S268: phases changed, rebuild attach map
+  _kinEngineDirty = true; // §S270: phases changed, rebuild engine
 
   console.log('§DOC_SCRUB to=' + (targetIdx + 1) + '/' + filtered.length +
     ' elements=' + _shownCount);
@@ -1579,18 +1579,17 @@ function prevPhase(A) {
   console.log('§DOC_PREV phase=' + (_phaseIndex + 1));
 }
 
-// ── §S267/S268: Recomposition — attach-map governed translate/scale ────────
-// _gridOriginals: snapshot of grid positions at envelope activation (baseline for deltas)
-var _gridOriginals = { x: [], z: [] };
+// ── §S270: Recomposition via GridKinematicEngine ────────────────────────────
+// Engine owns ALL recomposition math. doc_canvas.js is a thin caller:
+//   1. _collectElementData(A)  → builds [{guid, x, y, z, bbox*, ifcClass, ...}]
+//   2. _collectGridLines()     → builds [{id, axis, pos}]
+//   3. engine.dragGrid(id, d)  → returns command objects
+//   4. _applyCommand(cmd)      → writes to Three.js meshes
+// Only _collectElementData and _applyCommand touch Three.js.
 
-// §S268: Attach map — built lazily on first grid drag after phases are revealed.
-// Maps each grid line index to its governed elements.
-// _attachMapX[gridIdx] = [{guid, relation:'ATTACH'|'SPAN', edge:'near'|'far', origX, origW, origScaleX}]
-// _attachMapZ[gridIdx] = [{guid, relation:'ATTACH'|'SPAN', edge:'near'|'far', origZ, origD, origScaleZ}]
-var _attachMapX = {};
-var _attachMapZ = {};
-var _attachMapDirty = true; // rebuild on next drag
-var ATTACH_TOL = 0.5; // metres — max distance for centerline-to-grid attach
+var _gridOriginals = { x: [], z: [] };
+var _kinEngine = null;       // GridKinematicEngine instance (lazy, rebuilt when dirty)
+var _kinEngineDirty = true;  // rebuild on next drag (phases changed, etc.)
 
 /**
  * _snapshotGridOriginals() — called once at activate, records the initial grid positions.
@@ -1599,7 +1598,7 @@ var ATTACH_TOL = 0.5; // metres — max distance for centerline-to-grid attach
 function _snapshotGridOriginals() {
   _gridOriginals.x = _xPositions.slice();
   _gridOriginals.z = _zPositions.slice();
-  _attachMapDirty = true;
+  _kinEngineDirty = true;
 }
 
 /**
@@ -1621,7 +1620,7 @@ function _computeGridDeltas() {
 
 /**
  * _getMeshPosition(guid) — read current mesh position for a GUID.
- * Returns {x, z, bboxX, bboxZ, scaleX, scaleZ} or null.
+ * Returns {x, y, z, scaleX, scaleY, scaleZ} or null.
  */
 function _getMeshPosition(guid) {
   var slot = _guidToSlot[guid];
@@ -1632,7 +1631,7 @@ function _getMeshPosition(guid) {
     var scale = new THREE.Vector3();
     pos.setFromMatrixPosition(mat);
     scale.setFromMatrixScale(mat);
-    return { x: pos.x, z: pos.z, scaleX: scale.x, scaleZ: scale.z };
+    return { x: pos.x, y: pos.y, z: pos.z, scaleX: scale.x, scaleY: scale.y, scaleZ: scale.z };
   }
   var inst = _guidToInstance[guid];
   if (inst) {
@@ -1642,135 +1641,9 @@ function _getMeshPosition(guid) {
     var iscale = new THREE.Vector3();
     ipos.setFromMatrixPosition(imat);
     iscale.setFromMatrixScale(imat);
-    return { x: ipos.x, z: ipos.z, scaleX: iscale.x, scaleZ: iscale.z };
+    return { x: ipos.x, y: ipos.y, z: ipos.z, scaleX: iscale.x, scaleY: iscale.y, scaleZ: iscale.z };
   }
   return null;
-}
-
-/**
- * _buildAttachMap(A) — scan all revealed elements and assign each to its nearest
- * grid line (ATTACH) or detect spanning (SPAN). Elements not near any grid line
- * are classified as INTERIOR for bay-proportional repositioning (S269).
- *
- * §S268: Proven by sandbox — only governed elements move, 67% false-positive eliminated.
- */
-function _buildAttachMap(A) {
-  _attachMapX = {};
-  _attachMapZ = {};
-
-  // Get currently shown GUIDs
-  var shownGuids = _getShownGuids();
-  if (!shownGuids.length) return;
-
-  // Read bbox from extracted DB if available (for span detection)
-  var bboxLookup = {};
-  if (A.db) {
-    try {
-      var rows = A.db.exec("SELECT guid, bbox_x, bbox_z FROM element_transforms");
-      if (rows.length && rows[0].values) {
-        for (var ri = 0; ri < rows[0].values.length; ri++) {
-          var r = rows[0].values[ri];
-          bboxLookup[r[0]] = { bboxX: r[1] || 0, bboxZ: r[2] || 0 };
-        }
-      }
-    } catch(e) { /* bbox optional */ }
-  }
-
-  for (var gi = 0; gi < shownGuids.length; gi++) {
-    var guid = shownGuids[gi];
-    var mpos = _getMeshPosition(guid);
-    if (!mpos) continue;
-
-    var bbox = bboxLookup[guid] || { bboxX: 0, bboxZ: 0 };
-    var halfW = bbox.bboxX / 2;
-    var halfD = bbox.bboxZ / 2;
-
-    // X-axis attach
-    _attachToAxis(guid, mpos.x, halfW, mpos.scaleX, _gridOriginals.x, _attachMapX);
-    // Z-axis attach
-    _attachToAxis(guid, mpos.z, halfD, mpos.scaleZ, _gridOriginals.z, _attachMapZ);
-  }
-
-  _attachMapDirty = false;
-
-  var xCount = 0, zCount = 0;
-  for (var k in _attachMapX) xCount += _attachMapX[k].length;
-  for (var m in _attachMapZ) zCount += _attachMapZ[m].length;
-  console.log('§RECOMPOSE_ATTACH_MAP built guids=' + shownGuids.length +
-    ' xAttached=' + xCount + ' zAttached=' + zCount);
-}
-
-/**
- * _attachToAxis — attach a single element to its nearest grid line on one axis.
- *
- * Relations:
- *   ATTACH      — centerline within ATTACH_TOL → always translate
- *   SPAN        — grid line inside element body → scale width
- *   EDGE_RIGHT  — grid ≈ right edge (pos + halfExtent) within 0.1m
- *                 Grid away (+delta) → stretch. Grid into (-delta) → translate.
- *   EDGE_LEFT   — grid ≈ left edge (pos - halfExtent) within 0.1m
- *                 Grid into (+delta) → translate. Grid away (-delta) → stretch.
- */
-var EDGE_TOL = 0.1; // metres — tighter tolerance for edge detection
-
-function _attachToAxis(guid, pos, halfExtent, scale, gridPositions, attachMap) {
-  var bestGrid = -1;
-  var bestDist = Infinity;
-  var relation = 'ATTACH';
-  var edge = 'near';
-
-  for (var gi = 0; gi < gridPositions.length; gi++) {
-    var gp = gridPositions[gi];
-
-    // Centerline proximity → ATTACH
-    var dist = Math.abs(pos - gp);
-    if (dist < ATTACH_TOL && dist < bestDist) {
-      bestDist = dist;
-      bestGrid = gi;
-      relation = 'ATTACH';
-    }
-
-    if (halfExtent > 0.05) {
-      var lo = pos - halfExtent;
-      var hi = pos + halfExtent;
-
-      // Edge detection: grid line coincides with left or right edge (within 0.1m)
-      // Takes priority over SPAN when the grid is at the boundary, not inside.
-      if (Math.abs(hi - gp) < EDGE_TOL) {
-        // Grid at right edge
-        bestGrid = gi;
-        relation = 'EDGE_RIGHT';
-        bestDist = 0;
-        edge = 'right';
-      } else if (Math.abs(lo - gp) < EDGE_TOL) {
-        // Grid at left edge
-        bestGrid = gi;
-        relation = 'EDGE_LEFT';
-        bestDist = 0;
-        edge = 'left';
-      } else if (gp > lo + 0.01 && gp < hi - 0.01) {
-        // Grid line is inside the element body → SPAN
-        if (bestGrid < 0 || (relation !== 'ATTACH' && relation !== 'EDGE_RIGHT' && relation !== 'EDGE_LEFT')) {
-          bestGrid = gi;
-          relation = 'SPAN';
-          bestDist = 0;
-          edge = (gp - lo) < (hi - gp) ? 'near' : 'far';
-        }
-      }
-    }
-  }
-
-  if (bestGrid >= 0) {
-    if (!attachMap[bestGrid]) attachMap[bestGrid] = [];
-    attachMap[bestGrid].push({
-      guid: guid,
-      relation: relation,
-      edge: edge,
-      origPos: pos,
-      origHalfExtent: halfExtent,
-      origScale: scale
-    });
-  }
 }
 
 /**
@@ -1786,9 +1659,214 @@ function _getShownGuids() {
 }
 
 /**
- * recomposeAfterGridDrag(A) — §S268 attach-map recompose.
- * Only governed elements move. ATTACH = translate. SPAN = scale.
- * Interior elements get bay-proportional shift (S269).
+ * _collectElementData(A) — read mesh positions + DB bbox for all shown GUIDs.
+ * Builds the elementData array that GridKinematicEngine needs.
+ * This is the ONLY place that reads Three.js state for the engine.
+ */
+function _collectElementData(A) {
+  var shownGuids = _getShownGuids();
+  if (!shownGuids.length) return [];
+
+  // Read bbox + ifcClass from extracted DB
+  var bboxLookup = {};
+  var classLookup = {};
+  if (A.db) {
+    try {
+      var rows = A.db.exec("SELECT guid, bbox_x, bbox_y, bbox_z FROM element_transforms");
+      if (rows.length && rows[0].values) {
+        for (var ri = 0; ri < rows[0].values.length; ri++) {
+          var r = rows[0].values[ri];
+          bboxLookup[r[0]] = { bboxX: r[1] || 0, bboxY: r[2] || 0, bboxZ: r[3] || 0 };
+        }
+      }
+    } catch(e) { /* bbox optional — columns may not exist */ }
+    try {
+      var crows = A.db.exec("SELECT guid, ifc_class FROM elements_meta");
+      if (crows.length && crows[0].values) {
+        for (var ci = 0; ci < crows[0].values.length; ci++) {
+          classLookup[crows[0].values[ci][0]] = crows[0].values[ci][1] || '';
+        }
+      }
+    } catch(e2) { /* class optional */ }
+  }
+
+  var elements = [];
+  for (var gi = 0; gi < shownGuids.length; gi++) {
+    var guid = shownGuids[gi];
+    var mpos = _getMeshPosition(guid);
+    if (!mpos) continue;
+
+    var bbox = bboxLookup[guid] || { bboxX: 0, bboxY: 0, bboxZ: 0 };
+    elements.push({
+      guid: guid,
+      x: mpos.x,
+      y: mpos.y,
+      z: mpos.z,
+      bboxX: bbox.bboxX,
+      bboxY: bbox.bboxY,
+      bboxZ: bbox.bboxZ,
+      ifcClass: classLookup[guid] || '',
+      scaleX: mpos.scaleX,
+      scaleY: mpos.scaleY,
+      scaleZ: mpos.scaleZ
+    });
+  }
+  return elements;
+}
+
+/**
+ * _collectGridLines() — build gridLines array from current grid state.
+ * Uses grid labels as IDs (e.g. 'A', 'B', '1', '2').
+ */
+function _collectGridLines() {
+  var lines = [];
+  for (var xi = 0; xi < _gridOriginals.x.length; xi++) {
+    lines.push({
+      id: _xLabels[xi] || ('X' + xi),
+      axis: 'x',
+      pos: _gridOriginals.x[xi]
+    });
+  }
+  for (var zi = 0; zi < _gridOriginals.z.length; zi++) {
+    lines.push({
+      id: _zLabels[zi] || ('Z' + zi),
+      axis: 'z',
+      pos: _gridOriginals.z[zi]
+    });
+  }
+  return lines;
+}
+
+/**
+ * _rebuildEngine(A) — construct a fresh GridKinematicEngine from current state.
+ */
+function _rebuildEngine(A) {
+  if (typeof GridKinematics === 'undefined' || !GridKinematics.GridKinematicEngine) {
+    console.warn('§RECOMPOSE grid_kinematics.js not loaded — falling back');
+    _kinEngine = null;
+    return;
+  }
+  var elementData = _collectElementData(A);
+  var gridLines = _collectGridLines();
+  _kinEngine = new GridKinematics.GridKinematicEngine(elementData, gridLines);
+  _kinEngine.attachGridToElements();
+  _kinEngineDirty = false;
+
+  var map = _kinEngine.getAttachMap();
+  var totalAttached = 0;
+  for (var k in map) {
+    totalAttached += map[k].length;
+  }
+  console.log('§RECOMPOSE_ENGINE built elements=' + elementData.length +
+    ' grids=' + gridLines.length + ' attached=' + totalAttached +
+    ' interior=' + _kinEngine.getInteriorElements().length);
+}
+
+/**
+ * _applyCommand(cmd) — apply one engine command to Three.js meshes.
+ * This is the ONLY place that writes to Three.js from recomposition.
+ */
+function _applyCommand(cmd) {
+  switch (cmd.action) {
+    case 'TRANSLATE':
+      _translateMesh(cmd.guid, cmd.axis, cmd.delta);
+      break;
+    case 'SCALE':
+      _scaleMeshFromCommand(cmd);
+      break;
+    case 'ROOF_VERTICES':
+      _applyRoofVertices(cmd);
+      break;
+    case 'ROOF_LIFT':
+      _applyRoofLift(cmd);
+      break;
+  }
+}
+
+/**
+ * _scaleMeshFromCommand — apply SCALE command from engine.
+ * Engine provides newScale and translateDelta directly.
+ */
+function _scaleMeshFromCommand(cmd) {
+  var matIdx = cmd.axis === 'x' ? 12 : (cmd.axis === 'z' ? 14 : 13);
+  var scaleIdx = cmd.axis === 'x' ? 0 : (cmd.axis === 'z' ? 10 : 5);
+
+  var slot = _guidToSlot[cmd.guid];
+  if (slot) {
+    var mat = new THREE.Matrix4();
+    slot.mesh.getMatrixAt(slot.slotId, mat);
+    mat.elements[scaleIdx] = cmd.newScale;
+    if (cmd.translateDelta) mat.elements[matIdx] += cmd.translateDelta;
+    slot.mesh.setMatrixAt(slot.slotId, mat);
+    slot.mesh.instanceMatrix.needsUpdate = true;
+    return;
+  }
+  var inst = _guidToInstance[cmd.guid];
+  if (inst) {
+    var imat = new THREE.Matrix4();
+    inst.mesh.getMatrixAt(inst.index, imat);
+    imat.elements[scaleIdx] = cmd.newScale;
+    if (cmd.translateDelta) imat.elements[matIdx] += cmd.translateDelta;
+    inst.mesh.setMatrixAt(inst.index, imat);
+    inst.mesh.instanceMatrix.needsUpdate = true;
+    return;
+  }
+}
+
+/**
+ * _applyRoofVertices — apply per-vertex deltas to a roof mesh's BufferGeometry.
+ */
+function _applyRoofVertices(cmd) {
+  if (!cmd.vertexDeltas) return;
+  var mesh = _findMeshByGuid(cmd.guid);
+  if (!mesh || !mesh.geometry || !mesh.geometry.attributes.position) return;
+  var positions = mesh.geometry.attributes.position.array;
+  var vd = cmd.vertexDeltas;
+  for (var i = 0; i < vd.length && i < positions.length; i++) {
+    positions[i] += vd[i];
+  }
+  mesh.geometry.attributes.position.needsUpdate = true;
+  mesh.geometry.computeBoundingBox();
+  mesh.geometry.computeBoundingSphere();
+}
+
+/**
+ * _applyRoofLift — translate all vertices of a roof mesh on Y axis.
+ */
+function _applyRoofLift(cmd) {
+  var mesh = _findMeshByGuid(cmd.guid);
+  if (!mesh || !mesh.geometry || !mesh.geometry.attributes.position) return;
+  var positions = mesh.geometry.attributes.position.array;
+  var nVerts = positions.length / 3;
+  for (var i = 0; i < nVerts; i++) {
+    positions[i * 3 + 1] += cmd.deltaY; // Y component
+  }
+  mesh.geometry.attributes.position.needsUpdate = true;
+  mesh.geometry.computeBoundingBox();
+  mesh.geometry.computeBoundingSphere();
+}
+
+/**
+ * _findMeshByGuid — find a Three.js mesh for a GUID (for vertex-level ops).
+ */
+function _findMeshByGuid(guid) {
+  // BatchedMesh / InstancedMesh don't have per-instance geometry — roof vertex
+  // ops only work on single-mesh path. In practice, roofs are typically single meshes.
+  if (_appRef && _appRef.scene) {
+    var found = null;
+    _appRef.scene.traverse(function(obj) {
+      if (!found && obj.userData && obj.userData.guid === guid && obj.isMesh) {
+        found = obj;
+      }
+    });
+    return found;
+  }
+  return null;
+}
+
+/**
+ * recomposeAfterGridDrag(A) — §S270 engine-driven recompose.
+ * Delegates all math to GridKinematicEngine. Only applies commands to meshes.
  */
 function recomposeAfterGridDrag(A) {
   if (!_active || !A) return;
@@ -1798,126 +1876,54 @@ function recomposeAfterGridDrag(A) {
                  deltas.z.some(function(d) { return Math.abs(d.delta) > 0.01; });
   if (!anyDelta) return;
 
-  // Rebuild attach map if dirty (phases changed since last build)
-  if (_attachMapDirty) _buildAttachMap(A);
+  // Rebuild engine if dirty (phases changed since last build)
+  if (_kinEngineDirty || !_kinEngine) _rebuildEngine(A);
+  if (!_kinEngine) return; // grid_kinematics.js not loaded
 
-  var translated = 0;
-  var scaled = 0;
-  var bayMoved = 0;
+  var translated = 0, scaled = 0, roofOps = 0, bayMoved = 0;
 
-  // §S268: Apply governed deltas per axis
-  translated += _applyAxisDeltas(A, deltas.x, _attachMapX, 'x');
-  translated += _applyAxisDeltas(A, deltas.z, _attachMapZ, 'z');
-
-  // §S269: Bay-proportional interior repositioning
-  bayMoved = _applyBayProportional(A, deltas);
-
-  // §S270: Roof vertex recomposition — slopes adjust, ridge height constant
-  // (implementation pending spec review — see §17.10.2)
-
-  // Log results
-  for (var di = 0; di < deltas.x.length; di++) {
-    var d = deltas.x[di];
-    if (Math.abs(d.delta) < 0.01) continue;
-    var items = _attachMapX[d.idx] || [];
-    var tr = items.filter(function(it) { return it.relation === 'ATTACH'; });
-    var sp = items.filter(function(it) { return it.relation === 'SPAN'; });
-    var er = items.filter(function(it) { return it.relation === 'EDGE_RIGHT'; });
-    var el = items.filter(function(it) { return it.relation === 'EDGE_LEFT'; });
-    console.log('§RECOMPOSE_ATTACH grid=' + d.orig.toFixed(1) +
-      ' delta=' + (d.delta > 0 ? '+' : '') + d.delta.toFixed(3) +
-      ' translate=' + tr.length + ' scale=' + sp.length +
-      ' edgeR=' + er.length + ' edgeL=' + el.length);
-  }
-  for (var dj = 0; dj < deltas.z.length; dj++) {
-    var dz = deltas.z[dj];
-    if (Math.abs(dz.delta) < 0.01) continue;
-    var zItems = _attachMapZ[dz.idx] || [];
-    var ztr = zItems.filter(function(it) { return it.relation === 'ATTACH'; });
-    var zsp = zItems.filter(function(it) { return it.relation === 'SPAN'; });
-    var zer = zItems.filter(function(it) { return it.relation === 'EDGE_RIGHT'; });
-    var zel = zItems.filter(function(it) { return it.relation === 'EDGE_LEFT'; });
-    console.log('§RECOMPOSE_ATTACH gridZ=' + dz.orig.toFixed(1) +
-      ' delta=' + (dz.delta > 0 ? '+' : '') + dz.delta.toFixed(3) +
-      ' translate=' + ztr.length + ' scale=' + zsp.length +
-      ' edgeR=' + zer.length + ' edgeL=' + zel.length);
-  }
-
-  console.log('§RECOMPOSE_DONE translated=' + translated + ' scaled=' + scaled + ' bayMoved=' + bayMoved);
-}
-
-/**
- * _applyAxisDeltas — apply translate/scale to governed elements on one axis.
- * Returns count of elements moved.
- *
- * Relations and their behavior:
- *   ATTACH     → always translate by delta
- *   SPAN       → scale width (near edge: shift+shrink, far edge: grow)
- *   EDGE_RIGHT → grid at right edge:  +delta = stretch (w += delta)
- *                                      -delta = translate (dx += delta)
- *   EDGE_LEFT  → grid at left edge:   +delta = translate (dx += delta)
- *                                      -delta = stretch (w -= delta, i.e. w grows)
- *   Principle: grid moves away from body → stretch. Into body → translate.
- */
-var MIN_WALL_WIDTH = 0.05; // metres — minimum width after edge-stretch
-
-function _applyAxisDeltas(A, axisDeltaList, attachMap, axis) {
-  var count = 0;
-  for (var di = 0; di < axisDeltaList.length; di++) {
-    var d = axisDeltaList[di];
-    if (Math.abs(d.delta) < 0.01) continue;
-
-    var items = attachMap[d.idx];
-    if (!items || !items.length) continue;
-
-    for (var ii = 0; ii < items.length; ii++) {
-      var item = items[ii];
-
-      if (item.relation === 'ATTACH') {
-        _translateMesh(item.guid, axis, d.delta);
-        count++;
-
-      } else if (item.relation === 'SPAN') {
-        _scaleMesh(item.guid, axis, d.delta, item.edge, item.origScale, item.origHalfExtent);
-        count++;
-
-      } else if (item.relation === 'EDGE_RIGHT') {
-        // Grid at right edge (pos + halfExtent ≈ gridX)
-        if (d.delta > 0) {
-          // Grid moves away from body → stretch: w += delta
-          _scaleMesh(item.guid, axis, d.delta, 'far', item.origScale, item.origHalfExtent);
-        } else {
-          // Grid moves into body → translate whole wall
-          _translateMesh(item.guid, axis, d.delta);
-        }
-        count++;
-
-      } else if (item.relation === 'EDGE_LEFT') {
-        // Grid at left edge (pos - halfExtent ≈ gridX)
-        if (d.delta > 0) {
-          // Grid moves into body → translate whole wall
-          _translateMesh(item.guid, axis, d.delta);
-        } else {
-          // Grid moves away from body → stretch: left edge moves, width grows
-          var newHalf = item.origHalfExtent - d.delta / 2; // delta is negative, so this grows
-          if (newHalf * 2 >= MIN_WALL_WIDTH) {
-            _scaleMesh(item.guid, axis, d.delta, 'near', item.origScale, item.origHalfExtent);
-          } else {
-            _translateMesh(item.guid, axis, d.delta);
-          }
-        }
-        count++;
-      }
+  // For each grid line that moved, call engine and apply commands
+  for (var xi = 0; xi < deltas.x.length; xi++) {
+    var dx = deltas.x[xi];
+    if (Math.abs(dx.delta) < 0.01) continue;
+    var gridId = _xLabels[dx.idx] || ('X' + dx.idx);
+    var cmds = _kinEngine.dragGrid(gridId, dx.delta);
+    for (var ci = 0; ci < cmds.length; ci++) {
+      _applyCommand(cmds[ci]);
+      if (cmds[ci].action === 'TRANSLATE') translated++;
+      else if (cmds[ci].action === 'SCALE') scaled++;
+      else if (cmds[ci].action === 'ROOF_VERTICES' || cmds[ci].action === 'ROOF_LIFT') roofOps++;
     }
+    console.log('§RECOMPOSE_GRID id=' + gridId +
+      ' delta=' + (dx.delta > 0 ? '+' : '') + dx.delta.toFixed(3) +
+      ' commands=' + cmds.length);
   }
-  return count;
+
+  for (var zi = 0; zi < deltas.z.length; zi++) {
+    var dz = deltas.z[zi];
+    if (Math.abs(dz.delta) < 0.01) continue;
+    var zGridId = _zLabels[dz.idx] || ('Z' + dz.idx);
+    var zCmds = _kinEngine.dragGrid(zGridId, dz.delta);
+    for (var zci = 0; zci < zCmds.length; zci++) {
+      _applyCommand(zCmds[zci]);
+      if (zCmds[zci].action === 'TRANSLATE') translated++;
+      else if (zCmds[zci].action === 'SCALE') scaled++;
+      else if (zCmds[zci].action === 'ROOF_VERTICES' || zCmds[zci].action === 'ROOF_LIFT') roofOps++;
+    }
+    console.log('§RECOMPOSE_GRID id=' + zGridId +
+      ' delta=' + (dz.delta > 0 ? '+' : '') + dz.delta.toFixed(3) +
+      ' commands=' + zCmds.length);
+  }
+
+  console.log('§RECOMPOSE_DONE translated=' + translated + ' scaled=' + scaled +
+    ' roofOps=' + roofOps);
 }
 
 /**
- * _translateMesh — shift a mesh by delta on the given axis.
+ * _translateMesh — shift a mesh by delta on the given axis (x, y, or z).
  */
 function _translateMesh(guid, axis, delta) {
-  var matIdx = axis === 'x' ? 12 : 14; // matrix element: 12=X, 14=Z
+  var matIdx = axis === 'x' ? 12 : (axis === 'z' ? 14 : 13); // 12=X, 13=Y, 14=Z
 
   var slot = _guidToSlot[guid];
   if (slot) {
@@ -1942,145 +1948,11 @@ function _translateMesh(guid, axis, delta) {
     _appRef.scene.traverse(function(obj) {
       if (obj.userData && obj.userData.guid === guid && obj.isMesh) {
         if (axis === 'x') obj.position.x += delta;
+        else if (axis === 'y') obj.position.y += delta;
         else obj.position.z += delta;
       }
     });
   }
-}
-
-/**
- * _scaleMesh — scale a mesh to accommodate grid delta on a spanning axis.
- * edge='near': grid is at the near edge → shift position and shrink width.
- * edge='far': grid is at the far edge → keep position, grow width.
- */
-function _scaleMesh(guid, axis, delta, edge, origScale, origHalfExtent) {
-  if (origHalfExtent < 0.01) return; // can't scale zero-width
-
-  var matIdx = axis === 'x' ? 12 : 14;
-  var scaleIdx = axis === 'x' ? 0 : 10; // matrix diagonal: 0=scaleX, 5=scaleY, 10=scaleZ
-  var origWidth = origHalfExtent * 2;
-  var newWidth = origWidth + (edge === 'far' ? delta : -delta);
-  if (newWidth < 0.01) newWidth = 0.01;
-  var scaleRatio = newWidth / origWidth;
-
-  var slot = _guidToSlot[guid];
-  if (slot) {
-    var mat = new THREE.Matrix4();
-    slot.mesh.getMatrixAt(slot.slotId, mat);
-    mat.elements[scaleIdx] = origScale * scaleRatio;
-    if (edge === 'near') mat.elements[matIdx] += delta;
-    slot.mesh.setMatrixAt(slot.slotId, mat);
-    slot.mesh.instanceMatrix.needsUpdate = true;
-    return;
-  }
-  var inst = _guidToInstance[guid];
-  if (inst) {
-    var imat = new THREE.Matrix4();
-    inst.mesh.getMatrixAt(inst.index, imat);
-    imat.elements[scaleIdx] = origScale * scaleRatio;
-    if (edge === 'near') imat.elements[matIdx] += delta;
-    inst.mesh.setMatrixAt(inst.index, imat);
-    inst.mesh.instanceMatrix.needsUpdate = true;
-    return;
-  }
-}
-
-/**
- * _applyBayProportional(A, deltas) — §S269 bay-proportional interior repositioning.
- * Elements not attached to any grid line but lying inside a bay get proportional shift.
- * When bay [start, end] becomes [start, end + delta], element at relative t = (x - start) / oldW
- * moves to newX = start + t * newW.
- * Returns count of elements moved.
- */
-function _applyBayProportional(A, deltas) {
-  var moved = 0;
-  var shownGuids = _getShownGuids();
-  if (!shownGuids.length) return 0;
-
-  // Collect guids already governed by attach map (don't double-move)
-  var governed = {};
-  for (var gk in _attachMapX) {
-    var items = _attachMapX[gk];
-    for (var ai = 0; ai < items.length; ai++) governed[items[ai].guid] = true;
-  }
-  for (var gkz in _attachMapZ) {
-    var zItems = _attachMapZ[gkz];
-    for (var azi = 0; azi < zItems.length; azi++) governed[zItems[azi].guid] = true;
-  }
-
-  // Build sorted grid arrays (original positions for bay boundaries)
-  var origX = _gridOriginals.x.slice().sort(function(a, b) { return a - b; });
-  var currX = _xPositions.slice().sort(function(a, b) { return a - b; });
-  var origZ = _gridOriginals.z.slice().sort(function(a, b) { return a - b; });
-  var currZ = _zPositions.slice().sort(function(a, b) { return a - b; });
-
-  // Only process if any delta is non-zero
-  var anyXDelta = false, anyZDelta = false;
-  for (var xi = 0; xi < origX.length; xi++) {
-    if (xi < currX.length && Math.abs(origX[xi] - currX[xi]) > 0.01) { anyXDelta = true; break; }
-  }
-  for (var zi = 0; zi < origZ.length; zi++) {
-    if (zi < currZ.length && Math.abs(origZ[zi] - currZ[zi]) > 0.01) { anyZDelta = true; break; }
-  }
-  if (!anyXDelta && !anyZDelta) return 0;
-
-  for (var si = 0; si < shownGuids.length; si++) {
-    var guid = shownGuids[si];
-    if (governed[guid]) continue; // skip attached elements
-
-    var mpos = _getMeshPosition(guid);
-    if (!mpos) continue;
-
-    var dxBay = 0, dzBay = 0;
-
-    // X-axis bay proportional
-    if (anyXDelta) {
-      dxBay = _bayProportionalDelta(mpos.x, origX, currX);
-    }
-    // Z-axis bay proportional
-    if (anyZDelta) {
-      dzBay = _bayProportionalDelta(mpos.z, origZ, currZ);
-    }
-
-    if (Math.abs(dxBay) > 0.001 || Math.abs(dzBay) > 0.001) {
-      if (Math.abs(dxBay) > 0.001) _translateMesh(guid, 'x', dxBay);
-      if (Math.abs(dzBay) > 0.001) _translateMesh(guid, 'z', dzBay);
-      moved++;
-    }
-  }
-
-  if (moved > 0) {
-    console.log('§RECOMPOSE_BAY interior_moved=' + moved);
-  }
-  return moved;
-}
-
-/**
- * _bayProportionalDelta — compute proportional shift for an interior element on one axis.
- * @param {number} pos — element position
- * @param {number[]} origGrid — sorted original grid positions
- * @param {number[]} currGrid — sorted current grid positions (after drag)
- * @returns {number} delta to apply
- */
-function _bayProportionalDelta(pos, origGrid, currGrid) {
-  if (origGrid.length < 2 || currGrid.length < 2) return 0;
-
-  // Find which bay the element is in (between origGrid[i] and origGrid[i+1])
-  for (var i = 0; i < origGrid.length - 1; i++) {
-    var lo = origGrid[i];
-    var hi = origGrid[i + 1];
-    if (pos >= lo - 0.01 && pos <= hi + 0.01) {
-      var oldW = hi - lo;
-      if (oldW < 0.01) continue;
-      var t = (pos - lo) / oldW; // 0..1 relative position in bay
-      var newLo = i < currGrid.length ? currGrid[i] : lo;
-      var newHi = (i + 1) < currGrid.length ? currGrid[i + 1] : hi;
-      var newW = newHi - newLo;
-      var newPos = newLo + t * newW;
-      return newPos - pos;
-    }
-  }
-  return 0;
 }
 
 /**
@@ -2109,7 +1981,7 @@ window.DocCanvas = {
   handleRosettaDrag: handleRosettaDrag,
   setActiveDisc: setActiveDisc,
   // Test-only: inject phases without BOM.db (materialize tests)
-  _setPhases: function(p) { _phases = p; _attachMapDirty = true; },
+  _setPhases: function(p) { _phases = p; _kinEngineDirty = true; },
   isActive: function() { return _active; },
   isCalibrating: function() { return _calibrationMode; },
   getCalibrations: function() { return _calibrations.slice(); },
@@ -2123,15 +1995,12 @@ window.DocCanvas = {
       zLabels: _zLabels.slice()
     };
   },
-  // §S268 test-only: expose attach-map internals for verification
-  _buildAttachMap: _buildAttachMap,
-  _getAttachMapX: function() { return _attachMapX; },
-  _getAttachMapZ: function() { return _attachMapZ; },
-  _attachToAxis: _attachToAxis,
-  _bayProportionalDelta: _bayProportionalDelta,
+  // §S270 test-only: expose engine internals for verification
+  _getKinEngine: function() { return _kinEngine; },
+  _rebuildEngine: _rebuildEngine,
   _getShownGuids: _getShownGuids,
   _setGridPositions: function(x, z) { _xPositions = x; _zPositions = z; },
-  _setGridOriginals: function(x, z) { _gridOriginals = { x: x, z: z }; _attachMapDirty = true; }
+  _setGridOriginals: function(x, z) { _gridOriginals = { x: x, z: z }; _kinEngineDirty = true; }
 };
 
 })(window);
