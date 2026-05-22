@@ -963,6 +963,137 @@ Heights come from the dz tack offset on m_bom_line or from element_transforms.
 - `test_bom_phases.js`: 12/12 — tier ordering on SH/DX/SC/TE, MEP sub-BOMs, envelope
 - `test_doc_canvas.js`: 54/54 — existing tests + _setPhases test injection
 
+#### 17.10.1 Recomposition Rules — How Each Element Type Responds to Grid Drag
+
+Grid drag is not "move everything by delta." Each element type has a specific
+geometric response, mirroring how an architect would expect the building to adapt.
+The BOM verb determines the math; the IFC class determines the behavior.
+
+**Principle:** A grid line defines a structural datum. When it moves, elements
+respond based on their relationship to that datum — attached, spanning, contained,
+or independent. No element changes shape unless its verb demands it.
+
+##### Columns (IfcColumn, IfcPile) — FRAME / CLUSTER verb
+
+Columns sit AT grid intersections. When grid line A moves from X=12 to X=15:
+- Columns at A reposition to X=15 (direct attachment)
+- Columns at other grid lines: unchanged
+- Verb re-expansion: FRAME verb gets new X coordinate in its grid list
+
+**Architect expects:** Column moves with its grid line. Nothing stretches. Exact.
+
+##### Walls (IfcWall, IfcWallStandardCase) — CLUSTER verb
+
+Walls run BETWEEN grid lines (or along one). Two cases:
+1. **Wall on grid A:** wall centerline moves with A. Full delta applied. Wall does not stretch.
+2. **Wall spanning A to B:** when A moves outward by +3m, the wall's length increases by 3m.
+   Currently S267 translates the wall (wrong). S268 should scale the wall's long axis.
+
+For S268: identify wall orientation (long axis). If wall endpoints match two grid lines,
+scale `bbox_x` or `bbox_y` by the ratio `new_bay_width / old_bay_width`. Apply via
+`matrix.scale.x` or `matrix.scale.z` on the mesh (visual stretch — not new geometry).
+
+**Architect expects:** Wall grows or shrinks to fill the bay. No gap, no overlap.
+
+##### Openings (IfcDoor, IfcWindow, IfcOpeningElement) — child of wall
+
+Openings are children of walls. They do NOT respond to grid lines directly.
+They follow their host wall's movement. If wall moves +3m, its doors/windows
+move +3m. If wall stretches, openings stay at their proportional position
+along the wall (e.g. door at 40% of wall length stays at 40%).
+
+**Source:** `bom_tree` table (IfcRelVoidsElement → IfcRelFillsElement) or
+`host_element_ref` on m_bom_line.
+
+**Architect expects:** Doors and windows stick to their wall. Never float free.
+
+##### Slabs (IfcSlab) — CLUSTER / TILE verb
+
+Slabs span the full bay or envelope. When a grid line moves:
+- Slab edge that touches the moved grid: extends to follow
+- Other edges: unchanged
+- Implementation: scale slab mesh along the axis of the moved grid
+
+**Architect expects:** Floor plate covers the full structural bay. No exposed gap.
+
+##### Roof (IfcRoof) — envelope element
+
+Roof sits on top of the building. When footprint changes (grid A moves):
+- Roof extends horizontally to match new footprint
+- **Slope angle does NOT change.** The roof pitch is a design decision, not a
+  grid consequence. A later sub-grid line (Z-axis) with rotation can adjust pitch.
+- Implementation: scale roof mesh X or Z to match new envelope width
+
+**Architect expects:** Roof covers the new footprint at the same pitch. Pitch is
+changed deliberately via a Z-axis grid (storey height change) or rotation tool, never
+as a side effect of horizontal grid drag. This follows the standard architectural
+sequence: plan first, then section (pitch/height), then detail.
+
+##### Beams (IfcBeam) — structural span
+
+Beams run between columns (grid intersection to grid intersection). When grid A moves:
+- Beam connected to A: one end repositions, beam length changes
+- Implementation: scale beam long axis, reposition to bridge the two grid points
+- If both ends on the same grid line: translate only (no stretch)
+
+**Architect expects:** Beam spans between its supporting columns. Length adjusts.
+
+##### Stairs (IfcStair, IfcStairFlight) — vertical circulation
+
+Stairs connect storey N to storey N+1. Horizontal grid drag:
+- Stair translates with nearest grid line (if one end attached)
+- **Angle does NOT change** from horizontal grid drag. Stair pitch is governed by
+  the Y-axis grid (storey height). A horizontal grid drag may make the stair well
+  wider or narrower (scale the well, not the stair itself).
+
+**Architect expects:** Stair stays at the same pitch. Well adjusts.
+
+##### Covering / Tiles (IfcCovering) — TILE verb
+
+Floor/wall tiles fill a surface. When bay width changes:
+- TILE verb recalculates: `nx = ceil(new_width / stepX)`
+- Tile count changes. Some InstancedMesh instances are added or hidden.
+- This is the only case where element COUNT changes from a grid drag.
+
+**Architect expects:** Tiles fill the new surface. More tiles in wider bay.
+
+##### Furniture (IfcFurniture, IfcFurnishingElement) — interior infill
+
+Furniture sits inside rooms. When room boundary moves:
+- Furniture near the moved wall follows it (nearest-delta)
+- Furniture in room center: proportional shift based on bay center change
+- Furniture touching opposite wall: no change
+
+**Architect expects:** Furniture stays in its logical position within the room.
+Not pixel-precise, but reasonable. The user can manually adjust.
+
+##### MEP (IfcDuct*, IfcPipe*, IfcFlowTerminal) — routes
+
+MEP routes connect fixtures. When structural grid moves:
+- Fixtures follow their host room/wall (cascade)
+- Routes between fixtures need recalculation (RouteWalker re-run)
+- For S268: translate fixtures with host. Route regeneration deferred to S269.
+
+**Architect expects:** Fixtures stay in rooms, pipes get longer/shorter. Full
+re-routing is a specialist task (MEP engineer), not automatic.
+
+##### Summary Table
+
+| Element | Grid Response | Shape Change | Verb Path | Cascade |
+|---------|--------------|-------------|-----------|---------|
+| Column | Translate to new grid position | None | FRAME re-expand | Direct |
+| Wall (on grid) | Translate with grid | None | CLUSTER shift | Parent of openings |
+| Wall (spanning) | Scale long axis | Length changes | CLUSTER scale | Parent of openings |
+| Opening | Follow host wall | None | — | Child of wall |
+| Slab | Scale to new bay | Width/depth changes | CLUSTER scale | — |
+| Roof | Scale to new footprint | Width/depth, NOT pitch | — | Envelope |
+| Beam | Scale between grid points | Length changes | — | — |
+| Stair | Translate, NOT change pitch | Well width may change | — | — |
+| Covering/Tile | Tile count recalculated | Count changes | TILE re-expand | — |
+| Furniture | Nearest-delta + proportional | None | — | — |
+| MEP fixture | Follow host room | None | — | Child of room |
+| MEP route | Deferred (S269) | Re-route needed | ROUTE | — |
+
 #### What's Next (S268)
 
 1. **Grid-to-wall confirmation** — grid lines only draggable after user confirms
