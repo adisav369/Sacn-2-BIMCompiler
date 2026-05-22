@@ -110,6 +110,16 @@ Not pixel-perfect but visually correct.
 5. Read `deploy/dev/bom_walker.js` — collectLeaves, walk
 6. Query: `sqlite3 library/SC_BOM.db "SELECT verb_ref, role FROM m_bom_line WHERE verb_ref LIKE 'CLUSTER:%' LIMIT 5"`
 
+## Session Focus (user directive 2026-05-22)
+**One visible, material change: grid lines attach to elements and elements follow.**
+No cascade, no tile recount, no route regeneration. Just: drag grid → meshes move
+correctly with that grid line. Proven by §-tagged whitebox logs, not user testing.
+
+The S267 nearest-delta already moves meshes. The S268 improvement:
+- Grid line knows which elements it governs (attach relationship, not proximity)
+- Only governed elements move (not everything within 2m)
+- Log proves: `§RECOMPOSE_ATTACH grid=A elements=[guid1,guid2,...] delta=+3.0`
+
 ## Out of Scope
 - New geometry generation (wall polygon from boundary lines)
 - IFC export
@@ -117,3 +127,4 @@ Not pixel-perfect but visually correct.
 - GPU throttling
 - Save/recall sessions
 - Timeline tied to Time Machine (noted as spec update, not S268 work)
+- Tile recount, roof extension, route regeneration (S269+)
