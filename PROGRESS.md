@@ -31,9 +31,23 @@
   - **Tests:** 54/54 PASS — `test_doc_canvas.js` updated for handleElementPick (user-pick, not auto-grid).
   - **Spec updated:** §17.7 Rotation. §17.9 Grid Rethink + BOM Completion Triage (A–I). §17.9H Print-Ready Mode.
   - **DECISION: 100% browser.** Java verb expanders are pure math (~200 lines) — port to JS like route_walker.js. BOM.db already exists for fleet (504KB–8MB), lazy-fetch on Red Pill. IFC Drop: web-ifc extracts IfcRel* (3 queries, ~30 lines in import_worker.js). No Java install needed for end users.
-  - **Next session (S267):** Port BOMWalker + expandVerb to JS. Load BOM.db via sql.js. Grid drag → verb re-expansion → elements at new positions. Prompt: `prompts/S267_BOM_TREE_EXTRACTION.md`.
-  - **Deferred (S268+):** Max+Photo icons (white bg print). NEW geometry generation (Java Bridge, Desktop Pro). IFC export (Java Bridge). Validation gates. Z-axis grids. GPU throttle. Save/recall sessions.
   - Spec: `docs/NEW_FROM_REFERENCE.md` §4-6, §9, §17
+
+**S267 DONE (2026-05-22): BOM Walker + Verb Expansion — BOM.db drives phases, meshes follow grid. SW v436.**
+  - `verb_expand.js` NEW: JS port of 7 Java verb expanders (TILE/ROUTE/FRAME/CLUSTER/SPRAY/LINE/LINE_MULTI). Pure math, zero deps.
+  - `bom_walker.js` NEW: JS port of BOMWalker tree traversal via sql.js. Three-way dispatch, MAX_DEPTH=20 guard.
+  - `doc_canvas.js` REWRITE: `_loadPhases` walks BOM tree (no flat CLASS_PRIORITY query). `_buildEnvelope` from BOM root AABB. Nearest-delta recomposition on grid drag.
+  - `panels.js`: Lazy-fetch BOM.db fallback + IndexedDB cache. Reactivate Doc canvas when BOM.db arrives async.
+  - `import_worker.js` +50 lines: IfcRelVoids/Fills/Aggregates → `bom_tree` table (IFC Drop path).
+  - BOM data merged into extracted DBs: SH, DX, SC, HI, TE (m_bom + m_bom_line tables appended).
+  - SH_BOM.db (127KB, 14 BOMs) and DX_BOM.db (283KB, 36 BOMs) created via IFCtoBOMMain pipeline.
+  - 5 BOM.db files + 5 merged extracted DBs uploaded to OCI `bim-ootb` bucket.
+  - **Tests:** 106/106 PASS — test_verb_expand (20), test_bom_walker (20), test_bom_phases (12), test_doc_canvas (54).
+  - **Key finding:** BOM positions are floor-relative (local). Building origin bridges to world coords. Grid envelope from BOM root AABB (23.9×24.5m) is tighter than extracted scatter (43.5×43.5m) because BOM excludes outliers.
+  - **Limitation:** Grid drag uses nearest-delta (dumb shift), not verb re-expansion. Roof slides instead of extending, tiles don't recount, openings don't cascade with host wall.
+  - **Timeline note:** Timeline appears tied to Doc canvas, should be tied to TimeMachine ON/OFF state (spec update, not code fix).
+  - **Next session (S268):** Verb re-expansion on grid drag + parent-child cascade. Prompt: `prompts/S268_RECOMPOSE_CASCADE.md`.
+  - **Deferred (S269+):** Max+Photo icons. NEW geometry generation (Java Bridge). IFC export. Z-axis grids. GPU throttle. Save/recall. Timeline↔TM binding.
 
 **S265 Phase 5 DONE (2026-05-21): UI Aesthetics Overhaul. SW v416→v431. See `prompts/S265_UI_AESTHETICS.md`.**
   - Foundation: `A.createPanel()` factory + `.bim-panel` CSS + `ICONS` registry (24 icons) + `A.icon()` factory
