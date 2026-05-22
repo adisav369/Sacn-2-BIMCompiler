@@ -2819,6 +2819,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#design-invariants-explicit-non-negotiable_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Invariants (explicit, non-negotiable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#uiux" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6518,6 +6529,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#design-invariants-explicit-non-negotiable_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Invariants (explicit, non-negotiable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#uiux" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -8812,16 +8834,61 @@ UBBL_MEP_SCALE { guid: ductGuid, axis: &#39;x&#39;, oldLen: 5.0, newLen: 8.0 }
 (post-Stage-1), not the deltas. If positions already satisfy all rules,
 it emits no adjustments. Running twice without intermediate drags produces
 zero new ops. This is verified by test.</p>
+<h5 id="design-invariants-explicit-non-negotiable_1">Design Invariants (explicit, non-negotiable)<a class="headerlink" href="#design-invariants-explicit-non-negotiable_1" title="Permanent link">&para;</a></h5>
+<p><strong>1. Trigger semantics — drag before validate.</strong>
+If the user drags a second grid line before validating the first, the
+pending validator state <strong>accumulates</strong> — it does not cancel or auto-run.
+When "Validate" is finally pressed, the validator reads ALL un-validated
+<code>GRID_MOVE</code> ops from the kernel log since the last validation. Running the
+validator marks those ops as "validated" (a flag on the kernel op entry)
+and resets the pending state. This means:
+- Multiple drags → one validate pass (batch).
+- Validate after each drag also works (incremental).
+- No lost moves, no race conditions.</p>
+<p><strong>2. Performance — O(K) not O(N).</strong>
+The validator reads the kernel ops log to determine which grid lines moved,
+then queries only the elements in those grid lines' attach maps plus their
+BOM-tree dependents. It does NOT scan all N elements. For a building with
+48K elements but K=300 attached to the moved grid, the validator touches
+~300 + their children (~100 openings) = ~400 elements. The BOM-tree
+traversal is depth-limited (MAX_DEPTH=20, same as BOMWalker). Target:
+&lt; 500ms on SC (~3000 elements), &lt; 2s on TE (~48K elements).</p>
+<p><strong>3. No auto-correct — report only.</strong>
+The validator <strong>reports</strong> violations. It does NOT auto-fix them. There is
+no "snap to compliant position" in Stage 2. If an opening is too small
+after a wall scale, the validator emits a violation:
+<code>{rule: 'MIN_DOOR_WIDTH', element: doorGuid, detail: 'width 720mm &lt; 800mm min'}</code>.
+The user decides: accept (override), manually fix (drag the opening), or
+revert the grid drag (undo). Auto-correction is a future enhancement (Stage 3)
+that would require user-configurable fix strategies per rule.</p>
+<p>The one exception: <strong>cascade adjustments</strong> (openings following walls,
+interior proportional) are NOT auto-corrections — they are deterministic
+consequences of the kinematic move. They always happen. Violations are
+about legal compliance, not geometric consequence.</p>
+<p><strong>4. BOM-tree constraint graph.</strong>
+The validator uses the same <code>bom_tree</code> table as Stage 1 (parent → child
+relationships from IfcRelVoidsElement, IfcRelFillsElement, IfcRelAggregates).
+The constraint rule: <strong>never move a child without its parent having moved
+first.</strong> If a wall (parent) moved in Stage 1, its openings (children) get
+cascade-adjusted in Stage 2. If a wall did NOT move, its openings are
+untouched — even if they happen to be near a moved grid line. The BOM tree
+is the authority, not proximity.</p>
+<p>For elements with no BOM-tree entry (IFC Drop buildings without IfcRel data),
+the validator falls back to position-based parent detection: an opening
+whose center is within the bbox of a wall is treated as a child of that wall.
+This is the same heuristic used in <code>bom_extract.js</code>.</p>
 <h5 id="uiux">UI/UX<a class="headerlink" href="#uiux" title="Permanent link">&para;</a></h5>
 <ul>
 <li><strong>"Validate" button</strong> in the Doc canvas HUD (red pill panel), visible after
-  any grid drag. Greyed out if no pending drags.</li>
-<li><strong>Spinner</strong> during validation (use <code>requestIdleCallback</code> to avoid blocking).
-  Validation on SC (~3000 elements) should complete in &lt; 500ms.</li>
+  any grid drag. Greyed out if no pending drags (all ops validated).</li>
+<li><strong>Spinner</strong> during validation (use <code>requestIdleCallback</code> to avoid blocking).</li>
 <li><strong>Violations panel</strong> — list of failed checks with element highlight on click.
   User can accept (override), fix (manual drag), or revert (undo grid drag).</li>
 <li><strong>Auto-validate option</strong> — user preference to run Stage 2 automatically
   after each drag with a 500ms debounce. Off by default.</li>
+<li><strong>Pending indicator</strong> — after a grid drag, the Validate button shows a count
+  badge (e.g., "Validate (2)") indicating how many un-validated grid moves
+  are pending. Resets to zero after validation.</li>
 </ul>
 <h5 id="outputs">Outputs<a class="headerlink" href="#outputs" title="Permanent link">&para;</a></h5>
 <ul>
@@ -8839,6 +8906,7 @@ zero new ops. This is verified by test.</p>
 <li>Undo/redo of Stage 2 ops (possible via kernel log, but not built in Stage 2)</li>
 <li>New element creation (adding beams where none existed)</li>
 <li>Structural analysis (load calculations, deflection)</li>
+<li>Auto-correction of violations (report only — future Stage 3)</li>
 </ul>
 <h5 id="testing">Testing<a class="headerlink" href="#testing" title="Permanent link">&para;</a></h5>
 <ol>
