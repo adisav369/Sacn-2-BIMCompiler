@@ -1613,16 +1613,68 @@ UBBL_MEP_SCALE { guid: ductGuid, axis: 'x', oldLen: 5.0, newLen: 8.0 }
 it emits no adjustments. Running twice without intermediate drags produces
 zero new ops. This is verified by test.
 
+##### Design Invariants (explicit, non-negotiable)
+
+**1. Trigger semantics — drag before validate.**
+If the user drags a second grid line before validating the first, the
+pending validator state **accumulates** — it does not cancel or auto-run.
+When "Validate" is finally pressed, the validator reads ALL un-validated
+`GRID_MOVE` ops from the kernel log since the last validation. Running the
+validator marks those ops as "validated" (a flag on the kernel op entry)
+and resets the pending state. This means:
+- Multiple drags → one validate pass (batch).
+- Validate after each drag also works (incremental).
+- No lost moves, no race conditions.
+
+**2. Performance — O(K) not O(N).**
+The validator reads the kernel ops log to determine which grid lines moved,
+then queries only the elements in those grid lines' attach maps plus their
+BOM-tree dependents. It does NOT scan all N elements. For a building with
+48K elements but K=300 attached to the moved grid, the validator touches
+~300 + their children (~100 openings) = ~400 elements. The BOM-tree
+traversal is depth-limited (MAX_DEPTH=20, same as BOMWalker). Target:
+< 500ms on SC (~3000 elements), < 2s on TE (~48K elements).
+
+**3. No auto-correct — report only.**
+The validator **reports** violations. It does NOT auto-fix them. There is
+no "snap to compliant position" in Stage 2. If an opening is too small
+after a wall scale, the validator emits a violation:
+`{rule: 'MIN_DOOR_WIDTH', element: doorGuid, detail: 'width 720mm < 800mm min'}`.
+The user decides: accept (override), manually fix (drag the opening), or
+revert the grid drag (undo). Auto-correction is a future enhancement (Stage 3)
+that would require user-configurable fix strategies per rule.
+
+The one exception: **cascade adjustments** (openings following walls,
+interior proportional) are NOT auto-corrections — they are deterministic
+consequences of the kinematic move. They always happen. Violations are
+about legal compliance, not geometric consequence.
+
+**4. BOM-tree constraint graph.**
+The validator uses the same `bom_tree` table as Stage 1 (parent → child
+relationships from IfcRelVoidsElement, IfcRelFillsElement, IfcRelAggregates).
+The constraint rule: **never move a child without its parent having moved
+first.** If a wall (parent) moved in Stage 1, its openings (children) get
+cascade-adjusted in Stage 2. If a wall did NOT move, its openings are
+untouched — even if they happen to be near a moved grid line. The BOM tree
+is the authority, not proximity.
+
+For elements with no BOM-tree entry (IFC Drop buildings without IfcRel data),
+the validator falls back to position-based parent detection: an opening
+whose center is within the bbox of a wall is treated as a child of that wall.
+This is the same heuristic used in `bom_extract.js`.
+
 ##### UI/UX
 
 - **"Validate" button** in the Doc canvas HUD (red pill panel), visible after
-  any grid drag. Greyed out if no pending drags.
+  any grid drag. Greyed out if no pending drags (all ops validated).
 - **Spinner** during validation (use `requestIdleCallback` to avoid blocking).
-  Validation on SC (~3000 elements) should complete in < 500ms.
 - **Violations panel** — list of failed checks with element highlight on click.
   User can accept (override), fix (manual drag), or revert (undo grid drag).
 - **Auto-validate option** — user preference to run Stage 2 automatically
   after each drag with a 500ms debounce. Off by default.
+- **Pending indicator** — after a grid drag, the Validate button shows a count
+  badge (e.g., "Validate (2)") indicating how many un-validated grid moves
+  are pending. Resets to zero after validation.
 
 ##### Outputs
 
@@ -1640,6 +1692,7 @@ zero new ops. This is verified by test.
 - Undo/redo of Stage 2 ops (possible via kernel log, but not built in Stage 2)
 - New element creation (adding beams where none existed)
 - Structural analysis (load calculations, deflection)
+- Auto-correction of violations (report only — future Stage 3)
 
 ##### Testing
 
