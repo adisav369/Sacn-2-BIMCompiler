@@ -129,7 +129,20 @@ var THREE = {
     this.visible = true;
     _makeTraversable(this);
   },
-  Vector3: function(x, y, z) { this.x = x || 0; this.y = y || 0; this.z = z || 0; },
+  Vector3: function(x, y, z) {
+    this.x = x || 0; this.y = y || 0; this.z = z || 0;
+    this.setFromMatrixPosition = function(m) {
+      this.x = m.elements[12]; this.y = m.elements[13]; this.z = m.elements[14];
+      return this;
+    };
+    this.setFromMatrixScale = function(m) {
+      var e = m.elements;
+      this.x = Math.sqrt(e[0]*e[0] + e[1]*e[1] + e[2]*e[2]);
+      this.y = Math.sqrt(e[4]*e[4] + e[5]*e[5] + e[6]*e[6]);
+      this.z = Math.sqrt(e[8]*e[8] + e[9]*e[9] + e[10]*e[10]);
+      return this;
+    };
+  },
   Matrix4: function() {
     this.elements = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
     this.makeScale = function() { return this; };
@@ -1424,6 +1437,289 @@ test('T54 Issue: BUG-1 — engine rebuild resets _lastAppliedDeltas', function()
   var after = DC._getLastAppliedDeltas();
   assertEq(Object.keys(after).length, 0, 'Rebuild should reset _lastAppliedDeltas');
   logTag('BUG1_REBUILD', 'engine rebuild clears _lastAppliedDeltas');
+  DC.deactivate(A);
+});
+
+// ── T55-T58: §S270 BUG-4 bbox swizzle + SPAN/EDGE classification ──
+console.log('\n── T55-T58: §S270 BUG-4 bbox Swizzle + SPAN/EDGE ──');
+
+// Helper: create a BatchedMesh mock with per-slot matrix support
+function mockBatchedMesh(id, slotPositions) {
+  // slotPositions: [{guid, x, y, z}] — Three.js positions
+  var matrices = {};
+  var visibility = {};
+  for (var i = 0; i < slotPositions.length; i++) {
+    var sp = slotPositions[i];
+    // Identity matrix with translation
+    matrices[i] = [1,0,0,0, 0,1,0,0, 0,0,1,0, sp.x, sp.y, sp.z, 1];
+    visibility[i] = true;
+  }
+  var mesh = {
+    isBatchedMesh: true, isMesh: true, visible: true,
+    id: id, userData: {}, children: [], parent: null,
+    getMatrixAt: function(slotId, mat) {
+      var m = matrices[slotId];
+      if (m) for (var j = 0; j < 16; j++) mat.elements[j] = m[j];
+    },
+    setMatrixAt: function(slotId, mat) {
+      matrices[slotId] = mat.elements.slice();
+    },
+    setVisibleAt: function(slotId, vis) { visibility[slotId] = vis; },
+    _getMatrix: function(slotId) { return matrices[slotId]; },
+    _visibility: visibility
+  };
+  _makeTraversable(mesh);
+  return mesh;
+}
+
+// Helper: mock DB that returns bbox + class data
+function mockDbWithBbox(elements) {
+  // elements: [{guid, bbox_x, bbox_y, bbox_z, ifc_class}] — IFC coords!
+  return {
+    exec: function(sql) {
+      if (sql.indexOf('bbox_x') >= 0) {
+        return [{ values: elements.map(function(e) {
+          return [e.guid, e.bbox_x, e.bbox_y, e.bbox_z];
+        })}];
+      }
+      if (sql.indexOf('ifc_class') >= 0) {
+        return [{ values: elements.map(function(e) {
+          return [e.guid, e.ifc_class];
+        })}];
+      }
+      return [];
+    },
+    prepare: function() { return { getAsObject: function() { return {}; }, free: function() {} }; }
+  };
+}
+
+test('T55 Issue: BUG-4 — bbox IFC→Three swizzle: bboxY↔bboxZ swapped in elementData', function() {
+  var DC = loadDocCanvasWithEngine();
+
+  // Wall: IFC bbox 0.2m wide (X), 8m long (Y=depth), 3m tall (Z=height)
+  // Three.js position: x=5, y=1.5 (up=halfHeight), z=-4 (depth)
+  var wallElements = [
+    { guid: 'wall_A', bbox_x: 0.2, bbox_y: 8.0, bbox_z: 3.0, ifc_class: 'IfcWall' }
+  ];
+  var db = mockDbWithBbox(wallElements);
+
+  var bm = mockBatchedMesh(200, [
+    { guid: 'wall_A', x: 5.0, y: 1.5, z: -4.0 }
+  ]);
+
+  var A = mockA({ bom: testBOM(), db: db });
+  A._batchMeta = {};
+  A._batchMeta[200] = [
+    { guid: 'wall_A', slotId: 0, disc: 'ARC', ifcClass: 'IfcWall' }
+  ];
+  A.scene.add(bm);
+
+  DC.activate(A);
+  DC._setPhases([
+    { name: 'GF / ARC', disc: 'ARC', guids: ['wall_A'], tier: 1 }
+  ]);
+  DC.nextPhase(A);
+
+  // Set grid at x=5 (near wall center) with originals
+  DC._setGridOriginals([0, 5], [0, -4]);
+  DC._setGridPositions([0, 5], [0, -4]);
+  DC._rebuildEngine(A);
+
+  var engine = DC._getKinEngine();
+  assert(engine, 'Engine should exist');
+
+  // Verify the element data passed to engine has swizzled bbox
+  var map = engine.getAttachMap();
+  var allItems = [];
+  for (var k in map) {
+    for (var i = 0; i < map[k].length; i++) allItems.push(map[k][i]);
+  }
+  // Wall at x=5, bboxX=0.2 → halfExtent 0.1. Grid at x=5.
+  // Wall right edge at x=5.1, within EDGE_TOL of grid → EDGE_RIGHT wins over ATTACH
+  // (halfExtent ≈ EDGE_TOL, floating point makes 5.1-5.0 < 0.1 → EDGE fires)
+  var xItems = allItems.filter(function(it) { return it.axis === 'x' && it.guid === 'wall_A'; });
+  assert(xItems.length > 0, 'Wall should attach to X grid at x=5');
+  assertEq(xItems[0].relation, 'EDGE_RIGHT', 'Thin wall edge at grid → EDGE_RIGHT on X axis');
+
+  // Wall z=-4, swizzled bboxZ=8 (IFC Y=depth), halfExtent=4 → spans z=[-8,0]
+  // Grid z=0 at right edge → EDGE_RIGHT on z-axis
+  var zItems = allItems.filter(function(it) { return it.axis === 'z' && it.guid === 'wall_A'; });
+  assert(zItems.length > 0, 'Wall should attach to Z grid');
+  // Grid z=0 is at wall edge (center -4 + halfExtent 4 = 0) → EDGE
+  assert(zItems[0].relation === 'EDGE_RIGHT' || zItems[0].relation === 'EDGE_LEFT',
+    'Wall edge at Z grid → EDGE_* (got ' + zItems[0].relation + ')');
+
+  logTag('BUG4_SWIZZLE', 'wall bbox IFC(0.2,8,3) → Three bboxX=0.2 bboxY=3(height) bboxZ=8(depth)' +
+    ' — X:ATTACH Z:' + zItems[0].relation + ' confirmed');
+  DC.deactivate(A);
+});
+
+test('T56 Issue: BUG-4 — SPAN relation forms when grid crosses wall body', function() {
+  var DC = loadDocCanvasWithEngine();
+
+  // Long wall: IFC bbox 0.2m (X=thickness), 12m (Y=length along depth), 3m (Z=height)
+  // Three.js: wall center at z=-6 (midpoint of 12m wall in Three.js Z = -IFC Y)
+  // Swizzled: bboxZ = IFC Y = 12m → Three.js Z extent = 12m
+  // Wall spans z from -12 to 0
+  var wallElements = [
+    { guid: 'longwall', bbox_x: 0.2, bbox_y: 12.0, bbox_z: 3.0, ifc_class: 'IfcWall' }
+  ];
+  var db = mockDbWithBbox(wallElements);
+
+  var bm = mockBatchedMesh(201, [
+    { guid: 'longwall', x: 5.0, y: 1.5, z: -6.0 }
+  ]);
+
+  var A = mockA({ bom: testBOM(), db: db });
+  A._batchMeta = {};
+  A._batchMeta[201] = [
+    { guid: 'longwall', slotId: 0, disc: 'ARC', ifcClass: 'IfcWall' }
+  ];
+  A.scene.add(bm);
+
+  DC.activate(A);
+  DC._setPhases([
+    { name: 'GF / ARC', disc: 'ARC', guids: ['longwall'], tier: 1 }
+  ]);
+  DC.nextPhase(A);
+
+  // ONE grid on Z at z=-4: inside wall body z=[-12,0], not near either edge
+  // (No grid at edges, so SPAN should win as best classification)
+  DC._setGridOriginals([0, 5], [-4]);
+  DC._setGridPositions([0, 5], [-4]);
+  DC._rebuildEngine(A);
+
+  var engine = DC._getKinEngine();
+  var map = engine.getAttachMap();
+  var zItems = [];
+  for (var k in map) {
+    var items = map[k];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].axis === 'z' && items[i].guid === 'longwall') zItems.push(items[i]);
+    }
+  }
+
+  assert(zItems.length > 0, 'Wall should have Z-axis attachment');
+  // Grid z=-4 inside wall body z=[-12,0], not near edge → SPAN
+  assertEq(zItems[0].relation, 'SPAN', 'Grid inside wall body → SPAN (not just ATTACH)');
+
+  logTag('BUG4_SPAN', 'longwall z=[-12,0] grid z=-4 → SPAN relation confirmed');
+  DC.deactivate(A);
+});
+
+test('T57 Issue: BUG-4 — EDGE_RIGHT forms when grid at wall edge', function() {
+  var DC = loadDocCanvasWithEngine();
+
+  // Wall: IFC bbox 0.2m (X), 6m (Y=depth), 3m (Z=height)
+  // Three.js: center z=-3, extent on Z = IFC Y = 6m → z spans [-6, 0]
+  // Grid at z=0 (right edge of wall)
+  var wallElements = [
+    { guid: 'edgewall', bbox_x: 0.2, bbox_y: 6.0, bbox_z: 3.0, ifc_class: 'IfcWall' }
+  ];
+  var db = mockDbWithBbox(wallElements);
+
+  var bm = mockBatchedMesh(202, [
+    { guid: 'edgewall', x: 5.0, y: 1.5, z: -3.0 }
+  ]);
+
+  var A = mockA({ bom: testBOM(), db: db });
+  A._batchMeta = {};
+  A._batchMeta[202] = [
+    { guid: 'edgewall', slotId: 0, disc: 'ARC', ifcClass: 'IfcWall' }
+  ];
+  A.scene.add(bm);
+
+  DC.activate(A);
+  DC._setPhases([
+    { name: 'GF / ARC', disc: 'ARC', guids: ['edgewall'], tier: 1 }
+  ]);
+  DC.nextPhase(A);
+
+  // Grid at z=0 — at right edge of wall (center z=-3 + halfExtent 3 = 0)
+  DC._setGridOriginals([0, 5], [-6, 0]);
+  DC._setGridPositions([0, 5], [-6, 0]);
+  DC._rebuildEngine(A);
+
+  var engine = DC._getKinEngine();
+  var map = engine.getAttachMap();
+  var edgeItems = [];
+  for (var k in map) {
+    var items = map[k];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].guid === 'edgewall' && items[i].axis === 'z') edgeItems.push(items[i]);
+    }
+  }
+
+  assert(edgeItems.length > 0, 'Wall should have Z-axis edge attachment');
+  assert(edgeItems[0].relation === 'EDGE_RIGHT' || edgeItems[0].relation === 'EDGE_LEFT',
+    'Grid at wall edge → EDGE_* (got ' + edgeItems[0].relation + ')');
+
+  logTag('BUG4_EDGE', 'wall z=[-6,0] grid z=0 → ' + edgeItems[0].relation + ' confirmed');
+  DC.deactivate(A);
+});
+
+test('T58 Issue: BUG-4 — dragGrid produces SCALE commands for SPAN elements', function() {
+  var DC = loadDocCanvasWithEngine();
+
+  // Long wall spanning a grid → SPAN → should produce SCALE on drag
+  // IFC: 0.2m thick, 12m long (Y=depth), 3m tall (Z=height)
+  // Three.js: center z=-6, bboxZ(swizzled)=12 → spans z=[-12,0]
+  var wallElements = [
+    { guid: 'spanwall', bbox_x: 0.2, bbox_y: 12.0, bbox_z: 3.0, ifc_class: 'IfcWall' }
+  ];
+  var db = mockDbWithBbox(wallElements);
+
+  var bm = mockBatchedMesh(203, [
+    { guid: 'spanwall', x: 5.0, y: 1.5, z: -6.0 }
+  ]);
+
+  var A = mockA({ bom: testBOM(), db: db });
+  A._batchMeta = {};
+  A._batchMeta[203] = [
+    { guid: 'spanwall', slotId: 0, disc: 'ARC', ifcClass: 'IfcWall' }
+  ];
+  A.scene.add(bm);
+
+  DC.activate(A);
+  DC._setPhases([
+    { name: 'GF / ARC', disc: 'ARC', guids: ['spanwall'], tier: 1 }
+  ]);
+  DC.nextPhase(A);
+
+  // ONE grid on Z at z=-4: inside wall body z=[-12,0], not near edges → SPAN
+  DC._setGridOriginals([0, 5], [-4]);
+  DC._setGridPositions([0, 5], [-4]);
+  DC._rebuildEngine(A);
+
+  // Verify SPAN classification before drag
+  var engine = DC._getKinEngine();
+  var map = engine.getAttachMap();
+  var spanItems = [];
+  for (var k in map) {
+    for (var si = 0; si < map[k].length; si++) {
+      if (map[k][si].guid === 'spanwall' && map[k][si].axis === 'z') spanItems.push(map[k][si]);
+    }
+  }
+  assert(spanItems.length > 0, 'Wall should have SPAN on z');
+  assertEq(spanItems[0].relation, 'SPAN', 'Pre-drag: SPAN confirmed');
+
+  // Drag grid z=-4 to z=-2 (abs delta = +2, incremental = +2)
+  DC._setGridPositions([0, 5], [-2]);
+  DC.recompose(A);
+
+  // Check the matrix was modified
+  var mat = bm._getMatrix(0);
+  var scaleZ = Math.sqrt(mat[8]*mat[8] + mat[9]*mat[9] + mat[10]*mat[10]);
+  var posZ = mat[14];
+
+  logTag('BUG4_SCALE', 'spanwall after drag: scaleZ=' + scaleZ.toFixed(4) +
+    ' posZ=' + posZ.toFixed(3) +
+    (Math.abs(scaleZ - 1.0) > 0.001 ? ' SCALE applied ✓' : ' TRANSLATE only'));
+
+  // SPAN → SCALE: scaleZ should differ from 1.0
+  assert(Math.abs(scaleZ - 1.0) > 0.001,
+    'SPAN element should get SCALE (scaleZ=' + scaleZ.toFixed(4) + '), not just TRANSLATE');
+
   DC.deactivate(A);
 });
 

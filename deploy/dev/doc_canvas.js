@@ -1842,6 +1842,8 @@ function _collectElementData(A) {
     } catch(e2) { /* class optional */ }
   }
 
+  var bboxMatchCount = 0, bboxTotal = Object.keys(bboxLookup).length;
+
   var elements = [];
   for (var gi = 0; gi < shownGuids.length; gi++) {
     var guid = shownGuids[gi];
@@ -1849,20 +1851,36 @@ function _collectElementData(A) {
     if (!mpos) continue;
 
     var bbox = bboxLookup[guid] || { bboxX: 0, bboxY: 0, bboxZ: 0 };
+    // §S270 BUG-4 fix: swizzle IFC bbox (Z-up) → Three.js bbox (Y-up)
+    // IFC: X=width, Y=depth, Z=height → Three: X=X, Y=Z(up), Z=Y(depth)
     elements.push({
       guid: guid,
       x: mpos.x,
       y: mpos.y,
       z: mpos.z,
-      bboxX: bbox.bboxX,
-      bboxY: bbox.bboxY,
-      bboxZ: bbox.bboxZ,
+      bboxX: bbox.bboxX,            // IFC X → Three X (same)
+      bboxY: bbox.bboxZ,            // IFC Z (height) → Three Y (up)
+      bboxZ: bbox.bboxY,            // IFC Y (depth) → Three Z (into screen)
       ifcClass: classLookup[guid] || '',
       scaleX: mpos.scaleX,
       scaleY: mpos.scaleY,
       scaleZ: mpos.scaleZ
     });
+    if (bboxLookup[guid]) bboxMatchCount++;
   }
+
+  // §S270 BUG-4 diag: bbox match rate + sample values
+  if (elements.length) {
+    var sample = elements[0];
+    console.log('§COLLECT_ELEMENTS guids=' + shownGuids.length +
+      ' withMesh=' + elements.length +
+      ' bboxMatches=' + bboxMatchCount + '/' + bboxTotal +
+      ' sample: guid=' + sample.guid +
+      ' pos=(' + sample.x.toFixed(2) + ',' + sample.y.toFixed(2) + ',' + sample.z.toFixed(2) + ')' +
+      ' bbox=(' + sample.bboxX.toFixed(2) + ',' + sample.bboxY.toFixed(2) + ',' + sample.bboxZ.toFixed(2) + ')' +
+      ' class=' + sample.ifcClass);
+  }
+
   return elements;
 }
 
@@ -1911,12 +1929,24 @@ function _rebuildEngine(A) {
 
   var map = _kinEngine.getAttachMap();
   var totalAttached = 0;
+  var relCounts = { ATTACH: 0, SPAN: 0, EDGE_RIGHT: 0, EDGE_LEFT: 0, ROOF_EAVE: 0, ROOF_FLAT: 0, ROOF_LIFT: 0 };
   for (var k in map) {
-    totalAttached += map[k].length;
+    var items = map[k];
+    totalAttached += items.length;
+    for (var mi = 0; mi < items.length; mi++) {
+      var rel = items[mi].relation;
+      if (relCounts[rel] !== undefined) relCounts[rel]++;
+      else relCounts[rel] = 1;
+    }
   }
   console.log('§RECOMPOSE_ENGINE built elements=' + elementData.length +
     ' grids=' + gridLines.length + ' attached=' + totalAttached +
-    ' interior=' + _kinEngine.getInteriorElements().length);
+    ' interior=' + _kinEngine.getInteriorElements().length +
+    ' relations: ATTACH=' + relCounts.ATTACH +
+    ' SPAN=' + relCounts.SPAN +
+    ' EDGE_R=' + relCounts.EDGE_RIGHT +
+    ' EDGE_L=' + relCounts.EDGE_LEFT +
+    ' ROOF=' + (relCounts.ROOF_EAVE + relCounts.ROOF_FLAT + relCounts.ROOF_LIFT));
 }
 
 /**
