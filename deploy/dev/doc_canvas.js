@@ -1960,11 +1960,12 @@ function _translateMesh(guid, axis, delta) {
  */
 function _findRootBom(bomDb) {
   if (!bomDb) return null;
-  var boms = BOMWalker.listBoms(bomDb);
+  try {
+    var boms = BOMWalker.listBoms(bomDb);
+  } catch(e) { return null; } // DB may not have m_bom table
   for (var i = 0; i < boms.length; i++) {
     if (boms[i].bomType === 'BUILDING') return boms[i].bomId;
   }
-  // Fallback: first BOM
   return boms.length ? boms[0].bomId : null;
 }
 
