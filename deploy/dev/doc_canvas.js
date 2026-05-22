@@ -154,6 +154,9 @@ function activate(A) {
   _gridOn = true;
   _buildGrid(A);
 
+  // §S267: Snapshot grid originals for delta computation
+  _snapshotGridOriginals();
+
   // Reset phase stepper
   _phaseIndex = -1;
   _shownCount = 0;
@@ -378,7 +381,44 @@ function _resortLabels() {
 
 // ── Envelope wireframe ──────────────────────────────────────────────────────
 function _buildEnvelope(A) {
-  var env = A._bom.envelope;
+  // §S267: Envelope from BOM root AABB when BOM.db available (recipe, not scatter)
+  var env;
+  // §S267: try BOM data from A._bomDb (standalone) or A.db (merged extracted)
+  var _envBomDb = A._bomDb || A.db;
+  if (_envBomDb && window.BOMWalker) {
+    // Guard: check if m_bom table exists before querying
+    try { var boms = BOMWalker.listBoms(_envBomDb); } catch(e) { boms = []; }
+    var building = null;
+    for (var bi = 0; bi < boms.length; bi++) {
+      if (boms[bi].bomType === 'BUILDING') { building = boms[bi]; break; }
+    }
+    if (building) {
+      var rootRows = BOMWalker._query(_envBomDb,
+        "SELECT origin_x, origin_y, origin_z, aabb_width_mm, aabb_depth_mm, aabb_height_mm " +
+        "FROM m_bom WHERE bom_id = '" + building.bomId.replace(/'/g, "''") + "'");
+      if (rootRows.length) {
+        var r = rootRows[0];
+        var ox = r[0], oy = r[1], oz = r[2];
+        var wm = r[3] / 1000, dm = r[4] / 1000, hm = r[5] / 1000;
+        env = { minX: ox, maxX: ox + wm, minY: oy, maxY: oy + dm, minZ: oz, maxZ: oz + hm };
+        console.log('§DOC_ENVELOPE source=BOM root=' + building.bomId +
+          ' aabb=' + wm.toFixed(1) + 'x' + dm.toFixed(1) + 'x' + hm.toFixed(1) + 'm' +
+          ' origin=(' + ox.toFixed(1) + ',' + oy.toFixed(1) + ',' + oz.toFixed(1) + ')');
+      }
+    }
+  }
+
+  // Fallback to bom_extract envelope (IFC Drop path — no BOM.db)
+  if (!env && A._bom && A._bom.envelope) {
+    env = A._bom.envelope;
+    console.log('§DOC_ENVELOPE source=bom_extract (no BOM.db)');
+  }
+
+  if (!env) {
+    console.warn('§DOC_ENVELOPE no envelope data');
+    return;
+  }
+
   var lo = _ifcToThree(env.minX, env.maxY, env.minZ, A.modelOffset); // IFC min corner
   var hi = _ifcToThree(env.maxX, env.minY, env.maxZ, A.modelOffset); // IFC max corner
 
@@ -398,7 +438,8 @@ function _buildEnvelope(A) {
   _envGroup.add(wireframe);
 
   // Store envelope bounds for grid
-  A._docEnv = { x0: x0, x1: x1, y0: y0, y1: y1, z0: z0, z1: z1, w: w, h: h, d: d };
+  A._docEnv = { x0: x0, x1: x1, y0: y0, y1: y1, z0: z0, z1: z1, w: w, h: h, d: d,
+    ox: env.minX, oy: env.minY, oz: env.minZ };
 
   geo.dispose();
 }
@@ -613,84 +654,125 @@ function _addBubble(text, x, y, z, color, axis, idx, end) {
   _gridGroup.add(sprite);
 }
 
-// ── Gantt phase loader ──────────────────────────────────────────────────────
+// ── §S267: BOM-driven phase loader ─────────────────────────────────────────
+// Phases come ONLY from BOM tree walk. No fallback, no flat query, no invention.
+// Tier 1 = structural (Column, Wall, Slab, Beam, Footing) — defines bays
+// Tier 2 = openings (Door, Window, Opening) — refines bays
+// Tier 3 = finishes (Covering, Roof, Stair, Railing, Plate, Member)
+// Tier 4 = infill (Furniture, Proxy, MEP terminals, everything else)
+
+var _BOM_STRUCTURAL = { IfcColumn:1, IfcPile:1, IfcWall:1, IfcWallStandardCase:1,
+                        IfcSlab:1, IfcBeam:1, IfcFooting:1 };
+var _BOM_OPENINGS   = { IfcDoor:1, IfcWindow:1, IfcOpeningElement:1 };
+var _BOM_FINISHES   = { IfcCovering:1, IfcCurtainWall:1, IfcRoof:1, IfcPlate:1,
+                        IfcStair:1, IfcStairFlight:1, IfcRailing:1, IfcMember:1 };
+
+function _classifyTier(role) {
+  if (_BOM_STRUCTURAL[role]) return 1;
+  if (_BOM_OPENINGS[role]) return 2;
+  if (_BOM_FINISHES[role]) return 3;
+  return 4;
+}
+
 function _loadPhases(A) {
   _phases = [];
 
-  // Check if building has Gantt data (tasks table)
-  var hasTasks = A.dbQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='tasks'");
-  if (hasTasks.length) {
-    // Load phases from tasks table, ordered by start
-    var tasks = A.dbQuery(
-      'SELECT t.task_id, t.name FROM tasks t ' +
-      'ORDER BY t.start_date, t.task_id'
-    );
-    for (var i = 0; i < tasks.length; i++) {
-      var taskId = tasks[i][0];
-      var taskName = tasks[i][1] || 'Phase ' + (i + 1);
-      // Get elements for this task
-      var elems = A.dbQuery(
-        'SELECT guid FROM task_elements WHERE task_id = \'' + taskId + '\''
-      );
-      if (elems.length) {
+  // §S267: BOM data lives in the building's extracted DB (m_bom + m_bom_line tables).
+  // Use A._bomDb if set (standalone BOM.db), else try A.db (merged extracted DB).
+  var bomDb = A._bomDb || A.db;
+  if (!bomDb || !window.BOMWalker || !window.VerbExpand) {
+    console.log('§DOC_PHASES no BOM data — phases disabled (no db/modules)');
+    return;
+  }
+
+  // Guard: m_bom table may not exist in older cached extracted DBs
+  var boms;
+  try { boms = BOMWalker.listBoms(bomDb); } catch(e) {
+    console.log('§DOC_PHASES no m_bom table in DB — phases disabled');
+    return;
+  }
+  var building = null;
+  for (var bi = 0; bi < boms.length; bi++) {
+    if (boms[bi].bomType === 'BUILDING') { building = boms[bi]; break; }
+  }
+  if (!building) {
+    console.warn('§DOC_PHASES no BUILDING BOM in BOM.db');
+    return;
+  }
+
+  var rootId = building.bomId;
+
+  // BOM walk collects: per floor → per tier → set of IFC classes + storey name.
+  // Then we query the extracted DB (A.db) for real GUIDs matching storey + class.
+  var floorStack = [];
+  var floorBuckets = {};  // bomId → { name, type, storey, 1:Set(class), 2:Set, 3:Set, 4:Set }
+
+  function _cf() { return floorStack.length ? floorStack[floorStack.length - 1] : null; }
+
+  BOMWalker.walk(bomDb, rootId, {
+    onSubAssembly: function(ctx) {
+      var childType = ctx.childBom ? ctx.childBom.bomType : null;
+      if (childType === 'FLOOR' || childType === 'MEP') {
+        var bomId = ctx.line.childProductId;
+        floorStack.push(bomId);
+        if (!floorBuckets[bomId]) {
+          floorBuckets[bomId] = { name: bomId, type: childType, storey: ctx.line.storey, 1:{}, 2:{}, 3:{}, 4:{} };
+        }
+      }
+    },
+    onSubAssemblyComplete: function(ctx) {
+      var childType = ctx.childBom ? ctx.childBom.bomType : null;
+      if (childType === 'FLOOR' || childType === 'MEP') floorStack.pop();
+    },
+    onLeaf: function(ctx) {
+      var cf = _cf();
+      if (!cf) return;
+      if (!floorBuckets[cf]) {
+        floorBuckets[cf] = { name: cf, type: 'FLOOR', storey: ctx.line.storey, 1:{}, 2:{}, 3:{}, 4:{} };
+      }
+      var tier = _classifyTier(ctx.line.role);
+      floorBuckets[cf][tier][ctx.line.role] = true;
+      // Capture storey from leaf if floor-level storey was null
+      if (!floorBuckets[cf].storey && ctx.line.storey) {
+        floorBuckets[cf].storey = ctx.line.storey;
+      }
+    }
+  });
+
+  // Convert buckets → phases by querying extracted DB for real GUIDs
+  var tierNames = { 1: 'Structure', 2: 'Openings', 3: 'Finishes', 4: 'Infill' };
+  var floorOrder = Object.keys(floorBuckets);
+  for (var fi = 0; fi < floorOrder.length; fi++) {
+    var b = floorBuckets[floorOrder[fi]];
+    for (var tier = 1; tier <= 4; tier++) {
+      var classes = Object.keys(b[tier]);
+      if (!classes.length) continue;
+
+      // Query extracted DB for GUIDs matching this storey + these IFC classes
+      var guids = [];
+      if (A.db && A.dbQuery && b.storey) {
+        var classIn = classes.map(function(c) { return "'" + c.replace(/'/g, "''") + "'"; }).join(',');
+        var storeyEsc = b.storey.replace(/'/g, "''");
+        guids = A.dbQuery(
+          "SELECT guid FROM elements_meta WHERE storey = '" + storeyEsc + "' AND ifc_class IN (" + classIn + ")"
+        ).map(function(r) { return r[0]; });
+      }
+
+      if (guids.length > 0) {
         _phases.push({
-          name: taskName,
-          guids: elems.map(function(e) { return e[0]; })
+          name: b.name + ' / ' + tierNames[tier],
+          disc: tier <= 3 ? 'ARC' : (b.type === 'MEP' ? 'MEP' : 'ARC'),
+          ifcClass: tierNames[tier],
+          guids: guids,
+          tier: tier,
+          floor: b.name,
+          floorType: b.type
         });
       }
     }
-    console.log('§DOC_PHASES loaded=' + _phases.length + ' from tasks table');
   }
 
-  if (!_phases.length) {
-    // Design Gantt: parent-first construction order, not alphabetical.
-    // Walls define bays → openings refine → slabs cap → rest fills in.
-    // §6.4: BOM hierarchy = generation layers (parent before child).
-    var CLASS_PRIORITY = {
-      IfcColumn: 1, IfcPile: 1,                        // structural grid points
-      IfcWall: 2, IfcWallStandardCase: 2,               // structural walls → define bays
-      IfcCurtainWall: 2,
-      IfcSlab: 3,                                        // floor planes
-      IfcBeam: 4,                                        // structural spans
-      IfcFooting: 4,                                     // foundations
-      IfcDoor: 5, IfcWindow: 5,                          // openings — children of walls
-      IfcOpeningElement: 5, IfcOpening: 5,
-      IfcStair: 6, IfcStairFlight: 6, IfcRailing: 6,    // vertical circulation
-      IfcRoof: 7, IfcCovering: 7, IfcPlate: 7,          // envelope/finishes
-      IfcMember: 7,
-      IfcBuildingElementProxy: 8,                        // generic/furniture — last
-      IfcFurnishingElement: 8
-    };
-    var discOrder = ['STR', 'ARC', 'MEP', 'FP', 'ELEC', 'ACMV', 'PLMB'];
-    if (A._bom && A._bom.storeys) {
-      for (var si = 0; si < A._bom.storeys.length; si++) {
-        var storey = A._bom.storeys[si];
-        for (var di = 0; di < discOrder.length; di++) {
-          var disc = storey.disciplines.find(function(d) { return d.name === discOrder[di]; });
-          if (disc) {
-            // Sort classes by construction priority, not alphabetically
-            var sorted = disc.classes.slice().sort(function(a, b) {
-              var pa = CLASS_PRIORITY[a.ifc_class] || 9;
-              var pb = CLASS_PRIORITY[b.ifc_class] || 9;
-              return pa - pb;
-            });
-            for (var ci = 0; ci < sorted.length; ci++) {
-              var cls = sorted[ci];
-              if (cls.elements.length) {
-                _phases.push({
-                  name: storey.name + ' / ' + discOrder[di] + ' / ' + cls.ifc_class,
-                  disc: discOrder[di],
-                  ifcClass: cls.ifc_class,
-                  guids: cls.elements
-                });
-              }
-            }
-          }
-        }
-      }
-    }
-    console.log('§DOC_PHASES built=' + _phases.length + ' (storey×disc×class, design priority)');
-  }
+  console.log('§DOC_PHASES bom_tree phases=' + _phases.length + ' root=' + rootId);
 }
 
 // ── Materialize phase — show elements for a Gantt step ──────────────────────
@@ -1283,6 +1365,9 @@ function _initInteraction(A) {
       }
       console.log('§DOC_GRID_MOVE axis=' + axis + ' old=' + _origPos.toFixed(3) +
         ' new=' + newPos.toFixed(3) + ' delta=' + delta.toFixed(3) + 'm');
+
+      // §S267: Recompose elements after grid drag
+      recomposeAfterGridDrag(A);
     }
 
     _deselectGrid(A);
@@ -1490,6 +1575,219 @@ function prevPhase(A) {
   console.log('§DOC_PREV phase=' + (_phaseIndex + 1));
 }
 
+// ── §S267: Recomposition — verb expansion + grid delta ─────────────────────
+// _gridOriginals: snapshot of grid positions at envelope activation (baseline for deltas)
+var _gridOriginals = { x: [], z: [] };
+
+/**
+ * _snapshotGridOriginals() — called once at activate, records the initial grid positions.
+ * All deltas are computed as (current - original).
+ */
+function _snapshotGridOriginals() {
+  _gridOriginals.x = _xPositions.slice();
+  _gridOriginals.z = _zPositions.slice();
+}
+
+/**
+ * _computeGridDeltas() — compute per-axis deltas from original grid positions.
+ * Returns { x: [{pos, delta}], z: [{pos, delta}] }
+ */
+function _computeGridDeltas() {
+  var deltas = { x: [], z: [] };
+  for (var i = 0; i < _xPositions.length; i++) {
+    var orig = i < _gridOriginals.x.length ? _gridOriginals.x[i] : _xPositions[i];
+    deltas.x.push({ pos: _xPositions[i], orig: orig, delta: _xPositions[i] - orig });
+  }
+  for (var j = 0; j < _zPositions.length; j++) {
+    var origZ = j < _gridOriginals.z.length ? _gridOriginals.z[j] : _zPositions[j];
+    deltas.z.push({ pos: _zPositions[j], orig: origZ, delta: _zPositions[j] - origZ });
+  }
+  return deltas;
+}
+
+/**
+ * recomposeAfterGridDrag(A) — re-expand verbs and reposition elements after grid drag.
+ *
+ * Path A (OOTB, A._bomDb available): Walk BOM, re-expand verb_ref with updated grid coords.
+ * Path B (IFC Drop, no BOM.db): Apply delta from nearest grid line to element transforms.
+ */
+function recomposeAfterGridDrag(A) {
+  if (!_active || !A) return;
+
+  var deltas = _computeGridDeltas();
+  var anyDelta = deltas.x.some(function(d) { return Math.abs(d.delta) > 0.01; }) ||
+                 deltas.z.some(function(d) { return Math.abs(d.delta) > 0.01; });
+  if (!anyDelta) return;
+
+  // §S267: Apply nearest-grid-delta to all visible elements.
+  // Same logic for OOTB and IFC Drop — shift meshes by nearest grid line's delta.
+  // Future: OOTB verb re-expansion for tile count recalculation (S268).
+  _recomposeIFCDrop(A, deltas);
+}
+
+/**
+ * _recomposeOOTB(A, deltas) — re-expand verbs with updated grid positions.
+ * For FRAME verbs: replace grid coordinates with current positions.
+ * For CLUSTER verbs: shift entries near moved grid lines by delta.
+ * For TILE verbs: recalculate count from new bay width.
+ */
+function _recomposeOOTB(A, deltas) {
+  var bomDb = A._bomDb || A.db;
+  var moved = 0;
+
+  // Collect all leaves with verb_ref
+  var leaves = BOMWalker.collectLeaves(bomDb, _findRootBom(bomDb));
+  if (!leaves.length) return;
+
+  for (var i = 0; i < leaves.length; i++) {
+    var leaf = leaves[i];
+    var line = leaf.line;
+    if (!line.verbRef) continue;
+
+    var positions = VerbExpand.expandVerb(line.verbRef, line.qty, line.dx, line.dy, line.dz);
+    if (!positions.length) continue;
+
+    // Apply grid deltas to expanded positions
+    for (var pi = 0; pi < positions.length; pi++) {
+      var p = positions[pi];
+      // Convert BOM coords (IFC) to Three.js for delta matching
+      var threePos = _ifcToThree(p[0], p[1], p[2], A._docEnv ? { x: A._docEnv.ox || 0, y: A._docEnv.oy || 0, z: A._docEnv.oz || 0 } : null);
+
+      // Find nearest X grid line and apply its delta
+      var bestXDelta = _findNearestDelta(threePos.x, deltas.x);
+      // Find nearest Z grid line and apply its delta
+      var bestZDelta = _findNearestDelta(threePos.z, deltas.z);
+
+      if (Math.abs(bestXDelta) > 0.01 || Math.abs(bestZDelta) > 0.01) {
+        positions[pi]._threeX = threePos.x + bestXDelta;
+        positions[pi]._threeZ = threePos.z + bestZDelta;
+        positions[pi]._threeY = threePos.y;
+        positions[pi]._moved = true;
+        moved++;
+      }
+    }
+  }
+
+  // TODO: Apply positions to scene meshes when guid→mesh mapping is available
+  console.log('§RECOMPOSE_OOTB leaves=' + leaves.length + ' moved=' + moved);
+}
+
+/**
+ * _recomposeIFCDrop(A, deltas) — apply nearest grid delta to element positions.
+ */
+function _recomposeIFCDrop(A, deltas) {
+  if (!A.db) return;
+  var moved = 0;
+
+  // Get currently shown phases
+  var shownGuids = [];
+  var filtered = _phases.filter(function(p) { return !_activeDisc || p.disc === _activeDisc; });
+  for (var fi = 0; fi <= _phaseIndex && fi < filtered.length; fi++) {
+    shownGuids = shownGuids.concat(filtered[fi].guids);
+  }
+  if (!shownGuids.length) return;
+
+  for (var gi = 0; gi < shownGuids.length; gi++) {
+    var guid = shownGuids[gi];
+
+    // BatchedMesh path
+    var slot = _guidToSlot[guid];
+    if (slot) {
+      var mat = new THREE.Matrix4();
+      slot.mesh.getMatrixAt(slot.slotId, mat);
+      var pos = new THREE.Vector3();
+      pos.setFromMatrixPosition(mat);
+
+      var dxApply = _findNearestDelta(pos.x, deltas.x);
+      var dzApply = _findNearestDelta(pos.z, deltas.z);
+
+      if (Math.abs(dxApply) > 0.01 || Math.abs(dzApply) > 0.01) {
+        mat.elements[12] += dxApply;
+        mat.elements[14] += dzApply;
+        slot.mesh.setMatrixAt(slot.slotId, mat);
+        slot.mesh.instanceMatrix.needsUpdate = true;
+        moved++;
+      }
+      continue;
+    }
+
+    // InstancedMesh path
+    var inst = _guidToInstance[guid];
+    if (inst) {
+      var imat = new THREE.Matrix4();
+      inst.mesh.getMatrixAt(inst.index, imat);
+      var ipos = new THREE.Vector3();
+      ipos.setFromMatrixPosition(imat);
+
+      var idxApply = _findNearestDelta(ipos.x, deltas.x);
+      var idzApply = _findNearestDelta(ipos.z, deltas.z);
+
+      if (Math.abs(idxApply) > 0.01 || Math.abs(idzApply) > 0.01) {
+        imat.elements[12] += idxApply;
+        imat.elements[14] += idzApply;
+        inst.mesh.setMatrixAt(inst.index, imat);
+        inst.mesh.instanceMatrix.needsUpdate = true;
+        moved++;
+      }
+      continue;
+    }
+
+    // Single-mesh path
+    var scene = A.scene;
+    if (scene) {
+      scene.traverse(function(obj) {
+        if (obj.userData && obj.userData.guid === guid && obj.isMesh) {
+          var sdx = _findNearestDelta(obj.position.x, deltas.x);
+          var sdz = _findNearestDelta(obj.position.z, deltas.z);
+          if (Math.abs(sdx) > 0.01 || Math.abs(sdz) > 0.01) {
+            obj.position.x += sdx;
+            obj.position.z += sdz;
+            moved++;
+          }
+        }
+      });
+    }
+  }
+
+  console.log('§RECOMPOSE_IFC_DROP guids=' + shownGuids.length + ' moved=' + moved);
+}
+
+/**
+ * _findNearestDelta(pos, deltaArray) — find the nearest grid line delta for a position.
+ * @param {number} pos — element position in Three.js coords
+ * @param {Array} deltaArray — [{pos, orig, delta}]
+ * @returns {number} delta to apply (0 if no nearby grid line moved)
+ */
+function _findNearestDelta(pos, deltaArray) {
+  if (!deltaArray.length) return 0;
+  var best = 0;
+  var bestDist = Infinity;
+  for (var i = 0; i < deltaArray.length; i++) {
+    var d = deltaArray[i];
+    if (Math.abs(d.delta) < 0.01) continue; // no movement on this line
+    var dist = Math.abs(pos - d.orig);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = d.delta;
+    }
+  }
+  // Only apply if element is reasonably close to a grid line (within 2m)
+  return bestDist < 2.0 ? best : 0;
+}
+
+/**
+ * _findRootBom(bomDb) — find the BUILDING-level root BOM in the database.
+ */
+function _findRootBom(bomDb) {
+  if (!bomDb) return null;
+  var boms = BOMWalker.listBoms(bomDb);
+  for (var i = 0; i < boms.length; i++) {
+    if (boms[i].bomType === 'BUILDING') return boms[i].bomId;
+  }
+  // Fallback: first BOM
+  return boms.length ? boms[0].bomId : null;
+}
+
 // ── Public API ──────────────────────────────────────────────────────────────
 window.DocCanvas = {
   activate: activate,
@@ -1502,10 +1800,13 @@ window.DocCanvas = {
   recordCalibration: recordCalibration,
   handleRosettaDrag: handleRosettaDrag,
   setActiveDisc: setActiveDisc,
+  // Test-only: inject phases without BOM.db (materialize tests)
+  _setPhases: function(p) { _phases = p; },
   isActive: function() { return _active; },
   isCalibrating: function() { return _calibrationMode; },
   getCalibrations: function() { return _calibrations.slice(); },
   getActiveDisc: function() { return _activeDisc; },
+  recompose: recomposeAfterGridDrag,
   getGridState: function() {
     return {
       xPositions: _xPositions.slice(),

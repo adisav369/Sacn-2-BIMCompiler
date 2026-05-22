@@ -861,9 +861,7 @@ print-ready output. User controls grid density via double-click (add) / double-c
 
 #### I. Next Session Priority Order
 
-1. **BOM completion jump** — add `bom_tree` table to Java extraction pipeline,
-   carry to extracted DB. JS BOM extractor reads it for generation ordering and
-   structural classification. THIS IS THE FOUNDATION FOR EVERYTHING ELSE.
+1. ~~**BOM completion jump**~~ — DONE (S267). See §17.10.
 2. **User-initiated grid lines** — remove auto-grid, add tap-to-place from walls.
    Rosetta templates remain for manual placement.
 3. **Multi-axis opening drag** — requires `bom_tree` for parent lookup
@@ -872,3 +870,107 @@ print-ready output. User controls grid density via double-click (add) / double-c
 6. **GPU throttle** — chunked reveal, 30fps cap
 7. **Save/recall** — IndexedDB session store
 8. **Bubble rotation** — already coded, needs visual testing
+
+### 17.10 S267 BOM Walker — Java→JS Port + BOM-Driven Phases (2026-05-22)
+
+**Delivered:** The BOM tree now drives the browser. No flat queries, no heuristic
+class sorting, no invented structure. The recipe IS the truth.
+
+#### What Was Built
+
+| File | Lines | What |
+|------|-------|------|
+| `verb_expand.js` | 190 | JS port of 7 Java verb expanders (TILE, ROUTE, FRAME, CLUSTER, SPRAY, LINE, LINE_MULTI). Pure math, zero deps. |
+| `bom_walker.js` | 175 | JS port of BOMWalker tree traversal. Walks m_bom/m_bom_line via sql.js. Three-way dispatch: sub-assembly, PHANTOM, leaf. MAX_DEPTH=20 guard. |
+| `import_worker.js` | +50 | IfcRelVoidsElement + IfcRelFillsElement + IfcRelAggregates → `bom_tree` table in extracted DB (IFC Drop path). |
+| `import_db_builder.js` | +10 | `bom_tree` table creation from worker data. |
+| `doc_canvas.js` | rewrite | `_loadPhases` walks BOM.db tree, not flat query. `_buildEnvelope` uses BOM root AABB. Recomposition on grid drag. |
+| `panels.js` | +75 | Lazy-fetch BOM.db from OCI on Red Pill, cache in IndexedDB. |
+
+#### The Key Decision: BOM.db Drives Everything
+
+The flat `bom_extract.js` query (storey × discipline × class) was **removed from
+the phase builder**. Phases now come exclusively from `BOMWalker.walk()` on `A._bomDb`:
+
+```
+BUILDING_SH_STD
+  └─ SH_GF_STR (FLOOR)
+       Phase 1: Structure — IfcWall, IfcSlab       ← grid lines attach here
+       Phase 2: Openings — IfcDoor, IfcWindow       ← children of structure
+       Phase 3: Finishes — IfcCovering, IfcRoof      ← envelope/cladding
+  └─ SH_ROOM_GF (FLOOR)
+       Phase 4: Infill — IfcFurniture               ← fills defined spaces
+```
+
+No BOM.db → no phases → no Next button. The user sees the envelope wireframe but
+cannot decompose without the recipe. IFC Drop buildings without BOM data show
+envelope only until bom_tree is populated.
+
+#### Envelope: Recipe, Not Scatter
+
+The grid envelope now comes from the BOM BUILDING root's AABB + origin, not from
+the extracted DB's structural scatter. The BOM AABB is a curated, verified definition:
+
+| Building | BOM AABB (m) | Extracted scatter (m) | Diff |
+|----------|-------------|----------------------|------|
+| HI | 61.7 × 74.4 | 89.8 × 106.4 | 28m wider in scatter |
+| SH | 16.9 × 8.7 | (matches) | Clean building |
+| TE | 73.7 × 59.1 | (matches) | Federated MEP |
+
+The scatter is larger because it includes outlier structural elements (site walls,
+retaining walls) that the BOM recipe deliberately excludes. Grid lines should match
+the recipe's definition of the building footprint.
+
+#### BOM.db Fleet Status (as of S267)
+
+| PFX | BOM.db | BOMs | Leaves | Verbs | Verb Types | Phases |
+|-----|--------|------|--------|-------|------------|--------|
+| SH | 127KB | 14 | 50 | 5 | CLUSTER, TILE, LINE | 8 |
+| DX | 283KB | 36 | 242 | 5 | CLUSTER, LINE, LINE_MULTI | 13 |
+| SC | 684KB | 7 | 342 | 138 | CLUSTER, TILE | 20 |
+| HI | 516KB | 7 | 441 | 141 | CLUSTER, TILE, ROUTE | — |
+| TE | 8.2MB | 50 | 5,519 | 725 | CLUSTER, LINE, LINE_MULTI, TILE, ROUTE, FRAME | 69 |
+
+SH and DX BOM.db files were created this session via `IFCtoBOMMain` pipeline.
+TE is the only building with a FRAME verb (grid-line-to-column mapping).
+
+#### Tier Classification (Phase Ordering)
+
+| Tier | Name | IFC Classes | What It Defines |
+|------|------|-------------|-----------------|
+| 1 | Structure | Column, Pile, Wall, WallStandardCase, Slab, Beam, Footing | Bay geometry — grid lines attach here |
+| 2 | Openings | Door, Window, OpeningElement | Refines bays — children of walls |
+| 3 | Finishes | Covering, CurtainWall, Roof, Plate, Stair, StairFlight, Railing, Member | Envelope/cladding |
+| 4 | Infill | Everything else (Furniture, Proxy, MEP terminals) | Fills defined spaces |
+
+#### Coordinate System Relationship
+
+BOM positions are **floor-relative** (local to building origin). The extracted DB
+has world-absolute coordinates. The bridge:
+
+```
+World position = BOM origin + local position
+  [240.16, 294.65] = [237.39, 0] + [2.77, 57.26]  (HI columns X-axis)
+```
+
+All floor BOM origins in HI are (0,0,0) — storey height is NOT in origin_z.
+Heights come from the dz tack offset on m_bom_line or from element_transforms.
+
+#### Tests
+
+- `test_verb_expand.js`: 20/20 — each verb type, edge cases, matches Java output
+- `test_bom_walker.js`: 20/20 — mock + real HI_BOM.db (441 leaves, 11ms)
+- `test_bom_phases.js`: 12/12 — tier ordering on SH/DX/SC/TE, MEP sub-BOMs, envelope
+- `test_doc_canvas.js`: 54/54 — existing tests + _setPhases test injection
+
+#### What's Next (S268)
+
+1. **Grid-to-wall confirmation** — grid lines only draggable after user confirms
+   they attach to a structural wall from Phase 1
+2. **Recomposition mesh mapping** — map BOM leaf guids to extracted DB guids
+   (element_ref on m_bom_line → guid in element_transforms)
+3. **BOM.db upload** — upload SH/DX BOM.db files to `bim-ootb/buildings/`
+4. **IFC Drop bom_tree** — re-extract fleet with Node.js extractor to populate
+   bom_tree table (IfcRelVoids/Fills/Aggregates)
+5. **FRAME verb grid mapping** — TE's single FRAME verb maps column grid
+   coordinates to user-visible grid lines

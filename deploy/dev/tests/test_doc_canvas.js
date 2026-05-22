@@ -1150,6 +1150,11 @@ test('T46 Issue: _materializePhase shows elements via setVisibleAt on BatchedMes
   assertEq(slotVisibility[1], false, 'slot 1 hidden after activate');
   assertEq(slotVisibility[2], false, 'slot 2 hidden after activate');
 
+  // §S267: inject mock phases (BOM.db not available in test sandbox)
+  DC._setPhases([
+    { name: 'GF / Structure', disc: 'ARC', guids: ['wall1', 'wall2'], tier: 1 }
+  ]);
+
   // Now step Next — ARC phase with wall1, wall2
   DC.nextPhase(A);
 
@@ -1233,14 +1238,17 @@ test('T48 Issue: mixed BatchedMesh + single mesh — both paths work', function(
   // Batched slot hidden
   assertEq(slotVis[0], false, 'batched slot hidden');
 
-  // Step through ARC phases — slab1 is in BOM ARC classes, door1 too
-  DC.nextPhase(A);  // first ARC phase
-  // Keep stepping until we hit IfcDoor phase
-  DC.nextPhase(A);
-  DC.nextPhase(A);
+  // §S267: inject mock phases (BOM.db not in test sandbox)
+  DC._setPhases([
+    { name: 'GF / Structure', disc: 'ARC', guids: ['slab1'], tier: 1 },
+    { name: 'GF / Openings', disc: 'ARC', guids: ['door1'], tier: 2 }
+  ]);
 
-  // After stepping, slab1 batched slot should be visible
+  // Step through phases — slab1 first, then door1
+  DC.nextPhase(A);  // Structure phase: slab1
   assertEq(slotVis[0], true, 'slab1 batched slot shown');
+
+  DC.nextPhase(A);  // Openings phase: door1
   // door1 single mesh should be restored
   assertEq(singleMesh.visible, true, 'door1 single mesh shown');
 
@@ -1280,9 +1288,15 @@ test('T50 Issue: HUD element count starts at 0 and grows with Next', function() 
     A.scene.add(m);
   });
   DC.activate(A);
+
+  // §S267: inject mock phases (BOM.db not in test sandbox)
+  DC._setPhases([
+    { name: 'GF / Structure', disc: 'ARC', guids: ['wall1','wall2','wall3','wall4','wall5','wall6'], tier: 1 }
+  ]);
+
   var countEl = _domElements['s-buildings-done'];
   assertEq(String(countEl.textContent), '0', 'Step zero = 0 elements');
-  DC.nextPhase(A);  // ARC/IfcWall phase with 6 walls
+  DC.nextPhase(A);  // Structure phase with 6 walls
   assertEq(String(countEl.textContent), '6', 'After first Next = 6 wall elements');
   logTag('HUD_COUNT', 'zero=0 afterNext=6');
   DC.deactivate(A);
