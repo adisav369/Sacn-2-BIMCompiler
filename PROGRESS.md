@@ -33,6 +33,17 @@
   - **DECISION: 100% browser.** Java verb expanders are pure math (~200 lines) — port to JS like route_walker.js. BOM.db already exists for fleet (504KB–8MB), lazy-fetch on Red Pill. IFC Drop: web-ifc extracts IfcRel* (3 queries, ~30 lines in import_worker.js). No Java install needed for end users.
   - Spec: `docs/NEW_FROM_REFERENCE.md` §4-6, §9, §17
 
+**S268+S269 DONE (2026-05-22): Attach-Map Recompose — governed translate/scale + bay-proportional.**
+  - `doc_canvas.js` REWRITE: `recomposeAfterGridDrag` replaced nearest-delta with attach-map.
+  - S268: ATTACH (centerline within 0.5m of grid → translate) + SPAN (body straddles grid → scale width).
+  - S268: Eliminated 67% false positives from S267 nearest-delta (318 wrong moves on SC with 6 grid lines).
+  - S269: Bay-proportional interior repositioning — unattached elements shift proportionally within their bay.
+  - S269: TILE recount formula (`ceil(newWidth/step)`), FRAME coord replacement verified in tests.
+  - Attach map built lazily, dirty-flagged on phase change. `_getMeshPosition` reads BatchedMesh/InstancedMesh transforms.
+  - **Tests:** 149/149 PASS — test_s268_recompose (43 new), test_doc_canvas (54), test_verb_expand (20), test_bom_walker (20), test_bom_phases (12).
+  - **Sandbox:** `/tmp/ootb-dev/sandbox/sandbox_recompose.js` + `sandbox_grid_attach.js` — algorithm proven on SC_BOM.db before implementation.
+  - **Deferred (S270+):** Max+Photo icons. NEW geometry generation (Java Bridge). IFC export. Z-axis grids. GPU throttle. Save/recall. Timeline↔TM binding.
+
 **S267 DONE (2026-05-22): BOM Walker + Verb Expansion — BOM.db drives phases, meshes follow grid. SW v436.**
   - `verb_expand.js` NEW: JS port of 7 Java verb expanders (TILE/ROUTE/FRAME/CLUSTER/SPRAY/LINE/LINE_MULTI). Pure math, zero deps.
   - `bom_walker.js` NEW: JS port of BOMWalker tree traversal via sql.js. Three-way dispatch, MAX_DEPTH=20 guard.
