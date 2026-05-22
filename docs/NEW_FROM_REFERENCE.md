@@ -1094,14 +1094,614 @@ re-routing is a specialist task (MEP engineer), not automatic.
 | MEP fixture | Follow host room | None | — | Child of room |
 | MEP route | Deferred (S269) | Re-route needed | ROUTE | — |
 
-#### What's Next (S268)
+#### S268+S269 DONE — Attach-Map Recompose + Bay-Proportional (2026-05-22)
 
-1. **Grid-to-wall confirmation** — grid lines only draggable after user confirms
-   they attach to a structural wall from Phase 1
-2. **Recomposition mesh mapping** — map BOM leaf guids to extracted DB guids
-   (element_ref on m_bom_line → guid in element_transforms)
-3. **BOM.db upload** — upload SH/DX BOM.db files to `bim-ootb/buildings/`
-4. **IFC Drop bom_tree** — re-extract fleet with Node.js extractor to populate
-   bom_tree table (IfcRelVoids/Fills/Aggregates)
-5. **FRAME verb grid mapping** — TE's single FRAME verb maps column grid
-   coordinates to user-visible grid lines
+See commit `6d974b5f`. Nearest-delta replaced with governed attach-map. 149/149 tests.
+
+#### 17.10.2 Roof Recomposition on Grid Drag — Spec
+
+##### Problem
+
+When a horizontal grid line moves, walls and slabs adjust via translate/scale. But
+roofs are different: they have **slope geometry** baked into vertex positions. A
+simple matrix scale distorts the slope angle incorrectly (ridge rises/falls). The
+roof must remain watertight with no gaps to adjacent walls.
+
+##### Roof Types in the Fleet
+
+| Type | Example | Vertices | Geometry |
+|------|---------|----------|----------|
+| **Pitched/hip** | SampleHouse (942 verts, 1.73m rise, 14.84m span) | Eave vertices at footprint edges, ridge vertices at peak | Cross-section: V or trapezoid |
+| **Flat** | Terminal (2 roofs, 0.83m thick, 16m wide) | All vertices at ~same Y (height), just a slab | Uniform height |
+| **Mixed** | Some buildings have flat center + pitched edges | Combination of above | Flat plateau with sloped perimeter |
+
+##### Coordinate Convention (IFC → Three.js)
+
+```
+IFC (x, y, z)  →  Three.js (x, -z, y)
+IFC Y = depth   →  Three.js Z (negated)
+IFC Z = height  →  Three.js Y
+```
+
+In Three.js: `mesh.geometry.attributes.position` is a Float32Array of (x, y, z)
+triplets where **Y = height**. Ridge = max Y. Eave = min Y (for that roof).
+
+##### Algorithm: Horizontal Grid Drag (X or Z axis)
+
+**Step 1 — Identify roof meshes.** Scan shown GUIDs for `userData.ifcClass === 'IfcRoof'`.
+For BatchedMesh/InstancedMesh, look up the meta. Collect all roof meshes that
+are currently visible.
+
+**Step 2 — Classify vertices as eave, ridge, or flat.**
+
+For each roof mesh, read `geometry.attributes.position`:
+- Compute `yMin` and `yMax` of all vertices in the mesh.
+- `yRange = yMax - yMin`.
+- If `yRange < 0.05`: **flat roof**. All vertices are "flat".
+- Otherwise: **sloped roof**. Classify each vertex:
+  - `vertex.y > yMax - 0.1 * yRange` → **ridge** (top 10%)
+  - `vertex.y < yMin + 0.1 * yRange` → **eave** (bottom 10%)
+  - Otherwise → **slope** (interpolated between eave and ridge)
+
+**Step 3 — Find which eave vertices are near the moved grid line.**
+
+For each eave vertex, check if its X (or Z) position is within `ATTACH_TOL`
+of the moved grid line's original position. If yes, this eave vertex is governed.
+
+**Step 4 — Move governed eave vertices. Ridge stays. Slope interpolates.**
+
+For each governed eave vertex on the moved axis:
+- `eaveVertex.x += delta` (or `.z += delta`)
+
+For each slope vertex between eave and ridge on that axis:
+- Compute `t = (vertex.y - yMin) / yRange` (0 at eave, 1 at ridge)
+- `vertex.x += delta * (1 - t)` — linear interpolation: full delta at eave, zero at ridge
+
+Ridge vertices: **unchanged** (Y stays fixed, X stays fixed).
+
+**Invariant (must be stated explicitly):** For any roof on a horizontal drag:
+all points on the eave line move with the grid. All points on the ridge line
+remain fixed in space. All points between (the roof plane) are interpolated
+linearly between the moved eave and the fixed ridge. This is the single rule
+that keeps the mesh watertight and changes only the slope angle.
+
+This naturally changes the slope angle:
+```
+Before: rise = 1.73m, run = 7.42m → angle = 13.1°
+After (+2m): rise = 1.73m, run = 9.42m → angle = 10.4°
+```
+Ridge height is preserved. Only the angle changes.
+
+**Step 5 — Flat roof vertices.**
+
+For flat roofs (yRange < 0.05m), all vertices on the moved edge translate
+by full delta. This is equivalent to a horizontal stretch — the roof just
+gets wider. No slope math needed.
+
+**Step 6 — Mixed roofs (flat center + sloped edges).**
+
+Flat vertices (within 0.05m of the flat plateau Y) translate by full delta
+if they're near the grid. Sloped vertices interpolate as in Step 4. The
+shared vertices at the flat-to-slope junction move together, maintaining
+the watertight connection.
+
+**Step 7 — Update geometry buffer.**
+
+After modifying positions:
+```javascript
+geometry.attributes.position.needsUpdate = true;
+geometry.computeBoundingBox();
+geometry.computeBoundingSphere();
+```
+
+##### Algorithm: Ceiling-Level Grid (Vertical — Y axis)
+
+A user-assignable grid line at ceiling/eave height. When this grid line moves:
+
+- **All roof vertices translate up by delta.** The entire roof assembly lifts
+  rigidly — slope, footprint, and geometry unchanged.
+- **Wall tops below the roof gap-fill automatically** because walls already
+  scale height with vertical grid changes (existing EDGE_RIGHT/SPAN logic
+  on the Y axis when implemented).
+
+This is the simplest case: pure translation on all roof vertices, no slope math.
+
+##### Auto-Placement of Ceiling Grid Line
+
+When IfcRoof elements first appear (Phase 3: Finishes), auto-place a horizontal
+grid line at the roof eave height. This gives the user a handle to lift the
+ceiling without needing Rosetta Stone assignment.
+
+Detection: `eaveY = min(vertex.y)` across all roof mesh vertices in Three.js
+coords. Place a grid line on the Y axis at that height (if grid supports Y-axis
+lines — otherwise defer to Rosetta Stone manual assignment).
+
+**Note:** The Y-axis (vertical) grid line is NOT a structural bay line. It's a
+**floor-level marker** that tags along with horizontal grid operations. The user
+can Rosetta-assign it to ceiling height. Moving it lifts the roof rigidly.
+
+##### Verification (§-tagged logs)
+
+```
+§ROOF_CLASSIFY guid=xxx type=PITCHED verts=942 eave=241 ridge=413 slope=288
+§ROOF_RECOMPOSE guid=xxx axis=x delta=+2.0 eave_moved=38 slope_interp=120 ridge_fixed=413
+§ROOF_FLAT guid=xxx axis=x delta=+2.0 edge_moved=24
+§ROOF_CEILING guid=xxx delta_y=+0.5 all_verts=942
+```
+
+##### Out of Scope
+
+- New roof geometry generation (adding skylights, dormers)
+- Changing roof type (flat → pitched)
+- Z-axis grids for storey height — floor grid handles this
+- Ridge line repositioning (always fixed in this stage)
+
+#### 17.10.3 Grid Kinematics Engine — Standalone Module Spec
+
+##### Why Extract
+
+The attach-map algorithm (S268) lives inside `doc_canvas.js` — a 2000-line
+browser IIFE coupled to Three.js. The test file (`test_s268_recompose.js`)
+had to duplicate the algorithm to run in Node.js. Adding roof vertex math
+to this tangle would make it worse. The solution:
+
+**One module, one truth. `gridKinematics.js` owns ALL recomposition math.**
+`doc_canvas.js` becomes a thin caller that reads mesh positions, calls the
+engine, and writes back transforms. The engine never touches Three.js.
+
+##### Module: `deploy/dev/grid_kinematics.js`
+
+```
+Class: GridKinematicEngine
+
+Constructor(elementData, gridLines)
+  elementData: [{guid, x, z, bboxX, bboxZ, ifcClass, vertices?}]
+  gridLines:   [{id, axis:'x'|'z', pos}]
+
+Methods:
+  attachGridToElements()          → builds internal attachMap
+  dragGrid(gridId, delta)         → returns [{guid, action, params}]
+  getAttachMap()                   → returns attachMap for inspection/test
+```
+
+###### `elementData` — What the Engine Needs Per Element
+
+| Field | Source | Purpose |
+|-------|--------|---------|
+| `guid` | elements_meta | Element identity |
+| `x`, `z` | mesh position (Three.js) | Centerline for attach |
+| `bboxX`, `bboxZ` | element_transforms | Half-extent for edge/span detect |
+| `ifcClass` | elements_meta / userData | Determines kinematic rule |
+| `vertices` | BufferGeometry positions (Float32Array) | Only for IfcRoof — vertex-level edits |
+| `scaleX`, `scaleZ` | mesh matrix diagonal | Original scale for ratio computation |
+
+The caller (`doc_canvas.js`) assembles this from `_guidToSlot`, `_guidToInstance`,
+and the DB. The engine never reads a DB or a mesh directly.
+
+###### `gridLines` — Grid State
+
+```javascript
+[
+  { id: 'A', axis: 'x', pos: 1.0 },
+  { id: 'B', axis: 'x', pos: 5.0 },
+  { id: '1', axis: 'z', pos: 0.0 },
+  { id: '2', axis: 'z', pos: 8.7 }
+]
+```
+
+Positions are in Three.js world coords. The engine stores the original positions
+at construction time; `dragGrid` computes delta from the new position.
+
+###### `attachGridToElements()` — Build Attach Map
+
+For each element, for each grid line on the same axis:
+
+1. **ATTACH** — centerline within 0.5m of grid → translate
+2. **EDGE_RIGHT** — right edge (x + bboxX/2) within 0.1m of grid
+3. **EDGE_LEFT** — left edge (x - bboxX/2) within 0.1m of grid
+4. **SPAN** — grid inside element body (lo < grid < hi)
+5. **ROOF** — ifcClass is IfcRoof and any eave vertex within 0.5m of grid
+
+Elements not near any grid line are classified as **INTERIOR** with their
+enclosing bay recorded: `{bayStart: gridA.pos, bayEnd: gridB.pos}`.
+
+###### `dragGrid(gridId, delta)` — Compute Transforms
+
+Returns an array of commands. The caller applies them to meshes.
+
+```javascript
+[
+  // Wall/slab/column: matrix operation
+  { guid: 'abc', action: 'TRANSLATE', axis: 'x', delta: 3.0 },
+  { guid: 'def', action: 'SCALE', axis: 'x', newScale: 1.25, translateDelta: 0 },
+
+  // Edge-attached wall: direction-aware
+  { guid: 'ghi', action: 'EDGE_STRETCH', axis: 'x', delta: 3.0, edge: 'right' },
+  { guid: 'jkl', action: 'TRANSLATE', axis: 'x', delta: 3.0 },  // edge-left, +delta
+
+  // Interior element: bay-proportional
+  { guid: 'mno', action: 'TRANSLATE', axis: 'x', delta: 1.5 },  // proportional
+
+  // Sloped roof: vertex array modification
+  { guid: 'pqr', action: 'ROOF_VERTICES', axis: 'x', delta: 3.0,
+    vertexDeltas: Float32Array([...]) },
+    // vertexDeltas[i*3+0] = dx, [i*3+1] = dy=0, [i*3+2] = dz for each vertex
+
+  // Flat roof: same as slab scale
+  { guid: 'stu', action: 'SCALE', axis: 'x', newScale: 1.15, translateDelta: 0 },
+
+  // Ceiling lift: rigid translation on Y
+  { guid: 'vwx', action: 'ROOF_LIFT', deltaY: 0.5 }
+]
+```
+
+###### Roof Vertex Delta Computation (inside `dragGrid`)
+
+For an IfcRoof element with `vertices` (Float32Array, xyz triplets):
+
+```
+yMin, yMax = scan all vertex.y values
+yRange = yMax - yMin
+
+If yRange < 0.05:  // flat roof
+  → all edge vertices translate by delta (same as slab SCALE)
+
+Else:  // sloped or mixed
+  For each vertex i:
+    t = (vertices[i*3+1] - yMin) / yRange   // 0 at eave, 1 at ridge
+    axisIdx = (axis === 'x') ? 0 : 2
+    if vertex near moved grid line (within ATTACH_TOL of grid original pos):
+      vertexDelta[axisIdx] = delta * (1 - t)   // full at eave, zero at ridge
+    else:
+      vertexDelta[axisIdx] = 0                  // not on this edge
+```
+
+The `t` factor is the key insight: it's a height-ratio interpolation.
+Eave vertices (`t ≈ 0`) get full delta. Ridge vertices (`t ≈ 1`) get zero.
+Slope vertices get linear blend. This changes the angle while keeping the
+ridge at exactly the same height.
+
+**Mixed roof handling:** Flat vertices (within 0.05m of the flat plateau Y)
+get full delta regardless of t, because their "slope" is zero. The plateau
+Y is detected as the mode (most frequent Y value) of the vertex set.
+
+###### Design Invariants (explicit, non-negotiable)
+
+**1. Interpolation rule:** For any roof on a horizontal drag: all points on
+the eave line move with the grid. All points on the ridge line remain fixed
+in space. All points between are interpolated linearly by height ratio
+`t = (y - yMin) / yRange`. This is the single rule that keeps the mesh
+watertight. No exceptions, no heuristics.
+
+**2. Persistence / kernel_ops:** The engine is **stateless** regarding the
+kernel_ops log. It applies a given delta to the current element positions —
+nothing more. The parent module (`doc_canvas.js`) is responsible for
+replaying `GRID_MOVE` entries from the kernel_ops log on load to rebuild
+model state. The engine never reads or writes the log.
+
+**3. Unattached elements are ignored:** Only elements in the attach map are
+modified by `dragGrid()`. Any element not attached to any grid line (interior
+furniture, MEP terminals, etc.) receives **no command**. These elements are
+either handled by the caller's bay-proportional pass (S269, which the engine
+does compute as TRANSLATE commands for interior elements within bay bounds)
+or deferred to the UBBL validation stage. The engine never moves an element
+it doesn't have a classified relationship for.
+
+**4. Return contract:** `dragGrid(gridId, delta)` returns an array of
+command objects. Each command is a plain object with `guid`, `action`, and
+action-specific params. The caller applies these to Three.js. The engine
+never mutates external state — it is a pure function from
+`(currentPositions, delta) → commands`.
+
+**5. Performance:** The attach map is pre-indexed by grid line ID.
+`dragGrid()` iterates only the elements attached to the moved grid line —
+**O(K)** where K is the attached count, not O(N) total elements. For
+bay-proportional interior elements, the engine scans unattached elements
+once per drag — O(M) where M is the interior count. Both K and M are
+typically < 300 even on 48K-element buildings (Terminal). No spatial index
+beyond the attach map is needed at this scale.
+
+###### What the Engine Does NOT Do
+
+- Touch Three.js (`BufferGeometry`, `Matrix4`, `scene.traverse`)
+- Read databases (sql.js, IndexedDB)
+- Manage grid rendering (lines, bubbles, labels)
+- Handle user interaction (drag events, click, keyboard)
+- Tile recount, beam addition, route re-walk, UBBL validation
+
+##### Caller Contract: `doc_canvas.js` Changes
+
+`doc_canvas.js` shrinks. The recompose section becomes:
+
+```javascript
+// On first grid drag after phase change:
+var elementData = _collectElementData(A);  // reads meshes, builds [{guid, x, z, ...}]
+var gridLines = _collectGridLines();       // reads _xPositions, _zPositions
+_kinEngine = new GridKinematicEngine(elementData, gridLines);
+_kinEngine.attachGridToElements();
+
+// On each drag:
+var commands = _kinEngine.dragGrid(movedGridId, delta);
+for (var i = 0; i < commands.length; i++) {
+  _applyCommand(A, commands[i]);  // translates/scales meshes, updates vertex buffers
+}
+```
+
+`_applyCommand` is the ONLY place that touches Three.js. All math is in the engine.
+
+##### Test Harness: `deploy/dev/tests/test_grid_kinematics.js`
+
+Node.js test that:
+1. Constructs engine with synthetic element data (walls, slabs, roofs)
+2. Calls `attachGridToElements()`, verifies attach classifications
+3. Calls `dragGrid()` with +3.0 delta, verifies:
+   - Wall ATTACH → TRANSLATE delta=3.0
+   - Wall EDGE_RIGHT → EDGE_STRETCH delta=3.0 (positive direction)
+   - Wall EDGE_LEFT → TRANSLATE delta=3.0 (positive direction)
+   - Slab SPAN → SCALE with correct ratio
+   - Interior element → proportional TRANSLATE
+   - Sloped roof → ROOF_VERTICES with t-interpolated deltas
+   - Flat roof → SCALE (same as slab)
+4. Runs on SC_BOM.db real data for fleet-level validation
+5. Replaces duplicated algorithm in `test_s268_recompose.js`
+
+##### Migration Path
+
+| Step | What | Risk |
+|------|------|------|
+| 1 | Create `grid_kinematics.js` with pure algorithm | None — new file |
+| 2 | Write `test_grid_kinematics.js`, port all S268/S269 tests | None — tests run in Node |
+| 3 | Add roof vertex computation to engine | None — new feature |
+| 4 | Refactor `doc_canvas.js` to call engine | Medium — must preserve all existing behavior |
+| 5 | Delete duplicated algorithm from `doc_canvas.js` | Low — tests catch regressions |
+| 6 | Delete duplicated algorithm from `test_s268_recompose.js` | Low — replaced by engine tests |
+
+Steps 1-3 are safe (additive). Step 4 is the only risky step — do it with
+the full test suite as a safety net.
+
+#### 17.10.4 Stage 2 — UBBL Validator (Deferred Compliance Engine)
+
+> **Status:** Spec only. Triage and planning in a dedicated session.
+> **Depends on:** §17.10.3 Grid Kinematics Engine (Stage 1) must be implemented first.
+
+##### The Two-Stage Architecture
+
+```
+User drags grid line
+        │
+        ▼
+┌─────────────────────────────────────────┐
+│  Stage 1: GridKinematicEngine           │  ← real-time, per-frame
+│  Walls translate/scale/edge-stretch     │
+│  Slabs scale to bay                     │
+│  Roofs: eave moves, ridge fixed         │
+│  Returns commands → doc_canvas applies  │
+└─────────────────────────────────────────┘
+        │
+        │  User finishes drag, presses "Validate"
+        ▼
+┌─────────────────────────────────────────┐
+│  Stage 2: UBBLValidator                 │  ← deferred, explicit trigger
+│  Compliance checks (height/width/egress)│
+│  Opening cascade (doors follow walls)   │
+│  Interior bay-proportional reposition   │
+│  Tile recount, FRAME coord update       │
+│  Roof/slab snap-adjust                  │
+│  MEP scale/extend                       │
+│  Kernel log + idempotency               │
+└─────────────────────────────────────────┘
+        │
+        ▼
+  Building state is compliant + complete
+  Ready for save as NewBuilding.db
+```
+
+Why two stages: Stage 1 must run at drag speed (16ms budget). Tile recounts,
+MEP rerouting, and compliance checks are O(N) scans — too slow for real-time.
+Stage 2 runs once, after the user commits the drag.
+
+##### The Discipline Toggle Problem
+
+The viewer has a discipline toggle (ARC/STR/MEP/ALL). When the user drags a
+grid line with only ARC visible, Stage 1 moves ARC elements. But MEP ducts
+inside those walls also need adjustment — they're just hidden, not absent.
+
+**Rule:** Stage 1 operates on **visible elements only** (respects discipline
+filter for performance). Stage 2 operates on **all elements in all disciplines**
+(ignores the toggle). This means Stage 2 may adjust MEP elements the user
+can't currently see — that's correct. When the user switches to MEP view,
+everything should already be repositioned.
+
+The kernel_ops log records which grid moved and by how much. Stage 2 reads
+the log, not the visibility state. This makes it discipline-agnostic.
+
+##### Module: `deploy/dev/ubbl_validator.js`
+
+```
+Class: UBBLValidator
+
+Constructor(bomDb, elementData, kinematicEngine)
+  bomDb:        sql.js database handle (for BOM tree, relationships)
+  elementData:  [{guid, x, z, y, bboxX, bboxZ, bboxY, ifcClass, storey, discipline, parentGuid?}]
+  kinematicEngine: reference to GridKinematicEngine (reads attach map)
+
+Methods:
+  validate(appliedDeltas)  → { adjustments: [{guid, action, params}], violations: [{rule, element, detail}] }
+  isClean()                → boolean (no pending adjustments)
+```
+
+##### Responsibilities
+
+**1. UBBL Compliance Checks**
+
+| Check | Rule | Source |
+|-------|------|--------|
+| Wall height | Storey height within legal limits per building code | UBBL table |
+| Opening size | Door min 800mm width, 2100mm height; window min per code | UBBL table |
+| Clearance | Corridor min 1200mm, fire egress per occupancy | UBBL table |
+| Cantilever | Slab overhang ≤ ratio of span | Structural code |
+| Roof envelope | Ridge height within zoning height limit | Zoning table |
+
+Compliance tables are JSON-driven (like `clash_rules.json`). The validator
+reads rules, checks post-drag geometry, and reports violations. It does NOT
+auto-fix violations — it reports them. The user decides.
+
+**2. Cascade Adjustments (Non-Kinematic)**
+
+Openings (doors/windows) that belong to a wall that moved in Stage 1:
+- Query `bom_tree` table: `wall_guid → [opening_guids]`
+- If wall translated: opening translates by same delta
+- If wall scaled (EDGE_STRETCH): opening's proportional position within the
+  wall is maintained — `t = (opening.x - wall.left) / wall.width`
+
+Beams between columns: if column A moved, beam A-B stretches. This is a
+parent-child cascade from the BOM tree, not a grid attachment.
+
+**3. Bay-Proportional Interior Repositioning**
+
+For all elements NOT in the Stage 1 attach map, classified by enclosing bay:
+- Compute `t = (element.x - bayStart) / oldBayWidth`
+- `newX = newBayStart + t * newBayWidth`
+- Emit `{ action: 'TRANSLATE', delta: newX - element.x }`
+
+This is the same algorithm as S269 but applied to **all disciplines**, not
+just the visible ones. Stage 1's bay-proportional only covered visible elements.
+
+**4. Tile & Grid Fill**
+
+- **TILE verbs:** `nx = ceil(newBayWidth / tileStep)`. If count changed,
+  emit commands to add/remove InstancedMesh instances.
+- **FRAME verbs:** Replace the moved coordinate in the verb string.
+  `FRAME:18.2,20.2,...` → `FRAME:21.2,20.2,...` if grid at 18.2 moved +3.0.
+- **LINE/LINE_MULTI verbs:** Replace affected positions.
+
+These are verb-level operations. The validator reads verb_ref from BOM.db,
+computes new parameters, and emits re-expansion commands.
+
+**5. Roof & Slab Finalisation**
+
+Stage 1 moves eave vertices and interpolates slopes. Stage 2 snap-checks:
+- Roof edge aligns exactly with wall top (no gap)
+- Slab edge aligns exactly with wall face (no overhang unless intentional)
+- Mixed roof: ridge height within legal envelope; if not, report violation
+
+These are geometric tolerance checks (within 0.01m), not re-computation.
+
+**6. MEP / Service Adjustments**
+
+For each MEP element (IfcDuctSegment, IfcPipeSegment, IfcFlowTerminal):
+- If inside a bay that changed: proportional reposition (same as interior)
+- If attached to a wall that moved: follow wall delta
+- If spanning between two fixtures: scale length proportionally
+- Route regeneration (RouteWalker re-run) only if fixture positions changed
+
+MEP is the most expensive cascade. The validator batches MEP adjustments
+per discipline and emits them as a group.
+
+**7. Kernel Logging & Idempotency**
+
+Each Stage 2 adjustment is a kernel op:
+```
+UBBL_CASCADE   { parent: wallGuid, child: doorGuid, delta: 3.0 }
+UBBL_REPOSITION { guid: furnitureGuid, oldX: 7.5, newX: 9.0, bay: [5,13] }
+UBBL_RECOUNT   { guid: tileGuid, verb: 'TILE', oldNx: 6, newNx: 8 }
+UBBL_MEP_SCALE { guid: ductGuid, axis: 'x', oldLen: 5.0, newLen: 8.0 }
+```
+
+**Idempotency rule:** The validator reads the current element positions
+(post-Stage-1), not the deltas. If positions already satisfy all rules,
+it emits no adjustments. Running twice without intermediate drags produces
+zero new ops. This is verified by test.
+
+##### UI/UX
+
+- **"Validate" button** in the Doc canvas HUD (red pill panel), visible after
+  any grid drag. Greyed out if no pending drags.
+- **Spinner** during validation (use `requestIdleCallback` to avoid blocking).
+  Validation on SC (~3000 elements) should complete in < 500ms.
+- **Violations panel** — list of failed checks with element highlight on click.
+  User can accept (override), fix (manual drag), or revert (undo grid drag).
+- **Auto-validate option** — user preference to run Stage 2 automatically
+  after each drag with a 500ms debounce. Off by default.
+
+##### Outputs
+
+- `adjustments[]` — array of commands (same format as Stage 1). The caller
+  applies them to meshes identically to Stage 1 commands.
+- `violations[]` — array of `{rule, element, detail, severity}`. Displayed
+  in a violations panel. Does NOT block saving — user can save with violations
+  (they're warnings, not errors).
+- Kernel ops appended to log for undo/replay.
+
+##### Out of Scope (for Stage 2)
+
+- Real-time kinematics (Stage 1)
+- Direct grid interaction (Stage 1)
+- Undo/redo of Stage 2 ops (possible via kernel log, but not built in Stage 2)
+- New element creation (adding beams where none existed)
+- Structural analysis (load calculations, deflection)
+
+##### Testing
+
+1. Drag grid line +3.0m, run validator → openings followed their walls
+2. Drag grid line → tile count changed (TILE verb recounted)
+3. Drag grid line → interior furniture repositioned proportionally
+4. Run validator twice without drag → zero adjustments (idempotency)
+5. Validator does NOT modify elements unrelated to the moved grid
+6. Discipline toggle OFF for MEP → drag ARC wall → toggle MEP ON → ducts
+   are already repositioned (validator ran on all disciplines)
+
+##### Abstract Engine Architecture Summary
+
+```
+                    ┌──────────────────────────┐
+                    │  Element Data Layer       │
+                    │  (positions, bbox, class, │
+                    │   vertices, BOM tree)     │
+                    └─────────┬────────────────┘
+                              │
+              ┌───────────────┼───────────────┐
+              │               │               │
+              ▼               ▼               ▼
+    ┌─────────────┐  ┌──────────────┐  ┌────────────┐
+    │ Grid        │  │ UBBL         │  │ Discipline │
+    │ Kinematic   │  │ Validator    │  │ Filter     │
+    │ Engine      │  │              │  │            │
+    │ (Stage 1)   │  │ (Stage 2)   │  │ (view)     │
+    │             │  │              │  │            │
+    │ Real-time   │  │ Deferred     │  │ ARC/STR/   │
+    │ O(K) per    │  │ O(N) once    │  │ MEP/ALL    │
+    │ drag frame  │  │ per validate │  │            │
+    └──────┬──────┘  └──────┬──────┘  └─────┬──────┘
+           │                │               │
+           └────────────────┼───────────────┘
+                            │
+                            ▼
+                   ┌──────────────────┐
+                   │  doc_canvas.js   │
+                   │  (thin caller)   │
+                   │  reads meshes    │
+                   │  applies commands│
+                   │  renders grid    │
+                   └──────────────────┘
+```
+
+**Stage 1** sees only visible elements (discipline-filtered). **Stage 2**
+sees all elements (discipline-agnostic). **Discipline Filter** controls
+which meshes are visible but does not gate computation. This means:
+
+- Drag with ARC visible → Stage 1 moves ARC walls → Stage 2 fixes MEP ducts
+- Drag with MEP visible → Stage 1 moves MEP terminals → Stage 2 fixes ARC walls
+- Both stages produce the same final state regardless of which discipline was
+  active during the drag (convergence property)
+
+The kernel_ops log is the single source of truth. Both stages read/write it.
+Replay from log reproduces the exact building state.
+
+#### What's Next (S270+)
+
+1. **`grid_kinematics.js` implementation** — extract from doc_canvas.js, add roof vertex math
+2. **Ceiling grid auto-placement** — detect eave Y on Phase 3 reveal
+3. **UBBL Validator triage session** — review §17.10.4, scope Phase 1 checks, define JSON rule format
+4. **FRAME verb grid mapping** — TE's FRAME verb maps column grid coordinates
+5. **IFC Drop bom_tree** — populate IfcRelVoids/Fills/Aggregates from extraction

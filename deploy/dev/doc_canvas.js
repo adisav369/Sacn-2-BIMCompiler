@@ -1702,7 +1702,17 @@ function _buildAttachMap(A) {
 
 /**
  * _attachToAxis — attach a single element to its nearest grid line on one axis.
+ *
+ * Relations:
+ *   ATTACH      — centerline within ATTACH_TOL → always translate
+ *   SPAN        — grid line inside element body → scale width
+ *   EDGE_RIGHT  — grid ≈ right edge (pos + halfExtent) within 0.1m
+ *                 Grid away (+delta) → stretch. Grid into (-delta) → translate.
+ *   EDGE_LEFT   — grid ≈ left edge (pos - halfExtent) within 0.1m
+ *                 Grid into (+delta) → translate. Grid away (-delta) → stretch.
  */
+var EDGE_TOL = 0.1; // metres — tighter tolerance for edge detection
+
 function _attachToAxis(guid, pos, halfExtent, scale, gridPositions, attachMap) {
   var bestGrid = -1;
   var bestDist = Infinity;
@@ -1720,18 +1730,30 @@ function _attachToAxis(guid, pos, halfExtent, scale, gridPositions, attachMap) {
       relation = 'ATTACH';
     }
 
-    // Span detection: element body crosses grid line
-    // Element occupies [pos - halfExtent, pos + halfExtent]
     if (halfExtent > 0.05) {
       var lo = pos - halfExtent;
       var hi = pos + halfExtent;
-      if (gp > lo + 0.01 && gp < hi - 0.01) {
-        // Grid line is inside the element body
-        if (bestGrid < 0 || relation !== 'ATTACH') {
+
+      // Edge detection: grid line coincides with left or right edge (within 0.1m)
+      // Takes priority over SPAN when the grid is at the boundary, not inside.
+      if (Math.abs(hi - gp) < EDGE_TOL) {
+        // Grid at right edge
+        bestGrid = gi;
+        relation = 'EDGE_RIGHT';
+        bestDist = 0;
+        edge = 'right';
+      } else if (Math.abs(lo - gp) < EDGE_TOL) {
+        // Grid at left edge
+        bestGrid = gi;
+        relation = 'EDGE_LEFT';
+        bestDist = 0;
+        edge = 'left';
+      } else if (gp > lo + 0.01 && gp < hi - 0.01) {
+        // Grid line is inside the element body → SPAN
+        if (bestGrid < 0 || (relation !== 'ATTACH' && relation !== 'EDGE_RIGHT' && relation !== 'EDGE_LEFT')) {
           bestGrid = gi;
           relation = 'SPAN';
           bestDist = 0;
-          // Which edge is nearer to the grid line?
           edge = (gp - lo) < (hi - gp) ? 'near' : 'far';
         }
       }
@@ -1790,6 +1812,9 @@ function recomposeAfterGridDrag(A) {
   // §S269: Bay-proportional interior repositioning
   bayMoved = _applyBayProportional(A, deltas);
 
+  // §S270: Roof vertex recomposition — slopes adjust, ridge height constant
+  // (implementation pending spec review — see §17.10.2)
+
   // Log results
   for (var di = 0; di < deltas.x.length; di++) {
     var d = deltas.x[di];
@@ -1797,9 +1822,12 @@ function recomposeAfterGridDrag(A) {
     var items = _attachMapX[d.idx] || [];
     var tr = items.filter(function(it) { return it.relation === 'ATTACH'; });
     var sp = items.filter(function(it) { return it.relation === 'SPAN'; });
+    var er = items.filter(function(it) { return it.relation === 'EDGE_RIGHT'; });
+    var el = items.filter(function(it) { return it.relation === 'EDGE_LEFT'; });
     console.log('§RECOMPOSE_ATTACH grid=' + d.orig.toFixed(1) +
       ' delta=' + (d.delta > 0 ? '+' : '') + d.delta.toFixed(3) +
-      ' translate=' + tr.length + ' scale=' + sp.length);
+      ' translate=' + tr.length + ' scale=' + sp.length +
+      ' edgeR=' + er.length + ' edgeL=' + el.length);
   }
   for (var dj = 0; dj < deltas.z.length; dj++) {
     var dz = deltas.z[dj];
@@ -1807,9 +1835,12 @@ function recomposeAfterGridDrag(A) {
     var zItems = _attachMapZ[dz.idx] || [];
     var ztr = zItems.filter(function(it) { return it.relation === 'ATTACH'; });
     var zsp = zItems.filter(function(it) { return it.relation === 'SPAN'; });
+    var zer = zItems.filter(function(it) { return it.relation === 'EDGE_RIGHT'; });
+    var zel = zItems.filter(function(it) { return it.relation === 'EDGE_LEFT'; });
     console.log('§RECOMPOSE_ATTACH gridZ=' + dz.orig.toFixed(1) +
       ' delta=' + (dz.delta > 0 ? '+' : '') + dz.delta.toFixed(3) +
-      ' translate=' + ztr.length + ' scale=' + zsp.length);
+      ' translate=' + ztr.length + ' scale=' + zsp.length +
+      ' edgeR=' + zer.length + ' edgeL=' + zel.length);
   }
 
   console.log('§RECOMPOSE_DONE translated=' + translated + ' scaled=' + scaled + ' bayMoved=' + bayMoved);
@@ -1818,7 +1849,18 @@ function recomposeAfterGridDrag(A) {
 /**
  * _applyAxisDeltas — apply translate/scale to governed elements on one axis.
  * Returns count of elements moved.
+ *
+ * Relations and their behavior:
+ *   ATTACH     → always translate by delta
+ *   SPAN       → scale width (near edge: shift+shrink, far edge: grow)
+ *   EDGE_RIGHT → grid at right edge:  +delta = stretch (w += delta)
+ *                                      -delta = translate (dx += delta)
+ *   EDGE_LEFT  → grid at left edge:   +delta = translate (dx += delta)
+ *                                      -delta = stretch (w -= delta, i.e. w grows)
+ *   Principle: grid moves away from body → stretch. Into body → translate.
  */
+var MIN_WALL_WIDTH = 0.05; // metres — minimum width after edge-stretch
+
 function _applyAxisDeltas(A, axisDeltaList, attachMap, axis) {
   var count = 0;
   for (var di = 0; di < axisDeltaList.length; di++) {
@@ -1830,11 +1872,40 @@ function _applyAxisDeltas(A, axisDeltaList, attachMap, axis) {
 
     for (var ii = 0; ii < items.length; ii++) {
       var item = items[ii];
+
       if (item.relation === 'ATTACH') {
         _translateMesh(item.guid, axis, d.delta);
         count++;
+
       } else if (item.relation === 'SPAN') {
         _scaleMesh(item.guid, axis, d.delta, item.edge, item.origScale, item.origHalfExtent);
+        count++;
+
+      } else if (item.relation === 'EDGE_RIGHT') {
+        // Grid at right edge (pos + halfExtent ≈ gridX)
+        if (d.delta > 0) {
+          // Grid moves away from body → stretch: w += delta
+          _scaleMesh(item.guid, axis, d.delta, 'far', item.origScale, item.origHalfExtent);
+        } else {
+          // Grid moves into body → translate whole wall
+          _translateMesh(item.guid, axis, d.delta);
+        }
+        count++;
+
+      } else if (item.relation === 'EDGE_LEFT') {
+        // Grid at left edge (pos - halfExtent ≈ gridX)
+        if (d.delta > 0) {
+          // Grid moves into body → translate whole wall
+          _translateMesh(item.guid, axis, d.delta);
+        } else {
+          // Grid moves away from body → stretch: left edge moves, width grows
+          var newHalf = item.origHalfExtent - d.delta / 2; // delta is negative, so this grows
+          if (newHalf * 2 >= MIN_WALL_WIDTH) {
+            _scaleMesh(item.guid, axis, d.delta, 'near', item.origScale, item.origHalfExtent);
+          } else {
+            _translateMesh(item.guid, axis, d.delta);
+          }
+        }
         count++;
       }
     }

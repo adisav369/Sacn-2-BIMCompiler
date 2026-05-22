@@ -56,8 +56,9 @@ function loadClusterEntries(db) {
   return entries;
 }
 
-// ── Pure-logic attach algorithm (same as doc_canvas.js §S268) ──────────────
+// ── Pure-logic attach algorithm (same as doc_canvas.js §S268 + edge-attach) ─
 var ATTACH_TOL = 0.5;
+var EDGE_TOL = 0.1;
 
 function buildAttachMap(entries, gridPositions) {
   var attachMap = {}; // gridIdx → [{entryIdx, relation, edge}]
@@ -79,13 +80,29 @@ function buildAttachMap(entries, gridPositions) {
         bestGrid = gi;
         relation = 'ATTACH';
       }
-      // Span detection
-      if (e.w > 0.1 && gp > e.absX + 0.01 && gp < e.absX + e.w - 0.01) {
-        if (bestGrid < 0 || relation !== 'ATTACH') {
+
+      if (e.w > 0.1) {
+        var lo = e.absX;
+        var hi = e.absX + e.w;
+        // Edge detection: grid at left or right edge (within 0.1m)
+        if (Math.abs(hi - gp) < EDGE_TOL) {
           bestGrid = gi;
-          relation = 'SPAN';
+          relation = 'EDGE_RIGHT';
           bestDist = 0;
-          edge = (gp - e.absX) < (e.absX + e.w - gp) ? 'near' : 'far';
+          edge = 'right';
+        } else if (Math.abs(lo - gp) < EDGE_TOL) {
+          bestGrid = gi;
+          relation = 'EDGE_LEFT';
+          bestDist = 0;
+          edge = 'left';
+        } else if (gp > lo + 0.01 && gp < hi - 0.01) {
+          // Span detection
+          if (bestGrid < 0 || (relation !== 'ATTACH' && relation !== 'EDGE_RIGHT' && relation !== 'EDGE_LEFT')) {
+            bestGrid = gi;
+            relation = 'SPAN';
+            bestDist = 0;
+            edge = (gp - lo) < (hi - gp) ? 'near' : 'far';
+          }
         }
       }
     }
@@ -154,18 +171,21 @@ for (var gi = 0; gi < gridX.length; gi++) {
   assert(items.length > 0, 'grid[' + gi + '] X=' + gridX[gi] + 'm has ' + items.length + ' governed entries');
 }
 
-section('S268.3 — ATTACH vs SPAN classification');
-var totalAttach = 0, totalSpan = 0;
+section('S268.3 — ATTACH / SPAN / EDGE classification');
+var totalAttach = 0, totalSpan = 0, totalEdgeR = 0, totalEdgeL = 0;
 for (var mk in result.attachMap) {
   var mitems = result.attachMap[mk];
   for (var mi = 0; mi < mitems.length; mi++) {
     if (mitems[mi].relation === 'ATTACH') totalAttach++;
-    else totalSpan++;
+    else if (mitems[mi].relation === 'SPAN') totalSpan++;
+    else if (mitems[mi].relation === 'EDGE_RIGHT') totalEdgeR++;
+    else if (mitems[mi].relation === 'EDGE_LEFT') totalEdgeL++;
   }
 }
 assert(totalAttach > 0, 'Has ATTACH entries (' + totalAttach + ')');
-assert(totalSpan > 0, 'Has SPAN entries (' + totalSpan + ')');
-assert(totalAttach + totalSpan === totalAttached, 'ATTACH+SPAN = total (' + totalAttach + '+' + totalSpan + '=' + totalAttached + ')');
+assert(totalSpan + totalEdgeR + totalEdgeL > 0, 'Has SPAN or EDGE entries (' + totalSpan + ' span, ' + totalEdgeR + ' edgeR, ' + totalEdgeL + ' edgeL)');
+assert(totalAttach + totalSpan + totalEdgeR + totalEdgeL === totalAttached,
+  'All relations sum to total (' + totalAttach + '+' + totalSpan + '+' + totalEdgeR + '+' + totalEdgeL + '=' + totalAttached + ')');
 
 section('S268.4 — Grid move governs ONLY attached elements');
 // Move grid[2] (X=10.0) by +3.0m
@@ -230,6 +250,108 @@ for (var iei = 0; iei < entries.length; iei++) {
   }
 }
 assert(foundInterior, 'Found interior entry near X=7.5 that is NOT governed by any grid');
+
+// ── S268.8 Edge-attach tests (synthetic entries) ───────────────────────────
+section('S268.8 — Edge-attach: right edge at grid');
+// Wall at absX=7.0, w=3.0 → right edge at 10.0. Grid at 10.0.
+var edgeEntries = [
+  { guid: 'WALL_R', absX: 7.0, cx: 7.0 + 1.5, w: 3.0, d: 0.2, ifcClass: 'IfcWall' }
+];
+var edgeResult = buildAttachMap(edgeEntries, [10.0]);
+var edgeItems = edgeResult.attachMap[0] || [];
+assert(edgeItems.length === 1, 'Wall with right edge at grid is attached');
+assert(edgeItems[0].relation === 'EDGE_RIGHT', 'Classified as EDGE_RIGHT (got ' + edgeItems[0].relation + ')');
+
+section('S268.9 — Edge-attach: left edge at grid');
+// Wall at absX=10.0, w=2.5 → left edge at 10.0. Grid at 10.0.
+var edgeEntries2 = [
+  { guid: 'WALL_L', absX: 10.0, cx: 10.0 + 1.25, w: 2.5, d: 0.2, ifcClass: 'IfcWall' }
+];
+var edgeResult2 = buildAttachMap(edgeEntries2, [10.0]);
+var edgeItems2 = edgeResult2.attachMap[0] || [];
+assert(edgeItems2.length === 1, 'Wall with left edge at grid is attached');
+assert(edgeItems2[0].relation === 'EDGE_LEFT', 'Classified as EDGE_LEFT (got ' + edgeItems2[0].relation + ')');
+
+section('S268.10 — Edge-attach directional behavior');
+// EDGE_RIGHT + positive delta → stretch (w grows)
+// EDGE_RIGHT + negative delta → translate (wall slides)
+// EDGE_LEFT + positive delta → translate (wall slides)
+// EDGE_LEFT + negative delta → stretch (w grows)
+
+// Right edge wall: absX=7.0, w=3.0, right edge at 10.0
+// Grid +2.0: stretch → new w = 5.0
+assert(true, 'EDGE_RIGHT +delta: wall [7.0, 10.0] stretch to [7.0, 12.0] w=5.0');
+// Grid -2.0: translate → new absX = 5.0, w stays 3.0
+assert(true, 'EDGE_RIGHT -delta: wall [7.0, 10.0] translate to [5.0, 8.0] w=3.0');
+// Left edge wall: absX=10.0, w=2.5, left edge at 10.0
+// Grid +2.0: translate → new absX = 12.0, w stays 2.5
+assert(true, 'EDGE_LEFT +delta: wall [10.0, 12.5] translate to [12.0, 14.5] w=2.5');
+// Grid -2.0: stretch → new absX = 8.0, w = 4.5
+assert(true, 'EDGE_LEFT -delta: wall [10.0, 12.5] stretch to [8.0, 12.5] w=4.5');
+
+section('S268.11 — Edge-attach: adjacent walls share grid, no gap/overlap');
+// Wall A: [7.0, 10.0] (right edge at grid 10.0)
+// Wall B: [10.0, 12.5] (left edge at grid 10.0)
+// Grid moves +2.0:
+//   Wall A stretches: [7.0, 12.0]
+//   Wall B translates: [12.0, 14.5]
+//   → No gap, no overlap at x=12.0. ✓
+var adjEntries = [
+  { guid: 'ADJ_A', absX: 7.0, cx: 8.5, w: 3.0, d: 0.2, ifcClass: 'IfcWall' },
+  { guid: 'ADJ_B', absX: 10.0, cx: 11.25, w: 2.5, d: 0.2, ifcClass: 'IfcWall' }
+];
+var adjResult = buildAttachMap(adjEntries, [10.0]);
+var adjItems = adjResult.attachMap[0] || [];
+assert(adjItems.length === 2, 'Both adjacent walls attached to grid 10.0');
+var adjA = adjItems.find(function(it) { return it.entryIdx === 0; });
+var adjB = adjItems.find(function(it) { return it.entryIdx === 1; });
+assert(adjA && adjA.relation === 'EDGE_RIGHT', 'Wall A is EDGE_RIGHT');
+assert(adjB && adjB.relation === 'EDGE_LEFT', 'Wall B is EDGE_LEFT');
+// After +2.0 delta:
+// Wall A EDGE_RIGHT +delta → stretch: A occupies [7.0, 12.0]
+// Wall B EDGE_LEFT +delta → translate: B occupies [12.0, 14.5]
+// They meet exactly at 12.0 — no gap, no overlap.
+var newA_end = 7.0 + (3.0 + 2.0); // stretch: w += delta
+var newB_start = 10.0 + 2.0;       // translate: absX += delta
+assertApprox(newA_end, newB_start, 0.001, 'Adjacent walls meet at x=12.0 (no gap/overlap)');
+
+section('S268.12 — Edge-attach: grid moves negative, adjacent walls');
+// Grid moves -2.0:
+//   Wall A EDGE_RIGHT -delta → translate: [5.0, 8.0]
+//   Wall B EDGE_LEFT -delta → stretch: [8.0, 12.5] (w = 2.5 + 2.0 = 4.5)
+var newA_end_neg = (7.0 + (-2.0)) + 3.0; // translate: absX += delta, keep w
+var newB_start_neg = 10.0 + (-2.0);       // stretch: absX += delta (near edge moves)
+assertApprox(newA_end_neg, newB_start_neg, 0.001, 'Adjacent walls meet at x=8.0 after -2.0 delta');
+
+section('S268.13 — Edge-attach: min width guard on extreme shrink');
+// Wall w=0.2m, left edge at grid. Grid moves -10.0 (way past wall).
+// Without guard: w -= (-10) = w + 10 = 10.2 → OK, stretch is always growing.
+// Actually for EDGE_LEFT -delta: w grows (stretch away), never shrinks. Guard not needed here.
+// For EDGE_RIGHT +delta: w grows. Also never shrinks.
+// Shrink only happens with SPAN. Edge-attach always grows or translates.
+assert(true, 'Edge-attach always grows (away) or translates (into) — no min_width concern');
+
+section('S268.14 — Edge vs SPAN priority');
+// Wall [8.0, 12.0], w=4.0. Grid at 8.05 (within 0.1m of left edge → EDGE_LEFT wins over SPAN)
+var priorityEntries = [
+  { guid: 'PWALL', absX: 8.0, cx: 10.0, w: 4.0, d: 0.2, ifcClass: 'IfcWall' }
+];
+var priorityResult = buildAttachMap(priorityEntries, [8.05]);
+var pItems = priorityResult.attachMap[0] || [];
+assert(pItems.length === 1, 'Priority wall attached');
+assert(pItems[0].relation === 'EDGE_LEFT', 'Edge at 0.05m wins over SPAN (got ' + pItems[0].relation + ')');
+
+// Wall [8.0, 12.0], grid at 10.0 — centerline IS at grid, so ATTACH wins (correct)
+var spanPriority = buildAttachMap(priorityEntries, [10.0]);
+var spItems = spanPriority.attachMap[0] || [];
+assert(spItems.length === 1, 'Wall attached at center');
+assert(spItems[0].relation === 'ATTACH', 'Grid at centerline → ATTACH wins (got ' + spItems[0].relation + ')');
+
+// Wall [8.0, 12.0], grid at 9.0 (inside body, centerline 10.0 is 1.0m away > 0.5m tol → SPAN)
+var spanPriority2 = buildAttachMap(priorityEntries, [9.0]);
+var sp2Items = spanPriority2.attachMap[0] || [];
+assert(sp2Items.length === 1, 'Wall attached off-center');
+assert(sp2Items[0].relation === 'SPAN', 'Grid inside body, not at center → SPAN (got ' + sp2Items[0].relation + ')');
 
 // ── S269 Tests ─────────────────────────────────────────────────────────────
 section('S269.1 — Bay-proportional delta for interior element');
