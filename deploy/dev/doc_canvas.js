@@ -42,10 +42,10 @@ var GRID_STRATEGY = {
   // Explicitly no grid lines:
   IfcSlab:               { axes: 'none', desc: 'slab → no grid lines' },
   IfcBeam:               { axes: 'none', desc: 'beam → no grid lines (per user Q6)' },
-  IfcDoor:               { axes: 'long', desc: 'door → opening grid line (child of wall)' },
-  IfcWindow:             { axes: 'long', desc: 'window → opening grid line (child of wall)' },
-  IfcOpening:            { axes: 'long', desc: 'opening → child of wall' },
-  IfcOpeningElement:     { axes: 'long', desc: 'opening → child of wall' },
+  IfcDoor:               { axes: 'none', desc: 'door → no grid (opening, not structural)' },
+  IfcWindow:             { axes: 'none', desc: 'window → no grid (opening, not structural)' },
+  IfcOpening:            { axes: 'none', desc: 'opening → no grid (child of wall)' },
+  IfcOpeningElement:     { axes: 'none', desc: 'opening → no grid (child of wall)' },
   IfcStair:              { axes: 'none', desc: 'stair → no grid' },
   IfcStairFlight:        { axes: 'none', desc: 'stairflight → no grid' },
   IfcRailing:            { axes: 'none', desc: 'railing → no grid' },
@@ -235,6 +235,7 @@ function deactivate(A) {
   _phaseIndex = -1;
   _phases = [];
   _lastAppliedDeltas = {};  // §S270 BUG-1: reset on deactivate
+  _gridOrigByLabel = {};    // §S270: reset label originals
 
   console.log('§DOC_CANVAS deactivate');
 }
@@ -688,6 +689,9 @@ function _addGridPosition(axis, position, label) {
     }
   }
   labels.splice(idx, 0, label);
+
+  // §S270: register in label-based originals so delta computation stays correct
+  _gridOrigByLabel[label] = position;
 
   return true;
 }
@@ -1738,7 +1742,8 @@ function prevPhase(A) {
 //   4. _applyCommand(cmd)      → writes to Three.js meshes
 // Only _collectElementData and _applyCommand touch Three.js.
 
-var _gridOriginals = { x: [], z: [] };
+var _gridOriginals = { x: [], z: [] };  // legacy — kept for backward compat
+var _gridOrigByLabel = {};  // §S270 Fix: label → origPos, immune to re-sorting
 var _kinEngine = null;       // GridKinematicEngine instance (lazy, rebuilt when dirty)
 var _kinEngineDirty = true;  // rebuild on next drag (phases changed, etc.)
 var _lastAppliedDeltas = {};  // §S270 BUG-1 fix: gridId → last absolute delta applied
@@ -1750,22 +1755,35 @@ var _lastAppliedDeltas = {};  // §S270 BUG-1 fix: gridId → last absolute delt
 function _snapshotGridOriginals() {
   _gridOriginals.x = _xPositions.slice();
   _gridOriginals.z = _zPositions.slice();
+  // §S270: label-based originals — immune to index shifts from re-sorting
+  _gridOrigByLabel = {};
+  for (var xi = 0; xi < _xPositions.length; xi++) {
+    var xLbl = _xLabels[xi] || ('X' + xi);
+    _gridOrigByLabel[xLbl] = _xPositions[xi];
+  }
+  for (var zi = 0; zi < _zPositions.length; zi++) {
+    var zLbl = _zLabels[zi] || ('Z' + zi);
+    _gridOrigByLabel[zLbl] = _zPositions[zi];
+  }
   _kinEngineDirty = true;
 }
 
 /**
  * _computeGridDeltas() — compute per-axis deltas from original grid positions.
- * Returns { x: [{pos, orig, delta, idx}], z: [{pos, orig, delta, idx}] }
+ * §S270 fix: uses label-based lookup, immune to index shifts from re-sorting.
+ * Returns { x: [{pos, orig, delta, idx, label}], z: [{pos, orig, delta, idx, label}] }
  */
 function _computeGridDeltas() {
   var deltas = { x: [], z: [] };
   for (var i = 0; i < _xPositions.length; i++) {
-    var orig = i < _gridOriginals.x.length ? _gridOriginals.x[i] : _xPositions[i];
-    deltas.x.push({ pos: _xPositions[i], orig: orig, delta: _xPositions[i] - orig, idx: i });
+    var lbl = _xLabels[i] || ('X' + i);
+    var orig = _gridOrigByLabel[lbl] !== undefined ? _gridOrigByLabel[lbl] : _xPositions[i];
+    deltas.x.push({ pos: _xPositions[i], orig: orig, delta: _xPositions[i] - orig, idx: i, label: lbl });
   }
   for (var j = 0; j < _zPositions.length; j++) {
-    var origZ = j < _gridOriginals.z.length ? _gridOriginals.z[j] : _zPositions[j];
-    deltas.z.push({ pos: _zPositions[j], orig: origZ, delta: _zPositions[j] - origZ, idx: j });
+    var zLbl = _zLabels[j] || ('Z' + j);
+    var origZ = _gridOrigByLabel[zLbl] !== undefined ? _gridOrigByLabel[zLbl] : _zPositions[j];
+    deltas.z.push({ pos: _zPositions[j], orig: origZ, delta: _zPositions[j] - origZ, idx: j, label: zLbl });
   }
   return deltas;
 }
@@ -1886,23 +1904,20 @@ function _collectElementData(A) {
 
 /**
  * _collectGridLines() — build gridLines array from current grid state.
+ * §S270 fix: reads from label-based originals (all grids, not just envelope).
  * Uses grid labels as IDs (e.g. 'A', 'B', '1', '2').
  */
 function _collectGridLines() {
   var lines = [];
-  for (var xi = 0; xi < _gridOriginals.x.length; xi++) {
-    lines.push({
-      id: _xLabels[xi] || ('X' + xi),
-      axis: 'x',
-      pos: _gridOriginals.x[xi]
-    });
+  for (var xi = 0; xi < _xPositions.length; xi++) {
+    var xLbl = _xLabels[xi] || ('X' + xi);
+    var xOrig = _gridOrigByLabel[xLbl] !== undefined ? _gridOrigByLabel[xLbl] : _xPositions[xi];
+    lines.push({ id: xLbl, axis: 'x', pos: xOrig });
   }
-  for (var zi = 0; zi < _gridOriginals.z.length; zi++) {
-    lines.push({
-      id: _zLabels[zi] || ('Z' + zi),
-      axis: 'z',
-      pos: _gridOriginals.z[zi]
-    });
+  for (var zi = 0; zi < _zPositions.length; zi++) {
+    var zLbl = _zLabels[zi] || ('Z' + zi);
+    var zOrig = _gridOrigByLabel[zLbl] !== undefined ? _gridOrigByLabel[zLbl] : _zPositions[zi];
+    lines.push({ id: zLbl, axis: 'z', pos: zOrig });
   }
   // §S270: Y-axis ceiling grid
   if (_ceilingGridY !== null) {
@@ -2199,7 +2214,16 @@ window.DocCanvas = {
   _rebuildEngine: _rebuildEngine,
   _getShownGuids: _getShownGuids,
   _setGridPositions: function(x, z) { _xPositions = x; _zPositions = z; },
-  _setGridOriginals: function(x, z) { _gridOriginals = { x: x, z: z }; _kinEngineDirty = true; },
+  _setGridLabels: function(x, z) { _xLabels = x; _zLabels = z; },
+  _addGridPosition: _addGridPosition,
+  _setGridOriginals: function(x, z) {
+    _gridOriginals = { x: x, z: z };
+    // §S270: also build label-based map for tests
+    _gridOrigByLabel = {};
+    for (var i = 0; i < x.length; i++) _gridOrigByLabel[_xLabels[i] || ('X' + i)] = x[i];
+    for (var j = 0; j < z.length; j++) _gridOrigByLabel[_zLabels[j] || ('Z' + j)] = z[j];
+    _kinEngineDirty = true;
+  },
   _getLastAppliedDeltas: function() { return Object.assign({}, _lastAppliedDeltas); }
 };
 
