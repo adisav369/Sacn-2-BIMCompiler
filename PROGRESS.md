@@ -33,6 +33,8 @@
   - **DECISION: 100% browser.** Java verb expanders are pure math (~200 lines) — port to JS like route_walker.js. BOM.db already exists for fleet (504KB–8MB), lazy-fetch on Red Pill. IFC Drop: web-ifc extracts IfcRel* (3 queries, ~30 lines in import_worker.js). No Java install needed for end users.
   - Spec: `docs/NEW_FROM_REFERENCE.md` §4-6, §9, §17
 
+**S270 NEXT: Grid Kinematics Engine — extract pure-math module + roof vertex recomposition. Prompt: `prompts/S270_GRID_KINEMATICS.md`. Spec: `docs/NEW_FROM_REFERENCE.md` §17.10.2–4.**
+
 **S268+S269 DONE (2026-05-22): Attach-Map Recompose — governed translate/scale + bay-proportional.**
   - `doc_canvas.js` REWRITE: `recomposeAfterGridDrag` replaced nearest-delta with attach-map.
   - S268: ATTACH (centerline within 0.5m of grid → translate) + SPAN (body straddles grid → scale width).
