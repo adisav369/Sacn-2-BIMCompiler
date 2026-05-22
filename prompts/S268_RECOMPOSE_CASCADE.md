@@ -102,9 +102,25 @@ Not pixel-perfect but visually correct.
 - SampleHouse: drag grid → tile count changes (TILE verb recalculation)
 - §-tagged logs prove: `§RECOMPOSE verb=FRAME old_x=12.0 new_x=15.0 delta=+3.0`
 
+## Mathematical Foundation: `internal/RedPill.txt`
+
+The recomposition rules follow the Parallel Time Machine maths:
+- **kernel_ops log IS a causal DAG** — nodes are ops, edges are dependency
+- **"Reapply, not Replay"** — grid drag applies delta to cached base, not full re-expand
+- **BOM tree IS the causal graph** — wall depends on grid, opening depends on wall
+- **O(delta) not O(elements)** — walk BOM once at activation, cache positions, apply deltas
+
+The position cache built at activation:
+```
+guid → { baseX, baseY, baseZ, parentGuid, gridLine, tier }
+```
+On grid drag: traverse causal DAG from moved grid line → dependent elements only.
+No full BOM re-walk. No verb re-expansion unless tile count changes.
+
 ## Session Startup
 1. Read this prompt
-2. Read `docs/NEW_FROM_REFERENCE.md` §17.10 (S267 delivery summary)
+2. Read `internal/RedPill.txt` (the mathematical framework — event sourcing + causal DAG)
+3. Read `docs/NEW_FROM_REFERENCE.md` §17.10 + §17.10.1 (S267 delivery + recomposition rules)
 3. Read `deploy/dev/doc_canvas.js` — the `_recomposeOOTB` function (currently bypassed)
 4. Read `deploy/dev/verb_expand.js` — all 7 verb expanders
 5. Read `deploy/dev/bom_walker.js` — collectLeaves, walk
