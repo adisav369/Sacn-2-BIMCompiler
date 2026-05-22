@@ -1313,6 +1313,120 @@ test('T51 Issue: HUD grid bays section hidden after deactivate', function() {
   logTag('HUD_HIDE', 'gridbays-section display=none after deactivate');
 });
 
+// ── T52-T54: §S270 BUG-1 Incremental delta fix ──
+console.log('\n── T52-T54: §S270 BUG-1 Incremental Delta Fix ──');
+
+// Load doc_canvas + grid_kinematics in same VM context
+function loadDocCanvasWithEngine() {
+  var gkSrc = readFile('grid_kinematics.js');
+  var dcSrc = readFile('doc_canvas.js');
+  var ctx = {
+    window: {},
+    document: mockDocument,
+    THREE: THREE,
+    console: { log: function() {}, warn: function() {} },
+    performance: { now: function() { return 0; } }
+  };
+  vm.createContext(ctx);
+  vm.runInContext(gkSrc, ctx);  // exports GridKinematics to window
+  ctx.GridKinematics = ctx.window.GridKinematics;  // expose as global for _rebuildEngine
+  vm.runInContext(dcSrc, ctx);  // reads GridKinematics
+  return ctx.window.DocCanvas;
+}
+
+test('T52 Issue: BUG-1 — second drag should not double-count delta', function() {
+  // Verify _lastAppliedDeltas tracks correctly across two recompose calls
+  var DC = loadDocCanvasWithEngine();
+  var A = mockA({ bom: testBOM() });
+  DC.activate(A);
+
+  // Set up grid originals at 0, 10
+  DC._setGridOriginals([0, 10], [0, 8]);
+  DC._setGridPositions([0, 10], [0, 8]);
+
+  // Inject phases with wall GUIDs so engine has elements
+  DC._setPhases([
+    { name: 'GF / ARC', disc: 'ARC', guids: ['wall1','wall2'], tier: 1 }
+  ]);
+  DC.nextPhase(A);  // reveal elements
+
+  // Drag 1: move X grid index 1 from 10 to 13 (absolute delta = +3)
+  DC._setGridPositions([0, 13], [0, 8]);
+  DC.recompose(A);
+  var deltas1 = DC._getLastAppliedDeltas();
+  // The X grid label at index 1 should have lastApplied = 3
+  var hasXDelta = false;
+  for (var k in deltas1) {
+    if (Math.abs(deltas1[k] - 3) < 0.01) hasXDelta = true;
+  }
+  assert(hasXDelta, 'After drag 1: lastApplied should be ~3, got: ' + JSON.stringify(deltas1));
+
+  // Drag 2: move X grid index 1 to 15 (absolute delta = +5, incremental = +2)
+  DC._setGridPositions([0, 15], [0, 8]);
+  DC.recompose(A);
+  var deltas2 = DC._getLastAppliedDeltas();
+  var hasUpdatedDelta = false;
+  for (var k2 in deltas2) {
+    if (Math.abs(deltas2[k2] - 5) < 0.01) hasUpdatedDelta = true;
+  }
+  assert(hasUpdatedDelta, 'After drag 2: lastApplied should be ~5, got: ' + JSON.stringify(deltas2));
+  logTag('BUG1_DELTAS', 'drag1=3 drag2=5(incr=2) tracked correctly');
+  DC.deactivate(A);
+});
+
+test('T53 Issue: BUG-1 — pullback after drag produces correct incremental delta', function() {
+  var DC = loadDocCanvasWithEngine();
+  var A = mockA({ bom: testBOM() });
+  DC.activate(A);
+  DC._setGridOriginals([0, 10], [0, 8]);
+  DC._setGridPositions([0, 10], [0, 8]);
+  DC._setPhases([
+    { name: 'GF / ARC', disc: 'ARC', guids: ['wall1','wall2'], tier: 1 }
+  ]);
+  DC.nextPhase(A);
+
+  // Drag to 16 (abs = +6)
+  DC._setGridPositions([0, 16], [0, 8]);
+  DC.recompose(A);
+
+  // Pullback to 13 (abs = +3, incremental = -3)
+  DC._setGridPositions([0, 13], [0, 8]);
+  DC.recompose(A);
+  var deltas = DC._getLastAppliedDeltas();
+  var hasPullback = false;
+  for (var k in deltas) {
+    if (Math.abs(deltas[k] - 3) < 0.01) hasPullback = true;
+  }
+  assert(hasPullback, 'After pullback: lastApplied should be ~3 (not 6+(-3)=3 stacked), got: ' + JSON.stringify(deltas));
+  logTag('BUG1_PULLBACK', 'drag +6 then pullback to +3: lastApplied=3 correct');
+  DC.deactivate(A);
+});
+
+test('T54 Issue: BUG-1 — engine rebuild resets _lastAppliedDeltas', function() {
+  var DC = loadDocCanvasWithEngine();
+  var A = mockA({ bom: testBOM() });
+  DC.activate(A);
+  DC._setGridOriginals([0, 10], [0, 8]);
+  DC._setGridPositions([0, 10], [0, 8]);
+  DC._setPhases([
+    { name: 'GF / ARC', disc: 'ARC', guids: ['wall1'], tier: 1 }
+  ]);
+  DC.nextPhase(A);
+
+  // Drag to create a delta
+  DC._setGridPositions([0, 14], [0, 8]);
+  DC.recompose(A);
+  var before = DC._getLastAppliedDeltas();
+  assert(Object.keys(before).length > 0, 'Should have deltas after drag');
+
+  // Force engine rebuild (e.g. new phase revealed)
+  DC._rebuildEngine(A);
+  var after = DC._getLastAppliedDeltas();
+  assertEq(Object.keys(after).length, 0, 'Rebuild should reset _lastAppliedDeltas');
+  logTag('BUG1_REBUILD', 'engine rebuild clears _lastAppliedDeltas');
+  DC.deactivate(A);
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Summary
 // ═══════════════════════════════════════════════════════════════════════════

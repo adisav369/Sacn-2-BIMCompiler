@@ -28,28 +28,20 @@ geometry/BOM — read feedback files: deployment, pipeline, tack point, geometry
 
 ### Tests passing
 - `test_grid_kinematics.js`: 98/98
-- `test_doc_canvas.js`: 54/54
+- `test_doc_canvas.js`: 57/57
 - `test_s268_recompose.js`: 63/63
 - `test_grid_modules.js`: 114/114
 - `whitebox_regression.js`: 34/36 (2 pre-existing)
 
 ## KNOWN BUGS — Fix in next session
 
-### BUG-1: Incremental delta double-counting (CRITICAL)
-**Symptom:** Drag grid -6m, drag again -7m → elements move -13m instead of -7m total.
-Pullback (+3m) still moves further negative.
-**Root cause:** `recomposeAfterGridDrag()` computes **absolute delta from original**
-(`currentPos - originalPos = -8.0`) but `_translateMesh()` **adds incrementally** to
-the current mesh position. Second drag applies -8.0 on top of already-moved mesh.
-**Fix:** Track `_lastAppliedDeltas` per grid line. Pass only the **incremental** change
-`(newAbsoluteDelta - lastAppliedDelta)` to the engine. Reset on engine rebuild.
-**Log evidence:**
-```
-§RECOMPOSE_GRID id=1 delta=-4.401 commands=1085   ← drag 1: correct
-§RECOMPOSE_GRID id=1 delta=-11.344 commands=1085  ← drag 2: should be -6.9 incremental
-§RECOMPOSE_GRID id=1 delta=-8.033 commands=1085   ← pullback: should be +3.3 incremental
-```
-**Test to add:** Drag +3, then drag +5 total → mesh at +5 not +8.
+### BUG-1: Incremental delta double-counting — FIXED ✓
+**Was:** Absolute delta from `_computeGridDeltas()` fed directly to `_translateMesh()` which adds
+incrementally → second drag double-counted.
+**Fix:** Added `_lastAppliedDeltas` map in `doc_canvas.js`. `recomposeAfterGridDrag` now computes
+`incrementalDelta = absoluteDelta - _lastAppliedDeltas[gridId]` before calling engine.
+Reset on engine rebuild and deactivate. Log shows `absDelta` + `workedDelta` for tracing.
+**Tests:** T52 (two drags), T53 (pullback), T54 (rebuild resets). All 57/57 pass.
 
 ### BUG-2: Grid should validate edge alignment before allowing transform
 **Symptom:** Grid line not at building edge still allows drag and transforms.
@@ -81,10 +73,8 @@ count, and sample bbox values. Then trace why no SPAN/EDGE relations form.
 
 ## What's Next — S270b (next session)
 
-### Priority 1: Fix BUG-1 (incremental delta)
-This is a one-variable fix: track `_lastAppliedDeltas[gridId]` in `doc_canvas.js`.
-Compute `incrementalDelta = absoluteDelta - lastApplied`. Pass incremental to engine.
-Add test: drag +3, drag +5 total, verify mesh at +5.
+### Priority 1: Fix BUG-1 (incremental delta) — DONE ✓
+Fixed: `_lastAppliedDeltas` map, incremental delta computation, T52-T54 tests.
 
 ### Priority 2: Fix BUG-4 (all TRANSLATE, no SCALE)
 Debug with §-tagged logs. If bbox data is missing or zero for all elements,

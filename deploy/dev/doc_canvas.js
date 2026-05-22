@@ -234,6 +234,7 @@ function deactivate(A) {
   _group = _envGroup = _gridGroup = _phaseGroup = null;
   _phaseIndex = -1;
   _phases = [];
+  _lastAppliedDeltas = {};  // §S270 BUG-1: reset on deactivate
 
   console.log('§DOC_CANVAS deactivate');
 }
@@ -1740,6 +1741,7 @@ function prevPhase(A) {
 var _gridOriginals = { x: [], z: [] };
 var _kinEngine = null;       // GridKinematicEngine instance (lazy, rebuilt when dirty)
 var _kinEngineDirty = true;  // rebuild on next drag (phases changed, etc.)
+var _lastAppliedDeltas = {};  // §S270 BUG-1 fix: gridId → last absolute delta applied
 
 /**
  * _snapshotGridOriginals() — called once at activate, records the initial grid positions.
@@ -1905,6 +1907,7 @@ function _rebuildEngine(A) {
   _kinEngine = new GridKinematics.GridKinematicEngine(elementData, gridLines);
   _kinEngine.attachGridToElements();
   _kinEngineDirty = false;
+  _lastAppliedDeltas = {};  // §S270 BUG-1: reset delta tracking on rebuild
 
   var map = _kinEngine.getAttachMap();
   var totalAttached = 0;
@@ -2036,20 +2039,26 @@ function recomposeAfterGridDrag(A) {
 
   var translated = 0, scaled = 0, roofOps = 0, bayMoved = 0;
 
-  // For each grid line that moved, call engine and apply commands
+  // For each grid line that moved, compute incremental delta and apply commands
+  // §S270 BUG-1 fix: engine gets incremental delta, not absolute-from-original
   for (var xi = 0; xi < deltas.x.length; xi++) {
     var dx = deltas.x[xi];
     if (Math.abs(dx.delta) < 0.01) continue;
     var gridId = _xLabels[dx.idx] || ('X' + dx.idx);
-    var cmds = _kinEngine.dragGrid(gridId, dx.delta);
+    var lastDelta = _lastAppliedDeltas[gridId] || 0;
+    var incrementalDelta = dx.delta - lastDelta;
+    if (Math.abs(incrementalDelta) < 0.001) continue;
+    var cmds = _kinEngine.dragGrid(gridId, incrementalDelta);
     for (var ci = 0; ci < cmds.length; ci++) {
       _applyCommand(cmds[ci]);
       if (cmds[ci].action === 'TRANSLATE') translated++;
       else if (cmds[ci].action === 'SCALE') scaled++;
       else if (cmds[ci].action === 'ROOF_VERTICES' || cmds[ci].action === 'ROOF_LIFT') roofOps++;
     }
+    _lastAppliedDeltas[gridId] = dx.delta;
     console.log('§RECOMPOSE_GRID id=' + gridId +
-      ' delta=' + (dx.delta > 0 ? '+' : '') + dx.delta.toFixed(3) +
+      ' absDelta=' + (dx.delta > 0 ? '+' : '') + dx.delta.toFixed(3) +
+      ' workedDelta=' + (incrementalDelta > 0 ? '+' : '') + incrementalDelta.toFixed(3) +
       ' commands=' + cmds.length);
   }
 
@@ -2057,15 +2066,20 @@ function recomposeAfterGridDrag(A) {
     var dz = deltas.z[zi];
     if (Math.abs(dz.delta) < 0.01) continue;
     var zGridId = _zLabels[dz.idx] || ('Z' + dz.idx);
-    var zCmds = _kinEngine.dragGrid(zGridId, dz.delta);
+    var zLastDelta = _lastAppliedDeltas[zGridId] || 0;
+    var zIncrementalDelta = dz.delta - zLastDelta;
+    if (Math.abs(zIncrementalDelta) < 0.001) continue;
+    var zCmds = _kinEngine.dragGrid(zGridId, zIncrementalDelta);
     for (var zci = 0; zci < zCmds.length; zci++) {
       _applyCommand(zCmds[zci]);
       if (zCmds[zci].action === 'TRANSLATE') translated++;
       else if (zCmds[zci].action === 'SCALE') scaled++;
       else if (zCmds[zci].action === 'ROOF_VERTICES' || zCmds[zci].action === 'ROOF_LIFT') roofOps++;
     }
+    _lastAppliedDeltas[zGridId] = dz.delta;
     console.log('§RECOMPOSE_GRID id=' + zGridId +
-      ' delta=' + (dz.delta > 0 ? '+' : '') + dz.delta.toFixed(3) +
+      ' absDelta=' + (dz.delta > 0 ? '+' : '') + dz.delta.toFixed(3) +
+      ' workedDelta=' + (zIncrementalDelta > 0 ? '+' : '') + zIncrementalDelta.toFixed(3) +
       ' commands=' + zCmds.length);
   }
 
@@ -2155,7 +2169,8 @@ window.DocCanvas = {
   _rebuildEngine: _rebuildEngine,
   _getShownGuids: _getShownGuids,
   _setGridPositions: function(x, z) { _xPositions = x; _zPositions = z; },
-  _setGridOriginals: function(x, z) { _gridOriginals = { x: x, z: z }; _kinEngineDirty = true; }
+  _setGridOriginals: function(x, z) { _gridOriginals = { x: x, z: z }; _kinEngineDirty = true; },
+  _getLastAppliedDeltas: function() { return Object.assign({}, _lastAppliedDeltas); }
 };
 
 })(window);
