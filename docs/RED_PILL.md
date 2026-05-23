@@ -379,8 +379,8 @@ Each Rosetta Stone placement is a witnessed fact — a user-verified ground trut
 |---|---|---|
 | ~~P1~~ | ~~Y-axis drag UI~~ | ~~Done S270c — click disc → drag → cascade~~ |
 | P2 | BUG-2 warning | Status: "no attached elements — place elements first" |
-| P3 | BUG-3 phase-aware recompose | BOM engine solves this: `materializeLevel()` reads CURRENT AABBs. Wire B1+B2. |
-| P4 | UBBL Validator | `bom_rules.js` + `disc_rules.json` done (8 rules). Wire B1 to activate. |
+| ~~P3~~ | ~~BUG-3 phase-aware recompose~~ | ~~Done S270d — B1+B2 proven: `materializeLevel()` fires on Next, reads CURRENT AABBs. §BOM_NEXT logs confirmed.~~ |
+| P4 | UBBL Validator | `bom_rules.js` + `disc_rules.json` done (8 rules). B1 done (scripts loaded). UI wiring (4c) remaining. |
 | P5 | Materialization | Grammar + event log → NewBuilding.db |
 | P6 | Share via URL | `?ref=SampleHouse&ops=...` |
 
@@ -390,8 +390,8 @@ The BOM engine (438 tests) provides the algebra. These tasks wire it to visible 
 
 | ID | Task | What the engine already does | What's missing |
 |---|---|---|---|
-| B1 | **Script tags** | All 6 `bom_engine/*.js` + `disc_rules.json` exist | Not in `index.html` — modules load but no `<script>` includes them |
-| B2 | **Wall→Window cascade** | `recompose()` with UNIFORM strategy recounts windows when parent AABB changes | `materializeBomLevel()` exists in `grid_recompose.js` but only fires on explicit Next press. After B1, first Next populates `_bomNodes` → subsequent grid drags trigger L1 recompose. Verify with §-logs. |
+| ~~B1~~ | ~~**Script tags**~~ | ~~Done S270d — 7 `bom_engine/*.js` scripts added to `index.html` + `sw.js` precache. All globals load in browser.~~ | — |
+| ~~B2~~ | ~~**Wall→Window cascade**~~ | ~~Done S270d — `materializeBomLevel()` fires on Next, §BOM_NEXT level=1..3 confirmed. Column renamed `bom_child_id` → `M_BOM_Line_ID` (iDempiere convention).~~ | — |
 | B3 | **DISC switch → MEP fresh route** | ROUTE strategy stub exists, `route_walker.js` exists | ROUTE stub returns straight line. Wire: `ROUTE(p)` → `RouteWalker.walk(db, anchors, disc)` (~10 lines) |
 | B4 | **Tile recount on resize** | UNIFORM/PACKED strategies compute count from available space | verb_expand.js TILE formula not connected to BOM engine |
 | B5 | **Cross-DISC read-only cascade** | `recompose()` is stateless — reads current AABBs, doesn't care who moved them | No code needed. DISC switch → `materializeLevel()` → children read current positions. Already wired in `_materializeBomLevel()`. |
@@ -400,7 +400,7 @@ The BOM engine (438 tests) provides the algebra. These tasks wire it to visible 
 
 **Spec alignment notes (review before editing docs):**
 - `BOM_ENGINE_SPEC.md §16` says ROUTE delegates to RouteWalker "in Phase 3" — Phase 3 is done but ROUTE is still a stub. §16 should say "Phase 5" or "B3 task". Fix after B3 is wired.
-- `RED_PILL.md §11.5 P3` (BUG-3) references "phase-aware recompose" — this is exactly what `materializeLevel()` with current AABBs does. Close BUG-3 after B1+B2 are wired and §-logs prove it.
+- ~~`RED_PILL.md §11.5 P3` (BUG-3) — CLOSED. B1+B2 wired and §BOM_NEXT logs prove `materializeLevel()` reads current AABBs.~~
 - `BOM_ENGINE_SPEC.md §10` file layout lists `bom_rules.js` and `disc_rules.json` — both exist and pass tests, but §6.3 `DiscRuleProvider` still shows `// TODO: loadFromDB`. Acceptable — JSON-first is the current path, DB-load is v2.
 - `NEW_FROM_REFERENCE.md` §17.9 BOM Completion Triage (items A-I) — not cross-checked against B1-B5 tasks. May have duplicates or gaps. Verify on next full review.
 

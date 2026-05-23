@@ -47,7 +47,7 @@ function createTestDb(SQL) {
   // Schema — m_bom_line (full Phase 2 schema)
   db.run(
     "CREATE TABLE m_bom_line (" +
-    "  bom_child_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+    "  M_BOM_Line_ID INTEGER PRIMARY KEY AUTOINCREMENT, " +
     "  bom_id TEXT NOT NULL, child_product_id TEXT, " +
     "  child_element_type TEXT, child_name_pattern TEXT, " +
     "  role TEXT NOT NULL DEFAULT 'CHILD', " +

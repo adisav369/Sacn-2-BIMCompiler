@@ -29,7 +29,7 @@ function section(name) { console.log('\n── ' + name + ' ──'); }
 // ── Load BOM data into flat entry array (mirrors sandbox) ──────────────────
 function loadClusterEntries(db) {
   var lines = db.prepare(
-    "SELECT bom_child_id, bom_id, role, verb_ref, qty, dx, dy, dz " +
+    "SELECT M_BOM_Line_ID, bom_id, role, verb_ref, qty, dx, dy, dz " +
     "FROM m_bom_line WHERE verb_ref LIKE 'CLUSTER:%' AND is_active=1"
   ).all();
 
