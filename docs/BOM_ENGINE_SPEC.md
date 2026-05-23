@@ -551,7 +551,7 @@ deploy/dev/
 | # | Operation | Engine Response |
 |---|-----------|-----------------|
 | U1 | Override (drag child) | Mark overridden. Excluded from FILL. |
-| U2 | Promote override | Update m_bom_line columns. Clear overridden on siblings. |
+| U2 | Promote override | Clone m_bom_line row with new values → see §12.5 |
 | U3 | Delete child | If mandatory → CONFLICT. If optional → remove, recompose parent. |
 | U4 | Point-and-move | Drag leaf to adjacent parent. Removes from old parent, adds to new. Both recompose. |
 
@@ -570,6 +570,40 @@ deploy/dev/
 | C1 | Top-down | Parent recomposes → children's hostAABB updates → children recompose |
 | C2 | Conflict escalation | Child can't fit → CONFLICT flagged. UI shows. User resolves. |
 | C3 | Selective | Attach map → affected guids → parent BOMNodes → recompose those subtrees. |
+
+---
+
+### 12.5 Override Promotion — Data Mechanics
+
+When a user drags a child to a new position (U1 override) and then accepts "apply to all siblings":
+
+```
+1. User drags one child → overridden=true, new position stored in scene
+
+2. Engine offers: "Apply spacing=1600mm to all [productId] children on this parent?"
+
+3. User accepts → Promote:
+   a. Compute new spacing from override position:
+      newSpacing = (overriddenPos - edgeOffset) / instanceIndex
+
+   b. Clone the m_bom_line row:
+      INSERT INTO m_bom_line (bom_id, child_product_id, layout_strategy,
+        min_space_mm, entity_type, ...)
+      SELECT bom_id, child_product_id, layout_strategy,
+        [newSpacing], 'U',  ...     -- entity_type='U' (user variant)
+      FROM m_bom_line WHERE bom_child_id = [original]
+
+   c. Mark original row: is_active=0 (soft delete, never hard delete)
+
+   d. Clear overridden flag on all siblings of same child_product_id
+
+   e. Recompose parent with new rule → all siblings reposition
+
+4. Log to kernel_ops: BOM_PROMOTE op with original + new bom_child_id
+   Undo = reactivate original row, deactivate variant, recompose
+```
+
+**Key:** The original `entity_type='D'` (dictionary) row is never modified — it's deactivated. The new `entity_type='U'` (user) row carries the variant. This preserves the reference building's original rules for comparison or rollback.
 
 ---
 
@@ -780,3 +814,26 @@ Wire the engine into the existing viewer. The big integration step.
 | **Override** | User-repositioned child. Excluded from FILL. | §12.2 U1 |
 | **DISC** | Active discipline. Determines which BOM subtree is active. | §1.8 |
 | **Contractor** | Best-fit assignment engine (v2). Finds closest catalog match. | `IBOMContractor` |
+
+---
+
+## 20. Review Log
+
+### v5 Review — DeepSeek (2026-05-23)
+
+**Accepted:**
+- Phased rollout starting with pure math (Phase 1)
+- Gentle integration via ALTER TABLE (not new tables)
+- Idempotent recomposition as definitive fix for S270 bugs
+- Data-driven approach aligned with BOM-as-Context vision
+
+**Raised concerns — disposition:**
+
+| Concern | Disposition | Rationale |
+|---------|------------|-----------|
+| Web Worker for recompose | **Deferred** — measure first | Tree is small (~50 nodes per level). §13 has debounce fallback. Worker adds serialization overhead. Profile Phase 3 before deciding. |
+| InstancedMesh command execution | **Already specified** in §15.2 | MOVE→setMatrixAt, ADD→count++, REMOVE→zero-scale. `_guidToInstance` is the existing bridge. |
+| kernel_ops undo/redo | **Already specified** in §15.1 | `BOM_RECOMPOSE` op type with full command payload. Same pattern as RouteWalker. |
+| BOM variant promotion | **Added** — §12.5 | Clone m_bom_line row, entity_type='U', soft-delete original. Undo = reactivate original. |
+| PHANTOM & discipline validation | **Already specified** | PHANTOM in recompose Step 5 (§4). Discipline rules in Phase 4 (§16). |
+| Event-sourced kernel_ops | **Rejected** | Engine is idempotent — computes from current state, not event replay. kernel_ops is append-only log, not state machine. Coupling them defeats the purpose. |
