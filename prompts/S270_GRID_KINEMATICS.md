@@ -72,63 +72,54 @@ bbox match count + sample values, and per-relation-type counts in `§RECOMPOSE_E
 **Tests:** T55 (swizzle), T56 (SPAN forms), T57 (EDGE forms), T58 (SCALE fires, scaleZ=1.1667).
 All 61/61 pass.
 
-## What's Next — S270b (next session)
+## What's Done — S270c
 
-### Priority 1: Fix BUG-1 (incremental delta) — DONE ✓
-Fixed: `_lastAppliedDeltas` map, incremental delta computation, T52-T54 tests.
+### Priority 1: Y-axis drag UI — DONE ✓
+- `grid_state.js`: split `_ceilingY` into original + `_ceilingYCurrent`, `getDeltas()` includes CEIL delta
+- `doc_canvas.js`: click ceiling disc → select CEIL grid (cyan highlight), click again → drag up/down
+- Vertical plane projection (camera-facing) for Y-axis pointer tracking
+- Ceiling disc moves live during drag, position updates in real-time
+- `pointerup` commits CEIL GRID_MOVE kernel_op → `recomposeAfterGridDrag()` → engine produces
+  ROOF_LIFT + WALL_HEIGHT_SCALE cascade commands
+- Escape cancels drag, restores original ceiling position
+- Attachment guard: blocks CEIL drag if no ROOF_LIFT attachments
+- Status messages throughout: select, drag, commit
+- CACHE_VERSION v443
 
-### Priority 2: Fix BUG-4 (all TRANSLATE, no SCALE) — DONE ✓
-Fixed: IFC→Three.js bbox coordinate swizzle in `_collectElementData`. T55-T58 tests.
+### Tests (S270c)
+- T71: getDeltas includes CEIL after setCeilingYCurrent
+- T72: getLines uses original CEIL pos after drag
+- T73: reset clears ceiling state
+- T74: CEIL delta below threshold excluded
+- T75: engine ROOF_LIFT + WALL_HEIGHT_SCALE cascade from CEIL drag
+- T76: getCeilingYCurrent falls back to original when current not set
+- All suites: 79 + 98 + 63 + 114 = 354 pass. Whitebox 34/36 (2 pre-existing).
 
-### Priority 3: Refactor doc_canvas.js → 3 modules — DONE ✓ (Steps 1-2)
-Spec: `docs/REFACTOR_DOC_CANVAS.md`. Reviewed by DeepSeek 2026-05-23.
-**Step 1 (GridState wiring):** `grid_state.js` (already existed, 335 lines) wired into
-doc_canvas.js. All `_xPositions`, `_zPositions`, `_xLabels`, `_zLabels`, `_gridOriginals`,
-`_gridOrigByLabel`, `_ceilingGridY` vars removed from doc_canvas. Duplicate functions
-(`_snapshotGridOriginals`, `_computeGridDeltas`, `_collectGridLines`, `_resortLabels`,
-`_nextXLabel`, `_addGridPosition`, `_removeGridPosition`) replaced with GridState delegates.
-Added `getPosition()`, `getLabel()`, `getCount()` accessors to GridState.
-**Step 2 (GridRecompose extraction):** Created `grid_recompose.js` (682 lines).
-Extracted engine lifecycle, command dispatch, mesh transforms, BOM recompose, delta tracking.
-`_kinEngine`, `_kinEngineDirty`, `_lastAppliedDeltas`, all BOM state moved to GridRecompose.
-doc_canvas.js shrank from 2862 → 2088 lines.
-**Step 3 (GridInteraction):** Deferred — interaction code is ~190 lines, low priority.
-All 4 test suites pass: 73 + 98 + 63 + 114 = 348 tests. Whitebox 34/36 (2 pre-existing).
-Script tags and sw.js precache updated. CACHE_VERSION v442.
+## What's Next — S270d (next session)
 
-### Priority 4: Y-axis drag UI
-The ceiling grid auto-places at eave Y (translucent disc visible). But the current
-drag UI only handles X/Z axis lines. Need to wire Y-axis grid interaction:
-- Click on ceiling disc → select CEIL grid
-- Drag up/down → engine produces ROOF_LIFT + WALL_HEIGHT_SCALE cascade
-- Status shows "Ceiling grid selected (1 ROOF_LIFT, 2 cascades)"
+### Priority 1: BUG-2 and BUG-3 (triage)
+- BUG-2: Warning on empty attach map — already partially done (drag blocked with status message)
+- BUG-3: Phase-aware recompose — new elements should respect moved grid. May defer to UBBL Stage 2.
 
-### Priority 5: BUG-2 and BUG-3 (triage)
-- BUG-2: Warning on empty attach map — small UX fix
-- BUG-3: Phase-aware recompose — may defer to UBBL Stage 2
+### Priority 2: UBBL Validator (Stage 2)
+Compliance engine, clearance rules, code checks. Needs triage session first.
 
-## Repo Migration Note (2026-05-23)
-Repo migrating from `red1oon/ootb-dev` (sandbox/) to `red1oon/bim-ootb` (viewer/).
-Files move: `sandbox/grid_kinematics.js` → `viewer/grid_kinematics.js`, etc.
-**Critical:** `grid_kinematics.js` must load before `doc_canvas.js` in HTML.
-Check paths after migration before starting work.
-
-## DB Schema Note
-OCI `bim-ootb` bucket DBs were repaired on 2026-05-23. Five buildings (SC, HITOS, SH,
-Duplex, Terminal) had been overwritten with old-schema copies (no `bbox_x`). Merged
-correct DBs from `deploy/buildings/` + BOM from `*_BOM.db` and re-uploaded.
-All 5 now have both `bbox_x` columns AND `m_bom` tables.
+## Main Doc
+`docs/RED_PILL.md` is the single source of truth for the grid-based model.
+Read §10 (Grid CUD + Attachment + Cascade) and §11 (Implementation Status) before starting.
 
 ## Session Startup
-1. Read this prompt — note DONE section and KNOWN BUGS
-2. Read `docs/NEW_FROM_REFERENCE.md` §17.10.2 (roof), §17.10.3 (engine)
-3. Read `deploy/dev/doc_canvas.js` — the `recomposeAfterGridDrag` function
-4. Read `deploy/dev/grid_kinematics.js` — the engine
-5. Check repo paths (migration may have moved files to `viewer/`)
-6. Fix BUG-1 first — it's blocking all other drag testing
+1. Read this prompt — note DONE items above
+2. Read `docs/RED_PILL.md` §10 (grid CUD, attachment, cascade) and §11 (status, issues)
+3. Read `deploy/dev/doc_canvas.js` — interaction code (lines ~1370-1660)
+4. Read `deploy/dev/grid_recompose.js` — engine bridge
+5. Read `deploy/dev/grid_kinematics.js` — the engine (§ROOF_LIFT, §WALL_HEIGHT_SCALE)
+
+## Module Load Order (index.html)
+`grid_state.js` → `grid_kinematics.js` → `grid_recompose.js` → `doc_canvas.js`
 
 ## Out of Scope
-- UBBL Validator (Stage 2) — separate session after drag bugs fixed
 - Tile recount / FRAME coord replacement at runtime (Stage 2)
 - MEP rerouting (Stage 2)
-- IFC export, save/recall, GPU throttle
+- IFC export, GPU throttle
+- GridInteraction extraction (deferred, ~190 lines, low priority)

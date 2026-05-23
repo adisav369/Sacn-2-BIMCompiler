@@ -2058,6 +2058,139 @@ test('T70 Issue: S273/F6 — W023 SC BOM seed migration exists', function() {
   logTag('W023_SEED', 'migration file valid: layout_strategy + 9 IFC classes');
 });
 
+// ── T71-T76: §S270c Y-axis (ceiling) drag ──
+console.log('\n── T71-T76: §S270c Y-axis Ceiling Drag ──');
+
+test('T71 Issue: S270c — GridState getDeltas includes CEIL after setCeilingYCurrent', function() {
+  var GS = require(path.resolve(devDir, 'grid_state.js'));
+  GS.init([0, 10], [0, 8], ['A', 'B'], ['1', '2']);
+  GS.snapshotOriginals();
+  GS.setCeilingY(6.5);
+
+  // Before drag: no CEIL delta
+  var d0 = GS.getDeltas(0.01);
+  assertEq(d0.length, 0, 'no deltas before drag');
+
+  // Drag ceiling up 1.5m
+  GS.setCeilingYCurrent(8.0);
+  var d1 = GS.getDeltas(0.01);
+  assertEq(d1.length, 1, 'one CEIL delta');
+  assertEq(d1[0].label, 'CEIL', 'label is CEIL');
+  assertEq(d1[0].axis, 'y', 'axis is y');
+  assertClose(d1[0].absDelta, 1.5, 0.001, 'delta=1.5');
+  assertClose(d1[0].originalPos, 6.5, 0.001, 'original=6.5');
+  assertClose(d1[0].currentPos, 8.0, 0.001, 'current=8.0');
+  logTag('CEIL_DELTAS', 'CEIL delta=' + d1[0].absDelta.toFixed(3));
+});
+
+test('T72 Issue: S270c — GridState getLines uses original CEIL pos after drag', function() {
+  var GS = require(path.resolve(devDir, 'grid_state.js'));
+  GS.init([0, 10], [0, 8], ['A', 'B'], ['1', '2']);
+  GS.setCeilingY(6.5);
+  GS.setCeilingYCurrent(8.0);
+
+  var lines = GS.getLines();
+  var ceil = lines.filter(function(l) { return l.id === 'CEIL'; });
+  assertEq(ceil.length, 1, 'CEIL line present');
+  assertClose(ceil[0].pos, 6.5, 0.001, 'getLines uses original (6.5) not current');
+  logTag('CEIL_LINES', 'CEIL original pos=' + ceil[0].pos.toFixed(3));
+});
+
+test('T73 Issue: S270c — GridState reset clears ceiling state', function() {
+  var GS = require(path.resolve(devDir, 'grid_state.js'));
+  GS.init([0, 10], [0, 8]);
+  GS.setCeilingY(6.5);
+  GS.setCeilingYCurrent(8.0);
+  GS.reset();
+  assertEq(GS.getCeilingY(), null, 'ceiling original cleared');
+  assertEq(GS.getCeilingYCurrent(), null, 'ceiling current cleared');
+  logTag('CEIL_RESET', 'ceiling state cleared on reset');
+});
+
+test('T74 Issue: S270c — GridState CEIL delta below threshold excluded', function() {
+  var GS = require(path.resolve(devDir, 'grid_state.js'));
+  GS.init([0, 10], [0, 8]);
+  GS.setCeilingY(6.5);
+  GS.setCeilingYCurrent(6.505);  // 0.005 < threshold 0.01
+  var d = GS.getDeltas(0.01);
+  assertEq(d.length, 0, 'tiny CEIL delta excluded');
+  logTag('CEIL_THRESHOLD', 'CEIL delta 0.005 excluded at threshold 0.01');
+});
+
+test('T75 Issue: S270c — engine ROOF_LIFT + WALL_HEIGHT_SCALE cascade from CEIL drag', function() {
+  var gkSrc = readFile('grid_kinematics.js');
+  var gkCtx = { window: {}, module: { exports: {} } };
+  vm.createContext(gkCtx);
+  vm.runInContext(gkSrc, gkCtx);
+  var GK = gkCtx.window.GridKinematics || gkCtx.module.exports;
+
+  // Build elements: 1 roof at eaveY=6.5, 1 wall with top at 6.5
+  var elements = [
+    { guid: 'roof1', ifcClass: 'IfcRoof', x: 5, y: 6.5, z: 4,
+      bboxX: 10, bboxY: 2, bboxZ: 8, vertices: new Float32Array([
+        0, 6.5, 0,   10, 6.5, 0,   10, 6.5, 8,   0, 6.5, 8,  // eave at Y=6.5
+        5, 9.0, 4    // ridge at Y=9
+      ]) },
+    { guid: 'wall1', ifcClass: 'IfcWall', x: 0, y: 3.25, z: 4,
+      bboxX: 0.3, bboxY: 6.5, bboxZ: 8 }  // top = 3.25 + 3.25 = 6.5
+  ];
+
+  // Grid: 2 X lines + 1 Y-axis ceiling line at 6.5
+  var gridLines = [
+    { id: 'A', axis: 'x', pos: 0 },
+    { id: 'B', axis: 'x', pos: 10 },
+    { id: 'CEIL', axis: 'y', pos: 6.5 }
+  ];
+
+  var engine = new GK.GridKinematicEngine(elements, gridLines);
+  engine.attachGridToElements();
+
+  // Check CEIL has ROOF_LIFT attachment
+  var attachMap = engine.getAttachMap();
+  assert(attachMap['CEIL'], 'CEIL should have attachments');
+  var roofLiftItems = attachMap['CEIL'].filter(function(it) { return it.relation === 'ROOF_LIFT'; });
+  assert(roofLiftItems.length >= 1, 'CEIL should have at least 1 ROOF_LIFT attachment');
+
+  // Check cascades exist (WALL_HEIGHT_SCALE)
+  var hasCascade = false;
+  for (var ci = 0; ci < roofLiftItems.length; ci++) {
+    if (roofLiftItems[ci].cascades && roofLiftItems[ci].cascades.length > 0) {
+      for (var cc = 0; cc < roofLiftItems[ci].cascades.length; cc++) {
+        if (roofLiftItems[ci].cascades[cc].type === 'WALL_HEIGHT_SCALE') {
+          hasCascade = true;
+        }
+      }
+    }
+  }
+  assert(hasCascade, 'CEIL ROOF_LIFT should cascade WALL_HEIGHT_SCALE to wall1');
+
+  // Drag CEIL up 1m → expect ROOF_LIFT + SCALE commands
+  var cmds = engine.dragGrid('CEIL', 1.0);
+  assert(cmds.length >= 2, 'should produce at least 2 commands, got ' + cmds.length);
+
+  var roofCmd = cmds.filter(function(c) { return c.action === 'ROOF_LIFT'; });
+  var scaleCmd = cmds.filter(function(c) { return c.action === 'SCALE' && c.axis === 'y'; });
+  assert(roofCmd.length >= 1, 'should have ROOF_LIFT command');
+  assertClose(roofCmd[0].deltaY, 1.0, 0.001, 'ROOF_LIFT deltaY=1.0');
+  assert(scaleCmd.length >= 1, 'should have Y-axis SCALE command (wall height)');
+
+  logTag('CEIL_CASCADE', 'ROOF_LIFT=' + roofCmd.length +
+    ' WALL_SCALE=' + scaleCmd.length + ' totalCmds=' + cmds.length);
+});
+
+test('T76 Issue: S270c — getCeilingYCurrent returns original when current not set', function() {
+  var GS = require(path.resolve(devDir, 'grid_state.js'));
+  GS.init([0, 10], [0, 8]);
+  GS.setCeilingY(5.0);
+  // Current not explicitly set → getCeilingYCurrent returns original
+  assertClose(GS.getCeilingYCurrent(), 5.0, 0.001, 'returns original when current=null');
+
+  // After explicit set
+  GS.setCeilingYCurrent(7.0);
+  assertClose(GS.getCeilingYCurrent(), 7.0, 0.001, 'returns current after setCeilingYCurrent');
+  logTag('CEIL_FALLBACK', 'getCeilingYCurrent falls back to original correctly');
+});
+
 // Summary
 // ═══════════════════════════════════════════════════════════════════════════
 console.log('\n═══ Summary ═══');

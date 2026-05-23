@@ -1401,11 +1401,50 @@ function _initInteraction(A) {
     _raycaster.setFromCamera(_pointer, A.camera);
     var hits = _raycaster.intersectObjects(_gridGroup.children, false);
 
-    // Find first grid line or bubble hit
+    // Find first grid line, bubble, or ceiling disc hit
     var hit = null;
+    var ceilHit = null;
     for (var i = 0; i < hits.length; i++) {
       var ud = hits[i].object.userData;
-      if (ud && (ud.gridLine || ud.gridBubble)) { hit = hits[i]; break; }
+      if (ud && (ud.gridLine || ud.gridBubble)) { if (!hit) hit = hits[i]; }
+      if (ud && ud.ceilingGrid) { if (!ceilHit) ceilHit = hits[i]; }
+    }
+
+    // §S270c: Ceiling disc click → select/drag CEIL Y-axis grid
+    if (ceilHit && !hit) {
+      if (_selected && _selected.axis === 'Y') {
+        // Already selected CEIL → start Y-axis drag (with attachment guard)
+        if (_GR && _GR.getEngine()) {
+          var ceilMap = _GR.getAttachMap();
+          var ceilItems = ceilMap['CEIL'];
+          if (!ceilItems || !ceilItems.length) {
+            if (window.APP && APP.status) {
+              APP.status.textContent = 'Ceiling grid has no attached roofs — advance to Tier 3 first';
+            }
+            console.log('§DOC_GRID_DRAG_BLOCKED label=CEIL reason=no_attachments');
+            return;
+          }
+        }
+        _dragging = true;
+        _origPos = _GS.getCeilingYCurrent();
+        _dragStart = { x: 0, z: 0, y: ceilHit.point.y };
+        if (A.controls) A.controls.enabled = false;
+        console.log('§DOC_GRID_DRAG start axis=Y ceil pos=' + _origPos.toFixed(3));
+      } else {
+        // First click → select CEIL
+        if (_selected) _deselectGrid(A);
+        _selected = { axis: 'Y', idx: -1, mode: 'drag' };
+        _origPos = _GS.getCeilingYCurrent();
+        // Highlight ceiling disc
+        ceilHit.object.material.color.setHex(0x00ffff);
+        ceilHit.object.material.opacity = 0.25;
+        if (window.APP && APP.status) {
+          var ceilAttachInfo = _getGridAttachInfo('CEIL');
+          APP.status.textContent = 'Ceiling grid selected' + ceilAttachInfo + ' — click again to drag up/down';
+        }
+        console.log('§DOC_GRID_SELECT mode=drag axis=Y ceil');
+      }
+      return;
     }
 
     if (!hit) {
@@ -1468,9 +1507,42 @@ function _initInteraction(A) {
   canvas.addEventListener('pointermove', function(ev) {
     if (!_active || !_dragging || !_selected) return;
     _updatePointer(ev, canvas);
-
-    // Project pointer to ground plane (y = e.y0)
     _raycaster.setFromCamera(_pointer, A.camera);
+
+    // §S270c: Y-axis drag → vertical plane facing camera
+    if (_selected.axis === 'Y') {
+      // Project to vertical plane through ceiling disc center, facing camera
+      var camDir = A.camera.getWorldDirection(new THREE.Vector3());
+      // Use a plane normal in XZ (horizontal component of camera direction), so Y varies freely
+      var planeNormal = new THREE.Vector3(camDir.x, 0, camDir.z).normalize();
+      if (planeNormal.length() < 0.01) planeNormal.set(0, 0, 1); // fallback for top-down view
+      var envCX = A._docEnv ? (A._docEnv.minX + A._docEnv.maxX) / 2 : 0;
+      var envCZ = A._docEnv ? (A._docEnv.minZ + A._docEnv.maxZ) / 2 : 0;
+      var planeConst = -(planeNormal.x * envCX + planeNormal.z * envCZ);
+      var vertPlane = new THREE.Plane(planeNormal, planeConst);
+      var vertIntersect = new THREE.Vector3();
+      if (!_raycaster.ray.intersectPlane(vertPlane, vertIntersect)) return;
+
+      var newY = vertIntersect.y;
+      _GS.setCeilingYCurrent(newY);
+
+      // Move the ceiling disc mesh
+      if (_gridGroup) {
+        _gridGroup.traverse(function(obj) {
+          if (obj.userData && obj.userData.ceilingGrid) {
+            obj.position.y = newY;
+          }
+        });
+      }
+
+      var delta = newY - _origPos;
+      if (window.APP && APP.status) {
+        APP.status.textContent = 'Dragging ceiling: ' + (delta >= 0 ? '+' : '') + delta.toFixed(2) + 'm';
+      }
+      return;
+    }
+
+    // X/Z axis: Project pointer to ground plane (y = e.y0)
     var plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -A._docEnv.y0);
     var intersection = new THREE.Vector3();
     if (!_raycaster.ray.intersectPlane(plane, intersection)) return;
@@ -1503,6 +1575,40 @@ function _initInteraction(A) {
 
     var axis = _selected.axis;
     var idx = _selected.idx;
+
+    // §S270c: Y-axis (CEIL) drag commit
+    if (axis === 'Y') {
+      var newY = _GS.getCeilingYCurrent();
+      var deltaY = newY - _origPos;
+
+      if (Math.abs(deltaY) > 0.01) {
+        // Log GRID_MOVE kernel_op for ceiling
+        if (window.KernelOps && A.db) {
+          try {
+            KernelOps.commitOp(A.db, 'GRID_MOVE', JSON.stringify({
+              axis: 'Y', label: 'CEIL',
+              old_m: Math.round(_origPos * 1000) / 1000,
+              new_m: Math.round(newY * 1000) / 1000
+            }), null, null);
+          } catch(e) { /* kernel_ops optional */ }
+        }
+        console.log('§DOC_GRID_MOVE axis=Y old=' + _origPos.toFixed(3) +
+          ' new=' + newY.toFixed(3) + ' delta=' + deltaY.toFixed(3) + 'm');
+
+        // Recompose — ROOF_LIFT + WALL_HEIGHT_SCALE cascade
+        recomposeAfterGridDrag(A);
+
+        if (window.APP && APP.status) {
+          APP.status.textContent = 'Ceiling moved ' +
+            (deltaY >= 0 ? '+' : '') + deltaY.toFixed(2) + 'm — roof lifted, walls scaled';
+        }
+      }
+
+      _deselectGrid(A);
+      return;
+    }
+
+    // X/Z axis drag commit
     var gsAx = axis === 'X' ? 'x' : 'z';
     var newPos = _GS.getPosition(gsAx, idx);
     var delta = newPos - _origPos;
@@ -1578,8 +1684,18 @@ function _initInteraction(A) {
   document.addEventListener('keydown', function(ev) {
     if (ev.key === 'Escape' && _selected && _active) {
       if (_dragging) {
-        // Cancel drag — restore original position
-        _GS.setPosition(_selected.axis === 'X' ? 'x' : 'z', _selected.idx, _origPos);
+        if (_selected.axis === 'Y') {
+          // Cancel Y-axis drag — restore ceiling position + disc
+          _GS.setCeilingYCurrent(_origPos);
+          if (_gridGroup) {
+            _gridGroup.traverse(function(obj) {
+              if (obj.userData && obj.userData.ceilingGrid) obj.position.y = _origPos;
+            });
+          }
+        } else {
+          // Cancel X/Z drag — restore original position
+          _GS.setPosition(_selected.axis === 'X' ? 'x' : 'z', _selected.idx, _origPos);
+        }
         _dragging = false;
         if (A.controls) A.controls.enabled = true;
         _renderGrid(A);
@@ -1635,21 +1751,31 @@ function _getGridAttachInfo(gridLabel) {
 
 function _deselectGrid(A) {
   if (_selected && _gridGroup) {
-    // Restore normal line color + dashed style
-    _gridGroup.traverse(function(obj) {
-      var ud = obj.userData;
-      if (!ud || ud.axis !== _selected.axis || ud.idx !== _selected.idx) return;
-      if (ud.gridLine && obj.material) {
-        obj.material.color.setHex(_lineColor);
-        obj.material.opacity = 0.85;
-        obj.material.dashSize = 1.0;
-        obj.material.gapSize = 0.4;
-      }
-      if (ud.gridBubble && obj.material) {
-        obj.material.color.setHex(0xffffff);  // remove tint
-        obj.material.opacity = 0.85;
-      }
-    });
+    if (_selected.axis === 'Y') {
+      // §S270c: Restore ceiling disc appearance
+      _gridGroup.traverse(function(obj) {
+        if (obj.userData && obj.userData.ceilingGrid && obj.material) {
+          obj.material.color.setHex(0x00bcd4);
+          obj.material.opacity = 0.08;
+        }
+      });
+    } else {
+      // Restore normal line color + dashed style
+      _gridGroup.traverse(function(obj) {
+        var ud = obj.userData;
+        if (!ud || ud.axis !== _selected.axis || ud.idx !== _selected.idx) return;
+        if (ud.gridLine && obj.material) {
+          obj.material.color.setHex(_lineColor);
+          obj.material.opacity = 0.85;
+          obj.material.dashSize = 1.0;
+          obj.material.gapSize = 0.4;
+        }
+        if (ud.gridBubble && obj.material) {
+          obj.material.color.setHex(0xffffff);  // remove tint
+          obj.material.opacity = 0.85;
+        }
+      });
+    }
   }
   _selected = null;
   _dragging = false;

@@ -21,7 +21,8 @@
   var _xLabels = [];
   var _zLabels = [];
   var _origByLabel = {};  // label → original position (immune to re-sort)
-  var _ceilingY = null;   // Y-axis grid position (eave height), null = not placed
+  var _ceilingY = null;   // Y-axis grid original position (eave height), null = not placed
+  var _ceilingYCurrent = null; // Y-axis grid current position (after drag)
 
   // ── Init / Reset ──────────────────────────────────────────────────────────
 
@@ -39,6 +40,7 @@
     _zLabels = zLabels ? zLabels.slice() : _generateZLabels(zPositions.length);
     _origByLabel = {};
     _ceilingY = null;
+    _ceilingYCurrent = null;
   }
 
   /**
@@ -51,6 +53,7 @@
     _zLabels = [];
     _origByLabel = {};
     _ceilingY = null;
+    _ceilingYCurrent = null;
   }
 
   // ── Snapshot Originals ────────────────────────────────────────────────────
@@ -180,6 +183,17 @@
       }
     }
 
+    // §S270c: Include CEIL Y-axis delta if ceiling has been dragged
+    if (_ceilingY !== null && _ceilingYCurrent !== null) {
+      var ceilDelta = _ceilingYCurrent - _ceilingY;
+      if (Math.abs(ceilDelta) >= threshold) {
+        deltas.push({
+          label: 'CEIL', axis: 'y', absDelta: ceilDelta,
+          currentPos: _ceilingYCurrent, originalPos: _ceilingY, index: -1
+        });
+      }
+    }
+
     return deltas;
   }
 
@@ -225,7 +239,9 @@
   }
 
   function getCeilingY() { return _ceilingY; }
-  function setCeilingY(y) { _ceilingY = y; }
+  function getCeilingYCurrent() { return _ceilingYCurrent !== null ? _ceilingYCurrent : _ceilingY; }
+  function setCeilingY(y) { _ceilingY = y; _ceilingYCurrent = y; }
+  function setCeilingYCurrent(y) { _ceilingYCurrent = y; }
 
   /** getPosition(axis, index) — single-value read without copy overhead */
   function getPosition(axis, index) {
@@ -326,7 +342,9 @@
   exports.setPosition = setPosition;
   exports.getOriginal = getOriginal;
   exports.getCeilingY = getCeilingY;
+  exports.getCeilingYCurrent = getCeilingYCurrent;
   exports.setCeilingY = setCeilingY;
+  exports.setCeilingYCurrent = setCeilingYCurrent;
   exports.getPosition = getPosition;
   exports.getLabel = getLabel;
   exports.getCount = getCount;

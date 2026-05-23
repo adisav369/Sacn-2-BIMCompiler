@@ -323,8 +323,8 @@ Each Rosetta Stone placement is a witnessed fact — a user-verified ground trut
 
 | File | Lines | Role |
 |---|---|---|
-| `doc_canvas.js` | 2088 | Orchestrator: UX, phases, grid rendering, timeline, save/open |
-| `grid_state.js` | 335 | Grid positions, labels, originals, deltas — single source of truth |
+| `doc_canvas.js` | 2214 | Orchestrator: UX, phases, grid rendering, timeline, save/open |
+| `grid_state.js` | 353 | Grid positions, labels, originals, deltas — single source of truth |
 | `grid_recompose.js` | 682 | Engine bridge, bbox swizzle, command dispatch, BOM L1 recompose |
 | `grid_kinematics.js` | 672 | Pure-math engine: 8 relation types, cascades, bay-proportional |
 | `bom_extract.js` | 350 | Grammar extractor: one SQL query, BOM → envelope + phases |
@@ -348,17 +348,19 @@ Each Rosetta Stone placement is a witnessed fact — a user-verified ground trut
 | Refactor: grid_recompose.js | S270 | Extracted engine bridge + BOM recompose (682 lines) |
 | BOM Engine L1 Recompose | S272 | Phase 3+4, discipline rules, BomDiff commands |
 | Design Save/Open | S273 | IndexedDB, kernel_ops replay |
+| Y-axis Ceiling Drag UI | S270c | Click disc → drag up/down → ROOF_LIFT + WALL_HEIGHT_SCALE cascade |
 
 ### 11.3 Tests
 
 | File | Count | Scope |
 |---|---|---|
-| `test_doc_canvas.js` | 73 | UX, grid ops, BatchedMesh, BUG-1/BUG-4, save/open, grid guards |
+| `test_doc_canvas.js` | 79 | UX, grid ops, BatchedMesh, BUG-1/BUG-4, save/open, grid guards, ceiling drag |
 | `test_grid_kinematics.js` | 98 | ATTACH/SPAN/EDGE/ROOF classification, bay-proportional, cascades |
 | `test_s268_recompose.js` | 63 | Attach-map recompose + bay-proportional integration |
 | `test_grid_modules.js` | 114 | Grid detection, overlay, drag, label generation |
 | `whitebox_regression.js` | 34/36 | Split/IFC/offline/variance/ground (2 pre-existing) |
-| **Total** | **348+34** | All whitebox, §-tagged logs |
+| `test_bom_*.js` (7 files) | 438 | BOM engine: strategies, constraints, diff, node, tree, grid, rules, deep |
+| **Total** | **354+34+438** | All whitebox, §-tagged logs |
 
 ### 11.4 Known Issues
 
@@ -375,17 +377,35 @@ Each Rosetta Stone placement is a witnessed fact — a user-verified ground trut
 
 | Priority | Feature | Scope |
 |---|---|---|
-| P1 | Y-axis drag UI | Click ceiling disc → ROOF_LIFT + WALL_HEIGHT_SCALE cascade |
+| ~~P1~~ | ~~Y-axis drag UI~~ | ~~Done S270c — click disc → drag → cascade~~ |
 | P2 | BUG-2 warning | Status: "no attached elements — place elements first" |
-| P3 | BUG-3 phase-aware recompose | New elements snap to moved grid positions |
-| P4 | UBBL Validator | Compliance engine, clearance rules, code checks |
+| P3 | BUG-3 phase-aware recompose | BOM engine solves this: `materializeLevel()` reads CURRENT AABBs. Wire B1+B2. |
+| P4 | UBBL Validator | `bom_rules.js` + `disc_rules.json` done (8 rules). Wire B1 to activate. |
 | P5 | Materialization | Grammar + event log → NewBuilding.db |
 | P6 | Share via URL | `?ref=SampleHouse&ops=...` |
 
-### 11.6 Deferred (Stage 2+)
+### 11.6 BOM-Driven Cascade Tasks (S272 engine ready, needs wiring)
 
-- Tile recount / FRAME coord replacement at runtime
-- MEP rerouting after grid drag
+The BOM engine (438 tests) provides the algebra. These tasks wire it to visible behaviour.
+
+| ID | Task | What the engine already does | What's missing |
+|---|---|---|---|
+| B1 | **Script tags** | All 6 `bom_engine/*.js` + `disc_rules.json` exist | Not in `index.html` — modules load but no `<script>` includes them |
+| B2 | **Wall→Window cascade** | `recompose()` with UNIFORM strategy recounts windows when parent AABB changes | L1 debounce fires (`_fireBomRecompose`) but `_bomNodes` is empty until first `materializeLevel()` call from BOM.db |
+| B3 | **DISC switch → MEP fresh route** | ROUTE strategy stub exists, `route_walker.js` exists | ROUTE stub returns straight line. Wire: `ROUTE(p)` → `RouteWalker.walk(db, anchors, disc)` (~10 lines) |
+| B4 | **Tile recount on resize** | UNIFORM/PACKED strategies compute count from available space | verb_expand.js TILE formula not connected to BOM engine |
+| B5 | **Cross-DISC read-only cascade** | `recompose()` is stateless — reads current AABBs, doesn't care who moved them | No code needed. DISC switch → `materializeLevel()` → children read current positions. Already wired in `_materializeBomLevel()`. |
+
+**Key insight (2026-05-24 watchdog review):** "MEP rerouting after grid drag" (previously Deferred) is NOT needed. MEP never sees drag. User switches DISC → MEP reads current structural positions → RouteWalker fires once. One-way, user-triggered. No live coupling.
+
+**Spec alignment notes (review before editing docs):**
+- `BOM_ENGINE_SPEC.md §16` says ROUTE delegates to RouteWalker "in Phase 3" — Phase 3 is done but ROUTE is still a stub. §16 should say "Phase 5" or "B3 task". Fix after B3 is wired.
+- `RED_PILL.md §11.5 P3` (BUG-3) references "phase-aware recompose" — this is exactly what `materializeLevel()` with current AABBs does. Close BUG-3 after B1+B2 are wired and §-logs prove it.
+- `BOM_ENGINE_SPEC.md §10` file layout lists `bom_rules.js` and `disc_rules.json` — both exist and pass tests, but §6.3 `DiscRuleProvider` still shows `// TODO: loadFromDB`. Acceptable — JSON-first is the current path, DB-load is v2.
+- `NEW_FROM_REFERENCE.md` §17.9 BOM Completion Triage (items A-I) — not cross-checked against B1-B5 tasks. May have duplicates or gaps. Verify on next full review.
+
+### 11.7 Deferred (Stage 2+)
+
 - IFC export from NewBuilding.db
 - Diagonal grids / rotation / mirroring
 - Git-like branching (parallel design timelines)
