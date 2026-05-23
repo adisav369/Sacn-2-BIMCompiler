@@ -463,7 +463,7 @@
   </div>
 </div>
 <div id="info-panel">
-  <span class="panel-toggle" onclick="document.getElementById('info-panel').style.display='none'">×</span>
+  <span class="panel-toggle" id="info-panel-close">×</span>
   <div><span class="label" data-trl="ui_class">Class</span>: <span class="value" id="info-class">—</span></div>
   <div><span class="label" data-trl="ui_name">Name</span>: <span class="value" id="info-name">—</span></div>
   <div><span class="label" data-trl="ui_guid">GUID</span>: <span class="value" id="info-guid" style="font-size:10px">—</span></div>
@@ -864,7 +864,7 @@ if(new URLSearchParams(location.search).get('embedded')!=='true'){
 </script>
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js?v=445')
+  navigator.serviceWorker.register('sw.js?v=446')
     .then(function(r){console.log('§SW_REG scope='+r.scope)})
     .catch(function(e){console.warn('§SW_REG_FAIL',e)});
 }
