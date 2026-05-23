@@ -884,17 +884,38 @@ function setupPanels(A) {
       btnDisc.id = 'doc-disc-btn';
       btnDisc.style.color = _discColorMap['ARC'];  // default ARC color
       pill.appendChild(btnDisc);
-      // 6. Open — load saved NewBuilding.db from user's machine
+      // 6. Open — list saved designs and restore selected
       var btnOpen = A.icon('folderOpen', { size: 24, title: 'Open Design', onClick: function() {
-        console.log('§DOC_OPEN list saved designs');
-        // TODO S266: wire to IndexedDB NewIFC.db listing
+        if (!window.DocCanvas || !DocCanvas.listDesigns) return;
+        DocCanvas.listDesigns(function(err, list) {
+          if (err || !list.length) {
+            if (window.APP && APP.status) {
+              APP.status.textContent = err ? 'Error listing designs' : 'No saved designs found';
+            }
+            console.log('§DOC_OPEN ' + (err ? 'ERROR: ' + err : 'no_designs'));
+            return;
+          }
+          // Show picker: most recent first
+          list.sort(function(a, b) { return b.savedAt - a.savedAt; });
+          var names = list.map(function(d, i) {
+            var date = new Date(d.savedAt).toLocaleString();
+            return (i + 1) + '. ' + d.key + ' (' + date + ', ' + d.ops + ' ops)';
+          });
+          var choice = prompt('Select design to open:\\n' + names.join('\\n') + '\\n\\nEnter number or name:');
+          if (!choice) return;
+          var idx = parseInt(choice) - 1;
+          var key = (idx >= 0 && idx < list.length) ? list[idx].key : choice;
+          DocCanvas.openDesign(A, key);
+        });
       }});
       btnOpen.id = 'doc-open-btn';
       pill.appendChild(btnOpen);
-      // 6. Save — materialize NewIFC.db
+      // 7. Save — serialize grid state + kernel_ops to IndexedDB
       var btnSave = A.icon('save', { size: 24, title: 'Save Design', onClick: function() {
-        console.log('§DOC_SAVE materialize');
-        // TODO S266: wire to materialization service
+        if (!window.DocCanvas || !DocCanvas.saveDesign) return;
+        var key = prompt('Design name:', 'Design_' + new Date().toISOString().slice(0, 10));
+        if (!key) return;
+        DocCanvas.saveDesign(A, key);
       }});
       btnSave.id = 'doc-save-btn';
       pill.appendChild(btnSave);

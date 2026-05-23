@@ -712,6 +712,28 @@ function _addGridPosition(axis, position, label) {
   return true;
 }
 
+/**
+ * §S273 F4: Remove a grid line by axis and index.
+ * Returns the removed label, or null if index is out of range or is an envelope line (A/B or 1/2).
+ */
+function _removeGridPosition(axis, idx) {
+  var arr = axis === 'X' ? _xPositions : _zPositions;
+  var labels = axis === 'X' ? _xLabels : _zLabels;
+
+  // Don't remove envelope lines (first and last)
+  if (idx <= 0 || idx >= arr.length - 1) return null;
+
+  var label = labels[idx];
+  arr.splice(idx, 1);
+  labels.splice(idx, 1);
+
+  // Remove from originals tracking
+  delete _gridOrigByLabel[label];
+  delete _userGrids[label];  // §S273 F3
+
+  return label;
+}
+
 function _nextXLabel(idx) {
   // Generate label like A, A', A'', B, B', etc.
   // If inserting between A and B, use A'
@@ -1204,9 +1226,16 @@ function handleRosettaDrag(axis, position, A) {
       } catch(e) { /* kernel_ops optional */ }
     }
     _kinEngineDirty = true; // new grid line → rebuild engine
-    var placedLabel = axis === 'X'
-      ? _xLabels[_xLabels.length - 1]
-      : _zLabels[_zLabels.length - 1];
+    // Find the placed label by matching position (after resort, index may differ)
+    var placedLabel;
+    var posArr = axis === 'X' ? _xPositions : _zPositions;
+    var lblArr = axis === 'X' ? _xLabels : _zLabels;
+    for (var pi = 0; pi < posArr.length; pi++) {
+      if (Math.abs(posArr[pi] - position) < 0.01) { placedLabel = lblArr[pi]; break; }
+    }
+    if (!placedLabel) placedLabel = lblArr[lblArr.length - 1];
+    // §S273 F3: Track user-placed grid for scrub preservation
+    _userGrids[placedLabel] = { axis: axis, position: position };
     if (window.APP && APP.status) {
       APP.status.textContent = 'Rosetta placed grid ' + (axis === 'X' ? placedLabel : placedLabel) +
         ' at ' + (axis === 'X' ? 'X' : 'Z') + '=' + position.toFixed(2) + 'm — ready to drag';
@@ -1551,7 +1580,20 @@ function _initInteraction(A) {
       }
       console.log('§DOC_GRID_SELECT mode=rotate axis=' + axis + ' idx=' + idx + ' pivot=' + _selected.pivotEnd);
     } else if (_selected && _selected.axis === axis && _selected.idx === idx) {
-      // Already selected → start drag
+      // Already selected → start drag (with attachment guard)
+      var dragLbl = axis === 'X' ? _xLabels[idx] : _zLabels[idx];
+      if (_kinEngine) {
+        var attachMap = _kinEngine.getAttachMap();
+        var attachItems = attachMap[dragLbl];
+        if (!attachItems || !attachItems.length) {
+          // §S273 F5: Block drag on grid with no attachments
+          if (window.APP && APP.status) {
+            APP.status.textContent = 'Grid ' + dragLbl + ' has no attached elements — place elements first';
+          }
+          console.log('§DOC_GRID_DRAG_BLOCKED label=' + dragLbl + ' reason=no_attachments');
+          return;
+        }
+      }
       _dragging = true;
       _dragStart = _worldXZ(hit.point);
       _origPos = axis === 'X' ? _xPositions[idx] : _zPositions[idx];
@@ -1614,6 +1656,39 @@ function _initInteraction(A) {
     var idx = _selected.idx;
     var newPos = axis === 'X' ? _xPositions[idx] : _zPositions[idx];
     var delta = newPos - _origPos;
+
+    // §S273 F4: Drag beyond envelope → delete grid line
+    if (A._docEnv && idx > 0) {
+      var env = A._docEnv;
+      var beyondEnvelope = false;
+      if (axis === 'X') {
+        beyondEnvelope = newPos < env.x0 - 2 || newPos > env.x1 + 2;
+      } else {
+        beyondEnvelope = newPos < env.z0 - 2 || newPos > env.z1 + 2;
+      }
+      var positions = axis === 'X' ? _xPositions : _zPositions;
+      if (beyondEnvelope && idx < positions.length - 1) {
+        var delLabel = _removeGridPosition(axis, idx);
+        if (delLabel) {
+          _renderGrid(A);
+          _updateHud();
+          _kinEngineDirty = true;
+          if (window.KernelOps && A.db) {
+            try {
+              KernelOps.commitOp(A.db, 'GRID_DELETE', JSON.stringify({
+                axis: axis, label: delLabel, pos_m: Math.round(_origPos * 1000) / 1000
+              }), null, null);
+            } catch(e) { /* kernel_ops optional */ }
+          }
+          console.log('§DOC_ROSETTA_DELETE axis=' + axis + ' label=' + delLabel);
+          if (window.APP && APP.status) {
+            APP.status.textContent = 'Grid ' + delLabel + ' removed (dragged beyond envelope)';
+          }
+          _deselectGrid(A);
+          return;
+        }
+      }
+    }
 
     if (Math.abs(delta) > 0.01) {
       // Commit the move
@@ -1844,13 +1919,25 @@ function _scrubToPhase(A, targetIdx) {
   for (var g = 0; g <= targetIdx && g < filtered.length; g++) {
     _autoGridFromPhase(A, filtered[g]);
   }
+
+  // §S273 F3: Re-add user-placed grids (Rosetta) that were lost during reset
+  var preservedCount = 0;
+  for (var ugLabel in _userGrids) {
+    var ug = _userGrids[ugLabel];
+    if (_addGridPosition(ug.axis, ug.position, ugLabel)) {
+      preservedCount++;
+    }
+  }
+  _resortLabels();
+
   _renderGrid(A);
   _updateHud();
   _updateTimeline();
   _kinEngineDirty = true; // §S270: phases changed, rebuild engine
 
   console.log('§DOC_SCRUB to=' + (targetIdx + 1) + '/' + filtered.length +
-    ' elements=' + _shownCount);
+    ' elements=' + _shownCount +
+    (preservedCount > 0 ? ' §DOC_SCRUB preserved=' + preservedCount + ' userGrids' : ''));
 }
 
 // Zero matrix for hiding instanced meshes during scrub (lazy-init)
@@ -1886,6 +1973,7 @@ function prevPhase(A) {
 
 var _gridOriginals = { x: [], z: [] };  // legacy — kept for backward compat
 var _gridOrigByLabel = {};  // §S270 Fix: label → origPos, immune to re-sorting
+var _userGrids = {};  // §S273 F3: label → { axis, position } for user-placed grids (Rosetta)
 var _kinEngine = null;       // GridKinematicEngine instance (lazy, rebuilt when dirty)
 var _kinEngineDirty = true;  // rebuild on next drag (phases changed, etc.)
 var _lastAppliedDeltas = {};  // §S270 BUG-1 fix: gridId → last absolute delta applied
@@ -2549,6 +2637,179 @@ function _findRootBom(bomDb) {
   return boms.length ? boms[0].bomId : null;
 }
 
+// ── §S273 F1/F2: Save/Open Design via IndexedDB ────────────────────────────
+var DESIGN_IDB_NAME = 'bim-designs';
+var DESIGN_IDB_VERSION = 1;
+var DESIGN_STORE = 'designs';
+
+function _openDesignDB(callback) {
+  var req = indexedDB.open(DESIGN_IDB_NAME, DESIGN_IDB_VERSION);
+  req.onupgradeneeded = function(e) {
+    var db = e.target.result;
+    if (!db.objectStoreNames.contains(DESIGN_STORE)) {
+      db.createObjectStore(DESIGN_STORE, { keyPath: 'key' });
+    }
+  };
+  req.onsuccess = function(e) { callback(null, e.target.result); };
+  req.onerror = function(e) { callback(e.target.error); };
+}
+
+/**
+ * saveDesign(A, designKey) — serialize grid state + kernel_ops to IndexedDB.
+ * §-log: §DOC_SAVE key=<key> ops=<n> grids=<n>
+ */
+function saveDesign(A, designKey) {
+  if (!designKey) {
+    designKey = 'Design_' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  }
+
+  // Collect kernel_ops from DB
+  var ops = [];
+  if (A && A.db) {
+    try {
+      var r = A.db.exec('SELECT id, timestamp, op_type, parameters, input_guids, output_guid, undone FROM kernel_ops ORDER BY id');
+      if (r.length) {
+        for (var i = 0; i < r[0].values.length; i++) {
+          var v = r[0].values[i];
+          ops.push({ id: v[0], timestamp: v[1], op_type: v[2], parameters: v[3], input_guids: v[4], output_guid: v[5], undone: v[6] });
+        }
+      }
+    } catch(e) { /* kernel_ops table may not exist */ }
+  }
+
+  var gridCount = _xPositions.length + _zPositions.length - 4; // minus 4 envelope lines
+  var design = {
+    key: designKey,
+    savedAt: Date.now(),
+    phaseIndex: _phaseIndex,
+    activeDisc: _activeDisc,
+    xPositions: _xPositions.slice(),
+    zPositions: _zPositions.slice(),
+    xLabels: _xLabels.slice(),
+    zLabels: _zLabels.slice(),
+    userGrids: JSON.parse(JSON.stringify(_userGrids)),
+    kernelOps: ops
+  };
+
+  _openDesignDB(function(err, db) {
+    if (err) {
+      console.log('§DOC_SAVE ERROR: ' + err);
+      return;
+    }
+    var tx = db.transaction(DESIGN_STORE, 'readwrite');
+    tx.objectStore(DESIGN_STORE).put(design);
+    tx.oncomplete = function() {
+      console.log('§DOC_SAVE key=' + designKey + ' ops=' + ops.length + ' grids=' + gridCount);
+      if (window.APP && APP.status) {
+        APP.status.textContent = 'Design saved: ' + designKey + ' (' + ops.length + ' ops, ' + gridCount + ' user grids)';
+      }
+    };
+    tx.onerror = function(e) {
+      console.log('§DOC_SAVE ERROR: ' + e.target.error);
+    };
+    db.close();
+  });
+}
+
+/**
+ * listDesigns(callback) — list saved designs from IndexedDB.
+ * callback(err, [{key, savedAt, ops, grids}])
+ */
+function listDesigns(callback) {
+  _openDesignDB(function(err, db) {
+    if (err) return callback(err);
+    var tx = db.transaction(DESIGN_STORE, 'readonly');
+    var req = tx.objectStore(DESIGN_STORE).getAll();
+    req.onsuccess = function(e) {
+      var designs = e.target.result || [];
+      var list = designs.map(function(d) {
+        return {
+          key: d.key,
+          savedAt: d.savedAt,
+          ops: d.kernelOps ? d.kernelOps.length : 0,
+          grids: (d.xPositions ? d.xPositions.length : 0) + (d.zPositions ? d.zPositions.length : 0) - 4
+        };
+      });
+      callback(null, list);
+    };
+    req.onerror = function(e) { callback(e.target.error); };
+    db.close();
+  });
+}
+
+/**
+ * openDesign(A, designKey) — restore a saved design from IndexedDB.
+ * §-log: §DOC_OPEN key=<key> ops=<n> grids=<n> restored=true
+ */
+function openDesign(A, designKey) {
+  _openDesignDB(function(err, db) {
+    if (err) {
+      console.log('§DOC_OPEN ERROR: ' + err);
+      return;
+    }
+    var tx = db.transaction(DESIGN_STORE, 'readonly');
+    var req = tx.objectStore(DESIGN_STORE).get(designKey);
+    req.onsuccess = function(e) {
+      var design = e.target.result;
+      if (!design) {
+        console.log('§DOC_OPEN key=' + designKey + ' NOT_FOUND');
+        if (window.APP && APP.status) {
+          APP.status.textContent = 'Design not found: ' + designKey;
+        }
+        return;
+      }
+
+      // Restore grid state
+      _xPositions = design.xPositions || [A._docEnv.x0, A._docEnv.x1];
+      _zPositions = design.zPositions || [A._docEnv.z0, A._docEnv.z1];
+      _xLabels = design.xLabels || ['A', 'B'];
+      _zLabels = design.zLabels || ['1', '2'];
+      _userGrids = design.userGrids || {};
+      _phaseIndex = design.phaseIndex || -1;
+      _activeDisc = design.activeDisc || null;
+
+      // Replay kernel_ops into DB
+      if (A.db && design.kernelOps && design.kernelOps.length) {
+        try {
+          A.db.run('DELETE FROM kernel_ops');
+          for (var i = 0; i < design.kernelOps.length; i++) {
+            var op = design.kernelOps[i];
+            A.db.run(
+              'INSERT INTO kernel_ops (id, timestamp, op_type, parameters, input_guids, output_guid, undone) VALUES (?,?,?,?,?,?,?)',
+              [op.id, op.timestamp, op.op_type, op.parameters, op.input_guids, op.output_guid, op.undone]
+            );
+          }
+        } catch(e) { /* kernel_ops replay optional */ }
+      }
+
+      // Rebuild grid originals from current positions
+      _gridOrigByLabel = {};
+      for (var xi = 0; xi < _xPositions.length; xi++) {
+        _gridOrigByLabel[_xLabels[xi] || ('X' + xi)] = _xPositions[xi];
+      }
+      for (var zi = 0; zi < _zPositions.length; zi++) {
+        _gridOrigByLabel[_zLabels[zi] || ('Z' + zi)] = _zPositions[zi];
+      }
+
+      _kinEngineDirty = true;
+      _renderGrid(A);
+      _updateHud();
+      _updateTimeline();
+
+      var gridCount = _xPositions.length + _zPositions.length - 4;
+      var opCount = design.kernelOps ? design.kernelOps.length : 0;
+      console.log('§DOC_OPEN key=' + designKey + ' ops=' + opCount + ' grids=' + gridCount + ' restored=true');
+      if (window.APP && APP.status) {
+        APP.status.textContent = 'Design loaded: ' + designKey + ' (' + opCount + ' ops, ' + gridCount + ' user grids)';
+      }
+    };
+    req.onerror = function(e) {
+      console.log('§DOC_OPEN ERROR: ' + e.target.error);
+    };
+    db.close();
+  });
+}
+
 // ── Public API ──────────────────────────────────────────────────────────────
 window.DocCanvas = {
   activate: activate,
@@ -2568,6 +2829,9 @@ window.DocCanvas = {
   getCalibrations: function() { return _calibrations.slice(); },
   getActiveDisc: function() { return _activeDisc; },
   recompose: recomposeAfterGridDrag,
+  saveDesign: saveDesign,
+  openDesign: openDesign,
+  listDesigns: listDesigns,
   getGridState: function() {
     return {
       xPositions: _xPositions.slice(),
@@ -2583,6 +2847,7 @@ window.DocCanvas = {
   _setGridPositions: function(x, z) { _xPositions = x; _zPositions = z; },
   _setGridLabels: function(x, z) { _xLabels = x; _zLabels = z; },
   _addGridPosition: _addGridPosition,
+  _removeGridPosition: _removeGridPosition,
   _setGridOriginals: function(x, z) {
     _gridOriginals = { x: x, z: z };
     // §S270: also build label-based map for tests
