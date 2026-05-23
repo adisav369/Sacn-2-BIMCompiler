@@ -5361,6 +5361,11 @@ bbox_z  →  bboxY (IFC height → Three Y)
 </tbody>
 </table>
 <p><strong>Key insight (2026-05-24 watchdog review):</strong> "MEP rerouting after grid drag" (previously Deferred) is NOT needed. MEP never sees drag. User switches DISC → MEP reads current structural positions → RouteWalker fires once. One-way, user-triggered. No live coupling.</p>
+<p><strong>Spec alignment notes (review before editing docs):</strong>
+- <code>BOM_ENGINE_SPEC.md §16</code> says ROUTE delegates to RouteWalker "in Phase 3" — Phase 3 is done but ROUTE is still a stub. §16 should say "Phase 5" or "B3 task". Fix after B3 is wired.
+- <code>RED_PILL.md §11.5 P3</code> (BUG-3) references "phase-aware recompose" — this is exactly what <code>materializeLevel()</code> with current AABBs does. Close BUG-3 after B1+B2 are wired and §-logs prove it.
+- <code>BOM_ENGINE_SPEC.md §10</code> file layout lists <code>bom_rules.js</code> and <code>disc_rules.json</code> — both exist and pass tests, but §6.3 <code>DiscRuleProvider</code> still shows <code>// TODO: loadFromDB</code>. Acceptable — JSON-first is the current path, DB-load is v2.
+- <code>NEW_FROM_REFERENCE.md</code> §17.9 BOM Completion Triage (items A-I) — not cross-checked against B1-B5 tasks. May have duplicates or gaps. Verify on next full review.</p>
 <h3 id="117-deferred-stage-2">11.7 Deferred (Stage 2+)<a class="headerlink" href="#117-deferred-stage-2" title="Permanent link">&para;</a></h3>
 <ul>
 <li>IFC export from NewBuilding.db</li>
