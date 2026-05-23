@@ -1,6 +1,6 @@
 # Refactoring doc_canvas.js — Separation of Concerns
 
-**Status:** Spec — not yet implemented
+**Status:** Steps 1–2 implemented (2026-05-24, commit c1fd2809). Step 3 deferred.
 **Trigger:** S270 bug cascade (BUG-1, BUG-4, phantom deltas, grid flood) all caused by interleaved concerns sharing mutable state in a 2230-line monolithic IIFE.
 **Reviewed by:** DeepSeek (2026-05-23), accepted with modifications.
 

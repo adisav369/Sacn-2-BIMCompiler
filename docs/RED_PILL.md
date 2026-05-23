@@ -77,7 +77,9 @@ The original `IFC.db` never changes. The design is an event log applied to the g
 
 | File | Lines | Role |
 |---|---|---|
-| `doc_canvas.js` | ~2200 | **Orchestrator.** Red Pill UX, Gantt stepper (Next), grid drag → engine → mesh update. The thin caller. |
+| `doc_canvas.js` | ~2090 | **Orchestrator.** Red Pill UX, Gantt stepper (Next), grid rendering, timeline, design save/open. Thin caller — delegates state and recompose to modules. |
+| `grid_state.js` | ~335 | **Grid state.** Owns all position/label/original tracking. Single source of truth for grid lines. |
+| `grid_recompose.js` | ~682 | **Recompose bridge.** Engine lifecycle, bbox swizzle, command dispatch, BOM L1 recompose, delta tracking. |
 | `grid_kinematics.js` | ~670 | **Engine.** Pure-math grid recomposition. No Three.js, no DB, no DOM. Takes element positions + grid deltas, returns transform commands. |
 | `bom_extract.js` | ~350 | **Grammar extractor.** Walks `m_bom` table, produces envelope + storey + phase hierarchy. The JS port of 13 Java classes — one function, one query, one pass. |
 | `kernel_ops.js` | ~400 | **Event log.** Every user action as a JSON command. Undo/redo by replay. |
@@ -90,12 +92,12 @@ The original `IFC.db` never changes. The design is an event log applied to the g
 
 | File | Tests | What It Proves |
 |---|---|---|
-| `test_doc_canvas.js` | 61 | Doc canvas UX, grid ops, BatchedMesh, BUG-1/BUG-4 fixes |
+| `test_doc_canvas.js` | 73 | Doc canvas UX, grid ops, BatchedMesh, BUG-1/BUG-4, Save/Open, grid guards |
 | `test_grid_kinematics.js` | 98 | Engine classification: ATTACH/SPAN/EDGE/ROOF, bay-proportional, cascades |
 | `test_s268_recompose.js` | 63 | Attach-map recompose + bay-proportional integration |
 | `test_grid_modules.js` | 114 | Grid detection, overlay, drag, label generation |
 
-**Total: 336 tests, all whitebox §-tagged.**
+**Total: 348 tests, all whitebox §-tagged.**
 
 ---
 
@@ -141,7 +143,7 @@ bbox_y  →  bboxZ (IFC depth → Three Z)
 bbox_z  →  bboxY (IFC height → Three Y)
 ```
 
-This swizzle is applied in `_collectElementData()` (`doc_canvas.js`). The engine operates entirely in Three.js coordinates.
+This swizzle is applied in `_collectElementData()` (`grid_recompose.js`). The engine operates entirely in Three.js coordinates.
 
 ---
 
@@ -170,16 +172,17 @@ Each press reveals one construction phase, discipline by discipline:
 2. **ARC** — walls, slabs, doors, windows (architectural infill)
 3. **MEP** — pipes, ducts, terminals (services)
 
-Grid lines auto-generate from element positions at each phase. The grid refines as more elements appear — from 2-line envelope at step zero to full structural grid after all phases.
+Grid starts as a 2-line envelope at step zero. Grid lines are added by user action only — double-click an element (wall/column) or Rosetta drag. Auto-grid was disabled (v17.9B) to prevent flooding with 200+ lines on large buildings.
 
 ### Grid Drag → Recompose
 
 1. Click a grid line → highlight + attach info in status bar
-2. Drag → `_computeGridDeltas()` → incremental delta (BUG-1 fix)
-3. Engine classifies → `dragGrid(gridId, incrementalDelta)` → commands
-4. Caller applies commands to meshes (`_applyCommand`)
-5. Lengths and bays update in HUD
-6. `GRID_MOVE` logged to `kernel_ops`
+2. Drag → `GridState.getDeltas()` → incremental delta (BUG-1 fix)
+3. `GridRecompose.applyDrag()` → engine `dragGrid(gridId, incrementalDelta)` → commands
+4. Commands applied to meshes (TRANSLATE/SCALE/ROOF_VERTICES/ROOF_LIFT)
+5. BOM L1 recompose fires (debounced 16ms) if BOM nodes configured
+6. Lengths and bays update in HUD
+7. `GRID_MOVE` logged to `kernel_ops`
 
 ---
 
@@ -246,57 +249,147 @@ The vocabulary is deliberately small. Each op is reversible and composable. A fu
 
 ---
 
-## 10. Rosetta Stone — The User IS the Gate
+## 10. The Grid-Based Model — CUD + Attachment + Cascade
+
+The grid is not decoration. It is the design model. Everything flows from two ideas:
+
+1. **Grid lines are the user's design intent.** Create, move, or delete a grid line and the building responds.
+2. **BOM elements attach to grid lines.** The attachment type determines how each element responds when its grid moves.
+
+### 10.1 Grid Line CUD (Create / Update / Delete)
+
+Grid lines are managed via three user actions, each logged as a `kernel_op`:
+
+| Action | Trigger | Kernel Op | What Happens |
+|---|---|---|---|
+| **Create** | Rosetta drag from template line, or double-click a wall/column | `GRID_ADD` or `GRID_CALIBRATE` | New grid line inserted at element position. Engine rebuilds attach map. |
+| **Update** | Select grid line → drag to new position | `GRID_MOVE` | Engine computes incremental delta → elements translate/scale/reshape. |
+| **Delete** | Drag grid line beyond envelope boundary, or double-click existing line | `GRID_DELETE` | Line removed. Attached elements lose constraint. Engine rebuilds. |
+
+**Rosetta Stone** is the primary Create tool. Three template lines (X, Y, Z) sit outside the envelope. When calibration mode is ON (gold lines), the user drags from a template → a committed grid line appears at the drop position. This is the user's creative contribution — they decide where the structural bays are.
+
+**Double-click** is the secondary Create/Delete tool. Click an element (wall/column) → grid line appears at its position. Click near an existing line → removes it. Toggle behavior.
+
+### 10.2 BOM Attachment — Why Elements Follow Grid Lines
+
+When the engine rebuilds (after grid CUD or phase change), it classifies every visible BOM element against every grid line. The classification is spatial — based on proximity between element geometry and grid position:
+
+```
+For each element E, for each grid line G:
+  distance = |E.center[axis] - G.position|
+  halfExtent = E.bbox[axis] / 2
+
+  if distance < 0.5m         → ATTACH  (centerline near grid)
+  if G inside E body          → SPAN    (grid cuts through element)
+  if |E.rightEdge - G| < 0.1m → EDGE_RIGHT
+  if |E.leftEdge - G| < 0.1m  → EDGE_LEFT
+  if E is roof at eave height → ROOF_EAVE
+  if E is flat roof spanning G → ROOF_FLAT
+  if G is Y-axis ceiling grid  → ROOF_LIFT
+  else                         → INTERIOR (bay-proportional)
+```
+
+This is the **attach map** — the engine's index of which elements are bound to which grid lines, and how. The attach map makes the grid a structural model, not just a drawing overlay.
+
+### 10.3 Cascade — How One Drag Moves Many Elements
+
+When the user drags grid line B from position 10m to 13m:
+
+1. **ATTACH** elements (columns at B) translate +3m rigidly
+2. **SPAN** elements (slabs spanning A–B) scale to match new bay width
+3. **EDGE** elements (walls with one edge at B) scale or translate depending on which edge
+4. **ROOF_EAVE** elements have eave vertices move +3m while ridge stays fixed — slope changes
+5. **INTERIOR** elements (furniture between A and B) reposition proportionally within the bay
+6. **WALL_HEIGHT_SCALE** cascade: if a Y-axis grid (ceiling) moves, walls attached to it grow taller
+
+This is how one grid drag propagates through the BOM hierarchy. The BOM tells you which elements exist and where they sit in the recipe. The attach map tells you how each one responds to the grid change. Together they form the **grid-based model**.
+
+### 10.4 Rosetta Stone — The User IS the Gate
 
 In the Java compiler, Rosetta Stone is an automated verification gate (G5): does the reconstruction match the original?
 
-In Red Pill mode, Rosetta Stone is a **calibration tool**:
-1. User selects a grid line
-2. User drags a "Rosetta Stone" marker to a known real-world position
-3. The offset between auto-detected and user-placed position is recorded
-4. All future grid operations on that line account for the correction
+In Red Pill mode, Rosetta Stone is a **design tool**:
+- **Create** grid lines by dragging from template lines (gold when ON, grey when OFF)
+- **Calibrate** by recording the offset between auto-detected and user-placed positions
+- **Delete** grid lines by dragging them beyond the envelope boundary
 
-Each Rosetta Stone placement is a witnessed fact — a user-verified ground truth that the grid algorithm can learn from.
+Each Rosetta Stone placement is a witnessed fact — a user-verified ground truth logged as `GRID_CALIBRATE` in kernel_ops. The user decides which grid lines matter. The engine makes every other element follow.
 
 ---
 
-## 11. Roadmap — What's Built, What's Next
+## 11. Implementation Status
 
-### Done (S266–S270)
+### 11.1 Code Map
 
-| Feature | Status | Evidence |
+| File | Lines | Role |
 |---|---|---|
-| Red Pill UX + Doc Pill | ✓ Deployed | `doc_canvas.js` |
-| JS BOM Extractor | ✓ Deployed | `bom_extract.js`, one query |
-| Gantt Stepper (Next) | ✓ Deployed | Phase-by-phase reveal, discipline filtering |
-| Grid Auto-Generation | ✓ Deployed | From element positions per phase |
-| Grid Kinematics Engine | ✓ 98 tests | Pure-math, 8 relation types, cascades |
-| BUG-1 Incremental Delta | ✓ Fixed | T52-T54, `_lastAppliedDeltas` tracking |
-| BUG-4 SCALE Commands | ✓ Fixed | T55-T58, IFC→Three bbox swizzle |
-| Ceiling Grid Auto-Place | ✓ Deployed | Y-axis grid at eave height |
-| Rosetta Stone Drag | ✓ Deployed | User calibration mode |
-| 336 whitebox tests | ✓ All pass | 4 test files, §-tagged logs |
+| `doc_canvas.js` | 2088 | Orchestrator: UX, phases, grid rendering, timeline, save/open |
+| `grid_state.js` | 335 | Grid positions, labels, originals, deltas — single source of truth |
+| `grid_recompose.js` | 682 | Engine bridge, bbox swizzle, command dispatch, BOM L1 recompose |
+| `grid_kinematics.js` | 672 | Pure-math engine: 8 relation types, cascades, bay-proportional |
+| `bom_extract.js` | 350 | Grammar extractor: one SQL query, BOM → envelope + phases |
+| `kernel_ops.js` | 400 | Event log: every user action as reversible JSON command |
+| `bom_walker.js` | 175 | BOM tree traversal (JS port from Java) |
+| `verb_expand.js` | 190 | Verb expansion math (FRAME, TILE, etc.) |
 
-### Next (S270b+)
+### 11.2 Done (S266–S270, branch `full`)
+
+| Feature | Sprint | Evidence |
+|---|---|---|
+| Red Pill UX + Doc Pill | S266 | `doc_canvas.js`, 7 icons, activate/deactivate |
+| JS BOM Extractor | S266 | `bom_extract.js`, one query, one pass |
+| Gantt Stepper (Next/Prev) | S267 | Phase-by-phase, discipline filtering, timeline scrub |
+| Grid Kinematics Engine | S268 | `grid_kinematics.js`, 98 tests, pure-math |
+| BUG-1 Incremental Delta | S270 | `_lastAppliedDeltas` tracking, T52-T54 |
+| BUG-4 SCALE Commands | S270 | IFC→Three bbox swizzle, T55-T58 |
+| Ceiling Grid Auto-Place | S270 | Y-axis grid at eave height, Phase 3 trigger |
+| Rosetta Stone CUD | S273 | Create via drag, Delete via envelope boundary, user grids preserved on scrub |
+| Refactor: grid_state.js | S270 | Wired existing module, replaced 7 vars + 7 functions |
+| Refactor: grid_recompose.js | S270 | Extracted engine bridge + BOM recompose (682 lines) |
+| BOM Engine L1 Recompose | S272 | Phase 3+4, discipline rules, BomDiff commands |
+| Design Save/Open | S273 | IndexedDB, kernel_ops replay |
+
+### 11.3 Tests
+
+| File | Count | Scope |
+|---|---|---|
+| `test_doc_canvas.js` | 73 | UX, grid ops, BatchedMesh, BUG-1/BUG-4, save/open, grid guards |
+| `test_grid_kinematics.js` | 98 | ATTACH/SPAN/EDGE/ROOF classification, bay-proportional, cascades |
+| `test_s268_recompose.js` | 63 | Attach-map recompose + bay-proportional integration |
+| `test_grid_modules.js` | 114 | Grid detection, overlay, drag, label generation |
+| `whitebox_regression.js` | 34/36 | Split/IFC/offline/variance/ground (2 pre-existing) |
+| **Total** | **348+34** | All whitebox, §-tagged logs |
+
+### 11.4 Known Issues
+
+| ID | Severity | Description | Status |
+|---|---|---|---|
+| BUG-1 | Fixed | Incremental delta double-counting on second drag | T52-T54 |
+| BUG-2 | Low | Grid with no attachments should warn, not silently allow drag | Open |
+| BUG-3 | Medium | Next after drag materializes elements at original positions | Open (Stage 2) |
+| BUG-4 | Fixed | SCALE commands not firing (bbox axis swizzle wrong) | T55-T58 |
+| CREEP-1 | Low | BOM recompose code in grid_recompose.js (180 lines, undocumented in spec) | Accepted |
+| CREEP-2 | Low | `applyDrag()` signature differs from spec (all-deltas vs per-grid) | Accepted |
+
+### 11.5 Roadmap
 
 | Priority | Feature | Scope |
 |---|---|---|
-| P1 | Y-axis drag UI | Click ceiling disc → ROOF_LIFT + cascade |
-| P2 | BUG-2: Empty attach map warning | UX: "no attached elements" status |
-| P3 | BUG-3: Phase-aware recompose | New elements respect moved grid |
-| P4 | UBBL Validator | Compliance engine, clearance rules |
-| P5 | Save/Recall | IndexedDB persistence of event log |
-| P6 | Materialization | Grammar + log → NewBuilding.db |
-| P7 | Share via URL hash | `?ref=SampleHouse&ops=...` |
+| P1 | Y-axis drag UI | Click ceiling disc → ROOF_LIFT + WALL_HEIGHT_SCALE cascade |
+| P2 | BUG-2 warning | Status: "no attached elements — place elements first" |
+| P3 | BUG-3 phase-aware recompose | New elements snap to moved grid positions |
+| P4 | UBBL Validator | Compliance engine, clearance rules, code checks |
+| P5 | Materialization | Grammar + event log → NewBuilding.db |
+| P6 | Share via URL | `?ref=SampleHouse&ops=...` |
 
-### Deferred (Stage 2)
+### 11.6 Deferred (Stage 2+)
 
 - Tile recount / FRAME coord replacement at runtime
 - MEP rerouting after grid drag
 - IFC export from NewBuilding.db
-- GPU throttle in Doc mode
 - Diagonal grids / rotation / mirroring
 - Git-like branching (parallel design timelines)
+- GridInteraction extraction (doc_canvas.js → grid_interaction.js, ~190 lines, low priority)
 
 ---
 
