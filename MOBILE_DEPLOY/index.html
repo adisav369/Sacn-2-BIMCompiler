@@ -1269,6 +1269,8 @@
       
         
       
+        
+      
     
     
     
@@ -1332,6 +1334,34 @@
     
   
     Red Pill — Design From Grammar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOM_AS_CONTEXT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM-as-Context
   
 
     
@@ -2068,10 +2098,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#production-deploylive-live-oci-bucket" class="md-nav__link">
+  <a href="#production-deploylive-github-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Production (deploy/live/ → live OCI bucket)
+        Production (deploy/live/ → GitHub Pages)
       
     </span>
   </a>
@@ -4637,10 +4667,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#production-deploylive-live-oci-bucket" class="md-nav__link">
+  <a href="#production-deploylive-github-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Production (deploy/live/ → live OCI bucket)
+        Production (deploy/live/ → GitHub Pages)
       
     </span>
   </a>
@@ -4699,10 +4729,10 @@
 <p><strong>Foundation:</strong> <a href="../BIM_Designer_Browser/">BIM_Designer_Browser.md</a> · <a href="../4D5DAnalysis/">4D5DAnalysis.md</a></p>
 </blockquote>
 <div class="bim-banner">
-<p><b>BIM in your pocket.</b> One HTML viewer. Two SQLite DBs per building. Works on desktop and mobile — same URL, same code. No server, no install, no account.</p>
+<p><b>BIM in your pocket.</b> One HTML viewer. One SQLite DB per building (split meta+geo for large buildings). Works on desktop and mobile — same URL, same code. No server, no install, no account.</p>
 </div>
 <p><strong>Version:</strong> 0.3 (2026-05-09)
-<strong>Status:</strong> LIVE — 37 buildings streaming from OCI Object Storage
+<strong>Status:</strong> LIVE — 33 buildings streaming from OCI Object Storage and GitHub Pages
 <strong>Depends on:</strong> <code>deploy/dev/index.html</code> + 30+ JS modules, per-building DBs
 <strong>New:</strong> <a href="../BIM_2D_Guide/">2D Guide</a> | <a href="../BIM_Modeller_OOTB/#the-modelling-inversion">kernel_ops architecture</a> | <a href="../2D_LAYOUT/">2D Layout</a></p>
 <hr />
@@ -4719,20 +4749,20 @@
 </thead>
 <tbody>
 <tr>
-<td><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html"><strong>LIVE — Landing</strong></a></td>
-<td>37 buildings, 1M elements — pick a building to stream</td>
+<td><a href="https://red1oon.github.io/bim-ootb/"><strong>LIVE — Landing</strong></a></td>
+<td>33 buildings, 1M elements — pick a building to stream</td>
 <td>~5-10 MB/building</td>
 <td>Yes</td>
 </tr>
 <tr>
-<td><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/sandbox/index.html?db=https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/buildings/LTU_AHouse_extracted.db&amp;lib=https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/buildings/LTU_AHouse_library.db"><strong>LTU A-House (126K)</strong></a></td>
+<td><a href="https://red1oon.github.io/bim-ootb/viewer/viewer.html?db=buildings/LTU_AHouse_extracted.db"><strong>LTU A-House (126K)</strong></a></td>
 <td>126K elements — stress test, streams in seconds</td>
 <td>~68 MB</td>
 <td>Yes</td>
 </tr>
 <tr>
 <td><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/index.html"><strong>DEV — Landing</strong></a></td>
-<td>Dev/staging — latest changes under test</td>
+<td>(deprecated — now same as LIVE via GitHub Pages)</td>
 <td>same</td>
 <td>Yes</td>
 </tr>
@@ -4743,7 +4773,7 @@
 <h2 id="2-diy-downloader-one-click-self-host">2. DIY Downloader — One-Click Self-Host<a class="headerlink" href="#2-diy-downloader-one-click-self-host" title="Permanent link">&para;</a></h2>
 <p>The fastest way: click <strong>DIY Downloader</strong> in the About box of the <a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html">live viewer</a>. It generates a platform-specific install script that checks prerequisites, downloads the viewer (~49MB), and starts a local server — all automatic.</p>
 <p>Installs to <code>~/bim-ootb/</code> (Mac/Linux) or <code>C:\Users\{you}\bim-ootb\</code> (Windows).
-Includes all templates, rates, 15 language packs. Buildings load from OCI cloud.
+Includes all templates, rates, 18 language packs. Buildings load from OCI cloud.
 See <a href="https://red1oon.github.io/BIMCompiler/AboutMore/#diy-self-host">About — DIY Self-Host</a> for full details.</p>
 <h2 id="3-run-it-locally-manual-3-steps">3. Run It Locally — Manual (3 Steps)<a class="headerlink" href="#3-run-it-locally-manual-3-steps" title="Permanent link">&para;</a></h2>
 <p>You only need <strong>Python</strong> (built-in on Linux/Mac, easy install on Windows) and the repo.</p>
@@ -4776,7 +4806,7 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 </tr>
 <tr>
 <td><code>deploy/buildings/</code></td>
-<td>31 buildings × 2 DBs each (extracted + library)</td>
+<td>33 buildings (single DB each, split meta+geo for large)</td>
 <td>~2 GB total</td>
 </tr>
 <tr>
@@ -5056,7 +5086,7 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 <td>OK</td>
 <td>OK</td>
 <td>—</td>
-<td><code>rates.js</code> — CIDB Malaysia rates, 15 locales. Dev only. See <a href="../Localization/">Localization Guide</a></td>
+<td><code>rates.js</code> — CIDB Malaysia rates, 18 locales. Dev only. See <a href="../Localization/">Localization Guide</a></td>
 </tr>
 <tr>
 <td><strong>Service Worker</strong></td>
@@ -5771,7 +5801,7 @@ oci<span class="w"> </span>os<span class="w"> </span>bucket<span class="w"> </sp
 <li>[x] IFC export from browser — dev tested</li>
 <li>[x] InstancedMesh performance (85% draw call reduction) — dev tested</li>
 <li>[x] Service Worker offline cache — dev tested</li>
-<li>[x] Rates + Locale (CIDB Malaysia, 15 locales) — dev tested</li>
+<li>[x] Rates + Locale (CIDB Malaysia, 18 locales) — dev tested</li>
 <li>[ ] Promote all above to production OCI bucket</li>
 </ul>
 <h3 id="phase-b-mobile-polish-in-progress-s232-s233">Phase B: Mobile Polish (IN PROGRESS — S232-S233)<a class="headerlink" href="#phase-b-mobile-polish-in-progress-s232-s233" title="Permanent link">&para;</a></h3>
@@ -5872,7 +5902,7 @@ oci<span class="w"> </span>os<span class="w"> </span>bucket<span class="w"> </sp
 </ol>
 <hr />
 <h2 id="11-files">11. Files<a class="headerlink" href="#11-files" title="Permanent link">&para;</a></h2>
-<h3 id="production-deploylive-live-oci-bucket">Production (<code>deploy/live/</code> → live OCI bucket)<a class="headerlink" href="#production-deploylive-live-oci-bucket" title="Permanent link">&para;</a></h3>
+<h3 id="production-deploylive-github-pages">Production (<code>deploy/live/</code> → GitHub Pages)<a class="headerlink" href="#production-deploylive-github-pages" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -5981,7 +6011,7 @@ oci<span class="w"> </span>os<span class="w"> </span>bucket<span class="w"> </sp
 </tr>
 <tr>
 <td><code>rates.js</code></td>
-<td>CIDB Malaysia rates + 15 locales</td>
+<td>CIDB Malaysia rates + 18 locales</td>
 <td>S225b</td>
 </tr>
 <tr>
@@ -6102,7 +6132,7 @@ oci<span class="w"> </span>os<span class="w"> </span>bucket<span class="w"> </sp
 <tbody>
 <tr>
 <td><code>deploy/buildings/*.db</code></td>
-<td>31 buildings × 2 DBs (extracted + library)</td>
+<td>33 buildings (single DB each, split meta+geo for large)</td>
 </tr>
 <tr>
 <td><code>docs/MOBILE_DEPLOY.md</code></td>

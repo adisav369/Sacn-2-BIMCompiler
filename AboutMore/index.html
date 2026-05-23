@@ -1507,6 +1507,8 @@
       
         
       
+        
+      
     
     
     
@@ -1567,6 +1569,34 @@
     
   
     Red Pill — Design From Grammar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOM_AS_CONTEXT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM-as-Context
   
 
     
@@ -3973,14 +4003,14 @@ License: MIT</p>
 <p>Browser-native BIM viewer. Drop an IFC file or pick a building — geometry streams
 from SQLite databases directly to the GPU via Three.js. No server, no plugins,
 no build step. Works on desktop and mobile.</p>
-<p>17K lines of vanilla JavaScript — no framework, no build step, no npm, no bundler.
+<p>~50K lines of vanilla JavaScript — no framework, no build step, no npm, no bundler.
 ~4MB total download (cached after first visit). Static files only — zero server-side code.
-Compare typical web BIM viewers at 50K–200K+ lines with Node backends and heavy frameworks.</p>
+Compare typical web BIM viewers at 100K–500K+ lines with Node backends and heavy frameworks.</p>
 <ul>
-<li>17K lines of JavaScript + HTML</li>
-<li>15 languages, locale-aware currency</li>
-<li>155 Playwright E2E tests</li>
-<li>OCI Object Storage (Always Free tier)</li>
+<li>~50K lines of JavaScript + HTML</li>
+<li>18 languages, locale-aware currency</li>
+<li>30 Playwright test suites</li>
+<li>GitHub Pages (free hosting)</li>
 </ul>
 <h3 id="third-party-libraries-all-loaded-via-cdn-not-modified">Third-Party Libraries (all loaded via CDN, not modified)<a class="headerlink" href="#third-party-libraries-all-loaded-via-cdn-not-modified" title="Permanent link">&para;</a></h3>
 <table>
@@ -3995,7 +4025,7 @@ Compare typical web BIM viewers at 50K–200K+ lines with Node backends and heav
 <tbody>
 <tr>
 <td><a href="https://github.com/mrdoob/three.js">Three.js</a></td>
-<td>r128</td>
+<td>r160</td>
 <td>MIT</td>
 <td>WebGL 3D rendering</td>
 </tr>
@@ -4110,7 +4140,7 @@ Compare typical web BIM viewers at 50K–200K+ lines with Node backends and heav
 <td>Real-world BIM overlay</td>
 </tr>
 <tr>
-<td>+ 15 more modules</td>
+<td>+ 70 more modules</td>
 <td>UI, i18n, city mode, BOQ, wizard, NLP, etc.</td>
 <td>All original</td>
 </tr>
@@ -4126,7 +4156,7 @@ into a serverless BIM pipeline.</strong> The original contribution is:</p>
 <li><strong>Round-trip</strong> — browser edits → DB → IFC export, closing the loop without a server</li>
 </ol>
 <h3 id="language-and-currency">Language and Currency<a class="headerlink" href="#language-and-currency" title="Permanent link">&para;</a></h3>
-<p>15 languages with local currency and exchange rates. Click the flag to switch.</p>
+<p>18 languages with local currency and exchange rates. Click the flag to switch.</p>
 <p><strong>Locale files:</strong> <code>deploy/dev/locales/*.js</code> — one file per country.
 Each file contains all UI translations and currency settings (<code>cur</code>, <code>cur2</code>, <code>cur_rate</code>).</p>
 <p>To customise your own:</p>
@@ -4152,8 +4182,8 @@ e.g. English UI with Malaysian Ringgit rates.</p>
 <p><strong>Stage 1 (current) — Pure Browser</strong>
 Everything runs in the browser. No server, no APIs, no backend.
 IFC/mesh files are parsed client-side via Web Workers, stored in IndexedDB,
-streamed to the GPU. The two SQLite databases ARE the application — there is
-no server to talk to. Static HTML + JS files served from OCI Object Storage.</p>
+streamed to the GPU. The SQLite database IS the application.
+Static HTML + JS files served from GitHub Pages.</p>
 <p><strong>Stage 2 (planned) — DAGCompiler Backend</strong>
 Java-based BOM compilation engine. Reads IFC, builds recursive Bill of Materials
 (building → floor → room → furniture → leaf), runs validation rules, produces
@@ -4177,7 +4207,7 @@ Libraries loaded from CDN on first use, then cached offline by the Service Worke
 <li>Run <code>python3 -m http.server 8080</code> in the folder</li>
 <li>Open <code>http://localhost:8080</code> — drop any IFC file</li>
 </ol>
-<p>Or use the <strong>DIY Downloader</strong> in the About box of the <a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html">live viewer</a> — it generates an install script for your platform (Windows/Mac/Linux) that handles prerequisites automatically.</p>
+<p>Or use the <strong>DIY Downloader</strong> in the About box of the <a href="https://red1oon.github.io/bim-ootb/">live viewer</a> — it generates an install script for your platform (Windows/Mac/Linux) that handles prerequisites automatically.</p>
 <h3 id="what-gets-installed">What gets installed<a class="headerlink" href="#what-gets-installed" title="Permanent link">&para;</a></h3>
 <p>The script installs to:</p>
 <ul>
@@ -4248,7 +4278,7 @@ and Drop IFC builds your own databases locally in the browser.</p>
 
   ┌─ i18n ──────────────────────────────────────┐
   │ locale_loader.js  Detect locale, settings UI │
-  │ locales/*.js      15 language packs          │
+  │ locales/*.js      18 language packs          │
   └─────────────────────────────────────────────┘
 
   ┌─ Infrastructure ────────────────────────────┐
@@ -4261,8 +4291,7 @@ and Drop IFC builds your own databases locally in the browser.</p>
 <div class="highlight"><pre><span></span><code>IFC / OBJ / DAE / 3DS
         │
         ▼
-  [Web Worker]  ──→  extracted.db  (metadata, transforms, hierarchy)
-        │             library.db   (geometry BLOBs: vertices + faces)
+  [Web Worker]  ──→  extracted.db  (metadata, transforms, hierarchy, geometry BLOBs)
         ▼
   [IndexedDB cache]
         │
@@ -4272,17 +4301,18 @@ and Drop IFC builds your own databases locally in the browser.</p>
         ▼
   Three.js BufferGeometry  ──→  GPU
 </code></pre></div>
-<p>Two SQLite databases per building. <code>extracted.db</code> holds element metadata,
-spatial transforms, and BOM hierarchy. <code>library.db</code> holds geometry BLOBs
-(pre-tessellated vertices and face indices). The viewer streams BLOBs into
-<code>Float32Array</code> buffers and pushes them to Three.js <code>BufferGeometry</code> — no
-intermediate mesh formats.</p>
+<p>One SQLite database per building. <code>_extracted.db</code> holds element metadata,
+spatial transforms, BOM hierarchy, and geometry BLOBs (pre-tessellated
+vertices and face indices). Large buildings (15K+ elements) split into
+<code>_meta.db</code> (metadata) and <code>_geo.db</code> (geometry) for streaming performance.
+The viewer streams BLOBs into <code>Float32Array</code> buffers and pushes them to
+Three.js <code>BufferGeometry</code> — no intermediate mesh formats.</p>
 <h2 id="folder-layout">Folder Layout<a class="headerlink" href="#folder-layout" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>deploy/
   dev/                 Active development (NEVER in production directly)
     *.js, *.html       Viewer modules + pages
-    locales/           15 language packs (3.8K lines)
-    tests/             Playwright E2E suite (26 files, 5.2K lines)
+    locales/           18 language packs (3.8K lines)
+    tests/             Playwright E2E suite (30 files, ~6K lines)
     test/              Manual test harnesses
     test-results/      Playwright artifacts (gitignored)
   live/               Production mirror (promote from dev, never edit)
@@ -4293,32 +4323,26 @@ intermediate mesh formats.</p>
   buildings/           Per-building DB pairs (not in git)
 </code></pre></div>
 <h2 id="deployment">Deployment<a class="headerlink" href="#deployment" title="Permanent link">&para;</a></h2>
-<p>Three OCI buckets:</p>
+<p>Deployed via GitHub Pages. Building databases hosted on OCI <code>bim-ootb</code> bucket.</p>
 <table>
 <thead>
 <tr>
-<th>Bucket</th>
+<th>Target</th>
 <th>Role</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>bim-ootb-dev</code></td>
-<td>Staging — test here first</td>
+<td><code>red1oon.github.io/bim-ootb/</code></td>
+<td>Production — code via GitHub Pages</td>
 </tr>
 <tr>
-<td><code>bim-ootb-live</code></td>
-<td>Production — what users see</td>
-</tr>
-<tr>
-<td><code>bim-ootb-backup</code></td>
-<td>Snapshot before each deploy</td>
+<td>OCI <code>bim-ootb</code> bucket</td>
+<td>Building databases only</td>
 </tr>
 </tbody>
 </table>
-<p>Deploy SOP: Test → Snapshot → Copy dev→prod → Smoke test → Git commit.
-Rollback: one command copies backup→prod.</p>
-<p>See <code>deploy/OCI_UPLOAD.md</code> for full procedure.</p>
+<p>Deploy SOP: <code>git push</code> → live. No build step. No server.</p>
 <h2 id="size">Size<a class="headerlink" href="#size" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -4331,8 +4355,8 @@ Rollback: one command copies backup→prod.</p>
 <tbody>
 <tr>
 <td>Viewer JS modules</td>
-<td style="text-align: right;">~30</td>
-<td style="text-align: right;">14,000</td>
+<td style="text-align: right;">92</td>
+<td style="text-align: right;">49,000</td>
 </tr>
 <tr>
 <td>Viewer HTML pages</td>
@@ -4341,13 +4365,13 @@ Rollback: one command copies backup→prod.</p>
 </tr>
 <tr>
 <td>Playwright tests</td>
-<td style="text-align: right;">26</td>
-<td style="text-align: right;">5,200</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">~6,000</td>
 </tr>
 <tr>
 <td>Locale packs</td>
-<td style="text-align: right;">15</td>
-<td style="text-align: right;">3,800</td>
+<td style="text-align: right;">18</td>
+<td style="text-align: right;">~4,500</td>
 </tr>
 <tr>
 <td>Landing page</td>
@@ -4356,8 +4380,8 @@ Rollback: one command copies backup→prod.</p>
 </tr>
 <tr>
 <td><strong>Total</strong></td>
-<td style="text-align: right;"><strong>~76</strong></td>
-<td style="text-align: right;"><strong>~27,400</strong></td>
+<td style="text-align: right;"><strong>~145</strong></td>
+<td style="text-align: right;"><strong>~64,000</strong></td>
 </tr>
 </tbody>
 </table>

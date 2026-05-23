@@ -1267,6 +1267,8 @@
       
         
       
+        
+      
     
     
     
@@ -1327,6 +1329,34 @@
     
   
     Red Pill — Design From Grammar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOM_AS_CONTEXT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM-as-Context
   
 
     
@@ -4452,7 +4482,7 @@
 <p><em>"There's a new kind of coding I call 'vibe coding', where you fully give in to the vibes, embrace exponentials, and forget that the code even exists."</em></p>
 </blockquote>
 <p>He described accepting LLM suggestions without fully reading the code, running the app, seeing if it works, and iterating. He noted this works for throwaway weekend projects, not production code.</p>
-<p><strong>This project disagrees with half of that statement.</strong> The BIM Compiler is production-grade — 35 buildings compiled, 6 mathematical gates, deterministic output. But it was built entirely through AI-assisted programming. The difference: <strong>domain expertise is the guard rail, not the code.</strong></p>
+<p><strong>This project disagrees with half of that statement.</strong> The BIM Compiler is production-grade — 33 buildings compiled, 6 mathematical gates, deterministic output. But it was built entirely through AI-assisted programming. The difference: <strong>domain expertise is the guard rail, not the code.</strong></p>
 <hr />
 <h2 id="the-industry-numbers">The Industry Numbers<a class="headerlink" href="#the-industry-numbers" title="Permanent link">&para;</a></h2>
 <p>The shift is real. These are the numbers the sceptics should weigh:</p>
@@ -4731,7 +4761,7 @@ Building correct? → next task. Building wrong? → new drift point logged.
 </table>
 <h3 id="proven-at-scale">Proven at scale<a class="headerlink" href="#proven-at-scale" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>1,063,911 elements</strong> in sandbox city (12 disciplines, 35 buildings)</li>
+<li><strong>1,063,911 elements</strong> in sandbox city (12 disciplines, 33 buildings)</li>
 <li><strong>190,000 meshes</strong> tessellated from SQLite BLOBs in &lt;45s</li>
 <li><strong>Fine-grained Outliner</strong> — VENT/HEAT/PLB/SAN/HVAC/ARC/STR/VOID, not generic MEP</li>
 <li><strong>Session .blend ~1MB</strong> — links to baked chunks, instant save</li>
@@ -5172,9 +5202,9 @@ Proven at 126K elements (LTU AHouse).
 </tr>
 <tr>
 <td><strong>Three.js</strong></td>
-<td>r128</td>
-<td>23 Apr 2021</td>
-<td>3D rendering, InstancedMesh, clipping — loaded on <strong>every page view</strong></td>
+<td>r160</td>
+<td>13 Dec 2023</td>
+<td>3D rendering, BatchedMesh, clipping — loaded on <strong>every page view</strong></td>
 </tr>
 <tr>
 <td><strong>web-ifc</strong></td>
@@ -5190,7 +5220,7 @@ Proven at 126K elements (LTU AHouse).
 </tr>
 </tbody>
 </table>
-<p>The core viewer (DB streaming, 3D rendering, clash detection, sharing) runs entirely on <strong>rtree-sql.js v1.7.0 (2022)</strong> and <strong>Three.js r128 (2021)</strong>. Both are 3-4 years old. The sql.js stability fixes from 2024 are not in our build (rtree-sql.js is a separate fork). web-ifc only matters for IFC import — the viewer never touches it. <strong>This product could have been built in 2022</strong> — the technology was ready. Nobody connected the pieces until Oct 2025.</p>
+<p>The core viewer (DB streaming, 3D rendering, clash detection, sharing) runs entirely on <strong>rtree-sql.js v1.7.0 (2022)</strong> and <strong>Three.js r160 (2023)</strong>. Both are 2-3 years old. The sql.js stability fixes from 2024 are not in our build (rtree-sql.js is a separate fork). web-ifc only matters for IFC import — the viewer never touches it. <strong>This product could have been built in 2022</strong> — the technology was ready. Nobody connected the pieces until Oct 2025.</p>
 <h3 id="no-prior-art-in-any-industry">No Prior Art — In Any Industry<a class="headerlink" href="#no-prior-art-in-any-industry" title="Permanent link">&para;</a></h3>
 <p>A search across npm, GitHub, academic databases, and industry tools confirms: <strong>no application in the world streams 3D geometry from a SQLite database directly to the GPU in a browser.</strong> Not in BIM. Not in GIS. Not in CAD. Not in gaming. Not in mapping.</p>
 <p>The closest prior art:</p>

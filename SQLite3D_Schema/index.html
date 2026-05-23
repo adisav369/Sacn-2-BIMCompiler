@@ -1269,6 +1269,8 @@
       
         
       
+        
+      
     
     
     
@@ -1332,6 +1334,34 @@
     
   
     Red Pill — Design From Grammar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOM_AS_CONTEXT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM-as-Context
   
 
     
@@ -4496,7 +4526,7 @@
 
 <h1 id="sqlite-schema-bim-ootb-viewer-database">SQLite Schema — BIM OOTB Viewer Database<a class="headerlink" href="#sqlite-schema-bim-ootb-viewer-database" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>The innovation:</strong> IFC → web-ifc WASM → SQLite BLOBs → Three.js GPU. No server. No format conversion. No proprietary viewer. Two DBs (or one), straight from the IFC standard to the browser.</p>
+<p><strong>The innovation:</strong> IFC → web-ifc WASM → SQLite BLOBs → Three.js GPU. No server. No format conversion. No proprietary viewer. One DB per building, straight from the IFC standard to the browser.</p>
 </blockquote>
 <p><strong>Updated:</strong> 2026-05-19</p>
 <hr />
@@ -4903,7 +4933,7 @@ Normals precomputed at IFC extraction time — viewer just copies and applies Y�
 <td>Compiler toolchain</td>
 </tr>
 <tr>
-<td><strong>Three.js</strong> r128</td>
+<td><strong>Three.js</strong> r160 ESM</td>
 <td><a href="https://github.com/mrdoob/three.js">github.com/mrdoob/three.js</a></td>
 <td>MIT</td>
 <td>Active</td>
@@ -4920,7 +4950,7 @@ Normals precomputed at IFC extraction time — viewer just copies and applies Y�
 </table>
 <h3 id="live-demonstration-shareable-clash-deep-link">Live Demonstration — Shareable Clash Deep-Link<a class="headerlink" href="#live-demonstration-shareable-clash-deep-link" title="Permanent link">&para;</a></h3>
 <p>The R-tree powers the entire clash detection pipeline: spatial index → O(log N) query → fly-to → shareable URL. This link opens a specific clash pair in the Hospital Garage (63K elements), pre-positioned at the overlap zone:</p>
-<p><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/sandbox/index.html?db=https%3A%2F%2Fobjectstorage.ap-kulai-2.oraclecloud.com%2Fn%2Fax3cp6tzwuy2%2Fb%2Fbim-ootb-live%2Fo%2Fbuildings%2FHospitalGarage_extracted.db#clash=0GjpF04mX1K8P$TdM8fU2_~3ltWc9XO98DfOXi0yjJr4p&amp;st=&amp;cam=-44.21,-8.22,-42.42&amp;tgt=-52.01,-7.95,-35.39&amp;tol=25"><strong>Open Clash Pair — Hospital Garage MEP vs ARC</strong></a></p>
+<p><a href="https://red1oon.github.io/bim-ootb/viewer/viewer.html?db=buildings%2FHospitalGarage_extracted.db#clash=0GjpF04mX1K8P$TdM8fU2_~3ltWc9XO98DfOXi0yjJr4p&amp;st=&amp;cam=-44.21,-8.22,-42.42&amp;tgt=-52.01,-7.95,-35.39&amp;tol=25"><strong>Open Clash Pair — Hospital Garage MEP vs ARC</strong></a></p>
 <p>URL anatomy:
 <div class="highlight"><pre><span></span><code>?db=...HospitalGarage_extracted.db     ← SQLite DB with R-tree
 #clash=GUID_A~GUID_B                   ← the two clashing elements

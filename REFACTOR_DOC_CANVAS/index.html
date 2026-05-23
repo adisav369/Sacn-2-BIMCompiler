@@ -13,10 +13,6 @@
       
       
       
-        <link rel="prev" href="../EYES_SRS/">
-      
-      
-        <link rel="next" href="../BOMBasedCompilation/">
       
       
         
@@ -27,7 +23,7 @@
     
     
       
-        <title>Calibration - BIM Intent Compiler</title>
+        <title>Refactoring doc_canvas.js — Separation of Concerns - BIM Intent Compiler</title>
       
     
     
@@ -87,7 +83,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#calibration-srs-docevent-generic-vs-terminal-extracted" class="md-skip">
+        <a href="#refactoring-doc_canvasjs-separation-of-concerns" class="md-skip">
           Skip to content
         </a>
       
@@ -121,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Calibration
+              Refactoring doc_canvas.js — Separation of Concerns
             
           </span>
         </div>
@@ -276,12 +272,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../LAST_MILE_PROBLEM/" class="md-tabs__link">
           
   
@@ -844,10 +838,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -863,22 +855,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -896,7 +885,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -995,37 +984,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Calibration
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../CALIBRATION_SRS/" class="md-nav__link">
         
   
   
@@ -1041,370 +1003,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-what-we-compare" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. What We Compare
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="1. What We Compare">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#11-what-we-do-not-compare" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1.1 What We Do NOT Compare
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-terminal-oracle-observed-metrics" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Terminal Oracle — Observed Metrics
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="2. Terminal Oracle — Observed Metrics">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#21-fp-fire-protection-6863-elements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2.1 FP (Fire Protection) — 6,863 elements
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#22-elec-electrical-1172-elements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2.2 ELEC (Electrical) — 1,172 elements
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#23-observed-variance-bands" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2.3 Observed Variance Bands
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-calibration-test-design" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Calibration Test Design
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. Calibration Test Design">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#31-test-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.1 Test Setup
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#32-verdict-thresholds" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.2 Verdict Thresholds
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#33-what-fails-the-test" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.3 What Fails the Test
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#34-verdict-rules-blocking-vs-advisory" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.4 Verdict Rules — Blocking vs Advisory
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#35-non-disturbance-relationship" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.5 Non-Disturbance Relationship
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-per-discipline-calibration-metrics" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Per-Discipline Calibration Metrics
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="4. Per-Discipline Calibration Metrics">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#41-fp-fire-protection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4.1 FP — Fire Protection
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#42-elec-electrical" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4.2 ELEC — Electrical
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#43-cwsp-plumbing-advisory-only" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4.3 CW/SP — Plumbing (advisory only)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#44-acmv-hvac-advisory-only" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4.4 ACMV — HVAC (advisory only)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-implementation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Implementation
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="5. Implementation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#51-test-class-calibrationtestjava" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5.1 Test Class: CalibrationTest.java
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#52-dao-calibrationdaojava" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5.2 DAO: CalibrationDAO.java
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#53-verb-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5.3 Verb Usage
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-phase-plan" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Phase Plan
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-seed-data-gaps-3-fixes-session-33-analysis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Seed Data Gaps — 3 Fixes (session 33 analysis)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="7. Seed Data Gaps — 3 Fixes (session 33 analysis)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#71-fix-1-rule-803-elec-spacing-insert-into-erpdb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7.1 Fix 1: Rule 803 (ELEC spacing) — INSERT into ERP.db
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#72-fix-2-light-per_area_normal-update-in-erpdb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7.2 Fix 2: LIGHT per_area_normal — UPDATE in ERP.db
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#73-fix-3-fp-nn-head-only-filter-calibrationdao-code-change" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7.3 Fix 3: FP NN head-only filter — CalibrationDAO code change
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#74-impact-summary" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7.4 Impact Summary
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-traceability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Traceability
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3941,22 +3539,66 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-what-we-compare" class="md-nav__link">
+  <a href="#1-problem-statement" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. What We Compare
+        1. Problem Statement
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="1. What We Compare">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-target-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Target Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-module-contracts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Module Contracts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Module Contracts">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#11-what-we-do-not-compare" class="md-nav__link">
+  <a href="#31-grid_statejs-gridstate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1.1 What We Do NOT Compare
+        3.1 grid_state.js — GridState
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-grid_recomposejs-gridrecompose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 grid_recompose.js — GridRecompose
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-grid_interactionjs-gridinteraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 grid_interaction.js — GridInteraction
       
     </span>
   </a>
@@ -3969,22 +3611,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-terminal-oracle-observed-metrics" class="md-nav__link">
+  <a href="#4-extraction-order" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Terminal Oracle — Observed Metrics
+        4. Extraction Order
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="2. Terminal Oracle — Observed Metrics">
+    <nav class="md-nav" aria-label="4. Extraction Order">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#21-fp-fire-protection-6863-elements" class="md-nav__link">
+  <a href="#step-1-grid_statejs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.1 FP (Fire Protection) — 6,863 elements
+        Step 1: grid_state.js
       
     </span>
   </a>
@@ -3992,10 +3634,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#22-elec-electrical-1172-elements" class="md-nav__link">
+  <a href="#step-2-grid_recomposejs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.2 ELEC (Electrical) — 1,172 elements
+        Step 2: grid_recompose.js
       
     </span>
   </a>
@@ -4003,10 +3645,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#23-observed-variance-bands" class="md-nav__link">
+  <a href="#step-3-grid_interactionjs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.3 Observed Variance Bands
+        Step 3: grid_interaction.js
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-thin-doc_canvasjs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Thin doc_canvas.js
       
     </span>
   </a>
@@ -4019,193 +3672,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-calibration-test-design" class="md-nav__link">
+  <a href="#5-migration-safety" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Calibration Test Design
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. Calibration Test Design">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#31-test-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.1 Test Setup
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#32-verdict-thresholds" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.2 Verdict Thresholds
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#33-what-fails-the-test" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.3 What Fails the Test
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#34-verdict-rules-blocking-vs-advisory" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.4 Verdict Rules — Blocking vs Advisory
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#35-non-disturbance-relationship" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.5 Non-Disturbance Relationship
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-per-discipline-calibration-metrics" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Per-Discipline Calibration Metrics
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="4. Per-Discipline Calibration Metrics">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#41-fp-fire-protection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4.1 FP — Fire Protection
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#42-elec-electrical" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4.2 ELEC — Electrical
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#43-cwsp-plumbing-advisory-only" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4.3 CW/SP — Plumbing (advisory only)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#44-acmv-hvac-advisory-only" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4.4 ACMV — HVAC (advisory only)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-implementation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Implementation
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="5. Implementation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#51-test-class-calibrationtestjava" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5.1 Test Class: CalibrationTest.java
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#52-dao-calibrationdaojava" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5.2 DAO: CalibrationDAO.java
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#53-verb-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5.3 Verb Usage
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-phase-plan" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Phase Plan
+        5. Migration Safety
       
     </span>
   </a>
@@ -4213,71 +3683,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-seed-data-gaps-3-fixes-session-33-analysis" class="md-nav__link">
+  <a href="#6-what-this-does-not-change" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Seed Data Gaps — 3 Fixes (session 33 analysis)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="7. Seed Data Gaps — 3 Fixes (session 33 analysis)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#71-fix-1-rule-803-elec-spacing-insert-into-erpdb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7.1 Fix 1: Rule 803 (ELEC spacing) — INSERT into ERP.db
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#72-fix-2-light-per_area_normal-update-in-erpdb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7.2 Fix 2: LIGHT per_area_normal — UPDATE in ERP.db
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#73-fix-3-fp-nn-head-only-filter-calibrationdao-code-change" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7.3 Fix 3: FP NN head-only filter — CalibrationDAO code change
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#74-impact-summary" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7.4 Impact Summary
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-traceability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Traceability
+        6. What This Does NOT Change
       
     </span>
   </a>
@@ -4304,708 +3713,183 @@
   
 
 
-<h1 id="calibration-srs-docevent-generic-vs-terminal-extracted">Calibration SRS — DocEvent Generic vs Terminal Extracted<a class="headerlink" href="#calibration-srs-docevent-generic-vs-terminal-extracted" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
-</blockquote>
-<div class="bim-banner">
-<p><b>Terminal is ground truth — generic rules must match its variance.</b> Qualification test comparing DocEvent-generated MEP layouts against 48,428 engineer-placed elements.</p>
-</div>
-<p><strong>Version:</strong> 1.1 (2026-03-19, session 34 — §3.4 verdict rules, blocking vs advisory, GF exception)
-<strong>Depends on:</strong> <a href="../DocAction_SRS/">DocAction_SRS.md</a> §1.3, <a href="../DISC_VALIDATE_SRS/">DISC_VALIDATE_SRS.md</a> §9, <a href="https://github.com/red1oon/BIMCompiler/blob/master/internal/TE_MINING_RESULTS.md">TE_MINING_RESULTS.md</a>
-<strong>Scope:</strong> Qualification test comparing DocEvent rule-generated MEP layouts against
-Terminal's engineer-placed MEP elements. Proves the generic engine produces
-realistic results calibrated to ground truth.</p>
-<blockquote>
-<p><strong>Principle:</strong> The Terminal (48,428 elements, 8 disciplines, 7+ storeys) is
-ground truth — real engineers placed real equipment. If DocEvent rules
-produce density, spacing, and coverage metrics WITHIN the Terminal's own
-observed variance, the generic engine is calibrated. Position-for-position
-match is NOT required — engineering invariants are what matter.</p>
-<p><strong>Applicability:</strong> This comparison applies ONLY to DocEvent-routed
-disciplines (<code>YAML.disc = DocEvent</code>). RosettaStone buildings use
-<code>YAML.disc = {prefix}_BOM</code> — BOM pipeline populates from extracted data.
-RosettaStones are NOT subject to this calibration; they have their own
-Non-Disturbance gate (NonDisturbanceTest.java).</p>
-</blockquote>
+<h1 id="refactoring-doc_canvasjs-separation-of-concerns">Refactoring doc_canvas.js — Separation of Concerns<a class="headerlink" href="#refactoring-doc_canvasjs-separation-of-concerns" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Spec — not yet implemented
+<strong>Trigger:</strong> S270 bug cascade (BUG-1, BUG-4, phantom deltas, grid flood) all caused by interleaved concerns sharing mutable state in a 2230-line monolithic IIFE.
+<strong>Reviewed by:</strong> DeepSeek (2026-05-23), accepted with modifications.</p>
 <hr />
-<h2 id="1-what-we-compare">1. What We Compare<a class="headerlink" href="#1-what-we-compare" title="Permanent link">&para;</a></h2>
-<p>Position-for-position match is impossible (different building shape, different
-room layout). But engineering invariants are shape-independent:</p>
+<h2 id="1-problem-statement">1. Problem Statement<a class="headerlink" href="#1-problem-statement" title="Permanent link">&para;</a></h2>
+<p><code>doc_canvas.js</code> does 7 jobs in one file:</p>
 <table>
 <thead>
 <tr>
-<th>Metric</th>
-<th>What</th>
-<th>Why it's shape-independent</th>
+<th>Concern</th>
+<th>~Lines</th>
+<th>Mutable state it owns</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Density</strong></td>
-<td>elements per m² of floor area</td>
-<td>Code-driven: NFPA 13 says X heads per m² regardless of shape</td>
+<td>Grid state</td>
+<td>200</td>
+<td><code>_xPositions</code>, <code>_zPositions</code>, <code>_xLabels</code>, <code>_zLabels</code>, <code>_gridOriginals</code>, <code>_gridOrigByLabel</code></td>
 </tr>
 <tr>
-<td><strong>NN spacing</strong></td>
-<td>nearest-neighbour distance distribution</td>
-<td>Code-driven: min/max spacing is a physical law</td>
+<td>Grid rendering</td>
+<td>200</td>
+<td><code>_gridGroup</code>, line/bubble/dim meshes</td>
 </tr>
 <tr>
-<td><strong>Coverage ratio</strong></td>
-<td>% of floor area within max_coverage_m² of a head</td>
-<td>Code-driven: every point must be covered</td>
+<td>Grid interaction</td>
+<td>200</td>
+<td><code>_selected</code>, <code>_dragStart</code>, <code>_dragging</code>, <code>_origPos</code>, <code>_raycaster</code></td>
 </tr>
 <tr>
-<td><strong>Product mix</strong></td>
-<td>ratio of heads : pipes : fittings</td>
-<td>Engineering practice: ~1 head per 3-5 pipe segments + fittings</td>
+<td>Rosetta Stone</td>
+<td>150</td>
+<td><code>_calibrationMode</code>, <code>_calibrations</code>, <code>_rosettaGroup</code></td>
 </tr>
 <tr>
-<td><strong>Z band</strong></td>
-<td>height clustering per storey</td>
-<td>Physics: ceiling-mounted = consistent Z</td>
+<td>Phase/BOM</td>
+<td>250</td>
+<td><code>_phases</code>, <code>_phaseIndex</code>, <code>_activeDisc</code>, <code>_shownCount</code></td>
+</tr>
+<tr>
+<td>Recomposition</td>
+<td>300</td>
+<td><code>_kinEngine</code>, <code>_kinEngineDirty</code>, <code>_lastAppliedDeltas</code>, <code>_guidToSlot</code>, <code>_guidToInstance</code></td>
+</tr>
+<tr>
+<td>Scene management</td>
+<td>200</td>
+<td><code>_group</code>, <code>_envGroup</code>, <code>_hiddenMeshes</code>, <code>_batchedState</code>, <code>_instancedState</code></td>
 </tr>
 </tbody>
 </table>
-<h3 id="11-what-we-do-not-compare">1.1 What We Do NOT Compare<a class="headerlink" href="#11-what-we-do-not-compare" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Exact XY positions (different floor plans)</li>
-<li>Exact element count (floor area differs)</li>
-<li>Riser topology (vertical piping is building-specific)</li>
-<li>Assembly detail (fitting/valve placement is routing-specific)</li>
-</ul>
+<p>Every S270 bug occurred at a <strong>seam</strong> between two concerns sharing state:
+- BUG-1: grid state ↔ recomposition (incremental vs absolute delta)
+- BUG-4: recomposition ↔ scene (IFC↔Three.js coordinate swizzle)
+- Grid flood: phase/BOM ↔ grid state (auto-add pollutes grid)
+- Phantom deltas: grid state ↔ recomposition (index-based vs label-based originals)</p>
 <hr />
-<h2 id="2-terminal-oracle-observed-metrics">2. Terminal Oracle — Observed Metrics<a class="headerlink" href="#2-terminal-oracle-observed-metrics" title="Permanent link">&para;</a></h2>
-<p>Derived from <code>Terminal_extracted.db</code> (the reference DB, not TE_BOM.db).</p>
-<h3 id="21-fp-fire-protection-6863-elements">2.1 FP (Fire Protection) — 6,863 elements<a class="headerlink" href="#21-fp-fire-protection-6863-elements" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Storey</th>
-<th>IfcFireSuppressionTerminal</th>
-<th>Floor AABB (m²)</th>
-<th>Density (heads/m²)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Aras Tanah (GF)</td>
-<td>~909*</td>
-<td>~3,694 m²</td>
-<td>~0.246</td>
-</tr>
-<tr>
-<td>Aras 01 (L1)</td>
-<td>~242*</td>
-<td>~2,749 m²</td>
-<td>~0.088</td>
-</tr>
-<tr>
-<td>Aras 02 (L2)</td>
-<td>~328*</td>
-<td>~3,867 m²</td>
-<td>~0.085</td>
-</tr>
-<tr>
-<td>Aras 03 (L3)</td>
-<td>~280*</td>
-<td>~2,459 m²</td>
-<td>~0.114</td>
-</tr>
-</tbody>
-</table>
-<p><em>Estimated from total 909 heads distributed across storeys per TE_BOM.db FP sub-trees.</em></p>
-<p><strong>NN spacing (from M1 mining):</strong>
-- Median: ~3,800 mm
-- p50 cluster: 3,000–4,500 mm (NFPA 13 Light Hazard)
-- Dominant grid: 4,500 mm</p>
-<p><strong>Coverage per NFPA 13 LH:</strong> max_coverage = 18.6 m² per head.
-At 0.07-0.25 heads/m², coverage is 4.0–14.3 m²/head — within NFPA 13.</p>
-<h3 id="22-elec-electrical-1172-elements">2.2 ELEC (Electrical) — 1,172 elements<a class="headerlink" href="#22-elec-electrical-1172-elements" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Storey</th>
-<th>IfcLightFixture</th>
-<th>Floor AABB (m²)</th>
-<th>Density (lights/m²)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Ceiling Level Kedai</td>
-<td>209</td>
-<td>~3,694 m²</td>
-<td>~0.057</td>
-</tr>
-<tr>
-<td>Ceiling Level 02</td>
-<td>178</td>
-<td>~3,867 m²</td>
-<td>~0.046</td>
-</tr>
-<tr>
-<td>Ceiling Level 03</td>
-<td>152</td>
-<td>~2,459 m²</td>
-<td>~0.062</td>
-</tr>
-</tbody>
-</table>
-<p><strong>NN spacing (from M4 mining):</strong> avg ~3,964 mm, aligned to ceiling grid module.</p>
-<h3 id="23-observed-variance-bands">2.3 Observed Variance Bands<a class="headerlink" href="#23-observed-variance-bands" title="Permanent link">&para;</a></h3>
-<p>The Terminal itself has variance across storeys — the calibration tolerance
-should be WITHIN this observed variance, not tighter.</p>
-<table>
-<thead>
-<tr>
-<th>Metric</th>
-<th>Terminal Min</th>
-<th>Terminal Max</th>
-<th>Variance Factor</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>FP density (heads/m²)</td>
-<td>0.07</td>
-<td>0.25</td>
-<td>3.6×</td>
-</tr>
-<tr>
-<td>ELEC density (lights/m²)</td>
-<td>0.04</td>
-<td>0.07</td>
-<td>1.8×</td>
-</tr>
-<tr>
-<td>FP NN spacing (mm)</td>
-<td>3,000</td>
-<td>5,500</td>
-<td>1.8×</td>
-</tr>
-<tr>
-<td>ELEC NN spacing (mm)</td>
-<td>3,500</td>
-<td>5,000</td>
-<td>1.4×</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Calibration tolerance:</strong> DocEvent result must be within 2× of Terminal
-median — generous because Terminal has high-density zones (GF departures)
-and low-density zones (service areas) that skew the range.</p>
-<hr />
-<h2 id="3-calibration-test-design">3. Calibration Test Design<a class="headerlink" href="#3-calibration-test-design" title="Permanent link">&para;</a></h2>
-<h3 id="31-test-setup">3.1 Test Setup<a class="headerlink" href="#31-test-setup" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>INPUT:
-  - TE_BOM.db (extracted discipline BOMs — oracle)
-  - TE reference DB (elements_meta + element_transforms — positions)
-  - ERP.db (AD_Val_Rule — mined rules, the basis for DocEvent)
-  - ERP.db (ad_space_type_mep_bom, ad_fp_coverage, ad_element_mep)
-  - component_library.db (M_Product dimensions, LOD geometry)
-
-PROCESS:
-  For each MEP discipline (FP, ELEC, CW, SP, ACMV):
-
-    Step 1: EXTRACT oracle metrics from TE
-      → Query TE reference DB for per-storey element counts
-      → Compute: density, NN spacing distribution, Z band
-      → These are the ground truth targets
-
-    Step 2: COMPUTE DocEvent metrics from rules
-      → Read floor AABB from TE_BOM.db (same floor geometry)
-      → Apply ad_space_type_mep_bom rules:
-          qty = ceil(floor_area × per_area_normal)
-      → Apply ad_fp_coverage spacing:
-          pitch = min(max_spacing, dim / ceil(dim / typical_spacing))
-      → Compute: density, grid spacing, expected Z
-
-    Step 3: COMPARE
-      → Density ratio = DocEvent density / TE density
-      → Spacing delta = |DocEvent pitch - TE median NN|
-      → Coverage check: DocEvent covers &gt;= 90% of TE coverage
-
-OUTPUT:
-  CalibrationResult per discipline per storey:
-    - density_ratio (target: 0.5–2.0)
-    - spacing_delta_mm (target: &lt; 1000mm)
-    - coverage_pct (target: &gt;= 80%)
-    - verdict: CALIBRATED / DRIFT / UNCALIBRATED
+<h2 id="2-target-architecture">2. Target Architecture<a class="headerlink" href="#2-target-architecture" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>doc_canvas.js (orchestrator, ~800 lines)
+  ├── grid_state.js      — positions, labels, originals, deltas
+  ├── grid_recompose.js   — engine bridge, bbox swizzle, command dispatch
+  └── grid_interaction.js — pointer events, drag, select, status
+      └── grid_kinematics.js (already extracted — pure math engine)
 </code></pre></div>
-<h3 id="32-verdict-thresholds">3.2 Verdict Thresholds<a class="headerlink" href="#32-verdict-thresholds" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Verdict</th>
-<th>Condition</th>
-<th>Meaning</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>CALIBRATED</strong></td>
-<td>density_ratio ∈ [0.5, 2.0] AND spacing_delta &lt; 1000mm</td>
-<td>Generic matches Terminal reality</td>
-</tr>
-<tr>
-<td><strong>DRIFT</strong></td>
-<td>density_ratio ∈ [0.3, 3.0] AND spacing_delta &lt; 2000mm</td>
-<td>Close but needs tuning</td>
-</tr>
-<tr>
-<td><strong>UNCALIBRATED</strong></td>
-<td>Outside DRIFT bounds</td>
-<td>Rules are wrong or seed data missing</td>
-</tr>
-</tbody>
-</table>
-<p>These bands are deliberately wide for Phase 1 — they prove the engine is
-in the right ballpark. Tightening to [0.8, 1.2] is Phase 2 after
-ad_element_mep and ad_fp_coverage are fully seeded.</p>
-<h3 id="33-what-fails-the-test">3.3 What Fails the Test<a class="headerlink" href="#33-what-fails-the-test" title="Permanent link">&para;</a></h3>
-<ul>
-<li>DocEvent computes 0 heads for a floor where TE has 1,132 → UNCALIBRATED
-  (indicates missing seed data — ad_space_type_mep_bom has no entry for
-  this space type)</li>
-<li>DocEvent computes 50mm spacing where TE shows 4,500mm → UNCALIBRATED
-  (indicates wrong rule parameter)</li>
-<li>DocEvent computes 10× density → DRIFT
-  (indicates per_area_normal too aggressive)</li>
-</ul>
-<h3 id="34-verdict-rules-blocking-vs-advisory">3.4 Verdict Rules — Blocking vs Advisory<a class="headerlink" href="#34-verdict-rules-blocking-vs-advisory" title="Permanent link">&para;</a></h3>
-<p>CalibrationTest disciplines fall into two tiers:</p>
-<table>
-<thead>
-<tr>
-<th>Tier</th>
-<th>Disciplines</th>
-<th>Verdict Meaning</th>
-<th>CI Impact</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Blocking</strong></td>
-<td>FP, ELEC</td>
-<td>UNCALIBRATED → test FAIL, merge blocked</td>
-<td>Must be CALIBRATED or DRIFT to pass</td>
-</tr>
-<tr>
-<td><strong>Advisory</strong></td>
-<td>CW, SP, ACMV</td>
-<td>UNCALIBRATED → WARN only, merge allowed</td>
-<td>Topology-driven — density calibration only (Phase 1)</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Overall test verdict:</strong></p>
-<table>
-<thead>
-<tr>
-<th>Condition</th>
-<th>Verdict</th>
-<th>CI</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>All blocking disciplines CALIBRATED</td>
-<td><strong>PASS</strong></td>
-<td>GREEN</td>
-</tr>
-<tr>
-<td>All blocking disciplines ≤ DRIFT, none UNCALIBRATED</td>
-<td><strong>WARN</strong></td>
-<td>GREEN (developer alerted)</td>
-</tr>
-<tr>
-<td>Any blocking discipline UNCALIBRATED</td>
-<td><strong>FAIL</strong></td>
-<td>RED (merge blocked)</td>
-</tr>
-<tr>
-<td>Advisory discipline UNCALIBRATED</td>
-<td><strong>WARN</strong> (noted, not blocking)</td>
-<td>GREEN</td>
-</tr>
-</tbody>
-</table>
-<p><strong>GF exception (occupancy class):</strong> Terminal Ground Floor is an airport
-concourse (occupancy OH/COM). DocEvent baseline uses residential (LH).
-GF FP density ratio ~3.5× is expected DRIFT — do not fail on GF.
-Implementation: if storey = GF AND density_ratio &gt; 3.0, verdict = DRIFT
-(not UNCALIBRATED), with note <code>occupancy_class_mismatch</code>.</p>
-<p><strong>Conflict with Non-Disturbance:</strong> A rule can PASS Non-Disturbance (does not
-flag Terminal elements as violations) but FAIL Calibration (DocEvent produces
-wrong density). This is valid — the rule correctly describes Terminal but
-may be miscalibrated for generative use. Resolution: tune <code>per_area_normal</code>
-in ad_space_type_mep_bom until Calibration reaches DRIFT or better.</p>
-<h3 id="35-non-disturbance-relationship">3.5 Non-Disturbance Relationship<a class="headerlink" href="#35-non-disturbance-relationship" title="Permanent link">&para;</a></h3>
-<p>This calibration test is complementary to NonDisturbanceTest:</p>
-<table>
-<thead>
-<tr>
-<th>Test</th>
-<th>What it proves</th>
-<th>Direction</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>NonDisturbanceTest</td>
-<td>Mined rules don't flag Terminal elements as violations</td>
-<td>Rules ← Building</td>
-</tr>
-<tr>
-<td>CalibrationTest</td>
-<td>DocEvent using those rules produces Terminal-like layouts</td>
-<td>Rules → Building</td>
-</tr>
-</tbody>
-</table>
-<p>Non-Disturbance: "rules describe reality" (passive check).
-Calibration: "rules produce reality" (active generation check).</p>
+<p><strong>Dependency rule:</strong> Each module exposes a JSDoc-documented API. No module reads another module's internal state. <code>doc_canvas.js</code> is the only file that wires them together.</p>
+<p><strong>Facade rule:</strong> <code>window.DocCanvas</code> public API is unchanged. Existing callers (scene.js, index.html) see no difference. Test-only <code>_</code> prefixed methods remain on <code>DocCanvas</code> but delegate to the new modules.</p>
 <hr />
-<h2 id="4-per-discipline-calibration-metrics">4. Per-Discipline Calibration Metrics<a class="headerlink" href="#4-per-discipline-calibration-metrics" title="Permanent link">&para;</a></h2>
-<h3 id="41-fp-fire-protection">4.1 FP — Fire Protection<a class="headerlink" href="#41-fp-fire-protection" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Metric</th>
-<th>Source</th>
-<th>Formula</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>TE head count per storey</td>
-<td><code>elements_meta WHERE ifc_class='IfcFireSuppressionTerminal'</code></td>
-<td>COUNT per storey</td>
-</tr>
-<tr>
-<td>TE floor area per storey</td>
-<td><code>m_bom</code> children of root (getChildren)</td>
-<td>aabb_width_mm × aabb_depth_mm / 1e6</td>
-</tr>
-<tr>
-<td>TE density</td>
-<td>head_count / floor_area</td>
-<td>heads/m²</td>
-</tr>
-<tr>
-<td>DocEvent qty</td>
-<td><code>ceil(floor_area × per_area_normal)</code></td>
-<td>from ad_space_type_mep_bom (0.07/m²)</td>
-</tr>
-<tr>
-<td>DocEvent density</td>
-<td>DocEvent_qty / floor_area</td>
-<td>heads/m²</td>
-</tr>
-<tr>
-<td>TE NN spacing</td>
-<td><code>SpatialPredicates.nnDistance()</code> on TE head positions</td>
-<td>mm</td>
-</tr>
-<tr>
-<td>DocEvent pitch</td>
-<td><code>min(max_spacing, dim / ceil(dim / typical_spacing))</code></td>
-<td>mm from AD_Val_Rule 601</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Expected calibration:</strong> DocEvent density ~0.07/m² (NFPA 13 LH baseline).
-Terminal GF density ~0.246/m² (high-density departure lounge). Ratio ~3.5×.
-This is DRIFT, not CALIBRATED — expected because Terminal GF is an airport
-concourse (high occupancy), not a standard office/residential space.</p>
-<p><strong>Verdict logic for FP:</strong>
-- CALIBRATED if DocEvent density within [0.5×, 2.0×] of per-storey TE density
-- DRIFT if within [0.3×, 3.0×]
-- UNCALIBRATED otherwise
-- <strong>Exception:</strong> GF (airport concourse) is expected DRIFT — different occupancy class</p>
-<h3 id="42-elec-electrical">4.2 ELEC — Electrical<a class="headerlink" href="#42-elec-electrical" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Metric</th>
-<th>Source</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>TE light count</td>
-<td><code>elements_meta WHERE ifc_class='IfcLightFixture'</code> per storey</td>
-</tr>
-<tr>
-<td>DocEvent qty</td>
-<td><code>ceil(floor_area × per_area_normal)</code> — ad_space_type_mep_bom (0.1/m²)</td>
-</tr>
-<tr>
-<td>TE NN spacing</td>
-<td>From M4 mining: avg ~3,964mm</td>
-</tr>
-<tr>
-<td>DocEvent pitch</td>
-<td>From AD_Val_Rule 803: typical_spacing=3000mm, max=5000mm</td>
-</tr>
-</tbody>
-</table>
-<h3 id="43-cwsp-plumbing-advisory-only">4.3 CW/SP — Plumbing (advisory only)<a class="headerlink" href="#43-cwsp-plumbing-advisory-only" title="Permanent link">&para;</a></h3>
-<p>Plumbing density is topology-driven (riser + branch), not area-driven.
-DocEvent can place fixtures (toilet, sink, basin) per ad_space_type_mep_bom
-(fixed qty per room type), but pipe network topology is Phase 2.</p>
-<p><strong>Calibration metric:</strong> fixture count per storey only. Pipe/fitting counts
-are topology-dependent and not comparable via density.</p>
-<h3 id="44-acmv-hvac-advisory-only">4.4 ACMV — HVAC (advisory only)<a class="headerlink" href="#44-acmv-hvac-advisory-only" title="Permanent link">&para;</a></h3>
-<p>Similar to plumbing: air terminals are density-driven (diffusers per m²),
-but duct routing is topology-dependent. Calibrate diffuser count only.</p>
-<hr />
-<h2 id="5-implementation">5. Implementation<a class="headerlink" href="#5-implementation" title="Permanent link">&para;</a></h2>
-<h3 id="51-test-class-calibrationtestjava">5.1 Test Class: <code>CalibrationTest.java</code><a class="headerlink" href="#51-test-class-calibrationtestjava" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nd">@DisplayName</span><span class="p">(</span><span class="s">&quot;Calibration — DocEvent Generic vs Terminal Extracted&quot;</span><span class="p">)</span>
-<span class="kd">class</span> <span class="nc">CalibrationTest</span><span class="w"> </span><span class="p">{</span>
-
-<span class="w">    </span><span class="c1">// W-CAL-FP-DENSITY: FP head density within Terminal variance</span>
-<span class="w">    </span><span class="c1">// W-CAL-FP-SPACING: FP grid pitch within 1000mm of Terminal NN median</span>
-<span class="w">    </span><span class="c1">// W-CAL-ELEC-DENSITY: ELEC light density within Terminal variance</span>
-<span class="w">    </span><span class="c1">// W-CAL-ELEC-SPACING: ELEC grid pitch within 1000mm of Terminal NN median</span>
-<span class="w">    </span><span class="c1">// W-CAL-RULES-EXIST: All MEP disciplines have DocEvent seed data</span>
-
-<span class="w">    </span><span class="c1">// Step 1: Read TE oracle data</span>
-<span class="w">    </span><span class="c1">// Step 2: Compute DocEvent predictions from rules</span>
-<span class="w">    </span><span class="c1">// Step 3: Compare and emit CalibrationResult</span>
-
-<span class="w">    </span><span class="kd">record</span> <span class="nc">CalibrationResult</span><span class="p">(</span>
-<span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">discipline</span><span class="p">,</span>
-<span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">storey</span><span class="p">,</span>
-<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">teDensity</span><span class="p">,</span><span class="w">       </span><span class="c1">// elements per m²</span>
-<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">docEventDensity</span><span class="p">,</span><span class="w"> </span><span class="c1">// elements per m²</span>
-<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">densityRatio</span><span class="p">,</span><span class="w">    </span><span class="c1">// docEvent / te</span>
-<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">teNNMedian</span><span class="p">,</span><span class="w">      </span><span class="c1">// mm</span>
-<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">docEventPitch</span><span class="p">,</span><span class="w">   </span><span class="c1">// mm</span>
-<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">spacingDelta</span><span class="p">,</span><span class="w">    </span><span class="c1">// |docEventPitch - teNNMedian|</span>
-<span class="w">        </span><span class="n">Verdict</span><span class="w"> </span><span class="n">verdict</span>
-<span class="w">    </span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
-
-<span class="w">    </span><span class="kd">enum</span><span class="w"> </span><span class="n">Verdict</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">CALIBRATED</span><span class="p">,</span><span class="w"> </span><span class="n">DRIFT</span><span class="p">,</span><span class="w"> </span><span class="n">UNCALIBRATED</span><span class="w"> </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
-<h3 id="52-dao-calibrationdaojava">5.2 DAO: <code>CalibrationDAO.java</code><a class="headerlink" href="#52-dao-calibrationdaojava" title="Permanent link">&para;</a></h3>
+<h2 id="3-module-contracts">3. Module Contracts<a class="headerlink" href="#3-module-contracts" title="Permanent link">&para;</a></h2>
+<h3 id="31-grid_statejs-gridstate">3.1 <code>grid_state.js</code> — GridState<a class="headerlink" href="#31-grid_statejs-gridstate" title="Permanent link">&para;</a></h3>
+<p>Owns all grid position/label/original tracking. Single source of truth for "where are the grid lines and where were they."</p>
 <div class="highlight"><pre><span></span><code><span class="cm">/**</span>
-<span class="cm"> * DAO for calibration queries — reads from TE reference DB + ERP.db.</span>
-<span class="cm"> *</span>
-<span class="cm"> * Two concerns:</span>
-<span class="cm"> *   1. Oracle extraction: query TE for ground truth metrics</span>
-<span class="cm"> *   2. Rule prediction: compute DocEvent layout from rules + floor AABB</span>
+<span class="cm"> * @typedef {Object} GridDelta</span>
+<span class="cm"> * @property {string} label  — grid label (e.g. &#39;A&#39;, &#39;B&#39;, &#39;1&#39;, &#39;2&#39;)</span>
+<span class="cm"> * @property {string} axis   — &#39;x&#39; or &#39;z&#39;</span>
+<span class="cm"> * @property {number} absDelta — currentPos - originalPos</span>
+<span class="cm"> * @property {number} currentPos</span>
+<span class="cm"> * @property {number} originalPos</span>
+<span class="cm"> * @property {number} index  — current array index (for rendering, not for delta math)</span>
 <span class="cm"> */</span>
-<span class="kd">class</span> <span class="nc">CalibrationDAO</span><span class="w"> </span><span class="p">{</span>
 
-<span class="w">    </span><span class="cm">/** Oracle: per-storey element count by ifc_class from TE reference DB */</span>
-<span class="w">    </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">Integer</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">teCountByStorey</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">teConn</span><span class="p">,</span>
-<span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">discipline</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">ifcClass</span><span class="p">);</span>
-
-<span class="w">    </span><span class="cm">/** Oracle: per-storey NN spacing from TE reference DB */</span>
-<span class="w">    </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">Double</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">teNNMedianByStorey</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">teConn</span><span class="p">,</span>
-<span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">ifcClass</span><span class="p">);</span>
-
-<span class="w">    </span><span class="cm">/** Oracle: floor AABB from TE_BOM.db */</span>
-<span class="w">    </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="o">[]&gt;</span><span class="w"> </span><span class="nf">floorAABB</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">bomConn</span><span class="p">);</span>
-
-<span class="w">    </span><span class="cm">/** Prediction: DocEvent qty from ad_space_type_mep_bom rules */</span>
-<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="nf">docEventDensity</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">discConn</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">spaceType</span><span class="p">,</span>
-<span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">mepProduct</span><span class="p">);</span>
-
-<span class="w">    </span><span class="cm">/** Prediction: DocEvent pitch from AD_Val_Rule + ad_fp_coverage */</span>
-<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="nf">docEventPitch</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">valConn</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">ruleId</span><span class="p">,</span>
-<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">floorDimMm</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="nx">GridState</span><span class="p">.</span><span class="nx">init</span><span class="p">(</span><span class="nx">xPositions</span><span class="p">,</span><span class="w"> </span><span class="nx">zPositions</span><span class="p">,</span><span class="w"> </span><span class="nx">xLabels</span><span class="p">,</span><span class="w"> </span><span class="nx">zLabels</span><span class="p">)</span>
+<span class="nx">GridState</span><span class="p">.</span><span class="nx">addLine</span><span class="p">(</span><span class="nx">axis</span><span class="p">,</span><span class="w"> </span><span class="nx">position</span><span class="p">,</span><span class="w"> </span><span class="nx">label</span><span class="o">?</span><span class="p">)</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="p">{</span><span class="nx">label</span><span class="p">,</span><span class="w"> </span><span class="nx">index</span><span class="p">}</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span>
+<span class="nx">GridState</span><span class="p">.</span><span class="nx">removeLine</span><span class="p">(</span><span class="nx">axis</span><span class="p">,</span><span class="w"> </span><span class="nx">label</span><span class="p">)</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="kr">boolean</span>
+<span class="nx">GridState</span><span class="p">.</span><span class="nx">snapshotOriginals</span><span class="p">()</span><span class="w">  </span><span class="c1">// called once at activate, records label→pos</span>
+<span class="nx">GridState</span><span class="p">.</span><span class="nx">getDeltas</span><span class="p">()</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="nx">GridDelta</span><span class="p">[]</span><span class="w">  </span><span class="c1">// label-keyed, immune to re-sort</span>
+<span class="nx">GridState</span><span class="p">.</span><span class="nx">getLines</span><span class="p">()</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="p">[{</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">axis</span><span class="p">,</span><span class="w"> </span><span class="nx">pos</span><span class="p">}]</span><span class="w">  </span><span class="c1">// original positions for engine</span>
+<span class="nx">GridState</span><span class="p">.</span><span class="nx">getPositions</span><span class="p">()</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="p">{</span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="nx">number</span><span class="p">[],</span><span class="w"> </span><span class="nx">z</span><span class="o">:</span><span class="w"> </span><span class="nx">number</span><span class="p">[]}</span>
+<span class="nx">GridState</span><span class="p">.</span><span class="nx">getLabels</span><span class="p">()</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="p">{</span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="nx">string</span><span class="p">[],</span><span class="w"> </span><span class="nx">z</span><span class="o">:</span><span class="w"> </span><span class="nx">string</span><span class="p">[]}</span>
+<span class="nx">GridState</span><span class="p">.</span><span class="nx">setPosition</span><span class="p">(</span><span class="nx">axis</span><span class="p">,</span><span class="w"> </span><span class="nx">index</span><span class="p">,</span><span class="w"> </span><span class="nx">newPos</span><span class="p">)</span><span class="w">  </span><span class="c1">// drag updates</span>
+<span class="nx">GridState</span><span class="p">.</span><span class="nx">getOriginal</span><span class="p">(</span><span class="nx">label</span><span class="p">)</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="nx">number</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">undefined</span>
+<span class="nx">GridState</span><span class="p">.</span><span class="nx">reset</span><span class="p">()</span><span class="w">  </span><span class="c1">// clear all state (deactivate)</span>
 </code></pre></div>
-<h3 id="53-verb-usage">5.3 Verb Usage<a class="headerlink" href="#53-verb-usage" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Verb</th>
-<th>Where Used</th>
-<th>What</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>CHECK CALIBRATION</code></td>
-<td>CalibrationTest</td>
-<td>Compare DocEvent vs TE metrics</td>
-</tr>
-<tr>
-<td><code>TILE</code> / <code>ALONG</code></td>
-<td>DocEvent pitch computation</td>
-<td>Grid placement at computed spacing</td>
-</tr>
-<tr>
-<td><code>PLACE</code></td>
-<td>DocEvent single-element</td>
-<td>Fixed-qty elements (1 per room)</td>
-</tr>
-</tbody>
-</table>
+<p><strong>Invariants:</strong>
+- Originals are always label-keyed. No index-based lookup.
+- <code>addLine()</code> registers the new line's original position immediately.
+- <code>getDeltas()</code> returns only lines where <code>|absDelta| &gt; 0.01</code>.
+- Dedup: <code>addLine()</code> rejects positions within <code>minGap</code> of existing lines.
+- Cap: max 15 lines per axis.</p>
+<p><strong>Timing contract:</strong>
+- <code>snapshotOriginals()</code> is called exactly once, at <code>activate()</code> time.
+- <code>addLine()</code> can be called any time after (auto-grid, Rosetta, user click).
+- New lines added after snapshot get their insertion position as original.</p>
+<h3 id="32-grid_recomposejs-gridrecompose">3.2 <code>grid_recompose.js</code> — GridRecompose<a class="headerlink" href="#32-grid_recomposejs-gridrecompose" title="Permanent link">&para;</a></h3>
+<p>Bridge between GridState and GridKinematicEngine. Owns element data collection, engine lifecycle, command dispatch, and delta accumulation.</p>
+<div class="highlight"><pre><span></span><code><span class="cm">/**</span>
+<span class="cm"> * @typedef {Object} MeshLookup</span>
+<span class="cm"> * @property {function(string): Object|null} getPosition — guid → {x,y,z,scaleX,scaleY,scaleZ}</span>
+<span class="cm"> * @property {function(string,string,number): void} translate — guid, axis, delta</span>
+<span class="cm"> * @property {function(Object): void} scale — cmd → apply scale</span>
+<span class="cm"> * @property {function(Object): void} roofVertices — cmd → apply roof vertices</span>
+<span class="cm"> * @property {function(Object): void} roofLift — cmd → apply roof lift</span>
+<span class="cm"> */</span>
+
+<span class="nx">GridRecompose</span><span class="p">.</span><span class="nx">rebuild</span><span class="p">(</span><span class="nx">meshLookup</span><span class="p">,</span><span class="w"> </span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">shownGuids</span><span class="p">,</span><span class="w"> </span><span class="nx">gridLines</span><span class="p">)</span>
+<span class="nx">GridRecompose</span><span class="p">.</span><span class="nx">applyDrag</span><span class="p">(</span><span class="nx">gridLabel</span><span class="p">,</span><span class="w"> </span><span class="nx">incrementalDelta</span><span class="p">)</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="p">{</span><span class="nx">translated</span><span class="p">,</span><span class="w"> </span><span class="nx">scaled</span><span class="p">,</span><span class="w"> </span><span class="nx">roofOps</span><span class="p">}</span>
+<span class="nx">GridRecompose</span><span class="p">.</span><span class="nx">getAttachInfo</span><span class="p">(</span><span class="nx">label</span><span class="p">)</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="nx">string</span><span class="w">  </span><span class="c1">// status message</span>
+<span class="nx">GridRecompose</span><span class="p">.</span><span class="nx">getRelationCounts</span><span class="p">()</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="p">{</span><span class="nx">ATTACH</span><span class="p">,</span><span class="w"> </span><span class="nx">SPAN</span><span class="p">,</span><span class="w"> </span><span class="nx">EDGE_RIGHT</span><span class="p">,</span><span class="w"> </span><span class="nx">EDGE_LEFT</span><span class="p">,</span><span class="w"> </span><span class="p">...}</span>
+<span class="nx">GridRecompose</span><span class="p">.</span><span class="nx">resetDeltas</span><span class="p">()</span><span class="w">  </span><span class="c1">// clear _lastAppliedDeltas</span>
+<span class="nx">GridRecompose</span><span class="p">.</span><span class="nx">getLastAppliedDelta</span><span class="p">(</span><span class="nx">label</span><span class="p">)</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="nx">number</span>
+<span class="nx">GridRecompose</span><span class="p">.</span><span class="nx">isDirty</span><span class="p">()</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="kr">boolean</span>
+<span class="nx">GridRecompose</span><span class="p">.</span><span class="nx">markDirty</span><span class="p">()</span>
+</code></pre></div>
+<p><strong>Invariants:</strong>
+- The bbox swizzle (IFC Z-up → Three.js Y-up) happens in <code>rebuild()</code>, nowhere else.
+- <code>meshLookup</code> is a snapshot interface, not a live scene reference. Caller builds it from <code>_guidToSlot</code>/<code>_guidToInstance</code> at rebuild time.
+- <code>applyDrag()</code> receives <strong>incremental</strong> delta (already computed by caller from GridState). Engine is pure.
+- <code>_lastAppliedDeltas</code> lives here, not in GridState.</p>
+<p><strong>Timing contract:</strong>
+- <code>rebuild()</code> is called when engine is dirty (new phase, new elements).
+- <code>applyDrag()</code> is called per grid line per drag event.
+- <code>resetDeltas()</code> on rebuild and deactivate.</p>
+<h3 id="33-grid_interactionjs-gridinteraction">3.3 <code>grid_interaction.js</code> — GridInteraction<a class="headerlink" href="#33-grid_interactionjs-gridinteraction" title="Permanent link">&para;</a></h3>
+<p>Pointer events, drag mechanics, grid selection, status feedback.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">GridInteraction</span><span class="p">.</span><span class="nx">init</span><span class="p">(</span><span class="nx">canvas</span><span class="p">,</span><span class="w"> </span><span class="nx">camera</span><span class="p">,</span><span class="w"> </span><span class="nx">onDrag</span><span class="p">,</span><span class="w"> </span><span class="nx">onSelect</span><span class="p">,</span><span class="w"> </span><span class="nx">onDeselect</span><span class="p">)</span>
+<span class="nx">GridInteraction</span><span class="p">.</span><span class="nx">setGridState</span><span class="p">(</span><span class="nx">gridState</span><span class="p">)</span><span class="w">  </span><span class="c1">// reference to GridState for hit testing</span>
+<span class="nx">GridInteraction</span><span class="p">.</span><span class="nx">getSelected</span><span class="p">()</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="p">{</span><span class="nx">axis</span><span class="p">,</span><span class="w"> </span><span class="nx">label</span><span class="p">,</span><span class="w"> </span><span class="nx">index</span><span class="p">}</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span>
+<span class="nx">GridInteraction</span><span class="p">.</span><span class="nx">setStatus</span><span class="p">(</span><span class="nx">msg</span><span class="p">)</span><span class="w">  </span><span class="c1">// callback to update status bar</span>
+<span class="nx">GridInteraction</span><span class="p">.</span><span class="nx">dispose</span><span class="p">()</span><span class="w">  </span><span class="c1">// remove event listeners</span>
+</code></pre></div>
+<p><strong>Invariants:</strong>
+- Never touches meshes or the engine directly.
+- Calls <code>onDrag(label, delta)</code> callback — doc_canvas.js handles recompose.
+- Handles drag cancellation (pointerup outside canvas, Escape key).
+- Status messages via callback, not direct DOM manipulation.</p>
 <hr />
-<h2 id="6-phase-plan">6. Phase Plan<a class="headerlink" href="#6-phase-plan" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Phase</th>
-<th>What</th>
-<th>Tolerance</th>
-<th>Depends On</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Phase 1</strong> (now)</td>
-<td>Density + NN spacing comparison, wide bands [0.5, 2.0]</td>
-<td>DRIFT acceptable</td>
-<td>TE reference DB, ERP.db, TE_BOM.db</td>
-</tr>
-<tr>
-<td><strong>Phase 2</strong></td>
-<td>Tighten to [0.8, 1.2], add coverage check</td>
-<td>CALIBRATED required</td>
-<td>Full ad_element_mep + ad_fp_coverage seed</td>
-</tr>
-<tr>
-<td><strong>Phase 3</strong></td>
-<td>Position grid fidelity (DocEvent grid vs TE positions)</td>
-<td>NN match per element</td>
-<td>DocEvent placement engine implemented</td>
-</tr>
-</tbody>
-</table>
-<p>Phase 1 proves the RULES are in the right ballpark.
-Phase 2 proves the SEED DATA produces correct quantities.
-Phase 3 proves the PLACEMENT ENGINE produces correct positions.</p>
+<h2 id="4-extraction-order">4. Extraction Order<a class="headerlink" href="#4-extraction-order" title="Permanent link">&para;</a></h2>
+<h3 id="step-1-grid_statejs">Step 1: <code>grid_state.js</code><a class="headerlink" href="#step-1-grid_statejs" title="Permanent link">&para;</a></h3>
+<p>Foundation — everything else depends on grid positions/labels. Extract all <code>_xPositions</code>, <code>_zPositions</code>, <code>_xLabels</code>, <code>_zLabels</code>, <code>_gridOriginals</code>, <code>_gridOrigByLabel</code>, <code>_addGridPosition</code>, <code>_computeGridDeltas</code>, <code>_snapshotGridOriginals</code>, <code>_resortLabels</code>, <code>_nextXLabel</code> into this module.</p>
+<p><strong>Test:</strong> T59-T62 (label-based deltas) should work against <code>GridState</code> directly.</p>
+<h3 id="step-2-grid_recomposejs">Step 2: <code>grid_recompose.js</code><a class="headerlink" href="#step-2-grid_recomposejs" title="Permanent link">&para;</a></h3>
+<p>Extract <code>_kinEngine</code>, <code>_kinEngineDirty</code>, <code>_lastAppliedDeltas</code>, <code>_collectElementData</code>, <code>_collectGridLines</code>, <code>_rebuildEngine</code>, <code>_applyCommand</code>, <code>_translateMesh</code>, <code>_scaleMeshFromCommand</code>, <code>_applyRoofVertices</code>, <code>_applyRoofLift</code>, <code>recomposeAfterGridDrag</code>, <code>_getMeshPosition</code>, <code>_getShownGuids</code>.</p>
+<p><strong>Test:</strong> T52-T58 (BUG-1, BUG-4) should work against <code>GridRecompose</code> with mock meshLookup.</p>
+<h3 id="step-3-grid_interactionjs">Step 3: <code>grid_interaction.js</code><a class="headerlink" href="#step-3-grid_interactionjs" title="Permanent link">&para;</a></h3>
+<p>Extract <code>_selected</code>, <code>_dragStart</code>, <code>_dragging</code>, <code>_origPos</code>, <code>_raycaster</code>, <code>_pointer</code>, <code>_initInteraction</code>, pointer handlers, <code>_highlightGrid</code>, <code>_deselectGrid</code>, <code>_getGridAttachInfo</code>.</p>
+<p><strong>Test:</strong> Interaction tests (drag, select, cancel) against <code>GridInteraction</code> with mock callbacks.</p>
+<h3 id="step-4-thin-doc_canvasjs">Step 4: Thin <code>doc_canvas.js</code><a class="headerlink" href="#step-4-thin-doc_canvasjs" title="Permanent link">&para;</a></h3>
+<p>What remains: <code>activate</code>, <code>deactivate</code>, <code>toggleGrid</code>, <code>nextPhase</code>, <code>prevPhase</code>, envelope, HUD, Rosetta Stone, timeline, phase loading, GRID_STRATEGY table, <code>_ifcToThree</code>, scene mesh management.</p>
 <hr />
-<h2 id="7-seed-data-gaps-3-fixes-session-33-analysis">7. Seed Data Gaps — 3 Fixes (session 33 analysis)<a class="headerlink" href="#7-seed-data-gaps-3-fixes-session-33-analysis" title="Permanent link">&para;</a></h2>
-<p>Three seed data issues were identified in session 33 during ERP.db
-creation. Each fix is scoped, testable, and does NOT touch existing passing tests.</p>
-<h3 id="71-fix-1-rule-803-elec-spacing-insert-into-erpdb">7.1 Fix 1: Rule 803 (ELEC spacing) — INSERT into ERP.db<a class="headerlink" href="#71-fix-1-rule-803-elec-spacing-insert-into-erpdb" title="Permanent link">&para;</a></h3>
-<p><strong>Problem:</strong> CalibrationTest §4.2 references <code>AD_Val_Rule 803</code> for ELEC spacing
-(<code>typical_spacing=3000mm, max=5000mm</code>), but no such rule exists in ERP.db.
-DocEvent pitch computation returns 0 → UNCALIBRATED for ELEC discipline.</p>
-<p><strong>Fix:</strong> INSERT one AD_Val_Rule row (id=803, name='IES_LIGHT_SPACING',
-discipline='ELC', rule_type='COMPLIANCE') + AD_Val_Rule_Param rows
-(typical_spacing_mm=3000, max_spacing_mm=5000).</p>
-<p><strong>Impact:</strong> ERP.db only (append). No Java changes. No existing test
-references rule 803 — CalibrationTest is currently advisory for ELEC.</p>
-<p><strong>Migration:</strong> <code>V007_elec_spacing_rule.sql</code> (append-only, ERP.db).</p>
-<h3 id="72-fix-2-light-per_area_normal-update-in-erpdb">7.2 Fix 2: LIGHT per_area_normal — UPDATE in ERP.db<a class="headerlink" href="#72-fix-2-light-per_area_normal-update-in-erpdb" title="Permanent link">&para;</a></h3>
-<p><strong>Problem:</strong> <code>ad_space_type_mep_bom</code> has <code>per_area_normal=0.0</code> for LIGHT across
-most space types. DocEvent computes qty=0 → density=0 → UNCALIBRATED.
-Terminal shows ~0.05 lights/m² (814 lights across ~16,000 m² total floor area).</p>
-<p><strong>Fix:</strong> UPDATE <code>ad_space_type_mep_bom SET per_area_normal=0.05</code> WHERE
-<code>mep_product_id='LIGHT' AND per_area_normal=0</code>.</p>
-<p><strong>Impact:</strong> ERP.db only. component_library.db copy untouched
-(Phase 2 not yet active). No Java changes. CalibrationTest ELEC density
-should move from UNCALIBRATED to DRIFT or CALIBRATED.</p>
-<p><strong>Migration:</strong> <code>DV004_light_per_area.sql</code> (ERP.db).</p>
-<h3 id="73-fix-3-fp-nn-head-only-filter-calibrationdao-code-change">7.3 Fix 3: FP NN head-only filter — CalibrationDAO code change<a class="headerlink" href="#73-fix-3-fp-nn-head-only-filter-calibrationdao-code-change" title="Permanent link">&para;</a></h3>
-<p><strong>Problem:</strong> <code>CalibrationDAO.teNNMedianByStorey()</code> counts ALL
-IfcFireSuppressionTerminal elements for NN spacing, including hose reels
-(10 elements) which are sparse floor-mounted units. These outliers inflate
-the NN median, making DocEvent grid pitch look closer than it is.</p>
-<p><strong>Fix:</strong> Filter CalibrationDAO NN query to pendent/upright heads only:
-<code>WHERE element_type LIKE '%sprinkler head%'</code>. Hose reels excluded from
-NN spacing comparison (they are not grid-placed).</p>
-<p><strong>Impact:</strong> CalibrationDAO.java only (one SQL WHERE clause). No schema changes.
-FP NN median will decrease slightly (tighter), which may shift some storeys
-from CALIBRATED to DRIFT — but that's more accurate.</p>
-<p><strong>Pre-check:</strong> Run CalibrationTest before AND after to verify no CALIBRATED
-result flips to UNCALIBRATED.</p>
-<h3 id="74-impact-summary">7.4 Impact Summary<a class="headerlink" href="#74-impact-summary" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Fix</th>
-<th>DB</th>
-<th>File Changed</th>
-<th>Existing Tests</th>
-<th>Risk</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Rule 803</td>
-<td>ERP.db</td>
-<td>V007 migration</td>
-<td>None reference 803</td>
-<td>Zero</td>
-</tr>
-<tr>
-<td>LIGHT per_area</td>
-<td>ERP.db</td>
-<td>DV004 migration</td>
-<td>DiscValidationDBTest seed counts unchanged (UPDATE not INSERT)</td>
-<td>Zero</td>
-</tr>
-<tr>
-<td>FP NN filter</td>
-<td>—</td>
-<td>CalibrationDAO.java</td>
-<td>CalibrationTest FP spacing may shift verdict</td>
-<td>Low — run before/after</td>
-</tr>
-</tbody>
-</table>
+<h2 id="5-migration-safety">5. Migration Safety<a class="headerlink" href="#5-migration-safety" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Each step: extract → add <code>&lt;script&gt;</code> tag → facade delegates → run all 341 tests → commit.</li>
+<li><code>window.DocCanvas</code> API is unchanged throughout. No external caller breaks.</li>
+<li><code>grid_kinematics.js</code> is untouched — already clean.</li>
+<li><code>sw.js</code> precache list updated after each new file.</li>
+</ul>
 <hr />
-<h2 id="8-traceability">8. Traceability<a class="headerlink" href="#8-traceability" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Witness</th>
-<th>What it Proves</th>
-<th>Spec Reference</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>W-CAL-FP-DENSITY</td>
-<td>FP density ratio within [0.3, 3.0] per storey</td>
-<td>§4.1</td>
-</tr>
-<tr>
-<td>W-CAL-FP-SPACING</td>
-<td>FP pitch within 1000mm of TE NN median</td>
-<td>§4.1</td>
-</tr>
-<tr>
-<td>W-CAL-ELEC-DENSITY</td>
-<td>ELEC density ratio within [0.3, 3.0] per storey</td>
-<td>§4.2</td>
-</tr>
-<tr>
-<td>W-CAL-ELEC-SPACING</td>
-<td>ELEC pitch within 1000mm of TE NN median</td>
-<td>§4.2</td>
-</tr>
-<tr>
-<td>W-CAL-RULES-EXIST</td>
-<td>AD_Val_Rule seed data exists for FP + ELEC</td>
-<td>§3.3</td>
-</tr>
-<tr>
-<td>W-CAL-ND-COMPAT</td>
-<td>Calibration test does not disturb NonDisturbanceTest</td>
-<td>§3.4</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<p><em>References:
-<a href="../DocAction_SRS/">DocAction_SRS.md</a> §1.3 (processIt DocEvent path) |
-<a href="../DISC_VALIDATE_SRS/">DISC_VALIDATE_SRS.md</a> §9 (LOD resolution chain) |
-<a href="https://github.com/red1oon/BIMCompiler/blob/master/internal/TE_MINING_RESULTS.md">TE_MINING_RESULTS.md</a> (M1 FP spacing, M4 ELEC spacing) |
-<a href="https://github.com/red1oon/BIMCompiler/blob/master/BonsaiBIMDesigner/src/test/java/com/bim/designer/NonDisturbanceTest.java">NonDisturbanceTest.java</a> (complementary gate)</em></p>
-<p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
+<h2 id="6-what-this-does-not-change">6. What This Does NOT Change<a class="headerlink" href="#6-what-this-does-not-change" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>grid_kinematics.js</code> — already a standalone pure-math module (98 tests).</li>
+<li><code>bom_extract.js</code> — already standalone.</li>
+<li><code>kernel_ops.js</code> — already standalone.</li>
+<li>GRID_STRATEGY table — stays in <code>doc_canvas.js</code> as data (not a config file).</li>
+<li>Three.js rendering approach — BatchedMesh/InstancedMesh paths unchanged.</li>
+<li>The <code>_ifcToThree</code> coordinate transform — stays in <code>doc_canvas.js</code> as the single source of truth for coordinate conversion.</li>
+</ul>
 
 
 
